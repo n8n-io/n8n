@@ -367,7 +367,7 @@ export class ActiveWorkflowManager {
 				void this.activeWorkflowTriggers.remove(failedWorkflowData.id);
 				void this.activationErrorsService.register(failedWorkflowData.id, error.message);
 				const activationError = new WorkflowActivationError(
-					`There was a problem with the trigger node "${node.name}", for that reason did the workflow had to be deactivated`,
+					`The workflow was deactivated because its trigger node "${node.name}" failed`,
 					{ cause: error, node },
 				);
 				this.executeErrorWorkflow(activationError, failedWorkflowData, failureMode);
