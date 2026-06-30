@@ -1,10 +1,11 @@
 import type { Logger } from '@n8n/backend-common';
 import type {
+	EntityManager,
 	WorkflowPublicationOutbox,
 	WorkflowPublicationOutboxRepository,
 	WorkflowPublicationTriggerStatusRepository,
 } from '@n8n/db';
-import type { DataSource, EntityManager } from '@n8n/typeorm';
+import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
 
@@ -21,7 +22,6 @@ describe('PublicationStatusReporter', () => {
 	const activationErrorsService = mock<ActivationErrorsService>();
 	const push = mock<Push>();
 	const triggerStatusRepository = mock<WorkflowPublicationTriggerStatusRepository>();
-	const dataSource = mock<DataSource>();
 	const entityManager = mock<EntityManager>();
 
 	const reporter = new PublicationStatusReporter(
@@ -31,7 +31,6 @@ describe('PublicationStatusReporter', () => {
 		activationErrorsService,
 		push,
 		triggerStatusRepository,
-		dataSource,
 	);
 
 	function makeRecord(
@@ -57,11 +56,9 @@ describe('PublicationStatusReporter', () => {
 		activationErrorsService.deregister.mockResolvedValue(undefined);
 		activationErrorsService.register.mockResolvedValue(undefined);
 		triggerStatusRepository.replaceForWorkflow.mockResolvedValue(undefined);
-		dataSource.transaction.mockImplementation(
-			async (
-				_isolationLevel: unknown,
-				runInTransaction: (trx: EntityManager) => Promise<unknown>,
-			) => await runInTransaction(entityManager),
+		(outboxRepository.manager.transaction as unknown as Mock).mockImplementation(
+			async (runInTransaction: (trx: EntityManager) => Promise<unknown>) =>
+				await runInTransaction(entityManager),
 		);
 	});
 

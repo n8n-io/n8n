@@ -6,7 +6,6 @@ import {
 	type TriggerStatusRow,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource } from '@n8n/typeorm';
 import { ErrorReporter } from 'n8n-core';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
@@ -33,7 +32,6 @@ export class PublicationStatusReporter {
 		private readonly activationErrorsService: ActivationErrorsService,
 		private readonly push: Push,
 		private readonly triggerStatusRepository: WorkflowPublicationTriggerStatusRepository,
-		private readonly dataSource: DataSource,
 	) {
 		this.logger = this.logger.scoped('workflow-publication');
 	}
@@ -78,7 +76,7 @@ export class PublicationStatusReporter {
 
 			case 'failed': {
 				const { triggerStatuses } = result;
-				await this.dataSource.transaction(async (trx) => {
+				await this.outboxRepository.manager.transaction(async (trx) => {
 					if (triggerStatuses) {
 						await this.triggerStatusRepository.replaceForWorkflow(
 							record.workflowId,
@@ -124,7 +122,7 @@ export class PublicationStatusReporter {
 			failedNodeIds: failures.map((s) => s.nodeId),
 		});
 
-		await this.dataSource.transaction(async (trx) => {
+		await this.outboxRepository.manager.transaction(async (trx) => {
 			await this.triggerStatusRepository.replaceForWorkflow(
 				record.workflowId,
 				this.toRows(record, triggerStatuses),
@@ -186,7 +184,7 @@ export class PublicationStatusReporter {
 		record: WorkflowPublicationOutbox,
 		triggerStatuses?: TriggerStatusRow[],
 	): Promise<void> {
-		await this.dataSource.transaction(async (trx) => {
+		await this.outboxRepository.manager.transaction(async (trx) => {
 			if (triggerStatuses !== undefined) {
 				await this.triggerStatusRepository.replaceForWorkflow(
 					record.workflowId,
