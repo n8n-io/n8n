@@ -63,6 +63,11 @@ export class DeprecationService {
 			message: `n8n has replaced \`tmpl\` with \`tournament\` as expression evaluator. ${SAFE_TO_REMOVE}`,
 		},
 		{
+			envVar: 'WEBHOOK_URL',
+			message:
+				'Use N8N_WEBHOOK_URL instead, which sets the base URL for both test and production webhooks.',
+		},
+		{
 			envVar: 'EXECUTIONS_PROCESS',
 			message: SAFE_TO_REMOVE,
 			checkValue: (value: string | undefined) => value !== undefined && value !== 'own',

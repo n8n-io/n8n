@@ -248,6 +248,10 @@ export class GlobalConfig {
 	@Env('N8N_EDITOR_BASE_URL')
 	editorBaseUrl: string = '';
 
+	/** Public base URL for both test and production webhooks. Successor to the deprecated `WEBHOOK_URL`. */
+	@Env('N8N_WEBHOOK_URL')
+	webhookUrl: string = '';
+
 	/** URLs to external frontend hooks files, separated by semicolons. */
 	@Env('EXTERNAL_FRONTEND_HOOKS_URLS')
 	externalFrontendHooksUrls: string = '';
