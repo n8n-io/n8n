@@ -62,7 +62,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 		vi.useFakeTimers();
 		tracing.startSpan.mockImplementation(async (_opts, spanCb) => await spanCb(mock<Span>()));
 		outboxRepository.claimNextPendingRecord.mockResolvedValue(null);
-		applier.apply.mockResolvedValue({ type: 'completed' });
+		applier.apply.mockResolvedValue({ type: 'completed', triggerStatuses: [] });
 		reporter.report.mockResolvedValue(undefined);
 		consumer = createConsumer();
 	});
@@ -205,7 +205,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 				await new Promise<void>((resolve) => {
 					releaseApply = resolve;
 				});
-				return { type: 'completed' };
+				return { type: 'completed', triggerStatuses: [] };
 			});
 
 			consumer.startPolling();
@@ -235,7 +235,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 	describe('processRecord', () => {
 		test('applies the record then reports the result', async () => {
 			const record = makeRecord();
-			const result: PublicationResult = { type: 'completed' };
+			const result: PublicationResult = { type: 'completed', triggerStatuses: [] };
 			applier.apply.mockResolvedValue(result);
 
 			await consumer.processRecord(record);
