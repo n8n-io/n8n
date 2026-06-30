@@ -112,7 +112,10 @@ export class DataTableController {
 		} catch (e: unknown) {
 			if (!(e instanceof Error)) {
 				throw e;
-			} else if (e instanceof DataTableNameConflictError) {
+			} else if (
+				e instanceof DataTableNameConflictError ||
+				e instanceof DataTableSystemColumnNameConflictError
+			) {
 				throw new ConflictError(e.message);
 			} else if (e instanceof DataTableValidationError) {
 				throw new BadRequestError(e.message);
