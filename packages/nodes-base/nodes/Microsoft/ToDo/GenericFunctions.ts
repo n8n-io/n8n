@@ -127,9 +127,9 @@ export async function microsoftApiRequest(
 	).replace(/\/+$/, '');
 
 	// App-only Service Principal has no `/me`; rebase the request onto the chosen user.
-	// `userTarget` is a per-node setting resolved once here (item 0), not per input item.
-	// Only page-1 (relative) requests are scoped — paginated follow-ups pass an absolute
-	// `@odata.nextLink` as `uri`, which is used verbatim.
+	// `userTarget` is `noDataExpression` (a node-level value, identical for every item), so
+	// resolving it once here is correct. Only page-1 (relative) requests are scoped —
+	// paginated follow-ups pass an absolute `@odata.nextLink` as `uri`, used verbatim.
 	let uriToUse = uri || `${baseUrl}/v1.0/me${resource}`;
 	if (!uri && isServicePrincipal) {
 		const scopeRoot = resolveScopeRoot.call(this);

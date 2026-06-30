@@ -53,6 +53,8 @@ describe('MicrosoftToDo authentication descriptor', () => {
 		expect(userTarget?.displayOptions?.show?.authentication).toEqual([
 			'microsoftEntraServicePrincipalApi',
 		]);
+		// Node-level target: no per-item expression, so item-0 resolution can't misroute.
+		expect(userTarget?.noDataExpression).toBe(true);
 		// To Do is user-only: no "Access As" selector and no drive/site targets.
 		expect(properties.find((property) => property.name === 'resourceTarget')).toBeUndefined();
 	});

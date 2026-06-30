@@ -16,6 +16,10 @@ export const userTargetRLC: INodeProperties = {
 	displayName: 'User',
 	name: 'userTarget',
 	type: 'resourceLocator',
+	// Node-level target, not per-item: `noDataExpression` keeps it a fixed value for the whole
+	// run, so the transport resolving it once (item 0) can never silently target the wrong user
+	// from a per-item expression like `={{ $json.user }}`.
+	noDataExpression: true,
 	default: { mode: 'id', value: '' },
 	required: true,
 	modes: [
@@ -28,7 +32,7 @@ export const userTargetRLC: INodeProperties = {
 		},
 	],
 	description:
-		'The user whose To Do lists and tasks the Service Principal should act on. Applies to the whole node — set once, not evaluated per input item.',
+		'The user whose To Do lists and tasks the Service Principal should act on. Applies to the whole node (every item in the execution).',
 	displayOptions: {
 		show: {
 			authentication: ['microsoftEntraServicePrincipalApi'],
