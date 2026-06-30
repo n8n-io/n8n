@@ -1375,6 +1375,7 @@ export interface IHookFunctions
 
 export interface IWebhookFunctions extends FunctionsBaseWithRequiredKeys<'getMode'> {
 	getBodyData(): IDataObject;
+	getContext(type: ContextType): IContextObject;
 	getHeaderData(): IncomingHttpHeaders;
 	validateN8nOAuth2Token(token: string, resourceUrl: string): Promise<N8nOAuth2ValidationResult>;
 	establishTriggerIdentity(token: string, resource: string): Promise<void>;

@@ -2,7 +2,9 @@ import type { Request, Response } from 'express';
 import type {
 	AINodeConnectionType,
 	CloseFunction,
+	ContextType,
 	CredentialCheckResult,
+	IContextObject,
 	ICredentialDataDecryptedObject,
 	IDataObject,
 	IExecuteData,
@@ -19,7 +21,12 @@ import type {
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { UnexpectedError, createDeferredPromise, createEmptyRunExecutionData } from 'n8n-workflow';
+import {
+	NodeHelpers,
+	UnexpectedError,
+	createDeferredPromise,
+	createEmptyRunExecutionData,
+} from 'n8n-workflow';
 
 import { NodeExecutionContext } from './node-execution-context';
 import { copyBinaryFile, getBinaryHelperFunctions } from './utils/binary-helper-functions';
@@ -105,6 +112,13 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 
 	getHeaderData() {
 		return this.assertHttpRequest().headers;
+	}
+
+	getContext(type: ContextType): IContextObject {
+		if (!this.runExecutionData) {
+			throw new UnexpectedError('`executionData` is not initialized');
+		}
+		return NodeHelpers.getContext(this.runExecutionData, type, this.node);
 	}
 
 	getParamsData(): object {
