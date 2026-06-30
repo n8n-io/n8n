@@ -1,8 +1,8 @@
+import { isAgentFeatureEnabled } from '@/utils/agent-feature-enabled';
 import { loadRuntimeSkillSourceFromDirectory, type RuntimeSkillSource } from '@n8n/agents';
 import { resolve } from 'node:path';
 
 export const INSTANCE_AI_SKILLS_DIR = resolve(__dirname, '..', '..', 'skills');
-const AGENTS_MODULE_NAME = 'agents';
 const AGENTS_MODULE_RUNTIME_SKILLS = new Set(['intent-recognition']);
 
 let cachedRuntimeSkillSource: RuntimeSkillSource | undefined;
@@ -21,13 +21,6 @@ export function hasRuntimeSkills(
 }
 
 function runtimeSkillExclusions(): string[] {
-	const enabledModules = new Set(
-		(process.env.N8N_ENABLED_MODULES ?? '')
-			.split(',')
-			.map((moduleName) => moduleName.trim())
-			.filter((moduleName) => moduleName.length > 0),
-	);
-
-	if (enabledModules.has(AGENTS_MODULE_NAME)) return [];
+	if (isAgentFeatureEnabled()) return [];
 	return [...AGENTS_MODULE_RUNTIME_SKILLS];
 }
