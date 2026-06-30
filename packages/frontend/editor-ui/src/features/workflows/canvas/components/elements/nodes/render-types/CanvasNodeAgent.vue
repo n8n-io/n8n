@@ -239,7 +239,9 @@ watch(
 							<CanvasNodeAgentChips v-if="chips.length" :chips="chips" />
 						</template>
 					</template>
-					<div v-else :class="[$style.picker, 'nodrag', 'nowheel']">
+					<!-- Stop dbl-click bubbling so interacting with the picker doesn't trip
+					the card's double-click-to-open-NDV. -->
+					<div v-else :class="[$style.picker, 'nodrag', 'nowheel']" @dblclick.stop>
 						<AgentSelectorParameterInput
 							:parameter="agentSelectorParameter"
 							:model-value="agentResourceLocator"
@@ -247,7 +249,7 @@ watch(
 							:is-read-only="isReadOnly"
 							input-size="medium"
 							hide-mode-selector
-							allow-create
+							:allow-create="Boolean(projectId)"
 							@update:model-value="onPickAgent"
 							@agent-create-requested="onCreateAgent"
 						/>

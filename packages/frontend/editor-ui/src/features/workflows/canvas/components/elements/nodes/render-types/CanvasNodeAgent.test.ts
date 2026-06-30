@@ -207,4 +207,12 @@ describe('CanvasNodeAgent', () => {
 
 		expect(emitted('activate')).toBeTruthy();
 	});
+
+	it('does not open NDV when double-clicking the embedded picker (empty state)', async () => {
+		const { getByTestId, emitted } = renderWithAgent('');
+
+		await fireEvent.dblClick(getByTestId('agent-picker-stub'));
+
+		expect(emitted('activate')).toBeFalsy();
+	});
 });
