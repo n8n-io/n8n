@@ -32,6 +32,12 @@ export class WorkflowActivationError extends ExecutionBaseError {
 		this.node = node;
 		this.workflowId = workflowId;
 		this.message = message;
+		if (cause && !this.description) {
+			this.description =
+				'description' in cause && typeof cause.description === 'string'
+					? cause.description
+					: cause.message;
+		}
 		this.setLevel(level);
 	}
 
