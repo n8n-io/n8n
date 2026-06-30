@@ -120,9 +120,22 @@ type WorkflowPublishState =
 	| 'published-no-changes' // Published and up to date
 	| 'published-with-changes' // Published but has unpublished changes
 	| 'published-node-issues' // Published but has node issues
-	| 'published-invalid-trigger'; // Published but no trigger nodes
+	| 'published-invalid-trigger' // Published but no trigger nodes
+	| 'publishing' // Publication service: triggers being registered
+	| 'publication-partial' // Publication service: some triggers failed to activate
+	| 'publication-failed'; // Publication service: workflow not running
+
+const publicationStatus = computed(() => workflowDocumentStore.value.publicationStatus);
+const publicationServiceEnabled = computed(() => settingsStore.isWorkflowPublicationServiceEnabled);
 
 const workflowPublishState = computed((): WorkflowPublishState => {
+	// When publication service is enabled, its status takes precedence
+	if (publicationServiceEnabled.value) {
+		if (publicationStatus.value === 'publishing') return 'publishing';
+		if (publicationStatus.value === 'partial') return 'publication-partial';
+		if (publicationStatus.value === 'failed') return 'publication-failed';
+	}
+
 	const hasBeenPublished = !!activeVersion.value;
 	const hasChanges =
 		workflowDocumentStore.value.versionId !== activeVersion.value?.versionId ||
@@ -204,6 +217,7 @@ const publishButtonConfig = computed(() => {
 		const defaultConfigForNoPermission = {
 			text: i18n.baseText('workflows.publish'),
 			enabled: false,
+			loading: false,
 			showIndicator: false,
 			indicatorClass: '',
 			tooltip: isPersonalSpace.value
@@ -229,6 +243,7 @@ const publishButtonConfig = computed(() => {
 		return {
 			text: i18n.baseText('workflows.publish'),
 			enabled: containsTrigger.value && !hasNodeIssues.value,
+			loading: false,
 			showIndicator: false,
 			indicatorClass: '',
 			tooltip: !containsTrigger.value
@@ -248,6 +263,7 @@ const publishButtonConfig = computed(() => {
 		'not-published-not-eligible': {
 			text: i18n.baseText('workflows.publish'),
 			enabled: false,
+			loading: false,
 			showIndicator: false,
 			indicatorClass: '',
 			tooltip: !containsTrigger.value
@@ -261,6 +277,7 @@ const publishButtonConfig = computed(() => {
 		'not-published-eligible': {
 			text: i18n.baseText('workflows.publish'),
 			enabled: true,
+			loading: false,
 			showIndicator: false,
 			indicatorClass: '',
 			tooltip: '',
@@ -269,6 +286,7 @@ const publishButtonConfig = computed(() => {
 		'published-no-changes': {
 			text: i18n.baseText('generic.published'),
 			enabled: false,
+			loading: false,
 			showIndicator: true,
 			indicatorClass: 'published',
 			tooltip: '',
@@ -277,6 +295,7 @@ const publishButtonConfig = computed(() => {
 		'published-with-changes': {
 			text: i18n.baseText('workflows.publish'),
 			enabled: true,
+			loading: false,
 			showIndicator: true,
 			indicatorClass: 'changes',
 			tooltip: i18n.baseText('workflows.publishModal.changes'),
@@ -285,6 +304,7 @@ const publishButtonConfig = computed(() => {
 		'published-node-issues': {
 			text: i18n.baseText('workflows.publish'),
 			enabled: false,
+			loading: false,
 			showIndicator: true,
 			indicatorClass: 'error',
 			tooltip: i18n.baseText(
@@ -299,10 +319,38 @@ const publishButtonConfig = computed(() => {
 		'published-invalid-trigger': {
 			text: i18n.baseText('workflows.publish'),
 			enabled: false,
+			loading: false,
 			showIndicator: true,
 			indicatorClass: 'changes',
 			tooltip: i18n.baseText('workflows.publishModal.noTriggerMessage'),
 			showVersionInfo: true,
+		},
+		publishing: {
+			text: i18n.baseText('workflows.publish.publishing'),
+			enabled: false,
+			loading: true,
+			showIndicator: false,
+			indicatorClass: '',
+			tooltip: '',
+			showVersionInfo: false,
+		},
+		'publication-partial': {
+			text: i18n.baseText('workflows.publish'),
+			enabled: true,
+			loading: false,
+			showIndicator: true,
+			indicatorClass: 'error',
+			tooltip: i18n.baseText('workflows.publish.partial.tooltip'),
+			showVersionInfo: true,
+		},
+		'publication-failed': {
+			text: i18n.baseText('workflows.publish'),
+			enabled: true,
+			loading: false,
+			showIndicator: true,
+			indicatorClass: 'error',
+			tooltip: i18n.baseText('workflows.publish.failed.tooltip'),
+			showVersionInfo: false,
 		},
 	};
 
@@ -576,7 +624,7 @@ defineExpose({
 					</template>
 					<N8nButton
 						:class="$style.groupButtonLeft"
-						:loading="autoSaveForPublish"
+						:loading="autoSaveForPublish || publishButtonConfig.loading"
 						:disabled="!publishButtonConfig.enabled || shouldDisablePublishButton"
 						variant="ghost"
 						data-test-id="workflow-open-publish-modal-button"
