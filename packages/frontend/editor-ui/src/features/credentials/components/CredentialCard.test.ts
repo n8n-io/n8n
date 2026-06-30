@@ -341,7 +341,7 @@ describe('CredentialCard', () => {
 				id: 'cred-1',
 				isResolvable: true,
 				connectedByMe: false,
-				scopes: ['credential:update'],
+				scopes: ['credential:connect'],
 				homeProject: { name: 'Test Project' },
 				...overrides,
 			});
@@ -355,12 +355,24 @@ describe('CredentialCard', () => {
 			expect(queryByTestId('credential-card-not-connected')).not.toBeInTheDocument();
 		});
 
-		it('should hide the Connect button when the user lacks update permission', () => {
+		it('should hide the Connect button when the user lacks connect permission', () => {
 			const { queryByTestId } = renderComponent({
-				props: { data: privateUnconnectedData({ scopes: ['credential:read'] }) },
+				props: {
+					data: privateUnconnectedData({ scopes: ['credential:read', 'credential:update'] }),
+				},
 			});
 
 			expect(queryByTestId('credential-card-connect')).not.toBeInTheDocument();
+		});
+
+		it('should show the Connect button for a user with only the connect permission', () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					data: privateUnconnectedData({ scopes: ['credential:read', 'credential:connect'] }),
+				},
+			});
+
+			expect(getByTestId('credential-card-connect')).toBeInTheDocument();
 		});
 
 		it('should still show project badge alongside the Connect button', () => {

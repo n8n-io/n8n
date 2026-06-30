@@ -1,4 +1,5 @@
 import type { SpanJSON, TracesSamplerSamplingContext, TransactionEvent } from '@sentry/core';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
 	buildBeforeSendTransaction,
@@ -139,6 +140,64 @@ describe('buildBeforeSendTransaction', () => {
 	it('returns the event unchanged when it has no spans', () => {
 		const event = { type: 'transaction' } as TransactionEvent;
 		expect(buildBeforeSendTransaction(THRESHOLD_MS)(event)).toBe(event);
+	});
+
+	describe('webhook trace sampling', () => {
+		const WEBHOOK = { endpoint: 'webhook', sampleRate: 0.05 };
+		const beforeSend = buildBeforeSendTransaction(THRESHOLD_MS, WEBHOOK);
+
+		/** Builds a webhook transaction with the given name and root status. */
+		function webhookTx(name: string, status?: SpanJSON['status']): TransactionEvent {
+			return {
+				type: 'transaction',
+				transaction: name,
+				contexts: { trace: { op: 'http.server', span_id: 'root', trace_id: 't', status } },
+			} as TransactionEvent;
+		}
+
+		afterEach(() => vi.restoreAllMocks());
+
+		it('drops a successful webhook transaction when the dice roll exceeds the rate', () => {
+			vi.spyOn(Math, 'random').mockReturnValue(0.5);
+			expect(beforeSend(webhookTx('POST /webhook/*path', 'ok'))).toBeNull();
+		});
+
+		it('keeps a successful webhook transaction when the dice roll is below the rate', () => {
+			vi.spyOn(Math, 'random').mockReturnValue(0.01);
+			expect(beforeSend(webhookTx('POST /webhook/*path', 'ok'))).not.toBeNull();
+		});
+
+		it('keeps errored webhook transactions regardless of the dice roll', () => {
+			vi.spyOn(Math, 'random').mockReturnValue(0.99);
+			expect(beforeSend(webhookTx('POST /webhook/*path', 'internal_error'))).not.toBeNull();
+		});
+
+		it('does not sample /rest transactions', () => {
+			vi.spyOn(Math, 'random').mockReturnValue(0.99);
+			expect(beforeSend(webhookTx('POST /rest/executions/:id/stop', 'ok'))).not.toBeNull();
+		});
+
+		it('does not sample test/waiting webhooks (production only)', () => {
+			vi.spyOn(Math, 'random').mockReturnValue(0.99);
+			expect(beforeSend(webhookTx('POST /webhook-test/*path', 'ok'))).not.toBeNull();
+			expect(beforeSend(webhookTx('POST /webhook-waiting/:path', 'ok'))).not.toBeNull();
+		});
+
+		it('does not sample webhooks when no webhook config is provided', () => {
+			vi.spyOn(Math, 'random').mockReturnValue(0.99);
+			expect(
+				buildBeforeSendTransaction(THRESHOLD_MS)(webhookTx('POST /webhook/*path', 'ok')),
+			).not.toBeNull();
+		});
+
+		it('does not sample webhooks when the rate is 1', () => {
+			vi.spyOn(Math, 'random').mockReturnValue(0.99);
+			const keepAll = buildBeforeSendTransaction(THRESHOLD_MS, {
+				endpoint: 'webhook',
+				sampleRate: 1,
+			});
+			expect(keepAll(webhookTx('POST /webhook/*path', 'ok'))).not.toBeNull();
+		});
 	});
 });
 
