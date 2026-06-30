@@ -272,7 +272,9 @@ export async function runWorkflowTestCase(
 	if (!build.success || !build.workflowId) {
 		result.buildError = build.error;
 		const expectationResults = await expectationsPromise;
-		if (expectationResults.length > 0) result.buildExpectationResults = expectationResults;
+		const buildExpectationResults = expectationResults;
+		if (buildExpectationResults.length > 0)
+			result.buildExpectationResults = buildExpectationResults;
 		return result;
 	}
 
@@ -316,7 +318,8 @@ export async function runWorkflowTestCase(
 		expectationsPromise,
 	]);
 	result.executionScenarioResults = scenarioResults;
-	if (expectationResults.length > 0) result.buildExpectationResults = expectationResults;
+	const buildExpectationResults = expectationResults;
+	if (buildExpectationResults.length > 0) result.buildExpectationResults = buildExpectationResults;
 
 	const scenarioMs = Date.now() - scenarioStart;
 	logger.info(

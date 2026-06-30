@@ -18,6 +18,7 @@
 		"The agent classifies the Zendesk triage request as a hybrid classify-then-route workflow.",
 		"The agent explains that AI is useful for the bounded ticket classification and priority judgment.",
 		"The agent explains that deterministic routing should handle the fixed downstream Slack team assignment.",
-		"The agent does not classify the request as a full agent because there is no open-ended tool-use loop."
+		"The agent does not classify the request as a full agent because there is no open-ended tool-use loop.",
+		"The agent calls the load_skill tool with the intent-recognition skill before classifying the request."
 	]
 }

@@ -1,5 +1,7 @@
 import { DateTime } from 'luxon';
 
+import { isAgentFeatureEnabled } from '@/utils/agent-feature-enabled';
+
 import { getComputerUsePrompt } from './computer-use-prompt';
 import { SECRET_ASK_GUARDRAIL } from './credential-guardrails.prompt';
 import {
@@ -36,6 +38,10 @@ export function getDateTimeSection(timeZone?: string): string {
 The user's current local date and time is: ${isoTime}${tzLabel}.
 When you need to reference "now", use this date and time.`;
 }
+
+const INTENT_HINT = isAgentFeatureEnabled()
+	? 'For requests asking what kind of automation to build, whether something is workflow/hybrid/agent/single AI task, or how to route ambiguous automation intent, load `intent-recognition` before deciding.'
+	: '';
 
 function getInstanceInfoSection(webhookBaseUrl: string, formBaseUrl: string): string {
 	return `
@@ -124,7 +130,9 @@ ${workspaceRoot ? `\n${getSandboxWorkspaceSection(workspaceRoot)}\n` : ''}
 You have access to workflow, execution, and credential tools plus runtime skills (see the skill catalog). You also have delegation capabilities for complex tasks, and may have access to MCP tools for extended capabilities.
 ${getProjectScopeSection(projectId)}
 
-Match the user's request against skill descriptions in the catalog. Call \`load_skill\` before acting on a matched skill's guidance — never call \`data-tables\` or \`parse-file\` without loading \`data-table-manager\` first, and never call \`build-workflow\` without loading \`workflow-builder\` first. A single turn may need more than one skill when routing requires it (e.g. \`data-table-manager\` then \`workflow-builder\`).
+Match the user's request against skill descriptions in the catalog. Call \`load_skill\` before acting on a matched skill's guidance. Never call \`data-tables\` or \`parse-file\` without loading \`data-table-manager\` first, and never call \`build-workflow\` without loading \`workflow-builder\` first. A single turn may need more than one skill when routing requires it (e.g. \`data-table-manager\` then \`workflow-builder\`).
+
+${INTENT_HINT}
 
 - **Single workflow build or edit** (new workflow, add/remove/rewire nodes, expression/credential/schedule/Code fixes, including workflows that create or write to Data Tables) → \`data-table-manager\` when tables are involved, then \`workflow-builder\` → workspace file tools → \`build-workflow\`. If the service or workflow shape is clear, never stop before the first \`build-workflow\` call to ask for setup values like recipients, accounts, resources, credentials, channel IDs, or timezone; use placeholders or unresolved \`newCredential()\` calls. After save, load \`post-build-flow\` when verification or setup is needed. Do not create a plan just for verification. When the edit is to fix a node the user reports as erroring or showing a red expression error, inspect it first via \`debugging-executions\` (run the workflow, read the failing node's real error and resolved parameters) before editing anything — never guess at the cause or change the node on a hunch.
 - **Multi-workflow or coordinated architecture** (dependencies between workflows, shared data-table schema/migration, multiple durable artifacts, broad research, ambiguous business process, user asks to review a plan) → \`data-table-manager\` first when shared tables are involved → \`planning\` → \`create-tasks\` with \`planningContext.source: "planning-skill"\`.

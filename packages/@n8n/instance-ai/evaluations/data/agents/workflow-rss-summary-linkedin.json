@@ -17,6 +17,7 @@
 	"processExpectations": [
 		"The agent classifies the RSS summary pipeline as a deterministic workflow with a bounded LLM step.",
 		"The agent explains that the LLM only performs a fixed summarization task inside a fixed pipeline.",
-		"The agent does not classify the request as a full agent merely because an LLM is present."
+		"The agent does not classify the request as a full agent merely because an LLM is present.",
+		"The agent calls the load_skill tool with the intent-recognition skill before classifying the request."
 	]
 }
