@@ -34,13 +34,22 @@ describe('PoolConfigService', () => {
 	describe('resolvePoolForExecution', () => {
 		const projectId = 'project-123';
 
-		it("resolves to the project's default pool when it is live", async () => {
+		it("resolves to the project's configured pool", async () => {
 			projectPoolSettingsRepository.getDefaultPool.mockResolvedValue('gpu');
-			workerPoolsService.getAvailablePools.mockResolvedValue(['gpu', 'cpu']);
 
 			const result = await service.resolvePoolForExecution({ projectId });
 
 			expect(result).toEqual({ queueName: 'jobs-gpu', poolName: 'gpu' });
+		});
+
+		it('routes to the configured pool without checking for live workers', async () => {
+			projectPoolSettingsRepository.getDefaultPool.mockResolvedValue('gpu');
+
+			const result = await service.resolvePoolForExecution({ projectId });
+
+			expect(result).toEqual({ queueName: 'jobs-gpu', poolName: 'gpu' });
+			// Routing must stay off the registry: it runs on the enqueue hot path.
+			expect(workerPoolsService.getAvailablePools).not.toHaveBeenCalled();
 		});
 
 		it('falls back to the default queue when the project has no pool set', async () => {
@@ -51,13 +60,13 @@ describe('PoolConfigService', () => {
 			expect(result).toEqual({ queueName: 'jobs', poolName: undefined });
 		});
 
-		it('falls back to the default queue when the configured pool is not registered by any worker', async () => {
+		it('routes to the configured pool even when no worker is registered for it', async () => {
 			projectPoolSettingsRepository.getDefaultPool.mockResolvedValue('gpu');
 			workerPoolsService.getAvailablePools.mockResolvedValue(['cpu']);
 
 			const result = await service.resolvePoolForExecution({ projectId });
 
-			expect(result).toEqual({ queueName: 'jobs', poolName: undefined });
+			expect(result).toEqual({ queueName: 'jobs-gpu', poolName: 'gpu' });
 		});
 
 		it('falls back to the default queue when there is no project id', async () => {
