@@ -82,10 +82,10 @@ describe('Instance AI runtime skills', () => {
 		);
 		expect(
 			source.registry.skills.find((entry) => entry.id === 'intent-recognition')?.description,
-		).toContain('Load for intent-only classification');
+		).toContain('Must be used before deciding the intent of any automation request');
 		const skill = await source.loadSkill('intent-recognition');
 		expect(skill?.name).toBe('intent-recognition');
-		expect(skill?.instructions).toContain('The deciding question is who owns control flow');
+		expect(skill?.instructions).toContain('This skill must be used before deciding');
 
 		const loadTool = createSkillLoadTool(source);
 		const loadResult = await loadTool.handler?.({ skillId: 'intent-recognition' }, {});
