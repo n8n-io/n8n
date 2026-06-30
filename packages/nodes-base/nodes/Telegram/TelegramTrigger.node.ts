@@ -19,8 +19,8 @@ export class TelegramTrigger implements INodeType {
 		name: 'telegramTrigger',
 		icon: 'file:telegram.svg',
 		group: ['trigger'],
-		version: [1, 1.1, 1.2, 1.3],
-		defaultVersion: 1.3,
+		version: [1, 1.1, 1.2, 1.3, 1.4],
+		defaultVersion: 1.4,
 		subtitle: '=Updates: {{$parameter["updates"].join(", ")}}',
 		description: 'Starts the workflow on a Telegram update',
 		defaults: {
@@ -291,12 +291,16 @@ export class TelegramTrigger implements INodeType {
 			if (additionalFields.chatIds) {
 				const chatIds = additionalFields.chatIds as string;
 				const splitIds = chatIds.split(',').map((chatId) => chatId.trim());
+				// Versions < 1.4 only resolve the chat ID from `message` updates; later
+				// versions resolve it from every update type that carries a chat.
 				const chatId =
-					bodyData.message?.chat?.id ??
-					bodyData.edited_message?.chat?.id ??
-					bodyData.channel_post?.chat?.id ??
-					bodyData.edited_channel_post?.chat?.id ??
-					bodyData.callback_query?.message?.chat?.id;
+					nodeVersion >= 1.4
+						? (bodyData.message?.chat?.id ??
+							bodyData.edited_message?.chat?.id ??
+							bodyData.channel_post?.chat?.id ??
+							bodyData.edited_channel_post?.chat?.id ??
+							bodyData.callback_query?.message?.chat?.id)
+						: bodyData.message?.chat?.id;
 				if (!splitIds.includes(String(chatId))) {
 					return {};
 				}
@@ -305,15 +309,19 @@ export class TelegramTrigger implements INodeType {
 			if (additionalFields.userIds) {
 				const userIds = additionalFields.userIds as string;
 				const splitIds = userIds.split(',').map((userId) => userId.trim());
+				// Versions < 1.4 only resolve the user ID from `message` updates; later
+				// versions resolve it from every update type that carries a sender.
 				const userId =
-					bodyData.message?.from?.id ??
-					bodyData.edited_message?.from?.id ??
-					bodyData.channel_post?.from?.id ??
-					bodyData.edited_channel_post?.from?.id ??
-					bodyData.callback_query?.from?.id ??
-					bodyData.inline_query?.from?.id ??
-					bodyData.pre_checkout_query?.from?.id ??
-					bodyData.shipping_query?.from?.id;
+					nodeVersion >= 1.4
+						? (bodyData.message?.from?.id ??
+							bodyData.edited_message?.from?.id ??
+							bodyData.channel_post?.from?.id ??
+							bodyData.edited_channel_post?.from?.id ??
+							bodyData.callback_query?.from?.id ??
+							bodyData.inline_query?.from?.id ??
+							bodyData.pre_checkout_query?.from?.id ??
+							bodyData.shipping_query?.from?.id)
+						: bodyData.message?.from?.id;
 				if (!splitIds.includes(String(userId))) {
 					return {};
 				}

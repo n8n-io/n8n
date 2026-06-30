@@ -389,6 +389,101 @@ describe('TelegramTrigger', () => {
 
 			expect(responseData).toEqual({});
 		});
+
+		describe('version 1.3 (legacy filter resolution)', () => {
+			test('should drop callback_query when chatIds filter is set, matching only message updates', async () => {
+				const { responseData } = await testWebhookTriggerNode(TelegramTrigger, {
+					workflow: mock<Workflow>({ id: '1', active: true }),
+					node: mock<INode>({
+						id: '2',
+						typeVersion: 1.3,
+						parameters: {
+							additionalFields: {
+								download: false,
+								chatIds: '555',
+							},
+						},
+					}),
+					headerData: {
+						'x-telegram-bot-api-secret-token': '1_2',
+					},
+					bodyData: {
+						callback_query: {
+							from: { id: 777 },
+							message: {
+								chat: { id: 555 },
+								from: { id: 123 },
+							},
+						},
+					},
+				});
+
+				expect(responseData).toEqual({});
+			});
+
+			test('should drop callback_query when userIds filter is set, matching only message updates', async () => {
+				const { responseData } = await testWebhookTriggerNode(TelegramTrigger, {
+					workflow: mock<Workflow>({ id: '1', active: true }),
+					node: mock<INode>({
+						id: '2',
+						typeVersion: 1.3,
+						parameters: {
+							additionalFields: {
+								download: false,
+								userIds: '777',
+							},
+						},
+					}),
+					headerData: {
+						'x-telegram-bot-api-secret-token': '1_2',
+					},
+					bodyData: {
+						callback_query: {
+							from: { id: 777 },
+							message: {
+								chat: { id: 555 },
+								from: { id: 123 },
+							},
+						},
+					},
+				});
+
+				expect(responseData).toEqual({});
+			});
+
+			test('should still pass message updates matching the chatIds filter', async () => {
+				mockResult.message = {
+					chat: { id: 555 },
+					from: { id: 666 },
+				};
+
+				const { responseData } = await testWebhookTriggerNode(TelegramTrigger, {
+					workflow: mock<Workflow>({ id: '1', active: true }),
+					node: mock<INode>({
+						id: '2',
+						typeVersion: 1.3,
+						parameters: {
+							additionalFields: {
+								download: false,
+								chatIds: '555',
+								userIds: '666',
+							},
+						},
+					}),
+					headerData: {
+						'x-telegram-bot-api-secret-token': '1_2',
+					},
+					bodyData: {
+						message: {
+							chat: { id: 555 },
+							from: { id: 666 },
+						},
+					},
+				});
+
+				expect(responseData).toEqual({ workflowData: [[{ json: mockResult }]] });
+			});
+		});
 	});
 
 	describe('create', () => {
