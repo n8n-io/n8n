@@ -15,7 +15,7 @@ export const conversationTurnTextSchema = z
 	.union([z.string(), z.array(z.string())])
 	.transform((t) => (Array.isArray(t) ? t.join('\n') : t));
 
-const ConversationTurnSchema = z.object({
+export const ConversationTurnSchema = z.object({
 	role: z.enum(['user', 'assistant']),
 	text: conversationTurnTextSchema,
 });
@@ -88,7 +88,15 @@ const workflowTestCaseObjectSchema = z
 		 *  id; workspace auto-discovered. Supplies the live turn, so `conversation` is
 		 *  optional (continues after it). */
 		seedThread: z
-			.object({ threadId: z.string().min(1), project: z.string().min(1).optional() })
+			.object({
+				threadId: z.string().min(1),
+				project: z.string().min(1).optional(),
+				/** LangSmith host the source trace lives on (dual-tenant reads during the
+				 *  US→EU migration). Omit ⇒ the eval's home (EU) tenant, so existing cases
+				 *  are unchanged. A US-sourced case carries the US host; the harness maps
+				 *  host→key via env (LANGSMITH_API_KEY_US). */
+				endpoint: z.string().url().optional(),
+			})
 			.optional(),
 		/**
 		 * Logical groupings this case belongs to (e.g. `['pr', 'full']`). Used by
@@ -101,6 +109,13 @@ const workflowTestCaseObjectSchema = z
 	// `.strict()` so any key outside the schema (a legacy `buildExpectations`, a typo'd
 	// `outcomeExpectaiton`, etc.) fails at case-load instead of being silently stripped.
 	.strict();
+
+/** The keys n8n's case schema accepts. Exported so non-harness emitters (the
+ *  lang-tracer normalizer) can WHITELIST an exported case down to exactly these —
+ *  the schema is `.strict()`, so any extra key LangTracer attaches (id, name,
+ *  suiteId, timestamps, …) fails the whole suite load. Whitelisting the allowed
+ *  set is robust where blacklisting the few keys we happen to know today is not. */
+export const WORKFLOW_TEST_CASE_KEYS = Object.keys(workflowTestCaseObjectSchema.shape);
 
 // At most one seeding mode, and a source for the live turn.
 export const WorkflowTestCaseSchema = workflowTestCaseObjectSchema

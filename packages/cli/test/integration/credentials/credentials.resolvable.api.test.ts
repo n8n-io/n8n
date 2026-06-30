@@ -19,6 +19,7 @@ import { DynamicCredentialResolverRepository } from '@/modules/dynamic-credentia
 import { DynamicCredentialUserEntryRepository } from '@/modules/dynamic-credentials.ee/database/repositories/dynamic-credential-user-entry.repository';
 import { DynamicCredentialsConfig } from '@/modules/dynamic-credentials.ee/dynamic-credentials.config';
 import { Telemetry } from '@/telemetry';
+
 import {
 	getCredentialSharings,
 	saveCredential,
@@ -161,7 +162,7 @@ describe('GET /credentials — connectedByMe', () => {
 		await seedUserEntry(r3.id, memberA.id);
 
 		const repository = Container.get(DynamicCredentialUserEntryRepository);
-		const findSpy = jest.spyOn(repository, 'find');
+		const findSpy = vi.spyOn(repository, 'find');
 
 		try {
 			await testServer.authAgentFor(memberA).get('/credentials').expect(200);

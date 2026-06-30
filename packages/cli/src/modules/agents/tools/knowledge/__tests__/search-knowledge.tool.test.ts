@@ -1,5 +1,5 @@
 import type { BuiltTool } from '@n8n/agents';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { AgentKnowledgeSandboxService } from '../../../agent-knowledge-sandbox.service';
 import { createKnowledgeRetrievalTools } from '../search-knowledge.tool';

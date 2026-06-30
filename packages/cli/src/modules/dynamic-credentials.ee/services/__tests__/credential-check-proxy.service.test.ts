@@ -1,3 +1,4 @@
+import type { Mocked } from 'vitest';
 import type { GlobalConfig } from '@n8n/config';
 import type { IExecutionContext, PlaintextExecutionContext } from 'n8n-workflow';
 
@@ -32,11 +33,11 @@ const createMockCredentialEntity = (
 
 describe('CredentialCheckProxyService', () => {
 	let service: CredentialCheckProxyService;
-	let mockCredentialResolverWorkflowService: jest.Mocked<CredentialResolverWorkflowService>;
-	let mockExecutionContextService: jest.Mocked<ExecutionContextService>;
-	let mockEnterpriseCredentialsService: jest.Mocked<EnterpriseCredentialsService>;
-	let mockAuthorizeIntentService: jest.Mocked<AuthorizeIntentService>;
-	let mockUrlService: jest.Mocked<UrlService>;
+	let mockCredentialResolverWorkflowService: Mocked<CredentialResolverWorkflowService>;
+	let mockExecutionContextService: Mocked<ExecutionContextService>;
+	let mockEnterpriseCredentialsService: Mocked<EnterpriseCredentialsService>;
+	let mockAuthorizeIntentService: Mocked<AuthorizeIntentService>;
+	let mockUrlService: Mocked<UrlService>;
 
 	const executionContext: IExecutionContext = {
 		version: 1,
@@ -57,27 +58,27 @@ describe('CredentialCheckProxyService', () => {
 	};
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		mockCredentialResolverWorkflowService = {
-			getWorkflowStatus: jest.fn(),
-		} as unknown as jest.Mocked<CredentialResolverWorkflowService>;
+			getWorkflowStatus: vi.fn(),
+		} as unknown as Mocked<CredentialResolverWorkflowService>;
 
 		mockExecutionContextService = {
-			decryptExecutionContext: jest.fn().mockResolvedValue(plaintextContext),
-		} as unknown as jest.Mocked<ExecutionContextService>;
+			decryptExecutionContext: vi.fn().mockResolvedValue(plaintextContext),
+		} as unknown as Mocked<ExecutionContextService>;
 
 		mockEnterpriseCredentialsService = {
-			getOne: jest.fn(),
-		} as unknown as jest.Mocked<EnterpriseCredentialsService>;
+			getOne: vi.fn(),
+		} as unknown as Mocked<EnterpriseCredentialsService>;
 
 		mockAuthorizeIntentService = {
-			create: jest.fn().mockResolvedValue('intent-token'),
-		} as unknown as jest.Mocked<AuthorizeIntentService>;
+			create: vi.fn().mockResolvedValue('intent-token'),
+		} as unknown as Mocked<AuthorizeIntentService>;
 
 		mockUrlService = {
-			getInstanceBaseUrl: jest.fn().mockReturnValue('http://localhost:5678'),
-		} as unknown as jest.Mocked<UrlService>;
+			getInstanceBaseUrl: vi.fn().mockReturnValue('http://localhost:5678'),
+		} as unknown as Mocked<UrlService>;
 
 		const globalConfig = { endpoints: { rest: 'rest' } } as unknown as GlobalConfig;
 

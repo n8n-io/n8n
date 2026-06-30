@@ -75,7 +75,10 @@ describe('VaultProvider', () => {
 	mockInstance(ExternalSecretsConfig, { preferGet: true });
 
 	function createProvider(routes: Route[], settings = vaultSettings) {
-		const { outboundHttp, httpRequest, requests } = createFakeOutboundHttp(routes, jest.fn);
+		const { outboundHttp, httpRequest, requests } = createFakeOutboundHttp(
+			routes,
+			vi.fn as unknown as Parameters<typeof createFakeOutboundHttp>[1],
+		);
 		const provider = new VaultProvider(logger, outboundHttp);
 		return { provider, httpRequest, requests, outboundHttp, settings };
 	}

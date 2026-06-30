@@ -1,7 +1,8 @@
+import type { Mocked } from 'vitest';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { Logger } from '@n8n/backend-common';
 import type { OAuthClient } from '../database/entities/oauth-client.entity';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { OAuthAuthorizationCodeService } from '../oauth-authorization-code.service';
 import { OAuthConsentService } from '../oauth-consent.service';
@@ -16,30 +17,26 @@ import { UrlService } from '@/services/url.service';
 
 const issuer = 'https://n8n.example.com';
 
-let logger: jest.Mocked<Logger>;
-let oauthSessionService: jest.Mocked<OAuthSessionService>;
-let oauthClientRepository: jest.Mocked<OAuthClientRepository>;
-let userConsentRepository: jest.Mocked<UserConsentRepository>;
-let authorizationCodeService: jest.Mocked<OAuthAuthorizationCodeService>;
-let protectedResourceRegistry: jest.Mocked<ProtectedResourceRegistry>;
-let urlService: jest.Mocked<UrlService>;
+let logger: Mocked<Logger>;
+let oauthSessionService: Mocked<OAuthSessionService>;
+let oauthClientRepository: Mocked<OAuthClientRepository>;
+let userConsentRepository: Mocked<UserConsentRepository>;
+let authorizationCodeService: Mocked<OAuthAuthorizationCodeService>;
+let protectedResourceRegistry: Mocked<ProtectedResourceRegistry>;
+let urlService: Mocked<UrlService>;
 let service: OAuthConsentService;
 
 describe('OAuthConsentService', () => {
 	beforeAll(() => {
 		logger = mockInstance(Logger);
-		oauthSessionService = mockInstance(OAuthSessionService) as jest.Mocked<OAuthSessionService>;
-		oauthClientRepository = mockInstance(
-			OAuthClientRepository,
-		) as jest.Mocked<OAuthClientRepository>;
-		userConsentRepository = mockInstance(
-			UserConsentRepository,
-		) as jest.Mocked<UserConsentRepository>;
+		oauthSessionService = mockInstance(OAuthSessionService) as Mocked<OAuthSessionService>;
+		oauthClientRepository = mockInstance(OAuthClientRepository) as Mocked<OAuthClientRepository>;
+		userConsentRepository = mockInstance(UserConsentRepository) as Mocked<UserConsentRepository>;
 		authorizationCodeService = mockInstance(OAuthAuthorizationCodeService);
 		protectedResourceRegistry = mockInstance(
 			ProtectedResourceRegistry,
-		) as jest.Mocked<ProtectedResourceRegistry>;
-		urlService = mockInstance(UrlService) as jest.Mocked<UrlService>;
+		) as Mocked<ProtectedResourceRegistry>;
+		urlService = mockInstance(UrlService) as Mocked<UrlService>;
 
 		service = new OAuthConsentService(
 			logger,
@@ -53,7 +50,7 @@ describe('OAuthConsentService', () => {
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		urlService.getInstanceBaseUrl.mockReturnValue(issuer);
 	});
 

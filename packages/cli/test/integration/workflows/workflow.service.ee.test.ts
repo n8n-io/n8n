@@ -6,7 +6,7 @@ import {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { Telemetry } from '@/telemetry';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
@@ -45,7 +45,7 @@ describe('EnterpriseWorkflowService', () => {
 
 	afterEach(async () => {
 		await testDb.truncate(['WorkflowEntity']);
-		jest.restoreAllMocks();
+		vi.restoreAllMocks();
 	});
 
 	afterAll(async () => {

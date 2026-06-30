@@ -1,9 +1,11 @@
 import type { InstanceAiEvent } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
-jest.mock('@n8n/instance-ai', () => ({
-	...jest.requireActual('../../../../../@n8n/instance-ai/src/runtime/liveness-policy'),
+vi.mock('@n8n/instance-ai', async () => ({
+	...(await vi.importActual<Record<string, unknown>>(
+		'../../../../../@n8n/instance-ai/src/runtime/liveness-policy',
+	)),
 	orchestratorAgentId: (runId: string) => `orchestrator-${runId}`,
 }));
 
@@ -30,27 +32,27 @@ function createLivenessService() {
 	const policyConfig = createInstanceAiLivenessPolicyConfig();
 	const policy = new InstanceAiLivenessPolicy(policyConfig);
 	const runState = {
-		sweepTimedOut: jest.fn(
+		sweepTimedOut: vi.fn(
 			(_policy: InstanceAiLivenessPolicy, _now?: number): InstanceAiLivenessSweepResult => ({
 				activeThreadIds: [] as string[],
 				suspendedThreadIds: [] as string[],
 				confirmationRequestIds: [] as string[],
 			}),
 		),
-		cancelActiveRun: jest.fn(
+		cancelActiveRun: vi.fn(
 			(_threadId: string): { runId: string; abortController: AbortController } | undefined =>
 				undefined,
 		),
-		cancelSuspendedRun: jest.fn((_threadId: string): TestSuspendedRun | undefined => undefined),
-		getActiveRunId: jest.fn((_threadId: string): string | undefined => undefined),
-		getPendingConfirmation: jest.fn(
+		cancelSuspendedRun: vi.fn((_threadId: string): TestSuspendedRun | undefined => undefined),
+		getActiveRunId: vi.fn((_threadId: string): string | undefined => undefined),
+		getPendingConfirmation: vi.fn(
 			(_requestId: string): { threadId: string } | undefined => undefined,
 		),
-		hasPendingConfirmationForThread: jest.fn((_threadId: string) => false),
-		rejectPendingConfirmation: jest.fn((_requestId: string) => true),
+		hasPendingConfirmationForThread: vi.fn((_threadId: string) => false),
+		rejectPendingConfirmation: vi.fn((_requestId: string) => true),
 	};
 	const backgroundTasks = {
-		timeoutTimedOutTasks: jest.fn(
+		timeoutTimedOutTasks: vi.fn(
 			async (
 				_policy: InstanceAiLivenessPolicy,
 				_now?: number,
@@ -72,13 +74,13 @@ function createLivenessService() {
 		),
 	};
 	const eventBus = {
-		getEventsForRun: jest.fn((_threadId: string, _runId: string) => [] as InstanceAiEvent[]),
-		publish: jest.fn((_threadId: string, _event: InstanceAiEvent) => {}),
+		getEventsForRun: vi.fn((_threadId: string, _runId: string) => [] as InstanceAiEvent[]),
+		publish: vi.fn((_threadId: string, _event: InstanceAiEvent) => {}),
 	};
-	const finalizeCancelledSuspendedRun = jest.fn(
+	const finalizeCancelledSuspendedRun = vi.fn(
 		(_suspended: TestSuspendedRun, _reason: string) => {},
 	);
-	const onPendingConfirmationRejected = jest.fn((_requestId: string) => {});
+	const onPendingConfirmationRejected = vi.fn((_requestId: string) => {});
 	const logger = mock<Logger>();
 
 	const service = new InstanceAiLivenessService<TestSuspendedRun>({
