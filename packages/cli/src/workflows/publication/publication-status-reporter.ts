@@ -6,7 +6,7 @@ import {
 	type TriggerStatusRow,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, type EntityManager } from '@n8n/typeorm';
+import { DataSource } from '@n8n/typeorm';
 import { ErrorReporter } from 'n8n-core';
 
 import { ActivationErrorsService } from '@/activation-errors.service';

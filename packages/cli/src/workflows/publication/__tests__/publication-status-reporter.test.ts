@@ -58,7 +58,10 @@ describe('PublicationStatusReporter', () => {
 		activationErrorsService.register.mockResolvedValue(undefined);
 		triggerStatusRepository.replaceForWorkflow.mockResolvedValue(undefined);
 		dataSource.transaction.mockImplementation(
-			async (cb: (trx: EntityManager) => Promise<unknown>) => await cb(entityManager),
+			async (
+				_isolationLevel: unknown,
+				runInTransaction: (trx: EntityManager) => Promise<unknown>,
+			) => await runInTransaction(entityManager),
 		);
 	});
 
