@@ -46,6 +46,10 @@ import {
 	WorkflowPublicationOutbox,
 	WorkflowPublicationOutboxStatus,
 } from './workflow-publication-outbox';
+import {
+	WorkflowPublicationTriggerStatus,
+	type WorkflowPublicationTriggerStatusType,
+} from './workflow-publication-trigger-status';
 import { WorkflowPublishHistory } from './workflow-publish-history';
 import { WorkflowPublishedVersion } from './workflow-published-version';
 import { WorkflowStatistics } from './workflow-statistics';
@@ -89,6 +93,8 @@ export {
 	WorkflowHistory,
 	WorkflowPublicationOutbox,
 	WorkflowPublicationOutboxStatus,
+	WorkflowPublicationTriggerStatus,
+	type WorkflowPublicationTriggerStatusType,
 	WorkflowPublishedVersion,
 	WorkflowPublishHistory,
 	ExecutionData,
@@ -136,6 +142,7 @@ export const entities = {
 	AuthProviderSyncHistory,
 	WorkflowHistory,
 	WorkflowPublicationOutbox,
+	WorkflowPublicationTriggerStatus,
 	WorkflowPublishedVersion,
 	WorkflowPublishHistory,
 	ExecutionData,

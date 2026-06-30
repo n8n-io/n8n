@@ -3,6 +3,11 @@
   "version": "2.29.0",
   "description": "Base nodes of n8n",
   "main": "index.js",
+  "typesVersions": {
+    "*": {
+      "aws-credentials": ["dist/credentials/common/aws/index.d.ts"]
+    }
+  },
   "scripts": {
     "clean": "rimraf dist .turbo",
     "copy-nodes-json": "node scripts/copy-nodes-json.js .",
@@ -22,7 +27,8 @@
     "test:integration:skip": "vitest run --config vitest.integration.config.ts"
   },
   "files": [
-    "dist"
+    "dist",
+    "aws-credentials.js"
   ],
   "n8n": {
     "credentials": [
