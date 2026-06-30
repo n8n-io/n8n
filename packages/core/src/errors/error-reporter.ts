@@ -43,6 +43,12 @@ type ErrorReporterInitOptions = {
 	/** Threshold in ms below which non-errored `db`/`http.client` spans are dropped. */
 	slowSpanThresholdMs?: number;
 
+	/** Production webhook endpoint path segment (e.g. `webhook`), used to sample webhook traces. */
+	webhookEndpoint?: string;
+
+	/** Sample rate (0.0 to 1.0) for successful production webhook transaction traces. */
+	webhookTracesSampleRate?: number;
+
 	/** Sample rate for Sentry profiling (0.0 to 1.0). 0 means disabled */
 	profilesSampleRate: number;
 
@@ -151,6 +157,8 @@ export class ErrorReporter {
 		profilesSampleRate,
 		tracesSampleRate,
 		slowSpanThresholdMs = DEFAULT_SLOW_SPAN_THRESHOLD_MS,
+		webhookEndpoint,
+		webhookTracesSampleRate,
 		eligibleIntegrations = {},
 		healthEndpoint = '/healthz',
 	}: ErrorReporterInitOptions) {
@@ -245,7 +253,12 @@ export class ErrorReporter {
 			...(isTracingEnabled
 				? {
 						tracesSampler: buildTracesSampler(tracesSampleRate),
-						beforeSendTransaction: buildBeforeSendTransaction(slowSpanThresholdMs),
+						beforeSendTransaction: buildBeforeSendTransaction(
+							slowSpanThresholdMs,
+							webhookEndpoint && webhookTracesSampleRate !== undefined
+								? { endpoint: webhookEndpoint, sampleRate: webhookTracesSampleRate }
+								: undefined,
+						),
 					}
 				: {}),
 			...(isProfilingEnabled ? { profilesSampleRate, profileLifecycle: 'trace' } : {}),

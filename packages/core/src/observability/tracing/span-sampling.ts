@@ -67,6 +67,23 @@ function shouldKeepSpan(span: SpanJSON, slowSpanThresholdMs: number): boolean {
 	return true;
 }
 
+/**
+ * Whether a transaction is a successful (non-errored) production webhook request.
+ * Sentry names Express transactions by route pattern, e.g. `POST /webhook/*path`,
+ * so we match on the configured webhook endpoint. `webhook-test`/`webhook-waiting`
+ * are deliberately excluded (only production webhooks are high-volume).
+ */
+function isSuccessfulWebhook(event: TransactionEvent, webhookEndpoint: string): boolean {
+	if (isErrored(event.contexts?.trace?.status)) return false;
+
+	const name = event.transaction;
+	if (!name) return false;
+
+	const path = name.slice(name.indexOf(' ') + 1); // strip the HTTP method prefix
+	const prefix = `/${webhookEndpoint}`;
+	return path === prefix || path.startsWith(`${prefix}/`);
+}
+
 function reparentChildSpans(
 	spans: SpanJSON[],
 	droppedSpan: SpanJSON,
@@ -90,13 +107,23 @@ function reparentChildSpans(
  * - Fast, non-errored `db`/`http.client` child spans (below `slowSpanThresholdMs`).
  *
  * Kept descendants of dropped child spans are reparented.
+ *
+ * When `webhook` is set, successful production webhook transactions (the highest-volume
+ * route) are randomly dropped down to `webhook.sampleRate`; errored ones are always kept.
  */
-export function buildBeforeSendTransaction(slowSpanThresholdMs: number) {
+export function buildBeforeSendTransaction(
+	slowSpanThresholdMs: number,
+	webhook?: { endpoint: string; sampleRate: number },
+) {
 	return (event: TransactionEvent): TransactionEvent | null => {
 		// DB operations (queries, pool connects) get op `db`. A `db`-rooted transaction
 		// ran outside any request/job span — high volume, no signal. Child db spans under
 		// real transactions keep a non-`db` root op, so they are untouched.
 		if (event.contexts?.trace?.op === 'db') return null;
+
+		if (webhook && webhook.sampleRate < 1 && isSuccessfulWebhook(event, webhook.endpoint)) {
+			if (Math.random() >= webhook.sampleRate) return null;
+		}
 
 		if (event.spans) {
 			const spans = event.spans;
