@@ -1,5 +1,4 @@
 .root {
-	--tree-item-gap: var(--spacing--4xs);
 	--tree-item-height: var(--spacing--xl);
 	--tree-item-row-size: calc(var(--tree-item-height) + var(--tree-item-gap));
 	--tree-icon-size: var(--spacing--lg);
