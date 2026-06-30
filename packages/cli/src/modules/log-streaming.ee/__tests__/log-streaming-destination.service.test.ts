@@ -1,8 +1,9 @@
 import { Logger } from '@n8n/backend-common';
 import type { OutboundHttp } from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
-import { mock } from 'jest-mock-extended';
 import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
 import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
@@ -13,15 +14,15 @@ import { messageEventBusDestinationFromDb } from '../destinations/message-event-
 import type { MessageEventBusDestinationWebhook } from '../destinations/message-event-bus-destination-webhook.ee';
 import { LogStreamingDestinationService } from '../log-streaming-destination.service';
 
-jest.mock('../destinations/message-event-bus-destination-from-db');
+vi.mock('../destinations/message-event-bus-destination-from-db');
 
 describe('LogStreamingDestinationService', () => {
 	const logger = mockInstance(Logger);
 	const eventDestinationsRepository = mock<EventDestinationsRepository>();
 	const eventBus = {
-		on: jest.fn(),
-		removeListener: jest.fn(),
-		confirmMessageDelivered: jest.fn(),
+		on: vi.fn(),
+		removeListener: vi.fn(),
+		confirmMessageDelivered: vi.fn(),
 	} as unknown as MessageEventBus;
 	const publisher = mock<Publisher>();
 	const outboundHttp = mock<OutboundHttp>();
@@ -29,7 +30,7 @@ describe('LogStreamingDestinationService', () => {
 	let service: LogStreamingDestinationService;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		service = new LogStreamingDestinationService(
 			logger,
 			eventDestinationsRepository,
@@ -44,8 +45,8 @@ describe('LogStreamingDestinationService', () => {
 		id: string;
 		type?: MessageEventBusDestinationTypeNames;
 		hasSubscribedToEvent?: boolean;
-		receiveFromEventBus?: jest.Mock;
-		close?: jest.Mock;
+		receiveFromEventBus?: Mock;
+		close?: Mock;
 	}): MessageEventBusDestinationWebhook => {
 		const {
 			id,
@@ -59,7 +60,7 @@ describe('LogStreamingDestinationService', () => {
 			getId: () => id,
 			serialize: () => ({ id, __type: type }) as any,
 			...(hasSubscribedToEvent !== undefined && {
-				hasSubscribedToEvent: jest.fn().mockReturnValue(hasSubscribedToEvent),
+				hasSubscribedToEvent: vi.fn().mockReturnValue(hasSubscribedToEvent),
 			}),
 			...(receiveFromEventBus && { receiveFromEventBus }),
 			...(close && { close }),
@@ -86,7 +87,7 @@ describe('LogStreamingDestinationService', () => {
 			eventDestinationsRepository.find.mockResolvedValue([createDbEntity('webhook-1')] as any);
 
 			// Mock the messageEventBusDestinationFromDb function to return our mock destination
-			const mockedFromDb = jest.mocked(messageEventBusDestinationFromDb);
+			const mockedFromDb = vi.mocked(messageEventBusDestinationFromDb);
 			mockedFromDb.mockReturnValue(mockDestination);
 
 			// Actually call loadDestinationsFromDb
@@ -122,7 +123,7 @@ describe('LogStreamingDestinationService', () => {
 			]);
 
 			// Mock the messageEventBusDestinationFromDb to return null for invalid data
-			const mockedFromDb = jest.mocked(messageEventBusDestinationFromDb);
+			const mockedFromDb = vi.mocked(messageEventBusDestinationFromDb);
 			mockedFromDb.mockReturnValue(null);
 
 			await service.loadDestinationsFromDb();
@@ -161,7 +162,7 @@ describe('LogStreamingDestinationService', () => {
 
 	describe('removeDestination', () => {
 		it('should remove a destination and delete from database', async () => {
-			const destination = createMockDestination({ id: 'webhook-1', close: jest.fn() });
+			const destination = createMockDestination({ id: 'webhook-1', close: vi.fn() });
 
 			eventDestinationsRepository.upsert.mockResolvedValue({} as any);
 			eventDestinationsRepository.delete.mockResolvedValue({} as any);
@@ -233,7 +234,7 @@ describe('LogStreamingDestinationService', () => {
 		it('should test a destination successfully', async () => {
 			const destination = createMockDestination({
 				id: 'webhook-1',
-				receiveFromEventBus: jest.fn().mockResolvedValue(true),
+				receiveFromEventBus: vi.fn().mockResolvedValue(true),
 			});
 
 			eventDestinationsRepository.upsert.mockResolvedValue({} as any);
@@ -294,7 +295,7 @@ describe('LogStreamingDestinationService', () => {
 
 	describe('close', () => {
 		it('should close all destinations', async () => {
-			const destination = createMockDestination({ id: 'webhook-1', close: jest.fn() });
+			const destination = createMockDestination({ id: 'webhook-1', close: vi.fn() });
 
 			eventDestinationsRepository.upsert.mockResolvedValue({} as any);
 			await service.addDestination(destination);
@@ -308,7 +309,7 @@ describe('LogStreamingDestinationService', () => {
 	describe('restart', () => {
 		it('should close, reload, and reinitialize', async () => {
 			// Add a destination that we can verify gets closed
-			const existingDestination = createMockDestination({ id: 'webhook-1', close: jest.fn() });
+			const existingDestination = createMockDestination({ id: 'webhook-1', close: vi.fn() });
 
 			eventDestinationsRepository.upsert.mockResolvedValue({} as any);
 			await service.addDestination(existingDestination);
@@ -322,7 +323,7 @@ describe('LogStreamingDestinationService', () => {
 
 			eventDestinationsRepository.find.mockResolvedValue([createDbEntity('webhook-2')] as any);
 
-			const mockedFromDb = jest.mocked(messageEventBusDestinationFromDb);
+			const mockedFromDb = vi.mocked(messageEventBusDestinationFromDb);
 			mockedFromDb.mockReturnValue(reloadedDestination);
 
 			// Restart the service

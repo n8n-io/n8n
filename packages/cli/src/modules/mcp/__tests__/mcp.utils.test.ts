@@ -1,6 +1,6 @@
 import type { AuthenticatedRequest } from '@n8n/db';
 import type { Request } from 'express';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { getClientInfo, getToolName, getToolArguments } from '../mcp.utils';
 

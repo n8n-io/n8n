@@ -46,6 +46,42 @@ describe('normalizeExportedCase', () => {
 		expect('scenarios' in out).toBe(false);
 	});
 
+	it('strips arbitrary export-only keys the strict schema would reject', () => {
+		// LangTracer attaches keys like id/name/suiteId/timestamps to an exported
+		// case; n8n's schema is `.strict()` and the loader aggregates errors, so a
+		// single stray key fails the whole suite. Whitelisting to the schema's keys
+		// (not blacklisting the two we happen to know) keeps the export loadable.
+		const out = normalizeExportedCase({
+			conversation: [{ role: 'user', text: 'hi' }],
+			complexity: 'simple',
+			id: 42,
+			name: 'My case',
+			suiteId: 7,
+			createdAt: '2026-01-01',
+			randomFutureKey: { nested: true },
+		}) as Record<string, unknown>;
+		// Real schema fields survive...
+		expect(out.conversation).toEqual([{ role: 'user', text: 'hi' }]);
+		expect(out.complexity).toBe('simple');
+		// ...export-only keys are gone.
+		for (const k of ['id', 'name', 'suiteId', 'createdAt', 'randomFutureKey']) {
+			expect(k in out).toBe(false);
+		}
+	});
+
+	it('keeps a real schema field (seedThread, incl. its endpoint) through the whitelist', () => {
+		const out = normalizeExportedCase({
+			seedThread: { threadId: 't1', endpoint: 'https://api.smith.langchain.com' },
+			complexity: 'medium',
+			id: 1,
+		}) as Record<string, unknown>;
+		expect(out.seedThread).toEqual({
+			threadId: 't1',
+			endpoint: 'https://api.smith.langchain.com',
+		});
+		expect('id' in out).toBe(false);
+	});
+
 	it('returns non-object input unchanged', () => {
 		expect(normalizeExportedCase(null)).toBeNull();
 		expect(normalizeExportedCase('x')).toBe('x');

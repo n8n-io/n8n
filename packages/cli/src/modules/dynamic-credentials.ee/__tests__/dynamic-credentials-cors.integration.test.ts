@@ -3,8 +3,8 @@ import { mockInstance, testDb } from '@n8n/backend-test-utils';
 import { CredentialsRepository } from '@n8n/db';
 import type { ICredentialResolver } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 import { Cipher } from 'n8n-core';
+import { mock } from 'vitest-mock-extended';
 
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import { OauthService } from '@/oauth/oauth.service';
@@ -54,7 +54,7 @@ const mockResolver: ICredentialResolver = {
 	},
 	async deleteSecret() {},
 	async validateIdentity() {},
-	validateOptions: jest.fn(),
+	validateOptions: vi.fn(),
 };
 
 beforeAll(async () => {
@@ -64,7 +64,7 @@ beforeAll(async () => {
 	oauthService = Container.get(OauthService);
 
 	// Mock OAuth service to avoid actual OAuth flow
-	oauthService.generateAOauth2AuthUri = jest
+	oauthService.generateAOauth2AuthUri = vi
 		.fn()
 		.mockResolvedValue('https://oauth.example.com/authorize');
 	mockInstance(EnterpriseCredentialsService);
@@ -307,7 +307,7 @@ describe('GET /workflows/:workflowId/execution-status - CORS Integration', () =>
 			'../services/credential-resolver-workflow.service'
 		);
 		const workflowService = Container.get(CredentialResolverWorkflowService);
-		jest.spyOn(workflowService, 'getWorkflowStatus').mockResolvedValue([
+		vi.spyOn(workflowService, 'getWorkflowStatus').mockResolvedValue([
 			{
 				credentialId: 'cred-123',
 				resolverId: 'resolver-123',

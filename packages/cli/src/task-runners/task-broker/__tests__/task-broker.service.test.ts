@@ -2,8 +2,8 @@ import type { Logger } from '@n8n/backend-common';
 import type { TaskRunnersConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { RunnerMessage, TaskResultData } from '@n8n/task-runner';
-import { mock } from 'jest-mock-extended';
-import { ApplicationError, type INodeTypeBaseDescription } from 'n8n-workflow';
+import { type INodeTypeBaseDescription } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import type { TaskRunnerLifecycleEvents } from '@/task-runners/task-runner-lifecycle-events';
 
@@ -19,7 +19,7 @@ describe('TaskBroker', () => {
 
 	beforeEach(() => {
 		taskBroker = new TaskBroker(mock(), mock(), mock(), mock());
-		jest.restoreAllMocks();
+		vi.restoreAllMocks();
 	});
 
 	describe('expireTasks', () => {
@@ -92,7 +92,7 @@ describe('TaskBroker', () => {
 		it('should add a runner to known runners', () => {
 			const runnerId = 'runner1';
 			const runner = mock<TaskRunner>({ id: runnerId });
-			const messageCallback = jest.fn();
+			const messageCallback = vi.fn();
 
 			taskBroker.registerRunner(runner, messageCallback);
 
@@ -109,7 +109,7 @@ describe('TaskBroker', () => {
 		it('should send node types to runner', () => {
 			const runnerId = 'runner1';
 			const runner = mock<TaskRunner>({ id: runnerId });
-			const messageCallback = jest.fn();
+			const messageCallback = vi.fn();
 
 			taskBroker.registerRunner(runner, messageCallback);
 		});
@@ -118,7 +118,7 @@ describe('TaskBroker', () => {
 	describe('registerRequester', () => {
 		it('should add a requester to known requesters', () => {
 			const requesterId = 'requester1';
-			const messageCallback = jest.fn();
+			const messageCallback = vi.fn();
 
 			taskBroker.registerRequester(requesterId, messageCallback);
 
@@ -136,7 +136,7 @@ describe('TaskBroker', () => {
 		it('should remove a runner from known runners', () => {
 			const runnerId = 'runner1';
 			const runner = mock<TaskRunner>({ id: runnerId });
-			const messageCallback = jest.fn();
+			const messageCallback = vi.fn();
 
 			taskBroker.registerRunner(runner, messageCallback);
 			taskBroker.deregisterRunner(runnerId, new Error());
@@ -150,7 +150,7 @@ describe('TaskBroker', () => {
 		it('should remove any pending offers for that runner', () => {
 			const runnerId = 'runner1';
 			const runner = mock<TaskRunner>({ id: runnerId });
-			const messageCallback = jest.fn();
+			const messageCallback = vi.fn();
 
 			taskBroker.registerRunner(runner, messageCallback);
 			taskBroker.taskOffered({
@@ -177,13 +177,13 @@ describe('TaskBroker', () => {
 		it('should fail any running tasks for that runner', () => {
 			const runnerId = 'runner1';
 			const runner = mock<TaskRunner>({ id: runnerId });
-			const messageCallback = jest.fn();
+			const messageCallback = vi.fn();
 
 			const taskId = 'task1';
 
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const failSpy = jest.spyOn(taskBroker as any, 'failTask');
-			const rejectSpy = jest.spyOn(taskBroker, 'handleRunnerReject');
+			const failSpy = vi.spyOn(taskBroker as any, 'failTask');
+			const rejectSpy = vi.spyOn(taskBroker, 'handleRunnerReject');
 
 			taskBroker.registerRunner(runner, messageCallback);
 			taskBroker.setTasks({
@@ -204,7 +204,7 @@ describe('TaskBroker', () => {
 	describe('deregisterRequester', () => {
 		it('should remove a requester from known requesters', () => {
 			const requesterId = 'requester1';
-			const messageCallback = jest.fn();
+			const messageCallback = vi.fn();
 
 			taskBroker.registerRequester(requesterId, messageCallback);
 			taskBroker.deregisterRequester(requesterId);
@@ -234,11 +234,11 @@ describe('TaskBroker', () => {
 				taskType: 'taskType1',
 			};
 
-			jest.spyOn(taskBroker, 'acceptOffer').mockResolvedValue(); // allow Jest to exit cleanly
+			vi.spyOn(taskBroker, 'acceptOffer').mockResolvedValue(); // allow Jest to exit cleanly
 
 			taskBroker.taskRequested(request);
 
-			expect(taskBroker.acceptOffer).toHaveBeenCalled();
+			expect(vi.spyOn(taskBroker, 'acceptOffer')).toHaveBeenCalled();
 			expect(taskBroker.getPendingTaskOffers()).toHaveLength(0);
 		});
 	});
@@ -262,11 +262,11 @@ describe('TaskBroker', () => {
 				validUntil: createValidUntil(1000),
 			};
 
-			jest.spyOn(taskBroker, 'acceptOffer').mockResolvedValue(); // allow Jest to exit cleanly
+			vi.spyOn(taskBroker, 'acceptOffer').mockResolvedValue(); // allow Jest to exit cleanly
 
 			taskBroker.taskOffered(offer);
 
-			expect(taskBroker.acceptOffer).toHaveBeenCalled();
+			expect(vi.spyOn(taskBroker, 'acceptOffer')).toHaveBeenCalled();
 			expect(taskBroker.getPendingTaskOffers()).toHaveLength(0);
 		});
 	});
@@ -313,7 +313,7 @@ describe('TaskBroker', () => {
 			taskBroker.setPendingTaskOffers([offer1, offer2]);
 			taskBroker.setPendingTaskRequests([request1, request2, request3]);
 
-			const acceptOfferSpy = jest.spyOn(taskBroker, 'acceptOffer').mockResolvedValue();
+			const acceptOfferSpy = vi.spyOn(taskBroker, 'acceptOffer').mockResolvedValue();
 
 			taskBroker.settleTasks();
 
@@ -344,7 +344,7 @@ describe('TaskBroker', () => {
 			taskBroker.setPendingTaskOffers([offer]);
 			taskBroker.setPendingTaskRequests([request]);
 
-			const acceptOfferSpy = jest.spyOn(taskBroker, 'acceptOffer').mockResolvedValue();
+			const acceptOfferSpy = vi.spyOn(taskBroker, 'acceptOffer').mockResolvedValue();
 
 			taskBroker.settleTasks();
 
@@ -364,7 +364,7 @@ describe('TaskBroker', () => {
 			const runner = mock<TaskRunner>({ id: runnerId });
 
 			// Simulate a launcher-like runner that defers tasks on acceptance
-			const messageCallback = jest.fn().mockImplementation(async (message) => {
+			const messageCallback = vi.fn().mockImplementation(async (message) => {
 				if (message.type === 'broker:taskofferaccept') {
 					taskBroker.handleRunnerDeferred(message.taskId);
 				}
@@ -422,7 +422,7 @@ describe('TaskBroker', () => {
 			taskBroker.setPendingTaskOffers([offer]);
 			taskBroker.setPendingTaskRequests([request]);
 
-			jest.spyOn(taskBroker, 'acceptOffer').mockResolvedValue();
+			vi.spyOn(taskBroker, 'acceptOffer').mockResolvedValue();
 
 			taskBroker.settleTasks();
 
@@ -465,7 +465,7 @@ describe('TaskBroker', () => {
 			taskBroker.setPendingTaskOffers([validOffer, expiredOffer]);
 			taskBroker.setPendingTaskRequests([request1, request2]);
 
-			const acceptOfferSpy = jest.spyOn(taskBroker, 'acceptOffer').mockResolvedValue();
+			const acceptOfferSpy = vi.spyOn(taskBroker, 'acceptOffer').mockResolvedValue();
 
 			taskBroker.settleTasks();
 
@@ -487,11 +487,11 @@ describe('TaskBroker', () => {
 				taskId,
 			};
 
-			const accept = jest.fn();
-			const reject = jest.fn();
+			const accept = vi.fn();
+			const reject = vi.fn();
 
 			taskBroker.setRunnerAcceptRejects({ [taskId]: { accept, reject } });
-			taskBroker.registerRunner(mock<TaskRunner>({ id: runnerId }), jest.fn());
+			taskBroker.registerRunner(mock<TaskRunner>({ id: runnerId }), vi.fn());
 
 			await taskBroker.onRunnerMessage(runnerId, message);
 
@@ -513,11 +513,11 @@ describe('TaskBroker', () => {
 				reason: rejectionReason,
 			};
 
-			const accept = jest.fn();
-			const reject = jest.fn();
+			const accept = vi.fn();
+			const reject = vi.fn();
 
 			taskBroker.setRunnerAcceptRejects({ [taskId]: { accept, reject } });
-			taskBroker.registerRunner(mock<TaskRunner>({ id: runnerId }), jest.fn());
+			taskBroker.registerRunner(mock<TaskRunner>({ id: runnerId }), vi.fn());
 
 			await taskBroker.onRunnerMessage(runnerId, message);
 
@@ -540,9 +540,9 @@ describe('TaskBroker', () => {
 				data,
 			};
 
-			const requesterMessageCallback = jest.fn();
+			const requesterMessageCallback = vi.fn();
 
-			taskBroker.registerRunner(mock<TaskRunner>({ id: runnerId }), jest.fn());
+			taskBroker.registerRunner(mock<TaskRunner>({ id: runnerId }), vi.fn());
 			taskBroker.setTasks({
 				[taskId]: { id: taskId, runnerId, requesterId, taskType: 'test' },
 			});
@@ -571,9 +571,9 @@ describe('TaskBroker', () => {
 				error: errorMessage,
 			};
 
-			const requesterMessageCallback = jest.fn();
+			const requesterMessageCallback = vi.fn();
 
-			taskBroker.registerRunner(mock<TaskRunner>({ id: runnerId }), jest.fn());
+			taskBroker.registerRunner(mock<TaskRunner>({ id: runnerId }), vi.fn());
 			taskBroker.setTasks({
 				[taskId]: { id: taskId, runnerId, requesterId, taskType: 'test' },
 			});
@@ -611,9 +611,9 @@ describe('TaskBroker', () => {
 				requestParams,
 			};
 
-			const requesterMessageCallback = jest.fn();
+			const requesterMessageCallback = vi.fn();
 
-			taskBroker.registerRunner(mock<TaskRunner>({ id: runnerId }), jest.fn());
+			taskBroker.registerRunner(mock<TaskRunner>({ id: runnerId }), vi.fn());
 			taskBroker.setTasks({
 				[taskId]: { id: taskId, runnerId, requesterId, taskType: 'test' },
 			});
@@ -645,9 +645,9 @@ describe('TaskBroker', () => {
 				params: rpcParams,
 			};
 
-			const requesterMessageCallback = jest.fn();
+			const requesterMessageCallback = vi.fn();
 
-			taskBroker.registerRunner(mock<TaskRunner>({ id: runnerId }), jest.fn());
+			taskBroker.registerRunner(mock<TaskRunner>({ id: runnerId }), vi.fn());
 			taskBroker.setTasks({
 				[taskId]: { id: taskId, runnerId, requesterId, taskType: 'test' },
 			});
@@ -683,9 +683,9 @@ describe('TaskBroker', () => {
 				requestParams,
 			};
 
-			const requesterMessageCallback = jest.fn();
+			const requesterMessageCallback = vi.fn();
 
-			taskBroker.registerRunner(mock<TaskRunner>({ id: runnerId }), jest.fn());
+			taskBroker.registerRunner(mock<TaskRunner>({ id: runnerId }), vi.fn());
 			taskBroker.setTasks({
 				[taskId]: { id: taskId, runnerId, requesterId, taskType: 'test' },
 			});
@@ -712,7 +712,7 @@ describe('TaskBroker', () => {
 			};
 
 			const beforeTime = process.hrtime.bigint();
-			taskBroker.registerRunner(mock<TaskRunner>({ id: runnerId }), jest.fn());
+			taskBroker.registerRunner(mock<TaskRunner>({ id: runnerId }), vi.fn());
 
 			await taskBroker.onRunnerMessage(runnerId, message);
 
@@ -745,7 +745,7 @@ describe('TaskBroker', () => {
 				validFor: -1,
 			};
 
-			taskBroker.registerRunner(mock<TaskRunner>({ id: runnerId }), jest.fn());
+			taskBroker.registerRunner(mock<TaskRunner>({ id: runnerId }), vi.fn());
 
 			await taskBroker.onRunnerMessage(runnerId, message);
 
@@ -770,7 +770,7 @@ describe('TaskBroker', () => {
 			const requestId = 'request1';
 			const nodeTypes = [mock<INodeTypeBaseDescription>(), mock<INodeTypeBaseDescription>()];
 
-			const runnerMessageCallback = jest.fn();
+			const runnerMessageCallback = vi.fn();
 
 			taskBroker.registerRunner(mock<TaskRunner>({ id: runnerId }), runnerMessageCallback);
 			taskBroker.setTasks({
@@ -816,22 +816,22 @@ describe('TaskBroker', () => {
 		const runnerLifecycleEvents = mock<TaskRunnerLifecycleEvents>();
 
 		beforeAll(() => {
-			jest.useFakeTimers();
+			vi.useFakeTimers();
 			config = mock<TaskRunnersConfig>({ taskTimeout: 30, mode: 'internal' });
 			taskBroker = new TaskBroker(mock(), config, runnerLifecycleEvents, mock());
 		});
 
 		afterAll(() => {
-			jest.useRealTimers();
+			vi.useRealTimers();
 		});
 
 		it('on sending task, we should set up task timeout', async () => {
-			jest.spyOn(global, 'setTimeout');
+			vi.spyOn(global, 'setTimeout');
 
 			const taskId = 'task1';
 			const runnerId = 'runner1';
 			const runner = mock<TaskRunner>({ id: runnerId });
-			const runnerMessageCallback = jest.fn();
+			const runnerMessageCallback = vi.fn();
 
 			taskBroker.registerRunner(runner, runnerMessageCallback);
 			taskBroker.setTasks({
@@ -847,12 +847,12 @@ describe('TaskBroker', () => {
 		});
 
 		it('on task completion, we should clear timeout', async () => {
-			jest.spyOn(global, 'clearTimeout');
+			vi.spyOn(global, 'clearTimeout');
 
 			const taskId = 'task1';
 			const runnerId = 'runner1';
 			const requesterId = 'requester1';
-			const requesterCallback = jest.fn();
+			const requesterCallback = vi.fn();
 
 			taskBroker.registerRequester(requesterId, requesterCallback);
 			taskBroker.setTasks({
@@ -872,12 +872,12 @@ describe('TaskBroker', () => {
 		});
 
 		it('on task error, we should clear timeout', async () => {
-			jest.spyOn(global, 'clearTimeout');
+			vi.spyOn(global, 'clearTimeout');
 
 			const taskId = 'task1';
 			const runnerId = 'runner1';
 			const requesterId = 'requester1';
-			const requesterCallback = jest.fn();
+			const requesterCallback = vi.fn();
 
 			taskBroker.registerRequester(requesterId, requesterCallback);
 			taskBroker.setTasks({
@@ -897,14 +897,14 @@ describe('TaskBroker', () => {
 		});
 
 		it('[internal mode] on timeout, we should emit `runner:timed-out-during-task` event and send error to requester', async () => {
-			jest.spyOn(global, 'clearTimeout');
+			vi.spyOn(global, 'clearTimeout');
 
 			const taskId = 'task1';
 			const runnerId = 'runner1';
 			const requesterId = 'requester1';
 			const runner = mock<TaskRunner>({ id: runnerId });
-			const runnerCallback = jest.fn();
-			const requesterCallback = jest.fn();
+			const runnerCallback = vi.fn();
+			const requesterCallback = vi.fn();
 
 			taskBroker.registerRunner(runner, runnerCallback);
 			taskBroker.registerRequester(requesterId, requesterCallback);
@@ -915,7 +915,7 @@ describe('TaskBroker', () => {
 
 			await taskBroker.sendTaskSettings(taskId, {});
 
-			jest.runAllTimers();
+			vi.runAllTimers();
 
 			await Promise.resolve();
 
@@ -928,7 +928,7 @@ describe('TaskBroker', () => {
 			expect(requesterCallback).toHaveBeenCalledWith({
 				type: 'broker:taskerror',
 				taskId,
-				error: new ApplicationError(`Task execution timed out after ${config.taskTimeout} seconds`),
+				error: expect.any(TaskRunnerExecutionTimeoutError),
 			});
 
 			await Promise.resolve();
@@ -940,14 +940,14 @@ describe('TaskBroker', () => {
 			const config = mock<TaskRunnersConfig>({ taskTimeout: 30, mode: 'external' });
 			taskBroker = new TaskBroker(mock(), config, runnerLifecycleEvents, mock());
 
-			jest.spyOn(global, 'clearTimeout');
+			vi.spyOn(global, 'clearTimeout');
 
 			const taskId = 'task1';
 			const runnerId = 'runner1';
 			const requesterId = 'requester1';
 			const runner = mock<TaskRunner>({ id: runnerId });
-			const runnerCallback = jest.fn();
-			const requesterCallback = jest.fn();
+			const runnerCallback = vi.fn();
+			const requesterCallback = vi.fn();
 
 			taskBroker.registerRunner(runner, runnerCallback);
 			taskBroker.registerRequester(requesterId, requesterCallback);
@@ -959,7 +959,7 @@ describe('TaskBroker', () => {
 			await taskBroker.sendTaskSettings(taskId, {});
 			runnerCallback.mockClear();
 
-			jest.runAllTimers();
+			vi.runAllTimers();
 
 			await Promise.resolve(); // for timeout callback
 			await Promise.resolve(); // for sending messages to runner and requester
@@ -986,7 +986,7 @@ describe('TaskBroker', () => {
 		it('broker should handle timeout when waiting for acknowledgment of offer accept', async () => {
 			const runnerId = 'runner1';
 			const runner = mock<TaskRunner>({ id: runnerId });
-			const messageCallback = jest.fn();
+			const messageCallback = vi.fn();
 			const loggerMock = mock<Logger>();
 
 			taskBroker = new TaskBroker(loggerMock, mock(), mock(), mock());
@@ -1006,11 +1006,11 @@ describe('TaskBroker', () => {
 				taskType: 'taskType1',
 			};
 
-			jest.useFakeTimers();
+			vi.useFakeTimers();
 
 			const acceptPromise = taskBroker.acceptOffer(offer, request);
 
-			jest.advanceTimersByTime(2100);
+			vi.advanceTimersByTime(2100);
 
 			await acceptPromise;
 
@@ -1021,16 +1021,16 @@ describe('TaskBroker', () => {
 				),
 			);
 
-			jest.useRealTimers();
+			vi.useRealTimers();
 		});
 	});
 
 	describe('request timeout', () => {
 		it('should time out request and send `broker:requestexpired` message', async () => {
-			jest.useFakeTimers();
+			vi.useFakeTimers();
 
 			const requesterId = 'requester1';
-			const requesterCallback = jest.fn();
+			const requesterCallback = vi.fn();
 
 			taskBroker.registerRequester(requesterId, requesterCallback);
 
@@ -1045,7 +1045,7 @@ describe('TaskBroker', () => {
 
 			expect(taskBroker.getPendingTaskRequests()).toHaveLength(1);
 
-			jest.advanceTimersByTime(60 * 1000);
+			vi.advanceTimersByTime(60 * 1000);
 
 			await Promise.resolve();
 
@@ -1056,14 +1056,14 @@ describe('TaskBroker', () => {
 				reason: 'timeout',
 			});
 
-			jest.useRealTimers();
+			vi.useRealTimers();
 		});
 
 		it('should clear timeout on request matched', async () => {
-			jest.useFakeTimers();
+			vi.useFakeTimers();
 
 			const requesterId = 'requester1';
-			const requesterCallback = jest.fn();
+			const requesterCallback = vi.fn();
 
 			taskBroker.registerRequester(requesterId, requesterCallback);
 
@@ -1083,7 +1083,7 @@ describe('TaskBroker', () => {
 				taskType: 'taskType1',
 			};
 
-			jest.spyOn(taskBroker, 'acceptOffer').mockImplementation(async (_offer, request) => {
+			vi.spyOn(taskBroker, 'acceptOffer').mockImplementation(async (_offer, request) => {
 				clearTimeout(request.timeout);
 				const requests = taskBroker.getPendingTaskRequests();
 				const filtered = requests.filter((r) => r.requestId !== request.requestId);
@@ -1097,7 +1097,7 @@ describe('TaskBroker', () => {
 
 			expect(taskBroker.getPendingTaskRequests()).toHaveLength(0);
 
-			jest.advanceTimersByTime(65 * 1000);
+			vi.advanceTimersByTime(65 * 1000);
 
 			await Promise.resolve();
 
@@ -1105,14 +1105,14 @@ describe('TaskBroker', () => {
 				expect.objectContaining({ type: 'broker:requestexpired' }),
 			);
 
-			jest.useRealTimers();
+			vi.useRealTimers();
 		});
 
 		it('should reset timeout on request deferred', async () => {
-			jest.useFakeTimers();
+			vi.useFakeTimers();
 
 			const requesterId = 'requester1';
-			const requesterCallback = jest.fn();
+			const requesterCallback = vi.fn();
 
 			taskBroker.registerRequester(requesterId, requesterCallback);
 
@@ -1133,9 +1133,9 @@ describe('TaskBroker', () => {
 			taskBroker.setPendingTaskOffers([offer]);
 			taskBroker.setPendingTaskRequests([request]);
 
-			const handleTimeoutSpy = jest.spyOn(taskBroker as any, 'handleRequestTimeout');
+			const handleTimeoutSpy = vi.spyOn(taskBroker as any, 'handleRequestTimeout');
 
-			jest.spyOn(taskBroker, 'acceptOffer').mockImplementation(async (_offer, request) => {
+			vi.spyOn(taskBroker, 'acceptOffer').mockImplementation(async (_offer, request) => {
 				request.acceptInProgress = false;
 				clearTimeout(request.timeout);
 				request.timeout = taskBroker['createRequestTimeout'](request.requestId);
@@ -1147,7 +1147,7 @@ describe('TaskBroker', () => {
 			const deferredRequest = taskBroker.getPendingTaskRequests()[0];
 			expect(deferredRequest.timeout).toBeDefined();
 
-			jest.advanceTimersByTime(60 * 1000);
+			vi.advanceTimersByTime(60 * 1000);
 
 			await Promise.resolve();
 
@@ -1159,7 +1159,7 @@ describe('TaskBroker', () => {
 			});
 
 			handleTimeoutSpy.mockRestore();
-			jest.useRealTimers();
+			vi.useRealTimers();
 		});
 	});
 });

@@ -29,8 +29,6 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
-import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
-import { createFolder } from '@test-integration/db/folders';
 import { DateTime } from 'luxon';
 import {
 	PROJECT_ROOT,
@@ -40,6 +38,13 @@ import {
 	type IWorkflowBase,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
+
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { CollaborationService } from '@/collaboration/collaboration.service';
+import { EventService } from '@/events/event.service';
+import { ProjectService } from '@/services/project.service.ee';
+import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
+import { createFolder } from '@test-integration/db/folders';
 
 import { saveCredential } from '../shared/db/credentials';
 import { createCustomRoleWithScopeSlugs, cleanupRolesAndScopes } from '../shared/db/roles';
@@ -56,11 +61,6 @@ import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 import { makeWorkflow, MOCK_PINDATA } from '../shared/utils/';
 
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { CollaborationService } from '@/collaboration/collaboration.service';
-import { EventService } from '@/events/event.service';
-import { ProjectService } from '@/services/project.service.ee';
-
 let owner: User;
 let member: User;
 let anotherMember: User;
@@ -75,7 +75,15 @@ const testServer = utils.setupTestServer({
 	},
 });
 
-const { objectContaining, arrayContaining, any } = expect;
+// Vitest's asymmetric matchers are chai-based and rely on their `this` context, so they
+// can't be destructured or bound off `expect` (a bare `const { objectContaining } = expect`
+// throws "Cannot read properties of undefined (reading '__flags')"). Wrap them in thin
+// functions that call `expect.*` inline to keep the existing call sites unchanged.
+const objectContaining = (...args: Parameters<typeof expect.objectContaining>) =>
+	expect.objectContaining(...args);
+const arrayContaining = (...args: Parameters<typeof expect.arrayContaining>) =>
+	expect.arrayContaining(...args);
+const any = (...args: Parameters<typeof expect.any>) => expect.any(...args);
 
 const activeWorkflowManagerLike = mockInstance(ActiveWorkflowManager);
 const workflowValidationService = mockInstance(WorkflowValidationService);
@@ -130,7 +138,7 @@ beforeEach(async () => {
 });
 
 afterEach(() => {
-	jest.clearAllMocks();
+	vi.clearAllMocks();
 });
 
 describe('POST /workflows', () => {
@@ -3491,7 +3499,7 @@ describe('PATCH /workflows/:workflowId', () => {
 	});
 
 	test('should update workflow without updating its active version', async () => {
-		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
+		const addRecordSpy = vi.spyOn(workflowPublishHistoryRepository, 'addRecord');
 		const workflow = await createActiveWorkflow({}, owner);
 		await setActiveVersion(workflow.id, workflow.versionId);
 
@@ -3627,7 +3635,7 @@ describe('PATCH /workflows/:workflowId', () => {
 	});
 
 	test('should not deactivate workflow when updating with active: false', async () => {
-		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
+		const addRecordSpy = vi.spyOn(workflowPublishHistoryRepository, 'addRecord');
 		const workflow = await createActiveWorkflow({}, owner);
 		await setActiveVersion(workflow.id, workflow.versionId);
 
@@ -4040,7 +4048,7 @@ describe('PATCH /workflows/:workflowId', () => {
 
 describe('POST /workflows/:workflowId/activate', () => {
 	test('should activate workflow with provided versionId', async () => {
-		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
+		const addRecordSpy = vi.spyOn(workflowPublishHistoryRepository, 'addRecord');
 		const workflow = await createWorkflowWithHistory({}, owner);
 		const newVersionId = uuid();
 		await createWorkflowHistoryItem(workflow.id, { versionId: newVersionId });
@@ -4073,7 +4081,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 	test('should send activated event', async () => {
 		const workflow = await createWorkflowWithHistory({}, owner);
 
-		const emitSpy = jest.spyOn(eventService, 'emit');
+		const emitSpy = vi.spyOn(eventService, 'emit');
 		await authOwnerAgent
 			.post(`/workflows/${workflow.id}/activate`)
 			.send({ versionId: workflow.versionId });
@@ -4315,7 +4323,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 		const newVersionId = uuid();
 		await createWorkflowHistoryItem(workflow.id, { versionId: newVersionId });
 
-		const emitSpy = jest.spyOn(eventService, 'emit');
+		const emitSpy = vi.spyOn(eventService, 'emit');
 
 		activeWorkflowManagerLike.add.mockRejectedValueOnce(new Error('Activation failed'));
 
@@ -4359,7 +4367,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 	});
 
 	test('should call active workflow manager with activate mode if workflow is not active', async () => {
-		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
+		const addRecordSpy = vi.spyOn(workflowPublishHistoryRepository, 'addRecord');
 		const workflow = await createWorkflowWithHistory({}, owner);
 
 		await authOwnerAgent
@@ -4378,7 +4386,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 
 	test('should emit only activation event when activating inactive workflow', async () => {
 		const workflow = await createWorkflowWithHistory({}, owner);
-		const emitSpy = jest.spyOn(eventService, 'emit');
+		const emitSpy = vi.spyOn(eventService, 'emit');
 
 		await authOwnerAgent
 			.post(`/workflows/${workflow.id}/activate`)
@@ -4403,7 +4411,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 		const newVersionId = uuid();
 		await createWorkflowHistoryItem(workflow.id, { versionId: newVersionId });
 
-		const emitSpy = jest.spyOn(eventService, 'emit');
+		const emitSpy = vi.spyOn(eventService, 'emit');
 
 		await authOwnerAgent
 			.post(`/workflows/${workflow.id}/activate`)
@@ -4445,11 +4453,11 @@ describe('POST /workflows/:workflowId/activate', () => {
 		await createWorkflowHistoryItem(workflow.id, { versionId: newVersionId });
 
 		// Mock activeWorkflowManager.add to fail
-		const addSpy = jest
-			.spyOn(activeWorkflowManagerLike, 'add')
-			.mockRejectedValueOnce(new Error('Failed to add workflow'));
+		const addSpy = activeWorkflowManagerLike.add.mockRejectedValueOnce(
+			new Error('Failed to add workflow'),
+		);
 
-		const emitSpy = jest.spyOn(eventService, 'emit');
+		const emitSpy = vi.spyOn(eventService, 'emit');
 
 		const response = await authOwnerAgent
 			.post(`/workflows/${workflow.id}/activate`)
@@ -4483,11 +4491,11 @@ describe('POST /workflows/:workflowId/activate', () => {
 		const workflow = await createWorkflowWithHistory({}, owner);
 
 		// Mock activeWorkflowManager.add to fail
-		const addSpy = jest
-			.spyOn(activeWorkflowManagerLike, 'add')
-			.mockRejectedValueOnce(new Error('Failed to add workflow'));
+		const addSpy = activeWorkflowManagerLike.add.mockRejectedValueOnce(
+			new Error('Failed to add workflow'),
+		);
 
-		const emitSpy = jest.spyOn(eventService, 'emit');
+		const emitSpy = vi.spyOn(eventService, 'emit');
 
 		const response = await authOwnerAgent
 			.post(`/workflows/${workflow.id}/activate`)
@@ -4529,7 +4537,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 
 describe('POST /workflows/:workflowId/deactivate', () => {
 	test('should deactivate active workflow', async () => {
-		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
+		const addRecordSpy = vi.spyOn(workflowPublishHistoryRepository, 'addRecord');
 		const workflow = await createActiveWorkflow({}, owner);
 
 		const response = await authOwnerAgent.post(`/workflows/${workflow.id}/deactivate`);
@@ -4552,7 +4560,7 @@ describe('POST /workflows/:workflowId/deactivate', () => {
 	test('should send deactivated event', async () => {
 		const workflow = await createActiveWorkflow({}, owner);
 
-		const emitSpy = jest.spyOn(eventService, 'emit');
+		const emitSpy = vi.spyOn(eventService, 'emit');
 		await authOwnerAgent.post(`/workflows/${workflow.id}/deactivate`);
 
 		expect(emitSpy).toHaveBeenCalledWith('workflow-deactivated', expect.anything());
@@ -4570,7 +4578,7 @@ describe('POST /workflows/:workflowId/deactivate', () => {
 	});
 
 	test('should handle deactivating already inactive workflow', async () => {
-		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
+		const addRecordSpy = vi.spyOn(workflowPublishHistoryRepository, 'addRecord');
 		const workflow = await createWorkflow({}, owner);
 
 		const response = await authOwnerAgent.post(`/workflows/${workflow.id}/deactivate`);

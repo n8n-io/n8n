@@ -1,5 +1,6 @@
-jest.mock('@/generic-helpers', () => ({
-	validateEntity: jest.fn(),
+import type { MockInstance } from 'vitest';
+vi.mock('@/generic-helpers', () => ({
+	validateEntity: vi.fn(),
 }));
 
 import type { LicenseState } from '@n8n/backend-common';
@@ -14,7 +15,10 @@ import type {
 } from '@n8n/db';
 import { GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import type { Scope } from '@n8n/permissions';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
+
+import * as checkAccess from '@/permissions.ee/check-access';
+import type { CredentialRequest } from '@/requests';
 
 import { createNewCredentialsPayload, createdCredentialsWithScopes } from './credentials.test-data';
 import type { CredentialDependencyService } from '../credential-dependency.service';
@@ -22,9 +26,6 @@ import type { CredentialsFinderService } from '../credentials-finder.service';
 import { CredentialsController } from '../credentials.controller';
 import { CredentialsService } from '../credentials.service';
 import * as validation from '../validation';
-
-import * as checkAccess from '@/permissions.ee/check-access';
-import type { CredentialRequest } from '@/requests';
 
 const originalValidateExternalSecretsPermissions = validation.validateExternalSecretsPermissions;
 
@@ -63,13 +64,13 @@ describe('CredentialsController', () => {
 	// Spy on methods that need to be mocked in tests
 	// This allows us to mock specific behavior while keeping real implementations
 	// for isChangingExternalSecretExpression and validateExternalSecretsPermissions
-	let decryptSpy: jest.SpyInstance;
-	let createEncryptedDataSpy: jest.SpyInstance;
-	let getCredentialScopesSpy: jest.SpyInstance;
-	let updateSpy: jest.SpyInstance;
-	let createUnmanagedCredentialSpy: jest.SpyInstance;
-	let findCredentialOwningProjectSpy: jest.SpyInstance;
-	let emitSpy: jest.SpyInstance;
+	let decryptSpy: MockInstance;
+	let createEncryptedDataSpy: MockInstance;
+	let getCredentialScopesSpy: MockInstance;
+	let updateSpy: MockInstance;
+	let createUnmanagedCredentialSpy: MockInstance;
+	let findCredentialOwningProjectSpy: MockInstance;
+	let emitSpy: MockInstance;
 
 	const credentialsController = new CredentialsController(
 		mock(),
@@ -93,17 +94,14 @@ describe('CredentialsController', () => {
 	});
 
 	beforeEach(() => {
-		jest.resetAllMocks();
-		decryptSpy = jest.spyOn(credentialsService, 'decrypt');
-		createEncryptedDataSpy = jest.spyOn(credentialsService, 'createEncryptedData');
-		getCredentialScopesSpy = jest.spyOn(credentialsService, 'getCredentialScopes');
-		updateSpy = jest.spyOn(credentialsService, 'update');
-		createUnmanagedCredentialSpy = jest.spyOn(credentialsService, 'createUnmanagedCredential');
-		findCredentialOwningProjectSpy = jest.spyOn(
-			sharedCredentialsRepository,
-			'findCredentialOwningProject',
-		);
-		emitSpy = jest.spyOn(eventService, 'emit');
+		vi.resetAllMocks();
+		decryptSpy = vi.spyOn(credentialsService, 'decrypt');
+		createEncryptedDataSpy = vi.spyOn(credentialsService, 'createEncryptedData');
+		getCredentialScopesSpy = vi.spyOn(credentialsService, 'getCredentialScopes');
+		updateSpy = vi.spyOn(credentialsService, 'update');
+		createUnmanagedCredentialSpy = vi.spyOn(credentialsService, 'createUnmanagedCredential');
+		findCredentialOwningProjectSpy = sharedCredentialsRepository.findCredentialOwningProject;
+		emitSpy = eventService.emit;
 		// Set up credentialsRepository.create to return the input data
 		credentialsRepository.create.mockImplementation((data) => data as CredentialsEntity);
 	});
@@ -564,7 +562,7 @@ describe('CredentialsController', () => {
 		});
 
 		it('should throw error when editing external secret expression without permission', async () => {
-			jest.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
 			const memberReq = {
 				user: { id: 'member-id', role: GLOBAL_MEMBER_ROLE },
 				params: { credentialId },
@@ -575,7 +573,7 @@ describe('CredentialsController', () => {
 			const existingCredentialWithSecret = mock<CredentialsEntity>({
 				...existingCredential,
 			});
-			const validateExternalSecretsPermissionsSpy = jest
+			const validateExternalSecretsPermissionsSpy = vi
 				.spyOn(validation, 'validateExternalSecretsPermissions')
 				.mockImplementation(originalValidateExternalSecretsPermissions);
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(
@@ -597,7 +595,7 @@ describe('CredentialsController', () => {
 		});
 
 		it('should throw error when adding new external secret expression without permission', async () => {
-			jest.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
 			const memberReq = {
 				user: { id: 'member-id', role: GLOBAL_MEMBER_ROLE },
 				params: { credentialId },
@@ -605,7 +603,7 @@ describe('CredentialsController', () => {
 					data: { apiKey: '{{ $secrets.myVault.myKey }}' }, // Changed from regular key to external secret
 				},
 			} as unknown as CredentialRequest.Update;
-			const validateExternalSecretsPermissionsSpy = jest
+			const validateExternalSecretsPermissionsSpy = vi
 				.spyOn(validation, 'validateExternalSecretsPermissions')
 				.mockImplementation(originalValidateExternalSecretsPermissions);
 
@@ -713,7 +711,7 @@ describe('CredentialsController', () => {
 				isResolvable: true,
 			});
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(privateCredential);
-			jest.spyOn(credentialsService, 'delete').mockResolvedValue(undefined);
+			vi.spyOn(credentialsService, 'delete').mockResolvedValue(undefined);
 
 			const deleteReq = {
 				user: { id: 'u1' },
@@ -736,7 +734,7 @@ describe('CredentialsController', () => {
 				isResolvable: false,
 			});
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(staticCredential);
-			jest.spyOn(credentialsService, 'delete').mockResolvedValue(undefined);
+			vi.spyOn(credentialsService, 'delete').mockResolvedValue(undefined);
 
 			const deleteReq = {
 				user: { id: 'u1' },
