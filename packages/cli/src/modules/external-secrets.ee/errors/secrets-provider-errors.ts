@@ -1,5 +1,3 @@
-import { OperationalError } from 'n8n-workflow';
-
 type SafeContextValue = string | number | boolean | undefined;
 
 /**
@@ -16,7 +14,7 @@ export interface SecretsProviderErrorContext {
 	statusCode?: SafeContextValue;
 }
 
-export type SecretsProviderOperation =
+type SecretsProviderOperation =
 	| 'initialize'
 	| 'connect'
 	| 'disconnect'
@@ -24,7 +22,7 @@ export type SecretsProviderOperation =
 	| 'test'
 	| 'tokenRefresh';
 
-export type SecretsProviderLogContext = {
+type SecretsProviderLogContext = {
 	providerName: string;
 	providerDisplayName: string;
 	operation: SecretsProviderOperation;
@@ -43,128 +41,4 @@ export function secretsProviderLogContext({
 		operation,
 		errorName,
 	};
-}
-
-/**
- * @deprecated Do not use this class because this is overkill for the purpose of logging.
- * Use `secretsProviderLogContext` instead.
- */
-abstract class SecretsProviderOperationalError extends OperationalError {
-	constructor(
-		message: string,
-		providerName: string,
-		providerDisplayName: string,
-		operation: SecretsProviderOperation,
-		context: SecretsProviderErrorContext = {},
-	) {
-		super(message, {
-			extra: {
-				providerName,
-				providerDisplayName,
-				operation,
-				...context,
-			},
-		});
-		this.name = new.target.name;
-	}
-}
-
-/**
- * @deprecated Do not use this class because this is overkill for the purpose of logging.
- * Use `secretsProviderLogContext` instead.
- */
-export class SecretsProviderInitializationError extends SecretsProviderOperationalError {
-	constructor(
-		providerName: string,
-		providerDisplayName: string,
-		context?: SecretsProviderErrorContext,
-	) {
-		super(
-			'External secrets provider initialization failed',
-			providerName,
-			providerDisplayName,
-			'initialize',
-			context,
-		);
-	}
-}
-
-/**
- * @deprecated Do not use this class because this is overkill for the purpose of logging.
- * Use `secretsProviderLogContext` instead.
- */
-export class SecretsProviderConnectionError extends SecretsProviderOperationalError {
-	constructor(
-		providerName: string,
-		providerDisplayName: string,
-		context?: SecretsProviderErrorContext,
-	) {
-		super(
-			'External secrets provider connection failed',
-			providerName,
-			providerDisplayName,
-			'connect',
-			context,
-		);
-	}
-}
-
-/**
- * @deprecated Do not use this class because this is overkill for the purpose of logging.
- * Use `secretsProviderLogContext` instead.
- */
-export class SecretsProviderUpdateError extends SecretsProviderOperationalError {
-	constructor(
-		providerName: string,
-		providerDisplayName: string,
-		context?: SecretsProviderErrorContext,
-	) {
-		super(
-			'External secrets provider update failed',
-			providerName,
-			providerDisplayName,
-			'update',
-			context,
-		);
-	}
-}
-
-/**
- * @deprecated Do not use this class because this is overkill for the purpose of logging.
- * Use `secretsProviderLogContext` instead.
- */
-export class SecretsProviderTestError extends SecretsProviderOperationalError {
-	constructor(
-		providerName: string,
-		providerDisplayName: string,
-		context?: SecretsProviderErrorContext,
-	) {
-		super(
-			'External secrets provider test failed',
-			providerName,
-			providerDisplayName,
-			'test',
-			context,
-		);
-	}
-}
-
-/**
- * @deprecated Do not use this class because this is overkill for the purpose of logging.
- * Use `secretsProviderLogContext` instead.
- */
-export class SecretsProviderTokenRefreshError extends SecretsProviderOperationalError {
-	constructor(
-		providerName: string,
-		providerDisplayName: string,
-		context?: SecretsProviderErrorContext,
-	) {
-		super(
-			'External secrets provider token refresh failed',
-			providerName,
-			providerDisplayName,
-			'tokenRefresh',
-			context,
-		);
-	}
 }
