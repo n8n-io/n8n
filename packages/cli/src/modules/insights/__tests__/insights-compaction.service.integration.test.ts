@@ -380,7 +380,9 @@ describe('compaction', () => {
 				mockLogger(),
 			);
 			// spy on the compactInsights method to check if it's called
-			const compactInsightsSpy = vi.spyOn(insightsCompactionService, 'compactInsights');
+			const compactInsightsSpy = vi
+				.spyOn(insightsCompactionService, 'compactInsights')
+				.mockResolvedValue();
 
 			try {
 				insightsCompactionService.startCompactionTimer();
@@ -392,9 +394,96 @@ describe('compaction', () => {
 				// ASSERT
 				expect(compactInsightsSpy).toHaveBeenCalledTimes(1);
 			} finally {
-				insightsCompactionService.stopCompactionTimer();
+				await insightsCompactionService.stopCompactionTimer();
 				vi.useRealTimers();
 			}
+		});
+
+		test('stop waits for the active compaction after a skipped overlapping interval', async () => {
+			// ARRANGE
+			vi.useFakeTimers();
+			const loggerDebug = vi.fn();
+			const logger = mock<Logger>({ scoped: vi.fn().mockReturnThis(), debug: loggerDebug });
+			const insightsCompactionService = new InsightsCompactionService(
+				mock<InsightsByPeriodRepository>(),
+				mock<InsightsRawRepository>(),
+				mock<InsightsConfig>({
+					compactionIntervalMinutes: 1,
+					compactionBatchSize: 2,
+					compactionBatchDelayMilliseconds: 0,
+					compactionMaxBatchesPerRun: 0,
+					compactionMaxRuntimeSeconds: 0,
+				}),
+				logger,
+			);
+
+			let resolveRawToHour!: (numberOfCompactedRawData: number) => void;
+			const firstRawToHourPromise = new Promise<number>((resolve) => {
+				resolveRawToHour = resolve;
+			});
+			const rawToHourSpy = vi
+				.spyOn(insightsCompactionService, 'compactRawToHour')
+				.mockReturnValueOnce(firstRawToHourPromise)
+				.mockResolvedValue(0);
+			vi.spyOn(insightsCompactionService, 'compactHourToDay').mockResolvedValue(0);
+			vi.spyOn(insightsCompactionService, 'compactDayToWeek').mockResolvedValue(0);
+
+			try {
+				insightsCompactionService.startCompactionTimer();
+
+				// ACT
+				vi.advanceTimersByTime(1000 * 60);
+				await Promise.resolve();
+				vi.advanceTimersByTime(1000 * 60);
+				await Promise.resolve();
+
+				const stopPromise = insightsCompactionService.stopCompactionTimer();
+				let stopped = false;
+				void stopPromise.then(() => {
+					stopped = true;
+				});
+				await Promise.resolve();
+
+				// ASSERT
+				expect(stopped).toBe(false);
+				expect(loggerDebug).toHaveBeenCalledWith(
+					'Skipping insights compaction because another compaction run is active',
+				);
+
+				resolveRawToHour(0);
+				await stopPromise;
+				expect(stopped).toBe(true);
+				expect(rawToHourSpy).toHaveBeenCalledTimes(1);
+			} finally {
+				await insightsCompactionService.stopCompactionTimer();
+				vi.useRealTimers();
+			}
+		});
+
+		test('stop succeeds after compaction fails', async () => {
+			// ARRANGE
+			const insightsCompactionService = new InsightsCompactionService(
+				mock<InsightsByPeriodRepository>(),
+				mock<InsightsRawRepository>(),
+				mock<InsightsConfig>({
+					compactionBatchSize: 2,
+					compactionBatchDelayMilliseconds: 0,
+					compactionMaxBatchesPerRun: 0,
+					compactionMaxRuntimeSeconds: 0,
+				}),
+				mockLogger(),
+			);
+			vi.spyOn(insightsCompactionService, 'compactRawToHour').mockRejectedValueOnce(
+				new Error('compaction failed'),
+			);
+
+			// ACT
+			const compactionPromise = insightsCompactionService.compactInsights();
+			const stopPromise = insightsCompactionService.stopCompactionTimer();
+
+			// ASSERT
+			await expect(compactionPromise).rejects.toThrow('compaction failed');
+			await expect(stopPromise).resolves.toBeUndefined();
 		});
 	});
 

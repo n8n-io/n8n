@@ -284,7 +284,7 @@ export async function runWorkflowTestCase(
 
 	const scenarioStart = Date.now();
 	const scenariosPromise = runWithConcurrency(
-		testCase.executionScenarios,
+		testCase.executionScenarios ?? [],
 		async (scenario) => {
 			try {
 				return await executeScenario(
