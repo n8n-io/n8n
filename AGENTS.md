@@ -174,8 +174,7 @@ const children = getChildNodes(workflow.connections, 'NodeName', 'main', 1);
 
 ### Error Handling
 - Don't use the deprecated `ApplicationError` class anywhere — it's a
-  compatibility shim kept only so community nodes keep resolving, and the
-  `no-application-error` lint rule bans creating new instances in-repo.
+  compatibility shim kept only so community nodes keep resolving.
   Use `UnexpectedError`, `OperationalError` or `UserError` instead.
 - Import from appropriate error classes in each package
 
