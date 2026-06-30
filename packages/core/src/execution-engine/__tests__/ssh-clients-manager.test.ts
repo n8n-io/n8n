@@ -118,10 +118,7 @@ describe('onShutdown', () => {
 
 	it('should not throw when shutting down with a missing logger', () => {
 		// ARRANGE
-		const manager = new SSHClientsManager(
-			mock({ idleTimeout }),
-			undefined as unknown as Logger,
-		);
+		const manager = new SSHClientsManager(mock({ idleTimeout }), undefined as unknown as Logger);
 
 		// ACT & ASSERT
 		expect(() => manager.onShutdown()).not.toThrow();
