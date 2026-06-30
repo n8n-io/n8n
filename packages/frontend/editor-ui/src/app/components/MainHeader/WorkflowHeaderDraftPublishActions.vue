@@ -48,6 +48,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { useWorkflowPublicationStatusSync } from '@/app/composables/useWorkflowPublicationStatusSync';
 
 const props = defineProps<{
 	id: IWorkflowDb['id'];
@@ -65,6 +66,8 @@ const uiStore = useUIStore();
 const workflowDocumentStore = computed(() =>
 	useWorkflowDocumentStore(createWorkflowDocumentId(props.id)),
 );
+
+useWorkflowPublicationStatusSync(workflowDocumentStore.value.documentId);
 const collaborationStore = useCollaborationStore();
 const projectStore = useProjectsStore();
 const workflowHistoryStore = useWorkflowHistoryStore();
