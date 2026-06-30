@@ -11,7 +11,7 @@ import {
 	type InstanceAiEvent,
 	type InstanceAiThreadStatusResponse,
 } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
+import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { SsrfProtectionService } from '@n8n/backend-network';
 import { GlobalConfig, SsrfProtectionConfig, type InstanceAiConfig } from '@n8n/config';
 import { UserRepository, type User } from '@n8n/db';
@@ -518,6 +518,7 @@ export class InstanceAiService {
 		runProbe: InstanceAiRunProbe,
 		private readonly modelService: InstanceAiModelService,
 		private readonly creditService: InstanceAiCreditService,
+		private readonly moduleRegistry: ModuleRegistry,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		runProbe.registerActiveRunCountProvider(() => this.runState.activeRunCount());
@@ -1890,7 +1891,22 @@ export class InstanceAiService {
 			setSchemaBaseDirs(nodeDefDirs);
 		}
 
-		const baseRuntimeSkills = loadInstanceAiRuntimeSkillSource();
+		// The agent-builder tools are only registered when the agents module is
+		// active (InstanceAiAdapterService.getAgentBuilderAdapter), so hide its
+		// skill too when the module is off.
+		const allRuntimeSkills = loadInstanceAiRuntimeSkillSource();
+		const agentsModuleActive = this.moduleRegistry.isActive('agents');
+		const baseRuntimeSkills = agentsModuleActive
+			? allRuntimeSkills
+			: {
+					...allRuntimeSkills,
+					registry: {
+						...allRuntimeSkills.registry,
+						skills: allRuntimeSkills.registry.skills.filter(
+							(skill) => skill.id !== 'agent-builder',
+						),
+					},
+				};
 		let runtimeSkills = baseRuntimeSkills;
 		let runtimeWorkspace: Workspace | undefined;
 		let workspaceRoot: string | undefined;

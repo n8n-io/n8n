@@ -699,6 +699,56 @@ sandbox) to consult these before planning or building non-trivial workflows.
 
 ---
 
+## Agent Builder Tool
+
+### `agent_builder` *(conditional — requires the `agents` backend module)*
+
+A single router tool that lets the assistant **create and configure an n8n
+*Agent*** (the `AgentJsonConfig`: instructions, model, node/workflow/MCP/custom
+tools, skills, tasks, integrations, sub-agents). It is registered as a **deferred**
+tool and loaded on demand by the `agent-builder` skill; it is present only when the
+`agents` module is enabled. All builder capabilities are exposed as `action`s on
+this one tool. See `docs/agent-builder.md` for the design.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `action` | string | yes | Which builder action to run (see below) |
+| …action fields | — | — | Each action carries its own fields (validated per action on dispatch) |
+
+**Returns**: shape depends on the action — typically `{ ok: true, … }` on success or
+`{ ok: false, errors: [{ path?, message }] }` on failure.
+
+**Actions**:
+
+| Action | Description |
+|--------|-------------|
+| `create_agent` | Create a new empty agent and bind the conversation to it. Call this first when no agent is targeted yet. |
+| `read_config` | Read the current agent config plus freshness metadata (`configHash`, `updatedAt`, `versionId`). Call before every write/patch. |
+| `write_config` | Replace the whole agent config from a JSON string. Validates the schema, rejects empty instructions and unsupported native web search, enforces no `$fromAI` on stable dynamic selectors, and normalizes native web-search provider tools. Requires `baseConfigHash` (stale-write guard). |
+| `patch_config` | Apply RFC-6902 JSON Patch operations to the config (same validation as `write_config`). Requires `baseConfigHash`. |
+| `search_nodes` | Search the node catalog for **agent-tool-capable** nodes (excludes triggers/hidden/HITL) to add as node tools. |
+| `get_node_types` | Get TypeScript type definitions for node types — exact parameter names, enums, credential types, and `@searchListMethod`/`@loadOptionsMethod`/`@builderHint` annotations. |
+| `get_resource_locator_options` | Resolve live options for a parameter behind a `resourceLocator` / `loadOptionsMethod` / `loadOptions` routing (stable IDs like Linear teamId, Slack channel, model). Returns each option's `parameterValue` to write into `nodeParameters` (instead of `$fromAI`). |
+| `create_skill` | Create a reusable, load-on-demand target-agent skill (name + routing description + structured body). Does not attach it — follow up with `patch_config`/`write_config`. |
+| `create_task` | Create a recurring scheduled task (name + objective + cron) for the target agent. Adds a `{ type: "task" }` ref to the config. |
+| `build_custom_tool` | Compile and store a custom TypeScript tool (`export default new Tool(...)`), sandbox-validated. Register it via `patch_config` (`{ type: "custom", id }`). |
+| `list_integration_types` | List chat-platform integration types with their supported credential types and builder guidance. |
+| `list_sub_agents` | List published same-project agents that can be attached as sub-agents. |
+| `list_credentials` | List credentials (optionally filtered by type) to wire into node tools / integrations. |
+| `list_workflows` | List workflows attachable as `type: "workflow"` tools (supported trigger types only). |
+| `search_mcp_servers` | Search the MCP registry for servers to attach (returns url, transport, auth, credential type, tools). |
+| `verify_mcp_server` | Test connectivity to an MCP server and list its tools before adding it to the config. |
+| `resolve_llm` | Resolve the agent's main LLM (provider/model/credential) non-interactively; returns `ok: false` with candidates when the choice is missing/ambiguous. |
+
+**Getting user input:** there are no builder-specific picker cards. To ask the user
+anything (a choice, which credential, which model), use the native `ask-user` tool.
+Credentials are chosen via `list_credentials` (+ `ask-user` when several match); the
+main LLM via `resolve_llm` (+ `ask-user` fallback), then written with `write_config`.
+
+**Targeting:** actions that mutate a specific agent require a bound agent; before one
+exists they return a structured error telling the model to `create_agent` first.
+`create_agent` is target-less and binds the run to the new agent.
+
 ## Other Domain Tools
 
 | Tool | Description |
