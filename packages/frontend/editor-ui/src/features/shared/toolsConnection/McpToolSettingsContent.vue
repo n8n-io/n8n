@@ -25,6 +25,7 @@ const initialSettings = (): McpToolSettings =>
 const inclusionMode = ref<McpToolInclusionMode>(initialSettings().inclusionMode);
 const selectedTools = ref<string[]>([...initialSettings().selectedTools]);
 const excludedTools = ref<string[]>([...initialSettings().excludedTools]);
+const hasSavedBefore = ref(false);
 
 watch(
 	() => props.item.id,
@@ -76,6 +77,7 @@ function toolsKey(tools: string[]): string {
 }
 
 const hasChanges = computed(() => {
+	if (!hasSavedBefore.value) return true;
 	const saved = initialSettings();
 	if (inclusionMode.value !== saved.inclusionMode) return true;
 	if (inclusionMode.value === 'selected') {
@@ -89,6 +91,7 @@ const hasChanges = computed(() => {
 
 function handleSave() {
 	if (!hasChanges.value) return;
+	hasSavedBefore.value = true;
 	emit('save', {
 		inclusionMode: inclusionMode.value,
 		selectedTools: [...selectedTools.value],
