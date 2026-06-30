@@ -2,7 +2,11 @@ import { mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INode, IBinaryData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { Compression } from '../../Compression.node';
+import {
+	Compression,
+	FUTURE_MAX_DECOMPRESSED_SIZE,
+	FUTURE_MAX_ZIP_ENTRIES,
+} from '../../Compression.node';
 import { boundedGunzip } from '../../decompress/BoundedGunzip';
 import { boundedUntar } from '../../decompress/BoundedUntar';
 import { boundedUnzip } from '../../decompress/BoundedUnzip';
@@ -584,6 +588,62 @@ describe('Compression Node - Decompress Operation', () => {
 			expect(result[0][1].json).toEqual({ item: 2 });
 			expect(result[0][0].pairedItem).toEqual({ item: 0 });
 			expect(result[0][1].pairedItem).toEqual({ item: 1 });
+		});
+	});
+
+	describe('Future limit warnings', () => {
+		const zipBinaryData: IBinaryData = {
+			data: 'base64data',
+			mimeType: 'application/zip',
+			fileName: 'test.zip',
+			fileExtension: 'zip',
+		};
+
+		beforeEach(() => {
+			vi.mocked(mockExecuteFunctions.helpers.assertBinaryData).mockReturnValue(zipBinaryData);
+			vi.mocked(mockExecuteFunctions.helpers.getBinaryDataBuffer).mockResolvedValue(
+				Buffer.from('mock zip data'),
+			);
+			vi.mocked(mockExecuteFunctions.helpers.prepareBinaryData).mockImplementation(
+				async (_buffer, fileName) => ({ fileName: fileName ?? 'file' }) as IBinaryData,
+			);
+		});
+
+		it('should warn when decompressed size exceeds the future limit', async () => {
+			// Avoid allocating a real >256 MiB buffer by faking only its length!
+			const oversized = { length: FUTURE_MAX_DECOMPRESSED_SIZE + 1 } as unknown as Buffer;
+			mockBoundedUnzip({ 'big.txt': oversized });
+
+			await compression.execute.call(mockExecuteFunctions);
+
+			expect(mockExecuteFunctions.logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('N8N_COMPRESSION_NODE_MAX_DECOMPRESSED_SIZE_BYTES'),
+			);
+		});
+
+		it('should warn when entry count exceeds the future limit', async () => {
+			const manyEntries: Record<string, Buffer> = {};
+			for (let i = 0; i <= FUTURE_MAX_ZIP_ENTRIES; i++) {
+				manyEntries[`file${i}_txt`] = Buffer.from([1]);
+			}
+			mockBoundedUnzip(manyEntries);
+
+			await compression.execute.call(mockExecuteFunctions);
+
+			expect(mockExecuteFunctions.logger.warn).toHaveBeenCalledWith(
+				expect.stringContaining('N8N_COMPRESSION_NODE_MAX_ZIP_ENTRIES'),
+			);
+		});
+
+		it('should not warn when the archive stays within the future limits', async () => {
+			mockBoundedUnzip({
+				file1_txt: Buffer.from([72, 101, 108, 108, 111]),
+				file2_txt: Buffer.from([87, 111, 114, 108, 100]),
+			});
+
+			await compression.execute.call(mockExecuteFunctions);
+
+			expect(mockExecuteFunctions.logger.warn).not.toHaveBeenCalled();
 		});
 	});
 

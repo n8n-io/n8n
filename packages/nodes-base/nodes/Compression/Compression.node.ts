@@ -21,6 +21,10 @@ import { boundedUnzip } from './decompress/BoundedUnzip';
 const gzip = promisify(fflate.gzip);
 const zip = promisify(fflate.zip);
 
+// Lower limits planned for v3.
+export const FUTURE_MAX_DECOMPRESSED_SIZE = 256 * 1024 * 1024;
+export const FUTURE_MAX_ZIP_ENTRIES = 1000;
+
 type TarInputFile = { fileName: string; data: Buffer };
 
 /**
@@ -306,6 +310,19 @@ export class Compression implements INodeType {
 		const nodeVersion = this.getNode().typeVersion;
 		const { maxDecompressedSize, maxZipEntries } = Container.get(CompressionNodeConfig);
 
+		const warnIfExceedsFutureLimit = (totalSize: number, entryCount: number) => {
+			if (totalSize > FUTURE_MAX_DECOMPRESSED_SIZE) {
+				this.logger.warn(
+					`Decompressed output (${totalSize} bytes) exceeds the ${FUTURE_MAX_DECOMPRESSED_SIZE}-byte limit planned for a future version and will then be rejected. Raise N8N_COMPRESSION_NODE_MAX_DECOMPRESSED_SIZE_BYTES if you need more headroom.`,
+				);
+			}
+			if (entryCount > FUTURE_MAX_ZIP_ENTRIES) {
+				this.logger.warn(
+					`Decompressed archive (${entryCount} entries) exceeds the ${FUTURE_MAX_ZIP_ENTRIES}-entry limit planned for a future version and will then be rejected. Raise N8N_COMPRESSION_NODE_MAX_ZIP_ENTRIES if you need more headroom.`,
+				);
+			}
+		};
+
 		for (let i = 0; i < length; i++) {
 			try {
 				if (operation === 'decompress') {
@@ -342,6 +359,10 @@ export class Compression implements INodeType {
 								? await boundedUntar(binaryDataBuffer, maxDecompressedSize, maxZipEntries)
 								: await boundedUnzip(binaryDataBuffer, maxDecompressedSize, maxZipEntries);
 
+							const fileKeys = Object.keys(files);
+							const totalSize = fileKeys.reduce((sum, key) => sum + files[key].length, 0);
+							warnIfExceedsFutureLimit(totalSize, fileKeys.length);
+
 							for (const key of Object.keys(files)) {
 								// when files are compressed using MACOSX for some reason they are duplicated under __MACOSX
 								if (key.includes('__MACOSX')) {
@@ -354,6 +375,8 @@ export class Compression implements INodeType {
 							}
 						} else if (['gz', 'gzip'].includes(fileExtension)) {
 							const file = await boundedGunzip(binaryDataBuffer, maxDecompressedSize);
+
+							warnIfExceedsFutureLimit(file.length, 1);
 
 							const fileName = binaryData.fileName?.split('.')[0];
 							let fileExtension;
