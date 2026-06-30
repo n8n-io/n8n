@@ -5,10 +5,6 @@ import { UnexpectedError } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import {
-	SecretsProviderConnectionError,
-	SecretsProviderUpdateError,
-} from '../../errors/secrets-provider-errors';
 import { AzureKeyVault } from '../azure-key-vault/azure-key-vault';
 import type { AzureKeyVaultContext } from '../azure-key-vault/types';
 
@@ -48,7 +44,55 @@ describe('AzureKeyVault', () => {
 		expect(azureKeyVault.state).toBe('error');
 		expect(logger.warn).toHaveBeenCalledWith(
 			'Failed to connect Azure Key Vault provider',
-			expect.objectContaining({ error: expect.any(SecretsProviderConnectionError) }),
+			expect.objectContaining({
+				providerName: 'azureKeyVault',
+				providerDisplayName: 'Azure Key Vault',
+				operation: 'connect',
+				location: 'my-vault',
+				errorName: expect.any(String),
+				errorCode: expect.any(String),
+			}),
+		);
+	});
+
+	it('should log test failures with Azure error context', async () => {
+		await azureKeyVault.init(
+			mock<AzureKeyVaultContext>({
+				settings: {
+					vaultName: 'my-vault',
+					tenantId: 'my-tenant-id',
+					clientId: 'my-client-id',
+					clientSecret: 'my-client-secret',
+				},
+			}),
+		);
+
+		await azureKeyVault.connect();
+
+		const restError = Object.assign(new Error('Permission denied'), {
+			name: 'RestError',
+			statusCode: 403,
+			code: 'Forbidden',
+		});
+
+		vi.spyOn(SecretClient.prototype, 'listPropertiesOfSecrets').mockReturnValue({
+			next: vi.fn().mockRejectedValue(restError),
+		} as never);
+
+		const [success, message] = await azureKeyVault.test();
+
+		expect(success).toBe(false);
+		expect(message).toBe('Permission denied');
+		expect(logger.warn).toHaveBeenCalledWith(
+			'Azure Key Vault provider test failed',
+			expect.objectContaining({
+				providerName: 'azureKeyVault',
+				operation: 'test',
+				errorName: 'RestError',
+				statusCode: 403,
+				errorCode: 'Forbidden',
+				location: 'my-vault',
+			}),
 		);
 	});
 
@@ -173,6 +217,15 @@ describe('AzureKeyVault', () => {
 
 		expect(azureKeyVault.getSecret('good')).toBe('fine');
 		expect(azureKeyVault.hasSecret('bad')).toBe(false);
+		expect(logger.warn).toHaveBeenCalledWith(
+			'Could not read Azure Key Vault secret "bad"',
+			expect.objectContaining({
+				providerName: 'azureKeyVault',
+				operation: 'update',
+				resource: 'bad',
+				location: 'my-vault',
+			}),
+		);
 	});
 
 	it('should throw when every getSecret fails and leave the previous cache unchanged', async () => {
@@ -223,7 +276,12 @@ describe('AzureKeyVault', () => {
 		}
 		expect(logger.warn).toHaveBeenCalledWith(
 			'Failed to update Azure Key Vault provider secrets',
-			expect.objectContaining({ error: expect.any(SecretsProviderUpdateError) }),
+			expect.objectContaining({
+				providerName: 'azureKeyVault',
+				operation: 'update',
+				resource: 'secrets',
+				location: 'my-vault',
+			}),
 		);
 		expect(azureKeyVault.getSecret('only-secret')).toBe('cached-value');
 	});

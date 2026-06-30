@@ -85,6 +85,10 @@ export class SecretsProviderInitializationError extends SecretsProviderOperation
 	}
 }
 
+/**
+ * @deprecated Do not use this class because this is overkill for the purpose of logging.
+ * Use `secretsProviderLogContext` instead.
+ */
 export class SecretsProviderConnectionError extends SecretsProviderOperationalError {
 	constructor(
 		providerName: string,
