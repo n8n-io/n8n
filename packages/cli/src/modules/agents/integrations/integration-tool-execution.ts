@@ -1,5 +1,5 @@
 import type { InterruptibleToolContext, ToolContext } from '@n8n/agents';
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 import type { z } from 'zod';
 
 import { messageSchema, type IntegrationCardComponent } from './integration-tool-definitions';

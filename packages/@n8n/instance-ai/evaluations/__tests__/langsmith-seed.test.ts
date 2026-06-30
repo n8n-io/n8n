@@ -13,7 +13,7 @@ vi.mock('../harness/parse-seed-workflow', () => ({
 	}),
 }));
 
-import { reconstructSeedFromThread } from '../harness/langsmith-seed';
+import { configFor, reconstructSeedFromThread } from '../harness/langsmith-seed';
 
 // Discovery test doubles return fixed, already-resolved workspace lists.
 /* eslint-disable @typescript-eslint/promise-function-async */
@@ -80,6 +80,55 @@ describe('reconstructSeedFromThread', () => {
 		expect(result.seed.messages[0].content).toEqual([
 			{ type: 'text', text: 'Build Otter Digest, daily 9am' },
 		]);
+	});
+
+	it('pins the live turn to liveTurnRunId, seeding only the turns before the pin', async () => {
+		const runs: FakeRun[] = [
+			{ ...turn('r1', 1, 'Build Otter Digest, daily 9am'), outputs: { response: 'Built it.' } },
+			{
+				...turn('r2', 30, 'Change the schedule to every 30 minutes.'),
+				outputs: { response: 'Done.' },
+			},
+			turn('r3', 60, 'Now add error handling'),
+		];
+		// Pin the MIDDLE turn: it becomes the live turn and the later real turn (r3) is discarded.
+		const result = await reconstructSeedFromThread(
+			{ threadId: 'th1', liveTurnRunId: 'r2' },
+			fakeClient(runs),
+		);
+
+		expect(result.liveTurn).toBe('Change the schedule to every 30 minutes.');
+		// Only turn 1 is seeded — the pinned turn and everything after it are excluded.
+		const userTexts = result.seed.messages
+			.filter((m) => m.role === 'user')
+			.map((m) => (m.content as Array<{ text: string }>)[0].text);
+		expect(userTexts).toEqual(['Build Otter Digest, daily 9am']);
+	});
+
+	it('falls back to the last user turn (with a warning) when liveTurnRunId matches no turn', async () => {
+		const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+		const runs: FakeRun[] = [
+			{ ...turn('r1', 1, 'Build it'), outputs: { response: 'Built.' } },
+			turn('r2', 30, 'Change the schedule'),
+		];
+		const result = await reconstructSeedFromThread(
+			{ threadId: 'th1', liveTurnRunId: 'no-such-run' },
+			fakeClient(runs),
+		);
+
+		expect(result.liveTurn).toBe('Change the schedule'); // unchanged: the last user turn
+		expect(warn).toHaveBeenCalledWith(expect.stringContaining('not found among'));
+		warn.mockRestore();
+	});
+
+	it('throws when liveTurnRunId pins the first user turn (no prior turn to seed)', async () => {
+		const runs: FakeRun[] = [
+			{ ...turn('r1', 1, 'Build it'), outputs: { response: 'Built.' } },
+			turn('r2', 30, 'Change the schedule'),
+		];
+		await expect(
+			reconstructSeedFromThread({ threadId: 'th1', liveTurnRunId: 'r1' }, fakeClient(runs)),
+		).rejects.toThrow(/no prior turn to seed/);
 	});
 
 	it('rebuilds resolved tool-call blocks and compiles the seed workflow at the boundary', async () => {
@@ -224,7 +273,7 @@ describe('reconstructSeedFromThread', () => {
 	it('throws when the trace has fewer than two user turns', async () => {
 		const runs: FakeRun[] = [turn('r1', 1, 'Only one user turn')];
 		await expect(reconstructSeedFromThread({ threadId: 'th1' }, fakeClient(runs))).rejects.toThrow(
-			/need ≥2 to seed/,
+			/no prior turn to seed/,
 		);
 	});
 
@@ -544,6 +593,83 @@ describe('reconstructSeedFromThread — filesystem-based builds (post-#32545)', 
 	});
 });
 
+describe('reconstructSeedFromThread — workflow deletes', () => {
+	it('excludes a workflow deleted before the boundary and not rebuilt', async () => {
+		const runs: FakeRun[] = [
+			{ ...turn('r1', 1, 'Build it'), outputs: { response: 'Built.' } },
+			tool('b1', 4, 'build-workflow', { code: 'v1' }, { success: true, workflowId: 'WF1' }),
+			// The user said "delete everything" → the entity is removed and never rebuilt,
+			// so it must not be restored into the seed.
+			tool('d1', 6, 'workflows[delete]', { action: 'delete', workflowId: 'WF1' }),
+			turn('r2', 30, 'Change'),
+		];
+		const result = await reconstructSeedFromThread({ threadId: 'th1' }, fakeClient(runs));
+		expect(result.seed.workflows).toHaveLength(0);
+	});
+
+	it('keeps a workflow rebuilt after an earlier delete (latest build wins)', async () => {
+		const runs: FakeRun[] = [
+			{ ...turn('r1', 1, 'Build it'), outputs: { response: 'Built.' } },
+			tool('b1', 3, 'build-workflow', { code: 'v1' }, { success: true, workflowId: 'WF1' }),
+			tool('d1', 5, 'workflows[delete]', { action: 'delete', workflowId: 'WF1' }),
+			tool('b2', 7, 'build-workflow', { code: 'v2' }, { success: true, workflowId: 'WF1' }),
+			turn('r2', 30, 'Change'),
+		];
+		const result = await reconstructSeedFromThread({ threadId: 'th1' }, fakeClient(runs));
+		expect(result.seed.workflows).toHaveLength(1);
+		expect(result.seed.workflows[0].nodes[0]).toMatchObject({ __code: 'v2' });
+	});
+
+	it('ignores a failed delete — the workflow stays in the seed', async () => {
+		const runs: FakeRun[] = [
+			{ ...turn('r1', 1, 'Build it'), outputs: { response: 'Built.' } },
+			tool('b1', 3, 'build-workflow', { code: 'v1' }, { success: true, workflowId: 'WF1' }),
+			tool(
+				'd1',
+				5,
+				'workflows[delete]',
+				{ action: 'delete', workflowId: 'WF1' },
+				{ success: false },
+			),
+			turn('r2', 30, 'Change'),
+		];
+		const result = await reconstructSeedFromThread({ threadId: 'th1' }, fakeClient(runs));
+		expect(result.seed.workflows).toHaveLength(1);
+	});
+
+	it('keeps a workflow when the delete only suspended for confirmation (no success)', async () => {
+		const runs: FakeRun[] = [
+			{ ...turn('r1', 1, 'Build it'), outputs: { response: 'Built.' } },
+			tool('b1', 3, 'build-workflow', { code: 'v1' }, { success: true, workflowId: 'WF1' }),
+			// HITL: the delete suspended awaiting confirmation; its output is the confirmation
+			// request (no success field), not a completed delete — the workflow still exists.
+			tool(
+				'd1',
+				5,
+				'workflows[delete]',
+				{ action: 'delete', workflowId: 'WF1' },
+				{ requestId: 'req-1', message: 'Archive WF1', severity: 'warning' },
+			),
+			turn('r2', 30, 'Change'),
+		];
+		const result = await reconstructSeedFromThread({ threadId: 'th1' }, fakeClient(runs));
+		expect(result.seed.workflows).toHaveLength(1);
+	});
+
+	it('ignores a delete-shaped input from a non-workflows tool', async () => {
+		const runs: FakeRun[] = [
+			{ ...turn('r1', 1, 'Build it'), outputs: { response: 'Built.' } },
+			tool('b1', 3, 'build-workflow', { code: 'v1' }, { success: true, workflowId: 'WF1' }),
+			// Same delete-shaped input + success as a real workflow delete, but a different
+			// tool — the match is gated to `workflows`, so it must not evict the seed workflow.
+			tool('d1', 5, 'data-tables[delete-rows]', { action: 'delete', workflowId: 'WF1' }),
+			turn('r2', 30, 'Change'),
+		];
+		const result = await reconstructSeedFromThread({ threadId: 'th1' }, fakeClient(runs));
+		expect(result.seed.workflows).toHaveLength(1);
+	});
+});
+
 describe('reconstructSeedFromThread — workspace auto-discovery', () => {
 	const seedableRuns: FakeRun[] = [
 		{ ...turn('r1', 1, 'Build it'), outputs: { response: 'Built.' } },
@@ -597,6 +723,60 @@ describe('reconstructSeedFromThread — workspace auto-discovery', () => {
 					fakeClient(id === 'staging-id' ? oneTurn : seedableRuns),
 				ambientClient: () => fakeClient([]),
 			}),
-		).rejects.toThrow(/need ≥2 to seed/);
+		).rejects.toThrow(/no prior turn to seed/);
+	});
+});
+
+// Dual-tenant READS (US→EU migration): a seed ref's `endpoint` selects which
+// LangSmith tenant to read from. Writes are unaffected (they stay on the home
+// tenant elsewhere). The endpoint→key mapping is the cross-repo contract that
+// LangTracer's exported `seedThread.endpoint` rides on (TRUST-212).
+describe('configFor — dual-tenant read resolution', () => {
+	const EU = 'https://eu.api.smith.langchain.com';
+	const US = 'https://api.smith.langchain.com';
+
+	beforeEach(() => {
+		vi.stubEnv('LANGSMITH_ENDPOINT', EU);
+		vi.stubEnv('LANGSMITH_API_KEY', 'eu-key');
+		vi.stubEnv('LANGSMITH_ENDPOINT_US', US);
+		vi.stubEnv('LANGSMITH_API_KEY_US', 'us-key');
+	});
+	afterEach(() => vi.unstubAllEnvs());
+
+	it('resolves an omitted endpoint to the home (EU) host + key', () => {
+		expect(configFor()).toEqual({ apiUrl: EU, apiKey: 'eu-key' });
+	});
+
+	it('resolves the home endpoint to the home key', () => {
+		expect(configFor(EU)).toEqual({ apiUrl: EU, apiKey: 'eu-key' });
+	});
+
+	it('resolves the US endpoint to the US key — never the home key', () => {
+		expect(configFor(US)).toEqual({ apiUrl: US, apiKey: 'us-key' });
+	});
+
+	it('tolerates a trailing slash and an /api/v1 suffix on the endpoint', () => {
+		expect(configFor(`${US}/`)).toEqual({ apiUrl: US, apiKey: 'us-key' });
+		expect(configFor(`${EU}/api/v1`)).toEqual({ apiUrl: EU, apiKey: 'eu-key' });
+	});
+
+	it('throws (does NOT fall back to the home key) when the US key is missing', () => {
+		vi.stubEnv('LANGSMITH_API_KEY_US', '');
+		expect(() => configFor(US)).toThrow(/LANGSMITH_API_KEY_US is not set/);
+	});
+
+	it('throws on an endpoint that matches no configured tenant', () => {
+		expect(() => configFor('https://made-up.smith.langchain.com')).toThrow(
+			/no configured LangSmith tenant/,
+		);
+	});
+
+	it('routes a US-endpoint ref through the US resolver (no silent home fallback)', async () => {
+		// End-to-end: the endpoint flows ref → discoveryDepsFor(ref.endpoint) →
+		// configFor, so a missing US key fails loudly instead of querying EU.
+		vi.stubEnv('LANGSMITH_API_KEY_US', '');
+		await expect(reconstructSeedFromThread({ threadId: 't1', endpoint: US })).rejects.toThrow(
+			/LANGSMITH_API_KEY_US is not set/,
+		);
 	});
 });

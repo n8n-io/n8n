@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { AgentTestChatService, chatThreadId } from '../agent-test-chat.service';
 import type { N8nMemory } from '../integrations/n8n-memory';

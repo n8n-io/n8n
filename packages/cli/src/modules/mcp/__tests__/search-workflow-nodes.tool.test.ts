@@ -1,13 +1,14 @@
 import { User } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
-
-import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
-import { createSearchWorkflowNodesTool } from '../tools/workflow-builder/search-workflow-nodes.tool';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { NodeCatalogService } from '@/node-catalog';
 import type { Telemetry } from '@/telemetry';
 
-jest.mock('@n8n/ai-workflow-builder', () => ({
+import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
+import { createSearchWorkflowNodesTool } from '../tools/workflow-builder/search-workflow-nodes.tool';
+
+vi.mock('@n8n/ai-workflow-builder', () => ({
 	CODE_BUILDER_SEARCH_NODES_TOOL: {
 		toolName: 'search_workflow_nodes',
 		displayTitle: 'Search Workflow Nodes',
@@ -26,11 +27,11 @@ jest.mock('@n8n/ai-workflow-builder', () => ({
 
 describe('search-workflow-nodes MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
-	let nodeCatalogService: jest.Mocked<NodeCatalogService>;
-	let telemetry: jest.Mocked<Telemetry>;
+	let nodeCatalogService: Mocked<NodeCatalogService>;
+	let telemetry: Mocked<Telemetry>;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		nodeCatalogService = mock<NodeCatalogService>();
 		telemetry = mock<Telemetry>();
 		nodeCatalogService.searchNodes.mockResolvedValue({
