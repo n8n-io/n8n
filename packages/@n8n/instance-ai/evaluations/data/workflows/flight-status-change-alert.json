@@ -1,0 +1,55 @@
+{
+	"description": "Vague monitoring request with an unspecified data source. The agent should ask where to get the flight status from before building; the user answers 'scrape FlightAware'. Outcome/scenario assertions are grounded in a real build run (schedule → scrape FlightAware → compare against stored last-seen status → alert only on change).",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "I am flying on FR485 today. Create a workflow that alerts me when there's any change in my flight status."
+		},
+		{
+			"role": "assistant",
+			"text": "Where should I get the flight status from?"
+		},
+		{
+			"role": "user",
+			"text": "[Don't mention the data source unless the agent asks where to get the flight status from; then say 'Scrape it from FlightAware.']"
+		}
+	],
+	"messageBudget": 4,
+	"complexity": "medium",
+	"tags": [
+		"build",
+		"schedule",
+		"http-request",
+		"scraping",
+		"monitoring",
+		"flight",
+		"datatable",
+		"change-detection"
+	],
+	"triggerType": "schedule",
+	"datasets": ["full"],
+	"processExpectations": [
+		"Before building, the agent asked where to get the flight status data from, since the request did not specify a source.",
+		"If the agent asked about the data source and was told to scrape FlightAware, it then built against FlightAware (a flightaware.com source) rather than substituting a different flight-data provider."
+	],
+	"outcomeExpectations": [
+		"The workflow is driven by a Schedule Trigger that polls on a recurring interval, so it checks the flight status periodically rather than waiting for an external event.",
+		"It fetches the current flight status from an external flight-data source via an HTTP Request node (e.g. scraping a flight-tracking page or calling a flight-status API).",
+		"It persists the previously-seen flight status between runs (e.g. in a Data Table) and compares the freshly-fetched status against the stored value, so it can tell whether the status actually changed.",
+		"An alert to the user (e.g. an email or messaging node) is sent only on the branch where a change was detected, gated behind a conditional on the comparison — not on every scheduled poll."
+	],
+	"executionScenarios": [
+		{
+			"name": "status-change-detected",
+			"description": "The freshly-scraped status differs from the stored previous status, so an alert is sent",
+			"dataSetup": "The flight-status store already holds a record for FR485 with status 'Scheduled' (on time, gate A1). The FlightAware page fetch returns a page for FR485 whose current status is 'Delayed' with a changed departure gate.",
+			"successCriteria": "The workflow executes without errors. Because the scraped status ('Delayed') differs from the stored status ('Scheduled'), an alert about FR485 is sent to the user mentioning the new status, and the stored status is updated to the new value."
+		},
+		{
+			"name": "no-change-no-alert",
+			"description": "The scraped status matches the stored previous status, so no alert is sent",
+			"dataSetup": "The flight-status store already holds a record for FR485 with status 'On Time' (gate A1, same departure/arrival times). The FlightAware page fetch returns a page for FR485 whose current status, gate and times are identical to the stored record.",
+			"successCriteria": "The workflow executes without errors and sends no alert, because the scraped flight status is unchanged from the stored value."
+		}
+	]
+}
