@@ -7,6 +7,7 @@ import AgentSelectorParameterInput, { type Props } from './AgentSelectorParamete
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { NEW_AGENT_VIEW } from '@/features/agents/constants';
 
 const { listAgentsPage, listAgentsPageGlobal } = vi.hoisted(() => ({
 	listAgentsPage: vi.fn(),
@@ -16,6 +17,8 @@ const { listAgentsPage, listAgentsPageGlobal } = vi.hoisted(() => ({
 const { routerPush } = vi.hoisted(() => ({
 	routerPush: vi.fn(),
 }));
+
+const { canCreateHolder } = vi.hoisted(() => ({ canCreateHolder: { value: false } }));
 
 const flushPromises = async () => await new Promise(setImmediate);
 
@@ -35,6 +38,10 @@ vi.mock('vue-router', () => ({
 	}),
 	useRoute: () => ({ params: {} }),
 	RouterLink: vi.fn(),
+}));
+
+vi.mock('@/features/agents/composables/useAgentPermissions', () => ({
+	useAgentPermissions: () => ({ canCreate: canCreateHolder }),
 }));
 
 const renderComponent = createComponentRenderer(AgentSelectorParameterInput);
@@ -64,6 +71,8 @@ describe('AgentSelectorParameterInput', () => {
 		projectsStore = mockedStore(useProjectsStore);
 		projectsStore.isTeamProjectFeatureEnabled = false;
 		projectsStore.currentProjectId = 'proj-1';
+
+		canCreateHolder.value = false;
 
 		listAgentsPage.mockResolvedValue({ count: 0, data: [] });
 		listAgentsPageGlobal.mockResolvedValue({ count: 0, data: [] });
@@ -160,7 +169,8 @@ describe('AgentSelectorParameterInput', () => {
 		]);
 	});
 
-	it('hides the create-agent action by default', async () => {
+	it('hides the create-agent action without create permission', async () => {
+		canCreateHolder.value = false;
 		const { getByTestId, queryByTestId } = renderComponent({ props: makeProps() });
 		await flushPromises();
 
@@ -170,10 +180,9 @@ describe('AgentSelectorParameterInput', () => {
 		expect(queryByTestId('rlc-item-add-resource')).toBeNull();
 	});
 
-	it('shows the create-agent action and emits agentCreateRequested when allowCreate is set', async () => {
-		const { getByTestId, emitted } = renderComponent({
-			props: makeProps({ allowCreate: true }),
-		});
+	it('shows the create-agent action and opens the new-agent flow when the user can create', async () => {
+		canCreateHolder.value = true;
+		const { getByTestId, emitted } = renderComponent({ props: makeProps() });
 		await flushPromises();
 
 		await userEvent.click(getByTestId('rlc-input'));
@@ -184,6 +193,10 @@ describe('AgentSelectorParameterInput', () => {
 
 		await userEvent.click(createItem);
 		expect(emitted('agentCreateRequested')).toBeTruthy();
+		expect(routerPush).toHaveBeenCalledWith({
+			name: NEW_AGENT_VIEW,
+			query: { projectId: 'proj-1' },
+		});
 	});
 
 	it('shows an error with retry that re-fetches the catalog', async () => {

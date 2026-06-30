@@ -6,7 +6,7 @@ import type { AgentCapabilitySummary } from '@n8n/api-types';
 import CanvasNodeAgent from './CanvasNodeAgent.vue';
 import { createCanvasNodeProvide } from '@/features/workflows/canvas/__tests__/utils';
 import { CanvasNodeRenderType } from '@/features/workflows/canvas/canvas.types';
-import { AGENT_BUILDER_VIEW, NEW_AGENT_VIEW } from '@/features/agents/constants';
+import { AGENT_BUILDER_VIEW } from '@/features/agents/constants';
 
 const { summaryHolder, errorHolder, modelCatalogHolder, pushSpy, ensureLoadedSpy } = vi.hoisted(
 	() => ({
@@ -56,10 +56,7 @@ const renderComponent = createComponentRenderer(CanvasNodeAgent, {
 			CredentialIcon: true,
 			CanvasNodeStatusIcons: true,
 			AgentSelectorParameterInput: {
-				template: `<div>
-					<button data-test-id="agent-picker-stub" @click="onPick" />
-					<button data-test-id="agent-create-stub" @click="$emit('agentCreateRequested')" />
-				</div>`,
+				template: '<button data-test-id="agent-picker-stub" @click="onPick" />',
 				methods: {
 					onPick() {
 						this.$emit('update:modelValue', { __rl: true, mode: 'list', value: 'agent-9' });
@@ -108,17 +105,6 @@ describe('CanvasNodeAgent', () => {
 		expect(emitted('update')[0]).toEqual([
 			{ agentId: { __rl: true, mode: 'list', value: 'agent-9' } },
 		]);
-	});
-
-	it('navigates to the new-agent flow when create is requested (empty state)', async () => {
-		const { getByTestId } = renderWithAgent('');
-
-		await fireEvent.click(getByTestId('agent-create-stub'));
-
-		expect(pushSpy).toHaveBeenCalledWith({
-			name: NEW_AGENT_VIEW,
-			query: { projectId: 'proj-1' },
-		});
 	});
 
 	it('renders the agent name, friendly model name and capability chips (configured state)', () => {

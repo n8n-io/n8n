@@ -12,7 +12,7 @@ import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store
 import { useAgentCapabilitySummary } from '@/features/agents/composables/useAgentCapabilitySummary';
 import { useAgentIntegrationsCatalog } from '@/features/agents/composables/useAgentIntegrationsCatalog';
 import { useModelCatalog } from '@/features/agents/composables/useModelCatalog';
-import { AGENT_BUILDER_VIEW, NEW_AGENT_VIEW } from '@/features/agents/constants';
+import { AGENT_BUILDER_VIEW } from '@/features/agents/constants';
 import {
 	AGENT_MODEL_PROVIDER_DEFINITIONS,
 	isAgentModelProvider,
@@ -143,13 +143,6 @@ function onPickAgent(value: INodeParameterResourceLocator) {
 	emit('update', { agentId: value });
 }
 
-function onCreateAgent() {
-	if (!projectId.value) return;
-	// Lightweight create: open the standalone new-agent flow scoped to this
-	// project. The seamless inline-create round-trip back to the node is AGENT-277.
-	void router.push({ name: NEW_AGENT_VIEW, query: { projectId: projectId.value } });
-}
-
 function onActivate(event: MouseEvent) {
 	emit('activate', id.value, event);
 }
@@ -249,9 +242,7 @@ watch(
 							:is-read-only="isReadOnly"
 							input-size="medium"
 							hide-mode-selector
-							:allow-create="Boolean(projectId)"
 							@update:model-value="onPickAgent"
-							@agent-create-requested="onCreateAgent"
 						/>
 					</div>
 				</div>

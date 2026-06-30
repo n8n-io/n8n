@@ -20,6 +20,9 @@ import { useResourceLocatorModes } from '../../composables/useResourceLocatorMod
 import { useAgentResourcesLocator } from '../../composables/useAgentResourcesLocator';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useRouter } from 'vue-router';
+import { useAgentPermissions } from '@/features/agents/composables/useAgentPermissions';
+import { NEW_AGENT_VIEW } from '@/features/agents/constants';
 
 import { N8nButton, N8nIcon, N8nInput, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
 
@@ -40,11 +43,6 @@ export interface Props {
 	 * on the canvas card, where the agent is always picked from the list.
 	 */
 	hideModeSelector?: boolean;
-	/**
-	 * Show the "Create agent" action in the dropdown. The consumer handles
-	 * `agentCreateRequested` (e.g. navigates to the new-agent flow).
-	 */
-	allowCreate?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -57,7 +55,6 @@ const props = withDefaults(defineProps<Props>(), {
 	newResourceLabel: '',
 	parameterIssues: () => [],
 	hideModeSelector: false,
-	allowCreate: false,
 });
 
 const emit = defineEmits<{
@@ -70,6 +67,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const router = useRouter();
 const projectStore = useProjectsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 
@@ -131,6 +129,10 @@ const { hideDropdown, isDropdownVisible, showDropdown } = useResourceLocatorDrop
 	inputRef,
 );
 
+// Show "Create agent" only when the user can create one in the scoped project
+// (project/global agent:create scope, and not a read-only source-control branch).
+const { canCreate } = useAgentPermissions(projectId);
+
 const currentProjectName = computed(() => {
 	if (!projectStore.isTeamProjectFeatureEnabled) return '';
 
@@ -156,11 +158,9 @@ const getCreateResourceLabel = computed(() => {
 	});
 });
 
-// Opt-in via `allowCreate` (the canvas card enables it and handles the
-// `agentCreateRequested` emit). The seamless inline-create round-trip is
-// AGENT-277; today the consumer navigates to the standalone new-agent flow.
+// Surfaced whenever the user has create permission (NDV + canvas card alike).
 const newResourceOptions = computed(() =>
-	props.allowCreate ? { label: getCreateResourceLabel.value } : {},
+	canCreate.value ? { label: getCreateResourceLabel.value } : {},
 );
 
 const valueToDisplay = computed<INodeParameterResourceLocator['value']>(() => {
@@ -237,9 +237,10 @@ function onKeyDown(e: KeyboardEvent) {
 
 function onAddResourceClicked() {
 	hideDropdown();
-	// The eager-create + Agent Builder navigation is wired by AGENT-277. Here we
-	// only surface the intent so the parent can drive the create round-trip.
 	emit('agentCreateRequested');
+	// Open the standalone new-agent flow scoped to the picker's project. The
+	// seamless inline-create round-trip back to the node is AGENT-277.
+	void router.push({ name: NEW_AGENT_VIEW, query: { projectId: projectId.value } });
 }
 
 async function onRetry() {
