@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { Readable } from 'stream';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -14,7 +14,7 @@ const mockRequest = (payload = '', headers: Record<string, string> = {}) => {
 };
 
 describe('rawBodyReader', () => {
-	const next = jest.fn();
+	const next = vi.fn();
 
 	const readRawBody = async (req: Request) => {
 		void rawBodyReader(req, mock<Response>(), next);
