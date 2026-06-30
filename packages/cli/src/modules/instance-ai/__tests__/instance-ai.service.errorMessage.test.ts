@@ -3,7 +3,7 @@ import { getUserFacingErrorMessage } from '../instance-ai.service';
 describe('getUserFacingErrorMessage', () => {
 	it('maps a sandbox "Endpoint not allowed" failure to a clear, retryable message', () => {
 		const message = getUserFacingErrorMessage(new Error('Endpoint not allowed'));
-		expect(message).toContain("couldn't reach the workspace sandbox");
+		expect(message).toContain("couldn't finish preparing the workspace sandbox");
 		expect(message).toContain('try again');
 	});
 

@@ -254,8 +254,7 @@ function isTextMessagePart(part: unknown): part is { type: 'text'; text: string 
 	);
 }
 
-// "Endpoint not allowed" is the sandbox proxy's 403 for a blocked/unreachable endpoint.
-function isSandboxUnreachableError(error: unknown): boolean {
+function isSandboxEndpointNotAllowedError(error: unknown): boolean {
 	return getErrorMessage(error).toLowerCase().includes('endpoint not allowed');
 }
 
@@ -264,8 +263,8 @@ export function getUserFacingErrorMessage(error: unknown): string {
 		return error.message;
 	}
 
-	if (isSandboxUnreachableError(error)) {
-		return "I couldn't reach the workspace sandbox — it may have been paused or is temporarily unavailable. Please try again in a moment.";
+	if (isSandboxEndpointNotAllowedError(error)) {
+		return "I couldn't finish preparing the workspace sandbox. Please try again in a moment.";
 	}
 
 	if (error instanceof OperationalError) {
