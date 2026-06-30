@@ -23,7 +23,7 @@ describe('SlackIntegration', () => {
 
 	it('extracts the Slack bot user ID for bridge message context', () => {
 		const chat = {
-			getAdapter: jest.fn().mockReturnValue({ botUserId: 'U_BOT' }),
+			getAdapter: vi.fn().mockReturnValue({ botUserId: 'U_BOT' }),
 		} as unknown as ChatInstance;
 
 		expect(integration.getPlatformAgentContext(chat)).toEqual({ agentUserId: 'U_BOT' });
@@ -39,15 +39,15 @@ describe('SlackIntegration', () => {
 
 	it('sets a thinking status and buffers resume responses for Slack actions', async () => {
 		const thread = {
-			startTyping: jest.fn().mockResolvedValue(undefined),
+			startTyping: vi.fn().mockResolvedValue(undefined),
 		};
 
 		const context = await integration.createResumeExecutionContext({
 			chat: {
-				getAdapter: jest.fn().mockReturnValue(undefined),
+				getAdapter: vi.fn().mockReturnValue(undefined),
 			} as unknown as ChatInstance,
 			thread: thread as never,
-			logger: { warn: jest.fn() } as never,
+			logger: { warn: vi.fn() } as never,
 			agentId: 'agent-1',
 		});
 

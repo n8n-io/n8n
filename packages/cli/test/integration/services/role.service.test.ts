@@ -164,7 +164,7 @@ describe('RoleService', () => {
 				displayName: 'System Test Role',
 			});
 
-			const mockfindAllRoleCounts = jest.spyOn(roleRepository, 'findAllRoleCounts');
+			const mockfindAllRoleCounts = vi.spyOn(roleRepository, 'findAllRoleCounts');
 
 			//
 			// ACT
@@ -220,7 +220,7 @@ describe('RoleService', () => {
 			});
 
 			// Mock roleRepository.findAllRoleCounts to return predictable usage counts
-			const mockfindAllRoleCounts = jest.spyOn(roleRepository, 'findAllRoleCounts');
+			const mockfindAllRoleCounts = vi.spyOn(roleRepository, 'findAllRoleCounts');
 			mockfindAllRoleCounts.mockResolvedValue({
 				[customRole.slug]: 3,
 				[systemRole.slug]: 1,
@@ -276,7 +276,7 @@ describe('RoleService', () => {
 			});
 
 			// Mock roleRepository.findAllRoleCounts to return 0 for all roles
-			const mockfindAllRoleCounts = jest.spyOn(roleRepository, 'findAllRoleCounts');
+			const mockfindAllRoleCounts = vi.spyOn(roleRepository, 'findAllRoleCounts');
 			mockfindAllRoleCounts.mockResolvedValue({ [unusedRole.slug]: 0 });
 
 			//
@@ -311,7 +311,7 @@ describe('RoleService', () => {
 			});
 
 			// Mock different usage counts for each role
-			const mockfindAllRoleCounts = jest.spyOn(roleRepository, 'findAllRoleCounts');
+			const mockfindAllRoleCounts = vi.spyOn(roleRepository, 'findAllRoleCounts');
 			mockfindAllRoleCounts.mockResolvedValue({
 				[customRole1.slug]: 5,
 				[customRole2.slug]: 2,
@@ -357,7 +357,7 @@ describe('RoleService', () => {
 			);
 
 			// Mock usage count
-			const mockfindAllRoleCounts = jest.spyOn(roleRepository, 'findAllRoleCounts');
+			const mockfindAllRoleCounts = vi.spyOn(roleRepository, 'findAllRoleCounts');
 			mockfindAllRoleCounts.mockResolvedValue({
 				[fullRole.slug]: 7,
 			});
@@ -404,7 +404,7 @@ describe('RoleService', () => {
 			const role1 = await createCustomRoleWithScopes([testScopes.readScope]);
 			const role2 = await createSystemRole();
 
-			const mockfindAllRoleCounts = jest.spyOn(roleRepository, 'findAllRoleCounts');
+			const mockfindAllRoleCounts = vi.spyOn(roleRepository, 'findAllRoleCounts');
 			mockfindAllRoleCounts.mockResolvedValue({
 				[role1.slug]: 4,
 				[role2.slug]: 6,
@@ -431,7 +431,7 @@ describe('RoleService', () => {
 			const testScopes = await createTestScopes();
 			await createCustomRoleWithScopes([testScopes.readScope]);
 
-			const mockfindAllRoleCounts = jest.spyOn(roleRepository, 'findAllRoleCounts');
+			const mockfindAllRoleCounts = vi.spyOn(roleRepository, 'findAllRoleCounts');
 
 			//
 			// ACT
@@ -589,7 +589,7 @@ describe('RoleService', () => {
 			});
 
 			// Mock roleRepository.countUsersWithRole to return predictable count
-			const mockCountUsersWithRole = jest.spyOn(roleRepository, 'countUsersWithRole');
+			const mockCountUsersWithRole = vi.spyOn(roleRepository, 'countUsersWithRole');
 			mockCountUsersWithRole.mockResolvedValue(5);
 
 			//
@@ -645,7 +645,7 @@ describe('RoleService', () => {
 			});
 
 			// Mock higher usage count for system role
-			const mockCountUsersWithRole = jest.spyOn(roleRepository, 'countUsersWithRole');
+			const mockCountUsersWithRole = vi.spyOn(roleRepository, 'countUsersWithRole');
 			mockCountUsersWithRole.mockResolvedValue(12);
 
 			//
@@ -684,7 +684,7 @@ describe('RoleService', () => {
 			});
 
 			// Mock countUsersWithRole to return 0
-			const mockCountUsersWithRole = jest.spyOn(roleRepository, 'countUsersWithRole');
+			const mockCountUsersWithRole = vi.spyOn(roleRepository, 'countUsersWithRole');
 			mockCountUsersWithRole.mockResolvedValue(0);
 
 			//
@@ -723,7 +723,7 @@ describe('RoleService', () => {
 			);
 
 			// Mock usage count
-			const mockCountUsersWithRole = jest.spyOn(roleRepository, 'countUsersWithRole');
+			const mockCountUsersWithRole = vi.spyOn(roleRepository, 'countUsersWithRole');
 			mockCountUsersWithRole.mockResolvedValue(8);
 
 			//
@@ -764,7 +764,7 @@ describe('RoleService', () => {
 			const testScopes = await createTestScopes();
 			const testRole = await createCustomRoleWithScopes([testScopes.readScope]);
 
-			const mockCountUsersWithRole = jest.spyOn(roleRepository, 'countUsersWithRole');
+			const mockCountUsersWithRole = vi.spyOn(roleRepository, 'countUsersWithRole');
 			mockCountUsersWithRole.mockResolvedValue(3);
 
 			//
@@ -801,7 +801,7 @@ describe('RoleService', () => {
 			});
 
 			// Mock different usage counts for different roles
-			const mockCountUsersWithRole = jest.spyOn(roleRepository, 'countUsersWithRole');
+			const mockCountUsersWithRole = vi.spyOn(roleRepository, 'countUsersWithRole');
 			mockCountUsersWithRole.mockImplementation(async (role) => {
 				if (role.slug === role1.slug) return 15;
 				if (role.slug === role2.slug) return 3;
@@ -1526,7 +1526,7 @@ describe('RoleService', () => {
 
 	describe('isRoleLicensed', () => {
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		it.each([
@@ -1541,7 +1541,7 @@ describe('RoleService', () => {
 				// ARRANGE
 				//
 				const mockLicenseResult = true;
-				jest.spyOn(licenseState, licenseMethod).mockReturnValue(mockLicenseResult);
+				vi.spyOn(licenseState, licenseMethod).mockReturnValue(mockLicenseResult);
 
 				//
 				// ACT
@@ -1568,7 +1568,7 @@ describe('RoleService', () => {
 				// ARRANGE
 				//
 				const mockLicenseResult = false;
-				jest.spyOn(licenseState, licenseMethod).mockReturnValue(mockLicenseResult);
+				vi.spyOn(licenseState, licenseMethod).mockReturnValue(mockLicenseResult);
 
 				//
 				// ACT
@@ -1589,7 +1589,7 @@ describe('RoleService', () => {
 			//
 			const customRoleSlug = 'custom:test-role';
 			const mockLicenseResult = true; // Random boolean
-			jest.spyOn(licenseState, 'isCustomRolesLicensed').mockReturnValue(mockLicenseResult);
+			vi.spyOn(licenseState, 'isCustomRolesLicensed').mockReturnValue(mockLicenseResult);
 
 			//
 			// ACT
@@ -1609,7 +1609,7 @@ describe('RoleService', () => {
 			//
 			const customRoleSlug = 'custom:test-role';
 			const mockLicenseResult = false; // Random boolean
-			jest.spyOn(licenseState, 'isCustomRolesLicensed').mockReturnValue(mockLicenseResult);
+			vi.spyOn(licenseState, 'isCustomRolesLicensed').mockReturnValue(mockLicenseResult);
 
 			//
 			// ACT

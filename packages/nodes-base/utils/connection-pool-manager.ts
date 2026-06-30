@@ -25,6 +25,12 @@ type GetConnectionOption<Pool> = RegistrationOptions & {
 	 */
 	fallBackHandler: (abortController: AbortController) => Promise<Pool>;
 
+	/**
+	 * Returns whether the pool can be safely cleaned up. If omitted, stale pools
+	 * are assumed to be idle.
+	 */
+	isIdle?: (pool: Pool) => boolean;
+
 	wasUsed: (pool: Pool) => void;
 };
 
@@ -34,6 +40,7 @@ type Registration<Pool> = {
 
 	abortController: AbortController;
 
+	isIdle?: (pool: Pool) => boolean;
 	/** We keep this timestamp to check if a pool hasn't been used in a while, and if it needs to be closed */
 	lastUsed: number;
 };
@@ -109,6 +116,7 @@ export class ConnectionPoolManager {
 		value = {
 			pool: await options.fallBackHandler(abortController),
 			abortController,
+			isIdle: options.isIdle,
 		} as Registration<unknown>;
 
 		// It's possible that `options.fallBackHandler` already called the abort
@@ -143,8 +151,14 @@ export class ConnectionPoolManager {
 	 */
 	private cleanupStaleConnections() {
 		const now = Date.now();
-		for (const [key, { lastUsed }] of this.map.entries()) {
+		for (const [key, registration] of this.map.entries()) {
+			const { isIdle, lastUsed, pool } = registration;
 			if (now - lastUsed > ttl) {
+				if (isIdle && !isIdle(pool)) {
+					registration.lastUsed = now;
+					this.logger.debug('ConnectionPoolManager: Found stale pool, but it is still in use.');
+					continue;
+				}
 				this.logger.debug('ConnectionPoolManager: Found stale pool. Cleaning it up.');
 				void this.cleanupConnection(key);
 			}

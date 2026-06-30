@@ -6,7 +6,8 @@ import { ROLE, type UsersList } from '@n8n/api-types';
 import { type UserAction } from '@n8n/design-system';
 import SettingsUsersTable from './SettingsUsersTable.vue';
 import { createComponentRenderer } from '@/__tests__/render';
-import { useEmitters } from '@/__tests__/utils';
+import { useEmitters, mockedStore, type MockedStore } from '@/__tests__/utils';
+import { useRolesStore } from '@/app/stores/roles.store';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 
 const { emitters, addEmitter } = useEmitters<
@@ -128,6 +129,7 @@ const mockActions: Array<UserAction<IUser>> = [
 ];
 
 let renderComponent: ReturnType<typeof createComponentRenderer>;
+let rolesStore: MockedStore<typeof useRolesStore>;
 
 describe('SettingsUsersTable', () => {
 	beforeEach(() => {
@@ -141,6 +143,8 @@ describe('SettingsUsersTable', () => {
 			},
 		});
 		hasPermission.mockReturnValue(true); // Default to having permission
+		rolesStore = mockedStore(useRolesStore);
+		rolesStore.customInstanceRoles = [];
 	});
 
 	afterEach(() => {
@@ -243,6 +247,72 @@ describe('SettingsUsersTable', () => {
 
 			expect(emitted()).toHaveProperty('action');
 			expect(emitted().action[0]).toEqual([{ action: 'delete', userId: '2' }]);
+		});
+	});
+
+	describe('custom instance roles', () => {
+		const customRoleSlug = 'custom:analyst';
+		const customRoleDisplayName = 'Analyst';
+
+		const dataWithCustomRoleUser: UsersList = {
+			...mockUsersList,
+			items: [
+				...mockUsersList.items,
+				{
+					id: '4',
+					email: 'analyst@example.com',
+					firstName: 'Analyst',
+					lastName: 'User',
+					role: customRoleSlug as UsersList['items'][number]['role'],
+					isOwner: false,
+					isPending: false,
+					mfaEnabled: false,
+					settings: {},
+				},
+			],
+			count: 4,
+		};
+
+		beforeEach(() => {
+			rolesStore.customInstanceRoles = [
+				{
+					slug: customRoleSlug,
+					displayName: customRoleDisplayName,
+					description: 'Analyst role',
+					scopes: [],
+					licensed: true,
+					systemRole: false,
+					roleType: 'global',
+					usedByUsers: 1,
+				},
+			];
+		});
+
+		it('should display custom role label as plain text when canEditRole is false', () => {
+			hasPermission.mockReturnValue(false);
+			renderComponent({
+				props: {
+					data: dataWithCustomRoleUser,
+					canEditRole: false,
+				},
+			});
+
+			const analystRow = screen.getByTestId('user-row-4');
+			expect(within(analystRow).getByText(customRoleDisplayName)).toBeInTheDocument();
+		});
+
+		it('should fall back to role slug when custom role is not in the roles map', () => {
+			rolesStore.customInstanceRoles = [];
+			hasPermission.mockReturnValue(false);
+			renderComponent({
+				props: {
+					data: dataWithCustomRoleUser,
+					canEditRole: false,
+				},
+			});
+
+			const analystRow = screen.getByTestId('user-row-4');
+			expect(within(analystRow).queryByText(customRoleDisplayName)).not.toBeInTheDocument();
 		});
 	});
 });

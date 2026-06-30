@@ -13,13 +13,14 @@ import { CredentialsRepository, ProjectRepository, SharedCredentialsRepository }
 import { Container } from '@n8n/di';
 import type { Scope } from '@sentry/node';
 import * as a from 'assert';
-import { mock } from 'jest-mock-extended';
 import { Credentials } from 'n8n-core';
 import {
 	CREDENTIAL_BLANKING_VALUE,
 	type ICredentialDataDecryptedObject,
 	randomString,
 } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
+
 import { CredentialsService } from '@/credentials/credentials.service';
 import { createCredentialsFromCredentialsEntity } from '@/credentials-helper';
 import { CredentialsTester } from '@/services/credentials-tester.service';
@@ -41,7 +42,10 @@ import {
 import type { SuperAgentTest } from '../shared/types';
 import { initCredentialsTypes, setupTestServer } from '../shared/utils';
 
-const { any } = expect;
+// Vitest's asymmetric matchers are chai-based and rely on their `this` context, so they
+// can't be destructured off `expect` (a bare `const { any } = expect` throws "Cannot read
+// properties of undefined (reading '__flags')"). Wrap to call `expect.any` inline.
+const any = (...args: Parameters<typeof expect.any>) => expect.any(...args);
 
 const testServer = setupTestServer({
 	endpointGroups: ['credentials'],
@@ -1704,7 +1708,7 @@ describe('GET /credentials/:id', () => {
 
 	test('should redact the data when `includeData:true` is passed', async () => {
 		const credentialService = Container.get(CredentialsService);
-		const redactSpy = jest.spyOn(credentialService, 'redact');
+		const redactSpy = vi.spyOn(credentialService, 'redact');
 		const savedCredential = await saveCredential(randomCredentialPayload(), {
 			user: owner,
 			role: 'credential:owner',

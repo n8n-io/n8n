@@ -1,3 +1,4 @@
+import type { Mocked } from 'vitest';
 import type { CredentialProvider } from '@n8n/agents';
 import {
 	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
@@ -12,7 +13,7 @@ import type {
 } from '@n8n/backend-network';
 import type { SsrfProtectionConfig } from '@n8n/config';
 import type { User, WorkflowRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
 import type { CredentialTypes } from '@/credential-types';
@@ -40,7 +41,7 @@ import type { AiService } from '@/services/ai.service';
 
 const ctx = {
 	resumeData: undefined,
-	suspend: jest.fn().mockResolvedValue(undefined as never),
+	suspend: vi.fn().mockResolvedValue(undefined as never),
 	parentTelemetry: undefined,
 };
 
@@ -64,7 +65,7 @@ function makeService() {
 		buildCustomTool: agentCustomToolsService.buildCustomTool,
 		listChatIntegrations: agentIntegrationPersistenceService.listChatIntegrations,
 		createSkill: agentSkillsService.createSkill,
-	} as jest.Mocked<BuilderPurposeServices>;
+	} as Mocked<BuilderPurposeServices>;
 	const secureRuntime = mock<AgentSecureRuntime>();
 	const workflowRepository = mock<WorkflowRepository>();
 	const agentsToolsService = mock<AgentsToolsService>();
@@ -83,7 +84,7 @@ function makeService() {
 	mcpRegistryService.getAll.mockResolvedValue([]);
 
 	const transport = mock<HttpTransport>();
-	transport.asCustomFetch.mockReturnValue(jest.fn() as unknown as CustomFetch);
+	transport.asCustomFetch.mockReturnValue(vi.fn() as unknown as CustomFetch);
 	const outboundHttp = mock<OutboundHttp>();
 	outboundHttp.transport.mockReturnValue(transport);
 
@@ -217,7 +218,7 @@ describe('AgentsBuilderToolsService', () => {
 	const user = mock<User>();
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('JSON config tools', () => {
@@ -1120,15 +1121,20 @@ describe('AgentsBuilderToolsService', () => {
 			expect(tool.description).toContain('when to load it');
 			expect(tool.description).toContain('ask the user clarifying');
 			expect(tool.description).toContain('Gotchas');
+			expect(tool.description).toContain('References are not automatically loaded');
+			expect(tool.description).toContain('instructions must say exactly when to load each one');
+			expect(tool.systemInstruction).toContain(
+				'explicit conditions for loading each referenced file',
+			);
 		});
 
-		it('puts the structured body template in the body parameter', () => {
+		it('puts the structured body template in the instructions parameter', () => {
 			const { service } = makeService();
 
 			const tool = getCreateSkillTool(service);
-			const bodySchema = (
-				tool.inputSchema as unknown as { shape: { body: { description?: string } } }
-			).shape.body;
+			const instructionsSchema = (
+				tool.inputSchema as unknown as { shape: { instructions: { description?: string } } }
+			).shape.instructions;
 
 			for (const heading of [
 				'## Overview',
@@ -1138,7 +1144,7 @@ describe('AgentsBuilderToolsService', () => {
 				'## Example',
 				'## Gotchas',
 			]) {
-				expect(bodySchema.description).toContain(heading);
+				expect(instructionsSchema.description).toContain(heading);
 			}
 		});
 
@@ -1158,7 +1164,7 @@ describe('AgentsBuilderToolsService', () => {
 				{
 					name: 'Summarize Meetings',
 					description: 'Use when summarizing meeting notes',
-					body: 'Extract decisions and action items.',
+					instructions: 'Extract decisions and action items.',
 				},
 				ctx,
 			);
@@ -1179,7 +1185,7 @@ describe('AgentsBuilderToolsService', () => {
 			});
 		});
 
-		it('enforces name and body size limits via the input schema', () => {
+		it('enforces name and instruction size limits via the input schema', () => {
 			const { service } = makeService();
 
 			const result = (
@@ -1189,7 +1195,7 @@ describe('AgentsBuilderToolsService', () => {
 			).safeParse({
 				name: 'a'.repeat(129),
 				description: 'Use when summarizing meeting notes',
-				body: 'a'.repeat(AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH + 1),
+				instructions: 'a'.repeat(AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH + 1),
 			});
 
 			expect(result.success).toBe(false);

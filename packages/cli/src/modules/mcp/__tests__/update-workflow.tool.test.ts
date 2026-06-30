@@ -7,9 +7,8 @@ import {
 	type IConnections,
 	type INode,
 } from 'n8n-workflow';
+import type { Mock } from 'vitest';
 import { z } from 'zod';
-
-import { createUpdateWorkflowTool } from '../tools/workflow-builder/update-workflow.tool';
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -24,22 +23,26 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
-const mockAutoPopulateNodeCredentials = jest.fn();
-jest.mock('../tools/workflow-builder/credentials-auto-assign', () => ({
+import { createUpdateWorkflowTool } from '../tools/workflow-builder/update-workflow.tool';
+
+const mockAutoPopulateNodeCredentials = vi.fn();
+vi.mock('../tools/workflow-builder/credentials-auto-assign', () => ({
 	autoPopulateNodeCredentials: (...args: unknown[]) =>
 		mockAutoPopulateNodeCredentials(...args) as unknown,
-	stripNullCredentialStubs: jest.fn(),
+	stripNullCredentialStubs: vi.fn(),
 }));
 
-const mockValidateJSON = jest.fn().mockReturnValue([]);
-jest.mock('@n8n/ai-workflow-builder', () => ({
+const mockValidateJSON = vi.fn().mockReturnValue([]);
+vi.mock('@n8n/ai-workflow-builder', () => ({
 	MCP_UPDATE_WORKFLOW_TOOL: {
 		toolName: 'update_workflow',
 		displayTitle: 'Updating workflow',
 	},
-	ParseValidateHandler: jest.fn().mockImplementation(() => ({
-		validateJSON: (json: unknown) => mockValidateJSON(json) as unknown,
-	})),
+	ParseValidateHandler: vi.fn().mockImplementation(function () {
+		return {
+			validateJSON: (json: unknown) => mockValidateJSON(json) as unknown,
+		};
+	}),
 }));
 
 const parseResult = (result: { content: Array<{ type: string; text?: string }> }) =>
@@ -56,7 +59,7 @@ const makeNode = (overrides: Partial<INode> = {}): INode => ({
 });
 
 type DataTableOpsMock = {
-	getManyAndCount: jest.Mock;
+	getManyAndCount: Mock;
 };
 
 const userWithScopes = (scopeSlugs: string[]) =>
@@ -68,10 +71,10 @@ const userWithScopes = (scopeSlugs: string[]) =>
 describe('update-workflow MCP tool', () => {
 	const user = userWithScopes(['tag:create']);
 	let workflowFinderService: WorkflowFinderService;
-	let findWorkflowMock: jest.Mock;
-	let findWorkflowHeadMock: jest.Mock;
+	let findWorkflowMock: Mock;
+	let findWorkflowHeadMock: Mock;
 	let workflowService: WorkflowService;
-	let updateMock: jest.Mock;
+	let updateMock: Mock;
 	let urlService: UrlService;
 	let telemetry: Telemetry;
 	let credentialsService: CredentialsService;
@@ -80,13 +83,13 @@ describe('update-workflow MCP tool', () => {
 	let collaborationService: CollaborationService;
 	let dataTableOps: DataTableOpsMock;
 	let tagService: TagService;
-	let findOrCreateByNamesMock: jest.Mock;
-	let findByNamesMock: jest.Mock;
+	let findOrCreateByNamesMock: Mock;
+	let findByNamesMock: Mock;
 	let globalConfig: GlobalConfig;
 	let subworkflowPolicyChecker: SubworkflowPolicyChecker;
-	let policyCheckMock: jest.Mock;
+	let policyCheckMock: Mock;
 	let workflowPublishedDataService: WorkflowPublishedDataService;
-	let getPublishedWorkflowDataMock: jest.Mock;
+	let getPublishedWorkflowDataMock: Mock;
 
 	const buildExistingWorkflow = () =>
 		Object.assign(new WorkflowEntity(), {
@@ -108,27 +111,25 @@ describe('update-workflow MCP tool', () => {
 		});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
-		findWorkflowMock = jest.fn().mockResolvedValue(buildExistingWorkflow());
-		findWorkflowHeadMock = jest.fn().mockResolvedValue({ versionId: 'v1', updatedAt: new Date() });
+		findWorkflowMock = vi.fn().mockResolvedValue(buildExistingWorkflow());
+		findWorkflowHeadMock = vi.fn().mockResolvedValue({ versionId: 'v1', updatedAt: new Date() });
 		workflowFinderService = mockInstance(WorkflowFinderService, {
 			findWorkflowForUser: findWorkflowMock,
 			findWorkflowHeadForUser: findWorkflowHeadMock,
 		});
-		updateMock = jest
-			.fn()
-			.mockImplementation(async (_user, workflow, workflowId) =>
-				Object.assign(new WorkflowEntity(), { ...workflow, id: workflowId }),
-			);
+		updateMock = vi.fn().mockImplementation(async function (_user, workflow, workflowId) {
+			return Object.assign(new WorkflowEntity(), { ...workflow, id: workflowId });
+		});
 		workflowService = mockInstance(WorkflowService, { update: updateMock });
 		urlService = mockInstance(UrlService, {
-			getInstanceBaseUrl: jest.fn().mockReturnValue('https://n8n.example.com'),
+			getInstanceBaseUrl: vi.fn().mockReturnValue('https://n8n.example.com'),
 		});
-		telemetry = mockInstance(Telemetry, { track: jest.fn() });
+		telemetry = mockInstance(Telemetry, { track: vi.fn() });
 		credentialsService = mockInstance(CredentialsService);
 		sharedWorkflowRepository = mockInstance(SharedWorkflowRepository, {
-			findOneOrFail: jest.fn().mockResolvedValue({ projectId: 'project-1' }),
+			findOneOrFail: vi.fn().mockResolvedValue({ projectId: 'project-1' }),
 		});
 		nodeTypes = mockInstance(NodeTypes);
 		nodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
@@ -141,18 +142,18 @@ describe('update-workflow MCP tool', () => {
 			return { description: {} };
 		}) as typeof nodeTypes.getByNameAndVersion);
 		collaborationService = mockInstance(CollaborationService, {
-			ensureWorkflowEditable: jest.fn().mockResolvedValue(undefined),
-			broadcastWorkflowUpdate: jest.fn().mockResolvedValue(undefined),
+			ensureWorkflowEditable: vi.fn().mockResolvedValue(undefined),
+			broadcastWorkflowUpdate: vi.fn().mockResolvedValue(undefined),
 		});
 		mockAutoPopulateNodeCredentials.mockResolvedValue({ assignments: [], skippedHttpNodes: [] });
 		mockValidateJSON.mockReturnValue([]);
 
 		dataTableOps = {
-			getManyAndCount: jest.fn().mockResolvedValue({ data: [], count: 0 }),
+			getManyAndCount: vi.fn().mockResolvedValue({ data: [], count: 0 }),
 		};
 
-		findOrCreateByNamesMock = jest.fn();
-		findByNamesMock = jest.fn();
+		findOrCreateByNamesMock = vi.fn();
+		findByNamesMock = vi.fn();
 		tagService = mockInstance(TagService, {
 			findOrCreateByNames: findOrCreateByNamesMock,
 			findByNames: findByNamesMock,
@@ -163,11 +164,11 @@ describe('update-workflow MCP tool', () => {
 			nodes: { errorTriggerType: ERROR_TRIGGER_NODE_TYPE },
 			workflows: { useWorkflowPublicationService: false },
 		});
-		policyCheckMock = jest.fn().mockResolvedValue(undefined);
+		policyCheckMock = vi.fn().mockResolvedValue(undefined);
 		subworkflowPolicyChecker = mockInstance(SubworkflowPolicyChecker, {
 			check: policyCheckMock,
 		});
-		getPublishedWorkflowDataMock = jest.fn().mockResolvedValue(null);
+		getPublishedWorkflowDataMock = vi.fn().mockResolvedValue(null);
 		workflowPublishedDataService = mockInstance(WorkflowPublishedDataService, {
 			getPublishedWorkflowData: getPublishedWorkflowDataMock,
 		});
@@ -837,7 +838,7 @@ describe('update-workflow MCP tool', () => {
 		});
 
 		test('returns error when workflow has active write lock', async () => {
-			(collaborationService.ensureWorkflowEditable as jest.Mock).mockRejectedValue(
+			(collaborationService.ensureWorkflowEditable as Mock).mockRejectedValue(
 				new Error('Cannot modify workflow while it is being edited by a user in the editor.'),
 			);
 
@@ -1044,7 +1045,7 @@ describe('update-workflow MCP tool', () => {
 				operations: [{ type: 'setWorkflowMetadata', name: 'Renamed' }],
 			});
 
-			const trackedPayload = (telemetry.track as jest.Mock).mock.calls[0][1] as {
+			const trackedPayload = (telemetry.track as Mock).mock.calls[0][1] as {
 				parameters: Record<string, unknown>;
 			};
 			expect(trackedPayload.parameters).not.toHaveProperty('skillsUsed');
@@ -1057,7 +1058,7 @@ describe('update-workflow MCP tool', () => {
 				operations: [{ type: 'setWorkflowMetadata', name: 'Renamed' }],
 			});
 
-			const trackedPayload = (telemetry.track as jest.Mock).mock.calls[0][1] as {
+			const trackedPayload = (telemetry.track as Mock).mock.calls[0][1] as {
 				parameters: Record<string, unknown>;
 			};
 			expect(trackedPayload.parameters).not.toHaveProperty('skillsUsed');
@@ -1089,7 +1090,7 @@ describe('update-workflow MCP tool', () => {
 			});
 
 			expect(result.isError).toBeUndefined();
-			const trackedPayload = (telemetry.track as jest.Mock).mock.calls[0][1] as {
+			const trackedPayload = (telemetry.track as Mock).mock.calls[0][1] as {
 				parameters: { skillsUsed: string[] };
 			};
 			expect(trackedPayload.parameters.skillsUsed).toHaveLength(50);
@@ -1252,14 +1253,14 @@ describe('update-workflow MCP tool', () => {
 
 				// Credentials reachable from the workflow's project (mirrors the
 				// runtime permission gate).
-				(credentialsService.getCredentialsAUserCanUseInAWorkflow as jest.Mock).mockResolvedValue([
+				(credentialsService.getCredentialsAUserCanUseInAWorkflow as Mock).mockResolvedValue([
 					{ id: 'cred-slack', name: 'My Slack', type: 'slackApi' },
 					{ id: 'cred-wrong-type', name: 'Wrong', type: 'discordApi' },
 				]);
 
 				// getOne is the user-scoped fallback used only to tell a missing
 				// credential apart from a cross-project one.
-				(credentialsService.getOne as jest.Mock).mockImplementation(async (_user, id: string) => {
+				(credentialsService.getOne as Mock).mockImplementation(async function (_user, id: string) {
 					if (id === 'cred-slack') return { id, name: 'My Slack', type: 'slackApi' };
 					if (id === 'cred-wrong-type') return { id, name: 'Wrong', type: 'discordApi' };
 					if (id === 'cred-other-project') {
@@ -1377,7 +1378,7 @@ describe('update-workflow MCP tool', () => {
 			});
 
 			test('accepts setNodeCredential for a predefined credential type on an HTTP Request node', async () => {
-				(credentialsService.getCredentialsAUserCanUseInAWorkflow as jest.Mock).mockResolvedValue([
+				(credentialsService.getCredentialsAUserCanUseInAWorkflow as Mock).mockResolvedValue([
 					{ id: 'cred-github', name: 'My GitHub', type: 'githubApi' },
 				]);
 				findWorkflowMock.mockResolvedValue(
@@ -1416,7 +1417,7 @@ describe('update-workflow MCP tool', () => {
 			});
 
 			test('accepts addNode binding a predefined credential type on an HTTP Request node', async () => {
-				(credentialsService.getCredentialsAUserCanUseInAWorkflow as jest.Mock).mockResolvedValue([
+				(credentialsService.getCredentialsAUserCanUseInAWorkflow as Mock).mockResolvedValue([
 					{ id: 'cred-github', name: 'My GitHub', type: 'githubApi' },
 				]);
 
@@ -1479,7 +1480,7 @@ describe('update-workflow MCP tool', () => {
 			});
 
 			test('accepts a predefined credential configured via updateNodeParameters earlier in the same batch', async () => {
-				(credentialsService.getCredentialsAUserCanUseInAWorkflow as jest.Mock).mockResolvedValue([
+				(credentialsService.getCredentialsAUserCanUseInAWorkflow as Mock).mockResolvedValue([
 					{ id: 'cred-github', name: 'My GitHub', type: 'githubApi' },
 				]);
 				findWorkflowMock.mockResolvedValue(
@@ -1523,7 +1524,7 @@ describe('update-workflow MCP tool', () => {
 			});
 
 			test('accepts a predefined credential configured via setNodeParameter earlier in the same batch', async () => {
-				(credentialsService.getCredentialsAUserCanUseInAWorkflow as jest.Mock).mockResolvedValue([
+				(credentialsService.getCredentialsAUserCanUseInAWorkflow as Mock).mockResolvedValue([
 					{ id: 'cred-github', name: 'My GitHub', type: 'githubApi' },
 				]);
 				findWorkflowMock.mockResolvedValue(

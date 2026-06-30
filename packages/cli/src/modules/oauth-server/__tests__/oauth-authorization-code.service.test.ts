@@ -1,12 +1,13 @@
+import type { Mocked } from 'vitest';
 import { InvalidGrantError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
 import { mockInstance } from '@n8n/backend-test-utils';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { AuthorizationCode } from '../database/entities/oauth-authorization-code.entity';
 import { AuthorizationCodeRepository } from '../database/repositories/oauth-authorization-code.repository';
 import { OAuthAuthorizationCodeService } from '../oauth-authorization-code.service';
 
-let authorizationCodeRepository: jest.Mocked<AuthorizationCodeRepository>;
+let authorizationCodeRepository: Mocked<AuthorizationCodeRepository>;
 let service: OAuthAuthorizationCodeService;
 
 describe('OAuthAuthorizationCodeService', () => {
@@ -16,7 +17,7 @@ describe('OAuthAuthorizationCodeService', () => {
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('createAuthorizationCode', () => {

@@ -74,7 +74,7 @@ export async function init() {
 /**
  * Build a Postgres template DB with all migrations + auth roles seeded.
  * Idempotent: drops any existing DB with the same name first.
- * Called from Jest globalSetup (orchestrator process) before workers fork —
+ * Called from Vitest globalSetup (orchestrator process) before workers fork —
  * each worker's `init()` then clones from the template instead of replaying
  * the full migration history.
  */

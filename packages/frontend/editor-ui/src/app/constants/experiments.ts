@@ -115,7 +115,7 @@ export const INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_EXPERIMENT = createExperim
 	'087_instance_ai_workflow_preview_suggestions',
 );
 export const INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPERIMENT = createExperiment(
-	'090_instance_ai_personalized_prompt_suggestions',
+	'093_instance_ai_personalized_prompt_suggestions',
 	{
 		control: 'control',
 		variantCards: 'variant-cards',

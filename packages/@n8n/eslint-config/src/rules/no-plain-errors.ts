@@ -5,11 +5,11 @@ export const NoPlainErrorsRule = ESLintUtils.RuleCreator.withoutDocs({
 		type: 'problem',
 		docs: {
 			description:
-				'Only `ApplicationError` (from the `workflow` package) or its child classes must be thrown. This ensures the error will be normalized when reported to Sentry, if applicable.',
+				'Only `UserError`, `OperationalError`, `UnexpectedError` (from the `n8n-workflow` package) or their child classes must be thrown. This ensures the error will be normalized when reported to Sentry, if applicable.',
 		},
 		messages: {
-			useApplicationError:
-				'Throw an `ApplicationError` (from the `workflow` package) or its child classes.',
+			useN8nError:
+				'Throw a `UserError`, `OperationalError` or `UnexpectedError` (from the `n8n-workflow` package) or one of their child classes.',
 		},
 		fixable: 'code',
 		schema: [],
@@ -32,12 +32,12 @@ export const NoPlainErrorsRule = ESLintUtils.RuleCreator.withoutDocs({
 
 				if (isNewError || isNewlessError) {
 					return context.report({
-						messageId: 'useApplicationError',
+						messageId: 'useN8nError',
 						node,
 						fix: (fixer) =>
 							fixer.replaceText(
 								node,
-								`throw new ApplicationError(${(node.argument as TSESTree.CallExpression).arguments
+								`throw new UnexpectedError(${(node.argument as TSESTree.CallExpression).arguments
 									.map((arg) => context.sourceCode.getText(arg))
 									.join(', ')})`,
 							),
