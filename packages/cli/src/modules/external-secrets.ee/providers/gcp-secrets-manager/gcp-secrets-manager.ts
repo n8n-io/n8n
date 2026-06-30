@@ -3,18 +3,18 @@ import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import { jsonParse, UserError, type INodeProperties } from 'n8n-workflow';
 
+import {
+	getGcpErrorCode,
+	gcpErrorContext,
+	type GcpSecretsManagerLogContext,
+} from './gcp-error-context';
 import type {
 	GcpSecretsManagerContext,
 	GcpSecretAccountKey,
 	RawGcpSecretAccountKey,
 } from './types';
 import { DOCS_HELP_NOTICE } from '../../constants';
-import {
-	SecretsProviderConnectionError,
-	SecretsProviderInitializationError,
-	SecretsProviderTestError,
-	SecretsProviderUpdateError,
-} from '../../errors/secrets-provider-errors';
+import { secretsProviderLogContext } from '../../errors/secrets-provider-errors';
 import { SecretsProvider } from '../../types';
 
 export class GcpSecretsManager extends SecretsProvider {
@@ -52,9 +52,11 @@ export class GcpSecretsManager extends SecretsProvider {
 		try {
 			this.settings = this.parseSecretAccountKey(context.settings.serviceAccountKey);
 		} catch (error) {
-			this.logger.warn('Failed to initialize GCP Secrets Manager provider', {
-				error: new SecretsProviderInitializationError(this.name, this.displayName),
-			});
+			this.logOperationFailure(
+				'Failed to initialize GCP Secrets Manager provider',
+				'initialize',
+				error,
+			);
 			throw error;
 		}
 	}
@@ -76,9 +78,7 @@ export class GcpSecretsManager extends SecretsProvider {
 
 			this.logger.debug('GCP Secrets Manager provider connected');
 		} catch (error) {
-			this.logger.warn('Failed to connect GCP Secrets Manager provider', {
-				error: new SecretsProviderConnectionError(this.name, this.displayName),
-			});
+			this.logOperationFailure('Failed to connect GCP Secrets Manager provider', 'connect', error);
 			throw error;
 		}
 	}
@@ -90,11 +90,7 @@ export class GcpSecretsManager extends SecretsProvider {
 			await this.client.initialize();
 			return [true];
 		} catch (error: unknown) {
-			this.logger.warn('GCP Secrets Manager provider test failed', {
-				error: new SecretsProviderTestError(this.name, this.displayName, {
-					errorCode: this.getErrorCode(error),
-				}),
-			});
+			this.logOperationFailure('GCP Secrets Manager provider test failed', 'test', error);
 			return [false, error instanceof Error ? error.message : 'Unknown error'];
 		}
 	}
@@ -137,13 +133,10 @@ export class GcpSecretsManager extends SecretsProvider {
 				} catch (error) {
 					// Only handle expected error codes that indicate the secret is not accessible
 					// PERMISSION_DENIED (7), NOT_FOUND (5), UNAVAILABLE (14)
-					const errorCode = this.getErrorCode(error);
+					const errorCode = getGcpErrorCode(error);
 					if (errorCode === 7 || errorCode === 5 || errorCode === 14) {
-						this.logger.warn('Skipping inaccessible GCP secret version', {
-							error: new SecretsProviderUpdateError(this.name, this.displayName, {
-								errorCode,
-								resource: 'secret-version',
-							}),
+						this.logOperationFailure('Skipping inaccessible GCP secret version', 'update', error, {
+							secretName: name,
 						});
 					} else {
 						// Rethrow unexpected errors to avoid masking broader failures
@@ -173,11 +166,11 @@ export class GcpSecretsManager extends SecretsProvider {
 
 			this.logger.debug('GCP Secrets Manager provider secrets updated');
 		} catch (error) {
-			this.logger.warn('Failed to update GCP Secrets Manager provider secrets', {
-				error: new SecretsProviderUpdateError(this.name, this.displayName, {
-					errorCode: this.getErrorCode(error),
-				}),
-			});
+			this.logOperationFailure(
+				'Failed to update GCP Secrets Manager provider secrets',
+				'update',
+				error,
+			);
 			throw error;
 		}
 	}
@@ -215,10 +208,22 @@ export class GcpSecretsManager extends SecretsProvider {
 		};
 	}
 
-	private getErrorCode(error: unknown): number | undefined {
-		if (typeof error !== 'object' || error === null || !('code' in error)) return undefined;
-
-		const { code } = error;
-		return typeof code === 'number' ? code : undefined;
+	private logOperationFailure(
+		message: string,
+		operation: 'initialize' | 'connect' | 'test' | 'update',
+		error: unknown,
+		extra: GcpSecretsManagerLogContext = {},
+	): void {
+		this.logger.warn(message, {
+			...secretsProviderLogContext({
+				providerName: this.name,
+				providerDisplayName: this.displayName,
+				operation,
+				errorName: error instanceof Error ? error.name : undefined,
+			}),
+			...gcpErrorContext(error),
+			...(this.settings?.projectId ? { projectId: this.settings.projectId } : {}),
+			...extra,
+		});
 	}
 }

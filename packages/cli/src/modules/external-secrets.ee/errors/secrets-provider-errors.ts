@@ -2,6 +2,10 @@ import { OperationalError } from 'n8n-workflow';
 
 type SafeContextValue = string | number | boolean | undefined;
 
+/**
+ * @deprecated Do not use this interface because it exposes provider-specific internals in a shared type.
+ * Use `SecretsProviderLogContext` for common fields and a provider-specific log context type for the rest.
+ */
 export interface SecretsProviderErrorContext {
 	authMethod?: SafeContextValue;
 	errorCode?: SafeContextValue;
@@ -12,7 +16,7 @@ export interface SecretsProviderErrorContext {
 	statusCode?: SafeContextValue;
 }
 
-type SecretsProviderOperation =
+export type SecretsProviderOperation =
 	| 'initialize'
 	| 'connect'
 	| 'disconnect'
@@ -20,7 +24,7 @@ type SecretsProviderOperation =
 	| 'test'
 	| 'tokenRefresh';
 
-type SecretsProviderLogContext = {
+export type SecretsProviderLogContext = {
 	providerName: string;
 	providerDisplayName: string;
 	operation: SecretsProviderOperation;

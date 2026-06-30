@@ -2,13 +2,9 @@ import { SecretManagerServiceClient } from '@google-cloud/secret-manager';
 import type { google } from '@google-cloud/secret-manager/build/protos/protos';
 import type { Logger } from '@n8n/backend-common';
 import { UserError } from 'n8n-workflow';
+import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import {
-	SecretsProviderInitializationError,
-	SecretsProviderTestError,
-	SecretsProviderUpdateError,
-} from '../../errors/secrets-provider-errors';
 import { GcpSecretsManager } from '../gcp-secrets-manager/gcp-secrets-manager';
 import type { GcpSecretsManagerContext } from '../gcp-secrets-manager/types';
 
@@ -56,7 +52,12 @@ describe('GCP Secrets Manager', () => {
 			).rejects.toThrow(UserError);
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Failed to initialize GCP Secrets Manager provider',
-				expect.objectContaining({ error: expect.any(SecretsProviderInitializationError) }),
+				expect.objectContaining({
+					providerName: 'gcpSecretsManager',
+					providerDisplayName: 'GCP Secrets Manager',
+					operation: 'initialize',
+					errorName: expect.any(String),
+				}),
 			);
 		});
 
@@ -86,6 +87,37 @@ describe('GCP Secrets Manager', () => {
 				),
 			).rejects.toThrow(UserError);
 		});
+	});
+
+	it('should log failed client setup while preserving error state', async () => {
+		const PROJECT_ID = 'my-project-id';
+
+		await gcpSecretsManager.init(
+			mock<GcpSecretsManagerContext>({
+				settings: { serviceAccountKey: VALID_SERVICE_ACCOUNT_KEY(PROJECT_ID) },
+			}),
+		);
+
+		const setupError = new Error('Invalid configuration');
+		const SecretManagerServiceClientMock = SecretManagerServiceClient as unknown as Mock;
+		SecretManagerServiceClientMock.mockImplementationOnce(() => {
+			throw setupError;
+		});
+
+		await gcpSecretsManager.connect();
+
+		expect(gcpSecretsManager.state).toBe('error');
+		expect(logger.warn).toHaveBeenCalledWith(
+			'Failed to connect GCP Secrets Manager provider',
+			expect.objectContaining({
+				providerName: 'gcpSecretsManager',
+				providerDisplayName: 'GCP Secrets Manager',
+				operation: 'connect',
+				projectId: PROJECT_ID,
+				errorName: expect.any(String),
+				errorCode: expect.any(String),
+			}),
+		);
 	});
 
 	it('should update cached secrets', async () => {
@@ -162,14 +194,21 @@ describe('GCP Secrets Manager', () => {
 		);
 		await gcpSecretsManager.connect();
 
-		vi
-			.spyOn(SecretManagerServiceClient.prototype, 'initialize')
-			.mockRejectedValue(new Error('Invalid credentials'));
+		vi.spyOn(SecretManagerServiceClient.prototype, 'initialize').mockRejectedValue(
+			new Error('Invalid credentials'),
+		);
 
 		await expect(gcpSecretsManager.test()).resolves.toEqual([false, 'Invalid credentials']);
 		expect(logger.warn).toHaveBeenCalledWith(
 			'GCP Secrets Manager provider test failed',
-			expect.objectContaining({ error: expect.any(SecretsProviderTestError) }),
+			expect.objectContaining({
+				providerName: 'gcpSecretsManager',
+				providerDisplayName: 'GCP Secrets Manager',
+				operation: 'test',
+				errorName: 'Error',
+				errorCode: 'Error',
+				projectId: PROJECT_ID,
+			}),
 		);
 	});
 
@@ -217,7 +256,14 @@ describe('GCP Secrets Manager', () => {
 		await expect(gcpSecretsManager.update()).rejects.toThrow('test error');
 		expect(logger.warn).toHaveBeenCalledWith(
 			'Failed to update GCP Secrets Manager provider secrets',
-			expect.objectContaining({ error: expect.any(SecretsProviderUpdateError) }),
+			expect.objectContaining({
+				providerName: 'gcpSecretsManager',
+				providerDisplayName: 'GCP Secrets Manager',
+				operation: 'update',
+				errorName: 'Error',
+				errorCode: 'Error',
+				projectId: PROJECT_ID,
+			}),
 		);
 	});
 
@@ -287,6 +333,16 @@ describe('GCP Secrets Manager', () => {
 		expect(gcpSecretsManager.getSecret('secret1')).toBeUndefined(); // error case
 		expect(gcpSecretsManager.getSecret('secret2')).toBe('value2');
 		expect(gcpSecretsManager.getSecret('secret3')).toBeUndefined(); // no value
+		expect(logger.warn).toHaveBeenCalledWith(
+			'Skipping inaccessible GCP secret version',
+			expect.objectContaining({
+				providerName: 'gcpSecretsManager',
+				operation: 'update',
+				secretName: 'secret1',
+				errorCode: 5,
+				projectId: PROJECT_ID,
+			}),
+		);
 	});
 
 	it('should handle errors when accessing secret versions (PERMISSION_DENIED)', async () => {
@@ -355,6 +411,16 @@ describe('GCP Secrets Manager', () => {
 		expect(gcpSecretsManager.getSecret('secret1')).toBeUndefined(); // error case
 		expect(gcpSecretsManager.getSecret('secret2')).toBe('value2');
 		expect(gcpSecretsManager.getSecret('secret3')).toBeUndefined(); // no value
+		expect(logger.warn).toHaveBeenCalledWith(
+			'Skipping inaccessible GCP secret version',
+			expect.objectContaining({
+				providerName: 'gcpSecretsManager',
+				operation: 'update',
+				secretName: 'secret1',
+				errorCode: 7,
+				projectId: PROJECT_ID,
+			}),
+		);
 	});
 
 	it('should handle errors when accessing secret versions (UNAVAILABLE)', async () => {
@@ -423,5 +489,15 @@ describe('GCP Secrets Manager', () => {
 		expect(gcpSecretsManager.getSecret('secret1')).toBeUndefined(); // error case
 		expect(gcpSecretsManager.getSecret('secret2')).toBe('value2');
 		expect(gcpSecretsManager.getSecret('secret3')).toBeUndefined(); // no value
+		expect(logger.warn).toHaveBeenCalledWith(
+			'Skipping inaccessible GCP secret version',
+			expect.objectContaining({
+				providerName: 'gcpSecretsManager',
+				operation: 'update',
+				secretName: 'secret1',
+				errorCode: 14,
+				projectId: PROJECT_ID,
+			}),
+		);
 	});
 });
