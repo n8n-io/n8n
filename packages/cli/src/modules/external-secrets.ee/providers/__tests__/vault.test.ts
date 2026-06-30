@@ -326,14 +326,22 @@ describe('VaultProvider', () => {
 
 			expect(provider.hasSecret('forbidden')).toBe(false);
 			expect(provider.getSecretNames()).toHaveLength(0);
-			expect(logger.warn).toHaveBeenCalledWith(
+			expect(logger.debug).toHaveBeenCalledWith(
 				'Vault provider failed to list KV secrets',
 				expect.objectContaining({
 					operation: 'update',
 					mountPath: 'forbidden/',
 					kvVersion: '2',
-					resource: 'kv-list',
+					vaultApiPath: 'forbidden/metadata/?list=true',
 					statusCode: 403,
+				}),
+			);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Skipped inaccessible Vault KV secrets during update',
+				expect.objectContaining({
+					operation: 'update',
+					failedCount: 1,
+					sampleSecretPaths: ['forbidden/metadata/?list=true'],
 				}),
 			);
 		});
@@ -505,7 +513,7 @@ describe('VaultProvider', () => {
 				'Vault provider test failed',
 				expect.objectContaining({
 					operation: 'test',
-					resource: 'token-lookup',
+					vaultApiPath: 'auth/token/lookup-self',
 					errorCode: 'ECONNREFUSED',
 				}),
 			);

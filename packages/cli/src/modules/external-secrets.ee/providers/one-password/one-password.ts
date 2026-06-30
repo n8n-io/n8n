@@ -9,7 +9,10 @@ import {
 } from './one-password-error-context';
 import type { OnePasswordContext, OnePasswordSettings } from './types';
 import { DOCS_HELP_NOTICE } from '../../constants';
-import { secretsProviderLogContext } from '../../errors/secrets-provider-errors';
+import {
+	logProviderFailure,
+	type SecretsProviderOperation,
+} from '../../errors/secrets-provider-errors';
 import { SecretsProvider } from '../../types';
 
 export class OnePasswordProvider extends SecretsProvider {
@@ -89,7 +92,7 @@ export class OnePasswordProvider extends SecretsProvider {
 				keepAlive: true,
 			});
 
-			const [wasSuccessful, errorMessage] = await this.test();
+			const [wasSuccessful, errorMessage] = await this.test({ logOnFailure: false });
 
 			if (!wasSuccessful) {
 				throw new Error(errorMessage || 'Connection failed');
@@ -102,16 +105,18 @@ export class OnePasswordProvider extends SecretsProvider {
 		}
 	}
 
-	async test(): Promise<[boolean] | [boolean, string]> {
+	async test(options?: { logOnFailure?: boolean }): Promise<[boolean] | [boolean, string]> {
 		if (!this.client) return [false, 'Client not initialized'];
 
 		try {
 			await this.client.listVaults();
 			return [true];
 		} catch (error: unknown) {
-			this.logOperationFailure('1Password provider test failed', 'test', error, {
-				endpoint: 'vaults',
-			});
+			if (options?.logOnFailure !== false) {
+				this.logOperationFailure('1Password provider test failed', 'test', error, {
+					endpoint: 'vaults',
+				});
+			}
 			return [false, error instanceof Error ? error.message : 'Unknown error'];
 		}
 	}
@@ -176,20 +181,25 @@ export class OnePasswordProvider extends SecretsProvider {
 
 	private logOperationFailure(
 		message: string,
-		operation: 'initialize' | 'connect' | 'test' | 'update',
+		operation: SecretsProviderOperation,
 		error: unknown,
 		extra: OnePasswordProviderLogContext = {},
 	): void {
-		this.logger.warn(message, {
-			...secretsProviderLogContext({
-				providerName: this.name,
-				providerDisplayName: this.displayName,
-				operation,
-				errorName: error instanceof Error ? error.name : undefined,
-			}),
-			...onePasswordErrorContext(error),
-			...(this.settings?.serverUrl ? { serverUrl: this.settings.serverUrl } : {}),
-			...extra,
+		const settingsContext: OnePasswordProviderLogContext = {};
+		if (this.settings?.serverUrl) {
+			settingsContext.serverUrl = this.settings.serverUrl;
+		}
+
+		logProviderFailure({
+			logger: this.logger,
+			message,
+			providerName: this.name,
+			providerDisplayName: this.displayName,
+			operation,
+			error,
+			errorContext: onePasswordErrorContext(error),
+			settingsContext,
+			extra,
 		});
 	}
 }

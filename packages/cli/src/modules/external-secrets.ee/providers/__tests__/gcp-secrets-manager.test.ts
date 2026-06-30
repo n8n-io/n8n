@@ -333,7 +333,7 @@ describe('GCP Secrets Manager', () => {
 		expect(gcpSecretsManager.getSecret('secret1')).toBeUndefined(); // error case
 		expect(gcpSecretsManager.getSecret('secret2')).toBe('value2');
 		expect(gcpSecretsManager.getSecret('secret3')).toBeUndefined(); // no value
-		expect(logger.warn).toHaveBeenCalledWith(
+		expect(logger.debug).toHaveBeenCalledWith(
 			'Skipping inaccessible GCP secret version',
 			expect.objectContaining({
 				providerName: 'gcpSecretsManager',
@@ -341,6 +341,16 @@ describe('GCP Secrets Manager', () => {
 				secretName: 'secret1',
 				errorCode: 5,
 				projectId: PROJECT_ID,
+			}),
+		);
+		expect(logger.warn).toHaveBeenCalledWith(
+			'Skipped inaccessible GCP secret versions during update',
+			expect.objectContaining({
+				providerName: 'gcpSecretsManager',
+				operation: 'update',
+				projectId: PROJECT_ID,
+				failedCount: 1,
+				sampleSecretNames: ['secret1'],
 			}),
 		);
 	});
@@ -411,7 +421,7 @@ describe('GCP Secrets Manager', () => {
 		expect(gcpSecretsManager.getSecret('secret1')).toBeUndefined(); // error case
 		expect(gcpSecretsManager.getSecret('secret2')).toBe('value2');
 		expect(gcpSecretsManager.getSecret('secret3')).toBeUndefined(); // no value
-		expect(logger.warn).toHaveBeenCalledWith(
+		expect(logger.debug).toHaveBeenCalledWith(
 			'Skipping inaccessible GCP secret version',
 			expect.objectContaining({
 				providerName: 'gcpSecretsManager',
@@ -419,6 +429,16 @@ describe('GCP Secrets Manager', () => {
 				secretName: 'secret1',
 				errorCode: 7,
 				projectId: PROJECT_ID,
+			}),
+		);
+		expect(logger.warn).toHaveBeenCalledWith(
+			'Skipped inaccessible GCP secret versions during update',
+			expect.objectContaining({
+				providerName: 'gcpSecretsManager',
+				operation: 'update',
+				projectId: PROJECT_ID,
+				failedCount: 1,
+				sampleSecretNames: ['secret1'],
 			}),
 		);
 	});
@@ -489,7 +509,7 @@ describe('GCP Secrets Manager', () => {
 		expect(gcpSecretsManager.getSecret('secret1')).toBeUndefined(); // error case
 		expect(gcpSecretsManager.getSecret('secret2')).toBe('value2');
 		expect(gcpSecretsManager.getSecret('secret3')).toBeUndefined(); // no value
-		expect(logger.warn).toHaveBeenCalledWith(
+		expect(logger.debug).toHaveBeenCalledWith(
 			'Skipping inaccessible GCP secret version',
 			expect.objectContaining({
 				providerName: 'gcpSecretsManager',
@@ -497,6 +517,16 @@ describe('GCP Secrets Manager', () => {
 				secretName: 'secret1',
 				errorCode: 14,
 				projectId: PROJECT_ID,
+			}),
+		);
+		expect(logger.warn).toHaveBeenCalledWith(
+			'Skipped inaccessible GCP secret versions during update',
+			expect.objectContaining({
+				providerName: 'gcpSecretsManager',
+				operation: 'update',
+				projectId: PROJECT_ID,
+				failedCount: 1,
+				sampleSecretNames: ['secret1'],
 			}),
 		);
 	});

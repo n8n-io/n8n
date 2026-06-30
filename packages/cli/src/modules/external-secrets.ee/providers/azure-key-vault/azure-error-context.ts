@@ -1,6 +1,16 @@
 import { AuthenticationError } from '@azure/identity';
 
-import type { SecretsProviderErrorContext } from '../../errors/secrets-provider-errors';
+import type { SafeContextValue } from '../../errors/secrets-provider-errors';
+
+export type AzureKeyVaultLogContext = {
+	vaultName?: string;
+	secretName?: string;
+	errorCode?: SafeContextValue;
+	statusCode?: number;
+	failedCount?: number;
+	errorCodes?: Record<string, number>;
+	sampleSecretNames?: string[];
+};
 
 type AzureHttpLikeError = Error & {
 	statusCode?: number;
@@ -18,7 +28,9 @@ function isAzureHttpLikeError(error: unknown): error is AzureHttpLikeError {
 	);
 }
 
-export function azureErrorContext(error: unknown): SecretsProviderErrorContext {
+export function azureErrorContext(
+	error: unknown,
+): Pick<AzureKeyVaultLogContext, 'errorCode' | 'statusCode'> {
 	if (error instanceof AuthenticationError) {
 		return {
 			statusCode: error.statusCode,

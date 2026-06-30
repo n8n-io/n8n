@@ -1,9 +1,12 @@
-type SafeContextValue = string | number | boolean | undefined;
+import type { SafeContextValue } from '../../errors/secrets-provider-errors';
 
 export type GcpSecretsManagerLogContext = {
 	projectId?: string;
 	secretName?: string;
 	errorCode?: SafeContextValue;
+	failedCount?: number;
+	errorCodes?: Record<string, number>;
+	sampleSecretNames?: string[];
 };
 
 export function getGcpErrorCode(error: unknown): number | string | undefined {

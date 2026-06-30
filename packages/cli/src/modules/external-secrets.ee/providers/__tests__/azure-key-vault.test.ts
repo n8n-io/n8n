@@ -48,7 +48,7 @@ describe('AzureKeyVault', () => {
 				providerName: 'azureKeyVault',
 				providerDisplayName: 'Azure Key Vault',
 				operation: 'connect',
-				location: 'my-vault',
+				vaultName: 'my-vault',
 				errorName: expect.any(String),
 				errorCode: expect.any(String),
 			}),
@@ -91,7 +91,7 @@ describe('AzureKeyVault', () => {
 				errorName: 'RestError',
 				statusCode: 403,
 				errorCode: 'Forbidden',
-				location: 'my-vault',
+				vaultName: 'my-vault',
 			}),
 		);
 	});
@@ -217,13 +217,23 @@ describe('AzureKeyVault', () => {
 
 		expect(azureKeyVault.getSecret('good')).toBe('fine');
 		expect(azureKeyVault.hasSecret('bad')).toBe(false);
-		expect(logger.warn).toHaveBeenCalledWith(
+		expect(logger.debug).toHaveBeenCalledWith(
 			'Could not read Azure Key Vault secret "bad"',
 			expect.objectContaining({
 				providerName: 'azureKeyVault',
 				operation: 'update',
-				resource: 'bad',
-				location: 'my-vault',
+				secretName: 'bad',
+				vaultName: 'my-vault',
+			}),
+		);
+		expect(logger.warn).toHaveBeenCalledWith(
+			'Skipped unreadable Azure Key Vault secrets during update',
+			expect.objectContaining({
+				providerName: 'azureKeyVault',
+				operation: 'update',
+				vaultName: 'my-vault',
+				failedCount: 1,
+				sampleSecretNames: ['bad'],
 			}),
 		);
 	});
@@ -275,12 +285,13 @@ describe('AzureKeyVault', () => {
 			expect(thrown.cause).toEqual(expect.objectContaining({ message: 'Key Vault unavailable' }));
 		}
 		expect(logger.warn).toHaveBeenCalledWith(
-			'Failed to update Azure Key Vault provider secrets',
+			'Skipped unreadable Azure Key Vault secrets during update',
 			expect.objectContaining({
 				providerName: 'azureKeyVault',
 				operation: 'update',
-				resource: 'secrets',
-				location: 'my-vault',
+				vaultName: 'my-vault',
+				failedCount: 1,
+				sampleSecretNames: ['only-secret'],
 			}),
 		);
 		expect(azureKeyVault.getSecret('only-secret')).toBe('cached-value');

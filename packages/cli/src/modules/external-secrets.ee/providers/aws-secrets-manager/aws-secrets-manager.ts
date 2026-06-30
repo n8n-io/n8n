@@ -7,7 +7,10 @@ import { type INodeProperties } from 'n8n-workflow';
 import { awsErrorContext, type AwsSecretsManagerLogContext } from './aws-error-context';
 import type { AwsSecretsManagerContext, AwsSecretsManagerSettings, Secret } from './types';
 import { DOCS_HELP_NOTICE } from '../../constants';
-import { secretsProviderLogContext } from '../../errors/secrets-provider-errors';
+import {
+	logProviderFailure,
+	type SecretsProviderOperation,
+} from '../../errors/secrets-provider-errors';
 import { UnknownAuthTypeError } from '../../errors/unknown-auth-type.error';
 import { SecretsProvider } from '../../types';
 
@@ -132,20 +135,22 @@ export class AwsSecretsManager extends SecretsProvider {
 		}
 	}
 
-	async test(): Promise<[boolean] | [boolean, string]> {
+	async test(options?: { logOnFailure?: boolean }): Promise<[boolean] | [boolean, string]> {
 		try {
 			await this.client.listSecrets({ MaxResults: 1 });
 			return [true];
 		} catch (e) {
 			const error = e instanceof Error ? e : new Error(`${e}`);
-			this.logOperationFailure('AWS Secrets Manager provider test failed', 'test', error);
+			if (options?.logOnFailure !== false) {
+				this.logOperationFailure('AWS Secrets Manager provider test failed', 'test', error);
+			}
 			return [false, error.message];
 		}
 	}
 
 	protected async doConnect(): Promise<void> {
 		try {
-			const [wasSuccessful, errorMsg] = await this.test();
+			const [wasSuccessful, errorMsg] = await this.test({ logOnFailure: false });
 
 			if (!wasSuccessful) {
 				throw new Error(errorMsg || 'Connection failed');
@@ -255,21 +260,28 @@ export class AwsSecretsManager extends SecretsProvider {
 
 	private logOperationFailure(
 		message: string,
-		operation: 'initialize' | 'connect' | 'test' | 'update',
+		operation: SecretsProviderOperation,
 		error: unknown,
 		extra: AwsSecretsManagerLogContext = {},
 	): void {
-		this.logger.warn(message, {
-			...secretsProviderLogContext({
-				providerName: this.name,
-				providerDisplayName: this.displayName,
-				operation,
-				errorName: error instanceof Error ? error.name : undefined,
-			}),
-			...awsErrorContext(error),
-			...(this.settings?.region ? { region: this.settings.region } : {}),
-			...(this.settings?.authMethod ? { authMethod: this.settings.authMethod } : {}),
-			...extra,
+		const settingsContext: AwsSecretsManagerLogContext = {};
+		if (this.settings?.region) {
+			settingsContext.region = this.settings.region;
+		}
+		if (this.settings?.authMethod) {
+			settingsContext.authMethod = this.settings.authMethod;
+		}
+
+		logProviderFailure({
+			logger: this.logger,
+			message,
+			providerName: this.name,
+			providerDisplayName: this.displayName,
+			operation,
+			error,
+			errorContext: awsErrorContext(error),
+			settingsContext,
+			extra,
 		});
 	}
 }

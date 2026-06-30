@@ -1,4 +1,4 @@
-type SafeContextValue = string | number | boolean | undefined;
+import type { SafeContextValue } from '../../errors/secrets-provider-errors';
 
 export type AwsSecretsManagerLogContext = {
 	region?: string;

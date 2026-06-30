@@ -14,12 +14,16 @@ import {
 } from 'n8n-workflow';
 
 import { DOCS_HELP_NOTICE } from '../../constants';
-import type { SecretsProviderErrorContext } from '../../errors/secrets-provider-errors';
-import { secretsProviderLogContext } from '../../errors/secrets-provider-errors';
+import {
+	buildUpdateFailureSummary,
+	logProviderFailure,
+	type SafeContextValue,
+	type SecretsProviderOperation,
+} from '../../errors/secrets-provider-errors';
 import { ExternalSecretsConfig } from '../../external-secrets.config';
 import type { SecretsProviderSettings } from '../../types';
 import { SecretsProvider } from '../../types';
-import { vaultErrorContext } from './vault-error-context';
+import { vaultErrorContext, type VaultProviderLogContext } from './vault-error-context';
 
 type VaultAuthMethod = 'token' | 'usernameAndPassword' | 'appRole';
 
@@ -261,6 +265,8 @@ export class VaultProvider extends SecretsProvider {
 
 	private cachedSecrets: Record<string, IDataObject> = {};
 
+	private updatePathFailures: Array<{ secretPath: string; errorCode: SafeContextValue }> = [];
+
 	private settings: VaultSettings;
 
 	#currentToken: string | null = null;
@@ -323,9 +329,11 @@ export class VaultProvider extends SecretsProvider {
 			[this.#tokenInfo] = await this.getTokenInfo();
 			this.setupTokenRefresh();
 		} catch (error) {
-			this.logOperationFailure('Failed to connect Vault provider', 'connect', error, {
-				authMethod: this.settings.authMethod,
-			});
+			if (!this.isVaultAuthFailure(error)) {
+				this.logOperationFailure('Failed to connect Vault provider', 'connect', error, {
+					authMethod: this.settings.authMethod,
+				});
+			}
 			throw error;
 		}
 	}
@@ -463,10 +471,20 @@ export class VaultProvider extends SecretsProvider {
 			const method = (shouldPreferGet ? 'GET' : 'LIST') as IHttpRequestMethods;
 			listBody = await this.#http.request<VaultResponse<VaultSecretList>>({ url, method });
 		} catch (error) {
-			this.logOperationFailure('Vault provider failed to list KV secrets', 'update', error, {
+			const shouldPreferGet = Container.get(ExternalSecretsConfig).preferGet;
+			const vaultApiPath = `${listPath}${shouldPreferGet ? '?list=true' : ''}`;
+			const errorContext = vaultErrorContext(error);
+			this.logger.debug('Vault provider failed to list KV secrets', {
+				providerName: this.name,
+				operation: 'update',
 				mountPath,
 				kvVersion,
-				resource: 'kv-list',
+				vaultApiPath,
+				...errorContext,
+			});
+			this.updatePathFailures.push({
+				secretPath: vaultApiPath,
+				errorCode: errorContext.errorCode ?? 'unknown',
 			});
 			return null;
 		}
@@ -493,10 +511,18 @@ export class VaultProvider extends SecretsProvider {
 								kvVersion === '2' ? (secretBody.data.data as IDataObject) : secretBody.data,
 							];
 						} catch (error) {
-							this.logOperationFailure('Vault provider failed to read KV secret', 'update', error, {
+							const errorContext = vaultErrorContext(error);
+							this.logger.debug('Vault provider failed to read KV secret', {
+								providerName: this.name,
+								operation: 'update',
 								mountPath,
 								kvVersion,
-								resource: 'kv-read',
+								secretPath,
+								...errorContext,
+							});
+							this.updatePathFailures.push({
+								secretPath,
+								errorCode: errorContext.errorCode ?? 'unknown',
 							});
 							return null;
 						}
@@ -576,6 +602,7 @@ export class VaultProvider extends SecretsProvider {
 	}
 
 	async update(): Promise<void> {
+		this.updatePathFailures = [];
 		try {
 			const kvMounts = await this.discoverKvMounts();
 
@@ -593,6 +620,26 @@ export class VaultProvider extends SecretsProvider {
 				).filter((entry): entry is [string, IDataObject] => entry !== null),
 			);
 			this.cachedSecrets = secrets;
+
+			const summary = buildUpdateFailureSummary(
+				this.updatePathFailures.map((failure) => ({
+					name: failure.secretPath,
+					errorCode: failure.errorCode,
+				})),
+			);
+			if (summary) {
+				this.logOperationFailure(
+					'Skipped inaccessible Vault KV secrets during update',
+					'update',
+					new Error('One or more Vault KV secrets were inaccessible'),
+					{
+						failedCount: summary.failedCount,
+						errorCodes: summary.errorCodes,
+						sampleSecretPaths: summary.sampleSecretNames,
+					},
+				);
+			}
+
 			this.logger.debug('Vault provider secrets updated');
 		} catch (error) {
 			this.logOperationFailure('Failed to update Vault provider secrets', 'update', error);
@@ -614,7 +661,7 @@ export class VaultProvider extends SecretsProvider {
 			return await this.testSecretAccess();
 		} catch (error) {
 			this.logOperationFailure('Vault provider test failed', 'test', error, {
-				resource: 'token-lookup',
+				vaultApiPath: 'auth/token/lookup-self',
 			});
 
 			if (isConnectionRefusedError(error)) {
@@ -674,21 +721,29 @@ export class VaultProvider extends SecretsProvider {
 		});
 	}
 
+	private isVaultAuthFailure(error: unknown): boolean {
+		return (
+			error instanceof Error &&
+			(error.message === 'Failed to authenticate with Username and Password' ||
+				error.message === 'Failed to authenticate with AppRole')
+		);
+	}
+
 	private logOperationFailure(
 		message: string,
-		operation: 'connect' | 'update' | 'test' | 'tokenRefresh',
+		operation: SecretsProviderOperation,
 		error: unknown,
-		extra: SecretsProviderErrorContext = {},
+		extra: VaultProviderLogContext = {},
 	): void {
-		this.logger.warn(message, {
-			...secretsProviderLogContext({
-				providerName: this.name,
-				providerDisplayName: this.displayName,
-				operation,
-				errorName: error instanceof Error ? error.name : undefined,
-			}),
-			...vaultErrorContext(error),
-			...extra,
+		logProviderFailure({
+			logger: this.logger,
+			message,
+			providerName: this.name,
+			providerDisplayName: this.displayName,
+			operation,
+			error,
+			errorContext: vaultErrorContext(error),
+			extra,
 		});
 	}
 }

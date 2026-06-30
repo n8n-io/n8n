@@ -1,4 +1,10 @@
-import { httpStatusFromError, isConnectionRefusedError } from '@n8n/backend-network';
+import { httpStatusFromError } from '@n8n/backend-network';
+
+import {
+	buildHttpProviderErrorContext,
+	type SafeContextValue,
+} from '../../errors/secrets-provider-errors';
+import type { InfisicalSettings } from './types';
 
 export type InfisicalProviderLogContext = {
 	siteURL?: string;
@@ -7,7 +13,7 @@ export type InfisicalProviderLogContext = {
 	secretPath?: string;
 	authMethod?: string;
 	endpoint?: string;
-	errorCode?: string | number;
+	errorCode?: SafeContextValue;
 	statusCode?: number;
 };
 
@@ -15,37 +21,38 @@ export function getInfisicalHttpStatus(error: unknown): number | undefined {
 	return httpStatusFromError(error);
 }
 
-export function getInfisicalErrorCode(error: unknown): string | number | undefined {
-	if (isConnectionRefusedError(error)) {
-		return 'ECONNREFUSED';
-	}
-
-	const statusCode = getInfisicalHttpStatus(error);
-	if (statusCode !== undefined) {
-		return statusCode;
-	}
-
-	if (error instanceof Error) {
-		return error.name;
-	}
-
-	return undefined;
-}
-
 export function infisicalErrorContext(
 	error: unknown,
 ): Pick<InfisicalProviderLogContext, 'errorCode' | 'statusCode'> {
-	const context: Pick<InfisicalProviderLogContext, 'errorCode' | 'statusCode'> = {};
+	return buildHttpProviderErrorContext(error);
+}
 
-	const statusCode = getInfisicalHttpStatus(error);
-	if (statusCode !== undefined) {
-		context.statusCode = statusCode;
-	}
+export function infisicalConnectSettingsContext(
+	settings: InfisicalSettings,
+): Pick<InfisicalProviderLogContext, 'siteURL' | 'projectId' | 'authMethod'> {
+	return {
+		siteURL: settings.siteURL,
+		projectId: settings.projectId,
+		authMethod: settings.authMethod,
+	};
+}
 
-	const errorCode = getInfisicalErrorCode(error);
-	if (errorCode !== undefined) {
-		context.errorCode = errorCode;
-	}
+export function infisicalTestSettingsContext(
+	settings: InfisicalSettings,
+): Pick<InfisicalProviderLogContext, 'siteURL' | 'projectId'> {
+	return {
+		siteURL: settings.siteURL,
+		projectId: settings.projectId,
+	};
+}
 
-	return context;
+export function infisicalUpdateSettingsContext(
+	settings: InfisicalSettings,
+): Pick<InfisicalProviderLogContext, 'siteURL' | 'projectId' | 'environment' | 'secretPath'> {
+	return {
+		siteURL: settings.siteURL,
+		projectId: settings.projectId,
+		environment: settings.environment,
+		secretPath: settings.secretPath,
+	};
 }

@@ -1,14 +1,13 @@
 import { vaultErrorContext } from '../vault-error-context';
 
 describe('vaultErrorContext', () => {
-	it('extracts statusCode from HTTP request errors', () => {
+	it('extracts statusCode from HTTP request errors without duplicating it in errorCode', () => {
 		const error = Object.assign(new Error('Request failed'), {
 			response: { status: 403 },
 		});
 
 		expect(vaultErrorContext(error)).toEqual({
 			statusCode: 403,
-			errorCode: 'Error',
 		});
 	});
 

@@ -76,18 +76,7 @@ describe('AwsSecretsManager', () => {
 			await awsSecretsManager.connect();
 
 			expect(awsSecretsManager.state).toBe('error');
-			expect(logger.warn).toHaveBeenCalledWith(
-				'AWS Secrets Manager provider test failed',
-				expect.objectContaining({
-					providerName: 'awsSecretsManager',
-					providerDisplayName: 'AWS Secrets Manager',
-					operation: 'test',
-					region,
-					authMethod: 'iamUser',
-					errorName: expect.any(String),
-					errorCode: expect.any(String),
-				}),
-			);
+			expect(logger.warn).toHaveBeenCalledTimes(1);
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Failed to connect AWS Secrets Manager provider',
 				expect.objectContaining({

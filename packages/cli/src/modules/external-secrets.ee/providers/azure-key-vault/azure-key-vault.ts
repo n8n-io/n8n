@@ -4,10 +4,14 @@ import { Container } from '@n8n/di';
 import { ensureError, type INodeProperties, UnexpectedError } from 'n8n-workflow';
 
 import { DOCS_HELP_NOTICE } from '../../constants';
-import type { SecretsProviderErrorContext } from '../../errors/secrets-provider-errors';
-import { secretsProviderLogContext } from '../../errors/secrets-provider-errors';
+import {
+	buildUpdateFailureSummary,
+	logProviderFailure,
+	type SafeContextValue,
+	type SecretsProviderOperation,
+} from '../../errors/secrets-provider-errors';
 import { SecretsProvider } from '../../types';
-import { azureErrorContext } from './azure-error-context';
+import { azureErrorContext, type AzureKeyVaultLogContext } from './azure-error-context';
 import type { AzureKeyVaultContext } from './types';
 
 export class AzureKeyVault extends SecretsProvider {
@@ -128,6 +132,7 @@ export class AzureKeyVault extends SecretsProvider {
 
 			const updated: Record<string, string> = {};
 			const readErrors: Error[] = [];
+			const failedSecrets: Array<{ name: string; errorCode: SafeContextValue }> = [];
 			for (const [index, promiseResult] of promises.entries()) {
 				if (promiseResult.status === 'fulfilled') {
 					const { name, value } = promiseResult.value;
@@ -136,22 +141,32 @@ export class AzureKeyVault extends SecretsProvider {
 					const error = ensureError(promiseResult.reason);
 					readErrors.push(error);
 					const secretName = secretNames[index];
-					this.logOperationFailure(
-						`Could not read Azure Key Vault secret "${secretName}"`,
-						'update',
-						error,
-						{ resource: secretName },
-					);
+					const errorContext = azureErrorContext(error);
+					this.logger.debug(`Could not read Azure Key Vault secret "${secretName}"`, {
+						providerName: this.name,
+						operation: 'update',
+						vaultName: this.settings.vaultName,
+						secretName,
+						...errorContext,
+					});
+					failedSecrets.push({
+						name: secretName,
+						errorCode: errorContext.errorCode ?? 'unknown',
+					});
 				}
 			}
 
-			if (secretNames.length > 0 && Object.keys(updated).length === 0 && readErrors.length > 0) {
+			const summary = buildUpdateFailureSummary(failedSecrets);
+			if (summary) {
 				this.logOperationFailure(
-					'Failed to update Azure Key Vault provider secrets',
+					'Skipped unreadable Azure Key Vault secrets during update',
 					'update',
-					readErrors[0],
-					{ resource: 'secrets' },
+					readErrors[0] ?? new Error('One or more Azure Key Vault secrets could not be read'),
+					summary,
 				);
+			}
+
+			if (secretNames.length > 0 && Object.keys(updated).length === 0 && readErrors.length > 0) {
 				throw new UnexpectedError('Could not read any secrets from Azure Key Vault', {
 					cause: readErrors[0],
 				});
@@ -187,20 +202,20 @@ export class AzureKeyVault extends SecretsProvider {
 
 	private logOperationFailure(
 		message: string,
-		operation: 'connect' | 'test' | 'update',
+		operation: SecretsProviderOperation,
 		error: unknown,
-		extra: SecretsProviderErrorContext = {},
+		extra: AzureKeyVaultLogContext = {},
 	): void {
-		this.logger.warn(message, {
-			...secretsProviderLogContext({
-				providerName: this.name,
-				providerDisplayName: this.displayName,
-				operation,
-				errorName: error instanceof Error ? error.name : undefined,
-			}),
-			...azureErrorContext(error),
-			location: this.settings.vaultName,
-			...extra,
+		logProviderFailure({
+			logger: this.logger,
+			message,
+			providerName: this.name,
+			providerDisplayName: this.displayName,
+			operation,
+			error,
+			errorContext: azureErrorContext(error),
+			settingsContext: { vaultName: this.settings.vaultName },
+			extra,
 		});
 	}
 }

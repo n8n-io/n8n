@@ -1,25 +1,23 @@
-import { httpStatusFromError, isConnectionRefusedError } from '@n8n/backend-network';
+import {
+	buildHttpProviderErrorContext,
+	type SafeContextValue,
+} from '../../errors/secrets-provider-errors';
 
-import type { SecretsProviderErrorContext } from '../../errors/secrets-provider-errors';
+export type VaultProviderLogContext = {
+	authMethod?: string;
+	mountPath?: string;
+	kvVersion?: string;
+	vaultApiPath?: string;
+	secretPath?: string;
+	errorCode?: SafeContextValue;
+	statusCode?: number;
+	failedCount?: number;
+	errorCodes?: Record<string, number>;
+	sampleSecretPaths?: string[];
+};
 
-export function vaultErrorContext(error: unknown): SecretsProviderErrorContext {
-	const statusCode = httpStatusFromError(error);
-	const context: SecretsProviderErrorContext = {};
-
-	if (statusCode !== undefined) {
-		context.statusCode = statusCode;
-	}
-
-	if (isConnectionRefusedError(error)) {
-		context.errorCode = 'ECONNREFUSED';
-	} else if (typeof error === 'object' && error !== null && 'code' in error) {
-		const { code } = error as { code?: unknown };
-		if (typeof code === 'string') {
-			context.errorCode = code;
-		}
-	} else if (error instanceof Error) {
-		context.errorCode = error.name;
-	}
-
-	return context;
+export function vaultErrorContext(
+	error: unknown,
+): Pick<VaultProviderLogContext, 'errorCode' | 'statusCode'> {
+	return buildHttpProviderErrorContext(error);
 }

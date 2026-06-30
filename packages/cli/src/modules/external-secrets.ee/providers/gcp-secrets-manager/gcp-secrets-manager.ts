@@ -14,7 +14,12 @@ import type {
 	RawGcpSecretAccountKey,
 } from './types';
 import { DOCS_HELP_NOTICE } from '../../constants';
-import { secretsProviderLogContext } from '../../errors/secrets-provider-errors';
+import {
+	buildUpdateFailureSummary,
+	logProviderFailure,
+	type SafeContextValue,
+	type SecretsProviderOperation,
+} from '../../errors/secrets-provider-errors';
 import { SecretsProvider } from '../../types';
 
 export class GcpSecretsManager extends SecretsProvider {
@@ -117,6 +122,8 @@ export class GcpSecretsManager extends SecretsProvider {
 				return acc;
 			}, []);
 
+			const skippedSecrets: Array<{ name: string; errorCode: SafeContextValue }> = [];
+
 			const promises = secretNames.map(async (name) => {
 				let versions:
 					| [
@@ -135,8 +142,16 @@ export class GcpSecretsManager extends SecretsProvider {
 					// PERMISSION_DENIED (7), NOT_FOUND (5), UNAVAILABLE (14)
 					const errorCode = getGcpErrorCode(error);
 					if (errorCode === 7 || errorCode === 5 || errorCode === 14) {
-						this.logOperationFailure('Skipping inaccessible GCP secret version', 'update', error, {
+						this.logger.debug('Skipping inaccessible GCP secret version', {
+							providerName: this.name,
+							operation: 'update',
+							projectId,
 							secretName: name,
+							...gcpErrorContext(error),
+						});
+						skippedSecrets.push({
+							name,
+							errorCode: errorCode ?? 'unknown',
 						});
 					} else {
 						// Rethrow unexpected errors to avoid masking broader failures
@@ -163,6 +178,16 @@ export class GcpSecretsManager extends SecretsProvider {
 				if (cur) acc[cur.name] = cur.value;
 				return acc;
 			}, {});
+
+			const summary = buildUpdateFailureSummary(skippedSecrets);
+			if (summary) {
+				this.logOperationFailure(
+					'Skipped inaccessible GCP secret versions during update',
+					'update',
+					new Error('One or more GCP secret versions were inaccessible'),
+					summary,
+				);
+			}
 
 			this.logger.debug('GCP Secrets Manager provider secrets updated');
 		} catch (error) {
@@ -210,20 +235,25 @@ export class GcpSecretsManager extends SecretsProvider {
 
 	private logOperationFailure(
 		message: string,
-		operation: 'initialize' | 'connect' | 'test' | 'update',
+		operation: SecretsProviderOperation,
 		error: unknown,
 		extra: GcpSecretsManagerLogContext = {},
 	): void {
-		this.logger.warn(message, {
-			...secretsProviderLogContext({
-				providerName: this.name,
-				providerDisplayName: this.displayName,
-				operation,
-				errorName: error instanceof Error ? error.name : undefined,
-			}),
-			...gcpErrorContext(error),
-			...(this.settings?.projectId ? { projectId: this.settings.projectId } : {}),
-			...extra,
+		const settingsContext: GcpSecretsManagerLogContext = {};
+		if (this.settings?.projectId) {
+			settingsContext.projectId = this.settings.projectId;
+		}
+
+		logProviderFailure({
+			logger: this.logger,
+			message,
+			providerName: this.name,
+			providerDisplayName: this.displayName,
+			operation,
+			error,
+			errorContext: gcpErrorContext(error),
+			settingsContext,
+			extra,
 		});
 	}
 }

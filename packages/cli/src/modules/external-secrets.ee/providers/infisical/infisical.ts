@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import {
 	type HttpRequestClient,
+	httpStatusFromError,
 	isConnectionRefusedError,
 	OutboundHttp,
 } from '@n8n/backend-network';
@@ -8,8 +9,10 @@ import { Container } from '@n8n/di';
 import { type INodeProperties, UnexpectedError } from 'n8n-workflow';
 
 import {
-	getInfisicalHttpStatus,
+	infisicalConnectSettingsContext,
 	infisicalErrorContext,
+	infisicalTestSettingsContext,
+	infisicalUpdateSettingsContext,
 	type InfisicalProviderLogContext,
 } from './infisical-error-context';
 import type {
@@ -20,7 +23,10 @@ import type {
 	InfisicalUniversalAuthLoginResponse,
 } from './types';
 import { DOCS_HELP_NOTICE } from '../../constants';
-import { secretsProviderLogContext } from '../../errors/secrets-provider-errors';
+import {
+	logProviderFailure,
+	type SecretsProviderOperation,
+} from '../../errors/secrets-provider-errors';
 import type { SecretsProviderSettings } from '../../types';
 import { SecretsProvider } from '../../types';
 
@@ -168,7 +174,13 @@ export class InfisicalProvider extends SecretsProvider {
 
 			this.setupTokenRefresh();
 		} catch (error) {
-			this.logOperationFailure('Failed to connect Infisical provider', 'connect', error);
+			this.logOperationFailure(
+				'Failed to connect Infisical provider',
+				'connect',
+				error,
+				{},
+				'connect',
+			);
 			throw error;
 		}
 	}
@@ -212,9 +224,15 @@ export class InfisicalProvider extends SecretsProvider {
 
 			return [false, `Unexpected response from Infisical (status ${resp.statusCode}).`];
 		} catch (error) {
-			this.logOperationFailure('Infisical provider test failed', 'test', error, {
-				endpoint: 'workspace',
-			});
+			this.logOperationFailure(
+				'Infisical provider test failed',
+				'test',
+				error,
+				{
+					endpoint: 'workspace',
+				},
+				'test',
+			);
 
 			if (isConnectionRefusedError(error)) {
 				return [false, 'Connection refused. Check the Site URL.'];
@@ -234,7 +252,7 @@ export class InfisicalProvider extends SecretsProvider {
 			try {
 				this.cacheSecrets(await this.fetchSecrets());
 			} catch (error) {
-				if (getInfisicalHttpStatus(error) === 401) {
+				if (httpStatusFromError(error) === 401) {
 					this.logger.debug(
 						'Infisical token rejected during update; re-authenticating and retrying',
 					);
@@ -245,9 +263,15 @@ export class InfisicalProvider extends SecretsProvider {
 				throw error;
 			}
 		} catch (error) {
-			this.logOperationFailure('Failed to update Infisical provider secrets', 'update', error, {
-				endpoint: 'secrets',
-			});
+			this.logOperationFailure(
+				'Failed to update Infisical provider secrets',
+				'update',
+				error,
+				{
+					endpoint: 'secrets',
+				},
+				'update',
+			);
 			throw error;
 		}
 	}
@@ -335,6 +359,8 @@ export class InfisicalProvider extends SecretsProvider {
 				'Failed to refresh Infisical token. Attempting reconnect.',
 				'tokenRefresh',
 				error,
+				{},
+				'tokenRefresh',
 			);
 			void this.connect();
 		}
@@ -364,28 +390,37 @@ export class InfisicalProvider extends SecretsProvider {
 
 	private logOperationFailure(
 		message: string,
-		operation: 'connect' | 'test' | 'update' | 'tokenRefresh',
+		operation: SecretsProviderOperation,
 		error: unknown,
 		extra: InfisicalProviderLogContext = {},
+		settingsScope: 'connect' | 'test' | 'update' | 'tokenRefresh' = 'connect',
 	): void {
-		this.logger.warn(message, {
-			...secretsProviderLogContext({
-				providerName: this.name,
-				providerDisplayName: this.displayName,
-				operation,
-				errorName: error instanceof Error ? error.name : undefined,
-			}),
-			...infisicalErrorContext(error),
-			...(this.settings
-				? {
-						siteURL: this.settings.siteURL,
-						projectId: this.settings.projectId,
-						environment: this.settings.environment,
-						secretPath: this.settings.secretPath,
-						authMethod: this.settings.authMethod,
-					}
-				: {}),
-			...extra,
+		let settingsContext: InfisicalProviderLogContext = {};
+		if (this.settings) {
+			switch (settingsScope) {
+				case 'connect':
+				case 'tokenRefresh':
+					settingsContext = infisicalConnectSettingsContext(this.settings);
+					break;
+				case 'test':
+					settingsContext = infisicalTestSettingsContext(this.settings);
+					break;
+				case 'update':
+					settingsContext = infisicalUpdateSettingsContext(this.settings);
+					break;
+			}
+		}
+
+		logProviderFailure({
+			logger: this.logger,
+			message,
+			providerName: this.name,
+			providerDisplayName: this.displayName,
+			operation,
+			error,
+			errorContext: infisicalErrorContext(error),
+			settingsContext,
+			extra,
 		});
 	}
 }

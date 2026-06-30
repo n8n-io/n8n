@@ -60,14 +60,22 @@ const WORKSPACE_PATH = `/api/v1/workspace/${PROJECT_ID}`;
 const LOGIN_PATH = '/api/v1/auth/universal-auth/login';
 const SECRETS_PATH = '/api/v4/secrets';
 
-const infisicalSettingsLogContext = {
-	providerName: 'infisical',
-	providerDisplayName: 'Infisical',
+const infisicalConnectSettingsLogContext = {
+	siteURL: SITE_URL,
+	projectId: PROJECT_ID,
+	authMethod: 'universalAuth',
+};
+
+const infisicalTestSettingsLogContext = {
+	siteURL: SITE_URL,
+	projectId: PROJECT_ID,
+};
+
+const infisicalUpdateSettingsLogContext = {
 	siteURL: SITE_URL,
 	projectId: PROJECT_ID,
 	environment: ENVIRONMENT,
 	secretPath: SECRET_PATH,
-	authMethod: 'universalAuth',
 };
 
 describe('InfisicalProvider', () => {
@@ -209,7 +217,9 @@ describe('InfisicalProvider', () => {
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Infisical provider test failed',
 				expect.objectContaining({
-					...infisicalSettingsLogContext,
+					providerName: 'infisical',
+					providerDisplayName: 'Infisical',
+					...infisicalTestSettingsLogContext,
 					operation: 'test',
 					endpoint: 'workspace',
 					errorCode: 'ECONNREFUSED',
@@ -230,7 +240,9 @@ describe('InfisicalProvider', () => {
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Failed to connect Infisical provider',
 				expect.objectContaining({
-					...infisicalSettingsLogContext,
+					providerName: 'infisical',
+					providerDisplayName: 'Infisical',
+					...infisicalConnectSettingsLogContext,
 					operation: 'connect',
 					statusCode: 401,
 				}),
@@ -316,7 +328,9 @@ describe('InfisicalProvider', () => {
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Failed to update Infisical provider secrets',
 				expect.objectContaining({
-					...infisicalSettingsLogContext,
+					providerName: 'infisical',
+					providerDisplayName: 'Infisical',
+					...infisicalUpdateSettingsLogContext,
 					operation: 'update',
 					endpoint: 'secrets',
 					statusCode: 500,
@@ -335,7 +349,9 @@ describe('InfisicalProvider', () => {
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Failed to refresh Infisical token. Attempting reconnect.',
 				expect.objectContaining({
-					...infisicalSettingsLogContext,
+					providerName: 'infisical',
+					providerDisplayName: 'Infisical',
+					...infisicalConnectSettingsLogContext,
 					operation: 'tokenRefresh',
 					errorCode: 'ECONNREFUSED',
 				}),
