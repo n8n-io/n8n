@@ -41,13 +41,16 @@ export function getToDoCredentialType(
 // intact, so shape validation (not encoding) is what keeps the value safe to interpolate
 // into a Graph URL path. Validation messages are static, so the id is never echoed back.
 //
-// NOTE: To Do is user-only, like the Microsoft Outlook node — a Graph `/users/{id}` is only
-// a user object ID (GUID) or a UPN (has `@`); there is no bare host/domain form. Keep these
-// regexes in sync with Outlook's `validateMailbox` until ENT-92 lifts a shared helper.
+// NOTE: To Do is user-only — a Graph `/users/{id}` is only a user object ID (GUID) or a UPN
+// (has `@`); there is no bare host/domain form. The UPN character set follows Entra's
+// documented userPrincipalName policy; ENT-92 should lift a shared helper and bring the
+// Outlook node's `validateMailbox` to the same set.
 const USER_TARGET_GUID = /^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$/;
-// Local part allows apostrophes (e.g. o'connor@…) and excludes `%`, so an encoded-traversal
-// payload like `..%2f..%2fx@y.com` is rejected outright.
-const USER_TARGET_UPN = /^[A-Za-z0-9._+'-]+@[A-Za-z0-9.-]+$/;
+// Local part = Entra's documented userPrincipalName set (A-Z a-z 0-9 ' . - _ ! # ^ ~) plus
+// `+`, and covers B2B guest UPNs (`user_contoso.com#EXT#@tenant.onmicrosoft.com`). It excludes
+// `%`, so an encoded-traversal payload like `..%2f..%2fx@y.com` is rejected; for the rest,
+// `encodeURIComponent` makes `#`/`^` path-safe (`%23`/`%5E`) before they reach the URL.
+const USER_TARGET_UPN = /^[A-Za-z0-9._+'!#^~-]+@[A-Za-z0-9.-]+$/;
 
 /**
  * Validates an app-only user target id before it is encoded and used to compose a Graph

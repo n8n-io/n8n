@@ -440,6 +440,17 @@ describe('Microsoft ToDo GenericFunctions', () => {
 			expect(() => validateUserTargetId('jane+test@contoso.com', mockNode)).not.toThrow();
 		});
 
+		it('accepts a B2B guest UPN (#EXT#) and encodes it path-safely', () => {
+			expect(
+				getServicePrincipalResourceRoot('user_contoso.com#EXT#@tenant.onmicrosoft.com', mockNode),
+			).toBe('/users/user_contoso.com%23EXT%23%40tenant.onmicrosoft.com');
+		});
+
+		it('accepts the documented Entra UPN special characters (! # ^ ~)', () => {
+			expect(() => validateUserTargetId('joe^smith@contoso.com', mockNode)).not.toThrow();
+			expect(() => validateUserTargetId('o!brien@contoso.com', mockNode)).not.toThrow();
+		});
+
 		it('rejects a bare host/domain (not a valid /users/{id})', () => {
 			expect(() => validateUserTargetId('contoso.com', mockNode)).toThrow(
 				'The target ID is not valid',
