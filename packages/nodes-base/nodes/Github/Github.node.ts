@@ -552,6 +552,8 @@ export class Github implements INodeType {
 						typeOptions: {
 							searchListMethod: 'getUsers',
 							searchable: true,
+							// Endpoint requires a search filter
+							// https://docs.github.com/en/rest/search/search?apiVersion=2022-11-28#search-users
 							searchFilterRequired: true,
 						},
 					},
