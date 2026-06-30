@@ -628,10 +628,8 @@ describe('DbConnectionMonitor', () => {
 	});
 
 	describe('recoverDataSource destroy timeout (Postgres)', () => {
-		// A frozen/SHUNNED backend leaves pool connections checked out with queries that
-		// never drain, so `pool.end()` (inside dataSource.destroy()) never resolves and the
-		// recovery loop is pinned at attempt 1. The monitor must bound destroy() and
-		// force-close the pool's sockets so recovery proceeds to initialize().
+		// When a frozen backend leaves `pool.end()` (inside `destroy()`) unable to drain,
+		// the monitor must bound `destroy()` and force-close the pool so recovery can rebuild it.
 		type StreamShape = { destroy: Mock };
 		type ClientShape = { release: Mock; connection: { stream: StreamShape } };
 		type PoolShape = {
@@ -653,11 +651,9 @@ describe('DbConnectionMonitor', () => {
 				postgresdb: mock<DatabaseConfig['postgresdb']>({ destroyTimeoutMs }),
 			});
 
-		// Builds a driver whose pool has one un-drained client, and a destroy() that only
-		// resolves once that client is BOTH released with an error AND has its socket
-		// destroyed — mirroring pg-pool, where neither step alone unblocks `pool.end()`
-		// for a frozen checked-out client. This makes the test red if either force-close
-		// step is dropped, rather than just asserting the calls happened.
+		// One un-drained client whose `destroy()` resolves only once it is both released
+		// with an error and has its socket destroyed, mirroring pg-pool where neither step
+		// alone unblocks `pool.end()`. So the test goes red if either step is dropped.
 		const setupFrozenPool = () => {
 			let resolveDestroy!: () => void;
 			const destroyPromise = new Promise<void>((resolve) => (resolveDestroy = resolve));
@@ -703,14 +699,14 @@ describe('DbConnectionMonitor', () => {
 			const { stream, client } = setupFrozenPool();
 			// @ts-expect-error private property
 			pgMonitor.connected = false;
-			// Fire the destroy-timeout race arm immediately so the timeout wins.
+			// Fire the timeout immediately so it wins the race against `destroy()`.
 			mockedSetTimeoutP.mockResolvedValueOnce(undefined);
 
 			// @ts-expect-error private property
 			await pgMonitor.recoverDataSource();
 
-			// Timeout fired -> clients force-released (with an error) and sockets destroyed ->
-			// the stuck destroy() resolved -> reinit ran.
+			// Timeout fired: the client was force-released and its socket destroyed, so the
+			// stuck `destroy()` resolved and recovery rebuilt the pool.
 			expect(client.release).toHaveBeenCalledTimes(1);
 			expect(client.release).toHaveBeenCalledWith(expect.any(Error));
 			expect(stream.destroy).toHaveBeenCalledTimes(1);
@@ -731,7 +727,7 @@ describe('DbConnectionMonitor', () => {
 				dbConnectionMetrics,
 			);
 			const { stream, client } = setupFrozenPool();
-			// destroy() resolves on its own this time, before the (never-resolving) timeout arm.
+			// `destroy()` resolves on its own here, before the never-resolving timeout.
 			dataSource.destroy.mockResolvedValue();
 			// @ts-expect-error private property
 			pgMonitor.connected = false;
@@ -755,8 +751,7 @@ describe('DbConnectionMonitor', () => {
 				dbConnectionMetrics,
 			);
 			const { stream, client } = setupFrozenPool();
-			// destroy never resolves and the timeout is disabled: recovery must stay parked
-			// in destroy() rather than force-closing or proceeding to initialize().
+			// `destroy()` never resolves and the timeout is disabled, so recovery stays parked.
 			dataSource.destroy.mockReturnValue(new Promise<void>(() => {}));
 
 			// @ts-expect-error private property

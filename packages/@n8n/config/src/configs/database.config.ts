@@ -84,14 +84,10 @@ class PostgresConfig {
 	connectionTimeoutMs: number = 20_000;
 
 	/**
-	 * Timeout in milliseconds for tearing down the Postgres connection pool during
-	 * connection recovery. `pool.end()` waits for every pooled connection to drain,
-	 * so a connection frozen against an unreachable backend (e.g. a SHUNNED proxy)
-	 * would otherwise block recovery forever. If teardown exceeds this window the
-	 * pool's sockets are force-closed so recovery can proceed to reconnect. Set to 0
-	 * to wait indefinitely (legacy behavior).
-	 *
-	 * Must be >= 0; a negative or non-numeric value falls back to the default.
+	 * Timeout for tearing down the Postgres pool during connection recovery.
+	 * `pool.end()` waits for every connection to drain, so one frozen against an
+	 * unreachable backend would block recovery forever; past this window the pool's
+	 * sockets are force-closed so recovery can reconnect. `0` waits indefinitely.
 	 */
 	@Env('DB_POSTGRESDB_DESTROY_TIMEOUT_MS', z.coerce.number().int().gte(0))
 	destroyTimeoutMs: number = 10 * Time.seconds.toMilliseconds;

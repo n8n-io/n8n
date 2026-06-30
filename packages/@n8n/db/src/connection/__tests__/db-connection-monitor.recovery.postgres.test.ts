@@ -10,23 +10,16 @@ import { mock } from 'vitest-mock-extended';
 import type { DbConnectionMetrics } from '../db-connection-metrics';
 import { DbConnectionMonitor } from '../db-connection-monitor';
 
-// Minimal view of the pg pool we reach into to check out a client that the pool
-// can never drain on its own — the production hang.
+// Minimal pg pool view: check out a client the pool can never drain on its own.
 type PgPool = { connect: () => Promise<unknown> };
 type PgDriver = { master: PgPool };
 
 /**
- * A pass-through TCP proxy whose established connections can be "frozen": once
- * frozen it stops relaying bytes and never answers the peer's FIN, so a graceful
- * socket close can never complete. This reproduces the production failure mode —
- * a pooled connection frozen against an unreachable backend (e.g. a SHUNNED proxy)
- * where TCP stays open but unresponsive.
- *
- * `allowHalfOpen: true` is essential: without it Node auto-answers the peer's FIN,
- * which would let a graceful close finish and mask the hang.
- *
- * `freezeExisting()` freezes only connections open at call time; connections opened
- * afterwards (the rebuilt pool) relay normally so recovery can reconnect.
+ * A pass-through TCP proxy that can "freeze" its open connections: it stops relaying
+ * and never answers the peer's FIN, so a graceful close can't complete, reproducing a
+ * pooled connection frozen against an unreachable backend. `allowHalfOpen` stops Node
+ * auto-answering the FIN (which would mask the hang). `freezeExisting()` only freezes
+ * current connections; later ones (the rebuilt pool) relay normally.
  */
 class FreezableProxy {
 	private server!: net.Server;
@@ -131,8 +124,7 @@ const buildDatabaseConfig = (destroyTimeoutMs = 0) =>
 		minRecoveryBackoffMs: 1_000,
 		maxRecoveryBackoffMs: 30_000,
 		connectionAcquisitionTimeoutMs: 30_000,
-		// `0` keeps the legacy unbounded teardown; tests that exercise the destroy
-		// timeout pass a positive value.
+		// `0` keeps the unbounded teardown; pass a positive value to exercise the timeout.
 		postgresdb: mock<DatabaseConfig['postgresdb']>({ destroyTimeoutMs }),
 	});
 
@@ -295,8 +287,8 @@ describe('DbConnectionMonitor recovery against real Postgres', () => {
 				return;
 			}
 
-			// Route the pool through a freezable proxy so we can reproduce the real failure
-			// mode: a checked-out connection frozen against an unreachable backend.
+			// Route the pool through a freezable proxy to reproduce a checked-out connection
+			// frozen against an unreachable backend.
 			const proxy = new FreezableProxy(connection.host, connection.port);
 			const proxyPort = await proxy.listen();
 			const dataSource = new DataSource({
@@ -322,12 +314,9 @@ describe('DbConnectionMonitor recovery against real Postgres', () => {
 			);
 			monitor.start();
 
-			// Check out a real pool client with no in-flight query, then freeze it. It stays
-			// in the pool's client list with a healthy-looking-but-dead socket, so
-			// `pool.end()` (which `destroy()` awaits) can never drain it: a graceful
-			// `client.end()` waits on a FIN that never comes. This is the state that pins the
-			// recovery loop at attempt 1. Recovery must force-close it — release it from the
-			// pool *and* hard-destroy the socket; neither alone unblocks `end()`.
+			// Check out a real pool client with no in-flight query, then freeze it: it stays
+			// in the pool and `destroy()`'s `pool.end()` can never drain it (a graceful close
+			// waits on a FIN that never comes), pinning recovery at attempt 1.
 			const pool = (dataSource.driver as unknown as PgDriver).master;
 			const leaked = await pool.connect();
 			expect(leaked).toBeDefined();
@@ -335,14 +324,12 @@ describe('DbConnectionMonitor recovery against real Postgres', () => {
 
 			try {
 				const start = Date.now();
-				// Without the destroy timeout this never resolves (destroy() hangs at attempt 1).
+				// Without the destroy timeout this never resolves (`destroy()` hangs at attempt 1).
 				await (monitor as unknown as MonitorInternals).recoverDataSource();
 				const elapsed = Date.now() - start;
 
-				// destroy() was bounded, the frozen client force-closed, and the pool rebuilt
-				// (through the proxy, which only froze the pre-existing connection). The lower
-				// bound proves recovery actually went through the timeout path rather than a
-				// destroy() that happened to drain on its own.
+				// `destroy()` was bounded and the frozen client force-closed, so the pool rebuilt.
+				// The lower bound proves recovery went through the timeout path, not a self-drain.
 				expect(elapsed).toBeGreaterThanOrEqual(destroyTimeoutMs);
 				expect(elapsed).toBeLessThan(destroyTimeoutMs + 15_000);
 				expect(dataSource.isInitialized).toBe(true);
