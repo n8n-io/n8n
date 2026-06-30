@@ -3,14 +3,17 @@ import type { FlattenedItem, TreeRootEmits, TreeRootProps } from 'reka-ui';
 
 import { IconName } from '@n8n/design-system/components';
 
-export interface TreeItem<T = unknown> {
+export type TreeItem = {
 	id: string;
 	label: string;
-	children?: TreeItem<T>[];
 	icon?: IconName;
+};
+
+export interface TreeBranch extends TreeItem {
+	children?: TreeBranch[];
 }
 
-export type TreeNodeContext<T extends TreeItem> = {
+export type TreeNodeContext<T extends TreeItem = TreeBranch> = {
 	item: FlattenedItem<T>;
 	handleToggle: () => void;
 	handleSelect: () => void;
@@ -23,20 +26,29 @@ export type TreeDefaultNodeProps = {
 };
 
 export type TreeGetNodeProps<
-	T extends TreeItem,
+	T extends TreeItem = TreeBranch,
 	P extends Record<string, unknown> = TreeDefaultNodeProps,
 > = (context: TreeNodeContext<T>) => P;
 
-export type TreeProps<T extends TreeItem> = Omit<TreeRootProps<T>, 'asChild' | 'as'> & {
-	items: T[];
+export type TreeProps = Omit<
+	TreeRootProps<TreeBranch, TreeBranch, boolean>,
+	'asChild' | 'as' | 'getKey' | 'getChildren' | 'modelValue' | 'defaultValue'
+> & {
+	items: TreeBranch[];
+	getKey?: (item: TreeBranch) => string;
+	getChildren?: (item: TreeBranch) => TreeBranch[] | undefined;
+	modelValue?: string[];
+	defaultValue?: string[];
 	showExpandArrow?: boolean;
 	node?: Component;
-	getNodeProps?: TreeGetNodeProps<T>;
+	getNodeProps?: TreeGetNodeProps;
 };
 
-export type TreeEmits = TreeRootEmits;
+export type TreeEmits = Omit<TreeRootEmits<TreeBranch, boolean>, 'update:modelValue'> & {
+	'update:modelValue': [value: string[]];
+};
 
-export type TreeDefaultSlotProps<T extends TreeItem> = TreeNodeContext<T>;
+export type TreeDefaultSlotProps = TreeNodeContext;
 
 type TreeNodeDefaultIconSlotProps = {
 	icon?: IconName;
@@ -70,8 +82,8 @@ export type TreeNodeDefaultSlots = {
 	toggle?: (props: TreeNodeDefaultToggleSlotProps) => unknown;
 };
 
-export type TreeSlots<T extends TreeItem> = {
-	default?: (props: TreeDefaultSlotProps<T>) => unknown;
+export type TreeSlots = {
+	default?: (props: TreeDefaultSlotProps) => unknown;
 	icon?: (props: TreeNodeDefaultIconSlotProps) => unknown;
 	label?: (props: TreeNodeDefaultLabelSlotProps) => unknown;
 	toggle?: (props: TreeNodeDefaultToggleSlotProps) => unknown;
