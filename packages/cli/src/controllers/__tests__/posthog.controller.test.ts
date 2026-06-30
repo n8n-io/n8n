@@ -1,5 +1,6 @@
 import type { AuthenticatedRequest } from '@n8n/db';
 import type { ClientRequest } from 'node:http';
+import { vi } from 'vitest';
 
 import { maskIp, setPostHogProxyHeaders } from '../posthog.controller';
 
@@ -19,9 +20,9 @@ describe('maskIp', () => {
 
 describe('setPostHogProxyHeaders', () => {
 	const setup = () => {
-		const removeHeader = jest.fn();
-		const setHeader = jest.fn();
-		const write = jest.fn();
+		const removeHeader = vi.fn();
+		const setHeader = vi.fn();
+		const write = vi.fn();
 		const proxyReq = { removeHeader, setHeader, write } as unknown as ClientRequest;
 		return { proxyReq, removeHeader, setHeader, write };
 	};
