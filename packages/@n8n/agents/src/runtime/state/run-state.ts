@@ -41,8 +41,10 @@ export class RunStateManager {
 		await this.store.save(runId, { ...state, status: 'suspended' });
 	}
 
-	// FIXME: This method is not atomic, two agents can resume the same run at the same time and one will overwrite the other.
-	/** Load a suspended run state for resumption and mark it running. Status is not updated in the store. */
+	/**
+	 * Load a suspended run state for resumption and mark it running locally.
+	 * Multi-process atomicity is delegated to the CheckpointStore implementation.
+	 */
 	async resume(runId: string): Promise<SerializableAgentState | undefined> {
 		const state = await this.store.load(runId);
 		if (!state) return undefined;
