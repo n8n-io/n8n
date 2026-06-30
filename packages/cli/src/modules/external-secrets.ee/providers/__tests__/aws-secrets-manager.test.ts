@@ -6,12 +6,8 @@ import { mock } from 'vitest-mock-extended';
 import type { Agent as HttpAgent } from 'node:http';
 import type { Agent as HttpsAgent } from 'node:https';
 
-import {
-	SecretsProviderConnectionError,
-	SecretsProviderTestError,
-	SecretsProviderUpdateError,
-} from '../../errors/secrets-provider-errors';
-import { AwsSecretsManager, type AwsSecretsManagerContext } from '../aws-secrets-manager';
+import { AwsSecretsManager } from '../aws-secrets-manager/aws-secrets-manager';
+import type { AwsSecretsManagerContext } from '../aws-secrets-manager/types';
 
 vi.mock('@aws-sdk/client-secrets-manager');
 
@@ -82,11 +78,27 @@ describe('AwsSecretsManager', () => {
 			expect(awsSecretsManager.state).toBe('error');
 			expect(logger.warn).toHaveBeenCalledWith(
 				'AWS Secrets Manager provider test failed',
-				expect.objectContaining({ error: expect.any(SecretsProviderTestError) }),
+				expect.objectContaining({
+					providerName: 'awsSecretsManager',
+					providerDisplayName: 'AWS Secrets Manager',
+					operation: 'test',
+					region,
+					authMethod: 'iamUser',
+					errorName: expect.any(String),
+					errorCode: expect.any(String),
+				}),
 			);
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Failed to connect AWS Secrets Manager provider',
-				expect.objectContaining({ error: expect.any(SecretsProviderConnectionError) }),
+				expect.objectContaining({
+					providerName: 'awsSecretsManager',
+					providerDisplayName: 'AWS Secrets Manager',
+					operation: 'connect',
+					region,
+					authMethod: 'iamUser',
+					errorName: expect.any(String),
+					errorCode: expect.any(String),
+				}),
 			);
 		});
 	});
@@ -231,7 +243,15 @@ describe('AwsSecretsManager', () => {
 
 		expect(logger.warn).toHaveBeenCalledWith(
 			'Failed to update AWS Secrets Manager provider secrets',
-			expect.objectContaining({ error: expect.any(SecretsProviderUpdateError) }),
+			expect.objectContaining({
+				providerName: 'awsSecretsManager',
+				providerDisplayName: 'AWS Secrets Manager',
+				operation: 'update',
+				region,
+				authMethod: 'iamUser',
+				errorName: expect.any(String),
+				errorCode: expect.any(String),
+			}),
 		);
 	});
 });

@@ -4,34 +4,12 @@ import { OutboundHttp } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
 import { type INodeProperties } from 'n8n-workflow';
 
-import { DOCS_HELP_NOTICE } from '../constants';
-import {
-	SecretsProviderConnectionError,
-	SecretsProviderInitializationError,
-	SecretsProviderTestError,
-	SecretsProviderUpdateError,
-} from '../errors/secrets-provider-errors';
-import { UnknownAuthTypeError } from '../errors/unknown-auth-type.error';
-import { SecretsProvider } from '../types';
-import type { SecretsProviderSettings } from '../types';
-
-type Secret = {
-	secretName: string;
-	secretValue: string;
-};
-
-export type AwsSecretsManagerContext = SecretsProviderSettings<
-	{
-		region: string;
-	} & (
-		| {
-				authMethod: 'iamUser';
-				accessKeyId: string;
-				secretAccessKey: string;
-		  }
-		| { authMethod: 'autoDetect' }
-	)
->;
+import { awsErrorContext, type AwsSecretsManagerLogContext } from './aws-error-context';
+import type { AwsSecretsManagerContext, AwsSecretsManagerSettings, Secret } from './types';
+import { DOCS_HELP_NOTICE } from '../../constants';
+import { secretsProviderLogContext } from '../../errors/secrets-provider-errors';
+import { UnknownAuthTypeError } from '../../errors/unknown-auth-type.error';
+import { SecretsProvider } from '../../types';
 
 export class AwsSecretsManager extends SecretsProvider {
 	name = 'awsSecretsManager';
@@ -106,6 +84,8 @@ export class AwsSecretsManager extends SecretsProvider {
 
 	private client: SecretsManager;
 
+	private settings: AwsSecretsManagerSettings;
+
 	constructor(
 		private readonly logger = Container.get(Logger),
 		private readonly outboundHttp = Container.get(OutboundHttp),
@@ -115,10 +95,12 @@ export class AwsSecretsManager extends SecretsProvider {
 	}
 
 	async init(context: AwsSecretsManagerContext) {
+		const { region, authMethod } = context.settings;
+		this.settings = { region, authMethod };
+
 		try {
 			this.assertAuthType(context);
 
-			const { region, authMethod } = context.settings;
 			const clientConfig: SecretsManagerClientConfig = { region };
 
 			if (authMethod === 'iamUser') {
@@ -140,12 +122,12 @@ export class AwsSecretsManager extends SecretsProvider {
 
 			this.logger.debug('AWS Secrets Manager provider initialized');
 		} catch (error) {
-			this.logger.warn('Failed to initialize AWS Secrets Manager provider', {
-				authMethod: context.settings.authMethod,
-				error: new SecretsProviderInitializationError(this.name, this.displayName, {
-					authMethod: context.settings.authMethod,
-				}),
-			});
+			this.logOperationFailure(
+				'Failed to initialize AWS Secrets Manager provider',
+				'initialize',
+				error,
+				authMethod ? { authMethod } : {},
+			);
 			throw error;
 		}
 	}
@@ -156,9 +138,7 @@ export class AwsSecretsManager extends SecretsProvider {
 			return [true];
 		} catch (e) {
 			const error = e instanceof Error ? e : new Error(`${e}`);
-			this.logger.warn('AWS Secrets Manager provider test failed', {
-				error: new SecretsProviderTestError(this.name, this.displayName),
-			});
+			this.logOperationFailure('AWS Secrets Manager provider test failed', 'test', error);
 			return [false, error.message];
 		}
 	}
@@ -173,9 +153,7 @@ export class AwsSecretsManager extends SecretsProvider {
 
 			this.logger.debug('AWS Secrets Manager provider connected');
 		} catch (error) {
-			this.logger.warn('Failed to connect AWS Secrets Manager provider', {
-				error: new SecretsProviderConnectionError(this.name, this.displayName),
-			});
+			this.logOperationFailure('Failed to connect AWS Secrets Manager provider', 'connect', error);
 			throw error;
 		}
 	}
@@ -196,9 +174,11 @@ export class AwsSecretsManager extends SecretsProvider {
 
 			this.logger.debug('AWS Secrets Manager provider secrets updated');
 		} catch (error) {
-			this.logger.warn('Failed to update AWS Secrets Manager provider secrets', {
-				error: new SecretsProviderUpdateError(this.name, this.displayName),
-			});
+			this.logOperationFailure(
+				'Failed to update AWS Secrets Manager provider secrets',
+				'update',
+				error,
+			);
 			throw error;
 		}
 	}
@@ -271,5 +251,25 @@ export class AwsSecretsManager extends SecretsProvider {
 		return Array.from({ length: Math.ceil(arr.length / size) }, (_, index) =>
 			arr.slice(index * size, (index + 1) * size),
 		);
+	}
+
+	private logOperationFailure(
+		message: string,
+		operation: 'initialize' | 'connect' | 'test' | 'update',
+		error: unknown,
+		extra: AwsSecretsManagerLogContext = {},
+	): void {
+		this.logger.warn(message, {
+			...secretsProviderLogContext({
+				providerName: this.name,
+				providerDisplayName: this.displayName,
+				operation,
+				errorName: error instanceof Error ? error.name : undefined,
+			}),
+			...awsErrorContext(error),
+			...(this.settings?.region ? { region: this.settings.region } : {}),
+			...(this.settings?.authMethod ? { authMethod: this.settings.authMethod } : {}),
+			...extra,
+		});
 	}
 }
