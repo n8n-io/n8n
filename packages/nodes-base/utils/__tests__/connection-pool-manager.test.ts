@@ -215,17 +215,18 @@ describe('getConnection', () => {
 
 		// ASSERT 1
 		if (abortController === undefined) {
-			fail("abortController haven't been initialized");
+			expect.fail("abortController haven't been initialized");
 		}
+		const controller = abortController;
 		expect(isIdle).toHaveBeenCalledWith(connectionType);
-		expect(abortController.signal.aborted).toBe(false);
+		expect(controller.signal.aborted).toBe(false);
 
 		// ACT 2
 		isPoolBusy = false;
 		vi.advanceTimersByTime(ttl + cleanUpInterval * 2);
 
 		// ASSERT 2
-		expect(abortController.signal.aborted).toBe(true);
+		expect(controller.signal.aborted).toBe(true);
 	});
 
 	test('throws OperationsError if the fallBackHandler aborts during connection initialization', async () => {
