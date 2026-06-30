@@ -8,7 +8,7 @@ vi.mock('jsonwebtoken', () => ({
 	default: { sign: vi.fn() },
 }));
 
-vi.mock('@n8n/utils', () => ({
+vi.mock('@n8n/utils/format-pem-block', () => ({
 	formatPemBlock: (key: string) => key,
 }));
 

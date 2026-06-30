@@ -1,4 +1,4 @@
-import { formatPemBlock } from '@n8n/utils';
+import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import { LOCALHOST } from '@utils/constants';
 import mysql2 from 'mysql2/promise';
 import type {

@@ -1,6 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { Brackets, DataSource, Repository } from '@n8n/typeorm';
+import { Brackets, DataSource, In, Repository } from '@n8n/typeorm';
 import type { EntityManager } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 
@@ -17,6 +17,18 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 		private readonly globalConfig: GlobalConfig,
 	) {
 		super(WorkflowPublicationOutbox, dataSource.manager);
+	}
+
+	/**
+	 * The in-flight (pending or in_progress) publication for a workflow, or null.
+	 * In-progress is preferred when both exist.
+	 */
+	async findInFlightByWorkflowId(workflowId: string): Promise<WorkflowPublicationOutbox | null> {
+		const inFlight = await this.findBy({
+			workflowId,
+			status: In([Status.InProgress, Status.Pending]),
+		});
+		return inFlight.find((record) => record.status === Status.InProgress) ?? inFlight[0] ?? null;
 	}
 
 	/**
