@@ -4,7 +4,7 @@ import type { AgentsConfig } from '@n8n/config';
 import type { ModuleRegistry } from '@n8n/backend-common';
 import type { InstanceSettings } from 'n8n-core';
 import { UserError } from 'n8n-workflow';
-import { mock } from 'vitest-mock-extended';
+import { mock } from 'jest-mock-extended';
 
 import type { AgentCheckpoint } from '../../entities/agent-checkpoint.entity';
 import type { AgentCheckpointRepository } from '../../repositories/agent-checkpoint.repository';
@@ -31,7 +31,7 @@ function makeService() {
 		repository,
 		mockLogger(),
 		mock<AgentsConfig>({ checkpointTtlSeconds: 60 }),
-		mock<ModuleRegistry>({ isActive: vi.fn().mockReturnValue(true) }),
+		mock<ModuleRegistry>({ isActive: jest.fn().mockReturnValue(true) }),
 	);
 
 	return { service, repository };
