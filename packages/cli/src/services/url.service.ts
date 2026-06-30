@@ -48,6 +48,6 @@ export class UrlService {
 
 	/** Remove leading and trailing double quotes from a URL. */
 	private trimQuotes(url?: string) {
-		return url?.replace(/^["]+|["]+$/g, '') ?? '';
+		return typeof url === 'string' ? url.replace(/^["]+|["]+$/g, '') : '';
 	}
 }
