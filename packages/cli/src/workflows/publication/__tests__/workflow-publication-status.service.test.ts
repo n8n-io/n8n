@@ -4,7 +4,7 @@ import type {
 	WorkflowPublicationTriggerStatus,
 	WorkflowPublicationTriggerStatusRepository,
 } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
 
@@ -17,7 +17,7 @@ describe('WorkflowPublicationStatusService', () => {
 	const WORKFLOW_ID = 'wf-1';
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	function makeOutbox(
@@ -177,6 +177,21 @@ describe('WorkflowPublicationStatusService', () => {
 			const result = await service.getStatus(WORKFLOW_ID);
 
 			expect(result.status).toBe('failed');
+			expect(result.liveVersionId).toBeNull();
+			expect(result.pendingVersionId).toBeNull();
+		});
+	});
+
+	describe('unpublished (rows cleared; latest outbox completed)', () => {
+		it('returns not_published with null versions', async () => {
+			outboxRepository.findLatestByWorkflowId.mockResolvedValue(
+				makeOutbox({ status: 'completed', publishedVersionId: 'v-2' }),
+			);
+			triggerStatusRepository.findByWorkflowId.mockResolvedValue([]);
+
+			const result = await service.getStatus(WORKFLOW_ID);
+
+			expect(result.status).toBe('not_published');
 			expect(result.liveVersionId).toBeNull();
 			expect(result.pendingVersionId).toBeNull();
 		});

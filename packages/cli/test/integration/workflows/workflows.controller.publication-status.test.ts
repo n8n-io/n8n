@@ -1,4 +1,5 @@
 import { createWorkflow, createWorkflowHistory, testDb } from '@n8n/backend-test-utils';
+import { WorkflowsConfig } from '@n8n/config';
 import { WorkflowPublicationTriggerStatusRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { nanoid } from 'nanoid';
@@ -9,6 +10,18 @@ import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
 const testServer = utils.setupTestServer({ endpointGroups: ['workflows'] });
+
+// The endpoint is gated behind the publication service flag; enable it for the suite.
+let originalUseWorkflowPublicationService: boolean;
+beforeAll(() => {
+	const workflowsConfig = Container.get(WorkflowsConfig);
+	originalUseWorkflowPublicationService = workflowsConfig.useWorkflowPublicationService;
+	workflowsConfig.useWorkflowPublicationService = true;
+});
+afterAll(() => {
+	Container.get(WorkflowsConfig).useWorkflowPublicationService =
+		originalUseWorkflowPublicationService;
+});
 
 beforeEach(async () => {
 	await testDb.truncate([
@@ -97,5 +110,16 @@ describe('GET /workflows/:workflowId/publication-status', () => {
 		const nonExistentId = nanoid();
 
 		await ownerAgent.get(`/workflows/${nonExistentId}/publication-status`).expect(404);
+	});
+
+	test('returns 404 when the publication service is disabled', async () => {
+		const workflow = await createWorkflow(undefined, owner);
+		const workflowsConfig = Container.get(WorkflowsConfig);
+		workflowsConfig.useWorkflowPublicationService = false;
+		try {
+			await ownerAgent.get(`/workflows/${workflow.id}/publication-status`).expect(404);
+		} finally {
+			workflowsConfig.useWorkflowPublicationService = true;
+		}
 	});
 });

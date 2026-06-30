@@ -668,6 +668,13 @@ export class WorkflowsController {
 		_res: unknown,
 		@Param('workflowId') workflowId: string,
 	): Promise<WorkflowPublicationStatus> {
+		// The publication tables this reads are only populated when the publication
+		// service is enabled; otherwise the legacy path runs and the status would be
+		// misleading. Treat the route as absent when the feature is off.
+		if (!this.globalConfig.workflows.useWorkflowPublicationService) {
+			throw new NotFoundError('Workflow publication status is not available');
+		}
+
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, req.user, [
 			'workflow:read',
 		]);

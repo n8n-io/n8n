@@ -1,10 +1,11 @@
-import { Service } from '@n8n/di';
 import type { WorkflowPublicationStatus } from '@n8n/api-types';
 import {
+	type WorkflowPublicationOutbox,
 	WorkflowPublicationOutboxRepository,
-	WorkflowPublicationOutboxStatus,
+	type WorkflowPublicationTriggerStatus,
 	WorkflowPublicationTriggerStatusRepository,
 } from '@n8n/db';
+import { Service } from '@n8n/di';
 
 @Service()
 export class WorkflowPublicationStatusService {
@@ -14,8 +15,10 @@ export class WorkflowPublicationStatusService {
 	) {}
 
 	async getStatus(workflowId: string): Promise<WorkflowPublicationStatus> {
-		const latest = await this.outboxRepository.findLatestByWorkflowId(workflowId);
-		const rows = await this.triggerStatusRepository.findByWorkflowId(workflowId);
+		const [latest, rows] = await Promise.all([
+			this.outboxRepository.findLatestByWorkflowId(workflowId),
+			this.triggerStatusRepository.findByWorkflowId(workflowId),
+		]);
 
 		const triggers = rows.map((r) => ({
 			nodeId: r.nodeId,
@@ -36,8 +39,8 @@ export class WorkflowPublicationStatusService {
 
 	private deriveStatus(
 		isPublishing: boolean,
-		rows: Array<{ status: 'activated' | 'failed' }>,
-		latest: { status: WorkflowPublicationOutboxStatus } | null,
+		rows: WorkflowPublicationTriggerStatus[],
+		latest: WorkflowPublicationOutbox | null,
 	): WorkflowPublicationStatus['status'] {
 		if (isPublishing) return 'in_progress';
 		if (rows.length > 0) {
