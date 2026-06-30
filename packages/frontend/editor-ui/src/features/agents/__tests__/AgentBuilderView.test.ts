@@ -1077,6 +1077,73 @@ describe('AgentBuilderView — three-column shell', () => {
 			name: 'meeting_summary',
 			description: 'Use when extracting decisions from meeting notes',
 			instructions: 'Extract decisions, risks, and action items.',
+			allowedTools: ['load_workflow'],
+			references: [
+				{
+					path: 'references/guide.md',
+					content: '# Guide',
+				},
+			],
+		};
+		intendedConfig = {
+			name: 'Agent One',
+			instructions: 'You are a helpful assistant.',
+			tools: [{ type: 'workflow', workflow: 'load_workflow' }],
+			skills: [{ type: 'skill', id: 'summarize_notes' }],
+		};
+		mockConfig.value = withDefaultLlm(intendedConfig);
+		getAgentMock.mockResolvedValueOnce(
+			makeAgentResponse({
+				skills: {
+					summarize_notes: skill,
+				},
+			}),
+		);
+		updateAgentSkillMock.mockResolvedValueOnce({
+			id: 'summarize_notes',
+			skill: updatedSkill,
+			versionId: 'v2',
+		});
+
+		const wrapper = await renderView();
+		wrapper
+			.findComponent({ name: 'AgentCapabilitiesSection' })
+			.vm.$emit('open-skill', 'summarize_notes');
+		await nextTick();
+
+		const modalData = openModalWithDataMock.mock.calls[0][0].data as {
+			onConfirm: (payload: { id: string; skill: typeof updatedSkill }) => void;
+		};
+		modalData.onConfirm({ id: 'summarize_notes', skill: updatedSkill });
+		await nextTick();
+
+		expect(
+			(wrapper.vm as unknown as { agent: { skills: Record<string, unknown> } }).agent.skills,
+		).toEqual({
+			summarize_notes: updatedSkill,
+		});
+		expect(wrapper.findComponent({ name: 'AgentCapabilitiesSection' }).props('skills')).toEqual([
+			{ id: 'summarize_notes', skill: updatedSkill },
+		]);
+
+		await (wrapper.vm as unknown as { flushAutosave: () => Promise<void> }).flushAutosave();
+		await nextTick();
+
+		expect(updateAgentSkillMock).toHaveBeenCalledWith(
+			expect.anything(),
+			'p1',
+			'a1',
+			'summarize_notes',
+			updatedSkill,
+		);
+	});
+
+	it('omits allowed tools before saving a skill when none are attached', async () => {
+		const skill = {
+			name: 'summarize_notes',
+			description: 'Use when summarizing notes',
+			instructions: 'Read the notes and produce a concise summary.',
+			allowedTools: ['missing_tool'],
 		};
 		intendedConfig = {
 			name: 'Agent One',
@@ -1091,28 +1158,35 @@ describe('AgentBuilderView — three-column shell', () => {
 				},
 			}),
 		);
+		updateAgentSkillMock.mockResolvedValueOnce({
+			id: 'summarize_notes',
+			skill: {
+				name: skill.name,
+				description: skill.description,
+				instructions: skill.instructions,
+			},
+			versionId: 'v2',
+		});
 
 		const wrapper = await renderView();
 		wrapper
 			.findComponent({ name: 'AgentCapabilitiesSection' })
 			.vm.$emit('open-skill', 'summarize_notes');
 		await nextTick();
+		openModalWithDataMock.mock.calls[0][0].data.onConfirm({ id: 'summarize_notes', skill });
+		await (wrapper.vm as unknown as { flushAutosave: () => Promise<void> }).flushAutosave();
 
-		const modalData = openModalWithDataMock.mock.calls[0][0].data as {
-			onConfirm: (payload: { id: string; skill: typeof updatedSkill }) => void;
-		};
-		modalData.onConfirm({ id: 'summarize_notes', skill: updatedSkill });
-		await nextTick();
-
-		expect(updateAgentSkillMock).not.toHaveBeenCalled();
-		expect(
-			(wrapper.vm as unknown as { agent: { skills: Record<string, unknown> } }).agent.skills,
-		).toEqual({
-			summarize_notes: updatedSkill,
-		});
-		expect(wrapper.findComponent({ name: 'AgentCapabilitiesSection' }).props('skills')).toEqual([
-			{ id: 'summarize_notes', skill: updatedSkill },
-		]);
+		expect(updateAgentSkillMock).toHaveBeenCalledWith(
+			expect.anything(),
+			'p1',
+			'a1',
+			'summarize_notes',
+			{
+				name: skill.name,
+				description: skill.description,
+				instructions: skill.instructions,
+			},
+		);
 	});
 
 	it('shows the loading spinner while initialize() is in flight and hides it after', async () => {

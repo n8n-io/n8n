@@ -1,4 +1,4 @@
-import type { IWorkflowSettings, WorkflowFEMeta } from 'n8n-workflow';
+import type { IConnections, IWorkflowSettings, WorkflowFEMeta } from 'n8n-workflow';
 import z from 'zod';
 
 export const nodeSchema = z
@@ -7,6 +7,10 @@ export const nodeSchema = z
 		type: z.string(),
 	})
 	.passthrough();
+
+export const connectionsSchema = z
+	.custom<IConnections>((_value): _value is IConnections => true)
+	.describe('The node connections, keyed by source node name');
 
 export const tagSchema = z.object({ id: z.string(), name: z.string() }).passthrough();
 
@@ -70,7 +74,7 @@ export const successMessageOutputSchema = {
 	message: z.string().describe('Description of the result'),
 } satisfies z.ZodRawShape;
 
-const nodeGroupSchema = z
+export const nodeGroupSchema = z
 	.object({
 		id: z.string(),
 		name: z.string(),

@@ -4,6 +4,7 @@ import { ChatPayload } from '@n8n/ai-workflow-builder/dist/workflow-builder-agen
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
+import { BUILTIN_NODES_PACKAGES } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
 import * as fs from 'fs';
@@ -186,7 +187,7 @@ export class WorkflowBuilderService {
 
 	private resolveBuiltinNodeDefinitionDirs(): string[] {
 		const dirs: string[] = [];
-		for (const packageId of ['n8n-nodes-base', '@n8n/n8n-nodes-langchain']) {
+		for (const packageId of BUILTIN_NODES_PACKAGES) {
 			try {
 				const packageJsonPath = require.resolve(`${packageId}/package.json`);
 				const distDir = path.dirname(packageJsonPath);

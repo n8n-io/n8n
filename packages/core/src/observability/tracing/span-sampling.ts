@@ -19,6 +19,35 @@ const POLL_TRIGGER_SAMPLE_RATE = 0.001;
 /** Fallback slow-span threshold (ms) when a caller doesn't configure one. */
 export const DEFAULT_SLOW_SPAN_THRESHOLD_MS = 1000;
 
+/**
+ * Skipper request paths with no tracing signal. Sentry's `ignoreStaticAssets`
+ * already drops `.js/.css/…` but misses source maps.
+ */
+const NOISE_INCOMING_PATHS = [
+	/^\/assets\//,
+	/\.map$/,
+	/^\/healthz(\/|$)/, // liveness/readiness probes (default endpoint)
+	/^\/rest\/ph(\/|$)/,
+	/^\/rest\/telemetry\/proxy\//,
+];
+
+const TELEMETRY_HOSTNAME = 'telemetry.n8n.io';
+
+/** Whether an incoming request path should be skipped before a server span is created. */
+export function shouldIgnoreIncomingRequest(urlPath: string): boolean {
+	const path = urlPath.split('?')[0];
+	return NOISE_INCOMING_PATHS.some((re) => re.test(path));
+}
+
+/** Outbound telemetry batch calls carry no tracing signal. */
+export function shouldIgnoreOutgoingRequest(url: string): boolean {
+	try {
+		return new URL(url).hostname === TELEMETRY_HOSTNAME;
+	} catch {
+		return false;
+	}
+}
+
 /** A span errored unless Sentry explicitly marked it ok. */
 function isErrored(status: SpanJSON['status']): boolean {
 	return status !== undefined && status !== 'ok';
@@ -54,14 +83,21 @@ function reparentChildSpans(
 }
 
 /**
- * Filters noisy auto-instrumentation child spans before Sentry sends a transaction:
- * - Express middleware/router/handler spans wholesale.
- * - Fast, non-errored `db`/`http.client` spans (below `slowSpanThresholdMs`).
+ * Filters noise before Sentry sends a transaction:
+ * - Drops transactions rooted on a `db` operation wholesale (DB queries/pool connects
+ *   that became roots outside any request/job span — high volume, no signal).
+ * - Express middleware/router/handler child spans wholesale.
+ * - Fast, non-errored `db`/`http.client` child spans (below `slowSpanThresholdMs`).
  *
- * Kept descendants of dropped spans are reparented.
+ * Kept descendants of dropped child spans are reparented.
  */
 export function buildBeforeSendTransaction(slowSpanThresholdMs: number) {
-	return (event: TransactionEvent): TransactionEvent => {
+	return (event: TransactionEvent): TransactionEvent | null => {
+		// DB operations (queries, pool connects) get op `db`. A `db`-rooted transaction
+		// ran outside any request/job span — high volume, no signal. Child db spans under
+		// real transactions keep a non-`db` root op, so they are untouched.
+		if (event.contexts?.trace?.op === 'db') return null;
+
 		if (event.spans) {
 			const spans = event.spans;
 			event.spans = spans.filter((span) => {

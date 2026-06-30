@@ -21,7 +21,9 @@ import {
 	getAutoCommitSettings,
 	configureDataEmitter,
 	type KafkaTriggerOptions,
+	type KafkaCredentials,
 	getSchemaRegistryOptions,
+	resolveKafkaSsl,
 	setSchemaRegistry,
 } from '../utils';
 
@@ -37,6 +39,87 @@ vi.mock('n8n-workflow', async () => {
 const mockedSleep = vi.mocked(sleep);
 
 describe('Kafka Utils', () => {
+	describe('resolveKafkaSsl', () => {
+		const CERT_PEM = '-----BEGIN CERTIFICATE-----\nMIIBclientcertbody==\n-----END CERTIFICATE-----';
+		const KEY_PEM = '-----BEGIN PRIVATE KEY-----\nMIIBclientkeybody==\n-----END PRIVATE KEY-----';
+		const CA_PEM = '-----BEGIN CERTIFICATE-----\nMIIBcacertbody==\n-----END CERTIFICATE-----';
+
+		const creds = (overrides: Partial<KafkaCredentials> = {}): KafkaCredentials => ({
+			clientId: 'test',
+			brokers: 'localhost:9092',
+			ssl: true,
+			authentication: false,
+			...overrides,
+		});
+
+		type SslObject = Exclude<ReturnType<typeof resolveKafkaSsl>, boolean>;
+
+		it('returns false when SSL is disabled, even if cert material is present', () => {
+			expect(resolveKafkaSsl(creds({ ssl: false, cert: CERT_PEM, key: KEY_PEM }))).toBe(false);
+		});
+
+		it('returns plain boolean true for SSL-only credentials (legacy, no mTLS material)', () => {
+			expect(resolveKafkaSsl(creds())).toBe(true);
+		});
+
+		it('treats whitespace-only cert/key/CA as empty and stays on boolean SSL', () => {
+			expect(resolveKafkaSsl(creds({ cert: '   ', key: '\n', ca: ' ' }))).toBe(true);
+		});
+
+		it('builds cert + key buffers when a client certificate and key are provided', () => {
+			const ssl = resolveKafkaSsl(creds({ cert: CERT_PEM, key: KEY_PEM })) as SslObject;
+			expect(Buffer.isBuffer(ssl.cert)).toBe(true);
+			expect(Buffer.isBuffer(ssl.key)).toBe(true);
+			expect((ssl.cert as Buffer).toString()).toContain('BEGIN CERTIFICATE');
+			expect((ssl.key as Buffer).toString()).toContain('BEGIN PRIVATE KEY');
+			expect(ssl.ca).toBeUndefined();
+			expect(ssl.rejectUnauthorized).toBeUndefined();
+		});
+
+		it('wraps a CA certificate in an array', () => {
+			const ssl = resolveKafkaSsl(creds({ ca: CA_PEM })) as SslObject;
+			expect(Array.isArray(ssl.ca)).toBe(true);
+			expect(Buffer.isBuffer((ssl.ca as Buffer[])[0])).toBe(true);
+			expect(ssl.cert).toBeUndefined();
+			expect(ssl.key).toBeUndefined();
+		});
+
+		it('maps cert, key, CA and the insecure toggle together', () => {
+			const ssl = resolveKafkaSsl(
+				creds({ cert: CERT_PEM, key: KEY_PEM, ca: CA_PEM, allowUnauthorizedCerts: true }),
+			) as SslObject;
+			expect(Buffer.isBuffer(ssl.cert)).toBe(true);
+			expect(Buffer.isBuffer(ssl.key)).toBe(true);
+			expect(Array.isArray(ssl.ca)).toBe(true);
+			expect(ssl.rejectUnauthorized).toBe(false);
+		});
+
+		it('sets rejectUnauthorized:false for the insecure toggle on its own', () => {
+			expect(resolveKafkaSsl(creds({ allowUnauthorizedCerts: true }))).toEqual({
+				rejectUnauthorized: false,
+			});
+		});
+
+		it('throws when a client certificate is provided without its key', () => {
+			expect(() => resolveKafkaSsl(creds({ cert: CERT_PEM }))).toThrow('Kafka mTLS needs both');
+		});
+
+		it('throws when a client key is provided without its certificate', () => {
+			expect(() => resolveKafkaSsl(creds({ key: KEY_PEM }))).toThrow('Kafka mTLS needs both');
+		});
+
+		it('throws on a value that is not PEM at all', () => {
+			expect(() => resolveKafkaSsl(creds({ ca: 'not-a-pem' }))).toThrow('not a valid PEM block');
+		});
+
+		it('throws on a truncated PEM that has BEGIN but no matching END', () => {
+			const truncated = '-----BEGIN CERTIFICATE-----\nMIIBtruncatedbody==';
+			expect(() => resolveKafkaSsl(creds({ cert: truncated, key: KEY_PEM }))).toThrow(
+				'not a valid PEM block',
+			);
+		});
+	});
+
 	describe('getAutoCommitSettings', () => {
 		it('should return autoCommit true and eachBatchAutoResolve false for version 1.1', () => {
 			const options: KafkaTriggerOptions = {};

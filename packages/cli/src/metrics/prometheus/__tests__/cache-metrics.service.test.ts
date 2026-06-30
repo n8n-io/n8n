@@ -1,13 +1,14 @@
+import type { Mock } from 'vitest';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { PrometheusMetricsConfig } from '@n8n/config';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import promClient from 'prom-client';
 
 import { PrometheusCacheMetricsService } from '../cache-metrics.service';
 
 import type { CacheService } from '@/services/cache/cache.service';
 
-jest.mock('prom-client');
+vi.mock('prom-client');
 
 describe('PrometheusCacheMetricsService', () => {
 	const config = mockInstance(PrometheusMetricsConfig, {
@@ -16,17 +17,17 @@ describe('PrometheusCacheMetricsService', () => {
 	});
 	const cacheService = mock<CacheService>();
 	let service: PrometheusCacheMetricsService;
-	let mockCounterInc: jest.Mock;
+	let mockCounterInc: Mock;
 
 	beforeEach(() => {
 		Object.assign(config, { prefix: 'n8n_', includeCacheMetrics: true });
 		service = new PrometheusCacheMetricsService(cacheService, config);
-		mockCounterInc = jest.fn();
+		mockCounterInc = vi.fn();
 		promClient.Counter.prototype.inc = mockCounterInc;
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	function getCacheCall(metricName: string): (() => void) | undefined {

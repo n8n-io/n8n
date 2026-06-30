@@ -1,9 +1,10 @@
 // Reconstruct a conversation seed from a LangSmith trace at run time: pull the
-// thread's runs, rebuild the message log, split at the last user turn (before =
-// seed, last = live), and reconstruct each seed workflow from its source at the
-// build boundary. Transient: traces retain ~14 days.
+// thread's runs, rebuild the message log, split at the live turn (the last user
+// turn, or one pinned by liveTurnRunId — before = seed, that turn = live), and
+// reconstruct each seed workflow from its source at the build boundary. Transient:
+// traces retain ~14 days.
 
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 import { Client } from 'langsmith';
 import type { Run } from 'langsmith/schemas';
 
@@ -61,26 +62,63 @@ export const IGNORED_WORKSPACE_TOOLS: readonly string[] = [
 // The source thread may live in a different workspace than the eval writes to
 // (e.g. seed from prod, trace to staging). A PAT spans workspaces, so we
 // enumerate them and find the one holding the thread; reads are read-only.
+//
+// Reads are also dual-tenant: during the US→EU migration a US-sourced case
+// carries `seedThread.endpoint` = the US host, while results always write to the
+// home (EU) tenant elsewhere. `configFor` maps an endpoint → host + key via env.
 
-/** Ambient LangSmith host + key (the eval's own), used to enumerate workspaces. */
-function ambientLangSmithConfig(): { apiUrl: string; apiKey: string } {
-	const raw =
-		process.env.LANGSMITH_ENDPOINT ??
-		process.env.LANGCHAIN_ENDPOINT ??
-		'https://api.smith.langchain.com';
-	const host = raw.replace(/\/$/, '');
-	const apiUrl = host.endsWith('/api/v1') ? host : `${host}/api/v1`;
-	const apiKey = process.env.LANGSMITH_API_KEY ?? process.env.LANGCHAIN_API_KEY ?? '';
-	return { apiUrl, apiKey };
+/** The langsmith SDK's default endpoint is the US tenant, so an unset
+ *  LANGSMITH_ENDPOINT silently means US. The eval env sets it to the home host. */
+const US_DEFAULT_ENDPOINT = 'https://api.smith.langchain.com';
+
+/** Bare host the langsmith Client wants as `apiUrl` (it appends paths itself):
+ *  a trailing slash and an optional `/api/v1` suffix stripped. */
+function bareHost(raw: string): string {
+	return raw.replace(/\/+$/, '').replace(/\/api\/v1$/, '');
 }
 
-/** Workspaces the ambient key can access. Returns [] on any failure so the
+/**
+ * Resolve the LangSmith host + key to READ a seed trace from, by endpoint.
+ * Omitted ⇒ the eval's home tenant (its own env), so existing cases are
+ * unchanged. The home host uses the home key; the secondary (US) host uses
+ * LANGSMITH_API_KEY_US. A non-home host with no configured key THROWS rather
+ * than silently read with the home key — which would query the wrong tenant and
+ * report the thread as missing. Writes never go through here; they stay home.
+ */
+export function configFor(endpoint?: string): { apiUrl: string; apiKey: string } {
+	const homeHost = bareHost(
+		process.env.LANGSMITH_ENDPOINT ?? process.env.LANGCHAIN_ENDPOINT ?? US_DEFAULT_ENDPOINT,
+	);
+	const homeKey = process.env.LANGSMITH_API_KEY ?? process.env.LANGCHAIN_API_KEY ?? '';
+	if (!endpoint) return { apiUrl: homeHost, apiKey: homeKey };
+
+	const host = bareHost(endpoint);
+	if (host === homeHost) return { apiUrl: host, apiKey: homeKey };
+
+	const usHost = bareHost(process.env.LANGSMITH_ENDPOINT_US ?? US_DEFAULT_ENDPOINT);
+	if (host === usHost) {
+		const usKey = process.env.LANGSMITH_API_KEY_US ?? '';
+		if (!usKey) {
+			throw new Error(
+				`seedThread.endpoint "${endpoint}" is the secondary (US) tenant but LANGSMITH_API_KEY_US is not set — refusing to read it with the home key. Set LANGSMITH_API_KEY_US.`,
+			);
+		}
+		return { apiUrl: usHost, apiKey: usKey };
+	}
+	throw new Error(
+		`seedThread.endpoint "${endpoint}" matches no configured LangSmith tenant (home: ${homeHost}; secondary: ${usHost}). Set LANGSMITH_ENDPOINT_US + LANGSMITH_API_KEY_US, or omit endpoint to use the home tenant.`,
+	);
+}
+
+/** Workspaces a key can access on a host. Returns [] on any failure so the
  *  caller falls back to the key's default workspace. */
-async function listAccessibleWorkspaces(): Promise<Array<{ id: string; name: string }>> {
-	const { apiUrl, apiKey } = ambientLangSmithConfig();
+async function listAccessibleWorkspaces(
+	apiUrl: string,
+	apiKey: string,
+): Promise<Array<{ id: string; name: string }>> {
 	if (!apiKey) return [];
 	try {
-		const res = await fetch(`${apiUrl}/workspaces`, { headers: { 'x-api-key': apiKey } });
+		const res = await fetch(`${apiUrl}/api/v1/workspaces`, { headers: { 'x-api-key': apiKey } });
 		if (!res.ok) return [];
 		const data: unknown = await res.json();
 		if (!Array.isArray(data)) return [];
@@ -103,11 +141,17 @@ export interface SeedDiscoveryDeps {
 	ambientClient: () => Client;
 }
 
-const realDiscoveryDeps: SeedDiscoveryDeps = {
-	listWorkspaces: listAccessibleWorkspaces,
-	clientForWorkspace: (workspaceId) => new Client({ workspaceId }),
-	ambientClient: () => new Client(),
-};
+/** Build discovery deps bound to one tenant (host + key resolved from the seed
+ *  ref's endpoint). All three seams target that host, so cross-workspace
+ *  discovery stays within the chosen tenant. */
+function discoveryDepsFor(endpoint?: string): SeedDiscoveryDeps {
+	const { apiUrl, apiKey } = configFor(endpoint);
+	return {
+		listWorkspaces: async () => await listAccessibleWorkspaces(apiUrl, apiKey),
+		clientForWorkspace: (workspaceId) => new Client({ apiUrl, apiKey, workspaceId }),
+		ambientClient: () => new Client({ apiUrl, apiKey }),
+	};
+}
 
 /** Thrown when a thread has no runs in the queried (workspace, project) — used
  *  as control flow during discovery to advance to the next workspace. */
@@ -117,6 +161,14 @@ export interface SeedThreadRef {
 	threadId: string;
 	/** Override the LangSmith project to read the source trace from. */
 	project?: string;
+	/** LangSmith host the source trace lives on. Omit ⇒ the eval's home tenant.
+	 *  Maps host→key via env (home key for the home host, LANGSMITH_API_KEY_US for
+	 *  the US host); an unknown/unkeyed host throws rather than read the wrong tenant. */
+	endpoint?: string;
+	/** Pin which user turn is sent live (its LangSmith run id); everything before it
+	 *  is seeded. Omit ⇒ the thread's last user turn (default). LangTracer's live-turn
+	 *  picker exports this. */
+	liveTurnRunId?: string;
 }
 
 export interface ReconstructedSeed {
@@ -205,17 +257,19 @@ interface ToolCallBlock {
  * `client` to bypass discovery (tests).
  *
  * Throws when the thread isn't found in any accessible workspace (trace aged out
- * or wrong project), or when it has fewer than two user turns.
+ * or wrong project), or when the live turn has no prior turn to seed (a lone user
+ * turn, or a `liveTurnRunId` pin on the first turn).
  */
 export async function reconstructSeedFromThread(
 	ref: SeedThreadRef,
 	client?: Client,
-	deps: SeedDiscoveryDeps = realDiscoveryDeps,
+	deps?: SeedDiscoveryDeps,
 ): Promise<ReconstructedSeed> {
 	const project = ref.project ?? DEFAULT_SOURCE_PROJECT;
-	// An explicit client (tests) reads that one source; otherwise auto-discover.
+	// An explicit client (tests) reads that one source; otherwise auto-discover
+	// within the ref's tenant. Explicit deps (tests) override tenant resolution.
 	if (client) return await reconstructWithClient(ref, client, project);
-	return await discoverAndReconstruct(ref, project, deps);
+	return await discoverAndReconstruct(ref, project, deps ?? discoveryDepsFor(ref.endpoint));
 }
 
 /** Find the workspace holding the thread and reconstruct from it. Falls back to
@@ -281,15 +335,30 @@ async function reconstructWithClient(
 	const rootRuns = runs.filter((r) => r.run_type === 'chain' && !r.parent_run_id).sort(byStartTime);
 	const toolRuns = runs.filter((r) => r.run_type === 'tool').sort(byStartTime);
 
-	// Split point: the last genuine user turn is sent live; everything strictly
-	// before it is the seed.
+	// Split point: the live turn is sent live; everything strictly before it is the
+	// seed. Default = the last user turn; a `liveTurnRunId` pin (LangTracer's live-turn
+	// picker) moves it earlier, discarding the real turns at/after it.
 	const userTurns = rootRuns.filter((r) => userMessageOf(r) !== undefined);
-	if (userTurns.length < 2) {
+	let liveIndex = userTurns.length - 1; // default: last user turn (unchanged behavior)
+	if (ref.liveTurnRunId) {
+		const idx = userTurns.findIndex((r) => r.id === ref.liveTurnRunId);
+		if (idx === -1) {
+			console.warn(
+				`[seed] Thread ${ref.threadId}: pinned liveTurnRunId ${ref.liveTurnRunId} not found among ` +
+					`${userTurns.length} user turn(s) — falling back to the last user turn. (LangTracer pins the ` +
+					"agent_role=message_turn root id; verify it matches the name==='turn' root id.)",
+			);
+		} else {
+			liveIndex = idx;
+		}
+	}
+	if (liveIndex < 1) {
 		throw new Error(
-			`Thread ${ref.threadId} has ${userTurns.length} user turn(s) — need ≥2 to seed (one prior + one live). Use a plain conversation case instead.`,
+			`Thread ${ref.threadId}: the live turn is the first/only user turn — no prior turn to seed. ` +
+				'Pin a later turn, or use a plain conversation case.',
 		);
 	}
-	const liveTurnRun = userTurns[userTurns.length - 1];
+	const liveTurnRun = userTurns[liveIndex];
 	const boundaryMs = new Date(liveTurnRun.start_time).getTime();
 	const liveTurn = userMessageOf(liveTurnRun)!;
 
@@ -456,10 +525,11 @@ function applyFileMutation(files: Map<string, string>, tool: Run): boolean {
 }
 
 /** Reconstruct the seed's workflows: the latest successful build per workflow id
- *  before the boundary. Post-#32545 the builder builds from a workspace file
- *  (`build-workflow {filePath}`, no inline code), so the source is that file
- *  replayed from the workspace ops; inline `code` and `get-as-code` are fallbacks.
- *  Only files an actual build references become workflows. */
+ *  before the boundary, excluding any workflow deleted (and not rebuilt) before it.
+ *  Post-#32545 the builder builds from a workspace file (`build-workflow {filePath}`,
+ *  no inline code), so the source is that file replayed from the workspace ops; inline
+ *  `code` and `get-as-code` are fallbacks. Only files an actual build references become
+ *  workflows. */
 function buildSeedWorkflows(
 	toolRuns: Run[],
 	boundaryMs: number,
@@ -485,6 +555,25 @@ function buildSeedWorkflows(
 				if (path !== undefined) divergedPaths.delete(path);
 			} else if (!applied && path !== undefined) {
 				divergedPaths.add(path);
+			}
+			continue;
+		}
+
+		// A `workflows`-tool delete (traced as `workflows[delete]`) drops that id's prior
+		// reconstruction. Gated to the `workflows` tool so an unrelated delete-shaped input
+		// can't evict a seed workflow, and to success === true so a suspended (HITL) or denied
+		// delete keeps it. Chronological loop ⇒ a later rebuild re-adds it.
+		if (
+			tool.name.split('[')[0] === DOMAIN_TOOL_IDS.WORKFLOWS &&
+			isRecord(tool.inputs) &&
+			tool.inputs.action === 'delete'
+		) {
+			const deletedId = asString(tool.inputs.workflowId);
+			const deleteSucceeded = isRecord(tool.outputs) && tool.outputs.success === true;
+			if (deletedId !== undefined && deleteSucceeded) {
+				builtByWorkflowId.delete(deletedId);
+				buildSignalIds.delete(deletedId);
+				getAsCodeByWorkflowId.delete(deletedId);
 			}
 			continue;
 		}

@@ -33,7 +33,7 @@ describe('SecretsCache', () => {
 
 	describe('refreshProvider', () => {
 		it('should call update on a connected provider', async () => {
-			const updateSpy = jest.spyOn(dummyProvider, 'update');
+			const updateSpy = vi.spyOn(dummyProvider, 'update');
 
 			await cache.refreshProvider('dummy', dummyProvider);
 
@@ -42,7 +42,7 @@ describe('SecretsCache', () => {
 
 		it('should skip non-connected providers', async () => {
 			dummyProvider.setState('error', new Error('Test error'));
-			const updateSpy = jest.spyOn(dummyProvider, 'update');
+			const updateSpy = vi.spyOn(dummyProvider, 'update');
 
 			await cache.refreshProvider('dummy', dummyProvider);
 
@@ -50,24 +50,24 @@ describe('SecretsCache', () => {
 		});
 
 		it('should handle update errors gracefully without throwing', async () => {
-			jest.spyOn(dummyProvider, 'update').mockRejectedValue(new Error('Update failed'));
+			vi.spyOn(dummyProvider, 'update').mockRejectedValue(new Error('Update failed'));
 
 			await expect(cache.refreshProvider('dummy', dummyProvider)).resolves.not.toThrow();
 		});
 
 		it('should not hang when update exceeds refresh timeout', async () => {
-			jest.useFakeTimers();
+			vi.useFakeTimers();
 			try {
-				jest
-					.spyOn(dummyProvider, 'update')
-					.mockImplementation(async () => await new Promise(() => {}));
+				vi.spyOn(dummyProvider, 'update').mockImplementation(
+					async () => await new Promise(() => {}),
+				);
 
 				const refreshPromise = cache.refreshProvider('dummy', dummyProvider);
-				await jest.advanceTimersByTimeAsync(EXTERNAL_SECRETS_REFRESH_TIMEOUT_MS);
+				await vi.advanceTimersByTimeAsync(EXTERNAL_SECRETS_REFRESH_TIMEOUT_MS);
 
 				await expect(refreshPromise).resolves.toBeUndefined();
 			} finally {
-				jest.useRealTimers();
+				vi.useRealTimers();
 			}
 		});
 	});
@@ -77,8 +77,8 @@ describe('SecretsCache', () => {
 			registry.set('dummy', dummyProvider);
 			registry.set('another', anotherProvider);
 
-			const updateSpy1 = jest.spyOn(dummyProvider, 'update');
-			const updateSpy2 = jest.spyOn(anotherProvider, 'update');
+			const updateSpy1 = vi.spyOn(dummyProvider, 'update');
+			const updateSpy2 = vi.spyOn(anotherProvider, 'update');
 
 			await cache.refreshAll();
 
@@ -87,12 +87,12 @@ describe('SecretsCache', () => {
 		});
 
 		it('should continue refreshing other providers if one fails', async () => {
-			jest.spyOn(dummyProvider, 'update').mockRejectedValue(new Error('Update failed'));
+			vi.spyOn(dummyProvider, 'update').mockRejectedValue(new Error('Update failed'));
 
 			registry.set('dummy', dummyProvider);
 			registry.set('another', anotherProvider);
 
-			const updateSpy = jest.spyOn(anotherProvider, 'update');
+			const updateSpy = vi.spyOn(anotherProvider, 'update');
 
 			await cache.refreshAll();
 
@@ -133,7 +133,7 @@ describe('SecretsCache', () => {
 			registry.set('dummy', dummyProvider);
 			await dummyProvider.update();
 
-			const getSpy = jest.spyOn(dummyProvider, 'getSecret');
+			const getSpy = vi.spyOn(dummyProvider, 'getSecret');
 
 			cache.getSecret('dummy', 'test1');
 
@@ -170,7 +170,7 @@ describe('SecretsCache', () => {
 			registry.set('dummy', dummyProvider);
 			await dummyProvider.update();
 
-			const hasSpy = jest.spyOn(dummyProvider, 'hasSecret');
+			const hasSpy = vi.spyOn(dummyProvider, 'hasSecret');
 
 			cache.hasSecret('dummy', 'test1');
 
@@ -207,7 +207,7 @@ describe('SecretsCache', () => {
 			registry.set('dummy', dummyProvider);
 			await dummyProvider.update();
 
-			const getNamesSpy = jest.spyOn(dummyProvider, 'getSecretNames');
+			const getNamesSpy = vi.spyOn(dummyProvider, 'getSecretNames');
 
 			cache.getSecretNames('dummy');
 

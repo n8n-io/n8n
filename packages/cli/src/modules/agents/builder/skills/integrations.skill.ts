@@ -6,6 +6,14 @@ export function integrationsSkill(): RuntimeSkill {
 		name: 'Agent Builder Integrations',
 		description:
 			'Use when deciding whether Slack, Linear, Telegram, or another external platform should be a target-agent chat integration/trigger versus a node tool, and when adding or changing chat integrations; not for built-in Build chat or Preview chat behavior.',
+		recommendedTools: ['list_integration_types', 'ask_credential', 'read_config', 'patch_config'],
+		allowedTools: [
+			'list_integration_types',
+			'ask_credential',
+			'read_config',
+			'patch_config',
+			'write_config',
+		],
 		instructions: `\
 ## Purpose
 

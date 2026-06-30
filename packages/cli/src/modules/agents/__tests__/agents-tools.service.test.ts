@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { CredentialProvider } from '@n8n/agents';
 import {
 	AGENT_BUILDER_AVAILABLE_AI_UTILITY_TOOL_NODE_TYPES,
@@ -15,7 +15,7 @@ import {
 
 const ctx = {
 	resumeData: undefined,
-	suspend: jest.fn().mockResolvedValue(undefined as never),
+	suspend: vi.fn().mockResolvedValue(undefined as never),
 	parentTelemetry: undefined,
 };
 
@@ -42,7 +42,7 @@ function makeCredentialProvider(
 
 describe('AgentsToolsService', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('getSharedTools()', () => {

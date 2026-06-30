@@ -1,7 +1,7 @@
 /* eslint-disable n8n-local-rules/no-uncaught-json-parse */
 /* eslint-disable @typescript-eslint/unbound-method */
 
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
 import type { ObjectStoreService } from 'n8n-core/dist/binary-data/object-store/object-store.service.ee';
 import type { Readable } from 'node:stream';

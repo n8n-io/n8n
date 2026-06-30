@@ -4,6 +4,7 @@ export * from './community-nodes';
 export * from './instance';
 export * from './execution';
 export * from './logstreaming';
+export * from './nodes';
 
 export const LICENSE_FEATURES = {
 	SHARING: 'feat:sharing',

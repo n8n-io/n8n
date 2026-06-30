@@ -1,4 +1,4 @@
-import { formatPemBlock } from '@n8n/utils';
+import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import { createVerify, generateKeyPairSync, X509Certificate } from 'node:crypto';
 
 import { buildClientAssertion } from '@/client-assertion';

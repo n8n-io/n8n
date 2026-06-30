@@ -388,6 +388,7 @@ describe('CredentialConfig', () => {
 			share: false,
 			list: true,
 			move: false,
+			connect: true,
 		};
 
 		const oAuthConnectedProps = {
@@ -774,6 +775,78 @@ describe('CredentialConfig', () => {
 			});
 
 			expect(screen.queryByText('Need help filling out these fields?')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('Read-only access (view without edit)', () => {
+		const credentialTypeWithField: ICredentialType = {
+			name: 'testCredential',
+			displayName: 'Test Credential',
+			properties: [{ displayName: 'Key', name: 'key', type: 'string', default: '' }],
+		};
+
+		const readOnlyPermissions = {
+			create: false,
+			update: false,
+			read: true,
+			delete: false,
+			share: false,
+			list: true,
+			move: false,
+		};
+
+		it('does not render credential inputs for users without edit permission', () => {
+			renderComponent({
+				props: {
+					isManaged: false,
+					mode: 'edit',
+					credentialId: 'existing-cred-123',
+					credentialType: credentialTypeWithField,
+					credentialProperties: credentialTypeWithField.properties,
+					credentialData: { key: 'secret' } as ICredentialDataDecryptedObject,
+					credentialPermissions: readOnlyPermissions,
+				},
+			});
+
+			expect(screen.queryByTestId('credential-connection-parameter')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('Connect banner gating by connect permission', () => {
+		const oAuthNotConnectedProps = {
+			isManaged: false,
+			mode: 'edit' as const,
+			credentialId: 'existing-cred-123',
+			credentialType: mockCredentialType,
+			credentialProperties: [],
+			credentialData: {} as ICredentialDataDecryptedObject,
+			isOAuthType: true,
+			isOAuthConnected: false,
+			requiredPropertiesFilled: true,
+			isResolvable: true,
+		};
+
+		it('shows the connect button for a private credential when the user can connect', () => {
+			renderComponent({
+				props: {
+					...oAuthNotConnectedProps,
+					credentialPermissions: { read: true, connect: true },
+				},
+			});
+
+			expect(screen.getByTestId('quick-connect-button')).toBeInTheDocument();
+		});
+
+		it('hides the connect button for a private credential when the user cannot connect', () => {
+			renderComponent({
+				props: {
+					...oAuthNotConnectedProps,
+					credentialPermissions: { read: true, connect: false },
+				},
+			});
+
+			expect(screen.getByTestId('oauth-not-connected-banner')).toBeInTheDocument();
+			expect(screen.queryByTestId('quick-connect-button')).not.toBeInTheDocument();
 		});
 	});
 });
