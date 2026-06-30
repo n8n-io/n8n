@@ -692,6 +692,10 @@
 			</section>
 		</div>
 		<script>
+			// Get signature from URL for fetch requests
+			const url = new URL(window.location.href);
+			let formSignature = url.searchParams.get('signature');
+
 			function updateError(errorElement, action = 'add', message = '') {
 				if(action === 'add') {
 					errorElement.textContent = message;
@@ -898,11 +902,23 @@
 				if (!interval) return;
 
 				try {
-					const response = await fetch(`${formWaitingUrl ?? window.location.href}/n8n-execution-status`);
+					const baseUrl = formWaitingUrl ?? window.location.href;
+					const url = new URL(baseUrl);
+					url.pathname = url.pathname + '/n8n-execution-status';
+					// Include signature in fetch request for validation
+					if (formSignature) {
+						url.searchParams.set('signature', formSignature);
+					}
+					const response = await fetch(url.toString());
 					const text = (await response.text()).trim();
 
 					if (text === "form-waiting") {
-						window.location.replace(formWaitingUrl ?? window.location.href);
+						// Redirect to form page with signature in URL (will be cleaned after load)
+						const redirectUrl = new URL(formWaitingUrl ?? window.location.href);
+						if (formSignature) {
+							redirectUrl.searchParams.set('signature', formSignature);
+						}
+						window.location.replace(redirectUrl.toString());
 						return;
 					}
 
@@ -991,6 +1007,9 @@
 					let postUrl = '';
 					if (!window.location.href.includes('form-waiting')) {
 						postUrl = window.location.search;
+					} else if (formSignature) {
+						// For waiting forms, include signature in POST URL since it was cleaned from address bar
+						postUrl = '?signature=' + encodeURIComponent(formSignature);
 					}
 
 					const authToken = '{{{ authToken }}}';
@@ -1017,6 +1036,9 @@
 
 								if(json?.formWaitingUrl) {
 									formWaitingUrl = json.formWaitingUrl;
+									// Extract signature from URL for subsequent requests
+									const waitingUrl = new URL(json.formWaitingUrl);
+									formSignature = waitingUrl.searchParams.get('signature');
 									clearTimeout(timeoutId);
 									timeoutId = setTimeout(checkExecutionStatus, interval);
 									return;
@@ -1064,13 +1086,20 @@
 								document.querySelector('#submitted-form').style.display = 'block';
 								document.querySelector('#submitted-header').textContent = 'Problem submitting response';
 								document.querySelector('#submitted-content').textContent =
-									'Please try again or contact support if the problem persists';
+									response.status === 413
+										? 'The files you are trying to upload are too large. Please reduce the total size and try again.'
+										: 'Please try again or contact support if the problem persists';
 							}
 
 							return;
 						})
 						.catch(function (error) {
 							console.error('Error:', error);
+							form.style.display = 'none';
+							document.querySelector('#submitted-form').style.display = 'block';
+							document.querySelector('#submitted-header').textContent = 'Problem submitting response';
+							document.querySelector('#submitted-content').textContent =
+								'The form could not be submitted. Please check your connection and try again, or contact support if the problem persists.';
 						})
 						.finally(() => {
 							if (window.location.href.includes('form-waiting')) {

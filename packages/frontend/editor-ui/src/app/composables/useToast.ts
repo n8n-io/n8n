@@ -3,32 +3,30 @@ import type { NotificationHandle, MessageBoxState } from 'element-plus';
 import type { NotificationOptions } from '@/Interface';
 import { sanitizeHtml } from '@/app/utils/htmlUtils';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useI18n } from '@n8n/i18n';
 import { useExternalHooks } from './useExternalHooks';
 import { VIEWS } from '@/app/constants';
-import type { ApplicationError } from 'n8n-workflow';
 import { useStyles } from './useStyles';
-
-export interface NotificationErrorWithNodeAndDescription extends ApplicationError {
-	node: {
-		name: string;
-	};
-	description: string;
-}
 
 const stickyNotificationQueue: NotificationHandle[] = [];
 
 export function useToast() {
 	const telemetry = useTelemetry();
-	const workflowsStore = useWorkflowsStore();
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const uiStore = useUIStore();
 	const externalHooks = useExternalHooks();
 	const i18n = useI18n();
 	const { APP_Z_INDEXES } = useStyles();
 
 	function showMessage(messageData: Partial<NotificationOptions>, track = true) {
+		const suppressed = uiStore.areNotificationsSuppressed;
+		const allowErrors = uiStore.allowErrorNotificationsWhenSuppressed;
+		if (suppressed && !(allowErrors && messageData.type === 'error')) {
+			return { close: () => {} } as NotificationHandle;
+		}
+
 		const messageDefaults: Partial<Omit<NotificationOptions, 'message'>> = {
 			dangerouslyUseHTMLString: true,
 			position: 'bottom-right',
@@ -85,7 +83,7 @@ export function useToast() {
 				error_title: params.title,
 				error_message: messageForTelemetry,
 				caused_by_credential: causedByCredential(messageForTelemetry),
-				workflow_id: workflowsStore.workflowId,
+				workflow_id: workflowDocumentStore.value.workflowId,
 			});
 		}
 
@@ -130,9 +128,7 @@ export function useToast() {
 		return notification;
 	}
 
-	function collapsableDetails({ description, node }: NotificationErrorWithNodeAndDescription) {
-		if (!description) return '';
-
+	function collapsableDetails(description: string) {
 		const errorDescription =
 			description.length > 500 ? `${description.slice(0, 500)}...` : description;
 
@@ -145,13 +141,19 @@ export function useToast() {
 					>
 						${i18n.baseText('showMessage.showDetails')}
 					</summary>
-					<p>${node.name}: ${errorDescription}</p>
+					<p>${errorDescription}</p>
 				</details>
 			`;
 	}
 
-	function showError(e: Error | unknown, title: string, message?: string) {
-		const error = e as NotificationErrorWithNodeAndDescription;
+	function showError(
+		e: Error | unknown,
+		title: string,
+		options?: { message?: string; description?: string },
+	) {
+		const error = e as Error & { description?: string };
+		const message = options?.message;
+		const description = options?.description ?? error.description;
 		const messageLine = message ? `${message}<br/>` : '';
 		showMessage(
 			{
@@ -159,7 +161,7 @@ export function useToast() {
 				message: `
 					${messageLine}
 					<i>${error.message}</i>
-					${collapsableDetails(error)}`,
+					${description ? collapsableDetails(description) : ''}`,
 				type: 'error',
 				duration: 0,
 			},
@@ -177,7 +179,7 @@ export function useToast() {
 			error_description: message,
 			error_message: error.message,
 			caused_by_credential: causedByCredential(error.message),
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowDocumentStore.value.workflowId,
 		});
 	}
 

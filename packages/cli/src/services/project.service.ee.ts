@@ -1,17 +1,20 @@
 import type { CreateProjectDto, ProjectType, UpdateProjectDto } from '@n8n/api-types';
-import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
+import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
-import type { User } from '@n8n/db';
 import {
+	type User,
 	Project,
 	ProjectRelation,
 	ProjectRelationRepository,
 	ProjectRepository,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
+	type ProjectListOptions,
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import {
+	combineScopes,
+	getAuthPrincipalScopes,
 	hasGlobalScope,
 	type Scope,
 	AssignableProjectRole,
@@ -29,6 +32,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
+import { OwnershipService } from './ownership.service';
 import { RoleService } from './role.service';
 
 export class TeamProjectOverQuotaError extends UserError {
@@ -70,6 +74,8 @@ export class ProjectService {
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly licenseState: LicenseState,
 		private readonly moduleRegistry: ModuleRegistry,
+		private readonly ownershipService: OwnershipService,
+		private readonly logger: Logger,
 	) {}
 
 	private get workflowService() {
@@ -93,6 +99,30 @@ export class ProjectService {
 	private get dataTableService() {
 		return import('@/modules/data-table/data-table.service').then(({ DataTableService }) =>
 			Container.get(DataTableService),
+		);
+	}
+
+	private get secretsProvidersConnectionsService() {
+		return import('@/modules/external-secrets.ee/secrets-providers-connections.service.ee').then(
+			({ SecretsProvidersConnectionsService }) => Container.get(SecretsProvidersConnectionsService),
+		);
+	}
+
+	private get agentRepository() {
+		return import('@/modules/agents/repositories/agent.repository').then(({ AgentRepository }) =>
+			Container.get(AgentRepository),
+		);
+	}
+
+	private get agentKnowledgeService() {
+		return import('@/modules/agents/agent-knowledge.service').then(({ AgentKnowledgeService }) =>
+			Container.get(AgentKnowledgeService),
+		);
+	}
+
+	private get connectionStatusProxy() {
+		return import('@/credentials/credential-connection-status-proxy').then(
+			({ CredentialConnectionStatusProxy }) => Container.get(CredentialConnectionStatusProxy),
 		);
 	}
 
@@ -191,11 +221,48 @@ export class ProjectService {
 			}
 		}
 
-		// 7. delete project
+		// 7. delete secrets providers connections that are owned by this project
+		if (this.moduleRegistry.isActive('external-secrets')) {
+			const secretsProvidersConnectionsService = await this.secretsProvidersConnectionsService;
+			await secretsProvidersConnectionsService.cleanupConnectionsForProjectDeletion(project.id);
+		}
+
+		// 8. delete agent knowledge files before project removal cascades delete agent_files rows.
+		if (this.moduleRegistry.isActive('agents')) {
+			const [agentRepository, agentKnowledgeService] = await Promise.all([
+				this.agentRepository,
+				this.agentKnowledgeService,
+			]);
+			const agents = await agentRepository.findByProjectId(project.id);
+			for (const agent of agents) {
+				try {
+					await agentKnowledgeService.deleteAllFilesForAgent(project.id, agent.id, user.id);
+				} catch (error) {
+					this.logger.warn('Failed to delete knowledge files on project delete', {
+						agentId: agent.id,
+						projectId: project.id,
+						error: error instanceof Error ? error.message : error,
+					});
+				}
+			}
+		}
+
+		// Capture member user IDs before the project (and its relations) are removed,
+		// so we can clean up orphaned per-user credential entries afterward.
+		const projectMembers = await this.projectRelationRepository.findBy({ projectId: project.id });
+		const memberUserIds = projectMembers.map((pr) => pr.userId);
+
+		// 9. delete project
 		await this.projectRepository.remove(project);
 
-		// 8. delete project relations
+		// 10. delete project relations
 		// Cascading deletes take care of this.
+
+		// 11. delete orphaned per-user credential entries for former members
+		if (memberUserIds.length > 0) {
+			const proxy = await this.connectionStatusProxy;
+			await proxy.cleanupOrphanedEntriesForUsers(memberUserIds);
+		}
 	}
 
 	/**
@@ -206,12 +273,74 @@ export class ProjectService {
 		return await this.sharedWorkflowRepository.findProjectIds(workflowId);
 	}
 
+	/**
+	 * Enrich projects with the requesting user's role and scopes.
+	 * Mirrors the logic in getMyProjects controller: for each project,
+	 * find the user's ProjectRelation and combine global + project scopes.
+	 */
+	async addUserScopes(
+		user: User,
+		projects: Project[],
+	): Promise<Array<Project & { role: string; scopes: Scope[] }>> {
+		if (projects.length === 0) return [];
+
+		const relations = await this.projectRelationRepository.find({
+			where: {
+				userId: user.id,
+				projectId: In(projects.map((p) => p.id)),
+			},
+			relations: ['role'],
+		});
+		const relationsByProject = new Map(relations.map((r) => [r.projectId, r]));
+		const globalScopes = getAuthPrincipalScopes(user);
+
+		return projects.map((project) => {
+			const relation = relationsByProject.get(project.id);
+			const projectScopes = relation?.role?.scopes?.map((s) => s.slug) ?? [];
+			return Object.assign(project, {
+				role: relation?.role?.slug ?? user.role.slug,
+				scopes: [
+					...new Set(
+						combineScopes({
+							global: globalScopes,
+							...(projectScopes.length ? { project: projectScopes } : {}),
+						}),
+					),
+				].sort(),
+			});
+		});
+	}
+
 	async getAccessibleProjects(user: User): Promise<Project[]> {
 		// This user is probably an admin, show them everything
 		if (hasGlobalScope(user, 'project:read')) {
 			return await this.projectRepository.find();
 		}
 		return await this.projectRepository.getAccessibleProjects(user.id);
+	}
+
+	async getAccessibleProjectsAndCount(
+		user: User,
+		options: ProjectListOptions,
+	): Promise<[Project[], number]> {
+		if (hasGlobalScope(user, 'project:read')) {
+			return await this.projectRepository.findAllProjectsAndCount(options);
+		}
+		return await this.projectRepository.getAccessibleProjectsAndCount(user.id, options);
+	}
+
+	// Returns the projects a caller can pick as share targets, including peer
+	// personal projects. Admins (project:read) still see everything; non-admin
+	// callers also see all personal projects so the share dropdown can surface
+	// other users. See `ProjectRepository.getShareableProjectsAndCount`.
+	async getShareableProjectsAndCount(
+		user: User,
+		options: ProjectListOptions,
+	): Promise<[Project[], number]> {
+		if (hasGlobalScope(user, 'project:read')) {
+			return await this.projectRepository.findAllProjectsAndCount(options);
+		}
+		return await this.projectRepository.getShareableProjectsAndCount(user.id, options);
 	}
 
 	async getPersonalProjectOwners(projectIds: string[]): Promise<ProjectRelation[]> {
@@ -252,15 +381,22 @@ export class ProjectService {
 
 	async updateProject(
 		projectId: string,
-		{ name, icon, description }: UpdateProjectDto,
+		{ name, icon, description, customTelemetryTags }: UpdateProjectDto,
 	): Promise<void> {
+		const trimmedTags = customTelemetryTags
+			?.map(({ key, value }) => ({ key: key.trim(), value }))
+			.filter(({ key }) => key !== '');
+
 		const result = await this.projectRepository.update(
 			{ id: projectId, type: 'team' },
-			{ name, icon, description },
+			{ name, icon, description, customTelemetryTags: trimmedTags },
 		);
 		if (!result.affected) {
 			throw new ProjectNotFoundError(projectId);
 		}
+
+		// Ensure OTel spans pick up the updated customTelemetryTags on the next execution.
+		await this.ownershipService.invalidateWorkflowProjectCacheForProject(projectId);
 	}
 
 	async getPersonalProject(user: User): Promise<Project | null> {
@@ -290,9 +426,32 @@ export class ProjectService {
 			'project',
 		);
 
+		const incomingByUserId = new Map(relations.map((r) => [r.userId, r.role]));
+
+		const removedUserIds = project.projectRelations
+			.filter((r) => !incomingByUserId.has(r.userId))
+			.map((r) => r.userId);
+
+		// Users whose role slug changed — a downgrade may strip credential:update,
+		// so their per-user credential entries must be re-evaluated too.
+		const roleChangedUserIds = project.projectRelations
+			.filter((r) => {
+				const newRole = incomingByUserId.get(r.userId);
+				return newRole !== undefined && newRole !== r.role.slug;
+			})
+			.map((r) => r.userId);
+
+		const affectedUserIds = [...new Set([...removedUserIds, ...roleChangedUserIds])];
+
+		const proxy = await this.connectionStatusProxy;
+
 		await this.projectRelationRepository.manager.transaction(async (em) => {
 			await this.pruneRelations(em, project);
 			await this.addManyRelations(em, project, relations);
+
+			if (affectedUserIds.length > 0) {
+				await proxy.cleanupOrphanedEntriesForUsers(affectedUserIds, em);
+			}
 		});
 
 		const newRelations = relations.filter(
@@ -437,7 +596,12 @@ export class ProjectService {
 			throw new ForbiddenError('Project owner cannot be removed from the project');
 		}
 
-		await this.projectRelationRepository.delete({ projectId: project.id, userId });
+		const proxy = await this.connectionStatusProxy;
+
+		await this.projectRelationRepository.manager.transaction(async (em) => {
+			await em.delete(ProjectRelation, { projectId: project.id, userId });
+			await proxy.cleanupOrphanedEntriesForUsers([userId], em);
+		});
 	}
 
 	async changeUserRoleInProject(projectId: string, userId: string, role: AssignableProjectRole) {
@@ -464,7 +628,12 @@ export class ProjectService {
 			throw new UnlicensedProjectRoleError(role);
 		}
 
-		await this.projectRelationRepository.update({ projectId, userId }, { role: { slug: role } });
+		const proxy = await this.connectionStatusProxy;
+
+		await this.projectRelationRepository.manager.transaction(async (em) => {
+			await em.update(ProjectRelation, { projectId, userId }, { role: { slug: role } });
+			await proxy.cleanupOrphanedEntriesForUsers([userId], em);
+		});
 	}
 
 	async pruneRelations(em: EntityManager, project: Project) {
@@ -500,7 +669,10 @@ export class ProjectService {
 		};
 
 		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
-			const projectRoles = await this.roleService.rolesWithScope('project', scopes);
+			// Use the same EntityManager as the project lookup (including when callers pass a
+			// transaction manager). Otherwise role resolution can open a second pooled connection
+			// while a transaction already holds a connection
+			const projectRoles = await this.roleService.rolesWithScope('project', scopes, em);
 
 			where = {
 				...where,
@@ -524,7 +696,10 @@ export class ProjectService {
 
 		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
 			const projectRoles = await this.roleService.rolesWithScope('project', scopes);
-			where.type = 'team';
+			// if we're not checking specific projects, restrict to team projects
+			if (!projectIds) {
+				where.type = 'team';
+			}
 			where.projectRelations = {
 				role: In(projectRoles),
 				userId: user.id,

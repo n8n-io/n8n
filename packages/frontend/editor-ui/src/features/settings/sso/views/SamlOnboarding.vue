@@ -58,7 +58,7 @@ const onSubmit = async (values: { [key: string]: string }) => {
 		await router.push({ name: VIEWS.HOMEPAGE });
 	} catch (error) {
 		loading.value = false;
-		toast.showError(error, 'Error', error.message);
+		toast.showError(error, 'Error', { message: error.message });
 	}
 };
 </script>

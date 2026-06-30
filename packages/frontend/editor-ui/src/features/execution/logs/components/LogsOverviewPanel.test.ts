@@ -16,6 +16,59 @@ import {
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { createTestWorkflowObject } from '@/__tests__/mocks';
 import { createLogTree, flattenLogEntries } from '../logs.utils';
+import type { useWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+
+const { mockDocumentStore } = vi.hoisted(() => ({
+	mockDocumentStore: {
+		workflowId: 'test-workflow-id',
+		name: 'Test Workflow',
+		allNodes: [],
+		workflowTriggerNodes: [],
+		getNodeByName: vi.fn(),
+		getParentNodes: vi.fn().mockReturnValue([]),
+		getChildNodes: vi.fn().mockReturnValue([]),
+		getStartNode: vi.fn(),
+		checkIfNodeHasChatParent: vi.fn().mockReturnValue(false),
+		checkIfToolNodeHasChatParent: vi.fn().mockReturnValue(false),
+		getExpressionHandler: vi.fn().mockReturnValue(null),
+		getWorkflowObjectAccessorSnapshot: vi.fn().mockReturnValue({
+			id: 'test-workflow-id',
+			connectionsBySourceNode: {},
+			pinData: {},
+			expression: null,
+			getNode: vi.fn(),
+			getParentNodes: vi.fn().mockReturnValue([]),
+			getNodeConnectionIndexes: vi.fn(),
+			getParentMainInputNode: vi.fn(),
+			getChildNodes: vi.fn().mockReturnValue([]),
+			getParentNodesByDepth: vi.fn().mockReturnValue([]),
+		}),
+		documentId: 'test-workflow-id@latest',
+		connectionsBySourceNode: {},
+		pinnedDataByNodeName: {},
+		incomingConnectionsByNodeName: vi.fn().mockReturnValue({}),
+		outgoingConnectionsByNodeName: vi.fn().mockReturnValue({}),
+		settings: {},
+		getPinDataSnapshot: vi.fn().mockReturnValue({}),
+		serialize: vi.fn().mockReturnValue({
+			id: 'test-workflow-id',
+			name: 'Test Workflow',
+			nodes: [],
+			connections: {},
+			pinData: {},
+			active: false,
+			settings: {},
+			tags: [],
+			versionId: '',
+			meta: {},
+		}),
+	} satisfies Partial<ReturnType<typeof useWorkflowDocumentStore>>,
+}));
+
+vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => ({
+	...(await importOriginal<{}>()),
+	useWorkflowDocumentStore: () => mockDocumentStore,
+}));
 
 describe('LogsOverviewPanel', () => {
 	let pinia: TestingPinia;
@@ -56,6 +109,7 @@ describe('LogsOverviewPanel', () => {
 		setActivePinia(pinia);
 
 		workflowsStore = mockedStore(useWorkflowsStore);
+		workflowsStore.setWorkflowId('test-workflow-id');
 
 		pushConnectionStore = mockedStore(usePushConnectionStore);
 		pushConnectionStore.isConnected = true;
@@ -76,6 +130,20 @@ describe('LogsOverviewPanel', () => {
 		});
 
 		expect(rendered.queryByTestId('logs-overview-empty')).toBeInTheDocument();
+	});
+
+	it('should render a too-large message when the execution data was not loaded', () => {
+		const rendered = render({
+			isOpen: true,
+			flatLogEntries: [],
+			entries: [],
+			execution: { ...aiChatExecutionResponse, dataTooLargeToDisplay: true },
+		});
+
+		expect(rendered.queryByTestId('logs-overview-empty')).toBeInTheDocument();
+		expect(
+			rendered.queryByText("This execution's data is too large to display."),
+		).toBeInTheDocument();
 	});
 
 	it('should render summary text and executed nodes if there is an execution', async () => {

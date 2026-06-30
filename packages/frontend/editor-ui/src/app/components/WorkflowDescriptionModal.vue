@@ -4,6 +4,11 @@ import { N8nButton, N8nInput, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 import { useToast } from '@/app/composables/useToast';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { WORKFLOW_DESCRIPTION_MODAL_KEY } from '../constants';
@@ -27,7 +32,8 @@ const toast = useToast();
 const telemetry = useTelemetry();
 
 const settingsStore = useSettingsStore();
-const workflowStore = useWorkflowsStore();
+const workflowsStore = useWorkflowsStore();
+const workflowsListStore = useWorkflowsListStore();
 
 const descriptionValue = ref(props.data.workflowDescription ?? '');
 const descriptionInput = useTemplateRef<HTMLInputElement>('descriptionInput');
@@ -50,20 +56,58 @@ const textareaTip = computed(() =>
 		: i18n.baseText('workflow.description.nomcp'),
 );
 
+async function saveWorkflowDescription(id: string, description: string | null) {
+	let currentVersionId = '';
+	let currentChecksum = '';
+	const isCurrentWorkflow = id === workflowsStore.workflowId;
+
+	if (isCurrentWorkflow) {
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(id));
+		currentVersionId = workflowDocumentStore.versionId;
+		currentChecksum = workflowDocumentStore.checksum;
+	} else {
+		const cached = workflowsListStore.getWorkflowById(id);
+		if (cached?.versionId) {
+			currentVersionId = cached.versionId;
+		} else {
+			const fetched = await workflowsListStore.fetchWorkflow(id);
+			currentVersionId = fetched.versionId;
+		}
+	}
+
+	const updated = await workflowsStore.updateWorkflow(id, {
+		versionId: currentVersionId,
+		description,
+		...(currentChecksum ? { expectedChecksum: currentChecksum } : {}),
+	});
+
+	if (workflowsListStore.getWorkflowById(id)) {
+		workflowsListStore.updateWorkflowInCache(id, {
+			description: updated.description,
+			versionId: updated.versionId,
+		});
+	}
+
+	if (isCurrentWorkflow) {
+		const workflowDocStore = useWorkflowDocumentStore(createWorkflowDocumentId(id));
+		workflowDocStore.setDescription(updated.description ?? '');
+	}
+}
+
 const saveDescription = async () => {
 	isSaving.value = true;
 
 	try {
-		await workflowStore.saveWorkflowDescription(
-			props.data.workflowId,
-			normalizedCurrentValue.value ?? null,
-		);
+		const id = props.data.workflowId;
+		const description = normalizedCurrentValue.value ?? null;
 
-		props.data.onSave?.(normalizedCurrentValue.value ?? null);
+		await saveWorkflowDescription(id, description);
+
+		props.data.onSave?.(description);
 
 		telemetry.track('User set workflow description', {
-			workflow_id: props.data.workflowId,
-			description: normalizedCurrentValue.value ?? null,
+			workflow_id: id,
+			description,
 		});
 	} catch (error) {
 		toast.showError(error, i18n.baseText('workflow.description.error.title'));

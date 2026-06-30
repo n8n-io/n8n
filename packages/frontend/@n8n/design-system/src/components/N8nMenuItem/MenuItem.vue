@@ -3,13 +3,14 @@ import { computed } from 'vue';
 
 import type { IMenuItem } from '@n8n/design-system/types';
 
-import BetaTag from '../BetaTag/BetaTag.vue';
+import N8nActionPill from '../N8nActionPill/ActionPill.vue';
 import N8nIcon from '../N8nIcon';
 import type { IconName } from '../N8nIcon/icons';
 import N8nRoute from '../N8nRoute';
 import N8nTag from '../N8nTag';
 import N8nText from '../N8nText';
 import N8nTooltip from '../N8nTooltip';
+import PreviewTag from '../PreviewTag/PreviewTag.vue';
 
 const props = defineProps<{
 	item: IMenuItem;
@@ -48,7 +49,7 @@ const handleClick = () => {
 	emit('click');
 };
 
-const icon = computed<IconName | undefined>(() => {
+const icon = computed<IconName | (string & {}) | undefined>(() => {
 	if (typeof props.item.icon === 'object' && props.item.icon?.type === 'icon') {
 		return props.item.icon.value;
 	}
@@ -121,7 +122,6 @@ const tooltipPlacement = computed(() => {
 					<N8nText
 						v-if="item.icon && typeof item.icon === 'object' && item.icon.type === 'emoji'"
 						:class="$style.menuItemEmoji"
-						:color="iconColor"
 						>{{ item.icon.value }}</N8nText
 					>
 					<N8nIcon v-else-if="icon" :color="iconColor" :icon="icon" />
@@ -134,13 +134,14 @@ const tooltipPlacement = computed(() => {
 					>
 						{{ item.label }}
 					</N8nText>
-					<BetaTag v-if="!compact && item.beta" />
+					<PreviewTag v-if="!compact && item.preview" />
 					<N8nTag
 						v-if="!compact && item.new"
 						:clickable="false"
 						text="New"
 						:class="$style.newTag"
 					/>
+					<N8nActionPill v-if="!compact && item.creditsTag" size="small" :text="item.creditsTag" />
 				</div>
 				<N8nIcon v-if="item.children && !compact" icon="chevron-right" color="text-light" />
 			</N8nRoute>

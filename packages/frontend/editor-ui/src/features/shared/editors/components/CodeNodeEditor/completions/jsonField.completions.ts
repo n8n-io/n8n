@@ -1,19 +1,18 @@
 import { escape } from '../utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { isAllowedInDotNotation } from '@/features/shared/editors/plugins/codemirror/completions/utils';
 import { useI18n } from '@n8n/i18n';
 import type { IRunData, IDataObject } from 'n8n-workflow';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { computed } from 'vue';
 
 function useJsonFieldCompletions() {
 	const i18n = useI18n();
-	const ndvStore = useNDVStore();
-	const workflowsStore = useWorkflowsStore();
+	const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
+	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const ndvStore = computed(() => useNDVStore(workflowDocumentStore.value.documentId));
 
 	/**
 	 * - Complete `x.first().json.` to `.field`.
@@ -176,10 +175,12 @@ function useJsonFieldCompletions() {
 
 	const getInputNodeName = (): string | null => {
 		try {
-			const activeNode = ndvStore.activeNode;
+			const activeNode = ndvStore.value.activeNode;
 			if (activeNode) {
-				const input = workflowsStore.connectionsByDestinationNode[activeNode.name];
-				return input.main[0] ? input.main[0][0].node : null;
+				const input = (workflowDocumentStore?.value?.connectionsByDestinationNode ?? {})[
+					activeNode.name
+				];
+				return input?.main[0]?.[0]?.node ?? null;
 			}
 		} catch (e) {
 			console.error(e);
@@ -256,11 +257,7 @@ function useJsonFieldCompletions() {
 			nodeName = quotedNodeName.replace(/^"/, '').replace(/"$/, '');
 		}
 
-		const wfStore = useWorkflowsStore();
-		const workflowDocumentStore = wfStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(wfStore.workflowId))
-			: undefined;
-		const pinData = workflowDocumentStore?.getPinDataSnapshot();
+		const pinData = workflowDocumentStore?.value?.getPinDataSnapshot();
 
 		const nodePinData = pinData?.[nodeName];
 
@@ -276,7 +273,7 @@ function useJsonFieldCompletions() {
 			} catch {}
 		}
 
-		const runData: IRunData | null = useWorkflowsStore().getWorkflowRunData;
+		const runData: IRunData | null = workflowExecutionStateStore.value.activeExecutionRunData;
 
 		const nodeRunData = runData?.[nodeName];
 

@@ -14,11 +14,11 @@ import { CredentialsOverwritesAlreadySetError } from '@/errors/credentials-overw
 import { NonJsonBodyError } from '@/errors/non-json-body.error';
 import { ExternalHooks } from '@/external-hooks';
 import type { ICredentialsOverwrite } from '@/interfaces';
-import { PrometheusMetricsService } from '@/metrics/prometheus-metrics.service';
+import { PrometheusMetricsService } from '@/metrics/prometheus';
 import { rawBodyReader, bodyParser } from '@/middlewares';
 import * as ResponseHelper from '@/response-helper';
 import { RedisClientService } from '@/services/redis-client.service';
-import { resolveHealthEndpointPath } from '@/utils/health-endpoint.util';
+import { resolveBackendHealthEndpointPath } from '@/utils/health-endpoint.util';
 
 export type WorkerServerEndpointsConfig = {
 	/** Whether the health check endpoint is enabled. */
@@ -93,7 +93,7 @@ export class WorkerServer {
 
 		this.endpointsConfig = endpointsConfig;
 
-		await this.mountEndpoints();
+		this.mountEndpoints();
 
 		this.logger.debug('Worker server initialized', {
 			endpoints: Object.keys(this.endpointsConfig),
@@ -106,11 +106,11 @@ export class WorkerServer {
 		this.logger.info(`\nn8n worker server listening on port ${this.port}`);
 	}
 
-	private async mountEndpoints() {
+	private mountEndpoints() {
 		const { health, overwrites, metrics } = this.endpointsConfig;
 
 		if (health) {
-			const healthPath = resolveHealthEndpointPath(this.globalConfig);
+			const healthPath = resolveBackendHealthEndpointPath(this.globalConfig);
 			const readinessPath = `${healthPath}/readiness`;
 
 			this.app.get(healthPath, async (_, res) => {
@@ -137,7 +137,7 @@ export class WorkerServer {
 		}
 
 		if (metrics) {
-			await this.prometheusMetricsService.init(this.app);
+			this.prometheusMetricsService.init(this.app);
 		}
 	}
 

@@ -12,15 +12,20 @@ import type {
 	ITaskMetadata,
 	NodeError,
 	NodeHint,
-	Workflow,
 	NodeConnectionType,
 } from 'n8n-workflow';
-import { parseErrorMetadata, NodeConnectionTypes, NodeHelpers } from 'n8n-workflow';
+import {
+	isTerminalExecutionStatus,
+	parseErrorMetadata,
+	NodeConnectionTypes,
+	NodeHelpers,
+} from 'n8n-workflow';
 import { computed, defineAsyncComponent, onBeforeUnmount, onMounted, ref, toRef, watch } from 'vue';
 
 import type { INodeUi, IRunDataDisplayMode, ITab } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { NodePanelType } from '@/features/ndv/shared/ndv.types';
+import type { WorkflowObjectAccessors } from '@/app/types/workflow';
 
 import {
 	CORE_NODES_CATEGORY,
@@ -53,19 +58,18 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { dataPinningEventBus } from '@/app/event-bus';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { executionDataToJson } from '@/app/utils/nodeTypesUtils';
 import { getGenericHints } from '@/app/utils/nodeViewUtils';
 import { searchInObject } from '@/app/utils/objectUtils';
 import { clearJsonKey, isEmpty, isPresent } from '@/app/utils/typesUtils';
 import isEqual from 'lodash/isEqual';
 import isObject from 'lodash/isObject';
-import { storeToRefs } from 'pinia';
 import { useRoute, useRouter } from 'vue-router';
 import { useSchemaPreviewStore } from '@/features/ndv/runData/schemaPreview.store';
 import { asyncComputed } from '@vueuse/core';
@@ -94,7 +98,6 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 const LazyRunDataTable = defineAsyncComponent(async () => await import('./RunDataTable.vue'));
@@ -112,7 +115,7 @@ export type EnterEditModeArgs = {
 };
 
 type Props = {
-	workflowObject: Workflow;
+	workflowObject: WorkflowObjectAccessors;
 	workflowExecution?: IRunExecutionData;
 	runIndex: number;
 	executingMessage: string;
@@ -184,6 +187,8 @@ defineSlots<{
 	'node-not-run': {};
 	'no-output-data': {};
 	'recovered-artificial-output-data': {};
+	'data-redacted': {};
+	'redacted-error': {};
 }>();
 
 const emit = defineEmits<{
@@ -226,9 +231,12 @@ const dataContainerRef = ref<HTMLDivElement>();
 
 const workflowId = useInjectWorkflowId();
 const nodeTypesStore = useNodeTypesStore();
-const ndvStore = useNDVStore();
-const workflowsStore = useWorkflowsStore();
-const workflowState = injectWorkflowState();
+const ndvStore = injectNDVStore();
+const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
+const currentExecution = computed(() => workflowExecutionStateStore.value.activeExecution);
+const lastSuccessfulExecution = computed(
+	() => workflowExecutionStateStore.value.lastSuccessfulExecution,
+);
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const sourceControlStore = useSourceControlStore();
 const collaborationStore = useCollaborationStore();
@@ -265,7 +273,7 @@ const isWaitNodeWaiting = computed(() => {
 	);
 });
 
-const { activeNode } = storeToRefs(ndvStore);
+const activeNode = computed(() => ndvStore.value.activeNode);
 const nodeType = computed(() => {
 	if (!node.value) return null;
 
@@ -291,7 +299,7 @@ const hasAnyDataAvailable = computed(() => {
 		node.value?.disabled ||
 		hasPreviewSchema.value ||
 		hasAnyUpstreamExecuted.value ||
-		!!workflowsStore.lastSuccessfulExecution
+		!!lastSuccessfulExecution.value
 	);
 });
 const isSingleNodeView = computed(() => !displaysMultipleNodes.value);
@@ -310,7 +318,7 @@ const shouldShowSchemaView = computed(() => {
 	return (
 		hasNodeRun.value ||
 		hasPreviewSchema.value ||
-		(!hasNodeRun.value && (hasAnyUpstreamExecuted.value || workflowsStore.lastSuccessfulExecution))
+		(!hasNodeRun.value && (hasAnyUpstreamExecuted.value || lastSuccessfulExecution.value))
 	);
 });
 
@@ -392,8 +400,17 @@ const workflowRunErrorAsNodeError = computed(() => {
 	return selfTaskData?.error as NodeError;
 });
 
+const hasRedactedError = computed(() => {
+	if (!node.value) return false;
+	const selfTaskData = workflowRunData.value?.[node.value.name]?.[props.runIndex];
+	return !!selfTaskData?.redactedError;
+});
+
 const hasRunError = computed(
-	() => node.value && !isPaneTypeInput.value && !!workflowRunErrorAsNodeError.value,
+	() =>
+		node.value &&
+		!isPaneTypeInput.value &&
+		(!!workflowRunErrorAsNodeError.value || hasRedactedError.value),
 );
 
 const executionHints = computed(() => {
@@ -407,7 +424,7 @@ const executionHints = computed(() => {
 });
 
 const workflowExecution = computed(
-	() => props.workflowExecution ?? workflowsStore.getWorkflowExecution?.data ?? undefined,
+	() => props.workflowExecution ?? currentExecution.value?.data ?? undefined,
 );
 const workflowRunData = computed(() => {
 	if (workflowExecution.value === undefined) {
@@ -425,6 +442,18 @@ const dataCount = computed(() =>
 
 const isTrimmedManualExecutionDataItem = computed(() =>
 	workflowRunData.value ? hasTrimmedRunData(workflowRunData.value) : false,
+);
+
+const isExecutionInTerminalState = computed(() =>
+	isTerminalExecutionStatus(currentExecution.value?.status ?? undefined),
+);
+
+const isExecutionRedacted = computed(
+	() =>
+		hasNodeRun.value &&
+		workflowExecution.value?.redactionInfo?.isRedacted === true &&
+		!pinnedData.hasData.value &&
+		!hasRunError.value,
 );
 
 const unfilteredDataCount = computed(() =>
@@ -538,7 +567,7 @@ const branches = computed(() => {
 });
 
 const editMode = computed(() => {
-	return isPaneTypeInput.value ? { enabled: false, value: '' } : ndvStore.outputPanelEditMode;
+	return isPaneTypeInput.value ? { enabled: false, value: '' } : ndvStore.value.outputPanelEditMode;
 });
 
 const readOnlyEnv = computed(() => sourceControlStore.preferences.branchReadOnly);
@@ -594,7 +623,7 @@ const parentNodeOutputData = computed(() => {
 
 const parentNodePinnedData = computed(() => {
 	const parentNode = props.workflowObject.getParentNodesByDepth(node.value?.name ?? '')[0];
-	return workflowDocumentStore?.value?.pinData?.[parentNode?.name || ''] ?? [];
+	return workflowDocumentStore?.value?.pinnedDataByNodeName?.[parentNode?.name || ''] ?? [];
 });
 
 const showPinButton = computed(
@@ -602,6 +631,7 @@ const showPinButton = computed(
 		!props.disablePin &&
 		!hasNoData.value &&
 		!editMode.value.enabled &&
+		!isExecutionRedacted.value &&
 		(hasBinaryData.value ? isPaneTypeOutput.value : canPinData.value),
 );
 
@@ -645,7 +675,7 @@ const hasPreviewSchema = asyncComputed(async () => {
 	if (!isSchemaPreviewEnabled.value || props.nodes.length === 0) return false;
 	const nodes = props.nodes
 		.filter((n) => n.depth === 1)
-		.map((n) => workflowsStore.getNodeByName(n.name))
+		.map((n) => workflowDocumentStore?.value?.getNodeByName(n.name) ?? null)
 		.filter(isPresent);
 
 	for (const connectedNode of nodes) {
@@ -705,7 +735,7 @@ watch(
 	inputDataPage,
 	(data: INodeExecutionData[]) => {
 		if (props.paneType && data) {
-			ndvStore.setNDVPanelDataIsEmpty({
+			ndvStore.value.setNDVPanelDataIsEmpty({
 				panel: props.paneType,
 				isEmpty: data.every((item) => isEmpty(item.json)),
 			});
@@ -732,7 +762,7 @@ watch(binaryData, (newData, prevData) => {
 });
 
 watch(currentOutputIndex, (branchIndex: number) => {
-	ndvStore.setNDVBranchIndex({
+	ndvStore.value.setNDVBranchIndex({
 		pane: props.paneType,
 		branchIndex,
 	});
@@ -761,7 +791,7 @@ onMounted(() => {
 	if (!isPaneTypeInput.value) {
 		showPinDataDiscoveryTooltip(jsonData.value);
 	}
-	ndvStore.setNDVBranchIndex({
+	ndvStore.value.setNDVBranchIndex({
 		pane: props.paneType,
 		branchIndex: currentOutputIndex.value,
 	});
@@ -856,7 +886,7 @@ const nodeHints = computed<NodeHint[]>(() => {
 					node: node.value,
 					nodeType: nodeType.value,
 					nodeOutputData,
-					nodes: props.workflowObject.nodes,
+					getNodeByName: (name) => props.workflowObject.getNode(name),
 					connections: props.workflowObject.connectionsBySourceNode,
 					hasNodeRun: hasNodeRun.value,
 					hasMultipleInputItems,
@@ -941,7 +971,7 @@ function enterEditMode({ origin }: EnterEditModeArgs) {
 		: Object.keys(inputData ?? {}).length;
 
 	const lastSuccessfulExecutionItems = getOutputtedNodeItems(
-		workflowsStore.lastSuccessfulExecution,
+		lastSuccessfulExecution.value,
 		node.value,
 	);
 	previousExecutionDataUsedInEditMode.value =
@@ -951,8 +981,8 @@ function enterEditMode({ origin }: EnterEditModeArgs) {
 		: DUMMY_PIN_DATA;
 	const data = inputDataLength > 0 ? inputData : mockData;
 
-	ndvStore.setOutputPanelEditModeEnabled(true);
-	ndvStore.setOutputPanelEditModeValue(JSON.stringify(data, null, 2));
+	ndvStore.value.setOutputPanelEditModeEnabled(true);
+	ndvStore.value.setOutputPanelEditModeValue(JSON.stringify(data, null, 2));
 
 	telemetry.track('User opened ndv edit state', {
 		node_type: activeNode.value?.type,
@@ -986,8 +1016,8 @@ function getOutputtedNodeItems(
 }
 
 function onClickCancelEdit() {
-	ndvStore.setOutputPanelEditModeEnabled(false);
-	ndvStore.setOutputPanelEditModeValue('');
+	ndvStore.value.setOutputPanelEditModeEnabled(false);
+	ndvStore.value.setOutputPanelEditModeValue('');
 	onExitEditMode({ type: 'cancel' });
 }
 
@@ -1013,7 +1043,7 @@ function onClickSaveEdit() {
 		return;
 	}
 
-	ndvStore.setOutputPanelEditModeEnabled(false);
+	ndvStore.value.setOutputPanelEditModeEnabled(false);
 
 	onExitEditMode({ type: 'save' });
 }
@@ -1395,7 +1425,7 @@ function enableNode() {
 			},
 		};
 
-		workflowState.updateNodeProperties(updateInformation);
+		workflowDocumentStore?.value?.updateNodeProperties(updateInformation);
 	}
 }
 
@@ -1529,7 +1559,13 @@ defineExpose({ enterEditMode });
 				<N8nIconButton
 					variant="subtle"
 					size="small"
-					v-if="!props.disableEdit && canPinData && !isReadOnlyRoute && !readOnlyEnv"
+					v-if="
+						!props.disableEdit &&
+						canPinData &&
+						!isReadOnlyRoute &&
+						!readOnlyEnv &&
+						!isExecutionRedacted
+					"
 					v-show="!editMode.enabled"
 					:title="i18n.baseText('runData.editOutput')"
 					:circle="false"
@@ -1576,7 +1612,12 @@ defineExpose({ enterEditMode });
 			</div>
 
 			<div
-				v-if="maxRunIndex > 0 && !displaysMultipleNodes && !props.disableRunIndexSelection"
+				v-if="
+					maxRunIndex > 0 &&
+					!displaysMultipleNodes &&
+					!props.disableRunIndexSelection &&
+					!isExecutionRedacted
+				"
 				v-show="!editMode.enabled"
 				:class="$style.runSelector"
 			>
@@ -1648,7 +1689,11 @@ defineExpose({ enterEditMode });
 				<N8nText v-n8n-html="hint.message" size="small"></N8nText>
 			</N8nCallout>
 
-			<div v-if="showBranchSwitch" :class="$style.outputs" data-test-id="branches">
+			<div
+				v-if="showBranchSwitch && !isExecutionRedacted"
+				:class="$style.outputs"
+				data-test-id="branches"
+			>
 				<slot v-if="inputSelectLocation === 'outputs'" name="input-select"></slot>
 				<ViewSubExecution
 					v-if="activeTaskMetadata && !(paneType === 'input' && hasInputOverwrite)"
@@ -1673,7 +1718,8 @@ defineExpose({ enterEditMode });
 					!isSearchInSchemaView &&
 					((dataCount > 0 && maxRunIndex === 0) || search) &&
 					!isArtificialRecoveredEventItem &&
-					!displaysMultipleNodes
+					!displaysMultipleNodes &&
+					!isExecutionRedacted
 				"
 				v-show="!editMode.enabled"
 				:class="$style.itemsCount"
@@ -1715,8 +1761,9 @@ defineExpose({ enterEditMode });
 			</div>
 
 			<div
-				v-else-if="isTrimmedManualExecutionDataItem"
+				v-else-if="isTrimmedManualExecutionDataItem && !isExecutionInTerminalState"
 				:class="[$style.center, $style.executingMessage]"
+				data-test-id="ndv-trimmed-loading"
 			>
 				<div v-if="!props.compact" :class="$style.spinner">
 					<N8nSpinner type="ring" />
@@ -1724,6 +1771,26 @@ defineExpose({ enterEditMode });
 				<N8nText>
 					{{ i18n.baseText('runData.trimmedData.loading') }}
 				</N8nText>
+			</div>
+
+			<div
+				v-else-if="isTrimmedManualExecutionDataItem && isExecutionInTerminalState"
+				:class="[$style.center, $style.executingMessage]"
+				data-test-id="ndv-trimmed-corrupted"
+			>
+				<N8nText>
+					{{ i18n.baseText('runData.trimmedData.corrupted') }}
+				</N8nText>
+				<N8nButton
+					v-if="pinnedData.hasData.value"
+					class="mt-s"
+					type="secondary"
+					size="small"
+					data-test-id="ndv-trimmed-corrupted-unpin"
+					@click="onTogglePinData({ source: 'context-menu' })"
+				>
+					{{ i18n.baseText('runData.trimmedData.unpin') }}
+				</N8nButton>
 			</div>
 
 			<div v-else-if="editMode.enabled" :class="$style.editMode">
@@ -1749,6 +1816,180 @@ defineExpose({ enterEditMode });
 
 			<div v-else-if="isWaitNodeWaiting" :class="$style.center">
 				<slot name="node-waiting">xxx</slot>
+			</div>
+
+			<div v-else-if="isExecutionRedacted" :class="$style.redactedContainer">
+				<div :class="$style.redactedFakeData">
+					<!-- Text-like fake content for AI / text output -->
+					<div
+						v-if="displayMode === 'ai' || node?.type?.includes('langchain')"
+						:class="$style.redactedText"
+					>
+						<p>
+							The process completed successfully and generated the following results based on the
+							provided input parameters. The analysis identified several key patterns in the dataset
+							that are worth highlighting.
+						</p>
+						<p>
+							First, the primary metrics showed a consistent upward trend across all measured
+							dimensions. The correlation between input variables and output quality remained strong
+							throughout the evaluation period, with confidence intervals well within acceptable
+							ranges.
+						</p>
+						<p>
+							Additionally, the secondary analysis revealed three distinct clusters within the data,
+							each exhibiting unique characteristics that align with the expected theoretical
+							framework. These findings suggest that the underlying model is performing as intended.
+						</p>
+					</div>
+					<!-- JSON-like fake content -->
+					<pre v-else-if="displayMode === 'json'" :class="$style.redactedJson">
+[
+  {
+    "id": 1007,
+    "name": "John Smith",
+    "email": "john@example.com",
+    "status": "active",
+    "created_at": "2024-01-15"
+  },
+  {
+    "id": 1014,
+    "name": "Jane Doe",
+    "email": "jane@company.com",
+    "status": "pending",
+    "created_at": "2024-02-20"
+  },
+  {
+    "id": 1021,
+    "name": "Alex Johnson",
+    "email": "alex@mail.com",
+    "status": "active",
+    "created_at": "2024-03-10"
+  },
+  {
+    "id": 1028,
+    "name": "Maria Garcia",
+    "email": "maria@org.com",
+    "status": "inactive",
+    "created_at": "2024-04-05"
+  },
+  {
+    "id": 1035,
+    "name": "Chris Lee",
+    "email": "chris@test.com",
+    "status": "active",
+    "created_at": "2024-05-18"
+  }
+]</pre
+					>
+					<!-- Schema-like fake content -->
+					<div v-else-if="displayMode === 'schema'" :class="$style.redactedSchema">
+						<div :class="$style.redactedSchemaField">
+							<span :class="$style.redactedSchemaKey">id</span>
+							<span :class="$style.redactedSchemaType">number</span>
+						</div>
+						<div :class="$style.redactedSchemaField">
+							<span :class="$style.redactedSchemaKey">name</span>
+							<span :class="$style.redactedSchemaType">string</span>
+						</div>
+						<div :class="$style.redactedSchemaField">
+							<span :class="$style.redactedSchemaKey">email</span>
+							<span :class="$style.redactedSchemaType">string</span>
+						</div>
+						<div :class="$style.redactedSchemaField">
+							<span :class="$style.redactedSchemaKey">status</span>
+							<span :class="$style.redactedSchemaType">string</span>
+						</div>
+						<div :class="$style.redactedSchemaField">
+							<span :class="$style.redactedSchemaKey">created_at</span>
+							<span :class="$style.redactedSchemaType">string</span>
+						</div>
+						<div :class="$style.redactedSchemaField">
+							<span :class="$style.redactedSchemaKey">metadata</span>
+							<span :class="$style.redactedSchemaType">object</span>
+						</div>
+						<div :class="$style.redactedSchemaField">
+							<span :class="$style.redactedSchemaKey">tags</span>
+							<span :class="$style.redactedSchemaType">array</span>
+						</div>
+					</div>
+					<!-- Table-like fake content for structured data (default) -->
+					<table v-else :class="$style.redactedTable">
+						<thead>
+							<tr>
+								<th>id</th>
+								<th>name</th>
+								<th>email</th>
+								<th>status</th>
+								<th>created_at</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr v-for="row in 8" :key="row">
+								<td>{{ 1000 + row * 7 }}</td>
+								<td>
+									{{
+										[
+											'John Smith',
+											'Jane Doe',
+											'Alex Johnson',
+											'Maria Garcia',
+											'Chris Lee',
+											'Pat Taylor',
+											'Sam Wilson',
+											'Robin Brown',
+										][row - 1]
+									}}
+								</td>
+								<td>
+									{{
+										[
+											'john@example',
+											'jane@company',
+											'alex@mail',
+											'maria@org',
+											'chris@test',
+											'pat@demo',
+											'sam@site',
+											'robin@web',
+										][row - 1]
+									}}.com
+								</td>
+								<td>
+									{{
+										[
+											'active',
+											'pending',
+											'active',
+											'inactive',
+											'active',
+											'pending',
+											'active',
+											'inactive',
+										][row - 1]
+									}}
+								</td>
+								<td>
+									{{
+										[
+											'2024-01-15',
+											'2024-02-20',
+											'2024-03-10',
+											'2024-04-05',
+											'2024-05-18',
+											'2024-06-22',
+											'2024-07-30',
+											'2024-08-12',
+										][row - 1]
+									}}
+								</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+				<div v-if="$slots['data-redacted']" :class="$style.redactedOverlay">
+					<slot name="data-redacted"></slot>
+				</div>
 			</div>
 
 			<div v-else-if="shouldShowNodeNotRunState" :class="$style.center">
@@ -1794,6 +2035,9 @@ defineExpose({ enterEditMode });
 					:compact="compact"
 					show-details
 				/>
+				<div v-else-if="hasRedactedError" :class="$style.center" data-test-id="ndv-redacted-error">
+					<slot name="redacted-error"></slot>
+				</div>
 			</div>
 
 			<div v-else-if="shouldShowNoDataInBranch" :class="$style.center">
@@ -1942,7 +2186,7 @@ defineExpose({ enterEditMode });
 					:class="$style.schema"
 					:compact="props.compact"
 					:truncate-limit="props.truncateLimit"
-					:preview-execution="workflowsStore.lastSuccessfulExecution"
+					:preview-execution="lastSuccessfulExecution"
 					@clear:search="onSearchClear"
 					@execute="executeNode"
 				/>
@@ -2334,6 +2578,109 @@ defineExpose({ enterEditMode });
 	gap: var(--spacing--2xs);
 	width: 100%;
 	align-items: center;
+}
+
+.redactedContainer {
+	position: relative;
+	height: 100%;
+	overflow: hidden;
+}
+
+.redactedFakeData {
+	padding: var(--spacing--sm);
+	opacity: 0.6;
+	pointer-events: none;
+	user-select: none;
+	filter: blur(3px);
+}
+
+.redactedText {
+	font-size: var(--font-size--sm);
+	color: var(--color--text);
+	line-height: var(--line-height--xl);
+
+	p {
+		margin-bottom: var(--spacing--sm);
+	}
+}
+
+.redactedTable {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: var(--font-size--2xs);
+	color: var(--color--text);
+
+	th,
+	td {
+		padding: var(--spacing--3xs) var(--spacing--xs);
+		text-align: left;
+		border-bottom: 1px solid var(--color--foreground);
+	}
+
+	th {
+		font-weight: var(--font-weight--bold);
+	}
+}
+
+.redactedJson {
+	font-family: var(--font-family--monospace, 'Courier New', monospace);
+	font-size: var(--font-size--2xs);
+	color: var(--color--text);
+	line-height: var(--line-height--xl);
+	margin: 0;
+	white-space: pre;
+}
+
+.redactedSchema {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+	padding-top: var(--spacing--2xs);
+}
+
+.redactedSchemaField {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+	padding: var(--spacing--3xs) var(--spacing--xs);
+	border-bottom: 1px solid var(--color--foreground);
+}
+
+.redactedSchemaKey {
+	font-size: var(--font-size--sm);
+	color: var(--color--text);
+	font-weight: var(--font-weight--bold);
+}
+
+.redactedSchemaType {
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--tint-2);
+}
+
+.redactedOverlay {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	display: flex;
+	justify-content: center;
+	align-items: flex-start;
+	padding-top: var(--spacing--3xl);
+	z-index: 1;
+	backdrop-filter: blur(2px);
+
+	&::before {
+		content: '';
+		position: absolute;
+		top: 0;
+		left: 0;
+		width: 100%;
+		height: 100%;
+		background: var(--color--foreground--tint-2);
+		opacity: 0.5;
+		z-index: -1;
+	}
 }
 </style>
 

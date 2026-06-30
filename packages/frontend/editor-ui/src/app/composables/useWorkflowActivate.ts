@@ -11,9 +11,11 @@ import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
+import { useWorkflowId } from '@/app/composables/useWorkflowId';
 import { useI18n } from '@n8n/i18n';
 import { ref } from 'vue';
 import { useCollaborationStore } from '@/features/collaboration/collaboration/collaboration.store';
+import { useActivationError } from '@/app/composables/useActivationError';
 import type { INode } from 'n8n-workflow';
 import type { ResponseError } from '@n8n/rest-api-client/utils';
 import type { findWebhook } from '@n8n/rest-api-client/api/webhooks';
@@ -24,14 +26,17 @@ import {
 
 export function useWorkflowActivate() {
 	const updatingWorkflowActivation = ref(false);
+	const activationErrorNodeId = ref<string | undefined>();
 
 	const workflowsStore = useWorkflowsStore();
+	const currentWorkflowId = useWorkflowId();
 	const workflowsListStore = useWorkflowsListStore();
 	const uiStore = useUIStore();
 	const telemetry = useTelemetry();
 	const toast = useToast();
 	const i18n = useI18n();
 	const collaborationStore = useCollaborationStore();
+	const { errorMessage: activationErrorMessage } = useActivationError(activationErrorNodeId);
 
 	const parseWebhookConflictError = (error: ResponseError) => {
 		try {
@@ -105,7 +110,7 @@ export function useWorkflowActivate() {
 
 		try {
 			const expectedChecksum =
-				workflowId === workflowsStore.workflowId ? workflowDocumentStore.checksum : undefined;
+				workflowId === currentWorkflowId.value ? workflowDocumentStore.checksum : undefined;
 
 			const updatedWorkflow = await workflowsStore.publishWorkflow(workflowId, {
 				versionId,
@@ -123,11 +128,11 @@ export function useWorkflowActivate() {
 				activeVersion: updatedWorkflow.activeVersion,
 			});
 
-			if (workflowId === workflowsStore.workflowId) {
-				workflowsStore.setWorkflowVersionData({
+			if (workflowId === currentWorkflowId.value) {
+				workflowDocumentStore.setVersionData({
 					versionId: updatedWorkflow.versionId,
-					name: workflowsStore.versionData?.name ?? null,
-					description: workflowsStore.versionData?.description ?? null,
+					name: workflowDocumentStore.versionData?.name ?? null,
+					description: workflowDocumentStore.versionData?.description ?? null,
 				});
 				if (updatedWorkflow.checksum) {
 					workflowDocumentStore.setChecksum(updatedWorkflow.checksum);
@@ -148,12 +153,14 @@ export function useWorkflowActivate() {
 				await handleWebhookConflictError(error);
 				return { success: false, errorHandled: true };
 			} else {
-				toast.showError(
-					error,
-					i18n.baseText('workflowActivator.showError.title', {
-						interpolate: { newStateName: 'published' },
-					}) + ':',
-				);
+				activationErrorNodeId.value = error.meta?.nodeId as string | undefined;
+				const title = i18n.baseText('workflowActivator.showError.title', {
+					interpolate: { newStateName: 'published' },
+				});
+				toast.showError(error, title, {
+					message: activationErrorMessage.value,
+					description: error.meta?.description as string | undefined,
+				});
 
 				// Only update workflow state to inactive if this is not a validation error
 				if (!error.meta?.validationError) {
@@ -164,7 +171,7 @@ export function useWorkflowActivate() {
 					});
 				}
 			}
-			return { success: false };
+			return { success: false, errorHandled: true };
 		} finally {
 			updatingWorkflowActivation.value = false;
 		}
@@ -190,7 +197,7 @@ export function useWorkflowActivate() {
 		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
 		try {
 			const expectedChecksum =
-				workflowId === workflowsStore.workflowId ? workflowDocumentStore.checksum : undefined;
+				workflowId === currentWorkflowId.value ? workflowDocumentStore.checksum : undefined;
 
 			await workflowsStore.deactivateWorkflow(workflowId, expectedChecksum);
 			workflowDocumentStore.setActiveState({

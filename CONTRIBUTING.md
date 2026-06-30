@@ -54,8 +54,8 @@ The most important directories:
   execution, active webhooks and
   workflows. **Contact n8n before
   starting on any changes here**
-- [/packages/frontend/@n8n/design-system](/packages/design-system) - Vue frontend components
-- [/packages/frontend/editor-ui](/packages/editor-ui) - Vue frontend workflow editor
+- [/packages/frontend/@n8n/design-system](/packages/frontend/@n8n/design-system) - Vue frontend components
+- [/packages/frontend/editor-ui](/packages/frontend/editor-ui) - Vue frontend workflow editor
 - [/packages/node-dev](/packages/node-dev) - CLI to create new n8n-nodes
 - [/packages/nodes-base](/packages/nodes-base) - Base n8n nodes
 - [/packages/workflow](/packages/workflow) - Workflow code with interfaces which
@@ -135,6 +135,21 @@ brew install actionlint
 ```
 > **Note:** actionlint is only required if you're modifying workflow files. It runs automatically via git hooks when workflow files are changed.
 
+#### tbls (for database schema docs)
+
+The database schema docs under [`docs/generated/`](docs/generated) are generated from the migrations with [tbls](https://github.com/k1LoW/tbls). If you plan to modify DB migrations, you'll need **either** tbls installed **or** Docker available.
+
+**macOS (Homebrew):**
+```bash
+brew install tbls
+```
+
+For other platforms, see the [tbls install guide](https://github.com/k1LoW/tbls#install).
+
+> **Note:** tbls is only required if you're modifying DB migrations. It runs automatically via git hooks when migration files are changed.
+
+---
+
 ### Actual n8n setup
 
 > **IMPORTANT**: All the steps below have to get executed at least once to get the development setup up and running!
@@ -186,6 +201,26 @@ To start n8n execute:
 ```bash
 pnpm start
 ```
+
+### Environment variables (optional)
+
+Most environment variables have default values, but if you needed to modify any a template for local environment variables is provided at `.env.local.example`. Copy it and fill in any values you need.
+
+```bash
+cp .env.local.example .env.local
+```
+
+Then prefix any dev command with `dotenvx` to load it, for example:
+
+```bash
+cd packages/cli && pnpm exec dotenvx run -f ../../.env.local -- pnpm dev
+
+pnpm exec dotenvx run -f .env.local -- pnpm dev:be
+```
+
+> **Note:** dotenvx supports variable expansion (e.g. `$HOME`) but not shell
+> tilde expansion. Use `$HOME` instead of `~` for paths
+> (e.g. `N8N_USER_FOLDER=$HOME/.n8n-dev`).
 
 ## Development cycle
 

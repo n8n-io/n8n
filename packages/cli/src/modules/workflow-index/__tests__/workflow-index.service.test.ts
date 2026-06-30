@@ -4,10 +4,10 @@ import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { WorkflowsConfig } from '@n8n/config';
 import { WorkflowDependencyRepository, WorkflowEntity, WorkflowRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
 import type { Span } from 'n8n-core';
 import { ErrorReporter, Tracing } from 'n8n-core';
 import type { INode, IWorkflowBase } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { EventService } from '@/events/event.service';
 
@@ -26,7 +26,7 @@ describe('WorkflowIndexService', () => {
 		mock<WorkflowsConfig>({ indexingBatchSize: 10, ...overrides });
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 
 		mockTracing.startSpan.mockImplementation(async (_opts, spanCb) => await spanCb(mock<Span>()));
 
@@ -552,6 +552,30 @@ describe('WorkflowIndexService', () => {
 					dependencies: expect.not.arrayContaining([
 						expect.objectContaining({
 							dependencyKey: 'n8n-nodes-base.manualTrigger',
+						}),
+					]),
+				}),
+			);
+		});
+
+		it('should extract errorWorkflow dependency from workflow settings', async () => {
+			mockWorkflowDependencyRepository.updateDependenciesForWorkflow.mockResolvedValue(true);
+
+			const workflow = createWorkflow([
+				createNode({ id: 'node-1', type: 'n8n-nodes-base.manualTrigger' }),
+			]);
+			workflow.settings = { errorWorkflow: 'error-wf-1' };
+
+			await service.updateIndexForDraft(workflow);
+
+			expect(mockWorkflowDependencyRepository.updateDependenciesForWorkflow).toHaveBeenCalledWith(
+				'workflow-123',
+				expect.objectContaining({
+					dependencies: expect.arrayContaining([
+						expect.objectContaining({
+							dependencyType: 'errorWorkflow',
+							dependencyKey: 'error-wf-1',
+							dependencyInfo: null,
 						}),
 					]),
 				}),

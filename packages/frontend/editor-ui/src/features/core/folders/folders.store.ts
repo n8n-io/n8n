@@ -13,6 +13,7 @@ import * as foldersApi from './folders.api';
 import * as workflowsApi from '@/app/api/workflows';
 import * as workflowsEEApi from '@/app/api/workflows.ee';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
@@ -123,6 +124,7 @@ export const useFoldersStore = defineStore(STORES.FOLDERS, () => {
 
 	async function renameFolder(projectId: string, folderId: string, name: string) {
 		await foldersApi.renameFolder(rootStore.restApiContext, projectId, folderId, name);
+		useFavoritesStore().renameFavorite(folderId, 'folder', name);
 	}
 
 	async function fetchProjectFolders(projectId: string) {

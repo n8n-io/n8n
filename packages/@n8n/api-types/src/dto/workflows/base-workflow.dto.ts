@@ -3,6 +3,15 @@ import { z } from 'zod';
 
 export const WORKFLOW_NAME_MAX_LENGTH = 128;
 
+/** Maximum allowed size for pinned data in bytes (12 MB) */
+export const MAX_PINNED_DATA_SIZE = 1024 * 1024 * 12;
+
+/** Maximum allowed workflow size in bytes (16 MB) */
+export const MAX_WORKFLOW_SIZE = 1024 * 1024 * 16;
+
+/** Expected maximum workflow request metadata (i.e. headers) size in bytes (~2 KB) */
+export const MAX_EXPECTED_REQUEST_SIZE = 2048;
+
 export const workflowNameSchema = z
 	.string()
 	.min(1, { message: 'Workflow name is required' })
@@ -24,12 +33,36 @@ export const workflowConnectionsSchema = z.custom<IConnections>(
 	},
 );
 
-export const workflowSettingsSchema = z.custom<IWorkflowSettings>(
-	(val) => val === null || (typeof val === 'object' && val !== null && !Array.isArray(val)),
-	{
-		message: 'Settings must be an object or null',
-	},
-);
+const customTelemetryTagSchema = z
+	.object(
+		{
+			key: z
+				.string({ invalid_type_error: 'Key must be a string' })
+				.refine((key) => key.trim().length > 0, { message: 'Key must not be empty' }),
+			value: z.string({ invalid_type_error: 'Value must be a string' }),
+		},
+		{ invalid_type_error: 'Custom span attribute must be an object' },
+	)
+	.strict({ message: 'Custom span attribute must only include key and value' });
+
+const customTelemetryTagsSchema = z
+	.array(customTelemetryTagSchema, {
+		invalid_type_error: 'Custom span attributes must be an array',
+	})
+	.refine(
+		(tags) => {
+			const trimmedKeys = tags.map((tag) => tag.key.trim());
+			return trimmedKeys.length === new Set(trimmedKeys).size;
+		},
+		{ message: 'Duplicate keys are not allowed in custom span attributes' },
+	);
+
+export const workflowSettingsSchema: z.ZodType<IWorkflowSettings | null> = z
+	.object({
+		customTelemetryTags: customTelemetryTagsSchema.optional(),
+	})
+	.passthrough()
+	.nullable();
 
 export const workflowStaticDataSchema = z.preprocess(
 	(val) => {
@@ -61,6 +94,14 @@ export const workflowPinDataSchema = z.custom<IPinData | null>(
 
 export const workflowMetaSchema = z.record(z.string(), z.unknown()).nullable();
 
+const workflowGroupSchema = z.object({
+	id: z.string().min(1),
+	name: z.string().min(1),
+	nodeIds: z.array(z.string().min(1)),
+});
+
+export const workflowNodeGroupsSchema = z.array(workflowGroupSchema);
+
 /**
  * Base workflow shape containing fields shared between Create and Update DTOs.
  */
@@ -76,11 +117,15 @@ export const baseWorkflowShape = {
 	staticData: workflowStaticDataSchema.optional(),
 	meta: workflowMetaSchema.optional(),
 	pinData: workflowPinDataSchema.optional(),
+	nodeGroups: workflowNodeGroupsSchema.optional(),
 	hash: z.string().optional(),
 
-	// Folder organization
+	// Folder organization.
+	// `parentFolder` (the relation object) is intentionally NOT accepted as input: workflow
+	// placement is controlled solely via `parentFolderId`, which is validated against the target
+	// project. Any `parentFolder` a client sends is stripped by this schema and never
+	// mass-assigned — the workflow entity is built from an allowlist (workflow-entity-mapper.ts).
 	parentFolderId: z.string().optional(),
-	parentFolder: z.object({ id: z.string(), name: z.string() }).nullable().optional(),
 
 	// Tags
 	tags: z

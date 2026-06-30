@@ -1,6 +1,6 @@
-import { GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
-import type { User } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE, type User } from '@n8n/db';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
 import * as checkAccess from '@/permissions.ee/check-access';
@@ -9,66 +9,18 @@ import {
 	validateExternalSecretsPermissions,
 	isChangingExternalSecretExpression,
 	validateAccessToReferencedSecretProviders,
-	extractProviderKeys,
 } from '../validation';
 
+const ownerUser = mock<User>({ id: 'owner-id', role: GLOBAL_OWNER_ROLE });
+const memberUser = mock<User>({ id: 'member-id', role: GLOBAL_MEMBER_ROLE });
+
 describe('Credentials Validation', () => {
-	const ownerUser = mock<User>({ id: 'owner-id', role: GLOBAL_OWNER_ROLE });
-	const memberUser = mock<User>({ id: 'member-id', role: GLOBAL_MEMBER_ROLE });
 	const projectId = 'project-id';
 	const errorMessage = 'Lacking permissions to reference external secrets in credentials';
 
-	describe('extractProviderKeys', () => {
-		it('should extract single provider from dot notation', () => {
-			expect(extractProviderKeys('={{ $secrets.vault.myKey }}')).toEqual(['vault']);
-		});
-
-		it('should extract single provider from bracket notation', () => {
-			expect(extractProviderKeys("={{ $secrets['aws']['secret'] }}")).toEqual(['aws']);
-		});
-
-		it('should extract multiple providers from same expression', () => {
-			const result = extractProviderKeys(
-				'={{ $secrets.vault.myKey + ":" + $secrets.aws.otherKey }}',
-			);
-			expect(result.sort()).toEqual(['aws', 'vault']);
-		});
-
-		it('should deduplicate repeated provider keys', () => {
-			expect(extractProviderKeys('={{ $secrets.vault.key1 + $secrets.vault.key2 }}')).toEqual([
-				'vault',
-			]);
-		});
-
-		it('should return empty array when no $secrets references found', () => {
-			expect(extractProviderKeys('={{ $variables.myVar }}')).toEqual([]);
-		});
-
-		it('should return empty array for plain text', () => {
-			expect(extractProviderKeys('some plain text')).toEqual([]);
-		});
-
-		it('should return empty array when $secrets is not inside expression braces', () => {
-			expect(extractProviderKeys('$secrets.vault.key')).toEqual([]);
-			expect(extractProviderKeys('text with $secrets.vault.key but no braces')).toEqual([]);
-		});
-
-		it('should only extract providers from inside expression braces', () => {
-			expect(extractProviderKeys('$secrets.vault.key and {{ $secrets.aws.secret }}')).toEqual([
-				'aws',
-			]);
-		});
-
-		it('should extract providers from multiple expression blocks', () => {
-			const expression = 'hello {{ $secrets.vault.key }} world {{ $secrets.aws.secret }}';
-			const result = extractProviderKeys(expression);
-			expect(result.sort()).toEqual(['aws', 'vault']);
-		});
-	});
-
 	describe('validateExternalSecretsPermissions', () => {
 		beforeEach(() => {
-			jest.restoreAllMocks();
+			vi.restoreAllMocks();
 		});
 
 		it('should pass when credential data contains no external secrets', async () => {
@@ -83,7 +35,7 @@ describe('Credentials Validation', () => {
 		});
 
 		it('should pass when credential data contains external secrets and user has permission', async () => {
-			jest.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
 			const data = {
 				apiKey: '={{ $secrets.myApiKey }}',
 				domain: 'example.com',
@@ -95,7 +47,7 @@ describe('Credentials Validation', () => {
 		});
 
 		it('should throw BadRequestError when user lacks externalSecret:list permission', async () => {
-			jest.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
 			const data = {
 				apiKey: '={{ $secrets.myApiKey }}',
 				domain: 'example.com',
@@ -107,7 +59,7 @@ describe('Credentials Validation', () => {
 		});
 
 		it('should throw when user lacks permission and uses nested external secrets', async () => {
-			jest.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
 			const data = {
 				apiKey: 'regular-key',
 				advanced: {
@@ -121,7 +73,7 @@ describe('Credentials Validation', () => {
 		});
 
 		it('should pass when user has permission and uses nested external secrets', async () => {
-			jest.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
 			const data = {
 				apiKey: 'regular-key',
 				advanced: {
@@ -135,7 +87,7 @@ describe('Credentials Validation', () => {
 		});
 
 		it('should throw when updating nested credential with external secret without permission', async () => {
-			jest.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
+			vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
 			const existingData = {
 				apiKey: 'key',
 				config: { token: 'old-token' },
@@ -157,7 +109,7 @@ describe('Credentials Validation', () => {
 
 		describe('bracket notation', () => {
 			it('should throw when user lacks permission and uses bracket notation', async () => {
-				jest.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
+				vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
 				const data = {
 					apiKey: "={{ $secrets['vault']['key'] }}",
 				};
@@ -168,7 +120,7 @@ describe('Credentials Validation', () => {
 			});
 
 			it('should pass when user has permission and uses bracket notation', async () => {
-				jest.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+				vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
 				const data = {
 					apiKey: "={{ $secrets['vault']['key'] }}",
 				};
@@ -179,13 +131,44 @@ describe('Credentials Validation', () => {
 			});
 
 			it('should throw when user lacks permission and uses mixed notation', async () => {
-				jest.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
+				vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
 				const data = {
 					apiKey: "={{ $secrets.vault['nested'] }}",
 				};
 
 				await expect(
 					validateExternalSecretsPermissions({ user: memberUser, projectId, dataToSave: data }),
+				).rejects.toThrow(errorMessage);
+			});
+		});
+
+		describe('non-literal $secrets references', () => {
+			it.each([
+				['space before dot', '={{ $secrets .vault.key }}'],
+				['multiple spaces before dot', '={{ $secrets   .vault.key }}'],
+				['tab before dot', '={{ $secrets\t.vault.key }}'],
+				['newline before dot', '={{ $secrets\n.vault.key }}'],
+				['space before bracket', "={{ $secrets ['vault']['key'] }}"],
+				['newline before bracket', "={{ $secrets\n['vault']['key'] }}"],
+				['optional chaining', '={{ $secrets?.vault?.key }}'],
+				['parentheses', '={{ ($secrets).vault.key }}'],
+				['comma operator', '={{ (0, $secrets).vault.key }}'],
+				['array wrap with pop', '={{ [$secrets].pop().vault.key }}'],
+				['array wrap with at', '={{ [$secrets].at(0).vault.key }}'],
+				['inline comment', '={{ ( /* x */ $secrets ).vault.key }}'],
+				['Object() wrap', '={{ Object($secrets).vault.key }}'],
+				['nullish coalescing', '={{ ($secrets ?? {}).vault.key }}'],
+				['template-literal key', '={{ $secrets [`vault`].key }}'],
+				['concatenated key', '={{ $secrets ["va".concat("ult")].key }}'],
+			])('should throw when user lacks permission and uses %s', async (_label, expression) => {
+				vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
+
+				await expect(
+					validateExternalSecretsPermissions({
+						user: memberUser,
+						projectId,
+						dataToSave: { apiKey: expression },
+					}),
 				).rejects.toThrow(errorMessage);
 			});
 		});
@@ -294,19 +277,19 @@ describe('Credentials Validation', () => {
 			accessCheckService = mock<SecretsProviderAccessCheckService>();
 		});
 
-		it('should handle provider name with hyphens and numbers', async () => {
+		it('should handle provider name with letters and numbers', async () => {
 			const data = {
-				apiKey: '={{ $secrets.my-provider-123.key }}',
+				apiKey: '={{ $secrets.myProvider123.key }}',
 			};
 
-			accessCheckService.isProviderAvailableInProject = jest.fn().mockResolvedValue(true);
+			accessCheckService.isProviderAvailableInProject = vi.fn().mockResolvedValue(true);
 
 			await expect(
 				validateAccessToReferencedSecretProviders(projectId, data, accessCheckService, 'create'),
 			).resolves.toBeUndefined();
 
 			expect(accessCheckService.isProviderAvailableInProject).toHaveBeenCalledWith(
-				'my-provider-123',
+				'myProvider123',
 				projectId,
 			);
 		});
@@ -327,7 +310,7 @@ describe('Credentials Validation', () => {
 				apiKey: '={{ $secrets.vault.mykey }}',
 			};
 
-			accessCheckService.isProviderAvailableInProject = jest.fn().mockResolvedValue(true);
+			accessCheckService.isProviderAvailableInProject = vi.fn().mockResolvedValue(true);
 
 			await validateAccessToReferencedSecretProviders(
 				projectId,
@@ -348,13 +331,13 @@ describe('Credentials Validation', () => {
 				token: '={{ $secrets.aws.secret }}',
 			};
 
-			accessCheckService.isProviderAvailableInProject = jest.fn().mockResolvedValue(true);
+			accessCheckService.isProviderAvailableInProject = vi.fn().mockResolvedValue(true);
 
 			await expect(
 				validateAccessToReferencedSecretProviders(projectId, data, accessCheckService, 'create'),
 			).resolves.toBeUndefined();
 
-			expect((accessCheckService.isProviderAvailableInProject as jest.Mock).mock.calls).toEqual([
+			expect((accessCheckService.isProviderAvailableInProject as Mock).mock.calls).toEqual([
 				['vault', projectId],
 				['aws', projectId],
 			]);
@@ -365,7 +348,7 @@ describe('Credentials Validation', () => {
 				apiKey: '={{ $secrets.vault.mykey }}',
 			};
 
-			accessCheckService.isProviderAvailableInProject = jest.fn().mockResolvedValue(false);
+			accessCheckService.isProviderAvailableInProject = vi.fn().mockResolvedValue(false);
 
 			await expect(
 				validateAccessToReferencedSecretProviders(projectId, data, accessCheckService, 'create'),
@@ -380,7 +363,7 @@ describe('Credentials Validation', () => {
 				anotherApiKey: '={{ $secrets.anotherOutsideProvider.key }}',
 			};
 
-			accessCheckService.isProviderAvailableInProject = jest.fn().mockResolvedValue(false);
+			accessCheckService.isProviderAvailableInProject = vi.fn().mockResolvedValue(false);
 
 			await expect(
 				validateAccessToReferencedSecretProviders(projectId, data, accessCheckService, 'create'),
@@ -395,7 +378,7 @@ describe('Credentials Validation', () => {
 					apiKey: "={{ $secrets['vault']['mykey'] }}",
 				};
 
-				accessCheckService.isProviderAvailableInProject = jest.fn().mockResolvedValue(true);
+				accessCheckService.isProviderAvailableInProject = vi.fn().mockResolvedValue(true);
 
 				await expect(
 					validateAccessToReferencedSecretProviders(projectId, data, accessCheckService, 'create'),
@@ -412,13 +395,79 @@ describe('Credentials Validation', () => {
 					apiKey: "={{ $secrets['vault']['mykey'] }}",
 				};
 
-				accessCheckService.isProviderAvailableInProject = jest.fn().mockResolvedValue(false);
+				accessCheckService.isProviderAvailableInProject = vi.fn().mockResolvedValue(false);
 
 				await expect(
 					validateAccessToReferencedSecretProviders(projectId, data, accessCheckService, 'create'),
 				).rejects.toThrow(
 					'The secret provider "vault" used in "apiKey" does not exist in this project',
 				);
+			});
+
+			it('should pass when project has access to provider referenced using mixed notation', async () => {
+				const data = {
+					apiKey: "={{ $secrets.vault['mykey'] }}",
+				};
+
+				accessCheckService.isProviderAvailableInProject = vi.fn().mockResolvedValue(true);
+
+				await expect(
+					validateAccessToReferencedSecretProviders(projectId, data, accessCheckService, 'create'),
+				).resolves.toBeUndefined();
+
+				expect(accessCheckService.isProviderAvailableInProject).toHaveBeenCalledWith(
+					'vault',
+					projectId,
+				);
+			});
+		});
+
+		describe('whitespace and newline between $secrets and accessor', () => {
+			it.each([
+				['space before dot', '={{ $secrets .vault.mykey }}'],
+				['tab before dot', '={{ $secrets\t.vault.mykey }}'],
+				['newline before dot', '={{ $secrets\n.vault.mykey }}'],
+				['space before bracket', "={{ $secrets ['vault']['mykey'] }}"],
+				['newline before bracket', "={{ $secrets\n['vault']['mykey'] }}"],
+			])('should check provider access for reference with %s', async (_label, expression) => {
+				accessCheckService.isProviderAvailableInProject = vi.fn().mockResolvedValue(false);
+
+				await expect(
+					validateAccessToReferencedSecretProviders(
+						projectId,
+						{ apiKey: expression },
+						accessCheckService,
+						'create',
+					),
+				).rejects.toThrow(
+					'The secret provider "vault" used in "apiKey" does not exist in this project',
+				);
+
+				expect(accessCheckService.isProviderAvailableInProject).toHaveBeenCalledWith(
+					'vault',
+					projectId,
+				);
+			});
+		});
+
+		describe('detected reference with unrecoverable provider key', () => {
+			it.each([
+				['parentheses', '={{ ($secrets).vault.mykey }}'],
+				['array wrap', '={{ [$secrets].pop().vault.mykey }}'],
+				['optional chaining', '={{ $secrets?.vault?.mykey }}'],
+				['template-literal key', '={{ $secrets [`vault`].mykey }}'],
+				['concatenated key', '={{ $secrets ["va".concat("ult")].mykey }}'],
+			])('should reject %s', async (_label, expression) => {
+				accessCheckService.isProviderAvailableInProject = vi.fn().mockResolvedValue(true);
+
+				await expect(
+					validateAccessToReferencedSecretProviders(
+						projectId,
+						{ apiKey: expression },
+						accessCheckService,
+						'create',
+					),
+				).rejects.toThrow('Could not find a valid external secret vault name');
 			});
 		});
 
@@ -432,7 +481,7 @@ describe('Credentials Validation', () => {
 					},
 				};
 
-				accessCheckService.isProviderAvailableInProject = jest.fn().mockResolvedValue(true);
+				accessCheckService.isProviderAvailableInProject = vi.fn().mockResolvedValue(true);
 
 				await validateAccessToReferencedSecretProviders(
 					projectId,
@@ -451,7 +500,7 @@ describe('Credentials Validation', () => {
 					},
 				};
 
-				accessCheckService.isProviderAvailableInProject = jest.fn().mockResolvedValue(false);
+				accessCheckService.isProviderAvailableInProject = vi.fn().mockResolvedValue(false);
 
 				await expect(
 					validateAccessToReferencedSecretProviders(projectId, data, accessCheckService, 'create'),
@@ -467,7 +516,7 @@ describe('Credentials Validation', () => {
 				password: '={{ $secrets.vault.key2 }}',
 			};
 
-			accessCheckService.isProviderAvailableInProject = jest.fn().mockResolvedValue(false);
+			accessCheckService.isProviderAvailableInProject = vi.fn().mockResolvedValue(false);
 
 			await expect(
 				validateAccessToReferencedSecretProviders(projectId, data, accessCheckService, 'create'),
@@ -483,7 +532,7 @@ describe('Credentials Validation', () => {
 				password: '={{ $secrets.aws.pass }}',
 			};
 
-			accessCheckService.isProviderAvailableInProject = jest.fn().mockResolvedValue(false);
+			accessCheckService.isProviderAvailableInProject = vi.fn().mockResolvedValue(false);
 
 			await expect(
 				validateAccessToReferencedSecretProviders(projectId, data, accessCheckService, 'create'),
@@ -522,7 +571,7 @@ describe('Credentials Validation', () => {
 					apiKey: '={{ $secrets.vault.mykey }}',
 				};
 
-				accessCheckService.isProviderAvailableInProject = jest.fn().mockResolvedValue(false);
+				accessCheckService.isProviderAvailableInProject = vi.fn().mockResolvedValue(false);
 
 				await expect(
 					validateAccessToReferencedSecretProviders(projectId, data, accessCheckService, 'create'),
@@ -536,7 +585,7 @@ describe('Credentials Validation', () => {
 					apiKey: '={{ $secrets.vault.mykey }}',
 				};
 
-				accessCheckService.isProviderAvailableInProject = jest.fn().mockResolvedValue(false);
+				accessCheckService.isProviderAvailableInProject = vi.fn().mockResolvedValue(false);
 
 				await expect(
 					validateAccessToReferencedSecretProviders(projectId, data, accessCheckService, 'update'),
@@ -550,7 +599,7 @@ describe('Credentials Validation', () => {
 					apiKey: '={{ $secrets.vault.mykey }}',
 				};
 
-				accessCheckService.isProviderAvailableInProject = jest.fn().mockResolvedValue(false);
+				accessCheckService.isProviderAvailableInProject = vi.fn().mockResolvedValue(false);
 
 				await expect(
 					validateAccessToReferencedSecretProviders(

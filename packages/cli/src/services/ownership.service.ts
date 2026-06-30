@@ -1,3 +1,5 @@
+import { OwnerSetupRequestDto } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import type { ListQueryDb } from '@n8n/db';
 import {
 	GLOBAL_OWNER_ROLE,
@@ -12,15 +14,15 @@ import {
 	Scope,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { Logger } from '@n8n/backend-common';
-import { CacheService } from '@/services/cache/cache.service';
-import { OwnerSetupRequestDto } from '@n8n/api-types';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { EventService } from '@/events/event.service';
-import { PasswordUtility } from './password.utility';
 import { IsNull } from '@n8n/typeorm/find-options/operator/IsNull';
 import { Not } from '@n8n/typeorm/find-options/operator/Not';
+
 import config from '@/config';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { EventService } from '@/events/event.service';
+import { CacheService } from '@/services/cache/cache.service';
+
+import { PasswordUtility } from './password.utility';
 
 @Service()
 export class OwnershipService {
@@ -147,6 +149,19 @@ export class OwnershipService {
 		}
 	}
 
+	async invalidateWorkflowProjectCacheForProject(projectId: string): Promise<void> {
+		const rows = await this.sharedWorkflowRepository.find({
+			where: { projectId, role: 'workflow:owner' },
+			select: ['workflowId'],
+		});
+		await Promise.all(
+			rows.map(
+				async ({ workflowId }) =>
+					await this.cacheService.deleteFromHash('workflow-project', workflowId),
+			),
+		);
+	}
+
 	addOwnedByAndSharedWith(
 		rawWorkflow: ListQueryDb.Workflow.WithSharing,
 	): ListQueryDb.Workflow.WithOwnedByAndSharedWith;
@@ -221,25 +236,36 @@ export class OwnershipService {
 		});
 	}
 
-	async setupOwner(payload: OwnerSetupRequestDto) {
+	async setupOwner(
+		payload: OwnerSetupRequestDto,
+		options?: { overwriteExisting?: boolean; passwordIsHashed?: boolean },
+	) {
 		const { email, firstName, lastName, password } = payload;
-		if (await this.hasInstanceOwner()) {
+
+		if (!options?.overwriteExisting && (await this.hasInstanceOwner())) {
 			this.logger.debug(
 				'Request to claim instance ownership failed because instance owner already exists',
 			);
 			throw new BadRequestError('Instance owner already setup');
 		}
 
-		let shellUser = await this.userRepository.findOneOrFail({
+		let shellUser = await this.userRepository.findOne({
 			where: { role: { slug: GLOBAL_OWNER_ROLE.slug } },
 			relations: ['role'],
 		});
 
-		shellUser.email = email;
+		if (!shellUser) {
+			this.logger.error('Could not find shell user with global:owner role');
+			throw new BadRequestError('Instance owner shell user not found');
+		}
+
+		shellUser.email = email.toLowerCase();
 		shellUser.firstName = firstName;
 		shellUser.lastName = lastName;
 		shellUser.lastActiveAt = new Date();
-		shellUser.password = await this.passwordUtility.hash(password);
+		shellUser.password = options?.passwordIsHashed
+			? password
+			: await this.passwordUtility.hash(password);
 
 		shellUser = await this.userRepository.save(shellUser, { transaction: false });
 

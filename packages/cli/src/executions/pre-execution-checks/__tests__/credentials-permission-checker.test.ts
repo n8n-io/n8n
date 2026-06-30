@@ -6,8 +6,8 @@ import {
 	type CredentialsEntity,
 	GLOBAL_OWNER_ROLE,
 } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
 import type { INode } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import type { NodeTypes } from '@/node-types';
 import type { OwnershipService } from '@/services/ownership.service';
@@ -49,7 +49,7 @@ describe('CredentialsPermissionChecker', () => {
 	});
 
 	beforeEach(async () => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 
 		node.credentials!.someCredential.id = credentialId;
 		ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(personalProject);
@@ -147,7 +147,7 @@ describe('CredentialsPermissionChecker', () => {
 			type: 'team',
 		});
 		// Reset and set up new mocks for this test
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		ownershipService.getWorkflowProjectCached.mockResolvedValue(teamProject);
 		projectService.findProjectsWorkflowIsIn.mockResolvedValue([teamProject.id]);
 		ownershipService.getPersonalProjectOwnerCached.mockResolvedValue(null);
@@ -206,7 +206,7 @@ describe('CredentialsPermissionChecker', () => {
 		};
 
 		beforeEach(() => {
-			jest.resetAllMocks();
+			vi.resetAllMocks();
 			ownershipService.getWorkflowProjectCached.mockResolvedValue(teamProject);
 			ownershipService.getPersonalProjectOwnerCached.mockResolvedValue(null);
 			projectService.findProjectsWorkflowIsIn.mockResolvedValue([teamProject.id]);
@@ -237,6 +237,52 @@ describe('CredentialsPermissionChecker', () => {
 			expect(sharedCredentialsRepository.getFilteredAccessibleCredentials).toHaveBeenCalledWith(
 				[teamProject.id],
 				[activeCredentialId],
+			);
+		});
+
+		it('should check generic credential types specified by genericAuthType', async () => {
+			const genericCredentialId = 'generic-cred';
+			const httpRequestNodeWithGenericAuth: INode = {
+				id: 'node-2',
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4.2,
+				position: [0, 0],
+				parameters: {
+					authentication: 'genericCredentialType',
+					genericAuthType: 'httpHeaderAuth',
+				},
+				credentials: {
+					httpHeaderAuth: {
+						id: genericCredentialId,
+						name: 'Header Auth',
+					},
+				},
+			};
+
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: {
+					credentials: [
+						{
+							name: 'httpSslAuth',
+							required: true,
+							displayOptions: { show: { provideSslCertificates: [true] } },
+						},
+					],
+				},
+			} as never);
+
+			sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValue([]);
+			credentialsRepository.find.mockResolvedValue([]);
+
+			await expect(
+				permissionChecker.check(workflowId, [httpRequestNodeWithGenericAuth]),
+			).rejects.toThrow('Node "HTTP Request" does not have access to the credential');
+
+			// Should check the generic credential type, not skip it
+			expect(sharedCredentialsRepository.getFilteredAccessibleCredentials).toHaveBeenCalledWith(
+				[teamProject.id],
+				[genericCredentialId],
 			);
 		});
 

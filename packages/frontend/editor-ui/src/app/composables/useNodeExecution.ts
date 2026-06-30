@@ -12,22 +12,23 @@ import {
 import type { INodeUi, IUpdateInformation } from '@/Interface';
 
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useUIStore } from '@/app/stores/ui.store';
 
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
+import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { usePinnedData } from '@/app/composables/usePinnedData';
 import { useMessage } from '@/app/composables/useMessage';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import { useEditorContext } from '@/app/composables/useEditorContext';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 import { needsAgentInput } from '@/app/utils/nodes/nodeTransforms';
 import { generateCodeForAiTransform } from '@/features/ndv/parameters/utils/buttonParameter.utils';
-
-import { nodeViewEventBus } from '@/app/event-bus';
 
 import {
 	WEBHOOK_NODE_TYPE,
@@ -93,14 +94,18 @@ export function useNodeExecution(
 	const toast = useToast();
 	const message = useMessage();
 	const externalHooks = useExternalHooks();
+	const { askAi } = useEditorContext();
 
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
-	const ndvStore = useNDVStore();
 	const uiStore = useUIStore();
-	const workflowState = injectWorkflowState();
+
+	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const ndvStore = computed(() => useNDVStore(workflowDocumentStore.value.documentId));
+	const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 
 	const { runWorkflow, stopCurrentExecution } = useRunWorkflow({ router });
+	const nodeHelpers = useNodeHelpers();
 
 	const codeGenerationInProgress = ref(false);
 
@@ -123,7 +128,9 @@ export function useNodeExecution(
 	const isChatNode = computed(() => nodeType.value?.name === CHAT_TRIGGER_NODE_TYPE);
 
 	const isChatChild = computed(() =>
-		nodeRef.value ? workflowsStore.checkIfNodeHasChatParent(nodeRef.value.name) : false,
+		nodeRef.value
+			? workflowDocumentStore.value.checkIfNodeHasChatParent(nodeRef.value.name)
+			: false,
 	);
 
 	const isFormTriggerNode = computed(() => nodeType.value?.name === FORM_TRIGGER_NODE_TYPE);
@@ -135,17 +142,18 @@ export function useNodeExecution(
 	const isWebhookNode = computed(() => nodeType.value?.name === WEBHOOK_NODE_TYPE);
 
 	const isNodeRunning = computed(() => {
-		if (!workflowsStore.isWorkflowRunning || codeGenerationInProgress.value) return false;
-		const triggeredNode = workflowsStore.executedNode;
+		if (!workflowExecutionStateStore.value.isWorkflowRunning || codeGenerationInProgress.value)
+			return false;
+		const triggeredNode = workflowExecutionStateStore.value.activeExecutionExecutedNode;
 		return (
-			workflowState.executingNode.isNodeExecuting(nodeRef.value?.name ?? '') ||
+			workflowExecutionStateStore.value.executingNode.isNodeExecuting(nodeRef.value?.name ?? '') ||
 			triggeredNode === nodeRef.value?.name
 		);
 	});
 
 	const isListening = computed(() => {
-		const waitingOnWebhook = workflowsStore.executionWaitingForWebhook;
-		const executedNode = workflowsStore.executedNode;
+		const waitingOnWebhook = workflowExecutionStateStore.value.executionWaitingForWebhook;
+		const executedNode = workflowExecutionStateStore.value.activeExecutionExecutedNode;
 
 		return (
 			!!nodeRef.value &&
@@ -194,7 +202,7 @@ export function useNodeExecution(
 			return i18n.baseText('ndv.execute.requiredFieldsMissing');
 		}
 
-		if (workflowsStore.isWorkflowRunning && !isNodeRunning.value) {
+		if (workflowExecutionStateStore.value.isWorkflowRunning && !isNodeRunning.value) {
 			return i18n.baseText('ndv.execute.workflowAlreadyRunning');
 		}
 
@@ -211,7 +219,7 @@ export function useNodeExecution(
 		}
 
 		if (isChatNode.value) {
-			return i18n.baseText('ndv.execute.testChat');
+			return i18n.baseText('chat.open');
 		}
 
 		if (isWebhookNode.value) {
@@ -257,7 +265,7 @@ export function useNodeExecution(
 
 	async function stopWaitingForWebhook() {
 		try {
-			await workflowsStore.removeTestWebhook(workflowsStore.workflowId);
+			await workflowsStore.removeTestWebhook(workflowDocumentStore.value.workflowId);
 		} catch (error) {
 			toast.showError(error, 'Error stopping webhook');
 		}
@@ -280,6 +288,10 @@ export function useNodeExecution(
 			const updateInformation = await generateCodeForAiTransform(
 				prompt,
 				`parameters.${AI_TRANSFORM_JS_CODE}`,
+				workflowDocumentStore.value.documentId,
+				ndvStore.value.activeNode,
+				ndvStore.value.pushRef,
+				askAi.value,
 				5,
 			);
 
@@ -289,7 +301,7 @@ export function useNodeExecution(
 			}
 
 			// Update node with generated code
-			workflowState.updateNodeProperties({
+			workflowDocumentStore.value.updateNodeProperties({
 				name: nodeRef.value.name,
 				properties: {
 					parameters: {
@@ -309,12 +321,12 @@ export function useNodeExecution(
 				value: prompt,
 			});
 
-			telemetry.trackAiTransform('generationFinished', {
+			telemetry.trackAiTransform('generationFinished', ndvStore.value.pushRef, {
 				prompt,
 				code: updateInformation.value,
 			});
 		} catch (error) {
-			telemetry.trackAiTransform('generationFinished', {
+			telemetry.trackAiTransform('generationFinished', ndvStore.value.pushRef, {
 				prompt: nodeRef.value?.parameters?.instructions as string,
 				code: '',
 				hasError: true,
@@ -331,6 +343,15 @@ export function useNodeExecution(
 		return true;
 	}
 
+	function chatTriggerHasInputData(): boolean {
+		if (!nodeRef.value) return false;
+		const startNode = workflowDocumentStore.value.getStartNode(nodeRef.value.name);
+		if (!startNode || startNode.type !== CHAT_TRIGGER_NODE_TYPE) return false;
+		const hasRunData = nodeHelpers.getNodeInputData(startNode, 0, 0, 'input')?.length > 0;
+		const hasPinData = !!workflowDocumentStore.value.pinnedDataByNodeName?.[startNode.name];
+		return hasRunData || hasPinData;
+	}
+
 	async function execute(): Promise<ExecuteAction> {
 		if (!nodeRef.value) return 'noop';
 
@@ -342,11 +363,14 @@ export function useNodeExecution(
 			if (!success) return 'cancelled';
 		}
 
-		// Chat nodes
-		if (isChatNode.value || (isChatChild.value && ndvStore.isInputPanelEmpty)) {
-			ndvStore.unsetActiveNodeName();
-			workflowsStore.chatPartialExecutionDestinationNode = nodeName;
-			nodeViewEventBus.emit('openChat');
+		// Chat nodes — open chat when: it's a chat trigger itself, or it's a child of
+		// a chat trigger that has no execution/pin data yet (needs chat input first).
+		if (isChatNode.value || (isChatChild.value && !chatTriggerHasInputData())) {
+			ndvStore.value.unsetActiveNodeName();
+			await runWorkflow({
+				destinationNode: { nodeName, mode: toValue(executionMode) },
+				source,
+			});
 			return 'opened-chat';
 		}
 
@@ -395,9 +419,9 @@ export function useNodeExecution(
 			// Normal execution
 			const telemetryPayload = {
 				node_type: nodeType.value ? nodeType.value.name : null,
-				workflow_id: workflowsStore.workflowId,
+				workflow_id: workflowDocumentStore.value.workflowId,
 				source: telemetrySource,
-				push_ref: ndvStore.pushRef,
+				push_ref: ndvStore.value.pushRef,
 			};
 
 			telemetry.track('User clicked execute node button', telemetryPayload);

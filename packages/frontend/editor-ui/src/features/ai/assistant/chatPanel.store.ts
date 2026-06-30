@@ -14,6 +14,7 @@ import { useChatPanelStateStore, type ChatPanelMode } from './chatPanelState.sto
 import { useAssistantStore } from './assistant.store';
 import { useBuilderStore } from './builder.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { MERGE_ASK_BUILD_EXPERIMENT } from '@/app/constants/experiments';
 import type { ICredentialType } from 'n8n-workflow';
@@ -40,6 +41,7 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 	const route = useRoute();
 	const chatPanelStateStore = useChatPanelStateStore();
 	const settingsStore = useSettingsStore();
+	const workflowsStore = useWorkflowsStore();
 	const posthogStore = usePostHog();
 	const locale = useI18n();
 
@@ -61,11 +63,7 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 	const isAssistantModeActive = computed(() => chatPanelStateStore.activeMode === 'assistant');
 	const isBuilderModeActive = computed(() => chatPanelStateStore.activeMode === 'builder');
 
-	const canShowAiButtonOnCanvas = computed(
-		() =>
-			settingsStore.isAiAssistantOrBuilderEnabled &&
-			EDITABLE_CANVAS_VIEWS.includes(route.name as VIEWS),
-	);
+	const isEditableCanvasView = computed(() => EDITABLE_CANVAS_VIEWS.includes(route.name as VIEWS));
 
 	// Actions
 	async function open(options?: { mode?: ChatPanelMode; showCoachmark?: boolean }) {
@@ -136,7 +134,7 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 
 			// Reset assistant only if session has ended
 			if (assistantStore.isSessionEnded) {
-				assistantStore.resetAssistantChat();
+				assistantStore.resetAssistantChat(workflowsStore.workflowId);
 			}
 		}, ASK_AI_SLIDE_OUT_DURATION_MS + 50);
 	}
@@ -192,7 +190,7 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 			return;
 		}
 		const assistantStore = useAssistantStore();
-		await assistantStore.initCredHelp(credentialType);
+		await assistantStore.initCredHelp(workflowsStore.workflowId, credentialType);
 		await open({ mode: 'assistant' });
 	}
 
@@ -210,7 +208,7 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 			return;
 		}
 		const assistantStore = useAssistantStore();
-		await assistantStore.initErrorHelper(context);
+		await assistantStore.initErrorHelper(workflowsStore.workflowId, context);
 		await open({ mode: 'assistant' });
 	}
 
@@ -260,7 +258,7 @@ export const useChatPanelStore = defineStore(STORES.CHAT_PANEL, () => {
 		// Computed
 		isAssistantModeActive,
 		isBuilderModeActive,
-		canShowAiButtonOnCanvas,
+		isEditableCanvasView,
 		// Actions
 		open,
 		close,

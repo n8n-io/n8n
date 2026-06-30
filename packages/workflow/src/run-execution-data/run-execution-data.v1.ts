@@ -56,17 +56,17 @@ export interface IRunExecutionDataV1 {
 	};
 	parentExecution?: RelatedExecution;
 	/**
-	 * This is used to prevent breaking change
-	 * for waiting executions started before signature validation was added
+	 * Random token used to validate waiting webhook/form requests.
+	 * Generated when execution starts. Presence signals validation is required.
 	 */
-	validateSignature?: boolean;
+	resumeToken?: string;
 	waitTill?: Date;
 	pushRef?: string;
 
 	/** Data needed for a worker to run a manual execution. */
 	manualData?: Pick<
 		IWorkflowExecutionDataProcess,
-		'dirtyNodeNames' | 'triggerToStartFrom' | 'userId'
+		'dirtyNodeNames' | 'triggerToStartFrom' | 'userId' | 'evaluationRunId'
 	>;
 
 	/** Metadata about whether and how this execution's data was redacted. */

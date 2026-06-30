@@ -24,6 +24,9 @@ const props = defineProps<{
 	showDelete?: boolean;
 	hideCreateNew?: boolean;
 	createButtonVariant?: ButtonProps['variant'];
+	projectId?: string;
+	suggestedCredentialName?: string;
+	teleported?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -109,7 +112,16 @@ const onCredentialSelected = (credentialId: string) => {
 	emit('credentialSelected', credentialId);
 };
 const createNewCredential = () => {
-	uiStore.openNewCredential(props.credentialType, true);
+	uiStore.openNewCredential(
+		props.credentialType,
+		true,
+		false,
+		props.projectId,
+		props.suggestedCredentialName,
+		undefined,
+		undefined,
+		{ closeOnSave: true },
+	);
 	wasModalOpenedFromHere.value = true;
 	emit('credentialModalOpened', undefined);
 };
@@ -213,6 +225,7 @@ watch(
 				:selected-credential-id="props.selectedCredentialId"
 				data-test-id="credential-dropdown"
 				:permissions="credentialPermissions"
+				:teleported="props.teleported"
 				@credential-selected="onCredentialSelected"
 				@new-credential="createNewCredential"
 			/>

@@ -1,30 +1,31 @@
 import { ChatPromptTemplate, SystemMessagePromptTemplate } from '@langchain/core/prompts';
 import { FakeChatModel } from '@langchain/core/utils/testing';
-import { mock } from 'jest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import * as tracing from '@utils/tracing';
 
 import { processItem } from '../processItem';
+import type { Mocked } from 'vitest';
 
-jest.mock('@utils/tracing', () => ({
-	getTracingConfig: jest.fn(() => ({})),
+vi.mock('@utils/tracing', () => ({
+	getTracingConfig: vi.fn(() => ({})),
 }));
 
-jest.mock('@langchain/core/prompts', () => ({
+vi.mock('@langchain/core/prompts', () => ({
 	ChatPromptTemplate: {
-		fromMessages: jest.fn(),
+		fromMessages: vi.fn(),
 	},
 	SystemMessagePromptTemplate: {
-		fromTemplate: jest.fn().mockReturnValue({
-			format: jest.fn(),
+		fromTemplate: vi.fn().mockReturnValue({
+			format: vi.fn(),
 		}),
 	},
 }));
 
 describe('processItem', () => {
-	let mockContext: jest.Mocked<IExecuteFunctions>;
+	let mockContext: Mocked<IExecuteFunctions>;
 	let fakeLLM: FakeChatModel;
 
 	beforeEach(() => {
@@ -37,7 +38,7 @@ describe('processItem', () => {
 			return defaultValue;
 		});
 
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should throw error for empty input text', async () => {
@@ -66,12 +67,12 @@ describe('processItem', () => {
 		};
 
 		const mockChain = {
-			invoke: jest.fn().mockResolvedValue({ test: true }),
+			invoke: vi.fn().mockResolvedValue({ test: true }),
 		};
 
-		const mockPipe = jest.fn().mockReturnValue({
-			pipe: jest.fn().mockReturnValue({
-				withConfig: jest.fn().mockReturnValue(mockChain),
+		const mockPipe = vi.fn().mockReturnValue({
+			pipe: vi.fn().mockReturnValue({
+				withConfig: vi.fn().mockReturnValue(mockChain),
 			}),
 		});
 
@@ -79,7 +80,7 @@ describe('processItem', () => {
 			pipe: mockPipe,
 		};
 
-		jest.mocked(ChatPromptTemplate.fromMessages).mockReturnValue(mockPrompt as any);
+		vi.mocked(ChatPromptTemplate.fromMessages).mockReturnValue(mockPrompt as any);
 
 		const result = await processItem(
 			mockContext,
@@ -116,16 +117,16 @@ describe('processItem', () => {
 		};
 
 		const mockChain = {
-			invoke: jest.fn().mockResolvedValue({ category: 'test' }),
+			invoke: vi.fn().mockResolvedValue({ category: 'test' }),
 		};
 
-		const mockPipe = jest.fn().mockReturnValue({
-			pipe: jest.fn().mockReturnValue({
-				withConfig: jest.fn().mockReturnValue(mockChain),
+		const mockPipe = vi.fn().mockReturnValue({
+			pipe: vi.fn().mockReturnValue({
+				withConfig: vi.fn().mockReturnValue(mockChain),
 			}),
 		});
 
-		jest.mocked(ChatPromptTemplate.fromMessages).mockReturnValue({ pipe: mockPipe } as any);
+		vi.mocked(ChatPromptTemplate.fromMessages).mockReturnValue({ pipe: mockPipe } as any);
 
 		await processItem(
 			mockContext,
@@ -152,12 +153,12 @@ describe('processItem', () => {
 		};
 
 		const mockChain = {
-			invoke: jest.fn().mockResolvedValue({ category: 'test' }),
+			invoke: vi.fn().mockResolvedValue({ category: 'test' }),
 		};
 
-		const mockPipe = jest.fn().mockReturnValue({
-			pipe: jest.fn().mockReturnValue({
-				withConfig: jest.fn().mockReturnValue(mockChain),
+		const mockPipe = vi.fn().mockReturnValue({
+			pipe: vi.fn().mockReturnValue({
+				withConfig: vi.fn().mockReturnValue(mockChain),
 			}),
 		});
 
@@ -165,7 +166,7 @@ describe('processItem', () => {
 			pipe: mockPipe,
 		};
 
-		jest.mocked(ChatPromptTemplate.fromMessages).mockReturnValue(mockPrompt as any);
+		vi.mocked(ChatPromptTemplate.fromMessages).mockReturnValue(mockPrompt as any);
 
 		await processItem(
 			mockContext,

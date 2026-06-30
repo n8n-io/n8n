@@ -4,12 +4,16 @@
 
 import pLimit from 'p-limit';
 
-import { withTimeout, extractSubgraphMetrics } from '../harness/evaluation-helpers';
+import {
+	withTimeout,
+	extractSubgraphMetrics,
+	collectAgentTextResponse,
+} from '../harness/evaluation-helpers';
 
 describe('evaluation-helpers', () => {
 	describe('withTimeout()', () => {
 		it('should allow p-limit slot to be released when timeout triggers (best-effort)', async () => {
-			jest.useFakeTimers();
+			vi.useFakeTimers();
 			const limit = pLimit(1);
 			const started: string[] = [];
 
@@ -31,7 +35,7 @@ describe('evaluation-helpers', () => {
 				started.push('p2');
 			});
 
-			jest.advanceTimersByTime(11);
+			vi.advanceTimersByTime(11);
 			await Promise.resolve();
 			await Promise.resolve();
 
@@ -39,7 +43,55 @@ describe('evaluation-helpers', () => {
 			expect(started).toEqual(['p1', 'p2']);
 
 			await p1;
-			jest.useRealTimers();
+			vi.useRealTimers();
+		});
+	});
+
+	describe('collectAgentTextResponse()', () => {
+		it('should collect text from message chunks', async () => {
+			async function* gen() {
+				yield { messages: [{ type: 'message', text: 'Hello ' }] };
+				yield { messages: [{ type: 'tool', toolName: 'search' }] };
+				yield { messages: [{ type: 'message', text: 'world' }] };
+			}
+			const result = await collectAgentTextResponse(gen());
+			expect(result).toBe('Hello world');
+		});
+
+		it('should return empty string when no message chunks', async () => {
+			async function* gen() {
+				yield { messages: [{ type: 'tool', toolName: 'search' }] };
+			}
+			const result = await collectAgentTextResponse(gen());
+			expect(result).toBe('');
+		});
+
+		it('should handle empty generator', async () => {
+			async function* gen() {
+				// yields nothing
+			}
+			const result = await collectAgentTextResponse(
+				gen() as AsyncGenerator<{ messages?: Array<{ type: string; text?: string }> }>,
+			);
+			expect(result).toBe('');
+		});
+
+		it('should handle chunks without messages property', async () => {
+			async function* gen() {
+				yield {} as { messages?: Array<{ type: string; text?: string }> };
+				yield { messages: [{ type: 'message', text: 'hello' }] };
+			}
+			const result = await collectAgentTextResponse(gen());
+			expect(result).toBe('hello');
+		});
+
+		it('should skip message chunks without text', async () => {
+			async function* gen() {
+				yield { messages: [{ type: 'message' }] };
+				yield { messages: [{ type: 'message', text: 'ok' }] };
+			}
+			const result = await collectAgentTextResponse(gen());
+			expect(result).toBe('ok');
 		});
 	});
 

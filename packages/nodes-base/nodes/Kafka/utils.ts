@@ -14,10 +14,14 @@ import type {
 	IDataObject,
 	IRun,
 	IBinaryKeyData,
+	INode,
 	INodeExecutionData,
+	FunctionsBase,
+	RequestHelperFunctions,
 } from 'n8n-workflow';
-
 import { ensureError, jsonParse, NodeOperationError, sleep } from 'n8n-workflow';
+import http from 'node:http';
+import https from 'node:https';
 
 // Default delay in milliseconds before retrying after a failed offset resolution.
 // This prevents rapid retry loops that could overwhelm the Kafka broker
@@ -53,6 +57,18 @@ interface KafkaCredentials {
 	username?: string;
 	password?: string;
 	saslMechanism?: 'plain' | 'scram-sha-256' | 'scram-sha-512';
+}
+
+interface SchemaRegistryCredentials {
+	url: string;
+	authentication: 'none' | 'basicAuth';
+	username?: string;
+	password?: string;
+}
+
+interface SchemaRegistryOptions {
+	host: string;
+	auth?: { username: string; password: string };
 }
 
 type ResolveOffsetMode = 'immediately' | 'onCompletion' | 'onSuccess' | 'onStatus';
@@ -173,9 +189,10 @@ export function configureMessageParser(
 			try {
 				value = await registry.decode(message.value as Buffer);
 			} catch (error) {
-				logger.warn('Could not decode message with Schema Registry, returning original message', {
-					error,
-				});
+				logger.warn(
+					'Could not decode message with Schema Registry, returning original message',
+					sanitizeRegistryError(error),
+				);
 			}
 		}
 
@@ -214,12 +231,42 @@ export function configureMessageParser(
 }
 
 /**
+ * Maps a fatal consumer error to a user-facing error. Known cases (such as a
+ * topic compressed with a codec the client cannot decode) get an actionable
+ * message that points the user at a fix; anything else is surfaced unchanged so
+ * the original failure is still shown instead of an indefinite wait.
+ * @param node - The node raising the error
+ * @param error - The fatal error from the consumer
+ */
+export function toUserFacingConsumerError(node: INode, error: Error): Error {
+	if (/compression not implemented/i.test(error.message)) {
+		return new NodeOperationError(node, 'Kafka topic uses an unsupported compression codec', {
+			description:
+				'This topic contains messages compressed with LZ4, Snappy, or ZSTD, which the Kafka Trigger cannot decode (only GZIP and uncompressed messages are supported). Set the producer to use gzip or no compression to consume this topic.',
+		});
+	}
+
+	return error;
+}
+
+/**
+ * Handler invoked with a fatal (non-retriable) consumer error so the caller can
+ * surface it to the execution instead of leaving the trigger waiting.
+ */
+export type ConsumerErrorHandler = (error: Error) => void;
+
+/**
  * Attaches event listeners to the Kafka consumer for monitoring and logging
  * @param consumer - The Kafka consumer instance
  * @param logger - Logger instance for event logging
+ * @param onFatalCrash - Optional handler called when the consumer crashes non-retriably
  * @returns Array of listener removal functions
  */
-export function connectEventListeners(consumer: Consumer, logger: Logger) {
+export function connectEventListeners(
+	consumer: Consumer,
+	logger: Logger,
+	onFatalCrash?: ConsumerErrorHandler,
+) {
 	const onConnected = consumer.on(consumer.events.CONNECT, () => {
 		logger.debug('Kafka consumer connected');
 	});
@@ -247,8 +294,16 @@ export function connectEventListeners(consumer: Consumer, logger: Logger) {
 	const onRebalancing = consumer.on(consumer.events.REBALANCING, (payload) => {
 		logger.debug('Consumer is rebalancing', { payload });
 	});
-	const onCrash = consumer.on(consumer.events.CRASH, async (error) => {
-		logger.error('Consumer has crashed', { error });
+	const onCrash = consumer.on(consumer.events.CRASH, (event) => {
+		const { error, restart } = event.payload;
+		logger.error('Consumer has crashed', { error, restart });
+		// kafkajs auto-restarts retriable crashes (restart === true). A non-retriable
+		// crash (e.g. an undecodable compressed batch, or a group authorization
+		// failure) leaves the consumer dead; without surfacing it, the trigger just
+		// keeps waiting forever. Route it to the caller so the execution can fail.
+		if (!restart) {
+			onFatalCrash?.(ensureError(error));
+		}
 	});
 
 	return [
@@ -275,19 +330,154 @@ export function disconnectEventListeners(
 }
 
 /**
+ * Builds a sanitized log payload from a schema registry error, so raw error
+ * payloads are never logged: only the message (with any URL userinfo redacted,
+ * since registry client errors embed full request URLs) and, when present, the
+ * status
+ * @param error - The caught error
+ * @returns Log metadata with the redacted error message and optional status
+ */
+// The registry client interpolates the upstream HTTP response body into its
+// error message, which can be large, so the logged message is bounded.
+const MAX_REGISTRY_ERROR_MESSAGE_LENGTH = 500;
+
+function sanitizeRegistryError(error: unknown) {
+	const ensured = ensureError(error);
+	const redacted = ensured.message.replace(/\/\/[^/\s]+@/g, '//***@');
+	const message =
+		redacted.length > MAX_REGISTRY_ERROR_MESSAGE_LENGTH
+			? `${redacted.slice(0, MAX_REGISTRY_ERROR_MESSAGE_LENGTH)}...`
+			: redacted;
+	return {
+		message,
+		...('status' in ensured ? { status: ensured.status } : {}),
+	};
+}
+
+/**
+ * Resolves the Confluent Schema Registry connection options, preferring a
+ * selected `schemaRegistryApi` credential over the legacy URL node parameter
+ * @param ctx - The execution context (node or trigger)
+ * @param fallbackUrl - The `schemaRegistryUrl` node parameter, used when no credential is selected
+ * @returns Options for the `SchemaRegistry` constructor
+ */
+export async function getSchemaRegistryOptions(
+	ctx: Pick<FunctionsBase, 'getNode' | 'getCredentials'>,
+	fallbackUrl: string,
+): Promise<SchemaRegistryOptions> {
+	const emptyConfigError = () =>
+		new NodeOperationError(
+			ctx.getNode(),
+			'Select a Schema Registry credential or enter a Schema Registry URL',
+		);
+
+	if (!ctx.getNode().credentials?.schemaRegistryApi) {
+		const host = fallbackUrl.trim();
+		if (!host) {
+			throw emptyConfigError();
+		}
+		return { host };
+	}
+
+	const credentials = await ctx.getCredentials<SchemaRegistryCredentials>('schemaRegistryApi');
+
+	const host = credentials.url?.trim();
+	if (!host) {
+		throw emptyConfigError();
+	}
+
+	const options: SchemaRegistryOptions = { host };
+
+	if (credentials.authentication === 'basicAuth') {
+		if (!(credentials.username && credentials.password)) {
+			throw new NodeOperationError(
+				ctx.getNode(),
+				'Username and password are required for Schema Registry Basic Auth',
+			);
+		}
+		options.auth = { username: credentials.username, password: credentials.password };
+	}
+
+	return options;
+}
+
+/**
+ * Constructs a Schema Registry client from the resolved connection options.
+ * Shared by the Kafka producer node and the Kafka Trigger; each caller layers
+ * its own behavior on top (the producer resolves a schema id, the trigger
+ * applies the warn-and-continue policy).
+ * @param ctx - The execution context (node or trigger)
+ * @param fallbackUrl - The `schemaRegistryUrl` node parameter, used when no credential is selected
+ */
+export async function createSchemaRegistry(
+	ctx: Pick<FunctionsBase, 'getNode' | 'getCredentials'> & {
+		helpers: Pick<RequestHelperFunctions, 'getSecureEgressFilter'>;
+	},
+	fallbackUrl: string,
+): Promise<SchemaRegistry> {
+	const options = await getSchemaRegistryOptions(ctx, fallbackUrl);
+
+	const filter = ctx.helpers.getSecureEgressFilter();
+	if (!filter) {
+		// Egress filtering not configured: use the default transport unchanged.
+		return new SchemaRegistry(options);
+	}
+
+	// Parse the configured host once. A valid registry host is an absolute
+	// http(s) URL; if it does not parse or uses an unexpected scheme, reject so
+	// the validated target always matches the target the client connects to.
+	let parsed: URL;
+	try {
+		parsed = new URL(options.host);
+	} catch {
+		throw new NodeOperationError(ctx.getNode(), 'Verify your Schema Registry configuration', {
+			description: 'The Schema Registry URL is not a valid URL',
+		});
+	}
+	if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+		throw new NodeOperationError(ctx.getNode(), 'Verify your Schema Registry configuration', {
+			description: 'The Schema Registry URL must use http or https',
+		});
+	}
+
+	// Validate the target host against the configured egress rules before any
+	// request, covering direct/resolved IPs without DNS.
+	const result = await filter.validateUrl(parsed);
+	if (!result.ok) {
+		throw new NodeOperationError(ctx.getNode(), 'Verify your Schema Registry configuration', {
+			description: result.error.message,
+		});
+	}
+
+	// Connect using the canonical href so the client re-parses the exact
+	// authority we validated, and validate the resolved addresses at connect
+	// time via the secure lookup.
+	const agent =
+		parsed.protocol === 'https:'
+			? new https.Agent({ lookup: filter.createSecureLookup() })
+			: new http.Agent({ lookup: filter.createSecureLookup() });
+	return new SchemaRegistry({ ...options, host: parsed.href, agent });
+}
+
+/**
  * Initializes Confluent Schema Registry if enabled in node parameters
  * @param ctx - The trigger function context
  * @returns Schema registry instance or undefined if not configured
  */
-export function setSchemaRegistry(ctx: ITriggerFunctions) {
+export async function setSchemaRegistry(ctx: ITriggerFunctions) {
 	const useSchemaRegistry = ctx.getNodeParameter('useSchemaRegistry', 0) as boolean;
 
 	if (useSchemaRegistry) {
 		try {
 			const schemaRegistryUrl = ctx.getNodeParameter('schemaRegistryUrl', 0) as string;
-			return new SchemaRegistry({ host: schemaRegistryUrl });
+			return await createSchemaRegistry(ctx, schemaRegistryUrl);
 		} catch (error) {
-			ctx.logger.warn('Could not connect to Schema Registry', { error });
+			// Credential/config misconfiguration must fail loudly at activation
+			if (error instanceof NodeOperationError) {
+				throw error;
+			}
+			// Connection-type failures keep the warn-and-continue behavior
+			ctx.logger.warn('Could not connect to Schema Registry', sanitizeRegistryError(error));
 		}
 	}
 

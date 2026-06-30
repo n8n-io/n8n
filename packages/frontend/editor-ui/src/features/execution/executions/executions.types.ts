@@ -26,6 +26,7 @@ export type ExecutionFilterType = {
 	annotationTags: string[];
 	vote: ExecutionFilterVote;
 	metadata: ExecutionFilterMetadata[];
+	workflowVersionId: 'all' | string;
 };
 
 export type ExecutionsQueryFilter = {
@@ -39,6 +40,7 @@ export type ExecutionsQueryFilter = {
 	startedBefore?: string;
 	annotationTags?: string[];
 	vote?: ExecutionFilterVote;
+	workflowVersionId?: string;
 };
 
 export interface IExecutionBase {
@@ -61,6 +63,8 @@ export interface IExecutionFlatted extends IExecutionBase {
 
 export interface IExecutionFlattedResponse extends IExecutionFlatted {
 	id: string;
+	/** See {@link IExecutionResponse.dataTooLargeToDisplay}. When true, `data` is empty. */
+	dataTooLargeToDisplay?: boolean;
 }
 
 export interface IExecutionPushResponse {
@@ -74,6 +78,8 @@ export interface IExecutionResponse extends IExecutionBase {
 	workflowData: IWorkflowDb;
 	executedNode?: string;
 	triggerNode?: string;
+	/** Set when the backend skipped loading oversized run data; `data` is then empty. */
+	dataTooLargeToDisplay?: boolean;
 }
 
 export type ExecutionSummaryWithScopes = ExecutionSummary & { scopes: Scope[] };

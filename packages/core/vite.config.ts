@@ -1,0 +1,49 @@
+import { mergeConfig } from 'vite';
+import { createVitestConfigWithDecorators } from '@n8n/vitest-config/node-decorators';
+import path from 'node:path';
+
+export default mergeConfig(
+	createVitestConfigWithDecorators({
+		globalSetup: ['./test/setup.ts'],
+		setupFiles: ['./test/setup-mocks.ts'],
+	}),
+	{
+		resolve: {
+			alias: [
+				{ find: '@', replacement: path.resolve(__dirname, './src') },
+				{ find: '@test', replacement: path.resolve(__dirname, './test') },
+				// zod has dual ESM/CJS exports (`./dist/esm/index.js` for `import`,
+				// `./dist/cjs/index.js` for `require`) — two separate files with two separate
+				// `ZodType` classes. @n8n/config dist CJS-requires zod, test files ESM-import
+				// it, and `instanceof` fails between them. Pin the top-level `zod` import to the
+				// CJS file so both code paths share a single module instance. `require.resolve`
+				// follows zod's `require` export condition, so it tracks the installed (catalog)
+				// version automatically. Subpaths like `zod/v4` keep their normal resolution.
+				{
+					find: /^zod$/,
+					replacement: require.resolve('zod'),
+				},
+				// `n8n-workflow` has dual ESM/CJS builds (`./dist/esm/index.js` for `import`,
+				// `./dist/cjs/index.js` for `require`), each with its own `UserError` class.
+				// `@n8n/backend-network` is loaded from its CJS dist and `require`s the CJS copy,
+				// so `SsrfBlockedIpError extends UserError` (CJS), while test files ESM-import
+				// `UserError` (ESM) — and `instanceof` fails between them. Pin the top-level
+				// `n8n-workflow` import to the CJS file so both code paths share one module
+				// instance. `require.resolve` follows the `require` export condition.
+				{
+					find: /^n8n-workflow$/,
+					replacement: require.resolve('n8n-workflow'),
+				},
+			],
+		},
+		oxc: {
+			// OXC's TS transform ignores tsconfig's `emitDecoratorMetadata` — must be enabled
+			// explicitly here so `@n8n/config`'s `@Env(name, zodSchema) field: z.infer<...>`
+			// pattern works (the decorator reads `design:type` via `Reflect.getMetadata`).
+			decorator: {
+				legacy: true,
+				emitDecoratorMetadata: true,
+			},
+		},
+	},
+);

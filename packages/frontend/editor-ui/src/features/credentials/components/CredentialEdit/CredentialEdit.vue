@@ -13,7 +13,7 @@ import type {
 	INodeProperties,
 	ITelemetryTrackProperties,
 } from 'n8n-workflow';
-import { deepCopy, NodeHelpers } from 'n8n-workflow';
+import { CREDENTIAL_EMPTY_VALUE, deepCopy, NodeHelpers } from 'n8n-workflow';
 import CredentialIcon from '../CredentialIcon.vue';
 
 import CredentialConfig from './CredentialConfig.vue';
@@ -27,11 +27,12 @@ import { useToast } from '@/app/composables/useToast';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '../../credentials.constants';
 import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/app/constants';
 import { useCredentialsStore } from '../../credentials.store';
+import { getTrustedOAuthOrigins, parseOAuthCallbackMessage } from '../../composables/oauthCallback';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { provideWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import type { Project, ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import { getResourcePermissions } from '@n8n/permissions';
 import { assert } from '@n8n/utils/assert';
@@ -51,7 +52,7 @@ import {
 	updateNodeAuthType,
 } from '@/app/utils/nodeTypesUtils';
 import { isCredentialModalState, isValidCredentialResponse } from '@/app/utils/typeGuards';
-import { useI18n } from '@n8n/i18n';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useElementSize } from '@vueuse/core';
 import { useRouter } from 'vue-router';
 
@@ -64,12 +65,18 @@ import {
 	N8nText,
 	type IMenuItem,
 } from '@n8n/design-system';
-import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { setParameterValue } from '@/app/utils/parameterUtils';
 import get from 'lodash/get';
-import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
+import { usePrivateCredentials } from '@/features/resolvers/composables/usePrivateCredentials';
 import { useQuickConnect } from '../../quickConnect/composables/useQuickConnect';
 import type { CredentialModeOption } from './CredentialModeSelector.vue';
+
+const MANAGED_CREDENTIAL_HIDDEN_PROPERTIES = new Set([
+	'scope',
+	'customScopes',
+	'enabledScopes',
+	'customScopesNotice',
+]);
 
 type Props = {
 	modalName: string;
@@ -80,11 +87,8 @@ type Props = {
 const props = withDefaults(defineProps<Props>(), { mode: 'new', activeId: undefined });
 
 const credentialsStore = useCredentialsStore();
-const ndvStore = useNDVStore();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
-const workflowsStore = useWorkflowsStore();
-const workflowState = injectWorkflowState();
 const nodeTypesStore = useNodeTypesStore();
 const projectsStore = useProjectsStore();
 const externalSecretsStore = useExternalSecretsStore();
@@ -94,10 +98,32 @@ const externalHooks = useExternalHooks();
 const toast = useToast();
 const message = useMessage();
 const i18n = useI18n();
+
+const I18N_PREFIX = 'credentialEdit.credentialEdit.confirmMessage';
+
+async function confirmModal(
+	key: string,
+	interpolate?: Record<string, string>,
+	extra?: { cancelButtonText?: string },
+): Promise<string | boolean> {
+	const t = (suffix: string) =>
+		i18n.baseText(
+			`${I18N_PREFIX}.${key}.${suffix}` as BaseTextKey,
+			interpolate ? { interpolate } : {},
+		);
+
+	const cancelButton =
+		extra?.cancelButtonText !== undefined ? { cancelButtonText: extra.cancelButtonText } : {};
+
+	return await message.confirm(t('message'), t('headline'), {
+		confirmButtonText: i18n.baseText(`${I18N_PREFIX}.${key}.confirmButtonText` as BaseTextKey),
+		...cancelButton,
+	});
+}
 const telemetry = useTelemetry();
 const router = useRouter();
 const rootStore = useRootStore();
-const { isEnabled: isDynamicCredentialsEnabled } = useDynamicCredentials();
+const { isEnabled: isPrivateCredentialsEnabled } = usePrivateCredentials();
 const { getQuickConnectOption, connect: quickConnect } = useQuickConnect();
 const isQuickConnectMode = ref(false);
 const activeTab = ref('connection');
@@ -123,12 +149,48 @@ const requiredCredentials = ref(false); // Are credentials required or optional 
 const contentRef = ref<HTMLDivElement>();
 const isSharedGlobally = ref(false);
 const isResolvable = ref(false);
+const connectedByMe = ref(false);
 const useCustomOAuth = ref(false);
 const pendingAuthType = ref<string | null>(null);
 const credentialDataCache = ref<Record<string, ICredentialDataDecryptedObject>>({});
 
+// The credential editor can open outside the workflow editor (e.g. the
+// Credentials view), where no workflow document is provided. Re-provide the
+// resolved document store so the reused NDV parameter components rendered below
+// resolve a valid scoped store, and derive this modal's own NDV store from it
+// (it cannot inject what it provides).
+const workflowDocumentStore = provideWorkflowDocumentStore();
+const ndvStore = computed(() => useNDVStore(workflowDocumentStore.value.documentId));
+
+const contextNode = computed<INode | null>(() => {
+	if (ndvStore.value.activeNode) return ndvStore.value.activeNode;
+	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
+	if (isCredentialModalState(modalState) && modalState.contextNode) {
+		return modalState.contextNode;
+	}
+	const fallbackName = isCredentialModalState(modalState) ? modalState.nodeName : undefined;
+	return fallbackName ? (workflowDocumentStore.value?.getNodeByName(fallbackName) ?? null) : null;
+});
+
+const hideAskAssistant = computed<boolean>(() => {
+	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
+	return isCredentialModalState(modalState) && modalState.hideAskAssistant === true;
+});
+
+// The host's Instance AI credential-help behavior, stashed in the modal state by
+// whoever opened the modal (the editor capability or the credentials list).
+const instanceAiCredentialHelp = computed(() => {
+	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
+	return isCredentialModalState(modalState) ? modalState.instanceAiCredentialHelp : undefined;
+});
+
+const closeOnSave = computed<boolean>(() => {
+	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
+	return isCredentialModalState(modalState) && modalState.closeOnSave === true;
+});
+
 const activeNodeType = computed(() => {
-	const activeNode = ndvStore.activeNode;
+	const activeNode = contextNode.value;
 
 	if (activeNode) {
 		return nodeTypesStore.getNodeType(activeNode.type, activeNode.typeVersion);
@@ -145,14 +207,21 @@ const selectedCredentialType = computed(() => {
 	if (selectedCredential.value !== '') {
 		return credentialsStore.getCredentialTypeByName(selectedCredential.value) ?? null;
 	} else if (requiredCredentials.value) {
-		// Otherwise, use credential type that corresponds to the first auth option in the node definition
+		// Use the recommended auth option (managed OAuth sorts first) or the first available
 		const nodeAuthOptions = getNodeAuthOptions(activeNodeType.value);
-		// But only if there is zero or one auth options available
 		if (nodeAuthOptions.length > 0 && activeNodeType.value?.credentials) {
 			return getNodeCredentialForSelectedAuthType(activeNodeType.value, nodeAuthOptions[0].value);
-		} else {
-			return activeNodeType.value?.credentials ? activeNodeType.value.credentials[0] : null;
 		}
+		// No auth options — fall back to the explicitly requested type or the first credential
+		if (props.activeId) {
+			const nodeCredential = activeNodeType.value?.credentials?.find(
+				(c) => c.name === props.activeId,
+			);
+			if (nodeCredential) {
+				return nodeCredential;
+			}
+		}
+		return activeNodeType.value?.credentials?.[0] ?? null;
 	}
 
 	return null;
@@ -257,7 +326,15 @@ const managedOAuthAvailable = computed(() => {
 	);
 });
 
-const isOAuthConnected = computed(() => isOAuthType.value && !!credentialData.value.oauthTokenData);
+const isManagedOAuthMode = computed(
+	() => isOAuthType.value && managedOAuthAvailable.value && !useCustomOAuth.value,
+);
+
+const isOAuthConnected = computed(() => {
+	if (!isOAuthType.value) return false;
+	if (isResolvable.value) return connectedByMe.value;
+	return !!credentialData.value.oauthTokenData;
+});
 const credentialProperties = computed(() => {
 	const type = credentialType.value;
 	if (!type) {
@@ -301,6 +378,19 @@ const requiredPropertiesFilled = computed(() => {
 
 			if (typeof credentialProperty !== 'number' && !containsExpression) {
 				return false;
+			}
+		}
+
+		if (property.type === 'json' && credentialProperty) {
+			const jsonValue = String(credentialProperty);
+			const containsExpression = isExpression(jsonValue);
+			// Sentinels represent a previously-saved value, and expressions are always valid
+			if (!containsExpression && jsonValue !== CREDENTIAL_EMPTY_VALUE) {
+				try {
+					JSON.parse(jsonValue);
+				} catch {
+					return false;
+				}
 			}
 		}
 	}
@@ -349,13 +439,35 @@ const showSaveButton = computed(() => {
 	if (isQuickConnectMode.value) return false;
 	const hasPermission = credentialPermissions.value.create ?? credentialPermissions.value.update;
 	if (!hasPermission) return false;
-	if (isOAuthType.value && !isOAuthConnected.value) return false;
 	return true;
 });
 
+const showHeaderSaveButton = computed(
+	() =>
+		showSaveButton.value &&
+		!!credentialType.value &&
+		(activeTab.value === 'connection' || activeTab.value === 'sharing'),
+);
+
 const showSharingContent = computed(() => activeTab.value === 'sharing' && !!credentialType.value);
 
+// Whether the credential is already shared (with other projects or globally) as
+// persisted. A shared credential can't be turned into a dynamic credential.
+const isCurrentlyShared = computed(() => {
+	const cred = currentCredential.value;
+	if (!cred) return false;
+	const sharedWithProjects = 'sharedWithProjects' in cred ? (cred.sharedWithProjects ?? []) : [];
+	const isGlobal = 'isGlobal' in cred ? Boolean(cred.isGlobal) : false;
+	return isGlobal || sharedWithProjects.length > 0;
+});
+
 const homeProject = computed(() => {
+	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
+	const overrideProjectId = isCredentialModalState(modalState) ? modalState.projectId : undefined;
+	if (overrideProjectId) {
+		const override = projectsStore.myProjects.find((p) => p.id === overrideProjectId);
+		if (override) return override;
+	}
 	const { currentProject, personalProject } = projectsStore;
 	return currentProject ?? personalProject;
 });
@@ -391,109 +503,125 @@ watch(
 );
 
 onMounted(async () => {
-	const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
-	requiredCredentials.value =
-		isCredentialModalState(modalState) && modalState.showAuthSelector === true;
+	// Inner try isolates optional secrets loading; outer try catches all other initialization failures.
+	try {
+		const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
+		requiredCredentials.value =
+			isCredentialModalState(modalState) && modalState.showAuthSelector === true;
 
-	const forceManual = isCredentialModalState(modalState) && modalState.forceManualMode === true;
+		const forceManual = isCredentialModalState(modalState) && modalState.forceManualMode === true;
 
-	const projectId = projectsStore.currentProjectId ?? projectsStore.personalProject?.id;
-	if (projectId) {
-		try {
-			await externalSecretsStore.fetchSecretsForProject(projectId);
-		} catch {
-			// Secrets fetch failure should not block the credential modal
-		}
-	}
-
-	if (props.mode === 'new' && credentialTypeName.value) {
-		credentialName.value = await credentialsStore.getNewCredentialName({
-			credentialTypeName: defaultCredentialTypeName.value,
-		});
-
-		credentialData.value = {
-			...credentialData.value,
-			...(homeProject.value ? { homeProject: homeProject.value } : {}),
-		};
-	} else {
-		await loadCurrentCredential();
-	}
-
-	setCredentialPropertyDefaults();
-
-	// Detect if existing credential uses custom OAuth (user-provided clientId/clientSecret).
-	// Use __overwrittenProperties directly instead of managedOAuthAvailable so that skip-list
-	// types (where managedOAuthAvailable is false) still auto-detect custom credentials.
-	if (
-		credentialType.value?.__overwrittenProperties?.includes('clientId') &&
-		credentialData.value.clientId &&
-		credentialData.value.clientSecret
-	) {
-		useCustomOAuth.value = true;
-	}
-
-	// Default to quick connect mode for new credentials when available and not forced to manual
-	if (props.mode === 'new' && !forceManual && credentialTypeName.value && ndvStore.activeNode) {
-		const qcOption = getQuickConnectOption(credentialTypeName.value, ndvStore.activeNode.type);
-		if (qcOption) {
-			isQuickConnectMode.value = true;
-		}
-	}
-
-	await externalHooks.run('credentialsEdit.credentialModalOpened', {
-		credentialType: credentialTypeName.value,
-		isEditingCredential: props.mode === 'edit',
-		activeNode: ndvStore.activeNode,
-	});
-
-	setTimeout(async () => {
-		if (credentialId.value) {
-			if (!requiredPropertiesFilled.value && credentialPermissions.value.update) {
-				// sharees can't see properties, so this check would always fail for them
-				// if the credential contains required fields.
-				showValidationWarning.value = true;
-			} else {
-				await retestCredential();
+		const overrideProjectId = isCredentialModalState(modalState) ? modalState.projectId : undefined;
+		const projectId =
+			overrideProjectId ?? projectsStore.currentProjectId ?? projectsStore.personalProject?.id;
+		if (projectId) {
+			try {
+				await externalSecretsStore.fetchSecretsForProject(projectId);
+			} catch {
+				// Secrets fetch failure should not block the credential modal
 			}
 		}
-	}, 0);
 
-	loading.value = false;
+		if (props.mode === 'new' && credentialTypeName.value) {
+			const modalSuggestedName = isCredentialModalState(modalState)
+				? modalState.suggestedName
+				: undefined;
+			credentialName.value = modalSuggestedName
+				? modalSuggestedName
+				: await credentialsStore.getNewCredentialName({
+						credentialTypeName: defaultCredentialTypeName.value,
+					});
+
+			credentialData.value = {
+				...credentialData.value,
+				...(homeProject.value ? { homeProject: homeProject.value } : {}),
+			};
+		} else {
+			// loadCurrentCredential handles its own recovery by showing an error toast and closing the modal.
+			// It should be allowed to propagate to avoid subsequent initialization steps running on empty data.
+			await loadCurrentCredential();
+		}
+
+		setCredentialPropertyDefaults();
+
+		// Detect if existing credential uses custom OAuth (user-provided clientId/clientSecret).
+		// Use __overwrittenProperties directly instead of managedOAuthAvailable so that skip-list
+		// types (where managedOAuthAvailable is false) still auto-detect custom credentials.
+		if (
+			credentialType.value?.__overwrittenProperties?.includes('clientId') &&
+			credentialData.value.clientId &&
+			credentialData.value.clientSecret
+		) {
+			useCustomOAuth.value = true;
+		}
+
+		// Default to quick connect mode for new credentials when available and not forced to manual
+		if (
+			props.mode === 'new' &&
+			!forceManual &&
+			credentialTypeName.value &&
+			ndvStore.value.activeNode
+		) {
+			const qcOption = getQuickConnectOption(
+				credentialTypeName.value,
+				ndvStore.value.activeNode.type,
+			);
+			if (qcOption) {
+				isQuickConnectMode.value = true;
+			}
+		}
+
+		// External hooks are fire-and-forget so slow or failing hooks cannot keep the modal loading.
+		void externalHooks
+			.run('credentialsEdit.credentialModalOpened', {
+				credentialType: credentialTypeName.value,
+				isEditingCredential: props.mode === 'edit',
+				activeNode: ndvStore.value.activeNode,
+			})
+			.catch((error) => {
+				console.error('[CredentialEdit] External hooks execution failed', error);
+			});
+
+		setTimeout(async () => {
+			if (credentialId.value) {
+				if (!requiredPropertiesFilled.value && credentialPermissions.value.update) {
+					// sharees can't see properties, so this check would always fail for them
+					// if the credential contains required fields.
+					showValidationWarning.value = true;
+				} else {
+					await retestCredential();
+				}
+			}
+		}, 0);
+	} catch (error) {
+		console.error('[CredentialEdit] Initialization error', error);
+	} finally {
+		loading.value = false;
+	}
 });
 
 async function beforeClose() {
 	let keepEditing = false;
 
-	if (hasUnsavedChanges.value) {
+	if (hasUnsavedChanges.value && !isNewCredential.value) {
 		const displayName = credentialType.value ? credentialType.value.displayName : '';
-		const confirmAction = await message.confirm(
-			i18n.baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose1.message', {
-				interpolate: { credentialDisplayName: displayName },
-			}),
-			i18n.baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose1.headline'),
-			{
-				cancelButtonText: i18n.baseText(
-					'credentialEdit.credentialEdit.confirmMessage.beforeClose1.cancelButtonText',
-				),
-				confirmButtonText: i18n.baseText(
-					'credentialEdit.credentialEdit.confirmMessage.beforeClose1.confirmButtonText',
-				),
-			},
+		const confirmAction = await confirmModal(
+			'beforeClose1',
+			{ credentialDisplayName: displayName },
+			{ cancelButtonText: i18n.baseText(`${I18N_PREFIX}.beforeClose1.cancelButtonText`) },
 		);
 		keepEditing = confirmAction === MODAL_CONFIRM;
-	} else if (credentialPermissions.value.update && isOAuthType.value && !isOAuthConnected.value) {
-		const confirmAction = await message.confirm(
-			i18n.baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose2.message'),
-			i18n.baseText('credentialEdit.credentialEdit.confirmMessage.beforeClose2.headline'),
-			{
-				cancelButtonText: i18n.baseText(
-					'credentialEdit.credentialEdit.confirmMessage.beforeClose2.cancelButtonText',
-				),
-				confirmButtonText: i18n.baseText(
-					'credentialEdit.credentialEdit.confirmMessage.beforeClose2.confirmButtonText',
-				),
-			},
-		);
+	} else if (
+		credentialPermissions.value.update &&
+		isOAuthType.value &&
+		!isOAuthConnected.value &&
+		// Private credentials are only the reusable "blueprint" — connecting is a
+		// per-user step done later, so we don't prompt to connect before closing.
+		!isResolvable.value
+	) {
+		const confirmAction = await confirmModal('beforeClose2', undefined, {
+			cancelButtonText: i18n.baseText(`${I18N_PREFIX}.beforeClose2.cancelButtonText`),
+		});
 		keepEditing = confirmAction === MODAL_CONFIRM;
 	}
 
@@ -513,6 +641,13 @@ async function beforeClose() {
 
 function displayCredentialParameter(parameter: INodeProperties): boolean {
 	if (parameter.type === 'hidden') {
+		return false;
+	}
+
+	if (
+		MANAGED_CREDENTIAL_HIDDEN_PROPERTIES.has(parameter.name) &&
+		(isEditingManagedCredential.value || isManagedOAuthMode.value)
+	) {
 		return false;
 	}
 
@@ -608,27 +743,30 @@ async function loadCurrentCredential(id = props.activeId ?? '') {
 			'isResolvable' in currentCredentials && typeof currentCredentials.isResolvable === 'boolean'
 				? currentCredentials.isResolvable
 				: false;
+		connectedByMe.value =
+			'connectedByMe' in currentCredentials && typeof currentCredentials.connectedByMe === 'boolean'
+				? currentCredentials.connectedByMe
+				: false;
 	} catch (error) {
 		toast.showError(
 			error,
 			i18n.baseText('credentialEdit.credentialEdit.showError.loadCredential.title'),
 		);
 		closeDialog();
-
-		return;
+		throw error;
 	}
 }
 
 function onTabSelect(tab: string) {
 	activeTab.value = tab;
 	const credType: string = credentialType.value ? credentialType.value.name : '';
-	const activeNode: INode | null = ndvStore.activeNode;
+	const activeNode: INode | null = ndvStore.value.activeNode;
 
 	telemetry.track('User viewed credential tab', {
 		credential_type: credType,
 		node_type: activeNode ? activeNode.type : null,
 		tab,
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: workflowDocumentStore.value.workflowId,
 		credential_id: credentialId.value,
 		sharing_enabled: EnterpriseEditionFeature.Sharing,
 	});
@@ -672,8 +810,43 @@ function restoreOrReset(): void {
 	}
 }
 
-function onResolvableChange(value: boolean) {
+async function onResolvableChange(value: boolean) {
+	const credName = credentialName.value;
+	const isTogglingToPrivate = value && !isResolvable.value;
+	const isTogglingToStatic = !value && isResolvable.value;
+
+	if (isTogglingToPrivate && credentialData.value.oauthTokenData) {
+		// Static → Private: warn only when there is a shared token to lose
+		const confirmAction = await confirmModal('switchToPrivate', { credentialName: credName });
+
+		if (confirmAction !== MODAL_CONFIRM) {
+			return;
+		}
+	} else if (isTogglingToStatic) {
+		// Private → Static: warn only when there are connected users to disconnect.
+		// `connectedUserCount` reflects the server state at modal-open and isn't
+		// refreshed when the current user connects within the same session, so fold
+		// in `connectedByMe` to make sure the warning still appears in that case.
+		const serverConnectedCount = currentCredential.value?.connectedUserCount ?? 0;
+		const connectedUserCount = Math.max(serverConnectedCount, connectedByMe.value ? 1 : 0);
+		if (connectedUserCount > 0) {
+			const confirmAction = await confirmModal('switchToStatic', {
+				count: String(connectedUserCount),
+				credentialName: credName,
+			});
+
+			if (confirmAction !== MODAL_CONFIRM) {
+				return;
+			}
+		}
+	}
+
 	isResolvable.value = value;
+	// Switching sharing mode invalidates any carried-over connection state: a
+	// freshly-private credential has no per-user connection for the current
+	// user yet, so reset it to avoid rendering a stale "connected" state with a
+	// Disconnect button that has nothing to disconnect.
+	connectedByMe.value = false;
 	hasUnsavedChanges.value = true;
 }
 
@@ -833,8 +1006,12 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 	}
 
 	const appliedAuthType = pendingAuthType.value;
-	if (appliedAuthType && ndvStore.activeNode) {
-		updateNodeAuthType(workflowState, ndvStore.activeNode, appliedAuthType);
+	if (appliedAuthType && contextNode.value) {
+		updateNodeAuthType(
+			workflowDocumentStore.value.updateNodeProperties,
+			contextNode.value,
+			appliedAuthType,
+		);
 		pendingAuthType.value = null;
 	}
 
@@ -858,6 +1035,12 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 		credentialId.value = credential.id;
 		currentCredential.value = credential;
 
+		// Re-fetch to display server-redacted JSON shape for credentials with leaf-redacted fields
+		if (credentialProperties.value.some((p) => p.typeOptions?.redactJsonLeaves)) {
+			await loadCurrentCredential(credential.id);
+			setCredentialPropertyDefaults();
+		}
+
 		if (isCredentialTestable.value) {
 			isTesting.value = true;
 			// Add the full data including defaults for testing
@@ -867,14 +1050,22 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 
 			await testCredential(credentialDetails);
 			isTesting.value = false;
+
+			if (testedSuccessfully.value && closeOnSave.value) {
+				closeDialog();
+			}
 		} else {
 			authError.value = '';
 			testedSuccessfully.value = false;
+
+			if (!isOAuthType.value && closeOnSave.value) {
+				closeDialog();
+			}
 		}
 
 		const trackProperties: ITelemetryTrackProperties = {
 			credential_type: credentialDetails.type,
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowDocumentStore.value.workflowId,
 			credential_id: credential.id,
 			is_complete: !!requiredPropertiesFilled.value,
 			is_new: isNewCredential,
@@ -887,8 +1078,8 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 			trackProperties.is_valid = !!testedSuccessfully.value;
 		}
 
-		if (ndvStore.activeNode) {
-			trackProperties.node_type = ndvStore.activeNode.type;
+		if (ndvStore.value.activeNode) {
+			trackProperties.node_type = ndvStore.value.activeNode.type;
 		}
 
 		if (authError.value && authError.value !== '') {
@@ -1011,7 +1202,7 @@ async function createCredential(
 	telemetry.track('User created credentials', {
 		credential_type: credentialDetails.type,
 		credential_id: credential.id,
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: workflowDocumentStore.value.workflowId,
 	});
 
 	return credential;
@@ -1041,6 +1232,11 @@ async function updateCredential(
 		}
 		hasUnsavedChanges.value = false;
 		isSaved.value = true;
+
+		toast.showMessage({
+			title: i18n.baseText('credentials.update.toast.title'),
+			type: 'success',
+		});
 
 		if (credential) {
 			await externalHooks.run('credential.saved', {
@@ -1072,17 +1268,7 @@ async function deleteCredential() {
 
 	const savedCredentialName = currentCredential.value.name;
 
-	const deleteConfirmed = await message.confirm(
-		i18n.baseText('credentialEdit.credentialEdit.confirmMessage.deleteCredential.message', {
-			interpolate: { savedCredentialName },
-		}),
-		i18n.baseText('credentialEdit.credentialEdit.confirmMessage.deleteCredential.headline'),
-		{
-			confirmButtonText: i18n.baseText(
-				'credentialEdit.credentialEdit.confirmMessage.deleteCredential.confirmButtonText',
-			),
-		},
-	);
+	const deleteConfirmed = await confirmModal('deleteCredential', { savedCredentialName });
 
 	if (deleteConfirmed !== MODAL_CONFIRM) {
 		return;
@@ -1118,6 +1304,7 @@ async function deleteCredential() {
 async function oAuthCredentialAuthorize() {
 	let url;
 
+	credentialsStore.pendingOAuthRefresh = true;
 	const credential = await saveCredential();
 	if (!credential) {
 		return;
@@ -1126,9 +1313,10 @@ async function oAuthCredentialAuthorize() {
 	const types = parentTypes.value;
 
 	try {
-		// We exclude sharedWithProjects because it's not needed for the authorization and it causes the request to be too large
-		const { sharedWithProjects, ...sanitizedCredData } = credentialData.value;
-		const credData = { id: credential.id, ...sanitizedCredData };
+		// The authorization endpoints only need the credential id; the backend re-fetches the
+		// stored credential by id. Sending more (homeProject, scopes, etc.) bloats the GET query
+		// string and can exceed proxy header size limits.
+		const credData = { id: credential.id };
 
 		if (credentialTypeName.value === 'oAuth2Api' || types.includes('oAuth2Api')) {
 			if (isValidCredentialResponse(credData)) {
@@ -1143,7 +1331,11 @@ async function oAuthCredentialAuthorize() {
 		toast.showError(
 			error,
 			i18n.baseText('credentialEdit.credentialEdit.showError.generateAuthorizationUrl.title'),
-			i18n.baseText('credentialEdit.credentialEdit.showError.generateAuthorizationUrl.message'),
+			{
+				message: i18n.baseText(
+					'credentialEdit.credentialEdit.showError.generateAuthorizationUrl.message',
+				),
+			},
 		);
 
 		return;
@@ -1186,12 +1378,35 @@ async function oAuthCredentialAuthorize() {
 	};
 
 	const oauthChannel = new BroadcastChannel('oauth-callback');
-	const receiveMessage = (event: MessageEvent) => {
-		const successfullyConnected = event.data === 'success';
+	const trustedOrigins = getTrustedOAuthOrigins(rootStore.urlBaseEditor);
+	let oauthResultHandled = false;
+
+	// Fallback: if the popup is closed (or blocked) without ever delivering a
+	// callback message, no handler fires and the listeners below would leak —
+	// and stack up across attempts, so a later callback triggers duplicate side
+	// effects. Poll for the closed popup so the result is handled and cleaned up.
+	const popupClosedPoll = setInterval(() => {
+		if (!oauthPopup || oauthPopup.closed) {
+			handleOAuthResult(false);
+		}
+	}, 500);
+
+	const cleanupOAuthListeners = () => {
+		oauthChannel.removeEventListener('message', onChannelMessage);
+		window.removeEventListener('message', onWindowMessage);
+		oauthChannel.close();
+		clearInterval(popupClosedPoll);
+	};
+
+	const handleOAuthResult = (successfullyConnected: boolean) => {
+		if (oauthResultHandled) return;
+
+		oauthResultHandled = true;
+		cleanupOAuthListeners();
 
 		const trackProperties: ITelemetryTrackProperties = {
 			credential_type: credentialTypeName.value,
-			workflow_id: workflowsStore.workflowId || null,
+			workflow_id: workflowDocumentStore.value.workflowId || null,
 			credential_id: credentialId.value,
 			is_complete: !!requiredPropertiesFilled.value,
 			is_new: props.mode === 'new' && !credentialId.value,
@@ -1199,16 +1414,14 @@ async function oAuthCredentialAuthorize() {
 			uses_external_secrets: usesExternalSecrets(credentialData.value),
 		};
 
-		if (ndvStore.activeNode) {
-			trackProperties.node_type = ndvStore.activeNode.type;
+		if (ndvStore.value.activeNode) {
+			trackProperties.node_type = ndvStore.value.activeNode.type;
 		}
 
 		telemetry.track('User saved credentials', trackProperties);
 		void handleDynamicNotification(successfullyConnected);
 
 		if (successfullyConnected) {
-			oauthChannel.removeEventListener('message', receiveMessage);
-
 			// Set some kind of data that status changes.
 			// As data does not get displayed directly it does not matter what data.
 			credentialData.value = {
@@ -1216,13 +1429,72 @@ async function oAuthCredentialAuthorize() {
 				oauthTokenData: {} as CredentialInformation,
 			};
 
+			connectedByMe.value = true;
+
+			void credentialsStore.fetchAllCredentials().then(() => {
+				nodeHelpers.updateNodesCredentialsIssues();
+			});
+
 			// Close the window
 			if (oauthPopup) {
 				oauthPopup.close();
 			}
+
+			if (closeOnSave.value) {
+				closeDialog();
+			}
 		}
 	};
-	oauthChannel.addEventListener('message', receiveMessage);
+
+	function onChannelMessage(event: MessageEvent) {
+		handleOAuthResult(event.data === 'success');
+	}
+
+	// Cross-origin embed fallback: the callback page also posts to the opener.
+	function onWindowMessage(event: MessageEvent) {
+		const result = parseOAuthCallbackMessage(event, trustedOrigins);
+		if (result === null) return;
+		handleOAuthResult(result === 'success');
+	}
+
+	oauthChannel.addEventListener('message', onChannelMessage);
+	window.addEventListener('message', onWindowMessage);
+}
+
+async function onDisconnectMyConnection(): Promise<void> {
+	if (!credentialId.value) return;
+
+	const confirmed = await message.confirm(
+		i18n.baseText('credentialEdit.credentialEdit.confirmMessage.disconnectCredential.message', {
+			interpolate: { savedCredentialName: credentialName.value },
+		}),
+		i18n.baseText('credentialEdit.credentialEdit.confirmMessage.disconnectCredential.headline'),
+		{
+			confirmButtonText: i18n.baseText(
+				'credentialEdit.credentialEdit.confirmMessage.disconnectCredential.confirmButtonText',
+			),
+		},
+	);
+
+	if (confirmed !== MODAL_CONFIRM) return;
+
+	try {
+		await credentialsStore.disconnectMyConnection({ id: credentialId.value });
+		connectedByMe.value = false;
+		credentialData.value = {
+			...credentialData.value,
+			oauthTokenData: null as unknown as CredentialInformation,
+		};
+		toast.showMessage({
+			title: i18n.baseText('credentialEdit.credentialEdit.showMessage.disconnected.title'),
+			type: 'success',
+		});
+	} catch (error) {
+		toast.showError(
+			error,
+			i18n.baseText('credentialEdit.credentialEdit.showError.disconnectCredential.title'),
+		);
+	}
 }
 
 async function onAuthTypeChanged(payload: CredentialModeOption): Promise<void> {
@@ -1261,15 +1533,13 @@ async function onAuthTypeChanged(payload: CredentialModeOption): Promise<void> {
 }
 
 async function onQuickConnect(): Promise<void> {
-	if (!credentialTypeName.value || !ndvStore.activeNode) return;
+	if (!credentialTypeName.value || !ndvStore.value.activeNode) return;
 
-	const serviceName =
-		getAppNameFromCredType(credentialType.value?.displayName ?? '') ||
-		i18n.baseText('credentialEdit.credentialConfig.theServiceYouReConnectingTo');
+	const serviceName = getAppNameFromCredType(credentialType.value?.displayName ?? '');
 
 	const credential = await quickConnect({
 		credentialTypeName: credentialTypeName.value,
-		nodeType: ndvStore.activeNode.type,
+		nodeType: ndvStore.value.activeNode.type,
 		source: 'credential_type',
 		serviceName,
 	});
@@ -1297,14 +1567,13 @@ function resetCredentialData(): void {
 		}
 	}
 
-	const { currentProject, personalProject } = projectsStore;
-	const scopes = currentProject?.scopes ?? personalProject?.scopes ?? [];
-	const homeProject = currentProject ?? personalProject ?? {};
+	const resolvedProject = homeProject.value ?? {};
+	const scopes = ('scopes' in resolvedProject ? resolvedProject.scopes : undefined) ?? [];
 
 	credentialData.value = {
 		...credentialData.value,
 		scopes: scopes as unknown as CredentialInformation,
-		homeProject,
+		homeProject: resolvedProject,
 	};
 }
 
@@ -1321,6 +1590,7 @@ const { width } = useElementSize(credNameRef);
 		:before-close="beforeClose"
 		width="70%"
 		height="80%"
+		append-to-body
 	>
 		<template #header>
 			<div :class="$style.header">
@@ -1366,6 +1636,23 @@ const { width } = useElementSize(credNameRef);
 					</div>
 				</div>
 				<div :class="$style.credActions">
+					<SaveButton
+						v-if="showHeaderSaveButton"
+						:class="$style.saveButton"
+						:disabled="
+							(!isNewCredential && !hasUnsavedChanges && !isTesting) || !requiredPropertiesFilled
+						"
+						:variant="hasUnsavedChanges || isTesting ? 'solid' : 'subtle'"
+						:is-saving="isSaving || isTesting"
+						:saved="!isNewCredential && isSaved && !hasUnsavedChanges && !isTesting"
+						:saving-label="
+							isTesting
+								? i18n.baseText('credentialEdit.credentialEdit.testing')
+								: i18n.baseText('credentialEdit.credentialEdit.saving')
+						"
+						data-test-id="credential-save-button"
+						@click="saveCredential"
+					/>
 					<N8nIconButton
 						variant="subtle"
 						v-if="currentCredential && credentialPermissions.delete"
@@ -1412,33 +1699,26 @@ const { width } = useElementSize(credNameRef);
 						:credential-permissions="credentialPermissions"
 						:mode="mode"
 						:selected-credential="selectedCredential"
-						:is-dynamic-credentials-enabled="isDynamicCredentialsEnabled"
+						:is-private-credentials-enabled="isPrivateCredentialsEnabled"
 						:is-resolvable="isResolvable"
+						:is-shared="isCurrentlyShared"
+						:connected-by-me="connectedByMe"
 						:is-new-credential="isNewCredential"
 						:managed-oauth-available="managedOAuthAvailable"
 						:use-custom-oauth="useCustomOAuth"
 						:is-quick-connect-mode="isQuickConnectMode"
+						:context-node="contextNode"
+						:hide-ask-assistant="hideAskAssistant"
+						:instance-ai-credential-help="instanceAiCredentialHelp"
 						@update="onDataChange"
 						@oauth="oAuthCredentialAuthorize"
+						@disconnect="onDisconnectMyConnection"
 						@quick-connect="onQuickConnect"
 						@retest="retestCredential"
 						@scroll-to-top="scrollToTop"
 						@auth-type-changed="onAuthTypeChanged"
+						@claimed="closeDialog"
 						@update:is-resolvable="onResolvableChange"
-					/>
-					<SaveButton
-						v-if="showSaveButton"
-						:class="$style.saveButton"
-						:disabled="!hasUnsavedChanges && !isTesting && !!credentialId"
-						:is-saving="isSaving || isTesting"
-						:saved="false"
-						:saving-label="
-							isTesting
-								? i18n.baseText('credentialEdit.credentialEdit.testing')
-								: i18n.baseText('credentialEdit.credentialEdit.saving')
-						"
-						data-test-id="credential-save-button"
-						@click="saveCredential"
 					/>
 				</div>
 				<div v-else-if="showSharingContent" :class="$style.mainContent">
@@ -1448,23 +1728,10 @@ const { width } = useElementSize(credNameRef);
 						:credential-id="credentialId"
 						:credential-permissions="credentialPermissions"
 						:is-shared-globally="isSharedGlobally"
+						:is-resolvable="isResolvable"
 						:modal-bus="modalBus"
 						@update:model-value="onChangeSharedWith"
 						@update:share-with-all-users="onShareWithAllUsersUpdate"
-					/>
-					<SaveButton
-						v-if="showSaveButton"
-						:class="$style.saveButton"
-						:disabled="!hasUnsavedChanges && !isTesting && !!credentialId"
-						:is-saving="isSaving || isTesting"
-						:saved="false"
-						:saving-label="
-							isTesting
-								? i18n.baseText('credentialEdit.credentialEdit.testing')
-								: i18n.baseText('credentialEdit.credentialEdit.saving')
-						"
-						data-test-id="credential-save-button"
-						@click="saveCredential"
 					/>
 				</div>
 				<div v-else-if="activeTab === 'details' && credentialType" :class="$style.mainContent">
@@ -1495,7 +1762,7 @@ const { width } = useElementSize(credNameRef);
 .mainContent {
 	flex: 1;
 	overflow: auto;
-	padding-bottom: 100px;
+	padding-bottom: var(--spacing--lg);
 	padding-inline: var(--spacing--4xs);
 }
 
@@ -1551,12 +1818,10 @@ const { width } = useElementSize(credNameRef);
 	display: flex;
 	flex-direction: row;
 	align-items: center;
+	gap: var(--spacing--2xs);
 	margin-right: var(--spacing--xl);
 	margin-bottom: var(--spacing--lg);
-
-	> * {
-		margin-left: var(--spacing--2xs);
-	}
+	flex-shrink: 0;
 }
 
 .credIcon {
@@ -1566,6 +1831,7 @@ const { width } = useElementSize(credNameRef);
 }
 
 .saveButton {
-	margin-left: 1px;
+	flex-shrink: 0;
+	min-width: 57px;
 }
 </style>

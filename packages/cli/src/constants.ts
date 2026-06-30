@@ -17,13 +17,24 @@ export const CUSTOM_API_CALL_NAME = 'Custom API Call';
 export const CUSTOM_API_CALL_KEY = '__CUSTOM_API_CALL__';
 
 export const CLI_DIR = resolve(__dirname, '..');
+export const AI_ASSISTANT_SDK_DIR = dirname(dirname(require.resolve('@n8n_io/ai-assistant-sdk')));
 export const TEMPLATES_DIR = join(CLI_DIR, 'templates');
 export const NODES_BASE_DIR = dirname(require.resolve('n8n-nodes-base'));
 export const EDITOR_UI_DIST_DIR = join(dirname(require.resolve('n8n-editor-ui')), 'dist');
 
 const packageJsonPath = join(CLI_DIR, 'package.json');
+const aiAssistantPackageJsonPath = join(AI_ASSISTANT_SDK_DIR, 'package.json');
+const workflowSdkPackageJsonPath = require.resolve('@n8n/workflow-sdk/package.json');
 const n8nPackageJson = jsonParse<n8n.PackageJson>(readFileSync(packageJsonPath, 'utf8'));
+const aiAssistantPackageJson = jsonParse<n8n.PackageJson>(
+	readFileSync(aiAssistantPackageJsonPath, 'utf8'),
+);
+const workflowSdkPackageJson = jsonParse<n8n.PackageJson>(
+	readFileSync(workflowSdkPackageJsonPath, 'utf8'),
+);
 export const N8N_VERSION = n8nPackageJson.version;
+export const AI_ASSISTANT_SDK_VERSION = aiAssistantPackageJson.version;
+export const WORKFLOW_SDK_VERSION = workflowSdkPackageJson.version;
 export const N8N_RELEASE_DATE = statSync(packageJsonPath).mtime;
 
 export const STARTING_NODES = [
@@ -79,6 +90,9 @@ export const UNKNOWN_FAILURE_REASON = 'Unknown failure reason';
 export const WORKFLOW_REACTIVATE_INITIAL_TIMEOUT = 1000; // 1 second
 export const WORKFLOW_REACTIVATE_MAX_TIMEOUT = 24 * 60 * 60 * 1000; // 1 day
 
+/** Max in-process attempts to activate a single trigger node before recording it as failed. */
+export const TRIGGER_ACTIVATION_MAX_ATTEMPTS = 5;
+
 export const SETTINGS_LICENSE_CERT_KEY = 'license.cert';
 
 export const UM_FIX_INSTRUCTION =
@@ -94,6 +108,16 @@ export const GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE = [
 	'microsoftOAuth2Api',
 	'highLevelOAuth2Api',
 	'mcpOAuth2Api',
+	'snowflakeOAuth2Api',
+	'facebookGraphApiOAuth2Api',
+	'facebookGraphAppOAuth2Api',
+	'stravaOAuth2Api',
+	'wordpressOAuth2Api',
+	'figmaOAuth2Api',
+	'gumroadOAuth2Api',
+	'googleCloudStorageOAuth2Api',
+	'googleCalendarOAuth2Api',
+	'googleSheetsOAuth2Api',
 ];
 
 export const ARTIFICIAL_TASK_DATA = {

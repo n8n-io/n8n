@@ -6,6 +6,7 @@ import { ExpressionError } from '../src/errors/expression.error';
 import {
 	NodeConnectionTypes,
 	type NodeConnectionType,
+	type IDataObject,
 	type IExecuteData,
 	type INode,
 	type IPinData,
@@ -1275,6 +1276,40 @@ describe('WorkflowDataProxy', () => {
 			const data = { name: 'John' };
 			expect(proxy.$jmespath(data, 'name')).toBe(proxy.$jmesPath(data, 'name'));
 		});
+
+		test.each([
+			['constructor'],
+			['__proto__'],
+			['prototype'],
+			['getPrototypeOf'],
+			['user.constructor'],
+			['"constructor"'],
+			['a.b."__proto__"'],
+		])('should reject query "%s"', (query) => {
+			expect(() => proxy.$jmesPath({ a: 1 }, query)).toThrow(ExpressionError);
+			expect(() => proxy.$jmesPath({ a: 1 }, query)).toThrow(/due to security concerns/);
+		});
+
+		test('should reject query containing restricted identifier on aliased function', () => {
+			expect(() => proxy.$jmespath({ a: 1 }, 'constructor')).toThrow(ExpressionError);
+		});
+
+		test('should accept queries with restricted identifiers as substrings', () => {
+			const data = { constructorName: 'Widget', prototypeId: 42 };
+			expect(proxy.$jmesPath(data, 'constructorName')).toBe('Widget');
+			expect(proxy.$jmesPath(data, 'prototypeId')).toBe(42);
+		});
+
+		test.each([
+			['"\\u005f\\u005fproto\\u005f\\u005f"'],
+			['"\\u0063onstructor"'],
+			['"\\u0070rototype"'],
+			['"\\u005f\\u005fproto\\u005f\\u005f"."\\u0063onstructor"'],
+			['"foo\\bar"'],
+		])('should reject query "%s" containing backslash escapes', (query) => {
+			expect(() => proxy.$jmesPath({ a: 1 }, query)).toThrow(ExpressionError);
+			expect(() => proxy.$jmesPath({ a: 1 }, query)).toThrow(/due to security concerns/);
+		});
 	});
 
 	describe('$mode', () => {
@@ -1905,6 +1940,228 @@ describe('WorkflowDataProxy', () => {
 			});
 			expect(result).not.toHaveProperty('displayName');
 			expect(result).not.toHaveProperty('params');
+		});
+	});
+
+	describe('Partial execution: $() referencing executed node from unexecuted active node', () => {
+		// Scenario: Reference → Edit → NoOp → Edit Fields
+		// Only Reference and Edit have been executed (partial execution).
+		// Edit Fields (active, unexecuted) uses $('Edit').item.json.test
+		// "Edit" has data in runData, so the expression should resolve.
+		const workflowData: IWorkflowBase = {
+			id: '123',
+			name: 'partial execution test',
+			nodes: [
+				{
+					id: 'node1',
+					name: 'Reference',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [256, 16] as [number, number],
+					parameters: {},
+				},
+				{
+					id: 'node2',
+					name: 'Edit',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [544, 16] as [number, number],
+					parameters: {
+						assignments: {
+							assignments: [
+								{
+									id: 'e8d2af0b-147a-4b0d-a106-5ed5a5b753e4',
+									name: 'test',
+									value: '={{ 1111 }}',
+									type: 'string',
+								},
+							],
+						},
+						options: {},
+					},
+				},
+				{
+					id: 'node3',
+					name: 'NoOp',
+					type: 'n8n-nodes-base.noOp',
+					typeVersion: 1,
+					position: [832, 32] as [number, number],
+					parameters: {},
+				},
+				{
+					id: 'node4',
+					name: 'Edit Fields',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3.4,
+					position: [1136, 0] as [number, number],
+					parameters: {},
+				},
+			],
+			connections: {
+				Reference: {
+					main: [[{ node: 'Edit', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+				Edit: {
+					main: [[{ node: 'NoOp', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+				NoOp: {
+					main: [[{ node: 'Edit Fields', type: NodeConnectionTypes.Main, index: 0 }]],
+				},
+			},
+			active: false,
+			activeVersionId: null,
+			isArchived: false,
+			createdAt: new Date(),
+			updatedAt: new Date(),
+		};
+
+		// Exact run data from a real partial execution (only Reference and Edit ran)
+		const run: IRun = {
+			data: createRunExecutionData({
+				resultData: {
+					runData: {
+						Reference: [
+							{
+								startTime: 1774006769741,
+								executionTime: 1,
+								executionIndex: 0,
+								executionStatus: 'success',
+								source: [],
+								data: {
+									main: [[{ json: {}, pairedItem: { item: 0 } }]],
+								},
+							},
+						],
+						Edit: [
+							{
+								startTime: 1774006769743,
+								executionTime: 8,
+								executionIndex: 1,
+								executionStatus: 'success',
+								source: [
+									{
+										previousNode: 'Reference',
+										previousNodeOutput: 0,
+										previousNodeRun: 0,
+									},
+								],
+								data: {
+									main: [[{ json: { test: '1111' }, pairedItem: { item: 0 } }]],
+								},
+							},
+						],
+						// NoOp and Edit Fields have NOT been executed
+					},
+				},
+			}),
+			mode: 'manual',
+			startedAt: new Date(),
+			status: 'success',
+			storedAt: 'db',
+		};
+
+		test('$("Edit").first() should return data when referenced node was executed', () => {
+			const proxy = getProxyFromFixture(workflowData, run, 'Edit Fields', 'manual');
+			expect(proxy.$('Edit').first().json.test).toBe('1111');
+		});
+
+		test('$("Edit").isExecuted should return true', () => {
+			const proxy = getProxyFromFixture(workflowData, run, 'Edit Fields', 'manual');
+			expect(proxy.$('Edit').isExecuted).toBe(true);
+		});
+
+		test('$("Edit").item.json.test should resolve when the referenced node was executed', () => {
+			// .item uses paired item resolution which requires connectionInputData
+			// (the active node's input). In a partial execution the active node hasn't
+			// run so connectionInputData is empty, but the referenced node "Edit" has
+			// data in runData. The fix falls back to reading from runData directly.
+			const proxy = getProxyFromFixture(workflowData, run, 'Edit Fields', 'manual');
+			expect(proxy.$('Edit').item.json.test).toBe('1111');
+		});
+	});
+
+	describe('$self', () => {
+		const node: INode = {
+			id: 'uuid-1',
+			name: 'Test Node',
+			type: 'test.set',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+		};
+
+		const createTestWorkflow = () =>
+			new Workflow({
+				id: '123',
+				name: 'test workflow',
+				nodes: [node],
+				connections: {},
+				active: false,
+				nodeTypes: Helpers.NodeTypes(),
+			});
+
+		const readSelf = async (selfData: IDataObject, field: string) => {
+			const workflow = createTestWorkflow();
+			const dataProxy = new WorkflowDataProxy(
+				workflow,
+				createEmptyRunExecutionData(),
+				0,
+				0,
+				node.name,
+				[],
+				{},
+				'integrated',
+				{},
+				undefined,
+				-1,
+				selfData,
+			);
+			const proxy = dataProxy.getDataProxy({ throwOnMissingExecutionData: false });
+
+			await workflow.expression.acquireIsolate();
+			try {
+				return proxy.$self[field];
+			} finally {
+				await workflow.expression.releaseIsolate();
+			}
+		};
+
+		test('returns plain (fixed-mode) values verbatim', async () => {
+			expect(await readSelf({ tenantId: 'myTenant' }, 'tenantId')).toBe('myTenant');
+		});
+
+		test('strips the leading "=" from a literal expression-mode value', async () => {
+			expect(await readSelf({ tenantId: '=myTenant' }, 'tenantId')).toBe('myTenant');
+		});
+
+		test('resolves an expression-mode value containing a template', async () => {
+			expect(await readSelf({ tenantId: '={{ "myTenant".toUpperCase() }}' }, 'tenantId')).toBe(
+				'MYTENANT',
+			);
+		});
+
+		test('does not leak the "=" marker into a mid-string URL template', async () => {
+			const workflow = createTestWorkflow();
+			const selfData = { tenantId: '=myTenant' };
+			const accessTokenUrl =
+				'=https://login.microsoftonline.com/{{ $self["tenantId"] }}/oauth2/v2.0/token';
+
+			await workflow.expression.acquireIsolate();
+			try {
+				const resolved = workflow.expression.getComplexParameterValue(
+					node,
+					accessTokenUrl,
+					'integrated',
+					{},
+					undefined,
+					undefined,
+					selfData,
+				);
+
+				expect(resolved).toBe('https://login.microsoftonline.com/myTenant/oauth2/v2.0/token');
+			} finally {
+				await workflow.expression.releaseIsolate();
+			}
 		});
 	});
 });

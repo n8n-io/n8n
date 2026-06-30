@@ -30,6 +30,7 @@ import { ChatExecutionManager } from '@/chat/chat-execution-manager';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ExecutionService } from '@/executions/execution.service';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 
@@ -52,6 +53,7 @@ export class ChatHubExecutionService {
 		private readonly executionService: ExecutionService,
 		private readonly workflowExecutionService: WorkflowExecutionService,
 		private readonly executionRepository: ExecutionRepository,
+		private readonly executionPersistence: ExecutionPersistence,
 		private readonly executionManager: ChatExecutionManager,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly instanceSettings: InstanceSettings,
@@ -95,8 +97,14 @@ export class ChatHubExecutionService {
 		previousMessageId: ChatMessageId,
 		retryOfMessageId: ChatMessageId | null,
 		responseMode: ChatTriggerResponseMode,
+		pushRef?: string,
 	) {
-		const executionMode = model.provider === 'n8n' ? 'webhook' : 'chat';
+		const executionMode =
+			pushRef && model.provider === 'n8n'
+				? 'manual'
+				: model.provider === 'n8n'
+					? 'webhook'
+					: 'chat';
 		const { id: workflowId } = workflowData;
 
 		try {
@@ -110,6 +118,7 @@ export class ChatHubExecutionService {
 				retryOfMessageId,
 				executionMode,
 				responseMode,
+				pushRef,
 			);
 		} catch (error) {
 			this.logger.error(`Error in chat execution: ${error}`);
@@ -154,6 +163,7 @@ export class ChatHubExecutionService {
 		retryOfMessageId: ChatMessageId | null,
 		executionMode: WorkflowExecuteMode,
 		responseMode: ChatTriggerResponseMode,
+		pushRef?: string,
 	) {
 		this.logger.debug(
 			`Starting execution of workflow "${workflowData.name}" with ID ${workflowData.id}`,
@@ -174,6 +184,7 @@ export class ChatHubExecutionService {
 				retryOfMessageId,
 				executionMode,
 				responseMode,
+				pushRef,
 			);
 		} else if (responseMode === 'streaming') {
 			return await this.executeWithStreaming(
@@ -185,6 +196,7 @@ export class ChatHubExecutionService {
 				previousMessageId,
 				retryOfMessageId,
 				executionMode,
+				pushRef,
 			);
 		}
 	}
@@ -201,6 +213,7 @@ export class ChatHubExecutionService {
 		previousMessageId: string,
 		retryOfMessageId: string | null,
 		executionMode: WorkflowExecuteMode,
+		pushRef?: string,
 	) {
 		let executionId: string | undefined;
 		let executionStatus: 'success' | 'error' | 'cancelled' = 'success';
@@ -311,6 +324,7 @@ export class ChatHubExecutionService {
 				streamAdapter,
 				true,
 				executionMode,
+				pushRef,
 			);
 
 			executionId = execution.executionId;
@@ -361,6 +375,7 @@ export class ChatHubExecutionService {
 		retryOfMessageId: string | null,
 		executionMode: WorkflowExecuteMode,
 		responseMode: NonStreamingResponseMode,
+		pushRef?: string,
 	) {
 		// 1. Start the workflow execution
 		const running = await this.workflowExecutionService.executeChatWorkflow(
@@ -370,6 +385,7 @@ export class ChatHubExecutionService {
 			undefined,
 			false,
 			executionMode,
+			pushRef,
 		);
 
 		const executionId = running.executionId;
@@ -561,7 +577,7 @@ export class ChatHubExecutionService {
 
 		while (!errorText) {
 			try {
-				const execution = await this.executionRepository.findWithUnflattenedData(executionId, [
+				const execution = await this.executionPersistence.findWithUnflattenedData(executionId, [
 					workflowId,
 				]);
 				if (execution && EXECUTION_FINISHED_STATUSES.includes(execution.status)) {
@@ -655,7 +671,7 @@ export class ChatHubExecutionService {
 	}
 
 	async ensureWasSuccessfulOrThrow(executionId: string, errorMessage: string) {
-		const executionEntity = await this.executionRepository.findSingleExecution(executionId, {
+		const executionEntity = await this.executionPersistence.findSingleExecution(executionId, {
 			includeData: true,
 			unflattenData: true,
 		});

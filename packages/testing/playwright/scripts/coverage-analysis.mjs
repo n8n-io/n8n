@@ -129,16 +129,38 @@ export function inferType(filePath) {
 
 // ── Fetch ──────────────────────────────────────────────────────────────────────
 
-/** Fetch with exponential backoff retry — handles 429 rate limits and transient 5xx. */
-async function fetchJson(url, retries = 3) {
+/**
+ * Fetch with exponential backoff retry — handles 429 rate limits, transient
+ * 5xx (Codecov in particular serves 503 for ~60-90s post-upload while it
+ * indexes a fresh flag report), and network-level failures (socket reset,
+ * DNS hiccup, connection close) that Node's fetch throws as
+ * `TypeError: fetch failed`. Delay is capped to 30s so the total retry
+ * budget stays under ~3 minutes even at the max attempt count.
+ */
+async function fetchJson(url, retries = 10) {
+	const backoff = (attempt) => Math.min(Math.pow(2, attempt) * 1000, 30_000) + Math.random() * 500;
+
 	for (let attempt = 0; attempt <= retries; attempt++) {
-		const res = await fetch(url, { headers });
+		let res;
+		try {
+			res = await fetch(url, { headers });
+		} catch (error) {
+			if (attempt < retries) {
+				const delay = backoff(attempt);
+				process.stderr.write(
+					`  [network] ${String(error)} — retrying in ${Math.round(delay / 1000)}s...\n`,
+				);
+				await new Promise((r) => setTimeout(r, delay));
+				continue;
+			}
+			throw new Error(`Network failure after ${retries + 1} attempts  ${url}\n${String(error)}`);
+		}
 
 		if (res.ok) return res.json();
 
 		// Retry on rate limit or transient server error
 		if ((res.status === 429 || res.status >= 500) && attempt < retries) {
-			const delay = Math.pow(2, attempt) * 1000 + Math.random() * 500;
+			const delay = backoff(attempt);
 			process.stderr.write(`  [${res.status}] retrying in ${Math.round(delay / 1000)}s...\n`);
 			await new Promise((r) => setTimeout(r, delay));
 			continue;
@@ -161,7 +183,19 @@ async function fetchFlagMap(flag) {
 	process.stderr.write(`  ${flag}:`);
 	while (url) {
 		process.stderr.write(` p${page}`);
-		const data = await fetchJson(url);
+		let data;
+		try {
+			data = await fetchJson(url);
+		} catch (error) {
+			// A flag that was never uploaded (e.g. a per-layer flag since folded
+			// into nightly-full) 404s. Treat as "no data" rather than failing the
+			// whole gap report — the other flags still produce a useful analysis.
+			if (String(error).includes('HTTP 404')) {
+				process.stderr.write(' → flag not found (skipped)\n');
+				return map;
+			}
+			throw error;
+		}
 		for (const f of data.files ?? []) {
 			const t = f.totals ?? {};
 			const lines = Number(t.lines) || 0;

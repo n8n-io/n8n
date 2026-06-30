@@ -7,6 +7,7 @@ import { useI18n } from '@n8n/i18n';
 import { VIEWS } from '@/app/constants';
 import type { PermissionsRecord } from '@n8n/permissions';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
+import { checkExhaustive } from '@/app/utils/typeGuards';
 import type { IconColor } from '@n8n/design-system/types/icon';
 import type { ExecutionStatus, ExecutionSummary } from 'n8n-workflow';
 import { WAIT_INDEFINITELY } from 'n8n-workflow';
@@ -169,8 +170,19 @@ function onSelect() {
 }
 
 async function handleActionItemClick(commandData: Command) {
-	//@ts-ignore todo: fix this type
-	emit(commandData, props.execution);
+	switch (commandData) {
+		case 'retrySaved':
+			emit('retrySaved', props.execution);
+			break;
+		case 'retryOriginal':
+			emit('retryOriginal', props.execution);
+			break;
+		case 'delete':
+			emit('delete', props.execution);
+			break;
+		default:
+			checkExhaustive(commandData);
+	}
 }
 </script>
 <template>
@@ -190,7 +202,7 @@ async function handleActionItemClick(commandData: Command) {
 				<RouterLink
 					:to="{
 						name: VIEWS.EXECUTION_PREVIEW,
-						params: { name: execution.workflowId, executionId: execution.id },
+						params: { workflowId: execution.workflowId, executionId: execution.id },
 					}"
 					:class="$style.workflowName"
 					target="_blank"

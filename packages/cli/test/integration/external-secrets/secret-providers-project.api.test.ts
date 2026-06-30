@@ -6,9 +6,9 @@ import {
 	SecretsProviderConnectionRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 import { Cipher } from 'n8n-core';
 import type { Response } from 'superagent';
+import { mock } from 'vitest-mock-extended';
 
 import { ExternalSecretsProviders } from '@/modules/external-secrets.ee/external-secrets-providers.ee';
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
@@ -514,7 +514,7 @@ describe('Secret Providers Project API', () => {
 				.expect(404);
 		});
 
-		test('should return 404 for a global connection (cannot update global from project context)', async () => {
+		test('should return 404 for a global connection from project context', async () => {
 			await createProviderConnection('global-update', []);
 
 			await ownerAgent
@@ -675,19 +675,12 @@ describe('Secret Providers Project API', () => {
 			expect(response.body.data).toMatchObject({ success: true });
 		});
 
-		test('should test a global connection accessible from the project', async () => {
+		test('should return 404 for a global connection (cannot test global from project context)', async () => {
 			await createProviderConnection('global-test-conn', []);
 
-			const { ExternalSecretsManager } = await import(
-				'@/modules/external-secrets.ee/external-secrets-manager.ee'
-			);
-			await Container.get(ExternalSecretsManager).reloadAllProviders();
-
-			const response = await ownerAgent
+			await ownerAgent
 				.post(`/secret-providers/projects/${teamProject1.id}/connections/global-test-conn/test`)
-				.expect(200);
-
-			expect(response.body.data).toMatchObject({ success: true });
+				.expect(404);
 		});
 
 		test('should return 404 for a connection belonging to another project', async () => {

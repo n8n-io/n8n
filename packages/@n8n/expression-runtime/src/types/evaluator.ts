@@ -1,5 +1,6 @@
 import type { TournamentHooks } from '@n8n/tournament';
 
+import type { Logger } from './bridge';
 import type { RuntimeBridge } from './bridge';
 
 // ============================================================================
@@ -14,10 +15,8 @@ import type { RuntimeBridge } from './bridge';
  * will be added in later slices.
  */
 export interface EvaluatorConfig {
-	/**
-	 * Runtime bridge implementation.
-	 */
-	bridge: RuntimeBridge;
+	/** Factory function to create a bridge instance. */
+	createBridge: () => RuntimeBridge;
 
 	/**
 	 * Observability provider for metrics, traces, and logs.
@@ -30,6 +29,24 @@ export interface EvaluatorConfig {
 	 * If omitted, expressions are transformed with no security hooks (dev/testing use).
 	 */
 	hooks?: TournamentHooks;
+
+	/**
+	 * Maximum number of tournament-transformed expressions to cache (LRU).
+	 */
+	maxCodeCacheSize: number;
+
+	/**
+	 * Number of bridges to pre-warm in the pool. Defaults to 1 if not provided.
+	 * Can be set to the execution concurrency limit (N8N_EXPRESSION_ENGINE_POOL_SIZE)
+	 * to give each concurrent execution a pre-warmed bridge.
+	 */
+	poolSize?: number;
+
+	/** If set, scale the pool to 0 warm bridges after this many ms with no isolate acquire. */
+	idleTimeoutMs?: number;
+
+	/** Optional logger. Passed through to pool. Falls back to no-op. */
+	logger?: Logger;
 }
 
 /**
@@ -49,13 +66,28 @@ export interface IExpressionEvaluator {
 	 *
 	 * @param expression - Expression string (e.g., "{{ $json.email }}")
 	 * @param data - Workflow data context
-	 * @param options - Evaluation options
+	 * @param caller - Owner object that acquired the bridge (same object passed to acquire())
+	 * @param options - Optional evaluation options (e.g. timezone)
 	 * @returns Result of the expression
-	 *
-	 * Note: Synchronous for Slice 1 (Node.js vm module).
-	 *       Will be async for Slice 2 (isolated-vm).
 	 */
-	evaluate(expression: string, data: WorkflowData, options?: EvaluateOptions): unknown;
+	evaluate(
+		expression: string,
+		data: WorkflowData,
+		caller: object,
+		options?: EvaluateOptions,
+	): unknown;
+
+	/**
+	 * Acquire a bridge for an owner object (e.g. an Expression instance).
+	 * Must be called before evaluate(). The same object must be passed as
+	 * the caller argument to evaluate().
+	 */
+	acquire(owner: object): Promise<void>;
+
+	/**
+	 * Release the bridge held for an owner object.
+	 */
+	release(owner: object): Promise<void>;
 
 	/**
 	 * Dispose of the evaluator and free resources.
@@ -69,12 +101,108 @@ export interface IExpressionEvaluator {
 }
 
 /**
- * Workflow data proxy from WorkflowDataProxy.getDataProxy().
- *
- * For Slice 1: We pass this directly via VM context (simple pass-through).
- * Later: Will implement deep lazy proxy for field-level data fetching.
+ * The methods on the per-node accessor returned by `data.$('NodeName')`.
+ * Mirrors the host-side `WorkflowDataProxy` `$()` return shape, restricted
+ * to the operations the typed-RPC handlers dispatch into. All optional —
+ * the underlying proxy is dynamic and the handlers tolerate missing
+ * methods via optional chaining at the call site.
  */
-export type WorkflowData = Record<string, unknown>;
+export interface NodeProxy {
+	first?: (branchIndex?: number, runIndex?: number) => unknown;
+	last?: (branchIndex?: number, runIndex?: number) => unknown;
+	all?: (branchIndex?: number, runIndex?: number) => unknown;
+	/**
+	 * Paired-item resolvers. All three host-side surface forms exist as
+	 * separate properties on the proxy because the host's closure
+	 * captures which property name was accessed (to choose error
+	 * messages and getter-vs-method semantics). The bridge reads the
+	 * matching property per discriminator.
+	 */
+	pairedItem?: (itemIndex?: number) => unknown;
+	itemMatching?: (itemIndex?: number) => unknown;
+	/** Host getter — accessing it invokes the resolver immediately. */
+	item?: unknown;
+}
+
+/**
+ * The methods on `data.$input` that typed-RPC handlers dispatch into.
+ * Mirrors the host-side `ProxyInput` shape (`packages/workflow/src/interfaces.ts`),
+ * restricted to the no-arg method forms the host enforces (`$input.first()`,
+ * `.last()`, `.all()` throw on any arguments). Properties like `.item`,
+ * `.context`, `.params` stay on `getValueAtPath` and aren't part of this
+ * type.
+ *
+ * Return types are `unknown` rather than `INodeExecutionData` / `[]`:
+ * results cross the isolate boundary via `applySync({ result: { copy: true } })`,
+ * which structured-clones the value and erases nominal types. The handlers
+ * pass the clone through verbatim, so a precise return type would be
+ * misleading. Matches the `NodeProxy` return type for the same reason.
+ */
+export interface InputProxy {
+	first?: () => unknown;
+	last?: () => unknown;
+	all?: () => unknown;
+}
+
+/**
+ * Workflow data proxy from `WorkflowDataProxy.getDataProxy()`.
+ *
+ * `$`, `$input`, and `$items` are typed-RPC accessors (`$('NodeName').first()`,
+ * `$input.first()`, `$items(...)`, etc.) and are called directly from
+ * typed-RPC handlers. Everything else flows through the generic data-access
+ * primitives (`getValueAtPath`, `getArrayElement`), which read paths off
+ * the index signature without needing per-key types.
+ */
+/**
+ * Signature shared by `$fromAI`, `$fromAi`, and `$fromai` — the three
+ * host-side aliases that resolve to the same `handleFromAi` callback in
+ * `WorkflowDataProxy`. The `name` argument is optional in the type so
+ * empty / missing calls reach the host, which throws a friendly
+ * `ExpressionError` rather than a generic zod / runtime error.
+ */
+export type FromAi = (
+	name?: string,
+	description?: string,
+	valueType?: string,
+	defaultValue?: unknown,
+) => unknown;
+
+/**
+ * Source data describing where an item came from upstream. Mirrors the
+ * `ISourceData` interface from `n8n-workflow` without taking a runtime
+ * dependency on it.
+ */
+export interface SourceData {
+	previousNode: string;
+	previousNodeOutput?: number;
+	previousNodeRun?: number;
+}
+
+/**
+ * Paired-item descriptor. Mirrors the `IPairedItemData` interface from
+ * `n8n-workflow` without taking a runtime dependency on it.
+ */
+export interface PairedItemData {
+	item: number;
+	input?: number;
+	sourceOverwrite?: SourceData;
+}
+
+export interface WorkflowData {
+	$?: (nodeName: string) => NodeProxy | null | undefined;
+	$input?: InputProxy;
+	$items?: (nodeName?: string, outputIndex?: number, runIndex?: number) => unknown;
+	$fromAI?: FromAi;
+	$fromAi?: FromAi;
+	$fromai?: FromAi;
+	$evaluateExpression?: (expression: string, itemIndex?: number) => unknown;
+	$getPairedItem?: (
+		destinationNodeName: string,
+		incomingSourceData: SourceData | null,
+		initialPairedItem: PairedItemData,
+	) => unknown;
+	[key: string]: unknown;
+}
 
 /**
  * Options for evaluate().
@@ -82,12 +210,6 @@ export type WorkflowData = Record<string, unknown>;
  * Note: Slice 1 is minimal. Tournament options will be added later.
  */
 export interface EvaluateOptions {
-	/**
-	 * Custom timeout for this evaluation (in milliseconds).
-	 * Overrides the bridge's default timeout.
-	 */
-	timeout?: number;
-
 	/**
 	 * IANA timezone for this evaluation (e.g., 'America/New_York').
 	 * Sets luxon Settings.defaultZone inside the isolate before execution.

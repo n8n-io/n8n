@@ -7,6 +7,8 @@ import type {
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
+import { authorizeJWT } from '@microsoft/agents-hosting';
+
 import { getInputs } from '../../agents/Agent/V2/utils';
 
 import {
@@ -124,7 +126,7 @@ export class MicrosoftAgent365Trigger implements INodeType {
 				},
 			},
 			{
-				displayName: 'Enable Microsoft MCP Tools',
+				displayName: 'Enable Microsoft Work IQ Tools for A365',
 				name: 'useMcpTools',
 				type: 'boolean',
 				default: false,
@@ -192,7 +194,7 @@ export class MicrosoftAgent365Trigger implements INodeType {
 						name: 'welcomeMessage',
 						type: 'string',
 						placeholder: "e.g. Hello! I'm here to help you!",
-						default: '',
+						default: "Hello! I'm here to help you!",
 					},
 				],
 			},
@@ -217,7 +219,7 @@ export class MicrosoftAgent365Trigger implements INodeType {
 				'microsoftAgent365Api',
 			)) as MicrosoftAgent365Credentials;
 
-			const agent = createMicrosoftAgentApplication(credentials);
+			const { agent, authConfig } = createMicrosoftAgentApplication(credentials);
 
 			const activityCapture: ActivityCapture = {
 				input: '',
@@ -227,13 +229,28 @@ export class MicrosoftAgent365Trigger implements INodeType {
 
 			const callback = configureAdapterProcessCallback(this, agent, credentials, activityCapture);
 
-			(req as any).user = {
-				aud: credentials.clientId,
-				appid: credentials.clientId,
-				azp: credentials.clientId,
-			};
+			// authorizeJWT verifies the Bot Framework token (sets req.user) and 401s on failure
+			let authorized = false;
+			await authorizeJWT(authConfig)(req, res, (err?: unknown) => {
+				if (!err) authorized = true;
+			});
+
+			if (!authorized) {
+				// backstop: ensure a 401 is sent even if the middleware didn't
+				if (!res.headersSent) {
+					res.status(401).send({ error: 'Unauthorized' });
+				}
+				return { noWebhookResponse: true };
+			}
 
 			await agent.adapter.process(req, res, callback);
+
+			if (
+				activityCapture.activity.type === 'event' ||
+				activityCapture.input.trimStart().startsWith('<addmember>')
+			) {
+				return { noWebhookResponse: true };
+			}
 
 			let returnData;
 
@@ -248,6 +265,9 @@ export class MicrosoftAgent365Trigger implements INodeType {
 					input: activityCapture.input,
 					output: activityCapture.output,
 					...activity,
+					...(activityCapture.mcpToolLogs?.length
+						? { microsoftMcpToolLogs: activityCapture.mcpToolLogs }
+						: {}),
 				};
 			}
 

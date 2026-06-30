@@ -22,9 +22,40 @@ export const versionDescription: INodeTypeDescription = {
 		{
 			name: 'microsoftExcelOAuth2Api',
 			required: true,
+			displayOptions: {
+				show: {
+					authentication: ['microsoftExcelOAuth2Api'],
+				},
+			},
+		},
+		{
+			name: 'microsoftOAuth2Api',
+			required: true,
+			displayOptions: {
+				show: {
+					authentication: ['microsoftOAuth2Api'],
+				},
+			},
 		},
 	],
 	properties: [
+		{
+			displayName: 'Authentication',
+			name: 'authentication',
+			type: 'options',
+			noDataExpression: true,
+			options: [
+				{
+					name: 'Excel OAuth2',
+					value: 'microsoftExcelOAuth2Api',
+				},
+				{
+					name: 'Microsoft OAuth2 (Graph)',
+					value: 'microsoftOAuth2Api',
+				},
+			],
+			default: 'microsoftExcelOAuth2Api',
+		},
 		{
 			displayName:
 				'This node connects to the Microsoft 365 cloud platform. Use the \'Extract from File\' and \'Convert to File\' nodes to directly manipulate spreadsheet files (.xls, .csv, etc). <a href="https://n8n.io/workflows/890-read-in-an-excel-spreadsheet-file/" target="_blank">More info</a>.',

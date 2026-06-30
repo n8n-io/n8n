@@ -23,6 +23,7 @@ import { nanoid } from 'nanoid';
 
 import { EventService } from '@/events/event.service';
 import { NodeTypes } from '@/node-types';
+import { TaskCancelledError } from '@/task-runners/errors/task-cancelled.error';
 import { TaskRequestTimeoutError } from '@/task-runners/errors/task-request-timeout.error';
 
 import { DataRequestResponseBuilder } from './data-request-response-builder';
@@ -72,7 +73,7 @@ export abstract class TaskRequester {
 		private readonly eventService: EventService,
 		private readonly taskRunnersConfig: TaskRunnersConfig,
 		private readonly globalConfig: GlobalConfig,
-		private readonly errorReporter: ErrorReporter,
+		protected readonly errorReporter: ErrorReporter,
 	) {}
 
 	setRunnerUnavailable(taskType: string, reason: string) {
@@ -238,7 +239,7 @@ export abstract class TaskRequester {
 
 		const acceptReject = this.taskAcceptRejects.get(taskId);
 		if (acceptReject) {
-			acceptReject.reject(new Error(`Task cancelled: ${reason}`));
+			acceptReject.reject(new TaskCancelledError(reason));
 			this.taskAcceptRejects.delete(taskId);
 		}
 	}
@@ -442,7 +443,7 @@ export abstract class TaskRequester {
 				}
 			}
 
-			const data = (await func.call(funcs, ...params)) as unknown;
+			const data = await func.call(funcs, ...params);
 
 			this.sendMessage({
 				type: 'requester:rpcresponse',

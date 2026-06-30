@@ -20,7 +20,7 @@
 				],
 				"system": "Combine provided tools and knowledge to answer questions.\n\n__e2e_system_prompt_placeholder__\n\n## Instructions from the user\n\n> reply in Chinese"
 			},
-			"rawBytes": "eyJtb2RlbCI6ImNsYXVkZS1vcHVzLTQtNS0yMDI1MTEwMSIsInN0cmVhbSI6dHJ1ZSwibWF4X3Rva2VucyI6ODE5MiwidGhpbmtpbmciOnsidHlwZSI6ImRpc2FibGVkIn0sIm1lc3NhZ2VzIjpbeyJyb2xlIjoidXNlciIsImNvbnRlbnQiOiJIZWxsbyJ9XSwic3lzdGVtIjoicmVwbHkgaW4gQ2hpbmVzZVxuXG5fX2UyZV9zeXN0ZW1fcHJvbXB0X3BsYWNlaG9sZGVyX18ifQ=="
+			"rawBytes": "eyJtb2RlbCI6ImNsYXVkZS1vcHVzLTQtNS0yMDI1MTEwMSIsInN0cmVhbSI6dHJ1ZSwibWF4X3Rva2VucyI6ODE5MiwidGhpbmtpbmciOnsidHlwZSI6ImRpc2FibGVkIn0sIm1lc3NhZ2VzIjpbeyJyb2xlIjoidXNlciIsImNvbnRlbnQiOiJIZWxsbyJ9XSwic3lzdGVtIjoiQ29tYmluZSBwcm92aWRlZCB0b29scyBhbmQga25vd2xlZGdlIHRvIGFuc3dlciBxdWVzdGlvbnMuXG5cbl9fZTJlX3N5c3RlbV9wcm9tcHRfcGxhY2Vob2xkZXJfX1xuXG4jIyBJbnN0cnVjdGlvbnMgZnJvbSB0aGUgdXNlclxuXG4+IHJlcGx5IGluIENoaW5lc2UifQ=="
 		}
 	},
 	"httpResponse": {

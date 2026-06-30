@@ -1,7 +1,5 @@
-import type { GlobalConfig } from '@n8n/config';
-import type { Project, User, WorkflowEntity, WorkflowRepository } from '@n8n/db';
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
+import type { GlobalConfig, WorkflowsConfig } from '@n8n/config';
+import type { Project, User, WorkflowEntity, WorkflowHistory, WorkflowRepository } from '@n8n/db';
 import {
 	NodeConnectionTypes,
 	type IConnections,
@@ -12,13 +10,17 @@ import {
 	type ExecutionError,
 	createRunExecutionData,
 } from 'n8n-workflow';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { IWorkflowErrorData } from '@/interfaces';
 import type { NodeTypes } from '@/node-types';
+import type { OwnershipService } from '@/services/ownership.service';
 import type { TestWebhooks } from '@/webhooks/test-webhooks';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import type { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
+import type { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { toITaskData } from '@test/helpers';
 
 import type { WorkflowRequest } from '../workflow.request';
@@ -75,6 +77,14 @@ const secondHackerNewsNode: INode = {
 	position: [0, 0],
 };
 
+const mockOwnershipService = () => {
+	const ownershipService = mock<OwnershipService>();
+	ownershipService.getWorkflowProjectCached.mockResolvedValue(
+		mock<Project>({ id: 'test-project-id', name: 'Test Project' }),
+	);
+	return ownershipService;
+};
+
 describe('WorkflowExecutionService', () => {
 	const nodeTypes = mock<NodeTypes>();
 	const workflowRunner = mock<WorkflowRunner>();
@@ -90,10 +100,17 @@ describe('WorkflowExecutionService', () => {
 		mock(),
 		mock(),
 		mock(),
+		mockOwnershipService(),
+		mock(),
+		mock(),
+		mock(),
 	);
 
 	const additionalData = mock<IWorkflowExecuteAdditionalData>({});
-	jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
+
+	beforeEach(() => {
+		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
+	});
 
 	describe('runWorkflow()', () => {
 		test('should call `WorkflowRunner.run()`', async () => {
@@ -110,12 +127,41 @@ describe('WorkflowExecutionService', () => {
 
 			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
 		});
+
+		test('should forward deduplicationKey to `WorkflowRunner.run()`', async () => {
+			const node = mock<INode>();
+			const workflow = mock<IWorkflowBase>({
+				active: true,
+				activeVersionId: 'some-version-id',
+				nodes: [node],
+			});
+
+			workflowRunner.run.mockResolvedValue('fake-execution-id');
+
+			await workflowExecutionService.runWorkflow(
+				workflow,
+				node,
+				[[]],
+				mock(),
+				'trigger',
+				undefined,
+				'wf-1:node-1:1700000000000',
+			);
+
+			expect(workflowRunner.run).toHaveBeenCalledWith(
+				expect.objectContaining({ deduplicationKey: 'wf-1:node-1:1700000000000' }),
+				true,
+				undefined,
+				undefined,
+				undefined,
+			);
+		});
 	});
 
 	describe('executeManually()', () => {
 		beforeEach(() => {
 			workflowRunner.run.mockClear();
-			jest.spyOn(nodeTypes, 'getByNameAndVersion').mockReset();
+			vi.mocked(nodeTypes.getByNameAndVersion).mockReset();
 		});
 
 		test('should call `WorkflowRunner.run()` with correct parameters with default partial execution logic', async () => {
@@ -137,9 +183,9 @@ describe('WorkflowExecutionService', () => {
 				dirtyNodeNames: [],
 			};
 
-			jest
-				.spyOn(nodeTypes, 'getByNameAndVersion')
-				.mockReturnValueOnce(mock<INodeType>({ description: { group: [] } }));
+			vi.mocked(nodeTypes.getByNameAndVersion).mockReturnValueOnce(
+				mock<INodeType>({ description: { group: [] } }),
+			);
 
 			workflowRunner.run.mockResolvedValue(executionId);
 
@@ -154,6 +200,8 @@ describe('WorkflowExecutionService', () => {
 				workflowData,
 				userId,
 				dirtyNodeNames: runPayload.dirtyNodeNames,
+				projectId: 'test-project-id',
+				projectName: 'Test Project',
 			});
 			expect(result).toEqual({ executionId });
 		});
@@ -171,9 +219,9 @@ describe('WorkflowExecutionService', () => {
 				dirtyNodeNames: [],
 			};
 
-			jest
-				.spyOn(nodeTypes, 'getByNameAndVersion')
-				.mockReturnValueOnce(mock<INodeType>({ description: { group: ['trigger'] } }));
+			vi.mocked(nodeTypes.getByNameAndVersion).mockReturnValueOnce(
+				mock<INodeType>({ description: { group: ['trigger'] } }),
+			);
 
 			workflowRunner.run.mockResolvedValue(executionId);
 
@@ -187,6 +235,8 @@ describe('WorkflowExecutionService', () => {
 				pushRef: undefined,
 				workflowData,
 				userId,
+				projectId: 'test-project-id',
+				projectName: 'Test Project',
 			});
 			expect(result).toEqual({ executionId });
 		});
@@ -247,6 +297,8 @@ describe('WorkflowExecutionService', () => {
 				workflowData,
 				userId,
 				triggerToStartFrom: { name: pinnedTrigger.name },
+				projectId: 'test-project-id',
+				projectName: 'Test Project',
 			});
 			expect(result).toEqual({ executionId });
 		});
@@ -303,6 +355,8 @@ describe('WorkflowExecutionService', () => {
 				userId,
 				// pass unexecuted trigger to start from
 				triggerToStartFrom: runPayload.triggerToStartFrom,
+				projectId: 'test-project-id',
+				projectName: 'Test Project',
 			});
 			expect(result).toEqual({ executionId });
 		});
@@ -409,6 +463,10 @@ describe('WorkflowExecutionService', () => {
 				mock(),
 				mock(),
 				mock(),
+				mockOwnershipService(),
+				mock(),
+				mock<WorkflowsConfig>({ useWorkflowPublicationService: false }),
+				mock(),
 			);
 
 			const runPayload: WorkflowRequest.FullManualExecutionFromKnownTriggerPayload = {
@@ -430,6 +488,65 @@ describe('WorkflowExecutionService', () => {
 					workflowIsActive: true,
 				}),
 			);
+		});
+	});
+
+	describe('chat trigger with pinned data', () => {
+		test('should register webhook when chatSessionId is present even if trigger has pinned data', async () => {
+			const userId = 'user-id';
+			const user = mock<User>({ id: userId });
+			const testWebhooks = mock<TestWebhooks>();
+			const chatTrigger: INode = {
+				id: 'chat-trigger-id',
+				typeVersion: 1,
+				position: [1, 2],
+				parameters: {},
+				name: 'Chat Trigger',
+				type: '@n8n/n8n-nodes-langchain.chatTrigger',
+			};
+			const workflowData: IWorkflowBase = {
+				id: 'workflow-id',
+				name: 'Test Workflow',
+				active: false,
+				activeVersionId: null,
+				isArchived: false,
+				pinData: { [chatTrigger.name]: [{ json: { chatInput: 'old pinned message' } }] },
+				nodes: [chatTrigger],
+				connections: {},
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			};
+			const runPayload: WorkflowRequest.FullManualExecutionFromKnownTriggerPayload = {
+				triggerToStartFrom: { name: chatTrigger.name },
+				chatSessionId: 'test-session-123',
+			};
+
+			testWebhooks.needsWebhook.mockResolvedValue(true);
+
+			const service = new WorkflowExecutionService(
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				nodeTypes,
+				testWebhooks,
+				workflowRunner,
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				mockOwnershipService(),
+				mock(),
+				mock<WorkflowsConfig>({ useWorkflowPublicationService: false }),
+				mock(),
+			);
+
+			const result = await service.executeManually(workflowData, runPayload, user);
+
+			expect(testWebhooks.needsWebhook).toHaveBeenCalledWith(
+				expect.objectContaining({ chatSessionId: 'test-session-123' }),
+			);
+			expect(result).toEqual({ waitingForWebhook: true });
 		});
 	});
 
@@ -589,6 +706,10 @@ describe('WorkflowExecutionService', () => {
 				mock(),
 				mock(),
 				mock(),
+				mockOwnershipService(),
+				mock(),
+				mock<WorkflowsConfig>({ useWorkflowPublicationService: false }),
+				mock(),
 			);
 		});
 
@@ -598,7 +719,7 @@ describe('WorkflowExecutionService', () => {
 			} else {
 				process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = originalOffloadManualExecutionsToWorkers;
 			}
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		test('when receiving no `runData`, should set `runData` to undefined in `executionData`', async () => {
@@ -631,9 +752,9 @@ describe('WorkflowExecutionService', () => {
 			};
 			const connections = { ...createMainConnection(hackerNewsNode.name, webhookNode.name) };
 
-			jest
-				.spyOn(nodeTypes, 'getByNameAndVersion')
-				.mockReturnValueOnce(mock<INodeType>({ description: { group: [] } }));
+			vi.mocked(nodeTypes.getByNameAndVersion).mockReturnValueOnce(
+				mock<INodeType>({ description: { group: [] } }),
+			);
 
 			// ACT
 			const workflowData = mock<IWorkflowBase>({
@@ -715,6 +836,7 @@ describe('WorkflowExecutionService', () => {
 				activeVersionId: 'active-version-id',
 				isArchived: false,
 				pinData: {},
+				staticData: {},
 				nodes: [errorTriggerNode],
 				connections: {},
 				createdAt: new Date(),
@@ -740,6 +862,153 @@ describe('WorkflowExecutionService', () => {
 				mock(),
 				mock(),
 				mock(),
+				mockOwnershipService(),
+				mock(),
+				mock<WorkflowsConfig>({ useWorkflowPublicationService: false }),
+				mock(),
+			);
+
+			await service.executeErrorWorkflow(
+				'error-workflow-id',
+				workflowErrorData,
+				mock<Project>({ id: 'project-id', name: 'Error Project' }),
+			);
+
+			expect(workflowRunnerMock.run).toHaveBeenCalledTimes(1);
+			expect(workflowRunnerMock.run).toHaveBeenCalledWith({
+				executionMode: 'error',
+				executionData: {
+					...createRunExecutionData({
+						executionData: {
+							contextData: {},
+							metadata: {},
+							nodeExecutionStack: [
+								{
+									node: errorTriggerNode,
+									data: {
+										main: [
+											[
+												{
+													json: workflowErrorData,
+												},
+											],
+										],
+									},
+									source: null,
+									metadata: {
+										parentExecution: {
+											executionId: 'execution-id',
+											workflowId: 'workflow-id',
+											shouldResume: false,
+										},
+									},
+								},
+							],
+							waitingExecution: {},
+							waitingExecutionSource: {},
+						},
+						resultData: {
+							runData: {},
+						},
+						startData: {},
+						parentExecution: {
+							executionId: 'execution-id',
+							workflowId: 'workflow-id',
+							shouldResume: false,
+						},
+					}),
+					resumeToken: expect.any(String),
+				},
+				workflowData: errorWorkflow,
+				projectId: 'project-id',
+				projectName: 'Error Project',
+			});
+		});
+
+		test('should use published (activeVersion) nodes, not draft nodes', async () => {
+			const workflowErrorData: IWorkflowErrorData = {
+				workflow: { id: 'workflow-id', name: 'Test Workflow' },
+				execution: {
+					id: 'execution-id',
+					mode: 'manual',
+					error: new Error('Test error') as ExecutionError,
+					lastNodeExecuted: 'Node with error',
+				},
+			};
+
+			const workflowRunnerMock = mock<WorkflowRunner>();
+			workflowRunnerMock.run.mockResolvedValue('fake-execution-id');
+
+			const errorTriggerType = 'n8n-nodes-base.errorTrigger';
+			const globalConfig = mock<GlobalConfig>({
+				nodes: { errorTriggerType },
+			});
+
+			const errorTriggerNode: INode = {
+				id: 'error-trigger-node-id',
+				name: 'Error Trigger',
+				type: errorTriggerType,
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			};
+
+			const unpublishedNode: INode = {
+				id: 'unpublished-node-id',
+				name: 'Unpublished Node',
+				type: 'n8n-nodes-base.set',
+				typeVersion: 3,
+				position: [200, 0],
+				parameters: {},
+			};
+
+			const publishedNodes = [errorTriggerNode];
+			const publishedConnections: IConnections = {};
+
+			const draftNodes = [errorTriggerNode, unpublishedNode];
+			const draftConnections: IConnections = {
+				'Error Trigger': {
+					[NodeConnectionTypes.Main]: [[{ node: 'Unpublished Node', type: 'main', index: 0 }]],
+				},
+			};
+
+			const errorWorkflow = mock<WorkflowEntity>({
+				id: 'error-workflow-id',
+				name: 'Error Workflow',
+				active: false,
+				activeVersionId: 'active-version-id',
+				isArchived: false,
+				pinData: {},
+				staticData: {},
+				nodes: draftNodes,
+				connections: draftConnections,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+				activeVersion: {
+					nodes: publishedNodes,
+					connections: publishedConnections,
+				},
+			});
+
+			const workflowRepositoryMock = mock<WorkflowRepository>();
+			workflowRepositoryMock.get.mockResolvedValue(errorWorkflow);
+
+			const service = new WorkflowExecutionService(
+				mock(),
+				mock(),
+				mock(),
+				workflowRepositoryMock,
+				nodeTypes,
+				mock(),
+				workflowRunnerMock,
+				globalConfig,
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				mock<WorkflowsConfig>({ useWorkflowPublicationService: false }),
+				mock(),
 			);
 
 			await service.executeErrorWorkflow(
@@ -749,44 +1018,166 @@ describe('WorkflowExecutionService', () => {
 			);
 
 			expect(workflowRunnerMock.run).toHaveBeenCalledTimes(1);
-			expect(workflowRunnerMock.run).toHaveBeenCalledWith({
-				executionMode: 'error',
-				executionData: createRunExecutionData({
-					executionData: {
-						contextData: {},
-						metadata: {},
-						nodeExecutionStack: [
-							{
-								node: errorTriggerNode,
-								data: {
-									main: [
-										[
-											{
-												json: workflowErrorData,
-											},
-										],
-									],
-								},
-								source: null,
-								metadata: {
-									parentExecution: {
-										executionId: 'execution-id',
-										workflowId: 'workflow-id',
-									},
-								},
-							},
-						],
-						waitingExecution: {},
-						waitingExecutionSource: {},
-					},
-					resultData: {
-						runData: {},
-					},
-					startData: {},
-				}),
-				workflowData: errorWorkflow,
-				projectId: 'project-id',
+			const runCall = workflowRunnerMock.run.mock.calls[0][0];
+
+			// The workflowData passed to the runner should use published nodes,
+			// not the draft nodes that include the unpublished node
+			expect(runCall.workflowData.nodes).toEqual(publishedNodes);
+			expect(runCall.workflowData.connections).toEqual(publishedConnections);
+			expect(runCall.workflowData.nodes).not.toContainEqual(
+				expect.objectContaining({ name: 'Unpublished Node' }),
+			);
+		});
+
+		test('should use published_version mapping nodes when the publication service flag is on', async () => {
+			const workflowErrorData: IWorkflowErrorData = {
+				workflow: { id: 'workflow-id', name: 'Test Workflow' },
+				execution: {
+					id: 'execution-id',
+					mode: 'manual',
+					error: new Error('Test error') as ExecutionError,
+					lastNodeExecuted: 'Node with error',
+				},
+			};
+
+			const workflowRunnerMock = mock<WorkflowRunner>();
+			workflowRunnerMock.run.mockResolvedValue('fake-execution-id');
+
+			const errorTriggerType = 'n8n-nodes-base.errorTrigger';
+			const globalConfig = mock<GlobalConfig>({ nodes: { errorTriggerType } });
+
+			const errorTriggerNode: INode = {
+				id: 'error-trigger-node-id',
+				name: 'Error Trigger',
+				type: errorTriggerType,
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			};
+
+			// The activeVersion relation carries a different node than the
+			// published_version mapping, so a match on the mapping's nodes proves
+			// the mapping (not the relation) is the source under the flag.
+			const activeRelationNode: INode = {
+				id: 'active-relation-node-id',
+				name: 'Active Relation Node',
+				type: 'n8n-nodes-base.set',
+				typeVersion: 1,
+				position: [200, 0],
+				parameters: {},
+			};
+			const mappingNodes = [errorTriggerNode];
+			const mappingConnections: IConnections = {};
+
+			const errorWorkflow = mock<WorkflowEntity>({
+				id: 'error-workflow-id',
+				name: 'Error Workflow',
+				active: false,
+				activeVersionId: 'active-version-id',
+				isArchived: false,
+				pinData: {},
+				staticData: {},
+				nodes: [activeRelationNode],
+				connections: {},
+				createdAt: new Date(),
+				updatedAt: new Date(),
+				activeVersion: { nodes: [activeRelationNode], connections: {} },
 			});
+
+			const workflowRepositoryMock = mock<WorkflowRepository>();
+			workflowRepositoryMock.get.mockResolvedValue(errorWorkflow);
+
+			const workflowsConfig = mock<WorkflowsConfig>({ useWorkflowPublicationService: true });
+			const workflowPublishedDataService = mock<WorkflowPublishedDataService>();
+			workflowPublishedDataService.getPublishedWorkflowData.mockResolvedValue({
+				workflow: errorWorkflow,
+				publishedVersion: mock<WorkflowHistory>({
+					nodes: mappingNodes,
+					connections: mappingConnections,
+				}),
+			});
+
+			const service = new WorkflowExecutionService(
+				mock(),
+				mock(),
+				mock(),
+				workflowRepositoryMock,
+				nodeTypes,
+				mock(),
+				workflowRunnerMock,
+				globalConfig,
+				mock(),
+				mock(),
+				mock(),
+				mockOwnershipService(),
+				mock(),
+				workflowsConfig,
+				workflowPublishedDataService,
+			);
+
+			await service.executeErrorWorkflow(
+				'error-workflow-id',
+				workflowErrorData,
+				mock<Project>({ id: 'project-id' }),
+			);
+
+			expect(workflowPublishedDataService.getPublishedWorkflowData).toHaveBeenCalledWith(
+				'error-workflow-id',
+			);
+			expect(workflowRunnerMock.run).toHaveBeenCalledTimes(1);
+			expect(workflowRunnerMock.run.mock.calls[0][0].workflowData.nodes).toEqual(mappingNodes);
+		});
+
+		test('should not run the error workflow when it has no published version (flag on)', async () => {
+			const workflowErrorData: IWorkflowErrorData = {
+				workflow: { id: 'workflow-id', name: 'Test Workflow' },
+				execution: {
+					id: 'execution-id',
+					mode: 'manual',
+					error: new Error('Test error') as ExecutionError,
+					lastNodeExecuted: 'Node with error',
+				},
+			};
+
+			const workflowRunnerMock = mock<WorkflowRunner>();
+			const globalConfig = mock<GlobalConfig>({
+				nodes: { errorTriggerType: 'n8n-nodes-base.errorTrigger' },
+			});
+
+			const workflowRepositoryMock = mock<WorkflowRepository>();
+
+			const workflowsConfig = mock<WorkflowsConfig>({ useWorkflowPublicationService: true });
+			const workflowPublishedDataService = mock<WorkflowPublishedDataService>();
+			workflowPublishedDataService.getPublishedWorkflowData.mockResolvedValue(null);
+
+			const service = new WorkflowExecutionService(
+				mock(),
+				mock(),
+				mock(),
+				workflowRepositoryMock,
+				nodeTypes,
+				mock(),
+				workflowRunnerMock,
+				globalConfig,
+				mock(),
+				mock(),
+				mock(),
+				mockOwnershipService(),
+				mock(),
+				workflowsConfig,
+				workflowPublishedDataService,
+			);
+
+			await service.executeErrorWorkflow(
+				'error-workflow-id',
+				workflowErrorData,
+				mock<Project>({ id: 'project-id' }),
+			);
+
+			// No published version: nothing should run, and we did not load the
+			// workflow separately (single query via the publication service).
+			expect(workflowRunnerMock.run).not.toHaveBeenCalled();
+			expect(workflowRepositoryMock.get).not.toHaveBeenCalled();
 		});
 	});
 });

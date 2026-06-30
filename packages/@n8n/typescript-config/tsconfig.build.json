@@ -3,7 +3,8 @@
 		"types": ["node"],
 		"noUnusedLocals": false,
 		"noUnusedParameters": false,
-		"declaration": true
+		"declaration": true,
+		"tsBuildInfoFile": "${configDir}/dist/build.tsbuildinfo"
 	},
 	"tsc-alias": {
 		"replacers": {

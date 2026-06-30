@@ -12,7 +12,7 @@ import { VIEWS } from '@/app/constants';
 import { BUILDER_ENABLED_VIEWS } from '../constants';
 
 // Mock vue-router
-const mockRoute = reactive({ name: VIEWS.WORKFLOW });
+const mockRoute = reactive({ name: VIEWS.WORKFLOW, params: {} });
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
 	useRoute: () => mockRoute,
@@ -34,6 +34,7 @@ describe('useAskModeCoachmark', () => {
 	let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
 
 	beforeEach(() => {
+		vi.useFakeTimers();
 		vi.clearAllMocks();
 
 		setActivePinia(
@@ -57,6 +58,10 @@ describe('useAskModeCoachmark', () => {
 		// Default store states - both modes enabled
 		settingsStore.isAiAssistantEnabled = true;
 		builderStore.isAIBuilderEnabled = true;
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
 	});
 
 	describe('shouldShowCoachmark', () => {

@@ -1,4 +1,4 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type {
 	IExecuteFunctions,
 	IHookFunctions,
@@ -27,7 +27,7 @@ describe('Bitbucket GenericFunctions', () => {
 		};
 
 		beforeEach(() => {
-			jest.resetAllMocks();
+			vi.resetAllMocks();
 			mockExecuteFunctions.getNode.mockReturnValue(mockNode);
 			mockHookFunctions.getNode.mockReturnValue(mockNode);
 			mockLoadOptionsFunctions.getNode.mockReturnValue(mockNode);
@@ -294,7 +294,7 @@ describe('Bitbucket GenericFunctions', () => {
 		};
 
 		beforeEach(() => {
-			jest.resetAllMocks();
+			vi.resetAllMocks();
 			mockExecuteFunctions.getNode.mockReturnValue(mockNode);
 			mockExecuteFunctions.getNodeParameter.mockReturnValue('accessToken');
 		});

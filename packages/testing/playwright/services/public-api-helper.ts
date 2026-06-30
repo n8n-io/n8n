@@ -1,4 +1,5 @@
 import type { ApiKeyScope } from '@n8n/permissions';
+import type { APIResponse } from '@playwright/test';
 import { request } from '@playwright/test';
 import { nanoid } from 'nanoid';
 
@@ -15,7 +16,8 @@ export interface ApiKey {
 	expiresAt: string | null;
 }
 
-/** Default scopes for test API keys - covers most common operations */
+/** Default scopes for test API keys - covers most common operations.
+ * These scopes are owner-level; pass explicit scopes for member API keys. */
 const DEFAULT_API_KEY_SCOPES: ApiKeyScope[] = [
 	'user:read',
 	'user:list',
@@ -26,9 +28,14 @@ const DEFAULT_API_KEY_SCOPES: ApiKeyScope[] = [
 	'workflow:update',
 	'workflow:delete',
 	'workflow:list',
+	'execution:read',
+	'execution:list',
 	'credential:create',
 	'credential:update',
 	'credential:delete',
+	'tag:create',
+	'tag:read',
+	'tag:list',
 	'project:create',
 	'project:update',
 	'project:delete',
@@ -63,6 +70,16 @@ export class PublicApiHelper {
 		return apiKeyData;
 	}
 
+	/** Delete an API key by id. Emits the `n8n.audit.user.api.deleted` audit event. */
+	async deleteApiKey(id: string): Promise<void> {
+		const response = await this.api.request.delete(`/rest/api-keys/${id}`);
+		if (!response.ok()) {
+			throw new TestError(
+				`Failed to delete API key "${id}": ${response.status()} ${await response.text()}`,
+			);
+		}
+	}
+
 	private async ensureApiKey(): Promise<string> {
 		if (!this.apiKey) {
 			await this.createApiKey();
@@ -72,6 +89,26 @@ export class PublicApiHelper {
 
 	private async getApiHeaders(): Promise<Record<string, string>> {
 		return { 'X-N8N-API-KEY': await this.ensureApiKey() };
+	}
+
+	/**
+	 * GET /api/v1/executions/:id. Returns the raw response so callers can assert
+	 * redaction behavior on the second read channel for execution data (the
+	 * Public API), independent of the `/rest` endpoints.
+	 */
+	async getExecutionRaw(
+		executionId: string,
+		options?: { includeData?: boolean; redactExecutionData?: boolean },
+	): Promise<APIResponse> {
+		const headers = await this.getApiHeaders();
+		const params = new URLSearchParams();
+		if (options?.includeData !== undefined) {
+			params.set('includeData', String(options.includeData));
+		}
+		if (options?.redactExecutionData !== undefined) {
+			params.set('redactExecutionData', String(options.redactExecutionData));
+		}
+		return await this.api.request.get(`/api/v1/executions/${executionId}`, { headers, params });
 	}
 
 	/** Invite a user and return the invite accept URL for completing registration. */
@@ -109,7 +146,7 @@ export class PublicApiHelper {
 	 *
 	 * n8n's Public API doesn't have a direct "create user" endpoint. Users must be invited first,
 	 * then accept the invitation to complete registration. The invitation acceptance endpoint
-	 * (`/rest/invitations/:id/accept`) automatically logs in the new user by setting session cookies.
+	 * (`/rest/invitations/accept`) expects a JWT token from the invite link and sets session cookies.
 	 *
 	 * To prevent this from hijacking the current browser session (which would log out the owner),
 	 * we use an isolated request context for the acceptance step. This ensures the owner's session
@@ -133,15 +170,17 @@ export class PublicApiHelper {
 		const invited = await this.inviteUser(email, role);
 
 		const url = new URL(invited.inviteAcceptUrl);
-		const inviterId = url.searchParams.get('inviterId');
-		const inviteeId = url.searchParams.get('inviteeId');
+		const token = url.searchParams.get('token');
+		if (!token) {
+			throw new TestError(`Invite URL has no token: ${invited.inviteAcceptUrl}`);
+		}
 
 		// Use an isolated request context to prevent session cookie contamination.
 		// The accept endpoint sets cookies that would otherwise override the current user's session.
 		const isolatedContext = await request.newContext({ baseURL: url.origin });
 		try {
-			const acceptResponse = await isolatedContext.post(`/rest/invitations/${inviteeId}/accept`, {
-				data: { inviterId, firstName, lastName, password },
+			const acceptResponse = await isolatedContext.post('/rest/invitations/accept', {
+				data: { token, firstName, lastName, password },
 			});
 
 			if (!acceptResponse.ok()) {
@@ -153,6 +192,29 @@ export class PublicApiHelper {
 		}
 
 		return { id: invited.id, email, password, firstName, lastName, role: role as TestUser['role'] };
+	}
+
+	async getDiscovery(): Promise<{
+		scopes: string[];
+		resources: Record<
+			string,
+			{
+				operations: string[];
+				endpoints: Array<{ method: string; path: string; operationId: string }>;
+			}
+		>;
+		specUrl: string;
+	}> {
+		const headers = await this.getApiHeaders();
+		const response = await this.api.request.get('/api/v1/discover', { headers });
+
+		if (!response.ok()) {
+			const errorText = await response.text();
+			throw new TestError(`Failed to get discovery: ${response.status()} ${errorText}`);
+		}
+
+		const result = await response.json();
+		return result.data;
 	}
 
 	async getUsers(options?: { includeRole?: boolean; limit?: number }): Promise<

@@ -2,17 +2,17 @@ import type { User, ExecutionSummaries } from '@n8n/db';
 import { Get, Patch, Post, RestController } from '@n8n/decorators';
 import { PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
 
-import { ExecutionService } from './execution.service';
-import { EnterpriseExecutionsService } from './execution.service.ee';
-import { ExecutionRequest } from './execution.types';
-import { parseRangeQuery } from './parse-range-query.middleware';
-import { validateExecutionUpdatePayload } from './validation';
-
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { License } from '@/license';
 import { isPositiveInteger } from '@/utils';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
+
+import { ExecutionService } from './execution.service';
+import { EnterpriseExecutionsService } from './execution.service.ee';
+import { ExecutionRequest } from './execution.types';
+import { parseRangeQuery } from './parse-range-query.middleware';
+import { validateExecutionUpdatePayload } from './validation';
 
 @RestController('/executions')
 export class ExecutionsController {
@@ -36,19 +36,10 @@ export class ExecutionsController {
 
 	@Get('/', { middlewares: [parseRangeQuery] })
 	async getMany(req: ExecutionRequest.GetMany) {
-		const accessibleWorkflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:read');
-
-		if (accessibleWorkflowIds.length === 0) {
-			return { count: 0, estimated: false, results: [] };
-		}
-
 		const { rangeQuery: query } = req;
 
-		if (query.workflowId && !accessibleWorkflowIds.includes(query.workflowId)) {
-			return { count: 0, estimated: false, results: [] };
-		}
-
-		query.accessibleWorkflowIds = accessibleWorkflowIds;
+		query.user = req.user;
+		query.sharingOptions = await this.executionService.buildSharingOptions('workflow:read');
 
 		if (!this.license.isAdvancedExecutionFiltersEnabled()) {
 			delete query.metadata;
@@ -85,6 +76,17 @@ export class ExecutionsController {
 			...executions,
 			concurrentExecutionsCount,
 		};
+	}
+
+	@Get('/versions/:workflowId')
+	async getVersions(req: ExecutionRequest.GetVersions) {
+		const accessibleWorkflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:read');
+
+		if (!accessibleWorkflowIds.includes(req.params.workflowId)) {
+			return [];
+		}
+
+		return await this.executionService.getExecutedVersions(req.params.workflowId);
 	}
 
 	@Get('/:id')

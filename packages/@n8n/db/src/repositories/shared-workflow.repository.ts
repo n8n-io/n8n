@@ -1,10 +1,20 @@
 import { Service } from '@n8n/di';
-import { PROJECT_OWNER_ROLE_SLUG, type WorkflowSharingRole } from '@n8n/permissions';
+import {
+	hasGlobalScope,
+	PROJECT_OWNER_ROLE_SLUG,
+	type Scope,
+	type WorkflowSharingRole,
+} from '@n8n/permissions';
 import { DataSource, Repository, In, Not } from '@n8n/typeorm';
-import type { EntityManager, FindManyOptions, FindOptionsWhere } from '@n8n/typeorm';
+import type {
+	EntityManager,
+	FindManyOptions,
+	FindOptionsWhere,
+	SelectQueryBuilder,
+} from '@n8n/typeorm';
 
-import type { Project } from '../entities';
-import { SharedWorkflow } from '../entities';
+import type { User } from '../entities';
+import { Project, ProjectRelation, SharedWorkflow } from '../entities';
 
 @Service()
 export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
@@ -193,5 +203,77 @@ export class SharedWorkflowRepository extends Repository<SharedWorkflow> {
 				},
 			},
 		});
+	}
+
+	/**
+	 * Build a subquery that returns workflow IDs based on sharing permissions.
+	 * This replicates the logic from WorkflowSharingService but as a subquery.
+	 */
+	buildSharedWorkflowIdsSubquery(
+		user: User,
+		sharingOptions: {
+			scopes?: Scope[];
+			projectRoles?: string[];
+			workflowRoles?: string[];
+			isPersonalProject?: boolean;
+			personalProjectOwnerId?: string;
+			onlySharedWithMe?: boolean;
+			projectId?: string;
+		},
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	): SelectQueryBuilder<any> {
+		const {
+			projectRoles,
+			workflowRoles,
+			isPersonalProject,
+			personalProjectOwnerId,
+			onlySharedWithMe,
+			projectId,
+		} = sharingOptions;
+
+		const subquery = this.manager
+			.createQueryBuilder()
+			.select('sw.workflowId')
+			.from(SharedWorkflow, 'sw');
+
+		// Handle different sharing scenarios
+		// Check explicit filters first (isPersonalProject, onlySharedWithMe) before falling back to user's global permissions
+		if (isPersonalProject) {
+			// Personal project - get owned workflows using the project owner's ID (not the requesting user's)
+			const ownerUserId = personalProjectOwnerId ?? user.id;
+			subquery
+				.innerJoin(Project, 'p', 'sw.projectId = p.id')
+				.innerJoin(ProjectRelation, 'pr', 'pr.projectId = p.id')
+				.where('sw.role = :ownerRole', { ownerRole: 'workflow:owner' })
+				.andWhere('pr.userId = :subqueryUserId', { subqueryUserId: ownerUserId })
+				.andWhere('pr.role = :projectOwnerRole', { projectOwnerRole: PROJECT_OWNER_ROLE_SLUG });
+		} else if (onlySharedWithMe) {
+			// Shared with me - workflows shared (as editor) to user's personal project
+			subquery
+				.innerJoin(Project, 'p', 'sw.projectId = p.id')
+				.innerJoin(ProjectRelation, 'pr', 'pr.projectId = p.id')
+				.where('sw.role = :editorRole', { editorRole: 'workflow:editor' })
+				.andWhere('pr.userId = :subqueryUserId', { subqueryUserId: user.id })
+				.andWhere('pr.role = :projectOwnerRole', { projectOwnerRole: PROJECT_OWNER_ROLE_SLUG });
+		} else if (!hasGlobalScope(user, 'workflow:read')) {
+			// Standard sharing based on roles (global-scope users need no additional filtering)
+			if (!workflowRoles || !projectRoles) {
+				throw new Error('workflowRoles and projectRoles are required when not using special cases');
+			}
+
+			subquery
+				.innerJoin(Project, 'p', 'sw.projectId = p.id')
+				.innerJoin(ProjectRelation, 'pr', 'pr.projectId = p.id')
+				.where('sw.role IN (:...workflowRoles)', { workflowRoles })
+				.andWhere('pr.userId = :subqueryUserId', { subqueryUserId: user.id })
+				.andWhere('pr.role IN (:...projectRoles)', { projectRoles });
+		}
+
+		// Apply project filter across all branches (except onlySharedWithMe which is personal-project scoped)
+		if (!onlySharedWithMe && projectId) {
+			subquery.andWhere('sw.projectId = :subqueryProjectId', { subqueryProjectId: projectId });
+		}
+
+		return subquery;
 	}
 }

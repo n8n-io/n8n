@@ -15,25 +15,22 @@ import type {
 	WorkflowTagMappingRepository,
 	Variables,
 } from '@n8n/db';
-import { GLOBAL_ADMIN_ROLE, In, PROJECT_OWNER_ROLE, User } from '@n8n/db';
+import { GLOBAL_ADMIN_ROLE, In, PROJECT_OWNER_ROLE, User, WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { captor, mock } from 'jest-mock-extended';
 import { Cipher, type InstanceSettings } from 'n8n-core';
 import fsp from 'node:fs/promises';
 
+vi.mock('node:fs/promises');
+import { captor, mock } from 'vitest-mock-extended';
+
 import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
+
 import type { VariablesService } from '../../../environments.ee/variables/variables.service.ee';
 import { SourceControlExportService } from '../source-control-export.service.ee';
 import type { SourceControlScopedService } from '../source-control-scoped.service';
 import { SourceControlContext } from '../types/source-control-context';
 
 describe('SourceControlExportService', () => {
-	const globalAdminContext = new SourceControlContext(
-		Object.assign(new User(), {
-			role: GLOBAL_ADMIN_ROLE,
-		}),
-	);
-
 	const cipher = Container.get(Cipher);
 	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
@@ -45,6 +42,12 @@ describe('SourceControlExportService', () => {
 	const folderRepository = mock<FolderRepository>();
 	const sourceControlScopedService = mock<SourceControlScopedService>();
 	const dataTableRepository = mock<DataTableRepository>();
+
+	const globalAdminContext = new SourceControlContext(
+		Object.assign(new User(), { role: GLOBAL_ADMIN_ROLE }),
+		[],
+		[],
+	);
 
 	const service = new SourceControlExportService(
 		mock(),
@@ -61,10 +64,13 @@ describe('SourceControlExportService', () => {
 		dataTableRepository,
 	);
 
-	const fsWriteFile = jest.spyOn(fsp, 'writeFile');
-	const fsReadFile = jest.spyOn(fsp, 'readFile');
+	const fsWriteFile = vi.spyOn(fsp, 'writeFile');
+	const fsReadFile = vi.spyOn(fsp, 'readFile');
 
-	beforeEach(() => jest.clearAllMocks());
+	beforeEach(() => {
+		vi.clearAllMocks();
+		sourceControlScopedService.getDataTablesInAdminProjectsFromContextFilter.mockReturnValue({});
+	});
 
 	describe('exportCredentialsToWorkFolder', () => {
 		const credentialData = {
@@ -100,7 +106,7 @@ describe('SourceControlExportService', () => {
 							},
 						],
 					}),
-				}),
+				} as never) as SharedCredentials,
 			]);
 
 			// Act
@@ -141,7 +147,7 @@ describe('SourceControlExportService', () => {
 						id: 'team1',
 						name: 'Test Team',
 					}),
-				}),
+				} as never) as SharedCredentials,
 			]);
 
 			// Act
@@ -207,7 +213,7 @@ describe('SourceControlExportService', () => {
 						id: 'team1',
 						name: 'Test Team',
 					}),
-				}),
+				} as never) as SharedCredentials,
 			]);
 
 			// Act
@@ -267,7 +273,7 @@ describe('SourceControlExportService', () => {
 							},
 						],
 					}),
-				}),
+				} as never) as SharedCredentials,
 			]);
 
 			// Act
@@ -325,7 +331,7 @@ describe('SourceControlExportService', () => {
 							},
 						],
 					}),
-				}),
+				} as never) as SharedCredentials,
 			]);
 
 			// Act
@@ -523,25 +529,72 @@ describe('SourceControlExportService', () => {
 	});
 
 	describe('exportWorkflowsToWorkFolder', () => {
-		it('should export workflows to work folder', async () => {
+		it('should export workflows with all required fields', async () => {
 			// Arrange
-			workflowRepository.findByIds.mockResolvedValue([mock()]);
+			const workflowId = 'wf-1';
+			const nodeGroups = [{ id: 'g1', name: 'Group 1', nodeIds: ['node-1'] }];
+			const nodes = [
+				{
+					id: 'node-1',
+					type: 'n8n-nodes-base.noOp',
+					name: 'NoOp',
+					typeVersion: 1,
+					position: [0, 0] as [number, number],
+					parameters: {},
+				},
+			];
+			workflowRepository.find.mockResolvedValue([
+				Object.assign(new WorkflowEntity(), {
+					id: workflowId,
+					name: 'Test Workflow',
+					nodes,
+					connections: {},
+					settings: {},
+					triggerCount: 1,
+					versionId: 'v1',
+					parentFolder: null,
+					isArchived: false,
+					nodeGroups,
+				}),
+			]);
 			sharedWorkflowRepository.findByWorkflowIds.mockResolvedValue([
 				mock<SharedWorkflow>({
+					workflowId,
 					project: mock({
 						type: 'personal',
-						projectRelations: [{ role: PROJECT_OWNER_ROLE, user: mock() }],
+						projectRelations: [
+							{ role: PROJECT_OWNER_ROLE, user: mock({ email: 'user@test.com' }) },
+						],
 					}),
 					workflow: mock(),
-				}),
+				} as never) as SharedWorkflow,
 			]);
 
 			// Act
-			const result = await service.exportWorkflowsToWorkFolder([mock()]);
+			const result = await service.exportWorkflowsToWorkFolder([
+				mock<SourceControlledFile>({ id: workflowId }),
+			]);
 
 			// Assert
 			expect(result.count).toBe(1);
 			expect(result.files).toHaveLength(1);
+
+			const dataCaptor = captor<string>();
+			expect(fsWriteFile).toHaveBeenCalledWith(expect.stringContaining(workflowId), dataCaptor);
+			const exported = JSON.parse(dataCaptor.value);
+			expect(exported).toEqual({
+				id: workflowId,
+				name: 'Test Workflow',
+				nodes,
+				connections: {},
+				settings: {},
+				triggerCount: 1,
+				versionId: 'v1',
+				parentFolderId: null,
+				isArchived: false,
+				nodeGroups,
+				owner: { type: 'personal', personalEmail: 'user@test.com' },
+			});
 		});
 
 		it('should throw an error if workflow has no owner', async () => {
@@ -556,7 +609,7 @@ describe('SourceControlExportService', () => {
 						id: 'test-workflow-id',
 						name: 'TestWorkflow',
 					}),
-				}),
+				} as never) as SharedWorkflow,
 			]);
 
 			// Act & Assert
@@ -727,10 +780,6 @@ describe('SourceControlExportService', () => {
 			];
 
 			dataTableRepository.find.mockResolvedValue(mockDataTables as any);
-			sourceControlScopedService.getAuthorizedProjectsFromContext.mockResolvedValue([
-				mock<Project>({ id: 'project1' }),
-				mock<Project>({ id: 'project2' }),
-			]);
 
 			// Act
 			const result = await service.exportDataTablesToWorkFolder(candidates, globalAdminContext);
@@ -790,6 +839,40 @@ describe('SourceControlExportService', () => {
 			expect(result.count).toBe(0);
 			expect(result.files).toHaveLength(0);
 			expect(fsWriteFile).not.toHaveBeenCalled();
+		});
+
+		it('should scope exported data tables to projects the user can push to', async () => {
+			// Arrange
+			const candidates = [
+				{
+					id: 'dt1',
+					name: 'Test Table 1',
+					type: 'datatable' as const,
+					status: 'created' as const,
+					file: '/mock/n8n/git/datatables/dt1.json',
+					location: 'local' as const,
+					conflict: false,
+					updatedAt: '2024-01-02T00:00:00.000Z',
+				},
+			];
+			const scopedFilter = { project: { id: 'authorized-project' } };
+			sourceControlScopedService.getDataTablesInAdminProjectsFromContextFilter.mockReturnValue(
+				scopedFilter as any,
+			);
+			dataTableRepository.find.mockResolvedValue([]);
+
+			// Act
+			await service.exportDataTablesToWorkFolder(candidates, globalAdminContext);
+
+			// Assert
+			expect(
+				sourceControlScopedService.getDataTablesInAdminProjectsFromContextFilter,
+			).toHaveBeenCalledWith(globalAdminContext);
+			expect(dataTableRepository.find).toHaveBeenCalledWith(
+				expect.objectContaining({
+					where: expect.objectContaining(scopedFilter),
+				}),
+			);
 		});
 
 		it('should handle export errors gracefully', async () => {

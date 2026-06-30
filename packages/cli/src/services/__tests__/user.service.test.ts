@@ -13,19 +13,21 @@ import {
 } from '@n8n/db';
 import { PROJECT_OWNER_ROLE_SLUG, PROJECT_VIEWER_ROLE_SLUG } from '@n8n/permissions';
 import type { EntityManager } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { v4 as uuid } from 'uuid';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { UrlService } from '@/services/url.service';
 import { UserService } from '@/services/user.service';
 import type { UserManagementMailer } from '@/user-management/email';
 
 import type { OwnershipService } from '../ownership.service';
+import type { ProjectService } from '../project.service.ee';
 import type { PublicApiKeyService } from '../public-api-key.service';
 import type { RoleService } from '../role.service';
 import { JwtService } from '../jwt.service';
-import { PostHogClient } from '@/posthog';
 
 describe('UserService', () => {
 	const globalConfig = mockInstance(GlobalConfig, {
@@ -48,11 +50,9 @@ describe('UserService', () => {
 	const roleService = mock<RoleService>();
 	const mailer = mock<UserManagementMailer>();
 	const publicApiKeyService = mock<PublicApiKeyService>();
+	const projectService = mock<ProjectService>();
 	const jwtService = mockInstance(JwtService, {
-		sign: jest.fn().mockReturnValue('mock-jwt-token'),
-	});
-	const postHog = mockInstance(PostHogClient, {
-		getFeatureFlags: jest.fn().mockResolvedValue({}),
+		sign: vi.fn().mockReturnValue('mock-jwt-token'),
 	});
 	const userService = new UserService(
 		mock(),
@@ -66,7 +66,7 @@ describe('UserService', () => {
 		roleService,
 		globalConfig,
 		jwtService,
-		postHog,
+		projectService,
 	);
 
 	const commonMockUser = Object.assign(new User(), {
@@ -76,7 +76,7 @@ describe('UserService', () => {
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		// Restore default transaction implementation after each test (because some mock it)
 		manager.transaction.mockImplementation(async (arg1: unknown, arg2?: unknown) => {
 			const runInTransaction = (arg2 ?? arg1) as (entityManager: EntityManager) => Promise<unknown>;
@@ -118,28 +118,6 @@ describe('UserService', () => {
 			expect(scoped.globalScopes).toEqual(GLOBAL_MEMBER_ROLE.scopes.map((s) => s.slug));
 			expect(unscoped.globalScopes).toBeUndefined();
 		});
-
-		it('should add invite URL if requested', async () => {
-			const firstUser = Object.assign(new User(), { id: uuid(), role: GLOBAL_MEMBER_ROLE });
-			const secondUser = Object.assign(new User(), {
-				id: uuid(),
-				role: GLOBAL_MEMBER_ROLE,
-				isPending: true,
-			});
-
-			const withoutUrl = await userService.toPublic(secondUser);
-			const withUrl = await userService.toPublic(secondUser, {
-				withInviteUrl: true,
-				inviterId: firstUser.id,
-			});
-
-			expect(withoutUrl.inviteAcceptUrl).toBeUndefined();
-
-			const url = new URL(withUrl.inviteAcceptUrl ?? '');
-
-			expect(url.searchParams.get('inviterId')).toBe(firstUser.id);
-			expect(url.searchParams.get('inviteeId')).toBe(secondUser.id);
-		});
 	});
 
 	describe('inviteUrl visibility', () => {
@@ -149,36 +127,14 @@ describe('UserService', () => {
 			});
 
 			describe('toPublic', () => {
-				it('should include inviteAcceptUrl if requested', async () => {
-					const inviter = Object.assign(new User(), { id: uuid(), role: GLOBAL_ADMIN_ROLE });
+				it('should not include inviteAcceptUrl', async () => {
 					const pendingUser = Object.assign(new User(), {
 						id: uuid(),
 						role: GLOBAL_MEMBER_ROLE,
 						isPending: true,
 					});
 
-					const result = await userService.toPublic(pendingUser, {
-						withInviteUrl: true,
-						inviterId: inviter.id,
-					});
-
-					expect(result.inviteAcceptUrl).toBeDefined();
-					const url = new URL(result.inviteAcceptUrl ?? '');
-					expect(url.searchParams.get('inviterId')).toBe(inviter.id);
-					expect(url.searchParams.get('inviteeId')).toBe(pendingUser.id);
-				});
-
-				it('should not include inviteAcceptUrl if not requested', async () => {
-					const inviter = Object.assign(new User(), { id: uuid(), role: GLOBAL_ADMIN_ROLE });
-					const pendingUser = Object.assign(new User(), {
-						id: uuid(),
-						role: GLOBAL_MEMBER_ROLE,
-						isPending: true,
-					});
-
-					const result = await userService.toPublic(pendingUser, {
-						inviterId: inviter.id,
-					});
+					const result = await userService.toPublic(pendingUser);
 
 					expect(result.inviteAcceptUrl).toBeUndefined();
 				});
@@ -195,31 +151,6 @@ describe('UserService', () => {
 						return { user: { ...userData, id: uuid() } as User, project: mock<Project>() };
 					});
 					mailer.invite.mockResolvedValue({ emailSent: false });
-					// Feature flag disabled - should use old mechanism
-					postHog.getFeatureFlags.mockResolvedValue({});
-
-					const result = await userService.inviteUsers(owner, invitations);
-
-					expect(result.usersInvited[0].user.inviteAcceptUrl).toBeDefined();
-					expect(result.usersInvited[0].user.inviteAcceptUrl).toContain('inviterId');
-					expect(result.usersInvited[0].user.inviteAcceptUrl).toContain('inviteeId');
-					expect(jwtService.sign).not.toHaveBeenCalled();
-				});
-
-				it('should use JWT token when feature flag is enabled', async () => {
-					const owner = Object.assign(new User(), { id: uuid(), role: GLOBAL_ADMIN_ROLE });
-					const invitations = [{ email: 'test@example.com', role: GLOBAL_MEMBER_ROLE.slug }];
-
-					roleService.checkRolesExist.mockResolvedValue();
-					userRepository.findManyByEmail.mockResolvedValue([]);
-					userRepository.createUserWithProject.mockImplementation(async (userData) => {
-						return { user: { ...userData, id: uuid() } as User, project: mock<Project>() };
-					});
-					mailer.invite.mockResolvedValue({ emailSent: false });
-					// Feature flag enabled - should use JWT tokens
-					postHog.getFeatureFlags.mockResolvedValue({
-						'061_tamper_proof_invite_links': true,
-					});
 
 					const result = await userService.inviteUsers(owner, invitations);
 
@@ -252,33 +183,14 @@ describe('UserService', () => {
 			});
 
 			describe('toPublic', () => {
-				it('should not include inviteAcceptUrl if requested', async () => {
-					const inviter = Object.assign(new User(), { id: uuid(), role: GLOBAL_ADMIN_ROLE });
+				it('should not include inviteAcceptUrl', async () => {
 					const pendingUser = Object.assign(new User(), {
 						id: uuid(),
 						role: GLOBAL_MEMBER_ROLE,
 						isPending: true,
 					});
 
-					const result = await userService.toPublic(pendingUser, {
-						withInviteUrl: true,
-						inviterId: inviter.id,
-					});
-
-					expect(result.inviteAcceptUrl).toBeUndefined();
-				});
-
-				it('should not include inviteAcceptUrl if not requested', async () => {
-					const inviter = Object.assign(new User(), { id: uuid(), role: GLOBAL_ADMIN_ROLE });
-					const pendingUser = Object.assign(new User(), {
-						id: uuid(),
-						role: GLOBAL_MEMBER_ROLE,
-						isPending: true,
-					});
-
-					const result = await userService.toPublic(pendingUser, {
-						inviterId: inviter.id,
-					});
+					const result = await userService.toPublic(pendingUser);
 
 					expect(result.inviteAcceptUrl).toBeUndefined();
 				});
@@ -384,7 +296,10 @@ describe('UserService', () => {
 
 	describe('changeUserRole', () => {
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
+			// The new license guard calls isRoleLicensed; default it to licensed so the
+			// existing branch tests below exercise the role-change logic, not the guard.
+			roleService.isRoleLicensed.mockReturnValue(true);
 			manager.transaction.mockImplementation(async (arg1: unknown, arg2?: unknown) => {
 				const runInTransaction = (arg2 ?? arg1) as (
 					entityManager: EntityManager,
@@ -587,6 +502,38 @@ describe('UserService', () => {
 				{ role: { slug: PROJECT_OWNER_ROLE_SLUG } },
 			);
 		});
+
+		it('assigns a custom global role when it is licensed', async () => {
+			const user = new User();
+			user.id = uuid();
+			user.role = new Role();
+			user.role.slug = 'global:member';
+			roleService.checkRolesExist.mockResolvedValueOnce();
+
+			await userService.changeUserRole(user, { newRoleName: 'global:custom-role-abc' });
+
+			expect(roleService.isRoleLicensed).toHaveBeenCalledWith('global:custom-role-abc');
+			expect(manager.update).toHaveBeenCalledWith(
+				User,
+				{ id: user.id },
+				{ role: { slug: 'global:custom-role-abc' } },
+			);
+		});
+
+		it('rejects assigning a role that is not covered by the license', async () => {
+			const user = new User();
+			user.id = uuid();
+			user.role = new Role();
+			user.role.slug = 'global:member';
+			roleService.checkRolesExist.mockResolvedValueOnce();
+			roleService.isRoleLicensed.mockReturnValueOnce(false);
+
+			await expect(
+				userService.changeUserRole(user, { newRoleName: 'global:custom-role-abc' }),
+			).rejects.toThrow(ForbiddenError);
+
+			expect(manager.update).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('getInvitationIdsFromPayload', () => {
@@ -606,34 +553,14 @@ describe('UserService', () => {
 			});
 
 			userRepository.findOne.mockResolvedValue(instanceOwner);
-			postHog.getFeatureFlags.mockResolvedValue({
-				'061_tamper_proof_invite_links': true,
-			});
 
-			const result = await userService.getInvitationIdsFromPayload({ token });
+			const result = await userService.getInvitationIdsFromPayload(token);
 
 			expect(result).toEqual({ inviterId, inviteeId });
 			expect(jwtService.verify).toHaveBeenCalledWith(token);
-		});
-
-		it('should extract inviterId and inviteeId from legacy format (inviterId and inviteeId)', async () => {
-			const inviterId = uuid();
-			const inviteeId = uuid();
-			const instanceOwner = Object.assign(new User(), {
-				id: uuid(),
-				createdAt: new Date(),
-				role: GLOBAL_OWNER_ROLE,
+			expect(userRepository.findOne).toHaveBeenCalledWith({
+				where: { role: { slug: GLOBAL_OWNER_ROLE.slug } },
 			});
-
-			userRepository.findOne.mockResolvedValue(instanceOwner);
-			postHog.getFeatureFlags.mockResolvedValue({
-				'061_tamper_proof_invite_links': false,
-			});
-
-			const result = await userService.getInvitationIdsFromPayload({ inviterId, inviteeId });
-
-			expect(result).toEqual({ inviterId, inviteeId });
-			expect(jwtService.verify).not.toHaveBeenCalled();
 		});
 
 		it('should throw BadRequestError if JWT token verification fails', async () => {
@@ -650,10 +577,8 @@ describe('UserService', () => {
 
 			userRepository.findOne.mockResolvedValue(instanceOwner);
 
-			await expect(userService.getInvitationIdsFromPayload({ token })).rejects.toThrow(
-				BadRequestError,
-			);
-			await expect(userService.getInvitationIdsFromPayload({ token })).rejects.toThrow(
+			await expect(userService.getInvitationIdsFromPayload(token)).rejects.toThrow(BadRequestError);
+			await expect(userService.getInvitationIdsFromPayload(token)).rejects.toThrow(
 				'Invalid invite URL',
 			);
 		});
@@ -673,10 +598,8 @@ describe('UserService', () => {
 
 			userRepository.findOne.mockResolvedValue(instanceOwner);
 
-			await expect(userService.getInvitationIdsFromPayload({ token })).rejects.toThrow(
-				BadRequestError,
-			);
-			await expect(userService.getInvitationIdsFromPayload({ token })).rejects.toThrow(
+			await expect(userService.getInvitationIdsFromPayload(token)).rejects.toThrow(BadRequestError);
+			await expect(userService.getInvitationIdsFromPayload(token)).rejects.toThrow(
 				'Invalid invite URL',
 			);
 		});
@@ -696,188 +619,10 @@ describe('UserService', () => {
 
 			userRepository.findOne.mockResolvedValue(instanceOwner);
 
-			await expect(userService.getInvitationIdsFromPayload({ token })).rejects.toThrow(
-				BadRequestError,
-			);
-			await expect(userService.getInvitationIdsFromPayload({ token })).rejects.toThrow(
+			await expect(userService.getInvitationIdsFromPayload(token)).rejects.toThrow(BadRequestError);
+			await expect(userService.getInvitationIdsFromPayload(token)).rejects.toThrow(
 				'Invalid invite URL',
 			);
-		});
-
-		it('should throw BadRequestError if neither token nor inviterId/inviteeId are provided', async () => {
-			const instanceOwner = Object.assign(new User(), {
-				id: uuid(),
-				createdAt: new Date(),
-				role: GLOBAL_OWNER_ROLE,
-			});
-
-			userRepository.findOne.mockResolvedValue(instanceOwner);
-
-			await expect(userService.getInvitationIdsFromPayload({})).rejects.toThrow(BadRequestError);
-			await expect(userService.getInvitationIdsFromPayload({})).rejects.toThrow(
-				'Invalid invite URL',
-			);
-		});
-
-		it('should throw BadRequestError if only inviterId is provided (missing inviteeId)', async () => {
-			const inviterId = uuid();
-			const instanceOwner = Object.assign(new User(), {
-				id: uuid(),
-				createdAt: new Date(),
-				role: GLOBAL_OWNER_ROLE,
-			});
-
-			userRepository.findOne.mockResolvedValue(instanceOwner);
-
-			await expect(userService.getInvitationIdsFromPayload({ inviterId })).rejects.toThrow(
-				BadRequestError,
-			);
-			await expect(userService.getInvitationIdsFromPayload({ inviterId })).rejects.toThrow(
-				'Invalid invite URL',
-			);
-		});
-
-		it('should throw BadRequestError if only inviteeId is provided (missing inviterId)', async () => {
-			const inviteeId = uuid();
-			const instanceOwner = Object.assign(new User(), {
-				id: uuid(),
-				createdAt: new Date(),
-				role: GLOBAL_OWNER_ROLE,
-			});
-
-			userRepository.findOne.mockResolvedValue(instanceOwner);
-
-			await expect(userService.getInvitationIdsFromPayload({ inviteeId })).rejects.toThrow(
-				BadRequestError,
-			);
-			await expect(userService.getInvitationIdsFromPayload({ inviteeId })).rejects.toThrow(
-				'Invalid invite URL',
-			);
-		});
-
-		it('should throw BadRequestError when both token and inviterId/inviteeId are provided', async () => {
-			const token = 'valid-jwt-token';
-			const legacyInviterId = uuid();
-			const legacyInviteeId = uuid();
-
-			await expect(
-				userService.getInvitationIdsFromPayload({
-					token,
-					inviterId: legacyInviterId,
-					inviteeId: legacyInviteeId,
-				}),
-			).rejects.toThrow(BadRequestError);
-			await expect(
-				userService.getInvitationIdsFromPayload({
-					token,
-					inviterId: legacyInviterId,
-					inviteeId: legacyInviteeId,
-				}),
-			).rejects.toThrow('Invalid invite URL');
-		});
-
-		it('should accept JWT token when feature flag is enabled for instance owner', async () => {
-			const inviterId = uuid();
-			const inviteeId = uuid();
-			const token = 'valid-jwt-token';
-			const instanceOwner = Object.assign(new User(), {
-				id: uuid(),
-				createdAt: new Date(),
-				role: GLOBAL_OWNER_ROLE,
-			});
-
-			jwtService.verify.mockReturnValue({
-				inviterId,
-				inviteeId,
-			});
-
-			userRepository.findOne.mockResolvedValue(instanceOwner);
-			postHog.getFeatureFlags.mockResolvedValue({
-				'061_tamper_proof_invite_links': true,
-			});
-
-			const result = await userService.getInvitationIdsFromPayload({ token });
-
-			expect(result).toEqual({ inviterId, inviteeId });
-			expect(jwtService.verify).toHaveBeenCalledWith(token);
-			expect(userRepository.findOne).toHaveBeenCalledWith({
-				where: { role: { slug: GLOBAL_OWNER_ROLE.slug } },
-			});
-			expect(postHog.getFeatureFlags).toHaveBeenCalledWith({
-				id: instanceOwner.id,
-				createdAt: instanceOwner.createdAt,
-			});
-		});
-
-		it('should reject JWT token when feature flag is disabled for instance owner', async () => {
-			const inviterId = uuid();
-			const inviteeId = uuid();
-			const token = 'valid-jwt-token';
-			const instanceOwner = Object.assign(new User(), {
-				id: uuid(),
-				createdAt: new Date(),
-				role: GLOBAL_OWNER_ROLE,
-			});
-
-			jwtService.verify.mockReturnValue({
-				inviterId,
-				inviteeId,
-			});
-
-			userRepository.findOne.mockResolvedValue(instanceOwner);
-			postHog.getFeatureFlags.mockResolvedValue({
-				'061_tamper_proof_invite_links': false,
-			});
-
-			await expect(userService.getInvitationIdsFromPayload({ token })).rejects.toThrow(
-				BadRequestError,
-			);
-			await expect(userService.getInvitationIdsFromPayload({ token })).rejects.toThrow(
-				'Invalid invite URL',
-			);
-		});
-
-		it('should accept legacy format when feature flag is disabled for instance owner', async () => {
-			const inviterId = uuid();
-			const inviteeId = uuid();
-			const instanceOwner = Object.assign(new User(), {
-				id: uuid(),
-				createdAt: new Date(),
-				role: GLOBAL_OWNER_ROLE,
-			});
-
-			userRepository.findOne.mockResolvedValue(instanceOwner);
-			postHog.getFeatureFlags.mockResolvedValue({
-				'061_tamper_proof_invite_links': false,
-			});
-
-			const result = await userService.getInvitationIdsFromPayload({ inviterId, inviteeId });
-
-			expect(result).toEqual({ inviterId, inviteeId });
-			expect(jwtService.verify).not.toHaveBeenCalled();
-			expect(userRepository.findOne).toHaveBeenCalledWith({
-				where: { role: { slug: GLOBAL_OWNER_ROLE.slug } },
-			});
-		});
-
-		it('should accept legacy format when feature flag is enabled for instance owner', async () => {
-			const inviterId = uuid();
-			const inviteeId = uuid();
-			const instanceOwner = Object.assign(new User(), {
-				id: uuid(),
-				createdAt: new Date(),
-				role: GLOBAL_OWNER_ROLE,
-			});
-
-			userRepository.findOne.mockResolvedValue(instanceOwner);
-			postHog.getFeatureFlags.mockResolvedValue({
-				'061_tamper_proof_invite_links': true,
-			});
-
-			const result = await userService.getInvitationIdsFromPayload({ inviterId, inviteeId });
-
-			expect(result).toEqual({ inviterId, inviteeId });
-			expect(jwtService.verify).not.toHaveBeenCalled();
 		});
 
 		it('should throw error when instance owner is not found', async () => {
@@ -892,60 +637,9 @@ describe('UserService', () => {
 
 			userRepository.findOne.mockResolvedValue(null);
 
-			await expect(userService.getInvitationIdsFromPayload({ token })).rejects.toThrow(
-				BadRequestError,
-			);
-			await expect(userService.getInvitationIdsFromPayload({ token })).rejects.toThrow(
+			await expect(userService.getInvitationIdsFromPayload(token)).rejects.toThrow(BadRequestError);
+			await expect(userService.getInvitationIdsFromPayload(token)).rejects.toThrow(
 				'Instance owner not found',
-			);
-		});
-
-		it('should throw error when feature flag is enabled but no token and only one ID provided', async () => {
-			const inviterId = uuid();
-			const instanceOwner = Object.assign(new User(), {
-				id: uuid(),
-				createdAt: new Date(),
-				role: GLOBAL_OWNER_ROLE,
-			});
-
-			userRepository.findOne.mockResolvedValue(instanceOwner);
-			postHog.getFeatureFlags.mockResolvedValue({
-				'061_tamper_proof_invite_links': true,
-			});
-
-			await expect(userService.getInvitationIdsFromPayload({ inviterId })).rejects.toThrow(
-				BadRequestError,
-			);
-			await expect(userService.getInvitationIdsFromPayload({ inviterId })).rejects.toThrow(
-				'Invalid invite URL',
-			);
-		});
-
-		it('should throw error when feature flag is disabled but no inviterId/inviteeId provided', async () => {
-			const inviterId = uuid();
-			const inviteeId = uuid();
-			const token = 'valid-jwt-token';
-			const instanceOwner = Object.assign(new User(), {
-				id: uuid(),
-				createdAt: new Date(),
-				role: GLOBAL_OWNER_ROLE,
-			});
-
-			jwtService.verify.mockReturnValue({
-				inviterId,
-				inviteeId,
-			});
-
-			userRepository.findOne.mockResolvedValue(instanceOwner);
-			postHog.getFeatureFlags.mockResolvedValue({
-				'061_tamper_proof_invite_links': false,
-			});
-
-			await expect(userService.getInvitationIdsFromPayload({ token })).rejects.toThrow(
-				BadRequestError,
-			);
-			await expect(userService.getInvitationIdsFromPayload({ token })).rejects.toThrow(
-				'Invalid invite URL',
 			);
 		});
 	});
@@ -993,6 +687,36 @@ describe('UserService', () => {
 			const result = await userService.findSsoIdentity(userId);
 
 			expect(result).toEqual(samlIdentity);
+		});
+	});
+
+	describe('assertGetUsersAccess', () => {
+		it('should allow global member to list all users without project filter', async () => {
+			const member = Object.assign(new User(), { role: GLOBAL_MEMBER_ROLE });
+
+			await expect(userService.assertGetUsersAccess(member)).resolves.toBeUndefined();
+
+			expect(projectService.getProjectIdsWithScope).not.toHaveBeenCalled();
+		});
+
+		it('should allow non-admin members to list users by projectId', async () => {
+			const member = Object.assign(new User(), { role: GLOBAL_MEMBER_ROLE });
+			projectService.getProjectWithScope.mockResolvedValueOnce(mock<Project>());
+
+			await expect(userService.assertGetUsersAccess(member, 'project-1')).resolves.toBeUndefined();
+
+			expect(projectService.getProjectWithScope).toHaveBeenCalledWith(member, 'project-1', [
+				'project:list',
+			]);
+		});
+
+		it('should throw NotFoundError when filtering by unknown projectId', async () => {
+			const member = Object.assign(new User(), { role: GLOBAL_MEMBER_ROLE });
+			projectService.getProjectWithScope.mockResolvedValueOnce(null);
+
+			await expect(userService.assertGetUsersAccess(member, 'unknown-project')).rejects.toThrow(
+				NotFoundError,
+			);
 		});
 	});
 });

@@ -1,44 +1,57 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+
 import type { PushMessage, PushType } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
-import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
+import { SsrfProtectionService } from '@n8n/backend-network';
+import { ExecutionsConfig, GlobalConfig, SsrfProtectionConfig, WorkflowsConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
+import type { ServiceIdentifier } from '@n8n/di';
 import { Container } from '@n8n/di';
+import type { JSONSchema7 } from 'json-schema';
 import { ExternalSecretsProxy, WorkflowExecute } from 'n8n-core';
-import { UnexpectedError, Workflow, createRunExecutionData } from 'n8n-workflow';
 import type {
+	AiEvent,
+	EnvProviderState,
+	ExecuteAgentData,
+	ExecuteAgentWorkflowContext,
+	ExecuteWorkflowData,
+	ExecuteWorkflowOptions,
+	ExecutionError,
+	ExecutionStatus,
 	IDataObject,
 	IExecuteData,
+	IExecuteFunctions,
 	IExecuteWorkflowInfo,
 	INode,
 	INodeExecutionData,
 	INodeParameters,
+	IRun,
+	IRunExecutionData,
+	ITaskDataConnections,
 	IWorkflowBase,
 	IWorkflowExecuteAdditionalData,
-	IWorkflowSettings,
-	WorkflowExecuteMode,
-	ExecutionStatus,
-	ExecutionError,
-	IExecuteFunctions,
-	ITaskDataConnections,
-	ExecuteWorkflowOptions,
 	IWorkflowExecutionDataProcess,
-	EnvProviderState,
-	ExecuteWorkflowData,
+	IWorkflowSettings,
 	RelatedExecution,
-	IRunExecutionData,
+	WorkflowExecuteMode,
+} from 'n8n-workflow';
+import {
+	OperationalError,
+	UnexpectedError,
+	Workflow,
+	createRunExecutionData,
+	mergeRunsPerBranch,
 } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsHelper } from '@/credentials-helper';
 import { EventService } from '@/events/event.service';
-import type { AiEventMap, AiEventPayload } from '@/events/maps/ai.event-map';
+import type { AiEventPayload } from '@/events/maps/ai.event-map';
 import { getLifecycleHooksForSubExecutions } from '@/execution-lifecycle/execution-lifecycle-hooks';
-import { FailedRunFactory } from '@/executions/failed-run-factory';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { isManualOrChatExecution } from '@/executions/execution.utils';
+import { FailedRunFactory } from '@/executions/failed-run-factory';
 import {
 	CredentialsPermissionChecker,
 	SubworkflowPolicyChecker,
@@ -47,11 +60,13 @@ import type { UpdateExecutionPayload } from '@/interfaces';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
 import { UrlService } from '@/services/url.service';
-import { SsrfProtectionService } from '@/services/ssrf/ssrf-protection.service';
 import { TaskRequester } from '@/task-runners/task-managers/task-requester';
 import { findSubworkflowStart } from '@/utils';
 import { objectToError } from '@/utils/object-to-error';
 import * as WorkflowHelpers from '@/workflow-helpers';
+import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
+
+import { RuntimeCredentialProxyService } from './services/runtime-credential-proxy.service';
 
 export function getRunData(
 	workflowData: IWorkflowBase,
@@ -167,6 +182,30 @@ export async function getPublishedWorkflowData(
 	parentWorkflowId: string,
 	parentWorkflowSettings?: IWorkflowSettings,
 ): Promise<IWorkflowBase> {
+	// For a workflow loaded from the database, read the published version from the
+	// workflow_published_version table when the publication service is enabled.
+	// (Inline code is returned as-is below.)
+	//
+	// TODO(CAT-3202): clean up the workflow data fetching
+	if (
+		workflowInfo.id !== undefined &&
+		Container.get(WorkflowsConfig).useWorkflowPublicationService
+	) {
+		const publishedData = await Container.get(
+			WorkflowPublishedDataService,
+		).getPublishedWorkflowData(workflowInfo.id);
+		if (publishedData === null) {
+			throw new OperationalError('Workflow is not active and cannot be executed.', {
+				extra: { workflowId: workflowInfo.id, parentWorkflowId },
+			});
+		}
+		return {
+			...publishedData.workflow,
+			nodes: publishedData.publishedVersion.nodes,
+			connections: publishedData.publishedVersion.connections,
+		};
+	}
+
 	const workflowData = await fetchWorkflowData(
 		workflowInfo,
 		parentWorkflowId,
@@ -190,6 +229,57 @@ export async function getPublishedWorkflowData(
 	throw new UnexpectedError('Workflow is not active and cannot be executed.', {
 		extra: { workflowId: workflowInfo.id },
 	});
+}
+
+/**
+ * Determines a workflow's deadline given its start time, its settings
+ * and global execution config.
+ */
+function determineWorkflowDeadline(
+	startTime: number,
+	workflowSettings: IWorkflowSettings | undefined,
+	executionsConfig: ExecutionsConfig,
+): number | undefined {
+	const effectiveMaxTimeout =
+		executionsConfig.maxTimeout > 0 ? executionsConfig.maxTimeout : Infinity;
+
+	if (workflowSettings?.executionTimeout !== undefined) {
+		// A defined timeout of <= 0 means the workflow's own timeout is explicitly
+		// disabled, so it runs unbounded rather than falling back to the global
+		// default. Otherwise it is clamped to the configurable maximum. This mirrors
+		// the main-workflow path in workflow-runner.ts and job-processor.ts.
+		if (workflowSettings.executionTimeout <= 0) {
+			return undefined;
+		}
+		return (
+			startTime +
+			Math.min(workflowSettings.executionTimeout, effectiveMaxTimeout) * Time.seconds.toMilliseconds
+		);
+	}
+	if (executionsConfig.timeout > 0) {
+		return (
+			startTime +
+			Math.min(executionsConfig.timeout, effectiveMaxTimeout) * Time.seconds.toMilliseconds
+		);
+	}
+	return undefined;
+}
+
+/**
+ * Resolves a sub-workflow deadline depending on its parent.
+ */
+function resolveSubworkflowDeadline(
+	subWorkflowDeadline: number | undefined,
+	parentDeadline: number | undefined,
+	doNotWaitToFinish: boolean | undefined,
+): number | undefined {
+	if (doNotWaitToFinish) {
+		return subWorkflowDeadline;
+	}
+	if (parentDeadline !== undefined && subWorkflowDeadline !== undefined) {
+		return Math.min(parentDeadline, subWorkflowDeadline);
+	}
+	return parentDeadline ?? subWorkflowDeadline;
 }
 
 /**
@@ -246,6 +336,123 @@ export async function executeWorkflow(
 	}
 
 	return await executionPromise;
+}
+
+/**
+ * Executes an agent with the given ID and message.
+ */
+export async function executeAgent(
+	agentId: string,
+	message: string,
+	executionId: string,
+	threadId: string,
+	additionalData: IWorkflowExecuteAdditionalData,
+	executionMode: WorkflowExecuteMode,
+	outputSchema?: JSONSchema7,
+	workflowContext?: ExecuteAgentWorkflowContext,
+): Promise<ExecuteAgentData> {
+	let userId = additionalData.userId;
+	const telemetryUserId = additionalData.userId;
+	let projectId = additionalData.projectId;
+
+	// Trigger-fired and webhook executions build `additionalData` without a
+	// `userId` (see `getBase` callers in `active-workflow-manager`,
+	// `webhooks/*`, `scaling/job-processor`). Resolve the workflow's owning
+	// project to derive both `userId` and `projectId` so the agent runs under
+	// the workflow owner's identity, mirroring the projectId backfill below.
+	if ((!userId || !projectId) && additionalData.workflowId) {
+		const { OwnershipService } = await import('@/services/ownership.service');
+		const ownershipService = Container.get(OwnershipService);
+		const project = await ownershipService.getWorkflowProjectCached(additionalData.workflowId);
+		projectId = projectId ?? project.id;
+		if (!userId) {
+			const owner = await ownershipService.getPersonalProjectOwnerCached(project.id);
+			userId = owner?.id;
+		}
+	}
+
+	if (!userId) {
+		throw new UnexpectedError('Cannot execute agent without a userId in additional data');
+	}
+	if (!projectId) {
+		throw new UnexpectedError(
+			'Cannot execute agent without a projectId or workflowId in additional data',
+		);
+	}
+
+	const { AgentExecutionOrchestratorService } = await import(
+		'@/modules/agents/agent-execution-orchestrator.service'
+	);
+	const agentExecutionOrchestratorService = Container.get(AgentExecutionOrchestratorService);
+
+	const useDraftVersion = isManualOrChatExecution(executionMode);
+
+	return await agentExecutionOrchestratorService.executeForWorkflow(
+		agentId,
+		message,
+		executionId,
+		threadId,
+		userId,
+		projectId,
+		telemetryUserId,
+		useDraftVersion,
+		outputSchema,
+		workflowContext,
+	);
+}
+
+async function listAgents(userId: string): Promise<Array<{ id: string; name: string }>> {
+	const { AgentsService } = await import('@/modules/agents/agents.service');
+	const agentsService = Container.get(AgentsService);
+	// Only published agents are runnable from a published workflow.
+	// But unpublished agents may be called from manual workflow executions (e.g. during development), so they are included in the list as well.
+	const agents = await agentsService.findByUser(userId);
+	return agents.map((agent) => ({
+		id: agent.id,
+		name: agent.name,
+	}));
+}
+
+/**
+ * Whether the sub-workflow's `Execute Workflow Trigger` wants the legacy single-run output.
+ * v1.2+ triggers always opt into the new merged-runs default;
+ * pre-1.2 triggers can opt in via the `returnOutput` parameter
+ * and otherwise stay on `lastRunOnly` for backward compatibility.
+ * Sub-workflows without an `Execute Workflow Trigger` keep the legacy output too.
+ * See n8n-io/n8n#9989
+ */
+export function triggerReturnsLastRunOnly(nodes: INode[]): boolean {
+	const trigger = nodes.find((node) => node.type === 'n8n-nodes-base.executeWorkflowTrigger');
+	const triggerVersion = trigger?.typeVersion ?? 1;
+	return triggerVersion < 1.2 && trigger?.parameters?.returnOutput !== 'allRuns';
+}
+
+/**
+ * Returns the items the parent workflow gets back from the sub-workflow's last node.
+ * By default, items from every run of the terminal node are concatenated per output branch.
+ * The trigger declares its preference.
+ * The caller can additionally force the legacy single-run output via `returnLastRunOnly`
+ * (used by LangChain tool/retriever callers that need a single-answer output).
+ * Pinned data on the last node always wins in manual mode.
+ * See n8n-io/n8n#9989.
+ */
+export function buildSubWorkflowOutput(
+	data: IRun,
+	workflowNodes: INode[],
+	callerReturnsLastRunOnly: boolean,
+): Array<INodeExecutionData[] | null> {
+	const lastRunOnly = callerReturnsLastRunOnly || triggerReturnsLastRunOnly(workflowNodes);
+	const runs = WorkflowHelpers.getLastExecutedNodeRuns(data);
+	const { lastNodeExecuted, pinData = {} } = data.data.resultData;
+	const manualPinDataOverride =
+		data.mode === 'manual' &&
+		lastNodeExecuted !== undefined &&
+		pinData[lastNodeExecuted] !== undefined;
+
+	if (!lastRunOnly && runs.length > 0 && !manualPinDataOverride) {
+		return mergeRunsPerBranch(runs);
+	}
+	return WorkflowHelpers.getLastExecutedNodeData(data)?.data?.main ?? [null];
 }
 
 async function startExecution(
@@ -311,28 +518,29 @@ async function startExecution(
 		// This one already contains changes to talk to parent process
 		// and get executionID from `activeExecutions` running on main process
 		additionalDataIntegrated.executeWorkflow = additionalData.executeWorkflow;
+		additionalDataIntegrated.executeAgent = additionalData.executeAgent;
+		additionalDataIntegrated.listAgents = additionalData.listAgents;
 		// Propagate the root execution mode so nested subworkflows retain the original
 		// mode (e.g. 'manual') even though their own WorkflowExecute runs as 'integrated'
 		additionalDataIntegrated.rootExecutionMode =
 			additionalData.rootExecutionMode ?? options.executionMode;
+		// Propagate the eval run id so sub-workflows of an eval run expose `$evaluation.runId`
+		additionalDataIntegrated.evaluationRunId = additionalData.evaluationRunId;
 		if (additionalData.httpResponse) {
 			additionalDataIntegrated.httpResponse = additionalData.httpResponse;
 		}
 		// Propagate streaming state to subworkflows
 		additionalDataIntegrated.streamingEnabled = additionalData.streamingEnabled;
 
-		let subworkflowTimeout = additionalData.executionTimeoutTimestamp;
-		if (workflowSettings?.executionTimeout !== undefined && workflowSettings.executionTimeout > 0) {
-			// We might have received a max timeout timestamp from the parent workflow
-			// If we did, then we get the minimum time between the two timeouts
-			// If no timeout was given from the parent, then we use our timeout.
-			subworkflowTimeout = Math.min(
-				additionalData.executionTimeoutTimestamp || Number.MAX_SAFE_INTEGER,
-				startTime + workflowSettings.executionTimeout * 1000,
-			);
-		}
+		const executionsConfig = Container.get(ExecutionsConfig);
 
-		additionalDataIntegrated.executionTimeoutTimestamp = subworkflowTimeout;
+		const subworkflowDeadline = resolveSubworkflowDeadline(
+			determineWorkflowDeadline(startTime, workflowSettings, executionsConfig),
+			additionalData.executionTimeoutTimestamp,
+			options.doNotWaitToFinish,
+		);
+
+		additionalDataIntegrated.executionTimeoutTimestamp = subworkflowDeadline;
 
 		const runExecutionData = runData.executionData as IRunExecutionData;
 
@@ -374,7 +582,10 @@ async function startExecution(
 
 		activeExecutions.finalizeExecution(executionId, fullRunData);
 
-		await executionRepository.updateExistingExecution(executionId, fullExecutionData);
+		await Container.get(ExecutionPersistence).updateExistingExecution(
+			executionId,
+			fullExecutionData,
+		);
 		throw objectToError(
 			{
 				...executionError,
@@ -392,10 +603,10 @@ async function startExecution(
 		// Workflow did finish successfully
 
 		activeExecutions.finalizeExecution(executionId, data);
-		const returnData = WorkflowHelpers.getDataLastExecutedNodeData(data);
+
 		return {
 			executionId,
-			data: returnData!.data!.main,
+			data: buildSubWorkflowOutput(data, workflowData.nodes, options.returnLastRunOnly ?? false),
 			waitTill: data.waitTill,
 		};
 	}
@@ -415,7 +626,7 @@ async function startExecution(
 	);
 }
 
-export function setExecutionStatus(status: ExecutionStatus) {
+export function setExecutionStatus(this: { executionId?: string }, status: ExecutionStatus) {
 	const logger = Container.get(Logger);
 	if (this.executionId === undefined) {
 		logger.debug(`Setting execution status "${status}" failed because executionId is undefined`);
@@ -425,7 +636,11 @@ export function setExecutionStatus(status: ExecutionStatus) {
 	Container.get(ActiveExecutions).setStatus(this.executionId, status);
 }
 
-export function sendDataToUI(type: PushType, data: IDataObject | IDataObject[]) {
+export function sendDataToUI(
+	this: { pushRef?: string },
+	type: PushType,
+	data: IDataObject | IDataObject[],
+) {
 	const { pushRef } = this;
 	if (pushRef === undefined) {
 		return;
@@ -465,7 +680,9 @@ export async function getBase({
 	executionTimeoutTimestamp?: number;
 	workflowSettings?: IWorkflowSettings;
 } = {}): Promise<IWorkflowExecuteAdditionalData> {
-	const urlBaseWebhook = Container.get(UrlService).getWebhookBaseUrl();
+	const urlService = Container.get(UrlService);
+	const urlBaseWebhook = urlService.getWebhookBaseUrl();
+	const instanceBaseUrl = urlService.getInstanceBaseUrl();
 
 	const globalConfig = Container.get(GlobalConfig);
 
@@ -477,21 +694,33 @@ export async function getBase({
 		currentNodeExecutionIndex: 0,
 		credentialsHelper: Container.get(CredentialsHelper),
 		executeWorkflow,
+		executeAgent,
+		listAgents,
 		restApiUrl: urlBaseWebhook + globalConfig.endpoints.rest,
-		instanceBaseUrl: urlBaseWebhook,
+		instanceBaseUrl: `${instanceBaseUrl}/`,
 		formWaitingBaseUrl: urlBaseWebhook + globalConfig.endpoints.formWaiting,
 		webhookBaseUrl: urlBaseWebhook + globalConfig.endpoints.webhook,
 		webhookWaitingBaseUrl: urlBaseWebhook + globalConfig.endpoints.webhookWaiting,
 		webhookTestBaseUrl: urlBaseWebhook + globalConfig.endpoints.webhookTest,
+		mcpBaseUrl: urlBaseWebhook + globalConfig.endpoints.mcp,
+		mcpTestBaseUrl: urlBaseWebhook + globalConfig.endpoints.mcpTest,
 		currentNodeParameters,
 		executionTimeoutTimestamp,
 		userId,
+		workflowId,
+		projectId,
 		setExecutionStatus,
 		variables,
 		workflowSettings,
+		async getRuntimeCredential(runExecutionData, alias) {
+			return await Container.get(RuntimeCredentialProxyService).getRuntimeCredential(
+				runExecutionData,
+				alias,
+			);
+		},
 		async getRunExecutionData(executionId) {
-			const executionRepository = Container.get(ExecutionRepository);
-			const executionData = await executionRepository.findSingleExecution(executionId, {
+			const executionPersistence = Container.get(ExecutionPersistence);
+			const executionData = await executionPersistence.findSingleExecution(executionId, {
 				unflattenData: true,
 				includeData: true,
 			});
@@ -536,9 +765,11 @@ export async function getBase({
 				executeData,
 			);
 		},
-		logAiEvent: (eventName: keyof AiEventMap, payload: AiEventPayload) =>
-			eventService.emit(eventName, payload),
-		getRunnerStatus: (taskType: string) => Container.get(TaskRequester).getRunnerStatus(taskType),
+		logAiEvent: (eventName: AiEvent, payload: AiEventPayload) => {
+			eventService.emit(eventName, payload);
+		},
+		getRunnerStatus: (taskType: string) =>
+			Container.get(TaskRequester as ServiceIdentifier<TaskRequester>).getRunnerStatus(taskType),
 	};
 
 	const ssrfConfig = Container.get(SsrfProtectionConfig);

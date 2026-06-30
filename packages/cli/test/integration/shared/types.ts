@@ -12,6 +12,7 @@ type EndpointGroup =
 	| 'me'
 	| 'users'
 	| 'auth'
+	| 'oauth1'
 	| 'oauth2'
 	| 'owner'
 	| 'passwordReset'
@@ -37,6 +38,7 @@ type EndpointGroup =
 	| 'debug'
 	| 'project'
 	| 'role'
+	| 'roleMappingRule'
 	| 'dynamic-node-parameters'
 	| 'apiKeys'
 	| 'evaluation'
@@ -47,7 +49,10 @@ type EndpointGroup =
 	| 'security-settings'
 	| 'data-table'
 	| 'third-party-licenses'
-	| 'mcp';
+	| 'mcp'
+	| 'workflowDependencies'
+	| 'encryption-keys'
+	| 'test-webhooks';
 
 type ModuleName =
 	| 'insights'
@@ -55,17 +60,21 @@ type ModuleName =
 	| 'community-packages'
 	| 'data-table'
 	| 'mcp'
+	| 'oauth-server'
 	| 'dynamic-credentials'
 	| 'log-streaming'
 	| 'ldap'
 	| 'redaction'
-	| 'source-control';
+	| 'source-control'
+	| 'token-exchange';
 
 export interface SetupProps {
 	endpointGroups?: EndpointGroup[];
 	enabledFeatures?: BooleanLicenseFeature[];
 	quotas?: Partial<{ [K in NumericLicenseFeature]: number }>;
 	modules?: ModuleName[];
+	/** Override the default Jest timeout (ms) for the shared `beforeAll` setup hook. */
+	setupTimeout?: number;
 }
 
 export type SuperAgentTest = TestAgent;

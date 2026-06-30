@@ -1,5 +1,6 @@
 import { ref, readonly } from 'vue';
 import { createEventHook } from '@vueuse/core';
+import type { ITag } from '@n8n/rest-api-client';
 import { CHANGE_ACTION } from './types';
 import type { ChangeAction, ChangeEvent } from './types';
 
@@ -8,6 +9,12 @@ export type TagsPayload = {
 };
 
 export type TagsChangeEvent = ChangeEvent<TagsPayload>;
+
+export type TagsInput = Array<string | ITag>;
+
+function normalizeTags(input: TagsInput): string[] {
+	return input.map((tag) => (typeof tag === 'string' ? tag : tag.id));
+}
 
 export function useWorkflowDocumentTags() {
 	const tags = ref<string[]>([]);
@@ -27,12 +34,12 @@ export function useWorkflowDocumentTags() {
 		});
 	}
 
-	function setTags(newTags: string[]) {
-		applyTags(newTags);
+	function setTags(newTags: TagsInput) {
+		applyTags(normalizeTags(newTags));
 	}
 
-	function addTags(newTags: string[]) {
-		const uniqueTags = new Set([...tags.value, ...newTags]);
+	function addTags(newTags: TagsInput) {
+		const uniqueTags = new Set([...tags.value, ...normalizeTags(newTags)]);
 		applyTags(Array.from(uniqueTags), CHANGE_ACTION.ADD);
 	}
 

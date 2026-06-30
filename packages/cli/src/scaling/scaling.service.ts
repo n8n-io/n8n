@@ -5,20 +5,14 @@ import { ExecutionRepository } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
-import {
-	BINARY_ENCODING,
-	sleep,
-	jsonStringify,
-	ensureError,
-	UnexpectedError,
-	ManualExecutionCancelledError,
-} from 'n8n-workflow';
+import { BINARY_ENCODING, sleep, jsonStringify, ensureError, UnexpectedError } from 'n8n-workflow';
 import type { IExecuteResponsePromiseData, IRun } from 'n8n-workflow';
 import assert, { strict } from 'node:assert';
 
 import { ActiveExecutions } from '@/active-executions';
 import { HIGHEST_SHUTDOWN_PRIORITY } from '@/constants';
 import { EventService } from '@/events/event.service';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { assertNever } from '@/utils';
 
 import { JOB_TYPE_NAME, QUEUE_NAME } from './constants';
@@ -49,6 +43,7 @@ export class ScalingService {
 		private readonly jobProcessor: JobProcessor,
 		private readonly globalConfig: GlobalConfig,
 		private readonly executionRepository: ExecutionRepository,
+		private readonly executionPersistence: ExecutionPersistence,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly eventService: EventService,
 	) {
@@ -226,10 +221,12 @@ export class ScalingService {
 	async addJob(jobData: JobData, { priority }: { priority: number }) {
 		strict(priority > 0 && priority <= Number.MAX_SAFE_INTEGER);
 
+		const { keepLastCompleted, keepLastFailed } = this.globalConfig.executions.queueRetention;
+
 		const jobOptions: JobOptions = {
 			priority,
-			removeOnComplete: true,
-			removeOnFail: true,
+			removeOnComplete: keepLastCompleted,
+			removeOnFail: keepLastFailed,
 		};
 
 		const job = await this.queue.add(JOB_TYPE_NAME, jobData, jobOptions);
@@ -264,8 +261,7 @@ export class ScalingService {
 		try {
 			if (await job.isActive()) {
 				await job.progress({ kind: 'abort-job' }); // being processed by worker
-				await job.discard(); // prevent retries
-				await job.moveToFailed(new ManualExecutionCancelledError(job.data.executionId), true); // remove from queue
+				this.logger.debug('Sent abort signal to worker', props);
 				return true;
 			}
 
@@ -453,7 +449,7 @@ export class ScalingService {
 		try {
 			if (mcpType === 'service') {
 				// For MCP Service, fetch execution data from DB
-				const executionData = await this.executionRepository.findSingleExecution(executionId, {
+				const executionData = await this.executionPersistence.findSingleExecution(executionId, {
 					includeData: true,
 					unflattenData: true,
 				});

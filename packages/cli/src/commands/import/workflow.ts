@@ -15,11 +15,12 @@ import type { IWorkflowBase, WorkflowId } from 'n8n-workflow';
 import { jsonParse, UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { BaseCommand } from '../base-command';
-
 import { UM_FIX_INSTRUCTION } from '@/constants';
 import type { IWorkflowToImport, IWorkflowWithVersionMetadata } from '@/interfaces';
 import { ImportService } from '@/services/import.service';
+import { EventService } from '@/events/event.service';
+
+import { BaseCommand } from '../base-command';
 
 function assertHasWorkflowsToImport(
 	workflows: unknown[],
@@ -74,6 +75,16 @@ const flagsSchema = z.object({
 		.string()
 		.describe('The ID of the project to assign the imported workflows to')
 		.optional(),
+	activeState: z
+		.enum(['false', 'fromJson'], {
+			errorMap: () => ({
+				message: 'Valid values for flag "--activeState" are only "false" or "fromJson".',
+			}),
+		})
+		.describe(
+			'Whether to respect the JSON active field. "false" (default) deactivates all imported workflows. "fromJson" activates/deactivates each workflow based on its JSON active field.',
+		)
+		.default('false'),
 });
 
 @Command({
@@ -85,12 +96,19 @@ const flagsSchema = z.object({
 		'--input=file.json --userId=1d64c3d2-85fe-4a83-a649-e446b07b3aae',
 		'--input=file.json --projectId=Ox8O54VQrmBrb4qL',
 		'--separate --input=backups/latest/ --userId=1d64c3d2-85fe-4a83-a649-e446b07b3aae',
+		'--input=file.json --activeState=fromJson',
 	],
 	flagsSchema,
 })
 export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
 	async run(): Promise<void> {
 		const { flags } = this;
+
+		if (flags.activeState === 'fromJson' && this.globalConfig.executions.mode !== 'queue') {
+			throw new UserError(
+				'The "--activeState=fromJson" flag can only be used when n8n is running in queue or multi-main mode. In regular deployment mode, workflow activation is not supported.',
+			);
+		}
 
 		if (!flags.input) {
 			this.logger.info('An input file or directory with --input must be provided');
@@ -114,6 +132,12 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 
 		const project = await this.getProject(flags.userId, flags.projectId);
 
+		const ownerUser = await Container.get(UserRepository).findOneByOrFail({
+			role: { slug: GLOBAL_OWNER_ROLE.slug },
+		});
+		// This userId will be used as the actor for publish/unpublish workflow actions
+		const userId = flags.userId ?? ownerUser.id;
+
 		const workflows = await this.readWorkflows(flags.input, flags.separate);
 
 		const result = await this.checkRelations(workflows, flags.projectId, flags.userId);
@@ -124,9 +148,17 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 
 		this.logger.info(`Importing ${workflows.length} workflows...`);
 
-		await Container.get(ImportService).importWorkflows(workflows, project.id);
+		await Container.get(ImportService).importWorkflows(workflows, project.id, userId, {
+			activeState: flags.activeState,
+		});
 
 		this.reportSuccess(workflows.length);
+
+		Container.get(EventService).emit('server-cli-import', {
+			activeState: flags.activeState,
+			workflowCount: workflows.length,
+			separate: flags.separate,
+		});
 	}
 
 	private async checkRelations(workflows: IWorkflowBase[], projectId?: string, userId?: string) {

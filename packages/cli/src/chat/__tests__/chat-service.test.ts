@@ -1,7 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
-import { mock } from 'jest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
 import { CHAT_NODE_TYPE } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 import { WebSocket } from 'ws';
 
 import type { ChatExecutionManager } from '../chat-execution-manager';
@@ -16,11 +16,11 @@ describe('ChatService', () => {
 	let mockWs: ReturnType<typeof mock<WebSocket>>;
 
 	beforeAll(() => {
-		jest.useFakeTimers();
+		vi.useFakeTimers();
 	});
 
 	afterAll(() => {
-		jest.useRealTimers();
+		vi.useRealTimers();
 	});
 
 	beforeEach(() => {
@@ -43,12 +43,10 @@ describe('ChatService', () => {
 
 		mockExecutionManager.findExecution.mockResolvedValue(undefined);
 
-		try {
-			await chatService.startSession(req);
-		} catch (error) {
-			expect(error).toBeDefined();
-			expect(mockWs.send).toHaveBeenCalledWith('Execution with id "42" does not exist');
-		}
+		await chatService.startSession(req);
+
+		expect(mockWs.send).toHaveBeenCalledWith('Connection rejected');
+		expect(mockWs.close).toHaveBeenCalledWith(1008);
 	});
 
 	it('should handle missing WebSocket connection gracefully', async () => {
@@ -70,16 +68,21 @@ describe('ChatService', () => {
 
 			(mockWs as any).readyState = WebSocket.OPEN;
 
+			const validToken = 'a'.repeat(64);
 			const req = {
 				ws: mockWs,
 				query: {
 					sessionId: 'abc',
 					executionId: '123',
 					isPublic: true,
+					token: validToken,
 				},
 			} as unknown as ChatRequest;
 
-			mockExecutionManager.checkIfExecutionExists.mockResolvedValue({ id: '123' } as any);
+			mockExecutionManager.findExecution.mockResolvedValue({
+				id: '123',
+				data: { resumeToken: validToken },
+			} as any);
 
 			await chatService.startSession(req);
 
@@ -94,13 +97,14 @@ describe('ChatService', () => {
 		});
 
 		it('should terminate existing session if the same key is used and clear interval', async () => {
-			const clearIntervalSpy = jest.spyOn(global, 'clearInterval').mockImplementation();
+			const clearIntervalSpy = vi.spyOn(global, 'clearInterval').mockImplementation(() => {});
 			const req = {
 				ws: mockWs,
 				query: {
 					sessionId: 'abc',
 					executionId: '123',
 					isPublic: false,
+					token: 'a'.repeat(64),
 				},
 			} as unknown as ChatRequest;
 
@@ -119,7 +123,10 @@ describe('ChatService', () => {
 				isPublic: false,
 			});
 
-			mockExecutionManager.checkIfExecutionExists.mockResolvedValue({ id: '123' } as any);
+			mockExecutionManager.findExecution.mockResolvedValue({
+				id: '123',
+				data: { resumeToken: 'a'.repeat(64) },
+			} as any);
 
 			await chatService.startSession(req);
 
@@ -127,6 +134,119 @@ describe('ChatService', () => {
 			expect(clearIntervalSpy).toHaveBeenCalledWith(dummyInterval);
 			expect((chatService as any).sessions.get(sessionKey).connection).toBe(mockWs);
 			clearIntervalSpy.mockRestore();
+		});
+
+		it('should reject public session with missing token', async () => {
+			const req = {
+				ws: mockWs,
+				query: {
+					sessionId: 'abc',
+					executionId: '123',
+					isPublic: true,
+				},
+			} as unknown as ChatRequest;
+
+			mockExecutionManager.findExecution.mockResolvedValue({
+				id: '123',
+				data: { resumeToken: 'a'.repeat(64) },
+			} as any);
+
+			await chatService.startSession(req);
+
+			expect(mockWs.close).toHaveBeenCalledWith(1008);
+			expect(mockWs.on).not.toHaveBeenCalled();
+		});
+
+		it('should reject public session with invalid token', async () => {
+			const req = {
+				ws: mockWs,
+				query: {
+					sessionId: 'abc',
+					executionId: '123',
+					isPublic: true,
+					token: 'b'.repeat(64),
+				},
+			} as unknown as ChatRequest;
+
+			mockExecutionManager.findExecution.mockResolvedValue({
+				id: '123',
+				data: { resumeToken: 'a'.repeat(64) },
+			} as any);
+
+			await chatService.startSession(req);
+
+			expect(mockWs.close).toHaveBeenCalledWith(1008);
+			expect(mockWs.on).not.toHaveBeenCalled();
+		});
+
+		it('should accept public session with valid token', async () => {
+			const validToken = 'a'.repeat(64);
+			const req = {
+				ws: mockWs,
+				query: {
+					sessionId: 'abc',
+					executionId: '123',
+					isPublic: true,
+					token: validToken,
+				},
+			} as unknown as ChatRequest;
+
+			mockExecutionManager.findExecution.mockResolvedValue({
+				id: '123',
+				data: { resumeToken: validToken },
+			} as any);
+
+			await chatService.startSession(req);
+
+			const sessionKey = 'abc|123|public';
+			const session = (chatService as any).sessions.get(sessionKey);
+			expect(session).toBeDefined();
+			expect(session?.executionId).toBe('123');
+		});
+
+		it('should send same error for invalid token as for missing execution', async () => {
+			const req = {
+				ws: mockWs,
+				query: {
+					sessionId: 'abc',
+					executionId: '123',
+					isPublic: true,
+					token: 'b'.repeat(64),
+				},
+			} as unknown as ChatRequest;
+
+			mockExecutionManager.findExecution.mockResolvedValue({
+				id: '123',
+				data: { resumeToken: 'a'.repeat(64) },
+			} as any);
+
+			await chatService.startSession(req);
+
+			expect(mockWs.send).toHaveBeenCalledWith('Connection rejected');
+			expect(mockWs.close).toHaveBeenCalledWith(1008);
+		});
+
+		it('should skip token validation for old executions without resumeToken (backwards compat)', async () => {
+			const req = {
+				ws: mockWs,
+				query: {
+					sessionId: 'abc',
+					executionId: '123',
+					isPublic: true,
+				},
+			} as unknown as ChatRequest;
+
+			mockExecutionManager.findExecution.mockResolvedValue({
+				id: '123',
+				data: { resumeToken: undefined },
+			} as any);
+
+			await chatService.startSession(req);
+
+			const sessionKey = 'abc|123|public';
+			const session = (chatService as any).sessions.get(sessionKey);
+			expect(session).toBeDefined();
+			expect(session?.executionId).toBe('123');
 		});
 
 		describe('checkHeartbeats', () => {
@@ -142,7 +262,7 @@ describe('ChatService', () => {
 
 				mockExecutionManager.cancelExecution.mockResolvedValue(undefined);
 				mockWs.terminate.mockImplementation(() => {});
-				jest.spyOn(global, 'clearInterval').mockImplementation(() => {});
+				vi.spyOn(global, 'clearInterval').mockImplementation(() => {});
 
 				await (chatService as any).checkHeartbeats();
 
@@ -165,7 +285,7 @@ describe('ChatService', () => {
 				mockWs.send.mockImplementation(() => {
 					throw new Error('Connection error');
 				});
-				jest.spyOn(global, 'clearInterval').mockImplementation(() => {});
+				vi.spyOn(global, 'clearInterval').mockImplementation(() => {});
 
 				await (chatService as any).checkHeartbeats();
 
@@ -325,7 +445,7 @@ describe('ChatService', () => {
 			const session = {
 				isProcessing: false,
 				executionId: '123',
-				connection: { send: jest.fn() },
+				connection: { send: vi.fn() },
 				nodeWaitingForChatResponse: 'node1',
 			};
 			(chatService as any).sessions.set(sessionKey, session);
@@ -349,7 +469,7 @@ describe('ChatService', () => {
 			const session = {
 				isProcessing: false,
 				executionId: '123',
-				connection: { send: jest.fn() },
+				connection: { send: vi.fn() },
 				nodeWaitingForChatResponse: 'node1',
 			};
 			(chatService as any).sessions.set(sessionKey, session);
@@ -371,7 +491,7 @@ describe('ChatService', () => {
 			const session = {
 				isProcessing: false,
 				executionId: '123',
-				connection: { send: jest.fn() },
+				connection: { send: vi.fn() },
 				sessionId: 'abc',
 				nodeWaitingForChatResponse: undefined,
 			};
@@ -386,9 +506,9 @@ describe('ChatService', () => {
 				},
 				workflowData: { nodes: [{ name: 'node1' }] },
 			} as any);
-			(chatService as any).shouldResumeImmediately = jest.fn().mockReturnValue(false);
+			(chatService as any).shouldResumeImmediately = vi.fn().mockReturnValue(false);
 
-			(chatService as any).resumeExecution = jest.fn();
+			(chatService as any).resumeExecution = vi.fn();
 
 			const pollAndProcessChatResponses = (chatService as any).pollAndProcessChatResponses(
 				sessionKey,
@@ -404,7 +524,7 @@ describe('ChatService', () => {
 			const session = {
 				isProcessing: false,
 				executionId: '123',
-				connection: { send: jest.fn() },
+				connection: { send: vi.fn() },
 				sessionId: 'abc',
 				nodeWaitingForChatResponse: undefined,
 			};
@@ -419,8 +539,8 @@ describe('ChatService', () => {
 				},
 				workflowData: { nodes: [{ name: 'node1' }] },
 			} as any);
-			(chatService as any).shouldResumeImmediately = jest.fn().mockReturnValue(false);
-			(chatService as any).resumeExecution = jest.fn();
+			(chatService as any).shouldResumeImmediately = vi.fn().mockReturnValue(false);
+			(chatService as any).resumeExecution = vi.fn();
 
 			const pollAndProcessChatResponses = (chatService as any).pollAndProcessChatResponses(
 				sessionKey,
@@ -436,7 +556,7 @@ describe('ChatService', () => {
 			const session = {
 				isProcessing: false,
 				executionId: '123',
-				connection: { close: jest.fn(), readyState: 1, once: jest.fn() },
+				connection: { close: vi.fn(), readyState: 1, once: vi.fn() },
 				isPublic: false,
 			};
 			(chatService as any).sessions.set(sessionKey, session);
@@ -461,7 +581,7 @@ describe('ChatService', () => {
 			const session = {
 				isProcessing: false,
 				executionId: '123',
-				connection: { close: jest.fn(), readyState: 1, once: jest.fn() },
+				connection: { close: vi.fn(), readyState: 1, once: vi.fn() },
 				isPublic: false,
 				nodeWaitingForChatResponse: 'node1',
 			};

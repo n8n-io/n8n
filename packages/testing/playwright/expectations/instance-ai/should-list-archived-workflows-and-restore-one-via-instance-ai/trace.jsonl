@@ -1,0 +1,3 @@
+{"kind":"header","version":1,"testName":"recording","recordedAt":"2026-06-22T18:21:57.870Z"}
+{"kind":"tool-call","stepId":1,"agentRole":"orchestrator","toolName":"workflows","input":{"action":"list","query":"INS-199 Archived Restore Target","status":"archived"},"output":{"workflows":[{"id":"ins-199-archived-restore-target","name":"INS-199 Archived Restore Target","versionId":"5e666e61-addb-4f56-886e-4ce73aae2c91","activeVersionId":null,"isArchived":true,"createdAt":"2026-06-22T18:21:53.704Z","updatedAt":"2026-06-22T18:21:53.724Z"}]}}
+{"kind":"tool-call","stepId":2,"agentRole":"orchestrator","toolName":"workflows","input":{"action":"unarchive","workflowId":"ins-199-archived-restore-target"},"output":{"success":true}}

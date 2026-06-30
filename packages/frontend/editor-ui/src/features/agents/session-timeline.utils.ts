@@ -1,0 +1,294 @@
+import type { BaseTextKey } from '@n8n/i18n';
+import type { EventKind, IdleRange, TimelineItem } from './session-timeline.types';
+import type { AgentExecution } from './composables/useAgentThreadsApi';
+import { isDelegateSubAgentTool } from './utils/delegate-tool';
+import { formatToolNameForDisplay, getToolNameTranslationKey } from './utils/toolDisplayName';
+
+export const IDLE_THRESHOLD_MS = 10 * 60 * 1000;
+
+export function endTimestampOf(item: TimelineItem): number {
+	return item.endTimestamp ?? item.timestamp;
+}
+
+/** A `delegate_subagent` tool call — rendered as a sub-agent (bot icon) rather than a plain tool. */
+export function isSubAgentTimelineItem(item: TimelineItem): boolean {
+	return item.kind === 'tool' && isDelegateSubAgentTool(item.toolName);
+}
+
+export function computeIdleRanges(items: TimelineItem[]): IdleRange[] {
+	const ranges: IdleRange[] = [];
+	for (let i = 0; i < items.length - 1; i++) {
+		const a = items[i];
+		const b = items[i + 1];
+		if (a.kind === 'suspension' || b.kind === 'suspension') continue;
+		const aEnd = endTimestampOf(a);
+		const gap = b.timestamp - aEnd;
+		if (gap > IDLE_THRESHOLD_MS) {
+			ranges.push({ start: aEnd, end: b.timestamp });
+		}
+	}
+	return ranges;
+}
+
+export function itemFilterKey(item: TimelineItem): string {
+	// All tool-call kinds collapse to one filter entry per kind so the dropdown
+	// stays compact regardless of how many distinct tools the agent uses; the
+	// search input handles per-tool drill-down.
+	return item.kind;
+}
+
+export type TimelineLabelResolver = (key: string) => string;
+
+function searchableValueText(value: unknown): string | undefined {
+	if (value === undefined) return undefined;
+	if (value === null) return 'null';
+	if (typeof value === 'string') return value;
+	if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') {
+		return String(value);
+	}
+
+	try {
+		return JSON.stringify(value) ?? String(value);
+	} catch {
+		return String(value);
+	}
+}
+
+export function timelineItemSearchText(
+	item: TimelineItem,
+	labelForKey: TimelineLabelResolver,
+): string {
+	const parts: Array<string | undefined> = [];
+
+	parts.push(labelForKey(itemFilterKey(item)));
+	if (item.kind === 'suspension') {
+		parts.push(labelForKey('suspension-waiting'));
+	}
+	if (item.kind === 'tool' && item.isUserFeedback) {
+		parts.push(labelForKey('user-feedback'));
+	}
+
+	parts.push(
+		item.content,
+		item.toolName,
+		item.workflowName,
+		item.nodeDisplayName,
+		item.subAgentName,
+		searchableValueText(item.toolInput),
+		searchableValueText(item.toolOutput),
+	);
+	if (item.toolName) parts.push(formatToolNameForDisplay(item.toolName));
+
+	const toolKey = builtinToolLabelKey(item.toolName, item.toolOutput);
+	if (toolKey) parts.push(labelForKey(toolKey));
+
+	return parts
+		.filter((part): part is string => typeof part === 'string')
+		.join(' ')
+		.toLowerCase();
+}
+
+export function matchesSearch(
+	item: TimelineItem,
+	query: string,
+	labelForKey: TimelineLabelResolver,
+): boolean {
+	if (!query) return true;
+	return timelineItemSearchText(item, labelForKey).includes(query.toLowerCase());
+}
+
+export function filteredTimelineItemIndexes(
+	items: TimelineItem[],
+	visibleKinds: Set<string>,
+	searchQuery: string,
+	labelForKey: TimelineLabelResolver,
+): number[] {
+	return items
+		.map((item, index) => ({ item, index }))
+		.filter(
+			({ item }) =>
+				(visibleKinds.size === 0 || visibleKinds.has(itemFilterKey(item))) &&
+				matchesSearch(item, searchQuery.trim(), labelForKey),
+		)
+		.map(({ index }) => index);
+}
+
+export function sessionBounds(items: TimelineItem[]): { start: number; end: number } {
+	if (items.length === 0) return { start: 0, end: 1 };
+	let start = Infinity;
+	let end = -Infinity;
+	for (const item of items) {
+		if (item.timestamp < start) start = item.timestamp;
+		const e = endTimestampOf(item);
+		if (e > end) end = e;
+	}
+	if (end <= start) end = start + 1;
+	return { start, end };
+}
+
+const COLOR_MAP: Record<EventKind, string> = {
+	user: 'var(--color--blue-400)',
+	agent: 'var(--color--secondary)',
+	tool: 'var(--color--success)',
+	node: 'var(--color--text)',
+	workflow: 'var(--color--primary)',
+	suspension: 'var(--color--warning)',
+};
+
+export function kindColorToken(kind: EventKind): string {
+	return COLOR_MAP[kind];
+}
+
+const CHART_BLOCK_COLOR_MAP: Record<EventKind, string> = {
+	user: 'var(--color--blue-600)',
+	agent: 'var(--color--purple-600)',
+	tool: 'var(--color--green-600)',
+	node: 'var(--color--neutral-600)',
+	workflow: 'var(--color--orange-600)',
+	suspension: 'var(--color--yellow-600)',
+};
+
+export function chartBlockColor(kind: EventKind): string {
+	return CHART_BLOCK_COLOR_MAP[kind];
+}
+
+export function builtinToolLabelKey(
+	toolName: string | undefined,
+	_output?: unknown,
+): BaseTextKey | null {
+	return getToolNameTranslationKey(toolName) ?? null;
+}
+
+export function formatDuration(ms: number): string {
+	if (!ms || ms <= 0) return '';
+	if (ms < 1000) return `${ms}ms`;
+	if (ms < 60_000) return `${(ms / 1000).toFixed(1)}s`;
+	const minutes = Math.floor(ms / 60_000);
+	const seconds = Math.floor((ms % 60_000) / 1000);
+	if (minutes < 60) return seconds > 0 ? `${minutes}m ${seconds}s` : `${minutes}m`;
+	const hours = Math.floor(minutes / 60);
+	const remMinutes = minutes % 60;
+	return remMinutes > 0 ? `${hours}h ${remMinutes}m` : `${hours}h`;
+}
+
+interface RawToolCallEvent {
+	type: 'tool-call';
+	kind?: 'tool' | 'workflow' | 'node';
+	name: string;
+	toolCallId: string;
+	input: unknown;
+	output: unknown;
+	startTime: number;
+	endTime: number;
+	success: boolean;
+	workflowId?: string;
+	workflowName?: string;
+	workflowExecutionId?: string;
+	triggerType?: string;
+	nodeType?: string;
+	nodeTypeVersion?: number;
+	nodeDisplayName?: string;
+	nodeParameters?: Record<string, unknown>;
+}
+
+interface RawTextEvent {
+	type: 'text';
+	content: string;
+	timestamp: number;
+	endTime?: number;
+}
+
+interface RawSuspensionEvent {
+	type: 'suspension';
+	toolName: string;
+	toolCallId: string;
+	timestamp: number;
+}
+
+type RawEvent = RawToolCallEvent | RawTextEvent | RawSuspensionEvent;
+
+/**
+ * Cast the loose API timeline shape (`Record<string, unknown> & { type }`)
+ * into the discriminated union used by the renderer. The backend writes
+ * the same producer schema both layers expect; the API type is loose so
+ * `useAgentThreadsApi.ts` doesn't have to import the renderer's types.
+ */
+function timelineEvents(exec: AgentExecution): RawEvent[] {
+	return (exec.timeline ?? []) as unknown as RawEvent[];
+}
+
+export function flattenExecutionsToTimelineItems(executions: AgentExecution[]): TimelineItem[] {
+	const items: TimelineItem[] = [];
+	// Tool calls recorded AFTER a suspension of the same toolCallId are the
+	// resumed segment's record of the user's answer, not a fresh tool call.
+	const suspendedToolCallIds = new Set<string>();
+	for (const exec of executions) {
+		const isResumed = exec.hitlStatus === 'resumed';
+		let resumedTagUsed = false;
+
+		if (exec.userMessage) {
+			items.push({
+				kind: 'user',
+				executionId: exec.id,
+				content: exec.userMessage,
+				timestamp: exec.startedAt ? new Date(exec.startedAt).getTime() : 0,
+			});
+		}
+
+		for (const event of timelineEvents(exec)) {
+			if (event.type === 'text') {
+				const showResumed = isResumed && !resumedTagUsed;
+				if (showResumed) resumedTagUsed = true;
+				const startTs = event.timestamp ?? 0;
+				items.push({
+					kind: 'agent',
+					executionId: exec.id,
+					content: event.content,
+					timestamp: startTs,
+					// Generation duration: from first delta to flush. Older records without
+					// `endTime` skip this so the popover doesn't show a misleading 0.
+					endTimestamp: event.endTime && event.endTime > startTs ? event.endTime : undefined,
+					resumed: showResumed,
+				});
+			} else if (event.type === 'tool-call') {
+				const isWorkflow = event.kind === 'workflow';
+				const isNode = event.kind === 'node';
+				const isUserFeedback =
+					!isWorkflow &&
+					!isNode &&
+					event.toolCallId !== undefined &&
+					suspendedToolCallIds.has(event.toolCallId);
+				items.push({
+					kind: isWorkflow ? 'workflow' : isNode ? 'node' : 'tool',
+					executionId: exec.id,
+					toolName: event.name,
+					toolCallId: event.toolCallId,
+					toolInput: event.input,
+					toolOutput: event.output,
+					toolSuccess: event.success,
+					timestamp: event.startTime,
+					endTimestamp: event.endTime || event.startTime,
+					workflowId: isWorkflow ? event.workflowId : undefined,
+					workflowName: isWorkflow ? event.workflowName : undefined,
+					workflowExecutionId: isWorkflow ? event.workflowExecutionId : undefined,
+					workflowTriggerType: isWorkflow ? event.triggerType : undefined,
+					nodeType: isNode ? event.nodeType : undefined,
+					nodeTypeVersion: isNode ? event.nodeTypeVersion : undefined,
+					nodeDisplayName: isNode ? event.nodeDisplayName : undefined,
+					nodeParameters: isNode ? event.nodeParameters : undefined,
+					...(isUserFeedback && { isUserFeedback: true }),
+				});
+			} else if (event.type === 'suspension') {
+				if (event.toolCallId) suspendedToolCallIds.add(event.toolCallId);
+				items.push({
+					kind: 'suspension',
+					executionId: exec.id,
+					toolName: event.toolName,
+					toolCallId: event.toolCallId,
+					timestamp: event.timestamp ?? 0,
+				});
+			}
+		}
+	}
+	return items;
+}

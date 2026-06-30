@@ -1,22 +1,21 @@
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
-import { type ApiKey, type AuthenticatedRequest, WorkflowEntity, User, Role } from '@n8n/db';
+import { InstanceSettingsLoaderConfig } from '@n8n/config';
+import { type ApiKey, type AuthenticatedRequest, User, Role } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
-import { mock, mockDeep } from 'jest-mock-extended';
-import { HTTP_REQUEST_NODE_TYPE, WEBHOOK_NODE_TYPE, type INode } from 'n8n-workflow';
-import { v4 as uuid } from 'uuid';
+import { mock, mockDeep } from 'vitest-mock-extended';
 
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { ListQuery } from '@/requests';
+import { WorkflowService } from '@/workflows/workflow.service';
 
+import { UpdateAllowedRedirectUrisDto } from '../dto/update-allowed-redirect-uris.dto';
 import { UpdateMcpSettingsDto } from '../dto/update-mcp-settings.dto';
+import { UpdateWorkflowsAvailabilityDto } from '../dto/update-workflows-availability.dto';
 import { McpServerApiKeyService } from '../mcp-api-key.service';
 import { McpSettingsController } from '../mcp.settings.controller';
 import { McpSettingsService } from '../mcp.settings.service';
 import { createWorkflow } from './mock.utils';
-
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import { WorkflowService } from '@/workflows/workflow.service';
 
 const createReq = (
 	body: unknown,
@@ -82,24 +81,25 @@ describe('McpSettingsController', () => {
 	const moduleRegistry = mockDeep<ModuleRegistry>();
 	const mcpSettingsService = mock<McpSettingsService>();
 	const mcpServerApiKeyService = mockDeep<McpServerApiKeyService>();
-	const workflowFinderService = mock<WorkflowFinderService>();
 	const workflowService = mock<WorkflowService>();
+	const instanceSettingsLoaderConfig = mock<InstanceSettingsLoaderConfig>();
 
 	let controller: McpSettingsController;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
+		instanceSettingsLoaderConfig.mcpManagedByEnv = false;
 		Container.set(Logger, logger);
 		Container.set(McpSettingsService, mcpSettingsService);
 		Container.set(ModuleRegistry, moduleRegistry);
 		Container.set(McpServerApiKeyService, mcpServerApiKeyService);
-		Container.set(WorkflowFinderService, workflowFinderService);
 		Container.set(WorkflowService, workflowService);
+		Container.set(InstanceSettingsLoaderConfig, instanceSettingsLoaderConfig);
 		controller = Container.get(McpSettingsController);
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('updateSettings', () => {
@@ -148,6 +148,18 @@ describe('McpSettingsController', () => {
 				cause: 'Registry sync failed',
 			});
 			expect(result).toEqual({ mcpAccessEnabled: true });
+		});
+
+		test('rejects updates when MCP settings are managed by env', async () => {
+			instanceSettingsLoaderConfig.mcpManagedByEnv = true;
+			const req = createReq({ mcpAccessEnabled: true });
+			const dto = new UpdateMcpSettingsDto({ mcpAccessEnabled: true });
+
+			await expect(controller.updateSettings(req, createRes(), dto)).rejects.toThrow(
+				ForbiddenError,
+			);
+			expect(mcpSettingsService.setEnabled).not.toHaveBeenCalled();
+			expect(moduleRegistry.refreshModuleSettings).not.toHaveBeenCalled();
 		});
 
 		test('requires boolean mcpAccessEnabled value', () => {
@@ -307,155 +319,220 @@ describe('McpSettingsController', () => {
 		});
 	});
 
-	describe('toggleWorkflowMCPAccess', () => {
+	describe('toggleWorkflowsMCPAccess', () => {
 		const user = createUser();
-		const workflowId = 'workflow-1';
 
-		const createWebhookNode = (overrides: Partial<INode> = {}): INode => ({
-			id: 'node-1',
-			name: 'Webhook',
-			type: WEBHOOK_NODE_TYPE,
-			typeVersion: 1,
-			position: [0, 0],
-			parameters: {},
-			...overrides,
-		});
-
-		test('throws when workflow cannot be accessed', async () => {
-			workflowFinderService.findWorkflowForUser.mockResolvedValue(null);
-			const req = createReq({}, { user });
-
-			await expect(
-				controller.toggleWorkflowMCPAccess(req, mock<Response>(), workflowId, {
-					availableInMCP: true,
-				}),
-			).rejects.toThrow(
-				new NotFoundError(
-					'Could not load the workflow - you can only access workflows available to you',
-				),
-			);
-			expect(workflowService.update).not.toHaveBeenCalled();
-		});
-
-		test('allows enabling MCP for inactive workflows', async () => {
-			workflowFinderService.findWorkflowForUser.mockResolvedValue(
-				createWorkflow({
-					activeVersionId: null,
-					nodes: [createWebhookNode({ disabled: false })],
-				}),
-			);
-			workflowService.update.mockResolvedValue({
-				id: workflowId,
-				settings: { saveManualExecutions: true, availableInMCP: true },
-				versionId: 'client-version',
-			} as unknown as WorkflowEntity);
-
-			await controller.toggleWorkflowMCPAccess(
-				createReq({}, { user }),
-				mock<Response>(),
-				workflowId,
-				{
-					availableInMCP: true,
-				},
-			);
-
-			expect(workflowService.update).toHaveBeenCalledTimes(1);
-		});
-
-		test('allows disabling MCP for inactive workflows', async () => {
-			workflowFinderService.findWorkflowForUser.mockResolvedValue(
-				createWorkflow({ activeVersionId: null }),
-			);
-			workflowService.update.mockResolvedValue({
-				id: workflowId,
-				settings: { saveManualExecutions: true, availableInMCP: false },
-				versionId: 'client-version',
-			} as unknown as WorkflowEntity);
-
-			const req = createReq({}, { user });
-
-			await controller.toggleWorkflowMCPAccess(req, mock<Response>(), workflowId, {
-				availableInMCP: false,
+		test('delegates to mcpSettingsService.bulkSetAvailableInMCP and returns its result', async () => {
+			const dto = new UpdateWorkflowsAvailabilityDto({
+				availableInMCP: true,
+				workflowIds: ['wf-1', 'wf-2'],
 			});
-
-			expect(workflowService.update).toHaveBeenCalledTimes(1);
-		});
-
-		test('allows enabling MCP regardless of trigger node types', async () => {
-			workflowFinderService.findWorkflowForUser.mockResolvedValue(
-				createWorkflow({
-					activeVersionId: uuid(),
-					nodes: [
-						{
-							id: 'node-2',
-							name: 'HTTP Request',
-							type: HTTP_REQUEST_NODE_TYPE,
-							typeVersion: 1,
-							position: [10, 10],
-							parameters: {},
-						},
-					],
-				}),
-			);
-			workflowService.update.mockResolvedValue({
-				id: workflowId,
-				settings: { saveManualExecutions: true, availableInMCP: true },
-				versionId: 'client-version',
-			} as unknown as WorkflowEntity);
-
-			await controller.toggleWorkflowMCPAccess(
-				createReq({}, { user }),
-				mock<Response>(),
-				workflowId,
-				{
-					availableInMCP: true,
-				},
-			);
-
-			expect(workflowService.update).toHaveBeenCalledTimes(1);
-		});
-
-		test('persists MCP availability when validation passes', async () => {
-			const workflow = createWorkflow({
-				activeVersionId: uuid(),
-				settings: { saveManualExecutions: true },
-				nodes: [
-					createWebhookNode({ disabled: false }),
+			const bulkResult = {
+				updatedCount: 2,
+				updatedIds: ['wf-1', 'wf-2'],
+				unchangedCount: 0,
+				unchangedIds: [],
+				skippedCount: 0,
+				failedCount: 0,
+				changedWorkflows: [
 					{
-						id: 'node-2',
-						name: 'HTTP Request',
-						type: HTTP_REQUEST_NODE_TYPE,
-						typeVersion: 1,
-						position: [10, 10],
-						parameters: {},
+						workflowId: 'wf-1',
+						settings: { availableInMCP: true },
+						checksum: 'checksum-wf-1',
+					},
+					{
+						workflowId: 'wf-2',
+						settings: { availableInMCP: true },
+						checksum: 'checksum-wf-2',
 					},
 				],
-			});
-			workflowFinderService.findWorkflowForUser.mockResolvedValue(workflow);
-			workflowService.update.mockResolvedValue({
-				id: workflowId,
-				settings: { saveManualExecutions: true, availableInMCP: true },
-				versionId: 'updated-version-id',
-			} as unknown as WorkflowEntity);
+			};
+			mcpSettingsService.bulkSetAvailableInMCP.mockResolvedValue(bulkResult);
 
 			const req = createReq({}, { user });
-			const response = await controller.toggleWorkflowMCPAccess(req, mock<Response>(), workflowId, {
+			const result = await controller.toggleWorkflowsMCPAccess(req, mock<Response>(), dto);
+
+			expect(mcpSettingsService.bulkSetAvailableInMCP).toHaveBeenCalledTimes(1);
+			expect(mcpSettingsService.bulkSetAvailableInMCP).toHaveBeenCalledWith(user, dto);
+			expect(mcpSettingsService.broadcastWorkflowMCPAvailabilityChanged).toHaveBeenCalledWith(
+				bulkResult.changedWorkflows,
+			);
+			expect(result).toEqual({
+				updatedCount: 2,
+				updatedIds: ['wf-1', 'wf-2'],
+				unchangedCount: 0,
+				unchangedIds: [],
+				skippedCount: 0,
+				failedCount: 0,
+			});
+		});
+	});
+
+	describe('getAllowedRedirectUris', () => {
+		test('returns allowed redirect URIs', async () => {
+			const mockUris = ['https://example.com/callback', 'http://localhost:3000/callback'];
+			mcpSettingsService.getAllowedRedirectUris.mockResolvedValue(mockUris);
+
+			const result = await controller.getAllowedRedirectUris();
+
+			expect(mcpSettingsService.getAllowedRedirectUris).toHaveBeenCalled();
+			expect(result).toEqual({ uris: mockUris });
+		});
+
+		test('returns empty array when no URIs configured', async () => {
+			mcpSettingsService.getAllowedRedirectUris.mockResolvedValue([]);
+
+			const result = await controller.getAllowedRedirectUris();
+
+			expect(result).toEqual({ uris: [] });
+		});
+	});
+
+	describe('updateAllowedRedirectUris', () => {
+		test('updates allowed redirect URIs successfully', async () => {
+			const uris = ['https://example.com/callback', 'http://localhost:3000/callback'];
+			const dto = new UpdateAllowedRedirectUrisDto({ uris });
+			mcpSettingsService.setAllowedRedirectUris.mockResolvedValue(undefined);
+
+			const result = await controller.updateAllowedRedirectUris(createReq({}), createRes(), dto);
+
+			expect(mcpSettingsService.setAllowedRedirectUris).toHaveBeenCalledWith(uris);
+			expect(result).toEqual({ success: true });
+		});
+
+		test('propagates storage errors instead of mapping them to a client error', async () => {
+			const uris = ['https://example.com/callback'];
+			const dto = new UpdateAllowedRedirectUrisDto({ uris });
+			const dbError = new Error('Database connection failed');
+			mcpSettingsService.setAllowedRedirectUris.mockRejectedValue(dbError);
+
+			await expect(
+				controller.updateAllowedRedirectUris(createReq({}), createRes(), dto),
+			).rejects.toThrow(dbError);
+		});
+
+		test('accepts empty array', async () => {
+			const dto = new UpdateAllowedRedirectUrisDto({ uris: [] });
+			mcpSettingsService.setAllowedRedirectUris.mockResolvedValue(undefined);
+
+			const result = await controller.updateAllowedRedirectUris(createReq({}), createRes(), dto);
+
+			expect(mcpSettingsService.setAllowedRedirectUris).toHaveBeenCalledWith([]);
+			expect(result).toEqual({ success: true });
+		});
+	});
+
+	describe('UpdateAllowedRedirectUrisDto', () => {
+		test('accepts valid http and https URIs', () => {
+			const dto = new UpdateAllowedRedirectUrisDto({
+				uris: ['https://example.com/callback', 'http://localhost:3000/callback'],
+			});
+
+			expect(dto.uris).toEqual(['https://example.com/callback', 'http://localhost:3000/callback']);
+		});
+
+		test('trims whitespace and filters out empty entries', () => {
+			const dto = new UpdateAllowedRedirectUrisDto({
+				uris: ['  https://example.com/callback  ', '', '   '],
+			});
+
+			expect(dto.uris).toEqual(['https://example.com/callback']);
+		});
+
+		test('rejects malformed URLs', () => {
+			expect(() => new UpdateAllowedRedirectUrisDto({ uris: ['not-a-url'] })).toThrow();
+		});
+
+		test('rejects non-http/https protocols', () => {
+			expect(
+				() => new UpdateAllowedRedirectUrisDto({ uris: ['ftp://example.com/callback'] }),
+			).toThrow();
+		});
+
+		test('requires HTTPS for non-localhost URIs outside development', () => {
+			const originalEnv = process.env.NODE_ENV;
+			process.env.NODE_ENV = 'production';
+
+			try {
+				expect(
+					() => new UpdateAllowedRedirectUrisDto({ uris: ['http://example.com/callback'] }),
+				).toThrow();
+			} finally {
+				process.env.NODE_ENV = originalEnv;
+			}
+		});
+
+		test('allows http for localhost outside development', () => {
+			const originalEnv = process.env.NODE_ENV;
+			process.env.NODE_ENV = 'production';
+
+			try {
+				const dto = new UpdateAllowedRedirectUrisDto({
+					uris: ['http://localhost:3000/callback', 'http://127.0.0.1:3000/callback'],
+				});
+
+				expect(dto.uris).toEqual([
+					'http://localhost:3000/callback',
+					'http://127.0.0.1:3000/callback',
+				]);
+			} finally {
+				process.env.NODE_ENV = originalEnv;
+			}
+		});
+
+		test('allows http for IPv6 loopback [::1] outside development', () => {
+			const originalEnv = process.env.NODE_ENV;
+			process.env.NODE_ENV = 'production';
+
+			try {
+				const dto = new UpdateAllowedRedirectUrisDto({
+					uris: ['http://[::1]:3000/callback'],
+				});
+
+				expect(dto.uris).toEqual(['http://[::1]:3000/callback']);
+			} finally {
+				process.env.NODE_ENV = originalEnv;
+			}
+		});
+	});
+
+	describe('UpdateWorkflowsAvailabilityDto', () => {
+		test('requires availableInMCP to be a boolean', () => {
+			expect(() => new UpdateWorkflowsAvailabilityDto({} as never)).toThrow();
+			expect(
+				() => new UpdateWorkflowsAvailabilityDto({ availableInMCP: 'yes' } as never),
+			).toThrow();
+		});
+
+		test('accepts a valid workflowIds scope', () => {
+			const dto = new UpdateWorkflowsAvailabilityDto({
 				availableInMCP: true,
+				workflowIds: ['wf-1'],
 			});
+			expect(dto.workflowIds).toEqual(['wf-1']);
+			expect(dto.projectId).toBeUndefined();
+			expect(dto.folderId).toBeUndefined();
+		});
 
-			expect(workflowService.update).toHaveBeenCalledTimes(1);
-			const updateArgs = workflowService.update.mock.calls[0];
-			expect(updateArgs[0]).toEqual(user);
-			expect(updateArgs[1]).toBeInstanceOf(WorkflowEntity);
-			expect(updateArgs[1].settings).toEqual({ saveManualExecutions: true, availableInMCP: true });
-			expect(updateArgs[1].versionId).toEqual('some-version-id');
-			expect(updateArgs[2]).toEqual(workflowId);
+		test('rejects an empty workflowIds array', () => {
+			expect(
+				() =>
+					new UpdateWorkflowsAvailabilityDto({
+						availableInMCP: true,
+						workflowIds: [],
+					}),
+			).toThrow();
+		});
 
-			expect(response).toEqual({
-				id: workflowId,
-				settings: { saveManualExecutions: true, availableInMCP: true },
-				versionId: 'updated-version-id',
-			});
+		test('rejects workflowIds arrays over the cap', () => {
+			const workflowIds = Array.from({ length: 101 }, (_, i) => `wf-${i}`);
+			expect(
+				() =>
+					new UpdateWorkflowsAvailabilityDto({
+						availableInMCP: true,
+						workflowIds,
+					}),
+			).toThrow();
 		});
 	});
 });

@@ -1,5 +1,3 @@
-import { EventService } from '@/events/event.service';
-import { RelayEventMap } from '@/events/maps/relay.event-map';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig, WorkflowHistoryCompactionConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -9,6 +7,9 @@ import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { DiffMetaData, DiffRule, ensureError, RULES, SKIP_RULES, sleep } from 'n8n-workflow';
 import { strict } from 'node:assert';
+
+import { EventService } from '@/events/event.service';
+import { RelayEventMap } from '@/events/maps/relay.event-map';
 
 /**
  * Responsible for compacting auto saved workflow history entries in the database.
@@ -29,7 +30,7 @@ import { strict } from 'node:assert';
  *    by `trimmingMinimumAgeDays` and `trimmingTimeWindowDays`
  *
  * 2. For each workflow, fetch all versions in that window and leave behind
- *    only one version every minute to four hours, depending on the size of the
+ *    only one version every minute to ten hours, depending on the size of the
  *    workflow.
  *
  * Neither of these operations will remove active or named versions, and a version
@@ -162,10 +163,10 @@ export class WorkflowHistoryCompactionService {
 					RULES.makeMergeDependingOnSizeRule(
 						new Map([
 							[0, 60 * 1_000],
-							[100, 5 * 60 * 1_000],
-							[1000, 30 * 60 * 1_000],
-							[5000, 60 * 60 * 1_000],
-							[10000, 4 * 60 * 60 * 1_000],
+							[100, 10 * 60 * 1_000],
+							[1000, 2 * 60 * 60 * 1_000],
+							[5000, 5 * 60 * 60 * 1_000],
+							[10000, 10 * 60 * 60 * 1_000],
 						]),
 					),
 				],

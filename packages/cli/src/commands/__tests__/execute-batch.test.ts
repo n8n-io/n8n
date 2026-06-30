@@ -1,11 +1,12 @@
+import { LicenseState } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { User, WorkflowEntity } from '@n8n/db';
 import { WorkflowRepository, DbConnection, AuthRolesService, BinaryDataRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { type SelectQueryBuilder } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
 import type { IRun } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { ActiveExecutions } from '@/active-executions';
 import { DeprecationService } from '@/deprecation/deprecation.service';
@@ -13,6 +14,7 @@ import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus'
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay';
 import { ExternalHooks } from '@/external-hooks';
+import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CommunityPackagesService } from '@/modules/community-packages/community-packages.service';
 import { PostHogClient } from '@/posthog';
@@ -35,6 +37,8 @@ mockInstance(MessageEventBus);
 const posthogClient = mockInstance(PostHogClient);
 const telemetryEventRelay = mockInstance(TelemetryEventRelay);
 const externalHooks = mockInstance(ExternalHooks);
+mockInstance(License);
+mockInstance(LicenseState);
 mockInstance(CommunityPackagesService);
 mockInstance(WorkflowFailureNotificationEventRelay);
 
@@ -55,8 +59,8 @@ test('should start a task runner', async () => {
 	const run = mock<IRun>({ data: { resultData: { error: undefined } } });
 
 	const queryBuilder = mock<SelectQueryBuilder<WorkflowEntity>>({
-		andWhere: jest.fn().mockReturnThis(),
-		getMany: jest.fn().mockResolvedValue([workflow]),
+		andWhere: vi.fn().mockReturnThis(),
+		getMany: vi.fn().mockResolvedValue([workflow]),
 	});
 
 	loadNodesAndCredentials.init.mockResolvedValue(undefined);
@@ -83,7 +87,7 @@ test('should start a task runner', async () => {
 	// @ts-expect-error Protected property
 	cmd.flags = {};
 	// @ts-expect-error Private property
-	cmd.runTests = jest.fn().mockResolvedValue({ summary: { failedExecutions: [] } });
+	cmd.runTests = vi.fn().mockResolvedValue({ summary: { failedExecutions: [] } });
 
 	// act
 

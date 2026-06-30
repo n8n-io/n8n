@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-extension-insights",
-  "version": "0.11.0",
+  "version": "0.16.0",
   "type": "module",
   "files": [
     "dist",
@@ -28,6 +28,7 @@
     "./*": "./*"
   },
   "scripts": {
+    "clean": "rimraf dist .turbo",
     "cleanup": "rimraf dist",
     "dev": "tsdown --watch",
     "lint": "eslint src --quiet",
@@ -38,25 +39,26 @@
     "build:backend": "tsdown",
     "build:frontend": "vite build",
     "build": "pnpm cleanup && pnpm run \"/^build:.*/\"",
+    "build:unchecked": "pnpm cleanup && pnpm run build:backend && pnpm run build:frontend",
     "preview": "vite preview"
   },
-  "peerDependencies": {
+  "dependencies": {
+    "@n8n/extension-sdk": "workspace:*",
     "vue": "catalog:frontend",
     "vue-router": "catalog:frontend"
-  },
-  "dependencies": {
-    "@n8n/extension-sdk": "workspace:*"
   },
   "devDependencies": {
     "@n8n/stylelint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@vitejs/plugin-vue": "catalog:frontend",
     "@vue/tsconfig": "catalog:frontend",
+    "stylelint": "catalog:",
     "tsdown": "catalog:",
     "rimraf": "catalog:",
     "vite": "catalog:",
-    "vue": "catalog:frontend",
-    "vue-router": "catalog:frontend",
+    "vitest": "catalog:",
+    "vite-plugin-dts": "catalog:",
     "vue-tsc": "catalog:frontend"
-  }
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }

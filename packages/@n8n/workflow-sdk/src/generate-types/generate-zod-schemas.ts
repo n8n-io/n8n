@@ -24,6 +24,7 @@ import {
 	filterPropertiesForVersion,
 	buildDiscriminatorTree,
 	extractAIInputTypesFromBuilderHint,
+	narrowDisplayOptionsByDisabled,
 } from './generate-types';
 
 // =============================================================================
@@ -39,6 +40,30 @@ const CUSTOM_API_CALL_KEY = '__CUSTOM_API_CALL__';
 function isCustomApiCall(operation: string): boolean {
 	return operation === CUSTOM_API_CALL_KEY;
 }
+
+/**
+ * Property types that don't carry runtime data and are skipped from generated
+ * Zod schemas — they exist only as UI hints in the workflow JSON.
+ *
+ * Note: `button` and `icon` are not in this list — they can carry data.
+ */
+const DISPLAY_ONLY_PROPERTY_TYPES = new Set(['notice', 'curlImport', 'credentials', 'callout']);
+
+/**
+ * Runtime shape for `type: 'icon'` properties (see N8nIconPicker).
+ * Values are stored as `{ type: 'icon' | 'emoji'; value: string }`.
+ */
+const ICON_ZOD_SCHEMA =
+	"z.object({ type: z.union([z.literal('icon'), z.literal('emoji')]), value: z.string() })";
+
+/**
+ * Runtime shape for `type: 'workflowSelector'` properties.
+ * The UI hardcodes two modes (`list` and `id`). Stored as an
+ * `INodeParameterResourceLocator` object, or as an `={{...}}` expression
+ * string when the user enters an expression.
+ */
+const WORKFLOW_SELECTOR_ZOD_SCHEMA =
+	"z.union([z.object({ __rl: z.literal(true), mode: z.union([z.literal('list'), z.literal('id')]), value: z.union([z.string(), z.number()]), cachedResultName: z.string().optional(), cachedResultUrl: z.string().optional() }), expressionSchema])";
 
 /**
  * Known values for genericAuthType in HTTP Request node
@@ -177,13 +202,45 @@ const AI_TYPE_TO_SCHEMA_FIELD: Record<
 // =============================================================================
 
 /**
- * Determine if a property should be optional in the schema.
- * A property is optional if it's not required OR if it has a default value.
- * Properties with defaults can be omitted - the default will be used at runtime.
+ * A property's default value satisfies its required constraint only when the
+ * value is non-empty for the property type. Empty strings, empty `multiOptions`
+ * arrays, etc. do not count as satisfying `required: true`.
  */
-function isPropertyOptional(prop: NodeProperty): boolean {
-	const hasDefault = 'default' in prop && prop.default !== undefined;
-	return !prop.required || hasDefault;
+function defaultSatisfiesRequired(prop: NodeProperty): boolean {
+	if (!('default' in prop) || prop.default === undefined) return false;
+
+	switch (prop.type) {
+		case 'string':
+		case 'options':
+		case 'dateTime':
+			return prop.default !== '';
+		case 'multiOptions':
+			return !(Array.isArray(prop.default) && prop.default.length === 0);
+		default:
+			return true;
+	}
+}
+
+/**
+ * Determine if a property should be optional in the schema.
+ * A property is optional if it's not required OR if it has a default value
+ * that actually satisfies the required constraint (see
+ * `defaultSatisfiesRequired`).
+ */
+export function isPropertyOptional(prop: NodeProperty): boolean {
+	// A fixedCollection with minRequiredFields > 0 cannot satisfy the
+	// constraint via its default (typically `{}`), so the property itself
+	// must be present — overrides the default shortcut.
+	const minRequired = prop.typeOptions?.minRequiredFields;
+	if (
+		prop.type === 'fixedCollection' &&
+		prop.typeOptions?.multipleValues === true &&
+		typeof minRequired === 'number' &&
+		minRequired > 0
+	) {
+		return false;
+	}
+	return !prop.required || defaultSatisfiesRequired(prop);
 }
 
 /**
@@ -346,19 +403,50 @@ function generateResourceLocatorZodSchema(prop: NodeProperty): string {
 }
 
 /**
- * Map a nested property to its Zod schema code (for collection/fixedCollection inner properties)
+ * Primitive element schema token for a given base type.
+ * When `allowExpression` is true, returns the `*OrExpression` helper that accepts
+ * both the literal value and n8n expression strings; otherwise returns the plain
+ * Zod primitive. Callers embed this token inside larger schemas (arrays, unions).
  */
-function mapNestedPropertyToZodSchema(prop: NodeProperty): string {
-	const result = mapNestedPropertyToZodSchemaInner(prop);
-	if (prop.noDataExpression) {
-		return stripExpressionFromZodSchema(result);
-	}
-	return result;
+function primitiveElement(base: 'string' | 'number' | 'boolean', allowExpression: boolean): string {
+	if (base === 'string') return allowExpression ? 'stringOrExpression' : 'z.string()';
+	if (base === 'number') return allowExpression ? 'numberOrExpression' : 'z.number()';
+	return allowExpression ? 'booleanOrExpression' : 'z.boolean()';
 }
 
-function mapNestedPropertyToZodSchemaInner(prop: NodeProperty): string {
+/**
+ * Wrap an element schema in `z.array(...)` when the property supports
+ * `typeOptions.multipleValues`. When expressions are allowed the whole array
+ * can also be replaced by an expression string at runtime, so we emit a union
+ * with `expressionSchema`.
+ */
+function wrapMultipleValues(
+	elementSchema: string,
+	isMultipleValues: boolean,
+	_allowExpression: boolean,
+): string {
+	if (!isMultipleValues) return elementSchema;
+	return `z.array(${elementSchema})`;
+}
+
+/** Wrap a list of literal/object schemas in a union, optionally extended with `expressionSchema`. */
+function literalUnion(literals: string[], allowExpression: boolean): string {
+	const parts = allowExpression ? [...literals, 'expressionSchema'] : literals;
+	return `z.union([${parts.join(', ')}])`;
+}
+
+/**
+ * Map a nested property to its Zod schema code (for collection/fixedCollection inner properties).
+ * Reads `prop.noDataExpression` once here; all downstream branches build the schema
+ * directly in its final form instead of post-processing the string.
+ */
+function mapNestedPropertyToZodSchema(prop: NodeProperty): string {
+	return mapNestedPropertyToZodSchemaInner(prop, !prop.noDataExpression);
+}
+
+function mapNestedPropertyToZodSchemaInner(prop: NodeProperty, allowExpression: boolean): string {
 	// Skip display-only types
-	if (['notice', 'curlImport', 'credentials'].includes(prop.type)) {
+	if (DISPLAY_ONLY_PROPERTY_TYPES.has(prop.type)) {
 		return '';
 	}
 
@@ -372,12 +460,18 @@ function mapNestedPropertyToZodSchemaInner(prop: NodeProperty): string {
 		return 'resourceMapperValueSchema';
 	}
 
+	const isMultipleValues = prop.typeOptions?.multipleValues === true;
+
 	// Handle dynamic options (but not for types with specific structure)
 	if (prop.typeOptions?.loadOptionsMethod || prop.typeOptions?.loadOptionsDependsOn) {
 		if (prop.type === 'multiOptions') {
 			return 'z.array(z.string())';
 		}
-		return 'stringOrExpression';
+		return wrapMultipleValues(
+			primitiveElement('string', allowExpression),
+			isMultipleValues,
+			allowExpression,
+		);
 	}
 
 	switch (prop.type) {
@@ -385,35 +479,42 @@ function mapNestedPropertyToZodSchemaInner(prop: NodeProperty): string {
 		case 'dateTime':
 		case 'color':
 		case 'credentialsSelect':
-			return 'stringOrExpression';
+			return wrapMultipleValues(
+				primitiveElement('string', allowExpression),
+				isMultipleValues,
+				allowExpression,
+			);
 
 		case 'number':
-			return 'numberOrExpression';
+			return wrapMultipleValues(
+				primitiveElement('number', allowExpression),
+				isMultipleValues,
+				allowExpression,
+			);
 
 		case 'boolean':
-			return 'booleanOrExpression';
+			return primitiveElement('boolean', allowExpression);
 
-		case 'options':
-			if (prop.options && prop.options.length > 0) {
-				const literals = prop.options
-					.filter((opt) => opt.value !== undefined)
-					.map((opt) => `z.literal(${formatZodLiteral(opt.value)})`);
-				if (literals.length > 0) {
-					return `z.union([${literals.join(', ')}, expressionSchema])`;
-				}
-			}
-			return 'stringOrExpression';
+		case 'options': {
+			const literals = (prop.options ?? [])
+				.filter((opt) => opt.value !== undefined)
+				.map((opt) => `z.literal(${formatZodLiteral(opt.value)})`);
+			const elementSchema =
+				literals.length > 0
+					? literalUnion(literals, allowExpression)
+					: primitiveElement('string', allowExpression);
+			return wrapMultipleValues(elementSchema, isMultipleValues, allowExpression);
+		}
 
-		case 'multiOptions':
-			if (prop.options && prop.options.length > 0) {
-				const literals = prop.options
-					.filter((opt) => opt.value !== undefined)
-					.map((opt) => `z.literal(${formatZodLiteral(opt.value)})`);
-				if (literals.length > 0) {
-					return `z.array(z.union([${literals.join(', ')}]))`;
-				}
+		case 'multiOptions': {
+			const literals = (prop.options ?? [])
+				.filter((opt) => opt.value !== undefined)
+				.map((opt) => `z.literal(${formatZodLiteral(opt.value)})`);
+			if (literals.length > 0) {
+				return `z.array(z.union([${literals.join(', ')}]))`;
 			}
 			return 'z.array(z.string())';
+		}
 
 		case 'json':
 			return 'z.union([iDataObjectSchema, z.string()])';
@@ -423,6 +524,21 @@ function mapNestedPropertyToZodSchemaInner(prop: NodeProperty): string {
 
 		case 'assignmentCollection':
 			return 'assignmentCollectionValueSchema';
+
+		case 'fixedCollection':
+			return generateFixedCollectionZodSchema(prop);
+
+		case 'collection':
+			return generateCollectionZodSchema(prop);
+
+		case 'button':
+			return primitiveElement('string', allowExpression);
+
+		case 'icon':
+			return ICON_ZOD_SCHEMA;
+
+		case 'workflowSelector':
+			return WORKFLOW_SELECTOR_ZOD_SCHEMA;
 
 		case 'hidden':
 			return 'z.unknown()';
@@ -450,24 +566,28 @@ function generateFixedCollectionZodSchema(prop: NodeProperty): string {
 		}
 
 		const groupName = quotePropertyName(group.name);
-		const nestedProps: string[] = [];
-
-		for (const nestedProp of group.values) {
-			if (['notice', 'curlImport', 'credentials'].includes(nestedProp.type)) {
-				continue;
-			}
-
-			const nestedSchema = mapNestedPropertyToZodSchema(nestedProp);
-			if (nestedSchema) {
-				const quotedName = quotePropertyName(nestedProp.name);
-				nestedProps.push(`${quotedName}: ${nestedSchema}.optional()`);
-			}
-		}
+		const nestedProps = generateNestedSchemaPropertyLines(group.values);
 
 		if (nestedProps.length > 0) {
 			const innerSchema = `z.object({ ${nestedProps.join(', ')} })`;
-			const groupSchema = isMultipleValues ? `z.array(${innerSchema})` : innerSchema;
-			groups.push(`${groupName}: ${groupSchema}.optional()`);
+			const minRequired = prop.typeOptions?.minRequiredFields;
+			const hasMinRequired = typeof minRequired === 'number' && minRequired > 0;
+			let groupSchema: string;
+			if (isMultipleValues) {
+				const maxAllowed = prop.typeOptions?.maxAllowedFields;
+				let arraySchema = `z.array(${innerSchema})`;
+				if (hasMinRequired) {
+					arraySchema += `.min(${minRequired})`;
+				}
+				if (typeof maxAllowed === 'number' && maxAllowed > 0) {
+					arraySchema += `.max(${maxAllowed})`;
+				}
+				groupSchema = arraySchema;
+			} else {
+				groupSchema = innerSchema;
+			}
+			const groupSuffix = hasMinRequired ? '' : '.optional()';
+			groups.push(`${groupName}: ${groupSchema}${groupSuffix}`);
 		}
 	}
 
@@ -486,26 +606,10 @@ function generateCollectionZodSchema(prop: NodeProperty): string {
 		return 'z.record(z.string(), z.unknown())';
 	}
 
-	const nestedProps: string[] = [];
-
-	for (const nestedProp of prop.options) {
-		// Skip if this is a group (has values array)
-		if (nestedProp.values !== undefined) {
-			continue;
-		}
-
-		// Cast to NodeProperty since collection options are actually NodeProperty-like
-		const asNodeProp = nestedProp as unknown as NodeProperty;
-		if (['notice', 'curlImport', 'credentials'].includes(asNodeProp.type)) {
-			continue;
-		}
-
-		const nestedSchema = mapNestedPropertyToZodSchema(asNodeProp);
-		if (nestedSchema) {
-			const quotedName = quotePropertyName(nestedProp.name);
-			nestedProps.push(`${quotedName}: ${nestedSchema}.optional()`);
-		}
-	}
+	const nestedOptionProps = prop.options
+		.filter((nestedProp) => nestedProp.values === undefined)
+		.map((nestedProp) => nestedProp as unknown as NodeProperty);
+	const nestedProps = generateNestedSchemaPropertyLines(nestedOptionProps);
 
 	if (nestedProps.length === 0) {
 		return 'z.record(z.string(), z.unknown())';
@@ -514,39 +618,74 @@ function generateCollectionZodSchema(prop: NodeProperty): string {
 	return `z.object({ ${nestedProps.join(', ')} })`;
 }
 
+function combineSchemaAlternatives(schemas: string[]): string {
+	const uniqueSchemas = Array.from(new Set(schemas));
+	if (uniqueSchemas.length === 1) {
+		return uniqueSchemas[0];
+	}
+
+	return `z.union([${uniqueSchemas.join(', ')}])`;
+}
+
+/**
+ * Collection and fixedCollection fields can contain several UI-only variants
+ * with the same name. Emit one object key and accept every variant schema,
+ * otherwise JavaScript keeps only the last duplicate key.
+ */
+function generateNestedSchemaPropertyLines(properties: NodeProperty[]): string[] {
+	const schemasByName = new Map<string, string[]>();
+
+	for (const nestedProp of properties) {
+		if (DISPLAY_ONLY_PROPERTY_TYPES.has(nestedProp.type)) {
+			continue;
+		}
+
+		const nestedSchema = mapNestedPropertyToZodSchema(nestedProp);
+		if (!nestedSchema) {
+			continue;
+		}
+
+		const schemas = schemasByName.get(nestedProp.name) ?? [];
+		schemas.push(nestedSchema);
+		schemasByName.set(nestedProp.name, schemas);
+	}
+
+	return Array.from(schemasByName.entries()).map(([name, schemas]) => {
+		const quotedName = quotePropertyName(name);
+		return `${quotedName}: ${combineSchemaAlternatives(schemas)}.optional()`;
+	});
+}
+
 /**
  * Map n8n property type to Zod schema code string
  *
  * This function parallels mapPropertyType() but returns Zod schema code
  * that validates the runtime representation of values (where expressions
- * are strings like "={{ $json.field }}").
+ * are strings like "={{ $json.field }}"). When `prop.noDataExpression` is set,
+ * the generated schema omits expression support entirely.
  */
 export function mapPropertyToZodSchema(prop: NodeProperty): string {
-	const result = mapPropertyToZodSchemaInner(prop);
-	if (prop.noDataExpression) {
-		return stripExpressionFromZodSchema(result);
+	const result = mapPropertyToZodSchemaInner(prop, !prop.noDataExpression);
+	return wrapMultipleValuesZodSchema(prop, result);
+}
+
+function wrapMultipleValuesZodSchema(prop: NodeProperty, schema: string): string {
+	if (!schema || prop.type === 'fixedCollection' || prop.type === 'multiOptions') {
+		return schema;
 	}
-	return result;
+	return prop.typeOptions?.multipleValues === true ? `z.array(${schema})` : schema;
 }
 
-/**
- * Strip expression support from a Zod schema code string.
- * Used when noDataExpression is true.
- */
-function stripExpressionFromZodSchema(schema: string): string {
-	// Replace OrExpression helpers with plain types
-	if (schema === 'stringOrExpression') return 'z.string()';
-	if (schema === 'numberOrExpression') return 'z.number()';
-	if (schema === 'booleanOrExpression') return 'z.boolean()';
-	// Remove expressionSchema from z.union([..., expressionSchema])
-	return schema.replace(/,\s*expressionSchema/g, '');
-}
+function mapPropertyToZodSchemaInner(prop: NodeProperty, allowExpression: boolean): string {
+	// Skip display-only types (notice, curlImport, credentials, callout)
+	if (DISPLAY_ONLY_PROPERTY_TYPES.has(prop.type)) {
+		return '';
+	}
 
-function mapPropertyToZodSchemaInner(prop: NodeProperty): string {
 	// Special handling for known credentialsSelect fields with fixed values
 	if (prop.type === 'credentialsSelect' && prop.name === 'genericAuthType') {
 		const literals = GENERIC_AUTH_TYPE_VALUES.map((v) => `z.literal('${v}')`);
-		return `z.union([${literals.join(', ')}, expressionSchema])`;
+		return literalUnion(literals, allowExpression);
 	}
 
 	// Handle resourceLocator first - it has its own structure regardless of dynamic options
@@ -561,47 +700,41 @@ function mapPropertyToZodSchemaInner(prop: NodeProperty): string {
 
 	// Handle dynamic options (loadOptionsMethod) - but not for types with specific structure
 	if (prop.typeOptions?.loadOptionsMethod || prop.typeOptions?.loadOptionsDependsOn) {
-		switch (prop.type) {
-			case 'options':
-				return 'stringOrExpression';
-			case 'multiOptions':
-				return 'z.array(z.string())';
-			default:
-				return 'stringOrExpression';
-		}
+		if (prop.type === 'multiOptions') return 'z.array(z.string())';
+		return primitiveElement('string', allowExpression);
 	}
 
 	switch (prop.type) {
 		case 'string':
-			return 'stringOrExpression';
+		case 'dateTime':
+		case 'color':
+		case 'credentialsSelect':
+			return primitiveElement('string', allowExpression);
 
 		case 'number':
-			return 'numberOrExpression';
+			return primitiveElement('number', allowExpression);
 
 		case 'boolean':
-			return 'booleanOrExpression';
+			return primitiveElement('boolean', allowExpression);
 
-		case 'options':
-			if (prop.options && prop.options.length > 0) {
-				const literals = prop.options
-					.filter((opt) => opt.value !== undefined)
-					.map((opt) => `z.literal(${formatZodLiteral(opt.value)})`);
-				if (literals.length > 0) {
-					return `z.union([${literals.join(', ')}, expressionSchema])`;
-				}
-			}
-			return 'stringOrExpression';
+		case 'options': {
+			const literals = (prop.options ?? [])
+				.filter((opt) => opt.value !== undefined)
+				.map((opt) => `z.literal(${formatZodLiteral(opt.value)})`);
+			return literals.length > 0
+				? literalUnion(literals, allowExpression)
+				: primitiveElement('string', allowExpression);
+		}
 
-		case 'multiOptions':
-			if (prop.options && prop.options.length > 0) {
-				const literals = prop.options
-					.filter((opt) => opt.value !== undefined)
-					.map((opt) => `z.literal(${formatZodLiteral(opt.value)})`);
-				if (literals.length > 0) {
-					return `z.array(z.union([${literals.join(', ')}]))`;
-				}
+		case 'multiOptions': {
+			const literals = (prop.options ?? [])
+				.filter((opt) => opt.value !== undefined)
+				.map((opt) => `z.literal(${formatZodLiteral(opt.value)})`);
+			if (literals.length > 0) {
+				return `z.array(z.union([${literals.join(', ')}]))`;
 			}
 			return 'z.array(z.string())';
+		}
 
 		case 'json':
 			return 'z.union([iDataObjectSchema, z.string()])';
@@ -618,9 +751,17 @@ function mapPropertyToZodSchemaInner(prop: NodeProperty): string {
 		case 'collection':
 			return generateCollectionZodSchema(prop);
 
-		case 'dateTime':
-		case 'color':
-			return 'stringOrExpression';
+		case 'button':
+			// Buttons with `hasInputField: true` (e.g. AiTransform's instructions)
+			// store the user-typed text; pure-action buttons store the default ''.
+			// In both cases the value is a string.
+			return primitiveElement('string', allowExpression);
+
+		case 'icon':
+			return ICON_ZOD_SCHEMA;
+
+		case 'workflowSelector':
+			return WORKFLOW_SELECTOR_ZOD_SCHEMA;
 
 		case 'hidden':
 			return 'z.unknown()';
@@ -628,10 +769,8 @@ function mapPropertyToZodSchemaInner(prop: NodeProperty): string {
 		case 'notice':
 		case 'curlImport':
 		case 'credentials':
+		case 'callout':
 			return ''; // Skip these types
-
-		case 'credentialsSelect':
-			return 'stringOrExpression';
 
 		default:
 			return 'z.unknown()';
@@ -705,6 +844,25 @@ type MergeableDisplayOptions = {
 	hide?: Record<string, unknown[]>;
 };
 
+function cloneConditionMap(
+	conditions: Record<string, unknown[]> | undefined,
+): Record<string, unknown[]> | undefined {
+	if (!conditions) return undefined;
+
+	return Object.fromEntries(Object.entries(conditions).map(([key, values]) => [key, [...values]]));
+}
+
+function cloneDisplayOptions(displayOptions: MergeableDisplayOptions): MergeableDisplayOptions {
+	const cloned: MergeableDisplayOptions = {};
+	const show = cloneConditionMap(displayOptions.show);
+	const hide = cloneConditionMap(displayOptions.hide);
+
+	if (show) cloned.show = show;
+	if (hide) cloned.hide = hide;
+
+	return cloned;
+}
+
 /**
  * Merge two displayOptions objects by combining their show/hide conditions.
  * Used when multiple properties share the same name but have different visibility conditions.
@@ -717,7 +875,7 @@ export function mergeDisplayOptions(
 	existing: MergeableDisplayOptions,
 	incoming: MergeableDisplayOptions,
 ): MergeableDisplayOptions {
-	const merged: MergeableDisplayOptions = { ...existing };
+	const merged = cloneDisplayOptions(existing);
 
 	// Merge 'show' conditions
 	if (incoming.show) {
@@ -772,7 +930,7 @@ export function mergePropertiesByName(properties: NodeProperty[]): Map<string, N
 
 	for (const prop of properties) {
 		// Skip display-only types
-		if (['notice', 'curlImport', 'credentials'].includes(prop.type)) {
+		if (DISPLAY_ONLY_PROPERTY_TYPES.has(prop.type)) {
 			continue;
 		}
 
@@ -801,15 +959,161 @@ export function mergePropertiesByName(properties: NodeProperty[]): Map<string, N
 			}
 			// Keep the first property's other attributes (type, required, etc.)
 		} else {
-			// Create a shallow copy to avoid mutating the original when merging
-			propsByName.set(prop.name, {
+			// Create a copy to avoid mutating the original when merging
+			const propCopy: NodeProperty = {
 				...prop,
 				options: prop.options ? [...prop.options] : undefined,
-			});
+			};
+			if (prop.displayOptions) {
+				propCopy.displayOptions = cloneDisplayOptions(prop.displayOptions);
+			}
+			propsByName.set(prop.name, propCopy);
 		}
 	}
 
 	return propsByName;
+}
+
+/**
+ * Keep raw declarations around so same-name UI variants can be emitted as
+ * runtime alternatives instead of being merged into a contradictory condition.
+ */
+export function collectDeclarationsByName(properties: NodeProperty[]): Map<string, NodeProperty[]> {
+	const byName = new Map<string, NodeProperty[]>();
+	for (const prop of properties) {
+		if (DISPLAY_ONLY_PROPERTY_TYPES.has(prop.type)) {
+			continue;
+		}
+		const declarations = byName.get(prop.name) ?? [];
+		declarations.push(prop);
+		byName.set(prop.name, declarations);
+	}
+	return byName;
+}
+
+type DisplayOptionsValue = NonNullable<NodeProperty['displayOptions']>;
+
+interface SchemaVariant {
+	prop: NodeProperty;
+	displayOptions: DisplayOptionsValue;
+}
+
+export function generateOneOfSchemaLine(
+	variants: SchemaVariant[],
+	allProperties: NodeProperty[] = [],
+): string {
+	const propName = quotePropertyName(variants[0].prop.name);
+	const variantStrs: string[] = [];
+
+	for (const { prop, displayOptions } of variants) {
+		const zodSchema = mapPropertyToZodSchema(prop);
+		if (!zodSchema) {
+			return '';
+		}
+		const required = !isPropertyOptional(prop);
+		const displayOptionsStr = JSON.stringify(displayOptions);
+		const defaults = extractDefaultsForDisplayOptions(displayOptions, allProperties);
+		const defaultsStr =
+			Object.keys(defaults).length > 0 ? `, defaults: ${JSON.stringify(defaults)}` : '';
+		variantStrs.push(
+			`{ schema: ${zodSchema}, required: ${required}, displayOptions: ${displayOptionsStr}${defaultsStr} }`,
+		);
+	}
+
+	return `${INDENT}${propName}: resolveOneOfSchemas({ parameters, variants: [${variantStrs.join(', ')}] }),`;
+}
+
+function getSchemaVariantsForDuplicateDeclarations(
+	declarations: NodeProperty[],
+	keysToStrip: string[],
+): { allConditional: boolean; variants: SchemaVariant[] } {
+	const variants: SchemaVariant[] = [];
+	let allConditional = true;
+
+	for (const declaration of declarations) {
+		const { displayOptions, fullyDisabled } = narrowDisplayOptionsByDisabled(declaration);
+		if (fullyDisabled) {
+			continue;
+		}
+
+		const strippedDisplayOptions = displayOptions
+			? stripDiscriminatorKeysFromDisplayOptions(displayOptions, keysToStrip)
+			: undefined;
+		if (!strippedDisplayOptions) {
+			allConditional = false;
+			break;
+		}
+
+		variants.push({
+			prop: declaration,
+			displayOptions: strippedDisplayOptions,
+		});
+	}
+
+	return { allConditional, variants };
+}
+
+function hasDuplicateConditionalDeclarations(
+	properties: NodeProperty[],
+	keysToStrip: string[],
+): boolean {
+	for (const declarations of collectDeclarationsByName(properties).values()) {
+		if (declarations.length < 2) {
+			continue;
+		}
+
+		const { allConditional, variants } = getSchemaVariantsForDuplicateDeclarations(
+			declarations,
+			keysToStrip,
+		);
+		if (allConditional && variants.length >= 2) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+export function generateMergedSchemaLine(
+	mergedProp: NodeProperty,
+	declarations: NodeProperty[],
+	allProperties: NodeProperty[],
+	keysToStrip: string[],
+): string {
+	if (declarations.length > 1) {
+		const { allConditional, variants } = getSchemaVariantsForDuplicateDeclarations(
+			declarations,
+			keysToStrip,
+		);
+
+		if (allConditional) {
+			if (variants.length >= 2) {
+				const line = generateOneOfSchemaLine(variants, allProperties);
+				if (line) {
+					return line;
+				}
+			}
+			if (variants.length === 1) {
+				return generateConditionalSchemaLine(
+					{ ...variants[0].prop, displayOptions: variants[0].displayOptions },
+					allProperties,
+				);
+			}
+			return '';
+		}
+	}
+
+	const strippedDisplayOptions = mergedProp.displayOptions
+		? stripDiscriminatorKeysFromDisplayOptions(mergedProp.displayOptions, keysToStrip)
+		: undefined;
+	if (strippedDisplayOptions) {
+		return generateConditionalSchemaLine(
+			{ ...mergedProp, displayOptions: strippedDisplayOptions },
+			allProperties,
+		);
+	}
+
+	return generateSchemaPropertyLine(mergedProp, isPropertyOptional(mergedProp));
 }
 
 /**
@@ -1018,6 +1322,9 @@ export function generateSingleVersionSchemaFile(
 	const needsResolveSchema =
 		hasDisplayOptions(filteredProperties) ||
 		(hasAiInputs && hasConditionalSubnodeFields(aiInputTypes));
+	const needsResolveOneOfSchema = hasDuplicateConditionalDeclarations(filteredProperties, [
+		'@version',
+	]);
 
 	const lines: string[] = [];
 
@@ -1038,6 +1345,9 @@ export function generateSingleVersionSchemaFile(
 	// Add resolveSchema if we need it
 	if (needsResolveSchema) {
 		helpers.push('resolveSchema');
+	}
+	if (needsResolveSchema || needsResolveOneOfSchema) {
+		helpers.push('resolveOneOfSchemas');
 	}
 
 	// Add subnode schema imports if this is an AI node
@@ -1137,34 +1447,14 @@ export function generateSingleVersionSchemaFile(
 	// Group properties by name, merging displayOptions and nested options for duplicates
 	const propsByName = mergePropertiesByName(filteredProperties);
 	const allPropsArray = Array.from(propsByName.values());
+	// @version is implicit in the file path, so strip it from displayOptions
+	const declarationsByName = collectDeclarationsByName(filteredProperties);
 
 	for (const prop of allPropsArray) {
-		if (prop.displayOptions) {
-			// Strip @version since it's implicit in the file path
-			const strippedDisplayOptions = stripDiscriminatorKeysFromDisplayOptions(prop.displayOptions, [
-				'@version',
-			]);
-			if (strippedDisplayOptions) {
-				const propWithStripped: NodeProperty = {
-					...prop,
-					displayOptions: strippedDisplayOptions,
-				};
-				const propLine = generateConditionalSchemaLine(propWithStripped, allPropsArray);
-				if (propLine) {
-					lines.push(INDENT + propLine);
-				}
-			} else {
-				// No remaining conditions after stripping @version - use static schema
-				const propLine = generateSchemaPropertyLine(prop, isPropertyOptional(prop));
-				if (propLine) {
-					lines.push(INDENT + propLine);
-				}
-			}
-		} else {
-			const propLine = generateSchemaPropertyLine(prop, isPropertyOptional(prop));
-			if (propLine) {
-				lines.push(INDENT + propLine);
-			}
+		const declarations = declarationsByName.get(prop.name) ?? [prop];
+		const propLine = generateMergedSchemaLine(prop, declarations, allPropsArray, ['@version']);
+		if (propLine) {
+			lines.push(INDENT + propLine);
 		}
 	}
 
@@ -1174,7 +1464,7 @@ export function generateSingleVersionSchemaFile(
 	lines.push('');
 	lines.push(`${INDENT}// Return combined config schema`);
 	lines.push(`${INDENT}return z.object({`);
-	lines.push(`${INDENT.repeat(2)}parameters: parametersSchema.optional(),`);
+	lines.push(`${INDENT.repeat(2)}parameters: parametersSchema.nullable().optional(),`);
 	if (hasAiInputs) {
 		const subnodesOptional = !hasRequiredSubnodeFields(aiInputTypes);
 		if (hasConditionalSubnodeFields(aiInputTypes)) {
@@ -1269,6 +1559,7 @@ export function generateDiscriminatorSchemaFile(
 
 	// Check if AI inputs have conditional fields (displayOptions)
 	const hasConditionalAiInputs = hasAiInputs && hasConditionalSubnodeFields(aiInputTypes);
+	const needsResolveOneOfSchema = hasDuplicateConditionalDeclarations(props, discriminatorKeys);
 
 	const lines: string[] = [];
 
@@ -1295,6 +1586,9 @@ export function generateDiscriminatorSchemaFile(
 	// Add resolveSchema if properties have displayOptions OR AI inputs have displayOptions
 	if (hasRemainingDisplayOptions || hasConditionalAiInputs) {
 		helpers.push('resolveSchema');
+	}
+	if (hasRemainingDisplayOptions || hasConditionalAiInputs || needsResolveOneOfSchema) {
+		helpers.push('resolveOneOfSchemas');
 	}
 
 	// Add subnode schema imports if this combo has AI inputs
@@ -1414,32 +1708,12 @@ export function generateDiscriminatorSchemaFile(
 	// Generate schema for each merged property
 	// Convert propsByName to array for extractDefaultsForDisplayOptions
 	const allPropsArray = Array.from(propsByName.values());
+	const declarationsByName = collectDeclarationsByName(props);
 	for (const prop of allPropsArray) {
-		if (prop.displayOptions) {
-			const strippedDisplayOptions = stripDiscriminatorKeysFromDisplayOptions(
-				prop.displayOptions,
-				discriminatorKeys,
-			);
-			if (strippedDisplayOptions) {
-				const propWithStrippedOptions: NodeProperty = {
-					...prop,
-					displayOptions: strippedDisplayOptions,
-				};
-				const propLine = generateConditionalSchemaLine(propWithStrippedOptions, allPropsArray);
-				if (propLine) {
-					lines.push(INDENT.repeat(2) + propLine);
-				}
-			} else {
-				const propLine = generateSchemaPropertyLine(prop, isPropertyOptional(prop));
-				if (propLine) {
-					lines.push(INDENT.repeat(2) + propLine);
-				}
-			}
-		} else {
-			const propLine = generateSchemaPropertyLine(prop, isPropertyOptional(prop));
-			if (propLine) {
-				lines.push(INDENT.repeat(2) + propLine);
-			}
+		const declarations = declarationsByName.get(prop.name) ?? [prop];
+		const propLine = generateMergedSchemaLine(prop, declarations, allPropsArray, discriminatorKeys);
+		if (propLine) {
+			lines.push(INDENT.repeat(2) + propLine);
 		}
 	}
 

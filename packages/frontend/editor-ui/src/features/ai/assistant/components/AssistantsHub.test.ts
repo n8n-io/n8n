@@ -13,7 +13,7 @@ import { VIEWS } from '@/app/constants';
 import { BUILDER_ENABLED_VIEWS } from '../constants';
 
 // Mock vue-router
-const mockRoute = reactive({ name: VIEWS.WORKFLOW });
+const mockRoute = reactive({ name: VIEWS.WORKFLOW, params: {} });
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
 	useRoute: () => mockRoute,

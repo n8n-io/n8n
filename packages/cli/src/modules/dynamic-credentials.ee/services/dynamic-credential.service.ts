@@ -1,8 +1,8 @@
 import { Logger } from '@n8n/backend-common';
 import { AuthenticatedRequest } from '@n8n/db';
-import { CredentialResolverError } from '@n8n/decorators';
+import { CredentialResolverDataNotFoundError, CredentialResolverError } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { NextFunction, Response } from 'express';
+import type { NextFunction, Response } from 'express';
 import { Cipher } from 'n8n-core';
 import type {
 	ICredentialDataDecryptedObject,
@@ -11,6 +11,7 @@ import type {
 } from 'n8n-workflow';
 import { jsonParse, toCredentialContext } from 'n8n-workflow';
 
+import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { StaticAuthService } from '@/services/static-auth-service';
 
@@ -22,6 +23,7 @@ import type {
 	CredentialResolveMetadata,
 	ICredentialResolutionProvider,
 } from '../../../credentials/credential-resolution-provider.interface';
+import { SYSTEM_RESOLVER_ID, SYSTEM_RESOLVER_TYPE } from '../constants';
 import { DynamicCredentialResolverRepository } from '../database/repositories/credential-resolver.repository';
 import { DynamicCredentialsConfig } from '../dynamic-credentials.config';
 import { CredentialResolutionError } from '../errors/credential-resolution.error';
@@ -43,6 +45,7 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 		private readonly cipher: Cipher,
 		private readonly logger: Logger,
 		private readonly expressionService: ResolverConfigExpressionService,
+		private readonly dynamicCredentialsProxy: DynamicCredentialsProxy,
 	) {}
 
 	/**
@@ -62,8 +65,10 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 		workflowSettings?: IWorkflowSettings,
 	): Promise<CredentialResolutionResult> {
 		// Determine which resolver ID to use: credential's own resolver or workflow's fallback
+		// (explicit workflow override, or the seeded system resolver looked up via the proxy).
 		const resolverId =
-			credentialsResolveMetadata.resolverId ?? workflowSettings?.credentialResolverId;
+			credentialsResolveMetadata.resolverId ??
+			this.dynamicCredentialsProxy.getEffectiveResolverId(workflowSettings);
 
 		// Not resolvable - return static credentials
 		if (!credentialsResolveMetadata.isResolvable) {
@@ -91,7 +96,7 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 		}
 
 		// Build credential context from execution context
-		const credentialContext = this.buildCredentialContext(executionContext);
+		const credentialContext = await this.buildCredentialContext(executionContext);
 
 		if (!credentialContext) {
 			return this.handleMissingContext(credentialsResolveMetadata);
@@ -105,21 +110,23 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 			const sharedFields = extractSharedFields(credentialType.type);
 
 			// Decrypt and parse resolver configuration
-			const decryptedConfig = this.cipher.decrypt(resolverEntity.config);
+			const decryptedConfig = await this.cipher.decryptV2(resolverEntity.config);
 			const parsedConfig = jsonParse<Record<string, unknown>>(decryptedConfig);
 
 			// Resolve expressions in resolver configuration using global data only
 			const resolverConfig = await this.expressionService.resolve(parsedConfig);
 
+			const handle = {
+				resolverId: resolverEntity.id,
+				resolverName: resolverEntity.type,
+				configuration: resolverConfig,
+			};
+
 			// Attempt dynamic resolution
 			const dynamicData = await resolver.getSecret(
 				credentialsResolveMetadata.id,
 				credentialContext,
-				{
-					resolverId: resolverEntity.id,
-					resolverName: resolverEntity.type,
-					configuration: resolverConfig,
-				},
+				handle,
 			);
 
 			this.logger.debug('Successfully resolved dynamic credentials', {
@@ -136,24 +143,47 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 				}
 			}
 
+			// Capture the n8n user the credentials resolved to (only resolvers
+			// keyed on n8n identities implement this). Best-effort: a failure to
+			// resolve the owning user must not fail credential resolution — the
+			// execution simply stays unattributed (redacted for everyone).
+			let resolvedUserId: string | undefined;
+			try {
+				resolvedUserId = await resolver.resolveOwningUserId?.(credentialContext, handle);
+			} catch (error) {
+				this.logger.debug('Could not resolve owning user for dynamic credentials', {
+					credentialId: credentialsResolveMetadata.id,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
+
 			// Adds and override static data with dynamically resolved data
-			return { data: { ...staticData, ...dynamicData }, isDynamic: true };
+			return { data: { ...staticData, ...dynamicData }, isDynamic: true, resolvedUserId };
 		} catch (error) {
-			return this.handleResolutionError(credentialsResolveMetadata, error, resolverId);
+			return this.handleResolutionError(
+				credentialsResolveMetadata,
+				error,
+				resolverEntity.id,
+				resolverEntity.type,
+			);
 		}
+	}
+
+	getSystemResolverId(): string {
+		return SYSTEM_RESOLVER_ID;
 	}
 
 	/**
 	 * Builds credential context from execution context by decrypting the credentials field
 	 */
-	private buildCredentialContext(executionContext: IExecutionContext | undefined) {
+	private async buildCredentialContext(executionContext: IExecutionContext | undefined) {
 		if (!executionContext?.credentials) {
 			return undefined;
 		}
 
 		try {
 			// Decrypt credential context from execution context
-			const decrypted = this.cipher.decrypt(executionContext.credentials);
+			const decrypted = await this.cipher.decryptV2(executionContext.credentials);
 			return toCredentialContext(decrypted);
 		} catch (error) {
 			this.logger.error('Failed to decrypt credential context from execution context', {
@@ -165,15 +195,23 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 
 	/**
 	 * Throws when resolution fails inside getSecret().
+	 * - CredentialResolverDataNotFoundError from the n8n private-credential resolver
+	 *   → user-facing "you haven't connected" message. This resolver maps the
+	 *     credential context to an n8n user identity, so a missing row means the
+	 *     current user simply hasn't connected the credential yet — actionable
+	 *     regardless of how the run was triggered (editor, chat-hub, etc.).
 	 * - CredentialResolutionError subtypes (e.g. IdentifierValidationError)
 	 *   → rethrown with credential name prepended to the message
-	 * - CredentialResolverDataNotFoundError → rethrown with credential name prepended to the message
+	 * - CredentialResolverDataNotFoundError from external-identity resolvers
+	 *   (e.g. Slack) → rethrown with credential name prepended (generic message,
+	 *   since the missing connection isn't tied to the n8n user).
 	 * - Anything else → generic CredentialResolutionError (no internal detail surfaced)
 	 */
 	private handleResolutionError(
 		credentialsResolveMetadata: CredentialResolveMetadata,
 		error: unknown,
 		resolverId: string,
+		resolverType: string,
 	): never {
 		this.logger.debug('Dynamic credential resolution failed', {
 			credentialId: credentialsResolveMetadata.id,
@@ -182,6 +220,18 @@ export class DynamicCredentialService implements ICredentialResolutionProvider {
 			resolverSource: credentialsResolveMetadata.resolverId ? 'credential' : 'workflow',
 			error: error instanceof Error ? error.message : String(error),
 		});
+
+		if (
+			error instanceof CredentialResolverDataNotFoundError &&
+			resolverType === SYSTEM_RESOLVER_TYPE
+		) {
+			// TODO(M14): emit `private_credential.resolution_failed_missing_connection`
+			// via EventService once the relay event is defined in RelayEventMap.
+			throw new CredentialResolutionError(
+				`'${credentialsResolveMetadata.name}' private credential is not connected for you. Connect yours to execute this workflow manually.`,
+				{ cause: error },
+			);
+		}
 
 		// Known errors from both the CLI and resolver SDK layers.
 		// User-facing, safe to propagate details.

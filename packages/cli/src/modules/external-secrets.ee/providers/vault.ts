@@ -1,8 +1,17 @@
 import { Logger } from '@n8n/backend-common';
+import {
+	type HttpRequestClient,
+	isConnectionRefusedError,
+	OutboundHttp,
+} from '@n8n/backend-network';
 import { Container } from '@n8n/di';
-import type { AxiosInstance, AxiosResponse } from 'axios';
-import axios from 'axios';
-import type { IDataObject, INodeProperties } from 'n8n-workflow';
+import type {
+	IDataObject,
+	IHttpRequestMethods,
+	IHttpRequestOptions,
+	IN8nHttpFullResponse,
+	INodeProperties,
+} from 'n8n-workflow';
 
 import { DOCS_HELP_NOTICE } from '../constants';
 import { ExternalSecretsConfig } from '../external-secrets.config';
@@ -27,6 +36,10 @@ interface VaultSettings {
 	// AppRole
 	roleId: string;
 	secretId: string;
+
+	// Manual KV configuration (bypasses sys/mounts auto-discovery)
+	kvMountPath?: string;
+	kvVersion?: string;
 }
 
 interface VaultResponse<T> {
@@ -212,6 +225,31 @@ export class VaultProvider extends SecretsProvider {
 				},
 			},
 		},
+
+		// Manual KV configuration
+		{
+			displayName: 'KV Mount Path (optional)',
+			name: 'kvMountPath',
+			type: 'string',
+			default: '',
+			required: false,
+			noDataExpression: true,
+			placeholder: 'e.g. secret/',
+			hint: 'Specify the KV engine mount path to skip sys/mounts auto-discovery. Leave blank to auto-detect.',
+		},
+		{
+			displayName: 'KV Version',
+			name: 'kvVersion',
+			type: 'options',
+			default: '2',
+			required: false,
+			noDataExpression: true,
+			options: [
+				{ name: 'v1', value: '1' },
+				{ name: 'v2', value: '2' },
+			],
+			hint: 'Only used when KV Mount Path is specified.',
+		},
 	];
 
 	displayName = 'HashiCorp Vault';
@@ -226,13 +264,16 @@ export class VaultProvider extends SecretsProvider {
 
 	#tokenInfo: VaultTokenInfo | null = null;
 
-	#http: AxiosInstance;
+	#http: HttpRequestClient;
 
 	private refreshTimeout: NodeJS.Timeout | null;
 
 	private refreshAbort = new AbortController();
 
-	constructor(readonly logger = Container.get(Logger)) {
+	constructor(
+		readonly logger = Container.get(Logger),
+		private readonly outboundHttp = Container.get(OutboundHttp),
+	) {
 		super();
 		this.logger = this.logger.scoped('external-secrets');
 	}
@@ -240,20 +281,10 @@ export class VaultProvider extends SecretsProvider {
 	async init(settings: SecretsProviderSettings): Promise<void> {
 		this.settings = settings.settings as unknown as VaultSettings;
 
-		const baseURL = new URL(this.settings.url);
-
-		this.#http = axios.create({ baseURL: baseURL.toString() });
-		if (this.settings.namespace) {
-			this.#http.interceptors.request.use((config) => {
-				config.headers['X-Vault-Namespace'] = this.settings.namespace;
-				return config;
-			});
-		}
-		this.#http.interceptors.request.use((config) => {
-			if (this.#currentToken) {
-				config.headers['X-Vault-Token'] = this.#currentToken;
-			}
-			return config;
+		this.#http = this.outboundHttp.requests({
+			baseURL: new URL(this.settings.url).toString(), // Normalize here so a malformed URL fails at init time rather than on the first request.
+			headers: () => this.buildAuthHeaders(),
+			ssrf: 'disabled', // admin-configured infrastructure
 		});
 
 		this.logger.debug('Vault provider initialized');
@@ -320,7 +351,7 @@ export class VaultProvider extends SecretsProvider {
 		try {
 			// We don't actually care about the result of this since it doesn't
 			// return an expire_time
-			await this.#http.post('auth/token/renew-self');
+			await this.#http.request({ url: 'auth/token/renew-self', method: 'POST' });
 
 			[this.#tokenInfo] = await this.getTokenInfo();
 
@@ -347,14 +378,14 @@ export class VaultProvider extends SecretsProvider {
 		password: string,
 	): Promise<string | null> {
 		try {
-			const resp = await this.#http.request<VaultUserPassLoginResp>({
+			const body = await this.#http.request<VaultUserPassLoginResp>({
 				method: 'POST',
 				url: `auth/userpass/login/${username}`,
-				responseType: 'json',
-				data: { password },
+				json: true,
+				body: { password },
 			});
 
-			return resp.data.auth.client_token;
+			return body.auth.client_token;
 		} catch {
 			return null;
 		}
@@ -362,31 +393,31 @@ export class VaultProvider extends SecretsProvider {
 
 	private async authAppRole(roleId: string, secretId: string): Promise<string | null> {
 		try {
-			const resp = await this.#http.request<VaultAppRoleResp>({
+			const body = await this.#http.request<VaultAppRoleResp>({
 				method: 'POST',
 				url: 'auth/approle/login',
-				responseType: 'json',
-				data: { role_id: roleId, secret_id: secretId },
+				json: true,
+				body: { role_id: roleId, secret_id: secretId },
 			});
 
-			return resp.data.auth.client_token;
-		} catch (e) {
+			return body.auth.client_token;
+		} catch {
 			return null;
 		}
 	}
 
-	private async getTokenInfo(): Promise<[VaultTokenInfo | null, AxiosResponse]> {
-		const resp = await this.#http.request<VaultResponse<VaultTokenInfo>>({
+	private async getTokenInfo(): Promise<[VaultTokenInfo | null, IN8nHttpFullResponse]> {
+		const resp = await this.requestFull({
 			method: 'GET',
 			url: 'auth/token/lookup-self',
-			responseType: 'json',
-			validateStatus: () => true,
+			json: true,
 		});
 
-		if (resp.status !== 200 || !resp.data.data) {
+		const body = resp.body as VaultResponse<VaultTokenInfo> | undefined;
+		if (resp.statusCode !== 200 || !body?.data) {
 			return [null, resp];
 		}
-		return [resp.data.data, resp];
+		return [body.data, resp];
 	}
 
 	private async getKVSecrets(
@@ -400,24 +431,20 @@ export class VaultProvider extends SecretsProvider {
 			listPath += 'metadata/';
 		}
 		listPath += path;
-		let listResp: AxiosResponse<VaultResponse<VaultSecretList>>;
+		let listBody: VaultResponse<VaultSecretList>;
 		try {
 			const shouldPreferGet = Container.get(ExternalSecretsConfig).preferGet;
 			const url = `${listPath}${shouldPreferGet ? '?list=true' : ''}`;
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-			const method = shouldPreferGet ? 'GET' : ('LIST' as any);
-			listResp = await this.#http.request<VaultResponse<VaultSecretList>>({
-				url,
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				method,
-			});
+			// non-standard `LIST` verb works; `preferGet` swaps it for `GET ?list=true`.
+			const method = (shouldPreferGet ? 'GET' : 'LIST') as IHttpRequestMethods;
+			listBody = await this.#http.request<VaultResponse<VaultSecretList>>({ url, method });
 		} catch {
 			return null;
 		}
 		const data = Object.fromEntries(
 			(
 				await Promise.allSettled(
-					listResp.data.data.keys.map(async (key): Promise<[string, IDataObject] | null> => {
+					listBody.data.keys.map(async (key): Promise<[string, IDataObject] | null> => {
 						if (key.endsWith('/')) {
 							return await this.getKVSecrets(mountPath, kvVersion, path + key);
 						}
@@ -427,13 +454,14 @@ export class VaultProvider extends SecretsProvider {
 						}
 						secretPath += path + key;
 						try {
-							const secretResp = await this.#http.get<VaultResponse<IDataObject>>(secretPath);
+							const secretBody = await this.#http.request<VaultResponse<IDataObject>>({
+								url: secretPath,
+								method: 'GET',
+							});
 							this.logger.debug(`Vault provider retrieved secrets from ${secretPath}`);
 							return [
 								key,
-								kvVersion === '2'
-									? (secretResp.data.data.data as IDataObject)
-									: secretResp.data.data,
+								kvVersion === '2' ? (secretBody.data.data as IDataObject) : secretBody.data,
 							];
 						} catch {
 							return null;
@@ -449,28 +477,85 @@ export class VaultProvider extends SecretsProvider {
 		return [name, data];
 	}
 
-	async update(): Promise<void> {
-		const mounts = await this.#http.get<VaultResponse<VaultMountsResp>>('sys/mounts');
+	private normalizeKvPath(mountPath: string): string {
+		return mountPath.endsWith('/') ? mountPath : `${mountPath}/`;
+	}
 
-		const kvs = Object.entries(mounts.data.data).filter(([, v]) => v.type === 'kv');
+	private async discoverKvMounts(): Promise<Array<{ path: string; version: string }>> {
+		const { kvMountPath, kvVersion } = this.settings;
+
+		if (kvMountPath) {
+			return [{ path: this.normalizeKvPath(kvMountPath), version: kvVersion ?? '2' }];
+		}
+
+		const mounts = await this.#http.request<VaultResponse<VaultMountsResp>>({
+			url: 'sys/mounts',
+			method: 'GET',
+		});
+		const kvMounts = Object.entries(mounts.data).filter(([, mount]) => mount.type === 'kv');
+
+		return kvMounts
+			.map(([basePath, mount]) => {
+				const version = mount.options?.version;
+				if (typeof version !== 'string') {
+					this.logger.debug(`Skipping KV mount "${basePath}" — no version in mount options`);
+					return null;
+				}
+				return { path: basePath, version };
+			})
+			.filter((entry): entry is { path: string; version: string } => entry !== null);
+	}
+
+	private async testSecretAccess(): Promise<[boolean] | [boolean, string]> {
+		const { kvMountPath, kvVersion } = this.settings;
+
+		let listUrl: string;
+		let forbiddenMessage: string;
+		let failureMessage: (status: number) => string;
+
+		if (kvMountPath) {
+			const normalizedPath = this.normalizeKvPath(kvMountPath);
+			const version = kvVersion ?? '2';
+			listUrl =
+				version === '2' ? `${normalizedPath}metadata/?list=true` : `${normalizedPath}?list=true`;
+			forbiddenMessage = `Permission denied accessing ${kvMountPath}. Check your token policies.`;
+			failureMessage = (status) =>
+				`Could not access KV mount at ${kvMountPath} (status ${status}).`;
+		} else {
+			listUrl = 'sys/mounts';
+			forbiddenMessage =
+				"Couldn't list mounts. Please give these credentials 'read' access to sys/mounts.";
+			failureMessage = () =>
+				"Couldn't list mounts but it wasn't a permissions issue. Please consult your Vault admin.";
+		}
+
+		const resp = await this.requestFull({ url: listUrl, method: 'GET' });
+
+		if (resp.statusCode === 403) {
+			return [false, forbiddenMessage];
+		}
+		// Vault returns 404 when listing an empty KV mount — this is valid, not an error
+		if (resp.statusCode === 200 || (kvMountPath && resp.statusCode === 404)) {
+			return [true];
+		}
+		return [false, failureMessage(resp.statusCode)];
+	}
+
+	async update(): Promise<void> {
+		const kvMounts = await this.discoverKvMounts();
 
 		const secrets = Object.fromEntries(
 			(
 				await Promise.all(
-					kvs.map(async ([basePath, data]): Promise<[string, IDataObject] | null> => {
-						const version = data.options?.version;
-						if (typeof version !== 'string') {
-							this.logger.debug(`Skipping KV mount "${basePath}" — no version in mount options`);
-							return null;
-						}
-						const value = await this.getKVSecrets(basePath, version, '');
+					kvMounts.map(async ({ path, version }): Promise<[string, IDataObject] | null> => {
+						const value = await this.getKVSecrets(path, version, '');
 						if (value === null) {
 							return null;
 						}
-						return [basePath.substring(0, basePath.length - 1), value[1]];
+						return [path.substring(0, path.length - 1), value[1]];
 					}),
 				)
-			).filter((v): v is [string, IDataObject] => v !== null),
+			).filter((entry): entry is [string, IDataObject] => entry !== null),
 		);
 		this.cachedSecrets = secrets;
 		this.logger.debug('Vault provider secrets updated');
@@ -481,40 +566,19 @@ export class VaultProvider extends SecretsProvider {
 			const [token, tokenResp] = await this.getTokenInfo();
 
 			if (token === null) {
-				if (tokenResp.status === 404) {
+				if (tokenResp.statusCode === 404) {
 					return [false, 'Could not find auth path. Try adding /v1/ to the end of your base URL.'];
 				}
 				return [false, 'Invalid credentials'];
 			}
 
-			const resp = await this.#http.request<VaultResponse<VaultTokenInfo>>({
-				method: 'GET',
-				url: 'sys/mounts',
-				responseType: 'json',
-				validateStatus: () => true,
-			});
-
-			if (resp.status === 403) {
+			return await this.testSecretAccess();
+		} catch (error) {
+			if (isConnectionRefusedError(error)) {
 				return [
 					false,
-					"Couldn't list mounts. Please give these credentials 'read' access to sys/mounts.",
+					'Connection refused. Please check the host and port of the server are correct.',
 				];
-			} else if (resp.status !== 200) {
-				return [
-					false,
-					"Couldn't list mounts but wasn't a permissions issue. Please consult your Vault admin.",
-				];
-			}
-
-			return [true];
-		} catch (e) {
-			if (axios.isAxiosError(e)) {
-				if (e.code === 'ECONNREFUSED') {
-					return [
-						false,
-						'Connection refused. Please check the host and port of the server are correct.',
-					];
-				}
 			}
 
 			return [false];
@@ -546,5 +610,24 @@ export class VaultProvider extends SecretsProvider {
 			return [k];
 		};
 		return Object.entries(this.cachedSecrets).flatMap(getKeys);
+	}
+
+	private buildAuthHeaders(): Record<string, string> {
+		const headers: Record<string, string> = {};
+		if (this.settings.namespace) {
+			headers['X-Vault-Namespace'] = this.settings.namespace;
+		}
+		if (this.#currentToken) {
+			headers['X-Vault-Token'] = this.#currentToken;
+		}
+		return headers;
+	}
+
+	private async requestFull(options: IHttpRequestOptions): Promise<IN8nHttpFullResponse> {
+		return await this.#http.request({
+			...options,
+			returnFullResponse: true,
+			ignoreHttpStatusErrors: true, // Resolve non-2xx responses instead of throwing so the status checks below can return tailored messages.
+		});
 	}
 }

@@ -1,5 +1,5 @@
-import { mockDeep } from 'jest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import { mockDeep } from 'vitest-mock-extended';
 
 import * as transport from '../../../../transport';
 import * as classify from '../../../../v2/actions/text/classify.operation';
@@ -14,10 +14,10 @@ describe('OpenAI Classify Operation', () => {
 		position: [0, 0],
 		parameters: {},
 	} as INode;
-	const apiRequestSpy = jest.spyOn(transport, 'apiRequest');
+	const apiRequestSpy = vi.spyOn(transport, 'apiRequest');
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	it('should use omni-moderation-latest model when version is 2.1', async () => {

@@ -4,8 +4,12 @@
  * Core types for building n8n workflows programmatically.
  */
 
+import type { IWorkflowGroup } from 'n8n-workflow';
+
 import type { ValidationOptions, ValidationResult } from '../validation/index';
 import type { PluginRegistry } from '../workflow-builder/plugins/registry';
+
+export type { IWorkflowGroup };
 
 // =============================================================================
 // Data Types
@@ -71,18 +75,7 @@ export interface CredentialReference {
 export interface NewCredentialValue {
 	readonly __newCredential: true;
 	readonly name: string;
-}
-
-// =============================================================================
-// Placeholder Values
-// =============================================================================
-
-/**
- * Placeholder for values the user needs to fill in.
- */
-export interface PlaceholderValue {
-	readonly __placeholder: true;
-	readonly hint: string;
+	readonly id?: string;
 }
 
 // =============================================================================
@@ -153,6 +146,87 @@ export interface INodeConnections {
  */
 export interface IConnections {
 	[key: string]: INodeConnections;
+}
+
+/**
+ * Minimal node-info shape needed to resolve a node's error-output index.
+ * Accepts either a NodeJSON or a GraphNode instance config, so callers on
+ * both import and export paths can hand theirs off without conversion.
+ */
+interface ErrorIndexNodeInfo {
+	name?: string;
+	type: string;
+	parameters?: IDataObject;
+}
+
+/**
+ * Resolve the output index at which a node's error pin should live in the
+ * modern (main[n]) format. Kept in sync with the NODE_SEMANTICS table in
+ * codegen/semantic-registry.ts — the rule is always `natural output count`,
+ * with 1 as the fallback for community / unknown nodes.
+ */
+export function resolveErrorOutputIndex(type: string, parameters?: IDataObject): number {
+	if (type === 'n8n-nodes-base.if') return 2; // trueBranch + falseBranch
+	if (type === 'n8n-nodes-base.switch') {
+		const rules = parameters?.rules as { rules?: unknown[]; values?: unknown[] } | undefined;
+		const rulesArray = rules?.rules ?? rules?.values;
+		const numCases = Array.isArray(rulesArray) ? rulesArray.length : 4;
+		return numCases + 1; // cases + fallback
+	}
+	if (type === 'n8n-nodes-base.splitInBatches') return 2; // done + loop
+	if (type === 'n8n-nodes-base.merge') return 1; // single output
+	return 1;
+}
+
+/**
+ * Fold legacy top-level `error` connection entries into the `main` output
+ * array in-place.
+ *
+ * Older n8n workflows serialized error-pin connections under a sibling
+ * `"error"` key next to `"main"` on a source node. The modern format — what
+ * the editor canvas renders and what `onError: 'continueErrorOutput'` exposes
+ * at runtime — puts the error pin as an extra slot at the end of the `main`
+ * array (index 1 for single-output nodes, index 2 for IF, etc.).
+ *
+ * Pass `nodes` when available so the error pin lands at the correct index
+ * for multi-output nodes (IF / Switch / SplitInBatches). Without node info
+ * the helper falls back to index 1, which is right for the common
+ * single-main-output case but wrong for sparse multi-output nodes.
+ *
+ * Applied on both import and export so the SDK only ever hands out the
+ * modern shape, while still accepting legacy workflows as input.
+ */
+export function foldLegacyErrorConnections(
+	connections: IConnections,
+	nodes?: readonly ErrorIndexNodeInfo[],
+): void {
+	const nodeLookup = new Map<string, ErrorIndexNodeInfo>();
+	if (nodes) {
+		for (const n of nodes) {
+			if (n.name) nodeLookup.set(n.name, n);
+		}
+	}
+
+	for (const [nodeName, nodeConns] of Object.entries(connections)) {
+		const errorOutputs = nodeConns.error;
+		if (!Array.isArray(errorOutputs) || errorOutputs.length === 0) continue;
+
+		const errorTargets = errorOutputs[0];
+		delete nodeConns.error;
+		if (!Array.isArray(errorTargets) || errorTargets.length === 0) continue;
+
+		const node = nodeLookup.get(nodeName);
+		const targetIndex = node ? resolveErrorOutputIndex(node.type, node.parameters) : 1;
+
+		const main = Array.isArray(nodeConns.main) ? nodeConns.main : [];
+		// Pad any missing earlier output slots with empty arrays so the error
+		// target lands at its type-correct index (e.g. main[2] for IF even when
+		// neither branch was wired up).
+		while (main.length < targetIndex) main.push([]);
+		const existing = main[targetIndex] ?? [];
+		main[targetIndex] = [...existing, ...errorTargets];
+		nodeConns.main = main;
+	}
 }
 
 /**
@@ -233,13 +307,17 @@ export interface NodeJSON {
 	position: [number, number];
 	parameters?: IDataObject;
 	credentials?: Record<string, { id?: string; name: string }>;
+	webhookId?: string;
 	disabled?: boolean;
 	notes?: string;
 	notesInFlow?: boolean;
 	executeOnce?: boolean;
 	retryOnFail?: boolean;
+	maxTries?: number;
+	waitBetweenTries?: number;
 	alwaysOutputData?: boolean;
 	onError?: OnError;
+	extendsCredential?: string;
 }
 
 /**
@@ -256,6 +334,13 @@ export interface WorkflowJSON {
 		templateId?: string;
 		instanceId?: string;
 	};
+	/**
+	 * Node groups, referencing their members by node ID. Internally the SDK carries
+	 * group members by node *handle* (the value from `node(...)`) and resolves them to
+	 * the emitted node IDs here at the JSON boundary, so groups survive
+	 * `regenerateNodeIds()` like connections do.
+	 */
+	nodeGroups?: IWorkflowGroup[];
 }
 
 // =============================================================================
@@ -349,16 +434,23 @@ export interface WorkflowContext {
  */
 export interface NodeConfig<TParams = IDataObject> {
 	parameters?: TParams;
-	credentials?: Record<string, CredentialReference | NewCredentialValue>;
+	credentials?: Record<
+		string,
+		string | CredentialReference | NewCredentialValue | { value: string }
+	>;
 	name?: string;
 	position?: [number, number];
+	webhookId?: string;
 	disabled?: boolean;
 	notes?: string;
 	notesInFlow?: boolean;
 	executeOnce?: boolean;
 	retryOnFail?: boolean;
+	maxTries?: number;
+	waitBetweenTries?: number;
 	alwaysOutputData?: boolean;
 	onError?: OnError;
+	extendsCredential?: string;
 	pinData?: IDataObject[];
 	/**
 	 * Declared output shape for data flow validation.
@@ -449,9 +541,12 @@ export interface NodeInstance<TType extends string, TVersion extends string, TOu
 	 * Create a terminal input target for connecting to a specific input index.
 	 * Use this to connect a node to a specific input of a multi-input node like Merge.
 	 *
+	 * Index is **0-based**: `.input(0)` is the FIRST input, `.input(1)` is the SECOND.
+	 *
 	 * @example
-	 * // Connect to input 1 of a merge node
-	 * nodeA.to(mergeNode.input(1))
+	 * // Wire two sources to a merge node — first source to input 0, second to input 1
+	 * sourceA.to(mergeNode.input(0)) // first input
+	 * sourceB.to(mergeNode.input(1)) // second input
 	 */
 	input(index: number): InputTarget;
 
@@ -459,9 +554,11 @@ export interface NodeInstance<TType extends string, TVersion extends string, TOu
 	 * Create an output selector for connecting from a specific output index.
 	 * Use this for multi-output nodes (like text classifiers) to connect from specific outputs.
 	 *
+	 * Index is **0-based**: `.output(0)` is the FIRST output, `.output(1)` is the SECOND.
+	 *
 	 * @example
-	 * // Connect from output 1 of a classifier
-	 * classifier.output(1).to(categoryB)
+	 * classifier.output(0).to(categoryA) // first output
+	 * classifier.output(1).to(categoryB) // second output
 	 */
 	output(index: number): OutputSelector<TType, TVersion, TOutput>;
 
@@ -696,7 +793,8 @@ export interface SwitchCaseComposite {
 // =============================================================================
 
 /**
- * Target type for IF else branches - can be a node, chain, null, plain array (fan-out), or nested builder
+ * Target type for IF else branches - can be a node, chain, null, plain array (fan-out), nested builder,
+ * or an `InputTarget` (e.g. `merge.input(1)`) that wires a branch directly to a specific input index.
  */
 export type IfElseTarget =
 	| null
@@ -707,10 +805,13 @@ export type IfElseTarget =
 			| NodeChain<NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>>
 	  >
 	| IfElseBuilder<unknown>
-	| SwitchCaseBuilder<unknown>;
+	| SwitchCaseBuilder<unknown>
+	| SplitInBatchesBuilder<unknown>
+	| InputTarget;
 
 /**
- * Target type for Switch case branches - can be a node, chain, null, plain array (fan-out), or nested builder
+ * Target type for Switch case branches - can be a node, chain, null, plain array (fan-out), nested builder,
+ * or an `InputTarget` (e.g. `merge.input(1)`) that wires a case directly to a specific input index.
  */
 export type SwitchCaseTarget =
 	| null
@@ -721,7 +822,25 @@ export type SwitchCaseTarget =
 			| NodeChain<NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>>
 	  >
 	| IfElseBuilder<unknown>
-	| SwitchCaseBuilder<unknown>;
+	| SwitchCaseBuilder<unknown>
+	| SplitInBatchesBuilder<unknown>
+	| InputTarget;
+
+/**
+ * Target type for SplitInBatches `onEachBatch` / `onDone` branches - can be a node,
+ * chain, null, plain array (fan-out), or nested control-flow builder.
+ */
+export type SplitInBatchesTarget =
+	| null
+	| NodeInstance<string, string, unknown>
+	| NodeChain<NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>>
+	| Array<
+			| NodeInstance<string, string, unknown>
+			| NodeChain<NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>>
+	  >
+	| IfElseBuilder<unknown>
+	| SwitchCaseBuilder<unknown>
+	| SplitInBatchesBuilder<unknown>;
 
 /**
  * Fluent builder for IF nodes with onTrue/onFalse methods.
@@ -764,10 +883,14 @@ export interface IfElseBuilder<TOutput = unknown> {
 	onFalse(target: IfElseTarget): IfElseBuilder<TOutput>;
 
 	/**
-	 * Set the target for the error branch (output 2).
-	 * Only applicable when the IF node has onError: 'continueErrorOutput'.
+	 * Set the target for the IF node's own error output (output 2).
 	 *
-	 * @param target - The node or chain to execute on error
+	 * This wires the IF node's error branch — it is NOT a generic per-node
+	 * "on-error" output. Only applicable when the IF node's config sets
+	 * `onError: 'continueErrorOutput'`. For wiring a regular node's error
+	 * output, use `node.onError(handler)` on the source node instead.
+	 *
+	 * @param target - The node or chain to execute when the IF condition errors
 	 */
 	onError(target: IfElseTarget): IfElseBuilder<TOutput>;
 
@@ -854,16 +977,7 @@ export interface SplitInBatchesBuilder<TOutput = unknown> {
 	 *   .onEachBatch(processNode.to(sibNode))
 	 *   .onDone(finalizeNode)
 	 */
-	onEachBatch(
-		target:
-			| null
-			| NodeInstance<string, string, unknown>
-			| NodeChain<NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>>
-			| Array<
-					| NodeInstance<string, string, unknown>
-					| NodeChain<NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>>
-			  >,
-	): SplitInBatchesBuilder<TOutput>;
+	onEachBatch(target: SplitInBatchesTarget): SplitInBatchesBuilder<TOutput>;
 
 	/**
 	 * Fluent API: Set the "done" branch target (output 0).
@@ -875,16 +989,7 @@ export interface SplitInBatchesBuilder<TOutput = unknown> {
 	 *   .onDone(finalizeNode)
 	 *   .onEachBatch(processNode.to(sibNode))
 	 */
-	onDone(
-		target:
-			| null
-			| NodeInstance<string, string, unknown>
-			| NodeChain<NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>>
-			| Array<
-					| NodeInstance<string, string, unknown>
-					| NodeChain<NodeInstance<string, string, unknown>, NodeInstance<string, string, unknown>>
-			  >,
-	): SplitInBatchesBuilder<TOutput>;
+	onDone(target: SplitInBatchesTarget): SplitInBatchesBuilder<TOutput>;
 }
 
 // =============================================================================
@@ -899,9 +1004,26 @@ export interface GeneratePinDataOptions {
 	beforeWorkflow?: WorkflowJSON;
 }
 
+export interface ToJSONOptions {
+	/** Use Dagre-based layout matching the FE's tidy-up algorithm. Defaults to false (BFS layout). */
+	tidyUp?: boolean;
+	/**
+	 * Reuse existing group IDs (keyed by group name) instead of deriving deterministic ones.
+	 * Lets an edit of an existing workflow keep its (UI-assigned, random) group IDs so the diff
+	 * isn't skewed; groups without a match fall back to a deterministic ID.
+	 */
+	existingGroupIdsByName?: Map<string, string>;
+}
+
 /**
  * Workflow builder for constructing workflows with a fluent API
  */
+/**
+ * A reference to a node when defining a group: a node handle — the value
+ * returned by `node(...)`. Trigger nodes cannot be grouped.
+ */
+export type GroupMember = NodeInstance<string, string, unknown>;
+
 export interface WorkflowBuilder {
 	readonly id: string;
 	readonly name: string;
@@ -924,6 +1046,20 @@ export interface WorkflowBuilder {
 	to<T>(switchCaseBuilder: SwitchCaseBuilder<T>): WorkflowBuilder;
 	/** Connect to multiple outputs (branching). Each array element connects to incrementing output index. Use null to skip an output. */
 	to(nodes: Array<NodeInstance<string, string, unknown> | NodeChain | null>): WorkflowBuilder;
+
+	/**
+	 * Wire the true output of the IF node the cursor is on (the node just added
+	 * via `.to()`/`.add()`). Chains with `.onFalse()`, e.g.
+	 * `.to(ifNode).onTrue(yes).onFalse(no)`. Throws if the current node is not an IF.
+	 */
+	onTrue(target: IfElseTarget): WorkflowBuilder;
+	/** Wire the false output of the IF node the cursor is on. See {@link onTrue}. */
+	onFalse(target: IfElseTarget): WorkflowBuilder;
+	/**
+	 * Wire a case output of the Switch node the cursor is on, e.g.
+	 * `.to(switchNode).onCase(0, a).onCase(1, b)`. Throws if the current node is not a Switch.
+	 */
+	onCase(index: number, target: SwitchCaseTarget): WorkflowBuilder;
 
 	settings(settings: WorkflowSettings): WorkflowBuilder;
 
@@ -961,12 +1097,31 @@ export interface WorkflowBuilder {
 	getNode(name: string): NodeInstance<string, string, unknown> | undefined;
 
 	/**
+	 * Define a node group — a named, semantic grouping of nodes shown as a frame on
+	 * the canvas. Members are referenced the same way connections reference nodes: by
+	 * node handle (the `const` from `node(...)`). Trigger nodes cannot be grouped.
+	 * Members resolve to the emitted node IDs in `toJSON()`, so groups survive
+	 * `regenerateNodeIds()` like connections do. Chainable.
+	 *
+	 * @example
+	 * ```typescript
+	 * const fetch = node({ ... });
+	 * const transform = node({ ... });
+	 * workflow('id', 'Name')
+	 *   .add(fetch)
+	 *   .to(transform)
+	 *   .group('Data ingestion', [fetch, transform]);
+	 * ```
+	 */
+	group(name: string, members: GroupMember[]): WorkflowBuilder;
+
+	/**
 	 * Validate the workflow graph structure.
 	 * Returns errors and warnings without converting to JSON.
 	 */
 	validate(options?: ValidationOptions): ValidationResult;
 
-	toJSON(): WorkflowJSON;
+	toJSON(options?: ToJSONOptions): WorkflowJSON;
 
 	/**
 	 * Serialize the workflow to a specific format using registered serializers.
@@ -995,8 +1150,10 @@ export interface WorkflowBuilder {
 	 *
 	 * Node IDs are generated using SHA-256 hash of `${workflowId}:${nodeType}:${nodeName}`,
 	 * formatted as a valid UUID v4 structure.
+	 *
+	 * @param existingIdsByName - reuse these IDs (keyed by node name) instead of regenerating.
 	 */
-	regenerateNodeIds(): void;
+	regenerateNodeIds(existingIdsByName?: Map<string, string>): void;
 }
 
 /**
@@ -1067,9 +1224,9 @@ export type StickyFn = (
 	config?: StickyNoteConfig,
 ) => NodeInstance<'n8n-nodes-base.stickyNote', 'v1', void>;
 
-export type PlaceholderFn = (hint: string) => PlaceholderValue;
+export type PlaceholderFn = (hint: string) => string;
 
-export type NewCredentialFn = (name: string) => NewCredentialValue;
+export type NewCredentialFn = (name: string, id?: string) => NewCredentialValue;
 
 export type IfElseFn = (
 	branches: [

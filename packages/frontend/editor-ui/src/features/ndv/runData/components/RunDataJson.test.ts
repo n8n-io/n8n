@@ -1,12 +1,15 @@
 import { createTestingPinia } from '@pinia/testing';
 import { screen, cleanup } from '@testing-library/vue';
+import { flushPromises } from '@vue/test-utils';
 import RunDataJson from '@/features/ndv/runData/components/RunDataJson.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { useElementSize } from '@vueuse/core'; // Import the composable to mock
+import { Mock } from 'vitest';
+import { computed } from 'vue';
+import { WorkflowIdKey } from '@/app/constants/injectionKeys';
 
 vi.mock('@vueuse/core', async () => {
-	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
-	const originalModule = await vi.importActual<typeof import('@vueuse/core')>('@vueuse/core');
+	const originalModule = await vi.importActual('@vueuse/core');
 
 	return {
 		...originalModule, // Keep all original exports
@@ -14,7 +17,7 @@ vi.mock('@vueuse/core', async () => {
 	};
 });
 
-(useElementSize as jest.Mock).mockReturnValue({
+(useElementSize as Mock).mockReturnValue({
 	height: 500, // Mocked height value
 	width: 300, // Mocked width value
 });
@@ -55,12 +58,22 @@ const renderComponent = createComponentRenderer(RunDataJson, {
 describe('RunDataJson.vue', () => {
 	beforeEach(cleanup);
 
-	it('renders json values properly', () => {
+	it('renders json values properly', async () => {
 		const { container } = renderComponent({
 			global: {
 				plugins: [createTestingPinia()],
+				// RunDataJsonActions (lazy child) injects the workflow id on mount.
+				provide: {
+					[WorkflowIdKey as unknown as string]: computed(() => '1'),
+				},
 			},
 		});
+		// Resolve the defineAsyncComponent import to prevent EnvironmentTeardownError.
+		// flushPromises() only drains microtasks; dynamicImportSettled() waits for the
+		// dynamic import() itself to finish so it can't resolve after env teardown.
+		await flushPromises();
+		await vi.dynamicImportSettled();
+
 		expect(container).toMatchSnapshot();
 
 		expect(screen.getByText('123')).toBeInTheDocument();

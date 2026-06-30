@@ -8,7 +8,7 @@ import {
 } from '@/features/execution/insights/insights.utils';
 import type { InsightsByWorkflow } from '@n8n/api-types';
 import type { TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
-import { smartDecimal } from '@n8n/utils/number/smartDecimal';
+import { smartDecimal } from '@n8n/utils/number/smart-decimal';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { VIEWS } from '@/app/constants';
 import { computed, defineAsyncComponent, ref, watch } from 'vue';
@@ -132,7 +132,7 @@ const emit = defineEmits<{
 const getWorkflowLink = (item: Item, query?: LocationQueryRaw): RouteLocationRaw => ({
 	name: VIEWS.WORKFLOW,
 	params: {
-		name: item.workflowId,
+		workflowId: item.workflowId,
 	},
 	query,
 });
@@ -222,17 +222,22 @@ watch(sortBy, (newValue) => {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	line-height: 1.2;
-	width: fit-content;
 	max-width: 100%;
 }
 
 .link {
-	display: inline-flex;
+	display: flex;
 	height: 100%;
 	align-items: center;
 	color: var(--color--text);
 	text-decoration: underline;
 	max-width: 100%;
+	overflow: hidden;
+	min-width: 0;
+	& > * {
+		min-width: 0;
+		overflow: hidden;
+	}
 	&:hover {
 		color: var(--color--text--shade-1);
 	}

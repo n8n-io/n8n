@@ -23,7 +23,7 @@ import type { ChatUI } from '@n8n/design-system/types/assistant';
 import merge from 'lodash-es/merge';
 
 // Mock vue-router
-const mockRoute = reactive({ name: VIEWS.WORKFLOW });
+const mockRoute = reactive({ name: VIEWS.WORKFLOW, params: {} });
 vi.mock('vue-router', async (importOriginal) => ({
 	...(await importOriginal()),
 	useRoute: () => mockRoute,
@@ -328,7 +328,7 @@ describe('chatPanel.store', () => {
 
 			await chatPanelStore.openWithCredHelp(credType);
 
-			expect(assistantStore.initCredHelp).toHaveBeenCalledWith(credType);
+			expect(assistantStore.initCredHelp).toHaveBeenCalledWith('', credType);
 			expect(chatPanelStateStore.isOpen).toBe(true);
 			expect(chatPanelStateStore.activeMode).toBe('assistant');
 		});
@@ -354,7 +354,7 @@ describe('chatPanel.store', () => {
 
 			await chatPanelStore.openWithErrorHelper(errorContext);
 
-			expect(assistantStore.initErrorHelper).toHaveBeenCalledWith(errorContext);
+			expect(assistantStore.initErrorHelper).toHaveBeenCalledWith('', errorContext);
 			expect(chatPanelStateStore.isOpen).toBe(true);
 			expect(chatPanelStateStore.activeMode).toBe('assistant');
 		});

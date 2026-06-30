@@ -19,20 +19,22 @@ import { Cipher, InstanceSettings } from 'n8n-core';
 import { readFile as fsReadFile, writeFile as fsWriteFile } from 'node:fs/promises';
 import path from 'node:path';
 import { v4 as uuid } from 'uuid';
+import type { MockedFunction } from 'vitest';
 
+import { SourceControlContextFactory } from '@/modules/source-control.ee/source-control-context.factory';
 import { SourceControlExportService } from '@/modules/source-control.ee/source-control-export.service.ee';
 import type { ExportableCredential } from '@/modules/source-control.ee/types/exportable-credential';
-import { SourceControlContext } from '@/modules/source-control.ee/types/source-control-context';
 
 import { createCredentials } from '../shared/db/credentials';
 import { assignTagToWorkflow, createTag } from '../shared/db/tags';
 import { createUser } from '../shared/db/users';
 
 // Mock file system operations
-jest.mock('node:fs/promises');
+vi.mock('node:fs/promises');
 
 describe('SourceControlExportService Integration', () => {
 	let exportService: SourceControlExportService;
+	let sourceControlContextFactory: SourceControlContextFactory;
 	let testUser: User;
 	let personalProject: Project;
 	let teamProject: Project;
@@ -44,8 +46,8 @@ describe('SourceControlExportService Integration', () => {
 	let projectRepository: ProjectRepository;
 
 	// Mocked functions
-	let mockFsWriteFile: jest.MockedFunction<typeof fsWriteFile>;
-	let mockFsReadFile: jest.MockedFunction<typeof fsReadFile>;
+	let mockFsWriteFile: MockedFunction<typeof fsWriteFile>;
+	let mockFsReadFile: MockedFunction<typeof fsReadFile>;
 
 	beforeAll(async () => {
 		await testDb.init();
@@ -68,8 +70,9 @@ describe('SourceControlExportService Integration', () => {
 			n8nFolder: exportDirectory,
 		});
 
-		// Get the service from container (this will use real dependencies)
+		// Get the services from container (this will use real dependencies)
 		exportService = Container.get(SourceControlExportService);
+		sourceControlContextFactory = Container.get(SourceControlContextFactory);
 	});
 
 	afterAll(async () => {
@@ -79,11 +82,11 @@ describe('SourceControlExportService Integration', () => {
 
 	beforeEach(async () => {
 		// Setup mocks before each test
-		mockFsWriteFile = jest.mocked(fsWriteFile);
+		mockFsWriteFile = vi.mocked(fsWriteFile);
 		mockFsWriteFile.mockClear();
 		mockFsWriteFile.mockResolvedValue();
 
-		mockFsReadFile = jest.mocked(fsReadFile);
+		mockFsReadFile = vi.mocked(fsReadFile);
 		mockFsReadFile.mockClear();
 		// Default to empty tags file
 		mockFsReadFile.mockResolvedValue(JSON.stringify({ tags: [], mappings: [] }));
@@ -100,7 +103,7 @@ describe('SourceControlExportService Integration', () => {
 			'TagEntity',
 		]);
 		// Reset mocks
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('exportCredentialsToWorkFolder', () => {
@@ -543,7 +546,9 @@ describe('SourceControlExportService Integration', () => {
 		}
 
 		async function exportTags() {
-			return await exportService.exportTagsToWorkFolder(new SourceControlContext(testUser));
+			return await exportService.exportTagsToWorkFolder(
+				await sourceControlContextFactory.createContext(testUser),
+			);
 		}
 
 		it('should export tags and mappings across multiple teams', async () => {

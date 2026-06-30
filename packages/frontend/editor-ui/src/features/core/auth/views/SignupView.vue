@@ -5,16 +5,20 @@ import { useToast } from '@/app/composables/useToast';
 import { computed, onMounted, ref } from 'vue';
 import type { IFormBoxConfig } from '@/Interface';
 import { VIEWS } from '@/app/constants';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useI18n } from '@n8n/i18n';
+import { createPasswordRules } from '@n8n/design-system';
 import { useRoute, useRouter } from 'vue-router';
 
 const usersStore = useUsersStore();
+const settingsStore = useSettingsStore();
 
 const toast = useToast();
 const i18n = useI18n();
 const router = useRouter();
 const route = useRoute();
+const passwordMinLength = settingsStore.userManagement.passwordMinLength ?? 8;
 
 const FORM_CONFIG: IFormBoxConfig = {
 	title: i18n.baseText('auth.signup.setupYourAccount'),
@@ -46,9 +50,11 @@ const FORM_CONFIG: IFormBoxConfig = {
 			properties: {
 				label: i18n.baseText('auth.password'),
 				type: 'password',
-				validationRules: [{ name: 'DEFAULT_PASSWORD_RULES' }],
+				validationRules: [createPasswordRules(passwordMinLength)],
 				required: true,
-				infoText: i18n.baseText('auth.defaultPasswordRequirements'),
+				infoText: i18n.baseText('auth.defaultPasswordRequirements', {
+					interpolate: { minimum: passwordMinLength },
+				}),
 				autocomplete: 'new-password',
 				capitalize: true,
 			},
@@ -65,8 +71,6 @@ const FORM_CONFIG: IFormBoxConfig = {
 
 const loading = ref(false);
 const inviter = ref<null | { firstName: string; lastName: string }>(null);
-const inviterId = ref<string | undefined>(undefined);
-const inviteeId = ref<string | undefined>(undefined);
 const token = ref<string | undefined>(undefined);
 
 const inviteMessage = computed(() => {
@@ -80,22 +84,16 @@ const inviteMessage = computed(() => {
 });
 
 onMounted(async () => {
-	const inviterIdParam = getQueryParameter('inviterId');
-	const inviteeIdParam = getQueryParameter('inviteeId');
 	const tokenParam = getQueryParameter('token');
 
 	try {
-		if (!tokenParam && !inviterIdParam && !inviteeIdParam) {
+		if (!tokenParam) {
 			throw new Error(i18n.baseText('auth.signup.missingTokenError'));
 		}
 
-		inviterId.value = inviterIdParam ?? undefined;
-		inviteeId.value = inviteeIdParam ?? undefined;
-		token.value = tokenParam ?? undefined;
+		token.value = tokenParam;
 
 		const invite = await usersStore.validateSignupToken({
-			inviteeId: inviteeId.value,
-			inviterId: inviterId.value,
 			token: token.value,
 		});
 		inviter.value = invite.inviter as { firstName: string; lastName: string };
@@ -106,8 +104,7 @@ onMounted(async () => {
 });
 
 async function onSubmit(values: { [key: string]: string | boolean }) {
-	if (!token.value && (!inviterId.value || !inviteeId.value)) {
-		// Legacy invitation: require both inviterId and inviteeId
+	if (!token.value) {
 		toast.showError(
 			new Error(i18n.baseText('auth.signup.tokenValidationError')),
 			i18n.baseText('auth.signup.setupYourAccountError'),
@@ -119,13 +116,9 @@ async function onSubmit(values: { [key: string]: string | boolean }) {
 		loading.value = true;
 		await usersStore.acceptInvitation({
 			...values,
-			inviterId: inviterId.value,
-			inviteeId: inviteeId.value,
 			token: token.value,
 		} as {
-			inviteeId?: string;
-			inviterId?: string;
-			token?: string;
+			token: string;
 			firstName: string;
 			lastName: string;
 			password: string;
@@ -144,7 +137,7 @@ async function onSubmit(values: { [key: string]: string | boolean }) {
 	loading.value = false;
 }
 
-function getQueryParameter(key: 'inviterId' | 'inviteeId' | 'token'): string | null {
+function getQueryParameter(key: 'token'): string | null {
 	return !route.query[key] || typeof route.query[key] !== 'string' ? null : route.query[key];
 }
 </script>

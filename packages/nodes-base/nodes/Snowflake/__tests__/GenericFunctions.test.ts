@@ -1,8 +1,32 @@
 import crypto from 'crypto';
 
-import { getConnectionOptions } from '../GenericFunctions';
+import { escapeSnowflakeObjectIdentifier, getConnectionOptions } from '../GenericFunctions';
 
-jest.mock('crypto');
+vi.mock('crypto');
+
+describe('escapeSnowflakeObjectIdentifier', () => {
+	it('quotes a single-part identifier', () => {
+		expect(escapeSnowflakeObjectIdentifier('orders')).toBe('"ORDERS"');
+	});
+
+	it('quotes each segment of a two-part identifier', () => {
+		expect(escapeSnowflakeObjectIdentifier('schema.orders')).toBe('"SCHEMA"."ORDERS"');
+	});
+
+	it('quotes each segment of a three-part identifier', () => {
+		expect(escapeSnowflakeObjectIdentifier('db.schema.orders')).toBe('"DB"."SCHEMA"."ORDERS"');
+	});
+
+	it('preserves case for pre-quoted identifiers', () => {
+		expect(escapeSnowflakeObjectIdentifier('"myTable"')).toBe('"myTable"');
+	});
+
+	it('does not split on dots inside quoted segments', () => {
+		expect(escapeSnowflakeObjectIdentifier('"my.schema"."my.table"')).toBe(
+			'"my.schema"."my.table"',
+		);
+	});
+});
 
 describe('getConnectionOptions', () => {
 	const commonOptions = {
@@ -30,6 +54,56 @@ describe('getConnectionOptions', () => {
 			});
 		});
 
+		it('without origin hostname when not provided', () => {
+			const result = getConnectionOptions({
+				...commonOptions,
+				authentication: 'password',
+				username: 'test-username',
+				password: 'test-password',
+			});
+
+			expect(result).not.toHaveProperty('host');
+			expect(result).toEqual({
+				...commonOptions,
+				username: 'test-username',
+				password: 'test-password',
+			});
+		});
+
+		it('without origin hostname when only whitespace is provided', () => {
+			const result = getConnectionOptions({
+				...commonOptions,
+				host: '   ',
+				authentication: 'password',
+				username: 'test-username',
+				password: 'test-password',
+			});
+
+			expect(result).not.toHaveProperty('host');
+			expect(result).toEqual({
+				...commonOptions,
+				username: 'test-username',
+				password: 'test-password',
+			});
+		});
+
+		it('with optional origin hostname when provided', () => {
+			const result = getConnectionOptions({
+				...commonOptions,
+				host: 'acme-org.us-east-1.snowflakecomputing.com',
+				authentication: 'password',
+				username: 'test-username',
+				password: 'test-password',
+			});
+
+			expect(result).toEqual({
+				...commonOptions,
+				host: 'acme-org.us-east-1.snowflakecomputing.com',
+				username: 'test-username',
+				password: 'test-password',
+			});
+		});
+
 		it('with private key for keyPair authentication', () => {
 			const result = getConnectionOptions({
 				...commonOptions,
@@ -46,8 +120,22 @@ describe('getConnectionOptions', () => {
 			});
 		});
 
+		it('with oauth token for oauth2 authentication', () => {
+			const result = getConnectionOptions({
+				...commonOptions,
+				authentication: 'oauth2',
+				token: 'test-oauth-token',
+			});
+
+			expect(result).toEqual({
+				...commonOptions,
+				authenticator: 'OAUTH',
+				token: 'test-oauth-token',
+			});
+		});
+
 		it('with private key for keyPair authentication and passphrase', () => {
-			const createPrivateKeySpy = jest.spyOn(crypto, 'createPrivateKey').mockImplementation(
+			const createPrivateKeySpy = vi.spyOn(crypto, 'createPrivateKey').mockImplementation(
 				() =>
 					({
 						export: () => 'test-private-key',

@@ -45,7 +45,7 @@ export interface CodeBuilderNodeSearchResult {
 	score: number;
 	inputs: INodeTypeDescription['inputs'];
 	outputs: INodeTypeDescription['outputs'];
-	/** General hint message for workflow builders (from builderHint.message) */
+	/** General hint message for workflow builders (from node-level builderHint.searchHint) */
 	builderHintMessage?: string;
 	/** Subnode requirements extracted from builderHint.inputs */
 	subnodeRequirements?: SubnodeRequirement[];

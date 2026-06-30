@@ -4,6 +4,7 @@ import {
 	GLOBAL_MEMBER_ROLE,
 	type FolderRepository,
 	type FolderWithWorkflowAndSubFolderCount,
+	type Project,
 	type TagEntity,
 	type TagRepository,
 	type User,
@@ -12,12 +13,13 @@ import {
 	type WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
+import { mock } from 'vitest-mock-extended';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { EventService } from '@/events/event.service';
 
+import type { SourceControlContextFactory } from '../source-control-context.factory';
 import type { SourceControlGitService } from '../source-control-git.service.ee';
 import * as sourceControlHelper from '../source-control-helper.ee';
 import type { SourceControlImportService } from '../source-control-import.service.ee';
@@ -25,9 +27,16 @@ import { SourceControlPreferencesService } from '../source-control-preferences.s
 import { SourceControlStatusService } from '../source-control-status.service.ee';
 import type { StatusExportableCredential } from '../types/exportable-credential';
 import type { ExportableProjectWithFileName } from '../types/exportable-project';
+import { SourceControlContext } from '../types/source-control-context';
 import type { SourceControlWorkflowVersionId } from '../types/source-control-workflow-version-id';
 
+// Reuse typed user mocks at module scope to avoid performance issues related to recreating nested proxy mocks per test
+const globalAdminUser = mock<User>({ role: GLOBAL_ADMIN_ROLE });
+const globalAdminUserWithId = mock<User>({ id: '1', role: GLOBAL_ADMIN_ROLE });
+const globalMemberUser = mock<User>({ role: GLOBAL_MEMBER_ROLE });
+
 describe('getStatus', () => {
+	const gitService = mock<SourceControlGitService>();
 	const sourceControlImportService = mock<SourceControlImportService>();
 	const tagRepository = mock<TagRepository>();
 	const folderRepository = mock<FolderRepository>();
@@ -40,11 +49,13 @@ describe('getStatus', () => {
 		mock(),
 		mock(),
 	);
+	const sourceControlContextFactory = mock<SourceControlContextFactory>();
 	const sourceControlStatusService = new SourceControlStatusService(
 		mockLogger(),
-		mock<SourceControlGitService>(),
+		gitService,
 		sourceControlImportService,
 		preferencesService,
+		sourceControlContextFactory,
 		tagRepository,
 		folderRepository,
 		workflowRepository,
@@ -52,7 +63,11 @@ describe('getStatus', () => {
 	);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
+
+		sourceControlContextFactory.createContext.mockImplementation(
+			async (user) => new SourceControlContext(user, [], []),
+		);
 
 		// version ids (workflows)
 		sourceControlImportService.getRemoteVersionIdsFromFiles.mockResolvedValue([]);
@@ -95,20 +110,19 @@ describe('getStatus', () => {
 		// data tables
 		sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue([]);
 		sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([]);
+		gitService.getHistoricallyTrackedFiles.mockResolvedValue(new Set());
 
 		// repositories
 		tagRepository.find.mockResolvedValue([]);
 		folderRepository.find.mockResolvedValue([]);
 		workflowRepository.findByIds.mockResolvedValue([]);
 
-		jest.spyOn(sourceControlHelper, 'sourceControlFoldersExistCheck').mockReturnValue(true);
+		vi.spyOn(sourceControlHelper, 'sourceControlFoldersExistCheck').mockReturnValue(true);
 	});
 
 	it('ensure updatedAt field for last deleted tag', async () => {
 		// ARRANGE
-		const user = mock<User>({
-			role: GLOBAL_ADMIN_ROLE,
-		});
+		const user = globalAdminUser;
 
 		// Define a tag that does only exist remotely.
 		// Pushing this means it was deleted.
@@ -136,7 +150,7 @@ describe('getStatus', () => {
 		// ASSERT
 
 		if (!Array.isArray(pushResult)) {
-			fail('Expected pushResult to be an array.');
+			expect.fail('Expected pushResult to be an array.');
 		}
 
 		expect(pushResult).toHaveLength(1);
@@ -145,9 +159,7 @@ describe('getStatus', () => {
 
 	it('ensure updatedAt field for last deleted folder', async () => {
 		// ARRANGE
-		const user = mock<User>({
-			role: GLOBAL_ADMIN_ROLE,
-		});
+		const user = globalAdminUser;
 
 		// Define a folder that does only exist remotely.
 		// Pushing this means it was deleted.
@@ -177,7 +189,7 @@ describe('getStatus', () => {
 		// ASSERT
 
 		if (!Array.isArray(pushResult)) {
-			fail('Expected pushResult to be an array.');
+			expect.fail('Expected pushResult to be an array.');
 		}
 
 		expect(pushResult).toHaveLength(1);
@@ -186,9 +198,7 @@ describe('getStatus', () => {
 
 	it('conflict depends on the value of `direction`', async () => {
 		// ARRANGE
-		const user = mock<User>({
-			role: GLOBAL_ADMIN_ROLE,
-		});
+		const user = globalAdminUser;
 
 		// Define a credential that does only exist locally.
 		// Pulling this would delete it so it should be marked as a conflict.
@@ -289,10 +299,10 @@ describe('getStatus', () => {
 		// ASSERT
 
 		if (!Array.isArray(pullResult)) {
-			fail('Expected pullResult to be an array.');
+			expect.fail('Expected pullResult to be an array.');
 		}
 		if (!Array.isArray(pushResult)) {
-			fail('Expected pushResult to be an array.');
+			expect.fail('Expected pushResult to be an array.');
 		}
 
 		expect(pullResult).toHaveLength(7);
@@ -334,9 +344,7 @@ describe('getStatus', () => {
 
 	it('should throw `ForbiddenError` if direction is pull and user is not allowed to globally pull', async () => {
 		// ARRANGE
-		const user = mock<User>({
-			role: GLOBAL_MEMBER_ROLE,
-		});
+		const user = globalMemberUser;
 
 		// ACT
 		await expect(
@@ -346,6 +354,41 @@ describe('getStatus', () => {
 				preferLocalVersion: false,
 			}),
 		).rejects.toThrowError(ForbiddenError);
+	});
+
+	it('should throw `ForbiddenError` if direction is push and user has no source control push access', async () => {
+		// ARRANGE
+		const user = globalMemberUser;
+
+		// ACT
+		await expect(
+			sourceControlStatusService.getStatus(user, {
+				direction: 'push',
+				verbose: false,
+				preferLocalVersion: true,
+			}),
+		).rejects.toThrowError(ForbiddenError);
+
+		expect(gitService.resetBranch).not.toHaveBeenCalled();
+	});
+
+	it('should allow push status for a user with project source control push access', async () => {
+		// ARRANGE
+		const user = globalMemberUser;
+		sourceControlContextFactory.createContext.mockResolvedValueOnce(
+			new SourceControlContext(user, [mock<Project>({ id: 'project-1', type: 'team' })], []),
+		);
+
+		// ACT
+		const result = await sourceControlStatusService.getStatus(user, {
+			direction: 'push',
+			verbose: false,
+			preferLocalVersion: true,
+		});
+
+		// ASSERT
+		expect(result).toEqual([]);
+		expect(sourceControlContextFactory.createContext).toHaveBeenCalledWith(user);
 	});
 
 	describe('project', () => {
@@ -380,12 +423,8 @@ describe('getStatus', () => {
 		};
 
 		const mockUsers = {
-			globalAdmin: mock<User>({
-				role: GLOBAL_ADMIN_ROLE,
-			}),
-			limitedUser: mock<User>({
-				role: GLOBAL_MEMBER_ROLE,
-			}),
+			globalAdmin: globalAdminUser,
+			limitedUser: globalMemberUser,
 		};
 
 		const setupProjectMocks = ({
@@ -452,7 +491,7 @@ describe('getStatus', () => {
 
 			// ASSERT
 			if (Array.isArray(result)) {
-				fail('Expected result to be an object.');
+				expect.fail('Expected result to be an object.');
 			}
 
 			expect(result).toMatchObject({
@@ -489,7 +528,7 @@ describe('getStatus', () => {
 
 			// ASSERT
 			if (Array.isArray(result)) {
-				fail('Expected result to be an object.');
+				expect.fail('Expected result to be an object.');
 			}
 
 			expect(result).toMatchObject({
@@ -530,7 +569,7 @@ describe('getStatus', () => {
 
 			// ASSERT
 			if (Array.isArray(result)) {
-				fail('Expected result to be an object.');
+				expect.fail('Expected result to be an object.');
 			}
 
 			expect(result).toMatchObject({
@@ -572,7 +611,7 @@ describe('getStatus', () => {
 
 			// ASSERT
 			if (Array.isArray(result)) {
-				fail('Expected result to be an object.');
+				expect.fail('Expected result to be an object.');
 			}
 
 			expect(result).toMatchObject({
@@ -623,6 +662,15 @@ describe('getStatus', () => {
 				local: visibleProjects,
 				hiddenLocal: hiddenProjects,
 			});
+			sourceControlContextFactory.createContext.mockResolvedValueOnce(
+				new SourceControlContext(
+					user,
+					visibleProjects.map((project) =>
+						mock<Project>({ id: project.id, name: project.name, type: 'team' }),
+					),
+					[],
+				),
+			);
 
 			// ACT
 			const result = await sourceControlStatusService.getStatus(user, {
@@ -633,7 +681,7 @@ describe('getStatus', () => {
 
 			// ASSERT
 			if (!Array.isArray(result)) {
-				fail('Expected result to be an array.');
+				expect.fail('Expected result to be an array.');
 			}
 
 			expect(result).toHaveLength(visibleProjects.length);
@@ -695,7 +743,7 @@ describe('getStatus', () => {
 
 				// ASSERT
 				if (!Array.isArray(result)) {
-					fail('Expected result to be an array.');
+					expect.fail('Expected result to be an array.');
 				}
 
 				expect(result).toHaveLength(4);
@@ -749,7 +797,7 @@ describe('getStatus', () => {
 
 				// ASSERT
 				if (!Array.isArray(result)) {
-					fail('Expected result to be an array.');
+					expect.fail('Expected result to be an array.');
 				}
 
 				expect(result).toHaveLength(4);
@@ -813,7 +861,7 @@ describe('getStatus', () => {
 			});
 
 			// Override the default mock: folder doesn't exist (backward compatibility scenario)
-			jest.spyOn(sourceControlHelper, 'sourceControlFoldersExistCheck').mockReturnValue(false);
+			vi.spyOn(sourceControlHelper, 'sourceControlFoldersExistCheck').mockReturnValue(false);
 
 			// ACT
 			const result = await sourceControlStatusService.getStatus(user, {
@@ -824,7 +872,7 @@ describe('getStatus', () => {
 
 			// ASSERT
 			if (!Array.isArray(result)) {
-				fail('Expected result to be an array.');
+				expect.fail('Expected result to be an array.');
 			}
 
 			// Should NOT include any project deletion entries
@@ -836,7 +884,7 @@ describe('getStatus', () => {
 	});
 
 	describe('workflows', () => {
-		const user = mock<User>({ role: GLOBAL_ADMIN_ROLE });
+		const user = globalAdminUser;
 
 		const createWorkflow = (
 			overrides: Partial<SourceControlWorkflowVersionId> = {},
@@ -863,7 +911,7 @@ describe('getStatus', () => {
 					preferLocalVersion: false,
 				});
 
-				if (Array.isArray(result)) fail('Expected result to be an object.');
+				if (Array.isArray(result)) expect.fail('Expected result to be an object.');
 				expect(result.wfMissingInLocal).toMatchObject([remote]);
 				expect(result.sourceControlledFiles).toHaveLength(1);
 			});
@@ -880,9 +928,113 @@ describe('getStatus', () => {
 					preferLocalVersion: false,
 				});
 
-				if (Array.isArray(result)) fail('Expected result to be an object.');
+				if (Array.isArray(result)) expect.fail('Expected result to be an object.');
 				expect(result.wfMissingInRemote).toMatchObject([local]);
 				expect(result.sourceControlledFiles).toHaveLength(1);
+			});
+		});
+
+		describe('folder paths', () => {
+			it('includes folderPath for remote-only workflow', async () => {
+				const remote = createWorkflow({
+					id: 'wf-remote-foldered',
+					filename: 'workflows/wf-remote-foldered.json',
+					parentFolderId: 'child-folder',
+				});
+
+				sourceControlImportService.getRemoteVersionIdsFromFiles.mockResolvedValue([remote]);
+				sourceControlImportService.getLocalVersionIdsFromDb.mockResolvedValue([]);
+				sourceControlImportService.getRemoteFoldersAndMappingsFromFile.mockResolvedValue({
+					folders: [
+						{
+							id: 'root-folder',
+							name: 'Root',
+							parentFolderId: null,
+							homeProjectId: 'project1',
+							createdAt: '2023-01-01T00:00:00.000Z',
+							updatedAt: '2023-01-01T00:00:00.000Z',
+						},
+						{
+							id: 'child-folder',
+							name: 'Child',
+							parentFolderId: 'root-folder',
+							homeProjectId: 'project1',
+							createdAt: '2023-01-01T00:00:00.000Z',
+							updatedAt: '2023-01-01T00:00:00.000Z',
+						},
+					],
+				});
+
+				const result = await sourceControlStatusService.getStatus(user, {
+					direction: 'pull',
+					verbose: false,
+					preferLocalVersion: false,
+				});
+
+				const workflow = result.find((f) => f.id === 'wf-remote-foldered');
+				expect(workflow).toBeDefined();
+				expect(workflow?.parentFolderId).toBe('child-folder');
+				expect(workflow?.folderPath).toEqual(['Root', 'Child']);
+			});
+
+			it('uses local folder path for modified workflow when preferLocalVersion is true', async () => {
+				const local = createWorkflow({
+					id: 'wf-modified-foldered',
+					versionId: 'local-v1',
+					parentFolderId: 'local-child',
+				});
+				const remote = createWorkflow({
+					id: 'wf-modified-foldered',
+					versionId: 'remote-v2',
+					parentFolderId: 'remote-child',
+				});
+
+				sourceControlImportService.getLocalVersionIdsFromDb.mockResolvedValue([local]);
+				sourceControlImportService.getRemoteVersionIdsFromFiles.mockResolvedValue([remote]);
+				sourceControlImportService.getLocalFoldersAndMappingsFromDb.mockResolvedValue({
+					folders: [],
+				});
+				sourceControlImportService.getRemoteFoldersAndMappingsFromFile.mockResolvedValue({
+					folders: [
+						{
+							id: 'remote-child',
+							name: 'Remote Child',
+							parentFolderId: null,
+							homeProjectId: 'project1',
+							createdAt: '2023-01-01T00:00:00.000Z',
+							updatedAt: '2023-01-01T00:00:00.000Z',
+						},
+					],
+				});
+
+				const folderData = new Map([
+					[
+						'local-child',
+						{ id: 'local-child', name: 'Local Child', parentFolder: { id: 'local-parent' } },
+					],
+					['local-parent', { id: 'local-parent', name: 'Local Parent', parentFolder: null }],
+				]);
+				folderRepository.find.mockImplementation(async (options: any) => {
+					// populateMissingLocalFolderPathNodes calls with where.id (In(...))
+					if (options?.where?.id?._value) {
+						const ids = options.where.id._value as string[];
+						return ids.map((id: string) => folderData.get(id)).filter(Boolean) as any;
+					}
+					// Default: return empty for other calls (lastUpdatedFolder, etc.)
+					return [];
+				});
+
+				const result = await sourceControlStatusService.getStatus(user, {
+					direction: 'push',
+					verbose: false,
+					preferLocalVersion: true,
+				});
+
+				const workflow = result.find((f) => f.id === 'wf-modified-foldered');
+				expect(workflow).toBeDefined();
+				expect(workflow?.status).toBe('modified');
+				expect(workflow?.parentFolderId).toBe('local-child');
+				expect(workflow?.folderPath).toEqual(['Local Parent', 'Local Child']);
 			});
 		});
 
@@ -905,7 +1057,7 @@ describe('getStatus', () => {
 						preferLocalVersion: false,
 					});
 
-					if (Array.isArray(result)) fail('Expected result to be an object.');
+					if (Array.isArray(result)) expect.fail('Expected result to be an object.');
 					expect(result.wfModifiedInEither).toHaveLength(1);
 				});
 
@@ -926,7 +1078,7 @@ describe('getStatus', () => {
 						preferLocalVersion: false,
 					});
 
-					if (Array.isArray(result)) fail('Expected result to be an object.');
+					if (Array.isArray(result)) expect.fail('Expected result to be an object.');
 					expect(result.wfModifiedInEither).toHaveLength(1);
 				});
 			});
@@ -949,7 +1101,7 @@ describe('getStatus', () => {
 						preferLocalVersion: false,
 					});
 
-					if (Array.isArray(result)) fail('Expected result to be an object.');
+					if (Array.isArray(result)) expect.fail('Expected result to be an object.');
 					// No modification detected because personal projects are not synced
 					expect(result.wfModifiedInEither).toHaveLength(0);
 				});
@@ -969,7 +1121,7 @@ describe('getStatus', () => {
 						preferLocalVersion: false,
 					});
 
-					if (Array.isArray(result)) fail('Expected result to be an object.');
+					if (Array.isArray(result)) expect.fail('Expected result to be an object.');
 					expect(result.wfModifiedInEither).toHaveLength(0);
 				});
 			});
@@ -988,7 +1140,7 @@ describe('getStatus', () => {
 					preferLocalVersion: false,
 				});
 
-				if (Array.isArray(result)) fail('Expected result to be an object.');
+				if (Array.isArray(result)) expect.fail('Expected result to be an object.');
 				expect(result.wfModifiedInEither).toHaveLength(0);
 			});
 		});
@@ -996,7 +1148,7 @@ describe('getStatus', () => {
 
 	describe('credentials', () => {
 		describe('owner changes', () => {
-			const user = mock<User>({ role: GLOBAL_ADMIN_ROLE });
+			const user = globalAdminUser;
 
 			const createCredential = (
 				overrides: Partial<StatusExportableCredential> = {},
@@ -1029,7 +1181,7 @@ describe('getStatus', () => {
 						preferLocalVersion: false,
 					});
 
-					if (Array.isArray(result)) fail('Expected result to be an object.');
+					if (Array.isArray(result)) expect.fail('Expected result to be an object.');
 					expect(result.credModifiedInEither).toHaveLength(1);
 				});
 
@@ -1050,7 +1202,7 @@ describe('getStatus', () => {
 						preferLocalVersion: false,
 					});
 
-					if (Array.isArray(result)) fail('Expected result to be an object.');
+					if (Array.isArray(result)) expect.fail('Expected result to be an object.');
 					expect(result.credModifiedInEither).toHaveLength(1);
 				});
 			});
@@ -1073,7 +1225,7 @@ describe('getStatus', () => {
 						preferLocalVersion: false,
 					});
 
-					if (Array.isArray(result)) fail('Expected result to be an object.');
+					if (Array.isArray(result)) expect.fail('Expected result to be an object.');
 					// No modification detected because personal projects are not synced
 					expect(result.credModifiedInEither).toHaveLength(0);
 				});
@@ -1093,7 +1245,7 @@ describe('getStatus', () => {
 						preferLocalVersion: false,
 					});
 
-					if (Array.isArray(result)) fail('Expected result to be an object.');
+					if (Array.isArray(result)) expect.fail('Expected result to be an object.');
 					expect(result.credModifiedInEither).toHaveLength(0);
 				});
 			});
@@ -1112,7 +1264,7 @@ describe('getStatus', () => {
 						preferLocalVersion: false,
 					});
 
-					if (Array.isArray(result)) fail('Expected result to be an object.');
+					if (Array.isArray(result)) expect.fail('Expected result to be an object.');
 					expect(result.credModifiedInEither).toHaveLength(1);
 				});
 
@@ -1129,7 +1281,7 @@ describe('getStatus', () => {
 						preferLocalVersion: false,
 					});
 
-					if (Array.isArray(result)) fail('Expected result to be an object.');
+					if (Array.isArray(result)) expect.fail('Expected result to be an object.');
 					expect(result.credModifiedInEither).toHaveLength(1);
 				});
 
@@ -1146,7 +1298,7 @@ describe('getStatus', () => {
 						preferLocalVersion: false,
 					});
 
-					if (Array.isArray(result)) fail('Expected result to be an object.');
+					if (Array.isArray(result)) expect.fail('Expected result to be an object.');
 					expect(result.credModifiedInEither).toHaveLength(1);
 				});
 
@@ -1162,7 +1314,7 @@ describe('getStatus', () => {
 						preferLocalVersion: false,
 					});
 
-					if (Array.isArray(result)) fail('Expected result to be an object.');
+					if (Array.isArray(result)) expect.fail('Expected result to be an object.');
 					expect(result.credModifiedInEither).toHaveLength(0);
 				});
 
@@ -1178,7 +1330,7 @@ describe('getStatus', () => {
 						preferLocalVersion: false,
 					});
 
-					if (Array.isArray(result)) fail('Expected result to be an object.');
+					if (Array.isArray(result)) expect.fail('Expected result to be an object.');
 					expect(result.credModifiedInEither).toHaveLength(0);
 				});
 			});
@@ -1197,7 +1349,7 @@ describe('getStatus', () => {
 					preferLocalVersion: false,
 				});
 
-				if (Array.isArray(result)) fail('Expected result to be an object.');
+				if (Array.isArray(result)) expect.fail('Expected result to be an object.');
 				expect(result.credModifiedInEither).toHaveLength(0);
 			});
 		});
@@ -1223,7 +1375,7 @@ describe('getStatus', () => {
 			},
 		};
 
-		const user = mock<User>({ role: GLOBAL_ADMIN_ROLE });
+		const user = globalAdminUser;
 
 		it('should detect folder as modified when homeProjectId changes', async () => {
 			// ARRANGE
@@ -1258,7 +1410,7 @@ describe('getStatus', () => {
 
 			// ASSERT
 			if (Array.isArray(result)) {
-				fail('Expected result to be an object.');
+				expect.fail('Expected result to be an object.');
 			}
 
 			expect(result.foldersModifiedInEither).toHaveLength(1);
@@ -1286,7 +1438,7 @@ describe('getStatus', () => {
 
 			// ASSERT
 			if (Array.isArray(result)) {
-				fail('Expected result to be an object.');
+				expect.fail('Expected result to be an object.');
 			}
 
 			expect(result.foldersModifiedInEither).toHaveLength(0);
@@ -1332,7 +1484,7 @@ describe('getStatus', () => {
 
 			// ASSERT
 			if (Array.isArray(result)) {
-				fail('Expected result to be an object.');
+				expect.fail('Expected result to be an object.');
 			}
 
 			expect(result.foldersModifiedInEither).toHaveLength(1);
@@ -1344,7 +1496,7 @@ describe('getStatus', () => {
 		});
 
 		describe('owner changes', () => {
-			const user = mock<User>({ role: GLOBAL_ADMIN_ROLE });
+			const user = globalAdminUser;
 
 			const createFolder = (overrides = {}) => ({
 				id: 'folder1',
@@ -1389,7 +1541,7 @@ describe('getStatus', () => {
 					preferLocalVersion: false,
 				});
 
-				if (Array.isArray(result)) fail('Expected result to be an object.');
+				if (Array.isArray(result)) expect.fail('Expected result to be an object.');
 				expect(result.foldersModifiedInEither).toHaveLength(1);
 			});
 
@@ -1419,7 +1571,7 @@ describe('getStatus', () => {
 					preferLocalVersion: false,
 				});
 
-				if (Array.isArray(result)) fail('Expected result to be an object.');
+				if (Array.isArray(result)) expect.fail('Expected result to be an object.');
 				expect(result.foldersModifiedInEither).toHaveLength(1);
 			});
 
@@ -1442,7 +1594,7 @@ describe('getStatus', () => {
 					preferLocalVersion: false,
 				});
 
-				if (Array.isArray(result)) fail('Expected result to be an object.');
+				if (Array.isArray(result)) expect.fail('Expected result to be an object.');
 				expect(result.foldersModifiedInEither).toHaveLength(0);
 			});
 
@@ -1471,7 +1623,7 @@ describe('getStatus', () => {
 					preferLocalVersion: false,
 				});
 
-				if (Array.isArray(result)) fail('Expected result to be an object.');
+				if (Array.isArray(result)) expect.fail('Expected result to be an object.');
 				expect(result.foldersModifiedInEither).toHaveLength(0);
 			});
 		});
@@ -1585,7 +1737,7 @@ describe('getStatus', () => {
 	});
 
 	describe('tag mappings', () => {
-		const user = mock<User>({ role: GLOBAL_ADMIN_ROLE });
+		const user = globalAdminUser;
 
 		it('should detect when a tag mapping is removed locally but still exists remotely', async () => {
 			const tag = mock<TagEntity>({ id: 'tag1', name: 'Test Tag', updatedAt: new Date() });
@@ -1608,7 +1760,7 @@ describe('getStatus', () => {
 			});
 
 			if (Array.isArray(result)) {
-				fail('Expected result to be an object in verbose mode.');
+				expect.fail('Expected result to be an object in verbose mode.');
 			}
 
 			expect(result.mappingsMissingInLocal).toHaveLength(1);
@@ -1623,10 +1775,7 @@ describe('getStatus', () => {
 	describe('data tables', () => {
 		it('should handle undefined data tables from remote (null safety)', async () => {
 			// ARRANGE
-			const user = mock<User>({
-				id: '1',
-				role: GLOBAL_ADMIN_ROLE,
-			});
+			const user = globalAdminUserWithId;
 
 			// Mock undefined data tables from remote
 			sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue(undefined as any);
@@ -1640,17 +1789,14 @@ describe('getStatus', () => {
 			});
 
 			// ASSERT
-			if (Array.isArray(result)) fail('Expected result to be an object.');
+			if (Array.isArray(result)) expect.fail('Expected result to be an object.');
 			const dataTableFiles = result.sourceControlledFiles.filter((f) => f.type === 'datatable');
 			expect(dataTableFiles).toHaveLength(0);
 		});
 
 		it('should handle undefined data tables from local (null safety)', async () => {
 			// ARRANGE
-			const user = mock<User>({
-				id: '1',
-				role: GLOBAL_ADMIN_ROLE,
-			});
+			const user = globalAdminUserWithId;
 
 			// Mock undefined data tables from local
 			sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue([]);
@@ -1664,17 +1810,14 @@ describe('getStatus', () => {
 			});
 
 			// ASSERT
-			if (Array.isArray(result)) fail('Expected result to be an object.');
+			if (Array.isArray(result)) expect.fail('Expected result to be an object.');
 			const dataTableFiles = result.sourceControlledFiles.filter((f) => f.type === 'datatable');
 			expect(dataTableFiles).toHaveLength(0);
 		});
 
 		it('should handle both data tables undefined (null safety)', async () => {
 			// ARRANGE
-			const user = mock<User>({
-				id: '1',
-				role: GLOBAL_ADMIN_ROLE,
-			});
+			const user = globalAdminUserWithId;
 
 			// Mock both undefined
 			sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue(undefined as any);
@@ -1688,17 +1831,14 @@ describe('getStatus', () => {
 			});
 
 			// ASSERT
-			if (Array.isArray(result)) fail('Expected result to be an object.');
+			if (Array.isArray(result)) expect.fail('Expected result to be an object.');
 			const dataTableFiles = result.sourceControlledFiles.filter((f) => f.type === 'datatable');
 			expect(dataTableFiles).toHaveLength(0);
 		});
 
 		it('should identify data tables missing in local (remote only)', async () => {
 			// ARRANGE
-			const user = mock<User>({
-				id: '1',
-				role: GLOBAL_ADMIN_ROLE,
-			});
+			const user = globalAdminUserWithId;
 
 			const remoteDataTable = {
 				id: 'dt1',
@@ -1713,6 +1853,8 @@ describe('getStatus', () => {
 
 			sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue([remoteDataTable]);
 			sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([]);
+			// Table was previously synced, so it should be marked as deleted during push
+			gitService.getHistoricallyTrackedFiles.mockResolvedValue(new Set(['datatables/dt1.json']));
 
 			// ACT
 			const result = await sourceControlStatusService.getStatus(user, {
@@ -1722,7 +1864,7 @@ describe('getStatus', () => {
 			});
 
 			// ASSERT
-			if (Array.isArray(result)) fail('Expected result to be an object.');
+			if (Array.isArray(result)) expect.fail('Expected result to be an object.');
 			const dataTableFile = result.sourceControlledFiles.find(
 				(f) => f.type === 'datatable' && f.id === 'dt1',
 			);
@@ -1733,10 +1875,7 @@ describe('getStatus', () => {
 
 		it('should identify data tables missing in remote (local only)', async () => {
 			// ARRANGE
-			const user = mock<User>({
-				id: '1',
-				role: GLOBAL_ADMIN_ROLE,
-			});
+			const user = globalAdminUserWithId;
 
 			const localDataTable = {
 				id: 'dt2',
@@ -1760,7 +1899,7 @@ describe('getStatus', () => {
 			});
 
 			// ASSERT
-			if (Array.isArray(result)) fail('Expected result to be an object.');
+			if (Array.isArray(result)) expect.fail('Expected result to be an object.');
 			const dataTableFile = result.sourceControlledFiles.find(
 				(f) => f.type === 'datatable' && f.id === 'dt2',
 			);
@@ -1771,10 +1910,7 @@ describe('getStatus', () => {
 
 		it('should identify modified data tables (name changed)', async () => {
 			// ARRANGE
-			const user = mock<User>({
-				id: '1',
-				role: GLOBAL_ADMIN_ROLE,
-			});
+			const user = globalAdminUserWithId;
 
 			const localDataTable = {
 				id: 'dt3',
@@ -1809,7 +1945,7 @@ describe('getStatus', () => {
 			});
 
 			// ASSERT
-			if (Array.isArray(result)) fail('Expected result to be an object.');
+			if (Array.isArray(result)) expect.fail('Expected result to be an object.');
 			const dataTableFile = result.sourceControlledFiles.find(
 				(f) => f.type === 'datatable' && f.id === 'dt3',
 			);
@@ -1819,10 +1955,7 @@ describe('getStatus', () => {
 
 		it('should not detect modifications when data tables are identical', async () => {
 			// ARRANGE
-			const user = mock<User>({
-				id: '1',
-				role: GLOBAL_ADMIN_ROLE,
-			});
+			const user = globalAdminUserWithId;
 
 			const dataTable = {
 				id: 'dt4',
@@ -1846,17 +1979,14 @@ describe('getStatus', () => {
 			});
 
 			// ASSERT
-			if (Array.isArray(result)) fail('Expected result to be an object.');
+			if (Array.isArray(result)) expect.fail('Expected result to be an object.');
 			const dataTableFiles = result.sourceControlledFiles.filter((f) => f.type === 'datatable');
 			expect(dataTableFiles).toHaveLength(0);
 		});
 
 		it('should handle multiple data tables with mixed states', async () => {
 			// ARRANGE
-			const user = mock<User>({
-				id: '1',
-				role: GLOBAL_ADMIN_ROLE,
-			});
+			const user = globalAdminUserWithId;
 
 			const localDataTables = [
 				{
@@ -1926,6 +2056,8 @@ describe('getStatus', () => {
 
 			sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue(remoteDataTables);
 			sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue(localDataTables);
+			// dt8 was previously synced, so it should be marked as deleted during push
+			gitService.getHistoricallyTrackedFiles.mockResolvedValue(new Set(['datatables/dt8.json']));
 
 			// ACT
 			const result = await sourceControlStatusService.getStatus(user, {
@@ -1935,7 +2067,7 @@ describe('getStatus', () => {
 			});
 
 			// ASSERT
-			if (Array.isArray(result)) fail('Expected result to be an object.');
+			if (Array.isArray(result)) expect.fail('Expected result to be an object.');
 			const dataTableFiles = result.sourceControlledFiles.filter((f) => f.type === 'datatable');
 
 			// Should have: dt5 (created), dt6 (modified), dt8 (deleted)
@@ -1952,10 +2084,7 @@ describe('getStatus', () => {
 		});
 
 		describe('schema change detection', () => {
-			const user = mock<User>({
-				id: '1',
-				role: GLOBAL_ADMIN_ROLE,
-			});
+			const user = globalAdminUserWithId;
 
 			it('should detect column addition', async () => {
 				// ARRANGE
@@ -2001,7 +2130,7 @@ describe('getStatus', () => {
 				});
 
 				// ASSERT
-				if (Array.isArray(result)) fail('Expected result to be an object.');
+				if (Array.isArray(result)) expect.fail('Expected result to be an object.');
 				const dataTableFile = result.sourceControlledFiles.find(
 					(f) => f.type === 'datatable' && f.id === 'dt-schema-1',
 				);
@@ -2049,7 +2178,7 @@ describe('getStatus', () => {
 				});
 
 				// ASSERT
-				if (Array.isArray(result)) fail('Expected result to be an object.');
+				if (Array.isArray(result)) expect.fail('Expected result to be an object.');
 				const dataTableFile = result.sourceControlledFiles.find(
 					(f) => f.type === 'datatable' && f.id === 'dt-schema-2',
 				);
@@ -2100,7 +2229,7 @@ describe('getStatus', () => {
 				});
 
 				// ASSERT
-				if (Array.isArray(result)) fail('Expected result to be an object.');
+				if (Array.isArray(result)) expect.fail('Expected result to be an object.');
 				const dataTableFile = result.sourceControlledFiles.find(
 					(f) => f.type === 'datatable' && f.id === 'dt-schema-3',
 				);
@@ -2151,7 +2280,7 @@ describe('getStatus', () => {
 				});
 
 				// ASSERT
-				if (Array.isArray(result)) fail('Expected result to be an object.');
+				if (Array.isArray(result)) expect.fail('Expected result to be an object.');
 				const dataTableFile = result.sourceControlledFiles.find(
 					(f) => f.type === 'datatable' && f.id === 'dt-schema-4',
 				);
@@ -2202,7 +2331,7 @@ describe('getStatus', () => {
 				});
 
 				// ASSERT
-				if (Array.isArray(result)) fail('Expected result to be an object.');
+				if (Array.isArray(result)) expect.fail('Expected result to be an object.');
 				const dataTableFile = result.sourceControlledFiles.find(
 					(f) => f.type === 'datatable' && f.id === 'dt-schema-5',
 				);
@@ -2238,7 +2367,7 @@ describe('getStatus', () => {
 				});
 
 				// ASSERT
-				if (Array.isArray(result)) fail('Expected result to be an object.');
+				if (Array.isArray(result)) expect.fail('Expected result to be an object.');
 				const dataTableFiles = result.sourceControlledFiles.filter((f) => f.type === 'datatable');
 				expect(dataTableFiles).toHaveLength(0);
 			});
@@ -2287,7 +2416,7 @@ describe('getStatus', () => {
 				});
 
 				// ASSERT
-				if (Array.isArray(result)) fail('Expected result to be an object.');
+				if (Array.isArray(result)) expect.fail('Expected result to be an object.');
 				const dataTableFile = result.sourceControlledFiles.find(
 					(f) => f.type === 'datatable' && f.id === 'dt-schema-7',
 				);
@@ -2332,7 +2461,7 @@ describe('getStatus', () => {
 				});
 
 				// ASSERT
-				if (Array.isArray(result)) fail('Expected result to be an object.');
+				if (Array.isArray(result)) expect.fail('Expected result to be an object.');
 				const dataTableFiles = result.sourceControlledFiles.filter((f) => f.type === 'datatable');
 				expect(dataTableFiles).toHaveLength(0);
 			});
@@ -2374,12 +2503,256 @@ describe('getStatus', () => {
 				});
 
 				// ASSERT
-				if (Array.isArray(result)) fail('Expected result to be an object.');
+				if (Array.isArray(result)) expect.fail('Expected result to be an object.');
 				const dataTableFile = result.sourceControlledFiles.find(
 					(f) => f.type === 'datatable' && f.id === 'dt-schema-9',
 				);
 				expect(dataTableFile).toBeDefined();
 				expect(dataTableFile?.status).toBe('modified');
+			});
+		});
+
+		describe('git history protection', () => {
+			it('should not mark local-only data table as deleted during pull when never synced', async () => {
+				// ARRANGE
+				const user = mock<User>({ id: '1', role: GLOBAL_ADMIN_ROLE });
+
+				const localDataTable = {
+					id: 'dt-local-only',
+					name: 'Local Table',
+					ownedBy: { type: 'team' as const, projectId: 'projB', projectName: 'ProjectB' },
+					filename: 'test.json',
+					columns: [],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				};
+
+				sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue([]);
+				sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
+				// Table was never synced — no git history
+				gitService.getHistoricallyTrackedFiles.mockResolvedValue(new Set());
+
+				// ACT
+				const result = await sourceControlStatusService.getStatus(user, {
+					direction: 'pull',
+					verbose: false,
+					preferLocalVersion: false,
+				});
+
+				// ASSERT
+				if (!Array.isArray(result)) expect.fail('Expected result to be an array.');
+				const dataTableFiles = result.filter((f) => f.type === 'datatable');
+				expect(dataTableFiles).toHaveLength(0);
+			});
+
+			it('should mark local-only data table as deleted during pull when previously synced', async () => {
+				// ARRANGE
+				const user = mock<User>({ id: '1', role: GLOBAL_ADMIN_ROLE });
+
+				const localDataTable = {
+					id: 'dt-was-synced',
+					name: 'Previously Synced Table',
+					ownedBy: { type: 'team' as const, projectId: 'projA', projectName: 'ProjectA' },
+					filename: 'test.json',
+					columns: [],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				};
+
+				sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue([]);
+				sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
+				// Table was previously synced — exists in git history
+				gitService.getHistoricallyTrackedFiles.mockResolvedValue(
+					new Set(['datatables/dt-was-synced.json']),
+				);
+
+				// ACT
+				const result = await sourceControlStatusService.getStatus(user, {
+					direction: 'pull',
+					verbose: false,
+					preferLocalVersion: false,
+				});
+
+				// ASSERT
+				if (!Array.isArray(result)) expect.fail('Expected result to be an array.');
+				const dataTableFile = result.find(
+					(f) => f.type === 'datatable' && f.id === 'dt-was-synced',
+				);
+				expect(dataTableFile).toBeDefined();
+				expect(dataTableFile?.status).toBe('deleted');
+			});
+
+			it('should not mark remote-only data table as deleted during push when never synced locally', async () => {
+				// ARRANGE
+				const user = mock<User>({ id: '1', role: GLOBAL_ADMIN_ROLE });
+
+				const remoteDataTable = {
+					id: 'dt-remote-only',
+					name: 'Remote Table',
+					ownedBy: { type: 'team' as const, teamId: 'projA', teamName: 'ProjectA' },
+					columns: [],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				};
+
+				sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue([
+					remoteDataTable,
+				]);
+				sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([]);
+				// Table was never synced from this instance
+				gitService.getHistoricallyTrackedFiles.mockResolvedValue(new Set());
+
+				// ACT
+				const result = await sourceControlStatusService.getStatus(user, {
+					direction: 'push',
+					verbose: false,
+					preferLocalVersion: false,
+				});
+
+				// ASSERT
+				if (!Array.isArray(result)) expect.fail('Expected result to be an array.');
+				const dataTableFiles = result.filter((f) => f.type === 'datatable');
+				expect(dataTableFiles).toHaveLength(0);
+			});
+
+			it('should preserve local table during pull when remote has same-named table in different project', async () => {
+				// ARRANGE
+				const user = mock<User>({ id: '1', role: GLOBAL_ADMIN_ROLE });
+
+				const remoteDataTable = {
+					id: 'dt-remote',
+					name: 'Table1',
+					ownedBy: { type: 'team' as const, teamId: 'projA', teamName: 'ProjectA' },
+					columns: [],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				};
+
+				const localDataTable = {
+					id: 'dt-local',
+					name: 'Table1',
+					ownedBy: { type: 'team' as const, projectId: 'projB', projectName: 'ProjectB' },
+					filename: 'test.json',
+					columns: [],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				};
+
+				sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue([
+					remoteDataTable,
+				]);
+				sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
+				// Only the remote table has git history — local was never pushed
+				gitService.getHistoricallyTrackedFiles.mockResolvedValue(
+					new Set(['datatables/dt-remote.json']),
+				);
+
+				// ACT
+				const result = await sourceControlStatusService.getStatus(user, {
+					direction: 'pull',
+					verbose: false,
+					preferLocalVersion: false,
+				});
+
+				// ASSERT
+				if (!Array.isArray(result)) expect.fail('Expected result to be an array.');
+				const dataTableFiles = result.filter((f) => f.type === 'datatable');
+				// Only the remote table should appear as "created", local table should be preserved (not listed)
+				expect(dataTableFiles).toHaveLength(1);
+				expect(dataTableFiles[0].id).toBe('dt-remote');
+				expect(dataTableFiles[0].status).toBe('created');
+			});
+
+			it('should not delete remote table from another instance during push', async () => {
+				// ARRANGE
+				const user = mock<User>({ id: '1', role: GLOBAL_ADMIN_ROLE });
+
+				const remoteFromInstanceA = {
+					id: 'dt-instance-a',
+					name: 'Table1',
+					ownedBy: { type: 'team' as const, teamId: 'projA', teamName: 'ProjectA' },
+					columns: [],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				};
+
+				const localTable = {
+					id: 'dt-local',
+					name: 'Table1',
+					ownedBy: { type: 'team' as const, projectId: 'projB', projectName: 'ProjectB' },
+					filename: 'test.json',
+					columns: [],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				};
+
+				sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue([
+					remoteFromInstanceA,
+				]);
+				sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([localTable]);
+				// Only the local table has been synced from this instance, not Instance A's table
+				gitService.getHistoricallyTrackedFiles.mockResolvedValue(new Set());
+
+				// ACT
+				const result = await sourceControlStatusService.getStatus(user, {
+					direction: 'push',
+					verbose: false,
+					preferLocalVersion: false,
+				});
+
+				// ASSERT
+				if (!Array.isArray(result)) expect.fail('Expected result to be an array.');
+				const dataTableFiles = result.filter((f) => f.type === 'datatable');
+				// Local table should be "created", remote table should NOT be "deleted"
+				expect(dataTableFiles).toHaveLength(1);
+				expect(dataTableFiles[0].id).toBe('dt-local');
+				expect(dataTableFiles[0].status).toBe('created');
+			});
+
+			it('should detect name collision during pull even when local table was never synced', async () => {
+				// ARRANGE
+				const user = mock<User>({ id: '1', role: GLOBAL_ADMIN_ROLE });
+
+				const remoteDataTable = {
+					id: 'dt-remote',
+					name: 'Shared Name',
+					ownedBy: { type: 'team' as const, teamId: 'projA', teamName: 'ProjectA' },
+					columns: [],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				};
+
+				const localDataTable = {
+					id: 'dt-local',
+					name: 'Shared Name',
+					ownedBy: { type: 'team' as const, projectId: 'projA', projectName: 'ProjectA' },
+					filename: 'test.json',
+					columns: [],
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				};
+
+				sourceControlImportService.getRemoteDataTablesFromFiles.mockResolvedValue([
+					remoteDataTable,
+				]);
+				sourceControlImportService.getLocalDataTablesFromDb.mockResolvedValue([localDataTable]);
+				// Local table was never synced
+				gitService.getHistoricallyTrackedFiles.mockResolvedValue(new Set());
+
+				// ACT
+				const result = await sourceControlStatusService.getStatus(user, {
+					direction: 'pull',
+					verbose: false,
+					preferLocalVersion: false,
+				});
+
+				// ASSERT — collision must be flagged even though the local table was never synced
+				if (!Array.isArray(result)) expect.fail('Expected result to be an array.');
+				const collisionFile = result.find(
+					(f) => f.type === 'datatable' && f.status === 'modified' && f.conflict,
+				);
+				expect(collisionFile).toBeDefined();
+				expect(collisionFile?.name).toBe('Shared Name');
 			});
 		});
 	});

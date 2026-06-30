@@ -3,7 +3,6 @@ import { ref, computed, onMounted } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
 import {
 	ROLE,
-	type Role,
 	type UsersListSortOptions,
 	type User,
 	USERS_LIST_SORT_OPTIONS,
@@ -22,6 +21,7 @@ import type { IUser } from '@n8n/rest-api-client/api/users';
 import { useToast } from '@/app/composables/useToast';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { useRolesStore } from '@/app/stores/roles.store';
 import { useUsersStore } from '../users.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
@@ -32,9 +32,8 @@ import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHe
 import SettingsUsersTable from '../components/SettingsUsersTable.vue';
 import { I18nT } from 'vue-i18n';
 import { useUserRoleProvisioningStore } from '@/features/settings/sso/provisioning/composables/userRoleProvisioning.store';
+import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 import N8nAlert from '@n8n/design-system/components/N8nAlert/Alert.vue';
-import { usePostHog } from '@/app/stores/posthog.store';
-import { TAMPER_PROOF_INVITE_LINKS } from '@/app/constants/experiments';
 import {
 	N8nActionBox,
 	N8nButton,
@@ -55,11 +54,17 @@ const message = useMessage();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
+const rolesStore = useRolesStore();
 const ssoStore = useSSOStore();
 const documentTitle = useDocumentTitle();
 const pageRedirectionHelper = usePageRedirectionHelper();
 const userRoleProvisioningStore = useUserRoleProvisioningStore();
-const postHog = usePostHog();
+const { check: envFeatureFlagCheck } = useEnvFeatureFlag();
+
+// Gates assigning custom instance roles (invite/change/reinvite).
+const customInstanceRolesEnabled = computed(() =>
+	envFeatureFlagCheck.value('CUSTOM_INSTANCE_ROLES'),
+);
 
 const i18n = useI18n();
 
@@ -79,8 +84,8 @@ const isInstanceRoleProvisioningEnabled = computed(
 	() => userRoleProvisioningStore.provisioningConfig?.scopesProvisionInstanceRole || false,
 );
 
-const isTamperProofInviteLinksEnabled = computed(() =>
-	postHog.isVariantEnabled(TAMPER_PROOF_INVITE_LINKS.name, TAMPER_PROOF_INVITE_LINKS.variant),
+const isExpressionMappingEnabled = computed(
+	() => userRoleProvisioningStore.provisioningConfig?.scopesUseExpressionMapping || false,
 );
 
 const isSSOEnabled = computed(() => !!ssoStore.isSamlLoginEnabled || !!ssoStore.isOidcLoginEnabled);
@@ -101,20 +106,10 @@ const usersListActions = computed((): Array<UserAction<IUser>> => {
 			label: i18n.baseText('settings.users.actions.generateInviteLink'),
 			value: 'generateInviteLink',
 			guard: (user) =>
-				isTamperProofInviteLinksEnabled.value &&
 				hasPermission(['rbac'], { rbac: { scope: 'user:generateInviteLink' } }) &&
 				usersStore.usersLimitNotReached &&
 				user.id !== usersStore.currentUserId &&
 				!user.firstName,
-		},
-		{
-			label: i18n.baseText('settings.users.actions.copyInviteLink'),
-			value: 'copyInviteLink',
-			guard: (user) =>
-				!isTamperProofInviteLinksEnabled.value &&
-				usersStore.usersLimitNotReached &&
-				!user.firstName &&
-				!!user.inviteAcceptUrl,
 		},
 		{
 			label: i18n.baseText('settings.users.actions.reinvite'),
@@ -154,7 +149,7 @@ const isAdvancedPermissionsEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedPermissions],
 );
 
-const userRoles = computed((): Array<{ value: Role; label: string; disabled?: boolean }> => {
+const userRoles = computed((): Array<{ value: string; label: string; disabled?: boolean }> => {
 	return [
 		{
 			value: ROLE.Member,
@@ -170,6 +165,13 @@ const userRoles = computed((): Array<{ value: Role; label: string; disabled?: bo
 			label: i18n.baseText('auth.roles.admin'),
 			disabled: !isAdvancedPermissionsEnabled.value,
 		},
+		...(customInstanceRolesEnabled.value
+			? rolesStore.customInstanceRoles.map((role) => ({
+					value: role.slug,
+					label: role.displayName,
+					disabled: !role.licensed,
+				}))
+			: []),
 	];
 });
 
@@ -223,7 +225,12 @@ async function onReinvite(userId: string) {
 	try {
 		const user = usersStore.usersList.state.items.find((u) => u.id === userId);
 		if (user?.email && user?.role) {
-			if (!['global:admin', 'global:member'].includes(user.role)) {
+			// With custom instance roles, any assignable role (not owner/default/chat) can be
+			// reinvited; otherwise only the original member/admin roles are allowed.
+			const canReinvite = customInstanceRolesEnabled.value
+				? user.role !== ROLE.Owner && user.role !== ROLE.Default && user.role !== ROLE.ChatUser
+				: ([ROLE.Admin, ROLE.Member] as string[]).includes(user.role);
+			if (!canReinvite) {
 				throw new Error('Invalid role name on reinvite');
 			}
 			await usersStore.reinviteUser({
@@ -328,7 +335,7 @@ function goToUpgradeAdvancedPermissions() {
 
 const updatingRoleUserId = ref<string | null>(null);
 
-const onUpdateRole = async (payload: { userId: string; role: Role }) => {
+const onUpdateRole = async (payload: { userId: string; role: string }) => {
 	const user = usersStore.usersList.state.items.find((u) => u.id === payload.userId);
 	if (!user) {
 		showError(new Error('User not found'), i18n.baseText('settings.users.userNotFound'));
@@ -373,7 +380,7 @@ const updateUsersTableData = async ({ page, itemsPerPage, sortBy }: TableOptions
 	}
 };
 
-async function onRoleChange(user: User, newRoleName: Role) {
+async function onRoleChange(user: User, newRoleName: string) {
 	if (newRoleName === user.role) return;
 
 	const name =
@@ -479,7 +486,15 @@ const onSearch = (value: string) => {
 				</template>
 			</I18nT>
 		</N8nNotice>
-		<div v-if="isInstanceRoleProvisioningEnabled" :class="$style.container">
+		<div v-if="isExpressionMappingEnabled" :class="$style.container">
+			<N8nAlert
+				type="info"
+				:title="
+					i18n.baseText('settings.provisioningInstanceRolesHandledByExpressionMapping.description')
+				"
+			/>
+		</div>
+		<div v-else-if="isInstanceRoleProvisioningEnabled" :class="$style.container">
 			<N8nAlert
 				type="info"
 				:title="i18n.baseText('settings.provisioningInstanceRolesHandledBySsoProvider.description')"
@@ -524,7 +539,7 @@ const onSearch = (value: string) => {
 			<SettingsUsersTable
 				v-model:table-options="usersTableState"
 				data-test-id="settings-users-table"
-				:can-edit-role="!isInstanceRoleProvisioningEnabled"
+				:can-edit-role="!isInstanceRoleProvisioningEnabled && !isExpressionMappingEnabled"
 				:data="usersStore.usersList.state"
 				:loading="usersStore.usersList.isLoading"
 				:updating-role-user-id="updatingRoleUserId"

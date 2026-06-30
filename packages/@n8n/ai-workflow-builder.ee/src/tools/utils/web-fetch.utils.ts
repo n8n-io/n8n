@@ -1,18 +1,22 @@
 import { HumanMessage, type BaseMessage } from '@langchain/core/messages';
-import { Readability } from '@mozilla/readability';
-import dns from 'dns';
-import { JSDOM, VirtualConsole } from 'jsdom';
-import TurndownService from 'turndown';
-import { promisify } from 'util';
+// eslint-disable-next-line n8n-local-rules/no-uncentralized-http -- axios is the only client exposing manual per-hop redirect control + streaming the cross-host SSRF approval guard needs. To migrate: move this package off undici v6, then route via the factory's getDispatcher() + undici.request({ maxRedirections: 0 }) (see fetchUrl doc)
+import axios, { type AxiosRequestConfig } from 'axios';
+import type { Readable } from 'node:stream';
 
+import {
+	CrossHostRedirectError,
+	findCrossHostRedirectError,
+	isSsrfBlockedError,
+	type SsrfGuard,
+} from './ssrf-guard';
 import {
 	WEB_FETCH_MAX_BYTES,
 	WEB_FETCH_MAX_CONTENT_CHARS,
 	WEB_FETCH_TIMEOUT_MS,
 } from '../../constants';
 
-const resolve4 = promisify(dns.resolve4);
-const resolve6 = promisify(dns.resolve6);
+/** Maximum number of redirects axios will follow before aborting. */
+const WEB_FETCH_MAX_REDIRECTS = 5;
 
 // ============================================================================
 // URL PROVENANCE
@@ -66,7 +70,7 @@ export function isUrlInUserMessages(url: string, messages: BaseMessage[]): boole
 // ============================================================================
 
 export interface FetchResult {
-	status: 'success' | 'unsupported' | 'redirect_new_host';
+	status: 'success' | 'unsupported' | 'redirect_new_host' | 'blocked';
 	body?: string;
 	finalUrl?: string;
 	httpStatus?: number;
@@ -94,222 +98,129 @@ export function normalizeHost(url: string): string {
 }
 
 // ============================================================================
-// SSRF PROTECTION
-// ============================================================================
-
-const PRIVATE_IPV4_RANGES = [
-	// 127.0.0.0/8
-	{ start: [127, 0, 0, 0], mask: 8 },
-	// 10.0.0.0/8
-	{ start: [10, 0, 0, 0], mask: 8 },
-	// 172.16.0.0/12
-	{ start: [172, 16, 0, 0], mask: 12 },
-	// 192.168.0.0/16
-	{ start: [192, 168, 0, 0], mask: 16 },
-	// 169.254.0.0/16 (link-local)
-	{ start: [169, 254, 0, 0], mask: 16 },
-	// 0.0.0.0/8
-	{ start: [0, 0, 0, 0], mask: 8 },
-];
-
-function ipToNumber(parts: number[]): number {
-	return ((parts[0] << 24) | (parts[1] << 16) | (parts[2] << 8) | parts[3]) >>> 0;
-}
-
-function isPrivateIPv4(ip: string): boolean {
-	const parts = ip.split('.').map(Number);
-	if (parts.length !== 4 || parts.some((p) => isNaN(p) || p < 0 || p > 255)) return false;
-
-	const ipNum = ipToNumber(parts);
-
-	for (const range of PRIVATE_IPV4_RANGES) {
-		const rangeStart = ipToNumber(range.start);
-		const mask = (0xffffffff << (32 - range.mask)) >>> 0;
-		if ((ipNum & mask) === (rangeStart & mask)) return true;
-	}
-
-	return false;
-}
-
-function isPrivateIPv6(ip: string): boolean {
-	const normalized = ip.toLowerCase();
-	// Loopback
-	if (normalized === '::1') return true;
-	// Link-local
-	if (normalized.startsWith('fe80:')) return true;
-	// Unique local
-	if (normalized.startsWith('fc') || normalized.startsWith('fd')) return true;
-	// IPv4-mapped
-	if (normalized.startsWith('::ffff:')) {
-		const v4 = normalized.slice(7);
-		return isPrivateIPv4(v4);
-	}
-	return false;
-}
-
-/**
- * Check if a hostname is blocked by static rules (localhost, private IPs, etc).
- */
-function isBlockedHostname(hostname: string): boolean {
-	// Block localhost variants
-	if (
-		hostname === 'localhost' ||
-		hostname === '127.0.0.1' ||
-		hostname === '[::1]' ||
-		hostname === '::1'
-	) {
-		return true;
-	}
-
-	// Block .local and .internal TLDs
-	if (hostname.endsWith('.local') || hostname.endsWith('.internal')) {
-		return true;
-	}
-
-	// Block metadata service IPs
-	if (hostname === '169.254.169.254' || hostname === 'metadata.google.internal') {
-		return true;
-	}
-
-	// Check if hostname is an IP literal
-	if (isPrivateIPv4(hostname)) return true;
-	if (isPrivateIPv6(hostname.replace(/^\[|\]$/g, ''))) return true;
-
-	return false;
-}
-
-/**
- * Check if a URL should be blocked for SSRF protection.
- * Validates scheme, hostname patterns, and resolved IP addresses.
- */
-export async function isBlockedUrl(url: string): Promise<boolean> {
-	let parsed: URL;
-	try {
-		parsed = new URL(url);
-	} catch {
-		return true;
-	}
-
-	// Block non-HTTP(S) schemes
-	if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-		return true;
-	}
-
-	const hostname = parsed.hostname.toLowerCase().replace(/\.$/, '');
-
-	if (isBlockedHostname(hostname)) return true;
-
-	// DNS resolution check
-	try {
-		const [v4Addrs, v6Addrs] = await Promise.allSettled([resolve4(hostname), resolve6(hostname)]);
-
-		const allIps: string[] = [];
-		if (v4Addrs.status === 'fulfilled') allIps.push(...v4Addrs.value);
-		if (v6Addrs.status === 'fulfilled') allIps.push(...v6Addrs.value);
-
-		// If no DNS results at all, block (hostname may not exist or may be crafted)
-		if (allIps.length === 0) return true;
-
-		for (const ip of allIps) {
-			if (isPrivateIPv4(ip) || isPrivateIPv6(ip)) return true;
-		}
-	} catch {
-		// DNS resolution failed — block to be safe
-		return true;
-	}
-
-	return false;
-}
-
-// ============================================================================
 // HTTP FETCH
 // ============================================================================
 
 /**
- * Fetch a URL with timeout, size limit, redirect tracking, and PDF detection.
+ * Read a Node stream into a string, capping at maxBytes. On overflow the stream is
+ * destroyed and the partial content kept (the page is still extracted from what we have).
  */
-export async function fetchUrl(url: string, signal?: AbortSignal): Promise<FetchResult> {
-	const controller = new AbortController();
-	const timeout = setTimeout(() => controller.abort(), WEB_FETCH_TIMEOUT_MS);
+async function readStreamWithCap(stream: Readable, maxBytes: number): Promise<string> {
+	const chunks: Buffer[] = [];
+	let total = 0;
 
-	// Combine external signal with timeout
-	if (signal) {
-		signal.addEventListener('abort', () => controller.abort(), { once: true });
+	for await (const chunk of stream) {
+		const buf = chunk as Buffer;
+		if (total + buf.length > maxBytes) {
+			chunks.push(buf.subarray(0, maxBytes - total));
+			stream.destroy();
+			break;
+		}
+		chunks.push(buf);
+		total += buf.length;
 	}
 
-	try {
-		const response = await fetch(url, {
-			signal: controller.signal,
-			redirect: 'follow',
-			headers: {
-				// eslint-disable-next-line @typescript-eslint/naming-convention
-				'User-Agent': 'n8n-workflow-builder/1.0',
-				Accept: 'text/html,application/xhtml+xml,*/*',
-			},
-		});
+	return Buffer.concat(chunks).toString('utf-8');
+}
 
-		const finalUrl = response.url;
-		const contentType = response.headers.get('content-type') ?? '';
+/**
+ * Fetch a URL with SSRF protection, timeout, size limit, and PDF detection.
+ *
+ * SSRF is enforced three ways:
+ * - a pre-flight `validateUrl` on the initial target,
+ * - a secure DNS lookup that validates the resolved IP at connect time (every hop),
+ * - a `beforeRedirect` hook that validates direct-IP redirect targets and halts
+ *   auto-follow on a cross-host redirect so the caller can run domain approval.
+ *
+ * Why axios here, and not `@n8n/backend-network`'s transport factory: this call
+ * needs manual redirect control (read `Location` on each hop to run the cross-host
+ * HITL approval) together with response streaming, and axios on Node's `http.Agent`
+ * is the only client that exposes both today.
+ *
+ * Prerequisites to migrate this onto the factory:
+ *   1. Move this package off undici v6 (it pins `catalog:undici-v6`). The factory's
+ *      `getDispatcher()` returns a v7 `Dispatcher`, and the v6/v7 dispatch-handler
+ *      protocols are not interoperable. This is gated on the langchain providers
+ *      dropping their undici v6 pin (CAT-3377 Phase 5).
+ *   2. Then route via `getDispatcher()` + `undici.request(url, { dispatcher,
+ *      maxRedirections: 0 })` for the manual redirect loop. `asCustomFetch()` is not
+ *      usable: WHATWG `fetch` with `redirect: 'manual'` returns an opaque-redirect
+ *      response with no readable `Location`, which breaks the cross-host approval.
+ *      `undici.request`'s Node `Readable` body keeps `readStreamWithCap` unchanged.
+ */
+export async function fetchUrl(
+	url: string,
+	ssrf: SsrfGuard,
+	signal?: AbortSignal,
+): Promise<FetchResult> {
+	// Pre-flight: reject before opening any connection.
+	const preflight = await ssrf.validateUrl(url);
+	if (!preflight.ok) return { status: 'blocked' };
 
-		// PDF detection
-		if (contentType.includes('application/pdf')) {
-			return { status: 'unsupported', reason: 'pdf' };
-		}
+	const originalHost = normalizeHost(url);
 
-		// Check for cross-host redirect
-		const requestedHost = normalizeHost(url);
-		const finalHost = normalizeHost(finalUrl);
-		if (requestedHost !== finalHost) {
-			return { status: 'redirect_new_host', finalUrl };
-		}
-
-		// Read body with size limit
-		const reader = response.body?.getReader();
-		if (!reader) {
-			return {
-				status: 'success',
-				body: '',
-				finalUrl,
-				httpStatus: response.status,
-				contentType,
-			};
-		}
-
-		const chunks: Uint8Array[] = [];
-		let totalBytes = 0;
-
-		while (true) {
-			const { done, value } = await reader.read();
-			if (done) break;
-
-			totalBytes += value.byteLength;
-			if (totalBytes > WEB_FETCH_MAX_BYTES) {
-				void reader.cancel();
-				// Still return what we have
-				break;
+	const config: AxiosRequestConfig = {
+		// Honored by Node's http(s) agent on every hop; validates the resolved IP at
+		// connect time, preventing DNS-rebinding TOCTOU.
+		lookup: ssrf.createSecureLookup() as AxiosRequestConfig['lookup'],
+		beforeRedirect: (opts: Record<string, string>) => {
+			// Direct-IP redirect targets do no DNS lookup, so validate them here first.
+			ssrf.validateRedirectSync(opts.href);
+			// Halt auto-follow on cross-host redirects so the caller can run HITL approval.
+			if (normalizeHost(opts.href) !== originalHost) {
+				throw new CrossHostRedirectError(opts.href);
 			}
-			chunks.push(value);
+		},
+		maxRedirects: WEB_FETCH_MAX_REDIRECTS,
+		timeout: WEB_FETCH_TIMEOUT_MS,
+		signal,
+		responseType: 'stream',
+		// Let the manual byte-cap own truncation; arraybuffer + maxContentLength would reject.
+		maxContentLength: Infinity,
+		maxBodyLength: Infinity,
+		validateStatus: () => true,
+		headers: {
+			// eslint-disable-next-line @typescript-eslint/naming-convention
+			'User-Agent': 'n8n-workflow-builder/1.0',
+			Accept: 'text/html,application/xhtml+xml,*/*',
+		},
+	};
+
+	let response;
+	try {
+		response = await axios.get<Readable>(url, config);
+	} catch (error) {
+		const crossHost = findCrossHostRedirectError(error);
+		if (crossHost) {
+			return { status: 'redirect_new_host', finalUrl: crossHost.finalUrl };
 		}
-
-		const body = new TextDecoder().decode(
-			chunks.reduce((acc, chunk) => {
-				const merged = new Uint8Array(acc.length + chunk.length);
-				merged.set(acc);
-				merged.set(chunk, acc.length);
-				return merged;
-			}, new Uint8Array()),
-		);
-
-		return {
-			status: 'success',
-			body,
-			finalUrl,
-			httpStatus: response.status,
-			contentType,
-		};
-	} finally {
-		clearTimeout(timeout);
+		if (isSsrfBlockedError(error)) {
+			return { status: 'blocked' };
+		}
+		throw error;
 	}
+
+	const responseUrl = (response.request as { res?: { responseUrl?: string } } | undefined)?.res
+		?.responseUrl;
+	const finalUrl = responseUrl ?? url;
+	const contentTypeHeader = response.headers['content-type'];
+	const contentType = typeof contentTypeHeader === 'string' ? contentTypeHeader : '';
+
+	// PDF detection
+	if (contentType.includes('application/pdf')) {
+		response.data.destroy();
+		return { status: 'unsupported', reason: 'pdf' };
+	}
+
+	const body = await readStreamWithCap(response.data, WEB_FETCH_MAX_BYTES);
+
+	return {
+		status: 'success',
+		body,
+		finalUrl,
+		httpStatus: response.status,
+		contentType,
+	};
 }
 
 // ============================================================================
@@ -318,8 +229,12 @@ export async function fetchUrl(url: string, signal?: AbortSignal): Promise<Fetch
 
 /**
  * Extract readable content from HTML using JSDOM + Readability.
+ * Libraries are lazy-loaded to avoid pulling jsdom (~15-20MB) into memory at startup.
  */
-export function extractReadableContent(html: string, url: string): ExtractedContent {
+export async function extractReadableContent(html: string, url: string): Promise<ExtractedContent> {
+	const [{ JSDOM, VirtualConsole }, { Readability }, { default: TurndownService }] =
+		await Promise.all([import('jsdom'), import('@mozilla/readability'), import('turndown')]);
+
 	const virtualConsole = new VirtualConsole();
 	const dom = new JSDOM(html, { url, virtualConsole });
 	const article = new Readability(dom.window.document, { keepClasses: true }).parse();

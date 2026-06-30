@@ -5,7 +5,7 @@ import { SsrfProtectionConfig, SSRF_DEFAULT_BLOCKED_IP_RANGES } from '../ssrf-pr
 describe('SsrfProtectionConfig', () => {
 	beforeEach(() => {
 		Container.reset();
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	const originalEnv = process.env;
@@ -33,6 +33,11 @@ describe('SsrfProtectionConfig', () => {
 		test('allowedHostnames is empty array', () => {
 			process.env = {};
 			expect(Container.get(SsrfProtectionConfig).allowedHostnames).toEqual([]);
+		});
+
+		test('blockedHostnames is empty array', () => {
+			process.env = {};
+			expect(Container.get(SsrfProtectionConfig).blockedHostnames).toEqual([]);
 		});
 
 		test('dnsCacheMaxSize is 1048576', () => {
@@ -126,6 +131,21 @@ describe('SsrfProtectionConfig', () => {
 		});
 	});
 
+	describe('N8N_SSRF_BLOCKED_HOSTNAMES', () => {
+		test('parses comma-separated patterns', () => {
+			process.env = { N8N_SSRF_BLOCKED_HOSTNAMES: '*.tracker.example,exfil.example.com' };
+			expect(Container.get(SsrfProtectionConfig).blockedHostnames).toEqual([
+				'*.tracker.example',
+				'exfil.example.com',
+			]);
+		});
+
+		test('is empty when env var is empty string', () => {
+			process.env = { N8N_SSRF_BLOCKED_HOSTNAMES: '' };
+			expect(Container.get(SsrfProtectionConfig).blockedHostnames).toEqual([]);
+		});
+	});
+
 	describe('numeric fields', () => {
 		test('overrides dnsCacheMaxSize from env', () => {
 			process.env = { N8N_SSRF_DNS_CACHE_MAX_SIZE: '2097152' };
@@ -133,7 +153,7 @@ describe('SsrfProtectionConfig', () => {
 		});
 
 		test('falls back to default for invalid dnsCacheMaxSize', () => {
-			const consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
+			const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
 			process.env = { N8N_SSRF_DNS_CACHE_MAX_SIZE: 'invalid' };
 			expect(Container.get(SsrfProtectionConfig).dnsCacheMaxSize).toBe(1048576);

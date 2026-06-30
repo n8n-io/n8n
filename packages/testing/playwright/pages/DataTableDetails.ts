@@ -2,8 +2,13 @@ import { expect } from '@playwright/test';
 import type { Locator } from '@playwright/test';
 
 import { BasePage } from './BasePage';
+import { MessageBox } from './components/messageBoxLocators';
 
 export class DataTableDetails extends BasePage {
+	async goto(datatableId: string) {
+		await this.page.goto(`/datatables/${datatableId}`);
+	}
+
 	getPageWrapper() {
 		return this.page.getByTestId('data-table-details-view');
 	}
@@ -95,7 +100,7 @@ export class DataTableDetails extends BasePage {
 		await typeSelect.click();
 
 		const typeLabel = type === 'date' ? 'datetime' : type;
-		await this.page.getByRole('option', { name: typeLabel, exact: true }).click();
+		await this.getVisiblePopoverOption(typeLabel, { exact: true }).click();
 
 		await this.getAddColumnSubmitButton().click();
 
@@ -149,7 +154,7 @@ export class DataTableDetails extends BasePage {
 
 	async deleteSelectedRows() {
 		await this.getDeleteSelectedButton().click();
-		const confirmButton = this.page.locator('.btn--confirm');
+		const confirmButton = new MessageBox(this.page).confirmButton;
 		await confirmButton.click();
 	}
 
@@ -178,7 +183,7 @@ export class DataTableDetails extends BasePage {
 			.filter({ visible: true })
 			.click();
 
-		const confirmButton = this.page.locator('.btn--confirm');
+		const confirmButton = new MessageBox(this.page).confirmButton;
 		await confirmButton.click();
 	}
 
@@ -282,7 +287,7 @@ export class DataTableDetails extends BasePage {
 		const pagination = this.getPagination();
 		const selectTrigger = pagination.locator('.el-pagination__sizes .el-select');
 		await selectTrigger.click();
-		await this.page.getByRole('option').getByText(`${size}/page`).click();
+		await this.getVisiblePopoverOption().getByText(`${size}/page`).click();
 	}
 
 	getCell(rowIndex: number, columnId: string) {

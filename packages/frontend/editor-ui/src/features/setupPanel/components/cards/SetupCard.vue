@@ -4,6 +4,7 @@ import { useI18n } from '@n8n/i18n';
 import { N8nCallout, N8nIcon, N8nText } from '@n8n/design-system';
 
 import type { INodeUi } from '@/Interface';
+import { CHAT_TRIGGER_NODE_TYPE } from '@/app/constants/nodeTypes';
 import TriggerExecuteButton from '@/features/setupPanel/components/TriggerExecuteButton.vue';
 import WebhookUrlPreview from '@/features/setupPanel/components/WebhookUrlPreview.vue';
 import { useTriggerExecution } from '@/features/setupPanel/composables/useTriggerExecution';
@@ -79,6 +80,12 @@ const {
 } = useTriggerExecution(executableNodeRef);
 
 const { webhookUrls } = useWebhookUrls(executableNodeRef);
+
+const showExecuteButton = computed(() => {
+	if (props.executableNode?.type === CHAT_TRIGGER_NODE_TYPE && isInListeningState.value)
+		return false;
+	return !!props.executableNode;
+});
 
 const showTriggerCallout = computed(() => props.isTrigger && isInListeningState.value);
 
@@ -183,7 +190,7 @@ defineExpose({ markInteracted });
 				</div>
 				<slot name="footer-actions" />
 				<TriggerExecuteButton
-					v-if="executableNode"
+					v-if="showExecuteButton"
 					:label="executeLabel"
 					:icon="executeButtonIcon"
 					:disabled="isButtonDisabled || isTestingCredential"

@@ -116,8 +116,22 @@ const wrapperProps = computed(() => {
 
 const isCompareDisabled = computed(() => !props.compareWith?.versionId);
 
-const compareTooltipContent = computed(() => {
-	return props.compareWith?.name ? `Compare with ${props.compareWith.name}` : '';
+const compareTooltipLines = computed(() => {
+	if (!props.compareWith?.name) {
+		return null;
+	}
+
+	const compareName = props.isSelected ? versionName.value : props.compareWith.name;
+	const withName = props.isSelected ? props.compareWith.name : versionName.value;
+
+	return {
+		compareLine: i18n.baseText('workflowHistory.item.compareTooltip.compareLine', {
+			interpolate: { name: compareName },
+		}),
+		withLine: i18n.baseText('workflowHistory.item.compareTooltip.withLine', {
+			interpolate: { name: withName },
+		}),
+	};
 });
 
 const onAction = (value: string) => {
@@ -203,10 +217,16 @@ onMounted(() => {
 				</div>
 				<N8nTooltip
 					v-if="props.isWorkflowDiffsEnabled"
-					:content="compareTooltipContent"
 					:disabled="isCompareDisabled"
 					placement="top"
+					:content-class="$style.compareTooltipContent"
 				>
+					<template v-if="compareTooltipLines" #content>
+						<div :class="$style.compareTooltip">
+							<span :class="$style.compareTooltipLine">{{ compareTooltipLines.compareLine }}</span>
+							<span :class="$style.compareTooltipLine">{{ compareTooltipLines.withLine }}</span>
+						</div>
+					</template>
 					<N8nIconButton
 						variant="ghost"
 						icon="file-diff"
@@ -232,7 +252,6 @@ onMounted(() => {
 @use './timeline' as *;
 
 $hoverBackground: var(--color--background--light-1);
-$authorMaxWidth: 130px;
 
 .item {
 	display: flex;
@@ -325,17 +344,15 @@ $authorMaxWidth: 130px;
 .metaRow {
 	display: flex;
 	align-items: center;
+	flex-wrap: wrap;
 	gap: var(--spacing--5xs);
 	margin-top: var(--spacing--5xs);
 	min-width: 0;
 }
 
 .metaAuthor {
-	display: block;
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	max-width: $authorMaxWidth;
+	min-width: 0;
+	overflow-wrap: anywhere;
 }
 
 .metaTime {
@@ -352,5 +369,17 @@ $authorMaxWidth: 130px;
 
 .compareButton {
 	flex-shrink: 0;
+}
+
+.compareTooltip {
+	text-align: start;
+}
+
+.compareTooltipContent {
+	max-width: min(32ch, 80vw);
+}
+
+.compareTooltipLine {
+	display: block;
 }
 </style>

@@ -381,6 +381,7 @@ export function findOneFromModelsResponse(
 export function createSessionFromStreamingState(
 	streaming: ChatStreamingState,
 	toolIds: string[],
+	isManual = false,
 ): ChatHubSessionDto {
 	return {
 		id: streaming.sessionId,
@@ -390,9 +391,9 @@ export function createSessionFromStreamingState(
 		credentialId: null,
 		agentName: streaming.agent.name,
 		agentIcon: streaming.agent.icon,
+		type: isManual ? 'manual' : 'production',
 		createdAt: new Date().toISOString(),
 		updatedAt: new Date().toISOString(),
-		type: 'production',
 		toolIds,
 		...flattenModel(streaming.agent.model),
 	};
@@ -443,6 +444,44 @@ export function enrichMimeTypesWithExtensions(mimeTypes: string): string {
 		return `${mimeTypes},.md`;
 	}
 	return mimeTypes;
+}
+
+/**
+ * Mirrors the HTML `accept` attribute matching rules:
+ * - exact MIME match (`text/csv`)
+ * - MIME wildcard match (`image/*`)
+ * - extension match (`.md`, `.docx`)
+ *
+ * Extension matching is required because macOS reports an empty `file.type`
+ * for some formats (notably `.md`), so a MIME-only check would falsely reject
+ * files that the picker explicitly allowed.
+ */
+export function isFileAcceptedByAccept(
+	fileName: string,
+	fileMimeType: string,
+	acceptString: string,
+): boolean {
+	if (!acceptString || acceptString === '*/*') return true;
+	const tokens = acceptString
+		.split(',')
+		.map((t) => t.trim())
+		.filter(Boolean);
+	const lowerName = fileName.toLowerCase();
+	const lowerType = fileMimeType.toLowerCase();
+	for (const rawToken of tokens) {
+		const token = rawToken.toLowerCase();
+		if (token.startsWith('.')) {
+			if (lowerName.endsWith(token)) return true;
+			continue;
+		}
+		if (!lowerType) continue;
+		if (token === lowerType) return true;
+		if (token.endsWith('/*')) {
+			const prefix = token.slice(0, token.indexOf('/'));
+			if (lowerType.startsWith(`${prefix}/`)) return true;
+		}
+	}
+	return false;
 }
 
 export const isEditable = (message: ChatMessage): boolean => {
@@ -572,4 +611,26 @@ export function isWaitingForApproval(message: ChatMessage | null | undefined): b
 	}
 
 	return message.content.some((c) => c.type === 'with-buttons' && c.blockUserInput);
+}
+
+export function chunkFilesBySize(files: File[], maxSizeBytes: number): File[][] {
+	const chunks: File[][] = [];
+	let currentChunk: File[] = [];
+	let currentSize = 0;
+
+	for (const file of files) {
+		if (currentSize + file.size > maxSizeBytes && currentChunk.length > 0) {
+			chunks.push(currentChunk);
+			currentChunk = [];
+			currentSize = 0;
+		}
+		currentChunk.push(file);
+		currentSize += file.size;
+	}
+
+	if (currentChunk.length > 0) {
+		chunks.push(currentChunk);
+	}
+
+	return chunks;
 }

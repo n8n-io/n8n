@@ -14,9 +14,9 @@ import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import { useUsersStore } from '../users.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { useRolesStore } from '@/app/stores/roles.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
 import * as permissions from '@/app/utils/rbac/permissions';
-import { TAMPER_PROOF_INVITE_LINKS } from '@/app/constants/experiments';
 import type { PermissionTypeOptions } from '@/app/types/rbac';
 
 const { emitters, addEmitter } = useEmitters<'settingsUsersTable'>();
@@ -126,6 +126,7 @@ let renderComponent: ReturnType<typeof createComponentRenderer>;
 let usersStore: MockedStore<typeof useUsersStore>;
 let uiStore: MockedStore<typeof useUIStore>;
 let settingsStore: MockedStore<typeof useSettingsStore>;
+let rolesStore: MockedStore<typeof useRolesStore>;
 let ssoStore: MockedStore<typeof useSSOStore>;
 
 describe('SettingsUsersView', () => {
@@ -141,6 +142,7 @@ describe('SettingsUsersView', () => {
 		usersStore = mockedStore(useUsersStore);
 		uiStore = mockedStore(useUIStore);
 		settingsStore = mockedStore(useSettingsStore);
+		rolesStore = mockedStore(useRolesStore);
 		ssoStore = mockedStore(useSSOStore);
 
 		// Setup default store states
@@ -537,28 +539,7 @@ describe('SettingsUsersView', () => {
 			});
 		});
 
-		it('should show copy invite link action when feature flag is disabled', () => {
-			// Ensure feature flag is disabled - reset mock to ensure clean state
-			// The beforeEach already sets this, but be explicit to avoid test order issues
-			mockIsVariantEnabled.mockReset();
-			mockIsVariantEnabled.mockReturnValue(false);
-
-			renderComponent();
-
-			// User 3 has inviteAcceptUrl and no firstName, so copyInviteLink should show
-			// when feature flag is disabled
-			const actionsList = screen.getByTestId('actions-for-3');
-			expect(actionsList).toBeInTheDocument();
-			expect(screen.getByTestId('action-copyInviteLink-3')).toBeInTheDocument();
-		});
-
-		it('should handle generate invite link action when feature flag is enabled', async () => {
-			mockIsVariantEnabled.mockImplementation(
-				(experiment: string, variant: string) =>
-					experiment === TAMPER_PROOF_INVITE_LINKS.name &&
-					variant === TAMPER_PROOF_INVITE_LINKS.variant,
-			);
-
+		it('should handle generate invite link action', async () => {
 			const spy = vi
 				.spyOn(permissions, 'hasPermission')
 				.mockImplementation((features: string[], options?: Partial<PermissionTypeOptions>) => {
@@ -587,13 +568,7 @@ describe('SettingsUsersView', () => {
 			spy.mockRestore();
 		});
 
-		it('should handle generate invite link error when feature flag is enabled', async () => {
-			mockIsVariantEnabled.mockImplementation(
-				(experiment: string, variant: string) =>
-					experiment === TAMPER_PROOF_INVITE_LINKS.name &&
-					variant === TAMPER_PROOF_INVITE_LINKS.variant,
-			);
-
+		it('should handle generate invite link error', async () => {
 			usersStore.generateInviteLink = vi
 				.fn()
 				.mockRejectedValue(new Error('Failed to generate link'));
@@ -739,29 +714,7 @@ describe('SettingsUsersView', () => {
 			expect(mockToast.showToast).not.toHaveBeenCalled();
 		});
 
-		it('should hide copy invite link action when feature flag is enabled', () => {
-			mockIsVariantEnabled.mockImplementation(
-				(experiment: string, variant: string) =>
-					experiment === TAMPER_PROOF_INVITE_LINKS.name &&
-					variant === TAMPER_PROOF_INVITE_LINKS.variant,
-			);
-
-			renderComponent();
-
-			// User 3 has inviteAcceptUrl and no firstName, so copyInviteLink would normally show
-			const actionsList = screen.getByTestId('actions-for-3');
-			expect(actionsList).toBeInTheDocument();
-			// Copy invite link should not be in the actions list
-			expect(screen.queryByTestId('action-copyInviteLink-3')).not.toBeInTheDocument();
-		});
-
-		it('should show generate invite link action when feature flag is enabled', () => {
-			mockIsVariantEnabled.mockImplementation(
-				(experiment: string, variant: string) =>
-					experiment === TAMPER_PROOF_INVITE_LINKS.name &&
-					variant === TAMPER_PROOF_INVITE_LINKS.variant,
-			);
-
+		it('should show generate invite link action', () => {
 			const spy = vi
 				.spyOn(permissions, 'hasPermission')
 				.mockImplementation((features: string[], options?: Partial<PermissionTypeOptions>) => {
@@ -781,39 +734,7 @@ describe('SettingsUsersView', () => {
 			spy.mockRestore();
 		});
 
-		it('should hide generate invite link action when feature flag is disabled', () => {
-			mockIsVariantEnabled.mockImplementation(
-				(experiment: string, variant: string) =>
-					!(
-						experiment === TAMPER_PROOF_INVITE_LINKS.name &&
-						variant === TAMPER_PROOF_INVITE_LINKS.variant
-					),
-			);
-
-			const spy = vi
-				.spyOn(permissions, 'hasPermission')
-				.mockImplementation((features: string[], options?: Partial<PermissionTypeOptions>) => {
-					if (features.includes('rbac') && options?.rbac?.scope === 'user:generateInviteLink') {
-						return true;
-					}
-					return false;
-				});
-
-			renderComponent();
-
-			// Generate invite link should not be in the actions list when feature flag is disabled
-			expect(screen.queryByTestId('action-generateInviteLink-3')).not.toBeInTheDocument();
-
-			spy.mockRestore();
-		});
-
 		it('should hide generate invite link action when user has already accepted invite', () => {
-			mockIsVariantEnabled.mockImplementation(
-				(experiment: string, variant: string) =>
-					experiment === TAMPER_PROOF_INVITE_LINKS.name &&
-					variant === TAMPER_PROOF_INVITE_LINKS.variant,
-			);
-
 			const spy = vi
 				.spyOn(permissions, 'hasPermission')
 				.mockImplementation((features: string[], options?: Partial<PermissionTypeOptions>) => {
@@ -850,15 +771,61 @@ describe('SettingsUsersView', () => {
 			});
 		});
 
-		it('should handle reinvite with invalid role', async () => {
-			// Set user with invalid role
-			usersStore.usersList.state.items[2].role = 'invalid-role' as Role;
+		it('should not call reinviteUser for owner role', async () => {
+			usersStore.usersList.state.items[2].role = ROLE.Owner;
 
 			renderComponent();
 
 			emitters.settingsUsersTable.emit('action', { action: 'reinvite', userId: '3' });
 
-			// Should not call reinviteUser with invalid role
+			expect(usersStore.reinviteUser).not.toHaveBeenCalled();
+		});
+
+		it('should not call reinviteUser for default role', async () => {
+			usersStore.usersList.state.items[2].role = ROLE.Default;
+
+			renderComponent();
+
+			emitters.settingsUsersTable.emit('action', { action: 'reinvite', userId: '3' });
+
+			expect(usersStore.reinviteUser).not.toHaveBeenCalled();
+		});
+
+		it('should allow reinvite for a custom role', async () => {
+			settingsStore.settings.envFeatureFlags = { N8N_ENV_FEAT_CUSTOM_INSTANCE_ROLES: 'true' };
+			rolesStore.customInstanceRoles = [
+				{
+					slug: 'custom:developer',
+					displayName: 'Developer',
+					description: '',
+					scopes: [],
+					licensed: true,
+					systemRole: false,
+					roleType: 'global',
+					usedByUsers: 0,
+				},
+			];
+			usersStore.usersList.state.items[2].role = 'custom:developer' as Role;
+
+			renderComponent();
+
+			emitters.settingsUsersTable.emit('action', { action: 'reinvite', userId: '3' });
+
+			await waitFor(() => {
+				expect(usersStore.reinviteUser).toHaveBeenCalledWith({
+					email: 'pending@example.com',
+					role: 'custom:developer',
+				});
+			});
+		});
+
+		it('should not call reinviteUser for chatUser role', async () => {
+			usersStore.usersList.state.items[2].role = ROLE.ChatUser;
+
+			renderComponent();
+
+			emitters.settingsUsersTable.emit('action', { action: 'reinvite', userId: '3' });
+
 			expect(usersStore.reinviteUser).not.toHaveBeenCalled();
 		});
 
@@ -954,6 +921,53 @@ describe('SettingsUsersView', () => {
 					type: 'success',
 					title: expect.any(String),
 					message: expect.stringContaining('member@example.com'),
+				});
+			});
+		});
+
+		it('should use displayName from custom role in success toast message', async () => {
+			settingsStore.settings.envFeatureFlags = { N8N_ENV_FEAT_CUSTOM_INSTANCE_ROLES: 'true' };
+			rolesStore.customInstanceRoles = [
+				{
+					slug: 'custom:developer',
+					displayName: 'Developer',
+					description: '',
+					scopes: [],
+					licensed: true,
+					systemRole: false,
+					roleType: 'global',
+					usedByUsers: 0,
+				},
+			];
+
+			renderComponent();
+
+			emitters.settingsUsersTable.emit('update:role', { role: 'custom:developer', userId: '2' });
+
+			await waitFor(() => {
+				expect(mockToast.showToast).toHaveBeenCalledWith({
+					type: 'success',
+					title: expect.any(String),
+					message: expect.stringContaining('Developer'),
+				});
+			});
+		});
+
+		it('should fall back to role slug in toast when custom role is not in the store', async () => {
+			rolesStore.customInstanceRoles = [];
+
+			renderComponent();
+
+			emitters.settingsUsersTable.emit('update:role', {
+				role: 'custom:unknown-role',
+				userId: '2',
+			});
+
+			await waitFor(() => {
+				expect(mockToast.showToast).toHaveBeenCalledWith({
+					type: 'success',
+					title: expect.any(String),
+					message: expect.stringContaining('custom:unknown-role'),
 				});
 			});
 		});

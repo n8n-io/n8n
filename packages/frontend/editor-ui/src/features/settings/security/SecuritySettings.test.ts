@@ -43,6 +43,7 @@ describe('SecuritySettings', () => {
 		publishedPersonalWorkflowsCount: 14,
 		sharedPersonalWorkflowsCount: 12,
 		sharedPersonalCredentialsCount: 5,
+		managedByEnv: false,
 	};
 
 	let settingsStore: ReturnType<typeof mockedStore<typeof useSettingsStore>>;
@@ -58,6 +59,7 @@ describe('SecuritySettings', () => {
 		settingsStore.isMFAEnforced = false;
 		settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.EnforceMFA] = true;
 		settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.PersonalSpacePolicy] = true;
+		settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.DataRedaction] = true;
 		usersStore.updateEnforceMfa = vi.fn().mockResolvedValue(undefined);
 	});
 
@@ -352,6 +354,79 @@ describe('SecuritySettings', () => {
 		});
 	});
 
+	it('should not show personal space toggles before settings are loaded', async () => {
+		let resolveSettings: (value: typeof defaultSettings) => void = () => {};
+		getSecuritySettings.mockImplementation(
+			async () => await new Promise((resolve) => (resolveSettings = resolve)),
+		);
+
+		const { queryByTestId } = renderView();
+
+		expect(queryByTestId('security-personal-space-sharing-toggle')).not.toBeInTheDocument();
+		expect(queryByTestId('security-personal-space-publishing-toggle')).not.toBeInTheDocument();
+
+		resolveSettings(defaultSettings);
+
+		await waitFor(() => {
+			expect(queryByTestId('security-personal-space-sharing-toggle')).toBeInTheDocument();
+			expect(queryByTestId('security-personal-space-publishing-toggle')).toBeInTheDocument();
+		});
+	});
+
+	describe('when managed by environment variables', () => {
+		beforeEach(() => {
+			getSecuritySettings.mockResolvedValue({
+				...defaultSettings,
+				managedByEnv: true,
+			});
+		});
+
+		it('should show env-managed notice banner', async () => {
+			const { getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('security-managed-by-env-notice')).toBeInTheDocument();
+			});
+		});
+
+		it('should not show env-managed notice when managedByEnv is false', async () => {
+			getSecuritySettings.mockResolvedValue(defaultSettings);
+			const { queryByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(queryByTestId('security-personal-space-sharing-toggle')).toBeInTheDocument();
+			});
+
+			expect(queryByTestId('security-managed-by-env-notice')).not.toBeInTheDocument();
+		});
+
+		it('should disable all toggles when managed by env', async () => {
+			const { getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('security-personal-space-sharing-toggle')).toBeInTheDocument();
+			});
+
+			expect(getByTestId('enable-force-mfa')).toHaveClass('is-disabled');
+			expect(getByTestId('security-personal-space-sharing-toggle')).toHaveClass('is-disabled');
+			expect(getByTestId('security-personal-space-publishing-toggle')).toHaveClass('is-disabled');
+		});
+
+		it('should not call update APIs when clicking disabled toggles', async () => {
+			const { getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('security-personal-space-sharing-toggle')).toBeInTheDocument();
+			});
+
+			await userEvent.click(getByTestId('security-personal-space-sharing-toggle'));
+			await userEvent.click(getByTestId('enable-force-mfa'));
+
+			expect(updateSecuritySettings).not.toHaveBeenCalled();
+			expect(usersStore.updateEnforceMfa).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('when personalSpacePolicy feature is not licensed', () => {
 		beforeEach(() => {
 			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.PersonalSpacePolicy] =
@@ -403,6 +478,328 @@ describe('SecuritySettings', () => {
 			await userEvent.click(sharingToggle);
 
 			expect(updateSecuritySettings).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('Data redaction section', () => {
+		it('should render toggle and summary', async () => {
+			const { getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('enable-redaction-enforcement')).toBeInTheDocument();
+			});
+
+			expect(getByTestId('redaction-enforcement-summary')).toHaveTextContent('Affected scope');
+			expect(getByTestId('redaction-enforcement-summary')).toHaveTextContent('No executions');
+			expect(getByTestId('redaction-enforcement-docs-link').closest('a')).toHaveAttribute(
+				'href',
+				'https://docs.n8n.io/workflows/executions/execution-data-redaction/#instance-level-enforcement',
+			);
+		});
+
+		it('should not render scope dropdown when enforcement is off', async () => {
+			const { queryByTestId, getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('enable-redaction-enforcement')).toBeInTheDocument();
+			});
+
+			expect(queryByTestId('redaction-enforcement-scope-row')).not.toBeInTheDocument();
+		});
+
+		it('should render scope dropdown when enforcement is on', async () => {
+			getSecuritySettings.mockResolvedValue({
+				...defaultSettings,
+				redactionEnforcement: { floor: 'production' },
+			});
+
+			const { getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('redaction-enforcement-scope-row')).toBeInTheDocument();
+			});
+
+			expect(getByTestId('redaction-enforcement-summary')).toHaveTextContent(
+				'Production executions',
+			);
+		});
+
+		it('should show enable dialog and POST floor=production when confirming', async () => {
+			updateSecuritySettings.mockResolvedValue(undefined);
+
+			const { getByTestId, getByRole } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('enable-redaction-enforcement')).toBeInTheDocument();
+			});
+
+			await userEvent.click(getByTestId('enable-redaction-enforcement'));
+
+			await waitFor(() => {
+				expect(getByRole('dialog')).toBeInTheDocument();
+			});
+
+			expect(getByRole('dialog')).toHaveTextContent('manage data redaction permission');
+			expect(getByRole('dialog')).not.toHaveTextContent('Workflow editors');
+
+			await userEvent.click(getByRole('button', { name: 'Enable' }));
+
+			await waitFor(() => {
+				expect(updateSecuritySettings).toHaveBeenCalledWith(expect.anything(), {
+					redactionEnforcement: { floor: 'production' },
+				});
+			});
+			expect(showToast).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'success',
+				}),
+			);
+		});
+
+		it('should not POST when cancelling enable dialog', async () => {
+			const { getByTestId, getByRole } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('enable-redaction-enforcement')).toBeInTheDocument();
+			});
+
+			await userEvent.click(getByTestId('enable-redaction-enforcement'));
+
+			await waitFor(() => {
+				expect(getByRole('dialog')).toBeInTheDocument();
+			});
+
+			await userEvent.click(getByRole('button', { name: 'Cancel' }));
+
+			expect(updateSecuritySettings).not.toHaveBeenCalled();
+		});
+
+		it('should show disable dialog and POST floor=off when confirming', async () => {
+			getSecuritySettings.mockResolvedValue({
+				...defaultSettings,
+				redactionEnforcement: { floor: 'production' },
+			});
+			updateSecuritySettings.mockResolvedValue(undefined);
+
+			const { getByTestId, getByRole } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('enable-redaction-enforcement')).toBeInTheDocument();
+			});
+
+			await userEvent.click(getByTestId('enable-redaction-enforcement'));
+
+			await waitFor(() => {
+				expect(getByRole('dialog')).toBeInTheDocument();
+			});
+
+			expect(getByRole('dialog')).toHaveTextContent('manage data redaction permission');
+			expect(getByRole('dialog')).not.toHaveTextContent('Workflow editors');
+
+			await userEvent.click(getByRole('button', { name: 'Disable' }));
+
+			await waitFor(() => {
+				expect(updateSecuritySettings).toHaveBeenCalledWith(expect.anything(), {
+					redactionEnforcement: { floor: 'off' },
+				});
+			});
+		});
+
+		it('should show error toast when confirmed enable fails', async () => {
+			updateSecuritySettings.mockRejectedValue(new Error('boom'));
+
+			const { getByTestId, getByRole } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('enable-redaction-enforcement')).toBeInTheDocument();
+			});
+
+			await userEvent.click(getByTestId('enable-redaction-enforcement'));
+
+			await waitFor(() => {
+				expect(getByRole('dialog')).toBeInTheDocument();
+			});
+
+			await userEvent.click(getByRole('button', { name: 'Enable' }));
+
+			await waitFor(() => {
+				expect(showError).toHaveBeenCalledWith(expect.any(Error), expect.any(String));
+			});
+		});
+
+		it('should show upgrade badge when DataRedaction feature is not licensed', async () => {
+			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.DataRedaction] = false;
+
+			const { getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('enable-redaction-enforcement')).toBeInTheDocument();
+			});
+
+			expect(getByTestId('enable-redaction-enforcement')).toHaveClass('is-disabled');
+		});
+
+		it('should render disabled scope dropdown when unlicensed even if enforced=true', async () => {
+			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.DataRedaction] = false;
+			getSecuritySettings.mockResolvedValue({
+				...defaultSettings,
+				redactionEnforcement: { floor: 'production' },
+			});
+
+			const { getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('enable-redaction-enforcement')).toBeInTheDocument();
+			});
+
+			expect(getByTestId('redaction-enforcement-scope-row')).toBeInTheDocument();
+			expect(getByTestId('redaction-enforcement-scope-select')).toHaveAttribute('data-disabled');
+		});
+
+		it('should render scope dropdown with Upgrade badge when unlicensed and not enforced', async () => {
+			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.DataRedaction] = false;
+
+			const { getAllByText, getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('enable-redaction-enforcement')).toBeInTheDocument();
+			});
+
+			expect(getByTestId('redaction-enforcement-scope-row')).toBeInTheDocument();
+			expect(getByTestId('redaction-enforcement-scope-select')).toHaveAttribute('data-disabled');
+			// One badge on the toggle row, one on the scope row.
+			expect(getAllByText('Upgrade').length).toBeGreaterThanOrEqual(2);
+			// Summary reflects stored floor='off' while the disabled dropdown previews 'production'.
+			expect(getByTestId('redaction-enforcement-summary')).toHaveTextContent('No executions');
+		});
+
+		it('should not call updateSecuritySettings when clicking disabled scope dropdown', async () => {
+			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.DataRedaction] = false;
+			getSecuritySettings.mockResolvedValue({
+				...defaultSettings,
+				redactionEnforcement: { floor: 'production' },
+			});
+
+			const { getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('redaction-enforcement-scope-select')).toBeInTheDocument();
+			});
+
+			await userEvent.click(getByTestId('redaction-enforcement-scope-select'));
+
+			expect(updateSecuritySettings).not.toHaveBeenCalled();
+		});
+
+		it('should show stored scope value when unlicensed with floor=production (downgrade)', async () => {
+			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.DataRedaction] = false;
+			getSecuritySettings.mockResolvedValue({
+				...defaultSettings,
+				redactionEnforcement: { floor: 'production' },
+			});
+
+			const { getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('redaction-enforcement-scope-row')).toBeInTheDocument();
+			});
+
+			expect(getByTestId('redaction-enforcement-scope-select')).toHaveAttribute('data-disabled');
+			expect(getByTestId('redaction-enforcement-summary')).toHaveTextContent(
+				'Production executions',
+			);
+		});
+
+		it('should show stored scope value when unlicensed with floor=all (downgrade)', async () => {
+			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.DataRedaction] = false;
+			getSecuritySettings.mockResolvedValue({
+				...defaultSettings,
+				redactionEnforcement: { floor: 'all' },
+			});
+
+			const { getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('redaction-enforcement-scope-row')).toBeInTheDocument();
+			});
+
+			expect(getByTestId('redaction-enforcement-scope-select')).toHaveAttribute('data-disabled');
+			expect(getByTestId('redaction-enforcement-summary')).toHaveTextContent(
+				'Manual and production executions',
+			);
+		});
+
+		it('should disable toggle when managed by env', async () => {
+			getSecuritySettings.mockResolvedValue({
+				...defaultSettings,
+				managedByEnv: true,
+			});
+
+			const { getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('enable-redaction-enforcement')).toBeInTheDocument();
+			});
+
+			expect(getByTestId('enable-redaction-enforcement')).toHaveClass('is-disabled');
+		});
+
+		it('should render correct affected-scope summary for floor=all', async () => {
+			getSecuritySettings.mockResolvedValue({
+				...defaultSettings,
+				redactionEnforcement: { floor: 'all' },
+			});
+
+			const { getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('redaction-enforcement-summary')).toHaveTextContent(
+					'Manual and production executions',
+				);
+			});
+		});
+
+		describe('when security settings endpoint is unlicensed (403)', () => {
+			beforeEach(() => {
+				settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.DataRedaction] = false;
+				// Reproduce the 403: useAsyncState keeps state === undefined.
+				getSecuritySettings.mockRejectedValue(new Error('Forbidden'));
+			});
+
+			it('should still render the data redaction section when the endpoint 403s', async () => {
+				const { getByTestId } = renderView();
+
+				await waitFor(() => {
+					expect(getByTestId('enable-redaction-enforcement')).toBeInTheDocument();
+				});
+
+				expect(getByTestId('enable-redaction-enforcement')).toHaveClass('is-disabled');
+			});
+
+			it('should show the Upgrade badges and disabled scope dropdown when endpoint 403s', async () => {
+				const { getByTestId, getAllByText } = renderView();
+
+				await waitFor(() => {
+					expect(getByTestId('enable-redaction-enforcement')).toBeInTheDocument();
+				});
+
+				expect(getByTestId('redaction-enforcement-scope-row')).toBeInTheDocument();
+				expect(getByTestId('redaction-enforcement-scope-select')).toHaveAttribute('data-disabled');
+				// One badge on the toggle row, one on the scope row.
+				expect(getAllByText('Upgrade').length).toBeGreaterThanOrEqual(2);
+				// Defaults to floor 'off' when state never resolves.
+				expect(getByTestId('redaction-enforcement-summary')).toHaveTextContent('No executions');
+			});
+
+			it('should not show an error toast when the endpoint 403s', async () => {
+				const { getByTestId } = renderView();
+
+				await waitFor(() => {
+					expect(getByTestId('enable-redaction-enforcement')).toBeInTheDocument();
+				});
+
+				expect(showError).not.toHaveBeenCalled();
+			});
 		});
 	});
 });

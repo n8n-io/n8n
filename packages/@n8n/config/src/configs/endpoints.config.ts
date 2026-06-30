@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { Config, Env, Nested } from '../decorators';
 
 @Config
-class PrometheusMetricsConfig {
+export class PrometheusMetricsConfig {
 	/** Whether to enable the `/metrics` endpoint to expose Prometheus metrics. */
 	@Env('N8N_METRICS')
 	enable: boolean = false;
@@ -79,6 +79,38 @@ class PrometheusMetricsConfig {
 	/** How often (in seconds) to update workflow statistics metrics. */
 	@Env('N8N_METRICS_WORKFLOW_STATISTICS_INTERVAL')
 	workflowStatisticsInterval: number = 300;
+
+	/** Whether to include metrics for execution data reads and writes. */
+	@Env('N8N_METRICS_INCLUDE_EXECUTION_DATA_METRICS')
+	includeExecutionDataMetrics: boolean = false;
+
+	/** Whether to include metrics for SSRF protection checks. */
+	@Env('N8N_METRICS_INCLUDE_SSRF_METRICS')
+	includeSsrfMetrics: boolean = false;
+
+	/** Whether to include metrics for the DNS cache (currently only used by SSRF protection). */
+	@Env('N8N_METRICS_INCLUDE_DNS_CACHE_METRICS')
+	includeDnsCacheMetrics: boolean = false;
+
+	/** Whether to include a duration histogram metric for webhook requests. */
+	@Env('N8N_METRICS_INCLUDE_WEBHOOK_METRICS')
+	includeWebhookMetrics: boolean = false;
+
+	/** Whether to include a duration histogram metric for form submissions. */
+	@Env('N8N_METRICS_INCLUDE_FORM_METRICS')
+	includeFormMetrics: boolean = false;
+
+	/** Whether to include a gauge mapping workflow IDs to their human-readable names. */
+	@Env('N8N_METRICS_INCLUDE_WORKFLOW_INFO')
+	includeWorkflowInfoMetrics: boolean = false;
+
+	/** How often (in seconds) to refresh the workflow info metric cache. */
+	@Env('N8N_METRICS_WORKFLOW_INFO_METRIC_INTERVAL')
+	workflowInfoMetricInterval: number = 60;
+
+	/** Whether to include metrics for the database connection pool (size, usage, wait queue, acquire latency). */
+	@Env('N8N_METRICS_INCLUDE_DB_POOL_METRICS')
+	includeDbPoolMetrics: boolean = false;
 }
 
 @Config
@@ -132,7 +164,19 @@ export class EndpointsConfig {
 
 	/** Whether to enable workflow builder tools in the MCP server. */
 	@Env('N8N_MCP_BUILDER_ENABLED')
-	mcpBuilderEnabled: boolean = false;
+	mcpBuilderEnabled: boolean = true;
+
+	/**
+	 * Force-enable MCP Apps support (the iframe UI attached to MCP tools).
+	 * Acts as an operator-level override of the PostHog experiment.
+	 * Cannot force-disable: setting this to `false` falls back to PostHog.
+	 */
+	@Env('N8N_MCP_APPS_ENABLED')
+	mcpAppsEnabled: boolean = false;
+
+	/** Maximum number of OAuth clients that can be registered for MCP. */
+	@Env('N8N_MCP_MAX_REGISTERED_CLIENTS')
+	mcpMaxRegisteredClients: number = 5000;
 
 	/** Whether to disable n8n's UI (frontend). */
 	@Env('N8N_DISABLE_UI')

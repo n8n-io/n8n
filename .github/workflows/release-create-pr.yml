@@ -13,6 +13,11 @@ on:
         required: true
         type: string
 
+    outputs:
+      pull-request-number:
+        description: 'Number of the created pull request'
+        value: ${{ jobs.create-release-pr.outputs.pull-request-number }}
+
   workflow_dispatch:
     inputs:
       base-branch:
@@ -70,11 +75,12 @@ jobs:
           BASE_BRANCH: ${{ inputs.base-branch }}
         run: git checkout "$BASE_BRANCH"
 
-      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-nodejs
         with:
-          node-version: 24.13.1
-
-      - run: npm install --prefix=.github/scripts --no-package-lock
+          build-command: ''
+          install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
+          cache-dependency-path: .github/scripts/pnpm-lock.yaml
 
       - name: Setup corepack and pnpm
         run: |
@@ -122,7 +128,7 @@ jobs:
           branch: 'release-pr/${{ env.NEXT_RELEASE }}'
           commit-message: ':rocket: Release ${{ env.NEXT_RELEASE }}'
           delete-branch: true
-          labels: release,release:${{ inputs.release-type }}
+          labels: release,release:${{ inputs.release-type }},automation:release
           title: ':rocket: Release ${{ env.NEXT_RELEASE }}'
           body: ${{ steps.generate-body.outputs.content }}
 

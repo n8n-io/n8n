@@ -1,8 +1,16 @@
 import { BasePage } from './BasePage';
+import { ActionToggle } from './components/ActionToggle';
 import { AddResource } from './components/AddResource';
+import { MessageBox } from './components/messageBoxLocators';
 
 export class DataTableView extends BasePage {
+	async goto(projectId?: string) {
+		const url = projectId ? `/projects/${projectId}/datatables` : '/home/datatables';
+		await this.page.goto(url);
+	}
+
 	readonly addResource = new AddResource(this.page);
+	readonly actionToggle = new ActionToggle(this.page);
 
 	getEmptyStateActionBox() {
 		return this.page.getByTestId('empty-data-table-action-box');
@@ -41,15 +49,15 @@ export class DataTableView extends BasePage {
 	}
 
 	getDataTableCardAction(actionName: string) {
-		return this.page.getByTestId('action-toggle-dropdown').getByTestId(`action-${actionName}`);
+		return this.actionToggle.getAction(actionName);
 	}
 
 	getDeleteDataTableModal() {
-		return this.page.locator('.el-message-box').filter({ hasText: 'Delete Data table' });
+		return new MessageBox(this.page).root.filter({ hasText: 'Delete Data table' });
 	}
 
 	getDeleteDataTableConfirmButton() {
-		return this.getDeleteDataTableModal().locator('.btn--confirm');
+		return new MessageBox(this.getDeleteDataTableModal()).confirmButton;
 	}
 
 	getDataTablePageSizeSelect() {
