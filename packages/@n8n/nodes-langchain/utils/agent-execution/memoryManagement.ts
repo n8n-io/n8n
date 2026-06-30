@@ -55,7 +55,11 @@ export function extractToolCallId(
 
 /**
  * Converts ToolCallData array into LangChain message sequence.
- * Creates alternating AIMessage (with tool_calls) and ToolMessage pairs.
+ * For sequential tool calls this produces alternating AIMessage (with tool_calls)
+ * and ToolMessage pairs. For parallel tool calls, the shared AIMessage is emitted
+ * once for the batch followed by one ToolMessage per call
+ * (e.g. [AIMessage, ToolMessage, ToolMessage, …]), to avoid splitting a single
+ * model turn into several consecutive AI messages.
  *
  * @param steps - Array of tool call data with actions and observations
  * @returns Array of BaseMessage objects (AIMessage and ToolMessage pairs)
