@@ -25,13 +25,7 @@ async function main(): Promise<void> {
 	const context: CodeHealthContext = {
 		rootDir,
 		changedFiles: parseChangedFiles(process.env.CODE_HEALTH_CHANGED_FILES),
-		// Keep "defined but empty" distinct from "absent": when CI sets the env
-		// (even to an empty string) it's an authoritative "nothing was added"
-		// signal, not a reason to fall back to changedFiles.
-		addedFiles:
-			process.env.CODE_HEALTH_ADDED_FILES !== undefined
-				? (parseChangedFiles(process.env.CODE_HEALTH_ADDED_FILES) ?? [])
-				: undefined,
+		addedFiles: parseChangedFiles(process.env.CODE_HEALTH_ADDED_FILES),
 	};
 
 	const runner = createDefaultRunner();
