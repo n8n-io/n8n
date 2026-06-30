@@ -1,0 +1,35 @@
+packages/@n8n/db/scripts/schema-docs.mjs
+  s_6891623c24af51::t_3e51e3cedccb95 4
+  s_6891623c24af51::t_a6c6ed078e6a54 229
+.tbls.postgres.yml
+  s_6891623c24af51::t_eb35bb21141ebf 1
+  s_6891623c24af51::t_866904c21376ef 6
+docs/db.md
+  s_6891623c24af51::t_580fd4766ce43d 1,3-6,8-13,20,22-25,35-36
+.github/workflows/ci-pull-requests.yml
+  s_6891623c24af51::t_f30dbd5fefcdfe 136
+.claude/plugins/n8n/skills/db-migrations/SKILL.md
+  s_6891623c24af51::t_d1acfa96302671 788
+  s_6891623c24af51::t_a502ccd0f3a424 797
+  s_6891623c24af51::t_76d287d26162ee 126
+  s_6891623c24af51::t_279aafb0911086 793
+.tbls.sqlite.yml
+  s_6891623c24af51::t_cf2298e8dff97f 6
+  s_6891623c24af51::t_0e835173d58074 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d505a301db337bac8da3e9403e247b8a6c650597",
+  "prompts": {},
+  "sessions": {
+    "s_6891623c24af51": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8a992780-341c-4700-92bd-1d49e69bd4dc",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

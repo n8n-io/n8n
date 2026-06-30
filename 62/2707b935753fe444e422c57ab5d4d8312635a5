@@ -1,0 +1,40 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_0ecd32d98e3b48::t_fc3e303ad06cf4 1247
+packages/frontend/editor-ui/src/experiments/instanceAiSplitEmptyState/components/ListeningLoader.vue
+  s_0ecd32d98e3b48::t_894fbad5bae61a 1-66
+packages/frontend/editor-ui/src/experiments/instanceAiSplitEmptyState/components/InstanceAiSplitEmptyState.test.ts
+  s_0ecd32d98e3b48::t_4cfdee4fe8811c 118-139
+  s_0ecd32d98e3b48::t_dd7c0fe868cec1 42-43
+packages/frontend/editor-ui/src/experiments/instanceAiSplitEmptyState/components/InstanceAiSplitEmptyState.vue
+  s_0ecd32d98e3b48::t_6536e7b24f1adc 2
+  s_0ecd32d98e3b48::t_1fd3c1b45f10b9 47-52,55-62,68-81
+  s_0ecd32d98e3b48::t_9029abb3919f58 117
+  s_0ecd32d98e3b48::t_17aa7ced956e0e 107
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiInput.vue
+  s_0ecd32d98e3b48::t_44e21bf8188bc8 97
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiEmptyView.vue
+  s_0ecd32d98e3b48::t_58ce5ad97c8b07 287
+packages/frontend/editor-ui/src/experiments/instanceAiSplitEmptyState/components/CyclingPreviewCanvas.vue
+  s_0ecd32d98e3b48::t_9a1d3fa1600799 9,11-21
+  s_0ecd32d98e3b48::t_dabb69f65c1c32 45-46,48,50
+packages/frontend/editor-ui/src/experiments/instanceAiSplitEmptyState/components/CyclingPreviewCanvas.test.ts
+  s_0ecd32d98e3b48::t_2cb6cf3ceb8d6a 44-55
+packages/frontend/editor-ui/src/experiments/instanceAiSplitEmptyState/components/ListeningLoader.test.ts
+  s_0ecd32d98e3b48::t_497f19575c3eb9 1-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "622707b935753fe444e422c57ab5d4d8312635a5",
+  "prompts": {},
+  "sessions": {
+    "s_0ecd32d98e3b48": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "02ef8fce-68b7-4ab7-9259-b6efca1e0c07",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "frstavares <filipe.tavares@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+packages/cli/src/commands/start.ts
+  s_1a34162d408c68::t_93d91c3cb8585f 416-418
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fe0fc235b7a8d91aeea9f52e8122df7cf2dbaa24",
+  "prompts": {},
+  "sessions": {
+    "s_1a34162d408c68": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "04a01f2a-e22d-49c3-9e0c-c72c54d31d92",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

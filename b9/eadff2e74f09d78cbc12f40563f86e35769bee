@@ -1,0 +1,25 @@
+packages/nodes-base/nodes/Microsoft/Outlook/test/v2/utils/utils.test.ts
+  9a240a0da0671087 71,86-100
+packages/nodes-base/nodes/Microsoft/Outlook/v2/helpers/utils.ts
+  9a240a0da0671087 242
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.19",
+  "base_commit_sha": "b9eadff2e74f09d78cbc12f40563f86e35769bee",
+  "prompts": {
+    "9a240a0da0671087": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f5796e44-b952-4634-a861-f86da1339826",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jonathan Bennetts <jonathan.bennetts@gmail.com>",
+      "messages": [],
+      "total_additions": 18,
+      "total_deletions": 3,
+      "accepted_lines": 18,
+      "overriden_lines": 0
+    }
+  }
+}

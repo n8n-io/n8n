@@ -1,0 +1,14 @@
+single-instance-promotion-prototype/1_PROMPT.md
+  h_c63dce324dfc7b 1-38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.10",
+  "base_commit_sha": "ea53be2017a6e06500e19d8b41895ae39ff633d9",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

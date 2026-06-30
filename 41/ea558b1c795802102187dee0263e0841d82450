@@ -1,0 +1,38 @@
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeGroupView.ts
+  s_a662970bb19717::t_5f6537bd5af415 293-296,300
+packages/frontend/editor-ui/src/app/stores/workflowDocument/useWorkflowDocumentNodeGroups.ts
+  s_a662970bb19717::t_15ccd592b0474d 11-14,26,34-36
+  s_a662970bb19717::t_2be0e34e67417d 98
+  s_a662970bb19717::t_0033f5d63d97b9 69,72-76
+packages/frontend/editor-ui/src/features/workflows/canvas/composables/useCanvasNodeGroupView.test.ts
+  s_a662970bb19717::t_9c4f84e9fe214b 105-140
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.ts
+  s_a662970bb19717::t_51535634a454fd 3066-3072
+packages/frontend/editor-ui/src/app/stores/workflowDocument/useWorkflowDocumentNodeGroups.test.ts
+  s_a662970bb19717::t_0e8af48f01f81a 37-48
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.test.ts
+  s_a662970bb19717::t_33dcec1eba3b87 5794
+  s_a662970bb19717::t_4d9b9eca71392e 5848
+  s_a662970bb19717::t_1813565f24de17 5735
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "41ea558b1c795802102187dee0263e0841d82450",
+  "prompts": {},
+  "humans": {
+    "h_df158766ffbd97": {
+      "author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_a662970bb19717": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "293ac5cb-316a-48b2-86f5-eed6c50c793c",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}
