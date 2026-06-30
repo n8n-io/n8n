@@ -28,7 +28,7 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
         <div
           class="button-inner"
         >
-
+          
           <svg
             aria-hidden="true"
             class="n8n-icon"
@@ -54,9 +54,9 @@ exports[`RunDataJson.vue > renders json values properly 1`] = `
               />
             </g>
           </svg>
-
-
-
+          
+          
+          
         </div>
       </button>
     </div>
