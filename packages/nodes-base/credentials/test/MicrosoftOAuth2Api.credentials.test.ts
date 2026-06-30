@@ -1,5 +1,4 @@
-import type { INodeProperties } from 'n8n-workflow';
-import { NodeHelpers } from 'n8n-workflow';
+import { NodeHelpers, type INodeProperties } from 'n8n-workflow';
 
 import { MicrosoftOAuth2Api } from '../MicrosoftOAuth2Api.credentials';
 import { OAuth2Api } from '../OAuth2Api.credentials';

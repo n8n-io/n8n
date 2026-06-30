@@ -15,7 +15,10 @@ import { OauthService } from '@/oauth/oauth.service';
 import type { OAuthRequest } from '@/requests';
 
 vi.mock('axios');
-vi.mock('@n8n/client-oauth2');
+vi.mock('@n8n/client-oauth2', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@n8n/client-oauth2')>();
+	return { ...actual, ClientOAuth2: vi.fn() };
+});
 vi.mock('pkce-challenge');
 
 describe('OAuth2CredentialController', () => {
