@@ -47,8 +47,10 @@ export class SessionManager {
 	}
 
 	async destroySession(sessionId: string): Promise<void> {
+		const session = this.sessions[sessionId];
 		await this.store.unregister(sessionId);
 		delete this.sessions[sessionId];
+		await session?.server.close().catch(() => {});
 	}
 
 	getSession(sessionId: string): SessionInfo | undefined {

@@ -11,14 +11,18 @@ import {
 	createMockServer,
 	MCP_SESSION_ID_HEADER,
 } from './helpers';
+import type { McpServerConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
+
 import { QueuedExecutionStrategy } from '../execution/QueuedExecutionStrategy';
-import {
-	McpServer,
-	DEFAULT_SESSION_IDLE_TTL_MS,
-	DEFAULT_SESSION_SWEEP_INTERVAL_MS,
-} from '../McpServer';
+import { McpServer } from '../McpServer';
 import { InMemorySessionStore } from '../session/InMemorySessionStore';
 import type { SessionManager } from '../session/SessionManager';
+
+const setEvictionConfig = (sessionIdleTtl: number, sessionSweepInterval: number) =>
+	vi
+		.mocked(Container.get)
+		.mockReturnValue({ sessionIdleTtl, sessionSweepInterval } as McpServerConfig);
 
 describe('McpServer', () => {
 	let mcpServer: McpServer;
@@ -27,6 +31,7 @@ describe('McpServer', () => {
 	beforeEach(() => {
 		// Reset singleton for testing
 		(McpServer as unknown as { instance_: McpServer | undefined }).instance_ = undefined;
+		setEvictionConfig(60 * 60 * 1000, 5 * 60 * 1000);
 		mockLogger = createMockLogger();
 		mcpServer = McpServer.instance(mockLogger);
 	});
@@ -213,8 +218,8 @@ describe('McpServer', () => {
 	});
 
 	describe('idle session eviction', () => {
-		const TTL = DEFAULT_SESSION_IDLE_TTL_MS;
-		const INTERVAL = DEFAULT_SESSION_SWEEP_INTERVAL_MS;
+		const TTL = 1_000;
+		const INTERVAL = 500;
 
 		const sessionManagerOf = (server: McpServer) =>
 			(server as unknown as { sessionManager: SessionManager }).sessionManager;
@@ -234,7 +239,8 @@ describe('McpServer', () => {
 		beforeEach(() => {
 			vi.useFakeTimers();
 			vi.setSystemTime(0);
-			// Recreate the singleton so its sweep interval is registered under fake timers.
+			// Recreate the singleton with short timings registered under fake timers.
+			setEvictionConfig(TTL, INTERVAL);
 			(McpServer as unknown as { instance_: McpServer | undefined }).instance_ = undefined;
 			mcpServer = McpServer.instance(mockLogger);
 		});
@@ -250,6 +256,15 @@ describe('McpServer', () => {
 			await vi.advanceTimersByTimeAsync(TTL + INTERVAL);
 
 			expect(mcpServer.getTransport('idle-1')).toBeUndefined();
+		});
+
+		it('should close the server when evicting a session', async () => {
+			await registerSession('idle-3');
+			const server = sessionManagerOf(mcpServer).getServer('idle-3');
+
+			await vi.advanceTimersByTimeAsync(TTL + INTERVAL);
+
+			expect(server?.close).toHaveBeenCalled();
 		});
 
 		it('should not evict an idle SSE session (cleaned up via connection close instead)', async () => {

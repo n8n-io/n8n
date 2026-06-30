@@ -32,9 +32,6 @@ import { StreamableHttpTransport } from './transport/StreamableHttpTransport';
 import type { CompressionResponse, McpTransport } from './transport/Transport';
 import { TransportFactory } from './transport/TransportFactory';
 
-export const DEFAULT_SESSION_IDLE_TTL_MS = 60 * 60 * 1000;
-export const DEFAULT_SESSION_SWEEP_INTERVAL_MS = 5 * 60 * 1000;
-
 export interface HandlePostResult {
 	wasToolCall: boolean;
 	toolCallInfo?: McpToolCallInfo;
@@ -78,10 +75,9 @@ export class McpServer {
 		this.transportFactory = new TransportFactory();
 		this.pendingCallsManager = new PendingCallsManager();
 		this.executionCoordinator = new ExecutionCoordinator();
-		// DI can't resolve @n8n/config in the node test env, so fall back to defaults there.
 		const config = Container.get(McpServerConfig);
-		this.idleTtlMs = config.sessionIdleTtl ?? DEFAULT_SESSION_IDLE_TTL_MS;
-		this.sweepIntervalMs = config.sessionSweepInterval ?? DEFAULT_SESSION_SWEEP_INTERVAL_MS;
+		this.idleTtlMs = config.sessionIdleTtl;
+		this.sweepIntervalMs = config.sessionSweepInterval;
 		this.logger.debug('McpServer created');
 	}
 

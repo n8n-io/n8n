@@ -96,6 +96,35 @@ describe('SessionManager', () => {
 			await expect(manager.destroySession('non-existent')).resolves.not.toThrow();
 			expect(mockStore.unregister).toHaveBeenCalledWith('non-existent');
 		});
+
+		it('should close the server it held to release the transport', async () => {
+			const server = createMockServer();
+			await manager.registerSession('session-1', server, createMockTransport('session-1'));
+
+			await manager.destroySession('session-1');
+
+			expect(server.close).toHaveBeenCalled();
+		});
+
+		it('should not recurse when closing the server re-enters destroySession', async () => {
+			const server = createMockServer();
+			// Production wires transport.onclose -> cleanupSession -> destroySession, so
+			// server.close() re-enters this method for the same session.
+			let reentered = false;
+			server.close.mockImplementation(async () => {
+				if (!reentered) {
+					reentered = true;
+					await manager.destroySession('session-1');
+				}
+			});
+			await manager.registerSession('session-1', server, createMockTransport('session-1'));
+
+			await expect(manager.destroySession('session-1')).resolves.not.toThrow();
+
+			// Deleted before close, so the re-entrant call finds nothing and skips close.
+			expect(server.close).toHaveBeenCalledTimes(1);
+			expect(manager.getSession('session-1')).toBeUndefined();
+		});
 	});
 
 	describe('getSession', () => {
