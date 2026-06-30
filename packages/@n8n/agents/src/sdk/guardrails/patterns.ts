@@ -1,4 +1,4 @@
-import { SECRET_VALUE_PATTERNS } from '@n8n/utils';
+import { SECRET_VALUE_PATTERNS } from '@n8n/utils/scrub-secrets';
 import { createHash } from 'node:crypto';
 import { z, type ZodType } from 'zod';
 

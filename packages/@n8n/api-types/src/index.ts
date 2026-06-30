@@ -65,6 +65,7 @@ export {
 	suggestedPromptsSchema,
 	type MessageChunk,
 	UpdateChatSettingsRequest,
+	UpdateChatEnabledRequest,
 	ChatHubSemanticSearchSettings,
 	type ChatProviderSettingsDto,
 	type ChatSendMessageResponse,
@@ -219,6 +220,11 @@ export {
 	WorkflowExecutionStatusSchema,
 	type WorkflowExecutionStatus,
 } from './schemas/workflow-execution-status.schema';
+
+export {
+	WorkflowPublicationStatusSchema,
+	type WorkflowPublicationStatus,
+} from './schemas/workflow-publication-status.schema';
 
 export type { UsageState } from './schemas/usage.schema';
 

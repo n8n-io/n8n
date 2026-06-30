@@ -5,17 +5,18 @@ import {
 	type StreamChunk,
 	type StreamResult,
 } from '@n8n/agents';
-import type { Logger } from '@n8n/backend-common';
 import type {
 	ResolvedSubAgentSource,
 	RunnableAgentJsonConfig,
 	SubAgentSpawnRequest,
 } from '@n8n/api-types';
+import type { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
-import { AgentRuntimeReconstructionService } from '../../agent-runtime-reconstruction.service';
 import type { AgentExecutionService } from '../../agent-execution.service';
+import { AgentRuntimeReconstructionService } from '../../agent-runtime-reconstruction.service';
 import { SubAgentForegroundRunner } from '../sub-agent-foreground-runner';
 import type {
 	ResolvedSubAgentRuntimeSource,
@@ -93,16 +94,16 @@ const defaultStreamChunks: StreamChunk[] = [
 ];
 
 describe('SubAgentForegroundRunner', () => {
-	let sourceResolver: jest.Mocked<SubAgentSourceResolver>;
-	let reconstructionService: jest.Mocked<AgentRuntimeReconstructionService>;
+	let sourceResolver: Mocked<SubAgentSourceResolver>;
+	let reconstructionService: Mocked<AgentRuntimeReconstructionService>;
 	let runner: SubAgentForegroundRunner;
-	let childAgent: jest.Mocked<BuiltAgent>;
-	let agentExecutionService: jest.Mocked<AgentExecutionService>;
-	let logger: jest.Mocked<Logger>;
-	let credentialProvider: jest.Mocked<CredentialProvider>;
+	let childAgent: Mocked<BuiltAgent>;
+	let agentExecutionService: Mocked<AgentExecutionService>;
+	let logger: Mocked<Logger>;
+	let credentialProvider: Mocked<CredentialProvider>;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		Container.reset();
 		sourceResolver = mock<SubAgentSourceResolver>();
 		sourceResolver.resolveForRuntime.mockResolvedValue(runtimeSource);

@@ -13,17 +13,16 @@ import {
 	WorkflowEntity,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { createCredentials } from '@test-integration/db/credentials';
-import { createDataTable } from '@test-integration/db/data-tables';
-import { createFolder } from '@test-integration/db/folders';
-import { assignTagToWorkflow, createTag, updateTag } from '@test-integration/db/tags';
-import { createUser } from '@test-integration/db/users';
 import * as fastGlob from 'fast-glob';
-import { mock } from 'jest-mock-extended';
 import { Cipher } from 'n8n-core';
-import fsp from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { basename, isAbsolute } from 'node:path';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { EventService } from '@/events/event.service';
 import { DataTable } from '@/modules/data-table/data-table.entity';
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
@@ -32,11 +31,11 @@ import {
 	SOURCE_CONTROL_TAGS_EXPORT_FILE,
 	SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER,
 } from '@/modules/source-control.ee/constants';
+import { SourceControlContextFactory } from '@/modules/source-control.ee/source-control-context.factory';
 import { SourceControlExportService } from '@/modules/source-control.ee/source-control-export.service.ee';
 import type { SourceControlGitService } from '@/modules/source-control.ee/source-control-git.service.ee';
 import { SourceControlImportService } from '@/modules/source-control.ee/source-control-import.service.ee';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
-import { SourceControlContextFactory } from '@/modules/source-control.ee/source-control-context.factory';
 import { SourceControlScopedService } from '@/modules/source-control.ee/source-control-scoped.service';
 import { SourceControlStatusService } from '@/modules/source-control.ee/source-control-status.service.ee';
 import { SourceControlService } from '@/modules/source-control.ee/source-control.service.ee';
@@ -45,11 +44,23 @@ import type { ExportableDataTable } from '@/modules/source-control.ee/types/expo
 import type { ExportableFolder } from '@/modules/source-control.ee/types/exportable-folders';
 import type { ExportableWorkflow } from '@/modules/source-control.ee/types/exportable-workflow';
 import type { RemoteResourceOwner } from '@/modules/source-control.ee/types/resource-owner';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { EventService } from '@/events/event.service';
+import { createCredentials } from '@test-integration/db/credentials';
+import { createDataTable } from '@test-integration/db/data-tables';
+import { createFolder } from '@test-integration/db/folders';
+import { assignTagToWorkflow, createTag, updateTag } from '@test-integration/db/tags';
+import { createUser } from '@test-integration/db/users';
 
-jest.mock('fast-glob');
+vi.mock('fast-glob');
+
+// `readFile`/`writeFile` are imported as named bindings by the service, which `vi.spyOn` on a
+// default/namespace import can't intercept under Vitest. Mock them at the module level and keep
+// the other fs/promises exports real.
+vi.mock('node:fs/promises', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('node:fs/promises')>();
+	const readFile = vi.fn(actual.readFile);
+	const writeFile = vi.fn(actual.writeFile);
+	return { ...actual, readFile, writeFile, default: { ...actual, readFile, writeFile } };
+});
 
 type Scope = {
 	workflows: WorkflowEntity[];
@@ -228,12 +239,11 @@ describe('SourceControlService', () => {
 
 	let cipher: Cipher;
 
-	const globMock = fastGlob.default as unknown as jest.Mock<
-		Promise<string[]>,
-		[fastGlob.Pattern | fastGlob.Pattern[], fastGlob.Options]
+	const globMock = fastGlob.default as unknown as Mock<
+		(...args: [fastGlob.Pattern | fastGlob.Pattern[], fastGlob.Options]) => Promise<string[]>
 	>;
-	const fsReadFile = jest.spyOn(fsp, 'readFile');
-	const fsWriteFile = jest.spyOn(fsp, 'writeFile');
+	const fsReadFile = vi.mocked(readFile);
+	const fsWriteFile = vi.mocked(writeFile);
 
 	beforeAll(async () => {
 		await testModules.loadModules(['data-table']);
@@ -533,7 +543,7 @@ describe('SourceControlService', () => {
 		service.sanityCheck = async () => {};
 		statusService['resetWorkfolder'] = async () => undefined;
 		(statusService as any).gitService = gitService;
-		(gitService.getHistoricallyTrackedFiles as jest.Mock).mockResolvedValue(new Set<string>());
+		(gitService.getHistoricallyTrackedFiles as Mock).mockResolvedValue(new Set<string>());
 
 		// Git mocking
 		gitFiles = {
@@ -968,7 +978,7 @@ describe('SourceControlService', () => {
 		describe('remote data tables', () => {
 			describe('project:Admin user', () => {
 				it('should see only tracked remote data tables in correct scope', async () => {
-					(gitService.getHistoricallyTrackedFiles as jest.Mock).mockResolvedValueOnce(
+					(gitService.getHistoricallyTrackedFiles as Mock).mockResolvedValueOnce(
 						new Set([
 							`${SOURCE_CONTROL_DATATABLES_EXPORT_FOLDER}/${remoteInScopeDataTable.id}.json`,
 							`${SOURCE_CONTROL_DATATABLES_EXPORT_FOLDER}/${remoteOutOfScopeDataTable.id}.json`,

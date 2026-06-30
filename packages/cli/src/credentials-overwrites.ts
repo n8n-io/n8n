@@ -9,6 +9,7 @@ import { deepCopy, jsonParse } from 'n8n-workflow';
 
 import { CredentialTypes } from '@/credential-types';
 import type { ICredentialsOverwrite } from '@/interfaces';
+
 import { StaticAuthService } from './services/static-auth-service';
 
 const CREDENTIALS_OVERWRITE_KEY = 'credentialsOverwrite';
