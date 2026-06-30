@@ -45,7 +45,9 @@ export function useWorkflowPublicationStatusSync(documentId: MaybeRefOrGetter<Wo
 				.filter((t) => t.status === 'failed')
 				.map((t) => ({
 					nodeId: t.nodeId,
-					nodeName: t.nodeName,
+					// The status API returns only the stable nodeId; resolve the current
+					// display name from the live workflow (falls back to the id).
+					nodeName: workflowDocumentStore.getNodeById(t.nodeId)?.name ?? t.nodeId,
 					errorMessage: t.errorMessage ?? '',
 				}))
 				.sort((a, b) => a.nodeName.localeCompare(b.nodeName)),

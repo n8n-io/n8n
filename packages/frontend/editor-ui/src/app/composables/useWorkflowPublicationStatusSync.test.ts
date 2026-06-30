@@ -16,6 +16,7 @@ import {
 	type WorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
 import type { WorkflowPublicationStatus } from '@n8n/api-types';
+import type { INodeUi } from '@/Interface';
 
 const TEST_WORKFLOW_ID = 'wf-pub-sync';
 const TEST_DOCUMENT_ID = createWorkflowDocumentId(TEST_WORKFLOW_ID);
@@ -153,13 +154,19 @@ describe('useWorkflowPublicationStatusSync', () => {
 		expect(workflowsStore.fetchPublicationStatus).toHaveBeenCalledTimes(2);
 	});
 
-	it('should sort failures by nodeName for stable order', async () => {
+	it('should resolve failure node names from the workflow and sort them', async () => {
+		// The API returns only nodeId; the composable resolves the current display
+		// name from the live workflow via getNodeById.
+		const names: Record<string, string> = { 'id-a': 'Alpha', 'id-b': 'Bravo', 'id-c': 'Charlie' };
+		vi.spyOn(workflowDocumentStore, 'getNodeById').mockImplementation((id) =>
+			names[id] ? ({ name: names[id] } as INodeUi) : undefined,
+		);
 		vi.spyOn(workflowsStore, 'fetchPublicationStatus').mockResolvedValue({
 			...makeStatus('failed'),
 			triggers: [
-				{ nodeId: 'id-c', nodeName: 'Charlie', status: 'failed', errorMessage: 'err C' },
-				{ nodeId: 'id-a', nodeName: 'Alpha', status: 'failed', errorMessage: 'err A' },
-				{ nodeId: 'id-b', nodeName: 'Bravo', status: 'failed', errorMessage: 'err B' },
+				{ nodeId: 'id-c', status: 'failed', errorMessage: 'err C' },
+				{ nodeId: 'id-a', status: 'failed', errorMessage: 'err A' },
+				{ nodeId: 'id-b', status: 'failed', errorMessage: 'err B' },
 			],
 		});
 
@@ -172,12 +179,29 @@ describe('useWorkflowPublicationStatusSync', () => {
 		]);
 	});
 
+	it('should fall back to the nodeId when the node is not in the workflow', async () => {
+		// No nodes seeded → getNodeById returns undefined → nodeName falls back to nodeId.
+		vi.spyOn(workflowsStore, 'fetchPublicationStatus').mockResolvedValue({
+			...makeStatus('failed'),
+			triggers: [{ nodeId: 'unknown-id', status: 'failed', errorMessage: 'err' }],
+		});
+
+		await mountComposable();
+
+		expect(workflowDocumentStore.publicationFailures).toEqual([
+			{ nodeId: 'unknown-id', nodeName: 'unknown-id', errorMessage: 'err' },
+		]);
+	});
+
 	it('should only include failed triggers in failures list', async () => {
+		vi.spyOn(workflowDocumentStore, 'getNodeById').mockImplementation((id) =>
+			id === 'id-fail' ? ({ name: 'FailNode' } as INodeUi) : ({ name: 'OkNode' } as INodeUi),
+		);
 		vi.spyOn(workflowsStore, 'fetchPublicationStatus').mockResolvedValue({
 			...makeStatus('partial'),
 			triggers: [
-				{ nodeId: 'id-ok', nodeName: 'OkNode', status: 'activated', errorMessage: null },
-				{ nodeId: 'id-fail', nodeName: 'FailNode', status: 'failed', errorMessage: 'err' },
+				{ nodeId: 'id-ok', status: 'activated', errorMessage: null },
+				{ nodeId: 'id-fail', status: 'failed', errorMessage: 'err' },
 			],
 		});
 
