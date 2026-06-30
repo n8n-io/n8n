@@ -9,7 +9,6 @@ export const WorkflowPublicationStatusSchema = z.object({
 	triggers: z.array(
 		z.object({
 			nodeId: z.string(),
-			nodeName: z.string(),
 			status: z.enum(['activated', 'failed']),
 			errorMessage: z.string().nullable(),
 		}),

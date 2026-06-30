@@ -41,7 +41,6 @@ describe('WorkflowPublicationStatusService', () => {
 		return {
 			workflowId: WORKFLOW_ID,
 			nodeId: 'node-1',
-			nodeName: 'Trigger',
 			versionId: 'v-2',
 			status: 'activated',
 			errorMessage: null,
@@ -184,20 +183,18 @@ describe('WorkflowPublicationStatusService', () => {
 	});
 
 	describe('triggers field mirrors the rows', () => {
-		it('maps nodeId, nodeName, status, errorMessage from rows', async () => {
+		it('maps nodeId, status, errorMessage from rows', async () => {
 			outboxRepository.findLatestByWorkflowId.mockResolvedValue(
 				makeOutbox({ status: 'partial_success' }),
 			);
 			triggerStatusRepository.findByWorkflowId.mockResolvedValue([
 				makeRow({
 					nodeId: 'n1',
-					nodeName: 'Webhook',
 					status: 'activated',
 					errorMessage: null,
 				}),
 				makeRow({
 					nodeId: 'n2',
-					nodeName: 'Cron',
 					status: 'failed',
 					errorMessage: 'schedule parse error',
 				}),
@@ -206,8 +203,8 @@ describe('WorkflowPublicationStatusService', () => {
 			const result = await service.getStatus(WORKFLOW_ID);
 
 			expect(result.triggers).toEqual([
-				{ nodeId: 'n1', nodeName: 'Webhook', status: 'activated', errorMessage: null },
-				{ nodeId: 'n2', nodeName: 'Cron', status: 'failed', errorMessage: 'schedule parse error' },
+				{ nodeId: 'n1', status: 'activated', errorMessage: null },
+				{ nodeId: 'n2', status: 'failed', errorMessage: 'schedule parse error' },
 			]);
 		});
 	});

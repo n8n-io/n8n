@@ -1,4 +1,4 @@
-import { createWorkflow, testDb } from '@n8n/backend-test-utils';
+import { createWorkflow, createWorkflowHistory, testDb } from '@n8n/backend-test-utils';
 import { WorkflowPublicationTriggerStatusRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { nanoid } from 'nanoid';
@@ -13,6 +13,7 @@ const testServer = utils.setupTestServer({ endpointGroups: ['workflows'] });
 beforeEach(async () => {
 	await testDb.truncate([
 		'WorkflowPublicationTriggerStatus',
+		'WorkflowHistory',
 		'SharedWorkflow',
 		'WorkflowEntity',
 		'User',
@@ -37,18 +38,18 @@ describe('GET /workflows/:workflowId/publication-status', () => {
 	test('returns partial status when workflow has mixed activated/failed trigger rows', async () => {
 		const workflow = await createWorkflow(undefined, owner);
 		const versionId = uuid();
+		// Seed the workflow_history version the trigger-status rows reference (FK).
+		await createWorkflowHistory(workflow, owner, undefined, { versionId });
 
 		await triggerStatusRepo.replaceForWorkflow(workflow.id, [
 			{
 				nodeId: 'node-1',
-				nodeName: 'Webhook',
 				versionId,
 				status: 'activated',
 				errorMessage: null,
 			},
 			{
 				nodeId: 'node-2',
-				nodeName: 'Cron',
 				versionId,
 				status: 'failed',
 				errorMessage: 'Could not register trigger',

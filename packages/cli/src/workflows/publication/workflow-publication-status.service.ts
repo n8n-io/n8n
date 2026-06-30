@@ -19,7 +19,6 @@ export class WorkflowPublicationStatusService {
 
 		const triggers = rows.map((r) => ({
 			nodeId: r.nodeId,
-			nodeName: r.nodeName,
 			status: r.status,
 			errorMessage: r.errorMessage,
 		}));
