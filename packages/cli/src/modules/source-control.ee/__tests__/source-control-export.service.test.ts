@@ -329,18 +329,10 @@ describe('SourceControlExportService', () => {
 				resolvableAllowFallback: true,
 			});
 
+			// Ownership is not asserted here, so a minimal sharing mock is enough.
 			sharedCredentialsRepository.findByCredentialIds.mockResolvedValue([
 				mock<SharedCredentials>({
 					credentials: mockResolvableCredential,
-					project: mock({
-						type: 'personal',
-						projectRelations: [
-							{
-								role: PROJECT_OWNER_ROLE,
-								user: mock({ email: 'user@example.com' }),
-							},
-						],
-					}),
 				}),
 			]);
 
