@@ -923,6 +923,8 @@
   },
   "dependencies": {
     "@aws-sdk/credential-providers": "3.808.0",
+    "@smithy/node-http-handler": "4.5.0",
+    "@smithy/types": "4.13.1",
     "@n8n/backend-network": "workspace:*",
     "@kafkajs/confluent-schema-registry": "3.8.0",
     "@langchain/core": "catalog:",
