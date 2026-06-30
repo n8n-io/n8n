@@ -1,5 +1,5 @@
 // Mock the barrel import so these adapter tests only exercise local formatting helpers.
-jest.mock('@n8n/instance-ai', () => ({
+vi.mock('@n8n/instance-ai', () => ({
 	wrapUntrustedData(content: string, source: string, label?: string): string {
 		const esc = (s: string) =>
 			s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -18,8 +18,10 @@ jest.mock('@n8n/instance-ai', () => ({
 	},
 }));
 
+import type { Logger } from '@n8n/backend-common';
+import type { GlobalConfig } from '@n8n/config';
+import { GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 import type {
 	AiBuilderTemporaryWorkflowRepository,
 	User,
@@ -28,49 +30,50 @@ import type {
 	SharedWorkflowRepository,
 	WorkflowRepository,
 } from '@n8n/db';
-import { GLOBAL_MEMBER_ROLE } from '@n8n/db';
-import type { Logger } from '@n8n/backend-common';
-import type { GlobalConfig } from '@n8n/config';
 import type { InstanceSettings } from 'n8n-core';
+import { mock } from 'vitest-mock-extended';
 
-import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
-import type { WorkflowService } from '@/workflows/workflow.service';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
-import type { CredentialsService } from '@/credentials/credentials.service';
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { ActiveExecutions } from '@/active-executions';
+import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import type { CredentialsService } from '@/credentials/credentials.service';
 import type { WorkflowRunner } from '@/workflow-runner';
-import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import type { NodeTypes } from '@/node-types';
-import type { DataTableService } from '@/modules/data-table/data-table.service';
-import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import type { FolderService } from '@/services/folder.service';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { TagService } from '@/services/tag.service';
-import type { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+
 import type { InstanceAiSettingsService } from '../instance-ai-settings.service';
-import type { License } from '@/license';
+
 import type { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { EventService } from '@/events/event.service';
+import type { License } from '@/license';
+import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
+import type { DataTableService } from '@/modules/data-table/data-table.service';
+import type { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import type { NodeTypes } from '@/node-types';
 import type { RoleService } from '@/services/role.service';
 import type { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import type { Telemetry } from '@/telemetry';
 
-jest.mock('@/permissions.ee/check-access');
-jest.mock('@/workflow-execute-additional-data', () => ({
-	getBase: jest.fn().mockResolvedValue({}),
+vi.mock('@/permissions.ee/check-access');
+vi.mock('@/workflow-execute-additional-data', () => ({
+	getBase: vi.fn().mockResolvedValue({}),
 }));
-jest.mock('node:fs/promises', () => ({
-	readFile: jest.fn().mockResolvedValue('[]'),
+vi.mock('node:fs/promises', () => ({
+	readFile: vi.fn().mockResolvedValue('[]'),
 }));
 
 import { userHasScopes } from '@/permissions.ee/check-access';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+import type { WorkflowService } from '@/workflows/workflow.service';
 
-const userHasScopesMock = jest.mocked(userHasScopes);
+import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
+
+const userHasScopesMock = vi.mocked(userHasScopes);
 
 // ---------------------------------------------------------------------------
 // Setup
@@ -160,12 +163,12 @@ const user = mock<User>({
 });
 
 beforeEach(() => {
-	jest.clearAllMocks();
+	vi.clearAllMocks();
 	license.isLicensed.mockReturnValue(true);
 	sourceControlPreferencesService.getPreferences.mockReturnValue({
 		branchReadOnly: false,
 	} as never);
-	jest.spyOn(Container, 'get').mockReturnValue(executionPersistence);
+	vi.spyOn(Container, 'get').mockReturnValue(executionPersistence);
 });
 
 // ---------------------------------------------------------------------------

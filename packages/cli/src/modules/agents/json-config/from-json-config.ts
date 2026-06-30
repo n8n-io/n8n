@@ -10,6 +10,8 @@ import type {
 	ToolDescriptor,
 	JSONObject,
 	RuntimeSkill,
+	RuntimeSkillLinkedFiles,
+	RuntimeSkillSource,
 	Agent as RuntimeAgent,
 } from '@n8n/agents';
 import { wrapToolForApproval } from '@n8n/agents/tool';
@@ -22,6 +24,7 @@ import type {
 	AgentJsonSkillConfig,
 } from '@n8n/api-types';
 import { MANAGED_CREDENTIAL_TOKEN } from '@n8n/api-types';
+import { createHash } from 'crypto';
 import { z } from 'zod';
 
 import { mapCredentialForProvider } from './credential-field-mapping';
@@ -114,7 +117,7 @@ export async function buildFromJson(
 	toolDescriptors: Record<string, ToolDescriptor>,
 	options: BuildFromJsonOptions,
 ): Promise<RuntimeAgent> {
-	const { Agent } = await import('@n8n/agents');
+	const { Agent, createRuntimeSkillRegistry } = await import('@n8n/agents');
 	const agent = new Agent(config.name);
 
 	const resolvedModelConfig = await resolveModelConfig(config, options.credentialProvider);
@@ -123,7 +126,11 @@ export async function buildFromJson(
 		agent.modelFetch(options.modelFetch);
 	}
 
-	const configuredSkills = getConfiguredSkills(config.skills ?? [], options.skills ?? {});
+	const configuredSkillSource = getConfiguredSkillSource(
+		config.skills ?? [],
+		options.skills ?? {},
+		createRuntimeSkillRegistry,
+	);
 	agent.instructions(getInstructionsWithWebSearchPolicy(config));
 
 	// Tools
@@ -143,7 +150,7 @@ export async function buildFromJson(
 		}
 	}
 
-	agent.skills(configuredSkills);
+	agent.skills(configuredSkillSource);
 
 	// Provider tools
 	const providerTools = getNativeWebSearchProviderTools(config, { includeDefaultArgs: false });
@@ -291,27 +298,69 @@ function buildFallbackWebSearchTool(
 	};
 }
 
-function getConfiguredSkills(
+function getConfiguredSkillSource(
 	refs: AgentJsonSkillConfig[],
 	skills: Record<string, AgentSkill>,
-): RuntimeSkill[] {
+	createRegistry: (skills: RuntimeSkill[]) => RuntimeSkillSource['registry'],
+): RuntimeSkillSource {
 	const seen = new Set<string>();
 	const configured: RuntimeSkill[] = [];
+	const referencesBySkillId = new Map<
+		string,
+		Map<string, NonNullable<AgentSkill['references']>[number]>
+	>();
 
 	for (const ref of refs) {
 		if (seen.has(ref.id)) continue;
 		seen.add(ref.id);
 		const skill = skills[ref.id];
 		if (!skill) throw new Error(`Skill "${ref.id}" not found in stored skill bodies`);
+		const linkedFiles = linkedFilesForSkill(skill);
+		referencesBySkillId.set(
+			ref.id,
+			new Map((skill.references ?? []).map((reference) => [reference.path, reference])),
+		);
 		configured.push({
 			id: ref.id,
 			name: skill.name,
 			description: skill.description,
 			instructions: skill.instructions,
+			...(skill.allowedTools ? { allowedTools: skill.allowedTools } : {}),
+			linkedFiles,
 		});
 	}
 
-	return configured;
+	const skillsById = new Map(configured.map((skill) => [skill.id, skill]));
+	return {
+		registry: createRegistry(configured),
+		loadSkill: async (skillId) => (await Promise.resolve(skillsById.get(skillId))) ?? null,
+		loadFile: async (skillId, filePath) => {
+			const reference = referencesBySkillId.get(skillId)?.get(filePath);
+			if (!reference) return await Promise.resolve(null);
+			return await Promise.resolve({
+				skillId,
+				filePath: reference.path,
+				content: reference.content,
+				bytes: Buffer.byteLength(reference.content, 'utf8'),
+				sha256: createHash('sha256').update(reference.content).digest('hex'),
+			});
+		},
+	};
+}
+
+function linkedFilesForSkill(skill: AgentSkill): RuntimeSkillLinkedFiles {
+	return {
+		references: (skill.references ?? []).map((reference) => ({
+			path: reference.path,
+			bytes: Buffer.byteLength(reference.content, 'utf8'),
+			sha256: createHash('sha256').update(reference.content).digest('hex'),
+		})),
+		templates: [],
+		scripts: [],
+		assets: [],
+		examples: [],
+		other: [],
+	};
 }
 
 async function resolveToolRef(

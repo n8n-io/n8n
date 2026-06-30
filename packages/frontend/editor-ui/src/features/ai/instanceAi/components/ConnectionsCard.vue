@@ -10,6 +10,8 @@ import {
 	INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY,
 } from '@/app/constants/modals';
 import { useInstanceAiMcpConnectionsExperiment } from '@/experiments/instanceAiMcpConnections';
+import { useInstanceAiBrowserUseExperiment } from '@/experiments/instanceAiBrowserUse';
+import { useInstanceAiComputerUseExperiment } from '@/experiments/instanceAiComputerUse';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { useInstanceAiMcpStore } from '../instanceAiMcp.store';
 import { useInstanceAiMcpTelemetry } from '../instanceAiMcp.telemetry';
@@ -30,17 +32,29 @@ const store = useInstanceAiSettingsStore();
 const mcpStore = useInstanceAiMcpStore();
 const mcpTelemetry = useInstanceAiMcpTelemetry();
 const { isFeatureEnabled: isMcpFeatureEnabled } = useInstanceAiMcpConnectionsExperiment();
+const { isFeatureEnabled: isBrowserUseEnabled } = useInstanceAiBrowserUseExperiment();
+const { isFeatureEnabled: isComputerUseEnabled } = useInstanceAiComputerUseExperiment();
 
 const props = defineProps<{
 	dropdownPortalTarget?: HTMLElement;
 }>();
 
 const isMcpEnabled = computed(() => isMcpFeatureEnabled.value && store.settings?.mcpAccessEnabled);
-const singletonConnections = computed(() => store.connections);
+const singletonConnections = computed(() => {
+	const filteredTypes: SingletonConnectionType[] = [];
+	if (!isBrowserUseEnabled.value) filteredTypes.push('browser-use');
+	if (!isComputerUseEnabled.value) filteredTypes.push('computer-use');
+	return !filteredTypes.length
+		? store.connections
+		: store.connections.filter(({ type }) => !filteredTypes.includes(type));
+});
+
 const mcpConnections = computed(() => (isMcpEnabled.value ? mcpStore.connections : []));
 const isVisible = computed(() => {
 	const anyChannelEnabled =
-		!store.isLocalGatewayDisabledByAdmin || store.isBrowserUseEnabledByAdmin || isMcpEnabled.value;
+		(!store.isLocalGatewayDisabledByAdmin && isComputerUseEnabled.value) ||
+		(store.isBrowserUseEnabledByAdmin && isBrowserUseEnabled.value) ||
+		isMcpEnabled.value;
 	const statusReady =
 		store.gatewayStatusLoaded ||
 		store.browserStatusLoaded ||
@@ -62,13 +76,15 @@ const ICON_MAP: Record<SidebarRowIcon, IconName> = {
 };
 
 const baseAddItems = computed<Array<DropdownMenuItemProps<AddConnectionType>>>(() => {
-	const items: Array<DropdownMenuItemProps<AddConnectionType>> = [
-		{
+	const items: Array<DropdownMenuItemProps<AddConnectionType>> = [];
+
+	if (isComputerUseEnabled.value) {
+		items.push({
 			id: 'computer-use',
 			label: i18n.baseText('instanceAi.connections.add.computerUse'),
 			icon: { type: 'icon', value: ICON_MAP['computer-use'] },
-		},
-	];
+		});
+	}
 
 	if (isMcpEnabled.value) {
 		items.push({
@@ -235,8 +251,15 @@ function openMcpSettings(connectionId: string) {
 		</div>
 
 		<div v-else :class="$style.empty">
-			<span>{{ i18n.baseText('instanceAi.connections.empty.title') }}</span>
+			<span>{{
+				i18n.baseText(
+					isComputerUseEnabled
+						? 'instanceAi.connections.empty.title'
+						: 'instanceAi.connections.empty.titleNoComputerUse',
+				)
+			}}</span>
 			<N8nButton
+				v-if="isComputerUseEnabled"
 				:label="i18n.baseText('instanceAi.connections.empty.cta')"
 				variant="outline"
 				size="small"

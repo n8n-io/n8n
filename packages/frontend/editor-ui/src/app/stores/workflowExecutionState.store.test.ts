@@ -624,6 +624,74 @@ describe('workflowExecutionState.store', () => {
 			});
 		});
 
+		describe('activeExecutionPinDataByNodeName', () => {
+			it('does not treat a displayed execution as preview pin data in debug mode', () => {
+				const executionStateStore = useWorkflowExecutionStateStore(
+					createWorkflowDocumentId('wf-1'),
+				);
+				const execution = makeExecution({
+					id: 'exec-1',
+					data: createRunExecutionData({
+						resultData: {
+							runData: {},
+							pinData: { 'HTTP Request': [{ json: { source: 'workflow-pin-data' } }] },
+						},
+					}),
+				});
+
+				executionStateStore.setWorkflowExecutionData(execution);
+				expect(executionStateStore.isExecutionDataDisplayed).toBe(true);
+
+				executionStateStore.setIsInDebugMode(true);
+
+				expect(executionStateStore.displayedExecutionId).toBe('exec-1');
+				expect(executionStateStore.isExecutionDataDisplayed).toBe(false);
+				expect(executionStateStore.activeExecutionPinDataByNodeName).toEqual({
+					'HTTP Request': [{ json: { source: 'workflow-pin-data' } }],
+				});
+			});
+
+			it('uses the in-progress execution pin data while a new execution id is pending', () => {
+				const executionStateStore = useWorkflowExecutionStateStore(
+					createWorkflowDocumentId('wf-1'),
+				);
+				useExecutionDataStore(createExecutionDataId('previous-exec')).setExecution(
+					makeExecution({
+						id: 'previous-exec',
+						data: createRunExecutionData({
+							resultData: {
+								runData: {},
+								pinData: { 'Send Rain Alert': [{ json: { stale: true } }] },
+							},
+						}),
+					}),
+				);
+				useExecutionDataStore(createExecutionDataId(IN_PROGRESS_EXECUTION_ID)).setExecution(
+					makeExecution({
+						id: IN_PROGRESS_EXECUTION_ID,
+						data: createRunExecutionData({
+							resultData: {
+								runData: {},
+								pinData: { 'Get Berlin Forecast': [{ json: { dryRun: true } }] },
+							},
+						}),
+					}),
+				);
+
+				executionStateStore.setActiveExecutionId('previous-exec');
+				executionStateStore.setActiveExecutionId(undefined);
+				executionStateStore.setActiveExecutionId(null);
+
+				expect(executionStateStore.displayedExecutionId).toBe('previous-exec');
+				expect(executionStateStore.activeExecutionPinDataByNodeName).toEqual({
+					'Get Berlin Forecast': [{ json: { dryRun: true } }],
+				});
+				expect(
+					executionStateStore.activeExecutionPinDataByNodeName['Send Rain Alert'],
+				).toBeUndefined();
+			});
+		});
+
 		describe('activeExecutionExecutedNode', () => {
 			it('proxies the executedNode from the active executionData store', () => {
 				const executionStateStore = useWorkflowExecutionStateStore(
