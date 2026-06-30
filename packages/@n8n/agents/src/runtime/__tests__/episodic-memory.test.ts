@@ -12,8 +12,8 @@ import {
 	getEpisodicMemoryScope,
 	rankEpisodicMemoryEntries,
 	runEpisodicMemoryIndexer,
-} from '../episodic-memory';
-import { InMemoryMemory } from '../memory-store';
+} from '../memory/episodic-memory';
+import { InMemoryMemory } from '../memory/memory-store';
 
 vi.mock('ai', () => ({
 	embed: vi.fn(),

@@ -28,7 +28,7 @@ export class OAuth2CredentialController {
 	/** Get Authorization url */
 	@Get('/auth')
 	async getAuthUri(req: OAuthRequest.OAuth2Credential.Auth, res: Response): Promise<string> {
-		const credential = await this.oauthService.getCredentialForUpdate(req);
+		const credential = await this.oauthService.getCredentialForAuthFlow(req);
 		const csrfData = await this.oauthService.buildCsrfStateData(credential, req);
 		return await this.oauthService.generateAOauth2AuthUri(credential, csrfData, req, res);
 	}
@@ -48,6 +48,10 @@ export class OAuth2CredentialController {
 
 			const [credential, decryptedDataOriginal, oauthCredentials, state, flowState] =
 				await this.oauthService.resolveCredential<OAuth2CredentialData>(req);
+
+			if (typeof state.resource === 'string') {
+				oauthCredentials.resource = state.resource;
+			}
 
 			const oAuthOptions = this.convertCredentialToOptions(oauthCredentials);
 
@@ -103,6 +107,10 @@ export class OAuth2CredentialController {
 				...(typeof tokenData === 'object' ? tokenData : {}),
 				...tokenResponse,
 			} as ICredentialDataDecryptedObject;
+
+			if (typeof state.resource === 'string') {
+				oauthTokenData.resource = state.resource;
+			}
 
 			if (!state.origin || state.origin === 'static-credential') {
 				await this.oauthService.encryptAndSaveData(credential, { oauthTokenData });
@@ -165,6 +173,7 @@ export class OAuth2CredentialController {
 			redirectUri: `${this.oauthService.getBaseUrl(OauthVersion.V2)}/callback`,
 			scopes: split(credential.scope ?? 'openid', ','),
 			scopesSeparator: credential.scope?.includes(',') ? ',' : ' ',
+			resource: credential.resource,
 			ignoreSSLIssues: credential.ignoreSSLIssues ?? false,
 		};
 

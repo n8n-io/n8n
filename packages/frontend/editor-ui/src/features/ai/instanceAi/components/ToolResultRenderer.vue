@@ -1,10 +1,13 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
 import type { McpToolCallResult } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils/is-record';
+
 import ToolResultJson from './ToolResultJson.vue';
 import ToolResultTable from './ToolResultTable.vue';
 import ToolResultCode from './ToolResultCode.vue';
-import ToolResultMedia from './ToolResultMedia.vue';
+import ToolResultImage from './ToolResultImage.vue';
+import ToolResultFile from './ToolResultFile.vue';
 import ToolResultText from './ToolResultText.vue';
 
 const props = defineProps<{
@@ -18,10 +21,6 @@ type McpContentItem = McpToolCallResult['content'][number];
 
 function isAction(family: string, action: string): boolean {
 	return props.toolName === family && props.toolArgs?.action === action;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function normalizeImageContentItem(item: Record<string, unknown>): McpContentItem | null {
@@ -51,6 +50,21 @@ function normalizeContentItem(item: unknown): McpContentItem | null {
 
 	if (item.type === 'text' && typeof item.text === 'string') {
 		return { type: 'text', text: item.text };
+	}
+	if (
+		item.type === 'file-data' &&
+		typeof item.mediaType === 'string' &&
+		typeof item.data === 'string' &&
+		!item.mediaType.startsWith('image/')
+	) {
+		return {
+			type: 'resource',
+			resource: {
+				uri: '',
+				blob: item.data as string,
+				mimeType: item.mediaType,
+			},
+		};
 	}
 
 	return normalizeImageContentItem(item);
@@ -149,7 +163,12 @@ const tableRows = computed(() => extractTableRows(props.result));
 <template>
 	<div v-if="resultType === 'content' && contentItems" :class="$style.contentList">
 		<template v-for="(item, idx) in contentItems" :key="idx">
-			<ToolResultMedia v-if="item.type === 'image'" :data="item.data" :mime-type="item.mimeType" />
+			<ToolResultImage v-if="item.type === 'image'" :data="item.data" :mime-type="item.mimeType" />
+			<ToolResultFile
+				v-else-if="item.type === 'resource' && item.resource.mimeType"
+				:data="item.resource.blob"
+				:mime-type="item.resource.mimeType"
+			/>
 			<ToolResultText v-else-if="item.type === 'text'" :text="item.text" />
 		</template>
 	</div>

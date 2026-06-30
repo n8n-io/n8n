@@ -1,7 +1,6 @@
+import { TypedEmitter } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { ManualExecutionCancelledError } from 'n8n-workflow';
-
-import { TypedEmitter } from '@/typed-emitter';
 
 type ConcurrencyEvents = {
 	'execution-throttled': { executionId: string };

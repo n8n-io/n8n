@@ -73,6 +73,9 @@ export class OnePasswordProvider extends SecretsProvider {
 	protected async doConnect(): Promise<void> {
 		const { OnePasswordConnect } = await import('@1password/connect');
 
+		// TODO: the @1password/connect SDK exposes no transport/agent injection hook,
+		// so requests bypass @n8n/backend-network and the configured proxy and SSRF/DNS rules are not enforced here.
+		// Route through it once the SDK supports a custom client.
 		this.client = OnePasswordConnect({
 			serverURL: this.settings.serverUrl,
 			token: this.settings.accessToken,

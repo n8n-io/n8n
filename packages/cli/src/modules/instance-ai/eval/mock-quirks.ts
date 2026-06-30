@@ -73,6 +73,15 @@ export const MOCK_QUIRKS: MockQuirk[] = [
 		addedAt: '2026-05-19',
 	},
 	{
+		service: 'Googleapis',
+		endpoint: 'GET /gmail/v1/users/me/messages',
+		guidance:
+			'Gmail messages.list → `{ "messages": [{ "id": "...", "threadId": "..." }], "resultSizeEstimate": <n> }`. The `messages` wrapper key is REQUIRED — never return a bare top-level array (the node reads `response.messages` and silently yields zero items without it). List entries need only `id` + `threadId`; subject/from/body come from the follow-up `GET /gmail/v1/users/me/messages/{id}`, which returns the full message with `payload.headers`.',
+		rationale:
+			'The Gmail node consumes `responseData.messages` from the list call; a bare array yields zero items with no error. Observed as the residual mock_issue in eval run mock-robustness-fixes-n3 (daily-gmail-action-digest).',
+		addedAt: '2026-06-12',
+	},
+	{
 		service: 'Slack',
 		// Covers files.slack.com (PUT /upload/v1/<token>), hooks.slack.com (incoming
 		// webhooks), and any future subdomain — the service-name extractor maps these
@@ -119,7 +128,7 @@ export const MOCK_QUIRKS: MockQuirk[] = [
 			'Amazon S3 routes by HTTP method on `<bucket>.s3.amazonaws.com` or `s3.<region>.amazonaws.com`:\n' +
 			"  * `GET /<key>` (`GetObject`) → BINARY. Infer `contentType` from the key's file extension; default `application/octet-stream`. Set `filename` to the last path segment.\n" +
 			'  * `PUT /<key>` (`PutObject`) → empty success body (return `type: "json"` with `body: {}` and statusCode 200; the actual response headers carry `ETag`).\n' +
-			'  * `GET /?list-type=2` (`ListObjectsV2`) → XML, but the n8n eval framework accepts JSON `{ Contents: [...] }` as a stand-in.\n' +
+			'  * `GET /?list-type=2` (`ListObjectsV2`) → XML: use `type: "text"` with the real `<ListBucketResult>` document in `textBody` and `contentType: "application/xml"`.\n' +
 			'  * `DELETE /<key>` → empty body, `type: "json"`.',
 		rationale:
 			'S3 mixes binary and empty responses on the same path skeleton; downstream nodes (Extract from File, image processing) expect a real file body for GET.',

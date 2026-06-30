@@ -1,13 +1,65 @@
-import type { Logger } from '@n8n/backend-common';
-import { mock } from 'jest-mock-extended';
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-return -- mocks the ESM-only Chat SDK card factories */
+type MockFn = Mock<(...args: any[]) => any>;
+const {
+	mockButton,
+	mockCard,
+	mockActions,
+	mockCardText,
+	mockSection,
+	mockDivider,
+	mockImage,
+	mockSelect,
+	mockRadioSelect,
+	mockFields,
+	mockField,
+} = vi.hoisted(() => ({
+	mockButton: vi.fn((opts) => ({ type: 'button', ...opts })) as MockFn,
+	mockCard: vi.fn((opts) => ({ type: 'card', ...opts })) as MockFn,
+	mockActions: vi.fn((children) => ({ type: 'actions', children })) as MockFn,
+	mockCardText: vi.fn((content) => ({ type: 'text', content })) as MockFn,
+	mockSection: vi.fn((children) => ({ type: 'section', children })) as MockFn,
+	mockDivider: vi.fn(() => ({ type: 'divider' })) as MockFn,
+	mockImage: vi.fn((opts) => ({ type: 'image', ...opts })) as MockFn,
+	mockSelect: vi.fn((opts) => ({ type: 'select', ...opts })) as MockFn,
+	mockRadioSelect: vi.fn((opts) => ({ type: 'radio_select', ...opts })) as MockFn,
+	mockFields: vi.fn((children) => ({ type: 'fields', children })) as MockFn,
+	mockField: vi.fn((opts) => ({ type: 'field', ...opts })) as MockFn,
+}));
 
-import { ChatIntegrationRegistry } from '../agent-chat-integration';
+vi.mock('../esm-loader', () => ({
+	loadChatSdk: vi.fn().mockResolvedValue({
+		Button: mockButton,
+		Card: mockCard,
+		Actions: mockActions,
+		CardText: mockCardText,
+		Section: mockSection,
+		Divider: mockDivider,
+		Image: mockImage,
+		Select: mockSelect,
+		RadioSelect: mockRadioSelect,
+		Fields: mockFields,
+		Field: mockField,
+	}),
+}));
+
+import type { Mock } from 'vitest';
+import type { Logger } from '@n8n/backend-common';
+import type { OutboundHttp } from '@n8n/backend-network';
+import { Container } from '@n8n/di';
+import { mock } from 'vitest-mock-extended';
+
+import {
+	AgentChatIntegration,
+	ChatIntegrationRegistry,
+	type AgentChatIntegrationContext,
+} from '../agent-chat-integration';
 import { ChatIntegrationActionExecutor } from '../integration-action-executor';
 import { getIntegrationToolConnectionDescriptors } from '../integration-tools';
 import { LinearIntegration } from '../platforms/linear-integration';
 import { SlackIntegration } from '../platforms/slack-integration';
 import type { ChatIntegrationService, ChatInstance } from '../chat-integration.service';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
+import type { RichCardComponentType } from '@n8n/api-types';
 
 const slack: AgentIntegrationConfig = {
 	type: 'slack',
@@ -19,24 +71,56 @@ const linear: AgentIntegrationConfig = {
 	credentialId: 'cred-linear',
 };
 
+const telegram: AgentIntegrationConfig = {
+	type: 'telegram',
+	credentialId: 'cred-telegram',
+};
+
+class ShortCallbackTelegramIntegration extends AgentChatIntegration {
+	readonly type = 'telegram';
+
+	readonly credentialTypes = ['telegramApi'];
+
+	readonly displayLabel = 'Telegram';
+
+	readonly displayIcon = 'telegram';
+
+	readonly supportedComponents: readonly RichCardComponentType[] = [
+		'section',
+		'button',
+		'divider',
+		'fields',
+	];
+
+	readonly needsShortCallbackData = true;
+
+	async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {
+		return {};
+	}
+}
+
 function buildRegistry(): ChatIntegrationRegistry {
 	const registry = new ChatIntegrationRegistry();
 	registry.register(new SlackIntegration());
-	registry.register(new LinearIntegration(mock<Logger>()));
+	registry.register(new LinearIntegration(mock<Logger>(), mock<OutboundHttp>()));
 	return registry;
 }
 
 describe('ChatIntegrationActionExecutor', () => {
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
 	it('posts channel messages through the selected integration connection and returns message context', async () => {
 		const sentMessage = {
 			id: '123.456',
 			threadId: 'slack:C123:123.456',
 		};
 		const channel = {
-			post: jest.fn().mockResolvedValue(sentMessage),
+			post: vi.fn().mockResolvedValue(sentMessage),
 		};
 		const sentThread = {
-			subscribe: jest.fn().mockResolvedValue(undefined),
+			subscribe: vi.fn().mockResolvedValue(undefined),
 		};
 		const chat = mock<ChatInstance>();
 		chat.channel.mockReturnValue(channel as never);
@@ -83,7 +167,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			id: 'linear-message-1',
 		};
 		const channel = {
-			post: jest.fn().mockResolvedValue(sentMessage),
+			post: vi.fn().mockResolvedValue(sentMessage),
 		};
 		const chat = mock<ChatInstance>();
 		chat.channel.mockReturnValue(channel as never);
@@ -127,8 +211,8 @@ describe('ChatIntegrationActionExecutor', () => {
 		};
 		const thread = {
 			id: 'slack:D123:123.456',
-			post: jest.fn().mockResolvedValue(sentMessage),
-			subscribe: jest.fn().mockResolvedValue(undefined),
+			post: vi.fn().mockResolvedValue(sentMessage),
+			subscribe: vi.fn().mockResolvedValue(undefined),
 		};
 		const chat = mock<ChatInstance>();
 		chat.openDM.mockResolvedValue(thread as never);
@@ -148,9 +232,143 @@ describe('ChatIntegrationActionExecutor', () => {
 		expect(thread.subscribe).toHaveBeenCalled();
 	});
 
+	it('posts generic message card buttons with their labels', async () => {
+		const sentMessage = {
+			id: '123.456',
+			threadId: 'slack:C123:123.456',
+		};
+		const thread = {
+			post: vi.fn().mockResolvedValue(sentMessage),
+			subscribe: vi.fn().mockResolvedValue(undefined),
+		};
+		const chat = mock<ChatInstance>();
+		chat.thread.mockReturnValue(thread as never);
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		const registry = buildRegistry();
+		Container.set(ChatIntegrationRegistry, registry);
+		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, registry);
+		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
+
+		const result = await executor.execute({
+			descriptor,
+			action: 'respond',
+			input: {
+				message: {
+					text: 'Approve/Reject button demo',
+					card: {
+						title: 'Approve / Reject Demo',
+						components: [
+							{ type: 'section', text: 'Choose an action.' },
+							{ type: 'button', label: 'Approve', value: 'approve', style: 'primary' },
+							{ type: 'button', label: 'Reject', value: 'reject', style: 'danger' },
+							{ type: 'button', label: 'Revise', value: 'revise' },
+						],
+					},
+				},
+			},
+			awaitResponse: true,
+			runId: 'run-1',
+			toolCallId: 'tool-1',
+			currentMessageContext: {
+				integrationConnectionId: 'slack:cred-a',
+				platform: 'slack',
+				target: {
+					type: 'thread',
+					threadId: 'slack:C123:123.456',
+					channelId: 'slack:C123',
+				},
+				messageId: '123.456',
+				updatedAt: '2026-05-18T10:00:00.000Z',
+			},
+		});
+
+		expect(result).toEqual(expect.objectContaining({ ok: true }));
+		const postable = thread.post.mock.calls[0][0] as {
+			card: { children: Array<{ type: string; children?: Array<{ label?: string }> }> };
+		};
+		const actions = postable.card.children.find((child) => child.type === 'actions');
+		expect(actions?.children?.map((button) => button.label)).toEqual([
+			'Approve',
+			'Reject',
+			'Revise',
+		]);
+	});
+
+	it('shortens Telegram action card callback payloads before posting', async () => {
+		const sentMessage = {
+			id: 'telegram-message-1',
+			threadId: 'telegram-thread-1',
+		};
+		const thread = {
+			post: vi.fn().mockResolvedValue(sentMessage),
+		};
+		const chat = mock<ChatInstance>();
+		chat.thread.mockReturnValue(thread as never);
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getChatInstance.mockReturnValue(chat);
+		const shortenCallback = vi.fn(async (_actionId: string, _value: string) => ({
+			id: 'short1234',
+			value: '',
+		}));
+		Object.assign(chatIntegrationService, {
+			getShortenCallback: vi.fn().mockReturnValue(shortenCallback),
+		});
+		const registry = buildRegistry();
+		registry.register(new ShortCallbackTelegramIntegration());
+		Container.set(ChatIntegrationRegistry, registry);
+		const executor = new ChatIntegrationActionExecutor(chatIntegrationService, registry);
+		const descriptor = getIntegrationToolConnectionDescriptors([telegram], 'agent-1')[0];
+
+		const result = await executor.execute({
+			descriptor,
+			action: 'respond',
+			input: {
+				message: {
+					text: 'Telegram callback repro',
+					card: {
+						components: [
+							{ type: 'section', text: 'Click Approve to continue.' },
+							{ type: 'button', label: 'Approve', value: 'approve', style: 'primary' },
+						],
+					},
+				},
+			},
+			awaitResponse: true,
+			runId: 'run-1234567890',
+			toolCallId: 'tool-call-1234567890',
+			currentMessageContext: {
+				integrationConnectionId: 'telegram:cred-telegram',
+				platform: 'telegram',
+				target: {
+					type: 'thread',
+					threadId: 'telegram-thread-1',
+				},
+				messageId: 'telegram-message-0',
+				updatedAt: '2026-05-18T10:00:00.000Z',
+			},
+		});
+
+		expect(result).toEqual(expect.objectContaining({ ok: true }));
+		expect(chatIntegrationService.getShortenCallback).toHaveBeenCalledWith('agent-1', {
+			type: 'telegram',
+			credentialId: 'cred-telegram',
+		});
+		expect(shortenCallback).toHaveBeenCalledWith(
+			'resume:run-1234567890:tool-call-1234567890:0',
+			JSON.stringify({ type: 'button', value: 'approve' }),
+		);
+		expect(mockButton).toHaveBeenLastCalledWith({
+			id: 'short1234',
+			label: 'Approve',
+			style: 'primary',
+			value: '',
+		});
+	});
+
 	it('adds Slack reactions to the current message context', async () => {
 		const slackAdapter = {
-			addReaction: jest.fn().mockResolvedValue(undefined),
+			addReaction: vi.fn().mockResolvedValue(undefined),
 		};
 		const chat = mock<ChatInstance>();
 		chat.getAdapter.mockReturnValue(slackAdapter);
@@ -201,7 +419,7 @@ describe('ChatIntegrationActionExecutor', () => {
 
 	it('adds Slack reactions to an explicit message target', async () => {
 		const slackAdapter = {
-			addReaction: jest.fn().mockResolvedValue(undefined),
+			addReaction: vi.fn().mockResolvedValue(undefined),
 		};
 		const chat = mock<ChatInstance>();
 		chat.getAdapter.mockReturnValue(slackAdapter);
@@ -249,7 +467,7 @@ describe('ChatIntegrationActionExecutor', () => {
 
 	it('returns a structured error when a Slack reaction has no message target', async () => {
 		const slackAdapter = {
-			addReaction: jest.fn().mockResolvedValue(undefined),
+			addReaction: vi.fn().mockResolvedValue(undefined),
 		};
 		const chat = mock<ChatInstance>();
 		chat.getAdapter.mockReturnValue(slackAdapter);
@@ -318,10 +536,10 @@ describe('ChatIntegrationActionExecutor', () => {
 				isMentionable: true,
 				url: 'https://linear.app/n8n/profiles/user-1',
 			}),
-			labels: jest.fn().mockResolvedValue({ nodes: [{ id: 'label-1', name: 'Bug' }] }),
+			labels: vi.fn().mockResolvedValue({ nodes: [{ id: 'label-1', name: 'Bug' }] }),
 		};
 		const linearClient = {
-			createIssue: jest.fn().mockResolvedValue({
+			createIssue: vi.fn().mockResolvedValue({
 				issue: Promise.resolve(issue),
 				issueId: 'issue-uuid',
 			}),
@@ -421,7 +639,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			}),
 		};
 		const linearClient = {
-			createComment: jest.fn().mockResolvedValue({
+			createComment: vi.fn().mockResolvedValue({
 				comment: Promise.resolve(comment),
 				commentId: 'comment-1',
 			}),
@@ -486,10 +704,10 @@ describe('ChatIntegrationActionExecutor', () => {
 			url: 'https://linear.app/n8n/issue/ENG-123/fix-signup',
 			updatedAt: new Date('2026-05-18T10:05:00.000Z'),
 			state: Promise.resolve({ id: 'state-2', name: 'In Progress', type: 'started' }),
-			labels: jest.fn().mockResolvedValue({ nodes: [{ id: 'label-2', name: 'Customer' }] }),
+			labels: vi.fn().mockResolvedValue({ nodes: [{ id: 'label-2', name: 'Customer' }] }),
 		};
 		const linearClient = {
-			updateIssue: jest.fn().mockResolvedValue({
+			updateIssue: vi.fn().mockResolvedValue({
 				issue: Promise.resolve(issue),
 			}),
 		};

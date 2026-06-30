@@ -1,7 +1,7 @@
 {
   "name": "@n8n/stores",
   "type": "module",
-  "version": "2.25.0",
+  "version": "2.29.0",
   "files": [
     "dist"
   ],
@@ -36,7 +36,10 @@
     "format:check": "biome ci . && prettier --check . --ignore-path ../../../../.prettierignore"
   },
   "dependencies": {
-    "n8n-workflow": "workspace:*"
+    "n8n-workflow": "workspace:*",
+    "@vueuse/core": "catalog:frontend",
+    "pinia": "catalog:frontend",
+    "vue": "catalog:frontend"
   },
   "devDependencies": {
     "@n8n/eslint-config": "workspace:*",
@@ -49,18 +52,11 @@
     "@vitejs/plugin-vue": "catalog:frontend",
     "@vue/tsconfig": "catalog:frontend",
     "@vueuse/core": "catalog:frontend",
-    "pinia": "catalog:frontend",
-    "vue": "catalog:frontend",
     "tsdown": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:",
     "vue-tsc": "catalog:frontend"
   },
-  "peerDependencies": {
-    "@vueuse/core": "catalog:frontend",
-    "pinia": "catalog:frontend",
-    "vue": "catalog:frontend"
-  },
-  "license": "See LICENSE.md file in the root of the repository"
+  "license": "LicenseRef-n8n-sustainable-use"
 }

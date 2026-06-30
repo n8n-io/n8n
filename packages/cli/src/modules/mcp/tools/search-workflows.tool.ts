@@ -15,7 +15,7 @@ import type {
 import type { ListQuery } from '@/requests';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowService } from '@/workflows/workflow.service';
-import { createLimitSchema } from './schemas';
+import { createLimitSchema, tagSchema, toTagSummary } from './schemas';
 
 const MAX_RESULTS = 200;
 
@@ -25,6 +25,10 @@ const inputSchema = {
 	limit: createLimitSchema(MAX_RESULTS),
 	query: z.string().optional().describe('Filter by name or description'),
 	projectId: z.string().optional(),
+	tags: z
+		.array(z.string())
+		.optional()
+		.describe('Filter by tag names (AND semantics — workflow must have all).'),
 	sortBy: z
 		.enum(SEARCH_WORKFLOWS_SORT_BY_VALUES)
 		.optional()
@@ -60,6 +64,7 @@ const outputSchema = {
 					.boolean()
 					.describe('Whether the user has permission to execute this workflow'),
 				availableInMCP: z.boolean().describe('Whether the workflow is visible to MCP tools'),
+				tags: z.array(tagSchema).describe('Tags assigned to the workflow'),
 			}),
 		)
 		.describe('List of workflows matching the query'),
@@ -67,8 +72,8 @@ const outputSchema = {
 } satisfies z.ZodRawShape;
 
 /**
- * 	Creates mcp tool definition for searching workflows with optional filters. Workflows can be filtered by name, active status, and project ID.
- * Returns a preview of each workflow including id, name, active status, creation and update timestamps, and trigger count.
+ * 	Creates mcp tool definition for searching workflows with optional filters. Workflows can be filtered by name, project ID, and tags.
+ * Returns a preview of each workflow including id, name, active status, creation and update timestamps, trigger count, and tags.
  */
 export const createSearchWorkflowsTool = (
 	user: User,
@@ -94,14 +99,10 @@ export const createSearchWorkflowsTool = (
 			limit = MAX_RESULTS,
 			query,
 			projectId,
+			tags,
 			sortBy,
-		}: {
-			limit?: number;
-			query?: string;
-			projectId?: string;
-			sortBy?: SearchWorkflowsSortBy;
-		}) => {
-			const parameters = { limit, query, projectId, sortBy };
+		}: SearchWorkflowsParams) => {
+			const parameters = { limit, query, projectId, tags, sortBy };
 			const telemetryPayload: UserCalledMCPToolEventPayload = {
 				user_id: user.id,
 				tool_name: 'search_workflows',
@@ -113,6 +114,7 @@ export const createSearchWorkflowsTool = (
 					limit,
 					query,
 					projectId,
+					tags,
 					sortBy,
 				});
 
@@ -151,9 +153,10 @@ export const createSearchWorkflowsTool = (
 export async function searchWorkflows(
 	user: User,
 	workflowService: WorkflowService,
-	{ limit = MAX_RESULTS, query, projectId, sortBy = DEFAULT_SORT_BY }: SearchWorkflowsParams,
+	{ limit = MAX_RESULTS, query, projectId, tags, sortBy = DEFAULT_SORT_BY }: SearchWorkflowsParams,
 ): Promise<SearchWorkflowsResult> {
 	const safeLimit = Math.min(Math.max(1, limit), MAX_RESULTS);
+	const filterTags = tags && Array.from(new Set(tags.filter((tag) => tag.length > 0)));
 
 	const options: ListQuery.Options = {
 		take: safeLimit,
@@ -162,6 +165,7 @@ export async function searchWorkflows(
 			isArchived: false,
 			...(query ? { query } : {}),
 			...(projectId ? { projectId } : {}),
+			...(filterTags && filterTags.length > 0 ? { tags: filterTags } : {}),
 		},
 		select: {
 			id: true,
@@ -173,6 +177,7 @@ export async function searchWorkflows(
 			triggerCount: true,
 			ownedBy: true, // Required for loading 'shared' relation used in scope computation
 			settings: true,
+			tags: true,
 		},
 	};
 
@@ -185,8 +190,17 @@ export async function searchWorkflows(
 	);
 
 	const formattedWorkflows: SearchWorkflowsItem[] = workflows.map((workflow) => {
-		const { id, name, description, activeVersionId, createdAt, updatedAt, triggerCount, settings } =
-			workflow as WorkflowEntity;
+		const {
+			id,
+			name,
+			description,
+			activeVersionId,
+			createdAt,
+			updatedAt,
+			triggerCount,
+			settings,
+			tags: workflowTags,
+		} = workflow as WorkflowEntity;
 		const scopes = ('scopes' in workflow ? (workflow.scopes as string[]) : undefined) ?? [];
 
 		return {
@@ -200,6 +214,7 @@ export async function searchWorkflows(
 			scopes,
 			canExecute: scopes.includes('workflow:execute'),
 			availableInMCP: settings?.availableInMCP ?? false,
+			tags: toTagSummary(workflowTags),
 		};
 	});
 

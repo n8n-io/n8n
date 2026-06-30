@@ -5,10 +5,15 @@ import type {
 	InstanceAiToolCallState,
 	TaskList,
 } from '@n8n/api-types';
-import { N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
-import { extractArtifacts, HIDDEN_TOOLS, type ArtifactInfo } from '../agentTimeline.utils';
+import {
+	extractArtifacts,
+	isStreamingTimelineEntry,
+	isVisibleTimelineEntry,
+	HIDDEN_TOOLS,
+	type ArtifactInfo,
+} from '../agentTimeline.utils';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useThread } from '../instanceAi.store';
@@ -17,9 +22,9 @@ import AgentSection from './AgentSection.vue';
 import AnsweredQuestions from './AnsweredQuestions.vue';
 import ArtifactCard from './ArtifactCard.vue';
 import DelegateCard from './DelegateCard.vue';
-import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
 import PlanReviewPanel, { type PlannedTaskArg, type PlanReviewStatus } from './PlanReviewPanel.vue';
 import TaskChecklist from './TaskChecklist.vue';
+import TimelineTextSegment from './TimelineTextSegment.vue';
 import ToolCallStep from './ToolCallStep.vue';
 
 const i18n = useI18n();
@@ -92,10 +97,6 @@ const props = withDefaults(
 
 const timelineEntries = computed(() => props.visibleEntries ?? props.agentNode.timeline);
 
-defineSlots<{
-	'after-tool-call'?: (props: { toolCall: InstanceAiToolCallState }) => unknown;
-}>();
-
 /** Index tool calls by ID for O(1) lookup and proper reactivity tracking. */
 const toolCallsById = computed(() => {
 	const map: Record<string, InstanceAiToolCallState> = {};
@@ -156,6 +157,17 @@ const childrenById = computed(() => {
 	}
 	return map;
 });
+
+/**
+ * Whether any entry renders visible output. Segments made up entirely of
+ * hidden tool calls (e.g. builder calls represented by artifact cards) skip
+ * the wrapper div — an empty flex item would still add gap spacing.
+ */
+const hasVisibleEntries = computed(() =>
+	timelineEntries.value.some((entry) =>
+		isVisibleTimelineEntry(entry, toolCallsById.value, childrenById.value),
+	),
+);
 
 function handlePlanApprove(tc: InstanceAiToolCallState) {
 	const requestId = tc.confirmation?.requestId;
@@ -239,17 +251,16 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 </script>
 
 <template>
-	<div :class="$style.timeline">
+	<div v-if="hasVisibleEntries" :class="$style.timeline">
 		<template v-for="(entry, idx) in timelineEntries" :key="idx">
-			<!-- Text segment -->
-			<N8nText
+			<!-- Text segment (leaf keeps the per-token content read out of this render) -->
+			<TimelineTextSegment
 				v-if="entry.type === 'text'"
-				size="large"
+				:entry="entry"
 				:compact="props.compact"
+				:streaming="isStreamingTimelineEntry(props.agentNode, entry)"
 				:class="$style.timelineItem"
-			>
-				<InstanceAiMarkdown :content="entry.content" />
-			</N8nText>
+			/>
 
 			<!-- Tool call (skip internal tools like updateWorkingMemory) -->
 			<template
@@ -302,9 +313,9 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 						toolCallsById[entry.toolCallId].isLoading
 					"
 				/>
-				<ToolCallStep v-else :tool-call="toolCallsById[entry.toolCallId]" :show-connector="true">
-					<slot name="after-tool-call" :tool-call="toolCallsById[entry.toolCallId]" />
-				</ToolCallStep>
+				<!-- Keep slot-free: slot children disable the props bailout and would
+					 re-render every step on each timeline render -->
+				<ToolCallStep v-else :tool-call="toolCallsById[entry.toolCallId]" :show-connector="true" />
 			</template>
 
 			<!-- Child agent — flat section. Running builder sub-agents are

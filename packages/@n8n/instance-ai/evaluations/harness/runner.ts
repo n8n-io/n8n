@@ -8,37 +8,66 @@
 
 import type { InstanceAiConfirmRequest, InstanceAiEvalExecutionResult } from '@n8n/api-types';
 import crypto from 'node:crypto';
+import { mkdir, writeFile } from 'node:fs/promises';
+import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 
+import { captureThreadRunDebug } from './capture-run-debug';
 import {
 	SSE_SETTLE_DELAY_MS,
 	startSseConnection,
 	waitForAllActivity,
 	runMultiTurnConversation,
+	recordUserTurn,
 	type ConfirmationStrategy,
 } from './chat-loop';
+import {
+	loadConversationSeed,
+	remapSeedWorkflowIds,
+	seedFromProse,
+	transcriptPrefixFromSeed,
+	type ConversationSeed,
+} from './conversation-seed';
+import { reconstructSeedFromThread, type SeedThreadRef } from './langsmith-seed';
 import { type EvalLogger } from './logger';
 import { fetchPrebuiltBuild } from './prebuilt-workflows';
+import { buildWorkflowContextBlock } from './workflow-context';
 import { SONNET_MODEL } from '../../src/utils/eval-agents';
 import { runBinaryChecks } from '../binaryChecks/index';
 import type { BinaryCheckContext, CheckOutcome } from '../binaryChecks/types';
-import { verifyChecklist } from '../checklist/verifier';
-import type { N8nClient, WorkflowResponse } from '../clients/n8n-client';
-import { buildConversationMetrics, extractOutcomeFromEvents } from '../outcome/event-parser';
+import { selectAuthorExpectations } from '../build-expectations/select';
+import { allFailVerdicts, verifyBuildExpectations } from '../build-expectations/verifier';
+import { type VerifierAttemptDebug, verifyChecklist } from '../checklist/verifier';
+import { N8nApiError, type N8nClient, type WorkflowResponse } from '../clients/n8n-client';
+import { createDeclaredCredentials } from '../credentials/seeder';
+import {
+	buildConversationMetrics,
+	extractOutcomeFromEvents,
+	mergeSeededConversationMetrics,
+} from '../outcome/event-parser';
 import { buildTranscriptFromEvents } from '../outcome/transcript-from-events';
 import { buildAgentOutcome, extractWorkflowIdsFromMessages } from '../outcome/workflow-discovery';
 import type {
+	BuildTrace,
 	ChecklistItem,
+	ChecklistResult,
 	CapturedEvent,
+	BuildExpectationResult,
 	ConversationMetrics,
 	ConversationTurn,
 	ExecutionScenarioResult,
 	ExecutionScenario,
+	TestCaseCredential,
 	TranscriptTurn,
 	WorkflowTestCase,
 	WorkflowTestCaseResult,
 } from '../types';
-import { userTurnsAsText } from '../utils/conversation-text';
+import {
+	conversationUserTurnsAsText,
+	failedBuildsPerTurn,
+	lastAgentText,
+	userTurnsAsText,
+} from '../utils/conversation-text';
 import { UserProxyLlm, type ProxyDecisionStats } from '../utils/user-proxy';
 
 // ---------------------------------------------------------------------------
@@ -46,9 +75,84 @@ import { UserProxyLlm, type ProxyDecisionStats } from '../utils/user-proxy';
 // ---------------------------------------------------------------------------
 
 const DEFAULT_TIMEOUT_MS = 900_000;
+const EVAL_DATA_DIR = path.join(__dirname, '..', '..', '.data');
 
-/** Max concurrent scenario executions per test case */
-const MAX_CONCURRENT_SCENARIOS = 99;
+function getMaxConcurrentScenarios(): number {
+	const raw = process.env.N8N_EVAL_MAX_CONCURRENT_SCENARIOS;
+	const parsed = raw ? Number.parseInt(raw, 10) : 4;
+	return Number.isFinite(parsed) && parsed > 0 ? parsed : 4;
+}
+
+/**
+ * Max concurrent scenario executions per test case.
+ *
+ * Each scenario can trigger multiple LLM calls (mock generation + verifier),
+ * so effectively-unbounded fan-out causes provider-side throttling and turns
+ * verifier/model errors into noisy batch-wide failures.
+ */
+const MAX_CONCURRENT_SCENARIOS = getMaxConcurrentScenarios();
+
+function makeArtifactTimestamp(): string {
+	return new Date().toISOString().replace(/[:.]/g, '-');
+}
+
+function slugifyArtifactSegment(value: string, fallback: string): string {
+	const slug = value
+		.toLowerCase()
+		.replace(/[^a-z0-9]+/g, '-')
+		.replace(/^-+|-+$/g, '')
+		.slice(0, 64);
+
+	return slug.length > 0 ? slug : fallback;
+}
+
+function deriveTestCaseArtifactName(testCase: WorkflowTestCase): string {
+	return slugifyArtifactSegment(testCase.conversation?.[0]?.text ?? '', 'workflow');
+}
+
+async function writeScenarioVerificationSnapshot(input: {
+	testCaseName: string;
+	scenarioName: string;
+	workflowId: string;
+	passed: boolean;
+	result: ChecklistResult | undefined;
+	verificationResults: ChecklistResult[];
+	verifierAttempts: VerifierAttemptDebug[];
+	buildTrace?: BuildTrace;
+	logger: EvalLogger;
+}): Promise<void> {
+	const timestamp = makeArtifactTimestamp();
+	const fileName = `${slugifyArtifactSegment(input.testCaseName, 'workflow')}_${slugifyArtifactSegment(input.scenarioName, 'scenario')}_${timestamp}.json`;
+	const filePath = path.join(EVAL_DATA_DIR, fileName);
+
+	try {
+		await mkdir(EVAL_DATA_DIR, { recursive: true });
+		await writeFile(
+			filePath,
+			JSON.stringify(
+				{
+					timestamp,
+					workflowId: input.workflowId,
+					testCaseName: input.testCaseName,
+					scenarioName: input.scenarioName,
+					passed: input.passed,
+					result: input.result ?? null,
+					verificationResults: input.verificationResults,
+					verifierAttempts: input.verifierAttempts,
+					buildTrace: input.buildTrace ?? null,
+				},
+				null,
+				2,
+			),
+			'utf8',
+		);
+		input.logger.verbose(`    [${input.scenarioName}] wrote verifier snapshot: ${filePath}`);
+	} catch (error) {
+		input.logger.warn(
+			`    [${input.scenarioName}] failed to write verifier snapshot: ${error instanceof Error ? error.message : String(error)}`,
+		);
+	}
+}
 
 // ---------------------------------------------------------------------------
 // Workflow test case runner — build once, run scenarios against it
@@ -60,7 +164,8 @@ interface WorkflowTestCaseConfig {
 	baseUrl: string;
 	testCase: WorkflowTestCase;
 	timeoutMs: number;
-	seededCredentialTypes: string[];
+	/** Run-level registry of credentials created for test cases; cleaned up by the CLI. */
+	createdCredentialIds: Set<string>;
 	preRunWorkflowIds: Set<string>;
 	claimedWorkflowIds: Set<string>;
 	logger: EvalLogger;
@@ -101,6 +206,11 @@ export async function runWorkflowTestCase(
 				client,
 				conversation: testCase.conversation,
 				messageBudget: testCase.messageBudget,
+				credentials: testCase.credentials,
+				seedFile: testCase.seedFile,
+				priorConversation: testCase.priorConversation,
+				seedThread: testCase.seedThread,
+				createdCredentialIds: config.createdCredentialIds,
 				timeoutMs,
 				preRunWorkflowIds: config.preRunWorkflowIds,
 				claimedWorkflowIds: config.claimedWorkflowIds,
@@ -109,10 +219,12 @@ export async function runWorkflowTestCase(
 			});
 
 	if (config.prebuiltWorkflowId && build.success && !build.workflowChecks) {
-		// No transcript in prebuilt mode — checks run with empty prompt context.
+		// No transcript in prebuilt mode, but the authored conversation still
+		// carries the user's request — feed it so prompt-aware checks (e.g.
+		// fulfills_user_request) grade against real intent instead of "".
 		build.workflowChecks = await runWorkflowChecks({
 			workflow: build.workflowJsons[0],
-			prompt: '',
+			prompt: conversationUserTurnsAsText(testCase.conversation),
 			agentText: undefined,
 			logger,
 		});
@@ -123,6 +235,9 @@ export async function runWorkflowTestCase(
 	}
 	if (build.threadId) {
 		result.threadId = build.threadId;
+		if (!config.prebuiltWorkflowId) {
+			result.runDebug = await captureThreadRunDebug(client, build.threadId, logger);
+		}
 	}
 	if (build.transcript) {
 		result.transcript = build.transcript;
@@ -131,18 +246,45 @@ export async function runWorkflowTestCase(
 		result.workflowChecks = build.workflowChecks;
 	}
 
+	// Optional author expectations — informational, judged concurrently with scenarios.
+	const { expectations: expectationsToJudge, transcript: expectationsTranscript } =
+		selectAuthorExpectations({
+			testCase,
+			transcript: build.transcript,
+			buildSucceeded: build.success,
+			isPrebuilt: config.prebuiltWorkflowId !== undefined,
+			logger,
+		});
+	const expectationsPromise: Promise<BuildExpectationResult[]> =
+		expectationsToJudge.length > 0
+			? verifyBuildExpectations(expectationsToJudge, {
+					transcript: expectationsTranscript,
+					workflowJson: build.workflowJsons[0],
+					metrics: build.conversationMetrics,
+				}).catch((error: unknown) => {
+					logger.warn(
+						`  Author expectations judge errored: ${error instanceof Error ? error.message : String(error)}`,
+					);
+					return allFailVerdicts(expectationsToJudge, 'judge error');
+				})
+			: Promise.resolve<BuildExpectationResult[]>([]);
+
 	if (!build.success || !build.workflowId) {
 		result.buildError = build.error;
+		const expectationResults = await expectationsPromise;
+		if (expectationResults.length > 0) result.buildExpectationResults = expectationResults;
 		return result;
 	}
 
 	result.workflowBuildSuccess = true;
 	result.workflowId = build.workflowId;
 	result.workflowJson = build.workflowJsons[0];
+	result.buildTrace = build.buildTrace;
+	const testCaseArtifactName = deriveTestCaseArtifactName(testCase);
 
 	const scenarioStart = Date.now();
-	result.executionScenarioResults = await runWithConcurrency(
-		testCase.executionScenarios,
+	const scenariosPromise = runWithConcurrency(
+		testCase.executionScenarios ?? [],
 		async (scenario) => {
 			try {
 				return await executeScenario(
@@ -152,6 +294,8 @@ export async function runWorkflowTestCase(
 					build.workflowJsons,
 					logger,
 					timeoutMs,
+					testCaseArtifactName,
+					build.buildTrace,
 					config.pinAiRoots,
 				);
 			} catch (error: unknown) {
@@ -167,6 +311,12 @@ export async function runWorkflowTestCase(
 		},
 		MAX_CONCURRENT_SCENARIOS,
 	);
+	const [scenarioResults, expectationResults] = await Promise.all([
+		scenariosPromise,
+		expectationsPromise,
+	]);
+	result.executionScenarioResults = scenarioResults;
+	if (expectationResults.length > 0) result.buildExpectationResults = expectationResults;
 
 	const scenarioMs = Date.now() - scenarioStart;
 	logger.info(
@@ -220,6 +370,7 @@ async function driveMultiTurnConversation(
 		return decision;
 	};
 
+	recordUserTurn(config.events, openingMessage);
 	await config.client.sendMessage(config.threadId, openingMessage);
 
 	await runMultiTurnConversation({
@@ -247,6 +398,7 @@ export interface BuildResult {
 	workflowId?: string;
 	workflowJsons: WorkflowResponse[];
 	error?: string;
+	buildTrace?: BuildTrace;
 	/** IDs to pass to cleanupBuild() */
 	createdWorkflowIds: string[];
 	createdDataTableIds: string[];
@@ -261,25 +413,44 @@ export interface BuildResult {
 	/** Chat-style transcript built from the SSE event stream + proxy responses. */
 	transcript?: TranscriptTurn[];
 	workflowChecks?: CheckOutcome[];
+	/** False when the backend lacks the credential-pin endpoint and the build ran unpinned. */
+	credentialViewPinned?: boolean;
+	/** True when the build failed while setting up the conversation seed (trace
+	 *  gone, reconstruction drift, restore failed) — a harness/framework problem,
+	 *  not an agent build failure. Routed to `framework_issue`. */
+	seedingFailed?: boolean;
 }
 
 export interface BuildWorkflowConfig {
 	client: N8nClient;
-	/**
-	 * Hand-authored conversation. ≥1 turn, first turn must be `user`.
-	 *
-	 * - One user turn, no assistant turns → auto-approve all confirmations.
-	 * - Anything else → UserProxyLlm engages.
-	 */
-	conversation: ConversationTurn[];
+	/** Hand-authored conversation (≥1 turn, first `user`; one user turn →
+	 *  auto-approve, more → proxy). Optional when `seedThread` derives the live turn. */
+	conversation?: ConversationTurn[];
 	/** Max follow-up messages the proxy will send. Ignored in auto-approve mode. */
 	messageBudget?: number;
+	/** Credentials this build should see (created for real, view pinned to them). */
+	credentials?: TestCaseCredential[];
+	/** Run-level registry the created credential IDs are added to for cleanup. */
+	createdCredentialIds?: Set<string>;
+	/** Synthetic seed file (path) restored before the live message. */
+	seedFile?: string;
+	/** Prose turns seeded as plain-text history. */
+	priorConversation?: ConversationTurn[];
+	/** Reproduce a real conversation from its LangSmith trace (seed = before the
+	 *  last user message, live = that message). */
+	seedThread?: SeedThreadRef;
 	timeoutMs?: number;
 	preRunWorkflowIds: Set<string>;
 	claimedWorkflowIds: Set<string>;
 	logger: EvalLogger;
 	/** Optional " [lane N/M]" suffix appended to the build log line. */
 	laneTag?: string;
+	/**
+	 * Last-resort workflow discovery by list-diffing visible workflows. Keep this
+	 * disabled for normal eval runs because concurrent builds make the diff
+	 * non-attributable.
+	 */
+	allowWorkflowListDiffFallback?: boolean;
 	/** Let callers that own their own scoring avoid duplicate binary checks. */
 	skipWorkflowChecks?: boolean;
 }
@@ -297,8 +468,7 @@ function isMultiTurnConversation(conversation: ConversationTurn[]): boolean {
  * executeScenario(). Call cleanupBuild() when done.
  */
 export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildResult> {
-	const { client, conversation, logger } = config;
-	const openingMessage = conversation[0]?.text ?? '';
+	const { client, logger } = config;
 	const threadId = crypto.randomUUID();
 	const startTime = Date.now();
 	const timeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
@@ -308,15 +478,114 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 	const approvedRequests = new Set<string>();
 	const proxyResponses = new Map<string, InstanceAiConfirmRequest>();
 	const followUpMessages: string[] = [];
+	let credentialViewPinned = true;
+	let restoredWorkflowIds: string[] = [];
+	let restoredDataTableIds: string[] = [];
+	let seededTranscript: TranscriptTurn[] = [];
+	let seedingFailed = false;
 
 	try {
 		const buildStart = Date.now();
+
+		// `seedThread` derives both seed and live turn from a trace; otherwise the
+		// seed (if any) is a file/prose prelude and the conversation is authored.
+		let seed: ConversationSeed | undefined;
+		let conversation = config.conversation ?? [];
+		try {
+			if (config.seedThread) {
+				const reconstructed = await reconstructSeedFromThread(config.seedThread);
+				seed = reconstructed.seed;
+				// The trace's last user message is the live opening; any authored
+				// `conversation` continues from there (proxy-driven follow-ups).
+				conversation = [
+					{ role: 'user', text: reconstructed.liveTurn },
+					...(config.conversation ?? []),
+				];
+				const contSuffix =
+					(config.conversation?.length ?? 0) > 0
+						? ` + ${String(config.conversation!.length)} continuation turn(s)`
+						: '';
+				const wsLabel = reconstructed.sourceWorkspace
+					? `${reconstructed.sourceWorkspace}/${reconstructed.sourceProject}`
+					: reconstructed.sourceProject;
+				logger.info(
+					`  Reconstructed seed from thread ${config.seedThread.threadId}: ${String(reconstructed.runCount)} runs → ${String(seed.messages.length)} message(s), ${String(seed.workflows.length)} workflow(s)${contSuffix} [${wsLabel}]${config.laneTag ?? ''}`,
+				);
+			} else if (config.seedFile) {
+				seed = loadConversationSeed(config.seedFile);
+			} else if (config.priorConversation && config.priorConversation.length > 0) {
+				seed = seedFromProse(config.priorConversation);
+			}
+		} catch (error: unknown) {
+			// A seed that can't be resolved is a harness/framework problem, not an
+			// agent build failure — tag it and fail before spending a live turn.
+			seedingFailed = true;
+			throw new Error(`Seeding failed: ${error instanceof Error ? error.message : String(error)}`);
+		}
+
+		const openingMessage = conversation[0]?.text ?? '';
 		const isMultiTurn = isMultiTurnConversation(conversation);
 		logger.info(
 			`  Building workflow${isMultiTurn ? ' [multi-turn]' : ''}: "${truncate(openingMessage, 60)}"${config.laneTag ?? ''}`,
 		);
 
-		await client.ensureThread(threadId);
+		const projectId = await client.getPersonalProjectId();
+		await client.ensureThread(threadId, projectId);
+
+		// Pin the thread's credential view to the case's declared set (empty by
+		// default) before the first message, so every build-workflow call inside
+		// the build sees the same deterministic environment.
+		const declaredCredentials = config.credentials ?? [];
+		const createdCredentials = await createDeclaredCredentials(client, declaredCredentials, {
+			onCreated: (id) => config.createdCredentialIds?.add(id),
+			logger,
+		});
+		try {
+			await client.setThreadCredentialAllowlist(
+				threadId,
+				createdCredentials.map((c) => c.id),
+			);
+		} catch (error: unknown) {
+			// Only a missing endpoint (older backend) may degrade to the legacy
+			// unpinned view, and only for cases that declared nothing — any other
+			// failure must fail the build rather than silently change which
+			// credentials it sees.
+			const endpointMissing = error instanceof N8nApiError && error.status === 404;
+			if (!endpointMissing || declaredCredentials.length > 0) throw error;
+			credentialViewPinned = false;
+			logger.info(
+				`  Credential-pin endpoint unavailable, building unpinned${config.laneTag ?? ''}`,
+			);
+		}
+
+		// Restore the seed before the first live message. No degraded mode: a
+		// seeded case can't run unseeded, so any restore failure fails the build.
+		if (seed) {
+			try {
+				const remapped = remapSeedWorkflowIds(seed);
+				const restoreResult = await client.restoreThread(
+					threadId,
+					remapped.messages,
+					remapped.workflows,
+					remapped.dataTables,
+				);
+				restoredWorkflowIds = restoreResult.workflowIds;
+				restoredDataTableIds = restoreResult.dataTableIds;
+				seededTranscript = transcriptPrefixFromSeed(remapped.messages);
+				const dtSuffix =
+					restoredDataTableIds.length > 0
+						? `, ${String(restoredDataTableIds.length)} data table(s)`
+						: '';
+				logger.info(
+					`  Seeded ${String(restoreResult.restored)} prior message(s), ${String(restoredWorkflowIds.length)} workflow(s)${dtSuffix}${config.laneTag ?? ''}`,
+				);
+			} catch (error: unknown) {
+				seedingFailed = true;
+				throw new Error(
+					`Seeding failed: ${error instanceof Error ? error.message : String(error)}`,
+				);
+			}
+		}
 
 		const ssePromise = startSseConnection(client, threadId, events, abortController.signal).catch(
 			() => {},
@@ -340,6 +609,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				followUpMessagesOut: followUpMessages,
 			});
 		} else {
+			recordUserTurn(events, openingMessage);
 			await client.sendMessage(threadId, openingMessage);
 			await waitForAllActivity({
 				client,
@@ -356,13 +626,19 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		abortController.abort();
 		await ssePromise.catch(() => {});
 
-		const conversationMetrics = buildConversationMetrics(events);
-		const transcript = buildTranscriptFromEvents({
-			events,
-			openingMessage,
-			followUpMessages,
-			proxyResponses,
-		});
+		const conversationMetrics = mergeSeededConversationMetrics(
+			seededTranscript,
+			buildConversationMetrics(events),
+		);
+		const transcript = [
+			...seededTranscript,
+			...buildTranscriptFromEvents({
+				events,
+				openingMessage,
+				followUpMessages,
+				proxyResponses,
+			}),
+		];
 
 		let threadMessages;
 		try {
@@ -373,20 +649,24 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 
 		const messageWorkflowIds = extractWorkflowIdsFromMessages(threadMessages.messages);
 		const eventOutcome = extractOutcomeFromEvents(events);
+		// Restored workflows keep a seeded build scoreable/cleanable even if the
+		// live turn touches no workflow tool; live ids stay first (primary artifact).
+		const threadWorkflowIds = [
+			...new Set([...eventOutcome.workflowIds, ...messageWorkflowIds, ...restoredWorkflowIds]),
+		];
+		const buildTrace: BuildTrace = {
+			finalText:
+				eventOutcome.finalText.length > 0 ? eventOutcome.finalText : lastAgentText(transcript),
+			toolCalls: eventOutcome.toolCalls,
+			agentActivities: eventOutcome.agentActivities,
+		};
 		const outcome = await buildAgentOutcome(
 			client,
-			eventOutcome,
+			{ ...eventOutcome, workflowIds: threadWorkflowIds },
 			config.preRunWorkflowIds,
 			config.claimedWorkflowIds,
+			{ allowListDiffFallback: config.allowWorkflowListDiffFallback === true },
 		);
-
-		if (messageWorkflowIds.length > 0) {
-			const messageWfSet = new Set(messageWorkflowIds);
-			outcome.workflowsCreated = outcome.workflowsCreated.filter((wf) => messageWfSet.has(wf.id));
-			outcome.workflowJsons = outcome.workflowJsons.filter(
-				(wf) => typeof wf.id === 'string' && messageWfSet.has(wf.id),
-			);
-		}
 
 		if (outcome.workflowsCreated.length === 0) {
 			const toolErrors = events
@@ -426,20 +706,23 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				success: false,
 				error: buildError,
 				workflowJsons: [],
-				createdWorkflowIds: [],
-				createdDataTableIds: outcome.dataTablesCreated,
+				buildTrace,
+				createdWorkflowIds: restoredWorkflowIds,
+				createdDataTableIds: [...outcome.dataTablesCreated, ...restoredDataTableIds],
 				conversationMetrics,
 				events,
 				threadId,
 				proxyDecisionStats,
 				transcript,
+				credentialViewPinned,
+				seedingFailed,
 			};
 		}
 
 		const buildMs = Date.now() - buildStart;
 		const proxySuffix = formatProxyStatsSuffix(proxyDecisionStats);
 		logger.info(
-			`  Workflow built: ${outcome.workflowsCreated[0].name} (${String(outcome.workflowsCreated[0].nodeCount)} nodes) [${String(Math.round(buildMs / 1000))}s]${isMultiTurn ? ` (${String(conversationMetrics.turnCount)} turn${conversationMetrics.turnCount === 1 ? '' : 's'})` : ''}${proxySuffix}`,
+			`  Workflow built: ${outcome.workflowsCreated[0].name} (${String(outcome.workflowsCreated[0].nodeCount)} nodes) [${String(Math.round(buildMs / 1000))}s]${isMultiTurn ? ` (${String(conversationMetrics.turnCount)} turn${conversationMetrics.turnCount === 1 ? '' : 's'})` : ''}${proxySuffix} [thread ${threadId}]`,
 		);
 
 		const workflowChecks = config.skipWorkflowChecks
@@ -448,6 +731,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 					workflow: outcome.workflowJsons[0],
 					prompt: userTurnsAsText(transcript),
 					agentText: outcome.finalText,
+					failedBuildsPerTurn: failedBuildsPerTurn(transcript),
 					logger,
 				});
 
@@ -455,14 +739,16 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			success: true,
 			workflowId: outcome.workflowsCreated[0].id,
 			workflowJsons: outcome.workflowJsons,
+			buildTrace,
 			createdWorkflowIds: outcome.workflowsCreated.map((wf) => wf.id),
-			createdDataTableIds: outcome.dataTablesCreated,
+			createdDataTableIds: [...outcome.dataTablesCreated, ...restoredDataTableIds],
 			conversationMetrics,
 			events,
 			threadId,
 			proxyDecisionStats,
 			transcript,
 			workflowChecks,
+			credentialViewPinned,
 		};
 	} catch (error: unknown) {
 		abortController.abort();
@@ -472,11 +758,13 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			success: false,
 			error: error instanceof Error ? error.message : String(error),
 			workflowJsons: [],
-			createdWorkflowIds: [],
-			createdDataTableIds: [],
+			createdWorkflowIds: restoredWorkflowIds,
+			createdDataTableIds: restoredDataTableIds,
 			conversationMetrics,
 			events,
 			threadId,
+			credentialViewPinned,
+			seedingFailed,
 		};
 	}
 }
@@ -498,6 +786,8 @@ export async function executeScenario(
 	workflowJsons: WorkflowResponse[],
 	logger: EvalLogger,
 	timeoutMs?: number,
+	testCaseName?: string,
+	buildTrace?: BuildTrace,
 	pinAiRoots?: string[],
 ): Promise<ExecutionScenarioResult> {
 	return await runScenario(
@@ -507,6 +797,8 @@ export async function executeScenario(
 		workflowJsons,
 		logger,
 		timeoutMs,
+		testCaseName,
+		buildTrace,
 		pinAiRoots,
 	);
 }
@@ -555,6 +847,8 @@ async function runScenario(
 	workflowJsons: WorkflowResponse[],
 	logger: EvalLogger,
 	timeoutMs?: number,
+	testCaseName?: string,
+	buildTrace?: BuildTrace,
 	pinAiRoots?: string[],
 ): Promise<ExecutionScenarioResult> {
 	const pinNodes = pinAiRoots && pinAiRoots.length > 0 ? pinAiRoots : undefined;
@@ -585,11 +879,23 @@ async function runScenario(
 		},
 	];
 
-	const verificationResults = await verifyChecklist(scenarioChecklist, artifact);
+	const verification = await verifyChecklist(scenarioChecklist, artifact);
+	const verificationResults = verification.results;
 
 	const verifyMs = Date.now() - verifyStart;
 	const passed = verificationResults.length > 0 && verificationResults[0].pass;
 	const result = verificationResults[0];
+	await writeScenarioVerificationSnapshot({
+		testCaseName: testCaseName ?? `workflow-${workflowId}`,
+		scenarioName: scenario.name,
+		workflowId,
+		passed,
+		result,
+		verificationResults,
+		verifierAttempts: verification.attempts,
+		buildTrace,
+		logger,
+	});
 	const reasoning = result?.reasoning ?? 'No verification result — LLM verifier returned empty';
 	const failureCategory = result?.failureCategory ?? (result ? undefined : 'verification_failure');
 	const rootCause = result?.rootCause;
@@ -624,38 +930,27 @@ export interface VerificationArtifact {
 	scenarioContext: string;
 }
 
-/** Render the per-build workflow structure: nodes, connections, all configs. */
-function buildWorkflowContextBlock(wf: WorkflowResponse | undefined): string {
-	if (!wf) return '## Workflow structure\n\n(no workflow built)';
-	const lines: string[] = ['## Workflow structure', ''];
-	for (const node of wf.nodes) {
-		lines.push(`- **${node.name ?? '(unnamed)'}** (${node.type})`);
-	}
-	lines.push('');
-	lines.push('**All node configs:**');
-	lines.push(
-		'```json',
-		JSON.stringify(
-			wf.nodes.map((node) => ({
-				name: node.name ?? '(unnamed)',
-				type: node.type,
-				typeVersion: node.typeVersion,
-				...(node.disabled !== undefined ? { disabled: node.disabled } : {}),
-				parameters: node.parameters ?? {},
-			})),
-			null,
-			2,
-		),
-		'```',
-		'',
-	);
-	lines.push('**Connections:**');
-	lines.push('```json', JSON.stringify(wf.connections, null, 2), '```');
-	return lines.join('\n');
-}
-
 function isObjectRecord(v: unknown): v is Record<string, unknown> {
 	return typeof v === 'object' && v !== null && !Array.isArray(v);
+}
+
+function isNodeOutputs(value: unknown): value is Record<string, unknown[][]> {
+	if (!isObjectRecord(value)) return false;
+	return Object.values(value).every(
+		(branches) => Array.isArray(branches) && branches.every((branch) => Array.isArray(branch)),
+	);
+}
+
+function getNodeOutputs(value: unknown): Record<string, unknown[][]> {
+	return isNodeOutputs(value) ? value : {};
+}
+
+function getNumber(value: unknown, fallback = 0): number {
+	return typeof value === 'number' ? value : fallback;
+}
+
+function getOptionalBoolean(value: unknown): boolean | undefined {
+	return typeof value === 'boolean' ? value : undefined;
 }
 
 /** For a given node + connection type, return downstream node names per output port. */
@@ -832,14 +1127,17 @@ function buildScenarioContextBlock(
 			if (req.requestBody) {
 				sections.push('```json', JSON.stringify(req.requestBody, null, 2), '```');
 			}
-			if (req.mockResponse) {
+			if (req.mockResponse !== undefined) {
 				sections.push('**Mock response:**');
 				sections.push('```json', JSON.stringify(req.mockResponse, null, 2), '```');
 			}
 		}
 
+		const nodeOutputs = getNodeOutputs(nr.outputs);
+		const outputCount = getNumber(nr.outputCount);
+		const truncated = getOptionalBoolean(nr.truncated);
 		sections.push(
-			...renderNodeOutputs(nodeName, nr.outputs, nr.outputCount, nr.truncated, wf?.connections),
+			...renderNodeOutputs(nodeName, nodeOutputs, outputCount, truncated, wf?.connections),
 		);
 
 		sections.push('');
@@ -893,6 +1191,8 @@ export async function runWorkflowChecks(args: {
 	workflow: WorkflowResponse | undefined;
 	prompt: string;
 	agentText: string | undefined;
+	/** Per-live-turn failed build-workflow attempt counts; feeds the efficiency check. */
+	failedBuildsPerTurn?: number[];
 	logger: EvalLogger;
 }): Promise<CheckOutcome[] | undefined> {
 	if (!args.workflow) return undefined;
@@ -902,6 +1202,7 @@ export async function runWorkflowChecks(args: {
 		prompt: args.prompt,
 		...(modelId ? { modelId } : {}),
 		...(args.agentText ? { agentTextResponse: args.agentText } : {}),
+		...(args.failedBuildsPerTurn ? { failedBuildsPerTurn: args.failedBuildsPerTurn } : {}),
 	};
 
 	try {

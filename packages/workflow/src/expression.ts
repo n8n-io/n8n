@@ -1,9 +1,8 @@
-import { ApplicationError } from '@n8n/errors';
 import type { IExpressionEvaluator, ObservabilityProvider } from '@n8n/expression-runtime';
 import { MemoryLimitError, SecurityViolationError, TimeoutError } from '@n8n/expression-runtime';
 import { DateTime, Duration, Interval } from 'luxon';
 
-import { UnexpectedError } from './errors';
+import { UnexpectedError, UserError } from './errors';
 import { ExpressionExtensionError } from './errors/expression-extension.error';
 import { ExpressionError } from './errors/expression.error';
 import { evaluateExpression, setErrorHandler } from './expression-evaluator-proxy';
@@ -374,10 +373,23 @@ export class Expression {
 		data.Reflect = {};
 		data.Proxy = {};
 
-		data.__lookupGetter__ = undefined;
-		data.__lookupSetter__ = undefined;
-		data.__defineGetter__ = undefined;
-		data.__defineSetter__ = undefined;
+		// These four names are inherited from `Object.prototype`. In the secure-mode
+		// task-runner sandbox `Object.prototype` is frozen, so plain assignment walks
+		// the prototype chain to the now read-only inherited property and throws in
+		// strict mode. Define them as own properties to overwrite them safely.
+		for (const key of [
+			'__lookupGetter__',
+			'__lookupSetter__',
+			'__defineGetter__',
+			'__defineSetter__',
+		]) {
+			Object.defineProperty(data, key, {
+				value: undefined,
+				writable: true,
+				enumerable: true,
+				configurable: true,
+			});
+		}
 
 		// Deprecated
 		data.escape = {};
@@ -475,7 +487,7 @@ export class Expression {
 	 */
 	convertObjectValueToString(value: object): string {
 		if (value instanceof DateTime && value.invalidReason !== null) {
-			throw new ApplicationError('invalid DateTime');
+			throw new UserError('invalid DateTime');
 		}
 
 		if (value === null) {
@@ -597,9 +609,9 @@ export class Expression {
 		const returnValue = this.renderExpression(extendedExpression, data);
 		if (typeof returnValue === 'function') {
 			if (returnValue.name === 'DateTime')
-				throw new ApplicationError('this is a DateTime, please access its methods');
+				throw new UserError('this is a DateTime, please access its methods');
 
-			throw new ApplicationError('this is a function, please add ()');
+			throw new UserError('this is a function, please add ()');
 		} else if (typeof returnValue === 'string') {
 			return returnValue;
 		} else if (returnValue !== null && typeof returnValue === 'object') {
@@ -636,14 +648,14 @@ export class Expression {
 		} catch (error) {
 			if (isExpressionError(error)) throw error;
 
-			if (isSyntaxError(error)) throw new ApplicationError('invalid syntax');
+			if (isSyntaxError(error)) throw new UserError('invalid syntax');
 
 			if (isTypeError(error) && IS_FRONTEND && error.message.endsWith('is not a function')) {
 				const match = error.message.match(/(?<msg>[^.]+is not a function)/);
 
 				if (!match?.groups?.msg) return null;
 
-				throw new ApplicationError(match.groups.msg);
+				throw new UserError(match.groups.msg);
 			}
 		}
 

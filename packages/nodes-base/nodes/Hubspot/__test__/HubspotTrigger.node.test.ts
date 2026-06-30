@@ -3,16 +3,16 @@ import type { ILoadOptionsFunctions } from 'n8n-workflow';
 import { getEntityProperties } from '../HubspotTrigger.node';
 import { hubspotApiRequest } from '../V1/GenericFunctions';
 
-jest.mock('../V1/GenericFunctions', () => ({
-	hubspotApiRequest: jest.fn(),
+vi.mock('../V1/GenericFunctions', () => ({
+	hubspotApiRequest: vi.fn(),
 	propertyEvents: [],
 }));
 
-const mockedHubspotApiRequest = jest.mocked(hubspotApiRequest);
+const mockedHubspotApiRequest = vi.mocked(hubspotApiRequest);
 
 describe('HubspotTrigger getEntityProperties', () => {
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('maps HubSpot properties into options', async () => {
@@ -40,7 +40,7 @@ describe('HubspotTrigger getEntityProperties', () => {
 		mockedHubspotApiRequest.mockResolvedValueOnce({ results: [] });
 		const endpoint = '/properties/v2/contacts/properties';
 		const context = {
-			getNode: jest.fn().mockReturnValue({}),
+			getNode: vi.fn().mockReturnValue({}),
 		} as unknown as ILoadOptionsFunctions;
 
 		await expect(getEntityProperties.call(context, endpoint)).rejects.toThrow(

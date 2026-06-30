@@ -3,7 +3,7 @@ import type {
 	ObservationLogTaskKind,
 	ObservationLogTaskLockHandle,
 } from '../../types/sdk/observation-log';
-import { ScopedMemoryTaskRunner } from '../scoped-memory-task-runner';
+import { ScopedMemoryTaskRunner } from '../memory/scoped-memory-task-runner';
 
 function deferred(): { promise: Promise<void>; resolve: () => void } {
 	let resolve!: () => void;
@@ -102,7 +102,7 @@ describe('ScopedMemoryTaskRunner', () => {
 		await expect(handle.done).resolves.toMatchObject({ status: 'failed', error });
 		await expect(runner.flush()).resolves.toBeUndefined();
 		expect(runner.getCapturedErrors()).toMatchObject([{ error }]);
-		expect(seenEvents).toEqual(['started', 'failed']);
+		expect(seenEvents).toEqual(['queued', 'started', 'failed']);
 	});
 
 	it('treats negative maxCapturedErrors as zero', async () => {

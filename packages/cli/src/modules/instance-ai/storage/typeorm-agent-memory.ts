@@ -16,14 +16,21 @@ import {
 } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import type {
-	AgentDbMessage,
-	AgentMessage,
-	BuiltMemory,
-	Thread,
-	ThreadPatch,
+import { isRecord } from '@n8n/utils/is-record';
+import {
+	SUB_AGENT_RESOURCE_PREFIX,
+	createSubAgentResourceIdPrefix,
+	type AgentDbMessage,
+	type AgentMessage,
+	type BuiltMemory,
+	type Thread,
+	type ThreadPatch,
 } from '@n8n/instance-ai';
 import { In, LessThan, Like } from '@n8n/typeorm';
+import { UnexpectedError } from 'n8n-workflow';
+
+import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 import { TypeORMObservationLogStore } from './typeorm-observation-log-store';
 import type { InstanceAiMessage } from '../entities/instance-ai-message.entity';
@@ -41,10 +48,6 @@ function parseJsonSafe(text: string): unknown {
 	} catch {
 		return undefined;
 	}
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function isAgentMessage(value: unknown): value is AgentMessage {
@@ -256,6 +259,60 @@ export class TypeORMAgentMemory
 					resourceId: thread.resourceId,
 					title: thread.title ?? '',
 					metadata: thread.metadata ?? null,
+					projectId: await this.resolveSubAgentProjectId(thread.resourceId),
+				}),
+			);
+			return toThread(saved);
+		});
+	}
+
+	// Sub-agent threads are created by the agents SDK without a project. Derive it
+	// from the parent thread encoded in the resourceId
+	// (`instance-ai-subagent:<parentThreadId>:<kind>`); user threads are created via
+	// saveThreadWithProject and never reach this create path.
+	private async resolveSubAgentProjectId(resourceId: string): Promise<string> {
+		const parentThreadId = resourceId.startsWith(`${SUB_AGENT_RESOURCE_PREFIX}:`)
+			? resourceId.split(':')[1]
+			: undefined;
+		const parent = parentThreadId ? await this.threadRepo.findOneBy({ id: parentThreadId }) : null;
+		if (!parent?.projectId) {
+			throw new UnexpectedError(
+				`Cannot create Instance AI thread for resource "${resourceId}" without a project`,
+			);
+		}
+		return parent.projectId;
+	}
+
+	// Binds the thread to a project as part of the insert (atomic, so a partial
+	// failure can't leave a project-less thread) and never rebinds an existing
+	// thread (the binding is immutable). On a concurrent create the existing row
+	// is reused only when its owner and project match the request; a mismatch is
+	// rejected rather than returned.
+	async saveThreadWithProject(
+		thread: Omit<Thread, 'createdAt' | 'updatedAt'>,
+		projectId: string,
+	): Promise<Thread> {
+		return await this.serializeThreadMutation(thread.id, async () => {
+			const existing = await this.threadRepo.findOneBy({ id: thread.id });
+			if (existing) {
+				if (existing.resourceId !== thread.resourceId) {
+					throw new ForbiddenError('Not authorized for this thread');
+				}
+				if (existing.projectId !== projectId) {
+					throw new ConflictError(
+						`Thread ${thread.id} already exists with a different project binding`,
+					);
+				}
+				return toThread(existing);
+			}
+
+			const saved = await this.threadRepo.save(
+				this.threadRepo.create({
+					id: thread.id,
+					resourceId: thread.resourceId,
+					title: thread.title ?? '',
+					metadata: thread.metadata ?? null,
+					projectId,
 				}),
 			);
 			return toThread(saved);
@@ -284,6 +341,11 @@ export class TypeORMAgentMemory
 		await this.threadRepo.delete({ id: threadId });
 	}
 
+	async getThreadProjectId(threadId: string): Promise<string | null> {
+		const thread = await this.threadRepo.findOneBy({ id: threadId });
+		return thread?.projectId ?? null;
+	}
+
 	async deleteThreadsByResourceIdPrefix(resourceIdPrefix: string): Promise<void> {
 		const threads = await this.threadRepo.find({
 			where: { resourceId: Like(`${resourceIdPrefix}%`) },
@@ -298,6 +360,50 @@ export class TypeORMAgentMemory
 			id: In(threadIds.map((threadId) => `thread:${threadId}`)),
 		});
 		await this.threadRepo.delete({ id: In(threadIds) });
+	}
+
+	/**
+	 * Delete every thread owned by `resourceId` (a user), the sub-agent threads
+	 * spawned under those threads, and all of their working-memory resources.
+	 * Downstream rows (messages, checkpoints, run snapshots, iteration logs,
+	 * grants, pending confirmations, observations) cascade via their `threadId`
+	 * FK; resources have no FK to threads and are removed explicitly. Returns the
+	 * number of owner threads deleted.
+	 */
+	async deleteThreadsByResourceId(resourceId: string): Promise<number> {
+		const ownerThreads = await this.threadRepo.find({
+			where: { resourceId },
+			select: { id: true },
+		});
+
+		// The user's resource-scoped working memory is keyed by the resourceId
+		// itself and can outlive the user's threads, so always clear it.
+		const resourceIdsToDelete = new Set<string>([resourceId]);
+		const threadIdsToDelete = ownerThreads.map((thread) => thread.id);
+		for (const threadId of threadIdsToDelete) {
+			resourceIdsToDelete.add(`thread:${threadId}`);
+		}
+
+		if (ownerThreads.length > 0) {
+			const subAgentThreads = await this.threadRepo.find({
+				where: ownerThreads.map((thread) => ({
+					resourceId: Like(`${createSubAgentResourceIdPrefix(thread.id)}%`),
+				})),
+				select: { id: true, resourceId: true },
+			});
+			for (const subAgent of subAgentThreads) {
+				threadIdsToDelete.push(subAgent.id);
+				resourceIdsToDelete.add(subAgent.resourceId);
+				resourceIdsToDelete.add(`thread:${subAgent.id}`);
+			}
+		}
+
+		await this.resourceRepo.delete({ id: In([...resourceIdsToDelete]) });
+		if (threadIdsToDelete.length > 0) {
+			await this.threadRepo.delete({ id: In(threadIdsToDelete) });
+		}
+
+		return ownerThreads.length;
 	}
 
 	async getMessages(

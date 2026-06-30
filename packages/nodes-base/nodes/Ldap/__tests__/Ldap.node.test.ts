@@ -1,20 +1,22 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type { Client } from 'ldapts';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
 import * as Helpers from '../Helpers';
 import { Ldap } from '../Ldap.node';
+import type { Mock } from 'vitest';
+import type * as _importType0 from '../Helpers';
 
-jest.mock('../Helpers', () => ({
-	...jest.requireActual('../Helpers'),
-	createLdapClient: jest.fn(),
+vi.mock('../Helpers', async () => ({
+	...(await vi.importActual<typeof _importType0>('../Helpers')),
+	createLdapClient: vi.fn(),
 }));
 
 describe('Ldap', () => {
 	const executeFunctions = mockDeep<IExecuteFunctions>();
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 
 		executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
 		executeFunctions.getNode.mockReturnValue({
@@ -26,14 +28,14 @@ describe('Ldap', () => {
 	});
 
 	describe('search', () => {
-		let mockBind: jest.Mock;
-		let mockSearch: jest.Mock;
-		let mockUnbind: jest.Mock;
+		let mockBind: Mock;
+		let mockSearch: Mock;
+		let mockUnbind: Mock;
 
 		beforeEach(() => {
-			mockBind = jest.fn().mockResolvedValue(undefined);
-			mockSearch = jest.fn().mockResolvedValue({ searchEntries: [] });
-			mockUnbind = jest.fn().mockResolvedValue(undefined);
+			mockBind = vi.fn().mockResolvedValue(undefined);
+			mockSearch = vi.fn().mockResolvedValue({ searchEntries: [] });
+			mockUnbind = vi.fn().mockResolvedValue(undefined);
 
 			const mockClient = {
 				bind: mockBind,
@@ -41,7 +43,7 @@ describe('Ldap', () => {
 				unbind: mockUnbind,
 			};
 
-			jest.spyOn(Helpers, 'createLdapClient').mockResolvedValue(mockClient as unknown as Client);
+			vi.spyOn(Helpers, 'createLdapClient').mockResolvedValue(mockClient as unknown as Client);
 
 			executeFunctions.getCredentials.mockResolvedValue({
 				hostname: 'ldap.example.com',
@@ -254,14 +256,14 @@ describe('Ldap', () => {
 	});
 
 	describe('rename', () => {
-		let mockBind: jest.Mock;
-		let mockModifyDN: jest.Mock;
-		let mockUnbind: jest.Mock;
+		let mockBind: Mock;
+		let mockModifyDN: Mock;
+		let mockUnbind: Mock;
 
 		beforeEach(() => {
-			mockBind = jest.fn().mockResolvedValue(undefined);
-			mockModifyDN = jest.fn().mockResolvedValue(undefined);
-			mockUnbind = jest.fn().mockResolvedValue(undefined);
+			mockBind = vi.fn().mockResolvedValue(undefined);
+			mockModifyDN = vi.fn().mockResolvedValue(undefined);
+			mockUnbind = vi.fn().mockResolvedValue(undefined);
 
 			const mockClient = {
 				bind: mockBind,
@@ -269,7 +271,7 @@ describe('Ldap', () => {
 				unbind: mockUnbind,
 			};
 
-			jest.spyOn(Helpers, 'createLdapClient').mockResolvedValue(mockClient as unknown as Client);
+			vi.spyOn(Helpers, 'createLdapClient').mockResolvedValue(mockClient as unknown as Client);
 
 			executeFunctions.getCredentials.mockResolvedValue({
 				hostname: 'ldap.example.com',

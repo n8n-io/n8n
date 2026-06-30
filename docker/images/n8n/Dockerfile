@@ -1,10 +1,11 @@
-ARG NODE_VERSION=24.15.0
+ARG NODE_VERSION=24.16.0
 ARG N8N_VERSION=snapshot
 
 # Builder stage exists because the runtime base image has no toolchain.
 # Pinned to multi-arch index digest (linux/amd64 + linux/arm64) for reproducible builds.
 # Bump the digest together with the tag when updating the base image.
-FROM node:24.15.0-alpine3.22@sha256:b689d4005875ae167178471a7a622ec2909459a3bbb32277260be1971af7a99f AS builder
+# Digest pins to node:24.16.0-alpine3.24 (Node 24.16.0, Alpine 3.24).
+FROM node:24.16.0-alpine3.24@sha256:21f403ab171f2dc89bad4dd69d7721bfd15f084ccb46cdd225f31f2bc59b5c9a AS builder
 COPY ./compiled /usr/local/lib/node_modules/n8n
 RUN apk add --no-cache python3 make g++ && \
     cd /usr/local/lib/node_modules/n8n && \
@@ -15,16 +16,20 @@ RUN apk add --no-cache python3 make g++ && \
     # Removing prebuilds and invoking node-gyp directly avoids npm rebuild's
     # double-build behavior (built-in node-gyp + install-script node-gyp)
     # which races on dep-file state.
+    # Use npm's bundled node-gyp rather than `npx node-gyp` so the toolchain
+    # version is fixed by the pinned image digest instead of being fetched
+    # from the registry at build time.
     rm -rf node_modules/isolated-vm/prebuilds && \
     cd node_modules/isolated-vm && \
-    npx --yes node-gyp rebuild --release -j max
+    node /usr/local/lib/node_modules/npm/node_modules/node-gyp/bin/node-gyp.js rebuild --release -j max
 
 # Pinned to multi-arch index digest (linux/amd64 + linux/arm64) for reproducible builds.
 # n8nio/base is republished by a separate workflow (docker/images/n8n-base) on every
 # base change, so a base rebuild does not reach this image until the digest is
 # manually re-pinned here. Bump the digest together with the tag whenever the base
 # image is intentionally updated.
-FROM n8nio/base:24.15.0@sha256:dade45d8a974e72bccbf57c13bc684b5dbb2f73e0ca7c837739e439de7b91aa9
+# Digest pins to n8nio/base:24.16.0 (Node 24.16.0, Alpine 3.24).
+FROM n8nio/base:24.16.0@sha256:25e5671a1b3e11cd576bc9a4409ebf962baea993a4bc7414168dfd357e85a7e8
 
 ARG N8N_VERSION
 ARG N8N_RELEASE_TYPE=dev
@@ -37,7 +42,9 @@ WORKDIR /home/node
 COPY --from=builder /usr/local/lib/node_modules/n8n /usr/local/lib/node_modules/n8n
 COPY docker/images/n8n/docker-entrypoint.sh /
 
-RUN ln -s /usr/local/lib/node_modules/n8n/bin/n8n /usr/local/bin/n8n && \
+# The Alpine 3.24 base has no /usr/local/bin (node lives in /usr/bin); create it for the symlink.
+RUN mkdir -p /usr/local/bin && \
+    ln -s /usr/local/lib/node_modules/n8n/bin/n8n /usr/local/bin/n8n && \
     mkdir -p /home/node/.n8n && \
     chown -R node:node /home/node && \
     rm -rf /root/.npm /tmp/*

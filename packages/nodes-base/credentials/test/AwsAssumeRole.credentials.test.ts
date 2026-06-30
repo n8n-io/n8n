@@ -1,29 +1,42 @@
 import { sign } from 'aws4';
 import type { IHttpRequestOptions } from 'n8n-workflow';
+import type { Mock } from 'vitest';
 
 import { AwsAssumeRole } from '../AwsAssumeRole.credentials';
 import type { AwsAssumeRoleCredentialsType } from '../common/aws/types';
 
-jest.mock('aws4', () => ({
-	sign: jest.fn(),
+// Mock the SDK provider factory so assumeRole() doesn't make a real STS call.
+// Match the structure of nodes-langchain's resolveAwsCredentials.test.ts.
+const { mockProvider, mockFromTemporaryCredentials } = vi.hoisted(() => {
+	const mockProvider = vi.fn().mockResolvedValue({
+		accessKeyId: 'ASSUMED-KEY',
+		secretAccessKey: 'ASSUMED-SECRET',
+		sessionToken: 'ASSUMED-SESSION',
+	});
+	const mockFromTemporaryCredentials = vi.fn().mockReturnValue(mockProvider);
+	return { mockProvider, mockFromTemporaryCredentials };
+});
+
+vi.mock('@aws-sdk/credential-providers', () => ({
+	fromTemporaryCredentials: mockFromTemporaryCredentials,
 }));
 
-const stsAssumeRoleResponseXml = `<?xml version="1.0"?>
-<AssumeRoleResponse xmlns="https://sts.amazonaws.com/doc/2011-06-15/">
-	<AssumeRoleResult>
-		<Credentials>
-			<AccessKeyId>ASSUMED-KEY</AccessKeyId>
-			<SecretAccessKey>ASSUMED-SECRET</SecretAccessKey>
-			<SessionToken>ASSUMED-SESSION</SessionToken>
-			<Expiration>2099-01-01T00:00:00Z</Expiration>
-		</Credentials>
-	</AssumeRoleResult>
-</AssumeRoleResponse>`;
+vi.mock('@n8n/backend-network/proxy', () => ({
+	resolveProxyUrl: vi.fn().mockReturnValue(undefined),
+	createHttpsProxyAgent: vi.fn(),
+}));
+
+vi.mock('@smithy/node-http-handler', () => ({
+	NodeHttpHandler: vi.fn(),
+}));
+
+vi.mock('aws4', () => ({
+	sign: vi.fn(),
+}));
 
 describe('AwsAssumeRole Credential', () => {
 	const aws = new AwsAssumeRole();
-	let mockSign: jest.Mock;
-	let mockFetch: jest.SpyInstance;
+	let mockSign: Mock;
 
 	const credentials: AwsAssumeRoleCredentialsType = {
 		region: 'us-east-1',
@@ -37,15 +50,17 @@ describe('AwsAssumeRole Credential', () => {
 	};
 
 	beforeEach(() => {
-		mockSign = sign as unknown as jest.Mock;
-		mockFetch = jest
-			.spyOn(global, 'fetch')
-			.mockResolvedValue(new Response(stsAssumeRoleResponseXml, { status: 200 }));
+		mockSign = sign as unknown as Mock;
+		mockProvider.mockResolvedValue({
+			accessKeyId: 'ASSUMED-KEY',
+			secretAccessKey: 'ASSUMED-SECRET',
+			sessionToken: 'ASSUMED-SESSION',
+		});
+		mockFromTemporaryCredentials.mockReturnValue(mockProvider);
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
-		mockFetch.mockRestore();
+		vi.clearAllMocks();
 	});
 
 	it('should sign Bedrock requests with the bedrock service namespace', async () => {

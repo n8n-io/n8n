@@ -1,13 +1,17 @@
 import type {
 	AgentBuilder,
 	BuiltMemory,
+	BuiltProviderTool,
 	BuiltTool,
 	CredentialProvider,
+	FetchFn,
 	McpClient,
 	ModelConfig,
 	ToolDescriptor,
 	JSONObject,
 	RuntimeSkill,
+	RuntimeSkillLinkedFiles,
+	RuntimeSkillSource,
 	Agent as RuntimeAgent,
 } from '@n8n/agents';
 import { wrapToolForApproval } from '@n8n/agents/tool';
@@ -19,9 +23,13 @@ import type {
 	AgentJsonToolConfig,
 	AgentJsonSkillConfig,
 } from '@n8n/api-types';
+import { MANAGED_CREDENTIAL_TOKEN } from '@n8n/api-types';
+import { createHash } from 'crypto';
 import { z } from 'zod';
 
 import { mapCredentialForProvider } from './credential-field-mapping';
+import { resolveCredentialAwareModelConfig } from './model-config';
+import { getProviderPrefix } from './model-id';
 import {
 	getNativeWebSearchProviderTools,
 	hasNativeWebSearchProvider,
@@ -36,6 +44,10 @@ const WEB_SEARCH_INPUT_SCHEMA = z.object({
 	includeDomains: z.array(z.string()).optional().describe('Only return results from these domains'),
 	excludeDomains: z.array(z.string()).optional().describe('Exclude results from these domains'),
 });
+
+const WEB_SEARCH_POLICY_INSTRUCTION =
+	'### Web search policy\n' +
+	'Use web search only on high-signal requests: explicit web/current/latest/live/recent/research/source requests, or questions that require up-to-date external facts. Do not use web search for static knowledge, uploaded knowledge, local config, codebase questions, or confirmation. Prefer answering directly or using local knowledge tools first. One search is usually enough; do not search repeatedly unless the user asks for deep research.';
 
 export type ToolResolver = (
 	toolSchema: AgentJsonToolConfig,
@@ -56,6 +68,13 @@ export type MemoryFactory = (params: AgentJsonMemoryConfig) => BuiltMemory | Pro
  * `buildFromJson`.
  */
 export type McpClientBuilder = (server: AgentJsonMcpServerConfig) => Promise<McpClient>;
+export interface ManagedEmbeddingProviderOptions {
+	apiKey?: string;
+	baseURL?: string;
+	fetch?: typeof globalThis.fetch;
+}
+export type ManagedEmbeddingProviderOptionsResolver =
+	() => Promise<ManagedEmbeddingProviderOptions | null>;
 
 type MemoryWorkerModelConfig = {
 	model: string;
@@ -80,6 +99,10 @@ export interface BuildFromJsonOptions {
 	 *
 	 */
 	buildMcpClient?: McpClientBuilder;
+	/** Resolves proxy-backed OpenAI embedding options for `credential: "managed"`. */
+	resolveManagedEmbeddingProviderOptions?: ManagedEmbeddingProviderOptionsResolver;
+	/** Proxy-aware `fetch` for the agent's model calls (see `createAiProxyFetch`). */
+	modelFetch?: FetchFn;
 }
 
 /**
@@ -94,14 +117,21 @@ export async function buildFromJson(
 	toolDescriptors: Record<string, ToolDescriptor>,
 	options: BuildFromJsonOptions,
 ): Promise<RuntimeAgent> {
-	const { Agent } = await import('@n8n/agents');
+	const { Agent, createRuntimeSkillRegistry } = await import('@n8n/agents');
 	const agent = new Agent(config.name);
 
 	const resolvedModelConfig = await resolveModelConfig(config, options.credentialProvider);
 	agent.model(resolvedModelConfig);
+	if (options.modelFetch) {
+		agent.modelFetch(options.modelFetch);
+	}
 
-	const configuredSkills = getConfiguredSkills(config.skills ?? [], options.skills ?? {});
-	agent.instructions(config.instructions);
+	const configuredSkillSource = getConfiguredSkillSource(
+		config.skills ?? [],
+		options.skills ?? {},
+		createRuntimeSkillRegistry,
+	);
+	agent.instructions(getInstructionsWithWebSearchPolicy(config));
 
 	// Tools
 	if (config.tools) {
@@ -120,7 +150,7 @@ export async function buildFromJson(
 		}
 	}
 
-	agent.skills(configuredSkills);
+	agent.skills(configuredSkillSource);
 
 	// Provider tools
 	const providerTools = getNativeWebSearchProviderTools(config, { includeDefaultArgs: false });
@@ -142,6 +172,7 @@ export async function buildFromJson(
 			config.memory,
 			options.memoryFactory,
 			options.credentialProvider,
+			options.resolveManagedEmbeddingProviderOptions,
 		);
 	}
 
@@ -160,6 +191,61 @@ export async function buildFromJson(
 	}
 
 	return agent;
+}
+
+function modelConfigToModelId(modelConfig: ModelConfig): string | undefined {
+	if (typeof modelConfig === 'string') return modelConfig;
+	if (typeof modelConfig === 'object' && modelConfig !== null && 'id' in modelConfig) {
+		return typeof modelConfig.id === 'string' ? modelConfig.id : undefined;
+	}
+	if (
+		typeof modelConfig === 'object' &&
+		modelConfig !== null &&
+		'provider' in modelConfig &&
+		'modelId' in modelConfig
+	) {
+		const provider = typeof modelConfig.provider === 'string' ? modelConfig.provider : undefined;
+		const modelId = typeof modelConfig.modelId === 'string' ? modelConfig.modelId : undefined;
+		return provider && modelId ? `${provider}/${modelId}` : undefined;
+	}
+	return undefined;
+}
+
+function getProviderToolPrefix(toolName: string): string | undefined {
+	const dotIndex = toolName.indexOf('.');
+	return dotIndex > 0 ? toolName.slice(0, dotIndex) : undefined;
+}
+
+function getInstructionsWithWebSearchPolicy(config: AgentJsonConfig): string {
+	if (config.config?.webSearch?.enabled !== true) return config.instructions;
+	return `${config.instructions.trimEnd()}\n\n${WEB_SEARCH_POLICY_INSTRUCTION}`;
+}
+
+/**
+ * Build provider-defined tools for a specific model from persisted agent config.
+ * Used for inline sub-agents whose effective model may differ from the parent model.
+ */
+export function buildProviderToolsForModel(
+	config: AgentJsonConfig,
+	modelConfig: ModelConfig,
+): BuiltProviderTool[] {
+	const modelId = modelConfigToModelId(modelConfig);
+	if (!modelId) return [];
+
+	const providerPrefix = getProviderPrefix(modelId);
+	if (!providerPrefix) return [];
+
+	const providerTools = getNativeWebSearchProviderTools(
+		{ ...config, model: modelId },
+		{ includeDefaultArgs: false },
+	);
+
+	return Object.entries(providerTools)
+		.map(([name, args]) => ({
+			name: resolveProviderToolName(name) as `${string}.${string}`,
+			args,
+		}))
+		.filter((tool) => getProviderToolPrefix(tool.name) === providerPrefix);
 }
 
 function buildFallbackWebSearchTool(
@@ -212,27 +298,69 @@ function buildFallbackWebSearchTool(
 	};
 }
 
-function getConfiguredSkills(
+function getConfiguredSkillSource(
 	refs: AgentJsonSkillConfig[],
 	skills: Record<string, AgentSkill>,
-): RuntimeSkill[] {
+	createRegistry: (skills: RuntimeSkill[]) => RuntimeSkillSource['registry'],
+): RuntimeSkillSource {
 	const seen = new Set<string>();
 	const configured: RuntimeSkill[] = [];
+	const referencesBySkillId = new Map<
+		string,
+		Map<string, NonNullable<AgentSkill['references']>[number]>
+	>();
 
 	for (const ref of refs) {
 		if (seen.has(ref.id)) continue;
 		seen.add(ref.id);
 		const skill = skills[ref.id];
 		if (!skill) throw new Error(`Skill "${ref.id}" not found in stored skill bodies`);
+		const linkedFiles = linkedFilesForSkill(skill);
+		referencesBySkillId.set(
+			ref.id,
+			new Map((skill.references ?? []).map((reference) => [reference.path, reference])),
+		);
 		configured.push({
 			id: ref.id,
 			name: skill.name,
 			description: skill.description,
 			instructions: skill.instructions,
+			...(skill.allowedTools ? { allowedTools: skill.allowedTools } : {}),
+			linkedFiles,
 		});
 	}
 
-	return configured;
+	const skillsById = new Map(configured.map((skill) => [skill.id, skill]));
+	return {
+		registry: createRegistry(configured),
+		loadSkill: async (skillId) => (await Promise.resolve(skillsById.get(skillId))) ?? null,
+		loadFile: async (skillId, filePath) => {
+			const reference = referencesBySkillId.get(skillId)?.get(filePath);
+			if (!reference) return await Promise.resolve(null);
+			return await Promise.resolve({
+				skillId,
+				filePath: reference.path,
+				content: reference.content,
+				bytes: Buffer.byteLength(reference.content, 'utf8'),
+				sha256: createHash('sha256').update(reference.content).digest('hex'),
+			});
+		},
+	};
+}
+
+function linkedFilesForSkill(skill: AgentSkill): RuntimeSkillLinkedFiles {
+	return {
+		references: (skill.references ?? []).map((reference) => ({
+			path: reference.path,
+			bytes: Buffer.byteLength(reference.content, 'utf8'),
+			sha256: createHash('sha256').update(reference.content).digest('hex'),
+		})),
+		templates: [],
+		scripts: [],
+		assets: [],
+		examples: [],
+		other: [],
+	};
 }
 
 async function resolveToolRef(
@@ -306,6 +434,7 @@ async function applyMemoryFromConfig(
 	memoryConfig: AgentJsonMemoryConfig,
 	memoryFactory: MemoryFactory,
 	credentialProvider: CredentialProvider,
+	resolveManagedEmbeddingProviderOptions?: ManagedEmbeddingProviderOptionsResolver,
 ) {
 	const { Memory } = await import('@n8n/agents');
 	const memory = new Memory();
@@ -315,7 +444,11 @@ async function applyMemoryFromConfig(
 
 	if (memoryConfig.episodicMemory?.enabled === true) {
 		memory.episodicMemory(
-			await resolveEpisodicMemoryJsonConfig(memoryConfig.episodicMemory, credentialProvider),
+			await resolveEpisodicMemoryJsonConfig(
+				memoryConfig.episodicMemory,
+				credentialProvider,
+				resolveManagedEmbeddingProviderOptions,
+			),
 		);
 	}
 
@@ -369,6 +502,7 @@ async function applyMemoryFromConfig(
 async function resolveEpisodicMemoryJsonConfig(
 	config: Extract<NonNullable<AgentJsonMemoryConfig['episodicMemory']>, { enabled: true }>,
 	credentialProvider: CredentialProvider,
+	resolveManagedEmbeddingProviderOptions?: ManagedEmbeddingProviderOptionsResolver,
 ) {
 	const {
 		DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL,
@@ -376,12 +510,18 @@ async function resolveEpisodicMemoryJsonConfig(
 		createEpisodicMemoryReflectFn,
 	} = await import('@n8n/agents');
 	const embeddingModel = DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL;
-	const raw = await credentialProvider.resolve(config.credential);
-	const mapped = mapCredentialForProvider(getProviderPrefix(embeddingModel), raw);
-	const embeddingProviderOptions = {
-		...(typeof mapped.apiKey === 'string' && { apiKey: mapped.apiKey }),
-		...(typeof mapped.baseURL === 'string' && { baseURL: mapped.baseURL }),
-	};
+	const embeddingProviderOptions =
+		config.credential === MANAGED_CREDENTIAL_TOKEN
+			? await resolveManagedEmbeddingProviderOptions?.()
+			: await resolveEmbeddingProviderOptionsFromCredential(
+					config.credential,
+					embeddingModel,
+					credentialProvider,
+				);
+
+	if (!embeddingProviderOptions) {
+		throw new Error('Managed Episodic Memory embeddings require the AI assistant proxy.');
+	}
 
 	return {
 		enabled: true,
@@ -398,6 +538,19 @@ async function resolveEpisodicMemoryJsonConfig(
 		...(config.topK !== undefined && { topK: config.topK }),
 		...(config.maxEntriesPerRun !== undefined && { maxEntriesPerRun: config.maxEntriesPerRun }),
 		embeddingProviderOptions,
+	};
+}
+
+async function resolveEmbeddingProviderOptionsFromCredential(
+	credential: string,
+	embeddingModel: string,
+	credentialProvider: CredentialProvider,
+): Promise<ManagedEmbeddingProviderOptions> {
+	const raw = await credentialProvider.resolve(credential);
+	const mapped = mapCredentialForProvider(getProviderPrefix(embeddingModel), raw);
+	return {
+		...(typeof mapped.apiKey === 'string' && { apiKey: mapped.apiKey }),
+		...(typeof mapped.baseURL === 'string' && { baseURL: mapped.baseURL }),
 	};
 }
 
@@ -423,19 +576,4 @@ async function resolveMemoryWorkerModelConfig(
 		config.credential,
 		credentialProvider,
 	);
-}
-
-async function resolveCredentialAwareModelConfig(
-	model: string,
-	credential: string,
-	credentialProvider: CredentialProvider,
-): Promise<ModelConfig> {
-	const raw = await credentialProvider.resolve(credential);
-	const mapped = mapCredentialForProvider(getProviderPrefix(model), raw);
-	return { id: model, ...mapped } as ModelConfig;
-}
-
-function getProviderPrefix(modelId: string): string {
-	const slashIdx = modelId.indexOf('/');
-	return slashIdx !== -1 ? modelId.slice(0, slashIdx) : '';
 }

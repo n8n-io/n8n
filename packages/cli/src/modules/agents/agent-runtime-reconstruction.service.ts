@@ -3,65 +3,80 @@ import {
 	type Agent as RuntimeAgent,
 	BuiltTool,
 	CredentialProvider,
+	ModelConfig,
 	ToolDescriptor,
 } from '@n8n/agents';
-import type {
-	AgentIntegrationConfig,
-	AgentJsonConfig,
-	AgentJsonMcpServerConfig,
-	AgentJsonMemoryConfig,
-	AgentJsonToolConfig,
-	AgentSkill,
-	SubAgentRunPolicy,
-	SubAgentSource,
+import { proxyFetch } from '@n8n/ai-utilities/http-proxy-agent';
+import {
+	N8N_CHAT_ACTION_TOOL_NAME,
+	N8N_CHAT_CONTEXT_TOOL_NAME,
+	N8N_CHAT_INTEGRATION_TYPE,
+	SUB_AGENT_MAX_CHILDREN_DEFAULT,
+	SUB_AGENT_TASK_DIFFICULTIES,
+	buildProxyHeaders,
+	type AgentIntegrationConfig,
+	type AgentJsonConfig,
+	type AgentJsonMcpServerConfig,
+	type AgentJsonMemoryConfig,
+	type AgentJsonToolConfig,
+	type AgentSkill,
+	type SubAgentRunPolicy,
+	type SubAgentSource,
+	type SubAgentTaskDifficulty,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { AgentsConfig } from '@n8n/config';
-import { isNodeToolsEnabled } from '@n8n/api-types';
+import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
+import { AgentsConfig, SsrfProtectionConfig } from '@n8n/config';
 import { UserRepository, WorkflowRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
+import { nanoid } from 'nanoid';
 
 import { ActiveExecutions } from '@/active-executions';
+import { N8N_VERSION } from '@/constants';
 import { EphemeralNodeExecutor } from '@/node-execution';
 import { OauthService } from '@/oauth/oauth.service';
 import { UrlService } from '@/services/url.service';
+import { AiService } from '@/services/ai.service';
+import { ProxyTokenManager } from '@/services/proxy-token-manager';
+import { createAiMcpFetch, createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { Agent } from './entities/agent.entity';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
-import { ChatIntegrationActionExecutor } from './integrations/integration-action-executor';
-import { ChatIntegrationContextQueryExecutor } from './integrations/integration-context-query-executor';
-import { IntegrationMessageContextService } from './integrations/integration-message-context.service';
 import {
 	createIntegrationActionTool,
 	createIntegrationContextTool,
 	getIntegrationToolConnectionDescriptors,
+	type IntegrationToolConnectionDescriptor,
 } from './integrations/integration-tools';
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { N8nMemory } from './integrations/n8n-memory';
-import { createGetEnvironmentTool } from './tools/environment-tool';
-import { createRichInteractionTool } from './integrations/rich-interaction-tool';
 import {
 	buildFromJson,
+	buildProviderToolsForModel,
 	type MemoryFactory,
+	type ManagedEmbeddingProviderOptions,
 	type ToolResolver,
 } from './json-config/from-json-config';
 import { buildMcpClientForServer } from './json-config/mcp-client-factory';
+import { resolveCredentialAwareModelConfig } from './json-config/model-config';
+import { AgentFileRepository } from './repositories/agent-file.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
-import { buildToolRegistry, type ToolRegistry } from './tool-registry';
-import { AgentKnowledgeCommandService } from './agent-knowledge-command.service';
-import { AgentKnowledgeService } from './agent-knowledge.service';
-import { AgentsToolsService } from './agents-tools.service';
+import { isAgentKnowledgeBaseEnabled } from './agent-knowledge-gate';
+import { AgentKnowledgeSandboxService } from './agent-knowledge-sandbox.service';
 import { createN8nDelegateSubAgentTool } from './sub-agents/delegate-sub-agent-tool';
 import { SubAgentForegroundRunner } from './sub-agents/sub-agent-foreground-runner';
+import { buildToolRegistry, type ToolRegistry } from './tool-registry';
+import { createGetEnvironmentTool } from './tools/environment-tool';
+import { resolveUniqueSubAgents } from './utils/sub-agent-resolver';
 export type AgentRuntimeProfile = 'top-level' | 'sub-agent';
 
 export interface SubAgentDelegationConfig {
 	sourcesById: Record<string, SubAgentSource>;
-	availableSubAgents: Array<{ id: string; name: string; description?: string }>;
+	availableSubAgents: Array<{ id: string; name: string; useWhen?: string }>;
 }
 
 export interface ReconstructAgentRuntimeParams {
@@ -83,12 +98,38 @@ export interface ReconstructAgentRuntimeParams {
 	credentialIntegrations?: AgentIntegrationConfig[];
 }
 
+async function getChatIntegrationToolServices() {
+	// eslint-disable-next-line import-x/no-cycle
+	const { IntegrationMessageContextService } = await import(
+		'./integrations/integration-message-context.service'
+	);
+	// eslint-disable-next-line import-x/no-cycle
+	const { ChatIntegrationActionExecutor } = await import(
+		'./integrations/integration-action-executor'
+	);
+	// eslint-disable-next-line import-x/no-cycle
+	const { ChatIntegrationContextQueryExecutor } = await import(
+		'./integrations/integration-context-query-executor'
+	);
+
+	return {
+		messageContextStore: Container.get(IntegrationMessageContextService),
+		actionExecutor: Container.get(ChatIntegrationActionExecutor),
+		queryExecutor: Container.get(ChatIntegrationContextQueryExecutor),
+	};
+}
+
+async function getWorkflowRunner(): Promise<WorkflowRunner> {
+	const { WorkflowRunner } = await import('@/workflow-runner');
+	return Container.get(WorkflowRunner);
+}
+
 @Service()
 export class AgentRuntimeReconstructionService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly agentRepository: AgentRepository,
-		private readonly workflowRunner: WorkflowRunner,
+		private readonly agentFileRepository: AgentFileRepository,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly userRepository: UserRepository,
@@ -97,12 +138,14 @@ export class AgentRuntimeReconstructionService {
 		private readonly n8nCheckpointStorage: N8NCheckpointStorage,
 		private readonly secureRuntime: AgentSecureRuntime,
 		private readonly ephemeralNodeExecutor: EphemeralNodeExecutor,
-		private readonly agentsToolsService: AgentsToolsService,
 		private readonly n8nMemory: N8nMemory,
 		private readonly oauthService: OauthService,
 		private readonly agentsConfig: AgentsConfig,
-		private readonly agentKnowledgeService: AgentKnowledgeService,
-		private readonly agentKnowledgeCommandService: AgentKnowledgeCommandService,
+		private readonly aiService: AiService,
+		private readonly outboundHttp: OutboundHttp,
+		private readonly agentKnowledgeSandboxService: AgentKnowledgeSandboxService,
+		private readonly ssrfConfig: SsrfProtectionConfig,
+		private readonly ssrfProtectionService: SsrfProtectionService,
 	) {}
 
 	async reconstructFromAgentEntity(
@@ -195,11 +238,21 @@ export class AgentRuntimeReconstructionService {
 		const toolResolver = this.makeToolResolver(projectId, userId);
 		const resolvedTools: BuiltTool[] = [];
 
+		// Transport for LLM calls
+		const aiProxyFetch = createAiProxyFetch(this.outboundHttp);
+		// Transport for MCP calls
+		const aiMcpFetch = createAiMcpFetch(
+			this.outboundHttp,
+			this.ssrfConfig,
+			this.ssrfProtectionService,
+		);
+
 		const buildMcpClient = async (server: AgentJsonMcpServerConfig) =>
 			await buildMcpClientForServer(server, {
 				credentialProvider,
 				oauthService: this.oauthService,
 				projectId,
+				proxyFetch: aiMcpFetch,
 			});
 
 		const reconstructed = await buildFromJson(config, toolDescriptors, {
@@ -213,6 +266,9 @@ export class AgentRuntimeReconstructionService {
 			skills,
 			memoryFactory: this.getMemoryFactory(memoryOwnerAgentId),
 			buildMcpClient,
+			resolveManagedEmbeddingProviderOptions: async () =>
+				await this.resolveManagedEmbeddingProviderOptions(userId),
+			modelFetch: aiProxyFetch,
 		});
 
 		await this.injectRuntimeDependencies({
@@ -222,7 +278,7 @@ export class AgentRuntimeReconstructionService {
 			credentialProvider,
 			userId,
 			runtimeProfile,
-			nodeToolsEnabled: this.shouldAttachNodeTools(config.config),
+			config,
 			subAgentDelegation,
 			parentAgentIdForDelegation: parentAgentIdForDelegation ?? memoryOwnerAgentId,
 			integrationType,
@@ -240,53 +296,60 @@ export class AgentRuntimeReconstructionService {
 		const sourcesById: Record<string, SubAgentSource> = {};
 		const availableSubAgents: SubAgentDelegationConfig['availableSubAgents'] = [];
 
-		for (const { agentId, agent } of await this.fetchUniqueSubAgents(configuredAgents, projectId)) {
+		for (const { agentId, agent, useWhen } of await resolveUniqueSubAgents({
+			refs: configuredAgents,
+			projectId,
+			agentRepository: this.agentRepository,
+		})) {
 			if (!agent?.activeVersionId) continue;
 
 			sourcesById[agentId] = { agentId, versionId: agent.activeVersionId };
 			availableSubAgents.push({
 				id: agentId,
 				name: agent.name,
-				...(agent.description ? { description: agent.description } : {}),
+				...(useWhen ? { useWhen } : {}),
 			});
 		}
 
 		return { sourcesById, availableSubAgents };
 	}
 
-	private async fetchUniqueSubAgents(
-		refs: Array<{ agentId: string }>,
-		projectId: string,
-	): Promise<Array<{ agentId: string; agent: Agent | null }>> {
-		const seen = new Set<string>();
-		const resolved: Array<{ agentId: string; agent: Agent | null }> = [];
-		for (const { agentId } of refs) {
-			if (seen.has(agentId)) continue;
-			seen.add(agentId);
-			resolved.push({
-				agentId,
-				agent: await this.agentRepository.findByIdAndProjectId(agentId, projectId),
-			});
-		}
-		return resolved;
-	}
-
 	private getMemoryFactory(agentId: string): MemoryFactory {
 		return (_params: AgentJsonMemoryConfig) => this.n8nMemory.getImplementation(agentId);
 	}
 
-	private shouldAttachNodeTools(config: AgentJsonConfig['config']): boolean {
-		return this.isNodeToolsModuleEnabled() && isNodeToolsEnabled(config);
-	}
+	private async resolveManagedEmbeddingProviderOptions(
+		userId: string,
+	): Promise<ManagedEmbeddingProviderOptions | null> {
+		if (!this.aiService.isProxyEnabled()) return null;
+		// TODO: switch to n8n connect endpoints, don't use ai-proxy endpoints
+		const client = await this.aiService.getClient();
+		const baseURL = client.getApiProxyBaseUrl().replace(/\/$/, '') + '/openai/';
+		const tokenManager = new ProxyTokenManager(async () => {
+			return await client.getBuilderApiProxyToken({ id: userId }, { userMessageId: nanoid() });
+		});
 
-	private isNodeToolsModuleEnabled(): boolean {
-		return this.agentsConfig.modules.includes('node-tools-searcher');
+		return {
+			baseURL,
+			apiKey: 'proxy-managed',
+			fetch: async (
+				input: Parameters<typeof globalThis.fetch>[0],
+				init?: Parameters<typeof globalThis.fetch>[1],
+			) => {
+				const headers = new Headers(init?.headers);
+				const auth = await tokenManager.getAuthHeaders();
+				for (const [key, value] of Object.entries(auth)) {
+					headers.set(key, value);
+				}
+				for (const [key, value] of Object.entries(
+					buildProxyHeaders({ feature: 'agent-builder', n8nVersion: N8N_VERSION }),
+				)) {
+					headers.set(key, value);
+				}
+				return await proxyFetch(input as string, { ...init, headers });
+			},
+		};
 	}
-
-	private isKnowledgeBaseModuleEnabled(): boolean {
-		return this.agentsConfig.modules.includes('knowledge-base');
-	}
-
 	private makeToolResolver(projectId: string, userId: string): ToolResolver {
 		return async (ref: AgentJsonToolConfig) => {
 			if (ref.type === 'workflow') {
@@ -296,7 +359,7 @@ export class AgentRuntimeReconstructionService {
 				const { resolveWorkflowTool } = await import('./tools/workflow-tool-factory');
 				return await resolveWorkflowTool(ref, {
 					workflowRepository: this.workflowRepository,
-					workflowRunner: this.workflowRunner,
+					workflowRunner: await getWorkflowRunner(),
 					activeExecutions: this.activeExecutions,
 					workflowFinderService: this.workflowFinderService,
 					userRepository: this.userRepository,
@@ -325,7 +388,7 @@ export class AgentRuntimeReconstructionService {
 		credentialProvider: CredentialProvider;
 		userId: string;
 		runtimeProfile: AgentRuntimeProfile;
-		nodeToolsEnabled: boolean;
+		config: AgentJsonConfig;
 		subAgentDelegation: SubAgentDelegationConfig;
 		parentAgentIdForDelegation: string;
 		integrationType?: string;
@@ -338,7 +401,7 @@ export class AgentRuntimeReconstructionService {
 			credentialProvider,
 			userId,
 			runtimeProfile,
-			nodeToolsEnabled,
+			config,
 			subAgentDelegation,
 			parentAgentIdForDelegation,
 			integrationType,
@@ -347,48 +410,71 @@ export class AgentRuntimeReconstructionService {
 
 		agent.tool(createGetEnvironmentTool());
 
-		if (this.isKnowledgeBaseModuleEnabled()) {
-			try {
-				const { createSearchKnowledgeTool } = await import('./tools/knowledge/tool');
-				agent.tool(
-					createSearchKnowledgeTool({
-						agentId,
-						projectId,
-						knowledgeService: this.agentKnowledgeService,
-						commandService: this.agentKnowledgeCommandService,
-					}),
-				);
-			} catch (toolError) {
-				this.logger.warn('Failed to inject search_knowledge tool', {
+		if (
+			isAgentKnowledgeBaseEnabled(this.agentsConfig) &&
+			(await this.agentFileRepository.hasFilesForAgent(agentId))
+		) {
+			const { createKnowledgeRetrievalTools } = await import(
+				'./tools/knowledge/search-knowledge.tool'
+			);
+			agent.tool(
+				createKnowledgeRetrievalTools({
+					projectId,
 					agentId,
-					error: toolError instanceof Error ? toolError.message : String(toolError),
-				});
-			}
+					userId,
+					sandboxService: this.agentKnowledgeSandboxService,
+				}),
+			);
 		}
 
 		if (runtimeProfile === 'top-level') {
-			const integrationRegistry = Container.get(ChatIntegrationRegistry);
-			const integration = integrationType ? integrationRegistry.get(integrationType) : undefined;
-			if (integration?.supportedComponents !== undefined) {
-				agent.tool(createRichInteractionTool(integrationType));
-			}
+			const includeN8nChat = integrationType === N8N_CHAT_INTEGRATION_TYPE;
 
-			if (credentialIntegrations.length > 0) {
-				const messageContextStore = Container.get(IntegrationMessageContextService);
-				const actionExecutor = Container.get(ChatIntegrationActionExecutor);
-				const queryExecutor = Container.get(ChatIntegrationContextQueryExecutor);
+			if (credentialIntegrations.length > 0 || includeN8nChat) {
+				const integrationRegistry = Container.get(ChatIntegrationRegistry);
+				const { messageContextStore, actionExecutor, queryExecutor } =
+					await getChatIntegrationToolServices();
 
-				for (const descriptor of getIntegrationToolConnectionDescriptors(
-					credentialIntegrations,
-					agentId,
-					(integrationConfig) => {
-						const integrationDef = integrationRegistry.get(integrationConfig.type);
-						return {
-							contextQueries: integrationDef?.contextQueries,
-							actions: integrationDef?.actions,
-						};
-					},
-				)) {
+				const descriptors: IntegrationToolConnectionDescriptor[] =
+					getIntegrationToolConnectionDescriptors(
+						credentialIntegrations,
+						agentId,
+						(integrationConfig) => {
+							const integrationDef = integrationRegistry.get(integrationConfig.type);
+							return {
+								contextToolDefinitions: integrationDef?.contextToolDefinitions,
+								actionToolDefinitions: integrationDef?.actionToolDefinitions,
+								contextQueries: integrationDef?.contextQueries,
+								actions: integrationDef?.actions,
+								contextToolGuidance: integrationDef?.contextToolGuidance,
+								actionToolGuidance: integrationDef?.actionToolGuidance,
+							};
+						},
+					);
+
+				if (includeN8nChat) {
+					// Implicit in-app chat channel: credential-less, per-run, fixed
+					// tool names (exactly one n8n_chat per run — no suffixing).
+					const n8nChat = integrationRegistry.require(N8N_CHAT_INTEGRATION_TYPE);
+					const n8nChatIntegration = {
+						type: N8N_CHAT_INTEGRATION_TYPE,
+					} as unknown as IntegrationToolConnectionDescriptor['integration'];
+					descriptors.push({
+						agentId,
+						integration: n8nChatIntegration,
+						integrationConnectionId: N8N_CHAT_INTEGRATION_TYPE,
+						contextToolName: N8N_CHAT_CONTEXT_TOOL_NAME,
+						actionToolName: N8N_CHAT_ACTION_TOOL_NAME,
+						contextQueries: [...n8nChat.contextQueries],
+						actions: [...n8nChat.actions],
+						contextToolDefinitions: [...n8nChat.contextToolDefinitions],
+						actionToolDefinitions: [...n8nChat.actionToolDefinitions],
+						contextToolGuidance: n8nChat.contextToolGuidance,
+						actionToolGuidance: n8nChat.actionToolGuidance,
+					});
+				}
+
+				for (const descriptor of descriptors) {
 					agent.tool(
 						createIntegrationContextTool({ descriptor, messageContextStore, queryExecutor }),
 					);
@@ -399,13 +485,10 @@ export class AgentRuntimeReconstructionService {
 			}
 		}
 
-		if (nodeToolsEnabled) {
-			agent.tool(this.agentsToolsService.getRuntimeTools(credentialProvider, projectId));
-		}
-
 		if (runtimeProfile === 'top-level') {
-			this.attachSubAgentDelegationTool({
+			await this.attachSubAgentDelegationTool({
 				agent,
+				config,
 				parentAgentId: parentAgentIdForDelegation,
 				projectId,
 				credentialProvider,
@@ -416,19 +499,25 @@ export class AgentRuntimeReconstructionService {
 		}
 
 		if (!agent.hasCheckpointStorage()) {
-			agent.checkpoint(this.n8nCheckpointStorage);
+			agent.checkpoint(this.n8nCheckpointStorage.getStorage(agentId));
 		}
 	}
 
-	private attachSubAgentDelegationTool(params: {
+	private async attachSubAgentDelegationTool(params: {
 		agent: RuntimeAgent;
+		config: AgentJsonConfig;
 		parentAgentId: string;
 		projectId: string;
 		credentialProvider: CredentialProvider;
 		userId: string;
 		delegation: SubAgentDelegationConfig;
-	}): void {
-		const { agent, parentAgentId, projectId, credentialProvider, userId, delegation } = params;
+	}): Promise<void> {
+		const { agent, config, parentAgentId, projectId, credentialProvider, userId, delegation } =
+			params;
+		const inlineSubAgentModelsByDifficulty = await this.resolveInlineSubAgentModelsByDifficulty(
+			config,
+			credentialProvider,
+		);
 		agent.tool(
 			createN8nDelegateSubAgentTool({
 				runner: Container.get(SubAgentForegroundRunner),
@@ -437,10 +526,36 @@ export class AgentRuntimeReconstructionService {
 				parentAgentId,
 				userId,
 				credentialProvider,
-				policy: this.buildSubAgentPolicy(),
+				policy: this.buildSubAgentPolicy(config),
+				...(inlineSubAgentModelsByDifficulty !== undefined
+					? { inlineSubAgentModelsByDifficulty }
+					: {}),
+				resolveInlineSubAgentProviderTools: (modelConfig: ModelConfig) =>
+					buildProviderToolsForModel(config, modelConfig),
 			}),
 		);
 		this.logger.debug('Injected delegate_subagent tool', { agentId: parentAgentId });
+	}
+
+	private async resolveInlineSubAgentModelsByDifficulty(
+		config: AgentJsonConfig,
+		credentialProvider: CredentialProvider,
+	): Promise<Partial<Record<SubAgentTaskDifficulty, ModelConfig>> | undefined> {
+		const mappings = config.subAgents?.modelsByDifficulty;
+		if (!mappings) return undefined;
+
+		const resolved: Partial<Record<SubAgentTaskDifficulty, ModelConfig>> = {};
+		for (const difficulty of SUB_AGENT_TASK_DIFFICULTIES) {
+			const mapping = mappings[difficulty];
+			if (!mapping) continue;
+			resolved[difficulty] = await resolveCredentialAwareModelConfig(
+				mapping.model,
+				mapping.credential,
+				credentialProvider,
+			);
+		}
+
+		return Object.keys(resolved).length > 0 ? resolved : undefined;
 	}
 
 	private attachWriteTodosTool(agent: RuntimeAgent, agentId: string): void {
@@ -448,10 +563,9 @@ export class AgentRuntimeReconstructionService {
 		this.logger.debug('Injected write_todos tool', { agentId });
 	}
 
-	private buildSubAgentPolicy(): SubAgentRunPolicy {
+	private buildSubAgentPolicy(config: AgentJsonConfig): SubAgentRunPolicy {
 		return {
-			maxChildren: this.agentsConfig.subAgentMaxChildren,
-			timeoutMs: this.agentsConfig.subAgentTimeoutMs,
+			maxChildren: config.subAgents?.maxChildren ?? SUB_AGENT_MAX_CHILDREN_DEFAULT,
 		};
 	}
 }

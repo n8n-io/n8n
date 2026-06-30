@@ -1,6 +1,6 @@
 {
   "name": "@n8n/config",
-  "version": "2.23.0",
+  "version": "2.27.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -34,5 +34,6 @@
     "@vitest/coverage-v8": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"
-  }
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }

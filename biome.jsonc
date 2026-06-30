@@ -31,7 +31,13 @@
 		"attributePosition": "auto",
 		"ignore": [
 			// Handled by prettier
-			"**/*.vue"
+			"**/*.vue",
+			// Generated DB schema docs
+			"docs/generated/**",
+			// Generated / vendored test-impact data
+			".github/test-metrics/**",
+			// Vendored SPDX license data and overrides
+			"scripts/licenses/**"
 		]
 	},
 	"organizeImports": { "enabled": false },

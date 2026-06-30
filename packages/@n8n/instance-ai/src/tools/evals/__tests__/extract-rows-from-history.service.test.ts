@@ -23,6 +23,7 @@ const buildContext = (
 				>(),
 			...executionService,
 		},
+		logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 	}) as unknown as InstanceAiContext;
 
 const executionSummary = (

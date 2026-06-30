@@ -521,6 +521,15 @@ async function waitForInstanceAiIdle(backendUrl: string, testSlug: string): Prom
 export const instanceAiTestConfig = {
 	timezoneId: 'America/New_York',
 	capability: {
+		// Instance AI does not support queue/multi-main execution yet (implementation
+		// deferred): agent-triggered manual executions fail or flake on the worker
+		// offload path (the worker job processor reads execution.data.manualData while
+		// execution.data is undefined). Pin to a single main AND no workers so the suite
+		// runs in direct execution mode (a supported topology) under every CI project —
+		// `mains: 1` alone left the worker in place, so full-workflow runs still offloaded
+		// and flaked. Drop these overrides when queue/multi-main support lands.
+		mains: 1,
+		workers: 0,
 		services: ['proxy', 'sandbox'],
 		env: {
 			N8N_ENABLED_MODULES: 'instance-ai',
@@ -643,8 +652,12 @@ export const test = base.extend<InstanceAiFixtures>({
 
 			await use(undefined);
 
+			// Persist strictly on 'passed': a skipped test also satisfies
+			// status === expectedStatus, and persisting for it clears the
+			// expectations dir (clearDir) with no traffic to rewrite — silently
+			// deleting the recordings of every quarantined/fixme'd test in the run.
 			const shouldPersistRecording =
-				!process.env.CI && HAS_REAL_API_KEY && testInfo.status === testInfo.expectedStatus;
+				!process.env.CI && HAS_REAL_API_KEY && testInfo.status === 'passed';
 
 			if (shouldPersistRecording) {
 				await waitForInstanceAiIdle(backendUrl, testSlug);

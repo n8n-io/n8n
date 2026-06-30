@@ -15,7 +15,6 @@ import { useAgentBuilderStatus } from '../composables/useAgentBuilderStatus';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
 import { buildAgentConfigFingerprint } from '../composables/agentTelemetry.utils';
 import { upsertProjectAgentsListCache } from '../composables/useProjectAgentsList';
-import AgentBuilderProgress from '../components/AgentBuilderProgress.vue';
 import AgentBuilderUnconfiguredEmptyState from '../components/AgentBuilderUnconfiguredEmptyState.vue';
 
 const router = useRouter();
@@ -59,10 +58,6 @@ onMounted(async () => {
 		}
 	}
 });
-// When set, we've created the agent and the progress overlay is streaming
-// the build. We only route into the builder once the stream reports `done`.
-const building = ref<{ agentId: string; message: string } | null>(null);
-
 interface SuggestionTemplate {
 	icon: string;
 	name: string;
@@ -243,22 +238,15 @@ async function submitDescription() {
 		} catch {
 			// Swallow — telemetry is best-effort and must not block the build.
 		}
-		// Hand off to the progress overlay; it streams `/build` and fires `done`
-		// once the agent is ready, at which point we route into the builder.
-		building.value = { agentId: agent.id, message };
+		void router.push({
+			name: AGENT_BUILDER_VIEW,
+			params: { projectId: projectId.value, agentId: agent.id },
+			query: { prompt: message, expandBuildChat: 'true' },
+		});
 	} catch (e) {
 		isCreating.value = false;
 		throw e;
 	}
-}
-
-function onBuildDone() {
-	const target = building.value;
-	if (!target) return;
-	void router.push({
-		name: AGENT_BUILDER_VIEW,
-		params: { projectId: projectId.value, agentId: target.agentId },
-	});
 }
 
 function selectSuggestion(suggestion: SuggestionTemplate) {
@@ -273,81 +261,69 @@ function selectSuggestion(suggestion: SuggestionTemplate) {
 	<div :class="$style.page">
 		<AgentBuilderUnconfiguredEmptyState v-if="statusLoaded && !isBuilderConfigured" />
 		<template v-else-if="statusLoaded">
-			<Transition name="building-overlay">
-				<div v-if="building" :class="$style.buildingOverlay">
-					<AgentBuilderProgress
-						:project-id="projectId"
-						:agent-id="building.agentId"
-						:initial-message="building.message"
-						@done="onBuildDone"
+			<div :class="$style.content">
+				<div :class="$style.topBar">
+					<N8nButton
+						:label="i18n.baseText('agents.new.startBlank')"
+						variant="ghost"
+						size="medium"
+						icon="file"
+						:loading="isCreating"
+						data-testid="create-blank-agent"
+						@click="createBlank"
 					/>
 				</div>
-			</Transition>
-			<Transition name="new-agent-content">
-				<div v-if="!building" :class="$style.content">
-					<div :class="$style.topBar">
-						<N8nButton
-							:label="i18n.baseText('agents.new.startBlank')"
-							variant="ghost"
-							size="medium"
-							icon="file"
-							:loading="isCreating"
-							data-testid="create-blank-agent"
-							@click="createBlank"
+
+				<div :class="$style.center">
+					<h1 :class="$style.heading">{{ heading }}</h1>
+
+					<div :class="$style.inputWrapper">
+						<ChatInputBase
+							ref="chatInputRef"
+							v-model="inputText"
+							:placeholder="i18n.baseText('agents.new.description.placeholder')"
+							:is-streaming="false"
+							:can-submit="inputText.trim().length > 0 && !isCreating"
+							:show-voice="true"
+							:show-attach="false"
+							@submit="submitDescription"
 						/>
 					</div>
 
-					<div :class="$style.center">
-						<h1 :class="$style.heading">{{ heading }}</h1>
+					<div :class="$style.suggestions">
+						<N8nText :class="$style.suggestionsLabel" tag="h3" size="medium" bold>
+							{{ i18n.baseText('agents.new.templates.label') }}
+						</N8nText>
 
-						<div :class="$style.inputWrapper">
-							<ChatInputBase
-								ref="chatInputRef"
-								v-model="inputText"
-								:placeholder="i18n.baseText('agents.new.description.placeholder')"
-								:is-streaming="false"
-								:can-submit="inputText.trim().length > 0 && !isCreating"
-								:show-voice="true"
-								:show-attach="false"
-								@submit="submitDescription"
-							/>
-						</div>
-
-						<div :class="$style.suggestions">
-							<N8nText :class="$style.suggestionsLabel" tag="h3" size="medium" bold>
-								{{ i18n.baseText('agents.new.templates.label') }}
-							</N8nText>
-
-							<div :class="$style.suggestionGrid">
-								<button
-									v-for="(suggestion, index) in suggestions"
-									:key="suggestion.name"
-									type="button"
-									:class="$style.suggestionCard"
-									:style="{ '--suggestion-index': index }"
-									data-testid="agent-suggestion-card"
-									@click="selectSuggestion(suggestion)"
-								>
-									<div :class="$style.suggestionHeader">
-										<span :class="$style.suggestionIcon">{{ suggestion.icon }}</span>
-										<N8nText tag="span" bold size="small" :class="$style.suggestionName">
-											{{ suggestion.name }}
-										</N8nText>
-									</div>
-									<N8nText
-										tag="span"
-										size="small"
-										color="text-light"
-										:class="$style.suggestionDescription"
-									>
-										{{ suggestion.description }}
+						<div :class="$style.suggestionGrid">
+							<button
+								v-for="(suggestion, index) in suggestions"
+								:key="suggestion.name"
+								type="button"
+								:class="$style.suggestionCard"
+								:style="{ '--suggestion-index': index }"
+								data-testid="agent-suggestion-card"
+								@click="selectSuggestion(suggestion)"
+							>
+								<div :class="$style.suggestionHeader">
+									<span :class="$style.suggestionIcon">{{ suggestion.icon }}</span>
+									<N8nText tag="span" bold size="small" :class="$style.suggestionName">
+										{{ suggestion.name }}
 									</N8nText>
-								</button>
-							</div>
+								</div>
+								<N8nText
+									tag="span"
+									size="small"
+									color="text-light"
+									:class="$style.suggestionDescription"
+								>
+									{{ suggestion.description }}
+								</N8nText>
+							</button>
 						</div>
 					</div>
 				</div>
-			</Transition>
+			</div>
 		</template>
 	</div>
 </template>
@@ -361,43 +337,11 @@ function selectSuggestion(suggestion: SuggestionTemplate) {
 	width: 100%;
 }
 
-.buildingOverlay {
-	position: absolute;
-	inset: 0;
-	z-index: 10;
-	display: flex;
-	background: var(--color--background--light-3);
-	backdrop-filter: blur(4px);
-	pointer-events: all;
-}
-
 .content {
 	flex: 1;
 	display: flex;
 	flex-direction: column;
 	min-height: 0;
-}
-
-:global(.building-overlay-enter-active) {
-	transition: opacity calc(var(--duration--base) * 1.5) var(--easing--ease-out)
-		calc(var(--duration--base) / 3);
-}
-
-:global(.building-overlay-enter-from) {
-	opacity: 0;
-}
-
-:global(.new-agent-content-leave-active) {
-	transition:
-		opacity var(--duration--base) var(--easing--ease-out),
-		filter var(--duration--base) var(--easing--ease-out),
-		transform var(--duration--base) var(--easing--ease-out);
-}
-
-:global(.new-agent-content-leave-to) {
-	opacity: 0;
-	filter: blur(3px);
-	transform: translateY(calc(-1 * var(--spacing--xs)));
 }
 
 .topBar {
@@ -557,11 +501,6 @@ function selectSuggestion(suggestion: SuggestionTemplate) {
 	.suggestions,
 	.suggestionCard {
 		animation: none;
-	}
-
-	:global(.building-overlay-enter-active),
-	:global(.new-agent-content-leave-active) {
-		transition: none;
 	}
 }
 </style>

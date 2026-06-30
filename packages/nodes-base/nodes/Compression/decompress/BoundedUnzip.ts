@@ -1,90 +1,64 @@
 import * as fflate from 'fflate';
-import { ensureError } from 'n8n-workflow';
+import { ensureError, UserError } from 'n8n-workflow';
 
-import { feedInChunks } from './FeedInChunks';
-import { ZipEntryDecompressor } from './ZipEntryDecompressor';
-import { ZipOutputAccumulator } from './ZipOutputAccumulator';
+import { DecompressedSizeExceededError } from './DecompressedSizeExceededError';
 
 /**
- * Decompress a zip archive with upper bounds on total output size
- * and number of entries. Uses fflate's asynchronous inflate decoder for entries.
+ * Decompress a zip archive with upper bounds on total output size and number of
+ * entries.
+ *
+ * Extraction is driven by the archive's central directory, the authoritative
+ * list of members, so only the archive's own files are returned. Entries that
+ * happen to live inside a stored member (office documents such as xlsx/docx are
+ * themselves zip archives) are never surfaced. The size and entry-count limits
+ * are enforced from the central directory metadata, before any entry is
+ * inflated.
  */
 export async function boundedUnzip(
 	data: Buffer,
 	maxOutputSize: number,
 	maxEntries: number,
 ): Promise<Record<string, Buffer>> {
-	validateZipArchive(data);
-
 	return await new Promise<Record<string, Buffer>>((resolve, reject) => {
-		const zipOutputAccumulator = new ZipOutputAccumulator(maxOutputSize, maxEntries);
-		let inputFinished = false;
-		let pendingEntries = 0;
-		let isSettled = false;
+		let entryCount = 0;
+		let totalSize = 0;
+		let limitError: UserError | undefined;
 
-		const rejectOnce = (error: Error) => {
-			if (isSettled) return;
-			isSettled = true;
-			reject(error);
+		const filter = (file: fflate.UnzipFileInfo): boolean => {
+			if (limitError) return false;
+			// ZIP spec mandates '/' as path separator; a trailing slash marks a directory
+			if (file.name.endsWith('/')) return false;
+
+			entryCount++;
+			if (entryCount > maxEntries) {
+				limitError = new UserError(`The archive contains more than ${maxEntries} entries`);
+				return false;
+			}
+
+			totalSize += file.originalSize;
+			if (totalSize > maxOutputSize) {
+				limitError = new DecompressedSizeExceededError(maxOutputSize);
+				return false;
+			}
+
+			return true;
 		};
 
-		const resolveIfDone = () => {
-			if (isSettled || !inputFinished || pendingEntries > 0) return;
-			isSettled = true;
-			resolve(zipOutputAccumulator.toBuffers());
-		};
-
-		const unzipper = new fflate.Unzip((fileOrDirectory) => {
-			if (isSettled || zipOutputAccumulator.isLimitExceeded) return;
-			// ZIP spec mandates '/' as path separator on all platforms
-			if (fileOrDirectory.name.endsWith('/')) return;
-
-			const entryResult = zipOutputAccumulator.addEntry(fileOrDirectory.name);
-			if (!entryResult.ok) {
-				rejectOnce(entryResult.error);
+		fflate.unzip(data, { filter }, (error, unzipped) => {
+			if (limitError) {
+				reject(limitError);
 				return;
 			}
-			const writeChunk = entryResult.result;
+			if (error) {
+				reject(ensureError(error));
+				return;
+			}
 
-			pendingEntries++;
-			new ZipEntryDecompressor(fileOrDirectory, writeChunk, zipOutputAccumulator, {
-				isSettled: () => isSettled,
-				onFinish: () => {
-					pendingEntries--;
-					resolveIfDone();
-				},
-				onError: rejectOnce,
-			}).start();
+			const result: Record<string, Buffer> = {};
+			for (const [name, bytes] of Object.entries(unzipped)) {
+				result[name] = Buffer.from(bytes);
+			}
+			resolve(result);
 		});
-
-		unzipper.register(fflate.AsyncUnzipInflate);
-
-		try {
-			feedInChunks({
-				data,
-				push: (slice, isFinal) => {
-					unzipper.push(slice, isFinal);
-				},
-				shouldStop: () => isSettled || zipOutputAccumulator.isLimitExceeded,
-			});
-			inputFinished = true;
-			if (zipOutputAccumulator.isLimitExceeded) {
-				rejectOnce(zipOutputAccumulator.exceededError);
-				return;
-			}
-			resolveIfDone();
-		} catch (error) {
-			rejectOnce(ensureError(error));
-		}
 	});
-}
-
-function validateZipArchive(data: Buffer): void {
-	try {
-		// Parse archive metadata without inflating entries; the streaming reader
-		// does not validate the central directory before resolving.
-		void fflate.unzipSync(data, { filter: () => false });
-	} catch (error) {
-		throw ensureError(error);
-	}
 }

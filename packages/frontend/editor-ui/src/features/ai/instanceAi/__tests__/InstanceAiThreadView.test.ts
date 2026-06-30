@@ -175,11 +175,13 @@ const renderView = createComponentRenderer(InstanceAiThreadView, {
 const defaultModuleSettings: NonNullable<FrontendModuleSettings['instance-ai']> = {
 	enabled: true,
 	localGatewayDisabled: false,
+	browserUseEnabled: true,
 	proxyEnabled: false,
 	cloudManaged: false,
 	sandboxEnabled: true,
 	workflowBuilderAvailable: true,
 	sandboxUnavailableReason: null,
+	runDebugEnabled: false,
 };
 
 function makePlanReviewMessage(): InstanceAiMessage {
@@ -440,7 +442,7 @@ describe('InstanceAiThreadView', () => {
 		expect(thread.loadHistoricalMessages).toHaveBeenCalledWith();
 	});
 
-	it('uses edge reveal when the viewport is too narrow for pinned artifacts', async () => {
+	it('opens the artifacts panel from the header toggle when too narrow for pinned artifacts', async () => {
 		mockWindowSizeState.width.value = 900;
 		thread.messages = [
 			{
@@ -453,16 +455,55 @@ describe('InstanceAiThreadView', () => {
 		] as typeof thread.messages;
 		Object.defineProperty(thread, 'hasMessages', { value: true, configurable: true });
 
+		const user = userEvent.setup();
 		const { getByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
 		await vi.waitFor(() => {
-			expect(getByTestId('instance-ai-artifacts-sidebar-edge')).toBeInTheDocument();
+			expect(getByTestId('instance-ai-artifacts-panel-toggle')).toBeInTheDocument();
 		});
+		expect(queryByTestId('instance-ai-artifacts-sidebar-edge')).not.toBeInTheDocument();
+		expect(queryByTestId('instance-ai-artifacts-sidebar-slot')).not.toBeInTheDocument();
+
+		await user.click(getByTestId('instance-ai-artifacts-panel-toggle'));
+
+		expect(getByTestId('instance-ai-artifacts-sidebar-slot')).toBeInTheDocument();
+
+		await user.click(getByTestId('instance-ai-content-area'));
+
 		expect(queryByTestId('instance-ai-artifacts-sidebar-slot')).not.toBeInTheDocument();
 	});
 
-	// Re-enable when IS_FIX_WITH_AI_OFFER_ENABLED is true (INS-407).
-	describe.skip('Fix with AI card', () => {
+	it('keeps the artifacts panel toggle available when the panel is in the layout', async () => {
+		mockWindowSizeState.width.value = 1700;
+		thread.messages = [
+			{
+				id: 'msg-1',
+				role: 'assistant',
+				content: 'already loaded',
+				isStreaming: false,
+				createdAt: '2026-04-01T00:00:00.000Z',
+			},
+		] as typeof thread.messages;
+		Object.defineProperty(thread, 'hasMessages', { value: true, configurable: true });
+
+		const user = userEvent.setup();
+		const { getByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		await vi.waitFor(() => {
+			expect(getByTestId('instance-ai-artifacts-panel-toggle')).toBeInTheDocument();
+		});
+		expect(getByTestId('instance-ai-artifacts-sidebar-slot')).toBeInTheDocument();
+
+		await user.click(getByTestId('instance-ai-artifacts-panel-toggle'));
+
+		expect(queryByTestId('instance-ai-artifacts-sidebar-slot')).not.toBeInTheDocument();
+
+		await user.click(getByTestId('instance-ai-artifacts-panel-toggle'));
+
+		expect(getByTestId('instance-ai-artifacts-sidebar-slot')).toBeInTheDocument();
+	});
+
+	describe('Fix with AI card', () => {
 		const failureReport: WorkflowFailuresReport = {
 			workflowId: 'wf-1',
 			executionId: 'exec-1',

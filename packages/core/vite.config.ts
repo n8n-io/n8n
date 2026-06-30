@@ -23,6 +23,17 @@ export default mergeConfig(
 					find: /^zod$/,
 					replacement: require.resolve('zod'),
 				},
+				// `n8n-workflow` has dual ESM/CJS builds (`./dist/esm/index.js` for `import`,
+				// `./dist/cjs/index.js` for `require`), each with its own `UserError` class.
+				// `@n8n/backend-network` is loaded from its CJS dist and `require`s the CJS copy,
+				// so `SsrfBlockedIpError extends UserError` (CJS), while test files ESM-import
+				// `UserError` (ESM) — and `instanceof` fails between them. Pin the top-level
+				// `n8n-workflow` import to the CJS file so both code paths share one module
+				// instance. `require.resolve` follows the `require` export condition.
+				{
+					find: /^n8n-workflow$/,
+					replacement: require.resolve('n8n-workflow'),
+				},
 			],
 		},
 		oxc: {

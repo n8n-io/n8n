@@ -11,6 +11,9 @@ frontend, and extensible node-based workflow engine.
 ## General Guidelines
 
 - Always use pnpm
+- When adding comments, keep them concise and to the point - explain the "why"
+  in a line or two; don't be overly verbose. Comments should be scoped and
+  relevant to the surrounding code, not just to the current task
 - We use Linear as a ticket tracking system
 - We use Posthog for feature flags
 - When starting to work on a new ticket – create a new branch from fresh
@@ -20,12 +23,18 @@ frontend, and extensible node-based workflow engine.
   Hygiene below)
 - Use mermaid diagrams in MD files when you need to visualise something
 
-## Claude Code Plugin
+## Agent Skills and Claude Code Plugin
 
-n8n-specific skills, commands, and agents live in `.claude/plugins/n8n/` and
-are namespaced under `n8n:`. Use `n8n:` prefix when invoking them
-(e.g. `/n8n:create-pr`, `/n8n:plan`, `n8n:developer` agent).
-See [plugin README](.claude/plugins/n8n/README.md) for structure and details.
+n8n shared skills live in `.agents/skills/`. Claude Code consumes them through
+symlinks in `.claude/plugins/n8n/skills/`; OpenCode reads `.agents/skills/`
+directly. Harness-specific overrides remain real directories in the harness
+path, such as `.opencode/skills/setup-mcps/`. See
+[skills README](.agents/skills/AGENTS.md) for editing and sync guidance.
+
+n8n-specific Claude Code commands and agents live in `.claude/plugins/n8n/` and
+are namespaced under `n8n:`. Use `n8n:` prefix when invoking them (e.g.
+`/n8n:create-pr`, `/n8n:plan`, `n8n:developer` agent). See
+[plugin README](.claude/plugins/n8n/README.md) for structure and details.
 
 ## Essential Commands
 
@@ -58,6 +67,13 @@ You can inspect the last few lines of the build log file to check for errors:
 ```bash
 tail -n 20 build.log
 ```
+
+If build outputs or the turbo cache are stale (e.g. after switching branches
+or worktrees) but dependencies haven't changed, use `pnpm reset` (lightweight
+by default) for a fast recovery: it cleans build outputs and force-rebuilds
+(keeping `node_modules` and untracked files). If that doesn't fix your issue,
+use `pnpm reset --full`, which also wipes untracked files and reinstalls
+dependencies.
 
 ### Testing
 - `pnpm test` - Run all tests
@@ -157,9 +173,15 @@ const children = getChildNodes(workflow.connections, 'NodeName', 'main', 1);
   top-level `import`. Applies especially to native modules and large parsers.
 
 ### Error Handling
-- Don't use `ApplicationError` class in CLI and nodes for throwing errors,
-  because it's deprecated. Use `UnexpectedError`, `OperationalError` or
-  `UserError` instead.
+- Don't use the deprecated `ApplicationError` class anywhere — it's a
+  compatibility shim kept only so community nodes keep resolving. Use one of
+  these instead, picking by cause:
+  - `UserError` — the user caused it (invalid input, unauthorized action,
+    business-rule violation).
+  - `OperationalError` — a transient, expected issue (network request failing,
+    DB query timing out) that should be handled gracefully.
+  - `UnexpectedError` — a bug in the code (logic mistake, unhandled case,
+    failed assertion) that developers need to fix.
 - Import from appropriate error classes in each package
 
 ### Frontend Development

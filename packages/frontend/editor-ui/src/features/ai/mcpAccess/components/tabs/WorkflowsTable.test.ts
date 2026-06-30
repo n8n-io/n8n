@@ -1,6 +1,7 @@
 import { waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
+import { getTooltip } from '@/__tests__/utils';
 import WorkflowsTable from '@/features/ai/mcpAccess/components/tabs/WorkflowsTable.vue';
 import { createWorkflow } from '@/features/ai/mcpAccess/mcp.test.utils';
 
@@ -234,6 +235,25 @@ describe('WorkflowsTable', () => {
 			expect(getByTestId('mcp-workflow-description')).toHaveTextContent(
 				'This is a test workflow description',
 			);
+		});
+
+		it('should show "Click to edit" tooltip when description is present', async () => {
+			const workflow = createWorkflow({
+				description: 'Short description',
+			});
+
+			const { getByTestId } = createComponent({
+				props: {
+					workflows: [workflow],
+					loading: false,
+				},
+			});
+
+			await userEvent.hover(getByTestId('mcp-workflow-description-cell'));
+
+			await waitFor(() => {
+				expect(getTooltip()).toHaveTextContent('Click to edit');
+			});
 		});
 
 		it('should render warning when workflow has no description', () => {

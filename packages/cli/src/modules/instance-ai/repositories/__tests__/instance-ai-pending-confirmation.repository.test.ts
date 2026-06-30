@@ -1,5 +1,5 @@
 import type { DeleteResult, EntityManager, Repository } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { InstanceAiPendingConfirmation } from '../../entities/instance-ai-pending-confirmation.entity';
 import { InstanceAiPendingConfirmationRepository } from '../instance-ai-pending-confirmation.repository';
@@ -36,7 +36,7 @@ describe('InstanceAiPendingConfirmationRepository.claim', () => {
 		};
 
 		const outerManager = {
-			transaction: jest.fn(async (cb: (m: EntityManager) => Promise<unknown>) => await cb(manager)),
+			transaction: vi.fn(async (cb: (m: EntityManager) => Promise<unknown>) => await cb(manager)),
 		};
 
 		const repo = Object.create(

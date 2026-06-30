@@ -1,5 +1,5 @@
 import type { Request, Response } from 'express';
-import { type MockProxy, mock } from 'jest-mock-extended';
+import { type MockProxy, mock } from 'vitest-mock-extended';
 import type {
 	IExecuteFunctions,
 	INodeProperties,
@@ -250,8 +250,8 @@ describe('Send and Wait utils tests', () => {
 		});
 
 		it('should handle freeText GET webhook', async () => {
-			const mockRender = jest.fn();
-			const mockSetHeader = jest.fn();
+			const mockRender = vi.fn();
+			const mockSetHeader = vi.fn();
 
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
 				method: 'GET',
@@ -329,8 +329,8 @@ describe('Send and Wait utils tests', () => {
 		});
 
 		it('should handle customForm GET webhook', async () => {
-			const mockRender = jest.fn();
-			const mockSetHeader = jest.fn();
+			const mockRender = vi.fn();
+			const mockSetHeader = vi.fn();
 
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
 				method: 'GET',
@@ -393,8 +393,8 @@ describe('Send and Wait utils tests', () => {
 		});
 
 		it('should resolve expressions in HTML fields for customForm GET webhook', async () => {
-			const mockRender = jest.fn();
-			const mockSetHeader = jest.fn();
+			const mockRender = vi.fn();
+			const mockSetHeader = vi.fn();
 
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
 				method: 'GET',
@@ -486,7 +486,7 @@ describe('Send and Wait utils tests', () => {
 				query: { approved: 'false' },
 			} as any);
 
-			const send = jest.fn();
+			const send = vi.fn();
 
 			mockWebhookFunctions.getResponseObject.mockReturnValue({
 				send,
@@ -506,7 +506,7 @@ describe('Send and Wait utils tests', () => {
 		});
 
 		it('should return noWebhookResponse if user-agent is empty (Microsoft Preview Service)', async () => {
-			const send = jest.fn();
+			const send = vi.fn();
 			mockWebhookFunctions.getRequestObject.mockReturnValue({
 				headers: {},
 				query: { approved: 'true' },
@@ -535,7 +535,7 @@ describe('Send and Wait utils tests', () => {
 		])(
 			'should return noWebhookResponse if user-agent contains %s (Microsoft Preview Service)',
 			async (userAgent) => {
-				const send = jest.fn();
+				const send = vi.fn();
 				mockWebhookFunctions.getRequestObject.mockReturnValue({
 					headers: { 'user-agent': userAgent },
 					query: { approved: 'true' },
@@ -565,8 +565,8 @@ describe('Send and Wait utils tests', () => {
 		])(
 			'should not block Microsoft Preview Service when responseType is %s (user-agent: %s)',
 			async (responseType, userAgent) => {
-				const mockRender = jest.fn();
-				const mockSetHeader = jest.fn();
+				const mockRender = vi.fn();
+				const mockSetHeader = vi.fn();
 				mockWebhookFunctions.getRequestObject.mockReturnValue({
 					method: 'GET',
 					headers: { 'user-agent': userAgent },
@@ -612,7 +612,7 @@ describe('configureWaitTillDate', () => {
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should return WAIT_INDEFINITELY if limitWaitTime is empty', () => {

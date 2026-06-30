@@ -24,6 +24,8 @@ interface RichComponent {
 	placeholder?: string;
 	options?: SelectOption[];
 	fields?: FieldPair[];
+	items?: FieldPair[];
+	altText?: string;
 }
 
 interface RichInput {
@@ -99,7 +101,7 @@ const parsed = computed(() => {
 				</div>
 
 				<div v-else-if="comp.type === 'fields'" :class="$style.fieldsGroup">
-					<div v-for="f in comp.fields" :key="f.label" :class="$style.fieldRow">
+					<div v-for="f in comp.fields ?? comp.items" :key="f.label" :class="$style.fieldRow">
 						<span :class="$style.fieldLabel">{{ f.label }}</span>
 						<span>{{ f.value }}</span>
 					</div>
@@ -108,7 +110,7 @@ const parsed = computed(() => {
 				<img
 					v-else-if="comp.type === 'image' && comp.url"
 					:src="comp.url"
-					:alt="comp.alt ?? ''"
+					:alt="comp.alt ?? comp.altText ?? ''"
 					:class="$style.image"
 				/>
 			</template>

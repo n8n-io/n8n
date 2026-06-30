@@ -472,7 +472,7 @@ export class ImportService {
 		customEncryptionKey?: string,
 	): Promise<Array<Record<string, unknown>>> {
 		const content = await readFile(filePath, 'utf8');
-		const entities: Record<string, unknown>[] = [];
+		const entities: Array<Record<string, unknown>> = [];
 		const entitySchema = z.record(z.string(), z.unknown());
 
 		for (const block of content.split('\n')) {

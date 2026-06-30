@@ -134,6 +134,7 @@ export class TelemetryEventRelay extends EventRelay {
 			'public-api-invoked': (event) => this.publicApiInvoked(event),
 			'public-api-key-created': (event) => this.publicApiKeyCreated(event),
 			'public-api-key-deleted': (event) => this.publicApiKeyDeleted(event),
+			'public-api-key-rotated': (event) => this.publicApiKeyRotated(event),
 			'community-package-installed': (event) => this.communityPackageInstalled(event),
 			'community-package-updated': (event) => this.communityPackageUpdated(event),
 			'community-package-deleted': (event) => this.communityPackageDeleted(event),
@@ -164,6 +165,8 @@ export class TelemetryEventRelay extends EventRelay {
 			'workflow-activated': (event) => this.workflowActivated(event),
 			'workflow-deactivated': (event) => this.workflowDeactivated(event),
 			'server-started': async () => await this.serverStarted(),
+			'server-cli-import': (event) => this.serverCliImportCommand(event),
+			'server-cli-export': (event) => this.serverCliExportCommand(event),
 			'session-started': (event) => this.sessionStarted(event),
 			'instance-stopped': () => this.instanceStopped(),
 			'instance-owner-setup': async (event) => await this.instanceOwnerSetup(event),
@@ -521,9 +524,19 @@ export class TelemetryEventRelay extends EventRelay {
 	}
 
 	private publicApiKeyDeleted(event: RelayEventMap['public-api-key-deleted']) {
-		const { user, publicApi } = event;
+		const { user, publicApi, isOwn } = event;
 
 		this.telemetry.track('API key deleted', {
+			user_id: user.id,
+			public_api: publicApi,
+			is_own: isOwn,
+		});
+	}
+
+	private publicApiKeyRotated(event: RelayEventMap['public-api-key-rotated']) {
+		const { user, publicApi } = event;
+
+		this.telemetry.track('API key rotated', {
 			user_id: user.id,
 			public_api: publicApi,
 		});
@@ -1058,8 +1071,11 @@ export class TelemetryEventRelay extends EventRelay {
 			version_cli: N8N_VERSION,
 			success: false,
 			...executionTelemetryProperties,
+			// True when the execution attempted to run with a private credential, whether
+			// resolution succeeded or failed (e.g. the running user had not connected it).
+			// `attemptedDynamicCredentials` is a superset of `usedDynamicCredentials`.
 			used_private_credentials: Object.values(runData?.data?.resultData?.runData ?? {}).some(
-				(taskDataList) => taskDataList.some((taskData) => taskData.usedDynamicCredentials),
+				(taskDataList) => taskDataList.some((taskData) => taskData.attemptedDynamicCredentials),
 			),
 		};
 
@@ -1238,6 +1254,7 @@ export class TelemetryEventRelay extends EventRelay {
 	private async serverStarted() {
 		const cpus = os.cpus();
 		const otel = await this.getOtelTelemetryInfo();
+		const settingsManagedByEnvVars = this.getSettingsManagedByEnvVarsTelemetryInfo();
 
 		const isS3Selected = this.binaryDataConfig.mode === 's3';
 		const isS3Available = this.binaryDataConfig.availableModes.includes('s3');
@@ -1300,6 +1317,10 @@ export class TelemetryEventRelay extends EventRelay {
 				metrics_category_queue: this.globalConfig.endpoints.metrics.includeQueueMetrics,
 				metrics_category_execution_data:
 					this.globalConfig.endpoints.metrics.includeExecutionDataMetrics,
+				metrics_category_webhooks: this.globalConfig.endpoints.metrics.includeWebhookMetrics,
+				metrics_category_forms: this.globalConfig.endpoints.metrics.includeFormMetrics,
+				metrics_category_workflow_info:
+					this.globalConfig.endpoints.metrics.includeWorkflowInfoMetrics,
 			},
 		};
 
@@ -1364,6 +1385,7 @@ export class TelemetryEventRelay extends EventRelay {
 			...info,
 			earliest_workflow_created: firstWorkflow?.createdAt,
 			otel,
+			settings_managed_by_env_vars: settingsManagedByEnvVars,
 		});
 	}
 
@@ -1374,6 +1396,19 @@ export class TelemetryEventRelay extends EventRelay {
 		return {
 			enabled: otelConfig.enabled,
 			include_node_spans: otelConfig.includeNodeSpans,
+		};
+	}
+
+	private getSettingsManagedByEnvVarsTelemetryInfo() {
+		const config = this.globalConfig.instanceSettingsLoader;
+
+		return {
+			owner_managed_by_env: config.ownerManagedByEnv,
+			sso_managed_by_env: config.ssoManagedByEnv,
+			security_policy_managed_by_env: config.securityPolicyManagedByEnv,
+			log_streaming_managed_by_env: config.logStreamingManagedByEnv,
+			mcp_managed_by_env: config.mcpManagedByEnv,
+			community_packages_managed_by_env: config.communityPackagesManagedByEnv,
 		};
 	}
 
@@ -1879,6 +1914,38 @@ export class TelemetryEventRelay extends EventRelay {
 		this.telemetry.track('User deleted custom role', {
 			user_id: userId,
 			role_slug: roleSlug,
+		});
+	}
+
+	// #endregion
+
+	// #region Server CLI
+
+	private serverCliImportCommand({
+		activeState,
+		workflowCount,
+		separate,
+	}: RelayEventMap['server-cli-import']) {
+		this.telemetry.track('User imported workflows via server cli', {
+			active_state: activeState,
+			workflow_count: workflowCount,
+			separate,
+		});
+	}
+
+	private serverCliExportCommand({
+		selector,
+		published,
+		separate,
+		backup,
+		workflowCount,
+	}: RelayEventMap['server-cli-export']) {
+		this.telemetry.track('User exported workflows via server cli', {
+			selector,
+			published,
+			separate,
+			backup,
+			workflow_count: workflowCount,
 		});
 	}
 

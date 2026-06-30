@@ -1,7 +1,12 @@
 import type { LicenseState } from '@n8n/backend-common';
-import type { User, CredentialsEntity, Project } from '@n8n/db';
-import type { SharedCredentials, SharedCredentialsRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import type {
+	User,
+	CredentialsEntity,
+	Project,
+	SharedCredentials,
+	SharedCredentialsRepository,
+} from '@n8n/db';
+import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
@@ -36,7 +41,7 @@ describe('EnterpriseCredentialsService', () => {
 	);
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	/**
@@ -44,14 +49,14 @@ describe('EnterpriseCredentialsService', () => {
 	 */
 	const mockTransactionManager = () => {
 		const mockManager = {
-			remove: jest.fn().mockResolvedValue(undefined),
-			save: jest.fn().mockResolvedValue(undefined),
-			create: jest.fn().mockImplementation((_, data) => data),
+			remove: vi.fn().mockResolvedValue(undefined),
+			save: vi.fn().mockResolvedValue(undefined),
+			create: vi.fn().mockImplementation((_, data) => data),
 		};
 
 		// @ts-expect-error - Mocking manager for testing
 		sharedCredentialsRepository.manager = {
-			transaction: jest.fn().mockImplementation(async (callback) => {
+			transaction: vi.fn().mockImplementation(async (callback) => {
 				return await callback(mockManager);
 			}),
 		};
@@ -186,6 +191,78 @@ describe('EnterpriseCredentialsService', () => {
 					externalSecretsProviderAccessCheckService.isProviderAvailableInProject,
 				).not.toHaveBeenCalled();
 			});
+		});
+	});
+
+	describe('getOneForUser', () => {
+		const user = mock<User>({ id: 'user-id' });
+		const credentialId = 'cred-id';
+
+		const makeCredential = (isResolvable: boolean) =>
+			mock<CredentialsEntity>({
+				id: credentialId,
+				name: 'Cred',
+				type: 'oAuth2Api',
+				data: 'encrypted',
+				isResolvable,
+				shared: [],
+			});
+
+		beforeEach(() => {
+			ownershipService.addOwnedByAndSharedWith.mockImplementation((c) => c as never);
+			credentialsService.populateConnectedByMe.mockResolvedValue(undefined);
+			credentialsService.countConnectedUsers.mockResolvedValue(0);
+		});
+
+		it('returns redacted data to a connect-capable user of a private credential without edit rights', async () => {
+			const credential = makeCredential(true);
+			const redacted = { clientId: 'abc', clientSecret: '__redacted__' };
+			credentialsFinderService.findCredentialForUser.mockImplementation(
+				async (_id, _user, scopes) => (scopes.includes('credential:update') ? null : credential),
+			);
+			credentialsService.decrypt.mockResolvedValue(redacted);
+
+			const result = await service.getOneForUser(user, credentialId, true);
+
+			expect(credentialsService.decrypt).toHaveBeenCalledWith(credential);
+			expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
+				credentialId,
+				user,
+				['credential:connect'],
+			);
+			expect(result).toHaveProperty('data', redacted);
+		});
+
+		it('does not return data to a read-only user without connect on a private credential', async () => {
+			const credential = makeCredential(true);
+			credentialsFinderService.findCredentialForUser.mockImplementation(
+				async (_id, _user, scopes) =>
+					scopes.includes('credential:update') || scopes.includes('credential:connect')
+						? null
+						: credential,
+			);
+
+			const result = await service.getOneForUser(user, credentialId, true);
+
+			expect(credentialsService.decrypt).not.toHaveBeenCalled();
+			expect(result).not.toHaveProperty('data');
+		});
+
+		it('does not attempt to decrypt a static credential for a read-only user', async () => {
+			const credential = makeCredential(false);
+			credentialsFinderService.findCredentialForUser.mockImplementation(
+				async (_id, _user, scopes) => (scopes.includes('credential:update') ? null : credential),
+			);
+
+			const result = await service.getOneForUser(user, credentialId, true);
+
+			expect(credentialsService.decrypt).not.toHaveBeenCalled();
+			expect(credentialsFinderService.findCredentialForUser).not.toHaveBeenCalledWith(
+				credentialId,
+				user,
+				['credential:connect'],
+			);
+			expect(result).not.toHaveProperty('data');
 		});
 	});
 });

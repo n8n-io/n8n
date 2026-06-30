@@ -2,8 +2,8 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
-import { mock } from 'jest-mock-extended';
 import { PassThrough } from 'node:stream';
+import { mock } from 'vitest-mock-extended';
 
 import { N8nPackagesController } from '../n8n-packages.controller';
 import type { N8nPackagesService } from '../n8n-packages.service';
@@ -48,10 +48,6 @@ describe('n8n-packages export', () => {
 		const route = Container.get(ControllerRegistryMetadata)
 			.getControllerMetadata(N8nPackagesController as never)
 			.routes.get('exportWorkflows');
-
-		it('is gated by the feat:n8nPackages license', () => {
-			expect(route?.licenseFeature).toBe('feat:n8nPackages');
-		});
 
 		it('has no @ProjectScope or @GlobalScope decorator', () => {
 			expect(route?.accessScope).toBeUndefined();

@@ -1,14 +1,13 @@
 import type { Logger } from '@n8n/backend-common';
+import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import { mockInstance, randomName } from '@n8n/backend-test-utils';
 import { LICENSE_FEATURES } from '@n8n/constants';
-import axios from 'axios';
-import { mocked } from 'jest-mock';
-import { mock } from 'jest-mock-extended';
 import type { InstanceSettings, PackageDirectoryLoader } from 'n8n-core';
 import type { PublicInstalledPackage } from 'n8n-workflow';
 import { execFile } from 'node:child_process';
 import { access, constants, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path, { join } from 'node:path';
+import { mock } from 'vitest-mock-extended';
 
 import { NODE_PACKAGE_PREFIX, NPM_PACKAGE_STATUS_GOOD } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
@@ -28,18 +27,20 @@ import { InstalledPackages } from '../installed-packages.entity';
 import { InstalledPackagesRepository } from '../installed-packages.repository';
 import { executeNpmCommand } from '../npm-utils';
 
-jest.mock('node:fs/promises');
-jest.mock('node:child_process');
-jest.mock('axios');
-jest.mock('../community-node-types-utils', () => ({
-	getCommunityNodeTypes: jest.fn().mockResolvedValue([]),
+vi.mock('node:fs/promises');
+// Use a plain `execFile` mock (no `[util.promisify.custom]` symbol). Vitest's
+// automock preserves that symbol from the real module, which makes the source's
+// module-level `promisify(execFile)` bypass the mock and call the real binary.
+vi.mock('node:child_process', () => ({ execFile: vi.fn() }));
+vi.mock('../community-node-types-utils', () => ({
+	getCommunityNodeTypes: vi.fn().mockResolvedValue([]),
 }));
-jest.mock('../npm-utils', () => ({
-	...jest.requireActual('../npm-utils'),
-	executeNpmCommand: jest.fn(),
-	executeNpmRequest: jest.fn().mockResolvedValue({}),
-	checkIfVersionExistsOrThrow: jest.fn().mockResolvedValue(true),
-	verifyIntegrity: jest.fn().mockResolvedValue(undefined),
+vi.mock('../npm-utils', async () => ({
+	...(await vi.importActual<typeof import('../npm-utils')>('../npm-utils')),
+	executeNpmCommand: vi.fn(),
+	executeNpmRequest: vi.fn().mockResolvedValue({}),
+	checkIfVersionExistsOrThrow: vi.fn().mockResolvedValue(true),
+	verifyIntegrity: vi.fn().mockResolvedValue(undefined),
 }));
 
 type ExecFileCallback = NonNullable<Parameters<typeof execFile>[3]>;
@@ -49,7 +50,7 @@ const execMock: typeof execFile = ((...args) => {
 	currentCallback(null, 'Done', '');
 }) as typeof execFile;
 
-mocked(execFile).mockImplementation(execMock);
+vi.mocked(execFile).mockImplementation(execMock);
 
 describe('CommunityPackagesService', () => {
 	const license = mock<License>();
@@ -63,11 +64,15 @@ describe('CommunityPackagesService', () => {
 	const installedNodesRepository = mockInstance(InstalledNodesRepository);
 	const installedPackageRepository = mockInstance(InstalledPackagesRepository);
 
-	const nodesDownloadDir = path.join('tmp', 'n8n-jest-global-downloads');
+	const nodesDownloadDir = path.join('tmp', 'n8n-vi-global-downloads');
 	const instanceSettings = mock<InstanceSettings>({ nodesDownloadDir });
 
 	const logger = mock<Logger>();
 	const publisher = mock<Publisher>();
+
+	const request = vi.fn();
+	const requests = vi.fn().mockReturnValue(mock<HttpRequestClient>({ request }));
+	const outboundHttp = mock<OutboundHttp>({ requests });
 
 	const communityPackagesService = new CommunityPackagesService(
 		instanceSettings,
@@ -77,10 +82,11 @@ describe('CommunityPackagesService', () => {
 		publisher,
 		license,
 		config,
+		outboundHttp,
 	);
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		loadNodesAndCredentials.postProcessLoaders.mockResolvedValue(undefined);
 
 		const nodeName = randomName();
@@ -268,14 +274,20 @@ describe('CommunityPackagesService', () => {
 	});
 
 	describe('checkNpmPackageStatus()', () => {
-		test('should call axios.post', async () => {
-			await communityPackagesService.checkNpmPackageStatus(mockPackageName());
+		test('should POST the package name to the n8n backend', async () => {
+			const packageName = mockPackageName();
+			await communityPackagesService.checkNpmPackageStatus(packageName);
 
-			expect(axios.post).toHaveBeenCalled();
+			expect(request).toHaveBeenCalledWith({
+				url: 'https://api.n8n.io/api/package',
+				method: 'POST',
+				body: { name: packageName },
+				json: true,
+			});
 		});
 
 		test('should not fail if request fails', async () => {
-			mocked(axios.post).mockImplementation(() => {
+			request.mockImplementation(() => {
 				throw new Error('Something went wrong');
 			});
 
@@ -285,7 +297,7 @@ describe('CommunityPackagesService', () => {
 		});
 
 		test('should warn if package is banned', async () => {
-			mocked(axios.post).mockResolvedValue({ data: { status: 'Banned', reason: 'Not good' } });
+			request.mockResolvedValue({ status: 'Banned', reason: 'Not good' });
 
 			const result = (await communityPackagesService.checkNpmPackageStatus(
 				mockPackageName(),
@@ -381,17 +393,17 @@ describe('CommunityPackagesService', () => {
 		}) as typeof execFile;
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 
-			mocked(execFile).mockImplementation(execMockForThisBlock);
-			mocked(executeNpmCommand).mockImplementation(async (args: string[]) => {
+			vi.mocked(execFile).mockImplementation(execMockForThisBlock);
+			vi.mocked(executeNpmCommand).mockImplementation(async (args: string[]) => {
 				if (args[0] === 'pack') {
 					return testBlockTarballName;
 				}
 				return 'Done';
 			});
 
-			mocked(readFile).mockResolvedValue(
+			vi.mocked(readFile).mockResolvedValue(
 				JSON.stringify({
 					name: PACKAGE_NAME,
 					version: '1.0.0', // Mocked version from package.json inside tarball
@@ -401,7 +413,7 @@ describe('CommunityPackagesService', () => {
 					optionalDependencies: { 'an-optional-dep': '3.0.0' },
 				}),
 			);
-			mocked(writeFile).mockResolvedValue(undefined);
+			vi.mocked(writeFile).mockResolvedValue(undefined);
 
 			loadNodesAndCredentials.loadPackage.mockResolvedValue(packageDirectoryLoader);
 			loadNodesAndCredentials.unloadPackage.mockResolvedValue(undefined);
@@ -515,7 +527,7 @@ describe('CommunityPackagesService', () => {
 		const packageJsonPath = join(nodesDownloadDir, 'package.json');
 
 		test('should not create package.json if it already exists', async () => {
-			mocked(access).mockResolvedValue(undefined);
+			vi.mocked(access).mockResolvedValue(undefined);
 
 			await communityPackagesService.ensurePackageJson();
 
@@ -525,7 +537,7 @@ describe('CommunityPackagesService', () => {
 		});
 
 		test('should create package.json if it does not exist', async () => {
-			mocked(access).mockRejectedValue(new Error('ENOENT'));
+			vi.mocked(access).mockRejectedValue(new Error('ENOENT'));
 
 			await communityPackagesService.ensurePackageJson();
 
@@ -560,10 +572,10 @@ describe('CommunityPackagesService', () => {
 		});
 
 		beforeEach(() => {
-			jest
-				.spyOn(communityPackagesService, 'installPackage')
-				.mockResolvedValue({} as InstalledPackages);
-			mocked(getCommunityNodeTypes).mockResolvedValue([]);
+			vi.spyOn(communityPackagesService, 'installPackage').mockResolvedValue(
+				{} as InstalledPackages,
+			);
+			vi.mocked(getCommunityNodeTypes).mockResolvedValue([]);
 		});
 
 		test('should set missingPackages to empty array when no packages are missing', async () => {
@@ -623,7 +635,7 @@ describe('CommunityPackagesService', () => {
 			installedPackageRepository.find.mockResolvedValue(installedPackages);
 			loadNodesAndCredentials.isKnownNode.mockReturnValue(false);
 			config.reinstallMissing = true;
-			communityPackagesService.installPackage = jest
+			communityPackagesService.installPackage = vi
 				.fn()
 				.mockRejectedValue(new Error('Installation failed'));
 
@@ -648,7 +660,7 @@ describe('CommunityPackagesService', () => {
 			config.reinstallMissing = true;
 
 			// First installation fails, second succeeds
-			communityPackagesService.installPackage = jest
+			communityPackagesService.installPackage = vi
 				.fn()
 				.mockRejectedValueOnce(new Error('Installation failed'))
 				.mockResolvedValueOnce({} as InstalledPackages);
@@ -680,7 +692,7 @@ describe('CommunityPackagesService', () => {
 			loadNodesAndCredentials.isKnownNode.mockReturnValue(false);
 			config.reinstallMissing = true;
 
-			mocked(getCommunityNodeTypes).mockResolvedValue([
+			vi.mocked(getCommunityNodeTypes).mockResolvedValue([
 				{
 					packageName: 'package-1',
 					checksum: 'sha512-abc123',
@@ -704,7 +716,7 @@ describe('CommunityPackagesService', () => {
 			loadNodesAndCredentials.isKnownNode.mockReturnValue(false);
 			config.reinstallMissing = true;
 
-			mocked(getCommunityNodeTypes).mockResolvedValue([
+			vi.mocked(getCommunityNodeTypes).mockResolvedValue([
 				{
 					packageName: 'package-1',
 					checksum: 'sha512-latest',
@@ -732,7 +744,7 @@ describe('CommunityPackagesService', () => {
 			loadNodesAndCredentials.isKnownNode.mockReturnValue(false);
 			config.reinstallMissing = true;
 
-			mocked(getCommunityNodeTypes).mockResolvedValue([
+			vi.mocked(getCommunityNodeTypes).mockResolvedValue([
 				{
 					packageName: 'package-1',
 					checksum: 'sha512-latest',
@@ -758,7 +770,7 @@ describe('CommunityPackagesService', () => {
 			config.reinstallMissing = true;
 
 			// getCommunityNodeTypes returns empty array (package not vetted)
-			mocked(getCommunityNodeTypes).mockResolvedValue([]);
+			vi.mocked(getCommunityNodeTypes).mockResolvedValue([]);
 
 			await communityPackagesService.checkForMissingPackages();
 
@@ -777,7 +789,7 @@ describe('CommunityPackagesService', () => {
 			config.reinstallMissing = true;
 
 			// Mock getCommunityNodeTypes to return both packages in a single call
-			mocked(getCommunityNodeTypes).mockResolvedValueOnce([
+			vi.mocked(getCommunityNodeTypes).mockResolvedValueOnce([
 				{
 					packageName: 'package-1',
 					checksum: 'sha512-package1',
@@ -812,7 +824,7 @@ describe('CommunityPackagesService', () => {
 			loadNodesAndCredentials.isKnownNode.mockReturnValue(false);
 			config.reinstallMissing = true;
 
-			mocked(getCommunityNodeTypes).mockResolvedValue([]);
+			vi.mocked(getCommunityNodeTypes).mockResolvedValue([]);
 
 			await communityPackagesService.checkForMissingPackages();
 
@@ -834,7 +846,7 @@ describe('CommunityPackagesService', () => {
 			loadNodesAndCredentials.isKnownNode.mockReturnValue(false);
 			config.reinstallMissing = true;
 
-			mocked(getCommunityNodeTypes).mockResolvedValue([]);
+			vi.mocked(getCommunityNodeTypes).mockResolvedValue([]);
 
 			process.env.ENVIRONMENT = 'staging';
 
@@ -862,8 +874,8 @@ describe('CommunityPackagesService', () => {
 
 	describe('updatePackageJsonDependency', () => {
 		beforeEach(() => {
-			jest.clearAllMocks();
-			mocked(readFile).mockResolvedValue(JSON.stringify({ dependencies: {} }));
+			vi.clearAllMocks();
+			vi.mocked(readFile).mockResolvedValue(JSON.stringify({ dependencies: {} }));
 		});
 
 		test('should update package dependencies', async () => {
@@ -898,7 +910,7 @@ describe('CommunityPackagesService', () => {
 				return mock<PackageDirectoryLoader>();
 			});
 
-			jest.spyOn(communityPackagesService as any, 'downloadPackage').mockResolvedValue(undefined);
+			vi.spyOn(communityPackagesService as any, 'downloadPackage').mockResolvedValue(undefined);
 
 			await communityPackagesService.handleInstallEvent({
 				packageName: 'n8n-nodes-test',

@@ -16,6 +16,7 @@
     "bench:canvas:report": "playwright show-report",
     "test:infrastructure": "playwright test --project='*:infrastructure'",
     "test:benchmark": "playwright test --project='benchmarking:infrastructure'",
+    "benchmark:sizing-matrix": "tsx scripts/sizing-matrix-aggregate.ts",
     "test:container:sqlite": "playwright test --project='sqlite:*'",
     "test:container:sqlite:e2e": "playwright test --project='sqlite:e2e'",
     "test:container:postgres": "playwright test --project='postgres:*'",
@@ -59,6 +60,7 @@
     "@n8n/instance-ai": "workspace:*",
     "@n8n/permissions": "workspace:*",
     "@n8n/playwright-janitor": "workspace:*",
+    "@n8n/test-impact": "workspace:*",
     "@n8n/workflow-sdk": "workspace:*",
     "@playwright/cli": "catalog:e2e",
     "@playwright/test": "catalog:e2e",
@@ -83,5 +85,6 @@
     "tsx": "catalog:",
     "zod": "catalog:",
     "vitest": "catalog:"
-  }
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }

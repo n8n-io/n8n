@@ -2,12 +2,17 @@
 import { N8nIcon, N8nMarkdownEditor, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { reactive, toRef } from 'vue';
-import type { ToolCall } from '../composables/agentChatMessages';
+import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
 import { useSubAgentNames } from '../composables/useSubAgentNames';
 import { formatToolNameForDisplay, getToolNameTranslationKey } from '../utils/toolDisplayName';
-import { delegateLabel, isDelegateSubAgentTool, resolveSubAgentName } from '../utils/delegate-tool';
+import {
+	getDelegateDifficultySummary,
+	isDelegateSubAgentTool,
+	resolveSubAgentName,
+} from '../utils/delegate-tool';
 import { getToolCallDetails } from '../utils/tool-call-details';
 import {
+	countIncompleteTodos,
 	isWriteTodosTool,
 	parseWriteTodosOutput,
 	writeTodosLabel,
@@ -41,8 +46,9 @@ const expandedIds = reactive(new Set<string>());
 
 interface ToolStepDisplay {
 	label: string;
-	summary: string | undefined;
+	metadata: string[];
 	details: string;
+	hasRawData: boolean;
 	expandable: boolean;
 	expanded: boolean;
 }
@@ -54,28 +60,45 @@ function getToolDisplayName(toolName: string): string {
 
 function toolStepLabel(tc: ToolCall): string {
 	if (isDelegateSubAgentTool(tc.tool)) {
-		return delegateLabel(i18n, resolveSubAgentName(tc.input, subAgentNameById.value));
+		return i18n.baseText('agents.chat.delegate.labelFallback');
 	}
 	if (isWriteTodosTool(tc.tool)) return writeTodosLabel(i18n);
 	return getToolDisplayName(tc.tool);
 }
 
-function toolStepSummary(tc: ToolCall): string | undefined {
+function toolStepMetadata(tc: ToolCall): string[] {
+	if (isDelegateSubAgentTool(tc.tool)) {
+		return [
+			resolveSubAgentName(tc.input, subAgentNameById.value),
+			getDelegateDifficultySummary(tc.input, i18n),
+		].filter((part): part is string => Boolean(part));
+	}
 	if (isWriteTodosTool(tc.tool)) {
 		const parsed = parseWriteTodosOutput(tc.output);
-		if (parsed) return writeTodosSummaryLabel(i18n, parsed.todos.length);
+		if (parsed) return [writeTodosSummaryLabel(i18n, countIncompleteTodos(parsed.todos))];
 	}
-	if (tc.displaySummary) return tc.displaySummary;
-	return undefined;
+	if (tc.displaySummary) return [tc.displaySummary];
+	return [];
+}
+
+function hasToolData(tc: ToolCall): boolean {
+	return tc.input !== undefined || tc.output !== undefined;
+}
+
+function formatToolData(value: unknown): string {
+	if (typeof value === 'string') return value;
+	return JSON.stringify(value, null, 2) ?? String(value);
 }
 
 function toolStepView(tc: ToolCall): ToolStepDisplay {
 	const details = getToolCallDetails(tc, i18n, subAgentNameById.value) ?? '';
+	const hasRawData = details.length === 0 && hasToolData(tc);
 	return {
 		label: toolStepLabel(tc),
-		summary: toolStepSummary(tc),
+		metadata: toolStepMetadata(tc),
 		details,
-		expandable: details.length > 0,
+		hasRawData,
+		expandable: details.length > 0 || hasRawData,
 		expanded: expandedIds.has(tc.toolCallId),
 	};
 }
@@ -143,9 +166,15 @@ function toggle(tc: ToolCall, view: ToolStepDisplay): void {
 						<span :class="[$style.label, { [$style.shimmer]: tc.state === 'running' }]">
 							{{ view.label }}
 						</span>
-						<span v-if="view.summary" :class="$style.summary" data-testid="tool-step-summary">
-							· {{ view.summary }}
-						</span>
+						<template
+							v-for="(metadataPart, metadataIndex) in view.metadata"
+							:key="`${metadataIndex}:${metadataPart}`"
+						>
+							<span :class="$style.separator" aria-hidden="true">·</span>
+							<span :class="$style.summary" data-testid="tool-step-summary">
+								{{ metadataPart }}
+							</span>
+						</template>
 						<N8nIcon
 							v-if="view.expandable"
 							:icon="view.expanded ? 'chevron-down' : 'chevron-right'"
@@ -153,7 +182,7 @@ function toggle(tc: ToolCall, view: ToolStepDisplay): void {
 							:class="$style.chevron"
 						/>
 					</component>
-					<div v-if="view.expandable && view.expanded" :class="$style.answer">
+					<div v-if="view.expandable && view.expanded && view.details" :class="$style.answer">
 						<N8nMarkdownEditor
 							:model-value="view.details"
 							readonly
@@ -161,6 +190,23 @@ function toggle(tc: ToolCall, view: ToolStepDisplay): void {
 							show-toolbar="never"
 							max-height="240px"
 						/>
+					</div>
+					<div
+						v-else-if="view.expandable && view.expanded && view.hasRawData"
+						:class="$style.toolDataList"
+					>
+						<div v-if="tc.input !== undefined" :class="$style.toolDataSection">
+							<span :class="$style.toolDataLabel">
+								{{ i18n.baseText('agentSessions.timeline.input') }}
+							</span>
+							<pre :class="$style.toolDataContent">{{ formatToolData(tc.input) }}</pre>
+						</div>
+						<div v-if="tc.output !== undefined" :class="$style.toolDataSection">
+							<span :class="$style.toolDataLabel">
+								{{ i18n.baseText('agentSessions.timeline.output') }}
+							</span>
+							<pre :class="$style.toolDataContent">{{ formatToolData(tc.output) }}</pre>
+						</div>
 					</div>
 				</div>
 			</template>
@@ -254,7 +300,7 @@ function toggle(tc: ToolCall, view: ToolStepDisplay): void {
 .stepRow {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--2xs);
+	gap: var(--spacing--4xs);
 }
 
 .stepRowButton {
@@ -272,6 +318,12 @@ function toggle(tc: ToolCall, view: ToolStepDisplay): void {
 	font-size: var(--font-size--sm);
 	font-weight: var(--font-weight--medium);
 	color: var(--text-color--subtler);
+	line-height: var(--line-height--sm);
+}
+
+.separator {
+	color: var(--text-color--subtler);
+	font-size: var(--font-size--sm);
 	line-height: var(--line-height--sm);
 }
 
@@ -301,6 +353,41 @@ function toggle(tc: ToolCall, view: ToolStepDisplay): void {
 	   to inherit when unset). Pin it a step below the step label so the
 	   sub-agent answer reads as secondary, compact detail. */
 	--input--font-size: var(--font-size--2xs);
+}
+
+.toolDataList {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+	margin-bottom: var(--spacing--xs);
+	max-width: min(520px, calc(100vw - var(--spacing--4xl)));
+}
+
+.toolDataSection {
+	border: var(--border-width) var(--border-style) var(--border-color);
+	border-radius: var(--radius--xs);
+	background-color: var(--background--base);
+	padding: var(--spacing--2xs);
+	user-select: text;
+}
+
+.toolDataLabel {
+	display: block;
+	font-size: var(--font-size--2xs);
+	line-height: var(--line-height--sm);
+	color: var(--text-color--subtle);
+	margin-bottom: var(--spacing--5xs);
+}
+
+.toolDataContent {
+	margin: 0;
+	font-family: monospace;
+	font-size: var(--font-size--xs);
+	line-height: var(--line-height--sm);
+	color: var(--text-color);
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	user-select: text;
 }
 
 .shimmer {

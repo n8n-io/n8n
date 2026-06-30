@@ -1,5 +1,5 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import get from 'lodash/get';
 import { constructExecutionMetaData, returnJsonArray } from 'n8n-core';
 import type { IDataObject, IExecuteFunctions } from 'n8n-workflow';
@@ -132,7 +132,7 @@ describe('GraphQL Node', () => {
 		};
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		it('should format error response if response.errors is an array with objects', async () => {

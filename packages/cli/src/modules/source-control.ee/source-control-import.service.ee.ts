@@ -354,6 +354,8 @@ export class SourceControlImportService {
 				type: true,
 				data: true,
 				isGlobal: true,
+				isResolvable: true,
+				resolvableAllowFallback: true,
 				shared: {
 					project: {
 						id: true,
@@ -391,6 +393,8 @@ export class SourceControlImportService {
 					filename: getCredentialExportPath(local.id, this.credentialExportFolder),
 					ownedBy: toStatusOwner(ownerProject),
 					isGlobal: local.isGlobal,
+					isResolvable: local.isResolvable,
+					resolvableAllowFallback: local.resolvableAllowFallback,
 				};
 			}),
 		)) as StatusExportableCredential[];
@@ -754,7 +758,9 @@ export class SourceControlImportService {
 		importedWorkflow.nodeGroups ??= [];
 
 		try {
-			validateWorkflowNodeGroups(importedWorkflow);
+			// Basic checks only: a git import should not reset groups for graph-shape
+			// rules, only for structural integrity (missing refs, duplicate ids/names).
+			validateWorkflowNodeGroups(importedWorkflow, null);
 		} catch {
 			this.logger.warn(
 				`Workflow file ${candidate.file} has invalid nodeGroups, resetting to empty`,
@@ -957,7 +963,17 @@ export class SourceControlImportService {
 					(e) => e.id === credential.id && e.type === credential.type,
 				);
 
-				const { name, type, data, id, isGlobal = false } = credential;
+				// Carry the "private"/resolvable nature across environments. resolverId is
+				// instance-local and handled separately (see IAM-906).
+				const {
+					name,
+					type,
+					data,
+					id,
+					isGlobal = false,
+					isResolvable = false,
+					resolvableAllowFallback = false,
+				} = credential;
 				const newCredentialObject = new Credentials({ id, name }, type);
 
 				if (existingCredential?.data) {
@@ -981,7 +997,10 @@ export class SourceControlImportService {
 				}
 
 				this.logger.debug(`Updating credential id ${newCredentialObject.id as string}`);
-				await this.credentialsRepository.upsert({ ...newCredentialObject, isGlobal }, ['id']);
+				await this.credentialsRepository.upsert(
+					{ ...newCredentialObject, isGlobal, isResolvable, resolvableAllowFallback },
+					['id'],
+				);
 
 				const localOwner = existingSharedCredentials.find(
 					(c) => c.credentialsId === credential.id && c.role === 'credential:owner',

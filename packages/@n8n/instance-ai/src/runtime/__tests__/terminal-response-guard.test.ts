@@ -42,6 +42,15 @@ function childText(): InstanceAiEvent {
 	};
 }
 
+function toolCall(): InstanceAiEvent {
+	return {
+		type: 'tool-call',
+		runId,
+		agentId: rootAgentId,
+		payload: { toolCallId: 'tc-1', toolName: 'build_workflow', args: {} },
+	};
+}
+
 function previousRunRootText(): InstanceAiEvent {
 	return {
 		type: 'text-delta',
@@ -90,8 +99,8 @@ describe('InstanceAiTerminalResponseGuard', () => {
 		});
 	});
 
-	it('does not emit completed fallback when silence is expected', () => {
-		const decision = guard().evaluateTerminal([runStart()], 'completed', {
+	it('does not emit completed fallback when silence is expected and an agent already produced text', () => {
+		const decision = guard().evaluateTerminal([runStart(), childText()], 'completed', {
 			workSummary: { totalToolCalls: 3, totalToolErrors: 0, toolCalls: [] },
 			suppressCompletedFallback: true,
 		});
@@ -99,6 +108,26 @@ describe('InstanceAiTerminalResponseGuard', () => {
 		expect(decision.action).toBe('none');
 		expect(decision.reason).toBe('completed-silent-suppressed');
 		expect(decision.event).toBeUndefined();
+	});
+
+	it('emits fallback for a suppressed completed run that produced no text', () => {
+		const decision = guard().evaluateTerminal([runStart()], 'completed', {
+			suppressCompletedFallback: true,
+		});
+
+		expect(decision.action).toBe('emit');
+		expect(decision.reason).toBe('completed-silent');
+		expect(decision.event?.type).toBe('text-delta');
+	});
+
+	it('emits fallback for a suppressed completed run that only made internal tool calls', () => {
+		const decision = guard().evaluateTerminal([runStart(), toolCall()], 'completed', {
+			suppressCompletedFallback: true,
+		});
+
+		expect(decision.action).toBe('emit');
+		expect(decision.reason).toBe('completed-silent');
+		expect(decision.event?.type).toBe('text-delta');
 	});
 
 	it('does not emit completed fallback when the message group already has root text', () => {

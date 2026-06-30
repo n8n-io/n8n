@@ -8,7 +8,6 @@
 			"src/*": ["./src/*"],
 			"src": ["./src"]
 		},
-		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
 		"emitDecoratorMetadata": true,
 		"experimentalDecorators": true,
 		"types": ["node", "vitest/globals"]

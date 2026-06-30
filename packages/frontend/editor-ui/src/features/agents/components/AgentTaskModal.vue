@@ -169,10 +169,14 @@ function onMinuteInput(value: string) {
 	minute.value = Number.isFinite(parsed) ? Math.min(59, Math.max(0, Math.trunc(parsed))) : 0;
 }
 
+function getUserTimezone(): string {
+	return Intl.DateTimeFormat().resolvedOptions().timeZone ?? rootStore.timezone;
+}
+
 const nextOccurrenceText = computed(() => {
 	const next = getNextScheduleOccurrence(cronExpression.value, rootStore.timezone);
 	if (!next) return '';
-	return formatScheduleDateTime(next, rootStore.timezone);
+	return formatScheduleDateTime(next, getUserTimezone());
 });
 
 const errors = computed<{ name?: string; objective?: string; cron?: string }>(() => {

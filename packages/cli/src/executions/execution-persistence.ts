@@ -1,4 +1,4 @@
-import { parseFlatted } from '@n8n/backend-common';
+import { Logger, parseFlatted } from '@n8n/backend-common';
 import { DatabaseConfig, ExecutionsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type {
@@ -12,23 +12,30 @@ import type {
 	IExecutionResponse,
 	UpdateExecutionConditions,
 } from '@n8n/db';
-import { ExecutionData, ExecutionEntity, ExecutionRepository, In, Not } from '@n8n/db';
+import { ExecutionEntity, ExecutionRepository, In, Not } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { stringify } from 'flatted';
 import { BinaryDataService, ErrorReporter, StorageConfig } from 'n8n-core';
-import type { IRunExecutionData, IRunExecutionDataAll } from 'n8n-workflow';
-import { migrateRunExecutionData, UnexpectedError } from 'n8n-workflow';
+import type { ExecutionStatus, IRunExecutionData, IRunExecutionDataAll } from 'n8n-workflow';
+import {
+	createEmptyRunExecutionData,
+	migrateRunExecutionData,
+	UnexpectedError,
+} from 'n8n-workflow';
 
 import { CorruptedExecutionDataError } from './execution-data/corrupted-execution-data.error';
 import { DbStore } from './execution-data/db-store';
 import { FsStore } from './execution-data/fs-store';
 import { MissingExecutionDataError } from './execution-data/missing-execution-data.error';
 import type {
+	BundleWorkflowSnapshot,
 	ExecutionDataBundle,
+	ExecutionDataPayload,
 	ExecutionDataStore,
 	ExecutionRef,
 	WorkflowSnapshot,
 } from './execution-data/types';
+import { sumBinaryDataBytes } from './sum-binary-data-bytes';
 import { DuplicateExecutionError } from '../errors/duplicate-execution.error';
 import { EventService } from '../events/event.service';
 
@@ -54,6 +61,10 @@ type UpdatableEntityColumns = Omit<
  */
 @Service()
 export class ExecutionPersistence {
+	private s3Store: ExecutionDataStore | undefined;
+
+	private azStore: ExecutionDataStore | undefined;
+
 	constructor(
 		private readonly executionRepository: ExecutionRepository,
 		private readonly binaryDataService: BinaryDataService,
@@ -64,7 +75,16 @@ export class ExecutionPersistence {
 		private readonly databaseConfig: DatabaseConfig,
 		private readonly errorReporter: ErrorReporter,
 		private readonly eventService: EventService,
+		private readonly logger: Logger,
 	) {}
+
+	setS3Store(store: ExecutionDataStore) {
+		this.s3Store = store;
+	}
+
+	setAzStore(store: ExecutionDataStore) {
+		this.azStore = store;
+	}
 
 	/**
 	 * Create an execution entity and persist its data to the configured storage.
@@ -73,11 +93,18 @@ export class ExecutionPersistence {
 	 */
 	async create(payload: CreateExecutionPayload) {
 		const { data: rawData, workflowData, ...rest } = payload;
-		const { connections, nodes, name, settings, id } = workflowData;
-		const workflowSnapshot: WorkflowSnapshot = { connections, nodes, name, settings, id };
+		const { connections, nodes, name, settings, id, nodeGroups } = workflowData;
+		const workflowSnapshot: WorkflowSnapshot = {
+			connections,
+			nodes,
+			name,
+			settings,
+			id,
+			nodeGroups,
+		};
 		const storedAt = this.storageConfig.modeTag;
-		const executionEntity = { ...rest, createdAt: new Date(), storedAt };
 		const workflowVersionId = workflowData.versionId ?? null;
+		const executionEntity = { ...rest, createdAt: new Date(), storedAt, workflowVersionId };
 
 		try {
 			return await this.executionRepository.manager.transaction(async (tx) => {
@@ -86,14 +113,20 @@ export class ExecutionPersistence {
 				const ref = { workflowId: id, executionId };
 				const store = this.getStoreFor(storedAt);
 
-				await this.trackWrite(storedAt, async () => {
-					const bundle = {
+				const jsonSizeBytes = await this.trackWrite(storedAt, async () => {
+					const bundle: ExecutionDataPayload = {
 						data: stringify(rawData),
 						workflowData: workflowSnapshot,
 						workflowVersionId,
 					};
-					await store.write(ref, bundle, tx);
+					return await store.write(ref, bundle, tx);
 				});
+				const binaryDataSizeBytes = sumBinaryDataBytes(rawData);
+				await tx.update(
+					ExecutionEntity,
+					{ id: executionId },
+					{ jsonSizeBytes, binaryDataSizeBytes },
+				);
 
 				return executionId;
 			});
@@ -123,7 +156,7 @@ export class ExecutionPersistence {
 
 		const entity = await this.executionRepository.findOne({
 			where: this.buildEntityWhereCondition(executionId, conditions),
-			select: ['id', 'workflowId', 'storedAt'],
+			select: ['id', 'workflowId', 'storedAt', 'workflowVersionId'],
 		});
 
 		if (!entity) return false;
@@ -131,7 +164,14 @@ export class ExecutionPersistence {
 		const ref = { workflowId: entity.workflowId, executionId };
 		const store = this.getStoreFor(entity.storedAt);
 
-		return await this.applyDataUpdate(ref, store, entity.storedAt, execution, conditions);
+		return await this.applyDataUpdate(
+			ref,
+			store,
+			entity.storedAt,
+			entity.workflowVersionId,
+			execution,
+			conditions,
+		);
 	}
 
 	/**
@@ -141,9 +181,10 @@ export class ExecutionPersistence {
 	 *
 	 * A missing data bundle is handled differently per store. In `db` mode the entity and its data
 	 * share one database, so an absent data row means a known-corrupt record we report and skip
-	 * (soft). In `fs` mode the entity lives in the DB while its data lives on disk, so a missing
-	 * file points at an out-of-band loss (deletion, unmounted volume) that a single-execution read
-	 * should surface loudly rather than silently swallow (hard).
+	 * (soft). In `fs` and `s3` modes the entity lives in the DB while its data lives out of band on
+	 * disk or in object storage, so a missing bundle points at an out-of-band loss (deletion,
+	 * unmounted volume, expired object) that a single-execution read should surface loudly rather
+	 * than silently swallow (hard).
 	 */
 	async findSingleExecution(
 		id: string,
@@ -152,6 +193,8 @@ export class ExecutionPersistence {
 			includeAnnotation?: boolean;
 			unflattenData: true;
 			where?: FindOptionsWhere<ExecutionEntity>;
+			/** Above this byte size, return empty `data` + `dataTooLargeToDisplay` instead of loading it. `0`/omit loads unconditionally. */
+			maxDataSizeBytes?: number;
 		},
 	): Promise<IExecutionResponse | undefined>;
 	async findSingleExecution(
@@ -170,6 +213,7 @@ export class ExecutionPersistence {
 			includeAnnotation?: boolean;
 			unflattenData?: boolean;
 			where?: FindOptionsWhere<ExecutionEntity>;
+			maxDataSizeBytes?: number;
 		},
 	): Promise<IExecutionBase | undefined>;
 	async findSingleExecution(
@@ -179,6 +223,7 @@ export class ExecutionPersistence {
 			includeAnnotation?: boolean;
 			unflattenData?: boolean;
 			where?: FindOptionsWhere<ExecutionEntity>;
+			maxDataSizeBytes?: number;
 		},
 	): Promise<FoundExecution | undefined> {
 		if (!options?.includeData) {
@@ -195,8 +240,21 @@ export class ExecutionPersistence {
 
 		if (!entity) return undefined;
 
+		const max = this.maxDisplayDataSize(options);
 		const store = this.getStoreFor(entity.storedAt);
 		const ref = { workflowId: entity.workflowId, executionId: entity.id };
+
+		// Over the limit: skip reading run data, loading only the workflow snapshot. Size is known
+		// from `jsonSizeBytes`, or (legacy rows where it's 0) queried cheaply from the store.
+		if (this.isKnownOversize(entity, max)) {
+			return (await this.assembleSkippedExecution(entity, store, ref, options)) as FoundExecution;
+		}
+		if (max > 0 && entity.jsonSizeBytes === 0) {
+			const size = await store.getDataByteSize?.(ref);
+			if (typeof size === 'number' && size > max) {
+				return (await this.assembleSkippedExecution(entity, store, ref, options)) as FoundExecution;
+			}
+		}
 
 		const start = Date.now();
 		let success = false;
@@ -211,7 +269,7 @@ export class ExecutionPersistence {
 				}
 				throw new MissingExecutionDataError(ref);
 			}
-			const assembled = await this.assembleExecution(entity, bundle, options);
+			const assembled = await this.assembleReadExecution(entity, bundle, options, max);
 			success = true;
 			return assembled as FoundExecution;
 		} catch (error) {
@@ -238,6 +296,7 @@ export class ExecutionPersistence {
 		options?: {
 			unflattenData: true;
 			includeData?: true;
+			maxDataSizeBytes?: number;
 		},
 	): Promise<IExecutionResponse[]>;
 	async findMultipleExecutions(
@@ -252,6 +311,7 @@ export class ExecutionPersistence {
 		options?: {
 			unflattenData?: boolean;
 			includeData?: boolean;
+			maxDataSizeBytes?: number;
 		},
 	): Promise<IExecutionBase[]>;
 	async findMultipleExecutions(
@@ -259,6 +319,7 @@ export class ExecutionPersistence {
 		options?: {
 			unflattenData?: boolean;
 			includeData?: boolean;
+			maxDataSizeBytes?: number;
 		},
 	): Promise<IExecutionFlattedDb[] | IExecutionResponse[] | IExecutionBase[]> {
 		if (!options?.includeData) {
@@ -272,33 +333,40 @@ export class ExecutionPersistence {
 			queryParams.relations.metadata = true;
 		}
 
+		const max = this.maxDisplayDataSize(options);
+
 		// A narrowing `select` must still include the fields we route and read by: `storedAt` (else
 		// every execution defaults to the fs store) and `id`/`workflowId` (else no bundle resolves).
-		// An undefined `select` loads all columns, so no action needed.
+		// With the guard active also `jsonSizeBytes` (to decide) and `workflowVersionId` (for the
+		// skipped response). An undefined `select` loads all columns, so no action.
 		if (queryParams.select) {
+			const guardFields = max > 0 ? (['jsonSizeBytes', 'workflowVersionId'] as const) : [];
 			if (Array.isArray(queryParams.select)) {
-				for (const field of ['id', 'workflowId', 'storedAt'] as const) {
+				for (const field of ['id', 'workflowId', 'storedAt', ...guardFields] as const) {
 					if (!queryParams.select.includes(field)) queryParams.select.push(field);
 				}
 			} else {
 				queryParams.select.id = true;
 				queryParams.select.workflowId = true;
 				queryParams.select.storedAt = true;
+				for (const field of guardFields) queryParams.select[field] = true;
 			}
 		}
 
 		const entities = await this.executionRepository.find(queryParams);
 		if (entities.length === 0) return [];
 
+		const assembledById = new Map<string, Awaited<ReturnType<typeof this.assembleExecution>>>();
+
+		const entitiesToRead = await this.skipOversizedEntities(entities, max, assembledById);
+
 		// Group by storage location and batch-fetch each group from its store.
 		const entitiesByLocation = new Map<ExecutionDataStorageLocation, ExecutionEntity[]>();
-		for (const entity of entities) {
+		for (const entity of entitiesToRead) {
 			const group = entitiesByLocation.get(entity.storedAt) ?? [];
 			group.push(entity);
 			entitiesByLocation.set(entity.storedAt, group);
 		}
-
-		const assembledById = new Map<string, Awaited<ReturnType<typeof this.assembleExecution>>>();
 		await Promise.all(
 			[...entitiesByLocation].map(async ([location, group]) => {
 				const refs = group.map((e) => ({ workflowId: e.workflowId, executionId: e.id }));
@@ -316,7 +384,10 @@ export class ExecutionPersistence {
 						group.map(async (entity) => {
 							const bundle = bundles.get(entity.id);
 							if (!bundle) return;
-							assembledById.set(entity.id, await this.assembleExecution(entity, bundle, options));
+							assembledById.set(
+								entity.id,
+								await this.assembleReadExecution(entity, bundle, options, max),
+							);
 						}),
 					);
 					const corrupt = group.filter((_, i) => {
@@ -367,27 +438,68 @@ export class ExecutionPersistence {
 		});
 	}
 
-	/** Find an execution scoped to shared workflows, with unflattened data and annotation. */
-	async findIfSharedUnflatten(executionId: string, sharedWorkflowIds: string[]) {
+	/** Find an execution scoped to shared workflows, with unflattened data and annotation (a display read). */
+	async findIfSharedUnflatten(
+		executionId: string,
+		sharedWorkflowIds: string[],
+		maxDataSizeBytes?: number,
+	) {
 		return await this.findSingleExecution(executionId, {
 			where: { workflowId: In(sharedWorkflowIds) },
 			includeData: true,
 			unflattenData: true,
 			includeAnnotation: true,
+			maxDataSizeBytes,
 		});
 	}
 
-	/** Find an execution scoped to the given workflows for the public API. */
+	/** Find an execution scoped to the given workflows for the public API (a display read). */
 	async getExecutionInWorkflowsForPublicApi(
 		id: string,
 		workflowIds: string[],
 		includeData?: boolean,
+		maxDataSizeBytes?: number,
 	): Promise<IExecutionBase | undefined> {
 		return await this.findSingleExecution(id, {
 			where: { workflowId: In(workflowIds) },
 			includeData,
 			unflattenData: true,
+			maxDataSizeBytes,
 		});
+	}
+
+	/** Find executions scoped to the given workflows for the public API, with data per `storedAt`. */
+	async getExecutionsForPublicApi(
+		params: {
+			limit: number;
+			includeData?: boolean;
+			lastId?: string;
+			workflowIds?: string[];
+			status?: ExecutionStatus;
+			excludedExecutionsIds?: string[];
+		},
+		maxDataSizeBytes?: number,
+	): Promise<IExecutionBase[]> {
+		return await this.findMultipleExecutions(
+			{
+				select: [
+					'id',
+					'mode',
+					'retryOf',
+					'retrySuccessId',
+					'startedAt',
+					'stoppedAt',
+					'workflowId',
+					'waitTill',
+					'finished',
+					'status',
+				],
+				where: this.executionRepository.getFindExecutionsForPublicApiCondition(params),
+				order: { id: 'DESC' },
+				take: params.limit,
+			},
+			{ includeData: params.includeData, unflattenData: true, maxDataSizeBytes },
+		);
 	}
 
 	/**
@@ -412,20 +524,58 @@ export class ExecutionPersistence {
 		const targets = Array.isArray(target) ? target : [target];
 		if (targets.length === 0) return;
 
-		const fsTargets = targets.filter((t) => t.storedAt === 'fs');
-
 		await Promise.all([
 			this.executionRepository.deleteByIds(targets.map((t) => t.executionId)),
 			this.binaryDataService.deleteMany(targets.map((t) => ({ type: 'execution' as const, ...t }))),
-			fsTargets.length > 0 ? this.fsStore.delete(fsTargets) : Promise.resolve(),
+			this.deleteFsData(targets.filter((t) => t.storedAt === 'fs')),
+			this.deleteS3Data(targets.filter((t) => t.storedAt === 's3')),
+			this.deleteAzData(targets.filter((t) => t.storedAt === 'az')),
 		]);
 	}
 
 	async hardDeleteBy(criteria: ExecutionDeletionCriteria) {
 		const refs = await this.executionRepository.deleteExecutionsByFilter(criteria);
 
-		const fsRefs = refs.filter((r) => r.storedAt === 'fs');
-		if (fsRefs.length > 0) await this.fsStore.delete(fsRefs);
+		await this.deleteFsData(refs.filter((r) => r.storedAt === 'fs'));
+		await this.deleteS3Data(refs.filter((r) => r.storedAt === 's3'));
+		await this.deleteAzData(refs.filter((r) => r.storedAt === 'az'));
+	}
+
+	private async deleteFsData(refs: ExecutionRef[]) {
+		if (refs.length === 0) return;
+
+		await this.fsStore.delete(refs);
+	}
+
+	/**
+	 * Delete S3-stored execution data. If the S3 store is unavailable, e.g. external
+	 * storage was unconfigured after S3-stored executions were created, we skip data
+	 * deletion rather than block entity deletion.
+	 */
+	private async deleteS3Data(refs: ExecutionRef[]) {
+		if (refs.length === 0) return;
+
+		if (!this.s3Store) {
+			this.logger.warn('Skipped deleting S3 execution data - S3 store is not initialized', {
+				executionIds: refs.map((r) => r.executionId),
+			});
+			return;
+		}
+
+		await this.s3Store.delete(refs);
+	}
+
+	private async deleteAzData(refs: ExecutionRef[]) {
+		if (refs.length === 0) return;
+
+		if (!this.azStore) {
+			this.logger.warn('Skipped deleting Azure execution data - Azure store is not initialized', {
+				executionIds: refs.map((r) => r.executionId),
+			});
+			return;
+		}
+
+		await this.azStore.delete(refs);
 	}
 
 	private async updateEntityOnly(
@@ -445,6 +595,7 @@ export class ExecutionPersistence {
 		ref: ExecutionRef,
 		store: ExecutionDataStore,
 		mode: ExecutionDataStorageLocation,
+		workflowVersionId: string | null,
 		execution: Partial<IExecutionResponse>,
 		conditions?: UpdateExecutionConditions,
 	): Promise<boolean> {
@@ -471,36 +622,58 @@ export class ExecutionPersistence {
 				if (!matchingRow) return false;
 			}
 
-			if (data !== undefined && workflowData !== undefined && store === this.dbStore) {
-				await this.trackWrite(mode, async () => {
-					const result = await tx.update(
-						ExecutionData,
-						{ executionId: ref.executionId },
-						{ data: stringify(data), workflowData: this.toWorkflowSnapshot(workflowData) },
-					);
-					if ((result.affected ?? 0) === 0) throw new MissingExecutionDataError(ref);
+			// Skip the read on a full overwrite. Safe only with a known version id, except for the DB
+			// store: its overwrite leaves that column untouched, whereas others would clobber it with null.
+			if (
+				data !== undefined &&
+				workflowData !== undefined &&
+				(workflowVersionId !== null || store === this.dbStore)
+			) {
+				const binaryDataSizeBytes = sumBinaryDataBytes(data);
+				const jsonSizeBytes = await this.trackWrite(mode, async () => {
+					const bundle: ExecutionDataPayload = {
+						data: stringify(data),
+						workflowData: this.toWorkflowSnapshot(workflowData),
+						workflowVersionId,
+					};
+
+					return store === this.dbStore
+						? await this.dbStore.overwrite(ref, bundle, tx)
+						: await store.write(ref, bundle, tx);
 				});
+
+				await tx.update(
+					ExecutionEntity,
+					{ id: ref.executionId },
+					{ jsonSizeBytes, binaryDataSizeBytes },
+				);
 				return true;
 			}
 
+			// Read the existing bundle to merge the field the caller didn't supply (or to recover the
+			// version id when the entity row doesn't have it).
 			const existing = await this.trackRead(mode, async () => await store.read(ref, tx));
 			if (!existing) throw new MissingExecutionDataError(ref);
 
-			await this.trackWrite(
-				mode,
-				async () =>
-					await store.write(
-						ref,
-						{
-							data: data !== undefined ? stringify(data) : existing.data,
-							workflowData: workflowData
-								? this.toWorkflowSnapshot(workflowData)
-								: existing.workflowData,
-							workflowVersionId: existing.workflowVersionId,
-						},
-						tx,
-					),
-			);
+			const jsonSizeBytes = await this.trackWrite(mode, async () => {
+				const bundle: ExecutionDataPayload = {
+					data: data !== undefined ? stringify(data) : existing.data,
+					workflowData: workflowData
+						? this.toWorkflowSnapshot(workflowData)
+						: existing.workflowData,
+					workflowVersionId: existing.workflowVersionId,
+				};
+
+				return await store.write(ref, bundle, tx);
+			});
+			// Binary size is derived from the in-memory run data, so only recompute it when the
+			// caller supplied `data`. A workflowData-only update leaves the column untouched (and
+			// doesn't affect binary anyway), mirroring when `jsonSizeBytes` would have changed.
+			const sizeColumns =
+				data !== undefined
+					? { jsonSizeBytes, binaryDataSizeBytes: sumBinaryDataBytes(data) }
+					: { jsonSizeBytes };
+			await tx.update(ExecutionEntity, { id: ref.executionId }, sizeColumns);
 
 			return true;
 		});
@@ -518,6 +691,8 @@ export class ExecutionPersistence {
 	 * - **Immutable after creation**: `workflowVersionId`, `createdAt`,
 	 *   `startedAt` — set once at insert time and never overwritten.
 	 * - **Not persisted on the entity**: `customData` — handled separately.
+	 * - **Computed locally**: `jsonSizeBytes` and `binaryDataSizeBytes` — derived from
+	 *   the persisted bundle / run data, never trusted from the caller.
 	 */
 	private pickUpdatableEntityColumns(
 		execution: Partial<IExecutionResponse>,
@@ -531,6 +706,8 @@ export class ExecutionPersistence {
 			createdAt: _createdAt,
 			startedAt: _startedAt,
 			customData: _customData,
+			jsonSizeBytes: _jsonSizeBytes,
+			binaryDataSizeBytes: _binaryDataSizeBytes,
 			...updatableColumns
 		} = execution;
 		return updatableColumns;
@@ -576,20 +753,27 @@ export class ExecutionPersistence {
 		}
 	}
 
+	/**
+	 * Time and emit a metric for a data write. `op` serializes and writes the bundle — both counted
+	 * in the duration — and returns the written byte size, which rides the event (`0` on failure).
+	 */
 	private async trackWrite(
 		mode: ExecutionDataStorageLocation,
-		op: () => Promise<void>,
-	): Promise<void> {
+		op: () => Promise<number>,
+	): Promise<number> {
 		const start = Date.now();
 		let success = false;
+		let jsonSizeBytes = 0;
 		try {
-			await op();
+			jsonSizeBytes = await op();
 			success = true;
+			return jsonSizeBytes;
 		} finally {
 			this.eventService.emit('execution-data-write', {
 				mode,
 				durationMs: Date.now() - start,
 				success,
+				jsonSizeBytes,
 			});
 		}
 	}
@@ -600,6 +784,20 @@ export class ExecutionPersistence {
 				return this.dbStore;
 			case 'fs':
 				return this.fsStore;
+			case 's3':
+				if (!this.s3Store) {
+					throw new UnexpectedError(
+						'Execution data is stored on S3 but the S3 store is not initialized. Check that S3 is configured.',
+					);
+				}
+				return this.s3Store;
+			case 'az':
+				if (!this.azStore) {
+					throw new UnexpectedError(
+						'Execution data is stored on Azure Blob Storage but the Azure store is not initialized. Check that Azure is configured.',
+					);
+				}
+				return this.azStore;
 		}
 		const _exhaustive: never = location;
 		throw new Error(`Unknown storage location: ${String(_exhaustive)}`);
@@ -608,8 +806,8 @@ export class ExecutionPersistence {
 	private toWorkflowSnapshot(
 		workflowData: NonNullable<IExecutionResponse['workflowData']>,
 	): WorkflowSnapshot {
-		const { id, name, nodes, connections, settings } = workflowData;
-		return { id, name, nodes, connections, settings };
+		const { id, name, nodes, connections, settings, nodeGroups } = workflowData;
+		return { id, name, nodes, connections, settings, nodeGroups };
 	}
 
 	private async assembleExecution(
@@ -638,6 +836,113 @@ export class ExecutionPersistence {
 				? { annotation: serializedAnnotation }
 				: {}),
 		};
+	}
+
+	/**
+	 * Build a display response for an oversized execution: empty `data` + `dataTooLargeToDisplay`,
+	 * without parsing the run data (`jsonSizeBytes` keeps the real size). Uses the workflow snapshot
+	 * when available, else a stub from the entity.
+	 */
+	/** The byte size above which display reads skip run data, or `0` when the guard doesn't apply. */
+	private maxDisplayDataSize(options: { unflattenData?: boolean; maxDataSizeBytes?: number }) {
+		return options.unflattenData ? (options.maxDataSizeBytes ?? 0) : 0;
+	}
+
+	/** Whether the entity's recorded data size is known and exceeds `max` (so the read can be skipped). */
+	private isKnownOversize(entity: ExecutionEntity, max: number) {
+		return max > 0 && entity.jsonSizeBytes > 0 && entity.jsonSizeBytes > max;
+	}
+
+	/** Assemble an oversized execution, loading only the workflow snapshot (never the run data). */
+	private async assembleSkippedExecution(
+		entity: ExecutionEntity,
+		store: ExecutionDataStore,
+		ref: ExecutionRef,
+		options: { includeAnnotation?: boolean },
+	) {
+		const snapshot = (await store.readWorkflowData?.(ref)) ?? undefined;
+		return this.assembleOversizedExecution(
+			entity,
+			{ includeAnnotation: options.includeAnnotation },
+			snapshot,
+		);
+	}
+
+	private assembleOversizedExecution(
+		entity: ExecutionEntity,
+		options: { includeAnnotation?: boolean },
+		snapshot?: BundleWorkflowSnapshot,
+	) {
+		const { metadata, annotation, ...rest } = entity;
+		const serializedAnnotation = this.serializeAnnotation(annotation);
+		const workflowData = snapshot?.workflowData ?? {
+			id: entity.workflowId,
+			name: '',
+			nodes: [],
+			connections: {},
+			settings: {},
+		};
+
+		return {
+			...rest,
+			data: createEmptyRunExecutionData(),
+			workflowData,
+			workflowVersionId: snapshot?.workflowVersionId ?? entity.workflowVersionId ?? null,
+			customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
+			dataTooLargeToDisplay: true,
+			...(options.includeAnnotation && serializedAnnotation
+				? { annotation: serializedAnnotation }
+				: {}),
+		};
+	}
+
+	/**
+	 * Partition entities by known data size: oversized ones are assembled here (run-data read
+	 * skipped, only the workflow snapshot loaded) into `assembledById`; the rest are returned to
+	 * be read normally.
+	 */
+	private async skipOversizedEntities(
+		entities: ExecutionEntity[],
+		max: number,
+		assembledById: Map<string, Awaited<ReturnType<typeof this.assembleExecution>>>,
+	) {
+		if (max <= 0) return entities;
+
+		const entitiesToRead: ExecutionEntity[] = [];
+		const oversized: ExecutionEntity[] = [];
+		for (const entity of entities) {
+			if (this.isKnownOversize(entity, max)) oversized.push(entity);
+			else entitiesToRead.push(entity);
+		}
+		await Promise.all(
+			oversized.map(async (entity) => {
+				const store = this.getStoreFor(entity.storedAt);
+				const ref = { workflowId: entity.workflowId, executionId: entity.id };
+				const snapshot = (await store.readWorkflowData?.(ref)) ?? undefined;
+				assembledById.set(entity.id, this.assembleOversizedExecution(entity, {}, snapshot));
+			}),
+		);
+		return entitiesToRead;
+	}
+
+	/**
+	 * Assemble a freshly-read bundle, refusing it (empty data + flag) when the size was unknown
+	 * up front (`jsonSizeBytes === 0`) but the raw bytes exceed `max`.
+	 */
+	private async assembleReadExecution(
+		entity: ExecutionEntity,
+		bundle: ExecutionDataBundle,
+		options: { unflattenData?: boolean; includeAnnotation?: boolean },
+		max: number,
+	) {
+		if (max > 0 && entity.jsonSizeBytes === 0 && Buffer.byteLength(bundle.data, 'utf8') > max) {
+			return this.assembleOversizedExecution(
+				entity,
+				{ includeAnnotation: options.includeAnnotation },
+				{ workflowData: bundle.workflowData, workflowVersionId: bundle.workflowVersionId },
+			);
+		}
+		return await this.assembleExecution(entity, bundle, options);
 	}
 
 	private async parseExecutionData(

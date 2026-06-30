@@ -1,4 +1,6 @@
-import { isRecord, parseSuspension, asResumable, resumeAgentStream } from '../stream-helpers';
+import { isRecord } from '@n8n/utils/is-record';
+
+import { parseSuspension, asResumable, resumeAgentStream } from '../stream-helpers';
 
 describe('isRecord', () => {
 	it('returns true for plain objects', () => {

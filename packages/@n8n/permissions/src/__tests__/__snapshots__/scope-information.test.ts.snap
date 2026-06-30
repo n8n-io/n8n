@@ -36,6 +36,7 @@ exports[`Scope Information > ensure scopes are defined correctly 1`] = `
   "credential:unshare",
   "credential:shareGlobally",
   "credential:move",
+  "credential:connect",
   "credential:create",
   "credential:read",
   "credential:update",
@@ -169,6 +170,7 @@ exports[`Scope Information > ensure scopes are defined correctly 1`] = `
   "workflowTags:list",
   "workflowTags:*",
   "role:manage",
+  "role:read",
   "role:*",
   "mcp:manage",
   "mcp:oauth",
@@ -204,6 +206,7 @@ exports[`Scope Information > ensure scopes are defined correctly 1`] = `
   "instanceAi:message",
   "instanceAi:manage",
   "instanceAi:gateway",
+  "instanceAi:eval",
   "instanceAi:*",
   "roleMappingRule:create",
   "roleMappingRule:read",
@@ -211,6 +214,8 @@ exports[`Scope Information > ensure scopes are defined correctly 1`] = `
   "roleMappingRule:delete",
   "roleMappingRule:list",
   "roleMappingRule:*",
+  "otel:manage",
+  "otel:*",
   "*",
 ]
 `;

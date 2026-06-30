@@ -1,6 +1,6 @@
 import { inTest, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
+import type { ApiKey, User } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { AssignableProjectRole } from '@n8n/permissions';
@@ -19,6 +19,25 @@ import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { UrlService } from '@/services/url.service';
 import { toError } from '@/utils';
 
+const REVOKED_AT_FORMATTER = new Intl.DateTimeFormat('en-GB', {
+	day: 'numeric',
+	month: 'short',
+	year: 'numeric',
+});
+
+function formatRevokedAt(date: Date): string {
+	return REVOKED_AT_FORMATTER.format(date);
+}
+
+function formatRevokedBy(user: {
+	firstName?: string | null;
+	lastName?: string | null;
+	email: string;
+}): string {
+	const fullName = [user.firstName, user.lastName].filter(Boolean).join(' ').trim();
+	return fullName || user.email;
+}
+
 type Template = HandlebarsTemplateDelegate<unknown>;
 type TemplateName =
 	| 'user-invited'
@@ -27,7 +46,8 @@ type TemplateName =
 	| 'workflow-shared'
 	| 'credentials-shared'
 	| 'project-shared'
-	| 'workflow-failure';
+	| 'workflow-failure'
+	| 'api-key-revoked';
 
 @Service()
 export class UserManagementMailer {
@@ -75,6 +95,34 @@ export class UserManagementMailer {
 			emailRecipients: passwordResetData.email,
 			subject: 'n8n password reset',
 			body: template({ ...this.basePayload, ...passwordResetData }),
+		});
+	}
+
+	async notifyApiKeyRevoked({
+		apiKey,
+		revoker,
+	}: {
+		apiKey: ApiKey;
+		revoker: User;
+	}): Promise<SendEmailResult> {
+		if (!this.mailer) return { emailSent: false };
+
+		const baseUrl = this.urlService.getInstanceBaseUrl();
+		const template = await this.getTemplate('api-key-revoked');
+
+		return await this.mailer.sendMail({
+			emailRecipients: apiKey.user.email,
+			subject: 'Your n8n API key was revoked',
+			body: template({
+				...this.basePayload,
+				email: apiKey.user.email,
+				firstName: apiKey.user.firstName ?? 'there',
+				label: apiKey.label,
+				suffix: apiKey.apiKey.slice(-4),
+				revokedBy: formatRevokedBy(revoker),
+				revokedAt: formatRevokedAt(new Date()),
+				createApiKeyUrl: `${baseUrl}/settings/api`,
+			}),
 		});
 	}
 

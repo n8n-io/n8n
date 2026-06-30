@@ -11,7 +11,6 @@ import {
 	AGENT_TOOL_CONFIG_MODAL_KEY,
 	AGENT_SKILL_MODAL_KEY,
 	AGENT_TASK_MODAL_KEY,
-	AGENT_ADD_TRIGGER_MODAL_KEY,
 	AGENT_SUB_AGENTS_MODAL_KEY,
 	AGENT_EPISODIC_MEMORY_CREDENTIAL_MODAL_KEY,
 	AGENT_EPISODIC_MEMORY_CREDENTIAL_TYPE,
@@ -89,20 +88,6 @@ export const AgentsModule: FrontendModuleDescription = {
 					agentId: '',
 					isPublished: false,
 					onSaved: () => {},
-				},
-			},
-		},
-		{
-			key: AGENT_ADD_TRIGGER_MODAL_KEY,
-			component: async () => await import('./components/AgentAddTriggerModal.vue'),
-			initialState: {
-				open: false,
-				data: {
-					projectId: '',
-					agentId: '',
-					connectedTriggers: [],
-					onConnectedTriggersChange: () => {},
-					onTriggerAdded: () => {},
 				},
 			},
 		},

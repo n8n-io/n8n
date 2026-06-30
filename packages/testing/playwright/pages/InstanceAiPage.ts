@@ -16,7 +16,7 @@ export class InstanceAiPage extends BasePage {
 		this.workflowSetup = new InstanceAiWorkflowSetup(
 			page.getByTestId('instance-ai-workflow-setup'),
 		);
-		this.credentialModal = new CredentialModal(page.getByTestId('editCredential-modal'));
+		this.credentialModal = CredentialModal.fromPage(page);
 	}
 
 	private get container(): Locator {
@@ -24,7 +24,7 @@ export class InstanceAiPage extends BasePage {
 	}
 
 	async goto(): Promise<void> {
-		await this.page.goto('/instance-ai');
+		await this.page.goto('/assistant');
 		await this.enableInstanceAiIfPrompted();
 	}
 
@@ -42,7 +42,7 @@ export class InstanceAiPage extends BasePage {
 	}
 
 	async gotoThread(threadId: string): Promise<void> {
-		await this.page.goto(`/instance-ai/${threadId}`);
+		await this.page.goto(`/assistant/${threadId}`);
 	}
 
 	getContainer(): Locator {
@@ -291,9 +291,11 @@ export class InstanceAiPage extends BasePage {
 	}
 
 	/**
-	 * Wait for the plan-review panel to appear and approve it. New workflow
-	 * builds now route through the planner and pause at `awaiting_approval`
-	 * until the user approves — without this step the build never starts.
+	 * Wait for the plan-review panel to appear and approve it. Since the
+	 * planning guardrails (#31984), the planner only engages for coordinated
+	 * multi-artifact work or when the prompt explicitly asks to review a plan
+	 * first — single-workflow builds skip plan review entirely, so only call
+	 * this from tests whose prompt requests a plan.
 	 */
 	async approveBuildPlan(timeout = 120_000): Promise<void> {
 		await this.getPlanApproveButton().waitFor({ state: 'visible', timeout });

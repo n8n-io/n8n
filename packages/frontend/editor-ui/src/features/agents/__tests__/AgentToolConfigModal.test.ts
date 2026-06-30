@@ -27,7 +27,7 @@ vi.mock('uuid', () => ({ v4: () => 'mocked-uuid' }));
 function createToolSettingsStub(emitValid: boolean) {
 	return defineComponent({
 		props: ['initialNode', 'existingToolNames', 'projectId'],
-		emits: ['update:valid', 'update:node-name'],
+		emits: ['update:valid', 'update:node-name', 'update:node'],
 		setup(props, { emit, expose }) {
 			// Expose what the modal reads from ref(...). The stub carries through
 			// the initialNode's credentials so we can assert the round-trip keeps them.
@@ -48,6 +48,7 @@ function createToolSettingsStub(emitValid: boolean) {
 			onMounted(() => {
 				emit('update:valid', emitValid);
 				emit('update:node-name', props.initialNode?.name ?? '');
+				emit('update:node', node);
 			});
 			return {};
 		},
@@ -155,6 +156,16 @@ function renderModal({
 				NodeIcon: { template: '<div data-test-id="header-node-icon" />' },
 				AgentToolConfigNodeContent: createToolSettingsStub(valid),
 				AgentToolConfigWorkflowContent: createWorkflowToolConfigStub(valid),
+				AgentJsonEditor: {
+					props: ['value'],
+					template: '<pre data-test-id="agent-tool-raw-json">{{ JSON.stringify(value) }}</pre>',
+				},
+				N8nRadioButtons: {
+					props: ['modelValue', 'options'],
+					emits: ['update:modelValue'],
+					template:
+						'<div><button v-for="option in options" :key="option.value" @click="$emit(\'update:modelValue\', option.value)">{{ option.label }}</button></div>',
+				},
 				N8nSwitch2: {
 					props: ['modelValue'],
 					emits: ['update:modelValue'],
@@ -236,6 +247,16 @@ describe('AgentToolConfigModal', () => {
 		// Fields merged from the edited INode
 		expect(updated.node.nodeParameters).toEqual({ edited: true });
 		expect(updated.node.credentials).toEqual({ slackApi: { id: 'cred-1', name: 'Prod Slack' } });
+	});
+
+	it('shows draft node edits in the raw tab before saving', async () => {
+		const { getByText, getByTestId } = renderModal({ valid: true, ref: toolRef() });
+
+		await fireEvent.click(getByText('Raw'));
+
+		await waitFor(() => {
+			expect(getByTestId('agent-tool-raw-json').textContent).toContain('"edited":true');
+		});
 	});
 
 	it('saves the approval requirement on node tool refs', async () => {

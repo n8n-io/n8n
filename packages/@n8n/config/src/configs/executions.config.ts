@@ -165,4 +165,12 @@ export class ExecutionsConfig {
 	 */
 	@Env('N8N_ON_RECEIVED_WEBHOOK_QUEUE_LIMIT')
 	onReceivedWebhookQueueLimit: number = 10000;
+	/**
+	 * Max byte size of execution run data to load for display.
+	 * Executions whose data exceeds this are returned without their run data.
+	 * Does not affect operational reads (retry, resume, crash recovery).
+	 * `0` disables.
+	 */
+	@Env('EXECUTIONS_DATA_MAX_DISPLAY_SIZE')
+	maxDisplaySize: number = 100 * 1024 * 1024; // 100 MB
 }

@@ -1,14 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { ref } from 'vue';
+import { ref, shallowRef, nextTick } from 'vue';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import EvaluationsWizardSidepanel from './EvaluationsWizardSidepanel.vue';
 import { useEvaluationsWizardSidepanelStore } from '../../wizardSidepanel.store';
 import { useEvaluationStore } from '../../evaluation.store';
-import { CANNED_METRICS } from '../../evaluation.constants';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
 // Plain mutable holders instead of module-scope `ref()`s — reactive refs
 // surviving teardown have caused post-teardown rejections on Node 24.
@@ -20,6 +20,7 @@ type MockNode = {
 };
 const { mocks } = vi.hoisted(() => ({
 	mocks: {
+		workflowId: 'workflow-id' as string,
 		allNodes: [] as MockNode[],
 		sliceInputs: {
 			fieldNames: [] as string[],
@@ -33,19 +34,26 @@ const { mocks } = vi.hoisted(() => ({
 	},
 }));
 
+// Reactive workflow document ref — allows tests to swap workflowId and have
+// Vue's watch() in the component detect the change.
+const workflowDocumentRef = shallowRef({
+	get workflowId() {
+		return mocks.workflowId;
+	},
+	get allNodes() {
+		return mocks.allNodes;
+	},
+});
+
 vi.mock('@/app/stores/workflowDocument.store', () => ({
-	injectWorkflowDocumentStore: () => ({
-		value: {
-			get workflowId() {
-				return 'workflow-id';
-			},
-			get allNodes() {
-				return mocks.allNodes;
-			},
-		},
-	}),
+	injectWorkflowDocumentStore: () => workflowDocumentRef,
 	createWorkflowDocumentId: (id: string) => id,
 	useWorkflowDocumentStore: () => ({}),
+}));
+
+const mockHydrate = vi.fn();
+vi.mock('./useWizardHydration', () => ({
+	useWizardHydration: () => ({ hydrate: mockHydrate, isHydrating: ref(false) }),
 }));
 
 vi.mock('../../composables/useSliceInputs', () => ({
@@ -83,6 +91,11 @@ vi.mock('@/app/composables/useRunWorkflow', () => ({
 	}),
 }));
 
+const trackMock = vi.fn();
+vi.mock('@/app/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track: trackMock }),
+}));
+
 const mockRouterPush = vi.fn();
 vi.mock('vue-router', async (importOriginal) => {
 	const actual = (await importOriginal()) as Record<string, unknown>;
@@ -94,14 +107,39 @@ vi.mock('vue-router', async (importOriginal) => {
 	};
 });
 
+const { workflowIdHolder } = vi.hoisted(() => ({
+	workflowIdHolder: { current: (): string => '' },
+}));
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	return {
+		useWorkflowId: () => computed(() => workflowIdHolder.current()),
+		useRouteWorkflowId: () => computed(() => workflowIdHolder.current()),
+	};
+});
+
 const renderComponent = createComponentRenderer(EvaluationsWizardSidepanel);
 
 describe('EvaluationsWizardSidepanel', () => {
 	beforeEach(() => {
 		createTestingPinia({ stubActions: false });
+		workflowIdHolder.current = () => useWorkflowsStore().workflowId;
+		mocks.workflowId = 'workflow-id';
 		mocks.allNodes = [];
 		mocks.nodeTypeOutputs = {};
+		mocks.sliceInputs = { fieldNames: [], values: {}, hasExecution: true };
 		mockRouterPush.mockReset();
+		mockHydrate.mockReset();
+		trackMock.mockReset();
+		// Trigger Vue to re-read the shallowRef so watchers see the reset workflowId.
+		workflowDocumentRef.value = {
+			get workflowId() {
+				return mocks.workflowId;
+			},
+			get allNodes() {
+				return mocks.allNodes;
+			},
+		};
 	});
 
 	// The wizard now lives as a tab inside FocusSidebar — visibility is
@@ -215,14 +253,39 @@ describe('EvaluationsWizardSidepanel', () => {
 		expect(docHtml).not.toContain('OpenAI Chat Model');
 	});
 
-	it('renders every canned metric option on step 1 (Setup Checks)', () => {
+	it('shows Correctness on step 1 and reveals the rest behind "Explore more checks"', async () => {
 		const store = useEvaluationsWizardSidepanelStore();
 		store.open(1);
 
+		const { getByTestId, queryByTestId } = renderComponent();
+		// Correctness is shown up front; the other built-ins and the custom-check
+		// affordance are hidden initially.
+		expect(getByTestId('evaluations-wizard-sidepanel-metric-correctness')).toBeInTheDocument();
+		expect(queryByTestId('evaluations-wizard-sidepanel-metric-categorization')).toBeNull();
+		expect(queryByTestId('evaluations-wizard-sidepanel-metric-toolsUsed')).toBeNull();
+		expect(queryByTestId('evaluations-wizard-sidepanel-new-custom-check')).toBeNull();
+
+		// Reveal the rest.
+		await userEvent.click(getByTestId('evaluations-wizard-sidepanel-explore-more-checks'));
+		expect(getByTestId('evaluations-wizard-sidepanel-metric-categorization')).toBeInTheDocument();
+		expect(getByTestId('evaluations-wizard-sidepanel-metric-toolsUsed')).toBeInTheDocument();
+		// The custom-check affordance becomes available only after expanding.
+		expect(getByTestId('evaluations-wizard-sidepanel-new-custom-check')).toBeInTheDocument();
+		// The button disappears once expanded.
+		expect(queryByTestId('evaluations-wizard-sidepanel-explore-more-checks')).toBeNull();
+
+		// Helpfulness and String Similarity are never offered as built-in cards.
+		expect(queryByTestId('evaluations-wizard-sidepanel-metric-helpfulness')).toBeNull();
+		expect(queryByTestId('evaluations-wizard-sidepanel-metric-stringSimilarity')).toBeNull();
+	});
+
+	it('auto-reveals more checks when a hidden built-in is already selected', () => {
+		const store = useEvaluationsWizardSidepanelStore();
+		store.open(1);
+		store.selectedMetricKeys = ['correctness', 'toolsUsed'];
+
 		const { getByTestId } = renderComponent();
-		for (const metric of CANNED_METRICS) {
-			expect(getByTestId(`evaluations-wizard-sidepanel-metric-${metric.key}`)).toBeInTheDocument();
-		}
+		expect(getByTestId('evaluations-wizard-sidepanel-metric-toolsUsed')).toBeInTheDocument();
 	});
 
 	it('toggles selection when a check card is clicked on step 1', async () => {
@@ -230,11 +293,14 @@ describe('EvaluationsWizardSidepanel', () => {
 		store.open(1);
 
 		const { getByTestId } = renderComponent();
-		await userEvent.click(getByTestId('evaluations-wizard-sidepanel-metric-correctness'));
+		// Correctness is pre-selected by default.
 		expect(store.selectedMetricKeys).toContain('correctness');
 
 		await userEvent.click(getByTestId('evaluations-wizard-sidepanel-metric-correctness'));
 		expect(store.selectedMetricKeys).not.toContain('correctness');
+
+		await userEvent.click(getByTestId('evaluations-wizard-sidepanel-metric-correctness'));
+		expect(store.selectedMetricKeys).toContain('correctness');
 	});
 
 	it('closes when the Cancel button is clicked', async () => {
@@ -345,6 +411,8 @@ describe('EvaluationsWizardSidepanel', () => {
 	it('enables Next on step 1 when only a custom check is added (no canned metric)', () => {
 		const store = useEvaluationsWizardSidepanelStore();
 		store.open(1);
+		// Clear the default correctness pre-selection so only the custom check remains.
+		store.selectedMetricKeys = [];
 		store.addCustomCheck({
 			name: 'Has output',
 			expression: '$json.output.length > 0',
@@ -537,11 +605,165 @@ describe('EvaluationsWizardSidepanel', () => {
 				completedAt: '',
 			},
 		};
+		// A completed case feeds the case-centric results layout.
+		evalStore.testCaseExecutionsById = {
+			'case-1': {
+				id: 'case-1',
+				testRunId: 'run-1',
+				executionId: null,
+				status: 'success',
+				createdAt: '',
+				updatedAt: '',
+				runAt: null,
+				runIndex: 0,
+				metrics: { correctness: 4 },
+				inputs: { expectedAnswer: 'hi' },
+				outputs: { output: 'hello' },
+			},
+		};
 
 		const { getByTestId, queryByTestId } = renderComponent();
 		expect(queryByTestId('evaluations-wizard-sidepanel-loading-skeletons')).not.toBeInTheDocument();
 		expect(queryByTestId('evaluations-wizard-sidepanel-running')).not.toBeInTheDocument();
 		expect(getByTestId('evaluations-wizard-sidepanel-results')).toBeInTheDocument();
+		// A per-check result card and one expandable case row render from the run data.
+		expect(getByTestId('evaluations-wizard-sidepanel-result-card-correctness')).toBeInTheDocument();
+		expect(getByTestId('evaluations-wizard-sidepanel-case-1')).toBeInTheDocument();
+	});
+
+	it('shows each case its own expected answer from the matching dataset row', async () => {
+		const store = useEvaluationsWizardSidepanelStore();
+		const evalStore = useEvaluationStore();
+		store.open(3);
+		store.selectedMetricKeys = ['correctness'];
+		// One expected-value record per dataset row, indexed by position/runIndex.
+		store.datasetExpectedByRow = [
+			{ expectedAnswer: 'answer one' },
+			{ expectedAnswer: 'answer two' },
+		];
+		evalStore.testRunsById = {
+			'run-1': {
+				id: 'run-1',
+				workflowId: 'workflow-id',
+				status: 'success',
+				metrics: { correctness: 0.9 },
+				createdAt: '',
+				updatedAt: '',
+				runAt: '',
+				completedAt: '',
+			},
+		};
+		evalStore.testCaseExecutionsById = {
+			'case-1': {
+				id: 'case-1',
+				testRunId: 'run-1',
+				executionId: null,
+				status: 'success',
+				createdAt: '',
+				updatedAt: '',
+				runAt: null,
+				runIndex: 0,
+				metrics: { correctness: 4 },
+				outputs: { output: 'hello' },
+			},
+			'case-2': {
+				id: 'case-2',
+				testRunId: 'run-1',
+				executionId: null,
+				status: 'success',
+				createdAt: '',
+				updatedAt: '',
+				runAt: null,
+				runIndex: 1,
+				metrics: { correctness: 5 },
+				outputs: { output: 'world' },
+			},
+		};
+
+		const { getByTestId } = renderComponent();
+
+		await userEvent.click(getByTestId('evaluations-wizard-sidepanel-case-toggle-1'));
+		await userEvent.click(getByTestId('evaluations-wizard-sidepanel-case-toggle-2'));
+
+		expect(getByTestId('evaluations-wizard-sidepanel-case-detail-1')).toHaveTextContent(
+			'answer one',
+		);
+		expect(getByTestId('evaluations-wizard-sidepanel-case-detail-2')).toHaveTextContent(
+			'answer two',
+		);
+	});
+
+	it('tracks "User viewed evaluation results" once when a finished run renders on step 3', async () => {
+		const store = useEvaluationsWizardSidepanelStore();
+		const evalStore = useEvaluationStore();
+		store.open(3);
+		store.selectedMetricKeys = ['correctness'];
+		evalStore.testRunsById = {
+			'run-1': {
+				id: 'run-1',
+				workflowId: 'workflow-id',
+				status: 'success',
+				metrics: { correctness: 0.9 },
+				createdAt: '',
+				updatedAt: '',
+				runAt: '',
+				completedAt: '',
+			},
+		};
+		evalStore.testCaseExecutionsById = {
+			'case-1': {
+				id: 'case-1',
+				testRunId: 'run-1',
+				executionId: null,
+				status: 'success',
+				createdAt: '',
+				updatedAt: '',
+				runAt: null,
+				runIndex: 0,
+				metrics: { correctness: 4 },
+				inputs: { expectedAnswer: 'hi' },
+				outputs: { output: 'hello' },
+			},
+		};
+
+		renderComponent();
+		await nextTick();
+
+		const resultsEvents = trackMock.mock.calls.filter(
+			([event]) => event === 'User viewed evaluation results',
+		);
+		expect(resultsEvents).toHaveLength(1);
+		expect(resultsEvents[0][1]).toEqual({
+			workflow_id: 'workflow-id',
+			run_id: 'run-1',
+			test_case_count: 1,
+			metric_count: 1,
+		});
+	});
+
+	it('does not track evaluation results while the run is still in progress on step 3', async () => {
+		const store = useEvaluationsWizardSidepanelStore();
+		const evalStore = useEvaluationStore();
+		store.open(3);
+		store.selectedMetricKeys = ['correctness'];
+		evalStore.testRunsById = {
+			'run-1': {
+				id: 'run-1',
+				workflowId: 'workflow-id',
+				status: 'running',
+				createdAt: '',
+				updatedAt: '',
+				runAt: '',
+				completedAt: null,
+			},
+		};
+
+		renderComponent();
+		await nextTick();
+
+		expect(
+			trackMock.mock.calls.filter(([event]) => event === 'User viewed evaluation results'),
+		).toHaveLength(0);
 	});
 
 	it('shows "View Results" button on step 3 and closes the wizard on click', async () => {
@@ -583,6 +805,8 @@ describe('EvaluationsWizardSidepanel', () => {
 		store.open(1);
 
 		const { getByTestId, findByTestId } = renderComponent();
+		// The custom-check CTA only appears after expanding "Explore more checks".
+		await userEvent.click(getByTestId('evaluations-wizard-sidepanel-explore-more-checks'));
 		await userEvent.click(getByTestId('evaluations-wizard-sidepanel-new-custom-check'));
 
 		expect(store.isCustomCheckModalOpen).toBe(true);
@@ -607,5 +831,216 @@ describe('EvaluationsWizardSidepanel', () => {
 		expect(
 			queryByTestId(`evaluations-wizard-sidepanel-custom-check-${id}`),
 		).not.toBeInTheDocument();
+	});
+
+	describe('wizard step-view telemetry', () => {
+		const stepEvents = () =>
+			trackMock.mock.calls.filter(
+				([event]) => event === 'User viewed evaluation config wizard step',
+			);
+
+		it('tracks the scorers step once with step_name and 1-based step_index', async () => {
+			const store = useEvaluationsWizardSidepanelStore();
+			store.open(1);
+
+			renderComponent();
+			await nextTick();
+
+			const events = stepEvents();
+			expect(events).toHaveLength(1);
+			expect(events[0][1]).toEqual({
+				workflow_id: 'workflow-id',
+				step_name: 'setup_scorers',
+				step_index: 2,
+			});
+		});
+
+		it('tracks each step as the user advances, and dedupes a revisited step', async () => {
+			const store = useEvaluationsWizardSidepanelStore();
+			store.open(1);
+
+			renderComponent();
+			await nextTick();
+
+			store.setStep(2);
+			await nextTick();
+			// Going back to an already-viewed step must not emit a duplicate.
+			store.setStep(1);
+			await nextTick();
+
+			const events = stepEvents();
+			expect(events.map((call) => call[1])).toEqual([
+				{ workflow_id: 'workflow-id', step_name: 'setup_scorers', step_index: 2 },
+				{ workflow_id: 'workflow-id', step_name: 'add_test_cases', step_index: 3 },
+			]);
+		});
+
+		it('does not track a step while the run-first gate is showing', async () => {
+			// The execution probe (and thus the gate) only runs on steps 0 and 2.
+			mocks.sliceInputs = { fieldNames: [], values: {}, hasExecution: false };
+			const store = useEvaluationsWizardSidepanelStore();
+			store.open(2);
+
+			const { findByTestId } = renderComponent();
+			// Wait for the probe to settle and the gate to render.
+			await findByTestId('evaluations-wizard-sidepanel-gate');
+
+			expect(stepEvents()).toHaveLength(0);
+		});
+	});
+
+	describe('run-first gate', () => {
+		it('blocks the wizard with a run-first gate when the workflow has never run', async () => {
+			mocks.sliceInputs = { fieldNames: [], values: {}, hasExecution: false };
+			const store = useEvaluationsWizardSidepanelStore();
+			store.open(0);
+
+			const { findByTestId, queryByTestId } = renderComponent();
+
+			// Once the execution probe settles with no execution, the gate appears…
+			await findByTestId('evaluations-wizard-sidepanel-gate');
+			expect(queryByTestId('evaluations-wizard-sidepanel-gate-run')).toBeInTheDocument();
+			// …and the wizard steps/footer are hidden.
+			expect(queryByTestId('evaluations-wizard-sidepanel-progress')).toBeNull();
+			expect(queryByTestId('evaluations-wizard-sidepanel-next')).toBeNull();
+		});
+
+		it('shows the wizard (not the gate) when an execution exists', () => {
+			mocks.sliceInputs = { fieldNames: ['query'], values: { query: 'hi' }, hasExecution: true };
+			const store = useEvaluationsWizardSidepanelStore();
+			store.open(0);
+
+			const { getByTestId, queryByTestId } = renderComponent();
+			expect(getByTestId('evaluations-wizard-sidepanel-progress')).toBeInTheDocument();
+			expect(queryByTestId('evaluations-wizard-sidepanel-gate')).toBeNull();
+		});
+
+		it('does not gate an existing eval (run pinned) even without a detectable execution', () => {
+			// e.g. after "Edit evals": step 0 with the run still pinned, no fresh execution.
+			mocks.sliceInputs = { fieldNames: [], values: {}, hasExecution: false };
+			const store = useEvaluationsWizardSidepanelStore();
+			store.setStep(0);
+			store.setActiveRunId('run-1');
+
+			const { getByTestId, queryByTestId } = renderComponent();
+			expect(getByTestId('evaluations-wizard-sidepanel-progress')).toBeInTheDocument();
+			expect(queryByTestId('evaluations-wizard-sidepanel-gate')).toBeNull();
+		});
+	});
+
+	describe('workflow-switch watch', () => {
+		it('calls reset() and hydrate() when workflowId changes between two real ids', async () => {
+			const store = useEvaluationsWizardSidepanelStore();
+			// Seed non-default state to verify it is cleared (correctness is on by default).
+			store.setStep(2);
+			store.toggleMetric('toolsUsed');
+
+			mocks.workflowId = 'wf-1';
+			workflowDocumentRef.value = {
+				get workflowId() {
+					return mocks.workflowId;
+				},
+				get allNodes() {
+					return mocks.allNodes;
+				},
+			};
+
+			renderComponent();
+			await nextTick();
+
+			// Simulate switching to wf-2
+			mocks.workflowId = 'wf-2';
+			workflowDocumentRef.value = {
+				get workflowId() {
+					return mocks.workflowId;
+				},
+				get allNodes() {
+					return mocks.allNodes;
+				},
+			};
+			await nextTick();
+
+			expect(store.activeStep).toBe(0);
+			// reset() restores the default pre-selection.
+			expect(store.selectedMetricKeys).toEqual(['correctness']);
+		});
+
+		it('does NOT call reset() when prevId is the placeholder (new→saved transition)', async () => {
+			const store = useEvaluationsWizardSidepanelStore();
+			store.setStep(1);
+			store.toggleMetric('toolsUsed');
+
+			const NEW_WORKFLOW_ID = '__EMPTY__';
+			mocks.workflowId = NEW_WORKFLOW_ID;
+			workflowDocumentRef.value = {
+				get workflowId() {
+					return mocks.workflowId;
+				},
+				get allNodes() {
+					return mocks.allNodes;
+				},
+			};
+
+			renderComponent();
+			await nextTick();
+
+			// Simulate save completing — id transitions from placeholder to a real id
+			mocks.workflowId = 'wf-saved';
+			workflowDocumentRef.value = {
+				get workflowId() {
+					return mocks.workflowId;
+				},
+				get allNodes() {
+					return mocks.allNodes;
+				},
+			};
+			await nextTick();
+
+			// State must NOT be reset when transitioning from the placeholder id
+			expect(store.activeStep).toBe(1);
+			expect(store.selectedMetricKeys).toEqual(['correctness', 'toolsUsed']);
+		});
+
+		it('resets across an unmount/remount on a different workflow (pane closed between workflows)', async () => {
+			const store = useEvaluationsWizardSidepanelStore();
+
+			// Pane first opens on wf-1 and reaches the results step with a run.
+			mocks.workflowId = 'wf-1';
+			workflowDocumentRef.value = {
+				get workflowId() {
+					return mocks.workflowId;
+				},
+				get allNodes() {
+					return mocks.allNodes;
+				},
+			};
+			const first = renderComponent();
+			await nextTick();
+			store.setStep(3);
+			store.toggleMetric('toolsUsed');
+			store.setActiveRunId('run-from-wf-1');
+
+			// The focus panel closes between workflows, so the pane unmounts. The
+			// store (and its lastWorkflowId bookkeeping) survives.
+			first.unmount();
+			await nextTick();
+
+			// User switches to wf-2 and re-opens the evaluations pane → fresh mount.
+			mocks.workflowId = 'wf-2';
+			workflowDocumentRef.value = {
+				get workflowId() {
+					return mocks.workflowId;
+				},
+				get allNodes() {
+					return mocks.allNodes;
+				},
+			};
+			renderComponent();
+			await nextTick();
+
+			expect(store.activeStep).toBe(0);
+			expect(store.selectedMetricKeys).toEqual(['correctness']);
+			expect(store.activeRunId).toBeNull();
+		});
 	});
 });

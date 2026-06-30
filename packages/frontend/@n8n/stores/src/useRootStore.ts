@@ -32,7 +32,7 @@ export type RootStoreState = {
 	urlBaseWebhook: string;
 	urlBaseEditor: string;
 	instanceId: string;
-	binaryDataMode: 'default' | 'filesystem' | 's3' | 'database';
+	binaryDataMode: 'default' | 'filesystem' | 's3' | 'azure' | 'database';
 };
 
 export const useRootStore = defineStore(STORES.ROOT, () => {

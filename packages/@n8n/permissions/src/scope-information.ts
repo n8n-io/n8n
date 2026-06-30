@@ -92,6 +92,10 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		displayName: 'Unshare Credential',
 		description: 'Allows removing credential shares.',
 	},
+	'credential:connect': {
+		displayName: 'Connect Credential',
+		description: 'Allows connecting an own account to a private credential.',
+	},
 	'insights:read': {
 		displayName: 'Read Insights',
 		description: 'Allows reading insights data.',

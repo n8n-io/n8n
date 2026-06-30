@@ -1,4 +1,9 @@
-import type { INode, IWebhookFunctions, ICredentialDataDecryptedObject } from 'n8n-workflow';
+import type {
+	INode,
+	INodePropertyOptions,
+	IWebhookFunctions,
+	ICredentialDataDecryptedObject,
+} from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -87,10 +92,19 @@ describe('McpTrigger', () => {
 			expect(authParam).toBeDefined();
 			expect(authParam?.type).toBe('options');
 			expect(authParam?.default).toBe('none');
-			expect(authParam?.options).toHaveLength(3);
+			expect(authParam?.options).toHaveLength(4);
 			expect(authParam?.builderHint).toEqual({
 				propertyHint: INBOUND_TRIGGER_AUTHENTICATION_BUILDER_HINT,
 			});
+		});
+
+		it('should gate the n8nOAuth2 option to node version 2 and above', () => {
+			const authParam = mcpTrigger.description.properties?.find((p) => p.name === 'authentication');
+			const options = authParam?.options as INodePropertyOptions[];
+			const oauthOption = options.find((o) => o.value === 'n8nOAuth2');
+
+			expect(oauthOption).toBeDefined();
+			expect(oauthOption?.displayOptions).toEqual({ show: { '@version': [{ _cnd: { gte: 2 } }] } });
 		});
 
 		it('should define webhook endpoints', () => {
@@ -371,6 +385,97 @@ describe('McpTrigger', () => {
 
 			expect(resp.writeHead).toHaveBeenCalledWith(401);
 			expect(resp.end).toHaveBeenCalledWith('Unauthorized');
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+	});
+
+	describe('n8nOAuth2 authentication', () => {
+		const resourceUrl = 'https://n8n.example.com/mcp/abc';
+		const prmUrl = 'https://n8n.example.com/.well-known/oauth-protected-resource/mcp/abc';
+
+		function setupContext(opts: { typeVersion: number; headers?: Record<string, string> }) {
+			const req = createMockRequest({ path: '/mcp/abc', headers: opts.headers ?? {} });
+			const resp = createMockResponse();
+			const node = mock<INode>({ typeVersion: opts.typeVersion, name: 'MCP Server Trigger' });
+
+			mockContext.getNodeParameter.mockReturnValue('n8nOAuth2');
+			mockContext.getNodeWebhookUrl.mockReturnValue(resourceUrl);
+			mockContext.getWebhookName.mockReturnValue('setup');
+			mockContext.getRequestObject.mockReturnValue(req as never);
+			mockContext.getResponseObject.mockReturnValue(resp as never);
+			mockContext.getNode.mockReturnValue(node);
+			return { req, resp, node };
+		}
+
+		it('fails closed with 401 on node version below 2', async () => {
+			const { resp } = setupContext({ typeVersion: 1.1 });
+
+			const result = await mcpTrigger.webhook(mockContext);
+
+			expect(resp.writeHead).toHaveBeenCalledWith(401);
+			expect(mockContext.validateN8nOAuth2Token).not.toHaveBeenCalled();
+			expect(mockMcpServer.handleSetupRequest).not.toHaveBeenCalled();
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('returns 401 with resource_metadata and no error when the bearer token is missing', async () => {
+			const { resp } = setupContext({ typeVersion: 2 });
+
+			const result = await mcpTrigger.webhook(mockContext);
+
+			expect(resp.writeHead).toHaveBeenCalledWith(401, {
+				'WWW-Authenticate': `Bearer realm="n8n MCP Server", resource_metadata="${prmUrl}"`,
+			});
+			expect(mockContext.validateN8nOAuth2Token).not.toHaveBeenCalled();
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('returns 401 with error="invalid_token" when the token is rejected', async () => {
+			const { resp } = setupContext({
+				typeVersion: 2,
+				headers: { authorization: 'Bearer bad-token' },
+			});
+			mockContext.validateN8nOAuth2Token.mockResolvedValue({
+				valid: false,
+				reason: 'invalid_token',
+			});
+
+			const result = await mcpTrigger.webhook(mockContext);
+
+			expect(mockContext.validateN8nOAuth2Token).toHaveBeenCalledWith('bad-token', resourceUrl);
+			expect(resp.writeHead).toHaveBeenCalledWith(401, {
+				'WWW-Authenticate': `Bearer realm="n8n MCP Server", resource_metadata="${prmUrl}", error="invalid_token"`,
+			});
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('returns 503 when the token verifier is unavailable', async () => {
+			const { resp } = setupContext({
+				typeVersion: 2,
+				headers: { authorization: 'Bearer some-token' },
+			});
+			mockContext.validateN8nOAuth2Token.mockResolvedValue({
+				valid: false,
+				reason: 'verifier_unavailable',
+			});
+
+			const result = await mcpTrigger.webhook(mockContext);
+
+			expect(resp.status).toHaveBeenCalledWith(503);
+			expect(resp.writeHead).not.toHaveBeenCalled();
+			expect(result).toEqual({ noWebhookResponse: true });
+		});
+
+		it('proceeds to MCP dispatch when the token is valid', async () => {
+			setupContext({ typeVersion: 2, headers: { authorization: 'Bearer good-token' } });
+			mockContext.validateN8nOAuth2Token.mockResolvedValue({
+				valid: true,
+				user: { id: 'u1', email: 'u@example.com', firstName: 'U', lastName: 'One' },
+			});
+
+			const result = await mcpTrigger.webhook(mockContext);
+
+			expect(mockMcpServer.handleSetupRequest).toHaveBeenCalled();
 			expect(result).toEqual({ noWebhookResponse: true });
 		});
 	});

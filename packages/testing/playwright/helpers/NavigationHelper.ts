@@ -106,6 +106,16 @@ export class NavigationHelper {
 	}
 
 	/**
+	 * Navigate to a specific execution within a workflow
+	 * URLs:
+	 * - Existing workflow: /workflow/{workflowId}/executions/{executionId}
+	 */
+	async toExecution(workflowId: string, executionId: string): Promise<void> {
+		const url = `/workflow/${workflowId}/executions/${executionId}`;
+		await this.page.goto(url);
+	}
+
+	/**
 	 * Navigate to a specific folder
 	 * URL: /projects/{projectId}/folders/{folderId}/workflows or /home/folders/{folderId}/workflows
 	 */
@@ -221,10 +231,10 @@ export class NavigationHelper {
 
 	/**
 	 * Navigate to Instance AI page
-	 * URL: /instance-ai
+	 * URL: /assistant
 	 */
 	async toInstanceAi() {
-		await this.page.goto('/instance-ai');
+		await this.page.goto('/assistant');
 		await this.instanceAi.enableInstanceAiIfPrompted();
 	}
 

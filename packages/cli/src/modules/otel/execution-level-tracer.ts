@@ -11,7 +11,7 @@ import {
 	type EndNodeParams,
 	isEndNodeError,
 } from './execution-level-tracer.types';
-import { OtelConfig } from './otel.config';
+import { OtelSettingsService } from './otel-settings.service';
 import { ATTR } from './otel.constants';
 import type { TracingContext } from './tracing-context';
 
@@ -26,10 +26,19 @@ type TrackedSpan = { span: Span };
 export class ExecutionLevelTracer {
 	private readonly activeWorkflowSpans = new Map<string, TrackedSpan>();
 	private readonly activeNodeSpansByExecutionId = new Map<string, Map<string, TrackedSpan>>();
-	private readonly tracer = trace.getTracer(TRACER_NAME);
+	private tracer = trace.getTracer(TRACER_NAME);
+
+	/**
+	 * Called by OtelService after a SDK restart so this instance picks up the
+	 * new NodeTracerProvider. Without this, the cached NodeTracer stays bound
+	 * to the old (shutdown) provider and all spans are silently dropped.
+	 */
+	refreshTracer(): void {
+		this.tracer = trace.getTracer(TRACER_NAME);
+	}
 
 	constructor(
-		private readonly config: OtelConfig,
+		private readonly otelSettingsService: OtelSettingsService,
 		private readonly logger: Logger,
 	) {}
 
@@ -190,7 +199,7 @@ export class ExecutionLevelTracer {
 		headers: Record<string, string>,
 	): void {
 		try {
-			if (!this.config.injectOutbound) return;
+			if (!this.otelSettingsService.getSettings().injectOutbound) return;
 
 			const span = this.findMostSpecificSpan(executionId, nodeName);
 			if (!span) return;

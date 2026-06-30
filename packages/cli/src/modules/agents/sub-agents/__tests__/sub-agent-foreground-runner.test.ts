@@ -5,17 +5,18 @@ import {
 	type StreamChunk,
 	type StreamResult,
 } from '@n8n/agents';
-import type { Logger } from '@n8n/backend-common';
 import type {
 	ResolvedSubAgentSource,
 	RunnableAgentJsonConfig,
 	SubAgentSpawnRequest,
 } from '@n8n/api-types';
+import type { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
-import { AgentRuntimeReconstructionService } from '../../agent-runtime-reconstruction.service';
 import type { AgentExecutionService } from '../../agent-execution.service';
+import { AgentRuntimeReconstructionService } from '../../agent-runtime-reconstruction.service';
 import { SubAgentForegroundRunner } from '../sub-agent-foreground-runner';
 import type {
 	ResolvedSubAgentRuntimeSource,
@@ -93,16 +94,16 @@ const defaultStreamChunks: StreamChunk[] = [
 ];
 
 describe('SubAgentForegroundRunner', () => {
-	let sourceResolver: jest.Mocked<SubAgentSourceResolver>;
-	let reconstructionService: jest.Mocked<AgentRuntimeReconstructionService>;
+	let sourceResolver: Mocked<SubAgentSourceResolver>;
+	let reconstructionService: Mocked<AgentRuntimeReconstructionService>;
 	let runner: SubAgentForegroundRunner;
-	let childAgent: jest.Mocked<BuiltAgent>;
-	let agentExecutionService: jest.Mocked<AgentExecutionService>;
-	let logger: jest.Mocked<Logger>;
-	let credentialProvider: jest.Mocked<CredentialProvider>;
+	let childAgent: Mocked<BuiltAgent>;
+	let agentExecutionService: Mocked<AgentExecutionService>;
+	let logger: Mocked<Logger>;
+	let credentialProvider: Mocked<CredentialProvider>;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		Container.reset();
 		sourceResolver = mock<SubAgentSourceResolver>();
 		sourceResolver.resolveForRuntime.mockResolvedValue(runtimeSource);
@@ -180,6 +181,12 @@ describe('SubAgentForegroundRunner', () => {
 				threadId: result.threadId,
 				agentId: 'agent-1',
 				source: 'subagent',
+				telemetry: {
+					runType: 'production',
+					configuration: expect.objectContaining({
+						model: 'anthropic/claude-sonnet-4-5',
+					}),
+				},
 			}),
 		);
 	});
@@ -272,7 +279,7 @@ describe('SubAgentForegroundRunner', () => {
 					type: 'tool-call-suspended',
 					runId: 'child-run-1',
 					toolCallId: 'tool-call-1',
-					toolName: 'rich_interaction',
+					toolName: 'approval_action',
 				},
 				{ type: 'finish', finishReason: 'tool-calls' },
 			]),
@@ -315,27 +322,6 @@ describe('SubAgentForegroundRunner', () => {
 		expect(childAgent.close).toHaveBeenCalledTimes(1);
 	});
 
-	it('passes an abort signal when timeout policy is configured', async () => {
-		await runner.runForeground(
-			{
-				...spawnRequest,
-				policy: { timeoutMs: 1000 },
-			},
-			{
-				projectId,
-				userId,
-				credentialProvider,
-			},
-		);
-
-		expect(childAgent.stream).toHaveBeenCalledWith(
-			expect.any(String),
-			expect.objectContaining({
-				abortSignal: expect.any(AbortSignal),
-			}),
-		);
-	});
-
 	it('aborts the child run when the parent run is cancelled', async () => {
 		const parentAbort = new AbortController();
 		childAgent.stream.mockImplementation(
@@ -367,45 +353,6 @@ describe('SubAgentForegroundRunner', () => {
 			expect.any(String),
 			expect.objectContaining({ abortSignal: expect.any(AbortSignal) }),
 		);
-	});
-
-	it('returns failed status when timeout aborts the child run', async () => {
-		jest.useFakeTimers();
-		childAgent.stream.mockImplementation(
-			async (_input, options) =>
-				await new Promise<StreamResult>((resolve) => {
-					options?.abortSignal?.addEventListener('abort', () => {
-						resolve(
-							makeStreamResult([
-								{ type: 'error', error: new Error('aborted') },
-								{ type: 'finish', finishReason: 'error' },
-							]),
-						);
-					});
-				}),
-		);
-
-		try {
-			const run = runner.runForeground(
-				{
-					...spawnRequest,
-					policy: { timeoutMs: 1000 },
-				},
-				{
-					projectId,
-					userId,
-					credentialProvider,
-				},
-			);
-
-			await jest.advanceTimersByTimeAsync(1000);
-
-			await expect(run).resolves.toMatchObject({
-				status: 'failed',
-			});
-		} finally {
-			jest.useRealTimers();
-		}
 	});
 });
 

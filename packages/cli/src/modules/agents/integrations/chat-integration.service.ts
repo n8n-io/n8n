@@ -9,7 +9,7 @@ import type { User } from '@n8n/db';
 import { ProjectRelationRepository, UserRepository } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
-import type { Channel, Thread, UserInfo } from 'chat';
+import type { Channel, Chat as ChatSdk, StateAdapter, Thread, UserInfo } from 'chat';
 import { InstanceSettings } from 'n8n-core';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
@@ -23,9 +23,12 @@ import {
 	ChatIntegrationRegistry,
 	type AgentChatIntegrationContext,
 } from './agent-chat-integration';
-import { ComponentMapper } from './component-mapper';
+import { AgentChatSubscriptionStateService } from './agent-chat-subscription-state.service';
+import { ComponentMapper, type ShortenCallback } from './component-mapper';
 import { loadChatSdk, loadMemoryState } from './esm-loader';
 import { buildIntegrationConnectionId } from './integration-tools';
+import { channelIntegrationRecorder } from './recording/channel-integration-recorder';
+import { recordAdapterCalls } from './recording/recording-adapter';
 import type { Agent } from '../entities/agent.entity';
 import { AgentRepository } from '../repositories/agent.repository';
 
@@ -82,6 +85,14 @@ interface DisconnectOptions {
 	skipExternalHooks?: boolean;
 }
 
+async function getAgentExecutionOrchestratorService() {
+	// eslint-disable-next-line import-x/no-cycle
+	const { AgentExecutionOrchestratorService } = await import(
+		'../agent-execution-orchestrator.service'
+	);
+	return Container.get(AgentExecutionOrchestratorService);
+}
+
 /**
  * Manages per-agent Chat SDK instances and their lifecycle.
  *
@@ -103,6 +114,7 @@ export class ChatIntegrationService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly publisher: Publisher,
 		private readonly globalConfig: GlobalConfig,
+		private readonly chatSubscriptionStateService: AgentChatSubscriptionStateService,
 	) {}
 
 	/**
@@ -191,55 +203,75 @@ export class ChatIntegrationService {
 		}
 
 		// Delegate adapter construction to the platform implementation.
-		const adapter = await integrationImpl.createAdapter(ctx);
+		const adapter = recordAdapterCalls(integration.type, await integrationImpl.createAdapter(ctx));
+		channelIntegrationRecorder.startFetchRecording();
 
 		// Dynamic imports — chat packages are ESM-only, use loader to bypass CJS transform
 		const { Chat } = await loadChatSdk();
 		const { createMemoryState } = await loadMemoryState();
 
-		// Use the platform type as the adapter key (e.g. 'slack') so that
-		// bot.webhooks.slack maps correctly to the handler.
-		const chat = new Chat({
-			userName: `n8n-agent-${agentId}`,
-			adapters: { [integration.type]: adapter } as Record<string, never>,
-			state: createMemoryState(),
-		});
+		let state: StateAdapter | undefined;
+		let chat!: ChatSdk;
+		let bridge!: AgentChatBridge;
+		let initializeStarted = false;
 
-		// Create supporting infrastructure
-		const componentMapper = new ComponentMapper();
+		// Initialize the Chat instance (connects adapters, state adapter, etc.) and
+		// run post-initialize hooks (e.g. Telegram setWebhook) once it is live.
+		// If setup throws after registering subscription state but before
+		// initialization starts, disconnect the state directly. Once initialize()
+		// starts, chat.shutdown() owns cleanup for adapters, timers, and state.
+		try {
+			state = this.chatSubscriptionStateService.createStateAdapter({
+				agentId,
+				integration,
+				delegate: createMemoryState(),
+			});
 
-		// Lazy-import AgentsService to avoid circular DI dependency
-		// eslint-disable-next-line import-x/no-cycle
-		const { AgentsService } = await import('../agents.service');
-		const agentService = Container.get(AgentsService);
+			chat = new Chat({
+				userName: `n8n-agent-${agentId}`,
+				// Use the platform type as the adapter key (e.g. 'slack') so that
+				// bot.webhooks.slack maps correctly to the handler.
+				adapters: { [integration.type]: adapter } as Record<string, never>,
+				state,
+			});
 
-		const bridge = AgentChatBridge.create(
-			chat,
-			agentId,
-			agentService,
-			componentMapper,
-			this.logger,
-			projectId,
-			integration,
-		);
+			// Create supporting infrastructure
+			const componentMapper = new ComponentMapper();
 
-		// Initialize the Chat instance (connects adapters, state adapter, etc.)
-		await chat.initialize();
+			const agentExecutionOrchestratorService = await getAgentExecutionOrchestratorService();
 
-		// Post-initialize hooks (e.g. Telegram setWebhook) run AFTER chat is live.
-		// If one throws we must shut the chat down, otherwise adapters/timers leak.
-		if (integrationImpl.onAfterConnect && !options.skipExternalHooks) {
-			try {
+			bridge = AgentChatBridge.create(
+				chat,
+				agentId,
+				agentExecutionOrchestratorService,
+				componentMapper,
+				this.logger,
+				projectId,
+				integration,
+			);
+
+			initializeStarted = true;
+			await chat.initialize();
+
+			if (integrationImpl.onAfterConnect && !options.skipExternalHooks) {
 				await integrationImpl.onAfterConnect(ctx);
-			} catch (error) {
+			}
+		} catch (error) {
+			if (initializeStarted) {
 				await chat.shutdown().catch((shutdownError: unknown) => {
 					this.logger.warn(
-						`[ChatIntegrationService] Shutdown after failed onAfterConnect threw: ${shutdownError instanceof Error ? shutdownError.message : String(shutdownError)}`,
+						`[ChatIntegrationService] Shutdown after failed connect threw: ${shutdownError instanceof Error ? shutdownError.message : String(shutdownError)}`,
 					);
 				});
-				bridge.dispose();
-				throw error;
+			} else {
+				await state?.disconnect().catch((disconnectError: unknown) => {
+					this.logger.warn(
+						`[ChatIntegrationService] State cleanup after failed setup threw: ${disconnectError instanceof Error ? disconnectError.message : String(disconnectError)}`,
+					);
+				});
 			}
+			bridge?.dispose();
+			throw error;
 		}
 
 		// The `chat` variable is returned by `new Chat(...)` from the ESM-only
@@ -317,9 +349,9 @@ export class ChatIntegrationService {
 
 	/**
 	 * Diff the previous and next chat integrations of an agent and reconcile
-	 * runtime connections accordingly. Used by `AgentsService.updateConfig`
+	 * runtime connections accordingly. Used by `AgentConfigService.updateConfig`
 	 * after the builder writes a new integrations array, and by
-	 * `AgentsService.publishAgent` to wake up integrations that were persisted
+	 * `AgentPublishService.publishAgent` to wake up integrations that were persisted
 	 * while the agent was still a draft.
 	 *
 	 * Disconnects of removed integrations always run (so unpublishing-then-
@@ -351,6 +383,17 @@ export class ChatIntegrationService {
 						`[ChatIntegrationService] Disconnect during sync failed for ${integration.type} on agent ${agent.id}: ${error instanceof Error ? error.message : String(error)}`,
 					);
 				}
+
+				try {
+					await this.chatSubscriptionStateService.deleteSubscriptionsForIntegration(
+						agent.id,
+						integration,
+					);
+				} catch (error) {
+					this.logger.warn(
+						`[ChatIntegrationService] Subscription cleanup during sync failed for ${integration.type} on agent ${agent.id}: ${error instanceof Error ? error.message : String(error)}`,
+					);
+				}
 			}
 		}
 
@@ -374,6 +417,9 @@ export class ChatIntegrationService {
 			: [];
 
 		for (const integration of additions) {
+			const key = this.connectionKey(agent.id, integration.type, integration.credentialId);
+			if (this.connections.has(key)) continue;
+
 			let connected = false;
 			for (const userId of userIds) {
 				try {
@@ -438,6 +484,15 @@ export class ChatIntegrationService {
 			if (k.startsWith(`${agentId}:`)) return conn.chat;
 		}
 		return undefined;
+	}
+
+	getShortenCallback(
+		agentId: string,
+		integration: { type: string; credentialId: string },
+	): ShortenCallback | undefined {
+		return this.connections
+			.get(this.connectionKey(agentId, integration.type, integration.credentialId))
+			?.bridge.getShortenCallback();
 	}
 
 	/**

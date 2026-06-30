@@ -24,6 +24,12 @@ All Instance AI configuration is done via environment variables.
 | `LANGSMITH_ENDPOINT` / `LANGCHAIN_ENDPOINT` | string | unset | Optional direct LangSmith endpoint override. |
 | `LANGSMITH_TRACING` / `LANGCHAIN_TRACING_V2` | boolean | unset | LangSmith SDK tracing flags. `false` disables tracing; `true` enables direct tracing when direct LangSmith credentials or endpoints are configured. |
 
+### Debugging
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `N8N_INSTANCE_AI_RUN_DEBUG_ENABLED` | boolean | `false` | Capture orchestrator LLM steps and workflow code snapshots for the dev debug panel and eval LLM debug reports. |
+
 ### Memory
 
 | Variable | Type | Default | Description |
@@ -63,13 +69,18 @@ When no search provider is available, the `web-search` action is disabled. `fetc
 | `N8N_SANDBOX_SERVICE_URL` | string | `''` | n8n sandbox service URL. Required when provider is `n8n-sandbox`. |
 | `N8N_SANDBOX_SERVICE_API_KEY` | string | `''` | API key for the n8n sandbox service. Optional when an `httpHeaderAuth` credential is selected in admin settings. |
 | `N8N_INSTANCE_AI_SANDBOX_IMAGE` | string | `daytonaio/sandbox:0.5.0` | Docker image for the Daytona sandbox. |
+| `N8N_INSTANCE_AI_SANDBOX_SNAPSHOT` | string | `''` | Overrides the full Daytona snapshot name (e.g. `n8n/instance-ai:2.27.3`) used to create sandboxes. Defaults to the versioned snapshot derived from the running n8n version. Only applies in proxy mode; the snapshot must exist or Daytona falls back to building from the base image. |
 | `N8N_INSTANCE_AI_SANDBOX_TIMEOUT` | number | `300000` | Default command timeout in the sandbox (milliseconds). |
 | `N8N_INSTANCE_AI_SANDBOX_NAME_PREFIX` | string | `''` | Prefix prepended to every Daytona sandbox name (e.g. `eval-baseline-daily`). Also surfaced as a `name_prefix` label. Empty in production. |
+| `N8N_INSTANCE_AI_SANDBOX_EPHEMERAL` | boolean | `false` | When true, Daytona sandboxes are created ephemeral (auto-deleted on stop) instead of lingering stopped. Intended for throwaway eval instances so sandboxes don't accumulate. |
+| `N8N_INSTANCE_AI_SANDBOX_AUTO_STOP_MINUTES` | number | `15` | Minutes an idle Daytona sandbox waits before being stopped. `0` disables auto-stop. |
+| `N8N_INSTANCE_AI_SANDBOX_AUTO_ARCHIVE_MINUTES` | number | `60` (1 hour) | Minutes a stopped Daytona sandbox waits before being archived to cold storage. `0` uses Daytona's maximum interval. |
+| `N8N_INSTANCE_AI_SANDBOX_AUTO_DELETE_MINUTES` | number | `10080` (7 days) | Minutes a stopped Daytona sandbox waits before being deleted. Negative disables auto-delete; `0` deletes on stop. Ignored when `N8N_INSTANCE_AI_SANDBOX_EPHEMERAL` is true. |
 
-When sandbox is enabled, the builder agent writes TypeScript to
-`~/workspace/src/workflow.ts`, runs `tsc` for validation, and uses
-`submit-workflow` to save. It receives filesystem access and `execute_command`
-from the configured sandbox workspace. There is no no-sandbox builder fallback.
+When sandbox is enabled, Instance AI writes workflow source files in the runtime
+workspace and `build-workflow` runs TypeScript sources through the sandbox
+`tsx` build runner before saving. The model still calls only `build-workflow`;
+there is no no-sandbox TypeScript build fallback.
 
 Sandbox workspaces persist per thread — the same container is reused across messages in a conversation. Workspaces are destroyed on server shutdown.
 
@@ -90,6 +101,26 @@ Observer and Reflector use the same model as the orchestrator agent (see `@n8n/a
 | `N8N_INSTANCE_AI_PRUNE_INTERVAL` | number | `3600000` | Interval in ms between scheduled pruning runs on the leader. Prunes stale checkpoints, expired pending confirmations, and expired conversation threads. 0 = disabled. |
 | `N8N_INSTANCE_AI_SNAPSHOT_RETENTION` | number | `86400000` | Retention period in ms for orphaned workflow snapshots before pruning. |
 | `N8N_INSTANCE_AI_CONFIRMATION_TIMEOUT` | number | `86400000` | Timeout in ms for HITL confirmation requests. 0 = no timeout. |
+
+### Output Filtering
+
+Agent output is scanned for secrets/PII and redacted before it reaches the user.
+The scan covers streamed assistant text, reasoning, and tool results/errors, for
+both the orchestrator and delegated sub-agents. A filtering event (categories
+and counts only — never the values) is logged whenever a redaction occurs.
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `N8N_INSTANCE_AI_OUTPUT_REDACTION_ENABLED` | boolean | `true` | Master switch. When `false`, output passes through untouched. |
+| `N8N_INSTANCE_AI_OUTPUT_REDACTION_SECRETS` | boolean | `true` | Redact credential/secret patterns (API keys, tokens, auth headers, `key=value` pairs). |
+| `N8N_INSTANCE_AI_OUTPUT_REDACTION_PII` | string | `credit-card` | Comma-separated PII categories to redact. Available: `email`, `credit-card` (Luhn-validated), `ssn-us` (US Social Security Number, dashed `123-45-6789` form). Defaults to `credit-card` only; `email`/`ssn-us` are implemented but off by default pending review of false-positive rates. Empty = no PII scanning. Unrecognized values are ignored. Per-country national IDs each use their own `ssn-<cc>` category (e.g. a future `ssn-uk`). |
+| `N8N_INSTANCE_AI_OUTPUT_REDACTION_PLACEHOLDER` | string | `[REDACTED]` | Replacement text substituted for each redacted match. |
+
+Secret detection is conservative by design — it matches well-known token shapes
+and explicit `key=value`/JSON secret fields, not arbitrary opaque strings, to
+avoid mangling normal output. The `PiiDetectionType` API also reserves `phone`
+and `address`, but those have no detection pattern yet — setting them has no
+effect (they were deferred as too false-positive-prone for free-form prose).
 
 ## Enabling / Disabling
 
@@ -151,47 +182,40 @@ Runtime behavior:
 N8N_INSTANCE_AI_MODEL=anthropic/claude-opus-4-8
 
 # With MCP servers
-N8N_INSTANCE_AI_MODEL=anthropic/claude-opus-4-8
 N8N_INSTANCE_AI_MCP_SERVERS="my-tools=https://mcp.example.com/sse"
 
 # With SearXNG (free, self-hosted search)
-N8N_INSTANCE_AI_MODEL=anthropic/claude-opus-4-8
 N8N_INSTANCE_AI_SEARXNG_URL=http://searxng:8080
 
 # With Brave Search (paid API, takes priority over SearXNG)
-N8N_INSTANCE_AI_MODEL=anthropic/claude-opus-4-8
 INSTANCE_AI_BRAVE_SEARCH_API_KEY=BSA-xxx
 
 # With sandbox (n8n sandbox service)
 # CI can start it with:
 # pnpm tsx packages/testing/containers/start-sandbox.ts --network n8n-eval-net
-N8N_INSTANCE_AI_MODEL=anthropic/claude-sonnet-4-5
 N8N_INSTANCE_AI_SANDBOX_ENABLED=true
 N8N_INSTANCE_AI_SANDBOX_PROVIDER=n8n-sandbox
 N8N_SANDBOX_SERVICE_URL=https://sandbox.example.com
 N8N_SANDBOX_SERVICE_API_KEY=sandbox-key
 
 # With sandbox (Daytona — explicit provider)
-N8N_INSTANCE_AI_MODEL=anthropic/claude-opus-4-8
 N8N_INSTANCE_AI_SANDBOX_ENABLED=true
 N8N_INSTANCE_AI_SANDBOX_PROVIDER=daytona
 DAYTONA_API_URL=https://app.daytona.io/api
 DAYTONA_API_KEY=dtn_xxx
 
 # With filesystem gateway (user runs daemon on their machine)
-N8N_INSTANCE_AI_MODEL=anthropic/claude-opus-4-8
 N8N_INSTANCE_AI_GATEWAY_API_KEY=my-secret-key
 # User runs: npx @n8n/computer-use
 
 # With custom OpenAI-compatible endpoint (e.g. LM Studio, Ollama)
-N8N_INSTANCE_AI_MODEL=custom/llama-3.1-70b
 N8N_INSTANCE_AI_MODEL_URL=http://localhost:1234/v1
 
-# Full configuration with observational memory tuning
-N8N_INSTANCE_AI_MODEL=anthropic/claude-opus-4-8
-N8N_INSTANCE_AI_MCP_SERVERS="github=https://mcp.github.com/sse"
-N8N_INSTANCE_AI_MAX_STEPS=50
-N8N_INSTANCE_AI_MAX_LOOP_ITERATIONS=10
+# Output filtering — secrets + email only, with a custom placeholder
+N8N_INSTANCE_AI_OUTPUT_REDACTION_PII=email
+N8N_INSTANCE_AI_OUTPUT_REDACTION_PLACEHOLDER=‹redacted›
+
+# Observational memory tuning
 N8N_INSTANCE_AI_OBSERVER_MESSAGE_TOKENS=30000
 ```
 

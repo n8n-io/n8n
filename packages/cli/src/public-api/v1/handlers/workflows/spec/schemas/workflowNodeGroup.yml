@@ -1,0 +1,20 @@
+type: object
+additionalProperties: false
+required:
+  - id
+  - name
+  - nodeIds
+properties:
+  id:
+    type: string
+    description: Unique identifier for the node group
+    example: 9b1c8e2a-4d3f-4a6b-8c7d-1e2f3a4b5c6d
+  name:
+    type: string
+    description: Display name of the node group
+    example: Data processing
+  nodeIds:
+    type: array
+    description: IDs of the nodes that belong to this group
+    items:
+      type: string

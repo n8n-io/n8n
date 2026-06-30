@@ -4,7 +4,7 @@ import { ConcurrencyQueue } from '../concurrency-queue';
 
 describe('ConcurrencyQueue', () => {
 	beforeAll(() => {
-		jest.useFakeTimers();
+		vi.useFakeTimers();
 	});
 
 	it('should limit concurrency', async () => {
@@ -12,7 +12,7 @@ describe('ConcurrencyQueue', () => {
 		const state: Record<string, 'started' | 'finished' | 'rejected'> = {};
 
 		// eslint-disable-next-line @typescript-eslint/promise-function-async
-		const sleepSpy = jest.fn(() => sleep(500));
+		const sleepSpy = vi.fn(() => sleep(500));
 
 		const testFn = async (item: { executionId: string }) => {
 			try {
@@ -41,24 +41,24 @@ describe('ConcurrencyQueue', () => {
 		expect(state).toEqual({});
 
 		// At T+0.4 seconds the first `testFn` has been called, but hasn't resolved
-		await jest.advanceTimersByTimeAsync(400);
+		await vi.advanceTimersByTimeAsync(400);
 		expect(sleepSpy).toHaveBeenCalledTimes(1);
 		expect(state).toEqual({ 1: 'started' });
 
 		// At T+0.5 seconds the first promise has resolved, and the second one has stared
-		await jest.advanceTimersByTimeAsync(100);
+		await vi.advanceTimersByTimeAsync(100);
 		expect(sleepSpy).toHaveBeenCalledTimes(2);
 		expect(state).toEqual({ 1: 'finished', 2: 'started' });
 
 		// At T+1 seconds the first two promises have resolved, and the third one has stared
-		await jest.advanceTimersByTimeAsync(500);
+		await vi.advanceTimersByTimeAsync(500);
 		expect(sleepSpy).toHaveBeenCalledTimes(3);
 		expect(state).toEqual({ 1: 'finished', 2: 'finished', 3: 'started' });
 
 		// If the fourth promise is removed, it is rejected and never started.
 		// The fifth one remains queued until the third one finishes.
 		queue.remove('4');
-		await jest.advanceTimersByTimeAsync(1);
+		await vi.advanceTimersByTimeAsync(1);
 		expect(sleepSpy).toHaveBeenCalledTimes(3); // 4 was rejected, 5 is still waiting
 		expect(state).toEqual({
 			1: 'finished',
@@ -68,7 +68,7 @@ describe('ConcurrencyQueue', () => {
 		});
 
 		// At T+1.5 seconds, the third promise finishes, releasing the queue so the fifth one starts.
-		await jest.advanceTimersByTimeAsync(499);
+		await vi.advanceTimersByTimeAsync(499);
 		expect(sleepSpy).toHaveBeenCalledTimes(4); // 5 has started
 		expect(state).toEqual({
 			1: 'finished',
@@ -79,7 +79,13 @@ describe('ConcurrencyQueue', () => {
 		});
 
 		// at T+2.5 seconds, all active/waiting promises should be resolved/finished
-		await jest.advanceTimersByTimeAsync(1000);
+		await vi.advanceTimersByTimeAsync(1000);
+		await vi.advanceTimersByTimeAsync(1);
+		expect(sleepSpy).toHaveBeenCalledTimes(4);
+		expect(state).toEqual({ 1: 'finished', 2: 'finished', 3: 'started', 5: 'started' });
+
+		// at T+5 seconds, all but the fourth promise should be resolved
+		await vi.advanceTimersByTimeAsync(4000);
 		expect(sleepSpy).toHaveBeenCalledTimes(4);
 		expect(state).toEqual({
 			1: 'finished',
@@ -98,7 +104,7 @@ describe('ConcurrencyQueue', () => {
 			rejectedError = error;
 		});
 
-		await jest.advanceTimersByTimeAsync(1);
+		await vi.advanceTimersByTimeAsync(1);
 		expect(rejectedError).toBeNull();
 
 		queue.remove('queued-execution');
@@ -109,14 +115,14 @@ describe('ConcurrencyQueue', () => {
 
 	it('should debounce emitting of the `concurrency-check` event', async () => {
 		const queue = new ConcurrencyQueue(10);
-		const emitSpy = jest.fn();
+		const emitSpy = vi.fn();
 		queue.on('concurrency-check', emitSpy);
 
 		// eslint-disable-next-line @typescript-eslint/promise-function-async
 		Array.from({ length: 10 }, (_, i) => i).forEach(() => queue.enqueue('1'));
 
 		expect(queue.currentCapacity).toBe(0);
-		await jest.advanceTimersByTimeAsync(1000);
+		await vi.advanceTimersByTimeAsync(1000);
 		expect(emitSpy).toHaveBeenCalledTimes(1);
 	});
 });

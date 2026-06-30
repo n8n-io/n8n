@@ -196,7 +196,7 @@ const credentialsHandlers: CredentialsHandlers = {
 			const { id: credentialId } = req.params;
 			let credential: CredentialsEntity | undefined;
 
-			if (!['global:owner', 'global:admin'].includes(req.user.role.slug)) {
+			if (!hasGlobalScope(req.user, ['credential:read'])) {
 				const shared = await getSharedCredentials(req.user.id, credentialId);
 
 				if (shared?.role === 'credential:owner') {

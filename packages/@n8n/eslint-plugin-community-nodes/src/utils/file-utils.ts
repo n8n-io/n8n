@@ -158,20 +158,17 @@ export function validateIconPath(
 ): {
 	isValid: boolean;
 	isFile: boolean;
-	isSvg: boolean;
 	exists: boolean;
 } {
 	const isFile = iconPath.startsWith('file:');
 	const relativePath = iconPath.replace(/^file:/, '');
-	const isSvg = relativePath.endsWith('.svg');
 	// Should not use safeJoinPath here because iconPath can be outside of the node class folder
 	const fullPath = path.join(baseDir, relativePath);
 	const exists = fileExistsWithCaseSync(fullPath);
 
 	return {
-		isValid: isFile && isSvg && exists,
+		isValid: isFile && exists,
 		isFile,
-		isSvg,
 		exists,
 	};
 }
@@ -180,6 +177,44 @@ export function readPackageJsonNodes(packageJsonPath: string): string[] {
 	const n8nConfig = readPackageJsonN8n(packageJsonPath);
 	const nodePaths = n8nConfig.nodes ?? [];
 	return resolveN8nFilePaths(packageJsonPath, nodePaths);
+}
+
+function findFilesRecursively(dir: string, matches: (fileName: string) => boolean): string[] {
+	const results: string[] = [];
+
+	let entries;
+	try {
+		entries = readdirSync(dir, { withFileTypes: true });
+	} catch {
+		return results;
+	}
+
+	for (const entry of entries) {
+		const fullPath = path.join(dir, entry.name);
+		if (entry.isDirectory()) {
+			results.push(...findFilesRecursively(fullPath, matches));
+		} else if (entry.isFile() && matches(entry.name)) {
+			results.push(fullPath);
+		}
+	}
+
+	return results;
+}
+
+/**
+ * Finds all `*.node.ts` source files in the package's `nodes/` directory,
+ * returning their absolute paths. Returns an empty array if there is no
+ * `nodes/` directory.
+ */
+export function findNodeSourceFilesOnDisk(packageJsonPath: string): string[] {
+	const packageDir = dirname(packageJsonPath);
+	const nodesDir = safeJoinPath(packageDir, 'nodes');
+
+	if (!existsSync(nodesDir)) {
+		return [];
+	}
+
+	return findFilesRecursively(nodesDir, (fileName) => fileName.endsWith('.node.ts'));
 }
 
 export function areAllCredentialUsagesTestedByNodes(
@@ -268,7 +303,9 @@ function fileExistsWithCaseSync(filePath: string): boolean {
 	}
 }
 
-export function findSimilarSvgFiles(targetPath: string, baseDir: string): string[] {
+const ICON_EXTENSIONS = ['.svg', '.png'];
+
+export function findSimilarIconFiles(targetPath: string, baseDir: string): string[] {
 	try {
 		const targetFileName = path.basename(targetPath, path.extname(targetPath));
 		const targetDir = path.dirname(targetPath);
@@ -279,15 +316,25 @@ export function findSimilarSvgFiles(targetPath: string, baseDir: string): string
 			return [];
 		}
 
-		const files = readdirSync(searchDir);
-		const svgFileNames = files
-			.filter((file) => file.endsWith('.svg'))
-			.map((file) => path.basename(file, '.svg'));
+		const files = readdirSync(searchDir).filter((file) =>
+			ICON_EXTENSIONS.includes(path.extname(file).toLowerCase()),
+		);
 
-		const candidateNames = new Set(svgFileNames);
+		// Map icon base names to their actual filenames so suggestions keep their extension.
+		const baseNameToFiles = new Map<string, string[]>();
+		for (const file of files) {
+			const baseName = path.basename(file, path.extname(file));
+			const existing = baseNameToFiles.get(baseName) ?? [];
+			existing.push(file);
+			baseNameToFiles.set(baseName, existing);
+		}
+
+		const candidateNames = new Set(baseNameToFiles.keys());
 		const similarNames = findSimilarStrings(targetFileName, candidateNames);
 
-		return similarNames.map((name) => path.join(targetDir, `${name}.svg`));
+		return similarNames.flatMap((name) =>
+			(baseNameToFiles.get(name) ?? []).map((file) => path.join(targetDir, file)),
+		);
 	} catch {
 		return [];
 	}

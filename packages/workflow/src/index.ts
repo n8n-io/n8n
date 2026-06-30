@@ -11,6 +11,7 @@ export * from './data-table.types';
 export * from './deferred-promise';
 export * from './execution-context';
 export * from './execution-context-establishment-hooks';
+export * from './redaction-channels';
 export * from './global-state';
 export * from './interfaces';
 export * from './sub-workflow-output';
@@ -26,6 +27,7 @@ export * from './node-validation';
 export * from './node-grouping-validation';
 export * from './mcp-helpers';
 export * from './tool-helpers';
+export * from './trigger-identity';
 export * from './node-reference-parser-utils';
 export * from './metadata-utils';
 export * from './highlighted-data';
@@ -97,6 +99,7 @@ export * from './node-parameters/path-utils';
 export * from './evaluation-helpers';
 export * from './workflow-diff';
 export * from './workflow-environments-helper';
+export { evaluateJmespathQuery, JmespathQueryError } from './jmespath-query';
 
 export type {
 	DocMetadata,

@@ -1,6 +1,19 @@
-import { createInitialState, reduceEvent, findAgent, toAgentTree } from '../agent-run-reducer';
+import { deepCopy } from 'n8n-workflow';
+
+import {
+	createInitialState,
+	reduceEvent,
+	findAgent,
+	toAgentTree,
+	stateFromAgentTree,
+} from '../agent-run-reducer';
 import type { AgentRunState } from '../agent-run-reducer';
-import type { InstanceAiEvent } from '../instance-ai.schema';
+import type {
+	InstanceAiAgentNode,
+	InstanceAiEvent,
+	InstanceAiTimelineEntry,
+	InstanceAiToolCallState,
+} from '../instance-ai.schema';
 
 // ---------------------------------------------------------------------------
 // Factory helpers
@@ -133,10 +146,7 @@ function stateWithRun(runId: string, agentId: string): AgentRunState {
 function expectStateMapsNotPolluted(state: AgentRunState): void {
 	expect(Object.getPrototypeOf(state.agentsById)).toBe(Object.prototype);
 	expect(Object.getPrototypeOf(state.parentByAgentId)).toBe(Object.prototype);
-	expect(Object.getPrototypeOf(state.childrenByAgentId)).toBe(Object.prototype);
-	expect(Object.getPrototypeOf(state.timelineByAgentId)).toBe(Object.prototype);
 	expect(Object.getPrototypeOf(state.toolCallsById)).toBe(Object.prototype);
-	expect(Object.getPrototypeOf(state.toolCallIdsByAgentId)).toBe(Object.prototype);
 }
 
 // ---------------------------------------------------------------------------
@@ -254,6 +264,35 @@ describe('agent-run-reducer', () => {
 			expect(state.toolCallsById['tc-1'].isLoading).toBe(true);
 		});
 
+		it('follow-up run-start preserves a reasoning-only tree', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeReasoningDelta('run-1', 'root', 'deep thoughts'));
+			// Turn produced reasoning only — no text, tools, or children.
+			reduceEvent(state, makeRunFinish('run-1', 'root', 'completed'));
+
+			reduceEvent(state, makeRunStart('run-2', 'root'));
+
+			expect(state.agentsById['root'].reasoning).toBe('deep thoughts');
+			expect(state.status).toBe('active');
+			expect(state.agentsById['root'].status).toBe('active');
+		});
+
+		it('follow-up run-start preserves root-only status/result/error', () => {
+			const state = stateWithRun('run-1', 'root');
+			const root = state.agentsById['root'];
+			root.statusMessage = 'Recalling conversation...';
+			root.result = 'done';
+			root.error = 'boom';
+			reduceEvent(state, makeRunFinish('run-1', 'root', 'completed'));
+
+			reduceEvent(state, makeRunStart('run-2', 'root'));
+
+			expect(state.agentsById['root'].statusMessage).toBe('Recalling conversation...');
+			expect(state.agentsById['root'].result).toBe('done');
+			expect(state.agentsById['root'].error).toBe('boom');
+			expect(state.agentsById['root'].status).toBe('active');
+		});
+
 		it('run-start with unsafe agentId is ignored', () => {
 			const state = createInitialState();
 
@@ -273,8 +312,8 @@ describe('agent-run-reducer', () => {
 
 			expect(state.agentsById['root'].textContent).toBe('Hello world');
 			// Consecutive text should merge into one timeline entry
-			expect(state.timelineByAgentId['root']).toHaveLength(1);
-			expect(state.timelineByAgentId['root'][0]).toEqual({
+			expect(state.agentsById['root'].timeline).toHaveLength(1);
+			expect(state.agentsById['root'].timeline[0]).toEqual({
 				type: 'text',
 				content: 'Hello world',
 			});
@@ -325,8 +364,8 @@ describe('agent-run-reducer', () => {
 			expect(tc.isLoading).toBe(true);
 			expect(tc.renderHint).toBe('tasks');
 
-			expect(state.toolCallIdsByAgentId['root']).toContain('tc-1');
-			expect(state.timelineByAgentId['root']).toContainEqual({
+			expect(state.agentsById['root'].toolCalls.map((t) => t.toolCallId)).toContain('tc-1');
+			expect(state.agentsById['root'].timeline).toContainEqual({
 				type: 'tool-call',
 				toolCallId: 'tc-1',
 			});
@@ -399,8 +438,8 @@ describe('agent-run-reducer', () => {
 			expect(state.agentsById['sub-1'].role).toBe('sub-agent');
 			expect(state.agentsById['sub-1'].status).toBe('active');
 			expect(state.parentByAgentId['sub-1']).toBe('root');
-			expect(state.childrenByAgentId['root']).toContain('sub-1');
-			expect(state.timelineByAgentId['root']).toContainEqual({
+			expect(state.agentsById['root'].children.map((c) => c.agentId)).toContain('sub-1');
+			expect(state.agentsById['root'].timeline).toContainEqual({
 				type: 'child',
 				agentId: 'sub-1',
 			});
@@ -578,7 +617,7 @@ describe('agent-run-reducer', () => {
 			expect(state.agentsById['grandchild'].textContent).toBe('deep text');
 			expect(state.agentsById['grandchild'].status).toBe('completed');
 			expect(state.parentByAgentId['grandchild']).toBe('child');
-			expect(state.childrenByAgentId['child']).toContain('grandchild');
+			expect(state.agentsById['child'].children.map((c) => c.agentId)).toContain('grandchild');
 		});
 	});
 
@@ -591,7 +630,7 @@ describe('agent-run-reducer', () => {
 			reduceEvent(state, makeToolResult('run-1', 'sub-1', 'tc-1', 'found'));
 			reduceEvent(state, makeTextDelta('run-1', 'sub-1', 'after tool'));
 
-			const timeline = state.timelineByAgentId['sub-1'];
+			const timeline = state.agentsById['sub-1'].timeline;
 			expect(timeline).toHaveLength(3);
 			expect(timeline[0]).toEqual({ type: 'text', content: 'before tool' });
 			expect(timeline[1]).toEqual({ type: 'tool-call', toolCallId: 'tc-1' });
@@ -680,7 +719,7 @@ describe('agent-run-reducer', () => {
 			// builder-1 from run A should still exist
 			expect(findAgent(state, 'builder-1')).toBeDefined();
 			expect(state.toolCallsById['tc-1']).toBeDefined();
-			expect(state.childrenByAgentId['root']).toContain('builder-1');
+			expect(state.agentsById['root'].children.map((c) => c.agentId)).toContain('builder-1');
 
 			const tree = toAgentTree(state);
 			expect(tree.children).toHaveLength(1);
@@ -729,7 +768,10 @@ describe('agent-run-reducer', () => {
 				makeAgentSpawned('run-1', 'builder-2', 'root', 'workflow-builder', ['build']),
 			);
 
-			expect(state.childrenByAgentId['root']).toEqual(['builder-1', 'builder-2']);
+			expect(state.agentsById['root'].children.map((c) => c.agentId)).toEqual([
+				'builder-1',
+				'builder-2',
+			]);
 			expect(findAgent(state, 'builder-1')).toBeDefined();
 			expect(findAgent(state, 'builder-2')).toBeDefined();
 
@@ -737,13 +779,225 @@ describe('agent-run-reducer', () => {
 			reduceEvent(state, makeToolCall('run-1', 'builder-1', 'tc-1', 'search-nodes'));
 			reduceEvent(state, makeToolCall('run-1', 'builder-2', 'tc-2', 'search-nodes'));
 
-			expect(state.toolCallIdsByAgentId['builder-1']).toEqual(['tc-1']);
-			expect(state.toolCallIdsByAgentId['builder-2']).toEqual(['tc-2']);
+			expect(state.agentsById['builder-1'].toolCalls.map((t) => t.toolCallId)).toEqual(['tc-1']);
+			expect(state.agentsById['builder-2'].toolCalls.map((t) => t.toolCallId)).toEqual(['tc-2']);
 
 			const tree = toAgentTree(state);
 			expect(tree.children).toHaveLength(2);
 			expect(tree.children[0].toolCalls).toHaveLength(1);
 			expect(tree.children[1].toolCalls).toHaveLength(1);
+		});
+	});
+
+	describe('live tree view', () => {
+		it('toAgentTree returns the state root node itself (stable identity)', () => {
+			const state = stateWithRun('run-1', 'root');
+			const tree = toAgentTree(state);
+
+			expect(tree).toBe(state.agentsById['root']);
+			expect(toAgentTree(state)).toBe(tree);
+		});
+
+		it('mutations after toAgentTree are visible through the returned tree', () => {
+			const state = stateWithRun('run-1', 'root');
+			const tree = toAgentTree(state);
+
+			reduceEvent(state, makeTextDelta('run-1', 'root', 'streamed'));
+			reduceEvent(state, makeAgentSpawned('run-1', 'sub-1', 'root'));
+			reduceEvent(state, makeToolCall('run-1', 'sub-1', 'tc-1', 'search'));
+
+			expect(tree.textContent).toBe('streamed');
+			expect(tree.children).toHaveLength(1);
+			expect(tree.children[0]).toBe(state.agentsById['sub-1']);
+			expect(tree.children[0].toolCalls[0]).toBe(state.toolCallsById['tc-1']);
+		});
+
+		it('duplicate agent-spawned for an existing agent is ignored', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeAgentSpawned('run-1', 'sub-1', 'root'));
+			reduceEvent(state, makeTextDelta('run-1', 'sub-1', 'kept'));
+
+			reduceEvent(state, makeAgentSpawned('run-1', 'sub-1', 'root'));
+
+			expect(state.agentsById['root'].children).toHaveLength(1);
+			expect(state.agentsById['sub-1'].textContent).toBe('kept');
+		});
+	});
+
+	describe('stateFromAgentTree', () => {
+		function buildSnapshotTree() {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeTextDelta('run-1', 'root', 'hello'));
+			reduceEvent(state, makeAgentSpawned('run-1', 'sub-1', 'root', 'builder', ['build']));
+			reduceEvent(state, makeToolCall('run-1', 'sub-1', 'tc-1', 'build-workflow'));
+			reduceEvent(state, makeToolResult('run-1', 'sub-1', 'tc-1', 'ok'));
+			reduceEvent(state, makeAgentCompleted('run-1', 'sub-1', 'built'));
+			reduceEvent(state, makeRunFinish('run-1', 'root', 'completed'));
+			// Deep copy to simulate a backend snapshot (fresh objects).
+			return deepCopy(toAgentTree(state));
+		}
+
+		it('round-trips a snapshot tree back into an equivalent state', () => {
+			const tree = buildSnapshotTree();
+			const state = stateFromAgentTree(tree);
+
+			expect(state).toBeDefined();
+			expect(state!.rootAgentId).toBe('root');
+			expect(state!.status).toBe('completed');
+			expect(state!.parentByAgentId['sub-1']).toBe('root');
+			expect(state!.toolCallsById['tc-1'].result).toBe('ok');
+			expect(toAgentTree(state!)).toEqual(tree);
+		});
+
+		it('adopts the given nodes instead of copying them', () => {
+			const tree = buildSnapshotTree();
+			const state = stateFromAgentTree(tree);
+
+			expect(toAgentTree(state!)).toBe(tree);
+			expect(state!.agentsById['sub-1']).toBe(tree.children[0]);
+			expect(state!.toolCallsById['tc-1']).toBe(tree.children[0].toolCalls[0]);
+
+			// Live continuation: reducing into the adopted state mutates the original tree
+			reduceEvent(state!, makeTextDelta('run-2', 'root', ' again'));
+			expect(tree.textContent).toBe('hello again');
+		});
+
+		it('preserves an active run status', () => {
+			const tree = buildSnapshotTree();
+			tree.status = 'active';
+			const state = stateFromAgentTree(tree);
+
+			expect(state!.status).toBe('active');
+		});
+
+		it('returns undefined for an unsafe root agentId', () => {
+			const tree = buildSnapshotTree();
+			tree.agentId = '__proto__';
+
+			expect(stateFromAgentTree(tree)).toBeUndefined();
+		});
+
+		it('drops children and tool calls with unsafe ids', () => {
+			const tree = buildSnapshotTree();
+			tree.children.push({
+				...tree.children[0],
+				agentId: '__proto__',
+			});
+			tree.toolCalls.push({
+				toolCallId: '__proto__',
+				toolName: 'evil',
+				args: {},
+				isLoading: false,
+			});
+			tree.timeline.push({ type: 'child', agentId: '__proto__' });
+			tree.timeline.push({ type: 'tool-call', toolCallId: '__proto__' });
+
+			const state = stateFromAgentTree(tree);
+
+			expect(findAgent(state!, '__proto__')).toBeUndefined();
+			expect(tree.children).toHaveLength(1);
+			expect(tree.toolCalls).toHaveLength(0);
+			expect(tree.timeline.some((e) => e.type === 'child' && e.agentId === '__proto__')).toBe(
+				false,
+			);
+			expect(
+				tree.timeline.some((e) => e.type === 'tool-call' && e.toolCallId === '__proto__'),
+			).toBe(false);
+			expectStateMapsNotPolluted(state!);
+		});
+
+		it('normalizes missing or non-array collections instead of throwing', () => {
+			// Simulates a truncated/malformed snapshot — run-sync frames and
+			// hydrated messages are not schema-validated.
+			const child = {
+				agentId: 'sub-1',
+				role: 'builder',
+				status: 'completed',
+				textContent: '',
+				reasoning: '',
+				// children / toolCalls / timeline missing entirely
+			} as unknown as InstanceAiAgentNode;
+			const tree = {
+				agentId: 'root',
+				role: 'orchestrator',
+				status: 'active',
+				textContent: 'hi',
+				reasoning: '',
+				children: [child],
+				toolCalls: 'junk',
+				timeline: undefined,
+			} as unknown as InstanceAiAgentNode;
+
+			const state = stateFromAgentTree(tree);
+
+			expect(state).toBeDefined();
+			expect(tree.toolCalls).toEqual([]);
+			expect(tree.timeline).toEqual([]);
+			expect(child.children).toEqual([]);
+			expect(child.toolCalls).toEqual([]);
+			expect(child.timeline).toEqual([]);
+
+			// The repaired node is reducible: appendTimelineText reads timeline.at()
+			reduceEvent(state!, makeTextDelta('run-1', 'sub-1', 'live'));
+			expect(child.textContent).toBe('live');
+			expect(child.timeline).toEqual([{ type: 'text', content: 'live' }]);
+		});
+
+		it('drops junk entries inside snapshot collections', () => {
+			const tree = buildSnapshotTree();
+			tree.children.push(null as unknown as InstanceAiAgentNode);
+			tree.children.push({ role: 'no-id' } as unknown as InstanceAiAgentNode);
+			tree.toolCalls.push(null as unknown as InstanceAiToolCallState);
+			tree.timeline.push(null as unknown as InstanceAiTimelineEntry);
+
+			const state = stateFromAgentTree(tree);
+
+			expect(state).toBeDefined();
+			expect(tree.children).toHaveLength(1);
+			expect(tree.toolCalls).toHaveLength(0);
+			expect(tree.timeline.every((entry) => entry !== null)).toBe(true);
+			expect(findAgent(state!, 'undefined')).toBeUndefined();
+		});
+
+		it('returns undefined when the root agentId is missing', () => {
+			const tree = buildSnapshotTree();
+			Reflect.deleteProperty(tree, 'agentId');
+
+			expect(stateFromAgentTree(tree)).toBeUndefined();
+		});
+
+		it('drops unsafe ids on nested descendants, not just the root level', () => {
+			const tree = buildSnapshotTree();
+			const child = tree.children[0];
+			child.children.push({
+				agentId: '__proto__',
+				role: 'evil',
+				status: 'active',
+				textContent: '',
+				reasoning: '',
+				toolCalls: [],
+				children: [],
+				timeline: [],
+			});
+			child.toolCalls.push({
+				toolCallId: 'constructor',
+				toolName: 'evil',
+				args: {},
+				isLoading: true,
+			});
+			child.timeline.push({ type: 'child', agentId: '__proto__' });
+
+			const state = stateFromAgentTree(tree);
+
+			expect(findAgent(state!, '__proto__')).toBeUndefined();
+			// Plain-object lookup would hit Object.prototype.constructor — assert own keys.
+			expect(Object.prototype.hasOwnProperty.call(state!.toolCallsById, 'constructor')).toBe(false);
+			expect(child.children).toHaveLength(0);
+			expect(child.toolCalls.some((tc) => tc.toolCallId === 'constructor')).toBe(false);
+			expect(child.timeline.some((e) => e.type === 'child' && e.agentId === '__proto__')).toBe(
+				false,
+			);
+			expectStateMapsNotPolluted(state!);
 		});
 	});
 });

@@ -191,7 +191,7 @@ describe('CredentialsView', () => {
 			}));
 			const { rerender } = renderComponent();
 			await rerender({ credentialId: 'abc123' });
-			expect(uiStore.openExistingCredential).toHaveBeenCalledWith('abc123');
+			expect(uiStore.openExistingCredential).toHaveBeenCalledWith('abc123', expect.anything());
 		});
 
 		it('should not show the modal on the route if the user has no permission to read or update', async () => {
@@ -429,7 +429,7 @@ describe('CredentialsView', () => {
 				type: 'oAuth2Api',
 				createdAt: '2021-05-05T00:00:00Z',
 				updatedAt: '2021-05-05T00:00:00Z',
-				scopes: ['credential:update'],
+				scopes: ['credential:connect'],
 				isManaged: false,
 				isResolvable: true,
 				connectedByMe: false,

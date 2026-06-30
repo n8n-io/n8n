@@ -20,6 +20,7 @@
 		"declaration": true,
 		"sourceMap": true,
 		"skipLibCheck": true,
+		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
 		"types": ["node", "vitest/globals"]
 	},
 	"include": ["src/**/*.ts", "test/**/*.ts"],

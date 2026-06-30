@@ -1,5 +1,5 @@
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import {
 	type INode,
 	type INodeTypeBaseDescription,
@@ -9,12 +9,14 @@ import {
 
 import * as genericFunctions from '../../GenericFunctions';
 import { GmailV2 } from '../../v2/GmailV2.node';
+import type { Mock } from 'vitest';
+import type * as _importType0 from '../../GenericFunctions';
 
-jest.mock('../../GenericFunctions', () => {
-	const originalModule = jest.requireActual('../../GenericFunctions');
+vi.mock('../../GenericFunctions', async () => {
+	const originalModule = await vi.importActual<typeof _importType0>('../../GenericFunctions');
 	return {
 		...originalModule,
-		googleApiRequest: jest.fn(),
+		googleApiRequest: vi.fn(),
 	};
 });
 
@@ -28,7 +30,7 @@ describe('Test GmailV2, message => sendAndWait', () => {
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	const setupParameters = () => {
@@ -57,7 +59,7 @@ describe('Test GmailV2, message => sendAndWait', () => {
 		setupParameters();
 		mockExecuteFunctions.continueOnFail.mockReturnValue(true);
 
-		(genericFunctions.googleApiRequest as jest.Mock).mockRejectedValueOnce(
+		(genericFunctions.googleApiRequest as Mock).mockRejectedValueOnce(
 			new Error('invalid_recipient'),
 		);
 
@@ -73,7 +75,7 @@ describe('Test GmailV2, message => sendAndWait', () => {
 		setupParameters();
 		mockExecuteFunctions.continueOnFail.mockReturnValue(false);
 
-		(genericFunctions.googleApiRequest as jest.Mock).mockRejectedValueOnce(
+		(genericFunctions.googleApiRequest as Mock).mockRejectedValueOnce(
 			new Error('invalid_recipient'),
 		);
 
