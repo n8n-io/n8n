@@ -88,7 +88,7 @@ describe('PrometheusWorkflowPublicationMetricsService', () => {
 	});
 
 	describe('init', () => {
-		it('registers the outbox gauges, outcome/trigger/cleanup counters and histograms', () => {
+		it('registers the outbox gauges, outcome/cleanup counters and histograms', () => {
 			service.init();
 
 			const gaugeNames = (promClient.Gauge as unknown as Mock).mock.calls.map((c) => c[0].name);
@@ -103,7 +103,6 @@ describe('PrometheusWorkflowPublicationMetricsService', () => {
 			expect(counterNames).toEqual(
 				expect.arrayContaining([
 					'n8n_workflow_publication_outbox_record_outcomes_total',
-					'n8n_workflow_publication_trigger_node_operations_total',
 					'n8n_workflow_publication_outbox_cleanup_deleted_records_total',
 				]),
 			);
@@ -114,7 +113,6 @@ describe('PrometheusWorkflowPublicationMetricsService', () => {
 			expect(histogramNames).toEqual(
 				expect.arrayContaining([
 					'n8n_workflow_publication_outbox_record_duration_seconds',
-					'n8n_workflow_publication_trigger_operation_duration_seconds',
 					'n8n_workflow_publication_outbox_cleanup_duration_seconds',
 				]),
 			);
@@ -141,29 +139,6 @@ describe('PrometheusWorkflowPublicationMetricsService', () => {
 
 			expect(mockCounterInc).toHaveBeenCalledWith({ result: 'published', reason: 'none' }, 1);
 			expect(mockHistogramObserve).toHaveBeenCalledWith({ result: 'published', reason: 'none' }, 2);
-		});
-
-		it('records trigger operation duration', () => {
-			eventHandler('workflow-publication-trigger-operation')!({
-				operation: 'activate',
-				result: 'success',
-				durationMs: 500,
-			} as never);
-
-			expect(mockHistogramObserve).toHaveBeenCalledWith(
-				{ operation: 'activate', result: 'success' },
-				0.5,
-			);
-		});
-
-		it('increments the trigger node operations counter by the node count', () => {
-			eventHandler('workflow-publication-trigger-node-operations')!({
-				operation: 'activate',
-				result: 'failure',
-				count: 3,
-			} as never);
-
-			expect(mockCounterInc).toHaveBeenCalledWith({ operation: 'activate', result: 'failure' }, 3);
 		});
 
 		it('records cleanup deleted count and duration', () => {

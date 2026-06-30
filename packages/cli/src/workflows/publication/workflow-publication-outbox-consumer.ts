@@ -236,10 +236,8 @@ export class WorkflowPublicationOutboxConsumer {
 						this.errorReporter.error(reportError, { shouldBeLogged: true });
 					}
 
-					const outcome = this.toOutcomeLabels(result, reporterFailed);
 					this.eventService.emit('workflow-publication-outbox-record-processed', {
-						result: outcome.result,
-						reason: outcome.reason,
+						...this.toOutcomeLabels(result, reporterFailed),
 						durationMs: Date.now() - startedAt,
 					});
 

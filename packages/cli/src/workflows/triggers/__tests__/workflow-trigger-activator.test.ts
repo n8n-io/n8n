@@ -13,7 +13,6 @@ import {
 
 import type { ActivationErrorsService } from '@/activation-errors.service';
 import { TRIGGER_ACTIVATION_MAX_ATTEMPTS } from '@/constants';
-import type { EventService } from '@/events/event.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import type {
 	NonWebhookTriggerRegistrar,
@@ -37,7 +36,6 @@ const MAX_ATTEMPTS = TRIGGER_ACTIVATION_MAX_ATTEMPTS;
 const flushPromises = async () => await new Promise((resolve) => setImmediate(resolve));
 
 const tracing = mock<Tracing>();
-const eventService = mock<EventService>();
 
 type ActivatorOverrides = {
 	errorReporter?: ErrorReporter;
@@ -51,7 +49,6 @@ type ActivatorOverrides = {
 	triggerCountService?: TriggerCountService;
 	activationErrorsService?: ActivationErrorsService;
 	tracing?: Tracing;
-	eventService?: EventService;
 };
 
 function buildActivator(overrides: ActivatorOverrides = {}) {
@@ -68,7 +65,6 @@ function buildActivator(overrides: ActivatorOverrides = {}) {
 		overrides.triggerCountService ?? mock<TriggerCountService>(),
 		overrides.activationErrorsService ?? mock<ActivationErrorsService>(),
 		overrides.tracing ?? tracing,
-		overrides.eventService ?? eventService,
 	);
 }
 
@@ -862,110 +858,6 @@ describe('WorkflowTriggerActivator', () => {
 			expect(errorReporter.error).toHaveBeenCalledWith(
 				expect.objectContaining({ message: 'still broken' }),
 				expect.anything(),
-			);
-		});
-	});
-
-	describe('metrics events', () => {
-		const getEmissions = (event: string) =>
-			eventService.emit.mock.calls
-				.filter((call) => call[0] === event)
-				.map((call) => call[1] as Record<string, unknown>);
-
-		test('activate emits a success operation and success node count when all nodes activate', async () => {
-			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
-				mock<IWorkflowExecuteAdditionalData>(),
-			);
-			const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
-			webhookTriggerRegistrar.getWebhookTriggers.mockReturnValue([
-				mock<IWebhookData>({ node: 'Webhook A' }),
-			]);
-			const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
-			nonWebhookTriggerRegistrar.getTriggerNodeIds.mockReturnValue([]);
-
-			const activator = buildActivator({ webhookTriggerRegistrar, nonWebhookTriggerRegistrar });
-
-			await activator.activate(
-				mock<WorkflowEntity>({ id: 'wf-1', name: 'Test workflow', staticData: {}, settings: {} }),
-				{ nodes: [node('webhook-a', 'webhook', { name: 'Webhook A' })], connections: {} },
-				new Set(['webhook-a']),
-			);
-
-			expect(getEmissions('workflow-publication-trigger-operation')).toContainEqual(
-				expect.objectContaining({ operation: 'activate', result: 'success' }),
-			);
-			expect(getEmissions('workflow-publication-trigger-node-operations')).toContainEqual(
-				expect.objectContaining({ operation: 'activate', result: 'success', count: 1 }),
-			);
-		});
-
-		test('activate emits a failure operation and failure node count when a node fails', async () => {
-			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
-				mock<IWorkflowExecuteAdditionalData>(),
-			);
-			const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
-			webhookTriggerRegistrar.getWebhookTriggers.mockReturnValue([
-				mock<IWebhookData>({ node: 'Webhook B' }),
-			]);
-			webhookTriggerRegistrar.register.mockRejectedValue(new WebhookPathTakenError('Webhook B'));
-			const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
-			nonWebhookTriggerRegistrar.getTriggerNodeIds.mockReturnValue([]);
-
-			const activator = buildActivator({ webhookTriggerRegistrar, nonWebhookTriggerRegistrar });
-
-			await activator.activate(
-				mock<WorkflowEntity>({ id: 'wf-1', name: 'Test workflow', staticData: {}, settings: {} }),
-				{ nodes: [node('webhook-b', 'webhook', { name: 'Webhook B' })], connections: {} },
-				new Set(['webhook-b']),
-			);
-
-			expect(getEmissions('workflow-publication-trigger-operation')).toContainEqual(
-				expect.objectContaining({ operation: 'activate', result: 'failure' }),
-			);
-			expect(getEmissions('workflow-publication-trigger-node-operations')).toContainEqual(
-				expect.objectContaining({ operation: 'activate', result: 'failure', count: 1 }),
-			);
-		});
-
-		test('deactivate emits a success operation and deactivated node count', async () => {
-			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
-				mock<IWorkflowExecuteAdditionalData>(),
-			);
-			const webhookTriggerRegistrar = mock<WebhookTriggerRegistrar>();
-			webhookTriggerRegistrar.getWebhookTriggers.mockReturnValue([]);
-			const nonWebhookTriggerRegistrar = mock<NonWebhookTriggerRegistrar>();
-			nonWebhookTriggerRegistrar.getTriggerNodeIds.mockReturnValue(['trigger-a']);
-
-			const activator = buildActivator({ webhookTriggerRegistrar, nonWebhookTriggerRegistrar });
-
-			await activator.deactivate(
-				mock<WorkflowEntity>({ id: 'wf-1', name: 'Test workflow', staticData: {}, settings: {} }),
-				{ nodes: [node('trigger-a', 'trigger')], connections: {} },
-				new Set(['trigger-a']),
-			);
-
-			expect(getEmissions('workflow-publication-trigger-operation')).toContainEqual(
-				expect.objectContaining({ operation: 'deactivate', result: 'success' }),
-			);
-			expect(getEmissions('workflow-publication-trigger-node-operations')).toContainEqual(
-				expect.objectContaining({ operation: 'deactivate', result: 'success', count: 1 }),
-			);
-		});
-
-		test('updateTriggerCount emits a success operation', async () => {
-			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
-				mock<IWorkflowExecuteAdditionalData>(),
-			);
-
-			const activator = buildActivator();
-
-			await activator.updateTriggerCount(
-				mock<WorkflowEntity>({ id: 'wf-1', name: 'Test workflow', staticData: {}, settings: {} }),
-				{ nodes: [], connections: {} },
-			);
-
-			expect(getEmissions('workflow-publication-trigger-operation')).toContainEqual(
-				expect.objectContaining({ operation: 'update_count', result: 'success' }),
 			);
 		});
 	});
