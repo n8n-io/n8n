@@ -1233,12 +1233,14 @@ async function updateCredential(
 		hasUnsavedChanges.value = false;
 		isSaved.value = true;
 
-		toast.showMessage({
-			title: i18n.baseText('credentials.update.toast.title'),
-			type: 'success',
-		});
-
+		// Only surface the "saved" toast when something was actually persisted
+		// (update/share). Connect-only users have neither, so nothing was saved.
 		if (credential) {
+			toast.showMessage({
+				title: i18n.baseText('credentials.update.toast.title'),
+				type: 'success',
+			});
+
 			await externalHooks.run('credential.saved', {
 				credential_type: credentialDetails.type,
 				credential_id: credential.id,
@@ -1305,7 +1307,13 @@ async function oAuthCredentialAuthorize() {
 	let url;
 
 	credentialsStore.pendingOAuthRefresh = true;
-	const credential = await saveCredential();
+
+	// Editors persist any blueprint changes before connecting. Connect-only users
+	// (e.g. on a private credential they can't edit) have nothing to save, so
+	// connecting through saveCredential would be a no-op that returns null and
+	// aborts the flow — connect to the stored credential directly instead.
+	const canEditBlueprint = credentialPermissions.value.update || credentialPermissions.value.create;
+	const credential = canEditBlueprint ? await saveCredential() : currentCredential.value;
 	if (!credential) {
 		return;
 	}
