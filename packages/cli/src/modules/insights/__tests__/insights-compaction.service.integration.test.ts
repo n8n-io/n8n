@@ -460,14 +460,12 @@ describe('compaction', () => {
 			}
 		});
 
-		test('stop succeeds after a scheduled compaction fails', async () => {
+		test('stop succeeds after compaction fails', async () => {
 			// ARRANGE
-			vi.useFakeTimers();
 			const insightsCompactionService = new InsightsCompactionService(
 				mock<InsightsByPeriodRepository>(),
 				mock<InsightsRawRepository>(),
 				mock<InsightsConfig>({
-					compactionIntervalMinutes: 1,
 					compactionBatchSize: 2,
 					compactionBatchDelayMilliseconds: 0,
 					compactionMaxBatchesPerRun: 0,
@@ -479,20 +477,13 @@ describe('compaction', () => {
 				new Error('compaction failed'),
 			);
 
-			try {
-				insightsCompactionService.startCompactionTimer();
+			// ACT
+			const compactionPromise = insightsCompactionService.compactInsights();
+			const stopPromise = insightsCompactionService.stopCompactionTimer();
 
-				// ACT
-				vi.advanceTimersByTime(1000 * 60);
-				await Promise.resolve();
-				await Promise.resolve();
-
-				// ASSERT
-				await expect(insightsCompactionService.stopCompactionTimer()).resolves.toBeUndefined();
-			} finally {
-				await insightsCompactionService.stopCompactionTimer();
-				vi.useRealTimers();
-			}
+			// ASSERT
+			await expect(compactionPromise).rejects.toThrow('compaction failed');
+			await expect(stopPromise).resolves.toBeUndefined();
 		});
 	});
 
