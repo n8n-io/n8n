@@ -33,6 +33,11 @@ describe('project package export', () => {
 		return await readExport(stream);
 	}
 
+	async function exportProjects(user: User, projectIds: string[]) {
+		const stream = await service.exportPackage({ user, projectIds });
+		return await readExport(stream);
+	}
+
 	it('emits a tar with manifest.json first and project.json for an empty team project', async () => {
 		const owner = await createOwner();
 		const project = await createTeamProject('Empty Project', owner);
@@ -60,6 +65,28 @@ describe('project package export', () => {
 			id: project.id,
 			name: 'Empty Project',
 		});
+	});
+
+	it('exports multiple team projects in a single request', async () => {
+		const owner = await createOwner();
+		const firstProject = await createTeamProject('Alpha Project', owner);
+		const secondProject = await createTeamProject('Beta Project', owner);
+
+		const { manifest, entries } = await exportProjects(owner, [secondProject.id, firstProject.id]);
+
+		expect(manifest.projects).toHaveLength(2);
+		expect(manifest.projects).toEqual(
+			expect.arrayContaining([
+				{ id: firstProject.id, name: 'Alpha Project', target: 'projects/alpha-project' },
+				{ id: secondProject.id, name: 'Beta Project', target: 'projects/beta-project' },
+			]),
+		);
+
+		for (const { id, name, target } of manifest.projects!) {
+			const projectFile = entries.find((entry) => entry.name === `${target}/project.json`);
+			expect(projectFile).toBeDefined();
+			expect(JSON.parse(projectFile!.content.toString())).toEqual({ id, name });
+		}
 	});
 
 	it('allows a project editor to export an empty team project', async () => {
