@@ -1,7 +1,5 @@
-import type { Project, User } from '@n8n/db';
-import { ProjectRepository } from '@n8n/db';
+import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { In } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
 
 import { ProjectSerializer } from './project.serializer';
@@ -25,12 +23,17 @@ export interface ProjectExportResult {
 export class ProjectExporter {
 	constructor(
 		private readonly projectService: ProjectService,
-		private readonly projectRepository: ProjectRepository,
 		private readonly projectSerializer: ProjectSerializer,
 	) {}
 
 	async export(request: ProjectExportRequest): Promise<ProjectExportResult> {
-		const projects = await this.getAccessibleProjects(request.user, request.projectIds);
+		const projects = await this.projectService.findProjectsByIdsForUser(
+			request.user,
+			request.projectIds,
+			['project:export'],
+		);
+
+		this.assertAllRequestedProjectsFound(request.projectIds, projects);
 
 		const entries: ManifestEntry[] = [];
 		const targets = new UniqueFilenameAllocator('projects', 'project');
@@ -52,12 +55,12 @@ export class ProjectExporter {
 		return { entries };
 	}
 
-	private async getAccessibleProjects(user: User, projectIds: string[]): Promise<Project[]> {
-		const accessibleProjectIds = new Set(
-			await this.projectService.getProjectIdsWithScope(user, ['project:export'], projectIds),
-		);
-
-		const missingProjectIds = projectIds.filter((id) => !accessibleProjectIds.has(id));
+	private assertAllRequestedProjectsFound(
+		requestedProjectIds: string[],
+		foundProjects: Array<{ id: string }>,
+	) {
+		const foundProjectIds = new Set(foundProjects.map(({ id }) => id));
+		const missingProjectIds = requestedProjectIds.filter((id) => !foundProjectIds.has(id));
 
 		if (missingProjectIds.length > 0) {
 			const displayedProjectIds = missingProjectIds.slice(0, 20);
@@ -72,10 +75,5 @@ export class ProjectExporter {
 				},
 			);
 		}
-
-		return await this.projectRepository.find({
-			where: { id: In(projectIds) },
-			order: { createdAt: 'ASC', id: 'ASC' },
-		});
 	}
 }

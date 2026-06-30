@@ -1,4 +1,4 @@
-import type { Project, ProjectRepository, User } from '@n8n/db';
+import type { Project, User } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { Readable } from 'node:stream';
 
@@ -42,33 +42,21 @@ class CapturingWriter implements PackageWriter {
 
 function makeExporter({
 	projects = [],
-	accessibleProjectIds = projects.map((project) => project.id),
 }: {
 	projects?: Project[];
-	accessibleProjectIds?: string[];
 } = {}) {
 	const projectService = mock<ProjectService>();
-	const projectRepository = mock<ProjectRepository>();
 
-	projectService.getProjectIdsWithScope.mockImplementation(async (_user, _scopes, projectIds) =>
-		(projectIds ?? []).filter((id) => accessibleProjectIds.includes(id)),
-	);
-	projectRepository.find.mockImplementation(async (options) => {
-		const result = [...projects];
-		const order = options?.order;
-
-		if (order?.createdAt === 'ASC') {
-			result.sort((left, right) => {
-				const createdAtDiff = left.createdAt.getTime() - right.createdAt.getTime();
-				return createdAtDiff !== 0 ? createdAtDiff : left.id.localeCompare(right.id);
-			});
-		}
-
-		return result;
+	projectService.findProjectsByIdsForUser.mockImplementation(async (_user, projectIds) => {
+		const accessibleProjects = projects.filter((project) => projectIds.includes(project.id));
+		return [...accessibleProjects].sort((left, right) => {
+			const createdAtDiff = left.createdAt.getTime() - right.createdAt.getTime();
+			return createdAtDiff !== 0 ? createdAtDiff : left.id.localeCompare(right.id);
+		});
 	});
 
-	const exporter = new ProjectExporter(projectService, projectRepository, new ProjectSerializer());
-	return { exporter, projectService, projectRepository };
+	const exporter = new ProjectExporter(projectService, new ProjectSerializer());
+	return { exporter, projectService };
 }
 
 describe('ProjectExporter', () => {
@@ -79,19 +67,16 @@ describe('ProjectExporter', () => {
 
 		await exporter.export({ user, projectIds: [project.id], writer });
 
-		expect(projectService.getProjectIdsWithScope).toHaveBeenCalledWith(
+		expect(projectService.findProjectsByIdsForUser).toHaveBeenCalledWith(
 			user,
-			['project:export'],
 			[project.id],
+			['project:export'],
 		);
 	});
 
 	it('throws when the user lacks access to a requested project', async () => {
 		const project = makeProject();
-		const { exporter } = makeExporter({
-			projects: [project],
-			accessibleProjectIds: [],
-		});
+		const { exporter } = makeExporter({ projects: [] });
 		const writer = new CapturingWriter();
 
 		await expect(exporter.export({ user, projectIds: [project.id], writer })).rejects.toThrow(
@@ -135,7 +120,6 @@ describe('ProjectExporter', () => {
 		});
 		const { exporter } = makeExporter({
 			projects: [newerProject, olderProject],
-			accessibleProjectIds: [olderProject.id, newerProject.id],
 		});
 		const writer = new CapturingWriter();
 
