@@ -1,6 +1,7 @@
+import type { Mock, Mocked } from 'vitest';
 import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import type { User, UserRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { Cipher } from 'n8n-core';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
@@ -48,7 +49,7 @@ function slackAppCreatedResponse() {
 	});
 }
 
-function fetchParams(requestMock: jest.Mock, callIndex: number) {
+function fetchParams(requestMock: Mock, callIndex: number) {
 	const request = requestMock.mock.calls[callIndex]?.[0] as {
 		headers?: Record<string, string>;
 		body: Record<string, string>;
@@ -60,24 +61,24 @@ function fetchParams(requestMock: jest.Mock, callIndex: number) {
 }
 
 describe('SlackAppSetupService', () => {
-	let requestMock: jest.Mock;
-	let outboundHttp: jest.Mocked<OutboundHttp>;
+	let requestMock: Mock;
+	let outboundHttp: Mocked<OutboundHttp>;
 	let cacheStore: Map<string, unknown>;
-	let cacheService: jest.Mocked<CacheService>;
-	let cipher: jest.Mocked<Cipher>;
-	let credentialsService: jest.Mocked<CredentialsService>;
-	let userRepository: jest.Mocked<UserRepository>;
-	let agentRepository: jest.Mocked<AgentRepository>;
-	let agentIntegrationPersistenceService: jest.Mocked<
+	let cacheService: Mocked<CacheService>;
+	let cipher: Mocked<Cipher>;
+	let credentialsService: Mocked<CredentialsService>;
+	let userRepository: Mocked<UserRepository>;
+	let agentRepository: Mocked<AgentRepository>;
+	let agentIntegrationPersistenceService: Mocked<
 		Pick<AgentIntegrationPersistenceService, 'saveCredentialIntegration'>
 	>;
-	let agentPublishService: jest.Mocked<Pick<AgentPublishService, 'publishAgent'>>;
-	let chatIntegrationService: jest.Mocked<ChatIntegrationService>;
+	let agentPublishService: Mocked<Pick<AgentPublishService, 'publishAgent'>>;
+	let chatIntegrationService: Mocked<ChatIntegrationService>;
 	let service: SlackAppSetupService;
 
 	beforeEach(() => {
 		const httpClient = mock<HttpRequestClient>();
-		requestMock = httpClient.request as jest.Mock;
+		requestMock = httpClient.request as Mock;
 		outboundHttp = mock<OutboundHttp>();
 		outboundHttp.requests.mockReturnValue(httpClient);
 

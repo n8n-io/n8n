@@ -1,5 +1,5 @@
 import type { RoleMappingRuleRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { ProvisioningRoleDeletionChecker } from '../role-deletion-checker.ee';
 
@@ -8,7 +8,7 @@ describe('ProvisioningRoleDeletionChecker', () => {
 	const checker = new ProvisioningRoleDeletionChecker(roleMappingRuleRepository);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('reports no blockers when no mapping rule references the role', async () => {

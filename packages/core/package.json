@@ -1,6 +1,6 @@
 {
   "name": "n8n-core",
-  "version": "2.28.0",
+  "version": "2.29.0",
   "description": "Core functionality of n8n",
   "main": "dist/index",
   "types": "dist/index.d.ts",
@@ -33,7 +33,7 @@
   "devDependencies": {
     "@n8n/playwright-janitor": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
-    "@n8n/typeorm": "catalog:",
+    "@n8n/typeorm": "workspace:*",
     "@types/express": "catalog:",
     "@types/jsonwebtoken": "catalog:",
     "@types/lodash": "catalog:",

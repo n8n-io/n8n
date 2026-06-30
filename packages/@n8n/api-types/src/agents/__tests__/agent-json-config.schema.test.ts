@@ -101,3 +101,20 @@ describe('AgentJsonConfigSchema — tools', () => {
 		});
 	});
 });
+
+describe('AgentJsonConfigSchema — skills', () => {
+	it('rejects multiple skill refs with the same id', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			skills: [
+				{ type: 'skill', id: 'summarize_notes' },
+				{ type: 'skill', id: 'summarize_notes' },
+			],
+		});
+
+		expect(result.success).toBe(false);
+		if (!result.success) {
+			expect(result.error.errors[0].message).toBe('Duplicate skill id: "summarize_notes"');
+		}
+	});
+});

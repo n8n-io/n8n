@@ -304,7 +304,21 @@ export const AgentJsonConfigSchema = z.object({
 			}
 		})
 		.optional(),
-	skills: z.array(AgentJsonSkillConfigSchema).optional(),
+	skills: z
+		.array(AgentJsonSkillConfigSchema)
+		.superRefine((skills, ctx) => {
+			const seen = new Set<string>();
+			for (const skill of skills) {
+				if (seen.has(skill.id)) {
+					ctx.addIssue({
+						code: z.ZodIssueCode.custom,
+						message: `Duplicate skill id: "${skill.id}"`,
+					});
+				}
+				seen.add(skill.id);
+			}
+		})
+		.optional(),
 	tasks: z.array(AgentJsonTaskConfigSchema).optional(),
 	providerTools: z.record(z.record(z.unknown())).optional(),
 	integrations: z.array(AgentIntegrationConfigSchema).optional(),

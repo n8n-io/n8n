@@ -2,7 +2,8 @@
 // `priorConversation` (prose) paths. Real conversations use `seedThread`
 // (reconstructed from a LangSmith trace; see langsmith-seed.ts).
 
-import { generateNanoId, isRecord } from '@n8n/utils';
+import { generateNanoId } from '@n8n/utils/generate-nano-id';
+import { isRecord } from '@n8n/utils/is-record';
 import { jsonParse } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';

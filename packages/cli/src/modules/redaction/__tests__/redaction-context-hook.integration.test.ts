@@ -1,6 +1,5 @@
 import { Container } from '@n8n/di';
 import { parse as flattedParse, stringify as flattedStringify } from 'flatted';
-import { mock } from 'jest-mock-extended';
 import {
 	ExecutionContextHookRegistry,
 	ExecutionContextService,
@@ -15,6 +14,7 @@ import {
 	type Workflow,
 	type WorkflowSettings,
 } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import type { InstanceRedactionEnforcementService } from '../instance-redaction-enforcement.service';
 import { RedactionContextHook } from '../redaction-context-hook';

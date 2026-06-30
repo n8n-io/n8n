@@ -1,27 +1,28 @@
+import type { Mock } from 'vitest';
 import type { z as zType } from 'zod';
 
 // Manual mocks — must be declared before any imports that touch the mocked modules.
-jest.mock('@n8n/instance-ai', () => {
-	const { z } = jest.requireActual<{ z: typeof zType }>('zod');
+vi.mock('@n8n/instance-ai', async () => {
+	const { z } = await vi.importActual<{ z: typeof zType }>('zod');
 	return {
 		McpClientManager: class {
-			disconnect = jest.fn();
+			disconnect = vi.fn();
 		},
-		createDomainAccessTracker: jest.fn(),
-		createSandbox: jest.fn(),
-		createWorkspace: jest.fn(),
-		createLazyRuntimeWorkspace: jest.fn(),
-		createLazyWorkspaceRuntimeSkillSource: jest.fn(({ source }) => source),
-		setupSandboxWorkspace: jest.fn(),
-		loadInstanceAiRuntimeSkillSource: jest.fn(() => ({
+		createDomainAccessTracker: vi.fn(),
+		createSandbox: vi.fn(),
+		createWorkspace: vi.fn(),
+		createLazyRuntimeWorkspace: vi.fn(),
+		createLazyWorkspaceRuntimeSkillSource: vi.fn(({ source }) => source),
+		setupSandboxWorkspace: vi.fn(),
+		loadInstanceAiRuntimeSkillSource: vi.fn(() => ({
 			registry: { skillsHash: 'runtime-skills-hash', skills: [] },
-			loadSkill: jest.fn(),
+			loadSkill: vi.fn(),
 		})),
 		workflowBuildOutcomeSchema: z.object({}),
-		handleBuildOutcome: jest.fn(),
-		handleVerificationVerdict: jest.fn(),
-		createInstanceAgent: jest.fn(),
-		createAllTools: jest.fn(),
+		handleBuildOutcome: vi.fn(),
+		handleVerificationVerdict: vi.fn(),
+		createInstanceAgent: vi.fn(),
+		createAllTools: vi.fn(),
 	};
 });
 
@@ -36,7 +37,7 @@ import { InstanceAiService } from '../instance-ai.service';
 describe('InstanceAiService — "Builder asked for input" telemetry', () => {
 	type Internals = {
 		planRequestsByThread: Map<string, number>;
-		telemetry: { track: jest.Mock };
+		telemetry: { track: Mock };
 		trackConfirmationRequest: (
 			threadId: string,
 			confirmationEvent: { payload: Record<string, unknown> },
@@ -47,7 +48,7 @@ describe('InstanceAiService — "Builder asked for input" telemetry', () => {
 		// Bypass the constructor — we only exercise the counter map and telemetry.
 		const service = Object.create(InstanceAiService.prototype) as unknown as Internals;
 		service.planRequestsByThread = new Map<string, number>();
-		service.telemetry = { track: jest.fn() };
+		service.telemetry = { track: vi.fn() };
 		return service;
 	}
 
