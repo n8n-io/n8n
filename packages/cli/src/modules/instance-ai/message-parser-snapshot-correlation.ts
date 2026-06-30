@@ -29,6 +29,15 @@ function snapshotCreatedAtMs(snapshot: AgentTreeSnapshot): number | undefined {
 	return snapshot.createdAt?.getTime();
 }
 
+function compareSnapshotsByCreatedAt(a: AgentTreeSnapshot, b: AgentTreeSnapshot): number {
+	const aCreatedAt = snapshotCreatedAtMs(a);
+	const bCreatedAt = snapshotCreatedAtMs(b);
+	if (aCreatedAt === undefined && bCreatedAt === undefined) return 0;
+	if (aCreatedAt === undefined) return 1;
+	if (bCreatedAt === undefined) return -1;
+	return aCreatedAt - bCreatedAt;
+}
+
 function messageCreatedAtMs(message: { createdAt: Date }): number {
 	return message.createdAt.getTime();
 }
@@ -76,7 +85,9 @@ export function createSnapshotCorrelator<TMessage extends SnapshotConversationMe
 	conversationMessages,
 	pushSnapshotMessage,
 }: SnapshotCorrelatorInput<TMessage>): SnapshotCorrelator<TMessage> {
-	const snapshotList = (snapshots ?? []).filter(hasRenderableSnapshotTree);
+	const snapshotList = [...(snapshots ?? [])]
+		.filter(hasRenderableSnapshotTree)
+		.sort(compareSnapshotsByCreatedAt);
 	let nextSnapshotIdx = 0;
 	const consumedSnapshots = new Set<AgentTreeSnapshot>();
 
@@ -169,7 +180,7 @@ function propagateMessageGroupIdWithinRange(
 
 export function dedupeAssistantMessagesByMessageGroup(
 	messages: InstanceAiMessage[],
-	messagesWithSnapshotTree: ReadonlySet<InstanceAiMessage>,
+	messagesWithSnapshotTree: Set<InstanceAiMessage>,
 ): void {
 	const keptIndexByGid = new Map<string, number>();
 	const toRemove = new Set<number>();
@@ -186,6 +197,7 @@ export function dedupeAssistantMessagesByMessageGroup(
 		if (!messagesWithSnapshotTree.has(kept) && messagesWithSnapshotTree.has(candidate)) {
 			kept.agentTree = candidate.agentTree;
 			kept.runIds = candidate.runIds;
+			messagesWithSnapshotTree.add(kept);
 		}
 		toRemove.add(i);
 	}

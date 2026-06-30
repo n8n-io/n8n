@@ -50,5 +50,5 @@ export const INSTANCE_AI_PROXY_PROVIDERS: Record<
 };
 
 export function isInstanceAiProxyProvider(value: string): value is InstanceAiProxyProvider {
-	return value in INSTANCE_AI_PROXY_PROVIDERS;
+	return SUPPORTED_INSTANCE_AI_PROXY_PROVIDERS.includes(value as InstanceAiProxyProvider);
 }

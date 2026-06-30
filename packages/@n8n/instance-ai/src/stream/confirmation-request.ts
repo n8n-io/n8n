@@ -110,6 +110,7 @@ export function parseSuspendedToolCallConfirmation(
 		message: presentString(suspendPayload.message) ?? 'Confirmation required',
 	};
 
+	setIfDefined(payload, 'inputThreadId', presentString(suspendPayload.inputThreadId));
 	setIfDefined(
 		payload,
 		'credentialRequests',

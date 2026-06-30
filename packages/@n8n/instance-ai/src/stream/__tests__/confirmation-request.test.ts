@@ -8,6 +8,7 @@ describe('parseSuspendedToolCallConfirmation', () => {
 			input: { action: 'setup' },
 			suspendPayload: {
 				requestId: 'request-1',
+				inputThreadId: 'input-thread-1',
 				message: 'Configure workflow',
 				severity: 'warning',
 				inputType: 'continue',
@@ -33,6 +34,7 @@ describe('parseSuspendedToolCallConfirmation', () => {
 			toolCallId: 'tool-call-1',
 			toolName: 'workflows',
 			args: { action: 'setup' },
+			inputThreadId: 'input-thread-1',
 			severity: 'warning',
 			message: 'Configure workflow',
 			inputType: 'continue',
@@ -53,6 +55,7 @@ describe('parseSuspendedToolCallConfirmation', () => {
 		});
 		expect(parsed?.confirmation).toEqual({
 			requestId: 'request-1',
+			inputThreadId: 'input-thread-1',
 			severity: 'warning',
 			message: 'Configure workflow',
 			inputType: 'continue',

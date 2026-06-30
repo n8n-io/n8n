@@ -110,6 +110,15 @@ describe('InstanceAiSettingsService', () => {
 				/Supported providers: anthropic, openai/,
 			);
 		});
+
+		it('should reject inherited object property names as proxy model providers', () => {
+			globalConfig.instanceAi.model = 'toString/gpt-5.5';
+
+			expect(() => service.resolveProxyModelParts()).toThrow(UserError);
+			expect(() => service.resolveProxyModelParts()).toThrow(
+				/Unsupported Instance AI proxy model provider "toString"/,
+			);
+		});
 	});
 
 	describe('updateAdminSettings', () => {
