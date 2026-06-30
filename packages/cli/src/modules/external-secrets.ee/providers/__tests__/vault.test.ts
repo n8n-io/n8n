@@ -2,14 +2,8 @@ import { Logger } from '@n8n/backend-common';
 import { createFakeOutboundHttp, type Route } from '@n8n/backend-network/testing';
 import { mockInstance } from '@n8n/backend-test-utils';
 
-import {
-	SecretsProviderConnectionError,
-	SecretsProviderTestError,
-	SecretsProviderTokenRefreshError,
-	SecretsProviderUpdateError,
-} from '../../errors/secrets-provider-errors';
 import { ExternalSecretsConfig } from '../../external-secrets.config';
-import { VaultProvider } from '../vault';
+import { VaultProvider } from '../hashicorp-vault/vault';
 
 const VAULT_BASE_URL = 'https://vault.test.com';
 const VAULT_URL = `${VAULT_BASE_URL}/v1/`;
@@ -236,8 +230,10 @@ describe('VaultProvider', () => {
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Vault provider username/password authentication failed',
 				expect.objectContaining({
+					operation: 'connect',
 					authMethod: 'usernameAndPassword',
-					error: expect.any(SecretsProviderConnectionError),
+					providerName: 'vault',
+					statusCode: 401,
 				}),
 			);
 		});
@@ -333,9 +329,11 @@ describe('VaultProvider', () => {
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Vault provider failed to list KV secrets',
 				expect.objectContaining({
+					operation: 'update',
 					mountPath: 'forbidden/',
 					kvVersion: '2',
-					error: expect.any(SecretsProviderUpdateError),
+					resource: 'kv-list',
+					statusCode: 403,
 				}),
 			);
 		});
@@ -349,7 +347,11 @@ describe('VaultProvider', () => {
 
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Failed to update Vault provider secrets',
-				expect.objectContaining({ error: expect.any(SecretsProviderUpdateError) }),
+				expect.objectContaining({
+					operation: 'update',
+					providerName: 'vault',
+					statusCode: 500,
+				}),
 			);
 		});
 	});
@@ -501,7 +503,11 @@ describe('VaultProvider', () => {
 			);
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Vault provider test failed',
-				expect.objectContaining({ error: expect.any(SecretsProviderTestError) }),
+				expect.objectContaining({
+					operation: 'test',
+					resource: 'token-lookup',
+					errorCode: 'ECONNREFUSED',
+				}),
 			);
 		});
 
@@ -516,8 +522,9 @@ describe('VaultProvider', () => {
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Failed to connect Vault provider',
 				expect.objectContaining({
+					operation: 'connect',
 					authMethod: 'token',
-					error: expect.any(SecretsProviderConnectionError),
+					providerName: 'vault',
 				}),
 			);
 		});
@@ -534,7 +541,11 @@ describe('VaultProvider', () => {
 
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Failed to renew Vault token. Attempting to reconnect.',
-				expect.objectContaining({ error: expect.any(SecretsProviderTokenRefreshError) }),
+				expect.objectContaining({
+					operation: 'tokenRefresh',
+					authMethod: 'token',
+					errorCode: 'ECONNREFUSED',
+				}),
 			);
 			expect(connect).toHaveBeenCalled();
 		});

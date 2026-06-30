@@ -13,16 +13,13 @@ import {
 	type INodeProperties,
 } from 'n8n-workflow';
 
-import { DOCS_HELP_NOTICE } from '../constants';
-import {
-	SecretsProviderConnectionError,
-	SecretsProviderTestError,
-	SecretsProviderTokenRefreshError,
-	SecretsProviderUpdateError,
-} from '../errors/secrets-provider-errors';
-import { ExternalSecretsConfig } from '../external-secrets.config';
-import type { SecretsProviderSettings } from '../types';
-import { SecretsProvider } from '../types';
+import { DOCS_HELP_NOTICE } from '../../constants';
+import type { SecretsProviderErrorContext } from '../../errors/secrets-provider-errors';
+import { secretsProviderLogContext } from '../../errors/secrets-provider-errors';
+import { ExternalSecretsConfig } from '../../external-secrets.config';
+import type { SecretsProviderSettings } from '../../types';
+import { SecretsProvider } from '../../types';
+import { vaultErrorContext } from './vault-error-context';
 
 type VaultAuthMethod = 'token' | 'usernameAndPassword' | 'appRole';
 
@@ -326,11 +323,8 @@ export class VaultProvider extends SecretsProvider {
 			[this.#tokenInfo] = await this.getTokenInfo();
 			this.setupTokenRefresh();
 		} catch (error) {
-			this.logger.warn('Failed to connect Vault provider', {
+			this.logOperationFailure('Failed to connect Vault provider', 'connect', error, {
 				authMethod: this.settings.authMethod,
-				error: new SecretsProviderConnectionError(this.name, this.displayName, {
-					authMethod: this.settings.authMethod,
-				}),
 			});
 			throw error;
 		}
@@ -383,10 +377,13 @@ export class VaultProvider extends SecretsProvider {
 			}
 
 			this.setupTokenRefresh();
-		} catch {
-			this.logger.warn('Failed to renew Vault token. Attempting to reconnect.', {
-				error: new SecretsProviderTokenRefreshError(this.name, this.displayName),
-			});
+		} catch (error) {
+			this.logOperationFailure(
+				'Failed to renew Vault token. Attempting to reconnect.',
+				'tokenRefresh',
+				error,
+				{ authMethod: this.settings.authMethod },
+			);
 			void this.connect();
 		}
 	};
@@ -404,13 +401,13 @@ export class VaultProvider extends SecretsProvider {
 			});
 
 			return body.auth.client_token;
-		} catch {
-			this.logger.warn('Vault provider username/password authentication failed', {
-				authMethod: 'usernameAndPassword',
-				error: new SecretsProviderConnectionError(this.name, this.displayName, {
-					authMethod: 'usernameAndPassword',
-				}),
-			});
+		} catch (error) {
+			this.logOperationFailure(
+				'Vault provider username/password authentication failed',
+				'connect',
+				error,
+				{ authMethod: 'usernameAndPassword' },
+			);
 			return null;
 		}
 	}
@@ -425,12 +422,9 @@ export class VaultProvider extends SecretsProvider {
 			});
 
 			return body.auth.client_token;
-		} catch {
-			this.logger.warn('Vault provider AppRole authentication failed', {
+		} catch (error) {
+			this.logOperationFailure('Vault provider AppRole authentication failed', 'connect', error, {
 				authMethod: 'appRole',
-				error: new SecretsProviderConnectionError(this.name, this.displayName, {
-					authMethod: 'appRole',
-				}),
 			});
 			return null;
 		}
@@ -468,15 +462,11 @@ export class VaultProvider extends SecretsProvider {
 			// non-standard `LIST` verb works; `preferGet` swaps it for `GET ?list=true`.
 			const method = (shouldPreferGet ? 'GET' : 'LIST') as IHttpRequestMethods;
 			listBody = await this.#http.request<VaultResponse<VaultSecretList>>({ url, method });
-		} catch {
-			this.logger.warn('Vault provider failed to list KV secrets', {
+		} catch (error) {
+			this.logOperationFailure('Vault provider failed to list KV secrets', 'update', error, {
 				mountPath,
 				kvVersion,
-				error: new SecretsProviderUpdateError(this.name, this.displayName, {
-					mountPath,
-					kvVersion,
-					resource: 'kv-list',
-				}),
+				resource: 'kv-list',
 			});
 			return null;
 		}
@@ -502,15 +492,11 @@ export class VaultProvider extends SecretsProvider {
 								key,
 								kvVersion === '2' ? (secretBody.data.data as IDataObject) : secretBody.data,
 							];
-						} catch {
-							this.logger.warn('Vault provider failed to read KV secret', {
+						} catch (error) {
+							this.logOperationFailure('Vault provider failed to read KV secret', 'update', error, {
 								mountPath,
 								kvVersion,
-								error: new SecretsProviderUpdateError(this.name, this.displayName, {
-									mountPath,
-									kvVersion,
-									resource: 'kv-read',
-								}),
+								resource: 'kv-read',
 							});
 							return null;
 						}
@@ -609,9 +595,7 @@ export class VaultProvider extends SecretsProvider {
 			this.cachedSecrets = secrets;
 			this.logger.debug('Vault provider secrets updated');
 		} catch (error) {
-			this.logger.warn('Failed to update Vault provider secrets', {
-				error: new SecretsProviderUpdateError(this.name, this.displayName),
-			});
+			this.logOperationFailure('Failed to update Vault provider secrets', 'update', error);
 			throw error;
 		}
 	}
@@ -629,10 +613,8 @@ export class VaultProvider extends SecretsProvider {
 
 			return await this.testSecretAccess();
 		} catch (error) {
-			this.logger.warn('Vault provider test failed', {
-				error: new SecretsProviderTestError(this.name, this.displayName, {
-					resource: 'token-lookup',
-				}),
+			this.logOperationFailure('Vault provider test failed', 'test', error, {
+				resource: 'token-lookup',
 			});
 
 			if (isConnectionRefusedError(error)) {
@@ -689,6 +671,24 @@ export class VaultProvider extends SecretsProvider {
 			...options,
 			returnFullResponse: true,
 			ignoreHttpStatusErrors: true, // Resolve non-2xx responses instead of throwing so the status checks below can return tailored messages.
+		});
+	}
+
+	private logOperationFailure(
+		message: string,
+		operation: 'connect' | 'update' | 'test' | 'tokenRefresh',
+		error: unknown,
+		extra: SecretsProviderErrorContext = {},
+	): void {
+		this.logger.warn(message, {
+			...secretsProviderLogContext({
+				providerName: this.name,
+				providerDisplayName: this.displayName,
+				operation,
+				errorName: error instanceof Error ? error.name : undefined,
+			}),
+			...vaultErrorContext(error),
+			...extra,
 		});
 	}
 }

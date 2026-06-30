@@ -4,6 +4,7 @@ import { Container } from '@n8n/di';
 import { ensureError, type INodeProperties, UnexpectedError } from 'n8n-workflow';
 
 import { DOCS_HELP_NOTICE } from '../../constants';
+import type { SecretsProviderErrorContext } from '../../errors/secrets-provider-errors';
 import { secretsProviderLogContext } from '../../errors/secrets-provider-errors';
 import { SecretsProvider } from '../../types';
 import { azureErrorContext } from './azure-error-context';
@@ -89,16 +90,7 @@ export class AzureKeyVault extends SecretsProvider {
 
 			this.logger.debug('Azure Key Vault provider connected');
 		} catch (error) {
-			this.logger.warn('Failed to connect Azure Key Vault provider', {
-				...secretsProviderLogContext({
-					providerName: this.name,
-					providerDisplayName: this.displayName,
-					operation: 'connect',
-					errorName: error instanceof Error ? error.name : undefined,
-				}),
-				...azureErrorContext(error),
-				location: this.settings.vaultName,
-			});
+			this.logOperationFailure('Failed to connect Azure Key Vault provider', 'connect', error);
 			throw error;
 		}
 	}
@@ -110,16 +102,7 @@ export class AzureKeyVault extends SecretsProvider {
 			await this.client.listPropertiesOfSecrets().next();
 			return [true];
 		} catch (error: unknown) {
-			this.logger.warn('Azure Key Vault provider test failed', {
-				...secretsProviderLogContext({
-					providerName: this.name,
-					providerDisplayName: this.displayName,
-					operation: 'test',
-					errorName: error instanceof Error ? error.name : undefined,
-				}),
-				...azureErrorContext(error),
-				location: this.settings.vaultName,
-			});
+			this.logOperationFailure('Azure Key Vault provider test failed', 'test', error);
 			return [false, error instanceof Error ? error.message : 'Unknown error'];
 		}
 	}
@@ -153,32 +136,22 @@ export class AzureKeyVault extends SecretsProvider {
 					const error = ensureError(promiseResult.reason);
 					readErrors.push(error);
 					const secretName = secretNames[index];
-					this.logger.warn(`Could not read Azure Key Vault secret "${secretName}"`, {
-						...secretsProviderLogContext({
-							providerName: this.name,
-							providerDisplayName: this.displayName,
-							operation: 'update',
-							errorName: error.name,
-						}),
-						...azureErrorContext(error),
-						location: this.settings.vaultName,
-						resource: secretName,
-					});
+					this.logOperationFailure(
+						`Could not read Azure Key Vault secret "${secretName}"`,
+						'update',
+						error,
+						{ resource: secretName },
+					);
 				}
 			}
 
 			if (secretNames.length > 0 && Object.keys(updated).length === 0 && readErrors.length > 0) {
-				this.logger.warn('Failed to update Azure Key Vault provider secrets', {
-					...secretsProviderLogContext({
-						providerName: this.name,
-						providerDisplayName: this.displayName,
-						operation: 'update',
-						errorName: readErrors[0]?.name,
-					}),
-					...azureErrorContext(readErrors[0]),
-					location: this.settings.vaultName,
-					resource: 'secrets',
-				});
+				this.logOperationFailure(
+					'Failed to update Azure Key Vault provider secrets',
+					'update',
+					readErrors[0],
+					{ resource: 'secrets' },
+				);
 				throw new UnexpectedError('Could not read any secrets from Azure Key Vault', {
 					cause: readErrors[0],
 				});
@@ -191,16 +164,11 @@ export class AzureKeyVault extends SecretsProvider {
 				throw error;
 			}
 
-			this.logger.warn('Failed to update Azure Key Vault provider secrets', {
-				...secretsProviderLogContext({
-					providerName: this.name,
-					providerDisplayName: this.displayName,
-					operation: 'update',
-					errorName: error instanceof Error ? error.name : undefined,
-				}),
-				...azureErrorContext(error),
-				location: this.settings.vaultName,
-			});
+			this.logOperationFailure(
+				'Failed to update Azure Key Vault provider secrets',
+				'update',
+				error,
+			);
 			throw error;
 		}
 	}
@@ -215,5 +183,24 @@ export class AzureKeyVault extends SecretsProvider {
 
 	getSecretNames() {
 		return Object.keys(this.cachedSecrets);
+	}
+
+	private logOperationFailure(
+		message: string,
+		operation: 'connect' | 'test' | 'update',
+		error: unknown,
+		extra: SecretsProviderErrorContext = {},
+	): void {
+		this.logger.warn(message, {
+			...secretsProviderLogContext({
+				providerName: this.name,
+				providerDisplayName: this.displayName,
+				operation,
+				errorName: error instanceof Error ? error.name : undefined,
+			}),
+			...azureErrorContext(error),
+			location: this.settings.vaultName,
+			...extra,
+		});
 	}
 }
