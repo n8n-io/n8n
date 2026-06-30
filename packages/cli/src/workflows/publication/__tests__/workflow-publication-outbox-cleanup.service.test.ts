@@ -4,6 +4,8 @@ import type { WorkflowPublicationOutboxRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings, Span, Tracing } from 'n8n-core';
 
+import type { EventService } from '@/events/event.service';
+
 import { WorkflowPublicationOutboxCleanupService } from '../workflow-publication-outbox-cleanup.service';
 
 const logger = mock<Logger>({ scoped: vi.fn().mockReturnThis() });
@@ -17,6 +19,7 @@ const config = mock<WorkflowsConfig>({
 const outboxRepository = mock<WorkflowPublicationOutboxRepository>();
 const instanceSettings = mock<InstanceSettings>({ isLeader: true });
 const tracing = mock<Tracing>();
+const eventService = mock<EventService>();
 
 let service: WorkflowPublicationOutboxCleanupService;
 
@@ -30,6 +33,7 @@ beforeEach(() => {
 		outboxRepository,
 		instanceSettings,
 		tracing,
+		eventService,
 	);
 });
 
@@ -154,6 +158,32 @@ describe('WorkflowPublicationOutboxCleanupService', () => {
 			await vi.advanceTimersByTimeAsync(0);
 
 			expect(logger.error).toHaveBeenCalled();
+		});
+
+		it('should emit a success metrics event with the total deleted count', async () => {
+			outboxRepository.deleteTerminalOlderThan.mockResolvedValue(7);
+
+			service.startCleanup();
+			vi.advanceTimersByTime(30_000);
+			await vi.advanceTimersByTimeAsync(0);
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'workflow-publication-outbox-cleanup',
+				expect.objectContaining({ result: 'success', deletedCount: 7 }),
+			);
+		});
+
+		it('should emit a failure metrics event when cleanup throws', async () => {
+			outboxRepository.deleteTerminalOlderThan.mockRejectedValue(new Error('DB error'));
+
+			service.startCleanup();
+			vi.advanceTimersByTime(30_000);
+			await vi.advanceTimersByTimeAsync(0);
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'workflow-publication-outbox-cleanup',
+				expect.objectContaining({ result: 'failure', deletedCount: 0 }),
+			);
 		});
 	});
 

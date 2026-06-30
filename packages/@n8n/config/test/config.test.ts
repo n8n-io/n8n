@@ -254,6 +254,7 @@ describe('GlobalConfig', () => {
 				includeWorkflowInfoMetrics: false,
 				workflowInfoMetricInterval: 60,
 				includeDbPoolMetrics: false,
+				includeWorkflowPublicationMetrics: false,
 			},
 			additionalNonUIRoutes: '',
 			disableProductionWebhooksOnMainProcess: false,

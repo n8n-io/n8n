@@ -429,4 +429,66 @@ describe('WorkflowPublicationOutboxRepository', () => {
 			expect(pending[0].workflowId).toBe(active.id);
 		});
 	});
+
+	describe('getRecordCountsByStatus', () => {
+		it('returns counts grouped by status', async () => {
+			await repository.insert([
+				{ workflowId: 'wf-1', publishedVersionId: 'v', status: 'pending' },
+				{ workflowId: 'wf-2', publishedVersionId: 'v', status: 'in_progress' },
+				{ workflowId: 'wf-3', publishedVersionId: 'v', status: 'completed' },
+				{ workflowId: 'wf-4', publishedVersionId: 'v', status: 'completed' },
+				{ workflowId: 'wf-5', publishedVersionId: 'v', status: 'failed' },
+				{ workflowId: 'wf-6', publishedVersionId: 'v', status: 'partial_success' },
+			]);
+
+			const counts = await repository.getRecordCountsByStatus();
+
+			expect(Object.fromEntries(counts)).toEqual({
+				pending: 1,
+				in_progress: 1,
+				completed: 2,
+				failed: 1,
+				partial_success: 1,
+			});
+		});
+
+		it('returns an empty map when there are no records', async () => {
+			expect((await repository.getRecordCountsByStatus()).size).toBe(0);
+		});
+	});
+
+	describe('getOldestActiveRecordCreatedAtByStatus', () => {
+		it('returns the oldest createdAt per active status and omits inactive statuses', async () => {
+			await repository.insert([
+				{ workflowId: 'wf-1', publishedVersionId: 'v', status: 'pending' },
+				{ workflowId: 'wf-2', publishedVersionId: 'v', status: 'pending' },
+				{ workflowId: 'wf-3', publishedVersionId: 'v', status: 'in_progress' },
+				{ workflowId: 'wf-4', publishedVersionId: 'v', status: 'completed' },
+			]);
+
+			const all = await repository.find();
+			const oldestPending = Math.min(
+				...all
+					.filter((record) => record.status === 'pending')
+					.map((record) => record.createdAt.getTime()),
+			);
+
+			const byStatus = await repository.getOldestActiveRecordCreatedAtByStatus();
+
+			expect(byStatus.get('pending')?.getTime()).toBe(oldestPending);
+			expect(byStatus.get('in_progress')).toBeInstanceOf(Date);
+			// `completed` is terminal, not active, so it must not appear.
+			expect(byStatus.has('completed')).toBe(false);
+		});
+
+		it('returns an empty map when there are no active records', async () => {
+			await repository.insert({
+				workflowId: 'wf-1',
+				publishedVersionId: 'v',
+				status: 'completed',
+			});
+
+			expect((await repository.getOldestActiveRecordCreatedAtByStatus()).size).toBe(0);
+		});
+	});
 });

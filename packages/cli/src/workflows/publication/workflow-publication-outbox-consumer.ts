@@ -6,6 +6,11 @@ import { Service } from '@n8n/di';
 import { ErrorReporter, InstanceSettings, SpanStatus, Tracing } from 'n8n-core';
 import { UnexpectedError, ensureError } from 'n8n-workflow';
 
+import { EventService } from '@/events/event.service';
+import type {
+	PublicationOutcomeReason,
+	PublicationOutcomeResult,
+} from '@/events/maps/workflow-publication-metrics.event-map';
 import type { PublicationResult } from '@/workflows/publication/publication-result';
 import { PublicationStatusReporter } from '@/workflows/publication/publication-status-reporter';
 import { WorkflowPublicationLifecycleLock } from '@/workflows/publication/workflow-publication-lifecycle-lock';
@@ -40,6 +45,7 @@ export class WorkflowPublicationOutboxConsumer {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly lifecycleLock: WorkflowPublicationLifecycleLock,
 		private readonly tracing: Tracing,
+		private readonly eventService: EventService,
 	) {
 		this.logger = this.logger.scoped('workflow-publication');
 	}
@@ -209,6 +215,7 @@ export class WorkflowPublicationOutboxConsumer {
 						publishedVersionId: record.publishedVersionId,
 					});
 
+					const startedAt = Date.now();
 					let result: PublicationResult;
 
 					try {
@@ -221,11 +228,20 @@ export class WorkflowPublicationOutboxConsumer {
 						};
 					}
 
+					let reporterFailed = false;
 					try {
 						await this.reporter.report(record, result);
 					} catch (reportError) {
+						reporterFailed = true;
 						this.errorReporter.error(reportError, { shouldBeLogged: true });
 					}
+
+					const outcome = this.toOutcomeLabels(result, reporterFailed);
+					this.eventService.emit('workflow-publication-outbox-record-processed', {
+						result: outcome.result,
+						reason: outcome.reason,
+						durationMs: Date.now() - startedAt,
+					});
 
 					this.logger.debug('Finished processing workflow publication outbox record', {
 						outboxId: record.id,
@@ -239,5 +255,37 @@ export class WorkflowPublicationOutboxConsumer {
 				span.setStatus({ code: SpanStatus.ok });
 			},
 		);
+	}
+
+	/**
+	 * Maps a publication result to its metric labels. A reporter failure overrides
+	 * the result to `failed` (the terminal status write never landed), and
+	 * `version-missing` is surfaced as a `skipped`/`version_missing` outcome even
+	 * though the record itself is marked failed.
+	 */
+	private toOutcomeLabels(
+		result: PublicationResult,
+		reporterFailed: boolean,
+	): { result: PublicationOutcomeResult; reason: PublicationOutcomeReason } {
+		if (reporterFailed) return { result: 'failed', reason: 'none' };
+
+		switch (result.type) {
+			case 'completed':
+				return { result: 'published', reason: 'none' };
+			case 'unpublished':
+				return { result: 'unpublished', reason: 'none' };
+			case 'skipped':
+				return {
+					result: 'skipped',
+					reason:
+						result.reason === 'workflow-not-found' ? 'workflow_not_found' : 'workflow_inactive',
+				};
+			case 'version-missing':
+				return { result: 'skipped', reason: 'version_missing' };
+			case 'partial':
+				return { result: 'partial_success', reason: 'none' };
+			case 'failed':
+				return { result: 'failed', reason: 'none' };
+		}
 	}
 }
