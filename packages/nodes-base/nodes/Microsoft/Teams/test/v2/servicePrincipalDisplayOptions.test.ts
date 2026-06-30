@@ -237,5 +237,21 @@ describe('Microsoft Teams Service Principal displayOptions contract', () => {
 			const field = triggerProps.find((p) => p.name === name);
 			expect(isSpHidden(field)).toBe(true);
 		});
+
+		// Regression: the watch-all toggles are hidden under SP, so they resolve to `undefined`.
+		// The dependent pickers must gate on `_cnd: { not: true }` (matches `false` AND `undefined`),
+		// not a plain `[false]` — otherwise the Team/Channel pickers disappear under SP.
+		it.each(['teamId', 'channelId'])(
+			'the %s picker gates watchAllTeams with _cnd:{not:true} (renders under SP)',
+			(name) => {
+				const field = triggerProps.find((p) => p.name === name);
+				expect(field?.displayOptions?.show?.watchAllTeams).toEqual([{ _cnd: { not: true } }]);
+			},
+		);
+
+		it('the channelId picker gates watchAllChannels with _cnd:{not:true} (renders under SP)', () => {
+			const channel = triggerProps.find((p) => p.name === 'channelId');
+			expect(channel?.displayOptions?.show?.watchAllChannels).toEqual([{ _cnd: { not: true } }]);
+		});
 	});
 });

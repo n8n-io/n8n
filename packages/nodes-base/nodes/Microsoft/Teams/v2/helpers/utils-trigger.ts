@@ -116,9 +116,7 @@ export async function getResourcePath(
 		case 'newChatMessage': {
 			if (isServicePrincipal) throwChatTriggerUnsupported.call(this);
 
-			const watchAllChats = this.getNodeParameter('watchAllChats', false, {
-				extractValue: true,
-			}) as boolean;
+			const watchAllChats = this.getNodeParameter('watchAllChats', false) as boolean;
 
 			if (watchAllChats) {
 				return '/me/chats/getAllMessages';
@@ -129,9 +127,10 @@ export async function getResourcePath(
 		}
 
 		case 'newChannel': {
-			const watchAllTeams = this.getNodeParameter('watchAllTeams', false, {
-				extractValue: true,
-			}) as boolean;
+			// No `extractValue` for booleans: it triggers a property-descriptor lookup that
+			// throws "Could not find property" when the toggle is hidden under SP. The 2-arg
+			// form returns the `false` fallback cleanly when hidden.
+			const watchAllTeams = this.getNodeParameter('watchAllTeams', false) as boolean;
 
 			if (isServicePrincipal && watchAllTeams) throwWatchAllUnsupported.call(this);
 
@@ -148,9 +147,10 @@ export async function getResourcePath(
 		}
 
 		case 'newChannelMessage': {
-			const watchAllTeams = this.getNodeParameter('watchAllTeams', false, {
-				extractValue: true,
-			}) as boolean;
+			// No `extractValue` for booleans: it triggers a property-descriptor lookup that
+			// throws "Could not find property" when the toggle is hidden under SP. The 2-arg
+			// form returns the `false` fallback cleanly when hidden.
+			const watchAllTeams = this.getNodeParameter('watchAllTeams', false) as boolean;
 
 			if (isServicePrincipal && watchAllTeams) throwWatchAllUnsupported.call(this);
 
@@ -165,9 +165,7 @@ export async function getResourcePath(
 				return teamChannels.flat();
 			} else {
 				const teamId = this.getNodeParameter('teamId', undefined, { extractValue: true }) as string;
-				const watchAllChannels = this.getNodeParameter('watchAllChannels', false, {
-					extractValue: true,
-				}) as boolean;
+				const watchAllChannels = this.getNodeParameter('watchAllChannels', false) as boolean;
 
 				if (isServicePrincipal && watchAllChannels) throwWatchAllUnsupported.call(this);
 
@@ -197,9 +195,10 @@ export async function getResourcePath(
 		}
 
 		case 'newTeamMember': {
-			const watchAllTeams = this.getNodeParameter('watchAllTeams', false, {
-				extractValue: true,
-			}) as boolean;
+			// No `extractValue` for booleans: it triggers a property-descriptor lookup that
+			// throws "Could not find property" when the toggle is hidden under SP. The 2-arg
+			// form returns the `false` fallback cleanly when hidden.
+			const watchAllTeams = this.getNodeParameter('watchAllTeams', false) as boolean;
 
 			if (isServicePrincipal && watchAllTeams) throwWatchAllUnsupported.call(this);
 

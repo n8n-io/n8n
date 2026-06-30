@@ -209,7 +209,10 @@ export class MicrosoftTeamsTrigger implements INodeType {
 				displayOptions: {
 					show: {
 						event: ['newChannel', 'newChannelMessage', 'newTeamMember'],
-						watchAllTeams: [false],
+						// `_cnd: { not: true }` matches both `false` and `undefined`. Under SP the
+						// watch-all toggle is hidden (SP_HIDE) and resolves to `undefined`; a plain
+						// `[false]` would not match, so this picker would wrongly disappear.
+						watchAllTeams: [{ _cnd: { not: true } }],
 					},
 				},
 			},
@@ -270,8 +273,10 @@ export class MicrosoftTeamsTrigger implements INodeType {
 				displayOptions: {
 					show: {
 						event: ['newChannelMessage'],
-						watchAllTeams: [false],
-						watchAllChannels: [false],
+						// `_cnd: { not: true }` matches `false` and the `undefined` that the SP-hidden
+						// watch-all toggles resolve to, so the channel picker still renders under SP.
+						watchAllTeams: [{ _cnd: { not: true } }],
+						watchAllChannels: [{ _cnd: { not: true } }],
 					},
 				},
 			},

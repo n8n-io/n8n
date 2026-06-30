@@ -426,6 +426,27 @@ describe('Microsoft Teams Helpers Functions', () => {
 			expect(microsoftApiRequest.call).not.toHaveBeenCalled();
 		});
 
+		// Regression: under SP the watch-all toggles are hidden (SP_HIDE) and absent, so the
+		// reads must fall back to `false` WITHOUT `{ extractValue: true }` — extractValue on a
+		// hidden param throws a raw "Could not find property" before the channel path is built.
+		it('composes the channel path when watch-all toggles are absent, and reads them without extractValue', async () => {
+			setSpParams({ teamId: '1111-2222', channelId: '19:abc@thread.tacv2' });
+
+			const result = await getResourcePath.call(mockHookFunctions, 'newChannelMessage');
+
+			expect(result).toBe('/teams/1111-2222/channels/19:abc@thread.tacv2/messages');
+			expect(mockHookFunctions.getNodeParameter).not.toHaveBeenCalledWith(
+				'watchAllTeams',
+				expect.anything(),
+				expect.objectContaining({ extractValue: true }),
+			);
+			expect(mockHookFunctions.getNodeParameter).not.toHaveBeenCalledWith(
+				'watchAllChannels',
+				expect.anything(),
+				expect.objectContaining({ extractValue: true }),
+			);
+		});
+
 		it('passes a colon channelId RAW for newChannelMessage (same shape as OAuth2, not encoded)', async () => {
 			setSpParams({
 				watchAllTeams: false,
