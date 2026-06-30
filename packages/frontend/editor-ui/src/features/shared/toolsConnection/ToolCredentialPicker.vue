@@ -88,6 +88,7 @@ function editCredential(credentialId: string) {
 
 <template>
 	<N8nPopover
+		v-if="availableCredentials.length > 0"
 		v-model:open="isOpen"
 		side="bottom"
 		align="end"
@@ -179,6 +180,9 @@ function editCredential(credentialId: string) {
 			</button>
 		</template>
 	</N8nPopover>
+	<N8nButton v-else :variant="connectVariant" size="small" @click="createCredential">
+		<span>{{ i18n.baseText('tools.connection.action.connect') }}</span>
+	</N8nButton>
 </template>
 
 <style lang="scss" module>
