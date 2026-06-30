@@ -1067,7 +1067,7 @@ export class InstanceAiService {
 		}
 	}
 
-	// ── Cross-main task-control routing (INS-377) ─────────────────────────────
+	// ── Cross-main task-control routing ───────────────────────────────────────
 	// User actions (correct/cancel/clear) can land on a different main than the
 	// one running the task/run. Each `route*` method does the local action and,
 	// when the target isn't local (or is thread-wide), broadcasts so the owning

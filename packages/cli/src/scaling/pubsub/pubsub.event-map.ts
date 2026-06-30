@@ -152,7 +152,7 @@ export type PubSubCommandMap = {
 	};
 
 	/**
-	 * Relay an Instance AI stream event to sibling mains (INS-377).
+	 * Relay an Instance AI stream event to sibling mains.
 	 *
 	 * The agent runs on whichever main received `POST /chat/:threadId` and emits
 	 * events into that main's in-process bus, but the client's `GET /events/:threadId`
@@ -166,7 +166,7 @@ export type PubSubCommandMap = {
 
 	/**
 	 * Relay an Instance AI task-control action (correction / cancel / clear) to
-	 * sibling mains (INS-377). The action may target a background task or run held
+	 * sibling mains. The action may target a background task or run held
 	 * in another main's in-memory state. Broadcast + local-gate: every main applies
 	 * it only to its own local slice of the thread.
 	 */
