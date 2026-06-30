@@ -65,7 +65,7 @@ const evalTestCaseObjectSchema = z
 		complexity: z.enum(['simple', 'medium', 'complex']),
 		tags: z.array(z.string()),
 		triggerType: z.enum(['manual', 'webhook', 'schedule', 'form']).optional(),
-		executionScenarios: z.array(ExecutionScenarioSchema).min(1),
+		executionScenarios: z.array(ExecutionScenarioSchema).optional(),
 		messageBudget: z.number().int().positive().optional(),
 		/** Optional NL assertions about the build CONVERSATION (process: clarifications, push-back,
 		 *  ordering). LLM-judged from the transcript, so skipped in prebuilt/MCP runs. Counted as units. */
@@ -125,6 +125,9 @@ const evalTestCaseObjectSchema = z
 				 *  are unchanged. A US-sourced case carries the US host; the harness maps
 				 *  host→key via env (LANGSMITH_API_KEY_US). */
 				endpoint: z.string().url().optional(),
+				/** Pin which user turn is sent live (its LangSmith run id); everything before it
+				 *  is seeded. Omit ⇒ the thread's last user turn (default). */
+				liveTurnRunId: z.string().min(1).optional(),
 			})
 			.optional(),
 		/**
@@ -155,6 +158,16 @@ export const EvalTestCaseSchema = evalTestCaseObjectSchema
 	.refine((c) => c.seedThread !== undefined || c.conversation !== undefined, {
 		message:
 			'a case needs a conversation, or a seedThread (which supplies the live turn from the trace)',
-	});
+	})
+	.refine(
+		(c) =>
+			(c.executionScenarios?.length ?? 0) > 0 ||
+			(c.processExpectations?.length ?? 0) > 0 ||
+			(c.outcomeExpectations?.length ?? 0) > 0,
+		{
+			message:
+				'a case needs at least one executionScenario, or a process/outcome expectation to grade',
+		},
+	);
 
 export type EvalTestCaseInput = z.infer<typeof EvalTestCaseSchema>;

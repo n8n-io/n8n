@@ -70,18 +70,19 @@ export function aggregateResults(
 		const testCase = runs[0].testCase;
 		const buildSuccessCount = runs.filter((r) => r.workflowBuildSuccess).length;
 
+		const scenarios = testCase.executionScenarios ?? [];
 		// TODO: Remove when agent building is supported
 		const scenarioIndices =
 			// TODO: Remove when agent building is supported
 			options.caseSet === 'agents'
-				? testCase.executionScenarios
+				? scenarios
 						.map((_, sIdx) => sIdx)
 						.filter((sIdx) => runs.some((r) => r.executionScenarioResults[sIdx] !== undefined))
-				: testCase.executionScenarios.map((_, sIdx) => sIdx);
+				: scenarios.map((_, sIdx) => sIdx);
 		const executionScenarios: ExecutionScenarioAggregation[] = [];
 
 		for (const sIdx of scenarioIndices) {
-			const scenario = testCase.executionScenarios[sIdx];
+			const scenario = scenarios[sIdx];
 			const scenarioRuns =
 				// TODO: Remove when agent building is supported
 				options.caseSet === 'agents'
@@ -99,13 +100,14 @@ export function aggregateResults(
 								},
 						);
 			const passCount = scenarioRuns.filter((sr) => sr.success).length;
-			const { passAtKValues, passHatKValues } = computePassMetrics(scenarioRuns.length, passCount);
+			const runCount = options.caseSet === 'agents' ? scenarioRuns.length : totalRuns;
+			const { passAtKValues, passHatKValues } = computePassMetrics(runCount, passCount);
 
 			executionScenarios.push({
 				scenario,
 				runs: scenarioRuns,
 				passCount,
-				passRate: scenarioRuns.length > 0 ? passCount / scenarioRuns.length : 0,
+				passRate: runCount > 0 ? passCount / runCount : 0,
 				passAtK: passAtKValues,
 				passHatK: passHatKValues,
 			});
