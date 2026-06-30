@@ -206,6 +206,8 @@
 			"status": "gap"
 		},
 		"GET /insights/summary": {
+			"status": "gap"
+		},
 		"GET /data-tables/{dataTableId}/columns": {
 			"status": "gap"
 		},
