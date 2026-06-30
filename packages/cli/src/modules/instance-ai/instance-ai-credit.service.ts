@@ -104,7 +104,7 @@ export class InstanceAiCreditService {
 		// later run can re-attempt, and reports the failure.
 		let result: Awaited<ReturnType<typeof this.claimTokens>>;
 		try {
-			result = await this.claimTokensWithRetry(user, dedupeId, usage);
+			result = await this.claimTokensWithRetry(user, threadId, dedupeId, usage);
 		} catch (error) {
 			this.claimedRunIds.delete(dedupeId); // allow retry on failure
 			this.telemetry.track('Builder credits claimed', {
@@ -223,11 +223,25 @@ export class InstanceAiCreditService {
 		};
 	}
 
-	/** Single authoritative claim call against the proxy, routed by license. */
-	private async claimTokens(user: User, dedupeId: string, usage: BuilderUsageItem[]) {
+	/**
+	 * Single authoritative claim call against the proxy, routed by license.
+	 *
+	 * The IA branch forwards `threadId` so the service can attach it to the claim
+	 * telemetry; the builder branch is left unchanged (no `threadId`).
+	 */
+	private async claimTokens(
+		user: User,
+		threadId: string,
+		dedupeId: string,
+		usage: BuilderUsageItem[],
+	) {
 		const { client, headers } = await this.getProxyAuth(user);
 		return this.license.isInstanceAiEnabled()
-			? await client.markInstanceAiTokenUsage({ id: user.id }, headers, { dedupeId, usage })
+			? await client.markInstanceAiTokenUsage({ id: user.id }, headers, {
+					dedupeId,
+					usage,
+					threadId,
+				})
 			: await client.markBuilderTokenUsage({ id: user.id }, headers, { dedupeId, usage });
 	}
 
@@ -236,11 +250,16 @@ export class InstanceAiCreditService {
 	 * service dedupes replays by `dedupeId`. Rethrows the last error if every
 	 * attempt fails.
 	 */
-	private async claimTokensWithRetry(user: User, dedupeId: string, usage: BuilderUsageItem[]) {
+	private async claimTokensWithRetry(
+		user: User,
+		threadId: string,
+		dedupeId: string,
+		usage: BuilderUsageItem[],
+	) {
 		let lastError: unknown;
 		for (let attempt = 1; attempt <= InstanceAiCreditService.CLAIM_MAX_ATTEMPTS; attempt++) {
 			try {
-				return await this.claimTokens(user, dedupeId, usage);
+				return await this.claimTokens(user, threadId, dedupeId, usage);
 			} catch (error) {
 				lastError = error;
 				this.logger.debug('Instance AI credit claim attempt failed', {
