@@ -96,6 +96,9 @@ const workflowTestCaseObjectSchema = z
 				 *  are unchanged. A US-sourced case carries the US host; the harness maps
 				 *  host→key via env (LANGSMITH_API_KEY_US). */
 				endpoint: z.string().url().optional(),
+				/** Pin which user turn is sent live (its LangSmith run id); everything before it
+				 *  is seeded. Omit ⇒ the thread's last user turn (default). */
+				liveTurnRunId: z.string().min(1).optional(),
 			})
 			.optional(),
 		/**
