@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
+import type { ClientOAuth2 } from '@n8n/client-oauth2';
 import { type CredentialsEntity, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
@@ -142,6 +143,62 @@ describe('OAuth2CredentialController', () => {
 			);
 			expect(res.render).toHaveBeenCalledWith('oauth-callback');
 			expect(externalHooks.run).toHaveBeenCalledWith('oauth2.callback', expect.any(Array));
+		});
+
+		it('should build the client with a certificate when certificate authentication is selected', async () => {
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+			const mockGetToken = jest.fn().mockResolvedValue({
+				data: { access_token: 'new_token', refresh_token: 'refresh_token' },
+			});
+			jest
+				.mocked(ClientOAuth2)
+				.mockImplementation(() => mock<ClientOAuth2>({ code: { getToken: mockGetToken } }));
+
+			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1' });
+			const mockState = {
+				token: 'token',
+				cid: '1',
+				userId: '123',
+				origin: 'static-credential' as const,
+				createdAt: timestamp,
+				data: 'encrypted-data',
+			};
+			oauthService.resolveCredential.mockResolvedValueOnce([
+				mockResolvedCredential,
+				{ csrfSecret: 'csrf-secret' },
+				{
+					clientId: 'client_id',
+					clientCredentialType: 'certificate',
+					privateKey: 'private-key-pem',
+					certificate: 'certificate-pem',
+					authUrl: 'https://example.domain/oauth2/auth',
+					accessTokenUrl: 'https://example.domain/oauth2/token',
+					scope: 'openid',
+					grantType: 'authorizationCode',
+					authentication: 'body',
+				},
+				mockState,
+				{ csrfSecret: 'csrf-secret' },
+			]);
+			oauthService.getBaseUrl.mockReturnValue('http://localhost:5678/rest/oauth2-credential');
+			externalHooks.run.mockResolvedValue(undefined);
+
+			const req = mock<OAuthRequest.OAuth2Credential.Callback>({
+				query: {
+					code: 'auth_code',
+					state: validState,
+				},
+				originalUrl: '/oauth2-credential/callback?code=auth_code&state=state',
+			});
+
+			await controller.handleCallback(req, res);
+
+			expect(ClientOAuth2).toHaveBeenCalledWith(
+				expect.objectContaining({
+					clientCertificate: { privateKey: 'private-key-pem', certificate: 'certificate-pem' },
+				}),
+			);
+			expect(res.render).toHaveBeenCalledWith('oauth-callback');
 		});
 
 		it('should pass state resource to token exchange and store it for static credentials', async () => {

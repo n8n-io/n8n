@@ -113,4 +113,46 @@ describe('createOAuth2Client - scope handling', () => {
 			expect.objectContaining({ scopes: ['read', 'write'] }),
 		);
 	});
+
+	test('should pass clientCertificate when certificate authentication is selected', async () => {
+		mockThis.getCredentials.mockResolvedValue({
+			...baseCredentials,
+			clientCredentialType: 'certificate',
+			privateKey: 'private-key-pem',
+			certificate: 'certificate-pem',
+		});
+
+		await call();
+
+		expect(MockClientOAuth2).toHaveBeenCalledWith(
+			expect.objectContaining({
+				clientCertificate: { privateKey: 'private-key-pem', certificate: 'certificate-pem' },
+			}),
+		);
+	});
+
+	test('should not pass clientCertificate when authentication is the default client secret', async () => {
+		mockThis.getCredentials.mockResolvedValue({ ...baseCredentials });
+
+		await call();
+
+		expect(MockClientOAuth2).toHaveBeenCalledWith(
+			expect.not.objectContaining({ clientCertificate: expect.anything() }),
+		);
+	});
+
+	test('should not pass clientCertificate when certificate is selected but PEMs are missing', async () => {
+		mockThis.getCredentials.mockResolvedValue({
+			...baseCredentials,
+			clientCredentialType: 'certificate',
+			privateKey: '',
+			certificate: '',
+		});
+
+		await call();
+
+		expect(MockClientOAuth2).toHaveBeenCalledWith(
+			expect.not.objectContaining({ clientCertificate: expect.anything() }),
+		);
+	});
 });

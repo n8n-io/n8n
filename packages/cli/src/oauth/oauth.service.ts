@@ -686,9 +686,21 @@ export class OauthService {
 			.map((s) => s.trim())
 			.filter(Boolean);
 
+		const useCertificate =
+			oauthCredentials.clientCredentialType === 'certificate' &&
+			!!oauthCredentials.privateKey &&
+			!!oauthCredentials.certificate;
+
 		const oAuthClient = new ClientOAuth2({
 			clientId: oauthCredentials.clientId,
+			clientCredentialType: oauthCredentials.clientCredentialType,
 			clientSecret: oauthCredentials.clientSecret,
+			...(useCertificate && {
+				clientCertificate: {
+					privateKey: oauthCredentials.privateKey as string,
+					certificate: oauthCredentials.certificate as string,
+				},
+			}),
 			accessTokenUri: oauthCredentials.accessTokenUrl,
 			scopes: scopes?.length ? scopes : undefined,
 			ignoreSSLIssues: oauthCredentials.ignoreSSLIssues,
@@ -1208,6 +1220,11 @@ export class OauthService {
 		return Object.fromEntries(new URLSearchParams(response).entries());
 	}
 
+	// Builds options for the authorization-redirect leg, consumed by the `oauth2.authenticate`
+	// hook and `code.getUri()`. Neither authenticates the client. The certificate is deliberately
+	// not mapped here — it would only leak the private key to the hook with no benefit. `clientSecret`
+	// is also unused by `getUri()` and reaches only the hook (pre-existing). The resulting asymmetry
+	// (secret reaches the hook, certificate does not) is intentional.
 	private convertCredentialToOptions(credential: OAuth2CredentialData): ClientOAuth2Options {
 		const options: ClientOAuth2Options = {
 			clientId: credential.clientId,

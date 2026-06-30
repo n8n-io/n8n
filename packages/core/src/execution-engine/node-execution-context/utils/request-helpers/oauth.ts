@@ -48,9 +48,20 @@ function createOAuth2Client(credentials: OAuth2CredentialData): ClientOAuth2 {
 		?.split(' ')
 		.map((s) => s.trim())
 		.filter(Boolean);
+	const useCertificate =
+		credentials.clientCredentialType === 'certificate' &&
+		!!credentials.privateKey &&
+		!!credentials.certificate;
 	return new ClientOAuth2({
 		clientId: credentials.clientId,
+		clientCredentialType: credentials.clientCredentialType,
 		clientSecret: credentials.clientSecret,
+		...(useCertificate && {
+			clientCertificate: {
+				privateKey: credentials.privateKey as string,
+				certificate: credentials.certificate as string,
+			},
+		}),
 		accessTokenUri: credentials.accessTokenUrl,
 		scopes: scopes?.length ? scopes : undefined,
 		ignoreSSLIssues: credentials.ignoreSSLIssues,

@@ -91,6 +91,14 @@ export class OAuth2Api implements ICredentialType {
 			required: true,
 		},
 		{
+			// Hidden ordering anchor: lets extending credentials (e.g. microsoftOAuth2Api) render a
+			// secret/certificate selector right after Client ID by overriding this field. Inert here.
+			displayName: 'Authentication',
+			name: 'clientCredentialType',
+			type: 'hidden',
+			default: 'clientSecret',
+		},
+		{
 			displayName: 'Client Secret',
 			name: 'clientSecret',
 			type: 'string',

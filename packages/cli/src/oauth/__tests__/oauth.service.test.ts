@@ -5039,6 +5039,46 @@ describe('OauthService', () => {
 			expect(mockToken.refresh).toHaveBeenCalledTimes(1);
 		});
 
+		it('builds the client with a certificate when certificate authentication is selected', async () => {
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+			let capturedOptions: unknown;
+			const refreshed = {
+				data: { access_token: 'new-token', token_type: 'bearer' },
+				accessToken: 'new-token',
+			};
+			const mockToken = { refresh: jest.fn().mockResolvedValue(refreshed), client: {} };
+			jest.mocked(ClientOAuth2).mockImplementation((options) => {
+				capturedOptions = options;
+				return { createToken: jest.fn().mockReturnValue(mockToken) } as never;
+			});
+
+			credentialsRepository.findOne.mockResolvedValue(makeCredential({ isGlobal: true }) as never);
+			jest.spyOn(service, 'getOAuthCredentials').mockResolvedValue({
+				clientId: 'id',
+				clientCredentialType: 'certificate',
+				privateKey: 'private-key-pem',
+				certificate: 'certificate-pem',
+				accessTokenUrl: 'https://example.com/token',
+				grantType: 'authorizationCode',
+				authentication: 'header',
+				oauthTokenData: {
+					access_token: 'stale',
+					refresh_token: 'refresh-tok',
+					token_type: 'bearer',
+				},
+			} as unknown as OAuth2CredentialData);
+			jest.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
+
+			const result = await service.refreshOAuth2CredentialById(credentialId, projectId);
+
+			expect(result).toEqual({ Authorization: 'Bearer new-token' });
+			expect(capturedOptions).toEqual(
+				expect.objectContaining({
+					clientCertificate: { privateKey: 'private-key-pem', certificate: 'certificate-pem' },
+				}),
+			);
+		});
+
 		it('persists the refreshed token data after a successful refresh', async () => {
 			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
 			const refreshedData = { access_token: 'new-token', token_type: 'bearer' };

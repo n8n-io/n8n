@@ -1,4 +1,8 @@
+import type { INodeProperties } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
+
 import { MicrosoftOAuth2Api } from '../MicrosoftOAuth2Api.credentials';
+import { OAuth2Api } from '../OAuth2Api.credentials';
 
 describe('MicrosoftOAuth2Api Credential', () => {
 	const microsoftOAuth2Api = new MicrosoftOAuth2Api();
@@ -27,5 +31,44 @@ describe('MicrosoftOAuth2Api Credential', () => {
 		);
 		expect(authQueryParamsProperty?.type).toBe('hidden');
 		expect(authQueryParamsProperty?.default).toBe('response_mode=query&prompt=select_account');
+	});
+
+	describe('certificate authentication', () => {
+		const getProperty = (name: string) =>
+			microsoftOAuth2Api.properties.find((p) => p.name === name);
+
+		it('should offer a client secret / certificate selector defaulting to client secret', () => {
+			const clientCredentialType = getProperty('clientCredentialType');
+			expect(clientCredentialType?.type).toBe('options');
+			expect(clientCredentialType?.default).toBe('clientSecret');
+			expect(clientCredentialType?.options).toEqual([
+				{ name: 'Client Secret', value: 'clientSecret' },
+				{ name: 'Certificate', value: 'certificate' },
+			]);
+		});
+
+		it('should only show the client secret when client secret authentication is selected', () => {
+			const clientSecret = getProperty('clientSecret');
+			expect(clientSecret?.displayOptions?.show?.clientCredentialType).toEqual(['clientSecret']);
+		});
+
+		it('should show the private key and certificate only for certificate authentication', () => {
+			for (const name of ['privateKey', 'certificate']) {
+				const property = getProperty(name);
+				expect(property?.required).toBe(true);
+				expect(property?.displayOptions?.show?.clientCredentialType).toEqual(['certificate']);
+			}
+		});
+
+		it('should render the selector immediately after Client ID once merged with the base', () => {
+			const merged: INodeProperties[] = [];
+			NodeHelpers.mergeNodeProperties(merged, new OAuth2Api().properties);
+			NodeHelpers.mergeNodeProperties(merged, microsoftOAuth2Api.properties);
+
+			const names = merged.map((p) => p.name);
+			const selector = merged[names.indexOf('clientId') + 1];
+			expect(selector.name).toBe('clientCredentialType');
+			expect(selector.type).toBe('options');
+		});
 	});
 });
