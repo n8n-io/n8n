@@ -2,7 +2,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 const tableName = 'workflow_publication_trigger_status';
 
-export class CreateWorkflowPublicationTriggerStatusTable1784000000039
+export class CreateWorkflowPublicationTriggerStatusTable1784000000040
 	implements ReversibleMigration
 {
 	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
