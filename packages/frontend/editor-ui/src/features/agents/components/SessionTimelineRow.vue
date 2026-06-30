@@ -3,7 +3,7 @@ import { N8nTooltip } from '@n8n/design-system';
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
-import { truncate } from '@n8n/utils';
+import { truncate } from '@n8n/utils/string/truncate';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { VIEWS } from '@/app/constants/navigation';
 import type { TimelineItem } from '../session-timeline.types';

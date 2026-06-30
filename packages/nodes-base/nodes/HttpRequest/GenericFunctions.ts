@@ -1,4 +1,4 @@
-import { formatPemBlock } from '@n8n/utils';
+import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import FormData from 'form-data';
 import get from 'lodash/get';
 import isPlainObject from 'lodash/isPlainObject';

@@ -44,6 +44,7 @@ import { EvalExecutionService } from './eval/execution.service';
 import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service';
 import { EvalThreadRestoreService } from './eval/thread-restore.service';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
+import { InstanceAiErrorReporterService } from './instance-ai-error-reporter.service';
 import { InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
@@ -112,6 +113,7 @@ export class InstanceAiController {
 		private readonly userRepository: UserRepository,
 		private readonly credentialsService: CredentialsService,
 		private readonly projectService: ProjectService,
+		private readonly instanceAiErrorReporter: InstanceAiErrorReporterService,
 		globalConfig: GlobalConfig,
 	) {
 		this.gatewayApiKey = globalConfig.instanceAi.gatewayApiKey;
@@ -558,7 +560,21 @@ export class InstanceAiController {
 		}
 		const requestedThreadId = payload.threadId ?? randomUUID();
 		await this.assertThreadAccess(req.user.id, requestedThreadId, { allowNew: true });
-		return await this.memoryService.ensureThread(req.user.id, requestedThreadId, payload.projectId);
+		try {
+			return await this.memoryService.ensureThread(
+				req.user.id,
+				requestedThreadId,
+				payload.projectId,
+			);
+		} catch (error) {
+			this.instanceAiErrorReporter.report(error, {
+				component: 'instance-ai-ensure-thread',
+				threadId: requestedThreadId,
+				userId: req.user.id,
+				projectId: payload.projectId,
+			});
+			throw error;
+		}
 	}
 
 	@Delete('/threads/:threadId')

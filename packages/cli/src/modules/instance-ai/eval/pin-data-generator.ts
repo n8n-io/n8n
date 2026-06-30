@@ -10,11 +10,10 @@
  * by MCP, frontend, instance-ai evaluations, and other teams.
  */
 
+import { createEvalAgent, extractText } from '@n8n/instance-ai';
 import type { WorkflowJSON, NodeJSON } from '@n8n/workflow-sdk';
 import { existsSync, readFileSync, readdirSync } from 'fs';
 import { join } from 'path';
-
-import { createEvalAgent, extractText } from '@n8n/instance-ai';
 
 type PinData = Record<string, Array<Record<string, unknown>>>;
 

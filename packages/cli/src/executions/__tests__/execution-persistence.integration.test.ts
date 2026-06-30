@@ -334,7 +334,7 @@ describe('ExecutionPersistence', () => {
 			// Simulate a row written before jsonSizeBytes existed: 0 means unknown.
 			await executionRepository.update({ id: executionId }, { jsonSizeBytes: 0 });
 
-			const readSpy = jest.spyOn(dbStore, 'read');
+			const readSpy = vi.spyOn(dbStore, 'read');
 
 			const execution = await executionPersistence.findSingleExecution(executionId, {
 				includeData: true,
@@ -355,8 +355,8 @@ describe('ExecutionPersistence', () => {
 			const dbStore = Container.get(DbStore);
 			const { executionId } = await createSizedExecution(2 * ONE_MB);
 
-			const readSpy = jest.spyOn(dbStore, 'read');
-			const readWorkflowDataSpy = jest.spyOn(dbStore, 'readWorkflowData');
+			const readSpy = vi.spyOn(dbStore, 'read');
+			const readWorkflowDataSpy = vi.spyOn(dbStore, 'readWorkflowData');
 
 			await executionPersistence.findSingleExecution(executionId, {
 				includeData: true,

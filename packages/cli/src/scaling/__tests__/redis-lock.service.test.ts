@@ -2,9 +2,9 @@ import { LockNamespace } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import type { Redis as SingleNodeClient } from 'ioredis';
-import { mock } from 'jest-mock-extended';
 import { OperationalError } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
+import { mock } from 'vitest-mock-extended';
 
 import type { RedisClientService } from '@/services/redis-client.service';
 
@@ -29,12 +29,12 @@ describe('RedisLockService', () => {
 	let service: RedisLockService;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		service = new RedisLockService(logger, globalConfig, redisClientService);
 	});
 
 	afterEach(() => {
-		jest.useRealTimers();
+		vi.useRealTimers();
 	});
 
 	describe('constructor', () => {
@@ -50,7 +50,7 @@ describe('RedisLockService', () => {
 		it('should acquire with NX/PX, run fn, then release with the owner token', async () => {
 			client.set.mockResolvedValue('OK');
 			client.eval.mockResolvedValue(1);
-			const fn = jest.fn().mockResolvedValue('result');
+			const fn = vi.fn().mockResolvedValue('result');
 
 			const result = await service.withLease(NS, 'my-key', fn);
 
@@ -74,7 +74,7 @@ describe('RedisLockService', () => {
 			client.set.mockResolvedValue('OK');
 			client.eval.mockResolvedValue(1);
 
-			await service.withLease(NS, 'k', jest.fn(), { leaseTtlMs: 5_000 });
+			await service.withLease(NS, 'k', vi.fn(), { leaseTtlMs: 5_000 });
 
 			expect(client.set).toHaveBeenCalledWith(
 				expectedKey('k'),
@@ -87,7 +87,7 @@ describe('RedisLockService', () => {
 
 		it('should throw OperationalError and never run fn when waiting times out', async () => {
 			client.set.mockResolvedValue(null); // never acquired
-			const fn = jest.fn();
+			const fn = vi.fn();
 
 			await expect(service.withLease(NS, 'k', fn, { waitTimeoutMs: 50 })).rejects.toThrow(
 				OperationalError,
@@ -98,7 +98,7 @@ describe('RedisLockService', () => {
 		it('should release the lock when fn throws and propagate the error', async () => {
 			client.set.mockResolvedValue('OK');
 			client.eval.mockResolvedValue(1);
-			const fn = jest.fn().mockRejectedValue(new Error('boom'));
+			const fn = vi.fn().mockRejectedValue(new Error('boom'));
 
 			await expect(service.withLease(NS, 'k', fn)).rejects.toThrow('boom');
 			expect(client.eval).toHaveBeenCalledWith(
@@ -112,14 +112,14 @@ describe('RedisLockService', () => {
 		it('should still return fn result when release fails (best-effort)', async () => {
 			client.set.mockResolvedValue('OK');
 			client.eval.mockRejectedValue(new Error('redis down'));
-			const fn = jest.fn().mockResolvedValue('result');
+			const fn = vi.fn().mockResolvedValue('result');
 
 			expect(await service.withLease(NS, 'k', fn)).toBe('result');
 			expect(logger.warn).toHaveBeenCalled();
 		});
 
 		it('should renew the lease via watchdog and abort the signal when the lock is lost', async () => {
-			jest.useFakeTimers();
+			vi.useFakeTimers();
 			client.set.mockResolvedValue('OK');
 
 			// Distinguish renewal (PEXPIRE) from release (del): renew succeeds once, then loses.
@@ -134,7 +134,7 @@ describe('RedisLockService', () => {
 
 			let signal!: AbortSignal;
 			let resolveFn!: (v: string) => void;
-			const fn = jest.fn(async (s: AbortSignal) => {
+			const fn = vi.fn(async (s: AbortSignal) => {
 				signal = s;
 				return await new Promise<string>((r) => {
 					resolveFn = r;
@@ -145,10 +145,10 @@ describe('RedisLockService', () => {
 			const p = service.withLease(NS, 'k', fn, { leaseTtlMs: 300 });
 			await flush(); // let acquire resolve and fn run
 
-			await jest.advanceTimersByTimeAsync(100); // renewal #1 -> ok
+			await vi.advanceTimersByTimeAsync(100); // renewal #1 -> ok
 			expect(signal.aborted).toBe(false);
 
-			await jest.advanceTimersByTimeAsync(100); // renewal #2 -> lost
+			await vi.advanceTimersByTimeAsync(100); // renewal #2 -> lost
 			expect(signal.aborted).toBe(true);
 
 			resolveFn('done');

@@ -1,10 +1,10 @@
 import { Logger } from '@n8n/backend-common';
+import type { InstanceAiEvent } from '@n8n/api-types';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
+import type { InstanceAiEventBus, StoredEvent } from '@n8n/instance-ai';
 import { EventEmitter } from 'node:events';
 import { InstanceSettings } from 'n8n-core';
-import type { InstanceAiEvent } from '@n8n/api-types';
-import type { InstanceAiEventBus, StoredEvent } from '@n8n/instance-ai';
 
 import { MAX_PUBSUB_PAYLOAD_BYTES } from '@/scaling/constants';
 import { Publisher } from '@/scaling/pubsub/publisher.service';

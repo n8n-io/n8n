@@ -22,7 +22,7 @@ import { createUser } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
 import { initActiveWorkflowManager } from './shared/utils';
 
-jest.unmock('node:fs');
+vi.unmock('node:fs');
 
 class WebhookTestingNode implements INodeType {
 	description: INodeTypeDescription = {

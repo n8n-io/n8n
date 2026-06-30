@@ -17,12 +17,13 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { getOwnerOnlyApiKeyScopes } from '@n8n/permissions';
-import { mock } from 'jest-mock-extended';
 import { randomString } from 'n8n-workflow';
 import validator from 'validator';
+import { mock } from 'vitest-mock-extended';
 
+import { TOKEN_EXCHANGE_ISSUER } from '@/modules/token-exchange/token-exchange.types';
 import { CredentialsTester } from '@/services/credentials-tester.service';
-
+import { JwtService } from '@/services/jwt.service';
 import { affixRoleToSaveCredential, createCredentials } from '@test-integration/db/credentials';
 import { createErrorExecution, createSuccessfulExecution } from '@test-integration/db/executions';
 import { createTag } from '@test-integration/db/tags';
@@ -39,8 +40,6 @@ import type { SaveCredentialFunction } from '@test-integration/types';
 import { setupTestServer } from '@test-integration/utils';
 
 import * as utils from '../shared/utils';
-import { TOKEN_EXCHANGE_ISSUER } from '@/modules/token-exchange/token-exchange.types';
-import { JwtService } from '@/services/jwt.service';
 
 let saveCredential: SaveCredentialFunction;
 

@@ -10,6 +10,7 @@ import { DataTableRepository } from '../data-table.repository';
 import { DataTableService } from '../data-table.service';
 import { mockDataTableSizeValidator } from './test-helpers';
 import { DataTableColumnNameConflictError } from '../errors/data-table-column-name-conflict.error';
+import { DataTableSystemColumnNameConflictError } from '../errors/data-table-system-column-name-conflict.error';
 import { DataTableColumnNotFoundError } from '../errors/data-table-column-not-found.error';
 import { DataTableNameConflictError } from '../errors/data-table-name-conflict.error';
 import { DataTableNotFoundError } from '../errors/data-table-not-found.error';
@@ -138,6 +139,25 @@ describe('dataTable', () => {
 			// ASSERT
 			expect(project.id).toBe(project1.id);
 			expect(project.name).toBe(project1.name);
+		});
+
+		it('should reject columns named after system columns (id, createdAt, updatedAt)', async () => {
+			for (const systemColumnName of [
+				'id',
+				'ID',
+				'Id',
+				'createdAt',
+				'CreatedAt',
+				'updatedAt',
+				'UpdatedAt',
+			]) {
+				await expect(
+					dataTableService.createDataTable(project1.id, {
+						name: `table_with_${systemColumnName}`,
+						columns: [{ name: systemColumnName, type: 'string' }],
+					}),
+				).rejects.toThrow(DataTableSystemColumnNameConflictError);
+			}
 		});
 
 		it('should return an error if name/project combination already exists', async () => {
@@ -1030,7 +1050,7 @@ describe('dataTable', () => {
 						...row,
 						id: i + 1,
 						c3: typeof row.c3 === 'string' ? new Date(row.c3) : row.c3,
-					}) as jest.AsymmetricMatcher,
+					}) as unknown as DataTableRow,
 			);
 
 			expect(data).toEqual(expected);
@@ -1624,7 +1644,7 @@ describe('dataTable', () => {
 						expect.objectContaining<DataTableRow>({
 							...row,
 							id: i + 1,
-						}) as jest.AsymmetricMatcher,
+						}) as unknown as DataTableRow,
 				);
 				expect(data).toEqual(expected);
 			});
