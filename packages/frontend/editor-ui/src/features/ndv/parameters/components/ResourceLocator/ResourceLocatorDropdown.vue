@@ -304,7 +304,7 @@ watch(
 				</N8nInput>
 			</div>
 			<div
-				v-if="props.filterRequired && !props.filter && !props.errorView && !props.loading"
+				v-if="props.filterRequired && !props.filter && !props.errorView"
 				:class="$style.searchRequired"
 			>
 				{{ i18n.baseText('resourceLocator.mode.list.searchRequired') }}

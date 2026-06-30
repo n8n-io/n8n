@@ -552,7 +552,7 @@ export class Github implements INodeType {
 						typeOptions: {
 							searchListMethod: 'getUsers',
 							searchable: true,
-							searchFilterRequired: false,
+							searchFilterRequired: true,
 						},
 					},
 					{
