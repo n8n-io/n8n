@@ -14,39 +14,57 @@ export class WorkflowPublicationStatusService {
 		private readonly triggerStatusRepository: WorkflowPublicationTriggerStatusRepository,
 	) {}
 
+	/**
+	 * Get the publication status of a workflow.
+	 *
+	 * The status is derived from the latest outbox record and the current trigger statuses.
+	 *
+	 * NOTE: we only update the trigger statuses when a publication is completed,
+	 * so if there is a publication in progress, the trigger statuses may not reflect the latest state.
+	 */
 	async getStatus(workflowId: string): Promise<WorkflowPublicationStatus> {
-		const [latest, rows] = await Promise.all([
+		const [latestPublicationRequest, currentTriggerStatuses] = await Promise.all([
 			this.outboxRepository.findLatestByWorkflowId(workflowId),
 			this.triggerStatusRepository.findByWorkflowId(workflowId),
 		]);
 
-		const triggers = rows.map((r) => ({
+		const triggers = currentTriggerStatuses.map((r) => ({
 			nodeId: r.nodeId,
 			status: r.status,
 			errorMessage: r.errorMessage,
 		}));
 
-		const isPublishing = latest?.status === 'pending' || latest?.status === 'in_progress';
-		const pendingVersionId = isPublishing ? latest.publishedVersionId : null;
+		const isPublishing =
+			latestPublicationRequest?.status === 'pending' ||
+			latestPublicationRequest?.status === 'in_progress';
+		const pendingVersionId = isPublishing ? latestPublicationRequest.publishedVersionId : null;
 
 		// The settled rows ARE the running triggers; if none are activated, nothing is live.
-		const activatedRow = rows.find((r) => r.status === 'activated');
+		const activatedRow = currentTriggerStatuses.find((r) => r.status === 'activated');
 		const liveVersionId = activatedRow?.versionId ?? null;
 
-		const status = this.deriveStatus(isPublishing, rows, latest);
+		const status = this.deriveStatus(
+			isPublishing,
+			currentTriggerStatuses,
+			latestPublicationRequest,
+		);
 		return { status, liveVersionId, pendingVersionId, triggers };
 	}
 
 	private deriveStatus(
 		isPublishing: boolean,
-		rows: WorkflowPublicationTriggerStatus[],
-		latest: WorkflowPublicationOutbox | null,
+		currentTriggerStatuses: WorkflowPublicationTriggerStatus[],
+		latestPublicationRequest: WorkflowPublicationOutbox | null,
 	): WorkflowPublicationStatus['status'] {
 		if (isPublishing) return 'in_progress';
-		if (rows.length > 0) {
-			const failed = rows.filter((r) => r.status === 'failed').length;
-			return failed === 0 ? 'published' : failed < rows.length ? 'partial' : 'failed';
+		if (currentTriggerStatuses.length > 0) {
+			const failed = currentTriggerStatuses.filter((r) => r.status === 'failed').length;
+			return failed === 0
+				? 'published'
+				: failed < currentTriggerStatuses.length
+					? 'partial'
+					: 'failed';
 		}
-		return latest?.status === 'failed' ? 'failed' : 'not_published';
+		return latestPublicationRequest?.status === 'failed' ? 'failed' : 'not_published';
 	}
 }

@@ -1,6 +1,14 @@
 import { z } from 'zod';
 
 export const WorkflowPublicationStatusSchema = z.object({
+	// overall status of the workflow publication process
+	// in_progress: currently being published
+	// published: all triggers activated
+	// partial: some triggers failed to activate
+	// failed: all triggers failed to activate
+	// not_published: no version is live
+	// NOTE: the trigger statuses are finalized at the end of the publication process,
+	// so if there is a publication in progress, there may be some mismatch.
 	status: z.enum(['in_progress', 'published', 'partial', 'failed', 'not_published']),
 	// version whose triggers are currently registered; null if nothing is live
 	liveVersionId: z.string().nullable(),

@@ -19,7 +19,12 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 		super(WorkflowPublicationOutbox, dataSource.manager);
 	}
 
-	/** Latest outbox record for a workflow (highest id), or null. */
+	/**
+	 * Latest outbox record for a workflow (highest id), or null.
+	 *
+	 * NOTE: this is only guaranteed to return a result for in-progress publications.
+	 * Any terminal (completed, partial, or failed) publication may have been cleaned up.
+	 * */
 	async findLatestByWorkflowId(workflowId: string): Promise<WorkflowPublicationOutbox | null> {
 		return await this.findOne({ where: { workflowId }, order: { id: 'DESC' } });
 	}
