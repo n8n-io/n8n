@@ -57,7 +57,10 @@ export class InstanceAiModelService {
 			const client = await this.aiService.getClient();
 			const proxyBaseUrl = client.getApiProxyBaseUrl();
 			const tokenManager = new ProxyTokenManager(async () => {
-				return await client.getBuilderApiProxyToken({ id: user.id }, { userMessageId: nanoid() });
+				return await client.getInstanceAiApiProxyToken(
+					{ id: user.id },
+					{ userMessageId: nanoid() },
+				);
 			});
 			return await this.resolveProxyModel(user, proxyBaseUrl, tokenManager);
 		}

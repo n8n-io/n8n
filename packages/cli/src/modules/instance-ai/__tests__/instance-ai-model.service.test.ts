@@ -5,6 +5,16 @@ import { mock } from 'vitest-mock-extended';
 
 import type { AiService } from '@/services/ai.service';
 
+const capturedTokenGetters: Array<() => Promise<unknown>> = [];
+vi.mock('@/services/proxy-token-manager', () => ({
+	ProxyTokenManager: class {
+		constructor(fetchToken: () => Promise<unknown>) {
+			capturedTokenGetters.push(fetchToken);
+		}
+		getAuthHeaders = vi.fn();
+	},
+}));
+
 import { InstanceAiModelService } from '../instance-ai-model.service';
 import type { InstanceAiSettingsService } from '../instance-ai-settings.service';
 
@@ -12,6 +22,7 @@ const fakeUser = { id: 'user-1' } as User;
 
 function createClient() {
 	return {
+		getApiProxyBaseUrl: vi.fn(() => 'https://proxy.base'),
 		getInstanceAiApiProxyToken: vi
 			.fn()
 			.mockResolvedValue({ tokenType: 'Bearer', accessToken: 'ia-tok' }),
@@ -28,6 +39,7 @@ describe('InstanceAiModelService', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		capturedTokenGetters.length = 0;
 		service = new InstanceAiModelService(settingsService, aiService, outboundHttp);
 	});
 
@@ -71,6 +83,23 @@ describe('InstanceAiModelService', () => {
 			settingsService.resolveModelConfig.mockResolvedValue('anthropic/claude' as never);
 
 			await expect(service.resolveAgentModelConfig(fakeUser)).resolves.toBe('anthropic/claude');
+		});
+
+		it('should mint proxy tokens via the instance-ai endpoint when the proxy is active', async () => {
+			aiService.isProxyEnabled.mockReturnValue(true);
+			const client = createClient();
+			aiService.getClient.mockResolvedValue(client as never);
+			vi.spyOn(service, 'resolveProxyModel').mockResolvedValue('model' as never);
+
+			await service.resolveAgentModelConfig(fakeUser);
+
+			expect(capturedTokenGetters).toHaveLength(1);
+			await capturedTokenGetters[0]();
+
+			expect(client.getInstanceAiApiProxyToken).toHaveBeenCalledWith(
+				{ id: fakeUser.id },
+				expect.objectContaining({ userMessageId: expect.any(String) }),
+			);
 		});
 	});
 });
