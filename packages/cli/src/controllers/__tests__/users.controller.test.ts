@@ -1,6 +1,6 @@
 import { GLOBAL_ADMIN_ROLE, GLOBAL_OWNER_ROLE } from '@n8n/db';
 import type { AuthenticatedRequest, User, UserRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { Response } from 'express';
 
 import type { EventService } from '@/events/event.service';
@@ -41,8 +41,8 @@ describe('UsersController', () => {
 	);
 
 	beforeEach(() => {
-		jest.restoreAllMocks();
-		jest.clearAllMocks();
+		vi.restoreAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('changeGlobalRole', () => {

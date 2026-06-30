@@ -13,9 +13,8 @@ export const ROLE = {
 
 export type Role = (typeof ROLE)[keyof typeof ROLE];
 
-// Ensuring the array passed to z.enum is correctly typed as non-empty.
-const roleValuesForSchema = Object.values(ROLE) as [Role, ...Role[]];
-export const roleSchema = z.enum(roleValuesForSchema);
+// A user's global role: either 'default' or a namespaced slug like 'global:owner'.
+export const roleSchema = z.string().regex(/^(global:.+|default)$/);
 
 export const userProjectSchema = z.object({
 	id: z.string(),

@@ -13,7 +13,7 @@ test.describe(
 			// Send a message to establish the current thread
 			await n8n.instanceAi.sendMessage('First thread message');
 			await n8n.instanceAi.waitForResponseComplete();
-			await expect(n8n.page).toHaveURL(/\/instance-ai\/[^/]+$/);
+			await expect(n8n.page).toHaveURL(/\/assistant\/[^/]+$/);
 			const firstThreadPath = new URL(n8n.page.url()).pathname;
 
 			// Sidebar starts collapsed; open it so the thread list is queryable.
@@ -28,7 +28,7 @@ test.describe(
 			// Send a message to materialize the new thread in the sidebar
 			await n8n.instanceAi.sendMessage('Second thread message');
 			await n8n.instanceAi.waitForResponseComplete();
-			await expect(n8n.page).toHaveURL(/\/instance-ai\/[^/]+$/);
+			await expect(n8n.page).toHaveURL(/\/assistant\/[^/]+$/);
 			const secondThreadPath = new URL(n8n.page.url()).pathname;
 			expect(secondThreadPath).not.toBe(firstThreadPath);
 
@@ -45,7 +45,7 @@ test.describe(
 				'For this thread switch test, reply with exactly: first thread ready',
 			);
 			await n8n.instanceAi.waitForResponseComplete();
-			await expect(n8n.page).toHaveURL(/\/instance-ai\/[^/]+$/);
+			await expect(n8n.page).toHaveURL(/\/assistant\/[^/]+$/);
 			const firstThreadPath = new URL(n8n.page.url()).pathname;
 
 			// Sidebar starts collapsed; open it so the new-thread button and

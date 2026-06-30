@@ -66,7 +66,7 @@ class ModulesHooksRegistry {
 							executionId: this.executionId,
 							retryOf: this.retryOf,
 						};
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+
 						return await instance[methodName].call(instance, context);
 					});
 					break;
@@ -80,7 +80,7 @@ class ModulesHooksRegistry {
 							taskData,
 							executionId: this.executionId,
 						};
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+
 						return await instance[methodName].call(instance, context);
 					});
 					break;
@@ -95,7 +95,7 @@ class ModulesHooksRegistry {
 							executionData,
 							executionId: this.executionId,
 						};
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+
 						return await instance[methodName].call(instance, context);
 					});
 					break;
@@ -109,7 +109,7 @@ class ModulesHooksRegistry {
 							executionData,
 							executionId: this.executionId,
 						};
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+
 						return await instance[methodName].call(instance, context);
 					});
 					break;
@@ -123,7 +123,7 @@ class ModulesHooksRegistry {
 							executionData,
 							executionId: this.executionId,
 						};
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+
 						return await instance[methodName].call(instance, context);
 					});
 					break;

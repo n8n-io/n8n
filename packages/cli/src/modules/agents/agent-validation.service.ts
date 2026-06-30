@@ -7,17 +7,16 @@ import {
 } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 
-import { AgentSkillsService } from './agent-skills.service';
 import { LLM_PROVIDER_DEFAULTS } from './builder/interactive/llm-provider-defaults';
 import { getProviderPrefix } from './json-config/model-id';
 import { AgentRepository } from './repositories/agent.repository';
 import { AiService } from '@/services/ai.service';
+import { getMissingSkillIds } from '@/modules/agents/utils/agent-missing-skill-ids';
 
 @Service()
 export class AgentValidationService {
 	constructor(
 		private readonly agentRepository: AgentRepository,
-		private readonly agentSkillsService: AgentSkillsService,
 		private readonly aiService: AiService,
 	) {}
 
@@ -147,9 +146,7 @@ export class AgentValidationService {
 		}
 
 		missing.push(
-			...this.agentSkillsService
-				.getMissingSkillIds(config, agentEntity.skills ?? {})
-				.map((skillId) => `skill:${skillId}`),
+			...getMissingSkillIds(config, agentEntity.skills ?? {}).map((skillId) => `skill:${skillId}`),
 		);
 
 		return { missing };

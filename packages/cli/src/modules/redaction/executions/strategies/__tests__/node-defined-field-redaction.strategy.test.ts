@@ -70,7 +70,7 @@ describe('NodeDefinedFieldRedactionStrategy', () => {
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		strategy = new NodeDefinedFieldRedactionStrategy(logger, nodeTypes);
 	});
 

@@ -1,7 +1,7 @@
+import RefParser from '@apidevtools/json-schema-ref-parser';
 import type { ApiKeyScope } from '@n8n/permissions';
 import { isRecord } from '@n8n/utils';
 import path from 'path';
-import RefParser from '@apidevtools/json-schema-ref-parser';
 
 import type { ScopeTaggedMiddleware } from '../../shared/middlewares/global.middleware';
 
@@ -119,8 +119,11 @@ async function _parseEndpointsFromSpec(): Promise<EndpointInfo[]> {
 			if (!handlerModule) {
 				try {
 					const fullHandlerPath = path.join(publicApiRoot, handlerPath);
-					// eslint-disable-next-line @typescript-eslint/no-require-imports
-					const loaded = require(fullHandlerPath);
+					const imported: unknown = await import(fullHandlerPath);
+					if (!isRecord(imported)) continue;
+					// Handlers use `export = xHandlers`, which surfaces as `.default`
+					// under both tsc's CJS downleveling and Vitest's Vite interop.
+					const loaded = isRecord(imported.default) ? imported.default : imported;
 					if (!isRecord(loaded)) continue;
 					handlerModule = loaded;
 					handlerCache.set(handlerPath, handlerModule);
