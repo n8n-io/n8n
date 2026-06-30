@@ -1,8 +1,13 @@
 {
   "name": "n8n-nodes-base",
-  "version": "2.28.0",
+  "version": "2.29.0",
   "description": "Base nodes of n8n",
   "main": "index.js",
+  "typesVersions": {
+    "*": {
+      "aws-credentials": ["dist/credentials/common/aws/index.d.ts"]
+    }
+  },
   "scripts": {
     "clean": "rimraf dist .turbo",
     "copy-nodes-json": "node scripts/copy-nodes-json.js .",
@@ -22,7 +27,8 @@
     "test:integration:skip": "vitest run --config vitest.integration.config.ts"
   },
   "files": [
-    "dist"
+    "dist",
+    "aws-credentials.js"
   ],
   "n8n": {
     "credentials": [
@@ -917,6 +923,8 @@
   },
   "dependencies": {
     "@aws-sdk/credential-providers": "3.808.0",
+    "@smithy/node-http-handler": "4.5.0",
+    "@smithy/types": "4.13.1",
     "@n8n/backend-network": "workspace:*",
     "@kafkajs/confluent-schema-registry": "3.8.0",
     "@langchain/core": "catalog:",
