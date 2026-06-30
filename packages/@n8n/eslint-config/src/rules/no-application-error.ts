@@ -16,6 +16,7 @@ const ALLOWED_FILES = [
 	// Tests covering the shim / legacy-error handling
 	'application-error.test.ts',
 	'error-reporter.test.ts',
+	'workflow-execute-node-error-reporting.test.ts',
 ];
 
 export const NoApplicationErrorRule = ESLintUtils.RuleCreator.withoutDocs({
