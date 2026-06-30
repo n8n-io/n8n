@@ -491,6 +491,19 @@ function createCheckpointPruneService(): CheckpointPruneServiceInternals {
 }
 
 const fakeUser = { id: 'user-1' } as User;
+
+function createInstanceAiErrorReporterMock() {
+	return {
+		report: vi.fn(),
+		beginRun: vi.fn(),
+		endRun: vi.fn(),
+		endAllRuns: vi.fn(),
+		withBoundary: vi.fn(
+			async (_component: string, _context: unknown, fn: () => Promise<unknown>) => await fn(),
+		),
+	};
+}
+
 type ShutdownServiceInternals = {
 	shutdown: () => Promise<void>;
 	stopCheckpointPruning: MockedFunction<() => void>;
@@ -529,6 +542,7 @@ type ShutdownServiceInternals = {
 	_mcpClientManager?: { disconnect: MockedFunction<() => Promise<void>> };
 	inFlightExecutions: Set<Promise<unknown>>;
 	logger: { debug: Mock; warn: Mock };
+	instanceAiErrorReporter: ReturnType<typeof createInstanceAiErrorReporterMock>;
 };
 
 type TerminalGuardOrderServiceInternals = {
@@ -551,8 +565,7 @@ type TerminalGuardOrderServiceInternals = {
 	telemetry: { track: Mock };
 	suspendedThreads: { dropPendingConfirmationsForThread: Mock };
 	logger: { warn: Mock; error: Mock };
-	errorReporter: { error: Mock };
-	reportedErrors: WeakSet<object>;
+	instanceAiErrorReporter: ReturnType<typeof createInstanceAiErrorReporterMock>;
 	instanceAiConfig: {
 		outputRedactionEnabled: boolean;
 		outputRedactionSecrets: boolean;
@@ -572,6 +585,9 @@ type TerminalGuardOrderServiceInternals = {
 	creditService: { claimRunUsage: Mock };
 	schedulePlannedTasks: Mock;
 	drainPendingCheckpointReentries: Mock;
+	taskProjector: { syncFromWorkflowLoop: Mock };
+	maybeStartWorkflowSetupFollowUp: Mock;
+	finalizeRun: Mock;
 	processResumedStream: (
 		agent: unknown,
 		resumeData: unknown,
@@ -638,8 +654,7 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	service.telemetry = { track: vi.fn() };
 	service.suspendedThreads = { dropPendingConfirmationsForThread: vi.fn(async () => {}) };
 	service.logger = { warn: vi.fn(), error: vi.fn() };
-	service.errorReporter = { error: vi.fn() };
-	service.reportedErrors = new WeakSet();
+	service.instanceAiErrorReporter = createInstanceAiErrorReporterMock();
 	service.instanceAiConfig = {
 		outputRedactionEnabled: true,
 		outputRedactionSecrets: true,
@@ -790,6 +805,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			domainAccessTrackersByThread: Map<string, unknown>;
 			threadGrantRepo: { findKeys: Mock };
 			evalCredentialAllowlists: EvalThreadCredentialAllowlistService;
+			instanceAiErrorReporter: ReturnType<typeof createInstanceAiErrorReporterMock>;
 		};
 		service.settingsService = {
 			getAdminSettings: vi.fn(() => ({ localGatewayDisabled: false, sandboxEnabled: true })),
@@ -856,6 +872,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			aiService: { isProxyEnabled: vi.fn(() => false), getClient: vi.fn() },
 		});
 		service.evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
+		service.instanceAiErrorReporter = createInstanceAiErrorReporterMock();
 		(createAllTools as Mock).mockReturnValue(new Map());
 		const sandbox = { id: 'sandbox-1' };
 		const workspace = {
@@ -980,6 +997,7 @@ describe('InstanceAiService — shutdown', () => {
 		service._mcpClientManager = { disconnect: vi.fn(async () => {}) };
 		service.inFlightExecutions = new Set();
 		service.logger = { debug: vi.fn(), warn: vi.fn() };
+		service.instanceAiErrorReporter = createInstanceAiErrorReporterMock();
 
 		await service.shutdown();
 
@@ -2228,6 +2246,100 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 	});
 });
 
+describe('InstanceAiService — run error reporter lifecycle', () => {
+	const resumedStreamOpts = (abortController: AbortController) => ({
+		runId: 'run-1',
+		agentRunId: 'agent-run-1',
+		threadId: 'thread-a',
+		user: fakeUser,
+		toolCallId: 'tool-call-1',
+		signal: abortController.signal,
+		abortController,
+		snapshotStorage: {},
+	});
+
+	beforeEach(() => {
+		vi.mocked(resumeAgentRun).mockReset();
+	});
+
+	it('pairs beginRun/endRun when a resumed stream errors', async () => {
+		const service = createTerminalGuardOrderService();
+		const abortController = new AbortController();
+		vi.mocked(resumeAgentRun).mockRejectedValueOnce(new Error('provider failed'));
+
+		await service.processResumedStream({}, {}, resumedStreamOpts(abortController));
+
+		expect(service.instanceAiErrorReporter.beginRun).toHaveBeenCalledTimes(1);
+		expect(service.instanceAiErrorReporter.beginRun).toHaveBeenCalledWith('run-1');
+		expect(service.instanceAiErrorReporter.endRun).toHaveBeenCalledTimes(1);
+		expect(service.instanceAiErrorReporter.endRun).toHaveBeenCalledWith('run-1');
+	});
+
+	it('pairs beginRun/endRun when a resumed stream completes', async () => {
+		const service = createTerminalGuardOrderService();
+		const abortController = new AbortController();
+		vi.mocked(resumeAgentRun).mockResolvedValueOnce({
+			status: 'completed',
+			agentRunId: 'agent-run-1',
+			text: Promise.resolve('done'),
+			workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
+		});
+
+		await service.processResumedStream({}, {}, resumedStreamOpts(abortController));
+
+		expect(service.instanceAiErrorReporter.beginRun).toHaveBeenCalledWith('run-1');
+		expect(service.instanceAiErrorReporter.endRun).toHaveBeenCalledWith('run-1');
+	});
+
+	it('calls endRun after post-run wiring finishes', async () => {
+		const service = createTerminalGuardOrderService();
+		const abortController = new AbortController();
+		const callOrder: string[] = [];
+		service.runState.hasSuspendedRun = vi.fn(() => false);
+		service.schedulePlannedTasks = vi.fn(async () => {
+			callOrder.push('schedulePlannedTasks');
+		});
+		service.drainPendingCheckpointReentries = vi.fn(async () => {
+			callOrder.push('drainPendingCheckpointReentries');
+		});
+		service.taskProjector = {
+			syncFromWorkflowLoop: vi.fn(async () => {
+				callOrder.push('syncFromWorkflowLoop');
+			}),
+		};
+		service.maybeStartWorkflowSetupFollowUp = vi.fn(async () => {
+			callOrder.push('maybeStartWorkflowSetupFollowUp');
+		});
+		service.finalizeRun = vi.fn(async () => {
+			callOrder.push('finalizeRun');
+		});
+		service.instanceAiErrorReporter.beginRun = vi.fn(() => {
+			callOrder.push('beginRun');
+		});
+		service.instanceAiErrorReporter.endRun = vi.fn(() => {
+			callOrder.push('endRun');
+		});
+		vi.mocked(resumeAgentRun).mockResolvedValueOnce({
+			status: 'completed',
+			agentRunId: 'agent-run-1',
+			text: Promise.resolve('done'),
+			workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
+		});
+
+		await service.processResumedStream({}, {}, resumedStreamOpts(abortController));
+
+		expect(callOrder).toEqual([
+			'beginRun',
+			'finalizeRun',
+			'schedulePlannedTasks',
+			'drainPendingCheckpointReentries',
+			'syncFromWorkflowLoop',
+			'maybeStartWorkflowSetupFollowUp',
+			'endRun',
+		]);
+	});
+});
+
 describe('InstanceAiService — OAuth callback URL', () => {
 	// Regression: the OAuth callback URL exposed to browser-assisted credential
 	// setup must come from urlService.getInstanceBaseUrl() (which honors WEBHOOK_URL
@@ -2666,71 +2778,5 @@ describe('InstanceAiService — deterministic workflow setup follow-up', () => {
 				setupRequests: [],
 			}),
 		).toBeUndefined();
-	});
-});
-
-describe('reportInstanceAiError dedup + withSetupBoundary', () => {
-	type Internals = {
-		errorReporter: { error: Mock };
-		logger: { error: Mock };
-		reportedErrors: WeakSet<object>;
-		reportInstanceAiError: (
-			error: unknown,
-			context: { component: string; threadId: string; runId: string },
-		) => void;
-		withSetupBoundary: <T>(
-			component: string,
-			context: { threadId: string; runId: string },
-			fn: () => Promise<T>,
-		) => Promise<T>;
-	};
-
-	function makeService(): Internals {
-		const service = Object.create(InstanceAiService.prototype) as unknown as Internals;
-		service.errorReporter = { error: vi.fn() };
-		service.logger = { error: vi.fn() };
-		service.reportedErrors = new WeakSet();
-		return service;
-	}
-
-	it('reports an error once even if reported again under a different component', () => {
-		const service = makeService();
-		const error = new Error('boom');
-
-		service.reportInstanceAiError(error, {
-			component: 'instance-ai-mcp-setup',
-			threadId: 't',
-			runId: 'r',
-		});
-		service.reportInstanceAiError(error, {
-			component: 'instance-ai-run',
-			threadId: 't',
-			runId: 'r',
-		});
-
-		expect(service.errorReporter.error).toHaveBeenCalledTimes(1);
-		expect(service.errorReporter.error.mock.calls[0][1].tags.component).toBe(
-			'instance-ai-mcp-setup',
-		);
-	});
-
-	it('withSetupBoundary reports with its component then rethrows', async () => {
-		const service = makeService();
-		const error = new Error('setup failed');
-
-		await expect(
-			service.withSetupBoundary(
-				'instance-ai-sandbox-setup',
-				{ threadId: 't', runId: 'r' },
-				async () => {
-					throw error;
-				},
-			),
-		).rejects.toBe(error);
-
-		expect(service.errorReporter.error).toHaveBeenCalledTimes(1);
-		expect(service.errorReporter.error.mock.calls[0][1].tags.component).toBe(
-			'instance-ai-sandbox-setup',
-		);
 	});
 });

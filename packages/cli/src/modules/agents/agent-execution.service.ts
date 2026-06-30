@@ -17,7 +17,7 @@ export interface RecordMessageParams {
 	agentId: string;
 	agentName: string;
 	projectId: string;
-	userMessage: string;
+	userMessage: string | null;
 	record: MessageRecord;
 	/** Set to 'suspended' or 'resumed' for HITL tool call flows. */
 	hitlStatus?: 'suspended' | 'resumed';
@@ -41,7 +41,7 @@ export interface ThreadDetail {
 	executions: AgentExecution[];
 }
 
-export interface ThreadListItem extends AgentExecutionThread {
+export interface ThreadListItem extends Omit<AgentExecutionThread, 'generateId' | 'setUpdateDate'> {
 	firstMessage: string | null;
 }
 
@@ -92,10 +92,16 @@ export class AgentExecutionService {
 		}
 
 		// Replace platform mentions (e.g. Slack's <@U0ANB4K6611> or plain @U0ANB4K6611)
-		const cleanedMessage = params.userMessage
-			.replace(/<@[A-Z0-9]+>/gi, `@${agentName}`)
-			.replace(/@[A-Z0-9]{8,}/gi, `@${agentName}`)
-			.trim();
+		const userMessage =
+			params.userMessage === null
+				? null
+				: (() => {
+						const cleanedMessage = params.userMessage
+							.replace(/<@[A-Z0-9]+>/gi, `@${agentName}`)
+							.replace(/@[A-Z0-9]{8,}/gi, `@${agentName}`)
+							.trim();
+						return cleanedMessage.length > 0 ? cleanedMessage : null;
+					})();
 
 		const status: AgentExecution['status'] = record.error ? 'error' : 'success';
 		const startedAt = new Date(record.startTime);
@@ -108,14 +114,12 @@ export class AgentExecutionService {
 				startedAt,
 				stoppedAt,
 				duration: record.duration,
-				userMessage: cleanedMessage,
-				assistantResponse: record.assistantResponse,
+				userMessage,
 				model: record.model,
 				promptTokens: record.usage?.promptTokens ?? null,
 				completionTokens: record.usage?.completionTokens ?? null,
 				totalTokens: record.usage?.totalTokens ?? null,
 				cost: record.totalCost,
-				toolCalls: record.toolCalls.length > 0 ? record.toolCalls : null,
 				timeline: record.timeline.length > 0 ? record.timeline : null,
 				error: record.error,
 				hitlStatus: hitlStatus ?? null,
@@ -151,7 +155,7 @@ export class AgentExecutionService {
 					configuration: params.telemetry.configuration,
 					latency_ms: record.duration,
 					cost: record.totalCost ?? 0,
-					tool_call_count: record.toolCalls.length,
+					tool_call_count: record.timeline.filter((t) => t.type === 'tool-call').length,
 				});
 			} catch (error) {
 				this.logger.warn('Failed to track agent execution telemetry', {
