@@ -6,8 +6,7 @@ import { mock } from 'vitest-mock-extended';
 import type { Agent as HttpAgent } from 'node:http';
 import type { Agent as HttpsAgent } from 'node:https';
 
-import { AwsSecretsManager } from '../aws-secrets-manager/aws-secrets-manager';
-import type { AwsSecretsManagerContext } from '../aws-secrets-manager/types';
+import { AwsSecretsManager, type AwsSecretsManagerContext } from '../aws-secrets-manager';
 
 vi.mock('@aws-sdk/client-secrets-manager');
 

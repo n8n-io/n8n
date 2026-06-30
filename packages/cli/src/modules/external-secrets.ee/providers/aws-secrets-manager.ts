@@ -4,15 +4,84 @@ import { OutboundHttp } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
 import { type INodeProperties } from 'n8n-workflow';
 
-import { awsErrorContext, type AwsSecretsManagerLogContext } from './aws-error-context';
-import type { AwsSecretsManagerContext, AwsSecretsManagerSettings, Secret } from './types';
-import { DOCS_HELP_NOTICE } from '../../constants';
+import { DOCS_HELP_NOTICE } from '../constants';
 import {
 	logProviderFailure,
+	type LogContext,
 	type SecretsProviderOperation,
-} from '../../errors/secrets-provider-errors';
-import { UnknownAuthTypeError } from '../../errors/unknown-auth-type.error';
-import { SecretsProvider } from '../../types';
+} from '../errors/secrets-provider-errors';
+import { UnknownAuthTypeError } from '../errors/unknown-auth-type.error';
+import { SecretsProvider, type SecretsProviderSettings } from '../types';
+
+export type Secret = {
+	secretName: string;
+	secretValue: string;
+};
+
+export type AwsSecretsManagerSettings = {
+	region: string;
+	authMethod: 'iamUser' | 'autoDetect';
+};
+
+export type AwsSecretsManagerContext = SecretsProviderSettings<
+	{
+		region: string;
+	} & (
+		| {
+				authMethod: 'iamUser';
+				accessKeyId: string;
+				secretAccessKey: string;
+		  }
+		| { authMethod: 'autoDetect' }
+	)
+>;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null;
+}
+
+export function getAwsErrorCode(error: unknown): string | number | undefined {
+	if (isRecord(error)) {
+		if ('Code' in error && typeof error.Code === 'string') {
+			return error.Code;
+		}
+
+		if ('code' in error) {
+			const { code } = error;
+			if (typeof code === 'string' || typeof code === 'number') {
+				return code;
+			}
+		}
+	}
+
+	if (error instanceof Error) {
+		return error.name;
+	}
+
+	if (isRecord(error) && typeof error.name === 'string') {
+		return error.name;
+	}
+
+	return undefined;
+}
+
+export function awsErrorContext(error: unknown): LogContext {
+	const context: LogContext = {};
+
+	const errorCode = getAwsErrorCode(error);
+	if (errorCode !== undefined) {
+		context.errorCode = errorCode;
+	}
+
+	if (isRecord(error) && '$metadata' in error) {
+		const metadata = error.$metadata;
+		if (isRecord(metadata) && typeof metadata.httpStatusCode === 'number') {
+			context.statusCode = metadata.httpStatusCode;
+		}
+	}
+
+	return context;
+}
 
 export class AwsSecretsManager extends SecretsProvider {
 	name = 'awsSecretsManager';
@@ -262,9 +331,9 @@ export class AwsSecretsManager extends SecretsProvider {
 		message: string,
 		operation: SecretsProviderOperation,
 		error: unknown,
-		extra: AwsSecretsManagerLogContext = {},
+		extra: LogContext = {},
 	): void {
-		const settingsContext: AwsSecretsManagerLogContext = {};
+		const settingsContext: LogContext = {};
 		if (this.settings?.region) {
 			settingsContext.region = this.settings.region;
 		}

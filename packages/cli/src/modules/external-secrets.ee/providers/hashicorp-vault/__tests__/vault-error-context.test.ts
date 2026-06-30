@@ -1,4 +1,4 @@
-import { vaultErrorContext } from '../vault-error-context';
+import { vaultErrorContext } from '../../vault';
 
 describe('vaultErrorContext', () => {
 	it('extracts statusCode from HTTP request errors without duplicating it in errorCode', () => {

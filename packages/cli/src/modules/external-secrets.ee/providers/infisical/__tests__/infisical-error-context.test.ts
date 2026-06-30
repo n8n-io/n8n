@@ -1,6 +1,6 @@
 import { httpStatusFromError } from '@n8n/backend-network';
 
-import { infisicalErrorContext } from '../infisical-error-context';
+import { infisicalErrorContext } from '../../infisical';
 
 describe('infisicalErrorContext', () => {
 	it('extracts statusCode from HTTP request errors without duplicating it in errorCode', () => {

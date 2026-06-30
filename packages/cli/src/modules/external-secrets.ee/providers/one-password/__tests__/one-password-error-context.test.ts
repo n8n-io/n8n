@@ -1,4 +1,4 @@
-import { onePasswordErrorContext } from '../one-password-error-context';
+import { onePasswordErrorContext } from '../../one-password';
 
 describe('onePasswordErrorContext', () => {
 	it('extracts statusCode from HTTP request errors without duplicating it in errorCode', () => {

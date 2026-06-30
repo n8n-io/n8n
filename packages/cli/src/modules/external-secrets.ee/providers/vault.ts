@@ -13,17 +13,23 @@ import {
 	type INodeProperties,
 } from 'n8n-workflow';
 
-import { DOCS_HELP_NOTICE } from '../../constants';
+import { DOCS_HELP_NOTICE } from '../constants';
 import {
+	buildHttpProviderErrorContext,
 	buildUpdateFailureSummary,
+	type HttpProviderErrorLogContext,
 	logProviderFailure,
+	type LogContext,
 	type SafeContextValue,
 	type SecretsProviderOperation,
-} from '../../errors/secrets-provider-errors';
-import { ExternalSecretsConfig } from '../../external-secrets.config';
-import type { SecretsProviderSettings } from '../../types';
-import { SecretsProvider } from '../../types';
-import { vaultErrorContext, type VaultProviderLogContext } from './vault-error-context';
+} from '../errors/secrets-provider-errors';
+import { ExternalSecretsConfig } from '../external-secrets.config';
+import type { SecretsProviderSettings } from '../types';
+import { SecretsProvider } from '../types';
+
+export function vaultErrorContext(error: unknown): HttpProviderErrorLogContext {
+	return buildHttpProviderErrorContext(error);
+}
 
 type VaultAuthMethod = 'token' | 'usernameAndPassword' | 'appRole';
 
@@ -733,7 +739,7 @@ export class VaultProvider extends SecretsProvider {
 		message: string,
 		operation: SecretsProviderOperation,
 		error: unknown,
-		extra: VaultProviderLogContext = {},
+		extra: LogContext = {},
 	): void {
 		logProviderFailure({
 			logger: this.logger,

@@ -3,7 +3,7 @@ import { createFakeOutboundHttp, type Route } from '@n8n/backend-network/testing
 import { mockInstance } from '@n8n/backend-test-utils';
 
 import { ExternalSecretsConfig } from '../../external-secrets.config';
-import { VaultProvider } from '../hashicorp-vault/vault';
+import { VaultProvider } from '../vault';
 
 const VAULT_BASE_URL = 'https://vault.test.com';
 const VAULT_URL = `${VAULT_BASE_URL}/v1/`;

@@ -1,4 +1,4 @@
-import { awsErrorContext, getAwsErrorCode } from '../aws-error-context';
+import { awsErrorContext, getAwsErrorCode } from '../../aws-secrets-manager';
 
 function createAwsSdkError(
 	name: string,

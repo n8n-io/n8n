@@ -8,27 +8,57 @@ import {
 import { Container } from '@n8n/di';
 import { type INodeProperties, UnexpectedError } from 'n8n-workflow';
 
+import { DOCS_HELP_NOTICE } from '../constants';
 import {
-	infisicalConnectSettingsContext,
-	infisicalErrorContext,
-	infisicalTestSettingsContext,
-	infisicalUpdateSettingsContext,
-	type InfisicalProviderLogContext,
-} from './infisical-error-context';
-import type {
-	InfisicalImport,
-	InfisicalListSecretsResponse,
-	InfisicalSecret,
-	InfisicalSettings,
-	InfisicalUniversalAuthLoginResponse,
-} from './types';
-import { DOCS_HELP_NOTICE } from '../../constants';
-import {
+	buildHttpProviderErrorContext,
+	type HttpProviderErrorLogContext,
 	logProviderFailure,
+	type LogContext,
 	type SecretsProviderOperation,
-} from '../../errors/secrets-provider-errors';
-import type { SecretsProviderSettings } from '../../types';
-import { SecretsProvider } from '../../types';
+} from '../errors/secrets-provider-errors';
+import type { SecretsProviderSettings } from '../types';
+import { SecretsProvider } from '../types';
+
+export type InfisicalAuthMethod = 'universalAuth';
+
+export interface InfisicalSettings {
+	siteURL: string;
+	projectId: string;
+	environment: string;
+	secretPath: string;
+	authMethod: InfisicalAuthMethod;
+
+	// Universal Auth
+	clientId: string;
+	clientSecret: string;
+}
+
+export interface InfisicalUniversalAuthLoginResponse {
+	accessToken: string;
+	expiresIn: number;
+	accessTokenMaxTTL: number;
+	tokenType: string;
+}
+
+export interface InfisicalSecret {
+	secretKey: string;
+	secretValue: string;
+}
+
+export interface InfisicalImport {
+	secrets: InfisicalSecret[];
+	secretPath: string;
+	environment: string;
+}
+
+export interface InfisicalListSecretsResponse {
+	secrets: InfisicalSecret[];
+	imports: InfisicalImport[];
+}
+
+export function infisicalErrorContext(error: unknown): HttpProviderErrorLogContext {
+	return buildHttpProviderErrorContext(error);
+}
 
 const TOKEN_REFRESH_LEEWAY_SECONDS = 60;
 const MIN_REFRESH_DELAY_MS = 60 * 1000;
@@ -392,22 +422,17 @@ export class InfisicalProvider extends SecretsProvider {
 		message: string,
 		operation: SecretsProviderOperation,
 		error: unknown,
-		extra: InfisicalProviderLogContext = {},
+		extra: LogContext = {},
 		settingsScope: 'connect' | 'test' | 'update' | 'tokenRefresh' = 'connect',
 	): void {
-		let settingsContext: InfisicalProviderLogContext = {};
+		const settingsContext: LogContext = {};
 		if (this.settings) {
-			switch (settingsScope) {
-				case 'connect':
-				case 'tokenRefresh':
-					settingsContext = infisicalConnectSettingsContext(this.settings);
-					break;
-				case 'test':
-					settingsContext = infisicalTestSettingsContext(this.settings);
-					break;
-				case 'update':
-					settingsContext = infisicalUpdateSettingsContext(this.settings);
-					break;
+			const { siteURL, projectId, authMethod, environment, secretPath } = this.settings;
+			Object.assign(settingsContext, { siteURL, projectId });
+			if (settingsScope === 'connect' || settingsScope === 'tokenRefresh') {
+				settingsContext.authMethod = authMethod;
+			} else if (settingsScope === 'update') {
+				Object.assign(settingsContext, { environment, secretPath });
 			}
 		}
 

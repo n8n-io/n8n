@@ -3,17 +3,29 @@ import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import { UserError, type IDataObject, type INodeProperties } from 'n8n-workflow';
 
+import { DOCS_HELP_NOTICE } from '../constants';
 import {
-	onePasswordErrorContext,
-	type OnePasswordProviderLogContext,
-} from './one-password-error-context';
-import type { OnePasswordContext, OnePasswordSettings } from './types';
-import { DOCS_HELP_NOTICE } from '../../constants';
-import {
+	buildHttpProviderErrorContext,
+	type HttpProviderErrorLogContext,
 	logProviderFailure,
+	type LogContext,
 	type SecretsProviderOperation,
-} from '../../errors/secrets-provider-errors';
-import { SecretsProvider } from '../../types';
+} from '../errors/secrets-provider-errors';
+import { SecretsProvider, type SecretsProviderSettings } from '../types';
+
+export type OnePasswordContext = SecretsProviderSettings<{
+	serverUrl: string;
+	accessToken: string;
+}>;
+
+type OnePasswordSettings = {
+	serverUrl: string;
+	accessToken: string;
+};
+
+export function onePasswordErrorContext(error: unknown): HttpProviderErrorLogContext {
+	return buildHttpProviderErrorContext(error);
+}
 
 export class OnePasswordProvider extends SecretsProvider {
 	name = 'onePassword';
@@ -183,9 +195,9 @@ export class OnePasswordProvider extends SecretsProvider {
 		message: string,
 		operation: SecretsProviderOperation,
 		error: unknown,
-		extra: OnePasswordProviderLogContext = {},
+		extra: LogContext = {},
 	): void {
-		const settingsContext: OnePasswordProviderLogContext = {};
+		const settingsContext: LogContext = {};
 		if (this.settings?.serverUrl) {
 			settingsContext.serverUrl = this.settings.serverUrl;
 		}
