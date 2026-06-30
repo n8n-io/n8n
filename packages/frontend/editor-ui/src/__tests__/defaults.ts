@@ -15,6 +15,7 @@ export const defaultSettings: FrontendSettings = {
 	allowedModules: {},
 	communityNodesEnabled: false,
 	unverifiedCommunityNodesEnabled: true,
+	communityNodesManagedByEnv: false,
 	defaultLocale: '',
 	endpointForm: '',
 	endpointFormTest: '',
@@ -54,6 +55,7 @@ export const defaultSettings: FrontendSettings = {
 		customRoles: false,
 		personalSpacePolicy: false,
 		dataRedaction: false,
+		otelCustomSpanAttributes: false,
 	},
 	executionMode: 'regular',
 	isMultiMain: false,
@@ -65,6 +67,7 @@ export const defaultSettings: FrontendSettings = {
 	logLevel: 'info',
 	maxExecutionTimeout: 0,
 	oauthCallbackUrls: { oauth1: '', oauth2: '' },
+	jwksUri: '',
 	personalizationSurveyEnabled: false,
 	releaseChannel: 'stable',
 	posthog: {
@@ -88,9 +91,13 @@ export const defaultSettings: FrontendSettings = {
 	saveManualExecutions: false,
 	saveExecutionProgress: false,
 	sso: {
+		managedByEnv: false,
 		ldap: { loginEnabled: false, loginLabel: '' },
 		saml: { loginEnabled: false, loginLabel: '' },
 		oidc: { loginEnabled: false, loginUrl: '', callbackUrl: '' },
+	},
+	logStreaming: {
+		managedByEnv: false,
 	},
 	telemetry: {
 		enabled: false,
@@ -107,11 +114,13 @@ export const defaultSettings: FrontendSettings = {
 		smtpSetup: true,
 		authenticationMethod: 'email',
 		quota: 10,
+		passwordMinLength: 8,
 	},
 	versionCli: '',
 	nodeJsVersion: '',
 	nodeEnv: '',
 	concurrency: -1,
+	evaluationConcurrencyLimit: -1,
 	versionNotifications: {
 		enabled: true,
 		endpoint: '',
@@ -124,6 +133,7 @@ export const defaultSettings: FrontendSettings = {
 	},
 	workflowCallerPolicyDefaultOption: 'any',
 	workflowTagsDisabled: false,
+	workflowsAutosaveDisabled: false,
 	variables: {
 		limit: -1,
 	},
@@ -166,6 +176,9 @@ export const defaultSettings: FrontendSettings = {
 	folders: {
 		enabled: false,
 	},
+	collaboration: {
+		crdt: 'off',
+	},
 	evaluation: {
 		quota: 0,
 	},
@@ -175,5 +188,8 @@ export const defaultSettings: FrontendSettings = {
 	dynamicBanners: {
 		endpoint: 'https://api.n8n.io/api/banners',
 		enabled: true,
+		filters: {
+			publishedWorkflowCount: 0,
+		},
 	},
 };

@@ -2,22 +2,27 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, getTooltip, hoverTooltipTrigger } from '@/__tests__/utils';
 import ParameterInputList from './ParameterInputList.vue';
 import { createTestingPinia } from '@pinia/testing';
-import {
-	createTestWorkflowObject,
-	createTestNode,
-	createMockNodeTypes,
-	mockLoadedNodeType,
-} from '@/__tests__/mocks';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import * as workflowHelpers from '@/app/composables/useWorkflowHelpers';
 import { flushPromises } from '@vue/test-utils';
-import { shallowRef } from 'vue';
-import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { nextTick, shallowRef } from 'vue';
+import {
+	injectWorkflowDocumentStore,
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+} from '@/app/stores/workflowDocument.store';
 
 vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => ({
 	...(await importOriginal()),
 	injectWorkflowDocumentStore: vi.fn(),
+	useWorkflowDocumentStore: vi.fn().mockReturnValue({
+		name: '',
+		settings: {},
+		getPinDataSnapshot: () => ({}),
+		workflowTriggerNodes: [],
+		allNodes: [],
+	}),
 }));
 
 // Mock i18n to return translation keys instead of translated strings
@@ -55,21 +60,12 @@ import {
 	TEST_NODE_WITH_ISSUES,
 	FIXED_COLLECTION_PARAMETERS,
 } from './ParameterInputList.test.constants';
-import { FORM_NODE_TYPE, FORM_TRIGGER_NODE_TYPE, NodeConnectionTypes } from 'n8n-workflow';
-import type { INodeProperties } from 'n8n-workflow';
+import { FORM_NODE_TYPE, FORM_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+import type { INode, INodeProperties } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import type { MockInstance } from 'vitest';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { WAIT_NODE_TYPE } from '@/app/constants';
-import type { INodeTypeData } from 'n8n-workflow';
-
-// Create node types that include Form, FormTrigger, and Wait nodes
-const testNodeTypes: INodeTypeData = {
-	[FORM_TRIGGER_NODE_TYPE]: mockLoadedNodeType(FORM_TRIGGER_NODE_TYPE),
-	[FORM_NODE_TYPE]: mockLoadedNodeType(FORM_NODE_TYPE),
-	[WAIT_NODE_TYPE]: mockLoadedNodeType(WAIT_NODE_TYPE),
-};
-const formWorkflowNodeTypes = createMockNodeTypes(testNodeTypes);
+import { useAiGateway } from '@/app/composables/useAiGateway';
 
 const mockConfirm = vi.fn();
 vi.mock('@/app/composables/useMessage', () => ({
@@ -82,6 +78,21 @@ vi.mock('@/app/composables/useMessage', () => ({
 
 vi.mock('@n8n/rest-api-client/api/users', () => ({
 	updateCurrentUserSettings: vi.fn(),
+}));
+
+vi.mock('@/app/composables/useAiGateway', () => ({
+	useAiGateway: vi.fn(() => ({
+		isEnabled: { value: false },
+		isCredentialTypeSupported: vi.fn(() => false),
+		isActionSupported: vi.fn(() => true),
+		isNodePropertyHidden: vi.fn(() => false),
+		balance: { value: undefined },
+		budget: { value: undefined },
+		fetchError: { value: null },
+		fetchConfig: vi.fn(),
+		fetchWallet: vi.fn(),
+		saveAfterToggle: vi.fn(),
+	})),
 }));
 
 vi.mock('vue-router', async () => {
@@ -100,7 +111,19 @@ vi.mock('vue-router', async () => {
 });
 
 let ndvStore: ReturnType<typeof mockedStore<typeof useNDVStore>>;
-let workflowStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
+
+const workflowDocumentStoreMock = {
+	documentId: createWorkflowDocumentId(''),
+	getChildNodes: vi.fn().mockReturnValue([]),
+	getParentNodes: vi.fn().mockReturnValue([]),
+	getParentNodesByDepth: vi.fn().mockReturnValue([]),
+	getNodeByName: vi.fn().mockReturnValue(undefined),
+	name: '',
+	settings: {},
+	getPinDataSnapshot: vi.fn().mockReturnValue({}),
+	workflowTriggerNodes: [],
+	allNodes: [],
+};
 
 const renderComponent = createComponentRenderer(ParameterInputList, {
 	props: {
@@ -119,16 +142,18 @@ const renderComponent = createComponentRenderer(ParameterInputList, {
 describe('ParameterInputList', () => {
 	beforeEach(() => {
 		createTestingPinia();
-		ndvStore = mockedStore(useNDVStore);
-		workflowStore = mockedStore(useWorkflowsStore);
+		ndvStore = mockedStore(useNDVStore, createWorkflowDocumentId(''));
+		workflowDocumentStoreMock.getChildNodes.mockReturnValue([]);
+		workflowDocumentStoreMock.getParentNodes.mockReturnValue([]);
+		workflowDocumentStoreMock.getParentNodesByDepth.mockReturnValue([]);
+		workflowDocumentStoreMock.getNodeByName.mockReturnValue(undefined);
 		vi.mocked(injectWorkflowDocumentStore).mockReturnValue(
-			shallowRef({
-				getChildNodes: (...args: Parameters<typeof workflowStore.workflowObject.getChildNodes>) =>
-					workflowStore.workflowObject.getChildNodes(...args),
-				getParentNodes: (...args: Parameters<typeof workflowStore.workflowObject.getParentNodes>) =>
-					workflowStore.workflowObject.getParentNodes(...args),
-				getNodeByName: (name: string) => workflowStore.workflowObject.getNode(name),
-			}) as ReturnType<typeof injectWorkflowDocumentStore>,
+			shallowRef(workflowDocumentStoreMock) as unknown as ReturnType<
+				typeof injectWorkflowDocumentStore
+			>,
+		);
+		vi.mocked(useWorkflowDocumentStore).mockReturnValue(
+			workflowDocumentStoreMock as unknown as ReturnType<typeof useWorkflowDocumentStore>,
 		);
 	});
 
@@ -147,6 +172,40 @@ describe('ParameterInputList', () => {
 			}),
 		).not.toThrow();
 		await flushPromises();
+	});
+
+	it('remounts parameter inputs when navigating between nodes that share a parameter name', async () => {
+		// Same-named fields on two nodes used to reuse the input instance on
+		// navigation, which silently dropped the saved value (#31626).
+		const sharedParameters: INodeProperties[] = [
+			{
+				displayName: 'Category',
+				name: 'category',
+				type: 'options',
+				default: '',
+				options: [],
+				typeOptions: { loadOptionsMethod: 'getCategories' },
+			},
+		];
+		const nodeValues = { parameters: { category: '' } };
+
+		const firstNode: INodeUi = { ...TEST_NODE_NO_ISSUES, id: 'node-a', name: 'Node A' };
+		const secondNode: INodeUi = { ...TEST_NODE_NO_ISSUES, id: 'node-b', name: 'Node B' };
+
+		ndvStore.activeNode = firstNode;
+		const { getByTestId } = renderComponent({
+			props: { parameters: sharedParameters, nodeValues },
+		});
+		await flushPromises();
+
+		const beforeInput = getByTestId('parameter-input');
+
+		ndvStore.activeNode = secondNode;
+		await nextTick();
+		await flushPromises();
+
+		// A fresh DOM node means the input remounted rather than carrying over.
+		expect(getByTestId('parameter-input')).not.toBe(beforeInput);
 	});
 
 	it('renders fixed collection inputs correctly', async () => {
@@ -269,23 +328,12 @@ describe('ParameterInputList', () => {
 		it('should not show triggerNotice if Form Trigger is connected', () => {
 			ndvStore.activeNode = { name: 'Form', type: FORM_NODE_TYPE, parameters: {} } as INodeUi;
 
-			const formTriggerNode = createTestNode({
-				name: 'Form Trigger',
-				type: FORM_TRIGGER_NODE_TYPE,
-			});
-			const formNode = createTestNode({
-				name: 'Form',
-				type: FORM_NODE_TYPE,
-			});
-
-			workflowStore.workflowObject = createTestWorkflowObject({
-				nodes: [formTriggerNode, formNode],
-				connections: {
-					'Form Trigger': {
-						main: [[{ node: 'Form', type: NodeConnectionTypes.Main, index: 0 }]],
-					},
-				},
-				nodeTypes: formWorkflowNodeTypes,
+			workflowDocumentStoreMock.getParentNodes.mockReturnValue(['Form Trigger']);
+			workflowDocumentStoreMock.getNodeByName.mockImplementation((name: string) => {
+				if (name === 'Form Trigger') {
+					return { type: FORM_TRIGGER_NODE_TYPE };
+				}
+				return undefined;
 			});
 
 			const { queryByText } = renderComponent({
@@ -964,23 +1012,12 @@ describe('ParameterInputList', () => {
 				parameters: {},
 			} as INodeUi;
 
-			const formTriggerNode = createTestNode({
-				name: 'Form Trigger',
-				type: FORM_TRIGGER_NODE_TYPE,
-			});
-			const formNode = createTestNode({
-				name: 'Form',
-				type: FORM_NODE_TYPE,
-			});
-
-			workflowStore.workflowObject = createTestWorkflowObject({
-				nodes: [formTriggerNode, formNode],
-				connections: {
-					'Form Trigger': {
-						main: [[{ node: 'Form', type: NodeConnectionTypes.Main, index: 0 }]],
-					},
-				},
-				nodeTypes: formWorkflowNodeTypes,
+			workflowDocumentStoreMock.getChildNodes.mockReturnValue(['Form']);
+			workflowDocumentStoreMock.getNodeByName.mockImplementation((name: string) => {
+				if (name === 'Form') {
+					return { type: FORM_NODE_TYPE };
+				}
+				return undefined;
 			});
 
 			const { findByText } = renderComponent({
@@ -1002,23 +1039,12 @@ describe('ParameterInputList', () => {
 				parameters: {},
 			} as INodeUi;
 
-			const formTriggerNode = createTestNode({
-				name: 'Form Trigger',
-				type: FORM_TRIGGER_NODE_TYPE,
-			});
-			const formNode = createTestNode({
-				name: 'Form',
-				type: FORM_NODE_TYPE,
-			});
-
-			workflowStore.workflowObject = createTestWorkflowObject({
-				nodes: [formTriggerNode, formNode],
-				connections: {
-					'Form Trigger': {
-						main: [[{ node: 'Form', type: NodeConnectionTypes.Main, index: 0 }]],
-					},
-				},
-				nodeTypes: formWorkflowNodeTypes,
+			workflowDocumentStoreMock.getChildNodes.mockReturnValue(['Form']);
+			workflowDocumentStoreMock.getNodeByName.mockImplementation((name: string) => {
+				if (name === 'Form') {
+					return { type: FORM_NODE_TYPE };
+				}
+				return undefined;
 			});
 
 			const { container, getAllByTestId } = renderComponent({
@@ -1041,17 +1067,6 @@ describe('ParameterInputList', () => {
 				type: FORM_TRIGGER_NODE_TYPE,
 				parameters: {},
 			} as INodeUi;
-
-			const formTriggerNode = createTestNode({
-				name: 'Form Trigger',
-				type: FORM_TRIGGER_NODE_TYPE,
-			});
-
-			workflowStore.workflowObject = createTestWorkflowObject({
-				nodes: [formTriggerNode],
-				connections: {},
-				nodeTypes: formWorkflowNodeTypes,
-			});
 
 			const { container, getAllByTestId } = renderComponent({
 				props: {
@@ -1113,31 +1128,19 @@ describe('ParameterInputList', () => {
 				parameters: { resume: 'form' },
 			} as INodeUi;
 
-			const formTriggerNode = createTestNode({
-				name: 'Form Trigger',
-				type: FORM_TRIGGER_NODE_TYPE,
-			});
-			const waitNode = createTestNode({
-				name: 'Wait',
-				type: WAIT_NODE_TYPE,
-				parameters: { resume: 'form' },
-			});
-			const formNode = createTestNode({
-				name: 'Form',
-				type: FORM_NODE_TYPE,
-			});
-
-			workflowStore.workflowObject = createTestWorkflowObject({
-				nodes: [formTriggerNode, waitNode, formNode],
-				connections: {
-					'Form Trigger': {
-						main: [[{ node: 'Wait', type: NodeConnectionTypes.Main, index: 0 }]],
-					},
-					Wait: {
-						main: [[{ node: 'Form', type: NodeConnectionTypes.Main, index: 0 }]],
-					},
-				},
-				nodeTypes: formWorkflowNodeTypes,
+			workflowDocumentStoreMock.getParentNodes.mockReturnValue(['Form Trigger']);
+			workflowDocumentStoreMock.getChildNodes.mockReturnValue(['Wait', 'Form']);
+			workflowDocumentStoreMock.getNodeByName.mockImplementation((name: string) => {
+				if (name === 'Form Trigger') {
+					return { type: FORM_TRIGGER_NODE_TYPE };
+				}
+				if (name === 'Form') {
+					return { type: FORM_NODE_TYPE };
+				}
+				if (name === 'Wait') {
+					return { type: WAIT_NODE_TYPE };
+				}
+				return undefined;
 			});
 
 			const { findByText, queryByText } = renderComponent({
@@ -1163,18 +1166,6 @@ describe('ParameterInputList', () => {
 				position: [100, 200],
 				parameters: { resume: 'form' },
 			} as INodeUi;
-
-			const waitNode = createTestNode({
-				name: 'Wait',
-				type: WAIT_NODE_TYPE,
-				parameters: { resume: 'form' },
-			});
-
-			workflowStore.workflowObject = createTestWorkflowObject({
-				nodes: [waitNode],
-				connections: {},
-				nodeTypes: formWorkflowNodeTypes,
-			});
 
 			const { findByText } = renderComponent({
 				props: {
@@ -1722,6 +1713,336 @@ describe('ParameterInputList', () => {
 	 * Tests behavior across different node types.
 	 * Ensures component works correctly with Form, Form Trigger, Wait, and undefined types.
 	 */
+	describe('AI Gateway model hiding', () => {
+		const modelParameter: INodeProperties = {
+			displayName: 'Model',
+			name: 'modelId',
+			type: 'resourceLocator',
+			default: '',
+		};
+
+		const resourceParameter: INodeProperties = {
+			displayName: 'Resource',
+			name: 'resource',
+			type: 'options',
+			default: 'text',
+			options: [
+				{ name: 'Text', value: 'text' },
+				{ name: 'Audio', value: 'audio' },
+			],
+		};
+
+		const operationParameter: INodeProperties = {
+			displayName: 'Operation',
+			name: 'operation',
+			type: 'options',
+			default: 'message',
+			options: [
+				{ name: 'Message', value: 'message' },
+				{ name: 'Transcribe', value: 'transcribe' },
+			],
+		};
+
+		it('should hide model parameter when AI Gateway credential is active and action is unsupported', async () => {
+			vi.mocked(useAiGateway).mockReturnValue({
+				isEnabled: { value: true } as never,
+				isCredentialTypeSupported: vi.fn(() => true),
+				isNodeTypeVersionSupported: vi.fn(() => true),
+				isActionSupported: vi.fn(() => false),
+				isNodePropertyHidden: vi.fn(() => false),
+				balance: { value: undefined } as never,
+				budget: { value: undefined } as never,
+				fetchError: { value: null } as never,
+				fetchConfig: vi.fn(),
+				fetchWallet: vi.fn(),
+				saveAfterToggle: vi.fn(),
+			});
+
+			ndvStore.activeNode = {
+				...TEST_NODE_NO_ISSUES,
+				credentials: { openAiApi: { id: null, name: '', __aiGatewayManaged: true } },
+			};
+
+			const { container } = renderComponent({
+				props: {
+					parameters: [resourceParameter, operationParameter, modelParameter],
+					nodeValues: {
+						parameters: { resource: 'audio', operation: 'transcribe', modelId: '' },
+					},
+					path: 'parameters',
+				},
+			});
+			await flushPromises();
+
+			const paramInputs = container.querySelectorAll('[data-test-id="parameter-input"]');
+			expect(paramInputs.length).toBe(2);
+		});
+
+		it('should show model parameter when AI Gateway credential is active and action is supported', async () => {
+			vi.mocked(useAiGateway).mockReturnValue({
+				isEnabled: { value: true } as never,
+				isCredentialTypeSupported: vi.fn(() => true),
+				isNodeTypeVersionSupported: vi.fn(() => true),
+				isActionSupported: vi.fn(() => true),
+				isNodePropertyHidden: vi.fn(() => false),
+				balance: { value: undefined } as never,
+				budget: { value: undefined } as never,
+				fetchError: { value: null } as never,
+				fetchConfig: vi.fn(),
+				fetchWallet: vi.fn(),
+				saveAfterToggle: vi.fn(),
+			});
+
+			ndvStore.activeNode = {
+				...TEST_NODE_NO_ISSUES,
+				credentials: { openAiApi: { id: null, name: '', __aiGatewayManaged: true } },
+			};
+
+			const { container } = renderComponent({
+				props: {
+					parameters: [resourceParameter, operationParameter, modelParameter],
+					nodeValues: {
+						parameters: { resource: 'text', operation: 'message', modelId: '' },
+					},
+					path: 'parameters',
+				},
+			});
+			await flushPromises();
+
+			const paramInputs = container.querySelectorAll('[data-test-id="parameter-input"]');
+			expect(paramInputs.length).toBe(3);
+		});
+
+		it('should show model parameter when no AI Gateway credential is active', async () => {
+			ndvStore.activeNode = {
+				...TEST_NODE_NO_ISSUES,
+				credentials: { openAiApi: { id: 'cred-1', name: 'My Key' } },
+			};
+
+			const { container } = renderComponent({
+				props: {
+					parameters: [resourceParameter, operationParameter, modelParameter],
+					nodeValues: {
+						parameters: { resource: 'audio', operation: 'transcribe', modelId: '' },
+					},
+					path: 'parameters',
+				},
+			});
+			await flushPromises();
+
+			const paramInputs = container.querySelectorAll('[data-test-id="parameter-input"]');
+			expect(paramInputs.length).toBe(3);
+		});
+
+		it('should hide a managed-hidden parameter that is not a model parameter when a managed credential is active', async () => {
+			vi.mocked(useAiGateway).mockReturnValue({
+				isEnabled: { value: true } as never,
+				isCredentialTypeSupported: vi.fn(() => true),
+				isNodeTypeVersionSupported: vi.fn(() => true),
+				isActionSupported: vi.fn(() => true),
+				isNodePropertyHidden: vi.fn(
+					(_node: INode | null, param: string) => param === 'modelSource',
+				),
+				balance: { value: undefined } as never,
+				budget: { value: undefined } as never,
+				fetchError: { value: null } as never,
+				fetchConfig: vi.fn(),
+				fetchWallet: vi.fn(),
+				saveAfterToggle: vi.fn(),
+			});
+
+			ndvStore.activeNode = {
+				...TEST_NODE_NO_ISSUES,
+				credentials: { openAiApi: { id: null, name: '', __aiGatewayManaged: true } },
+			};
+
+			const modelSourceParameter: INodeProperties = {
+				displayName: 'Model Source',
+				name: 'modelSource',
+				type: 'string',
+				default: '',
+			};
+
+			const { container } = renderComponent({
+				props: {
+					parameters: [resourceParameter, operationParameter, modelSourceParameter],
+					nodeValues: {
+						parameters: { resource: 'text', operation: 'message', modelSource: '' },
+					},
+					path: 'parameters',
+				},
+			});
+			await flushPromises();
+
+			const paramInputs = container.querySelectorAll('[data-test-id="parameter-input"]');
+			expect(paramInputs.length).toBe(2);
+		});
+
+		it('should not hide a managed-hidden parameter when the credential is not gateway-managed', async () => {
+			vi.mocked(useAiGateway).mockReturnValue({
+				isEnabled: { value: true } as never,
+				isCredentialTypeSupported: vi.fn(() => true),
+				isNodeTypeVersionSupported: vi.fn(() => true),
+				isActionSupported: vi.fn(() => true),
+				// Mirror the real store: only hidden when a gateway-managed credential is present
+				isNodePropertyHidden: vi.fn(
+					(node: INode | null, param: string) =>
+						Object.values(node?.credentials ?? {}).some(
+							(cred) => cred.__aiGatewayManaged === true,
+						) && param === 'modelSource',
+				),
+				balance: { value: undefined } as never,
+				budget: { value: undefined } as never,
+				fetchError: { value: null } as never,
+				fetchConfig: vi.fn(),
+				fetchWallet: vi.fn(),
+				saveAfterToggle: vi.fn(),
+			});
+
+			ndvStore.activeNode = {
+				...TEST_NODE_NO_ISSUES,
+				credentials: { openAiApi: { id: 'cred-1', name: 'My Key' } },
+			};
+
+			const modelSourceParameter: INodeProperties = {
+				displayName: 'Model Source',
+				name: 'modelSource',
+				type: 'string',
+				default: '',
+			};
+
+			const { container } = renderComponent({
+				props: {
+					parameters: [resourceParameter, operationParameter, modelSourceParameter],
+					nodeValues: {
+						parameters: { resource: 'text', operation: 'message', modelSource: '' },
+					},
+					path: 'parameters',
+				},
+			});
+			await flushPromises();
+
+			const paramInputs = container.querySelectorAll('[data-test-id="parameter-input"]');
+			expect(paramInputs.length).toBe(3);
+		});
+	});
+
+	describe('AI Gateway unsupported action notice', () => {
+		const resourceParameter: INodeProperties = {
+			displayName: 'Resource',
+			name: 'resource',
+			type: 'options',
+			default: 'text',
+			options: [
+				{ name: 'Text', value: 'text' },
+				{ name: 'Audio', value: 'audio' },
+			],
+		};
+
+		const operationParameter: INodeProperties = {
+			displayName: 'Operation',
+			name: 'operation',
+			type: 'options',
+			default: 'message',
+			options: [
+				{ name: 'Message', value: 'message' },
+				{ name: 'Transcribe', value: 'transcribe' },
+			],
+		};
+
+		it('should show unsupported action notice when action is not supported via gateway', async () => {
+			vi.mocked(useAiGateway).mockReturnValue({
+				isEnabled: { value: true } as never,
+				isCredentialTypeSupported: vi.fn(() => true),
+				isNodeTypeVersionSupported: vi.fn(() => true),
+				isActionSupported: vi.fn(() => false),
+				isNodePropertyHidden: vi.fn(() => false),
+				balance: { value: undefined } as never,
+				budget: { value: undefined } as never,
+				fetchError: { value: null } as never,
+				fetchConfig: vi.fn(),
+				fetchWallet: vi.fn(),
+				saveAfterToggle: vi.fn(),
+			});
+
+			ndvStore.activeNode = {
+				...TEST_NODE_NO_ISSUES,
+				credentials: { openAiApi: { id: null, name: '', __aiGatewayManaged: true } },
+			};
+
+			const { findByTestId } = renderComponent({
+				props: {
+					parameters: [resourceParameter, operationParameter],
+					nodeValues: {
+						parameters: { resource: 'audio', operation: 'transcribe' },
+					},
+					path: 'parameters',
+				},
+			});
+			await flushPromises();
+
+			expect(await findByTestId('ai-gateway-unsupported-action-notice')).toBeInTheDocument();
+		});
+
+		it('should not show unsupported action notice when action is supported via gateway', async () => {
+			vi.mocked(useAiGateway).mockReturnValue({
+				isEnabled: { value: true } as never,
+				isCredentialTypeSupported: vi.fn(() => true),
+				isNodeTypeVersionSupported: vi.fn(() => true),
+				isActionSupported: vi.fn(() => true),
+				isNodePropertyHidden: vi.fn(() => false),
+				balance: { value: undefined } as never,
+				budget: { value: undefined } as never,
+				fetchError: { value: null } as never,
+				fetchConfig: vi.fn(),
+				fetchWallet: vi.fn(),
+				saveAfterToggle: vi.fn(),
+			});
+
+			ndvStore.activeNode = {
+				...TEST_NODE_NO_ISSUES,
+				credentials: { openAiApi: { id: null, name: '', __aiGatewayManaged: true } },
+			};
+
+			const { container } = renderComponent({
+				props: {
+					parameters: [resourceParameter, operationParameter],
+					nodeValues: {
+						parameters: { resource: 'text', operation: 'message' },
+					},
+					path: 'parameters',
+				},
+			});
+			await flushPromises();
+
+			expect(
+				container.querySelector('[data-test-id="ai-gateway-unsupported-action-notice"]'),
+			).not.toBeInTheDocument();
+		});
+
+		it('should not show unsupported action notice when credential is not gateway-managed', async () => {
+			ndvStore.activeNode = {
+				...TEST_NODE_NO_ISSUES,
+				credentials: { openAiApi: { id: 'cred-1', name: 'My Key' } },
+			};
+
+			const { container } = renderComponent({
+				props: {
+					parameters: [resourceParameter, operationParameter],
+					nodeValues: {
+						parameters: { resource: 'audio', operation: 'transcribe' },
+					},
+					path: 'parameters',
+				},
+			});
+			await flushPromises();
+
+			expect(
+				container.querySelector('[data-test-id="ai-gateway-unsupported-action-notice"]'),
+			).not.toBeInTheDocument();
+		});
+	});
+
 	describe('Node Type Variations', () => {
 		it('should handle nodes without type', async () => {
 			ndvStore.activeNode = {

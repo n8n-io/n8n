@@ -19,8 +19,8 @@ async function toJpeg(
 	logicalWidth?: number,
 	logicalHeight?: number,
 ): Promise<Buffer> {
-	const { default: sharp } = await import('sharp');
-	let pipeline = sharp(rawBuffer, { raw: { width, height, channels: 4 } });
+	const { Transformer } = await import('@napi-rs/image');
+	let pipeline = Transformer.fromRgbaPixels(rawBuffer, width, height);
 	if (logicalWidth && logicalHeight && (width !== logicalWidth || height !== logicalHeight)) {
 		pipeline = pipeline.resize(logicalWidth, logicalHeight);
 	}
@@ -32,7 +32,7 @@ async function toJpeg(
 		const scale = maxDim / Math.max(w, h);
 		pipeline = pipeline.resize(Math.round(w * scale), Math.round(h * scale));
 	}
-	return await pipeline.jpeg({ quality: 85 }).toBuffer();
+	return await pipeline.jpeg(85);
 }
 
 export const screenshotTool: ToolDefinition<typeof screenshotSchema> = {

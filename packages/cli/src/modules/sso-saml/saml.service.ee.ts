@@ -1,22 +1,27 @@
 import type { SamlPreferences, SamlPreferencesAttributeMapping } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { OutboundHttp } from '@n8n/backend-network';
 import { GlobalConfig } from '@n8n/config';
 import type { Settings, User } from '@n8n/db';
 import { isValidEmail, SettingsRepository, UserRepository } from '@n8n/db';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
-import axios from 'axios';
-import { createPublicKey, X509Certificate } from 'crypto';
+import { createPublicKey, randomBytes, X509Certificate } from 'crypto';
 import type express from 'express';
-import { Cipher, createHttpProxyAgent, createHttpsProxyAgent, InstanceSettings } from 'n8n-core';
+import { Cipher, InstanceSettings } from 'n8n-core';
 import { CREDENTIAL_BLANKING_VALUE, jsonParse, UnexpectedError } from 'n8n-workflow';
 import { type IdentityProviderInstance, type ServiceProviderInstance } from 'samlify';
-import type { BindingContext, PostBindingContext } from 'samlify/types/src/entity';
+import type {
+	BindingContext,
+	ESamlHttpRequest,
+	PostBindingContext,
+} from 'samlify/types/src/entity';
 
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { buildSamlClaimsContext } from '@/modules/provisioning.ee/claims-context.builder';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
+import { CacheService } from '@/services/cache/cache.service';
 import { UrlService } from '@/services/url.service';
 import {
 	getSamlLoginLabel,
@@ -39,6 +44,9 @@ import {
 import { SamlValidator } from './saml-validator';
 import { getServiceProviderInstance } from './service-provider.ee';
 import type { SamlLoginBinding, SamlUserAttributes } from './types';
+
+const TEST_CONFIG_TTL_MS = 10 * 60 * 1000;
+const TEST_CONFIG_CACHE_PREFIX = 'saml:pending-test-config:';
 
 @Service()
 export class SamlService {
@@ -93,6 +101,8 @@ export class SamlService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly provisioningService: ProvisioningService,
 		private readonly cipher: Cipher,
+		private readonly cacheService: CacheService,
+		private readonly outboundHttp: OutboundHttp,
 	) {}
 
 	/**
@@ -107,11 +117,11 @@ export class SamlService {
 	 * Returns the decrypted signing private key for internal use (e.g., signing SAML requests).
 	 * @throws BadRequestError if decryption fails
 	 */
-	private getDecryptedSigningPrivateKey(): string | undefined {
+	private async getDecryptedSigningPrivateKey(): Promise<string | undefined> {
 		if (!this.isSignedSamlRequestsEnabled()) return undefined;
 		if (!this._samlPreferences.signingPrivateKey) return undefined;
 		try {
-			return this.cipher.decrypt(this._samlPreferences.signingPrivateKey);
+			return await this.cipher.decryptV2(this._samlPreferences.signingPrivateKey);
 		} catch {
 			throw new BadRequestError(
 				'Failed to decrypt SAML signing private key. The key may be corrupted.',
@@ -143,7 +153,7 @@ export class SamlService {
 		}
 	}
 
-	private validateSigningKeyConfiguration(prefs: Partial<SamlPreferences>): void {
+	private async validateSigningKeyConfiguration(prefs: Partial<SamlPreferences>): Promise<void> {
 		// Treat the blanking value as "keep existing" — the UI sends it back for redacted fields
 		// Treat empty string as "clear this field"
 		const isClearingKey = prefs.signingPrivateKey === '';
@@ -182,7 +192,7 @@ export class SamlService {
 				? undefined
 				: isNewKey
 					? prefs.signingPrivateKey!
-					: this.getDecryptedSigningPrivateKey();
+					: await this.getDecryptedSigningPrivateKey();
 			const effectiveCert = isClearingCert
 				? undefined
 				: isNewCert
@@ -292,17 +302,9 @@ export class SamlService {
 			throw new UnexpectedError('Samlify is not initialized');
 		}
 
-		let idp: IdentityProviderInstance;
-		if (metadata) {
-			const validationResult = await this.validator.validateMetadata(metadata);
-			if (!validationResult) {
-				throw new InvalidSamlMetadataError();
-			}
-			idp = this.samlify.IdentityProvider({ metadata });
-			this.validator.validateIdentityProvider(idp);
-		} else {
-			idp = this.getIdentityProviderInstance();
-		}
+		const idp = metadata
+			? await this.createIdentityProviderFromMetadata(metadata)
+			: this.getIdentityProviderInstance();
 
 		binding ??= this._samlPreferences.loginBinding ?? 'redirect';
 		const sp = this.getServiceProviderInstance();
@@ -314,17 +316,64 @@ export class SamlService {
 		};
 	}
 
+	/**
+	 * Temporarily stores IdP metadata for a pending connection test so it can be
+	 * retrieved when the IdP posts back to the ACS endpoint. Uses the shared
+	 * cache service so it works across instances in a multi-main setup. Returns
+	 * an opaque token to be embedded in the RelayState.
+	 */
+	async storePendingTestConfig(metadata: string): Promise<string> {
+		const testId = randomBytes(6).toString('hex');
+		await this.cacheService.set(
+			`${TEST_CONFIG_CACHE_PREFIX}${testId}`,
+			metadata,
+			TEST_CONFIG_TTL_MS,
+		);
+		return testId;
+	}
+
+	/**
+	 * Retrieves and removes the pending test metadata associated with the given
+	 * token. Returns undefined if the token is unknown or expired.
+	 */
+	async consumePendingTestConfig(testId: string): Promise<string | undefined> {
+		const key = `${TEST_CONFIG_CACHE_PREFIX}${testId}`;
+		const metadata = await this.cacheService.get<string>(key);
+		if (metadata === undefined) return undefined;
+		await this.cacheService.delete(key);
+		return metadata;
+	}
+
+	private async createIdentityProviderFromMetadata(
+		metadata: string,
+	): Promise<IdentityProviderInstance> {
+		await this.loadSamlify();
+		if (this.samlify === undefined) {
+			throw new UnexpectedError('Samlify is not initialized');
+		}
+		const validationResult = await this.validator.validateMetadata(metadata);
+		if (!validationResult) {
+			throw new InvalidSamlMetadataError();
+		}
+		const idp = this.samlify.IdentityProvider({ metadata });
+		this.validator.validateIdentityProvider(idp);
+		return idp;
+	}
+
 	async handleSamlLogin(
 		req: express.Request,
 		binding: SamlLoginBinding,
+		metadataOverride?: string,
 	): Promise<{
 		authenticatedUser: User | undefined;
 		attributes: SamlUserAttributes;
+		rawAttributes: Record<string, unknown>;
 		onboardingRequired: boolean;
 	}> {
 		const { mapped: attributes, raw: rawAttributes } = await this.getAttributesFromLoginResponse(
 			req,
 			binding,
+			metadataOverride,
 		);
 
 		if (attributes.email) {
@@ -349,6 +398,7 @@ export class SamlService {
 					return {
 						authenticatedUser: user,
 						attributes,
+						rawAttributes,
 						onboardingRequired: false,
 					};
 				} else {
@@ -359,6 +409,7 @@ export class SamlService {
 					return {
 						authenticatedUser: updatedUser,
 						attributes,
+						rawAttributes,
 						onboardingRequired,
 					};
 				}
@@ -370,6 +421,7 @@ export class SamlService {
 					return {
 						authenticatedUser: newUser,
 						attributes,
+						rawAttributes,
 						onboardingRequired: !newUser.firstName || !newUser.lastName,
 					};
 				}
@@ -379,6 +431,7 @@ export class SamlService {
 		return {
 			authenticatedUser: undefined,
 			attributes,
+			rawAttributes,
 			onboardingRequired: false,
 		};
 	}
@@ -446,7 +499,7 @@ export class SamlService {
 		broadcastReload: boolean = true,
 	): Promise<SamlPreferences | undefined> {
 		await this.loadSamlify();
-		this.validateSigningKeyConfiguration(prefs);
+		await this.validateSigningKeyConfiguration(prefs);
 		const previousMetadataUrl = this._samlPreferences.metadataUrl;
 		await this.loadPreferencesWithoutValidation(prefs);
 		await this.applyLoadedPreferences(prefs, previousMetadataUrl, tryFallback);
@@ -543,7 +596,9 @@ export class SamlService {
 				this._samlPreferences.signingPrivateKey = undefined;
 			} else if (this.isValidPemPrivateKey(prefs.signingPrivateKey)) {
 				// Plaintext PEM from API → encrypt
-				this._samlPreferences.signingPrivateKey = this.cipher.encrypt(prefs.signingPrivateKey);
+				this._samlPreferences.signingPrivateKey = await this.cipher.encryptV2(
+					prefs.signingPrivateKey,
+				);
 			} else {
 				// Already-encrypted from DB → store as-is
 				this._samlPreferences.signingPrivateKey = prefs.signingPrivateKey;
@@ -627,23 +682,18 @@ export class SamlService {
 		const shouldIgnoreSSL = ignoreSSL ?? this._samlPreferences.ignoreSSL;
 		if (!url) throw new BadRequestError('Error fetching SAML Metadata, no Metadata URL set');
 		try {
-			// Create a proxy-aware HTTPS agent that respects HTTP_PROXY, HTTPS_PROXY, and NO_PROXY
-			// environment variables while also supporting SSL certificate validation options
-			const httpsAgent = createHttpsProxyAgent(
-				null, // Uses proxy from environment variables
-				url,
-				{
-					rejectUnauthorized: !shouldIgnoreSSL,
-				},
-			);
-			const httpAgent = createHttpProxyAgent(null, url);
-
-			const response = await axios.get(url, {
-				httpsAgent,
-				httpAgent,
-			});
-			if (response.status === 200 && response.data) {
-				const xml = (await response.data) as string;
+			const response = await this.outboundHttp
+				.requests({
+					ssrf: 'disabled', // The metadata URL is admin-configured and may point at an internal IdP, so SSRF protection is disabled.
+				})
+				.request({
+					url,
+					method: 'GET',
+					skipSslCertificateValidation: shouldIgnoreSSL,
+					returnFullResponse: true,
+				});
+			if (response.statusCode === 200 && response.body) {
+				const xml = response.body as string;
 				const validationResult = await this.validator.validateMetadata(xml);
 				if (!validationResult) {
 					throw new BadRequestError(`Data received from ${url} is not valid SAML metadata.`);
@@ -660,16 +710,24 @@ export class SamlService {
 	async getAttributesFromLoginResponse(
 		req: express.Request,
 		binding: SamlLoginBinding,
+		metadataOverride?: string,
 	): Promise<{ mapped: SamlUserAttributes; raw: Record<string, unknown> }> {
 		let parsedSamlResponse;
 		if (!this._samlPreferences.mapping)
 			throw new BadRequestError('Error fetching SAML Attributes, no Attribute mapping set');
 		try {
 			await this.loadSamlify();
+			const idp = metadataOverride
+				? await this.createIdentityProviderFromMetadata(metadataOverride)
+				: this.getIdentityProviderInstance();
+			const samlRequest: ESamlHttpRequest = {
+				body: req.body,
+				query: req.query as Record<string, string | undefined>,
+			};
 			parsedSamlResponse = await this.getServiceProviderInstance().parseLoginResponse(
-				this.getIdentityProviderInstance(),
+				idp,
 				binding,
-				req,
+				samlRequest,
 			);
 		} catch (error) {
 			// throw error;

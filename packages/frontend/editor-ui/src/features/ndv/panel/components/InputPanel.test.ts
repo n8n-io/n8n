@@ -1,7 +1,6 @@
-import { createTestNode, createTestWorkflow, createTestWorkflowObject } from '@/__tests__/mocks';
+import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
 import { createComponentRenderer } from '@/__tests__/render';
 import InputPanel, { type Props } from './InputPanel.vue';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createTestingPinia } from '@pinia/testing';
 import { waitFor } from '@testing-library/vue';
 import {
@@ -13,14 +12,14 @@ import {
 } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
 import { computed, shallowRef } from 'vue';
-import { WorkflowIdKey } from '@/app/constants/injectionKeys';
+import { WorkflowDocumentStoreKey, WorkflowIdKey } from '@/app/constants/injectionKeys';
 
-import { useWorkflowState } from '@/app/composables/useWorkflowState';
 import {
 	injectWorkflowDocumentStore,
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 
 vi.mock('@/app/stores/workflowDocument.store', async () => {
 	const actual = await vi.importActual('@/app/stores/workflowDocument.store');
@@ -30,7 +29,7 @@ vi.mock('@/app/stores/workflowDocument.store', async () => {
 vi.mock('vue-router', () => {
 	return {
 		useRouter: () => ({}),
-		useRoute: () => ({ meta: {} }),
+		useRoute: () => ({ meta: {}, params: {} }),
 		RouterLink: vi.fn(),
 	};
 });
@@ -67,21 +66,21 @@ const render = (props: Partial<Props> = {}, pinData?: INodeExecutionData[], runD
 	setActivePinia(pinia);
 
 	const workflow = createTestWorkflow({ nodes, connections });
-	const workflowStore = useWorkflowsStore();
-	const workflowState = useWorkflowState();
 
-	workflowStore.setWorkflow(workflow);
+	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
+	workflowDocumentStore.hydrate(workflow);
 
-	vi.mocked(injectWorkflowDocumentStore).mockReturnValue(
-		shallowRef(useWorkflowDocumentStore(createWorkflowDocumentId(workflowStore.workflowId))),
-	);
+	vi.mocked(injectWorkflowDocumentStore).mockReturnValue(shallowRef(workflowDocumentStore));
 
 	if (pinData) {
-		workflowStore.workflow.pinData = Object.fromEntries(nodes.map((n) => [n.name, pinData]));
+		workflowDocumentStore.setPinData(Object.fromEntries(nodes.map((n) => [n.name, pinData])));
 	}
 
 	if (runData) {
-		workflowState.setWorkflowExecutionData({
+		// The component reads run data via `injectWorkflowExecutionStateStore()`,
+		// which resolves through the execution-state store keyed by the injected
+		// workflow document's id.
+		useWorkflowExecutionStateStore(createWorkflowDocumentId(workflow.id)).setWorkflowExecutionData({
 			id: '',
 			workflowData: {
 				id: '',
@@ -106,18 +105,12 @@ const render = (props: Partial<Props> = {}, pinData?: INodeExecutionData[], runD
 		});
 	}
 
-	const workflowObject = createTestWorkflowObject({
-		nodes,
-		connections,
-	});
-
 	return createComponentRenderer(InputPanel, {
 		props: {
 			pushRef: 'pushRef',
 			runIndex: 0,
 			currentNodeName: nodes[0].name,
 			activeNodeName: nodes[1].name,
-			workflowObject,
 			displayMode: 'schema',
 			focusedMappableInput: '',
 			isMappingOnboarded: false,
@@ -125,6 +118,7 @@ const render = (props: Partial<Props> = {}, pinData?: INodeExecutionData[], runD
 		global: {
 			provide: {
 				[WorkflowIdKey as unknown as string]: computed(() => workflow.id),
+				[WorkflowDocumentStoreKey as symbol]: shallowRef(workflowDocumentStore),
 			},
 			stubs: {
 				InputPanelPinButton: { template: '<button data-test-id="ndv-pin-data"></button>' },

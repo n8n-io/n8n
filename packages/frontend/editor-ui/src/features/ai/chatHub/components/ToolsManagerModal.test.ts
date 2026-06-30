@@ -153,7 +153,7 @@ const renderComponent = createComponentRenderer(ToolsManagerModal, {
 	global: {
 		stubs: {
 			ElDialog: ElDialogStub,
-			ToolSettingsContent: {
+			NodeToolSettingsContent: {
 				template: '<div data-test-id="tool-settings-content" />',
 				props: ['initialNode', 'existingToolNames'],
 			},

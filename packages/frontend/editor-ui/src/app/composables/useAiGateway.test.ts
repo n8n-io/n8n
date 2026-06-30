@@ -1,16 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { ref } from 'vue';
+import type { INode } from 'n8n-workflow';
 import { useAiGateway } from './useAiGateway';
 import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 
-const mockGetGatewayCredits = vi.fn();
+const mockGetGatewayWallet = vi.fn();
 const mockGetGatewayConfig = vi
 	.fn()
 	.mockResolvedValue({ nodes: [], credentialTypes: [], providerConfig: {} });
 
 vi.mock('@/features/ai/assistant/assistant.api', () => ({
-	getGatewayCredits: (...args: unknown[]) => mockGetGatewayCredits(...args),
+	getGatewayWallet: (...args: unknown[]) => mockGetGatewayWallet(...args),
 	getGatewayConfig: (...args: unknown[]) => mockGetGatewayConfig(...args),
 }));
 
@@ -29,90 +30,73 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 }));
 
 const mockIsAiGatewayEnabled = ref(false);
-const mockGetVariant = vi.fn().mockReturnValue(undefined);
 
 vi.mock('@/app/stores/settings.store', () => ({
 	useSettingsStore: vi.fn(() => ({ isAiGatewayEnabled: mockIsAiGatewayEnabled.value })),
 }));
-
-vi.mock('@/app/stores/posthog.store', () => ({
-	usePostHog: vi.fn(() => ({ getVariant: mockGetVariant })),
-}));
-
-vi.mock('@/app/constants', async () => {
-	const actual = await vi.importActual('@/app/constants');
-	return {
-		...actual,
-		AI_GATEWAY_EXPERIMENT: { name: 'ai_gateway', variant: 'enabled' },
-	};
-});
 
 describe('useAiGateway', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
 		vi.clearAllMocks();
 		mockIsAiGatewayEnabled.value = false;
-		mockGetVariant.mockReturnValue(undefined);
 		mockGetGatewayConfig.mockResolvedValue({ nodes: [], credentialTypes: [], providerConfig: {} });
 	});
 
-	describe('fetchCredits()', () => {
+	describe('fetchWallet()', () => {
 		it('should not call API when AI Gateway is not enabled', async () => {
 			// isEnabled = false (default mock values)
-			const { fetchCredits, creditsRemaining } = useAiGateway();
+			const { fetchWallet, balance } = useAiGateway();
 
-			await fetchCredits();
+			await fetchWallet();
 
-			expect(mockGetGatewayCredits).not.toHaveBeenCalled();
-			expect(creditsRemaining.value).toBeUndefined();
+			expect(mockGetGatewayWallet).not.toHaveBeenCalled();
+			expect(balance.value).toBeUndefined();
 		});
 
-		it('should fetch and update creditsRemaining and creditsQuota when enabled', async () => {
-			mockGetVariant.mockReturnValue('enabled');
+		it('should fetch and update balance and budget when enabled', async () => {
 			mockIsAiGatewayEnabled.value = true;
-			mockGetGatewayCredits.mockResolvedValue({ creditsRemaining: 7, creditsQuota: 10 });
+			mockGetGatewayWallet.mockResolvedValue({ balance: 7, budget: 10 });
 
-			const { fetchCredits, creditsRemaining, creditsQuota } = useAiGateway();
+			const { fetchWallet, balance, budget } = useAiGateway();
 
-			await fetchCredits();
+			await fetchWallet();
 
-			expect(mockGetGatewayCredits).toHaveBeenCalledOnce();
-			expect(creditsRemaining.value).toBe(7);
-			expect(creditsQuota.value).toBe(10);
+			expect(mockGetGatewayWallet).toHaveBeenCalledOnce();
+			expect(balance.value).toBe(7);
+			expect(budget.value).toBe(10);
 		});
 
 		it('should keep previous values on API error', async () => {
-			mockGetVariant.mockReturnValue('enabled');
 			mockIsAiGatewayEnabled.value = true;
 
 			// First successful call
-			mockGetGatewayCredits.mockResolvedValueOnce({ creditsRemaining: 5, creditsQuota: 10 });
-			const { fetchCredits, creditsRemaining, creditsQuota } = useAiGateway();
-			await fetchCredits();
-			expect(creditsRemaining.value).toBe(5);
+			mockGetGatewayWallet.mockResolvedValueOnce({ balance: 5, budget: 10 });
+			const { fetchWallet, balance, budget } = useAiGateway();
+			await fetchWallet();
+			expect(balance.value).toBe(5);
 
 			// Second call fails
-			mockGetGatewayCredits.mockRejectedValueOnce(new Error('Network error'));
-			await fetchCredits();
+			mockGetGatewayWallet.mockRejectedValueOnce(new Error('Network error'));
+			await fetchWallet();
 
 			// Values should remain from first successful call
-			expect(creditsRemaining.value).toBe(5);
-			expect(creditsQuota.value).toBe(10);
+			expect(balance.value).toBe(5);
+			expect(budget.value).toBe(10);
 		});
 
-		it('should share credits state across multiple composable instances', async () => {
-			mockGetVariant.mockReturnValue('enabled');
+		it('should share balance state across multiple composable instances', async () => {
 			mockIsAiGatewayEnabled.value = true;
-			mockGetGatewayCredits.mockResolvedValue({ creditsRemaining: 3, creditsQuota: 5 });
+			mockGetGatewayWallet.mockResolvedValue({ balance: 3, budget: 5 });
 
 			const instance1 = useAiGateway();
 			const instance2 = useAiGateway();
 
-			await instance1.fetchCredits();
+			await instance1.fetchWallet();
 
 			// Both instances read from the same store
-			expect(instance1.creditsRemaining.value).toBe(3);
-			expect(instance2.creditsRemaining.value).toBe(3);
+			expect(instance1.balance.value).toBe(3);
+			expect(instance2.balance.value).toBe(3);
 		});
 	});
 
@@ -133,6 +117,33 @@ describe('useAiGateway', () => {
 		it('should return false when credential type is not in gateway config', () => {
 			const { isCredentialTypeSupported } = useAiGateway();
 			expect(isCredentialTypeSupported('openAiApi')).toBe(false);
+		});
+	});
+
+	describe('isNodePropertyHidden()', () => {
+		const managedNode = {
+			type: 'n8n-nodes-base.browserbase',
+			credentials: { browserbaseApi: { id: null, name: '', __aiGatewayManaged: true } },
+		} as unknown as INode;
+
+		it('should delegate to the store', async () => {
+			mockGetGatewayConfig.mockResolvedValue({
+				nodes: [],
+				credentialTypes: [],
+				providerConfig: {},
+				hiddenNodeProperties: { 'n8n-nodes-base.browserbase': ['modelSource'] },
+			});
+			const aiGatewayStore = useAiGatewayStore();
+			await aiGatewayStore.fetchConfig();
+
+			const { isNodePropertyHidden } = useAiGateway();
+			expect(isNodePropertyHidden(managedNode, 'modelSource')).toBe(true);
+			expect(isNodePropertyHidden(managedNode, 'otherParam')).toBe(false);
+		});
+
+		it('should return false when no config is loaded', () => {
+			const { isNodePropertyHidden } = useAiGateway();
+			expect(isNodePropertyHidden(managedNode, 'modelSource')).toBe(false);
 		});
 	});
 });

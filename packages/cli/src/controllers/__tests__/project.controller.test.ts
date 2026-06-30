@@ -1,10 +1,12 @@
-import type { AuthenticatedRequest, ProjectRepository } from '@n8n/db';
 import { ListProjectsQueryDto } from '@n8n/api-types';
-import { mock } from 'jest-mock-extended';
-
-import type { EventService } from '@/events/event.service';
+import type { AuthenticatedRequest, ProjectRepository } from '@n8n/db';
 import type { Response } from 'express';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+
 import { ProjectController } from '@/controllers/project.controller';
+import type { EventService } from '@/events/event.service';
+import type { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { UserManagementMailer } from '@/user-management/email';
 
@@ -13,19 +15,21 @@ describe('ProjectController', () => {
 	const projectsService = mock<ProjectService>();
 	const projectRepository = mock<ProjectRepository>();
 	const userManagementMailer = mock<UserManagementMailer>();
+	const provisioningService = mock<ProvisioningService>();
 
 	const controller = new ProjectController(
 		projectsService as unknown as ProjectService,
 		projectRepository as unknown as ProjectRepository,
 		eventService as unknown as EventService,
 		userManagementMailer as unknown as UserManagementMailer,
+		provisioningService as unknown as ProvisioningService,
 	);
 
 	const makeRes = () => {
 		const res = {
-			status: jest.fn().mockReturnThis(),
-			json: jest.fn().mockReturnThis(),
-			send: jest.fn().mockReturnThis(),
+			status: vi.fn().mockReturnThis(),
+			json: vi.fn().mockReturnThis(),
+			send: vi.fn().mockReturnThis(),
 		} as unknown as Response;
 		return res;
 	};
@@ -35,7 +39,7 @@ describe('ProjectController', () => {
 	} as AuthenticatedRequest;
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('getAllProjects', () => {
@@ -44,8 +48,8 @@ describe('ProjectController', () => {
 				{ id: 'p1', name: 'Project 1' },
 				{ id: 'p2', name: 'Project 2' },
 			];
-			(projectsService.getAccessibleProjectsAndCount as jest.Mock).mockResolvedValue([projects, 2]);
-			(projectsService.addUserScopes as jest.Mock).mockResolvedValue(projects);
+			(projectsService.getAccessibleProjectsAndCount as Mock).mockResolvedValue([projects, 2]);
+			(projectsService.addUserScopes as Mock).mockResolvedValue(projects);
 
 			const res = makeRes();
 			const query = { skip: 0, take: 10, search: 'test', type: 'team' as const };
@@ -59,7 +63,7 @@ describe('ProjectController', () => {
 
 		it('returns bare array when no pagination params given', async () => {
 			const projects = [{ id: 'p1', name: 'Project 1' }];
-			(projectsService.getAccessibleProjectsAndCount as jest.Mock).mockResolvedValue([projects, 1]);
+			(projectsService.getAccessibleProjectsAndCount as Mock).mockResolvedValue([projects, 1]);
 
 			const res = makeRes();
 			// Simulate DTO-parsed output: when no query params are provided,
@@ -75,18 +79,98 @@ describe('ProjectController', () => {
 		});
 	});
 
+	describe('getSharingCandidates', () => {
+		it('calls service with query options and returns enriched { count, data }', async () => {
+			const projects = [
+				{ id: 'p1', name: 'Project 1' },
+				{ id: 'p2', name: 'Peer personal project' },
+			];
+			const enriched = projects.map((p) => ({
+				...p,
+				role: 'global:member',
+				scopes: ['user:list'],
+			}));
+			(projectsService.getShareableProjectsAndCount as Mock).mockResolvedValue([projects, 2]);
+			(projectsService.addUserScopes as Mock).mockResolvedValue(enriched);
+
+			const res = makeRes();
+			const query = { skip: 0, take: 50, search: '' };
+
+			await controller.getSharingCandidates(req, res, query as any);
+
+			expect(projectsService.getShareableProjectsAndCount).toHaveBeenCalledWith(req.user, query);
+			expect(projectsService.addUserScopes).toHaveBeenCalledWith(req.user, projects);
+			expect(res.json).toHaveBeenCalledWith({ count: 2, data: enriched });
+		});
+
+		it('always returns the { count, data } envelope (no bare-array path)', async () => {
+			(projectsService.getShareableProjectsAndCount as Mock).mockResolvedValue([[], 0]);
+			(projectsService.addUserScopes as Mock).mockResolvedValue([]);
+
+			const res = makeRes();
+			const parsed = ListProjectsQueryDto.safeParse({});
+			expect(parsed.success).toBe(true);
+			const query = parsed.data!;
+
+			await controller.getSharingCandidates(req, res, query);
+
+			expect(res.json).toHaveBeenCalledWith({ count: 0, data: [] });
+		});
+	});
+
+	it('emits team-project-updated with custom telemetry tag count on updateProject', async () => {
+		const projectId = 'p1';
+		const payload = {
+			name: 'Updated Project',
+			customTelemetryTags: [
+				{ key: 'env', value: 'production' },
+				{ key: 'team', value: 'engineering' },
+			],
+		};
+
+		const res = makeRes();
+
+		await controller.updateProject(req, res, payload as any, projectId);
+
+		expect(projectsService.updateProject).toHaveBeenCalledWith(projectId, payload);
+		expect(projectsService.getProjectRelations).not.toHaveBeenCalled();
+		expect(eventService.emit).toHaveBeenCalledWith('team-project-updated', {
+			userId: 'actor-user',
+			role: 'global:owner',
+			projectId,
+			otelProjectCustomTagsCount: 2,
+		});
+	});
+
+	it('emits team-project-updated without custom telemetry tag count on updateProject without tags', async () => {
+		const projectId = 'p1';
+		const payload = { name: 'Updated Project' };
+
+		const res = makeRes();
+
+		await controller.updateProject(req, res, payload as any, projectId);
+
+		expect(projectsService.updateProject).toHaveBeenCalledWith(projectId, payload);
+		expect(projectsService.getProjectRelations).not.toHaveBeenCalled();
+		expect(eventService.emit).toHaveBeenCalledWith('team-project-updated', {
+			userId: 'actor-user',
+			role: 'global:owner',
+			projectId,
+		});
+	});
+
 	it('emits team-project-updated with full members list on addProjectUsers', async () => {
 		// Arrange
 		const projectId = 'p1';
 		const payload = { relations: [{ userId: 'u2', role: 'project:viewer' as const }] };
 
-		(projectsService.addUsersWithConflictSemantics as jest.Mock).mockResolvedValue({
+		(projectsService.addUsersWithConflictSemantics as Mock).mockResolvedValue({
 			project: { id: projectId, name: 'Project' },
 			added: payload.relations,
 			conflicts: [],
 		});
 
-		(projectsService.getProjectRelations as jest.Mock).mockResolvedValue([
+		(projectsService.getProjectRelations as Mock).mockResolvedValue([
 			{ userId: 'u1', role: { slug: 'project:admin' } },
 			{ userId: 'u2', role: { slug: 'project:viewer' } },
 		]);
@@ -118,7 +202,8 @@ describe('ProjectController', () => {
 	it('emits team-project-updated on changeProjectUserRole and returns 204', async () => {
 		// Arrange
 		const projectId = 'p2';
-		(projectsService.getProjectRelations as jest.Mock).mockResolvedValue([
+		provisioningService.isProjectRoleManaged.mockResolvedValue(false);
+		(projectsService.getProjectRelations as Mock).mockResolvedValue([
 			{ userId: 'u1', role: { slug: 'project:admin' } },
 			{ userId: 'u2', role: { slug: 'project:editor' } },
 		]);
@@ -146,7 +231,7 @@ describe('ProjectController', () => {
 	it('emits team-project-updated on deleteProjectUser and returns 204', async () => {
 		// Arrange
 		const projectId = 'p3';
-		(projectsService.getProjectRelations as jest.Mock).mockResolvedValue([
+		(projectsService.getProjectRelations as Mock).mockResolvedValue([
 			{ userId: 'u1', role: { slug: 'project:admin' } },
 			{ userId: 'u3', role: { slug: 'project:viewer' } },
 		]);
@@ -181,13 +266,13 @@ describe('ProjectController', () => {
 			},
 		];
 
-		(projectsService.addUsersWithConflictSemantics as jest.Mock).mockResolvedValue({
+		(projectsService.addUsersWithConflictSemantics as Mock).mockResolvedValue({
 			project: { id: projectId, name: 'Project' },
 			added,
 			conflicts,
 		});
 
-		(projectsService.getProjectRelations as jest.Mock).mockResolvedValue([
+		(projectsService.getProjectRelations as Mock).mockResolvedValue([
 			{ userId: 'u1', role: { slug: 'project:admin' } },
 			{ userId: 'u4', role: { slug: 'project:viewer' } },
 			{ userId: 'u5', role: { slug: 'project:viewer' } },

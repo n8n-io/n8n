@@ -3,21 +3,22 @@ import type { IHttpRequestOptions } from 'n8n-workflow';
 
 import { Aws } from '../Aws.credentials';
 import type { AwsIamCredentialsType } from '../common/aws/types';
+import type { Mock } from 'vitest';
 
-jest.mock('aws4', () => ({
-	sign: jest.fn(),
+vi.mock('aws4', () => ({
+	sign: vi.fn(),
 }));
 
 describe('Aws Credential', () => {
 	const aws = new Aws();
-	let mockSign: jest.Mock;
+	let mockSign: Mock;
 
 	beforeEach(() => {
-		mockSign = sign as unknown as jest.Mock;
+		mockSign = sign as unknown as Mock;
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should have correct properties', () => {
@@ -142,6 +143,51 @@ describe('Aws Credential', () => {
 			);
 			expect(result.method).toBe('POST');
 			expect(result.url).toBe('https://iam.amazonaws.com/');
+		});
+
+		describe('Amazon Bedrock services', () => {
+			it.each([
+				{
+					host: 'bedrock-runtime.us-east-1.amazonaws.com',
+					path: '/model/anthropic.claude-v2/invoke',
+				},
+				{
+					host: 'bedrock-agent.us-east-1.amazonaws.com',
+					path: '/agents/',
+				},
+				{
+					host: 'bedrock-agent-runtime.us-east-1.amazonaws.com',
+					path: '/agents/agent-id/agentAliases/alias-id/sessions/session-id/text',
+				},
+				{
+					host: 'bedrock-data-automation.us-east-1.amazonaws.com',
+					path: '/projects/',
+				},
+				{
+					host: 'bedrock-data-automation-runtime.us-east-1.amazonaws.com',
+					path: '/invocations',
+				},
+			])(
+				'should sign $host requests with the Bedrock service namespace',
+				async ({ host, path }) => {
+					const result = await aws.authenticate(credentials, {
+						...requestOptions,
+						baseURL: '',
+						url: `https://${host}${path}`,
+					});
+
+					expect(mockSign).toHaveBeenCalledWith(
+						expect.objectContaining({
+							host,
+							path,
+							region: 'us-east-1',
+							service: 'bedrock',
+						}),
+						securityHeaders,
+					);
+					expect(result.url).toBe(`https://${host}${path}`);
+				},
+			);
 		});
 
 		it('should handle an IRequestOptions object with form instead of body', async () => {

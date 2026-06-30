@@ -580,7 +580,7 @@ onMounted(() => {
 															v-else-if="row.file.type === SOURCE_CONTROL_FILE_TYPE.workflow"
 															target="_blank"
 															rel="noopener noreferrer"
-															:to="{ name: VIEWS.WORKFLOW, params: { name: row.file.id } }"
+															:to="{ name: VIEWS.WORKFLOW, params: { workflowId: row.file.id } }"
 														>
 															{{ row.file.name }}
 														</RouterLink>

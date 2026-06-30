@@ -1,5 +1,5 @@
-// Mock the barrel import to avoid pulling in @mastra/core (ESM-only transitive deps)
-jest.mock('@n8n/instance-ai', () => ({
+// Mock the barrel import so these adapter tests only exercise local formatting helpers.
+vi.mock('@n8n/instance-ai', () => ({
 	wrapUntrustedData(content: string, source: string, label?: string): string {
 		const esc = (s: string) =>
 			s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -7,56 +7,73 @@ jest.mock('@n8n/instance-ai', () => ({
 		const safeContent = content.replace(/<\/untrusted_data/gi, '&lt;/untrusted_data');
 		return `<untrusted_data source="${esc(source)}"${safeLabel}>\n${safeContent}\n</untrusted_data>`;
 	},
+	builderTemplatesOptionsFromEnv: () => ({}),
+	BuilderTemplatesService: class {
+		async getBundle() {
+			return { files: [], indexTxt: '', version: null };
+		}
+		getVersion() {
+			return null;
+		}
+	},
 }));
 
-import { mock } from 'jest-mock-extended';
+import type { Logger } from '@n8n/backend-common';
+import type { GlobalConfig } from '@n8n/config';
+import { GLOBAL_MEMBER_ROLE } from '@n8n/db';
+import { Container } from '@n8n/di';
 import type {
+	AiBuilderTemporaryWorkflowRepository,
 	User,
 	ExecutionRepository,
 	ProjectRepository,
 	SharedWorkflowRepository,
 	WorkflowRepository,
 } from '@n8n/db';
-import { GLOBAL_MEMBER_ROLE } from '@n8n/db';
-import type { Logger } from '@n8n/backend-common';
-import type { GlobalConfig } from '@n8n/config';
 import type { InstanceSettings } from 'n8n-core';
+import { mock } from 'vitest-mock-extended';
 
-import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
-import type { WorkflowService } from '@/workflows/workflow.service';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
-import type { CredentialsService } from '@/credentials/credentials.service';
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { ActiveExecutions } from '@/active-executions';
+import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import type { CredentialsService } from '@/credentials/credentials.service';
 import type { WorkflowRunner } from '@/workflow-runner';
-import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import type { DataTableService } from '@/modules/data-table/data-table.service';
-import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
+import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import type { FolderService } from '@/services/folder.service';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { TagService } from '@/services/tag.service';
-import type { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+
 import type { InstanceAiSettingsService } from '../instance-ai-settings.service';
-import type { License } from '@/license';
+
 import type { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { EventService } from '@/events/event.service';
+import type { License } from '@/license';
+import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
+import type { DataTableService } from '@/modules/data-table/data-table.service';
+import type { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import type { NodeTypes } from '@/node-types';
 import type { RoleService } from '@/services/role.service';
+import type { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import type { Telemetry } from '@/telemetry';
 
-jest.mock('@/permissions.ee/check-access');
-jest.mock('@/workflow-execute-additional-data', () => ({
-	getBase: jest.fn().mockResolvedValue({}),
+vi.mock('@/permissions.ee/check-access');
+vi.mock('@/workflow-execute-additional-data', () => ({
+	getBase: vi.fn().mockResolvedValue({}),
 }));
-jest.mock('node:fs/promises', () => ({
-	readFile: jest.fn().mockResolvedValue('[]'),
+vi.mock('node:fs/promises', () => ({
+	readFile: vi.fn().mockResolvedValue('[]'),
 }));
 
 import { userHasScopes } from '@/permissions.ee/check-access';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+import type { WorkflowService } from '@/workflows/workflow.service';
 
-const userHasScopesMock = jest.mocked(userHasScopes);
+import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
+
+const userHasScopesMock = vi.mocked(userHasScopes);
 
 // ---------------------------------------------------------------------------
 // Setup
@@ -75,6 +92,7 @@ const credentialsFinderService = mock<CredentialsFinderService>();
 const activeExecutions = mock<ActiveExecutions>();
 const workflowRunner = mock<WorkflowRunner>();
 const loadNodesAndCredentials = mock<LoadNodesAndCredentials>();
+const nodeTypes = mock<NodeTypes>();
 const dataTableService = mock<DataTableService>();
 const dataTableRepository = mock<DataTableRepository>();
 const dynamicNodeParametersService = mock<DynamicNodeParametersService>();
@@ -90,6 +108,15 @@ const executionPersistence = mock<ExecutionPersistence>();
 const eventService = mock<EventService>();
 const roleService = mock<RoleService>();
 const telemetry = mock<Telemetry>();
+const aiBuilderTemporaryWorkflowRepository = mock<AiBuilderTemporaryWorkflowRepository>();
+
+const nodeResourceExplorerService = new NodeResourceExplorerService(
+	logger,
+	dynamicNodeParametersService,
+	credentialsFinderService,
+	projectRepository,
+	nodeTypes,
+);
 
 const service = new InstanceAiAdapterService(
 	logger,
@@ -105,10 +132,11 @@ const service = new InstanceAiAdapterService(
 	activeExecutions,
 	workflowRunner,
 	loadNodesAndCredentials,
-	mock<InstanceSettings>({ staticCacheDir: '/tmp/test-cache' }),
+	nodeTypes,
+	mock<InstanceSettings>({ staticCacheDir: '/tmp/test-cache', n8nFolder: '/tmp/test-cache' }),
 	dataTableService,
 	dataTableRepository,
-	dynamicNodeParametersService,
+	nodeResourceExplorerService,
 	folderService,
 	projectService,
 	tagService,
@@ -121,6 +149,9 @@ const service = new InstanceAiAdapterService(
 	eventService,
 	roleService,
 	telemetry,
+	aiBuilderTemporaryWorkflowRepository,
+	mock<SsrfProtectionService>(),
+	mock<OutboundHttp>(),
 );
 
 const user = mock<User>({
@@ -132,8 +163,12 @@ const user = mock<User>({
 });
 
 beforeEach(() => {
-	jest.clearAllMocks();
+	vi.clearAllMocks();
 	license.isLicensed.mockReturnValue(true);
+	sourceControlPreferencesService.getPreferences.mockReturnValue({
+		branchReadOnly: false,
+	} as never);
+	vi.spyOn(Container, 'get').mockReturnValue(executionPersistence);
 });
 
 // ---------------------------------------------------------------------------
@@ -363,5 +398,151 @@ describe('cleanupTestExecutions — scope and deletion pipeline', () => {
 		expect(result.deletedCount).toBe(0);
 		expect(executionPersistence.hardDeleteBy).not.toHaveBeenCalled();
 		expect(eventService.emit).not.toHaveBeenCalled();
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Credential listing — workflow/project scoping
+// ---------------------------------------------------------------------------
+
+describe('credentialService.list — scoping', () => {
+	it('uses getCredentialsAUserCanUseInAWorkflow when workflowId is provided', async () => {
+		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+			{ id: 'c1', name: 'Slack Shared', type: 'slackApi' },
+			{ id: 'c2', name: 'Notion', type: 'notionApi' },
+		] as never);
+
+		const ctx = service.createContext(user);
+		const result = await ctx.credentialService.list({ type: 'slackApi', workflowId: 'wf-1' });
+
+		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
+			workflowId: 'wf-1',
+		});
+		expect(credentialsService.getMany).not.toHaveBeenCalled();
+		// type filter applied post-fetch
+		expect(result).toEqual([{ id: 'c1', name: 'Slack Shared', type: 'slackApi' }]);
+	});
+
+	it('uses getCredentialsAUserCanUseInAWorkflow when projectId is provided', async () => {
+		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+			{ id: 'c1', name: 'Slack Shared', type: 'slackApi' },
+		] as never);
+
+		const ctx = service.createContext(user);
+		await ctx.credentialService.list({ projectId: 'proj-1' });
+
+		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
+			projectId: 'proj-1',
+		});
+		expect(credentialsService.getMany).not.toHaveBeenCalled();
+	});
+
+	it('falls back to getMany (broad) when neither workflowId nor projectId is provided', async () => {
+		credentialsService.getMany.mockResolvedValue([
+			{ id: 'c1', name: 'Slack', type: 'slackApi' },
+		] as never);
+
+		const ctx = service.createContext(user);
+		await ctx.credentialService.list({ type: 'slackApi' });
+
+		expect(credentialsService.getMany).toHaveBeenCalledWith(user, {
+			listQueryOptions: { filter: { type: 'slackApi' } },
+			includeGlobal: true,
+		});
+		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).not.toHaveBeenCalled();
+	});
+
+	it('scopes to the bound project and ignores caller-supplied workflowId/projectId', async () => {
+		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+			{ id: 'c1', name: 'Bound Project Cred', type: 'slackApi' },
+		] as never);
+
+		const ctx = service.createContext(user, { projectId: 'bound-project' });
+		await ctx.credentialService.list({ workflowId: 'wf-other', projectId: 'project-other' });
+
+		// A bound thread can only ever see its own project's usable credentials —
+		// the LLM cannot broaden the list by passing another workflow or project.
+		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledTimes(1);
+		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
+			projectId: 'bound-project',
+		});
+		expect(credentialsService.getMany).not.toHaveBeenCalled();
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Credential listing — eval credential-view allowlist
+// ---------------------------------------------------------------------------
+
+describe('credentialService.list — eval allowlist', () => {
+	it('filters the listed credentials to the allowlisted IDs', async () => {
+		credentialsService.getMany.mockResolvedValue([
+			{ id: 'c1', name: 'Slack', type: 'slackApi' },
+			{ id: 'c2', name: 'Notion', type: 'notionApi' },
+			{ id: 'c3', name: 'Slack #2', type: 'slackApi' },
+		] as never);
+
+		const ctx = service.createContext(user, { credentialIdAllowlist: ['c1', 'c3'] });
+		const result = await ctx.credentialService.list();
+
+		expect(result).toEqual([
+			{ id: 'c1', name: 'Slack', type: 'slackApi' },
+			{ id: 'c3', name: 'Slack #2', type: 'slackApi' },
+		]);
+	});
+
+	it('returns an empty list without querying the credentials service when the allowlist is empty', async () => {
+		const ctx = service.createContext(user, { credentialIdAllowlist: [] });
+		const result = await ctx.credentialService.list();
+
+		expect(result).toEqual([]);
+		expect(credentialsService.getMany).not.toHaveBeenCalled();
+		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).not.toHaveBeenCalled();
+	});
+
+	it('does not filter the list when no allowlist is set', async () => {
+		const all = [
+			{ id: 'c1', name: 'Slack', type: 'slackApi' },
+			{ id: 'c2', name: 'Notion', type: 'notionApi' },
+		];
+		credentialsService.getMany.mockResolvedValue(all as never);
+
+		const ctx = service.createContext(user);
+		const result = await ctx.credentialService.list();
+
+		expect(result).toEqual(all);
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Credential adapter — credential ownership revalidation
+// ---------------------------------------------------------------------------
+
+describe('credentialService.get — credential ownership revalidation', () => {
+	it('forwards the credential ID to credentialsService.getOne with the bound user', async () => {
+		credentialsService.getOne.mockResolvedValue({
+			id: 'cred-mine',
+			name: 'My Slack',
+			type: 'slackApi',
+		} as never);
+
+		const ctx = service.createContext(user);
+		const result = await ctx.credentialService.get('cred-mine');
+
+		expect(credentialsService.getOne).toHaveBeenCalledWith(user, 'cred-mine', false);
+		expect(result).toEqual({ id: 'cred-mine', name: 'My Slack', type: 'slackApi' });
+	});
+
+	it('propagates the NotFoundError when the user cannot access the credential', async () => {
+		credentialsService.getOne.mockRejectedValue(
+			new Error('Credential with ID "cred-other" could not be found.'),
+		);
+
+		const ctx = service.createContext(user);
+
+		await expect(ctx.credentialService.get('cred-other')).rejects.toThrow(
+			'Credential with ID "cred-other" could not be found.',
+		);
+		expect(credentialsService.getOne).toHaveBeenCalledWith(user, 'cred-other', false);
 	});
 });

@@ -10,7 +10,7 @@ import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import type { MockInstance } from 'vitest';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import type { ResourceMapperTypeOptions } from 'n8n-workflow';
+import type { ResourceMapperTypeOptions, ResourceMapperValue } from 'n8n-workflow';
 import { createTestNode, createTestNodeProperties } from '@/__tests__/mocks';
 import { createTestingPinia } from '@pinia/testing';
 import {
@@ -394,6 +394,52 @@ describe('ResourceMapper.vue', () => {
 		await waitAllPromises();
 
 		expect(getByTestId('matching-column-select').querySelector('input')).toHaveValue('name');
+	});
+
+	it('ADO-5197: deletion must not mutate props.node.parameters in place', async () => {
+		// The store's change-detection (updateNodeAtIndex isEqual) compares the new
+		// parameters against the store's current parameters. If ResourceMapper shares
+		// nested refs with props.node.parameters (the store object), in-place mutations
+		// from deleteField propagate into the store BEFORE the explicit emit→save path
+		// runs — making isEqual see no change and silently skipping the dirty/save
+		// trigger. Result: the deletion is never persisted.
+		const originalValue = { 'First name': 'a', 'Last name': 'b', Username: 'c', Address: 'd' };
+		const originalSchema = UPDATED_SCHEMA.map((f) => ({ ...f }));
+		const node = createTestNode({
+			parameters: {
+				columns: {
+					mappingMode: 'defineBelow',
+					value: { ...originalValue },
+					schema: originalSchema,
+				},
+			},
+		});
+
+		const { getByTestId } = renderComponent(
+			{
+				props: {
+					node,
+					parameter: createTestNodeProperties({
+						name: 'columns',
+						typeOptions: {
+							resourceMapper: {
+								mode: 'add',
+							} as ResourceMapperTypeOptions,
+						},
+					}),
+				},
+			},
+			{ merge: true },
+		);
+		await waitAllPromises();
+
+		await userEvent.click(getByTestId('remove-field-button-Username'));
+		await waitAllPromises();
+
+		const columns = node.parameters.columns as ResourceMapperValue;
+		expect(columns.value).toEqual(originalValue);
+		const usernameSchema = (columns.schema ?? []).find((f) => f.id === 'Username');
+		expect(usernameSchema?.removed).not.toBe(true);
 	});
 
 	it('should set default value for the fields if provided', async () => {

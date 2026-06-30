@@ -8,7 +8,15 @@ import {
 	NodeConnectionTypes,
 } from 'n8n-workflow';
 
-import { getPath, microsoftApiRequest, microsoftApiRequestAllItemsDelta } from './GenericFunctions';
+import { targetDescription } from './descriptions/TargetDescription';
+import {
+	driveEndpoint,
+	getOneDriveCredentialType,
+	getPath,
+	microsoftApiRequest,
+	microsoftApiRequestAllItemsDelta,
+	resolveDriveScopeRoot,
+} from './GenericFunctions';
 import { triggerDescription } from './TriggerDescription';
 
 export class MicrosoftOneDriveTrigger implements INodeType {
@@ -27,12 +35,63 @@ export class MicrosoftOneDriveTrigger implements INodeType {
 			{
 				name: 'microsoftOneDriveOAuth2Api',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['microsoftOneDriveOAuth2Api'],
+					},
+				},
+			},
+			{
+				name: 'microsoftOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['microsoftOAuth2Api'],
+					},
+				},
+			},
+			{
+				name: 'microsoftEntraServicePrincipalApi',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['microsoftEntraServicePrincipalApi'],
+					},
+				},
 			},
 		],
 		polling: true,
 		inputs: [],
 		outputs: [NodeConnectionTypes.Main],
-		properties: [...triggerDescription],
+		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'OneDrive OAuth2',
+						value: 'microsoftOneDriveOAuth2Api',
+					},
+					{
+						name: 'Microsoft OAuth2 (Graph)',
+						value: 'microsoftOAuth2Api',
+						description:
+							'Generic Microsoft Graph credential. Enable the scopes this node needs (e.g. Files.ReadWrite.All) on the credential.',
+					},
+					{
+						name: 'Microsoft Entra Service Principal (App-Only)',
+						value: 'microsoftEntraServicePrincipalApi',
+						description:
+							'App-only access via a Microsoft Entra app registration. Choose which user or drive to watch under "Access As".',
+					},
+				],
+				default: 'microsoftOneDriveOAuth2Api',
+			},
+			...targetDescription,
+			...triggerDescription,
+		],
 	};
 
 	methods = {
@@ -43,15 +102,25 @@ export class MicrosoftOneDriveTrigger implements INodeType {
 		const workflowData = this.getWorkflowStaticData('node');
 		let responseData: IDataObject[];
 
-		const credentials = await this.getCredentials('microsoftOneDriveOAuth2Api');
+		const credentials = await this.getCredentials(getOneDriveCredentialType.call(this));
 		const baseUrl = (
 			typeof credentials.graphApiBaseUrl === 'string' && credentials.graphApiBaseUrl !== ''
 				? credentials.graphApiBaseUrl
 				: 'https://graph.microsoft.com'
 		).replace(/\/+$/, '');
 
-		const lastLink: string =
-			(workflowData.LastLink as string) || `${baseUrl}/v1.0/me/drive/root/delta?token=latest`;
+		// App-only Graph has no `/me`, so the delta feed is rooted at the chosen
+		// user/drive. `undefined` for OAuth2 → fall back to `/me/drive`.
+		const driveScopeRoot = resolveDriveScopeRoot.call(this, true);
+		const deltaRoot = `${baseUrl}/v1.0${driveScopeRoot ? driveEndpoint(driveScopeRoot) : '/me/drive'}/root/delta`;
+
+		// Reset a persisted delta link that belongs to a different scope (auth switched,
+		// or the target id changed) so polling stays on the currently-configured drive.
+		const persistedLastLink = workflowData.LastLink as string | undefined;
+		const hasValidScope = persistedLastLink?.startsWith(deltaRoot) ?? false;
+		const lastLink: string = hasValidScope
+			? (persistedLastLink as string)
+			: `${deltaRoot}?token=latest`;
 
 		const now = DateTime.now().toUTC();
 		const start = DateTime.fromISO(workflowData.lastTimeChecked as string) || now;
@@ -71,16 +140,8 @@ export class MicrosoftOneDriveTrigger implements INodeType {
 		}
 		try {
 			if (this.getMode() === 'manual') {
-				responseData = (
-					await microsoftApiRequest.call(
-						this,
-						'GET',
-						'',
-						{},
-						{},
-						`${baseUrl}/v1.0/me/drive/root/delta`,
-					)
-				).value as IDataObject[];
+				responseData = (await microsoftApiRequest.call(this, 'GET', '', {}, {}, deltaRoot))
+					.value as IDataObject[];
 			} else {
 				const response: IDataObject = (await microsoftApiRequestAllItemsDelta.call(
 					this,

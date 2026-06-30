@@ -6,10 +6,10 @@ import {
 	type IRun,
 } from 'n8n-workflow';
 
-import { McpExecutionTimeoutError } from '../mcp.errors';
-
 import type { ActiveExecutions } from '@/active-executions';
 import type { McpService } from '@/modules/mcp/mcp.service';
+
+import { McpExecutionTimeoutError } from '../mcp.errors';
 
 export const WORKFLOW_EXECUTION_TIMEOUT_MS = 5 * Time.minutes.toMilliseconds;
 

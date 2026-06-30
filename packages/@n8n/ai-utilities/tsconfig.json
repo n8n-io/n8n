@@ -4,14 +4,13 @@
 		"@n8n/typescript-config/tsconfig.backend.json"
 	],
 	"compilerOptions": {
-		"baseUrl": ".",
 		"paths": {
 			"src/*": ["./src/*"],
 			"src": ["./src"]
 		},
-		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
 		"emitDecoratorMetadata": true,
-		"experimentalDecorators": true
+		"experimentalDecorators": true,
+		"types": ["node", "vitest/globals"]
 	},
 	"include": ["src/**/*.ts", "test/**/*.ts", "integration-tests/**/*.ts"]
 }

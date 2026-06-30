@@ -19,4 +19,16 @@ export class InstanceAiRunSnapshot extends WithTimestamps {
 
 	@Column({ type: 'text' })
 	tree: string;
+
+	@Column({ type: 'varchar', length: 64, nullable: true })
+	traceId: string | null;
+
+	@Column({ type: 'varchar', length: 64, nullable: true })
+	spanId: string | null;
+
+	@Column({ type: 'varchar', length: 36, nullable: true })
+	langsmithRunId: string | null;
+
+	@Column({ type: 'varchar', length: 36, nullable: true })
+	langsmithTraceId: string | null;
 }

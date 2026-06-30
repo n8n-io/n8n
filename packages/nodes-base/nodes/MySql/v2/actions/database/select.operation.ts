@@ -4,6 +4,7 @@ import type {
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
@@ -13,6 +14,7 @@ import {
 	addWhereClauses,
 	escapeSqlIdentifier,
 	getWhereClauses,
+	prepareErrorItem,
 } from '../../helpers/utils';
 import {
 	optionsCollection,
@@ -78,54 +80,67 @@ export async function execute(
 	const queries: QueryWithValues[] = [];
 
 	for (let i = 0; i < inputItems.length; i++) {
-		const table = this.getNodeParameter('table', i, undefined, {
-			extractValue: true,
-		}) as string;
+		try {
+			const table = this.getNodeParameter('table', i, undefined, {
+				extractValue: true,
+			}) as string;
 
-		const outputColumns = this.getNodeParameter('options.outputColumns', i, ['*']) as string[];
-		const selectDistinct = this.getNodeParameter('options.selectDistinct', i, false) as boolean;
+			const outputColumns = this.getNodeParameter('options.outputColumns', i, ['*']) as string[];
+			const selectDistinct = this.getNodeParameter('options.selectDistinct', i, false) as boolean;
 
-		let query = '';
-		const SELECT = selectDistinct ? 'SELECT DISTINCT' : 'SELECT';
+			let query = '';
+			const SELECT = selectDistinct ? 'SELECT DISTINCT' : 'SELECT';
 
-		if (outputColumns.includes('*')) {
-			query = `${SELECT} * FROM ${escapeSqlIdentifier(table)}`;
-		} else {
-			const escapedColumns = outputColumns.map(escapeSqlIdentifier).join(', ');
-			query = `${SELECT} ${escapedColumns} FROM ${escapeSqlIdentifier(table)}`;
+			if (outputColumns.includes('*')) {
+				query = `${SELECT} * FROM ${escapeSqlIdentifier(table)}`;
+			} else {
+				const escapedColumns = outputColumns.map(escapeSqlIdentifier).join(', ');
+				query = `${SELECT} ${escapedColumns} FROM ${escapeSqlIdentifier(table)}`;
+			}
+
+			let values: QueryValues = [];
+
+			const whereClauses = getWhereClauses(this, i);
+
+			const combineConditions = this.getNodeParameter('combineConditions', i, 'AND') as string;
+
+			[query, values] = addWhereClauses(
+				this.getNode(),
+				i,
+				query,
+				whereClauses,
+				values,
+				combineConditions,
+			);
+
+			const sortRules =
+				((this.getNodeParameter('sort', i, []) as IDataObject).values as SortRule[]) || [];
+
+			[query, values] = addSortRules(query, sortRules, values);
+
+			const returnAll = this.getNodeParameter('returnAll', i, false);
+			if (!returnAll) {
+				const limit = this.getNodeParameter('limit', i, 50);
+				query += ' LIMIT ?';
+				values.push(limit);
+			}
+
+			queries.push({ query, values, itemIndex: i });
+		} catch (error) {
+			if (!this.continueOnFail()) throw error;
+
+			const nodeError =
+				error instanceof NodeOperationError
+					? error
+					: new NodeOperationError(this.getNode(), error as Error, { itemIndex: i });
+
+			returnData.push(prepareErrorItem(inputItems[i].json, nodeError, i));
 		}
-
-		let values: QueryValues = [];
-
-		const whereClauses = getWhereClauses(this, i);
-
-		const combineConditions = this.getNodeParameter('combineConditions', i, 'AND') as string;
-
-		[query, values] = addWhereClauses(
-			this.getNode(),
-			i,
-			query,
-			whereClauses,
-			values,
-			combineConditions,
-		);
-
-		const sortRules =
-			((this.getNodeParameter('sort', i, []) as IDataObject).values as SortRule[]) || [];
-
-		[query, values] = addSortRules(query, sortRules, values);
-
-		const returnAll = this.getNodeParameter('returnAll', i, false);
-		if (!returnAll) {
-			const limit = this.getNodeParameter('limit', i, 50);
-			query += ' LIMIT ?';
-			values.push(limit);
-		}
-
-		queries.push({ query, values });
 	}
 
-	returnData = await runQueries(queries);
+	if (queries.length > 0) {
+		returnData = returnData.concat(await runQueries(queries));
+	}
 
 	return returnData;
 }

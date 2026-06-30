@@ -124,17 +124,134 @@ describe('POST /role-mapping-rule', () => {
 		expect(stored!.projects).toHaveLength(0);
 	});
 
-	it('should return 409 when type and order match an existing rule', async () => {
+	it('should shift existing rules down when a new rule is created at an occupied order', async () => {
+		const first = await ownerAgent
+			.post('/role-mapping-rule')
+			.send(validInstancePayload)
+			.expect(200);
+
+		const second = await ownerAgent
+			.post('/role-mapping-rule')
+			.send({
+				...validInstancePayload,
+				expression: 'claims.other === true',
+				order: 0,
+			})
+			.expect(200);
+
+		expect(second.body.data.order).toBe(0);
+
+		const repo = Container.get(RoleMappingRuleRepository);
+		const all = await repo.find({ where: { type: 'instance' }, order: { order: 'ASC' } });
+		expect(all.map((r) => r.id)).toEqual([second.body.data.id, first.body.data.id]);
+		expect(all.map((r) => r.order)).toEqual([0, 1]);
+	});
+
+	it('should insert at position 0 and shift all existing rules down', async () => {
+		const first = await ownerAgent
+			.post('/role-mapping-rule')
+			.send(validInstancePayload)
+			.expect(200);
+		const second = await ownerAgent
+			.post('/role-mapping-rule')
+			.send({ ...validInstancePayload, expression: 'claims.b', order: 1 })
+			.expect(200);
+
+		const inserted = await ownerAgent
+			.post('/role-mapping-rule')
+			.send({ ...validInstancePayload, expression: 'claims.new-head', order: 0 })
+			.expect(200);
+
+		expect(inserted.body.data.order).toBe(0);
+
+		const list = await ownerAgent.get('/role-mapping-rule').expect(200);
+		expect(list.body.data.items.map((r: { id: string }) => r.id)).toEqual([
+			inserted.body.data.id,
+			first.body.data.id,
+			second.body.data.id,
+		]);
+		expect(list.body.data.items.map((r: { order: number }) => r.order)).toEqual([0, 1, 2]);
+	});
+
+	it('should append when order is omitted', async () => {
+		await ownerAgent.post('/role-mapping-rule').send(validInstancePayload).expect(200);
+		await ownerAgent
+			.post('/role-mapping-rule')
+			.send({ ...validInstancePayload, expression: 'claims.b', order: 1 })
+			.expect(200);
+
+		const { role, type } = validInstancePayload;
+		const appended = await ownerAgent
+			.post('/role-mapping-rule')
+			.send({ expression: 'claims.appended', role, type })
+			.expect(200);
+
+		expect(appended.body.data.order).toBe(2);
+	});
+
+	it('should clamp order to list length when supplied value is too high', async () => {
 		await ownerAgent.post('/role-mapping-rule').send(validInstancePayload).expect(200);
 
-		const response = await ownerAgent.post('/role-mapping-rule').send({
-			...validInstancePayload,
-			expression: 'claims.other === true',
-		});
+		const tooHigh = await ownerAgent
+			.post('/role-mapping-rule')
+			.send({ ...validInstancePayload, expression: 'claims.b', order: 999 })
+			.expect(200);
 
-		expect(response.status).toBe(409);
-		expect(response.body.message).toContain('already exists');
-		expect(response.body.message).toContain('order');
+		expect(tooHigh.body.data.order).toBe(1);
+	});
+
+	it('should insert at a middle position and shift subsequent rules down', async () => {
+		const first = await ownerAgent
+			.post('/role-mapping-rule')
+			.send({ ...validInstancePayload, expression: 'claims.a', order: 0 })
+			.expect(200);
+		const second = await ownerAgent
+			.post('/role-mapping-rule')
+			.send({ ...validInstancePayload, expression: 'claims.b', order: 1 })
+			.expect(200);
+		const third = await ownerAgent
+			.post('/role-mapping-rule')
+			.send({ ...validInstancePayload, expression: 'claims.c', order: 2 })
+			.expect(200);
+
+		const inserted = await ownerAgent
+			.post('/role-mapping-rule')
+			.send({ ...validInstancePayload, expression: 'claims.middle', order: 1 })
+			.expect(200);
+
+		expect(inserted.body.data.order).toBe(1);
+
+		const list = await ownerAgent.get('/role-mapping-rule').expect(200);
+		expect(list.body.data.items.map((r: { id: string }) => r.id)).toEqual([
+			first.body.data.id,
+			inserted.body.data.id,
+			second.body.data.id,
+			third.body.data.id,
+		]);
+		expect(list.body.data.items.map((r: { order: number }) => r.order)).toEqual([0, 1, 2, 3]);
+	});
+
+	it('should allow instance and project rules to share the same order value', async () => {
+		const teamProject = await createTeamProject(undefined, owner);
+
+		await ownerAgent
+			.post('/role-mapping-rule')
+			.send({ ...validInstancePayload, order: 0 })
+			.expect(200);
+
+		const projectRule = await ownerAgent
+			.post('/role-mapping-rule')
+			.send({
+				expression: 'claims.project',
+				role: 'project:editor',
+				type: 'project',
+				order: 0,
+				projectIds: [teamProject.id],
+			})
+			.expect(200);
+
+		expect(projectRule.body.data.order).toBe(0);
+		expect(projectRule.body.data.type).toBe('project');
 	});
 
 	it('should normalize order when created with an abnormally high order value', async () => {

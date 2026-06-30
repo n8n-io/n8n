@@ -1,5 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import type { Cipher } from 'n8n-core';
+import type { Mocked } from 'vitest';
 
 import { testCredentialResolverContract, testHelpers } from './resolver-contract-tests';
 import type { SlackSignatureIdentifier } from '../identifiers/slack-signature-identifier';
@@ -7,10 +8,10 @@ import { SlackCredentialResolver } from '../slack-credential-resolver';
 import type { DynamicCredentialEntryStorage } from '../storage/dynamic-credential-entry-storage';
 
 describe('SlackCredentialResolver', () => {
-	let mockLogger: jest.Mocked<Logger>;
-	let mockIdentifier: jest.Mocked<SlackSignatureIdentifier>;
-	let mockStorage: jest.Mocked<DynamicCredentialEntryStorage>;
-	let mockCipher: jest.Mocked<Cipher>;
+	let mockLogger: Mocked<Logger>;
+	let mockIdentifier: Mocked<SlackSignatureIdentifier>;
+	let mockStorage: Mocked<DynamicCredentialEntryStorage>;
+	let mockCipher: Mocked<Cipher>;
 
 	const validOptions = {
 		signingSecret: 'test-slack-signing-secret-abc123',
@@ -19,29 +20,31 @@ describe('SlackCredentialResolver', () => {
 
 	beforeEach(() => {
 		mockLogger = {
-			debug: jest.fn(),
-			info: jest.fn(),
-			warn: jest.fn(),
-			error: jest.fn(),
-		} as unknown as jest.Mocked<Logger>;
+			debug: vi.fn(),
+			info: vi.fn(),
+			warn: vi.fn(),
+			error: vi.fn(),
+		} as unknown as Mocked<Logger>;
 
 		mockIdentifier = {
-			resolve: jest.fn(),
-			resolveKey: jest.fn(),
-			validateOptions: jest.fn(),
-		} as unknown as jest.Mocked<SlackSignatureIdentifier>;
+			resolve: vi.fn(),
+			resolveKey: vi.fn(),
+			validateOptions: vi.fn(),
+		} as unknown as Mocked<SlackSignatureIdentifier>;
 
 		mockStorage = {
-			getCredentialData: jest.fn(),
-			setCredentialData: jest.fn(),
-			deleteCredentialData: jest.fn(),
-			deleteAllCredentialData: jest.fn(),
-		} as unknown as jest.Mocked<DynamicCredentialEntryStorage>;
+			getCredentialData: vi.fn(),
+			setCredentialData: vi.fn(),
+			deleteCredentialData: vi.fn(),
+			deleteAllCredentialData: vi.fn(),
+		} as unknown as Mocked<DynamicCredentialEntryStorage>;
 
 		mockCipher = {
-			encrypt: jest.fn(),
-			decrypt: jest.fn(),
-		} as unknown as jest.Mocked<Cipher>;
+			encrypt: vi.fn(),
+			decrypt: vi.fn(),
+			encryptV2: vi.fn(),
+			decryptV2: vi.fn(),
+		} as unknown as Mocked<Cipher>;
 	});
 
 	// Run the standard contract tests
@@ -78,8 +81,8 @@ describe('SlackCredentialResolver', () => {
 				},
 			);
 
-			mockCipher.encrypt.mockImplementation((data) => JSON.stringify(data));
-			mockCipher.decrypt.mockImplementation((data) => data);
+			mockCipher.encryptV2.mockImplementation(async (data) => JSON.stringify(data));
+			mockCipher.decryptV2.mockImplementation(async (data) => data);
 
 			return new SlackCredentialResolver(mockLogger, mockIdentifier, mockStorage, mockCipher);
 		},
@@ -118,7 +121,7 @@ describe('SlackCredentialResolver', () => {
 				const handle = testHelpers.createHandle(validOptions);
 
 				mockStorage.getCredentialData.mockResolvedValue('encrypted-credential-data');
-				mockCipher.decrypt.mockReturnValue('{"apiKey":"decrypted-key"}');
+				mockCipher.decryptV2.mockResolvedValue('{"apiKey":"decrypted-key"}');
 
 				await resolver.getSecret(credentialId, context, handle);
 
@@ -131,11 +134,11 @@ describe('SlackCredentialResolver', () => {
 				const handle = testHelpers.createHandle(validOptions);
 
 				mockStorage.getCredentialData.mockResolvedValue('encrypted-data-from-db');
-				mockCipher.decrypt.mockReturnValue('{"apiKey":"secret-key-123"}');
+				mockCipher.decryptV2.mockResolvedValue('{"apiKey":"secret-key-123"}');
 
 				const result = await resolver.getSecret(credentialId, context, handle);
 
-				expect(mockCipher.decrypt).toHaveBeenCalledWith('encrypted-data-from-db');
+				expect(mockCipher.decryptV2).toHaveBeenCalledWith('encrypted-data-from-db');
 				expect(result).toEqual({ apiKey: 'secret-key-123' });
 			});
 
@@ -145,7 +148,7 @@ describe('SlackCredentialResolver', () => {
 				const handle = testHelpers.createHandle(validOptions);
 
 				mockStorage.getCredentialData.mockResolvedValue('encrypted-data');
-				mockCipher.decrypt.mockReturnValue('invalid-json{{{');
+				mockCipher.decryptV2.mockResolvedValue('invalid-json{{{');
 
 				await expect(resolver.getSecret(credentialId, context, handle)).rejects.toThrow();
 				expect(mockLogger.error).toHaveBeenCalledWith('Failed to decrypt or parse credential data');
@@ -157,7 +160,7 @@ describe('SlackCredentialResolver', () => {
 				const handle = testHelpers.createHandle(validOptions);
 
 				mockStorage.getCredentialData.mockResolvedValue('corrupted-encrypted-data');
-				mockCipher.decrypt.mockImplementation(() => {
+				mockCipher.decryptV2.mockImplementation(async () => {
 					throw new Error('ERR_OSSL_BAD_DECRYPT');
 				});
 
@@ -173,11 +176,11 @@ describe('SlackCredentialResolver', () => {
 				const data = testHelpers.createCredentialData({ apiKey: 'new-key' });
 				const handle = testHelpers.createHandle(validOptions);
 
-				mockCipher.encrypt.mockReturnValue('encrypted-new-data');
+				mockCipher.encryptV2.mockResolvedValue('encrypted-new-data');
 
 				await resolver.setSecret(credentialId, context, data, handle);
 
-				expect(mockCipher.encrypt).toHaveBeenCalledWith(data);
+				expect(mockCipher.encryptV2).toHaveBeenCalledWith(data);
 				expect(mockStorage.setCredentialData).toHaveBeenCalledWith(
 					credentialId,
 					'U12345',
@@ -251,7 +254,7 @@ describe('SlackCredentialResolver', () => {
 				const data1 = testHelpers.createCredentialData({ apiKey: 'key-user1' });
 				const data2 = testHelpers.createCredentialData({ apiKey: 'key-user2' });
 
-				mockCipher.encrypt.mockReturnValue('encrypted');
+				mockCipher.encryptV2.mockResolvedValue('encrypted');
 
 				await resolver.setSecret(credentialId, testHelpers.createContext('U11111'), data1, handle);
 				await resolver.setSecret(credentialId, testHelpers.createContext('U22222'), data2, handle);

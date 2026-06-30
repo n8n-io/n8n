@@ -2,8 +2,8 @@ import type { InstanceRegistration } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import type { Redis as SingleNodeClient } from 'ioredis';
-import { mock } from 'jest-mock-extended';
 import { jsonStringify } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import type { RedisClientService } from '@/services/redis-client.service';
 
@@ -42,7 +42,7 @@ describe('RedisInstanceStorage', () => {
 	let storage: RedisInstanceStorage;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		storage = new RedisInstanceStorage(logger, globalConfig, redisClientService);
 	});
 
@@ -75,16 +75,11 @@ describe('RedisInstanceStorage', () => {
 			);
 		});
 
-		it('should log warning on error', async () => {
+		it('should propagate error on failure', async () => {
 			client.eval.mockRejectedValueOnce(new Error('connection lost'));
 			const registration = createRegistration();
 
-			await storage.register(registration);
-
-			expect(logger.scoped(['instance-registry', 'redis']).warn).toHaveBeenCalledWith(
-				'Failed to register instance',
-				expect.objectContaining({ instanceKey: registration.instanceKey }),
-			);
+			await expect(storage.register(registration)).rejects.toThrow('connection lost');
 		});
 	});
 

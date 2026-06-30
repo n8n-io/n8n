@@ -53,7 +53,7 @@ n8n is [fair-code](https://faircode.io) distributed under the [Sustainable Use L
 - **Self-Hostable**: Deploy anywhere
 - **Extensible**: Add your own nodes and functionality
 
-[Enterprise licenses](mailto:license@n8n.io) available for additional features and support.
+[Enterprise Licenses](mailto:license@n8n.io) available for additional features and support.
 
 Additional information about the license model can be found in the [docs](https://docs.n8n.io/sustainable-use-license/).
 

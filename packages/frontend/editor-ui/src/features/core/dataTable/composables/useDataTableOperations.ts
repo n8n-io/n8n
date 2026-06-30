@@ -21,6 +21,7 @@ import { MODAL_CONFIRM } from '@/app/constants';
 import { isDataTableValue, isAGGridCellType } from '@/features/core/dataTable/typeGuards';
 import { useDataTableTypes } from '@/features/core/dataTable/composables/useDataTableTypes';
 import { areValuesEqual } from '@/features/core/dataTable/utils/typeUtils';
+import { isUnsafeNumberValue } from '@/features/core/dataTable/utils/columnUtils';
 import { ResponseError } from '@n8n/rest-api-client';
 
 export type UseDataTableOperationsParams = {
@@ -303,6 +304,13 @@ export const useDataTableOperations = ({
 				column_id: colDef.colId,
 				column_type: colDef.cellDataType,
 			});
+			if (isUnsafeNumberValue(value)) {
+				toast.showMessage({
+					title: i18n.baseText('dataTable.updateRow.numberPrecisionWarning.title'),
+					message: i18n.baseText('dataTable.updateRow.numberPrecisionWarning.message'),
+					type: 'warning',
+				});
+			}
 		} catch (error) {
 			// Revert cell to original value if the update fails
 			const validOldValue = isDataTableValue(oldValue) ? oldValue : null;

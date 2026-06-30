@@ -1,5 +1,5 @@
 import { isSerializedBuffer, toBuffer } from 'n8n-core';
-import { ApplicationError, ensureError, randomInt } from 'n8n-workflow';
+import { ensureError, OperationalError, randomInt, UnexpectedError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { EventEmitter } from 'node:events';
 import { type MessageEvent, WebSocket } from 'ws';
@@ -86,6 +86,16 @@ export abstract class TaskRunner extends EventEmitter {
 
 	private isShuttingDown = false;
 
+	/**
+	 * Whether the runner has committed to draining and should reject new tasks. Set on
+	 * `broker:drain` or when the grace period elapses — not when shutdown merely begins,
+	 * so the runner still accepts tasks during the grace period.
+	 */
+	private isDraining = false;
+
+	/** Resolver for the grace-period wait in {@link stop}, called once the broker drains. */
+	private brokerDrainResolve: (() => void) | undefined;
+
 	private idleTimer: NodeJS.Timeout | undefined;
 
 	/** How long (in seconds) a task is allowed to take for completion, else the task will be aborted. */
@@ -93,6 +103,9 @@ export abstract class TaskRunner extends EventEmitter {
 
 	/** How long (in seconds) a runner may be idle for before exit. */
 	private readonly idleTimeout: number;
+
+	/** How long (in seconds) to keep serving tasks on shutdown while waiting for the broker to drain. */
+	private readonly gracefulShutdownTimeout: number;
 
 	constructor(opts: TaskRunnerOpts) {
 		super();
@@ -102,6 +115,7 @@ export abstract class TaskRunner extends EventEmitter {
 		this.maxConcurrency = opts.maxConcurrency;
 		this.taskTimeout = opts.taskTimeout;
 		this.idleTimeout = opts.idleTimeout;
+		this.gracefulShutdownTimeout = opts.gracefulShutdownTimeout;
 
 		const { host: taskBrokerHost } = new URL(opts.taskBrokerUri);
 
@@ -156,10 +170,20 @@ export abstract class TaskRunner extends EventEmitter {
 	private onConnectionClose = () => {
 		this.stopTaskOffers();
 
-		if (!this.isShuttingDown) {
-			console.error('Connection to task broker closed unexpectedly, exiting...');
-			process.exit(1);
+		if (this.isShuttingDown) {
+			// stop() is orchestrating shutdown; release its grace wait so it finishes
+			// promptly (no `broker:drain` is coming on a closed connection).
+			this.releaseBrokerDrainWait();
+			return;
 		}
+
+		if (this.isDraining) {
+			// Broker drained us then closed the connection — expected shutdown, so exit cleanly.
+			process.exit(0);
+		}
+
+		console.error('Connection to task broker closed unexpectedly, exiting...');
+		process.exit(1);
 	};
 
 	private stopTaskOffers = () => {
@@ -249,7 +273,7 @@ export abstract class TaskRunner extends EventEmitter {
 				this.processNodeTypesResponse(message.requestId, message.nodeTypes);
 				break;
 			case 'broker:drain':
-				this.stopTaskOffers();
+				this.onBrokerDrain();
 				break;
 		}
 	}
@@ -282,6 +306,15 @@ export abstract class TaskRunner extends EventEmitter {
 	}
 
 	offerAccepted(offerId: string, taskId: string) {
+		if (this.isDraining) {
+			this.send({
+				type: 'runner:taskrejected',
+				taskId,
+				reason: 'Runner is shutting down',
+			});
+			return;
+		}
+
 		if (!this.hasOpenTaskSlots()) {
 			this.openOffers.delete(offerId);
 			this.send({
@@ -411,7 +444,7 @@ export abstract class TaskRunner extends EventEmitter {
 	}
 
 	async executeTask(_taskParams: TaskParams, _signal: AbortSignal): Promise<TaskResultData> {
-		throw new ApplicationError('Unimplemented');
+		throw new UnexpectedError('Unimplemented');
 	}
 
 	async requestNodeTypes<T = unknown>(
@@ -516,14 +549,71 @@ export abstract class TaskRunner extends EventEmitter {
 		}
 	}
 
-	/** Close the connection gracefully and wait until has been closed */
-	async stop() {
+	/** Handles `broker:drain`: commit to draining and release the grace-period wait in {@link stop}. */
+	private onBrokerDrain() {
+		this.isDraining = true;
+		this.stopTaskOffers();
+		this.releaseBrokerDrainWait();
+	}
+
+	/** Release the grace-period wait in {@link stop}, if one is pending. */
+	private releaseBrokerDrainWait() {
+		if (this.brokerDrainResolve) {
+			this.brokerDrainResolve();
+			this.brokerDrainResolve = undefined;
+		}
+	}
+
+	/**
+	 * Block until the broker signals draining (`broker:drain`), the connection closes,
+	 * or the grace period elapses. See {@link stop} for why the runner defers.
+	 */
+	private async waitForBrokerDrain(timeoutMs: number) {
+		if (this.isDraining || timeoutMs <= 0) return;
+
+		await new Promise<void>((resolve) => {
+			const timer = setTimeout(resolve, timeoutMs);
+			timer.unref?.();
+			this.brokerDrainResolve = () => {
+				clearTimeout(timer);
+				resolve();
+			};
+		});
+		this.brokerDrainResolve = undefined;
+	}
+
+	/**
+	 * Gracefully stop, bounded by the grace period: keep offering and serving until the
+	 * broker drains or the deadline, then commit to draining, finish any in-flight task
+	 * within the remaining budget, and close.
+	 *
+	 * @param deferToBrokerDrain When `false`, skip the keep-offering wait and drain
+	 * immediately (e.g. an idle-timeout exit, where nothing is waiting on this runner).
+	 */
+	async stop({ deferToBrokerDrain = true }: { deferToBrokerDrain?: boolean } = {}) {
 		this.isShuttingDown = true;
 		this.clearIdleTimer();
 
-		this.stopTaskOffers();
+		const graceMs = Math.max(0, this.gracefulShutdownTimeout) * 1000;
+		const deadline = Date.now() + graceMs;
 
-		await this.waitUntilAllTasksAreDone();
+		if (deferToBrokerDrain) {
+			await this.waitForBrokerDrain(graceMs);
+		}
+
+		// Commit to draining, then finish any in-flight task within the remaining budget
+		// (tasks accepted earlier have been running through the keep-offering phase).
+		this.isDraining = true;
+		this.stopTaskOffers();
+		this.openOffers.clear();
+
+		try {
+			await this.waitUntilAllTasksAreDone(Math.max(0, deadline - Date.now()));
+		} catch (error) {
+			// Task overran the grace period: abandon it (the broker will fail it) but
+			// still close cleanly below so no dangling runner is left behind.
+			console.error(ensureError(error).message);
+		}
 
 		await this.closeConnection();
 	}
@@ -534,6 +624,10 @@ export abstract class TaskRunner extends EventEmitter {
 	}
 
 	private async closeConnection() {
+		// If the broker already closed the socket while draining, awaiting another
+		// 'close' event below would hang shutdown.
+		if (this.ws.readyState === WebSocket.CLOSED) return;
+
 		// 1000 is the standard close code
 		// https://www.rfc-editor.org/rfc/rfc6455.html#section-7.1.5
 		this.ws.close(1000, 'Shutting down');
@@ -549,7 +643,7 @@ export abstract class TaskRunner extends EventEmitter {
 
 		while (this.runningTasks.size > 0) {
 			if (Date.now() - start > maxWaitTimeInMs) {
-				throw new ApplicationError('Timeout while waiting for tasks to finish');
+				throw new OperationalError('Timeout while waiting for tasks to finish');
 			}
 
 			await new Promise((resolve) => setTimeout(resolve, 100));

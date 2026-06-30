@@ -1,11 +1,12 @@
 {
   "name": "@n8n/backend-test-utils",
-  "version": "1.16.0",
+  "version": "1.29.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck",
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "lint": "eslint . --quiet",
@@ -27,13 +28,15 @@
     "@n8n/db": "workspace:*",
     "@n8n/di": "workspace:*",
     "@n8n/permissions": "workspace:*",
-    "@n8n/typeorm": "catalog:",
-    "jest-mock-extended": "^3.0.4",
+    "@n8n/typeorm": "workspace:*",
     "n8n-workflow": "workspace:*",
     "reflect-metadata": "catalog:",
-    "uuid": "catalog:"
+    "uuid": "catalog:",
+    "vitest": "catalog:",
+    "vitest-mock-extended": "catalog:"
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*"
-  }
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }

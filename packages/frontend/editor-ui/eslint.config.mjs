@@ -1,5 +1,6 @@
 import { defineConfig } from 'eslint/config';
 import { frontendConfig } from '@n8n/eslint-config/frontend';
+import oxlint from 'eslint-plugin-oxlint';
 
 export default defineConfig(
 	frontendConfig,
@@ -63,9 +64,9 @@ export default defineConfig(
 				},
 				{
 					selector:
-						"MemberExpression[property.name='nodes'][object.property.name='workflow'][object.object.name='workflowsStore']",
+						"MemberExpression[property.name=/^(name|nodes|connections|active|isArchived|settings|tags|pinData|meta|versionId|activeVersionId|createdAt|updatedAt|parentFolder|scopes|usedCredentials|homeProject|description|versionData)$/][object.property.name='workflow'][object.object.name='workflowsStore']",
 					message:
-						'Use workflowDocumentStore node accessors instead of workflowsStore.workflow.nodes',
+						'Use the equivalent workflowDocumentStore accessor instead of workflowsStore.workflow.<property>',
 				},
 				{
 					selector:
@@ -115,79 +116,74 @@ export default defineConfig(
 					message:
 						'Use workflowDocumentStore.setLastNodeParameters() instead of workflowsStore.setLastNodeParameters()',
 				},
-				// Guard: prevent direct workflowObject access — use workflowDocumentStore graph/expression methods.
 				{
-					selector:
-						"MemberExpression[property.name='workflowObject'][object.name='workflowsStore']",
+					selector: "MemberExpression[property.name='workflowId'][object.name='workflowsStore']",
 					message:
-						'Use workflowDocumentStore graph/expression methods instead of workflowsStore.workflowObject',
-				},
-				// Guard: prevent per-node mutations via deprecated workflowState composable.
-				{
-					selector:
-						"CallExpression[callee.property.name='setNodeParameters'][callee.object.name='workflowState']",
-					message:
-						'Use workflowDocumentStore.setNodeParameters() instead of workflowState.setNodeParameters()',
+						'Use the workflow document store instead of workflowsStore.workflowId: workflowDocumentStore.workflowId (components/composables via injectWorkflowDocumentStore(); stores via useWorkflowId()) or the documentId from the handler options in push handlers',
 				},
 				{
 					selector:
-						"CallExpression[callee.property.name='setNodeValue'][callee.object.name='workflowState']",
+						"CallExpression[callee.property.name='setWorkflowId'][callee.object.name='workflowsStore']",
 					message:
-						'Use workflowDocumentStore.setNodeValue() instead of workflowState.setNodeValue()',
+						'Do not call workflowsStore.setWorkflowId() — the current workflow id is derived from the route (useWorkflowId())',
+				},
+				// Guard: the legacy execution bridge on workflowsStore resolves by the
+				// global workflow id, which silently reads the wrong instance inside
+				// scoped hosts (execution preview, embedded editors). Read through
+				// injectWorkflowExecutionStateStore() (or the documentId-keyed
+				// useWorkflowExecutionStateStore) instead.
+				{
+					selector:
+						"MemberExpression[property.name='getWorkflowExecution'][object.name='workflowsStore']",
+					message:
+						'Use injectWorkflowExecutionStateStore().value.activeExecution instead of workflowsStore.getWorkflowExecution — the bridge resolves by global workflow id and reads the wrong instance inside scoped hosts',
 				},
 				{
 					selector:
-						"CallExpression[callee.property.name='setNodePositionById'][callee.object.name='workflowState']",
+						"MemberExpression[property.name='workflowExecutionData'][object.name='workflowsStore']",
 					message:
-						'Use workflowDocumentStore.setNodePositionById() instead of workflowState.setNodePositionById()',
+						'Use injectWorkflowExecutionStateStore().value.activeExecution instead of workflowsStore.workflowExecutionData — the bridge resolves by global workflow id and reads the wrong instance inside scoped hosts',
 				},
 				{
 					selector:
-						"CallExpression[callee.property.name='updateNodeById'][callee.object.name='workflowState']",
+						"MemberExpression[property.name='getWorkflowRunData'][object.name='workflowsStore']",
 					message:
-						'Use workflowDocumentStore.updateNodeById() instead of workflowState.updateNodeById()',
+						'Use injectWorkflowExecutionStateStore().value.activeExecutionRunData instead of workflowsStore.getWorkflowRunData',
+				},
+				{
+					selector: "MemberExpression[property.name='executedNode'][object.name='workflowsStore']",
+					message:
+						'Use injectWorkflowExecutionStateStore().value.activeExecutionExecutedNode instead of workflowsStore.executedNode',
 				},
 				{
 					selector:
-						"CallExpression[callee.property.name='updateNodeProperties'][callee.object.name='workflowState']",
+						"MemberExpression[property.name='workflowExecutionStartedData'][object.name='workflowsStore']",
 					message:
-						'Use workflowDocumentStore.updateNodeProperties() instead of workflowState.updateNodeProperties()',
+						'Use injectWorkflowExecutionStateStore().value.activeExecutionStartedData instead of workflowsStore.workflowExecutionStartedData',
 				},
 				{
 					selector:
-						"CallExpression[callee.property.name='setNodeIssue'][callee.object.name='workflowState']",
+						"MemberExpression[property.name='workflowExecutionResultDataLastUpdate'][object.name='workflowsStore']",
 					message:
-						'Use workflowDocumentStore.setNodeIssue() instead of workflowState.setNodeIssue()',
+						'Use injectWorkflowExecutionStateStore().value.activeExecutionResultDataLastUpdate instead of workflowsStore.workflowExecutionResultDataLastUpdate',
 				},
 				{
 					selector:
-						"CallExpression[callee.property.name='resetAllNodesIssues'][callee.object.name='workflowState']",
+						"MemberExpression[property.name='workflowExecutionPairedItemMappings'][object.name='workflowsStore']",
 					message:
-						'Use workflowDocumentStore.resetAllNodesIssues() instead of workflowState.resetAllNodesIssues()',
+						'Use injectWorkflowExecutionStateStore().value.activeExecutionPairedItemMappings instead of workflowsStore.workflowExecutionPairedItemMappings',
 				},
 				{
 					selector:
-						"CallExpression[callee.property.name='setLastNodeParameters'][callee.object.name='workflowState']",
+						"MemberExpression[property.name='lastSuccessfulExecution'][object.name='workflowsStore']",
 					message:
-						'Use workflowDocumentStore.setLastNodeParameters() instead of workflowState.setLastNodeParameters()',
+						'Use injectWorkflowExecutionStateStore().value.lastSuccessfulExecution instead of workflowsStore.lastSuccessfulExecution',
 				},
 				{
 					selector:
-						"CallExpression[callee.property.name='resetParametersLastUpdatedAt'][callee.object.name='workflowState']",
+						"MemberExpression[property.name='getWorkflowResultDataByNodeName'][object.name='workflowsStore']",
 					message:
-						'Use workflowDocumentStore.resetParametersLastUpdatedAt() instead of workflowState.resetParametersLastUpdatedAt()',
-				},
-				{
-					selector:
-						"CallExpression[callee.property.name='removeAllNodes'][callee.object.name='workflowState']",
-					message:
-						'Use workflowDocumentStore.removeAllNodes() instead of workflowState.removeAllNodes()',
-				},
-				{
-					selector:
-						"CallExpression[callee.property.name='updateNodeAtIndex'][callee.object.name='workflowState']",
-					message:
-						'Use per-node mutation methods on workflowDocumentStore instead of workflowState.updateNodeAtIndex()',
+						'Use injectWorkflowExecutionStateStore().value.getActiveExecutionRunDataByNodeName() instead of workflowsStore.getWorkflowResultDataByNodeName()',
 				},
 			],
 			// TODO: Remove these
@@ -253,4 +249,10 @@ export default defineConfig(
 			'no-restricted-syntax': 'off',
 		},
 	},
+	{
+		// Mirrors the `*.stories.ts` exclusion in tsconfig.json — typescript-eslint
+		// can't parse files outside the TS project.
+		ignores: ['src/**/*.stories.ts'],
+	},
+	...oxlint.buildFromOxlintConfigFile('./.oxlintrc.json'),
 );

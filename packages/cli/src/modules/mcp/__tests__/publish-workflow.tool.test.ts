@@ -1,25 +1,32 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
 import { v4 as uuid } from 'uuid';
+import type { Mock } from 'vitest';
 
-import { createWorkflow } from './mock.utils';
-import { createPublishWorkflowTool } from '../tools/publish-workflow.tool';
-
+import { CollaborationService } from '@/collaboration/collaboration.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
+
+import { createWorkflow } from './mock.utils';
+import { createPublishWorkflowTool } from '../tools/publish-workflow.tool';
 
 describe('publish-workflow MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
 	let workflowFinderService: WorkflowFinderService;
 	let workflowService: WorkflowService;
 	let telemetry: Telemetry;
+	let collaborationService: CollaborationService;
 
 	beforeEach(() => {
 		workflowFinderService = mockInstance(WorkflowFinderService);
 		workflowService = mockInstance(WorkflowService);
 		telemetry = mockInstance(Telemetry, {
-			track: jest.fn(),
+			track: vi.fn(),
+		});
+		collaborationService = mockInstance(CollaborationService, {
+			ensureWorkflowEditable: vi.fn().mockResolvedValue(undefined),
+			broadcastWorkflowUpdate: vi.fn().mockResolvedValue(undefined),
 		});
 	});
 
@@ -30,6 +37,7 @@ describe('publish-workflow MCP tool', () => {
 				workflowFinderService,
 				workflowService,
 				telemetry,
+				collaborationService,
 			);
 
 			expect(tool.name).toBe('publish_workflow');
@@ -45,13 +53,14 @@ describe('publish-workflow MCP tool', () => {
 	describe('handler tests', () => {
 		describe('workflow validation', () => {
 			test('returns error response when workflow validation fails', async () => {
-				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(null);
+				(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(null);
 
 				const tool = createPublishWorkflowTool(
 					user,
 					workflowFinderService,
 					workflowService,
 					telemetry,
+					collaborationService,
 				);
 
 				const result = await tool.handler(
@@ -68,20 +77,50 @@ describe('publish-workflow MCP tool', () => {
 			});
 		});
 
-		describe('successful publish', () => {
-			test('publishes workflow successfully', async () => {
+		describe('write lock', () => {
+			test('returns error when workflow has active write lock', async () => {
 				const workflow = createWorkflow({ settings: { availableInMCP: true } });
-				const activeVersionId = uuid();
-				const activatedWorkflow = { ...workflow, activeVersionId };
-
-				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(workflow);
-				(workflowService.activateWorkflow as jest.Mock).mockResolvedValue(activatedWorkflow);
+				(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(workflow);
+				(collaborationService.ensureWorkflowEditable as Mock).mockRejectedValue(
+					new Error('Cannot modify workflow while it is being edited by a user in the editor.'),
+				);
 
 				const tool = createPublishWorkflowTool(
 					user,
 					workflowFinderService,
 					workflowService,
 					telemetry,
+					collaborationService,
+				);
+
+				const result = await tool.handler(
+					{ workflowId: 'wf-1', versionId: undefined },
+					{} as Parameters<typeof tool.handler>[1],
+				);
+
+				expect(result.structuredContent).toMatchObject({
+					success: false,
+					error: expect.stringContaining('being edited by a user'),
+				});
+				expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('successful publish', () => {
+			test('publishes workflow successfully', async () => {
+				const workflow = createWorkflow({ settings: { availableInMCP: true } });
+				const activeVersionId = uuid();
+				const activatedWorkflow = { ...workflow, activeVersionId };
+
+				(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(workflow);
+				(workflowService.activateWorkflow as Mock).mockResolvedValue(activatedWorkflow);
+
+				const tool = createPublishWorkflowTool(
+					user,
+					workflowFinderService,
+					workflowService,
+					telemetry,
+					collaborationService,
 				);
 
 				const result = await tool.handler(
@@ -97,7 +136,10 @@ describe('publish-workflow MCP tool', () => {
 
 				expect(workflowService.activateWorkflow).toHaveBeenCalledWith(user, 'wf-1', {
 					versionId: undefined,
+					source: 'n8n-mcp',
 				});
+
+				expect(collaborationService.broadcastWorkflowUpdate).toHaveBeenCalledWith('wf-1', user.id);
 			});
 
 			test('publishes specific version when versionId provided', async () => {
@@ -105,14 +147,15 @@ describe('publish-workflow MCP tool', () => {
 				const versionId = uuid();
 				const activatedWorkflow = { ...workflow, activeVersionId: versionId };
 
-				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(workflow);
-				(workflowService.activateWorkflow as jest.Mock).mockResolvedValue(activatedWorkflow);
+				(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(workflow);
+				(workflowService.activateWorkflow as Mock).mockResolvedValue(activatedWorkflow);
 
 				const tool = createPublishWorkflowTool(
 					user,
 					workflowFinderService,
 					workflowService,
 					telemetry,
+					collaborationService,
 				);
 
 				const result = await tool.handler(
@@ -128,6 +171,7 @@ describe('publish-workflow MCP tool', () => {
 
 				expect(workflowService.activateWorkflow).toHaveBeenCalledWith(user, 'wf-1', {
 					versionId,
+					source: 'n8n-mcp',
 				});
 			});
 		});
@@ -138,14 +182,15 @@ describe('publish-workflow MCP tool', () => {
 				const activeVersionId = uuid();
 				const activatedWorkflow = { ...workflow, activeVersionId };
 
-				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(workflow);
-				(workflowService.activateWorkflow as jest.Mock).mockResolvedValue(activatedWorkflow);
+				(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(workflow);
+				(workflowService.activateWorkflow as Mock).mockResolvedValue(activatedWorkflow);
 
 				const tool = createPublishWorkflowTool(
 					user,
 					workflowFinderService,
 					workflowService,
 					telemetry,
+					collaborationService,
 				);
 
 				await tool.handler(
@@ -171,13 +216,14 @@ describe('publish-workflow MCP tool', () => {
 			});
 
 			test('tracks failed publish with error reason', async () => {
-				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(null);
+				(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(null);
 
 				const tool = createPublishWorkflowTool(
 					user,
 					workflowFinderService,
 					workflowService,
 					telemetry,
+					collaborationService,
 				);
 
 				await tool.handler(
@@ -204,8 +250,8 @@ describe('publish-workflow MCP tool', () => {
 		describe('error handling', () => {
 			test('handles WorkflowService errors gracefully', async () => {
 				const workflow = createWorkflow({ settings: { availableInMCP: true } });
-				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(workflow);
-				(workflowService.activateWorkflow as jest.Mock).mockRejectedValue(
+				(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(workflow);
+				(workflowService.activateWorkflow as Mock).mockRejectedValue(
 					new Error('Version not found'),
 				);
 
@@ -214,6 +260,7 @@ describe('publish-workflow MCP tool', () => {
 					workflowFinderService,
 					workflowService,
 					telemetry,
+					collaborationService,
 				);
 
 				const result = await tool.handler(

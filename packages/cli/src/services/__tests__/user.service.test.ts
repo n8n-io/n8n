@@ -13,15 +13,18 @@ import {
 } from '@n8n/db';
 import { PROJECT_OWNER_ROLE_SLUG, PROJECT_VIEWER_ROLE_SLUG } from '@n8n/permissions';
 import type { EntityManager } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { v4 as uuid } from 'uuid';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { UrlService } from '@/services/url.service';
 import { UserService } from '@/services/user.service';
 import type { UserManagementMailer } from '@/user-management/email';
 
 import type { OwnershipService } from '../ownership.service';
+import type { ProjectService } from '../project.service.ee';
 import type { PublicApiKeyService } from '../public-api-key.service';
 import type { RoleService } from '../role.service';
 import { JwtService } from '../jwt.service';
@@ -47,8 +50,9 @@ describe('UserService', () => {
 	const roleService = mock<RoleService>();
 	const mailer = mock<UserManagementMailer>();
 	const publicApiKeyService = mock<PublicApiKeyService>();
+	const projectService = mock<ProjectService>();
 	const jwtService = mockInstance(JwtService, {
-		sign: jest.fn().mockReturnValue('mock-jwt-token'),
+		sign: vi.fn().mockReturnValue('mock-jwt-token'),
 	});
 	const userService = new UserService(
 		mock(),
@@ -62,6 +66,7 @@ describe('UserService', () => {
 		roleService,
 		globalConfig,
 		jwtService,
+		projectService,
 	);
 
 	const commonMockUser = Object.assign(new User(), {
@@ -71,7 +76,7 @@ describe('UserService', () => {
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		// Restore default transaction implementation after each test (because some mock it)
 		manager.transaction.mockImplementation(async (arg1: unknown, arg2?: unknown) => {
 			const runInTransaction = (arg2 ?? arg1) as (entityManager: EntityManager) => Promise<unknown>;
@@ -291,7 +296,10 @@ describe('UserService', () => {
 
 	describe('changeUserRole', () => {
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
+			// The new license guard calls isRoleLicensed; default it to licensed so the
+			// existing branch tests below exercise the role-change logic, not the guard.
+			roleService.isRoleLicensed.mockReturnValue(true);
 			manager.transaction.mockImplementation(async (arg1: unknown, arg2?: unknown) => {
 				const runInTransaction = (arg2 ?? arg1) as (
 					entityManager: EntityManager,
@@ -494,6 +502,38 @@ describe('UserService', () => {
 				{ role: { slug: PROJECT_OWNER_ROLE_SLUG } },
 			);
 		});
+
+		it('assigns a custom global role when it is licensed', async () => {
+			const user = new User();
+			user.id = uuid();
+			user.role = new Role();
+			user.role.slug = 'global:member';
+			roleService.checkRolesExist.mockResolvedValueOnce();
+
+			await userService.changeUserRole(user, { newRoleName: 'global:custom-role-abc' });
+
+			expect(roleService.isRoleLicensed).toHaveBeenCalledWith('global:custom-role-abc');
+			expect(manager.update).toHaveBeenCalledWith(
+				User,
+				{ id: user.id },
+				{ role: { slug: 'global:custom-role-abc' } },
+			);
+		});
+
+		it('rejects assigning a role that is not covered by the license', async () => {
+			const user = new User();
+			user.id = uuid();
+			user.role = new Role();
+			user.role.slug = 'global:member';
+			roleService.checkRolesExist.mockResolvedValueOnce();
+			roleService.isRoleLicensed.mockReturnValueOnce(false);
+
+			await expect(
+				userService.changeUserRole(user, { newRoleName: 'global:custom-role-abc' }),
+			).rejects.toThrow(ForbiddenError);
+
+			expect(manager.update).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('getInvitationIdsFromPayload', () => {
@@ -647,6 +687,36 @@ describe('UserService', () => {
 			const result = await userService.findSsoIdentity(userId);
 
 			expect(result).toEqual(samlIdentity);
+		});
+	});
+
+	describe('assertGetUsersAccess', () => {
+		it('should allow global member to list all users without project filter', async () => {
+			const member = Object.assign(new User(), { role: GLOBAL_MEMBER_ROLE });
+
+			await expect(userService.assertGetUsersAccess(member)).resolves.toBeUndefined();
+
+			expect(projectService.getProjectIdsWithScope).not.toHaveBeenCalled();
+		});
+
+		it('should allow non-admin members to list users by projectId', async () => {
+			const member = Object.assign(new User(), { role: GLOBAL_MEMBER_ROLE });
+			projectService.getProjectWithScope.mockResolvedValueOnce(mock<Project>());
+
+			await expect(userService.assertGetUsersAccess(member, 'project-1')).resolves.toBeUndefined();
+
+			expect(projectService.getProjectWithScope).toHaveBeenCalledWith(member, 'project-1', [
+				'project:list',
+			]);
+		});
+
+		it('should throw NotFoundError when filtering by unknown projectId', async () => {
+			const member = Object.assign(new User(), { role: GLOBAL_MEMBER_ROLE });
+			projectService.getProjectWithScope.mockResolvedValueOnce(null);
+
+			await expect(userService.assertGetUsersAccess(member, 'unknown-project')).rejects.toThrow(
+				NotFoundError,
+			);
 		});
 	});
 });

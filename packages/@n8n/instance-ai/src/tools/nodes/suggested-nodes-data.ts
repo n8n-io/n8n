@@ -22,7 +22,7 @@ export const suggestedNodesData: Record<string, CategoryData> = {
 		nodes: [
 			{
 				name: '@n8n/n8n-nodes-langchain.chatTrigger',
-				note: 'When loadPreviousSession is set to memory, the downstream Agent must also have its own memory subnode to maintain conversation context during processing',
+				note: "Do not attach a memory subnode to the Chat Trigger to give the Agent memory — that's the Agent's job. See the loadPreviousSession builderHint for when the trigger itself needs memory.",
 			},
 			{
 				name: '@n8n/n8n-nodes-langchain.agent',
@@ -221,12 +221,19 @@ export const suggestedNodesData: Record<string, CategoryData> = {
 				name: 'n8n-nodes-base.formTrigger',
 				note: 'ALWAYS store raw data to persistent storage',
 			},
-			{ name: 'n8n-nodes-base.form', note: 'Each node is one page/step' },
+			{
+				name: 'n8n-nodes-base.form',
+				note: 'Each node is one page/step; use for Form Ending / completion pages after processing',
+			},
 			{
 				name: 'n8n-nodes-base.dataTable',
 				note: 'PREFERRED for form data storage',
 			},
 			{ name: 'n8n-nodes-base.googleSheets' },
+			{
+				name: '@n8n/n8n-nodes-langchain.openAi',
+				note: 'Confirmation/summary text: resource=text, operation=response. See open-ai-output-shape.md for downstream field paths (not $json.text).',
+			},
 			{ name: 'n8n-nodes-base.airtable' },
 		],
 	},
@@ -241,7 +248,7 @@ export const suggestedNodesData: Record<string, CategoryData> = {
 			},
 			{
 				name: '@n8n/n8n-nodes-langchain.openAi',
-				note: 'Use for image/video generation. DALL-E, TTS, Sora video generation',
+				note: 'Text (operation=response), DALL-E, TTS, Sora. See open-ai-output-shape.md when wiring downstream fields.',
 			},
 			{
 				name: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',

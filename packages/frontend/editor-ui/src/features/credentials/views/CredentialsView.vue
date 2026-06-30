@@ -31,6 +31,7 @@ import { useRoute, useRouter, type LocationQueryRaw } from 'vue-router';
 import { useCredentialsStore } from '../credentials.store';
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
 import { useDependencies } from '@/app/composables/useDependencies';
+import { useInstanceAiCredentialHelp } from '@/features/ai/instanceAi/composables/useInstanceAiCredentialHelp';
 
 import { N8nActionBox, N8nCheckbox, N8nInputLabel, N8nOption, N8nSelect } from '@n8n/design-system';
 const props = defineProps<{
@@ -43,6 +44,10 @@ const uiStore = useUIStore();
 const sourceControlStore = useSourceControlStore();
 const externalSecretsStore = useExternalSecretsStore();
 const projectsStore = useProjectsStore();
+
+// Credentials-list credential help (shared with the new-credential dialog): opens
+// Instance AI in a new tab asking about the credential alone.
+const instanceAiCredentialHelp = useInstanceAiCredentialHelp();
 const usersStore = useUsersStore();
 const insightsStore = useInsightsStore();
 const { fetchDependencyCounts } = useDependencies();
@@ -100,6 +105,7 @@ const allCredentials = computed<Resource[]>(() =>
 		needsSetup: needsSetup(credential.data),
 		isGlobal: credential.isGlobal,
 		isResolvable: credential.isResolvable,
+		connectedByMe: credential.connectedByMe,
 		type: credential.type,
 	})),
 );
@@ -132,6 +138,14 @@ const setRouteCredentialId = (credentialId?: string) => {
 	void router.replace({ params: { credentialId }, query: route.query });
 };
 
+const refreshCredentials = () => {
+	void credentialsStore.fetchAllCredentials({
+		projectId: route?.params?.projectId as string | undefined,
+		includeScopes: true,
+		externalSecretsStore: filters.value.externalSecretsStore,
+	});
+};
+
 const addCredential = () => {
 	setRouteCredentialId('create');
 	telemetry.track('User clicked add cred button', {
@@ -144,6 +158,10 @@ listenForModalChanges({
 	onModalClosed(modalName) {
 		if ([CREDENTIAL_SELECT_MODAL_KEY, CREDENTIAL_EDIT_MODAL_KEY].includes(modalName as string)) {
 			void router.replace({ params: { credentialId: '' }, query: route.query });
+		}
+		if (modalName === CREDENTIAL_EDIT_MODAL_KEY && credentialsStore.pendingOAuthRefresh) {
+			credentialsStore.pendingOAuthRefresh = false;
+			refreshCredentials();
 		}
 	},
 });
@@ -193,7 +211,9 @@ const maybeEditCredential = async () => {
 		}
 
 		if (credentialPermissions.update || credentialPermissions.read) {
-			uiStore.openExistingCredential(props.credentialId);
+			uiStore.openExistingCredential(props.credentialId, {
+				instanceAiCredentialHelp: instanceAiCredentialHelp(),
+			});
 			return;
 		}
 
@@ -240,11 +260,7 @@ const initialize = async () => {
 credentialsStore.$onAction(({ name, after }) => {
 	if (name === 'createNewCredential' || name === 'updateCredential') {
 		after(() => {
-			void credentialsStore.fetchAllCredentials({
-				projectId: route?.params?.projectId as string | undefined,
-				includeScopes: true,
-				externalSecretsStore: filters.value.externalSecretsStore,
-			});
+			refreshCredentials();
 		});
 	}
 });
@@ -315,6 +331,7 @@ onMounted(() => {
 				:read-only="data.readOnly"
 				:needs-setup="data.needsSetup"
 				@click="setRouteCredentialId"
+				@connected="refreshCredentials"
 			/>
 		</template>
 		<template #filters="{ setKeyValue }">

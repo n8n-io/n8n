@@ -1,17 +1,20 @@
-import { getCommunityNodeTypes, getCommunityNodesMetadata } from '../community-node-types-utils';
-import { paginatedRequest } from '../strapi-utils';
+import type { MockedFunction } from 'vitest';
 
-jest.mock('../strapi-utils', () => ({
-	paginatedRequest: jest.fn(),
+import { paginatedRequest } from '@/utils/strapi-utils';
+
+import { getCommunityNodeTypes, getCommunityNodesMetadata } from '../community-node-types-utils';
+
+vi.mock('@/utils/strapi-utils', () => ({
+	paginatedRequest: vi.fn(),
 }));
 
-const mockPaginatedRequest = paginatedRequest as jest.MockedFunction<typeof paginatedRequest>;
+const mockPaginatedRequest = paginatedRequest as MockedFunction<typeof paginatedRequest>;
 
 const AI_SDK_VERSION = 1;
 
 describe('community-node-types-utils', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('getCommunityNodeTypes', () => {

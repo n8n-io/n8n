@@ -1,5 +1,3 @@
-import { EventService } from '@/events/event.service';
-import { RelayEventMap } from '@/events/maps/relay.event-map';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig, WorkflowHistoryCompactionConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -9,6 +7,9 @@ import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { DiffMetaData, DiffRule, ensureError, RULES, SKIP_RULES, sleep } from 'n8n-workflow';
 import { strict } from 'node:assert';
+
+import { EventService } from '@/events/event.service';
+import { RelayEventMap } from '@/events/maps/relay.event-map';
 
 /**
  * Responsible for compacting auto saved workflow history entries in the database.

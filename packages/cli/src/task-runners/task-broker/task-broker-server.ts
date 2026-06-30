@@ -135,7 +135,8 @@ export class TaskBrokerServer {
 				this.logger.info(
 					`n8n Task Broker's port ${port} is already in use. Do you have another instance of n8n running already?`,
 				);
-				process.exit(1);
+				// Skip in tests, where exiting would kill the vi worker.
+				if (!inTest) process.exit(1);
 			}
 		});
 
@@ -243,7 +244,10 @@ export class TaskBrokerServer {
 			);
 
 			if (!result.isValid) {
-				this.logger.warn(`Task runner connection attempt failed: ${result.reason}`, { runnerId });
+				this.logger.warn(
+					`Task runner connection attempt failed: ${result.reason}. If the runner startup exceeds grant token TTL ${this.globalConfig.taskRunners.grantTokenTtl}s, increase N8N_RUNNERS_GRANT_TOKEN_TTL`,
+					{ runnerId },
+				);
 				this.failUpgradeRequest(socket, result.statusCode);
 				return;
 			}

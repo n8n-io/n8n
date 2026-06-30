@@ -1,13 +1,13 @@
-import { mock } from 'jest-mock-extended';
 import type { Logger } from '@n8n/backend-common';
 import type { InstanceSettingsLoaderConfig } from '@n8n/config';
+import { mock } from 'vitest-mock-extended';
 
 import type { OwnershipService } from '@/services/ownership.service';
 
 import { OwnerInstanceSettingsLoader } from '../loaders/owner.instance-settings-loader';
 
 describe('OwnerInstanceSettingsLoader', () => {
-	const logger = mock<Logger>({ scoped: jest.fn().mockReturnThis() });
+	const logger = mock<Logger>({ scoped: vi.fn().mockReturnThis() });
 	const ownershipService = mock<OwnershipService>();
 
 	const validBcryptHash = '$2b$10$abcdefghijklmnopqrstuuABCDEFGHIJKLMNOPQRSTUVWXYZ01234';
@@ -26,7 +26,7 @@ describe('OwnerInstanceSettingsLoader', () => {
 	};
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		logger.scoped.mockReturnThis();
 	});
 
@@ -41,31 +41,25 @@ describe('OwnerInstanceSettingsLoader', () => {
 			expect(logger.warn).not.toHaveBeenCalled();
 		});
 
-		it('should skip and warn when ownerEmail is set', async () => {
+		it('should skip when ownerEmail is set', async () => {
 			const loader = createLoader({ ownerEmail: 'admin@example.com' });
 
 			const result = await loader.run();
 
 			expect(result).toBe('skipped');
 			expect(ownershipService.setupOwner).not.toHaveBeenCalled();
-			expect(logger.warn).toHaveBeenCalledWith(
-				expect.stringContaining('N8N_INSTANCE_OWNER_MANAGED_BY_ENV is not enabled'),
-			);
 		});
 
-		it('should skip and warn when ownerPasswordHash is set', async () => {
+		it('should skip when ownerPasswordHash is set', async () => {
 			const loader = createLoader({ ownerPasswordHash: validBcryptHash });
 
 			const result = await loader.run();
 
 			expect(result).toBe('skipped');
 			expect(ownershipService.setupOwner).not.toHaveBeenCalled();
-			expect(logger.warn).toHaveBeenCalledWith(
-				expect.stringContaining('N8N_INSTANCE_OWNER_MANAGED_BY_ENV is not enabled'),
-			);
 		});
 
-		it('should skip and warn when both email and password are set', async () => {
+		it('should skip when both email and password are set', async () => {
 			const loader = createLoader({
 				ownerEmail: 'admin@example.com',
 				ownerPasswordHash: validBcryptHash,
@@ -75,7 +69,6 @@ describe('OwnerInstanceSettingsLoader', () => {
 
 			expect(result).toBe('skipped');
 			expect(ownershipService.setupOwner).not.toHaveBeenCalled();
-			expect(logger.warn).toHaveBeenCalled();
 		});
 	});
 

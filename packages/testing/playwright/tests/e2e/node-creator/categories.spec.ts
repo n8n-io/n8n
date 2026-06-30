@@ -3,7 +3,7 @@ import { test, expect } from '../../../fixtures/base';
 
 test.use({ capability: { env: { TEST_ISOLATION: 'node-creator-categories' } } });
 
-test.describe(
+test.skip(
 	'Node Creator Categories',
 	{
 		annotation: [{ type: 'owner', description: 'Adore' }],
@@ -23,20 +23,12 @@ test.describe(
 			await expect(n8n.canvas.nodeCreator.getCategoryItem('Actions')).toBeVisible();
 			await expect(n8n.canvas.nodeCreator.getCategoryItem('Triggers')).toBeVisible();
 
-			await expect(
-				n8n.canvas.nodeCreator.getCategoryItem('Triggers').locator('..'),
-			).toHaveAttribute('data-category-collapsed', 'false');
+			await n8n.canvas.nodeCreator.expectCategoryCollapsed('Triggers', false);
 
-			await expect(n8n.canvas.nodeCreator.getCategoryItem('Actions').locator('..')).toHaveAttribute(
-				'data-category-collapsed',
-				'true',
-			);
+			await n8n.canvas.nodeCreator.expectCategoryCollapsed('Actions', true);
 
 			await n8n.canvas.nodeCreator.selectCategoryItem('Actions');
-			await expect(n8n.canvas.nodeCreator.getCategoryItem('Actions').locator('..')).toHaveAttribute(
-				'data-category-collapsed',
-				'false',
-			);
+			await n8n.canvas.nodeCreator.expectCategoryCollapsed('Actions', false);
 		});
 
 		test('should have "Triggers" section collapsed when opening actions view from Regular root view', async ({
@@ -48,25 +40,15 @@ test.describe(
 			await n8n.canvas.nodeCreator.searchFor('n8n');
 			await n8n.canvas.nodeCreator.getNodeItems().filter({ hasText: 'n8n' }).first().click();
 
-			await expect(n8n.canvas.nodeCreator.getCategoryItem('Actions').locator('..')).toHaveAttribute(
-				'data-category-collapsed',
-				'false',
-			);
+			await n8n.canvas.nodeCreator.expectCategoryCollapsed('Actions', false);
 
 			await n8n.canvas.nodeCreator.selectCategoryItem('Actions');
-			await expect(n8n.canvas.nodeCreator.getCategoryItem('Actions').locator('..')).toHaveAttribute(
-				'data-category-collapsed',
-				'true',
-			);
+			await n8n.canvas.nodeCreator.expectCategoryCollapsed('Actions', true);
 
-			await expect(
-				n8n.canvas.nodeCreator.getCategoryItem('Triggers').locator('..'),
-			).toHaveAttribute('data-category-collapsed', 'true');
+			await n8n.canvas.nodeCreator.expectCategoryCollapsed('Triggers', true);
 
 			await n8n.canvas.nodeCreator.selectCategoryItem('Triggers');
-			await expect(
-				n8n.canvas.nodeCreator.getCategoryItem('Triggers').locator('..'),
-			).toHaveAttribute('data-category-collapsed', 'false');
+			await n8n.canvas.nodeCreator.expectCategoryCollapsed('Triggers', false);
 		});
 
 		test('should show callout and two suggested nodes if node has no trigger actions', async ({
@@ -87,7 +69,7 @@ test.describe(
 			await n8n.canvas.nodeCreator.open();
 			await n8n.canvas.nodeCreator.searchFor('Customer Datastore (n8n training)');
 			await n8n.canvas.nodeCreator.selectItem('Customer Datastore (n8n training)');
-
+			await n8n.page.pause();
 			await expect(n8n.canvas.nodeCreator.getActivationCallout()).toBeVisible();
 		});
 

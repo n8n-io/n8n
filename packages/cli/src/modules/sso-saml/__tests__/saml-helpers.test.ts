@@ -1,6 +1,9 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { AuthIdentity } from '@n8n/db';
 import { generateNanoId, User, AuthIdentityRepository, UserRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
+
+import { UrlService } from '@/services/url.service';
 
 import * as helpers from '../saml-helpers';
 import type { SamlUserAttributes } from '../types';
@@ -328,5 +331,54 @@ describe('sso/saml/samlHelpers', () => {
 		);
 
 		expect(result.rawAttributes).toEqual({});
+	});
+
+	describe('isConnectionTestRequest', () => {
+		const baseUrl = 'http://localhost:5678';
+		const testReturnUrl = `${baseUrl}/config/test/return`;
+
+		beforeAll(() => {
+			const urlService = mockInstance(UrlService);
+			urlService.getInstanceBaseUrl.mockReturnValue(baseUrl);
+			Container.set(UrlService, urlService);
+		});
+
+		test('returns true when RelayState matches the test return URL exactly', () => {
+			expect(helpers.isConnectionTestRequest({ RelayState: testReturnUrl })).toBe(true);
+		});
+
+		test('returns true when RelayState starts with the test return URL (with testId)', () => {
+			expect(helpers.isConnectionTestRequest({ RelayState: `${testReturnUrl}?t=abc123` })).toBe(
+				true,
+			);
+		});
+
+		test('returns false when RelayState is unrelated', () => {
+			expect(helpers.isConnectionTestRequest({ RelayState: '/workflow/123' })).toBe(false);
+		});
+
+		test('returns false when RelayState is missing', () => {
+			expect(helpers.isConnectionTestRequest({})).toBe(false);
+		});
+	});
+
+	describe('extractTestIdFromRelayState', () => {
+		test('returns the value of the t query parameter', () => {
+			expect(
+				helpers.extractTestIdFromRelayState('http://localhost:5678/config/test/return?t=tok123'),
+			).toBe('tok123');
+		});
+
+		test('returns undefined when t query parameter is absent', () => {
+			expect(
+				helpers.extractTestIdFromRelayState('http://localhost:5678/config/test/return'),
+			).toBeUndefined();
+		});
+
+		test('returns undefined when RelayState is empty or malformed', () => {
+			expect(helpers.extractTestIdFromRelayState(undefined)).toBeUndefined();
+			expect(helpers.extractTestIdFromRelayState('')).toBeUndefined();
+			expect(helpers.extractTestIdFromRelayState('not-a-url')).toBeUndefined();
+		});
 	});
 });

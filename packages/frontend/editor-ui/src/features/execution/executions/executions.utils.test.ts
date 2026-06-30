@@ -44,6 +44,12 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 
 vi.mock('@/app/stores/workflows.store', () => ({
 	useWorkflowsStore: () => ({
+		workflowId: 'test-workflow',
+	}),
+}));
+
+vi.mock('@/app/stores/workflowExecutionState.store', () => ({
+	useWorkflowExecutionStateStore: () => ({
 		activeExecutionId: '123',
 	}),
 }));
@@ -642,6 +648,23 @@ describe('getExecutionErrorToastConfiguration', () => {
 			title: 'Subworkflow failed',
 			message: 'Workflow XYZ failed',
 		});
+	});
+
+	it('returns config for WorkflowHasIssuesError with multi-line message preserved', () => {
+		const result = getExecutionErrorToastConfiguration({
+			error: executionErrorFactory({
+				name: 'WorkflowHasIssuesError',
+				message: 'The \'HTTP Request\' node has issues:\n- Parameter "URL" is required.',
+			}),
+			lastNodeExecuted: 'HTTP Request',
+		});
+
+		expect(result.title).toBe('pushConnection.workflowHasIssues.title');
+		const message = result.message as VNode;
+		expect(message.props?.style).toBe('white-space: pre-line');
+		expect(message.children).toBe(
+			'The \'HTTP Request\' node has issues:\n- Parameter "URL" is required.',
+		);
 	});
 
 	it('returns config for configuration-node error with node name', () => {

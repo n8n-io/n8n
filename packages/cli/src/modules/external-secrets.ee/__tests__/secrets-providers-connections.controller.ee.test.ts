@@ -1,15 +1,16 @@
-import type { NextFunction, Request, Response } from 'express';
 import type { Logger } from '@n8n/backend-common';
-import { mock } from 'jest-mock-extended';
+import type { NextFunction, Request, Response } from 'express';
+import { mock } from 'vitest-mock-extended';
 
-import type { SecretsProvidersConnectionsService } from '../secrets-providers-connections.service.ee';
-import { SecretProvidersConnectionsController } from '../secrets-providers-connections.controller.ee';
-import { ExternalSecretsConfig } from '../external-secrets.config';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import * as responseHelper from '@/response-helper';
 
-jest.mock('@/response-helper', () => ({
-	sendErrorResponse: jest.fn(),
+import { ExternalSecretsConfig } from '../external-secrets.config';
+import { SecretProvidersConnectionsController } from '../secrets-providers-connections.controller.ee';
+import type { SecretsProvidersConnectionsService } from '../secrets-providers-connections.service.ee';
+
+vi.mock('@/response-helper', () => ({
+	sendErrorResponse: vi.fn(),
 }));
 
 describe('SecretProvidersConnectionsController', () => {
@@ -27,21 +28,21 @@ describe('SecretProvidersConnectionsController', () => {
 
 	const createMockResponse = (): Response => {
 		const res = mock<Response>();
-		(res.status as any) = jest.fn().mockReturnThis();
-		(res.json as any) = jest.fn().mockReturnThis();
-		(res.send as any) = jest.fn().mockReturnThis();
+		(res.status as any) = vi.fn().mockReturnThis();
+		(res.json as any) = vi.fn().mockReturnThis();
+		(res.send as any) = vi.fn().mockReturnThis();
 		return res;
 	};
 
-	const createMockNextFunction = (): NextFunction => jest.fn() as NextFunction;
+	const createMockNextFunction = (): NextFunction => vi.fn() as NextFunction;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		config = new ExternalSecretsConfig();
 		logger = mock<Logger>();
-		logger.scoped = jest.fn().mockReturnValue(logger);
-		logger.warn = jest.fn();
+		logger.scoped = vi.fn().mockReturnValue(logger);
+		logger.warn = vi.fn();
 
 		connectionsService = mock<SecretsProvidersConnectionsService>();
 

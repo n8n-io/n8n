@@ -7,20 +7,73 @@
 
 import { z } from 'zod';
 
+import { BASELINE_EXPERIMENT_PREFIX } from '../comparison/fetch-baseline';
+
+/** Default LangSmith dataset — the shared Instance AI cohort. */
+export const DEFAULT_DATASET = 'instance-ai-workflow-evals';
+
 // ---------------------------------------------------------------------------
 // Public types
 // ---------------------------------------------------------------------------
 
 export interface CliArgs {
+	/** TimeoutMs is defined per iteration, not as the total timeout for all iterations */
 	timeoutMs: number;
-	baseUrl: string;
+	/** One or more n8n base URLs. Multi-lane runs use a work-stealing allocator
+	 *  that dispatches each build to a lane that isn't already running its
+	 *  prompt, capped per-lane at MAX_CONCURRENT_BUILDS=4. Pass comma-separated
+	 *  to `--base-url`. */
+	baseUrls: string[];
 	email?: string;
 	password?: string;
 	verbose: boolean;
-	/** Filter workflow test cases by filename substring (e.g. "contact-form") */
+	/** Filter workflow test cases by filename substring(s). Accepts a comma-separated
+	 *  list with OR semantics, e.g. "contact-form,deduplication". */
 	filter?: string;
+	/** Exclude workflow test cases whose filename matches any of the substring(s).
+	 *  Same comma-separated shape as --filter; applied after --filter. */
+	exclude?: string;
+	/** Path to a JSON manifest mapping test-case file slugs to one or more
+	 *  pre-built workflow IDs. When set, the harness skips the orchestrator
+	 *  build for matched test cases and verifies the existing workflow instead.
+	 *  See evaluations/harness/prebuilt-workflows.ts for the schema. */
+	prebuiltWorkflows?: string;
 	/** Keep built workflows after evaluation instead of deleting them */
 	keepWorkflows: boolean;
+	/** Delete successfully used workflows from --prebuilt-workflows after evaluation */
+	deletePrebuiltWorkflows: boolean;
+	/** Directory to write eval-results.json (defaults to cwd) */
+	outputDir?: string;
+	/** LangSmith dataset name (synced from JSON test cases before each run) */
+	dataset: string;
+	/** Max concurrent target() calls in LangSmith evaluate(). Build concurrency is
+	 *  enforced separately by the LaneAllocator (cap=4 per lane). */
+	concurrency: number;
+	/** LangSmith experiment name prefix (auto-generated if not set) */
+	experimentName?: string;
+	/** Number of iterations to run each test case (default: 1). Each iteration
+	 *  gets a fresh build so pass@k / pass^k capture real builder variance. */
+	iterations: number;
+	/** AI root nodes (Agent, Chain) to keep pinned — opt-out from the default-on
+	 *  wire-server interception path. Useful for A/B comparison or when a
+	 *  specific root needs to stay on the pinned baseline. CSV of node names. */
+	pinAiRoots?: string[];
+	/** Filter test cases by the `datasets` field (e.g. `pr`, `full`). When set,
+	 *  only test cases whose `datasets` array contains this value will run, and
+	 *  LangSmith examples are queried via the matching split. Defaults to
+	 *  unset → run everything matched by `--filter` / `--exclude`. */
+	tier?: string;
+	/** Experiment-name prefix the regression comparison uses to find the
+	 *  baseline. Defaults to the Instance AI baseline (`instance-ai-baseline-`).
+	 *  Override for an isolated cohort (e.g. `mcp-baseline-`) so the run compares
+	 *  against its own baselines instead of the Instance AI one. Pair with a
+	 *  dedicated `--dataset` to keep MCP runs fully separate. */
+	baselinePrefix: string;
+	/** Test-case source: `disk` (default) reads data/workflows/, `langtracer` pulls a
+	 *  suite over MCP (needs LANGTRACER_URL + LANGTRACER_API_KEY). */
+	source: 'disk' | 'langtracer';
+	/** lang-tracer suite slug (or numeric id) to export when `--source langtracer`. */
+	suite?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -28,13 +81,34 @@ export interface CliArgs {
 // ---------------------------------------------------------------------------
 
 const cliArgsSchema = z.object({
-	timeoutMs: z.number().int().positive().default(600_000),
-	baseUrl: z.string().url().default('http://localhost:5678'),
+	timeoutMs: z.number().int().positive().default(900_000),
+	baseUrls: z.array(z.string().url()).min(1).default(['http://localhost:5678']),
 	email: z.string().optional(),
 	password: z.string().optional(),
 	verbose: z.boolean().default(false),
 	filter: z.string().optional(),
+	exclude: z.string().optional(),
+	prebuiltWorkflows: z.string().optional(),
 	keepWorkflows: z.boolean().default(false),
+	deletePrebuiltWorkflows: z.boolean().default(false),
+	outputDir: z.string().optional(),
+	dataset: z.string().default(DEFAULT_DATASET),
+	concurrency: z.number().int().positive().default(16),
+	experimentName: z.string().optional(),
+	iterations: z.number().int().positive().default(1),
+	pinAiRoots: z.array(z.string().min(1)).optional(),
+	tier: z.string().min(1).optional(),
+	// Normalize to a trailing hyphen. The baseline lookup matches by prefix and
+	// LangSmith always appends `-<suffix>` to the experiment name, so the hyphen
+	// anchors the match to that separator — without it `mcp-baseline` would also
+	// match unrelated names like `mcp-baseline2-...`. Mirrors BASELINE_EXPERIMENT_PREFIX.
+	baselinePrefix: z
+		.string()
+		.min(1)
+		.transform((s) => (s.endsWith('-') ? s : `${s}-`))
+		.default(BASELINE_EXPERIMENT_PREFIX),
+	source: z.enum(['disk', 'langtracer']).default('disk'),
+	suite: z.string().min(1).optional(),
 });
 
 // ---------------------------------------------------------------------------
@@ -44,16 +118,76 @@ const cliArgsSchema = z.object({
 export function parseCliArgs(argv: string[]): CliArgs {
 	const raw = parseRawArgs(argv);
 	const validated = cliArgsSchema.parse(raw);
+	if (validated.deletePrebuiltWorkflows && !validated.prebuiltWorkflows) {
+		throw new Error('--delete-prebuilt-workflows requires --prebuilt-workflows');
+	}
+	if (validated.deletePrebuiltWorkflows && validated.keepWorkflows) {
+		throw new Error('--delete-prebuilt-workflows cannot be used with --keep-workflows');
+	}
+	if (validated.source === 'langtracer' && !validated.suite) {
+		throw new Error('--source langtracer requires --suite <slug>');
+	}
+
+	// In langtracer mode, default the dataset + baseline to a suite-scoped, eval-tagged
+	// name so runs don't pollute the shared cohort and re-runs upsert one stable dataset.
+	let dataset = validated.dataset;
+	let baselinePrefix = validated.baselinePrefix;
+	if (validated.source === 'langtracer' && validated.suite) {
+		const suiteSlug = validated.suite
+			.toLowerCase()
+			.replace(/[^a-z0-9]+/g, '-')
+			.replace(/^-+|-+$/g, '');
+		if (!raw.datasetProvided) dataset = `instance-ai-langtracer-${suiteSlug}`;
+		if (!raw.baselineProvided) baselinePrefix = `instance-ai-langtracer-${suiteSlug}-baseline-`;
+	}
 
 	return {
 		timeoutMs: validated.timeoutMs,
-		baseUrl: validated.baseUrl,
+		baseUrls: validated.baseUrls,
 		email: validated.email,
 		password: validated.password,
 		verbose: validated.verbose,
 		filter: validated.filter,
+		exclude: validated.exclude,
+		prebuiltWorkflows: validated.prebuiltWorkflows,
 		keepWorkflows: validated.keepWorkflows,
+		deletePrebuiltWorkflows: validated.deletePrebuiltWorkflows,
+		outputDir: validated.outputDir,
+		dataset,
+		concurrency: validated.concurrency,
+		experimentName: validated.experimentName,
+		iterations: validated.iterations,
+		pinAiRoots: validated.pinAiRoots,
+		tier: validated.tier,
+		baselinePrefix,
+		source: validated.source,
+		suite: validated.suite,
 	};
+}
+
+/**
+ * A dedicated `--dataset` and a dedicated `--baseline-prefix` are the two halves
+ * of LangSmith cohort isolation (e.g. for MCP runs). Overriding exactly one of
+ * them still writes to / compares against shared Instance AI data, which is
+ * almost always a mistake. Returns a warning for that mismatched case, or
+ * `undefined` when the pairing is consistent (both shared, or both isolated).
+ *
+ * Leaving BOTH at their defaults is a normal Instance AI run — including
+ * `--tier pr`/`mcp` against the shared dataset, whose example upserts are
+ * idempotent — so it is intentionally not flagged.
+ */
+export function partialIsolationWarning(
+	dataset: string,
+	baselinePrefix: string,
+): string | undefined {
+	const datasetIsolated = dataset !== DEFAULT_DATASET;
+	const baselineIsolated = baselinePrefix !== BASELINE_EXPERIMENT_PREFIX;
+	if (datasetIsolated === baselineIsolated) return undefined;
+	return (
+		`Partial LangSmith isolation: --dataset="${dataset}" with --baseline-prefix="${baselinePrefix}". ` +
+		'Override BOTH for an isolated cohort (e.g. MCP), or leave BOTH at their defaults for an ' +
+		'Instance AI run — overriding only one still touches shared Instance AI data.'
+	);
 }
 
 // ---------------------------------------------------------------------------
@@ -62,20 +196,48 @@ export function parseCliArgs(argv: string[]): CliArgs {
 
 interface RawArgs {
 	timeoutMs: number;
-	baseUrl: string;
+	baseUrls: string[];
 	email?: string;
 	password?: string;
 	verbose: boolean;
 	filter?: string;
+	exclude?: string;
+	prebuiltWorkflows?: string;
 	keepWorkflows: boolean;
+	deletePrebuiltWorkflows: boolean;
+	outputDir?: string;
+	dataset: string;
+	concurrency: number;
+	experimentName?: string;
+	iterations: number;
+	pinAiRoots?: string[];
+	tier?: string;
+	baselinePrefix: string;
+	source: string;
+	suite?: string;
+	/** Whether --dataset / --baseline-prefix were explicitly passed (langtracer mode
+	 *  derives suite-scoped defaults otherwise). */
+	datasetProvided: boolean;
+	baselineProvided: boolean;
 }
 
 function parseRawArgs(argv: string[]): RawArgs {
 	const result: RawArgs = {
-		timeoutMs: 600_000,
-		baseUrl: 'http://localhost:5678',
+		timeoutMs: 900_000,
+		baseUrls: ['http://localhost:5678'],
 		verbose: false,
 		keepWorkflows: false,
+		deletePrebuiltWorkflows: false,
+		outputDir: undefined,
+		dataset: DEFAULT_DATASET,
+		concurrency: 16,
+		experimentName: undefined,
+		iterations: 1,
+		pinAiRoots: undefined,
+		baselinePrefix: BASELINE_EXPERIMENT_PREFIX,
+		source: 'disk',
+		datasetProvided: false,
+		baselineProvided: false,
 	};
 
 	for (let i = 0; i < argv.length; i++) {
@@ -87,10 +249,15 @@ function parseRawArgs(argv: string[]): RawArgs {
 				i++;
 				break;
 
-			case '--base-url':
-				result.baseUrl = nextArg(argv, i, '--base-url');
+			case '--base-url': {
+				const raw = nextArg(argv, i, '--base-url');
+				result.baseUrls = raw
+					.split(',')
+					.map((s) => s.trim())
+					.filter((s) => s.length > 0);
 				i++;
 				break;
+			}
 
 			case '--email':
 				result.email = nextArg(argv, i, '--email');
@@ -111,13 +278,91 @@ function parseRawArgs(argv: string[]): RawArgs {
 				i++;
 				break;
 
+			case '--exclude':
+				result.exclude = nextArg(argv, i, '--exclude');
+				i++;
+				break;
+
+			case '--prebuilt-workflows':
+				result.prebuiltWorkflows = nextArg(argv, i, '--prebuilt-workflows');
+				i++;
+				break;
+
 			case '--keep-workflows':
 				result.keepWorkflows = true;
 				break;
 
-			default:
-				// Ignore unknown flags
+			case '--delete-prebuilt-workflows':
+				result.deletePrebuiltWorkflows = true;
 				break;
+
+			case '--output-dir':
+				result.outputDir = nextArg(argv, i, '--output-dir');
+				i++;
+				break;
+
+			case '--iterations':
+				result.iterations = parseIntArg(argv, i, '--iterations');
+				i++;
+				break;
+
+			case '--dataset':
+				result.dataset = nextArg(argv, i, '--dataset');
+				result.datasetProvided = true;
+				i++;
+				break;
+
+			case '--concurrency':
+				result.concurrency = parseIntArg(argv, i, '--concurrency');
+				i++;
+				break;
+
+			case '--experiment-name':
+				result.experimentName = nextArg(argv, i, '--experiment-name');
+				i++;
+				break;
+
+			case '--pin-ai-roots': {
+				const raw = nextArg(argv, i, '--pin-ai-roots');
+				result.pinAiRoots = raw
+					.split(',')
+					.map((s) => s.trim())
+					.filter((s) => s.length > 0);
+				i++;
+				break;
+			}
+
+			case '--tier':
+				result.tier = nextArg(argv, i, '--tier');
+				i++;
+				break;
+
+			case '--baseline-prefix':
+				result.baselinePrefix = nextArg(argv, i, '--baseline-prefix');
+				result.baselineProvided = true;
+				i++;
+				break;
+
+			case '--source':
+				result.source = nextArg(argv, i, '--source');
+				i++;
+				break;
+
+			case '--suite':
+				result.suite = nextArg(argv, i, '--suite');
+				i++;
+				break;
+
+			default:
+				// Fail loudly on unknown flags. Strip any =value payload before
+				// echoing and drop positional values entirely — raw CLI input
+				// may contain secrets (e.g. --password=... or an accidentally
+				// pasted token) that would otherwise leak into terminal/CI logs.
+				if (arg.startsWith('--')) {
+					const flagName = arg.split('=', 1)[0];
+					throw new Error(`Unknown flag: ${flagName}`);
+				}
+				throw new Error('Unexpected positional argument');
 		}
 	}
 
@@ -140,7 +385,8 @@ function parseIntArg(argv: string[], currentIndex: number, flagName: string): nu
 	const raw = nextArg(argv, currentIndex, flagName);
 	const parsed = parseInt(raw, 10);
 	if (Number.isNaN(parsed)) {
-		throw new Error(`Invalid integer for ${flagName}: ${raw}`);
+		// Don't echo raw — a bad shell expansion could leak a secret here.
+		throw new Error(`Invalid integer for ${flagName}`);
 	}
 	return parsed;
 }

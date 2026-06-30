@@ -1,6 +1,7 @@
-import { LocalGateway } from '../filesystem/local-gateway';
-import type { LocalGatewayEvent } from '../filesystem/local-gateway';
 import type { McpTool } from '@n8n/api-types';
+
+import { LocalGateway } from '../filesystem/local-gateway';
+import type { LocalGatewayRequestEvent } from '../filesystem/local-gateway';
 
 const SAMPLE_TOOL: McpTool = {
 	name: 'read_file',
@@ -57,13 +58,37 @@ describe('LocalGateway', () => {
 
 			await expect(callPromise).rejects.toThrow('disconnected');
 		});
+
+		it('should emit gateway-disconnect event before clearing state', () => {
+			gateway.init({ rootPath: 'my-project', tools: [SAMPLE_TOOL], toolCategories: [] });
+
+			const observedConnectedAtEmit: boolean[] = [];
+			gateway.onDisconnect(() => {
+				observedConnectedAtEmit.push(gateway.isConnected);
+			});
+
+			gateway.disconnect();
+
+			expect(observedConnectedAtEmit).toEqual([true]);
+			expect(gateway.isConnected).toBe(false);
+		});
+
+		it('should deliver gateway-disconnect event with the expected shape', () => {
+			gateway.init(EMPTY_CAPABILITIES);
+			const events: Array<{ type: string }> = [];
+			gateway.onDisconnect((event) => events.push(event));
+
+			gateway.disconnect();
+
+			expect(events).toEqual([{ type: 'gateway-disconnect' }]);
+		});
 	});
 
 	describe('callTool (gateway round-trip)', () => {
 		it('should emit filesystem-request event and resolve on response', async () => {
 			gateway.init(EMPTY_CAPABILITIES);
 
-			const events: LocalGatewayEvent[] = [];
+			const events: LocalGatewayRequestEvent[] = [];
 			gateway.onRequest((event) => events.push(event));
 
 			const callPromise = gateway.callTool({
@@ -94,7 +119,7 @@ describe('LocalGateway', () => {
 		it('should reject on error string response', async () => {
 			gateway.init(EMPTY_CAPABILITIES);
 
-			const events: LocalGatewayEvent[] = [];
+			const events: LocalGatewayRequestEvent[] = [];
 			gateway.onRequest((event) => events.push(event));
 
 			const callPromise = gateway.callTool({
@@ -110,7 +135,7 @@ describe('LocalGateway', () => {
 		it('should reject on isError result', async () => {
 			gateway.init(EMPTY_CAPABILITIES);
 
-			const events: LocalGatewayEvent[] = [];
+			const events: LocalGatewayRequestEvent[] = [];
 			gateway.onRequest((event) => events.push(event));
 
 			const callPromise = gateway.callTool({
@@ -135,8 +160,8 @@ describe('LocalGateway', () => {
 			).rejects.toThrow('not connected');
 		});
 
-		it('should timeout after 30 seconds', async () => {
-			jest.useFakeTimers();
+		it('should timeout after 60 seconds', async () => {
+			vi.useFakeTimers();
 
 			gateway.init(EMPTY_CAPABILITIES);
 
@@ -145,17 +170,17 @@ describe('LocalGateway', () => {
 				arguments: { filePath: 'slow.ts' },
 			});
 
-			jest.advanceTimersByTime(30_001);
+			vi.advanceTimersByTime(60_001);
 
 			await expect(callPromise).rejects.toThrow('timed out');
 
-			jest.useRealTimers();
+			vi.useRealTimers();
 		});
 
 		it('should dispatch different tool names correctly', async () => {
 			gateway.init(EMPTY_CAPABILITIES);
 
-			const events: LocalGatewayEvent[] = [];
+			const events: LocalGatewayRequestEvent[] = [];
 			gateway.onRequest((event) => events.push(event));
 
 			const treeText = 'project/\n  src/\n    index.ts';
@@ -191,7 +216,7 @@ describe('LocalGateway', () => {
 		it('should resolve with isError result so the tool layer can inspect it', async () => {
 			gateway.init(EMPTY_CAPABILITIES);
 
-			const requestEvents: LocalGatewayEvent[] = [];
+			const requestEvents: LocalGatewayRequestEvent[] = [];
 			gateway.onRequest((e) => requestEvents.push(e));
 
 			const callPromise = gateway.callTool({
@@ -229,11 +254,75 @@ describe('LocalGateway', () => {
 		});
 	});
 
+	describe('setExcludedToolCategories', () => {
+		const FS_TOOL: McpTool = {
+			name: 'read_file',
+			description: 'Read a file',
+			inputSchema: { type: 'object', properties: {} },
+			annotations: { category: 'filesystem' },
+		};
+		const BROWSER_TOOL: McpTool = {
+			name: 'browser_open',
+			description: 'Open a page',
+			inputSchema: { type: 'object', properties: {} },
+			annotations: { category: 'browser' },
+		};
+
+		beforeEach(() => {
+			gateway.init({
+				rootPath: 'p',
+				tools: [FS_TOOL, BROWSER_TOOL],
+				toolCategories: [
+					{ name: 'filesystem', enabled: true },
+					{ name: 'browser', enabled: true },
+				],
+			});
+		});
+
+		it('hides excluded-category tools from getAvailableTools', () => {
+			gateway.setExcludedToolCategories(['browser']);
+
+			expect(gateway.getAvailableTools()).toEqual([FS_TOOL]);
+		});
+
+		it('returns no tools for an excluded category', () => {
+			gateway.setExcludedToolCategories(['browser']);
+
+			expect(gateway.getToolsByCategory('browser')).toEqual([]);
+			expect(gateway.getToolsByCategory('filesystem')).toEqual([FS_TOOL]);
+		});
+
+		it('drops excluded categories from getStatus', () => {
+			gateway.setExcludedToolCategories(['browser']);
+
+			expect(gateway.getStatus().toolCategories).toEqual([{ name: 'filesystem', enabled: true }]);
+		});
+
+		it('blocks callTool for excluded tools without dispatching to the daemon', async () => {
+			gateway.setExcludedToolCategories(['browser']);
+			const events: LocalGatewayRequestEvent[] = [];
+			gateway.onRequest((event) => events.push(event));
+
+			const result = await gateway.callTool({ name: 'browser_open', arguments: {} });
+
+			expect(result.isError).toBe(true);
+			expect(events).toHaveLength(0);
+		});
+
+		it('exposes everything when no categories are excluded', () => {
+			expect(gateway.getAvailableTools()).toEqual([FS_TOOL, BROWSER_TOOL]);
+			expect(gateway.getStatus().toolCategories).toEqual([
+				{ name: 'filesystem', enabled: true },
+				{ name: 'browser', enabled: true },
+			]);
+		});
+	});
+
 	describe('onRequest', () => {
 		it('should return unsubscribe function that stops event delivery', async () => {
 			gateway.init(EMPTY_CAPABILITIES);
 
-			const events: LocalGatewayEvent[] = [];
+			const events: LocalGatewayRequestEvent[] = [];
 			const unsubscribe = gateway.onRequest((event) => events.push(event));
 
 			const p1 = gateway

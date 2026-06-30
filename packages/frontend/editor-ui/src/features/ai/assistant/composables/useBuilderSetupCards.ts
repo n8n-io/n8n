@@ -4,21 +4,12 @@ import type { SetupCardItem } from '@/features/setupPanel/setupPanel.types';
 import { isCardComplete } from '@/features/setupPanel/setupPanel.utils';
 import { useWorkflowSetupState } from '@/features/setupPanel/composables/useWorkflowSetupState';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { findPlaceholderDetails } from '@/features/ai/assistant/composables/useBuilderTodos';
 
 export function useBuilderSetupCards() {
 	const builderStore = useBuilderStore();
-	const workflowsStore = useWorkflowsStore();
-	const workflowDocumentStore = computed(() =>
-		workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined,
-	);
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 
 	// Sticky map of node name → placeholder parameter names.
 	// Once a node's placeholders are detected, the entry persists even after the user
@@ -29,7 +20,7 @@ export function useBuilderSetupCards() {
 	// Detect current placeholders (reactive, recomputes when node params change)
 	const detectedPlaceholders = computed(() => {
 		const result = new Map<string, string[]>();
-		for (const node of workflowDocumentStore.value?.allNodes ?? []) {
+		for (const node of workflowDocumentStore.value.allNodes) {
 			const placeholders = findPlaceholderDetails(node.parameters);
 			if (placeholders.length > 0) {
 				result.set(node.name, [...new Set(placeholders.map((p) => p.path[0]).filter(Boolean))]);

@@ -15,18 +15,25 @@
  *  - Delegation-style tests (expect(store.method).toHaveBeenCalled()) would
  *    need to be rewritten every time internals change; round-trips do not.
  */
-import { describe, it, expect, beforeEach } from 'vitest';
-import { setActivePinia, createPinia } from 'pinia';
+import { createPinia, setActivePinia } from 'pinia';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { useWorkflowDocumentExpression } from './useWorkflowDocumentExpression';
+import { useWorkflowDocumentWorkflowObject } from './useWorkflowDocumentWorkflowObject';
 
 describe('useWorkflowDocumentExpression', () => {
+	let workflowObject: ReturnType<typeof useWorkflowDocumentWorkflowObject>['workflowObject'];
+
 	beforeEach(() => {
 		setActivePinia(createPinia());
+		const wfObj = useWorkflowDocumentWorkflowObject({
+			workflowId: '',
+		});
+		workflowObject = wfObj.workflowObject;
 	});
 
 	describe('getExpressionHandler', () => {
 		it('returns the expression resolver instance', () => {
-			const expression = useWorkflowDocumentExpression();
+			const expression = useWorkflowDocumentExpression(workflowObject);
 
 			const handler = expression.getExpressionHandler();
 			expect(handler).toBeDefined();
@@ -36,7 +43,7 @@ describe('useWorkflowDocumentExpression', () => {
 		});
 
 		it('convertObjectValueToString converts object to string', () => {
-			const expression = useWorkflowDocumentExpression();
+			const expression = useWorkflowDocumentExpression(workflowObject);
 
 			const handler = expression.getExpressionHandler();
 			const result = handler.convertObjectValueToString({ key: 'value' });

@@ -1,7 +1,7 @@
 {
   "name": "@n8n/eslint-plugin-community-nodes",
   "type": "module",
-  "version": "0.11.0",
+  "version": "0.23.0",
   "main": "./dist/plugin.js",
   "types": "./dist/plugin.d.ts",
   "exports": {
@@ -12,14 +12,15 @@
   },
   "scripts": {
     "build": "tsc --project tsconfig.build.json",
-    "build:docs": "eslint-doc-generator",
+    "build:unchecked": "tsc --project tsconfig.build.json --noCheck",
+    "build:docs": "pnpm build && eslint-doc-generator",
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
     "format": "biome format --write .",
     "format:check": "biome ci .",
-    "lint": "eslint src",
+    "lint": "eslint src && pnpm lint:docs",
     "lint:fix": "eslint src --fix",
-    "lint:docs": "eslint-doc-generator --check",
+    "lint:docs": "pnpm build && eslint-doc-generator --check",
     "test": "vitest run",
     "test:unit": "vitest run",
     "test:dev": "vitest",
@@ -27,6 +28,7 @@
     "watch": "tsc --watch --project tsconfig.build.json"
   },
   "dependencies": {
+    "@typescript-eslint/typescript-estree": "^8.35.0",
     "@typescript-eslint/utils": "^8.35.0",
     "fastest-levenshtein": "catalog:"
   },
@@ -40,10 +42,11 @@
     "eslint-plugin-eslint-plugin": "^7.0.0",
     "rimraf": "catalog:",
     "typescript": "catalog:",
+    "vite": "catalog:",
     "vitest": "catalog:"
   },
   "peerDependencies": {
-    "eslint": ">= 9",
+    "eslint": "catalog:",
     "n8n-workflow": ">=2"
   },
   "eslint-doc-generator": {
@@ -57,5 +60,6 @@
         "☑️"
       ]
     ]
-  }
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }

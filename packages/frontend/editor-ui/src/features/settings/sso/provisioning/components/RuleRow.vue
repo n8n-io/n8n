@@ -94,8 +94,6 @@ const selectedProjectNames = computed(() => {
 					:label="option.label"
 					:value="option.value"
 				/>
-				<div :class="$style.optionDivider" />
-				<N8nOption label="No role" value="" />
 			</N8nSelect>
 		</div>
 		<div v-if="props.type === 'project'" :class="$style.cellProject">
@@ -218,12 +216,6 @@ const selectedProjectNames = computed(() => {
 	justify-content: center;
 	width: 24px;
 	flex-shrink: 0;
-}
-
-.optionDivider {
-	height: 1px;
-	background: var(--color--foreground);
-	margin: var(--spacing--4xs) var(--spacing--2xs);
 }
 
 .actionIcon {

@@ -54,7 +54,6 @@ export type PermissionMode = z.infer<typeof permissionModeSchema>;
 
 export interface GatewayConfig {
 	logLevel: 'silent' | 'error' | 'warn' | 'info' | 'debug';
-	port: number;
 	allowedOrigins: string[];
 	filesystem: { dir: string };
 	computer: { shell: { timeout: number } };
@@ -96,12 +95,10 @@ function envNumber(name: string): number | undefined {
 
 export const logLevelSchema = z.enum(['silent', 'error', 'warn', 'info', 'debug']).default('info');
 export type LogLevel = z.infer<typeof logLevelSchema>;
-export const portSchema = z.number().int().positive().default(7655);
 
 const structuralConfigSchema = z.object({
 	logLevel: logLevelSchema,
-	port: portSchema,
-	allowedOrigins: z.array(z.string()).default([]),
+	allowedOrigins: z.array(z.string()).default(['https://*.app.n8n.cloud']),
 	filesystem: z.object({ dir: z.string().default('.') }).default({}),
 	computer: z
 		.object({
@@ -163,14 +160,6 @@ function buildEnvConfig(): PartialStructural {
 	const logLevel = envString('LOG_LEVEL') ?? process.env.LOG_LEVEL;
 	if (logLevel) config.logLevel = logLevel;
 
-	const allowedOrigins = envString('ALLOWED_ORIGINS');
-	if (allowedOrigins) {
-		config.allowedOrigins = allowedOrigins
-			.split(',')
-			.map((s) => s.trim())
-			.filter(Boolean);
-	}
-
 	const fsDir = envString('FILESYSTEM_DIR');
 	if (fsDir) config.filesystem = { dir: fsDir };
 
@@ -190,13 +179,18 @@ function buildCliConfig(args: yargsParser.Arguments): PartialStructural {
 	const config: Record<string, unknown> = {};
 
 	if (args['log-level']) config.logLevel = args['log-level'];
-	if (args.port !== undefined) config.port = args.port;
-	if (args['allow-origin']) {
-		const raw = args['allow-origin'] as unknown;
-		config.allowedOrigins = Array.isArray(raw) ? raw.map(String) : [String(raw)];
+	if (args['allowed-origins']) {
+		const raw = args['allowed-origins'] as string | string[];
+		const rawArr = Array.isArray(raw) ? raw.map(String) : [String(raw)];
+		config.allowedOrigins = rawArr.flatMap((s) =>
+			s
+				.split(',')
+				.map((p) => p.trim())
+				.filter(Boolean),
+		);
 	}
 
-	const dir = args['filesystem-dir'] as string;
+	const dir = args.dir as string;
 	if (dir) config.filesystem = { dir };
 
 	const timeout = args['computer-shell-timeout'] as number;
@@ -250,14 +244,34 @@ export function getSettingsFilePath(): string {
 	return path.join(os.homedir(), '.n8n-gateway', 'settings.json');
 }
 
+let _settingsDir: string | undefined;
+
+/** Return the directory containing the gateway settings file (cached). */
+export function getSettingsDir(): string {
+	_settingsDir ??= path.dirname(getSettingsFilePath());
+	return _settingsDir;
+}
+
+/**
+ * Check if an absolute path falls within the gateway settings directory.
+ * Used to prevent computer-use tools from modifying their own configuration.
+ */
+export function isProtectedSettingsPath(absolutePath: string): boolean {
+	let dir = path.resolve(getSettingsDir());
+	let target = path.resolve(absolutePath);
+	if (process.platform === 'darwin' || process.platform === 'win32') {
+		dir = dir.toLowerCase();
+		target = target.toLowerCase();
+	}
+	return target === dir || target.startsWith(dir + path.sep);
+}
+
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
 export interface ParsedArgs {
-	/** Subcommand: 'serve' or undefined (direct mode) */
-	command?: 'serve';
-	/** n8n instance URL (direct mode) */
+	/** n8n instance URL */
 	url?: string;
 	/** Gateway API key (direct mode) */
 	apiKey?: string;
@@ -276,23 +290,20 @@ export interface ParsedArgs {
 }
 
 export function parseConfig(argv = process.argv.slice(2)): ParsedArgs {
-	const isServe = argv[0] === 'serve';
-	const rawArgs = isServe ? argv.slice(1) : argv;
-
 	const permissionFlags = Object.values(TOOL_GROUP_DEFINITIONS).map((o) => o.cliFlag);
 
-	const args = yargsParser(rawArgs, {
+	const args = yargsParser(argv, {
 		string: [
 			'log-level',
-			'filesystem-dir',
+			'dir',
 			'browser-default',
-			'allow-origin',
+			'allowed-origins',
 			'permission-confirmation',
 			...permissionFlags,
 		],
 		boolean: ['auto-confirm', 'non-interactive', 'help'],
-		number: ['port', 'computer-shell-timeout'],
-		alias: { h: 'help', p: 'port' },
+		number: ['computer-shell-timeout'],
+		alias: { h: 'help', d: 'dir' },
 	});
 
 	// Three-tier merge: Zod defaults ← env ← CLI
@@ -303,40 +314,30 @@ export function parseConfig(argv = process.argv.slice(2)): ParsedArgs {
 		cliConfig as Record<string, unknown>,
 	);
 
-	// Handle positional args
+	// Handle positional args: [url?, token?, dir?]
 	let url: string | undefined;
 	let apiKey: string | undefined;
 
-	if (isServe) {
-		const positional = args._;
-		if (positional.length > 0 && typeof positional[0] === 'string') {
-			const dir = String(positional[0]);
+	const positional = args._;
+	if (positional.length >= 1) {
+		url = String(positional[0]);
+		if (positional.length >= 2) {
+			apiKey = String(positional[1]);
+		}
+		if (positional.length >= 3) {
+			const dir = String(positional[2]);
 			if (!merged.filesystem || typeof merged.filesystem !== 'object') {
 				merged.filesystem = { dir };
 			} else if (!(merged.filesystem as Record<string, unknown>).dir) {
 				(merged.filesystem as Record<string, unknown>).dir = dir;
 			}
 		}
-	} else {
-		const positional = args._;
-		if (positional.length >= 2) {
-			url = String(positional[0]);
-			apiKey = String(positional[1]);
-			if (positional.length >= 3) {
-				const dir = String(positional[2]);
-				if (!merged.filesystem || typeof merged.filesystem !== 'object') {
-					merged.filesystem = { dir };
-				} else if (!(merged.filesystem as Record<string, unknown>).dir) {
-					(merged.filesystem as Record<string, unknown>).dir = dir;
-				}
-			}
-		} else if (!args.help) {
-			url = args.url as string | undefined;
-			apiKey = args['api-key'] as string | undefined;
-			if (args.dir) {
-				if (!merged.filesystem || typeof merged.filesystem !== 'object') {
-					merged.filesystem = { dir: args.dir as string };
-				}
+	} else if (!args.help) {
+		url = args.url as string | undefined;
+		apiKey = args['api-key'] as string | undefined;
+		if (args.dir) {
+			if (!merged.filesystem || typeof merged.filesystem !== 'object') {
+				merged.filesystem = { dir: args.dir as string };
 			}
 		}
 	}
@@ -373,11 +374,57 @@ export function parseConfig(argv = process.argv.slice(2)): ParsedArgs {
 	const config: GatewayConfig = { ...structural, permissions };
 
 	return {
-		command: isServe ? 'serve' : undefined,
 		url,
 		apiKey,
 		config,
 		autoConfirm,
 		nonInteractive,
 	};
+}
+
+// ---------------------------------------------------------------------------
+// Origin matching — supports wildcard patterns like https://*.app.n8n.cloud
+// ---------------------------------------------------------------------------
+
+function matchesOriginPattern(pattern: string, origin: string): boolean {
+	if (!pattern.includes('*')) {
+		try {
+			return new URL(pattern).origin === new URL(origin).origin;
+		} catch {
+			return false;
+		}
+	}
+
+	let originUrl: URL;
+	try {
+		originUrl = new URL(origin);
+	} catch {
+		return false;
+	}
+
+	// Parse pattern manually — URL constructor rejects wildcards in hostnames
+	const schemeMatch = /^([a-z][a-z0-9+\-.]*):\/\/(.+)$/.exec(pattern);
+	if (!schemeMatch) return false;
+	const [, patternScheme, patternAuthority] = schemeMatch;
+
+	if (originUrl.protocol !== `${patternScheme}:`) return false;
+
+	// Split authority into hostname and optional port
+	const colonIdx = patternAuthority.lastIndexOf(':');
+	const hasPort = colonIdx > patternAuthority.lastIndexOf('*');
+	const patternHostname = hasPort ? patternAuthority.slice(0, colonIdx) : patternAuthority;
+	const patternPort = hasPort ? patternAuthority.slice(colonIdx + 1) : '';
+
+	if (patternPort && originUrl.port !== patternPort) return false;
+	if (!patternPort && originUrl.port !== '') return false;
+
+	// Match hostname — * expands to any depth of subdomains
+	const escapedParts = patternHostname
+		.split('*')
+		.map((s) => s.replace(/[.+^${}()|[\]\\]/g, '\\$&'));
+	return new RegExp(`^${escapedParts.join('.+')}$`).test(originUrl.hostname);
+}
+
+export function isOriginAllowed(origin: string, allowedOrigins: string[]): boolean {
+	return allowedOrigins.some((pattern) => matchesOriginPattern(pattern, origin));
 }

@@ -1,9 +1,11 @@
 import type { CommunityNodeType } from '@n8n/api-types';
 import { inProduction, Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
+import cloneDeep from 'lodash/cloneDeep';
 import { ensureError, isToolType, NodeConnectionTypes } from 'n8n-workflow';
 
-import cloneDeep from 'lodash/cloneDeep';
+import { buildStrapiUpdateQuery } from '@/utils/strapi-utils';
+
 import {
 	getCommunityNodeTypes,
 	getCommunityNodesMetadata,
@@ -12,7 +14,6 @@ import {
 } from './community-node-types-utils';
 import { CommunityPackagesConfig } from './community-packages.config';
 import { CommunityPackagesService } from './community-packages.service';
-import { buildStrapiUpdateQuery } from './strapi-utils';
 
 const UPDATE_INTERVAL = 8 * 60 * 60 * 1000;
 const RETRY_INTERVAL = 5 * 60 * 1000;
@@ -148,7 +149,10 @@ export class CommunityNodeTypesService {
 
 	private createAiTools() {
 		const usableAsTools = Array.from(this.communityNodeTypes.values()).filter(
-			(nodeType) => nodeType.nodeDescription.usableAsTool && !isToolType(nodeType.name),
+			(nodeType) =>
+				nodeType.nodeDescription.usableAsTool &&
+				!isToolType(nodeType.name) &&
+				!nodeType.nodeDescription.group?.includes('trigger'),
 		);
 		const forbiddenCategories = ['Recommended Tools'];
 		for (const nodeType of usableAsTools) {
@@ -223,7 +227,10 @@ export class CommunityNodeTypesService {
 		return { ...nodeType, isInstalled: isInstalled(nodeType.name) };
 	}
 
-	findVetted(packageName: string) {
+	async findVetted(packageName: string) {
+		if (this.updateRequired()) {
+			await this.fetchNodeTypes();
+		}
 		const vettedTypes = Array.from(this.communityNodeTypes.values());
 		return vettedTypes.find((nodeType) => nodeType.packageName === packageName);
 	}

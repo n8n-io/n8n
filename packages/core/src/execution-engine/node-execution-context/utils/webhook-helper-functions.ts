@@ -39,13 +39,15 @@ export function getNodeWebhookUrl(
 	additionalKeys: IWorkflowDataProxyAdditionalKeys,
 	isTest?: boolean,
 ): string | undefined {
-	let baseUrl = additionalData.webhookBaseUrl;
-	if (isTest === true) {
-		baseUrl = additionalData.webhookTestBaseUrl;
-	}
-
 	const webhookDescription = getWebhookDescription(name, workflow, node);
 	if (webhookDescription === undefined) return;
+
+	let baseUrl: string;
+	if (webhookDescription.nodeType === 'mcp') {
+		baseUrl = isTest === true ? additionalData.mcpTestBaseUrl : additionalData.mcpBaseUrl;
+	} else {
+		baseUrl = isTest === true ? additionalData.webhookTestBaseUrl : additionalData.webhookBaseUrl;
+	}
 
 	const path = workflow.expression.getSimpleParameterValue(
 		node,

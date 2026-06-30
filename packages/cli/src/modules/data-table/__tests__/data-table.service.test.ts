@@ -1,8 +1,12 @@
-import { mockInstance, testModules } from '@n8n/backend-test-utils';
 import type { RenameDataTableColumnDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { mockInstance, testModules } from '@n8n/backend-test-utils';
 import { ProjectRelationRepository, type User } from '@n8n/db';
 import type { DataTableInfoById } from 'n8n-workflow';
+import type { Mocked } from 'vitest';
+
+import { EventService } from '@/events/event.service';
+import { RoleService } from '@/services/role.service';
 
 import type { DataTableColumn } from '../data-table-column.entity';
 import { DataTableColumnRepository } from '../data-table-column.repository';
@@ -15,18 +19,18 @@ import { DataTableService } from '../data-table.service';
 import { DataTableColumnNotFoundError } from '../errors/data-table-column-not-found.error';
 import { DataTableNotFoundError } from '../errors/data-table-not-found.error';
 import { DataTableValidationError } from '../errors/data-table-validation.error';
-import { RoleService } from '@/services/role.service';
 
 describe('DataTableService', () => {
 	let dataTableService: DataTableService;
-	let mockDataTableRepository: jest.Mocked<DataTableRepository>;
-	let mockDataTableColumnRepository: jest.Mocked<DataTableColumnRepository>;
-	let mockDataTableRowsRepository: jest.Mocked<DataTableRowsRepository>;
-	let mockLogger: jest.Mocked<Logger>;
-	let mockDataTableSizeValidator: jest.Mocked<DataTableSizeValidator>;
-	let mockProjectRelationRepository: jest.Mocked<ProjectRelationRepository>;
-	let mockRoleService: jest.Mocked<RoleService>;
-	let mockCsvImportService: jest.Mocked<DataTableCsvImportService>;
+	let mockDataTableRepository: Mocked<DataTableRepository>;
+	let mockDataTableColumnRepository: Mocked<DataTableColumnRepository>;
+	let mockDataTableRowsRepository: Mocked<DataTableRowsRepository>;
+	let mockLogger: Mocked<Logger>;
+	let mockDataTableSizeValidator: Mocked<DataTableSizeValidator>;
+	let mockProjectRelationRepository: Mocked<ProjectRelationRepository>;
+	let mockRoleService: Mocked<RoleService>;
+	let mockCsvImportService: Mocked<DataTableCsvImportService>;
+	let mockEventService: Mocked<EventService>;
 
 	beforeAll(async () => {
 		await testModules.loadModules(['data-table']);
@@ -41,9 +45,10 @@ describe('DataTableService', () => {
 		mockProjectRelationRepository = mockInstance(ProjectRelationRepository);
 		mockRoleService = mockInstance(RoleService);
 		mockCsvImportService = mockInstance(DataTableCsvImportService);
+		mockEventService = mockInstance(EventService);
 
 		// Mock the logger.scoped method to return the logger itself
-		mockLogger.scoped = jest.fn().mockReturnValue(mockLogger);
+		mockLogger.scoped = vi.fn().mockReturnValue(mockLogger);
 
 		dataTableService = new DataTableService(
 			mockDataTableRepository,
@@ -54,9 +59,10 @@ describe('DataTableService', () => {
 			mockProjectRelationRepository,
 			mockRoleService,
 			mockCsvImportService,
+			mockEventService,
 		);
 
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('renameColumn', () => {
@@ -495,7 +501,7 @@ describe('DataTableService', () => {
 			// Mock insertRows transaction
 			Object.defineProperty(mockDataTableColumnRepository, 'manager', {
 				value: {
-					transaction: jest.fn(async (fn) => fn({} as any)),
+					transaction: vi.fn(async (fn) => fn({} as any)),
 				},
 				writable: true,
 				configurable: true,
@@ -504,7 +510,7 @@ describe('DataTableService', () => {
 				success: true,
 				insertedRows: 2,
 			});
-			mockDataTableSizeValidator.reset = jest.fn();
+			mockDataTableSizeValidator.reset = vi.fn();
 			mockDataTableRepository.touchUpdatedAt.mockResolvedValue(undefined);
 		});
 

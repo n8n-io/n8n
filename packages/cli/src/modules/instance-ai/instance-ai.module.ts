@@ -19,34 +19,39 @@ export class InstanceAiModule implements ModuleInterface {
 		const { InstanceAiSettingsService } = await import('./instance-ai-settings.service');
 		await Container.get(InstanceAiSettingsService).loadFromDb();
 		await import('./instance-ai.controller');
+		await import('./mcp/instance-ai-mcp-connection.controller');
 
-		// Fire-and-forget: clean up expired conversation threads on startup
-		const { InstanceAiMemoryService } = await import('./instance-ai-memory.service');
-		const { InstanceAiService } = await import('./instance-ai.service');
-		const aiService = Container.get(InstanceAiService);
-		void Container.get(InstanceAiMemoryService)
-			.cleanupExpiredThreads(async (threadId) => await aiService.clearThreadState(threadId))
-			.catch(() => undefined);
+		// Instantiating the relay registers its `user-deleted` listener, which
+		// cleans up Instance AI data owned by the deleted user.
+		const { InstanceAiEventRelay } = await import('./instance-ai-event-relay.service');
+		Container.get(InstanceAiEventRelay);
 
-		// Register snapshot pruning — lifecycle decorators handle start/stop
-		await import('./snapshot-pruning.service');
+		if (process.env.E2E_TESTS === 'true' && process.env.NODE_ENV !== 'production') {
+			await import('./instance-ai-test.controller');
+		}
 	}
 
 	async settings() {
+		const { GlobalConfig } = await import('@n8n/config');
 		const { InstanceAiService } = await import('./instance-ai.service');
 		const { InstanceAiSettingsService } = await import('./instance-ai-settings.service');
+		const globalConfig = Container.get(GlobalConfig);
 		const service = Container.get(InstanceAiService);
 		const settingsService = Container.get(InstanceAiSettingsService);
-		const enabled = service.isEnabled();
-		const localGateway = service.isLocalFilesystemAvailable();
+		const enabled = settingsService.isAgentEnabled();
 		const localGatewayDisabled = settingsService.isLocalGatewayDisabled();
-		const localGatewayFallbackDirectory = service.getLocalFilesystemDirectory();
+		const browserUseEnabled = settingsService.isBrowserUseEnabled();
+		const sandboxStatus = settingsService.getSandboxStatus();
 		return {
 			enabled,
-			localGateway,
 			localGatewayDisabled,
-			localGatewayFallbackDirectory,
+			browserUseEnabled,
 			proxyEnabled: service.isProxyEnabled(),
+			cloudManaged: globalConfig.deployment.type === 'cloud',
+			sandboxEnabled: sandboxStatus.enabled,
+			workflowBuilderAvailable: enabled && sandboxStatus.workflowBuilderAvailable,
+			sandboxUnavailableReason: sandboxStatus.unavailableReason,
+			runDebugEnabled: globalConfig.instanceAi.runDebugEnabled,
 		};
 	}
 
@@ -54,23 +59,37 @@ export class InstanceAiModule implements ModuleInterface {
 		const { InstanceAiThread } = await import('./entities/instance-ai-thread.entity');
 		const { InstanceAiMessage } = await import('./entities/instance-ai-message.entity');
 		const { InstanceAiResource } = await import('./entities/instance-ai-resource.entity');
-		const { InstanceAiObservationalMemory } = await import(
-			'./entities/instance-ai-observational-memory.entity'
-		);
-		const { InstanceAiWorkflowSnapshot } = await import(
-			'./entities/instance-ai-workflow-snapshot.entity'
-		);
 		const { InstanceAiRunSnapshot } = await import('./entities/instance-ai-run-snapshot.entity');
 		const { InstanceAiIterationLog } = await import('./entities/instance-ai-iteration-log.entity');
+		const { InstanceAiCheckpoint } = await import('./entities/instance-ai-checkpoint.entity');
+		const { InstanceAiPendingConfirmation } = await import(
+			'./entities/instance-ai-pending-confirmation.entity'
+		);
+		const { InstanceAiObservation } = await import('./entities/instance-ai-observation.entity');
+		const { InstanceAiObservationCursor } = await import(
+			'./entities/instance-ai-observation-cursor.entity'
+		);
+		const { InstanceAiObservationLock } = await import(
+			'./entities/instance-ai-observation-lock.entity'
+		);
+		const { InstanceAiMcpRegistryConnection } = await import(
+			'./entities/instance-ai-mcp-registry-connection.entity'
+		);
+		const { InstanceAiThreadGrant } = await import('./entities/instance-ai-thread-grant.entity');
 
 		return [
 			InstanceAiThread,
 			InstanceAiMessage,
 			InstanceAiResource,
-			InstanceAiObservationalMemory,
-			InstanceAiWorkflowSnapshot,
 			InstanceAiRunSnapshot,
 			InstanceAiIterationLog,
+			InstanceAiCheckpoint,
+			InstanceAiPendingConfirmation,
+			InstanceAiObservation,
+			InstanceAiObservationCursor,
+			InstanceAiObservationLock,
+			InstanceAiMcpRegistryConnection,
+			InstanceAiThreadGrant,
 		];
 	}
 

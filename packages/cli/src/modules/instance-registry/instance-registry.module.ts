@@ -1,6 +1,5 @@
-import { Logger } from '@n8n/backend-common';
 import type { ModuleInterface } from '@n8n/decorators';
-import { BackendModule } from '@n8n/decorators';
+import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
 /**
@@ -14,7 +13,28 @@ import { Container } from '@n8n/di';
 @BackendModule({ name: 'instance-registry' })
 export class InstanceRegistryModule implements ModuleInterface {
 	async init() {
-		const logger = Container.get(Logger);
-		logger.debug('Initializing instance-registry module.');
+		await import('./instance-registry.controller');
+
+		const { InstanceRegistryService } = await import('./instance-registry.service');
+		const instanceRegistryService = Container.get(InstanceRegistryService);
+		await instanceRegistryService.init();
+
+		const { InstanceRegistryProxyService } = await import(
+			'@/services/instance-registry-proxy.service'
+		);
+		Container.get(InstanceRegistryProxyService).registerProvider(instanceRegistryService);
+
+		const { StaleMemberCleanupService } = await import('./stale-member-cleanup.service');
+		Container.get(StaleMemberCleanupService).init();
+
+		await import('./checks');
+		const { CheckService } = await import('./checks/check.service');
+		Container.get(CheckService).init();
+	}
+
+	@OnShutdown()
+	async shutdown() {
+		const { InstanceRegistryService } = await import('./instance-registry.service');
+		await Container.get(InstanceRegistryService).shutdown();
 	}
 }

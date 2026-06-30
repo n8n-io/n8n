@@ -28,9 +28,9 @@ properties:
   callerPolicy:
     type: string
     enum: ['any', 'none', 'workflowsFromAList', 'workflowsFromSameOwner']
-    default: workflowsFromSameOwner
     description: |
       Controls which workflows are allowed to call this workflow using the Execute Workflow node.
+      Defaults to workflowsFromSameOwner.
 
       Available options:
       - `any`: Any workflow can call this workflow (no restrictions)
@@ -49,11 +49,30 @@ properties:
   timeSavedPerExecution:
     type: number
     description: Estimated time saved per execution in minutes
+  redactionPolicy:
+    type: string
+    enum: ['none', 'non-manual', 'manual-only', 'all']
+    description: |
+      Controls whether execution data is redacted for this workflow.
+
+      Available options:
+      - `none` (default): No redaction — all execution data is stored.
+      - `non-manual`: Redact production (non-manually triggered) executions only.
+      - `manual-only`: Redact manually triggered executions only.
+      - `all`: Redact all executions (manual and production).
+
+      When the instance has a redaction floor configured, the policy must be equal to
+      or stricter than the floor. A policy weaker than the floor is rejected with 422
+      on create, and on update when it changes the stored policy; an unchanged
+      pre-existing below-floor policy is preserved (the floor is not applied
+      retroactively). Omitting this field when creating a workflow seeds it to the
+      instance floor instead.
+    example: non-manual
   availableInMCP:
     type: boolean
-    default: false
     description: |
       Controls whether this workflow is accessible via the Model Context Protocol (MCP).
+      Defaults to false.
 
       When enabled, this workflow can be called by MCP clients (AI assistants and other tools
       that support MCP). This allows external AI tools to discover and execute this workflow
@@ -67,3 +86,16 @@ properties:
       Security note: When a workflow is available in MCP, it can be discovered and executed
       by any MCP client that has the appropriate API credentials for your n8n instance.
     example: false
+  customTelemetryTags:
+    type: array
+    items:
+      type: object
+      additionalProperties: false
+      required:
+        - key
+        - value
+      properties:
+        key:
+          type: string
+        value:
+          type: string

@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type {
 	IExecuteFunctions,
 	IDataTableProjectAggregateService,
@@ -42,7 +42,7 @@ describe('Table Operations', () => {
 			});
 
 			mockExecuteFunctions.helpers = {
-				getDataTableAggregateProxy: jest.fn().mockResolvedValue(mockAggregateProxy),
+				getDataTableAggregateProxy: vi.fn().mockResolvedValue(mockAggregateProxy),
 			} as any;
 
 			const mockResult = {
@@ -84,7 +84,7 @@ describe('Table Operations', () => {
 			});
 
 			mockExecuteFunctions.helpers = {
-				getDataTableAggregateProxy: jest.fn().mockResolvedValue(mockAggregateProxy),
+				getDataTableAggregateProxy: vi.fn().mockResolvedValue(mockAggregateProxy),
 			} as any;
 
 			const mockResult = {
@@ -120,7 +120,7 @@ describe('Table Operations', () => {
 			});
 
 			mockExecuteFunctions.helpers = {
-				getDataTableAggregateProxy: jest.fn().mockResolvedValue(mockAggregateProxy),
+				getDataTableAggregateProxy: vi.fn().mockResolvedValue(mockAggregateProxy),
 			} as any;
 
 			const existingTable = {
@@ -160,7 +160,7 @@ describe('Table Operations', () => {
 			});
 
 			mockExecuteFunctions.helpers = {
-				getDataTableAggregateProxy: jest.fn().mockResolvedValue(mockAggregateProxy),
+				getDataTableAggregateProxy: vi.fn().mockResolvedValue(mockAggregateProxy),
 			} as any;
 
 			mockAggregateProxy.getManyAndCount.mockResolvedValue({
@@ -211,7 +211,7 @@ describe('Table Operations', () => {
 			});
 
 			mockExecuteFunctions.helpers = {
-				getDataTableAggregateProxy: jest.fn().mockResolvedValue(mockAggregateProxy),
+				getDataTableAggregateProxy: vi.fn().mockResolvedValue(mockAggregateProxy),
 			} as any;
 
 			const mockResult = {
@@ -255,7 +255,7 @@ describe('Table Operations', () => {
 			});
 
 			mockExecuteFunctions.helpers = {
-				getDataTableProxy: jest.fn().mockResolvedValue(mockDataTableProxy),
+				getDataTableProxy: vi.fn().mockResolvedValue(mockDataTableProxy),
 			} as any;
 
 			mockDataTableProxy.deleteDataTable.mockResolvedValue(true);
@@ -277,7 +277,7 @@ describe('Table Operations', () => {
 			});
 
 			mockExecuteFunctions.helpers = {
-				getDataTableProxy: jest.fn().mockResolvedValue(mockDataTableProxy),
+				getDataTableProxy: vi.fn().mockResolvedValue(mockDataTableProxy),
 			} as any;
 
 			mockDataTableProxy.deleteDataTable.mockResolvedValue(false);
@@ -303,7 +303,7 @@ describe('Table Operations', () => {
 			});
 
 			mockExecuteFunctions.helpers = {
-				getDataTableAggregateProxy: jest.fn().mockResolvedValue(mockAggregateProxy),
+				getDataTableAggregateProxy: vi.fn().mockResolvedValue(mockAggregateProxy),
 			} as any;
 
 			const mockTables = [
@@ -339,7 +339,7 @@ describe('Table Operations', () => {
 			});
 
 			mockExecuteFunctions.helpers = {
-				getDataTableAggregateProxy: jest.fn().mockResolvedValue(mockAggregateProxy),
+				getDataTableAggregateProxy: vi.fn().mockResolvedValue(mockAggregateProxy),
 			} as any;
 
 			const mockTables = [
@@ -375,7 +375,7 @@ describe('Table Operations', () => {
 			});
 
 			mockExecuteFunctions.helpers = {
-				getDataTableAggregateProxy: jest.fn().mockResolvedValue(mockAggregateProxy),
+				getDataTableAggregateProxy: vi.fn().mockResolvedValue(mockAggregateProxy),
 			} as any;
 
 			const mockTables = [{ id: 'table-1', name: 'Test Table', columns: [] }];
@@ -409,7 +409,7 @@ describe('Table Operations', () => {
 			});
 
 			mockExecuteFunctions.helpers = {
-				getDataTableAggregateProxy: jest.fn().mockResolvedValue(mockAggregateProxy),
+				getDataTableAggregateProxy: vi.fn().mockResolvedValue(mockAggregateProxy),
 			} as any;
 
 			const mockTables = [
@@ -446,7 +446,7 @@ describe('Table Operations', () => {
 			});
 
 			mockExecuteFunctions.helpers = {
-				getDataTableAggregateProxy: jest.fn().mockResolvedValue(mockAggregateProxy),
+				getDataTableAggregateProxy: vi.fn().mockResolvedValue(mockAggregateProxy),
 			} as any;
 
 			// First page
@@ -501,7 +501,7 @@ describe('Table Operations', () => {
 			});
 
 			mockExecuteFunctions.helpers = {
-				getDataTableAggregateProxy: jest.fn().mockResolvedValue(mockAggregateProxy),
+				getDataTableAggregateProxy: vi.fn().mockResolvedValue(mockAggregateProxy),
 			} as any;
 
 			mockAggregateProxy.getManyAndCount.mockResolvedValue({
@@ -574,7 +574,7 @@ describe('Table Operations', () => {
 			});
 
 			mockExecuteFunctions.helpers = {
-				getDataTableProxy: jest.fn().mockResolvedValue(mockDataTableProxy),
+				getDataTableProxy: vi.fn().mockResolvedValue(mockDataTableProxy),
 			} as any;
 
 			mockDataTableProxy.updateDataTable.mockResolvedValue(true);
@@ -599,7 +599,7 @@ describe('Table Operations', () => {
 			});
 
 			mockExecuteFunctions.helpers = {
-				getDataTableProxy: jest.fn().mockResolvedValue(mockDataTableProxy),
+				getDataTableProxy: vi.fn().mockResolvedValue(mockDataTableProxy),
 			} as any;
 
 			mockDataTableProxy.updateDataTable.mockResolvedValue(false);

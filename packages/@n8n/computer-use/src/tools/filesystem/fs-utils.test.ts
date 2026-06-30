@@ -1,16 +1,23 @@
 import type { Stats } from 'node:fs';
 import * as fs from 'node:fs/promises';
+import type { Mock } from 'vitest';
 
-import { resolveSafePath } from './fs-utils';
+import {
+	buildFilesystemResource,
+	isLikelyBinaryContent,
+	resolveReadablePath,
+	resolveSafePath,
+} from './fs-utils';
+import * as config from '../../config';
 
-jest.mock('node:fs/promises');
+vi.mock('node:fs/promises');
 
 const BASE = '/base';
 const enoent = (): Error => Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
 
 function mockRealpath(entries: Array<[string, string]>): void {
 	const map = new Map(entries);
-	(fs.realpath as jest.Mock).mockImplementation(async (p: string) => {
+	(fs.realpath as Mock).mockImplementation(async (p: string) => {
 		if (map.has(p)) return await Promise.resolve(map.get(p)!);
 		throw enoent();
 	});
@@ -18,7 +25,7 @@ function mockRealpath(entries: Array<[string, string]>): void {
 
 function mockLstat(entries: Array<[string, Partial<Stats>]>): void {
 	const map = new Map(entries);
-	jest.mocked(fs.lstat).mockImplementation(async (p) => {
+	vi.mocked(fs.lstat).mockImplementation(async (p) => {
 		const entry = map.get(p as string);
 		if (entry) return await Promise.resolve(entry as Stats);
 		throw enoent();
@@ -27,7 +34,7 @@ function mockLstat(entries: Array<[string, Partial<Stats>]>): void {
 
 function mockReadlink(entries: Array<[string, string]>): void {
 	const map = new Map(entries);
-	(fs.readlink as jest.Mock).mockImplementation(async (p: string) => {
+	(fs.readlink as Mock).mockImplementation(async (p: string) => {
 		if (map.has(p)) return await Promise.resolve(map.get(p)!);
 		throw enoent();
 	});
@@ -35,10 +42,10 @@ function mockReadlink(entries: Array<[string, string]>): void {
 
 describe('resolveSafePath', () => {
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		// Default: only base exists; everything else is ENOENT
 		mockRealpath([[BASE, BASE]]);
-		jest.mocked(fs.lstat).mockRejectedValue(enoent());
+		vi.mocked(fs.lstat).mockRejectedValue(enoent());
 	});
 
 	it('resolves a simple path within the base directory', async () => {
@@ -133,5 +140,138 @@ describe('resolveSafePath', () => {
 		]);
 
 		await expect(resolveSafePath(BASE, 'test/bam/bum')).rejects.toThrow('escapes');
+	});
+
+	it('throws when a symlink resolves to the protected settings directory', async () => {
+		// Use the settings directory's parent as base so the resolved path is within bounds
+		const settingsDir = config.getSettingsDir();
+		const parentDir = settingsDir.replace(/\/[^/]+$/, '');
+		const sneakyLink = `${parentDir}/sneaky-link`;
+		// Identity realpath by default; only the symlink diverges
+		(fs.realpath as Mock).mockImplementation(async (p: string) => {
+			if (p === sneakyLink) return await Promise.resolve(settingsDir);
+			return await Promise.resolve(p);
+		});
+
+		await expect(resolveSafePath(parentDir, 'sneaky-link/settings.json')).rejects.toThrow(
+			'Access denied',
+		);
+	});
+});
+
+describe('isLikelyBinaryContent', () => {
+	it('treats text as valid when a multibyte character crosses the sample boundary', () => {
+		const buffer = Buffer.concat([Buffer.alloc(8191, 'a'), Buffer.from('é')]);
+
+		expect(isLikelyBinaryContent(buffer)).toBe(false);
+	});
+
+	it('detects null bytes outside the sample boundary', () => {
+		const buffer = Buffer.concat([Buffer.alloc(8192, 'a'), Buffer.from([0])]);
+
+		expect(isLikelyBinaryContent(buffer)).toBe(true);
+	});
+});
+
+describe('resolveReadablePath', () => {
+	beforeEach(() => {
+		vi.resetAllMocks();
+		vi.mocked(fs.lstat).mockRejectedValue(enoent());
+	});
+
+	it('throws when a symlink resolves into an excluded directory segment', async () => {
+		mockRealpath([
+			[BASE, BASE],
+			[`${BASE}/link`, `${BASE}/node_modules`],
+		]);
+
+		await expect(resolveReadablePath(BASE, 'link/pkg/index.js')).rejects.toThrow(
+			'excluded from filesystem reads',
+		);
+	});
+});
+
+describe('buildFilesystemResource — settings self-protection', () => {
+	const settingsDir = config.getSettingsDir();
+	const settingsFile = config.getSettingsFilePath();
+
+	beforeEach(() => {
+		vi.resetAllMocks();
+		// Base dir is the settings directory's parent (so the path is reachable)
+		const parentDir = settingsDir.replace(/\/[^/]+$/, '');
+		(fs.realpath as Mock).mockImplementation(async (p: string) => {
+			if (p === parentDir) return await Promise.resolve(parentDir);
+			throw enoent();
+		});
+	});
+
+	it('throws for filesystemWrite targeting the settings file', async () => {
+		const parentDir = settingsDir.replace(/\/[^/]+$/, '');
+		const relPath = settingsFile.replace(parentDir + '/', '');
+		await expect(
+			buildFilesystemResource(parentDir, relPath, 'filesystemWrite', 'Write settings'),
+		).rejects.toThrow('Access denied');
+	});
+
+	it('throws for filesystemRead targeting the settings file', async () => {
+		const parentDir = settingsDir.replace(/\/[^/]+$/, '');
+		const relPath = settingsFile.replace(parentDir + '/', '');
+		await expect(
+			buildFilesystemResource(parentDir, relPath, 'filesystemRead', 'Read settings'),
+		).rejects.toThrow('Access denied');
+	});
+
+	it('does not throw for unrelated paths', async () => {
+		(fs.realpath as Mock).mockImplementation(async (p: string) => {
+			if (p === BASE) return await Promise.resolve(BASE);
+			throw enoent();
+		});
+		const result = await buildFilesystemResource(
+			BASE,
+			'src/index.ts',
+			'filesystemWrite',
+			'Write file',
+		);
+		expect(result.resource).toBe('/base/src/index.ts');
+	});
+
+	it('throws for filesystemRead targeting an excluded directory segment', async () => {
+		mockRealpath([[BASE, BASE]]);
+
+		await expect(
+			buildFilesystemResource(BASE, 'node_modules/pkg/index.js', 'filesystemRead', 'Read file'),
+		).rejects.toThrow('excluded from filesystem reads');
+	});
+
+	it('throws for filesystemRead when a symlink targets an excluded directory segment', async () => {
+		mockRealpath([
+			[BASE, BASE],
+			[`${BASE}/link`, `${BASE}/node_modules`],
+		]);
+
+		await expect(
+			buildFilesystemResource(BASE, 'link/pkg/index.js', 'filesystemRead', 'Read file'),
+		).rejects.toThrow('excluded from filesystem reads');
+	});
+
+	it('matches excluded directory segments case-insensitively', async () => {
+		mockRealpath([[BASE, BASE]]);
+
+		await expect(
+			buildFilesystemResource(BASE, 'Node_Modules/pkg/index.js', 'filesystemRead', 'Read file'),
+		).rejects.toThrow('excluded from filesystem reads');
+	});
+
+	it('does not apply excluded segment policy to filesystemWrite resources', async () => {
+		mockRealpath([[BASE, BASE]]);
+
+		const result = await buildFilesystemResource(
+			BASE,
+			'dist/generated.js',
+			'filesystemWrite',
+			'Write generated file',
+		);
+
+		expect(result.resource).toBe('/base/dist/generated.js');
 	});
 });

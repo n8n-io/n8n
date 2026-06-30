@@ -7,7 +7,12 @@ import { In } from '@n8n/typeorm';
 import pick from 'lodash/pick';
 import { UserError } from 'n8n-workflow';
 
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { EventService } from '@/events/event.service';
+import { ExportableTagEntity } from '@/modules/source-control.ee/types/exportable-tags';
+
 import { SOURCE_CONTROL_DATATABLES_EXPORT_FOLDER } from './constants';
+import { SourceControlContextFactory } from './source-control-context.factory';
 import { SourceControlGitService } from './source-control-git.service.ee';
 import {
 	hasOwnerChanged,
@@ -23,7 +28,6 @@ import {
 } from './source-control-helper.ee';
 import { SourceControlImportService } from './source-control-import.service.ee';
 import { SourceControlPreferencesService } from './source-control-preferences.service.ee';
-import { SourceControlContextFactory } from './source-control-context.factory';
 import type { StatusExportableCredential } from './types/exportable-credential';
 import type {
 	DataTableResourceOwner,
@@ -40,10 +44,6 @@ import type {
 	SourceControlGetStatusVerboseResult,
 } from './types/source-control-get-status';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
-
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { EventService } from '@/events/event.service';
-import { ExportableTagEntity } from '@/modules/source-control.ee/types/exportable-tags';
 
 @Service()
 export class SourceControlStatusService {
@@ -95,6 +95,35 @@ export class SourceControlStatusService {
 		}
 
 		return;
+	}
+
+	/**
+	 * Checks whether a local and remote data table belong to the same project.
+	 * For team projects, compares the project/team ID.
+	 * Returns true when both owners are null (unowned) or when neither is a team
+	 * (conservative match to avoid suppressing real collisions).
+	 */
+	private isSameDataTableProject(
+		localOwner: StatusResourceOwner | null,
+		remoteOwner: DataTableResourceOwner | null,
+	): boolean {
+		if (!localOwner && !remoteOwner) {
+			return true;
+		}
+
+		if (localOwner?.type === 'team' && remoteOwner?.type === 'team') {
+			return localOwner.projectId === remoteOwner.teamId;
+		}
+
+		// Personal projects don't have stable IDs across instances,
+		// so we can't reliably determine if they're the same project.
+		// Return false to avoid false-positive collision flags.
+		if (localOwner?.type === 'personal' || remoteOwner?.type === 'personal') {
+			return false;
+		}
+
+		// Mixed (one null, one not) — different projects
+		return false;
 	}
 
 	private buildFolderPath(
@@ -156,6 +185,14 @@ export class SourceControlStatusService {
 			throw new ForbiddenError('You do not have permission to pull from source control');
 		}
 
+		if (
+			options.direction === 'push' &&
+			!hasGlobalScope(user, 'sourceControl:push') &&
+			context.authorizedProjects.length === 0
+		) {
+			throw new ForbiddenError('You do not have permission to push to source control');
+		}
+
 		await this.resetWorkfolder();
 
 		const remoteFolders =
@@ -173,7 +210,7 @@ export class SourceControlStatusService {
 			this.getStatusWorkflows(options, context, collectVerbose, remoteFolders),
 			this.getStatusCredentials(options, context, collectVerbose),
 			this.getStatusVariables(options, collectVerbose),
-			this.getStatusDataTables(options, collectVerbose),
+			this.getStatusDataTables(options, context, collectVerbose),
 			this.getStatusTagsMappings(options, context, collectVerbose),
 			this.getStatusFoldersMapping(options, context, collectVerbose, remoteFolders),
 			this.getStatusProjects(options, context, collectVerbose),
@@ -646,19 +683,48 @@ export class SourceControlStatusService {
 		};
 	}
 
-	private async getStatusDataTables(options: SourceControlGetStatus, collectVerbose: boolean) {
+	private async getStatusDataTables(
+		options: SourceControlGetStatus,
+		context: SourceControlContext,
+		collectVerbose: boolean,
+	) {
 		const sourceControlledFiles: SourceControlledFile[] = [];
 		const dataTablesRemote =
-			(await this.sourceControlImportService.getRemoteDataTablesFromFiles()) ?? [];
+			(await this.sourceControlImportService.getRemoteDataTablesFromFiles(context)) ?? [];
 		const dataTablesLocal =
-			(await this.sourceControlImportService.getLocalDataTablesFromDb()) ?? [];
+			(await this.sourceControlImportService.getLocalDataTablesFromDb(context)) ?? [];
+
+		const localById = new Map(dataTablesLocal.map((dt) => [dt.id, dt]));
+		const remoteById = new Map(dataTablesRemote.map((dt) => [dt.id, dt]));
+		const remoteByName = new Map(dataTablesRemote.map((dt) => [dt.name, dt]));
+
+		// Query git history to find data table IDs that were previously synced.
+		// This lets us distinguish "deleted from remote" (should delete locally on pull)
+		// from "never pushed" (should preserve locally on pull), and vice versa for push.
+		const historicallyTrackedFiles = await this.gitService.getHistoricallyTrackedFiles(
+			SOURCE_CONTROL_DATATABLES_EXPORT_FOLDER,
+		);
+		const previouslySyncedIds = new Set<string>();
+		for (const filePath of historicallyTrackedFiles) {
+			const match = filePath.match(/([^/]+)\.json$/);
+			if (match) {
+				previouslySyncedIds.add(match[1]);
+			}
+		}
 
 		const dtMissingInLocal: ExportableDataTable[] = [];
 		const dtMissingInRemote: StatusExportableDataTable[] = [];
 		const dtModifiedInEither: Array<ExportableDataTable | StatusExportableDataTable> = [];
 
 		for (const remote of dataTablesRemote) {
-			if (dataTablesLocal.findIndex((local) => local.id === remote.id) === -1) {
+			if (!localById.has(remote.id)) {
+				// During push, a remote-only table would be marked as "deleted" from remote.
+				// Skip if this table was never synced from this instance (it was pushed by
+				// another instance and should not be deleted).
+				if (options.direction === 'push' && !previouslySyncedIds.has(remote.id)) {
+					continue;
+				}
+
 				if (collectVerbose) {
 					dtMissingInLocal.push(remote);
 				}
@@ -677,9 +743,45 @@ export class SourceControlStatusService {
 		}
 
 		for (const local of dataTablesLocal) {
-			const remote = dataTablesRemote.find((r) => r.id === local.id);
+			const remote = remoteById.get(local.id);
 
 			if (!remote) {
+				// Check for cross-ID name collision (different tables sharing the same name
+				// in the same project). This must run before the never-synced early-continue
+				// below, otherwise a pull would silently create a remote table that collides
+				// with an unsynced local one.
+				const nameCandidate = remoteByName.get(local.name);
+				const nameCollision =
+					nameCandidate &&
+					nameCandidate.id !== local.id &&
+					this.isSameDataTableProject(local.ownedBy, nameCandidate.ownedBy)
+						? nameCandidate
+						: undefined;
+				if (nameCollision) {
+					const modified = options.preferLocalVersion ? local : nameCollision;
+					if (collectVerbose) {
+						dtModifiedInEither.push(modified);
+					}
+					sourceControlledFiles.push({
+						id: modified.id,
+						name: modified.name,
+						type: 'datatable',
+						status: 'modified',
+						location: options.direction === 'push' ? 'local' : 'remote',
+						conflict: true,
+						file: getDataTableExportPath(modified.id, this.dataTableExportFolder),
+						updatedAt: new Date().toISOString(),
+						owner: this.convertToStatusResourceOwner(modified.ownedBy),
+					});
+				}
+
+				// During pull, a local-only table would be marked as "deleted" locally.
+				// Skip if this table was never synced — it was created locally and not yet
+				// pushed, so it should not be deleted.
+				if (options.direction === 'pull' && !previouslySyncedIds.has(local.id)) {
+					continue;
+				}
+
 				if (collectVerbose) {
 					dtMissingInRemote.push(local);
 				}
@@ -694,16 +796,13 @@ export class SourceControlStatusService {
 					updatedAt: new Date().toISOString(),
 					owner: local.ownedBy ?? undefined,
 				});
+
 				continue;
 			}
 
-			const hasMismatch =
-				(remote.id === local.id && remote.name !== local.name) ||
-				(remote.id !== local.id && remote.name === local.name);
-
 			const isModified = isDataTableModified(local, remote);
 
-			if (hasMismatch || isModified) {
+			if (isModified) {
 				const modified = options.preferLocalVersion ? local : remote;
 				if (collectVerbose) {
 					dtModifiedInEither.push(modified);

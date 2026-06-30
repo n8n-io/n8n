@@ -3,7 +3,6 @@ import { createTestingPinia } from '@pinia/testing';
 import { createTestNode } from '@/__tests__/mocks';
 import { mockedStore } from '@/__tests__/utils';
 
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { INodeUi } from '@/Interface';
@@ -36,6 +35,12 @@ const mockWorkflowDocumentStore = {
 	getNodeByName: vi.fn() as ReturnType<typeof vi.fn>,
 	getNodes: vi.fn() as ReturnType<typeof vi.fn>,
 	updateNodeProperties: mockUpdateNodeProperties,
+	name: '',
+	settings: {},
+	getPinDataSnapshot: vi.fn().mockReturnValue({}),
+	connectionsBySourceNode: {} as Record<string, unknown>,
+	connectionsByDestinationNode: {} as Record<string, unknown>,
+	workflowTriggerNodes: [] as INodeUi[],
 };
 
 vi.mock('@/app/stores/workflowDocument.store', async () => {
@@ -44,6 +49,7 @@ vi.mock('@/app/stores/workflowDocument.store', async () => {
 		...actual,
 		useWorkflowDocumentStore: vi.fn(() => mockWorkflowDocumentStore),
 		createWorkflowDocumentId: vi.fn().mockReturnValue('test-id'),
+		injectWorkflowDocumentStore: () => ({ value: mockWorkflowDocumentStore }),
 	};
 });
 
@@ -102,17 +108,14 @@ const createNode = (overrides: Partial<INodeUi> = {}): INodeUi =>
 	}) as INodeUi;
 
 describe('useWorkflowSetupState – node grouping', () => {
-	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
 	let credentialsStore: ReturnType<typeof mockedStore<typeof useCredentialsStore>>;
 	let nodeTypesStore: ReturnType<typeof mockedStore<typeof useNodeTypesStore>>;
 
 	beforeEach(() => {
 		createTestingPinia();
-		workflowsStore = mockedStore(useWorkflowsStore);
 		credentialsStore = mockedStore(useCredentialsStore);
 		nodeTypesStore = mockedStore(useNodeTypesStore);
 
-		workflowsStore.workflowId = 'test-workflow';
 		credentialsStore.getCredentialTypeByName = vi.fn().mockReturnValue(undefined);
 		credentialsStore.getCredentialById = vi.fn().mockReturnValue(undefined);
 		credentialsStore.getNodesWithAccess = vi.fn().mockReturnValue([]);
@@ -122,10 +125,11 @@ describe('useWorkflowSetupState – node grouping', () => {
 		credentialsStore.fetchAllCredentials = vi.fn().mockResolvedValue([]);
 		credentialsStore.fetchAllCredentialsForWorkflow = vi.fn().mockResolvedValue([]);
 		nodeTypesStore.isTriggerNode = vi.fn().mockReturnValue(false);
-		workflowsStore.getWorkflowResultDataByNodeName = vi.fn().mockReturnValue(null);
 
 		mockGetNodeTypeDisplayableCredentials.mockReturnValue([]);
 		mockWorkflowDocumentStore.allNodes = [];
+		mockWorkflowDocumentStore.connectionsBySourceNode = {};
+		mockWorkflowDocumentStore.connectionsByDestinationNode = {};
 		mockWorkflowDocumentStore.getNodeByName = vi.fn();
 		mockWorkflowDocumentStore.getNodes = vi.fn();
 		mockUpdateNodeProperties.mockReset();
@@ -166,7 +170,7 @@ describe('useWorkflowSetupState – node grouping', () => {
 		});
 
 		// AI connection: LLM → Agent via ai_languageModel
-		workflowsStore.connectionsByDestinationNode = {
+		mockWorkflowDocumentStore.connectionsByDestinationNode = {
 			'AI Agent': {
 				ai_languageModel: [[{ node: 'OpenAI Chat Model', type: 'ai_languageModel', index: 0 }]],
 			},
@@ -211,7 +215,7 @@ describe('useWorkflowSetupState – node grouping', () => {
 		});
 
 		// AI connection: LLM → Chain via ai_languageModel
-		workflowsStore.connectionsByDestinationNode = {
+		mockWorkflowDocumentStore.connectionsByDestinationNode = {
 			'Basic LLM Chain': {
 				ai_languageModel: [[{ node: 'OpenAI Chat Model', type: 'ai_languageModel', index: 0 }]],
 			},
@@ -266,7 +270,7 @@ describe('useWorkflowSetupState – node grouping', () => {
 		});
 
 		// Chain → Retriever (ai_retriever), Retriever → VectorStore (ai_vectorStore), VectorStore → Embedding (ai_embedding)
-		workflowsStore.connectionsByDestinationNode = {
+		mockWorkflowDocumentStore.connectionsByDestinationNode = {
 			'Basic LLM Chain': {
 				ai_retriever: [[{ node: 'Retriever', type: 'ai_retriever', index: 0 }]],
 			},
@@ -330,7 +334,7 @@ describe('useWorkflowSetupState – node grouping', () => {
 		});
 
 		// Agent → Tool Code (ai_tool), Tool Code → VectorStore (ai_vectorStore), VectorStore → Embedding (ai_embedding)
-		workflowsStore.connectionsByDestinationNode = {
+		mockWorkflowDocumentStore.connectionsByDestinationNode = {
 			'AI Agent': {
 				ai_tool: [[{ node: 'Tool Code', type: 'ai_tool', index: 0 }]],
 			},
@@ -381,7 +385,7 @@ describe('useWorkflowSetupState – node grouping', () => {
 		});
 
 		// Main connection only (no AI connections)
-		workflowsStore.connectionsByDestinationNode = {
+		mockWorkflowDocumentStore.connectionsByDestinationNode = {
 			Slack: {
 				main: [[{ node: 'Schedule Trigger', type: 'main', index: 0 }]],
 			},
@@ -420,7 +424,7 @@ describe('useWorkflowSetupState – node grouping', () => {
 		});
 
 		// AI connection: Tool Code → Agent via ai_tool
-		workflowsStore.connectionsByDestinationNode = {
+		mockWorkflowDocumentStore.connectionsByDestinationNode = {
 			'AI Agent': {
 				ai_tool: [[{ node: 'Tool Code', type: 'ai_tool', index: 0 }]],
 			},

@@ -1,5 +1,5 @@
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import {
 	isExpression as isExpressionUtil,
 	stringifyExpressionResult,
@@ -18,10 +18,7 @@ import {
 	watch,
 } from 'vue';
 import { useWorkflowHelpers, type ResolveParameterOptions } from './useWorkflowHelpers';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
 
@@ -38,13 +35,9 @@ export function useResolvedExpression({
 	stringifyObject?: MaybeRefOrGetter<boolean>;
 	contextNodeName?: MaybeRefOrGetter<string>;
 }) {
-	const ndvStore = useNDVStore();
-	const workflowsStore = useWorkflowsStore();
-	const workflowDocumentStore = computed(() =>
-		workflowsStore.workflowId
-			? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-			: undefined,
-	);
+	const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
+	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const ndvStore = computed(() => useNDVStore(workflowDocumentStore.value.documentId));
 
 	const { resolveExpression } = useWorkflowHelpers();
 
@@ -56,11 +49,11 @@ export function useResolvedExpression({
 	const resolvedExpression = ref<unknown>(null);
 	const resolvedExpressionString = ref('');
 
-	const targetItem = computed(() => ndvStore.expressionTargetItem ?? undefined);
-	const activeNode = computed(() => ndvStore.activeNode);
+	const targetItem = computed(() => ndvStore.value.expressionTargetItem ?? undefined);
+	const activeNode = computed(() => ndvStore.value.activeNode);
 	const hasRunData = computed(() =>
 		Boolean(
-			workflowsStore.workflowExecutionData?.data?.resultData?.runData[activeNode.value?.name ?? ''],
+			workflowExecutionStateStore.value.activeExecutionRunData?.[activeNode.value?.name ?? ''],
 		),
 	);
 	const isExpression = computed(() => isExpressionUtil(toValue(expression)));
@@ -76,12 +69,12 @@ export function useResolvedExpression({
 			isForCredential: toValue(isForCredential),
 			additionalKeys: toValue(additionalData),
 			contextNodeName: toValue(contextNodeName),
-			...(contextNodeName === undefined && ndvStore.isInputParentOfActiveNode
+			...(contextNodeName === undefined && ndvStore.value.isInputParentOfActiveNode
 				? {
 						targetItem: targetItem.value ?? undefined,
-						inputNodeName: ndvStore.ndvInputNodeName,
-						inputRunIndex: ndvStore.ndvInputRunIndex,
-						inputBranchIndex: ndvStore.ndvInputBranchIndex,
+						inputNodeName: ndvStore.value.ndvInputNodeName,
+						inputRunIndex: ndvStore.value.ndvInputRunIndex,
+						inputBranchIndex: ndvStore.value.ndvInputBranchIndex,
 					}
 				: {}),
 		};
@@ -114,7 +107,11 @@ export function useResolvedExpression({
 			if (currentInvocation !== updateExpressionInvocation) return;
 
 			resolvedExpression.value = resolved.ok ? resolved.result : null;
-			resolvedExpressionString.value = stringifyExpressionResult(resolved, hasRunData.value);
+			resolvedExpressionString.value = stringifyExpressionResult(
+				resolved,
+				workflowDocumentStore.value.getPinDataSnapshot(),
+				hasRunData.value,
+			);
 		} else {
 			resolvedExpression.value = null;
 			resolvedExpressionString.value = '';
@@ -126,9 +123,9 @@ export function useResolvedExpression({
 			expressionLocalResolveCtx,
 			toRef(expression),
 			toRef(additionalData),
-			() => workflowsStore.getWorkflowExecution,
-			() => workflowsStore.getWorkflowRunData,
-			() => workflowDocumentStore.value?.name,
+			() => workflowExecutionStateStore.value.activeExecution,
+			() => workflowExecutionStateStore.value.activeExecutionRunData,
+			() => workflowDocumentStore.value.name,
 			targetItem,
 		],
 		debouncedUpdateExpression,

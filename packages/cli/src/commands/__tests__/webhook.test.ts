@@ -1,27 +1,50 @@
 import { mockInstance } from '@n8n/backend-test-utils';
+import { DbConnection, DeploymentKeyRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { BinaryDataConfig } from 'n8n-core';
+import type { Mock, MockInstance } from 'vitest';
 
+import { DeprecationService } from '@/deprecation/deprecation.service';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
+import { JwtService } from '@/services/jwt.service';
 import { RedisClientService } from '@/services/redis-client.service';
 import { WebhookServer } from '@/webhooks/webhook-server';
 
+import { BaseCommand } from '../base-command';
 import { Webhook } from '../webhook';
 
-jest.mock('@/scaling/scaling.service', () => ({
+vi.mock('@/scaling/scaling.service', () => ({
 	ScalingService: class {},
 }));
+
+const dbConnection = mockInstance(DbConnection);
+dbConnection.init.mockResolvedValue(undefined);
+dbConnection.migrate.mockResolvedValue(undefined);
+
+const deploymentKeyRepository = mockInstance(DeploymentKeyRepository);
+deploymentKeyRepository.findActiveByType.mockResolvedValue(null);
+deploymentKeyRepository.insertOrIgnore.mockResolvedValue(undefined);
 
 mockInstance(RedisClientService);
 mockInstance(PubSubRegistry);
 const mockSubscriber = mockInstance(Subscriber);
 const mockWebhookServer = mockInstance(WebhookServer);
-mockInstance(LoadNodesAndCredentials);
+const mockLoadNodesAndCredentials = mockInstance(LoadNodesAndCredentials);
+mockLoadNodesAndCredentials.postProcessLoaders.mockResolvedValue(undefined);
+
+mockInstance(DeprecationService);
+mockInstance(JwtService, { initialize: vi.fn().mockResolvedValue(undefined) });
+mockInstance(BinaryDataConfig, { initialize: vi.fn().mockResolvedValue(undefined) });
+mockInstance(MessageEventBus, { initialize: vi.fn().mockResolvedValue(undefined) });
+mockInstance(LogStreamingEventRelay);
 
 describe('Webhook', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('initOrchestration', () => {
@@ -38,7 +61,7 @@ describe('Webhook', () => {
 
 		it('should initialize PubSubRegistry', async () => {
 			const pubSubRegistry = Container.get(PubSubRegistry);
-			const initSpy = jest.spyOn(pubSubRegistry, 'init');
+			const initSpy = pubSubRegistry.init;
 
 			await new Webhook().initOrchestration();
 
@@ -47,11 +70,11 @@ describe('Webhook', () => {
 	});
 
 	describe('run', () => {
-		beforeEach(() => {
-			const { ScalingService } = jest.requireMock<{ ScalingService: new () => unknown }>(
-				'@/scaling/scaling.service',
-			);
-			Container.set(ScalingService, { setupQueue: jest.fn() });
+		beforeEach(async () => {
+			const { ScalingService } = await import('@/scaling/scaling.service');
+			Container.set(ScalingService, { setupQueue: vi.fn() } as unknown as InstanceType<
+				typeof ScalingService
+			>);
 		});
 
 		it('should call markAsReady after server starts', async () => {
@@ -63,6 +86,59 @@ describe('Webhook', () => {
 
 			expect(mockWebhookServer.start).toHaveBeenCalled();
 			expect(mockWebhookServer.markAsReady).toHaveBeenCalled();
+		});
+	});
+
+	describe('init', () => {
+		let baseInitSpy: MockInstance;
+
+		beforeEach(() => {
+			baseInitSpy = vi.spyOn(BaseCommand.prototype, 'init').mockResolvedValue(undefined);
+		});
+
+		afterEach(() => {
+			baseInitSpy.mockRestore();
+		});
+
+		it('should call executionContextHookRegistry.init before LoadNodesAndCredentials.postProcessLoaders', async () => {
+			const webhook = new Webhook();
+
+			// @ts-expect-error - Accessing protected property for testing
+			webhook.globalConfig = { executions: { mode: 'queue' } };
+			// @ts-expect-error - Accessing protected method for testing
+			webhook.initCrashJournal = vi.fn().mockResolvedValue(undefined);
+			webhook.initLicense = vi.fn().mockResolvedValue(undefined);
+			// @ts-expect-error - Accessing protected method for testing
+			webhook.initCommunityPackages = vi.fn().mockResolvedValue(undefined);
+			webhook.initOrchestration = vi.fn().mockResolvedValue(undefined);
+			webhook.initBinaryDataService = vi.fn().mockResolvedValue(undefined);
+			// @ts-expect-error - Accessing protected method for testing
+			webhook.initDataDeduplicationService = vi.fn().mockResolvedValue(undefined);
+			webhook.initExternalHooks = vi.fn().mockResolvedValue(undefined);
+			// @ts-expect-error - Accessing protected property for testing
+			webhook.moduleRegistry = { initModules: vi.fn().mockResolvedValue(undefined) };
+			// @ts-expect-error - Accessing protected property for testing
+			webhook.instanceSettings = {
+				hostId: 'test',
+				instanceType: 'webhook',
+				initialize: vi.fn().mockResolvedValue(undefined),
+			};
+			// @ts-expect-error - Accessing protected property for testing
+			webhook.executionContextHookRegistry = {
+				init: vi.fn().mockResolvedValue(undefined),
+			};
+
+			await webhook.init();
+
+			// @ts-expect-error - Accessing protected property for testing
+			const hookInitMock = webhook.executionContextHookRegistry.init as Mock;
+			const postProcessMock = mockLoadNodesAndCredentials.postProcessLoaders as Mock;
+
+			expect(hookInitMock).toHaveBeenCalled();
+			expect(postProcessMock).toHaveBeenCalled();
+			expect(hookInitMock.mock.invocationCallOrder[0]).toBeLessThan(
+				postProcessMock.mock.invocationCallOrder[0],
+			);
 		});
 	});
 });

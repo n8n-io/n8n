@@ -1,17 +1,16 @@
-import { computed, ref, watch, type Ref } from 'vue';
-import type { RouteLocationNormalizedLoadedGeneric } from 'vue-router';
+import { computed, ref, watch } from 'vue';
 import type { IconName } from '@n8n/design-system';
 import {
 	getLatestBuildResult,
-	getLatestExecutionId,
+	getLatestBuilderTarget,
+	getLatestWorkflowSetupResult,
+	getLatestWorkflowUpdateResult,
 	getLatestDataTableResult,
 	getLatestDeletedDataTableId,
 	getExecutionResultsByWorkflow,
 	type ExecutionResult,
 } from './canvasPreview.utils';
-import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
-import type { useInstanceAiStore } from './instanceAi.store';
-import type { ExecutionStatus, WorkflowExecutionState } from './useExecutionPushEvents';
+import type { ThreadRuntime } from './instanceAi.store';
 
 export interface ArtifactTab {
 	id: string;
@@ -19,7 +18,6 @@ export interface ArtifactTab {
 	name: string;
 	icon: IconName;
 	projectId?: string;
-	executionStatus?: ExecutionStatus;
 }
 
 const ARTIFACT_ICON_MAP: Record<string, IconName> = {
@@ -28,58 +26,25 @@ const ARTIFACT_ICON_MAP: Record<string, IconName> = {
 };
 
 interface UseCanvasPreviewOptions {
-	store: ReturnType<typeof useInstanceAiStore>;
-	route: RouteLocationNormalizedLoadedGeneric;
-	workflowExecutions?: Ref<Map<string, WorkflowExecutionState>>;
+	thread: ThreadRuntime;
+	threadId: () => string;
 }
 
-export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvasPreviewOptions) {
-	const workflowsListStore = useWorkflowsListStore();
-
+export function useCanvasPreview({ thread }: UseCanvasPreviewOptions) {
 	// --- Tab state ---
-	const activeTabId = ref<string | null>(null);
-	const activeExecutionId = ref<string | null>(null);
-
-	// Execution results extracted from historical chat messages (survives page refresh).
-	// Filters out stale executions where the workflow was edited after the execution finished.
-	const historicalExecutions = computed(() => {
-		const results = new Map<string, ExecutionResult>();
-		for (const msg of store.messages) {
-			if (!msg.agentTree) continue;
-			for (const [wfId, result] of getExecutionResultsByWorkflow(msg.agentTree)) {
-				results.set(wfId, result);
-			}
-		}
-		for (const [wfId, result] of results) {
-			if (!result.finishedAt) continue;
-			const wf = workflowsListStore.getWorkflowById(wfId);
-			if (wf?.updatedAt && new Date(wf.updatedAt) > new Date(result.finishedAt)) {
-				results.delete(wfId);
-			}
-		}
-		return results;
-	});
+	const activeTabId = ref<string>();
 
 	// All artifacts (workflows + data tables) in the current thread, derived from resource registry
 	const allArtifactTabs = computed((): ArtifactTab[] => {
 		const result: ArtifactTab[] = [];
-		const liveExecMap = workflowExecutions?.value;
-		const historicalExecMap = historicalExecutions.value;
-		for (const entry of store.resourceRegistry.values()) {
+		for (const entry of thread.producedArtifacts.values()) {
 			if (entry.type === 'workflow' || entry.type === 'data-table') {
-				// Live push event state takes priority over historical message data.
-				// Historical data already has stale executions filtered out.
-				const status =
-					entry.type === 'workflow'
-						? (liveExecMap?.get(entry.id)?.status ?? historicalExecMap.get(entry.id)?.status)
-						: undefined;
 				result.push({
 					id: entry.id,
 					type: entry.type,
 					name: entry.name,
 					icon: ARTIFACT_ICON_MAP[entry.type] ?? 'file',
 					projectId: entry.projectId,
-					executionStatus: status,
 				});
 			}
 		}
@@ -103,18 +68,49 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 		return tab?.type === 'data-table' ? (tab.projectId ?? null) : null;
 	});
 
+	const executionResultsByWorkflow = computed(() => {
+		const results = new Map<string, ExecutionResult>();
+		for (const message of thread.messages) {
+			if (!message.agentTree) continue;
+			for (const [workflowId, result] of getExecutionResultsByWorkflow(message.agentTree)) {
+				results.set(workflowId, result);
+			}
+		}
+		return results;
+	});
+
+	const activeWorkflowExecutionResult = computed(() => {
+		const workflowId = activeWorkflowId.value;
+		return workflowId ? executionResultsByWorkflow.value.get(workflowId) : undefined;
+	});
+
 	const dataTableRefreshKey = ref(0);
 
-	const isPreviewVisible = computed(() => activeTabId.value !== null);
+	const isPreviewVisible = computed(() => activeTabId.value !== undefined);
 
-	// Tracks whether the user sent a message in the current thread session.
-	// Used to distinguish live operations (should auto-open preview) from
-	// historical data being loaded (should not).
-	const userSentMessage = ref(false);
+	// --- Workflow attachments (e.g. an editor hand-off) ---
+	// A workflow attached to a message surfaces as an artifact tab via the
+	// resource registry. The first one is opened on arrival. (Its execution, if
+	// any, is shown once by the preview itself — see consumePendingInitialExecution.)
+	const firstAttachedWorkflowId = computed(() => {
+		for (const message of thread.messages) {
+			for (const attachment of message.attachments ?? []) {
+				if (attachment.type === 'workflow') return attachment.id;
+			}
+		}
+		return undefined;
+	});
 
-	// Tracks whether the canvas was open before the most recent thread switch,
-	// so we can restore it when the new thread has a build result.
-	const wasCanvasOpenBeforeSwitch = ref(false);
+	// Open the attached workflow on arrival. Only when nothing is open, so it
+	// never steals focus from an agent-driven open or a user selection.
+	watch(
+		firstAttachedWorkflowId,
+		(id) => {
+			if (!id || activeTabId.value !== undefined) return;
+			activeTabId.value = id;
+		},
+		{ immediate: true },
+	);
 
 	// --- Actions ---
 
@@ -123,86 +119,50 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 	}
 
 	function closePreview() {
-		activeTabId.value = null;
-		activeExecutionId.value = null;
+		activeTabId.value = undefined;
 	}
 
-	function openWorkflowPreview(workflowId: string) {
+	/**
+	 * Open or switch the preview to a workflow.
+	 * Returns true if the preview tab changed; false if the tab was already
+	 * active (so the caller can fall back to opening in a new tab instead).
+	 */
+	function openWorkflowPreview(workflowId: string): boolean {
+		if (activeTabId.value === workflowId) return false;
 		activeTabId.value = workflowId;
+		return true;
 	}
 
-	function openDataTablePreview(dataTableId: string, _projectId: string) {
-		activeExecutionId.value = null;
+	/**
+	 * Open or switch the preview to a data table.
+	 * Returns true if the preview tab changed; false if the tab was already
+	 * active (so the caller can fall back to opening in a new tab instead).
+	 */
+	function openDataTablePreview(dataTableId: string, _projectId: string): boolean {
+		if (activeTabId.value === dataTableId) return false;
 		activeTabId.value = dataTableId;
+		return true;
 	}
-
-	function markUserSentMessage() {
-		userSentMessage.value = true;
-	}
-
-	// --- Reset execution view when a new execution starts ---
-	// When the AI re-runs a workflow, clear the stale executionId so the iframe
-	// switches from showing old execution results to the live workflow view.
-	watch(
-		() => {
-			if (!workflowExecutions || !activeTabId.value) return undefined;
-			return workflowExecutions.value.get(activeTabId.value)?.status;
-		},
-		(status) => {
-			if (status === 'running') {
-				activeExecutionId.value = null;
-			}
-		},
-	);
-
-	// --- Restore historical execution when tab becomes active ---
-	// On page refresh or tab switch, if a workflow tab has a completed execution
-	// in the chat history, show its execution results in the iframe.
-	// If it doesn't, clear the stale executionId so the iframe shows workflow mode.
-	watch(activeTabId, (tabId, oldTabId) => {
-		if (!tabId) return;
-		// Don't override if a live execution is in progress
-		if (workflowExecutions?.value.get(tabId)?.status === 'running') return;
-		const historical = historicalExecutions.value.get(tabId);
-		if (historical) {
-			activeExecutionId.value = historical.executionId;
-		} else if (oldTabId) {
-			// Only clear when switching between tabs, not on initial open
-			activeExecutionId.value = null;
-		}
-	});
 
 	// --- Guard: fall back if active tab is removed from registry ---
 	// Only acts when there ARE tabs but the selected one is missing (i.e. it was removed).
 	// Skips when tabs are empty to avoid a race where the registry hasn't been populated yet.
 
 	watch(allArtifactTabs, (tabs) => {
-		if (activeTabId.value === null || tabs.length === 0) return;
+		if (activeTabId.value === undefined || tabs.length === 0) return;
 		const stillExists = tabs.some((t) => t.id === activeTabId.value);
 		if (!stillExists) {
 			activeTabId.value = tabs[0].id;
 		}
 	});
 
-	// --- Preserve canvas intent when switching threads ---
-
-	watch(
-		() => route.params.threadId,
-		() => {
-			wasCanvasOpenBeforeSwitch.value = isPreviewVisible.value;
-			activeTabId.value = null;
-			activeExecutionId.value = null;
-			userSentMessage.value = false;
-		},
-	);
-
 	// --- Auto-open canvas when AI creates/modifies a workflow ---
 
 	const workflowRefreshKey = ref(0);
 
 	const latestBuildResult = computed(() => {
-		for (let i = store.messages.length - 1; i >= 0; i--) {
-			const msg = store.messages[i];
+		for (let i = thread.messages.length - 1; i >= 0; i--) {
+			const msg = thread.messages[i];
 			if (msg.agentTree) {
 				const result = getLatestBuildResult(msg.agentTree);
 				if (result) return result;
@@ -213,55 +173,63 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 
 	// Watch the toolCallId — it changes even when the same workflow is rebuilt.
 	// Auto-open logic:
-	//   - Preview closed + live build/user message: auto-open to this workflow
-	//   - Preview open on same workflow: refresh it (workflowRefreshKey++)
-	//   - Preview open on different artifact: don't switch — user chose that tab
-	//   - Thread switch with canvas open: restore canvas with new thread's workflow
-	//   - Thread switch with canvas closed: stay closed
+	//   - During hydration (loading past conversations from the server) → skip,
+	//     so re-entering an old thread doesn't pop the panel for past artifacts.
+	//   - Otherwise (live build / late run-sync delivery) → open or switch tab.
+	//
+	// `flush: 'sync'` is required: hydration runs `messages.value = […]` then
+	// clears `hydratingThreadId` in the same microtask. With the default `pre`
+	// flush the callback would fire AFTER that clear and skip the gate.
 	watch(
 		() => latestBuildResult.value?.toolCallId,
 		(toolCallId) => {
 			if (!toolCallId || !latestBuildResult.value) return;
+			if (thread.isHydratingThread) return;
 
-			const targetId = latestBuildResult.value.workflowId;
-
-			if (
-				!isPreviewVisible.value &&
-				!store.isStreaming &&
-				!userSentMessage.value &&
-				!wasCanvasOpenBeforeSwitch.value
-			) {
-				return;
-			}
-
-			// Clear stale execution state for the rebuilt workflow so the tab
-			// icon doesn't show a checkmark from a previous execution.
-			if (workflowExecutions?.value.has(targetId)) {
-				const next = new Map(workflowExecutions.value);
-				next.delete(targetId);
-				workflowExecutions.value = next;
-			}
-
-			// If preview is already open on a different artifact, don't switch
-			if (isPreviewVisible.value && activeTabId.value !== null && activeTabId.value !== targetId) {
-				workflowRefreshKey.value++;
-				return;
-			}
-
-			wasCanvasOpenBeforeSwitch.value = false;
-			activeExecutionId.value = null;
-			activeTabId.value = targetId;
+			activeTabId.value = latestBuildResult.value.workflowId;
 			workflowRefreshKey.value++;
 		},
+		{ flush: 'sync' },
 	);
 
-	// --- Auto-show execution after run-workflow completes ---
+	// --- Auto-open canvas when an edit-mode builder spawns ---
+	// The workflow-builder carries the existing workflow id in
+	// `targetResource.id` from the moment it is spawned. Opening the preview
+	// then — instead of waiting for the first build-workflow result — lets the
+	// user see what is being edited as soon as the sub-agent is called.
+	// Keyed by agentId so a fresh builder spawn re-triggers the preview.
 
-	const latestExecution = computed(() => {
-		for (let i = store.messages.length - 1; i >= 0; i--) {
-			const msg = store.messages[i];
+	const latestBuilderTarget = computed(() => {
+		for (let i = thread.messages.length - 1; i >= 0; i--) {
+			const msg = thread.messages[i];
 			if (msg.agentTree) {
-				const result = getLatestExecutionId(msg.agentTree);
+				const target = getLatestBuilderTarget(msg.agentTree);
+				if (target) return target;
+			}
+		}
+		return null;
+	});
+
+	watch(
+		() => latestBuilderTarget.value?.agentId,
+		(agentId) => {
+			if (!agentId || !latestBuilderTarget.value) return;
+			if (thread.isHydratingThread) return;
+
+			activeTabId.value = latestBuilderTarget.value.workflowId;
+		},
+		{ flush: 'sync' },
+	);
+
+	// --- Refresh preview when setup-workflow / apply-workflow-credentials completes ---
+	// These tools modify the workflow (credentials, parameters) but aren't detected
+	// by getLatestBuildResult. Refresh the preview so the iframe shows the latest state.
+
+	const latestSetupResult = computed(() => {
+		for (let i = thread.messages.length - 1; i >= 0; i--) {
+			const msg = thread.messages[i];
+			if (msg.agentTree) {
+				const result = getLatestWorkflowSetupResult(msg.agentTree);
 				if (result) return result;
 			}
 		}
@@ -269,25 +237,45 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 	});
 
 	watch(
-		() => latestExecution.value?.executionId,
-		() => {
-			const exec = latestExecution.value;
-			if (!exec) return;
+		() => latestSetupResult.value?.toolCallId,
+		(toolCallId) => {
+			if (!toolCallId || !latestSetupResult.value) return;
 
-			if (!isPreviewVisible.value && !store.isStreaming && !userSentMessage.value) return;
+			const targetId = latestSetupResult.value.workflowId;
 
-			// If preview is already open on a different artifact, don't switch
-			if (
-				isPreviewVisible.value &&
-				activeTabId.value !== null &&
-				activeTabId.value !== exec.workflowId
-			) {
-				return;
+			// Only refresh if the setup targeted the currently active workflow tab
+			if (activeTabId.value === targetId) {
+				workflowRefreshKey.value++;
 			}
+		},
+	);
 
-			activeExecutionId.value = exec.executionId;
-			activeTabId.value = exec.workflowId;
-			if (!isPreviewVisible.value) {
+	// --- Refresh preview when a `workflows` update / restore-version / setup completes ---
+	// The `workflows` tool's update / restore-version / setup actions mutate the
+	// workflow definition but surface under tool name 'workflows', so
+	// getLatestBuildResult doesn't detect them. Refresh the preview so the canvas
+	// shows the latest state.
+
+	const latestUpdateResult = computed(() => {
+		for (let i = thread.messages.length - 1; i >= 0; i--) {
+			const msg = thread.messages[i];
+			if (msg.agentTree) {
+				const result = getLatestWorkflowUpdateResult(msg.agentTree);
+				if (result) return result;
+			}
+		}
+		return null;
+	});
+
+	watch(
+		() => latestUpdateResult.value?.toolCallId,
+		(toolCallId) => {
+			if (!toolCallId || !latestUpdateResult.value) return;
+
+			const targetId = latestUpdateResult.value.workflowId;
+
+			// Only refresh if the update targeted the currently active workflow tab
+			if (activeTabId.value === targetId) {
 				workflowRefreshKey.value++;
 			}
 		},
@@ -296,8 +284,8 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 	// --- Auto-open data table preview when AI creates/modifies a data table ---
 
 	const latestDataTableResult = computed(() => {
-		for (let i = store.messages.length - 1; i >= 0; i--) {
-			const msg = store.messages[i];
+		for (let i = thread.messages.length - 1; i >= 0; i--) {
+			const msg = thread.messages[i];
 			if (msg.agentTree) {
 				const result = getLatestDataTableResult(msg.agentTree);
 				if (result) return result;
@@ -310,36 +298,19 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 		() => latestDataTableResult.value?.toolCallId,
 		(toolCallId) => {
 			if (!toolCallId || !latestDataTableResult.value) return;
+			if (thread.isHydratingThread) return;
 
-			const targetId = latestDataTableResult.value.dataTableId;
-
-			if (
-				!isPreviewVisible.value &&
-				!store.isStreaming &&
-				!userSentMessage.value &&
-				!wasCanvasOpenBeforeSwitch.value
-			) {
-				return;
-			}
-
-			// If preview is already open on a different artifact, don't switch
-			if (isPreviewVisible.value && activeTabId.value !== null && activeTabId.value !== targetId) {
-				dataTableRefreshKey.value++;
-				return;
-			}
-
-			wasCanvasOpenBeforeSwitch.value = false;
-			activeExecutionId.value = null;
-			activeTabId.value = targetId;
+			activeTabId.value = latestDataTableResult.value.dataTableId;
 			dataTableRefreshKey.value++;
 		},
+		{ flush: 'sync' },
 	);
 
 	// --- Close data table preview if the active table is deleted ---
 
 	const latestDeletedDataTableId = computed(() => {
-		for (let i = store.messages.length - 1; i >= 0; i--) {
-			const msg = store.messages[i];
+		for (let i = thread.messages.length - 1; i >= 0; i--) {
+			const msg = thread.messages[i];
 			if (msg.agentTree) {
 				const id = getLatestDeletedDataTableId(msg.agentTree);
 				if (id) return id;
@@ -351,7 +322,7 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 	watch(latestDeletedDataTableId, (deletedId) => {
 		if (deletedId && deletedId === activeTabId.value) {
 			const remaining = allArtifactTabs.value.filter((t) => t.id !== deletedId);
-			activeTabId.value = remaining.length > 0 ? remaining[0].id : null;
+			activeTabId.value = remaining.length > 0 ? remaining[0].id : undefined;
 		}
 	});
 
@@ -359,17 +330,15 @@ export function useCanvasPreview({ store, route, workflowExecutions }: UseCanvas
 		activeTabId,
 		allArtifactTabs,
 		activeWorkflowId,
-		activeExecutionId,
 		activeDataTableId,
 		activeDataTableProjectId,
+		activeWorkflowExecutionResult,
 		dataTableRefreshKey,
 		isPreviewVisible,
-		userSentMessage,
 		workflowRefreshKey,
 		selectTab,
 		closePreview,
 		openWorkflowPreview,
 		openDataTablePreview,
-		markUserSentMessage,
 	};
 }

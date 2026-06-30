@@ -9,19 +9,22 @@ import type {
 	SectionCreateElement,
 	SimplifiedNodeType,
 	SubcategorizedNodeTypes,
+	SubcategoryCreateElement,
 } from '@/Interface';
 import {
 	AI_CATEGORY_AGENTS,
 	AI_CATEGORY_HUMAN_IN_THE_LOOP,
+	AI_CATEGORY_MCP_NODES,
 	AI_CATEGORY_OTHER_TOOLS,
+	AI_CATEGORY_ROOT_NODES,
 	AI_CATEGORY_VECTOR_STORES,
 	AI_SUBCATEGORY,
 	AI_TRANSFORM_NODE_TYPE,
-	AI_GATEWAY_EXPERIMENT,
 	BETA_NODES,
 	CORE_NODES_CATEGORY,
 	DEFAULT_SUBCATEGORY,
 	DISCORD_NODE_TYPE,
+	HITL_SUBCATEGORY,
 	HUMAN_IN_THE_LOOP_CATEGORY,
 	MICROSOFT_TEAMS_NODE_TYPE,
 	RECOMMENDED_NODES,
@@ -29,19 +32,19 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 
 import { i18n } from '@n8n/i18n';
-import { reRankSearchResults } from '@n8n/utils/search/reRankSearchResults';
-import { sublimeSearch } from '@n8n/utils/search/sublimeSearch';
+import { reRankSearchResults } from '@n8n/utils/search/re-rank-search-results';
+import { sublimeSearch } from '@n8n/utils/search/sublime-search';
 import * as changeCase from 'change-case';
 import sortBy from 'lodash/sortBy';
 import type { NodeViewItemSection } from './views/viewsData';
 
 import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { usePostHog } from '@/app/stores/posthog.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import type { NodeIconSource } from '@/app/utils/nodeIcon';
 import { SampleTemplates } from '@/features/workflows/templates/utils/workflowSamples';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import type { INodeOutputConfiguration, NodeConnectionType } from 'n8n-workflow';
 import { SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import type { CommunityNodeDetails, ViewStack } from './composables/useViewStacks';
 
@@ -191,6 +194,8 @@ export function mapToolSubcategoryIcon(sectionKey: string): IconName {
 			return 'database';
 		case AI_CATEGORY_HUMAN_IN_THE_LOOP:
 			return 'badge-check';
+		case AI_CATEGORY_MCP_NODES:
+			return 'mcp';
 		default:
 			return 'globe';
 	}
@@ -286,7 +291,17 @@ export const removePreviewToken = (key: string) =>
 export const isNodePreviewKey = (key = '') => key.includes(COMMUNITY_NODE_TYPE_PREVIEW_TOKEN);
 
 function applyNodeTags(element: INodeCreateElement): INodeCreateElement {
-	if (element.type !== 'node' || element.properties.tag) return element;
+	if (element.type !== 'node') return element;
+
+	const aiSubcategories = element.properties.codex?.subcategories?.[AI_SUBCATEGORY] ?? [];
+	if (
+		aiSubcategories.includes(AI_CATEGORY_MCP_NODES) &&
+		!aiSubcategories.includes(AI_CATEGORY_ROOT_NODES)
+	) {
+		element.properties.isNew = true;
+	}
+
+	if (element.properties.tag) return element;
 
 	if (RECOMMENDED_NODES.includes(element.properties.name)) {
 		element.properties.tag = {
@@ -299,14 +314,17 @@ function applyNodeTags(element: INodeCreateElement): INodeCreateElement {
 			text: i18n.baseText('generic.betaProper'),
 		};
 	} else if (
-		usePostHog().getVariant(AI_GATEWAY_EXPERIMENT.name) === AI_GATEWAY_EXPERIMENT.variant &&
 		useSettingsStore().isAiGatewayEnabled &&
 		useAiGatewayStore().isNodeSupported(element.properties.name)
 	) {
-		element.properties.tag = {
-			type: 'success',
-			text: i18n.baseText('generic.freeCredits'),
-		};
+		const versions = useNodeTypesStore().getNodeVersions(element.properties.name);
+		const latestVersion = versions.length > 0 ? Math.max(...versions) : 1;
+		if (useAiGatewayStore().isNodeTypeVersionSupported(element.properties.name, latestVersion)) {
+			element.properties.tag = {
+				text: i18n.baseText('generic.freeCredits'),
+				pill: true,
+			};
+		}
 	}
 
 	return element;
@@ -321,18 +339,50 @@ export function finalizeItems(items: INodeCreateElement[]): INodeCreateElement[]
 		.map(applyNodeTags);
 }
 
+const hasMatchingOutput = (
+	node: SimplifiedNodeType,
+	connectionType: NodeConnectionType,
+): boolean => {
+	const outputs = node.outputs;
+	if (!Array.isArray(outputs)) return false;
+	return outputs.some((output: NodeConnectionType | INodeOutputConfiguration) =>
+		typeof output === 'string' ? output === connectionType : output?.type === connectionType,
+	);
+};
+
 export const filterAndSearchNodes = (
 	mergedNodes: SimplifiedNodeType[],
 	search: string,
-	isAgentSubcategory: boolean,
+	options: {
+		isAiSubcategory?: boolean;
+		isHitlSubcategory?: boolean;
+		aiConnectionType?: NodeConnectionType;
+	} = {},
 ) => {
-	if (!search || isAgentSubcategory) return [];
+	if (!search) return [];
+
+	const { isAiSubcategory = false, isHitlSubcategory = false, aiConnectionType } = options;
+
+	// HITL surfacing from community nodes is not supported yet — see
+	// CommunityNodeTypesService.createAiTools which only generates `...Tool`
+	// variants, never `...HitlTool` variants.
+	if (isHitlSubcategory) return [];
+
+	// AI sub-pickers (Tools, Language Model, Memory, Vector Store, …) all share
+	// rootView === AI_OTHERS_NODE_CREATOR_VIEW but target different connection
+	// types. Only surface community results when we know which connection type
+	// the picker is scoped to, and only for nodes whose outputs match it, so
+	// tool nodes don't leak into the Language Model / Memory / … pickers.
+	if (isAiSubcategory) {
+		if (!aiConnectionType) return [];
+		const candidates = mergedNodes.filter((node) => hasMatchingOutput(node, aiConnectionType));
+		const vettedNodes = candidates.map((item) => transformNodeType(item)) as NodeCreateElement[];
+		return finalizeItems(searchNodes(search, vettedNodes));
+	}
 
 	const vettedNodes = mergedNodes.map((item) => transformNodeType(item)) as NodeCreateElement[];
 
-	const searchResult: INodeCreateElement[] = finalizeItems(searchNodes(search || '', vettedNodes));
-
-	return searchResult;
+	return finalizeItems(searchNodes(search, vettedNodes));
 };
 
 export function prepareCommunityNodeDetailsViewStack(
@@ -421,13 +471,54 @@ export function getAiTemplatesCallout(aiTemplatesURL: string): LinkCreateElement
 	};
 }
 
-export function getRootSearchCallouts(search: string, { isRagStarterCalloutVisible = false } = {}) {
+// Nodes that expose a "send and wait" operation and are grouped under the
+// Human-in-the-Loop ("Human review") subcategory in the node creator.
+export function getSendAndWaitNodes(nodes: SimplifiedNodeType[]) {
+	return (nodes ?? [])
+		.filter((node) => node.codex?.categories?.includes(HUMAN_IN_THE_LOOP_CATEGORY))
+		.map((node) => node.name);
+}
+
+// Synthetic search result that mirrors the "Human review" subcategory tile shown
+// in the RegularView. Selecting it navigates into the existing HITL subcategory,
+// because subcategory tiles themselves are not part of the searchable node base.
+export function getHumanInTheLoopCallout(nodes: SimplifiedNodeType[]): SubcategoryCreateElement {
+	return {
+		key: HITL_SUBCATEGORY,
+		type: 'subcategory',
+		properties: {
+			title: HITL_SUBCATEGORY,
+			icon: 'badge-check',
+			sections: [
+				{
+					key: 'sendAndWait',
+					title: i18n.baseText('nodeCreator.sectionNames.sendAndWait'),
+					items: getSendAndWaitNodes(nodes),
+				},
+			],
+		},
+	};
+}
+
+export function getRootSearchCallouts(
+	search: string,
+	{ isRagStarterCalloutVisible = false } = {},
+	nodes: SimplifiedNodeType[] = [],
+) {
 	const results: INodeCreateElement[] = [];
+	const normalizedSearch = search.toLowerCase();
 
 	const ragKeywords = ['rag', 'vec', 'know'];
-	if (isRagStarterCalloutVisible && ragKeywords.some((x) => search.toLowerCase().startsWith(x))) {
+	if (isRagStarterCalloutVisible && ragKeywords.some((x) => normalizedSearch.startsWith(x))) {
 		results.push(getRagStarterCallout());
 	}
+
+	// "human in the loop" is covered by the "human" prefix.
+	const hitlKeywords = ['human', 'hitl', 'approval', 'review'];
+	if (hitlKeywords.some((x) => normalizedSearch.startsWith(x))) {
+		results.push(getHumanInTheLoopCallout(nodes));
+	}
+
 	return results;
 }
 

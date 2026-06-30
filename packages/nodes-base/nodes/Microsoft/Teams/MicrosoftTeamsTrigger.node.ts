@@ -13,7 +13,12 @@ import type {
 import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
 
 import type { WebhookNotification, SubscriptionResponse } from './v2/helpers/types';
-import { createSubscription, getResourcePath } from './v2/helpers/utils-trigger';
+import {
+	createSubscription,
+	generateClientState,
+	getResourcePath,
+	verifyWebhook,
+} from './v2/helpers/utils-trigger';
 import { listSearch } from './v2/methods';
 import { microsoftApiRequest, microsoftApiRequestAllItems } from './v2/transport';
 
@@ -34,6 +39,20 @@ export class MicrosoftTeamsTrigger implements INodeType {
 			{
 				name: 'microsoftTeamsOAuth2Api',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['microsoftTeamsOAuth2Api'],
+					},
+				},
+			},
+			{
+				name: 'microsoftOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['microsoftOAuth2Api'],
+					},
+				},
 			},
 		],
 		inputs: [],
@@ -47,6 +66,25 @@ export class MicrosoftTeamsTrigger implements INodeType {
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'Teams OAuth2',
+						value: 'microsoftTeamsOAuth2Api',
+					},
+					{
+						name: 'Microsoft OAuth2 (Graph)',
+						value: 'microsoftOAuth2Api',
+						description:
+							'Generic Microsoft Graph credential. Add the Teams change-notification scopes (e.g. ChannelMessage.Read.All, Chat.Read, Subscription.Read.All) and grant admin consent on the credential. See the docs for the full scope string.',
+					},
+				],
+				default: 'microsoftTeamsOAuth2Api',
+			},
 			{
 				displayName: 'Trigger On',
 				name: 'event',
@@ -319,13 +357,19 @@ export class MicrosoftTeamsTrigger implements INodeType {
 					});
 				}
 
+				const clientState = generateClientState();
 				const resourcePaths = await getResourcePath.call(this, event);
 				const subscriptionIds: string[] = [];
 
 				if (Array.isArray(resourcePaths)) {
 					await Promise.all(
 						resourcePaths.map(async (resource) => {
-							const subscription = await createSubscription.call(this, webhookUrl, resource);
+							const subscription = await createSubscription.call(
+								this,
+								webhookUrl,
+								resource,
+								clientState,
+							);
 							subscriptionIds.push(subscription.id);
 							return subscription;
 						}),
@@ -333,10 +377,16 @@ export class MicrosoftTeamsTrigger implements INodeType {
 
 					webhookData.subscriptionIds = subscriptionIds;
 				} else {
-					const subscription = await createSubscription.call(this, webhookUrl, resourcePaths);
+					const subscription = await createSubscription.call(
+						this,
+						webhookUrl,
+						resourcePaths,
+						clientState,
+					);
 					webhookData.subscriptionIds = [subscription.id];
 				}
 
+				webhookData.webhookSecret = clientState;
 				return true;
 			},
 
@@ -366,6 +416,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 					);
 
 					delete webhookData.subscriptionIds;
+					delete webhookData.webhookSecret;
 					return true;
 				} catch (error) {
 					return false;
@@ -380,7 +431,12 @@ export class MicrosoftTeamsTrigger implements INodeType {
 
 		// Handle Microsoft Graph validation request
 		if (req.query.validationToken) {
-			res.status(200).send(req.query.validationToken);
+			res.status(200).type('text/plain').send(req.query.validationToken);
+			return { noWebhookResponse: true };
+		}
+
+		if (!verifyWebhook.call(this)) {
+			res.status(401).send('Unauthorized').end();
 			return { noWebhookResponse: true };
 		}
 

@@ -30,7 +30,7 @@ export class JtiCleanupService {
 
 	@OnLeaderTakeover()
 	startCleanup() {
-		if (this.isShuttingDown) return;
+		if (this.isShuttingDown || this.cleanupInterval) return;
 
 		const intervalMs = this.config.jtiCleanupIntervalSeconds * Time.seconds.toMilliseconds;
 		this.cleanupInterval = setInterval(async () => await this.cleanup(), intervalMs);

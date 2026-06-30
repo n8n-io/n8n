@@ -32,7 +32,7 @@ describe('formatWorkflowLoopGuidance', () => {
 				summary: 'Built successfully',
 			};
 			const result = formatWorkflowLoopGuidance(action);
-			expect(result).not.toContain('setup-credentials');
+			expect(result).not.toContain('credentials(action="setup")');
 			expect(result).not.toContain('mock');
 		});
 
@@ -43,7 +43,7 @@ describe('formatWorkflowLoopGuidance', () => {
 				mockedCredentialTypes: [],
 			};
 			const result = formatWorkflowLoopGuidance(action);
-			expect(result).not.toContain('setup-credentials');
+			expect(result).not.toContain('credentials(action="setup")');
 			expect(result).toContain('Report completion');
 		});
 
@@ -54,24 +54,25 @@ describe('formatWorkflowLoopGuidance', () => {
 				mockedCredentialTypes: ['slackOAuth2Api', 'gmailOAuth2'],
 			};
 			const result = formatWorkflowLoopGuidance(action);
-			expect(result).toContain('setup-credentials');
-			expect(result).toContain('slackOAuth2Api, gmailOAuth2');
-			expect(result).toContain('finalize');
-			expect(result).toContain('apply-workflow-credentials');
+			expect(result).toContain('workflows(action="setup")');
+			expect(result).toContain('inline setup card in the AI Assistant panel');
+			expect(result).toContain('Do not call');
+			expect(result).not.toContain('setup UI');
 		});
 
-		it('should use workItemId from options when mockedCredentialTypes present', () => {
+		it('should include workflowId in workflow setup guidance when mockedCredentialTypes present', () => {
 			const action: WorkflowLoopAction = {
 				type: 'done',
 				summary: 'Done with mocks',
 				mockedCredentialTypes: ['notionApi'],
+				workflowId: 'wf-42',
 			};
-			const result = formatWorkflowLoopGuidance(action, { workItemId: 'item-42' });
-			expect(result).toContain('item-42');
-			expect(result).not.toContain('unknown');
+			const result = formatWorkflowLoopGuidance(action);
+			expect(result).toContain('workflows(action="setup")');
+			expect(result).toContain('wf-42');
 		});
 
-		it('should default workItemId to "unknown" when not provided and mocked credentials exist', () => {
+		it('should default workflowId to "unknown" when not provided and mocked credentials exist', () => {
 			const action: WorkflowLoopAction = {
 				type: 'done',
 				summary: 'Done with mocks',
@@ -79,6 +80,43 @@ describe('formatWorkflowLoopGuidance', () => {
 			};
 			const result = formatWorkflowLoopGuidance(action);
 			expect(result).toContain('"unknown"');
+		});
+
+		it('should trigger workflow setup guidance when hasUnresolvedPlaceholders is true (no mocked credentials)', () => {
+			const action: WorkflowLoopAction = {
+				type: 'done',
+				summary: 'Built with placeholders',
+				workflowId: 'wf-ph-1',
+				hasUnresolvedPlaceholders: true,
+			};
+			const result = formatWorkflowLoopGuidance(action);
+			expect(result).toContain('workflows(action="setup")');
+			expect(result).toContain('wf-ph-1');
+		});
+
+		it('should forbid invented canvas or editor setup instructions', () => {
+			const action: WorkflowLoopAction = {
+				type: 'done',
+				summary: 'Built with placeholders',
+				workflowId: 'wf-ph-1',
+				hasUnresolvedPlaceholders: true,
+			};
+			const result = formatWorkflowLoopGuidance(action);
+			expect(result).toContain(
+				'Do not tell the user to open the editor, use the canvas, or click a Setup button',
+			);
+		});
+
+		it('should trigger workflow setup guidance when both mocked credentials and placeholders exist', () => {
+			const action: WorkflowLoopAction = {
+				type: 'done',
+				summary: 'Built with mocks and placeholders',
+				mockedCredentialTypes: ['gmailOAuth2'],
+				hasUnresolvedPlaceholders: true,
+				workflowId: 'wf-ph-2',
+			};
+			const result = formatWorkflowLoopGuidance(action);
+			expect(result).toContain('workflows(action="setup")');
 		});
 	});
 
@@ -104,7 +142,7 @@ describe('formatWorkflowLoopGuidance', () => {
 			expect(result).toContain('wi-99');
 		});
 
-		it('should default workItemId to "unknown"', () => {
+		it('should default report-verification-verdict workItemId to "unknown"', () => {
 			const action: WorkflowLoopAction = {
 				type: 'verify',
 				workflowId: 'wf-456',
@@ -113,24 +151,46 @@ describe('formatWorkflowLoopGuidance', () => {
 			expect(result).toContain('"unknown"');
 		});
 
-		it('should mention verify-built-workflow and run-workflow', () => {
+		it('should mention repeatable verify-built-workflow and fixture overrides', () => {
 			const action: WorkflowLoopAction = {
 				type: 'verify',
 				workflowId: 'wf-789',
 			};
 			const result = formatWorkflowLoopGuidance(action);
+			expect(result).toContain('workflows(action="get-as-code", workflowId)');
+			expect(result).toContain('Build/save success only means a workflow was saved');
 			expect(result).toContain('verify-built-workflow');
-			expect(result).toContain('run-workflow');
+			expect(result).toContain('safe to call multiple times');
+			expect(result).toContain('fixtureOverrides');
 		});
 
-		it('should mention debug-execution and report-verification-verdict', () => {
+		it('should mention execution debug action and report-verification-verdict', () => {
 			const action: WorkflowLoopAction = {
 				type: 'verify',
 				workflowId: 'wf-789',
 			};
 			const result = formatWorkflowLoopGuidance(action);
-			expect(result).toContain('debug-execution');
+			expect(result).toContain('executions(action="debug")');
+			expect(result).toContain('needs_patch');
+			expect(result).toContain('needs_rebuild');
 			expect(result).toContain('report-verification-verdict');
+			expect(result).toContain('workflowInspection');
+		});
+	});
+
+	// ── continue_building ─────────────────────────────────────────────────────
+
+	describe('action type "continue_building"', () => {
+		it('should instruct the builder to fix code and build again', () => {
+			const action: WorkflowLoopAction = {
+				type: 'continue_building',
+				reason: 'Validation failed',
+				sourceFilePath: 'src/workflows/main.workflow.ts',
+			};
+			const result = formatWorkflowLoopGuidance(action);
+			expect(result).toContain('BUILD FAILED');
+			expect(result).toContain('build-workflow');
+			expect(result).toContain('src/workflows/main.workflow.ts');
 		});
 	});
 
@@ -172,15 +232,18 @@ describe('formatWorkflowLoopGuidance', () => {
 			expect(result).toContain('Node configuration is invalid after schema change');
 		});
 
-		it('should instruct to submit a new plan with build-workflow task', () => {
+		it('should instruct to load workflow-builder, edit the source file, and rebuild with filePath', () => {
 			const action: WorkflowLoopAction = {
 				type: 'rebuild',
 				workflowId: 'wf-rebuild-2',
+				sourceFilePath: 'src/workflows/main.workflow.ts',
 				failureDetails: 'Broken connections',
 			};
 			const result = formatWorkflowLoopGuidance(action);
+			expect(result).toContain('workflow-builder');
 			expect(result).toContain('build-workflow');
-			expect(result).toContain('plan');
+			expect(result).toContain('filePath "src/workflows/main.workflow.ts"');
+			expect(result).toContain('workflowId "wf-rebuild-2"');
 			expect(result).toContain('structural repair');
 		});
 	});
@@ -226,17 +289,20 @@ describe('formatWorkflowLoopGuidance', () => {
 			expect(result).not.toContain('Suggested fix');
 		});
 
-		it('should instruct to submit a plan with patch mode', () => {
+		it('should instruct to load workflow-builder, edit the source file, and build with filePath', () => {
 			const action: WorkflowLoopAction = {
 				type: 'patch',
 				workflowId: 'wf-patch-4',
+				sourceFilePath: 'src/workflows/main.workflow.ts',
 				failedNodeName: 'IF',
 				diagnosis: 'Condition always evaluates to true',
 			};
 			const result = formatWorkflowLoopGuidance(action);
+			expect(result).toContain('workflow-builder');
 			expect(result).toContain('build-workflow');
-			expect(result).toContain('mode "patch"');
-			expect(result).toContain('wf-patch-4');
+			expect(result).toContain('filePath "src/workflows/main.workflow.ts"');
+			expect(result).toContain('workflowId "wf-patch-4"');
+			expect(result).toContain('targeted fix');
 		});
 	});
 
@@ -246,22 +312,23 @@ describe('formatWorkflowLoopGuidance', () => {
 		it('should pass workItemId to verify guidance', () => {
 			const action: WorkflowLoopAction = { type: 'verify', workflowId: 'wf-1' };
 			const result = formatWorkflowLoopGuidance(action, { workItemId: 'wi-abc' });
-			// workItemId appears in two places: verify-built-workflow and report-verification-verdict
+			// workItemId appears in verify-built-workflow guidance and report-verification-verdict.
 			const occurrences = result.split('wi-abc').length - 1;
 			expect(occurrences).toBeGreaterThanOrEqual(2);
 		});
 
-		it('should pass workItemId to done guidance with mocked credentials', () => {
+		it('should include workflowId in done guidance with mocked credentials', () => {
 			const action: WorkflowLoopAction = {
 				type: 'done',
 				summary: 'ok',
 				mockedCredentialTypes: ['testApi'],
+				workflowId: 'wf-xyz',
 			};
-			const result = formatWorkflowLoopGuidance(action, { workItemId: 'wi-xyz' });
-			expect(result).toContain('wi-xyz');
+			const result = formatWorkflowLoopGuidance(action);
+			expect(result).toContain('wf-xyz');
 		});
 
-		it('should not affect blocked or rebuild actions', () => {
+		it('should not affect blocked actions and should bind repair actions', () => {
 			const blocked = formatWorkflowLoopGuidance(
 				{ type: 'blocked', reason: 'No access' },
 				{ workItemId: 'wi-ignored' },
@@ -272,7 +339,7 @@ describe('formatWorkflowLoopGuidance', () => {
 				{ type: 'rebuild', workflowId: 'wf-1', failureDetails: 'broken' },
 				{ workItemId: 'wi-ignored' },
 			);
-			expect(rebuild).not.toContain('wi-ignored');
+			expect(rebuild).toContain('wi-ignored');
 		});
 	});
 });

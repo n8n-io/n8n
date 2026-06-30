@@ -1,22 +1,24 @@
 import { Logger } from '@n8n/backend-common';
+import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
+import { InstanceSettings } from 'n8n-core';
+import { ensureError, jsonParse, type PublicInstalledPackage } from 'n8n-workflow';
+
 import {
 	RESPONSE_ERROR_MESSAGES,
 	STARTER_TEMPLATE_NAME,
 	UNKNOWN_FAILURE_REASON,
 } from '@/constants';
-import type { UserLike } from '@/events/maps/relay.event-map';
-import { EventService } from '@/events/event.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { EventService } from '@/events/event.service';
+import type { UserLike } from '@/events/maps/relay.event-map';
 import { Push } from '@/push';
-import { InstanceSettings } from 'n8n-core';
-import { valid } from 'semver';
-import { ensureError, jsonParse, type PublicInstalledPackage } from 'n8n-workflow';
 
 import { CommunityNodeTypesService } from './community-node-types.service';
-import { CommunityPackagesService } from './community-packages.service';
+import { CommunityPackagesConfig } from './community-packages.config';
+import { CommunityPackagesService, isValidVersionSpecifier } from './community-packages.service';
 import type { CommunityPackages } from './community-packages.types';
 import type { InstalledPackages } from './installed-packages.entity';
 import { executeNpmCommand, isNpmExecErrorWithStdout } from './npm-utils';
@@ -38,6 +40,9 @@ export type CommunityPackageInstallPresentation = 'ui' | 'publicApi';
 
 export type MissingInstalledPackageBehavior = 'badRequest' | 'notFound';
 
+const MANAGED_BY_ENV_MESSAGE =
+	'Community packages are managed via environment variables on this instance and cannot be modified through the API.';
+
 @Service()
 export class CommunityPackagesLifecycleService {
 	constructor(
@@ -47,7 +52,15 @@ export class CommunityPackagesLifecycleService {
 		private readonly eventService: EventService,
 		private readonly communityNodeTypesService: CommunityNodeTypesService,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly communityPackagesConfig: CommunityPackagesConfig,
+		private readonly instanceSettingsLoaderConfig: InstanceSettingsLoaderConfig,
 	) {}
+
+	private assertNotManagedByEnv() {
+		if (this.instanceSettingsLoaderConfig.communityPackagesManagedByEnv) {
+			throw new BadRequestError(MANAGED_BY_ENV_MESSAGE);
+		}
+	}
 
 	async listInstalledPackages(): Promise<PublicInstalledPackage[] | InstalledPackages[]> {
 		const installedPackages = await this.communityPackagesService.getAllInstalledPackages();
@@ -56,19 +69,23 @@ export class CommunityPackagesLifecycleService {
 
 		let pendingUpdates: CommunityPackages.AvailableUpdates | undefined;
 
-		try {
-			await executeNpmCommand(['outdated', '--json'], {
-				doNotHandleError: true,
-				cwd: this.instanceSettings.nodesDownloadDir,
-			});
-		} catch (error) {
-			if (isNpmExecErrorWithStdout(error) && error.code === 1) {
-				try {
-					pendingUpdates = jsonParse<CommunityPackages.AvailableUpdates>(error.stdout.trim());
-				} catch (parseError) {
-					this.logger.warn('Failed to parse npm outdated output', {
-						error: ensureError(parseError),
-					});
+		// Only check npm registry for updates when unverified packages are enabled.
+		// In verified-only mode, update availability is determined by Strapi CMS versions on the frontend.
+		if (this.communityPackagesConfig.unverifiedEnabled) {
+			try {
+				await executeNpmCommand(['outdated', '--json'], {
+					doNotHandleError: true,
+					cwd: this.instanceSettings.nodesDownloadDir,
+				});
+			} catch (error) {
+				if (isNpmExecErrorWithStdout(error) && error.code === 1) {
+					try {
+						pendingUpdates = jsonParse<CommunityPackages.AvailableUpdates>(error.stdout.trim());
+					} catch (parseError) {
+						this.logger.warn('Failed to parse npm outdated output', {
+							error: ensureError(parseError),
+						});
+					}
 				}
 			}
 		}
@@ -94,20 +111,21 @@ export class CommunityPackagesLifecycleService {
 		user: UserLike,
 		presentation: CommunityPackageInstallPresentation,
 	): Promise<InstalledPackages> {
+		this.assertNotManagedByEnv();
 		const { name, verify, version } = args;
 
 		if (!name) {
 			throw new BadRequestError(PACKAGE_NAME_NOT_PROVIDED);
 		}
 
-		if (version && !valid(version)) {
+		if (version && !isValidVersionSpecifier(version)) {
 			throw new BadRequestError(`Invalid version: ${version}`);
 		}
 
 		let checksum: string | undefined;
 
 		if (verify) {
-			checksum = this.communityNodeTypesService.findVetted(name)?.checksum;
+			checksum = (await this.communityNodeTypesService.findVetted(name))?.checksum;
 			if (!checksum) {
 				throw new BadRequestError(`Package ${name} is not vetted for installation`);
 			}
@@ -212,17 +230,37 @@ export class CommunityPackagesLifecycleService {
 	}
 
 	async update(
-		args: { name: string | undefined; version?: string; checksum?: string },
+		args: { name: string | undefined; version?: string; checksum?: string; verify?: boolean },
 		user: UserLike,
 		whenMissing: MissingInstalledPackageBehavior,
 	): Promise<InstalledPackages> {
-		const { name, version, checksum } = args;
+		this.assertNotManagedByEnv();
+		const { name, version, verify } = args;
+
+		let checksum = args.checksum;
+
+		if (verify) {
+			const vettedPackage = await this.communityNodeTypesService.findVetted(name ?? '');
+			if (!vettedPackage) {
+				throw new BadRequestError(`Package ${name} is not vetted for installation`);
+			}
+			if (!version || version === vettedPackage.npmVersion) {
+				checksum = vettedPackage.checksum;
+			} else {
+				checksum = vettedPackage.nodeVersions?.find((v) => v.npmVersion === version)?.checksum;
+			}
+			if (!checksum) {
+				throw new BadRequestError(
+					`Version ${version} of ${name} is not verified by n8n. Latest verified version is ${vettedPackage.npmVersion}`,
+				);
+			}
+		}
 
 		if (!name) {
 			throw new BadRequestError(PACKAGE_NAME_NOT_PROVIDED);
 		}
 
-		if (version && !valid(version)) {
+		if (version && !isValidVersionSpecifier(version)) {
 			throw new BadRequestError(`Invalid version: ${version}`);
 		}
 
@@ -300,6 +338,7 @@ export class CommunityPackagesLifecycleService {
 		user: UserLike,
 		whenMissing: MissingInstalledPackageBehavior,
 	): Promise<void> {
+		this.assertNotManagedByEnv();
 		if (!packageName) {
 			throw new BadRequestError(PACKAGE_NAME_NOT_PROVIDED);
 		}

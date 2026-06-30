@@ -23,12 +23,10 @@ test.describe(
 			await n8n.canvas.toggleFocusPanelButton().click();
 			await n8n.canvas.canvasPane().click();
 			await n8n.canvas.nodeByName('Code').dblclick();
-			await n8n.ndv.getParameterByLabel('JavaScript').getByRole('textbox').fill('alert(1)');
+			await n8n.ndv.getParameterTextboxByLabel('JavaScript').fill('alert(1)');
 			await n8n.ndv.close();
 			await n8n.canvas.nodeByName('Code').dblclick();
-			await expect(n8n.ndv.getParameterByLabel('JavaScript').getByRole('textbox')).toHaveText(
-				'alert(1)',
-			);
+			await expect(n8n.ndv.getParameterTextboxByLabel('JavaScript')).toHaveText('alert(1)');
 		});
 	},
 );

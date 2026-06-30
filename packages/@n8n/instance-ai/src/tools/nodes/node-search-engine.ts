@@ -6,7 +6,7 @@
  * replaced with local types so the package stays decoupled.
  */
 
-import { sublimeSearch } from '@n8n/utils';
+import { sublimeSearch } from '@n8n/utils/search/sublime-search';
 
 import type {
 	BuilderHintInputs,
@@ -40,7 +40,6 @@ const NODE_SEARCH_KEYS = [
 	{ key: 'displayName', weight: 1.5 },
 	{ key: 'name', weight: 1.3 },
 	{ key: 'codex.alias', weight: 1.0 },
-	{ key: 'description', weight: 0.7 },
 ];
 
 /**
@@ -76,6 +75,29 @@ function extractSubnodeRequirements(inputs?: BuilderHintInputs): SubnodeRequirem
 		}));
 }
 
+function getBuilderHintMessage(
+	builderHint?: SearchableNodeType['builderHint'],
+): string | undefined {
+	return builderHint?.message ?? builderHint?.searchHint;
+}
+
+function toNodeSearchResult(node: SearchableNodeType, score: number): NodeSearchResult {
+	const subnodeRequirements = extractSubnodeRequirements(node.builderHint?.inputs);
+	const builderHintMessage = getBuilderHintMessage(node.builderHint);
+
+	return {
+		name: node.name,
+		displayName: node.displayName,
+		description: node.description ?? 'No description available',
+		version: getLatestVersion(node.version),
+		inputs: node.inputs,
+		outputs: node.outputs,
+		score,
+		...(builderHintMessage && { builderHintMessage }),
+		...(subnodeRequirements.length > 0 && { subnodeRequirements }),
+	};
+}
+
 function dedupeNodes(nodes: SearchableNodeType[]): SearchableNodeType[] {
 	const dedupeCache: Record<string, SearchableNodeType> = {};
 	nodes.forEach((node) => {
@@ -96,6 +118,38 @@ function dedupeNodes(nodes: SearchableNodeType[]): SearchableNodeType[] {
 	return Object.values(dedupeCache);
 }
 
+function cloneSearchResult(result: NodeSearchResult): NodeSearchResult {
+	return {
+		...result,
+		...(result.subnodeRequirements
+			? {
+					subnodeRequirements: result.subnodeRequirements.map((requirement) => ({
+						...requirement,
+					})),
+				}
+			: {}),
+	};
+}
+
+function cloneSearchResults(results: NodeSearchResult[]): NodeSearchResult[] {
+	return results.map(cloneSearchResult);
+}
+
+function descriptionMatchScore(
+	description: string | undefined,
+	queryLower: string,
+	queryTerms: string[],
+): number {
+	if (!description) return 0;
+	const descriptionLower = description.toLowerCase();
+	if (queryTerms.length === 0) return descriptionLower.includes(queryLower) ? 1 : 0;
+	let matches = 0;
+	for (const term of queryTerms) {
+		if (descriptionLower.includes(term)) matches += 1;
+	}
+	return matches;
+}
+
 // ---------------------------------------------------------------------------
 // Engine
 // ---------------------------------------------------------------------------
@@ -107,18 +161,24 @@ function dedupeNodes(nodes: SearchableNodeType[]): SearchableNodeType[] {
 export class NodeSearchEngine {
 	private readonly nodeTypes: SearchableNodeType[];
 
+	private readonly nameSearchCache = new Map<string, NodeSearchResult[]>();
+
+	private readonly connectionSearchCache = new Map<string, NodeSearchResult[]>();
+
 	constructor(nodeTypes: SearchableNodeType[]) {
 		this.nodeTypes = dedupeNodes(nodeTypes);
 	}
 
 	/**
-	 * Search nodes by name, display name, or description.
-	 * Always returns the latest version of a node.
-	 * @param query - The search query string
-	 * @param limit - Maximum number of results to return
-	 * @returns Array of matching nodes sorted by relevance
+	 * Fuzzy-search a list of nodes by query, handling multi-word queries by
+	 * splitting into individual terms and merging results. Falls back to
+	 * direct type-name / display-name matching for nodes the fuzzy search missed.
 	 */
-	searchByName(query: string, limit: number = 20): NodeSearchResult[] {
+	private fuzzySearchNodes(
+		query: string,
+		candidates: SearchableNodeType[],
+		limit?: number,
+	): Array<{ item: SearchableNodeType; score: number }> {
 		const queryLower = query.toLowerCase().trim();
 		const queryTerms = queryLower.split(/\s+/).filter((t) => t.length > 1);
 		const isMultiWord = queryTerms.length > 1;
@@ -130,14 +190,13 @@ export class NodeSearchEngine {
 		let searchResults: ScoredNode[];
 
 		if (isMultiWord) {
-			// Per-term fuzzy search — each term searched independently, best score wins
 			const scoreMap = new Map<string, ScoredNode>();
 			for (const term of queryTerms) {
 				const termResults = sublimeSearch<SearchableNodeType>(
 					term,
-					this.nodeTypes,
+					candidates,
 					NODE_SEARCH_KEYS,
-				);
+				).slice(0, limit);
 				for (const r of termResults) {
 					const existing = scoreMap.get(r.item.name);
 					if (!existing || r.score > existing.score) {
@@ -147,20 +206,32 @@ export class NodeSearchEngine {
 			}
 			searchResults = [...scoreMap.values()];
 		} else {
-			searchResults = sublimeSearch<SearchableNodeType>(query, this.nodeTypes, NODE_SEARCH_KEYS);
+			searchResults = sublimeSearch<SearchableNodeType>(query, candidates, NODE_SEARCH_KEYS);
 		}
 
 		const fuzzyResultNames = new Set(searchResults.map((r) => r.item.name));
+		const remainingDescriptionMatches =
+			limit === undefined ? Number.POSITIVE_INFINITY : Math.max(0, limit - searchResults.length);
+		if (remainingDescriptionMatches > 0) {
+			const descriptionResults: ScoredNode[] = [];
+			for (const item of candidates) {
+				if (fuzzyResultNames.has(item.name)) continue;
+				const score = descriptionMatchScore(item.description, queryLower, queryTerms);
+				if (score === 0) continue;
+				descriptionResults.push({ item, score });
+				fuzzyResultNames.add(item.name);
+				if (descriptionResults.length >= remainingDescriptionMatches) break;
+			}
+			searchResults = [...searchResults, ...descriptionResults];
+		}
 
 		// Direct type name / display name match — catches nodes fuzzy search missed
-		const typeNameMatches = this.nodeTypes
+		const typeNameMatches = candidates
 			.filter((node) => {
 				if (fuzzyResultNames.has(node.name)) return false;
 				const typeName = getTypeName(node.name).toLowerCase();
 				const displayName = node.displayName.toLowerCase();
-				// Exact full-query match
 				if (typeName === queryLower || displayName === queryLower) return true;
-				// Any individual term matches type name or display name
 				return queryTerms.some(
 					(term) =>
 						typeName === term ||
@@ -191,29 +262,26 @@ export class NodeSearchEngine {
 			return b.score - a.score;
 		});
 
-		// Apply limit and map to result format
-		return allResults.slice(0, limit).map(
-			({
-				item,
-				score,
-			}: {
-				item: SearchableNodeType;
-				score: number;
-			}): NodeSearchResult => {
-				const subnodeRequirements = extractSubnodeRequirements(item.builderHint?.inputs);
-				return {
-					name: item.name,
-					displayName: item.displayName,
-					description: item.description ?? 'No description available',
-					version: getLatestVersion(item.version),
-					inputs: item.inputs,
-					outputs: item.outputs,
-					score,
-					...(item.builderHint?.message && { builderHintMessage: item.builderHint.message }),
-					...(subnodeRequirements.length > 0 && { subnodeRequirements }),
-				};
-			},
-		);
+		return allResults;
+	}
+
+	/**
+	 * Search nodes by name, display name, or description.
+	 * Always returns the latest version of a node.
+	 * @param query - The search query string
+	 * @param limit - Maximum number of results to return
+	 * @returns Array of matching nodes sorted by relevance
+	 */
+	searchByName(query: string, limit: number = 20): NodeSearchResult[] {
+		const cacheKey = `${query}\0${limit}`;
+		const cached = this.nameSearchCache.get(cacheKey);
+		if (cached) return cloneSearchResults(cached);
+
+		const results = this.fuzzySearchNodes(query, this.nodeTypes, limit)
+			.slice(0, limit)
+			.map(({ item, score }) => toNodeSearchResult(item, score));
+		this.nameSearchCache.set(cacheKey, results);
+		return cloneSearchResults(results);
 	}
 
 	/**
@@ -229,6 +297,10 @@ export class NodeSearchEngine {
 		limit: number = 20,
 		nameFilter?: string,
 	): NodeSearchResult[] {
+		const cacheKey = `${connectionType}\0${limit}\0${nameFilter ?? ''}`;
+		const cached = this.connectionSearchCache.get(cacheKey);
+		if (cached) return cloneSearchResults(cached);
+
 		// First, filter by connection type
 		const nodesWithConnectionType = this.nodeTypes
 			.map((nodeType) => {
@@ -241,53 +313,28 @@ export class NodeSearchEngine {
 
 		// If no name filter, return connection matches sorted by score
 		if (!nameFilter) {
-			return nodesWithConnectionType
+			const results = nodesWithConnectionType
 				.sort((a, b) => b.connectionScore - a.connectionScore)
 				.slice(0, limit)
-				.map(({ nodeType, connectionScore }) => {
-					const subnodeRequirements = extractSubnodeRequirements(nodeType.builderHint?.inputs);
-					return {
-						name: nodeType.name,
-						displayName: nodeType.displayName,
-						version: getLatestVersion(nodeType.version),
-						description: nodeType.description ?? 'No description available',
-						inputs: nodeType.inputs,
-						outputs: nodeType.outputs,
-						score: connectionScore,
-						...(nodeType.builderHint?.message && {
-							builderHintMessage: nodeType.builderHint.message,
-						}),
-						...(subnodeRequirements.length > 0 && { subnodeRequirements }),
-					};
-				});
+				.map(({ nodeType, connectionScore }) => toNodeSearchResult(nodeType, connectionScore));
+			this.connectionSearchCache.set(cacheKey, results);
+			return cloneSearchResults(results);
 		}
 
-		// Apply name filter using sublimeSearch
+		// Apply name filter using the same multi-word-aware fuzzy search as searchByName
 		const nodeTypesOnly = nodesWithConnectionType.map((result) => result.nodeType);
-		const nameFilteredResults = sublimeSearch(nameFilter, nodeTypesOnly, NODE_SEARCH_KEYS);
+		const nameFilteredResults = this.fuzzySearchNodes(nameFilter, nodeTypesOnly, limit);
 
 		// Combine connection score with name score
-		return nameFilteredResults
-			.slice(0, limit)
-			.map(({ item, score: nameScore }: { item: SearchableNodeType; score: number }) => {
-				const connectionResult = nodesWithConnectionType.find(
-					(result) => result.nodeType.name === item.name,
-				);
-				const connectionScore = connectionResult?.connectionScore ?? 0;
-				const subnodeRequirements = extractSubnodeRequirements(item.builderHint?.inputs);
-
-				return {
-					name: item.name,
-					version: getLatestVersion(item.version),
-					displayName: item.displayName,
-					description: item.description ?? 'No description available',
-					inputs: item.inputs,
-					outputs: item.outputs,
-					score: connectionScore + nameScore,
-					...(item.builderHint?.message && { builderHintMessage: item.builderHint.message }),
-					...(subnodeRequirements.length > 0 && { subnodeRequirements }),
-				};
-			});
+		const results = nameFilteredResults.slice(0, limit).map(({ item, score: nameScore }) => {
+			const connectionResult = nodesWithConnectionType.find(
+				(result) => result.nodeType.name === item.name,
+			);
+			const connectionScore = connectionResult?.connectionScore ?? 0;
+			return toNodeSearchResult(item, connectionScore + nameScore);
+		});
+		this.connectionSearchCache.set(cacheKey, results);
+		return cloneSearchResults(results);
 	}
 
 	/**

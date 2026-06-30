@@ -1,8 +1,9 @@
 import { LicenseState, Logger } from '@n8n/backend-common';
+import { OutboundHttp, type HttpRequestClient, isHttpRequestError } from '@n8n/backend-network';
+import { Time } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import axios, { AxiosError } from 'axios';
 import { ensureError } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -10,6 +11,8 @@ import { LicenseEulaRequiredError } from '@/errors/response-errors/license-eula-
 import { EventService } from '@/events/event.service';
 import { License } from '@/license';
 import { UrlService } from '@/services/url.service';
+
+const REQUEST_TIMEOUT_MS = 30 * Time.seconds.toMilliseconds;
 
 export const LicenseErrors = {
 	SCHEMA_VALIDATION: 'Activation key is in the wrong format',
@@ -22,6 +25,8 @@ export const LicenseErrors = {
 
 @Service()
 export class LicenseService {
+	private readonly http: HttpRequestClient;
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly license: License,
@@ -29,7 +34,13 @@ export class LicenseService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly urlService: UrlService,
 		private readonly eventService: EventService,
-	) {}
+		outboundHttp: OutboundHttp,
+	) {
+		this.http = outboundHttp.requests({
+			ssrf: 'disabled', // Fixed, n8n-controlled host
+			timeout: REQUEST_TIMEOUT_MS,
+		});
+	}
 
 	async getLicenseData() {
 		const triggerCount = await this.workflowRepository.getActiveTriggerCount();
@@ -57,12 +68,17 @@ export class LicenseService {
 	}
 
 	async requestEnterpriseTrial(user: User) {
-		await axios.post('https://enterprise.n8n.io/enterprise-trial', {
-			licenseType: 'enterprise',
-			firstName: user.firstName,
-			lastName: user.lastName,
-			email: user.email,
-			instanceUrl: this.urlService.getWebhookBaseUrl(),
+		await this.http.request({
+			url: 'https://enterprise.n8n.io/enterprise-trial',
+			method: 'POST',
+			body: {
+				licenseType: 'enterprise',
+				firstName: user.firstName,
+				lastName: user.lastName,
+				email: user.email,
+				instanceUrl: this.urlService.getWebhookBaseUrl(),
+			},
+			json: true,
 		});
 	}
 
@@ -80,23 +96,27 @@ export class LicenseService {
 		licenseType: string;
 	}): Promise<{ title: string; text: string }> {
 		try {
-			const {
-				data: { licenseKey, ...rest },
-			} = await axios.post<{ title: string; text: string; licenseKey: string }>(
-				'https://enterprise.n8n.io/community-registered',
-				{
+			const { licenseKey, ...rest } = await this.http.request<{
+				title: string;
+				text: string;
+				licenseKey: string;
+			}>({
+				url: 'https://enterprise.n8n.io/community-registered',
+				method: 'POST',
+				body: {
 					email,
 					instanceId,
 					instanceUrl,
 					licenseType,
 				},
-			);
+				json: true,
+			});
 			this.eventService.emit('license-community-plus-registered', { userId, email, licenseKey });
 			return rest;
 		} catch (e: unknown) {
-			if (e instanceof AxiosError) {
-				const error = e as AxiosError<{ message: string }>;
-				const errorMsg = error.response?.data?.message ?? e.message;
+			if (isHttpRequestError(e)) {
+				const data = e.response?.data as { message?: string } | undefined;
+				const errorMsg = data?.message ?? e.message;
 				throw new BadRequestError('Failed to register community edition: ' + errorMsg);
 			} else {
 				this.logger.error('Failed to register community edition', { error: ensureError(e) });

@@ -7,12 +7,12 @@
 #
 # Key differences:
 # - Uses Debian-based builders (glibc instead of musl)
-# - Final image is Google's distroless/cc-debian12
+# - Final image is Google's distroless/cc-debian13
 # - Extra runtime-prep stage to organize filesystem
 # - Uses distroless nonroot user (UID 65532)
 # ==============================================================================
 
-ARG NODE_VERSION=24.14.1
+ARG NODE_VERSION=24.16.0
 ARG PYTHON_VERSION=3.13
 
 
@@ -106,7 +106,7 @@ RUN uv pip install . && rm -rf /app/task-runner-python/src
 # ==============================================================================
 FROM debian:bookworm-slim AS launcher-downloader
 ARG TARGETPLATFORM
-ARG LAUNCHER_VERSION=1.4.3
+ARG LAUNCHER_VERSION=1.4.7
 
 RUN set -e; \
     apt-get update && apt-get install -y --no-install-recommends wget ca-certificates && \
@@ -146,7 +146,10 @@ COPY --from=python-runner-builder /usr/local/lib/libpython3.13.so* /runtime/usr/
 
 # Copy Python dependencies (architecture-specific directories)
 # The /* glob will match x86_64-linux-gnu or aarch64-linux-gnu
-COPY --from=python-runner-builder /lib/*-linux-gnu* /runtime/lib/
+# Stage glibc into /usr/lib/ because cc-debian13 completes the usr-merge:
+# /lib is a symlink to /usr/lib, so a final COPY into /lib/ would collide
+# with that symlink at the runtime stage.
+COPY --from=python-runner-builder /lib/*-linux-gnu* /runtime/usr/lib/
 COPY --from=python-runner-builder /usr/lib/*-linux-gnu* /runtime/usr/lib/
 
 # Copy Node.js runtime
@@ -170,14 +173,14 @@ RUN mkdir -p /runtime/home/runner && \
 # ==============================================================================
 # STAGE 6: Distroless Runtime
 # ==============================================================================
-# Uses Google's distroless/cc-debian12 which provides:
+# Uses Google's distroless/cc-debian13 which provides:
 # - glibc, libgcc, libstdc++
 # - CA certificates
 # - Timezone data
 # - nonroot user (UID 65532)
 # - NO shell, NO package manager, NO system utilities
 # ==============================================================================
-FROM gcr.io/distroless/cc-debian12:latest AS runtime
+FROM gcr.io/distroless/cc-debian13:latest AS runtime
 ARG N8N_VERSION=snapshot
 ARG N8N_RELEASE_TYPE=dev
 

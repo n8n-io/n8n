@@ -1,6 +1,5 @@
-import type { IExecutionResponse, ExecutionRepository } from '@n8n/db';
+import type { IExecutionResponse } from '@n8n/db';
 import type express from 'express';
-import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import { getHtmlSandboxCSP, WAITING_TOKEN_QUERY_PARAM } from 'n8n-core';
 import {
@@ -9,10 +8,12 @@ import {
 	type IWorkflowBase,
 	type Workflow,
 } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
+
+import type { ExecutionPersistence } from '@/executions/execution-persistence';
+import { WaitingForms } from '@/webhooks/waiting-forms';
 
 import type { WaitingWebhookRequest } from '../webhook.types';
-
-import { WaitingForms } from '@/webhooks/waiting-forms';
 
 class TestWaitingForms extends WaitingForms {
 	exposeCreateWorkflow(workflowData: IWorkflowBase): Workflow {
@@ -28,24 +29,25 @@ class TestWaitingForms extends WaitingForms {
 }
 
 describe('WaitingForms', () => {
-	const executionRepository = mock<ExecutionRepository>();
+	const executionPersistence = mock<ExecutionPersistence>();
 	const mockInstanceSettings = mock<InstanceSettings>();
 	const waitingForms = new TestWaitingForms(
 		mock(),
 		mock(),
-		executionRepository,
+		executionPersistence,
 		mock(),
 		mockInstanceSettings,
+		mock(),
 	);
 
 	beforeEach(() => {
-		jest.restoreAllMocks();
+		vi.restoreAllMocks();
 	});
 
 	describe('findCompletionPage', () => {
 		it('should return lastNodeExecuted if it is a non-disabled form completion node', () => {
 			const workflow = mock<Workflow>({
-				getParentNodes: jest.fn().mockReturnValue([]),
+				getParentNodes: vi.fn().mockReturnValue([]),
 				nodes: {
 					Form1: {
 						disabled: undefined,
@@ -63,7 +65,7 @@ describe('WaitingForms', () => {
 
 		it('should return undefined if lastNodeExecuted is disabled', () => {
 			const workflow = mock<Workflow>({
-				getParentNodes: jest.fn().mockReturnValue([]),
+				getParentNodes: vi.fn().mockReturnValue([]),
 				nodes: {
 					Form1: {
 						disabled: true,
@@ -81,7 +83,7 @@ describe('WaitingForms', () => {
 
 		it('should return undefined if lastNodeExecuted is not a form node', () => {
 			const workflow = mock<Workflow>({
-				getParentNodes: jest.fn().mockReturnValue([]),
+				getParentNodes: vi.fn().mockReturnValue([]),
 				nodes: {
 					NonForm: {
 						disabled: undefined,
@@ -97,7 +99,7 @@ describe('WaitingForms', () => {
 
 		it('should return undefined if lastNodeExecuted operation is not completion', () => {
 			const workflow = mock<Workflow>({
-				getParentNodes: jest.fn().mockReturnValue([]),
+				getParentNodes: vi.fn().mockReturnValue([]),
 				nodes: {
 					Form1: {
 						disabled: undefined,
@@ -115,7 +117,7 @@ describe('WaitingForms', () => {
 
 		it('should find first valid completion form in parent nodes if lastNodeExecuted is not valid', () => {
 			const workflow = mock<Workflow>({
-				getParentNodes: jest.fn().mockReturnValue(['Form1', 'Form2', 'Form3']),
+				getParentNodes: vi.fn().mockReturnValue(['Form1', 'Form2', 'Form3']),
 				nodes: {
 					LastNode: {
 						disabled: undefined,
@@ -157,7 +159,7 @@ describe('WaitingForms', () => {
 
 		it('should return undefined if no valid completion form is found in parent nodes', () => {
 			const workflow = mock<Workflow>({
-				getParentNodes: jest.fn().mockReturnValue(['Form1', 'Form2']),
+				getParentNodes: vi.fn().mockReturnValue(['Form1', 'Form2']),
 				nodes: {
 					LastNode: {
 						disabled: undefined,
@@ -187,7 +189,7 @@ describe('WaitingForms', () => {
 
 		it('should skip parent nodes without runData', () => {
 			const workflow = mock<Workflow>({
-				getParentNodes: jest.fn().mockReturnValue(['Form1', 'Form2', 'Form3']),
+				getParentNodes: vi.fn().mockReturnValue(['Form1', 'Form2', 'Form3']),
 				nodes: {
 					LastNode: {
 						disabled: undefined,
@@ -230,7 +232,7 @@ describe('WaitingForms', () => {
 			const execution = mock<IExecutionResponse>({
 				status: 'success',
 			});
-			executionRepository.findSingleExecution.mockResolvedValue(execution);
+			executionPersistence.findSingleExecution.mockResolvedValue(execution);
 
 			const req = mock<WaitingWebhookRequest>({
 				headers: {},
@@ -252,7 +254,7 @@ describe('WaitingForms', () => {
 			const execution = mock<IExecutionResponse>({
 				status: 'success',
 			});
-			executionRepository.findSingleExecution.mockResolvedValue(execution);
+			executionPersistence.findSingleExecution.mockResolvedValue(execution);
 
 			const req = mock<WaitingWebhookRequest>({
 				headers: { origin: 'null' },
@@ -273,7 +275,7 @@ describe('WaitingForms', () => {
 			const execution = mock<IExecutionResponse>({
 				status: 'success',
 			});
-			executionRepository.findSingleExecution.mockResolvedValue(execution);
+			executionPersistence.findSingleExecution.mockResolvedValue(execution);
 
 			const req = mock<WaitingWebhookRequest>({
 				headers: { origin: 'null' },
@@ -295,7 +297,7 @@ describe('WaitingForms', () => {
 			const execution = mock<IExecutionResponse>({
 				status: 'success',
 			});
-			executionRepository.findSingleExecution.mockResolvedValue(execution);
+			executionPersistence.findSingleExecution.mockResolvedValue(execution);
 
 			const req = mock<WaitingWebhookRequest>({
 				headers: { origin: undefined },
@@ -346,7 +348,7 @@ describe('WaitingForms', () => {
 					updatedAt: new Date(),
 				},
 			});
-			executionRepository.findSingleExecution.mockResolvedValue(execution);
+			executionPersistence.findSingleExecution.mockResolvedValue(execution);
 
 			const req = mock<WaitingWebhookRequest>({
 				headers: { origin: 'null', host: 'localhost:5678' },
@@ -375,7 +377,7 @@ describe('WaitingForms', () => {
 					nodes: [],
 					connections: {},
 					active: true,
-					activeVersionId: undefined, // Must be explicitly set to undefined; jest-mock-extended returns a truthy mock if omitted
+					activeVersionId: undefined, // Must be explicitly set to undefined; vitest-mock-extended returns a truthy mock if omitted
 					settings: {},
 					staticData: {},
 					isArchived: false,
@@ -397,7 +399,7 @@ describe('WaitingForms', () => {
 					nodes: [],
 					connections: {},
 					active: false,
-					activeVersionId: undefined, // Must be explicitly set to undefined; jest-mock-extended returns a truthy mock if omitted
+					activeVersionId: undefined, // Must be explicitly set to undefined; vitest-mock-extended returns a truthy mock if omitted
 					settings: {},
 					staticData: {},
 					isArchived: false,
@@ -418,7 +420,7 @@ describe('WaitingForms', () => {
 					name: 'Test Workflow',
 					nodes: [],
 					connections: {},
-					active: undefined, // Must be explicitly set to undefined; jest-mock-extended returns a truthy mock if omitted
+					active: undefined, // Must be explicitly set to undefined; vitest-mock-extended returns a truthy mock if omitted
 					activeVersionId: 'version-123',
 					settings: {},
 					staticData: {},
@@ -440,7 +442,7 @@ describe('WaitingForms', () => {
 					name: 'Test Workflow',
 					nodes: [],
 					connections: {},
-					active: undefined, // Must be explicitly set to undefined; jest-mock-extended returns a truthy mock if omitted
+					active: undefined, // Must be explicitly set to undefined; vitest-mock-extended returns a truthy mock if omitted
 					activeVersionId: null,
 					settings: {},
 					staticData: {},
@@ -465,7 +467,7 @@ describe('WaitingForms', () => {
 					resultData: {
 						lastNodeExecuted: 'LastNode',
 						runData: {},
-						error: undefined, // Must be explicitly set to undefined; jest-mock-extended returns a truthy mock if omitted
+						error: undefined, // Must be explicitly set to undefined; vitest-mock-extended returns a truthy mock if omitted
 					},
 					resumeToken: undefined, // Old execution without token
 				},
@@ -491,7 +493,7 @@ describe('WaitingForms', () => {
 					updatedAt: new Date(),
 				},
 			});
-			executionRepository.findSingleExecution.mockResolvedValue(execution);
+			executionPersistence.findSingleExecution.mockResolvedValue(execution);
 
 			const req = mock<WaitingWebhookRequest>({
 				headers: { host: 'localhost:5678' },
@@ -523,7 +525,7 @@ describe('WaitingForms', () => {
 					resultData: {
 						lastNodeExecuted: 'LastNode',
 						runData: {},
-						error: undefined, // Must be explicitly set to undefined; jest-mock-extended returns a truthy mock if omitted
+						error: undefined, // Must be explicitly set to undefined; vitest-mock-extended returns a truthy mock if omitted
 					},
 					resumeToken: undefined, // Old execution without token
 				},
@@ -549,7 +551,7 @@ describe('WaitingForms', () => {
 					updatedAt: new Date(),
 				},
 			});
-			executionRepository.findSingleExecution.mockResolvedValue(execution);
+			executionPersistence.findSingleExecution.mockResolvedValue(execution);
 
 			const req = mock<WaitingWebhookRequest>({
 				headers: { host: 'localhost:5678' },
@@ -598,7 +600,7 @@ describe('WaitingForms', () => {
 					updatedAt: new Date(),
 				},
 			});
-			executionRepository.findSingleExecution.mockResolvedValue(execution);
+			executionPersistence.findSingleExecution.mockResolvedValue(execution);
 
 			const req = mock<WaitingWebhookRequest>({
 				headers: { host: 'localhost:5678' },
@@ -609,8 +611,8 @@ describe('WaitingForms', () => {
 				url: '/form-waiting/123', // No token in URL
 			});
 
-			const mockRender = jest.fn();
-			const mockStatus = jest.fn().mockReturnValue({ render: mockRender });
+			const mockRender = vi.fn();
+			const mockStatus = vi.fn().mockReturnValue({ render: mockRender });
 			const res = mock<express.Response>({
 				status: mockStatus,
 			});
@@ -632,7 +634,7 @@ describe('WaitingForms', () => {
 						runData: {},
 						error: undefined,
 					},
-					resumeToken: undefined, // Must be explicitly set to undefined; jest-mock-extended returns a truthy mock if omitted
+					resumeToken: undefined, // Must be explicitly set to undefined; vitest-mock-extended returns a truthy mock if omitted
 				},
 				workflowData: {
 					id: 'workflow1',
@@ -656,7 +658,7 @@ describe('WaitingForms', () => {
 					updatedAt: new Date(),
 				},
 			});
-			executionRepository.findSingleExecution.mockResolvedValue(execution);
+			executionPersistence.findSingleExecution.mockResolvedValue(execution);
 
 			const req = mock<WaitingWebhookRequest>({
 				headers: { host: 'localhost:5678' },
@@ -729,6 +731,97 @@ describe('WaitingForms', () => {
 			const result = waitingForms.exposeValidateToken(mockReq, mockExecution);
 
 			expect(result).toEqual({ valid: false, webhookPath: undefined });
+		});
+	});
+
+	describe('cookie sanitization (n8nUserAuth)', () => {
+		const buildExecutionWithResumeNode = (resumeNodeType: string) =>
+			mock<IExecutionResponse>({
+				finished: true,
+				status: 'success',
+				data: {
+					resultData: {
+						lastNodeExecuted: 'ResumeNode',
+						runData: {},
+						error: undefined,
+					},
+					resumeToken: undefined,
+				},
+				workflowData: {
+					id: 'workflow1',
+					name: 'Test Workflow',
+					nodes: [
+						{
+							name: 'ResumeNode',
+							type: resumeNodeType,
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+					],
+					connections: {},
+					active: false,
+					activeVersionId: undefined,
+					settings: {},
+					staticData: {},
+					isArchived: false,
+					createdAt: new Date(),
+					updatedAt: new Date(),
+				},
+			});
+
+		const buildReqWithAuthCookie = () =>
+			({
+				method: 'GET',
+				headers: { host: 'localhost:5678', cookie: 'n8n-auth=jwt.token; other=value' },
+				cookies: { 'n8n-auth': 'jwt.token', other: 'value' },
+				params: { path: '123', suffix: undefined },
+				url: '/form-waiting/123',
+			}) as unknown as WaitingWebhookRequest;
+
+		it('preserves the n8n-auth cookie when the resume node is a Form node', async () => {
+			executionPersistence.findSingleExecution.mockResolvedValue(
+				buildExecutionWithResumeNode(FORM_NODE_TYPE),
+			);
+
+			const req = buildReqWithAuthCookie();
+			const res = mock<express.Response>();
+
+			await waitingForms.executeWebhook(req, res);
+
+			expect(req.headers.cookie).toContain('n8n-auth=jwt.token');
+			expect(req.cookies['n8n-auth']).toBe('jwt.token');
+		});
+
+		it('strips the n8n-auth cookie when the resume node is not allowlisted', async () => {
+			executionPersistence.findSingleExecution.mockResolvedValue(
+				buildExecutionWithResumeNode('other-node-type'),
+			);
+
+			const req = buildReqWithAuthCookie();
+			const res = mock<express.Response>();
+
+			await waitingForms.executeWebhook(req, res);
+
+			expect(req.headers.cookie).not.toContain('n8n-auth=');
+			expect(req.headers.cookie).toContain('other=value');
+			expect(req.cookies['n8n-auth']).toBeUndefined();
+		});
+
+		it('strips the n8n-auth cookie when the execution cannot be resolved', async () => {
+			executionPersistence.findSingleExecution.mockResolvedValue(undefined);
+
+			const req = buildReqWithAuthCookie();
+			const res = mock<express.Response>();
+
+			try {
+				await waitingForms.executeWebhook(req, res);
+			} catch {
+				// NotFoundError is expected for missing execution; we still want to verify sanitize ran first.
+			}
+
+			expect(req.headers.cookie).not.toContain('n8n-auth=');
+			expect(req.cookies['n8n-auth']).toBeUndefined();
 		});
 	});
 });

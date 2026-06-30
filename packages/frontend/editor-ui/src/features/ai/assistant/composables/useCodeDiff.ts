@@ -1,4 +1,4 @@
-import { ref, h } from 'vue';
+import { computed, ref, h } from 'vue';
 import type { Ref } from 'vue';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
 import type { INodeParameters } from 'n8n-workflow';
@@ -9,6 +9,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
+	injectWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useI18n } from '@n8n/i18n';
@@ -26,7 +27,8 @@ export interface UseCodeDiffOptions {
 
 export function useCodeDiff(options: UseCodeDiffOptions) {
 	const rootStore = useRootStore();
-	const ndvStore = useNDVStore();
+	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const ndvStore = computed(() => useNDVStore(workflowDocumentStore.value.documentId));
 	const locale = useI18n();
 
 	const suggestions = ref<{
@@ -37,7 +39,7 @@ export function useCodeDiff(options: UseCodeDiffOptions) {
 	}>({});
 
 	function updateParameters(workflowId: string, nodeName: string, parameters: INodeParameters) {
-		if (ndvStore.activeNodeName === nodeName) {
+		if (ndvStore.value.activeNodeName === nodeName) {
 			Object.keys(parameters).forEach((key) => {
 				const update: IUpdateInformation = {
 					node: nodeName,
@@ -70,7 +72,7 @@ export function useCodeDiff(options: UseCodeDiffOptions) {
 	}
 
 	function showCodeUpdateToastIfNeeded(errorNodeName: string) {
-		if (errorNodeName !== ndvStore.activeNodeName) {
+		if (errorNodeName !== ndvStore.value.activeNodeName) {
 			useToast().showMessage({
 				type: 'success',
 				title: locale.baseText('aiAssistant.codeUpdated.message.title'),

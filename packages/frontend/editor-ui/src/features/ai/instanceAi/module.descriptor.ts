@@ -1,37 +1,64 @@
 import { i18n } from '@n8n/i18n';
 import type { FrontendModuleDescription } from '@/app/moduleInitializer/module.types';
-import { hasPermission } from '@/app/utils/rbac/permissions';
+import {
+	INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY,
+	INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY,
+} from '@/app/constants/modals';
 import { INSTANCE_AI_VIEW, INSTANCE_AI_THREAD_VIEW, INSTANCE_AI_SETTINGS_VIEW } from './constants';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 
 const InstanceAiView = async () => await import('./InstanceAiView.vue');
+const InstanceAiEmptyView = async () => await import('./InstanceAiEmptyView.vue');
+const InstanceAiThreadView = async () => await import('./InstanceAiThreadView.vue');
 const SettingsInstanceAiView = async () => await import('./views/SettingsInstanceAiView.vue');
+const ComputerUseSetupModal = async () =>
+	await import('./components/modals/ComputerUseSetupModal.vue');
+const BrowserUseSetupModal = async () =>
+	await import('./components/modals/BrowserUseSetupModal.vue');
 
 export const InstanceAiModule: FrontendModuleDescription = {
 	id: 'instance-ai',
-	name: 'Instance AI',
-	description: 'Chat with the n8n Instance AI agent.',
+	name: 'AI Assistant',
+	description: 'Chat with your n8n instance.',
 	icon: 'sparkles',
 	routes: [
 		{
-			name: INSTANCE_AI_VIEW,
+			path: '/assistant',
+			component: InstanceAiView,
+			meta: {
+				layout: 'instanceAi',
+				middleware: ['authenticated', 'custom'],
+			},
+			children: [
+				{
+					name: INSTANCE_AI_VIEW,
+					path: '',
+					component: InstanceAiEmptyView,
+				},
+				{
+					name: INSTANCE_AI_THREAD_VIEW,
+					path: ':threadId',
+					component: InstanceAiThreadView,
+					props: true,
+				},
+			],
+		},
+		// Permanent redirects from the legacy `/instance-ai` path to `/assistant`.
+		{
 			path: '/instance-ai',
-			component: InstanceAiView,
-			meta: {
-				layout: 'instanceAi',
-				middleware: ['authenticated', 'custom'],
-			},
+			redirect: (to) => ({ name: INSTANCE_AI_VIEW, query: to.query, hash: to.hash }),
 		},
 		{
-			name: INSTANCE_AI_THREAD_VIEW,
 			path: '/instance-ai/:threadId',
-			component: InstanceAiView,
-			meta: {
-				layout: 'instanceAi',
-				middleware: ['authenticated', 'custom'],
-			},
+			redirect: (to) => ({
+				name: INSTANCE_AI_THREAD_VIEW,
+				params: { threadId: to.params.threadId },
+				query: to.query,
+				hash: to.hash,
+			}),
 		},
 		{
-			path: 'instance-ai',
+			path: 'assistant',
 			name: INSTANCE_AI_SETTINGS_VIEW,
 			component: SettingsInstanceAiView,
 			meta: {
@@ -39,9 +66,19 @@ export const InstanceAiModule: FrontendModuleDescription = {
 				middleware: ['authenticated', 'rbac', 'custom'],
 				middlewareOptions: {
 					rbac: {
-						scope: 'instanceAi:manage',
+						scope: 'instanceAi:message',
 					},
 				},
+				telemetry: {
+					pageCategory: 'settings',
+				},
+			},
+		},
+		// Permanent redirect from the legacy `/settings/instance-ai` path.
+		{
+			path: 'instance-ai',
+			redirect: (to) => ({ name: INSTANCE_AI_SETTINGS_VIEW, query: to.query, hash: to.hash }),
+			meta: {
 				telemetry: {
 					pageCategory: 'settings',
 				},
@@ -53,7 +90,10 @@ export const InstanceAiModule: FrontendModuleDescription = {
 		project: [],
 	},
 	resources: [],
-	modals: [],
+	modals: [
+		{ key: INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY, component: ComputerUseSetupModal },
+		{ key: INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY, component: BrowserUseSetupModal },
+	],
 	settingsPages: [
 		{
 			id: 'settings-instance-ai',
@@ -61,8 +101,9 @@ export const InstanceAiModule: FrontendModuleDescription = {
 			label: i18n.baseText('settings.n8nAgent'),
 			position: 'top',
 			route: { to: { name: INSTANCE_AI_SETTINGS_VIEW } },
+			preview: true,
 			get available() {
-				return hasPermission(['rbac'], { rbac: { scope: 'instanceAi:manage' } });
+				return hasPermission(['rbac'], { rbac: { scope: 'instanceAi:message' } });
 			},
 		},
 	],

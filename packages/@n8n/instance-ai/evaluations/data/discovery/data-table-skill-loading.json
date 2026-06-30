@@ -1,0 +1,24 @@
+{
+	"id": "data-table-skill-loading",
+	"userMessage": "Use the data-table-manager skill to list my n8n Data Tables and summarize what tables are available. This is standalone data-table work; do not build or modify a workflow.",
+	"expectedToolInvocations": {
+		"allOfToolCalls": [
+			{
+				"toolName": "load_skill",
+				"argsContainAny": ["data-table-manager"]
+			},
+			{
+				"toolName": "data-tables",
+				"argsContainAny": ["list"]
+			}
+		],
+		"noneOf": [
+			"create-tasks",
+			"build-workflow",
+			"delegate",
+			"spawn_sub_agent:workflow-builder",
+			"spawn_sub_agent:delegate"
+		]
+	},
+	"rationale": "Regression coverage for runtime skill loading. Standalone data-table work must load the data-table-manager skill and call data-tables directly, without routing through planning, workflow-building, task creation, or delegate paths."
+}

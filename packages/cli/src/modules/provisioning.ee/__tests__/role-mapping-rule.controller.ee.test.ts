@@ -1,5 +1,9 @@
 import type { LicenseState } from '@n8n/backend-common';
-import { mock } from 'jest-mock-extended';
+import type { AuthenticatedRequest } from '@n8n/db';
+import type { Response } from 'express';
+import { mock } from 'vitest-mock-extended';
+
+import type { EventService } from '@/events/event.service';
 
 import { RoleMappingRuleController } from '../role-mapping-rule.controller.ee';
 import type {
@@ -7,24 +11,27 @@ import type {
 	RoleMappingRuleResponse,
 	RoleMappingRuleService,
 } from '../role-mapping-rule.service.ee';
-import type { Response } from 'express';
-import type { AuthenticatedRequest } from '@n8n/db';
 
 const roleMappingRuleService = mock<RoleMappingRuleService>();
 const licenseState = mock<LicenseState>();
+const eventService = mock<EventService>();
 
-const controller = new RoleMappingRuleController(roleMappingRuleService, licenseState);
+const controller = new RoleMappingRuleController(
+	roleMappingRuleService,
+	licenseState,
+	eventService,
+);
 
 describe('RoleMappingRuleController', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('list', () => {
 		const req = mock<AuthenticatedRequest>();
 		const res = mock<Response>({
-			json: jest.fn().mockReturnThis(),
-			status: jest.fn().mockReturnThis(),
+			json: vi.fn().mockReturnThis(),
+			status: vi.fn().mockReturnThis(),
 		});
 
 		const query = { skip: 0, take: 10 };
@@ -66,8 +73,8 @@ describe('RoleMappingRuleController', () => {
 	describe('create', () => {
 		const req = mock<AuthenticatedRequest>();
 		const res = mock<Response>({
-			json: jest.fn().mockReturnThis(),
-			status: jest.fn().mockReturnThis(),
+			json: vi.fn().mockReturnThis(),
+			status: vi.fn().mockReturnThis(),
 		});
 
 		const body = {
@@ -113,8 +120,8 @@ describe('RoleMappingRuleController', () => {
 		req.params = { id: ruleId };
 		req.body = patchBody;
 		const res = mock<Response>({
-			json: jest.fn().mockReturnThis(),
-			status: jest.fn().mockReturnThis(),
+			json: vi.fn().mockReturnThis(),
+			status: vi.fn().mockReturnThis(),
 		});
 
 		it('should return 403 if provisioning is not licensed', async () => {
@@ -152,8 +159,8 @@ describe('RoleMappingRuleController', () => {
 		const req = mock<AuthenticatedRequest>();
 		req.params = { id: ruleId };
 		const res = mock<Response>({
-			json: jest.fn().mockReturnThis(),
-			status: jest.fn().mockReturnThis(),
+			json: vi.fn().mockReturnThis(),
+			status: vi.fn().mockReturnThis(),
 		});
 
 		it('should return 403 if provisioning is not licensed', async () => {
@@ -190,8 +197,8 @@ describe('RoleMappingRuleController', () => {
 		const req = mock<AuthenticatedRequest>();
 		req.params = { id: ruleId };
 		const res = mock<Response>({
-			json: jest.fn().mockReturnThis(),
-			status: jest.fn().mockReturnThis(),
+			json: vi.fn().mockReturnThis(),
+			status: vi.fn().mockReturnThis(),
 		});
 
 		it('should return 403 if provisioning is not licensed', async () => {
@@ -203,12 +210,16 @@ describe('RoleMappingRuleController', () => {
 
 		it('should delete a role mapping rule when provisioning is licensed', async () => {
 			licenseState.isProvisioningLicensed.mockReturnValue(true);
-			roleMappingRuleService.delete.mockResolvedValue(undefined);
+			roleMappingRuleService.delete.mockResolvedValue({ ruleType: 'instance' });
 
 			const result = await controller.delete(req, res, ruleId);
 
 			expect(result).toEqual({ success: true });
 			expect(roleMappingRuleService.delete).toHaveBeenCalledWith(ruleId);
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'role-mapping-rule-deleted',
+				expect.objectContaining({ ruleId, ruleType: 'instance' }),
+			);
 		});
 	});
 });

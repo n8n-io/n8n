@@ -1,14 +1,17 @@
 import { ref } from 'vue';
 import { defineStore } from 'pinia';
+import type { INode } from 'n8n-workflow';
 import type { AiGatewayConfigDto, AiGatewayUsageEntry } from '@n8n/api-types';
 import { STORES } from '@n8n/stores';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
 import {
 	getGatewayConfig,
-	getGatewayCredits,
+	getGatewayWallet,
 	getGatewayUsage,
 } from '@/features/ai/assistant/assistant.api';
+
+const OPERATION_ONLY = '__operation_only__';
 
 function toError(e: unknown): Error {
 	return e instanceof Error ? e : new Error(String(e));
@@ -18,8 +21,8 @@ export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 	const rootStore = useRootStore();
 
 	const config = ref<AiGatewayConfigDto | null>(null);
-	const creditsRemaining = ref<number | undefined>(undefined);
-	const creditsQuota = ref<number | undefined>(undefined);
+	const balance = ref<number | undefined>(undefined);
+	const budget = ref<number | undefined>(undefined);
 	const usageEntries = ref<AiGatewayUsageEntry[]>([]);
 	const usageTotal = ref<number>(0);
 	const fetchError = ref<Error | null>(null);
@@ -34,11 +37,11 @@ export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 		}
 	}
 
-	async function fetchCredits(): Promise<void> {
+	async function fetchWallet(): Promise<void> {
 		try {
-			const data = await getGatewayCredits(rootStore.restApiContext);
-			creditsRemaining.value = data.creditsRemaining;
-			creditsQuota.value = data.creditsQuota;
+			const data = await getGatewayWallet(rootStore.restApiContext);
+			balance.value = data.balance;
+			budget.value = data.budget;
 			fetchError.value = null;
 		} catch (error) {
 			fetchError.value = toError(error);
@@ -75,18 +78,67 @@ export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 		return config.value?.credentialTypes.includes(credentialType) ?? false;
 	}
 
+	/**
+	 * Returns true when the given node action (resource + operation) is allowed
+	 * by the gateway config, or when there is no restriction to enforce.
+	 *
+	 * The "no restriction" cases — returning true — are intentional permissive
+	 * defaults so that nodes without an entry in `supportedActions` are never
+	 * accidentally hidden:
+	 *  - config not yet loaded → allow everything until we know otherwise
+	 *  - node not listed in supportedActions → no restrictions defined, allow all
+	 *
+	 * For operation-only nodes (no resource parameter, e.g. PDF.co), pass
+	 * `resource` as `undefined`. The lookup falls back to the OPERATION_ONLY key
+	 * (`'__operation_only__'`) so the operation list is still enforced.
+	 */
+	function isActionSupported(
+		nodeName: string,
+		resource: string | undefined,
+		operation: string,
+	): boolean {
+		if (!config.value) return true;
+		const nodeActions = config.value.supportedActions?.[nodeName];
+		if (!nodeActions) return true;
+		const ops = nodeActions[resource ?? OPERATION_ONLY];
+		if (!ops) return false;
+		return ops.includes(operation);
+	}
+
+	function isNodeTypeVersionSupported(nodeName: string, typeVersion: number): boolean {
+		const minVersion = config.value?.minNodeTypeVersion?.[nodeName];
+		if (minVersion === undefined) return true;
+		return typeVersion >= minVersion;
+	}
+
+	function isNodePropertyHidden(node: INode | null, propertyName: string): boolean {
+		if (!node?.credentials) return false;
+
+		const hasGatewayCredential = Object.values(node.credentials).some(
+			(cred) => cred.__aiGatewayManaged === true,
+		);
+		if (!hasGatewayCredential) return false;
+
+		const properties = config.value?.hiddenNodeProperties?.[node.type];
+		if (!properties) return false;
+		return properties.includes(propertyName);
+	}
+
 	return {
 		config,
-		creditsRemaining,
-		creditsQuota,
+		balance,
+		budget,
 		usageEntries,
 		usageTotal,
 		fetchError,
 		fetchConfig,
-		fetchCredits,
+		fetchWallet,
 		fetchUsage,
 		fetchMoreUsage,
 		isNodeSupported,
+		isNodeTypeVersionSupported,
 		isCredentialTypeSupported,
+		isActionSupported,
+		isNodePropertyHidden,
 	};
 });

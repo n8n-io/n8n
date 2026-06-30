@@ -12,6 +12,8 @@
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/motion';
+
 .card {
 	display: flex;
 	align-items: center;
@@ -23,18 +25,26 @@
 }
 
 .skeleton {
+	--animation--skeleton-pulse--duration: 1s;
+	--animation--skeleton-pulse--opacity-start: 0.6;
+	--animation--skeleton-pulse--opacity-end: 0.3;
+
 	background: var(--color--foreground);
-	animation: skeleton-pulse 1s ease-in-out infinite;
+	@include motion.skeleton-pulse;
 	border-radius: var(--radius--sm);
 }
 
 .avatar {
+	--animation--skeleton-pulse--duration: 1s;
+	--animation--skeleton-pulse--opacity-start: 0.6;
+	--animation--skeleton-pulse--opacity-end: 0.3;
+
 	width: 24px;
 	height: 24px;
 	border-radius: 50%;
 	flex-shrink: 0;
 	background: var(--color--foreground);
-	animation: skeleton-pulse 1s ease-in-out infinite;
+	@include motion.skeleton-pulse;
 }
 
 .content {
@@ -59,15 +69,5 @@
 	width: 24px;
 	height: 24px;
 	border-radius: var(--radius);
-}
-
-@keyframes skeleton-pulse {
-	0%,
-	100% {
-		opacity: 0.6;
-	}
-	50% {
-		opacity: 0.3;
-	}
 }
 </style>

@@ -103,12 +103,12 @@ describe('ToolCallStep', () => {
 		expect(label).toBeInTheDocument();
 	});
 
-	it('should append query to web-search tool label', () => {
+	it('should append query to research web-search tool label', () => {
 		const { getByText } = renderComponent({
 			props: {
 				toolCall: makeToolCall({
-					toolName: 'web-search',
-					args: { query: 'n8n docs' },
+					toolName: 'research',
+					args: { action: 'web-search', query: 'n8n docs' },
 				}),
 			},
 		});

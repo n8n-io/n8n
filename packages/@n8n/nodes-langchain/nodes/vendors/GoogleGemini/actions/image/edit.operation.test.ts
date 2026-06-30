@@ -1,5 +1,5 @@
-import { mock, mockDeep } from 'jest-mock-extended';
 import type { IBinaryData, ICredentialDataDecryptedObject, IExecuteFunctions } from 'n8n-workflow';
+import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { execute } from './edit.operation';
 
@@ -184,25 +184,20 @@ describe('Gemini Node image edit', () => {
 		);
 	});
 
-	it('should handle empty prompt', async () => {
+	it('should throw error for empty prompt', async () => {
 		const executeFunctions = getMockedExecuteFunctions({ prompt: '' });
 
-		const result = await execute.call(executeFunctions, 0);
+		await expect(execute.call(executeFunctions, 0)).rejects.toThrow(
+			'A non-empty prompt is required.',
+		);
+	});
 
-		expect(result).toEqual([
-			{
-				binary: {
-					edited: {
-						data: 'ZWRpdGVkIGltYWdl',
-						fileName: 'image.png',
-						fileSize: '12',
-						mimeType: 'image/png',
-					},
-				},
-				json: { fileName: 'image.png', fileSize: '12', mimeType: 'image/png', data: undefined },
-				pairedItem: { item: 0 },
-			},
-		]);
+	it('should throw error for whitespace-only prompt', async () => {
+		const executeFunctions = getMockedExecuteFunctions({ prompt: '   ' });
+
+		await expect(execute.call(executeFunctions, 0)).rejects.toThrow(
+			'A non-empty prompt is required.',
+		);
 	});
 
 	it('should handle different MIME types', async () => {
@@ -217,7 +212,9 @@ describe('Gemini Node image edit', () => {
 		const result = await execute.call(executeFunctions, 0);
 
 		expect(result[0]?.binary?.enhanced?.mimeType).toBe('image/jpeg');
+		expect(result[0]?.binary?.enhanced?.fileName).toBe('image.jpg');
 		expect(result[0]?.json?.mimeType).toBe('image/jpeg');
+		expect(result[0]?.json?.fileName).toBe('image.jpg');
 	});
 
 	it('should handle empty images array when no valid binary property names', async () => {

@@ -1,7 +1,7 @@
 {
   "name": "@n8n/stores",
   "type": "module",
-  "version": "2.16.0",
+  "version": "2.29.0",
   "files": [
     "dist"
   ],
@@ -21,11 +21,14 @@
     }
   },
   "scripts": {
+    "clean": "rimraf dist .turbo",
     "dev": "tsdown --watch",
     "build": "tsdown",
+    "build:unchecked": "pnpm run build",
     "preview": "vite preview",
     "typecheck": "vue-tsc --noEmit",
     "test": "vitest run",
+    "test:changed": "janitor test-scoped --runner=vitest",
     "test:dev": "vitest --silent=false",
     "lint": "eslint src --quiet",
     "lint:fix": "eslint src --fix",
@@ -33,10 +36,14 @@
     "format:check": "biome ci . && prettier --check . --ignore-path ../../../../.prettierignore"
   },
   "dependencies": {
-    "n8n-workflow": "workspace:*"
+    "n8n-workflow": "workspace:*",
+    "@vueuse/core": "catalog:frontend",
+    "pinia": "catalog:frontend",
+    "vue": "catalog:frontend"
   },
   "devDependencies": {
     "@n8n/eslint-config": "workspace:*",
+    "@n8n/playwright-janitor": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@testing-library/jest-dom": "catalog:frontend",
@@ -45,18 +52,11 @@
     "@vitejs/plugin-vue": "catalog:frontend",
     "@vue/tsconfig": "catalog:frontend",
     "@vueuse/core": "catalog:frontend",
-    "pinia": "catalog:frontend",
-    "vue": "catalog:frontend",
     "tsdown": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:",
     "vue-tsc": "catalog:frontend"
   },
-  "peerDependencies": {
-    "@vueuse/core": "catalog:frontend",
-    "pinia": "catalog:frontend",
-    "vue": "catalog:frontend"
-  },
-  "license": "See LICENSE.md file in the root of the repository"
+  "license": "LicenseRef-n8n-sustainable-use"
 }

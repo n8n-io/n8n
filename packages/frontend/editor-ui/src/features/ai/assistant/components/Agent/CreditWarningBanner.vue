@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nButton, N8nIcon, N8nTooltip } from '@n8n/design-system';
+import { round2 } from './creditFormatting';
 
 const props = defineProps<{
 	creditsRemaining?: number;
@@ -18,8 +19,8 @@ const i18n = useI18n();
 const bannerText = computed(() => {
 	return i18n.baseText('aiAssistant.builder.creditBanner.text', {
 		interpolate: {
-			remaining: String(props.creditsRemaining ?? 0),
-			total: String(props.creditsQuota ?? 0),
+			remaining: String(round2(props.creditsRemaining ?? 0)),
+			total: String(round2(props.creditsQuota ?? 0)),
 		},
 	});
 });

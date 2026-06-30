@@ -2,18 +2,39 @@ import { Logger } from '@n8n/backend-common';
 import { ExecutionRepository } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { ErrorReporter, InstanceSettings } from 'n8n-core';
-import { UnexpectedError, type IWorkflowExecutionDataProcess } from 'n8n-workflow';
+import { InstanceSettings } from 'n8n-core';
+import {
+	ensureError,
+	sleep,
+	UnexpectedError,
+	UserError,
+	type IRun,
+	type IWorkflowExecutionDataProcess,
+	type RelatedExecution,
+} from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
-import { DbClock } from '@/services/db-clock.service';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowRunner } from '@/workflow-runner';
+
 import {
 	shouldRestartParentExecution,
 	updateParentExecutionWithChildResults,
 } from './workflow-helpers';
+
+/** How many times each parent-resume step is attempted before giving up. */
+const MAX_PARENT_RESUME_ATTEMPTS = 3;
+
+/**
+ * Whether a resume parent failure is worth retrying. Only `UserError` and
+ * `UnexpectedError` are not. Everything else is retried, including `OperationalError` (which
+ * by convention signals a transient issue) and raw database or Redis failures
+ */
+function isRetryableResumeError(error: unknown): boolean {
+	return !(error instanceof UserError || error instanceof UnexpectedError);
+}
 
 @Service()
 export class WaitTracker {
@@ -26,18 +47,14 @@ export class WaitTracker {
 
 	mainTimer: NodeJS.Timeout;
 
-	/** Guards against overlapping poll invocations when DB queries take longer than the poll interval. */
-	private isPolling = false;
-
 	constructor(
 		private readonly logger: Logger,
 		private readonly executionRepository: ExecutionRepository,
+		private readonly executionPersistence: ExecutionPersistence,
 		private readonly ownershipService: OwnershipService,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly instanceSettings: InstanceSettings,
-		private readonly dbClock: DbClock,
-		private readonly errorReporter: ErrorReporter,
 	) {
 		this.logger = this.logger.scoped('waiting-executions');
 	}
@@ -52,9 +69,10 @@ export class WaitTracker {
 
 	@OnLeaderTakeover()
 	private startTracking() {
+		// Poll every 60 seconds a list of upcoming executions
 		this.mainTimer = setInterval(() => {
 			void this.getWaitingExecutions();
-		}, 5000);
+		}, 60000);
 
 		void this.getWaitingExecutions();
 
@@ -62,64 +80,32 @@ export class WaitTracker {
 	}
 
 	async getWaitingExecutions() {
-		if (this.isPolling) {
-			this.logger.debug('Skipping poll — previous poll still in progress');
+		this.logger.debug('Querying database for waiting executions');
+
+		const executions = await this.executionRepository.getWaitingExecutions();
+
+		if (executions.length === 0) {
 			return;
 		}
 
-		this.isPolling = true;
-		try {
-			const [executions, dbTime] = await Promise.all([
-				this.executionRepository.getWaitingExecutions(),
-				this.dbClock.getApproximateDbTime(),
-			]);
+		const executionIds = executions.map((execution) => execution.id).join(', ');
+		this.logger.debug(
+			`Found ${executions.length} executions. Setting timer for IDs: ${executionIds}`,
+		);
 
-			const skewMs = dbTime.getTime() - Date.now();
-			if (Math.abs(skewMs) > 2000) {
-				this.logger.warn(
-					`Clock skew detected: this instance is ${Math.abs(skewMs)}ms ${skewMs > 0 ? 'behind' : 'ahead of'} the database server`,
-				);
-			}
+		// Add timers for each waiting execution that they get started at the correct time
 
-			if (executions.length === 0) {
-				return;
-			}
-
-			const newExecutions = executions.filter((e) => this.waitingExecutions[e.id] === undefined);
-
-			if (newExecutions.length > 0) {
-				const executionIds = newExecutions.map((e) => e.id).join(', ');
-				this.logger.debug(
-					`Found ${newExecutions.length} new waiting execution(s). Setting timer for IDs: ${executionIds}`,
-				);
-			}
-
-			for (const execution of newExecutions) {
-				const executionId = execution.id;
-				if (execution.waitTill === null || execution.waitTill === undefined) {
-					this.errorReporter.error(
-						new UnexpectedError(
-							'Polling returned an execution without waitTill — this should never happen',
-							{ extra: { executionId } },
-						),
-						{ level: 'fatal' },
-					);
-					continue;
-				}
-
-				const triggerTime = execution.waitTill.getTime() - dbTime.getTime();
+		for (const execution of executions) {
+			const executionId = execution.id;
+			if (this.waitingExecutions[executionId] === undefined) {
+				const triggerTime = execution.waitTill!.getTime() - new Date().getTime();
 				this.waitingExecutions[executionId] = {
 					executionId,
-					timer: setTimeout(
-						() => {
-							void this.startExecution(executionId);
-						},
-						Math.max(triggerTime, 0),
-					),
+					timer: setTimeout(() => {
+						void this.startExecution(executionId);
+					}, triggerTime),
 				};
 			}
-		} finally {
-			this.isPolling = false;
 		}
 	}
 
@@ -133,71 +119,132 @@ export class WaitTracker {
 
 	async startExecution(executionId: string) {
 		this.logger.debug(`Resuming execution ${executionId}`, { executionId });
+		delete this.waitingExecutions[executionId];
 
+		// Get the data to execute
+		const fullExecutionData = await this.executionPersistence.findSingleExecution(executionId, {
+			includeData: true,
+			unflattenData: true,
+		});
+
+		if (!fullExecutionData) {
+			throw new UnexpectedError('Execution does not exist.', { extra: { executionId } });
+		}
+		if (fullExecutionData.finished) {
+			throw new UnexpectedError('The execution did succeed and can so not be started again.');
+		}
+
+		if (!fullExecutionData.workflowData.id) {
+			throw new UnexpectedError('Only saved workflows can be resumed.');
+		}
+
+		const workflowId = fullExecutionData.workflowData.id;
+		const project = await this.ownershipService.getWorkflowProjectCached(workflowId);
+
+		const data: IWorkflowExecutionDataProcess = {
+			executionMode: fullExecutionData.mode,
+			executionData: fullExecutionData.data,
+			workflowData: fullExecutionData.workflowData,
+			projectId: project.id,
+			pushRef: fullExecutionData.data.pushRef,
+			startedAt: fullExecutionData.startedAt,
+		};
+
+		// Start the execution again
 		try {
-			const fullExecutionData = await this.executionRepository.findSingleExecution(executionId, {
-				includeData: true,
-				unflattenData: true,
-			});
-
-			if (!fullExecutionData) {
-				throw new UnexpectedError('Execution does not exist.', { extra: { executionId } });
+			await this.workflowRunner.run(data, false, false, executionId);
+		} catch (error) {
+			if (error instanceof ExecutionAlreadyResumingError) {
+				// This execution is already being resumed by another child execution
+				// This is expected in "run once for each item" mode when multiple children complete
+				this.logger.debug(
+					`Execution ${executionId} is already being resumed, skipping duplicate resume`,
+					{ executionId },
+				);
+				return;
 			}
-			if (fullExecutionData.finished) {
-				throw new UnexpectedError('The execution did succeed and can so not be started again.');
-			}
+			// Rethrow any other errors
+			throw error;
+		}
 
-			if (!fullExecutionData.workflowData.id) {
-				throw new UnexpectedError('Only saved workflows can be resumed.');
-			}
+		const { parentExecution } = fullExecutionData.data;
+		if (shouldRestartParentExecution(parentExecution)) {
+			// on child execution completion, resume parent execution
+			void this.resumeParentExecution(
+				parentExecution,
+				this.activeExecutions.getPostExecutePromise(executionId),
+				{ executionId, workflowId },
+			);
+		}
+	}
 
-			const workflowId = fullExecutionData.workflowData.id;
-			const project = await this.ownershipService.getWorkflowProjectCached(workflowId);
+	/**
+	 * Resume a parent execution once its child execution has completed.
+	 *
+	 * The resume crosses several async boundaries (DB write to patch the parent,
+	 * then resuming the parent). Each step is retried up to `MAX_PARENT_RESUME_ATTEMPTS`
+	 * so a transient failure recovers and the parent resumes.
+	 * If every attempt fails, the error is caught and logged below; the parent stays in `waiting`, but the
+	 * failure is now visible and attributable instead of lost.
+	 * This never rejects, so callers can invoke it as fire and forget.
+	 */
+	async resumeParentExecution(
+		parentExecution: RelatedExecution,
+		executePromise: Promise<IRun | undefined>,
+		childExecution?: RelatedExecution,
+	): Promise<void> {
+		try {
+			const subworkflowResults = await executePromise;
+			if (!subworkflowResults) return;
+			if (subworkflowResults.status === 'waiting') return; // The child execution is waiting, not completing.
 
-			const data: IWorkflowExecutionDataProcess = {
-				executionMode: fullExecutionData.mode,
-				executionData: fullExecutionData.data,
-				workflowData: fullExecutionData.workflowData,
-				projectId: project.id,
-				pushRef: fullExecutionData.data.pushRef,
-				startedAt: fullExecutionData.startedAt,
-			};
-
-			try {
-				await this.workflowRunner.run(data, false, false, executionId);
-			} catch (error) {
-				if (error instanceof ExecutionAlreadyResumingError) {
-					this.logger.debug(
-						`Execution ${executionId} is already being resumed, skipping duplicate resume`,
-						{ executionId },
+			await this.withRetry(
+				async () => {
+					await updateParentExecutionWithChildResults(
+						parentExecution.executionId,
+						subworkflowResults,
+						childExecution,
 					);
-					return;
-				}
-				throw error;
-			}
+				},
+				MAX_PARENT_RESUME_ATTEMPTS,
+				isRetryableResumeError,
+			);
 
-			const { parentExecution } = fullExecutionData.data;
-			if (shouldRestartParentExecution(parentExecution)) {
-				void this.activeExecutions
-					.getPostExecutePromise(executionId)
-					.then(async (subworkflowResults) => {
-						if (!subworkflowResults) return;
-						if (subworkflowResults.status === 'waiting') return; // The child execution is waiting, not completing.
-						await updateParentExecutionWithChildResults(
-							this.executionRepository,
-							parentExecution.executionId,
-							subworkflowResults,
-						);
-						return subworkflowResults;
-					})
-					.then((subworkflowResults) => {
-						if (!subworkflowResults) return;
-						if (subworkflowResults.status === 'waiting') return; // The child execution is waiting, not completing.
-						void this.startExecution(parentExecution.executionId);
-					});
+			await this.withRetry(
+				async () => {
+					await this.startExecution(parentExecution.executionId);
+				},
+				MAX_PARENT_RESUME_ATTEMPTS,
+				isRetryableResumeError,
+			);
+		} catch (error) {
+			this.logger.error('Failed to resume parent execution after sub-workflow completed', {
+				parentExecutionId: parentExecution.executionId,
+				error: ensureError(error).message,
+			});
+		}
+	}
+
+	/**
+	 * Run an operation up to `maxAttempts` times with exponential backoff, returning
+	 * on the first success and rethrowing the last error if they all fail. Generic
+	 * (not specific to parent resume) — the caller passes the attempt count and an
+	 * optional `shouldRetry` predicate; an error it rejects is rethrown immediately
+	 * instead of being retried.
+	 */
+	private async withRetry(
+		operation: () => Promise<void>,
+		maxAttempts: number,
+		shouldRetry: (error: unknown) => boolean = () => true,
+	): Promise<void> {
+		for (let attempt = 1; ; attempt++) {
+			try {
+				await operation();
+				return;
+			} catch (error) {
+				if (attempt >= maxAttempts || !shouldRetry(error)) throw error;
+				await sleep(100 * 2 ** (attempt - 1));
 			}
-		} finally {
-			delete this.waitingExecutions[executionId];
 		}
 	}
 

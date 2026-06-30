@@ -93,6 +93,10 @@ export const PROVIDER_NODE_TYPE_MAP: Record<ChatHubLLMProvider, INodeTypeNameVer
 		name: '@n8n/n8n-nodes-langchain.lmChatMistralCloud',
 		version: 1,
 	},
+	nvidia: {
+		name: '@n8n/n8n-nodes-langchain.lmChatNvidia',
+		version: 1,
+	},
 };
 
 export const NODE_NAMES = {
@@ -162,6 +166,10 @@ const MODEL_METADATA_REGISTRY: Partial<
 		'claude-sonnet-4-5-20250929': {
 			inputModalities: ['text', 'image'],
 			priority: 80,
+		},
+		'claude-opus-4-7': {
+			inputModalities: ['text', 'image'],
+			priority: 110,
 		},
 		'claude-opus-4-6': {
 			inputModalities: ['text', 'image'],

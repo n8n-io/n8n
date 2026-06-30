@@ -16,6 +16,7 @@ import {
 } from 'n8n-workflow';
 
 import { NotFoundError } from '../errors/response-errors/not-found.error';
+import { ExecutionPersistence } from '../executions/execution-persistence';
 import * as WorkflowExecuteAdditionalData from '../workflow-execute-additional-data';
 import { preserveInputOverride } from '../workflow-helpers';
 import { WorkflowRunner } from '../workflow-runner';
@@ -28,6 +29,7 @@ import { OwnershipService } from '../services/ownership.service';
 export class ChatExecutionManager {
 	constructor(
 		private readonly executionRepository: ExecutionRepository,
+		private readonly executionPersistence: ExecutionPersistence,
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly ownershipService: OwnershipService,
 		private readonly nodeTypes: NodeTypes,
@@ -43,7 +45,7 @@ export class ChatExecutionManager {
 	}
 
 	async cancelExecution(executionId: string) {
-		const execution = await this.executionRepository.findSingleExecution(executionId, {
+		const execution = await this.executionPersistence.findSingleExecution(executionId, {
 			includeData: true,
 			unflattenData: true,
 		});
@@ -56,15 +58,11 @@ export class ChatExecutionManager {
 	}
 
 	async findExecution(executionId: string) {
-		return await this.executionRepository.findSingleExecution(executionId, {
+		return await this.executionPersistence.findSingleExecution(executionId, {
 			includeData: true,
 			unflattenData: true,
 		});
 	}
-	async checkIfExecutionExists(executionId: string) {
-		return await this.executionRepository.findSingleExecution(executionId);
-	}
-
 	private getWorkflow(execution: IExecutionResponse) {
 		const { workflowData } = execution;
 		return new Workflow({
@@ -136,7 +134,12 @@ export class ChatExecutionManager {
 		}
 
 		if (nodeType.onMessage) {
-			return await nodeType.onMessage(context, nodeExecutionData);
+			await workflow.expression.acquireIsolate();
+			try {
+				return await nodeType.onMessage(context, nodeExecutionData);
+			} finally {
+				await workflow.expression.releaseIsolate();
+			}
 		}
 
 		return [[nodeExecutionData]];

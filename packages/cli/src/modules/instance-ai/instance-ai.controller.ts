@@ -1,22 +1,26 @@
 import {
 	InstanceAiConfirmRequestDto,
-	instanceAiGatewayCapabilitiesSchema,
-	instanceAiFilesystemResponseSchema,
+	InstanceAiFeedbackRequestDto,
+	InstanceAiGatewayCapabilitiesDto,
+	InstanceAiGatewayCreateCredentialDto,
+	InstanceAiFilesystemResponseDto,
 	InstanceAiRenameThreadRequestDto,
 	InstanceAiSendMessageRequest,
 	InstanceAiEventsQuery,
 	instanceAiGatewayKeySchema,
 	InstanceAiCorrectTaskRequest,
-	InstanceAiUpdateMemoryRequest,
 	InstanceAiEnsureThreadRequest,
 	InstanceAiThreadMessagesQuery,
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiUserPreferencesUpdateRequest,
 	InstanceAiEvalExecutionRequest,
+	InstanceAiEvalCredentialAllowlistRequest,
+	InstanceAiEvalRestoreThreadRequest,
 } from '@n8n/api-types';
+import type { InstanceAiAgentNode } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { AuthenticatedRequest } from '@n8n/db';
+import { AuthenticatedRequest, User, UserRepository } from '@n8n/db';
 import {
 	RestController,
 	GlobalScope,
@@ -32,19 +36,28 @@ import {
 } from '@n8n/decorators';
 import type { StoredEvent } from '@n8n/instance-ai';
 import { buildAgentTreeFromEvents } from '@n8n/instance-ai';
+import { UnsupportedAttachmentError, validateAttachmentMimeTypes } from '@n8n/instance-ai/parsers';
 import type { NextFunction, Request, Response } from 'express';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
+import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-session.service';
 import { EvalExecutionService } from './eval/execution.service';
+import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service';
+import { EvalThreadRestoreService } from './eval/thread-restore.service';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
+import { InstanceAiErrorReporterService } from './instance-ai-error-reporter.service';
+import { InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { InstanceAiService } from './instance-ai.service';
+import { CredentialsService } from '@/credentials/credentials.service';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { Push } from '@/push';
+import { ProjectService } from '@/services/project.service.ee';
+import { UrlService } from '@/services/url.service';
 
 type FlushableResponse = Response & { flush?: () => void };
 
@@ -54,22 +67,69 @@ const KEEP_ALIVE_INTERVAL_MS = 15_000;
 export class InstanceAiController {
 	private readonly gatewayApiKey: string;
 
-	private readonly instanceBaseUrl: string;
+	private static getTreeRichnessScore(tree: InstanceAiAgentNode): number {
+		let score = 0;
+		const stack = [tree];
+
+		while (stack.length > 0) {
+			const node = stack.pop()!;
+			score += 100;
+			score += node.toolCalls.length * 10;
+			score += node.timeline.length * 2;
+			score += (node.planItems?.length ?? 0) * 20;
+			score += node.toolCalls.filter((toolCall) => toolCall.confirmation).length * 50;
+			score += node.children.length * 25;
+			stack.push(...node.children);
+		}
+
+		return score;
+	}
+
+	private static selectBootstrapTree(
+		eventTree: InstanceAiAgentNode,
+		persistedTree?: InstanceAiAgentNode,
+	): InstanceAiAgentNode {
+		if (!persistedTree) return eventTree;
+
+		return InstanceAiController.getTreeRichnessScore(persistedTree) >
+			InstanceAiController.getTreeRichnessScore(eventTree)
+			? persistedTree
+			: eventTree;
+	}
 
 	constructor(
 		private readonly instanceAiService: InstanceAiService,
+		private readonly gatewayService: InstanceAiGatewayService,
+		private readonly browserSessionService: InstanceAiBrowserSessionService,
 		private readonly memoryService: InstanceAiMemoryService,
 		private readonly settingsService: InstanceAiSettingsService,
 		private readonly evalExecutionService: EvalExecutionService,
+		private readonly evalCredentialAllowlists: EvalThreadCredentialAllowlistService,
+		private readonly evalThreadRestore: EvalThreadRestoreService,
 		private readonly eventBus: InProcessEventBus,
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly push: Push,
+		private readonly urlService: UrlService,
+		private readonly userRepository: UserRepository,
+		private readonly credentialsService: CredentialsService,
+		private readonly projectService: ProjectService,
+		private readonly instanceAiErrorReporter: InstanceAiErrorReporterService,
 		globalConfig: GlobalConfig,
 	) {
 		this.gatewayApiKey = globalConfig.instanceAi.gatewayApiKey;
-		this.instanceBaseUrl = globalConfig.editorBaseUrl || `http://localhost:${globalConfig.port}`;
 	}
 
+	private requireInstanceAiEnabled(): void {
+		if (!this.settingsService.isInstanceAiEnabled()) {
+			throw new ForbiddenError('Instance AI is disabled');
+		}
+	}
+
+	private requireRunDebugEnabled(): void {
+		if (!this.instanceAiService.isRunDebugEnabled()) {
+			throw new NotFoundError('Run debug is not enabled');
+		}
+	}
 	// Each BrotliCompress stream allocates ~8.6 MB of native memory for its
 	// dictionary, and the compression middleware retains streams via closures on
 	// the response object for the lifetime of the HTTP keep-alive connection.
@@ -91,8 +151,33 @@ export class InstanceAiController {
 		@Param('threadId') threadId: string,
 		@Body payload: InstanceAiSendMessageRequest,
 	) {
+		this.requireInstanceAiEnabled();
+		if (!payload.message && (!payload.attachments || payload.attachments.length === 0)) {
+			throw new BadRequestError('Either message or attachments must be provided');
+		}
+
 		// Verify the requesting user owns this thread (or it's new)
 		await this.assertThreadAccess(req.user.id, threadId, { allowNew: true });
+
+		// Only file attachments carry a mime type to validate; workflow
+		// attachments are resource references the agent resolves with its tools.
+		const fileAttachments = (payload.attachments ?? []).filter(
+			(attachment) => attachment.type === 'file',
+		);
+		if (fileAttachments.length > 0) {
+			try {
+				validateAttachmentMimeTypes(fileAttachments);
+			} catch (error) {
+				if (error instanceof UnsupportedAttachmentError) {
+					const summary = error.unsupported.map((u) => `${u.fileName} (${u.mimeType})`).join(', ');
+					throw new BadRequestError(
+						`Unsupported attachment type: ${summary}. Supported types include CSV, JSON, ` +
+							'PDF, DOCX, XLSX, HTML, plain text, markdown, and images.',
+					);
+				}
+				throw error;
+			}
+		}
 
 		// One active run per thread
 		if (this.instanceAiService.hasActiveRun(threadId)) {
@@ -103,8 +188,8 @@ export class InstanceAiController {
 			req.user,
 			threadId,
 			payload.message,
-			payload.researchMode,
 			payload.attachments,
+			payload.context,
 			payload.timeZone,
 			payload.pushRef,
 		);
@@ -120,12 +205,18 @@ export class InstanceAiController {
 		@Param('threadId') threadId: string,
 		@Query query: InstanceAiEventsQuery,
 	) {
+		this.requireInstanceAiEnabled();
 		// Verify the requesting user owns this thread before streaming events.
 		// A thread that doesn't exist yet is allowed — the frontend opens the SSE
 		// connection for new conversations before the first message creates the thread.
 		const ownership = await this.memoryService.checkThreadOwnership(req.user.id, threadId);
 		if (ownership === 'other_user') {
 			throw new ForbiddenError('Not authorized for this thread');
+		}
+		if (ownership === 'owned') {
+			await this.instanceAiService.replayUndeliveredTerminalOutcomes(threadId, {
+				delivery: 'event',
+			});
 		}
 
 		// When the thread didn't exist at connect time, another user could create
@@ -143,7 +234,7 @@ export class InstanceAiController {
 		// of native memory for the lifetime of the connection.
 		(res as unknown as { compress: boolean }).compress = false;
 		res.setHeader('Content-Type', 'text/event-stream; charset=UTF-8');
-		res.setHeader('Cache-Control', 'no-cache');
+		res.setHeader('Cache-Control', 'no-cache, no-transform');
 		res.setHeader('Connection', 'keep-alive');
 		res.setHeader('X-Accel-Buffering', 'no');
 		res.flushHeaders();
@@ -202,13 +293,21 @@ export class InstanceAiController {
 
 		for (const [groupId, group] of liveGroups) {
 			const runEvents = this.eventBus.getEventsForRuns(threadId, group.runIds);
-			if (runEvents.length === 0) continue;
-
-			const agentTree = buildAgentTreeFromEvents(runEvents);
 			// Use the group's own latest runId — NOT the thread-global activeRunId,
 			// which belongs to the current orchestrator turn and would be wrong for
 			// background groups from older turns.
 			const groupRunId = group.runIds.at(-1);
+			const persistedSnapshot = await this.memoryService.getLatestRunSnapshot(threadId, {
+				messageGroupId: groupId,
+				runId: groupRunId,
+			});
+			if (runEvents.length === 0 && !persistedSnapshot) continue;
+
+			const eventTree = buildAgentTreeFromEvents(runEvents);
+			const agentTree = InstanceAiController.selectBootstrapTree(
+				eventTree,
+				persistedSnapshot?.tree,
+			);
 			res.write(
 				`event: run-sync\ndata: ${JSON.stringify({
 					runId: groupRunId,
@@ -273,26 +372,21 @@ export class InstanceAiController {
 
 	@Post('/confirm/:requestId')
 	@GlobalScope('instanceAi:message')
-	async confirm(
-		req: AuthenticatedRequest,
-		_res: Response,
-		@Param('requestId') requestId: string,
-		@Body body: InstanceAiConfirmRequestDto,
-	) {
-		const resolved = await this.instanceAiService.resolveConfirmation(req.user.id, requestId, {
-			approved: body.approved,
-			credentialId: body.credentialId,
-			credentials: body.credentials,
-			nodeCredentials: body.nodeCredentials,
-			autoSetup: body.autoSetup,
-			userInput: body.userInput,
-			domainAccessAction: body.domainAccessAction,
-			action: body.action,
-			nodeParameters: body.nodeParameters,
-			testTriggerNode: body.testTriggerNode,
-			answers: body.answers,
-			resourceDecision: body.resourceDecision,
-		});
+	async confirm(req: AuthenticatedRequest, _res: Response, @Param('requestId') requestId: string) {
+		this.requireInstanceAiEnabled();
+
+		// Manual parse: `@Body` decorator can't resolve zod discriminated unions via reflection,
+		// so validate the request body against the union schema directly.
+		const parseResult = InstanceAiConfirmRequestDto.safeParse(req.body);
+		if (!parseResult.success) {
+			throw new BadRequestError(parseResult.error.errors[0].message);
+		}
+
+		const resolved = await this.instanceAiService.resolveConfirmation(
+			req.user.id,
+			requestId,
+			parseResult.data,
+		);
 		if (!resolved) {
 			throw new NotFoundError('Confirmation request not found or not authorized');
 		}
@@ -302,8 +396,29 @@ export class InstanceAiController {
 	@Post('/chat/:threadId/cancel')
 	@GlobalScope('instanceAi:message')
 	async cancel(req: AuthenticatedRequest, _res: Response, @Param('threadId') threadId: string) {
+		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
 		this.instanceAiService.cancelRun(threadId);
+		return { ok: true };
+	}
+
+	@Post('/feedback/:threadId/:responseId')
+	@GlobalScope('instanceAi:message')
+	async feedback(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+		@Param('responseId') responseId: string,
+		@Body payload: InstanceAiFeedbackRequestDto,
+	) {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, threadId);
+		// Fire-and-forget: never surface LangSmith errors to the UI. The service
+		// logs its own failures; the .catch here guards against unhandled
+		// rejections from paths not wrapped internally (e.g. DB lookups).
+		void this.instanceAiService
+			.submitLangsmithFeedback(req.user, threadId, responseId, payload)
+			.catch(() => {});
 		return { ok: true };
 	}
 
@@ -315,6 +430,7 @@ export class InstanceAiController {
 		@Param('threadId') threadId: string,
 		@Param('taskId') taskId: string,
 	) {
+		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
 		this.instanceAiService.cancelBackgroundTask(threadId, taskId);
 		return { ok: true };
@@ -329,6 +445,7 @@ export class InstanceAiController {
 		@Param('taskId') taskId: string,
 		@Body payload: InstanceAiCorrectTaskRequest,
 	) {
+		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
 		this.instanceAiService.sendCorrectionToTask(threadId, taskId, payload.message);
 		return { ok: true };
@@ -339,6 +456,7 @@ export class InstanceAiController {
 	@Get('/credits')
 	@GlobalScope('instanceAi:message')
 	async getCredits(req: AuthenticatedRequest) {
+		this.requireInstanceAiEnabled();
 		return await this.instanceAiService.getCredits(req.user);
 	}
 
@@ -357,7 +475,32 @@ export class InstanceAiController {
 		_res: Response,
 		@Body payload: InstanceAiAdminSettingsUpdateRequest,
 	) {
-		return await this.settingsService.updateAdminSettings(payload);
+		const result = await this.settingsService.updateAdminSettings(payload);
+		await this.moduleRegistry.refreshModuleSettings('instance-ai');
+
+		if (payload.enabled === false || payload.browserUseEnabled === false) {
+			await this.browserSessionService.shutdown();
+		}
+
+		if (payload.enabled === false || payload.localGatewayDisabled === true) {
+			const disconnectedUserIds = this.gatewayService.disconnectAllGateways();
+			if (disconnectedUserIds.length > 0) {
+				this.push.sendToUsers(
+					{
+						type: 'instanceAiGatewayStateChanged',
+						data: {
+							connected: false,
+							directory: null,
+							hostIdentifier: null,
+							toolCategories: [],
+						},
+					},
+					disconnectedUserIds,
+				);
+			}
+		}
+
+		return result;
 	}
 
 	// ── User preferences (per-user, self-service) ──────────────────────────
@@ -394,29 +537,10 @@ export class InstanceAiController {
 		return await this.settingsService.listServiceCredentials(req.user);
 	}
 
-	@Get('/memory/:threadId')
-	@GlobalScope('instanceAi:message')
-	async getMemory(req: AuthenticatedRequest, _res: Response, @Param('threadId') threadId: string) {
-		await this.assertThreadAccess(req.user.id, threadId, { allowNew: true });
-		return await this.memoryService.getWorkingMemory(req.user.id, threadId);
-	}
-
-	@Put('/memory/:threadId')
-	@GlobalScope('instanceAi:message')
-	async updateMemory(
-		req: AuthenticatedRequest,
-		_res: Response,
-		@Param('threadId') threadId: string,
-		@Body payload: InstanceAiUpdateMemoryRequest,
-	) {
-		await this.assertThreadAccess(req.user.id, threadId, { allowNew: true });
-		await this.memoryService.updateWorkingMemory(req.user.id, threadId, payload.content);
-		return { ok: true };
-	}
-
 	@Get('/threads')
 	@GlobalScope('instanceAi:message')
 	async listThreads(req: AuthenticatedRequest) {
+		this.requireInstanceAiEnabled();
 		return await this.memoryService.listThreads(req.user.id);
 	}
 
@@ -427,9 +551,30 @@ export class InstanceAiController {
 		_res: Response,
 		@Body payload: InstanceAiEnsureThreadRequest,
 	) {
+		this.requireInstanceAiEnabled();
+		const project = await this.projectService.getProjectWithScope(req.user, payload.projectId, [
+			'project:read',
+		]);
+		if (!project) {
+			throw new ForbiddenError('You do not have access to the requested project');
+		}
 		const requestedThreadId = payload.threadId ?? randomUUID();
 		await this.assertThreadAccess(req.user.id, requestedThreadId, { allowNew: true });
-		return await this.memoryService.ensureThread(req.user.id, requestedThreadId);
+		try {
+			return await this.memoryService.ensureThread(
+				req.user.id,
+				requestedThreadId,
+				payload.projectId,
+			);
+		} catch (error) {
+			this.instanceAiErrorReporter.report(error, {
+				component: 'instance-ai-ensure-thread',
+				threadId: requestedThreadId,
+				userId: req.user.id,
+				projectId: payload.projectId,
+			});
+			throw error;
+		}
 	}
 
 	@Delete('/threads/:threadId')
@@ -439,6 +584,7 @@ export class InstanceAiController {
 		_res: Response,
 		@Param('threadId') threadId: string,
 	) {
+		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
 		await this.instanceAiService.clearThreadState(threadId);
 		await this.memoryService.deleteThread(threadId);
@@ -453,8 +599,12 @@ export class InstanceAiController {
 		@Param('threadId') threadId: string,
 		@Body payload: InstanceAiRenameThreadRequestDto,
 	) {
+		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
-		const thread = await this.memoryService.renameThread(threadId, payload.title);
+		const thread = await this.memoryService.updateThread(threadId, {
+			title: payload.title,
+			metadata: payload.metadata,
+		});
 		return { thread };
 	}
 
@@ -466,7 +616,9 @@ export class InstanceAiController {
 		@Param('threadId') threadId: string,
 		@Query query: InstanceAiThreadMessagesQuery,
 	) {
+		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
+		await this.instanceAiService.replayUndeliveredTerminalOutcomes(threadId);
 
 		// ?raw=true returns the old format for the thread inspector
 		if (query.raw === 'true') {
@@ -476,9 +628,21 @@ export class InstanceAiController {
 			});
 		}
 
+		// Exclude snapshots for active/suspended runs — they have no matching
+		// assistant message in native memory yet and would misalign the
+		// positional snapshot-to-message matching in parseStoredMessages.
+		const threadStatus = this.instanceAiService.getThreadStatus(threadId);
+		const activeRunId = this.instanceAiService.getActiveRunId(threadId);
+		const excludeRunIds: string[] = [];
+		if (activeRunId) excludeRunIds.push(activeRunId);
+		for (const t of threadStatus.backgroundTasks) {
+			if (t.status === 'running' && t.runId) excludeRunIds.push(t.runId);
+		}
+
 		const result = await this.memoryService.getRichMessages(req.user.id, threadId, {
 			limit: query.limit,
 			page: query.page,
+			excludeRunIds: excludeRunIds.length > 0 ? excludeRunIds : undefined,
 		});
 
 		// Include the next SSE event ID so the frontend can skip past events
@@ -494,26 +658,45 @@ export class InstanceAiController {
 		_res: Response,
 		@Param('threadId') threadId: string,
 	) {
+		this.requireInstanceAiEnabled();
 		// Allow new threads — the frontend polls status before the first message is sent
 		await this.assertThreadAccess(req.user.id, threadId, { allowNew: true });
 		return this.instanceAiService.getThreadStatus(threadId);
 	}
 
-	@Get('/threads/:threadId/context')
+	@Get('/debug/runs/:runId')
 	@GlobalScope('instanceAi:message')
-	async getThreadContext(
+	async getRunDebug(req: AuthenticatedRequest, _res: Response, @Param('runId') runId: string) {
+		this.requireInstanceAiEnabled();
+		this.requireRunDebugEnabled();
+		const record = this.instanceAiService.getRunDebug(runId);
+		if (!record) {
+			throw new NotFoundError('Run debug record not found');
+		}
+		await this.assertThreadAccess(req.user.id, record.threadId);
+		return record;
+	}
+
+	@Get('/debug/threads/:threadId/runs')
+	@GlobalScope('instanceAi:message')
+	async listThreadDebugRuns(
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('threadId') threadId: string,
 	) {
-		await this.assertThreadAccess(req.user.id, threadId, { allowNew: true });
-		return await this.memoryService.getThreadContext(req.user.id, threadId);
+		this.requireInstanceAiEnabled();
+		this.requireRunDebugEnabled();
+		await this.assertThreadAccess(req.user.id, threadId);
+		return {
+			threadId,
+			runs: this.instanceAiService.listThreadDebugRuns(threadId),
+		};
 	}
 
 	// ── Evaluation endpoints ──────────────────────────────────────────────────
 
 	@Post('/eval/execute-with-llm-mock/:workflowId')
-	@GlobalScope('instanceAi:message')
+	@GlobalScope('instanceAi:eval')
 	async executeWithLlmMock(
 		req: AuthenticatedRequest,
 		_res: Response,
@@ -523,32 +706,132 @@ export class InstanceAiController {
 		return await this.evalExecutionService.executeWithLlmMock(workflowId, req.user, payload);
 	}
 
+	/**
+	 * Pin a build thread's credential view to a declared set. Only narrows:
+	 * `list()` results are intersected with these IDs, so the caller cannot see
+	 * anything they couldn't already access. The thread must exist — entries are
+	 * cleared with the thread's state, so pins for never-created threads would
+	 * be uncollectable.
+	 */
+	@Post('/eval/thread-credential-allowlist')
+	@GlobalScope('instanceAi:eval')
+	async setThreadCredentialAllowlist(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: InstanceAiEvalCredentialAllowlistRequest,
+	) {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, payload.threadId);
+		this.evalCredentialAllowlists.set(payload.threadId, payload.credentialIds);
+		return { ok: true };
+	}
+
+	/**
+	 * Seed an existing (owned) thread with a previously exported conversation:
+	 * recreate the workflow artifacts the history references (node credentials
+	 * stripped — see `EvalThreadRestoreService`), then write the native message
+	 * log verbatim. The thread then continues as if the conversation really
+	 * happened, so an eval can drive the next turn live.
+	 */
+	@Post('/eval/restore-thread')
+	@GlobalScope('instanceAi:eval')
+	async restoreEvalThread(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: InstanceAiEvalRestoreThreadRequest,
+	) {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, payload.threadId);
+		const projectId = await this.memoryService.getThreadProjectId(payload.threadId);
+		if (!projectId) {
+			throw new BadRequestError('Thread is not bound to a project');
+		}
+
+		const workflows = payload.workflows ?? [];
+		// Data tables first: the workflows reference them, and their ids are
+		// rewritten to the recreated tables' ids during workflow restore.
+		const idMap = await this.evalThreadRestore.restoreDataTables(
+			payload.dataTables ?? [],
+			projectId,
+		);
+		const dataTableIds = [...idMap.values()];
+		// Roll back everything we created if a later step fails, so a partial
+		// restore doesn't leak workflows/tables into the shared eval project.
+		let restored: number;
+		let createdWorkflowIds: string[] = [];
+		try {
+			createdWorkflowIds = await this.evalThreadRestore.restoreWorkflows(
+				workflows,
+				projectId,
+				idMap,
+			);
+			({ restored } = await this.memoryService.restoreThreadMessages(
+				req.user.id,
+				payload.threadId,
+				payload.messages,
+			));
+		} catch (error) {
+			await this.evalThreadRestore.deleteWorkflows(createdWorkflowIds);
+			await this.evalThreadRestore.deleteDataTables(dataTableIds, projectId);
+			throw error;
+		}
+		return {
+			ok: true,
+			threadId: payload.threadId,
+			restored,
+			workflowIds: workflows.map((workflow) => workflow.id),
+			dataTableIds,
+		};
+	}
+
 	// ── Gateway endpoints (daemon ↔ server) ──────────────────────────────────
 
 	@Post('/gateway/create-link')
 	@GlobalScope('instanceAi:gateway')
 	async createGatewayLink(req: AuthenticatedRequest) {
-		const token = this.instanceAiService.generatePairingToken(req.user.id);
-		const baseUrl = this.instanceBaseUrl.replace(/\/$/, '');
+		await this.assertGatewayEnabled(req.user.id);
+		const token = this.gatewayService.generatePairingToken(req.user.id);
+		const expiresAt = this.gatewayService.getGatewayApiKeyExpiresAt(req.user.id, token);
+		const ttlSeconds = expiresAt
+			? Math.max(0, Math.ceil((expiresAt.getTime() - Date.now()) / 1000))
+			: null;
+		const baseUrl = this.urlService.getInstanceBaseUrl();
 		const command = `npx @n8n/computer-use ${baseUrl} ${token}`;
-		return { token, command };
+		return { token, command, expiresAt: expiresAt?.toISOString() ?? null, ttlSeconds };
 	}
 
 	@Get('/gateway/events', { usesTemplates: true, skipAuth: true })
 	async gatewayEvents(req: Request, res: FlushableResponse) {
 		const userId = this.validateGatewayApiKey(this.getGatewayKeyHeader(req));
+		await this.assertGatewayEnabled(userId);
+
+		const gateway = this.gatewayService.getLocalGateway(userId);
+
+		// If the grace-period timer already fired (e.g. after a long reconnect gap),
+		// the gateway state is torn down. Reject so the daemon falls into its auth-error
+		// reconnect branch, which re-uploads capabilities and re-establishes state.
+		if (!gateway.isConnected) {
+			throw new ForbiddenError('Local gateway not initialized');
+		}
+
+		// Daemon reconnected within the grace window — cancel the pending disconnect.
+		this.gatewayService.clearDisconnectTimer(userId);
 
 		(res as unknown as { compress: boolean }).compress = false;
 		res.setHeader('Content-Type', 'text/event-stream; charset=UTF-8');
-		res.setHeader('Cache-Control', 'no-cache');
+		res.setHeader('Cache-Control', 'no-cache, no-transform');
 		res.setHeader('Connection', 'keep-alive');
 		res.setHeader('X-Accel-Buffering', 'no');
 		res.flushHeaders();
 
-		const gateway = this.instanceAiService.getLocalGateway(userId);
-		const unsubscribe = gateway.onRequest((event) => {
+		const unsubscribeRequest = gateway.onRequest((event) => {
 			res.write(`data: ${JSON.stringify(event)}\n\n`);
 			res.flush?.();
+		});
+		const unsubscribeDisconnect = gateway.onDisconnect((event) => {
+			res.write(`data: ${JSON.stringify(event)}\n\n`);
+			res.flush?.();
+			res.end();
 		});
 
 		const keepAlive = setInterval(() => {
@@ -556,10 +839,14 @@ export class InstanceAiController {
 			res.flush?.();
 		}, KEEP_ALIVE_INTERVAL_MS);
 
+		let cleanedUp = false;
 		const cleanup = () => {
-			unsubscribe();
+			if (cleanedUp) return;
+			cleanedUp = true;
+			unsubscribeRequest();
+			unsubscribeDisconnect();
 			clearInterval(keepAlive);
-			this.instanceAiService.startDisconnectTimer(userId, () => {
+			this.gatewayService.startDisconnectTimer(userId, () => {
 				this.push.sendToUsers(
 					{
 						type: 'instanceAiGatewayStateChanged',
@@ -574,36 +861,35 @@ export class InstanceAiController {
 				);
 			});
 		};
-		req.once('close', cleanup);
+		res.once('close', cleanup);
 		res.once('finish', cleanup);
 	}
 
 	@Post('/gateway/init', { skipAuth: true })
-	gatewayInit(req: Request) {
+	async gatewayInit(req: Request, _res: Response, @Body payload: InstanceAiGatewayCapabilitiesDto) {
 		const key = this.getGatewayKeyHeader(req);
 		const userId = this.validateGatewayApiKey(key);
+		await this.assertGatewayEnabled(userId);
 
-		const parsed = instanceAiGatewayCapabilitiesSchema.safeParse(req.body);
-		if (!parsed.success) {
-			throw new BadRequestError(parsed.error.message);
-		}
-		this.instanceAiService.initGateway(userId, parsed.data);
+		this.gatewayService.initGateway(userId, payload);
+		this.gatewayService.applyToolPolicy(userId);
 
+		const status = this.gatewayService.getGatewayStatus(userId);
 		this.push.sendToUsers(
 			{
 				type: 'instanceAiGatewayStateChanged',
 				data: {
-					connected: true,
-					directory: parsed.data.rootPath,
-					hostIdentifier: parsed.data.hostIdentifier ?? null,
-					toolCategories: parsed.data.toolCategories ?? [],
+					connected: status.connected,
+					directory: status.directory,
+					hostIdentifier: status.hostIdentifier,
+					toolCategories: status.toolCategories,
 				},
 			},
 			[userId],
 		);
 
 		// Try to consume a pairing token and upgrade to a session key
-		const sessionKey = key ? this.instanceAiService.consumePairingToken(userId, key) : null;
+		const sessionKey = key ? this.gatewayService.consumePairingToken(userId, key) : null;
 		if (sessionKey) {
 			return { ok: true, sessionKey };
 		}
@@ -614,9 +900,9 @@ export class InstanceAiController {
 	gatewayDisconnect(req: Request) {
 		const userId = this.validateGatewayApiKey(this.getGatewayKeyHeader(req));
 
-		this.instanceAiService.clearDisconnectTimer(userId);
-		this.instanceAiService.disconnectGateway(userId);
-		this.instanceAiService.clearActiveSessionKey(userId);
+		this.gatewayService.clearDisconnectTimer(userId);
+		this.gatewayService.disconnectGateway(userId);
+		this.gatewayService.clearActiveSessionKey(userId);
 		this.push.sendToUsers(
 			{
 				type: 'instanceAiGatewayStateChanged',
@@ -628,18 +914,19 @@ export class InstanceAiController {
 	}
 
 	@Post('/gateway/response/:requestId', { skipAuth: true })
-	gatewayResponse(req: Request, _res: Response, @Param('requestId') requestId: string) {
+	gatewayResponse(
+		req: Request,
+		_res: Response,
+		@Param('requestId') requestId: string,
+		@Body payload: InstanceAiFilesystemResponseDto,
+	) {
 		const userId = this.validateGatewayApiKey(this.getGatewayKeyHeader(req));
 
-		const parsed = instanceAiFilesystemResponseSchema.safeParse(req.body);
-		if (!parsed.success) {
-			throw new BadRequestError(parsed.error.message);
-		}
-		const resolved = this.instanceAiService.resolveGatewayRequest(
+		const resolved = this.gatewayService.resolveGatewayRequest(
 			userId,
 			requestId,
-			parsed.data.result,
-			parsed.data.error,
+			payload.result,
+			payload.error,
 		);
 		if (!resolved) {
 			throw new NotFoundError('Gateway request not found or already resolved');
@@ -647,13 +934,79 @@ export class InstanceAiController {
 		return { ok: true };
 	}
 
+	@Post('/gateway/credentials', { skipAuth: true })
+	async gatewayCreateCredential(
+		req: Request,
+		_res: Response,
+		@Body payload: InstanceAiGatewayCreateCredentialDto,
+	) {
+		const user = await this.resolveGatewayUser(this.getGatewayKeyHeader(req));
+		await this.assertGatewayEnabled(user.id);
+		const credential = await this.credentialsService.createUnmanagedCredential(payload, user);
+		return { credentialId: credential.id };
+	}
+
 	@Get('/gateway/status')
 	@GlobalScope('instanceAi:gateway')
 	async gatewayStatus(req: AuthenticatedRequest) {
-		return this.instanceAiService.getGatewayStatus(req.user.id);
+		await this.assertGatewayEnabled(req.user.id);
+		this.gatewayService.applyToolPolicy(req.user.id);
+		return this.gatewayService.getGatewayStatus(req.user.id);
+	}
+
+	/**
+	 * User-initiated gateway disconnect. Tears down the paired daemon session
+	 * so its tools are no longer exposed to the agent, without changing the
+	 * user's preference to disabled.
+	 */
+	@Post('/gateway/disconnect-session')
+	@GlobalScope('instanceAi:gateway')
+	async gatewayDisconnectSession(req: AuthenticatedRequest) {
+		const userId = req.user.id;
+		this.gatewayService.clearDisconnectTimer(userId);
+		this.gatewayService.disconnectGateway(userId);
+		this.gatewayService.clearActiveSessionKey(userId);
+		this.push.sendToUsers(
+			{
+				type: 'instanceAiGatewayStateChanged',
+				data: { connected: false, directory: null, hostIdentifier: null, toolCategories: [] },
+			},
+			[userId],
+		);
+		return { ok: true };
+	}
+
+	@Post('/browser/create-link')
+	@GlobalScope('instanceAi:gateway')
+	async createBrowserLink(req: AuthenticatedRequest) {
+		this.requireInstanceAiEnabled();
+		this.assertBrowserChannelEnabled();
+		return await this.browserSessionService.createLink(req.user.id);
+	}
+
+	@Get('/browser/status')
+	@GlobalScope('instanceAi:gateway')
+	browserStatus(req: AuthenticatedRequest) {
+		this.requireInstanceAiEnabled();
+		this.assertBrowserChannelEnabled();
+		return this.browserSessionService.getStatus(req.user.id);
+	}
+
+	@Post('/browser/disconnect-session')
+	@GlobalScope('instanceAi:gateway')
+	async browserDisconnectSession(req: AuthenticatedRequest) {
+		this.requireInstanceAiEnabled();
+		await this.browserSessionService.disconnect(req.user.id);
+		return { ok: true };
 	}
 
 	// ── Helpers ──────────────────────────────────────────────────────────────
+
+	private assertBrowserChannelEnabled(): void {
+		if (!this.settingsService.getAdminSettings().browserUseEnabled) {
+			throw new ForbiddenError('Browser Use is disabled');
+		}
+	}
 
 	/**
 	 * Verify thread ownership. Throws ForbiddenError if another user owns it.
@@ -670,6 +1023,13 @@ export class InstanceAiController {
 		}
 		if (!options?.allowNew && ownership === 'not_found') {
 			throw new NotFoundError('Thread not found');
+		}
+	}
+
+	/** Throw if the local gateway is disabled globally or for this user. */
+	private async assertGatewayEnabled(userId: string): Promise<void> {
+		if (await this.settingsService.isLocalGatewayDisabledForUser(userId)) {
+			throw new ForbiddenError('Local gateway is disabled');
 		}
 	}
 
@@ -705,10 +1065,27 @@ export class InstanceAiController {
 		}
 
 		// Check per-user pairing token or session key via reverse lookup
-		const userId = this.instanceAiService.getUserIdForApiKey(key);
+		const userId = this.gatewayService.getUserIdForApiKey(key);
 		if (userId) return userId;
 
 		throw new ForbiddenError('Invalid API key');
+	}
+
+	/**
+	 * Resolve a gateway API key to its associated User. Requires a user-scoped
+	 * key — the static env-var key (which has no associated DB user) is rejected.
+	 */
+	private async resolveGatewayUser(key: string | undefined): Promise<User> {
+		const userId = this.validateGatewayApiKey(key);
+		if (userId === 'env-gateway') {
+			throw new ForbiddenError('Credential creation requires a user-scoped gateway key');
+		}
+		const user = await this.userRepository.findOne({
+			where: { id: userId },
+			relations: ['role', 'role.scopes'],
+		});
+		if (!user) throw new ForbiddenError('Invalid API key');
+		return user;
 	}
 
 	private writeSseEvent(res: FlushableResponse, stored: StoredEvent): void {

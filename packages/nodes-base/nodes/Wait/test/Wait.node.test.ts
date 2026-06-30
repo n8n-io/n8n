@@ -1,19 +1,23 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { DateTime } from 'luxon';
 import { NodeOperationError, type IExecuteFunctions } from 'n8n-workflow';
 
 import { Wait } from '../Wait.node';
 
 describe('Execute Wait Node', () => {
+	let timer: NodeJS.Timeout;
+	const { clearInterval, setInterval } = global;
 	const nextDay = DateTime.now().startOf('day').plus({ days: 1 });
 
 	beforeAll(() => {
-		jest.useFakeTimers().setSystemTime(new Date('2025-01-01'));
+		timer = setInterval(() => vi.advanceTimersByTime(1000), 10);
+		vi.useFakeTimers().setSystemTime(new Date('2025-01-01'));
 	});
 
 	afterAll(() => {
-		jest.useRealTimers();
+		clearInterval(timer);
+		vi.useRealTimers();
 	});
 
 	test.each([
@@ -41,17 +45,17 @@ describe('Execute Wait Node', () => {
 	])(
 		'Test Wait Node with specificTime $value and isValid $isValid',
 		async ({ value, isValid, expectedWaitTill }) => {
-			const putExecutionToWaitSpy = jest.fn();
+			const putExecutionToWaitSpy = vi.fn();
 			const waitNode = new Wait();
 			const executeFunctionsMock = mock<IExecuteFunctions>({
-				getNodeParameter: jest.fn().mockImplementation((paramName: string) => {
+				getNodeParameter: vi.fn().mockImplementation((paramName: string) => {
 					if (paramName === 'resume') return 'specificTime';
 					if (paramName === 'dateTime') return value;
 				}),
-				getTimezone: jest.fn().mockReturnValue('UTC'),
+				getTimezone: vi.fn().mockReturnValue('UTC'),
 				putExecutionToWait: putExecutionToWaitSpy,
-				getInputData: jest.fn(),
-				getNode: jest.fn(),
+				getInputData: vi.fn(),
+				getNode: vi.fn(),
 			});
 
 			if (isValid) {
@@ -63,36 +67,45 @@ describe('Execute Wait Node', () => {
 		},
 	);
 
+	test('should resolve with input data if canceled', async () => {
+		const putExecutionToWaitSpy = vi.fn();
+		const waitNode = new Wait();
+
+		let cancelSignal: (() => void) | null = null;
+
+		const inputData = [{ json: { test: 'data' } }];
+
+		const executeFunctionsMock = mock<IExecuteFunctions>({
+			getNodeParameter: vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'resume') return 'timeInterval';
+				if (paramName === 'unit') return 'seconds';
+				if (paramName === 'amount') return 60;
+			}),
+			getTimezone: vi.fn().mockReturnValue('UTC'),
+			putExecutionToWait: putExecutionToWaitSpy,
+			getInputData: vi.fn(() => inputData),
+			getNode: vi.fn(),
+			onExecutionCancellation: (handler) => {
+				cancelSignal = handler;
+			},
+		});
+
+		const waitPromise = waitNode.execute(executeFunctionsMock);
+
+		for (let index = 0; index < 20; index++) {
+			await new Promise((r) => setTimeout(r, 10));
+			if (cancelSignal !== null) break;
+		}
+
+		expect(cancelSignal).not.toBeNull();
+		cancelSignal!();
+
+		await expect(waitPromise).resolves.toEqual([inputData]);
+	});
+
 	describe('Validation', () => {
 		describe('Time interval', () => {
 			it.each([
-				// Previously in-memory path (< 65s) — now all go through putToWait
-				{
-					unit: 'seconds',
-					amount: 5,
-					expectedWaitTill: () => DateTime.now().plus({ seconds: 5 }).toJSDate(),
-				},
-				{
-					unit: 'seconds',
-					amount: 30,
-					expectedWaitTill: () => DateTime.now().plus({ seconds: 30 }).toJSDate(),
-				},
-				{
-					unit: 'seconds',
-					amount: 60,
-					expectedWaitTill: () => DateTime.now().plus({ seconds: 60 }).toJSDate(),
-				},
-				{
-					unit: 'seconds',
-					amount: 64,
-					expectedWaitTill: () => DateTime.now().plus({ seconds: 64 }).toJSDate(),
-				},
-				// DB-persisted path (>= 65s)
-				{
-					unit: 'seconds',
-					amount: 66,
-					expectedWaitTill: () => DateTime.now().plus({ seconds: 66 }).toJSDate(),
-				},
 				{
 					unit: 'seconds',
 					amount: 300,
@@ -116,6 +129,7 @@ describe('Execute Wait Node', () => {
 				{
 					unit: 'seconds',
 					amount: 0,
+					mode: 'timeout',
 					expectedWaitTill: () => DateTime.now().toJSDate(),
 				},
 				{
@@ -135,26 +149,33 @@ describe('Execute Wait Node', () => {
 				},
 			])(
 				'Validate wait unit: $unit, amount: $amount',
-				async ({ unit, amount, expectedWaitTill, error }) => {
-					const putExecutionToWaitSpy = jest.fn();
+				async ({ unit, amount, expectedWaitTill, error, mode }) => {
+					const putExecutionToWaitSpy = vi.fn();
 					const waitNode = new Wait();
 					const inputData = [{ json: { inputData: true } }];
 					const executeFunctionsMock = mock<IExecuteFunctions>({
-						getNodeParameter: jest.fn().mockImplementation((paramName: string) => {
+						getNodeParameter: vi.fn().mockImplementation((paramName: string) => {
 							if (paramName === 'resume') return 'timeInterval';
 							if (paramName === 'amount') return amount;
 							if (paramName === 'unit') return unit;
 						}),
-						getTimezone: jest.fn().mockReturnValue('UTC'),
+						getTimezone: vi.fn().mockReturnValue('UTC'),
 						putExecutionToWait: putExecutionToWaitSpy,
-						getInputData: jest.fn(() => inputData),
-						getNode: jest.fn(),
+						getInputData: vi.fn(() => inputData),
+						getNode: vi.fn(),
 					});
 
 					if (!error) {
-						// All time-based waits are now persisted to DB via putToWait
-						await expect(waitNode.execute(executeFunctionsMock)).resolves.not.toThrow();
-						expect(putExecutionToWaitSpy).toHaveBeenCalledWith(expectedWaitTill?.());
+						if (mode === 'timeout') {
+							// for short wait times (<65s) a simple timeout is used
+							const resultPromise = waitNode.execute(executeFunctionsMock);
+							vi.runAllTimers();
+							await expect(resultPromise).resolves.toEqual([inputData]);
+						} else {
+							// for longer wait times (>=65s) the execution is put to wait
+							await expect(waitNode.execute(executeFunctionsMock)).resolves.not.toThrow();
+							expect(putExecutionToWaitSpy).toHaveBeenCalledWith(expectedWaitTill?.());
+						}
 					} else {
 						await expect(waitNode.execute(executeFunctionsMock)).rejects.toThrowError(error);
 					}

@@ -6,7 +6,7 @@ import {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import type { User, PublicUser } from '@n8n/db';
+import type { User, PublicUser, AuthIdentity } from '@n8n/db';
 import { UserRepository, AuthenticatedRequest } from '@n8n/db';
 import { Body, createUserKeyedRateLimiter, Patch, Post, RestController } from '@n8n/decorators';
 import { plainToInstance } from 'class-transformer';
@@ -14,6 +14,7 @@ import { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
@@ -22,7 +23,7 @@ import { MfaService } from '@/mfa/mfa.service';
 import { MeRequest } from '@/requests';
 import { PasswordUtility } from '@/services/password.utility';
 import { UserService } from '@/services/user.service';
-import { isSamlLicensedAndEnabled } from '@/sso.ee/sso-helpers';
+import { getCurrentAuthenticationMethod, isSamlLicensedAndEnabled } from '@/sso.ee/sso-helpers';
 
 import { PersonalizationSurveyAnswersV4 } from './survey-answers.dto';
 
@@ -57,8 +58,8 @@ export class MeController {
 		} = req.user;
 
 		if (this.isUserManagedByEnv(req.user)) {
-			throw new BadRequestError(
-				'This account is managed via environment variables and cannot be updated here',
+			throw new ForbiddenError(
+				'This account is managed via environment variables and cannot be modified through the API',
 			);
 		}
 
@@ -72,7 +73,7 @@ export class MeController {
 		if (isEmailBeingChanged || isFirstNameChanged || isLastNameChanged) {
 			const ssoIdentity = await this.userService.findSsoIdentity(userId);
 
-			if (ssoIdentity) {
+			if (ssoIdentity && this.isAuthIdentityActive(ssoIdentity)) {
 				this.logger.debug(
 					`Request to update user failed because ${ssoIdentity.providerType} user may not change their profile information`,
 					{
@@ -179,6 +180,10 @@ export class MeController {
 		);
 	}
 
+	private isAuthIdentityActive(authIdentity: AuthIdentity) {
+		return authIdentity.providerType === getCurrentAuthenticationMethod();
+	}
+
 	/**
 	 * Update the logged-in user's password.
 	 */
@@ -194,8 +199,8 @@ export class MeController {
 		const { currentPassword, newPassword, mfaCode } = payload;
 
 		if (this.isUserManagedByEnv(user)) {
-			throw new BadRequestError(
-				'This account is managed via environment variables and cannot be updated here',
+			throw new ForbiddenError(
+				'This account is managed via environment variables and cannot be modified through the API',
 			);
 		}
 

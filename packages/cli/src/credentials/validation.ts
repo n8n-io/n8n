@@ -2,14 +2,14 @@ import type { User } from '@n8n/db';
 import get from 'lodash/get';
 import { type ICredentialDataDecryptedObject } from 'n8n-workflow';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import type { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
+import { userHasScopes } from '@/permissions.ee/check-access';
+
 import {
 	extractProviderKeysFromExpression,
 	getExternalSecretExpressionPaths,
 } from './external-secrets.utils';
-
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import type { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
-import { userHasScopes } from '@/permissions.ee/check-access';
 
 // #region External Secrets
 
@@ -93,10 +93,11 @@ export async function validateAccessToReferencedSecretProviders(
 	externalSecretsProviderAccessCheckService: SecretsProviderAccessCheckService,
 	source: 'create' | 'update' | 'transfer',
 ) {
-	const secretPaths = getExternalSecretExpressionPaths(data);
-	if (secretPaths.length === 0) {
+	if (!containsExternalSecrets(data)) {
 		return; // No external secrets referenced, nothing to check
 	}
+
+	const secretPaths = getExternalSecretExpressionPaths(data);
 
 	// Track which credential properties use which providers
 	const providerToCredentialPropertyMap = new Map<string, string[]>();

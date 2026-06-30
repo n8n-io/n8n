@@ -1,7 +1,6 @@
+import { type ProvisioningConfigDto } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
-import { mock } from 'jest-mock-extended';
-
-import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
+import { type GlobalConfig } from '@n8n/config';
 import {
 	type User,
 	type UserRepository,
@@ -13,19 +12,23 @@ import {
 	type ProjectRepository,
 	ProjectRelation,
 } from '@n8n/db';
-import { type GlobalConfig } from '@n8n/config';
-import { PROVISIONING_PREFERENCES_DB_KEY } from '../constants';
-import { type ProvisioningConfigDto } from '@n8n/api-types';
-import { type Publisher } from '@/scaling/pubsub/publisher.service';
-import { type ProjectService } from '@/services/project.service.ee';
 import type { EntityManager } from '@n8n/typeorm';
 import { type InstanceSettings } from 'n8n-core';
+import { mock } from 'vitest-mock-extended';
+
 import { type EventService } from '@/events/event.service';
-import { type UserService } from '@/services/user.service';
+import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
+import { type RoleMappingRuleService } from '@/modules/provisioning.ee/role-mapping-rule.service.ee';
 import { type RoleResolverService } from '@/modules/provisioning.ee/role-resolver.service.ee';
+import { type Publisher } from '@/scaling/pubsub/publisher.service';
+import { type ProjectService } from '@/services/project.service.ee';
+import { type UserService } from '@/services/user.service';
+
+import { PROVISIONING_PREFERENCES_DB_KEY } from '../constants';
 
 const globalConfig = mock<GlobalConfig>();
-const settingsRepository = mock<SettingsRepository>();
+const settingsEntityManager = mock<EntityManager>();
+const settingsRepository = mock<SettingsRepository>({ manager: settingsEntityManager });
 const userRepository = mock<UserRepository>();
 const userService = mock<UserService>();
 const entityManager = mock<EntityManager>();
@@ -39,6 +42,7 @@ const roleRepository = mock<RoleRepository>();
 const instanceSettings = mock<InstanceSettings>();
 const roleMappingRuleRepository = mock<RoleMappingRuleRepository>();
 const roleResolverService = mock<RoleResolverService>();
+const roleMappingRuleService = mock<RoleMappingRuleService>();
 
 const provisioningService = new ProvisioningService(
 	eventService,
@@ -54,15 +58,21 @@ const provisioningService = new ProvisioningService(
 	instanceSettings,
 	roleMappingRuleRepository,
 	roleResolverService,
+	roleMappingRuleService,
 );
 
 describe('ProvisioningService', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		entityManager.transaction.mockImplementation(async (cb) => {
 			// @ts-expect-error Mock
 			await cb(entityManager);
 		});
+		settingsEntityManager.transaction.mockImplementation(async (cb) => {
+			// @ts-expect-error Mock
+			await cb(settingsEntityManager);
+		});
+		settingsEntityManager.getRepository.mockReturnValue(settingsRepository);
 	});
 
 	const provisioningConfigDto: ProvisioningConfigDto = {
@@ -78,7 +88,7 @@ describe('ProvisioningService', () => {
 		it('should set provisioning config from the result of loadConfig', async () => {
 			const originStateLoadConfig = provisioningService.loadConfig;
 
-			provisioningService.loadConfig = jest.fn().mockResolvedValue({ foo: 'bar' });
+			provisioningService.loadConfig = vi.fn().mockResolvedValue({ foo: 'bar' });
 
 			await provisioningService.init();
 			// @ts-expect-error - provisioningConfig is private and only accessible within the class
@@ -94,7 +104,7 @@ describe('ProvisioningService', () => {
 			// @ts-expect-error - provisioningConfig is private and only accessible within the class
 			provisioningService.provisioningConfig = undefined;
 
-			provisioningService.loadConfig = jest.fn().mockResolvedValue({ foo: 'bar' });
+			provisioningService.loadConfig = vi.fn().mockResolvedValue({ foo: 'bar' });
 
 			const config = await provisioningService.getConfig();
 			expect(config).toEqual({ foo: 'bar' });
@@ -185,7 +195,7 @@ describe('ProvisioningService', () => {
 			const user = mock<User>({ role: { slug: 'global:member' } });
 			const roleSlug = 123;
 
-			provisioningService['isInstanceRoleProvisioningEnabled'] = jest.fn().mockResolvedValue(true);
+			provisioningService['isInstanceRoleProvisioningEnabled'] = vi.fn().mockResolvedValue(true);
 
 			await provisioningService.provisionInstanceRoleForUser(user, roleSlug);
 			expect(userRepository.update).not.toHaveBeenCalled();
@@ -203,7 +213,7 @@ describe('ProvisioningService', () => {
 
 			roleRepository.findOneOrFail.mockRejectedValue(thrownError);
 
-			provisioningService['isInstanceRoleProvisioningEnabled'] = jest.fn().mockResolvedValue(true);
+			provisioningService['isInstanceRoleProvisioningEnabled'] = vi.fn().mockResolvedValue(true);
 
 			await provisioningService.provisionInstanceRoleForUser(user, roleSlug);
 			expect(userRepository.update).not.toHaveBeenCalled();
@@ -223,7 +233,7 @@ describe('ProvisioningService', () => {
 				mock<Role>({ slug: 'global:member', roleType: 'global' }),
 			);
 
-			provisioningService['isInstanceRoleProvisioningEnabled'] = jest.fn().mockResolvedValue(true);
+			provisioningService['isInstanceRoleProvisioningEnabled'] = vi.fn().mockResolvedValue(true);
 
 			await provisioningService.provisionInstanceRoleForUser(user, roleSlug);
 			expect(userRepository.update).not.toHaveBeenCalled();
@@ -241,7 +251,7 @@ describe('ProvisioningService', () => {
 			roleRepository.findOneOrFail.mockResolvedValue(
 				mock<Role>({ slug: 'global:member', roleType: 'global' }),
 			);
-			provisioningService['isInstanceRoleProvisioningEnabled'] = jest.fn().mockResolvedValue(true);
+			provisioningService['isInstanceRoleProvisioningEnabled'] = vi.fn().mockResolvedValue(true);
 
 			await provisioningService.provisionInstanceRoleForUser(user, roleSlug);
 
@@ -255,7 +265,7 @@ describe('ProvisioningService', () => {
 			roleRepository.findOneOrFail.mockResolvedValue(
 				mock<Role>({ slug: 'global:owner', roleType: 'global' }),
 			);
-			provisioningService['isInstanceRoleProvisioningEnabled'] = jest.fn().mockResolvedValue(true);
+			provisioningService['isInstanceRoleProvisioningEnabled'] = vi.fn().mockResolvedValue(true);
 
 			await provisioningService.provisionInstanceRoleForUser(user, roleSlug);
 
@@ -268,7 +278,7 @@ describe('ProvisioningService', () => {
 			roleRepository.findOneOrFail.mockResolvedValue(
 				mock<Role>({ slug: 'global:owner', roleType: 'global' }),
 			);
-			provisioningService['isInstanceRoleProvisioningEnabled'] = jest.fn().mockResolvedValue(true);
+			provisioningService['isInstanceRoleProvisioningEnabled'] = vi.fn().mockResolvedValue(true);
 
 			await provisioningService.provisionInstanceRoleForUser(user, roleSlug);
 
@@ -282,7 +292,7 @@ describe('ProvisioningService', () => {
 			roleRepository.findOneOrFail.mockResolvedValue(
 				mock<Role>({ slug: 'global:owner', roleType: 'project' }),
 			);
-			provisioningService['isInstanceRoleProvisioningEnabled'] = jest.fn().mockResolvedValue(true);
+			provisioningService['isInstanceRoleProvisioningEnabled'] = vi.fn().mockResolvedValue(true);
 
 			await provisioningService.provisionInstanceRoleForUser(user, roleSlug);
 
@@ -302,7 +312,7 @@ describe('ProvisioningService', () => {
 				mock<Role>({ slug: 'global:owner', roleType: 'global' }),
 			);
 
-			provisioningService['isInstanceRoleProvisioningEnabled'] = jest.fn().mockResolvedValue(true);
+			provisioningService['isInstanceRoleProvisioningEnabled'] = vi.fn().mockResolvedValue(true);
 
 			await provisioningService.provisionInstanceRoleForUser(user, roleSlug);
 
@@ -319,7 +329,7 @@ describe('ProvisioningService', () => {
 			const userId = 'user-id-123';
 			const projectIdToRole = { not: 'an array' };
 
-			provisioningService['isProjectRolesProvisioningEnabled'] = jest.fn().mockResolvedValue(true);
+			provisioningService['isProjectRolesProvisioningEnabled'] = vi.fn().mockResolvedValue(true);
 
 			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
 
@@ -335,7 +345,7 @@ describe('ProvisioningService', () => {
 			const userId = 'user-id-123';
 			const projectIdToRole = 'invalid-json-string';
 
-			provisioningService['isProjectRolesProvisioningEnabled'] = jest.fn().mockResolvedValue(true);
+			provisioningService['isProjectRolesProvisioningEnabled'] = vi.fn().mockResolvedValue(true);
 
 			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
 
@@ -351,7 +361,7 @@ describe('ProvisioningService', () => {
 			const userId = 'user-id-123';
 			const projectIdToRole = [{ projectId: 'project-1', role: 'viewer' }]; // invalid value type
 
-			provisioningService['isProjectRolesProvisioningEnabled'] = jest.fn().mockResolvedValue(true);
+			provisioningService['isProjectRolesProvisioningEnabled'] = vi.fn().mockResolvedValue(true);
 
 			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
 
@@ -369,7 +379,7 @@ describe('ProvisioningService', () => {
 			projectRepository.find.mockResolvedValue([]);
 			roleRepository.find.mockResolvedValue([mock<Role>({ slug: 'project:viewer' })]);
 
-			provisioningService['isProjectRolesProvisioningEnabled'] = jest.fn().mockResolvedValue(true);
+			provisioningService['isProjectRolesProvisioningEnabled'] = vi.fn().mockResolvedValue(true);
 
 			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
 
@@ -382,7 +392,7 @@ describe('ProvisioningService', () => {
 			projectRepository.find.mockResolvedValue([mock<Project>({ id: 'project-1' })]);
 			roleRepository.find.mockResolvedValue([]);
 
-			provisioningService['isProjectRolesProvisioningEnabled'] = jest.fn().mockResolvedValue(true);
+			provisioningService['isProjectRolesProvisioningEnabled'] = vi.fn().mockResolvedValue(true);
 
 			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
 
@@ -402,7 +412,7 @@ describe('ProvisioningService', () => {
 				mock<Role>({ displayName: 'viewer', slug: 'project:viewer' }),
 			]);
 
-			provisioningService['isProjectRolesProvisioningEnabled'] = jest.fn().mockResolvedValue(true);
+			provisioningService['isProjectRolesProvisioningEnabled'] = vi.fn().mockResolvedValue(true);
 
 			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
 
@@ -429,7 +439,7 @@ describe('ProvisioningService', () => {
 				mock<Role>({ displayName: 'editor', slug: 'project:editor' }),
 			]);
 
-			provisioningService['isProjectRolesProvisioningEnabled'] = jest.fn().mockResolvedValue(true);
+			provisioningService['isProjectRolesProvisioningEnabled'] = vi.fn().mockResolvedValue(true);
 
 			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
 
@@ -460,7 +470,7 @@ describe('ProvisioningService', () => {
 				mock<Role>({ displayName: 'editor', slug: 'project:editor' }),
 			]);
 
-			provisioningService['isProjectRolesProvisioningEnabled'] = jest.fn().mockResolvedValue(true);
+			provisioningService['isProjectRolesProvisioningEnabled'] = vi.fn().mockResolvedValue(true);
 
 			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
 
@@ -482,7 +492,7 @@ describe('ProvisioningService', () => {
 			projectRepository.find.mockResolvedValue([mock<Project>({ id: 'project1' })]);
 			roleRepository.find.mockResolvedValue([]);
 
-			provisioningService['isProjectRolesProvisioningEnabled'] = jest.fn().mockResolvedValue(true);
+			provisioningService['isProjectRolesProvisioningEnabled'] = vi.fn().mockResolvedValue(true);
 
 			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
 
@@ -507,7 +517,7 @@ describe('ProvisioningService', () => {
 				mock<Role>({ displayName: 'viewer', slug: 'project:viewer' }),
 			]);
 
-			provisioningService['isProjectRolesProvisioningEnabled'] = jest.fn().mockResolvedValue(true);
+			provisioningService['isProjectRolesProvisioningEnabled'] = vi.fn().mockResolvedValue(true);
 
 			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
 
@@ -538,7 +548,7 @@ describe('ProvisioningService', () => {
 				mock<Role>({ displayName: 'editor', slug: 'project:editor' }),
 			]);
 
-			provisioningService['isProjectRolesProvisioningEnabled'] = jest.fn().mockResolvedValue(true);
+			provisioningService['isProjectRolesProvisioningEnabled'] = vi.fn().mockResolvedValue(true);
 
 			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
 
@@ -607,7 +617,7 @@ describe('ProvisioningService', () => {
 	describe('handleReloadSsoProvisioningConfiguration', () => {
 		it('should reload the provisioning config', async () => {
 			const originStateLoadConfig = provisioningService.loadConfig;
-			provisioningService.loadConfig = jest.fn().mockResolvedValue({ foo: 'bar' });
+			provisioningService.loadConfig = vi.fn().mockResolvedValue({ foo: 'bar' });
 
 			await provisioningService.handleReloadSsoProvisioningConfiguration();
 			// @ts-expect-error - provisioningConfig is private and only accessible within the class
@@ -618,18 +628,34 @@ describe('ProvisioningService', () => {
 	});
 
 	describe('patchConfig', () => {
+		const stubGetConfigs = (current: ProvisioningConfigDto, next: ProvisioningConfigDto) => {
+			provisioningService.getConfig = vi
+				.fn()
+				.mockResolvedValueOnce(current)
+				.mockResolvedValueOnce(next);
+			provisioningService.loadConfig = vi.fn().mockResolvedValue(next);
+		};
+
+		let originStateLoadConfig: typeof provisioningService.loadConfig;
+		let originStateGetConfig: typeof provisioningService.getConfig;
+
+		beforeEach(() => {
+			originStateLoadConfig = provisioningService.loadConfig;
+			originStateGetConfig = provisioningService.getConfig;
+		});
+
+		afterEach(() => {
+			provisioningService.loadConfig = originStateLoadConfig;
+			provisioningService.getConfig = originStateGetConfig;
+		});
+
 		it('should patch the provisioning config, sending out pubsub updates for other nodes to reload in multi-main setup', async () => {
 			(instanceSettings as any).isMultiMain = true;
-			const originStateLoadConfig = provisioningService.loadConfig;
-			const originStateGetConfig = provisioningService.getConfig;
 
-			provisioningService.getConfig = jest
-				.fn()
-				.mockResolvedValueOnce(provisioningConfigDto)
-				.mockResolvedValueOnce({ ...provisioningConfigDto, scopesProvisionInstanceRole: false });
-			provisioningService.loadConfig = jest
-				.fn()
-				.mockResolvedValue({ ...provisioningConfigDto, scopesProvisionInstanceRole: false });
+			stubGetConfigs(provisioningConfigDto, {
+				...provisioningConfigDto,
+				scopesProvisionInstanceRole: false,
+			});
 
 			const config = await provisioningService.patchConfig({ scopesProvisionInstanceRole: false });
 			expect(config).toEqual({ ...provisioningConfigDto, scopesProvisionInstanceRole: false });
@@ -640,9 +666,205 @@ describe('ProvisioningService', () => {
 			expect(publisher.publishCommand).toHaveBeenCalledWith({
 				command: 'reload-sso-provisioning-configuration',
 			});
+		});
 
-			provisioningService.loadConfig = originStateLoadConfig;
-			provisioningService.getConfig = originStateGetConfig;
+		it('should wrap settings upsert and project rule cleanup in a single transaction', async () => {
+			(instanceSettings as any).isMultiMain = false;
+
+			const current: ProvisioningConfigDto = {
+				...provisioningConfigDto,
+				scopesProvisionProjectRoles: true,
+				scopesUseExpressionMapping: false,
+			};
+			const next: ProvisioningConfigDto = {
+				...current,
+				scopesProvisionProjectRoles: false,
+			};
+			stubGetConfigs(current, next);
+			roleMappingRuleService.deleteAllOfType.mockResolvedValue(2);
+
+			await provisioningService.patchConfig({ scopesProvisionProjectRoles: false });
+
+			expect(settingsEntityManager.transaction).toHaveBeenCalledTimes(1);
+			expect(settingsRepository.upsert).toHaveBeenCalledTimes(1);
+			expect(roleMappingRuleService.deleteAllOfType).toHaveBeenCalledTimes(1);
+			expect(roleMappingRuleService.deleteAllOfType).toHaveBeenCalledWith(
+				'project',
+				settingsEntityManager,
+			);
+		});
+
+		it('should emit role-mapping-rules-bulk-deleted with the deleted count after commit', async () => {
+			(instanceSettings as any).isMultiMain = false;
+
+			const current: ProvisioningConfigDto = {
+				...provisioningConfigDto,
+				scopesProvisionProjectRoles: true,
+				scopesUseExpressionMapping: false,
+			};
+			const next: ProvisioningConfigDto = { ...current, scopesProvisionProjectRoles: false };
+			stubGetConfigs(current, next);
+			roleMappingRuleService.deleteAllOfType.mockResolvedValue(4);
+
+			await provisioningService.patchConfig({ scopesProvisionProjectRoles: false });
+
+			expect(eventService.emit).toHaveBeenCalledWith('role-mapping-rules-bulk-deleted', {
+				ruleType: 'project',
+				count: 4,
+				reason: 'strategy-switch',
+			});
+		});
+
+		it('should delete project rules when expression mapping is turned off', async () => {
+			(instanceSettings as any).isMultiMain = false;
+
+			const current: ProvisioningConfigDto = {
+				...provisioningConfigDto,
+				scopesProvisionInstanceRole: false,
+				scopesProvisionProjectRoles: false,
+				scopesUseExpressionMapping: true,
+			};
+			const next: ProvisioningConfigDto = {
+				...current,
+				scopesUseExpressionMapping: false,
+				scopesProvisionInstanceRole: true,
+			};
+			stubGetConfigs(current, next);
+			roleMappingRuleService.deleteAllOfType.mockResolvedValue(1);
+
+			await provisioningService.patchConfig({
+				scopesUseExpressionMapping: false,
+				scopesProvisionInstanceRole: true,
+			});
+
+			expect(roleMappingRuleService.deleteAllOfType).toHaveBeenCalledWith(
+				'project',
+				settingsEntityManager,
+			);
+		});
+
+		it('should delete project rules when the caller passes explicit deleteProjectRules=true without changing strategy flags', async () => {
+			(instanceSettings as any).isMultiMain = false;
+
+			const current: ProvisioningConfigDto = {
+				...provisioningConfigDto,
+				scopesProvisionInstanceRole: false,
+				scopesProvisionProjectRoles: false,
+				scopesUseExpressionMapping: true,
+			};
+			stubGetConfigs(current, current);
+			roleMappingRuleService.deleteAllOfType.mockResolvedValue(3);
+
+			await provisioningService.patchConfig({ deleteProjectRules: true });
+
+			expect(roleMappingRuleService.deleteAllOfType).toHaveBeenCalledWith(
+				'project',
+				settingsEntityManager,
+			);
+			expect(eventService.emit).toHaveBeenCalledWith('role-mapping-rules-bulk-deleted', {
+				ruleType: 'project',
+				count: 3,
+				reason: 'strategy-switch',
+			});
+		});
+
+		it('should not touch project rules when the strategy does not drop project-role management', async () => {
+			(instanceSettings as any).isMultiMain = false;
+
+			stubGetConfigs(provisioningConfigDto, {
+				...provisioningConfigDto,
+				scopesProvisionInstanceRole: false,
+			});
+
+			await provisioningService.patchConfig({ scopesProvisionInstanceRole: false });
+
+			expect(roleMappingRuleService.deleteAllOfType).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalledWith(
+				'role-mapping-rules-bulk-deleted',
+				expect.anything(),
+			);
+		});
+
+		it('should persist deleteProjectRules only as a transient flag, never to settings', async () => {
+			(instanceSettings as any).isMultiMain = false;
+
+			const current: ProvisioningConfigDto = {
+				...provisioningConfigDto,
+				scopesProvisionProjectRoles: true,
+			};
+			const next: ProvisioningConfigDto = { ...current, scopesProvisionProjectRoles: false };
+			stubGetConfigs(current, next);
+			roleMappingRuleService.deleteAllOfType.mockResolvedValue(0);
+
+			await provisioningService.patchConfig({
+				scopesProvisionProjectRoles: false,
+				deleteProjectRules: true,
+			});
+
+			const upsertCall = settingsRepository.upsert.mock.calls[0]?.[0] as {
+				value: string;
+			};
+			expect(upsertCall.value).toBeDefined();
+			expect(JSON.parse(upsertCall.value)).not.toHaveProperty('deleteProjectRules');
+		});
+
+		it('should still broadcast reload-sso-provisioning-configuration after cleanup in multi-main', async () => {
+			(instanceSettings as any).isMultiMain = true;
+
+			const current: ProvisioningConfigDto = {
+				...provisioningConfigDto,
+				scopesProvisionProjectRoles: true,
+			};
+			const next: ProvisioningConfigDto = { ...current, scopesProvisionProjectRoles: false };
+			stubGetConfigs(current, next);
+			roleMappingRuleService.deleteAllOfType.mockResolvedValue(1);
+
+			const transactionInvocationOrder: string[] = [];
+			settingsEntityManager.transaction.mockImplementation(async (cb) => {
+				transactionInvocationOrder.push('tx:enter');
+				// @ts-expect-error Mock
+				await cb(settingsEntityManager);
+				transactionInvocationOrder.push('tx:exit');
+			});
+			publisher.publishCommand.mockImplementation(async () => {
+				transactionInvocationOrder.push('pubsub');
+			});
+
+			await provisioningService.patchConfig({ scopesProvisionProjectRoles: false });
+
+			expect(roleMappingRuleService.deleteAllOfType).toHaveBeenCalledTimes(1);
+			expect(publisher.publishCommand).toHaveBeenCalledWith({
+				command: 'reload-sso-provisioning-configuration',
+			});
+			// Pubsub must fire after transaction has fully committed.
+			expect(transactionInvocationOrder).toEqual(['tx:enter', 'tx:exit', 'pubsub']);
+		});
+
+		it('should not commit settings upsert if the rule cleanup throws inside the transaction', async () => {
+			(instanceSettings as any).isMultiMain = false;
+
+			const current: ProvisioningConfigDto = {
+				...provisioningConfigDto,
+				scopesProvisionProjectRoles: true,
+			};
+			stubGetConfigs(current, { ...current, scopesProvisionProjectRoles: false });
+
+			roleMappingRuleService.deleteAllOfType.mockRejectedValue(new Error('cleanup failed'));
+			// Simulate real TX behaviour — a throw in the callback rejects the transaction promise,
+			// and the outer patchConfig must propagate the error.
+			settingsEntityManager.transaction.mockImplementation(async (cb) => {
+				// @ts-expect-error Mock
+				return await cb(settingsEntityManager);
+			});
+
+			await expect(
+				provisioningService.patchConfig({ scopesProvisionProjectRoles: false }),
+			).rejects.toThrow('cleanup failed');
+
+			expect(eventService.emit).not.toHaveBeenCalledWith(
+				'role-mapping-rules-bulk-deleted',
+				expect.anything(),
+			);
 		});
 	});
 
@@ -655,7 +877,7 @@ describe('ProvisioningService', () => {
 				scopesProvisionInstanceRole: true,
 				scopesProvisionProjectRoles: true,
 			};
-			provisioningService.getConfig = jest.fn().mockResolvedValue(provisioningConfig);
+			provisioningService.getConfig = vi.fn().mockResolvedValue(provisioningConfig);
 			const isProvisioningEnabled = await provisioningService.isProvisioningEnabled();
 			expect(isProvisioningEnabled).toBe(true);
 
@@ -670,11 +892,167 @@ describe('ProvisioningService', () => {
 				scopesProvisionInstanceRole: false,
 				scopesProvisionProjectRoles: false,
 			};
-			provisioningService.getConfig = jest.fn().mockResolvedValue(provisioningConfig);
+			provisioningService.getConfig = vi.fn().mockResolvedValue(provisioningConfig);
 			const isProvisioningEnabled = await provisioningService.isProvisioningEnabled();
 			expect(isProvisioningEnabled).toBe(false);
 
 			provisioningService.getConfig = originStateGetConfig;
+		});
+	});
+
+	describe('provisionExpressionMappedRolesForUser', () => {
+		const user = mock<User>({
+			id: 'user-1',
+			email: 'test@example.com',
+			role: mock<Role>({ slug: 'global:member', roleType: 'global' }),
+		});
+
+		beforeEach(() => {
+			provisioningService['isExpressionMappingEnabled'] = vi.fn().mockResolvedValue(true);
+			provisioningService['buildRoleMappingConfig'] = vi.fn().mockResolvedValue({
+				instanceRoleRules: [],
+				projectRoleRules: [],
+				fallbackInstanceRole: 'global:member',
+			});
+			// Mock getPreviousProjectRoles — no existing project access
+			projectRepository.find.mockResolvedValue([]);
+		});
+
+		it('should emit expression-mapping-roles-resolved with metadata', async () => {
+			roleResolverService.resolveRoles.mockResolvedValue({
+				instanceRole: {
+					role: 'global:admin',
+					matchedRuleId: 'rule-1',
+					expression: '{{ $claims.role === "admin" }}',
+					isFallback: false,
+				},
+				projectRoles: new Map([
+					[
+						'proj-1',
+						{
+							projectId: 'proj-1',
+							role: 'project:editor',
+							matchedRuleId: 'rule-2',
+							expression: '{{ true }}',
+						},
+					],
+				]),
+			});
+			roleRepository.findOneOrFail.mockResolvedValue(
+				mock<Role>({ slug: 'global:admin', roleType: 'global' }),
+			);
+
+			const context = { $claims: { role: 'admin' }, $provider: 'oidc' as const };
+
+			await provisioningService.provisionExpressionMappedRolesForUser(user, context);
+
+			expect(eventService.emit).toHaveBeenCalledWith('expression-mapping-roles-resolved', {
+				userId: 'user-1',
+				userEmail: 'test@example.com',
+				provider: 'oidc',
+				instanceRole: {
+					role: 'global:admin',
+					previousRole: 'global:member',
+					changed: true,
+					matchedRuleId: 'rule-1',
+					expression: '{{ $claims.role === "admin" }}',
+					isFallback: false,
+				},
+				projectRoles: [
+					{
+						projectId: 'proj-1',
+						role: 'project:editor',
+						previousRole: null,
+						changed: true,
+						matchedRuleId: 'rule-2',
+						expression: '{{ true }}',
+					},
+				],
+				removedProjectIds: [],
+			});
+		});
+
+		it('should not emit when expression mapping is disabled', async () => {
+			provisioningService['isExpressionMappingEnabled'] = vi.fn().mockResolvedValue(false);
+
+			const context = { $claims: {}, $provider: 'saml' as const };
+			await provisioningService.provisionExpressionMappedRolesForUser(user, context);
+
+			expect(eventService.emit).not.toHaveBeenCalledWith(
+				'expression-mapping-roles-resolved',
+				expect.anything(),
+			);
+		});
+
+		it('should emit a debug log summarising the resolution without leaking claim values', async () => {
+			roleResolverService.resolveRoles.mockResolvedValue({
+				instanceRole: {
+					role: 'global:member',
+					matchedRuleId: null,
+					expression: null,
+					isFallback: true,
+				},
+				projectRoles: new Map(),
+			});
+			roleRepository.findOneOrFail.mockResolvedValue(
+				mock<Role>({ slug: 'global:member', roleType: 'global' }),
+			);
+
+			const context = {
+				$claims: { groups: ['admins'], email: 'test@example.com' },
+				$provider: 'oidc' as const,
+			};
+			await provisioningService.provisionExpressionMappedRolesForUser(user, context);
+
+			expect(logger.debug).toHaveBeenCalledWith('SSO role resolution complete', {
+				userId: 'user-1',
+				provider: 'oidc',
+				claimKeys: ['email', 'groups'],
+				matchedInstanceRuleId: null,
+				isFallback: true,
+				matchedProjectRuleIds: [],
+			});
+		});
+
+		it('should detect removed projects and role changes', async () => {
+			const existingProject = mock<Project>({
+				id: 'old-proj-1',
+				projectRelations: [
+					mock<ProjectRelation>({
+						userId: 'user-1',
+						role: mock<Role>({ slug: 'project:viewer' }),
+					}),
+				],
+			});
+			// First call is getPreviousProjectRoles, second is from applyExpressionMappedProjectRoles
+			projectRepository.find
+				.mockResolvedValueOnce([existingProject])
+				.mockResolvedValueOnce([existingProject]);
+
+			roleResolverService.resolveRoles.mockResolvedValue({
+				instanceRole: {
+					role: 'global:member',
+					matchedRuleId: null,
+					expression: null,
+					isFallback: true,
+				},
+				projectRoles: new Map(),
+			});
+
+			const context = { $claims: {}, $provider: 'oidc' as const };
+			await provisioningService.provisionExpressionMappedRolesForUser(user, context);
+
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'expression-mapping-roles-resolved',
+				expect.objectContaining({
+					removedProjectIds: ['old-proj-1'],
+					instanceRole: expect.objectContaining({
+						isFallback: true,
+						changed: false,
+						previousRole: 'global:member',
+					}),
+				}),
+			);
 		});
 	});
 });

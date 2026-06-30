@@ -9,9 +9,6 @@ import type {
 	MessageEventBusDestinationOptions,
 	INodeParameters,
 	NodeParameterValueType,
-	MessageEventBusDestinationSentryOptions,
-	MessageEventBusDestinationSyslogOptions,
-	MessageEventBusDestinationWebhookOptions,
 	INodeProperties,
 } from 'n8n-workflow';
 import {
@@ -29,11 +26,7 @@ import { createEventBus } from '@n8n/utils/event-bus';
 
 import { useLogStreamingStore } from '../logStreaming.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
+import { provideWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
 import type { IMenuItem, IUpdateInformation, ModalKey } from '@/Interface';
 import { LOG_STREAM_MODAL_KEY, MODAL_CONFIRM } from '@/app/constants';
@@ -42,7 +35,7 @@ import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/app/composables/useMessage';
 import { useUIStore } from '@/app/stores/ui.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
-import { destinationToFakeINodeUi } from '../logStreaming.utils';
+import { destinationToFakeINodeUi, isDestinationComplete } from '../logStreaming.utils';
 import type { BaseTextKey } from '@n8n/i18n';
 import SaveButton from '@/app/components/SaveButton.vue';
 import EventSelection from './EventSelection.vue';
@@ -87,13 +80,12 @@ const i18n = useI18n();
 const { confirm } = useMessage();
 const telemetry = useTelemetry();
 const logStreamingStore = useLogStreamingStore();
-const ndvStore = useNDVStore();
-const workflowsStore = useWorkflowsStore();
-const workflowDocumentStore = computed(() =>
-	workflowsStore.workflowId
-		? useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId))
-		: undefined,
-);
+// The log-streaming settings modal can open outside the workflow editor, where
+// no workflow document is provided. Re-provide the resolved document store so
+// the reused NDV parameter components resolve a valid scoped store, and derive
+// this modal's own NDV store from it (it cannot inject what it provides).
+const workflowDocumentStore = provideWorkflowDocumentStore();
+const ndvStore = computed(() => useNDVStore(workflowDocumentStore.value.documentId));
 const uiStore = useUIStore();
 
 const unchanged = ref(!isNew);
@@ -191,12 +183,15 @@ const isFormValid = computed(() => {
 	return issues === null;
 });
 
-const destinationNode = computed(
-	() => workflowDocumentStore?.value?.getNodeByName(destination.id ?? '') ?? null,
+const destinationNode = computed(() =>
+	workflowDocumentStore.value.getNodeByName(destination.id ?? ''),
 );
 
 watch(
-	() => destinationNode.value?.credentials,
+	() =>
+		Object.keys(destinationNode.value?.credentials ?? {}).length === 0
+			? null
+			: destinationNode.value?.credentials,
 	(newCredentials) => {
 		unchanged.value = false;
 		if (newCredentials) {
@@ -227,9 +222,9 @@ function onLabelChange(value: string) {
 }
 
 function setupNode(options: MessageEventBusDestinationOptions) {
-	workflowDocumentStore?.value?.removeNode(node.value);
-	ndvStore.setActiveNodeName(options.id ?? 'thisshouldnothappen', 'other');
-	workflowDocumentStore?.value?.addNode(destinationToFakeINodeUi(options));
+	workflowDocumentStore.value.removeNode(node.value);
+	ndvStore.value.setActiveNodeName(options.id ?? 'thisshouldnothappen', 'other');
+	workflowDocumentStore.value.addNode(destinationToFakeINodeUi(options));
 	nodeParameters.value = options as INodeParameters;
 	logStreamingStore.items[destination.id!].destination = options;
 }
@@ -294,7 +289,7 @@ function valueChanged(parameterData: IUpdateInformation) {
 	}
 
 	nodeParameters.value = deepCopy(nodeParametersCopy);
-	workflowDocumentStore?.value?.updateNodeProperties({
+	workflowDocumentStore.value.updateNodeProperties({
 		name: node.value.name,
 		properties: { parameters: nodeParameters.value, position: [0, 0] },
 	});
@@ -334,12 +329,12 @@ async function removeThis() {
 
 function onModalClose() {
 	if (!hasOnceBeenSaved.value) {
-		workflowDocumentStore?.value?.removeNode(node.value);
+		workflowDocumentStore.value.removeNode(node.value);
 		if (nodeParameters.value.id && typeof nodeParameters.value.id !== 'object') {
 			logStreamingStore.removeDestination(nodeParameters.value.id.toString());
 		}
 	}
-	ndvStore.unsetActiveNodeName();
+	ndvStore.value.unsetActiveNodeName();
 	callEventBus('closing', destination.id);
 	uiStore.markStateClean();
 }
@@ -364,31 +359,10 @@ async function saveDestination() {
 			.replace('$MessageEventBusDestination', '')
 			.toLowerCase();
 
-		const isComplete = () => {
-			if (isTypeWebhook.value) {
-				const webhookDestination = destination as MessageEventBusDestinationWebhookOptions;
-				return webhookDestination.url !== '';
-			} else if (isTypeSentry.value) {
-				const sentryDestination = destination as MessageEventBusDestinationSentryOptions;
-				return sentryDestination.dsn !== '';
-			} else if (isTypeSyslog.value) {
-				const syslogDestination = destination as MessageEventBusDestinationSyslogOptions;
-				return (
-					syslogDestination.host !== '' &&
-					syslogDestination.port !== undefined &&
-					// @ts-expect-error TODO: fix this typing
-					syslogDestination.protocol !== '' &&
-					syslogDestination.facility !== undefined &&
-					syslogDestination.app_name !== ''
-				);
-			}
-			return false;
-		};
-
 		telemetry.track('User updated log streaming destination', {
 			instance_id: useRootStore().instanceId,
 			destination_type: destinationType,
-			is_complete: isComplete(),
+			is_complete: isDestinationComplete(nodeParameters.value),
 			is_active: destination.enabled,
 		});
 	}

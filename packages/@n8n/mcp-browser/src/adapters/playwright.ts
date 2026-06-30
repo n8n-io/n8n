@@ -18,7 +18,9 @@ import {
 	StaleRefError,
 	type ConnectionLostReason,
 } from '../errors';
+import { buildExtensionConnectUrl } from '../extension-connect';
 import { createLogger } from '../logger';
+import { HTML_PROBE_SCRIPT, parseHtmlProbeResult } from '../sensitivity/html-probe';
 import type {
 	ClickOptions,
 	ConnectConfig,
@@ -31,6 +33,7 @@ import type {
 	NetworkEntry,
 	PageInfo,
 	ResolvedConfig,
+	HtmlProbeResult,
 	ScreenshotOptions,
 	ScrollOptions,
 	SnapshotResult,
@@ -40,26 +43,6 @@ import type {
 import { generateId, toError } from '../utils';
 
 const log = createLogger('playwright');
-
-// ---------------------------------------------------------------------------
-// Type augmentation for Playwright's private _snapshotForAI API.
-// This is used internally by Playwright MCP (playwright/lib/mcp/browser/tab.js)
-// and returns a YAML accessibility tree with aria-ref= annotations.
-// ---------------------------------------------------------------------------
-
-interface SnapshotForAIResult {
-	/** Complete YAML accessibility tree with [ref=eN] annotations */
-	full: string;
-	/** Incremental diff (only changed elements), undefined on first call */
-	incremental?: string;
-}
-
-interface PlaywrightPagePrivate extends Page {
-	_snapshotForAI(options?: {
-		timeout?: number;
-		track?: string;
-	}): Promise<SnapshotForAIResult>;
-}
 
 // ---------------------------------------------------------------------------
 // Per-page state tracked by the adapter
@@ -76,15 +59,22 @@ interface PageState {
 }
 
 // ---------------------------------------------------------------------------
-// Stable extension ID derived from the "key" field in mcp-browser-extension/manifest.json.
-// This ensures the same ID whether loaded unpacked or installed from the Chrome Web Store.
-// ---------------------------------------------------------------------------
-
-const BROWSER_USE_EXTENSION_ID = 'cegmdpndekdfpnafgacidejijecomlhh';
-
-// ---------------------------------------------------------------------------
 // Adapter
 // ---------------------------------------------------------------------------
+
+export interface PlaywrightAdapterOptions {
+	/**
+	 * Externally managed relay (remote mode). When provided, launch() does not
+	 * start a local browser or a relay of its own; it waits for the extension
+	 * on this relay and connects Playwright through it. The relay's lifecycle
+	 * is owned by the embedder.
+	 */
+	relay?: CDPRelayServer;
+	/** Explicit CDP endpoint to connect to in remote mode. Overrides `relay.cdpEndpoint()`. */
+	cdpEndpoint?: string;
+	/** Headers sent when connecting to the CDP endpoint (e.g. an auth token). */
+	cdpConnectHeaders?: Record<string, string>;
+}
 
 export class PlaywrightAdapter {
 	readonly name = 'playwright';
@@ -94,14 +84,22 @@ export class PlaywrightAdapter {
 	private context?: BrowserContext;
 	private pageStates = new Map<string, PageState>();
 	private relay?: CDPRelayServer;
+	private readonly externalRelay?: CDPRelayServer;
+	private readonly externalCdpEndpoint?: string;
+	private readonly cdpConnectHeaders?: Record<string, string>;
+	/** The embedder's extension-disconnect handler, chained in remote mode. */
+	private previousOnExtensionDisconnect?: (reason: ConnectionLostReason) => void;
 	/** Pending activation: set by ensurePage(), consumed by context.on('page'). */
 	private pendingActivation?: { id: string; resolve: (page: Page) => void };
 
 	/** Called when the browser connection is unexpectedly lost. */
 	onDisconnect?: (reason: ConnectionLostReason) => void;
 
-	constructor(config: ResolvedConfig) {
+	constructor(config: ResolvedConfig, options?: PlaywrightAdapterOptions) {
 		this.resolvedConfig = config;
+		this.externalRelay = options?.relay;
+		this.externalCdpEndpoint = options?.cdpEndpoint;
+		this.cdpConnectHeaders = options?.cdpConnectHeaders;
 	}
 
 	// =========================================================================
@@ -110,6 +108,17 @@ export class PlaywrightAdapter {
 
 	async launch(config: ConnectConfig): Promise<void> {
 		log.debug('launch: browser =', config.browser);
+
+		if (this.externalRelay) {
+			// Remote mode - the extension connects to an externally managed relay
+			// (e.g. exposed by the n8n server). No local browser is launched.
+			this.relay = this.externalRelay;
+			log.debug('remote mode: waiting for extension on external relay...');
+			await this.relay.waitForExtension({ browserWasLaunched: true });
+			await this.connectPlaywright(this.externalCdpEndpoint ?? this.relay.cdpEndpoint());
+			return;
+		}
+
 		// Local mode — connect to the user's running Chrome via extension bridge.
 		// The CDPRelayServer bridges Playwright ↔ Chrome extension (chrome.debugger).
 		this.relay = new CDPRelayServer();
@@ -117,9 +126,14 @@ export class PlaywrightAdapter {
 		const extensionEndpoint = this.relay.extensionEndpoint(port);
 
 		// Open the extension's connect page with the relay URL so it auto-connects.
-		const connectUrl =
-			`chrome-extension://${BROWSER_USE_EXTENSION_ID}/connect.html` +
-			`?mcpRelayUrl=${encodeURIComponent(extensionEndpoint)}`;
+		// `N8N_EVAL_AUTO_BROWSER_CONNECT=1` (set by the eval daemon spawn) appends
+		// `autoConnect=1` so the extension UI clicks Connect itself — keeps eval
+		// runs human-out-of-the-loop across reconnect cycles. The extension only
+		// honors `autoConnect=1` when the relay URL is localhost (which the relay
+		// always is — see `cdp-relay.ts`), so a crafted chrome-extension URL
+		// pointing at a remote relay can't trigger this path.
+		const autoConnect = process.env.N8N_EVAL_AUTO_BROWSER_CONNECT === '1';
+		const connectUrl = buildExtensionConnectUrl(extensionEndpoint, { autoConnect });
 		const browserInfo = this.resolvedConfig.browsers.get(config.browser);
 		const chromePath = browserInfo?.executablePath;
 		if (!chromePath) {
@@ -144,13 +158,20 @@ export class PlaywrightAdapter {
 		log.debug('waiting for extension...');
 		await this.relay.waitForExtension({ browserWasLaunched: true });
 
-		// Connect Playwright over CDP through the relay
-		const cdpEndpoint = this.relay.cdpEndpoint(port);
+		await this.connectPlaywright(this.relay.cdpEndpoint(port));
+	}
+
+	/** Connect Playwright over CDP through the relay and wire up handlers. */
+	private async connectPlaywright(cdpEndpoint: string): Promise<void> {
+		const relay = this.relay!;
 		log.debug('connecting Playwright over CDP:', cdpEndpoint);
-		this.browser = await chromium.connectOverCDP(cdpEndpoint);
+		this.browser = await chromium.connectOverCDP(cdpEndpoint, {
+			headers: this.cdpConnectHeaders,
+			noDefaults: true,
+		});
 		const contexts = this.browser.contexts();
 		log.debug('browser contexts:', contexts.length);
-		this.context = contexts[0] ?? (await this.browser.newContext());
+		this.context = contexts[0] ?? (await this.browser.newContext({ colorScheme: null }));
 
 		// Two-tier model: pages are created lazily via ensurePage().
 		// When ensurePage() triggers activateTab(), it sets pendingActivation
@@ -179,9 +200,14 @@ export class PlaywrightAdapter {
 			this.onDisconnect?.('browser_closed');
 		});
 
-		// Detect extension disconnection via the relay (already a typed reason)
-		this.relay.onExtensionDisconnect = (reason) => {
+		// Detect extension disconnection via the relay (already a typed reason).
+		// In remote mode the embedder may have installed its own handler,
+		// chain it so connection-state tracking keeps working.
+		this.previousOnExtensionDisconnect = relay.onExtensionDisconnect;
+		const previous = this.previousOnExtensionDisconnect;
+		relay.onExtensionDisconnect = (reason) => {
 			log.debug('relay: extension disconnected, reason:', reason);
+			previous?.(reason);
 			this.onDisconnect?.(reason);
 		};
 
@@ -200,7 +226,14 @@ export class PlaywrightAdapter {
 			// browser may already be closed
 		}
 		if (this.relay) {
-			this.relay.stop();
+			if (this.relay === this.externalRelay) {
+				// Externally managed relay: restore the embedder's handler and
+				// leave the relay running (its lifecycle is owned by the embedder).
+				this.relay.onExtensionDisconnect = this.previousOnExtensionDisconnect;
+				this.previousOnExtensionDisconnect = undefined;
+			} else {
+				this.relay.stop();
+			}
 			this.relay = undefined;
 		}
 		this.pageStates.clear();
@@ -279,8 +312,8 @@ export class PlaywrightAdapter {
 	}
 
 	/** Return the session IDs of all currently tracked pages. */
-	listTabSessionIds(): string[] {
-		return Array.from(this.pageStates.keys());
+	async listTabSessionIds() {
+		return await Promise.resolve(Array.from(this.pageStates.keys()));
 	}
 
 	/** Return IDs of all known tabs (relay cache + local pages). */
@@ -290,7 +323,7 @@ export class PlaywrightAdapter {
 			log.debug(`listTabIds: relay returned ${tabs.length} tab(s)`);
 			return tabs.map((t) => t.id);
 		}
-		const ids = this.listTabSessionIds();
+		const ids = await this.listTabSessionIds();
 		log.debug(`listTabIds: fallback to pageStates, ${ids.length} page(s)`);
 		return ids;
 	}
@@ -490,21 +523,23 @@ export class PlaywrightAdapter {
 		return buffer.toString('base64');
 	}
 
-	async snapshot(pageId: string, target?: ElementTarget): Promise<SnapshotResult> {
+	async snapshot(
+		pageId: string,
+		target?: ElementTarget,
+		interactive = true,
+	): Promise<SnapshotResult> {
 		const { page } = await this.ensurePage(pageId);
+		const mode = interactive ? 'ai' : 'default';
 
-		// Use Playwright's internal _snapshotForAI API which returns a YAML
-		// accessibility tree with [ref=eN] annotations on interactive elements.
-		// This is the same API used by Playwright MCP's Tab.captureSnapshot().
+		// Use Playwright's public ariaSnapshot() API.
+		// mode='ai' includes [ref=eN] annotations for interaction tools.
 		let yaml: string;
 		if (target) {
 			const locator = await this.resolveLocator(pageId, target);
-			// Scoped snapshots use the public ariaSnapshot() on the locator
-			yaml = await locator.ariaSnapshot();
+			// Scoped snapshots use ariaSnapshot() on the locator.
+			yaml = await locator.ariaSnapshot({ mode });
 		} else {
-			const privatePage = page as PlaywrightPagePrivate;
-			const result = await privatePage._snapshotForAI({ track: 'response' });
-			yaml = result.full;
+			yaml = await page.ariaSnapshot({ mode });
 		}
 
 		if (!yaml) {
@@ -516,6 +551,16 @@ export class PlaywrightAdapter {
 		const refCount = refMatches?.length ?? 0;
 
 		return { tree: yaml, refCount };
+	}
+
+	async probePageHtml(pageId: string): Promise<HtmlProbeResult> {
+		try {
+			const { page } = await this.ensurePage(pageId);
+			const raw = await page.evaluate(HTML_PROBE_SCRIPT);
+			return parseHtmlProbeResult(raw);
+		} catch (error) {
+			return { ok: false, error: error instanceof Error ? error.message : String(error) };
+		}
 	}
 
 	async getText(pageId: string, target?: ElementTarget): Promise<string> {
@@ -992,6 +1037,10 @@ export class PlaywrightAdapter {
 		} catch {
 			return undefined;
 		}
+	}
+
+	getElementValue(_pageId: string, _target: ElementTarget): never {
+		throw new Error('Not implemented');
 	}
 
 	private async resolveLocator(pageId: string, target: ElementTarget): Promise<Locator> {

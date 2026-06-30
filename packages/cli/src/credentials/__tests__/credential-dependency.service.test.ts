@@ -1,7 +1,7 @@
 import type { CredentialDependencyRepository, SecretsProviderConnectionRepository } from '@n8n/db';
 import { In } from '@n8n/typeorm';
 import type { EntityManager } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import {
 	CredentialDependencyService,
@@ -17,7 +17,7 @@ describe('CredentialDependencyService', () => {
 	);
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('resolveExternalSecretsStoreDependencyFilter', () => {
@@ -51,14 +51,14 @@ describe('CredentialDependencyService', () => {
 				credentialId: 'cred-1',
 				decryptedCredentialData: {
 					apiKey: '={{ $secrets.vault.apiKey }}',
-					token: '={{ $secrets["aws-secrets-manager"].token }}',
+					token: '={{ $secrets["awsSecretsManager"].token }}',
 				},
 				entityManager,
 			});
 
 			expect(secretsProviderConnectionRepository.findIdsByProviderKeys).toHaveBeenCalledWith([
 				'vault',
-				'aws-secrets-manager',
+				'awsSecretsManager',
 			]);
 			expect(credentialDependencyRepository.upsertDependenciesForCredential).toHaveBeenCalledWith({
 				credentialId: 'cred-1',
@@ -97,14 +97,14 @@ describe('CredentialDependencyService', () => {
 				credentialId: 'cred-1',
 				decryptedCredentialData: {
 					apiKey: '={{ $secrets.vault.apiKey }}',
-					token: '={{ $secrets["aws-secrets-manager"].token }}',
+					token: '={{ $secrets["awsSecretsManager"].token }}',
 				},
 				entityManager,
 			});
 
 			expect(secretsProviderConnectionRepository.findIdsByProviderKeys).toHaveBeenCalledWith([
 				'vault',
-				'aws-secrets-manager',
+				'awsSecretsManager',
 			]);
 			expect(credentialDependencyRepository.syncDependenciesForCredential).toHaveBeenCalledWith({
 				credentialId: 'cred-1',

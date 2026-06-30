@@ -1,13 +1,16 @@
 import { getDefaultDiscovery, getInstallInstructions } from './browser-discovery';
+import type { CDPRelayServer } from './cdp-relay';
 import {
 	AlreadyConnectedError,
 	BrowserNotAvailableError,
 	ConnectionLostError,
+	ExtensionNotConnectedError,
 	NotConnectedError,
 	type ConnectionLostReason,
 } from './errors';
 import { createLogger } from './logger';
 import type {
+	Adapter,
 	BrowserName,
 	Config,
 	ConnectConfig,
@@ -20,13 +23,33 @@ import { configSchema } from './types';
 
 const log = createLogger('connection');
 
+export interface BrowserConnectionOptions {
+	/**
+	 * Externally managed relay (remote mode). The connection does not own its
+	 * lifecycle - the embedder is responsible for stopping it.
+	 */
+	relay?: CDPRelayServer;
+	/** Explicit CDP endpoint for remote mode; overrides `relay.cdpEndpoint()`. */
+	cdpEndpoint?: string;
+	/** Headers sent when connecting to {@link cdpEndpoint} (e.g. an auth token). */
+	cdpConnectHeaders?: Record<string, string>;
+}
+
 export class BrowserConnection {
 	private state: ConnectionState | null = null;
 	private disconnectReason: ConnectionLostReason | undefined;
 	private readonly config: ResolvedConfig;
+	private readonly externalRelay?: CDPRelayServer;
+	private readonly externalCdpEndpoint?: string;
+	private readonly cdpConnectHeaders?: Record<string, string>;
+	/** Adapter kept alive after an extension-connect timeout so its relay URL remains valid. */
+	private pendingAdapter: Adapter | null = null;
 
-	constructor(userConfig?: Partial<Config>) {
+	constructor(userConfig?: Partial<Config>, options?: BrowserConnectionOptions) {
 		const parsed = configSchema.parse(userConfig ?? {});
+		this.externalRelay = options?.relay;
+		this.externalCdpEndpoint = options?.cdpEndpoint;
+		this.cdpConnectHeaders = options?.cdpConnectHeaders;
 
 		// Merge auto-discovery with programmatic overrides
 		const discovery = getDefaultDiscovery().discover();
@@ -58,6 +81,8 @@ export class BrowserConnection {
 		this.config = {
 			defaultBrowser: parsed.defaultBrowser,
 			browsers,
+			adapter: parsed.adapter,
+			mode: parsed.mode,
 		};
 	}
 
@@ -71,13 +96,17 @@ export class BrowserConnection {
 		}
 
 		const browser = overrideBrowser ?? this.config.defaultBrowser;
-		this.requireBrowserAvailable(browser);
+		if (this.config.mode !== 'remote') {
+			this.requireBrowserAvailable(browser);
+		}
 
 		const connectConfig: ConnectConfig = {
 			browser,
 		};
 
-		const adapter = await this.createAdapter();
+		// Reuse a pending adapter (relay kept alive from a prior timeout) if available.
+		const adapter = this.pendingAdapter ?? (await this.createAdapter());
+		this.pendingAdapter = null;
 
 		// Listen for unexpected disconnections so we can invalidate state immediately
 		adapter.onDisconnect = (reason) => {
@@ -87,7 +116,17 @@ export class BrowserConnection {
 			this.state = null;
 		};
 
-		await adapter.launch(connectConfig);
+		try {
+			await adapter.launch(connectConfig);
+		} catch (error) {
+			if (error instanceof ExtensionNotConnectedError) {
+				// Keep the adapter alive so its relay URL stays valid for the next retry.
+				this.pendingAdapter = adapter;
+			} else {
+				await adapter.close().catch(() => {});
+			}
+			throw error;
+		}
 
 		// Two-tier model: listTabs() returns metadata from the relay (no
 		// debugger attachment). Playwright page objects are created lazily
@@ -105,6 +144,11 @@ export class BrowserConnection {
 	}
 
 	async disconnect(): Promise<void> {
+		const pending = this.pendingAdapter;
+		this.pendingAdapter = null;
+
+		if (pending) await pending.close().catch(() => {});
+
 		if (!this.state) return; // already disconnected — idempotent
 
 		const { adapter } = this.state;
@@ -159,7 +203,20 @@ export class BrowserConnection {
 		}
 	}
 
-	private async createAdapter() {
+	private async createAdapter(): Promise<Adapter> {
+		if (this.config.mode === 'remote') {
+			// Remote mode is only supported by the Playwright adapter
+			const { PlaywrightAdapter } = await import('./adapters/playwright');
+			return new PlaywrightAdapter(this.config, {
+				relay: this.externalRelay,
+				cdpEndpoint: this.externalCdpEndpoint,
+				cdpConnectHeaders: this.cdpConnectHeaders,
+			});
+		}
+		if (this.config.adapter === 'agent-browser') {
+			const { AgentBrowserAdapter } = await import('./adapters/agent-browser');
+			return new AgentBrowserAdapter(this.config);
+		}
 		const { PlaywrightAdapter } = await import('./adapters/playwright');
 		return new PlaywrightAdapter(this.config);
 	}
