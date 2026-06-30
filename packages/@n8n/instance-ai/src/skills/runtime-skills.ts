@@ -9,7 +9,9 @@ const AGENTS_MODULE_RUNTIME_SKILLS = new Set(['intent-recognition']);
 let cachedRuntimeSkillSource: RuntimeSkillSource | undefined;
 
 export function loadInstanceAiRuntimeSkillSource(): RuntimeSkillSource {
-	cachedRuntimeSkillSource ??= filterRuntimeSkillSource(loadRuntimeSkillSourceFromDirectory(INSTANCE_AI_SKILLS_DIR));
+	cachedRuntimeSkillSource ??= filterRuntimeSkillSource(
+		loadRuntimeSkillSourceFromDirectory(INSTANCE_AI_SKILLS_DIR),
+	);
 	return cachedRuntimeSkillSource;
 }
 
