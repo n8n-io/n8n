@@ -8,6 +8,7 @@ import { AgentKnowledgeService } from './agent-knowledge.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentTestChatService } from './agent-test-chat.service';
 import { Agent } from './entities/agent.entity';
+import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { AgentRepository } from './repositories/agent.repository';
 
 @Service()
@@ -114,6 +115,21 @@ export class AgentsService {
 				error: error instanceof Error ? error.message : error,
 			});
 		}
+
+		const chatIntegrationService = Container.get(ChatIntegrationService);
+		for (const integration of agent.integrations ?? []) {
+			try {
+				await chatIntegrationService.disconnectChannel(agentId, integration);
+			} catch (error) {
+				this.logger.warn('Failed to disconnect channel on agent delete', {
+					agentId,
+					integrationType: integration.type,
+					credentialId: integration.credentialId,
+					error: error instanceof Error ? error.message : error,
+				});
+			}
+		}
+
 		await this.agentRepository.remove(agent);
 
 		this.runtimeCacheService.clearRuntimes(agentId);

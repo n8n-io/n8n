@@ -131,12 +131,14 @@ describe('ChatIntegrationService.syncToConfig — publish gate', () => {
 	let chatSubscriptionStateService: ReturnType<typeof mock<AgentChatSubscriptionStateService>>;
 	let connectSpy: jest.SpyInstance;
 	let disconnectSpy: jest.SpyInstance;
+	let broadcastSpy: jest.SpyInstance;
 
 	beforeEach(() => {
 		Container.reset();
 		({ service, projectRelationRepository, chatSubscriptionStateService } = buildServiceWith());
 		connectSpy = jest.spyOn(service, 'connect').mockResolvedValue();
 		disconnectSpy = jest.spyOn(service, 'disconnect').mockResolvedValue();
+		broadcastSpy = jest.spyOn(service, 'broadcastIntegrationChange').mockResolvedValue();
 	});
 
 	it('skips connect when the agent is not published', async () => {
@@ -161,6 +163,17 @@ describe('ChatIntegrationService.syncToConfig — publish gate', () => {
 
 		await service.syncToConfig(agent, [slackIntegration], []);
 
+		expect(chatSubscriptionStateService.deleteSubscriptionsForIntegration).toHaveBeenCalledWith(
+			'agent-1',
+			slackIntegration,
+		);
+	});
+
+	it('disconnects a channel everywhere and removes persisted subscriptions', async () => {
+		await service.disconnectChannel('agent-1', slackIntegration);
+
+		expect(disconnectSpy).toHaveBeenCalledWith('agent-1', slackIntegration);
+		expect(broadcastSpy).toHaveBeenCalledWith('agent-1', slackIntegration, 'disconnect');
 		expect(chatSubscriptionStateService.deleteSubscriptionsForIntegration).toHaveBeenCalledWith(
 			'agent-1',
 			slackIntegration,

@@ -134,7 +134,10 @@ export class AgentPublishService {
 
 		this.runtimeCacheService.clearRuntimes(agentId);
 
-		await Container.get(ChatIntegrationService).disconnect(agentId);
+		const chatIntegrationService = Container.get(ChatIntegrationService);
+		for (const integration of agent.integrations ?? []) {
+			await chatIntegrationService.disconnectChannel(agentId, integration);
+		}
 
 		const { AgentTaskService } = await import('./agent-task.service');
 		await Container.get(AgentTaskService)

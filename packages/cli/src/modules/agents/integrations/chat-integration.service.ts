@@ -312,6 +312,32 @@ export class ChatIntegrationService {
 	}
 
 	/**
+	 * Remove a chat channel everywhere: local runtime state, peer main runtime
+	 * state, and persisted thread subscriptions.
+	 */
+	async disconnectChannel(agentId: string, integration: AgentIntegrationConfig): Promise<void> {
+		try {
+			await this.disconnect(agentId, integration);
+			await this.broadcastIntegrationChange(agentId, integration, 'disconnect');
+		} catch (error) {
+			this.logger.warn(
+				`[ChatIntegrationService] Disconnect failed for ${integration.type} on agent ${agentId}: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
+
+		try {
+			await this.chatSubscriptionStateService.deleteSubscriptionsForIntegration(
+				agentId,
+				integration,
+			);
+		} catch (error) {
+			this.logger.warn(
+				`[ChatIntegrationService] Subscription cleanup failed for ${integration.type} on agent ${agentId}: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
+	}
+
+	/**
 	 * Disconnect every active integration regardless of type. Used by tests and
 	 * for explicit shutdown paths; the leader-stepdown lifecycle uses
 	 * {@link disconnectLeaderOnlyIntegrations} so webhook integrations keep
@@ -372,25 +398,7 @@ export class ChatIntegrationService {
 
 		for (const integration of previous) {
 			if (!nextKeys.has(buildIntegrationConnectionId(integration))) {
-				try {
-					await this.disconnect(agent.id, integration);
-					await this.broadcastIntegrationChange(agent.id, integration, 'disconnect');
-				} catch (error) {
-					this.logger.warn(
-						`[ChatIntegrationService] Disconnect during sync failed for ${integration.type} on agent ${agent.id}: ${error instanceof Error ? error.message : String(error)}`,
-					);
-				}
-
-				try {
-					await this.chatSubscriptionStateService.deleteSubscriptionsForIntegration(
-						agent.id,
-						integration,
-					);
-				} catch (error) {
-					this.logger.warn(
-						`[ChatIntegrationService] Subscription cleanup during sync failed for ${integration.type} on agent ${agent.id}: ${error instanceof Error ? error.message : String(error)}`,
-					);
-				}
+				await this.disconnectChannel(agent.id, integration);
 			}
 		}
 
