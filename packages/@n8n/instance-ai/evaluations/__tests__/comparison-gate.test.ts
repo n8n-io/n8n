@@ -10,8 +10,13 @@ import type {
 
 interface CaseSpec {
 	slug: string;
-	scenarios?: Array<{ name: string; passes: boolean[]; failureCategory?: string }>;
-	expectations?: Array<{ text: string; verdicts: Array<boolean | 'incomplete'> }>;
+	scenarios?: Array<{
+		name: string;
+		passes: boolean[];
+		failureCategory?: string;
+		reasoning?: string;
+	}>;
+	expectations?: Array<{ text: string; verdicts: Array<boolean | 'incomplete'>; reason?: string }>;
 }
 
 /** Build a MultiRunEvaluation + slug map matching the shape gate.ts/format.ts read. */
@@ -47,7 +52,7 @@ function makeEval(totalRuns: number, cases: CaseSpec[]) {
 						scenario,
 						success: p,
 						score: p ? 1 : 0,
-						reasoning: '',
+						reasoning: p ? '' : (sa.reasoning ?? `judge: ${sa.name} failed`),
 						failureCategory: !p ? sa.failureCategory : undefined,
 					}),
 				),
@@ -58,7 +63,11 @@ function makeEval(totalRuns: number, cases: CaseSpec[]) {
 			const runs: BuildExpectationResult[] = e.verdicts.map((v) =>
 				v === 'incomplete'
 					? { expectation: e.text, pass: false, reason: '', incomplete: true }
-					: { expectation: e.text, pass: v, reason: '' },
+					: {
+							expectation: e.text,
+							pass: v,
+							reason: v ? '' : (e.reason ?? 'judge: expectation failed'),
+						},
 			);
 			const evaluated = runs.filter((r) => !r.incomplete);
 			const passCount = evaluated.filter((r) => r.pass).length;
@@ -115,6 +124,35 @@ describe('evaluateGate', () => {
 		expect(gate.units).toHaveLength(3);
 		expect(gate.failing).toHaveLength(0);
 		expect(gate.excluded).toHaveLength(0);
+	});
+
+	it('grades a build-only case (0 scenarios) by its expectation alone', () => {
+		const { evaluation, slugByTestCase } = makeEval(3, [
+			{
+				slug: 'build-only',
+				expectations: [{ text: 'splits the records envelope', verdicts: [true, true, true] }],
+			},
+		]);
+		const gate = evaluateGate(evaluation, { slugByTestCase });
+
+		expect(gate.units).toHaveLength(1);
+		expect(gate.units[0].kind).toBe('buildExpectation');
+		expect(gate.green).toBe(true);
+		expect(gate.excluded).toHaveLength(0);
+	});
+
+	it('fails a build-only case when its sole expectation never passes', () => {
+		const { evaluation, slugByTestCase } = makeEval(3, [
+			{
+				slug: 'build-only',
+				expectations: [{ text: 'splits the records envelope', verdicts: [false, false, false] }],
+			},
+		]);
+		const gate = evaluateGate(evaluation, { slugByTestCase });
+
+		expect(gate.units).toHaveLength(1);
+		expect(gate.failing).toHaveLength(1);
+		expect(gate.green).toBe(false);
 	});
 
 	it('is not green when a unit never passes, and records its failure categories', () => {
@@ -207,7 +245,7 @@ describe('formatComparisonMarkdown — gate mode', () => {
 		expect(md).not.toMatch(/#### Not green/);
 	});
 
-	it('renders a red CAUTION verdict with a Not-green table for failing units', () => {
+	it("renders a red CAUTION verdict and the failing unit's full judge text", () => {
 		const { evaluation, slugByTestCase } = makeEval(3, [
 			{
 				slug: 'rest-api-data-pipeline',
@@ -217,6 +255,7 @@ describe('formatComparisonMarkdown — gate mode', () => {
 						name: 'empty-response',
 						passes: [false, false, false],
 						failureCategory: 'builder_issue',
+						reasoning: 'No Slack message was posted for the empty array.',
 					},
 				],
 			},
@@ -226,19 +265,24 @@ describe('formatComparisonMarkdown — gate mode', () => {
 
 		expect(md).toMatch(/> \[!CAUTION\]/);
 		expect(md).toMatch(/🔴 1 of 2 units not green over 3 runs/);
-		expect(md).toMatch(/#### Not green/);
-		expect(md).toMatch(
-			/`rest-api-data-pipeline\/empty-response` \| 0\/3 \(0%\) \| 3× builder_issue/,
-		);
+		expect(md).toMatch(/<details open><summary>Failures \(1\)<\/summary>/);
+		expect(md).toMatch(/`rest-api-data-pipeline\/empty-response`\*\* — passed 0\/3/);
+		expect(md).toMatch(/_\[builder_issue\]_ No Slack message was posted for the empty array\./);
+		expect(md).not.toMatch(/#### Not green/);
 	});
 
-	it('renders a yellow WARNING when all units pass@k but one had a failing run', () => {
+	it('renders a yellow WARNING when a unit barely passed (failed the majority)', () => {
 		const { evaluation, slugByTestCase } = makeEval(3, [
 			{
 				slug: 'notification-router',
 				scenarios: [
 					{ name: 'low', passes: [true, true, true] },
-					{ name: 'high', passes: [true, false, true], failureCategory: 'builder_issue' },
+					{
+						name: 'high',
+						passes: [true, false, false], // 1/3 — passed the minority
+						failureCategory: 'builder_issue',
+						reasoning: 'Teams message omitted the Server Down title.',
+					},
 				],
 			},
 		]);
@@ -247,11 +291,60 @@ describe('formatComparisonMarkdown — gate mode', () => {
 
 		expect(gate.green).toBe(true); // pass@k still met
 		expect(md).toMatch(/> \[!WARNING\]/);
-		expect(md).toMatch(/🟡 All 2 units green over 3 runs, but 1 had a failing run/);
-		expect(md).toMatch(/#### Passed with failures/);
-		expect(md).toMatch(/`notification-router\/high` \| 2\/3 \(67%\) \| 1× builder_issue/);
-		expect(md).not.toMatch(/#### Not green/);
+		expect(md).toMatch(/🟡 All 2 units green over 3 runs, but 1 barely passed/);
+		expect(md).toMatch(/`notification-router\/high`\*\* — passed 1\/3/);
+		expect(md).toMatch(/_\[builder_issue\]_ Teams message omitted the Server Down title\./);
 		expect(md).not.toMatch(/> \[!CAUTION\]/);
+	});
+
+	it('stays a green TIP for a single flaky run (2/3) but still lists it', () => {
+		const { evaluation, slugByTestCase } = makeEval(3, [
+			{
+				slug: 'notification-router',
+				scenarios: [
+					{ name: 'low', passes: [true, true, true] },
+					{
+						name: 'high',
+						passes: [true, false, true], // 2/3 — one flaky miss, still majority-pass
+						failureCategory: 'mock_issue',
+						reasoning: 'Transient mock hiccup on run 2.',
+					},
+				],
+			},
+		]);
+		const gate = evaluateGate(evaluation, { slugByTestCase });
+		const md = formatComparisonMarkdown(evaluation, undefined, { slugByTestCase, gate });
+
+		expect(md).toMatch(/> \[!TIP\]/);
+		expect(md).toMatch(/🟢 All 2 units green over 3 runs; 1 flaky/);
+		expect(md).not.toMatch(/> \[!WARNING\]/);
+		// the flaky run is still surfaced, with its judge text
+		expect(md).toMatch(/`notification-router\/high`\*\* — passed 2\/3/);
+		expect(md).toMatch(/Transient mock hiccup on run 2\./);
+	});
+
+	it('renders the judge text for a failing build expectation, not just scenarios', () => {
+		const { evaluation, slugByTestCase } = makeEval(3, [
+			{
+				slug: 'notification-router',
+				scenarios: [{ name: 'happy', passes: [true, true, true] }],
+				expectations: [
+					{
+						text: 'asked a clarifying question before building',
+						verdicts: [true, false, false], // 1/3 — barely passed
+						reason: 'The agent started building without asking anything.',
+					},
+				],
+			},
+		]);
+		const gate = evaluateGate(evaluation, { slugByTestCase });
+		const md = formatComparisonMarkdown(evaluation, undefined, { slugByTestCase, gate });
+
+		// the build-expectation failure is surfaced with its full reason (previously omitted)
+		expect(md).toMatch(/notification-router :: asked a clarifying question/);
+		expect(md).toMatch(/passed 1\/3/);
+		expect(md).toMatch(/The agent started building without asking anything\./);
+		expect(md).toMatch(/> \[!WARNING\]/); // a 1/3 build expectation is "barely passed"
 	});
 
 	it('renders the gate even if a comparison outcome is also passed (gate wins)', () => {
@@ -302,7 +395,7 @@ describe('formatComparisonTerminal — gate mode', () => {
 		expect(out).not.toMatch(/\| /);
 	});
 
-	it('marks green-but-flaky units as FLAKY in the gate summary', () => {
+	it('marks green-but-flaky units in the terminal gate summary', () => {
 		const { evaluation, slugByTestCase } = makeEval(3, [
 			{
 				slug: 'notification-router',
@@ -315,7 +408,7 @@ describe('formatComparisonTerminal — gate mode', () => {
 		const gate = evaluateGate(evaluation, { slugByTestCase });
 		const out = formatComparisonTerminal(evaluation, undefined, { slugByTestCase, gate });
 
-		expect(out).toMatch(/▶ GATE: all 2 units green over 3 runs, 1 with a failing run/);
-		expect(out).toMatch(/FLAKY +notification-router\/high +2\/3/);
+		expect(out).toMatch(/▶ GATE: all 2 units green over 3 runs, 1 flaky/);
+		expect(out).toMatch(/flaky +notification-router\/high +2\/3/);
 	});
 });
