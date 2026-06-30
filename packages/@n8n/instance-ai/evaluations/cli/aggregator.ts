@@ -100,13 +100,14 @@ export function aggregateResults(
 								},
 						);
 			const passCount = scenarioRuns.filter((sr) => sr.success).length;
-			const { passAtKValues, passHatKValues } = computePassMetrics(scenarioRuns.length, passCount);
+			const runCount = options.caseSet === 'agents' ? scenarioRuns.length : totalRuns;
+			const { passAtKValues, passHatKValues } = computePassMetrics(runCount, passCount);
 
 			executionScenarios.push({
 				scenario,
 				runs: scenarioRuns,
 				passCount,
-				passRate: scenarioRuns.length > 0 ? passCount / scenarioRuns.length : 0,
+				passRate: runCount > 0 ? passCount / runCount : 0,
 				passAtK: passAtKValues,
 				passHatK: passHatKValues,
 			});
