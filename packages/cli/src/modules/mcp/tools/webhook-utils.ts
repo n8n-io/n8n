@@ -7,14 +7,14 @@ import {
 	type INode,
 } from 'n8n-workflow';
 
+import type { CredentialsService } from '@/credentials/credentials.service';
+
 import {
 	hasHttpHeaderAuthDecryptedData,
 	hasJwtPemKeyDecryptedData,
 	hasJwtSecretDecryptedData,
 } from '../mcp.typeguards';
 import type { MCPTriggersMap } from '../mcp.types';
-
-import type { CredentialsService } from '@/credentials/credentials.service';
 
 export type WebhookEndpoints = {
 	webhook: string;
@@ -54,7 +54,7 @@ export const getTriggerDetails = async (
 	endpoints: WebhookEndpoints,
 ): Promise<string> => {
 	if (supportedTriggers.length === 0) {
-		return 'This workflow does not have a trigger node that can be executed via MCP.';
+		return 'This workflow has no production triggers (Schedule, Webhook, Form, or Chat). It can only be executed in manual mode.';
 	}
 
 	// Organize triggers by their node type

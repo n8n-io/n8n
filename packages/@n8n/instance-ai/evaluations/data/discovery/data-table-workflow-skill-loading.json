@@ -1,0 +1,21 @@
+{
+	"id": "data-table-workflow-skill-loading",
+	"userMessage": "Create me a workflow that implements an n8n form to capture responses into a data table. The form should be a decklist submission form for a MTG tournament, asking for player name and a deck list as text fields they'll fill.",
+	"expectedToolInvocations": {
+		"allOfToolCalls": [
+			{
+				"toolName": "load_skill",
+				"argsContainAny": ["data-table-manager"]
+			},
+			{
+				"toolName": "load_skill",
+				"argsContainAny": ["workflow-builder"]
+			},
+			{
+				"toolName": "build-workflow"
+			}
+		],
+		"noneOf": ["create-tasks", "delegate", "spawn_sub_agent:delegate"]
+	},
+	"rationale": "Regression coverage for single-workflow build prompts that depend on Data Tables. The orchestrator should load both the data-table-manager skill and the workflow-builder skill, include workflow-local table requirements in the build, and avoid task planning or delegation."
+}

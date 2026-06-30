@@ -478,6 +478,19 @@ describe('useImportCurlCommand', () => {
 			]);
 		});
 
+		test('Should parse cURL command with repeated query parameter names', () => {
+			const curl = "curl 'https://example.com/api?type[]=foo&type[]=bar&type[]=baz&page=0'";
+			const parameters = toHttpNodeParameters(curl);
+			expect(parameters.url).toBe('https://example.com/api');
+			expect(parameters.sendQuery).toBe(true);
+			expect(parameters.queryParameters?.parameters).toEqual([
+				{ name: 'type[]', value: 'foo' },
+				{ name: 'type[]', value: 'bar' },
+				{ name: 'type[]', value: 'baz' },
+				{ name: 'page', value: '0' },
+			]);
+		});
+
 		test('Should parse cURL command with a comma in query parameter value', () => {
 			const curl = 'curl "https://example.com?bla=blu,bli"';
 			const parameters = toHttpNodeParameters(curl);
@@ -572,6 +585,72 @@ describe('useImportCurlCommand', () => {
 			const curl = 'curl -X POST -d "key=value"';
 			expect(() => toHttpNodeParameters(curl)).toThrow('no URL specified!');
 		});
+
+		test('Should wrap integer JSON body values in expressions', () => {
+			const curl =
+				"curl 'http://hostname' -H 'content-type: application/json' --data-raw '{\"size\":100}'";
+			const parameters = toHttpNodeParameters(curl);
+			expect(parameters.contentType).toBe('json');
+			expect(parameters.specifyBody).toBe('keypair');
+			expect(parameters.bodyParameters?.parameters[0]).toEqual({
+				name: 'size',
+				value: '={{ 100 }}',
+			});
+		});
+
+		test('Should wrap boolean JSON body values in expressions', () => {
+			const curl =
+				"curl 'http://hostname' -H 'content-type: application/json' --data-raw '{\"active\":true,\"verified\":false}'";
+			const parameters = toHttpNodeParameters(curl);
+			expect(parameters.contentType).toBe('json');
+			expect(parameters.specifyBody).toBe('keypair');
+			expect(parameters.bodyParameters?.parameters[0]).toEqual({
+				name: 'active',
+				value: '={{ true }}',
+			});
+			expect(parameters.bodyParameters?.parameters[1]).toEqual({
+				name: 'verified',
+				value: '={{ false }}',
+			});
+		});
+
+		test('Should wrap null JSON body values in expressions', () => {
+			const curl =
+				"curl 'http://hostname' -H 'content-type: application/json' --data-raw '{\"name\":null}'";
+			const parameters = toHttpNodeParameters(curl);
+			expect(parameters.contentType).toBe('json');
+			expect(parameters.specifyBody).toBe('keypair');
+			expect(parameters.bodyParameters?.parameters[0]).toEqual({
+				name: 'name',
+				value: '={{ null }}',
+			});
+		});
+
+		test('Should use plain strings and expressions for mixed JSON body values', () => {
+			const curl =
+				'curl \'http://hostname\' -H \'content-type: application/json\' --data-raw \'{"name":"Alice","age":30}\'';
+			const parameters = toHttpNodeParameters(curl);
+			expect(parameters.contentType).toBe('json');
+			expect(parameters.specifyBody).toBe('keypair');
+			expect(parameters.bodyParameters?.parameters[0]).toEqual({ name: 'name', value: 'Alice' });
+			expect(parameters.bodyParameters?.parameters[1]).toEqual({
+				name: 'age',
+				value: '={{ 30 }}',
+			});
+		});
+
+		test('Should use keypair mode with plain strings when all JSON body values are strings', () => {
+			const curl =
+				'curl \'http://hostname\' -H \'content-type: application/json\' --data-raw \'{"login":"user","password":"pass"}\'';
+			const parameters = toHttpNodeParameters(curl);
+			expect(parameters.contentType).toBe('json');
+			expect(parameters.specifyBody).toBe('keypair');
+			expect(parameters.bodyParameters?.parameters[0]).toEqual({ name: 'login', value: 'user' });
+			expect(parameters.bodyParameters?.parameters[1]).toEqual({
+				name: 'password',
+				value: 'pass',
+			});
+		});
 	});
 });
 
@@ -646,5 +725,35 @@ describe('sanitizeCurlUrlPlaceholders', () => {
 		expect(result).toBe(
 			'curl https://api.example.com/{USER_ID} -H "Content-Type: application/json" -d \'{"content": "<div><b>Text</b></div>"}\'',
 		);
+	});
+
+	test('should parse cURL command with unknown content-type', () => {
+		const curl = `curl --request POST \
+  --url https://example.com/api \
+  --header 'content-type: text/xml' \
+  --data '<some>value</some>'`;
+
+		const parameters = toHttpNodeParameters(curl);
+
+		expect(parameters.url).toBe('https://example.com/api');
+		expect(parameters.method).toBe('POST');
+		expect(parameters.contentType).toBe('raw');
+		expect(parameters.rawContentType).toBe('text/xml');
+		expect(parameters.body).toEqual('<some>value</some>');
+	});
+
+	test('should parse cURL command with content-type containing encoding as raw', () => {
+		const curl = `curl --request POST \
+  --url https://example.com/api \
+  --header 'content-type: application/json; charset=UTF-8' \
+  --data '{"userId":"123","active":false,"visited":false}'`;
+
+		const parameters = toHttpNodeParameters(curl);
+
+		expect(parameters.url).toBe('https://example.com/api');
+		expect(parameters.method).toBe('POST');
+		expect(parameters.contentType).toBe('raw');
+		expect(parameters.rawContentType).toBe('application/json; charset=UTF-8');
+		expect(parameters.body).toEqual('{"userId":"123","active":false,"visited":false}');
 	});
 });

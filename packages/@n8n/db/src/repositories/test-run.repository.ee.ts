@@ -4,12 +4,8 @@ import { DataSource, In, Repository } from '@n8n/typeorm';
 import { UnexpectedError, type IDataObject } from 'n8n-workflow';
 
 import { TestRun } from '../entities';
-import type {
-	AggregatedTestRunMetrics,
-	TestRunErrorCode,
-	TestRunFinalResult,
-	ListQuery,
-} from '../entities/types-db';
+import { TestRunErrorCode } from '../entities/types-db';
+import type { AggregatedTestRunMetrics, TestRunFinalResult, ListQuery } from '../entities/types-db';
 import { getTestRunFinalResult } from '../utils/get-final-test-result';
 
 export type TestRunSummary = TestRun & {
@@ -22,21 +18,34 @@ export class TestRunRepository extends Repository<TestRun> {
 		super(TestRun, dataSource.manager);
 	}
 
-	async createTestRun(workflowId: string): Promise<TestRun> {
+	async createTestRun(
+		workflowId: string,
+		attrs?: {
+			collectionId?: string | null;
+			workflowVersionId?: string | null;
+			evaluationConfigId?: string | null;
+			evaluationConfigSnapshot?: IDataObject | null;
+		},
+	): Promise<TestRun> {
 		const testRun = this.create({
 			status: 'new',
 			workflow: {
 				id: workflowId,
 			},
+			collectionId: attrs?.collectionId ?? null,
+			workflowVersionId: attrs?.workflowVersionId ?? null,
+			evaluationConfigId: attrs?.evaluationConfigId ?? null,
+			evaluationConfigSnapshot: attrs?.evaluationConfigSnapshot ?? null,
 		});
 
 		return await this.save(testRun);
 	}
 
-	async markAsRunning(id: string) {
+	async markAsRunning(id: string, instanceId?: string) {
 		return await this.update(id, {
 			status: 'running',
 			runAt: new Date(),
+			runningInstanceId: instanceId ?? null,
 		});
 	}
 
@@ -61,8 +70,31 @@ export class TestRunRepository extends Repository<TestRun> {
 	async markAllIncompleteAsFailed() {
 		return await this.update(
 			{ status: In(['new', 'running']) },
-			{ status: 'error', errorCode: 'INTERRUPTED', completedAt: new Date() },
+			{ status: 'error', errorCode: TestRunErrorCode.INTERRUPTED, completedAt: new Date() },
 		);
+	}
+
+	/**
+	 * Request cancellation of a test run by setting the cancelRequested flag.
+	 * This is used as a fallback mechanism for multi-main mode.
+	 */
+	async requestCancellation(id: string) {
+		return await this.update(id, { cancelRequested: true });
+	}
+
+	/**
+	 * Check if cancellation has been requested for a test run.
+	 */
+	async isCancellationRequested(id: string): Promise<boolean> {
+		const testRun = await this.findOneBy({ id });
+		return testRun?.cancelRequested ?? false;
+	}
+
+	/**
+	 * Clear the instance tracking when test run completes.
+	 */
+	async clearInstanceTracking(id: string) {
+		return await this.update(id, { runningInstanceId: null, cancelRequested: false });
 	}
 
 	async getMany(workflowId: string, options: ListQuery.Options) {

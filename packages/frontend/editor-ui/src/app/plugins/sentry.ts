@@ -9,10 +9,18 @@ const ignoredErrors = [
 	{ instanceof: ResponseError, message: /ECONNREFUSED/ },
 	{ instanceof: ResponseError, message: "Can't connect to n8n." },
 	{ instanceof: ResponseError, message: 'Unauthorized' },
+	{ instanceof: ResponseError, message: 'Session not found' },
+	{ instanceof: ResponseError, message: /Your most recent changes may be lost/ },
 	{ instanceof: RangeError, message: /Position \d+ is out of range for changeset of length \d+/ },
 	{ instanceof: RangeError, message: /Invalid change range \d+ to \d+/ },
 	{ instanceof: RangeError, message: /Selection points outside of document$/ },
 	{ instanceof: Error, message: /ResizeObserver/ },
+	// Stale-chunk preload errors after a deploy — the page auto-reloads to recover.
+	// Known blind spot: a broken deploy (chunk missing for everyone) produces the same
+	// message and is also suppressed; rely on CI / smoke checks for that signal.
+	{ instanceof: TypeError, message: /Failed to fetch dynamically imported module/ },
+	{ instanceof: TypeError, message: /error loading dynamically imported module/ },
+	{ instanceof: TypeError, message: /Importing a module script failed/ },
 ] as const;
 
 type SentryConfig = {
@@ -76,6 +84,7 @@ export const SentryPlugin: Plugin = {
 
 		if (serverName) {
 			Sentry.setTag('server_name', serverName);
+			Sentry.setUser({ id: serverName });
 		}
 	},
 };

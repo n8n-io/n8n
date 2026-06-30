@@ -1,5 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import type { Cipher } from 'n8n-core';
+import type { Mocked } from 'vitest';
 
 import { testCredentialResolverContract, testHelpers } from './resolver-contract-tests';
 import type { OAuth2TokenIntrospectionIdentifier } from '../identifiers/oauth2-introspection-identifier';
@@ -8,11 +9,11 @@ import { OAuthCredentialResolver } from '../oauth-credential-resolver';
 import type { DynamicCredentialEntryStorage } from '../storage/dynamic-credential-entry-storage';
 
 describe('OAuthCredentialResolver', () => {
-	let mockLogger: jest.Mocked<Logger>;
-	let mockIdentifier: jest.Mocked<OAuth2TokenIntrospectionIdentifier>;
-	let mockIdentifierUserInfo: jest.Mocked<OAuth2UserInfoIdentifier>;
-	let mockStorage: jest.Mocked<DynamicCredentialEntryStorage>;
-	let mockCipher: jest.Mocked<Cipher>;
+	let mockLogger: Mocked<Logger>;
+	let mockIdentifier: Mocked<OAuth2TokenIntrospectionIdentifier>;
+	let mockIdentifierUserInfo: Mocked<OAuth2UserInfoIdentifier>;
+	let mockStorage: Mocked<DynamicCredentialEntryStorage>;
+	let mockCipher: Mocked<Cipher>;
 
 	const validOptions = {
 		metadataUri: 'https://auth.example.com/.well-known/openid-configuration',
@@ -24,32 +25,34 @@ describe('OAuthCredentialResolver', () => {
 
 	beforeEach(() => {
 		mockLogger = {
-			debug: jest.fn(),
-			info: jest.fn(),
-			warn: jest.fn(),
-			error: jest.fn(),
-		} as unknown as jest.Mocked<Logger>;
+			debug: vi.fn(),
+			info: vi.fn(),
+			warn: vi.fn(),
+			error: vi.fn(),
+		} as unknown as Mocked<Logger>;
 
 		mockIdentifier = {
-			resolve: jest.fn(),
-			validateOptions: jest.fn(),
-		} as unknown as jest.Mocked<OAuth2TokenIntrospectionIdentifier>;
+			resolve: vi.fn(),
+			validateOptions: vi.fn(),
+		} as unknown as Mocked<OAuth2TokenIntrospectionIdentifier>;
 
 		mockIdentifierUserInfo = {
-			resolve: jest.fn(),
-			validateOptions: jest.fn(),
-		} as unknown as jest.Mocked<OAuth2UserInfoIdentifier>;
+			resolve: vi.fn(),
+			validateOptions: vi.fn(),
+		} as unknown as Mocked<OAuth2UserInfoIdentifier>;
 
 		mockStorage = {
-			getCredentialData: jest.fn(),
-			setCredentialData: jest.fn(),
-			deleteCredentialData: jest.fn(),
-		} as unknown as jest.Mocked<DynamicCredentialEntryStorage>;
+			getCredentialData: vi.fn(),
+			setCredentialData: vi.fn(),
+			deleteCredentialData: vi.fn(),
+		} as unknown as Mocked<DynamicCredentialEntryStorage>;
 
 		mockCipher = {
-			encrypt: jest.fn(),
-			decrypt: jest.fn(),
-		} as unknown as jest.Mocked<Cipher>;
+			encrypt: vi.fn(),
+			decrypt: vi.fn(),
+			encryptV2: vi.fn(),
+			decryptV2: vi.fn(),
+		} as unknown as Mocked<Cipher>;
 	});
 
 	// Run the standard contract tests
@@ -86,8 +89,8 @@ describe('OAuthCredentialResolver', () => {
 				},
 			);
 
-			mockCipher.encrypt.mockImplementation((data) => JSON.stringify(data));
-			mockCipher.decrypt.mockImplementation((data) => data);
+			mockCipher.encryptV2.mockImplementation(async (data) => JSON.stringify(data));
+			mockCipher.decryptV2.mockImplementation(async (data) => data);
 
 			return new OAuthCredentialResolver(
 				mockLogger,
@@ -155,7 +158,7 @@ describe('OAuthCredentialResolver', () => {
 				const handle = testHelpers.createHandle(validOptions);
 
 				mockStorage.getCredentialData.mockResolvedValue('encrypted-credential-data');
-				mockCipher.decrypt.mockReturnValue('{"apiKey":"decrypted-key"}');
+				mockCipher.decryptV2.mockResolvedValue('{"apiKey":"decrypted-key"}');
 
 				await resolver.getSecret(credentialId, context, handle);
 
@@ -168,11 +171,11 @@ describe('OAuthCredentialResolver', () => {
 				const handle = testHelpers.createHandle(validOptions);
 
 				mockStorage.getCredentialData.mockResolvedValue('encrypted-data-from-db');
-				mockCipher.decrypt.mockReturnValue('{"apiKey":"secret-key-123"}');
+				mockCipher.decryptV2.mockResolvedValue('{"apiKey":"secret-key-123"}');
 
 				const result = await resolver.getSecret(credentialId, context, handle);
 
-				expect(mockCipher.decrypt).toHaveBeenCalledWith('encrypted-data-from-db');
+				expect(mockCipher.decryptV2).toHaveBeenCalledWith('encrypted-data-from-db');
 				expect(result).toEqual({ apiKey: 'secret-key-123' });
 			});
 
@@ -182,7 +185,7 @@ describe('OAuthCredentialResolver', () => {
 				const handle = testHelpers.createHandle(validOptions);
 
 				mockStorage.getCredentialData.mockResolvedValue('encrypted-data');
-				mockCipher.decrypt.mockReturnValue('invalid-json{{{');
+				mockCipher.decryptV2.mockResolvedValue('invalid-json{{{');
 
 				await expect(resolver.getSecret(credentialId, context, handle)).rejects.toThrow();
 				expect(mockLogger.error).toHaveBeenCalledWith(
@@ -199,11 +202,11 @@ describe('OAuthCredentialResolver', () => {
 				const data = testHelpers.createCredentialData({ apiKey: 'new-key' });
 				const handle = testHelpers.createHandle(validOptions);
 
-				mockCipher.encrypt.mockReturnValue('encrypted-new-data');
+				mockCipher.encryptV2.mockResolvedValue('encrypted-new-data');
 
 				await resolver.setSecret(credentialId, context, data, handle);
 
-				expect(mockCipher.encrypt).toHaveBeenCalledWith(data);
+				expect(mockCipher.encryptV2).toHaveBeenCalledWith(data);
 				expect(mockStorage.setCredentialData).toHaveBeenCalledWith(
 					credentialId,
 					'oauth-subject-123',
@@ -220,7 +223,7 @@ describe('OAuthCredentialResolver', () => {
 				const handle = testHelpers.createHandle(validOptions);
 
 				mockIdentifier.resolve.mockResolvedValue('resolved-subject-456');
-				mockCipher.encrypt.mockReturnValue('encrypted-data');
+				mockCipher.encryptV2.mockResolvedValue('encrypted-data');
 
 				await resolver.setSecret(credentialId, context, data, handle);
 
@@ -285,7 +288,7 @@ describe('OAuthCredentialResolver', () => {
 				const data1 = testHelpers.createCredentialData({ apiKey: 'key-1' });
 				const data2 = testHelpers.createCredentialData({ apiKey: 'key-2' });
 
-				mockCipher.encrypt.mockReturnValue('encrypted');
+				mockCipher.encryptV2.mockResolvedValue('encrypted');
 
 				await resolver.setSecret(credentialId, testHelpers.createContext(token1), data1, handle);
 				await resolver.setSecret(credentialId, testHelpers.createContext(token2), data2, handle);
@@ -324,7 +327,7 @@ describe('OAuthCredentialResolver', () => {
 				mockIdentifier.resolve.mockResolvedValue('introspection-subject-123');
 				mockIdentifier.validateOptions.mockResolvedValue(undefined);
 				mockStorage.getCredentialData.mockResolvedValue('encrypted-data');
-				mockCipher.decrypt.mockReturnValue('{"apiKey":"test-key"}');
+				mockCipher.decryptV2.mockResolvedValue('{"apiKey":"test-key"}');
 
 				await resolver.getSecret(credentialId, context, handle);
 
@@ -345,7 +348,7 @@ describe('OAuthCredentialResolver', () => {
 				mockIdentifierUserInfo.resolve.mockResolvedValue('userinfo-subject-456');
 				mockIdentifierUserInfo.validateOptions.mockResolvedValue(undefined);
 				mockStorage.getCredentialData.mockResolvedValue('encrypted-data');
-				mockCipher.decrypt.mockReturnValue('{"apiKey":"test-key"}');
+				mockCipher.decryptV2.mockResolvedValue('{"apiKey":"test-key"}');
 
 				await resolver.getSecret(credentialId, context, handle);
 
@@ -375,7 +378,7 @@ describe('OAuthCredentialResolver', () => {
 				expect(mockIdentifier.validateOptions).toHaveBeenCalledWith(introspectionOptions);
 				expect(mockIdentifierUserInfo.validateOptions).not.toHaveBeenCalled();
 
-				jest.clearAllMocks();
+				vi.clearAllMocks();
 
 				await resolver.validateOptions(userInfoOptions);
 				expect(mockIdentifierUserInfo.validateOptions).toHaveBeenCalledWith(userInfoOptions);

@@ -12,17 +12,6 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 describe('CredentialIcon', () => {
 	const renderComponent = createComponentRenderer(CredentialIcon, {
 		pinia: createTestingPinia(),
-		global: {
-			stubs: {
-				N8nTooltip: true,
-				N8nNodeIcon: {
-					template: `
-						<svg v-if="type === 'icon'" class="n8n-icon" :data-icon="name"></svg>
-					`,
-					props: ['type', 'src', 'name', 'color', 'size'],
-				},
-			},
-		},
 	});
 	let pinia: TestingPinia;
 
@@ -65,9 +54,9 @@ describe('CredentialIcon', () => {
 			},
 		});
 
-		const icon = container.querySelector('.n8n-icon');
+		// N8nIcon component renders with data-icon attribute
+		const icon = container.querySelector('[data-icon="clock"]');
 		expect(icon).toBeInTheDocument();
-		expect(icon?.getAttribute('data-icon')).toBe('clock');
 	});
 
 	it('shows correct icon when credential has an icon with node: prefix', () => {
@@ -96,6 +85,33 @@ describe('CredentialIcon', () => {
 		});
 
 		expect(getByRole('img')).toHaveAttribute('src', useRootStore().baseUrl + testIconUrl);
+	});
+
+	it('shows named icon when referenced node uses a named icon (e.g. HTTP Request)', () => {
+		useCredentialsStore().setCredentialTypes([
+			mock<ICredentialType>({
+				name: 'httpQueryAuth',
+				icon: 'node:n8n-nodes-base.httpRequest',
+			}),
+		]);
+
+		useNodeTypesStore().setNodeTypes([
+			mock<INodeTypeDescription>({
+				version: 1,
+				name: 'n8n-nodes-base.httpRequest',
+				icon: 'node:http-request',
+				iconUrl: undefined,
+			}),
+		]);
+
+		const { container } = renderComponent({
+			pinia,
+			props: {
+				credentialTypeName: 'httpQueryAuth',
+			},
+		});
+
+		expect(container.querySelector('.nodeIconPlaceholder')).not.toBeInTheDocument();
 	});
 
 	it('shows fallback icon when icon is not found', () => {

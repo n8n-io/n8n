@@ -1,46 +1,95 @@
 import type { Fixtures, TestInfo } from '@playwright/test';
-import type { N8NStack } from 'n8n-containers/n8n-test-container-creation';
-import { ObservabilityHelper } from 'n8n-containers/n8n-test-container-victoria-helpers';
+import type { N8NStartupDiagnostics } from 'n8n-containers';
+import { consumeStartupFailure } from 'n8n-containers';
+import type { N8NStack } from 'n8n-containers/stack';
 
-/**
- * Fixture type for auto-attaching logs on test failure.
- * Uses undefined instead of void to satisfy eslint @typescript-eslint/no-invalid-void-type
- */
 export type ObservabilityTestFixtures = {
 	autoAttachLogs: undefined;
 };
 
-/**
- * Worker fixtures required by observability fixtures.
- */
 export type ObservabilityWorkerFixtures = {
 	n8nContainer: N8NStack;
 };
 
 /**
- * Queries VictoriaLogs and attaches logs to test info on failure.
- * Retrieves logs from the last 5 minutes to capture test context.
+ * `stack.services` is a Proxy whose factory throws when a service isn't in the
+ * project config (e.g. sqlite:e2e has no observability services). Optional
+ * chaining doesn't help — the throw happens inside the factory invocation.
  */
+function tryGetObservability(stack: N8NStack | undefined) {
+	if (!stack) return undefined;
+	try {
+		return stack.services?.observability;
+	} catch {
+		return undefined;
+	}
+}
+
+const STARTUP_PROFILE_TAG = '@startup-profile';
+
+function shouldAlwaysAttachStartup(testInfo: TestInfo): boolean {
+	if (process.env.CONTAINER_TELEMETRY_VERBOSE === '1') return true;
+	return testInfo.tags.includes(STARTUP_PROFILE_TAG);
+}
+
+function formatStartupLogs(diagnostics: N8NStartupDiagnostics): string {
+	const entries = Object.entries(diagnostics.logs).sort(([a], [b]) => a.localeCompare(b));
+	if (entries.length === 0) return '';
+	return entries.map(([name, body]) => `=== ${name} ===\n${body}`).join('\n\n');
+}
+
+function formatReadinessPayloads(diagnostics: N8NStartupDiagnostics): string {
+	const entries = Object.entries(diagnostics.readinessPayloads).sort(([a], [b]) =>
+		a.localeCompare(b),
+	);
+	if (entries.length === 0) return '';
+	return entries
+		.map(
+			([name, body]) =>
+				`=== ${name} ===\n${body ?? '(no /healthz/readiness response observed before timeout)'}`,
+		)
+		.join('\n\n');
+}
+
+async function attachStartupDiagnostics(
+	diagnostics: N8NStartupDiagnostics,
+	testInfo: TestInfo,
+): Promise<void> {
+	const startupLogs = formatStartupLogs(diagnostics);
+	if (startupLogs) {
+		await testInfo.attach('n8n-startup-logs.txt', {
+			body: startupLogs,
+			contentType: 'text/plain',
+		});
+	}
+
+	const readinessPayloads = formatReadinessPayloads(diagnostics);
+	if (readinessPayloads) {
+		await testInfo.attach('n8n-readiness-payload.txt', {
+			body: readinessPayloads,
+			contentType: 'text/plain',
+		});
+	}
+}
+
 async function attachLogsOnFailure(
 	stack: N8NStack,
 	testInfo: TestInfo,
 	options: { lookbackMinutes?: number } = {},
 ): Promise<void> {
-	if (!stack?.observability) return;
+	const obs = tryGetObservability(stack);
+	if (!obs) return;
 
 	const lookback = options.lookbackMinutes ?? 5;
-	const obs = new ObservabilityHelper(stack.observability);
 
 	try {
-		// Query all logs from the last N minutes
 		const logs = await obs.logs.query('*', {
-			limit: 500,
+			limit: 10000,
 			start: `${lookback}m`,
 		});
 
 		if (logs.length === 0) return;
 
-		// Group logs by container for readability
 		const groupedLogs = logs.reduce<Record<string, typeof logs>>((acc, log) => {
 			const container = log.container_name ?? 'unknown';
 			acc[container] ??= [];
@@ -48,8 +97,12 @@ async function attachLogsOnFailure(
 			return acc;
 		}, {});
 
-		// Format logs for attachment
+		for (const containerLogs of Object.values(groupedLogs)) {
+			containerLogs.sort((a, b) => (a._time ?? '').localeCompare(b._time ?? ''));
+		}
+
 		const formattedLogs = Object.entries(groupedLogs)
+			.sort(([a], [b]) => a.localeCompare(b))
 			.map(([container, containerLogs]) => {
 				const logLines = containerLogs.map((log) => `[${log._time}] ${log.message}`).join('\n');
 				return `=== ${container} ===\n${logLines}`;
@@ -61,35 +114,37 @@ async function attachLogsOnFailure(
 			contentType: 'text/plain',
 		});
 
-		// Also attach raw JSON for programmatic access
-		await testInfo.attach('container-logs-json', {
-			body: JSON.stringify(groupedLogs, null, 2),
-			contentType: 'application/json',
+		const jsonLinesExport = logs.map((log) => JSON.stringify(log)).join('\n');
+		await testInfo.attach('victoria-logs-export.jsonl', {
+			body: jsonLinesExport,
+			contentType: 'application/x-ndjson',
 		});
 	} catch (error) {
-		// Don't fail the test if log collection fails
 		console.warn('Failed to collect container logs:', error);
 	}
 }
 
+async function attachMetricsOnFailure(stack: N8NStack, testInfo: TestInfo): Promise<void> {
+	const obs = tryGetObservability(stack);
+	if (!obs) return;
+
+	try {
+		const metricsExport = await obs.metrics.exportAll();
+
+		if (!metricsExport.trim()) return;
+
+		await testInfo.attach('victoria-metrics-export.jsonl', {
+			body: metricsExport,
+			contentType: 'application/x-ndjson',
+		});
+	} catch (error) {
+		console.warn('Failed to export metrics:', error);
+	}
+}
+
 /**
- * Observability fixtures that can be spread into the main test fixtures.
- * Provides auto-attachment of container logs on test failure.
- *
- * Usage in base.ts:
- * ```typescript
- * import { observabilityFixtures } from './observability';
- *
- * export const test = base.extend<TestFixtures & { autoAttachLogs: void }, WorkerFixtures>({
- *   ...observabilityFixtures,
- *   // other fixtures
- * });
- * ```
- *
- * The autoAttachLogs fixture:
- * - Runs automatically for every test (auto: true)
- * - Only collects logs when a test fails AND observability is enabled
- * - Attaches logs as both plaintext and JSON for debugging
+ * Auto-attaches container logs and metrics on test failure.
+ * Import exports locally with scripts/import-victoria-data.mjs
  */
 export const observabilityFixtures: Fixtures<
 	ObservabilityTestFixtures,
@@ -97,13 +152,41 @@ export const observabilityFixtures: Fixtures<
 > = {
 	autoAttachLogs: [
 		async ({ n8nContainer }, use, testInfo) => {
-			// Run the test
 			await use(undefined);
 
-			// After test: attach logs if failed
-			if (testInfo.status !== testInfo.expectedStatus && n8nContainer?.observability) {
-				await attachLogsOnFailure(n8nContainer, testInfo);
+			const isFailure = testInfo.status !== testInfo.expectedStatus;
+			const alwaysAttach = shouldAlwaysAttachStartup(testInfo);
+
+			// n8nContainer is undefined when createN8NStack threw before returning,
+			// so observability/metrics aren't queryable. Drain whatever diagnostics
+			// the container service stashed before re-throwing.
+			if (!n8nContainer) {
+				if (!isFailure) return;
+				const failure = consumeStartupFailure();
+				if (!failure) return;
+				try {
+					await attachStartupDiagnostics(failure.diagnostics, testInfo);
+				} catch (error) {
+					console.warn('Failed to attach n8n startup diagnostics:', error);
+				}
+				return;
 			}
+
+			if (alwaysAttach) {
+				try {
+					await attachStartupDiagnostics(n8nContainer.startupDiagnostics, testInfo);
+				} catch (error) {
+					console.warn('Failed to attach n8n startup diagnostics:', error);
+				}
+			}
+
+			if (!isFailure) return;
+			if (!tryGetObservability(n8nContainer)) return;
+
+			await Promise.all([
+				attachLogsOnFailure(n8nContainer, testInfo),
+				attachMetricsOnFailure(n8nContainer, testInfo),
+			]);
 		},
 		{ auto: true },
 	],

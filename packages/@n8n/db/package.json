@@ -1,19 +1,27 @@
 {
   "name": "@n8n/db",
-  "version": "1.1.0",
+  "version": "1.29.0",
   "scripts": {
-    "clean": "rimraf dist .turbo",
+    "clean": "rimraf dist .turbo .tmp-schema-docs",
     "dev": "pnpm watch",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck",
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "watch": "tsc -p tsconfig.build.json --watch",
-    "test": "jest",
-    "test:unit": "jest",
-    "test:dev": "jest --watch"
+    "test": "vitest run",
+    "test:unit": "vitest run",
+    "test:dev": "vitest --silent=false",
+    "migration:new": "node scripts/new-migration.mjs",
+    "schema:docs:sqlite": "node scripts/schema-docs.mjs doc --db=sqlite",
+    "schema:docs:postgres": "node scripts/schema-docs.mjs doc --db=postgres",
+    "schema:docs": "pnpm schema:docs:sqlite && pnpm schema:docs:postgres",
+    "schema:check:sqlite": "node scripts/schema-docs.mjs diff --db=sqlite",
+    "schema:check:postgres": "node scripts/schema-docs.mjs diff --db=postgres",
+    "schema:check": "pnpm schema:check:sqlite && pnpm schema:check:postgres"
   },
   "main": "dist/index.js",
   "module": "src/index.ts",
@@ -29,7 +37,8 @@
     "@n8n/decorators": "workspace:*",
     "@n8n/di": "workspace:*",
     "@n8n/permissions": "workspace:*",
-    "@n8n/typeorm": "catalog:",
+    "@n8n/utils": "workspace:*",
+    "@n8n/typeorm": "workspace:*",
     "class-validator": "0.14.0",
     "flatted": "catalog:",
     "lodash": "catalog:",
@@ -44,7 +53,16 @@
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
+    "@n8n/vitest-config": "workspace:*",
+    "@types/express": "catalog:",
     "@types/lodash": "catalog:",
-    "express": "5.1.0"
-  }
+    "@testcontainers/postgresql": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "express": "catalog:",
+    "testcontainers": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:",
+    "vitest-mock-extended": "catalog:"
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }

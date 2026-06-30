@@ -366,8 +366,8 @@ export function prepareQuery(
 		} else {
 			qs.q = `is:${qs.readStatus}`;
 		}
-		delete qs.readStatus;
 	}
+	delete qs.readStatus;
 
 	if (qs.receivedAfter) {
 		qs.q = prepareTimestamp(

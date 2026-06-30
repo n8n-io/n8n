@@ -1,10 +1,108 @@
+import type { CredentialsEntity, Project, SharedCredentials, User } from '@n8n/db';
+import { CredentialsRepository, GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
+import { Container } from '@n8n/di';
+import { mock } from 'vitest-mock-extended';
+import { validate, type Schema } from 'jsonschema';
+import { Cipher, CipherAes256GCM, CipherAes256CBC, EncryptionKeyProxy } from 'n8n-core';
+import type { InstanceSettings } from 'n8n-core';
 import type { GenericValue, IDataObject, INodeProperties } from 'n8n-workflow';
 
+import { buildSharedForCredential, toJsonSchema, updateCredential } from '../credentials.service';
+
+import { CredentialsService } from '@/credentials/credentials.service';
+import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
+import { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
+import * as checkAccess from '@/permissions.ee/check-access';
 import type { IDependency } from '@/public-api/types';
 
-import { toJsonSchema } from '../credentials.service';
+// Set up real Cipher with mocked InstanceSettings for encryption
+const cipher = new Cipher(
+	mock<InstanceSettings>({ encryptionKey: 'test-encryption-key' }),
+	new CipherAes256GCM(),
+	new CipherAes256CBC(),
+	new EncryptionKeyProxy(),
+);
+Container.set(Cipher, cipher);
 
 describe('CredentialsService', () => {
+	let mockExternalSecretsConfig: ExternalSecretsConfig;
+	const canAccessProviderFromProjectMock = vi.fn();
+	const mockSecretsProviderAccessCheckService = mock<SecretsProviderAccessCheckService>({
+		isProviderAvailableInProject: canAccessProviderFromProjectMock,
+	});
+	beforeEach(() => {
+		mockExternalSecretsConfig = new ExternalSecretsConfig();
+		Container.set(ExternalSecretsConfig, mockExternalSecretsConfig);
+		Container.set(SecretsProviderAccessCheckService, mockSecretsProviderAccessCheckService);
+
+		canAccessProviderFromProjectMock.mockResolvedValue(true);
+	});
+	describe('buildSharedForCredential', () => {
+		it('returns one shared entry when credential is shared with one project', () => {
+			const createdAt = new Date('2024-01-01T00:00:00.000Z');
+			const updatedAt = new Date('2024-01-02T00:00:00.000Z');
+			const credential = {
+				shared: [
+					{
+						role: 'credential:owner',
+						createdAt,
+						updatedAt,
+						project: { id: 'proj-1', name: 'My Project' },
+					},
+				],
+			} as unknown as CredentialsEntity;
+			expect(buildSharedForCredential(credential)).toEqual([
+				{
+					id: 'proj-1',
+					name: 'My Project',
+					role: 'credential:owner',
+					createdAt,
+					updatedAt,
+				},
+			]);
+		});
+
+		it('returns multiple shared entries and skips shared entries without project', () => {
+			const createdAt1 = new Date('2024-01-01T00:00:00.000Z');
+			const updatedAt1 = new Date('2024-01-02T00:00:00.000Z');
+			const createdAt2 = new Date('2024-02-01T00:00:00.000Z');
+			const updatedAt2 = new Date('2024-02-02T00:00:00.000Z');
+			const credential = {
+				shared: [
+					{
+						role: 'credential:owner',
+						createdAt: createdAt1,
+						updatedAt: updatedAt1,
+						project: { id: 'proj-1', name: 'Project One' },
+					},
+					{ role: 'credential:user', createdAt: createdAt2, updatedAt: updatedAt2, project: null },
+					{
+						role: 'credential:user',
+						createdAt: createdAt2,
+						updatedAt: updatedAt2,
+						project: { id: 'proj-2', name: 'Project Two' },
+					},
+				],
+			} as unknown as CredentialsEntity;
+			expect(buildSharedForCredential(credential)).toEqual([
+				{
+					id: 'proj-1',
+					name: 'Project One',
+					role: 'credential:owner',
+					createdAt: createdAt1,
+					updatedAt: updatedAt1,
+				},
+				{
+					id: 'proj-2',
+					name: 'Project Two',
+					role: 'credential:user',
+					createdAt: createdAt2,
+					updatedAt: updatedAt2,
+				},
+			]);
+		});
+	});
+
 	describe('toJsonSchema', () => {
 		it('should create separate conditionals for different values of the same dependant field', () => {
 			// This test simulates the JWT auth credential scenario where
@@ -23,6 +121,7 @@ describe('CredentialsService', () => {
 				{
 					name: 'secret',
 					type: 'string',
+					required: true,
 					displayName: 'Secret',
 					default: '',
 					displayOptions: {
@@ -34,6 +133,7 @@ describe('CredentialsService', () => {
 				{
 					name: 'privateKey',
 					type: 'string',
+					required: true,
 					displayName: 'Private Key',
 					default: '',
 					displayOptions: {
@@ -45,6 +145,7 @@ describe('CredentialsService', () => {
 				{
 					name: 'publicKey',
 					type: 'string',
+					required: true,
 					displayName: 'Public Key',
 					default: '',
 					displayOptions: {
@@ -138,6 +239,7 @@ describe('CredentialsService', () => {
 				{
 					name: 'username',
 					type: 'string',
+					required: true,
 					displayName: 'Username',
 					default: '',
 					displayOptions: {
@@ -149,6 +251,7 @@ describe('CredentialsService', () => {
 				{
 					name: 'password',
 					type: 'string',
+					required: true,
 					displayName: 'Password',
 					default: '',
 					displayOptions: {
@@ -160,6 +263,7 @@ describe('CredentialsService', () => {
 				{
 					name: 'clientId',
 					type: 'string',
+					required: true,
 					displayName: 'Client ID',
 					default: '',
 					displayOptions: {
@@ -200,6 +304,7 @@ describe('CredentialsService', () => {
 				{
 					name: 'createField',
 					type: 'string',
+					required: true,
 					displayName: 'Create Field',
 					default: '',
 					displayOptions: {
@@ -211,6 +316,7 @@ describe('CredentialsService', () => {
 				{
 					name: 'updateField',
 					type: 'string',
+					required: true,
 					displayName: 'Update Field',
 					default: '',
 					displayOptions: {
@@ -222,6 +328,7 @@ describe('CredentialsService', () => {
 				{
 					name: 'deleteField',
 					type: 'string',
+					required: true,
 					displayName: 'Delete Field',
 					default: '',
 					displayOptions: {
@@ -272,6 +379,7 @@ describe('CredentialsService', () => {
 				{
 					name: 'field3',
 					type: 'string',
+					required: true,
 					displayName: 'Field 3',
 					default: '',
 					displayOptions: {
@@ -311,10 +419,283 @@ describe('CredentialsService', () => {
 
 			// then block requires field3 when field2 === false
 			expect(condition.then?.allOf.some((req: any) => req.required?.includes('field3'))).toBe(true);
-			// else block forbids field3 when field2 !== false
-			expect(
-				condition.else?.allOf.some((notReq: any) => notReq.not?.required?.includes('field3')),
-			).toBe(true);
+			// no else block: hidden fields are optional, not forbidden
+			expect((condition as any).else).toBeUndefined();
+		});
+
+		it('should not forbid conditional fields belonging to inactive conditions', () => {
+			// Mirrors the mongoDb scenario: two fields depend on the same options field
+			// but with different values. A payload that includes both the active
+			// and the inactive conditional field must validate.
+			const properties: INodeProperties[] = [
+				{
+					name: 'configurationType',
+					type: 'options',
+					options: [
+						{ value: 'connectionString', name: 'Connection String' },
+						{ value: 'values', name: 'Values' },
+					],
+					displayName: 'Configuration Type',
+					default: 'values',
+				},
+				{
+					name: 'connectionString',
+					type: 'string',
+					required: true,
+					displayName: 'Connection String',
+					default: '',
+					displayOptions: { show: { configurationType: ['connectionString'] } },
+				},
+				{
+					name: 'host',
+					type: 'string',
+					required: true,
+					displayName: 'Host',
+					default: '',
+					displayOptions: { show: { configurationType: ['values'] } },
+				},
+			];
+
+			const schema = toJsonSchema(properties);
+
+			// No `not: { required }` anywhere in the generated schema
+			expect(JSON.stringify(schema)).not.toContain('"not"');
+
+			// A payload using connectionString but also carrying the inactive `host` field
+			// must be accepted.
+			const connectionStringPayload = {
+				configurationType: 'connectionString',
+				connectionString: 'mongodb://localhost:27017/mydb',
+				host: 'localhost',
+			};
+			expect(validate(connectionStringPayload, schema as unknown as Schema).valid).toBe(true);
+
+			// And the reverse direction.
+			const valuesPayload = {
+				configurationType: 'values',
+				host: 'localhost',
+				connectionString: 'mongodb://localhost:27017/mydb',
+			};
+			expect(validate(valuesPayload, schema as unknown as Schema).valid).toBe(true);
+
+			// Required fields are still enforced via the `then` block.
+			const missingRequired = { configurationType: 'values' };
+			expect(validate(missingRequired, schema as unknown as Schema).valid).toBe(false);
+		});
+	});
+
+	describe('updateCredential', () => {
+		let credentialsRepository: CredentialsRepository;
+		let ownerUser: User;
+		let memberUser: User;
+
+		const credentialsService = new CredentialsService(
+			mock(), // credentialsRepository
+			mock(),
+			mock(), // sharedCredentialsRepository
+			mock(), // ownershipService
+			mock(), // logger
+			mock(), // errorReporter
+			mock(), // credentialsTester
+			mock(), // externalHooks
+			mock(), // credentialTypes
+			mock(), // projectRepository
+			mock(), // projectService
+			mock(), // roleService
+			mock(), // userRepository
+			mock(), // credentialsFinderService
+			mock(), // credentialsHelper
+			mock(), // externalSecretsConfig
+			mock(), // externalSecretsProviderAccessCheckService
+			mock(), // connectionStatusProxy
+		);
+
+		beforeEach(() => {
+			credentialsRepository = mock<CredentialsRepository>();
+
+			vi.spyOn(credentialsService, 'decrypt');
+
+			vi.spyOn(Container, 'get').mockImplementation((serviceClass) => {
+				if (serviceClass === CredentialsService) {
+					return credentialsService;
+				}
+				if (serviceClass === CredentialsRepository) {
+					return credentialsRepository;
+				}
+				if (serviceClass === Cipher) {
+					return cipher;
+				}
+				if (serviceClass === SecretsProviderAccessCheckService) {
+					return mockSecretsProviderAccessCheckService;
+				}
+				if (serviceClass === ExternalSecretsConfig) {
+					return mockExternalSecretsConfig;
+				}
+				return mock();
+			});
+
+			//vi.clearAllMocks();
+
+			ownerUser = { id: 'user-with-permission', role: GLOBAL_OWNER_ROLE } as User;
+			memberUser = { id: 'user-without-permission', role: GLOBAL_MEMBER_ROLE } as User;
+		});
+
+		describe('external secrets', () => {
+			const owningProjectData: Partial<Project> = {
+				id: 'nUnAvqXSO4nw522z',
+				name: 'Test Project',
+				type: 'team',
+				icon: { type: 'icon', value: 'layers' },
+			};
+			const owningProject = {
+				role: 'credential:owner',
+				project: owningProjectData as Project,
+			} as SharedCredentials;
+			it('should throw error when user without permission tries to add external secret expression', async () => {
+				vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
+				const existingCredential = mock<CredentialsEntity>({
+					id: 'cred-id',
+					name: 'Test Credential',
+					type: 'testApi',
+					isManaged: false,
+					shared: [owningProject],
+				});
+
+				credentialsRepository.findOne = vi.fn().mockResolvedValue(existingCredential);
+				credentialsRepository.update = vi.fn().mockResolvedValue(undefined);
+				// mock credential that doesn't have secret expression yet
+				vi.mocked(credentialsService.decrypt).mockResolvedValue({ apiKey: 'regular-secret' });
+
+				await expect(
+					updateCredential(existingCredential, memberUser, {
+						data: { apiKey: '{{ $secrets.vault.myKey }}' },
+					}),
+				).rejects.toThrow('Lacking permissions to reference external secrets in credentials');
+			});
+
+			it('should throw error when user without permission tries to modify existing external secret expression', async () => {
+				vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(false);
+				const existingCredential = mock<CredentialsEntity>({
+					id: 'cred-id',
+					name: 'Test Credential',
+					type: 'testApi',
+					isManaged: false,
+					shared: [owningProject],
+				});
+
+				credentialsRepository.findOne = vi.fn().mockResolvedValue(existingCredential);
+				credentialsRepository.update = vi.fn().mockResolvedValue(undefined);
+
+				// Mock credential that already has secret expression
+				vi.mocked(credentialsService.decrypt).mockResolvedValue({
+					apiKey: '{{ $secrets.vault.oldKey }}',
+				});
+
+				await expect(
+					updateCredential(existingCredential, memberUser, {
+						data: { apiKey: '{{ $secrets.vault.newKey }}' },
+					}),
+				).rejects.toThrow('Lacking permissions to reference external secrets in credentials');
+			});
+
+			it('should throw error when external secret store referenced in expression is not shared with current project', async () => {
+				vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+				const existingCredential = mock<CredentialsEntity>({
+					id: 'UdGtZBYb2TLDgSHy',
+					name: 'Test Credential',
+					type: 'testApi',
+					isManaged: false,
+					shared: [owningProject],
+				});
+				const secretProviderKey = 'vault';
+				const secretExpression = `={{ $secrets.${secretProviderKey}.myKey }}`;
+
+				credentialsRepository.findOne = vi.fn().mockResolvedValue(existingCredential);
+				credentialsRepository.update = vi.fn().mockResolvedValue(undefined);
+				vi.mocked(credentialsService.decrypt).mockResolvedValue({
+					apiKey: 'currentPlainTextValue',
+				});
+				vi.mocked(
+					mockSecretsProviderAccessCheckService.isProviderAvailableInProject,
+				).mockResolvedValue(false);
+				mockExternalSecretsConfig.externalSecretsForProjects = true;
+
+				await expect(
+					updateCredential(existingCredential, ownerUser, {
+						data: { apiKey: secretExpression },
+					}),
+				).rejects.toThrow(
+					'The secret provider "vault" used in "apiKey" does not exist in this project',
+				);
+			});
+
+			it('should allow updates when no external secret expression is being changed', async () => {
+				const existingCredential = mock<CredentialsEntity>({
+					id: 'cred-id',
+					name: 'Test Credential',
+					type: 'testApi',
+					isManaged: false,
+					shared: [owningProject],
+				});
+
+				credentialsRepository.findOne = vi.fn().mockResolvedValue(existingCredential);
+				credentialsRepository.update = vi.fn().mockResolvedValue(undefined);
+
+				// Mock credential that has existing secret expression
+				vi.mocked(credentialsService.decrypt).mockResolvedValue({
+					apiKey: '{{ $secrets.vault.myKey }}',
+				});
+
+				credentialsRepository.update = vi.fn().mockResolvedValue(undefined);
+
+				await updateCredential(existingCredential, memberUser, {
+					name: 'Updated Name',
+				});
+			});
+
+			it('should allow updates of non-secret data without specific external-secret permission', async () => {
+				const existingCredential = mock<CredentialsEntity>({
+					id: 'cred-id',
+					name: 'Test Credential',
+					type: 'testApi',
+					isManaged: false,
+					shared: [owningProject],
+				});
+
+				credentialsRepository.findOne = vi.fn().mockResolvedValue(existingCredential);
+				credentialsRepository.update = vi.fn().mockResolvedValue(undefined);
+
+				// Mock credential not using any external secret expressions
+				vi.mocked(credentialsService.decrypt).mockResolvedValue({ apiKey: 'regular-key' });
+
+				credentialsRepository.update = vi.fn().mockResolvedValue(undefined);
+
+				await updateCredential(existingCredential, memberUser, {
+					data: { apiKey: 'another-regular-key' },
+				});
+			});
+
+			it('should allow user with permission to add external secret expression', async () => {
+				vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+				const existingCredential = mock<CredentialsEntity>({
+					id: 'cred-id',
+					name: 'Test Credential',
+					type: 'testApi',
+					isManaged: false,
+					shared: [owningProject],
+				});
+				credentialsRepository.findOne = vi.fn().mockResolvedValue(existingCredential);
+				credentialsRepository.update = vi.fn().mockResolvedValue(undefined);
+				vi.mocked(credentialsService.decrypt).mockResolvedValue({ apiKey: 'regular-key' });
+				vi.mocked(
+					mockSecretsProviderAccessCheckService.isProviderAvailableInProject,
+				).mockResolvedValue(true);
+				credentialsRepository.update = vi.fn().mockResolvedValue(undefined);
+
+				await updateCredential(existingCredential, ownerUser, {
+					data: { apiKey: '{{ $secrets.vault.myKey }}' },
+				});
+			});
 		});
 	});
 });

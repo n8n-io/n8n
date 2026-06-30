@@ -1,12 +1,13 @@
-import { testDb } from '@n8n/backend-test-utils';
+import { mockInstance, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { SettingsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Cipher } from 'n8n-core';
 
-import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { CredentialTypes } from '@/credential-types';
+import { CredentialsOverwrites } from '@/credentials-overwrites';
 import type { ICredentialsOverwrite } from '@/interfaces';
+import { FrontendService } from '@/services/frontend.service';
 
 describe('CredentialsOverwrites - Integration Tests', () => {
 	let credentialsOverwrites: CredentialsOverwrites;
@@ -16,6 +17,9 @@ describe('CredentialsOverwrites - Integration Tests', () => {
 	let credentialTypes: CredentialTypes;
 
 	beforeAll(async () => {
+		// Mock FrontendService to prevent initialization issues during tests
+		mockInstance(FrontendService);
+
 		// Initialize real database
 		await testDb.init();
 
@@ -32,6 +36,7 @@ describe('CredentialsOverwrites - Integration Tests', () => {
 				persistence: true, // Enable persistence for integration tests
 				endpointAuthToken: 'integration-test-token',
 				endpoint: 'integration-credentials-overwrite',
+				skipTypes: [],
 			},
 		};
 
@@ -170,7 +175,7 @@ describe('CredentialsOverwrites - Integration Tests', () => {
 				const mixedConfig = new CredentialsOverwrites(
 					globalConfig,
 					credentialTypes,
-					{ debug: jest.fn(), warn: jest.fn(), error: jest.fn() } as any,
+					{ debug: vi.fn(), warn: vi.fn(), error: vi.fn() } as any,
 					settingsRepository,
 					cipher,
 				);
@@ -253,7 +258,7 @@ describe('CredentialsOverwrites - Integration Tests', () => {
 				// First attempt with failing repository
 				const failingRepo = {
 					...settingsRepository,
-					create: jest.fn(() => {
+					create: vi.fn(() => {
 						throw new Error('Temporary failure');
 					}),
 				};
@@ -261,7 +266,7 @@ describe('CredentialsOverwrites - Integration Tests', () => {
 				const failingInstance = new CredentialsOverwrites(
 					globalConfig,
 					credentialTypes,
-					{ debug: jest.fn(), warn: jest.fn(), error: jest.fn() } as any,
+					{ debug: vi.fn(), warn: vi.fn(), error: vi.fn() } as any,
 					failingRepo as any,
 					cipher,
 				);
@@ -347,7 +352,7 @@ describe('CredentialsOverwrites - Integration Tests', () => {
 				const freshInstance = new CredentialsOverwrites(
 					globalConfig,
 					credentialTypes,
-					{ debug: jest.fn(), warn: jest.fn(), error: jest.fn() } as any,
+					{ debug: vi.fn(), warn: vi.fn(), error: vi.fn() } as any,
 					settingsRepository,
 					cipher,
 				);
@@ -388,7 +393,7 @@ describe('CredentialsOverwrites - Integration Tests', () => {
 				const newInstance = new CredentialsOverwrites(
 					globalConfig,
 					credentialTypes,
-					{ debug: jest.fn(), warn: jest.fn(), error: jest.fn() } as any,
+					{ debug: vi.fn(), warn: vi.fn(), error: vi.fn() } as any,
 					settingsRepository,
 					cipher,
 				);

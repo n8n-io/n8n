@@ -9,6 +9,7 @@ import type {
 import * as eventsApi from '@n8n/rest-api-client/api/events';
 import * as settingsApi from '@n8n/rest-api-client/api/settings';
 import * as moduleSettingsApi from '@n8n/rest-api-client/api/module-settings';
+import * as aiUsageApi from '@n8n/rest-api-client/api/ai-usage';
 import { testHealthEndpoint } from '@n8n/rest-api-client/api/templates';
 import { INSECURE_CONNECTION_WARNING } from '@/app/constants';
 import { STORES } from '@n8n/stores';
@@ -27,6 +28,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		showSetupOnFirstLoad: false,
 		smtpSetup: false,
 		authenticationMethod: UserManagementAuthenticationMethod.Email,
+		passwordMinLength: 8,
 	});
 	const templatesEndpointHealthy = ref(false);
 	const api = ref({
@@ -71,8 +73,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const concurrency = computed(() => settings.value.concurrency);
 
-	const isNativePythonRunnerEnabled = computed(() => settings.value.isNativePythonRunnerEnabled);
-
 	const isConcurrencyEnabled = computed(() => concurrency.value !== -1);
 
 	const isPublicApiEnabled = computed(() => api.value.enabled);
@@ -80,6 +80,12 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	const isSwaggerUIEnabled = computed(() => api.value.swaggerUi.enabled);
 
 	const isPreviewMode = computed(() => settings.value.previewMode);
+
+	const isCanvasOnly = computed(() => settings.value.canvasOnly);
+
+	const isCrdtCollaborationEnabled = computed(
+		() => (settings.value.collaboration?.crdt ?? 'off') !== 'off',
+	);
 
 	const publicApiLatestVersion = computed(() => api.value.latestVersion);
 
@@ -111,9 +117,34 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		return activeModules.value?.includes(moduleName);
 	};
 
-	const isAiCreditsEnabled = computed(() => settings.value.aiCredits?.enabled);
+	/**
+	 * Checks whether an agents-module sub-feature token (listed in
+	 * `N8N_AGENTS_MODULES` on the backend) is enabled. Returns `false`
+	 * unless the top-level `agents` module is active AND the token is
+	 * present in the module settings' `modules` array.
+	 *
+	 * Known tokens: see `AGENTS_MODULE_NAMES` in `agents.config.ts`.
+	 */
+	const isAgentModuleActive = (name: string): boolean => {
+		return (
+			isModuleActive('agents') === true &&
+			moduleSettings.value.agents?.modules?.includes(name) === true
+		);
+	};
+
+	const isAiCreditsEnabled = computed(
+		() => settings.value.aiCredits?.enabled && settings.value.aiCredits?.setup,
+	);
 
 	const aiCreditsQuota = computed(() => settings.value.aiCredits?.credits);
+
+	const isAiDataSharingEnabled = computed(
+		() => settings.value.ai?.allowSendingParameterValues ?? true,
+	);
+
+	const isAiGatewayEnabled = computed(() => settings.value.aiGateway?.enabled ?? false);
+
+	const aiGatewayBudget = computed(() => settings.value.aiGateway?.budget ?? 0);
 
 	const isSmtpSetup = computed(() => userManagement.value.smtpSetup);
 
@@ -139,7 +170,30 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const isDataTableFeatureEnabled = computed(() => isModuleActive('data-table'));
 
-	const isChatFeatureEnabled = computed(() => isModuleActive('chat-hub'));
+	const isChatFeatureEnabled = computed(
+		() => isModuleActive('chat-hub') && moduleSettings.value['chat-hub']?.enabled === true,
+	);
+
+	const isOtelCustomSpanAttributesEnabled = computed(() => {
+		const isOtelCustomSpanAttributesLicensed =
+			settings.value.enterprise?.otelCustomSpanAttributes === true;
+		const isOtelModuleActive =
+			isModuleActive('otel') === true && moduleSettings.value.otel?.enabled === true;
+
+		return isOtelCustomSpanAttributesLicensed && isOtelModuleActive;
+	});
+
+	// Opt-in flag: requires `N8N_AGENTS_AI_SANDBOX_ENABLED=true` and
+	// `N8N_AGENTS_AI_SANDBOX_PROVIDER=daytona` on the backend.
+	const isAgentsKnowledgeBaseFeatureEnabled = computed(
+		() =>
+			isModuleActive('agents') === true &&
+			moduleSettings.value.agents?.knowledgeBaseEnabled === true,
+	);
+
+	const isPublicChatTriggerDisabled = computed(
+		() => settings.value.chatTrigger?.disablePublicChat ?? false,
+	);
 
 	const isCustomRolesFeatureEnabled = computed(
 		() => settings.value.enterprise?.customRoles ?? false,
@@ -147,6 +201,12 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const areTagsEnabled = computed(() =>
 		settings.value.workflowTagsDisabled !== undefined ? !settings.value.workflowTagsDisabled : true,
+	);
+
+	const isAutosaveEnabled = computed(() =>
+		settings.value.workflowsAutosaveDisabled !== undefined
+			? !settings.value.workflowsAutosaveDisabled
+			: true,
 	);
 
 	const isHiringBannerEnabled = computed(() => settings.value.hiringBannerEnabled);
@@ -181,6 +241,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	const isCommunityPlan = computed(() => planName.value.toLowerCase() === 'community');
 
 	const isDevRelease = computed(() => settings.value.releaseChannel === 'dev');
+
+	const endpointHealth = computed(() => settings.value.endpointHealth);
 
 	const setSettings = (newSettings: FrontendSettings) => {
 		settings.value = newSettings;
@@ -239,11 +301,16 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		const fetchedSettings = await settingsApi.getSettings(rootStore.restApiContext);
 
 		setSettings(fetchedSettings);
+		rootStore.setDefaultLocale(fetchedSettings.defaultLocale);
+
+		// Set MFA enforced state even for public settings mode
+		// as it is needed to determine if the MFA setup page should be shown
+		isMFAEnforced.value = settings.value.mfa?.enforced ?? false;
 
 		if (fetchedSettings.settingsMode === 'public') {
 			// public settings mode is typically used for unauthenticated users
 			// when public settings are returned we can skip the rest of the setup
-			// that need the full set of auntenticated settings
+			// that need the full set of authenticated settings
 			return;
 		}
 
@@ -255,8 +322,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		setSaveDataSuccessExecution(fetchedSettings.saveDataSuccessExecution);
 		setSaveDataProgressExecution(fetchedSettings.saveExecutionProgress);
 		setSaveManualExecutions(fetchedSettings.saveManualExecutions);
-
-		isMFAEnforced.value = settings.value.mfa?.enforced ?? false;
 
 		rootStore.setUrlBaseWebhook(fetchedSettings.urlBaseWebhook);
 		rootStore.setUrlBaseEditor(fetchedSettings.urlBaseEditor);
@@ -274,7 +339,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		rootStore.setInstanceId(fetchedSettings.instanceId);
 		rootStore.setOauthCallbackUrls(fetchedSettings.oauthCallbackUrls);
 		rootStore.setN8nMetadata(fetchedSettings.n8nMetadata || {});
-		rootStore.setDefaultLocale(fetchedSettings.defaultLocale);
 		rootStore.setBinaryDataMode(fetchedSettings.binaryDataMode);
 
 		if (fetchedSettings.telemetry.enabled) {
@@ -326,6 +390,16 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		moduleSettings.value = fetched;
 	};
 
+	const updateAiDataSharingSettings = async (allowSendingParameterValues: boolean) => {
+		const rootStore = useRootStore();
+		await aiUsageApi.updateAiUsageSettings(rootStore.restApiContext, {
+			allowSendingParameterValues,
+		});
+		if (settings.value.ai) {
+			settings.value.ai.allowSendingParameterValues = allowSendingParameterValues;
+		}
+	};
+
 	return {
 		settings,
 		userManagement,
@@ -334,6 +408,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		mfa,
 		isDocker,
 		isDevRelease,
+		endpointHealth,
 		isEnterpriseFeatureEnabled,
 		databaseType,
 		planName,
@@ -344,11 +419,12 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		nodeJsVersion,
 		nodeEnv,
 		concurrency,
-		isNativePythonRunnerEnabled,
 		isConcurrencyEnabled,
 		isPublicApiEnabled,
 		isSwaggerUIEnabled,
 		isPreviewMode,
+		isCanvasOnly,
+		isCrdtCollaborationEnabled,
 		publicApiLatestVersion,
 		publicApiPath,
 		showSetupPage,
@@ -364,6 +440,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isAiAssistantEnabled,
 		isCustomRolesFeatureEnabled,
 		areTagsEnabled,
+		isAutosaveEnabled,
 		isHiringBannerEnabled,
 		isTemplatesEnabled,
 		isTemplatesEndpointReachable,
@@ -387,6 +464,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isAiAssistantOrBuilderEnabled,
 		isAiCreditsEnabled,
 		aiCreditsQuota,
+		isAiDataSharingEnabled,
+		isAiGatewayEnabled,
+		aiGatewayBudget,
 		reset,
 		getTimezones,
 		testTemplatesEndpoint,
@@ -397,11 +477,16 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		initialize,
 		getModuleSettings,
 		moduleSettings,
+		updateAiDataSharingSettings,
 		isMFAEnforcementLicensed,
 		isMFAEnforced,
 		activeModules,
 		isModuleActive,
+		isAgentModuleActive,
 		isDataTableFeatureEnabled,
 		isChatFeatureEnabled,
+		isOtelCustomSpanAttributesEnabled,
+		isAgentsKnowledgeBaseFeatureEnabled,
+		isPublicChatTriggerDisabled,
 	};
 });

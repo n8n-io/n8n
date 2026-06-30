@@ -11,15 +11,18 @@ describe('N8nSendStopButton', () => {
 		it('should render send button by default', () => {
 			const { container } = renderComponent({
 				global: {
-					stubs: ['N8nButton'],
+					stubs: {
+						N8nButton: {
+							inheritAttrs: true,
+							template: '<button v-bind="$attrs"></button>',
+						},
+					},
 				},
 			});
 
-			const sendButton = container.querySelector('.sendButton');
+			const sendButton = container.querySelector('[data-test-id="send-message-button"]');
 			expect(sendButton).toBeTruthy();
-
-			const stopButton = container.querySelector('.stopButton');
-			expect(stopButton).toBeFalsy();
+			expect(sendButton).toHaveAttribute('aria-label', 'Send');
 		});
 
 		it('should render stop button when streaming', () => {
@@ -28,15 +31,18 @@ describe('N8nSendStopButton', () => {
 					streaming: true,
 				},
 				global: {
-					stubs: ['N8nButton'],
+					stubs: {
+						N8nButton: {
+							inheritAttrs: true,
+							template: '<button v-bind="$attrs"></button>',
+						},
+					},
 				},
 			});
 
-			const sendButton = container.querySelector('.sendButton');
-			expect(sendButton).toBeFalsy();
-
-			const stopButton = container.querySelector('.stopButton');
+			const stopButton = container.querySelector('[data-test-id="send-message-button"]');
 			expect(stopButton).toBeTruthy();
+			expect(stopButton).toHaveAttribute('aria-label', 'Stop');
 		});
 
 		it('should render with custom size', () => {
@@ -47,7 +53,7 @@ describe('N8nSendStopButton', () => {
 				global: {
 					stubs: {
 						N8nButton: {
-							props: ['size', 'type', 'square', 'disabled', 'icon', 'iconSize'],
+							props: ['size', 'variant', 'iconOnly', 'disabled', 'icon', 'iconSize'],
 							template: '<button :class="{sendButton: true}" :data-size="size"></button>',
 						},
 					},
@@ -66,7 +72,7 @@ describe('N8nSendStopButton', () => {
 				global: {
 					stubs: {
 						N8nButton: {
-							props: ['disabled', 'type', 'square', 'icon', 'iconSize', 'size'],
+							props: ['disabled', 'variant', 'iconOnly', 'icon', 'iconSize', 'size'],
 							template: '<button :disabled="disabled" :class="{sendButton: true}"></button>',
 						},
 					},
@@ -84,7 +90,7 @@ describe('N8nSendStopButton', () => {
 				global: {
 					stubs: {
 						N8nButton: {
-							props: ['disabled', 'type', 'square', 'icon', 'iconSize', 'size'],
+							props: ['disabled', 'variant', 'iconOnly', 'icon', 'iconSize', 'size'],
 							template: '<button @click="$emit(\'click\')" :class="{sendButton: true}"></button>',
 							emits: ['click'],
 						},
@@ -107,7 +113,7 @@ describe('N8nSendStopButton', () => {
 				global: {
 					stubs: {
 						N8nButton: {
-							props: ['type', 'square', 'size', 'icon', 'iconSize'],
+							props: ['variant', 'iconOnly', 'size', 'icon', 'iconSize'],
 							template: '<button @click="$emit(\'click\')" :class="{stopButton: true}"></button>',
 							emits: ['click'],
 						},
@@ -130,7 +136,7 @@ describe('N8nSendStopButton', () => {
 				global: {
 					stubs: {
 						N8nButton: {
-							props: ['disabled', 'type', 'square', 'icon', 'iconSize', 'size'],
+							props: ['disabled', 'variant', 'iconOnly', 'icon', 'iconSize', 'size'],
 							template:
 								'<button :disabled="disabled" @click="!disabled && $emit(\'click\')" :class="{sendButton: true}"></button>',
 							emits: ['click'],
@@ -156,13 +162,13 @@ describe('N8nSendStopButton', () => {
 				global: {
 					stubs: {
 						N8nButton: {
-							props: ['type', 'size', 'iconSize', 'square', 'icon', 'disabled'],
+							props: ['variant', 'size', 'iconSize', 'iconOnly', 'icon', 'disabled'],
 							template: `
 								<button
-									:data-type="type"
+									:data-variant="variant"
 									:data-size="size"
 									:data-icon-size="iconSize"
-									:data-square="square"
+									:data-icon-only="iconOnly"
 									:data-icon="icon"
 									:disabled="disabled"
 									:class="{sendButton: true}"
@@ -173,10 +179,10 @@ describe('N8nSendStopButton', () => {
 			});
 
 			const button = container.querySelector('button');
-			expect(button).toHaveAttribute('data-type', 'primary');
+			expect(button).toHaveAttribute('data-variant', 'solid');
 			expect(button).toHaveAttribute('data-size', 'medium');
 			expect(button).toHaveAttribute('data-icon-size', 'large');
-			expect(button).toHaveAttribute('data-square', '');
+			expect(button).toHaveAttribute('data-icon-only', 'true');
 			expect(button).toHaveAttribute('data-icon', 'arrow-up');
 			expect(button).not.toHaveAttribute('disabled');
 		});
@@ -190,12 +196,12 @@ describe('N8nSendStopButton', () => {
 				global: {
 					stubs: {
 						N8nButton: {
-							props: ['type', 'size', 'square'],
+							props: ['variant', 'size', 'iconOnly'],
 							template: `
 								<button
-									:data-type="type"
+									:data-variant="variant"
 									:data-size="size"
-									:data-square="square"
+									:data-icon-only="iconOnly"
 									:class="{stopButton: true}"
 								></button>`,
 						},
@@ -204,19 +210,19 @@ describe('N8nSendStopButton', () => {
 			});
 
 			const button = container.querySelector('button');
-			expect(button).toHaveAttribute('data-type', 'primary');
+			expect(button).toHaveAttribute('data-variant', 'solid');
 			expect(button).toHaveAttribute('data-size', 'small');
-			expect(button).toHaveAttribute('data-square', '');
+			expect(button).toHaveAttribute('data-icon-only', '');
 		});
 	});
 
 	describe('default props', () => {
-		it('should use default size of small', () => {
+		it('should use default size of medium', () => {
 			const { container } = renderComponent({
 				global: {
 					stubs: {
 						N8nButton: {
-							props: ['size', 'type', 'square', 'icon', 'iconSize', 'disabled'],
+							props: ['size', 'variant', 'iconOnly', 'icon', 'iconSize', 'disabled'],
 							template: '<button :data-size="size" :class="{sendButton: true}"></button>',
 						},
 					},
@@ -224,21 +230,24 @@ describe('N8nSendStopButton', () => {
 			});
 
 			const button = container.querySelector('button');
-			expect(button).toHaveAttribute('data-size', 'small');
+			expect(button).toHaveAttribute('data-size', 'medium');
 		});
 
 		it('should default to not streaming', () => {
 			const { container } = renderComponent({
 				global: {
-					stubs: ['N8nButton'],
+					stubs: {
+						N8nButton: {
+							inheritAttrs: true,
+							template: '<button v-bind="$attrs"></button>',
+						},
+					},
 				},
 			});
 
-			const sendButton = container.querySelector('.sendButton');
+			const sendButton = container.querySelector('[data-test-id="send-message-button"]');
 			expect(sendButton).toBeTruthy();
-
-			const stopButton = container.querySelector('.stopButton');
-			expect(stopButton).toBeFalsy();
+			expect(sendButton).toHaveAttribute('aria-label', 'Send');
 		});
 
 		it('should default to not disabled', () => {
@@ -246,7 +255,7 @@ describe('N8nSendStopButton', () => {
 				global: {
 					stubs: {
 						N8nButton: {
-							props: ['disabled', 'type', 'square', 'icon', 'iconSize', 'size'],
+							props: ['disabled', 'variant', 'iconOnly', 'icon', 'iconSize', 'size'],
 							template:
 								'<button :disabled="disabled" :data-disabled="disabled" :class="{sendButton: true}"></button>',
 						},

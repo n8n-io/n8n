@@ -38,7 +38,7 @@ describe('ParameterOptions', () => {
 	});
 
 	it("doesn't render expression with showExpression set to false", () => {
-		const { getByTestId, queryByTestId, container } = renderComponent(ParameterOptions, {
+		const { getByTestId, queryByTestId } = renderComponent(ParameterOptions, {
 			props: {
 				parameter: DEFAULT_PARAMETER,
 				isReadOnly: false,
@@ -50,7 +50,6 @@ describe('ParameterOptions', () => {
 		expect(getByTestId('action-toggle')).toBeInTheDocument();
 		expect(queryByTestId('radio-button-fixed')).not.toBeInTheDocument();
 		expect(queryByTestId('radio-button-expression')).not.toBeInTheDocument();
-		expect(container.querySelector('.noExpressionSelector')).toBeInTheDocument();
 	});
 
 	it('should render loading state', () => {
@@ -97,7 +96,7 @@ describe('ParameterOptions', () => {
 		const actionToggle = getByTestId('action-toggle');
 		const actionToggleButton = within(actionToggle).getByRole('button');
 		expect(actionToggleButton).toBeVisible();
-		await userEvent.click(actionToggle);
+		await userEvent.click(actionToggleButton);
 		const actionToggleId = actionToggleButton.getAttribute('aria-controls');
 		const actionDropdown = document.getElementById(actionToggleId as string) as HTMLElement;
 		expect(actionDropdown).toBeInTheDocument();

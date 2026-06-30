@@ -43,6 +43,11 @@ describe('AddWorkflowPublishScopeToProjectRoles Migration', () => {
 
 		dataSource = Container.get(DataSource);
 
+		// Clear database to start with clean slate
+		const context = createTestMigrationContext(dataSource);
+		await context.queryRunner.clearDatabase();
+		await context.queryRunner.release();
+
 		await initDbUpToMigration(MIGRATION_NAME);
 	});
 
@@ -63,15 +68,19 @@ describe('AddWorkflowPublishScopeToProjectRoles Migration', () => {
 		const displayNameColumn = context.escape.columnName('displayName');
 		const descriptionColumn = context.escape.columnName('description');
 
-		const existingScope = await context.queryRunner.query(
-			`SELECT ${slugColumn} FROM ${tableName} WHERE ${slugColumn} = ?`,
-			[scopeData.slug],
+		const existingScope = await context.runQuery<unknown[]>(
+			`SELECT ${slugColumn} FROM ${tableName} WHERE ${slugColumn} = :slug`,
+			{ slug: scopeData.slug },
 		);
 
 		if (existingScope.length === 0) {
-			await context.queryRunner.query(
-				`INSERT INTO ${tableName} (${slugColumn}, ${displayNameColumn}, ${descriptionColumn}) VALUES (?, ?, ?)`,
-				[scopeData.slug, scopeData.displayName, scopeData.description],
+			await context.runQuery(
+				`INSERT INTO ${tableName} (${slugColumn}, ${displayNameColumn}, ${descriptionColumn}) VALUES (:slug, :displayName, :description)`,
+				{
+					slug: scopeData.slug,
+					displayName: scopeData.displayName,
+					description: scopeData.description,
+				},
 			);
 		}
 	}
@@ -90,9 +99,16 @@ describe('AddWorkflowPublishScopeToProjectRoles Migration', () => {
 
 		const systemRole = roleData.systemRole ?? false;
 
-		await context.queryRunner.query(
-			`INSERT INTO ${tableName} (${slugColumn}, ${displayNameColumn}, ${roleTypeColumn}, ${systemRoleColumn}, ${createdAtColumn}, ${updatedAtColumn}) VALUES (?, ?, ?, ?, ?, ?)`,
-			[roleData.slug, roleData.displayName, roleData.roleType, systemRole, new Date(), new Date()],
+		await context.runQuery(
+			`INSERT INTO ${tableName} (${slugColumn}, ${displayNameColumn}, ${roleTypeColumn}, ${systemRoleColumn}, ${createdAtColumn}, ${updatedAtColumn}) VALUES (:slug, :displayName, :roleType, :systemRole, :createdAt, :updatedAt)`,
+			{
+				slug: roleData.slug,
+				displayName: roleData.displayName,
+				roleType: roleData.roleType,
+				systemRole,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			},
 		);
 	}
 
@@ -107,9 +123,9 @@ describe('AddWorkflowPublishScopeToProjectRoles Migration', () => {
 		const roleSlugColumn = context.escape.columnName('roleSlug');
 		const scopeSlugColumn = context.escape.columnName('scopeSlug');
 
-		await context.queryRunner.query(
-			`INSERT INTO ${tableName} (${roleSlugColumn}, ${scopeSlugColumn}) VALUES (?, ?)`,
-			[roleScopeData.roleSlug, roleScopeData.scopeSlug],
+		await context.runQuery(
+			`INSERT INTO ${tableName} (${roleSlugColumn}, ${scopeSlugColumn}) VALUES (:roleSlug, :scopeSlug)`,
+			{ roleSlug: roleScopeData.roleSlug, scopeSlug: roleScopeData.scopeSlug },
 		);
 	}
 
@@ -124,12 +140,12 @@ describe('AddWorkflowPublishScopeToProjectRoles Migration', () => {
 		const roleSlugColumn = context.escape.columnName('roleSlug');
 		const scopeSlugColumn = context.escape.columnName('scopeSlug');
 
-		const scopes = await context.queryRunner.query(
-			`SELECT ${roleSlugColumn} as roleSlug, ${scopeSlugColumn} as scopeSlug FROM ${tableName} WHERE ${roleSlugColumn} = ?`,
-			[roleSlug],
+		const scopes = await context.runQuery<Array<{ roleSlug: string; scopeSlug: string }>>(
+			`SELECT ${roleSlugColumn}, ${scopeSlugColumn} FROM ${tableName} WHERE ${roleSlugColumn} = :roleSlug`,
+			{ roleSlug },
 		);
 
-		return scopes;
+		return scopes as RoleScopeRow[];
 	}
 
 	/**
@@ -143,12 +159,12 @@ describe('AddWorkflowPublishScopeToProjectRoles Migration', () => {
 		const roleSlugColumn = context.escape.columnName('roleSlug');
 		const scopeSlugColumn = context.escape.columnName('scopeSlug');
 
-		const roleScopeEntries = await context.queryRunner.query(
-			`SELECT ${roleSlugColumn} as roleSlug, ${scopeSlugColumn} as scopeSlug FROM ${tableName} WHERE ${scopeSlugColumn} = ?`,
-			[scopeSlug],
+		const roleScopeEntries = await context.runQuery<Array<{ roleSlug: string; scopeSlug: string }>>(
+			`SELECT ${roleSlugColumn}, ${scopeSlugColumn} FROM ${tableName} WHERE ${scopeSlugColumn} = :scopeSlug`,
+			{ scopeSlug },
 		);
 
-		return roleScopeEntries;
+		return roleScopeEntries as RoleScopeRow[];
 	}
 
 	describe('up migration', () => {

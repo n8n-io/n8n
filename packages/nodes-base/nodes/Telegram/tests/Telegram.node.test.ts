@@ -1,4 +1,4 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type {
 	IExecuteFunctions,
 	INode,
@@ -8,14 +8,21 @@ import type {
 
 import * as GenericFunctions from '../GenericFunctions';
 import { Telegram } from '../Telegram.node';
+import type { MockInstance } from 'vitest';
 
 describe('Telegram node', () => {
 	const executeFunctionsMock = mockDeep<IExecuteFunctions>();
-	const apiRequestSpy = jest.spyOn(GenericFunctions, 'apiRequest');
+	let apiRequestSpy: MockInstance;
 	const node = new Telegram();
 
+	const legacyBinaryAccessHelper = (index: number, propertyName: string | any) => {
+		const items = executeFunctionsMock.getInputData();
+		return items[index].binary![propertyName as string];
+	};
+
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
+		apiRequestSpy = vi.spyOn(GenericFunctions, 'apiRequest');
 		executeFunctionsMock.getCredentials.mockResolvedValue({
 			baseUrl: 'https://api.telegram.org',
 			accessToken: 'test-token',
@@ -196,8 +203,238 @@ describe('Telegram node', () => {
 		});
 	});
 
+	describe('assertBinaryData usage', () => {
+		beforeEach(() => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((paramName, _) => {
+				switch (paramName) {
+					case 'resource':
+						return 'message';
+					case 'operation':
+						return 'sendPhoto';
+					case 'binaryData':
+						return true;
+					case 'chatId':
+						return 'chat-id';
+					case 'binaryPropertyName':
+						return 'data';
+					case 'additionalFields.fileName':
+						return '';
+					case 'additionalFields':
+						return {};
+					default:
+						return undefined;
+				}
+			});
+		});
+
+		it('should call assertBinaryData with correct parameters', async () => {
+			executeFunctionsMock.getInputData.mockReturnValue([
+				{
+					json: {},
+					binary: {
+						data: {
+							data: 'binary-data',
+							mimeType: 'image/jpeg',
+							fileName: 'photo.jpg',
+						},
+					},
+				},
+			]);
+
+			executeFunctionsMock.helpers.assertBinaryData.mockReturnValue({
+				data: 'binary-data',
+				mimeType: 'image/jpeg',
+				fileName: 'photo.jpg',
+			});
+
+			apiRequestSpy.mockResolvedValue([{ result: { message_id: 123 } }]);
+
+			await node.execute.call(executeFunctionsMock);
+
+			expect(executeFunctionsMock.helpers.assertBinaryData).toHaveBeenCalledWith(0, 'data');
+		});
+
+		it('should call assertBinaryData for each item with correct index', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((paramName, index) => {
+				switch (paramName) {
+					case 'resource':
+						return 'message';
+					case 'operation':
+						return 'sendPhoto';
+					case 'binaryData':
+						return true;
+					case 'chatId':
+						return `chat-id-${index}`;
+					case 'binaryPropertyName':
+						return `data${index}`;
+					case 'additionalFields.fileName':
+						return '';
+					case 'additionalFields':
+						return {};
+					default:
+						return undefined;
+				}
+			});
+
+			executeFunctionsMock.getInputData.mockReturnValue([
+				{
+					json: {},
+					binary: {
+						data0: {
+							data: 'binary-data-0',
+							mimeType: 'image/jpeg',
+							fileName: 'photo0.jpg',
+						},
+					},
+				},
+				{
+					json: {},
+					binary: {
+						data1: {
+							data: 'binary-data-1',
+							mimeType: 'image/png',
+							fileName: 'photo1.png',
+						},
+					},
+				},
+				{
+					json: {},
+					binary: {
+						data2: {
+							data: 'binary-data-2',
+							mimeType: 'image/gif',
+							fileName: 'photo2.gif',
+						},
+					},
+				},
+			]);
+
+			executeFunctionsMock.helpers.assertBinaryData.mockImplementation(legacyBinaryAccessHelper);
+
+			apiRequestSpy.mockResolvedValue([{ result: { message_id: 123 } }]);
+
+			await node.execute.call(executeFunctionsMock);
+
+			expect(executeFunctionsMock.helpers.assertBinaryData).toHaveBeenCalledTimes(3);
+			expect(executeFunctionsMock.helpers.assertBinaryData).toHaveBeenNthCalledWith(1, 0, 'data0');
+			expect(executeFunctionsMock.helpers.assertBinaryData).toHaveBeenNthCalledWith(2, 1, 'data1');
+			expect(executeFunctionsMock.helpers.assertBinaryData).toHaveBeenNthCalledWith(3, 2, 'data2');
+		});
+
+		it('should throw error when binary data is missing', async () => {
+			executeFunctionsMock.getInputData.mockReturnValue([
+				{
+					json: {},
+					// No binary data
+				},
+			]);
+
+			executeFunctionsMock.helpers.assertBinaryData.mockImplementation(() => {
+				throw new Error('No binary data exists on item!');
+			});
+
+			await expect(node.execute.call(executeFunctionsMock)).rejects.toThrow(
+				'No binary data exists on item!',
+			);
+
+			expect(executeFunctionsMock.helpers.assertBinaryData).toHaveBeenCalledWith(0, 'data');
+		});
+
+		it('should throw error when specified binary property does not exist', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((paramName) => {
+				switch (paramName) {
+					case 'resource':
+						return 'message';
+					case 'operation':
+						return 'sendPhoto';
+					case 'binaryData':
+						return true;
+					case 'chatId':
+						return 'chat-id';
+					case 'binaryPropertyName':
+						return 'nonExistentProperty';
+					case 'additionalFields.fileName':
+						return '';
+					case 'additionalFields':
+						return {};
+					default:
+						return undefined;
+				}
+			});
+
+			executeFunctionsMock.getInputData.mockReturnValue([
+				{
+					json: {},
+					binary: {
+						data: {
+							data: 'binary-data',
+							mimeType: 'image/jpeg',
+							fileName: 'photo.jpg',
+						},
+					},
+				},
+			]);
+
+			executeFunctionsMock.helpers.assertBinaryData.mockImplementation(() => {
+				throw new Error("There is no binary data property 'nonExistentProperty' on item!");
+			});
+
+			await expect(node.execute.call(executeFunctionsMock)).rejects.toThrow(
+				"There is no binary data property 'nonExistentProperty' on item!",
+			);
+
+			expect(executeFunctionsMock.helpers.assertBinaryData).toHaveBeenCalledWith(
+				0,
+				'nonExistentProperty',
+			);
+		});
+
+		it('should use fileName from assertBinaryData result when additionalFields.fileName is not provided', async () => {
+			const mockBinaryData = {
+				data: 'binary-data',
+				mimeType: 'image/jpeg',
+				fileName: 'from-binary-data.jpg',
+			};
+
+			executeFunctionsMock.getInputData.mockReturnValue([
+				{
+					json: {},
+					binary: {
+						data: mockBinaryData,
+					},
+				},
+			]);
+
+			executeFunctionsMock.helpers.assertBinaryData.mockReturnValue(mockBinaryData);
+
+			apiRequestSpy.mockResolvedValue([{ result: { message_id: 123 } }]);
+
+			await node.execute.call(executeFunctionsMock);
+
+			expect(executeFunctionsMock.helpers.assertBinaryData).toHaveBeenCalledWith(0, 'data');
+			expect(apiRequestSpy).toHaveBeenCalledWith(
+				'POST',
+				'sendPhoto',
+				{},
+				{},
+				expect.objectContaining({
+					formData: expect.objectContaining({
+						photo: expect.objectContaining({
+							options: expect.objectContaining({
+								filename: 'from-binary-data.jpg',
+								contentType: 'image/jpeg',
+							}),
+						}),
+					}),
+				}),
+			);
+		});
+	});
+
 	describe('message:sendPhoto with binary data', () => {
 		beforeEach(() => {
+			executeFunctionsMock.helpers.assertBinaryData.mockImplementation(legacyBinaryAccessHelper);
+
 			executeFunctionsMock.getNodeParameter.mockImplementation((paramName, index) => {
 				switch (paramName) {
 					case 'resource':
@@ -513,6 +750,281 @@ describe('Telegram node', () => {
 			expectChatId(1, 'chat-id-0');
 			expectChatId(2, 'chat-id-1');
 			expectChatId(3, 'chat-id-2');
+		});
+	});
+
+	describe('message:sendMessageDraft', () => {
+		it('should send the draft with chat_id, draft_id, text and additional fields', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((p) => {
+				switch (p) {
+					case 'resource':
+						return 'message';
+					case 'operation':
+						return 'sendMessageDraft';
+					case 'binaryData':
+						return false;
+					case 'chatId':
+						return '123456789';
+					case 'draftId':
+						return 42;
+					case 'text':
+						return 'Generating an answer';
+					case 'additionalFields':
+						return { parse_mode: 'HTML', message_thread_id: 7 };
+					default:
+						return undefined;
+				}
+			});
+			apiRequestSpy.mockResolvedValue([{ ok: true, result: true }]);
+
+			await node.execute.call(executeFunctionsMock);
+
+			expect(apiRequestSpy).toHaveBeenCalledWith(
+				'POST',
+				'sendMessageDraft',
+				{
+					chat_id: '123456789',
+					draft_id: 42,
+					text: 'Generating an answer',
+					parse_mode: 'HTML',
+					message_thread_id: 7,
+				},
+				{},
+			);
+		});
+
+		it('should allow an empty text in the draft', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((p) => {
+				switch (p) {
+					case 'resource':
+						return 'message';
+					case 'operation':
+						return 'sendMessageDraft';
+					case 'binaryData':
+						return false;
+					case 'chatId':
+						return '123456789';
+					case 'draftId':
+						return 1;
+					case 'text':
+						return '';
+					case 'additionalFields':
+						return {};
+					default:
+						return undefined;
+				}
+			});
+			apiRequestSpy.mockResolvedValue([{ ok: true, result: true }]);
+
+			await node.execute.call(executeFunctionsMock);
+
+			expect(apiRequestSpy).toHaveBeenCalledWith(
+				'POST',
+				'sendMessageDraft',
+				{ chat_id: '123456789', draft_id: 1, text: '' },
+				{},
+			);
+		});
+
+		it('should throw when the draft ID is zero', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((p) => {
+				switch (p) {
+					case 'resource':
+						return 'message';
+					case 'operation':
+						return 'sendMessageDraft';
+					case 'binaryData':
+						return false;
+					case 'chatId':
+						return '123456789';
+					case 'draftId':
+						return 0;
+					case 'text':
+						return 'hello';
+					case 'additionalFields':
+						return {};
+					default:
+						return undefined;
+				}
+			});
+			executeFunctionsMock.continueOnFail.mockReturnValue(false);
+
+			await expect(node.execute.call(executeFunctionsMock)).rejects.toThrow(
+				'Draft ID must be non-zero',
+			);
+			expect(apiRequestSpy).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('message:sendRichMessage', () => {
+		it('should wrap markdown content in rich_message and merge send options', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((p) => {
+				switch (p) {
+					case 'resource':
+						return 'message';
+					case 'operation':
+						return 'sendRichMessage';
+					case 'binaryData':
+						return false;
+					case 'chatId':
+						return '@channel';
+					case 'richFormat':
+						return 'markdown';
+					case 'richMessageText':
+						return '# Title\n\nBody';
+					case 'additionalFields':
+						return { is_rtl: true, disable_notification: true, message_thread_id: 5 };
+					case 'replyMarkup':
+						return 'none';
+					default:
+						return undefined;
+				}
+			});
+			apiRequestSpy.mockResolvedValue([{ ok: true, result: { message_id: 99 } }]);
+
+			await node.execute.call(executeFunctionsMock);
+
+			expect(apiRequestSpy).toHaveBeenCalledWith(
+				'POST',
+				'sendRichMessage',
+				{
+					chat_id: '@channel',
+					rich_message: { markdown: '# Title\n\nBody', is_rtl: true },
+					disable_notification: true,
+					message_thread_id: 5,
+				},
+				{},
+			);
+		});
+
+		it('should use the html field when the format is HTML', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((p) => {
+				switch (p) {
+					case 'resource':
+						return 'message';
+					case 'operation':
+						return 'sendRichMessage';
+					case 'binaryData':
+						return false;
+					case 'chatId':
+						return '123';
+					case 'richFormat':
+						return 'html';
+					case 'richMessageText':
+						return '<b>Hello</b>';
+					case 'additionalFields':
+						return { skip_entity_detection: true };
+					case 'replyMarkup':
+						return 'none';
+					default:
+						return undefined;
+				}
+			});
+			apiRequestSpy.mockResolvedValue([{ ok: true, result: { message_id: 100 } }]);
+
+			await node.execute.call(executeFunctionsMock);
+
+			expect(apiRequestSpy).toHaveBeenCalledWith(
+				'POST',
+				'sendRichMessage',
+				{
+					chat_id: '123',
+					rich_message: { html: '<b>Hello</b>', skip_entity_detection: true },
+				},
+				{},
+			);
+		});
+
+		it('should attach reply_markup with an inline keyboard', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((p) => {
+				switch (p) {
+					case 'resource':
+						return 'message';
+					case 'operation':
+						return 'sendRichMessage';
+					case 'binaryData':
+						return false;
+					case 'chatId':
+						return '123';
+					case 'richFormat':
+						return 'html';
+					case 'richMessageText':
+						return '<b>Hi</b>';
+					case 'additionalFields':
+						return {};
+					case 'replyMarkup':
+						return 'inlineKeyboard';
+					case 'inlineKeyboard':
+						return {
+							rows: [
+								{
+									row: {
+										buttons: [{ text: 'Open', additionalFields: { url: 'https://n8n.io' } }],
+									},
+								},
+							],
+						};
+					default:
+						return undefined;
+				}
+			});
+			apiRequestSpy.mockResolvedValue([{ ok: true, result: { message_id: 5 } }]);
+
+			await node.execute.call(executeFunctionsMock);
+
+			expect(apiRequestSpy).toHaveBeenCalledWith(
+				'POST',
+				'sendRichMessage',
+				{
+					chat_id: '123',
+					rich_message: { html: '<b>Hi</b>' },
+					reply_markup: {
+						inline_keyboard: [[{ text: 'Open', url: 'https://n8n.io' }]],
+					},
+				},
+				{},
+			);
+		});
+	});
+
+	describe('message:sendRichMessageDraft', () => {
+		it('should stream the rich message with chat_id and draft_id', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((p) => {
+				switch (p) {
+					case 'resource':
+						return 'message';
+					case 'operation':
+						return 'sendRichMessageDraft';
+					case 'binaryData':
+						return false;
+					case 'chatId':
+						return '123456789';
+					case 'draftId':
+						return 7;
+					case 'richFormat':
+						return 'markdown';
+					case 'richMessageText':
+						return '## Streaming';
+					case 'additionalFields':
+						return {};
+					default:
+						return undefined;
+				}
+			});
+			apiRequestSpy.mockResolvedValue([{ ok: true, result: true }]);
+
+			await node.execute.call(executeFunctionsMock);
+
+			expect(apiRequestSpy).toHaveBeenCalledWith(
+				'POST',
+				'sendRichMessageDraft',
+				{
+					chat_id: '123456789',
+					draft_id: 7,
+					rich_message: { markdown: '## Streaming' },
+				},
+				{},
+			);
 		});
 	});
 });

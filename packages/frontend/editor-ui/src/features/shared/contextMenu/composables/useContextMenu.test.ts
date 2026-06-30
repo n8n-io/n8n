@@ -1,5 +1,15 @@
 import type { INodeUi } from '@/Interface';
 import { useContextMenu } from './useContextMenu';
+
+// Instantiates the builder store transitively, which derives the workflow id from
+// the route. This composable test runs without a router, so resolve the id directly.
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	return {
+		useWorkflowId: () => computed(() => ''),
+		useRouteWorkflowId: () => computed(() => ''),
+	};
+});
 import {
 	BASIC_CHAIN_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
@@ -7,10 +17,44 @@ import {
 	STICKY_NODE_TYPE,
 } from '@/app/constants';
 import { faker } from '@faker-js/faker';
+import { shallowRef } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useFocusedNodesStore } from '@/features/ai/assistant/focusedNodes.store';
+import {
+	useWorkflowDocumentStore,
+	createWorkflowDocumentId,
+	injectWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
+
+vi.mock('@/app/stores/workflowDocument.store', async (importOriginal) => ({
+	...(await importOriginal()),
+	injectWorkflowDocumentStore: vi.fn(),
+}));
+
+// useContextMenuItems resolves per-editor host overrides via inject, which is
+// unavailable in this non-component harness — stub it with mutable flags.
+const editorContextFlags = vi.hoisted(() => ({
+	aiAssistant: true,
+	aiBuilder: true,
+	instanceAi: false,
+}));
+vi.mock('@/app/composables/useEditorContext', async () => {
+	const { computed } = await import('vue');
+	return {
+		useEditorContext: () => ({
+			aiAssistant: computed(() => editorContextFlags.aiAssistant),
+			aiBuilder: computed(() => editorContextFlags.aiBuilder),
+			instanceAi: computed(() => editorContextFlags.instanceAi),
+			askAi: computed(() => true),
+			readOnly: computed(() => false),
+			executionSuccessToasts: computed(() => true),
+			executionErrorToasts: computed(() => true),
+		}),
+	};
+});
 import {
 	EXECUTE_WORKFLOW_NODE_TYPE,
 	NodeConnectionTypes,
@@ -33,8 +77,11 @@ describe('useContextMenu', () => {
 	let sourceControlStore: ReturnType<typeof useSourceControlStore>;
 	let uiStore: ReturnType<typeof useUIStore>;
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
+	let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>;
+	let focusedNodesStore: ReturnType<typeof useFocusedNodesStore>;
 	const nodes = [nodeFactory(), nodeFactory(), nodeFactory()];
 	const selectedNodes = nodes.slice(0, 2);
+	const testWorkflowId = 'test-workflow-id';
 
 	beforeAll(() => {
 		setActivePinia(createPinia());
@@ -46,15 +93,14 @@ describe('useContextMenu', () => {
 		uiStore = useUIStore();
 		vi.spyOn(uiStore, 'isReadOnlyView', 'get').mockReturnValue(false);
 
+		focusedNodesStore = useFocusedNodesStore();
+
 		workflowsStore = useWorkflowsStore();
-		workflowsStore.workflow.nodes = nodes;
-		workflowsStore.workflow.scopes = ['workflow:update'];
-		workflowsStore.workflowObject = {
-			nodes,
-			getNode: (_: string) => {
-				return {};
-			},
-		} as never;
+		workflowsStore.setWorkflowId(testWorkflowId);
+		workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(testWorkflowId));
+		workflowDocumentStore.setNodes(nodes);
+		workflowDocumentStore.setScopes(['workflow:update']);
+		vi.mocked(injectWorkflowDocumentStore).mockReturnValue(shallowRef(workflowDocumentStore));
 
 		vi.spyOn(NodeHelpers, 'getNodeInputs').mockReturnValue([]);
 		vi.spyOn(NodeHelpers, 'isExecutable').mockReturnValue(true);
@@ -66,6 +112,31 @@ describe('useContextMenu', () => {
 	});
 
 	const mockEvent = new MouseEvent('contextmenu', { clientX: 500, clientY: 300 });
+
+	describe('focus_ai_on_selected gating', () => {
+		beforeEach(() => {
+			editorContextFlags.aiAssistant = true;
+			editorContextFlags.aiBuilder = true;
+			vi.spyOn(focusedNodesStore, 'isFeatureEnabled', 'get').mockReturnValue(true);
+		});
+
+		it('shows "Focus AI on selected" when the focused-nodes feature is on and AI is available', () => {
+			const { open, actions } = useContextMenu();
+			open(mockEvent, { source: 'canvas', nodeIds: selectedNodes.map((n) => n.id) });
+
+			expect(actions.value.some((action) => action.id === 'focus_ai_on_selected')).toBe(true);
+		});
+
+		it('hides "Focus AI on selected" when the editor host disables AI', () => {
+			editorContextFlags.aiAssistant = false;
+			editorContextFlags.aiBuilder = false;
+
+			const { open, actions } = useContextMenu();
+			open(mockEvent, { source: 'canvas', nodeIds: selectedNodes.map((n) => n.id) });
+
+			expect(actions.value.some((action) => action.id === 'focus_ai_on_selected')).toBe(false);
+		});
+	});
 
 	it('should support opening and closing (default = right click on canvas)', () => {
 		const { open, close, isOpen, actions, position, target, targetNodeIds } = useContextMenu();
@@ -94,7 +165,7 @@ describe('useContextMenu', () => {
 	it('should return the correct actions when right clicking a sticky', () => {
 		const { open, isOpen, actions, targetNodeIds } = useContextMenu();
 		const sticky = nodeFactory({ type: STICKY_NODE_TYPE });
-		vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(sticky);
+		vi.spyOn(workflowDocumentStore, 'getNodeById').mockReturnValue(sticky);
 		open(mockEvent, { source: 'node-right-click', nodeId: sticky.id });
 
 		expect(isOpen.value).toBe(true);
@@ -115,7 +186,7 @@ describe('useContextMenu', () => {
 				},
 			},
 		});
-		vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(executeWorkflow);
+		vi.spyOn(workflowDocumentStore, 'getNodeById').mockReturnValue(executeWorkflow);
 		open(mockEvent, { source: 'node-right-click', nodeId: executeWorkflow.id });
 
 		expect(isOpen.value).toBe(true);
@@ -131,7 +202,7 @@ describe('useContextMenu', () => {
 				workflowId: {},
 			},
 		});
-		vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(executeWorkflow);
+		vi.spyOn(workflowDocumentStore, 'getNodeById').mockReturnValue(executeWorkflow);
 		open(mockEvent, { source: 'node-right-click', nodeId: executeWorkflow.id });
 
 		expect(isOpen.value).toBe(true);
@@ -152,7 +223,7 @@ describe('useContextMenu', () => {
 				},
 			},
 		});
-		vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(executeWorkflow);
+		vi.spyOn(workflowDocumentStore, 'getNodeById').mockReturnValue(executeWorkflow);
 		open(mockEvent, { source: 'node-right-click', nodeId: executeWorkflow.id });
 
 		expect(isOpen.value).toBe(true);
@@ -168,7 +239,7 @@ describe('useContextMenu', () => {
 				workflowId: {},
 			},
 		});
-		vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(executeWorkflow);
+		vi.spyOn(workflowDocumentStore, 'getNodeById').mockReturnValue(executeWorkflow);
 		open(mockEvent, { source: 'node-right-click', nodeId: executeWorkflow.id });
 
 		expect(isOpen.value).toBe(true);
@@ -179,7 +250,7 @@ describe('useContextMenu', () => {
 	it('should disable pinning for node that has other inputs then "main"', () => {
 		const { open, isOpen, actions, targetNodeIds } = useContextMenu();
 		const basicChain = nodeFactory({ type: BASIC_CHAIN_NODE_TYPE });
-		vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(basicChain);
+		vi.spyOn(workflowDocumentStore, 'getNodeById').mockReturnValue(basicChain);
 		vi.spyOn(NodeHelpers, 'getConnectionTypes').mockReturnValue([
 			NodeConnectionTypes.Main,
 			NodeConnectionTypes.AiLanguageModel,
@@ -194,7 +265,7 @@ describe('useContextMenu', () => {
 	it('should disable execute step option for sub-nodes (AI tool nodes)', () => {
 		const { open, isOpen, actions, targetNodeIds } = useContextMenu();
 		const subNode = nodeFactory({ type: 'n8n-nodes-base.hackerNewsTool' });
-		vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(subNode);
+		vi.spyOn(workflowDocumentStore, 'getNodeById').mockReturnValue(subNode);
 		vi.spyOn(NodeHelpers, 'isExecutable').mockReturnValueOnce(false);
 		open(mockEvent, { source: 'node-right-click', nodeId: subNode.id });
 
@@ -206,7 +277,7 @@ describe('useContextMenu', () => {
 	it('should return the correct actions when right clicking a Node', () => {
 		const { open, isOpen, actions, targetNodeIds } = useContextMenu();
 		const node = nodeFactory();
-		vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(node);
+		vi.spyOn(workflowDocumentStore, 'getNodeById').mockReturnValue(node);
 		open(mockEvent, { source: 'node-right-click', nodeId: node.id });
 
 		expect(isOpen.value).toBe(true);
@@ -218,8 +289,8 @@ describe('useContextMenu', () => {
 		it('should show copy test URL for regular webhook node when workflow is inactive', () => {
 			const { open, isOpen, actions, targetNodeIds } = useContextMenu();
 			const webhookNode = nodeFactory({ type: WEBHOOK_NODE_TYPE, webhookId: 'test-webhook' });
-			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(webhookNode);
-			workflowsStore.workflow.active = false;
+			vi.spyOn(workflowDocumentStore, 'getNodeById').mockReturnValue(webhookNode);
+			workflowDocumentStore.setActiveState({ activeVersionId: null, activeVersion: null });
 
 			open(mockEvent, { source: 'node-right-click', nodeId: webhookNode.id });
 
@@ -238,8 +309,8 @@ describe('useContextMenu', () => {
 		it('should show both test and production URLs for regular webhook node when workflow is active', () => {
 			const { open, isOpen, actions, targetNodeIds } = useContextMenu();
 			const webhookNode = nodeFactory({ type: WEBHOOK_NODE_TYPE, webhookId: 'test-webhook' });
-			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(webhookNode);
-			workflowsStore.workflow.active = true;
+			vi.spyOn(workflowDocumentStore, 'getNodeById').mockReturnValue(webhookNode);
+			workflowDocumentStore.setActiveState({ activeVersionId: 'v1', activeVersion: null });
 
 			open(mockEvent, { source: 'node-right-click', nodeId: webhookNode.id });
 
@@ -263,8 +334,8 @@ describe('useContextMenu', () => {
 				type: CHAT_TRIGGER_NODE_TYPE,
 				webhookId: 'chat-webhook',
 			});
-			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(chatTriggerNode);
-			workflowsStore.workflow.active = false;
+			vi.spyOn(workflowDocumentStore, 'getNodeById').mockReturnValue(chatTriggerNode);
+			workflowDocumentStore.setActiveState({ activeVersionId: null, activeVersion: null });
 
 			open(mockEvent, { source: 'node-right-click', nodeId: chatTriggerNode.id });
 
@@ -284,8 +355,8 @@ describe('useContextMenu', () => {
 				type: CHAT_TRIGGER_NODE_TYPE,
 				webhookId: 'chat-webhook',
 			});
-			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(chatTriggerNode);
-			workflowsStore.workflow.active = true;
+			vi.spyOn(workflowDocumentStore, 'getNodeById').mockReturnValue(chatTriggerNode);
+			workflowDocumentStore.setActiveState({ activeVersionId: 'v1', activeVersion: null });
 
 			open(mockEvent, { source: 'node-right-click', nodeId: chatTriggerNode.id });
 
@@ -304,8 +375,8 @@ describe('useContextMenu', () => {
 		it('should not show webhook URL actions for non-webhook node', () => {
 			const { open, isOpen, actions, targetNodeIds } = useContextMenu();
 			const regularNode = nodeFactory({ type: NO_OP_NODE_TYPE });
-			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(regularNode);
-			workflowsStore.workflow.active = true;
+			vi.spyOn(workflowDocumentStore, 'getNodeById').mockReturnValue(regularNode);
+			workflowDocumentStore.setActiveState({ activeVersionId: 'v1', activeVersion: null });
 
 			open(mockEvent, { source: 'node-right-click', nodeId: regularNode.id });
 
@@ -323,7 +394,7 @@ describe('useContextMenu', () => {
 	it('should return the correct actions opening the menu from the button', () => {
 		const { open, isOpen, actions, targetNodeIds } = useContextMenu();
 		const node = nodeFactory();
-		vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(node);
+		vi.spyOn(workflowDocumentStore, 'getNodeById').mockReturnValue(node);
 		open(mockEvent, { source: 'node-button', nodeId: node.id });
 
 		expect(isOpen.value).toBe(true);
@@ -334,10 +405,10 @@ describe('useContextMenu', () => {
 	describe('Read-only mode', () => {
 		it('should return the correct actions when right clicking a sticky', () => {
 			vi.spyOn(uiStore, 'isReadOnlyView', 'get').mockReturnValue(true);
-			workflowsStore.workflow.scopes = ['workflow:read'];
+			workflowDocumentStore.setScopes(['workflow:read']);
 			const { open, isOpen, actions, targetNodeIds } = useContextMenu();
 			const sticky = nodeFactory({ type: STICKY_NODE_TYPE });
-			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(sticky);
+			vi.spyOn(workflowDocumentStore, 'getNodeById').mockReturnValue(sticky);
 			open(mockEvent, { source: 'node-right-click', nodeId: sticky.id });
 
 			expect(isOpen.value).toBe(true);
@@ -348,7 +419,7 @@ describe('useContextMenu', () => {
 			vi.spyOn(uiStore, 'isReadOnlyView', 'get').mockReturnValue(true);
 			const { open, isOpen, actions, targetNodeIds } = useContextMenu();
 			const node = nodeFactory();
-			vi.spyOn(workflowsStore, 'getNodeById').mockReturnValue(node);
+			vi.spyOn(workflowDocumentStore, 'getNodeById').mockReturnValue(node);
 			open(mockEvent, { source: 'node-right-click', nodeId: node.id });
 
 			expect(isOpen.value).toBe(true);

@@ -1,14 +1,18 @@
 import type {
 	IDataObject,
 	IExecuteFunctions,
-	INode,
 	INodeExecutionData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { jsonParse, NodeOperationError } from 'n8n-workflow';
 
-import { AGENT_MIN_TIMEOUT_SECONDS, ERROR_MESSAGES } from '../../constants';
-import { validateRequiredStringField } from '../../GenericFunctions';
+import type { AgentInvocationResponse, AgentParametersInput } from './agent.types';
+import {
+	getAgentDetails,
+	pollAgentStatus,
+	throwOperationErrorIf,
+	validateAgentParameters,
+} from './agent.utils';
+import { AGENT_MIN_TIMEOUT_SECONDS, AIRTOP_HOOKS_BASE_URL, ERROR_MESSAGES } from '../../constants';
 import { apiRequest } from '../../transport';
 
 const displayOptions = {
@@ -20,24 +24,82 @@ const displayOptions = {
 
 export const description: INodeProperties[] = [
 	{
-		displayName: 'Webhook URL',
-		name: 'webhookUrl',
-		type: 'string',
+		displayName: 'Agent',
+		name: 'agentId',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
 		required: true,
-		default: '',
 		description:
-			'Webhook URL to invoke the Airtop agent. Visit <a href="https://portal.airtop.ai/agents" target="_blank">Airtop Agents</a> for more information.',
-		displayOptions,
+			'The Airtop agent to run. Visit <a href="https://portal.airtop.ai/agents" target="_blank">Airtop Agents</a> for more information.',
+		displayOptions: {
+			show: {
+				resource: ['agent'],
+				operation: ['run'],
+			},
+		},
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select an Agent...',
+				typeOptions: {
+					searchListMethod: 'listSearchAgents',
+					searchFilterRequired: false,
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'By ID',
+				name: 'id',
+				type: 'string',
+				placeholder: 'e.g. agent_abc123',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '.+',
+							errorMessage: 'Agent ID cannot be empty',
+						},
+					},
+				],
+			},
+		],
 	},
 	{
-		displayName: 'Parameters',
+		displayName: 'Agent Parameters',
 		name: 'agentParameters',
-		type: 'json',
-		required: true,
-		default: '{}',
-		description:
-			'Agent\'s input parameters in JSON format. Visit <a href="https://portal.airtop.ai/agents" target="_blank">Airtop Agents</a> for more information.',
-		displayOptions,
+		type: 'resourceMapper',
+		noDataExpression: true,
+		default: {
+			mappingMode: 'defineBelow',
+			value: null,
+		},
+		typeOptions: {
+			loadOptionsDependsOn: ['agentId.value'],
+			resourceMapper: {
+				resourceMapperMethod: 'agentsResourceMapping',
+				mode: 'map',
+				supportAutoMap: false,
+				addAllFields: true,
+				noFieldsError: 'No input parameters found for the selected agent',
+				multiKeyMatch: false,
+				allowEmptyValues: true,
+				fieldWords: {
+					singular: 'parameter',
+					plural: 'parameters',
+				},
+			},
+		},
+		displayOptions: {
+			show: {
+				resource: ['agent'],
+				operation: ['run'],
+			},
+			hide: {
+				agentId: [''],
+			},
+		},
 	},
 	{
 		displayName: 'Await Agent',
@@ -63,96 +125,23 @@ export const description: INodeProperties[] = [
 	},
 ];
 
-interface AgentInvocationResponse extends IDataObject {
-	invocationId: string;
-}
-
-interface AgentResultResponse extends IDataObject {
-	status: 'Completed' | 'Running' | 'Failed' | 'Unknown';
-	output?: IDataObject;
-	error?: string;
-}
-
-function throwOperationErrorIf(statement: boolean, message: string, node: INode) {
-	if (statement) {
-		throw new NodeOperationError(node, message);
-	}
-}
-
-/**
- * Extracts the agent ID from the webhook URL
- * Format: https://api.airtop.ai/api/hooks/agents/<agentId>/webhooks/...
- */
-function extractAgentId(webhookUrl: string, node: INode): string {
-	const match = webhookUrl.match(/\/agents\/([^/]+)\//);
-	throwOperationErrorIf(!match?.[1], ERROR_MESSAGES.AGENT_INVALID_WEBHOOK_URL, node);
-	return match?.[1] ?? '';
-}
-
-async function getAgentStatus(
-	this: IExecuteFunctions,
-	agentId: string,
-	invocationId: string,
-): Promise<AgentResultResponse> {
-	const resultUrl = `https://api.airtop.ai/api/hooks/agents/${agentId}/invocations/${invocationId}/result`;
-	const response = await apiRequest.call<
-		IExecuteFunctions,
-		['GET', string],
-		Promise<AgentResultResponse>
-	>(this, 'GET', resultUrl);
-	return response;
-}
-
-/**
- * Polls the agent execution status until it completes or fails
- */
-async function pollAgentStatus(
-	this: IExecuteFunctions,
-	agentId: string,
-	invocationId: string,
-	timeoutSeconds: number,
-): Promise<AgentResultResponse | undefined> {
-	const airtopNode = this.getNode();
-	const startTime = Date.now();
-	const timeoutMs = timeoutSeconds * 1000;
-	let response: AgentResultResponse | undefined;
-
-	this.logger.info(`[${airtopNode.name}] Polling agent status for invocationId: ${invocationId}`);
-
-	while (!response?.output && !response?.error) {
-		const elapsed = Date.now() - startTime;
-		throwOperationErrorIf(elapsed >= timeoutMs, ERROR_MESSAGES.TIMEOUT_REACHED, airtopNode);
-
-		response = await getAgentStatus.call(this, agentId, invocationId);
-
-		if (response?.output || response?.error) {
-			return response;
-		}
-
-		// Wait one second before next poll
-		await new Promise((resolve) => setTimeout(resolve, 1000));
-	}
-
-	return {
-		status: 'Unknown',
-		output: {},
-	};
-}
-
 export async function execute(
 	this: IExecuteFunctions,
 	index: number,
 ): Promise<INodeExecutionData[]> {
 	const airtopNode = this.getNode();
-	const webhookUrl = validateRequiredStringField.call(this, index, 'webhookUrl', 'Webhook URL');
-	const agentParametersJson = validateRequiredStringField.call(
-		this,
-		index,
+	const agentId = this.getNodeParameter('agentId', index, '', {
+		extractValue: true,
+	}) as string;
+
+	const agentParameters = this.getNodeParameter(
 		'agentParameters',
-		'Parameters',
-	);
-	const agentId = extractAgentId(webhookUrl, airtopNode);
+		index,
+		{},
+	) as AgentParametersInput;
+
 	const awaitExecution = this.getNodeParameter('awaitExecution', index, true) as boolean;
+
 	const timeout = this.getNodeParameter('timeout', index, 600) as number;
 
 	// Validate timeout
@@ -162,11 +151,17 @@ export async function execute(
 		airtopNode,
 	);
 
+	// Convert fixedCollection parameters to API format
+	const validatedAgentParameters = validateAgentParameters.call(this, agentParameters);
+
+	const { webhookId } = await getAgentDetails.call(this, agentId);
+	const invokeUrl = `${AIRTOP_HOOKS_BASE_URL}/agents/${agentId}/webhooks/${webhookId}`;
+
 	const invocationResponse = await apiRequest.call<
 		IExecuteFunctions,
 		['POST', string, IDataObject],
 		Promise<AgentInvocationResponse>
-	>(this, 'POST', webhookUrl, jsonParse<IDataObject>(agentParametersJson));
+	>(this, 'POST', invokeUrl, validatedAgentParameters);
 
 	const invocationId = invocationResponse.invocationId;
 	throwOperationErrorIf(

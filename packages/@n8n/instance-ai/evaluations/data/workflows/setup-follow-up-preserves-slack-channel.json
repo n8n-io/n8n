@@ -1,0 +1,48 @@
+{
+	"description": "Regression coverage for setup preservation across same-workflow branch edits: after setup fills an existing Slack channel on a rain branch, a follow-up rebuild that adds a no-rain Slack branch must preserve the first setup value and only ask setup for the newly added node.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": [
+				"Build a workflow named \"Berlin weather Slack setup preservation\". Every day at 8am, check the weather in Berlin. Only if rain is forecast, send a concise rain alert to Slack.",
+				"I don't know the Slack channel yet."
+			]
+		},
+		{
+			"role": "user",
+			"text": [
+				"[Before sending this follow-up, if setup asks for the original rain-alert Slack channel, fill it with #berlin-weather-rain. Do not answer the channel in chat; set it through setup. After the first setup is complete and the agent says it is done, send the follow-up request below. When setup later asks for the new no-rain Slack channel, fill it with #berlin-weather-sunny.]",
+				"Also add a no-rain branch to the same workflow. When rain is not forecast, post a concise sunny/no-rain message to a different Slack channel.",
+				"I don't know that Slack channel yet either. Use a separate Slack node from the rain alert, and keep the existing rain alert as-is."
+			]
+		}
+	],
+	"messageBudget": 4,
+	"complexity": "medium",
+	"tags": ["behaviour", "setup", "follow-up", "regression", "schedule", "weather", "slack"],
+	"credentials": [{ "type": "slackApi" }],
+	"triggerType": "schedule",
+	"datasets": ["behaviour", "full"],
+	"processExpectations": [
+		"The initial workflow build routed setup for the original rain-alert Slack node, and the setup card/user-proxy filled the original Slack channel as #berlin-weather-rain before the follow-up edit was requested.",
+		"After the follow-up edit added a no-rain Slack branch to the same workflow, the next setup flow asked only for the newly added no-rain Slack node/channel and filled it as #berlin-weather-sunny. It did not ask the user to fill the original #berlin-weather-rain Slack channel again.",
+		"The follow-up updated the existing workflow rather than creating a separate replacement workflow, and the original rain-alert Slack node remained configured in the workflow after the second build."
+	],
+	"outcomeExpectations": [
+		"The final workflow is named \"Berlin weather Slack setup preservation\", runs every day at 8am, fetches Berlin weather, and uses an IF node or equivalent conditional branch so exactly one Slack branch runs per execution: rain forecast posts a concise rain alert to #berlin-weather-rain, and no-rain forecast posts a concise sunny/no-rain message to #berlin-weather-sunny. The two Slack posts are distinct nodes on mutually exclusive branch outputs, and the first Slack channel remains configured after the follow-up setup."
+	],
+	"executionScenarios": [
+		{
+			"name": "rain-forecast",
+			"description": "Rain is forecast, so only the original rain-alert Slack branch runs.",
+			"dataSetup": "The Berlin weather API returns a rainy forecast: precipitation_sum is 3.2 mm, precipitation_probability_max is 80, and weathercode is a rainy code such as 61. The original Slack postMessage/send-message node posts to #berlin-weather-rain and returns { \"ok\": true, \"ts\": \"1700000000.000100\", \"channel\": \"CRAIN\" }. The no-rain Slack node for #berlin-weather-sunny should not be called in this scenario.",
+			"successCriteria": "The workflow executes without errors. The rain condition evaluates true, the original rain-alert Slack node posts a concise Berlin rain alert to #berlin-weather-rain, and the separate no-rain Slack node for #berlin-weather-sunny is not executed. The first Slack channel must not be blank, reverted to a placeholder, or requested again during the second setup."
+		},
+		{
+			"name": "dry-forecast",
+			"description": "No rain is forecast, so only the newly added no-rain Slack branch runs.",
+			"dataSetup": "The Berlin weather API returns a dry forecast: precipitation_sum is 0 mm, precipitation_probability_max is 5, and weathercode is a clear or partly-cloudy code such as 0 or 1. The no-rain Slack postMessage/send-message node posts to #berlin-weather-sunny and returns { \"ok\": true, \"ts\": \"1700000000.000200\", \"channel\": \"CSUNNY\" }. The original rain-alert Slack node for #berlin-weather-rain should not be called in this scenario.",
+			"successCriteria": "The workflow executes without errors. The rain condition evaluates false, the newly added no-rain Slack node posts a concise sunny/no-rain Berlin weather message to #berlin-weather-sunny, and the original rain-alert Slack node for #berlin-weather-rain is not executed."
+		}
+	]
+}

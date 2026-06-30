@@ -10,7 +10,7 @@ import debounce from 'lodash/debounce';
 import { N8nTag } from '@n8n/design-system';
 
 interface TagsContainerProps {
-	tagIds: string[];
+	tagIds: readonly string[];
 	tagsById: { [id: string]: ITag };
 	limit?: number;
 	clickable?: boolean;

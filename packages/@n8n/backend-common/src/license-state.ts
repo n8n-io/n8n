@@ -62,6 +62,10 @@ export class LicenseState {
 		return this.isLicensed(LICENSE_FEATURES.DYNAMIC_CREDENTIALS);
 	}
 
+	isPersonalSpacePolicyLicensed() {
+		return this.isLicensed(LICENSE_FEATURES.PERSONAL_SPACE_POLICY);
+	}
+
 	isSharingLicensed() {
 		return this.isLicensed('feat:sharing');
 	}
@@ -102,6 +106,10 @@ export class LicenseState {
 		return this.isLicensed('feat:aiCredits');
 	}
 
+	isAiGatewayLicensed() {
+		return this.isLicensed('feat:aiGateway');
+	}
+
 	isAdvancedExecutionFiltersLicensed() {
 		return this.isLicensed('feat:advancedExecutionFilters');
 	}
@@ -116,6 +124,18 @@ export class LicenseState {
 
 	isBinaryDataS3Licensed() {
 		return this.isLicensed('feat:binaryDataS3');
+	}
+
+	isBinaryDataAzureLicensed() {
+		return this.isLicensed('feat:binaryDataAz');
+	}
+
+	isExecutionDataS3Licensed() {
+		return this.isLicensed('feat:executionDataS3');
+	}
+
+	isExecutionDataAzureLicensed() {
+		return this.isLicensed('feat:executionDataAz');
 	}
 
 	isMultiMainLicensed() {
@@ -178,8 +198,16 @@ export class LicenseState {
 		return this.isLicensed('feat:workflowDiffs');
 	}
 
+	isDataRedactionLicensed() {
+		return this.isLicensed(LICENSE_FEATURES.DATA_REDACTION);
+	}
+
 	isProvisioningLicensed() {
 		return this.isLicensed(['feat:saml', 'feat:oidc']);
+	}
+
+	isOtelCustomSpanAttributesLicensed() {
+		return this.isLicensed(LICENSE_FEATURES.OTEL_CUSTOM_SPAN_ATTRIBUTES);
 	}
 
 	// --------------------
@@ -222,7 +250,25 @@ export class LicenseState {
 		return this.getValue('quota:maxTeamProjects') ?? 0;
 	}
 
+	isTeamProjectsLicensed() {
+		const quota = this.getMaxTeamProjects();
+		return quota === UNLIMITED_LICENSE_QUOTA || quota > 0;
+	}
+
 	getMaxWorkflowsWithEvaluations() {
 		return this.getValue('quota:evaluations:maxWorkflows') ?? 0;
+	}
+
+	/**
+	 * Effective evaluation concurrency cap issued by the license server.
+	 * Returns `undefined` (not a number) when the quota is absent so callers
+	 * can distinguish "the license intentionally set this to a value" from
+	 * "the license doesn't have an opinion, fall through to the tier default".
+	 *
+	 * `-1` from the license is honoured as "unlimited", matching the
+	 * `N8N_CONCURRENCY_EVALUATION_LIMIT` env-var convention.
+	 */
+	getEvaluationConcurrencyQuota(): number | undefined {
+		return this.getValue('quota:evaluations:concurrencyLimit');
 	}
 }

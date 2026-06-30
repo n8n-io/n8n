@@ -3,10 +3,13 @@ import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { useClipboard } from '@/app/composables/useClipboard';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import { useToast } from '@/app/composables/useToast';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useEditorContext } from '@/app/composables/useEditorContext';
+import { useInstanceAiEditorCapability } from '@/app/composables/useInstanceAiEditorCapability';
+import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type {
 	IDataObject,
@@ -49,23 +52,23 @@ const toast = useToast();
 const i18n = useI18n();
 const assistantHelpers = useAIAssistantHelpers();
 
+const workflowId = useInjectWorkflowId();
 const nodeTypesStore = useNodeTypesStore();
-const ndvStore = useNDVStore();
-const workflowsStore = useWorkflowsStore();
+const ndvStore = injectNDVStore();
+const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 const rootStore = useRootStore();
 const assistantStore = useAssistantStore();
 const chatPanelStore = useChatPanelStore();
 const uiStore = useUIStore();
 
-const workflowId = computed(() => workflowsStore.workflowId);
-const executionId = computed(() => workflowsStore.getWorkflowExecution?.id);
+const executionId = computed(() => workflowExecutionStateStore.value.activeExecution?.id);
 
 const displayCause = computed(() => {
 	return JSON.stringify(props.error.cause ?? '').length < MAX_DISPLAY_DATA_SIZE;
 });
 
 const node = computed(() => {
-	return props.error.node || ndvStore.activeNode;
+	return props.error.node || ndvStore.value.activeNode;
 });
 
 const parameters = computed<INodeProperties[]>(() => {
@@ -93,7 +96,7 @@ const n8nVersion = computed(() => {
 });
 
 const hasManyInputItems = computed(() => {
-	return ndvStore.ndvInputData.length > 1;
+	return ndvStore.value.ndvInputData.length > 1;
 });
 
 const nodeDefaultName = computed(() => {
@@ -133,19 +136,35 @@ const prepareRawMessages = computed(() => {
 	return returnData;
 });
 
+const { aiAssistant, instanceAi } = useEditorContext();
+const instanceAiCapability = useInstanceAiEditorCapability();
+
 const isAskAssistantAvailable = computed(() => {
 	if (!node.value || isSubNodeError.value) {
 		return false;
 	}
 	const isCustomNode = node.value.type === undefined || isCommunityPackageName(node.value.type);
 
-	return chatPanelStore.canShowAiButtonOnCanvas && !isCustomNode && !nodeIsHidden();
+	return (
+		chatPanelStore.isEditableCanvasView &&
+		!isCustomNode &&
+		!nodeIsHidden() &&
+		aiAssistant.value &&
+		!instanceAi.value
+	);
 });
+
+// Replaces the assistant button when Instance AI is on: hands the workflow off
+// like the canvas action. Gated on `openWorkflow` so it's hidden in the artifact.
+const isInstanceAiHandoffAvailable = computed(
+	() =>
+		chatPanelStore.isEditableCanvasView && instanceAi.value && !!instanceAiCapability.openWorkflow,
+);
 
 const assistantAlreadyAsked = computed(() => {
 	return assistantStore.isNodeErrorActive({
 		error: assistantHelpers.simplifyErrorForAssistant(props.error),
-		node: props.error.node || ndvStore.activeNode,
+		node: props.error.node || ndvStore.value.activeNode,
 	});
 });
 
@@ -416,14 +435,14 @@ const onOpenErrorNodeDetailClick = () => {
 		const link = router.resolve({
 			name: VIEWS.EXECUTION_PREVIEW,
 			params: {
-				name: props.error.workflowId,
+				workflowId: props.error.workflowId,
 				executionId: props.error.executionId,
 				nodeId: props.error.node.id,
 			},
 		});
 		window.open(link.href, '_blank');
 	} else {
-		ndvStore.setActiveNodeName(props.error.node.name, 'other');
+		ndvStore.value.setActiveNodeName(props.error.node.name, 'other');
 	}
 };
 
@@ -452,7 +471,12 @@ async function onAskAssistantClick() {
 		source: 'error',
 		task: 'error',
 		has_existing_session: false,
+		workflowId: workflowId.value,
 	});
+}
+
+async function onInstanceAiHandoffClick() {
+	await instanceAiCapability.openWorkflow?.('node_error_view');
 }
 </script>
 
@@ -473,12 +497,22 @@ async function onAskAssistantClick() {
 
 			<div v-if="isSubNodeError">
 				<N8nButton
+					variant="subtle"
 					icon="arrow-right"
-					type="secondary"
 					:label="i18n.baseText('pushConnection.executionError.openNode')"
 					class="node-error-view__button"
 					data-test-id="node-error-view-open-node-button"
 					@click="onOpenErrorNodeDetailClick"
+				/>
+			</div>
+			<div
+				v-if="isInstanceAiHandoffAvailable"
+				class="node-error-view__button"
+				data-test-id="node-error-view-instance-ai-button"
+			>
+				<N8nInlineAskAssistantButton
+					:label="i18n.baseText('instanceAi.askAiAssistant')"
+					@click="onInstanceAiHandoffClick"
 				/>
 			</div>
 			<div
@@ -501,14 +535,7 @@ async function onAskAssistantClick() {
 					placement="left"
 				>
 					<div class="copy-button">
-						<N8nIconButton
-							icon="files"
-							type="secondary"
-							size="small"
-							:text="true"
-							transparent-background="transparent"
-							@click="copyErrorDetails"
-						/>
+						<N8nIconButton variant="ghost" icon="files" size="small" @click="copyErrorDetails" />
 					</div>
 				</N8nTooltip>
 			</div>

@@ -19,6 +19,7 @@ import type {
 import { z } from 'zod';
 
 import type { CredentialsEntity } from './credentials-entity';
+import type { ExecutionDataStorageLocation } from './execution-entity';
 import type { Folder } from './folder';
 import type { Project } from './project';
 import type { SharedCredentials } from './shared-credentials';
@@ -58,6 +59,18 @@ export interface IExecutionBase {
 	retrySuccessId?: string; // If it failed and a retry did succeed. The id of the successful retry.
 	status: ExecutionStatus;
 	waitTill?: Date | null;
+	storedAt: ExecutionDataStorageLocation;
+	/**
+	 * W3C trace context propagated with the execution so outbound spans can be
+	 * correlated across queue-mode boundaries.
+	 * @see https://www.w3.org/TR/trace-context/#traceparent-header
+	 */
+	tracingContext?: { traceparent: string; tracestate?: string } | null;
+	deduplicationKey?: string | null; // see `ExecutionEntity.deduplicationKey`
+	jsonSizeBytes?: number; // see `ExecutionEntity.jsonSizeBytes`
+	binaryDataSizeBytes?: number; // see `ExecutionEntity.binaryDataSizeBytes`
+	workflowVersionId?: string | null; // see `ExecutionEntity.workflowVersionId`
+	usedPrivateCredentials?: boolean; // see `ExecutionEntity.usedPrivateCredentials`
 }
 
 // Required by PublicUser
@@ -89,6 +102,7 @@ export interface ICredentialsDb extends ICredentialsBase, ICredentialsEncrypted 
 	shared?: SharedCredentials[];
 	isGlobal?: boolean;
 	isResolvable?: boolean;
+	isManaged?: boolean;
 }
 
 export interface IExecutionResponse extends IExecutionBase {
@@ -97,10 +111,16 @@ export interface IExecutionResponse extends IExecutionBase {
 	retryOf?: string;
 	retrySuccessId?: string;
 	workflowData: IWorkflowBase | WorkflowWithSharingsAndCredentials;
+	workflowVersionId?: string | null;
 	customData: Record<string, string>;
 	annotation: {
 		tags: ITagBase[];
 	};
+	/**
+	 * Set when run data was skipped for exceeding `ExecutionsConfig.maxDisplaySize`. `data` is
+	 * then an empty run-data object and `jsonSizeBytes` holds the real size.
+	 */
+	dataTooLargeToDisplay?: boolean;
 }
 
 export interface PublicUser {
@@ -123,6 +143,7 @@ export interface PublicUser {
 	featureFlags?: FeatureFlags; // External type from n8n-workflow
 	lastActiveAt?: Date | null;
 	mfaAuthenticated?: boolean;
+	isManagedByEnv?: boolean;
 }
 
 export type UserSettings = Pick<User, 'id' | 'settings'>;
@@ -152,7 +173,16 @@ export interface WorkflowWithSharingsMetaDataAndCredentials extends Omit<Workflo
 }
 
 /** Payload for creating an execution. */
-export type CreateExecutionPayload = Omit<IExecutionDb, 'id' | 'createdAt' | 'startedAt'>;
+export type CreateExecutionPayload = Omit<
+	IExecutionDb,
+	| 'id'
+	| 'createdAt'
+	| 'startedAt'
+	| 'storedAt'
+	| 'jsonSizeBytes'
+	| 'binaryDataSizeBytes'
+	| 'workflowVersionId'
+>;
 
 // Data in regular format with references
 export interface IExecutionDb extends IExecutionBase {
@@ -177,10 +207,10 @@ export namespace ExecutionSummaries {
 
 	export type CountQuery = { kind: 'count' } & FilterFields & AccessFields;
 
-	type FilterFields = Partial<{
+	export type FilterFields = Partial<{
 		id: string;
 		finished: boolean;
-		mode: string;
+		mode: WorkflowExecuteMode;
 		retryOf: string;
 		retrySuccessId: string;
 		status: ExecutionStatus[];
@@ -192,10 +222,23 @@ export namespace ExecutionSummaries {
 		annotationTags: string[]; // tag IDs
 		vote: AnnotationVote;
 		projectId: string;
+		workflowVersionId: string;
+		isArchived: boolean;
+		workflowBooleanSettings: Array<{ key: string; value: boolean }>;
 	}>;
 
+	export type StopExecutionFilterQuery = { workflowId: string } & Pick<
+		FilterFields,
+		'startedAfter' | 'startedBefore' | 'workflowId' | 'status'
+	>; // parsed from query params
+
 	type AccessFields = {
-		accessibleWorkflowIds?: string[];
+		user?: User;
+		sharingOptions?: {
+			scopes?: Scope[];
+			projectRoles?: string[];
+			workflowRoles?: string[];
+		};
 	};
 
 	type RangeFields = {
@@ -288,7 +331,7 @@ export const enum StatisticsNames {
 	dataLoaded = 'data_loaded',
 }
 
-const ALL_AUTH_PROVIDERS = z.enum(['ldap', 'email', 'saml', 'oidc']);
+const ALL_AUTH_PROVIDERS = z.enum(['ldap', 'email', 'saml', 'oidc', 'token-exchange']);
 
 export type AuthProviderType = z.infer<typeof ALL_AUTH_PROVIDERS>;
 
@@ -307,24 +350,33 @@ export type FolderWithWorkflowAndSubFolderCountAndPath = FolderWithWorkflowAndSu
 
 export type TestRunFinalResult = 'success' | 'error' | 'warning';
 
-export type TestRunErrorCode =
-	| 'TEST_CASES_NOT_FOUND'
-	| 'INTERRUPTED'
-	| 'UNKNOWN_ERROR'
-	| 'EVALUATION_TRIGGER_NOT_FOUND'
-	| 'EVALUATION_TRIGGER_NOT_CONFIGURED'
-	| 'EVALUATION_TRIGGER_DISABLED'
-	| 'SET_OUTPUTS_NODE_NOT_CONFIGURED'
-	| 'SET_METRICS_NODE_NOT_FOUND'
-	| 'SET_METRICS_NODE_NOT_CONFIGURED'
-	| 'CANT_FETCH_TEST_CASES';
+export const TestRunErrorCode = {
+	TEST_CASES_NOT_FOUND: 'TEST_CASES_NOT_FOUND',
+	INTERRUPTED: 'INTERRUPTED',
+	UNKNOWN_ERROR: 'UNKNOWN_ERROR',
+	EVALUATION_TRIGGER_NOT_FOUND: 'EVALUATION_TRIGGER_NOT_FOUND',
+	EVALUATION_TRIGGER_NOT_CONFIGURED: 'EVALUATION_TRIGGER_NOT_CONFIGURED',
+	EVALUATION_TRIGGER_DISABLED: 'EVALUATION_TRIGGER_DISABLED',
+	EVALUATION_CONFIG_NOT_FOUND: 'EVALUATION_CONFIG_NOT_FOUND',
+	COMPILATION_FAILED: 'COMPILATION_FAILED',
+	SET_OUTPUTS_NODE_NOT_CONFIGURED: 'SET_OUTPUTS_NODE_NOT_CONFIGURED',
+	SET_METRICS_NODE_NOT_FOUND: 'SET_METRICS_NODE_NOT_FOUND',
+	SET_METRICS_NODE_NOT_CONFIGURED: 'SET_METRICS_NODE_NOT_CONFIGURED',
+	CANT_FETCH_TEST_CASES: 'CANT_FETCH_TEST_CASES',
+} as const;
+
+export type TestRunErrorCode = (typeof TestRunErrorCode)[keyof typeof TestRunErrorCode];
+
+export const TestCaseExecutionErrorCode = {
+	NO_METRICS_COLLECTED: 'NO_METRICS_COLLECTED',
+	MOCKED_NODE_NOT_FOUND: 'MOCKED_NODE_NOT_FOUND', // This will be used when node mocking will be implemented
+	FAILED_TO_EXECUTE_WORKFLOW: 'FAILED_TO_EXECUTE_WORKFLOW',
+	INVALID_METRICS: 'INVALID_METRICS',
+	UNKNOWN_ERROR: 'UNKNOWN_ERROR',
+} as const;
 
 export type TestCaseExecutionErrorCode =
-	| 'NO_METRICS_COLLECTED'
-	| 'MOCKED_NODE_NOT_FOUND' // This will be used when node mocking will be implemented
-	| 'FAILED_TO_EXECUTE_WORKFLOW'
-	| 'INVALID_METRICS'
-	| 'UNKNOWN_ERROR';
+	(typeof TestCaseExecutionErrorCode)[keyof typeof TestCaseExecutionErrorCode];
 
 export type AggregatedTestRunMetrics = Record<string, number | boolean>;
 
@@ -385,7 +437,26 @@ export type APIRequest<
 
 export type AuthenticationInformation = {
 	usedMfa: boolean;
+	// Indicates the user is logged in but hasn't completed required MFA enrollment
+	mfaEnrollmentRequired?: boolean;
 };
+
+/**
+ * Permission context carried by a scoped JWT issued via OAuth 2.0 token exchange.
+ * Present on AuthenticatedRequest only when authentication was performed via a
+ * scoped JWT; absent for API key and session auth.
+ *
+ * roles:    Role URNs from the issued token (e.g. ['project:editor']) — for audit logging only, not enforcement.
+ * scopes:   Concrete scopes resolved from those roles (e.g. ['workflow:create', 'workflow:read']).
+ * resource: Optional URN constraining which resource the token may access (e.g. 'urn:n8n:project:abc123').
+ * actor:    Actor identity for delegation — present when the token carries an `act` claim.
+ */
+export interface TokenGrant {
+	scopes: string[];
+	apiKeyScopes?: string[];
+	actor?: User;
+	subject: User;
+}
 
 export type AuthenticatedRequest<
 	RouteParams = {},
@@ -399,7 +470,12 @@ export type AuthenticatedRequest<
 	headers: express.Request['headers'] & {
 		'push-ref': string;
 	};
+	tokenGrant?: TokenGrant;
 };
+
+export function isAuthenticatedRequest(req: express.Request): req is AuthenticatedRequest {
+	return 'user' in req && Object.hasOwn(req, 'user') && req.user !== null;
+}
 
 /**
  * Simplified to prevent excessively deep type instantiation error from
@@ -412,8 +488,3 @@ export interface ISimplifiedPinData {
 		pairedItem?: IPairedItemData | IPairedItemData[] | number;
 	}>;
 }
-
-export type WorkflowHistoryUpdate = Omit<
-	Partial<WorkflowHistory>,
-	'versionId' | 'workflowId' | 'createdAt' | 'updatedAt'
->;

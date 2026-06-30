@@ -13,3 +13,17 @@ import type { IWorkflowBase } from 'n8n-workflow';
 export function getWorkflowActiveStatusFromWorkflowData(workflowData: IWorkflowBase): boolean {
 	return !!workflowData.activeVersionId || workflowData.active;
 }
+
+/**
+ * Determines if an execution mode is manual or chat.
+ *
+ * Manual and chat executions use draft sub-workflows to enable
+ * iterating on sub-workflows without requiring them to be published.
+ *
+ * Note: Test webhooks use 'manual' execution mode, so they also use draft versions.
+ * Production webhooks use 'webhook' execution mode and use published versions.
+ */
+export function isManualOrChatExecution(executionMode?: string): boolean {
+	if (!executionMode) return false;
+	return ['manual', 'chat'].includes(executionMode);
+}

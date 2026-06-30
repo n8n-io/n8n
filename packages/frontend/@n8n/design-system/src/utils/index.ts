@@ -1,3 +1,4 @@
+export * from './colorUtils';
 export * from './form-event-bus';
 export * from './markdown';
 export * from './typeguards';

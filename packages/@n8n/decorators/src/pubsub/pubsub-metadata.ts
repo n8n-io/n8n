@@ -10,10 +10,12 @@ export type PubSubEventName =
 	| 'display-workflow-activation'
 	| 'display-workflow-deactivation'
 	| 'display-workflow-activation-error'
+	| 'workflow-publish-wake-up'
 	| 'community-package-install'
 	| 'community-package-uninstall'
 	| 'community-package-update'
 	| 'get-worker-status'
+	| 'stop-execution'
 	| 'reload-external-secrets-providers'
 	| 'reload-license'
 	| 'reload-oidc-config'
@@ -22,7 +24,20 @@ export type PubSubEventName =
 	| 'response-to-get-worker-status'
 	| 'restart-event-bus'
 	| 'relay-execution-lifecycle-event'
-	| 'reload-sso-provisioning-configuration';
+	| 'relay-chat-stream-event'
+	| 'relay-chat-human-message'
+	| 'relay-chat-message-edit'
+	| 'reload-sso-provisioning-configuration'
+	| 'reload-source-control-config'
+	| 'reload-mcp-registry'
+	| 'reload-otel-config'
+	| 'cancel-test-run'
+	| 'cancel-collection'
+	| 'agent-chat-integration-changed'
+	| 'agent-chat-subscription-changed'
+	| 'agent-config-changed'
+	| 'agent-tasks-changed'
+	| 'redaction-floor-changed';
 
 export type PubSubEventFilter =
 	| {

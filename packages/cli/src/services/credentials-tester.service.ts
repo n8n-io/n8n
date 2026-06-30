@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
+
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 import { Logger, isObjectLiteral } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
@@ -25,6 +25,7 @@ import type {
 	ICredentialTestFunctions,
 	IDataObject,
 	IExecuteData,
+	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
 import {
 	VersionedNodeType,
@@ -34,13 +35,13 @@ import {
 	createEmptyRunExecutionData,
 } from 'n8n-workflow';
 
-import { RESPONSE_ERROR_MESSAGES } from '../constants';
-import { CredentialsHelper } from '../credentials-helper';
-
 import { CredentialTypes } from '@/credential-types';
 import { NodeTypes } from '@/node-types';
-import { getAllKeyPaths } from '@/utils';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
+
+import { RESPONSE_ERROR_MESSAGES } from '../constants';
+import { getExternalSecretExpressionPaths } from '../credentials/external-secrets.utils';
+import { CredentialsHelper } from '../credentials-helper';
 
 const { OAUTH2_CREDENTIAL_TEST_SUCCEEDED, OAUTH2_CREDENTIAL_TEST_FAILED } = RESPONSE_ERROR_MESSAGES;
 
@@ -203,38 +204,38 @@ export class CredentialsTester {
 		}
 
 		let credentialsDataSecretKeys: string[] = [];
-		if (credentialsDecrypted.data) {
-			try {
-				const additionalData = await WorkflowExecuteAdditionalData.getBase({
-					userId,
-					projectId: credentialsDecrypted.homeProject?.id,
-				});
+		let baseAdditionalData: IWorkflowExecuteAdditionalData;
+		try {
+			baseAdditionalData = await WorkflowExecuteAdditionalData.getBase({
+				userId,
+				projectId: credentialsDecrypted.homeProject?.id,
+			});
 
+			if (credentialsDecrypted.data) {
 				// Keep all credentials data keys which have a secret value
-				credentialsDataSecretKeys = getAllKeyPaths(credentialsDecrypted.data, '', [], (value) =>
-					value.includes('$secrets.'),
-				);
+				credentialsDataSecretKeys = getExternalSecretExpressionPaths(credentialsDecrypted.data);
 				credentialsDecrypted.data = await this.credentialsHelper.applyDefaultsAndOverwrites(
-					additionalData,
+					baseAdditionalData,
 					credentialsDecrypted.data,
-					credentialsDecrypted,
 					credentialType,
 					'internal' as WorkflowExecuteMode,
 					undefined,
 					undefined,
 				);
-			} catch (error) {
-				this.logger.debug('Credential test failed', error);
-				return {
-					status: 'Error',
-					message: error.message.toString(),
-				};
 			}
+		} catch (error) {
+			this.logger.debug('Credential test failed', error);
+			return {
+				status: 'Error',
+				message: error.message.toString(),
+			};
 		}
 
 		if (typeof credentialTestFunction === 'function') {
-			// The credentials get tested via a function that is defined on the node
-			const context = new CredentialTestContext();
+			// The credentials get tested via a function that is defined on the node.
+			// Pass the base additional data so the test's HTTP requests honour the
+			// egress policy carried by its SSRF bridge.
+			const context = new CredentialTestContext(baseAdditionalData);
 			const functionResult = credentialTestFunction.call(context, credentialsDecrypted);
 			if (functionResult instanceof Promise) {
 				const result = await functionResult;
@@ -351,6 +352,7 @@ export class CredentialsTester {
 
 		let response: INodeExecutionData[][] | null | undefined;
 		try {
+			await workflow.expression.acquireIsolate();
 			response = await routingNode.runNode();
 		} catch (error) {
 			this.errorReporter.error(error);
@@ -396,6 +398,7 @@ export class CredentialsTester {
 				message: error.message.toString(),
 			};
 		} finally {
+			await workflow.expression.releaseIsolate();
 			delete mockNodesData[nodeTypeCopy.description.name];
 		}
 

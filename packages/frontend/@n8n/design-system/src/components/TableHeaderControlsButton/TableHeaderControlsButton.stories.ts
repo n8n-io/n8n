@@ -14,7 +14,7 @@ interface StoryArgs {
 }
 
 export default {
-	title: 'Modules/TableHeaderControlsButton',
+	title: 'Tables/TableHeaderControlsButton',
 	component: TableHeaderControlsButton,
 };
 

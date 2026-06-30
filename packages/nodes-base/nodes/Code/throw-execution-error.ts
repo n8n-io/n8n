@@ -1,4 +1,4 @@
-import { ApplicationError } from 'n8n-workflow';
+import { UnexpectedError } from 'n8n-workflow';
 
 import { isWrappableError, WrappedExecutionError } from './errors/WrappedExecutionError';
 
@@ -11,5 +11,5 @@ export function throwExecutionError(error: unknown): never {
 		throw new WrappedExecutionError(error);
 	}
 
-	throw new ApplicationError(`Unknown error: ${JSON.stringify(error)}`);
+	throw new UnexpectedError(`Unknown error: ${JSON.stringify(error)}`);
 }

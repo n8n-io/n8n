@@ -1,5 +1,6 @@
 export {
 	WithStringId,
+	WithCreatedAt,
 	WithTimestamps,
 	WithTimestampsAndStringId,
 	jsonColumnType,
@@ -9,8 +10,10 @@ export {
 	DateTimeColumn,
 } from './entities/abstract-entity';
 
-export { generateNanoId } from './utils/generators';
+export { generateNanoId } from '@n8n/utils/generate-nano-id';
+export { generateHostInstanceId } from './utils/generators';
 export { isStringArray } from './utils/is-string-array';
+export { isUniqueConstraintError } from './utils/is-unique-constraint-error';
 export { isValidEmail } from './utils/is-valid-email';
 export { separate } from './utils/separate';
 export { sql } from './utils/sql';
@@ -29,15 +32,18 @@ export * from './subscribers';
 export { Column as DslColumn } from './migrations/dsl/column';
 export { CreateTable } from './migrations/dsl/table';
 export { sqliteMigrations } from './migrations/sqlite';
-export { mysqlMigrations } from './migrations/mysqldb';
 export { postgresMigrations } from './migrations/postgresdb';
 
 export { wrapMigration } from './migrations/migration-helpers';
 export * from './migrations/migration-types';
 export { DbConnection } from './connection/db-connection';
+export { DbConnectionMetrics } from './connection/db-connection-metrics';
 export { DbConnectionOptions } from './connection/db-connection-options';
+export type { DbPoolStats } from './connection/db-pool-stats';
 
 export { AuthRolesService } from './services/auth.roles.service';
+export { DbLock, DbLockService } from './services/db-lock.service';
 
-export { In, Like, Not, DataSource } from '@n8n/typeorm';
-export type { FindOptionsWhere } from '@n8n/typeorm';
+export { In, Like, MoreThanOrEqual, Not, DataSource } from '@n8n/typeorm';
+export type { FindManyOptions, FindOptionsWhere } from '@n8n/typeorm';
+export type { EntityManager } from '@n8n/typeorm';

@@ -1,5 +1,11 @@
 // services/api-helper.ts
-import type { APIRequestContext } from '@playwright/test';
+import type {
+	ClusterInfoResponse,
+	InstanceAiEnsureThreadResponse,
+	InstanceAiPermissions,
+	InstanceAiThreadInfo,
+} from '@n8n/api-types';
+import { request, type APIRequestContext } from '@playwright/test';
 import { setTimeout as wait } from 'node:timers/promises';
 
 import type { UserCredentials } from '../config/test-users';
@@ -7,13 +13,22 @@ import {
 	INSTANCE_OWNER_CREDENTIALS,
 	INSTANCE_MEMBER_CREDENTIALS,
 	INSTANCE_ADMIN_CREDENTIALS,
+	INSTANCE_CHAT_CREDENTIALS,
 } from '../config/test-users';
 import { TestError } from '../Types';
 import { CredentialApiHelper } from './credential-api-helper';
+import { DynamicCredentialApiHelper } from './dynamic-credential-api-helper';
+import { ExternalSecretsApiHelper } from './external-secrets-api-helper';
+import { McpApiHelper } from './mcp-api-helper';
+import { McpOAuthApiHelper } from './mcp-oauth-api-helper';
 import { ProjectApiHelper } from './project-api-helper';
+import { PublicApiHelper } from './public-api-helper';
 import { RoleApiHelper } from './role-api-helper';
+import { SecuritySettingsApiHelper } from './security-settings-api-helper';
+import { SourceControlApiHelper } from './source-control-api-helper';
 import { TagApiHelper } from './tag-api-helper';
-import { UserApiHelper } from './user-api-helper';
+import { TokenExchangeApiHelper } from './token-exchange-api-helper';
+import { UserApiHelper, type TestUser } from './user-api-helper';
 import { VariablesApiHelper } from './variables-api-helper';
 import { WebhookApiHelper } from './webhook-api-helper';
 import { WorkflowApiHelper } from './workflow-api-helper';
@@ -23,13 +38,26 @@ export interface LoginResponseData {
 	[key: string]: unknown;
 }
 
-export type UserRole = 'owner' | 'admin' | 'member';
+export interface InstanceAiBackgroundTimeoutSimulation {
+	threadId: string;
+	timeoutAt: number;
+}
+
+export interface InstanceAiThreadStatus {
+	backgroundTasks: Array<{
+		taskId?: string;
+		status?: string;
+	}>;
+}
+
+export type UserRole = 'owner' | 'admin' | 'member' | 'chat';
 export type TestState = 'fresh' | 'reset' | 'signin-only';
 
 const AUTH_TAGS = {
 	ADMIN: '@auth:admin',
 	OWNER: '@auth:owner',
 	MEMBER: '@auth:member',
+	CHAT: '@auth:chat',
 	NONE: '@auth:none',
 } as const;
 
@@ -41,36 +69,54 @@ export class ApiHelpers {
 	request: APIRequestContext;
 	workflows: WorkflowApiHelper;
 	webhooks: WebhookApiHelper;
+	mcp: McpApiHelper;
+	mcpOauth: McpOAuthApiHelper;
 	projects: ProjectApiHelper;
 	credentials: CredentialApiHelper;
+	dynamicCredentials: DynamicCredentialApiHelper;
 	variables: VariablesApiHelper;
+	externalSecrets: ExternalSecretsApiHelper;
 	users: UserApiHelper;
 	tags: TagApiHelper;
 	roles: RoleApiHelper;
+	sourceControl: SourceControlApiHelper;
+	securitySettings: SecuritySettingsApiHelper;
+	tokenExchange: TokenExchangeApiHelper;
+
+	publicApi: PublicApiHelper;
 
 	constructor(requestContext: APIRequestContext) {
 		this.request = requestContext;
 		this.workflows = new WorkflowApiHelper(this);
 		this.webhooks = new WebhookApiHelper(this);
+		this.mcp = new McpApiHelper(this);
+		this.mcpOauth = new McpOAuthApiHelper(this);
 		this.projects = new ProjectApiHelper(this);
 		this.credentials = new CredentialApiHelper(this);
+		this.dynamicCredentials = new DynamicCredentialApiHelper(this);
 		this.variables = new VariablesApiHelper(this);
+		this.externalSecrets = new ExternalSecretsApiHelper(this);
 		this.users = new UserApiHelper(this);
 		this.tags = new TagApiHelper(this);
 		this.roles = new RoleApiHelper(this);
+		this.sourceControl = new SourceControlApiHelper(this);
+		this.securitySettings = new SecuritySettingsApiHelper(this);
+		this.tokenExchange = new TokenExchangeApiHelper(this);
+
+		this.publicApi = new PublicApiHelper(this);
 	}
 
 	// ===== MAIN SETUP METHODS =====
 
 	/**
-	 * Setup test environment based on test tags (recommended approach)
+	 * Setup test environment based on test tags
 	 * @param tags - Array of test tags (e.g., ['@db:reset', '@auth:owner'])
 	 * @param memberIndex - Which member to use (if auth role is 'member')
 	 *
 	 * Examples:
-	 * - ['@db:reset'] = reset DB, manual signin required
 	 * - ['@db:reset', '@auth:owner'] = reset DB + signin as owner
 	 * - ['@auth:admin'] = signin as admin (no reset)
+	 * - ['@auth:none'] = no signin (unauthenticated)
 	 */
 	async setupFromTags(tags: string[], memberIndex: number = 0): Promise<LoginResponseData | null> {
 		const shouldReset = this.shouldResetDatabase(tags);
@@ -91,6 +137,14 @@ export class ApiHelpers {
 
 		// No setup required
 		return null;
+	}
+
+	/**
+	 * Check if database should be reset based on tags
+	 */
+	private shouldResetDatabase(tags: string[]): boolean {
+		const lowerTags = tags.map((tag) => tag.toLowerCase());
+		return lowerTags.includes(DB_TAGS.RESET.toLowerCase());
 	}
 
 	/**
@@ -132,6 +186,7 @@ export class ApiHelpers {
 				owner: INSTANCE_OWNER_CREDENTIALS,
 				members: INSTANCE_MEMBER_CREDENTIALS,
 				admin: INSTANCE_ADMIN_CREDENTIALS,
+				chat: INSTANCE_CHAT_CREDENTIALS,
 			},
 		});
 
@@ -213,6 +268,18 @@ export class ApiHelpers {
 		await this.setFeature(feature, true);
 	}
 
+	/**
+	 * Enable all project features (sharing, folders, advancedPermissions, projectRoles)
+	 * Use this in API-only tests - the n8n fixture enables these via withProjectFeatures()
+	 */
+	async enableProjectFeatures(): Promise<void> {
+		await this.enableFeature('sharing');
+		await this.enableFeature('folders');
+		await this.enableFeature('advancedPermissions');
+		await this.enableFeature('projectRole:admin');
+		await this.enableFeature('projectRole:editor');
+	}
+
 	async disableFeature(feature: string): Promise<void> {
 		await this.setFeature(feature, false);
 	}
@@ -221,10 +288,134 @@ export class ApiHelpers {
 		await this.setQuota('maxTeamProjects', value);
 	}
 
-	async get(path: string, params?: URLSearchParams) {
-		const response = await this.request.get(path, { params });
-		const { data } = await response.json();
-		return data;
+	/**
+	 * Create an isolated API context for a specific user.
+	 * Returns an ApiHelpers instance logged in as the specified user.
+	 * Use this for API-only operations without needing a browser context.
+	 */
+	async createApiForUser(user: Pick<TestUser, 'email' | 'password'>): Promise<ApiHelpers> {
+		const userContext = await request.newContext();
+		const userApi = new ApiHelpers(userContext);
+		await userApi.login({ email: user.email, password: user.password });
+		return userApi;
+	}
+
+	/**
+	 * Fetch cluster info from the instance registry endpoint.
+	 */
+	async getClusterInfo(): Promise<ClusterInfoResponse> {
+		const response = await this.request.get('/rest/instance-registry');
+		if (!response.ok()) {
+			throw new TestError(
+				`GET /rest/instance-registry failed (${response.status()}): ${await response.text()}`,
+			);
+		}
+		const plain = await response.json();
+		console.log('Cluster info: ', JSON.stringify(plain));
+		return (plain as { data: ClusterInfoResponse }).data;
+	}
+
+	async getInstanceAiToolTraceEvents(slug: string): Promise<unknown[]> {
+		const response = await this.request.get(`/rest/instance-ai/test/tool-trace/${slug}`);
+		if (!response.ok()) {
+			throw new TestError(
+				`GET /rest/instance-ai/test/tool-trace/${slug} failed (${response.status()}): ${await response.text()}`,
+			);
+		}
+
+		const body = (await response.json()) as { data?: { events?: unknown[] } };
+		return body.data?.events ?? [];
+	}
+
+	async createInstanceAiThread(projectId?: string): Promise<InstanceAiThreadInfo> {
+		const resolvedProjectId = projectId ?? (await this.projects.getMyPersonalProject()).id;
+		const response = await this.request.post('/rest/instance-ai/threads', {
+			data: { projectId: resolvedProjectId },
+		});
+		if (!response.ok()) {
+			throw new TestError(
+				`POST /rest/instance-ai/threads failed (${response.status()}): ${await response.text()}`,
+			);
+		}
+
+		const body = (await response.json()) as { data: InstanceAiEnsureThreadResponse };
+		return body.data.thread;
+	}
+
+	async renameInstanceAiThread(threadId: string, title: string): Promise<InstanceAiThreadInfo> {
+		const response = await this.request.patch(`/rest/instance-ai/threads/${threadId}`, {
+			data: { title },
+		});
+		if (!response.ok()) {
+			throw new TestError(
+				`PATCH /rest/instance-ai/threads/${threadId} failed (${response.status()}): ${await response.text()}`,
+			);
+		}
+
+		const body = (await response.json()) as { data: { thread: InstanceAiThreadInfo } };
+		return body.data.thread;
+	}
+
+	async getInstanceAiThreadStatus(threadId: string): Promise<InstanceAiThreadStatus> {
+		const response = await this.request.get(`/rest/instance-ai/threads/${threadId}/status`);
+		if (!response.ok()) {
+			throw new TestError(
+				`GET /rest/instance-ai/threads/${threadId}/status failed (${response.status()}): ${await response.text()}`,
+			);
+		}
+
+		const body = (await response.json()) as { data?: Partial<InstanceAiThreadStatus> };
+		return { backgroundTasks: body.data?.backgroundTasks ?? [] };
+	}
+
+	async startInstanceAiBackgroundTimeoutSimulation(
+		userId: string,
+		threadId?: string,
+	): Promise<InstanceAiBackgroundTimeoutSimulation> {
+		const response = await this.request.post('/rest/instance-ai/test/background-timeout/start', {
+			data: { userId, ...(threadId ? { threadId } : {}) },
+		});
+		if (!response.ok()) {
+			throw new TestError(
+				`POST /rest/instance-ai/test/background-timeout/start failed (${response.status()}): ${await response.text()}`,
+			);
+		}
+
+		const body = (await response.json()) as { data: InstanceAiBackgroundTimeoutSimulation };
+		return body.data;
+	}
+
+	async cancelInstanceAiTask(threadId: string, taskId: string): Promise<void> {
+		const response = await this.request.post(
+			`/rest/instance-ai/chat/${threadId}/tasks/${taskId}/cancel`,
+		);
+		if (!response.ok()) {
+			throw new TestError(
+				`POST /rest/instance-ai/chat/${threadId}/tasks/${taskId}/cancel failed (${response.status()}): ${await response.text()}`,
+			);
+		}
+	}
+
+	async runInstanceAiLivenessSweep(now?: number): Promise<void> {
+		const response = await this.request.post('/rest/instance-ai/test/liveness-sweep', {
+			data: { ...(now !== undefined ? { now } : {}) },
+		});
+		if (!response.ok()) {
+			throw new TestError(
+				`POST /rest/instance-ai/test/liveness-sweep failed (${response.status()}): ${await response.text()}`,
+			);
+		}
+	}
+
+	async setInstanceAiPermissions(permissions: Partial<InstanceAiPermissions>): Promise<void> {
+		const response = await this.request.put('/rest/instance-ai/settings', {
+			data: { permissions },
+		});
+		if (!response.ok()) {
+			throw new TestError(
+				`PUT /rest/instance-ai/settings failed (${response.status()}): ${await response.text()}`,
+			);
+		}
 	}
 
 	/**
@@ -289,19 +480,34 @@ export class ApiHelpers {
 	 */
 	async createWebhookDestination(config: {
 		url: string;
-		method?: 'POST' | 'GET' | 'PUT' | 'PATCH';
+		method?: string;
 		label?: string;
+		enabled?: boolean;
 		subscribedEvents?: string[];
-		sendPayload?: boolean;
+		anonymizeAuditMessages?: boolean;
+		sendHeaders?: boolean;
+		headerParameters?: Array<{ name: string; value: string }>;
+		authentication?: 'genericCredentialType' | 'none';
+		genericAuthType?: string;
+		credentials?: Record<string, { id: string; name: string }>;
 	}): Promise<{ id: string }> {
 		const response = await this.request.post('/rest/eventbus/destination', {
 			data: {
 				__type: '$$MessageEventBusDestinationWebhook',
 				url: config.url,
 				method: config.method ?? 'POST',
-				label: config.label ?? 'Webhook Destination',
-				subscribedEvents: config.subscribedEvents ?? ['*'], // All events
-				sendPayload: config.sendPayload ?? true,
+				label: config.label ?? 'Webhook Endpoint',
+				// Destinations default to disabled in the backend; real events only
+				// reach enabled destinations (the test-message endpoint bypasses this).
+				enabled: config.enabled ?? true,
+				subscribedEvents: config.subscribedEvents ?? ['*'],
+				anonymizeAuditMessages: config.anonymizeAuditMessages ?? false,
+				authentication: config.authentication ?? 'none',
+				genericAuthType: config.genericAuthType ?? '',
+				sendHeaders: config.sendHeaders ?? Boolean(config.headerParameters),
+				specifyHeaders: config.headerParameters ? 'keypair' : '',
+				headerParameters: { parameters: config.headerParameters ?? [] },
+				credentials: config.credentials,
 			},
 		});
 
@@ -312,7 +518,6 @@ export class ApiHelpers {
 		}
 
 		const result = await response.json();
-		// Handle both direct response and {data: ...} wrapped response
 		return result.data ?? result;
 	}
 
@@ -364,6 +569,71 @@ export class ApiHelpers {
 		return result.data ?? result;
 	}
 
+	/**
+	 * Delete all log streaming destinations.
+	 */
+	async deleteAllLogStreamingDestinations(): Promise<void> {
+		const destinations = await this.getLogStreamingDestinations();
+		for (const destination of destinations) {
+			await this.deleteLogStreamingDestination(destination.id);
+		}
+	}
+
+	// ===== MCP REGISTRY METHODS =====
+
+	/**
+	 * Seed the MCP registry with mock server data
+	 * This inserts data into the mcp_registry_server table and triggers
+	 * a node type refresh so the synthetic MCP nodes become available.
+	 */
+	async seedMcpRegistry(): Promise<void> {
+		const response = await this.request.post('/rest/mcp-registry/test/seed');
+		if (!response.ok()) {
+			throw new TestError(
+				`Failed to seed MCP registry: ${response.status()} ${await response.text()}`,
+			);
+		}
+	}
+
+	// ===== MCP API KEY METHODS =====
+
+	/**
+	 * Rotate the MCP API key for the authenticated user.
+	 * Creates a new API key and invalidates the old one.
+	 *
+	 * @returns The new MCP API key data
+	 */
+	async rotateMcpApiKey(): Promise<{ id: string; apiKey: string; userId: string }> {
+		const response = await this.request.post('/rest/mcp/api-key/rotate');
+
+		if (!response.ok()) {
+			throw new TestError(
+				`Failed to rotate MCP API key: ${response.status()} ${await response.text()}`,
+			);
+		}
+
+		const result = await response.json();
+		return result.data ?? result;
+	}
+
+	/**
+	 * Enable or disable MCP access for the instance.
+	 * Uses the MCP settings endpoint to toggle access.
+	 *
+	 * @param enabled - Whether MCP access should be enabled
+	 */
+	async setMcpAccess(enabled: boolean): Promise<void> {
+		const response = await this.request.patch('/rest/mcp/settings', {
+			data: { mcpAccessEnabled: enabled },
+		});
+
+		if (!response.ok()) {
+			throw new TestError(
+				`Failed to set MCP access: ${response.status()} ${await response.text()}`,
+			);
+		}
+	}
+
 	// ===== PRIVATE METHODS =====
 
 	private async loginAndSetCookies(
@@ -410,6 +680,8 @@ export class ApiHelpers {
 					throw new TestError(`No member credentials found for index ${memberIndex}`);
 				}
 				return INSTANCE_MEMBER_CREDENTIALS[memberIndex];
+			case 'chat':
+				return INSTANCE_CHAT_CREDENTIALS;
 			default:
 				throw new TestError(`Unknown role: ${role as string}`);
 		}
@@ -417,14 +689,9 @@ export class ApiHelpers {
 
 	// ===== TAG PARSING METHODS =====
 
-	private shouldResetDatabase(tags: string[]): boolean {
-		const lowerTags = tags.map((tag) => tag.toLowerCase());
-		return lowerTags.includes(DB_TAGS.RESET.toLowerCase());
-	}
-
 	/**
 	 * Get the role from the tags
-	 * @param tags - Array of test tags (e.g., ['@db:reset', '@auth:owner'])
+	 * @param tags - Array of test tags (e.g., ['@auth:owner'])
 	 * @returns The role from the tags, or 'owner' if no role is found
 	 */
 	getRoleFromTags(tags: string[]): UserRole | null {
@@ -433,6 +700,7 @@ export class ApiHelpers {
 		if (lowerTags.includes(AUTH_TAGS.ADMIN.toLowerCase())) return 'admin';
 		if (lowerTags.includes(AUTH_TAGS.OWNER.toLowerCase())) return 'owner';
 		if (lowerTags.includes(AUTH_TAGS.MEMBER.toLowerCase())) return 'member';
+		if (lowerTags.includes(AUTH_TAGS.CHAT.toLowerCase())) return 'chat';
 		if (lowerTags.includes(AUTH_TAGS.NONE.toLowerCase())) return null;
 		return 'owner';
 	}

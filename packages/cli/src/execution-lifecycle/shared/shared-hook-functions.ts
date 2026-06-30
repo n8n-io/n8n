@@ -1,10 +1,10 @@
 import { Logger } from '@n8n/backend-common';
-import type { IExecutionDb } from '@n8n/db';
-import { ExecutionRepository } from '@n8n/db';
+import type { IExecutionDb, UpdateExecutionConditions } from '@n8n/db';
 import { Container } from '@n8n/di';
 import pick from 'lodash/pick';
 import { ensureError, type ExecutionStatus, type IRun, type IWorkflowBase } from 'n8n-workflow';
 
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { UpdateExecutionPayload } from '@/interfaces';
 import { ExecutionMetadataService } from '@/services/execution-metadata.service';
 import { isWorkflowIdValid } from '@/utils';
@@ -47,6 +47,7 @@ export function prepareExecutionDataForDbUpdate(parameters: {
 		'settings',
 		'staticData',
 		'pinData',
+		'nodeGroups',
 	]);
 
 	const fullExecutionData: UpdateExecutionPayload = {
@@ -73,13 +74,30 @@ export function prepareExecutionDataForDbUpdate(parameters: {
 	return fullExecutionData;
 }
 
+export async function updateExistingExecutionMetadata(
+	executionId: string,
+	metadata?: Record<string, string>,
+) {
+	const logger = Container.get(Logger);
+
+	try {
+		if (metadata && Object.keys(metadata).length > 0) {
+			await Container.get(ExecutionMetadataService).save(executionId, metadata);
+		}
+	} catch (e) {
+		const error = ensureError(e);
+		logger.error(`Failed to save metadata for execution ID ${executionId}`, { error });
+	}
+}
+
 export async function updateExistingExecution(parameters: {
 	executionId: string;
 	workflowId: string;
 	executionData: Partial<IExecutionDb>;
+	conditions?: UpdateExecutionConditions;
 }) {
 	const logger = Container.get(Logger);
-	const { executionId, workflowId, executionData } = parameters;
+	const { executionId, workflowId, executionData, conditions } = parameters;
 	// Leave log message before flatten as that operation increased memory usage a lot and the chance of a crash is highest here
 	logger.debug(`Save execution data to database for execution ID ${executionId}`, {
 		executionId,
@@ -88,22 +106,23 @@ export async function updateExistingExecution(parameters: {
 		stoppedAt: executionData.stoppedAt,
 	});
 
-	await Container.get(ExecutionRepository).updateExistingExecution(executionId, executionData);
+	const executionPersistence = Container.get(ExecutionPersistence);
+	const updated = await executionPersistence.updateExistingExecution(
+		executionId,
+		executionData,
+		conditions,
+	);
 
-	try {
-		if (executionData.data?.resultData.metadata) {
-			await Container.get(ExecutionMetadataService).save(
-				executionId,
-				executionData.data.resultData.metadata,
-			);
-		}
-	} catch (e) {
-		const error = ensureError(e);
-		logger.error(`Failed to save metadata for execution ID ${executionId}`, { error });
+	if (!updated) {
+		logger.debug(
+			`Skipped saving execution data for execution ID ${executionId} - update conditions not met`,
+			{ executionId, workflowId },
+		);
+		return;
 	}
 
 	if (executionData.finished === true && executionData.retryOf !== undefined) {
-		await Container.get(ExecutionRepository).updateExistingExecution(executionData.retryOf, {
+		await executionPersistence.updateExistingExecution(executionData.retryOf, {
 			retrySuccessId: executionId,
 		});
 	}

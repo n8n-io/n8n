@@ -1,10 +1,14 @@
-import type { Response } from 'express';
+import { Container } from '@n8n/di';
+import type { Request, Response } from 'express';
 import { rm } from 'fs/promises';
 import isbot from 'isbot';
+import jwt from 'jsonwebtoken';
 import { DateTime } from 'luxon';
-import { getWebhookSandboxCSP } from 'n8n-core';
+import { getHtmlSandboxCSP, InstanceSettings, isFormHtmlSandboxingDisabled } from 'n8n-core';
 import type {
+	INode,
 	INodeExecutionData,
+	IUser,
 	MultiPartFormData,
 	IDataObject,
 	IWebhookFunctions,
@@ -19,15 +23,50 @@ import {
 	WorkflowConfigurationError,
 	jsonParse,
 	tryToParseUrl,
+	BINARY_MODE_COMBINED,
+	tryToParseJsonToFormFields,
 } from 'n8n-workflow';
 import * as a from 'node:assert';
 import sanitize from 'sanitize-html';
 
 import { getResolvables } from '../../../utils/utilities';
 import { WebhookAuthorizationError } from '../../Webhook/error';
-import { validateWebhookAuthentication } from '../../Webhook/utils';
+import {
+	generateFormPostBasicAuthToken,
+	isIpAllowed,
+	validateWebhookAuthentication,
+} from '../../Webhook/utils';
 import { FORM_TRIGGER_AUTHENTICATION_PROPERTY } from '../interfaces';
 import type { FormTriggerData, FormField } from '../interfaces';
+
+/**
+ * Time-to-live for the form auth token embedded in n8nUserAuth forms.
+ * Long enough for users to fill out a form, short enough to limit damage
+ * if the token leaks (e.g. via malicious HTML in form fields).
+ */
+const FORM_USER_AUTH_TOKEN_TTL_SECONDS = 60 * 60;
+
+type FormUserAuthClaims = {
+	sub: string;
+	email: string;
+	firstName: string;
+	lastName: string;
+	nid: string;
+	wid: string;
+};
+
+function isFormUserAuthClaims(value: unknown): value is FormUserAuthClaims {
+	if (typeof value !== 'object' || value === null) return false;
+	const c = value as Record<string, unknown>;
+	return (
+		typeof c.sub === 'string' &&
+		typeof c.email === 'string' &&
+		typeof c.firstName === 'string' &&
+		typeof c.lastName === 'string' &&
+		typeof c.nid === 'string' &&
+		typeof c.wid === 'string'
+	);
+}
 
 export function sanitizeHtml(text: string) {
 	return sanitize(text, {
@@ -101,20 +140,21 @@ export function sanitizeHtml(text: string) {
 	});
 }
 
-export const prepareFormFields = (context: IWebhookFunctions, fields: FormFieldsParameter) => {
+/**
+ *  Replaces `\n` strings with actual newline characters.
+ *  Also replaces `\\n` strings with `\n` string
+ * @param text - The text to replace newlines in
+ * @returns Updated text
+ */
+export const handleNewlines = (text: string) => {
+	return text.replace(/\\n|\\\\n/g, (match) => (match === '\\\\n' ? '\\n' : '\n'));
+};
+
+export const prepareFormFields = (fields: FormFieldsParameter) => {
 	return fields.map((field) => {
-		if (field.fieldType === 'html') {
-			let { html } = field;
-
-			if (!html) return field;
-
-			for (const resolvable of getResolvables(html)) {
-				html = html.replace(resolvable, context.evaluateExpression(resolvable) as string);
-			}
-
-			field.html = sanitizeHtml(html);
+		if (field.fieldType === 'html' && field.html) {
+			field.html = sanitizeHtml(field.html);
 		}
-
 		if (field.fieldType === 'hiddenField') {
 			field.fieldLabel = field.fieldName as string;
 		}
@@ -126,13 +166,17 @@ export const prepareFormFields = (context: IWebhookFunctions, fields: FormFields
 export function sanitizeCustomCss(css: string | undefined): string | undefined {
 	if (!css) return undefined;
 
-	// Use sanitize-html with custom settings for CSS
-	return sanitize(css, {
-		allowedTags: [], // No HTML tags allowed
-		allowedAttributes: {}, // No attributes allowed
-		// This ensures we're only keeping the text content
-		// which should be the CSS, while removing any HTML/script tags
+	const sanitized = sanitize(css, {
+		allowedTags: [],
+		allowedAttributes: {},
 	});
+
+	// Restore only the entities needed for valid CSS after tag stripping.
+	// &gt; → > is needed for CSS child combinator selectors (div > p).
+	// &amp; → & is needed for CSS values, but NOT when followed by lt;/gt;/amp;
+	// to prevent cascading decode of double-encoded entities.
+	// &lt; is never decoded — < is not valid in CSS and would enable tag injection.
+	return sanitized.replace(/&gt;/g, '>').replace(/&amp;(?!(?:lt|gt|amp);)/g, '&');
 }
 
 /**
@@ -185,6 +229,7 @@ export function prepareFormData({
 	buttonLabel,
 	customCss,
 	nodeVersion,
+	authToken,
 }: {
 	formTitle: string;
 	formDescription: string;
@@ -200,6 +245,7 @@ export function prepareFormData({
 	formSubmittedHeader?: string;
 	customCss?: string;
 	nodeVersion?: number;
+	authToken?: string;
 }) {
 	const utm_campaign = instanceId ? `&utm_campaign=${instanceId}` : '';
 	const n8nWebsiteLink = `https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger${utm_campaign}`;
@@ -221,6 +267,7 @@ export function prepareFormData({
 		appendAttribution,
 		buttonLabel,
 		dangerousCustomCss: sanitizeCustomCss(customCss),
+		authToken,
 	};
 
 	if (redirectUrl) {
@@ -389,11 +436,13 @@ export async function prepareFormReturnItem(
 	formFields: FormFieldsParameter,
 	mode: 'test' | 'production',
 	useWorkflowTimezone: boolean = false,
+	authedUser?: IUser,
 ) {
 	const req = context.getRequestObject() as MultiPartFormData.Request;
 	a.ok(req.contentType === 'multipart/form-data', 'Expected multipart/form-data');
 	const bodyData = (context.getBodyData().data as IDataObject) ?? {};
 	const files = (context.getBodyData().files as IDataObject) ?? {};
+	const { binaryMode } = context.getWorkflowSettings();
 
 	const returnItem: INodeExecutionData = {
 		json: {},
@@ -408,19 +457,25 @@ export async function prepareFormReturnItem(
 		const filesInput = files[key] as MultiPartFormData.File[] | MultiPartFormData.File;
 
 		if (Array.isArray(filesInput)) {
-			bodyData[key] = filesInput.map((file) => ({
-				filename: file.originalFilename,
-				mimetype: file.mimetype,
-				size: file.size,
-			}));
+			bodyData[key] =
+				binaryMode === BINARY_MODE_COMBINED
+					? []
+					: filesInput.map((file) => ({
+							filename: file.originalFilename,
+							mimetype: file.mimetype,
+							size: file.size,
+						}));
 			processFiles.push(...filesInput);
 			multiFile = true;
 		} else {
-			bodyData[key] = {
-				filename: filesInput.originalFilename,
-				mimetype: filesInput.mimetype,
-				size: filesInput.size,
-			};
+			bodyData[key] =
+				binaryMode === BINARY_MODE_COMBINED
+					? {}
+					: {
+							filename: filesInput.originalFilename,
+							mimetype: filesInput.mimetype,
+							size: filesInput.size,
+						};
 			processFiles.push(filesInput);
 		}
 
@@ -430,17 +485,27 @@ export async function prepareFormReturnItem(
 
 		let fileCount = 0;
 		for (const file of processFiles) {
-			let binaryPropertyName = fieldLabel.replace(/\W/g, '_');
-
-			if (multiFile) {
-				binaryPropertyName += `_${fileCount++}`;
-			}
-
-			returnItem.binary![binaryPropertyName] = await context.nodeHelpers.copyBinaryFile(
+			const binaryData = await context.nodeHelpers.copyBinaryFile(
 				file.filepath,
 				file.originalFilename ?? file.newFilename,
 				file.mimetype,
 			);
+
+			if (binaryMode === BINARY_MODE_COMBINED) {
+				if (Array.isArray(bodyData[key])) {
+					(bodyData[key] as IDataObject[]).push(binaryData);
+				} else {
+					bodyData[key] = binaryData;
+				}
+			} else {
+				let binaryPropertyName = fieldLabel.replace(/\W/g, '_');
+
+				if (multiFile) {
+					binaryPropertyName += `_${fileCount++}`;
+				}
+
+				returnItem.binary![binaryPropertyName] = binaryData;
+			}
 
 			// Delete original file to prevent tmp directory from growing too large
 			await rm(file.filepath, { force: true });
@@ -461,6 +526,15 @@ export async function prepareFormReturnItem(
 		returnItem.json.formQueryParameters = context.getRequestObject().query;
 	}
 
+	if (authedUser) {
+		returnItem.json.user = {
+			id: authedUser.id,
+			email: authedUser.email,
+			firstName: authedUser.firstName,
+			lastName: authedUser.lastName,
+		};
+	}
+
 	return returnItem;
 }
 
@@ -477,6 +551,7 @@ export function renderForm({
 	appendAttribution,
 	buttonLabel,
 	customCss,
+	authToken,
 }: {
 	context: IWebhookFunctions;
 	res: Response;
@@ -490,8 +565,8 @@ export function renderForm({
 	appendAttribution?: boolean;
 	buttonLabel?: string;
 	customCss?: string;
+	authToken?: string;
 }) {
-	formDescription = (formDescription || '').replace(/\\n/g, '\n').replace(/<br>/g, '\n');
 	const instanceId = context.getInstanceId();
 
 	const useResponseData = responseMode === 'responseNode';
@@ -516,7 +591,7 @@ export function renderForm({
 		} catch (error) {}
 	}
 
-	formFields = prepareFormFields(context, formFields);
+	formFields = prepareFormFields(formFields);
 
 	const data = prepareFormData({
 		formTitle,
@@ -532,10 +607,37 @@ export function renderForm({
 		buttonLabel,
 		customCss,
 		nodeVersion: context.getNode().typeVersion,
+		authToken,
 	});
 
-	res.setHeader('Content-Security-Policy', getWebhookSandboxCSP());
+	if (!isFormHtmlSandboxingDisabled()) {
+		res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());
+	}
 	res.render('form-trigger', data);
+}
+
+/**
+ * Build the absolute URL the user originally requested, honouring
+ * `x-forwarded-*` headers so it survives behind a reverse proxy. The full URL
+ * is required so the post-signin redirect uses `window.location.href = redirect`
+ * in SigninView.vue (the `router.push` branch only handles SPA routes, and the
+ * public form is served outside the Vue app).
+ *
+ * Security note: `x-forwarded-host` / `x-forwarded-proto` are attacker-controlled
+ * unless the deployer puts a trusted proxy in front (recommended). The redirect
+ * value flows through SigninView.vue's `isRedirectSafe()`, which enforces a
+ * same-origin check (`url.origin === window.location.origin`). So a spoofed
+ * Host header can at worst break the post-signin redirect for that user — it
+ * cannot redirect to an attacker-controlled origin.
+ */
+function buildAbsoluteFormUrl(req: Request): string {
+	const headerValue = (name: string) => {
+		const raw = req.headers[name];
+		return typeof raw === 'string' ? raw.trim() : undefined;
+	};
+	const protocol = headerValue('x-forwarded-proto') ?? req.protocol ?? 'http';
+	const host = headerValue('x-forwarded-host') ?? req.headers.host ?? '';
+	return `${protocol}://${host}${req.originalUrl}`;
 }
 
 export const isFormConnected = (nodes: NodeTypeAndVersion[]) => {
@@ -545,6 +647,114 @@ export const isFormConnected = (nodes: NodeTypeAndVersion[]) => {
 	);
 };
 
+/**
+ * Generate a form auth token for n8nUserAuth. The token embeds the user info
+ * in a signed JWT so the POST handler can authenticate the submission without
+ * relying on the `n8n-auth` cookie (cookies aren't sent on fetch requests from
+ * the sandboxed form page because the document has a null origin and the
+ * cookie is `SameSite=Lax`).
+ *
+ * The `nid` and `wid` claims bind the token to a specific node + webhook,
+ * preventing replay across forms. Signed with HS256 using the instance's
+ * hmac signature secret.
+ */
+export function generateFormUserAuthToken(node: INode, user: IUser): string {
+	const secret = Container.get(InstanceSettings).hmacSignatureSecret;
+	const payload: FormUserAuthClaims = {
+		sub: user.id,
+		email: user.email,
+		firstName: user.firstName,
+		lastName: user.lastName,
+		nid: node.id,
+		wid: node.webhookId ?? '',
+	};
+	return jwt.sign(payload, secret, {
+		algorithm: 'HS256',
+		expiresIn: FORM_USER_AUTH_TOKEN_TTL_SECONDS,
+	});
+}
+
+/**
+ * Verify a form auth token issued by `generateFormUserAuthToken`. Returns the
+ * encoded user on success or `null` on any failure (bad format, expired,
+ * wrong signature, wrong node). The caller decides how to surface the failure.
+ */
+export function verifyFormUserAuthToken(token: string, node: INode): IUser | null {
+	const secret = Container.get(InstanceSettings).hmacSignatureSecret;
+	let claims: unknown;
+	try {
+		claims = jwt.verify(token, secret, { algorithms: ['HS256'] });
+	} catch {
+		return null;
+	}
+	if (!isFormUserAuthClaims(claims)) return null;
+	if (claims.nid !== node.id) return null;
+	if (claims.wid !== (node.webhookId ?? '')) return null;
+	return {
+		id: claims.sub,
+		email: claims.email,
+		firstName: claims.firstName,
+		lastName: claims.lastName,
+	};
+}
+
+/**
+ * Authenticate an `n8nUserAuth` request via:
+ * 1. the `n8n-auth` cookie (sent on top-level GET when the user is logged in), or
+ * 2. the `x-auth-token` form auth token (used on POST and multi-step page
+ *    navigations from the sandboxed form page that can't send cookies).
+ *
+ * On success returns the user. On failure sends the appropriate response
+ * (302 to `/signin` on GET, 401 on POST) and returns `null` — the caller
+ * must abort with `noWebhookResponse`.
+ */
+async function authenticateFormUserOrRespond(context: IWebhookFunctions): Promise<IUser | null> {
+	const req = context.getRequestObject();
+
+	// Parse the raw Cookie header rather than `req.cookies` because the webhook
+	// path may bypass cookie-parser middleware in some deployments.
+	const cookieMatch = (req.headers.cookie ?? '').match(/(?:^|;\s*)n8n-auth=([^;]+)/);
+	if (cookieMatch) {
+		try {
+			return await context.validateCookieAuth(cookieMatch[1].trim());
+		} catch {}
+	}
+
+	const formToken = req.headers['x-auth-token'];
+	if (typeof formToken === 'string' && formToken) {
+		const user = verifyFormUserAuthToken(formToken, context.getNode());
+		if (user) return user;
+	}
+
+	const res = context.getResponseObject();
+	if (req.method === 'GET') {
+		res.writeHead(302, {
+			Location: `/signin?redirect=${encodeURIComponent(buildAbsoluteFormUrl(req))}`,
+		});
+		res.end();
+	} else {
+		res.setHeader('WWW-Authenticate', 'Basic realm="Enter credentials"');
+		res.status(401).send();
+	}
+	return null;
+}
+
+/**
+ * Multi-step Form/Wait nodes inherit `authentication` from the upstream
+ * Form Trigger. This wrapper short-circuits when n8nUserAuth isn't in use.
+ *
+ * Returns `{ authedUser }` on success, `{ responded: true }` after sending a
+ * 302/401 on failure, or `{}` if the trigger doesn't require auth.
+ */
+export async function validateFormPageAuth(
+	context: IWebhookFunctions,
+	triggerAuthentication: string,
+): Promise<{ authedUser?: IUser; responded?: boolean }> {
+	if (triggerAuthentication !== 'n8nUserAuth') return {};
+	const user = await authenticateFormUserOrRespond(context);
+	return user ? { authedUser: user } : { responded: true };
+}
+
 export async function formWebhook(
 	context: IWebhookFunctions,
 	authProperty = FORM_TRIGGER_AUTHENTICATION_PROPERTY,
@@ -552,6 +762,7 @@ export async function formWebhook(
 	const node = context.getNode();
 	const options = context.getNodeParameter('options', {}) as {
 		ignoreBots?: boolean;
+		ipWhitelist?: string;
 		respondWithOptions?: {
 			values: {
 				respondWith: 'text' | 'redirect';
@@ -564,28 +775,57 @@ export async function formWebhook(
 		appendAttribution?: boolean;
 		buttonLabel?: string;
 		customCss?: string;
+		includeUserInOutput?: boolean;
 	};
 	const res = context.getResponseObject();
 	const req = context.getRequestObject();
 
-	try {
-		if (options.ignoreBots && isbot(req.headers['user-agent'])) {
-			throw new WebhookAuthorizationError(403);
+	// Check IP allowlist first (before bot detection and authentication)
+	if (!isIpAllowed(options.ipWhitelist, req.ips, req.ip)) {
+		res.writeHead(403);
+		res.end('IP is not allowed to access this form!');
+		return { noWebhookResponse: true };
+	}
+
+	if (options.ignoreBots && isbot(req.headers['user-agent'])) {
+		res.setHeader('WWW-Authenticate', 'Basic realm="Enter credentials"');
+		res.status(401).send();
+		return { noWebhookResponse: true };
+	}
+
+	const authentication = context.getNodeParameter(authProperty, 'none') as string;
+	let authedUser: IUser | undefined;
+	if (node.typeVersion > 1) {
+		if (authentication === 'n8nUserAuth') {
+			const user = await authenticateFormUserOrRespond(context);
+			if (!user) return { noWebhookResponse: true };
+			authedUser = user;
+		} else {
+			try {
+				await validateWebhookAuthentication(context, authProperty);
+			} catch (error) {
+				if (error instanceof WebhookAuthorizationError) {
+					res.setHeader('WWW-Authenticate', 'Basic realm="Enter credentials"');
+					res.status(401).send();
+					return { noWebhookResponse: true };
+				}
+				throw error;
+			}
 		}
-		if (node.typeVersion > 1) {
-			await validateWebhookAuthentication(context, authProperty);
-		}
-	} catch (error) {
-		if (error instanceof WebhookAuthorizationError) {
-			res.setHeader('WWW-Authenticate', 'Basic realm="Enter credentials"');
-			res.status(401).send();
-			return { noWebhookResponse: true };
-		}
-		throw error;
 	}
 
 	const mode = context.getMode() === 'manual' ? 'test' : 'production';
 	const formFields = context.getNodeParameter('formFields.values', []) as FormFieldsParameter;
+
+	for (const field of formFields) {
+		if (field.fieldType === 'html') {
+			let html = field.html ?? '';
+			for (const resolvable of getResolvables(html)) {
+				html = html.replace(resolvable, context.evaluateExpression(resolvable) as string);
+			}
+			field.html = html;
+		}
+	}
 
 	const method = context.getRequestObject().method;
 
@@ -594,7 +834,9 @@ export async function formWebhook(
 	//Show the form on GET request
 	if (method === 'GET') {
 		const formTitle = context.getNodeParameter('formTitle', '') as string;
-		const formDescription = sanitizeHtml(context.getNodeParameter('formDescription', '') as string);
+		const formDescription = handleNewlines(
+			sanitizeHtml(context.getNodeParameter('formDescription', '') as string),
+		);
 		let responseMode = context.getNodeParameter('responseMode', '') as string;
 
 		let formSubmittedText;
@@ -633,6 +875,18 @@ export async function formWebhook(
 			responseMode = 'responseNode';
 		}
 
+		let authToken: string | undefined;
+		if (node.typeVersion > 1) {
+			if (authentication === 'n8nUserAuth' && authedUser) {
+				// Cookies aren't sent on POST from the sandboxed form page
+				// (null origin + SameSite=Lax). Embed an HMAC token so the
+				// POST handler can re-authenticate the user.
+				authToken = generateFormUserAuthToken(node, authedUser);
+			} else {
+				authToken = await generateFormPostBasicAuthToken(context, authProperty);
+			}
+		}
+
 		renderForm({
 			context,
 			res,
@@ -646,6 +900,7 @@ export async function formWebhook(
 			appendAttribution,
 			buttonLabel,
 			customCss: options.customCss,
+			authToken,
 		});
 
 		return {
@@ -659,7 +914,14 @@ export async function formWebhook(
 		useWorkflowTimezone = true;
 	}
 
-	const returnItem = await prepareFormReturnItem(context, formFields, mode, useWorkflowTimezone);
+	const userForOutput = options.includeUserInOutput === false ? undefined : authedUser;
+	const returnItem = await prepareFormReturnItem(
+		context,
+		formFields,
+		mode,
+		useWorkflowTimezone,
+		userForOutput,
+	);
 
 	return {
 		webhookResponse: { status: 200 },
@@ -668,6 +930,8 @@ export async function formWebhook(
 }
 
 export function resolveRawData(context: IWebhookFunctions, rawData: string) {
+	if (!rawData) return rawData;
+
 	const resolvables = getResolvables(rawData);
 	let returnData: string = rawData;
 
@@ -689,4 +953,39 @@ export function resolveRawData(context: IWebhookFunctions, rawData: string) {
 		}
 	}
 	return returnData;
+}
+
+type ParseFormFieldsOptions = {
+	defineForm: 'json' | 'fields';
+	fieldsParameterName: string;
+	mode?: 'test' | 'production';
+};
+export function parseFormFields(context: IWebhookFunctions, options: ParseFormFieldsOptions) {
+	let fields: FormFieldsParameter = [];
+	if (options.defineForm === 'json') {
+		try {
+			const jsonOutput = context.getNodeParameter(options.fieldsParameterName, '', {
+				rawExpressions: true,
+			}) as string;
+
+			fields = tryToParseJsonToFormFields(resolveRawData(context, jsonOutput));
+		} catch (error) {
+			throw new NodeOperationError(context.getNode(), error.message, {
+				description: error.message,
+				type: options.mode === 'test' ? 'manual-form-test' : undefined,
+			});
+		}
+	} else {
+		fields = context.getNodeParameter(options.fieldsParameterName, []) as FormFieldsParameter;
+		for (const field of fields) {
+			if (field.fieldType === 'html') {
+				let html = field.html ?? '';
+				for (const resolvable of getResolvables(html)) {
+					html = html.replace(resolvable, context.evaluateExpression(resolvable) as string);
+				}
+				field.html = html;
+			}
+		}
+	}
+	return fields;
 }

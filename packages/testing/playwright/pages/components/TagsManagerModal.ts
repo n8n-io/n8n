@@ -33,6 +33,10 @@ export class TagsManagerModal extends BasePage {
 		return this.getTable().locator('tbody tr').first();
 	}
 
+	getTagByName(name: string): Locator {
+		return this.getTable().getByText(name);
+	}
+
 	getDeleteTagButton(): Locator {
 		return this.root.getByTestId('delete-tag-button');
 	}
@@ -45,8 +49,13 @@ export class TagsManagerModal extends BasePage {
 		return this.root.getByText('Are you sure you want to delete this tag?');
 	}
 
-	async clickAddNewButton(): Promise<void> {
-		await this.root.getByRole('button', { name: 'Add new' }).click();
+	/**
+	 * Start adding a new tag, handling both empty state ("Create a tag") and existing tags ("Add new")
+	 */
+	async addTag(): Promise<void> {
+		const addNewButton = this.root.getByRole('button', { name: 'Add new' });
+		const createTagButton = this.root.getByRole('button', { name: 'Create a tag' });
+		await addNewButton.or(createTagButton).click();
 	}
 
 	async clickDoneButton(): Promise<void> {

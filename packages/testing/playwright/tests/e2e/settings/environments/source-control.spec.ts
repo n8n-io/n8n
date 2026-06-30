@@ -1,56 +1,170 @@
-import { addGiteaSSHKey } from 'n8n-containers/n8n-test-container-gitea';
-
-import { test, expect } from '../../../../fixtures/base';
+import { expect, test } from '../../../../fixtures/base';
 import type { n8nPage } from '../../../../pages/n8nPage';
+import {
+	buildRepoUrl,
+	generateUniqueRepoName,
+	initSourceControl,
+} from '../../../../utils/source-control-helper';
 
-test.use({
-	addContainerCapability: {
-		sourceControl: true,
-	},
-});
+test.use({ capability: 'source-control' });
 
-async function setupSourceControl(n8n: n8nPage) {
-	await n8n.api.enableFeature('sourceControl');
-	// This is needed because the DB reset wipes out source control preferences
-	await n8n.page.request.post('/rest/source-control/preferences', {
-		data: {
-			connectionType: 'ssh',
-			keyGeneratorType: 'ed25519',
-		},
-	});
+async function saveSettings(n8n: n8nPage) {
+	await Promise.all([
+		n8n.page.waitForResponse(
+			(response) =>
+				response.url().includes('/rest/source-control/preferences') &&
+				response.request().method() === 'PATCH',
+		),
+		n8n.settingsEnvironment.getSaveButton().click(),
+	]);
 }
 
-test.describe('Source Control Integration @capability:source-control', () => {
-	test('should connect to Git repository using SSH', async ({ n8n, n8nContainer }) => {
-		await setupSourceControl(n8n);
+async function connectRepository(n8n: n8nPage) {
+	await expect(n8n.settingsEnvironment.getConnectButton()).toBeEnabled();
+	await Promise.all([
+		n8n.page.waitForResponse(
+			(response) =>
+				response.url().includes('/rest/source-control/preferences') &&
+				response.request().method() === 'POST',
+		),
+		n8n.settingsEnvironment.getConnectButton().click(),
+	]);
+}
 
-		const preferencesResponse = await n8n.page.request.get('/rest/source-control/preferences');
-		const preferences = await preferencesResponse.json();
-		const sshKey = preferences.data.publicKey;
+async function disconnectRepository(n8n: n8nPage) {
+	await Promise.all([
+		n8n.page.waitForResponse(
+			(response) =>
+				response.url().includes('/rest/source-control/disconnect') &&
+				response.request().method() === 'POST',
+		),
+		n8n.settingsEnvironment.disconnect(),
+	]);
+}
 
-		expect(sshKey).toBeTruthy();
-		expect(sshKey).toContain('ssh-');
+// Exercises global source-control preferences, so keep the cases serialized.
+// https://linear.app/n8n/issue/PAY-4365/bug-source-control-operations-fail-in-multi-main-deployment
+test.describe(
+	'Source Control Settings @capability:source-control @licensed',
+	{
+		annotation: [{ type: 'owner', description: 'Lifecycle & Governance' }],
+	},
+	() => {
+		test.describe.configure({ mode: 'serial' });
 
-		// Get the source control container
-		const sourceControlContainer = n8nContainer.containers.find((c) =>
-			c.getName().includes('gitea'),
-		);
-		expect(sourceControlContainer).toBeDefined();
-		await addGiteaSSHKey(sourceControlContainer!, 'n8n-source-control', sshKey);
+		let repoUrl: string;
+		let repoName: string;
 
-		await n8n.navigate.toEnvironments();
+		test.beforeEach(async ({ n8n, api, services }) => {
+			await api.enableFeature('sourceControl');
+			const gitea = services.gitea;
+			await initSourceControl({ n8n, api, gitea });
 
-		await n8n.settingsEnvironment.fillRepoUrl('ssh://git@gitea/giteaadmin/n8n-test-repo.git');
-		await expect(n8n.settingsEnvironment.getConnectButton()).toBeEnabled();
-		await n8n.settingsEnvironment.getConnectButton().click();
+			// Create unique repo with branches via API (not UI)
+			repoName = generateUniqueRepoName();
+			await gitea.createRepo(repoName);
 
-		await expect(n8n.settingsEnvironment.getDisconnectButton()).toBeVisible();
-		await expect(n8n.settingsEnvironment.getBranchSelect()).toBeVisible();
+			repoUrl = buildRepoUrl(repoName);
+		});
 
-		await n8n.settingsEnvironment.getBranchSelect().click();
-		await expect(n8n.page.getByRole('option', { name: 'main' })).toBeVisible();
-		await expect(n8n.page.getByRole('option', { name: 'development' })).toBeVisible();
-		await expect(n8n.page.getByRole('option', { name: 'staging' })).toBeVisible();
-		await expect(n8n.page.getByRole('option', { name: 'production' })).toBeVisible();
-	});
-});
+		test('should connect to Git repository using SSH', async ({ n8n }) => {
+			// Test UI connection flow with unique repo
+			await n8n.navigate.toEnvironments();
+
+			await n8n.settingsEnvironment.waitForConnectForm();
+			await n8n.settingsEnvironment.fillRepoUrl(repoUrl);
+			await connectRepository(n8n);
+
+			await expect(n8n.settingsEnvironment.getDisconnectButton()).toBeVisible();
+			await expect(n8n.settingsEnvironment.getBranchSelect()).toBeVisible();
+
+			await n8n.settingsEnvironment.getBranchSelect().click();
+			await expect(n8n.settingsEnvironment.getVisiblePopoverOption('main')).toBeVisible();
+
+			// Verify source control connected indicator is visible
+			await n8n.navigate.toHome();
+			await expect(n8n.sideBar.getSourceControlConnectedIndicator()).toBeVisible();
+		});
+
+		test('should switch between branches', async ({ n8n, api, services }) => {
+			const gitea = services.gitea;
+			await gitea.createBranch(repoName, 'development');
+			await gitea.createBranch(repoName, 'staging');
+			await gitea.createBranch(repoName, 'production');
+
+			await api.sourceControl.connect({ repositoryUrl: repoUrl });
+
+			await n8n.navigate.toEnvironments();
+
+			// Switch to 'development' branch
+			await n8n.settingsEnvironment.getBranchSelect().click();
+			await expect(n8n.settingsEnvironment.getVisiblePopoverOption('main')).toBeVisible();
+			await expect(n8n.settingsEnvironment.getVisiblePopoverOption('development')).toBeVisible();
+			await expect(n8n.settingsEnvironment.getVisiblePopoverOption('staging')).toBeVisible();
+			await expect(n8n.settingsEnvironment.getVisiblePopoverOption('production')).toBeVisible();
+			await n8n.settingsEnvironment.getVisiblePopoverOption('development').click();
+			await saveSettings(n8n);
+
+			// Verify branch switched by checking preferences
+			let preferencesResponse = await api.request.get('/rest/source-control/preferences');
+			let preferences = await preferencesResponse.json();
+			expect(preferences.data.branchName).toBe('development');
+
+			// Switch back to 'main'
+			await n8n.settingsEnvironment.selectBranch('main');
+			await saveSettings(n8n);
+
+			// Verify switched back
+			preferencesResponse = await api.request.get('/rest/source-control/preferences');
+			preferences = await preferencesResponse.json();
+			expect(preferences.data.branchName).toBe('main');
+		});
+
+		test('should enable read-only mode and restrict operations', async ({ n8n, api }) => {
+			await api.sourceControl.connect({ repositoryUrl: repoUrl });
+
+			await n8n.navigate.toEnvironments();
+
+			await n8n.settingsEnvironment.enableReadOnlyMode();
+			await saveSettings(n8n);
+
+			// Verify push button is disabled in read-only mode
+			await n8n.navigate.toHome();
+			await expect(n8n.sideBar.getSourceControlPushButton()).toBeDisabled();
+			await expect(n8n.sideBar.getSourceControlPullButton()).toBeEnabled();
+
+			await n8n.navigate.toEnvironments();
+			await n8n.settingsEnvironment.disableReadOnlyMode();
+			await saveSettings(n8n);
+
+			// Verify push button is enabled again
+			await n8n.navigate.toHome();
+			await expect(n8n.sideBar.getSourceControlPushButton()).toBeEnabled();
+			await expect(n8n.sideBar.getSourceControlPullButton()).toBeEnabled();
+		});
+
+		test('should disconnect and reconnect with existing keys', async ({ n8n, api }) => {
+			await api.sourceControl.connect({ repositoryUrl: repoUrl });
+
+			await n8n.navigate.toEnvironments();
+			await disconnectRepository(n8n);
+
+			// check that source control is disconnected
+			await n8n.navigate.toHome();
+			await expect(n8n.sideBar.getSourceControlConnectedIndicator()).toBeHidden();
+
+			// Reconnect
+			await n8n.navigate.toEnvironments();
+			await n8n.settingsEnvironment.waitForConnectForm();
+			await n8n.settingsEnvironment.fillRepoUrl(repoUrl);
+			await connectRepository(n8n);
+
+			await expect(n8n.settingsEnvironment.getDisconnectButton()).toBeVisible();
+			await expect(n8n.settingsEnvironment.getBranchSelect()).toBeVisible();
+
+			// check that source control is connected
+			await n8n.navigate.toHome();
+			await expect(n8n.sideBar.getSourceControlConnectedIndicator()).toBeVisible();
+		});
+	},
+);

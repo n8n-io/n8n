@@ -1,9 +1,11 @@
 import { DateTime } from 'luxon';
 import * as oracleDBTypes from 'oracledb';
+import type { IExecuteFunctions, INode, INodeExecutionData } from 'n8n-workflow';
 
 import type { ExecuteOpBindParam } from '../helpers/interfaces';
 import {
 	addSortRules,
+	configureQueryRunner,
 	getBindParameters,
 	getCompatibleValue,
 	getOutBindDefsForExecute,
@@ -234,5 +236,418 @@ describe('Test getBindParameters ', () => {
 		({ updatedQuery, bindParameters } = getBindParameters(query, paramList));
 		expect(updatedQuery).toEqual(query);
 		expect(bindParameters).toEqual(expectedBindParams);
+	});
+
+	it('should configure out bind parameters without input values', () => {
+		const query = 'BEGIN demo(:out_string, :inout_string, :out_number); END;';
+		const paramList = [
+			{
+				name: 'out_string',
+				bindDirection: 'out',
+				datatype: 'string',
+				valueString: '',
+				parseInStatement: false,
+			},
+			{
+				name: 'inout_string',
+				bindDirection: 'inout',
+				datatype: 'string',
+				valueString: 'input',
+				parseInStatement: false,
+			},
+			{
+				name: 'out_number',
+				bindDirection: 'out',
+				datatype: 'number',
+				valueNumber: 0,
+				parseInStatement: false,
+			},
+		] as ExecuteOpBindParam[];
+
+		const { updatedQuery, bindParameters } = getBindParameters(query, paramList);
+
+		expect(updatedQuery).toEqual(query);
+		expect(bindParameters).toEqual({
+			out_string: {
+				type: oracleDBTypes.STRING,
+				dir: oracleDBTypes.BIND_OUT,
+				maxSize: 4000,
+			},
+			inout_string: {
+				type: oracleDBTypes.STRING,
+				val: 'input',
+				dir: oracleDBTypes.BIND_INOUT,
+				maxSize: 4000,
+			},
+			out_number: {
+				type: oracleDBTypes.NUMBER,
+				dir: oracleDBTypes.BIND_OUT,
+			},
+		});
+	});
+
+	it('should use a custom max size for string out bind parameters', () => {
+		const query = 'BEGIN demo(:out_string, :inout_string); END;';
+		const paramList = [
+			{
+				name: 'out_string',
+				bindDirection: 'out',
+				datatype: 'string',
+				valueString: '',
+				parseInStatement: false,
+			},
+			{
+				name: 'inout_string',
+				bindDirection: 'inout',
+				datatype: 'string',
+				valueString: 'input',
+				parseInStatement: false,
+			},
+		] as ExecuteOpBindParam[];
+
+		const { updatedQuery, bindParameters } = getBindParameters(query, paramList, {
+			stringOutBindMaxSize: 1024,
+		});
+
+		expect(updatedQuery).toEqual(query);
+		expect(bindParameters).toEqual({
+			out_string: {
+				type: oracleDBTypes.STRING,
+				dir: oracleDBTypes.BIND_OUT,
+				maxSize: 1024,
+			},
+			inout_string: {
+				type: oracleDBTypes.STRING,
+				val: 'input',
+				dir: oracleDBTypes.BIND_INOUT,
+				maxSize: 1024,
+			},
+		});
+	});
+
+	it('should use the default string type for out bind parameters when the data type is missing', () => {
+		const query = 'BEGIN demo(:out_string); END;';
+		const paramList = [
+			{
+				name: 'out_string',
+				bindDirection: 'out',
+				parseInStatement: false,
+			},
+		] as unknown as ExecuteOpBindParam[];
+
+		const { updatedQuery, bindParameters } = getBindParameters(query, paramList);
+
+		expect(updatedQuery).toEqual(query);
+		expect(bindParameters).toEqual({
+			out_string: {
+				type: oracleDBTypes.STRING,
+				dir: oracleDBTypes.BIND_OUT,
+				maxSize: 4000,
+			},
+		});
+	});
+
+	it('should use the default string type for out bind parameters when the data type is empty', () => {
+		const query = 'BEGIN demo(:out_string); END;';
+		const paramList = [
+			{
+				name: 'out_string',
+				bindDirection: 'out',
+				datatype: '',
+				parseInStatement: false,
+			},
+		] as unknown as ExecuteOpBindParam[];
+
+		const { updatedQuery, bindParameters } = getBindParameters(query, paramList);
+
+		expect(updatedQuery).toEqual(query);
+		expect(bindParameters).toEqual({
+			out_string: {
+				type: oracleDBTypes.STRING,
+				dir: oracleDBTypes.BIND_OUT,
+				maxSize: 4000,
+			},
+		});
+	});
+
+	it('should skip value parsing for out bind parameters', () => {
+		const query = 'BEGIN demo(:out_blob); END;';
+		const paramList = [
+			{
+				name: 'out_blob',
+				bindDirection: 'out',
+				datatype: 'blob',
+				parseInStatement: false,
+			},
+		] as unknown as ExecuteOpBindParam[];
+
+		const { updatedQuery, bindParameters } = getBindParameters(query, paramList);
+
+		expect(updatedQuery).toEqual(query);
+		expect(bindParameters).toEqual({
+			out_blob: {
+				type: oracleDBTypes.BLOB,
+				dir: oracleDBTypes.BIND_OUT,
+			},
+		});
+	});
+});
+
+describe('Test configureQueryRunner', () => {
+	it('should return object out bind values from execute operations', async () => {
+		const execute = vi.fn().mockResolvedValue({ outBinds: { ret: 'registered' } });
+		const close = vi.fn().mockResolvedValue(undefined);
+		const connection = { execute, close };
+		const getConnection = vi.fn().mockResolvedValue(connection);
+		const pool = { getConnection } as unknown as oracleDBTypes.Pool;
+		const constructExecutionMetaData = vi
+			.fn()
+			.mockImplementation((data: INodeExecutionData[]) => data);
+		const context = {
+			helpers: {
+				constructExecutionMetaData,
+			},
+		} as unknown as IExecuteFunctions;
+		const node = {} as unknown as INode;
+		const queryRunner = configureQueryRunner.call(context, node, false, pool);
+
+		const result = await queryRunner(
+			[
+				{
+					query: 'BEGIN demo(:ret); END;',
+					values: {
+						ret: {
+							type: oracleDBTypes.STRING,
+							dir: oracleDBTypes.BIND_OUT,
+							maxSize: 4000,
+						},
+					},
+				},
+			],
+			[],
+			{
+				operation: 'execute',
+				stmtBatching: 'independently',
+			},
+		);
+
+		expect(result).toEqual([{ json: { ret: 'registered' } }]);
+		expect(result).not.toEqual([{ json: { success: true } }]);
+		expect(constructExecutionMetaData).toHaveBeenCalledWith([{ json: { ret: 'registered' } }], {
+			itemData: { item: 0 },
+		});
+		expect(getConnection).toHaveBeenCalledTimes(1);
+		expect(execute).toHaveBeenCalledWith(
+			'BEGIN demo(:ret); END;',
+			{
+				ret: {
+					type: oracleDBTypes.STRING,
+					dir: oracleDBTypes.BIND_OUT,
+					maxSize: 4000,
+				},
+			},
+			expect.objectContaining({
+				outFormat: oracleDBTypes.OUT_FORMAT_OBJECT,
+			}),
+		);
+		expect(close).toHaveBeenCalledTimes(1);
+	});
+
+	it('should append out-bind execution data one item at a time without spread push', async () => {
+		// Manually patch Array.prototype.push instead of vi.spyOn — vitest records spy calls
+		// via array push internally, so spying on push itself recurses infinitely. Record via
+		// index assignment to avoid that.
+		const originalPush = Array.prototype.push;
+		const pushCalls: unknown[][] = [];
+		Array.prototype.push = function (...args: unknown[]) {
+			pushCalls[pushCalls.length] = args;
+			return originalPush.apply(this, args);
+		};
+		const outBinds = [
+			[[1], ['Alice']],
+			[[2], ['Bob']],
+			[[3], ['Charlie']],
+		];
+		const executeMany = vi.fn().mockResolvedValue({ outBinds });
+		const close = vi.fn().mockResolvedValue(undefined);
+		const connection = { executeMany, close };
+		const getConnection = vi.fn().mockResolvedValue(connection);
+		const pool = { getConnection } as unknown as oracleDBTypes.Pool;
+		const expectedEntries: INodeExecutionData[] = [];
+		const constructExecutionMetaData = vi.fn().mockImplementation((data: INodeExecutionData[]) => {
+			const item = data[0];
+			if (item) expectedEntries[expectedEntries.length] = item;
+			return item ? [item, item, item] : [];
+		});
+		const context = {
+			helpers: {
+				constructExecutionMetaData,
+			},
+		} as unknown as IExecuteFunctions;
+		const node = {} as unknown as INode;
+
+		let result: INodeExecutionData[] = [];
+		let executionDataPushCalls: unknown[][] = [];
+		try {
+			const queryRunner = configureQueryRunner.call(context, node, false, pool);
+
+			result = await queryRunner(
+				[
+					{
+						query: 'INSERT INTO "TEST" ("COL1", "COL2") VALUES (:0, :1)',
+						executeManyValues: [{}, {}, {}],
+						outputColumns: ['COL1', 'COL2'],
+					},
+				],
+				[],
+				{
+					operation: 'insert',
+					stmtBatching: 'single',
+				},
+			);
+			executionDataPushCalls = pushCalls.filter(
+				([entry]) => entry && expectedEntries.includes(entry as INodeExecutionData),
+			);
+		} finally {
+			Array.prototype.push = originalPush;
+		}
+
+		expect(result).toHaveLength(9);
+		expect(result[0]?.json).toMatchObject({ COL1: 1, COL2: 'Alice' });
+		expect(result[8]?.json).toMatchObject({ COL1: 3, COL2: 'Charlie' });
+		expect(executionDataPushCalls).toHaveLength(9);
+		expect(executionDataPushCalls.every((call) => call.length === 1)).toBe(true);
+		expect(constructExecutionMetaData).toHaveBeenCalledTimes(3);
+		expect(getConnection).toHaveBeenCalledTimes(1);
+		expect(close).toHaveBeenCalledTimes(1);
+	});
+
+	it('should return select execution data from the concat path', async () => {
+		const concatSpy = vi.spyOn(Array.prototype, 'concat');
+		const rows = [{ COL1: 1 }, { COL1: 2 }, { COL1: 3 }];
+		const executionData = rows.map((row) => ({ json: row }));
+		const execute = vi.fn().mockResolvedValue({ rows });
+		const close = vi.fn().mockResolvedValue(undefined);
+		const connection = { execute, close };
+		const getConnection = vi.fn().mockResolvedValue(connection);
+		const pool = { getConnection } as unknown as oracleDBTypes.Pool;
+		const constructExecutionMetaData = vi.fn().mockImplementation(() => executionData);
+		const context = {
+			helpers: {
+				constructExecutionMetaData,
+			},
+		} as unknown as IExecuteFunctions;
+		const node = {} as unknown as INode;
+
+		let result: INodeExecutionData[] = [];
+		try {
+			const queryRunner = configureQueryRunner.call(context, node, false, pool);
+
+			result = await queryRunner(
+				[
+					{
+						query: 'SELECT COL1 FROM TEST',
+					},
+				],
+				[],
+				{
+					operation: 'select',
+					stmtBatching: 'independently',
+				},
+			);
+			expect(concatSpy).toHaveBeenCalledWith(executionData);
+		} finally {
+			concatSpy.mockRestore();
+		}
+
+		expect(result).toHaveLength(3);
+		expect(result[0]?.json).toMatchObject({ COL1: 1 });
+		expect(result[2]?.json).toMatchObject({ COL1: 3 });
+		expect(constructExecutionMetaData).toHaveBeenCalledTimes(1);
+		expect(getConnection).toHaveBeenCalledTimes(1);
+		expect(close).toHaveBeenCalledTimes(1);
+	});
+});
+
+// eslint-disable-next-line n8n-local-rules/no-skipped-tests
+describe.skip('configureQueryRunner stack overflow regression', () => {
+	it('should handle large out bind datasets without stack overflow', async () => {
+		const chunkSize = 250_000;
+		const outBinds = [[[42]]];
+		const executeMany = vi.fn().mockResolvedValue({ outBinds });
+		const close = vi.fn().mockResolvedValue(undefined);
+		const connection = { executeMany, close };
+		const getConnection = vi.fn().mockResolvedValue(connection);
+		const pool = { getConnection } as unknown as oracleDBTypes.Pool;
+		const constructExecutionMetaData = vi
+			.fn()
+			.mockImplementation((data: INodeExecutionData[]) =>
+				Array.from({ length: chunkSize }, () => data[0]),
+			);
+		const context = {
+			helpers: {
+				constructExecutionMetaData,
+			},
+		} as unknown as IExecuteFunctions;
+		const node = {} as unknown as INode;
+		const queryRunner = configureQueryRunner.call(context, node, false, pool);
+
+		const queries = [
+			{
+				query: 'INSERT INTO "TEST" ("COL1") VALUES (:0)',
+				executeManyValues: [{}],
+				outputColumns: ['COL1'],
+			},
+		];
+
+		const result = await queryRunner(queries as any, [], {
+			operation: 'insert',
+			stmtBatching: 'single',
+		});
+
+		expect(result).toHaveLength(chunkSize);
+		expect(result[0]?.json).toMatchObject({ COL1: 42 });
+		expect(result[chunkSize - 1]?.json).toMatchObject({ COL1: 42 });
+		expect(constructExecutionMetaData).toHaveBeenCalledTimes(1);
+		expect(getConnection).toHaveBeenCalledTimes(1);
+		expect(close).toHaveBeenCalledTimes(1);
+	});
+
+	it('should handle large select result sets without stack overflow', async () => {
+		const chunkSize = 250_000;
+		const rows = Array.from({ length: chunkSize }, (_, index) => ({ COL1: index }));
+		const execute = vi.fn().mockResolvedValue({ rows });
+		const close = vi.fn().mockResolvedValue(undefined);
+		const connection = { execute, close };
+		const getConnection = vi.fn().mockResolvedValue(connection);
+		const pool = { getConnection } as unknown as oracleDBTypes.Pool;
+		const constructExecutionMetaData = vi
+			.fn()
+			.mockImplementation((data: INodeExecutionData[]) => data);
+		const context = {
+			helpers: {
+				constructExecutionMetaData,
+			},
+		} as unknown as IExecuteFunctions;
+		const node = {} as unknown as INode;
+		const queryRunner = configureQueryRunner.call(context, node, false, pool);
+
+		const queries = [
+			{
+				query: 'SELECT COL1 FROM TEST',
+			},
+		];
+
+		const result = await queryRunner(queries as any, [], {
+			operation: 'select',
+			stmtBatching: 'independently',
+		});
+
+		expect(result).toHaveLength(chunkSize);
+		expect(result[0]?.json).toMatchObject({ COL1: 0 });
+		expect(result[chunkSize - 1]?.json).toMatchObject({ COL1: chunkSize - 1 });
+		expect(constructExecutionMetaData).toHaveBeenCalledTimes(1);
+		expect(getConnection).toHaveBeenCalledTimes(1);
+		expect(close).toHaveBeenCalledTimes(1);
 	});
 });

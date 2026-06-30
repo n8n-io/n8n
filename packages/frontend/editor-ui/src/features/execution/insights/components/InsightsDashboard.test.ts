@@ -81,6 +81,7 @@ const moduleSettings: FrontendModuleSettings = {
 	insights: {
 		summary: true,
 		dashboard: true,
+		earliestDataDate: null,
 		dateRanges: [
 			{
 				key: 'day',
@@ -226,11 +227,7 @@ const DEFAULT_TABLE_PARAMS = {
 };
 
 // Helper functions
-const expectStoreExecutions = (params: {
-	summary?: object;
-	charts?: object;
-	table?: object;
-}) => {
+const expectStoreExecutions = (params: { summary?: object; charts?: object; table?: object }) => {
 	if (params.summary) {
 		expect(insightsStore.summary.execute).toHaveBeenCalledWith(0, params.summary);
 	}
@@ -242,8 +239,8 @@ const expectStoreExecutions = (params: {
 	}
 };
 
-const openDatePicker = async (getByText: (text: string, options?: object) => HTMLElement) => {
-	const trigger = getByText('12 Dec - 19 Dec, 2000', { selector: 'button' });
+const openDatePicker = async (getByRole: (role: string, options?: object) => HTMLElement) => {
+	const trigger = getByRole('button', { name: '12 Dec - 19 Dec, 2000' });
 	expect(trigger).toBeInTheDocument();
 	await userEvent.click(trigger);
 
@@ -268,6 +265,46 @@ const selectProject = async (projectName: string | null) => {
 	await userEvent.click(teamProject as Element);
 };
 
+const setupStores = () => {
+	insightsStore = mockedStore(useInsightsStore);
+	projectsStore = mockedStore(useProjectsStore);
+
+	insightsStore.isSummaryEnabled = true;
+	insightsStore.isDashboardEnabled = true;
+
+	projectsStore.availableProjects = projects;
+	projectsStore.getAvailableProjects = vi.fn().mockResolvedValue(projects);
+	projectsStore.searchProjects.mockResolvedValue({ count: projects.length, data: projects });
+	projectsStore.globalProjectPermissions = { list: true };
+
+	insightsStore.summary = {
+		state: mockSummaryData,
+		isLoading: false,
+		execute: vi.fn(),
+		isReady: true,
+		error: null,
+		then: vi.fn(),
+	};
+
+	insightsStore.charts = {
+		state: mockChartsData,
+		isLoading: false,
+		execute: vi.fn(),
+		isReady: true,
+		error: null,
+		then: vi.fn(),
+	};
+
+	insightsStore.table = {
+		state: mockTableData,
+		isLoading: false,
+		execute: vi.fn(),
+		isReady: true,
+		error: null,
+		then: vi.fn(),
+	};
+};
+
 describe('InsightsDashboard', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -279,43 +316,7 @@ describe('InsightsDashboard', () => {
 			initialState: { settings: { settings: defaultSettings, moduleSettings } },
 		});
 
-		insightsStore = mockedStore(useInsightsStore);
-		projectsStore = mockedStore(useProjectsStore);
-
-		insightsStore.isSummaryEnabled = true;
-		insightsStore.isDashboardEnabled = true;
-
-		// Mock projects store
-		projectsStore.availableProjects = projects;
-		projectsStore.getAvailableProjects = vi.fn().mockResolvedValue(projects);
-
-		// Mock async states
-		insightsStore.summary = {
-			state: mockSummaryData,
-			isLoading: false,
-			execute: vi.fn(),
-			isReady: true,
-			error: null,
-			then: vi.fn(),
-		};
-
-		insightsStore.charts = {
-			state: mockChartsData,
-			isLoading: false,
-			execute: vi.fn(),
-			isReady: true,
-			error: null,
-			then: vi.fn(),
-		};
-
-		insightsStore.table = {
-			state: mockTableData,
-			isLoading: false,
-			execute: vi.fn(),
-			isReady: true,
-			error: null,
-			then: vi.fn(),
-		};
+		setupStores();
 	});
 
 	describe('Component Rendering', () => {
@@ -387,11 +388,11 @@ describe('InsightsDashboard', () => {
 
 	describe('Date Range Selection', () => {
 		it('should update the selected time range', async () => {
-			const { getByText } = renderComponent({
+			const { getByRole } = renderComponent({
 				props: { insightType: INSIGHT_TYPES.TOTAL },
 			});
 
-			const picker = await openDatePicker(getByText);
+			const picker = await openDatePicker(getByRole);
 			const dayOption = within(picker).getByText('Last 24 hours');
 			await userEvent.click(dayOption);
 
@@ -414,11 +415,11 @@ describe('InsightsDashboard', () => {
 		});
 
 		it('should show upgrade modal when unlicensed time range selected ', async () => {
-			const { getByText } = renderComponent({
+			const { getByRole } = renderComponent({
 				props: { insightType: INSIGHT_TYPES.TOTAL },
 			});
 
-			const picker = await openDatePicker(getByText);
+			const picker = await openDatePicker(getByRole);
 			const dayOption = within(picker).getByText('Last 90 days');
 			await userEvent.click(dayOption);
 
@@ -426,6 +427,46 @@ describe('InsightsDashboard', () => {
 			expect(
 				screen.getByText(/Viewing this time period requires an enterprise plan/),
 			).toBeVisible();
+		});
+
+		it('should set start date to beginning of day for multi-day ranges', async () => {
+			// Set system time to Dec 19, 2000 at 14:30:45
+			const currentTime = new Date('2000-12-19T14:30:45.000Z');
+			vi.setSystemTime(currentTime);
+
+			const { getByRole } = renderComponent({
+				props: { insightType: INSIGHT_TYPES.TOTAL },
+			});
+
+			vi.clearAllMocks();
+
+			const picker = await openDatePicker(getByRole);
+			// Select month option to get a multi-day range
+			const monthOption = within(picker).getByText('Last 30 days');
+			await userEvent.click(monthOption);
+
+			// For multi-day ranges ending today: start is midnight, end is current time
+			const expectedRange = {
+				startDate: new Date('2000-11-19T00:00:00.000Z'), // 30 days ago at midnight
+				endDate: currentTime, // Current time
+			};
+
+			expect(mockTelemetry.track).toHaveBeenCalledWith('User updated insights time range', {
+				end_date: expectedRange.endDate.toISOString(),
+				start_date: expectedRange.startDate.toISOString(),
+				range_length_days: 30,
+				type: 'preset',
+			});
+
+			expectStoreExecutions({
+				summary: expectedRange,
+				charts: expectedRange,
+				table: {
+					...DEFAULT_TABLE_PARAMS,
+					sortBy: 'total:desc',
+					...expectedRange,
+				},
+			});
 		});
 	});
 
@@ -608,14 +649,14 @@ describe('InsightsDashboard', () => {
 		});
 
 		it('should combine project filter with date range changes', async () => {
-			const { getByText } = renderComponent({
+			const { getByRole } = renderComponent({
 				props: { insightType: INSIGHT_TYPES.TOTAL },
 			});
 
 			await selectProject(teamProjects[0].name);
 			vi.clearAllMocks();
 
-			const picker = await openDatePicker(getByText);
+			const picker = await openDatePicker(getByRole);
 			const dayOption = within(picker).getByText('Last 24 hours');
 			await userEvent.click(dayOption);
 
@@ -679,6 +720,35 @@ describe('InsightsDashboard', () => {
 					projectId: teamProjects[0].id,
 				},
 			});
+		});
+	});
+
+	describe('Default date range initialization', () => {
+		it('should default to 7 days ago when earliestDataDate is null', () => {
+			const { getByRole } = renderComponent({ props: { insightType: INSIGHT_TYPES.TOTAL } });
+			// System date is 2000-12-19, so 7 days ago is 2000-12-12
+			expect(getByRole('button', { name: '12 Dec - 19 Dec, 2000' })).toBeInTheDocument();
+		});
+
+		it('should clamp default range start to the earliest date with data with a maximum of 7', () => {
+			// earliestDataDate is Dec 15, which is within the last 7 days (Dec 12–19)
+			createTestingPinia({
+				initialState: {
+					settings: {
+						settings: defaultSettings,
+						moduleSettings: {
+							...moduleSettings,
+							insights: {
+								...moduleSettings.insights!,
+								earliestDataDate: '2000-12-15T00:00:00.000Z',
+							},
+						},
+					},
+				},
+			});
+			setupStores();
+			const { getByRole } = renderComponent({ props: { insightType: INSIGHT_TYPES.TOTAL } });
+			expect(getByRole('button', { name: '15 Dec - 19 Dec, 2000' })).toBeInTheDocument();
 		});
 	});
 });

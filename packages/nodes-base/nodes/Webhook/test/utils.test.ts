@@ -1,26 +1,32 @@
 import jwt from 'jsonwebtoken';
 import {
-	ApplicationError,
+	UnexpectedError,
 	type IWebhookFunctions,
 	type INodeExecutionData,
 	type IDataObject,
 	type MultiPartFormData,
+	type INode,
+	type ICredentialDataDecryptedObject,
 } from 'n8n-workflow';
 
 import type { WebhookParameters } from '../utils';
 import {
 	checkResponseModeConfiguration,
 	configuredOutputs,
+	generateBasicAuthToken,
+	generateFormPostBasicAuthToken,
 	getResponseCode,
 	getResponseData,
 	handleFormData,
-	isIpWhitelisted,
+	isIpAllowed,
 	setupOutputConnection,
 	validateWebhookAuthentication,
 } from '../utils';
+import { mock } from 'vitest-mock-extended';
+import type { Mock } from 'vitest';
 
-jest.mock('jsonwebtoken', () => ({
-	verify: jest.fn(),
+vi.mock('jsonwebtoken', () => ({
+	default: { verify: vi.fn() },
 }));
 
 describe('Webhook Utils', () => {
@@ -152,9 +158,9 @@ describe('Webhook Utils', () => {
 	describe('setupOutputConnection', () => {
 		it('should return a function that sets the webhookUrl and executionMode in the output data', () => {
 			const ctx: Partial<IWebhookFunctions> = {
-				getNodeParameter: jest.fn().mockReturnValue('GET'),
-				getNodeWebhookUrl: jest.fn().mockReturnValue('https://example.com/webhook/'),
-				getMode: jest.fn().mockReturnValue('manual'),
+				getNodeParameter: vi.fn().mockReturnValue('GET'),
+				getNodeWebhookUrl: vi.fn().mockReturnValue('https://example.com/webhook/'),
+				getMode: vi.fn().mockReturnValue('manual'),
 			};
 			const method = 'GET';
 			const additionalData = {
@@ -182,9 +188,9 @@ describe('Webhook Utils', () => {
 
 		it('should return a function that sets the webhookUrl and executionMode in the output data for multiple methods', () => {
 			const ctx: Partial<IWebhookFunctions> = {
-				getNodeParameter: jest.fn().mockReturnValue(['GET', 'POST']),
-				getNodeWebhookUrl: jest.fn().mockReturnValue('https://example.com/webhook/'),
-				getMode: jest.fn().mockReturnValue('manual'),
+				getNodeParameter: vi.fn().mockReturnValue(['GET', 'POST']),
+				getNodeWebhookUrl: vi.fn().mockReturnValue('https://example.com/webhook/'),
+				getMode: vi.fn().mockReturnValue('manual'),
 			};
 			const method = 'POST';
 			const additionalData = {
@@ -212,70 +218,93 @@ describe('Webhook Utils', () => {
 		});
 	});
 
-	describe('isIpWhitelisted', () => {
-		it('should return true if whitelist is undefined', () => {
-			expect(isIpWhitelisted(undefined, ['192.168.1.1'], '192.168.1.1')).toBe(true);
+	describe('isIpAllowed', () => {
+		it('should return true if allowlist is undefined', () => {
+			expect(isIpAllowed(undefined, ['192.168.1.1'], '192.168.1.1')).toBe(true);
 		});
 
-		it('should return true if whitelist is an empty string', () => {
-			expect(isIpWhitelisted('', ['192.168.1.1'], '192.168.1.1')).toBe(true);
+		it('should return true if allowlist is an empty string', () => {
+			expect(isIpAllowed('', ['192.168.1.1'], '192.168.1.1')).toBe(true);
 		});
 
-		it('should return true if ip is in the whitelist', () => {
-			expect(isIpWhitelisted('192.168.1.1', ['192.168.1.2'], '192.168.1.1')).toBe(true);
+		it('should return true if ip is in the allowlist', () => {
+			expect(isIpAllowed('192.168.1.1', ['192.168.1.2'], '192.168.1.1')).toBe(true);
 		});
 
-		it('should return true if any ip in ips is in the whitelist', () => {
-			expect(isIpWhitelisted('192.168.1.1', ['192.168.1.1', '192.168.1.2'])).toBe(true);
+		it('should return true if any ip in ips is in the allowlist', () => {
+			expect(isIpAllowed('192.168.1.1', ['192.168.1.1', '192.168.1.2'])).toBe(true);
 		});
 
-		it('should return false if ip and ips are not in the whitelist', () => {
-			expect(isIpWhitelisted('192.168.1.3', ['192.168.1.1', '192.168.1.2'], '192.168.1.4')).toBe(
-				false,
-			);
+		it('should return false if ip and ips are not in the allowlist', () => {
+			expect(isIpAllowed('192.168.1.3', ['192.168.1.1', '192.168.1.2'], '192.168.1.4')).toBe(false);
 		});
 
-		it('should return true if any ip in ips matches any address in the whitelist array', () => {
-			expect(isIpWhitelisted(['192.168.1.1', '192.168.1.2'], ['192.168.1.2', '192.168.1.3'])).toBe(
+		it('should return true if any ip in ips matches any address in the allowlist array', () => {
+			expect(isIpAllowed(['192.168.1.1', '192.168.1.2'], ['192.168.1.2', '192.168.1.3'])).toBe(
 				true,
 			);
 		});
 
-		it('should return true if ip matches any address in the whitelist array', () => {
-			expect(isIpWhitelisted(['192.168.1.1', '192.168.1.2'], ['192.168.1.3'], '192.168.1.2')).toBe(
+		it('should return true if ip matches any address in the allowlist array', () => {
+			expect(isIpAllowed(['192.168.1.1', '192.168.1.2'], ['192.168.1.3'], '192.168.1.2')).toBe(
 				true,
 			);
 		});
 
-		it('should return false if ip and ips do not match any address in the whitelist array', () => {
+		it('should return false if ip and ips do not match any address in the allowlist array', () => {
 			expect(
-				isIpWhitelisted(
-					['192.168.1.4', '192.168.1.5'],
-					['192.168.1.1', '192.168.1.2'],
-					'192.168.1.3',
-				),
+				isIpAllowed(['192.168.1.4', '192.168.1.5'], ['192.168.1.1', '192.168.1.2'], '192.168.1.3'),
 			).toBe(false);
 		});
 
-		it('should handle comma-separated whitelist string', () => {
-			expect(isIpWhitelisted('192.168.1.1, 192.168.1.2', ['192.168.1.3'], '192.168.1.2')).toBe(
-				true,
-			);
+		it('CAT-1846: should use CIDR matching to determine if ip is in the allowlist', () => {
+			expect(isIpAllowed('192.168.1.3', [], '192.168.1.30')).toBe(false);
 		});
 
-		it('should trim whitespace in comma-separated whitelist string', () => {
-			expect(isIpWhitelisted(' 192.168.1.1 , 192.168.1.2 ', ['192.168.1.3'], '192.168.1.2')).toBe(
-				true,
-			);
+		it('should handle comma-separated allowlist string', () => {
+			expect(isIpAllowed('192.168.1.1, 192.168.1.2', ['192.168.1.3'], '192.168.1.2')).toBe(true);
+		});
+
+		it('should trim whitespace in comma-separated allowlist string', () => {
+			expect(isIpAllowed(' 192.168.1.1 , 192.168.1.2 ', ['192.168.1.3'], '192.168.1.2')).toBe(true);
+		});
+
+		it('should support IPv4 CIDR notation', () => {
+			expect(isIpAllowed('192.168.1.0/24', [], '192.168.1.50')).toBe(true);
+			expect(isIpAllowed('192.168.1.0/24', [], '192.168.1.255')).toBe(true);
+			expect(isIpAllowed('192.168.1.0/24', [], '192.168.2.1')).toBe(false);
+		});
+
+		it('should support IPv6 CIDR notation', () => {
+			expect(isIpAllowed('2001:db8::/32', [], '2001:db8::1')).toBe(true);
+			expect(isIpAllowed('2001:db8::/32', [], '2001:db9::1')).toBe(false);
+		});
+
+		it('should support mixed single IPs and CIDR ranges', () => {
+			expect(isIpAllowed('127.0.0.1, 192.168.0.0/16', [], '192.168.100.50')).toBe(true);
+			expect(isIpAllowed('127.0.0.1, 192.168.0.0/16', [], '10.0.0.1')).toBe(false);
+			expect(isIpAllowed('127.0.0.1, 192.168.0.0/16', [], '127.0.0.1')).toBe(true);
+		});
+
+		it('should handle invalid CIDR notation gracefully', () => {
+			expect(isIpAllowed('192.168.1.0/abc', [], '192.168.1.1')).toBe(false);
+			expect(isIpAllowed('192.168.1.0/99', [], '192.168.1.1')).toBe(false);
+			expect(isIpAllowed('invalid/24', [], '192.168.1.1')).toBe(false);
+		});
+
+		it('should handle /32 and /128 CIDR (single IP)', () => {
+			expect(isIpAllowed('192.168.1.1/32', [], '192.168.1.1')).toBe(true);
+			expect(isIpAllowed('192.168.1.1/32', [], '192.168.1.2')).toBe(false);
+			expect(isIpAllowed('::1/128', [], '::1')).toBe(true);
 		});
 	});
 
 	describe('checkResponseModeConfiguration', () => {
 		it('should throw an error if response mode is "responseNode" but no Respond to Webhook node is found', () => {
 			const context: Partial<IWebhookFunctions> = {
-				getNodeParameter: jest.fn().mockReturnValue('responseNode'),
-				getChildNodes: jest.fn().mockReturnValue([]),
-				getNode: jest.fn().mockReturnValue({ name: 'Webhook' }),
+				getNodeParameter: vi.fn().mockReturnValue('responseNode'),
+				getChildNodes: vi.fn().mockReturnValue([]),
+				getNode: vi.fn().mockReturnValue({ name: 'Webhook' }),
 			};
 			expect(() => {
 				checkResponseModeConfiguration(context as IWebhookFunctions);
@@ -284,9 +313,9 @@ describe('Webhook Utils', () => {
 
 		it('should throw an error if response mode is not "responseNode" but a Respond to Webhook node is found', () => {
 			const context: Partial<IWebhookFunctions> = {
-				getNodeParameter: jest.fn().mockReturnValue('onReceived'),
-				getChildNodes: jest.fn().mockReturnValue([{ type: 'n8n-nodes-base.respondToWebhook' }]),
-				getNode: jest.fn().mockReturnValue({ name: 'Webhook' }),
+				getNodeParameter: vi.fn().mockReturnValue('onReceived'),
+				getChildNodes: vi.fn().mockReturnValue([{ type: 'n8n-nodes-base.respondToWebhook' }]),
+				getNode: vi.fn().mockReturnValue({ name: 'Webhook' }),
 			};
 			expect(() => {
 				checkResponseModeConfiguration(context as IWebhookFunctions);
@@ -297,7 +326,7 @@ describe('Webhook Utils', () => {
 	describe('validateWebhookAuthentication', () => {
 		it('should return early if authentication is "none"', async () => {
 			const ctx: Partial<IWebhookFunctions> = {
-				getNodeParameter: jest.fn().mockReturnValue('none'),
+				getNodeParameter: vi.fn().mockReturnValue('none'),
 			};
 			const authPropertyName = 'authentication';
 			const result = await validateWebhookAuthentication(
@@ -312,12 +341,12 @@ describe('Webhook Utils', () => {
 				authorization: 'Basic some-token',
 			};
 			const ctx: Partial<IWebhookFunctions> = {
-				getNodeParameter: jest.fn().mockReturnValue('basicAuth'),
-				getCredentials: jest.fn().mockRejectedValue(new Error()),
-				getRequestObject: jest.fn().mockReturnValue({
+				getNodeParameter: vi.fn().mockReturnValue('basicAuth'),
+				getCredentials: vi.fn().mockRejectedValue(new Error()),
+				getRequestObject: vi.fn().mockReturnValue({
 					headers,
 				}),
-				getHeaderData: jest.fn().mockReturnValue(headers),
+				getHeaderData: vi.fn().mockReturnValue(headers),
 			};
 			const authPropertyName = 'authentication';
 			await expect(
@@ -330,15 +359,15 @@ describe('Webhook Utils', () => {
 				authorization: 'Basic some-token',
 			};
 			const ctx: Partial<IWebhookFunctions> = {
-				getNodeParameter: jest.fn().mockReturnValue('basicAuth'),
-				getCredentials: jest.fn().mockResolvedValue({
+				getNodeParameter: vi.fn().mockReturnValue('basicAuth'),
+				getCredentials: vi.fn().mockResolvedValue({
 					user: 'admin',
 					password: 'password',
 				}),
-				getRequestObject: jest.fn().mockReturnValue({
+				getRequestObject: vi.fn().mockReturnValue({
 					headers,
 				}),
-				getHeaderData: jest.fn().mockReturnValue(headers),
+				getHeaderData: vi.fn().mockReturnValue(headers),
 			};
 			const authPropertyName = 'authentication';
 			await expect(
@@ -346,16 +375,61 @@ describe('Webhook Utils', () => {
 			).rejects.toThrowError('Authorization is required!');
 		});
 
+		it('should successfully pass if basicAuth is enabled and provided basic auth data is correct', async () => {
+			const headers = {
+				authorization: `Basic ${Buffer.from('admin:password').toString('base64')}`,
+			};
+			const ctx: Partial<IWebhookFunctions> = {
+				getNodeParameter: vi.fn().mockReturnValue('basicAuth'),
+				getCredentials: vi.fn().mockResolvedValue({
+					user: 'admin',
+					password: 'password',
+				}),
+				getRequestObject: vi.fn().mockReturnValue({
+					headers,
+				}),
+				getHeaderData: vi.fn().mockReturnValue(headers),
+			};
+			const authPropertyName = 'authentication';
+			await validateWebhookAuthentication(ctx as IWebhookFunctions, authPropertyName);
+		});
+
+		it('should successfully pass if basicAuth is enabled and provided auth token data is correct', async () => {
+			const node = {
+				id: 'node-789',
+				webhookId: 'webhook-456',
+				type: 'n8n-nodes-base.formTrigger',
+			} as INode;
+			const credentials = {
+				user: (Math.random() * 10000).toString(),
+				password: (Math.random() * 10000).toString(),
+			};
+			const headers = {
+				'x-auth-token': generateBasicAuthToken(node, credentials),
+			};
+			const ctx: Partial<IWebhookFunctions> = {
+				getNode: vi.fn().mockReturnValue(node),
+				getCredentials: vi.fn().mockResolvedValue(credentials),
+				getNodeParameter: vi.fn().mockReturnValue('basicAuth'),
+				getRequestObject: vi.fn().mockReturnValue({
+					headers,
+				}),
+				getHeaderData: vi.fn().mockReturnValue(headers),
+			};
+			const authPropertyName = 'authentication';
+			await validateWebhookAuthentication(ctx as IWebhookFunctions, authPropertyName);
+		});
+
 		it('should throw an error if headerAuth is enabled but no authentication data is defined on the node', async () => {
 			const ctx: Partial<IWebhookFunctions> = {
-				getNodeParameter: jest.fn().mockReturnValue('headerAuth'),
-				getCredentials: jest
+				getNodeParameter: vi.fn().mockReturnValue('headerAuth'),
+				getCredentials: vi
 					.fn()
 					.mockRejectedValue(new Error('No authentication data defined on node!')),
-				getRequestObject: jest.fn().mockReturnValue({
+				getRequestObject: vi.fn().mockReturnValue({
 					headers: {},
 				}),
-				getHeaderData: jest.fn().mockReturnValue({}),
+				getHeaderData: vi.fn().mockReturnValue({}),
 			};
 			const authPropertyName = 'authentication';
 			await expect(
@@ -368,15 +442,15 @@ describe('Webhook Utils', () => {
 				authorization: 'Bearer invalid-token',
 			};
 			const ctx: Partial<IWebhookFunctions> = {
-				getNodeParameter: jest.fn().mockReturnValue('headerAuth'),
-				getCredentials: jest.fn().mockResolvedValue({
+				getNodeParameter: vi.fn().mockReturnValue('headerAuth'),
+				getCredentials: vi.fn().mockResolvedValue({
 					name: 'Authorization',
 					value: 'Bearer token',
 				}),
-				getRequestObject: jest.fn().mockReturnValue({
+				getRequestObject: vi.fn().mockReturnValue({
 					headers,
 				}),
-				getHeaderData: jest.fn().mockReturnValue(headers),
+				getHeaderData: vi.fn().mockReturnValue(headers),
 			};
 			const authPropertyName = 'authentication';
 			await expect(
@@ -386,12 +460,12 @@ describe('Webhook Utils', () => {
 
 		it('should throw an error if jwtAuth is enabled but no authentication data is defined on the node', async () => {
 			const ctx: Partial<IWebhookFunctions> = {
-				getNodeParameter: jest.fn().mockReturnValue('jwtAuth'),
-				getCredentials: jest
+				getNodeParameter: vi.fn().mockReturnValue('jwtAuth'),
+				getCredentials: vi
 					.fn()
 					.mockRejectedValue(new Error('No authentication data defined on node!')),
-				getRequestObject: jest.fn().mockReturnValue({}),
-				getHeaderData: jest.fn().mockReturnValue({}),
+				getRequestObject: vi.fn().mockReturnValue({}),
+				getHeaderData: vi.fn().mockReturnValue({}),
 			};
 			const authPropertyName = 'authentication';
 			await expect(
@@ -401,17 +475,17 @@ describe('Webhook Utils', () => {
 
 		it('should throw an error if jwtAuth is enabled but no token is provided', async () => {
 			const ctx: Partial<IWebhookFunctions> = {
-				getNodeParameter: jest.fn().mockReturnValue('jwtAuth'),
-				getCredentials: jest.fn().mockResolvedValue({
+				getNodeParameter: vi.fn().mockReturnValue('jwtAuth'),
+				getCredentials: vi.fn().mockResolvedValue({
 					keyType: 'passphrase',
 					publicKey: '',
 					secret: 'secret',
 					algorithm: 'HS256',
 				}),
-				getRequestObject: jest.fn().mockReturnValue({
+				getRequestObject: vi.fn().mockReturnValue({
 					headers: {},
 				}),
-				getHeaderData: jest.fn().mockReturnValue({}),
+				getHeaderData: vi.fn().mockReturnValue({}),
 			};
 			const authPropertyName = 'authentication';
 			await expect(
@@ -424,20 +498,20 @@ describe('Webhook Utils', () => {
 				authorization: 'Bearer invalid-token',
 			};
 			const ctx: Partial<IWebhookFunctions> = {
-				getNodeParameter: jest.fn().mockReturnValue('jwtAuth'),
-				getCredentials: jest.fn().mockResolvedValue({
+				getNodeParameter: vi.fn().mockReturnValue('jwtAuth'),
+				getCredentials: vi.fn().mockResolvedValue({
 					keyType: 'passphrase',
 					publicKey: '',
 					secret: 'secret',
 					algorithm: 'HS256',
 				}),
-				getRequestObject: jest.fn().mockReturnValue({
+				getRequestObject: vi.fn().mockReturnValue({
 					headers,
 				}),
-				getHeaderData: jest.fn().mockReturnValue(headers),
+				getHeaderData: vi.fn().mockReturnValue(headers),
 			};
-			(jwt.verify as jest.Mock).mockImplementationOnce(() => {
-				throw new ApplicationError('jwt malformed');
+			(jwt.verify as Mock).mockImplementationOnce(() => {
+				throw new UnexpectedError('jwt malformed');
 			});
 			const authPropertyName = 'authentication';
 			await expect(
@@ -451,23 +525,23 @@ describe('Webhook Utils', () => {
 				name: 'John Doe',
 				iat: 1516239022,
 			};
-			(jwt.verify as jest.Mock).mockReturnValue(decodedPayload);
+			(jwt.verify as Mock).mockReturnValue(decodedPayload);
 			const headers = {
 				authorization:
 					'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c',
 			};
 			const ctx: Partial<IWebhookFunctions> = {
-				getNodeParameter: jest.fn().mockReturnValue('jwtAuth'),
-				getCredentials: jest.fn().mockResolvedValue({
+				getNodeParameter: vi.fn().mockReturnValue('jwtAuth'),
+				getCredentials: vi.fn().mockResolvedValue({
 					keyType: 'passphrase',
 					publicKey: '',
 					secret: 'secret',
 					algorithm: 'HS256',
 				}),
-				getRequestObject: jest.fn().mockReturnValue({
+				getRequestObject: vi.fn().mockReturnValue({
 					headers,
 				}),
-				getHeaderData: jest.fn().mockReturnValue(headers),
+				getHeaderData: vi.fn().mockReturnValue(headers),
 			};
 			const authPropertyName = 'authentication';
 
@@ -480,14 +554,14 @@ describe('Webhook Utils', () => {
 	});
 
 	describe('handleFormData', () => {
-		const mockCopyBinaryFile = jest.fn().mockResolvedValue({
+		const mockCopyBinaryFile = vi.fn().mockResolvedValue({
 			data: 'binary-data',
 			mimeType: 'text/plain',
 		});
 
 		const createMockContext = (options: IDataObject = {}): IWebhookFunctions =>
 			({
-				getRequestObject: jest.fn().mockReturnValue({
+				getRequestObject: vi.fn().mockReturnValue({
 					contentType: 'multipart/form-data',
 					headers: { 'content-type': 'multipart/form-data' },
 					params: {},
@@ -497,16 +571,16 @@ describe('Webhook Utils', () => {
 						files: {},
 					},
 				}),
-				getNodeParameter: jest.fn().mockReturnValue(options),
+				getNodeParameter: vi.fn().mockReturnValue(options),
 				nodeHelpers: {
 					copyBinaryFile: mockCopyBinaryFile,
 				},
 			}) as any;
 
-		const mockPrepareOutput = jest.fn().mockImplementation((data: INodeExecutionData) => [[data]]);
+		const mockPrepareOutput = vi.fn().mockImplementation((data: INodeExecutionData) => [[data]]);
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		it('should use default binary property name for empty filename', async () => {
@@ -620,6 +694,133 @@ describe('Webhook Utils', () => {
 			expect(result.workflowData[0][0].binary).toEqual({
 				validFile: expect.any(Object),
 			});
+		});
+	});
+});
+
+describe('Auth token generation', () => {
+	describe('generateFormPostBasicAuthToken', () => {
+		let webhookFunctions: ReturnType<typeof mock<IWebhookFunctions>>;
+
+		beforeEach(() => {
+			webhookFunctions = mock<IWebhookFunctions>();
+		});
+
+		it('should use authentication property for Form Trigger nodes', async () => {
+			webhookFunctions.getNode.mockReturnValue({
+				type: 'n8n-nodes-base.formTrigger',
+			} as INode);
+			webhookFunctions.getNodeParameter.mockReturnValue('basicAuth');
+
+			await generateFormPostBasicAuthToken(webhookFunctions, 'authentication');
+
+			expect(webhookFunctions.getNodeParameter).toHaveBeenCalledWith('authentication', 'none');
+		});
+
+		it('should use passed authentication key', async () => {
+			webhookFunctions.getNode.mockReturnValue({
+				type: 'n8n-nodes-base.wait',
+			} as INode);
+			webhookFunctions.getNodeParameter.mockReturnValue('basicAuth');
+
+			await generateFormPostBasicAuthToken(webhookFunctions, 'incomingAuthentication');
+
+			expect(webhookFunctions.getNodeParameter).toHaveBeenCalledWith(
+				'incomingAuthentication',
+				'none',
+			);
+		});
+
+		it('should handle "none" authentication', async () => {
+			webhookFunctions.getNode.mockReturnValue({
+				type: 'n8n-nodes-base.formTrigger',
+			} as INode);
+			webhookFunctions.getNodeParameter.mockReturnValue('none');
+
+			const result = await generateFormPostBasicAuthToken(webhookFunctions, 'authentication');
+
+			expect(result).toBeUndefined();
+		});
+	});
+
+	describe('generateBasicAuthToken', () => {
+		let testNode: INode;
+		let randomCredentials: ICredentialDataDecryptedObject & {
+			user: string;
+			password: string;
+		};
+
+		beforeEach(() => {
+			testNode = {
+				id: new Date().getMilliseconds().toString(),
+				webhookId: 'webhook-456',
+				type: 'n8n-nodes-base.formTrigger',
+			} as INode;
+
+			randomCredentials = {
+				user: (Math.random() * 100000).toString(),
+				password: (Math.random() * 100000).toString(),
+			};
+		});
+
+		it('should return undefined when credentials are empty', () => {
+			const result = generateBasicAuthToken(testNode, undefined);
+
+			expect(result).toBeUndefined();
+		});
+
+		it('should generate valid HMAC token using credentials', () => {
+			const result = generateBasicAuthToken(testNode, randomCredentials);
+
+			expect(result).toBeDefined();
+			expect(typeof result).toBe('string');
+			expect(result?.length).toBe(64);
+		});
+
+		it('should generate deterministic token for same inputs', () => {
+			const token1 = generateBasicAuthToken(testNode, randomCredentials);
+			const token2 = generateBasicAuthToken(testNode, randomCredentials);
+
+			expect(token1).toBe(token2);
+		});
+
+		it('should generate different tokens for different credentials', () => {
+			const token1 = generateBasicAuthToken(testNode, { user: 'user1', password: 'password' });
+			const token2 = generateBasicAuthToken(testNode, { user: 'user2', password: 'password' });
+			const token3 = generateBasicAuthToken(testNode, { user: 'user1', password: 'passwOrd' });
+
+			expect(token1).not.toBe(token2);
+			expect(token1).not.toBe(token3);
+		});
+
+		it('should generate different tokens for different node IDs', () => {
+			const token1 = generateBasicAuthToken(
+				{
+					id: 'node-789',
+					webhookId: 'webhook-456',
+					type: 'n8n-nodes-base.formTrigger',
+				} as INode,
+				randomCredentials,
+			);
+			const token2 = generateBasicAuthToken(
+				{
+					id: 'node-678',
+					webhookId: 'webhook-456',
+					type: 'n8n-nodes-base.formTrigger',
+				} as INode,
+				randomCredentials,
+			);
+			const token3 = generateBasicAuthToken(
+				{
+					id: 'node-789',
+					webhookId: 'webhook-459',
+					type: 'n8n-nodes-base.formTrigger',
+				} as INode,
+				randomCredentials,
+			);
+
+			expect(token1).not.toBe(token2);
+			expect(token1).not.toBe(token3);
 		});
 	});
 });

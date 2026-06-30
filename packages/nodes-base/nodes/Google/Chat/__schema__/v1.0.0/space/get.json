@@ -6,10 +6,16 @@
             "properties": {
                 "accessState": {
                     "type": "string"
+                },
+                "audience": {
+                    "type": "string"
                 }
             }
         },
         "createTime": {
+            "type": "string"
+        },
+        "customer": {
             "type": "string"
         },
         "displayName": {
@@ -138,5 +144,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

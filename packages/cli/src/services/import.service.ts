@@ -1,5 +1,5 @@
 import { Logger, safeJoinPath } from '@n8n/backend-common';
-import type { TagEntity, ICredentialsDb, IWorkflowDb } from '@n8n/db';
+import type { TagEntity, ICredentialsDb, User } from '@n8n/db';
 import {
 	Project,
 	WorkflowEntity,
@@ -7,23 +7,39 @@ import {
 	WorkflowTagMapping,
 	CredentialsRepository,
 	TagRepository,
-	WorkflowPublishHistoryRepository,
+	UserRepository,
+	WorkflowHistory,
 } from '@n8n/db';
-// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { DataSource, EntityManager } from '@n8n/typeorm';
 import { Service } from '@n8n/di';
-import { type INode, type INodeCredentialsDetails, type IWorkflowBase } from 'n8n-workflow';
-import { v4 as uuid } from 'uuid';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
+import { DataSource, EntityManager, In, type EntityMetadata } from '@n8n/typeorm';
+import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { readdir, readFile } from 'fs/promises';
-
-import { replaceInvalidCredentials } from '@/workflow-helpers';
-import { validateDbTypeForImportEntities } from '@/utils/validate-database-type';
 import { Cipher } from 'n8n-core';
-import { decompressFolder } from '@/utils/compression.util';
+import {
+	ensureError,
+	type INode,
+	type INodeCredentialsDetails,
+	type IWorkflowBase,
+} from 'n8n-workflow';
+import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
+
+import type { IWorkflowWithVersionMetadata } from '@/interfaces';
+import type { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
+import { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
+import {
+	normalizeUserRowValueForDatabase,
+	quoteIdentifier,
+	toTableName,
+} from '@/modules/data-table/utils/sql-utils';
 import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
-import { DatabaseConfig } from '@n8n/config';
+import { decompressFolder } from '@/utils/compression.util';
+import { validateDbTypeForImportEntities } from '@/utils/validate-database-type';
+import { replaceInvalidCredentials, validateWorkflowStructure } from '@/workflow-helpers';
+import { WorkflowService } from '@/workflows/workflow.service';
+
+const DATA_TABLE_ROWS_FILE_PREFIX = 'data_table_user_';
 
 @Service()
 export class ImportService {
@@ -43,8 +59,8 @@ export class ImportService {
 			sqlite: 'PRAGMA defer_foreign_keys = OFF;',
 			'sqlite-pooled': 'PRAGMA defer_foreign_keys = OFF;',
 			'sqlite-memory': 'PRAGMA defer_foreign_keys = OFF;',
-			postgres: 'SET session_replication_role = DEFAULT;',
-			postgresql: 'SET session_replication_role = DEFAULT;',
+			postgres: 'SET session_replication_role = ORIGIN;',
+			postgresql: 'SET session_replication_role = ORIGIN;',
 		},
 	};
 
@@ -54,10 +70,10 @@ export class ImportService {
 		private readonly tagRepository: TagRepository,
 		private readonly dataSource: DataSource,
 		private readonly cipher: Cipher,
-		private readonly activeWorkflowManager: ActiveWorkflowManager,
 		private readonly workflowIndexService: WorkflowIndexService,
-		private readonly databaseConfig: DatabaseConfig,
-		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
+		private readonly dataTableDDLService: DataTableDDLService,
+		private readonly userRepository: UserRepository,
+		private readonly workflowService: WorkflowService,
 	) {}
 
 	async initRecords() {
@@ -65,8 +81,39 @@ export class ImportService {
 		this.dbTags = await this.tagRepository.find();
 	}
 
-	async importWorkflows(workflows: IWorkflowDb[], projectId: string) {
+	async importWorkflows(
+		workflows: IWorkflowWithVersionMetadata[],
+		projectId: string,
+		userId: string,
+		{ activeState = 'false' }: { activeState?: 'false' | 'fromJson' },
+	) {
 		await this.initRecords();
+
+		const user = await this.userRepository.findOneOrFail({
+			where: { id: userId },
+			relations: ['role'],
+		});
+
+		const { manager: dbManager } = this.credentialsRepository;
+
+		// Check existence and active status of all workflows
+		const workflowIds = workflows.map((w) => w.id).filter((id) => !!id);
+		const existingWorkflowIds = new Set<string>();
+		const activeVersionIdByWorkflow = new Map<string, string>();
+
+		if (workflowIds.length > 0) {
+			const existingWorkflows = await dbManager.find(WorkflowEntity, {
+				where: { id: In(workflowIds) },
+				select: ['id', 'activeVersionId'],
+			});
+
+			for (const { id, activeVersionId } of existingWorkflows) {
+				existingWorkflowIds.add(id);
+				if (activeVersionId !== null) {
+					activeVersionIdByWorkflow.set(id, activeVersionId);
+				}
+			}
+		}
 
 		for (const workflow of workflows) {
 			workflow.nodes.forEach((node) => {
@@ -77,42 +124,54 @@ export class ImportService {
 
 			const hasInvalidCreds = workflow.nodes.some((node) => !node.credentials?.id);
 
-			if (hasInvalidCreds) await this.replaceInvalidCreds(workflow);
+			if (hasInvalidCreds) await this.replaceInvalidCreds(workflow, projectId);
+			validateWorkflowStructure(workflow);
 
-			// Remove workflows from ActiveWorkflowManager BEFORE transaction to prevent orphaned trigger listeners
-			if (workflow.id) {
-				await this.activeWorkflowManager.remove(workflow.id);
+			// Deactivate BEFORE the transaction to prevent orphaned trigger listeners.
+			// Only applies to workflows that are currently active in the database.
+			if (workflow.id && activeVersionIdByWorkflow.has(workflow.id)) {
+				await this.workflowService.deactivateWorkflow(user, workflow.id, { source: 'import' });
 			}
 		}
 
-		const insertedWorkflows: IWorkflowBase[] = [];
-		const { manager: dbManager } = this.credentialsRepository;
+		const insertedWorkflows: IWorkflowWithVersionMetadata[] = [];
+		const workflowsToActivate: Array<{ workflowId: string; versionId: string }> = [];
 		await dbManager.transaction(async (tx) => {
+			// Upsert all workflows
 			for (const workflow of workflows) {
-				if (workflow.active || workflow.activeVersionId) {
-					await this.workflowPublishHistoryRepository.addRecord({
-						workflowId: workflow.id,
-						versionId: workflow.activeVersionId ?? workflow.versionId ?? 'no id found',
-						event: 'deactivated',
-						userId: null,
-					});
+				// Always generate a new versionId on import to ensure proper history ordering
+				workflow.versionId = uuid();
 
-					workflow.active = false;
-					workflow.activeVersionId = null;
+				// Store the old activeVersionId to record the deactivation of the old version
+				const oldActiveVersionId = workflow.id ? activeVersionIdByWorkflow.get(workflow.id) : null;
+				const shouldActivate = activeState === 'fromJson' && workflow.active;
+				const versionIdToActivate = workflow.versionId;
 
-					this.logger.info(`Deactivating workflow "${workflow.name}". Remember to activate later.`);
+				// Always upsert with active=false and activeVersionId=null.
+				// Activation happens post-transaction once the new workflow_history row exists
+				// (the activeVersionId FK references workflow_history.versionId).
+				if (
+					!shouldActivate &&
+					(oldActiveVersionId || workflow.activeVersionId || workflow.active)
+				) {
+					this.logger.info(`Deactivating workflow "${workflow.name}".`);
 				}
+				workflow.active = false;
+				workflow.activeVersionId = null;
 
-				const exists = workflow.id ? await tx.existsBy(WorkflowEntity, { id: workflow.id }) : false;
-
-				const upsertResult = await tx.upsert(WorkflowEntity, workflow, ['id']);
+				const workflowToUpsert = workflow as QueryDeepPartialEntity<WorkflowEntity>;
+				const upsertResult = await tx.upsert(WorkflowEntity, workflowToUpsert, ['id']);
 				const workflowId = upsertResult.identifiers.at(0)?.id as string;
 				insertedWorkflows.push({ ...workflow, id: workflowId }); // Collect inserted workflow with correct ID, for indexing later.
+
+				if (shouldActivate) {
+					workflowsToActivate.push({ workflowId, versionId: versionIdToActivate });
+				}
 
 				const personalProject = await tx.findOneByOrFail(Project, { id: projectId });
 
 				// Create relationship if the workflow was inserted instead of updated.
-				if (!exists) {
+				if (!existingWorkflowIds.has(workflow.id)) {
 					await tx.upsert(
 						SharedWorkflow,
 						{ workflowId, projectId: personalProject.id, role: 'workflow:owner' },
@@ -131,21 +190,139 @@ export class ImportService {
 					]);
 				}
 			}
+
+			// Always create workflow history for the current version
+			// This is needed to be able to activate the workflow later
+			for (const workflow of insertedWorkflows) {
+				const versionMetadata = workflow.versionMetadata;
+				await tx.insert(WorkflowHistory, {
+					versionId: workflow.versionId,
+					workflowId: workflow.id,
+					nodes: workflow.nodes,
+					connections: workflow.connections,
+					nodeGroups: workflow.nodeGroups,
+					authors: 'import',
+					name: versionMetadata?.name ?? null,
+					description: versionMetadata?.description ?? null,
+				});
+			}
 		});
+
+		const orderedWorkflowsToActivate = this.sortWorkflowsForActivation(
+			insertedWorkflows,
+			workflowsToActivate,
+		);
+		for (const { workflowId, versionId } of orderedWorkflowsToActivate) {
+			await this.activateWorkflow(workflowId, versionId, user);
+		}
 
 		// Directly update the index for the important workflows, since they don't generate
 		// workflow-update events during import.
-		// Workflow indexing isn't supported on legacy SQLite.
-		if (!this.databaseConfig.isLegacySqlite) {
-			for (const workflow of insertedWorkflows) {
-				await this.workflowIndexService.updateIndexFor(workflow);
-			}
+		for (const workflow of insertedWorkflows) {
+			await this.workflowIndexService.updateIndexForDraft(workflow);
 		}
 	}
 
-	async replaceInvalidCreds(workflow: IWorkflowBase) {
+	/**
+	 * Sorts workflows to activate in dependency order so that subworkflows are activated
+	 * before the workflows that call them. Uses Kahn's topological sort algorithm.
+	 */
+	private sortWorkflowsForActivation(
+		allImportedWorkflows: IWorkflowWithVersionMetadata[],
+		toActivate: Array<{ workflowId: string; versionId: string }>,
+	): Array<{ workflowId: string; versionId: string }> {
+		if (toActivate.length <= 1) return toActivate;
+
+		const nodesByWorkflowId = new Map(allImportedWorkflows.map((w) => [w.id, w.nodes]));
+		const activateIds = new Set(toActivate.map((w) => w.workflowId));
+
+		// Fast path: skip the full graph build if no workflow in the batch references
+		// another batch workflow via an active executeWorkflow node.
+		const hasCrossReference = toActivate.some(({ workflowId }) =>
+			(nodesByWorkflowId.get(workflowId) ?? []).some(
+				(node) =>
+					!node.disabled &&
+					node.type === 'n8n-nodes-base.executeWorkflow' &&
+					activateIds.has(this.extractSubworkflowId(node) ?? ''),
+			),
+		);
+		if (!hasCrossReference) return toActivate;
+
+		const toActivateByWorkflowId = new Map(toActivate.map((w) => [w.workflowId, w]));
+		// callee id → set of caller ids that depend on it being activated first
+		const dependents = new Map<string, Set<string>>(
+			toActivate.map(({ workflowId }) => [workflowId, new Set()]),
+		);
+		// caller id → how many of its subworkflow dependencies in this batch are not yet activated
+		const unresolvedDepsCount = new Map<string, number>(
+			toActivate.map(({ workflowId }) => [workflowId, 0]),
+		);
+
+		for (const { workflowId } of toActivate) {
+			for (const node of nodesByWorkflowId.get(workflowId) ?? []) {
+				if (node.disabled || node.type !== 'n8n-nodes-base.executeWorkflow') continue;
+				const calleeId = this.extractSubworkflowId(node);
+				if (!calleeId || !activateIds.has(calleeId) || calleeId === workflowId) continue;
+				dependents.get(calleeId)!.add(workflowId);
+				unresolvedDepsCount.set(workflowId, unresolvedDepsCount.get(workflowId)! + 1);
+			}
+		}
+
+		const queue = toActivate.filter((w) => unresolvedDepsCount.get(w.workflowId) === 0);
+		const result: Array<{ workflowId: string; versionId: string }> = [];
+
+		while (queue.length > 0) {
+			const item = queue.shift()!;
+			result.push(item);
+			for (const callerId of dependents.get(item.workflowId)!) {
+				const remaining = unresolvedDepsCount.get(callerId)! - 1;
+				unresolvedDepsCount.set(callerId, remaining);
+				if (remaining === 0) queue.push(toActivateByWorkflowId.get(callerId)!);
+			}
+		}
+
+		if (result.length < toActivate.length) {
+			// Any workflow still with unresolvedDepsCount > 0 was never enqueued by the
+			// sort — it's part of a cycle (its dependency also waits on it). Append these
+			// so they still get activated rather than being silently dropped.
+			const cycleWorkflows = toActivate.filter(
+				(w) => Number(unresolvedDepsCount.get(w.workflowId)) > 0,
+			);
+			this.logger.warn(
+				`Detected circular subworkflow references among workflows: [${cycleWorkflows.map((w) => w.workflowId).join(', ')}]. Activating them in original order.`,
+			);
+			result.push(...cycleWorkflows);
+		}
+
+		return result;
+	}
+
+	private extractSubworkflowId(node: INode): string | undefined {
+		const source = node.parameters?.['source'];
+		if (source === 'parameter' || source === 'localFile' || source === 'url') return undefined;
+		const wfId = node.parameters?.['workflowId'];
+		const rawId = typeof wfId === 'string' ? wfId : (wfId as { value?: unknown } | null)?.value;
+		return typeof rawId === 'string' && !rawId.startsWith('=') ? rawId : undefined;
+	}
+
+	private async activateWorkflow(
+		workflowId: string,
+		versionIdToActivate: string,
+		user: User,
+	): Promise<void> {
 		try {
-			await replaceInvalidCredentials(workflow);
+			await this.workflowService.activateWorkflow(user, workflowId, {
+				versionId: versionIdToActivate,
+				source: 'import',
+			});
+		} catch (e) {
+			this.logger.error(`Failed to activate workflow ${workflowId}`, { error: ensureError(e) });
+		}
+	}
+
+	async replaceInvalidCreds(workflow: IWorkflowBase, projectId: string) {
+		try {
+			await replaceInvalidCredentials(workflow, projectId);
 		} catch (e) {
 			this.logger.error('Failed to replace invalid credential', { error: e });
 		}
@@ -223,49 +400,64 @@ export class ImportService {
 	/**
 	 * Get import metadata including table names and entity files
 	 * @param inputDir - Directory containing exported entity files
-	 * @returns Object containing table names and entity files grouped by entity name
+	 * @returns Object containing table names, entity files grouped by entity name,
+	 *   and data-table row files grouped by data table id.
 	 */
 	async getImportMetadata(inputDir: string): Promise<{
 		tableNames: string[];
 		entityFiles: Record<string, string[]>;
+		dataTableFiles: Record<string, string[]>;
 	}> {
 		const files = await readdir(inputDir);
 		const entityTableNamesMap: Record<string, string> = {};
 		const entityFiles: Record<string, string[]> = {};
+		const dataTableFiles: Record<string, string[]> = {};
 
 		for (const file of files) {
-			if (file.endsWith('.jsonl')) {
-				const entityName = file.replace(/\.\d+\.jsonl$/, '.jsonl').replace('.jsonl', '');
-				// Exclude migrations from regular entity import
-				if (entityName === 'migrations') {
+			if (!file.endsWith('.jsonl')) continue;
+
+			const baseName = file.replace(/\.\d+\.jsonl$/, '.jsonl').replace('.jsonl', '');
+
+			// Exclude migrations from regular entity import
+			if (baseName === 'migrations') {
+				continue;
+			}
+
+			// Route data-table user-row files into their own bucket keyed by data table id.
+			if (baseName.startsWith(DATA_TABLE_ROWS_FILE_PREFIX)) {
+				const dataTableId = baseName.slice(DATA_TABLE_ROWS_FILE_PREFIX.length);
+				if (!dataTableFiles[dataTableId]) dataTableFiles[dataTableId] = [];
+				dataTableFiles[dataTableId].push(safeJoinPath(inputDir, file));
+				continue;
+			}
+
+			const entityName = baseName;
+
+			// Build table names map (only need to do this once per entity)
+			if (!entityTableNamesMap[entityName]) {
+				const entityMetadata = this.dataSource.entityMetadatas.find(
+					(meta) => meta.name.toLowerCase() === entityName,
+				);
+
+				if (!entityMetadata) {
+					this.logger.warn(`⚠️  No entity metadata found for ${entityName}, skipping...`);
 					continue;
 				}
 
-				// Build table names map (only need to do this once per entity)
-				if (!entityTableNamesMap[entityName]) {
-					const entityMetadata = this.dataSource.entityMetadatas.find(
-						(meta) => meta.name.toLowerCase() === entityName,
-					);
-
-					if (!entityMetadata) {
-						this.logger.warn(`⚠️  No entity metadata found for ${entityName}, skipping...`);
-						continue;
-					}
-
-					entityTableNamesMap[entityName] = entityMetadata.tableName;
-				}
-
-				// Build entity files map (only for entities with valid metadata)
-				if (!entityFiles[entityName]) {
-					entityFiles[entityName] = [];
-				}
-				entityFiles[entityName].push(safeJoinPath(inputDir, file));
+				entityTableNamesMap[entityName] = entityMetadata.tableName;
 			}
+
+			// Build entity files map (only for entities with valid metadata)
+			if (!entityFiles[entityName]) {
+				entityFiles[entityName] = [];
+			}
+			entityFiles[entityName].push(safeJoinPath(inputDir, file));
 		}
 
 		return {
 			tableNames: Object.values(entityTableNamesMap),
 			entityFiles,
+			dataTableFiles,
 		};
 	}
 
@@ -280,11 +472,11 @@ export class ImportService {
 		customEncryptionKey?: string,
 	): Promise<Array<Record<string, unknown>>> {
 		const content = await readFile(filePath, 'utf8');
-		const entities: Record<string, unknown>[] = [];
+		const entities: Array<Record<string, unknown>> = [];
 		const entitySchema = z.record(z.string(), z.unknown());
 
 		for (const block of content.split('\n')) {
-			const lines = this.cipher.decrypt(block, customEncryptionKey).split(/\r?\n/);
+			const lines = (await this.cipher.decryptV2(block, customEncryptionKey)).split(/\r?\n/);
 
 			for (let i = 0; i < lines.length; i++) {
 				const line = lines[i].trim();
@@ -321,7 +513,13 @@ export class ImportService {
 		this.logger.info('✅ Successfully decompressed entities.zip');
 	}
 
-	async importEntities(inputDir: string, truncateTables: boolean, keyFilePath?: string) {
+	async importEntities(
+		inputDir: string,
+		truncateTables: boolean,
+		keyFilePath?: string,
+		skipMigrationChecks = false,
+		skipTogglingForeignKeyConstraints = false,
+	) {
 		validateDbTypeForImportEntities(this.dataSource.options.type);
 
 		// Read custom encryption key from file if provided
@@ -339,18 +537,28 @@ export class ImportService {
 		}
 
 		await this.decompressEntitiesZip(inputDir);
-		await this.validateMigrations(inputDir, customEncryptionKey);
+		if (!skipMigrationChecks) {
+			await this.validateMigrations(inputDir, customEncryptionKey);
+		} else {
+			this.logger.info('⏭️  Skipping migration validation checks');
+		}
 
 		await this.dataSource.transaction(async (transactionManager: EntityManager) => {
-			await this.disableForeignKeyConstraints(transactionManager);
+			if (!skipTogglingForeignKeyConstraints) {
+				await this.disableForeignKeyConstraints(transactionManager);
+			}
 
 			// Get import metadata after migration validation
 			const importMetadata = await this.getImportMetadata(inputDir);
-			const { tableNames, entityFiles } = importMetadata;
+			const { tableNames, entityFiles, dataTableFiles } = importMetadata;
 			const entityNames = Object.keys(entityFiles);
 
 			if (truncateTables) {
 				this.logger.info('\n🗑️  Truncating tables before import...');
+
+				// Drop dynamic data-table user tables first; once the registry is
+				// truncated we have no way to enumerate them.
+				await this.dropExistingDataTableUserTables(transactionManager);
 
 				this.logger.info(`Found ${tableNames.length} tables to truncate: ${tableNames.join(', ')}`);
 
@@ -379,7 +587,22 @@ export class ImportService {
 				customEncryptionKey,
 			);
 
-			await this.enableForeignKeyConstraints(transactionManager);
+			// Postgres IDENTITY sequences don't auto-advance when explicit ids are
+			// inserted, so subsequent implicit inserts would collide. Reset each
+			// imported table's sequence to MAX(col).
+			await this.advanceIdentitySequences(transactionManager, tableNames);
+
+			// After the data_table / data_table_column registry rows are imported,
+			// recreate the dynamic backing tables and load any user rows from the archive.
+			await this.recreateDataTableUserTablesFromRegistry(
+				transactionManager,
+				dataTableFiles,
+				customEncryptionKey,
+			);
+
+			if (!skipTogglingForeignKeyConstraints) {
+				await this.enableForeignKeyConstraints(transactionManager);
+			}
 		});
 
 		// Cleanup decompressed files after import
@@ -452,13 +675,14 @@ export class ImportService {
 
 						await Promise.all(
 							entities.map(async (entity) => {
-								const columns = Object.keys(entity);
+								const normalizedEntity = this.normalizeEntityJsonColumns(entity, entityMetadata);
+								const columns = Object.keys(normalizedEntity);
 								const columnNames = columns.map(this.dataSource.driver.escape).join(', ');
 								const columnValues = columns.map((key) => `:${key}`).join(', ');
 
 								const [query, parameters] = this.dataSource.driver.escapeQueryWithParameters(
 									`INSERT INTO ${tableName} (${columnNames}) VALUES (${columnValues})`,
-									entity,
+									normalizedEntity,
 									{},
 								);
 
@@ -499,6 +723,245 @@ export class ImportService {
 
 			node.credentials[type] = nodeCredential;
 		}
+	}
+
+	/**
+	 * Normalise JSON column values to JSON strings before a raw INSERT.
+	 *
+	 * The export uses raw SQL (SELECT … FROM table) which bypasses TypeORM column
+	 * transformers entirely. As a result, json/simple-json column values differ by
+	 * source database:
+	 *   - SQLite  → stored as TEXT, so SELECT returns a plain string
+	 *   - Postgres → stored natively, so SELECT returns a parsed JS object/array
+	 *
+	 * Passing a raw string to a Postgres `json` column or a raw object to SQLite's
+	 * TEXT-backed column via a parameterised INSERT produces incorrect data. This
+	 * method normalises both cases to a JSON string, which both database drivers
+	 * accept correctly for json/simple-json columns.
+	 */
+	private normalizeEntityJsonColumns(
+		entity: Record<string, unknown>,
+		metadata: EntityMetadata,
+	): Record<string, unknown> {
+		const result = { ...entity };
+
+		for (const column of metadata.columns) {
+			const { databaseName, type } = column;
+			if (type !== 'json' && type !== 'simple-json') continue;
+
+			const value = result[databaseName];
+			if (value === null || value === undefined) continue;
+
+			if (typeof value === 'string') {
+				// SQLite exports json columns as serialised text — parse then re-serialise
+				// to canonical JSON so both SQLite and Postgres targets receive a valid string.
+				try {
+					result[databaseName] = JSON.stringify(JSON.parse(value));
+				} catch {
+					// Not a valid JSON string; leave as-is and let the DB validate on insert.
+				}
+			} else if (typeof value === 'object') {
+				// Postgres exports json columns as parsed objects — serialise for raw INSERT.
+				result[databaseName] = JSON.stringify(value);
+			}
+		}
+
+		return result;
+	}
+
+	/**
+	 * Drop every dynamic data-table user backing table referenced in the destination's
+	 * `data_table` registry. Called before truncating registry rows so that backing
+	 * tables don't end up orphaned.
+	 */
+	async dropExistingDataTableUserTables(transactionManager: EntityManager): Promise<void> {
+		const tablePrefix = this.dataSource.options.entityPrefix || '';
+		const dataTableTableName = `${tablePrefix}data_table`;
+
+		let existing: Array<{ id: string }>;
+		try {
+			existing = await transactionManager.query(
+				`SELECT id FROM ${this.dataSource.driver.escape(dataTableTableName)}`,
+			);
+		} catch (error) {
+			this.logger.info(
+				`   ⚠️  ${dataTableTableName} registry not found, skipping dynamic-table cleanup...`,
+				{ error },
+			);
+			return;
+		}
+
+		if (existing.length === 0) return;
+
+		this.logger.info(`🗑️  Dropping ${existing.length} existing data-table backing table(s)...`);
+		for (const { id } of existing) {
+			await this.dataTableDDLService.dropTable(id, transactionManager);
+		}
+	}
+
+	/**
+	 * Recreate dynamic data-table backing tables for every entry in the imported
+	 * `data_table` registry, and insert user rows from any matching JSONL files.
+	 *
+	 * Tables are dropped before recreation so the operation is idempotent and
+	 * handles stale tables left over from a partially-failed prior import. When
+	 * no row file exists for a table (e.g. an archive produced with
+	 * `--includeDataTableRows=false` or before this feature) the backing table
+	 * is recreated empty so the system stays functional.
+	 */
+	async recreateDataTableUserTablesFromRegistry(
+		transactionManager: EntityManager,
+		dataTableFiles: Record<string, string[]> = {},
+		customEncryptionKey?: string,
+	): Promise<void> {
+		const dbType = this.dataSource.options.type;
+		const tablePrefix = this.dataSource.options.entityPrefix || '';
+		const dataTableTableName = `${tablePrefix}data_table`;
+		const dataTableColumnTableName = `${tablePrefix}data_table_column`;
+
+		let dataTables: Array<{ id: string }>;
+		try {
+			dataTables = await transactionManager.query(
+				`SELECT id FROM ${this.dataSource.driver.escape(dataTableTableName)}`,
+			);
+		} catch (error) {
+			this.logger.info(
+				`   ⚠️  ${dataTableTableName} registry not present; skipping data-table backing-table recreation.`,
+				{ error },
+			);
+			return;
+		}
+
+		if (dataTables.length === 0) {
+			if (Object.keys(dataTableFiles).length > 0) {
+				this.logger.warn(
+					`   ⚠️  Found ${Object.keys(dataTableFiles).length} data-table row file(s) in the archive but no entries in the data_table registry; skipping.`,
+				);
+			}
+			return;
+		}
+
+		const escapedColumnTable = this.dataSource.driver.escape(dataTableColumnTableName);
+		const escapedDataTableId = this.dataSource.driver.escape('dataTableId');
+		const escapedIndex = this.dataSource.driver.escape('index');
+
+		const columnRows: DataTableColumn[] = await transactionManager.query(
+			`SELECT id, ${escapedDataTableId}, name, type, ${escapedIndex} FROM ${escapedColumnTable}`,
+		);
+
+		const columnsByDataTableId = new Map<string, DataTableColumn[]>();
+		for (const row of columnRows) {
+			const list = columnsByDataTableId.get(row.dataTableId) ?? [];
+			list.push(row);
+			columnsByDataTableId.set(row.dataTableId, list);
+		}
+
+		this.logger.info(`\n📚 Recreating ${dataTables.length} data-table backing table(s)...`);
+		let totalRowsImported = 0;
+
+		for (const { id: dataTableId } of dataTables) {
+			const userTable = toTableName(dataTableId);
+			const cols = (columnsByDataTableId.get(dataTableId) ?? [])
+				.slice()
+				.sort((a, b) => a.index - b.index);
+
+			await this.dataTableDDLService.dropTable(dataTableId, transactionManager);
+			await this.dataTableDDLService.createTableWithColumns(dataTableId, cols, transactionManager);
+
+			const files = dataTableFiles[dataTableId];
+			if (!files || files.length === 0) continue;
+
+			const columnTypeMap = new Map<string, string>(cols.map((c) => [c.name, c.type]));
+			columnTypeMap.set('createdAt', 'date');
+			columnTypeMap.set('updatedAt', 'date');
+
+			const escapedTable = quoteIdentifier(userTable, dbType);
+			let rowsForTable = 0;
+
+			for (const filePath of files) {
+				const rows = await this.readEntityFile(filePath, customEncryptionKey);
+				for (const row of rows) {
+					const normalizedRow: Record<string, unknown> = {};
+					for (const [key, value] of Object.entries(row)) {
+						normalizedRow[key] = normalizeUserRowValueForDatabase(
+							value,
+							columnTypeMap.get(key),
+							dbType,
+						);
+					}
+
+					const columnNames = Object.keys(normalizedRow);
+					const escapedCols = columnNames.map((c) => quoteIdentifier(c, dbType)).join(', ');
+					const placeholders = columnNames.map((c) => `:${c}`).join(', ');
+					const [query, params] = this.dataSource.driver.escapeQueryWithParameters(
+						`INSERT INTO ${escapedTable} (${escapedCols}) VALUES (${placeholders})`,
+						normalizedRow,
+						{},
+					);
+					await transactionManager.query(query, params);
+					rowsForTable++;
+				}
+			}
+
+			// Postgres IDENTITY columns don't auto-advance when explicit ids are
+			// inserted, so the next implicit insert would collide. Reset to MAX(id).
+			if (rowsForTable > 0 && dbType === 'postgres') {
+				await this.advanceIdentitySequences(transactionManager, [userTable]);
+			}
+
+			if (rowsForTable > 0) {
+				this.logger.info(`   ✅ ${userTable}: ${rowsForTable} row(s) imported`);
+			}
+			totalRowsImported += rowsForTable;
+		}
+
+		this.logger.info(
+			`✅ Recreated ${dataTables.length} data-table backing table(s); imported ${totalRowsImported} row(s)`,
+		);
+	}
+
+	/**
+	 * Advance Postgres IDENTITY sequences to MAX(col) for every identity column
+	 * in the given tables. No-op on SQLite, where INTEGER PRIMARY KEY auto-bumps
+	 * its rowid sequence on inserts with explicit ids.
+	 */
+	async advanceIdentitySequences(
+		transactionManager: EntityManager,
+		tableNames: string[],
+	): Promise<void> {
+		if (this.dataSource.options.type !== 'postgres') return;
+		if (tableNames.length === 0) return;
+
+		this.logger.info('\n🔢 Advancing Postgres IDENTITY sequences...');
+		let advanced = 0;
+
+		for (const tableName of tableNames) {
+			const identityColumns: Array<{ column_name: string }> = await transactionManager.query(
+				`SELECT column_name FROM information_schema.columns
+					WHERE table_schema = current_schema()
+						AND table_name = $1
+						AND identity_generation IS NOT NULL`,
+				[tableName],
+			);
+
+			if (identityColumns.length === 0) continue;
+
+			const escapedTable = this.dataSource.driver.escape(tableName);
+			for (const { column_name: columnName } of identityColumns) {
+				const escapedCol = this.dataSource.driver.escape(columnName);
+				await transactionManager.query(
+					`SELECT setval(
+						pg_get_serial_sequence($1, $2),
+						COALESCE((SELECT MAX(${escapedCol}) FROM ${escapedTable}), 1),
+						(SELECT MAX(${escapedCol}) FROM ${escapedTable}) IS NOT NULL
+					)`,
+					[escapedTable, columnName],
+				);
+				advanced++;
+			}
+		}
+
+		this.logger.info(`✅ Advanced ${advanced} sequence(s) across ${tableNames.length} table(s)`);
 	}
 
 	async disableForeignKeyConstraints(transactionManager: EntityManager) {
@@ -549,8 +1012,9 @@ export class ImportService {
 
 		// Read and parse migrations from file
 		const migrationsFileContent = await readFile(migrationsFilePath, 'utf8');
-		const importMigrations = this.cipher
-			.decrypt(migrationsFileContent, customEncryptionKey)
+		const importMigrations = (
+			await this.cipher.decryptV2(migrationsFileContent, customEncryptionKey)
+		)
 			.trim()
 			.split('\n')
 			.filter((line) => line.trim())

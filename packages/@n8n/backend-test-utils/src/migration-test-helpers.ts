@@ -1,7 +1,7 @@
 import { GlobalConfig } from '@n8n/config';
 import { type DatabaseType, DbConnection, type Migration } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { DataSource, type QueryRunner } from '@n8n/typeorm';
+import { DataSource, type ObjectLiteral, type QueryRunner } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 
 async function reinitializeDataConnection(): Promise<void> {
@@ -11,13 +11,27 @@ async function reinitializeDataConnection(): Promise<void> {
 }
 
 /**
+ * Get the properly qualified migrations table name for the current database.
+ */
+function getMigrationsTableName(): string {
+	const globalConfig = Container.get(GlobalConfig);
+	const dbType = globalConfig.database.type;
+	const tablePrefix = globalConfig.database.tablePrefix;
+
+	if (dbType === 'postgresdb') {
+		const schema = globalConfig.database.postgresdb.schema;
+		return `${schema}."${tablePrefix}migrations"`;
+	}
+	return `"${tablePrefix}migrations"`;
+}
+
+/**
  * Test migration context with database-specific helpers (similar to MigrationContext).
  */
 export interface TestMigrationContext {
 	queryRunner: QueryRunner;
 	tablePrefix: string;
 	dbType: DatabaseType;
-	isMysql: boolean;
 	isSqlite: boolean;
 	isPostgres: boolean;
 	escape: {
@@ -25,6 +39,7 @@ export interface TestMigrationContext {
 		tableName(name: string): string;
 		indexName(name: string): string;
 	};
+	runQuery: <T = unknown>(sql: string, namedParameters?: ObjectLiteral) => Promise<T>;
 }
 
 /**
@@ -41,13 +56,38 @@ export function createTestMigrationContext(dataSource: DataSource): TestMigratio
 		queryRunner,
 		tablePrefix,
 		dbType,
-		isMysql: ['mariadb', 'mysqldb'].includes(dbType),
 		isSqlite: dbType === 'sqlite',
 		isPostgres: dbType === 'postgresdb',
 		escape: {
 			columnName: (name) => queryRunner.connection.driver.escape(name),
 			tableName: (name) => queryRunner.connection.driver.escape(`${tablePrefix}${name}`),
 			indexName: (name) => queryRunner.connection.driver.escape(`IDX_${tablePrefix}${name}`),
+		},
+		runQuery: async <T>(sql: string, namedParameters?: ObjectLiteral) => {
+			if (namedParameters) {
+				if (dbType === 'postgresdb') {
+					// For PostgreSQL, convert named parameters to positional ($1, $2, etc.)
+					// This handles JSON columns properly which don't work well with TypeORM's escapeQueryWithParameters
+					// Use negative lookbehind to avoid matching PostgreSQL's :: cast operator
+					let paramIndex = 1;
+					const paramValues: unknown[] = [];
+					const convertedSql = sql.replace(/(?<!:):(\w+)/g, (_, paramName: string) => {
+						paramValues.push(namedParameters[paramName] as unknown);
+						return `$${paramIndex++}`;
+					});
+					return (await queryRunner.query(convertedSql, paramValues)) as T;
+				} else {
+					// For MySQL/SQLite, use TypeORM's escapeQueryWithParameters
+					const [query, parameters] = queryRunner.connection.driver.escapeQueryWithParameters(
+						sql,
+						namedParameters,
+						{},
+					);
+					return (await queryRunner.query(query, parameters)) as T;
+				}
+			} else {
+				return (await queryRunner.query(sql)) as T;
+			}
 		},
 	};
 }
@@ -96,8 +136,38 @@ export async function initDbUpToMigration(beforeMigrationName: string): Promise<
  */
 export async function undoLastSingleMigration(): Promise<void> {
 	const dataSource = Container.get(DataSource);
+
+	// Get the last executed migration from the migrations table
+	const executedMigrations = await dataSource.query<Array<{ name: string }>>(
+		`SELECT * FROM ${getMigrationsTableName()} ORDER BY timestamp DESC LIMIT 1`,
+	);
+
+	if (executedMigrations.length === 0) {
+		throw new UnexpectedError('No migrations found to undo');
+	}
+
+	const lastMigrationName = executedMigrations[0].name;
+
+	// Find the migration class by name
+	type MigrationConstructor = new () => { transaction?: false };
+	type MigrationClass = MigrationConstructor & {
+		prototype?: { transaction?: false; __n8n_wrapped?: boolean };
+		name: string;
+	};
+	const migration = (dataSource.options.migrations as MigrationClass[]).find(
+		(m) => m.name === lastMigrationName,
+	);
+
+	// Create an instance to check the transaction property (class fields are on instances, not prototypes)
+	let hasTransactionDisabled = false;
+	if (migration) {
+		const instance = new migration();
+		hasTransactionDisabled = instance.transaction === false;
+	}
+
+	// Use transaction: 'none' for migrations with transaction = false, otherwise use 'each'
 	await dataSource.undoLastMigration({
-		transaction: 'each',
+		transaction: hasTransactionDisabled ? 'none' : 'each',
 	});
 }
 

@@ -4,7 +4,8 @@ import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { autocompletableNodeNames } from '@/features/shared/editors/plugins/codemirror/completions/utils';
 import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { forceParse } from '@/app/utils/forceParse';
 import { executionDataToJson } from '@/app/utils/nodeTypesUtils';
 import { autocompletion } from '@codemirror/autocomplete';
@@ -14,7 +15,7 @@ import { Text, type Extension } from '@codemirror/state';
 import { EditorView, hoverTooltip } from '@codemirror/view';
 import * as Comlink from 'comlink';
 import { NodeConnectionTypes, type CodeExecutionMode, type INodeExecutionData } from 'n8n-workflow';
-import { onBeforeUnmount, ref, toRef, toValue, watch, type MaybeRefOrGetter } from 'vue';
+import { computed, onBeforeUnmount, ref, toRef, toValue, watch, type MaybeRefOrGetter } from 'vue';
 import type { LanguageServiceWorker, RemoteLanguageServiceWorkerInit } from '../types';
 import { typescriptCompletionSource } from './completions';
 import { typescriptWorkerFacet } from './facet';
@@ -22,7 +23,7 @@ import { typescriptHoverTooltips } from './hoverTooltip';
 import { linter } from '@codemirror/lint';
 import { typescriptLintSource } from './linter';
 import type { TargetNodeParameterContext } from '@/Interface';
-import { TARGET_NODE_PARAMETER_FACET } from '../../completions/constants';
+import { TARGET_NODE_PARAMETER_FACET, WORKFLOW_DOCUMENT_FACET } from '../../completions/constants';
 
 export function useTypescript(
 	view: MaybeRefOrGetter<EditorView | undefined>,
@@ -31,10 +32,12 @@ export function useTypescript(
 	targetNodeParameterContext?: MaybeRefOrGetter<TargetNodeParameterContext | undefined>,
 ) {
 	const { getInputDataWithPinned, getSchemaForExecutionData } = useDataSchema();
-	const ndvStore = useNDVStore();
-	const workflowsStore = useWorkflowsStore();
+	const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
+	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const ndvStore = computed(() => useNDVStore(workflowDocumentStore.value.documentId));
 	const { debounce } = useDebounce();
-	const activeNodeName = toValue(targetNodeParameterContext)?.nodeName ?? ndvStore.activeNodeName;
+	const activeNodeName =
+		toValue(targetNodeParameterContext)?.nodeName ?? ndvStore.value.activeNodeName;
 	const worker = ref<Comlink.Remote<LanguageServiceWorker>>();
 	const webWorker = ref<Worker>();
 
@@ -47,30 +50,34 @@ export function useTypescript(
 			{
 				id: toValue(id),
 				content: Comlink.proxy((toValue(view)?.state.doc ?? Text.empty).toJSON()),
-				allNodeNames: autocompletableNodeNames(toValue(targetNodeParameterContext)),
+				allNodeNames: autocompletableNodeNames(
+					workflowDocumentStore.value.documentId,
+					toValue(targetNodeParameterContext),
+				),
 				variables: useEnvironmentsStore().scopedVariables.map((v) => v.key),
 				inputNodeNames: activeNodeName
-					? workflowsStore.workflowObject.getParentNodes(
+					? (workflowDocumentStore?.value?.getParentNodes(
 							activeNodeName,
 							NodeConnectionTypes.Main,
 							1,
-						)
+						) ?? [])
 					: [],
 				mode: toValue(mode),
+				binaryMode: workflowDocumentStore?.value?.settings?.binaryMode,
 			},
 			Comlink.proxy(async (nodeName) => {
-				const node = workflowsStore.getNodeByName(nodeName);
+				const node = workflowDocumentStore?.value?.getNodeByName(nodeName);
 
 				if (node) {
 					const inputData: INodeExecutionData[] = getInputDataWithPinned(node);
 					const schema = getSchemaForExecutionData(executionDataToJson(inputData), true);
-					const execution = workflowsStore.getWorkflowExecution;
+					const execution = workflowExecutionStateStore.value.activeExecution;
 					const binaryData = useNodeHelpers()
 						.getBinaryData(
 							execution?.data?.resultData?.runData ?? null,
 							node.name,
 							toValue(targetNodeParameterContext) === undefined
-								? (ndvStore.ndvInputRunIndex ?? 0)
+								? (ndvStore.value.ndvInputRunIndex ?? 0)
 								: 0,
 							0,
 						)
@@ -96,6 +103,7 @@ export function useTypescript(
 		return [
 			typescriptWorkerFacet.of({ worker: worker.value }),
 			TARGET_NODE_PARAMETER_FACET.of(toValue(targetNodeParameterContext)),
+			WORKFLOW_DOCUMENT_FACET.of(workflowDocumentStore.value.documentId),
 			new LanguageSupport(javascriptLanguage, [
 				javascriptLanguage.data.of({ autocomplete: typescriptCompletionSource }),
 			]),
@@ -123,7 +131,10 @@ export function useTypescript(
 	}
 
 	watch(
-		[() => workflowsStore.getWorkflowExecution, () => workflowsStore.getWorkflowRunData],
+		[
+			() => workflowExecutionStateStore.value.activeExecution,
+			() => workflowExecutionStateStore.value.activeExecutionRunData,
+		],
 		debounce(onWorkflowDataChange, { debounceTime: 200, trailing: true }),
 	);
 

@@ -5,7 +5,9 @@ import { stripExcessParens } from './utils';
 /**
  * Completions offered at the blank position: `{{ | }}`
  */
-export function blankCompletions(context: CompletionContext): CompletionResult | null {
+export async function blankCompletions(
+	context: CompletionContext,
+): Promise<CompletionResult | null> {
 	const word = context.matchBefore(/\{\{\s/);
 
 	if (!word) return null;
@@ -18,7 +20,7 @@ export function blankCompletions(context: CompletionContext): CompletionResult |
 
 	return {
 		from: word.to,
-		options: dollarOptions(context).map(stripExcessParens(context)),
+		options: (await dollarOptions(context)).map(stripExcessParens(context)),
 		filter: false,
 	};
 }

@@ -11,6 +11,28 @@ import { NodeApiError } from 'n8n-workflow';
 
 import { capitalize } from '../../../../../utils/utilities';
 
+export type TeamsCredentialType = 'microsoftTeamsOAuth2Api' | 'microsoftOAuth2Api';
+
+/**
+ * Resolves which credential type the node is configured to use. Defaults to the
+ * node-specific `microsoftTeamsOAuth2Api` so existing workflows (and nodes saved
+ * before the `authentication` selector existed) keep working unchanged, while
+ * allowing the generic `microsoftOAuth2Api` (Graph) credential to be selected.
+ *
+ * Shared by the action node (v2), its `listSearch` helpers and the Trigger's
+ * webhook hooks, since all of them authenticate through `microsoftApiRequest`.
+ */
+export function getTeamsCredentialType(
+	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
+): TeamsCredentialType {
+	// `0` is the execute item index; in load-options getNodeParameter has no itemIndex
+	// arg, so don't switch this to the 3-arg `(name, itemIndex, default)` form. Anything
+	// other than the generic value (incl. legacy nodes) resolves to the Teams credential.
+	return this.getNodeParameter('authentication', 0) === 'microsoftOAuth2Api'
+		? 'microsoftOAuth2Api'
+		: 'microsoftTeamsOAuth2Api';
+}
+
 export async function microsoftApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
 	method: IHttpRequestMethods,
@@ -20,6 +42,13 @@ export async function microsoftApiRequest(
 	uri?: string,
 	headers: IDataObject = {},
 ): Promise<any> {
+	const credentialType = getTeamsCredentialType.call(this);
+	const credentials = await this.getCredentials(credentialType);
+	const baseUrl = (
+		typeof credentials.graphApiBaseUrl === 'string' && credentials.graphApiBaseUrl !== ''
+			? credentials.graphApiBaseUrl
+			: 'https://graph.microsoft.com'
+	).replace(/\/+$/, '');
 	const options: IRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
@@ -27,14 +56,14 @@ export async function microsoftApiRequest(
 		method,
 		body,
 		qs,
-		uri: uri || `https://graph.microsoft.com${resource}`,
+		uri: uri || `${baseUrl}${resource}`,
 		json: true,
 	};
 	try {
 		if (Object.keys(headers).length !== 0) {
 			options.headers = Object.assign({}, options.headers, headers);
 		}
-		return await this.helpers.requestOAuth2.call(this, 'microsoftTeamsOAuth2Api', options);
+		return await this.helpers.requestOAuth2.call(this, credentialType, options);
 	} catch (error) {
 		const errorOptions: IDataObject = {};
 		if (error.error?.error) {

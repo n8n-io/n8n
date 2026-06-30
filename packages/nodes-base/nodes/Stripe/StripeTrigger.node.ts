@@ -12,6 +12,7 @@ import type {
 import { NodeApiError, NodeConnectionTypes } from 'n8n-workflow';
 
 import { stripeApiRequest } from './helpers';
+import { verifySignature } from './StripeTriggerHelpers';
 
 export class StripeTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -332,6 +333,12 @@ export class StripeTrigger implements INodeType {
 						description: 'Occurs whenever an invoice is marked uncollectible.',
 					},
 					{
+						name: 'Invoice Paid',
+						value: 'invoice.paid',
+						description:
+							'Occurs whenever an invoice payment attempt succeeds or an invoice is marked as paid out-of-band.',
+					},
+					{
 						name: 'Invoice Payment_action_required',
 						value: 'invoice.payment_action_required',
 						description:
@@ -342,6 +349,11 @@ export class StripeTrigger implements INodeType {
 						value: 'invoice.payment_failed',
 						description:
 							'Occurs whenever an invoice payment attempt fails, due either to a declined payment or to the lack of a stored payment method.',
+					},
+					{
+						name: 'Invoice Payment_paid',
+						value: 'invoice_payment.paid',
+						description: 'Occurs when an InvoicePayment is successfully paid.',
 					},
 					{
 						name: 'Invoice Payment_succeeded',
@@ -832,7 +844,7 @@ export class StripeTrigger implements INodeType {
 				displayName: 'API Version',
 				name: 'apiVersion',
 				type: 'string',
-				placeholder: '2025-05-28.basil',
+				placeholder: '2026-01-28.clover',
 				default: '',
 				description:
 					'The API version to use for requests. It controls the format and structure of the incoming event payloads that Stripe sends to your webhook. If empty, Stripe will use the default API version set in your account at the time, which may lead to event processing issues if the API version changes in the future.',
@@ -949,8 +961,15 @@ export class StripeTrigger implements INodeType {
 		const bodyData = this.getBodyData();
 		const req = this.getRequestObject();
 
-		const events = this.getNodeParameter('events', []) as string[];
+		if (!(await verifySignature.call(this))) {
+			const res = this.getResponseObject();
+			res.status(401).send('Unauthorized').end();
+			return {
+				noWebhookResponse: true,
+			};
+		}
 
+		const events = this.getNodeParameter('events', []) as string[];
 		const eventType = bodyData.type as string | undefined;
 
 		if (eventType === undefined || (!events.includes('*') && !events.includes(eventType))) {

@@ -1,22 +1,37 @@
+import { Time } from '@n8n/constants';
+
 import { Config, Env, Nested } from '../decorators';
 
 @Config
 class HealthConfig {
 	/**
-	 * Whether to enable the worker health check endpoints:
-	 * - `/healthz` (worker alive)
-	 * - `/healthz/readiness` (worker connected to migrated database and connected to Redis)
+	 * Whether to enable worker health endpoints: `/healthz` (liveness) and `/healthz/readiness` (DB and Redis ready).
 	 */
 	@Env('QUEUE_HEALTH_CHECK_ACTIVE')
 	active: boolean = false;
 
-	/** Port for worker server to listen on. */
+	/** Port the worker HTTP server listens on for health checks. */
 	@Env('QUEUE_HEALTH_CHECK_PORT')
 	port: number = 5678;
 
-	/** IP address for worker server to listen on. */
+	/** IP address the worker server binds to. Use `::` for all interfaces. */
 	@Env('N8N_WORKER_SERVER_ADDRESS')
 	address: string = '::';
+}
+
+@Config
+class RedisTlsConfig {
+	/** SNI extension servername for TLS handshake. */
+	@Env('QUEUE_BULL_REDIS_TLS_SERVERNAME')
+	serverName: string = '';
+
+	/**
+	 * When TLS enabled validate certificates.
+	 * - true (default): Recommended for secure production deployments to ensure redis connections are not vulnerable to MITM attacks.
+	 * - false: Accept any certificate presented by the server for local development or self-signed certificate scenarios.
+	 */
+	@Env('QUEUE_BULL_REDIS_TLS_VALIDATE_CERTIFICATE')
+	rejectUnauthorized: boolean = true;
 }
 
 @Config
@@ -39,14 +54,14 @@ class RedisConfig {
 
 	/** Max cumulative timeout (in milliseconds) of connection retries before process exit. */
 	@Env('QUEUE_BULL_REDIS_TIMEOUT_THRESHOLD')
-	timeoutThreshold: number = 10_000;
+	timeoutThreshold: number = 10 * Time.seconds.toMilliseconds;
 
 	/** Slot refresh timeout (in milliseconds) before a timeout occurs while refreshing slots from the cluster. */
 	@Env('QUEUE_BULL_REDIS_SLOT_REFRESH_TIMEOUT')
-	slotsRefreshTimeout: number = 1_000;
+	slotsRefreshTimeout: number = 1 * Time.seconds.toMilliseconds;
 	/** Slot refresh interval (in milliseconds) between every automatic slot refresh. */
 	@Env('QUEUE_BULL_REDIS_SLOT_REFRESH_INTERVAL')
-	slotsRefreshInterval: number = 5_000;
+	slotsRefreshInterval: number = 5 * Time.seconds.toMilliseconds;
 
 	/** Redis username. Redis 6.0 or higher required. */
 	@Env('QUEUE_BULL_REDIS_USERNAME')
@@ -59,6 +74,9 @@ class RedisConfig {
 	/** Whether to enable TLS on Redis connections. */
 	@Env('QUEUE_BULL_REDIS_TLS')
 	tls: boolean = false;
+
+	@Nested
+	tlsConfig: RedisTlsConfig;
 
 	/**
 	 * DNS resolution strategy for Redis hostnames on initial client connection.
@@ -76,21 +94,37 @@ class RedisConfig {
 	/** Whether to enable dual-stack hostname resolution for Redis connections. */
 	@Env('QUEUE_BULL_REDIS_DUALSTACK')
 	dualStack: boolean = false;
+
+	/** Whether to enable TCP keep-alive on Redis connections. */
+	@Env('QUEUE_BULL_REDIS_KEEP_ALIVE')
+	keepAlive: boolean = false;
+
+	/** TCP keep-alive initial delay in milliseconds. */
+	@Env('QUEUE_BULL_REDIS_KEEP_ALIVE_DELAY')
+	keepAliveDelay: number = 5 * Time.seconds.toMilliseconds;
+
+	/** TCP keep-alive interval in milliseconds. */
+	@Env('QUEUE_BULL_REDIS_KEEP_ALIVE_INTERVAL')
+	keepAliveInterval: number = 5 * Time.seconds.toMilliseconds;
+
+	/** Whether to reconnect to Redis on READONLY errors i.e., failover events. */
+	@Env('QUEUE_BULL_REDIS_RECONNECT_ON_FAILOVER')
+	reconnectOnFailover: boolean = true;
 }
 
 @Config
 class SettingsConfig {
 	/** How long (in milliseconds) is the lease period for a worker processing a job. */
 	@Env('QUEUE_WORKER_LOCK_DURATION')
-	lockDuration: number = 60_000;
+	lockDuration: number = 1 * Time.minutes.toMilliseconds;
 
 	/** How often (in milliseconds) a worker must renew the lease. */
 	@Env('QUEUE_WORKER_LOCK_RENEW_TIME')
-	lockRenewTime: number = 10_000;
+	lockRenewTime: number = 10 * Time.seconds.toMilliseconds;
 
 	/** How often (in milliseconds) Bull must check for stalled jobs. `0` to disable. */
 	@Env('QUEUE_WORKER_STALLED_INTERVAL')
-	stalledInterval: number = 30_000;
+	stalledInterval: number = 30 * Time.seconds.toMilliseconds;
 }
 
 @Config

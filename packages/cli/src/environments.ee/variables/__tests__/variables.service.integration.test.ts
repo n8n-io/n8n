@@ -2,7 +2,8 @@ import { createTeamProject, linkUserToProject, testDb } from '@n8n/backend-test-
 import { VariablesRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { AssignableProjectRole } from '@n8n/permissions';
-import { mock } from 'jest-mock-extended';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { EventService } from '@/events/event.service';
 import { CacheService } from '@/services/cache/cache.service';
@@ -17,7 +18,7 @@ describe('VariablesService', () => {
 	let variablesRepository: VariablesRepository;
 	let cacheService: CacheService;
 	let projectService: ProjectService;
-	let licenseState: { isVariablesLicensed: jest.Mock; getMaxVariables: jest.Mock };
+	let licenseState: { isVariablesLicensed: Mock; getMaxVariables: Mock };
 
 	beforeAll(async () => {
 		await testDb.init();
@@ -32,8 +33,8 @@ describe('VariablesService', () => {
 		cacheService = Container.get(CacheService);
 		projectService = Container.get(ProjectService);
 		licenseState = {
-			isVariablesLicensed: jest.fn().mockReturnValue(true),
-			getMaxVariables: jest.fn().mockReturnValue(5),
+			isVariablesLicensed: vi.fn().mockReturnValue(true),
+			getMaxVariables: vi.fn().mockReturnValue(5),
 		};
 
 		variablesService = new VariablesService(
@@ -46,7 +47,7 @@ describe('VariablesService', () => {
 	});
 
 	afterEach(async () => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		await testDb.truncate(['Variables']);
 	});
 
@@ -623,6 +624,58 @@ describe('VariablesService', () => {
 				type: 'string',
 				value: 'value2',
 				project: { id: project2.id, name: project2.name },
+			});
+		});
+
+		describe('variable key validation', () => {
+			const legacyInvalidVariableKey = '1_old_invalid_key';
+			const validVariableKey = 'iSupportDot_Notation';
+
+			it('should allow updating value without changing legacy key that does not fulfill regex rule', async () => {
+				const admin = await createAdmin();
+				const variable = await createVariable(legacyInvalidVariableKey, 'foo');
+
+				const updatedVariable = await variablesService.update(admin, variable.id, {
+					value: 'new value',
+				});
+
+				expect(updatedVariable.key).toBe(legacyInvalidVariableKey);
+				expect(updatedVariable.value).toBe('new value');
+			});
+
+			it('should allow changing key from one invalid format to valid', async () => {
+				const admin = await createAdmin();
+				const variable = await createVariable(legacyInvalidVariableKey, 'foo');
+
+				const updatedVariable = await variablesService.update(admin, variable.id, {
+					key: validVariableKey,
+				});
+
+				expect(updatedVariable.key).toBe(validVariableKey);
+			});
+
+			it('should reject changing key from invalid format to invalid fromat', async () => {
+				const admin = await createAdmin();
+				const variable = await createVariable(legacyInvalidVariableKey, 'foo');
+
+				await expect(
+					variablesService.update(admin, variable.id, {
+						key: legacyInvalidVariableKey + 'changed-and-still-invalid',
+					}),
+				).rejects.toThrow(
+					"When changing the variable key, it can only contain letters, numbers, and underscores (A-Za-z0-9_). Existing keys that don't follow this rule can be kept as-is for backwards-compatibility",
+				);
+			});
+
+			it('should reject changing key from valid to invalid format', async () => {
+				const admin = await createAdmin();
+				const variable = await createVariable(validVariableKey, 'foo');
+
+				await expect(
+					variablesService.update(admin, variable.id, { key: legacyInvalidVariableKey }),
+				).rejects.toThrow(
+					"When changing the variable key, it can only contain letters, numbers, and underscores (A-Za-z0-9_). Existing keys that don't follow this rule can be kept as-is for backwards-compatibility",
+				);
 			});
 		});
 	});

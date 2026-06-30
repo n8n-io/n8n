@@ -3,8 +3,14 @@ import type { StoryFn } from '@storybook/vue3-vite';
 import N8nTree from './Tree.vue';
 
 export default {
-	title: 'Atoms/Tree',
+	title: 'Core/Tree',
 	component: N8nTree,
+
+	parameters: {
+		docs: {
+			description: { component: 'A hierarchical tree view with expand and collapse behavior.' },
+		},
+	},
 };
 
 // @ts-expect-error Storybook incorrect slot types

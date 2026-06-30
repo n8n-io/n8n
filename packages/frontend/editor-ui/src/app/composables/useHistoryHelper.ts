@@ -1,94 +1,89 @@
 import { MAIN_HEADER_TABS } from '@/app/constants';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import type { WorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import type { Undoable } from '@/app/models/history';
 import { BulkCommand, Command } from '@/app/models/history';
 import { useHistoryStore } from '@/app/stores/history.store';
 import { useUIStore } from '@/app/stores/ui.store';
 
-import { onMounted, onUnmounted, nextTick } from 'vue';
+import { onMounted, onUnmounted, nextTick, computed, type Ref } from 'vue';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { getNodeViewTab } from '@/app/utils/nodeViewUtils';
 import type { RouteLocationNormalizedLoaded } from 'vue-router';
 import { useTelemetry } from './useTelemetry';
-import { useDebounce } from '@/app/composables/useDebounce';
 import { shouldIgnoreCanvasShortcut } from '@/features/workflows/canvas/canvas.utils';
 
-const UNDO_REDO_DEBOUNCE_INTERVAL = 100;
 const ELEMENT_UI_OVERLAY_SELECTOR = '.el-overlay';
 
-export function useHistoryHelper(activeRoute: RouteLocationNormalizedLoaded) {
+export function useHistoryHelper(
+	activeRoute: RouteLocationNormalizedLoaded,
+	workflowDocumentId: Readonly<Ref<WorkflowDocumentId | null>>,
+) {
 	const telemetry = useTelemetry();
 
-	const ndvStore = useNDVStore();
+	const ndvStore = computed(() =>
+		workflowDocumentId.value ? useNDVStore(workflowDocumentId.value) : null,
+	);
 	const historyStore = useHistoryStore();
 	const uiStore = useUIStore();
 
-	const { callDebounced } = useDebounce();
 	const { isCtrlKeyPressed } = useDeviceSupport();
 
-	const undo = async () =>
-		await callDebounced(
-			async () => {
-				const command = historyStore.popUndoableToUndo();
-				if (!command) {
-					return;
-				}
+	const undo = async () => {
+		const command = historyStore.popUndoableToUndo();
+		if (!command) {
+			return;
+		}
 
-				const timestamp = Date.now();
+		const timestamp = Date.now();
 
-				if (command instanceof BulkCommand) {
-					historyStore.bulkInProgress = true;
-					const commands = command.commands;
-					const reverseCommands: Command[] = [];
-					for (let i = commands.length - 1; i >= 0; i--) {
-						await commands[i].revert();
-						reverseCommands.push(commands[i].getReverseCommand(timestamp));
-					}
-					historyStore.pushUndoableToRedo(new BulkCommand(reverseCommands));
-					await nextTick();
-					historyStore.bulkInProgress = false;
-				}
-				if (command instanceof Command) {
-					await command.revert();
-					historyStore.pushUndoableToRedo(command.getReverseCommand(timestamp));
-					uiStore.stateIsDirty = true;
-				}
-				trackCommand(command, 'undo');
-			},
-			{ debounceTime: UNDO_REDO_DEBOUNCE_INTERVAL },
-		);
+		if (command instanceof BulkCommand) {
+			historyStore.bulkInProgress = true;
+			const commands = command.commands;
+			const reverseCommands: Command[] = [];
+			for (let i = commands.length - 1; i >= 0; i--) {
+				await commands[i].revert();
+				reverseCommands.push(commands[i].getReverseCommand(timestamp));
+			}
+			historyStore.pushUndoableToRedo(new BulkCommand(reverseCommands));
+			await nextTick();
+			historyStore.bulkInProgress = false;
+		}
+		if (command instanceof Command) {
+			await command.revert();
+			historyStore.pushUndoableToRedo(command.getReverseCommand(timestamp));
+			uiStore.markStateDirty();
+		}
+		trackCommand(command, 'undo');
+	};
 
-	const redo = async () =>
-		await callDebounced(
-			async () => {
-				const command = historyStore.popUndoableToRedo();
-				if (!command) {
-					return;
-				}
+	const redo = async () => {
+		const command = historyStore.popUndoableToRedo();
+		if (!command) {
+			return;
+		}
 
-				const timestamp = Date.now();
+		const timestamp = Date.now();
 
-				if (command instanceof BulkCommand) {
-					historyStore.bulkInProgress = true;
-					const commands = command.commands;
-					const reverseCommands = [];
-					for (let i = commands.length - 1; i >= 0; i--) {
-						await commands[i].revert();
-						reverseCommands.push(commands[i].getReverseCommand(timestamp));
-					}
-					historyStore.pushBulkCommandToUndo(new BulkCommand(reverseCommands), false);
-					await nextTick();
-					historyStore.bulkInProgress = false;
-				}
-				if (command instanceof Command) {
-					await command.revert();
-					historyStore.pushCommandToUndo(command.getReverseCommand(timestamp), false);
-					uiStore.stateIsDirty = true;
-				}
-				trackCommand(command, 'redo');
-			},
-			{ debounceTime: UNDO_REDO_DEBOUNCE_INTERVAL },
-		);
+		if (command instanceof BulkCommand) {
+			historyStore.bulkInProgress = true;
+			const commands = command.commands;
+			const reverseCommands = [];
+			for (let i = commands.length - 1; i >= 0; i--) {
+				await commands[i].revert();
+				reverseCommands.push(commands[i].getReverseCommand(timestamp));
+			}
+			historyStore.pushBulkCommandToUndo(new BulkCommand(reverseCommands), false);
+			await nextTick();
+			historyStore.bulkInProgress = false;
+		}
+		if (command instanceof Command) {
+			await command.revert();
+			historyStore.pushCommandToUndo(command.getReverseCommand(timestamp), false);
+			uiStore.markStateDirty();
+		}
+		trackCommand(command, 'redo');
+	};
 
 	function trackCommand(command: Undoable, type: 'undo' | 'redo'): void {
 		if (command instanceof Command) {
@@ -102,7 +97,7 @@ export function useHistoryHelper(activeRoute: RouteLocationNormalizedLoaded) {
 	}
 
 	function trackUndoAttempt() {
-		const activeNode = ndvStore.activeNode;
+		const activeNode = ndvStore.value?.activeNode;
 		if (activeNode) {
 			telemetry?.track('User hit undo in NDV', { node_type: activeNode.type });
 		}
@@ -121,7 +116,7 @@ export function useHistoryHelper(activeRoute: RouteLocationNormalizedLoaded) {
 
 	function handleKeyDown(event: KeyboardEvent) {
 		const currentNodeViewTab = getNodeViewTab(activeRoute);
-		const isNDVOpen = ndvStore.isNDVOpen;
+		const isNDVOpen = ndvStore.value?.isNDVOpen;
 		const isAnyModalOpen = uiStore.isAnyModalOpen || isMessageDialogOpen();
 		const undoKeysPressed = isCtrlKeyPressed(event) && event.key.toLowerCase() === 'z';
 

@@ -77,41 +77,7 @@ const y = f({ a: 'c' })
 			});
 		});
 
-		describe('Python (Pyodide)', () => {
-			it('should convert input item correctly, runOnceForAllItems', () => {
-				expect(valueToInsert('{{ $json.foo.bar[0].baz }}', 'python', 'runOnceForAllItems')).toBe(
-					'{{ _input.first().json.foo.bar[0].baz }}',
-				);
-			});
-
-			it('should convert input item correctly, runOnceForEachItem', () => {
-				expect(valueToInsert('{{ $json.foo.bar[0].baz }}', 'python', 'runOnceForEachItem')).toBe(
-					'{{ _input.item.json.foo.bar[0].baz }}',
-				);
-			});
-
-			it('should convert previous node correctly, runOnceForAllItems', () => {
-				expect(
-					valueToInsert(
-						"{{ $('Some Previous Node').item.json.foo.bar[0].baz }}",
-						'python',
-						'runOnceForAllItems',
-					),
-				).toBe("{{ _('Some Previous Node').first().json.foo.bar[0].baz }}");
-			});
-
-			it('should convert previous node correctly, runOnceForEachItem', () => {
-				expect(
-					valueToInsert(
-						"{{ $('Some Previous Node').item.json.foo.bar[0].baz }}",
-						'python',
-						'runOnceForEachItem',
-					),
-				).toBe("{{ _('Some Previous Node').item.json.foo.bar[0].baz }}");
-			});
-		});
-
-		describe('Python (Native)', () => {
+		describe('Python', () => {
 			it('should convert input item correctly, runOnceForAllItems', () => {
 				expect(
 					valueToInsert('{{ $json.foo.bar[0].baz }}', 'pythonNative', 'runOnceForAllItems'),

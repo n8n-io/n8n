@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 from unittest.mock import patch
 
-from src.env import read_env, read_int_env, read_bool_env, read_str_env
+from src.env import read_env, read_int_env, read_bool_env, read_str_env, read_float_env
 
 
 class TestReadEnv:
@@ -179,3 +179,45 @@ class TestReadBoolEnv:
         with patch.dict(os.environ, clear=True):
             result = read_bool_env("TEST_BOOL", default=True)
             assert result is True
+
+
+class TestReadFloatEnv:
+    def test_returns_float_from_direct_env(self):
+        with patch.dict(os.environ, {"TEST_FLOAT": "3.14"}):
+            result = read_float_env("TEST_FLOAT", default=0.0)
+            assert result == 3.14
+
+    def test_returns_float_from_file(self):
+        with tempfile.NamedTemporaryFile(mode="w", delete=True) as f:
+            f.write("2.718")
+            f.flush()
+
+            with patch.dict(os.environ, {"TEST_FLOAT_FILE": f.name}):
+                result = read_float_env("TEST_FLOAT", default=0.0)
+                assert result == 2.718
+
+    def test_returns_default_when_not_set(self):
+        with patch.dict(os.environ, clear=True):
+            result = read_float_env("TEST_FLOAT", default=9.99)
+            assert result == 9.99
+
+    def test_raises_error_for_invalid_float(self):
+        with patch.dict(os.environ, {"TEST_FLOAT": "not_a_number"}):
+            with pytest.raises(ValueError) as exc_info:
+                read_float_env("TEST_FLOAT", default=0.0)
+            assert "must be a float" in str(exc_info.value)
+
+    def test_handles_negative_numbers(self):
+        with patch.dict(os.environ, {"TEST_FLOAT": "-42.5"}):
+            result = read_float_env("TEST_FLOAT", default=0.0)
+            assert result == -42.5
+
+    def test_handles_integer_values(self):
+        with patch.dict(os.environ, {"TEST_FLOAT": "42"}):
+            result = read_float_env("TEST_FLOAT", default=0.0)
+            assert result == 42.0
+
+    def test_handles_zero(self):
+        with patch.dict(os.environ, {"TEST_FLOAT": "0"}):
+            result = read_float_env("TEST_FLOAT", default=1.0)
+            assert result == 0.0

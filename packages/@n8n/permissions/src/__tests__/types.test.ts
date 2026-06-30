@@ -6,10 +6,10 @@ describe('ApiKeyScope', () => {
 	test('Valid scopes', () => {
 		const validScopes: ApiKeyScope[] = [
 			'credential:create',
+			'credential:read',
 			'credential:delete',
 			'credential:move',
 			'execution:delete',
-			'execution:get',
 			'execution:list',
 			'execution:read',
 			'project:create',
@@ -69,6 +69,7 @@ describe('Scope', () => {
 			'credential:create',
 			'credential:delete',
 			'credential:move',
+			'execution:reveal',
 			'ldap:sync',
 			'project:create',
 			'project:delete',

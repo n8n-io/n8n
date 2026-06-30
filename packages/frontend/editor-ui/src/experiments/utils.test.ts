@@ -1,5 +1,6 @@
 import { setActivePinia, createPinia } from 'pinia';
 import {
+	getExperimentTelemetryPayload,
 	getTemplatePathByRole,
 	isExtraTemplateLinksExperimentEnabled,
 	TemplateClickSource,
@@ -23,9 +24,8 @@ vi.mock('@/app/stores/cloudPlan.store', () => ({
 	})),
 }));
 
-vi.mock('@/app/stores/workflows.store', () => ({
-	useWorkflowsStore: vi.fn(() => ({
-		userIsTrialing: isTrialing,
+vi.mock('@/app/stores/workflowsList.store', () => ({
+	useWorkflowsListStore: vi.fn(() => ({
 		activeWorkflows: [1, 2, 3],
 	})),
 }));
@@ -40,6 +40,40 @@ vi.mock('@/app/composables/useTelemetry', () => ({
 describe('Utils: experiments', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());
+	});
+
+	describe('getExperimentTelemetryPayload()', () => {
+		it('adds PostHog experiment attribution properties', () => {
+			expect(
+				getExperimentTelemetryPayload({ name: 'example_experiment' }, 'control', {
+					source: 'empty_state',
+				}),
+			).toEqual({
+				source: 'empty_state',
+				variant: 'control',
+				'$feature/example_experiment': 'control',
+			});
+		});
+
+		it('leaves payloads unchanged when the user is not enrolled', () => {
+			expect(
+				getExperimentTelemetryPayload({ name: 'example_experiment' }, undefined, {
+					source: 'empty_state',
+				}),
+			).toEqual({
+				source: 'empty_state',
+			});
+		});
+
+		it('leaves payloads unchanged for boolean feature flags', () => {
+			expect(
+				getExperimentTelemetryPayload({ name: 'example_flag' }, true, {
+					source: 'empty_state',
+				}),
+			).toEqual({
+				source: 'empty_state',
+			});
+		});
 	});
 
 	describe('isExtraTemplateLinksExperimentEnabled()', () => {

@@ -1,0 +1,217 @@
+name: 'Mutation Health (nightly)'
+
+on:
+  schedule:
+    # 03:30 UTC daily — outside CI rush, before EU morning. Runs both passes.
+    - cron: '30 3 * * *'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Which pass to run'
+        type: choice
+        options:
+          - both
+          - baseline # score files with no result yet (the `new` bucket)
+          - coverage # revisit the weakest scored files (`red`/`stale`, lowest first)
+        default: both
+      top_n:
+        description: 'How many top-ranked rows the global picker schedules for this run (--top-n).'
+        type: string
+        default: '6'
+      source_file:
+        description: 'Optional: re-score this exact repo-relative file, skipping the picker (e.g. packages/workflow/src/common/get-node-by-name.ts). Used by the lane:mutation-increase close handler to refresh the ledger.'
+        type: string
+        default: ''
+      bootstrap_packages:
+        description: |
+          Comma-separated ELIGIBLE_PACKAGES.name list to skip in the divergence guard for this run.
+          Use after onboarding a new entry to ELIGIBLE_PACKAGES (the guard otherwise refuses to schedule for a package with zero prior-status rows). Use '*' to acknowledge a genuine cold-start (empty ledger). Leave empty otherwise — empty ledger then fails loud on the scheduled path.
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+env:
+  READER_URL: https://internal.users.n8n.cloud/webhook/mutation-health-ledger
+
+jobs:
+  # Build the matrix once. The package list is the picker's ELIGIBLE_PACKAGES
+  # export (single source of truth — DEVP-497); the workflow no longer
+  # redeclares it. fetch-depth: 0 here so signals.mjs has full git history
+  # for churn / fix-density when ranking globally. The picker's --global mode
+  # walks every eligible package, ranks rows by value, and returns the top-N
+  # picks across all packages; the matrix maps one job per pick.
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.build.outputs.matrix }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          # Full history feeds signals.mjs (churn + fix-density). A shallow
+          # clone yields zero signals and falls back to a coverage-only
+          # ranking, which is fine but loses the value formula's leverage.
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: 24.16.0
+
+      - name: Fetch read-all live ledger from BigQuery
+        # Read-all (no ?package= param): one curl returns every row across
+        # every eligible package. Per-package narrowing happens inside the
+        # picker.
+        run: |
+          mkdir -p .mutation-health
+          curl --fail -sS "$READER_URL" -o .mutation-health/live-ledger.json
+
+      - name: Gather git-derived signals (churn + fix-density)
+        # Drives the value formula inside the global picker. Skipped when
+        # SOURCE_FILE is set — that path bypasses the picker.
+        if: ${{ github.event.inputs.source_file == '' }}
+        run: |
+          node scripts/mutation-health/signals.mjs \
+            --since 180.days.ago \
+            > .mutation-health/signals.json
+
+      - name: Build matrix
+        id: build
+        env:
+          REQUESTED_MODE: ${{ github.event.inputs.mode || 'both' }}
+          # TOP_N intentionally has no `|| '6'` fallback here — the default lives
+          # in build-matrix.mjs so the script stays self-contained for local
+          # invocation. Scheduled runs (no inputs) hit the script default.
+          TOP_N: ${{ github.event.inputs.top_n }}
+          SOURCE_FILE: ${{ github.event.inputs.source_file || '' }}
+          BOOTSTRAP_PACKAGES: ${{ github.event.inputs.bootstrap_packages || '' }}
+          LEDGER_FILE: .mutation-health/live-ledger.json
+          SIGNALS_FILE: .mutation-health/signals.json
+        run: node scripts/mutation-health/build-matrix.mjs >> "$GITHUB_OUTPUT"
+
+      - name: Upload picker artefacts
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: mutation-health-picker-${{ github.run_id }}
+          path: |
+            .mutation-health/live-ledger.json
+            .mutation-health/signals.json
+          retention-days: 14
+          if-no-files-found: warn
+
+  mutate:
+    needs: setup
+    # Gate on setup success so a die-loud failure in build-matrix.mjs (e.g.
+    # the divergence guard) surfaces cleanly via setup, instead of via
+    # `fromJSON('')` here.
+    if: ${{ needs.setup.result == 'success' && needs.setup.outputs.matrix && fromJSON(needs.setup.outputs.matrix).include[0] != null }}
+    name: ${{ matrix.mode }} · ${{ matrix.name }} · ${{ matrix.source_file }}
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false # one leg's failure must not skip the others
+      matrix: ${{ fromJSON(needs.setup.outputs.matrix) }}
+    # Concurrency-group key is per-row (mode + package slug + file slug) so
+    # multiple top-N picks within the same (mode, package) bucket each get
+    # their own group. With `cancel-in-progress: false` Actions otherwise
+    # keeps at most one running + one pending job per group and cancels any
+    # older pending — which would silently drop middle picks every nightly
+    # and leave their ledger rows stuck on `new`. The original double-write
+    # protection (scheduled vs manual on the same row) is unchanged because
+    # the same `file_slug` resolves to the same group key.
+    concurrency:
+      group: mutation-health-${{ matrix.mode }}-${{ matrix.slug }}-${{ matrix.file_slug }}
+      cancel-in-progress: false
+    env:
+      PACKAGE_NAME: ${{ matrix.name }}
+      PKG_DIR: ${{ matrix.dir }}
+      REPORTS_DIR: ${{ matrix.dir }}/reports/mutation
+      SOURCE_FILE: ${{ matrix.source_file || '' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        # Shallow clone is fine — the file to mutate has already been picked
+        # in the setup job, and Stryker only needs the working tree.
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup-nodejs
+
+      - name: Download picker artefacts (signals.json)
+        # The setup job computed churn/fix-density over full history and uploaded
+        # signals.json. This shallow checkout can't recompute them from git, so
+        # emit-payload reads them from here instead — keeping the ledger's churn
+        # and fix_density columns populated and consistent with what the picker
+        # ranked on. Best-effort: the on-demand source_file path skips the gather
+        # step, so signals.json may be absent; emit-payload falls back gracefully.
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        continue-on-error: true
+        with:
+          name: mutation-health-picker-${{ github.run_id }}
+          path: .mutation-health
+
+      - name: Mutate the picked source file
+        # Exit code semantics from mutate.mjs:
+        #   0 — gate passed: score >= threshold AND no unjustified survivors (green)
+        #   1 — gate failed: score < threshold OR >=1 Survived/NoCoverage mutant (red)
+        #         — emit step still runs, this is normal
+        #   2 — usage error
+        #   3 — Stryker hard failure (no summary.json) — must fail the job
+        # We capture rc explicitly so we can distinguish "gate failed" from
+        # "Stryker crashed." continue-on-error: true would collapse them.
+        run: |
+          mkdir -p "$REPORTS_DIR"
+          src_rel="${SOURCE_FILE#"$PKG_DIR"/}"
+          set +e
+          node scripts/mutation-health/mutate.mjs "$src_rel" --package-dir "$PKG_DIR"
+          rc=$?
+          set -e
+          if [ "$rc" -gt 1 ]; then
+            echo "::error::Stryker hard-failed with exit code $rc."
+            exit "$rc"
+          fi
+          echo "Mutate exit $rc ($([ "$rc" = "0" ] && echo green || echo red))."
+
+      - name: Emit BQ payload
+        # Pass --signals only when the setup job produced it (skipped on the
+        # source_file re-score path). Without it emit-payload falls back to git,
+        # which yields null churn/fix_density on this shallow clone.
+        run: |
+          signals_arg=""
+          if [ -f .mutation-health/signals.json ]; then
+            signals_arg="--signals .mutation-health/signals.json"
+          else
+            echo "::notice::signals.json not present — churn/fix_density will fall back to git (null on shallow clone)."
+          fi
+          node scripts/mutation-health/emit-payload.mjs \
+            --summary "$REPORTS_DIR/summary.json" \
+            --package "$PACKAGE_NAME" \
+            $signals_arg
+
+      - name: POST result payload
+        env:
+          MUTATION_HEALTH_WEBHOOK: ${{ secrets.MUTATION_HEALTH_WEBHOOK }}
+        run: |
+          if [ -z "$MUTATION_HEALTH_WEBHOOK" ]; then
+            echo "::notice::MUTATION_HEALTH_WEBHOOK not set — dry-run, POST skipped (payload uploaded as artefact)."
+            exit 0
+          fi
+          curl --fail -sS -X POST \
+            -H 'Content-Type: application/json' \
+            --data @"$REPORTS_DIR/bq-payload.json" \
+            "$MUTATION_HEALTH_WEBHOOK"
+
+      - name: Upload artefacts
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: mutation-health-${{ matrix.mode }}-${{ matrix.slug }}-${{ matrix.file_slug }}-${{ github.run_id }}
+          path: |
+            ${{ env.REPORTS_DIR }}/raw.json
+            ${{ env.REPORTS_DIR }}/raw.html
+            ${{ env.REPORTS_DIR }}/summary.json
+            ${{ env.REPORTS_DIR }}/bq-payload.json
+          retention-days: 14
+          if-no-files-found: warn

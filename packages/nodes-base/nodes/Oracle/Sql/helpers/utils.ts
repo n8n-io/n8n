@@ -24,7 +24,18 @@ import type {
 	SortRule,
 	ColumnMap,
 	OracleDBNodeOptions,
+	TableColumnRow,
 } from './interfaces';
+
+type DefaultStringBindParam = Omit<
+	Extract<ExecuteOpBindParam, { datatype: 'string' }>,
+	'datatype' | 'valueString'
+> & {
+	datatype?: undefined;
+	valueString?: string;
+};
+
+type RuntimeExecuteOpBindParam = ExecuteOpBindParam | DefaultStringBindParam;
 
 const n8nTypetoDBType: { [key: string]: oracledb.DbType } = {
 	boolean: oracledb.DB_TYPE_BOOLEAN,
@@ -37,6 +48,8 @@ const n8nTypetoDBType: { [key: string]: oracledb.DbType } = {
 	string: oracledb.STRING,
 	blob: oracledb.BLOB,
 };
+
+export const DEFAULT_STRING_OUT_BIND_MAX_SIZE = 4000;
 
 function isDateType(type: string) {
 	return /^(timestamp(\(\d+\))?( with(?: local)? time zone)?|date)$/i.test(type);
@@ -240,13 +253,17 @@ export async function getColumnMetaData(
 	let conn: oracledb.Connection | undefined;
 	try {
 		conn = await pool.getConnection();
-		const sql = `WITH constraint_info AS (
+
+		const isCDBSupported = conn.oracleServerVersion >= 1200000000;
+
+		const sql = isCDBSupported
+			? `
+WITH constraint_info AS (
   SELECT
     acc.owner,
     acc.table_name,
     acc.column_name,
-    LISTAGG(ac.constraint_type, ',')
-      WITHIN GROUP (ORDER BY ac.constraint_type) AS constraint_types
+    LISTAGG(ac.constraint_type, ',') WITHIN GROUP (ORDER BY ac.constraint_type) AS constraint_types
   FROM all_cons_columns acc
   JOIN all_constraints ac
     ON acc.constraint_name = ac.constraint_name
@@ -270,44 +287,78 @@ LEFT JOIN constraint_info ci
  AND atc.column_name = ci.column_name
 WHERE atc.owner = :schema_name
   AND atc.table_name = :table_name
+ORDER BY atc.COLUMN_NAME`
+			: `
+WITH constraint_info AS (
+  SELECT
+    acc.owner,
+    acc.table_name,
+    acc.column_name,
+    RTRIM(
+      XMLAGG(
+        XMLELEMENT(e, ac.constraint_type || ',')
+        ORDER BY ac.constraint_type
+      ).EXTRACT('//text()').getClobVal(),
+      ','
+    ) AS constraint_types
+  FROM all_cons_columns acc
+  JOIN all_constraints ac
+    ON acc.constraint_name = ac.constraint_name
+   AND acc.owner = ac.owner
+  GROUP BY acc.owner, acc.table_name, acc.column_name
+)
+SELECT
+  atc.COLUMN_NAME,
+  atc.DATA_TYPE,
+  atc.DATA_LENGTH,
+  atc.CHAR_LENGTH,
+  atc.DEFAULT_LENGTH,
+  atc.NULLABLE,
+  CASE WHEN atc.DATA_DEFAULT IS NOT NULL THEN 'YES' ELSE 'NO' END AS HAS_DEFAULT,
+  ci.constraint_types
+FROM all_tab_columns atc
+LEFT JOIN constraint_info ci
+  ON atc.owner = ci.owner
+ AND atc.table_name = ci.table_name
+ AND atc.column_name = ci.column_name
+WHERE atc.owner = :schema_name
+  AND atc.table_name = :table_name
 ORDER BY atc.COLUMN_NAME`;
-		const result = await conn.execute(
+
+		const result = await conn.execute<TableColumnRow>(
 			sql,
 			{ table_name: table, schema_name: schema },
 			{ outFormat: oracledb.OUT_FORMAT_OBJECT },
 		);
 
-		// If schema is not available, throw error.
-		if (!result.rows || result.rows.length === 0) {
+		const rows = result.rows ?? [];
+		if (rows.length === 0) {
 			throw new NodeOperationError(node, 'Schema Information does not exist for selected table', {
 				itemIndex: index,
 			});
 		}
 
-		return (
-			result.rows?.map((row: any) => ({
-				columnName: row.COLUMN_NAME,
-				isGenerated: row.IDENTITY_COLUMN === 'YES' ? 'ALWAYS' : 'NEVER',
-				columnDefault: row.HAS_DEFAULT,
-				dataType: row.DATA_TYPE,
-				isNullable: row.NULLABLE === 'Y',
-				maxSize: row.DATA_LENGTH,
-			})) ?? []
-		);
+		return rows.map((row) => ({
+			columnName: row.COLUMN_NAME,
+			isGenerated: isCDBSupported && row.IDENTITY_COLUMN === 'YES' ? 'ALWAYS' : 'NEVER',
+			columnDefault: row.HAS_DEFAULT,
+			dataType: row.DATA_TYPE,
+			isNullable: row.NULLABLE === 'Y',
+			maxSize: row.DATA_LENGTH,
+		}));
 	} finally {
 		if (conn) {
-			await conn.close(); // Ensure connection is closed
+			await conn.close();
 		}
 	}
 }
 
 export function prepareErrorItem(
-	items: INodeExecutionData[],
 	error: IDataObject | NodeOperationError | Error,
 	index: number,
 ): INodeExecutionData {
 	return {
-		json: { message: error.message, item: { ...items[index].json }, error: { ...error } },
+		json: { message: error.message, error: { ...error } },
 		pairedItem: { item: index },
 	};
 }
@@ -329,9 +380,19 @@ function normalizeOutBinds(
 	stmtBatching: string,
 	outputColumns: string[],
 ): Array<Record<string, any>> {
-	if (!Array.isArray(outBinds)) return [];
-
 	const rows: Array<Record<string, any>> = [];
+
+	if (!Array.isArray(outBinds)) {
+		// For execute operation mode, we get outBinds as object and
+		// array for other insert, update, upsert operations.
+		const row: Record<string, any> = {};
+		for (const [key, val] of Object.entries(outBinds as Record<string, unknown>)) {
+			// If val is expected to be an array, safely extract the first element
+			row[key] = Array.isArray(val) ? val[0] : val;
+		}
+		rows.push(row);
+		return rows;
+	}
 
 	// executeMany case outBinds-> [ [[col1Row1Val], [col2Row1Val]], [[col1Row2Val], [col2Row2Val]], ...]
 	if (stmtBatching === 'single') {
@@ -364,8 +425,9 @@ function _getResponseForOutbinds(
 			const executionData = this.helpers.constructExecutionMetaData(wrapData(normalizedRows[j]), {
 				itemData: { item: j },
 			});
-			if (executionData) {
-				returnData.push(...executionData);
+			if (!executionData?.length) continue;
+			for (const entry of executionData) {
+				returnData.push(entry);
 			}
 		}
 	}
@@ -378,6 +440,34 @@ function _getResponseForOutbinds(
 function doesRowExist(query: string, results: any) {
 	if (/^\s*UPDATE\b/i.test(query) && results.rowsAffected === 0) {
 		throw new Error("The row you are trying to update doesn't exist");
+	}
+}
+
+function createErrorItems(
+	error: NodeOperationError | Error,
+	items: INodeExecutionData[],
+): INodeExecutionData[] {
+	if (items.length) {
+		return items.map((_item, index) => prepareErrorItem(error, index));
+	}
+	return [prepareErrorItem(error, 0)];
+}
+
+type ConnectionResult =
+	| { connection: oracledb.Connection; error?: never }
+	| { connection?: never; error: NodeOperationError };
+
+async function getConnectionOrError(
+	pool: oracledb.Pool,
+	node: INode,
+	continueOnFail: boolean,
+): Promise<ConnectionResult> {
+	try {
+		return { connection: await pool.getConnection() };
+	} catch (caughtError) {
+		const error = parseOracleError(node, caughtError);
+		if (!continueOnFail) throw error;
+		return { error };
 	}
 }
 
@@ -445,7 +535,10 @@ export function configureQueryRunner(
 		}
 
 		if (stmtBatching === 'single' && queries[0].executeManyValues) {
-			const connection = await pool.getConnection();
+			const { connection, error } = await getConnectionOrError(pool, node, continueOnFail);
+			if (!connection) {
+				return createErrorItems(error, items);
+			}
 			try {
 				execOptions = getExecuteManyOptions(options);
 				if (continueOnFail) {
@@ -496,7 +589,10 @@ export function configureQueryRunner(
 			}
 		} else if (stmtBatching === 'transaction') {
 			execOptions.autoCommit = false; // for transaction mode forcefully overwrite it.
-			const connection = await pool.getConnection();
+			const { connection, error } = await getConnectionOrError(pool, node, continueOnFail);
+			if (!connection) {
+				return createErrorItems(error, items);
+			}
 			try {
 				for (let i = 0; i < queries.length; i++) {
 					try {
@@ -533,14 +629,14 @@ export function configureQueryRunner(
 								{ itemData: { item: i } },
 							);
 
-							returnData.push.apply(returnData, executionData);
+							returnData = returnData.concat(executionData);
 						} else {
-							returnData.push.apply(returnData, resultOutBinds);
+							returnData = returnData.concat(resultOutBinds);
 						}
 					} catch (caughtError) {
 						const error = parseOracleError(node, caughtError, i);
 						if (!continueOnFail) throw error;
-						returnData.push(prepareErrorItem(items, error, i));
+						returnData.push(prepareErrorItem(error, i));
 
 						// The rollback happens automatically, so just return.
 						return returnData;
@@ -553,7 +649,10 @@ export function configureQueryRunner(
 				await connection.close();
 			}
 		} else if (stmtBatching === 'independently') {
-			const connection = await pool.getConnection();
+			const { connection, error } = await getConnectionOrError(pool, node, continueOnFail);
+			if (!connection) {
+				return createErrorItems(error, items);
+			}
 			try {
 				for (let i = 0; i < queries.length; i++) {
 					try {
@@ -589,14 +688,14 @@ export function configureQueryRunner(
 								wrapData(rowData as IDataObject[]),
 								{ itemData: { item: i } },
 							);
-							returnData.push.apply(returnData, executionData);
+							returnData = returnData.concat(executionData);
 						} else {
-							returnData.push.apply(returnData, resultOutBinds);
+							returnData = returnData.concat(resultOutBinds);
 						}
 					} catch (caughtError) {
 						const error = parseOracleError(node, caughtError, i);
 						if (!continueOnFail) throw error;
-						returnData.push(prepareErrorItem(items, error, i));
+						returnData.push(prepareErrorItem(error, i));
 					}
 				}
 			} finally {
@@ -772,32 +871,93 @@ function generateBindVariablesList(
 	return query.replace(regex, generatedSqlString);
 }
 
+function isSerializedBuffer(val: unknown): val is { type: 'Buffer'; data: number[] } {
+	return (
+		typeof val === 'object' &&
+		val !== null &&
+		'type' in val &&
+		'data' in val &&
+		(val as any).type === 'Buffer' &&
+		Array.isArray((val as any).data)
+	);
+}
+
 export function getBindParameters(
 	query: string,
 	parameterList: ExecuteOpBindParam[],
+	options: Pick<OracleDBNodeOptions, 'stringOutBindMaxSize'> = {},
 ): { updatedQuery: string; bindParameters: QueryValue } {
 	const bindParameters: ObjectQueryValue = {};
+	const stringOutBindMaxSize = options.stringOutBindMaxSize ?? DEFAULT_STRING_OUT_BIND_MAX_SIZE;
 
 	for (const item of parameterList) {
-		if (!item.parseInStatement) {
+		const itemWithOptionalDatatype = item as RuntimeExecuteOpBindParam;
+		const bindItem = (
+			!itemWithOptionalDatatype.datatype
+				? {
+						...itemWithOptionalDatatype,
+						datatype: 'string',
+						valueString: itemWithOptionalDatatype.valueString ?? '',
+					}
+				: itemWithOptionalDatatype
+		) as ExecuteOpBindParam;
+
+		if (!bindItem.parseInStatement) {
 			let bindVal = null;
-			const type = item.datatype;
+			const type = bindItem.datatype;
+			const dir =
+				bindItem.bindDirection === 'in'
+					? oracledb.BIND_IN
+					: bindItem.bindDirection === 'out'
+						? oracledb.BIND_OUT
+						: oracledb.BIND_INOUT;
+
+			if (bindItem.bindDirection === 'out') {
+				const bindParameter: oracledb.BindParameter = {
+					type: n8nTypetoDBType[type],
+					dir,
+				};
+
+				if (type === 'string') {
+					bindParameter.maxSize = stringOutBindMaxSize;
+				}
+
+				bindParameters[bindItem.name] = bindParameter;
+				continue;
+			}
 
 			switch (type) {
 				case 'number':
-					bindVal = item.valueNumber;
+					bindVal = bindItem.valueNumber;
 					break;
 				case 'string':
-					bindVal = item.valueString;
+					bindVal = bindItem.valueString;
 					break;
 				case 'boolean':
-					bindVal = item.valueBoolean;
+					bindVal = bindItem.valueBoolean;
 					break;
 				case 'blob':
-					bindVal = item.valueBlob;
-					break;
+					bindVal = bindItem.valueBlob;
+
+					// Allow null or undefined to represent SQL NULL BLOB values
+					if (bindVal === null) {
+						break;
+					}
+
+					if (Buffer.isBuffer(bindVal)) {
+						break;
+					}
+
+					// Serialized form: { type: 'Buffer', data: [...] }
+					if (isSerializedBuffer(bindVal)) {
+						bindVal = Buffer.from((bindVal as any).data);
+						break;
+					}
+					throw new UserError(
+						'BLOB data must be a valid Buffer or \'{ type: "Buffer", data: [...] }\'',
+					);
 				case 'date': {
-					const val = item.valueDate;
+					const val = bindItem.valueDate;
 					if (typeof val === 'string') {
 						bindVal = new Date(val); // string → Date
 					} else if (val instanceof Date) {
@@ -811,7 +971,7 @@ export function getBindParameters(
 					break;
 				}
 				case 'sparse': {
-					const val = item.valueSparse;
+					const val = bindItem.valueSparse;
 					let indices = val.indices;
 					let values = val.values;
 					const dims = val.dimensions;
@@ -843,7 +1003,7 @@ export function getBindParameters(
 				}
 				case 'vector':
 					{
-						const val = item.valueVector;
+						const val = bindItem.valueVector;
 
 						bindVal = val;
 						if (typeof val === 'string') {
@@ -859,7 +1019,7 @@ export function getBindParameters(
 					break;
 				case 'json':
 					{
-						const val = item.valueJson;
+						const val = bindItem.valueJson;
 
 						bindVal = val;
 						if (typeof val === 'string') {
@@ -875,19 +1035,19 @@ export function getBindParameters(
 					throw new UserError(`Unsupported Bind type: ${type}`);
 			}
 
-			const dir =
-				item.bindDirection === 'in'
-					? oracledb.BIND_IN
-					: item.bindDirection === 'out'
-						? oracledb.BIND_OUT
-						: oracledb.BIND_INOUT;
-			bindParameters[item.name] = {
-				type: n8nTypetoDBType[item.datatype],
+			const bindParameter: oracledb.BindParameter = {
+				type: n8nTypetoDBType[type],
 				val: bindVal,
 				dir,
 			};
+
+			if (bindItem.bindDirection === 'inout' && type === 'string') {
+				bindParameter.maxSize = stringOutBindMaxSize;
+			}
+
+			bindParameters[bindItem.name] = bindParameter;
 		} else {
-			query = generateBindVariablesList(item, bindParameters, query);
+			query = generateBindVariablesList(bindItem, bindParameters, query);
 		}
 	}
 	return { updatedQuery: query, bindParameters };

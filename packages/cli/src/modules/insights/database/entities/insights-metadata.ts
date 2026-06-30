@@ -5,7 +5,7 @@ export class InsightsMetadata extends BaseEntity {
 	@PrimaryGeneratedColumn()
 	metaId: number;
 
-	@Column({ unique: true, type: 'varchar', length: 16 })
+	@Column({ unique: true, type: 'varchar', length: 36 })
 	workflowId: string;
 
 	@Column({ type: 'varchar', length: 36 })

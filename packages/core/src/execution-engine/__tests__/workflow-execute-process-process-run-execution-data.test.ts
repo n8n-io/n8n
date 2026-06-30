@@ -1,4 +1,3 @@
-import { mock } from 'jest-mock-extended';
 import type {
 	IDataObject,
 	IWorkflowExecuteAdditionalData,
@@ -9,9 +8,21 @@ import type {
 	INodeExecutionData,
 	INodeType,
 } from 'n8n-workflow';
-import { ApplicationError, NodeConnectionTypes, createRunExecutionData } from 'n8n-workflow';
+import {
+	BaseError,
+	NodeConnectionTypes,
+	UnexpectedError,
+	createRunExecutionData,
+} from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { NodeTypes } from '@test/helpers';
+
+vi.mock('node:fs', async (importActual) => ({
+	...(await importActual()),
+	existsSync: vi.fn().mockReturnValue(false),
+	renameSync: vi.fn(),
+}));
 
 import { DirectedGraph } from '../partial-execution-utils';
 import { createNodeData, toITaskData } from '../partial-execution-utils/__tests__/helpers';
@@ -25,15 +36,18 @@ import {
 } from './mock-node-types';
 
 describe('processRunExecutionData', () => {
-	const runHook = jest.fn().mockResolvedValue(undefined);
+	const runHook = vi.fn().mockResolvedValue(undefined);
 	const additionalData = mock<IWorkflowExecuteAdditionalData>({
 		hooks: { runHook },
 		restartExecutionId: undefined,
+		webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
+		formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
 	});
 	const executionMode: WorkflowExecuteMode = 'trigger';
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
+		runHook.mockResolvedValue(undefined);
 	});
 
 	test('throws if execution-data is missing', () => {
@@ -53,9 +67,10 @@ describe('processRunExecutionData', () => {
 		// ACT & ASSERT
 		// The function returns a Promise, but throws synchronously, so we can't await it.
 		// eslint-disable-next-line @typescript-eslint/promise-function-async
-		expect(() => workflowExecute.processRunExecutionData(workflow)).toThrowError(
-			new ApplicationError('Failed to run workflow due to missing execution data'),
-		);
+		const execution = () => workflowExecute.processRunExecutionData(workflow);
+
+		expect(execution).toThrow(UnexpectedError);
+		expect(execution).toThrow('Failed to run workflow due to missing execution data');
 	});
 
 	test('returns input data verbatim', async () => {
@@ -164,7 +179,7 @@ describe('processRunExecutionData', () => {
 
 		// ASSERT
 		expect(
-			runHook.mock.calls.map((hook: [string, unknown[]]) => ({
+			(runHook.mock.calls as Array<[string, unknown[]]>).map((hook) => ({
 				name: hook[0],
 				node: typeof hook[1][0] === 'string' ? hook[1][0] : undefined,
 			})),
@@ -237,10 +252,11 @@ describe('processRunExecutionData', () => {
 			// ACT & ASSERT
 			// The function returns a Promise, but throws synchronously, so we can't await it.
 			// eslint-disable-next-line @typescript-eslint/promise-function-async
-			expect(() => workflowExecute.processRunExecutionData(workflow)).toThrowError(
-				new ApplicationError(
-					'The workflow has issues and cannot be executed for that reason. Please fix them first.',
-				),
+			const execution = () => workflowExecute.processRunExecutionData(workflow);
+
+			expect(execution).toThrow(BaseError);
+			expect(execution).toThrow(
+				/^The 'node' node has issues:\n- Parameter "Required Text" is required\.$/,
 			);
 		});
 
@@ -274,6 +290,86 @@ describe('processRunExecutionData', () => {
 	});
 
 	describe('waiting tools', () => {
+		test('run() executes requested ai_tool actions when destination is an agent', async () => {
+			// ARRANGE
+			const triggerNode = createNodeData({ name: 'trigger', type: types.passThrough });
+			const toolNode = createNodeData({ name: 'tool', type: types.passThrough });
+			const toolInput = { query: 'test input' };
+
+			const agentNodeType = modifyNode(passThroughNode)
+				.return({
+					actions: [
+						{
+							actionType: 'ExecutionNodeAction',
+							nodeName: toolNode.name,
+							input: toolInput,
+							type: 'ai_tool',
+							id: 'action_1',
+							metadata: {},
+						},
+					],
+					metadata: { requestId: 'test_request' },
+				})
+				.return((response?: EngineResponse) => {
+					return [
+						[
+							{
+								json: {
+									result: 'agent completed',
+									actionResponsesCount: response?.actionResponses.length ?? 0,
+								},
+							},
+						],
+					];
+				})
+				.done();
+
+			const agentNode = createNodeData({ name: 'agent', type: 'agentNodeType' });
+			const customNodeTypes = NodeTypes({
+				...nodeTypeArguments,
+				agentNodeType: { type: agentNodeType, sourcePath: '' },
+			});
+
+			const workflow = new DirectedGraph()
+				.addNodes(triggerNode, agentNode, toolNode)
+				.addConnections(
+					{ from: triggerNode, to: agentNode, type: NodeConnectionTypes.Main },
+					{ from: toolNode, to: agentNode, type: NodeConnectionTypes.AiTool },
+				)
+				.toWorkflow({
+					name: '',
+					active: false,
+					nodeTypes: customNodeTypes,
+					settings: { executionOrder: 'v1' },
+				});
+
+			const workflowExecute = new WorkflowExecute(additionalData, executionMode);
+
+			// ACT
+			const result = await workflowExecute.run({
+				workflow,
+				startNode: triggerNode,
+				destinationNode: { nodeName: agentNode.name, mode: 'inclusive' },
+			});
+
+			// ASSERT
+			const runData = result.data.resultData.runData;
+			expect(result.data.resultData.error).toBeUndefined();
+
+			expect(Object.keys(runData)).toEqual(
+				expect.arrayContaining([triggerNode.name, agentNode.name, toolNode.name]),
+			);
+			expect(runData[toolNode.name]).toBeDefined();
+			expect(runData[toolNode.name]).toHaveLength(1);
+			expect(runData[toolNode.name][0].inputOverride?.ai_tool?.[0]?.[0]?.json).toMatchObject(
+				toolInput,
+			);
+
+			const agentRuns = runData[agentNode.name];
+			const agentFinalOutput = agentRuns[agentRuns.length - 1].data?.main?.[0]?.[0]?.json;
+			expect(agentFinalOutput?.actionResponsesCount).toBe(1);
+		});
+
 		test('handles Request objects with actions correctly', async () => {
 			// ARRANGE
 			let response: EngineResponse | undefined;
@@ -397,7 +493,7 @@ describe('processRunExecutionData', () => {
 				ai_tool: [
 					[
 						{
-							json: { prompt: 'test prompt', query: 'test input', toolCallId: 'action_1' },
+							json: { query: 'test input' },
 							pairedItem: {
 								input: 0,
 								item: 0,
@@ -417,7 +513,7 @@ describe('processRunExecutionData', () => {
 				ai_tool: [
 					[
 						{
-							json: { prompt: 'test prompt', data: 'another input', toolCallId: 'action_2' },
+							json: { data: 'another input' },
 							pairedItem: {
 								input: 0,
 								item: 0,
@@ -524,7 +620,7 @@ describe('processRunExecutionData', () => {
 				ai_tool: [
 					[
 						{
-							json: { prompt: 'test prompt', query: 'test input', toolCallId: 'action_1' },
+							json: { query: 'test input' },
 							pairedItem: {
 								input: 0,
 								item: 0,
@@ -714,9 +810,7 @@ describe('processRunExecutionData', () => {
 			expect(toolRunData.inputOverride).toBeDefined();
 			expect(toolRunData.inputOverride?.ai_tool).toBeDefined();
 			expect(toolRunData.inputOverride?.ai_tool?.[0]?.[0]?.json).toMatchObject({
-				prompt: 'test prompt',
 				query: 'test input that will fail',
-				toolCallId: 'action_1',
 			});
 
 			// Error output should be set under the correct connection type (ai_tool)

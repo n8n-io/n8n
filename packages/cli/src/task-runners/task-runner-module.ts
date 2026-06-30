@@ -1,7 +1,8 @@
-import { Logger } from '@n8n/backend-common';
+import { inTest, Logger } from '@n8n/backend-common';
 import { TaskRunnersConfig } from '@n8n/config';
 import { OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
+import type { ServiceIdentifier } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
 import { sleep } from 'n8n-workflow';
 import * as a from 'node:assert/strict';
@@ -50,8 +51,6 @@ export class TaskRunnerModule {
 	}
 
 	async start() {
-		a.ok(this.runnerConfig.enabled, 'Task runner is disabled');
-
 		const { mode, authToken } = this.runnerConfig;
 
 		if (mode === 'external' && !authToken) throw new MissingAuthTokenError();
@@ -114,6 +113,13 @@ export class TaskRunnerModule {
 	private async startInternalTaskRunners() {
 		a.ok(this.taskBrokerWsServer, 'Task Runner WS Server not loaded');
 
+		const { InternalTaskRunnerDisconnectAnalyzer } = await import(
+			'@/task-runners/internal-task-runner-disconnect-analyzer'
+		);
+		this.taskBrokerWsServer.setDisconnectAnalyzer(
+			Container.get(InternalTaskRunnerDisconnectAnalyzer),
+		);
+
 		const { JsTaskRunnerProcess } = await import('@/task-runners/task-runner-process-js');
 		this.jsRunnerProcess = Container.get(JsTaskRunnerProcess);
 		this.jsRunnerProcessRestartLoopDetector = new TaskRunnerProcessRestartLoopDetector(
@@ -126,39 +132,37 @@ export class TaskRunnerModule {
 
 		await this.jsRunnerProcess.start();
 
-		if (this.runnerConfig.isNativePythonRunnerEnabled) {
-			const { PyTaskRunnerProcess } = await import('@/task-runners/task-runner-process-py');
+		const { PyTaskRunnerProcess } = await import('@/task-runners/task-runner-process-py');
 
-			const failureReason = await PyTaskRunnerProcess.checkRequirements();
-			if (failureReason) {
-				Container.get(TaskRequester).setRunnerUnavailable('python', failureReason);
-				const error = new MissingRequirementsError(failureReason);
-				this.logger.warn(error.message);
-				return; // allow bootup, will fail at execution time
-			}
-
-			this.pyRunnerProcess = Container.get(PyTaskRunnerProcess);
-			this.pyRunnerProcessRestartLoopDetector = new TaskRunnerProcessRestartLoopDetector(
-				this.pyRunnerProcess,
+		const failureReason = await PyTaskRunnerProcess.checkRequirements();
+		if (failureReason) {
+			Container.get(TaskRequester as ServiceIdentifier<TaskRequester>).setRunnerUnavailable(
+				'python',
+				failureReason,
 			);
-			this.pyRunnerProcessRestartLoopDetector.on(
-				'restart-loop-detected',
-				this.onRunnerRestartLoopDetected,
-			);
-			await this.pyRunnerProcess.start();
+			const error = new MissingRequirementsError(failureReason);
+			this.logger.warn(error.message);
+			return; // allow bootup, will fail at execution time
 		}
 
-		const { InternalTaskRunnerDisconnectAnalyzer } = await import(
-			'@/task-runners/internal-task-runner-disconnect-analyzer'
+		this.pyRunnerProcess = Container.get(PyTaskRunnerProcess);
+		this.pyRunnerProcessRestartLoopDetector = new TaskRunnerProcessRestartLoopDetector(
+			this.pyRunnerProcess,
 		);
-		this.taskBrokerWsServer.setDisconnectAnalyzer(
-			Container.get(InternalTaskRunnerDisconnectAnalyzer),
+		this.pyRunnerProcessRestartLoopDetector.on(
+			'restart-loop-detected',
+			this.onRunnerRestartLoopDetected,
 		);
+		await this.pyRunnerProcess.start();
 	}
 
 	private onRunnerRestartLoopDetected = async (error: TaskRunnerRestartLoopError) => {
 		this.logger.error(error.message);
 		this.errorReporter.error(error);
+
+		// A restart loop is unrecoverable, so exit and let the process manager
+		// restart n8n. Skip in tests, where exiting would kill the vi worker.
+		if (inTest) return;
 
 		// Allow some time for the error to be flushed
 		await sleep(1000);

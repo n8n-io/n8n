@@ -11,8 +11,7 @@ import {
 	type SupplyData,
 } from 'n8n-workflow';
 
-import { logWrapper } from '@utils/logWrapper';
-import { getConnectionHintNoticeField } from '@utils/sharedFields';
+import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
 const supportedLanguages: SupportedTextSplitterLanguage[] = [
 	'cpp',
@@ -35,7 +34,7 @@ export class TextSplitterRecursiveCharacterTextSplitter implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Recursive Character Text Splitter',
 		name: 'textSplitterRecursiveCharacterTextSplitter',
-		icon: 'fa:grip-lines-vertical',
+		icon: 'node:recursive-character-text-splitter',
 		iconColor: 'black',
 		group: ['transform'],
 		version: 1,

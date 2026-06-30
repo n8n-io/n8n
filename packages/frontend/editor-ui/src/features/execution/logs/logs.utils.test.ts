@@ -547,6 +547,62 @@ describe(getTreeNodeData, () => {
 		const deepNodeRunIndex = rootNode2Tree[0].children[0].children[0].runIndex;
 		expect(typeof deepNodeRunIndex).toBe('number');
 	});
+
+	it('should treat missing previousNodeRun in source as 0', () => {
+		const rootNode = createTestNode({ name: 'RootNode' });
+		const workflow = createTestWorkflowObject({
+			nodes: [
+				rootNode,
+				createTestNode({ name: 'SubNode' }),
+				createTestNode({ name: 'NestedNode' }),
+			],
+			connections: {
+				SubNode: {
+					ai_tool: [[{ node: 'RootNode', type: NodeConnectionTypes.AiTool, index: 0 }]],
+				},
+				NestedNode: {
+					ai_tool: [[{ node: 'SubNode', type: NodeConnectionTypes.AiTool, index: 0 }]],
+				},
+			},
+		});
+
+		// Create test run data with source information
+		const runData = {
+			RootNode: [
+				createTestTaskData({
+					startTime: Date.parse('2025-02-26T00:00:00.000Z'),
+					executionIndex: 0,
+				}),
+			],
+			SubNode: [
+				createTestTaskData({
+					startTime: Date.parse('2025-02-26T00:00:02.000Z'),
+					executionIndex: 1,
+					source: [{ previousNode: 'RootNode', previousNodeRun: undefined }],
+					data: { main: [[{ json: { result: 'from RootNode' } }]] },
+				}),
+			],
+			NestedNode: [
+				createTestTaskData({
+					startTime: Date.parse('2025-02-26T00:00:03.000Z'),
+					executionIndex: 2,
+					source: [{ previousNode: 'SubNode', previousNodeRun: undefined }],
+					data: { main: [[{ json: { result: 'from SubNode' } }]] },
+				}),
+			],
+		};
+
+		const rootNode1Tree = getTreeNodeData(
+			rootNode,
+			runData.RootNode[0],
+			undefined,
+			createTestLogTreeCreationContext(workflow, runData),
+		);
+		expect(rootNode1Tree[0].children.length).toBe(1);
+		expect(rootNode1Tree[0].children[0].node.name).toBe('SubNode');
+		expect(rootNode1Tree[0].children[0].children.length).toBe(1);
+		expect(rootNode1Tree[0].children[0].children[0].node.name).toBe('NestedNode');
+	});
 });
 
 describe(findSelectedLogEntry, () => {

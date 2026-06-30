@@ -1,0 +1,1398 @@
+import type { Mock } from 'vitest';
+import type { SourceControlledFile } from '@n8n/api-types';
+import { isContainedWithin } from '@n8n/backend-common';
+import { GLOBAL_ADMIN_ROLE, GLOBAL_MEMBER_ROLE, User, type WorkflowEntity } from '@n8n/db';
+import { Container } from '@n8n/di';
+import { mock } from 'vitest-mock-extended';
+import { InstanceSettings } from 'n8n-core';
+import type { CommitResult, PullResult, PushResult } from 'simple-git';
+
+import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import { SourceControlService } from '@/modules/source-control.ee/source-control.service.ee';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import type { EventService } from '@/events/event.service';
+import type { SourceControlExportService } from '../source-control-export.service.ee';
+import type { SourceControlGitService } from '../source-control-git.service.ee';
+import type { SourceControlImportService } from '../source-control-import.service.ee';
+import type { SourceControlContextFactory } from '../source-control-context.factory';
+import type { SourceControlScopedService } from '../source-control-scoped.service';
+import {
+	SOURCE_CONTROL_DEFAULT_BRANCH_COLOR,
+	SOURCE_CONTROL_DEFAULT_EMAIL,
+	SOURCE_CONTROL_DEFAULT_NAME,
+} from '../constants';
+import { sourceControlFoldersExistCheck } from '../source-control-helper.ee';
+import type { ExportResult } from '../types/export-result';
+
+// Mock the status service to avoid complex dependency issues
+const mockStatusService = {
+	getStatus: vi.fn(),
+};
+
+vi.mock('@n8n/backend-common', async () => ({
+	...(await vi.importActual<typeof import('@n8n/backend-common')>('@n8n/backend-common')),
+	isContainedWithin: vi.fn(() => true),
+}));
+
+vi.mock('../source-control-helper.ee', async () => ({
+	...(await vi.importActual<typeof import('../source-control-helper.ee')>(
+		'../source-control-helper.ee',
+	)),
+	sourceControlFoldersExistCheck: vi.fn(() => true),
+}));
+
+// Reuse typed user mocks at module scope to avoid performance issues related to recreating nested proxy mocks per test
+const globalAdminUser = mock<User>({ role: GLOBAL_ADMIN_ROLE });
+const globalAdminUserWithId = mock<User>({ id: 'user-id', role: GLOBAL_ADMIN_ROLE });
+const globalMemberUser = mock<User>({ role: GLOBAL_MEMBER_ROLE });
+const globalMemberUserWithId = mock<User>({ id: 'user-id', role: GLOBAL_MEMBER_ROLE });
+
+describe('SourceControlService', () => {
+	const preferencesService = new SourceControlPreferencesService(
+		Container.get(InstanceSettings),
+		mock(),
+		mock(),
+		mock(),
+		mock(),
+	);
+	const sourceControlImportService = mock<SourceControlImportService>();
+	const sourceControlExportService = mock<SourceControlExportService>();
+	const sourceControlContextFactory = mock<SourceControlContextFactory>();
+	const sourceControlScopedService = mock<SourceControlScopedService>();
+	const gitService = mock<SourceControlGitService>();
+	const eventService = mock<EventService>();
+	const sourceControlService = new SourceControlService(
+		mock(), // logger
+		gitService,
+		preferencesService,
+		sourceControlExportService,
+		sourceControlImportService,
+		sourceControlContextFactory,
+		sourceControlScopedService,
+		eventService, // event service
+		mockStatusService as any, // status service
+	);
+
+	beforeEach(() => {
+		vi.resetAllMocks();
+		vi.spyOn(sourceControlService, 'sanityCheck').mockResolvedValue(undefined);
+		// Reset mock implementations
+		mockStatusService.getStatus.mockReset();
+	});
+
+	describe('pushWorkfolder', () => {
+		it('should push the workfolder', async () => {
+			const mockExportResult = mock<ExportResult>();
+			// Arrange
+			const user = Object.assign(new User(), {
+				role: GLOBAL_ADMIN_ROLE,
+			});
+
+			const mockPushResult = mock<PushResult>();
+			const now = new Date().toISOString();
+
+			// Prepare a set of files of all types, some deleted, some not
+			const files: SourceControlledFile[] = [
+				{
+					file: 'workflow-1.json',
+					id: 'wf-1',
+					name: 'Workflow 1',
+					type: 'workflow',
+					status: 'modified',
+					location: 'local',
+					conflict: false,
+					updatedAt: now,
+				},
+				{
+					file: 'credential-1.json',
+					id: 'cred-1',
+					name: 'Credential 1',
+					type: 'credential',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					updatedAt: now,
+				},
+				{
+					file: 'project-1.json',
+					id: 'proj-1',
+					name: 'Project 1',
+					type: 'project',
+					status: 'modified',
+					location: 'local',
+					conflict: false,
+					updatedAt: now,
+				},
+				{
+					file: 'folders.json',
+					id: 'folders',
+					name: 'Folders',
+					type: 'folders',
+					status: 'modified',
+					location: 'local',
+					conflict: false,
+					updatedAt: now,
+				},
+				{
+					file: 'variables.json',
+					id: 'variables',
+					name: 'Variables',
+					type: 'variables',
+					status: 'modified',
+					location: 'local',
+					conflict: false,
+					updatedAt: now,
+				},
+				{
+					file: 'data_tables.json',
+					id: 'data-tables',
+					name: 'Data Tables',
+					type: 'datatable',
+					status: 'modified',
+					location: 'local',
+					conflict: false,
+					updatedAt: now,
+				},
+				{
+					file: 'tags.json',
+					id: 'tags',
+					name: 'Tags',
+					type: 'tags',
+					status: 'modified',
+					location: 'local',
+					conflict: false,
+					updatedAt: now,
+				},
+				// Deleted resources
+				{
+					file: 'workflow-2.json',
+					id: 'wf-2',
+					name: 'Workflow 2',
+					type: 'workflow',
+					status: 'deleted',
+					location: 'local',
+					conflict: false,
+					updatedAt: now,
+				},
+				{
+					file: 'credential-2.json',
+					id: 'cred-2',
+					name: 'Credential 2',
+					type: 'credential',
+					status: 'deleted',
+					location: 'local',
+					conflict: false,
+					updatedAt: now,
+				},
+				{
+					file: 'project-2.json',
+					id: 'proj-2',
+					name: 'Project 2',
+					type: 'project',
+					status: 'deleted',
+					location: 'local',
+					conflict: false,
+					updatedAt: now,
+				},
+			];
+
+			// The status service should return all these files as allowed
+			mockStatusService.getStatus.mockResolvedValueOnce(files);
+
+			// Mock all export and delete methods
+			sourceControlExportService.exportWorkflowsToWorkFolder.mockResolvedValueOnce(
+				mockExportResult,
+			);
+			sourceControlExportService.exportCredentialsToWorkFolder.mockResolvedValueOnce({
+				count: 1,
+				missingIds: [],
+				folder: '',
+				files: [],
+			});
+			sourceControlExportService.exportTeamProjectsToWorkFolder.mockResolvedValueOnce(
+				mockExportResult,
+			);
+			sourceControlExportService.exportTagsToWorkFolder.mockResolvedValueOnce(mockExportResult);
+			sourceControlExportService.exportFoldersToWorkFolder.mockResolvedValueOnce(mockExportResult);
+			sourceControlExportService.exportGlobalVariablesToWorkFolder.mockResolvedValueOnce(
+				mockExportResult,
+			);
+			sourceControlExportService.exportDataTablesToWorkFolder.mockResolvedValueOnce(
+				mockExportResult,
+			);
+			sourceControlExportService.exportFoldersToWorkFolder.mockResolvedValueOnce(mockExportResult);
+			sourceControlExportService.exportGlobalVariablesToWorkFolder.mockResolvedValueOnce(
+				mockExportResult,
+			);
+			sourceControlExportService.rmFilesFromExportFolder.mockResolvedValueOnce(new Set());
+
+			(isContainedWithin as Mock).mockReturnValue(true);
+
+			gitService.push.mockResolvedValueOnce(mockPushResult);
+
+			const commitMessage = 'Test commit message';
+
+			// Act
+			const result = await sourceControlService.pushWorkfolder(user, {
+				fileNames: files.map((f) => ({
+					file: f.file,
+					id: f.id,
+					name: f.name,
+					type: f.type,
+					status: f.status,
+					location: f.location,
+					conflict: f.conflict,
+					updatedAt: f.updatedAt,
+				})),
+				commitMessage,
+			});
+
+			// Assert
+			// All export methods for non-deleted resources should be called
+			expect(sourceControlExportService.exportWorkflowsToWorkFolder).toHaveBeenCalledWith(
+				expect.arrayContaining([expect.objectContaining({ id: 'wf-1' })]),
+			);
+			expect(sourceControlExportService.exportCredentialsToWorkFolder).toHaveBeenCalledWith(
+				expect.arrayContaining([expect.objectContaining({ id: 'cred-1' })]),
+			);
+			expect(sourceControlExportService.exportTeamProjectsToWorkFolder).toHaveBeenCalledWith(
+				expect.arrayContaining([expect.objectContaining({ id: 'proj-1' })]),
+			);
+			expect(sourceControlExportService.exportTagsToWorkFolder).toHaveBeenCalled();
+			expect(sourceControlExportService.exportFoldersToWorkFolder).toHaveBeenCalled();
+			expect(sourceControlExportService.exportGlobalVariablesToWorkFolder).toHaveBeenCalled();
+			expect(sourceControlExportService.exportDataTablesToWorkFolder).toHaveBeenCalled();
+
+			// Deleted resources should be passed to rmFilesFromExportFolder
+			expect(sourceControlExportService.rmFilesFromExportFolder).toHaveBeenCalledWith(
+				new Set([
+					`${preferencesService.gitFolder}/workflow-2.json`,
+					`${preferencesService.gitFolder}/credential-2.json`,
+					`${preferencesService.gitFolder}/project-2.json`,
+				]),
+			);
+
+			// Git operations should be called
+			expect(gitService.stage).toHaveBeenCalledWith(
+				new Set([
+					`${preferencesService.gitFolder}/workflow-1.json`,
+					`${preferencesService.gitFolder}/credential-1.json`,
+					`${preferencesService.gitFolder}/project-1.json`,
+					`${preferencesService.gitFolder}/folders.json`,
+					`${preferencesService.gitFolder}/variables.json`,
+					`${preferencesService.gitFolder}/data_tables.json`,
+					`${preferencesService.gitFolder}/tags.json`,
+				]),
+				new Set([
+					`${preferencesService.gitFolder}/workflow-2.json`,
+					`${preferencesService.gitFolder}/credential-2.json`,
+					`${preferencesService.gitFolder}/project-2.json`,
+				]),
+			);
+			expect(gitService.commit).toHaveBeenCalledWith(commitMessage);
+			expect(gitService.push).toHaveBeenCalledWith({
+				branch: 'main', // default branch
+				force: false,
+			});
+
+			// The result should include the status and push result
+			expect(result).toMatchObject({
+				statusCode: 200,
+			});
+		});
+
+		it('should throw an error if file path validation fails', async () => {
+			const user = mock<User>();
+			(isContainedWithin as Mock).mockReturnValueOnce(false);
+
+			await expect(
+				sourceControlService.pushWorkfolder(user, {
+					fileNames: [
+						{
+							file: '/etc/passwd',
+							id: 'test',
+							name: 'secret-file',
+							type: 'file',
+							status: 'modified',
+							location: 'local',
+							conflict: false,
+							updatedAt: new Date().toISOString(),
+							pushed: false,
+						},
+					],
+				}),
+			).rejects.toThrow('File path /etc/passwd is invalid');
+
+			expect(gitService.stage).not.toHaveBeenCalled();
+			expect(gitService.commit).not.toHaveBeenCalled();
+			expect(gitService.push).not.toHaveBeenCalled();
+		});
+
+		it('should include the tags file even if not explicitly specified', async () => {
+			// ARRANGE
+			const user = mock<User>();
+			const mockFile: SourceControlledFile = {
+				file: 'some-workflow.json',
+				id: 'test',
+				name: 'some-workflow',
+				type: 'workflow',
+				status: 'modified',
+				location: 'local',
+				conflict: false,
+				updatedAt: new Date().toISOString(),
+			};
+
+			mockStatusService.getStatus.mockResolvedValueOnce([mockFile]);
+			sourceControlExportService.exportCredentialsToWorkFolder.mockResolvedValueOnce({
+				count: 0,
+				missingIds: [],
+				folder: '',
+				files: [],
+			});
+			eventService.emit.mockReturnValueOnce(true);
+
+			const mockPushResult = mock<PushResult>();
+			gitService.push.mockResolvedValueOnce(mockPushResult);
+
+			(isContainedWithin as Mock).mockReturnValueOnce(true);
+
+			const expectedTagsPath = `${preferencesService.gitFolder}/tags.json`;
+			const expectedFilePath = `${preferencesService.gitFolder}/some-workflow.json`;
+
+			// ACT
+			const result = await sourceControlService.pushWorkfolder(user, {
+				fileNames: [mockFile],
+				commitMessage: 'A commit message',
+			});
+
+			// ASSERT
+			expect(gitService.stage).toHaveBeenCalledWith(
+				new Set([expectedFilePath, expectedTagsPath]),
+				new Set(),
+			);
+			expect(gitService.commit).toHaveBeenCalledWith('A commit message');
+			expect(gitService.push).toHaveBeenCalledWith({
+				branch: 'main', // default branch
+				force: false,
+			});
+			expect(result).toHaveProperty('statusCode', 200);
+		});
+
+		it('should reset branch to HEAD when export fails', async () => {
+			// ARRANGE
+			const user = mock<User>();
+
+			const mockFile: SourceControlledFile = {
+				file: 'workflow-1.json',
+				id: 'wf-1',
+				name: 'Workflow 1',
+				type: 'workflow',
+				status: 'modified',
+				location: 'local',
+				conflict: false,
+				updatedAt: new Date().toISOString(),
+			};
+
+			mockStatusService.getStatus.mockResolvedValueOnce([mockFile]);
+
+			(isContainedWithin as Mock).mockReturnValue(true);
+
+			// Mock workflow export to fail
+			const exportError = new Error('Failed to export workflows');
+			sourceControlExportService.exportWorkflowsToWorkFolder.mockRejectedValueOnce(exportError);
+
+			// ACT & ASSERT
+			await expect(
+				sourceControlService.pushWorkfolder(user, {
+					fileNames: [mockFile],
+					commitMessage: 'Test commit',
+				}),
+			).rejects.toThrow(exportError);
+
+			// Verify no git operations were performed
+			expect(gitService.stage).not.toHaveBeenCalled();
+			expect(gitService.commit).not.toHaveBeenCalled();
+			expect(gitService.push).not.toHaveBeenCalled();
+
+			// Verify resetBranch was called with HEAD to clean up any potential state
+			expect(gitService.resetBranch).toHaveBeenCalledWith({ hard: true, target: 'HEAD' });
+		});
+
+		it('should reset branch to origin/branch when push fails after commit', async () => {
+			// ARRANGE
+			const user = mock<User>();
+			const mockFile: SourceControlledFile = {
+				file: 'workflow-1.json',
+				id: 'wf-1',
+				name: 'Workflow 1',
+				type: 'workflow',
+				status: 'modified',
+				location: 'local',
+				conflict: false,
+				updatedAt: new Date().toISOString(),
+			};
+
+			mockStatusService.getStatus.mockResolvedValueOnce([mockFile]);
+			sourceControlExportService.exportCredentialsToWorkFolder.mockResolvedValueOnce({
+				count: 0,
+				missingIds: [],
+				folder: '',
+				files: [],
+			});
+
+			(isContainedWithin as Mock).mockReturnValue(true);
+
+			const pushError = new Error(
+				'To github.com:test/n8n.git ! refs/heads/test:refs/heads/test [remote rejected] (push declined due to repository rule violations)',
+			);
+			gitService.push.mockRejectedValueOnce(pushError);
+
+			// ACT & ASSERT
+			await expect(
+				sourceControlService.pushWorkfolder(user, {
+					fileNames: [mockFile],
+					commitMessage: 'Test commit',
+				}),
+			).rejects.toThrow(pushError);
+
+			// Verify git operations were attempted
+			expect(gitService.stage).toHaveBeenCalled();
+			expect(gitService.commit).toHaveBeenCalled();
+			expect(gitService.push).toHaveBeenCalled();
+
+			// Verify resetBranch was called with origin/branch to sync with remote
+			expect(gitService.resetBranch).toHaveBeenCalledWith({
+				hard: true,
+				target: 'origin/main',
+			});
+		});
+
+		it('should reset branch to HEAD when commit fails', async () => {
+			// ARRANGE
+			const user = mock<User>();
+			const mockFile: SourceControlledFile = {
+				file: 'workflow-1.json',
+				id: 'wf-1',
+				name: 'Workflow 1',
+				type: 'workflow',
+				status: 'modified',
+				location: 'local',
+				conflict: false,
+				updatedAt: new Date().toISOString(),
+			};
+
+			mockStatusService.getStatus.mockResolvedValueOnce([mockFile]);
+			sourceControlExportService.exportCredentialsToWorkFolder.mockResolvedValueOnce({
+				count: 0,
+				missingIds: [],
+				folder: '',
+				files: [],
+			});
+
+			(isContainedWithin as Mock).mockReturnValue(true);
+
+			// Mock commit to fail
+			const commitError = new Error('Git commit failed');
+			gitService.commit.mockRejectedValueOnce(commitError);
+
+			// ACT & ASSERT
+			await expect(
+				sourceControlService.pushWorkfolder(user, {
+					fileNames: [mockFile],
+					commitMessage: 'Test commit',
+				}),
+			).rejects.toThrow(commitError);
+
+			// Verify stage was called but not push
+			expect(gitService.stage).toHaveBeenCalled();
+			expect(gitService.commit).toHaveBeenCalled();
+			expect(gitService.push).not.toHaveBeenCalled();
+
+			// Verify resetBranch was called with HEAD (no commit to undo)
+			expect(gitService.resetBranch).toHaveBeenCalledWith({ hard: true, target: 'HEAD' });
+		});
+	});
+
+	describe('pullWorkfolder', () => {
+		it('does not filter locally created credentials', async () => {
+			// ARRANGE
+			const user = mock<User>();
+			const statuses = [
+				mock<SourceControlledFile>({
+					status: 'created',
+					location: 'local',
+					type: 'credential',
+				}),
+				mock<SourceControlledFile>({
+					status: 'created',
+					location: 'local',
+					type: 'workflow',
+				}),
+			];
+			mockStatusService.getStatus.mockResolvedValueOnce(statuses);
+
+			// ACT
+			const result = await sourceControlService.pullWorkfolder(user, { autoPublish: 'none' });
+
+			// ASSERT
+			expect(result).toMatchObject({ statusCode: 409, statusResult: statuses });
+		});
+
+		it('does not filter remotely deleted credentials', async () => {
+			// ARRANGE
+			const user = mock<User>();
+			const statuses = [
+				mock<SourceControlledFile>({
+					status: 'deleted',
+					location: 'remote',
+					type: 'credential',
+				}),
+				mock<SourceControlledFile>({
+					status: 'created',
+					location: 'local',
+					type: 'workflow',
+				}),
+			];
+			mockStatusService.getStatus.mockResolvedValueOnce(statuses);
+
+			// ACT
+			const result = await sourceControlService.pullWorkfolder(user, { autoPublish: 'none' });
+
+			// ASSERT
+			expect(result).toMatchObject({ statusCode: 409, statusResult: statuses });
+		});
+	});
+
+	describe('getStatus', () => {
+		it('ensure updatedAt field for last deleted tag', async () => {
+			// ARRANGE
+			const user = globalAdminUser;
+
+			const mockResult = [
+				{
+					type: 'tags',
+					updatedAt: new Date().toISOString(),
+					status: 'deleted',
+					location: 'remote',
+					conflict: false,
+					pushed: false,
+					file: 'tags.json',
+					id: 'test-tag',
+					name: 'test tag name',
+				},
+			];
+
+			mockStatusService.getStatus.mockResolvedValue(mockResult);
+
+			// ACT
+			const pushResult = await sourceControlService.getStatus(user, {
+				direction: 'push',
+				verbose: false,
+				preferLocalVersion: false,
+			});
+
+			// ASSERT
+			expect(mockStatusService.getStatus).toHaveBeenCalledWith(user, {
+				direction: 'push',
+				verbose: false,
+				preferLocalVersion: false,
+			});
+
+			if (!Array.isArray(pushResult)) {
+				expect.fail('Expected pushResult to be an array.');
+			}
+
+			expect(pushResult).toHaveLength(1);
+			expect(pushResult.find((i) => i.type === 'tags')?.updatedAt).toBeDefined();
+		});
+
+		it('ensure updatedAt field for last deleted folder', async () => {
+			// ARRANGE
+			const user = globalAdminUser;
+
+			const mockResult = [
+				{
+					type: 'folders',
+					updatedAt: new Date().toISOString(),
+					status: 'deleted',
+					location: 'remote',
+					conflict: false,
+					pushed: false,
+					file: 'folders.json',
+					id: 'test-folder',
+					name: 'test folder name',
+				},
+			];
+
+			mockStatusService.getStatus.mockResolvedValue(mockResult);
+
+			// ACT
+			const pushResult = await sourceControlService.getStatus(user, {
+				direction: 'push',
+				verbose: false,
+				preferLocalVersion: false,
+			});
+
+			// ASSERT
+			expect(mockStatusService.getStatus).toHaveBeenCalledWith(user, {
+				direction: 'push',
+				verbose: false,
+				preferLocalVersion: false,
+			});
+
+			if (!Array.isArray(pushResult)) {
+				expect.fail('Expected pushResult to be an array.');
+			}
+
+			expect(pushResult).toHaveLength(1);
+			expect(pushResult.find((i) => i.type === 'folders')?.updatedAt).toBeDefined();
+		});
+
+		it('conflict depends on the value of `direction`', async () => {
+			// ARRANGE
+			const user = globalAdminUser;
+
+			const mockPullResult = [
+				{ type: 'workflow', conflict: true },
+				{ type: 'credential', conflict: true },
+				{ type: 'variables', conflict: true },
+				{ type: 'tags', conflict: true },
+				{ type: 'folders', conflict: true },
+			];
+
+			const mockPushResult = [
+				{ type: 'workflow', conflict: false },
+				{ type: 'credential', conflict: false },
+				{ type: 'variables', conflict: false },
+				{ type: 'tags', conflict: false },
+				{ type: 'folders', conflict: false },
+			];
+
+			mockStatusService.getStatus
+				.mockResolvedValueOnce(mockPullResult)
+				.mockResolvedValueOnce(mockPushResult);
+
+			// ACT
+			const pullResult = await sourceControlService.getStatus(user, {
+				direction: 'pull',
+				verbose: false,
+				preferLocalVersion: false,
+			});
+
+			const pushResult = await sourceControlService.getStatus(user, {
+				direction: 'push',
+				verbose: false,
+				preferLocalVersion: false,
+			});
+
+			// ASSERT
+			expect(mockStatusService.getStatus).toHaveBeenCalledTimes(2);
+			expect(mockStatusService.getStatus).toHaveBeenCalledWith(user, {
+				direction: 'pull',
+				verbose: false,
+				preferLocalVersion: false,
+			});
+			expect(mockStatusService.getStatus).toHaveBeenCalledWith(user, {
+				direction: 'push',
+				verbose: false,
+				preferLocalVersion: false,
+			});
+
+			if (!Array.isArray(pullResult)) {
+				expect.fail('Expected pullResult to be an array.');
+			}
+			if (!Array.isArray(pushResult)) {
+				expect.fail('Expected pushResult to be an array.');
+			}
+
+			expect(pullResult).toHaveLength(5);
+			expect(pushResult).toHaveLength(5);
+
+			expect(pullResult.find((i) => i.type === 'workflow')).toHaveProperty('conflict', true);
+			expect(pushResult.find((i) => i.type === 'workflow')).toHaveProperty('conflict', false);
+
+			expect(pullResult.find((i) => i.type === 'credential')).toHaveProperty('conflict', true);
+			expect(pushResult.find((i) => i.type === 'credential')).toHaveProperty('conflict', false);
+
+			expect(pullResult.find((i) => i.type === 'variables')).toHaveProperty('conflict', true);
+			expect(pushResult.find((i) => i.type === 'variables')).toHaveProperty('conflict', false);
+
+			expect(pullResult.find((i) => i.type === 'tags')).toHaveProperty('conflict', true);
+			expect(pushResult.find((i) => i.type === 'tags')).toHaveProperty('conflict', false);
+
+			expect(pullResult.find((i) => i.type === 'folders')).toHaveProperty('conflict', true);
+			expect(pushResult.find((i) => i.type === 'folders')).toHaveProperty('conflict', false);
+		});
+
+		it('should throw `ForbiddenError` if direction is pull and user is not allowed to globally pull', async () => {
+			// ARRANGE
+			const user = globalMemberUser;
+
+			mockStatusService.getStatus.mockRejectedValue(
+				new ForbiddenError('You do not have permission to pull from source control'),
+			);
+
+			// ACT
+			await expect(
+				sourceControlService.getStatus(user, {
+					direction: 'pull',
+					verbose: false,
+					preferLocalVersion: false,
+				}),
+			).rejects.toThrowError(ForbiddenError);
+
+			// ASSERT
+			expect(mockStatusService.getStatus).toHaveBeenCalledWith(user, {
+				direction: 'pull',
+				verbose: false,
+				preferLocalVersion: false,
+			});
+		});
+	});
+
+	describe('getFileContent', () => {
+		it.each([{ type: 'workflow' as SourceControlledFile['type'], id: '1234', content: '{}' }])(
+			'should return file content for $type',
+			async ({ type, id, content }) => {
+				vi.mocked(gitService.getFileContent).mockResolvedValue(content);
+				const user = globalAdminUserWithId;
+
+				const result = await sourceControlService.getRemoteFileEntity({ user, type, id });
+
+				expect(result).toEqual(JSON.parse(content));
+			},
+		);
+
+		it.each<SourceControlledFile['type']>(['folders', 'credential', 'tags', 'variables'])(
+			'should throw an error if the file type is not handled',
+			async (type) => {
+				const user = globalAdminUserWithId;
+				await expect(
+					sourceControlService.getRemoteFileEntity({ user, type, id: 'unknown' }),
+				).rejects.toThrow(`Unsupported file type: ${type}`);
+			},
+		);
+
+		it('should fail if the git service fails to get the file content', async () => {
+			vi.mocked(gitService.getFileContent).mockRejectedValue(new Error('Git service error'));
+			const user = globalAdminUserWithId;
+
+			await expect(
+				sourceControlService.getRemoteFileEntity({ user, type: 'workflow', id: '1234' }),
+			).rejects.toThrow('Git service error');
+		});
+
+		it('should throw an error if the user does not have access to the project', async () => {
+			const user = globalMemberUserWithId;
+			vi.mocked(
+				sourceControlScopedService.getWorkflowsInAdminProjectsFromContext,
+			).mockResolvedValue([]);
+
+			await expect(
+				sourceControlService.getRemoteFileEntity({ user, type: 'workflow', id: '1234' }),
+			).rejects.toThrow('You are not allowed to access workflow with id 1234');
+		});
+
+		it('should return content for an authorized workflow', async () => {
+			const user = globalMemberUserWithId;
+			vi.mocked(
+				sourceControlScopedService.getWorkflowsInAdminProjectsFromContext,
+			).mockResolvedValue([{ id: '1234' } as WorkflowEntity]);
+			vi.mocked(gitService.getFileContent).mockResolvedValue('{}');
+			const result = await sourceControlService.getRemoteFileEntity({
+				user,
+				type: 'workflow',
+				id: '1234',
+			});
+			expect(result).toEqual({});
+		});
+	});
+
+	describe('disconnect', () => {
+		beforeEach(() => {
+			// Common mock setup
+			preferencesService.setPreferences = vi.fn().mockResolvedValue(undefined);
+			sourceControlExportService.deleteRepositoryFolder.mockResolvedValue(undefined);
+			preferencesService.deleteHttpsCredentials = vi.fn().mockResolvedValue(undefined);
+			preferencesService.deleteKeyPair = vi.fn().mockResolvedValue(undefined);
+			preferencesService.resetKnownHosts = vi.fn().mockResolvedValue(undefined);
+			gitService.resetService.mockReturnValue(undefined);
+		});
+
+		it('should reset the preferences', async () => {
+			const mockPreferences = {
+				connected: true,
+				branchName: 'feature-branch',
+				repositoryUrl: 'https://github.com/test/repo.git',
+				branchReadOnly: true,
+				branchColor: '#ff0000',
+				connectionType: 'https' as const,
+			};
+			preferencesService.getPreferences = vi.fn().mockReturnValue(mockPreferences);
+
+			const result = await sourceControlService.disconnect();
+
+			expect(preferencesService.setPreferences).toHaveBeenCalledWith({
+				connected: false,
+				branchName: '',
+				repositoryUrl: '',
+				branchReadOnly: false,
+				branchColor: SOURCE_CONTROL_DEFAULT_BRANCH_COLOR,
+				connectionType: 'https',
+			});
+			expect(result).toEqual(preferencesService.sourceControlPreferences);
+		});
+
+		it('should delete the repository folder', async () => {
+			const mockPreferences = {
+				connected: true,
+				branchName: 'main',
+				repositoryUrl: 'https://github.com/test/repo.git',
+				connectionType: 'https' as const,
+			};
+			preferencesService.getPreferences = vi.fn().mockReturnValue(mockPreferences);
+
+			await sourceControlService.disconnect();
+
+			expect(sourceControlExportService.deleteRepositoryFolder).toHaveBeenCalledTimes(1);
+		});
+
+		it('should delete the HTTPS credentials when connection type is HTTPS', async () => {
+			const mockPreferences = {
+				connected: true,
+				branchName: 'main',
+				repositoryUrl: 'https://github.com/test/repo.git',
+				connectionType: 'https' as const,
+			};
+			preferencesService.getPreferences = vi.fn().mockReturnValue(mockPreferences);
+
+			await sourceControlService.disconnect();
+
+			expect(preferencesService.deleteHttpsCredentials).toHaveBeenCalledTimes(1);
+		});
+
+		it('should delete the SSH key pair when connection type is SSH and keepKeyPair is false', async () => {
+			const mockPreferences = {
+				connected: true,
+				branchName: 'main',
+				repositoryUrl: 'git@github.com:test/repo.git',
+				connectionType: 'ssh' as const,
+			};
+			preferencesService.getPreferences = vi.fn().mockReturnValue(mockPreferences);
+
+			await sourceControlService.disconnect({ keepKeyPair: false });
+
+			expect(preferencesService.deleteKeyPair).toHaveBeenCalledTimes(1);
+		});
+
+		it('should not delete the SSH key pair when connection type is SSH and keepKeyPair is true', async () => {
+			const mockPreferences = {
+				connected: true,
+				branchName: 'main',
+				repositoryUrl: 'git@github.com:test/repo.git',
+				connectionType: 'ssh' as const,
+			};
+			preferencesService.getPreferences = vi.fn().mockReturnValue(mockPreferences);
+
+			await sourceControlService.disconnect({ keepKeyPair: true });
+
+			expect(preferencesService.deleteKeyPair).not.toHaveBeenCalled();
+		});
+
+		it('should reset known_hosts file during disconnect', async () => {
+			const mockPreferences = {
+				connected: true,
+				branchName: 'main',
+				repositoryUrl: 'git@github.com:test/repo.git',
+				connectionType: 'ssh' as const,
+			};
+			preferencesService.getPreferences = vi.fn().mockReturnValue(mockPreferences);
+
+			await sourceControlService.disconnect();
+
+			expect(preferencesService.resetKnownHosts).toHaveBeenCalledTimes(1);
+		});
+
+		it('should set git client to null', async () => {
+			const mockPreferences = {
+				connected: true,
+				branchName: 'main',
+				repositoryUrl: 'https://github.com/test/repo.git',
+				connectionType: 'https' as const,
+			};
+			preferencesService.getPreferences = vi.fn().mockReturnValue(mockPreferences);
+
+			// ACT
+			await sourceControlService.disconnect();
+
+			// ASSERT
+			expect(gitService.resetService).toHaveBeenCalledTimes(1);
+		});
+
+		// Note: Broadcast tests have been moved to source-control-preferences.service.ee.test.ts
+		// since the broadcast now happens inside setPreferences() in the preferences service
+	});
+
+	describe('reloadConfiguration', () => {
+		beforeEach(() => {
+			gitService.resetService.mockReturnValue(undefined);
+		});
+
+		it('should reload configuration from database when triggered by pubsub', async () => {
+			// ARRANGE
+			preferencesService.loadFromDbAndApplySourceControlPreferences = vi
+				.fn()
+				.mockResolvedValue(undefined);
+			preferencesService.isSourceControlConnected = vi.fn().mockReturnValue(false);
+			preferencesService.isSourceControlLicensedAndEnabled = vi.fn().mockReturnValue(false);
+
+			// ACT
+			await sourceControlService.reloadConfiguration();
+
+			// ASSERT
+			expect(preferencesService.loadFromDbAndApplySourceControlPreferences).toHaveBeenCalled();
+		});
+
+		it('should delete git folder when source control was connected but is now disconnected', async () => {
+			// ARRANGE
+			preferencesService.loadFromDbAndApplySourceControlPreferences = vi
+				.fn()
+				.mockResolvedValue(undefined);
+			// Simulate: was connected, now disconnected
+			preferencesService.isSourceControlConnected = vi
+				.fn()
+				.mockReturnValueOnce(true) // wasConnected check
+				.mockReturnValueOnce(false); // isNowConnected check
+			preferencesService.isSourceControlLicensedAndEnabled = vi.fn().mockReturnValue(false);
+
+			// ACT
+			await sourceControlService.reloadConfiguration();
+
+			// ASSERT
+			expect(sourceControlExportService.deleteRepositoryFolder).toHaveBeenCalled();
+		});
+
+		it('should not delete git folder when source control remains connected', async () => {
+			// ARRANGE
+			preferencesService.loadFromDbAndApplySourceControlPreferences = vi
+				.fn()
+				.mockResolvedValue(undefined);
+			// Simulate: was connected, still connected
+			preferencesService.isSourceControlConnected = vi.fn().mockReturnValue(true);
+			preferencesService.isSourceControlLicensedAndEnabled = vi.fn().mockReturnValue(true);
+
+			// ACT
+			await sourceControlService.reloadConfiguration();
+
+			// ASSERT
+			expect(sourceControlExportService.deleteRepositoryFolder).not.toHaveBeenCalled();
+		});
+
+		it('should not delete git folder when source control was not connected before', async () => {
+			// ARRANGE
+			preferencesService.loadFromDbAndApplySourceControlPreferences = vi
+				.fn()
+				.mockResolvedValue(undefined);
+			// Simulate: was not connected, still not connected
+			preferencesService.isSourceControlConnected = vi.fn().mockReturnValue(false);
+			preferencesService.isSourceControlLicensedAndEnabled = vi.fn().mockReturnValue(false);
+
+			// ACT
+			await sourceControlService.reloadConfiguration();
+
+			// ASSERT
+			expect(sourceControlExportService.deleteRepositoryFolder).not.toHaveBeenCalled();
+		});
+
+		it('should skip reload if another reload is already in progress', async () => {
+			// ARRANGE
+			let resolveFirstReload: () => void;
+			const firstReloadPromise = new Promise<void>((resolve) => {
+				resolveFirstReload = resolve;
+			});
+
+			preferencesService.loadFromDbAndApplySourceControlPreferences = vi
+				.fn()
+				.mockImplementationOnce(async () => {
+					await firstReloadPromise;
+				})
+				.mockResolvedValue(undefined);
+			preferencesService.isSourceControlConnected = vi.fn().mockReturnValue(false);
+			preferencesService.isSourceControlLicensedAndEnabled = vi.fn().mockReturnValue(false);
+
+			// ACT - Start first reload (will block)
+			const firstReload = sourceControlService.reloadConfiguration();
+
+			// Start second reload while first is in progress
+			await sourceControlService.reloadConfiguration();
+
+			// ASSERT - Second reload should have been skipped (only one call to loadFromDb)
+			expect(preferencesService.loadFromDbAndApplySourceControlPreferences).toHaveBeenCalledTimes(
+				1,
+			);
+
+			// Clean up - resolve first reload
+			resolveFirstReload!();
+			await firstReload;
+		});
+
+		it('should allow reload after previous reload completes', async () => {
+			// ARRANGE
+			preferencesService.loadFromDbAndApplySourceControlPreferences = vi
+				.fn()
+				.mockResolvedValue(undefined);
+			preferencesService.isSourceControlConnected = vi.fn().mockReturnValue(false);
+			preferencesService.isSourceControlLicensedAndEnabled = vi.fn().mockReturnValue(false);
+
+			// ACT - Run two reloads sequentially
+			await sourceControlService.reloadConfiguration();
+			await sourceControlService.reloadConfiguration();
+
+			// ASSERT - Both reloads should have completed
+			expect(preferencesService.loadFromDbAndApplySourceControlPreferences).toHaveBeenCalledTimes(
+				2,
+			);
+		});
+	});
+
+	describe('initializeRepository', () => {
+		beforeEach(() => {
+			gitService.initRepository.mockResolvedValue(undefined);
+			gitService.setBranch.mockResolvedValue({ branches: ['main'], currentBranch: 'main' });
+			preferencesService.setPreferences = vi.fn().mockResolvedValue(undefined);
+		});
+
+		it('should throw UserError for host key verification failure', async () => {
+			const user = mock<User>();
+			const preferences = {
+				branchName: 'main',
+				repositoryUrl: 'git@github.com:test/repo.git',
+				connectionType: 'ssh' as const,
+			} as any;
+
+			gitService.fetch.mockRejectedValue(new Error('Host key verification failed.'));
+
+			await expect(sourceControlService.initializeRepository(preferences, user)).rejects.toThrow(
+				"SSH host key verification failed. The remote server's key may have changed.",
+			);
+		});
+
+		it('should throw UserError when remote host identification has changed', async () => {
+			const user = mock<User>();
+			const preferences = {
+				branchName: 'main',
+				repositoryUrl: 'git@github.com:test/repo.git',
+				connectionType: 'ssh' as const,
+			} as any;
+
+			gitService.fetch.mockRejectedValue(
+				new Error('WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!'),
+			);
+
+			await expect(sourceControlService.initializeRepository(preferences, user)).rejects.toThrow(
+				"SSH host key verification failed. The remote server's key may have changed.",
+			);
+		});
+
+		it('should retry on "Permanently added" warning and succeed', async () => {
+			const user = mock<User>();
+			const preferences = {
+				branchName: 'main',
+				repositoryUrl: 'git@github.com:test/repo.git',
+				connectionType: 'ssh' as const,
+			} as any;
+
+			// SSH outputs this warning to stderr when adding a new host key.
+			// simple-git captures stderr and may include it in errors.
+			gitService.fetch
+				.mockRejectedValueOnce(
+					new Error("Warning: Permanently added 'github.com' to the list of known hosts."),
+				)
+				.mockResolvedValueOnce({ raw: '' } as any);
+			gitService.getBranches.mockResolvedValue({ branches: ['main'], currentBranch: 'main' });
+
+			const result = await sourceControlService.initializeRepository(preferences, user);
+
+			expect(gitService.fetch).toHaveBeenCalledTimes(2);
+			expect(result).toEqual({ branches: ['main'], currentBranch: 'main' });
+		});
+	});
+
+	describe('sanityCheck', () => {
+		beforeEach(() => {
+			// Restore the actual sanityCheck implementation for these tests
+			vi.spyOn(sourceControlService, 'sanityCheck').mockRestore();
+		});
+
+		it('should throw error when folders do not exist', async () => {
+			// ARRANGE
+			(sourceControlFoldersExistCheck as Mock).mockReturnValue(false);
+
+			// ACT & ASSERT
+			await expect(sourceControlService.sanityCheck()).rejects.toThrow(
+				'Source control is not properly set up, please disconnect and reconnect.',
+			);
+			expect(gitService.initService).not.toHaveBeenCalled();
+		});
+
+		it('should initialize git service when folders exist but git service is not initialized', async () => {
+			// ARRANGE
+			(sourceControlFoldersExistCheck as Mock).mockReturnValue(true);
+			gitService.git = null as any;
+			gitService.initService.mockResolvedValue(undefined);
+			gitService.getCurrentBranch.mockResolvedValue({ current: 'main', remote: 'origin/main' });
+			preferencesService.sourceControlPreferences = { branchName: 'main' } as any;
+
+			// ACT
+			await sourceControlService.sanityCheck();
+
+			// ASSERT
+			expect(gitService.initService).toHaveBeenCalled();
+		});
+
+		it('should pass when folders exist and branch matches', async () => {
+			// ARRANGE
+			(sourceControlFoldersExistCheck as Mock).mockReturnValue(true);
+			gitService.getCurrentBranch.mockResolvedValue({ current: 'main', remote: 'origin/main' });
+			preferencesService.sourceControlPreferences = { branchName: 'main' } as any;
+
+			// ACT & ASSERT
+			await expect(sourceControlService.sanityCheck()).resolves.toBeUndefined();
+		});
+	});
+
+	describe('work folder serialization', () => {
+		const user = Object.assign(new User(), { role: GLOBAL_ADMIN_ROLE });
+		const now = new Date().toISOString();
+
+		const workflowFile: SourceControlledFile = {
+			file: 'workflow-1.json',
+			id: 'wf-1',
+			name: 'Workflow 1',
+			type: 'workflow',
+			status: 'modified',
+			location: 'local',
+			conflict: false,
+			updatedAt: now,
+		};
+
+		const pushOptions = {
+			fileNames: [
+				{
+					file: workflowFile.file,
+					id: workflowFile.id,
+					name: workflowFile.name,
+					type: workflowFile.type,
+					status: workflowFile.status,
+					location: workflowFile.location,
+					conflict: workflowFile.conflict,
+					updatedAt: workflowFile.updatedAt,
+				},
+			],
+			commitMessage: 'Test commit',
+		};
+
+		// Parks an in-flight push inside its export step. `exportStarted` resolves once the push
+		// has reached the export call; `releaseExport` lets it continue from there. This keeps the
+		// race tests deterministic instead of relying on a fixed number of microtask ticks.
+		const installExportGate = () => {
+			let releaseExport!: () => void;
+			let signalExportStarted!: () => void;
+			const exportGate = new Promise<void>((resolve) => {
+				releaseExport = resolve;
+			});
+			const exportStarted = new Promise<void>((resolve) => {
+				signalExportStarted = resolve;
+			});
+			sourceControlExportService.exportWorkflowsToWorkFolder.mockImplementation(async () => {
+				signalExportStarted();
+				await exportGate;
+				return mock<ExportResult>();
+			});
+			return { exportStarted, releaseExport };
+		};
+
+		const arrangeSuccessfulPushMocks = () => {
+			(isContainedWithin as Mock).mockReturnValue(true);
+			gitService.git = {} as any;
+			gitService.push.mockResolvedValue(mock<PushResult>());
+			sourceControlExportService.rmFilesFromExportFolder.mockResolvedValue(new Set());
+			sourceControlExportService.exportCredentialsToWorkFolder.mockResolvedValue({
+				count: 0,
+				missingIds: [],
+				folder: '',
+				files: [],
+			});
+			sourceControlExportService.exportTeamProjectsToWorkFolder.mockResolvedValue(
+				mock<ExportResult>(),
+			);
+			sourceControlExportService.exportTagsToWorkFolder.mockResolvedValue(mock<ExportResult>());
+		};
+
+		it('queues a reset behind an in-flight push and never resets the work tree mid-push', async () => {
+			// ARRANGE
+			arrangeSuccessfulPushMocks();
+			mockStatusService.getStatus.mockResolvedValue([workflowFile]);
+
+			const callOrder: string[] = [];
+			gitService.commit.mockImplementation(async () => {
+				callOrder.push('commit');
+				return await Promise.resolve(mock<CommitResult>());
+			});
+			gitService.resetBranch.mockImplementation(async () => {
+				callOrder.push('reset');
+				return await Promise.resolve('');
+			});
+			gitService.pull.mockResolvedValue(mock<PullResult>());
+
+			const { exportStarted, releaseExport } = installExportGate();
+
+			// ACT: start the push and wait until it is parked inside the export step.
+			const pushPromise = sourceControlService.pushWorkfolder(user, pushOptions);
+			await exportStarted;
+
+			// A concurrent reset arrives while the push holds the lock.
+			const resetPromise = sourceControlService.resetWorkfolder();
+
+			// ASSERT: the reset is queued behind the mutex, so no `git reset --hard` runs yet.
+			expect(gitService.resetBranch).not.toHaveBeenCalled();
+
+			releaseExport();
+			await pushPromise;
+			await resetPromise;
+
+			// Once the push releases the lock, the queued reset runs - but only after the commit.
+			expect(gitService.resetBranch).toHaveBeenCalled();
+			expect(callOrder).toEqual(['commit', 'reset']);
+		});
+
+		it('queues getStatus behind an in-flight push', async () => {
+			// ARRANGE
+			arrangeSuccessfulPushMocks();
+			mockStatusService.getStatus.mockResolvedValue([workflowFile]);
+			gitService.commit.mockResolvedValue(mock<CommitResult>());
+
+			const { exportStarted, releaseExport } = installExportGate();
+
+			// ACT
+			const pushPromise = sourceControlService.pushWorkfolder(user, pushOptions);
+			await exportStarted;
+
+			// The push has already read status once before parking at the export gate.
+			expect(mockStatusService.getStatus).toHaveBeenCalledTimes(1);
+
+			const statusPromise = sourceControlService.getStatus(user, {} as any);
+
+			// ASSERT: the queued getStatus has not run its own status read yet.
+			expect(mockStatusService.getStatus).toHaveBeenCalledTimes(1);
+
+			releaseExport();
+			await pushPromise;
+			await statusPromise;
+
+			// Once the push releases the lock, the queued getStatus runs.
+			expect(mockStatusService.getStatus).toHaveBeenCalledTimes(2);
+		});
+
+		it('queues a pull behind an in-flight push', async () => {
+			// ARRANGE
+			arrangeSuccessfulPushMocks();
+			mockStatusService.getStatus.mockResolvedValue([workflowFile]);
+			gitService.commit.mockResolvedValue(mock<CommitResult>());
+			sourceControlImportService.importWorkflowFromWorkFolder.mockResolvedValue([]);
+
+			const { exportStarted, releaseExport } = installExportGate();
+
+			// ACT
+			const pushPromise = sourceControlService.pushWorkfolder(user, pushOptions);
+			await exportStarted;
+
+			// The push has already read status once before parking at the export gate.
+			expect(mockStatusService.getStatus).toHaveBeenCalledTimes(1);
+
+			const pullPromise = sourceControlService.pullWorkfolder(user, { force: true } as any);
+
+			// ASSERT: the queued pull has not run its own status read yet.
+			expect(mockStatusService.getStatus).toHaveBeenCalledTimes(1);
+
+			releaseExport();
+			await pushPromise;
+			await pullPromise;
+
+			// Once the push releases the lock, the queued pull runs its status read.
+			expect(mockStatusService.getStatus).toHaveBeenCalledTimes(2);
+		});
+
+		it('sets the git author inside the locked push, before the commit it applies to', async () => {
+			// ARRANGE
+			arrangeSuccessfulPushMocks();
+			mockStatusService.getStatus.mockResolvedValue([workflowFile]);
+			sourceControlExportService.exportWorkflowsToWorkFolder.mockResolvedValue(
+				mock<ExportResult>(),
+			);
+
+			const callOrder: string[] = [];
+			gitService.setGitUserDetails.mockImplementation(async () => {
+				callOrder.push('setAuthor');
+				await Promise.resolve();
+			});
+			gitService.commit.mockImplementation(async () => {
+				callOrder.push('commit');
+				return await Promise.resolve(mock<CommitResult>());
+			});
+
+			const author = Object.assign(new User(), {
+				role: GLOBAL_ADMIN_ROLE,
+				firstName: 'Ada',
+				lastName: 'Lovelace',
+				email: 'ada@example.com',
+			});
+
+			// ACT
+			await sourceControlService.pushWorkfolder(author, pushOptions);
+
+			// ASSERT: the author is set from the pushing user, immediately before the commit,
+			// both inside the serialized section.
+			expect(gitService.setGitUserDetails).toHaveBeenCalledWith('Ada Lovelace', 'ada@example.com');
+			expect(callOrder).toEqual(['setAuthor', 'commit']);
+		});
+
+		it('falls back to default author details when the pushing user has no full profile', async () => {
+			// ARRANGE
+			arrangeSuccessfulPushMocks();
+			mockStatusService.getStatus.mockResolvedValue([workflowFile]);
+			gitService.commit.mockResolvedValue(mock<CommitResult>());
+			sourceControlExportService.exportWorkflowsToWorkFolder.mockResolvedValue(
+				mock<ExportResult>(),
+			);
+
+			const userWithoutProfile = Object.assign(new User(), {
+				role: GLOBAL_ADMIN_ROLE,
+				firstName: '',
+				lastName: '',
+				email: '',
+			});
+
+			// ACT
+			await sourceControlService.pushWorkfolder(userWithoutProfile, pushOptions);
+
+			// ASSERT: an empty profile must not produce an invalid git identity for the commit.
+			expect(gitService.setGitUserDetails).toHaveBeenCalledWith(
+				SOURCE_CONTROL_DEFAULT_NAME,
+				SOURCE_CONTROL_DEFAULT_EMAIL,
+			);
+		});
+
+		it('releases the lock when an operation fails so the next operation can proceed', async () => {
+			// ARRANGE
+			gitService.git = {} as any;
+			gitService.resetBranch.mockRejectedValueOnce(new Error('reset failed'));
+
+			// ACT & ASSERT: a failing reset rejects but must not hold the lock.
+			await expect(sourceControlService.resetWorkfolder()).rejects.toThrow();
+
+			mockStatusService.getStatus.mockResolvedValueOnce([]);
+			await expect(sourceControlService.getStatus(user, {} as any)).resolves.toEqual([]);
+		});
+	});
+});

@@ -1,3 +1,4 @@
+import type { APIResponse } from '@playwright/test';
 import { readFileSync } from 'fs';
 import type { IWorkflowBase, ExecutionSummary } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
@@ -25,8 +26,10 @@ type WorkflowImportResult = {
 export class WorkflowApiHelper {
 	constructor(private api: ApiHelpers) {}
 
-	async createWorkflow(workflow: Partial<IWorkflowBase>) {
-		const response = await this.api.request.post('/rest/workflows', { data: workflow });
+	async createWorkflow(workflow: Partial<IWorkflowBase>, projectId?: string) {
+		const response = await this.api.request.post('/rest/workflows', {
+			data: projectId ? { ...workflow, projectId } : workflow,
+		});
 
 		if (!response.ok()) {
 			throw new TestError(`Failed to create workflow: ${await response.text()}`);
@@ -82,11 +85,162 @@ export class WorkflowApiHelper {
 		}
 	}
 
+	async update(
+		workflowId: string,
+		versionId: string,
+		data: Partial<IWorkflowBase>,
+	): Promise<IWorkflowBase> {
+		const response = await this.api.request.patch(`/rest/workflows/${workflowId}`, {
+			data: {
+				...data,
+				versionId,
+			},
+		});
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to update workflow: ${await response.text()}`);
+		}
+
+		const result = await response.json();
+		return result.data ?? result;
+	}
+
+	/** Triggers a manual workflow execution from a specific trigger node. */
+	async runManually(workflowId: string, triggerNodeName: string): Promise<{ executionId: string }> {
+		const response = await this.api.request.post(`/rest/workflows/${workflowId}/run`, {
+			data: {
+				triggerToStartFrom: { name: triggerNodeName },
+			},
+		});
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to run workflow: ${await response.text()}`);
+		}
+
+		const result = await response.json();
+		return result.data ?? result;
+	}
+
+	/**
+	 * Like {@link runManually}, but accepts an explicit workflow payload and
+	 * returns the raw response instead of throwing — for asserting the run
+	 * status or starting from a trigger with custom `workflowData`.
+	 */
+	async runRaw(
+		workflowId: string,
+		options: { workflowData?: Partial<IWorkflowBase>; triggerNodeName: string },
+	): Promise<APIResponse> {
+		return await this.api.request.post(`/rest/workflows/${workflowId}/run`, {
+			data: {
+				...(options.workflowData ? { workflowData: options.workflowData } : {}),
+				triggerToStartFrom: { name: options.triggerNodeName },
+			},
+		});
+	}
+
+	/**
+	 * Like {@link update}, but returns the raw response instead of throwing on a
+	 * non-2xx status — for asserting a specific status code (e.g. the `422` from
+	 * the redaction floor-enforcement guard).
+	 */
+	async updateRaw(
+		workflowId: string,
+		versionId: string,
+		data: Partial<IWorkflowBase>,
+	): Promise<APIResponse> {
+		return await this.api.request.patch(`/rest/workflows/${workflowId}`, {
+			data: { ...data, versionId },
+		});
+	}
+
 	async deactivate(workflowId: string) {
 		const response = await this.api.request.post(`/rest/workflows/${workflowId}/deactivate`);
 
 		if (!response.ok()) {
 			throw new TestError(`Failed to deactivate workflow: ${await response.text()}`);
+		}
+	}
+
+	async archive(workflowId: string) {
+		const response = await this.api.request.post(`/rest/workflows/${workflowId}/archive`);
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to archive workflow: ${await response.text()}`);
+		}
+	}
+
+	async delete(workflowId: string) {
+		const response = await this.api.request.delete(`/rest/workflows/${workflowId}`);
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to delete workflow: ${await response.text()}`);
+		}
+	}
+
+	async shareWorkflow(workflowId: string, shareWithIds: string[]) {
+		const response = await this.api.request.put(`/rest/workflows/${workflowId}/share`, {
+			data: { shareWithIds },
+		});
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to share workflow: ${await response.text()}`);
+		}
+	}
+
+	async getWorkflows() {
+		const response = await this.api.request.get('/rest/workflows');
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to get workflows: ${await response.text()}`);
+		}
+
+		const result = await response.json();
+		return result.data ?? result;
+	}
+
+	async getWorkflow(workflowId: string): Promise<IWorkflowBase> {
+		const response = await this.api.request.get(`/rest/workflows/${workflowId}`);
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to get workflow: ${await response.text()}`);
+		}
+
+		const result = await response.json();
+		return result.data ?? result;
+	}
+
+	async transfer(workflowId: string, destinationProjectId: string) {
+		const response = await this.api.request.put(`/rest/workflows/${workflowId}/transfer`, {
+			data: { destinationProjectId },
+		});
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to transfer workflow: ${await response.text()}`);
+		}
+	}
+
+	/**
+	 * Set tags on a workflow via API
+	 * @param workflowId - The workflow ID
+	 * @param tagIds - Array of tag IDs to assign to the workflow
+	 */
+	async setTags(workflowId: string, tagIds: string[]): Promise<void> {
+		const getResponse = await this.api.request.get(`/rest/workflows/${workflowId}`);
+		if (!getResponse.ok()) {
+			throw new TestError(`Failed to get workflow: ${await getResponse.text()}`);
+		}
+		const workflowData = await getResponse.json();
+		const workflow = workflowData.data ?? workflowData;
+
+		const response = await this.api.request.patch(`/rest/workflows/${workflowId}`, {
+			data: {
+				versionId: workflow.versionId,
+				tags: tagIds,
+			},
+		});
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to set workflow tags: ${await response.text()}`);
 		}
 	}
 
@@ -126,6 +280,16 @@ export class WorkflowApiHelper {
 					// Extract HTTP method from webhook node, default to GET
 					webhookMethod = (node.parameters.httpMethod as typeof webhookMethod) ?? 'GET';
 				}
+
+				// Handle MCP Trigger nodes - make their paths unique
+				// Note: webhookId is required for isFullPath: true webhooks to work correctly.
+				// Without it, the webhook path becomes workflowId/nodeName/path instead of just path.
+				if (node.type === '@n8n/n8n-nodes-langchain.mcpTrigger') {
+					const mcpId = nanoid(idLength);
+					const currentPath = (node.parameters.path as string) ?? 'mcp';
+					node.parameters.path = `${currentPath}-${mcpId}`;
+					node.webhookId = mcpId;
+				}
 			}
 		}
 
@@ -135,13 +299,18 @@ export class WorkflowApiHelper {
 	/** Creates a workflow from definition, making it unique for testing. */
 	async createWorkflowFromDefinition(
 		workflow: Partial<IWorkflowBase>,
-		options?: { webhookPrefix?: string; idLength?: number; makeUnique?: boolean },
+		options?: {
+			webhookPrefix?: string;
+			idLength?: number;
+			makeUnique?: boolean;
+			projectId?: string;
+		},
 	): Promise<WorkflowImportResult> {
-		const { makeUnique = true, ...rest } = options ?? {};
+		const { makeUnique = true, projectId, ...rest } = options ?? {};
 		const { webhookPath, webhookId, webhookMethod } = makeUnique
 			? this.makeWorkflowUnique(workflow, rest)
 			: { webhookPath: undefined, webhookId: undefined, webhookMethod: undefined };
-		const createdWorkflow = await this.createWorkflow(workflow);
+		const createdWorkflow = await this.createWorkflow(workflow, projectId);
 		const workflowId: string = String(createdWorkflow.id);
 
 		return {
@@ -156,11 +325,21 @@ export class WorkflowApiHelper {
 	/** Imports a workflow from file, making it unique for testing. */
 	async importWorkflowFromFile(
 		fileName: string,
-		options?: { webhookPrefix?: string; idLength?: number; makeUnique?: boolean },
+		options?: {
+			webhookPrefix?: string;
+			idLength?: number;
+			makeUnique?: boolean;
+			transform?: (workflow: Partial<IWorkflowBase>) => Partial<IWorkflowBase>;
+		},
 	): Promise<WorkflowImportResult> {
 		const filePath = resolveFromRoot('workflows', fileName);
 		const fileContent = readFileSync(filePath, 'utf8');
-		const workflowDefinition = JSON.parse(fileContent) as IWorkflowBase;
+		let workflowDefinition = JSON.parse(fileContent) as IWorkflowBase;
+
+		// Apply transform if provided
+		if (options?.transform) {
+			workflowDefinition = options.transform(workflowDefinition) as IWorkflowBase;
+		}
 
 		return await this.importWorkflowFromDefinition(workflowDefinition, options);
 	}
@@ -179,7 +358,9 @@ export class WorkflowApiHelper {
 
 	async getExecutions(workflowId?: string, limit = 20): Promise<ExecutionListResponse[]> {
 		const params = new URLSearchParams();
-		if (workflowId) params.set('workflowId', workflowId);
+		if (workflowId) {
+			params.set('filter', JSON.stringify({ workflowId }));
+		}
 		params.set('limit', limit.toString());
 		const response = await this.api.request.get('/rest/executions', { params });
 
@@ -196,8 +377,11 @@ export class WorkflowApiHelper {
 		return [];
 	}
 
-	async getExecution(executionId: string): Promise<ExecutionListResponse> {
-		const response = await this.api.request.get(`/rest/executions/${executionId}`);
+	async getExecution(
+		executionId: string,
+		options?: { redactExecutionData?: boolean },
+	): Promise<ExecutionListResponse> {
+		const response = await this.getExecutionRaw(executionId, options);
 
 		if (!response.ok()) {
 			throw new TestError(`Failed to get execution: ${await response.text()}`);
@@ -207,7 +391,39 @@ export class WorkflowApiHelper {
 		return result.data ?? result;
 	}
 
-	async waitForExecution(workflowId: string, timeoutMs = 10000): Promise<ExecutionListResponse> {
+	/** Stops a running or waiting execution and returns the stopped execution summary. */
+	async stopExecution(executionId: string): Promise<ExecutionListResponse> {
+		const response = await this.api.request.post(`/rest/executions/${executionId}/stop`);
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to stop execution: ${await response.text()}`);
+		}
+
+		const result = await response.json();
+		return result.data ?? result;
+	}
+
+	/**
+	 * Like {@link getExecution}, but returns the raw response instead of throwing
+	 * on a non-2xx status — for asserting a specific status code (e.g. the `403`
+	 * from the `execution:reveal` scope guard on `?redactExecutionData=false`).
+	 */
+	async getExecutionRaw(
+		executionId: string,
+		options?: { redactExecutionData?: boolean },
+	): Promise<APIResponse> {
+		const params = new URLSearchParams();
+		if (options?.redactExecutionData !== undefined) {
+			params.set('redactExecutionData', String(options.redactExecutionData));
+		}
+		return await this.api.request.get(`/rest/executions/${executionId}`, { params });
+	}
+
+	async waitForExecution(
+		workflowId: string,
+		timeoutMs = 10000,
+		mode: 'manual' | 'webhook' | 'trigger' | 'integrated' = 'webhook',
+	): Promise<ExecutionListResponse> {
 		const initialExecutions = await this.getExecutions(workflowId, 50);
 		const initialCount = initialExecutions.length;
 		const startTime = Date.now();
@@ -219,7 +435,8 @@ export class WorkflowApiHelper {
 				for (const execution of executions.slice(0, executions.length - initialCount)) {
 					const isCompleted = execution.status === 'success' || execution.status === 'error';
 					const isCorrectWorkflow = execution.workflowId === workflowId;
-					if (isCompleted && isCorrectWorkflow) {
+					const isCorrectMode = execution.mode === mode;
+					if (isCompleted && isCorrectWorkflow && isCorrectMode) {
 						return execution;
 					}
 				}
@@ -228,7 +445,8 @@ export class WorkflowApiHelper {
 			for (const execution of executions) {
 				const isCompleted = execution.status === 'success' || execution.status === 'error';
 				const isCorrectWorkflow = execution.workflowId === workflowId;
-				if (isCompleted && isCorrectWorkflow && execution.mode === 'webhook') {
+				const isCorrectMode = execution.mode === mode;
+				if (isCompleted && isCorrectWorkflow && isCorrectMode) {
 					const executionTime = new Date(
 						execution.startedAt ?? execution.createdAt ?? Date.now(),
 					).getTime();

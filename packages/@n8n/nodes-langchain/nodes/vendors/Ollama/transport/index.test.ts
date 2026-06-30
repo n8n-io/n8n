@@ -1,5 +1,5 @@
-import { mockDeep } from 'jest-mock-extended';
 import type { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-workflow';
+import { mockDeep } from 'vitest-mock-extended';
 
 import { apiRequest } from './index';
 
@@ -8,7 +8,7 @@ describe('Ollama Transport', () => {
 	const loadOptionsFunctionsMock = mockDeep<ILoadOptionsFunctions>();
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('apiRequest', () => {

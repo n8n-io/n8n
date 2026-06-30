@@ -4,6 +4,7 @@ import { ChatPromptTemplate, SystemMessagePromptTemplate } from '@langchain/core
 import type { OutputFixingParser, StructuredOutputParser } from '@langchain/classic/output_parsers';
 import { NodeOperationError, type IExecuteFunctions, type INodeExecutionData } from 'n8n-workflow';
 
+import { wrapLangChainParserError } from '@utils/output_parsers/langchainParserError';
 import { getTracingConfig } from '@utils/tracing';
 
 import { SYSTEM_PROMPT_TEMPLATE } from './constants';
@@ -36,8 +37,12 @@ export async function processItem(
 		itemIndex,
 		SYSTEM_PROMPT_TEMPLATE,
 	) as string;
+	const escapedTemplate = (systemPromptTemplateOpt ?? SYSTEM_PROMPT_TEMPLATE)
+		.replace(/[{}]/g, (match) => match + match)
+		.replaceAll('{{categories}}', '{categories}');
+
 	const systemPromptTemplate = SystemMessagePromptTemplate.fromTemplate(
-		`${systemPromptTemplateOpt ?? SYSTEM_PROMPT_TEMPLATE}
+		`${escapedTemplate}
 	{format_instructions}
 	${multiClassPrompt}
 	${fallbackPrompt}`,
@@ -53,5 +58,9 @@ export async function processItem(
 	const prompt = ChatPromptTemplate.fromMessages(messages);
 	const chain = prompt.pipe(llm).pipe(parser).withConfig(getTracingConfig(ctx));
 
-	return await chain.invoke(messages);
+	try {
+		return await chain.invoke(messages);
+	} catch (error) {
+		throw wrapLangChainParserError(error, ctx.getNode(), itemIndex);
+	}
 }

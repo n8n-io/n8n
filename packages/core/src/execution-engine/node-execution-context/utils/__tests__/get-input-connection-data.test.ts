@@ -1,5 +1,5 @@
 import type { Tool } from '@langchain/core/tools';
-import { mock } from 'jest-mock-extended';
+import { DynamicStructuredTool } from '@langchain/core/tools';
 import type {
 	INode,
 	ITaskDataConnections,
@@ -14,11 +14,41 @@ import type {
 	IRunData,
 	ITaskData,
 	EngineRequest,
+	WorkflowExecuteMode,
+	CloseFunction,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import * as n8nWorkflow from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+import { z } from 'zod';
 
 import { ExecuteContext } from '../../execute-context';
-import { makeHandleToolInvocation } from '../get-input-connection-data';
+import { SupplyDataContext } from '../../supply-data-context';
+import { StructuredToolkit } from '../ai-tool-types';
+import { getSchema } from '../create-node-as-tool';
+import {
+	createHitlToolkit,
+	createHitlToolSupplyData,
+	extendResponseMetadata,
+	makeHandleToolInvocation,
+} from '../get-input-connection-data';
+
+// Mock getSchema
+vi.mock('../create-node-as-tool', async (importActual) => ({
+	...(await importActual()),
+	getSchema: vi.fn(),
+}));
+
+// n8n-workflow is externalized (see vite.config.ts), so its CJS exports are
+// getter-only and Vite SSR wraps the namespace separately from `require`.
+// Replace the namespace's `sleepWithAbort` so both source code (via Vite SSR
+// `import`) and tests see the mock.
+const sleepWithAbort = vi.fn();
+Object.defineProperty(n8nWorkflow, 'sleepWithAbort', {
+	configurable: true,
+	get: () => sleepWithAbort,
+});
 
 describe('getInputConnectionData', () => {
 	const agentNode = mock<INode>({
@@ -50,7 +80,7 @@ describe('getInputConnectionData', () => {
 	let executeContext: ExecuteContext;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		executeContext = new ExecuteContext(
 			workflow,
@@ -65,14 +95,14 @@ describe('getInputConnectionData', () => {
 			[],
 		);
 
-		jest.spyOn(executeContext, 'getNode').mockReturnValue(agentNode);
+		vi.spyOn(executeContext, 'getNode').mockReturnValue(agentNode);
 		nodeTypes.getByNameAndVersion
 			.calledWith(agentNode.type, expect.anything())
 			.mockReturnValue(agentNodeType);
 
 		// Mock getConnections method used by validateInputConfiguration
 		// This will be overridden in individual tests as needed
-		jest.spyOn(executeContext, 'getConnections').mockReturnValue([]);
+		vi.spyOn(executeContext, 'getConnections').mockReturnValue([]);
 	});
 
 	describe.each([
@@ -94,7 +124,7 @@ describe('getInputConnectionData', () => {
 			disabled: false,
 		});
 		const secondNode = mock<INode>({ name: 'Second Node', type: 'test.type', disabled: false });
-		const supplyData = jest.fn().mockResolvedValue({ response });
+		const supplyData = vi.fn().mockResolvedValue({ response });
 		const nodeType = mock<INodeType>({ supplyData });
 
 		beforeEach(() => {
@@ -126,7 +156,7 @@ describe('getInputConnectionData', () => {
 				},
 			];
 			workflow.getParentNodes.mockReturnValueOnce([]);
-			(executeContext.getConnections as jest.Mock).mockReturnValueOnce([]);
+			(executeContext.getConnections as Mock).mockReturnValueOnce([]);
 
 			const result = await executeContext.getInputConnectionData(connectionType, 0);
 			expect(result).toBeUndefined();
@@ -142,12 +172,10 @@ describe('getInputConnectionData', () => {
 				},
 			];
 			workflow.getParentNodes.mockReturnValueOnce([node.name, secondNode.name]);
-			jest
-				.spyOn(executeContext, 'getConnections')
-				.mockReturnValueOnce([
-					[{ node: node.name, type: connectionType, index: 0 }],
-					[{ node: secondNode.name, type: connectionType, index: 0 }],
-				]);
+			vi.spyOn(executeContext, 'getConnections').mockReturnValueOnce([
+				[{ node: node.name, type: connectionType, index: 0 }],
+				[{ node: secondNode.name, type: connectionType, index: 0 }],
+			]);
 
 			await expect(executeContext.getInputConnectionData(connectionType, 0)).rejects.toThrow(
 				`Only 1 ${connectionType} sub-nodes are/is allowed to be connected`,
@@ -163,7 +191,7 @@ describe('getInputConnectionData', () => {
 				},
 			];
 			workflow.getParentNodes.mockReturnValueOnce([]);
-			jest.spyOn(executeContext, 'getConnections').mockReturnValueOnce([]);
+			vi.spyOn(executeContext, 'getConnections').mockReturnValueOnce([]);
 
 			await expect(executeContext.getInputConnectionData(connectionType, 0)).rejects.toThrow(
 				'must be connected and enabled',
@@ -187,9 +215,9 @@ describe('getInputConnectionData', () => {
 			workflow.getParentNodes.mockReturnValueOnce([disabledNode.name]);
 			workflow.getNode.calledWith(disabledNode.name).mockReturnValue(disabledNode);
 			// Mock connections that include the disabled node, but getConnectedNodes will filter it out
-			jest
-				.spyOn(executeContext, 'getConnections')
-				.mockReturnValueOnce([[{ node: disabledNode.name, type: connectionType, index: 0 }]]);
+			vi.spyOn(executeContext, 'getConnections').mockReturnValueOnce([
+				[{ node: disabledNode.name, type: connectionType, index: 0 }],
+			]);
 
 			await expect(executeContext.getInputConnectionData(connectionType, 0)).rejects.toThrow(
 				'must be connected and enabled',
@@ -204,9 +232,9 @@ describe('getInputConnectionData', () => {
 					required: true,
 				},
 			];
-			jest
-				.spyOn(executeContext, 'getConnections')
-				.mockReturnValueOnce([[{ node: node.name, type: connectionType, index: 0 }]]);
+			vi.spyOn(executeContext, 'getConnections').mockReturnValueOnce([
+				[{ node: node.name, type: connectionType, index: 0 }],
+			]);
 
 			supplyData.mockRejectedValueOnce(new Error('supplyData error'));
 
@@ -223,9 +251,9 @@ describe('getInputConnectionData', () => {
 					required: true,
 				},
 			];
-			jest
-				.spyOn(executeContext, 'getConnections')
-				.mockReturnValueOnce([[{ node: node.name, type: connectionType, index: 0 }]]);
+			vi.spyOn(executeContext, 'getConnections').mockReturnValueOnce([
+				[{ node: node.name, type: connectionType, index: 0 }],
+			]);
 
 			const configError = new NodeOperationError(node, 'Config Error in node', {
 				functionality: 'configuration-node',
@@ -246,11 +274,11 @@ describe('getInputConnectionData', () => {
 					required: true,
 				},
 			];
-			jest
-				.spyOn(executeContext, 'getConnections')
-				.mockReturnValueOnce([[{ node: node.name, type: connectionType, index: 0 }]]);
+			vi.spyOn(executeContext, 'getConnections').mockReturnValueOnce([
+				[{ node: node.name, type: connectionType, index: 0 }],
+			]);
 
-			const closeFunction = jest.fn();
+			const closeFunction = vi.fn();
 			supplyData.mockResolvedValueOnce({ response, closeFunction });
 
 			const result = await executeContext.getInputConnectionData(connectionType, 0);
@@ -286,13 +314,11 @@ describe('getInputConnectionData', () => {
 
 			workflow.getParentNodes.mockReturnValueOnce([node.name, secondNode.name, thirdNode.name]);
 			workflow.getNode.calledWith(thirdNode.name).mockReturnValue(thirdNode);
-			jest
-				.spyOn(executeContext, 'getConnections')
-				.mockReturnValueOnce([
-					[{ node: node.name, type: connectionType, index: 0 }],
-					[{ node: secondNode.name, type: connectionType, index: 0 }],
-					[{ node: thirdNode.name, type: connectionType, index: 0 }],
-				]);
+			vi.spyOn(executeContext, 'getConnections').mockReturnValueOnce([
+				[{ node: node.name, type: connectionType, index: 0 }],
+				[{ node: secondNode.name, type: connectionType, index: 0 }],
+				[{ node: thirdNode.name, type: connectionType, index: 0 }],
+			]);
 
 			const result = await executeContext.getInputConnectionData(connectionType, 0);
 			expect(result).toEqual([response, response, response]);
@@ -324,13 +350,11 @@ describe('getInputConnectionData', () => {
 				.mockReturnValue(nodeType);
 
 			workflow.getParentNodes.mockReturnValueOnce([node.name, secondNode.name, thirdNode.name]);
-			jest
-				.spyOn(executeContext, 'getConnections')
-				.mockReturnValueOnce([
-					[{ node: node.name, type: connectionType, index: 0 }],
-					[{ node: secondNode.name, type: connectionType, index: 0 }],
-					[{ node: thirdNode.name, type: connectionType, index: 0 }],
-				]);
+			vi.spyOn(executeContext, 'getConnections').mockReturnValueOnce([
+				[{ node: node.name, type: connectionType, index: 0 }],
+				[{ node: secondNode.name, type: connectionType, index: 0 }],
+				[{ node: thirdNode.name, type: connectionType, index: 0 }],
+			]);
 
 			await expect(executeContext.getInputConnectionData(connectionType, 0)).rejects.toThrow(
 				`Only 2 ${connectionType} sub-nodes are/is allowed to be connected`,
@@ -351,9 +375,9 @@ describe('getInputConnectionData', () => {
 					required: false,
 				},
 			];
-			jest
-				.spyOn(executeContext, 'getConnections')
-				.mockReturnValueOnce([[{ node: node.name, type: connectionType, index: 0 }]]);
+			vi.spyOn(executeContext, 'getConnections').mockReturnValueOnce([
+				[{ node: node.name, type: connectionType, index: 0 }],
+			]);
 
 			const result = await executeContext.getInputConnectionData(connectionType, 0);
 			expect(result).toEqual([response]);
@@ -374,7 +398,7 @@ describe('getInputConnectionData', () => {
 				},
 			];
 			workflow.getParentNodes.mockReturnValueOnce([]);
-			jest.spyOn(executeContext, 'getConnections').mockReturnValueOnce([]);
+			vi.spyOn(executeContext, 'getConnections').mockReturnValueOnce([]);
 
 			const result = await executeContext.getInputConnectionData(connectionType, 0);
 			expect(result).toEqual([]);
@@ -389,13 +413,17 @@ describe('getInputConnectionData', () => {
 			type: 'test.tool',
 			disabled: false,
 		});
-		const supplyData = jest.fn().mockResolvedValue({ response: mockTool });
+		const supplyData = vi.fn().mockResolvedValue({ response: mockTool });
 		const toolNodeType = mock<INodeType>({ supplyData });
 
-		const secondToolNode = mock<INode>({ name: 'test.secondTool', disabled: false });
+		const secondToolNode = mock<INode>({
+			name: 'Second Tool',
+			type: 'test.secondTool',
+			disabled: false,
+		});
 		const secondMockTool = mock<Tool>();
 		const secondToolNodeType = mock<INodeType>({
-			supplyData: jest.fn().mockResolvedValue({ response: secondMockTool }),
+			supplyData: vi.fn().mockResolvedValue({ response: secondMockTool }),
 		});
 
 		beforeEach(() => {
@@ -417,7 +445,7 @@ describe('getInputConnectionData', () => {
 				},
 			];
 			workflow.getParentNodes.mockReturnValueOnce([]);
-			jest.spyOn(executeContext, 'getConnections').mockReturnValueOnce([]);
+			vi.spyOn(executeContext, 'getConnections').mockReturnValueOnce([]);
 
 			const result = await executeContext.getInputConnectionData(NodeConnectionTypes.AiTool, 0);
 			expect(result).toEqual([]);
@@ -432,7 +460,7 @@ describe('getInputConnectionData', () => {
 				},
 			];
 			workflow.getParentNodes.mockReturnValueOnce([]);
-			jest.spyOn(executeContext, 'getConnections').mockReturnValueOnce([]);
+			vi.spyOn(executeContext, 'getConnections').mockReturnValueOnce([]);
 
 			await expect(
 				executeContext.getInputConnectionData(NodeConnectionTypes.AiTool, 0),
@@ -458,11 +486,9 @@ describe('getInputConnectionData', () => {
 				.calledWith(agentNode.name, NodeConnectionTypes.AiTool)
 				.mockReturnValue([disabledToolNode.name]);
 			workflow.getNode.calledWith(disabledToolNode.name).mockReturnValue(disabledToolNode);
-			jest
-				.spyOn(executeContext, 'getConnections')
-				.mockReturnValueOnce([
-					[{ node: disabledToolNode.name, type: NodeConnectionTypes.AiTool, index: 0 }],
-				]);
+			vi.spyOn(executeContext, 'getConnections').mockReturnValueOnce([
+				[{ node: disabledToolNode.name, type: NodeConnectionTypes.AiTool, index: 0 }],
+			]);
 
 			await expect(
 				executeContext.getInputConnectionData(NodeConnectionTypes.AiTool, 0),
@@ -485,12 +511,10 @@ describe('getInputConnectionData', () => {
 			workflow.getParentNodes
 				.calledWith(agentNode.name, NodeConnectionTypes.AiTool)
 				.mockReturnValue([toolNode.name, secondToolNode.name]);
-			jest
-				.spyOn(executeContext, 'getConnections')
-				.mockReturnValueOnce([
-					[{ node: toolNode.name, type: NodeConnectionTypes.AiTool, index: 0 }],
-					[{ node: secondToolNode.name, type: NodeConnectionTypes.AiTool, index: 0 }],
-				]);
+			vi.spyOn(executeContext, 'getConnections').mockReturnValueOnce([
+				[{ node: toolNode.name, type: NodeConnectionTypes.AiTool, index: 0 }],
+				[{ node: secondToolNode.name, type: NodeConnectionTypes.AiTool, index: 0 }],
+			]);
 
 			const result = await executeContext.getInputConnectionData(NodeConnectionTypes.AiTool, 0);
 			expect(result).toEqual([mockTool, secondMockTool]);
@@ -507,11 +531,9 @@ describe('getInputConnectionData', () => {
 					required: true,
 				},
 			];
-			jest
-				.spyOn(executeContext, 'getConnections')
-				.mockReturnValueOnce([
-					[{ node: toolNode.name, type: NodeConnectionTypes.AiTool, index: 0 }],
-				]);
+			vi.spyOn(executeContext, 'getConnections').mockReturnValueOnce([
+				[{ node: toolNode.name, type: NodeConnectionTypes.AiTool, index: 0 }],
+			]);
 
 			await expect(
 				executeContext.getInputConnectionData(NodeConnectionTypes.AiTool, 0),
@@ -526,11 +548,9 @@ describe('getInputConnectionData', () => {
 					required: true,
 				},
 			];
-			jest
-				.spyOn(executeContext, 'getConnections')
-				.mockReturnValueOnce([
-					[{ node: toolNode.name, type: NodeConnectionTypes.AiTool, index: 0 }],
-				]);
+			vi.spyOn(executeContext, 'getConnections').mockReturnValueOnce([
+				[{ node: toolNode.name, type: NodeConnectionTypes.AiTool, index: 0 }],
+			]);
 
 			const result = await executeContext.getInputConnectionData(NodeConnectionTypes.AiTool, 0);
 			expect(result).toEqual([mockTool]);
@@ -544,11 +564,11 @@ describe('makeHandleToolInvocation', () => {
 		name: 'Test Tool Node',
 		type: 'test.tool',
 	});
-	const execute = jest.fn();
+	const execute = vi.fn();
 	const connectedNodeType = mock<INodeType>({
 		execute,
 	});
-	const contextFactory = jest.fn();
+	const contextFactory = vi.fn();
 	const taskData = mock<ITaskData>();
 
 	let runExecutionData = mock<IRunExecutionData>({
@@ -559,7 +579,7 @@ describe('makeHandleToolInvocation', () => {
 	const toolArgs = { key: 'value' };
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should return stringified results when execution is successful', async () => {
@@ -612,7 +632,7 @@ describe('makeHandleToolInvocation', () => {
 		]);
 	});
 
-	it('should handle engine requests and return a warning message', async () => {
+	it('should throw a clear UserError when a tool returns an EngineRequest from inside a parent agent', async () => {
 		const mockContext = mock<IExecuteFunctions>();
 		contextFactory.mockReturnValue(mockContext);
 		const mockResult: EngineRequest = { actions: [], metadata: {} };
@@ -624,25 +644,14 @@ describe('makeHandleToolInvocation', () => {
 			connectedNodeType,
 			runExecutionData,
 		);
-		const result = await handleToolInvocation(toolArgs);
 
-		expect(result).toBe(
-			'"Error: The Tool attempted to return an engine request, which is not supported in Agents"',
+		await expect(handleToolInvocation(toolArgs)).rejects.toThrow(
+			/connected tool returned an engine request/i,
 		);
-		expect(mockContext.addOutputData).toHaveBeenCalledWith(NodeConnectionTypes.AiTool, 0, [
-			[
-				{
-					json: {
-						response:
-							'Error: The Tool attempted to return an engine request, which is not supported in Agents',
-					},
-				},
-			],
-		]);
 	});
 
 	it('should continue if json and binary data exist', async () => {
-		const warnFn = jest.fn();
+		const warnFn = vi.fn();
 		const mockContext = mock<IExecuteFunctions>({
 			logger: {
 				warn: warnFn,
@@ -743,17 +752,17 @@ describe('makeHandleToolInvocation', () => {
 	});
 
 	describe('retry functionality', () => {
-		const contextFactory = jest.fn();
+		const contextFactory = vi.fn();
 		const toolArgs = { input: 'test' };
 		let handleToolInvocation: ReturnType<typeof makeHandleToolInvocation>;
 		let mockContext: unknown;
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			mockContext = {
-				addInputData: jest.fn(),
-				addOutputData: jest.fn(),
-				logger: { warn: jest.fn() },
+				addInputData: vi.fn(),
+				addOutputData: vi.fn(),
+				logger: { warn: vi.fn() },
 			};
 			contextFactory.mockReturnValue(mockContext);
 		});
@@ -764,7 +773,7 @@ describe('makeHandleToolInvocation', () => {
 				retryOnFail: false,
 			});
 			const connectedNodeType = mock<INodeType>({
-				execute: jest.fn().mockRejectedValue(new Error('Test error')),
+				execute: vi.fn().mockRejectedValue(new Error('Test error')),
 			});
 
 			handleToolInvocation = makeHandleToolInvocation(
@@ -790,7 +799,7 @@ describe('makeHandleToolInvocation', () => {
 				waitBetweenTries: 0,
 			});
 			const connectedNodeType = mock<INodeType>({
-				execute: jest.fn().mockRejectedValue(new Error('Test error')),
+				execute: vi.fn().mockRejectedValue(new Error('Test error')),
 			});
 
 			handleToolInvocation = makeHandleToolInvocation(
@@ -815,7 +824,7 @@ describe('makeHandleToolInvocation', () => {
 				waitBetweenTries: 0,
 			});
 			const connectedNodeType = mock<INodeType>({
-				execute: jest
+				execute: vi
 					.fn()
 					.mockRejectedValueOnce(new Error('First attempt fails'))
 					.mockResolvedValueOnce([[{ json: { result: 'success' } }]]),
@@ -843,7 +852,7 @@ describe('makeHandleToolInvocation', () => {
 			];
 
 			for (const { maxTries, expected } of testCases) {
-				jest.clearAllMocks();
+				vi.clearAllMocks();
 
 				const connectedNode = mock<INode>({
 					name: 'Test Tool',
@@ -852,7 +861,7 @@ describe('makeHandleToolInvocation', () => {
 					waitBetweenTries: 0,
 				});
 				const connectedNodeType = mock<INodeType>({
-					execute: jest.fn().mockRejectedValue(new Error('Test error')),
+					execute: vi.fn().mockRejectedValue(new Error('Test error')),
 				});
 
 				handleToolInvocation = makeHandleToolInvocation(
@@ -870,9 +879,7 @@ describe('makeHandleToolInvocation', () => {
 		});
 
 		it('should respect waitBetweenTries limits (0-5000ms)', async () => {
-			const sleepWithAbortSpy = jest
-				.spyOn(require('n8n-workflow'), 'sleepWithAbort')
-				.mockResolvedValue(undefined);
+			const sleepWithAbortSpy = (sleepWithAbort as Mock).mockResolvedValue(undefined);
 
 			const connectedNode = mock<INode>({
 				name: 'Test Tool',
@@ -881,7 +888,7 @@ describe('makeHandleToolInvocation', () => {
 				waitBetweenTries: 1500,
 			});
 			const connectedNodeType = mock<INodeType>({
-				execute: jest.fn().mockRejectedValue(new Error('Test error')),
+				execute: vi.fn().mockRejectedValue(new Error('Test error')),
 			});
 
 			handleToolInvocation = makeHandleToolInvocation(
@@ -901,20 +908,20 @@ describe('makeHandleToolInvocation', () => {
 	});
 
 	describe('abort signal functionality', () => {
-		const contextFactory = jest.fn();
+		const contextFactory = vi.fn();
 		const toolArgs = { input: 'test' };
 		let handleToolInvocation: ReturnType<typeof makeHandleToolInvocation>;
 		let mockContext: unknown;
 		let abortController: AbortController;
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			abortController = new AbortController();
 			mockContext = {
-				addInputData: jest.fn(),
-				addOutputData: jest.fn(),
-				logger: { warn: jest.fn() },
-				getExecutionCancelSignal: jest.fn(() => abortController.signal),
+				addInputData: vi.fn(),
+				addOutputData: vi.fn(),
+				logger: { warn: vi.fn() },
+				getExecutionCancelSignal: vi.fn(() => abortController.signal),
 			};
 			contextFactory.mockReturnValue(mockContext);
 		});
@@ -927,7 +934,7 @@ describe('makeHandleToolInvocation', () => {
 				waitBetweenTries: 100,
 			});
 			const connectedNodeType = mock<INodeType>({
-				execute: jest.fn().mockResolvedValue([[{ json: { result: 'success' } }]]),
+				execute: vi.fn().mockResolvedValue([[{ json: { result: 'success' } }]]),
 			});
 
 			// Abort before starting
@@ -947,9 +954,9 @@ describe('makeHandleToolInvocation', () => {
 		});
 
 		it('should handle abort signal during retry wait', async () => {
-			const sleepWithAbortSpy = jest
-				.spyOn(require('n8n-workflow'), 'sleepWithAbort')
-				.mockRejectedValue(new Error('Execution was cancelled'));
+			const sleepWithAbortSpy = (sleepWithAbort as Mock).mockRejectedValue(
+				new Error('Execution was cancelled'),
+			);
 
 			const connectedNode = mock<INode>({
 				name: 'Test Tool',
@@ -958,7 +965,7 @@ describe('makeHandleToolInvocation', () => {
 				waitBetweenTries: 1000,
 			});
 			const connectedNodeType = mock<INodeType>({
-				execute: jest
+				execute: vi
 					.fn()
 					.mockRejectedValueOnce(new Error('First attempt fails'))
 					.mockResolvedValueOnce([[{ json: { result: 'success' } }]]),
@@ -988,7 +995,7 @@ describe('makeHandleToolInvocation', () => {
 				waitBetweenTries: 0,
 			});
 			const connectedNodeType = mock<INodeType>({
-				execute: jest.fn().mockImplementation(() => {
+				execute: vi.fn().mockImplementation(() => {
 					// Simulate abort during execution
 					abortController.abort();
 					throw new Error('Execution failed');
@@ -1016,15 +1023,13 @@ describe('makeHandleToolInvocation', () => {
 				waitBetweenTries: 10,
 			});
 			const connectedNodeType = mock<INodeType>({
-				execute: jest
+				execute: vi
 					.fn()
 					.mockRejectedValueOnce(new Error('First attempt fails'))
 					.mockResolvedValueOnce([[{ json: { result: 'success' } }]]),
 			});
 
-			const sleepWithAbortSpy = jest
-				.spyOn(require('n8n-workflow'), 'sleepWithAbort')
-				.mockResolvedValue(undefined);
+			const sleepWithAbortSpy = (sleepWithAbort as Mock).mockResolvedValue(undefined);
 
 			handleToolInvocation = makeHandleToolInvocation(
 				contextFactory,
@@ -1044,9 +1049,9 @@ describe('makeHandleToolInvocation', () => {
 
 		it('should work when getExecutionCancelSignal is not available', async () => {
 			const contextWithoutSignal = {
-				addInputData: jest.fn(),
-				addOutputData: jest.fn(),
-				logger: { warn: jest.fn() },
+				addInputData: vi.fn(),
+				addOutputData: vi.fn(),
+				logger: { warn: vi.fn() },
 				// No getExecutionCancelSignal method
 			};
 			contextFactory.mockReturnValue(contextWithoutSignal);
@@ -1058,15 +1063,13 @@ describe('makeHandleToolInvocation', () => {
 				waitBetweenTries: 10,
 			});
 			const connectedNodeType = mock<INodeType>({
-				execute: jest
+				execute: vi
 					.fn()
 					.mockRejectedValueOnce(new Error('First attempt fails'))
 					.mockResolvedValueOnce([[{ json: { result: 'success' } }]]),
 			});
 
-			const sleepWithAbortSpy = jest
-				.spyOn(require('n8n-workflow'), 'sleepWithAbort')
-				.mockResolvedValue(undefined);
+			const sleepWithAbortSpy = (sleepWithAbort as Mock).mockResolvedValue(undefined);
 
 			handleToolInvocation = makeHandleToolInvocation(
 				contextFactory,
@@ -1082,5 +1085,546 @@ describe('makeHandleToolInvocation', () => {
 
 			sleepWithAbortSpy.mockRestore();
 		});
+	});
+
+	describe('sendMessage propagation', () => {
+		it('should include sendMessage in addOutputData when Chat node returns a string message', async () => {
+			// Use a fresh runExecutionData so runIndex starts at 0 regardless of prior tests
+			const freshRunExecutionData = mock<IRunExecutionData>({
+				resultData: { runData: {} },
+			});
+			const mockContext = mock<IExecuteFunctions>();
+			contextFactory.mockReturnValue(mockContext);
+
+			const sendMessage = 'Please choose an option';
+			const mockResult = [[{ json: { result: 'ok' }, sendMessage }]];
+			execute.mockResolvedValueOnce(mockResult);
+
+			const handleToolInvocation = makeHandleToolInvocation(
+				contextFactory,
+				connectedNode,
+				connectedNodeType,
+				freshRunExecutionData,
+			);
+			const result = await handleToolInvocation(toolArgs);
+
+			// The tool return value to the agent is still just the JSON response
+			expect(result).toBe(JSON.stringify([{ result: 'ok' }]));
+			// sendMessage must be stored in the output data so the chat service can forward it
+			expect(mockContext.addOutputData).toHaveBeenCalledWith(NodeConnectionTypes.AiTool, 0, [
+				[{ json: { response: [{ result: 'ok' }] }, sendMessage }],
+			]);
+		});
+
+		it('should include sendMessage object with buttons in addOutputData', async () => {
+			// Use a fresh runExecutionData so runIndex starts at 0 regardless of prior tests
+			const freshRunExecutionData = mock<IRunExecutionData>({
+				resultData: { runData: {} },
+			});
+			const mockContext = mock<IExecuteFunctions>();
+			contextFactory.mockReturnValue(mockContext);
+
+			const sendMessage = {
+				type: 'with-buttons' as const,
+				text: 'Approve or deny?',
+				blockUserInput: true,
+				buttons: [{ label: 'Approve', value: 'approve', style: 'primary' as const }],
+			};
+			const mockResult = [[{ json: { result: 'pending' }, sendMessage }]];
+			execute.mockResolvedValueOnce(mockResult);
+
+			const handleToolInvocation = makeHandleToolInvocation(
+				contextFactory,
+				connectedNode,
+				connectedNodeType,
+				freshRunExecutionData,
+			);
+			await handleToolInvocation(toolArgs);
+
+			expect(mockContext.addOutputData).toHaveBeenCalledWith(NodeConnectionTypes.AiTool, 0, [
+				[{ json: { response: [{ result: 'pending' }] }, sendMessage }],
+			]);
+		});
+
+		it('should not include sendMessage in addOutputData when node does not return one', async () => {
+			// Use a fresh runExecutionData so runIndex starts at 0 regardless of prior tests
+			const freshRunExecutionData = mock<IRunExecutionData>({
+				resultData: { runData: {} },
+			});
+			const mockContext = mock<IExecuteFunctions>();
+			contextFactory.mockReturnValue(mockContext);
+
+			const mockResult = [[{ json: { result: 'data' } }]];
+			execute.mockResolvedValueOnce(mockResult);
+
+			const handleToolInvocation = makeHandleToolInvocation(
+				contextFactory,
+				connectedNode,
+				connectedNodeType,
+				freshRunExecutionData,
+			);
+			await handleToolInvocation(toolArgs);
+
+			// sendMessage must not be set to a real value in the stored output
+			expect(mockContext.addOutputData).toHaveBeenCalledWith(NodeConnectionTypes.AiTool, 0, [
+				[expect.not.objectContaining({ sendMessage: expect.anything() })],
+			]);
+		});
+	});
+});
+
+describe('HITL Tool handling', () => {
+	const agentNode = mock<INode>({
+		name: 'Test Agent',
+		type: 'test.agent',
+		parameters: {},
+	});
+	const agentNodeType = mock<INodeType>({
+		description: {
+			inputs: [],
+		},
+	});
+	const nodeTypes = mock<INodeTypes>();
+	const workflow = mock<Workflow>({
+		id: 'test-workflow',
+		active: false,
+		nodeTypes,
+	});
+	const runExecutionData = mock<IRunExecutionData>({
+		resultData: { runData: {} },
+	});
+	const connectionInputData = [] as INodeExecutionData[];
+	const inputData = {} as ITaskDataConnections;
+	const executeData = {} as IExecuteData;
+
+	const hooks = mock<Required<IWorkflowExecuteAdditionalData['hooks']>>();
+	const additionalData = mock<IWorkflowExecuteAdditionalData>({ hooks });
+
+	let executeContext: ExecuteContext;
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+
+		executeContext = new ExecuteContext(
+			workflow,
+			agentNode,
+			additionalData,
+			'internal',
+			runExecutionData,
+			0,
+			connectionInputData,
+			inputData,
+			executeData,
+			[],
+		);
+
+		vi.spyOn(executeContext, 'getNode').mockReturnValue(agentNode);
+		nodeTypes.getByNameAndVersion
+			.calledWith(agentNode.type, expect.anything())
+			.mockReturnValue(agentNodeType);
+		vi.spyOn(executeContext, 'getConnections').mockReturnValue([]);
+	});
+
+	describe('isHitlTool detection', () => {
+		it('should not treat regular tools as HITL tools', async () => {
+			const regularToolNode = mock<INode>({
+				name: 'Regular Tool',
+				type: 'n8n-nodes-base.httpRequest',
+				disabled: false,
+			});
+
+			const mockTool = mock<Tool>();
+
+			const regularNodeType = mock<INodeType>({
+				supplyData: vi.fn().mockResolvedValue({ response: mockTool }),
+			});
+
+			agentNodeType.description.inputs = [
+				{
+					type: NodeConnectionTypes.AiTool,
+					required: true,
+				},
+			];
+
+			nodeTypes.getByNameAndVersion
+				.calledWith(regularToolNode.type, expect.anything())
+				.mockReturnValue(regularNodeType);
+			workflow.getParentNodes
+				.calledWith(agentNode.name, NodeConnectionTypes.AiTool)
+				.mockReturnValue([regularToolNode.name]);
+			workflow.getNode.calledWith(regularToolNode.name).mockReturnValue(regularToolNode);
+			vi.spyOn(executeContext, 'getConnections').mockReturnValueOnce([
+				[{ node: regularToolNode.name, type: NodeConnectionTypes.AiTool, index: 0 }],
+			]);
+
+			const result = await executeContext.getInputConnectionData(NodeConnectionTypes.AiTool, 0);
+
+			expect(result).toEqual([mockTool]);
+			expect(regularNodeType.supplyData).toHaveBeenCalled();
+		});
+
+		it('should identify HITL tools by type suffix ending in HitlTool', () => {
+			const hitlTypes = [
+				'@n8n/n8n-nodes-langchain.toolWorkflowHitlTool',
+				'test.HitlTool',
+				'myPackage.customHitlTool',
+			];
+
+			const nonHitlTypes = [
+				'n8n-nodes-base.httpRequest',
+				'@n8n/n8n-nodes-langchain.toolWorkflow',
+				'test.regularTool',
+			];
+
+			for (const type of hitlTypes) {
+				expect(type.endsWith('HitlTool')).toBe(true);
+			}
+
+			for (const type of nonHitlTypes) {
+				expect(type.endsWith('HitlTool')).toBe(false);
+			}
+		});
+	});
+
+	describe('HITL tool metadata wrapping', () => {
+		it('should create wrapped tools with correct metadata structure', () => {
+			const originalSourceNodeName = 'Original Tool Node';
+			const hitlNodeName = 'HITL Node';
+
+			const wrappedTool = new DynamicStructuredTool({
+				name: 'my_tool',
+				description: 'Tool description',
+				schema: z.object({ query: z.string() }),
+				func: async () => '',
+				metadata: {
+					sourceNodeName: hitlNodeName,
+					gatedToolNodeName: originalSourceNodeName,
+				},
+			});
+
+			expect(wrappedTool.metadata?.sourceNodeName).toBe(hitlNodeName);
+			expect(wrappedTool.metadata?.gatedToolNodeName).toBe(originalSourceNodeName);
+		});
+	});
+});
+
+describe('createHitlToolkit', () => {
+	const hitlNode = mock<INode>({
+		name: 'HITL Node',
+		type: 'test.HitlTool',
+	});
+
+	const mockHitlSchema = z.object({
+		approvalRequired: z.boolean(),
+		message: z.string(),
+	});
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		(getSchema as Mock).mockReturnValue(mockHitlSchema);
+	});
+
+	it('should return empty toolkit when input is undefined', () => {
+		const result = createHitlToolkit(undefined, hitlNode);
+
+		expect(result).toBeInstanceOf(StructuredToolkit);
+		expect(result.tools).toHaveLength(0);
+		expect(getSchema).toHaveBeenCalledWith(hitlNode);
+	});
+
+	it('should wrap a single tool with HITL metadata', () => {
+		const originalTool = new DynamicStructuredTool({
+			name: 'test_tool',
+			description: 'Test tool description',
+			schema: z.object({ input: z.string() }),
+			func: async () => 'result',
+			metadata: { sourceNodeName: 'Original Node' },
+		});
+
+		const result = createHitlToolkit(originalTool, hitlNode);
+
+		expect(result).toBeInstanceOf(StructuredToolkit);
+		expect(result.tools).toHaveLength(1);
+
+		const wrappedTool = result.tools[0];
+		expect(wrappedTool.name).toBe('test_tool');
+		expect(wrappedTool.description).toBe('Test tool description');
+		expect(wrappedTool.metadata?.sourceNodeName).toBe('HITL Node');
+		expect(wrappedTool.metadata?.gatedToolNodeName).toBe('Original Node');
+	});
+
+	it('should wrap tool schema with toolParameters and hitlParameters', () => {
+		const originalSchema = z.object({ input: z.string(), count: z.number() });
+		const originalTool = new DynamicStructuredTool({
+			name: 'test_tool',
+			description: 'Test tool',
+			schema: originalSchema,
+			func: async () => 'result',
+		});
+
+		const result = createHitlToolkit(originalTool, hitlNode);
+		const wrappedTool = result.tools[0];
+
+		// The schema should be wrapped in an object with toolParameters and hitlParameters
+		expect(wrappedTool.schema).toBeDefined();
+		// Verify it's a Zod object schema
+		const schemaShape = (wrappedTool.schema as z.ZodObject<z.ZodRawShape>).shape;
+		expect(schemaShape).toHaveProperty('toolParameters');
+		expect(schemaShape).toHaveProperty('hitlParameters');
+	});
+
+	it('should handle array of tools', () => {
+		const tool1 = new DynamicStructuredTool({
+			name: 'tool_1',
+			description: 'First tool',
+			schema: z.object({ a: z.string() }),
+			func: async () => 'result1',
+			metadata: { sourceNodeName: 'Node 1' },
+		});
+
+		const tool2 = new DynamicStructuredTool({
+			name: 'tool_2',
+			description: 'Second tool',
+			schema: z.object({ b: z.number() }),
+			func: async () => 'result2',
+			metadata: { sourceNodeName: 'Node 2' },
+		});
+
+		const result = createHitlToolkit([tool1, tool2], hitlNode);
+
+		expect(result.tools).toHaveLength(2);
+		expect(result.tools[0].name).toBe('tool_1');
+		expect(result.tools[1].name).toBe('tool_2');
+		expect(result.tools[0].metadata?.sourceNodeName).toBe('HITL Node');
+		expect(result.tools[1].metadata?.sourceNodeName).toBe('HITL Node');
+		expect(result.tools[0].metadata?.gatedToolNodeName).toBe('Node 1');
+		expect(result.tools[1].metadata?.gatedToolNodeName).toBe('Node 2');
+	});
+
+	it('should extract tools from StructuredToolkit', () => {
+		const tool1 = new DynamicStructuredTool({
+			name: 'tool_1',
+			description: 'First tool',
+			schema: z.object({ a: z.string() }),
+			func: async () => 'result1',
+			metadata: { sourceNodeName: 'Node 1' },
+		});
+
+		const tool2 = new DynamicStructuredTool({
+			name: 'tool_2',
+			description: 'Second tool',
+			schema: z.object({ b: z.number() }),
+			func: async () => 'result2',
+			metadata: { sourceNodeName: 'Node 2' },
+		});
+
+		const toolkit = new StructuredToolkit([tool1, tool2]);
+		const result = createHitlToolkit(toolkit, hitlNode);
+
+		expect(result.tools).toHaveLength(2);
+		expect(result.tools[0].name).toBe('tool_1');
+		expect(result.tools[1].name).toBe('tool_2');
+		expect(result.tools[0].metadata?.sourceNodeName).toBe('HITL Node');
+		expect(result.tools[1].metadata?.sourceNodeName).toBe('HITL Node');
+	});
+
+	it('should handle mixed array of tools and toolkits', () => {
+		const standaloneTool = new DynamicStructuredTool({
+			name: 'standalone_tool',
+			description: 'Standalone tool',
+			schema: z.object({ x: z.string() }),
+			func: async () => 'result',
+			metadata: { sourceNodeName: 'Standalone Node' },
+		});
+
+		const toolkitTool1 = new DynamicStructuredTool({
+			name: 'toolkit_tool_1',
+			description: 'Toolkit tool 1',
+			schema: z.object({ y: z.string() }),
+			func: async () => 'result',
+			metadata: { sourceNodeName: 'Toolkit Node 1' },
+		});
+
+		const toolkitTool2 = new DynamicStructuredTool({
+			name: 'toolkit_tool_2',
+			description: 'Toolkit tool 2',
+			schema: z.object({ z: z.string() }),
+			func: async () => 'result',
+			metadata: { sourceNodeName: 'Toolkit Node 2' },
+		});
+
+		const toolkit = new StructuredToolkit([toolkitTool1, toolkitTool2]);
+
+		const result = createHitlToolkit([standaloneTool, toolkit], hitlNode);
+
+		expect(result.tools).toHaveLength(3);
+		expect(result.tools[0].name).toBe('standalone_tool');
+		expect(result.tools[1].name).toBe('toolkit_tool_1');
+		expect(result.tools[2].name).toBe('toolkit_tool_2');
+
+		// All should have HITL node as sourceNodeName
+		expect(result.tools[0].metadata?.sourceNodeName).toBe('HITL Node');
+		expect(result.tools[1].metadata?.sourceNodeName).toBe('HITL Node');
+		expect(result.tools[2].metadata?.sourceNodeName).toBe('HITL Node');
+
+		// Each should preserve original node name as gatedToolNodeName
+		expect(result.tools[0].metadata?.gatedToolNodeName).toBe('Standalone Node');
+		expect(result.tools[1].metadata?.gatedToolNodeName).toBe('Toolkit Node 1');
+		expect(result.tools[2].metadata?.gatedToolNodeName).toBe('Toolkit Node 2');
+	});
+
+	it('should handle tool with non-Zod schema', () => {
+		// Non-Zod schema (e.g., JSON Schema)
+		const nonZodSchema = { type: 'object', properties: { input: { type: 'string' } } };
+		const originalTool = new DynamicStructuredTool({
+			name: 'test_tool',
+			description: 'Test tool',
+			schema: nonZodSchema as unknown as z.ZodObject<z.ZodRawShape>,
+			func: async () => 'result',
+			metadata: { sourceNodeName: 'Original Node' },
+		});
+
+		const result = createHitlToolkit(originalTool, hitlNode);
+
+		expect(result.tools).toHaveLength(1);
+		const wrappedTool = result.tools[0];
+		// Non-Zod schemas should be passed through unchanged
+		expect(wrappedTool.schema).toEqual({
+			type: 'object',
+			properties: { input: { type: 'string' } },
+		});
+		expect(wrappedTool.metadata?.sourceNodeName).toBe('HITL Node');
+		expect(wrappedTool.metadata?.gatedToolNodeName).toBe('Original Node');
+	});
+
+	it('should handle tool without metadata', () => {
+		const originalTool = new DynamicStructuredTool({
+			name: 'test_tool',
+			description: 'Test tool',
+			schema: z.object({ input: z.string() }),
+			func: async () => 'result',
+		});
+
+		const result = createHitlToolkit(originalTool, hitlNode);
+
+		expect(result.tools).toHaveLength(1);
+		const wrappedTool = result.tools[0];
+		expect(wrappedTool.metadata?.sourceNodeName).toBe('HITL Node');
+		expect(wrappedTool.metadata?.gatedToolNodeName).toBeUndefined();
+	});
+
+	it('should create wrapped tools with empty func that returns empty string', async () => {
+		const originalTool = new DynamicStructuredTool({
+			name: 'test_tool',
+			description: 'Test tool',
+			schema: z.object({ input: z.string() }),
+			func: async (input) => `Processed: ${input.input}`,
+		});
+
+		const result = createHitlToolkit(originalTool, hitlNode);
+		const wrappedTool = result.tools[0];
+
+		// The wrapped tool should have a no-op func that returns empty string
+		const funcResult = await wrappedTool.func({ input: 'test' });
+		expect(funcResult).toBe('');
+	});
+});
+
+describe('createHitlToolSupplyData', () => {
+	const hitlNode = mock<INode>({
+		name: 'HITL Node',
+		type: 'test.HitlTool',
+	});
+	const parentNode = mock<INode>({
+		name: 'Parent Agent',
+		type: 'test.agent',
+	});
+	const workflow = mock<Workflow>({
+		id: 'test-workflow',
+		active: false,
+		nodeTypes: mock<INodeTypes>(),
+	});
+	const runExecutionData = mock<IRunExecutionData>({
+		resultData: { runData: {} },
+	});
+	const connectionInputData = [] as INodeExecutionData[];
+	const parentInputData = {} as ITaskDataConnections;
+	const executeData = {} as IExecuteData;
+	const hooks = mock<Required<IWorkflowExecuteAdditionalData['hooks']>>();
+	const additionalData = mock<IWorkflowExecuteAdditionalData>({ hooks });
+	const mode: WorkflowExecuteMode = 'internal';
+	const closeFunctions: CloseFunction[] = [];
+	const itemIndex = 0;
+	const parentRunIndex = 0;
+	const abortSignal = mock<AbortSignal>();
+
+	const mockHitlSchema = z.object({
+		approvalRequired: z.boolean(),
+		message: z.string(),
+	});
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		(getSchema as Mock).mockReturnValue(mockHitlSchema);
+		vi.spyOn(SupplyDataContext.prototype, 'getInputConnectionData');
+	});
+
+	it('should create supply data with single tool wrapped in toolkit', async () => {
+		const originalTool = new DynamicStructuredTool({
+			name: 'test_tool',
+			description: 'Test tool description',
+			schema: z.object({ input: z.string() }),
+			func: async () => 'result',
+			metadata: { sourceNodeName: 'Original Tool Node' },
+		});
+
+		(SupplyDataContext.prototype.getInputConnectionData as Mock).mockResolvedValue(originalTool);
+		const result = await createHitlToolSupplyData(
+			hitlNode,
+			workflow,
+			runExecutionData,
+			parentRunIndex,
+			connectionInputData,
+			parentInputData,
+			additionalData,
+			executeData,
+			mode,
+			closeFunctions,
+			itemIndex,
+			abortSignal,
+			parentNode,
+		);
+
+		expect(result).toHaveProperty('response');
+		const toolkit = result.response as StructuredToolkit;
+		expect(toolkit).toBeInstanceOf(StructuredToolkit);
+		expect(toolkit.tools).toHaveLength(1);
+		expect(toolkit.tools[0].name).toBe('test_tool');
+		expect(toolkit.tools[0].metadata?.sourceNodeName).toBe('HITL Node');
+		expect(toolkit.tools[0].metadata?.gatedToolNodeName).toBe('Original Tool Node');
+	});
+});
+
+describe('extendResponseMetadata', () => {
+	it('should extend metadata for toolkits', () => {
+		const tool = new DynamicStructuredTool({
+			name: 'test_tool',
+			description: 'Test tool',
+			schema: z.object({ input: z.string() }),
+			func: async () => 'result',
+		});
+		const toolkit = new StructuredToolkit([tool]);
+		extendResponseMetadata(toolkit, { name: 'HITL Node' } as INode);
+		expect(toolkit.tools[0].metadata?.sourceNodeName).toBe('HITL Node');
+	});
+	it('should extend metadata for tools', () => {
+		const tool = new DynamicStructuredTool({
+			name: 'test_tool',
+			description: 'Test tool',
+			schema: z.object({ input: z.string() }),
+			func: async () => 'result',
+		});
+		extendResponseMetadata(tool, { name: 'HITL Node' } as INode);
+		expect(tool.metadata?.sourceNodeName).toBe('HITL Node');
 	});
 });

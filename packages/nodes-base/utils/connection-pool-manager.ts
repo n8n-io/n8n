@@ -13,6 +13,8 @@ type RegistrationOptions = {
 	credentials: unknown;
 	nodeType: string;
 	nodeVersion?: string;
+	/** Additional data to include in the pool cache key, for options that affect how data is read */
+	poolKeyExtras?: Record<string, unknown>;
 };
 
 type GetConnectionOption<Pool> = RegistrationOptions & {
@@ -23,6 +25,12 @@ type GetConnectionOption<Pool> = RegistrationOptions & {
 	 */
 	fallBackHandler: (abortController: AbortController) => Promise<Pool>;
 
+	/**
+	 * Returns whether the pool can be safely cleaned up. If omitted, stale pools
+	 * are assumed to be idle.
+	 */
+	isIdle?: (pool: Pool) => boolean;
+
 	wasUsed: (pool: Pool) => void;
 };
 
@@ -32,8 +40,7 @@ type Registration<Pool> = {
 
 	abortController: AbortController;
 
-	wasUsed: (pool: Pool) => void;
-
+	isIdle?: (pool: Pool) => boolean;
 	/** We keep this timestamp to check if a pool hasn't been used in a while, and if it needs to be closed */
 	lastUsed: number;
 };
@@ -71,7 +78,12 @@ export class ConnectionPoolManager {
 	 * Generates a unique key for connection pool identification.
 	 * Hashes the credentials and node information for security.
 	 */
-	private makeKey({ credentials, nodeType, nodeVersion }: RegistrationOptions): string {
+	private makeKey({
+		credentials,
+		nodeType,
+		nodeVersion,
+		poolKeyExtras,
+	}: RegistrationOptions): string {
 		// The credential contains decrypted secrets, that's why we hash it.
 		return createHash('sha1')
 			.update(
@@ -79,6 +91,7 @@ export class ConnectionPoolManager {
 					credentials,
 					nodeType,
 					nodeVersion,
+					poolKeyExtras,
 				}),
 			)
 			.digest('base64');
@@ -95,7 +108,7 @@ export class ConnectionPoolManager {
 
 		if (value) {
 			value.lastUsed = Date.now();
-			value.wasUsed(value.pool);
+			options.wasUsed(value.pool as T);
 			return value.pool as T;
 		}
 
@@ -103,7 +116,7 @@ export class ConnectionPoolManager {
 		value = {
 			pool: await options.fallBackHandler(abortController),
 			abortController,
-			wasUsed: options.wasUsed,
+			isIdle: options.isIdle,
 		} as Registration<unknown>;
 
 		// It's possible that `options.fallBackHandler` already called the abort
@@ -138,8 +151,14 @@ export class ConnectionPoolManager {
 	 */
 	private cleanupStaleConnections() {
 		const now = Date.now();
-		for (const [key, { lastUsed }] of this.map.entries()) {
+		for (const [key, registration] of this.map.entries()) {
+			const { isIdle, lastUsed, pool } = registration;
 			if (now - lastUsed > ttl) {
+				if (isIdle && !isIdle(pool)) {
+					registration.lastUsed = now;
+					this.logger.debug('ConnectionPoolManager: Found stale pool, but it is still in use.');
+					continue;
+				}
 				this.logger.debug('ConnectionPoolManager: Found stale pool. Cleaning it up.');
 				void this.cleanupConnection(key);
 			}

@@ -7,7 +7,6 @@ import { N8nActionDropdown, N8nIconButton, N8nText } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system/types';
 import { useI18n } from '@n8n/i18n';
 import { RouterLink } from 'vue-router';
-import { hasPermission } from '@/app/utils/rbac/permissions';
 
 const { agent } = defineProps<{
 	agent: ChatModelDto;
@@ -31,7 +30,7 @@ const menuItems = computed<Array<ActionDropdownItem<MenuAction>>>(() => {
 const canEdit = computed(
 	() =>
 		agent.model.provider === 'custom-agent' ||
-		hasPermission(['rbac'], { rbac: { scope: ['workflow:read'] } }),
+		(agent.model.provider === 'n8n' && agent.metadata.scopes?.includes('workflow:read')),
 );
 
 function handleSelectMenu(action: MenuAction) {
@@ -60,9 +59,9 @@ function handleSelectMenu(action: MenuAction) {
 
 		<div :class="$style.actions">
 			<N8nIconButton
+				variant="subtle"
 				v-if="canEdit"
 				icon="pen"
-				type="tertiary"
 				size="medium"
 				:title="i18n.baseText('chatHub.agent.card.button.edit')"
 				@click.prevent="emit('edit')"
@@ -76,11 +75,10 @@ function handleSelectMenu(action: MenuAction) {
 			>
 				<template #activator>
 					<N8nIconButton
+						variant="ghost"
 						icon="ellipsis-vertical"
-						type="tertiary"
 						size="medium"
 						:title="i18n.baseText('chatHub.agent.card.button.moreOptions')"
-						text
 						:class="$style.actionDropdownTrigger"
 					/>
 				</template>
@@ -103,7 +101,7 @@ function handleSelectMenu(action: MenuAction) {
 	transition: box-shadow 0.3s ease;
 
 	&:hover {
-		box-shadow: 0 2px 8px rgba(#441c17, 0.1);
+		box-shadow: var(--shadow--card-hover);
 	}
 }
 

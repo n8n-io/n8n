@@ -1,27 +1,26 @@
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
-import axios from 'axios';
 import type { ICredentialContext } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { CacheService } from '@/services/cache/cache.service';
-
 import { IdentifierValidationError, ITokenIdentifier } from './identifier-interface';
+import { OAuth2MetadataHttpClient } from './oauth2-metadata-http-client';
 import { OAuth2OptionsSchema, sha256 } from './oauth2-utils';
+
+import { CacheService } from '@/services/cache/cache.service';
 
 // Use minimum of 30 seconds to avoid cache thrashing
 // Cap at 5 minutes to ensure periodic revalidation
 const MIN_TOKEN_CACHE_TIMEOUT = 30 * Time.seconds.toMilliseconds;
 const MAX_TOKEN_CACHE_TIMEOUT = 5 * Time.minutes.toMilliseconds;
 const DEFAULT_CACHE_TIMEOUT = 60 * Time.seconds.toMilliseconds; // 60 seconds
-const METADATA_CACHE_TIMEOUT = 1 * Time.hours.toMilliseconds; // 1 hour
 
 export const OAuth2IntrospectionOptionsSchema = z.object({
 	...OAuth2OptionsSchema.shape,
 	validation: z.literal('oauth2-introspection'),
-	clientId: z.string(),
-	clientSecret: z.string(),
+	clientId: z.string().trim().min(1, 'Client ID is required'),
+	clientSecret: z.string().trim().min(1, 'Client Secret is required'),
 });
 
 type OAuth2IntrospectionOptions = z.infer<typeof OAuth2IntrospectionOptionsSchema>;
@@ -65,11 +64,26 @@ export class OAuth2TokenIntrospectionIdentifier implements ITokenIdentifier {
 	constructor(
 		private readonly logger: Logger,
 		private readonly cache: CacheService,
+		private readonly http: OAuth2MetadataHttpClient,
 	) {}
 
 	async validateOptions(identifierOptions: Record<string, unknown>): Promise<void> {
 		const options = this.parseOptions(identifierOptions);
-		const metadata = await this.fetchMetadata(options, true);
+		let metadata;
+		try {
+			metadata = await this.fetchMetadata(options, true);
+		} catch (error) {
+			if (error instanceof IdentifierValidationError) {
+				throw error;
+			}
+			this.logger.error(`Failed to reach OAuth2 metadata URL ${options.metadataUri}`, {
+				error,
+			});
+			throw new IdentifierValidationError(
+				`Could not reach metadata URL: ${error instanceof Error ? error.message : String(error)}`,
+				{ cause: error },
+			);
+		}
 		if (!metadata.introspection_endpoint) {
 			this.logger.error('Metadata does not contain an introspection endpoint');
 			throw new IdentifierValidationError('Metadata does not contain an introspection endpoint');
@@ -136,38 +150,11 @@ export class OAuth2TokenIntrospectionIdentifier implements ITokenIdentifier {
 		options: OAuth2IntrospectionOptions,
 		skipCache: boolean = false,
 	): Promise<OAuth2Metadata> {
-		const cacheKey = `${CACHE_PREFIX}:metadata:${options.metadataUri}`;
-		if (!skipCache) {
-			const cached = await this.cache.get<OAuth2Metadata>(cacheKey);
-			if (cached) {
-				return cached;
-			}
-		}
-
-		const response = await axios.get(options.metadataUri, {
-			validateStatus: () => true,
-			timeout: 10 * Time.seconds.toMilliseconds,
+		return await this.http.fetchMetadata(OAuth2MetadataSchema, {
+			metadataUri: options.metadataUri,
+			cachePrefix: CACHE_PREFIX,
+			skipCache,
 		});
-
-		if (response.status !== 200) {
-			this.logger.error(
-				`Failed to fetch OAuth2 metadata from ${options.metadataUri}, status code: ${response.status}`,
-			);
-			throw new IdentifierValidationError(
-				`Failed to fetch OAuth2 metadata, status code: ${response.status}`,
-			);
-		}
-
-		try {
-			const metadata = OAuth2MetadataSchema.parse(response.data);
-			if (!skipCache) {
-				await this.cache.set(cacheKey, metadata, METADATA_CACHE_TIMEOUT);
-			}
-			return metadata;
-		} catch (error) {
-			this.logger.error('Invalid OAuth2 metadata format', { error });
-			throw new IdentifierValidationError('Invalid OAuth2 metadata format', { cause: error });
-		}
 	}
 
 	private buildClientBasicRequest(options: OAuth2IntrospectionOptions): {
@@ -240,21 +227,23 @@ export class OAuth2TokenIntrospectionIdentifier implements ITokenIdentifier {
 			...authParams,
 		});
 
-		const response = await axios.post(metadata.introspection_endpoint, params, {
+		const response = await this.http.requestFull({
+			url: metadata.introspection_endpoint,
+			method: 'POST',
+			body: params,
 			headers: { 'Content-Type': 'application/x-www-form-urlencoded', ...authHeaders },
-			validateStatus: () => true,
-			timeout: 10 * Time.seconds.toMilliseconds,
+			json: true,
 		});
 
-		if (response.status !== 200) {
+		if (response.statusCode !== 200) {
 			this.logger.error('Token introspection failed', {
-				status: response.status,
-				data: response.data,
+				status: response.statusCode,
+				data: response.body,
 			});
 			throw new IdentifierValidationError('Token introspection failed');
 		}
 
-		const introspectionData = this.parseIntrospectionResponse(response.data);
+		const introspectionData = this.parseIntrospectionResponse(response.body);
 
 		if (!introspectionData.active) {
 			this.logger.error('Token is not active according to introspection response');

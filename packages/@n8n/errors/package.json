@@ -1,11 +1,12 @@
 {
   "name": "@n8n/errors",
-  "version": "0.5.0",
+  "version": "0.10.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck",
     "format": "biome format --write .",
     "format:check": "biome ci .",
     "lint": "eslint . --quiet",
@@ -22,9 +23,10 @@
   ],
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
-    "@sentry/node": "catalog:"
+    "@sentry/node": "catalog:sentry"
   },
   "dependencies": {
     "callsites": "catalog:"
-  }
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }

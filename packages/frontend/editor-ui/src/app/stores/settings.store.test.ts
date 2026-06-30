@@ -20,6 +20,7 @@ const mockRootStore = {
 	setMaxExecutionTimeout: vi.fn(),
 	setInstanceId: vi.fn(),
 	setOauthCallbackUrls: vi.fn(),
+	setJwksUri: vi.fn(),
 	setN8nMetadata: vi.fn(),
 	setDefaultLocale: vi.fn(),
 	setBinaryDataMode: vi.fn(),
@@ -54,8 +55,7 @@ vi.mock('@/app/stores/versions.store', () => ({
 }));
 
 vi.mock('@vueuse/core', async () => {
-	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
-	const originalModule = await vi.importActual<typeof import('@vueuse/core')>('@vueuse/core');
+	const originalModule = await vi.importActual('@vueuse/core');
 
 	return {
 		...originalModule,
@@ -81,6 +81,94 @@ describe('settings.store', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		setActivePinia(createPinia());
+	});
+
+	describe('isAutosaveEnabled', () => {
+		it('should return true when workflowsAutosaveDisabled is false', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				workflowsAutosaveDisabled: false,
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+
+			expect(settingsStore.isAutosaveEnabled).toBe(true);
+		});
+
+		it('should return false when workflowsAutosaveDisabled is true', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				workflowsAutosaveDisabled: true,
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+
+			expect(settingsStore.isAutosaveEnabled).toBe(false);
+		});
+
+		it('should return true when workflowsAutosaveDisabled is undefined', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				workflowsAutosaveDisabled: undefined,
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+
+			expect(settingsStore.isAutosaveEnabled).toBe(true);
+		});
+	});
+
+	describe('isCrdtCollaborationEnabled', () => {
+		it('should return true when collaboration.crdt is local', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				collaboration: { crdt: 'local' },
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+
+			expect(settingsStore.isCrdtCollaborationEnabled).toBe(true);
+		});
+
+		it('should return true when collaboration.crdt is server', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				collaboration: { crdt: 'server' },
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+
+			expect(settingsStore.isCrdtCollaborationEnabled).toBe(true);
+		});
+
+		it('should return false when collaboration.crdt is off', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				collaboration: { crdt: 'off' },
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+
+			expect(settingsStore.isCrdtCollaborationEnabled).toBe(false);
+		});
+
+		it('should return false when collaboration is undefined', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				collaboration: undefined,
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+
+			expect(settingsStore.isCrdtCollaborationEnabled).toBe(false);
+		});
 	});
 
 	describe('getSettings', () => {
@@ -138,7 +226,7 @@ describe('settings.store', () => {
 				expect(mockRootStore.setOauthCallbackUrls).not.toHaveBeenCalledWith(
 					mockSettings.oauthCallbackUrls,
 				);
-				expect(mockRootStore.setDefaultLocale).not.toHaveBeenCalledWith(mockSettings.defaultLocale);
+				expect(mockRootStore.setDefaultLocale).toHaveBeenCalledWith(mockSettings.defaultLocale);
 				expect(mockRootStore.setInstanceId).not.toHaveBeenCalledWith(mockSettings.instanceId);
 				expect(mockRootStore.setUrlBaseWebhook).not.toHaveBeenCalled();
 				expect(mockRootStore.setUrlBaseEditor).not.toHaveBeenCalled();
@@ -198,6 +286,80 @@ describe('settings.store', () => {
 				// side effects
 				expect(sessionStarted).toHaveBeenCalled();
 			});
+		});
+	});
+
+	describe('isOtelCustomSpanAttributesEnabled', () => {
+		it('should return false when otel module is not active', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				activeModules: [],
+				enterprise: { otelCustomSpanAttributes: true },
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+			settingsStore.moduleSettings = {
+				otel: {
+					enabled: true,
+				},
+			};
+
+			expect(settingsStore.isOtelCustomSpanAttributesEnabled).toBe(false);
+		});
+
+		it('should return false when otel module is active but not enabled in moduleSettings', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				activeModules: ['otel'],
+				enterprise: { otelCustomSpanAttributes: true },
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+			settingsStore.moduleSettings = {
+				otel: {
+					enabled: false,
+				},
+			};
+
+			expect(settingsStore.isOtelCustomSpanAttributesEnabled).toBe(false);
+		});
+
+		it('should return false when otel module is active and enabled but not licensed', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				activeModules: ['otel'],
+				enterprise: { otelCustomSpanAttributes: false },
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+			settingsStore.moduleSettings = {
+				otel: {
+					enabled: true,
+				},
+			};
+
+			expect(settingsStore.isOtelCustomSpanAttributesEnabled).toBe(false);
+		});
+
+		it('should return true when otel module is active, enabled, and licensed', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				activeModules: ['otel'],
+				enterprise: { otelCustomSpanAttributes: true },
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+			settingsStore.moduleSettings = {
+				otel: {
+					enabled: true,
+				},
+			};
+
+			expect(settingsStore.isOtelCustomSpanAttributesEnabled).toBe(true);
 		});
 	});
 });

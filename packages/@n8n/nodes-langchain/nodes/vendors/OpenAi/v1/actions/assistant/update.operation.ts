@@ -4,7 +4,7 @@ import type {
 	INodeExecutionData,
 	IDataObject,
 } from 'n8n-workflow';
-import { ApplicationError, NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
+import { NodeOperationError, UnexpectedError, updateDisplayOptions } from 'n8n-workflow';
 
 import { apiRequest } from '../../../transport';
 import { assistantRLC, modelRLC } from '../descriptions';
@@ -126,7 +126,7 @@ function getFileIds(file_ids: unknown): string[] {
 		return file_ids.split(',').map((file_id) => file_id.trim());
 	}
 
-	throw new ApplicationError('Invalid file_ids type');
+	throw new UnexpectedError('Invalid file_ids type');
 }
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {

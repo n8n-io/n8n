@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import { ApplicationError } from '@n8n/errors';
+import { UnexpectedError } from 'n8n-workflow';
 import type {
 	Workflow,
 	INode,
@@ -12,6 +12,7 @@ import type {
 	IDeferredPromise,
 	IExecuteResponsePromiseData,
 	IRun,
+	ExecutionError,
 } from 'n8n-workflow';
 import assert from 'node:assert';
 
@@ -20,9 +21,9 @@ import type { IGetExecuteTriggerFunctions } from './interfaces';
 @Service()
 export class TriggersAndPollers {
 	/**
-	 * Runs the given trigger node so that it can trigger the workflow when the node has data.
+	 * Runs the trigger() implementation for an active trigger or schedule trigger node.
 	 */
-	async runTrigger(
+	async runTriggerFunction(
 		workflow: Workflow,
 		node: INode,
 		getTriggerFunctions: IGetExecuteTriggerFunctions,
@@ -35,7 +36,7 @@ export class TriggersAndPollers {
 		const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
 		if (!nodeType.trigger) {
-			throw new ApplicationError('Node type does not have a trigger function defined', {
+			throw new UnexpectedError('Node type does not have a trigger function defined', {
 				extra: { nodeName: node.name },
 				tags: { nodeType: node.type },
 			});
@@ -76,6 +77,10 @@ export class TriggersAndPollers {
 					}
 					reject(error);
 				};
+
+				triggerFunctions.saveFailedExecution = (error: ExecutionError) => {
+					reject(error);
+				};
 			});
 
 			return triggerResponse;
@@ -85,9 +90,9 @@ export class TriggersAndPollers {
 	}
 
 	/**
-	 * Runs the given poller node so that it can trigger the workflow when the node has data.
+	 * Runs the poll() implementation for a poll trigger node.
 	 */
-	async runPoll(
+	async runPollFunction(
 		workflow: Workflow,
 		node: INode,
 		pollFunctions: IPollFunctions,
@@ -95,7 +100,7 @@ export class TriggersAndPollers {
 		const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 
 		if (!nodeType.poll) {
-			throw new ApplicationError('Node type does not have a poll function defined', {
+			throw new UnexpectedError('Node type does not have a poll function defined', {
 				extra: { nodeName: node.name },
 				tags: { nodeType: node.type },
 			});

@@ -36,9 +36,40 @@ export class Wordpress implements INodeType {
 			{
 				name: 'wordpressApi',
 				required: true,
+				displayOptions: {
+					show: {
+						authType: ['basicAuth'],
+					},
+				},
+			},
+			{
+				name: 'wordpressOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authType: ['oAuth2'],
+					},
+				},
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authType',
+				type: 'options',
+				options: [
+					{
+						name: 'Basic Auth',
+						value: 'basicAuth',
+					},
+					{
+						name: 'OAuth2 (WordPress.com)',
+						value: 'oAuth2',
+					},
+				],
+				default: 'basicAuth',
+				description: 'The authentication method to use',
+			},
 			{
 				displayName: 'Resource',
 				name: 'resource',

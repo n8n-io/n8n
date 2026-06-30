@@ -7,6 +7,7 @@ import {
 	type INodeParameters,
 	type INodeProperties,
 	type INodeTypeDescription,
+	type NodeParameterValueType,
 } from '../src/interfaces';
 import {
 	getNodeParameters,
@@ -22,6 +23,11 @@ import {
 	makeNodeName,
 	isTool,
 	getNodeWebhookPath,
+	isToolType,
+	isHitlToolType,
+	getNodeOutputs,
+	nodeIssuesToString,
+	isTriggerNodeType,
 } from '../src/node-helpers';
 import type { Workflow } from '../src/workflow';
 import { mock } from 'vitest-mock-extended';
@@ -1509,6 +1515,103 @@ describe('NodeHelpers', () => {
 							mode: 'mode1',
 							values: {
 								string1: 'own string1',
+							},
+						},
+					},
+				},
+			},
+			{
+				description:
+					'complex type "fixedCollection" with "multipleValues: false" preserves explicitly added options with all default values (GitHub case)',
+				input: {
+					nodePropertiesArray: [
+						{
+							name: 'additionalParameters',
+							displayName: 'Additional Parameters',
+							type: 'fixedCollection',
+							default: {},
+							options: [
+								{
+									name: 'author',
+									displayName: 'Author',
+									values: [
+										{
+											name: 'name',
+											displayName: 'Name',
+											type: 'string',
+											default: '',
+										},
+										{
+											name: 'email',
+											displayName: 'Email',
+											type: 'string',
+											default: '',
+										},
+									],
+								},
+								{
+									name: 'branch',
+									displayName: 'Branch',
+									values: [
+										{
+											name: 'branch',
+											displayName: 'Branch',
+											type: 'string',
+											default: '',
+										},
+									],
+								},
+							],
+						},
+					],
+					nodeValues: {
+						additionalParameters: {
+							author: {
+								name: '',
+								email: '',
+							},
+							branch: {
+								branch: '',
+							},
+						},
+					},
+				},
+				output: {
+					noneDisplayedFalse: {
+						defaultsFalse: {
+							additionalParameters: {
+								author: {},
+								branch: {},
+							},
+						},
+						defaultsTrue: {
+							additionalParameters: {
+								author: {
+									name: '',
+									email: '',
+								},
+								branch: {
+									branch: '',
+								},
+							},
+						},
+					},
+					noneDisplayedTrue: {
+						defaultsFalse: {
+							additionalParameters: {
+								author: {},
+								branch: {},
+							},
+						},
+						defaultsTrue: {
+							additionalParameters: {
+								author: {
+									name: '',
+									email: '',
+								},
+								branch: {
+									branch: '',
+								},
 							},
 						},
 					},
@@ -3514,6 +3617,69 @@ describe('NodeHelpers', () => {
 					},
 				},
 			},
+			{
+				description:
+					'complex type "fixedCollection" with "multipleValues: true". Skip unknown item names instead of throwing',
+				input: {
+					nodePropertiesArray: [
+						{
+							displayName: 'Values',
+							name: 'values',
+							type: 'fixedCollection',
+							typeOptions: {
+								multipleValues: true,
+							},
+							default: {},
+							options: [
+								{
+									name: 'number1',
+									displayName: 'Number 1',
+									values: [
+										{
+											displayName: 'Number',
+											name: 'number',
+											type: 'number',
+											default: 0,
+										},
+									],
+								},
+							],
+						},
+					],
+					nodeValues: {
+						values: {
+							number1: [{ number: 42 }],
+							and: [{ property: 'Status', filter: 'active' }],
+						},
+					},
+				},
+				output: {
+					noneDisplayedFalse: {
+						defaultsFalse: {
+							values: {
+								number1: [{ number: 42 }],
+							},
+						},
+						defaultsTrue: {
+							values: {
+								number1: [{ number: 42 }],
+							},
+						},
+					},
+					noneDisplayedTrue: {
+						defaultsFalse: {
+							values: {
+								number1: [{ number: 42 }],
+							},
+						},
+						defaultsTrue: {
+							values: {
+								number1: [{ number: 42 }],
+							},
+						},
+					},
+				},
+			},
 		];
 
 		for (const testData of tests) {
@@ -4231,6 +4397,47 @@ describe('NodeHelpers', () => {
 		});
 	});
 
+	describe('nodeIssuesToString', () => {
+		it('returns an empty list when no issues are set', () => {
+			expect(nodeIssuesToString({})).toEqual([]);
+		});
+
+		it('flattens every issue type in order (execution, parameters, credentials, input, typeUnknown)', () => {
+			const issues: INodeIssues = {
+				execution: true,
+				parameters: {
+					url: ['Parameter "URL" is required.', 'Parameter "URL" must be a string.'],
+					method: ['Parameter "Method" is required.'],
+				},
+				credentials: { api: ['Credentials for "api" are not set.'] },
+				input: { main: ['No node connected to required input "main"'] },
+				typeUnknown: true,
+			};
+			const node: INode = {
+				id: '1',
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4.2,
+				position: [0, 0],
+				parameters: {},
+			};
+
+			expect(nodeIssuesToString(issues, node)).toEqual([
+				'Execution Error.',
+				'Parameter "URL" is required.',
+				'Parameter "URL" must be a string.',
+				'Parameter "Method" is required.',
+				'Credentials for "api" are not set.',
+				'No node connected to required input "main"',
+				'Node Type "n8n-nodes-base.httpRequest" is not known.',
+			]);
+		});
+
+		it('falls back to a generic typeUnknown message when no node is passed', () => {
+			expect(nodeIssuesToString({ typeUnknown: true })).toEqual(['Node Type is not known.']);
+		});
+	});
+
 	describe('isTriggerNode', () => {
 		const tests: Array<{
 			description: string;
@@ -4321,6 +4528,72 @@ describe('NodeHelpers', () => {
 				expect(result).toEqual(testData.expected);
 			});
 		}
+	});
+
+	describe('getNodeOutputs', () => {
+		const workflowMock = {
+			expression: {
+				getSimpleParameterValue: vi.fn().mockReturnValue([NodeConnectionTypes.Main]),
+			},
+		} as unknown as Workflow;
+
+		test('Should return empty array when nodeTypeData is null', () => {
+			const node: INode = {
+				id: 'testNodeId',
+				name: 'TestNode',
+				position: [0, 0],
+				type: 'n8n-nodes-base.TestNode',
+				typeVersion: 1,
+				parameters: {},
+			};
+
+			const result = getNodeOutputs(workflowMock, node, null as unknown as INodeTypeDescription);
+			expect(result).toEqual([]);
+		});
+
+		test('Should return empty array when nodeTypeData is undefined', () => {
+			const node: INode = {
+				id: 'testNodeId',
+				name: 'TestNode',
+				position: [0, 0],
+				type: 'n8n-nodes-base.TestNode',
+				typeVersion: 1,
+				parameters: {},
+			};
+
+			const result = getNodeOutputs(
+				workflowMock,
+				node,
+				undefined as unknown as INodeTypeDescription,
+			);
+			expect(result).toEqual([]);
+		});
+
+		test('Should return outputs array when nodeTypeData is valid', () => {
+			const node: INode = {
+				id: 'testNodeId',
+				name: 'TestNode',
+				position: [0, 0],
+				type: 'n8n-nodes-base.TestNode',
+				typeVersion: 1,
+				parameters: {},
+			};
+
+			const nodeTypeData: INodeTypeDescription = {
+				name: 'TestNode',
+				displayName: 'Test Node',
+				group: ['transform'],
+				description: 'Test node description',
+				version: 1,
+				defaults: {},
+				inputs: [NodeConnectionTypes.Main],
+				outputs: [NodeConnectionTypes.Main, NodeConnectionTypes.AiAgent],
+				properties: [],
+			};
+
+			const result = getNodeOutputs(workflowMock, node, nodeTypeData);
+			expect(result).toEqual([NodeConnectionTypes.Main, NodeConnectionTypes.AiAgent]);
+		});
 	});
 
 	describe('isExecutable', () => {
@@ -4492,6 +4765,34 @@ describe('NodeHelpers', () => {
 				expect(result).toEqual(testData.expected);
 			});
 		}
+
+		test('Should return false when nodeTypeData is null', () => {
+			const node: INode = {
+				id: 'testNodeId',
+				name: 'TestNode',
+				position: [0, 0],
+				type: 'n8n-nodes-base.TestNode',
+				typeVersion: 1,
+				parameters: {},
+			};
+
+			const result = isExecutable(workflowMock, node, null as unknown as INodeTypeDescription);
+			expect(result).toBe(false);
+		});
+
+		test('Should return false when nodeTypeData is undefined', () => {
+			const node: INode = {
+				id: 'testNodeId',
+				name: 'TestNode',
+				position: [0, 0],
+				type: 'n8n-nodes-base.TestNode',
+				typeVersion: 1,
+				parameters: {},
+			};
+
+			const result = isExecutable(workflowMock, node, undefined as unknown as INodeTypeDescription);
+			expect(result).toBe(false);
+		});
 	});
 	describe('displayParameter', () => {
 		const testNode: INode = {
@@ -5080,6 +5381,60 @@ describe('NodeHelpers', () => {
 				expect(result).toEqual(expected);
 			});
 		}
+
+		describe('_cnd string operators with undefined property value', () => {
+			const node: INode = { ...testNode };
+			const nodeTypeDescription: INodeTypeDescription = { ...testNodeType };
+
+			const baseParam: INodeProperties = {
+				displayName: 'Test',
+				name: 'test',
+				type: 'string',
+				default: '',
+			};
+
+			test('includes returns false when property is undefined', () => {
+				const param: INodeProperties = {
+					...baseParam,
+					displayOptions: { show: { '/missingParam': [{ _cnd: { includes: 'foo' } }] } },
+				};
+				expect(displayParameter({}, param, node, nodeTypeDescription)).toBe(false);
+			});
+
+			test('startsWith returns false when property is undefined', () => {
+				const param: INodeProperties = {
+					...baseParam,
+					displayOptions: { show: { '/missingParam': [{ _cnd: { startsWith: 'foo' } }] } },
+				};
+				expect(displayParameter({}, param, node, nodeTypeDescription)).toBe(false);
+			});
+
+			test('endsWith returns false when property is undefined', () => {
+				const param: INodeProperties = {
+					...baseParam,
+					displayOptions: { show: { '/missingParam': [{ _cnd: { endsWith: 'foo' } }] } },
+				};
+				expect(displayParameter({}, param, node, nodeTypeDescription)).toBe(false);
+			});
+
+			test('regex returns false when property is undefined', () => {
+				const param: INodeProperties = {
+					...baseParam,
+					displayOptions: { show: { '/missingParam': [{ _cnd: { regex: 'foo' } }] } },
+				};
+				expect(displayParameter({}, param, node, nodeTypeDescription)).toBe(false);
+			});
+
+			test('includes returns true when property matches', () => {
+				const param: INodeProperties = {
+					...baseParam,
+					displayOptions: { show: { '/missingParam': [{ _cnd: { includes: 'foo' } }] } },
+				};
+				expect(displayParameter({ missingParam: 'foobar' }, param, node, nodeTypeDescription)).toBe(
+					true,
+				);
+			});
+		});
 	});
 
 	describe('makeDescription', () => {
@@ -5548,6 +5903,52 @@ describe('NodeHelpers', () => {
 			// Assert
 			expect(result).toBe('This is the default node description');
 		});
+
+		test('should resolve expression in toolDescription via the resolver callback', () => {
+			// Arrange
+			mockNode.parameters = {
+				descriptionType: 'manual',
+				toolDescription: '={{ $json.sessionId }}{{ $json.user }}',
+			};
+			const resolveToolDescription = vi.fn().mockReturnValue('123ABC');
+
+			// Act
+			const result = getToolDescriptionForNode(mockNode, mockNodeType, resolveToolDescription);
+
+			// Assert
+			expect(resolveToolDescription).toHaveBeenCalledTimes(1);
+			expect(result).toBe('123ABC');
+		});
+
+		test('should not call resolver for static toolDescription', () => {
+			// Arrange
+			mockNode.parameters = {
+				descriptionType: 'manual',
+				toolDescription: 'Plain static description',
+			};
+			const resolveToolDescription = vi.fn();
+
+			// Act
+			const result = getToolDescriptionForNode(mockNode, mockNodeType, resolveToolDescription);
+
+			// Assert
+			expect(resolveToolDescription).not.toHaveBeenCalled();
+			expect(result).toBe('Plain static description');
+		});
+
+		test('should fall back to raw value when no resolver is provided for an expression', () => {
+			// Arrange
+			mockNode.parameters = {
+				descriptionType: 'manual',
+				toolDescription: '={{ $json.sessionId }}',
+			};
+
+			// Act
+			const result = getToolDescriptionForNode(mockNode, mockNodeType);
+
+			// Assert
+			expect(result).toBe('={{ $json.sessionId }}');
+		});
 	});
 	describe('isDefaultNodeName', () => {
 		let mockNodeTypeDescription: INodeTypeDescription;
@@ -5713,6 +6114,39 @@ describe('NodeHelpers', () => {
 			expect(result).toBe('Create a new user');
 		});
 
+		test('should check for skipNameGeneration and use displayName', () => {
+			// Arrange
+			const nodeParameters: INodeParameters = {
+				resource: 'user',
+				operation: 'create',
+			};
+
+			mockNodeTypeDescription.skipNameGeneration = true;
+
+			// Act
+			const result = makeNodeName(nodeParameters, mockNodeTypeDescription);
+
+			// Assert
+			expect(result).toBe('Test Node');
+		});
+
+		test('should check for skipNameGeneration and use defaults.name', () => {
+			// Arrange
+			const nodeParameters: INodeParameters = {
+				resource: 'user',
+				operation: 'create',
+			};
+
+			mockNodeTypeDescription.skipNameGeneration = true;
+			mockNodeTypeDescription.defaults.name = 'Test Node Default';
+
+			// Act
+			const result = makeNodeName(nodeParameters, mockNodeTypeDescription);
+
+			// Assert
+			expect(result).toBe('Test Node Default');
+		});
+
 		test('should return resource-operation-based name when action is not available', () => {
 			// Arrange
 			const nodeParameters: INodeParameters = {
@@ -5830,10 +6264,46 @@ describe('NodeHelpers', () => {
 			expect(result).toBe('Create user in Test Node');
 		});
 
+		test('should return defaults.name when skipNameGeneration is true', () => {
+			// Arrange
+			const nodeParameters: INodeParameters = {
+				resource: 'user',
+				operation: 'create',
+			};
+
+			mockNodeTypeDescription.outputs = [NodeConnectionTypes.AiTool];
+			mockNodeTypeDescription.skipNameGeneration = true;
+			mockNodeTypeDescription.properties = [
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					displayOptions: {
+						show: {
+							resource: ['user'],
+						},
+					},
+					options: [
+						{
+							name: 'Create',
+							value: 'create',
+							action: 'Create a new user',
+						},
+					],
+					default: 'create',
+				},
+			];
+
+			// Act
+			const result = makeNodeName(nodeParameters, mockNodeTypeDescription);
+
+			// Assert - should return defaults.name, NOT action-based or resource/operation-based name
+			expect(result).toBe('Test Node');
+		});
+
 		test.each([
 			['javaScript', 'Code in JavaScript'],
-			['python', 'Code in Python'],
-			['pythonNative', 'Code in Python (Native)'],
+			['pythonNative', 'Code in Python'],
 		])(
 			'should return action-based name for Code node with %s language',
 			(language, expectedAction) => {
@@ -5851,13 +6321,8 @@ describe('NodeHelpers', () => {
 							},
 							{
 								name: 'Python',
-								value: 'python',
-								action: 'Code in Python',
-							},
-							{
-								name: 'Python (Native)',
 								value: 'pythonNative',
-								action: 'Code in Python (Native)',
+								action: 'Code in Python',
 							},
 						],
 						default: 'javaScript',
@@ -5991,6 +6456,907 @@ describe('NodeHelpers', () => {
 			const result = getNodeWebhookPath(mockWorkflowId, node, mockPath, false, false);
 
 			expect(result).toBe('workflow-123/testnode/test-path');
+		});
+	});
+
+	describe('isToolType', () => {
+		it('should return false when nodeType is undefined', () => {
+			expect(isToolType(undefined)).toBe(false);
+		});
+
+		it('should return false when nodeType is empty string', () => {
+			expect(isToolType('')).toBe(false);
+		});
+
+		it('should return true when nodeType ends with "Tool" (default includeHitl=true)', () => {
+			expect(isToolType('CustomTool')).toBe(true);
+		});
+
+		it('should return true when nodeType ends with "HitlTool" and includeHitl=true (default)', () => {
+			expect(isToolType('CustomHitlTool')).toBe(true);
+			expect(isToolType('CustomHitlTool', { includeHitl: true })).toBe(true);
+		});
+
+		it('should return false when nodeType ends with "HitlTool" and includeHitl=false', () => {
+			expect(isToolType('CustomHitlTool', { includeHitl: false })).toBe(false);
+		});
+
+		it('should return true when nodeType ends with "Tool" but not "HitlTool" and includeHitl=false', () => {
+			expect(isToolType('CustomTool', { includeHitl: false })).toBe(true);
+		});
+
+		it('should return false when nodeType does not end with "Tool" regardless of includeHitl option', () => {
+			expect(isToolType('CustomNode', { includeHitl: true })).toBe(false);
+			expect(isToolType('CustomNode', { includeHitl: false })).toBe(false);
+		});
+
+		it.each([
+			['@n8n/n8n-nodes-base.toolCalculator', true],
+			['@n8n/n8n-nodes-base.toolCode', true],
+			['n8n-nodes-base.someTool', true],
+			['nodes-base.dot.dot.dot.someTool', true],
+			['nodes-base.dot.dot.dot.someTool', true],
+			['nodes-base.dot.dot.dot.someHitlTool', true],
+		])('should return true when nodeType is %s', (nodeType, expected) => {
+			expect(isToolType(nodeType)).toBe(expected);
+		});
+	});
+
+	describe('isHitlToolType', () => {
+		it('should return false when nodeType is undefined', () => {
+			expect(isHitlToolType(undefined)).toBe(false);
+		});
+
+		it('should return false when nodeType is empty string', () => {
+			expect(isHitlToolType('')).toBe(false);
+		});
+
+		it('should return true when nodeType ends with "HitlTool"', () => {
+			expect(isHitlToolType('CustomHitlTool')).toBe(true);
+		});
+
+		it('should return false when nodeType ends with "Tool" but not "HitlTool"', () => {
+			expect(isHitlToolType('CustomTool')).toBe(false);
+		});
+
+		it('should return false when nodeType does not end with "Tool"', () => {
+			expect(isHitlToolType('CustomNode')).toBe(false);
+		});
+	});
+
+	describe('getNodeParameters - noDataExpression handling', () => {
+		it('should strip expression prefix when noDataExpression is true and value is an expression', () => {
+			const nodePropertiesArray: INodeProperties[] = [
+				{
+					name: 'resource',
+					displayName: 'Resource',
+					type: 'string',
+					default: '',
+					noDataExpression: true,
+				},
+			];
+
+			const nodeValues: Record<string, string> = {
+				resource: '=users',
+			};
+
+			const node: INode = {
+				id: 'test-123',
+				name: 'Test',
+				type: 'n8n-nodes-base.test',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: nodeValues,
+				credentials: {},
+			};
+			const description: INodeTypeDescription = {
+				name: 'Test',
+				displayName: 'Test',
+				group: [],
+				version: 1,
+				description: 'Test',
+				defaults: {},
+				inputs: [],
+				outputs: [],
+				properties: nodePropertiesArray,
+			};
+
+			const nodeType: INodeType = {
+				description,
+			};
+
+			const result = getNodeParameters(
+				nodeType.description.properties,
+				nodeValues,
+				true,
+				false,
+				node,
+				nodeType.description,
+			);
+
+			expect(result?.resource).toBe('users');
+		});
+
+		it('should not strip expression prefix when noDataExpression is false', () => {
+			const nodePropertiesArray: INodeProperties[] = [
+				{
+					name: 'resource',
+					displayName: 'Resource',
+					type: 'string',
+					default: '',
+					noDataExpression: false,
+				},
+			];
+
+			const nodeValues: Record<string, string> = {
+				resource: '=users',
+			};
+
+			const node: INode = {
+				id: 'test-123',
+				name: 'Test',
+				type: 'n8n-nodes-base.test',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: nodeValues,
+				credentials: {},
+			};
+
+			const nodeType: INodeType = {
+				description: {
+					displayName: 'Test',
+					name: 'Test',
+					group: [],
+					version: 1,
+					description: 'Test',
+					defaults: {},
+					inputs: [],
+					outputs: [],
+					properties: nodePropertiesArray,
+				},
+			};
+
+			const result = getNodeParameters(
+				nodeType.description.properties,
+				nodeValues,
+				true,
+				false,
+				node,
+				nodeType.description,
+			);
+
+			expect(result?.resource).toBe('=users');
+		});
+
+		it('should not modify non-expression values when noDataExpression is true', () => {
+			const nodePropertiesArray: INodeProperties[] = [
+				{
+					name: 'resource',
+					displayName: 'Resource',
+					type: 'string',
+					default: '',
+					noDataExpression: true,
+				},
+			];
+
+			const nodeValues: Record<string, string> = {
+				resource: 'users',
+			};
+
+			const node: INode = {
+				id: 'test-123',
+				name: 'Test',
+				type: 'n8n-nodes-base.test',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: nodeValues,
+				credentials: {},
+			};
+
+			const nodeType: INodeType = {
+				description: {
+					displayName: 'Test',
+					name: 'Test',
+					group: [],
+					version: 1,
+					description: 'Test',
+					defaults: {},
+					inputs: [],
+					outputs: [],
+					properties: nodePropertiesArray,
+				},
+			};
+
+			const result = getNodeParameters(
+				nodeType.description.properties,
+				nodeValues,
+				true,
+				false,
+				node,
+				nodeType.description,
+			);
+
+			expect(result?.resource).toBe('users');
+		});
+
+		it('should handle undefined values when noDataExpression is true', () => {
+			const nodePropertiesArray: INodeProperties[] = [
+				{
+					name: 'resource',
+					displayName: 'Resource',
+					type: 'string',
+					default: '',
+					noDataExpression: true,
+				},
+			];
+
+			const nodeValues: NodeParameterValueType = {
+				resource: undefined,
+			};
+
+			const node: INode = {
+				id: 'test-123',
+				name: 'Test',
+				type: 'n8n-nodes-base.test',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: nodeValues,
+				credentials: {},
+			};
+
+			const nodeType: INodeType = {
+				description: {
+					displayName: 'Test',
+					name: 'Test',
+					group: [],
+					version: 1,
+					description: 'Test',
+					defaults: {},
+					inputs: [],
+					outputs: [],
+					properties: nodePropertiesArray,
+				},
+			};
+
+			const result = getNodeParameters(
+				nodeType.description.properties,
+				nodeValues,
+				true,
+				false,
+				node,
+				nodeType.description,
+			);
+
+			// When undefined, the default value (empty string) is used
+			expect(result?.resource).toBe('');
+		});
+
+		describe('$fromAI placeholder carve-out', () => {
+			const resolveQuery = (query: string) => {
+				const properties: INodeProperties[] = [
+					{
+						name: 'query',
+						displayName: 'Query',
+						type: 'string',
+						default: '',
+						noDataExpression: true,
+					},
+				];
+
+				const nodeValues: Record<string, string> = { query };
+
+				const node: INode = {
+					id: 'test-123',
+					name: 'Test',
+					type: 'n8n-nodes-base.test',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: nodeValues,
+					credentials: {},
+				};
+
+				const description: INodeTypeDescription = {
+					displayName: 'Test',
+					name: 'Test',
+					group: [],
+					version: 1,
+					description: 'Test',
+					defaults: {},
+					inputs: [],
+					outputs: [],
+					properties,
+				};
+
+				return getNodeParameters(properties, nodeValues, true, false, node, description)?.query;
+			};
+
+			it('keeps a lone $fromAI() placeholder intact', () => {
+				const query = "=$fromAI('sqlQuery', 'The SQL query to execute', 'string')";
+				expect(resolveQuery(query)).toBe(query);
+			});
+
+			it('keeps a $fromAI() placeholder wrapped in {{ }} intact', () => {
+				const query = "={{ $fromAI('sqlQuery') }}";
+				expect(resolveQuery(query)).toBe(query);
+			});
+
+			it('still strips a plain expression that is not a $fromAI() call', () => {
+				expect(resolveQuery('=$env.SECRET')).toBe('$env.SECRET');
+			});
+
+			it('still strips $fromAI() concatenated with another expression', () => {
+				expect(resolveQuery("=$fromAI('x') + $env.SECRET")).toBe("$fromAI('x') + $env.SECRET");
+			});
+
+			it('still strips $fromAI() with an interpolated value in its argument', () => {
+				// Split the `${` token so the lint rule doesn't read it as interpolation.
+				const interpolated = '`$' + '{$env.SECRET}`';
+				expect(resolveQuery(`=$fromAI(${interpolated})`)).toBe(`$fromAI(${interpolated})`);
+			});
+		});
+	});
+
+	describe('getNodeParameters filter defaults', () => {
+		const filterProperty: INodeProperties = {
+			displayName: 'Conditions',
+			name: 'conditions',
+			type: 'filter',
+			default: {},
+		};
+
+		it('should add missing combinator and options to a filter parameter', () => {
+			const result = getNodeParameters(
+				[filterProperty],
+				{
+					conditions: {
+						conditions: [
+							{
+								leftValue: '={{ $json.field }}',
+								rightValue: 'value',
+								operator: { type: 'string', operation: 'equals' },
+							},
+						],
+					},
+				},
+				true,
+				false,
+				null,
+				null,
+			);
+
+			expect(result).toEqual({
+				conditions: {
+					combinator: 'and',
+					options: {
+						caseSensitive: true,
+						leftValue: '',
+						typeValidation: 'strict',
+						version: 1,
+					},
+					conditions: [
+						{
+							leftValue: '={{ $json.field }}',
+							rightValue: 'value',
+							operator: { type: 'string', operation: 'equals' },
+						},
+					],
+				},
+			});
+		});
+
+		it('should preserve existing combinator and options', () => {
+			const result = getNodeParameters(
+				[filterProperty],
+				{
+					conditions: {
+						combinator: 'or',
+						options: {
+							caseSensitive: false,
+							leftValue: '',
+							typeValidation: 'loose',
+							version: 2,
+						},
+						conditions: [],
+					},
+				},
+				true,
+				false,
+				null,
+				null,
+			);
+
+			expect(result).toEqual({
+				conditions: {
+					combinator: 'or',
+					options: {
+						caseSensitive: false,
+						leftValue: '',
+						typeValidation: 'loose',
+						version: 2,
+					},
+					conditions: [],
+				},
+			});
+		});
+
+		it('should fill in missing fields in partial options', () => {
+			const result = getNodeParameters(
+				[filterProperty],
+				{
+					conditions: {
+						combinator: 'and',
+						options: { caseSensitive: false },
+						conditions: [],
+					},
+				},
+				true,
+				false,
+				null,
+				null,
+			);
+
+			expect(result).toEqual({
+				conditions: {
+					combinator: 'and',
+					options: {
+						caseSensitive: false,
+						leftValue: '',
+						typeValidation: 'strict',
+						version: 1,
+					},
+					conditions: [],
+				},
+			});
+		});
+	});
+
+	describe('isTriggerNodeType', () => {
+		// Membership in TRIGGER_NODE_TYPES: each legacy/special type is matched by
+		// identity, not by the generic "contains trigger" heuristic.
+		test.each([
+			'n8n-nodes-base.webhook',
+			'n8n-nodes-base.cron',
+			'n8n-nodes-base.emailReadImap',
+			'n8n-nodes-base.telegramBot',
+			'n8n-nodes-base.start',
+		])('recognises the explicitly-listed trigger type %s', (type) => {
+			expect(isTriggerNodeType(type)).toBe(true);
+		});
+
+		it('recognises any type whose name contains "trigger"', () => {
+			expect(isTriggerNodeType('n8n-nodes-base.scheduleTrigger')).toBe(true);
+			expect(isTriggerNodeType('n8n-nodes-base.manualTrigger')).toBe(true);
+		});
+
+		it('matches "trigger" case-insensitively', () => {
+			// Guards the `.toLowerCase()` normalisation: without it these would miss.
+			expect(isTriggerNodeType('CustomTrigger')).toBe(true);
+			expect(isTriggerNodeType('SOMETRIGGERNODE')).toBe(true);
+		});
+
+		it('returns false for non-trigger types not in the set', () => {
+			expect(isTriggerNodeType('n8n-nodes-base.set')).toBe(false);
+			expect(isTriggerNodeType('n8n-nodes-base.httpRequest')).toBe(false);
+			expect(isTriggerNodeType('')).toBe(false);
+		});
+	});
+
+	describe('getParameterIssues - validation paths', () => {
+		const testNode: INode = {
+			id: '12345',
+			name: 'Test Node',
+			typeVersion: 1,
+			type: 'n8n-nodes-base.testNode',
+			position: [1, 1],
+			parameters: {},
+		};
+
+		describe('resourceLocator regex validation', () => {
+			const resourceLocatorProperties: INodeProperties = {
+				displayName: 'Document',
+				name: 'documentId',
+				type: 'resourceLocator',
+				default: { mode: 'id', value: '' },
+				modes: [
+					{
+						displayName: 'By ID',
+						name: 'id',
+						type: 'string',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '[0-9]+',
+									errorMessage: 'Document ID must be numeric',
+								},
+							},
+						],
+					},
+				],
+			};
+
+			it('reports the configured error when the value fails the mode regex', () => {
+				const result = getParameterIssues(
+					resourceLocatorProperties,
+					{ documentId: { __rl: true, mode: 'id', value: 'abc' } },
+					'',
+					testNode,
+					null,
+				);
+
+				expect(result).toEqual({
+					parameters: { documentId: ['Document ID must be numeric'] },
+				});
+			});
+
+			it('returns no issues when the value matches the mode regex', () => {
+				const result = getParameterIssues(
+					resourceLocatorProperties,
+					{ documentId: { __rl: true, mode: 'id', value: '123' } },
+					'',
+					testNode,
+					null,
+				);
+
+				expect(result).toEqual({});
+			});
+
+			it('skips validation for expression values (starting with "=")', () => {
+				// Metamorphic: an expression is resolved at runtime, so static
+				// validation must never flag it regardless of the regex.
+				const result = getParameterIssues(
+					resourceLocatorProperties,
+					{ documentId: { __rl: true, mode: 'id', value: '={{ $json.id }}' } },
+					'',
+					testNode,
+					null,
+				);
+
+				expect(result).toEqual({});
+			});
+
+			it('returns no issues when the value mode has no matching mode definition', () => {
+				const result = getParameterIssues(
+					resourceLocatorProperties,
+					{ documentId: { __rl: true, mode: 'url', value: 'abc' } },
+					'',
+					testNode,
+					null,
+				);
+
+				expect(result).toEqual({});
+			});
+
+			it('applies regex validation to workflowSelector values too', () => {
+				// workflowSelector shares the resource-locator validation branch.
+				const workflowSelectorProperties: INodeProperties = {
+					...resourceLocatorProperties,
+					name: 'workflowId',
+					type: 'workflowSelector',
+				};
+				const result = getParameterIssues(
+					workflowSelectorProperties,
+					{ workflowId: { __rl: true, mode: 'id', value: 'abc' } },
+					'',
+					testNode,
+					null,
+				);
+
+				expect(result).toEqual({
+					parameters: { workflowId: ['Document ID must be numeric'] },
+				});
+			});
+		});
+
+		describe('resourceMapper required-field validation', () => {
+			const resourceMapperProperties: INodeProperties = {
+				displayName: 'Columns',
+				name: 'columns',
+				type: 'resourceMapper',
+				default: {},
+				typeOptions: {
+					resourceMapper: {
+						// `add` mode is the only one that runs the required-field check.
+						mode: 'add',
+						resourceMapperMethod: 'getFields',
+						fieldWords: { singular: 'field', plural: 'fields' },
+					},
+				},
+			};
+
+			it('reports required schema fields that are missing in add mode', () => {
+				const result = getParameterIssues(
+					resourceMapperProperties,
+					{
+						columns: {
+							mappingMode: 'defineBelow',
+							value: { providedField: 'x' },
+							schema: [
+								{
+									id: 'requiredField',
+									displayName: 'requiredField',
+									required: true,
+									defaultMatch: false,
+									display: true,
+									type: 'string',
+									canBeUsedToMatch: true,
+								},
+							],
+						},
+					},
+					'',
+					testNode,
+					null,
+				);
+
+				expect(result.parameters?.['columns.requiredField']).toContain(
+					'Field "requiredField" is required',
+				);
+			});
+
+			it('skips the required-field check outside add mode', () => {
+				// Only `add` mode validates required fields; update/upsert/map map onto
+				// existing rows where missing fields are legitimate.
+				const updateModeProperties: INodeProperties = {
+					...resourceMapperProperties,
+					typeOptions: {
+						resourceMapper: {
+							mode: 'update',
+							resourceMapperMethod: 'getFields',
+							fieldWords: { singular: 'field', plural: 'fields' },
+						},
+					},
+				};
+				const result = getParameterIssues(
+					updateModeProperties,
+					{
+						columns: {
+							mappingMode: 'defineBelow',
+							value: { providedField: 'x' },
+							schema: [
+								{
+									id: 'requiredField',
+									displayName: 'requiredField',
+									required: true,
+									defaultMatch: false,
+									display: true,
+									type: 'string',
+									canBeUsedToMatch: true,
+								},
+							],
+						},
+					},
+					'',
+					testNode,
+					null,
+				);
+
+				expect(result.parameters?.['columns.requiredField']).toBeUndefined();
+			});
+
+			it('reports a type mismatch for a provided field value', () => {
+				const result = getParameterIssues(
+					resourceMapperProperties,
+					{
+						columns: {
+							mappingMode: 'defineBelow',
+							value: { numField: 'not-a-number' },
+							schema: [
+								{
+									id: 'numField',
+									displayName: 'numField',
+									required: false,
+									defaultMatch: false,
+									display: true,
+									type: 'number',
+									canBeUsedToMatch: true,
+								},
+							],
+						},
+					},
+					'',
+					testNode,
+					null,
+				);
+
+				expect(result.parameters?.['columns.numField']).toBeDefined();
+				expect(result.parameters?.['columns.numField']?.length).toBeGreaterThan(0);
+			});
+
+			it('skips type validation for expression field values', () => {
+				// Metamorphic: an expression value is resolved at runtime, so a static
+				// type mismatch must not be reported.
+				const result = getParameterIssues(
+					resourceMapperProperties,
+					{
+						columns: {
+							mappingMode: 'defineBelow',
+							value: { numField: '={{ $json.n }}' },
+							schema: [
+								{
+									id: 'numField',
+									displayName: 'numField',
+									required: false,
+									defaultMatch: false,
+									display: true,
+									type: 'number',
+									canBeUsedToMatch: true,
+								},
+							],
+						},
+					},
+					'',
+					testNode,
+					null,
+				);
+
+				expect(result).toEqual({});
+			});
+
+			it('does not validate in automatic mapping mode', () => {
+				// Metamorphic: autoMapInputData has no user-entered values to validate,
+				// so it must never produce issues regardless of the schema.
+				const result = getParameterIssues(
+					resourceMapperProperties,
+					{
+						columns: {
+							mappingMode: 'autoMapInputData',
+							value: null,
+							schema: [
+								{
+									id: 'requiredField',
+									displayName: 'requiredField',
+									required: true,
+									defaultMatch: false,
+									display: true,
+									type: 'string',
+									canBeUsedToMatch: true,
+								},
+							],
+						},
+					},
+					'',
+					testNode,
+					null,
+				);
+
+				expect(result).toEqual({});
+			});
+		});
+
+		describe('validateType', () => {
+			const numberProperties: INodeProperties = {
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				default: 0,
+				validateType: 'number',
+			};
+
+			it('reports an issue when the value does not match validateType', () => {
+				const result = getParameterIssues(
+					numberProperties,
+					{ limit: 'not-a-number' },
+					'',
+					testNode,
+					null,
+				);
+
+				expect(result.parameters?.limit).toHaveLength(1);
+			});
+
+			it('returns no issues when the value matches validateType', () => {
+				const result = getParameterIssues(numberProperties, { limit: 5 }, '', testNode, null);
+
+				expect(result).toEqual({});
+			});
+
+			it('skips validateType for expression values (starting with "=")', () => {
+				const result = getParameterIssues(
+					numberProperties,
+					{ limit: '={{ $json.count }}' },
+					'',
+					testNode,
+					null,
+				);
+
+				expect(result).toEqual({});
+			});
+		});
+
+		describe('required parameter emptiness by type', () => {
+			const requiredOf = (overrides: Partial<INodeProperties>): INodeProperties => ({
+				displayName: 'Field',
+				name: 'field',
+				type: 'string',
+				default: '',
+				required: true,
+				...overrides,
+			});
+
+			it('flags a required string that is an empty string', () => {
+				const result = getParameterIssues(requiredOf({}), { field: '' }, '', testNode, null);
+				expect(result).toEqual({ parameters: { field: ['Parameter "Field" is required.'] } });
+			});
+
+			it('flags a required string that is undefined', () => {
+				const result = getParameterIssues(requiredOf({}), { field: undefined }, '', testNode, null);
+				expect(result).toEqual({ parameters: { field: ['Parameter "Field" is required.'] } });
+			});
+
+			it('flags a required multiOptions with an empty array', () => {
+				const result = getParameterIssues(
+					requiredOf({ type: 'multiOptions', options: [], default: [] }),
+					{ field: [] },
+					'',
+					testNode,
+					null,
+				);
+				expect(result).toEqual({ parameters: { field: ['Parameter "Field" is required.'] } });
+			});
+
+			it('flags a required options parameter that is an empty string', () => {
+				const result = getParameterIssues(
+					requiredOf({ type: 'options', options: [] }),
+					{ field: '' },
+					'',
+					testNode,
+					null,
+				);
+				expect(result).toEqual({ parameters: { field: ['Parameter "Field" is required.'] } });
+			});
+
+			it('flags a required resourceLocator with an empty value', () => {
+				const result = getParameterIssues(
+					requiredOf({ type: 'resourceLocator', default: { mode: 'id', value: '' } }),
+					{ field: { __rl: true, mode: 'id', value: '' } },
+					'',
+					testNode,
+					null,
+				);
+				expect(result).toEqual({ parameters: { field: ['Parameter "Field" is required.'] } });
+			});
+
+			it('does not flag a required string that has a value', () => {
+				const result = getParameterIssues(requiredOf({}), { field: 'present' }, '', testNode, null);
+				expect(result).toEqual({});
+			});
+
+			it('checks each entry of a required multipleValues parameter', () => {
+				const result = getParameterIssues(
+					requiredOf({ typeOptions: { multipleValues: true }, default: [] }),
+					{ field: ['ok', ''] },
+					'',
+					testNode,
+					null,
+				);
+				// Only the empty entry is flagged.
+				expect(result).toEqual({ parameters: { field: ['Parameter "Field" is required.'] } });
+			});
+		});
+
+		it('recurses into collection children and validates required sub-fields', () => {
+			const collectionProperties: INodeProperties = {
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				default: {},
+				options: [
+					{
+						displayName: 'Required Field',
+						name: 'reqField',
+						type: 'string',
+						default: '',
+						required: true,
+					},
+				],
+			};
+
+			const result = getParameterIssues(collectionProperties, { reqField: '' }, '', testNode, null);
+
+			expect(result).toEqual({
+				parameters: { reqField: ['Parameter "Required Field" is required.'] },
+			});
 		});
 	});
 });

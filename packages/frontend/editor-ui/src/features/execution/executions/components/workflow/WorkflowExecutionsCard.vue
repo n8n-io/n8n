@@ -3,15 +3,15 @@ import { computed, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import type { IExecutionUIData } from '../../composables/useExecutionHelpers';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
+import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 import ExecutionsTime from '../ExecutionsTime.vue';
 import { useExecutionHelpers } from '../../composables/useExecutionHelpers';
 import type { ExecutionSummary } from 'n8n-workflow';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useI18n } from '@n8n/i18n';
 import type { PermissionsRecord } from '@n8n/permissions';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { toDayMonth, toTime } from '@/app/utils/formatters/dateFormatter';
-
+import PrivateCredentialIcon from '@/features/resolvers/components/PrivateCredentialIcon.vue';
 import {
 	N8nActionDropdown,
 	N8nIcon,
@@ -36,7 +36,6 @@ const route = useRoute();
 const locale = useI18n();
 
 const executionHelpers = useExecutionHelpers();
-const workflowsStore = useWorkflowsStore();
 const settingsStore = useSettingsStore();
 
 const isAdvancedExecutionFilterEnabled = computed(
@@ -44,7 +43,9 @@ const isAdvancedExecutionFilterEnabled = computed(
 );
 const isAnnotationEnabled = computed(() => isAdvancedExecutionFilterEnabled.value);
 
-const currentWorkflow = computed(() => (route.params.name as string) || workflowsStore.workflowId);
+const workflowId = useInjectWorkflowId();
+
+const hasPrivateCredentials = computed(() => props.execution.usedPrivateCredentials === true);
 const retryExecutionActions = computed(() => [
 	{
 		id: 'current-workflow',
@@ -85,7 +86,7 @@ function onRetryMenuItemSelect(action: string): void {
 			:class="$style.executionLink"
 			:to="{
 				name: VIEWS.EXECUTION_PREVIEW,
-				params: { name: currentWorkflow, executionId: execution.id },
+				params: { workflowId: workflowId, executionId: execution.id },
 				query: route.query,
 			}"
 			:data-test-execution-status="executionUIDetails.name"
@@ -169,6 +170,12 @@ function onRetryMenuItemSelect(action: string): void {
 					activator-icon="redo-2"
 					data-test-id="retry-execution-button"
 					@select="onRetryMenuItemSelect"
+				/>
+				<PrivateCredentialIcon
+					v-if="hasPrivateCredentials"
+					:class="$style.icon"
+					:tooltip-text="locale.baseText('executions.privateCredential.tooltip')"
+					data-test-id="execution-card-private-credential"
 				/>
 				<N8nTooltip v-if="execution.mode === 'manual'" placement="top">
 					<template #content>
@@ -323,10 +330,17 @@ function onRetryMenuItemSelect(action: string): void {
 .icons {
 	display: flex;
 	align-items: center;
+	justify-content: flex-end;
+	gap: var(--spacing--2xs);
+	min-width: calc(2 * var(--font-size--sm) + var(--spacing--2xs));
 }
 
 .icon {
 	font-size: var(--font-size--sm);
+	width: var(--font-size--sm);
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
 
 	&.retry {
 		svg {
@@ -337,10 +351,6 @@ function onRetryMenuItemSelect(action: string): void {
 	&.manual {
 		position: relative;
 		top: 1px;
-	}
-
-	& + & {
-		margin-left: var(--spacing--2xs);
 	}
 }
 

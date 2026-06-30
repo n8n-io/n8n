@@ -1,6 +1,5 @@
 import { TaskRunnersConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 import type {
 	IExecuteFunctions,
 	INode,
@@ -17,9 +16,23 @@ import {
 	NodeConnectionTypes,
 	Workflow,
 } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { LocalTaskRequester } from '@/task-runners/task-managers/local-task-requester';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
+import { PyTaskRunnerProcess } from '@/task-runners/task-runner-process-py';
+
+// `restoreMocks: true` in the root vi config restores spies between tests,
+// but the Python runtime check is invoked from inner describes' `beforeAll`
+// hooks (which run after the previous test's restore). Patching the static
+// method directly keeps the stub active for the whole test file.
+const originalCheckRequirements = PyTaskRunnerProcess.checkRequirements;
+beforeAll(() => {
+	PyTaskRunnerProcess.checkRequirements = async () => 'python';
+});
+afterAll(() => {
+	PyTaskRunnerProcess.checkRequirements = originalCheckRequirements;
+});
 
 /**
  * Integration tests for the JS TaskRunner execution. Starts the TaskRunner
@@ -28,9 +41,7 @@ import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 describe('JS TaskRunner execution on internal mode', () => {
 	const runnerConfig = Container.get(TaskRunnersConfig);
 	runnerConfig.mode = 'internal';
-	runnerConfig.enabled = true;
 	runnerConfig.port = 45678;
-	runnerConfig.isNativePythonRunnerEnabled = false;
 
 	const taskRunnerModule = Container.get(TaskRunnerModule);
 	const taskRequester = Container.get(LocalTaskRequester);
@@ -135,7 +146,10 @@ describe('JS TaskRunner execution on internal mode', () => {
 		});
 
 		return {
-			additionalData: mock<IWorkflowExecuteAdditionalData>(),
+			additionalData: mock<IWorkflowExecuteAdditionalData>({
+				webhookWaitingBaseUrl: 'http://localhost:5678/webhook-waiting',
+				formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
+			}),
 			executeFunctions: mock<IExecuteFunctions>(),
 			taskSettings,
 			codeNode,
@@ -198,12 +212,35 @@ describe('JS TaskRunner execution on internal mode', () => {
 				result: { hello: 'world' },
 			});
 		});
+
+		// CAT-3208 / GH #24307: secure-mode task runners disable code generation
+		// (--disallow-code-generation-from-strings) and freeze Object.prototype, so
+		// expressions can't be evaluated inside the Code node. $evaluateExpression
+		// must surface a clear, actionable error instead of crashing with
+		// "Cannot assign to read only property '__lookupGetter__'" or silently
+		// returning null.
+		it('should throw a clear error for $evaluateExpression in the Code node', async () => {
+			// Act
+			const result = await runTaskWithCode("return { val: $evaluateExpression('{{ 1 + 1 }}') }");
+
+			// Assert
+			expect(result).toEqual({
+				ok: false,
+				error: expect.objectContaining({
+					message: expect.stringContaining(
+						'in the Code node while task runners run in secure mode',
+					),
+				}),
+			});
+		});
 	});
 
 	describe('Internal and external libs', () => {
 		beforeAll(async () => {
 			process.env.NODE_FUNCTION_ALLOW_BUILTIN = 'crypto';
 			process.env.NODE_FUNCTION_ALLOW_EXTERNAL = 'moment';
+			const { TaskBroker } = await import('@/task-runners/task-broker/task-broker.service');
+			Container.get(TaskBroker).stopDraining();
 			await taskRunnerModule.start();
 		});
 

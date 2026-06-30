@@ -13,23 +13,40 @@ import type { DataTableColumn, DataTableRow } from '@/features/core/dataTable/da
 import {
 	ADD_ROW_ROW_ID,
 	EMPTY_VALUE,
+	MAX_CELL_DISPLAY_LENGTH,
 	NULL_VALUE,
 	NUMBER_DECIMAL_SEPARATOR,
 	NUMBER_THOUSAND_SEPARATOR,
 	NUMBER_WITH_SPACES_REGEX,
 } from '@/features/core/dataTable/constants';
 import NullEmptyCellRenderer from '@/features/core/dataTable/components/dataGrid/NullEmptyCellRenderer.vue';
+import OversizedCellRenderer from '@/features/core/dataTable/components/dataGrid/OversizedCellRenderer.vue';
 import { isDataTableValue } from '@/features/core/dataTable/typeGuards';
 
-export const getCellClass = (params: CellClassParams): string => {
-	if (params.data?.id === ADD_ROW_ROW_ID) {
-		return 'add-row-cell';
-	}
-	if (params.column.getUserProvidedColDef()?.cellDataType === 'boolean') {
-		return 'boolean-cell';
-	}
-	return '';
+export const isOversizedValue = (value: unknown): boolean =>
+	typeof value === 'string' && value.length > MAX_CELL_DISPLAY_LENGTH;
+
+export const isUnsafeNumberValue = (value: unknown): boolean => {
+	if (typeof value !== 'number') return false;
+	if (!Number.isFinite(value)) return true;
+	return Math.abs(value) > Number.MAX_SAFE_INTEGER;
 };
+
+export const createCellClass =
+	(col: DataTableColumn) =>
+	(params: CellClassParams<DataTableRow>): string => {
+		if (params.data?.id === ADD_ROW_ROW_ID) {
+			return 'add-row-cell';
+		}
+		if (params.column.getUserProvidedColDef()?.cellDataType === 'boolean') {
+			return 'boolean-cell';
+		}
+		const rowValue = params.data?.[col.name];
+		if (isOversizedValue(rowValue)) {
+			return 'oversized-cell';
+		}
+		return '';
+	};
 
 export const createValueGetter =
 	(col: DataTableColumn) => (params: ValueGetterParams<DataTableRow>) => {
@@ -46,11 +63,11 @@ export const createValueGetter =
 	};
 
 export const createCellRendererSelector =
-	(col: DataTableColumn) => (params: ICellRendererParams) => {
+	(col: DataTableColumn) => (params: ICellRendererParams<DataTableRow>) => {
 		if (params.data?.id === ADD_ROW_ROW_ID || col.id === 'add-column') {
 			return {};
 		}
-		let rowValue = (params.data as DataTableRow | undefined)?.[col.name];
+		let rowValue = params.data?.[col.name];
 		if (rowValue === undefined) {
 			rowValue = null;
 		}
@@ -64,6 +81,11 @@ export const createCellRendererSelector =
 			return {
 				component: NullEmptyCellRenderer,
 				params: { value: EMPTY_VALUE },
+			};
+		}
+		if (isOversizedValue(rowValue)) {
+			return {
+				component: OversizedCellRenderer,
 			};
 		}
 		return undefined;

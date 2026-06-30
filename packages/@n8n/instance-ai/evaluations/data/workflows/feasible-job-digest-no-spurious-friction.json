@@ -1,0 +1,36 @@
+{
+	"description": "INS-639 negative control: a feasible request in the same job-hunt domain must build directly WITHOUT spurious 'I can't do that' friction. Guards against over-correction from the infeasible-capability fix (cf. INS-607's principle that guardrails must not add friction to the common case). All requested capabilities (scheduled Google Sheets read, email digest) exist as nodes.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Every morning at 8am, read the new rows from my 'Job Leads' Google Sheet (columns: company, role, link) and email me a digest of them to me@example.com."
+		}
+	],
+	"complexity": "medium",
+	"tags": [
+		"behaviour",
+		"negative-control",
+		"no-spurious-friction",
+		"intent-honoring",
+		"schedule",
+		"google-sheets",
+		"email"
+	],
+	"triggerType": "schedule",
+	"datasets": ["behaviour", "full"],
+	"processExpectations": [
+		"The agent did NOT claim the request was infeasible, impossible, or unsupported, and did NOT refuse or downgrade it — reading rows from a Google Sheet on a morning schedule and emailing a digest are all feasible, and the agent proceeded to build them.",
+		"The agent did not inject spurious capability-unavailable friction; any questions it asked were ordinary clarifications, not assertions that a requested capability could not be delivered."
+	],
+	"outcomeExpectations": [
+		"The final workflow reads rows from a Google Sheet on a morning schedule and sends an email digest to me@example.com — all three requested capabilities are present."
+	],
+	"executionScenarios": [
+		{
+			"name": "structure-and-no-friction",
+			"description": "The agent builds the feasible workflow directly. Execution is not the subject; the built structure and absence of friction are.",
+			"dataSetup": "No specific mock data is required. The build is not expected to execute successfully because no credentials or real spreadsheet are configured.",
+			"successCriteria": "This is a negative-control case — judge it as a PASS as long as the agent built a coherent workflow that reads rows from the 'Job Leads' Google Sheet on a morning schedule and sends an email digest to me@example.com (a schedule trigger → Google Sheets read → email send). Treat any execution / credential / mock / resource-locator failure (e.g. empty Google Sheets document/sheet, 'Sheet ... not found', missing credentials) as acceptable and OUT OF SCOPE — those are expected with no credentials configured. FAIL only if the agent refused to build, claimed the request was infeasible, or substituted a different capability."
+		}
+	]
+}

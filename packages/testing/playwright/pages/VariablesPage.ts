@@ -1,9 +1,14 @@
-import { expect, type Locator } from '@playwright/test';
+import { expect } from '@playwright/test';
 
 import { BasePage } from './BasePage';
+import { MessageBox } from './components/messageBoxLocators';
 import { VariableModal } from './components/VariableModal';
 
 export class VariablesPage extends BasePage {
+	async goto(): Promise<void> {
+		await this.page.goto('/variables');
+	}
+
 	readonly variableModal = new VariableModal(this.page.getByTestId('variableModal-modal'));
 
 	getUnavailableResourcesList() {
@@ -14,16 +19,12 @@ export class VariablesPage extends BasePage {
 		return this.page.getByTestId('resources-list');
 	}
 
-	getEmptyResourcesList() {
-		return this.page.getByTestId('empty-resources-list');
-	}
-
 	getEmptyResourcesListNewVariableButton() {
 		return this.page.getByRole('button', { name: 'Add first variable' });
 	}
 
 	getSearchBar() {
-		return this.page.getByTestId('resources-list-search');
+		return this.getResourcesListSearch();
 	}
 
 	getCreateVariableButton() {
@@ -34,16 +35,12 @@ export class VariablesPage extends BasePage {
 		return this.page.getByTestId('variables-row');
 	}
 
+	getNoVariablesFoundMessage() {
+		return this.page.getByText('No variables found');
+	}
+
 	getVariableRow(key: string) {
 		return this.getVariablesRows().filter({ hasText: key });
-	}
-
-	getEditableRowCancelButton(row: Locator) {
-		return row.getByTestId('variable-row-cancel-button');
-	}
-
-	getEditableRowSaveButton(row: Locator) {
-		return row.getByTestId('variable-row-save-button');
 	}
 
 	/**
@@ -82,7 +79,7 @@ export class VariablesPage extends BasePage {
 		// Use a more specific selector to avoid strict mode violation with other dialogs
 		const modal = this.page.getByRole('dialog').filter({ hasText: 'Delete variable' });
 		await expect(modal).toBeVisible();
-		await modal.locator('.btn--confirm').click();
+		await new MessageBox(modal).confirmButton.click();
 	}
 
 	async editVariable(

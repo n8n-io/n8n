@@ -2,7 +2,7 @@ import { createRouter, createMemoryHistory } from 'vue-router';
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
-import { createProjectListItem } from '../__tests__/utils';
+import { createProjectListItem, createTestProject } from '../__tests__/utils';
 import ProjectsNavigation from './ProjectNavigation.vue';
 import { useProjectsStore } from '../projects.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -93,6 +93,7 @@ describe('ProjectsNavigation', () => {
 	it('should show "Projects" title and Personal project when the feature is enabled', async () => {
 		projectsStore.teamProjectsLimit = -1;
 		projectsStore.myProjects = [...personalProjects, ...teamProjects];
+		projectsStore.personalProject = createTestProject({ type: 'personal' });
 
 		const { getAllByTestId, getByTestId, queryByText } = renderComponent({
 			props: {
@@ -104,6 +105,36 @@ describe('ProjectsNavigation', () => {
 		expect(getByTestId('project-personal-menu-item')).toBeVisible();
 		expect(getByTestId('project-personal-menu-item').querySelector('svg')).toBeVisible();
 		expect(getAllByTestId('project-menu-item')).toHaveLength(teamProjects.length);
+	});
+
+	it('should show Instance AI above Home when enabled', () => {
+		projectsStore.teamProjectsLimit = -1;
+		settingsStore.isModuleActive = vi.fn().mockReturnValue(true);
+		settingsStore.moduleSettings = {
+			'instance-ai': {
+				enabled: true,
+				localGatewayDisabled: false,
+				browserUseEnabled: true,
+				proxyEnabled: false,
+				cloudManaged: false,
+				sandboxEnabled: true,
+				workflowBuilderAvailable: true,
+				sandboxUnavailableReason: null,
+				runDebugEnabled: false,
+			},
+		};
+
+		const { getByTestId } = renderComponent({
+			props: {
+				collapsed: false,
+			},
+		});
+
+		expect(
+			getByTestId('project-instance-ai-menu-item').compareDocumentPosition(
+				getByTestId('project-home-menu-item'),
+			) & Node.DOCUMENT_POSITION_FOLLOWING,
+		).toBeTruthy();
 	});
 
 	it('should not show "Projects" title when the menu is collapsed', async () => {
@@ -133,6 +164,7 @@ describe('ProjectsNavigation', () => {
 	it('should show Personal project when folders are enabled but projects are disabled', async () => {
 		projectsStore.teamProjectsLimit = 0;
 		settingsStore.isFoldersFeatureEnabled = true;
+		projectsStore.personalProject = createTestProject({ type: 'personal' });
 
 		const { queryByText, getByTestId, queryByTestId } = renderComponent({
 			props: {
@@ -149,6 +181,7 @@ describe('ProjectsNavigation', () => {
 
 	it('should show project icons when the menu is collapsed', async () => {
 		projectsStore.teamProjectsLimit = -1;
+		projectsStore.personalProject = createTestProject({ type: 'personal' });
 
 		const { getByTestId } = renderComponent({
 			props: {
@@ -171,6 +204,23 @@ describe('ProjectsNavigation', () => {
 		});
 
 		expect(getByText('Projects')).toBeVisible();
+	});
+
+	it('should render a fallback icon for projects with no icon set', async () => {
+		projectsStore.teamProjectsLimit = -1;
+		const projectWithoutIcon = createProjectListItem('team');
+		projectWithoutIcon.icon = null;
+		projectsStore.myProjects = [projectWithoutIcon];
+
+		const { getAllByTestId } = renderComponent({
+			props: {
+				collapsed: false,
+			},
+		});
+
+		const items = getAllByTestId('project-menu-item');
+		expect(items).toHaveLength(1);
+		expect(items[0].querySelector('svg')).toBeInTheDocument();
 	});
 
 	it('should not render shared menu item when only one verified user', async () => {

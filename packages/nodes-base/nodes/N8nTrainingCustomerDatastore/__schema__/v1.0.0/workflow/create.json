@@ -4,8 +4,14 @@
         "active": {
             "type": "boolean"
         },
+        "activeVersionId": {
+            "type": "null"
+        },
         "createdAt": {
             "type": "string"
+        },
+        "description": {
+            "type": "null"
         },
         "id": {
             "type": "string"
@@ -35,6 +41,9 @@
                         "properties": {
                             "content": {
                                 "type": "string"
+                            },
+                            "operation": {
+                                "type": "string"
                             }
                         }
                     },
@@ -56,10 +65,19 @@
         "settings": {
             "type": "object",
             "properties": {
+                "availableInMCP": {
+                    "type": "boolean"
+                },
+                "callerPolicy": {
+                    "type": "string"
+                },
                 "executionOrder": {
                     "type": "string"
                 }
             }
+        },
+        "staticData": {
+            "type": "null"
         },
         "triggerCount": {
             "type": "integer"
@@ -67,9 +85,12 @@
         "updatedAt": {
             "type": "string"
         },
+        "versionCounter": {
+            "type": "integer"
+        },
         "versionId": {
             "type": "string"
         }
     },
-    "version": 3
+    "version": 5
 }

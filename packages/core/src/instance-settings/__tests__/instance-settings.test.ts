@@ -1,8 +1,17 @@
 import type { Logger } from '@n8n/backend-common';
 import { InstanceSettingsConfig } from '@n8n/config';
-import { mock } from 'jest-mock-extended';
-jest.mock('node:fs', () => mock<typeof fs>());
 import * as fs from 'node:fs';
+import { mock } from 'vitest-mock-extended';
+
+vi.mock('node:fs', async () => {
+	const { mock: hoistedMock } = await import('vitest-mock-extended');
+	const proxy = hoistedMock<typeof fs>();
+	return new Proxy(proxy, {
+		get: (target, prop, receiver) =>
+			prop === 'default' ? receiver : Reflect.get(target, prop, receiver),
+		has: (target, prop) => prop === 'default' || Reflect.has(target, prop),
+	});
+});
 
 import { InstanceSettings } from '../instance-settings';
 import { WorkerMissingEncryptionKey } from '../worker-missing-encryption-key.error';
@@ -23,7 +32,7 @@ describe('InstanceSettings', () => {
 		);
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		mockFs.statSync.mockReturnValue({ mode: 0o600 } as fs.Stats);
 
 		process.argv[2] = 'main';
@@ -198,6 +207,148 @@ describe('InstanceSettings', () => {
 			const [instanceType, hostId] = settings.hostId.split('-');
 			expect(instanceType).toEqual('main');
 			expect(hostId.length).toBeGreaterThan(0); // hostname or nanoID
+		});
+	});
+
+	describe('nodeDefinitionsDir', () => {
+		it('should return the path to the node definitions directory', () => {
+			const encryptionKey = 'test_key';
+			mockFs.existsSync.mockReturnValueOnce(true);
+			mockFs.readFileSync.mockReturnValueOnce(JSON.stringify({ encryptionKey }));
+
+			const settings = createInstanceSettings({ encryptionKey });
+
+			expect(settings.nodeDefinitionsDir).toEqual('/test/.n8n/node-definitions');
+		});
+	});
+
+	describe('initialize', () => {
+		const mockRepo = {
+			findActiveByType: vi.fn(),
+			insertOrIgnore: vi.fn(),
+		};
+
+		let settings: InstanceSettings;
+
+		beforeEach(() => {
+			mockFs.existsSync.mockReturnValue(false);
+			mockFs.mkdirSync.mockReturnValue('');
+			mockFs.writeFileSync.mockReturnValue();
+
+			settings = createInstanceSettings({ encryptionKey: 'test_key' });
+
+			// Default: no DB rows, inserts succeed
+			mockRepo.findActiveByType.mockResolvedValue(null);
+			mockRepo.insertOrIgnore.mockResolvedValue(undefined);
+		});
+
+		describe('instance.id', () => {
+			it('should use N8N_INSTANCE_ID env var and skip DB entirely', async () => {
+				process.env.N8N_INSTANCE_ID = 'env-pinned-id';
+
+				await settings.initialize(mockRepo);
+
+				expect(settings.instanceId).toEqual('env-pinned-id');
+				expect(mockRepo.findActiveByType).not.toHaveBeenCalledWith('instance.id');
+				expect(mockRepo.insertOrIgnore).not.toHaveBeenCalledWith(
+					expect.objectContaining({ type: 'instance.id' }),
+				);
+			});
+
+			it('should use the value from the active DB row when one exists', async () => {
+				mockRepo.findActiveByType.mockImplementation(async (type: string) =>
+					type === 'instance.id' ? { value: 'db-stored-id' } : null,
+				);
+
+				await settings.initialize(mockRepo);
+
+				expect(settings.instanceId).toEqual('db-stored-id');
+				expect(mockRepo.insertOrIgnore).not.toHaveBeenCalledWith(
+					expect.objectContaining({ type: 'instance.id' }),
+				);
+			});
+
+			it('should persist the derived instanceId when no active DB row exists', async () => {
+				const derivedId = settings.instanceId;
+
+				await settings.initialize(mockRepo);
+
+				expect(mockRepo.insertOrIgnore).toHaveBeenCalledWith({
+					type: 'instance.id',
+					value: derivedId,
+					status: 'active',
+					algorithm: null,
+				});
+				expect(settings.instanceId).toEqual(derivedId);
+			});
+
+			it('should use the winner row when a concurrent insert is ignored', async () => {
+				mockRepo.insertOrIgnore.mockImplementation(async (entity: { type: string }) => {
+					// Simulate conflict only for instance.id
+					if (entity.type === 'instance.id') return undefined;
+				});
+				mockRepo.findActiveByType.mockImplementation(async (type: string) =>
+					type === 'instance.id' ? { value: 'winner-id' } : null,
+				);
+
+				await settings.initialize(mockRepo);
+
+				expect(settings.instanceId).toEqual('winner-id');
+			});
+		});
+
+		describe('signing.hmac', () => {
+			it('should use N8N_HMAC_SIGNATURE_SECRET env var and skip DB entirely', async () => {
+				process.env.N8N_HMAC_SIGNATURE_SECRET = 'env-pinned-hmac';
+
+				await settings.initialize(mockRepo);
+
+				expect(settings.hmacSignatureSecret).toEqual('env-pinned-hmac');
+				expect(mockRepo.findActiveByType).not.toHaveBeenCalledWith('signing.hmac');
+				expect(mockRepo.insertOrIgnore).not.toHaveBeenCalledWith(
+					expect.objectContaining({ type: 'signing.hmac' }),
+				);
+			});
+
+			it('should use the value from the active DB row when one exists', async () => {
+				mockRepo.findActiveByType.mockImplementation(async (type: string) =>
+					type === 'signing.hmac' ? { value: 'db-stored-hmac' } : null,
+				);
+
+				await settings.initialize(mockRepo);
+
+				expect(settings.hmacSignatureSecret).toEqual('db-stored-hmac');
+				expect(mockRepo.insertOrIgnore).not.toHaveBeenCalledWith(
+					expect.objectContaining({ type: 'signing.hmac' }),
+				);
+			});
+
+			it('should persist the derived HMAC secret when no active DB row exists', async () => {
+				const derivedHmac = settings.hmacSignatureSecret;
+
+				await settings.initialize(mockRepo);
+
+				expect(mockRepo.insertOrIgnore).toHaveBeenCalledWith({
+					type: 'signing.hmac',
+					value: derivedHmac,
+					status: 'active',
+					algorithm: null,
+				});
+				expect(settings.hmacSignatureSecret).toEqual(derivedHmac);
+			});
+
+			it('should use the winner row when a concurrent insert is ignored', async () => {
+				mockRepo.insertOrIgnore.mockImplementation(async (entity: { type: string }) => {
+					if (entity.type === 'signing.hmac') return undefined;
+				});
+				mockRepo.findActiveByType.mockImplementation(async (type: string) =>
+					type === 'signing.hmac' ? { value: 'winner-hmac' } : null,
+				);
+
+				await settings.initialize(mockRepo);
+
+				expect(settings.hmacSignatureSecret).toEqual('winner-hmac');
+			});
 		});
 	});
 

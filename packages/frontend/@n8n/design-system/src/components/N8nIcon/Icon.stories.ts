@@ -3,7 +3,7 @@ import type { StoryFn } from '@storybook/vue3-vite';
 import N8nIcon from './Icon.vue';
 
 export default {
-	title: 'Atoms/Icon',
+	title: 'Core/Icon',
 	component: N8nIcon,
 	argTypes: {
 		icon: {
@@ -41,6 +41,14 @@ export default {
 		strokeWidth: {
 			control: {
 				type: 'number',
+			},
+		},
+	},
+
+	parameters: {
+		docs: {
+			description: {
+				component: 'A visual glyph component for representing actions, objects, and states.',
 			},
 		},
 	},
@@ -194,6 +202,11 @@ export const AllColors: StoryFn = (args, { argTypes }) => ({
 	`,
 });
 
+export const UserRoundKey = Template.bind({});
+UserRoundKey.args = {
+	icon: 'user-round-key',
+};
+
 export const CommonIcons: StoryFn = (args, { argTypes }) => ({
 	setup: () => ({ args }),
 	props: Object.keys(argTypes),
@@ -249,6 +262,10 @@ export const CommonIcons: StoryFn = (args, { argTypes }) => ({
 			<div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
 				<n8n-icon icon="exclamation-triangle" size="large" />
 				<span style="font-size: 12px;">exclamation-triangle</span>
+			</div>
+			<div style="display: flex; flex-direction: column; align-items: center; gap: 8px;">
+				<n8n-icon icon="user-round-key" size="large" />
+				<span style="font-size: 12px;">user-round-key</span>
 			</div>
 		</div>
 	`,

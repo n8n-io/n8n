@@ -1,0 +1,112 @@
+{
+	"name": "Pipedrive v2 deal get test",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "d4d44444-e5e5-f6f6-a7a7-b8b888888888",
+			"name": "When clicking \"Execute Workflow\"",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"authentication": "apiToken",
+				"resource": "deal",
+				"operation": "get",
+				"dealId": 8
+			},
+			"id": "e5e55555-f6f6-a7a7-b8b8-c9c999999999",
+			"name": "Pipedrive",
+			"type": "n8n-nodes-base.pipedrive",
+			"typeVersion": 2,
+			"position": [200, 0],
+			"credentials": {
+				"pipedriveApi": {
+					"id": "cred-1",
+					"name": "Pipedrive API"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"id": "f6f66666-a7a7-b8b8-c9c9-d0d000000000",
+			"name": "No Operation, do nothing",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [400, 0]
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing": [
+			{
+				"json": {
+					"id": 8,
+					"title": "Test Deal",
+					"creator_user_id": 25455458,
+					"value": 199.98,
+					"person_id": 10,
+					"org_id": 7,
+					"stage_id": 6,
+					"currency": "USD",
+					"add_time": "2026-04-01T22:03:27Z",
+					"update_time": "2026-04-01T22:03:28Z",
+					"status": "open",
+					"probability": null,
+					"lost_reason": null,
+					"visible_to": 3,
+					"close_time": null,
+					"pipeline_id": 2,
+					"won_time": null,
+					"lost_time": null,
+					"stage_change_time": null,
+					"local_won_date": null,
+					"local_lost_date": null,
+					"local_close_date": null,
+					"expected_close_date": null,
+					"custom_fields": {
+						"test_string": null,
+						"test_enum": null,
+						"test_multi": null
+					},
+					"owner_id": 25455458,
+					"label_ids": [],
+					"is_deleted": false,
+					"origin": "API",
+					"origin_id": null,
+					"channel": null,
+					"channel_id": null,
+					"acv": 199.98,
+					"arr": 0.0,
+					"mrr": 0.0,
+					"is_archived": false,
+					"archive_time": null
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking \"Execute Workflow\"": {
+			"main": [
+				[
+					{
+						"node": "Pipedrive",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Pipedrive": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

@@ -12,6 +12,7 @@ export const enum VIEWS {
 	NEW_WORKFLOW = 'NodeViewNew',
 	WORKFLOW = 'NodeViewExisting',
 	DEMO = 'WorkflowDemo',
+	DEMO_DIFF = 'WorkflowDemoDiff',
 	TEMPLATE_IMPORT = 'WorkflowTemplate',
 	WORKFLOW_ONBOARDING = 'WorkflowOnboarding',
 	SIGNIN = 'SigninView',
@@ -24,6 +25,7 @@ export const enum VIEWS {
 	USERS_SETTINGS = 'UsersSettings',
 	LDAP_SETTINGS = 'LdapSettings',
 	PERSONAL_SETTINGS = 'PersonalSettings',
+	SECURITY_SETTINGS = 'SecuritySettings',
 	API_SETTINGS = 'APISettings',
 	NOT_FOUND = 'NotFoundView',
 	COMMUNITY_NODES = 'CommunityNodes',
@@ -34,7 +36,9 @@ export const enum VIEWS {
 	EVALUATION_RUNS_DETAIL = 'EvaluationRunsDetail',
 	USAGE = 'Usage',
 	LOG_STREAMING_SETTINGS = 'LogStreamingSettingsView',
+	OPENTELEMETRY_SETTINGS = 'SettingsOpenTelemetryView',
 	SSO_SETTINGS = 'SSoSettings',
+	ENCRYPTION_KEYS_SETTINGS = 'EncryptionKeysSettings',
 	EXTERNAL_SECRETS_SETTINGS = 'ExternalSecretsSettings',
 	SAML_ONBOARDING = 'SamlOnboarding',
 	SOURCE_CONTROL = 'SourceControl',
@@ -47,9 +51,14 @@ export const enum VIEWS {
 	PROJECTS_CREDENTIALS = 'ProjectsCredentials',
 	PROJECT_SETTINGS = 'ProjectSettings',
 	PROJECTS_EXECUTIONS = 'ProjectsExecutions',
+	ROLES_SETTINGS = 'RolesSettingsView',
 	PROJECT_ROLES_SETTINGS = 'ProjectRolesSettingsView',
 	PROJECT_ROLE_SETTINGS = 'ProjectRoleSettingsView',
 	PROJECT_NEW_ROLE = 'ProjectNewRoleView',
+	PROJECT_ROLE_VIEW = 'ProjectRoleViewView',
+	INSTANCE_NEW_ROLE = 'InstanceNewRoleView',
+	INSTANCE_ROLE_SETTINGS = 'InstanceRoleSettingsView',
+	INSTANCE_ROLE_VIEW = 'InstanceRoleViewView',
 	PROJECTS_VARIABLES = 'ProjectsVariables',
 	HOME_VARIABLES = 'HomeVariables',
 	FOLDERS = 'Folders',
@@ -61,10 +70,13 @@ export const enum VIEWS {
 	ENTITY_NOT_FOUND = 'EntityNotFound',
 	ENTITY_UNAUTHORIZED = 'EntityUnAuthorized',
 	PRE_BUILT_AGENT_TEMPLATES = 'PreBuiltAgentTemplates',
+	AI_SETTINGS = 'AISettingsView',
+	AI_GATEWAY_SETTINGS = 'AIGatewaySettingsView',
 	OAUTH_CONSENT = 'OAuthConsent',
 	MIGRATION_REPORT = 'MigrationReport',
 	MIGRATION_RULE_REPORT = 'MigrationRuleReport',
 	RESOLVERS = 'Resolvers',
+	RESOURCE_CENTER = 'ResourceCenter',
 }
 
 export const EDITABLE_CANVAS_VIEWS = [VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.EXECUTION_DEBUG];
@@ -75,3 +87,6 @@ export const enum MAIN_HEADER_TABS {
 	SETTINGS = 'settings',
 	EVALUATION = 'evaluation',
 }
+
+/** Query parameter value used to deep-link to the publish timeline tab in workflow history */
+export const WORKFLOW_HISTORY_PUBLISH_TIMELINE_TAB = 'publishTimeline';

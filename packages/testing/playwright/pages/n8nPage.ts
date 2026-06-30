@@ -1,28 +1,38 @@
 import type { Page } from '@playwright/test';
 
 import { AIAssistantPage } from './AIAssistantPage';
-import { AIBuilderPage } from './AIBuilderPage';
-import { BecomeCreatorCTAPage } from './BecomeCreatorCTAPage';
 import { CanvasPage } from './CanvasPage';
+import { ChatHubChatPage } from './ChatHubChatPage';
+import { ChatHubPersonalAgentsPage } from './ChatHubPersonalAgentsPage';
+import { ChatHubSettingsPage } from './ChatHubSettingsPage';
+import { ChatHubWorkflowAgentsPage } from './ChatHubWorkflowAgentsPage';
 import { CommunityNodesPage } from './CommunityNodesPage';
+import { AIBuilderPage } from './components/AIBuilderPage';
 import { BaseModal } from './components/BaseModal';
 import { Breadcrumbs } from './components/Breadcrumbs';
+import { CommandBar } from './components/CommandBar';
+import { DeleteSecretsProviderModal } from './components/DeleteSecretsProviderModal';
+import { InteractionsPage } from './components/InteractionsPage';
+import { NotificationsPage } from './components/NotificationsPage';
 import { ProjectTabsComponent } from './components/ProjectTabsComponent';
 import { ResourceMoveModal } from './components/ResourceMoveModal';
+import { SecretsProviderConnectionModal } from './components/SecretsProviderConnectionModal';
+import { WorkflowMenu } from './components/WorkflowMenu';
 import { CredentialsPage } from './CredentialsPage';
 import { DataTableDetails } from './DataTableDetails';
 import { DataTableView } from './DataTableView';
 import { DemoPage } from './DemoPage';
 import { ExecutionsPage } from './ExecutionsPage';
-import { IframePage } from './IframePage';
-import { InteractionsPage } from './InteractionsPage';
+import { InstanceAiPage } from './InstanceAiPage';
 import { KeycloakLoginPage } from './KeycloakLoginPage';
 import { MfaLoginPage } from './MfaLoginPage';
 import { MfaSetupModal } from './MfaSetupModal';
 import { NodeDetailsViewPage } from './NodeDetailsViewPage';
-import { NotificationsPage } from './NotificationsPage';
 import { NpsSurveyPage } from './NpsSurveyPage';
+import { OAuthConsentPage } from './OAuthConsentPage';
 import { ProjectSettingsPage } from './ProjectSettingsPage';
+import { SecretsProviderSettingsPage } from './SecretsProviderSettingsPage';
+import { SecuritySettingsPage } from './SecuritySettingsPage';
 import { SettingsEnvironmentPage } from './SettingsEnvironmentPage';
 import { SettingsLogStreamingPage } from './SettingsLogStreamingPage';
 import { SettingsPersonalPage } from './SettingsPersonalPage';
@@ -30,6 +40,8 @@ import { SettingsSsoPage } from './SettingsSsoPage';
 import { SettingsUsersPage } from './SettingsUsersPage';
 import { SidebarPage } from './SidebarPage';
 import { SignInPage } from './SignInPage';
+import { SourceControlPullModal } from './SourceControlPullModal';
+import { SourceControlPushModal } from './SourceControlPushModal';
 import { TemplateCredentialSetupPage } from './TemplateCredentialSetupPage';
 import { TemplatesPage } from './TemplatesPage';
 import { VariablesPage } from './VariablesPage';
@@ -40,6 +52,7 @@ import { WorkflowCredentialSetupModal } from './WorkflowCredentialSetupModal';
 import { WorkflowSettingsModal } from './WorkflowSettingsModal';
 import { WorkflowSharingModal } from './WorkflowSharingModal';
 import { WorkflowsPage } from './WorkflowsPage';
+import { BuilderWizardComposer } from '../composables/BuilderWizardComposer';
 import { CanvasComposer } from '../composables/CanvasComposer';
 import { CredentialsComposer } from '../composables/CredentialsComposer';
 import { DataTableComposer } from '../composables/DataTablesComposer';
@@ -64,16 +77,20 @@ export class n8nPage {
 	// Pages
 	readonly aiAssistant: AIAssistantPage;
 	readonly aiBuilder: AIBuilderPage;
-	readonly becomeCreatorCTA: BecomeCreatorCTAPage;
 	readonly canvas: CanvasPage;
+	readonly chatHubChat: ChatHubChatPage;
+	readonly chatHubPersonalAgents: ChatHubPersonalAgentsPage;
+	readonly chatHubSettings: ChatHubSettingsPage;
+	readonly chatHubWorkflowAgents: ChatHubWorkflowAgentsPage;
 	readonly communityNodes: CommunityNodesPage;
 	readonly demo: DemoPage;
-	readonly iframe: IframePage;
+	readonly instanceAi: InstanceAiPage;
 	readonly interactions: InteractionsPage;
 	readonly keycloakLogin: KeycloakLoginPage;
 	readonly mfaLogin: MfaLoginPage;
 	readonly ndv: NodeDetailsViewPage;
 	readonly npsSurvey: NpsSurveyPage;
+	readonly oauthConsent: OAuthConsentPage;
 	readonly projectSettings: ProjectSettingsPage;
 	readonly settingsPersonal: SettingsPersonalPage;
 	readonly settingsLogStreaming: SettingsLogStreamingPage;
@@ -96,18 +113,28 @@ export class n8nPage {
 
 	// Components
 	readonly projectTabs: ProjectTabsComponent;
+	readonly commandBar: CommandBar;
+	readonly workflowMenu: WorkflowMenu;
 
 	readonly settingsEnvironment: SettingsEnvironmentPage;
+	readonly secretsProviderSettings: SecretsProviderSettingsPage;
+	readonly securitySettings: SecuritySettingsPage;
+
 	// Modals
 	readonly workflowActivationModal: WorkflowActivationModal;
 	readonly workflowCredentialSetupModal: WorkflowCredentialSetupModal;
 	readonly workflowSettingsModal: WorkflowSettingsModal;
 	readonly workflowSharingModal: WorkflowSharingModal;
+	readonly sourceControlPushModal: SourceControlPushModal;
+	readonly sourceControlPullModal: SourceControlPullModal;
 	readonly mfaSetupModal: MfaSetupModal;
 	readonly modal: BaseModal;
 	readonly resourceMoveModal: ResourceMoveModal;
+	readonly secretsProviderConnectionModal: SecretsProviderConnectionModal;
+	readonly deleteSecretsProviderModal: DeleteSecretsProviderModal;
 
 	// Composables
+	readonly builderWizardComposer: BuilderWizardComposer;
 	readonly workflowComposer: WorkflowComposer;
 	readonly projectComposer: ProjectComposer;
 	readonly canvasComposer: CanvasComposer;
@@ -133,16 +160,20 @@ export class n8nPage {
 		// Pages
 		this.aiAssistant = new AIAssistantPage(page);
 		this.aiBuilder = new AIBuilderPage(page);
-		this.becomeCreatorCTA = new BecomeCreatorCTAPage(page);
 		this.canvas = new CanvasPage(page);
+		this.chatHubChat = new ChatHubChatPage(page);
+		this.chatHubPersonalAgents = new ChatHubPersonalAgentsPage(page);
+		this.chatHubSettings = new ChatHubSettingsPage(page);
+		this.chatHubWorkflowAgents = new ChatHubWorkflowAgentsPage(page);
 		this.communityNodes = new CommunityNodesPage(page);
 		this.demo = new DemoPage(page);
-		this.iframe = new IframePage(page);
+		this.instanceAi = new InstanceAiPage(page);
 		this.interactions = new InteractionsPage(page);
 		this.keycloakLogin = new KeycloakLoginPage(page);
 		this.mfaLogin = new MfaLoginPage(page);
 		this.ndv = new NodeDetailsViewPage(page);
 		this.npsSurvey = new NpsSurveyPage(page);
+		this.oauthConsent = new OAuthConsentPage(page);
 		this.projectSettings = new ProjectSettingsPage(page);
 		this.settingsPersonal = new SettingsPersonalPage(page);
 		this.settingsLogStreaming = new SettingsLogStreamingPage(page);
@@ -161,22 +192,31 @@ export class n8nPage {
 		this.dataTable = new DataTableView(page);
 		this.dataTableDetails = new DataTableDetails(page);
 		this.settingsEnvironment = new SettingsEnvironmentPage(page);
+		this.secretsProviderSettings = new SecretsProviderSettingsPage(page);
+		this.securitySettings = new SecuritySettingsPage(page);
 
 		this.settingsUsers = new SettingsUsersPage(page);
 		this.settingsSso = new SettingsSsoPage(page);
 
 		// Components
 		this.projectTabs = new ProjectTabsComponent(page);
+		this.commandBar = new CommandBar(page);
+		this.workflowMenu = new WorkflowMenu(page);
 
 		// Modals
 		this.workflowActivationModal = new WorkflowActivationModal(page);
 		this.workflowCredentialSetupModal = new WorkflowCredentialSetupModal(page);
 		this.workflowSettingsModal = new WorkflowSettingsModal(page);
+		this.sourceControlPushModal = new SourceControlPushModal(page);
+		this.sourceControlPullModal = new SourceControlPullModal(page);
 		this.mfaSetupModal = new MfaSetupModal(page);
 		this.modal = new BaseModal(page);
 		this.resourceMoveModal = new ResourceMoveModal(page);
+		this.secretsProviderConnectionModal = new SecretsProviderConnectionModal(page);
+		this.deleteSecretsProviderModal = new DeleteSecretsProviderModal(page);
 
 		// Composables
+		this.builderWizardComposer = new BuilderWizardComposer(this);
 		this.workflowComposer = new WorkflowComposer(this);
 		this.projectComposer = new ProjectComposer(this);
 		this.canvasComposer = new CanvasComposer(this);

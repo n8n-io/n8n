@@ -11,20 +11,23 @@ import { useToast } from '@/app/composables/useToast';
 import InsightsSummary from '@/features/execution/insights/components/InsightsSummary.vue';
 import { useInsightsStore } from '@/features/execution/insights/insights.store';
 import { useExecutionsStore } from '../executions.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { storeToRefs } from 'pinia';
 import { onBeforeMount, onBeforeUnmount, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 const route = useRoute();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const externalHooks = useExternalHooks();
-const workflowsStore = useWorkflowsStore();
+const workflowsListStore = useWorkflowsListStore();
 const executionsStore = useExecutionsStore();
 const insightsStore = useInsightsStore();
 const documentTitle = useDocumentTitle();
 const toast = useToast();
+const workflowDocumentStore = injectWorkflowDocumentStore();
+
 const overview = useProjectPages();
 
 const {
@@ -40,7 +43,7 @@ onBeforeMount(async () => {
 
 	void externalHooks.run('executionsList.openDialog');
 	telemetry.track('User opened Executions log', {
-		workflow_id: workflowsStore.workflowId,
+		workflow_id: workflowDocumentStore.value.workflowId,
 	});
 });
 
@@ -58,7 +61,7 @@ onBeforeUnmount(() => {
 
 async function loadWorkflows() {
 	try {
-		await workflowsStore.fetchAllWorkflows(route.params?.projectId as string | undefined);
+		await workflowsListStore.fetchAllWorkflows(route.params?.projectId as string | undefined);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('executionsList.showError.loadWorkflows.title'));
 	}

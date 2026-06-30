@@ -1,9 +1,20 @@
+import { mockInstance } from '@n8n/backend-test-utils';
+import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
 import { ExecutionRepository } from '@n8n/db';
 import type { IExecutionResponse } from '@n8n/db';
+import { mock } from 'vitest-mock-extended';
+
+import type { ExecutionPersistence } from '@/executions/execution-persistence';
+import {
+	CHAT_NODE_TYPE,
+	CHAT_TOOL_NODE_TYPE,
+	NodeConnectionTypes,
+	RESPOND_TO_WEBHOOK_NODE_TYPE,
+} from 'n8n-workflow';
+import type { Mock } from 'vitest';
 
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
-import { mockInstance } from '@n8n/backend-test-utils';
 
 import { NodeTypes } from '../../node-types';
 import { OwnershipService } from '../../services/ownership.service';
@@ -12,27 +23,28 @@ import type { ChatMessage } from '../chat-service.types';
 
 describe('ChatExecutionManager', () => {
 	const executionRepository = mockInstance(ExecutionRepository);
+	const executionPersistence = mock<ExecutionPersistence>();
 	const workflowRunner = mockInstance(WorkflowRunner);
 	const ownershipService = mockInstance(OwnershipService);
 	const nodeTypes = mockInstance(NodeTypes);
 	const chatExecutionManager = new ChatExecutionManager(
 		executionRepository,
+		executionPersistence,
 		workflowRunner,
 		ownershipService,
 		nodeTypes,
 	);
 
 	beforeEach(() => {
-		jest.restoreAllMocks();
+		vi.restoreAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should handle errors from getRunData gracefully', async () => {
 		const execution = { id: '1', workflowData: {}, data: {} } as IExecutionResponse;
 		const message = { sessionId: '123', action: 'sendMessage', chatInput: 'input' } as ChatMessage;
 
-		jest
-			.spyOn(chatExecutionManager as any, 'getRunData')
-			.mockRejectedValue(new Error('Test error'));
+		vi.spyOn(chatExecutionManager as any, 'getRunData').mockRejectedValue(new Error('Test error'));
 
 		await expect(chatExecutionManager.runWorkflow(execution, message)).rejects.toThrow(
 			'Test error',
@@ -49,7 +61,7 @@ describe('ChatExecutionManager', () => {
 			} as ChatMessage;
 			const runData = { executionMode: 'manual', executionData: {}, workflowData: {} } as any;
 
-			jest.spyOn(chatExecutionManager as any, 'getRunData').mockResolvedValue(runData);
+			vi.spyOn(chatExecutionManager as any, 'getRunData').mockResolvedValue(runData);
 
 			await chatExecutionManager.runWorkflow(execution, message);
 
@@ -62,7 +74,7 @@ describe('ChatExecutionManager', () => {
 			const executionId = '1';
 			const execution = { id: executionId, status: 'running' } as any;
 
-			executionRepository.findSingleExecution.mockResolvedValue(execution);
+			executionPersistence.findSingleExecution.mockResolvedValue(execution);
 
 			await chatExecutionManager.cancelExecution(executionId);
 
@@ -76,7 +88,7 @@ describe('ChatExecutionManager', () => {
 			const executionId = '2';
 			const execution = { id: executionId, status: 'waiting' } as any;
 
-			executionRepository.findSingleExecution.mockResolvedValue(execution);
+			executionPersistence.findSingleExecution.mockResolvedValue(execution);
 
 			await chatExecutionManager.cancelExecution(executionId);
 
@@ -90,7 +102,7 @@ describe('ChatExecutionManager', () => {
 			const executionId = '3';
 			const execution = { id: executionId, status: 'unknown' } as any;
 
-			executionRepository.findSingleExecution.mockResolvedValue(execution);
+			executionPersistence.findSingleExecution.mockResolvedValue(execution);
 
 			await chatExecutionManager.cancelExecution(executionId);
 
@@ -104,7 +116,7 @@ describe('ChatExecutionManager', () => {
 			const executionId = '1';
 			const execution = { id: executionId, status: 'completed' } as any;
 
-			executionRepository.findSingleExecution.mockResolvedValue(execution);
+			executionPersistence.findSingleExecution.mockResolvedValue(execution);
 
 			await chatExecutionManager.cancelExecution(executionId);
 
@@ -116,7 +128,7 @@ describe('ChatExecutionManager', () => {
 		it('should return undefined if execution does not exist', async () => {
 			const executionId = 'non-existent';
 
-			executionRepository.findSingleExecution.mockResolvedValue(undefined);
+			executionPersistence.findSingleExecution.mockResolvedValue(undefined);
 
 			const result = await chatExecutionManager.findExecution(executionId);
 
@@ -127,7 +139,7 @@ describe('ChatExecutionManager', () => {
 			const executionId = '1';
 			const execution = { id: executionId } as any;
 
-			executionRepository.findSingleExecution.mockResolvedValue(execution);
+			executionPersistence.findSingleExecution.mockResolvedValue(execution);
 
 			const result = await chatExecutionManager.findExecution(executionId);
 
@@ -142,7 +154,9 @@ describe('ChatExecutionManager', () => {
 				workflowData: { id: 'workflowId' },
 				data: {
 					resultData: { pinData: {} },
-					executionData: { nodeExecutionStack: [{ data: { main: [[]] } }] },
+					executionData: {
+						nodeExecutionStack: [{ node: { type: 'testType' }, data: { main: [[]] } }],
+					},
 					pushRef: 'pushRef',
 				},
 				mode: 'manual',
@@ -155,12 +169,11 @@ describe('ChatExecutionManager', () => {
 			const project = { id: 'projectId' };
 			const nodeExecutionData = [[{ json: message }]];
 
-			const getRunDataSpy = jest
+			const getRunDataSpy = vi
 				.spyOn(chatExecutionManager as any, 'runNode')
 				.mockResolvedValue(nodeExecutionData);
-			const getWorkflowProjectCachedSpy = jest
-				.spyOn(ownershipService, 'getWorkflowProjectCached')
-				.mockResolvedValue(project as any);
+			const getWorkflowProjectCachedSpy =
+				ownershipService.getWorkflowProjectCached.mockResolvedValue(project as any);
 
 			const runData = await (chatExecutionManager as any).getRunData(execution, message);
 
@@ -173,6 +186,177 @@ describe('ChatExecutionManager', () => {
 				workflowData: execution.workflowData,
 				pinData: execution.data.resultData.pinData,
 				projectId: 'projectId',
+			});
+		});
+
+		describe('when node is a chat tool', () => {
+			const message: ChatMessage = { sessionId: '123', action: 'sendMessage', chatInput: 'input' };
+
+			function makeChatToolExecution(runDataEntry: object = {}) {
+				return {
+					id: '1',
+					workflowData: { id: 'workflowId' },
+					data: {
+						resultData: {
+							pinData: {},
+							lastNodeExecuted: 'ChatToolNode',
+							runData: {
+								ChatToolNode: [
+									{
+										startTime: 123,
+										executionTime: 456,
+										executionIndex: 0,
+										source: [],
+										...runDataEntry,
+									},
+								],
+							},
+						},
+						executionData: {
+							nodeExecutionStack: [
+								{
+									node: { name: 'ChatToolNode', type: CHAT_TOOL_NODE_TYPE, disabled: false },
+									data: { main: [[]] },
+								},
+							],
+						},
+						pushRef: 'pushRef',
+					},
+					mode: 'manual',
+				} as any;
+			}
+
+			beforeEach(() => {
+				vi.spyOn(chatExecutionManager as any, 'runNode').mockResolvedValue(null);
+				ownershipService.getWorkflowProjectCached.mockResolvedValue({ id: 'projectId' } as any);
+			});
+
+			it('should disable node and clear waitTill even when waitTill is not set', async () => {
+				const execution = makeChatToolExecution();
+
+				await (chatExecutionManager as any).getRunData(execution, message);
+
+				expect(execution.data.executionData.nodeExecutionStack[0].node.disabled).toBe(true);
+				expect(execution.data.waitTill).toBeUndefined();
+			});
+
+			it('should set rewireOutputLogTo to AiTool', async () => {
+				const execution = makeChatToolExecution();
+
+				await (chatExecutionManager as any).getRunData(execution, message);
+
+				expect(execution.data.executionData.nodeExecutionStack[0].node.rewireOutputLogTo).toBe(
+					NodeConnectionTypes.AiTool,
+				);
+			});
+
+			it('should replace run data entry with inputOverride placeholder', async () => {
+				const inputOverride = { main: [[{ json: { toolInput: 'test' } }]] };
+				const execution = makeChatToolExecution({
+					source: [{ previousNode: 'Agent' }],
+					inputOverride,
+				});
+
+				await (chatExecutionManager as any).getRunData(execution, message);
+
+				const runData = execution.data.resultData.runData.ChatToolNode;
+				expect(runData).toHaveLength(1);
+				expect(runData[0].inputOverride).toBe(inputOverride);
+				expect(runData[0].startTime).toBe(0);
+				expect(runData[0].source[0]).toMatchObject({ previousNode: 'Agent' });
+			});
+
+			it('should pop run data entry when no inputOverride', async () => {
+				const execution = makeChatToolExecution();
+
+				await (chatExecutionManager as any).getRunData(execution, message);
+
+				expect(execution.data.resultData.runData.ChatToolNode).toHaveLength(0);
+			});
+		});
+
+		describe('when node is a regular chat node', () => {
+			const message: ChatMessage = { sessionId: '123', action: 'sendMessage', chatInput: 'input' };
+
+			beforeEach(() => {
+				vi.spyOn(chatExecutionManager as any, 'runNode').mockResolvedValue(null);
+				ownershipService.getWorkflowProjectCached.mockResolvedValue({ id: 'projectId' } as any);
+			});
+
+			it('should not modify node state or run data for chat node', async () => {
+				const runDataEntry = { startTime: 123, executionTime: 456, executionIndex: 0, source: [] };
+				const waitTill = new Date();
+				const execution = {
+					id: '1',
+					workflowData: { id: 'workflowId' },
+					data: {
+						resultData: {
+							pinData: {},
+							lastNodeExecuted: 'ChatNode',
+							runData: { ChatNode: [runDataEntry] },
+						},
+						executionData: {
+							nodeExecutionStack: [
+								{
+									node: { name: 'ChatNode', type: CHAT_NODE_TYPE, disabled: false },
+									data: { main: [[]] },
+								},
+							],
+						},
+						pushRef: 'pushRef',
+						waitTill,
+					},
+					mode: 'manual',
+				} as any;
+
+				await (chatExecutionManager as any).getRunData(execution, message);
+
+				expect(execution.data.executionData.nodeExecutionStack[0].node.disabled).toBe(false);
+				expect(execution.data.waitTill).toBe(waitTill);
+				expect(execution.data.resultData.runData.ChatNode).toHaveLength(1);
+				expect(
+					execution.data.executionData.nodeExecutionStack[0].node.rewireOutputLogTo,
+				).toBeUndefined();
+			});
+
+			it('should not modify node state or run data for respond to webhook node', async () => {
+				const runDataEntry = { startTime: 123, executionTime: 456, executionIndex: 0, source: [] };
+				const waitTill = new Date();
+				const execution = {
+					id: '1',
+					workflowData: { id: 'workflowId' },
+					data: {
+						resultData: {
+							pinData: {},
+							lastNodeExecuted: 'RespondNode',
+							runData: { RespondNode: [runDataEntry] },
+						},
+						executionData: {
+							nodeExecutionStack: [
+								{
+									node: {
+										name: 'RespondNode',
+										type: RESPOND_TO_WEBHOOK_NODE_TYPE,
+										disabled: false,
+									},
+									data: { main: [[]] },
+								},
+							],
+						},
+						pushRef: 'pushRef',
+						waitTill,
+					},
+					mode: 'manual',
+				} as any;
+
+				await (chatExecutionManager as any).getRunData(execution, message);
+
+				expect(execution.data.executionData.nodeExecutionStack[0].node.disabled).toBe(false);
+				expect(execution.data.waitTill).toBe(waitTill);
+				expect(execution.data.resultData.runData.RespondNode).toHaveLength(1);
+				expect(
+					execution.data.executionData.nodeExecutionStack[0].node.rewireOutputLogTo,
+				).toBeUndefined();
 			});
 		});
 	});
@@ -194,9 +378,9 @@ describe('ChatExecutionManager', () => {
 				chatInput: 'input',
 			} as ChatMessage;
 
-			jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
-			const workflow = { getNode: jest.fn().mockReturnValue(null) };
-			jest.spyOn(chatExecutionManager as any, 'getWorkflow').mockReturnValue(workflow);
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
+			const workflow = { getNode: vi.fn().mockReturnValue(null) };
+			vi.spyOn(chatExecutionManager as any, 'getWorkflow').mockReturnValue(workflow);
 
 			const result = await (chatExecutionManager as any).runNode(execution, message);
 
@@ -219,9 +403,9 @@ describe('ChatExecutionManager', () => {
 				chatInput: 'input',
 			} as ChatMessage;
 
-			jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
-			const workflow = { getNode: jest.fn().mockReturnValue({}) };
-			jest.spyOn(chatExecutionManager as any, 'getWorkflow').mockReturnValue(workflow);
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
+			const workflow = { getNode: vi.fn().mockReturnValue({}) };
+			vi.spyOn(chatExecutionManager as any, 'getWorkflow').mockReturnValue(workflow);
 
 			const result = await (chatExecutionManager as any).runNode(execution, message);
 
@@ -245,13 +429,17 @@ describe('ChatExecutionManager', () => {
 				files: [],
 			} as ChatMessage;
 			const node = { type: 'testType', typeVersion: 1 };
-			const nodeType = { onMessage: jest.fn().mockResolvedValue([[{ json: message }]]) };
+			const nodeType = { onMessage: vi.fn().mockResolvedValue([[{ json: message }]]) };
 			const workflow = {
-				getNode: jest.fn().mockReturnValue(node),
-				nodeTypes: { getByNameAndVersion: jest.fn().mockReturnValue(nodeType) },
+				getNode: vi.fn().mockReturnValue(node),
+				nodeTypes: { getByNameAndVersion: vi.fn().mockReturnValue(nodeType) },
+				expression: {
+					acquireIsolate: vi.fn().mockResolvedValue(undefined),
+					releaseIsolate: vi.fn().mockResolvedValue(undefined),
+				},
 			};
-			jest.spyOn(chatExecutionManager as any, 'getWorkflow').mockReturnValue(workflow);
-			jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
+			vi.spyOn(chatExecutionManager as any, 'getWorkflow').mockReturnValue(workflow);
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
 
 			const result = await (chatExecutionManager as any).runNode(execution, message);
 
@@ -276,17 +464,187 @@ describe('ChatExecutionManager', () => {
 				chatInput: 'input',
 			} as ChatMessage;
 			const node = { type: 'testType', typeVersion: 1 };
-			const nodeType = { onMessage: jest.fn().mockResolvedValue([[{ json: message }]]) };
+			const nodeType = { onMessage: vi.fn().mockResolvedValue([[{ json: message }]]) };
 			const workflow = {
-				getNode: jest.fn().mockReturnValue(node),
-				nodeTypes: { getByNameAndVersion: jest.fn().mockReturnValue(nodeType) },
+				getNode: vi.fn().mockReturnValue(node),
+				nodeTypes: { getByNameAndVersion: vi.fn().mockReturnValue(nodeType) },
+				expression: {
+					acquireIsolate: vi.fn().mockResolvedValue(undefined),
+					releaseIsolate: vi.fn().mockResolvedValue(undefined),
+				},
 			};
-			jest.spyOn(chatExecutionManager as any, 'getWorkflow').mockReturnValue(workflow);
-			jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
+			vi.spyOn(chatExecutionManager as any, 'getWorkflow').mockReturnValue(workflow);
+			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
 
 			const result = await (chatExecutionManager as any).runNode(execution, message);
 
 			expect(result).toEqual([[{ json: message }]]);
+		});
+
+		describe('expression isolate lifecycle', () => {
+			const message: ChatMessage = {
+				sessionId: '123',
+				action: 'sendMessage',
+				chatInput: 'input',
+				files: [],
+			};
+
+			function makeExecution() {
+				return {
+					id: '1',
+					workflowData: { id: 'workflowId' },
+					data: {
+						resultData: { lastNodeExecuted: 'nodeId' },
+						executionData: { nodeExecutionStack: [{ data: { main: [[{}]] } }] },
+					},
+					mode: 'manual',
+				} as any;
+			}
+
+			function makeWorkflow(nodeType: { onMessage?: Mock }) {
+				const expression = {
+					acquireIsolate: vi.fn().mockResolvedValue(undefined),
+					releaseIsolate: vi.fn().mockResolvedValue(undefined),
+				};
+				const workflow = {
+					getNode: vi.fn().mockReturnValue({ type: 'testType', typeVersion: 1 }),
+					nodeTypes: { getByNameAndVersion: vi.fn().mockReturnValue(nodeType) },
+					expression,
+				};
+				vi.spyOn(chatExecutionManager as any, 'getWorkflow').mockReturnValue(workflow);
+				vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
+				return { workflow, expression };
+			}
+
+			it('should acquire and release isolate around onMessage', async () => {
+				const onMessage = vi.fn().mockResolvedValue([[{ json: message }]]);
+				const { expression } = makeWorkflow({ onMessage });
+
+				await (chatExecutionManager as any).runNode(makeExecution(), message);
+
+				expect(expression.acquireIsolate).toHaveBeenCalledTimes(1);
+				expect(expression.releaseIsolate).toHaveBeenCalledTimes(1);
+				const [acquireOrder] = expression.acquireIsolate.mock.invocationCallOrder;
+				const [onMessageOrder] = onMessage.mock.invocationCallOrder;
+				const [releaseOrder] = expression.releaseIsolate.mock.invocationCallOrder;
+				expect(acquireOrder).toBeLessThan(onMessageOrder);
+				expect(onMessageOrder).toBeLessThan(releaseOrder);
+			});
+
+			it('should release isolate when onMessage throws', async () => {
+				const onMessage = vi.fn().mockRejectedValue(new Error('boom'));
+				const { expression } = makeWorkflow({ onMessage });
+
+				await expect(
+					(chatExecutionManager as any).runNode(makeExecution(), message),
+				).rejects.toThrow('boom');
+
+				expect(expression.acquireIsolate).toHaveBeenCalledTimes(1);
+				expect(expression.releaseIsolate).toHaveBeenCalledTimes(1);
+			});
+
+			it('should not acquire isolate when node type has no onMessage', async () => {
+				const { expression } = makeWorkflow({});
+
+				await (chatExecutionManager as any).runNode(makeExecution(), message);
+
+				expect(expression.acquireIsolate).not.toHaveBeenCalled();
+				expect(expression.releaseIsolate).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('when lastNodeExecuted is TOOL_EXECUTOR_NODE_NAME', () => {
+			const message: ChatMessage = { sessionId: '123', action: 'sendMessage', chatInput: 'input' };
+			const toolNode = {
+				name: 'My Tool',
+				type: 'n8n-nodes-base.myTool',
+				typeVersion: 1,
+				parameters: {},
+			};
+
+			it('returns null when the referenced tool node is not in the workflow', async () => {
+				const execution = {
+					id: '1',
+					workflowData: { id: 'workflowId' },
+					data: {
+						resultData: { lastNodeExecuted: TOOL_EXECUTOR_NODE_NAME, runData: {} },
+						startData: {},
+						executionData: {
+							nodeExecutionStack: [
+								{
+									node: {
+										name: TOOL_EXECUTOR_NODE_NAME,
+										parameters: { node: 'My Tool' },
+									},
+									data: { main: [[{}]] },
+								},
+							],
+						},
+					},
+					mode: 'manual',
+				} as any;
+
+				const workflow = {
+					id: 'workflowId',
+					getNode: vi.fn().mockReturnValue(null), // tool node not found
+				};
+				vi.spyOn(chatExecutionManager as any, 'getWorkflow').mockReturnValue(workflow);
+				vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
+
+				const result = await (chatExecutionManager as any).runNode(execution, message);
+
+				expect(result).toBeNull();
+			});
+
+			it('redirects to the real tool node and runs onMessage on it', async () => {
+				const onMessage = vi.fn().mockResolvedValue([[{ json: { result: 'ok' } }]]);
+				const execution = {
+					id: '1',
+					workflowData: { id: 'workflowId' },
+					data: {
+						resultData: { lastNodeExecuted: TOOL_EXECUTOR_NODE_NAME, runData: {} },
+						startData: { runNodeFilter: ['My Tool'], destinationNode: 'My Tool' },
+						executionData: {
+							nodeExecutionStack: [
+								{
+									node: {
+										name: TOOL_EXECUTOR_NODE_NAME,
+										parameters: { node: 'My Tool' },
+									},
+									data: { main: [[{}]] },
+								},
+							],
+						},
+					},
+					mode: 'manual',
+				} as any;
+
+				const workflow = {
+					id: 'workflowId',
+					getNode: vi.fn().mockImplementation((name: string) => {
+						if (name === TOOL_EXECUTOR_NODE_NAME) return null;
+						if (name === 'My Tool') return toolNode;
+						return null;
+					}),
+					nodeTypes: {
+						getByNameAndVersion: vi.fn().mockReturnValue({ onMessage }),
+					},
+					expression: {
+						acquireIsolate: vi.fn().mockResolvedValue(undefined),
+						releaseIsolate: vi.fn().mockResolvedValue(undefined),
+					},
+				};
+				vi.spyOn(chatExecutionManager as any, 'getWorkflow').mockReturnValue(workflow);
+				vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue({} as any);
+
+				const result = await (chatExecutionManager as any).runNode(execution, message);
+
+				// The node was redirected to the real tool node
+				expect(execution.data.resultData.lastNodeExecuted).toBe('My Tool');
+				// onMessage was called on the tool node
+				expect(onMessage).toHaveBeenCalled();
+				expect(result).toEqual([[{ json: { result: 'ok' } }]]);
+			});
 		});
 	});
 });
