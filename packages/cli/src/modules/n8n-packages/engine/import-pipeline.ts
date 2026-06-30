@@ -112,6 +112,8 @@ export class ImportPipeline {
 		);
 
 		const imported = outcomes.filter(({ status }) => status !== 'skipped');
+		const countByStatus = (status: WorkflowImportOutcome['status']) =>
+			outcomes.filter((outcome) => outcome.status === status).length;
 		this.eventService.emit('workflows-imported', {
 			user: context.user,
 			projectId: context.projectId,
@@ -130,6 +132,12 @@ export class ImportPipeline {
 				matched: credentialApply.matched.map((sourceId) => credentialApply.bindings.get(sourceId)!),
 				created: credentialApply.stubbed.map((sourceId) => credentialApply.bindings.get(sourceId)!),
 				updated: [],
+			},
+			counts: {
+				workflowsCreated: countByStatus('created'),
+				workflowsUpdated: countByStatus('updated'),
+				workflowsSkipped: countByStatus('skipped'),
+				credentialRequirements: credentialRequest.requirements?.length ?? 0,
 			},
 		});
 

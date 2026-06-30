@@ -80,6 +80,13 @@ describe('LogStreamingEventRelay', () => {
 					created: [],
 					updated: [],
 				},
+				// Telemetry-only; must not appear in the audit payload below.
+				counts: {
+					workflowsCreated: 1,
+					workflowsUpdated: 1,
+					workflowsSkipped: 0,
+					credentialRequirements: 1,
+				},
 			};
 
 			eventService.emit('workflows-imported', event);

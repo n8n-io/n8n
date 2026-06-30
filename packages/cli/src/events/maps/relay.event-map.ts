@@ -14,6 +14,7 @@ import type {
 import type { ConcurrencyQueueType } from '@/concurrency/concurrency-control.service';
 import type {
 	ImportAuditCredentialIds,
+	ImportPackageEventCounts,
 	ImportPackageEventOptions,
 } from '@/modules/n8n-packages/n8n-packages.types';
 import type { TokenExchangeFailureReason } from '@/modules/token-exchange/token-exchange.types';
@@ -97,6 +98,13 @@ export type RelayEventMap = {
 		packageSourceId: string;
 		packageVersion: string;
 		credentialIds: ImportAuditCredentialIds;
+		counts: ImportPackageEventCounts;
+	};
+
+	'package-exported': {
+		user: UserLike;
+		workflowCount: number;
+		credentialCount: number;
 	};
 
 	'workflow-deleted': {

@@ -1972,6 +1972,69 @@ describe('TelemetryEventRelay', () => {
 		});
 	});
 
+	describe('package import/export events', () => {
+		it('should track on `workflows-imported` event with params and counts', () => {
+			const event: RelayEventMap['workflows-imported'] = {
+				user: { id: 'user123' },
+				projectId: 'project123',
+				folderId: 'folder123',
+				workflowIds: ['wf1', 'wf2', 'wf3'],
+				options: {
+					workflowConflictPolicy: 'new-version',
+					workflowIdPolicy: 'new',
+					credentialMatchingMode: 'id-only',
+					credentialMissingMode: 'must-preexist',
+					workflowPublishingPolicy: 'preserve-published-state',
+				},
+				packageSourceId: 'source-instance-1',
+				packageVersion: '1',
+				credentialIds: {
+					matched: ['cred1', 'cred2'],
+					created: [],
+					updated: [],
+				},
+				counts: {
+					workflowsCreated: 2,
+					workflowsUpdated: 1,
+					workflowsSkipped: 1,
+					credentialRequirements: 3,
+				},
+			};
+
+			eventService.emit('workflows-imported', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User imported package', {
+				user_id: 'user123',
+				workflow_conflict_policy: 'new-version',
+				workflow_id_policy: 'new',
+				credential_matching_mode: 'id-only',
+				credential_missing_mode: 'must-preexist',
+				workflow_publishing_policy: 'preserve-published-state',
+				workflows_created: 2,
+				workflows_updated: 1,
+				workflows_skipped: 1,
+				credentials_matched: 2,
+				credential_requirements: 3,
+			});
+		});
+
+		it('should track on `package-exported` event with entity counts', () => {
+			const event: RelayEventMap['package-exported'] = {
+				user: { id: 'user123' },
+				workflowCount: 3,
+				credentialCount: 2,
+			};
+
+			eventService.emit('package-exported', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User exported package', {
+				user_id: 'user123',
+				workflow_count: 3,
+				credential_count: 2,
+			});
+		});
+	});
+
 	describe('user events', () => {
 		it('should track on `user-updated` event', () => {
 			const event: RelayEventMap['user-updated'] = {

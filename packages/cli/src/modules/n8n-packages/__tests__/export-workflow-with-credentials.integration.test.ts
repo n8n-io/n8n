@@ -7,6 +7,9 @@ import {
 import { Container } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
 
+import { EventService } from '@/events/event.service';
+import type { RelayEventMap } from '@/events/maps/relay.event-map';
+
 import { saveCredential } from '@test-integration/db/credentials';
 import { createMember, createOwner } from '@test-integration/db/users';
 
@@ -212,5 +215,98 @@ describe('workflow package export — with credentials', () => {
 
 		const credentialFiles = entries.filter((e) => e.name.endsWith('/credential.json'));
 		expect(credentialFiles).toEqual([]);
+	});
+
+	describe('telemetry event', () => {
+		it('emits package-exported with entity counts on a successful export', async () => {
+			const owner = await createOwner();
+			const project = await createTeamProject('Project A', owner);
+			const firstCredential = await saveCredential(
+				{ name: 'First', type: 'httpHeaderAuth', data: { name: 'X-Auth', value: 'a' } },
+				{ project, role: 'credential:owner' },
+			);
+			const secondCredential = await saveCredential(
+				{ name: 'Second', type: 'httpHeaderAuth', data: { name: 'X-Auth', value: 'b' } },
+				{ project, role: 'credential:owner' },
+			);
+			// Three workflows referencing two distinct credentials (one is shared by two workflows).
+			const wfA = await buildWorkflowReferencingCredential({
+				name: 'WF A',
+				project,
+				credential: firstCredential,
+			});
+			const wfB = await buildWorkflowReferencingCredential({
+				name: 'WF B',
+				project,
+				credential: secondCredential,
+			});
+			const wfC = await buildWorkflowReferencingCredential({
+				name: 'WF C',
+				project,
+				credential: firstCredential,
+			});
+
+			const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+
+			try {
+				await service.exportWorkflows({ user: owner, workflowIds: [wfA.id, wfB.id, wfC.id] });
+
+				const exportedEvents = emitSpy.mock.calls.filter(([name]) => name === 'package-exported');
+				expect(exportedEvents).toHaveLength(1);
+
+				const payload = exportedEvents[0][1] as RelayEventMap['package-exported'];
+				expect(payload.workflowCount).toBe(3);
+				expect(payload.credentialCount).toBe(2);
+				expect(payload.user.id).toBe(owner.id);
+			} finally {
+				emitSpy.mockRestore();
+			}
+		});
+
+		it('counts only bundled credentials, not unresolved requirements', async () => {
+			const owner = await createOwner();
+			const project = await createTeamProject('Project A', owner);
+			// An orphan credential reference becomes a requirement but is never bundled,
+			// so credentialCount must track bundled entries (0), not requirements (1).
+			const workflow = await buildWorkflowReferencingCredentialById({
+				name: 'WF with orphan cred',
+				project,
+				credentialId: 'does-not-exist',
+				credentialName: 'Stale cred',
+				credentialType: 'httpHeaderAuth',
+			});
+
+			const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+
+			try {
+				await service.exportWorkflows({ user: owner, workflowIds: [workflow.id] });
+
+				const exportedEvents = emitSpy.mock.calls.filter(([name]) => name === 'package-exported');
+				expect(exportedEvents).toHaveLength(1);
+
+				const payload = exportedEvents[0][1] as RelayEventMap['package-exported'];
+				expect(payload.workflowCount).toBe(1);
+				expect(payload.credentialCount).toBe(0);
+			} finally {
+				emitSpy.mockRestore();
+			}
+		});
+
+		it('does not emit package-exported when the export aborts', async () => {
+			const owner = await createOwner();
+			await createTeamProject('Project A', owner);
+			const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+
+			try {
+				await expect(
+					service.exportWorkflows({ user: owner, workflowIds: ['does-not-exist'] }),
+				).rejects.toThrow(/not found or not accessible/i);
+
+				const exportedEvents = emitSpy.mock.calls.filter(([name]) => name === 'package-exported');
+				expect(exportedEvents).toHaveLength(0);
+			} finally {
+				emitSpy.mockRestore();
+			}
+		});
 	});
 });

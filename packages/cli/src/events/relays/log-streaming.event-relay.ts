@@ -143,7 +143,8 @@ export class LogStreamingEventRelay extends EventRelay {
 	// #region Workflow
 
 	@Redactable()
-	private workflowsImported({ user, ...rest }: RelayEventMap['workflows-imported']) {
+	private workflowsImported({ user, counts, ...rest }: RelayEventMap['workflows-imported']) {
+		// `counts` is telemetry-only; the audit payload carries ids, not aggregate counts.
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.n8n-package.imported',
 			payload: { ...user, ...rest },
