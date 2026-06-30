@@ -2,8 +2,6 @@ import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils';
 import { jsonParse } from 'n8n-workflow';
 
-import { AgentResourceRepository } from '../repositories/agent-resource.repository';
-import { AgentThreadRepository } from '../repositories/agent-thread.repository';
 import type {
 	IntegrationMessageContext,
 	IntegrationMessageSubject,
@@ -11,6 +9,8 @@ import type {
 	IntegrationMessageContextStore,
 	IntegrationMessageTarget,
 } from './integration-tools';
+import { AgentResourceRepository } from '../repositories/agent-resource.repository';
+import { AgentThreadRepository } from '../repositories/agent-thread.repository';
 
 const MESSAGE_CONTEXT_METADATA_KEY = 'currentMessageContext';
 

@@ -19,6 +19,9 @@ import { UnexpectedError } from 'n8n-workflow';
 import { rm as fsRm, writeFile as fsWriteFile } from 'node:fs/promises';
 import path from 'path';
 
+import { DataTableRepository } from '@/modules/data-table/data-table.repository';
+import { formatWorkflow } from '@/workflows/workflow.formatter';
+
 import {
 	SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER,
 	SOURCE_CONTROL_DATATABLES_EXPORT_FOLDER,
@@ -51,9 +54,6 @@ import type { ExportableWorkflow } from './types/exportable-workflow';
 import type { RemoteResourceOwner } from './types/resource-owner';
 import type { SourceControlContext } from './types/source-control-context';
 import { VariablesService } from '../../environments.ee/variables/variables.service.ee';
-
-import { DataTableRepository } from '@/modules/data-table/data-table.repository';
-import { formatWorkflow } from '@/workflows/workflow.formatter';
 
 @Service()
 export class SourceControlExportService {

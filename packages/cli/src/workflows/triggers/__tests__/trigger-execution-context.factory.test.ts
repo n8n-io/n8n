@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import type { Logger } from '@n8n/backend-common';
-import type { WorkflowEntity, WorkflowHistory } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import type { WorkflowEntity } from '@n8n/db';
 import type { ErrorReporter, StorageConfig } from 'n8n-core';
+import { createDeferredPromise, sleep, UnexpectedError } from 'n8n-workflow';
 import type {
 	ExecutionError,
 	IConnections,
@@ -13,9 +13,9 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
+	Workflow,
 } from 'n8n-workflow';
-import { createDeferredPromise, sleep, UnexpectedError } from 'n8n-workflow';
-import type { Workflow } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
@@ -23,14 +23,18 @@ import type { EventService } from '@/events/event.service';
 import { executeErrorWorkflow } from '@/execution-lifecycle/execute-error-workflow';
 import type { ExecutionService } from '@/executions/execution.service';
 import type { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
-import type { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
+import type {
+	PublishedWorkflowDataForExecution,
+	WorkflowPublishedDataService,
+} from '@/workflows/workflow-published-data.service';
 import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
+
 import {
 	TriggerExecutionContextFactory,
 	type TriggerFailureHandler,
 } from '../trigger-execution-context.factory';
 
-jest.mock('@/execution-lifecycle/execute-error-workflow');
+vi.mock('@/execution-lifecycle/execute-error-workflow');
 
 describe('TriggerExecutionContextFactory', () => {
 	const workflowStaticDataService = mock<WorkflowStaticDataService>();
@@ -44,13 +48,13 @@ describe('TriggerExecutionContextFactory', () => {
 	let factory: TriggerExecutionContextFactory;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		workflowStaticDataService.saveStaticData.mockResolvedValue(undefined);
 		workflowExecutionService.runWorkflow.mockResolvedValue('exec-123');
 		executionService.createErrorExecution.mockResolvedValue(undefined);
 
 		const scopedLogger = mock<Logger>();
-		const rootLogger = mock<Logger>({ scoped: jest.fn().mockReturnValue(scopedLogger) });
+		const rootLogger = mock<Logger>({ scoped: vi.fn().mockReturnValue(scopedLogger) });
 
 		factory = new TriggerExecutionContextFactory(
 			rootLogger,
@@ -82,7 +86,7 @@ describe('TriggerExecutionContextFactory', () => {
 					mode,
 					activation,
 					async () => workflowData,
-					jest.fn(),
+					vi.fn(),
 				);
 				const context = getTriggerFunctions(workflow, node, additionalData, mode, activation);
 
@@ -121,7 +125,7 @@ describe('TriggerExecutionContextFactory', () => {
 					mode,
 					activation,
 					async () => workflowData,
-					jest.fn(),
+					vi.fn(),
 				);
 				const context = getTriggerFunctions(workflow, node, additionalData, mode, activation);
 
@@ -155,7 +159,7 @@ describe('TriggerExecutionContextFactory', () => {
 					mode,
 					activation,
 					async () => workflowData,
-					jest.fn(),
+					vi.fn(),
 				);
 				const context = getTriggerFunctions(workflow, node, additionalData, mode, activation);
 				const donePromise = createDeferredPromise<IRun>();
@@ -185,7 +189,7 @@ describe('TriggerExecutionContextFactory', () => {
 					mode,
 					activation,
 					async () => workflowData,
-					jest.fn(),
+					vi.fn(),
 				);
 				const context = getTriggerFunctions(workflow, node, additionalData, mode, activation);
 
@@ -213,7 +217,7 @@ describe('TriggerExecutionContextFactory', () => {
 					mode,
 					activation,
 					async () => workflowData,
-					jest.fn(),
+					vi.fn(),
 				);
 				const context = getTriggerFunctions(workflow, node, additionalData, mode, activation);
 				const donePromise = createDeferredPromise<IRun>();
@@ -226,7 +230,8 @@ describe('TriggerExecutionContextFactory', () => {
 
 		describe('emitError', () => {
 			test('delegates to the injected onTriggerFailure callback', () => {
-				const onTriggerFailure = jest.fn<() => void, Parameters<TriggerFailureHandler>>();
+				const onTriggerFailure =
+					vi.fn<(...args: Parameters<TriggerFailureHandler>) => () => void>();
 				const workflowData = mock<WorkflowEntity>({ id: 'wf-1', name: 'Test Workflow' });
 				const additionalData = mock<IWorkflowExecuteAdditionalData>();
 				const mode: WorkflowExecuteMode = 'trigger';
@@ -259,7 +264,7 @@ describe('TriggerExecutionContextFactory', () => {
 
 		describe('saveFailedExecution', () => {
 			test('calls createErrorExecution then executeErrorWorkflow', async () => {
-				const executeErrorWorkflowSpy = jest
+				const executeErrorWorkflowSpy = vi
 					.spyOn(factory, 'executeErrorWorkflow')
 					.mockImplementation(() => {});
 
@@ -276,7 +281,7 @@ describe('TriggerExecutionContextFactory', () => {
 					mode,
 					activation,
 					async () => workflowData,
-					jest.fn(),
+					vi.fn(),
 				);
 				const context = getTriggerFunctions(workflow, node, additionalData, mode, activation);
 				const executionError = mock<ExecutionError>();
@@ -361,7 +366,7 @@ describe('TriggerExecutionContextFactory', () => {
 
 		describe('__emitError', () => {
 			test('calls createErrorExecution then executeErrorWorkflow', async () => {
-				const executeErrorWorkflowSpy = jest
+				const executeErrorWorkflowSpy = vi
 					.spyOn(factory, 'executeErrorWorkflow')
 					.mockImplementation(() => {});
 
@@ -419,32 +424,60 @@ describe('TriggerExecutionContextFactory', () => {
 	});
 
 	describe('loadPublishedWorkflowData', () => {
-		test('returns IWorkflowBase with nodes and connections from the published version', async () => {
+		test('sources nodes/connections/versionId from the published version and other fields from the workflow projection', async () => {
 			const publishedNodes: INode[] = [{ id: 'n1' } as INode];
 			const publishedConnections: IConnections = {};
-			const initialWorkflowData = mock<WorkflowEntity>({ id: 'wf-1' });
+			const publishedNodeGroups = [{ id: 'g1', name: 'Group', nodeIds: ['n1'] }];
+			const workflowData = {
+				id: 'wf-1',
+				name: 'My workflow',
+				description: null,
+				active: true,
+				isArchived: false,
+				createdAt: new Date('2026-01-01T00:00:00.000Z'),
+				updatedAt: new Date('2026-01-02T00:00:00.000Z'),
+				settings: { timezone: 'Europe/Berlin' },
+				staticData: { foo: 'bar' },
+				activeVersionId: 'published-version',
+				versionCounter: 3,
+				versionId: 'published-version',
+				nodes: publishedNodes,
+				connections: publishedConnections,
+				nodeGroups: publishedNodeGroups,
+			} satisfies PublishedWorkflowDataForExecution;
 
-			workflowPublishedDataService.getPublishedWorkflowData.mockResolvedValue({
-				workflow: mock<WorkflowEntity>(),
-				publishedVersion: {
-					nodes: publishedNodes,
-					connections: publishedConnections,
-				} as WorkflowHistory,
-			});
+			workflowPublishedDataService.getCachedPublishedWorkflowDataForExecution.mockResolvedValue(
+				workflowData,
+			);
 
-			const result = await factory.loadPublishedWorkflowData(initialWorkflowData);
+			const result = await factory.loadPublishedWorkflowData('wf-1');
 
+			// Topology + version that actually ran come from the published snapshot.
 			expect(result.nodes).toBe(publishedNodes);
 			expect(result.connections).toBe(publishedConnections);
+			expect(result.nodeGroups).toBe(publishedNodeGroups);
+			expect(result.versionId).toBe('published-version');
+
+			// Other execution-relevant fields come from the live workflow entity.
+			expect(result.id).toBe('wf-1');
+			expect(result.name).toBe('My workflow');
+			expect(result.active).toBe(true);
+			expect(result.settings).toEqual({ timezone: 'Europe/Berlin' });
+			expect(result.staticData).toEqual({ foo: 'bar' });
+			expect(result.activeVersionId).toBe('published-version');
+			expect(result.versionCounter).toBe(3);
+
+			// Deliberately excluded from a production trigger execution.
+			expect(result.pinData).toBeUndefined();
+			expect(result.meta).toBeUndefined();
 		});
 
 		test('throws UnexpectedError when the service returns null', async () => {
-			const initialWorkflowData = mock<WorkflowEntity>({ id: 'wf-1' });
-			workflowPublishedDataService.getPublishedWorkflowData.mockResolvedValue(null);
-
-			await expect(factory.loadPublishedWorkflowData(initialWorkflowData)).rejects.toThrow(
-				UnexpectedError,
+			workflowPublishedDataService.getCachedPublishedWorkflowDataForExecution.mockResolvedValue(
+				null,
 			);
+
+			await expect(factory.loadPublishedWorkflowData('wf-1')).rejects.toThrow(UnexpectedError);
 		});
 	});
 });

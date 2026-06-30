@@ -1,3 +1,4 @@
+import { formatPemBlock } from '@n8n/utils';
 import { writeFile } from 'fs/promises';
 import type {
 	ICredentialTestFunctions,
@@ -19,8 +20,6 @@ import type { Config } from 'node-ssh';
 import { NodeSSH } from 'node-ssh';
 import type { Readable } from 'stream';
 import { file as tmpFile } from 'tmp-promise';
-
-import { formatPrivateKey } from '@utils/utilities';
 
 async function resolveHomeDir(
 	this: IExecuteFunctions,
@@ -301,7 +300,7 @@ export class Ssh implements INodeType {
 							host: credentials.host as string,
 							username: credentials.username as string,
 							port: credentials.port as number,
-							privateKey: formatPrivateKey(credentials.privateKey as string),
+							privateKey: formatPemBlock(credentials.privateKey as string),
 						};
 
 						if (credentials.passphrase) {
@@ -354,7 +353,7 @@ export class Ssh implements INodeType {
 					host: credentials.host as string,
 					username: credentials.username as string,
 					port: credentials.port as number,
-					privateKey: formatPrivateKey(credentials.privateKey as string),
+					privateKey: formatPemBlock(credentials.privateKey as string),
 				};
 
 				if (credentials.passphrase) {

@@ -19,26 +19,26 @@ import {
 	ProjectRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 import type { INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
+import { mock } from 'vitest-mock-extended';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { NodeTypes } from '@/node-types';
+import { OwnershipService } from '@/services/ownership.service';
+import { ProjectService } from '@/services/project.service.ee';
+import { RoleService } from '@/services/role.service';
 import { Telemetry } from '@/telemetry';
+import { WebhookService } from '@/webhooks/webhook.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import { WorkflowService } from '@/workflows/workflow.service';
-import { OwnershipService } from '@/services/ownership.service';
-import { ProjectService } from '@/services/project.service.ee';
-import { RoleService } from '@/services/role.service';
 
 import { createCustomRoleWithScopeSlugs, cleanupRolesAndScopes } from '../shared/db/roles';
 import { createOwner, createMember } from '../shared/db/users';
 import { createWorkflowHistoryItem } from '../shared/db/workflow-history';
-import { WebhookService } from '@/webhooks/webhook.service';
 
 let globalConfig: GlobalConfig;
 let workflowRepository: WorkflowRepository;
@@ -115,7 +115,7 @@ afterEach(async () => {
 		'User',
 	]);
 	await cleanupRolesAndScopes();
-	jest.restoreAllMocks();
+	vi.restoreAllMocks();
 });
 
 describe('update()', () => {
@@ -123,8 +123,8 @@ describe('update()', () => {
 		const owner = await createOwner();
 		const workflow = await createWorkflowWithHistory({}, owner);
 
-		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
-		const saveVersionSpy = jest.spyOn(workflowHistoryService, 'saveVersion');
+		const addRecordSpy = vi.spyOn(workflowPublishHistoryRepository, 'addRecord');
+		const saveVersionSpy = vi.spyOn(workflowHistoryService, 'saveVersion');
 
 		const updateData = {
 			nodes: [
@@ -180,8 +180,8 @@ describe('update()', () => {
 			owner,
 		);
 
-		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
-		const saveVersionSpy = jest.spyOn(workflowHistoryService, 'saveVersion');
+		const addRecordSpy = vi.spyOn(workflowPublishHistoryRepository, 'addRecord');
+		const saveVersionSpy = vi.spyOn(workflowHistoryService, 'saveVersion');
 
 		const updateData = {
 			connections: {
@@ -220,7 +220,7 @@ describe('activateWorkflow()', () => {
 		const owner = await createOwner();
 		const workflow = await createWorkflowWithHistory({}, owner);
 
-		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
+		const addRecordSpy = vi.spyOn(workflowPublishHistoryRepository, 'addRecord');
 
 		const updatedWorkflow = await workflowService.activateWorkflow(owner, workflow.id);
 
@@ -244,7 +244,7 @@ describe('activateWorkflow()', () => {
 		const owner = await createOwner();
 		const workflow = await createWorkflowWithHistory({}, owner);
 
-		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
+		const addRecordSpy = vi.spyOn(workflowPublishHistoryRepository, 'addRecord');
 
 		const newVersionId = uuid();
 		await createWorkflowHistoryItem(workflow.id, { versionId: newVersionId });
@@ -438,7 +438,7 @@ describe('activateWorkflow()', () => {
 
 		const oldActiveVersionId = workflow.activeVersionId;
 
-		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
+		const addRecordSpy = vi.spyOn(workflowPublishHistoryRepository, 'addRecord');
 
 		// Create a new version to try to activate
 		const newVersionId = uuid();

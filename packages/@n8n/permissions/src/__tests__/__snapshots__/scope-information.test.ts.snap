@@ -36,6 +36,7 @@ exports[`Scope Information > ensure scopes are defined correctly 1`] = `
   "credential:unshare",
   "credential:shareGlobally",
   "credential:move",
+  "credential:connect",
   "credential:create",
   "credential:read",
   "credential:update",

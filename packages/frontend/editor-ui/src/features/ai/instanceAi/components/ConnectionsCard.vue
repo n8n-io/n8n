@@ -10,6 +10,8 @@ import {
 	INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY,
 } from '@/app/constants/modals';
 import { useInstanceAiMcpConnectionsExperiment } from '@/experiments/instanceAiMcpConnections';
+import { useInstanceAiBrowserUseExperiment } from '@/experiments/instanceAiBrowserUse';
+import { useInstanceAiComputerUseExperiment } from '@/experiments/instanceAiComputerUse';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { useInstanceAiMcpStore } from '../instanceAiMcp.store';
 import { useInstanceAiMcpTelemetry } from '../instanceAiMcp.telemetry';
@@ -27,20 +29,36 @@ const store = useInstanceAiSettingsStore();
 const mcpStore = useInstanceAiMcpStore();
 const mcpTelemetry = useInstanceAiMcpTelemetry();
 const { isFeatureEnabled: isMcpFeatureEnabled } = useInstanceAiMcpConnectionsExperiment();
+const { isFeatureEnabled: isBrowserUseEnabled } = useInstanceAiBrowserUseExperiment();
+const { isFeatureEnabled: isComputerUseEnabled } = useInstanceAiComputerUseExperiment();
 
 const props = defineProps<{
 	dropdownPortalTarget?: HTMLElement;
 }>();
 
 const isMcpEnabled = computed(() => isMcpFeatureEnabled.value && store.settings?.mcpAccessEnabled);
-const singletonConnections = computed(() => store.connections);
+const singletonConnections = computed(() => {
+	const filteredTypes: SingletonConnectionType[] = [];
+	if (!isBrowserUseEnabled.value) filteredTypes.push('browser-use');
+	if (!isComputerUseEnabled.value) filteredTypes.push('computer-use');
+	return !filteredTypes.length
+		? store.connections
+		: store.connections.filter(({ type }) => !filteredTypes.includes(type));
+});
+
 const mcpConnections = computed(() => (isMcpEnabled.value ? mcpStore.connections : []));
-const isVisible = computed(
-	() =>
-		(!store.isLocalGatewayDisabledByAdmin &&
-			(store.gatewayStatusLoaded || store.browserStatusLoaded || store.isLocalGatewayDisabled)) ||
-		isMcpEnabled.value,
-);
+const isVisible = computed(() => {
+	const anyChannelEnabled =
+		(!store.isLocalGatewayDisabledByAdmin && isComputerUseEnabled.value) ||
+		(store.isBrowserUseEnabledByAdmin && isBrowserUseEnabled.value) ||
+		isMcpEnabled.value;
+	const statusReady =
+		store.gatewayStatusLoaded ||
+		store.browserStatusLoaded ||
+		store.isLocalGatewayDisabled ||
+		isMcpEnabled.value;
+	return anyChannelEnabled && statusReady;
+});
 
 void store.fetch();
 

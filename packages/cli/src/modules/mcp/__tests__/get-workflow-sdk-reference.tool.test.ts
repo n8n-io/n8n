@@ -5,12 +5,12 @@ import {
 	WORKFLOW_SDK_PATTERNS,
 } from '@n8n/workflow-sdk/prompts/sdk-reference';
 
+import { Telemetry } from '@/telemetry';
+
 import { createGetWorkflowSdkReferenceTool } from '../tools/workflow-builder/get-workflow-sdk-reference.tool';
 import { getSdkReferenceContent } from '../tools/workflow-builder/sdk-reference-content';
 
-import { Telemetry } from '@/telemetry';
-
-jest.mock('@n8n/ai-workflow-builder', () => ({
+vi.mock('@n8n/ai-workflow-builder', () => ({
 	SDK_IMPORT_STATEMENT: "import { workflow } from '@n8n/workflow-sdk';",
 	MCP_GET_SDK_REFERENCE_TOOL: {
 		toolName: 'get_sdk_reference',
@@ -23,8 +23,8 @@ describe('get-workflow-sdk-reference MCP tool', () => {
 	let telemetry: Telemetry;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
-		telemetry = mockInstance(Telemetry, { track: jest.fn() });
+		vi.clearAllMocks();
+		telemetry = mockInstance(Telemetry, { track: vi.fn() });
 	});
 
 	test('returns canonical workflow SDK patterns', () => {

@@ -106,6 +106,29 @@ function getRecord(value: unknown): Record<string, unknown> | undefined {
 	return isRecord(value) ? value : undefined;
 }
 
+function hasEntries(value: Record<string, unknown>): boolean {
+	return Object.keys(value).length > 0;
+}
+
+function hasReplayableReasoningProviderOptions(
+	providerOptions: ProviderOptions | undefined,
+): boolean {
+	if (!providerOptions) return false;
+
+	const anthropicOptions = getRecord(providerOptions.anthropic);
+	if (
+		typeof anthropicOptions?.signature === 'string' ||
+		typeof anthropicOptions?.redactedData === 'string'
+	) {
+		return true;
+	}
+
+	return Object.entries(providerOptions).some(
+		([provider, options]) =>
+			provider !== 'anthropic' && provider !== 'openai' && hasEntries(options),
+	);
+}
+
 type ContentToolResultOutput = Extract<ToolResultPart['output'], { type: 'content' }>;
 
 function isContentToolResultOutput(value: JSONValue): value is ContentToolResultOutput {
@@ -166,6 +189,9 @@ function toAiContent(block: MessageContent): AiContentPart | undefined {
 		const providerOptions = isReasoning(block)
 			? toReasoningProviderOptions(block)
 			: block.providerOptions;
+		if (isReasoning(block) && !hasReplayableReasoningProviderOptions(providerOptions)) {
+			return undefined;
+		}
 
 		return {
 			...base,

@@ -1,7 +1,8 @@
+import type { Mock } from 'vitest';
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import type { UserRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { Push } from '@/push';
@@ -13,14 +14,16 @@ import {
 } from '../browser/browser-use-ws.constants';
 import { InstanceAiBrowserSessionService } from '../browser/instance-ai-browser-session.service';
 
-jest.mock('@n8n/mcp-browser', () => {
+import * as mcpBrowser from '@n8n/mcp-browser';
+
+vi.mock('@n8n/mcp-browser', () => {
 	const createdRelays: unknown[] = [];
 	class MockRelay {
 		onExtensionConnect?: () => void;
 		onExtensionDisconnect?: () => void;
-		attachExtension = jest.fn();
-		attachController = jest.fn();
-		stop = jest.fn();
+		attachExtension = vi.fn();
+		attachController = vi.fn();
+		stop = vi.fn();
 		constructor() {
 			createdRelays.push(this);
 		}
@@ -28,9 +31,9 @@ jest.mock('@n8n/mcp-browser', () => {
 	return {
 		__createdRelays: createdRelays,
 		CDPRelayServer: MockRelay,
-		createBrowserTools: jest.fn(() => ({
+		createBrowserTools: vi.fn(() => ({
 			tools: [],
-			connection: { shutdown: jest.fn(async () => undefined) },
+			connection: { shutdown: vi.fn(async () => undefined) },
 		})),
 		buildExtensionConnectUrl: (endpoint: string) =>
 			`chrome-extension://ext-id/connect.html?mcpRelayUrl=${encodeURIComponent(endpoint)}`,
@@ -40,17 +43,25 @@ jest.mock('@n8n/mcp-browser', () => {
 const mcpBrowserMock: {
 	__createdRelays: Array<{
 		onExtensionConnect?: () => void;
-		attachExtension: jest.Mock;
-		attachController: jest.Mock;
-		stop: jest.Mock;
+		attachExtension: Mock;
+		attachController: Mock;
+		stop: Mock;
 	}>;
-	createBrowserTools: jest.Mock;
-} = jest.requireMock('@n8n/mcp-browser');
+	createBrowserTools: Mock;
+} = mcpBrowser as unknown as {
+	__createdRelays: Array<{
+		onExtensionConnect?: () => void;
+		attachExtension: Mock;
+		attachController: Mock;
+		stop: Mock;
+	}>;
+	createBrowserTools: Mock;
+};
 
 const USER_ID = 'user-1';
 
 function extensionRequest(sessionId: string, token: string | null) {
-	const ws = { close: jest.fn() };
+	const ws = { close: vi.fn() };
 	const req = {
 		params: { sessionId },
 		query: token === null ? {} : { token },
@@ -62,7 +73,7 @@ function extensionRequest(sessionId: string, token: string | null) {
 }
 
 function cdpRequest(sessionId: string, token: string | null, remoteAddress = '127.0.0.1') {
-	const ws = { close: jest.fn() };
+	const ws = { close: vi.fn() };
 	const req = {
 		params: { sessionId },
 		query: {},
@@ -98,7 +109,7 @@ describe('InstanceAiBrowserSessionService', () => {
 	let service: InstanceAiBrowserSessionService;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		mcpBrowserMock.__createdRelays.length = 0;
 		logger.scoped.mockReturnValue(logger);
 		urlService.getInstanceBaseUrl.mockReturnValue('http://localhost:5678');
@@ -169,7 +180,7 @@ describe('InstanceAiBrowserSessionService', () => {
 		});
 
 		it('rejects a still-valid token once it is past the connect TTL (before first connect)', async () => {
-			const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(1_000_000);
+			const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(1_000_000);
 			const { sessionId, extToken, relay } = await createSession(service);
 
 			nowSpy.mockReturnValue(1_000_000 + 6 * 60 * 1000);
@@ -182,7 +193,7 @@ describe('InstanceAiBrowserSessionService', () => {
 		});
 
 		it('accepts the token past the TTL once the extension has connected at least once', async () => {
-			const nowSpy = jest.spyOn(Date, 'now').mockReturnValue(1_000_000);
+			const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(1_000_000);
 			const { sessionId, extToken, relay } = await createSession(service);
 
 			relay.onExtensionConnect?.(); // marks hasConnectedOnce

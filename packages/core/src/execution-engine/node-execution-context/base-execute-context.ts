@@ -24,6 +24,7 @@ import type {
 	NodeConnectionType,
 	Result,
 	IExecuteFunctions,
+	ExecuteAgentWorkflowContext,
 } from 'n8n-workflow';
 import {
 	UnexpectedError,
@@ -172,6 +173,30 @@ export class BaseExecuteContext extends NodeExecutionContext {
 
 		const threadId = agentInfo.sessionId?.trim() || `${executionId}-${itemIndex}`;
 
+		const inputDataScope = agentInfo.inputDataScope ?? 'item';
+		const mainBranches = this.inputData?.main ?? [];
+		const primaryBranch = mainBranches[0] ?? [];
+		// 'all' exposes every input item across all main branches; otherwise scope
+		// to the current item from the primary branch (empty when itemIndex is out
+		// of range — defensive).
+		const scopedInput =
+			inputDataScope === 'all'
+				? mainBranches.flatMap((branch) => branch ?? [])
+				: itemIndex < primaryBranch.length
+					? [primaryBranch[itemIndex]]
+					: [];
+
+		const workflowContext: ExecuteAgentWorkflowContext = {
+			workflowId: this.workflow.id,
+			workflowName: this.workflow.name,
+			callingNodeName: this.node.name,
+			inputData: scopedInput,
+			inputDataScope,
+			exposeWorkflowData: agentInfo.exposeWorkflowData ?? false,
+			nodes: Object.values(this.workflow.nodes).map(({ name, type }) => ({ name, type })),
+			runExecutionData: this.runExecutionData,
+		};
+
 		return await this.additionalData.executeAgent(
 			agentInfo.agentId,
 			message,
@@ -180,6 +205,7 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			this.additionalData,
 			this.additionalData.rootExecutionMode ?? this.getMode(),
 			agentInfo.outputSchema,
+			workflowContext,
 		);
 	}
 
