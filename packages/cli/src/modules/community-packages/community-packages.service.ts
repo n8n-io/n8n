@@ -481,22 +481,15 @@ export class CommunityPackagesService {
 		}
 
 		if (loader.loadedNodes.length > 0) {
-			// Save info to DB
+			let installedPackage: InstalledPackages;
+
+			// Persisting to the DB is the point of no return: the transaction either
+			// commits the new version or leaves the old record intact, so a failure here
+			// can still roll back to a consistent previous state.
 			try {
-				const installedPackage = isUpdate
+				installedPackage = isUpdate
 					? await this.replaceInstalledPackage(options.installedPackage, loader)
 					: await this.persistInstalledPackage(loader);
-				if (backupDirectory) {
-					await rm(backupDirectory, { recursive: true, force: true });
-				}
-				void this.publisher.publishCommand({
-					command: isUpdate ? 'community-package-update' : 'community-package-install',
-					payload: { packageName, packageVersion },
-				});
-				await this.loadNodesAndCredentials.postProcessLoaders();
-				this.loadNodesAndCredentials.releaseTypes();
-				this.logger.info(`Community package installed: ${packageName}`);
-				return installedPackage;
 			} catch (error) {
 				await this.restoreFailedPackageInstallation(packageName, {
 					backupDirectory,
@@ -509,6 +502,20 @@ export class CommunityPackagesService {
 					cause: error,
 				});
 			}
+
+			// The new version is now authoritative; later failures must not roll back,
+			// or the DB record would end up inconsistent with the restored files.
+			if (backupDirectory) {
+				await rm(backupDirectory, { recursive: true, force: true });
+			}
+			void this.publisher.publishCommand({
+				command: isUpdate ? 'community-package-update' : 'community-package-install',
+				payload: { packageName, packageVersion },
+			});
+			await this.loadNodesAndCredentials.postProcessLoaders();
+			this.loadNodesAndCredentials.releaseTypes();
+			this.logger.info(`Community package installed: ${packageName}`);
+			return installedPackage;
 		} else {
 			await this.restoreFailedPackageInstallation(packageName, {
 				backupDirectory,

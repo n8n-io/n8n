@@ -607,6 +607,26 @@ describe('CommunityPackagesService', () => {
 			);
 		});
 
+		test('should not roll back when a post-save step fails after the database is updated', async () => {
+			license.isCustomNpmRegistryEnabled.mockReturnValue(true);
+
+			// Fails only after the DB swap has already committed the new version
+			loadNodesAndCredentials.postProcessLoaders.mockRejectedValueOnce(
+				new Error('post-process failed'),
+			);
+
+			await expect(
+				communityPackagesService.updatePackage(
+					installedPackageForUpdateTest.packageName,
+					installedPackageForUpdateTest,
+				),
+			).rejects.toThrow('post-process failed');
+
+			expect(installedPackageRepository.replaceInstalledPackageWithNodes).toHaveBeenCalled();
+			// No restore: the new version is already authoritative in the DB
+			expect(loadNodesAndCredentials.loadPackage).toHaveBeenCalledTimes(1);
+		});
+
 		test('should call `exec` with the correct sequence of commands, handle file ops, and interact with services', async () => {
 			// ARRANGE
 			license.isCustomNpmRegistryEnabled.mockReturnValue(true);
