@@ -20,6 +20,29 @@ type SecretsProviderOperation =
 	| 'test'
 	| 'tokenRefresh';
 
+export function createSecretsProviderLogError({
+	message,
+	providerName,
+	providerDisplayName,
+	operation,
+	context = {},
+}: {
+	message: string;
+	providerName: string;
+	providerDisplayName: string;
+	operation: SecretsProviderOperation;
+	context?: SecretsProviderErrorContext;
+}) {
+	return new OperationalError(message, {
+		extra: {
+			providerName,
+			providerDisplayName,
+			operation,
+			...context,
+		},
+	});
+}
+
 abstract class SecretsProviderOperationalError extends OperationalError {
 	constructor(
 		message: string,
