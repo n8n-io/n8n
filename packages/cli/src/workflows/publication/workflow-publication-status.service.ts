@@ -51,14 +51,9 @@ export class WorkflowPublicationStatusService {
 		currentTriggerStatuses: WorkflowPublicationTriggerStatus[],
 	): WorkflowPublicationStatus['status'] {
 		if (isPublishing) return 'in_progress';
-		if (currentTriggerStatuses.length > 0) {
-			const failed = currentTriggerStatuses.filter((r) => r.status === 'failed').length;
-			return failed === 0
-				? 'published'
-				: failed < currentTriggerStatuses.length
-					? 'partial'
-					: 'failed';
-		}
-		return 'not_published';
+		if (currentTriggerStatuses.length === 0) return 'not_published';
+		const failed = currentTriggerStatuses.filter((r) => r.status === 'failed').length;
+		if (failed === 0) return 'published';
+		return failed < currentTriggerStatuses.length ? 'partial' : 'failed';
 	}
 }
