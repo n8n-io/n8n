@@ -16,7 +16,11 @@ import type {
 	InstanceAiEvalSeedDataTable,
 	InstanceAiEvalSeedWorkflow,
 } from '@n8n/api-types';
+import { Agent, setGlobalDispatcher } from 'undici';
 import { z } from 'zod';
+
+// Disable undici's 300s timeouts — mocked eval runs take minutes; AbortSignal is the real bound.
+setGlobalDispatcher(new Agent({ headersTimeout: 0, bodyTimeout: 0 }));
 
 // -- Conversation seeding response shapes -------------------------------------
 
