@@ -1,5 +1,5 @@
 import type { Project } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { ProjectSerializer } from '../project.serializer';
 

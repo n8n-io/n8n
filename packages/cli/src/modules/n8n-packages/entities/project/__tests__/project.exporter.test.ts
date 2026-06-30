@@ -1,12 +1,12 @@
 import type { Project, User } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
 import type { Readable } from 'node:stream';
-
-import type { ProjectService } from '@/services/project.service.ee';
+import { mock } from 'vitest-mock-extended';
 
 import type { PackageWriter } from '../../../io/package-writer';
 import { ProjectExporter } from '../project.exporter';
 import { ProjectSerializer } from '../project.serializer';
+
+import type { ProjectService } from '@/services/project.service.ee';
 
 const user = mock<User>({ id: 'user-1' });
 
