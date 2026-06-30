@@ -1,59 +1,28 @@
 import { Logger } from '@n8n/backend-common';
 import {
 	type HttpRequestClient,
-	httpStatusFromError,
 	isConnectionRefusedError,
 	OutboundHttp,
 } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
 import { type INodeProperties, UnexpectedError } from 'n8n-workflow';
 
-import { DOCS_HELP_NOTICE } from '../constants';
 import {
-	SecretsProviderConnectionError,
-	SecretsProviderTestError,
-	SecretsProviderTokenRefreshError,
-	SecretsProviderUpdateError,
-} from '../errors/secrets-provider-errors';
-import type { SecretsProviderSettings } from '../types';
-import { SecretsProvider } from '../types';
-
-type InfisicalAuthMethod = 'universalAuth';
-
-interface InfisicalSettings {
-	siteURL: string;
-	projectId: string;
-	environment: string;
-	secretPath: string;
-	authMethod: InfisicalAuthMethod;
-
-	// Universal Auth
-	clientId: string;
-	clientSecret: string;
-}
-
-interface InfisicalUniversalAuthLoginResponse {
-	accessToken: string;
-	expiresIn: number;
-	accessTokenMaxTTL: number;
-	tokenType: string;
-}
-
-interface InfisicalSecret {
-	secretKey: string;
-	secretValue: string;
-}
-
-interface InfisicalImport {
-	secrets: InfisicalSecret[];
-	secretPath: string;
-	environment: string;
-}
-
-interface InfisicalListSecretsResponse {
-	secrets: InfisicalSecret[];
-	imports: InfisicalImport[];
-}
+	getInfisicalHttpStatus,
+	infisicalErrorContext,
+	type InfisicalProviderLogContext,
+} from './infisical-error-context';
+import type {
+	InfisicalImport,
+	InfisicalListSecretsResponse,
+	InfisicalSecret,
+	InfisicalSettings,
+	InfisicalUniversalAuthLoginResponse,
+} from './types';
+import { DOCS_HELP_NOTICE } from '../../constants';
+import { secretsProviderLogContext } from '../../errors/secrets-provider-errors';
+import type { SecretsProviderSettings } from '../../types';
+import { SecretsProvider } from '../../types';
 
 const TOKEN_REFRESH_LEEWAY_SECONDS = 60;
 const MIN_REFRESH_DELAY_MS = 60 * 1000;
@@ -199,13 +168,7 @@ export class InfisicalProvider extends SecretsProvider {
 
 			this.setupTokenRefresh();
 		} catch (error) {
-			this.logger.warn('Failed to connect Infisical provider', {
-				authMethod: this.settings.authMethod,
-				error: new SecretsProviderConnectionError(this.name, this.displayName, {
-					authMethod: this.settings.authMethod,
-					statusCode: httpStatusFromError(error),
-				}),
-			});
+			this.logOperationFailure('Failed to connect Infisical provider', 'connect', error);
 			throw error;
 		}
 	}
@@ -249,11 +212,8 @@ export class InfisicalProvider extends SecretsProvider {
 
 			return [false, `Unexpected response from Infisical (status ${resp.statusCode}).`];
 		} catch (error) {
-			this.logger.warn('Infisical provider test failed', {
-				error: new SecretsProviderTestError(this.name, this.displayName, {
-					statusCode: httpStatusFromError(error),
-					resource: 'workspace',
-				}),
+			this.logOperationFailure('Infisical provider test failed', 'test', error, {
+				endpoint: 'workspace',
 			});
 
 			if (isConnectionRefusedError(error)) {
@@ -274,7 +234,7 @@ export class InfisicalProvider extends SecretsProvider {
 			try {
 				this.cacheSecrets(await this.fetchSecrets());
 			} catch (error) {
-				if (httpStatusFromError(error) === 401) {
+				if (getInfisicalHttpStatus(error) === 401) {
 					this.logger.debug(
 						'Infisical token rejected during update; re-authenticating and retrying',
 					);
@@ -285,11 +245,8 @@ export class InfisicalProvider extends SecretsProvider {
 				throw error;
 			}
 		} catch (error) {
-			this.logger.warn('Failed to update Infisical provider secrets', {
-				error: new SecretsProviderUpdateError(this.name, this.displayName, {
-					statusCode: httpStatusFromError(error),
-					resource: 'secrets',
-				}),
+			this.logOperationFailure('Failed to update Infisical provider secrets', 'update', error, {
+				endpoint: 'secrets',
 			});
 			throw error;
 		}
@@ -373,12 +330,12 @@ export class InfisicalProvider extends SecretsProvider {
 			await this.loginUniversalAuth();
 			if (this.refreshAbort.signal.aborted) return;
 			this.setupTokenRefresh();
-		} catch {
-			this.logger.warn('Failed to refresh Infisical token. Attempting reconnect.', {
-				error: new SecretsProviderTokenRefreshError(this.name, this.displayName, {
-					authMethod: this.settings.authMethod,
-				}),
-			});
+		} catch (error) {
+			this.logOperationFailure(
+				'Failed to refresh Infisical token. Attempting reconnect.',
+				'tokenRefresh',
+				error,
+			);
 			void this.connect();
 		}
 	};
@@ -403,5 +360,32 @@ export class InfisicalProvider extends SecretsProvider {
 			};
 		}
 		return {};
+	}
+
+	private logOperationFailure(
+		message: string,
+		operation: 'connect' | 'test' | 'update' | 'tokenRefresh',
+		error: unknown,
+		extra: InfisicalProviderLogContext = {},
+	): void {
+		this.logger.warn(message, {
+			...secretsProviderLogContext({
+				providerName: this.name,
+				providerDisplayName: this.displayName,
+				operation,
+				errorName: error instanceof Error ? error.name : undefined,
+			}),
+			...infisicalErrorContext(error),
+			...(this.settings
+				? {
+						siteURL: this.settings.siteURL,
+						projectId: this.settings.projectId,
+						environment: this.settings.environment,
+						secretPath: this.settings.secretPath,
+						authMethod: this.settings.authMethod,
+					}
+				: {}),
+			...extra,
+		});
 	}
 }

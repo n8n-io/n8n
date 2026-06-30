@@ -4,7 +4,7 @@ import { Service } from '@n8n/di';
 import { AwsSecretsManager } from './providers/aws-secrets-manager/aws-secrets-manager';
 import { AzureKeyVault } from './providers/azure-key-vault/azure-key-vault';
 import { GcpSecretsManager } from './providers/gcp-secrets-manager/gcp-secrets-manager';
-import { InfisicalProvider } from './providers/infisical';
+import { InfisicalProvider } from './providers/infisical/infisical';
 import { OnePasswordProvider } from './providers/one-password';
 import { VaultProvider } from './providers/hashicorp-vault/vault';
 import type { SecretsProvider } from './types';

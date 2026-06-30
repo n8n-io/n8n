@@ -3,13 +3,7 @@ import { createFakeOutboundHttp, type Route } from '@n8n/backend-network/testing
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { IHttpRequestOptions } from 'n8n-workflow';
 
-import {
-	SecretsProviderConnectionError,
-	SecretsProviderTestError,
-	SecretsProviderTokenRefreshError,
-	SecretsProviderUpdateError,
-} from '../../errors/secrets-provider-errors';
-import { InfisicalProvider } from '../infisical';
+import { InfisicalProvider } from '../infisical/infisical';
 
 const SITE_URL = 'https://app.infisical.com';
 const PROJECT_ID = 'project-123';
@@ -65,6 +59,16 @@ function listSecretsResponse(
 const WORKSPACE_PATH = `/api/v1/workspace/${PROJECT_ID}`;
 const LOGIN_PATH = '/api/v1/auth/universal-auth/login';
 const SECRETS_PATH = '/api/v4/secrets';
+
+const infisicalSettingsLogContext = {
+	providerName: 'infisical',
+	providerDisplayName: 'Infisical',
+	siteURL: SITE_URL,
+	projectId: PROJECT_ID,
+	environment: ENVIRONMENT,
+	secretPath: SECRET_PATH,
+	authMethod: 'universalAuth',
+};
 
 describe('InfisicalProvider', () => {
 	const logger = mockInstance(Logger);
@@ -205,7 +209,10 @@ describe('InfisicalProvider', () => {
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Infisical provider test failed',
 				expect.objectContaining({
-					error: expect.any(SecretsProviderTestError),
+					...infisicalSettingsLogContext,
+					operation: 'test',
+					endpoint: 'workspace',
+					errorCode: 'ECONNREFUSED',
 				}),
 			);
 		});
@@ -223,8 +230,9 @@ describe('InfisicalProvider', () => {
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Failed to connect Infisical provider',
 				expect.objectContaining({
-					authMethod: 'universalAuth',
-					error: expect.any(SecretsProviderConnectionError),
+					...infisicalSettingsLogContext,
+					operation: 'connect',
+					statusCode: 401,
 				}),
 			);
 		});
@@ -308,7 +316,10 @@ describe('InfisicalProvider', () => {
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Failed to update Infisical provider secrets',
 				expect.objectContaining({
-					error: expect.any(SecretsProviderUpdateError),
+					...infisicalSettingsLogContext,
+					operation: 'update',
+					endpoint: 'secrets',
+					statusCode: 500,
 				}),
 			);
 		});
@@ -323,7 +334,11 @@ describe('InfisicalProvider', () => {
 
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Failed to refresh Infisical token. Attempting reconnect.',
-				expect.objectContaining({ error: expect.any(SecretsProviderTokenRefreshError) }),
+				expect.objectContaining({
+					...infisicalSettingsLogContext,
+					operation: 'tokenRefresh',
+					errorCode: 'ECONNREFUSED',
+				}),
 			);
 			expect(connect).toHaveBeenCalled();
 		});
