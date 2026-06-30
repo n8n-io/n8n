@@ -131,10 +131,10 @@ describe('InstanceAiModelService', () => {
 			aiService.isProxyEnabled.mockReturnValue(true);
 			settingsService.resolveSubAgentModelName.mockReturnValue('claude-haiku-4-5');
 			settingsService.resolveSubAgentModel.mockReturnValue('anthropic/claude-haiku-4-5');
-			const resolveProxyModel = jest
+			const resolveProxyModel = vi
 				.spyOn(service, 'resolveProxyModel')
 				.mockResolvedValue('proxy-haiku' as never);
-			const tokenManager = { getAuthHeaders: jest.fn() } as never;
+			const tokenManager = { getAuthHeaders: vi.fn() } as never;
 
 			await expect(
 				service.resolveSubAgentModelConfig(fakeUser, {
