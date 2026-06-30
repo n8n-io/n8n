@@ -88,7 +88,10 @@ type ResolveOffsetMode = 'immediately' | 'onCompletion' | 'onSuccess' | 'onStatu
  */
 function toPemBuffer(value: string, fieldName: string): Buffer {
 	const formatted = formatPemBlock(value);
-	if (!/-----BEGIN [A-Z0-9 ]+-----/.test(formatted)) {
+	// Require a matching BEGIN/END pair with the same label — a lone BEGIN header
+	// (e.g. a truncated paste) would otherwise pass and only fail later as an
+	// opaque TLS handshake error.
+	if (!/-----BEGIN ([A-Z0-9 ]+)-----[\s\S]+-----END \1-----/.test(formatted)) {
 		throw new UserError(`The Kafka ${fieldName} is not a valid PEM block`, {
 			level: 'warning',
 			description:
