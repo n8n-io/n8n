@@ -5567,6 +5567,9 @@ importers:
 
   packages/nodes-base:
     dependencies:
+      '@aws-crypto/sha256-js':
+        specifier: 5.2.0
+        version: 5.2.0
       '@aws-sdk/credential-providers':
         specifier: 3.808.0
         version: 3.808.0
@@ -5600,6 +5603,12 @@ importers:
       '@smithy/node-http-handler':
         specifier: 4.5.0
         version: 4.5.0
+      '@smithy/protocol-http':
+        specifier: 5.3.12
+        version: 5.3.12
+      '@smithy/signature-v4':
+        specifier: 5.3.5
+        version: 5.3.5
       '@smithy/types':
         specifier: 4.13.1
         version: 4.13.1
