@@ -3,14 +3,8 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import {
-	SecretsProviderConnectionError,
-	SecretsProviderInitializationError,
-	SecretsProviderTestError,
-	SecretsProviderUpdateError,
-} from '../../errors/secrets-provider-errors';
 import { OnePasswordProvider } from '../one-password';
-import type { OnePasswordContext } from '../one-password';
+import type { OnePasswordContext } from '../types';
 
 const mockListVaults = vi.fn();
 const mockListItems = vi.fn();
@@ -43,7 +37,12 @@ describe('OnePasswordProvider', () => {
 			);
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Failed to initialize 1Password provider',
-				expect.objectContaining({ error: expect.any(SecretsProviderInitializationError) }),
+				expect.objectContaining({
+					providerName: 'onePassword',
+					providerDisplayName: '1Password',
+					operation: 'initialize',
+					errorName: expect.any(String),
+				}),
 			);
 		});
 
@@ -104,7 +103,11 @@ describe('OnePasswordProvider', () => {
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Failed to connect 1Password provider',
 				expect.objectContaining({
-					error: expect.any(SecretsProviderConnectionError),
+					providerName: 'onePassword',
+					providerDisplayName: '1Password',
+					operation: 'connect',
+					errorName: 'Error',
+					serverUrl: 'http://localhost:8080',
 				}),
 			);
 		});
@@ -143,7 +146,14 @@ describe('OnePasswordProvider', () => {
 			expect(result).toEqual([false, 'Connection refused']);
 			expect(logger.warn).toHaveBeenCalledWith(
 				'1Password provider test failed',
-				expect.objectContaining({ error: expect.any(SecretsProviderTestError) }),
+				expect.objectContaining({
+					providerName: 'onePassword',
+					providerDisplayName: '1Password',
+					operation: 'test',
+					errorName: 'Error',
+					endpoint: 'vaults',
+					serverUrl: 'http://localhost:8080',
+				}),
 			);
 		});
 	});
@@ -306,7 +316,12 @@ describe('OnePasswordProvider', () => {
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Failed to update 1Password provider secrets',
 				expect.objectContaining({
-					error: expect.any(SecretsProviderUpdateError),
+					providerName: 'onePassword',
+					providerDisplayName: '1Password',
+					operation: 'update',
+					errorName: 'Error',
+					endpoint: 'secrets',
+					serverUrl: 'http://localhost:8080',
 				}),
 			);
 		});
