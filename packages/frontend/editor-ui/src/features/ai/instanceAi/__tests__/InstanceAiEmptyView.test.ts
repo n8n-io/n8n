@@ -409,13 +409,15 @@ describe('InstanceAiEmptyView', () => {
 
 	it('passes the fixed suggestions to the empty-state composer', () => {
 		const { getByTestId, getByText } = renderView();
-		// 4 suggestions in INSTANCE_AI_EMPTY_STATE_SUGGESTIONS — suggestions array
-		// renders as its `.length`.
-		expect(getByText('AI Assistant')).toBeVisible();
+		expect(getByText('What do you want to automate?')).toBeVisible();
 		expect(getByTestId('instance-ai-input-suggestions')).toHaveTextContent('4');
-		expect(getByTestId('instance-ai-input-suggestions-component')).toHaveTextContent('unset');
-		expect(getByTestId('instance-ai-input-suggestion-catalog-version')).toHaveTextContent('unset');
-		expect(getByTestId('instance-ai-input-placeholder-key')).toHaveTextContent('unset');
+		expect(getByTestId('instance-ai-input-suggestions-component')).toHaveTextContent('set');
+		expect(getByTestId('instance-ai-input-suggestion-catalog-version')).toHaveTextContent(
+			'v3-workflow-preview',
+		);
+		expect(getByTestId('instance-ai-input-placeholder-key')).toHaveTextContent(
+			'experiments.instanceAiWorkflowPreviewSuggestions.input.placeholder',
+		);
 	});
 
 	it('passes v2 copy, suggestions, component, and catalog version when prompt suggestions v2 is enabled', () => {
