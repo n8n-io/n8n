@@ -75,8 +75,6 @@ const agentId = computed(() => {
 
 const isConfigured = computed(() => agentId.value !== '');
 
-// The canvas route is the workflow, not a project, so resolve the agent's
-// project the same way the picker does: current → workflow home → personal.
 const projectId = computed(
 	() =>
 		projectsStore.currentProjectId ??
@@ -110,13 +108,13 @@ const modelCredentialType = computed(() =>
 const modelName = computed(() => {
 	const model = summary.value?.model;
 	if (!model) return '';
-	// Mirror the edit page's model selector: resolve the friendly catalog name
+	// Resolve the friendly catalog name
 	// (e.g. "Claude Opus 4.8"), falling back to the raw id while the catalog
 	// loads or for an unknown model.
 	return modelCatalog.value[model.provider]?.models[model.model]?.name ?? model.model;
 });
 
-// Mirror the edit page: resolve a node tool's display name (" Tool" suffix
+// Resolve a node tool's display name (" Tool" suffix
 // stripped) so same-node-type tools can group into "N {NodeType}". Returns
 // undefined when the node type isn't loaded, leaving the tool as an individual
 // humanized chip.
@@ -155,9 +153,7 @@ function onOpenContextMenu(event: MouseEvent) {
 
 function openAgent() {
 	if (!isConfigured.value || !projectId.value) return;
-	// Navigate to the leaf builder route (not the parent AGENT_VIEW): pushing the
-	// parent by name leaves its <RouterView> child unmatched, so the editor mounts
-	// empty until a full reload resolves the leaf from the URL.
+
 	void router.push({
 		name: AGENT_BUILDER_VIEW,
 		params: { projectId: projectId.value, agentId: agentId.value },
@@ -216,8 +212,6 @@ watch(
 							{{ i18n.baseText('agentNode.card.loadError') }}
 						</N8nText>
 						<template v-else>
-							<!-- Always render the model row so a configured-but-empty agent (no
-						model, no capabilities) doesn't collapse to an empty body. -->
 							<div :class="$style.modelRow" data-test-id="canvas-node-agent-model">
 								<CredentialIcon
 									v-if="modelCredentialType"
@@ -257,27 +251,21 @@ watch(
 @use './_canvasNodeStyles.scss' as styles;
 
 .card {
-	// Fixed card width matching the Figma "WF Agent Node" frame (424px less the
-	// handle gutters); no spacing token maps to this exact value.
 	--agent-card--border-color: var(--border-color);
 	--agent-card--header-dot-color: var(--border-color);
-	// Hard-coded 12px per Figma. The matching token (--radius--sm) can't be used:
-	// the legacy theme globally overrides it to ~2px, which renders square.
 	--agent-card--radius: 12px;
+
 	position: relative;
 	// Own stacking context so the header/body/glow z-indexes below stay local and
 	// never compete with the connection handles (which must stay on top).
 	isolation: isolate;
 	width: 384px;
-	// Shapes the selected ring on this (non-clipping) wrapper; the visible card
-	// lives in .surface.
 	border-radius: var(--agent-card--radius);
 }
 
 .surface {
 	// Transparent layout wrapper only — the header and body each carry their own
-	// border so the body's rounded top corners miter cleanly (a single shared
-	// border would force the body's top divider to taper at the corners).
+	// border so the body's rounded top corners miter cleanly
 	display: flex;
 	flex-direction: column;
 }
@@ -292,7 +280,8 @@ watch(
 	padding: var(--spacing--sm) var(--spacing--sm) var(--spacing--lg);
 	border: 2px solid var(--agent-card--border-color);
 	border-radius: var(--agent-card--radius) var(--agent-card--radius) 0 0;
-	// Solid surface base (never transparent) + a dot grid,
+
+	// Solid surface base + a dot grid,
 	// faded toward the left/right edges by a surface sheen
 	background-color: var(--background--surface);
 	background-image:
@@ -368,7 +357,7 @@ watch(
 // Stacking context that sits above the header (which stays in normal flow, so
 // its arrow button keeps its clicks + hover), and tucks the body up into the
 // header by one radius. The body's run glow resolves into this layer, so it
-// paints over the header's bottom edge → a complete ring around the body.
+// paints over the header's bottom edge.
 .bodyWrap {
 	position: relative;
 	z-index: 1;
@@ -413,8 +402,6 @@ watch(
 
 .statusIcons {
 	// Above .bodyWrap (z-index 1) so the status check/spinner shows over the body.
-	// Safe because the card is its own stacking context (the connection handles
-	// sit above the whole card regardless of this local z-index).
 	position: absolute;
 	z-index: 2;
 	bottom: var(--spacing--2xs);

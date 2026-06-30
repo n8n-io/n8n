@@ -102,7 +102,6 @@ const overflowItems = computed<Array<ActionDropdownItem<string>>>(() =>
 }
 
 .nodeIcon {
-	// No color override — the node icon keeps its own brand colours.
 	flex-shrink: 0;
 }
 
