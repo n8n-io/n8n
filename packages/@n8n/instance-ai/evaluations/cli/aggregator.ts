@@ -59,8 +59,6 @@ function computePassMetrics(
 export function aggregateResults(
 	allRunResults: WorkflowTestCaseResult[][],
 	totalRuns: number,
-	// TODO: Remove when agent building is supported
-	options: { caseSet?: 'workflows' | 'agents' } = {},
 ): MultiRunEvaluation {
 	const testCaseCount = allRunResults[0].length;
 	const testCases: TestCaseAggregation[] = [];
@@ -71,43 +69,26 @@ export function aggregateResults(
 		const buildSuccessCount = runs.filter((r) => r.workflowBuildSuccess).length;
 
 		const scenarios = testCase.executionScenarios ?? [];
-		// TODO: Remove when agent building is supported
-		const scenarioIndices =
-			// TODO: Remove when agent building is supported
-			options.caseSet === 'agents'
-				? scenarios
-						.map((_, sIdx) => sIdx)
-						.filter((sIdx) => runs.some((r) => r.executionScenarioResults[sIdx] !== undefined))
-				: scenarios.map((_, sIdx) => sIdx);
 		const executionScenarios: ExecutionScenarioAggregation[] = [];
 
-		for (const sIdx of scenarioIndices) {
-			const scenario = scenarios[sIdx];
-			const scenarioRuns =
-				// TODO: Remove when agent building is supported
-				options.caseSet === 'agents'
-					? runs.flatMap((r) => {
-							const result = r.executionScenarioResults[sIdx];
-							return result ? [result] : [];
-						})
-					: runs.map(
-							(r) =>
-								r.executionScenarioResults[sIdx] ?? {
-									scenario,
-									success: false,
-									score: 0,
-									reasoning: 'Build failed — scenario not executed',
-								},
-						);
+		for (const [sIdx, scenario] of scenarios.entries()) {
+			const scenarioRuns = runs.map(
+				(r) =>
+					r.executionScenarioResults[sIdx] ?? {
+						scenario,
+						success: false,
+						score: 0,
+						reasoning: 'Build failed — scenario not executed',
+					},
+			);
 			const passCount = scenarioRuns.filter((sr) => sr.success).length;
-			const runCount = options.caseSet === 'agents' ? scenarioRuns.length : totalRuns;
-			const { passAtKValues, passHatKValues } = computePassMetrics(runCount, passCount);
+			const { passAtKValues, passHatKValues } = computePassMetrics(totalRuns, passCount);
 
 			executionScenarios.push({
 				scenario,
 				runs: scenarioRuns,
 				passCount,
-				passRate: runCount > 0 ? passCount / runCount : 0,
+				passRate: totalRuns > 0 ? passCount / totalRuns : 0,
 				passAtK: passAtKValues,
 				passHatK: passHatKValues,
 			});

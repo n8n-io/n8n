@@ -72,9 +72,6 @@ export interface CliArgs {
 	/** Test-case source: `disk` (default) reads data/workflows/, `langtracer` pulls a
 	 *  suite over MCP (needs LANGTRACER_URL + LANGTRACER_API_KEY). */
 	source: 'disk' | 'langtracer';
-	/** Disk test-case set to load. Ignored by the langtracer source. */
-	// TODO: Remove when agent building is supported
-	caseSet: 'workflows' | 'agents';
 	/** lang-tracer suite slug (or numeric id) to export when `--source langtracer`. */
 	suite?: string;
 }
@@ -111,8 +108,6 @@ const cliArgsSchema = z.object({
 		.transform((s) => (s.endsWith('-') ? s : `${s}-`))
 		.default(BASELINE_EXPERIMENT_PREFIX),
 	source: z.enum(['disk', 'langtracer']).default('disk'),
-	// TODO: Remove when agent building is supported
-	caseSet: z.enum(['workflows', 'agents']).default('workflows'),
 	suite: z.string().min(1).optional(),
 });
 
@@ -166,8 +161,6 @@ export function parseCliArgs(argv: string[]): CliArgs {
 		tier: validated.tier,
 		baselinePrefix,
 		source: validated.source,
-		// TODO: Remove when agent building is supported
-		caseSet: validated.caseSet,
 		suite: validated.suite,
 	};
 }
@@ -221,8 +214,6 @@ interface RawArgs {
 	tier?: string;
 	baselinePrefix: string;
 	source: string;
-	// TODO: Remove when agent building is supported
-	caseSet: string;
 	suite?: string;
 	/** Whether --dataset / --baseline-prefix were explicitly passed (langtracer mode
 	 *  derives suite-scoped defaults otherwise). */
@@ -245,8 +236,6 @@ function parseRawArgs(argv: string[]): RawArgs {
 		pinAiRoots: undefined,
 		baselinePrefix: BASELINE_EXPERIMENT_PREFIX,
 		source: 'disk',
-		// TODO: Remove when agent building is supported
-		caseSet: 'workflows',
 		datasetProvided: false,
 		baselineProvided: false,
 	};
@@ -356,12 +345,6 @@ function parseRawArgs(argv: string[]): RawArgs {
 
 			case '--source':
 				result.source = nextArg(argv, i, '--source');
-				i++;
-				break;
-
-			case '--case-set':
-				// TODO: Remove when agent building is supported
-				result.caseSet = nextArg(argv, i, '--case-set');
 				i++;
 				break;
 

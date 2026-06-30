@@ -4,25 +4,20 @@
 		{
 			"role": "user",
 			"text": [
+				"This is not a request to build or execute anything. Do not create workflows, do not create agents, and do not run anything.",
+				"I only want you to classify the intent of this hypothetical request:",
+				"Say whether this should be handled as a deterministic workflow, a hybrid workflow with a bounded AI judgment step, a full agent, or a single AI task. Briefly explain why in terms of control flow, runtime decision-making, tool-use loops, unstructured data, and whether the next action depends on prior results.",
 				"Watch our error logs, and when something looks unusual, investigate the root cause across services and write up what you find."
 			]
 		}
 	],
 	"complexity": "complex",
 	"tags": ["intent-resolution", "agent", "root-cause-investigation"],
-	"datasets": ["full"],
+	"datasets": ["agents"],
 	"processExpectations": [
 		"The agent classifies the unusual error-log investigation request as a full agent.",
 		"The agent explains that deciding what looks unusual requires judgment.",
 		"The agent explains that root-cause investigation across services has no predefinable path.",
 		"The agent does not classify the request as a fixed alert workflow."
-	],
-	"executionScenarios": [
-		{
-			"name": "intent-only-response",
-			"description": "The agent should only classify intent; no executable workflow is expected",
-			"dataSetup": "No external data is required because this scenario is an intent-classification prompt.",
-			"successCriteria": "The response classifies the request as a full agent and cites open-ended anomaly investigation."
-		}
 	]
 }

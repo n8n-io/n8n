@@ -95,22 +95,6 @@ describe('parseCliArgs --exclude', () => {
 	});
 });
 
-describe('parseCliArgs --case-set', () => {
-	it('defaults to workflows', () => {
-		// TODO: Remove when agent building is supported
-		expect(parseCliArgs([]).caseSet).toBe('workflows');
-	});
-
-	it('accepts the agents case set', () => {
-		// TODO: Remove when agent building is supported
-		expect(parseCliArgs(['--case-set', 'agents']).caseSet).toBe('agents');
-	});
-
-	it('rejects unknown case sets', () => {
-		expect(() => parseCliArgs(['--case-set', 'nope'])).toThrow();
-	});
-});
-
 describe('parseCliArgs --baseline-prefix', () => {
 	it('defaults to the instance-ai baseline prefix', () => {
 		expect(parseCliArgs([]).baselinePrefix).toBe('instance-ai-baseline-');

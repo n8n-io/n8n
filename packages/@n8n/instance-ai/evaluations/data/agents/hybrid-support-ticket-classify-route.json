@@ -4,13 +4,16 @@
 		{
 			"role": "user",
 			"text": [
+				"This is not a request to build or execute anything. Do not create workflows, do not create agents, and do not run anything.",
+				"I only want you to classify the intent of this hypothetical request:",
+				"Say whether this should be handled as a deterministic workflow, a hybrid workflow with a bounded AI judgment step, a full agent, or a single AI task. Briefly explain why in terms of control flow, runtime decision-making, tool-use loops, unstructured data, and whether the next action depends on prior results.",
 				"When a new Zendesk ticket arrives, read the message, classify it as billing, bug, account access, or product question, set priority as low/normal/high, and route it to the matching team in Slack."
 			]
 		}
 	],
 	"complexity": "medium",
 	"tags": ["intent-resolution", "hybrid", "classification-routing"],
-	"datasets": ["full"],
+	"datasets": ["agents"],
 	"processExpectations": [
 		"The agent classifies the Zendesk triage request as a hybrid classify-then-route workflow.",
 		"The agent explains that AI is useful for the bounded ticket classification and priority judgment.",
@@ -24,13 +27,5 @@
 				"argsContainAny": ["intent-recognition"]
 			}
 		]
-	},
-	"executionScenarios": [
-		{
-			"name": "intent-only-response",
-			"description": "The agent should only classify intent; no executable workflow is expected",
-			"dataSetup": "No external data is required because this scenario is an intent-classification prompt.",
-			"successCriteria": "The response classifies the request as hybrid classify-then-route and rejects full-agent handling."
-		}
-	]
+	}
 }

@@ -4,25 +4,20 @@
 		{
 			"role": "user",
 			"text": [
+				"This is not a request to build or execute anything. Do not create workflows, do not create agents, and do not run anything.",
+				"I only want you to classify the intent of this hypothetical request:",
+				"Say whether this should be handled as a deterministic workflow, a hybrid workflow with a bounded AI judgment step, a full agent, or a single AI task. Briefly explain why in terms of control flow, runtime decision-making, tool-use loops, unstructured data, and whether the next action depends on prior results.",
 				"Build an incident investigator that watches for critical production alerts, checks logs and metrics, decides which service or deployment is most likely responsible, gathers more evidence as needed, and then either recommends a rollback, opens an incident, or escalates to the on-call engineer."
 			]
 		}
 	],
 	"complexity": "complex",
 	"tags": ["intent-resolution", "agent", "tool-loop"],
-	"datasets": ["full"],
+	"datasets": ["agents"],
 	"processExpectations": [
 		"The agent classifies the incident investigator request as a full agent.",
 		"The agent explains that each next action depends on interpreting logs, metrics, or prior investigation results.",
 		"The agent identifies the need for an autonomous tool-use loop.",
 		"The agent does not classify the request as a deterministic workflow because the control flow cannot be fully enumerated before runtime."
-	],
-	"executionScenarios": [
-		{
-			"name": "intent-only-response",
-			"description": "The agent should only classify intent; no executable workflow is expected",
-			"dataSetup": "No external data is required because this scenario is an intent-classification prompt.",
-			"successCriteria": "The response classifies the request as a full agent and explains that investigation steps depend on runtime observations."
-		}
 	]
 }

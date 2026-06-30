@@ -3,12 +3,17 @@
 	"conversation": [
 		{
 			"role": "user",
-			"text": ["Help me handle my inbox."]
+			"text": [
+				"This is not a request to build or execute anything. Do not create workflows, do not create agents, and do not run anything.",
+				"I only want you to classify the intent of this hypothetical request:",
+				"Say whether this should be handled as a deterministic workflow, a hybrid workflow with a bounded AI judgment step, a full agent, or a single AI task. Briefly explain why in terms of control flow, runtime decision-making, tool-use loops, unstructured data, and whether the next action depends on prior results.",
+				"Help me handle my inbox."
+			]
 		}
 	],
 	"complexity": "simple",
 	"tags": ["intent-resolution", "ambiguous", "clarification"],
-	"datasets": ["full"],
+	"datasets": ["agents"],
 	"processExpectations": [
 		"The agent treats the inbox handling request as underspecified.",
 		"The agent asks a clarifying question instead of forcing a workflow, hybrid, or agent classification.",
@@ -21,13 +26,5 @@
 				"argsContainAny": ["intent-recognition"]
 			}
 		]
-	},
-	"executionScenarios": [
-		{
-			"name": "intent-only-response",
-			"description": "The agent should only classify intent or ask for clarification; no executable workflow is expected",
-			"dataSetup": "No external data is required because this scenario is an intent-classification prompt.",
-			"successCriteria": "The response asks for clarification and identifies the workflow-versus-agent ambiguity."
-		}
-	]
+	}
 }

@@ -83,18 +83,26 @@ describe('Instance AI runtime skills', () => {
 		expect(
 			source.registry.skills.find((entry) => entry.id === 'intent-recognition')?.description,
 		).toContain('Load for intent-only classification');
-		await expect(source.loadSkill('intent-recognition')).resolves.toMatchObject({
-			name: 'intent-recognition',
-			instructions: expect.stringContaining('The deciding question is who owns control flow'),
-		});
+		const skill = await source.loadSkill('intent-recognition');
+		expect(skill?.name).toBe('intent-recognition');
+		expect(skill?.instructions).toContain('The deciding question is who owns control flow');
 
 		const loadTool = createSkillLoadTool(source);
-		await expect(loadTool.handler?.({ skillId: 'intent-recognition' }, {})).resolves.toMatchObject({
+		const loadResult = await loadTool.handler?.({ skillId: 'intent-recognition' }, {});
+		expect(loadResult).toMatchObject({
 			success: true,
 			skillId: 'intent-recognition',
 			name: 'intent-recognition',
-			content: expect.stringContaining('workflow | hybrid | agent | single-ai-task | ambiguous'),
 		});
+		if (
+			!loadResult ||
+			typeof loadResult !== 'object' ||
+			!('content' in loadResult) ||
+			typeof loadResult.content !== 'string'
+		) {
+			throw new Error('Expected load_skill to return intent-recognition content');
+		}
+		expect(loadResult.content).toContain('workflow | hybrid | agent | single-ai-task | ambiguous');
 	});
 
 	it('loads the bundled Computer Use credential setup skill', async () => {

@@ -614,7 +614,7 @@ describe('formatComparisonTerminal', () => {
 		expect(out).toMatch(/partial: 1 baseline scenarios not run by PR/);
 	});
 
-	it('does not render workflow build failure text for agents intent checks', () => {
+	it('does not render workflow build failure text for process-only checks', () => {
 		const agentsEval = evaluation({
 			totalRuns: 1,
 			testCases: [
@@ -622,21 +622,19 @@ describe('formatComparisonTerminal', () => {
 					userText: 'workflow-scheduled-weather-and-agent',
 					buildSuccessCount: 0,
 					buildError: "Agent response: Here's the intent I'd detect",
+					buildExpectations: [{ expectation: 'classifies the request intent', passes: [true] }],
 				},
 			],
 		});
 
-		const out = formatComparisonTerminal(agentsEval, undefined, {
-			// TODO: Remove when agent building is supported
-			caseSet: 'agents',
-		});
+		const out = formatComparisonTerminal(agentsEval);
 
-		expect(out).toMatch(/INTENT CHECKED/);
+		expect(out).toMatch(/CHECKED/);
 		expect(out).not.toMatch(/BUILD FAILED/);
 		expect(out).not.toMatch(/Agent response/);
 	});
 
-	it('counts evaluated expectations in the agents terminal aggregate', () => {
+	it('counts evaluated expectations in the terminal aggregate', () => {
 		const agentsEval = evaluation({
 			totalRuns: 1,
 			testCases: [
@@ -653,10 +651,7 @@ describe('formatComparisonTerminal', () => {
 			],
 		});
 
-		const out = formatComparisonTerminal(agentsEval, undefined, {
-			// TODO: Remove when agent building is supported
-			caseSet: 'agents',
-		});
+		const out = formatComparisonTerminal(agentsEval);
 
 		expect(out).toMatch(/Aggregate: 100\.0% pass \(4\/4 trials, 4 checks × N=1\)/);
 	});

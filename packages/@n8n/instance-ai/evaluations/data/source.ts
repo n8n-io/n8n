@@ -22,10 +22,19 @@ export async function loadTestCases(
 		});
 	}
 
-	// TODO: Remove when agent building is supported
-	if (args.caseSet === 'agents') {
-		return loadAgentEvalTestCasesWithFiles(args.filter, args.exclude, args.tier);
-	}
+	const cases = [
+		...loadWorkflowTestCasesWithFiles(args.filter, args.exclude),
+		...loadAgentEvalTestCasesWithFiles(args.filter, args.exclude),
+	];
+	const { tier } = args;
+	if (!tier) return cases;
 
-	return loadWorkflowTestCasesWithFiles(args.filter, args.exclude, args.tier);
+	const matched = cases.filter(({ testCase }) => testCase.datasets.includes(tier));
+	if (matched.length === 0) {
+		const known = [...new Set(cases.flatMap(({ testCase }) => testCase.datasets))].sort();
+		throw new Error(
+			`No test cases match --tier "${tier}". Known tiers: ${known.join(', ') || '(none)'}.`,
+		);
+	}
+	return matched;
 }

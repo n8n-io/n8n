@@ -4,13 +4,16 @@
 		{
 			"role": "user",
 			"text": [
+				"This is not a request to build or execute anything. Do not create workflows, do not create agents, and do not run anything.",
+				"I only want you to classify the intent of this hypothetical request:",
+				"Say whether this should be handled as a deterministic workflow, a hybrid workflow with a bounded AI judgment step, a full agent, or a single AI task. Briefly explain why in terms of control flow, runtime decision-making, tool-use loops, unstructured data, and whether the next action depends on prior results.",
 				"Whenever a new article hits our RSS feed, summarize it in two sentences and post the summary to LinkedIn."
 			]
 		}
 	],
 	"complexity": "medium",
 	"tags": ["intent-resolution", "workflow", "bounded-llm", "adversarial-ai-inside"],
-	"datasets": ["full"],
+	"datasets": ["agents"],
 	"processExpectations": [
 		"The agent classifies the RSS summary pipeline as a deterministic workflow with a bounded LLM step.",
 		"The agent explains that the LLM only performs a fixed summarization task inside a fixed pipeline.",
@@ -23,13 +26,5 @@
 				"argsContainAny": ["intent-recognition"]
 			}
 		]
-	},
-	"executionScenarios": [
-		{
-			"name": "intent-only-response",
-			"description": "The agent should only classify intent; no executable workflow is expected",
-			"dataSetup": "No external data is required because this scenario is an intent-classification prompt.",
-			"successCriteria": "The response classifies the request as a workflow and distinguishes a bounded LLM call from an agent."
-		}
-	]
+	}
 }

@@ -1,5 +1,7 @@
 import { DateTime } from 'luxon';
 
+import { isAgentFeatureEnabled } from '@/utils/agent-feature-enabled';
+
 import { getComputerUsePrompt } from './computer-use-prompt';
 import { SECRET_ASK_GUARDRAIL } from './credential-guardrails.prompt';
 import {
@@ -8,7 +10,6 @@ import {
 	UNTRUSTED_CONTENT_DOCTRINE,
 } from './shared-prompts';
 import type { LocalGatewayStatus } from '../types';
-import { isAgentFeatureEnabled } from '@/utils/agent-feature-enabled';
 
 interface SystemPromptOptions {
 	webhookBaseUrl?: string;
