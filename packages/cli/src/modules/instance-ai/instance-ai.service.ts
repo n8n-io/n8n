@@ -254,9 +254,18 @@ function isTextMessagePart(part: unknown): part is { type: 'text'; text: string 
 	);
 }
 
-function getUserFacingErrorMessage(error: unknown): string {
+// "Endpoint not allowed" is the sandbox proxy's 403 for a blocked/unreachable endpoint.
+function isSandboxUnreachableError(error: unknown): boolean {
+	return getErrorMessage(error).toLowerCase().includes('endpoint not allowed');
+}
+
+export function getUserFacingErrorMessage(error: unknown): string {
 	if (error instanceof UserError) {
 		return error.message;
+	}
+
+	if (isSandboxUnreachableError(error)) {
+		return "I couldn't reach the workspace sandbox — it may have been paused or is temporarily unavailable. Please try again in a moment.";
 	}
 
 	if (error instanceof OperationalError) {
@@ -3344,11 +3353,14 @@ export class InstanceAiService {
 					messageId,
 				});
 			}
+			const userFacingErrorMessage =
+				result.status === 'errored' ? getUserFacingErrorMessage(result.error) : undefined;
 			if (runControl.shouldEmitTerminalOutcome(result.stopReason)) {
 				this.terminalOutcome.evaluateTerminalResponse(threadId, runId, result.status, {
 					messageGroupId,
 					correlationId: messageId,
 					workSummary: result.workSummary,
+					errorMessage: userFacingErrorMessage,
 					suppressCompletedFallback:
 						checkpoint?.isCheckpointFollowUp === true ||
 						plannedBuild?.isPlannedBuildFollowUp === true,
@@ -3378,6 +3390,7 @@ export class InstanceAiService {
 				archivedWorkflowIds,
 				workSummary: result.workSummary,
 				usage: result.usage,
+				errorReason: userFacingErrorMessage,
 			});
 
 			// Bill token usage for every terminal outcome (completed / cancelled / errored),
@@ -4270,10 +4283,13 @@ export class InstanceAiService {
 					},
 				);
 			}
+			const userFacingErrorMessage =
+				result.status === 'errored' ? getUserFacingErrorMessage(result.error) : undefined;
 			if (runControl.shouldEmitTerminalOutcome(result.stopReason)) {
 				this.terminalOutcome.evaluateTerminalResponse(opts.threadId, opts.runId, result.status, {
 					messageGroupId,
 					workSummary: result.workSummary,
+					errorMessage: userFacingErrorMessage,
 					suppressCompletedFallback:
 						opts.checkpoint?.isCheckpointFollowUp === true ||
 						opts.plannedBuild?.isPlannedBuildFollowUp === true,
@@ -4302,6 +4318,7 @@ export class InstanceAiService {
 				archivedWorkflowIds,
 				workSummary: result.workSummary,
 				usage: result.usage,
+				errorReason: userFacingErrorMessage,
 			});
 
 			// Bill token usage for every terminal outcome, deduped per run segment.
@@ -4829,7 +4846,11 @@ export class InstanceAiService {
 			agentId: orchestratorAgentId(runId),
 			payload: {
 				status: effectiveStatus,
-				...(status === 'cancelled' ? { reason: reason ?? 'user_cancelled' } : {}),
+				...(status === 'cancelled'
+					? { reason: reason ?? 'user_cancelled' }
+					: status === 'errored' && reason
+						? { reason }
+						: {}),
 				...(hasArchived ? { archivedWorkflowIds } : {}),
 			},
 		});
@@ -4853,13 +4874,14 @@ export class InstanceAiService {
 			archivedWorkflowIds?: string[];
 			workSummary?: WorkSummary;
 			usage?: RunTokenUsage;
+			errorReason?: string;
 		},
 	): Promise<void> {
 		this.publishRunFinish(
 			threadId,
 			runId,
 			status,
-			undefined,
+			options?.errorReason,
 			options?.archivedWorkflowIds,
 			options?.userId,
 		);
