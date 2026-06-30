@@ -46,7 +46,7 @@ export class WorkflowExporter {
 
 		const entries: ManifestEntry[] = [];
 		const credentials: WorkflowCredentialRequirement[] = [];
-		const fileNames = new UniqueFilenameAllocator('workflows');
+		const fileNames = new UniqueFilenameAllocator('workflows', 'workflow');
 
 		for (const workflow of workflows) {
 			const target = fileNames.allocate(workflow.name);
