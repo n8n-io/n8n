@@ -180,7 +180,13 @@ function editCredential(credentialId: string) {
 			</button>
 		</template>
 	</N8nPopover>
-	<N8nButton v-else :variant="connectVariant" size="small" @click="createCredential">
+	<N8nButton
+		v-else
+		:variant="connectVariant"
+		size="small"
+		data-test-id="tool-credential-picker-trigger-connect"
+		@click="createCredential"
+	>
 		<span>{{ i18n.baseText('tools.connection.action.connect') }}</span>
 	</N8nButton>
 </template>

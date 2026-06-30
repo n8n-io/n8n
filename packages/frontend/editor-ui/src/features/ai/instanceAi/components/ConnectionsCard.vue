@@ -72,6 +72,7 @@ const ICON_MAP: Record<SingletonConnectionType, IconName> = {
 };
 
 const hasAddableComputerUse = computed(() => {
+	if (!isComputerUseEnabled.value) return false;
 	if (store.isLocalGatewayDisabledByAdmin) return false;
 	const addedSingletonConnections = new Set(
 		singletonConnections.value.map((connection) => connection.type),
@@ -204,10 +205,10 @@ function openMcpSettings(connectionId: string) {
 		<div v-else :class="$style.empty">
 			<span>{{ i18n.baseText('instanceAi.connections.empty.title') }}</span>
 			<N8nButton
+				v-if="hasAddableConnection"
 				:label="i18n.baseText('instanceAi.connections.empty.cta')"
 				variant="outline"
 				size="small"
-				:disabled="!hasAddableConnection"
 				data-test-id="instance-ai-connections-empty-cta"
 				@click="openToolsConnectionModal()"
 			/>
