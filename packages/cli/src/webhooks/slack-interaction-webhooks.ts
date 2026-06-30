@@ -2,10 +2,10 @@ import { Service } from '@n8n/di';
 import type express from 'express';
 import { jsonParse } from 'n8n-workflow';
 
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+
 import { WaitingWebhooks } from './waiting-webhooks';
 import type { IWebhookResponseCallbackData, WaitingWebhookRequest } from './webhook.types';
-
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 interface SlackInteractionValue {
 	executionId?: string;

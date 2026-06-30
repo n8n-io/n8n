@@ -69,4 +69,30 @@ describe('SlackInteractionWebhooks', () => {
 		);
 		expect(req.params).toEqual({ path: 'e1', suffix: 'n1' });
 	});
+
+	it('responds 409 and does not resume when the execution is already finished', async () => {
+		executionPersistence.findSingleExecution.mockResolvedValue(
+			mock<IExecutionResponse>({
+				status: 'success',
+				finished: true,
+				data: mock({ resultData: { lastNodeExecuted: 'Slack' } }),
+			}),
+		);
+		const res = mock<express.Response>();
+		(res.status as unknown as ReturnType<typeof vi.fn>).mockReturnValue(res);
+		const req = makeReq({
+			actions: [
+				{
+					action_id: 'n8n_hitl_approve',
+					value: JSON.stringify({ executionId: 'e1', nodeId: 'n1' }),
+				},
+			],
+		});
+
+		const result = await svc.executeWebhook(req, res);
+
+		expect(res.status).toHaveBeenCalledWith(409);
+		expect(result).toEqual({ noWebhookResponse: true });
+		expect(getWebhookExecutionData).not.toHaveBeenCalled();
+	});
 });

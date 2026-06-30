@@ -17,9 +17,9 @@ import { bodyParser, corsMiddleware, rawBodyReader } from '@/middlewares';
 import { sendErrorResponse } from '@/response-helper';
 import { createHandlebarsEngine } from '@/utils/handlebars.util';
 import { LiveWebhooks } from '@/webhooks/live-webhooks';
+import { SlackInteractionWebhooks } from '@/webhooks/slack-interaction-webhooks';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
 import { WaitingForms } from '@/webhooks/waiting-forms';
-import { SlackInteractionWebhooks } from '@/webhooks/slack-interaction-webhooks';
 import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
 import { createWebhookHandlerFor } from '@/webhooks/webhook-request-handler';
 

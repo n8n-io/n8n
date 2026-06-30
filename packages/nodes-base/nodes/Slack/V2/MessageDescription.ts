@@ -197,6 +197,14 @@ export const captureResponderField: INodeProperties = {
 	name: 'captureResponder',
 	type: 'boolean',
 	default: false,
+	// Access-token + approval only: the interactive callback verifies the slackApi signing
+	// secret (not available under OAuth2), and the form response types need the link button.
+	displayOptions: {
+		show: {
+			authentication: ['accessToken'],
+			responseType: ['approval'],
+		},
+	},
 	description:
 		"Whether to use Slack interactive buttons so the responder's identity (ID, name, email) is captured and returned with the response. Requires the Slack app to have Interactivity enabled (Request URL pointed at this n8n instance), a signing secret on the credential, and the users:read and users:read.email scopes.",
 };

@@ -16,6 +16,7 @@ describe('slackSendAndWaitWebhook', () => {
 
 	beforeEach(() => {
 		webhookFns = mock<IWebhookFunctions>();
+		webhookFns.getCredentials.mockResolvedValue({ signatureSecret: 'shhh' } as any);
 		vi.mocked(verifySignature).mockReset();
 	});
 
@@ -61,6 +62,39 @@ describe('slackSendAndWaitWebhook', () => {
 
 		expect(status).toHaveBeenCalledWith(401);
 		expect(result).toEqual({ noWebhookResponse: true });
+	});
+
+	it('treats an explicit decline action as not approved (fail closed)', async () => {
+		vi.mocked(verifySignature).mockResolvedValue(true);
+		webhookFns.getRequestObject.mockReturnValue({
+			method: 'POST',
+			headers: { 'x-slack-signature': 'v0=abc' },
+		} as any);
+		webhookFns.getBodyData.mockReturnValue({
+			actions: [{ action_id: 'n8n_hitl_decline' }],
+			user: { id: 'U1' },
+		} as any);
+
+		const result = await slackSendAndWaitWebhook.call(webhookFns);
+
+		expect((result as any).workflowData[0][0].json.data.approved).toBe(false);
+	});
+
+	it('refuses (no resume, verify not attempted) when no signing secret is configured', async () => {
+		vi.mocked(verifySignature).mockResolvedValue(true);
+		webhookFns.getCredentials.mockResolvedValue({} as any);
+		const status = vi.fn().mockReturnThis();
+		webhookFns.getRequestObject.mockReturnValue({
+			method: 'POST',
+			headers: { 'x-slack-signature': 'v0=abc' },
+		} as any);
+		webhookFns.getResponseObject.mockReturnValue({ status, send: vi.fn() } as any);
+
+		const result = await slackSendAndWaitWebhook.call(webhookFns);
+
+		expect(status).toHaveBeenCalledWith(401);
+		expect(result).toEqual({ noWebhookResponse: true });
+		expect(verifySignature).not.toHaveBeenCalled();
 	});
 });
 
@@ -216,6 +250,37 @@ describe('Slack Utility Functions', () => {
 			});
 			// Interactive buttons must not carry a url (that would render a plain link button).
 			expect(actions.elements[0].url).toBeUndefined();
+		});
+
+		it('ignores captureResponder for non-approval response types (keeps the link button)', () => {
+			mockExecuteFunctions.getNode.mockReturnValue({
+				name: 'Slack',
+				id: 'node-1',
+				typeVersion: 2.3,
+			} as any);
+			mockExecuteFunctions.getExecutionId.mockReturnValue('exec-1');
+			mockExecuteFunctions.getSignedResumeUrl.mockReturnValue(
+				'http://localhost/waiting-webhook/exec-1/node-1?approved=true&signature=abc',
+			);
+			mockExecuteFunctions.getNodeParameter.mockImplementation((name: string) => {
+				const params: Record<string, any> = {
+					select: 'channel',
+					channelId: 'channelID',
+					message: 'message',
+					subject: 'subject',
+					'approvalOptions.values': {},
+					responseType: 'freeText',
+					options: { captureResponder: true },
+				};
+				return params[name];
+			});
+
+			const body = createSendAndWaitMessageBody(mockExecuteFunctions);
+			const actions = body.blocks.find((b) => b.type === 'actions') as { elements: any[] };
+
+			// Free Text must keep the plain link button so the form can be opened.
+			expect(actions.elements[0].url).toBeDefined();
+			expect(actions.elements[0].action_id).toBeUndefined();
 		});
 
 		it('should create message with double buttons - pre 2.3 plain_text', () => {

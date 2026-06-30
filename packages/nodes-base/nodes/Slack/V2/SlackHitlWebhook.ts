@@ -55,13 +55,19 @@ export async function slackSendAndWaitWebhook(this: IWebhookFunctions) {
 		return await sendAndWaitWebhook.call(this);
 	}
 
-	if (!(await verifySignature.call(this))) {
+	// Fail closed: this server-initiated callback must have a signing secret to verify against,
+	// unlike the trigger's lenient skip-if-no-secret default.
+	const credential = await this.getCredentials('slackApi');
+	const signingSecret =
+		typeof credential.signatureSecret === 'string' ? credential.signatureSecret : '';
+	if (!signingSecret || !(await verifySignature.call(this))) {
 		this.getResponseObject().status(401).send('');
 		return { noWebhookResponse: true };
 	}
 
 	const payload = this.getBodyData() as SlackInteractionPayload;
-	const approved = payload.actions?.[0]?.action_id !== 'n8n_hitl_decline';
+	// Fail closed: only an explicit approve action counts as approved.
+	const approved = payload.actions?.[0]?.action_id === 'n8n_hitl_approve';
 	const responder = await extractSlackResponder(this, payload);
 
 	return {

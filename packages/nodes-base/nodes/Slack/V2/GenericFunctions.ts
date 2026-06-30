@@ -430,7 +430,10 @@ export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
 	const sendAndWaitOptions = (context.getNodeParameter('options', 0, {}) ?? {}) as {
 		captureResponder?: boolean;
 	};
-	const captureResponder = sendAndWaitOptions.captureResponder === true;
+	// Interactive buttons are approval-only; free-text/custom-form need the plain link button.
+	const responseType = context.getNodeParameter('responseType', 0, 'approval');
+	const captureResponder =
+		sendAndWaitOptions.captureResponder === true && responseType === 'approval';
 	// Interactive buttons echo this back so the callback knows which run/node to resume.
 	const interactionValue = captureResponder
 		? JSON.stringify({ executionId: context.getExecutionId(), nodeId: context.getNode().id })
