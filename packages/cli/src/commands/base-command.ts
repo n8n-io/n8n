@@ -37,13 +37,13 @@ import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-
 import { ExpressionObservabilityProvider } from '@/expression-observability/expression-observability.provider';
 import { ExternalHooks } from '@/external-hooks';
 import { License } from '@/license';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { resolveBackendHealthEndpointPath } from '@/utils/health-endpoint.util';
 import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-history-manager';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
 export abstract class BaseCommand<F = never> {
 	readonly flags: F;
@@ -97,6 +97,7 @@ export abstract class BaseCommand<F = never> {
 			profilesSampleRate,
 			tracesSampleRate,
 			tracesSlowSpanThresholdMs,
+			webhookTracesSampleRate,
 			eventLoopBlockThreshold,
 			eventLoopBlockMaxEventsPerHour,
 			eventLoopBlockDetectionEnabled,
@@ -113,6 +114,8 @@ export abstract class BaseCommand<F = never> {
 			eventLoopBlockMaxEventsPerHour,
 			tracesSampleRate,
 			slowSpanThresholdMs: tracesSlowSpanThresholdMs,
+			webhookEndpoint: this.globalConfig.endpoints.webhook,
+			webhookTracesSampleRate,
 			profilesSampleRate,
 			healthEndpoint: resolveBackendHealthEndpointPath(this.globalConfig),
 			eligibleIntegrations: {

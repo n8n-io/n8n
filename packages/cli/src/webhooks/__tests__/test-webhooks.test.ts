@@ -2,7 +2,6 @@ import type { Logger } from '@n8n/backend-common';
 import type { WorkflowEntity } from '@n8n/db';
 import { generateNanoId } from '@n8n/db';
 import type * as express from 'express';
-import { mock } from 'jest-mock-extended';
 import type {
 	ITaskData,
 	IWorkflowBase,
@@ -13,6 +12,8 @@ import type {
 	WorkflowExpression,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
+import type { Mock, Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
@@ -26,9 +27,9 @@ import type { WebhookService } from '@/webhooks/webhook.service';
 import type { WebhookRequest } from '@/webhooks/webhook.types';
 import * as AdditionalData from '@/workflow-execute-additional-data';
 
-jest.mock('@/workflow-execute-additional-data');
+vi.mock('@/workflow-execute-additional-data');
 
-const mockedAdditionalData = AdditionalData as jest.Mocked<typeof AdditionalData>;
+const mockedAdditionalData = AdditionalData as Mocked<typeof AdditionalData>;
 
 const workflowEntity = mock<IWorkflowBase>({ id: generateNanoId(), nodes: [] });
 
@@ -59,12 +60,12 @@ describe('TestWebhooks', () => {
 	);
 
 	beforeAll(() => {
-		jest.useFakeTimers();
+		vi.useFakeTimers();
 	});
 
 	beforeEach(() => {
-		jest.restoreAllMocks();
-		jest.clearAllMocks();
+		vi.restoreAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('needsWebhook()', () => {
@@ -77,8 +78,8 @@ describe('TestWebhooks', () => {
 		test('if webhook is needed, should register then create webhook and return true', async () => {
 			const workflow = mock<Workflow>({ expression: mock<WorkflowExpression>() });
 
-			jest.spyOn(testWebhooks, 'toWorkflow').mockReturnValueOnce(workflow);
-			jest.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhook]);
+			vi.spyOn(testWebhooks, 'toWorkflow').mockReturnValueOnce(workflow);
+			vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhook]);
 
 			const needsWebhook = await testWebhooks.needsWebhook(args);
 
@@ -92,8 +93,8 @@ describe('TestWebhooks', () => {
 		test('if webhook activation fails, should deactivate workflow webhooks', async () => {
 			const msg = 'Failed to add webhook to active webhooks';
 
-			jest.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhook]);
-			jest.spyOn(registrations, 'register').mockRejectedValueOnce(new Error(msg));
+			vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhook]);
+			registrations.register.mockRejectedValueOnce(new Error(msg));
 			registrations.getAllRegistrations.mockResolvedValue([]);
 
 			const needsWebhook = testWebhooks.needsWebhook(args);
@@ -103,7 +104,7 @@ describe('TestWebhooks', () => {
 
 		test('if no webhook is found to start workflow, should return false', async () => {
 			webhook.webhookDescription.restartWebhook = true;
-			jest.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhook]);
+			vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhook]);
 
 			const result = await testWebhooks.needsWebhook(args);
 
@@ -112,8 +113,8 @@ describe('TestWebhooks', () => {
 
 		test('returns false if a triggerToStartFrom with triggerData is given', async () => {
 			const workflow = mock<Workflow>({ expression: mock<WorkflowExpression>() });
-			jest.spyOn(testWebhooks, 'toWorkflow').mockReturnValueOnce(workflow);
-			jest.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhook]);
+			vi.spyOn(testWebhooks, 'toWorkflow').mockReturnValueOnce(workflow);
+			vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhook]);
 
 			const needsWebhook = await testWebhooks.needsWebhook({
 				...args,
@@ -136,8 +137,8 @@ describe('TestWebhooks', () => {
 				workflowId: workflowEntity.id,
 				userId,
 			});
-			jest.spyOn(testWebhooks, 'toWorkflow').mockReturnValueOnce(workflow);
-			jest.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhook, webhook2]);
+			vi.spyOn(testWebhooks, 'toWorkflow').mockReturnValueOnce(workflow);
+			vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhook, webhook2]);
 
 			// ACT
 			const needsWebhook = await testWebhooks.needsWebhook({
@@ -176,8 +177,8 @@ describe('TestWebhooks', () => {
 				userId,
 			});
 
-			jest.spyOn(testWebhooks, 'toWorkflow').mockReturnValueOnce(workflow);
-			jest.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([chatWebhook]);
+			vi.spyOn(testWebhooks, 'toWorkflow').mockReturnValueOnce(workflow);
+			vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([chatWebhook]);
 
 			// ACT
 			await testWebhooks.needsWebhook({
@@ -215,8 +216,8 @@ describe('TestWebhooks', () => {
 				userId,
 			});
 
-			jest.spyOn(testWebhooks, 'toWorkflow').mockReturnValueOnce(workflow);
-			jest.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([chatWebhook]);
+			vi.spyOn(testWebhooks, 'toWorkflow').mockReturnValueOnce(workflow);
+			vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([chatWebhook]);
 
 			// ACT
 			await testWebhooks.needsWebhook(args);
@@ -247,8 +248,8 @@ describe('TestWebhooks', () => {
 				userId,
 			});
 
-			jest.spyOn(testWebhooks, 'toWorkflow').mockReturnValueOnce(workflow);
-			jest.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([regularWebhook]);
+			vi.spyOn(testWebhooks, 'toWorkflow').mockReturnValueOnce(workflow);
+			vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([regularWebhook]);
 
 			// ACT
 			await testWebhooks.needsWebhook({
@@ -272,8 +273,8 @@ describe('TestWebhooks', () => {
 				path,
 			};
 
-			jest.spyOn(testWebhooks, 'toWorkflow').mockReturnValueOnce(workflow);
-			jest.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhook]);
+			vi.spyOn(testWebhooks, 'toWorkflow').mockReturnValueOnce(workflow);
+			vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([webhook]);
 
 			// ACT
 			await testWebhooks.needsWebhook({
@@ -322,11 +323,12 @@ describe('TestWebhooks', () => {
 					type: 'n8n-nodes-base.telegramTrigger',
 				});
 
-				jest.spyOn(testWebhooks, 'toWorkflow').mockReturnValueOnce(workflow);
-				jest
-					.spyOn(WebhookHelpers, 'getWorkflowWebhooks')
-					.mockReturnValue([regularWebhook, telegramWebhook]);
-				jest.spyOn(workflow, 'getNode').mockImplementation((name: string) => {
+				vi.spyOn(testWebhooks, 'toWorkflow').mockReturnValueOnce(workflow);
+				vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([
+					regularWebhook,
+					telegramWebhook,
+				]);
+				workflow.getNode.mockImplementation((name: string) => {
 					if (name === 'Webhook') return webhookNode;
 					if (name === 'Telegram Trigger' && withSingleWebhookTrigger) return telegramNode;
 					return null;
@@ -355,8 +357,8 @@ describe('TestWebhooks', () => {
 
 	describe('executeWebhook()', () => {
 		test('if webhook is not registered, should throw', async () => {
-			jest.spyOn(testWebhooks, 'getActiveWebhook').mockResolvedValue(webhook);
-			jest.spyOn(testWebhooks, 'getWebhookMethods').mockResolvedValue([]);
+			vi.spyOn(testWebhooks, 'getActiveWebhook').mockResolvedValue(webhook);
+			vi.spyOn(testWebhooks, 'getWebhookMethods').mockResolvedValue([]);
 
 			const promise = testWebhooks.executeWebhook(
 				mock<WebhookRequest>({ params: { path } }),
@@ -367,8 +369,8 @@ describe('TestWebhooks', () => {
 		});
 
 		test('if webhook is registered but missing from workflow, should throw', async () => {
-			jest.spyOn(testWebhooks, 'getActiveWebhook').mockResolvedValue(webhook);
-			jest.spyOn(testWebhooks, 'getWebhookMethods').mockResolvedValue([]);
+			vi.spyOn(testWebhooks, 'getActiveWebhook').mockResolvedValue(webhook);
+			vi.spyOn(testWebhooks, 'getWebhookMethods').mockResolvedValue([]);
 
 			const registration = mock<TestWebhookRegistration>({
 				pushRef: 'some-session-id',
@@ -393,8 +395,8 @@ describe('TestWebhooks', () => {
 				webhookDescription: { nodeType: 'form' } as never,
 			});
 
-			jest.spyOn(testWebhooks, 'getActiveWebhook').mockResolvedValue(formWebhook);
-			jest.spyOn(testWebhooks, 'getWebhookMethods').mockResolvedValue([]);
+			vi.spyOn(testWebhooks, 'getActiveWebhook').mockResolvedValue(formWebhook);
+			vi.spyOn(testWebhooks, 'getWebhookMethods').mockResolvedValue([]);
 
 			const promise = testWebhooks.executeWebhook(
 				mock<WebhookRequest>({ params: { path } }),
@@ -413,8 +415,8 @@ describe('TestWebhooks', () => {
 				webhookDescription: { nodeType: undefined } as never,
 			});
 
-			jest.spyOn(testWebhooks, 'getActiveWebhook').mockResolvedValue(regularWebhook);
-			jest.spyOn(testWebhooks, 'getWebhookMethods').mockResolvedValue([]);
+			vi.spyOn(testWebhooks, 'getActiveWebhook').mockResolvedValue(regularWebhook);
+			vi.spyOn(testWebhooks, 'getWebhookMethods').mockResolvedValue([]);
 
 			const promise = testWebhooks.executeWebhook(
 				mock<WebhookRequest>({ params: { path } }),
@@ -444,21 +446,24 @@ describe('TestWebhooks', () => {
 	});
 
 	describe('cancelWebhook()', () => {
-		const flushMicrotasks = async () =>
-			await new Promise((resolve) => jest.requireActual('timers').setImmediate(resolve));
+		const flushMicrotasks = async () => {
+			const { setImmediate: realSetImmediate } =
+				await vi.importActual<typeof import('timers')>('timers');
+			await new Promise((resolve) => realSetImmediate(resolve));
+		};
 
 		test('acquires and releases isolate around deactivateWebhooks', async () => {
 			const expression = mock<WorkflowExpression>();
 			const workflow = mock<Workflow>({ id: workflowEntity.id, expression });
 
-			jest.spyOn(testWebhooks, 'toWorkflow').mockReturnValue(workflow);
+			vi.spyOn(testWebhooks, 'toWorkflow').mockReturnValue(workflow);
 			registrations.getAllKeys.mockResolvedValue(['key1']);
 			registrations.get.mockResolvedValue({
 				version: 1,
 				workflowEntity,
 				webhook,
 			} as TestWebhookRegistration);
-			const deactivateSpy = jest
+			const deactivateSpy = vi
 				.spyOn(testWebhooks, 'deactivateWebhooks')
 				.mockResolvedValue(undefined);
 
@@ -468,9 +473,9 @@ describe('TestWebhooks', () => {
 			expect(expression.acquireIsolate).toHaveBeenCalledTimes(1);
 			expect(deactivateSpy).toHaveBeenCalledWith(workflow);
 			expect(expression.releaseIsolate).toHaveBeenCalledTimes(1);
-			const [acquireOrder] = (expression.acquireIsolate as jest.Mock).mock.invocationCallOrder;
+			const [acquireOrder] = (expression.acquireIsolate as Mock).mock.invocationCallOrder;
 			const [deactivateOrder] = deactivateSpy.mock.invocationCallOrder;
-			const [releaseOrder] = (expression.releaseIsolate as jest.Mock).mock.invocationCallOrder;
+			const [releaseOrder] = (expression.releaseIsolate as Mock).mock.invocationCallOrder;
 			expect(acquireOrder).toBeLessThan(deactivateOrder);
 			expect(deactivateOrder).toBeLessThan(releaseOrder);
 		});
@@ -479,7 +484,7 @@ describe('TestWebhooks', () => {
 			const expression = mock<WorkflowExpression>();
 			const workflow = mock<Workflow>({ id: workflowEntity.id, expression });
 
-			jest.spyOn(testWebhooks, 'toWorkflow').mockReturnValue(workflow);
+			vi.spyOn(testWebhooks, 'toWorkflow').mockReturnValue(workflow);
 			registrations.getAllKeys.mockResolvedValue(['key1']);
 			registrations.get.mockResolvedValue({
 				version: 1,
@@ -487,7 +492,7 @@ describe('TestWebhooks', () => {
 				webhook,
 			} as TestWebhookRegistration);
 			const error = new Error('boom');
-			jest.spyOn(testWebhooks, 'deactivateWebhooks').mockRejectedValue(error);
+			vi.spyOn(testWebhooks, 'deactivateWebhooks').mockRejectedValue(error);
 
 			await testWebhooks.cancelWebhook(workflowEntity.id);
 			await flushMicrotasks();
@@ -506,9 +511,9 @@ describe('TestWebhooks', () => {
 			const expression = mock<WorkflowExpression>();
 			const workflow = mock<Workflow>({ id: workflowEntity.id, expression });
 
-			jest.spyOn(testWebhooks, 'toWorkflow').mockReturnValue(workflow);
-			((testWebhooks as any).push.hasPushRef as jest.Mock).mockReturnValue(true);
-			const deactivateSpy = jest
+			vi.spyOn(testWebhooks, 'toWorkflow').mockReturnValue(workflow);
+			((testWebhooks as any).push.hasPushRef as Mock).mockReturnValue(true);
+			const deactivateSpy = vi
 				.spyOn(testWebhooks, 'deactivateWebhooks')
 				.mockResolvedValue(undefined);
 
@@ -527,9 +532,9 @@ describe('TestWebhooks', () => {
 			const expression = mock<WorkflowExpression>();
 			const workflow = mock<Workflow>({ id: workflowEntity.id, expression });
 
-			jest.spyOn(testWebhooks, 'toWorkflow').mockReturnValue(workflow);
-			((testWebhooks as any).push.hasPushRef as jest.Mock).mockReturnValue(true);
-			jest.spyOn(testWebhooks, 'deactivateWebhooks').mockRejectedValue(new Error('boom'));
+			vi.spyOn(testWebhooks, 'toWorkflow').mockReturnValue(workflow);
+			((testWebhooks as any).push.hasPushRef as Mock).mockReturnValue(true);
+			vi.spyOn(testWebhooks, 'deactivateWebhooks').mockRejectedValue(new Error('boom'));
 
 			await expect(
 				testWebhooks.handleClearTestWebhooks({

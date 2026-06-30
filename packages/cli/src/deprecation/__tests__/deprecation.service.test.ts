@@ -2,8 +2,8 @@ import type { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { InstanceType } from '@n8n/constants';
-import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
+import { mock } from 'vitest-mock-extended';
 
 import { DeprecationService } from '../deprecation.service';
 
@@ -21,7 +21,7 @@ describe('DeprecationService', () => {
 		// this test suite.
 		process.env = {};
 
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	const toTest = (envVar: string, value: string | undefined, mustWarn: boolean) => {

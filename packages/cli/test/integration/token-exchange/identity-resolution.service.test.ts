@@ -45,7 +45,7 @@ beforeEach(async () => {
 });
 
 afterEach(() => {
-	jest.restoreAllMocks();
+	vi.restoreAllMocks();
 });
 
 const baseClaims: ExternalTokenClaims = {
@@ -466,8 +466,8 @@ describe('IdentityResolutionService (integration)', () => {
 			const user = await createUser({ email: 'legacy@example.com' });
 			// Legacy row stored under the bare subject, before issuer-scoped binding.
 			await authIdentityRepository.save(AuthIdentity.create(user, 'legacy-sub', 'token-exchange'));
-			jest.spyOn(trustedKeyService, 'hasSingleTrustedIssuer').mockResolvedValue(true);
-			const emitSpy = jest.spyOn(eventService, 'emit');
+			vi.spyOn(trustedKeyService, 'hasSingleTrustedIssuer').mockResolvedValue(true);
+			const emitSpy = vi.spyOn(eventService, 'emit');
 
 			// No email claim — the rebind must work for email-less integrations.
 			const result = await service.resolve({ ...baseClaims, sub: 'legacy-sub', email: undefined });
@@ -489,7 +489,7 @@ describe('IdentityResolutionService (integration)', () => {
 			await authIdentityRepository.save(
 				AuthIdentity.create(user, 'legacy-multi-sub', 'token-exchange'),
 			);
-			jest.spyOn(trustedKeyService, 'hasSingleTrustedIssuer').mockResolvedValue(false);
+			vi.spyOn(trustedKeyService, 'hasSingleTrustedIssuer').mockResolvedValue(false);
 
 			// An email-less token sharing a subject cannot be safely attributed to one issuer.
 			await expect(

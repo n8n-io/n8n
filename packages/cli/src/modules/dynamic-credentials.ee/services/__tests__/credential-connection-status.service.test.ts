@@ -1,6 +1,6 @@
 import type { SharedCredentialsRepository, User, UserRepository } from '@n8n/db';
 import type { EntityManager } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { RoleService } from '@/services/role.service';
 
@@ -37,7 +37,7 @@ describe('CredentialConnectionStatusService', () => {
 	const VALID_CRED_ROLES = ['credential:owner', 'credential:user'];
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		roleService.rolesWithScope.mockResolvedValue(VALID_CRED_ROLES);
 	});
 

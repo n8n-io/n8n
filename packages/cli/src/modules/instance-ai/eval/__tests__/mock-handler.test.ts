@@ -8,71 +8,94 @@ interface MockResponseSpec {
 	sizeHint?: 'small' | 'medium' | 'large';
 }
 
-const submitQueue: MockResponseSpec[] = [];
-const generateOverride: { fn?: () => Promise<unknown> } = {};
-const submitCapture: { handler?: (input: MockResponseSpec) => Promise<unknown> } = {};
-const quirksCapture: { handler?: () => Promise<string> } = {};
-
-const mockGenerate = jest.fn(async (_prompt: string) => {
-	if (generateOverride.fn) return await generateOverride.fn();
-	const next = submitQueue.shift();
-	if (next && submitCapture.handler) {
-		await submitCapture.handler(next);
-	}
-	return { messages: [], finishReason: 'tool-calls' };
-});
-
 interface MockAgent {
-	tool: jest.Mock;
-	generate: jest.Mock;
+	tool: Mock;
+	generate: Mock;
 }
 
-const mockAgent: MockAgent = {
-	tool: jest.fn(function (this: MockAgent, builtTool: { _name?: string; _handler?: unknown }) {
-		if (builtTool._name === 'submit_response') {
-			submitCapture.handler = builtTool._handler as (input: MockResponseSpec) => Promise<unknown>;
-		} else if (builtTool._name === 'get_endpoint_quirks') {
-			quirksCapture.handler = builtTool._handler as () => Promise<string>;
+// Hoisted so the `vi.mock('@n8n/instance-ai')` factory below (which references
+// mockAgent/mockExtractText) can resolve them — vi.mock factories are hoisted
+// above all module-level statements.
+const {
+	submitQueue,
+	generateOverride,
+	submitCapture,
+	quirksCapture,
+	mockGenerate,
+	mockAgent,
+	mockExtractText,
+} = vi.hoisted(() => {
+	const submitQueue: MockResponseSpec[] = [];
+	const generateOverride: { fn?: () => Promise<unknown> } = {};
+	const submitCapture: { handler?: (input: MockResponseSpec) => Promise<unknown> } = {};
+	const quirksCapture: { handler?: () => Promise<string> } = {};
+
+	const mockGenerate = vi.fn(async (_prompt: string) => {
+		if (generateOverride.fn) return await generateOverride.fn();
+		const next = submitQueue.shift();
+		if (next && submitCapture.handler) {
+			await submitCapture.handler(next);
 		}
-		return this;
-	}),
-	generate: mockGenerate,
-};
-const mockLogger = { info: jest.fn(), warn: jest.fn(), error: jest.fn(), debug: jest.fn() };
+		return { messages: [], finishReason: 'tool-calls' };
+	});
 
-const mockExtractText = jest.fn((result: { _text?: string }) => result._text ?? '');
+	const mockAgent: MockAgent = {
+		tool: vi.fn(function (this: MockAgent, builtTool: { _name?: string; _handler?: unknown }) {
+			if (builtTool._name === 'submit_response') {
+				submitCapture.handler = builtTool._handler as (input: MockResponseSpec) => Promise<unknown>;
+			} else if (builtTool._name === 'get_endpoint_quirks') {
+				quirksCapture.handler = builtTool._handler as () => Promise<string>;
+			}
+			return this;
+		}),
+		generate: mockGenerate,
+	};
 
-jest.mock('@n8n/instance-ai', () => ({
-	createEvalAgent: jest.fn(() => mockAgent),
+	const mockExtractText = vi.fn((result: { _text?: string }) => result._text ?? '');
+
+	return {
+		submitQueue,
+		generateOverride,
+		submitCapture,
+		quirksCapture,
+		mockGenerate,
+		mockAgent,
+		mockExtractText,
+	};
+});
+const mockLogger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
+
+vi.mock('@n8n/instance-ai', () => ({
+	createEvalAgent: vi.fn(() => mockAgent),
 	extractText: mockExtractText,
-	Tool: jest.fn().mockImplementation((name: string) => {
+	Tool: vi.fn().mockImplementation(function (name: string) {
 		const built: { _name: string; _handler?: unknown } = { _name: name };
 		const builder = {
-			description: jest.fn().mockReturnThis(),
-			input: jest.fn().mockReturnThis(),
-			handler: jest.fn(function (this: unknown, h: unknown) {
+			description: vi.fn().mockReturnThis(),
+			input: vi.fn().mockReturnThis(),
+			handler: vi.fn(function (this: unknown, h: unknown) {
 				built._handler = h;
 				return this;
 			}),
-			build: jest.fn(() => built),
+			build: vi.fn(() => built),
 		};
 		return builder;
 	}),
 }));
 
-jest.mock('../api-docs', () => ({ fetchApiDocs: jest.fn().mockResolvedValue('') }));
+vi.mock('../api-docs', () => ({ fetchApiDocs: vi.fn().mockResolvedValue('') }));
 
-jest.mock('../node-config', () => ({
-	extractNodeConfig: jest.fn().mockReturnValue('{}'),
+vi.mock('../node-config', () => ({
+	extractNodeConfig: vi.fn().mockReturnValue('{}'),
 }));
 
-jest.mock('@n8n/di', () => ({
+vi.mock('@n8n/di', () => ({
 	Container: {
-		get: jest.fn().mockReturnValue({
-			info: jest.fn(),
-			warn: jest.fn(),
-			error: jest.fn(),
-			debug: jest.fn(),
+		get: vi.fn().mockReturnValue({
+			info: vi.fn(),
+			warn: vi.fn(),
+			error: vi.fn(),
+			debug: vi.fn(),
 		}),
 	},
 	// No-op decorator factory so n8n-core's @Service-decorated classes load
@@ -80,6 +103,7 @@ jest.mock('@n8n/di', () => ({
 	Service: () => (target: unknown) => target,
 }));
 
+import type { Mock } from 'vitest';
 import { Container } from '@n8n/di';
 import { createEvalAgent, Tool } from '@n8n/instance-ai';
 import { fileTypeFromBuffer } from 'file-type';
@@ -90,27 +114,27 @@ import { fetchApiDocs } from '../api-docs';
 import { buildDateAnchors, createLlmMockHandler } from '../mock-handler';
 import { extractNodeConfig } from '../node-config';
 
-// `restoreMocks: true` in the root jest.config wipes `.mockImplementation` set
-// inside jest.mock factories before every test, so re-apply the mocks that
+// `restoreMocks: true` in the root vi.config wipes `.mockImplementation` set
+// inside vi.mock factories before every test, so re-apply the mocks that
 // matter for tests to pass. Keep in sync with the factory bodies above.
 function reapplyMockImplementations() {
-	jest.mocked(Container.get).mockReturnValue(mockLogger);
-	jest.mocked(fetchApiDocs).mockResolvedValue('');
-	jest.mocked(extractNodeConfig).mockReturnValue('{}');
-	jest.mocked(createEvalAgent).mockReturnValue(mockAgent as never);
-	jest.mocked(Tool).mockImplementation(((name: string) => {
+	vi.mocked(Container.get).mockReturnValue(mockLogger);
+	vi.mocked(fetchApiDocs).mockResolvedValue('');
+	vi.mocked(extractNodeConfig).mockReturnValue('{}');
+	vi.mocked(createEvalAgent).mockReturnValue(mockAgent as never);
+	vi.mocked(Tool).mockImplementation(function (name: string) {
 		const built: { _name: string; _handler?: unknown } = { _name: name };
 		const builder = {
-			description: jest.fn().mockReturnThis(),
-			input: jest.fn().mockReturnThis(),
-			handler: jest.fn(function (this: unknown, h: unknown) {
+			description: vi.fn().mockReturnThis(),
+			input: vi.fn().mockReturnThis(),
+			handler: vi.fn(function (this: unknown, h: unknown) {
 				built._handler = h;
 				return this;
 			}),
-			build: jest.fn(() => built),
+			build: vi.fn(() => built),
 		};
 		return builder;
-	}) as never);
+	} as never);
 	mockAgent.tool.mockImplementation(function (
 		this: MockAgent,
 		builtTool: { _name?: string; _handler?: unknown },
@@ -122,7 +146,7 @@ function reapplyMockImplementations() {
 		}
 		return this;
 	});
-	mockGenerate.mockImplementation(async (_prompt: string) => {
+	mockGenerate.mockImplementation(async function (_prompt: string) {
 		if (generateOverride.fn) return await generateOverride.fn();
 		const next = submitQueue.shift();
 		if (next && submitCapture.handler) {
@@ -130,7 +154,9 @@ function reapplyMockImplementations() {
 		}
 		return { messages: [], finishReason: 'tool-calls' };
 	});
-	mockExtractText.mockImplementation((result: { _text?: string }) => result._text ?? '');
+	mockExtractText.mockImplementation(function (result: { _text?: string }) {
+		return result._text ?? '';
+	});
 }
 
 // ---------------------------------------------------------------------------
@@ -168,7 +194,7 @@ async function callHandler(
 }
 
 beforeEach(() => {
-	jest.clearAllMocks();
+	vi.clearAllMocks();
 	reapplyMockImplementations();
 	submitQueue.length = 0;
 	generateOverride.fn = undefined;
@@ -452,8 +478,8 @@ describe('createLlmMockHandler', () => {
 	});
 
 	it('should cache node config across calls for the same node name', async () => {
-		const { extractNodeConfig } = require('../node-config') as {
-			extractNodeConfig: jest.Mock;
+		const { extractNodeConfig } = (await import('../node-config')) as unknown as {
+			extractNodeConfig: Mock;
 		};
 		extractNodeConfig.mockReturnValue('{"resource":"message"}');
 
@@ -468,8 +494,8 @@ describe('createLlmMockHandler', () => {
 	});
 
 	it('should extract config separately for different node names', async () => {
-		const { extractNodeConfig } = require('../node-config') as {
-			extractNodeConfig: jest.Mock;
+		const { extractNodeConfig } = (await import('../node-config')) as unknown as {
+			extractNodeConfig: Mock;
 		};
 		extractNodeConfig.mockReturnValue('{}');
 

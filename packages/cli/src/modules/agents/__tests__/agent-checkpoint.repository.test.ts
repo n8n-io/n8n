@@ -11,13 +11,13 @@ describe('AgentCheckpointRepository', () => {
 	let repository: AgentCheckpointRepository;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		repository = new AgentCheckpointRepository(mockDataSource as never);
 	});
 
 	describe('claimForResume', () => {
 		it('claims only the checkpoint row that still has the original suspended state', async () => {
-			jest.spyOn(repository, 'update').mockResolvedValue({ affected: 1 } as never);
+			vi.spyOn(repository, 'update').mockResolvedValue({ affected: 1 } as never);
 
 			await expect(
 				repository.claimForResume('run-1', '{"status":"suspended"}', '{"status":"running"}'),
@@ -30,7 +30,7 @@ describe('AgentCheckpointRepository', () => {
 		});
 
 		it('returns false when another process already changed the checkpoint state', async () => {
-			jest.spyOn(repository, 'update').mockResolvedValue({ affected: 0 } as never);
+			vi.spyOn(repository, 'update').mockResolvedValue({ affected: 0 } as never);
 
 			await expect(
 				repository.claimForResume('run-1', '{"status":"suspended"}', '{"status":"running"}'),

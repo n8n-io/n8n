@@ -1,5 +1,6 @@
+import type { Mocked } from 'vitest';
 import type { AgentsConfig } from '@n8n/config';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import multer from 'multer';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -22,9 +23,9 @@ function makeController({
 	} as AgentsConfig,
 	runtimeCacheService = mock<AgentRuntimeCacheService>(),
 }: {
-	agentKnowledgeService?: jest.Mocked<AgentKnowledgeService>;
+	agentKnowledgeService?: Mocked<AgentKnowledgeService>;
 	agentsConfig?: AgentsConfig;
-	runtimeCacheService?: jest.Mocked<AgentRuntimeCacheService>;
+	runtimeCacheService?: Mocked<AgentRuntimeCacheService>;
 } = {}) {
 	return {
 		controller: new AgentKnowledgeController(

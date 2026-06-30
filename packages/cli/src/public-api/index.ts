@@ -1,22 +1,21 @@
+import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Router, ErrorRequestHandler, RequestHandler } from 'express';
 import express from 'express';
 import fs from 'fs/promises';
+import { UnexpectedError } from 'n8n-workflow';
 import path from 'path';
 import type { JsonObject } from 'swagger-ui-express';
 import validator from 'validator';
 
-import { Logger } from '@n8n/backend-common';
-
 import { EventService } from '@/events/event.service';
 import { License } from '@/license';
+import { createN8nPackageMulterOptions } from '@/modules/n8n-packages/utils/import-package-upload';
 import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import { LastActiveAtService } from '@/services/last-active-at.service';
 import { UrlService } from '@/services/url.service';
-
-import { createN8nPackageMulterOptions } from '@/modules/n8n-packages/utils/import-package-upload';
 
 import { sendPublicApiErrorResponse } from './v1/public-api-error-response';
 
@@ -121,6 +120,72 @@ function createLazySwaggerMiddleware(
 	};
 }
 
+// Minimal shapes of the express-openapi-validator resolver arguments we depend on.
+interface EovRoute {
+	basePath: string;
+	expressRoute: string;
+	openApiRoute: string;
+	method: string;
+}
+interface EovOperation {
+	operationId?: string;
+	// eslint-disable-next-line @typescript-eslint/naming-convention -- OpenAPI vendor extension keys
+	'x-eov-operation-id'?: string;
+	// eslint-disable-next-line @typescript-eslint/naming-convention -- OpenAPI vendor extension keys
+	'x-eov-operation-handler'?: string;
+}
+interface EovApiDoc {
+	paths?: Record<string, Record<string, EovOperation>>;
+}
+
+/**
+ * Test-only express-openapi-validator operation-handler resolver. It is wired in **only** under
+ * Vitest (see `operationHandlers` below); production and e2e keep eov's default string resolver
+ * and its synchronous `require()`, so runtime behaviour is unchanged.
+ *
+ * Why it's needed in tests: eov's default resolver `require()`s each handler module, but under
+ * Vitest only the `.ts` handler sources exist on disk (no `.js`) and they're served by Vite, not
+ * Node's `require` — so `require()` throws and every route 500s. (Under Jest this worked via
+ * ts-jest's require hook, which Vitest has no equivalent of.) `import()` is intercepted by Vite and
+ * resolves the `.ts`. Mirrors eov's `defaultResolver` lookup (`mod[id]` / `mod.default[id]` / `mod.default`).
+ */
+async function importOperationHandlerResolver(
+	handlersPath: string,
+	// Typed as `unknown` (then narrowed) so the signature stays assignable to eov's
+	// `resolver` type, whose `route`/`apiDoc` params are its own internal interfaces.
+	routeArg: unknown,
+	apiDocArg: unknown,
+): Promise<unknown> {
+	const route = routeArg as EovRoute;
+	const apiDoc = apiDocArg as EovApiDoc;
+	const pathKey = route.openApiRoute.substring(route.basePath.length);
+	const operation = apiDoc.paths?.[pathKey]?.[route.method.toLowerCase()];
+	const operationId = operation?.['x-eov-operation-id'] ?? operation?.operationId;
+	const handlerModule = operation?.['x-eov-operation-handler'];
+
+	if (!operationId || !handlerModule) {
+		throw new UnexpectedError(
+			`Missing operation id or handler for [${route.method}] ${route.expressRoute}`,
+		);
+	}
+
+	const modulePath = path.join(handlersPath, handlerModule);
+	// `@vite-ignore`: the path is fully dynamic, so Vite's `dynamic-import-vars` plugin can't
+	// analyze it (it throws during transform when this module is loaded under Vitest). Skipping
+	// analysis leaves a plain runtime `import()`, which the test runner and the prod CJS build
+	// (downleveled to `require`) both resolve.
+	const imported = (await import(/* @vite-ignore */ modulePath)) as Record<string, unknown> & {
+		default?: Record<string, unknown>;
+	};
+	const handler = imported[operationId] ?? imported.default?.[operationId] ?? imported.default;
+
+	if (!handler) {
+		throw new UnexpectedError(`Could not find handler '${operationId}' in module '${modulePath}'`);
+	}
+
+	return handler;
+}
+
 function createLazyValidatorMiddleware(
 	openApiSpecPath: string,
 	handlersDirectory: string,
@@ -165,7 +230,12 @@ function createLazyValidatorMiddleware(
 				router.use(
 					openApiValidatorMiddleware({
 						apiSpec: openApiSpecPath,
-						operationHandlers: handlersDirectory,
+						// Production/e2e use eov's default resolver (synchronous `require`). Under Vitest,
+						// where handler modules are `.ts` served by Vite, swap in an `import()`-based
+						// resolver so route handlers can load. See `importOperationHandlerResolver`.
+						operationHandlers: process.env.VITEST
+							? { basePath: handlersDirectory, resolver: importOperationHandlerResolver }
+							: handlersDirectory,
 						validateRequests: true,
 						validateApiSpec: true,
 						fileUploader: createN8nPackageMulterOptions(globalConfig),

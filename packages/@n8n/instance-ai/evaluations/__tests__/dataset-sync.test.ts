@@ -5,7 +5,7 @@ import type { Mock } from 'vitest';
 
 import type { WorkflowTestCaseWithFile } from '../data/workflows';
 import type { EvalLogger } from '../harness/logger';
-import { syncDataset } from '../langsmith/dataset-sync';
+import { BUILD_ONLY_SCENARIO_NAME, syncDataset } from '../langsmith/dataset-sync';
 
 function scenarioFixture(testCaseFile: string, scenarioName: string): WorkflowTestCaseWithFile {
 	return {
@@ -22,6 +22,21 @@ function scenarioFixture(testCaseFile: string, scenarioName: string): WorkflowTe
 					successCriteria: `criteria for ${scenarioName}`,
 				},
 			],
+			datasets: ['full'],
+		},
+		fileSlug: testCaseFile,
+	};
+}
+
+function buildOnlyFixture(testCaseFile: string): WorkflowTestCaseWithFile {
+	return {
+		testCase: {
+			conversation: [{ role: 'user' as const, text: `prompt for ${testCaseFile}` }],
+			complexity: 'medium' as const,
+			tags: ['test'],
+			triggerType: 'manual' as const,
+			executionScenarios: [],
+			outcomeExpectations: ['The workflow posts to Slack.'],
 			datasets: ['full'],
 		},
 		fileSlug: testCaseFile,
@@ -116,6 +131,20 @@ describe('syncDataset', () => {
 		expect(created).toHaveLength(1);
 		expect(created[0].id).toMatch(UUID_RE);
 		expect(created[0].inputs).toMatchObject({ testCaseFile: 'foo', scenarioName: 'happy-path' });
+	});
+
+	it('emits one build-only sentinel example for a 0-scenario case', async () => {
+		const { client, createExamples } = buildClient([]);
+
+		await syncDataset(client, 'ds', logger, [buildOnlyFixture('build-only')]);
+
+		expect(createExamples).toHaveBeenCalledTimes(1);
+		const created = createExamples.mock.calls[0][0];
+		expect(created).toHaveLength(1);
+		expect(created[0].inputs).toMatchObject({
+			testCaseFile: 'build-only',
+			scenarioName: BUILD_ONLY_SCENARIO_NAME,
+		});
 	});
 
 	it('updates existing examples in place when inputs change, preserving the existing UUID', async () => {

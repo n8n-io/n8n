@@ -4,9 +4,9 @@ import type { Readable } from 'node:stream';
 
 import { N8N_VERSION } from '@/constants';
 
+import { ImportPipeline } from './engine/import-pipeline';
 import { CredentialExporter } from './entities/credential/credential.exporter';
 import { WorkflowExporter } from './entities/workflow/workflow.exporter';
-import { ImportPipeline } from './engine/import-pipeline';
 import { TarPackageWriter } from './io/tar/tar-package-writer';
 import type {
 	ExportWorkflowsRequest,

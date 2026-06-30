@@ -18,6 +18,29 @@ vi.mock('@/app/composables/useWorkflowId', async () => {
 	};
 });
 
+// Controllable active node + gateway lookups so the AI Gateway hiding path can be
+// exercised. Defaults match the no-active-node behaviour the other tests rely on.
+let mockActiveNode: unknown = null;
+const mockIsNodePropertyHidden = vi.fn((_node: unknown, _param: string) => false);
+
+vi.mock('@/features/ndv/shared/ndv.store', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@/features/ndv/shared/ndv.store')>();
+	return {
+		...actual,
+		injectNDVStore: () => ({
+			value: {
+				get activeNode() {
+					return mockActiveNode;
+				},
+			},
+		}),
+	};
+});
+
+vi.mock('@/app/stores/aiGateway.store', () => ({
+	useAiGatewayStore: () => ({ isNodePropertyHidden: mockIsNodePropertyHidden }),
+}));
+
 describe('CollectionParameterLegacy.vue', () => {
 	const pinia = createTestingPinia({
 		initialState: {
@@ -501,6 +524,72 @@ describe('CollectionParameterLegacy.vue', () => {
 			await flushPromises();
 
 			expect(container).toBeInTheDocument();
+		});
+	});
+
+	describe('AI Gateway hidden properties', () => {
+		afterEach(() => {
+			mockActiveNode = null;
+			mockIsNodePropertyHidden.mockReset();
+			mockIsNodePropertyHidden.mockReturnValue(false);
+		});
+
+		it('removes properties the store reports as hidden', async () => {
+			mockIsNodePropertyHidden.mockImplementation((_node, param) => param === 'value');
+
+			const { getAllByTestId } = renderComponent();
+			await flushPromises();
+
+			const options = getAllByTestId('collection-parameter-option');
+			expect(options).toHaveLength(1);
+			expect(options[0]).toHaveTextContent('Currency');
+		});
+
+		it('keeps properties the store does not hide', async () => {
+			mockIsNodePropertyHidden.mockReturnValue(false);
+
+			const { getAllByTestId } = renderComponent();
+			await flushPromises();
+
+			expect(getAllByTestId('collection-parameter-option')).toHaveLength(2);
+		});
+
+		it('removes hidden collection-type options', async () => {
+			mockIsNodePropertyHidden.mockImplementation((_node, param) => param === 'nestedCollection');
+
+			const { getAllByTestId } = renderComponent({
+				props: {
+					...baseProps,
+					parameter: {
+						...baseProps.parameter,
+						options: [
+							{
+								displayName: 'Currency',
+								name: 'currency',
+								type: 'string',
+								default: 'USD',
+							},
+							{
+								name: 'nestedCollection',
+								displayName: 'Nested Collection',
+								values: [
+									{
+										displayName: 'Field 1',
+										name: 'field1',
+										type: 'string',
+										default: '',
+									},
+								],
+							},
+						],
+					},
+				},
+			});
+			await flushPromises();
+
+			const options = getAllByTestId('collection-parameter-option');
+			expect(options).toHaveLength(1);
+			expect(options[0]).toHaveTextContent('Currency');
 		});
 	});
 
