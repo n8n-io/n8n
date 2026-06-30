@@ -16,7 +16,7 @@
 	"datasets": ["agents"],
 	"processExpectations": [
 		"The agent treats the meaning of important emails as underspecified.",
-		"The agent asks whether importance can be defined by deterministic rules or requires judgment.",
+		"The agent asks, or explicitly says the next step is to ask, whether email importance can be defined by deterministic rules or requires judgment.",
 		"The agent explains that rule-derivable importance would be a workflow while judged importance would be hybrid."
 	]
 }

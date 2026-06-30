@@ -29,6 +29,13 @@ import {
 import type { GateCriterion, GateResult, GateUnit } from './gate';
 import { aggregateWorkflowChecks } from '../binaryChecks/aggregate';
 import { CHECK_DIMENSIONS } from '../binaryChecks/types';
+import {
+	countAggregatedUnitTrials,
+	getAggregatedCaseUnits,
+	getCaseRunStatus,
+	getCaseRunStatusLabel,
+	getCheckedRunCount,
+} from '../summary';
 import type { MultiRunEvaluation, TestCaseAggregation, WorkflowTestCase } from '../types';
 import { caseDisplayPrompt } from '../utils/conversation-text';
 
@@ -450,11 +457,10 @@ function formatAggregateBlock(
 	comparison?: ComparisonResult,
 ): string {
 	if (!comparison) {
-		const allScenarios = evaluation.testCases.flatMap((tc) => tc.executionScenarios);
-		const passed = allScenarios.reduce((sum, sa) => sum + sa.passCount, 0);
-		const total = allScenarios.reduce((sum, sa) => sum + sa.runs.length, 0);
-		const rate = total > 0 ? (passed / total) * 100 : 0;
-		return `**Aggregate**: ${rate.toFixed(1)}% pass (${passed}/${total} trials, ${allScenarios.length} scenarios × N=${evaluation.totalRuns})`;
+		const units = evaluation.testCases.flatMap(getAggregatedCaseUnits);
+		const { passCount, totalCount } = countAggregatedUnitTrials(units);
+		const rate = totalCount > 0 ? (passCount / totalCount) * 100 : 0;
+		return `**Aggregate**: ${rate.toFixed(1)}% pass (${passCount}/${totalCount} trials, ${units.length} checks × N=${evaluation.totalRuns})`;
 	}
 
 	const { aggregate } = comparison;
@@ -603,35 +609,36 @@ function renderPerTestCaseDetails(
 		return slug ? `\`${slug}\`` : `\`${caseDisplayPrompt(tc.testCase).slice(0, 70)}\``;
 	};
 	if (totalRuns > 1) {
-		lines.push(`| Workflow | Built | pass@${totalRuns} | pass^${totalRuns} |`);
+		lines.push(`| Workflow | Status | pass@${totalRuns} | pass^${totalRuns} |`);
 		lines.push('|---|---|---|---|');
 		for (const tc of testCases) {
-			const meanPassAtK = tc.executionScenarios.length
+			const units = getAggregatedCaseUnits(tc);
+			const meanPassAtK = units.length
 				? Math.round(
-						(tc.executionScenarios.reduce((sum, sa) => sum + (sa.passAtK[totalRuns - 1] ?? 0), 0) /
-							tc.executionScenarios.length) *
+						(units.reduce((sum, unit) => sum + (unit.passAtK[totalRuns - 1] ?? 0), 0) /
+							units.length) *
 							100,
 					)
 				: 0;
-			const meanPassHatK = tc.executionScenarios.length
+			const meanPassHatK = units.length
 				? Math.round(
-						(tc.executionScenarios.reduce((sum, sa) => sum + (sa.passHatK[totalRuns - 1] ?? 0), 0) /
-							tc.executionScenarios.length) *
+						(units.reduce((sum, unit) => sum + (unit.passHatK[totalRuns - 1] ?? 0), 0) /
+							units.length) *
 							100,
 					)
 				: 0;
 			lines.push(
-				`| ${renderName(tc)} | ${tc.buildSuccessCount}/${totalRuns} | ${meanPassAtK}% | ${meanPassHatK}% |`,
+				`| ${renderName(tc)} | ${getCheckedRunCount(tc)}/${totalRuns} | ${meanPassAtK}% | ${meanPassHatK}% |`,
 			);
 		}
 	} else {
-		lines.push('| Workflow | Built | Pass rate |');
+		lines.push('| Workflow | Status | Pass rate |');
 		lines.push('|---|---|---|');
 		for (const tc of testCases) {
-			const built = tc.runs[0]?.workflowBuildSuccess ? '✓' : '✗';
-			const passed = tc.executionScenarios.filter((sa) => sa.runs[0]?.success).length;
-			const total = tc.executionScenarios.length;
-			lines.push(`| ${renderName(tc)} | ${built} | ${passed}/${total} |`);
+			const run = tc.runs[0];
+			const status = run ? getCaseRunStatusLabel(run) : 'NO RUN';
+			const { passCount, totalCount } = countAggregatedUnitTrials(getAggregatedCaseUnits(tc));
+			lines.push(`| ${renderName(tc)} | ${status} | ${passCount}/${totalCount} |`);
 		}
 	}
 	lines.push('');
@@ -1006,19 +1013,12 @@ function formatTerminalAggregate(
 ): string[] {
 	const lines: string[] = [];
 	if (!comparison) {
-		const units = evaluation.testCases.flatMap((tc) => [
-			...tc.executionScenarios,
-			...tc.buildExpectations.filter((ea) => ea.evaluatedCount > 0),
-		]);
-		const passed = units.reduce((sum, unit) => sum + unit.passCount, 0);
-		const total = units.reduce(
-			(sum, unit) => sum + ('evaluatedCount' in unit ? unit.evaluatedCount : unit.runs.length),
-			0,
-		);
-		const rate = total > 0 ? (passed / total) * 100 : 0;
+		const units = evaluation.testCases.flatMap(getAggregatedCaseUnits);
+		const { passCount, totalCount } = countAggregatedUnitTrials(units);
+		const rate = totalCount > 0 ? (passCount / totalCount) * 100 : 0;
 		lines.push(
 			TERMINAL_INDENT +
-				`Aggregate: ${rate.toFixed(1)}% pass (${passed}/${total} trials, ${units.length} checks × N=${evaluation.totalRuns})`,
+				`Aggregate: ${rate.toFixed(1)}% pass (${passCount}/${totalCount} trials, ${units.length} checks × N=${evaluation.totalRuns})`,
 		);
 		return lines;
 	}
@@ -1055,18 +1055,6 @@ function formatTerminalAggregate(
 	return lines;
 }
 
-function requiresWorkflowOutput(testCase: WorkflowTestCase): boolean {
-	return (
-		(testCase.executionScenarios?.length ?? 0) > 0 ||
-		(testCase.outcomeExpectations?.length ?? 0) > 0
-	);
-}
-
-function checkedRuns(tc: TestCaseAggregation): number {
-	if (requiresWorkflowOutput(tc.testCase)) return tc.buildSuccessCount;
-	return tc.runs.filter((run) => (run.buildExpectationResults?.length ?? 0) > 0).length;
-}
-
 function formatTerminalPerTestCase(
 	evaluation: MultiRunEvaluation,
 	slugByTestCase?: Map<WorkflowTestCase, string>,
@@ -1084,10 +1072,7 @@ function formatTerminalPerTestCase(
 
 	if (totalRuns > 1) {
 		const rows = testCases.map((tc) => {
-			const units = [
-				...tc.executionScenarios,
-				...tc.buildExpectations.filter((ea) => ea.evaluatedCount > 0),
-			];
+			const units = getAggregatedCaseUnits(tc);
 			const meanPassAtK =
 				units.length > 0
 					? Math.round(
@@ -1106,7 +1091,7 @@ function formatTerminalPerTestCase(
 					: 0;
 			return {
 				name: nameOf(tc, 60),
-				status: `${checkedRuns(tc)}/${totalRuns}`,
+				status: `${getCheckedRunCount(tc)}/${totalRuns}`,
 				passAtK: `${meanPassAtK}%`,
 				passHatK: `${meanPassHatK}%`,
 			};
@@ -1147,17 +1132,11 @@ function formatTerminalPerTestCase(
 	} else {
 		for (const tc of testCases) {
 			const r = tc.runs[0];
-			const checkedWithoutWorkflow =
-				!requiresWorkflowOutput(tc.testCase) && (r.buildExpectationResults?.length ?? 0) > 0;
-			const buildStatus = checkedWithoutWorkflow
-				? 'CHECKED'
-				: r.workflowBuildSuccess
-					? 'BUILT'
-					: 'BUILD FAILED';
+			const buildStatus = getCaseRunStatusLabel(r);
 			lines.push('');
 			lines.push(TERMINAL_INDENT + `${nameOf(tc, 70)}…`);
 			lines.push(TERMINAL_INDENT + `  ${buildStatus}${r.workflowId ? ` (${r.workflowId})` : ''}`);
-			if (!checkedWithoutWorkflow && r.buildError) {
+			if (getCaseRunStatus(r) !== 'checked' && r.buildError) {
 				lines.push(TERMINAL_INDENT + `  error: ${r.buildError.slice(0, 200)}`);
 			}
 			for (const sa of tc.executionScenarios) {

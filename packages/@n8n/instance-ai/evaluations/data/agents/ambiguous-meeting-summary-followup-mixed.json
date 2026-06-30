@@ -18,6 +18,6 @@
 		"The agent decomposes the request instead of forcing one label for the whole prompt.",
 		"The agent identifies meeting summarization as a bounded AI task or hybrid step.",
 		"The agent identifies action-item follow-up as underspecified and potentially agentic if the actions are not predefined.",
-		"The agent asks for clarification about what follow-up actions should be taken and under what rules."
+		"The agent asks, or explicitly says the next step is to ask, what follow-up actions should be taken and under what rules."
 	]
 }
