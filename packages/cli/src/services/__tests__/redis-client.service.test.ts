@@ -69,6 +69,51 @@ describe('RedisClientService', () => {
 		expect(callArgs).not.toHaveProperty('keepAlive');
 	});
 
+	it('should set tls options with servername when tls and serverName are configured', () => {
+		globalConfig.queue.bull.redis.tls = true;
+		globalConfig.queue.bull.redis.tlsConfig = {
+			serverName: 'my-redis.example.com',
+			rejectUnauthorized: true,
+		};
+
+		const service = new RedisClientService(logger, globalConfig);
+		service.createClient({ type: 'client(bull)' });
+
+		expect(Redis).toHaveBeenCalledWith(
+			expect.objectContaining({
+				tls: { servername: 'my-redis.example.com', rejectUnauthorized: true },
+			}),
+		);
+	});
+
+	it('should set tls options without servername when serverName is empty', () => {
+		globalConfig.queue.bull.redis.tls = true;
+		globalConfig.queue.bull.redis.tlsConfig = { serverName: '', rejectUnauthorized: true };
+
+		const service = new RedisClientService(logger, globalConfig);
+		service.createClient({ type: 'client(bull)' });
+
+		const callArgs = mockedRedis.mock.calls[0][0] as {
+			tls: { servername: unknown; rejectUnauthorized: boolean };
+		};
+		expect(callArgs.tls.servername).toBeUndefined();
+		expect(callArgs.tls.rejectUnauthorized).toBe(true);
+	});
+
+	it('should pass rejectUnauthorized false when cert validation is disabled', () => {
+		globalConfig.queue.bull.redis.tls = true;
+		globalConfig.queue.bull.redis.tlsConfig = { serverName: '', rejectUnauthorized: false };
+
+		const service = new RedisClientService(logger, globalConfig);
+		service.createClient({ type: 'client(bull)' });
+
+		expect(Redis).toHaveBeenCalledWith(
+			expect.objectContaining({
+				tls: expect.objectContaining({ rejectUnauthorized: false }),
+			}),
+		);
+	});
+
 	it('should add keepAlive options when configured', () => {
 		globalConfig.queue.bull.redis.keepAlive = true;
 		globalConfig.queue.bull.redis.keepAliveDelay = 123;

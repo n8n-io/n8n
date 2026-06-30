@@ -31,7 +31,7 @@ const UI_OPERATIONS = {
 		'disableRedaction',
 	],
 	agent: ['read', 'execute', 'list', 'create', 'update', 'delete', 'publish', 'unpublish'],
-	credential: ['read', 'update', 'create', 'share', 'unshare', 'move', 'delete'],
+	credential: ['read', 'connect', 'update', 'create', 'share', 'unshare', 'move', 'delete'],
 	execution: ['reveal'],
 	externalSecretsProvider: ['read', 'create', 'update', 'delete', 'sync'],
 	externalSecret: ['list'],

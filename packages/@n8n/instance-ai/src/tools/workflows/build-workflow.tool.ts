@@ -1,6 +1,6 @@
 import { Tool } from '@n8n/agents';
 import { instanceAiConfirmationSeveritySchema } from '@n8n/api-types';
-import { hasPlaceholderDeep } from '@n8n/utils';
+import { hasPlaceholderDeep } from '@n8n/utils/placeholder';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
