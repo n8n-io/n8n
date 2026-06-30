@@ -24,16 +24,15 @@ import {
 	type IRun,
 } from 'n8n-workflow';
 
-import {
-	createAddDataTableColumnTool,
-	createAddDataTableRowsTool,
-	createCreateDataTableTool,
-	createDeleteDataTableColumnTool,
-	createRenameDataTableColumnTool,
-	createRenameDataTableTool,
-	createSearchDataTablesTool,
-} from './tools/data-table';
-import { createExecuteWorkflowTool } from './tools/execute-workflow.tool';
+import { ActiveExecutions } from '@/active-executions';
+import { CollaborationService } from '@/collaboration/collaboration.service';
+import { N8N_VERSION } from '@/constants';
+import { CredentialsService } from '@/credentials/credentials.service';
+import { EventService } from '@/events/event.service';
+import { ExecutionService } from '@/executions/execution.service';
+import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
+import { NodeCatalogService } from '@/node-catalog';
+
 import { createGetExecutionTool } from './tools/get-execution.tool';
 import { createSearchExecutionsTool } from './tools/search-executions.tool';
 import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
@@ -59,13 +58,7 @@ import { createSearchWorkflowNodesTool } from './tools/workflow-builder/search-w
 import { getSdkReferenceContent } from './tools/workflow-builder/sdk-reference-content';
 import { createValidateNodeTool } from './tools/workflow-builder/validate-node.tool';
 import { createValidateWorkflowCodeTool } from './tools/workflow-builder/validate-workflow-code.tool';
-import { NodeCatalogService } from '@/node-catalog';
 
-import { ActiveExecutions } from '@/active-executions';
-import { CollaborationService } from '@/collaboration/collaboration.service';
-import { N8N_VERSION } from '@/constants';
-import { CredentialsService } from '@/credentials/credentials.service';
-import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
@@ -83,9 +76,18 @@ import { WorkflowService } from '@/workflows/workflow.service';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import { MCP_PREVIEW_RENDER_REQUESTED_EVENT } from './mcp.constants';
 import type { McpAppsTelemetryVariant, McpClientInfo } from './mcp.types';
+import {
+	createAddDataTableColumnTool,
+	createAddDataTableRowsTool,
+	createCreateDataTableTool,
+	createDeleteDataTableColumnTool,
+	createRenameDataTableColumnTool,
+	createRenameDataTableTool,
+	createSearchDataTablesTool,
+} from './tools/data-table';
+import { createExecuteWorkflowTool } from './tools/execute-workflow.tool';
 import { createPrepareTestPinDataTool } from './tools/prepare-workflow-pin-data.tool';
 import { createTestWorkflowTool } from './tools/test-workflow.tool';
-import { ExecutionService } from '@/executions/execution.service';
 
 /**
  * Pending MCP execution response, used for queue mode support.
@@ -146,6 +148,7 @@ export class McpService {
 		private readonly workflowsConfig: WorkflowsConfig,
 		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
 		private readonly subworkflowPolicyChecker: SubworkflowPolicyChecker,
+		private readonly eventService: EventService,
 	) {}
 
 	async resolveMcpAppsVariant(user: User): Promise<McpAppsResolution> {
@@ -206,6 +209,62 @@ export class McpService {
 		}
 	}
 
+	/**
+	 * Wraps `server.registerTool` so each tool invocation emits an `mcp-tool-called`
+	 * event (forwarded to log streaming). Applied once, before any tool is
+	 * registered, so it covers every tool including builder and data-table tools.
+	 */
+	private instrumentToolUsage(server: McpServer, user: User, clientInfo?: McpClientInfo) {
+		const { eventService } = this;
+		const userLike = {
+			id: user.id,
+			email: user.email,
+			firstName: user.firstName,
+			lastName: user.lastName,
+			role: user.role ? { slug: user.role.slug } : undefined,
+		};
+
+		const originalRegisterTool: typeof server.registerTool = server.registerTool.bind(server);
+
+		server.registerTool = (name, config, handler) => {
+			// `ToolCallback` is a union of 1- and 2-arity signatures, so we invoke it
+			// through a generic callable and narrow the result back to a tool result.
+			const invoke = handler as (...handlerArgs: unknown[]) => Promise<{ isError?: boolean }>;
+
+			const instrumentedHandler = async (...handlerArgs: unknown[]) => {
+				const toolArgs = handlerArgs[0];
+				const workflowId =
+					toolArgs && typeof toolArgs === 'object' && 'workflowId' in toolArgs
+						? String((toolArgs as { workflowId: unknown }).workflowId)
+						: undefined;
+
+				try {
+					const result = await invoke(...handlerArgs);
+					eventService.emit('mcp-tool-called', {
+						user: userLike,
+						toolName: name,
+						workflowId,
+						status: result?.isError === true ? 'error' : 'success',
+						clientName: clientInfo?.name,
+					});
+					return result;
+				} catch (error) {
+					eventService.emit('mcp-tool-called', {
+						user: userLike,
+						toolName: name,
+						workflowId,
+						status: 'error',
+						errorMessage: error instanceof Error ? error.message : String(error),
+						clientName: clientInfo?.name,
+					});
+					throw error;
+				}
+			};
+
+			return originalRegisterTool(name, config, instrumentedHandler as typeof handler);
+		};
+	}
+
 	async getServer(user: User, mcpAppsEnabled: boolean, clientInfo?: McpClientInfo) {
 		const { McpServer } = await import('@modelcontextprotocol/sdk/server/mcp.js');
 		const builderEnabled = this.globalConfig.endpoints.mcpBuilderEnabled;
@@ -218,6 +277,10 @@ export class McpService {
 				instructions: getMcpInstructions(builderEnabled),
 			},
 		);
+
+		// Instrument every registered tool so MCP usage flows to log streaming:
+		// which tool was called, against which workflow, and whether it succeeded.
+		this.instrumentToolUsage(server, user, clientInfo);
 
 		// Existing tools
 		const workflowSearchTool = createSearchWorkflowsTool(

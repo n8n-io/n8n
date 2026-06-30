@@ -18,6 +18,9 @@ import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { Response } from 'express';
 
+import { EventService } from '@/events/event.service';
+import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
+
 import { OAuthClient } from './database/entities/oauth-client.entity';
 import { OAuthClientRepository } from './database/repositories/oauth-client.repository';
 import { UserConsentRepository } from './database/repositories/oauth-user-consent.repository';
@@ -25,7 +28,6 @@ import { OAuthAuthorizationCodeService } from './oauth-authorization-code.servic
 import { OAuthSessionService } from './oauth-session.service';
 import { OAuthTokenService } from './oauth-token.service';
 import { OAuthClientLimitReachedError } from './oauth.errors';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 
 /** Maximum number of redirect URIs per client */
 const MAX_REDIRECT_URIS = 10;
@@ -48,6 +50,7 @@ export class OAuthServerService implements OAuthServerProvider {
 		private readonly authorizationCodeService: OAuthAuthorizationCodeService,
 		private readonly userConsentRepository: UserConsentRepository,
 		private readonly resourceRegistry: ProtectedResourceRegistry,
+		private readonly eventService: EventService,
 	) {}
 
 	get clientsStore(): OAuthRegisteredClientsStore {
@@ -328,6 +331,14 @@ export class OAuthServerService implements OAuthServerProvider {
 			client.client_id,
 			authRecord.userId,
 		);
+
+		// Completion of the authorization-code grant is the point at which the user
+		// has finished the OAuth flow for this client.
+		this.eventService.emit('mcp-oauth-completed', {
+			userId: authRecord.userId,
+			clientId: client.client_id,
+			clientName: client.client_name,
+		});
 
 		return {
 			access_token: accessToken,

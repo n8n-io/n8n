@@ -9,6 +9,9 @@ import { GlobalConfig } from '@n8n/config';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
+import type { EventService } from '@/events/event.service';
+import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
+
 import type { AuthorizationCode } from '../database/entities/oauth-authorization-code.entity';
 import type { OAuthClient } from '../database/entities/oauth-client.entity';
 import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
@@ -17,7 +20,6 @@ import { OAuthAuthorizationCodeService } from '../oauth-authorization-code.servi
 import { OAuthServerService } from '../oauth-server.service';
 import { OAuthSessionService } from '../oauth-session.service';
 import { OAuthTokenService } from '../oauth-token.service';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 
 const SUPPORTED_SCOPES = ['tool:listWorkflows', 'tool:getWorkflowDetails'];
 const TEST_RESOURCE_URL = 'https://n8n.example.com/mcp-server/http';
@@ -30,6 +32,7 @@ let authorizationCodeService: Mocked<OAuthAuthorizationCodeService>;
 let service: OAuthServerService;
 let userConsentRepository: Mocked<UserConsentRepository>;
 let getAllowedRedirectUris: Mock<() => Promise<string[]>>;
+let eventService: Mocked<EventService>;
 
 describe('OAuthServerService', () => {
 	beforeAll(() => {
@@ -40,6 +43,7 @@ describe('OAuthServerService', () => {
 		authorizationCodeService = mockInstance(OAuthAuthorizationCodeService);
 		userConsentRepository = mockInstance(UserConsentRepository);
 		getAllowedRedirectUris = vi.fn<(...args: []) => Promise<string[]>>().mockResolvedValue([]);
+		eventService = mock<EventService>();
 
 		const resourceRegistry = new ProtectedResourceRegistry(mock<Logger>());
 		resourceRegistry.register({
@@ -60,6 +64,7 @@ describe('OAuthServerService', () => {
 			authorizationCodeService,
 			userConsentRepository,
 			resourceRegistry,
+			eventService,
 		);
 	});
 
@@ -649,6 +654,11 @@ describe('OAuthServerService', () => {
 				expires_in: 3600,
 				refresh_token: 'refresh-token-456',
 			});
+			expect(eventService.emit).toHaveBeenCalledWith('mcp-oauth-completed', {
+				userId: 'user-456',
+				clientId: 'client-123',
+				clientName: 'Test Client',
+			});
 		});
 
 		it('should handle authorization code exchange without redirect URI', async () => {
@@ -1067,6 +1077,7 @@ describe('OAuthServerService', () => {
 				authorizationCodeService,
 				userConsentRepository,
 				multiRegistry,
+				mock<EventService>(),
 			);
 
 			expect(
