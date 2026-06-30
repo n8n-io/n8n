@@ -6,8 +6,8 @@ import {
 	type CredentialsEntity,
 	GLOBAL_OWNER_ROLE,
 } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
 import type { INode } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import type { NodeTypes } from '@/node-types';
 import type { OwnershipService } from '@/services/ownership.service';
@@ -49,7 +49,7 @@ describe('CredentialsPermissionChecker', () => {
 	});
 
 	beforeEach(async () => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 
 		node.credentials!.someCredential.id = credentialId;
 		ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(personalProject);
@@ -147,7 +147,7 @@ describe('CredentialsPermissionChecker', () => {
 			type: 'team',
 		});
 		// Reset and set up new mocks for this test
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		ownershipService.getWorkflowProjectCached.mockResolvedValue(teamProject);
 		projectService.findProjectsWorkflowIsIn.mockResolvedValue([teamProject.id]);
 		ownershipService.getPersonalProjectOwnerCached.mockResolvedValue(null);
@@ -206,7 +206,7 @@ describe('CredentialsPermissionChecker', () => {
 		};
 
 		beforeEach(() => {
-			jest.resetAllMocks();
+			vi.resetAllMocks();
 			ownershipService.getWorkflowProjectCached.mockResolvedValue(teamProject);
 			ownershipService.getPersonalProjectOwnerCached.mockResolvedValue(null);
 			projectService.findProjectsWorkflowIsIn.mockResolvedValue([teamProject.id]);

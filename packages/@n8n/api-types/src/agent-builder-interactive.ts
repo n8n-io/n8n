@@ -10,6 +10,7 @@ import { z } from 'zod';
  */
 export const ASK_LLM_TOOL_NAME = 'ask_llm' as const;
 export const ASK_CREDENTIAL_TOOL_NAME = 'ask_credential' as const;
+export const ASK_EMBEDDING_CREDENTIAL_TOOL_NAME = 'ask_embedding_credential' as const;
 export const ASK_QUESTION_TOOL_NAME = 'ask_question' as const;
 /**
  * Frontend-only discriminator for generic approval cards.
@@ -22,6 +23,7 @@ export const APPROVAL_TOOL_NAME = 'approval' as const;
 export const interactiveToolNameSchema = z.union([
 	z.literal(ASK_LLM_TOOL_NAME),
 	z.literal(ASK_CREDENTIAL_TOOL_NAME),
+	z.literal(ASK_EMBEDDING_CREDENTIAL_TOOL_NAME),
 	z.literal(ASK_QUESTION_TOOL_NAME),
 ]);
 
@@ -75,6 +77,9 @@ export const askCredentialResumeSchema = z.union([
 export type AskCredentialInput = z.infer<typeof askCredentialInputSchema>;
 export type AskCredentialResume = z.infer<typeof askCredentialResumeSchema>;
 
+export const askEmbeddingCredentialResumeSchema = askCredentialResumeSchema;
+export type AskEmbeddingCredentialResume = AskCredentialResume;
+
 // ---------------------------------------------------------------------------
 // ask_question
 // ---------------------------------------------------------------------------
@@ -122,6 +127,7 @@ export type CancellationResumeData = z.infer<typeof cancellationResumeSchema>;
 
 export const interactiveResumeDataSchema = z.union([
 	askLlmResumeSchema,
+	askEmbeddingCredentialResumeSchema,
 	askCredentialResumeSchema,
 	askQuestionResumeSchema,
 	cancellationResumeSchema,

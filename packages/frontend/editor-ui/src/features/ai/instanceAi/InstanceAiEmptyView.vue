@@ -333,7 +333,7 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 	isStartingThread.value = true;
 
 	// Persist the thread on the BE first. Otherwise we'd navigate to
-	// `/instance-ai/:threadId` for a thread the BE doesn't know about, and the
+	// `/assistant/:threadId` for a thread the BE doesn't know about, and the
 	// follow-up `postMessage` would 404.
 	try {
 		await store.syncThread(threadId, selectedProject.value);

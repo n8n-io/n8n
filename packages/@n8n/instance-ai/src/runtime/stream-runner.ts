@@ -3,6 +3,10 @@ import type { InstanceAiEvent } from '@n8n/api-types';
 
 import type { InstanceAiEventBus } from '../event-bus';
 import type { Logger } from '../logger';
+import type {
+	OrchestratorRunHandoffReason,
+	OrchestratorRunStopSignal,
+} from './orchestrator-run-control';
 import {
 	executeResumableStream,
 	normalizeStreamSource,
@@ -26,6 +30,7 @@ export interface StreamRunOptions {
 	eventBus: InstanceAiEventBus;
 	logger: Logger;
 	onActivity?: () => void;
+	stopSignal?: () => OrchestratorRunStopSignal | undefined;
 	/** Output-redaction policy: omit for the safe default, or `false` to disable. */
 	outputRedaction?: RedactionOptions | false;
 }
@@ -37,6 +42,7 @@ export interface StreamRunResult {
 	error?: unknown;
 	workSummary: WorkSummary;
 	usage?: RunTokenUsage;
+	stopReason?: OrchestratorRunHandoffReason;
 	suspension?: SuspensionInfo;
 	confirmationEvent?: Extract<InstanceAiEvent, { type: 'confirmation-request' }>;
 }
@@ -81,6 +87,7 @@ async function consumeStream(
 			signal: options.signal,
 			logger: options.logger,
 			onActivity: options.onActivity,
+			stopSignal: options.stopSignal,
 			outputRedaction: options.outputRedaction,
 		},
 		control: { mode: 'manual' },
@@ -111,5 +118,6 @@ async function consumeStream(
 		...(result.error !== undefined ? { error: result.error } : {}),
 		workSummary: result.workSummary,
 		usage: result.usage,
+		...(result.stopReason ? { stopReason: result.stopReason } : {}),
 	};
 }

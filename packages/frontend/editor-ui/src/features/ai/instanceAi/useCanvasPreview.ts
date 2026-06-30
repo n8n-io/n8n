@@ -30,7 +30,7 @@ interface UseCanvasPreviewOptions {
 	threadId: () => string;
 }
 
-export function useCanvasPreview({ thread, threadId }: UseCanvasPreviewOptions) {
+export function useCanvasPreview({ thread }: UseCanvasPreviewOptions) {
 	// --- Tab state ---
 	const activeTabId = ref<string>();
 
@@ -154,20 +154,6 @@ export function useCanvasPreview({ thread, threadId }: UseCanvasPreviewOptions) 
 		if (!stillExists) {
 			activeTabId.value = tabs[0].id;
 		}
-	});
-
-	// --- Reset preview on thread switch ---
-	// Each thread is stateless for the preview panel: switching threads
-	// closes the panel. Past artifacts are reachable via their inline
-	// references in the message timeline.
-	watch(threadId, (nextThreadId, oldThreadId) => {
-		// Skip if this is the initial route setup (e.g. URL updated from
-		// /instance-ai to /instance-ai/:threadId after the first message)
-		if (!oldThreadId) return;
-		// Skip if the thread ID hasn't actually changed
-		if (nextThreadId === oldThreadId) return;
-
-		activeTabId.value = undefined;
 	});
 
 	// --- Auto-open canvas when AI creates/modifies a workflow ---

@@ -159,25 +159,40 @@ export function getLatestWorkflowUpdateResult(
 	return undefined;
 }
 
-const WORKFLOW_EDITING_TOOLS = new Set([
+const WORKFLOW_LOCKING_TOOLS = new Set([
 	'build-workflow',
 	'build-workflow-with-agent',
 	'apply-workflow-credentials',
 	'setup-workflow',
+	'verify-built-workflow',
 ]);
 
 /**
- * Whether the agent is actively mutating `workflowId` somewhere in this agent
- * tree — used to lock the artifact canvas while a build/edit is in flight so the
- * user can't drag nodes into a mid-stream conflict. Two signals, either is enough:
- *   1. An active workflow-builder sub-agent targeting the workflow (covers the
+ * Whether the agent is actively working on `workflowId` somewhere in this agent
+ * tree — used to lock the artifact canvas while a build/edit/verification is in
+ * flight so the user can't execute or edit into a mid-stream conflict. Any
+ * of these signals is enough:
+ *   1. The active agent tree has already built/updated/setup this workflow.
+ *      This covers short gaps between tool calls while the agent run is still
+ *      ongoing.
+ *   2. An active workflow-builder sub-agent targeting the workflow (covers the
  *      whole build window: read file → edit → submit-workflow → verify).
- *   2. An in-flight workflow-mutating tool call targeting the workflow — the
- *      build/setup tools, or a `workflows` update / restore-version / setup action.
- *      Read-only `workflows` actions (get-json, get, list, …) don't lock.
+ *   3. An in-flight workflow-affecting tool call targeting the workflow — the
+ *      build/setup/verify tools, `executions.run`, or a `workflows` update /
+ *      restore-version / setup action. Read-only `workflows` actions (get-json,
+ *      get, list, …) don't lock.
  */
 export function isAgentEditingWorkflow(node: InstanceAiAgentNode, workflowId: string): boolean {
-	// Signal 1: workflow-builder sub-agent active with our workflow id
+	if (
+		node.status === 'active' &&
+		(getLatestBuildResult(node)?.workflowId === workflowId ||
+			getLatestWorkflowSetupResult(node)?.workflowId === workflowId ||
+			getLatestWorkflowUpdateResult(node)?.workflowId === workflowId)
+	) {
+		return true;
+	}
+
+	// Signal 2: workflow-builder sub-agent active with our workflow id
 	if (
 		isBuilderNode(node) &&
 		node.status === 'active' &&
@@ -187,12 +202,13 @@ export function isAgentEditingWorkflow(node: InstanceAiAgentNode, workflowId: st
 		return true;
 	}
 
-	// Signal 2: in-flight workflow-mutating tool call targeting our workflow id
+	// Signal 3: in-flight workflow-affecting tool call targeting our workflow id
 	for (const tc of node.toolCalls) {
 		if (!tc.isLoading) continue;
 		const args = tc.args as { workflowId?: string; action?: string } | undefined;
 		if (args?.workflowId !== workflowId) continue;
-		if (WORKFLOW_EDITING_TOOLS.has(tc.toolName)) return true;
+		if (WORKFLOW_LOCKING_TOOLS.has(tc.toolName)) return true;
+		if (tc.toolName === 'executions' && args.action === 'run') return true;
 		if (
 			tc.toolName === 'workflows' &&
 			typeof args?.action === 'string' &&
