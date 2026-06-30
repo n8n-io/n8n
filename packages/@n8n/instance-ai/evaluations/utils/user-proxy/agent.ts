@@ -1,5 +1,5 @@
 import { SYSTEM_PROMPT, TOOL_DESCRIPTIONS } from './prompts';
-import { decisionSchema, type Decision } from './tools';
+import { parseWireDecision, wireDecisionSchema, type Decision, type WireDecision } from './tools';
 import { createEvalAgent } from '../../../src/utils/eval-agents';
 import type { EvalLogger } from '../../harness/logger';
 
@@ -21,11 +21,12 @@ export function createUserProxyAgent(config: UserProxyAgentConfig = {}): UserPro
 				...(config.modelId ? { model: config.modelId } : {}),
 				instructions,
 				cache: true,
-			}).structuredOutput(decisionSchema);
+			}).structuredOutput(wireDecisionSchema);
 
 			try {
 				const result = await agent.generate(userPrompt);
-				const decision = (result.structuredOutput as Decision | undefined) ?? undefined;
+				const wireDecision = (result.structuredOutput as WireDecision | undefined) ?? undefined;
+				const decision = wireDecision ? parseWireDecision(wireDecision) : undefined;
 				if (!decision) {
 					config.logger?.warn(
 						`[user-proxy] no structuredOutput; error=${describeFailure((result as { error?: unknown }).error)}`,

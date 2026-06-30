@@ -29,6 +29,11 @@ import {
 	N8N_SANDBOX_SERVICE_URL_REQUIRED_MESSAGE,
 	normalizeSandboxProvider,
 } from './sandbox-provider';
+import {
+	isInstanceAiProxyProvider,
+	SUPPORTED_INSTANCE_AI_PROXY_PROVIDERS,
+	type InstanceAiProxyProvider,
+} from './instance-ai-proxy-providers';
 
 const ADMIN_SETTINGS_KEY = 'instanceAi.settings';
 
@@ -57,9 +62,11 @@ const CREDENTIAL_TO_MODEL_PROVIDER: Record<string, string> = {
 
 const SUPPORTED_CREDENTIAL_TYPES = Object.keys(CREDENTIAL_TO_MODEL_PROVIDER);
 
-type ProxyModelParts =
-	| { provider: 'anthropic'; modelName: string; modelId: `anthropic/${string}` }
-	| { provider: 'openai'; modelName: string; modelId: `openai/${string}` };
+type ProxyModelParts = {
+	provider: InstanceAiProxyProvider;
+	modelName: string;
+	modelId: string;
+};
 
 /** Fields that contain the base URL per credential type. */
 const URL_FIELD_MAP: Record<string, string> = {
@@ -486,11 +493,12 @@ export class InstanceAiSettingsService {
 
 	/** Resolve provider-aware model parts for AI Assistant proxy routing. */
 	resolveProxyModelParts(): ProxyModelParts {
+		const supportedProviders = SUPPORTED_INSTANCE_AI_PROXY_PROVIDERS.join(', ');
 		const model = this.config.model.trim();
 		const slash = model.indexOf('/');
 		if (slash <= 0 || slash === model.length - 1) {
 			throw new UserError(
-				`Invalid Instance AI proxy model "${this.config.model}". Expected "anthropic/<model>" or "openai/<model>".`,
+				`Invalid Instance AI proxy model "${this.config.model}". Expected one of: ${SUPPORTED_INSTANCE_AI_PROXY_PROVIDERS.map((provider) => `${provider}/<model>`).join(', ')}.`,
 			);
 		}
 
@@ -502,16 +510,12 @@ export class InstanceAiSettingsService {
 			);
 		}
 
-		if (provider === 'anthropic') {
-			return { provider, modelName, modelId: `anthropic/${modelName}` };
-		}
-
-		if (provider === 'openai') {
-			return { provider, modelName, modelId: `openai/${modelName}` };
+		if (isInstanceAiProxyProvider(provider)) {
+			return { provider, modelName, modelId: `${provider}/${modelName}` };
 		}
 
 		throw new UserError(
-			`Unsupported Instance AI proxy model provider "${provider}". Supported providers: anthropic, openai.`,
+			`Unsupported Instance AI proxy model provider "${provider}". Supported providers: ${supportedProviders}.`,
 		);
 	}
 

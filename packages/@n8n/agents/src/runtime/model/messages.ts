@@ -1,4 +1,3 @@
-import type { ProviderOptions } from '@ai-sdk/provider-utils';
 import { isRecord } from '@n8n/utils';
 import type {
 	FilePart,
@@ -12,6 +11,12 @@ import type {
 	FinishReason as AiFinishReason,
 } from 'ai';
 
+import {
+	getReasoningReplayProviderOptions,
+	hasReplayableReasoningProviderOptions,
+	sanitizeProviderMetadataForReplay,
+	sanitizeProviderOptionsForReplay,
+} from './provider-metadata-policy';
 import type { FinishReason } from '../../types';
 import type {
 	AgentMessage,
@@ -106,145 +111,10 @@ function getRecord(value: unknown): Record<string, unknown> | undefined {
 	return isRecord(value) ? value : undefined;
 }
 
-const OPENAI_RESPONSES_STATE_KEYS = new Set(['itemId', 'responseId', 'phase']);
-
-function hasEntries(value: Record<string, unknown>): boolean {
-	return Object.keys(value).length > 0;
-}
-
-function shouldStripOpenAiResponsesField(key: string, value: unknown): boolean {
-	return (
-		OPENAI_RESPONSES_STATE_KEYS.has(key) ||
-		(key === 'reasoningEncryptedContent' && (value === null || value === undefined))
-	);
-}
-
-function stripOpenAiResponsesStateFromRecord(
-	value: Record<string, unknown>,
-): Record<string, unknown> | undefined {
-	const result: Record<string, unknown> = {};
-	for (const [key, entry] of Object.entries(value)) {
-		if (!shouldStripOpenAiResponsesField(key, entry)) {
-			result[key] = entry;
-		}
-	}
-
-	return hasEntries(result) ? result : undefined;
-}
-
-function stripOpenAiResponsesStateFromJsonObject(value: JSONObject): JSONObject | undefined {
-	const result: JSONObject = {};
-	for (const [key, entry] of Object.entries(value)) {
-		if (!shouldStripOpenAiResponsesField(key, entry)) {
-			result[key] = entry;
-		}
-	}
-
-	return hasEntries(result) ? result : undefined;
-}
-
-function stripOpenAiResponsesStateFromProviderMetadata(
-	providerMetadata: Record<string, unknown> | undefined,
-): Record<string, unknown> | undefined {
-	if (!providerMetadata) return undefined;
-
-	const result: Record<string, unknown> = {};
-	for (const [provider, metadata] of Object.entries(providerMetadata)) {
-		if (provider === 'openai' && isRecord(metadata)) {
-			const sanitizedOpenAiMetadata = stripOpenAiResponsesStateFromRecord(metadata);
-			if (sanitizedOpenAiMetadata) result[provider] = sanitizedOpenAiMetadata;
-			continue;
-		}
-
-		result[provider] = metadata;
-	}
-
-	return hasEntries(result) ? result : undefined;
-}
-
-function stripOpenAiResponsesStateFromProviderOptions(
-	providerOptions: ProviderOptions | undefined,
-): ProviderOptions | undefined {
-	if (!providerOptions) return undefined;
-
-	const result: ProviderOptions = {};
-	for (const [provider, options] of Object.entries(providerOptions)) {
-		if (provider === 'openai') {
-			const sanitizedOpenAiOptions = stripOpenAiResponsesStateFromJsonObject(options);
-			if (sanitizedOpenAiOptions) result[provider] = sanitizedOpenAiOptions;
-			continue;
-		}
-
-		result[provider] = options;
-	}
-
-	return Object.keys(result).length > 0 ? result : undefined;
-}
-
-function hasReplayableReasoningProviderOptions(
-	providerOptions: ProviderOptions | undefined,
-): boolean {
-	if (!providerOptions) return false;
-
-	const openAiOptions = getRecord(providerOptions.openai);
-	if (typeof openAiOptions?.reasoningEncryptedContent === 'string') return true;
-
-	const anthropicOptions = getRecord(providerOptions.anthropic);
-	if (
-		typeof anthropicOptions?.signature === 'string' ||
-		typeof anthropicOptions?.redactedData === 'string'
-	) {
-		return true;
-	}
-
-	return Object.entries(providerOptions).some(
-		([provider, options]) =>
-			provider !== 'openai' && provider !== 'anthropic' && hasEntries(options),
-	);
-}
-
 type ContentToolResultOutput = Extract<ToolResultPart['output'], { type: 'content' }>;
 
 function isContentToolResultOutput(value: JSONValue): value is ContentToolResultOutput {
 	return isRecord(value) && value.type === 'content' && Array.isArray(value.value);
-}
-
-/**
- * Some providers replay reasoning from `providerOptions`, but the AI SDK exposes
- * replay fields in `providerMetadata`. Copy them across so the next request can
- * replay the reasoning block. Existing `providerOptions` values win.
- */
-function toReasoningProviderOptions(block: ContentReasoning): ProviderOptions | undefined {
-	const anthropicMetadata = getRecord(block.providerMetadata?.anthropic);
-	const signature = anthropicMetadata?.signature;
-	const redactedData = anthropicMetadata?.redactedData;
-
-	const openAiMetadata = getRecord(block.providerMetadata?.openai);
-	const reasoningEncryptedContent = openAiMetadata?.reasoningEncryptedContent;
-
-	const hasAnthropicReplayFields =
-		typeof signature === 'string' || typeof redactedData === 'string';
-	const hasOpenAiReplayFields = typeof reasoningEncryptedContent === 'string';
-	if (!hasAnthropicReplayFields && !hasOpenAiReplayFields) {
-		return block.providerOptions;
-	}
-
-	return {
-		...block.providerOptions,
-		...(hasOpenAiReplayFields && {
-			openai: {
-				reasoningEncryptedContent,
-				...getRecord(block.providerOptions?.openai),
-			},
-		}),
-		...(hasAnthropicReplayFields && {
-			anthropic: {
-				...(typeof signature === 'string' && { signature }),
-				...(typeof redactedData === 'string' && { redactedData }),
-				...getRecord(block.providerOptions?.anthropic),
-			},
-		}),
-	};
 }
 
 /** Convert a single n8n MessageContent block to an AI SDK content part. */
@@ -275,12 +145,10 @@ function toAiContent(block: MessageContent): AiContentPart | undefined {
 		// `google.thoughtSignature` to function-call parts, and the next request
 		// is rejected if that signature is dropped from conversation history.
 		const providerOptions = isReasoning(block)
-			? toReasoningProviderOptions(block)
+			? getReasoningReplayProviderOptions(block)
 			: block.providerOptions;
-		const sanitizedProviderMetadata = stripOpenAiResponsesStateFromProviderMetadata(
-			block.providerMetadata,
-		);
-		const sanitizedProviderOptions = stripOpenAiResponsesStateFromProviderOptions(providerOptions);
+		const sanitizedProviderMetadata = sanitizeProviderMetadataForReplay(block.providerMetadata);
+		const sanitizedProviderOptions = sanitizeProviderOptionsForReplay(providerOptions);
 		if (isReasoning(block) && !hasReplayableReasoningProviderOptions(sanitizedProviderOptions)) {
 			return undefined;
 		}
@@ -332,8 +200,8 @@ function fromAiContent(part: AiContentPart): MessageContent | undefined {
 		'providerMetadata' in part ? part.providerMetadata : undefined,
 	);
 	const providerOptions = 'providerOptions' in part ? part.providerOptions : undefined;
-	const sanitizedProviderMetadata = stripOpenAiResponsesStateFromProviderMetadata(providerMetadata);
-	const sanitizedProviderOptions = stripOpenAiResponsesStateFromProviderOptions(providerOptions);
+	const sanitizedProviderMetadata = sanitizeProviderMetadataForReplay(providerMetadata);
+	const sanitizedProviderOptions = sanitizeProviderOptionsForReplay(providerOptions);
 
 	let base: MessageContent | undefined;
 	switch (part.type) {
@@ -405,7 +273,7 @@ function toAiMessageList(msg: Message): ModelMessage[] {
 				.map((b) => b.text)
 				.join('');
 			const base: ModelMessage = { role: 'system', content: text };
-			const providerOptions = stripOpenAiResponsesStateFromProviderOptions(msg.providerOptions);
+			const providerOptions = sanitizeProviderOptionsForReplay(msg.providerOptions);
 			return [providerOptions ? { ...base, providerOptions } : base];
 		}
 
@@ -414,7 +282,7 @@ function toAiMessageList(msg: Message): ModelMessage[] {
 				.map(toAiContent)
 				.filter((p): p is TextPart | FilePart => p?.type === 'text' || p?.type === 'file');
 			const base: ModelMessage = { role: 'user', content: parts };
-			const providerOptions = stripOpenAiResponsesStateFromProviderOptions(msg.providerOptions);
+			const providerOptions = sanitizeProviderOptionsForReplay(msg.providerOptions);
 			return [providerOptions ? { ...base, providerOptions } : base];
 		}
 
@@ -443,12 +311,8 @@ function toAiMessageList(msg: Message): ModelMessage[] {
 					// Replayed settled tool calls still need their original provider
 					// metadata. Gemini validates thought signatures on historical
 					// function-call parts, even after the tool result is available.
-					const providerMetadata = stripOpenAiResponsesStateFromProviderMetadata(
-						block.providerMetadata,
-					);
-					const providerOptions = stripOpenAiResponsesStateFromProviderOptions(
-						block.providerOptions,
-					);
+					const providerMetadata = sanitizeProviderMetadataForReplay(block.providerMetadata);
+					const providerOptions = sanitizeProviderOptionsForReplay(block.providerOptions);
 					assistantParts.push({
 						...toolCallPart,
 						...(providerMetadata && { providerMetadata }),
@@ -472,7 +336,7 @@ function toAiMessageList(msg: Message): ModelMessage[] {
 						TextPart | ReasoningPart | ToolCallPart | ToolResultPart | FilePart
 					>,
 				};
-				const providerOptions = stripOpenAiResponsesStateFromProviderOptions(msg.providerOptions);
+				const providerOptions = sanitizeProviderOptionsForReplay(msg.providerOptions);
 				const assistantMsg: ModelMessage = providerOptions
 					? { ...assistantBase, providerOptions }
 					: assistantBase;
@@ -559,7 +423,7 @@ export function fromAiMessages(messages: ModelMessage[]): AgentMessage[] {
 
 		const agentMsg: AgentMessage = { role: msg.role, content };
 		if ('providerOptions' in msg && msg.providerOptions) {
-			const providerOptions = stripOpenAiResponsesStateFromProviderOptions(msg.providerOptions);
+			const providerOptions = sanitizeProviderOptionsForReplay(msg.providerOptions);
 			if (providerOptions) agentMsg.providerOptions = providerOptions;
 		}
 		result.push(agentMsg);

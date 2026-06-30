@@ -11,15 +11,20 @@ import { zodToJsonSchema } from '@n8n/agents';
 import type { CapturedEvent } from '../types';
 import { UserProxyLlm } from '../utils/user-proxy';
 import type { UserProxyAgent } from '../utils/user-proxy/agent';
-import { decisionSchema, type Decision } from '../utils/user-proxy/tools';
+import {
+	parseWireDecision,
+	wireDecisionSchema,
+	type Decision,
+	type WireDecision,
+} from '../utils/user-proxy/tools';
 
 // ---------------------------------------------------------------------------
 // Decision schema
 // ---------------------------------------------------------------------------
 
-describe('decisionSchema', () => {
+describe('wireDecisionSchema', () => {
 	it('marks nullable fields as required for strict response formats', () => {
-		const schema = zodToJsonSchema(decisionSchema) as {
+		const schema = zodToJsonSchema(wireDecisionSchema) as {
 			type?: string;
 			required?: string[];
 			properties?: {
@@ -45,22 +50,43 @@ describe('decisionSchema', () => {
 			'skipped',
 		]);
 	});
+
+	it('converts valid wire decisions into non-null domain decisions', () => {
+		const wireDecision: WireDecision = {
+			action: 'answer_questions',
+			answers: [{ questionId: 'q1', selectedOptions: ['#general'] }],
+			nodeParametersJson: null,
+			approved: null,
+			userInput: null,
+			response: null,
+			decision: null,
+			message: null,
+		};
+
+		expect(parseWireDecision(wireDecision)).toEqual({
+			action: 'answer_questions',
+			answers: [{ questionId: 'q1', selectedOptions: ['#general'] }],
+		});
+	});
+
+	it('drops incomplete wire decisions at the boundary', () => {
+		expect(
+			parseWireDecision({
+				action: 'approve_or_reject',
+				answers: null,
+				nodeParametersJson: null,
+				approved: null,
+				userInput: null,
+				response: null,
+				decision: null,
+				message: null,
+			}),
+		).toBeUndefined();
+	});
 });
 
-const nullDecisionFields = {
-	answers: null,
-	nodeParametersJson: null,
-	approved: null,
-	userInput: null,
-	response: null,
-	decision: null,
-	message: null,
-} satisfies Omit<Decision, 'action'>;
-
-function makeDecision(
-	decision: Pick<Decision, 'action'> & Partial<Omit<Decision, 'action'>>,
-): Decision {
-	return { ...nullDecisionFields, ...decision };
+function makeDecision(decision: Decision): Decision {
+	return decision;
 }
 
 // ---------------------------------------------------------------------------
@@ -253,9 +279,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		agent.enqueue(
 			makeDecision({
 				action: 'answer_questions',
-				answers: [
-					{ questionId: 'q1', selectedOptions: ['#general'], customText: null, skipped: null },
-				],
+				answers: [{ questionId: 'q1', selectedOptions: ['#general'] }],
 			}),
 		);
 		const proxy = new UserProxyLlm({
@@ -285,13 +309,10 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 						questionId: 'cities',
 						selectedOptions: [],
 						customText: 'London, New York, Tokyo',
-						skipped: null,
 					},
 					{
 						questionId: 'destination',
 						selectedOptions: ['Slack'],
-						customText: null,
-						skipped: null,
 					},
 				],
 			}),
@@ -380,7 +401,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 
 	it('returns approval with no userInput when the agent omits it', async () => {
 		const agent = new FakeAgent();
-		agent.enqueue(makeDecision({ action: 'approve_or_reject', approved: true, userInput: null }));
+		agent.enqueue(makeDecision({ action: 'approve_or_reject', approved: true }));
 		const proxy = new UserProxyLlm({
 			conversation: [{ role: 'user', text: 'approve' }],
 			agent,
@@ -671,9 +692,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		agent.enqueue(
 			makeDecision({
 				action: 'answer_questions',
-				answers: [
-					{ questionId: 'q1', selectedOptions: ['#general'], customText: null, skipped: null },
-				],
+				answers: [{ questionId: 'q1', selectedOptions: ['#general'] }],
 			}),
 		);
 		const proxy = new UserProxyLlm({
@@ -700,9 +719,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 			new Error('temporary model failure'),
 			makeDecision({
 				action: 'answer_questions',
-				answers: [
-					{ questionId: 'q1', selectedOptions: ['#general'], customText: null, skipped: null },
-				],
+				answers: [{ questionId: 'q1', selectedOptions: ['#general'] }],
 			}),
 		);
 		const proxy = new UserProxyLlm({
@@ -858,7 +875,7 @@ describe('UserProxyLlm.decideFollowUp', () => {
 		agent.enqueue(
 			makeDecision({
 				action: 'answer_questions',
-				answers: [{ questionId: 'q1', selectedOptions: [], customText: null, skipped: null }],
+				answers: [{ questionId: 'q1', selectedOptions: [] }],
 			}),
 		);
 		const proxy = new UserProxyLlm({

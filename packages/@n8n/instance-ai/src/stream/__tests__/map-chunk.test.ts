@@ -355,7 +355,7 @@ describe('mapAgentChunkToEvent', () => {
 				toolCallId: 'tc-1',
 				toolName: '',
 				args: {},
-				severity: 'warning',
+				severity: 'info',
 				message: 'Confirmation required',
 			},
 		});
@@ -383,7 +383,7 @@ describe('mapAgentChunkToEvent', () => {
 				toolCallId: 'tc-1',
 				toolName: 'pause-for-user',
 				args: {},
-				severity: 'warning',
+				severity: 'info',
 				message: 'Continue after reviewing results',
 				inputType: 'continue',
 				webSearch: { query: 'n8n agents deferred tools' },

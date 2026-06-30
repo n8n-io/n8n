@@ -11,6 +11,7 @@ import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
+import { INSTANCE_AI_PROXY_PROVIDERS } from './instance-ai-proxy-providers';
 
 /**
  * Resolves the language model the Instance AI agent runs against and reports
@@ -70,10 +71,6 @@ export class InstanceAiModelService {
 	 * Build model config. When the AI service proxy is enabled, returns a native
 	 * LanguageModelV2 instance pointing at the provider-specific proxy route.
 	 *
-	 * Anthropic uses `@ai-sdk/anthropic` directly because this proxy route needs
-	 * the native Messages transport. OpenAI uses `@ai-sdk/openai` directly to keep
-	 * the provider identity consistent without loading the full agents package.
-	 *
 	 * Auth headers are injected via a custom `fetch` wrapper so that each
 	 * request gets a fresh-or-cached token from the ProxyTokenManager,
 	 * avoiding 401s on long-running agent turns.
@@ -87,24 +84,7 @@ export class InstanceAiModelService {
 		// Route through the proxy-aware transport so this path honours
 		// HTTP(S)_PROXY and the long AI timeout, same as the HTTP-proxy path.
 		const fetch = this.createAuthenticatedProxyFetch(tokenManager);
-
-		if (provider === 'anthropic') {
-			const { createAnthropic } = await import('@ai-sdk/anthropic');
-			const anthropicProvider = createAnthropic({
-				baseURL: `${baseUrl}/anthropic/v1`,
-				apiKey: 'proxy-managed',
-				fetch,
-			});
-			return anthropicProvider(modelName);
-		}
-
-		const { createOpenAI } = await import('@ai-sdk/openai');
-		const openAiProvider = createOpenAI({
-			apiKey: 'proxy-managed',
-			baseURL: `${baseUrl}/openai/v1`,
-			fetch,
-		});
-		return openAiProvider(modelName);
+		return await INSTANCE_AI_PROXY_PROVIDERS[provider].createModel({ modelName, baseUrl, fetch });
 	}
 
 	private createAuthenticatedProxyFetch(tokenManager: ProxyTokenManager): CustomFetch {

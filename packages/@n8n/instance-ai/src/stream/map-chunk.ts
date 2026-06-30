@@ -1,22 +1,8 @@
 import type { StreamChunk } from '@n8n/agents';
-import {
-	credentialRequestSchema,
-	workflowSetupNodeSchema,
-	taskListSchema,
-	plannedTaskArgSchema,
-	gatewayConfirmationRequiredPayloadSchema,
-	webSearchMetaSchema,
-} from '@n8n/api-types';
 import type { InstanceAiEvent } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils';
-import { z } from 'zod';
 
-const questionItemSchema = z.object({
-	id: z.string(),
-	question: z.string(),
-	type: z.enum(['single', 'multi', 'text']),
-	options: z.array(z.string()).optional(),
-});
+import { parseSuspendedToolCallConfirmation } from './confirmation-request';
 
 function getArrayProperty(record: Record<string, unknown>, key: string): unknown[] | undefined {
 	const value = record[key];
@@ -156,71 +142,6 @@ function extractErrorInfo(error: unknown): ErrorInfo {
 
 type EventBase = { runId: string; agentId: string; responseId?: string };
 
-type ConfirmationInputType =
-	| 'approval'
-	| 'text'
-	| 'questions'
-	| 'plan-review'
-	| 'resource-decision'
-	| 'continue';
-
-/** A non-empty string, or undefined for anything else (matches the legacy `value ? value : undefined` gate). */
-function presentString(value: unknown): string | undefined {
-	return typeof value === 'string' && value ? value : undefined;
-}
-
-function parseSchemaArray<T>(value: unknown, schema: z.ZodType<T>): T[] | undefined {
-	if (!Array.isArray(value)) return undefined;
-	const parsed = value
-		.map((item) => schema.safeParse(item))
-		.filter((r) => r.success)
-		.map((r) => r.data);
-	return parsed.length > 0 ? parsed : undefined;
-}
-
-function parseSchemaRecord<T>(value: unknown, schema: z.ZodType<T>): T | undefined {
-	if (!isRecord(value)) return undefined;
-	const parsed = schema.safeParse(value);
-	return parsed.success ? parsed.data : undefined;
-}
-
-function parseSeverity(value: unknown): 'destructive' | 'warning' | 'info' {
-	const raw = typeof value === 'string' ? value : '';
-	const valid = ['destructive', 'warning', 'info'] as const;
-	return (valid as readonly string[]).includes(raw) ? (raw as (typeof valid)[number]) : 'warning';
-}
-
-function parseInputType(value: unknown): ConfirmationInputType | undefined {
-	const raw = typeof value === 'string' ? value : undefined;
-	const valid = [
-		'approval',
-		'text',
-		'questions',
-		'plan-review',
-		'resource-decision',
-		'continue',
-	] as const;
-	return (valid as readonly string[]).includes(raw ?? '')
-		? (raw as (typeof valid)[number])
-		: undefined;
-}
-
-function parseDomainAccess(value: unknown): { url: string; host: string } | undefined {
-	const raw = isRecord(value) ? value : undefined;
-	return raw && typeof raw.url === 'string' && typeof raw.host === 'string'
-		? { url: raw.url, host: raw.host }
-		: undefined;
-}
-
-function parseCredentialFlow(value: unknown): { stage: 'generic' | 'finalize' } | undefined {
-	const raw = isRecord(value) ? value : undefined;
-	const validStages = new Set<'generic' | 'finalize'>(['generic', 'finalize']);
-	const stage = raw && typeof raw.stage === 'string' ? raw.stage : undefined;
-	return stage !== undefined && validStages.has(stage as 'generic' | 'finalize')
-		? { stage: stage as 'generic' | 'finalize' }
-		: undefined;
-}
-
 function mapToolCallChunk(
 	chunk: Extract<StreamChunk, { type: 'tool-call' }>,
 	base: EventBase,
@@ -259,62 +180,13 @@ function mapSuspendedChunk(
 	chunk: Extract<StreamChunk, { type: 'tool-call-suspended' }>,
 	base: EventBase,
 ): InstanceAiEvent | null {
-	const suspendPayload = isRecord(chunk.suspendPayload) ? chunk.suspendPayload : {};
-	const toolCallId = typeof chunk.toolCallId === 'string' ? chunk.toolCallId : '';
-	const requestId =
-		typeof suspendPayload.requestId === 'string' && suspendPayload.requestId
-			? suspendPayload.requestId
-			: toolCallId;
-
-	if (!requestId || !toolCallId) return null;
-
-	const credentialRequests = parseSchemaArray(
-		suspendPayload.credentialRequests,
-		credentialRequestSchema,
-	);
-	const projectId = presentString(suspendPayload.projectId);
-	const inputType = parseInputType(suspendPayload.inputType);
-	const questions = parseSchemaArray(suspendPayload.questions, questionItemSchema);
-	const introMessage = presentString(suspendPayload.introMessage);
-	const tasks = parseSchemaRecord(suspendPayload.tasks, taskListSchema);
-	const planItems = parseSchemaArray(suspendPayload.planItems, plannedTaskArgSchema);
-	const domainAccess = parseDomainAccess(suspendPayload.domainAccess);
-	const webSearch = parseSchemaRecord(suspendPayload.webSearch, webSearchMetaSchema);
-	const credentialFlow = parseCredentialFlow(suspendPayload.credentialFlow);
-	const setupRequests = parseSchemaArray(suspendPayload.setupRequests, workflowSetupNodeSchema);
-	const workflowId = presentString(suspendPayload.workflowId);
-	const resourceDecision = parseSchemaRecord(
-		suspendPayload.resourceDecision,
-		gatewayConfirmationRequiredPayloadSchema,
-	);
+	const confirmation = parseSuspendedToolCallConfirmation(chunk);
+	if (!confirmation) return null;
 
 	return {
 		type: 'confirmation-request',
 		...base,
-		payload: {
-			requestId,
-			toolCallId,
-			toolName: typeof chunk.toolName === 'string' ? chunk.toolName : '',
-			args: isRecord(chunk.input) ? chunk.input : {},
-			severity: parseSeverity(suspendPayload.severity),
-			message:
-				typeof suspendPayload.message === 'string'
-					? suspendPayload.message
-					: 'Confirmation required',
-			...(credentialRequests ? { credentialRequests } : {}),
-			...(projectId ? { projectId } : {}),
-			...(inputType ? { inputType } : {}),
-			...(domainAccess ? { domainAccess } : {}),
-			...(webSearch ? { webSearch } : {}),
-			...(credentialFlow ? { credentialFlow } : {}),
-			...(setupRequests ? { setupRequests } : {}),
-			...(workflowId ? { workflowId } : {}),
-			...(questions ? { questions } : {}),
-			...(introMessage ? { introMessage } : {}),
-			...(tasks ? { tasks } : {}),
-			...(planItems ? { planItems } : {}),
-			...(resourceDecision ? { resourceDecision } : {}),
-		},
+		payload: confirmation.payload,
 	};
 }
 

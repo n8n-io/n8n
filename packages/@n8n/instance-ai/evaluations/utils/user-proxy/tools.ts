@@ -1,22 +1,22 @@
-// Decision schema (structured-output target) + encoders to InstanceAiConfirmRequest.
+// Decision wire schema (structured-output target) + encoders to InstanceAiConfirmRequest.
 
 import { domainAccessActionSchema, instanceGatewayResourceDecisionSchema } from '@n8n/api-types';
-import type { InstanceAiConfirmRequest } from '@n8n/api-types';
+import type { DomainAccessAction, InstanceAiConfirmRequest } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils';
 import { z } from 'zod';
 
 // ---------------------------------------------------------------------------
-// Decision schema — the structured-output shape the model fills
+// Wire schema — the strict structured-output shape the model fills
 // ---------------------------------------------------------------------------
 
-const answerSchema = z.object({
+const wireAnswerSchema = z.object({
 	questionId: z.string(),
 	selectedOptions: z.array(z.string()),
 	customText: z.string().nullable(),
 	skipped: z.boolean().nullable(),
 });
 
-export const decisionSchema = z.object({
+export const wireDecisionSchema = z.object({
 	action: z.enum([
 		'answer_questions',
 		'apply_setup_wizard',
@@ -26,7 +26,7 @@ export const decisionSchema = z.object({
 		'send_follow_up_message',
 		'declare_done',
 	]),
-	answers: z.array(answerSchema).nullable(),
+	answers: z.array(wireAnswerSchema).nullable(),
 	// JSON-encoded object mapping setup node name -> parameter map. Emitted as a string
 	// because Anthropic structured output rejects nested z.record schemas.
 	nodeParametersJson: z.string().nullable(),
@@ -37,7 +37,68 @@ export const decisionSchema = z.object({
 	message: z.string().nullable(),
 });
 
-export type Decision = z.infer<typeof decisionSchema>;
+export type WireDecision = z.infer<typeof wireDecisionSchema>;
+
+export interface Answer {
+	questionId: string;
+	selectedOptions: string[];
+	customText?: string;
+	skipped?: boolean;
+}
+
+export type Decision =
+	| { action: 'answer_questions'; answers: Answer[] }
+	| { action: 'apply_setup_wizard'; nodeParametersJson: string }
+	| { action: 'approve_or_reject'; approved: boolean; userInput?: string }
+	| { action: 'respond_to_domain_access'; response: DomainAccessAction }
+	| { action: 'pick_resource_decision'; decision: string }
+	| { action: 'send_follow_up_message'; message: string }
+	| { action: 'declare_done' };
+
+export function parseWireDecision(value: WireDecision): Decision | undefined {
+	switch (value.action) {
+		case 'answer_questions':
+			if (!value.answers) return undefined;
+			return {
+				action: value.action,
+				answers: value.answers.map(({ questionId, selectedOptions, customText, skipped }) => ({
+					questionId,
+					selectedOptions,
+					...(customText ? { customText } : {}),
+					...(skipped !== null ? { skipped } : {}),
+				})),
+			};
+
+		case 'apply_setup_wizard':
+			return value.nodeParametersJson
+				? { action: value.action, nodeParametersJson: value.nodeParametersJson }
+				: undefined;
+
+		case 'approve_or_reject':
+			return value.approved !== null
+				? {
+						action: value.action,
+						approved: value.approved,
+						...(value.userInput ? { userInput: value.userInput } : {}),
+					}
+				: undefined;
+
+		case 'respond_to_domain_access': {
+			if (!value.response) return undefined;
+			const parsed = domainAccessActionSchema.safeParse(value.response);
+			return parsed.success ? { action: value.action, response: parsed.data } : undefined;
+		}
+
+		case 'pick_resource_decision':
+			return value.decision ? { action: value.action, decision: value.decision } : undefined;
+
+		case 'send_follow_up_message':
+			return value.message !== null ? { action: value.action, message: value.message } : undefined;
+
+		case 'declare_done':
+			return { action: value.action };
+	}
+}
 
 export interface SetupWizardParseContext {
 	nodes: Array<{
@@ -85,19 +146,17 @@ export function encodeConfirmationDecision(
 ): InstanceAiConfirmRequest | null {
 	switch (decision.action) {
 		case 'answer_questions':
-			if (!decision.answers) return null;
 			return {
 				kind: 'questions',
 				answers: decision.answers.map(({ questionId, selectedOptions, customText, skipped }) => ({
 					questionId,
 					selectedOptions,
 					...(customText ? { customText } : {}),
-					...(skipped !== null ? { skipped } : {}),
+					...(skipped !== undefined ? { skipped } : {}),
 				})),
 			};
 
 		case 'apply_setup_wizard':
-			if (!decision.nodeParametersJson) return null;
 			return {
 				kind: 'setupWorkflowApply',
 				nodeParameters: parseNodeParametersJson(
@@ -108,7 +167,6 @@ export function encodeConfirmationDecision(
 			};
 
 		case 'approve_or_reject':
-			if (decision.approved === null) return null;
 			return {
 				kind: 'approval',
 				approved: decision.approved,
@@ -116,7 +174,6 @@ export function encodeConfirmationDecision(
 			};
 
 		case 'respond_to_domain_access': {
-			if (!decision.response) return null;
 			if (decision.response === 'deny') return { kind: 'domainAccessDeny' };
 			const parsed = domainAccessActionSchema.safeParse(decision.response);
 			return {
@@ -126,7 +183,6 @@ export function encodeConfirmationDecision(
 		}
 
 		case 'pick_resource_decision': {
-			if (!decision.decision) return null;
 			const parsed = instanceGatewayResourceDecisionSchema.safeParse(decision.decision);
 			return {
 				kind: 'resourceDecision',

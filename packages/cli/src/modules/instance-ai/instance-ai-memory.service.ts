@@ -1,6 +1,4 @@
 import {
-	confirmationRequestPayloadSchema,
-	instanceAiConfirmationSeveritySchema,
 	type InstanceAiConfirmation,
 	InstanceAiEnsureThreadResponse,
 	InstanceAiRichMessagesResponse,
@@ -14,6 +12,7 @@ import type { InstanceAiConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import {
 	createSubAgentResourceIdPrefix,
+	parseSuspendedToolCallConfirmation,
 	patchThread,
 	type AgentDbMessage,
 	type AgentTreeSnapshot,
@@ -89,83 +88,19 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function presentString(value: unknown): string | undefined {
-	return typeof value === 'string' && value.length > 0 ? value : undefined;
-}
-
-function parseConfirmationSeverity(value: unknown): InstanceAiConfirmation['severity'] {
-	const parsed = instanceAiConfirmationSeveritySchema.safeParse(value);
-	return parsed.success ? parsed.data : 'info';
-}
-
-function setIfDefined<T, K extends keyof T>(target: T, key: K, value: T[K] | undefined): void {
-	if (value !== undefined) target[key] = value;
-}
-
-function buildConfirmationFromPendingToolCall(
-	toolCallId: string,
-	pendingToolCall: unknown,
-): InstanceAiConfirmation | undefined {
-	if (!isRecord(pendingToolCall) || pendingToolCall.suspended !== true) return undefined;
-
-	const suspendPayload = isRecord(pendingToolCall.suspendPayload)
-		? pendingToolCall.suspendPayload
-		: {};
-	const parsed = confirmationRequestPayloadSchema.safeParse({
-		requestId: presentString(suspendPayload.requestId) ?? toolCallId,
-		inputThreadId: suspendPayload.inputThreadId,
-		toolCallId,
-		toolName: presentString(pendingToolCall.toolName) ?? '',
-		args: isRecord(pendingToolCall.input) ? pendingToolCall.input : {},
-		severity: parseConfirmationSeverity(suspendPayload.severity),
-		message: presentString(suspendPayload.message) ?? 'Confirmation required',
-		credentialRequests: suspendPayload.credentialRequests,
-		projectId: suspendPayload.projectId,
-		inputType: suspendPayload.inputType,
-		questions: suspendPayload.questions,
-		introMessage: suspendPayload.introMessage,
-		tasks: suspendPayload.tasks,
-		planItems: suspendPayload.planItems,
-		domainAccess: suspendPayload.domainAccess,
-		webSearch: suspendPayload.webSearch,
-		credentialFlow: suspendPayload.credentialFlow,
-		setupRequests: suspendPayload.setupRequests,
-		workflowId: suspendPayload.workflowId,
-		resourceDecision: suspendPayload.resourceDecision,
-	});
-	if (!parsed.success) return undefined;
-
-	const payload = parsed.data;
-	const confirmation: InstanceAiConfirmation = {
-		requestId: payload.requestId,
-		severity: payload.severity,
-		message: payload.message,
-	};
-	setIfDefined(confirmation, 'inputThreadId', payload.inputThreadId);
-	setIfDefined(confirmation, 'credentialRequests', payload.credentialRequests);
-	setIfDefined(confirmation, 'projectId', payload.projectId);
-	setIfDefined(confirmation, 'inputType', payload.inputType);
-	setIfDefined(confirmation, 'domainAccess', payload.domainAccess);
-	setIfDefined(confirmation, 'webSearch', payload.webSearch);
-	setIfDefined(confirmation, 'credentialFlow', payload.credentialFlow);
-	setIfDefined(confirmation, 'setupRequests', payload.setupRequests);
-	setIfDefined(confirmation, 'workflowId', payload.workflowId);
-	setIfDefined(confirmation, 'planItems', payload.planItems);
-	setIfDefined(confirmation, 'questions', payload.questions);
-	setIfDefined(confirmation, 'introMessage', payload.introMessage);
-	setIfDefined(confirmation, 'tasks', payload.tasks);
-	setIfDefined(confirmation, 'resourceDecision', payload.resourceDecision);
-
-	return confirmation;
-}
-
 function collectCheckpointConfirmations(state: unknown): Map<string, InstanceAiConfirmation> {
 	const confirmations = new Map<string, InstanceAiConfirmation>();
 	if (!isRecord(state) || !isRecord(state.pendingToolCalls)) return confirmations;
 
 	for (const [toolCallId, pendingToolCall] of Object.entries(state.pendingToolCalls)) {
-		const confirmation = buildConfirmationFromPendingToolCall(toolCallId, pendingToolCall);
-		if (confirmation) confirmations.set(toolCallId, confirmation);
+		if (!isRecord(pendingToolCall) || pendingToolCall.suspended !== true) continue;
+		const parsed = parseSuspendedToolCallConfirmation({
+			toolCallId,
+			toolName: pendingToolCall.toolName,
+			input: pendingToolCall.input,
+			suspendPayload: pendingToolCall.suspendPayload,
+		});
+		if (parsed) confirmations.set(toolCallId, parsed.confirmation);
 	}
 
 	return confirmations;

@@ -13,6 +13,7 @@ import type { CredentialsFinderService } from '@/credentials/credentials-finder.
 import type { CredentialsService } from '@/credentials/credentials.service';
 
 import { InstanceAiSettingsService } from '../instance-ai-settings.service';
+import { SUPPORTED_INSTANCE_AI_PROXY_PROVIDERS } from '../instance-ai-proxy-providers';
 
 describe('InstanceAiSettingsService', () => {
 	const globalConfig = mock<{
@@ -74,31 +75,25 @@ describe('InstanceAiSettingsService', () => {
 	});
 
 	describe('resolveProxyModelParts', () => {
-		it('should parse Anthropic proxy model IDs', () => {
-			globalConfig.instanceAi.model = 'anthropic/claude-sonnet-4-6';
+		it.each(SUPPORTED_INSTANCE_AI_PROXY_PROVIDERS)(
+			'should parse %s proxy model IDs',
+			(provider) => {
+				const modelName = provider === 'anthropic' ? 'claude-sonnet-4-6' : 'gpt-5.5';
+				globalConfig.instanceAi.model = `${provider}/${modelName}`;
 
-			expect(service.resolveProxyModelParts()).toEqual({
-				provider: 'anthropic',
-				modelName: 'claude-sonnet-4-6',
-				modelId: 'anthropic/claude-sonnet-4-6',
-			});
-		});
-
-		it('should parse OpenAI proxy model IDs', () => {
-			globalConfig.instanceAi.model = 'openai/gpt-5.5';
-
-			expect(service.resolveProxyModelParts()).toEqual({
-				provider: 'openai',
-				modelName: 'gpt-5.5',
-				modelId: 'openai/gpt-5.5',
-			});
-		});
+				expect(service.resolveProxyModelParts()).toEqual({
+					provider,
+					modelName,
+					modelId: `${provider}/${modelName}`,
+				});
+			},
+		);
 
 		it('should reject model IDs without a provider prefix', () => {
 			globalConfig.instanceAi.model = 'gpt-5.5';
 
 			expect(() => service.resolveProxyModelParts()).toThrow(UserError);
-			expect(() => service.resolveProxyModelParts()).toThrow(/Expected "anthropic\/<model>"/);
+			expect(() => service.resolveProxyModelParts()).toThrow(/Expected one of:/);
 		});
 
 		it('should reject empty model names', () => {
