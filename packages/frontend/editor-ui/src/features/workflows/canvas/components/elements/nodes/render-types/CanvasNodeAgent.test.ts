@@ -7,6 +7,7 @@ import CanvasNodeAgent from './CanvasNodeAgent.vue';
 import { createCanvasNodeProvide } from '@/features/workflows/canvas/__tests__/utils';
 import { CanvasNodeRenderType } from '@/features/workflows/canvas/canvas.types';
 import { AGENT_BUILDER_VIEW } from '@/features/agents/constants';
+import { useAgentCanvasCardStore } from '@/features/agents/agentCanvasCard.store';
 
 const { summaryHolder, errorHolder, modelCatalogHolder, pushSpy, ensureLoadedSpy } = vi.hoisted(
 	() => ({
@@ -56,7 +57,9 @@ const renderComponent = createComponentRenderer(CanvasNodeAgent, {
 			CredentialIcon: true,
 			CanvasNodeStatusIcons: true,
 			AgentSelectorParameterInput: {
-				template: '<button data-test-id="agent-picker-stub" @click="onPick" />',
+				props: ['autoOpen'],
+				template:
+					'<button data-test-id="agent-picker-stub" :data-auto-open="String(autoOpen)" @click="onPick" />',
 				methods: {
 					onPick() {
 						this.$emit('update:modelValue', { __rl: true, mode: 'list', value: 'agent-9' });
@@ -200,5 +203,29 @@ describe('CanvasNodeAgent', () => {
 		await fireEvent.dblClick(getByTestId('agent-picker-stub'));
 
 		expect(emitted('activate')).toBeFalsy();
+	});
+
+	it('auto-opens the picker and consumes the signal when this node is queued (empty state)', () => {
+		setActivePinia(createTestingPinia({ stubActions: false }));
+		const agentStore = useAgentCanvasCardStore();
+		// 'node' is the default id from createCanvasNodeProvide.
+		agentStore.setNodeIdToOpenPicker('node');
+
+		const { getByTestId } = renderWithAgent('');
+
+		expect(getByTestId('agent-picker-stub').getAttribute('data-auto-open')).toBe('true');
+		// Consumed so a later re-render doesn't reopen it.
+		expect(agentStore.nodeIdToOpenPicker).toBeUndefined();
+	});
+
+	it('does not auto-open or consume the signal when another node is queued', () => {
+		setActivePinia(createTestingPinia({ stubActions: false }));
+		const agentStore = useAgentCanvasCardStore();
+		agentStore.setNodeIdToOpenPicker('some-other-node');
+
+		const { getByTestId } = renderWithAgent('');
+
+		expect(getByTestId('agent-picker-stub').getAttribute('data-auto-open')).toBe('false');
+		expect(agentStore.nodeIdToOpenPicker).toBe('some-other-node');
 	});
 });

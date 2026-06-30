@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, useCssModule, watch } from 'vue';
+import { computed, ref, useCssModule, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import type { INodeParameterResourceLocator, INodeProperties } from 'n8n-workflow';
 import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
@@ -9,6 +9,7 @@ import type { CanvasNodeAgentRender } from '../../../../canvas.types';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useAgentCanvasCardStore } from '@/features/agents/agentCanvasCard.store';
 import { useAgentCapabilitySummary } from '@/features/agents/composables/useAgentCapabilitySummary';
 import { useAgentIntegrationsCatalog } from '@/features/agents/composables/useAgentIntegrationsCatalog';
 import { useModelCatalog } from '@/features/agents/composables/useModelCatalog';
@@ -74,6 +75,23 @@ const agentId = computed(() => {
 });
 
 const isConfigured = computed(() => agentId.value !== '');
+
+const agentCanvasCardStore = useAgentCanvasCardStore();
+
+// Auto-open the embedded picker once, right after the node is added: the add
+// flow queues this node's id. Consume the signal so the picker doesn't reopen
+// on later re-renders.
+const shouldAutoOpenPicker = ref(false);
+watch(
+	() => agentCanvasCardStore.nodeIdToOpenPicker,
+	(queuedId) => {
+		if (queuedId && queuedId === id.value && !isConfigured.value) {
+			shouldAutoOpenPicker.value = true;
+			agentCanvasCardStore.clearNodeIdToOpenPicker();
+		}
+	},
+	{ immediate: true },
+);
 
 const projectId = computed(
 	() =>
@@ -234,6 +252,7 @@ watch(
 							:model-value="agentResourceLocator"
 							path="parameters.agentId"
 							:is-read-only="isReadOnly"
+							:auto-open="shouldAutoOpenPicker"
 							input-size="medium"
 							hide-mode-selector
 							@update:model-value="onPickAgent"

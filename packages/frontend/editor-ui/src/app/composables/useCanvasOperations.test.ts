@@ -30,6 +30,7 @@ import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionSt
 import { useUIStore } from '@/app/stores/ui.store';
 import { useHistoryStore } from '@/app/stores/history.store';
 import { getNDVStoreId, useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useAgentCanvasCardStore } from '@/features/agents/agentCanvasCard.store';
 import {
 	createTestNode,
 	createTestNodeProperties,
@@ -53,6 +54,7 @@ import {
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	MCP_TRIGGER_NODE_TYPE,
+	MESSAGE_AN_AGENT_NODE_TYPE,
 	OPEN_AI_CHAT_MODEL_NODE_TYPE,
 	SET_NODE_TYPE,
 	STICKY_NODE_TYPE,
@@ -400,6 +402,71 @@ describe('useCanvasOperations', () => {
 			);
 
 			await waitFor(() => expect(ndvStore.setActiveNodeName).not.toHaveBeenCalled());
+		});
+
+		it('opens the agent card picker instead of the NDV when adding the v2 agent node', async () => {
+			const ndvStore = useNDVStore(createWorkflowDocumentId(workflowId));
+			const agentCanvasCardStore = mockedStore(useAgentCanvasCardStore);
+			const nodeTypeDescription = mockNodeTypeDescription({ name: MESSAGE_AN_AGENT_NODE_TYPE });
+
+			const { addNode } = useCanvasOperations();
+			const result = addNode(
+				{
+					type: MESSAGE_AN_AGENT_NODE_TYPE,
+					typeVersion: 2,
+					name: 'Agent',
+				},
+				nodeTypeDescription,
+				{ openNDV: true },
+			);
+
+			await waitFor(() =>
+				expect(agentCanvasCardStore.setNodeIdToOpenPicker).toHaveBeenCalledWith(result.id),
+			);
+			expect(ndvStore.setActiveNodeName).not.toHaveBeenCalled();
+		});
+
+		it('does not queue the agent card picker when the v2 agent node is added without openNDV', async () => {
+			const agentCanvasCardStore = mockedStore(useAgentCanvasCardStore);
+			const nodeTypeDescription = mockNodeTypeDescription({ name: MESSAGE_AN_AGENT_NODE_TYPE });
+
+			const { addNode } = useCanvasOperations();
+			addNode(
+				{
+					type: MESSAGE_AN_AGENT_NODE_TYPE,
+					typeVersion: 2,
+					name: 'Agent',
+				},
+				nodeTypeDescription,
+				{ openNDV: false },
+			);
+
+			// Flush the post-add nextTick (a macrotask runs after the microtask queue)
+			// before asserting the absence of a call.
+			await new Promise((resolve) => setTimeout(resolve));
+			expect(agentCanvasCardStore.setNodeIdToOpenPicker).not.toHaveBeenCalled();
+		});
+
+		it('still opens the NDV when adding the legacy v1 agent node', async () => {
+			const ndvStore = useNDVStore(createWorkflowDocumentId(workflowId));
+			const agentCanvasCardStore = mockedStore(useAgentCanvasCardStore);
+			const nodeTypeDescription = mockNodeTypeDescription({ name: MESSAGE_AN_AGENT_NODE_TYPE });
+
+			const { addNode } = useCanvasOperations();
+			addNode(
+				{
+					type: MESSAGE_AN_AGENT_NODE_TYPE,
+					typeVersion: 1,
+					name: 'Agent',
+				},
+				nodeTypeDescription,
+				{ openNDV: true },
+			);
+
+			await waitFor(() =>
+				expect(ndvStore.setActiveNodeName).toHaveBeenCalledWith('Agent', 'added_new_node'),
+			);
+			expect(agentCanvasCardStore.setNodeIdToOpenPicker).not.toHaveBeenCalled();
 		});
 
 		it('should pass actionName to telemetry when adding node with action', async () => {

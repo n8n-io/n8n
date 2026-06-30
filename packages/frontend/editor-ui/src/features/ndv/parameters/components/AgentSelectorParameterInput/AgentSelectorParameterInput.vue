@@ -59,6 +59,12 @@ export interface Props {
 	 * NDV the active node is resolved from the NDV store instead.
 	 */
 	originNodeId?: string;
+	/**
+	 * Open the list dropdown (and focus its filter) as soon as this turns true.
+	 * Used by the canvas card to surface the picker right after the node is
+	 * added. No-op outside list mode or when read-only.
+	 */
+	autoOpen?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -71,6 +77,7 @@ const props = withDefaults(defineProps<Props>(), {
 	newResourceLabel: '',
 	parameterIssues: () => [],
 	hideModeSelector: false,
+	autoOpen: false,
 });
 
 const emit = defineEmits<{
@@ -359,17 +366,31 @@ async function onRetry() {
 // tab/route) reflects without reopening the NDV.
 onDocumentVisible(refreshCachedAgent);
 
+// Open the list dropdown when the consumer requests it (the canvas card sets
+// `autoOpen` right after the node is added). `showDropdown` is a no-op outside
+// list mode, and the dropdown focuses its own filter input once shown.
+function openPickerIfRequested() {
+	if (props.autoOpen && !props.isReadOnly) {
+		showDropdown();
+	}
+}
+
 onMounted(() => {
 	window.addEventListener('resize', setWidth);
 	setWidth();
 	void setAgentsResources();
 	void refreshCachedAgent();
+	openPickerIfRequested();
 });
 
 onUnmounted(() => {
 	emitValueDebounced.flush();
 	window.removeEventListener('resize', setWidth);
 });
+
+// Handle the signal arriving after mount; the dropdown is already mounted, so
+// the false→true `show` transition focuses its filter input.
+watch(() => props.autoOpen, openPickerIfRequested);
 
 watch(
 	() => props.isValueExpression,

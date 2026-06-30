@@ -377,4 +377,33 @@ describe('AgentSelectorParameterInput', () => {
 		// The list input itself is still available.
 		expect(getByTestId('rlc-input')).toBeInTheDocument();
 	});
+
+	it('opens the dropdown on mount when autoOpen is set', async () => {
+		const { getByTestId } = renderComponent({
+			props: makeProps({ hideModeSelector: true, autoOpen: true }),
+		});
+		await flushPromises();
+
+		// The filter input only renders while the dropdown is open, so its
+		// presence proves the picker auto-opened without a click.
+		expect(getByTestId('rlc-search')).toBeInTheDocument();
+	});
+
+	it('keeps the dropdown closed on mount without autoOpen', async () => {
+		const { queryByTestId } = renderComponent({
+			props: makeProps({ hideModeSelector: true }),
+		});
+		await flushPromises();
+
+		expect(queryByTestId('rlc-search')).toBeNull();
+	});
+
+	it('does not auto-open when read-only', async () => {
+		const { queryByTestId } = renderComponent({
+			props: makeProps({ hideModeSelector: true, autoOpen: true, isReadOnly: true }),
+		});
+		await flushPromises();
+
+		expect(queryByTestId('rlc-search')).toBeNull();
+	});
 });

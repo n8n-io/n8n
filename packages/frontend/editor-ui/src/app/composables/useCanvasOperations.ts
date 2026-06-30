@@ -37,6 +37,7 @@ import { useWorkflowNormalization } from '@/app/composables/useWorkflowNormaliza
 import { getExecutionErrorToastConfiguration } from '@/features/execution/executions/executions.utils';
 import {
 	EnterpriseEditionFeature,
+	MESSAGE_AN_AGENT_NODE_TYPE,
 	STICKY_NODE_TYPE,
 	UPDATE_WEBHOOK_ID_NODE_TYPES,
 	VIEWS,
@@ -141,6 +142,7 @@ import { isChatNode } from '@/app/utils/aiUtils';
 import cloneDeep from 'lodash/cloneDeep';
 import uniq from 'lodash/uniq';
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
+import { useAgentCanvasCardStore } from '@/features/agents/agentCanvasCard.store';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
 import { useCanvasNodeGroupOperationGuards } from '@/features/workflows/canvas/composables/useCanvasNodeGroupOperationGuards';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
@@ -202,6 +204,7 @@ export function useCanvasOperations() {
 	const projectsStore = useProjectsStore();
 	const logsStore = useLogsStore();
 	const experimentalNdvStore = useExperimentalNdvStore();
+	const agentCanvasCardStore = useAgentCanvasCardStore();
 	const templatesStore = useTemplatesStore();
 	const focusPanelStore = useFocusPanelStore();
 	const setupPanelStore = useSetupPanelStore();
@@ -1092,8 +1095,12 @@ export function useCanvasOperations() {
 			}
 
 			const isStickyNode = nodeData.type === STICKY_NODE_TYPE;
+			// The v2 AI Agent node is configured inline on its canvas card, so an
+			// interactive add opens the card's embedded picker instead of the NDV.
+			const isAgentCardNode =
+				nodeData.type === MESSAGE_AN_AGENT_NODE_TYPE && (nodeData.typeVersion ?? 0) >= 2;
 			const nextView =
-				isStickyNode || !options.openNDV || preventOpeningNDV
+				isStickyNode || isAgentCardNode || !options.openNDV || preventOpeningNDV
 					? undefined
 					: experimentalNdvStore.isNdvInFocusPanelEnabled &&
 							focusPanelStore.focusPanelActive &&
@@ -1110,7 +1117,13 @@ export function useCanvasOperations() {
 			if (!isStickyNode) {
 				void externalHooks.run('nodeView.addNodeButton', { nodeTypeName: nodeData.type });
 
-				if (nextView === 'focus_panel') {
+				if (isAgentCardNode) {
+					// Mirror the NDV-open gating: only an interactive add (not paste/import)
+					// surfaces the picker.
+					if (options.openNDV && !preventOpeningNDV) {
+						agentCanvasCardStore.setNodeIdToOpenPicker(nodeData.id);
+					}
+				} else if (nextView === 'focus_panel') {
 					// Do nothing. The added node get selected and the details are shown in the focus panel
 				} else if (nextView === 'zoomed_view') {
 					experimentalNdvStore.setNodeNameToBeFocused(nodeData.name);
