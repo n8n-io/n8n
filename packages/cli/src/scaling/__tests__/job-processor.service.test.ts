@@ -335,6 +335,44 @@ describe('JobProcessor', () => {
 		expect(additionalData.restartExecutionId).toBe(restartExecutionId);
 	});
 
+	it('should rehydrate the manual-execution identity onto additionalData from job data', async () => {
+		const executionRepository = mock<ExecutionRepository>();
+		const execution = mock<IExecutionResponse>({
+			mode: 'manual',
+			workflowData: { id: 'workflow-id', nodes: [], staticData: {} },
+			data: mock<IRunExecutionData>({
+				resultData: { runData: {} },
+				executionData: undefined,
+			}),
+		});
+		const executionPersistence = mock<ExecutionPersistence>();
+		executionPersistence.findSingleExecution.mockResolvedValue(execution);
+
+		const additionalData = mock<IWorkflowExecuteAdditionalData>();
+		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
+
+		const manualExecutionService = createManualExecutionServiceMock();
+		const jobProcessor = new JobProcessor(
+			logger,
+			executionRepository,
+			executionPersistence,
+			mock(),
+			mock(),
+			mock(),
+			manualExecutionService,
+			executionsConfig,
+			mock(),
+		);
+
+		const executionId = 'execution-id';
+		const encryptedRunnerIdentity = 'encrypted-identity-blob';
+		await jobProcessor.processJob(
+			mock<Job>({ data: { executionId, loadStaticData: false, encryptedRunnerIdentity } }),
+		);
+
+		expect(additionalData.encryptedRunnerIdentity).toBe(encryptedRunnerIdentity);
+	});
+
 	it.each(['manual', 'evaluation', 'trigger'] satisfies WorkflowExecuteMode[])(
 		'should use workflowExecute to process a job with mode %p with execution data',
 		async (mode) => {

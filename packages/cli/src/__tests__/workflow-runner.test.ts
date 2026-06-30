@@ -412,6 +412,32 @@ describe('enqueueExecution', () => {
 			expect.any(Object),
 		);
 	});
+
+	it('should carry the manual-execution identity into job data', async () => {
+		const activeExecutions = Container.get(ActiveExecutions);
+		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValue();
+		vi.spyOn(runner, 'processError').mockResolvedValue();
+		const data = mock<IWorkflowExecutionDataProcess>({
+			workflowData: { nodes: [], staticData: {} },
+			executionData: undefined,
+			encryptedRunnerIdentity: 'encrypted-identity-blob',
+		});
+		const error = new Error('stop for test purposes');
+
+		// mock a rejection to stop execution flow before we create the PCancelable promise,
+		// so that Jest does not move on to tear down the suite until the PCancelable settles
+		addJob.mockRejectedValueOnce(error);
+
+		// @ts-expect-error Private method
+		await expect(runner.enqueueExecution('1', 'workflow-xyz', data)).rejects.toThrowError(error);
+
+		expect(addJob).toHaveBeenCalledWith(
+			expect.objectContaining({
+				encryptedRunnerIdentity: 'encrypted-identity-blob',
+			}),
+			expect.any(Object),
+		);
+	});
 });
 
 describe('workflow timeout with startedAt', () => {

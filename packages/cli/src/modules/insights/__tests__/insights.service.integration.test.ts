@@ -1099,6 +1099,13 @@ describe('InsightsService (Integration)', () => {
 			);
 		});
 
+		beforeEach(() => {
+			mockCompactionService.stopCompactionTimer.mockReset();
+			mockCompactionService.stopCompactionTimer.mockResolvedValue(undefined);
+			mockPruningService.stopPruningTimer.mockReset();
+			mockPruningService.stopPruningTimer.mockReturnValue(undefined);
+		});
+
 		test('shutdown stops timers and shuts down services', async () => {
 			// ARRANGE
 			// Get the real service from the container and spy on it
@@ -1112,6 +1119,31 @@ describe('InsightsService (Integration)', () => {
 			expect(shutdownSpy).toHaveBeenCalled();
 			expect(mockCompactionService.stopCompactionTimer).toHaveBeenCalled();
 			expect(mockPruningService.stopPruningTimer).toHaveBeenCalled();
+		});
+
+		test('stops pruning before waiting for compaction to finish', async () => {
+			// ARRANGE
+			const callOrder: string[] = [];
+			let resolveCompaction!: () => void;
+			mockCompactionService.stopCompactionTimer.mockImplementation(async () => {
+				callOrder.push('compaction');
+				await new Promise<void>((resolve) => {
+					resolveCompaction = resolve;
+				});
+			});
+			mockPruningService.stopPruningTimer.mockImplementation(() => {
+				callOrder.push('pruning');
+			});
+
+			// ACT
+			const stopPromise = insightsService.stopCompactionAndPruningTimers();
+			await Promise.resolve();
+
+			// ASSERT
+			expect(callOrder).toEqual(['pruning', 'compaction']);
+
+			resolveCompaction();
+			await stopPromise;
 		});
 	});
 });

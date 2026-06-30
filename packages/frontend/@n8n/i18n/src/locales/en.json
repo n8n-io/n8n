@@ -2819,6 +2819,7 @@
 	"instanceRoles.option.manage": "Manage",
 	"instanceRoles.option.manageOwn": "Manage own",
 	"instanceRoles.option.manageAll": "Manage others",
+	"instanceRoles.option.includedIn": "Included in {option}",
 	"roles.instance.newRole": "New instance role",
 	"roles.instance.editRole": "Custom instance role",
 	"roles.instance.backToRoles": "Back to roles",
