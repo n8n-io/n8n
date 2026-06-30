@@ -115,8 +115,14 @@ const pendingCredentialContext = ref<PendingCredentialContext | null>(null);
 async function connectOrSwapCredential(serverSlug: string, credentialId: string): Promise<boolean> {
 	const existing = mcpStore.connections.find((c) => c.serverSlug === serverSlug);
 	if (!existing) {
-		const created = await mcpStore.connect({ serverSlug, credentialId });
-		return Boolean(created);
+		const result = await mcpStore.connect({ serverSlug, credentialId });
+		if (result) {
+			toast.showMessage({
+				type: 'success',
+				title: i18n.baseText('instanceAi.mcp.success.connect'),
+			});
+		}
+		return Boolean(result);
 	}
 
 	if (existing.credentialId === credentialId) {

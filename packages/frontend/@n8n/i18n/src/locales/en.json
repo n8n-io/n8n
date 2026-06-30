@@ -5964,6 +5964,7 @@
 	"instanceAi.connections.types.computerUse.description": "Work with local files, terminal commands, and your browser",
 	"instanceAi.connections.types.browserUse.subtitle": "Browser use",
 	"instanceAi.connections.types.browserUse.description": "Let the agent automate tasks in your browser",
+	"instanceAi.mcp.success.connect": "Connected successfully",
 	"instanceAi.mcp.error.fetchConnections": "Failed to load MCP connections",
 	"instanceAi.mcp.error.fetchCatalog": "Failed to load MCP server catalog",
 	"instanceAi.mcp.error.connect": "Failed to connect MCP server",
