@@ -122,7 +122,7 @@ The monorepo is organized into these key packages:
 
 - **Frontend:** Vue 3 + TypeScript + Vite + Pinia + Storybook UI Library
 - **Backend:** Node.js + TypeScript + Express + TypeORM
-- **Testing:** Jest (unit) + Playwright (E2E)
+- **Testing:** Vitest (unit) + Playwright (E2E)
 - **Database:** TypeORM with SQLite/PostgreSQL support
 - **Code Quality:** Biome (for formatting) + ESLint + lefthook git hooks
 
@@ -195,7 +195,7 @@ const children = getChildNodes(workflow.connections, 'NodeName', 'main', 1);
 - **For Vitest packages that use `@n8n/di` decorators**, use `createVitestConfigWithDecorators` from `@n8n/vitest-config/node-decorators`. It enables SWC `decoratorMetadata` (esbuild doesn't emit it) and externalizes workspace packages that register services (`@n8n/di`, `@n8n/config`, `@n8n/constants`, `n8n-workflow`) so a single DI `Container` instance is shared across the runtime. Loading them through Vitest's pipeline alongside their CJS dist produces two `Container`s and `Container.get(...)` returns `undefined`.
 
 What we use for testing and writing tests:
-- For testing nodes and other backend components, we use Jest for unit tests. Examples can be found in `packages/nodes-base/nodes/**/*test*`.
+- For testing nodes and other backend components, we use Vitest for unit tests. Examples can be found in `packages/nodes-base/nodes/**/*test*`.
 - We use `nock` for server mocking
 - For frontend we use `vitest`
 - For E2E tests we use Playwright. Run with `pnpm --filter=n8n-playwright test:local`.

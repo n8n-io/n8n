@@ -177,8 +177,6 @@ describe('WorkflowExecuteAdditionalData', () => {
 					},
 					nodes: [],
 					connections: {},
-					// Real object: a mock-generated fn breaks Workflow's observable wrapping
-					// (vitest's vi.fn().mock is enumerable; Jest's was not).
 					staticData: {},
 				}),
 			);
