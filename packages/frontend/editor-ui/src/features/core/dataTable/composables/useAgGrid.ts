@@ -46,6 +46,11 @@ export const useAgGrid = <TRowData extends Record<string, unknown> = Record<stri
 		const row = initializedGridApi.value.getDisplayedRowAtIndex(focusedCell.rowIndex);
 		if (!row) return;
 
+		// setDataValue bypasses colDef.editable, so check it explicitly — pasting
+		// must respect the same rules as regular editing (read-only grid, add-row
+		// row, oversized values).
+		if (!focusedCell.column.isCellEditable(row)) return;
+
 		const colDef = focusedCell.column.getColDef();
 		if (colDef.cellDataType === 'text') {
 			row.setDataValue(focusedCell.column.getColId(), data);

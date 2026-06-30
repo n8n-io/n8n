@@ -5597,6 +5597,12 @@ importers:
       '@n8n/utils':
         specifier: workspace:*
         version: link:../@n8n/utils
+      '@smithy/node-http-handler':
+        specifier: 4.5.0
+        version: 4.5.0
+      '@smithy/types':
+        specifier: 4.13.1
+        version: 4.13.1
       '@thednp/dommatrix':
         specifier: ^2.0.12
         version: 2.0.12

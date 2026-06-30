@@ -166,6 +166,8 @@ export class JobProcessor {
 		additionalData.streamingEnabled = job.data.streamingEnabled;
 		additionalData.restartExecutionId = job.data.restartExecutionId;
 		additionalData.evaluationRunId = execution.data.manualData?.evaluationRunId;
+		// Rehydrate the manual-execution identity for private credential resolution.
+		additionalData.encryptedRunnerIdentity = job.data.encryptedRunnerIdentity;
 
 		const { pushRef } = job.data;
 

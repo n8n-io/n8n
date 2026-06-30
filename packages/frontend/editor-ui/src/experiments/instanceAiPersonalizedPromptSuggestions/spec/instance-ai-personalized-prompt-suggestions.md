@@ -19,7 +19,7 @@ Use a new PostHog multivariant experiment flag:
 
 ```ts
 export const INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPERIMENT = createExperiment(
-	'090_instance_ai_personalized_prompt_suggestions',
+	'093_instance_ai_personalized_prompt_suggestions',
 	{
 		control: 'control',
 		variantCards: 'variant-cards',
@@ -218,6 +218,7 @@ Treatment behavior:
 - Clicking a suggestion does not auto-send.
 - Focus the composer after insertion.
 - Hover/focus preview uses the full `builderPrompt` as the ghost placeholder, matching current v2 behavior.
+- When no suggestion hover/focus preview is active, use the experiment placeholder `Tip: Ask me for suggestions if you're not sure what to build`.
 - Suggestions are hidden once the composer is dirty, busy, gated by setup, or unavailable, matching the current input behavior.
 - Show a `See more` CTA above the suggestions, aligned to the right, only when the initial suggestion source is `matrix`, `role_default`, or `global_top_performers`.
 - The `See more` label stays `See more` in both states.
@@ -278,6 +279,22 @@ Secondary/diagnostic metrics:
 - Matrix/default coverage: share of treatment users with recognized role/use-case metadata.
 - Source performance split by `suggestion_source`.
 - Cards vs list performance split by `suggestion_format`.
+
+## Feedback Follow-up
+
+Source: Notion feedback from 2026-06-22.
+
+Must change:
+
+- [x] Align card content to the top instead of vertically centering it.
+- [x] Make the card variant feel more clickable.
+
+Nice to have:
+
+- [x] Replace `Suggested for you` with `Start from an example`.
+- [x] Add helper copy under the header: `Picked for you. Change anything.`
+- [x] Use the experiment placeholder: `Tip: Ask me for suggestions if you're not sure what to build`.
+- [x] Add an `AI Assistant` pill near the top so users recognize the feature/icon faster.
 
 ## Implementation TODO
 
