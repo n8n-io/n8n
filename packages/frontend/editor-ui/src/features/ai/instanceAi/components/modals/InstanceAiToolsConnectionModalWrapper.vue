@@ -32,6 +32,8 @@ import type { BaseTextKey } from '@n8n/i18n';
 import { iconForTool } from '../../toolIcons';
 import BrowserUseSetupContent from './BrowserUseSetupContent.vue';
 import ComputerUseSetupContent from './ComputerUseSetupContent.vue';
+import { useInstanceAiComputerUseExperiment } from '@/experiments/instanceAiComputerUse';
+import { useInstanceAiBrowserUseExperiment } from '@/experiments/instanceAiBrowserUse';
 
 const COMPUTER_USE_ITEM_ID = 'computer-use';
 const BROWSER_USE_ITEM_ID = 'browser-use';
@@ -58,6 +60,18 @@ const settingsStore = useInstanceAiSettingsStore();
 const toast = useToast();
 const { canOAuthCredentialQuickConnect, createAndAuthorize } = useCredentialOAuth();
 const { isFeatureEnabled: isMcpFeatureEnabled } = useInstanceAiMcpConnectionsExperiment();
+const { isFeatureEnabled: isComputerUseFeatureEnabled } = useInstanceAiComputerUseExperiment();
+const { isFeatureEnabled: isBrowserUseFeatureEnabled } = useInstanceAiBrowserUseExperiment();
+
+const isMcpEnabled = computed(
+	() => isMcpFeatureEnabled.value && settingsStore.settings?.mcpAccessEnabled,
+);
+const isComputerUseEnabled = computed(
+	() => isComputerUseFeatureEnabled.value && !settingsStore.isLocalGatewayDisabledByAdmin,
+);
+const isBrowserUseEnabled = computed(
+	() => isBrowserUseFeatureEnabled.value && settingsStore.isBrowserUseEnabledByAdmin,
+);
 
 function readConnectionIdPayload(data: unknown): string | null {
 	if (data === null || typeof data !== 'object') return null;
@@ -109,12 +123,12 @@ async function connectOrSwapCredential(serverSlug: string, credentialId: string)
 	return Boolean(updated);
 }
 
-if (isMcpFeatureEnabled.value) {
+if (isMcpEnabled.value) {
 	void mcpStore.fetchCatalogLazy();
 	void mcpStore.fetchConnections();
 }
 
-const credentialsPromise = isMcpFeatureEnabled.value
+const credentialsPromise = isMcpEnabled.value
 	? credentialsStore.fetchAllCredentials()
 	: Promise.resolve([]);
 
@@ -167,8 +181,9 @@ function buildItem(
 }
 
 const builtInServiceDefinitions = computed<ServiceConnectionDefinition[]>(() => {
-	return [
-		{
+	const out: ServiceConnectionDefinition[] = [];
+	if (isBrowserUseEnabled.value) {
+		out.push({
 			id: BROWSER_USE_ITEM_ID,
 			titleKey: 'instanceAi.connections.add.browserUse',
 			descriptionKey: 'instanceAi.connections.types.browserUse.description',
@@ -177,8 +192,11 @@ const builtInServiceDefinitions = computed<ServiceConnectionDefinition[]>(() => 
 			detailProps: { embedded: true },
 			isAvailable: true,
 			isConnected: settingsStore.isBrowserUseConnected,
-		},
-		{
+		});
+	}
+
+	if (isComputerUseEnabled.value) {
+		out.push({
 			id: COMPUTER_USE_ITEM_ID,
 			titleKey: 'instanceAi.connections.add.computerUse',
 			descriptionKey: 'instanceAi.connections.types.computerUse.description',
@@ -187,8 +205,10 @@ const builtInServiceDefinitions = computed<ServiceConnectionDefinition[]>(() => 
 			detailProps: { embedded: true },
 			isAvailable: !settingsStore.isLocalGatewayDisabledByAdmin,
 			isConnected: settingsStore.isGatewayConnected,
-		},
-	];
+		});
+	}
+
+	return out;
 });
 
 const serviceItems = computed<ServiceConnectionItem[]>(() => {
@@ -213,7 +233,7 @@ const activeServiceDefinition = computed<ServiceConnectionDefinition | null>(() 
 
 const items = computed<ToolConnectionItem[]>(() => {
 	const out: ToolConnectionItem[] = [...serviceItems.value];
-	if (!isMcpFeatureEnabled.value || !settingsStore.settings?.mcpAccessEnabled) return out;
+	if (!isMcpEnabled.value) return out;
 
 	const catalog = mcpStore.catalog ?? [];
 	for (const server of catalog) {
