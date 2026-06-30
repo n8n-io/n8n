@@ -1,7 +1,7 @@
 import type { FlattenedItem, TreeRootEmits, TreeRootProps } from 'reka-ui';
 import type { Component } from 'vue';
 
-import type { IconName } from '@n8n/design-system/components';
+import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 
 export type TreeItem = {
 	id: string;

@@ -141,7 +141,7 @@ function getCustomNodeProps(
 	</RekaTreeItem>
 </template>
 
-<style lang="css" module>
+<style module>
 .treeItemRow {
 	position: relative;
 	width: 100%;

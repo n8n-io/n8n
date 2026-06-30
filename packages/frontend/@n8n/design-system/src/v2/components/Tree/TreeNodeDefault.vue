@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, useCssModule } from 'vue';
 
-import N8nIcon from '@n8n/design-system/components/N8nIcon/Icon.vue';
+import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 
 import type { TreeNodeDefaultSlots } from './Tree.types';
@@ -51,7 +51,7 @@ const toggleUi = computed(() => ({
 	>
 		<slot name="icon" :icon="icon" :disabled="disabled" :is-selected="isSelected" :ui="iconUi">
 			<span v-if="icon" :class="$style.treeItemIcon" data-test-id="tree-node-icon">
-				<N8nIcon :icon="icon" size="small" />
+				<Icon :icon="icon" size="small" />
 			</span>
 		</slot>
 
@@ -89,7 +89,7 @@ const toggleUi = computed(() => ({
 				data-test-id="tree-node-toggle"
 				@click.stop="handleToggle()"
 			>
-				<N8nIcon
+				<Icon
 					icon="chevron-right"
 					size="small"
 					:class="[$style.treeItemToggleIcon, { [$style.treeItemToggleIconExpanded]: isExpanded }]"
@@ -99,7 +99,7 @@ const toggleUi = computed(() => ({
 	</div>
 </template>
 
-<style lang="css" module>
+<style module>
 .treeItem {
 	display: flex;
 	align-items: center;

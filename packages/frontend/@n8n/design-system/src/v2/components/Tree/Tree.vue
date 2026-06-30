@@ -242,7 +242,7 @@ function mapVirtualFlattenedItem(
 	</TreeRoot>
 </template>
 
-<style lang="css" module>
+<style module>
 .virtualized {
 	overflow: auto;
 	height: 100%;
