@@ -156,6 +156,27 @@ describe('License', () => {
 		expect(LicenseManager.prototype.getManagementJwt).toHaveBeenCalled();
 	});
 
+	test('isInstanceAiEnabled() checks the feat:instanceAi feature flag', () => {
+		license.isInstanceAiEnabled();
+
+		expect(LicenseManager.prototype.hasFeatureEnabled).toHaveBeenCalledWith('feat:instanceAi');
+	});
+
+	test('getInstanceAiCredits() reads the quota:instanceAiCredits value', () => {
+		vi.mocked(LicenseManager.prototype.getFeatureValue).mockReturnValueOnce(5700);
+
+		expect(license.getInstanceAiCredits()).toBe(5700);
+		expect(LicenseManager.prototype.getFeatureValue).toHaveBeenCalledWith(
+			'quota:instanceAiCredits',
+		);
+	});
+
+	test('getInstanceAiCredits() defaults to 0 when the quota is absent', () => {
+		vi.mocked(LicenseManager.prototype.getFeatureValue).mockReturnValueOnce(undefined);
+
+		expect(license.getInstanceAiCredits()).toBe(0);
+	});
+
 	test('getMainPlan() returns the latest main entitlement', async () => {
 		// mock entitlements response
 		License.prototype.getCurrentEntitlements = vi.fn().mockReturnValue([

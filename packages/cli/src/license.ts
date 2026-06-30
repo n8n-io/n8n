@@ -303,6 +303,11 @@ export class License implements LicenseProvider {
 		return this.isLicensed(LICENSE_FEATURES.AI_CREDITS);
 	}
 
+	/** Whether this instance bills Instance AI from its own credit pool. */
+	isInstanceAiEnabled() {
+		return this.isLicensed(LICENSE_FEATURES.INSTANCE_AI);
+	}
+
 	/** @deprecated Use `LicenseState.isAdvancedExecutionFiltersLicensed` instead. */
 	isAdvancedExecutionFiltersEnabled() {
 		return this.isLicensed(LICENSE_FEATURES.ADVANCED_EXECUTION_FILTERS);
@@ -437,6 +442,11 @@ export class License implements LicenseProvider {
 	/** @deprecated Use `LicenseState` instead. */
 	getAiCredits() {
 		return this.getValue(LICENSE_QUOTAS.AI_CREDITS) ?? 0;
+	}
+
+	/** Instance AI monthly credit allotment; `0` when the quota is absent. */
+	getInstanceAiCredits() {
+		return this.getValue(LICENSE_QUOTAS.INSTANCE_AI_CREDITS) ?? 0;
 	}
 
 	/** @deprecated Use `LicenseState` instead. */
