@@ -174,8 +174,15 @@ const children = getChildNodes(workflow.connections, 'NodeName', 'main', 1);
 
 ### Error Handling
 - Don't use the deprecated `ApplicationError` class anywhere — it's a
-  compatibility shim kept only so community nodes keep resolving.
-  Use `UnexpectedError`, `OperationalError` or `UserError` instead.
+  compatibility shim kept only so community nodes keep resolving. Use one of
+  these instead, picking by cause:
+  - `UserError` — the user caused it (invalid input, unauthorized action,
+    business-rule violation). Default level: info.
+  - `OperationalError` — a transient, expected issue (network request failing,
+    DB query timing out) that should be handled gracefully. Default level:
+    warning.
+  - `UnexpectedError` — a bug in the code (logic mistake, unhandled case,
+    failed assertion) that developers need to fix. Default level: error.
 - Import from appropriate error classes in each package
 
 ### Frontend Development
