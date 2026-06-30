@@ -19,9 +19,10 @@ import {
 	UserRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 import type { INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
 import { ImportService } from '@/services/import.service';
@@ -34,7 +35,7 @@ describe('ImportService', () => {
 	let tagRepository: TagRepository;
 	let owner: User;
 	let ownerPersonalProject: Project;
-	let mockWorkflowService: jest.Mocked<WorkflowService>;
+	let mockWorkflowService: Mocked<WorkflowService>;
 	let mockWorkflowIndexService: WorkflowIndexService;
 
 	let workflowRepository: WorkflowRepository;
@@ -94,7 +95,7 @@ describe('ImportService', () => {
 
 		const dbWorkflow = await getWorkflowById(workflowToImport.id);
 
-		if (!dbWorkflow) fail('Expected to find workflow');
+		if (!dbWorkflow) expect.fail('Expected to find workflow');
 
 		expect(dbWorkflow.id).toBe(workflowToImport.id);
 		expect(mockWorkflowIndexService.updateIndexForDraft).toHaveBeenCalledWith(workflowToImport);
@@ -141,7 +142,7 @@ describe('ImportService', () => {
 
 		const dbWorkflow = await getWorkflowById(workflowToImport.id);
 
-		if (!dbWorkflow) fail('Expected to find workflow');
+		if (!dbWorkflow) expect.fail('Expected to find workflow');
 
 		expect(dbWorkflow.active).toBe(false);
 		expect(dbWorkflow.activeVersionId).toBeNull();
@@ -170,7 +171,7 @@ describe('ImportService', () => {
 
 		const dbWorkflow = await getWorkflowById(workflowToImport.id);
 
-		if (!dbWorkflow) fail('Expected to find workflow');
+		if (!dbWorkflow) expect.fail('Expected to find workflow');
 
 		expect(dbWorkflow.nodes.at(0)?.credentials).toMatchObject(credential);
 	});
@@ -233,7 +234,7 @@ describe('ImportService', () => {
 			relations: ['tags'],
 		});
 
-		if (!dbWorkflow.tags) fail('No tags found on workflow');
+		if (!dbWorkflow.tags) expect.fail('No tags found on workflow');
 
 		expect(dbWorkflow.tags.at(0)?.name).toBe(tag.name); // workflow tagged
 
@@ -295,7 +296,7 @@ describe('ImportService', () => {
 		const existingWorkflow = await createActiveWorkflow();
 
 		const workflowToImport = await getWorkflowById(existingWorkflow.id);
-		if (!workflowToImport) fail('Expected to find workflow');
+		if (!workflowToImport) expect.fail('Expected to find workflow');
 
 		await importService.importWorkflows([workflowToImport], ownerPersonalProject.id, owner.id, {});
 
@@ -324,7 +325,7 @@ describe('ImportService', () => {
 
 		// Import the same workflow again (simulating re-import)
 		const workflowToReimport = await getWorkflowById(initialWorkflow.id);
-		if (!workflowToReimport) fail('Expected to find workflow');
+		if (!workflowToReimport) expect.fail('Expected to find workflow');
 
 		await importService.importWorkflows(
 			[workflowToReimport],
@@ -369,7 +370,7 @@ describe('ImportService', () => {
 			const existingWorkflow = await createActiveWorkflow();
 
 			const workflowToImport = await getWorkflowById(existingWorkflow.id);
-			if (!workflowToImport) fail('Expected to find workflow');
+			if (!workflowToImport) expect.fail('Expected to find workflow');
 			workflowToImport.active = false;
 
 			await importService.importWorkflows([workflowToImport], ownerPersonalProject.id, owner.id, {
@@ -377,7 +378,7 @@ describe('ImportService', () => {
 			});
 
 			const dbWorkflow = await getWorkflowById(workflowToImport.id);
-			if (!dbWorkflow) fail('Expected to find workflow');
+			if (!dbWorkflow) expect.fail('Expected to find workflow');
 
 			expect(dbWorkflow.active).toBe(false);
 			expect(dbWorkflow.activeVersionId).toBeNull();
@@ -395,7 +396,7 @@ describe('ImportService', () => {
 			});
 
 			const dbWorkflow = await getWorkflowById(workflowToImport.id);
-			if (!dbWorkflow) fail('Expected to find workflow');
+			if (!dbWorkflow) expect.fail('Expected to find workflow');
 
 			expect(dbWorkflow.active).toBe(false);
 			expect(dbWorkflow.activeVersionId).toBeNull();
@@ -409,7 +410,7 @@ describe('ImportService', () => {
 			const existingWorkflow = await createActiveWorkflow();
 
 			const workflowToImport = await getWorkflowById(existingWorkflow.id);
-			if (!workflowToImport) fail('Expected to find workflow');
+			if (!workflowToImport) expect.fail('Expected to find workflow');
 			workflowToImport.active = true;
 
 			await importService.importWorkflows([workflowToImport], ownerPersonalProject.id, owner.id, {
@@ -455,7 +456,7 @@ describe('ImportService', () => {
 			const existingWorkflow = await createActiveWorkflow();
 
 			const workflowToImport = await getWorkflowById(existingWorkflow.id);
-			if (!workflowToImport) fail('Expected to find workflow');
+			if (!workflowToImport) expect.fail('Expected to find workflow');
 			workflowToImport.active = true;
 
 			await importService.importWorkflows([workflowToImport], ownerPersonalProject.id, owner.id, {

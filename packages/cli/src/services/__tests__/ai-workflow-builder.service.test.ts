@@ -1,14 +1,16 @@
+import type { Mock, MockedClass } from 'vitest';
 import { AiWorkflowBuilderService } from '@n8n/ai-workflow-builder';
 import type { Logger } from '@n8n/backend-common';
 import type { HttpTransport, OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import type { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import { LazyPackageDirectoryLoader } from 'n8n-core';
 import type { IUser, INodeTypeDescription, ITelemetryTrackProperties } from 'n8n-workflow';
-import type * as fs from 'node:fs';
-import type * as fsp from 'node:fs/promises';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 import type { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
@@ -19,22 +21,22 @@ import type { DynamicNodeParametersService } from '@/services/dynamic-node-param
 import type { UrlService } from '@/services/url.service';
 import type { Telemetry } from '@/telemetry';
 
-jest.mock('@n8n/ai-workflow-builder', () => ({
-	AiWorkflowBuilderService: jest.fn(),
-	// Plain function (not jest.fn) so the global `restoreMocks` doesn't wipe its
+vi.mock('@n8n/ai-workflow-builder', () => ({
+	AiWorkflowBuilderService: vi.fn(),
+	// Plain function (not vi.fn) so the global `restoreMocks` doesn't wipe its
 	// implementation between tests; the disabled SSRF path relies on its return value.
 	createPassthroughSsrfGuard: () => ({
-		validateUrl: jest.fn(),
-		validateRedirectSync: jest.fn(),
-		createSecureLookup: jest.fn(),
+		validateUrl: vi.fn(),
+		validateRedirectSync: vi.fn(),
+		createSecureLookup: vi.fn(),
 	}),
 }));
-jest.mock('@n8n_io/ai-assistant-sdk');
+vi.mock('@n8n_io/ai-assistant-sdk');
 
-const MockedAiWorkflowBuilderService = AiWorkflowBuilderService as jest.MockedClass<
+const MockedAiWorkflowBuilderService = AiWorkflowBuilderService as MockedClass<
 	typeof AiWorkflowBuilderService
 >;
-const MockedAiAssistantClient = AiAssistantClient as jest.MockedClass<typeof AiAssistantClient>;
+const MockedAiAssistantClient = AiAssistantClient as MockedClass<typeof AiAssistantClient>;
 
 describe('WorkflowBuilderService', () => {
 	let service: WorkflowBuilderService;
@@ -55,7 +57,7 @@ describe('WorkflowBuilderService', () => {
 	let mockUser: IUser;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		mockNodeTypeDescriptions = [
 			{
@@ -77,13 +79,13 @@ describe('WorkflowBuilderService', () => {
 				credentials: [],
 			},
 			// postProcessLoaders always releases types from memory
-			postProcessLoaders: jest.fn().mockResolvedValue(undefined),
+			postProcessLoaders: vi.fn().mockResolvedValue(undefined),
 			// collectTypes returns a snapshot copy for callers that need types
-			collectTypes: jest.fn().mockResolvedValue({
+			collectTypes: vi.fn().mockResolvedValue({
 				nodes: mockNodeTypeDescriptions,
 				credentials: [],
 			}),
-			addPostProcessor: jest.fn(),
+			addPostProcessor: vi.fn(),
 		} as unknown as LoadNodesAndCredentials;
 
 		mockLicense = mock<License>();
@@ -102,15 +104,15 @@ describe('WorkflowBuilderService', () => {
 		mockSsrfProtectionService = mock<SsrfProtectionService>();
 		mockOutboundHttp = mock<OutboundHttp>();
 		const mockTransport = mock<HttpTransport>();
-		mockTransport.asCustomFetch.mockReturnValue(jest.fn() as never);
-		(mockOutboundHttp.transport as jest.Mock).mockReturnValue(mockTransport);
+		mockTransport.asCustomFetch.mockReturnValue(vi.fn() as never);
+		(mockOutboundHttp.transport as Mock).mockReturnValue(mockTransport);
 		mockUser = mock<IUser>();
 		mockUser.id = 'test-user-id';
 
 		// Setup default mocks
-		(mockUrlService.getInstanceBaseUrl as jest.Mock).mockReturnValue('https://instance.test.com');
-		(mockLicense.loadCertStr as jest.Mock).mockResolvedValue('test-cert');
-		(mockLicense.getConsumerId as jest.Mock).mockReturnValue('test-consumer-id');
+		(mockUrlService.getInstanceBaseUrl as Mock).mockReturnValue('https://instance.test.com');
+		(mockLicense.loadCertStr as Mock).mockResolvedValue('test-cert');
+		(mockLicense.getConsumerId as Mock).mockReturnValue('test-consumer-id');
 		(mockInstanceSettings.instanceId as unknown) = 'test-instance-id';
 		mockConfig.aiAssistant = { baseUrl: '' };
 
@@ -154,8 +156,10 @@ describe('WorkflowBuilderService', () => {
 			})();
 
 			const mockAiService = mock<AiWorkflowBuilderService>();
-			(mockAiService.chat as jest.Mock).mockReturnValue(mockChatGenerator);
-			MockedAiWorkflowBuilderService.mockImplementation(() => mockAiService);
+			(mockAiService.chat as Mock).mockReturnValue(mockChatGenerator);
+			MockedAiWorkflowBuilderService.mockImplementation(function () {
+				return mockAiService;
+			});
 
 			const generator = service.chat(mockPayload, mockUser);
 			const result = await generator.next();
@@ -193,8 +197,10 @@ describe('WorkflowBuilderService', () => {
 			})();
 
 			const mockAiService = mock<AiWorkflowBuilderService>();
-			(mockAiService.chat as jest.Mock).mockReturnValue(mockChatGenerator);
-			MockedAiWorkflowBuilderService.mockImplementation(() => mockAiService);
+			(mockAiService.chat as Mock).mockReturnValue(mockChatGenerator);
+			MockedAiWorkflowBuilderService.mockImplementation(function () {
+				return mockAiService;
+			});
 
 			const generator = service.chat(mockPayload, mockUser);
 			await generator.next();
@@ -239,10 +245,12 @@ describe('WorkflowBuilderService', () => {
 			})();
 
 			const mockAiService = mock<AiWorkflowBuilderService>();
-			(mockAiService.chat as jest.Mock)
+			(mockAiService.chat as Mock)
 				.mockReturnValueOnce(mockChatGenerator1)
 				.mockReturnValueOnce(mockChatGenerator2);
-			MockedAiWorkflowBuilderService.mockImplementation(() => mockAiService);
+			MockedAiWorkflowBuilderService.mockImplementation(function () {
+				return mockAiService;
+			});
 
 			// First call
 			const generator1 = service.chat(mockPayload, mockUser);
@@ -269,8 +277,10 @@ describe('WorkflowBuilderService', () => {
 			})();
 
 			const mockAiService = mock<AiWorkflowBuilderService>();
-			(mockAiService.chat as jest.Mock).mockReturnValue(mockChatGenerator);
-			MockedAiWorkflowBuilderService.mockImplementation(() => mockAiService);
+			(mockAiService.chat as Mock).mockReturnValue(mockChatGenerator);
+			MockedAiWorkflowBuilderService.mockImplementation(function () {
+				return mockAiService;
+			});
 
 			const generator = service.chat(mockPayload, mockUser, abortController.signal);
 			await generator.next();
@@ -296,8 +306,10 @@ describe('WorkflowBuilderService', () => {
 			};
 
 			const mockAiService = mock<AiWorkflowBuilderService>();
-			(mockAiService.getSessions as jest.Mock).mockResolvedValue(mockSessions);
-			MockedAiWorkflowBuilderService.mockImplementation(() => mockAiService);
+			(mockAiService.getSessions as Mock).mockResolvedValue(mockSessions);
+			MockedAiWorkflowBuilderService.mockImplementation(function () {
+				return mockAiService;
+			});
 
 			const result = await service.getSessions('workflow-123', mockUser);
 
@@ -310,8 +322,10 @@ describe('WorkflowBuilderService', () => {
 			const mockSessions = { sessions: [] };
 
 			const mockAiService = mock<AiWorkflowBuilderService>();
-			(mockAiService.getSessions as jest.Mock).mockResolvedValue(mockSessions);
-			MockedAiWorkflowBuilderService.mockImplementation(() => mockAiService);
+			(mockAiService.getSessions as Mock).mockResolvedValue(mockSessions);
+			MockedAiWorkflowBuilderService.mockImplementation(function () {
+				return mockAiService;
+			});
 
 			const result = await service.getSessions(undefined, mockUser);
 
@@ -323,8 +337,10 @@ describe('WorkflowBuilderService', () => {
 			const mockSessions = { sessions: [] };
 
 			const mockAiService = mock<AiWorkflowBuilderService>();
-			(mockAiService.getSessions as jest.Mock).mockResolvedValue(mockSessions);
-			MockedAiWorkflowBuilderService.mockImplementation(() => mockAiService);
+			(mockAiService.getSessions as Mock).mockResolvedValue(mockSessions);
+			MockedAiWorkflowBuilderService.mockImplementation(function () {
+				return mockAiService;
+			});
 
 			await service.getSessions('workflow-123', mockUser, true);
 
@@ -345,19 +361,19 @@ describe('WorkflowBuilderService', () => {
 			})();
 
 			const mockAiService = mock<AiWorkflowBuilderService>();
-			(mockAiService.chat as jest.Mock).mockReturnValue(mockChatGenerator);
+			(mockAiService.chat as Mock).mockReturnValue(mockChatGenerator);
 
 			let capturedCallback:
 				| ((userId: string, creditsQuota: number, creditsClaimed: number) => void)
 				| undefined;
 
-			MockedAiWorkflowBuilderService.mockImplementation(((...args: any[]) => {
+			MockedAiWorkflowBuilderService.mockImplementation(function (...args: any[]) {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				const callback = args[7]; // onCreditsUpdated is the 8th parameter (index 7, after n8nVersion)
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				capturedCallback = callback;
 				return mockAiService;
-			}) as any);
+			} as any);
 
 			// Trigger service creation
 			const generator = service.chat(mockPayload, mockUser);
@@ -394,19 +410,19 @@ describe('WorkflowBuilderService', () => {
 			})();
 
 			const mockAiService = mock<AiWorkflowBuilderService>();
-			(mockAiService.chat as jest.Mock).mockReturnValue(mockChatGenerator);
+			(mockAiService.chat as Mock).mockReturnValue(mockChatGenerator);
 
 			let capturedCallback:
 				| ((userId: string, creditsQuota: number, creditsClaimed: number) => void)
 				| undefined;
 
-			MockedAiWorkflowBuilderService.mockImplementation(((...args: any[]) => {
+			MockedAiWorkflowBuilderService.mockImplementation(function (...args: any[]) {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				const callback = args[7]; // onCreditsUpdated is the 8th parameter (index 7, after n8nVersion)
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				capturedCallback = callback;
 				return mockAiService;
-			}) as any);
+			} as any);
 
 			const generator = service.chat(mockPayload, mockUser);
 			await generator.next();
@@ -455,19 +471,19 @@ describe('WorkflowBuilderService', () => {
 			})();
 
 			const mockAiService = mock<AiWorkflowBuilderService>();
-			(mockAiService.chat as jest.Mock).mockReturnValue(mockChatGenerator);
+			(mockAiService.chat as Mock).mockReturnValue(mockChatGenerator);
 
 			let capturedTelemetryCallback:
 				| ((event: string, properties: ITelemetryTrackProperties) => void)
 				| undefined;
 
-			MockedAiWorkflowBuilderService.mockImplementation(((...args: any[]) => {
+			MockedAiWorkflowBuilderService.mockImplementation(function (...args: any[]) {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				const telemetryCallback = args[8]; // onTelemetryEvent is the 9th parameter (index 8, after n8nVersion)
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				capturedTelemetryCallback = telemetryCallback;
 				return mockAiService;
-			}) as any);
+			} as any);
 
 			// Trigger service creation
 			const generator = service.chat(mockPayload, mockUser);
@@ -502,19 +518,19 @@ describe('WorkflowBuilderService', () => {
 			})();
 
 			const mockAiService = mock<AiWorkflowBuilderService>();
-			(mockAiService.chat as jest.Mock).mockReturnValue(mockChatGenerator);
+			(mockAiService.chat as Mock).mockReturnValue(mockChatGenerator);
 
 			let capturedTelemetryCallback:
 				| ((event: string, properties: ITelemetryTrackProperties) => void)
 				| undefined;
 
-			MockedAiWorkflowBuilderService.mockImplementation(((...args: any[]) => {
+			MockedAiWorkflowBuilderService.mockImplementation(function (...args: any[]) {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				const telemetryCallback = args[8]; // onTelemetryEvent is the 9th parameter (index 8, after n8nVersion)
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				capturedTelemetryCallback = telemetryCallback;
 				return mockAiService;
-			}) as any);
+			} as any);
 
 			const generator = service.chat(mockPayload, mockUser);
 			await generator.next();
@@ -547,19 +563,19 @@ describe('WorkflowBuilderService', () => {
 			})();
 
 			const mockAiService = mock<AiWorkflowBuilderService>();
-			(mockAiService.chat as jest.Mock).mockReturnValue(mockChatGenerator);
+			(mockAiService.chat as Mock).mockReturnValue(mockChatGenerator);
 
 			let capturedTelemetryCallback:
 				| ((event: string, properties: ITelemetryTrackProperties) => void)
 				| undefined;
 
-			MockedAiWorkflowBuilderService.mockImplementation(((...args: any[]) => {
+			MockedAiWorkflowBuilderService.mockImplementation(function (...args: any[]) {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				const telemetryCallback = args[8]; // onTelemetryEvent is the 9th parameter (index 8, after n8nVersion)
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				capturedTelemetryCallback = telemetryCallback;
 				return mockAiService;
-			}) as any);
+			} as any);
 
 			const generator = service.chat(mockPayload, mockUser);
 			await generator.next();
@@ -590,8 +606,10 @@ describe('WorkflowBuilderService', () => {
 			})();
 
 			const mockAiService = mock<AiWorkflowBuilderService>();
-			(mockAiService.chat as jest.Mock).mockReturnValue(mockChatGenerator);
-			MockedAiWorkflowBuilderService.mockImplementation(() => mockAiService);
+			(mockAiService.chat as Mock).mockReturnValue(mockChatGenerator);
+			MockedAiWorkflowBuilderService.mockImplementation(function () {
+				return mockAiService;
+			});
 
 			const generator = service.chat(mockPayload, mockUser);
 			await generator.next();
@@ -613,12 +631,14 @@ describe('WorkflowBuilderService', () => {
 			})();
 
 			const mockAiService = mock<AiWorkflowBuilderService>();
-			(mockAiService.chat as jest.Mock).mockReturnValue(mockChatGenerator);
-			MockedAiWorkflowBuilderService.mockImplementation(() => mockAiService);
+			(mockAiService.chat as Mock).mockReturnValue(mockChatGenerator);
+			MockedAiWorkflowBuilderService.mockImplementation(function () {
+				return mockAiService;
+			});
 
 			// Capture the callback passed to onCertRefresh
 			let capturedCallback: ((cert: string) => void) | undefined;
-			(mockLicense.onCertRefresh as jest.Mock).mockImplementation((cb: (cert: string) => void) => {
+			(mockLicense.onCertRefresh as Mock).mockImplementation((cb: (cert: string) => void) => {
 				capturedCallback = cb;
 				return () => {};
 			});
@@ -651,8 +671,10 @@ describe('WorkflowBuilderService', () => {
 			})();
 
 			const mockAiService = mock<AiWorkflowBuilderService>();
-			(mockAiService.chat as jest.Mock).mockReturnValue(mockChatGenerator);
-			MockedAiWorkflowBuilderService.mockImplementation(() => mockAiService);
+			(mockAiService.chat as Mock).mockReturnValue(mockChatGenerator);
+			MockedAiWorkflowBuilderService.mockImplementation(function () {
+				return mockAiService;
+			});
 
 			const generator = service.chat(mockPayload, mockUser);
 			await generator.next();
@@ -674,9 +696,11 @@ describe('WorkflowBuilderService', () => {
 			})();
 
 			const mockAiService = mock<AiWorkflowBuilderService>();
-			(mockAiService.chat as jest.Mock).mockReturnValue(mockChatGenerator);
-			(mockAiService.updateNodeTypes as jest.Mock).mockImplementation(() => {});
-			MockedAiWorkflowBuilderService.mockImplementation(() => mockAiService);
+			(mockAiService.chat as Mock).mockReturnValue(mockChatGenerator);
+			(mockAiService.updateNodeTypes as Mock).mockImplementation(() => {});
+			MockedAiWorkflowBuilderService.mockImplementation(function () {
+				return mockAiService;
+			});
 
 			// First call - creates the service
 			const generator1 = service.chat(mockPayload, mockUser);
@@ -697,7 +721,7 @@ describe('WorkflowBuilderService', () => {
 			} as INodeTypeDescription;
 
 			const updatedNodeTypes = [...mockNodeTypeDescriptions, newNodeType];
-			(mockLoadNodesAndCredentials.collectTypes as jest.Mock).mockResolvedValueOnce({
+			(mockLoadNodesAndCredentials.collectTypes as Mock).mockResolvedValueOnce({
 				nodes: updatedNodeTypes,
 				credentials: [],
 			});
@@ -738,8 +762,10 @@ describe('WorkflowBuilderService', () => {
 			};
 
 			const mockAiService = mock<AiWorkflowBuilderService>();
-			(mockAiService.getBuilderInstanceCredits as jest.Mock).mockResolvedValue(expectedCredits);
-			MockedAiWorkflowBuilderService.mockImplementation(() => mockAiService);
+			(mockAiService.getBuilderInstanceCredits as Mock).mockResolvedValue(expectedCredits);
+			MockedAiWorkflowBuilderService.mockImplementation(function () {
+				return mockAiService;
+			});
 
 			const result = await service.getBuilderInstanceCredits(mockUser);
 
@@ -755,8 +781,10 @@ describe('WorkflowBuilderService', () => {
 			};
 
 			const mockAiService = mock<AiWorkflowBuilderService>();
-			(mockAiService.getBuilderInstanceCredits as jest.Mock).mockResolvedValue(expectedCredits);
-			MockedAiWorkflowBuilderService.mockImplementation(() => mockAiService);
+			(mockAiService.getBuilderInstanceCredits as Mock).mockResolvedValue(expectedCredits);
+			MockedAiWorkflowBuilderService.mockImplementation(function () {
+				return mockAiService;
+			});
 
 			// Call twice to test service reuse
 			await service.getBuilderInstanceCredits(mockUser);
@@ -771,8 +799,6 @@ describe('WorkflowBuilderService', () => {
 });
 
 describe('WorkflowBuilderService - node type loading', () => {
-	const packageDir = '/test/nodes-base';
-
 	const nodeTypeDescription = {
 		name: 'httpRequest',
 		displayName: 'HTTP Request',
@@ -785,40 +811,50 @@ describe('WorkflowBuilderService - node type loading', () => {
 		group: ['output'],
 	};
 
+	let tmpRoot: string;
+	let packageDir: string;
+
+	// LazyPackageDirectoryLoader lives in the externalized `n8n-core` dist and reads
+	// from disk through its own `fs` binding, which Vitest module mocks can't reach
+	// (unlike Jest's global module registry). So write a real fixture package and let
+	// the loader exercise the full path against the real filesystem.
+	beforeAll(() => {
+		tmpRoot = mkdtempSync(join(tmpdir(), 'n8n-ai-builder-nodes-'));
+		packageDir = join(tmpRoot, 'nodes-base');
+		mkdirSync(join(packageDir, 'dist', 'known'), { recursive: true });
+		mkdirSync(join(packageDir, 'dist', 'types'), { recursive: true });
+
+		writeFileSync(
+			join(packageDir, 'package.json'),
+			JSON.stringify({
+				name: 'n8n-nodes-base',
+				version: '1.0.0',
+				n8n: { nodes: [], credentials: [] },
+			}),
+		);
+		writeFileSync(
+			join(packageDir, 'dist', 'known', 'nodes.json'),
+			JSON.stringify({
+				httpRequest: {
+					className: 'HttpRequest',
+					sourcePath: 'dist/nodes/HttpRequest/HttpRequest.node.js',
+				},
+			}),
+		);
+		writeFileSync(join(packageDir, 'dist', 'known', 'credentials.json'), JSON.stringify({}));
+		writeFileSync(
+			join(packageDir, 'dist', 'types', 'nodes.json'),
+			JSON.stringify([nodeTypeDescription]),
+		);
+		writeFileSync(join(packageDir, 'dist', 'types', 'credentials.json'), JSON.stringify([]));
+	});
+
+	afterAll(() => {
+		rmSync(tmpRoot, { recursive: true, force: true });
+	});
+
 	beforeEach(() => {
 		MockedAiWorkflowBuilderService.mockClear();
-
-		// Mock node:fs so LazyPackageDirectoryLoader can "read" from disk
-		const fsModule = require('node:fs') as jest.Mocked<typeof fs>;
-		const fspModule = require('node:fs/promises') as jest.Mocked<typeof fsp>;
-
-		fsModule.realpathSync.mockReturnValue(packageDir);
-		fsModule.readFileSync.mockImplementation((filePath: unknown) => {
-			if (String(filePath).endsWith('package.json')) {
-				return JSON.stringify({
-					name: 'n8n-nodes-base',
-					version: '1.0.0',
-					n8n: { nodes: [], credentials: [] },
-				});
-			}
-			throw new Error(`Unexpected readFileSync: ${String(filePath)}`);
-		});
-
-		fspModule.readFile.mockImplementation(async (filePath: unknown) => {
-			const p = String(filePath);
-			if (p.endsWith('known/nodes.json')) {
-				return JSON.stringify({
-					httpRequest: {
-						className: 'HttpRequest',
-						sourcePath: 'dist/nodes/HttpRequest/HttpRequest.node.js',
-					},
-				});
-			}
-			if (p.endsWith('known/credentials.json')) return JSON.stringify({});
-			if (p.endsWith('types/nodes.json')) return JSON.stringify([nodeTypeDescription]);
-			if (p.endsWith('types/credentials.json')) return JSON.stringify([]);
-			throw new Error(`Unexpected readFile: ${p}`);
-		});
 	});
 
 	it('should load node types through real postProcessLoaders and pass them to AiWorkflowBuilderService', async () => {
@@ -838,27 +874,29 @@ describe('WorkflowBuilderService - node type loading', () => {
 		loadNodesAndCredentials.loaders[loader.packageName] = loader;
 
 		const mockAiService = mock<AiWorkflowBuilderService>();
-		(mockAiService.chat as jest.Mock).mockReturnValue(
+		(mockAiService.chat as Mock).mockReturnValue(
 			(async function* () {
 				yield { messages: ['response'] };
 			})(),
 		);
-		MockedAiWorkflowBuilderService.mockImplementation(() => mockAiService);
+		MockedAiWorkflowBuilderService.mockImplementation(function () {
+			return mockAiService;
+		});
 
 		const outboundHttp = mock<OutboundHttp>();
 		const transport = mock<HttpTransport>();
-		transport.asCustomFetch.mockReturnValue(jest.fn() as never);
+		transport.asCustomFetch.mockReturnValue(vi.fn() as never);
 		outboundHttp.transport.mockReturnValue(transport);
 
 		const builderService = new WorkflowBuilderService(
 			loadNodesAndCredentials,
 			mock<License>({
-				loadCertStr: jest.fn().mockResolvedValue('cert'),
-				getConsumerId: jest.fn().mockReturnValue('consumer'),
+				loadCertStr: vi.fn().mockResolvedValue('cert'),
+				getConsumerId: vi.fn().mockReturnValue('consumer'),
 			}),
 			mock<GlobalConfig>({ aiAssistant: { baseUrl: '' } }),
 			mock(),
-			mock<UrlService>({ getInstanceBaseUrl: jest.fn().mockReturnValue('http://localhost') }),
+			mock<UrlService>({ getInstanceBaseUrl: vi.fn().mockReturnValue('http://localhost') }),
 			mock(),
 			mock(),
 			mock<InstanceSettings>({ instanceId: 'test' }),

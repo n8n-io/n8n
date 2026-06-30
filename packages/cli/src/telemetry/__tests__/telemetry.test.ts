@@ -2,23 +2,26 @@ import type { OutboundHttp } from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import type RudderStack from '@rudderstack/rudder-sdk-node';
-import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
+import type { MockInstance } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { PostHogClient } from '@/posthog';
 import { Telemetry } from '@/telemetry';
 
-jest.unmock('@/telemetry');
-jest.mock('@/posthog');
+vi.unmock('@/telemetry');
+vi.mock('@/posthog');
 
-const rudderStackConstructor = jest.fn().mockImplementation(() => mock<RudderStack>());
-jest.mock('@rudderstack/rudder-sdk-node', () => ({
+const rudderStackConstructor = vi.fn().mockImplementation(function () {
+	return mock<RudderStack>();
+});
+vi.mock('@rudderstack/rudder-sdk-node', () => ({
 	__esModule: true,
 	default: rudderStackConstructor,
 }));
 
 describe('Telemetry', () => {
-	let spyTrack: jest.SpyInstance;
+	let spyTrack: MockInstance;
 
 	const mockRudderStack = mock<RudderStack>();
 
@@ -32,21 +35,21 @@ describe('Telemetry', () => {
 	});
 
 	beforeAll(() => {
-		jest.useFakeTimers();
-		jest.setSystemTime(testDateTime);
+		vi.useFakeTimers();
+		vi.setSystemTime(testDateTime);
 		globalConfig.deployment.type = 'n8n-testing';
 	});
 
 	afterAll(async () => {
-		jest.clearAllTimers();
-		jest.useRealTimers();
+		vi.clearAllTimers();
+		vi.useRealTimers();
 		await telemetry.stopTracking();
 	});
 
 	beforeEach(async () => {
-		spyTrack = jest.spyOn(Telemetry.prototype, 'track').mockName('track');
+		spyTrack = vi.spyOn(Telemetry.prototype, 'track').mockName('track');
 		// @ts-expect-error Spying on private method
-		jest.spyOn(Telemetry.prototype, 'startPulse').mockImplementation(() => {});
+		vi.spyOn(Telemetry.prototype, 'startPulse').mockImplementation(function () {});
 
 		const postHog = new PostHogClient(instanceSettings, mock());
 		await postHog.init();
@@ -72,8 +75,8 @@ describe('Telemetry', () => {
 	describe('init', () => {
 		const httpAgent = mock();
 		const httpsAgent = mock();
-		const getNodeAgent = jest.fn().mockReturnValue({ httpAgent, httpsAgent });
-		const transport = jest.fn().mockReturnValue({ getNodeAgent });
+		const getNodeAgent = vi.fn().mockReturnValue({ httpAgent, httpsAgent });
+		const transport = vi.fn().mockReturnValue({ getNodeAgent });
 		const outboundHttp = mock<OutboundHttp>({ transport });
 
 		const initConfig = mock<GlobalConfig>({
@@ -134,7 +137,7 @@ describe('Telemetry', () => {
 
 	describe('trackWorkflowExecution', () => {
 		beforeEach(() => {
-			jest.setSystemTime(testDateTime);
+			vi.setSystemTime(testDateTime);
 		});
 
 		test('should count executions correctly', async () => {
@@ -826,7 +829,7 @@ describe('Telemetry', () => {
 
 	describe('trackApiInvocation', () => {
 		beforeEach(() => {
-			jest.setSystemTime(testDateTime);
+			vi.setSystemTime(testDateTime);
 		});
 
 		test('should count calls per user and endpoint', () => {
@@ -1058,6 +1061,6 @@ describe('Telemetry', () => {
 
 const fakeJestSystemTime = (dateTime: string | Date): Date => {
 	const dt = new Date(dateTime);
-	jest.setSystemTime(dt);
+	vi.setSystemTime(dt);
 	return dt;
 };

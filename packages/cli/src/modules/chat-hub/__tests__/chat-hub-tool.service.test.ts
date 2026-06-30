@@ -1,17 +1,17 @@
 import type { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import type { EntityManager } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
 import type { INode, INodeType } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
-
-import type { ChatHubTool } from '../chat-hub-tool.entity';
-import type { ChatHubToolRepository } from '../chat-hub-tool.repository';
-import { ChatHubToolService } from '../chat-hub-tool.service';
+import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { NodeTypes } from '@/node-types';
+
+import type { ChatHubTool } from '../chat-hub-tool.entity';
+import type { ChatHubToolRepository } from '../chat-hub-tool.repository';
+import { ChatHubToolService } from '../chat-hub-tool.service';
 
 const mockDefinition: INode = {
 	parameters: {
@@ -58,7 +58,7 @@ describe('ChatHubToolService', () => {
 	let service: ChatHubToolService;
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 		logger.scoped.mockReturnValue(logger);
 
 		// withTransaction calls manager.transaction when no trx is passed

@@ -1829,9 +1829,9 @@ describe('POST /workflows redaction floor enforcement', () => {
 		// persisted/seeded rather than stripped on save. The spy survives the global
 		// restoreMocks reset by being set per-test.
 		license.enable('feat:dataRedaction');
-		jest
-			.spyOn(Container.get(InstanceRedactionEnforcementService), 'get')
-			.mockResolvedValue('production');
+		vi.spyOn(Container.get(InstanceRedactionEnforcementService), 'get').mockResolvedValue(
+			'production',
+		);
 	});
 
 	const savedRedactionPolicy = async (workflowId: string) =>
@@ -1895,9 +1895,9 @@ describe('PUT /workflows/:id redaction floor enforcement', () => {
 
 	beforeEach(() => {
 		license.enable('feat:dataRedaction');
-		jest
-			.spyOn(Container.get(InstanceRedactionEnforcementService), 'get')
-			.mockResolvedValue('production');
+		vi.spyOn(Container.get(InstanceRedactionEnforcementService), 'get').mockResolvedValue(
+			'production',
+		);
 	});
 
 	const savedRedactionPolicy = async (workflowId: string) =>

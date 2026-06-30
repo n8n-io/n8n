@@ -9,7 +9,7 @@ import type {
 } from '@n8n/db';
 import type { WorkflowHistory } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { IRun, IRunData, IRunExecutionData, ITaskData } from 'n8n-workflow';
 import { ManualExecutionCancelledError, WorkflowOperationError } from 'n8n-workflow';
 
@@ -64,7 +64,7 @@ describe('ExecutionService', () => {
 
 	beforeEach(() => {
 		globalConfig.executions.mode = 'regular';
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('findOne', () => {
@@ -616,7 +616,7 @@ describe('ExecutionService', () => {
 					scalingService.findJobsByStatus.mockResolvedValue([job]);
 					executionPersistence.updateExistingExecution.mockResolvedValue(true);
 					// @ts-expect-error Private method
-					const stopInRegularModeSpy = jest.spyOn(executionService, 'stopInRegularMode');
+					const stopInRegularModeSpy = vi.spyOn(executionService, 'stopInRegularMode');
 
 					/**
 					 * Act
@@ -746,7 +746,7 @@ describe('ExecutionService', () => {
 			executionRepository.findByStopExecutionsFilter.mockResolvedValue(
 				['1', '2', '3'].map((id) => ({ id })),
 			);
-			const stopFn = jest.fn();
+			const stopFn = vi.fn();
 			executionService.stop = stopFn;
 
 			const filters = {

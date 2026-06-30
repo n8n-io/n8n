@@ -1,15 +1,16 @@
+import type { Mock } from 'vitest';
 import type { DatabaseConfig, PrometheusMetricsConfig } from '@n8n/config';
 import { DbConnectionMetrics, type DbConnection, type DbPoolStats } from '@n8n/db';
 import promClient from 'prom-client';
 
 import { PrometheusDbPoolMetricsService } from '../db-pool-metrics.service';
 
-jest.mock('prom-client');
+vi.mock('prom-client');
 
 type GaugeConfig = {
 	name: string;
 	help: string;
-	collect?: (this: { set: jest.Mock }) => void;
+	collect?: (this: { set: Mock }) => void;
 };
 
 const buildConfig = (overrides: Partial<PrometheusMetricsConfig> = {}) =>
@@ -27,27 +28,27 @@ const buildDbConnection = (stats: DbPoolStats | undefined) =>
 	({ getPoolStats: () => stats }) as unknown as DbConnection;
 
 describe('PrometheusDbPoolMetricsService', () => {
-	let mockGaugeSet: jest.Mock;
-	let mockHistogramObserve: jest.Mock;
+	let mockGaugeSet: Mock;
+	let mockHistogramObserve: Mock;
 
 	beforeEach(() => {
-		mockGaugeSet = jest.fn();
-		mockHistogramObserve = jest.fn();
+		mockGaugeSet = vi.fn();
+		mockHistogramObserve = vi.fn();
 		promClient.Gauge.prototype.set = mockGaugeSet;
 		promClient.Histogram.prototype.observe = mockHistogramObserve;
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	const gaugeConfigs = () =>
-		(promClient.Gauge as unknown as jest.Mock).mock.calls.map((c) => c[0] as GaugeConfig);
+		(promClient.Gauge as unknown as Mock).mock.calls.map((c) => c[0] as GaugeConfig);
 
 	const findGauge = (name: string) => gaugeConfigs().find((g) => g.name === name);
 
 	const runCollect = (name: string) => {
-		const setSpy = jest.fn();
+		const setSpy = vi.fn();
 		findGauge(name)?.collect?.call({ set: setSpy });
 		return setSpy;
 	};

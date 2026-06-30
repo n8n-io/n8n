@@ -39,7 +39,7 @@ test.describe(
 					action: async () => {
 						await threadTab.page.goto('/home/workflows');
 						await threadTab.page.waitForLoadState('load');
-						await threadTab.page.goto(`/instance-ai/${threadId}`);
+						await threadTab.page.goto(`/assistant/${threadId}`);
 						await threadTab.instanceAi
 							.getChatInput()
 							.waitFor({ state: 'visible', timeout: 10_000 });
