@@ -1,51 +1,81 @@
-import { OperationalError, UserError } from 'n8n-workflow';
+import { UserError } from 'n8n-workflow';
 import type { AWSRegion } from './regions';
 import type { AwsAssumeRoleCredentialsType, AwsIamCredentialsType } from './types';
 
-// `assumeRole` now sends via @n8n/backend-network/transport's asCustomFetch(),
-// not the global fetch, so we mock the transport and assert on its fetch.
-const { mockFetch } = vi.hoisted(() => ({ mockFetch: vi.fn() }));
+// Mock the SDK provider factory. Each call returns a function identity we can
+// inspect, mirroring nodes-langchain's resolveAwsCredentials.test.ts pattern.
+const { mockProvider, mockFromTemporaryCredentials } = vi.hoisted(() => {
+	const mockProvider = vi.fn().mockResolvedValue({
+		accessKeyId: 'assumed-access-key',
+		secretAccessKey: 'assumed-secret-key',
+		sessionToken: 'assumed-session-token',
+	});
+	const mockFromTemporaryCredentials = vi.fn().mockReturnValue(mockProvider);
+	return { mockProvider, mockFromTemporaryCredentials };
+});
 
-vi.mock('@n8n/backend-network/transport', () => ({
-	createDispatcherTransport: () => ({
-		asCustomFetch: () => mockFetch,
-	}),
+vi.mock('@aws-sdk/credential-providers', () => ({
+	fromTemporaryCredentials: mockFromTemporaryCredentials,
+}));
+
+const { mockResolveProxyUrl, mockCreateHttpsProxyAgent } = vi.hoisted(() => ({
+	mockResolveProxyUrl: vi.fn().mockReturnValue(undefined),
+	mockCreateHttpsProxyAgent: vi.fn().mockReturnValue({ type: 'mock-https-agent' }),
+}));
+
+vi.mock('@n8n/backend-network/proxy', () => ({
+	resolveProxyUrl: mockResolveProxyUrl,
+	createHttpsProxyAgent: mockCreateHttpsProxyAgent,
+}));
+
+const { MockNodeHttpHandler } = vi.hoisted(() => ({
+	MockNodeHttpHandler: vi.fn(),
+}));
+
+vi.mock('@smithy/node-http-handler', () => ({
+	NodeHttpHandler: MockNodeHttpHandler,
 }));
 
 vi.mock('aws4', () => ({
 	sign: vi.fn(),
 }));
 
-vi.mock('xml2js', () => ({
-	parseString: vi.fn(),
-}));
-
-import { sign } from 'aws4';
-import { parseString } from 'xml2js';
 import { assertSupportedAwsRegion, assumeRole, awsGetSignInOptionsAndUpdateRequest } from './utils';
 import * as systemCredentialsUtils from './system-credentials-utils';
-import type { MockedFunction, MockInstance } from 'vitest';
+
+type FromTemporaryCredentialsCallArg = {
+	params: { RoleArn: string; RoleSessionName: string; ExternalId: string };
+	masterCredentials: unknown;
+	clientConfig: { region: string; requestHandler?: unknown };
+};
+
+function lastCallArg(): FromTemporaryCredentialsCallArg {
+	const calls = mockFromTemporaryCredentials.mock.calls;
+	return calls[calls.length - 1][0] as FromTemporaryCredentialsCallArg;
+}
+
+// `masterCredentials` is always passed as a provider function; invoke it to read
+// the resolved identity the SDK would receive.
+async function resolvedMaster(): Promise<unknown> {
+	const provider = lastCallArg().masterCredentials as () => Promise<unknown>;
+	return await provider();
+}
 
 describe('assumeRole', () => {
-	let mockSign: MockedFunction<typeof sign>;
-	let mockParseString: MockedFunction<typeof parseString>;
-	let consoleErrorSpy: MockInstance;
-
 	beforeEach(() => {
 		vi.clearAllMocks();
-		mockSign = sign as MockedFunction<typeof sign>;
-		mockParseString = parseString as MockedFunction<typeof parseString>;
-		consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
-		mockSign.mockImplementation((request: any) => request as any);
-	});
-
-	afterEach(() => {
-		consoleErrorSpy.mockRestore();
+		mockResolveProxyUrl.mockReturnValue(undefined);
+		mockCreateHttpsProxyAgent.mockReturnValue({ type: 'mock-https-agent' });
+		mockProvider.mockResolvedValue({
+			accessKeyId: 'assumed-access-key',
+			secretAccessKey: 'assumed-secret-key',
+			sessionToken: 'assumed-session-token',
+		});
+		mockFromTemporaryCredentials.mockReturnValue(mockProvider);
 	});
 
 	describe('with system credentials', () => {
-		it('should successfully assume role using system credentials by environment', async () => {
+		it('passes an async masterCredentials function (refreshable provider) to the SDK', async () => {
 			const credentials: AwsAssumeRoleCredentialsType = {
 				region: 'us-east-1',
 				customEndpoints: false,
@@ -66,36 +96,6 @@ describe('assumeRole', () => {
 				mockSystemCredentials,
 			);
 
-			const mockResponse = {
-				ok: true,
-				text: vi.fn().mockResolvedValue(`<?xml version="1.0" encoding="UTF-8"?>
-					<AssumeRoleResponse xmlns="https://sts.amazonaws.com/doc/2011-06-15/">
-						<AssumeRoleResult>
-							<Credentials>
-								<AccessKeyId>assumed-access-key</AccessKeyId>
-								<SecretAccessKey>assumed-secret-key</SecretAccessKey>
-								<SessionToken>assumed-session-token</SessionToken>
-							</Credentials>
-						</AssumeRoleResult>
-					</AssumeRoleResponse>`),
-			};
-
-			mockFetch.mockResolvedValue(mockResponse as any);
-
-			mockParseString.mockImplementation((_xml, _options, callback) => {
-				callback(null, {
-					AssumeRoleResponse: {
-						AssumeRoleResult: {
-							Credentials: {
-								AccessKeyId: 'assumed-access-key',
-								SecretAccessKey: 'assumed-secret-key',
-								SessionToken: 'assumed-session-token',
-							},
-						},
-					},
-				});
-			});
-
 			const result = await assumeRole(credentials, 'us-east-1');
 
 			expect(result).toEqual({
@@ -104,25 +104,20 @@ describe('assumeRole', () => {
 				sessionToken: 'assumed-session-token',
 			});
 
+			const arg = lastCallArg();
+			expect(typeof arg.masterCredentials).toBe('function');
+
+			// Simulate the SDK invoking the provider; system credentials are read fresh.
+			const masterProvider = arg.masterCredentials as () => Promise<unknown>;
+			await expect(masterProvider()).resolves.toEqual({
+				accessKeyId: 'system-access-key',
+				secretAccessKey: 'system-secret-key',
+				sessionToken: 'system-session-token',
+			});
 			expect(systemCredentialsUtils.getSystemCredentials).toHaveBeenCalled();
-			expect(mockSign).toHaveBeenCalledWith(
-				expect.objectContaining({
-					method: 'POST',
-					path: '/',
-					region: 'us-east-1',
-				}),
-				mockSystemCredentials,
-			);
-			expect(mockFetch).toHaveBeenCalledWith(
-				'https://sts.us-east-1.amazonaws.com',
-				expect.objectContaining({
-					method: 'POST',
-					body: expect.stringContaining('Action=AssumeRole'),
-				}),
-			);
 		});
 
-		it('should successfully assume role using system credentials by instanceMetadata', async () => {
+		it('omits sessionToken from masterCredentials when system creds have none', async () => {
 			const credentials: AwsAssumeRoleCredentialsType = {
 				region: 'us-east-1',
 				customEndpoints: false,
@@ -132,74 +127,22 @@ describe('assumeRole', () => {
 				roleSessionName: 'test-session',
 			};
 
-			const mockSystemCredentials = {
+			vi.spyOn(systemCredentialsUtils, 'getSystemCredentials').mockResolvedValue({
 				accessKeyId: 'system-access-key',
 				secretAccessKey: 'system-secret-key',
-				sessionToken: 'system-session-token',
-				source: 'instanceMetadata' as const,
-			};
-
-			vi.spyOn(systemCredentialsUtils, 'getSystemCredentials').mockResolvedValue(
-				mockSystemCredentials,
-			);
-
-			const mockResponse = {
-				ok: true,
-				text: vi.fn().mockResolvedValue(`<?xml version="1.0" encoding="UTF-8"?>
-					<AssumeRoleResponse xmlns="https://sts.amazonaws.com/doc/2011-06-15/">
-						<AssumeRoleResult>
-							<Credentials>
-								<AccessKeyId>assumed-access-key</AccessKeyId>
-								<SecretAccessKey>assumed-secret-key</SecretAccessKey>
-								<SessionToken>assumed-session-token</SessionToken>
-							</Credentials>
-						</AssumeRoleResult>
-					</AssumeRoleResponse>`),
-			};
-
-			mockFetch.mockResolvedValue(mockResponse as any);
-
-			mockParseString.mockImplementation((_xml, _options, callback) => {
-				callback(null, {
-					AssumeRoleResponse: {
-						AssumeRoleResult: {
-							Credentials: {
-								AccessKeyId: 'assumed-access-key',
-								SecretAccessKey: 'assumed-secret-key',
-								SessionToken: 'assumed-session-token',
-							},
-						},
-					},
-				});
+				source: 'environment' as const,
 			});
 
-			const result = await assumeRole(credentials, 'us-east-1');
+			await assumeRole(credentials, 'us-east-1');
 
-			expect(result).toEqual({
-				accessKeyId: 'assumed-access-key',
-				secretAccessKey: 'assumed-secret-key',
-				sessionToken: 'assumed-session-token',
+			const masterProvider = lastCallArg().masterCredentials as () => Promise<unknown>;
+			await expect(masterProvider()).resolves.toEqual({
+				accessKeyId: 'system-access-key',
+				secretAccessKey: 'system-secret-key',
 			});
-
-			expect(systemCredentialsUtils.getSystemCredentials).toHaveBeenCalled();
-			expect(mockSign).toHaveBeenCalledWith(
-				expect.objectContaining({
-					method: 'POST',
-					path: '/',
-					region: 'us-east-1',
-				}),
-				mockSystemCredentials,
-			);
-			expect(mockFetch).toHaveBeenCalledWith(
-				'https://sts.us-east-1.amazonaws.com',
-				expect.objectContaining({
-					method: 'POST',
-					body: expect.stringContaining('Action=AssumeRole'),
-				}),
-			);
 		});
 
-		it('should throw error when system credentials are not available', async () => {
+		it('throws UserError when system credentials are not available (provider invocation)', async () => {
 			const credentials: AwsAssumeRoleCredentialsType = {
 				region: 'us-east-1',
 				customEndpoints: false,
@@ -211,66 +154,43 @@ describe('assumeRole', () => {
 
 			vi.spyOn(systemCredentialsUtils, 'getSystemCredentials').mockResolvedValue(null);
 
-			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(UserError);
-			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(
+			await assumeRole(credentials, 'us-east-1');
+
+			const masterProvider = lastCallArg().masterCredentials as () => Promise<unknown>;
+			await expect(masterProvider()).rejects.toThrow(UserError);
+			await expect(masterProvider()).rejects.toThrow(
 				'System AWS credentials are required for role assumption',
 			);
 		});
 
-		it('should include external ID when provided', async () => {
+		it('surfaces the original UserError message without double-wrapping', async () => {
 			const credentials: AwsAssumeRoleCredentialsType = {
 				region: 'us-east-1',
 				customEndpoints: false,
-				useSystemCredentialsForRole: true,
+				useSystemCredentialsForRole: false,
 				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
-				roleSessionName: 'test-session',
-				externalId: 'external-123',
+				stsAccessKeyId: 'sts-access-key',
+				stsSecretAccessKey: 'sts-secret-key',
 			};
 
-			const mockSystemCredentials = {
-				accessKeyId: 'system-access-key',
-				secretAccessKey: 'system-secret-key',
-				source: 'environment' as const,
-			};
-
-			vi.spyOn(systemCredentialsUtils, 'getSystemCredentials').mockResolvedValue(
-				mockSystemCredentials,
+			// Simulate a UserError propagating from the SDK (e.g. masterCredentials rejected).
+			// assumeRole() must re-throw it unchanged, not wrap it in "STS AssumeRole failed: ...".
+			mockProvider.mockRejectedValue(
+				new UserError('System AWS credentials are required for role assumption.'),
 			);
 
-			const mockResponse = {
-				ok: true,
-				text: vi.fn().mockResolvedValue('<?xml version="1.0" encoding="UTF-8"?>'),
-			};
-
-			mockFetch.mockResolvedValue(mockResponse as any);
-
-			mockParseString.mockImplementation((_xml, _options, callback) => {
-				callback(null, {
-					AssumeRoleResponse: {
-						AssumeRoleResult: {
-							Credentials: {
-								AccessKeyId: 'assumed-access-key',
-								SecretAccessKey: 'assumed-secret-key',
-								SessionToken: 'assumed-session-token',
-							},
-						},
-					},
-				});
-			});
-
-			await assumeRole(credentials, 'us-east-1');
-
-			expect(mockFetch).toHaveBeenCalledWith(
-				'https://sts.us-east-1.amazonaws.com',
-				expect.objectContaining({
-					body: expect.stringContaining('ExternalId=external-123'),
-				}),
+			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(UserError);
+			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(
+				'System AWS credentials are required for role assumption.',
+			);
+			await expect(assumeRole(credentials, 'us-east-1')).rejects.not.toThrow(
+				'STS AssumeRole failed',
 			);
 		});
 	});
 
 	describe('with manual STS credentials', () => {
-		it('should successfully assume role using manual STS credentials', async () => {
+		it('passes a static masterCredentials object with sessionToken when provided', async () => {
 			const credentials: AwsAssumeRoleCredentialsType = {
 				region: 'us-east-1',
 				customEndpoints: false,
@@ -283,27 +203,6 @@ describe('assumeRole', () => {
 				stsSessionToken: 'sts-session-token',
 			};
 
-			const mockResponse = {
-				ok: true,
-				text: vi.fn().mockResolvedValue('<?xml version="1.0" encoding="UTF-8"?>'),
-			};
-
-			mockFetch.mockResolvedValue(mockResponse as any);
-
-			mockParseString.mockImplementation((_xml, _options, callback) => {
-				callback(null, {
-					AssumeRoleResponse: {
-						AssumeRoleResult: {
-							Credentials: {
-								AccessKeyId: 'assumed-access-key',
-								SecretAccessKey: 'assumed-secret-key',
-								SessionToken: 'assumed-session-token',
-							},
-						},
-					},
-				});
-			});
-
 			const result = await assumeRole(credentials, 'us-east-1');
 
 			expect(result).toEqual({
@@ -312,21 +211,14 @@ describe('assumeRole', () => {
 				sessionToken: 'assumed-session-token',
 			});
 
-			expect(mockSign).toHaveBeenCalledWith(
-				expect.objectContaining({
-					method: 'POST',
-					path: '/',
-					region: 'us-east-1',
-				}),
-				{
-					accessKeyId: 'sts-access-key',
-					secretAccessKey: 'sts-secret-key',
-					sessionToken: 'sts-session-token',
-				},
-			);
+			expect(await resolvedMaster()).toEqual({
+				accessKeyId: 'sts-access-key',
+				secretAccessKey: 'sts-secret-key',
+				sessionToken: 'sts-session-token',
+			});
 		});
 
-		it('should work without STS session token', async () => {
+		it('omits sessionToken when not provided', async () => {
 			const credentials: AwsAssumeRoleCredentialsType = {
 				region: 'us-east-1',
 				customEndpoints: false,
@@ -338,37 +230,58 @@ describe('assumeRole', () => {
 				stsSecretAccessKey: 'sts-secret-key',
 			};
 
-			const mockResponse = {
-				ok: true,
-				text: vi.fn().mockResolvedValue('<?xml version="1.0" encoding="UTF-8"?>'),
-			};
-
-			mockFetch.mockResolvedValue(mockResponse as any);
-
-			mockParseString.mockImplementation((_xml, _options, callback) => {
-				callback(null, {
-					AssumeRoleResponse: {
-						AssumeRoleResult: {
-							Credentials: {
-								AccessKeyId: 'assumed-access-key',
-								SecretAccessKey: 'assumed-secret-key',
-								SessionToken: 'assumed-session-token',
-							},
-						},
-					},
-				});
-			});
-
 			await assumeRole(credentials, 'us-east-1');
 
-			expect(mockSign).toHaveBeenCalledWith(expect.anything(), {
+			expect(await resolvedMaster()).toEqual({
 				accessKeyId: 'sts-access-key',
 				secretAccessKey: 'sts-secret-key',
-				sessionToken: undefined,
 			});
 		});
 
-		it('should throw error when STS access key ID is missing', async () => {
+		it('omits sessionToken when only whitespace', async () => {
+			const credentials: AwsAssumeRoleCredentialsType = {
+				region: 'us-east-1',
+				customEndpoints: false,
+				useSystemCredentialsForRole: false,
+				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				externalId: 'external-123',
+				roleSessionName: 'test-session',
+				stsAccessKeyId: 'sts-access-key',
+				stsSecretAccessKey: 'sts-secret-key',
+				stsSessionToken: '   ',
+			};
+
+			await assumeRole(credentials, 'us-east-1');
+
+			expect(await resolvedMaster()).toEqual({
+				accessKeyId: 'sts-access-key',
+				secretAccessKey: 'sts-secret-key',
+			});
+		});
+
+		it('trims whitespace from STS credentials and session token', async () => {
+			const credentials: AwsAssumeRoleCredentialsType = {
+				region: 'us-east-1',
+				customEndpoints: false,
+				useSystemCredentialsForRole: false,
+				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				externalId: 'external-123',
+				roleSessionName: 'test-session',
+				stsAccessKeyId: '  sts-access-key  ',
+				stsSecretAccessKey: '  sts-secret-key  ',
+				stsSessionToken: '  sts-session-token  ',
+			};
+
+			await assumeRole(credentials, 'us-east-1');
+
+			expect(await resolvedMaster()).toEqual({
+				accessKeyId: 'sts-access-key',
+				secretAccessKey: 'sts-secret-key',
+				sessionToken: 'sts-session-token',
+			});
+		});
+
+		it('throws when STS access key ID is missing', async () => {
 			const credentials: AwsAssumeRoleCredentialsType = {
 				region: 'us-east-1',
 				customEndpoints: false,
@@ -385,7 +298,7 @@ describe('assumeRole', () => {
 			);
 		});
 
-		it('should throw error when STS access key ID is empty', async () => {
+		it('throws when STS access key ID is whitespace-only', async () => {
 			const credentials: AwsAssumeRoleCredentialsType = {
 				region: 'us-east-1',
 				customEndpoints: false,
@@ -403,7 +316,7 @@ describe('assumeRole', () => {
 			);
 		});
 
-		it('should throw error when STS secret access key is missing', async () => {
+		it('throws when STS secret access key is missing', async () => {
 			const credentials: AwsAssumeRoleCredentialsType = {
 				region: 'us-east-1',
 				customEndpoints: false,
@@ -420,7 +333,7 @@ describe('assumeRole', () => {
 			);
 		});
 
-		it('should throw error when STS secret access key is empty', async () => {
+		it('throws when STS secret access key is whitespace-only', async () => {
 			const credentials: AwsAssumeRoleCredentialsType = {
 				region: 'us-east-1',
 				customEndpoints: false,
@@ -437,8 +350,33 @@ describe('assumeRole', () => {
 				'STS Secret Access Key is required when not using system credentials',
 			);
 		});
+	});
 
-		it('should trim whitespace from STS credentials', async () => {
+	describe('SDK params', () => {
+		it('passes trimmed RoleArn, RoleSessionName, ExternalId to the SDK', async () => {
+			const credentials: AwsAssumeRoleCredentialsType = {
+				region: 'us-east-1',
+				customEndpoints: false,
+				useSystemCredentialsForRole: false,
+				roleArn: '  arn:aws:iam::123456789012:role/TestRole  ',
+				externalId: '  external-123  ',
+				roleSessionName: '  test-session  ',
+				stsAccessKeyId: 'sts-access-key',
+				stsSecretAccessKey: 'sts-secret-key',
+			};
+
+			await assumeRole(credentials, 'us-east-1');
+
+			expect(lastCallArg().params).toEqual({
+				RoleArn: 'arn:aws:iam::123456789012:role/TestRole',
+				RoleSessionName: 'test-session',
+				ExternalId: 'external-123',
+			});
+		});
+	});
+
+	describe('return shape', () => {
+		it('returns sessionToken as empty string when SDK returns undefined', async () => {
 			const credentials: AwsAssumeRoleCredentialsType = {
 				region: 'us-east-1',
 				customEndpoints: false,
@@ -446,310 +384,145 @@ describe('assumeRole', () => {
 				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
 				externalId: 'external-123',
 				roleSessionName: 'test-session',
-				stsAccessKeyId: '  sts-access-key  ',
-				stsSecretAccessKey: '  sts-secret-key  ',
-				stsSessionToken: '  sts-session-token  ',
+				stsAccessKeyId: 'sts-access-key',
+				stsSecretAccessKey: 'sts-secret-key',
 			};
 
-			const mockResponse = {
-				ok: true,
-				text: vi.fn().mockResolvedValue('<?xml version="1.0" encoding="UTF-8"?>'),
-			};
-
-			mockFetch.mockResolvedValue(mockResponse as any);
-
-			mockParseString.mockImplementation((_xml, _options, callback) => {
-				callback(null, {
-					AssumeRoleResponse: {
-						AssumeRoleResult: {
-							Credentials: {
-								AccessKeyId: 'assumed-access-key',
-								SecretAccessKey: 'assumed-secret-key',
-								SessionToken: 'assumed-session-token',
-							},
-						},
-					},
-				});
+			mockProvider.mockResolvedValueOnce({
+				accessKeyId: 'assumed-access-key',
+				secretAccessKey: 'assumed-secret-key',
+				// sessionToken intentionally absent
 			});
 
-			await assumeRole(credentials, 'us-east-1');
+			const result = await assumeRole(credentials, 'us-east-1');
 
-			expect(mockSign).toHaveBeenCalledWith(expect.anything(), {
-				accessKeyId: 'sts-access-key',
-				secretAccessKey: 'sts-secret-key',
-				sessionToken: 'sts-session-token',
+			expect(result).toEqual({
+				accessKeyId: 'assumed-access-key',
+				secretAccessKey: 'assumed-secret-key',
+				sessionToken: '',
 			});
+		});
+	});
+
+	describe('proxy handling', () => {
+		const baseCredentials: AwsAssumeRoleCredentialsType = {
+			region: 'us-east-1',
+			customEndpoints: false,
+			useSystemCredentialsForRole: false,
+			roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+			externalId: 'external-123',
+			roleSessionName: 'test-session',
+			stsAccessKeyId: 'sts-access-key',
+			stsSecretAccessKey: 'sts-secret-key',
+		};
+
+		it('calls resolveProxyUrl with the concrete STS endpoint', async () => {
+			await assumeRole(baseCredentials, 'us-east-1');
+			expect(mockResolveProxyUrl).toHaveBeenCalledWith('https://sts.us-east-1.amazonaws.com');
+		});
+
+		it('uses a plain timeout object (no NodeHttpHandler) when no proxy is configured', async () => {
+			mockResolveProxyUrl.mockReturnValue(undefined);
+			await assumeRole(baseCredentials, 'us-east-1');
+
+			expect(mockCreateHttpsProxyAgent).not.toHaveBeenCalled();
+			expect(MockNodeHttpHandler).not.toHaveBeenCalled();
+			expect(lastCallArg().clientConfig.requestHandler).toEqual({
+				requestTimeout: 2000,
+				connectionTimeout: 2000,
+			});
+		});
+
+		it('builds a NodeHttpHandler with a proxy agent when a proxy is configured', async () => {
+			const proxyAgent = { type: 'mock-https-agent' };
+			mockResolveProxyUrl.mockReturnValue('http://proxy.example.com:8080');
+			mockCreateHttpsProxyAgent.mockReturnValue(proxyAgent);
+
+			await assumeRole(baseCredentials, 'us-east-1');
+
+			expect(mockCreateHttpsProxyAgent).toHaveBeenCalledWith(
+				'https://sts.us-east-1.amazonaws.com',
+				'http://proxy.example.com:8080',
+			);
+			expect(MockNodeHttpHandler).toHaveBeenCalledTimes(1);
+			expect(MockNodeHttpHandler).toHaveBeenCalledWith({
+				httpAgent: proxyAgent,
+				httpsAgent: proxyAgent,
+			});
+			expect(lastCallArg().clientConfig.requestHandler).toBeDefined();
+		});
+
+		it('reuses a single proxy agent for both http and https slots', async () => {
+			mockResolveProxyUrl.mockReturnValue('http://proxy.example.com:8080');
+			await assumeRole(baseCredentials, 'us-east-1');
+
+			// One agent created, not two.
+			expect(mockCreateHttpsProxyAgent).toHaveBeenCalledTimes(1);
 		});
 	});
 
 	describe('region handling', () => {
-		it('should use correct endpoint for China regions', async () => {
-			const credentials: AwsAssumeRoleCredentialsType = {
-				region: 'cn-north-1',
-				customEndpoints: false,
-				useSystemCredentialsForRole: false,
-				roleArn: 'arn:aws-cn:iam::123456789012:role/TestRole',
-				externalId: 'external-123',
-				roleSessionName: 'test-session',
-				stsAccessKeyId: 'sts-access-key',
-				stsSecretAccessKey: 'sts-secret-key',
-			};
-
-			const mockResponse = {
-				ok: true,
-				text: vi.fn().mockResolvedValue('<?xml version="1.0" encoding="UTF-8"?>'),
-			};
-
-			mockFetch.mockResolvedValue(mockResponse as any);
-
-			mockParseString.mockImplementation((_xml, _options, callback) => {
-				callback(null, {
-					AssumeRoleResponse: {
-						AssumeRoleResult: {
-							Credentials: {
-								AccessKeyId: 'assumed-access-key',
-								SecretAccessKey: 'assumed-secret-key',
-								SessionToken: 'assumed-session-token',
-							},
-						},
-					},
-				});
-			});
-
-			await assumeRole(credentials, 'cn-north-1' as AWSRegion);
-
-			expect(mockFetch).toHaveBeenCalledWith(
-				'https://sts.cn-north-1.amazonaws.com.cn',
-				expect.any(Object),
-			);
+		const credentialsFor = (region: AWSRegion): AwsAssumeRoleCredentialsType => ({
+			region,
+			customEndpoints: false,
+			useSystemCredentialsForRole: false,
+			roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+			externalId: 'external-123',
+			roleSessionName: 'test-session',
+			stsAccessKeyId: 'sts-access-key',
+			stsSecretAccessKey: 'sts-secret-key',
 		});
 
-		it('should use correct endpoint for GovCloud regions', async () => {
-			const credentials: AwsAssumeRoleCredentialsType = {
-				region: 'us-gov-west-1',
-				customEndpoints: false,
-				useSystemCredentialsForRole: false,
-				roleArn: 'arn:aws-us-gov:iam::123456789012:role/TestRole',
-				externalId: 'external-123',
-				roleSessionName: 'test-session',
-				stsAccessKeyId: 'sts-access-key',
-				stsSecretAccessKey: 'sts-secret-key',
-			};
-
-			const mockResponse = {
-				ok: true,
-				text: vi.fn().mockResolvedValue('<?xml version="1.0" encoding="UTF-8"?>'),
-			};
-
-			mockFetch.mockResolvedValue(mockResponse as any);
-
-			mockParseString.mockImplementation((_xml, _options, callback) => {
-				callback(null, {
-					AssumeRoleResponse: {
-						AssumeRoleResult: {
-							Credentials: {
-								AccessKeyId: 'assumed-access-key',
-								SecretAccessKey: 'assumed-secret-key',
-								SessionToken: 'assumed-session-token',
-							},
-						},
-					},
-				});
-			});
-
-			await assumeRole(credentials, 'us-gov-west-1');
-
-			expect(mockFetch).toHaveBeenCalledWith(
-				'https://sts.us-gov-west-1.amazonaws.com',
-				expect.any(Object),
-			);
+		it('uses the standard amazonaws.com STS host for standard regions', async () => {
+			await assumeRole(credentialsFor('eu-west-1'), 'eu-west-1');
+			expect(mockResolveProxyUrl).toHaveBeenCalledWith('https://sts.eu-west-1.amazonaws.com');
+			expect(lastCallArg().clientConfig.region).toBe('eu-west-1');
 		});
 
-		it('should use correct endpoint for standard regions', async () => {
-			const credentials: AwsAssumeRoleCredentialsType = {
-				region: 'eu-west-1',
-				customEndpoints: false,
-				useSystemCredentialsForRole: false,
-				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
-				externalId: 'external-123',
-				roleSessionName: 'test-session',
-				stsAccessKeyId: 'sts-access-key',
-				stsSecretAccessKey: 'sts-secret-key',
-			};
+		it('uses the amazonaws.com.cn STS host for China regions', async () => {
+			await assumeRole(credentialsFor('cn-north-1' as AWSRegion), 'cn-north-1' as AWSRegion);
+			expect(mockResolveProxyUrl).toHaveBeenCalledWith('https://sts.cn-north-1.amazonaws.com.cn');
+			expect(lastCallArg().clientConfig.region).toBe('cn-north-1');
+		});
 
-			const mockResponse = {
-				ok: true,
-				text: vi.fn().mockResolvedValue('<?xml version="1.0" encoding="UTF-8"?>'),
-			};
-
-			mockFetch.mockResolvedValue(mockResponse as any);
-
-			mockParseString.mockImplementation((_xml, _options, callback) => {
-				callback(null, {
-					AssumeRoleResponse: {
-						AssumeRoleResult: {
-							Credentials: {
-								AccessKeyId: 'assumed-access-key',
-								SecretAccessKey: 'assumed-secret-key',
-								SessionToken: 'assumed-session-token',
-							},
-						},
-					},
-				});
-			});
-
-			await assumeRole(credentials, 'eu-west-1');
-
-			expect(mockFetch).toHaveBeenCalledWith(
-				'https://sts.eu-west-1.amazonaws.com',
-				expect.any(Object),
-			);
+		it('uses the amazonaws.com STS host for GovCloud regions', async () => {
+			await assumeRole(credentialsFor('us-gov-west-1'), 'us-gov-west-1');
+			expect(mockResolveProxyUrl).toHaveBeenCalledWith('https://sts.us-gov-west-1.amazonaws.com');
+			expect(lastCallArg().clientConfig.region).toBe('us-gov-west-1');
 		});
 	});
 
-	describe('error handling', () => {
-		it('should throw error when signing fails', async () => {
-			const credentials: AwsAssumeRoleCredentialsType = {
-				region: 'us-east-1',
-				customEndpoints: false,
-				useSystemCredentialsForRole: false,
-				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
-				externalId: 'external-123',
-				roleSessionName: 'test-session',
-				stsAccessKeyId: 'sts-access-key',
-				stsSecretAccessKey: 'sts-secret-key',
-			};
+	describe('field validation', () => {
+		const baseCredentials: AwsAssumeRoleCredentialsType = {
+			region: 'us-east-1',
+			customEndpoints: false,
+			useSystemCredentialsForRole: false,
+			roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+			externalId: 'external-123',
+			roleSessionName: 'test-session',
+			stsAccessKeyId: 'sts-access-key',
+			stsSecretAccessKey: 'sts-secret-key',
+		};
 
-			mockSign.mockImplementation(() => {
-				throw new Error('Signing failed');
-			});
-
-			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(OperationalError);
-			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(
-				'Failed to sign STS request',
+		it('throws when roleArn is missing', async () => {
+			await expect(assumeRole({ ...baseCredentials, roleArn: '' }, 'us-east-1')).rejects.toThrow(
+				'Role ARN is required when assuming a role.',
 			);
 		});
 
-		it('should throw error when STS request fails', async () => {
-			const credentials: AwsAssumeRoleCredentialsType = {
-				region: 'us-east-1',
-				customEndpoints: false,
-				useSystemCredentialsForRole: false,
-				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
-				externalId: 'external-123',
-				roleSessionName: 'test-session',
-				stsAccessKeyId: 'sts-access-key',
-				stsSecretAccessKey: 'sts-secret-key',
-			};
-
-			const mockResponse = {
-				ok: false,
-				status: 403,
-				statusText: 'Forbidden',
-				text: vi.fn().mockResolvedValue('Access denied'),
-			};
-
-			mockFetch.mockResolvedValue(mockResponse as any);
-
-			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(UserError);
-			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(
-				'STS AssumeRole failed: 403 Forbidden - Access denied',
-			);
+		it('omits ExternalId from params when externalId is absent', async () => {
+			await assumeRole({ ...baseCredentials, externalId: '' }, 'us-east-1');
+			expect(lastCallArg().params).not.toHaveProperty('ExternalId');
 		});
 
-		it('should throw error when XML parsing fails', async () => {
-			const credentials: AwsAssumeRoleCredentialsType = {
-				region: 'us-east-1',
-				customEndpoints: false,
-				useSystemCredentialsForRole: false,
-				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
-				externalId: 'external-123',
-				roleSessionName: 'test-session',
-				stsAccessKeyId: 'sts-access-key',
-				stsSecretAccessKey: 'sts-secret-key',
-			};
-
-			const mockResponse = {
-				ok: true,
-				text: vi.fn().mockResolvedValue('invalid xml'),
-			};
-
-			mockFetch.mockResolvedValue(mockResponse as any);
-
-			mockParseString.mockImplementation((_xml, _options, callback) => {
-				callback(new Error('XML parsing failed'), null);
-			});
-
-			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow('XML parsing failed');
-		});
-
-		it('should throw error when response has no credentials', async () => {
-			const credentials: AwsAssumeRoleCredentialsType = {
-				region: 'us-east-1',
-				customEndpoints: false,
-				useSystemCredentialsForRole: false,
-				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
-				externalId: 'external-123',
-				roleSessionName: 'test-session',
-				stsAccessKeyId: 'sts-access-key',
-				stsSecretAccessKey: 'sts-secret-key',
-			};
-
-			const mockResponse = {
-				ok: true,
-				text: vi.fn().mockResolvedValue('<?xml version="1.0" encoding="UTF-8"?>'),
-			};
-
-			mockFetch.mockResolvedValue(mockResponse as any);
-
-			mockParseString.mockImplementation((_xml, _options, callback) => {
-				callback(null, {
-					AssumeRoleResponse: {
-						AssumeRoleResult: {},
-					},
-				});
-			});
-
-			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(OperationalError);
-			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(
-				'Invalid response from STS AssumeRole',
-			);
-		});
-
-		it('should throw error when response structure is invalid', async () => {
-			const credentials: AwsAssumeRoleCredentialsType = {
-				region: 'us-east-1',
-				customEndpoints: false,
-				useSystemCredentialsForRole: false,
-				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
-				externalId: 'external-123',
-				roleSessionName: 'test-session',
-				stsAccessKeyId: 'sts-access-key',
-				stsSecretAccessKey: 'sts-secret-key',
-			};
-
-			const mockResponse = {
-				ok: true,
-				text: vi.fn().mockResolvedValue('<?xml version="1.0" encoding="UTF-8"?>'),
-			};
-
-			mockFetch.mockResolvedValue(mockResponse as any);
-
-			mockParseString.mockImplementation((_xml, _options, callback) => {
-				callback(null, {
-					InvalidResponse: {},
-				});
-			});
-
-			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(OperationalError);
-			await expect(assumeRole(credentials, 'us-east-1')).rejects.toThrow(
-				'Invalid response from STS AssumeRole',
-			);
+		it('defaults RoleSessionName to n8n-session when roleSessionName is absent', async () => {
+			await assumeRole({ ...baseCredentials, roleSessionName: '' }, 'us-east-1');
+			expect(lastCallArg().params.RoleSessionName).toBe('n8n-session');
 		});
 	});
 
 	describe('default values', () => {
-		it('should default useSystemCredentialsForRole to false when not provided', async () => {
+		it('defaults useSystemCredentialsForRole to false when not provided', async () => {
 			const credentials: AwsAssumeRoleCredentialsType = {
 				region: 'us-east-1',
 				customEndpoints: false,
@@ -760,35 +533,37 @@ describe('assumeRole', () => {
 				stsSecretAccessKey: 'sts-secret-key',
 			};
 
-			const mockResponse = {
-				ok: true,
-				text: vi.fn().mockResolvedValue('<?xml version="1.0" encoding="UTF-8"?>'),
-			};
-
-			mockFetch.mockResolvedValue(mockResponse as any);
-
-			mockParseString.mockImplementation((_xml, _options, callback) => {
-				callback(null, {
-					AssumeRoleResponse: {
-						AssumeRoleResult: {
-							Credentials: {
-								AccessKeyId: 'assumed-access-key',
-								SecretAccessKey: 'assumed-secret-key',
-								SessionToken: 'assumed-session-token',
-							},
-						},
-					},
-				});
-			});
-
 			await assumeRole(credentials, 'us-east-1');
 
-			expect(mockSign).toHaveBeenCalledWith(expect.anything(), {
+			expect(await resolvedMaster()).toEqual({
 				accessKeyId: 'sts-access-key',
 				secretAccessKey: 'sts-secret-key',
-				sessionToken: undefined,
 			});
 		});
+	});
+
+	describe('region validation', () => {
+		it.each(['@example.com#', 'us-fake-1', '', 'us-east-1/foo', 'us-east-1#frag'])(
+			'rejects unsupported region value %s before calling the SDK',
+			async (region) => {
+				const credentials: AwsAssumeRoleCredentialsType = {
+					region: 'us-east-1',
+					customEndpoints: false,
+					useSystemCredentialsForRole: false,
+					roleArn: 'arn:aws:iam::123456789012:role/TestRole',
+					stsAccessKeyId: 'sts-access-key',
+					stsSecretAccessKey: 'sts-secret-key',
+				};
+
+				await expect(assumeRole(credentials, region as AWSRegion)).rejects.toThrow(UserError);
+				await expect(assumeRole(credentials, region as AWSRegion)).rejects.toThrow(
+					'Unsupported AWS region',
+				);
+
+				expect(mockFromTemporaryCredentials).not.toHaveBeenCalled();
+				expect(mockResolveProxyUrl).not.toHaveBeenCalled();
+			},
+		);
 	});
 });
 
@@ -890,42 +665,4 @@ describe('awsGetSignInOptionsAndUpdateRequest', () => {
 			),
 		).toThrow(UserError);
 	});
-});
-
-describe('assumeRole region validation', () => {
-	let mockSign: MockedFunction<typeof sign>;
-	let consoleErrorSpy: MockInstance;
-
-	beforeEach(() => {
-		vi.clearAllMocks();
-		mockSign = sign as MockedFunction<typeof sign>;
-		consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-		mockSign.mockImplementation((request: any) => request as any);
-	});
-
-	afterEach(() => {
-		consoleErrorSpy.mockRestore();
-	});
-
-	it.each(['@example.com#', 'us-fake-1', '', 'us-east-1/foo', 'us-east-1#frag'])(
-		'rejects unsupported region value %s without signing or sending a request',
-		async (region) => {
-			const credentials: AwsAssumeRoleCredentialsType = {
-				region: 'us-east-1',
-				customEndpoints: false,
-				useSystemCredentialsForRole: false,
-				roleArn: 'arn:aws:iam::123456789012:role/TestRole',
-				stsAccessKeyId: 'sts-access-key',
-				stsSecretAccessKey: 'sts-secret-key',
-			};
-
-			await expect(assumeRole(credentials, region as any)).rejects.toThrow(UserError);
-			await expect(assumeRole(credentials, region as any)).rejects.toThrow(
-				'Unsupported AWS region',
-			);
-
-			expect(mockSign).not.toHaveBeenCalled();
-			expect(mockFetch).not.toHaveBeenCalled();
-		},
-	);
 });

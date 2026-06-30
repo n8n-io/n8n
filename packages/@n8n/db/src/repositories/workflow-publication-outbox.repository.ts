@@ -251,18 +251,22 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 		}
 	}
 
-	/** Mark a claimed record as successfully processed. */
-	async markCompleted(id: number): Promise<void> {
-		const result = await this.update(
+	/** Mark a claimed record as successfully processed. Pass `trx` to enroll in an existing transaction. */
+	async markCompleted(id: number, trx?: EntityManager): Promise<void> {
+		const manager = trx ?? this.manager;
+		const result = await manager.update(
+			WorkflowPublicationOutbox,
 			{ id, status: Status.InProgress },
 			{ status: Status.Completed, errorMessage: null },
 		);
 		this.assertSingleRowAffected(result.affected, id, Status.Completed);
 	}
 
-	/** Mark a claimed record as failed and record the error for diagnostics. */
-	async markFailed(id: number, errorMessage: string): Promise<void> {
-		const result = await this.update(
+	/** Mark a claimed record as failed and record the error for diagnostics. Pass `trx` to enroll in an existing transaction. */
+	async markFailed(id: number, errorMessage: string, trx?: EntityManager): Promise<void> {
+		const manager = trx ?? this.manager;
+		const result = await manager.update(
+			WorkflowPublicationOutbox,
 			{ id, status: Status.InProgress },
 			{ status: Status.Failed, errorMessage },
 		);
@@ -272,10 +276,13 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	/**
 	 * Mark a claimed record as partially successful: the published version advanced
 	 * and some triggers are running, but others failed to (de)register. The message
-	 * carries per-node detail for diagnostics. The workflow stays published.
+	 * carries per-node detail for diagnostics. The workflow stays published. Pass
+	 * `trx` to enroll in an existing transaction.
 	 */
-	async markPartialSuccess(id: number, errorMessage: string): Promise<void> {
-		const result = await this.update(
+	async markPartialSuccess(id: number, errorMessage: string, trx?: EntityManager): Promise<void> {
+		const manager = trx ?? this.manager;
+		const result = await manager.update(
+			WorkflowPublicationOutbox,
 			{ id, status: Status.InProgress },
 			{ status: Status.PartialSuccess, errorMessage },
 		);
