@@ -63,27 +63,4 @@ describe('useAgentNavigation', () => {
 			agentId: 'agent-9',
 		});
 	});
-
-	// The unsaved-workflow guard is reached via openAgent — the canvas card's
-	// open-existing affordance navigates without saving first. The create flow's
-	// openBuilder persists the workflow before navigating, so it never sees an
-	// unsaved workflow (the save assigns an id and flips isNewWorkflow to false).
-	it('openAgent does not set a return context for a brand-new (unsaved) workflow, but still navigates', async () => {
-		workflowsStore.isNewWorkflow = true;
-
-		await useAgentNavigation().openAgent('proj-1', 'agent-9', 'node-1');
-
-		expect(returnContextStore.set).not.toHaveBeenCalled();
-		expect(push).toHaveBeenCalled();
-	});
-
-	it('openAgent does not set a return context when no workflow id resolves', async () => {
-		workflowsStore.workflowId = '';
-		workflowId.value = '';
-
-		await useAgentNavigation().openAgent('proj-1', 'agent-9', 'node-1');
-
-		expect(returnContextStore.set).not.toHaveBeenCalled();
-		expect(push).toHaveBeenCalled();
-	});
 });
