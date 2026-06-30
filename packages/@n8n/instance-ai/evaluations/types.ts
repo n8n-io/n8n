@@ -6,7 +6,6 @@ import type { InstanceAiEvalExecutionResult, InstanceAiRunDebugResponse } from '
 
 import type { CheckOutcome } from './binaryChecks/types';
 import type { WorkflowResponse } from './clients/n8n-client';
-import type { ExpectedToolInvocations } from './discovery/types';
 
 // ---------------------------------------------------------------------------
 // Checklist items and verification
@@ -206,8 +205,6 @@ export interface WorkflowTestCase {
 	/** Optional NL assertions about the resulting WORKFLOW (outcome). LLM-judged from the workflow,
 	 *  so they also run in prebuilt/MCP runs. Counted toward the pass rate alongside scenarios. */
 	outcomeExpectations?: string[];
-	/** Optional deterministic assertions against captured build-time tool calls. */
-	expectedToolInvocations?: ExpectedToolInvocations;
 	/**
 	 * Credentials visible to this case's build. Created for real before the build
 	 * and pinned as the thread's entire credential view — cases without this

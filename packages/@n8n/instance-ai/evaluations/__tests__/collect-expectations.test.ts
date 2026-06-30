@@ -1,8 +1,4 @@
-import {
-	EXPECTED_TOOL_INVOCATIONS_EXPECTATION,
-	collectExpectations,
-	collectMeasuredExpectations,
-} from '../build-expectations/collect';
+import { collectExpectations } from '../build-expectations/collect';
 
 describe('collectExpectations', () => {
 	it('returns an empty array when neither field is set', () => {
@@ -28,20 +24,5 @@ describe('collectExpectations', () => {
 
 	it('treats empty arrays as empty', () => {
 		expect(collectExpectations({ processExpectations: [], outcomeExpectations: [] })).toEqual([]);
-	});
-
-	it('adds deterministic tool invocation checks only to measured expectations', () => {
-		const testCase = {
-			processExpectations: ['classified the prompt'],
-			expectedToolInvocations: {
-				allOfToolCalls: [{ toolName: 'load_skill', argsContainAny: ['intent-recognition'] }],
-			},
-		};
-
-		expect(collectExpectations(testCase)).toEqual(['classified the prompt']);
-		expect(collectMeasuredExpectations(testCase)).toEqual([
-			'classified the prompt',
-			EXPECTED_TOOL_INVOCATIONS_EXPECTATION,
-		]);
 	});
 });

@@ -28,33 +28,6 @@ const ExecutionScenarioSchema = z.object({
 	requires: z.string().optional(),
 });
 
-const ToolCallExpectationSchema = z.object({
-	toolName: z.string().min(1),
-	argsContainAny: z.array(z.string().min(1)).optional(),
-});
-
-const ExpectedToolInvocationsSchema = z
-	.object({
-		anyOf: z.array(z.string().min(1)).optional(),
-		noneOf: z.array(z.string().min(1)).optional(),
-		anyOfToolCalls: z.array(ToolCallExpectationSchema).optional(),
-		allOfToolCalls: z.array(ToolCallExpectationSchema).optional(),
-		noneOfToolCalls: z.array(ToolCallExpectationSchema).optional(),
-	})
-	.refine(
-		(rule) =>
-			[
-				rule.anyOf,
-				rule.noneOf,
-				rule.anyOfToolCalls,
-				rule.allOfToolCalls,
-				rule.noneOfToolCalls,
-			].some((expectations) => (expectations?.length ?? 0) > 0),
-		{
-			message: 'expectedToolInvocations must specify at least one non-empty invocation expectation',
-		},
-	);
-
 const evalTestCaseObjectSchema = z
 	.object({
 		/** Optional human-readable note on what this case is testing (esp. for behaviour cases). */
@@ -73,8 +46,13 @@ const evalTestCaseObjectSchema = z
 		/** Optional NL assertions about the resulting WORKFLOW (outcome). LLM-judged from the workflow,
 		 *  so they also run in prebuilt/MCP runs. Counted as units in the pass rate. */
 		outcomeExpectations: z.array(z.string().min(1)).optional(),
-		/** Optional deterministic assertions against captured build-time tool calls. */
-		expectedToolInvocations: ExpectedToolInvocationsSchema.optional(),
+		/** Removed for workflow test cases; discovery evals still use deterministic tool checks. */
+		expectedToolInvocations: z
+			.never({
+				invalid_type_error:
+					'`expectedToolInvocations` is no longer supported for workflow test cases — express tool-call checks as `processExpectations`; discovery evals still use deterministic tool checks.',
+			})
+			.optional(),
 		/**
 		 * Removed in favour of the process/outcome split. Declared as a forbidden key (rather
 		 * than dropped from the shape) so a legacy fixture fails loudly with a migration hint,

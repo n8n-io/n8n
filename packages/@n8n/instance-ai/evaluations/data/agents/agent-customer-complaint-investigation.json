@@ -18,14 +18,7 @@
 		"The agent classifies the customer complaint investigation request as a full agent.",
 		"The agent explains that investigation steps depend on what order history and past tickets reveal.",
 		"The agent distinguishes this from fixed classify-then-route triage because the action sequence is discovered at runtime.",
-		"The agent does not classify the request as hybrid merely because refund, replace, and escalate are named outcomes."
-	],
-	"expectedToolInvocations": {
-		"allOfToolCalls": [
-			{
-				"toolName": "load_skill",
-				"argsContainAny": ["intent-recognition"]
-			}
-		]
-	}
+		"The agent does not classify the request as hybrid merely because refund, replace, and escalate are named outcomes.",
+		"The agent calls the load_skill tool with the intent-recognition skill before classifying the request."
+	]
 }

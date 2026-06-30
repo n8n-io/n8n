@@ -35,13 +35,11 @@ import { buildWorkflowContextBlock } from './workflow-context';
 import { SONNET_MODEL } from '../../src/utils/eval-agents';
 import { runBinaryChecks } from '../binaryChecks/index';
 import type { BinaryCheckContext, CheckOutcome } from '../binaryChecks/types';
-import { EXPECTED_TOOL_INVOCATIONS_EXPECTATION } from '../build-expectations/collect';
 import { selectAuthorExpectations } from '../build-expectations/select';
 import { allFailVerdicts, verifyBuildExpectations } from '../build-expectations/verifier';
 import { type VerifierAttemptDebug, verifyChecklist } from '../checklist/verifier';
 import { N8nApiError, type N8nClient, type WorkflowResponse } from '../clients/n8n-client';
 import { createDeclaredCredentials } from '../credentials/seeder';
-import { runExpectedToolsInvokedCheck } from '../discovery/expected-tools-invoked';
 import {
 	buildConversationMetrics,
 	extractOutcomeFromEvents,
@@ -247,7 +245,6 @@ export async function runWorkflowTestCase(
 	if (build.workflowChecks) {
 		result.workflowChecks = build.workflowChecks;
 	}
-	const toolExpectationResults = evaluateToolInvocationExpectations(testCase, build.buildTrace);
 
 	// Optional author expectations — informational, judged concurrently with scenarios.
 	const { expectations: expectationsToJudge, transcript: expectationsTranscript } =
@@ -275,7 +272,7 @@ export async function runWorkflowTestCase(
 	if (!build.success || !build.workflowId) {
 		result.buildError = build.error;
 		const expectationResults = await expectationsPromise;
-		const buildExpectationResults = [...expectationResults, ...toolExpectationResults];
+		const buildExpectationResults = expectationResults;
 		if (buildExpectationResults.length > 0)
 			result.buildExpectationResults = buildExpectationResults;
 		return result;
@@ -321,7 +318,7 @@ export async function runWorkflowTestCase(
 		expectationsPromise,
 	]);
 	result.executionScenarioResults = scenarioResults;
-	const buildExpectationResults = [...expectationResults, ...toolExpectationResults];
+	const buildExpectationResults = expectationResults;
 	if (buildExpectationResults.length > 0) result.buildExpectationResults = buildExpectationResults;
 
 	const scenarioMs = Date.now() - scenarioStart;
@@ -334,47 +331,6 @@ export async function runWorkflowTestCase(
 	}
 
 	return result;
-}
-
-function evaluateToolInvocationExpectations(
-	testCase: WorkflowTestCase,
-	buildTrace: BuildTrace | undefined,
-): BuildExpectationResult[] {
-	if (!testCase.expectedToolInvocations) return [];
-	if (!buildTrace) {
-		return [
-			{
-				expectation: EXPECTED_TOOL_INVOCATIONS_EXPECTATION,
-				pass: false,
-				reason: 'No build trace captured, so tool invocations could not be checked.',
-				incomplete: true,
-			},
-		];
-	}
-
-	const check = runExpectedToolsInvokedCheck(
-		{
-			id: 'build-tool-invocations',
-			userMessage: '',
-			expectedToolInvocations: testCase.expectedToolInvocations,
-		},
-		{
-			workflowIds: [],
-			executionIds: [],
-			dataTableIds: [],
-			finalText: buildTrace.finalText,
-			toolCalls: buildTrace.toolCalls,
-			agentActivities: buildTrace.agentActivities,
-		},
-	);
-
-	return [
-		{
-			expectation: EXPECTED_TOOL_INVOCATIONS_EXPECTATION,
-			pass: check.pass,
-			reason: check.comment,
-		},
-	];
 }
 
 // ---------------------------------------------------------------------------
