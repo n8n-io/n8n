@@ -50,10 +50,16 @@ vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => {
 	};
 });
 
+vi.mock('@/features/resolvers/composables/useNodeRunsAsYou', () => ({
+	useNodeRunsAsYou: vi.fn(),
+}));
+
+import { useNodeRunsAsYou } from '@/features/resolvers/composables/useNodeRunsAsYou';
+
 const stubs = {
 	NodeIcon: {
 		template:
-			'<node-icon-stub :icon-source="iconSource" :size="size" :shrink="shrink" :disabled="disabled"></node-icon-stub>',
+			'<node-icon-stub :data-badge-name="iconSource?.badge?.name" :data-badge-tooltip="iconSource?.badge?.tooltip" :icon-source="iconSource" :size="size" :shrink="shrink" :disabled="disabled"></node-icon-stub>',
 		props: ['icon-source', 'size', 'shrink', 'disabled'],
 	},
 };
@@ -85,6 +91,10 @@ beforeEach(() => {
 	setActivePinia(pinia);
 	nodeTypesStore = mockedStore(useNodeTypesStore);
 	mockedUseRoute.mockReturnValue({} as RouteLocationNormalizedLoadedGeneric);
+	vi.mocked(useNodeRunsAsYou).mockReturnValue({
+		runsAsYou: computed(() => false),
+		tooltipText: computed(() => ''),
+	});
 });
 
 describe('CanvasNodeDefault', () => {
@@ -99,6 +109,40 @@ describe('CanvasNodeDefault', () => {
 		});
 
 		expect(getByTestId('canvas-default-node')).toMatchSnapshot();
+	});
+
+	describe('private credential (runs as you)', () => {
+		it('shows the private-credential icon (with tooltip) as the node badge, replacing the node badge', () => {
+			vi.mocked(useNodeRunsAsYou).mockReturnValue({
+				runsAsYou: computed(() => true),
+				tooltipText: computed(
+					() => 'This node uses private credentials that are resolved at runtime.',
+				),
+			});
+
+			const { getByTestId } = renderComponent({
+				global: {
+					stubs,
+					provide: {
+						...createCanvasNodeProvide({
+							data: {
+								render: {
+									type: CanvasNodeRenderType.Default,
+									options: { icon: { type: 'file', src: 'https://example.com/icon.png' } },
+								},
+							},
+						}),
+					},
+				},
+			});
+
+			const nodeIcon = getByTestId('canvas-default-node').querySelector('node-icon-stub');
+			expect(nodeIcon).toHaveAttribute('data-badge-name', 'user-round-key');
+			expect(nodeIcon).toHaveAttribute(
+				'data-badge-tooltip',
+				'This node uses private credentials that are resolved at runtime.',
+			);
+		});
 	});
 
 	describe('inputs and outputs', () => {
