@@ -90,34 +90,49 @@ describe('WorkflowPublicationTriggerStatusRepository', () => {
 		expect(await repo.findByWorkflowId(ownWorkflow.id)).toEqual([]);
 	});
 
-	it('findLatestByWorkflowId returns the highest-id outbox record', async () => {
+	it('findInFlightByWorkflowId prefers the in_progress record when a pending one coexists', async () => {
 		const wf = await createWorkflow();
-		// Insert two completed rows — completed has no partial-unique-index constraint,
-		// so both rows can coexist for the same workflowId.
-		const first = outboxRepo.create({
-			workflowId: wf.id,
-			publishedVersionId: 'v1',
-			status: 'completed',
-			errorMessage: null,
-		});
-		const second = outboxRepo.create({
-			workflowId: wf.id,
-			publishedVersionId: 'v2',
-			status: 'completed',
-			errorMessage: null,
-		});
-		await outboxRepo.save(first);
-		await outboxRepo.save(second);
+		// A pending and an in_progress record can coexist for the same workflow:
+		// their (workflowId, status) tuples differ, so the partial unique index allows both.
+		await outboxRepo.save(
+			outboxRepo.create({
+				workflowId: wf.id,
+				publishedVersionId: 'v-pending',
+				status: 'pending',
+				errorMessage: null,
+			}),
+		);
+		await outboxRepo.save(
+			outboxRepo.create({
+				workflowId: wf.id,
+				publishedVersionId: 'v-in-progress',
+				status: 'in_progress',
+				errorMessage: null,
+			}),
+		);
 
-		const latest = await outboxRepo.findLatestByWorkflowId(wf.id);
-		expect(latest).not.toBeNull();
-		expect(latest!.id).toBe(second.id);
-		expect(latest!.publishedVersionId).toBe('v2');
+		const inFlight = await outboxRepo.findInFlightByWorkflowId(wf.id);
+		expect(inFlight).not.toBeNull();
+		expect(inFlight!.status).toBe('in_progress');
+		expect(inFlight!.publishedVersionId).toBe('v-in-progress');
 	});
 
-	it('findLatestByWorkflowId returns null when no outbox records exist', async () => {
+	it('findInFlightByWorkflowId ignores terminal records', async () => {
 		const wf = await createWorkflow();
-		const result = await outboxRepo.findLatestByWorkflowId(wf.id);
-		expect(result).toBeNull();
+		await outboxRepo.save(
+			outboxRepo.create({
+				workflowId: wf.id,
+				publishedVersionId: 'v1',
+				status: 'completed',
+				errorMessage: null,
+			}),
+		);
+
+		expect(await outboxRepo.findInFlightByWorkflowId(wf.id)).toBeNull();
+	});
+
+	it('findInFlightByWorkflowId returns null when no outbox records exist', async () => {
+		const wf = await createWorkflow();
+		expect(await outboxRepo.findInFlightByWorkflowId(wf.id)).toBeNull();
 	});
 });

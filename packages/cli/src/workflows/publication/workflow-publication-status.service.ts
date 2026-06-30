@@ -1,6 +1,5 @@
 import type { WorkflowPublicationStatus } from '@n8n/api-types';
 import {
-	type WorkflowPublicationOutbox,
 	WorkflowPublicationOutboxRepository,
 	type WorkflowPublicationTriggerStatus,
 	WorkflowPublicationTriggerStatusRepository,
@@ -17,14 +16,16 @@ export class WorkflowPublicationStatusService {
 	/**
 	 * Get the publication status of a workflow.
 	 *
-	 * The status is derived from the latest outbox record and the current trigger statuses.
+	 * The status is derived from the in-flight publication (if any) and the current
+	 * trigger statuses. The outbox is consulted only to detect an in-flight
+	 * publication; settled state comes entirely from the trigger statuses.
 	 *
 	 * NOTE: we only update the trigger statuses when a publication is completed,
 	 * so if there is a publication in progress, the trigger statuses may not reflect the latest state.
 	 */
 	async getStatus(workflowId: string): Promise<WorkflowPublicationStatus> {
-		const [latestPublicationRequest, currentTriggerStatuses] = await Promise.all([
-			this.outboxRepository.findLatestByWorkflowId(workflowId),
+		const [inFlightPublication, currentTriggerStatuses] = await Promise.all([
+			this.outboxRepository.findInFlightByWorkflowId(workflowId),
 			this.triggerStatusRepository.findByWorkflowId(workflowId),
 		]);
 
@@ -34,27 +35,20 @@ export class WorkflowPublicationStatusService {
 			errorMessage: r.errorMessage,
 		}));
 
-		const isPublishing =
-			latestPublicationRequest?.status === 'pending' ||
-			latestPublicationRequest?.status === 'in_progress';
-		const pendingVersionId = isPublishing ? latestPublicationRequest.publishedVersionId : null;
+		const isPublishing = inFlightPublication !== null;
+		const pendingVersionId = inFlightPublication?.publishedVersionId ?? null;
 
 		// The settled rows ARE the running triggers; if none are activated, nothing is live.
 		const activatedRow = currentTriggerStatuses.find((r) => r.status === 'activated');
 		const liveVersionId = activatedRow?.versionId ?? null;
 
-		const status = this.deriveStatus(
-			isPublishing,
-			currentTriggerStatuses,
-			latestPublicationRequest,
-		);
+		const status = this.deriveStatus(isPublishing, currentTriggerStatuses);
 		return { status, liveVersionId, pendingVersionId, triggers };
 	}
 
 	private deriveStatus(
 		isPublishing: boolean,
 		currentTriggerStatuses: WorkflowPublicationTriggerStatus[],
-		latestPublicationRequest: WorkflowPublicationOutbox | null,
 	): WorkflowPublicationStatus['status'] {
 		if (isPublishing) return 'in_progress';
 		if (currentTriggerStatuses.length > 0) {
@@ -65,6 +59,6 @@ export class WorkflowPublicationStatusService {
 					? 'partial'
 					: 'failed';
 		}
-		return latestPublicationRequest?.status === 'failed' ? 'failed' : 'not_published';
+		return 'not_published';
 	}
 }

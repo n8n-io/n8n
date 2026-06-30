@@ -1,6 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { Brackets, DataSource, Repository } from '@n8n/typeorm';
+import { Brackets, DataSource, In, Repository } from '@n8n/typeorm';
 import type { EntityManager } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 
@@ -20,13 +20,14 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	}
 
 	/**
-	 * Latest outbox record for a workflow (highest id), or null.
-	 *
-	 * NOTE: this is only guaranteed to return a result for in-progress publications.
-	 * Any terminal (completed, partial, or failed) publication may have been cleaned up.
-	 * */
-	async findLatestByWorkflowId(workflowId: string): Promise<WorkflowPublicationOutbox | null> {
-		return await this.findOne({ where: { workflowId }, order: { id: 'DESC' } });
+	 * The in-flight (pending or in_progress) publication for a workflow, or null.
+	 * In-progress is preferred when both exist.
+	 */
+	async findInFlightByWorkflowId(workflowId: string): Promise<WorkflowPublicationOutbox | null> {
+		const inFlight = await this.find({
+			where: { workflowId, status: In([Status.InProgress, Status.Pending]) },
+		});
+		return inFlight.find((record) => record.status === Status.InProgress) ?? inFlight[0] ?? null;
 	}
 
 	/**
