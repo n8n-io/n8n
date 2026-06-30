@@ -1,5 +1,6 @@
 import { getRenderHint } from '@n8n/api-types';
 import type {
+	InstanceAiConfirmation,
 	InstanceAiMessage,
 	InstanceAiAgentNode,
 	InstanceAiToolCallState,
@@ -50,6 +51,7 @@ interface StoredToolInvocation {
 	args: Record<string, unknown>;
 	result?: unknown;
 	error?: string;
+	confirmation?: InstanceAiConfirmation;
 }
 
 type StoredContentPart = MessageContent;
@@ -162,8 +164,12 @@ function extractToolInvocations(content: unknown): StoredToolInvocation[] {
 	return [];
 }
 
-function buildToolCallState(invocation: StoredToolInvocation): InstanceAiToolCallState {
+function buildToolCallState(
+	invocation: StoredToolInvocation,
+	confirmation?: InstanceAiConfirmation,
+): InstanceAiToolCallState {
 	const isCompleted = invocation.state === 'result';
+	const pendingConfirmation = isCompleted ? undefined : (invocation.confirmation ?? confirmation);
 	return {
 		toolCallId: invocation.toolCallId,
 		toolName: invocation.toolName,
@@ -172,6 +178,7 @@ function buildToolCallState(invocation: StoredToolInvocation): InstanceAiToolCal
 		error: isCompleted ? invocation.error : undefined,
 		isLoading: !isCompleted,
 		renderHint: getRenderHint(invocation.toolName),
+		...(pendingConfirmation ? { confirmation: pendingConfirmation } : {}),
 	};
 }
 
@@ -270,6 +277,17 @@ function buildSnapshotMessage(snapshot: AgentTreeSnapshot): InstanceAiMessage {
 	};
 }
 
+function hasRenderableSnapshotTree(snapshot: AgentTreeSnapshot): boolean {
+	const tree = snapshot.tree;
+	return (
+		tree.textContent.trim().length > 0 ||
+		tree.reasoning.trim().length > 0 ||
+		tree.toolCalls.length > 0 ||
+		tree.children.length > 0 ||
+		tree.timeline.length > 0
+	);
+}
+
 // ---------------------------------------------------------------------------
 // Main parser
 // ---------------------------------------------------------------------------
@@ -281,9 +299,12 @@ function buildSnapshotMessage(snapshot: AgentTreeSnapshot): InstanceAiMessage {
 export function parseStoredMessages(
 	storedMessages: Array<AgentDbMessage | StoredAgentMessage>,
 	snapshots?: RunSnapshots,
+	options: {
+		confirmationsByToolCallId?: ReadonlyMap<string, InstanceAiConfirmation>;
+	} = {},
 ): InstanceAiMessage[] {
 	const messages: InstanceAiMessage[] = [];
-	const snapshotList = snapshots ?? [];
+	const snapshotList = (snapshots ?? []).filter(hasRenderableSnapshotTree);
 
 	const conversationMessages = storedMessages.filter(
 		(message): message is ConversationStoredMessage => 'role' in message,
@@ -375,7 +396,12 @@ export function parseStoredMessages(
 		if (msg.role === 'assistant') {
 			const reasoning = extractReasoningFromContent(msg.content);
 			const invocations = extractToolInvocations(msg.content);
-			const toolCalls = invocations.map(buildToolCallState);
+			const toolCalls = invocations.map((invocation) =>
+				buildToolCallState(
+					invocation,
+					options.confirmationsByToolCallId?.get(invocation.toolCallId),
+				),
+			);
 			const parts = extractParts(msg.content);
 
 			const snapshot = takeSnapshotForAssistant(msg, messageIndex);
@@ -410,7 +436,7 @@ export function parseStoredMessages(
 		// in the assistant message's content
 	}
 
-	for (const snapshot of snapshots ?? []) {
+	for (const snapshot of snapshotList) {
 		if (consumedSnapshots.has(snapshot)) continue;
 		pushSnapshotMessage(snapshot);
 	}

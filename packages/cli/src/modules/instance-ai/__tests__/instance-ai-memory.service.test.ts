@@ -232,6 +232,109 @@ describe('InstanceAiMemoryService.getRichMessages', () => {
 		expect(result.messages[1]).toMatchObject({ id: 'cp-assistant-1', role: 'assistant' });
 	});
 
+	it('hydrates pending checkpoint tool calls with their confirmation payload', async () => {
+		const setupRequest = {
+			node: {
+				name: 'Send Rain Alert Email',
+				type: 'n8n-nodes-base.gmail',
+				typeVersion: 2.2,
+				parameters: {},
+				position: [0, 0],
+				id: 'node-1',
+			},
+			isTrigger: false,
+			parameterIssues: {
+				sendTo: ['Placeholder "Email address" - please provide the real value'],
+			},
+			editableParameters: [
+				{
+					name: 'sendTo',
+					displayName: 'To',
+					type: 'string',
+					required: true,
+				},
+			],
+			needsAction: true,
+		};
+
+		mockListMessages.mockResolvedValue({ messages: [] });
+		mockPendingConfirmationRepository.findLiveRequestIds.mockResolvedValueOnce(
+			new Set(['req-setup']),
+		);
+		mockCheckpointRepository.findActiveByThreadId.mockResolvedValueOnce([
+			{
+				key: 'run_abc',
+				runId: 'run_abc',
+				threadId: 'thread-1',
+				expiredAt: null,
+				state: {
+					messageList: {
+						messages: [
+							{
+								id: 'cp-user-1',
+								role: 'user',
+								content: [{ type: 'text', text: 'build my workflow' }],
+								createdAt: '2026-01-01T00:00:00.000Z',
+							},
+							{
+								id: 'cp-assistant-1',
+								role: 'assistant',
+								content: [
+									{
+										type: 'tool-call',
+										toolCallId: 'tc-setup',
+										toolName: 'workflows',
+										input: { action: 'setup', workflowId: 'wf-1' },
+										state: 'pending',
+									},
+								],
+								createdAt: '2026-01-01T00:00:01.000Z',
+							},
+						],
+					},
+					pendingToolCalls: {
+						'tc-setup': {
+							suspended: true,
+							toolCallId: 'tc-setup',
+							toolName: 'workflows',
+							input: { action: 'setup', workflowId: 'wf-1' },
+							suspendPayload: {
+								requestId: 'req-setup',
+								message: 'Configure credentials for your workflow',
+								severity: 'info',
+								setupRequests: [setupRequest],
+								workflowId: 'wf-1',
+							},
+						},
+					},
+				},
+				createdAt: new Date('2026-01-01T00:00:01.000Z'),
+				updatedAt: new Date('2026-01-01T00:00:01.000Z'),
+			},
+		]);
+
+		const service = createService();
+		const result = await service.getRichMessages('user-1', 'thread-1');
+
+		const toolCall = result.messages[1].agentTree?.toolCalls[0];
+		expect(toolCall).toMatchObject({
+			toolCallId: 'tc-setup',
+			toolName: 'workflows',
+			isLoading: true,
+			confirmation: {
+				requestId: 'req-setup',
+				message: 'Configure credentials for your workflow',
+				severity: 'info',
+				setupRequests: [setupRequest],
+				workflowId: 'wf-1',
+			},
+		});
+		expect(mockPendingConfirmationRepository.findLiveRequestIds).toHaveBeenCalledWith(
+			['req-setup'],
+			expect.any(Date),
+		);
+	});
+
 	it('prefers stored messages over checkpoint duplicates with the same id', async () => {
 		// When a previously suspended turn resumes and commits its messages to
 		// memory, the same IDs appear in both places. The stored row wins so

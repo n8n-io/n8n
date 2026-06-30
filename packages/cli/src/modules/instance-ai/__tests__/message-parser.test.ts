@@ -26,6 +26,19 @@ function makeSnapshotTree(text = 'Snapshot text'): InstanceAiAgentNode {
 	};
 }
 
+function makeEmptySnapshotTree(): InstanceAiAgentNode {
+	return {
+		agentId: 'agent-001',
+		role: 'orchestrator',
+		status: 'completed',
+		textContent: '',
+		reasoning: '',
+		toolCalls: [],
+		children: [],
+		timeline: [],
+	};
+}
+
 describe('parseStoredMessages', () => {
 	describe('user messages', () => {
 		it('should parse user message with string content', () => {
@@ -884,6 +897,71 @@ describe('parseStoredMessages', () => {
 			expect(result).toHaveLength(3);
 			expect(result[1].messageGroupId).toBeUndefined();
 			expect(result[2].messageGroupId).toBeUndefined();
+		});
+
+		it('does not collapse a turn around an empty snapshot', () => {
+			const messages: StoredAgentMessage[] = [
+				{ id: 'msg-u', role: 'user', content: 'Build it', createdAt: makeDate(0) },
+				{
+					id: 'msg-load-skill',
+					role: 'assistant',
+					content: [
+						{ type: 'text', text: 'I will build it.' },
+						{
+							type: 'tool-call',
+							toolCallId: 'call_1',
+							toolName: 'load_skill',
+							input: { skillId: 'workflow-builder' },
+							state: 'resolved',
+							output: { success: true },
+						},
+					],
+					createdAt: makeDate(1),
+				},
+				{
+					id: 'msg-build',
+					role: 'assistant',
+					content: [
+						{
+							type: 'tool-call',
+							toolCallId: 'call_2',
+							toolName: 'build-workflow',
+							input: { filePath: 'src/workflows/main.workflow.ts' },
+							state: 'resolved',
+							output: { success: true },
+						},
+					],
+					createdAt: makeDate(2),
+				},
+				{
+					id: 'msg-final',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'Done.' }],
+					createdAt: makeDate(4),
+				},
+			];
+
+			const result = parseStoredMessages(messages, [
+				{
+					tree: makeEmptySnapshotTree(),
+					runId: 'run_empty',
+					messageGroupId: 'mg_empty',
+					runIds: ['run_empty'],
+					createdAt: makeDate(3),
+					updatedAt: makeDate(3),
+				},
+			]);
+
+			expect(result).toHaveLength(4);
+			expect(result.map((message) => message.id)).toEqual([
+				'msg-u',
+				'msg-load-skill',
+				'msg-build',
+				'msg-final',
+			]);
+			expect(result[1].messageGroupId).toBeUndefined();
+			expect(result[2].messageGroupId).toBeUndefined();
+			expect(result[3].messageGroupId).toBeUndefined();
 		});
 
 		it('does not propagate group ids across separate turns', () => {

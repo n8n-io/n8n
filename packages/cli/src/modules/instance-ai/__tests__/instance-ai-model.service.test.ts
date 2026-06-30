@@ -85,9 +85,9 @@ describe('InstanceAiModelService', () => {
 		delete process.env.HTTPS_PROXY;
 		jest.clearAllMocks();
 		const transport = mock<HttpTransport>();
-		customFetch = jest.fn(
+		customFetch = jest.fn<ReturnType<CustomFetch>, Parameters<CustomFetch>>(
 			async () => new Response(null, { status: 200 }),
-		) as jest.MockedFunction<CustomFetch>;
+		);
 		transport.asCustomFetch.mockReturnValue(customFetch);
 		outboundHttp.transport.mockReturnValue(transport);
 		service = new InstanceAiModelService(settingsService, aiService, outboundHttp);
