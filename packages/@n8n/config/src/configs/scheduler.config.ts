@@ -4,17 +4,13 @@ import { z } from 'zod';
 import { Config, Env } from '../decorators';
 import { positiveIntSchema } from '../schemas';
 
-/** Allows 0 (clamp disabled) in addition to any positive interval, in seconds. */
+/** Allows 0 (clamp disabled) in addition to positive values. */
 const nonNegativeIntSchema = z.number({ coerce: true }).int().nonnegative();
 
 /**
- * Configuration for the durable scheduler: a master on/off flag plus the engine
- * tunables (loop cadences, lease and retention windows). All durations are in
- * seconds, matching the `@n8n/scheduler` schedule math (`intervalSeconds`).
- *
- * Default off: with `enabled` false nothing reads these values, so the existing
- * in-memory schedule trigger engine is unaffected. The engine loops that consume
- * this config are wired up separately (lifecycle wiring, materialiser).
+ * Configuration for the durable scheduler: the master on/off flag and the engine
+ * tunables. Off by default; while `enabled` is false nothing reads these values,
+ * so the existing in-memory schedule trigger engine is unaffected.
  */
 @Config
 export class SchedulerConfig {
