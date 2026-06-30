@@ -433,6 +433,49 @@ describe('memoryManagement', () => {
 			expect(result[2]).toBe(aiMessage2);
 			expect(result[3]).toBeInstanceOf(ToolMessage);
 		});
+		it('should handle multiple tool calls in a single step (deduplicating AIMessage)', () => {
+			const aiMessage = new AIMessage({
+				content: 'Let me do both',
+				tool_calls: [
+					{ id: 'call-1', name: 'weather', args: { location: 'NYC' }, type: 'tool_call' },
+					{ id: 'call-2', name: 'time', args: { timezone: 'EST' }, type: 'tool_call' },
+				],
+			});
+
+			const steps: ToolCallData[] = [
+				{
+					action: {
+						tool: 'weather',
+						toolInput: { location: 'NYC' },
+						log: 'Weather',
+						messageLog: [aiMessage],
+						toolCallId: 'call-1',
+						type: 'tool_call',
+					},
+					observation: 'Sunny, 72°F',
+				},
+				{
+					action: {
+						tool: 'time',
+						toolInput: { timezone: 'EST' },
+						log: 'Time',
+						messageLog: [aiMessage],
+						toolCallId: 'call-2',
+						type: 'tool_call',
+					},
+					observation: '14:30',
+				},
+			];
+
+			const result = buildMessagesFromSteps(steps);
+
+			expect(result).toHaveLength(3);
+			expect(result[0]).toBe(aiMessage);
+			expect(result[1]).toBeInstanceOf(ToolMessage);
+			expect((result[1] as ToolMessage).tool_call_id).toBe('call-1');
+			expect(result[2]).toBeInstanceOf(ToolMessage);
+			expect((result[2] as ToolMessage).tool_call_id).toBe('call-2');
+		});
 
 		it('should return empty array for empty steps', () => {
 			const result = buildMessagesFromSteps([]);
