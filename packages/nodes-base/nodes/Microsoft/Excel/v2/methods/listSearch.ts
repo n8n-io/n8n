@@ -94,7 +94,7 @@ export async function getWorksheetsList(
 	response = await microsoftApiRequest.call(
 		this,
 		'GET',
-		`/drive/items/${encodeURIComponent(workbookId)}/workbook/worksheets`,
+		`/drive/items/${workbookId}/workbook/worksheets`,
 		undefined,
 		{
 			select: 'id,name',
@@ -123,18 +123,16 @@ export async function getWorksheetTables(
 		workbookURL = `https://onedrive.live.com/edit.aspx?resid=${workbookId}`;
 	}
 
-	const worksheetId = encodeURIComponent(
-		this.getNodeParameter('worksheet', undefined, {
-			extractValue: true,
-		}) as string,
-	);
+	const worksheetId = this.getNodeParameter('worksheet', undefined, {
+		extractValue: true,
+	}) as string;
 
 	let response: IDataObject = {};
 
 	response = await microsoftApiRequest.call(
 		this,
 		'GET',
-		`/drive/items/${encodeURIComponent(workbookId)}/workbook/worksheets/${worksheetId}/tables`,
+		`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables`,
 		undefined,
 	);
 
@@ -147,7 +145,7 @@ export async function getWorksheetTables(
 		const { address } = await microsoftApiRequest.call(
 			this,
 			'GET',
-			`/drive/items/${encodeURIComponent(workbookId)}/workbook/worksheets/${worksheetId}/tables/${value}/range`,
+			`/drive/items/${workbookId}/workbook/worksheets/${worksheetId}/tables/${value}/range`,
 			undefined,
 			{
 				select: 'address',

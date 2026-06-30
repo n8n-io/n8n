@@ -49,11 +49,9 @@ export async function execute(
 
 	for (let i = 0; i < items.length; i++) {
 		try {
-			const workbookId = encodeURIComponent(
-				this.getNodeParameter('workbook', i, undefined, {
-					extractValue: true,
-				}) as string,
-			);
+			const workbookId = this.getNodeParameter('workbook', i, undefined, {
+				extractValue: true,
+			}) as string;
 
 			const additionalFields = this.getNodeParameter('additionalFields', i);
 			const body: IDataObject = {};

@@ -24,17 +24,13 @@ export async function execute(
 
 	for (let i = 0; i < items.length; i++) {
 		try {
-			const workbookId = encodeURIComponent(
-				this.getNodeParameter('workbook', i, undefined, {
-					extractValue: true,
-				}) as string,
-			);
+			const workbookId = this.getNodeParameter('workbook', i, undefined, {
+				extractValue: true,
+			}) as string;
 
-			const worksheetId = encodeURIComponent(
-				this.getNodeParameter('worksheet', i, undefined, {
-					extractValue: true,
-				}) as string,
-			);
+			const worksheetId = this.getNodeParameter('worksheet', i, undefined, {
+				extractValue: true,
+			}) as string;
 
 			await microsoftApiRequest.call(
 				this,
