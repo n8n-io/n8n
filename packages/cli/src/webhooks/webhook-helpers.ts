@@ -58,9 +58,9 @@ import { finished } from 'stream/promises';
 import { ActiveExecutions } from '@/active-executions';
 import { AuthService } from '@/auth/auth.service';
 import { MCP_TRIGGER_NODE_TYPE } from '@/constants';
+import { ResponseError } from '@/errors/response-errors/abstract/response.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { UnprocessableRequestError } from '@/errors/response-errors/unprocessable.error';
 import { EventService } from '@/events/event.service';
 import { parseBody } from '@/middlewares';
 import {
@@ -68,6 +68,7 @@ import {
 	OAuthTokenVerifierProxy,
 } from '@/services/oauth-token-verifier-proxy.service';
 import { OwnershipService } from '@/services/ownership.service';
+import { TriggerAuthIdentitySeederProxy } from '@/services/trigger-auth-identity-seeder-proxy.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 import { WaitTracker } from '@/wait-tracker';
 import { WebhookExecutionContext } from '@/webhooks/webhook-execution-context';
@@ -87,7 +88,6 @@ import {
 } from './webhook-response-headers';
 import { WebhookService } from './webhook.service';
 import type { IWebhookResponseCallbackData, WebhookRequest } from './webhook.types';
-import { TriggerAuthIdentitySeederProxy } from '@/services/trigger-auth-identity-seeder-proxy.service';
 
 // Type guards for MCP queue mode data validation
 interface McpToolCallPayload {
@@ -1011,7 +1011,7 @@ export async function executeWebhook(
 		return executionId;
 	} catch (e) {
 		let error: Error;
-		if (e instanceof UnprocessableRequestError) {
+		if (e instanceof ResponseError && e.httpStatusCode < 500) {
 			error = e;
 		} else {
 			Container.get(ErrorReporter).error(e, { executionId });

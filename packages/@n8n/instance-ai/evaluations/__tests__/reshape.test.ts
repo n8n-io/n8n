@@ -2,6 +2,7 @@ import type { Run } from 'langsmith/schemas';
 
 import { reshapeLangSmithRuns } from '../cli/reshape';
 import type { WorkflowTestCaseWithFile } from '../data/workflows';
+import { BUILD_ONLY_SCENARIO_NAME } from '../langsmith/dataset-sync';
 import type {
 	BuildExpectationResult,
 	ExecutionScenario,
@@ -70,6 +71,64 @@ describe('reshapeLangSmithRuns', () => {
 		expect(tc.workflowBuildSuccess).toBe(true);
 		expect(tc.n8nBaseUrl).toBe('http://localhost:5678');
 		expect(tc.executionScenarioResults.map((r) => r.success)).toEqual([true, true]);
+	});
+
+	it('grades a build-only case (0 scenarios) from the sentinel row without a scenario unit', () => {
+		const cases = [withFile('build-only', [])];
+		const rows = [
+			row(
+				{ testCaseFile: 'build-only', scenarioName: BUILD_ONLY_SCENARIO_NAME, _iteration: 0 },
+				{
+					buildSuccess: true,
+					passed: false,
+					score: 0,
+					reasoning: 'Build-only case — graded by process/outcome expectations',
+					workflowId: 'wf-1',
+					threadId: 'tid-1',
+				},
+			),
+		];
+
+		const result = reshapeLangSmithRuns(
+			rows,
+			cases,
+			1,
+			new Map([['tid-1', [turn]]]),
+			new Map([['0:build-only', [verdict]]]),
+			undefined,
+		);
+
+		const tc = result[0][0];
+		expect(tc.executionScenarioResults).toEqual([]); // no phantom scenario unit
+		expect(tc.workflowBuildSuccess).toBe(true);
+		expect(tc.workflowId).toBe('wf-1');
+		expect(tc.threadId).toBe('tid-1');
+		expect(tc.transcript).toEqual([turn]);
+		expect(tc.buildExpectationResults).toEqual([verdict]);
+	});
+
+	it('reports a build-only case whose build failed as not built, surfacing the build error', () => {
+		const cases = [withFile('build-only', [])];
+		// The sentinel row carries the build-failure output the target returns before the
+		// build-only branch — reshape must report it as not built, not mask it as success.
+		const rows = [
+			row(
+				{ testCaseFile: 'build-only', scenarioName: BUILD_ONLY_SCENARIO_NAME, _iteration: 0 },
+				{
+					buildSuccess: false,
+					passed: false,
+					score: 0,
+					reasoning: 'Build failed: agent produced no workflow',
+				},
+			),
+		];
+
+		const result = reshapeLangSmithRuns(rows, cases, 1, new Map(), new Map(), undefined);
+
+		const tc = result[0][0];
+		expect(tc.executionScenarioResults).toEqual([]); // no phantom scenario unit
+		expect(tc.workflowBuildSuccess).toBe(false);
+		expect(tc.buildError).toBe('Build failed: agent produced no workflow');
 	});
 
 	it('attaches build-expectation verdicts by iteration:fileSlug even with no threadId (prebuilt/MCP path)', () => {

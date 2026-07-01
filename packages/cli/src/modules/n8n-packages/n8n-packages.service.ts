@@ -2,6 +2,9 @@ import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import type { Readable } from 'node:stream';
 
+import { N8N_VERSION } from '@/constants';
+import { EventService } from '@/events/event.service';
+
 import { ImportPipeline } from './engine/import-pipeline';
 import { CredentialExporter } from './entities/credential/credential.exporter';
 import { ProjectExporter } from './entities/project/project.exporter';
@@ -15,8 +18,6 @@ import type {
 import { FORMAT_VERSION } from './spec/constants';
 import { packageManifestSchema } from './spec/manifest.schema';
 
-import { N8N_VERSION } from '@/constants';
-
 @Service()
 export class N8nPackagesService {
 	constructor(
@@ -25,6 +26,7 @@ export class N8nPackagesService {
 		private readonly credentialExporter: CredentialExporter,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly importPipeline: ImportPipeline,
+		private readonly eventService: EventService,
 	) {}
 
 	async exportPackage(request: ExportPackageRequest): Promise<Readable> {
@@ -72,7 +74,19 @@ export class N8nPackagesService {
 		});
 
 		writer.writeFile('manifest.json', JSON.stringify(manifest, null, '\t'));
-		return writer.finalize();
+
+		// Finalize before emitting so a failed finalization doesn't report a phantom export.
+		const stream = writer.finalize();
+
+		this.eventService.emit('n8n-package-exported', {
+			user: request.user,
+			counts: {
+				workflows: workflowEntries.length,
+				credentials: credentialEntries.length,
+			},
+		});
+
+		return stream;
 	}
 
 	async importPackage(request: ImportPackageRequest): Promise<ImportResult> {

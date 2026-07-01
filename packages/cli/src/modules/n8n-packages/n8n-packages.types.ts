@@ -84,6 +84,29 @@ export type ImportAuditCredentialIds = {
 	updated: string[];
 };
 
+/**
+ * Per-entity counts for an import, carried on `n8n-package-imported` for telemetry.
+ * Counts only — no ids — so they can be relayed to analytics without leaking data.
+ */
+export type ImportPackageEventCounts = {
+	workflows: {
+		created: number;
+		updated: number;
+		skipped: number;
+	};
+	credentials: {
+		matched: number;
+		created: number;
+		requirements: number;
+	};
+};
+
+/** Per-entity counts for an export, carried on `n8n-package-exported` for telemetry. */
+export type ExportPackageEventCounts = {
+	workflows: number;
+	credentials: number;
+};
+
 export interface ImportedWorkflowSummary {
 	sourceWorkflowId: string;
 	localId: string;

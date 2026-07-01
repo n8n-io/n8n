@@ -438,8 +438,14 @@ function deleteOption(optionName: string): void {
 }
 
 function isHiddenByAiGateway(parameter: INodeProperties): boolean {
-	if (!MODEL_PARAMETER_NAMES.has(parameter.name)) return false;
 	if (!node.value) return false;
+
+	// isNodePropertyHidden internally gates on a gateway-managed credential
+	if (aiGateway.isNodePropertyHidden(node.value, parameter.name)) {
+		return true;
+	}
+
+	if (!MODEL_PARAMETER_NAMES.has(parameter.name)) return false;
 
 	const credentials = node.value.credentials;
 	if (!credentials) return false;
@@ -880,7 +886,7 @@ watch(
 				:dependent-parameters-values="item.dependentParametersValues"
 				:is-read-only="isReadOnly"
 				:allow-empty-strings="item.parameter.typeOptions?.resourceMapper?.allowEmptyValues"
-				input-size="medium"
+				input-size="small"
 				label-size="small"
 				@value-changed="valueChanged"
 			/>

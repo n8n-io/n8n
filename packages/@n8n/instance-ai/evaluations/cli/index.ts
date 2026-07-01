@@ -68,7 +68,11 @@ import {
 	runWithConcurrency,
 	type BuildResult,
 } from '../harness/runner';
-import { syncDataset, type DatasetExampleInputs } from '../langsmith/dataset-sync';
+import {
+	BUILD_ONLY_SCENARIO_NAME,
+	syncDataset,
+	type DatasetExampleInputs,
+} from '../langsmith/dataset-sync';
 import { seedMcpRegistry } from '../mcp-registry/seeder';
 import { snapshotWorkflowIds } from '../outcome/workflow-discovery';
 import { writeRunDebugReport } from '../report/run-debug-report';
@@ -556,6 +560,27 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			};
 		}
 
+		// Build-only case — the build plus its expectation judging (in getOrBuild) is the whole
+		// test; skip execution. A failed build returns above with its error reasoning; reflect
+		// the real build status here rather than assuming success.
+		if (inputs.scenarioName === BUILD_ONLY_SCENARIO_NAME) {
+			return {
+				buildSuccess: build.success,
+				workflowId: build.workflowId,
+				passed: false,
+				score: 0,
+				reasoning: 'Build-only case — graded by process/outcome expectations',
+				execErrors: [],
+				buildDurationMs,
+				execDurationMs: 0,
+				nodeCount: build.workflowJsons[0]?.nodes.length ?? 0,
+				threadId: build.threadId,
+				workflowChecks: build.workflowChecks,
+				workflowJson: build.workflowJsons[0],
+				buildTrace: build.buildTrace,
+			};
+		}
+
 		const execStart = Date.now();
 		const nodeCount = build.workflowJsons[0]?.nodes.length ?? 0;
 		const maxExecAttempts = 5;
@@ -950,7 +975,7 @@ async function runDirectLoop(config: RunConfig): Promise<{
 	}
 
 	const totalScenarios = testCasesWithFiles.reduce(
-		(sum, { testCase }) => sum + testCase.executionScenarios.length,
+		(sum, { testCase }) => sum + (testCase.executionScenarios ?? []).length,
 		0,
 	);
 	logger.info(

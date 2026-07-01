@@ -4,7 +4,15 @@ import { returnAllOrLimit } from '@utils/descriptions';
 import { updateDisplayOptions } from '@utils/utilities';
 
 import { groupRLC, planRLC } from '../../descriptions';
-import { microsoftApiRequest, microsoftApiRequestAllItems } from '../../transport';
+import {
+	buildTeamsPath,
+	getTeamsCredentialType,
+	microsoftApiRequest,
+	microsoftApiRequestAllItems,
+	SERVICE_PRINCIPAL_AUTH,
+	SP_HIDE,
+} from '../../transport';
+import { byIdUnderSp } from './helpers';
 
 const properties: INodeProperties[] = [
 	{
@@ -26,16 +34,41 @@ const properties: INodeProperties[] = [
 				description: 'Tasks in group plan',
 			},
 		],
+		// App-only Graph has no `/me`, so "Group Member" mode (which reads /v1.0/me)
+		// has no app-only form — hidden under the Service Principal credential, which
+		// is forced to plan mode in execute.
+		displayOptions: {
+			hide: {
+				...SP_HIDE,
+			},
+		},
 	},
-	groupRLC,
+	{
+		// The group picker (member mode, and the dependency for the OAuth2 plan picker)
+		// is part of the member-mode flow that has no app-only form — hidden under the
+		// Service Principal credential, which is forced to plan mode in execute.
+		...groupRLC,
+		displayOptions: {
+			hide: {
+				...SP_HIDE,
+			},
+		},
+	},
 	{
 		...planRLC,
 		displayOptions: {
 			show: {
 				tasksFor: ['plan'],
 			},
+			hide: {
+				...SP_HIDE,
+			},
 		},
 	},
+	// Plan picker shown under the Service Principal credential (which has no `tasksFor`
+	// selector). By-ID — plan mode is forced in execute and the value routes through
+	// `buildTeamsPath`. (See `byIdUnderSp` for why list mode is dropped under SP.)
+	byIdUnderSp(planRLC),
 	...returnAllOrLimit,
 ];
 
@@ -49,7 +82,10 @@ const displayOptions = {
 export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number) {
-	const tasksFor = this.getNodeParameter('tasksFor', i) as string;
+	// App-only Graph has no `/me`, so "Group Member" mode is unavailable; force plan
+	// mode (and never read the hidden `tasksFor`) under the Service Principal credential.
+	const isServicePrincipal = getTeamsCredentialType.call(this) === SERVICE_PRINCIPAL_AUTH;
+	const tasksFor = isServicePrincipal ? 'plan' : (this.getNodeParameter('tasksFor', i) as string);
 	const returnAll = this.getNodeParameter('returnAll', i);
 
 	if (tasksFor === 'member') {
@@ -77,20 +113,16 @@ export async function execute(this: IExecuteFunctions, i: number) {
 	} else {
 		//https://docs.microsoft.com/en-us/graph/api/plannerplan-list-tasks?view=graph-rest-1.0&tabs=http
 		const planId = this.getNodeParameter('planId', i, '', { extractValue: true }) as string;
+		const endpoint = buildTeamsPath.call(this, ['/v1.0/planner/plans/', { id: planId }, '/tasks']);
 		if (returnAll) {
-			return await microsoftApiRequestAllItems.call(
-				this,
-				'value',
-				'GET',
-				`/v1.0/planner/plans/${planId}/tasks`,
-			);
+			return await microsoftApiRequestAllItems.call(this, 'value', 'GET', endpoint);
 		} else {
 			const limit = this.getNodeParameter('limit', i);
 			const responseData = await microsoftApiRequestAllItems.call(
 				this,
 				'value',
 				'GET',
-				`/v1.0/planner/plans/${planId}/tasks`,
+				endpoint,
 				{},
 			);
 			return responseData.splice(0, limit);

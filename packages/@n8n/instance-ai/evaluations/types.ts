@@ -194,7 +194,8 @@ export interface WorkflowTestCase {
 	complexity: 'simple' | 'medium' | 'complex';
 	tags: string[];
 	triggerType?: 'manual' | 'webhook' | 'schedule' | 'form';
-	executionScenarios: ExecutionScenario[];
+	/** Optional — a build-only case is graded by process/outcome expectations instead. */
+	executionScenarios?: ExecutionScenario[];
 	/** Max follow-up messages the proxy will send. Ignored in auto-approve mode. */
 	messageBudget?: number;
 	/** Optional NL assertions about the build CONVERSATION (process: clarifications, push-back,
@@ -217,10 +218,11 @@ export interface WorkflowTestCase {
 	 *  Mutually exclusive with `seedFile`. */
 	priorConversation?: ConversationTurn[];
 	/** Reproduce a real conversation from its LangSmith trace at run time: restore
-	 *  up to the last user message, send that live. Commits only the thread id
-	 *  (workspace auto-discovered; `project` overrides the source project).
-	 *  Supplies the live turn, so `conversation` is optional. Transient (~14d). */
-	seedThread?: { threadId: string; project?: string };
+	 *  up to the live turn (the last user message, or one pinned by `liveTurnRunId`)
+	 *  and send that live. Commits only the thread id (workspace auto-discovered;
+	 *  `project`/`endpoint` override the source project/tenant). Supplies the live
+	 *  turn, so `conversation` is optional. Transient (~14d). */
+	seedThread?: { threadId: string; project?: string; endpoint?: string; liveTurnRunId?: string };
 	/** Logical groupings this case belongs to (e.g. `['pr', 'full']`). Defaults to `['full']`. */
 	datasets: string[];
 }
