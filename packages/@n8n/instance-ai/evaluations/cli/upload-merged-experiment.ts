@@ -27,6 +27,7 @@ import {
 	type ScenarioCounts,
 } from '../comparison/compare';
 import { fetchBaselineBucket, findLatestBaseline } from '../comparison/fetch-baseline';
+import { loadWorkflowTestCasesWithFiles } from '../data/workflows';
 import { createLogger } from '../harness/logger';
 import { syncDataset } from '../langsmith/dataset-sync';
 
@@ -167,15 +168,10 @@ export async function uploadUnifiedExperiment(
 	const slugs = [...new Set(opts.combined.testCases.map((tc) => tc.testCaseFile ?? tc.name))];
 
 	// Ensure the dataset + examples exist for every merged slug (idempotent), so
-	// the replay runs link to real dataset examples.
-	const datasetName = await syncDataset(
-		client,
-		opts.dataset,
-		logger,
-		slugs.join(','),
-		undefined,
-		undefined,
-	);
+	// the replay runs link to real dataset examples. syncDataset takes the loaded
+	// test cases (filtered to our slugs) — mirrors the eval CLI's call in index.ts.
+	const testCasesWithFiles = loadWorkflowTestCasesWithFiles(slugs.join(','));
+	const datasetName = await syncDataset(client, opts.dataset, logger, testCasesWithFiles);
 
 	const replay = buildReplayMap(opts.combined.testCases);
 	const data = await expandExamples(
