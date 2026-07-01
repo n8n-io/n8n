@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { N8nButton, N8nHeading, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useInstanceAiSettingsStore } from '../../instanceAiSettings.store';
+import { useInstanceAiBrowserUseTelemetry } from '../../instanceAiBrowserUse.telemetry';
 
 import { CHROME_EXTENSION_URL } from './constants';
 
@@ -19,6 +20,7 @@ const props = withDefaults(
 
 const i18n = useI18n();
 const store = useInstanceAiSettingsStore();
+const telemetry = useInstanceAiBrowserUseTelemetry();
 
 const isConnected = computed(() => store.browserConnected);
 const connectUrl = ref<string | null>(null);
@@ -45,6 +47,7 @@ async function refreshConnectUrl(): Promise<void> {
 }
 
 onMounted(() => {
+	telemetry.trackModalOpened();
 	void store.fetchBrowserStatus();
 	if (!store.browserConnected) {
 		void refreshConnectUrl();
@@ -97,6 +100,7 @@ onBeforeUnmount(() => {
 					size="medium"
 					icon="external-link"
 					data-test-id="browser-use-install-extension"
+					@click="telemetry.trackInstallExtensionClicked"
 				/>
 			</div>
 
@@ -116,6 +120,7 @@ onBeforeUnmount(() => {
 					icon="external-link"
 					:disabled="!connectUrl"
 					data-test-id="browser-use-open-connect-page"
+					@click="telemetry.trackOpenExtensionClicked"
 				/>
 			</div>
 

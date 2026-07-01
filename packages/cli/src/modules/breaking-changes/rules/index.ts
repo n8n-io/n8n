@@ -18,3 +18,6 @@ import './v2/task-runner-docker-image.rule';
 import './v2/tunnel-option.rule';
 import './v2/wait-node-subworkflow.rule';
 import './v2/workflow-hooks-deprecated.rule';
+
+// v3 rules
+import './v3/execute-workflow-each-mode.rule';
