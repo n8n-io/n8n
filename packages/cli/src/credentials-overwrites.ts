@@ -225,4 +225,18 @@ export class CredentialsOverwrites {
 	getAll(): ICredentialsOverwrite {
 		return this.overwriteData;
 	}
+
+	supportsManagedAuth(type: string): boolean {
+		return this.get(type) !== undefined;
+	}
+
+	usesManagedAuth(type: string, data: Record<string, unknown>): boolean {
+		const overwrites = this.get(type);
+		if (overwrites === undefined) return false;
+
+		return Object.keys(overwrites).some((key) => {
+			const value = data[key];
+			return value === null || value === undefined || value === '';
+		});
+	}
 }

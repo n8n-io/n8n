@@ -954,6 +954,8 @@ describe('TelemetryEventRelay', () => {
 				projectId: 'project123',
 				projectType: 'personal',
 				isDynamic: false,
+				supportsManagedAuth: true,
+				usesManagedAuth: true,
 			};
 
 			eventService.emit('credentials-created', event);
@@ -968,6 +970,8 @@ describe('TelemetryEventRelay', () => {
 				is_private: false,
 				uses_external_secrets: false,
 				jwe_enabled: false,
+				credential_supports_managed_auth: true,
+				credential_uses_managed_auth: true,
 			});
 		});
 
@@ -1024,6 +1028,8 @@ describe('TelemetryEventRelay', () => {
 				is_private: true,
 				uses_external_secrets: false,
 				jwe_enabled: false,
+				credential_supports_managed_auth: false,
+				credential_uses_managed_auth: false,
 			});
 		});
 
