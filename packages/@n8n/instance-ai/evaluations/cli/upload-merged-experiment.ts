@@ -1,8 +1,8 @@
 // ---------------------------------------------------------------------------
-// Re-upload the merged shard results as ONE LangSmith experiment (Phase 2,
-// option b). Sharding splits a run across N processes, and LangSmith makes each
-// evaluate() call its own experiment — so without this, a sharded run scatters
-// into N experiments and you lose the single-experiment, run-over-run history.
+// Re-upload the merged shard results as ONE LangSmith experiment. Sharding
+// splits a run across N processes, and LangSmith makes each evaluate() call its
+// own experiment — so without this, a sharded run scatters into N experiments
+// and you lose the single-experiment, run-over-run history.
 //
 // We replay the already-computed per-(slug, scenario, iteration) outcomes
 // through the SAME evaluate() path a real run uses (a target that just returns

@@ -30,12 +30,12 @@ on:
         type: string
         default: ''
       slugs:
-        description: 'Phase 2 shard slice: exact slugs to build + eval (comma-separated). Takes precedence over filter; empty = whole tier / filter.'
+        description: 'Shard slice: exact slugs to build + eval (comma-separated). Takes precedence over filter; empty = whole tier / filter.'
         required: false
         type: string
         default: ''
       shard-id:
-        description: 'Phase 2 shard identifier. Suffixes the uploaded artifact name so matrix shards do not collide; empty = single (non-sharded) run.'
+        description: 'Shard identifier. Suffixes the uploaded artifact name so matrix shards do not collide; empty = single (non-sharded) run.'
         required: false
         type: string
         default: ''
@@ -95,11 +95,11 @@ on:
         required: false
         default: ''
       slugs:
-        description: 'Phase 2 shard slice: exact slugs to build + eval (comma-separated). Takes precedence over filter; empty = whole tier / filter.'
+        description: 'Shard slice: exact slugs to build + eval (comma-separated). Takes precedence over filter; empty = whole tier / filter.'
         required: false
         default: ''
       shard-id:
-        description: 'Phase 2 shard identifier. Suffixes the uploaded artifact name so matrix shards do not collide; empty = single (non-sharded) run.'
+        description: 'Shard identifier. Suffixes the uploaded artifact name so matrix shards do not collide; empty = single (non-sharded) run.'
         required: false
         default: ''
       iterations:
@@ -278,7 +278,7 @@ jobs:
         run: |
           # build-mcp-manifest narrows by positional slugs (space-separated),
           # not --filter; translate a comma/space list into positional args.
-          # Phase 2 passes this shard's `slugs`; they take precedence over the
+          # The matrix passes this shard's `slugs`; they take precedence over the
           # single-case `filter`. Empty = whole tier. --tier still intersects, so
           # passing slugs + --tier mcp is safe.
           ARGS=(

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // ---------------------------------------------------------------------------
-// Merge sharded MCP eval results (CI Phase 2).
+// Merge sharded MCP eval results.
 //
 // Each matrix shard runs the whole build+eval pipeline for a disjoint slice of
 // the `mcp` tier and uploads its own `eval-results.json`. Because shards are
@@ -340,8 +340,8 @@ export interface RenderContext {
  * Render the combined run as markdown for `$GITHUB_STEP_SUMMARY` /
  * `eval-pr-comment.md`. Mirrors the no-comparison layout of
  * `formatComparisonMarkdown`: headline, per-test-case table, workflow checks,
- * failure details. (The baseline-comparison section is added by the LangSmith
- * upload step in Increment 2.)
+ * failure details. The baseline-comparison section is included when a
+ * comparison outcome is supplied (after the LangSmith upload).
  */
 export function renderSummaryMarkdown(
 	combined: CombinedResults,
@@ -595,7 +595,7 @@ interface MergeArgs {
 	inputDir?: string;
 	inputs: string[];
 	outputDir: string;
-	/** Re-upload the merged results as one unified LangSmith experiment (option b). */
+	/** Re-upload the merged results as one unified LangSmith experiment. */
 	uploadExperiment: boolean;
 	dataset: string;
 	baselinePrefix: string;
@@ -714,9 +714,9 @@ async function main(): Promise<void> {
 	const missingShardCount =
 		args.expectedShards !== undefined ? Math.max(0, args.expectedShards - reportedShards) : 0;
 
-	// Option b: re-upload one unified experiment so LangSmith keeps a single
-	// experiment per run for run-over-run comparison. Best-effort — a LangSmith
-	// outage must not sink the merge, whose core value is the combined summary.
+	// Re-upload one unified experiment so LangSmith keeps a single experiment per
+	// run for run-over-run comparison. Best-effort — a LangSmith outage must not
+	// sink the merge, whose core value is the combined summary.
 	let experimentName: string | undefined;
 	let experimentUrl: string | undefined;
 	let outcome: ComparisonOutcome | undefined;

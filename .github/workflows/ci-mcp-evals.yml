@@ -6,7 +6,7 @@ name: 'CI: MCP Workflow Evals'
 # ci-mcp-evals.yml`); set experiment-name=mcp-baseline to refresh the LangSmith
 # baseline, or filter=<slug> to run a single case.
 #
-# Phase 2 (parallelism): a `plan-shards` job splits the tier into `shards` slug
+# Parallelism: a `plan-shards` job splits the tier into `shards` slug
 # groups; a matrix fans out the whole build+eval pipeline per group on its own
 # n8n instance (so the single-instance prebuilt guard is never violated); a
 # `merge` job combines the per-shard results into one summary and re-uploads a
@@ -123,7 +123,7 @@ jobs:
       N8N_ENCRYPTION_KEY: ${{ secrets.N8N_ENCRYPTION_KEY }}
 
   # Combine the per-shard results into one summary and re-upload a single unified
-  # LangSmith experiment for the whole tier (option b). Runs even when some
+  # LangSmith experiment for the whole tier. Runs even when some
   # shards failed, as long as planning succeeded and at least one shard reported.
   merge:
     name: Merge shard results

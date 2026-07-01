@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Plan the MCP workflow-eval shard matrix (CI Phase 2).
+ * Plan the MCP workflow-eval shard matrix.
  *
  * Splits a tier's test-case slugs into N groups and emits a GitHub Actions
  * matrix (`{ include: [{ shard, slugs }] }`). Each shard then runs the whole

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Derive per-slug shard weights from a run's build stats (CI Phase 2 balancing).
+ * Derive per-slug shard weights from a run's build stats (shard balancing).
  *
  * Each MCP eval shard uploads `eval-mcp-cohort/manifest-stats.json` with a
  * per-(slug, iteration) build record. This unions those across a run's shard
