@@ -309,4 +309,58 @@ describe('applyRuntimeCacheBreakpoints', () => {
 		});
 		expect(result.aiTools.tool_b?.providerOptions).toBeUndefined();
 	});
+
+	it('does not re-mark or double-count a last message that already carries a marker, leaving room for the tool breakpoint', () => {
+		// Existing markers: system (1) + first message (1) + last message (1) = 3.
+		// The last message is already an anchor, so the remaining slot must go to
+		// the tool. Double-counting the last message would push used to 4 and wrongly
+		// suppress the tool breakpoint.
+		const messages = [
+			makeUserMessage('a', ANTHROPIC_CACHE_CONTROL),
+			makeUserMessage('b', ANTHROPIC_CACHE_CONTROL),
+		];
+		const aiTools = { tool_a: makeTool(), tool_b: makeTool() };
+
+		const result = applyRuntimeCacheBreakpoints({
+			system: anthropicSystem,
+			messages,
+			aiTools,
+			promptCaching: { enabled: true },
+			modelId: 'anthropic/claude-sonnet-4-5',
+			staticToolCacheName: 'tool_b',
+		});
+
+		// The last message keeps its original caller marker untouched (not evicted).
+		expect(result.messages).toBe(messages);
+		expect(result.messages[1]?.providerOptions).toEqual(ANTHROPIC_CACHE_CONTROL);
+		// The tool breakpoint is still added — the existing marker was not double-counted.
+		expect(result.aiTools.tool_b?.providerOptions).toEqual({
+			anthropic: { cacheControl: { type: 'ephemeral', ttl: '1h' } },
+		});
+	});
+
+	it('skips a marker already on the last content part (not just message-level)', () => {
+		// The marker lives on the last content part; a message-level marker from the
+		// runtime would land on the same part, so it must not be added or counted.
+		const partMarked = {
+			role: 'user',
+			content: [{ type: 'text', text: 'b', providerOptions: ANTHROPIC_CACHE_CONTROL }],
+		} as ModelMessage;
+		const messages = [makeUserMessage('a', ANTHROPIC_CACHE_CONTROL), partMarked];
+		const aiTools = { tool_a: makeTool(), tool_b: makeTool() };
+
+		const result = applyRuntimeCacheBreakpoints({
+			system: anthropicSystem,
+			messages,
+			aiTools,
+			promptCaching: { enabled: true },
+			modelId: 'anthropic/claude-sonnet-4-5',
+			staticToolCacheName: 'tool_b',
+		});
+
+		expect(result.messages).toBe(messages);
+		expect(result.aiTools.tool_b?.providerOptions).toEqual({
+			anthropic: { cacheControl: { type: 'ephemeral', ttl: '1h' } },
+		});
+	});
 });

@@ -78,6 +78,22 @@ function hasAnthropicCacheControl(providerOptions: ProviderOptions | undefined):
 }
 
 /**
+ * True when `message` already carries an Anthropic `cacheControl` marker at the
+ * position the runtime conversation-history breakpoint would occupy — message-level
+ * (which the AI SDK applies to the last content part) or directly on the last
+ * content part. Adding our marker there creates no new breakpoint, so it must not
+ * be counted against the 4-breakpoint budget, and the caller's marker is left intact.
+ */
+function lastContentPartHasAnthropicCacheControl(message: ModelMessage): boolean {
+	if (hasAnthropicCacheControl(message.providerOptions)) return true;
+	if (!Array.isArray(message.content)) return false;
+	const lastPart = message.content.at(-1);
+	const lastPartProviderOptions =
+		lastPart && 'providerOptions' in lastPart ? lastPart.providerOptions : undefined;
+	return hasAnthropicCacheControl(lastPartProviderOptions);
+}
+
+/**
  * Count Anthropic `cacheControl` breakpoints already present across the system
  * message(s), tool definitions, and conversation messages (message-level and
  * per-content-part) — used to stay within Anthropic's 4-breakpoint limit before
@@ -183,12 +199,18 @@ export function applyRuntimeCacheBreakpoints(params: {
 	if (messages.length > 0 && used < MAX_ANTHROPIC_CACHE_BREAKPOINTS) {
 		const lastIndex = messages.length - 1;
 		const lastMessage = messages[lastIndex];
-		nextMessages = [...messages];
-		nextMessages[lastIndex] = {
-			...lastMessage,
-			providerOptions: mergeProviderOptions(lastMessage.providerOptions, cacheControl),
-		};
-		used++;
+		// Skip when the last message is already marked where ours would land: it
+		// already anchors the conversation prefix and is counted in `used`, so
+		// re-marking would double-count the budget (wrongly suppressing the tool
+		// breakpoint below) and evict the caller's marker.
+		if (!lastContentPartHasAnthropicCacheControl(lastMessage)) {
+			nextMessages = [...messages];
+			nextMessages[lastIndex] = {
+				...lastMessage,
+				providerOptions: mergeProviderOptions(lastMessage.providerOptions, cacheControl),
+			};
+			used++;
+		}
 	}
 
 	let nextTools = aiTools;
