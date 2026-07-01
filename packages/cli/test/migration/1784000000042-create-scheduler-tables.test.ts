@@ -9,7 +9,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
-const MIGRATION_NAME = 'CreateSchedulerTables1784000000041';
+const MIGRATION_NAME = 'CreateSchedulerTables1784000000042';
 
 describe('CreateSchedulerTables Migration', () => {
 	let dataSource: DataSource;
@@ -44,6 +44,27 @@ describe('CreateSchedulerTables Migration', () => {
 			{ name },
 		);
 		return rows.length === 1;
+	}
+
+	async function insertWorkflow(context: TestMigrationContext): Promise<string> {
+		const workflowId = randomUUID();
+		const now = new Date();
+		await context.runQuery(
+			`INSERT INTO ${context.escape.tableName('workflow_entity')} ("id", "name", "active", "nodes", "connections", "triggerCount", "versionId", "createdAt", "updatedAt")
+			 VALUES (:id, :name, :active, :nodes, :connections, :triggerCount, :versionId, :createdAt, :updatedAt)`,
+			{
+				id: workflowId,
+				name: `Scheduler test workflow ${workflowId}`,
+				active: false,
+				nodes: '[]',
+				connections: '{}',
+				triggerCount: 0,
+				versionId: randomUUID(),
+				createdAt: now,
+				updatedAt: now,
+			},
+		);
+		return workflowId;
 	}
 
 	async function insertJob(
@@ -164,6 +185,105 @@ describe('CreateSchedulerTables Migration', () => {
 
 			await insert();
 			await expect(insert()).rejects.toThrow();
+			await context.queryRunner.release();
+		});
+
+		it('rejects an out-of-set kind via the CHECK constraint', async () => {
+			const context = createTestMigrationContext(dataSource);
+			const table = context.escape.tableName('scheduled_job');
+			const now = new Date();
+			await expect(
+				context.runQuery(
+					`INSERT INTO ${table} ("name", "taskType", "kind", "createdAt", "updatedAt")
+					 VALUES (:name, :taskType, :kind, :createdAt, :updatedAt)`,
+					{
+						name: `job-${randomUUID()}`,
+						taskType: 'scheduleTrigger',
+						kind: 'bogus',
+						createdAt: now,
+						updatedAt: now,
+					},
+				),
+			).rejects.toThrow();
+			await context.queryRunner.release();
+		});
+
+		it('rejects an out-of-set misfirePolicy via the CHECK constraint', async () => {
+			const context = createTestMigrationContext(dataSource);
+			const table = context.escape.tableName('scheduled_job');
+			const now = new Date();
+			await expect(
+				context.runQuery(
+					`INSERT INTO ${table} ("name", "taskType", "kind", "misfirePolicy", "createdAt", "updatedAt")
+					 VALUES (:name, :taskType, :kind, :misfirePolicy, :createdAt, :updatedAt)`,
+					{
+						name: `job-${randomUUID()}`,
+						taskType: 'scheduleTrigger',
+						kind: 'cron',
+						misfirePolicy: 'bogus',
+						createdAt: now,
+						updatedAt: now,
+					},
+				),
+			).rejects.toThrow();
+			await context.queryRunner.release();
+		});
+
+		it('enforces one job per (workflowId, nodeId) trigger node', async () => {
+			const context = createTestMigrationContext(dataSource);
+			const table = context.escape.tableName('scheduled_job');
+			const workflowId = await insertWorkflow(context);
+			const nodeId = randomUUID();
+			const now = new Date();
+			const insert = async () =>
+				await context.runQuery(
+					`INSERT INTO ${table} ("workflowId", "nodeId", "taskType", "kind", "createdAt", "updatedAt")
+					 VALUES (:workflowId, :nodeId, :taskType, :kind, :createdAt, :updatedAt)`,
+					{
+						workflowId,
+						nodeId,
+						taskType: 'scheduleTrigger',
+						kind: 'cron',
+						createdAt: now,
+						updatedAt: now,
+					},
+				);
+
+			await insert();
+			await expect(insert()).rejects.toThrow();
+			await context.queryRunner.release();
+		});
+
+		it('enforces one job per well-known name', async () => {
+			const context = createTestMigrationContext(dataSource);
+			const table = context.escape.tableName('scheduled_job');
+			const name = `job-${randomUUID()}`;
+			const now = new Date();
+			const insert = async () =>
+				await context.runQuery(
+					`INSERT INTO ${table} ("name", "taskType", "kind", "createdAt", "updatedAt")
+					 VALUES (:name, :taskType, :kind, :createdAt, :updatedAt)`,
+					{ name, taskType: 'scheduleTrigger', kind: 'cron', createdAt: now, updatedAt: now },
+				);
+
+			await insert();
+			await expect(insert()).rejects.toThrow();
+			await context.queryRunner.release();
+		});
+
+		it('allows multiple system jobs with no workflow or node', async () => {
+			const context = createTestMigrationContext(dataSource);
+			const table = context.escape.tableName('scheduled_job');
+			const now = new Date();
+			const insert = async () =>
+				await context.runQuery(
+					`INSERT INTO ${table} ("taskType", "kind", "createdAt", "updatedAt")
+					 VALUES (:taskType, :kind, :createdAt, :updatedAt)`,
+					{ taskType: 'scheduleTrigger', kind: 'cron', createdAt: now, updatedAt: now },
+				);
+
+			await insert();
+			await expect(insert()).resolves.not.toThrow();
 			await context.queryRunner.release();
 		});
 

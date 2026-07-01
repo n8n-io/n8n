@@ -48,7 +48,8 @@
 | Name | Definition |
 | ---- | ---------- |
 | IDX_scheduled_job_due | CREATE INDEX "IDX_scheduled_job_due" ON public.scheduled_job USING btree ("nextRunAt") WHERE ((enabled = true) AND ("nextRunAt" IS NOT NULL)) |
-| IDX_scheduled_job_workflow | CREATE INDEX "IDX_scheduled_job_workflow" ON public.scheduled_job USING btree ("workflowId", "nodeId") |
+| IDX_scheduled_job_name | CREATE UNIQUE INDEX "IDX_scheduled_job_name" ON public.scheduled_job USING btree (name) WHERE (name IS NOT NULL) |
+| IDX_scheduled_job_workflow | CREATE UNIQUE INDEX "IDX_scheduled_job_workflow" ON public.scheduled_job USING btree ("workflowId", "nodeId") WHERE (("workflowId" IS NOT NULL) AND ("nodeId" IS NOT NULL)) |
 | PK_893185383f029ca8d57bb781fa8 | CREATE UNIQUE INDEX "PK_893185383f029ca8d57bb781fa8" ON public.scheduled_job USING btree (id) |
 
 ## Relations

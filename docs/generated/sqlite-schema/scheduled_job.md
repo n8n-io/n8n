@@ -49,7 +49,8 @@ CREATE TABLE "scheduled_job" ("id" integer PRIMARY KEY NOT NULL, "name" varchar(
 | Name | Definition |
 | ---- | ---------- |
 | IDX_scheduled_job_due | CREATE INDEX "IDX_scheduled_job_due" ON "scheduled_job" ("nextRunAt") WHERE "enabled" = true AND "nextRunAt" IS NOT NULL |
-| IDX_scheduled_job_workflow | CREATE INDEX "IDX_scheduled_job_workflow" ON "scheduled_job" ("workflowId", "nodeId")  |
+| IDX_scheduled_job_name | CREATE UNIQUE INDEX "IDX_scheduled_job_name" ON "scheduled_job" ("name") WHERE "name" IS NOT NULL |
+| IDX_scheduled_job_workflow | CREATE UNIQUE INDEX "IDX_scheduled_job_workflow" ON "scheduled_job" ("workflowId", "nodeId") WHERE "workflowId" IS NOT NULL AND "nodeId" IS NOT NULL |
 
 ## Relations
 

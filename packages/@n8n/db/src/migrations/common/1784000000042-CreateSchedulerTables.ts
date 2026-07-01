@@ -1,6 +1,6 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-export class CreateSchedulerTables1784000000041 implements ReversibleMigration {
+export class CreateSchedulerTables1784000000042 implements ReversibleMigration {
 	async up(context: MigrationContext) {
 		await this.createScheduledJobTable(context);
 		await this.createScheduledTaskTable(context);
@@ -96,11 +96,26 @@ export class CreateSchedulerTables1784000000041 implements ReversibleMigration {
 			'"enabled" = true AND "nextRunAt" IS NOT NULL',
 		);
 
+		// One job per trigger node. Partial + unique so it only constrains
+		// workflow-bound trigger jobs; system jobs and workflow-level jobs without a
+		// node (NULL workflowId or nodeId) are exempt. The workflowId prefix also
+		// indexes the FK for cascade deletes.
 		await createIndex(
 			'scheduled_job',
 			['workflowId', 'nodeId'],
-			false,
+			true,
 			'IDX_scheduled_job_workflow',
+			'"workflowId" IS NOT NULL AND "nodeId" IS NOT NULL',
+		);
+
+		// One job per well-known scheduler key. Partial so workflow-owned jobs
+		// (NULL name) are exempt.
+		await createIndex(
+			'scheduled_job',
+			['name'],
+			true,
+			'IDX_scheduled_job_name',
+			'"name" IS NOT NULL',
 		);
 	}
 
