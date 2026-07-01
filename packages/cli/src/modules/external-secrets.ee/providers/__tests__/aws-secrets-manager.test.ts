@@ -127,7 +127,10 @@ describe('AwsSecretsManager', () => {
 			await awsSecretsManager.init(context);
 
 			listSecretsSpy.mockImplementation(() => {
-				throw new Error('Invalid credentials');
+				throw createAwsSdkError('AccessDeniedException', {
+					httpStatusCode: 403,
+					Code: 'AccessDenied',
+				});
 			});
 
 			await awsSecretsManager.connect();
@@ -142,8 +145,9 @@ describe('AwsSecretsManager', () => {
 					operation: 'connect',
 					region,
 					authMethod: 'iamUser',
-					errorName: expect.any(String),
-					errorCode: expect.any(String),
+					errorName: 'AccessDeniedException',
+					errorCode: 'AccessDenied',
+					statusCode: 403,
 				}),
 			);
 		});

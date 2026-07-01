@@ -147,40 +147,40 @@ export class AwsSecretsManager extends SecretsProvider {
 
 			this.logger.debug('AWS Secrets Manager provider initialized');
 		} catch (error) {
-			this.logOperationFailure(
-				'Failed to initialize AWS Secrets Manager provider',
-				'initialize',
+			this.logOperationFailure('Failed to initialize AWS Secrets Manager provider', {
+				operation: 'initialize',
 				error,
-				authMethod ? { authMethod } : {},
-			);
+			});
 			throw error;
 		}
 	}
 
-	async test(options?: { logOnFailure?: boolean }): Promise<[boolean] | [boolean, string]> {
+	async test(): Promise<[boolean] | [boolean, string]> {
 		try {
-			await this.client.listSecrets({ MaxResults: 1 });
+			await this.verifyConnection();
 			return [true];
 		} catch (e) {
 			const error = e instanceof Error ? e : new Error(`${e}`);
-			if (options?.logOnFailure !== false) {
-				this.logOperationFailure('AWS Secrets Manager provider test failed', 'test', error);
-			}
+			this.logOperationFailure('AWS Secrets Manager provider test failed', {
+				operation: 'test',
+				error,
+				context: this.awsErrorContext(error),
+			});
 			return [false, error.message];
 		}
 	}
 
 	protected async doConnect(): Promise<void> {
 		try {
-			const [wasSuccessful, errorMsg] = await this.test({ logOnFailure: false });
-
-			if (!wasSuccessful) {
-				throw new Error(errorMsg || 'Connection failed');
-			}
+			await this.verifyConnection();
 
 			this.logger.debug('AWS Secrets Manager provider connected');
 		} catch (error) {
-			this.logOperationFailure('Failed to connect AWS Secrets Manager provider', 'connect', error);
+			this.logOperationFailure('Failed to connect AWS Secrets Manager provider', {
+				operation: 'connect',
+				error,
+				context: this.awsErrorContext(error),
+			});
 			throw error;
 		}
 	}
@@ -201,11 +201,11 @@ export class AwsSecretsManager extends SecretsProvider {
 
 			this.logger.debug('AWS Secrets Manager provider secrets updated');
 		} catch (error) {
-			this.logOperationFailure(
-				'Failed to update AWS Secrets Manager provider secrets',
-				'update',
+			this.logOperationFailure('Failed to update AWS Secrets Manager provider secrets', {
+				operation: 'update',
 				error,
-			);
+				context: this.awsErrorContext(error),
+			});
 			throw error;
 		}
 	}
@@ -280,6 +280,10 @@ export class AwsSecretsManager extends SecretsProvider {
 		);
 	}
 
+	private async verifyConnection(): Promise<void> {
+		await this.client.listSecrets({ MaxResults: 1 });
+	}
+
 	private isRecord(value: unknown): value is Record<string, unknown> {
 		return typeof value === 'object' && value !== null;
 	}
@@ -329,11 +333,13 @@ export class AwsSecretsManager extends SecretsProvider {
 
 	private logOperationFailure(
 		message: string,
-		operation: SecretsProviderOperation,
-		error: unknown,
-		extra: LogContext = {},
+		params: {
+			operation: SecretsProviderOperation;
+			error: unknown;
+			context?: LogContext;
+		},
 	): void {
-		const context: LogContext = this.awsErrorContext(error);
+		const context: LogContext = { ...params.context };
 		if (this.settings?.region) {
 			context.region = this.settings.region;
 		}
@@ -346,12 +352,9 @@ export class AwsSecretsManager extends SecretsProvider {
 			message,
 			providerName: this.name,
 			providerDisplayName: this.displayName,
-			operation,
-			error,
-			context: {
-				...context,
-				...extra,
-			},
+			operation: params.operation,
+			error: params.error,
+			context,
 		});
 	}
 }
