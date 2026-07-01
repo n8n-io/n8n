@@ -109,18 +109,21 @@ describe('CreateSchedulerTables Migration', () => {
 
 		it('creates all engine indexes', async () => {
 			const context = createTestMigrationContext(dataSource);
-			for (const name of [
-				'IDX_scheduled_job_nextRunAt',
-				'IDX_scheduled_job_workflowId_nodeId',
-				'IDX_scheduled_job_workflowId',
-				'IDX_scheduled_task_jobId_scheduledFor',
-				'IDX_scheduled_task_runAt',
-				'IDX_scheduled_task_leaseExpiresAt',
-				'IDX_scheduled_task_finishedAt',
-			]) {
-				expect(await indexExists(context, name)).toBe(true);
+			try {
+				for (const suffix of [
+					'scheduled_job_nextRunAt',
+					'scheduled_job_workflowId_nodeId',
+					'scheduled_job_workflowId',
+					'scheduled_task_jobId_scheduledFor',
+					'scheduled_task_runAt',
+					'scheduled_task_leaseExpiresAt',
+					'scheduled_task_finishedAt',
+				]) {
+					expect(await indexExists(context, `IDX_${context.tablePrefix}${suffix}`)).toBe(true);
+				}
+			} finally {
+				await context.queryRunner.release();
 			}
-			await context.queryRunner.release();
 		});
 
 		it('applies column defaults on insert', async () => {
