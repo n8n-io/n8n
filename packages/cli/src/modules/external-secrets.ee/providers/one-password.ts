@@ -6,7 +6,6 @@ import { UserError, type IDataObject, type INodeProperties } from 'n8n-workflow'
 import { DOCS_HELP_NOTICE } from '../constants';
 import {
 	buildHttpProviderErrorContext,
-	type HttpProviderErrorLogContext,
 	logProviderFailure,
 	type LogContext,
 	type SecretsProviderOperation,
@@ -82,7 +81,10 @@ export class OnePasswordProvider extends SecretsProvider {
 				accessToken: trimmedAccessToken,
 			};
 		} catch (error) {
-			this.logOperationFailure('Failed to initialize 1Password provider', 'initialize', error);
+			this.logOperationFailure('Failed to initialize 1Password provider', {
+				operation: 'initialize',
+				error,
+			});
 			throw error;
 		}
 	}
@@ -100,31 +102,34 @@ export class OnePasswordProvider extends SecretsProvider {
 				keepAlive: true,
 			});
 
-			const [wasSuccessful, errorMessage] = await this.test({ logOnFailure: false });
-
-			if (!wasSuccessful) {
-				throw new Error(errorMessage || 'Connection failed');
-			}
+			await this.verifyConnection();
 
 			this.logger.debug('1Password provider connected');
 		} catch (error) {
-			this.logOperationFailure('Failed to connect 1Password provider', 'connect', error);
+			this.logOperationFailure('Failed to connect 1Password provider', {
+				operation: 'connect',
+				error,
+				context: buildHttpProviderErrorContext(error),
+			});
 			throw error;
 		}
 	}
 
-	async test(options?: { logOnFailure?: boolean }): Promise<[boolean] | [boolean, string]> {
+	async test(): Promise<[boolean] | [boolean, string]> {
 		if (!this.client) return [false, 'Client not initialized'];
 
 		try {
-			await this.client.listVaults();
+			await this.verifyConnection();
 			return [true];
 		} catch (error: unknown) {
-			if (options?.logOnFailure !== false) {
-				this.logOperationFailure('1Password provider test failed', 'test', error, {
+			this.logOperationFailure('1Password provider test failed', {
+				operation: 'test',
+				error,
+				context: {
+					...buildHttpProviderErrorContext(error),
 					endpoint: 'vaults',
-				});
-			}
+				},
+			});
 			return [false, error instanceof Error ? error.message : 'Unknown error'];
 		}
 	}
@@ -168,8 +173,13 @@ export class OnePasswordProvider extends SecretsProvider {
 
 			this.logger.debug('1Password provider secrets updated');
 		} catch (error) {
-			this.logOperationFailure('Failed to update 1Password provider secrets', 'update', error, {
-				endpoint: 'secrets',
+			this.logOperationFailure('Failed to update 1Password provider secrets', {
+				operation: 'update',
+				error,
+				context: {
+					...buildHttpProviderErrorContext(error),
+					endpoint: 'secrets',
+				},
 			});
 			throw error;
 		}
@@ -187,17 +197,19 @@ export class OnePasswordProvider extends SecretsProvider {
 		return Object.keys(this.cachedSecrets);
 	}
 
-	private onePasswordErrorContext(error: unknown): HttpProviderErrorLogContext {
-		return buildHttpProviderErrorContext(error);
+	private async verifyConnection(): Promise<void> {
+		await this.client.listVaults();
 	}
 
 	private logOperationFailure(
 		message: string,
-		operation: SecretsProviderOperation,
-		error: unknown,
-		extra: LogContext = {},
+		params: {
+			operation: SecretsProviderOperation;
+			error: unknown;
+			context?: LogContext;
+		},
 	): void {
-		const context: LogContext = this.onePasswordErrorContext(error);
+		const context: LogContext = { ...params.context };
 		if (this.settings?.serverUrl) {
 			context.serverUrl = this.settings.serverUrl;
 		}
@@ -207,12 +219,9 @@ export class OnePasswordProvider extends SecretsProvider {
 			message,
 			providerName: this.name,
 			providerDisplayName: this.displayName,
-			operation,
-			error,
-			context: {
-				...context,
-				...extra,
-			},
+			operation: params.operation,
+			error: params.error,
+			context,
 		});
 	}
 }

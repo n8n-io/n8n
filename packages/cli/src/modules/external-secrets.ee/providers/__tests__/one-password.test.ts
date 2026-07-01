@@ -28,45 +28,6 @@ describe('OnePasswordProvider', () => {
 		provider = new OnePasswordProvider(logger);
 	});
 
-	describe('error context', () => {
-		it('extracts statusCode from HTTP request errors without duplicating it in errorCode', () => {
-			const error = Object.assign(new Error('Request failed'), {
-				response: { status: 403 },
-			});
-
-			expect(provider['onePasswordErrorContext'](error)).toEqual({ statusCode: 403 });
-		});
-
-		it('extracts errorCode from transport errors', () => {
-			const error = Object.assign(new Error('Connection refused'), { code: 'ECONNREFUSED' });
-
-			expect(provider['onePasswordErrorContext'](error)).toEqual({ errorCode: 'ECONNREFUSED' });
-		});
-
-		it('extracts SDK error code when present alongside HTTP status', () => {
-			const error = Object.assign(new Error('Forbidden'), {
-				response: { status: 403 },
-				code: 'FORBIDDEN',
-			});
-
-			expect(provider['onePasswordErrorContext'](error)).toEqual({
-				statusCode: 403,
-				errorCode: 'FORBIDDEN',
-			});
-		});
-
-		it('falls back to Error.name for generic errors', () => {
-			expect(provider['onePasswordErrorContext'](new Error('Something went wrong'))).toEqual({
-				errorCode: 'Error',
-			});
-		});
-
-		it('returns empty context for non-error values', () => {
-			expect(provider['onePasswordErrorContext']('not an error')).toEqual({});
-			expect(provider['onePasswordErrorContext'](null)).toEqual({});
-		});
-	});
-
 	describe('init validation', () => {
 		it('should throw UserError when serverUrl is empty', async () => {
 			const settings = { serverUrl: '', accessToken: 'test-token' };
@@ -133,7 +94,11 @@ describe('OnePasswordProvider', () => {
 				}),
 			);
 
-			mockListVaults.mockRejectedValue(new Error('Unauthorized'));
+			mockListVaults.mockRejectedValue(
+				Object.assign(new Error('Unauthorized'), {
+					response: { status: 401 },
+				}),
+			);
 
 			await provider.connect();
 
@@ -145,6 +110,7 @@ describe('OnePasswordProvider', () => {
 					providerDisplayName: '1Password',
 					operation: 'connect',
 					errorName: 'Error',
+					statusCode: 401,
 					serverUrl: 'http://localhost:8080',
 				}),
 			);
@@ -178,7 +144,9 @@ describe('OnePasswordProvider', () => {
 			mockListVaults.mockResolvedValue([]);
 			await provider.connect();
 
-			mockListVaults.mockRejectedValue(new Error('Connection refused'));
+			mockListVaults.mockRejectedValue(
+				Object.assign(new Error('Connection refused'), { code: 'ECONNREFUSED' }),
+			);
 			const result = await provider.test();
 
 			expect(result).toEqual([false, 'Connection refused']);
@@ -189,6 +157,7 @@ describe('OnePasswordProvider', () => {
 					providerDisplayName: '1Password',
 					operation: 'test',
 					errorName: 'Error',
+					errorCode: 'ECONNREFUSED',
 					endpoint: 'vaults',
 					serverUrl: 'http://localhost:8080',
 				}),
