@@ -205,6 +205,7 @@ import { AddBinaryDataSizeBytesToExecutionEntity1784000000033 } from '../common/
 import { AddUniqueAgentFileNames1784000000035 } from '../common/1784000000035-AddUniqueAgentFileNames';
 import { CreateInstanceAiThreadGrantTable1784000000036 } from '../common/1784000000036-CreateInstanceAiThreadGrantTable';
 import { SetChatHubEnabledFromUsage1784000000038 } from '../common/1784000000038-SetChatHubEnabledFromUsage';
+import { CreateWorkflowPublicationTriggerStatusTable1784000000040 } from '../common/1784000000040-CreateWorkflowPublicationTriggerStatusTable';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -413,6 +414,7 @@ const sqliteMigrations: Migration[] = [
 	CreateInstanceAiThreadGrantTable1784000000036,
 	DropAgentDescriptionFromAgents1784000000037,
 	SetChatHubEnabledFromUsage1784000000038,
+	CreateWorkflowPublicationTriggerStatusTable1784000000040,
 ];
 
 export { sqliteMigrations };
