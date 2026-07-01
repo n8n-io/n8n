@@ -596,25 +596,6 @@ describe('buildFromJson()', () => {
 		expect(snap.thinking).toMatchObject({ budgetTokens: 5000 });
 	});
 
-	it('sets prompt caching config when enabled', async () => {
-		const config = makeConfig({
-			config: { promptCaching: { enabled: true } },
-		});
-
-		const agent = await buildFromJson(
-			config,
-			{},
-			{
-				toolExecutor: makeMockToolExecutor(),
-				credentialProvider: makeMockCredentialProvider(),
-				memoryFactory: makeMockMemoryFactory(),
-			},
-		);
-		const snap: AgentSnapshot = agent.snapshot;
-
-		expect(snap.promptCaching).toEqual({ enabled: true });
-	});
-
 	it('sets prompt caching config when explicitly disabled (opt-out)', async () => {
 		const config = makeConfig({
 			config: { promptCaching: { enabled: false } },

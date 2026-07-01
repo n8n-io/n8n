@@ -39,7 +39,8 @@ function isEnabledForProvider(
 	return config[provider] !== false;
 }
 
-function getModelProvider(modelId: string): string {
+/** Provider prefix of a `provider/model` id (e.g. `anthropic` from `anthropic/claude-...`). */
+export function getModelProvider(modelId: string): string {
 	return modelId.split('/')[0];
 }
 
@@ -59,20 +60,19 @@ export function createOpenAIPromptCacheKey(input: {
 		.update(`${input.modelId}\n${input.instructions}`)
 		.digest('hex')
 		.slice(0, 16);
-	return `n8n-agent:${input.agentName}:${hash}`;
+	// Provider-neutral namespace — this is a generic SDK, not an n8n-only surface.
+	return `agent:${input.agentName}:${hash}`;
 }
 
 /** `{ anthropic: { cacheControl: { type: 'ephemeral', ttl } } }` using the configured TTL. */
-export function buildAnthropicCacheControl(
-	config: PromptCachingConfig | undefined,
-): ProviderOptions {
+function buildAnthropicCacheControl(config: PromptCachingConfig | undefined): ProviderOptions {
 	return {
 		anthropic: { cacheControl: { type: 'ephemeral', ttl: getAnthropicCacheTtl(config) } },
 	};
 }
 
 /** True when `providerOptions` carries an Anthropic `cacheControl` marker. */
-export function hasAnthropicCacheControl(providerOptions: ProviderOptions | undefined): boolean {
+function hasAnthropicCacheControl(providerOptions: ProviderOptions | undefined): boolean {
 	const anthropic = providerOptions?.anthropic;
 	return isRecord(anthropic) && isRecord(anthropic.cacheControl);
 }

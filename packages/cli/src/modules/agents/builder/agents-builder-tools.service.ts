@@ -10,6 +10,7 @@ import {
 	agentTaskSchema,
 	formatZodErrors,
 	PROVIDER_CAPABILITIES,
+	resolvePromptCaching,
 	RunnableAgentJsonConfigSchema,
 	sanitizeAgentJsonConfig,
 	tryParseConfigJson,
@@ -272,8 +273,9 @@ function applyNativeWebSearchBuilderDefaults(config: AgentJsonConfig): AgentJson
 function applyPromptCachingBuilderDefaults(config: AgentJsonConfig): AgentJsonConfig {
 	const providerPrefix = getProviderPrefix(config.model);
 	const supportsPromptCaching = PROVIDER_CAPABILITIES[providerPrefix]?.promptCaching === true;
+	const resolved = resolvePromptCaching(config.config?.promptCaching, supportsPromptCaching);
 
-	if (!supportsPromptCaching) {
+	if (!resolved) {
 		if (!config.config || !('promptCaching' in config.config)) return config;
 		const { promptCaching: _promptCaching, ...restConfig } = config.config;
 		const { config: _config, ...restAgentConfig } = config;
@@ -283,12 +285,11 @@ function applyPromptCachingBuilderDefaults(config: AgentJsonConfig): AgentJsonCo
 		};
 	}
 
-	const explicitlyDisabled = config.config?.promptCaching?.enabled === false;
 	return {
 		...config,
 		config: {
 			...(config.config ?? {}),
-			promptCaching: { enabled: !explicitlyDisabled },
+			promptCaching: resolved,
 		},
 	};
 }

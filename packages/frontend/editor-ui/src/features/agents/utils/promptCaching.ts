@@ -1,3 +1,5 @@
+import { resolvePromptCaching } from '@n8n/api-types';
+
 import type { AgentJsonConfig } from '../types';
 
 type ConfigObj = NonNullable<AgentJsonConfig['config']>;
@@ -18,18 +20,20 @@ export function normalizePromptCachingForModelChange(
 	nextProviderSupportsPromptCaching: boolean,
 ): Partial<AgentJsonConfig> {
 	const current = currentSubConfig?.promptCaching;
+	const resolved = resolvePromptCaching(current, nextProviderSupportsPromptCaching);
 
-	if (!nextProviderSupportsPromptCaching) {
+	if (!resolved) {
 		if (!current) return {};
 		const { promptCaching: _promptCaching, ...restConfig } = currentSubConfig ?? {};
-		return { config: restConfig };
+		// Clear with `undefined` (not `{}`) when nothing else remains so the parent's
+		// Object.assign merge drops the key, matching the backend normalizer.
+		return { config: Object.keys(restConfig).length > 0 ? restConfig : undefined };
 	}
 
-	const explicitlyDisabled = current?.enabled === false;
 	return {
 		config: {
 			...(currentSubConfig ?? {}),
-			promptCaching: { enabled: !explicitlyDisabled },
+			promptCaching: resolved,
 		},
 	};
 }

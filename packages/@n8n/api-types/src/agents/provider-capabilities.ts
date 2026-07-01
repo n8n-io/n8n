@@ -89,3 +89,18 @@ export function getValidProviderToolNames(): string[] {
 		),
 	];
 }
+
+/**
+ * Shared opt-out decision for prompt caching. Preserve an explicit
+ * `{ enabled: false }`, default to enabled for supporting providers, and strip
+ * the field (`undefined`) for providers that don't support it. Callers own the
+ * surrounding config plumbing — the editor model picker and the backend
+ * write-path normalizer share this rule but differ in return shape.
+ */
+export function resolvePromptCaching(
+	current: { enabled: boolean } | undefined,
+	supportsPromptCaching: boolean,
+): { enabled: boolean } | undefined {
+	if (!supportsPromptCaching) return undefined;
+	return { enabled: current?.enabled !== false };
+}

@@ -34,6 +34,17 @@ describe('normalizePromptCachingForModelChange', () => {
 		expect(result.config).toEqual({ toolCallConcurrency: 3 });
 	});
 
+	it('clears the config object when promptCaching was the only sub-config key', () => {
+		const result = normalizePromptCachingForModelChange(
+			{ promptCaching: { enabled: true } },
+			false,
+		);
+		// Key present so the parent's Object.assign strips it; value undefined so it
+		// serializes away instead of persisting an empty `{}`.
+		expect('config' in result).toBe(true);
+		expect(result.config).toBeUndefined();
+	});
+
 	it('is a no-op when switching to an unsupported provider with no prior promptCaching', () => {
 		const result = normalizePromptCachingForModelChange({ toolCallConcurrency: 3 }, false);
 		expect(result).toEqual({});

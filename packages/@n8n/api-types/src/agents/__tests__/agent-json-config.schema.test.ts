@@ -103,18 +103,10 @@ describe('AgentJsonConfigSchema — tools', () => {
 });
 
 describe('AgentJsonConfigSchema — config.promptCaching', () => {
-	it('accepts enabling caching', () => {
+	it.each([true, false])('accepts promptCaching with enabled=%s', (enabled) => {
 		const result = AgentJsonConfigSchema.safeParse({
 			...minimalConfig,
-			config: { promptCaching: { enabled: true } },
-		});
-		expect(result.success).toBe(true);
-	});
-
-	it('accepts disabling caching explicitly', () => {
-		const result = AgentJsonConfigSchema.safeParse({
-			...minimalConfig,
-			config: { promptCaching: { enabled: false } },
+			config: { promptCaching: { enabled } },
 		});
 		expect(result.success).toBe(true);
 	});

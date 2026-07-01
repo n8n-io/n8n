@@ -24,7 +24,11 @@ import {
 import { loadAi } from '../model/lazy-ai';
 import type { AgentMessageList } from '../model/message-list';
 import { createModel } from '../model/model-factory';
-import { buildCallPromptCacheOptions, mergeProviderOptions } from '../model/prompt-cache';
+import {
+	buildCallPromptCacheOptions,
+	getModelProvider,
+	mergeProviderOptions,
+} from '../model/prompt-cache';
 import type { DeferredToolManager } from '../tools/deferred-tool-manager';
 import { buildToolMap, toAiSdkProviderTools, toAiSdkTools } from '../tools/tool-adapter';
 
@@ -272,7 +276,7 @@ export class RuntimeContextBuilder {
 	private buildThinkingProviderOptions(): Record<string, Record<string, unknown>> | undefined {
 		if (!this.config.thinking) return undefined;
 
-		const provider = this.modelId.split('/')[0];
+		const provider = getModelProvider(this.modelId);
 		const thinking = this.config.thinking;
 
 		switch (provider) {

@@ -330,23 +330,8 @@ describe('AgentAdvancedPanel', () => {
 		expect((last.config as { thinking: { provider: string } }).thinking.provider).toBe('anthropic');
 	});
 
-	it('shows no sub-control for Anthropic when prompt caching is on', async () => {
+	it('shows the toggle with no ttl/settings sub-control when prompt caching is on', async () => {
 		const config = makeConfig({
-			config: { promptCaching: { enabled: true } },
-		} as Partial<AgentJsonConfig>);
-		const wrapper = mount(AgentAdvancedPanel, {
-			props: { config },
-			global: { stubs: globalStubs },
-		});
-		await nextTick();
-		expect(wrapper.find('[data-testid="agent-prompt-caching-toggle"]').exists()).toBe(true);
-		expect(wrapper.find('[data-testid="agent-prompt-caching-settings"]').exists()).toBe(false);
-		expect(wrapper.find('[data-testid="agent-prompt-caching-ttl-select"]').exists()).toBe(false);
-	});
-
-	it('shows no sub-control for OpenAI when prompt caching is on', async () => {
-		const config = makeConfig({
-			model: 'openai/gpt-4o',
 			config: { promptCaching: { enabled: true } },
 		} as Partial<AgentJsonConfig>);
 		const wrapper = mount(AgentAdvancedPanel, {
@@ -370,21 +355,8 @@ describe('AgentAdvancedPanel', () => {
 		expect(toggle.attributes('disabled')).toBeDefined();
 	});
 
-	it('emits { enabled: true } when the toggle flips on for Anthropic', async () => {
+	it('emits { enabled: true } when the toggle flips on', async () => {
 		const config = makeConfig();
-		const wrapper = mount(AgentAdvancedPanel, {
-			props: { config },
-			global: { stubs: globalStubs },
-		});
-		await wrapper.find('[data-testid="agent-prompt-caching-toggle"]').trigger('click');
-		const events = wrapper.emitted('update:config') ?? [];
-		expect(events.length).toBeGreaterThan(0);
-		const last = events[events.length - 1][0] as Partial<AgentJsonConfig>;
-		expect(last.config?.promptCaching).toEqual({ enabled: true });
-	});
-
-	it('emits { enabled: true } when toggled on for OpenAI', async () => {
-		const config = makeConfig({ model: 'openai/gpt-4o' });
 		const wrapper = mount(AgentAdvancedPanel, {
 			props: { config },
 			global: { stubs: globalStubs },

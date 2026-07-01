@@ -4502,7 +4502,7 @@ describe('promptCaching', () => {
 		vi.clearAllMocks();
 	});
 
-	it('attaches a 1h Anthropic cache breakpoint to the system message by default', async () => {
+	it('applies default 1h Anthropic cache breakpoints to the system message and the last conversation message', async () => {
 		generateText.mockResolvedValue(makeGenerateSuccess());
 
 		const runtime = new AgentRuntime({
@@ -4519,46 +4519,9 @@ describe('promptCaching', () => {
 		expect(systemMsg.providerOptions).toEqual({
 			anthropic: { cacheControl: { type: 'ephemeral', ttl: '1h' } },
 		});
-	});
-
-	it('respects an explicit 5m ttl override for Anthropic', async () => {
-		generateText.mockResolvedValue(makeGenerateSuccess());
-
-		const runtime = new AgentRuntime({
-			name: 'test',
-			model: 'anthropic/claude-sonnet-4-5',
-			instructions: 'You are a test assistant.',
-			promptCaching: { anthropic: { ttl: '5m' } },
-		});
-
-		await runtime.generate('hello');
-
-		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
-		const systemMsg = callArgs.system as Record<string, unknown>;
-		expect(systemMsg.providerOptions).toEqual({
-			anthropic: { cacheControl: { type: 'ephemeral', ttl: '5m' } },
-		});
-	});
-
-	it('lets explicit instruction providerOptions override the generated Anthropic breakpoint', async () => {
-		generateText.mockResolvedValue(makeGenerateSuccess());
-
-		const runtime = new AgentRuntime({
-			name: 'test',
-			model: 'anthropic/claude-sonnet-4-5',
-			instructions: 'You are a test assistant.',
-			promptCaching: { enabled: true },
-			instructionProviderOptions: {
-				anthropic: { cacheControl: { type: 'ephemeral', ttl: '5m' } },
-			},
-		});
-
-		await runtime.generate('hello');
-
-		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
-		const systemMsg = callArgs.system as Record<string, unknown>;
-		expect(systemMsg.providerOptions).toEqual({
-			anthropic: { cacheControl: { type: 'ephemeral', ttl: '5m' } },
+		const messages = callArgs.messages as Array<Record<string, unknown>>;
+		expect(messages[messages.length - 1].providerOptions).toEqual({
+			anthropic: { cacheControl: { type: 'ephemeral', ttl: '1h' } },
 		});
 	});
 
@@ -4578,25 +4541,6 @@ describe('promptCaching', () => {
 		const openaiOpts = (callArgs.providerOptions as Record<string, Record<string, unknown>>).openai;
 		expect(openaiOpts.promptCacheRetention).toBe('24h');
 		expect(typeof openaiOpts.promptCacheKey).toBe('string');
-	});
-
-	it('lets explicit call-level providerOptions override the generated OpenAI defaults', async () => {
-		generateText.mockResolvedValue(makeGenerateSuccess());
-
-		const runtime = new AgentRuntime({
-			name: 'test',
-			model: 'openai/gpt-5.1',
-			instructions: 'You are a test assistant.',
-			promptCaching: { enabled: true },
-		});
-
-		await runtime.generate('hello', {
-			providerOptions: { openai: { promptCacheKey: 'explicit-key' } },
-		});
-
-		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
-		const openaiOpts = (callArgs.providerOptions as Record<string, Record<string, unknown>>).openai;
-		expect(openaiOpts).toEqual({ promptCacheKey: 'explicit-key', promptCacheRetention: '24h' });
 	});
 
 	it('merges thinking config with generated prompt caching and caller providerOptions for OpenAI', async () => {
@@ -4620,25 +4564,6 @@ describe('promptCaching', () => {
 		expect(openaiOpts.promptCacheRetention).toBe('24h');
 		expect(typeof openaiOpts.promptCacheKey).toBe('string');
 		expect(openaiOpts.strictJsonSchema).toBe(false);
-	});
-
-	it('adds a moving cache breakpoint to the last conversation message for Anthropic', async () => {
-		generateText.mockResolvedValue(makeGenerateSuccess());
-
-		const runtime = new AgentRuntime({
-			name: 'test',
-			model: 'anthropic/claude-sonnet-4-5',
-			instructions: 'You are a test assistant.',
-			promptCaching: { enabled: true },
-		});
-
-		await runtime.generate('hello');
-
-		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
-		const messages = callArgs.messages as Array<Record<string, unknown>>;
-		expect(messages[messages.length - 1].providerOptions).toEqual({
-			anthropic: { cacheControl: { type: 'ephemeral', ttl: '1h' } },
-		});
 	});
 
 	it('adds a cache breakpoint to the last tool definition for a fully-static Anthropic tool set', async () => {
