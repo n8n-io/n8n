@@ -46,6 +46,15 @@ interface ReplayOutput {
 	failureCategory?: string;
 	workflowId?: string;
 	execErrors: string[];
+	/**
+	 * Scenario-level pass@k / pass^k, stamped onto every run of the scenario. The
+	 * direct eval path attaches these per-run post-hoc (writePerRunPassMetrics in
+	 * cli/index.ts); the merged JSON already carries the computed values, so the
+	 * replay emits them directly and LangSmith's column average reduces to the
+	 * mean across scenarios — matching the non-sharded experiment.
+	 */
+	passAtK: number;
+	passHatK: number;
 }
 
 /** Index the merged test cases by `${slug}/${scenario}/${iteration}` for O(1) replay. */
@@ -63,6 +72,8 @@ export function buildReplayMap(testCases: EvalTestCase[]): Map<string, ReplayOut
 					failureCategory: run.passed ? undefined : run.failureCategory,
 					workflowId: run.workflowId ?? undefined,
 					execErrors: [],
+					passAtK: sc.passAtK,
+					passHatK: sc.passHatK,
 				});
 			});
 		}
@@ -202,6 +213,8 @@ export async function uploadUnifiedExperiment(
 				reasoning: 'No merged result for this scenario/iteration.',
 				failureCategory: 'framework_issue',
 				execErrors: [],
+				passAtK: 0,
+				passHatK: 0,
 			}
 		);
 	};
@@ -220,10 +233,18 @@ export async function uploadUnifiedExperiment(
 			: typeof out.failureCategory === 'string'
 				? out.failureCategory
 				: 'unknown';
-		return [
+		const feedback: EvaluationResult[] = [
 			{ key: 'scenario_pass', score },
 			{ key: 'failure_category', value: failureCategory },
 		];
+		// Scenario-level pass@k / pass^k are precomputed in the merged JSON and
+		// stamped onto every run (see ReplayOutput) so these columns populate the
+		// same way the direct eval path does.
+		if (typeof out.passAtK === 'number') feedback.push({ key: 'pass_at_k', score: out.passAtK });
+		if (typeof out.passHatK === 'number') {
+			feedback.push({ key: 'pass_hat_k', score: out.passHatK });
+		}
+		return feedback;
 	};
 
 	const experimentResults = await evaluate(target, {
@@ -237,6 +258,9 @@ export async function uploadUnifiedExperiment(
 			shards: opts.shardCount ?? null,
 			tier: 'mcp',
 			iterations: opts.combined.totalRuns,
+			// Mirror the direct eval path's metadata so the experiments table shows
+			// the same baselinePrefix column for sharded runs.
+			baselinePrefix: opts.baselinePrefix,
 			...buildCIMetadata(),
 		},
 	});

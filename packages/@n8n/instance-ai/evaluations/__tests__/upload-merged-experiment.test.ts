@@ -57,6 +57,20 @@ describe('buildReplayMap', () => {
 		const map = buildReplayMap([tc]);
 		expect(map.get('weather-alert/error-handling/0')?.failureCategory).toBeUndefined();
 	});
+
+	it('stamps scenario-level pass@k / pass^k onto every run of the scenario', () => {
+		const map = buildReplayMap([tc]);
+		// Both iterations carry the scenario's precomputed pass@k / pass^k so the
+		// LangSmith column average reduces to the per-scenario mean.
+		expect(map.get('weather-alert/error-handling/0')).toMatchObject({
+			passAtK: 0.5,
+			passHatK: 0.25,
+		});
+		expect(map.get('weather-alert/error-handling/1')).toMatchObject({
+			passAtK: 0.5,
+			passHatK: 0.25,
+		});
+	});
 });
 
 describe('bucketFromCombined', () => {
