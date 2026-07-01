@@ -76,7 +76,7 @@ const isPrivateUnconnected = computed(
 		isPrivateCredentialsEnabled.value &&
 		props.data.isResolvable === true &&
 		props.data.connectedByMe === false &&
-		credentialPermissions.value.update === true,
+		credentialPermissions.value.connect === true,
 );
 
 const actions = computed(() => {

@@ -1,7 +1,7 @@
 {
 	"version": 1,
 	"generated": "2026-06-04T06:55:45.363Z",
-	"totalViolations": 159,
+	"totalViolations": 160,
 	"violations": {
 		"packages/@n8n/ai-workflow-builder.ee/package.json": [
 			{
@@ -547,8 +547,8 @@
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1714133768519-CreateProject.ts (1714133768519) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
-				"hash": "cdd159d80c55"
+				"message": "1714133768519-CreateProject.ts (1714133768519) is at or below the highest existing migration timestamp (1784000000038). New migrations must be strictly ordered — pick a timestamp greater than 1784000000038.",
+				"hash": "8c3e8df6f6f5"
 			}
 		],
 		"packages/@n8n/db/src/migrations/common/1714133768521-MakeExecutionStatusNonNullable.ts": [
@@ -563,8 +563,16 @@
 			{
 				"rule": "migration-timestamp",
 				"line": 1,
-				"message": "1724951148974-AddApiKeysTable.ts (1724951148974) is at or below the highest existing migration timestamp (1784000000025). New migrations must be strictly ordered — pick a timestamp greater than 1784000000025.",
-				"hash": "3eaa3fa96ad1"
+				"message": "1724951148974-AddApiKeysTable.ts (1724951148974) is at or below the highest existing migration timestamp (1784000000038). New migrations must be strictly ordered — pick a timestamp greater than 1784000000038.",
+				"hash": "b582d057878a"
+			}
+		],
+		"packages/@n8n/db/src/migrations/sqlite/1724951148974-AddApiKeysTable.ts": [
+			{
+				"rule": "migration-timestamp",
+				"line": 1,
+				"message": "1724951148974-AddApiKeysTable.ts (1724951148974) is at or below the highest existing migration timestamp (1784000000038). New migrations must be strictly ordered — pick a timestamp greater than 1784000000038.",
+				"hash": "c743ad0d5284"
 			}
 		],
 		"packages/@n8n/db/src/migrations/common/1727427440136-SeparateExecutionCreationFromStart.ts": [

@@ -2,14 +2,14 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-
 import { WorkflowSerializer } from './workflow.serializer';
 import type { PackageWriter } from '../../io/package-writer';
 import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator';
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import { CredentialRequirementsExtractor } from '../credential/credential-requirements.extractor';
 import type { WorkflowCredentialRequirement } from '../credential/credential.types';
+
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 export interface WorkflowExportRequest {
 	user: User;
@@ -46,7 +46,7 @@ export class WorkflowExporter {
 
 		const entries: ManifestEntry[] = [];
 		const credentials: WorkflowCredentialRequirement[] = [];
-		const fileNames = new UniqueFilenameAllocator('workflows');
+		const fileNames = new UniqueFilenameAllocator('workflows', 'workflow');
 
 		for (const workflow of workflows) {
 			const target = fileNames.allocate(workflow.name);

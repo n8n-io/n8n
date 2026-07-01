@@ -7,6 +7,7 @@ const mockRootStore = {
 	restApiContext: {},
 	setUrlBaseWebhook: vi.fn(),
 	setUrlBaseEditor: vi.fn(),
+	setUrlBaseWebhookTest: vi.fn(),
 	setEndpointForm: vi.fn(),
 	setEndpointFormTest: vi.fn(),
 	setEndpointFormWaiting: vi.fn(),

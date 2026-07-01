@@ -1,4 +1,4 @@
-import { formatPemBlock } from '@n8n/utils';
+import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import { createVerify, generateKeyPairSync, X509Certificate } from 'node:crypto';
 
 import { buildClientAssertion } from '@/client-assertion';
@@ -43,7 +43,7 @@ describe('buildClientAssertion', () => {
 		expect(verified).toBe(true);
 	});
 
-	it('throws when the certificate is not a valid X.509 certificate', () => {
+	it('throws a clear error when the certificate is not a valid X.509 certificate', () => {
 		expect(() =>
 			buildClientAssertion({
 				clientId: config.clientId,
@@ -51,10 +51,10 @@ describe('buildClientAssertion', () => {
 				privateKey: config.privateKey,
 				certificate: 'not-a-valid-certificate',
 			}),
-		).toThrow();
+		).toThrow('The Certificate field must contain a PEM certificate');
 	});
 
-	it('throws when the private key is invalid', () => {
+	it('throws a clear error when the private key is invalid', () => {
 		expect(() =>
 			buildClientAssertion({
 				clientId: config.clientId,
@@ -62,7 +62,18 @@ describe('buildClientAssertion', () => {
 				privateKey: 'not-a-valid-key',
 				certificate: config.certificate,
 			}),
-		).toThrow();
+		).toThrow('The Private Key field must contain a PEM private key');
+	});
+
+	it('throws a clear error when the certificate and private key fields are swapped', () => {
+		expect(() =>
+			buildClientAssertion({
+				clientId: config.clientId,
+				accessTokenUri: config.accessTokenUri,
+				privateKey: config.certificate,
+				certificate: config.privateKey,
+			}),
+		).toThrow('The Certificate field must contain a PEM certificate');
 	});
 
 	it('throws when a well-formed non-RSA (EC) private key is provided', () => {
