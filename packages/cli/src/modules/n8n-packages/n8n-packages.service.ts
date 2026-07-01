@@ -3,6 +3,7 @@ import { InstanceSettings } from 'n8n-core';
 import type { Readable } from 'node:stream';
 
 import { N8N_VERSION } from '@/constants';
+import { EventService } from '@/events/event.service';
 
 import { ImportPipeline } from './engine/import-pipeline';
 import { CredentialExporter } from './entities/credential/credential.exporter';
@@ -23,6 +24,7 @@ export class N8nPackagesService {
 		private readonly credentialExporter: CredentialExporter,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly importPipeline: ImportPipeline,
+		private readonly eventService: EventService,
 	) {}
 
 	async exportWorkflows(request: ExportWorkflowsRequest): Promise<Readable> {
@@ -55,7 +57,19 @@ export class N8nPackagesService {
 		});
 
 		writer.writeFile('manifest.json', JSON.stringify(manifest, null, '\t'));
-		return writer.finalize();
+
+		// Finalize before emitting so a failed finalization doesn't report a phantom export.
+		const stream = writer.finalize();
+
+		this.eventService.emit('n8n-package-exported', {
+			user: request.user,
+			counts: {
+				workflows: workflowEntries.length,
+				credentials: credentialEntries.length,
+			},
+		});
+
+		return stream;
 	}
 
 	async importPackage(request: ImportPackageRequest): Promise<ImportResult> {

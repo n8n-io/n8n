@@ -73,6 +73,7 @@ describe('GlobalConfig', () => {
 		ssl_cert: '',
 		canvasOnly: false,
 		editorBaseUrl: '',
+		webhookUrl: '',
 		dataTable: {
 			maxSize: 200 * 1024 * 1024,
 			sizeCheckCacheDuration: 5 * 1000,
@@ -296,6 +297,10 @@ describe('GlobalConfig', () => {
 		mcpClient: {
 			cacheTtl: 300000,
 			cacheMaxSize: 500,
+		},
+		mcpServer: {
+			sessionIdleTtl: 3600000,
+			sessionSweepInterval: 300000,
 		},
 		chatHub: {
 			executionContextTtl: 3600,
