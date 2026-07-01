@@ -815,6 +815,20 @@ describe('NodeCreator - utils', () => {
 			expect(isNodeTypeVersionSupported).toHaveBeenCalledWith('my-node', 2);
 		});
 
+		it('should fall back to version 1 when the node type has no known versions', () => {
+			const isNodeTypeVersionSupported = vi.fn(() => true);
+			vi.mocked(useNodeTypesStore).mockReturnValue({
+				getNodeVersions: vi.fn(() => []),
+			} as unknown as ReturnType<typeof useNodeTypesStore>);
+			vi.mocked(useAiGatewayStore).mockReturnValue({
+				isNodeSupported: vi.fn(() => true),
+				isNodeTypeVersionSupported,
+			} as unknown as ReturnType<typeof useAiGatewayStore>);
+
+			finalizeItems([makeGatewayNode('my-node')]);
+			expect(isNodeTypeVersionSupported).toHaveBeenCalledWith('my-node', 1);
+		});
+
 		it('should show Free credits badge for a Tool-suffixed node whose base name is in the gateway config', () => {
 			// "llamaParsePlatformTool" is not in config, but "llamaParsePlatform" is.
 			vi.mocked(useAiGatewayStore).mockReturnValue({
