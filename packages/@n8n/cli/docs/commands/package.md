@@ -2,10 +2,7 @@
 
 Export and import workflows as portable n8n packages (`.n8np` archives).
 
-> **Beta — disabled by default.** These commands call beta endpoints that the
-> target instance must opt into with `N8N_PUBLIC_API_PACKAGES_ENABLED=true`, and
-> the n8n Packages feature must be licensed. While disabled, the instance returns
-> `404` and the CLI prints a hint explaining how to enable it.
+> **Beta feature:** n8n packages are still under development and there may be breaking changes on APIs.
 
 ## `package export`
 

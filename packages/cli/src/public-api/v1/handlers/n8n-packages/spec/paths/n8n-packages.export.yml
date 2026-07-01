@@ -6,8 +6,7 @@ post:
     - N8nPackage
   summary: 'Beta: Export workflows as an n8n package'
   description: |
-    **Beta — disabled by default.** Set `N8N_PUBLIC_API_PACKAGES_ENABLED=true` on the
-    instance to enable this endpoint. While disabled, requests return `404`.
+    **Beta** — breaking changes may still occur without major version bump.
 
     Export one or more workflows as a gzipped tar archive (.n8np). The response is
     streamed as `application/gzip` with a `Content-Disposition` attachment header.
