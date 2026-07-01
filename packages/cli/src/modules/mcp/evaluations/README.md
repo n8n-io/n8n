@@ -391,3 +391,50 @@ in the manifest.
 For a clean slate, run the cohort against a throwaway project with `--project-id`
 and delete the whole project afterwards — that removes the workflows and the data
 tables they created in one step.
+
+## Rebalancing CI shards
+
+In CI, the `mcp` tier runs **sharded** across parallel jobs (see
+[`ci-mcp-evals.yml`](../../../../../../.github/workflows/ci-mcp-evals.yml)): a
+planner splits the tier across shards, each shard builds + evals its slice on its
+own instance, and a merge job combines the results. Shards are balanced by
+**per-case build time**, read from the committed
+[`mcp-shard-weights.json`](../../../../../@n8n/instance-ai/mcp-shard-weights.json)
+(`slug → mean Claude build seconds`). A slug with no entry — a new or renamed
+case — falls back to the median weight and is spread across shards, so the
+weights only ever affect **balance**, never which cases run. Without the file,
+shards are balanced by case count.
+
+The file is a committed performance cache, refreshed on demand from a
+**full-tier** run (a filtered run only updates the slugs it built and merges them
+into the rest). Every full CI run emits a refreshed copy in the merged artifact:
+
+```bash
+gh run download <full-run-id> --name mcp-workflow-eval-results-merged --dir /tmp/merged
+cp /tmp/merged/mcp-shard-weights.json packages/@n8n/instance-ai/mcp-shard-weights.json
+git add packages/@n8n/instance-ai/mcp-shard-weights.json
+git commit -m "test(instance-ai): refresh MCP shard weights"
+```
+
+To (re)generate it yourself — from an older run's per-shard artifacts, or from a
+local full-tier cohort — point `derive-mcp-shard-weights.mjs` at any directory
+containing `manifest-stats.json` files:
+
+```bash
+# From a CI run's per-shard artifacts:
+gh run download <full-run-id> --pattern 'mcp-workflow-eval-results-*' --dir /tmp/mcp-shards
+node .github/scripts/derive-mcp-shard-weights.mjs \
+  --input-dir /tmp/mcp-shards \
+  --base packages/@n8n/instance-ai/mcp-shard-weights.json \
+  --out  packages/@n8n/instance-ai/mcp-shard-weights.json
+
+# ...or from a local cohort (the manifest-stats.json written by eval:build-mcp-manifest):
+node .github/scripts/derive-mcp-shard-weights.mjs \
+  --input-dir /tmp/n8n-mcp-cohort \
+  --base packages/@n8n/instance-ai/mcp-shard-weights.json \
+  --out  packages/@n8n/instance-ai/mcp-shard-weights.json
+```
+
+Using the same path for `--base` and `--out` merges in place; on the first run
+the missing base resolves to empty. Weights are build time only (the dominant,
+most-variable cost); the verifier's mock-execution time is not included.

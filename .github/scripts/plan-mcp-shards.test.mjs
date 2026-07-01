@@ -8,7 +8,9 @@ import { join } from 'node:path';
  * Run with:
  * node --test --experimental-test-module-mocks ./.github/scripts/plan-mcp-shards.test.mjs
  */
-const { chunkSlugs, planShards, readTierSlugs } = await import('./plan-mcp-shards.mjs');
+const { chunkSlugs, packShardsByWeight, planShards, readTierSlugs, readWeights } = await import(
+	'./plan-mcp-shards.mjs'
+);
 
 describe('chunkSlugs', () => {
 	it('splits into balanced contiguous groups, remainder to earlier groups', () => {
@@ -31,9 +33,60 @@ describe('chunkSlugs', () => {
 	});
 });
 
+describe('packShardsByWeight (LPT)', () => {
+	it('isolates a dominant-cost case instead of splitting by count', () => {
+		// Count-based would pair the heavy `a` with `b` (load 110); LPT keeps `a`
+		// alone so the slowest shard is 100, not 110.
+		const groups = packShardsByWeight(['a', 'b', 'c', 'd'], 2, { a: 100, b: 10, c: 10, d: 10 });
+		assert.deepEqual(groups, [['a'], ['b', 'c', 'd']]);
+	});
+
+	it('balances equal-weight cases evenly across shards', () => {
+		const groups = packShardsByWeight(['a', 'b', 'c', 'd'], 2, { a: 50, b: 50, c: 50, d: 50 });
+		assert.deepEqual(
+			groups.map((g) => g.length),
+			[2, 2],
+		);
+	});
+
+	it('weights unmeasured slugs as the median (not free) so they are not clustered', () => {
+		// b, c are unmeasured -> median of [100] = 100. Treated as typical cost, so
+		// c lands with a (=> [[a,c],[b]]); a weight-1 fallback would instead pile the
+		// unknowns together as [[a],[b,c]].
+		const groups = packShardsByWeight(['a', 'b', 'c'], 2, { a: 100 });
+		assert.deepEqual(groups, [['a', 'c'], ['b']]);
+	});
+
+	it('spreads all-unmeasured slugs (median falls back to 1, round-robin by count)', () => {
+		const groups = packShardsByWeight(['a', 'b', 'c', 'd'], 2, {});
+		assert.deepEqual(
+			groups.map((g) => g.length),
+			[2, 2],
+		);
+	});
+});
+
 describe('planShards', () => {
-	it('emits an include-only matrix with stringified indices and csv slugs', () => {
+	it('emits an include-only matrix with stringified indices and csv slugs (count-based)', () => {
 		assert.deepEqual(planShards(['a', 'b', 'c', 'd', 'e'], 2), {
+			include: [
+				{ shard: '1', slugs: 'a,b,c' },
+				{ shard: '2', slugs: 'd,e' },
+			],
+		});
+	});
+
+	it('uses LPT when weights are provided', () => {
+		assert.deepEqual(planShards(['a', 'b', 'c', 'd'], 2, { a: 100, b: 10, c: 10, d: 10 }), {
+			include: [
+				{ shard: '1', slugs: 'a' },
+				{ shard: '2', slugs: 'b,c,d' },
+			],
+		});
+	});
+
+	it('ignores an empty weights map (falls back to count-based)', () => {
+		assert.deepEqual(planShards(['a', 'b', 'c', 'd', 'e'], 2, {}), {
 			include: [
 				{ shard: '1', slugs: 'a,b,c' },
 				{ shard: '2', slugs: 'd,e' },
@@ -46,6 +99,28 @@ describe('planShards', () => {
 		const recombined = planShards(slugs, 4).include.flatMap((s) => s.slugs.split(','));
 		assert.deepEqual([...recombined].sort(), [...slugs].sort());
 		assert.equal(new Set(recombined).size, slugs.length);
+	});
+});
+
+describe('readWeights', () => {
+	function writeJson(body) {
+		const dir = mkdtempSync(join(tmpdir(), 'weights-'));
+		const path = join(dir, 'w.json');
+		writeFileSync(path, typeof body === 'string' ? body : JSON.stringify(body));
+		return path;
+	}
+
+	it('returns {} for a missing file', () => {
+		assert.deepEqual(readWeights('/no/such/weights.json'), {});
+	});
+
+	it('keeps only finite positive numeric weights', () => {
+		const path = writeJson({ a: 12, b: 0, c: -3, d: 'x', e: 4.5 });
+		assert.deepEqual(readWeights(path), { a: 12, e: 4.5 });
+	});
+
+	it('returns {} for malformed JSON', () => {
+		assert.deepEqual(readWeights(writeJson('{not json')), {});
 	});
 });
 

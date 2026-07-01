@@ -172,6 +172,18 @@ jobs:
           [ -n "$EXPERIMENT_NAME" ] && ARGS+=(--experiment-name "$EXPERIMENT_NAME")
           pnpm eval:merge-results "${ARGS[@]}"
 
+      # Refresh per-slug shard weights from this run's build stats and merge them
+      # into the committed file. Download it from the artifact + commit to rebalance
+      # future runs (LPT). Independent of the merge/upload above, so always runs.
+      - name: Derive shard weights
+        if: ${{ always() }}
+        run: |
+          mkdir -p packages/@n8n/instance-ai/merged
+          node .github/scripts/derive-mcp-shard-weights.mjs \
+            --input-dir "$GITHUB_WORKSPACE/shard-artifacts" \
+            --base packages/@n8n/instance-ai/mcp-shard-weights.json \
+            --out packages/@n8n/instance-ai/merged/mcp-shard-weights.json
+
       - name: Upload merged results
         if: ${{ always() }}
         uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
@@ -180,5 +192,6 @@ jobs:
           path: |
             packages/@n8n/instance-ai/merged/eval-results.json
             packages/@n8n/instance-ai/merged/eval-pr-comment.md
+            packages/@n8n/instance-ai/merged/mcp-shard-weights.json
           if-no-files-found: ignore
           retention-days: 14
