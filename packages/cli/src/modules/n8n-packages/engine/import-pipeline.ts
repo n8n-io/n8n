@@ -114,7 +114,7 @@ export class ImportPipeline {
 		const imported = outcomes.filter(({ status }) => status !== 'skipped');
 		const countByStatus = (status: WorkflowImportOutcome['status']) =>
 			outcomes.filter((outcome) => outcome.status === status).length;
-		this.eventService.emit('package-imported', {
+		this.eventService.emit('n8n-package-imported', {
 			user: context.user,
 			projectId: context.projectId,
 			folderId: context.folderId,

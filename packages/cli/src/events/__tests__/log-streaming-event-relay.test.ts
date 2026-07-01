@@ -54,8 +54,8 @@ describe('LogStreamingEventRelay', () => {
 			});
 		});
 
-		it('should log on `package-imported` event', () => {
-			const event: RelayEventMap['package-imported'] = {
+		it('should log on `n8n-package-imported` event', () => {
+			const event: RelayEventMap['n8n-package-imported'] = {
 				user: {
 					id: 'user-import',
 					email: 'importer@example.com',
@@ -91,7 +91,7 @@ describe('LogStreamingEventRelay', () => {
 				},
 			};
 
-			eventService.emit('package-imported', event);
+			eventService.emit('n8n-package-imported', event);
 
 			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
 				eventName: 'n8n.audit.n8n-package.imported',

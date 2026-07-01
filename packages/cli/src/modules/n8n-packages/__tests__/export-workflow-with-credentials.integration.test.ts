@@ -218,7 +218,7 @@ describe('workflow package export — with credentials', () => {
 	});
 
 	describe('telemetry event', () => {
-		it('emits package-exported with entity counts on a successful export', async () => {
+		it('emits n8n-package-exported with entity counts on a successful export', async () => {
 			const owner = await createOwner();
 			const project = await createTeamProject('Project A', owner);
 			const firstCredential = await saveCredential(
@@ -251,10 +251,12 @@ describe('workflow package export — with credentials', () => {
 			try {
 				await service.exportWorkflows({ user: owner, workflowIds: [wfA.id, wfB.id, wfC.id] });
 
-				const exportedEvents = emitSpy.mock.calls.filter(([name]) => name === 'package-exported');
+				const exportedEvents = emitSpy.mock.calls.filter(
+					([name]) => name === 'n8n-package-exported',
+				);
 				expect(exportedEvents).toHaveLength(1);
 
-				const payload = exportedEvents[0][1] as RelayEventMap['package-exported'];
+				const payload = exportedEvents[0][1] as RelayEventMap['n8n-package-exported'];
 				expect(payload.counts.workflows).toBe(3);
 				expect(payload.counts.credentials).toBe(2);
 				expect(payload.user.id).toBe(owner.id);
@@ -281,10 +283,12 @@ describe('workflow package export — with credentials', () => {
 			try {
 				await service.exportWorkflows({ user: owner, workflowIds: [workflow.id] });
 
-				const exportedEvents = emitSpy.mock.calls.filter(([name]) => name === 'package-exported');
+				const exportedEvents = emitSpy.mock.calls.filter(
+					([name]) => name === 'n8n-package-exported',
+				);
 				expect(exportedEvents).toHaveLength(1);
 
-				const payload = exportedEvents[0][1] as RelayEventMap['package-exported'];
+				const payload = exportedEvents[0][1] as RelayEventMap['n8n-package-exported'];
 				expect(payload.counts.workflows).toBe(1);
 				expect(payload.counts.credentials).toBe(0);
 			} finally {
@@ -292,7 +296,7 @@ describe('workflow package export — with credentials', () => {
 			}
 		});
 
-		it('does not emit package-exported when the export aborts', async () => {
+		it('does not emit n8n-package-exported when the export aborts', async () => {
 			const owner = await createOwner();
 			await createTeamProject('Project A', owner);
 			const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
@@ -302,7 +306,9 @@ describe('workflow package export — with credentials', () => {
 					service.exportWorkflows({ user: owner, workflowIds: ['does-not-exist'] }),
 				).rejects.toThrow(/not found or not accessible/i);
 
-				const exportedEvents = emitSpy.mock.calls.filter(([name]) => name === 'package-exported');
+				const exportedEvents = emitSpy.mock.calls.filter(
+					([name]) => name === 'n8n-package-exported',
+				);
 				expect(exportedEvents).toHaveLength(0);
 			} finally {
 				emitSpy.mockRestore();

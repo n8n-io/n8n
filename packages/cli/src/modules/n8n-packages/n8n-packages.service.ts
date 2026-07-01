@@ -58,7 +58,10 @@ export class N8nPackagesService {
 
 		writer.writeFile('manifest.json', JSON.stringify(manifest, null, '\t'));
 
-		this.eventService.emit('package-exported', {
+		// Finalize before emitting so a failed finalization doesn't report a phantom export.
+		const stream = writer.finalize();
+
+		this.eventService.emit('n8n-package-exported', {
 			user: request.user,
 			counts: {
 				workflows: workflowEntries.length,
@@ -66,7 +69,7 @@ export class N8nPackagesService {
 			},
 		});
 
-		return writer.finalize();
+		return stream;
 	}
 
 	async importPackage(request: ImportPackageRequest): Promise<ImportResult> {

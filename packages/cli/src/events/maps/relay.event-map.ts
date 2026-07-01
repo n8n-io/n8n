@@ -90,7 +90,7 @@ export type RelayEventMap = {
 		source?: WorkflowActionSource;
 	};
 
-	'package-imported': {
+	'n8n-package-imported': {
 		user: UserLike;
 		projectId: string;
 		folderId: string | null;
@@ -102,7 +102,7 @@ export type RelayEventMap = {
 		counts: ImportPackageEventCounts;
 	};
 
-	'package-exported': {
+	'n8n-package-exported': {
 		user: UserLike;
 		counts: ExportPackageEventCounts;
 	};

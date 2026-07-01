@@ -1119,7 +1119,7 @@ describe('ImportPipeline rejection cases', () => {
 });
 
 describe('ImportPipeline event emission', () => {
-	it('emits workflow-created per workflow plus one package-imported on success', async () => {
+	it('emits workflow-created per workflow plus one n8n-package-imported on success', async () => {
 		const owner = await createOwner();
 		const eventService = Container.get(EventService);
 		const emitSpy = vi.spyOn(eventService, 'emit');
@@ -1134,7 +1134,7 @@ describe('ImportPipeline event emission', () => {
 			});
 
 			const createdEvents = emitSpy.mock.calls.filter(([name]) => name === 'workflow-created');
-			const importedEvents = emitSpy.mock.calls.filter(([name]) => name === 'package-imported');
+			const importedEvents = emitSpy.mock.calls.filter(([name]) => name === 'n8n-package-imported');
 
 			expect(createdEvents).toHaveLength(2);
 			expect(
@@ -1142,7 +1142,7 @@ describe('ImportPipeline event emission', () => {
 			).toBe(true);
 			expect(importedEvents).toHaveLength(1);
 
-			const importedPayload = importedEvents[0][1] as RelayEventMap['package-imported'];
+			const importedPayload = importedEvents[0][1] as RelayEventMap['n8n-package-imported'];
 			expect(importedPayload.workflowIds).toHaveLength(2);
 			expect(importedPayload.credentialIds).toEqual({
 				matched: [],
@@ -1172,7 +1172,7 @@ describe('ImportPipeline event emission', () => {
 		}
 	});
 
-	it('records matched and created credential ids on package-imported', async () => {
+	it('records matched and created credential ids on n8n-package-imported', async () => {
 		const owner = await createOwner();
 		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
 			owner.id,
@@ -1217,10 +1217,10 @@ describe('ImportPipeline event emission', () => {
 				),
 			});
 
-			const importedEvents = emitSpy.mock.calls.filter(([name]) => name === 'package-imported');
+			const importedEvents = emitSpy.mock.calls.filter(([name]) => name === 'n8n-package-imported');
 			expect(importedEvents).toHaveLength(1);
 
-			const importedPayload = importedEvents[0][1] as RelayEventMap['package-imported'];
+			const importedPayload = importedEvents[0][1] as RelayEventMap['n8n-package-imported'];
 			expect(importedPayload.credentialIds.matched).toEqual(
 				expect.arrayContaining([firstCredential.id, secondCredential.id]),
 			);
@@ -1242,7 +1242,7 @@ describe('ImportPipeline event emission', () => {
 		}
 	});
 
-	it('excludes skipped workflow ids from package-imported payload', async () => {
+	it('excludes skipped workflow ids from n8n-package-imported payload', async () => {
 		const owner = await createOwner();
 		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
 			owner.id,
@@ -1261,10 +1261,10 @@ describe('ImportPipeline event emission', () => {
 				workflowConflictPolicy: WorkflowConflictPolicy.Skip,
 			});
 
-			const importedEvents = emitSpy.mock.calls.filter(([name]) => name === 'package-imported');
+			const importedEvents = emitSpy.mock.calls.filter(([name]) => name === 'n8n-package-imported');
 			expect(importedEvents).toHaveLength(1);
 
-			const { workflowIds, counts } = importedEvents[0][1] as RelayEventMap['package-imported'];
+			const { workflowIds, counts } = importedEvents[0][1] as RelayEventMap['n8n-package-imported'];
 			const createdWorkflow = result.workflows.find(({ status }) => status === 'created');
 			expect(workflowIds).toEqual([createdWorkflow!.localId]);
 			expect(result.workflows.find(({ status }) => status === 'skipped')).toBeDefined();
@@ -1305,10 +1305,10 @@ describe('ImportPipeline event emission', () => {
 				workflowIdPolicy: WorkflowIdPolicy.Source,
 			});
 
-			const importedEvents = emitSpy.mock.calls.filter(([name]) => name === 'package-imported');
+			const importedEvents = emitSpy.mock.calls.filter(([name]) => name === 'n8n-package-imported');
 			expect(importedEvents).toHaveLength(1);
 
-			const { counts } = importedEvents[0][1] as RelayEventMap['package-imported'];
+			const { counts } = importedEvents[0][1] as RelayEventMap['n8n-package-imported'];
 			expect(counts).toEqual({
 				workflows: {
 					created: 0,
@@ -1339,7 +1339,7 @@ describe('ImportPipeline event emission', () => {
 			).rejects.toThrow();
 
 			const created = emitSpy.mock.calls.filter(([name]) => name === 'workflow-created');
-			const imported = emitSpy.mock.calls.filter(([name]) => name === 'package-imported');
+			const imported = emitSpy.mock.calls.filter(([name]) => name === 'n8n-package-imported');
 
 			expect(created).toHaveLength(0);
 			expect(imported).toHaveLength(0);
@@ -1348,7 +1348,7 @@ describe('ImportPipeline event emission', () => {
 		}
 	});
 
-	it('emits no package-imported event when a blocking conflict aborts the import', async () => {
+	it('emits no n8n-package-imported event when a blocking conflict aborts the import', async () => {
 		const owner = await createOwner();
 		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
 			owner.id,
@@ -1368,7 +1368,7 @@ describe('ImportPipeline event emission', () => {
 				}),
 			).rejects.toThrow('Import blocked');
 
-			const imported = emitSpy.mock.calls.filter(([name]) => name === 'package-imported');
+			const imported = emitSpy.mock.calls.filter(([name]) => name === 'n8n-package-imported');
 			expect(imported).toHaveLength(0);
 		} finally {
 			emitSpy.mockRestore();

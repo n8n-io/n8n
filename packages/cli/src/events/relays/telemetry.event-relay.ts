@@ -161,8 +161,8 @@ export class TelemetryEventRelay extends EventRelay {
 			'workflow-unarchived': (event) => this.workflowUnarchived(event),
 			'workflow-deleted': (event) => this.workflowDeleted(event),
 			'workflow-sharing-updated': (event) => this.workflowSharingUpdated(event),
-			'package-imported': (event) => this.packageImported(event),
-			'package-exported': (event) => this.packageExported(event),
+			'n8n-package-imported': (event) => this.packageImported(event),
+			'n8n-package-exported': (event) => this.packageExported(event),
 			'workflow-saved': async (event) => await this.workflowSaved(event),
 			'workflow-activated': (event) => this.workflowActivated(event),
 			'workflow-deactivated': (event) => this.workflowDeactivated(event),
@@ -959,8 +959,8 @@ export class TelemetryEventRelay extends EventRelay {
 		options,
 		credentialIds,
 		counts,
-	}: RelayEventMap['package-imported']) {
-		this.telemetry.track('User imported package', {
+	}: RelayEventMap['n8n-package-imported']) {
+		this.telemetry.track('User imported n8n package', {
 			user_id: user.id,
 			workflow_conflict_policy: options.workflowConflictPolicy,
 			workflow_id_policy: options.workflowIdPolicy,
@@ -975,8 +975,8 @@ export class TelemetryEventRelay extends EventRelay {
 		});
 	}
 
-	private packageExported({ user, counts }: RelayEventMap['package-exported']) {
-		this.telemetry.track('User exported package', {
+	private packageExported({ user, counts }: RelayEventMap['n8n-package-exported']) {
+		this.telemetry.track('User exported n8n package', {
 			user_id: user.id,
 			workflow_count: counts.workflows,
 			credential_count: counts.credentials,

@@ -1973,8 +1973,8 @@ describe('TelemetryEventRelay', () => {
 	});
 
 	describe('package import/export events', () => {
-		it('should track on `package-imported` event with params and counts', () => {
-			const event: RelayEventMap['package-imported'] = {
+		it('should track on `n8n-package-imported` event with params and counts', () => {
+			const event: RelayEventMap['n8n-package-imported'] = {
 				user: { id: 'user123' },
 				projectId: 'project123',
 				folderId: 'folder123',
@@ -2003,9 +2003,9 @@ describe('TelemetryEventRelay', () => {
 				},
 			};
 
-			eventService.emit('package-imported', event);
+			eventService.emit('n8n-package-imported', event);
 
-			expect(telemetry.track).toHaveBeenCalledWith('User imported package', {
+			expect(telemetry.track).toHaveBeenCalledWith('User imported n8n package', {
 				user_id: 'user123',
 				workflow_conflict_policy: 'new-version',
 				workflow_id_policy: 'new',
@@ -2020,8 +2020,8 @@ describe('TelemetryEventRelay', () => {
 			});
 		});
 
-		it('should track on `package-exported` event with entity counts', () => {
-			const event: RelayEventMap['package-exported'] = {
+		it('should track on `n8n-package-exported` event with entity counts', () => {
+			const event: RelayEventMap['n8n-package-exported'] = {
 				user: { id: 'user123' },
 				counts: {
 					workflows: 3,
@@ -2029,9 +2029,9 @@ describe('TelemetryEventRelay', () => {
 				},
 			};
 
-			eventService.emit('package-exported', event);
+			eventService.emit('n8n-package-exported', event);
 
-			expect(telemetry.track).toHaveBeenCalledWith('User exported package', {
+			expect(telemetry.track).toHaveBeenCalledWith('User exported n8n package', {
 				user_id: 'user123',
 				workflow_count: 3,
 				credential_count: 2,
