@@ -380,15 +380,15 @@ describe('Webhook Utils', () => {
 				authorization: `Basic ${Buffer.from('admin:wrong-password').toString('base64')}`,
 			};
 			const ctx: Partial<IWebhookFunctions> = {
-				getNodeParameter: jest.fn().mockReturnValue('basicAuth'),
-				getCredentials: jest.fn().mockResolvedValue({
+				getNodeParameter: vi.fn().mockReturnValue('basicAuth'),
+				getCredentials: vi.fn().mockResolvedValue({
 					user: 'admin',
 					password: 'password',
 				}),
-				getRequestObject: jest.fn().mockReturnValue({
+				getRequestObject: vi.fn().mockReturnValue({
 					headers,
 				}),
-				getHeaderData: jest.fn().mockReturnValue(headers),
+				getHeaderData: vi.fn().mockReturnValue(headers),
 			};
 			const authPropertyName = 'authentication';
 
@@ -433,13 +433,13 @@ describe('Webhook Utils', () => {
 				'x-auth-token': 'wrong-token',
 			};
 			const ctx: Partial<IWebhookFunctions> = {
-				getNode: jest.fn().mockReturnValue(node),
-				getCredentials: jest.fn().mockResolvedValue(credentials),
-				getNodeParameter: jest.fn().mockReturnValue('basicAuth'),
-				getRequestObject: jest.fn().mockReturnValue({
+				getNode: vi.fn().mockReturnValue(node),
+				getCredentials: vi.fn().mockResolvedValue(credentials),
+				getNodeParameter: vi.fn().mockReturnValue('basicAuth'),
+				getRequestObject: vi.fn().mockReturnValue({
 					headers,
 				}),
-				getHeaderData: jest.fn().mockReturnValue(headers),
+				getHeaderData: vi.fn().mockReturnValue(headers),
 			};
 			const authPropertyName = 'authentication';
 
