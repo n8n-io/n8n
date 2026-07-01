@@ -38,6 +38,7 @@ import { PublicApiConfig } from './configs/public-api.config';
 import { RedisConfig } from './configs/redis.config';
 import { TaskRunnersConfig } from './configs/runners.config';
 import { ScalingModeConfig } from './configs/scaling-mode.config';
+import { SchedulerConfig } from './configs/scheduler.config';
 import { SecurityConfig } from './configs/security.config';
 import { SentryConfig } from './configs/sentry.config';
 import { SsoConfig } from './configs/sso.config';
@@ -87,6 +88,7 @@ export { PasswordConfig } from './configs/password.config';
 export { AgentsConfig } from './configs/agents.config';
 export { CompressionNodeConfig } from './configs/compression.config';
 export { RedisConfig } from './configs/redis.config';
+export { SchedulerConfig } from './configs/scheduler.config';
 export { EndpointsConfig, PrometheusMetricsConfig };
 
 const protocolSchema = z.enum(['http', 'https']);
@@ -171,6 +173,9 @@ export class GlobalConfig {
 
 	@Nested
 	multiMainSetup: MultiMainSetupConfig;
+
+	@Nested
+	scheduler: SchedulerConfig;
 
 	@Nested
 	generic: GenericConfig;
