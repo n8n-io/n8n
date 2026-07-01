@@ -71,7 +71,8 @@ export class PrometheusWorkflowPublicationMetricsService implements PrometheusMe
 			let entries = await cacheService.get<StatusStatsEntries>(RECORD_STATS_CACHE_KEY);
 			if (entries === undefined) {
 				const stats = await repository.getRecordStatsByStatus();
-				entries = [...stats].map(
+				entries = Array.from(
+					stats,
 					([status, { count, oldestCreatedAt }]): [
 						WorkflowPublicationOutboxStatus,
 						StatusStats,
