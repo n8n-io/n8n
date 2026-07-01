@@ -748,8 +748,14 @@ export class AgentRuntime {
 			},
 			getAbortFinish: () => sink?.getAbortFinish() ?? {},
 			// Durably save the turn-so-far when a streaming run is aborted, so a cancelled
-			// run still leaves its assistant work in memory (mirrors the suspend-time save).
-			persistTurnOnAbort: async () => await this.memory.persistTurnDelta(ctx.list, ctx.options),
+			// run still leaves its assistant work in memory. Fold in the text streamed for
+			// the in-flight turn first — its `newMessages` are only built once the stream
+			// completes, which the abort skipped, so it isn't in the list yet.
+			persistTurnOnAbort: async () => {
+				const partial = sink?.getAbortSnapshot();
+				if (partial) ctx.list.addResponse([partial]);
+				await this.memory.persistTurnDelta(ctx.list, ctx.options);
+			},
 			flushTelemetry: async (options) => await this.telemetry.flush(options),
 			cleanupRun: async () => await this.cleanupRun(),
 			updateState: (status) => this.updateState({ status }),

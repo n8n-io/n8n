@@ -937,6 +937,42 @@ describe('AgentRuntime — eager input persistence', () => {
 		);
 		expect(assistantRows).toHaveLength(1);
 	});
+
+	it('persists the text already streamed when a run is stopped mid-response', async () => {
+		const { runtime, memory } = makeMemoryRuntime();
+		const controller = new AbortController();
+		const abortError = Object.assign(new Error('This operation was aborted'), {
+			name: 'AbortError',
+		});
+
+		// The model streams two text deltas, then the stop lands — before the turn
+		// completes, so its `newMessages` are never built (finishReason/response reject).
+		streamText.mockReturnValueOnce({
+			fullStream: (async function* () {
+				yield { type: 'text-delta', id: 't1', text: 'Here is my ' };
+				yield { type: 'text-delta', id: 't1', text: 'partial answer' };
+				controller.abort();
+			})(),
+			finishReason: silentReject(abortError),
+			usage: silentReject(abortError),
+			response: silentReject(abortError),
+			toolCalls: silentReject(abortError),
+		});
+
+		const { stream } = await runtime.stream('hello', {
+			...PERSIST,
+			abortSignal: controller.signal,
+		});
+		await collectChunks(stream);
+
+		expect(runtime.getState().status).toBe('cancelled');
+		// The text the user already saw is in memory, not lost with the aborted turn.
+		const persisted = await memory.getMessages('t1', { resourceId: 'u1' });
+		const assistantTexts = persisted
+			.filter((m) => (m as { role?: string }).role === 'assistant')
+			.map((m) => textOf(m));
+		expect(assistantTexts).toContain('Here is my partial answer');
+	});
 });
 
 // ---------------------------------------------------------------------------

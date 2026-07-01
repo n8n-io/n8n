@@ -90,7 +90,13 @@ export function startStreamSession(deps: StreamSessionDeps): ReadableStream<Stre
 			const isAbort = deps.abortScope.isAborted;
 			deps.updateState(isAbort ? 'cancelled' : 'failed');
 			if (isAbort) {
-				await deps.persistTurnOnAbort?.();
+				// Best-effort: a persistence failure must never skip the shutdown steps
+				// below (cleanup, telemetry flush, terminal failure signal).
+				try {
+					await deps.persistTurnOnAbort?.();
+				} catch {
+					// swallowed — persistTurnDelta already logs; shutdown must proceed
+				}
 			} else {
 				deps.emitError(error);
 			}
