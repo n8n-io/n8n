@@ -9,7 +9,7 @@ vi.mock('fs', () => ({
 import { readdirSync, readFileSync } from 'fs';
 import { jsonParse } from 'n8n-workflow';
 
-import { loadWorkflowTestCasesWithFiles } from '../data/workflows';
+import { loadWorkflowTestCasesBySlugs, loadWorkflowTestCasesWithFiles } from '../data/workflows';
 
 const mockedReaddir = vi.mocked(readdirSync);
 const mockedReadFile = vi.mocked(readFileSync);
@@ -163,7 +163,9 @@ describe('loadWorkflowTestCasesWithFiles', () => {
 				.sort();
 
 			expect(inPr).toEqual(['weather-alert']);
-			const allSlugs = loadWorkflowTestCasesWithFiles().map((c) => c.fileSlug).sort();
+			const allSlugs = loadWorkflowTestCasesWithFiles()
+				.map((c) => c.fileSlug)
+				.sort();
 			expect(inFull).toEqual(allSlugs);
 		});
 
@@ -197,5 +199,43 @@ describe('loadWorkflowTestCasesWithFiles', () => {
 			);
 			expect(() => loadWorkflowTestCasesWithFiles()).toThrow(/datasets/i);
 		});
+	});
+});
+
+describe('loadWorkflowTestCasesBySlugs (exact match)', () => {
+	function bySlugs(slugs: string[]): string[] {
+		return loadWorkflowTestCasesBySlugs(slugs)
+			.map((tc) => tc.fileSlug)
+			.sort();
+	}
+
+	it('selects only the exact slug, never a filename that merely contains it', () => {
+		// The real collision: an exact slug that is a prefix of another case file.
+		mockedReaddir.mockReturnValue([
+			'weather-alert.json',
+			'weather-alert-no-prebuild-setup-question.json',
+		] as unknown as ReturnType<typeof readdirSync>);
+		expect(bySlugs(['weather-alert'])).toEqual(['weather-alert']);
+	});
+
+	it('does not match a substring token that is not itself a file slug', () => {
+		// `weather` substring-matches two files in loadWorkflowTestCasesWithFiles,
+		// but there is no file literally named `weather`, so exact match finds none.
+		expect(bySlugs(['weather'])).toEqual([]);
+	});
+
+	it('loads several exact slugs at once', () => {
+		expect(bySlugs(['weather-alert', 'form-to-hubspot'])).toEqual([
+			'form-to-hubspot',
+			'weather-alert',
+		]);
+	});
+
+	it('skips unknown slugs and dedups the requested set', () => {
+		expect(bySlugs(['weather-alert', 'no-such-case', 'weather-alert'])).toEqual(['weather-alert']);
+	});
+
+	it('returns nothing for an empty slug list', () => {
+		expect(bySlugs([])).toEqual([]);
 	});
 });

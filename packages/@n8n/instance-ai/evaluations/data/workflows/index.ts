@@ -103,3 +103,27 @@ export function loadWorkflowTestCasesWithFiles(
 	}
 	return matched;
 }
+
+/**
+ * Load test cases for an EXACT set of file slugs (no substring matching).
+ *
+ * `loadWorkflowTestCasesWithFiles`'s `filter` is a deliberate substring match
+ * (for the CLI's `--filter`), so passing exact slugs there can pull in unrelated
+ * cases whose filename merely *contains* a slug — e.g. `weather-alert` also
+ * matches `weather-alert-no-prebuild-setup-question`. Callers that already hold
+ * exact slugs (e.g. the sharded-merge dataset sync) must select precisely, so
+ * match `fileSlug` by identity. Unknown slugs are silently skipped; the caller
+ * knows the requested set and can detect anything that didn't resolve.
+ */
+export function loadWorkflowTestCasesBySlugs(slugs: string[]): WorkflowTestCaseWithFile[] {
+	const wanted = new Set(slugs);
+	if (wanted.size === 0) return [];
+	const cases: WorkflowTestCaseWithFile[] = [];
+	for (const file of readdirSync(__dirname)) {
+		if (!file.endsWith('.json')) continue;
+		const fileSlug = basename(file, '.json');
+		if (!wanted.has(fileSlug)) continue;
+		cases.push({ testCase: parseTestCaseFile(join(__dirname, file)), fileSlug });
+	}
+	return cases;
+}

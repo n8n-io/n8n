@@ -27,7 +27,7 @@ import {
 	type ScenarioCounts,
 } from '../comparison/compare';
 import { fetchBaselineBucket, findLatestBaseline } from '../comparison/fetch-baseline';
-import { loadWorkflowTestCasesWithFiles } from '../data/workflows';
+import { loadWorkflowTestCasesBySlugs } from '../data/workflows';
 import { createLogger } from '../harness/logger';
 import { syncDataset } from '../langsmith/dataset-sync';
 
@@ -168,9 +168,18 @@ export async function uploadUnifiedExperiment(
 	const slugs = [...new Set(opts.combined.testCases.map((tc) => tc.testCaseFile ?? tc.name))];
 
 	// Ensure the dataset + examples exist for every merged slug (idempotent), so
-	// the replay runs link to real dataset examples. syncDataset takes the loaded
-	// test cases (filtered to our slugs) — mirrors the eval CLI's call in index.ts.
-	const testCasesWithFiles = loadWorkflowTestCasesWithFiles(slugs.join(','));
+	// the replay runs link to real dataset examples. Select by EXACT slug — a
+	// substring filter here would sync unrelated cases (e.g. `weather-alert` also
+	// matching `weather-alert-no-prebuild-setup-question`) into the dataset.
+	const testCasesWithFiles = loadWorkflowTestCasesBySlugs(slugs);
+	if (testCasesWithFiles.length < slugs.length) {
+		const found = new Set(testCasesWithFiles.map((tc) => tc.fileSlug));
+		const missing = slugs.filter((slug) => !found.has(slug));
+		// A merged slug with no case file won't get a dataset example, so its runs
+		// can't be replayed. Shouldn't happen at a fixed ref (the shards built it),
+		// so surface it rather than dropping the slug silently.
+		logger.warn(`No test-case file for merged slug(s): ${missing.join(', ')}`);
+	}
 	const datasetName = await syncDataset(client, opts.dataset, logger, testCasesWithFiles);
 
 	const replay = buildReplayMap(opts.combined.testCases);
