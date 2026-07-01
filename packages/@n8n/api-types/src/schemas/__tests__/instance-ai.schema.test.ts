@@ -87,6 +87,18 @@ describe('workflowSetupNodeSchema credentials', () => {
 		expect(result.data?.node.credentials?.googlePalmApi?.id).toBe('cred-123');
 	});
 
+	it('rejects null id without __aiGatewayManaged: true', () => {
+		const result = workflowSetupNodeSchema.safeParse({
+			node: {
+				...baseNode,
+				credentials: { googlePalmApi: { id: null, name: 'My Cred' } },
+			},
+			isTrigger: false,
+		});
+
+		expect(result.success).toBe(false);
+	});
+
 	it('exports the shared AI Gateway-managed setup tag', () => {
 		expect(AI_GATEWAY_MANAGED_TAG).toBe('__AI_GATEWAY_MANAGED__');
 	});

@@ -52,6 +52,15 @@ export async function resolveCredentialForApply(
 	context: Pick<InstanceAiContext, 'credentialService'>,
 ): Promise<ResolveCredentialResult> {
 	if (credId === AI_GATEWAY_MANAGED_TAG) {
+		if (context.credentialService.isAiGatewayCredentialType) {
+			const supported = await context.credentialService.isAiGatewayCredentialType(credType);
+			if (!supported) {
+				return {
+					resolved: false,
+					error: `Credential type "${credType}" is not supported by AI Gateway`,
+				};
+			}
+		}
 		return { resolved: true, credential: { ...AI_GATEWAY_CREDENTIAL } };
 	}
 

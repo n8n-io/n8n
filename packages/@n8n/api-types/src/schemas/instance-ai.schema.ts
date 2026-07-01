@@ -224,14 +224,13 @@ export const workflowSetupNodeSchema = z.object({
 		type: z.string(),
 		typeVersion: z.number(),
 		parameters: z.record(z.unknown()),
-		// `id` is null for AI Gateway managed credentials
+		// `id` is null only when `__aiGatewayManaged` is true
 		credentials: z
 			.record(
-				z.object({
-					id: z.string().nullable(),
-					name: z.string(),
-					__aiGatewayManaged: z.boolean().optional(),
-				}),
+				z.union([
+					z.object({ id: z.string(), name: z.string() }),
+					z.object({ id: z.null(), name: z.string(), __aiGatewayManaged: z.literal(true) }),
+				]),
 			)
 			.optional(),
 		position: z.tuple([z.number(), z.number()]),
