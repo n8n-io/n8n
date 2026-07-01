@@ -132,12 +132,14 @@ describe('ChatIntegrationService.syncToConfig — publish gate', () => {
 	let chatSubscriptionStateService: ReturnType<typeof mock<AgentChatSubscriptionStateService>>;
 	let connectSpy: MockInstance;
 	let disconnectSpy: MockInstance;
+	let broadcastSpy: MockInstance;
 
 	beforeEach(() => {
 		Container.reset();
 		({ service, projectRelationRepository, chatSubscriptionStateService } = buildServiceWith());
 		connectSpy = vi.spyOn(service, 'connect').mockResolvedValue();
 		disconnectSpy = vi.spyOn(service, 'disconnect').mockResolvedValue();
+		broadcastSpy = vi.spyOn(service, 'broadcastIntegrationChange').mockResolvedValue();
 	});
 
 	it('skips connect when the agent is not published', async () => {
@@ -166,6 +168,25 @@ describe('ChatIntegrationService.syncToConfig — publish gate', () => {
 			'agent-1',
 			slackIntegration,
 		);
+	});
+
+	it('disconnects a channel everywhere and removes persisted subscriptions', async () => {
+		await service.disconnectChannel('agent-1', slackIntegration);
+
+		expect(disconnectSpy).toHaveBeenCalledWith('agent-1', slackIntegration);
+		expect(broadcastSpy).toHaveBeenCalledWith('agent-1', slackIntegration, 'disconnect');
+		expect(chatSubscriptionStateService.deleteSubscriptionsForIntegration).toHaveBeenCalledWith(
+			'agent-1',
+			slackIntegration,
+		);
+	});
+
+	it('can disconnect a channel while preserving persisted subscriptions', async () => {
+		await service.disconnectChannel('agent-1', slackIntegration, { deleteSubscriptions: false });
+
+		expect(disconnectSpy).toHaveBeenCalledWith('agent-1', slackIntegration);
+		expect(broadcastSpy).toHaveBeenCalledWith('agent-1', slackIntegration, 'disconnect');
+		expect(chatSubscriptionStateService.deleteSubscriptionsForIntegration).not.toHaveBeenCalled();
 	});
 
 	it('does not reconnect an already-live integration when republishing', async () => {
