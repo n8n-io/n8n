@@ -37,6 +37,7 @@ export const createWorkflowDetailsTool = (
 	telemetry: Telemetry,
 	roleService: RoleService,
 	projectService: ProjectService,
+	testBaseWebhookUrl: string = baseWebhookUrl,
 ): ToolDefinition<typeof inputSchema> => {
 	return {
 		name: 'get_workflow_details',
@@ -70,6 +71,7 @@ export const createWorkflowDetailsTool = (
 					roleService,
 					projectService,
 					{ workflowId },
+					testBaseWebhookUrl,
 				);
 
 				// Track successful execution
@@ -110,6 +112,7 @@ export async function getWorkflowDetails(
 	roleService: RoleService,
 	projectService: ProjectService,
 	{ workflowId }: { workflowId: string },
+	testBaseWebhookUrl: string = baseWebhookUrl,
 ): Promise<WorkflowDetailsResult> {
 	const workflow = await getMcpWorkflow(
 		workflowId,
@@ -149,6 +152,8 @@ export async function getWorkflowDetails(
 		baseWebhookUrl,
 		credentialsService,
 		endpoints,
+		workflow.id,
+		testBaseWebhookUrl,
 	);
 
 	const sanitizedWorkflow: WorkflowDetailsResult['workflow'] = {

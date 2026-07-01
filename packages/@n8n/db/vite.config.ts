@@ -139,8 +139,6 @@ function tscDecoratorTransform(): Plugin {
 
 export default mergeConfig(
 	createVitestConfigWithDecorators({
-		// The n8n root jest.config sets `restoreMocks: true`, and most test files silently
-		// rely on it — omit this and mocks bleed between tests.
 		restoreMocks: true,
 	}),
 	{

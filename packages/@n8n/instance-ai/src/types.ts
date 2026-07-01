@@ -410,6 +410,8 @@ export interface InstanceAiCredentialService {
 	/** Search available credential types by keyword. Returns matching types with display names. */
 	searchCredentialTypes?(query: string): Promise<CredentialTypeSearchResult[]>;
 	getAccountContext?(credentialId: string): Promise<{ accountIdentifier?: string }>;
+	/** Whether the given credential type is supported by AI Gateway. */
+	isAiGatewayCredentialType?(credType: string): Promise<boolean>;
 }
 
 export interface CredentialFieldInfo {
