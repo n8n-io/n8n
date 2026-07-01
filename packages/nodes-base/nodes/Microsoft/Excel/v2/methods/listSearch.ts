@@ -4,14 +4,26 @@ import type {
 	INodeListSearchItems,
 	INodeListSearchResult,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
-import { microsoftApiRequest } from '../transport';
+import { getExcelCredentialType, microsoftApiRequest } from '../transport';
 
 export async function searchWorkbooks(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
+	if (getExcelCredentialType.call(this) === 'microsoftEntraServicePrincipalApi') {
+		// App-only Graph can't search a drive — steer the user to "By ID".
+		throw new NodeOperationError(
+			this.getNode(),
+			'Search is not supported with the Service Principal credential',
+			{
+				description:
+					'App-only Microsoft Graph cannot search a drive. Switch the Workbook field to "By ID" and paste the workbook ID, or use an OAuth2 credential.',
+			},
+		);
+	}
 	const fileExtensions = ['.xlsx', '.xlsm', '.xlst'];
 	const extensionFilter = fileExtensions.join(' OR ');
 

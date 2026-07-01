@@ -54,8 +54,8 @@ describe('LogStreamingEventRelay', () => {
 			});
 		});
 
-		it('should log on `workflows-imported` event', () => {
-			const event: RelayEventMap['workflows-imported'] = {
+		it('should log on `n8n-package-imported` event', () => {
+			const event: RelayEventMap['n8n-package-imported'] = {
 				user: {
 					id: 'user-import',
 					email: 'importer@example.com',
@@ -80,9 +80,22 @@ describe('LogStreamingEventRelay', () => {
 					created: [],
 					updated: [],
 				},
+				// Telemetry-only; must not appear in the audit payload below.
+				counts: {
+					workflows: {
+						created: 1,
+						updated: 1,
+						skipped: 0,
+					},
+					credentials: {
+						matched: 1,
+						created: 0,
+						requirements: 1,
+					},
+				},
 			};
 
-			eventService.emit('workflows-imported', event);
+			eventService.emit('n8n-package-imported', event);
 
 			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
 				eventName: 'n8n.audit.n8n-package.imported',

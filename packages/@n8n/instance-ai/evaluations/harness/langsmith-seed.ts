@@ -1,9 +1,10 @@
 // Reconstruct a conversation seed from a LangSmith trace at run time: pull the
-// thread's runs, rebuild the message log, split at the last user turn (before =
-// seed, last = live), and reconstruct each seed workflow from its source at the
-// build boundary. Transient: traces retain ~14 days.
+// thread's runs, rebuild the message log, split at the live turn (the last user
+// turn, or one pinned by liveTurnRunId — before = seed, that turn = live), and
+// reconstruct each seed workflow from its source at the build boundary. Transient:
+// traces retain ~14 days.
 
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 import { Client } from 'langsmith';
 import type { Run } from 'langsmith/schemas';
 
@@ -164,6 +165,10 @@ export interface SeedThreadRef {
 	 *  Maps host→key via env (home key for the home host, LANGSMITH_API_KEY_US for
 	 *  the US host); an unknown/unkeyed host throws rather than read the wrong tenant. */
 	endpoint?: string;
+	/** Pin which user turn is sent live (its LangSmith run id); everything before it
+	 *  is seeded. Omit ⇒ the thread's last user turn (default). LangTracer's live-turn
+	 *  picker exports this. */
+	liveTurnRunId?: string;
 }
 
 export interface ReconstructedSeed {
@@ -252,7 +257,8 @@ interface ToolCallBlock {
  * `client` to bypass discovery (tests).
  *
  * Throws when the thread isn't found in any accessible workspace (trace aged out
- * or wrong project), or when it has fewer than two user turns.
+ * or wrong project), or when the live turn has no prior turn to seed (a lone user
+ * turn, or a `liveTurnRunId` pin on the first turn).
  */
 export async function reconstructSeedFromThread(
 	ref: SeedThreadRef,
@@ -329,15 +335,30 @@ async function reconstructWithClient(
 	const rootRuns = runs.filter((r) => r.run_type === 'chain' && !r.parent_run_id).sort(byStartTime);
 	const toolRuns = runs.filter((r) => r.run_type === 'tool').sort(byStartTime);
 
-	// Split point: the last genuine user turn is sent live; everything strictly
-	// before it is the seed.
+	// Split point: the live turn is sent live; everything strictly before it is the
+	// seed. Default = the last user turn; a `liveTurnRunId` pin (LangTracer's live-turn
+	// picker) moves it earlier, discarding the real turns at/after it.
 	const userTurns = rootRuns.filter((r) => userMessageOf(r) !== undefined);
-	if (userTurns.length < 2) {
+	let liveIndex = userTurns.length - 1; // default: last user turn (unchanged behavior)
+	if (ref.liveTurnRunId) {
+		const idx = userTurns.findIndex((r) => r.id === ref.liveTurnRunId);
+		if (idx === -1) {
+			console.warn(
+				`[seed] Thread ${ref.threadId}: pinned liveTurnRunId ${ref.liveTurnRunId} not found among ` +
+					`${userTurns.length} user turn(s) — falling back to the last user turn. (LangTracer pins the ` +
+					"agent_role=message_turn root id; verify it matches the name==='turn' root id.)",
+			);
+		} else {
+			liveIndex = idx;
+		}
+	}
+	if (liveIndex < 1) {
 		throw new Error(
-			`Thread ${ref.threadId} has ${userTurns.length} user turn(s) — need ≥2 to seed (one prior + one live). Use a plain conversation case instead.`,
+			`Thread ${ref.threadId}: the live turn is the first/only user turn — no prior turn to seed. ` +
+				'Pin a later turn, or use a plain conversation case.',
 		);
 	}
-	const liveTurnRun = userTurns[userTurns.length - 1];
+	const liveTurnRun = userTurns[liveIndex];
 	const boundaryMs = new Date(liveTurnRun.start_time).getTime();
 	const liveTurn = userMessageOf(liveTurnRun)!;
 
@@ -504,10 +525,11 @@ function applyFileMutation(files: Map<string, string>, tool: Run): boolean {
 }
 
 /** Reconstruct the seed's workflows: the latest successful build per workflow id
- *  before the boundary. Post-#32545 the builder builds from a workspace file
- *  (`build-workflow {filePath}`, no inline code), so the source is that file
- *  replayed from the workspace ops; inline `code` and `get-as-code` are fallbacks.
- *  Only files an actual build references become workflows. */
+ *  before the boundary, excluding any workflow deleted (and not rebuilt) before it.
+ *  Post-#32545 the builder builds from a workspace file (`build-workflow {filePath}`,
+ *  no inline code), so the source is that file replayed from the workspace ops; inline
+ *  `code` and `get-as-code` are fallbacks. Only files an actual build references become
+ *  workflows. */
 function buildSeedWorkflows(
 	toolRuns: Run[],
 	boundaryMs: number,
@@ -533,6 +555,25 @@ function buildSeedWorkflows(
 				if (path !== undefined) divergedPaths.delete(path);
 			} else if (!applied && path !== undefined) {
 				divergedPaths.add(path);
+			}
+			continue;
+		}
+
+		// A `workflows`-tool delete (traced as `workflows[delete]`) drops that id's prior
+		// reconstruction. Gated to the `workflows` tool so an unrelated delete-shaped input
+		// can't evict a seed workflow, and to success === true so a suspended (HITL) or denied
+		// delete keeps it. Chronological loop ⇒ a later rebuild re-adds it.
+		if (
+			tool.name.split('[')[0] === DOMAIN_TOOL_IDS.WORKFLOWS &&
+			isRecord(tool.inputs) &&
+			tool.inputs.action === 'delete'
+		) {
+			const deletedId = asString(tool.inputs.workflowId);
+			const deleteSucceeded = isRecord(tool.outputs) && tool.outputs.success === true;
+			if (deletedId !== undefined && deleteSucceeded) {
+				builtByWorkflowId.delete(deletedId);
+				buildSignalIds.delete(deletedId);
+				getAsCodeByWorkflowId.delete(deletedId);
 			}
 			continue;
 		}

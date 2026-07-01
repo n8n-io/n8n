@@ -566,6 +566,51 @@ describe('AgentIntegrationsController integration credentials', () => {
 		});
 	});
 
+	it('disconnects the channel before removing the persisted integration', async () => {
+		const agentRepository = mock<AgentRepository>();
+		const agent = {
+			id: 'agent-1',
+			projectId: 'project-1',
+			integrations: [{ type: 'slack', credentialId: 'cred-slack' }],
+		};
+		agentRepository.findByIdAndProjectId.mockResolvedValue(agent as never);
+
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		const agentIntegrationPersistenceService = mock<AgentIntegrationPersistenceService>();
+		const { controller } = makeController({
+			agentRepository,
+			chatIntegrationService,
+			agentIntegrationPersistenceService,
+		});
+
+		await expect(
+			controller.disconnectIntegration(
+				{
+					params: { projectId: 'project-1' },
+					user: { id: 'user-1' },
+					body: { type: 'slack', credentialId: 'cred-slack' },
+				} as never,
+				undefined as never,
+				'agent-1',
+				{ type: 'slack', credentialId: 'cred-slack' },
+			),
+		).resolves.toEqual({ status: 'disconnected' });
+
+		expect(chatIntegrationService.disconnectChannel).toHaveBeenCalledWith('agent-1', {
+			type: 'slack',
+			credentialId: 'cred-slack',
+		});
+		expect(agentIntegrationPersistenceService.removeCredentialIntegration).toHaveBeenCalledWith(
+			agent,
+			'slack',
+			'cred-slack',
+			{ broadcast: false },
+		);
+		expect(chatIntegrationService.disconnectChannel.mock.invocationCallOrder[0]).toBeLessThan(
+			agentIntegrationPersistenceService.removeCredentialIntegration.mock.invocationCallOrder[0],
+		);
+	});
+
 	it('starts Slack app setup with the temporary app configuration token', async () => {
 		const slackAppSetupService = mock<SlackAppSetupService>();
 		slackAppSetupService.createApp.mockResolvedValue({
