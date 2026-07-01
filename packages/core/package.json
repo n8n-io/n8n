@@ -48,6 +48,7 @@
     "axios": "catalog:",
     "nock": "catalog:",
     "reflect-metadata": "catalog:",
+    "vite": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"
   },
