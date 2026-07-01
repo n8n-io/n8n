@@ -9,8 +9,8 @@ import type {
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import {
-	ensureError,
 	toCronExpression,
 	TriggerCloseError,
 	UserError,
