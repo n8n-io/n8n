@@ -2253,12 +2253,6 @@ type EngineAction<T = unknown> = ExecuteNodeAction<T>;
  * containing the results of all requested actions.
  *
  * @template T - The type of metadata associated with this request
- *
- * @todo This should use `unknown`, but jest-mock-extended will turn this into
- * `Partial<unknown>` which `unknown` cannot be assigned to, which leads to a
- * lot of type errors in our tests.
- * The correct fix is to make a PR to jest-mock-extended and make it handle
- * `unknown` special, turning it into `unknown` instead of `Partial<unknown>`.
  */
 export type EngineRequest<T = object> = {
 	/** Array of actions that the requesting node wants the engine to fulfill */

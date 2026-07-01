@@ -111,6 +111,7 @@
     "dotenv": "catalog:",
     "cross-env": "catalog:",
     "nock": "catalog:",
+    "vite": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"
   },

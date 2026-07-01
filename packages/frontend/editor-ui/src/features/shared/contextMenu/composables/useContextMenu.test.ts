@@ -266,7 +266,7 @@ describe('useContextMenu', () => {
 		const { open, isOpen, actions, targetNodeIds } = useContextMenu();
 		const subNode = nodeFactory({ type: 'n8n-nodes-base.hackerNewsTool' });
 		vi.spyOn(workflowDocumentStore, 'getNodeById').mockReturnValue(subNode);
-		vi.spyOn(NodeHelpers, 'isExecutable').mockReturnValueOnce(false);
+		vi.spyOn(NodeHelpers, 'isExecutable').mockReturnValueOnce(false).mockReturnValueOnce(false);
 		open(mockEvent, { source: 'node-right-click', nodeId: subNode.id });
 
 		expect(isOpen.value).toBe(true);

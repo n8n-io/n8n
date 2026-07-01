@@ -255,9 +255,17 @@ function isTextMessagePart(part: unknown): part is { type: 'text'; text: string 
 	);
 }
 
-function getUserFacingErrorMessage(error: unknown): string {
+function isSandboxEndpointNotAllowedError(error: unknown): boolean {
+	return getErrorMessage(error).toLowerCase().includes('endpoint not allowed');
+}
+
+export function getUserFacingErrorMessage(error: unknown): string {
 	if (error instanceof UserError) {
 		return error.message;
+	}
+
+	if (isSandboxEndpointNotAllowedError(error)) {
+		return "I couldn't finish preparing the workspace sandbox. Please try again in a moment.";
 	}
 
 	if (error instanceof OperationalError) {
@@ -2749,6 +2757,36 @@ export class InstanceAiService {
 		}
 	}
 
+	/** Save the user's prompt when Stop is hit before the stream starts; the SDK only persists it once the stream is invoked. */
+	private async persistInterruptedUserMessage(
+		threadId: string,
+		userId: string,
+		message: string,
+		createdAt: Date,
+	): Promise<void> {
+		if (!message) return;
+		try {
+			await this.agentMemory.saveMessages({
+				threadId,
+				resourceId: userId,
+				messages: [
+					{
+						id: nanoid(),
+						createdAt,
+						type: 'llm',
+						role: 'user',
+						content: [{ type: 'text', text: message }],
+					},
+				],
+			});
+		} catch (error) {
+			this.logger.warn('Failed to persist user message on cancel', {
+				threadId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
 	/**
 	 * Run body for a fresh orchestrator turn. Never call directly — go through
 	 * `startExecuteRun` so the promise is registered with `inFlightExecutions`
@@ -2786,6 +2824,8 @@ export class InstanceAiService {
 		let aiCreatedWorkflowIds: Set<string> | undefined;
 		let activeSnapshotStorage: DbSnapshotStorage | undefined;
 		let messageId = '';
+		let streamReached = false;
+		const turnStartedAt = new Date();
 
 		try {
 			this.instanceAiErrorReporter.beginRun(runId);
@@ -2856,6 +2896,7 @@ export class InstanceAiService {
 
 			// Check if already cancelled before starting agent work
 			if (signal.aborted) {
+				await this.persistInterruptedUserMessage(threadId, user.id, message, turnStartedAt);
 				this.terminalOutcome.evaluateTerminalResponse(threadId, runId, 'cancelled', {
 					messageGroupId,
 					correlationId: messageId,
@@ -3149,6 +3190,7 @@ export class InstanceAiService {
 
 			const streamOptions = this.buildOrchestratorAgentStreamOptions(user, threadId, runId, signal);
 
+			streamReached = true;
 			const result = tracing
 				? await tracing.withActiveSpan(tracing.actorRun, async () => {
 						return await streamAgentRun(agent as StreamableAgent, streamInput, streamOptions, {
@@ -3316,11 +3358,14 @@ export class InstanceAiService {
 					},
 				);
 			}
+			const userFacingErrorMessage =
+				result.status === 'errored' ? getUserFacingErrorMessage(result.error) : undefined;
 			if (runControl.shouldEmitTerminalOutcome(result.stopReason)) {
 				this.terminalOutcome.evaluateTerminalResponse(threadId, runId, result.status, {
 					messageGroupId,
 					correlationId: messageId,
 					workSummary: result.workSummary,
+					errorMessage: userFacingErrorMessage,
 					suppressCompletedFallback:
 						checkpoint?.isCheckpointFollowUp === true ||
 						plannedBuild?.isPlannedBuildFollowUp === true,
@@ -3350,6 +3395,7 @@ export class InstanceAiService {
 				archivedWorkflowIds,
 				workSummary: result.workSummary,
 				usage: result.usage,
+				errorReason: userFacingErrorMessage,
 			});
 
 			// Bill token usage for every terminal outcome (completed / cancelled / errored),
@@ -3381,6 +3427,9 @@ export class InstanceAiService {
 				// to see on reload, so just bail out.
 				if (this.shouldPreserveHitlOnShutdown(runId)) {
 					return;
+				}
+				if (!streamReached) {
+					await this.persistInterruptedUserMessage(threadId, user.id, message, turnStartedAt);
 				}
 				const runTimeout = this.liveness.consumeRunTimeout(runId);
 				const cancellationReason = runTimeout.timedOut
@@ -4245,10 +4294,13 @@ export class InstanceAiService {
 					},
 				);
 			}
+			const userFacingErrorMessage =
+				result.status === 'errored' ? getUserFacingErrorMessage(result.error) : undefined;
 			if (runControl.shouldEmitTerminalOutcome(result.stopReason)) {
 				this.terminalOutcome.evaluateTerminalResponse(opts.threadId, opts.runId, result.status, {
 					messageGroupId,
 					workSummary: result.workSummary,
+					errorMessage: userFacingErrorMessage,
 					suppressCompletedFallback:
 						opts.checkpoint?.isCheckpointFollowUp === true ||
 						opts.plannedBuild?.isPlannedBuildFollowUp === true,
@@ -4277,6 +4329,7 @@ export class InstanceAiService {
 				archivedWorkflowIds,
 				workSummary: result.workSummary,
 				usage: result.usage,
+				errorReason: userFacingErrorMessage,
 			});
 
 			// Bill token usage for every terminal outcome, deduped per run segment.
@@ -4808,7 +4861,11 @@ export class InstanceAiService {
 			agentId: orchestratorAgentId(runId),
 			payload: {
 				status: effectiveStatus,
-				...(status === 'cancelled' ? { reason: reason ?? 'user_cancelled' } : {}),
+				...(status === 'cancelled'
+					? { reason: reason ?? 'user_cancelled' }
+					: status === 'errored' && reason
+						? { reason }
+						: {}),
 				...(hasArchived ? { archivedWorkflowIds } : {}),
 			},
 		});
@@ -4832,13 +4889,14 @@ export class InstanceAiService {
 			archivedWorkflowIds?: string[];
 			workSummary?: WorkSummary;
 			usage?: RunTokenUsage;
+			errorReason?: string;
 		},
 	): Promise<void> {
 		this.publishRunFinish(
 			threadId,
 			runId,
 			status,
-			undefined,
+			options?.errorReason,
 			options?.archivedWorkflowIds,
 			options?.userId,
 		);
