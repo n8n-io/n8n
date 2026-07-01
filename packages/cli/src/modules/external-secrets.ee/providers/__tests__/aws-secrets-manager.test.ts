@@ -6,9 +6,27 @@ import { mock } from 'vitest-mock-extended';
 import type { Agent as HttpAgent } from 'node:http';
 import type { Agent as HttpsAgent } from 'node:https';
 
-import { AwsSecretsManager, type AwsSecretsManagerContext } from '../aws-secrets-manager';
+import {
+	AwsSecretsManager,
+	awsErrorContext,
+	getAwsErrorCode,
+	type AwsSecretsManagerContext,
+} from '../aws-secrets-manager';
 
 vi.mock('@aws-sdk/client-secrets-manager');
+
+function createAwsSdkError(
+	name: string,
+	options: { httpStatusCode?: number; Code?: string; code?: string | number } = {},
+): Error {
+	return Object.assign(new Error(name), {
+		name,
+		...(options.Code !== undefined ? { Code: options.Code } : {}),
+		...(options.code !== undefined ? { code: options.code } : {}),
+		$metadata:
+			options.httpStatusCode !== undefined ? { httpStatusCode: options.httpStatusCode } : {},
+	});
+}
 
 describe('AwsSecretsManager', () => {
 	const region = 'eu-central-1';
@@ -27,6 +45,45 @@ describe('AwsSecretsManager', () => {
 		logger.scoped.mockReturnValue(logger);
 
 		awsSecretsManager = new AwsSecretsManager(logger);
+	});
+
+	describe('error context', () => {
+		it('extracts legacy Code property', () => {
+			const error = Object.assign(new Error('Access denied'), { Code: 'AccessDenied' });
+
+			expect(getAwsErrorCode(error)).toBe('AccessDenied');
+			expect(awsErrorContext(error)).toEqual({ errorCode: 'AccessDenied' });
+		});
+
+		it('extracts string and numeric error codes from code property', () => {
+			expect(
+				getAwsErrorCode(Object.assign(new Error('Connection failed'), { code: 'ECONNREFUSED' })),
+			).toBe('ECONNREFUSED');
+			expect(getAwsErrorCode(Object.assign(new Error('Timeout'), { code: 408 }))).toBe(408);
+		});
+
+		it('extracts AWS SDK exception name and HTTP status code', () => {
+			expect(
+				awsErrorContext(createAwsSdkError('AccessDeniedException', { httpStatusCode: 403 })),
+			).toEqual({
+				errorCode: 'AccessDeniedException',
+				statusCode: 403,
+			});
+		});
+
+		it('falls back to Error.name for generic errors', () => {
+			expect(getAwsErrorCode(new Error('Something went wrong'))).toBe('Error');
+			expect(awsErrorContext(new Error('Something went wrong'))).toEqual({
+				errorCode: 'Error',
+			});
+		});
+
+		it('returns empty context for non-error values', () => {
+			expect(getAwsErrorCode('not an error')).toBeUndefined();
+			expect(getAwsErrorCode(null)).toBeUndefined();
+			expect(awsErrorContext('not an error')).toEqual({});
+			expect(awsErrorContext(null)).toEqual({});
+		});
 	});
 
 	describe('transport wiring', () => {
