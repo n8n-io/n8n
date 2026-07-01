@@ -121,27 +121,6 @@ vi.mock('@/app/stores/ui.store', () => ({
 	useUIStore: () => ({ openNewCredential }),
 }));
 
-vi.mock('@/features/ai/modelSelector/AiModelSelectorDropdown.vue', () => ({
-	default: {
-		name: 'AiModelSelectorDropdown',
-		props: [
-			'items',
-			'selectedLabel',
-			'selectedCredentialName',
-			'credentialsMissing',
-			'credentialsMissingLabel',
-			'noMatchLabel',
-			'horizontal',
-			'disabled',
-			'dataTestId',
-			'credentialDataTestId',
-			'maxSelectedNameChars',
-		],
-		emits: ['select'],
-		template: '<div data-testid="ai-model-selector-dropdown" />',
-	},
-}));
-
 const modelsByProvider: AgentModelsByProvider = {
 	anthropic: {
 		models: [
