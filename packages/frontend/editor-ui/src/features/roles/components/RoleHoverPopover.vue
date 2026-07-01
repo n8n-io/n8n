@@ -6,7 +6,7 @@ import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { VIEWS } from '@/app/constants';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 import CustomRolesUpgradeModal from './CustomRolesUpgradeModal.vue';
 import {
 	UI_VISIBLE_SCOPES,
@@ -38,13 +38,13 @@ const props = withDefaults(
 
 const i18n = useI18n();
 const router = useRouter();
-const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
 
 const upgradeModalVisible = ref(false);
 
-const isAdminOrOwner = computed(() => usersStore.isInstanceOwner || usersStore.isAdmin);
-const canEditRole = computed(() => isAdminOrOwner.value && !props.role.systemRole);
+const canEditRole = computed(
+	() => hasPermission(['rbac'], { rbac: { scope: 'role:manage' } }) && !props.role.systemRole,
+);
 
 // Count only UI-visible scopes (exclude implicit :list, :execute, :listProject)
 const resolvedPermissionCount = computed(
