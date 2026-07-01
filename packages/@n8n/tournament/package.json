@@ -1,6 +1,6 @@
 {
   "name": "@n8n/tournament",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "Output compatible rewrite of riot tmpl",
   "main": "dist/index.js",
   "module": "src/index.ts",
@@ -47,6 +47,7 @@
     "@types/node": "^18.13.0",
     "@n8n/vitest-config": "workspace:*",
     "@vitest/coverage-v8": "catalog:",
+    "vite": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:",
     "nodemon": "^2.0.20",
@@ -58,10 +59,5 @@
     "ast-types": "^0.16.1",
     "esprima-next": "^5.8.4",
     "recast": "^0.22.0"
-  },
-  "pnpm": {
-    "overrides": {
-      "@babel/traverse": "^7.23.2"
-    }
   }
 }

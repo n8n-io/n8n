@@ -65,6 +65,7 @@ export {
 	suggestedPromptsSchema,
 	type MessageChunk,
 	UpdateChatSettingsRequest,
+	UpdateChatEnabledRequest,
 	ChatHubSemanticSearchSettings,
 	type ChatProviderSettingsDto,
 	type ChatSendMessageResponse,
@@ -220,6 +221,11 @@ export {
 	type WorkflowExecutionStatus,
 } from './schemas/workflow-execution-status.schema';
 
+export {
+	WorkflowPublicationStatusSchema,
+	type WorkflowPublicationStatus,
+} from './schemas/workflow-publication-status.schema';
+
 export type { UsageState } from './schemas/usage.schema';
 
 export type {
@@ -307,6 +313,8 @@ export {
 	domainAccessMetaSchema,
 	webSearchMetaSchema,
 	credentialFlowSchema,
+	instanceAiCredentialHandoffContextSchema,
+	instanceAiHandoffContextSchema,
 	gatewayConfirmationRequiredWirePayloadSchema,
 	gatewayConfirmationRequiredPayloadSchema,
 	instanceGatewayResourceDecisionSchema,
@@ -317,6 +325,7 @@ export {
 	InstanceAiEvalExecutionRequest,
 	InstanceAiEvalCredentialAllowlistRequest,
 	INSTANCE_AI_MEMORY_TASK_WAIT_TIMEOUT_MS,
+	AI_GATEWAY_MANAGED_TAG,
 	InstanceAiEvalRestoreThreadRequest,
 	instanceAiGatewayKeySchema,
 	InstanceAiGatewayEventsQuery,
@@ -407,9 +416,13 @@ export type {
 	DomainAccessMeta,
 	WebSearchMeta,
 	InstanceAiCredentialFlow,
+	InstanceAiCredentialHandoffContext,
+	InstanceAiHandoffContext,
 	GatewayConfirmationRequiredWirePayload,
 	GatewayConfirmationRequiredPayload,
 	InstanceGatewayResourceDecision,
+	InstanceAiBrowserCreateLinkResponse,
+	InstanceAiBrowserStatusResponse,
 	ToolCategory,
 	InstanceAiWorkflowSetupNode,
 	PlannedTaskArg,

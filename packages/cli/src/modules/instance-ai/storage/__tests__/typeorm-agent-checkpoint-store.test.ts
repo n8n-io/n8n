@@ -1,6 +1,7 @@
 import type { SerializableAgentState } from '@n8n/instance-ai';
-import { mock } from 'jest-mock-extended';
 import { UserError } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { InstanceAiCheckpoint } from '../../entities/instance-ai-checkpoint.entity';
 import type { InstanceAiCheckpointRepository } from '../../repositories/instance-ai-checkpoint.repository';
@@ -43,7 +44,7 @@ describe('TypeORMAgentCheckpointStore', () => {
 	let store: TypeORMAgentCheckpointStore;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		store = new TypeORMAgentCheckpointStore(checkpointRepo);
 	});
 
@@ -129,11 +130,11 @@ describe('TypeORMAgentCheckpointStore', () => {
 
 	it('marks stale checkpoints expired via the query builder', async () => {
 		const builder = {
-			update: jest.fn(),
-			set: jest.fn(),
-			where: jest.fn(),
-			andWhere: jest.fn(),
-			execute: jest.fn(),
+			update: vi.fn(),
+			set: vi.fn(),
+			where: vi.fn(),
+			andWhere: vi.fn(),
+			execute: vi.fn(),
 		};
 		builder.update.mockReturnValue(builder);
 		builder.set.mockReturnValue(builder);
@@ -141,7 +142,7 @@ describe('TypeORMAgentCheckpointStore', () => {
 		builder.andWhere.mockReturnValue(builder);
 		builder.execute.mockResolvedValueOnce({ affected: 4, raw: {}, generatedMaps: [] });
 
-		(checkpointRepo.createQueryBuilder as unknown as jest.Mock).mockReturnValueOnce(builder);
+		(checkpointRepo.createQueryBuilder as unknown as Mock).mockReturnValueOnce(builder);
 
 		const olderThan = new Date('2026-05-01T00:00:00.000Z');
 		await expect(store.markExpiredOlderThan(olderThan)).resolves.toBe(4);
@@ -154,7 +155,7 @@ describe('TypeORMAgentCheckpointStore', () => {
 	});
 
 	it('keeps the deleteOlderThan shim delegating to markExpiredOlderThan', async () => {
-		const spy = jest.spyOn(store, 'markExpiredOlderThan').mockResolvedValueOnce(7);
+		const spy = vi.spyOn(store, 'markExpiredOlderThan').mockResolvedValueOnce(7);
 
 		await expect(store.deleteOlderThan(new Date(0))).resolves.toBe(7);
 		expect(spy).toHaveBeenCalledTimes(1);

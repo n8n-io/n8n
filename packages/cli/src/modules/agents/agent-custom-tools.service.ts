@@ -1,5 +1,9 @@
 import { type ToolDescriptor } from '@n8n/agents';
-import { type AgentJsonConfig, type AgentJsonToolConfig } from '@n8n/api-types';
+import {
+	type AgentJsonConfig,
+	type AgentJsonToolConfig,
+	CUSTOM_TOOL_ID_REGEX,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
@@ -10,7 +14,6 @@ import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import type { Agent } from './entities/agent.entity';
 import { AgentRepository } from './repositories/agent.repository';
 import { markAgentDraftDirty } from './utils/agent-draft.utils';
-import { generateAgentResourceId } from './utils/agent-resource-id';
 
 type AgentToolEntries = Agent['tools'];
 
@@ -36,7 +39,13 @@ export class AgentCustomToolsService {
 		const entity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!entity) throw new NotFoundError('Agent not found');
 
-		const toolId = generateAgentResourceId('tool', Object.keys(entity.tools ?? {}));
+		if (!CUSTOM_TOOL_ID_REGEX.test(descriptor.name)) {
+			throw new UserError(
+				`Custom tool name "${descriptor.name}" contains invalid characters. Only letters, numbers, and underscores are allowed.`,
+			);
+		}
+
+		const toolId = descriptor.name;
 
 		entity.tools = {
 			...entity.tools,

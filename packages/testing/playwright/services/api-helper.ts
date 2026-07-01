@@ -472,6 +472,56 @@ export class ApiHelpers {
 	}
 
 	/**
+	 * Create a webhook destination for log streaming.
+	 * Requires the logStreaming feature to be enabled.
+	 *
+	 * @param config - Webhook destination configuration
+	 * @returns Created destination data
+	 */
+	async createWebhookDestination(config: {
+		url: string;
+		method?: string;
+		label?: string;
+		enabled?: boolean;
+		subscribedEvents?: string[];
+		anonymizeAuditMessages?: boolean;
+		sendHeaders?: boolean;
+		headerParameters?: Array<{ name: string; value: string }>;
+		authentication?: 'genericCredentialType' | 'none';
+		genericAuthType?: string;
+		credentials?: Record<string, { id: string; name: string }>;
+	}): Promise<{ id: string }> {
+		const response = await this.request.post('/rest/eventbus/destination', {
+			data: {
+				__type: '$$MessageEventBusDestinationWebhook',
+				url: config.url,
+				method: config.method ?? 'POST',
+				label: config.label ?? 'Webhook Endpoint',
+				// Destinations default to disabled in the backend; real events only
+				// reach enabled destinations (the test-message endpoint bypasses this).
+				enabled: config.enabled ?? true,
+				subscribedEvents: config.subscribedEvents ?? ['*'],
+				anonymizeAuditMessages: config.anonymizeAuditMessages ?? false,
+				authentication: config.authentication ?? 'none',
+				genericAuthType: config.genericAuthType ?? '',
+				sendHeaders: config.sendHeaders ?? Boolean(config.headerParameters),
+				specifyHeaders: config.headerParameters ? 'keypair' : '',
+				headerParameters: { parameters: config.headerParameters ?? [] },
+				credentials: config.credentials,
+			},
+		});
+
+		if (!response.ok()) {
+			throw new TestError(
+				`Failed to create webhook destination: ${response.status()} ${await response.text()}`,
+			);
+		}
+
+		const result = await response.json();
+		return result.data ?? result;
+	}
+
+	/**
 	 * Delete a log streaming destination.
 	 *
 	 * @param id - Destination ID to delete

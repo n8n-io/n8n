@@ -30,9 +30,16 @@
  *   node scripts/mutation-health/emit-payload.mjs \
  *     --summary packages/workflow/reports/mutation/summary.json \
  *     --package n8n-workflow \
- *     [--churn-window "90 days"]          # git approxidate for the churn count
- *     [--fix-density-window "1 year"]     # git approxidate bounding the fix-density log read
- *     [--fix-density-half-life 90]        # half-life in days for the fix-density decay
+ *     [--signals <path>]                  # signals.json from `signals.mjs gatherSignals`
+ *                                         # (the setup job's full-history signals). When
+ *                                         # present, churn/fix_density are read from it per
+ *                                         # file instead of computed from git — the only
+ *                                         # path that works under the mutate job's shallow
+ *                                         # clone, and keeps stored values consistent with
+ *                                         # what the picker ranked on.
+ *     [--churn-window "90 days"]          # git approxidate for the churn count (git fallback only)
+ *     [--fix-density-window "1 year"]     # git approxidate bounding the fix-density log read (git fallback only)
+ *     [--fix-density-half-life 90]        # half-life in days for the fix-density decay (git fallback only)
  *     [--out <path>]                      # default: <pkg>/reports/mutation/bq-payload.json
  */
 
@@ -188,6 +195,42 @@ export function makeFixDensityFor({
 }
 
 /**
+ * Build `{ churnFor, fixDensityFor }` that read from the setup job's
+ * `signals.json` (the full-history signals `signals.mjs gatherSignals` wrote and
+ * the picker ranked on) instead of from git.
+ *
+ * This is the path the nightly `mutate` job uses: its checkout is shallow, so
+ * the git-derived factories above would emit `null` for every file. Reusing the
+ * already-computed signals keeps the stored ledger columns consistent with the
+ * exact churn/fix-density the global picker scored — and matches how the picker
+ * reads them (`extractSignals` in `pick-next.mjs`): churn is the per-file commit
+ * count, fix-density the decayed score.
+ *
+ * A file absent from the signals map had no commits (churn) / no fix commits
+ * (fix-density) in the gather window, so both lookups return 0 — known-zero, not
+ * the `null` (unknown) the shallow-clone git path emits. The whole map is keyed
+ * by repo-relative path, the same key `buildPayload` joins on.
+ */
+export function makeSignalLookups(signals) {
+	const churn = signals?.churn ?? {};
+	const fixDensity = signals?.fixDensity ?? {};
+	return {
+		churnFor: (sourceRel) => {
+			const entry = churn[sourceRel];
+			if (typeof entry === 'number') return Number.isFinite(entry) ? entry : 0;
+			if (typeof entry?.commits === 'number' && Number.isFinite(entry.commits)) {
+				return entry.commits;
+			}
+			return 0;
+		},
+		fixDensityFor: (sourceRel) => {
+			const v = fixDensity[sourceRel];
+			return typeof v === 'number' && Number.isFinite(v) ? +v.toFixed(4) : 0;
+		},
+	};
+}
+
+/**
  * Build the `{ ledger, events }` payload from a parsed summary. Pure given its
  * signal dependencies: takes the summary plus run metadata, returns the rows
  * the writer webhook consumes. `churnFor(sourceRel)` / `fixDensityFor(sourceRel)`
@@ -276,22 +319,35 @@ async function main() {
 	);
 	const pkgRelToRepo = path.relative(repoRoot, pkgRoot);
 
-	const churnFor = makeChurnFor({
-		cwd: repoRoot,
-		since: typeof args['churn-window'] === 'string' ? args['churn-window'] : DEFAULT_CHURN_WINDOW,
-	});
+	// Prefer the setup job's full-history signals.json when provided: the nightly
+	// mutate job's checkout is shallow, so the git-derived factories below would
+	// emit null for every file. Falls back to git for local/standalone runs that
+	// have full history and no signals file.
+	let churnFor;
+	let fixDensityFor;
+	const signalsPath = typeof args.signals === 'string' ? args.signals : undefined;
+	if (signalsPath) {
+		if (!existsSync(signalsPath)) die(2, `Signals file not found: ${signalsPath}`);
+		const signals = JSON.parse(await readFile(signalsPath, 'utf8'));
+		({ churnFor, fixDensityFor } = makeSignalLookups(signals));
+	} else {
+		churnFor = makeChurnFor({
+			cwd: repoRoot,
+			since: typeof args['churn-window'] === 'string' ? args['churn-window'] : DEFAULT_CHURN_WINDOW,
+		});
 
-	const halfLifeArg = Number(args['fix-density-half-life']);
-	const fixDensityFor = makeFixDensityFor({
-		cwd: repoRoot,
-		since:
-			typeof args['fix-density-window'] === 'string'
-				? args['fix-density-window']
-				: DEFAULT_FIX_DENSITY_WINDOW,
-		halfLifeDays:
-			Number.isFinite(halfLifeArg) && halfLifeArg > 0 ? halfLifeArg : DEFAULT_HALF_LIFE_DAYS,
-		pathspec: pkgRelToRepo,
-	});
+		const halfLifeArg = Number(args['fix-density-half-life']);
+		fixDensityFor = makeFixDensityFor({
+			cwd: repoRoot,
+			since:
+				typeof args['fix-density-window'] === 'string'
+					? args['fix-density-window']
+					: DEFAULT_FIX_DENSITY_WINDOW,
+			halfLifeDays:
+				Number.isFinite(halfLifeArg) && halfLifeArg > 0 ? halfLifeArg : DEFAULT_HALF_LIFE_DAYS,
+			pathspec: pkgRelToRepo,
+		});
+	}
 
 	const { ledger, events } = buildPayload(summary, {
 		pkg,

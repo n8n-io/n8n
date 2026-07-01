@@ -1,4 +1,5 @@
 import { BasePage } from './BasePage';
+import { ActionToggle } from './components/ActionToggle';
 import { AddResource } from './components/AddResource';
 import { MessageBox } from './components/messageBoxLocators';
 
@@ -9,6 +10,7 @@ export class DataTableView extends BasePage {
 	}
 
 	readonly addResource = new AddResource(this.page);
+	readonly actionToggle = new ActionToggle(this.page);
 
 	getEmptyStateActionBox() {
 		return this.page.getByTestId('empty-data-table-action-box');
@@ -47,7 +49,7 @@ export class DataTableView extends BasePage {
 	}
 
 	getDataTableCardAction(actionName: string) {
-		return this.page.getByTestId('action-toggle-dropdown').getByTestId(`action-${actionName}`);
+		return this.actionToggle.getAction(actionName);
 	}
 
 	getDeleteDataTableModal() {

@@ -1,7 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import type { GlobalConfig } from '@n8n/config';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { DynamicTemplatesService, REQUEST_TIMEOUT_MS } from '@/services/dynamic-templates.service';
 
@@ -12,13 +12,13 @@ describe('DynamicTemplatesService', () => {
 	const mockGlobalConfig = mock<GlobalConfig>({
 		templates: { dynamicTemplatesHost: MOCK_DYNAMIC_TEMPLATES_HOST },
 	});
-	const request = jest.fn();
-	const requests = jest.fn().mockReturnValue(mock<HttpRequestClient>({ request }));
+	const request = vi.fn();
+	const requests = vi.fn().mockReturnValue(mock<HttpRequestClient>({ request }));
 	const outboundHttp = mock<OutboundHttp>({ requests });
 	let dynamicTemplatesService: DynamicTemplatesService;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		requests.mockReturnValue(mock<HttpRequestClient>({ request }));
 		dynamicTemplatesService = new DynamicTemplatesService(
 			mockLogger,
@@ -28,7 +28,7 @@ describe('DynamicTemplatesService', () => {
 	});
 
 	it('should create the request client with SSRF disabled for the fixed host', () => {
-		expect(requests).toHaveBeenCalledWith({ ssrf: 'disabled' });
+		expect(requests).toHaveBeenCalledWith({ ssrf: 'disabled', timeout: REQUEST_TIMEOUT_MS });
 	});
 
 	describe('fetchDynamicTemplates', () => {
@@ -48,7 +48,6 @@ describe('DynamicTemplatesService', () => {
 				method: 'GET',
 				headers: { 'Content-Type': 'application/json' },
 				json: true,
-				timeout: REQUEST_TIMEOUT_MS,
 			});
 		});
 

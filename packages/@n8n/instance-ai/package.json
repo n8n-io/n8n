@@ -1,6 +1,6 @@
 {
   "name": "@n8n/instance-ai",
-  "version": "1.13.0",
+  "version": "1.14.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "typecheck": "tsc --noEmit",
@@ -63,6 +63,7 @@
     "@n8n/workflow-sdk": "workspace:*",
     "@opentelemetry/api": "^1.9.0",
     "@thednp/dommatrix": "^2.0.12",
+    "ai": "catalog:",
     "csv-parse": "catalog:",
     "fast-glob": "catalog:",
     "flatted": "catalog:",
@@ -77,6 +78,7 @@
     "psl": "1.9.0",
     "source-map-support": "catalog:",
     "turndown": "catalog:",
+    "undici": "catalog:undici-v7",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz",
     "zod": "catalog:",
     "zod-from-json-schema-v3": "npm:zod-from-json-schema@^0.0.5"
@@ -87,11 +89,12 @@
     "@n8n/ai-workflow-builder": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
-    "@types/luxon": "3.2.0",
+    "@types/luxon": "catalog:",
     "@types/psl": "1.1.3",
-    "@types/turndown": "^5.0.5",
+    "@types/turndown": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "tsx": "catalog:",
+    "vite": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"
   },

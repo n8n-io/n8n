@@ -16,8 +16,9 @@ import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import { oldVersionNotice } from '@utils/descriptions';
 import { getResolvables } from '@utils/utilities';
 
-import { escapeSqlIdentifier } from '../v2/helpers/utils';
 import { createConnection, searchTables } from './GenericFunctions';
+import type { QueryValues } from '../v2/helpers/interfaces';
+import { escapeSqlIdentifier, prepareSafeQuery } from '../v2/helpers/utils';
 
 const versionDescription: INodeTypeDescription = {
 	displayName: 'MySQL',
@@ -88,7 +89,9 @@ const versionDescription: INodeTypeDescription = {
 			default: '',
 			placeholder: 'SELECT id, name FROM product WHERE id < 40',
 			required: true,
-			description: 'The SQL query to execute',
+			description:
+				"The SQL query to execute. You can use n8n expressions and $1, $2, $3, etc to refer to the 'Query Parameters' set in options below.",
+			hint: 'Consider using query parameters to prevent SQL injection attacks. Add them in the options below',
 		},
 
 		// ----------------------------------
@@ -147,13 +150,27 @@ const versionDescription: INodeTypeDescription = {
 			type: 'collection',
 			displayOptions: {
 				show: {
-					operation: ['insert'],
+					operation: ['insert', 'executeQuery'],
 				},
 			},
 			default: {},
-			placeholder: 'Add modifiers',
-			description: 'Modifiers for INSERT statement',
+			placeholder: 'Add option',
 			options: [
+				{
+					displayName: 'Query Parameters',
+					name: 'queryReplacement',
+					type: 'string',
+					default: '',
+					placeholder: 'e.g. value1,value2,value3',
+					description:
+						'Comma-separated list of the values you want to use as query parameters. You can drag the values from the input panel on the left. <a href="https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.mysql/" target="_blank">More info</a>',
+					hint: 'Comma-separated list of values: reference them in your query as $1, $2, $3…',
+					displayOptions: {
+						show: {
+							'/operation': ['executeQuery'],
+						},
+					},
+				},
 				{
 					displayName: 'Ignore',
 					name: 'ignore',
@@ -161,6 +178,11 @@ const versionDescription: INodeTypeDescription = {
 					default: true,
 					description:
 						'Whether to ignore any ignorable errors that occur while executing the INSERT statement',
+					displayOptions: {
+						show: {
+							'/operation': ['insert'],
+						},
+					},
 				},
 				{
 					displayName: 'Priority',
@@ -183,6 +205,11 @@ const versionDescription: INodeTypeDescription = {
 					default: 'LOW_PRIORITY',
 					description:
 						'Ignore any ignorable errors that occur while executing the INSERT statement',
+					displayOptions: {
+						show: {
+							'/operation': ['insert'],
+						},
+					},
 				},
 			],
 		},
@@ -315,7 +342,26 @@ export class MySqlV1 implements INodeType {
 						);
 					}
 
-					return await connection.query(rawQuery);
+					const options = this.getNodeParameter('options', index, {});
+					let queryReplacement = options.queryReplacement ?? [];
+
+					if (typeof queryReplacement === 'string') {
+						queryReplacement = queryReplacement.split(',').map((entry) => entry.trim());
+					}
+
+					if (!Array.isArray(queryReplacement)) {
+						throw new NodeOperationError(
+							this.getNode(),
+							'Query Parameters must be a string of comma-separated values, or an array of values',
+							{ itemIndex: index },
+						);
+					}
+
+					const { query, values } = prepareSafeQuery(rawQuery, queryReplacement as QueryValues);
+
+					return values.length
+						? await connection.query(query, values)
+						: await connection.query(query);
 				});
 
 				returnItems = ((await Promise.all(queryQueue)) as mysql2.OkPacket[][]).reduce(

@@ -4,7 +4,7 @@
 		"emitDecoratorMetadata": true,
 		"experimentalDecorators": true,
 		"strictPropertyInitialization": false,
-		"types": ["node", "vitest/globals"]
+		"types": ["node", "vitest/globals", "vite/client"]
 	},
 	"include": ["src/**/*.ts", "test/**/*.ts"],
 	"references": [{ "path": "../di/tsconfig.build.json" }]

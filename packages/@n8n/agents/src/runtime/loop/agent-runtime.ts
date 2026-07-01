@@ -382,6 +382,11 @@ export class AgentRuntime {
 
 			await this.memory.setListObservationLogMemory(list, state.persistence);
 
+			const claimed = await this.runState.claimResume(this.runId, state);
+			if (!claimed) {
+				throw new Error(`Run ${this.runId} is not suspended. Cannot resume.`);
+			}
+
 			if (method === 'generate') {
 				const sink = new GenerateSink(this.createRunServices());
 				const rawResult = await this.telemetry.withRootSpan(
@@ -453,6 +458,13 @@ export class AgentRuntime {
 		const list = new AgentMessageList();
 		await this.memory.loadInto(list, options);
 		list.addInput(input);
+
+		// Persist input now (after history load, so the prompt isn't polluted) so it
+		// survives an abort or abandoned HITL suspend that never reaches finishComplete.
+		// Best-effort: persistInputMessages swallows failures — the end-of-turn save
+		// is authoritative for completed turns, so this must not abort the turn.
+		await this.memory.persistInputMessages(list, options);
+
 		return list;
 	}
 
@@ -745,8 +757,9 @@ export class AgentRuntime {
 	}
 
 	/**
-	 * Persist a suspended run state and update the current state snapshot.
-	 * Returns the runtime's runId.
+	 * Persist a suspended run state and update the current state snapshot, and durably
+	 * save the turn-so-far to thread memory so a suspended turn that is later cancelled or
+	 * abandoned still leaves its assistant work behind. Returns the runtime's runId.
 	 */
 	private async persistSuspension(
 		pendingToolCalls: Record<string, PendingToolCall>,
@@ -774,6 +787,8 @@ export class AgentRuntime {
 		};
 		await this.runState.suspend(this.runId, state);
 		this.updateState({ status: 'suspended', pendingToolCalls, messageList: list.serialize() });
+		await this.memory.persistTurnOnSuspend(list, options);
+
 		return this.runId;
 	}
 

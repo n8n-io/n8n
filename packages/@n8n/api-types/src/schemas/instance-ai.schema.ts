@@ -14,6 +14,12 @@ import { TimeZoneSchema } from './timezone.schema';
  */
 export const UNLIMITED_CREDITS = -1;
 
+/**
+ * Transient setup-state tag for an AI Gateway managed credential selection.
+ * Handlers convert this tag to the Ai Gateway managed credential shape.
+ */
+export const AI_GATEWAY_MANAGED_TAG = '__AI_GATEWAY_MANAGED__';
+
 // ---------------------------------------------------------------------------
 // Session grant keys ("always allow")
 // ---------------------------------------------------------------------------
@@ -218,7 +224,15 @@ export const workflowSetupNodeSchema = z.object({
 		type: z.string(),
 		typeVersion: z.number(),
 		parameters: z.record(z.unknown()),
-		credentials: z.record(z.object({ id: z.string(), name: z.string() })).optional(),
+		// `id` is null only when `__aiGatewayManaged` is true
+		credentials: z
+			.record(
+				z.union([
+					z.object({ id: z.string(), name: z.string() }),
+					z.object({ id: z.null(), name: z.string(), __aiGatewayManaged: z.literal(true) }),
+				]),
+			)
+			.optional(),
 		position: z.tuple([z.number(), z.number()]),
 		id: z.string(),
 	}),
@@ -577,6 +591,18 @@ export class InstanceAiGatewayCreateCredentialDto extends Z.class({
 	projectId: z.string().optional(),
 }) {}
 
+export interface InstanceAiBrowserCreateLinkResponse {
+	connectUrl: string;
+	expiresAt: string | null;
+	ttlSeconds: number | null;
+}
+
+export interface InstanceAiBrowserStatusResponse {
+	connected: boolean;
+	connectedAt: string | null;
+	toolCategories: ToolCategory[];
+}
+
 // ---------------------------------------------------------------------------
 // Filesystem bridge payloads (browser ↔ server round-trip)
 // ---------------------------------------------------------------------------
@@ -718,9 +744,31 @@ export const instanceAiAttachmentSchema = z.discriminatedUnion('type', [
 ]);
 export type InstanceAiAttachment = z.infer<typeof instanceAiAttachmentSchema>;
 
+export const instanceAiCredentialHandoffContextSchema = z.object({
+	source: z.literal('credential-modal'),
+	credential: z.object({
+		credentialType: z.string().min(1).max(255),
+		displayName: z.string().min(1).max(255),
+		id: z.string().min(1).max(128).optional(),
+		nodeName: z.string().min(1).max(255).optional(),
+		nodeType: z.string().min(1).max(255).optional(),
+		documentationUrl: z.string().url().max(2048).optional(),
+		oauthRedirectUrl: z.string().url().max(2048).optional(),
+	}),
+});
+export type InstanceAiCredentialHandoffContext = z.infer<
+	typeof instanceAiCredentialHandoffContextSchema
+>;
+
+export const instanceAiHandoffContextSchema = z.discriminatedUnion('source', [
+	instanceAiCredentialHandoffContextSchema,
+]);
+export type InstanceAiHandoffContext = z.infer<typeof instanceAiHandoffContextSchema>;
+
 export class InstanceAiSendMessageRequest extends Z.class({
 	message: z.string().default(''),
 	attachments: z.array(instanceAiAttachmentSchema).max(10).optional(),
+	context: instanceAiHandoffContextSchema.optional(),
 	timeZone: TimeZoneSchema,
 	pushRef: z.string().optional(),
 }) {}
@@ -1131,6 +1179,7 @@ export interface InstanceAiAdminSettingsResponse {
 	n8nSandboxCredentialId: string | null;
 	searchCredentialId: string | null;
 	localGatewayDisabled: boolean;
+	browserUseEnabled: boolean;
 }
 
 export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
@@ -1147,6 +1196,7 @@ export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	n8nSandboxCredentialId: z.string().nullable().optional(),
 	searchCredentialId: z.string().nullable().optional(),
 	localGatewayDisabled: z.boolean().optional(),
+	browserUseEnabled: z.boolean().optional(),
 }) {}
 
 // ---------------------------------------------------------------------------

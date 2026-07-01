@@ -7,7 +7,7 @@
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | publishedVersionId | varchar(36) |  | false |  | [public.workflow_history](public.workflow_history.md) |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| workflowId | varchar(36) |  | false |  | [public.workflow_entity](public.workflow_entity.md) |  |
+| workflowId | varchar(36) |  | false | [public.scheduled_job](public.scheduled_job.md) | [public.workflow_entity](public.workflow_entity.md) |  |
 
 ## Constraints
 
@@ -34,6 +34,7 @@ erDiagram
 
 "public.workflow_published_version" }o--|| "public.workflow_history" : "FOREIGN KEY (#quot;publishedVersionId#quot;) REFERENCES workflow_history(#quot;versionId#quot;) ON DELETE RESTRICT"
 "public.workflow_published_version" |o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE RESTRICT"
+"public.scheduled_job" }o--o| "public.workflow_published_version" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_published_version(#quot;workflowId#quot;) ON DELETE CASCADE"
 
 "public.workflow_published_version" {
   timestamp_3__with_time_zone createdAt
@@ -75,6 +76,25 @@ erDiagram
   timestamp_3__with_time_zone updatedAt
   integer versionCounter
   character_36_ versionId
+}
+"public.scheduled_job" {
+  timestamp_3__with_time_zone createdAt
+  varchar_255_ cronExpression
+  boolean enabled
+  timestamp_3__with_time_zone fireAt
+  integer id
+  integer intervalSeconds
+  varchar_16_ kind
+  timestamp_3__with_time_zone lastFiredAt
+  integer maxAttempts
+  varchar_255_ name
+  timestamp_3__with_time_zone nextRunAt
+  varchar_36_ nodeId
+  json payload
+  varchar_128_ taskType
+  varchar_64_ timezone
+  timestamp_3__with_time_zone updatedAt
+  varchar_36_ workflowId FK
 }
 ```
 

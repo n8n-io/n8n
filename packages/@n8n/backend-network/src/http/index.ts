@@ -1,9 +1,9 @@
 export {
 	createHttpProxyAgent,
 	createHttpsProxyAgent,
-	installGlobalProxyAgent,
 	resolveProxyUrl,
-} from './http-proxy';
+} from '../proxy/proxy-resolution';
+export { installGlobalProxyAgent } from './http-proxy';
 export { configureGlobalAxiosDefaults } from './axios/config';
 export { tryParseUrl } from './axios/utils';
 export { httpRequest, removeEmptyBody } from './axios/request';
@@ -17,9 +17,11 @@ export {
 	type HttpRequestClient,
 	type HttpTransport,
 	type HttpTransportOptions,
+	type TypedHttpFullResponse,
 } from './outbound-http';
 export {
 	httpStatusFromError,
+	isAxiosError,
 	isConnectionRefusedError,
 	isHttpRequestError,
 	markHttpRequestError,

@@ -1,5 +1,6 @@
+import type { Mocked } from 'vitest';
 import type { Response } from 'express';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 
@@ -18,34 +19,22 @@ function makeController({
 	agentsService = mock<
 		Pick<
 			AgentsService,
-			| 'create'
-			| 'findById'
-			| 'findByProjectId'
-			| 'findByProjectIdPaginated'
-			| 'updateName'
-			| 'updateDescription'
-			| 'delete'
+			'create' | 'findById' | 'findByProjectId' | 'findByProjectIdPaginated' | 'delete'
 		>
 	>(),
 	agentPublishService = mock<AgentPublishService>(),
 	agentValidationService = mock<AgentValidationService>(),
 	credentialsService = mock<CredentialsService>(),
 }: {
-	agentsService?: jest.Mocked<
+	agentsService?: Mocked<
 		Pick<
 			AgentsService,
-			| 'create'
-			| 'findById'
-			| 'findByProjectId'
-			| 'findByProjectIdPaginated'
-			| 'updateName'
-			| 'updateDescription'
-			| 'delete'
+			'create' | 'findById' | 'findByProjectId' | 'findByProjectIdPaginated' | 'delete'
 		>
 	>;
-	agentPublishService?: jest.Mocked<AgentPublishService>;
-	agentValidationService?: jest.Mocked<AgentValidationService>;
-	credentialsService?: jest.Mocked<CredentialsService>;
+	agentPublishService?: Mocked<AgentPublishService>;
+	agentValidationService?: Mocked<AgentValidationService>;
+	credentialsService?: Mocked<CredentialsService>;
 } = {}) {
 	const agentRunnableStateService = new AgentRunnableStateService(
 		credentialsService,
@@ -73,7 +62,6 @@ describe('AgentsController route access scopes', () => {
 		['create', 'agent:create'],
 		['list', 'agent:list'],
 		['get', 'agent:read'],
-		['update', 'agent:update'],
 		['delete', 'agent:delete'],
 	])('%s uses %s', (handlerName, scope) => {
 		expect(routes.get(handlerName)?.accessScope?.scope).toBe(scope);

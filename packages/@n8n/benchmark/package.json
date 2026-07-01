@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-benchmark",
-  "version": "2.13.0",
+  "version": "2.14.0",
   "description": "Cli for running benchmark tests for n8n",
   "main": "dist/index",
   "scripts": {
@@ -37,7 +37,7 @@
   "dependencies": {
     "@oclif/core": "4.0.7",
     "axios": "catalog:",
-    "dotenv": "17.2.3",
+    "dotenv": "catalog:",
     "nanoid": "catalog:",
     "zx": "^8.8.5"
   },

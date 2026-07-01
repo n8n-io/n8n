@@ -4,6 +4,7 @@ export * from './community-nodes';
 export * from './instance';
 export * from './execution';
 export * from './logstreaming';
+export * from './nodes';
 
 export const LICENSE_FEATURES = {
 	SHARING: 'feat:sharing',
@@ -20,6 +21,7 @@ export const LICENSE_FEATURES = {
 	SHOW_NON_PROD_BANNER: 'feat:showNonProdBanner',
 	DEBUG_IN_EDITOR: 'feat:debugInEditor',
 	BINARY_DATA_S3: 'feat:binaryDataS3',
+	BINARY_DATA_AZURE: 'feat:binaryDataAz',
 	EXECUTION_DATA_S3: 'feat:executionDataS3',
 	EXECUTION_DATA_AZURE: 'feat:executionDataAz',
 	MULTIPLE_MAIN_INSTANCES: 'feat:multipleMainInstances',

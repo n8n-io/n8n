@@ -31,7 +31,7 @@ export class AzureStore implements ExecutionDataStore {
 		);
 
 		try {
-			await this.azureBlob.put(this.key(ref), body);
+			await this.azureBlob.put(this.key(ref), body, { mimeType: 'application/json' });
 		} catch (error) {
 			throw new ExecutionDataWriteError(ref, error);
 		}
@@ -43,7 +43,7 @@ export class AzureStore implements ExecutionDataStore {
 		let content: string;
 
 		try {
-			const buffer = await this.azureBlob.get(this.key(ref));
+			const buffer = await this.azureBlob.get(this.key(ref), { mode: 'buffer' });
 			content = buffer.toString('utf-8');
 		} catch (error) {
 			if (this.isNotFound(error)) return null;

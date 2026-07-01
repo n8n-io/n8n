@@ -67,6 +67,7 @@ erDiagram
   datetime stoppedAt
   varchar_2_ storedAt
   TEXT tracingContext
+  BOOLEAN usedPrivateCredentials
   datetime waitTill
   varchar_36_ workflowId FK
   varchar_36_ workflowVersionId

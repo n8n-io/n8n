@@ -9,6 +9,7 @@
 	"complexity": "medium",
 	"tags": ["build", "gmail", "ai", "schedule", "conditional", "digest"],
 	"triggerType": "schedule",
+	"datasets": ["mcp", "full"],
 	"executionScenarios": [
 		{
 			"name": "emails-with-action-items",

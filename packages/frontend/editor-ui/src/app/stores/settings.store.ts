@@ -171,7 +171,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	const isDataTableFeatureEnabled = computed(() => isModuleActive('data-table'));
 
 	const isChatFeatureEnabled = computed(
-		() => isModuleActive('chat-hub') && moduleSettings.value['chat-hub']?.enabled !== false,
+		() => isModuleActive('chat-hub') && moduleSettings.value['chat-hub']?.enabled === true,
 	);
 
 	const isOtelCustomSpanAttributesEnabled = computed(() => {
@@ -182,12 +182,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 		return isOtelCustomSpanAttributesLicensed && isOtelModuleActive;
 	});
-
-	// Opt-in flag: the `node-tools-searcher` token must be listed in the backend
-	// `N8N_AGENTS_MODULES` env var for this to evaluate true.
-	const isAgentsNodeToolsFeatureEnabled = computed(() =>
-		isAgentModuleActive('node-tools-searcher'),
-	);
 
 	// Opt-in flag: requires `N8N_AGENTS_AI_SANDBOX_ENABLED=true` and
 	// `N8N_AGENTS_AI_SANDBOX_PROVIDER=daytona` on the backend.
@@ -331,6 +325,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 		rootStore.setUrlBaseWebhook(fetchedSettings.urlBaseWebhook);
 		rootStore.setUrlBaseEditor(fetchedSettings.urlBaseEditor);
+		rootStore.setUrlBaseWebhookTest(fetchedSettings.urlBaseWebhookTest);
 		rootStore.setEndpointForm(fetchedSettings.endpointForm);
 		rootStore.setEndpointFormTest(fetchedSettings.endpointFormTest);
 		rootStore.setEndpointFormWaiting(fetchedSettings.endpointFormWaiting);
@@ -492,7 +487,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		isDataTableFeatureEnabled,
 		isChatFeatureEnabled,
 		isOtelCustomSpanAttributesEnabled,
-		isAgentsNodeToolsFeatureEnabled,
 		isAgentsKnowledgeBaseFeatureEnabled,
 		isPublicChatTriggerDisabled,
 	};

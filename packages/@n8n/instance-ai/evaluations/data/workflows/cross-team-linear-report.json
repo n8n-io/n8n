@@ -25,6 +25,7 @@
 	"complexity": "complex",
 	"tags": ["build", "linear", "slack", "schedule", "data-processing"],
 	"triggerType": "schedule",
+	"datasets": ["mcp", "full"],
 	"executionScenarios": [
 		{
 			"name": "happy-path",

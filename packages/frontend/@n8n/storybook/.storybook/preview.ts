@@ -1,3 +1,6 @@
+import { IconBodyLoaderKey, N8nPlugin } from '@n8n/design-system';
+import { loadLucideIconBody } from '@n8n/design-system/icons/lucide';
+import { i18nInstance } from '@n8n/i18n';
 import { withThemeByDataAttribute } from '@storybook/addon-themes';
 import { setup } from '@storybook/vue3';
 import ElementPlus from 'element-plus';
@@ -5,10 +8,6 @@ import ElementPlus from 'element-plus';
 import lang from 'element-plus/dist/locale/en.mjs';
 import { createPinia } from 'pinia';
 import { createMemoryHistory, createRouter } from 'vue-router';
-
-import { IconBodyLoaderKey, N8nPlugin } from '@n8n/design-system';
-import { loadLucideIconBody } from '@n8n/design-system/icons/lucide';
-import { i18nInstance } from '@n8n/i18n';
 
 import './storybook.scss';
 import { allModes } from './modes';
@@ -28,6 +27,7 @@ setup((app) => {
 	app.use(router);
 
 	app.use(ElementPlus, {
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment -- element-plus locale .mjs ships no types
 		locale: lang,
 	});
 

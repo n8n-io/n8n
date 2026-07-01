@@ -1,28 +1,30 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
-import { type CredentialsEntity } from '@n8n/db';
+import { type AuthenticatedRequest, type CredentialsEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 import type { Request, Response } from 'express';
 import { Cipher } from 'n8n-core';
-import { DynamicCredentialsController } from '@/modules/dynamic-credentials.ee/dynamic-credentials.controller';
+import { mock } from 'vitest-mock-extended';
+
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import { EventService } from '@/events/event.service';
-import { OauthService } from '@/oauth/oauth.service';
+import type { DynamicCredentialResolver } from '@/modules/dynamic-credentials.ee/database/entities/credential-resolver';
 import { DynamicCredentialResolverRepository } from '@/modules/dynamic-credentials.ee/database/repositories/credential-resolver.repository';
+import { DynamicCredentialsController } from '@/modules/dynamic-credentials.ee/dynamic-credentials.controller';
 import {
 	AuthorizeIntentService,
 	CredentialConnectionStatusService,
 	DynamicCredentialResolverRegistry,
 } from '@/modules/dynamic-credentials.ee/services';
-import type { DynamicCredentialResolver } from '@/modules/dynamic-credentials.ee/database/entities/credential-resolver';
+import { OauthService } from '@/oauth/oauth.service';
+
 import { DynamicCredentialWebService } from '../services/dynamic-credential-web.service';
 
-jest.mock('axios');
+vi.mock('axios');
 
-jest.mock('../utils', () => ({
-	getDynamicCredentialMiddlewares: jest.fn(() => undefined),
+vi.mock('../utils', () => ({
+	getDynamicCredentialMiddlewares: vi.fn(() => undefined),
 }));
 
 describe('DynamicCredentialsController', () => {
@@ -33,7 +35,7 @@ describe('DynamicCredentialsController', () => {
 	const dynamicCredentialWebService = mockInstance(DynamicCredentialWebService);
 	const cipher = mockInstance(Cipher);
 	const authorizeIntentService = mockInstance(AuthorizeIntentService);
-	mockInstance(CredentialsFinderService);
+	const credentialsFinderService = mockInstance(CredentialsFinderService);
 	mockInstance(CredentialConnectionStatusService);
 	mockInstance(EventService);
 
@@ -42,17 +44,44 @@ describe('DynamicCredentialsController', () => {
 	const controller = Container.get(DynamicCredentialsController);
 
 	const timestamp = 1706750625678;
-	jest.useFakeTimers({ advanceTimers: true });
+	vi.useFakeTimers({ shouldAdvanceTime: true });
 
 	beforeEach(() => {
-		jest.setSystemTime(new Date(timestamp));
-		jest.clearAllMocks();
+		vi.setSystemTime(new Date(timestamp));
+		vi.clearAllMocks();
 
 		// Configure default credential context mock
 		dynamicCredentialWebService.getCredentialContextFromRequest.mockReturnValue({
 			identity: 'token123',
 			version: 1 as const,
 			metadata: {},
+		});
+
+		// Default: caller can access the credential
+		credentialsFinderService.findCredentialForUser.mockResolvedValue(mock<CredentialsEntity>());
+	});
+
+	describe('in-app access control', () => {
+		it('returns 404 when an authenticated user cannot access the credential', async () => {
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
+			const user = mock<AuthenticatedRequest['user']>({ id: 'user-123' });
+			const req = mock<AuthenticatedRequest>({
+				user,
+				params: { id: 'foreign-credential' },
+				query: { resolverId: 'resolver-123' },
+				headers: { authorization: 'Bearer token123' },
+			});
+			const res = mock<Response>();
+
+			await expect(controller.authorizeCredential(req, res)).rejects.toThrow(
+				'Credential not found',
+			);
+			expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
+				'foreign-credential',
+				user,
+				['credential:update'],
+			);
+			expect(enterpriseCredentialsService.getOne).not.toHaveBeenCalled();
 		});
 	});
 
@@ -64,8 +93,8 @@ describe('DynamicCredentialsController', () => {
 			config: 'encrypted-config',
 			createdAt: new Date(),
 			updatedAt: new Date(),
-			generateId: jest.fn(),
-			setUpdateDate: jest.fn(),
+			generateId: vi.fn(),
+			setUpdateDate: vi.fn(),
 		};
 
 		const mockResolver = {
@@ -73,9 +102,9 @@ describe('DynamicCredentialsController', () => {
 				name: 'oauth2-introspection-identifier',
 				description: 'OAuth2 Introspection Identifier',
 			},
-			getSecret: jest.fn(),
-			setSecret: jest.fn(),
-			validateOptions: jest.fn(),
+			getSecret: vi.fn(),
+			setSecret: vi.fn(),
+			validateOptions: vi.fn(),
 		};
 
 		it('should throw NotFoundError when credential is not found', async () => {
@@ -265,7 +294,7 @@ describe('DynamicCredentialsController', () => {
 			});
 			const mockResolverWithValidation = {
 				...mockResolver,
-				validateIdentity: jest.fn().mockResolvedValue(undefined),
+				validateIdentity: vi.fn().mockResolvedValue(undefined),
 			};
 			const req = mock<Request>({
 				params: { id: '1' },
@@ -456,8 +485,8 @@ describe('DynamicCredentialsController', () => {
 			config: 'encrypted-config',
 			createdAt: new Date(),
 			updatedAt: new Date(),
-			generateId: jest.fn(),
-			setUpdateDate: jest.fn(),
+			generateId: vi.fn(),
+			setUpdateDate: vi.fn(),
 		};
 
 		it('should throw NotFoundError when credential is not found', async () => {
@@ -505,10 +534,10 @@ describe('DynamicCredentialsController', () => {
 					name: 'oauth2-introspection-identifier',
 					description: 'OAuth2 Introspection Identifier',
 				},
-				getSecret: jest.fn(),
-				setSecret: jest.fn(),
-				validateOptions: jest.fn(),
-				deleteSecret: jest.fn().mockResolvedValue(undefined),
+				getSecret: vi.fn(),
+				setSecret: vi.fn(),
+				validateOptions: vi.fn(),
+				deleteSecret: vi.fn().mockResolvedValue(undefined),
 			};
 			const req = mock<Request>({
 				params: { id: '1' },
@@ -550,9 +579,9 @@ describe('DynamicCredentialsController', () => {
 					name: 'oauth2-introspection-identifier',
 					description: 'OAuth2 Introspection Identifier',
 				},
-				getSecret: jest.fn(),
-				setSecret: jest.fn(),
-				validateOptions: jest.fn(),
+				getSecret: vi.fn(),
+				setSecret: vi.fn(),
+				validateOptions: vi.fn(),
 				// No deleteSecret method
 			};
 			const req = mock<Request>({
@@ -585,10 +614,10 @@ describe('DynamicCredentialsController', () => {
 					name: 'oauth2-introspection-identifier',
 					description: 'OAuth2 Introspection Identifier',
 				},
-				getSecret: jest.fn(),
-				setSecret: jest.fn(),
-				validateOptions: jest.fn(),
-				deleteSecret: jest.fn().mockResolvedValue(undefined),
+				getSecret: vi.fn(),
+				setSecret: vi.fn(),
+				validateOptions: vi.fn(),
+				deleteSecret: vi.fn().mockResolvedValue(undefined),
 			};
 			const req = mock<Request>({
 				params: { id: 'cred-456' },
@@ -636,10 +665,10 @@ describe('DynamicCredentialsController', () => {
 					name: 'oauth2-introspection-identifier',
 					description: 'OAuth2 Introspection Identifier',
 				},
-				getSecret: jest.fn(),
-				setSecret: jest.fn(),
-				validateOptions: jest.fn(),
-				deleteSecret: jest.fn().mockResolvedValue(undefined),
+				getSecret: vi.fn(),
+				setSecret: vi.fn(),
+				validateOptions: vi.fn(),
+				deleteSecret: vi.fn().mockResolvedValue(undefined),
 			};
 			const req = mock<Request>({
 				params: { id: '1' },

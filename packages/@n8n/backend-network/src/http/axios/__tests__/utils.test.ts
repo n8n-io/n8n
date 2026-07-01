@@ -28,7 +28,7 @@ import {
 // SSRF lookup injection is exercised there; here we only assert the transport
 // policy (proxy + ssrf option) that the axios utils forward to it.
 vi.mock('../../node-agents', () => ({
-	buildNodeAgents: vi.fn((_proxy, _ssrf, opts) => ({
+	buildNodeAgents: vi.fn((_proxy, _ssrf, opts?: Record<string, unknown>) => ({
 		httpAgent: { type: 'http', ...opts },
 		httpsAgent: { type: 'https', ...opts },
 	})),

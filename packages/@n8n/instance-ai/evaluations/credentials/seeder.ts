@@ -52,6 +52,10 @@ const CREDENTIAL_TEMPLATES: Record<string, CredentialTemplate> = {
 			oauthTokenData: { access_token: token },
 		}),
 	},
+	whatsAppTriggerApi: {
+		defaultName: '[eval] WhatsApp OAuth account',
+		buildData: () => ({ clientId: 'eval-client-id', clientSecret: 'eval-client-secret' }),
+	},
 	httpHeaderAuth: {
 		defaultName: '[eval] HTTP Header',
 		buildData: () => ({ name: 'Authorization', value: 'Bearer eval-placeholder' }),

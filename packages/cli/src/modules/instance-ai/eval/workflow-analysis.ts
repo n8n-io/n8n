@@ -565,7 +565,7 @@ RULES:
 4. Hints should describe the DATA CONTENT, not the API response format. The mock server already knows the API schema.
 5. Ensure data flows logically through the workflow. If node A fetches items that node B processes, the items in A's hint should match what B expects.
 6. Use realistic but clearly fake values (e.g., "jane@example.com", "U_abc123").
-7. **If a "Test Scenario" section is provided, it OVERRIDES your default data generation.** Use the exact names, emails, values, and conditions described in the scenario. If the scenario says "no name field", do NOT include a name. If it says "email is not-an-email", use that exact value. The scenario defines the test — follow it precisely.
+7. **If a "Test Scenario" section is provided, it OVERRIDES your default data generation.** Use the exact names, emails, numeric magnitudes (amounts, percentages, counts, thresholds), and conditions described in the scenario. If the scenario says "no name field", do NOT include a name. If it says "email is not-an-email", use that exact value. The scenario defines the test — follow it precisely.
 8. Return ONLY valid JSON, no explanation or markdown fencing.`;
 
 function buildUserPrompt(
@@ -645,9 +645,8 @@ export async function generateMockHints(options: GenerateMockHintsOptions): Prom
 				instructions: SYSTEM_PROMPT,
 			});
 
-			const result = await agent.generate(userPrompt, {
-				providerOptions: { anthropic: { maxTokens: 4096 } },
-			});
+			// No maxTokens cap — a low ceiling truncates hints for large workflows.
+			const result = await agent.generate(userPrompt);
 
 			const text = extractText(result)
 				.replace(/^```(?:json)?\s*\n?/i, '')

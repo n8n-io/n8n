@@ -5,7 +5,7 @@ import { useI18n } from '@n8n/i18n';
 import { APPROVAL_TOOL_NAME } from '@n8n/api-types';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 import { useAgentChatStream } from '../composables/useAgentChatStream';
-import { findOpenInteractive } from '../composables/agentChatMessages';
+import { findOpenInteractive } from '@/features/ai/shared/agentsChat/messageMappers';
 import AgentChatEmptyState from './AgentChatEmptyState.vue';
 import AgentChatMessageList from './AgentChatMessageList.vue';
 import type { AgentJsonConfig } from '../types';
@@ -119,6 +119,9 @@ const hasOpenInteraction = computed(() => openInteractive.value !== undefined);
 const hasOpenApproval = computed(() => openInteractive.value?.toolName === APPROVAL_TOOL_NAME);
 const hasOpenInteractiveQuestion = computed(
 	() => hasOpenInteraction.value && !hasOpenApproval.value,
+);
+const areConfigurationActionsDisabled = computed(
+	() => isStreaming.value || isPreparingToSend.value || hasOpenInteraction.value,
 );
 
 const isBuilderReadOnly = computed(() => props.endpoint === 'build' && !props.canEditAgent);
@@ -298,7 +301,7 @@ onBeforeUnmount(() => {
 		/>
 
 		<div :class="$style.inputArea">
-			<slot name="above-input" />
+			<slot name="above-input" :disabled="areConfigurationActionsDisabled" />
 			<ChatInputBase
 				v-model="inputText"
 				:placeholder="chatPlaceholder"

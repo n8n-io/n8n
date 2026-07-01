@@ -1,12 +1,12 @@
 import { Tool } from '@n8n/agents';
 import { instanceAiConfirmationSeveritySchema } from '@n8n/api-types';
-import { hasPlaceholderDeep } from '@n8n/utils';
+import { hasPlaceholderDeep } from '@n8n/utils/placeholder';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import { planVerificationSimulation } from './plan-verification-simulation';
 import { buildCredentialMap, resolveCredentials } from './resolve-credentials';
-import { stripStaleCredentialsFromWorkflow } from './setup-workflow.service';
+import { analyzeWorkflow, stripStaleCredentialsFromWorkflow } from './setup-workflow.service';
 import {
 	combineWarnings,
 	formatWarning,
@@ -40,6 +40,7 @@ import {
 	getReferencedWorkflowIds,
 	isTriggerNodeType,
 	preserveExistingNodeGroupIds,
+	preserveExistingSetupValues,
 } from './workflow-json-utils';
 import { compileWorkflowSource } from './workflow-source-compiler';
 import { partitionWarnings, type ValidationWarning } from './workflow-validation-warnings';
@@ -521,6 +522,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			await stripStaleCredentialsFromWorkflow(context, json);
 
 			try {
+				await preserveExistingSetupValues(json, targetWorkflowId, context);
 				await ensureWebhookIds(json, targetWorkflowId, context);
 				await preserveExistingNodeGroupIds(json, targetWorkflowId, context);
 
@@ -538,24 +540,18 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					saved: { id: string; versionId: string },
 					operation: 'create' | 'update',
 				) => {
+					const setupRequests = await analyzeWorkflow(context, saved.id);
+					const workflowNeedsSetup = setupRequests.some((request) => request.needsAction);
 					const { nodeSimulationPlan, simulationFixtures } = await planVerificationSimulation({
 						workflow: json,
 						mockedNodeNames: mockResult.mockedNodeNames,
+						declaredOutputFixtures: compiled.declaredOutputFixtures,
 						workflowId: saved.id,
 						logger: context.logger,
 					});
 					const runId = buildContext?.runId ?? context.runId;
 					const workflowName = json.name || 'workflow';
 					const summary = `${operation === 'update' ? 'Updated' : 'Created'} ${isSupportingWorkflow ? 'supporting ' : ''}workflow "${workflowName}" (${saved.id}).`;
-					const placeholderRemediation = hasPlaceholders
-						? createRemediation({
-								category: 'needs_setup',
-								shouldEdit: false,
-								reason: 'mocked_credentials_or_placeholders',
-								guidance:
-									'Workflow submitted successfully, but unresolved setup values remain. Stop code edits and route to workflows(action="setup").',
-							})
-						: undefined;
 					binding = await saveWorkflowSourceFileBinding(context, {
 						...binding,
 						workflowId: saved.id,
@@ -573,8 +569,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						submitted: true,
 						triggerType: 'manual_or_testable',
 						triggerNodes,
-						needsUserInput: hasPlaceholders,
-						blockingReason: placeholderRemediation?.guidance,
+						needsUserInput: false,
 						mockedNodeNames: hasMockedCredentialNodes ? mockResult.mockedNodeNames : undefined,
 						mockedCredentialTypes: hasMockedCredentialNodes
 							? mockResult.mockedCredentialTypes
@@ -582,12 +577,12 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						mockedCredentialsByNode: hasMockedCredentialNodes
 							? mockResult.mockedCredentialsByNode
 							: undefined,
+						workflowNeedsSetup,
 						nodeSimulationPlan,
 						simulationFixtures,
 						supportingWorkflowIds:
 							referencedWorkflowIds.length > 0 ? referencedWorkflowIds : undefined,
 						hasUnresolvedPlaceholders: hasPlaceholders || undefined,
-						remediation: placeholderRemediation,
 						summary,
 					});
 
@@ -608,7 +603,6 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						saveOperation: operation,
 						isSupportingWorkflow,
 						isAuxiliarySupportingWorkflow,
-						remediation: placeholderRemediation,
 						warningCount: informational.length,
 					});
 

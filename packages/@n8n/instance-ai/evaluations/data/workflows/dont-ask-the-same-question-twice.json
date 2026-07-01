@@ -19,7 +19,7 @@
 	"tags": ["behaviour", "clarification", "repeat-questions", "schedule", "slack"],
 	"triggerType": "schedule",
 	"datasets": ["behaviour", "full"],
-	"buildExpectations": [
+	"processExpectations": [
 		"The agent asked for the user to provide a Slack channel, rather than silently picking one itself.",
 		"The user did not provide the channel, and then the agent moved on — leaving it blank or for setup — never asking for the channel again."
 	],

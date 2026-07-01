@@ -7,6 +7,8 @@ import {
 	getLatestWorkflowUpdateResult,
 	getLatestDataTableResult,
 	getLatestDeletedDataTableId,
+	getExecutionResultsByWorkflow,
+	type ExecutionResult,
 } from './canvasPreview.utils';
 import type { ThreadRuntime } from './instanceAi.store';
 
@@ -28,7 +30,7 @@ interface UseCanvasPreviewOptions {
 	threadId: () => string;
 }
 
-export function useCanvasPreview({ thread, threadId }: UseCanvasPreviewOptions) {
+export function useCanvasPreview({ thread }: UseCanvasPreviewOptions) {
 	// --- Tab state ---
 	const activeTabId = ref<string>();
 
@@ -64,6 +66,22 @@ export function useCanvasPreview({ thread, threadId }: UseCanvasPreviewOptions) 
 	const activeDataTableProjectId = computed(() => {
 		const tab = allArtifactTabs.value.find((t) => t.id === activeTabId.value);
 		return tab?.type === 'data-table' ? (tab.projectId ?? null) : null;
+	});
+
+	const executionResultsByWorkflow = computed(() => {
+		const results = new Map<string, ExecutionResult>();
+		for (const message of thread.messages) {
+			if (!message.agentTree) continue;
+			for (const [workflowId, result] of getExecutionResultsByWorkflow(message.agentTree)) {
+				results.set(workflowId, result);
+			}
+		}
+		return results;
+	});
+
+	const activeWorkflowExecutionResult = computed(() => {
+		const workflowId = activeWorkflowId.value;
+		return workflowId ? executionResultsByWorkflow.value.get(workflowId) : undefined;
 	});
 
 	const dataTableRefreshKey = ref(0);
@@ -136,20 +154,6 @@ export function useCanvasPreview({ thread, threadId }: UseCanvasPreviewOptions) 
 		if (!stillExists) {
 			activeTabId.value = tabs[0].id;
 		}
-	});
-
-	// --- Reset preview on thread switch ---
-	// Each thread is stateless for the preview panel: switching threads
-	// closes the panel. Past artifacts are reachable via their inline
-	// references in the message timeline.
-	watch(threadId, (nextThreadId, oldThreadId) => {
-		// Skip if this is the initial route setup (e.g. URL updated from
-		// /instance-ai to /instance-ai/:threadId after the first message)
-		if (!oldThreadId) return;
-		// Skip if the thread ID hasn't actually changed
-		if (nextThreadId === oldThreadId) return;
-
-		activeTabId.value = undefined;
 	});
 
 	// --- Auto-open canvas when AI creates/modifies a workflow ---
@@ -328,6 +332,7 @@ export function useCanvasPreview({ thread, threadId }: UseCanvasPreviewOptions) 
 		activeWorkflowId,
 		activeDataTableId,
 		activeDataTableProjectId,
+		activeWorkflowExecutionResult,
 		dataTableRefreshKey,
 		isPreviewVisible,
 		workflowRefreshKey,
