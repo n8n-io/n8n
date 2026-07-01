@@ -596,7 +596,45 @@ describe('buildFromJson()', () => {
 		expect(snap.thinking).toMatchObject({ budgetTokens: 5000 });
 	});
 
-	it('sets prompt caching config when explicitly disabled (opt-out)', async () => {
+	it('sets prompt caching config with an Anthropic ttl', async () => {
+		const config = makeConfig({
+			config: { promptCaching: { enabled: true, anthropic: { ttl: '1h' } } },
+		});
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
+		const snap: AgentSnapshot = agent.snapshot;
+
+		expect(snap.promptCaching).toEqual({ enabled: true, anthropic: { ttl: '1h' } });
+	});
+
+	it('sets prompt caching config when enabled with no ttl', async () => {
+		const config = makeConfig({
+			config: { promptCaching: { enabled: true } },
+		});
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
+		const snap: AgentSnapshot = agent.snapshot;
+
+		expect(snap.promptCaching).toEqual({ enabled: true });
+	});
+
+	it('passes through promptCaching verbatim even if enabled=false was somehow saved (mapping is not a policy enforcer)', async () => {
 		const config = makeConfig({
 			config: { promptCaching: { enabled: false } },
 		});

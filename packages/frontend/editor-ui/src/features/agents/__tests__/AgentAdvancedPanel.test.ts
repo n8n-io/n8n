@@ -330,57 +330,50 @@ describe('AgentAdvancedPanel', () => {
 		expect((last.config as { thinking: { provider: string } }).thinking.provider).toBe('anthropic');
 	});
 
-	it('shows the toggle with no ttl/settings sub-control when prompt caching is on', async () => {
-		const config = makeConfig({
-			config: { promptCaching: { enabled: true } },
-		} as Partial<AgentJsonConfig>);
-		const wrapper = mount(AgentAdvancedPanel, {
-			props: { config },
-			global: { stubs: globalStubs },
-		});
-		await nextTick();
-		expect(wrapper.find('[data-testid="agent-prompt-caching-toggle"]').exists()).toBe(true);
-		expect(wrapper.find('[data-testid="agent-prompt-caching-settings"]').exists()).toBe(false);
-		expect(wrapper.find('[data-testid="agent-prompt-caching-ttl-select"]').exists()).toBe(false);
-	});
-
-	it('disables the prompt caching toggle for providers that do not support it', () => {
-		const config = makeConfig({ model: 'google/gemini-pro' });
-		const wrapper = mount(AgentAdvancedPanel, {
-			props: { config },
-			global: { stubs: globalStubs },
-		});
-		const toggle = wrapper.find('[data-testid="agent-prompt-caching-toggle"]');
-		expect(toggle.exists()).toBe(true);
-		expect(toggle.attributes('disabled')).toBeDefined();
-	});
-
-	it('emits { enabled: true } when the toggle flips on', async () => {
+	it('shows the Anthropic ttl dropdown, defaulting to 1h, with no on/off toggle', async () => {
 		const config = makeConfig();
 		const wrapper = mount(AgentAdvancedPanel, {
 			props: { config },
 			global: { stubs: globalStubs },
 		});
-		await wrapper.find('[data-testid="agent-prompt-caching-toggle"]').trigger('click');
-		const events = wrapper.emitted('update:config') ?? [];
-		expect(events.length).toBeGreaterThan(0);
-		const last = events[events.length - 1][0] as Partial<AgentJsonConfig>;
-		expect(last.config?.promptCaching).toEqual({ enabled: true });
+		await nextTick();
+		expect(wrapper.find('[data-testid="agent-prompt-caching-toggle"]').exists()).toBe(false);
+		const ttlSelect = findStubComponent(wrapper, 'agent-prompt-caching-ttl-select');
+		expect(ttlSelect.exists()).toBe(true);
+		expect(ttlSelect.props('modelValue')).toBe('1h');
 	});
 
-	it('persists { enabled: false } (opt-out) when the toggle flips off', async () => {
-		const config = makeConfig({
-			config: { promptCaching: { enabled: true } },
-		} as Partial<AgentJsonConfig>);
+	it('hides the prompt-caching row entirely for OpenAI (mandatory, no user-facing control)', () => {
+		const config = makeConfig({ model: 'openai/gpt-5.1' });
 		const wrapper = mount(AgentAdvancedPanel, {
 			props: { config },
 			global: { stubs: globalStubs },
 		});
-		await wrapper.find('[data-testid="agent-prompt-caching-toggle"]').trigger('click');
+		expect(wrapper.find('[data-testid="agent-prompt-caching-toggle"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-prompt-caching-ttl-select"]').exists()).toBe(false);
+	});
+
+	it('hides the prompt-caching row entirely for providers that do not support it', () => {
+		const config = makeConfig({ model: 'google/gemini-pro' });
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: { config },
+			global: { stubs: globalStubs },
+		});
+		expect(wrapper.find('[data-testid="agent-prompt-caching-toggle"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-prompt-caching-ttl-select"]').exists()).toBe(false);
+	});
+
+	it('emits { enabled: true, anthropic: { ttl } } when the ttl dropdown changes', () => {
+		const config = makeConfig();
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: { config },
+			global: { stubs: globalStubs },
+		});
+		emitSelectValue(wrapper, 'agent-prompt-caching-ttl-select', '5m');
 		const events = wrapper.emitted('update:config') ?? [];
 		expect(events.length).toBeGreaterThan(0);
 		const last = events[events.length - 1][0] as Partial<AgentJsonConfig>;
-		expect(last.config?.promptCaching).toEqual({ enabled: false });
+		expect(last.config?.promptCaching).toEqual({ enabled: true, anthropic: { ttl: '5m' } });
 	});
 
 	it('disables every control when the disabled prop is true', () => {

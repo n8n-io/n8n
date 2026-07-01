@@ -64,9 +64,9 @@ describe('sanitizeAgentJsonConfig', () => {
 				webSearch: { enabled: true, provider: 'native', legacyProviderSetting: true },
 				promptCaching: {
 					enabled: true,
-					// Legacy per-provider sub-config, no longer in the schema shape —
-					// stripped alongside the made-up key.
-					anthropic: { ttl: '1h' },
+					// anthropic.ttl is a real schema field; the made-up key inside it
+					// and the sibling made-up field are both stripped.
+					anthropic: { ttl: '1h', legacyAnthropicSetting: true },
 					legacyPromptCachingSetting: true,
 				},
 				nodeTools: { enabled: true, legacyNodeToolSetting: true },
@@ -83,7 +83,7 @@ describe('sanitizeAgentJsonConfig', () => {
 			config: {
 				toolCallConcurrency: 2,
 				webSearch: { enabled: true, provider: 'native' },
-				promptCaching: { enabled: true },
+				promptCaching: { enabled: true, anthropic: { ttl: '1h' } },
 			},
 		});
 		expect(AgentJsonConfigSchema.safeParse(sanitized).success).toBe(true);

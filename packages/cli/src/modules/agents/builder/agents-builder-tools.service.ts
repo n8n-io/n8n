@@ -264,16 +264,17 @@ function applyNativeWebSearchBuilderDefaults(config: AgentJsonConfig): AgentJson
 }
 
 /**
- * Prompt caching is opt-out for OpenAI/Anthropic: this write-path normalizer
- * guarantees `config.promptCaching` is `{ enabled: true }` for those providers
- * unless the config explicitly opted out (`{ enabled: false }`, preserved),
- * and strips the field entirely for every other provider — regardless of what
- * the builder LLM wrote.
+ * Prompt caching is mandatory for OpenAI/Anthropic: this write-path
+ * normalizer guarantees `config.promptCaching` is force-enabled for those
+ * providers (the user cannot disable it, even if the LLM wrote
+ * `{ enabled: false }`), preserves an explicit Anthropic TTL, and strips the
+ * field entirely for every other provider — regardless of what the builder
+ * LLM wrote.
  */
 function applyPromptCachingBuilderDefaults(config: AgentJsonConfig): AgentJsonConfig {
 	const providerPrefix = getProviderPrefix(config.model);
-	const supportsPromptCaching = PROVIDER_CAPABILITIES[providerPrefix]?.promptCaching === true;
-	const resolved = resolvePromptCaching(config.config?.promptCaching, supportsPromptCaching);
+	const capability = PROVIDER_CAPABILITIES[providerPrefix]?.promptCaching ?? false;
+	const resolved = resolvePromptCaching(config.config?.promptCaching, capability);
 
 	if (!resolved) {
 		if (!config.config || !('promptCaching' in config.config)) return config;

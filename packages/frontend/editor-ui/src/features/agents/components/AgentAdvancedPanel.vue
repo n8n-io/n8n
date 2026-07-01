@@ -27,7 +27,9 @@ import type { AgentJsonConfig } from '../types';
 import {
 	PROVIDER_CAPABILITIES,
 	REASONING_EFFORT_OPTIONS,
+	ANTHROPIC_CACHE_TTL_OPTIONS,
 	type ReasoningEffort,
+	type AnthropicCacheTtl,
 } from '../provider-capabilities';
 import { parseProvider } from '../utils/model-string';
 import {
@@ -157,6 +159,7 @@ const MAX_ITERATIONS_MAX = 200;
 const MAX_ITERATIONS_DEFAULT = 30;
 const BUDGET_TOKENS_MIN = 1;
 const BUDGET_TOKENS_DEFAULT = 1024;
+const PROMPT_CACHING_TTL_DEFAULT: AnthropicCacheTtl = '1h';
 
 const {
 	modelValue: concurrencyModelValue,
@@ -195,10 +198,11 @@ const reasoningEffort = ref<ReasoningEffort>(
 	(thinkingCfg.value?.reasoningEffort as ReasoningEffort) ?? 'medium',
 );
 
-const promptCachingCfg = computed(() => props.config?.config?.promptCaching ?? null);
-const promptCachingEnabled = ref(
-	promptCachingCfg.value !== null && promptCachingCfg.value.enabled !== false,
-);
+function anthropicTtlFrom(cfg: AgentJsonConfig | null): AnthropicCacheTtl {
+	return cfg?.config?.promptCaching?.anthropic?.ttl ?? PROMPT_CACHING_TTL_DEFAULT;
+}
+
+const anthropicTtl = ref<AnthropicCacheTtl>(anthropicTtlFrom(props.config));
 
 function syncWebSearchOptions(args: NativeWebSearchArgs) {
 	webSearchMaxUses.value =
@@ -225,8 +229,7 @@ watch(
 		thinkingEnabled.value = t !== null;
 		budgetTokens.value = t?.budgetTokens ?? BUDGET_TOKENS_DEFAULT;
 		reasoningEffort.value = (t?.reasoningEffort as ReasoningEffort) ?? 'medium';
-		const pc = cfg.config?.promptCaching ?? null;
-		promptCachingEnabled.value = pc !== null && pc.enabled !== false;
+		anthropicTtl.value = anthropicTtlFrom(cfg);
 		syncConcurrency(cfg);
 		syncMaxIterations(cfg);
 		webSearchEnabled.value = cfg.config?.webSearch?.enabled === true;
@@ -376,25 +379,15 @@ const thinkingDisabledReason = computed(() =>
 			}),
 );
 
-function onPromptCachingToggle(value: boolean) {
-	if (!capabilities.value.promptCaching) return;
-	promptCachingEnabled.value = value;
+function onAnthropicTtlChange(value: AnthropicCacheTtl) {
+	anthropicTtl.value = value;
 	emit('update:config', {
-		config: { ...props.config?.config, promptCaching: { enabled: value } },
+		config: {
+			...props.config?.config,
+			promptCaching: { enabled: true, anthropic: { ttl: value } },
+		},
 	});
 }
-
-const promptCachingDisabledReason = computed(() =>
-	capabilities.value.promptCaching
-		? ''
-		: i18n.baseText('agents.builder.advanced.promptCaching.unsupportedTooltip', {
-				interpolate: {
-					provider:
-						provider.value ||
-						i18n.baseText('agents.builder.advanced.promptCaching.unsupportedProviderFallback'),
-				},
-			}),
-);
 </script>
 
 <template>
@@ -635,29 +628,31 @@ const promptCachingDisabledReason = computed(() =>
 				</div>
 			</div>
 
-			<div :class="$style.settingGroup">
+			<div v-if="capabilities.promptCaching === 'ttl'" :class="$style.settingGroup">
 				<div :class="$style.row">
 					<div :class="$style.rowLabel">
 						<N8nText size="small" :bold="true">{{
-							i18n.baseText('agents.builder.advanced.promptCaching.label')
+							i18n.baseText('agents.builder.advanced.promptCachingTtl.label')
 						}}</N8nText>
 						<N8nText size="xsmall" color="text-light">
 							{{ i18n.baseText('agents.builder.advanced.promptCaching.hint') }}
 						</N8nText>
 					</div>
-					<N8nTooltip
-						:content="promptCachingDisabledReason"
-						:disabled="!!capabilities.promptCaching"
-						placement="top"
+					<N8nSelect
+						:model-value="anthropicTtl"
+						size="small"
+						:disabled="props.disabled"
+						:class="$style.shortInput"
+						data-testid="agent-prompt-caching-ttl-select"
+						@update:model-value="(v) => onAnthropicTtlChange(v as AnthropicCacheTtl)"
 					>
-						<N8nSwitch2
-							:model-value="promptCachingEnabled"
-							:disabled="!capabilities.promptCaching || props.disabled"
-							:class="$style.switchControl"
-							data-testid="agent-prompt-caching-toggle"
-							@update:model-value="(v) => onPromptCachingToggle(Boolean(v))"
+						<N8nOption
+							v-for="opt in ANTHROPIC_CACHE_TTL_OPTIONS"
+							:key="opt"
+							:value="opt"
+							:label="opt"
 						/>
-					</N8nTooltip>
+					</N8nSelect>
 				</div>
 			</div>
 

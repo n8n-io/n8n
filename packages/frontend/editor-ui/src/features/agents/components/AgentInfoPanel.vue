@@ -111,7 +111,7 @@ function onModelChange(selection: AgentModelSelection) {
 		...webSearchChanges,
 		...normalizePromptCachingForModelChange(
 			webSearchChanges.config ?? props.config?.config,
-			capabilities?.promptCaching === true,
+			capabilities?.promptCaching ?? false,
 		),
 	});
 }

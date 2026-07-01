@@ -76,10 +76,11 @@ const ThinkingConfigSchema = z.object({
 	reasoningEffort: z.string().optional(),
 });
 
-// Opt-out toggle only — provider-specific tuning (e.g. Anthropic TTL) is
-// backend-decided (fixed at 1h) and not exposed in the JSON config.
+// Mandatory for supporting providers (the user cannot disable it). Anthropic
+// exposes a cache-breakpoint TTL; OpenAI has no sub-config.
 const PromptCachingConfigSchema = z.object({
 	enabled: z.boolean(),
+	anthropic: z.object({ ttl: z.enum(['5m', '1h']).optional() }).optional(),
 });
 
 const WebSearchConfigSchema = z.object({

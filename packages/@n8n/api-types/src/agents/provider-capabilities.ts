@@ -45,8 +45,8 @@ export const NATIVE_WEB_SEARCH_DEFAULTS_BY_PROVIDER = {
 
 export interface ProviderCapabilities {
 	thinking: false | 'budgetTokens' | 'reasoningEffort';
-	/** Whether the provider supports prompt caching (opt-out toggle only; no sub-control). */
-	promptCaching: boolean;
+	/** false = unsupported; 'ttl' = Anthropic (renders TTL select); true = mandatory, no sub-control (OpenAI). */
+	promptCaching: false | 'ttl' | true;
 	webSearch: false | NativeWebSearchCanonicalTool;
 	providerTools: ReadonlyArray<NativeWebSearchCanonicalTool | 'openai.image_generation'>;
 }
@@ -54,7 +54,7 @@ export interface ProviderCapabilities {
 export const PROVIDER_CAPABILITIES: Record<string, ProviderCapabilities> = {
 	anthropic: {
 		thinking: 'budgetTokens',
-		promptCaching: true,
+		promptCaching: 'ttl',
 		webSearch: 'anthropic.web_search',
 		providerTools: ['anthropic.web_search'],
 	},
@@ -82,6 +82,9 @@ export const PROVIDER_CAPABILITIES: Record<string, ProviderCapabilities> = {
 export const REASONING_EFFORT_OPTIONS = ['low', 'medium', 'high'] as const;
 export type ReasoningEffort = (typeof REASONING_EFFORT_OPTIONS)[number];
 
+export const ANTHROPIC_CACHE_TTL_OPTIONS = ['5m', '1h'] as const;
+export type AnthropicCacheTtl = (typeof ANTHROPIC_CACHE_TTL_OPTIONS)[number];
+
 export function getValidProviderToolNames(): string[] {
 	return [
 		...new Set(
@@ -90,17 +93,26 @@ export function getValidProviderToolNames(): string[] {
 	];
 }
 
+export interface ResolvedPromptCachingConfig {
+	enabled: boolean;
+	anthropic?: { ttl?: AnthropicCacheTtl };
+}
+
 /**
- * Shared opt-out decision for prompt caching. Preserve an explicit
- * `{ enabled: false }`, default to enabled for supporting providers, and strip
- * the field (`undefined`) for providers that don't support it. Callers own the
- * surrounding config plumbing — the editor model picker and the backend
- * write-path normalizer share this rule but differ in return shape.
+ * Shared, mandatory decision for prompt caching. Always enables caching for
+ * supporting providers (the user cannot disable it) and strips the field
+ * (`undefined`) for providers that don't support it. For Anthropic
+ * (`capability === 'ttl'`), preserves an explicit TTL from the current
+ * config. Callers own the surrounding config plumbing — the editor model
+ * picker and the backend write-path normalizer share this rule.
  */
 export function resolvePromptCaching(
-	current: { enabled: boolean } | undefined,
-	supportsPromptCaching: boolean,
-): { enabled: boolean } | undefined {
-	if (!supportsPromptCaching) return undefined;
-	return { enabled: current?.enabled !== false };
+	current: ResolvedPromptCachingConfig | undefined,
+	capability: ProviderCapabilities['promptCaching'],
+): ResolvedPromptCachingConfig | undefined {
+	if (!capability) return undefined;
+	if (capability === 'ttl' && current?.anthropic?.ttl) {
+		return { enabled: true, anthropic: { ttl: current.anthropic.ttl } };
+	}
+	return { enabled: true };
 }

@@ -1,14 +1,14 @@
-import { resolvePromptCaching } from '@n8n/api-types';
+import { resolvePromptCaching, type ProviderCapabilities } from '@n8n/api-types';
 
 import type { AgentJsonConfig } from '../types';
 
 type ConfigObj = NonNullable<AgentJsonConfig['config']>;
 
 /**
- * Prompt caching is opt-out for supported providers (OpenAI/Anthropic): keep
- * an explicit `{ enabled: false }` across a provider switch (never silently
- * re-enable it), default to `{ enabled: true }` for a newly selected
- * supported provider, and strip the field entirely when the newly selected
+ * Prompt caching is mandatory for supported providers (OpenAI/Anthropic): it
+ * always resolves to `{ enabled: true }` for a newly selected supported
+ * provider (the user cannot disable it), preserves an explicit Anthropic TTL
+ * across the switch, and strips the field entirely when the newly selected
  * provider doesn't support it.
  *
  * `currentSubConfig` should be the agent's `config.config`, already merged
@@ -17,10 +17,10 @@ type ConfigObj = NonNullable<AgentJsonConfig['config']>;
  */
 export function normalizePromptCachingForModelChange(
 	currentSubConfig: ConfigObj | undefined,
-	nextProviderSupportsPromptCaching: boolean,
+	nextPromptCachingCapability: ProviderCapabilities['promptCaching'],
 ): Partial<AgentJsonConfig> {
 	const current = currentSubConfig?.promptCaching;
-	const resolved = resolvePromptCaching(current, nextProviderSupportsPromptCaching);
+	const resolved = resolvePromptCaching(current, nextPromptCachingCapability);
 
 	if (!resolved) {
 		if (!current) return {};

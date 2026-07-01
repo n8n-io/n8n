@@ -119,14 +119,46 @@ describe('AgentJsonConfigSchema — config.promptCaching', () => {
 		expect(result.success).toBe(false);
 	});
 
-	it('strips legacy per-provider sub-config (anthropic ttl, openai retention)', () => {
+	it.each(['5m', '1h'] as const)('accepts an Anthropic ttl of %s', (ttl) => {
 		const result = AgentJsonConfigSchema.safeParse({
 			...minimalConfig,
-			config: { promptCaching: { enabled: true, anthropic: { ttl: '1h' } } },
+			config: { promptCaching: { enabled: true, anthropic: { ttl } } },
 		});
 		expect(result.success).toBe(true);
 		if (result.success) {
-			expect(result.data.config?.promptCaching).toEqual({ enabled: true });
+			expect(result.data.config?.promptCaching).toEqual({ enabled: true, anthropic: { ttl } });
+		}
+	});
+
+	it('accepts an anthropic sub-object with no ttl', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			config: { promptCaching: { enabled: true, anthropic: {} } },
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('rejects an invalid Anthropic ttl value', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			config: { promptCaching: { enabled: true, anthropic: { ttl: '1d' } } },
+		});
+		expect(result.success).toBe(false);
+	});
+
+	it('strips unknown keys (e.g. legacy openai sub-config) from promptCaching', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			config: {
+				promptCaching: { enabled: true, anthropic: { ttl: '1h' }, openai: { promptCacheKey: 'x' } },
+			},
+		});
+		expect(result.success).toBe(true);
+		if (result.success) {
+			expect(result.data.config?.promptCaching).toEqual({
+				enabled: true,
+				anthropic: { ttl: '1h' },
+			});
 		}
 	});
 });

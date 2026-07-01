@@ -18,12 +18,12 @@ describe('normalizePromptCachingForModelChange', () => {
 		expect(result.config?.promptCaching).toEqual({ enabled: true });
 	});
 
-	it('preserves an explicit opt-out across a switch between supported providers (e.g. OpenAI -> Anthropic)', () => {
+	it('force-enables even when the prior config had enabled: false (mandatory, cannot be disabled)', () => {
 		const result = normalizePromptCachingForModelChange(
 			{ promptCaching: { enabled: false } },
 			true,
 		);
-		expect(result.config?.promptCaching).toEqual({ enabled: false });
+		expect(result.config?.promptCaching).toEqual({ enabled: true });
 	});
 
 	it('strips promptCaching entirely when switching to an unsupported provider', () => {
@@ -53,5 +53,34 @@ describe('normalizePromptCachingForModelChange', () => {
 	it('is a no-op when switching to an unsupported provider with no prior sub-config at all', () => {
 		const result = normalizePromptCachingForModelChange(undefined, false);
 		expect(result).toEqual({});
+	});
+
+	it('defaults to enabled with no ttl when switching to Anthropic with no prior ttl', () => {
+		const result = normalizePromptCachingForModelChange(undefined, 'ttl');
+		expect(result.config?.promptCaching).toEqual({ enabled: true });
+	});
+
+	it('preserves an explicit Anthropic ttl across a switch to Anthropic', () => {
+		const result = normalizePromptCachingForModelChange(
+			{ promptCaching: { enabled: true, anthropic: { ttl: '5m' } } },
+			'ttl',
+		);
+		expect(result.config?.promptCaching).toEqual({ enabled: true, anthropic: { ttl: '5m' } });
+	});
+
+	it('force-enables and preserves ttl even when the prior Anthropic config had enabled: false', () => {
+		const result = normalizePromptCachingForModelChange(
+			{ promptCaching: { enabled: false, anthropic: { ttl: '1h' } } },
+			'ttl',
+		);
+		expect(result.config?.promptCaching).toEqual({ enabled: true, anthropic: { ttl: '1h' } });
+	});
+
+	it('drops a previously-set Anthropic ttl when switching away to a non-ttl supported provider (e.g. OpenAI)', () => {
+		const result = normalizePromptCachingForModelChange(
+			{ promptCaching: { enabled: true, anthropic: { ttl: '5m' } } },
+			true,
+		);
+		expect(result.config?.promptCaching).toEqual({ enabled: true });
 	});
 });

@@ -1132,7 +1132,7 @@ describe('AgentsBuilderToolsService', () => {
 				);
 			});
 
-			it('write_config preserves an explicit opt-out across a switch between supported providers', async () => {
+			it('write_config force-enables prompt caching even when the config says enabled: false', async () => {
 				const { service, agentsService } = makeService();
 				const baseAgent = {
 					...baseConfig,
@@ -1152,7 +1152,50 @@ describe('AgentsBuilderToolsService', () => {
 					...currentConfig,
 					model: 'anthropic/claude-sonnet-4-5',
 					credential: 'Anthropic Key',
-					config: { promptCaching: { enabled: false } },
+					config: { promptCaching: { enabled: true } },
+				};
+				agentsService.findById.mockResolvedValue(makeAgent(baseAgent));
+				agentsService.updateConfig.mockResolvedValue({
+					config: normalizedConfig,
+					updatedAt: '2026-01-02T00:00:00.000Z',
+					versionId: 'v2',
+				});
+
+				await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
+					{
+						baseConfigHash: getAgentConfigHash(currentConfig),
+						json: JSON.stringify(updatedConfig),
+					},
+					ctx,
+				);
+
+				expect(agentsService.updateConfig).toHaveBeenCalledWith(
+					agentId,
+					projectId,
+					normalizedConfig,
+				);
+			});
+
+			it('write_config preserves an explicit Anthropic ttl', async () => {
+				const { service, agentsService } = makeService();
+				const baseAgent = {
+					...baseConfig,
+					integrations: [],
+					config: { promptCaching: { enabled: true, anthropic: { ttl: '5m' as const } } },
+				};
+				const currentConfig = { ...baseAgent };
+				const updatedConfig: AgentJsonConfig = {
+					...currentConfig,
+					instructions: 'Updated instructions.',
+					config: {
+						webSearch: { enabled: false },
+						promptCaching: { enabled: true, anthropic: { ttl: '5m' } },
+					},
+				};
+				const normalizedConfig = {
+					...currentConfig,
+					instructions: 'Updated instructions.',
+					config: { promptCaching: { enabled: true, anthropic: { ttl: '5m' } } },
 				};
 				agentsService.findById.mockResolvedValue(makeAgent(baseAgent));
 				agentsService.updateConfig.mockResolvedValue({

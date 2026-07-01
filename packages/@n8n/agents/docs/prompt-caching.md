@@ -24,25 +24,27 @@ new Agent('assistant')
   .instructions(LONG_SYSTEM_PROMPT);
 ```
 
-## The n8n Agent JSON config is a simplified, opt-out surface
+## The n8n Agent JSON config is a mandatory, simplified surface
 
-The richer SDK shape above (per-provider TTL, OpenAI key/retention overrides)
-is for direct SDK callers. The n8n Agent product (JSON config / builder UI)
-exposes only `config.promptCaching: { enabled: boolean }` — no TTL or
-per-provider tuning — and maps it straight to `agent.promptCaching({ enabled })`.
-Two differences from the SDK default worth knowing:
+The richer SDK shape above (OpenAI key/retention overrides) is for direct SDK
+callers. The n8n Agent product (JSON config / builder UI) exposes
+`config.promptCaching: { enabled: boolean; anthropic?: { ttl?: '5m' | '1h' } }`
+and maps it straight to `agent.promptCaching(config.promptCaching)`. Two
+differences from the general SDK usage worth knowing:
 
-- **Opt-out, not opt-in.** For OpenAI and Anthropic agents, the config is
-  written with `{ enabled: true }` by default (by the builder agent's
-  write-path normalizer and the model picker) unless the user explicitly
-  disables it; the explicit `{ enabled: false }` is preserved across
-  switching between OpenAI and Anthropic. Every other provider never gets
-  the field at all. As with the SDK, a missing `promptCaching` field is
-  still just "disabled" at runtime — the opt-out default lives in the config
-  producers (builder tools, model picker), not in the runtime default.
-- **TTL is fixed at `1h`**, matching the SDK default described below; there
-  is no way to request `5m` from the JSON config. Use the SDK directly
-  (`Agent.promptCaching({ anthropic: { ttl: '5m' } })`) if you need it.
+- **Mandatory, not opt-in or opt-out.** For OpenAI and Anthropic agents, the
+  config is always force-written with `{ enabled: true, ... }` — by the
+  builder agent's write-path normalizer and the model picker — regardless of
+  what the LLM or a prior config said; there is no user-facing way to disable
+  it. Every other provider never gets the field at all. As with the SDK, a
+  missing `promptCaching` field is still just "disabled" at runtime — the
+  mandatory-on behavior lives in the config producers (builder tools, model
+  picker), not in the runtime default.
+- **TTL is Anthropic-only and defaults to `1h`.** The Advanced panel renders
+  a Cache duration dropdown (`5m` / `1h`) only for Anthropic agents; OpenAI
+  has no sub-config or UI (its caching is fully automatic server-side). The
+  TTL is preserved across a switch between Anthropic and another supported
+  provider and back.
 
 ## Prefix stability (always on, both providers)
 
