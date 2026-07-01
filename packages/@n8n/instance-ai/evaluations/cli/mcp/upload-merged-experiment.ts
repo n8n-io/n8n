@@ -18,18 +18,18 @@ import { evaluate } from 'langsmith/evaluation';
 import type { EvaluationResult } from 'langsmith/evaluation';
 import type { Example } from 'langsmith/schemas';
 
-import { buildCIMetadata, computeExperimentPrefix } from './ci-metadata';
+import { buildCIMetadata, computeExperimentPrefix } from '../ci-metadata';
 import type { CombinedResults, EvalTestCase } from './merge-results';
 import {
 	compareBuckets,
 	type ComparisonOutcome,
 	type ExperimentBucket,
 	type ScenarioCounts,
-} from '../comparison/compare';
-import { fetchBaselineBucket, findLatestBaseline } from '../comparison/fetch-baseline';
-import { loadWorkflowTestCasesBySlugs } from '../data/workflows';
-import { createLogger } from '../harness/logger';
-import { syncDataset } from '../langsmith/dataset-sync';
+} from '../../comparison/compare';
+import { fetchBaselineBucket, findLatestBaseline } from '../../comparison/fetch-baseline';
+import { loadWorkflowTestCasesBySlugs } from '../../data/workflows';
+import { createLogger } from '../../harness/logger';
+import { syncDataset } from '../../langsmith/dataset-sync';
 
 interface ReplayInputs {
 	testCaseFile?: string;

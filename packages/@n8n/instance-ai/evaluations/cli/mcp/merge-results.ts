@@ -30,7 +30,7 @@ import {
 	watchList,
 	type ComparisonOutcome,
 	type ScenarioComparison,
-} from '../comparison/compare';
+} from '../../comparison/compare';
 
 // ---------------------------------------------------------------------------
 // Artifact schema — the subset of cli/index.ts's writeEvalResults output we

@@ -1,5 +1,5 @@
-import type { CombinedResults, EvalTestCase } from '../cli/merge-results';
-import { buildReplayMap, bucketFromCombined } from '../cli/upload-merged-experiment';
+import type { CombinedResults, EvalTestCase } from '../cli/mcp/merge-results';
+import { buildReplayMap, bucketFromCombined } from '../cli/mcp/upload-merged-experiment';
 
 function testCase(overrides: Partial<EvalTestCase> & { testCaseFile: string }): EvalTestCase {
 	return {

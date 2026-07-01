@@ -10,7 +10,7 @@ import {
 	renderSummaryMarkdown,
 	resolveInputPaths,
 	type EvalResults,
-} from '../cli/merge-results';
+} from '../cli/mcp/merge-results';
 
 // Build a minimal shard artifact. Defaults keep call sites focused on the
 // fields each test actually asserts on.
