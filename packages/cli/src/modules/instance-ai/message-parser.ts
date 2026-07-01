@@ -246,6 +246,7 @@ function isRenderableTree(tree: InstanceAiAgentNode): boolean {
 		tree.textContent.length > 0 ||
 		tree.reasoning.length > 0 ||
 		(tree.planItems?.length ?? 0) > 0 ||
+		!!tree.tasks ||
 		!!tree.statusMessage ||
 		!!tree.result ||
 		!!tree.error

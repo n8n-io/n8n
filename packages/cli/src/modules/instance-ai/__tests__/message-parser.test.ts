@@ -408,6 +408,46 @@ describe('parseStoredMessages', () => {
 			expect(assistant?.runId).toBe('run_x');
 		});
 
+		it('should keep a task-list-only snapshot instead of discarding it as empty', () => {
+			const messages: StoredAgentMessage[] = [
+				{ id: 'msg-u', role: 'user', content: 'plan it', createdAt: makeDate() },
+				{
+					id: 'msg-a',
+					role: 'assistant',
+					content: [{ type: 'text', text: "Here's the plan" }],
+					createdAt: makeDate(1),
+				},
+			];
+			// The snapshot carries only a task checklist — no text/tools/timeline. It must
+			// still count as renderable, otherwise the checklist UI is lost on reload.
+			const taskTree: InstanceAiAgentNode = {
+				agentId: 'agent-001',
+				role: 'orchestrator',
+				status: 'completed',
+				textContent: '',
+				reasoning: '',
+				toolCalls: [],
+				children: [],
+				timeline: [],
+				tasks: { tasks: [{ id: 't1', description: 'Do the thing', status: 'todo' }] },
+			};
+			const snapshots = [
+				{
+					tree: taskTree,
+					runId: 'run_x',
+					messageGroupId: 'mg_x',
+					createdAt: makeDate(2),
+					updatedAt: makeDate(2),
+				},
+			];
+
+			const result = parseStoredMessages(messages, snapshots);
+
+			const assistant = result.find((m) => m.role === 'assistant');
+			// The snapshot tree (with its checklist) is used, not a flat fallback that drops it.
+			expect(assistant?.agentTree?.tasks?.tasks).toHaveLength(1);
+		});
+
 		it('should aggregate a multi-row cancelled turn into one bubble, not just the last row', () => {
 			const messages: StoredAgentMessage[] = [
 				{ id: 'msg-u', role: 'user', content: 'Build something', createdAt: makeDate() },
