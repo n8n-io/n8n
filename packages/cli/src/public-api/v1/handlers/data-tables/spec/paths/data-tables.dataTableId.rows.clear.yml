@@ -1,5 +1,6 @@
 delete:
   x-eov-operation-id: clearDataTableRows
+  x-required-scope: dataTableRow:delete
   x-eov-operation-handler: v1/handlers/data-tables/data-tables.rows.handler
   tags:
     - DataTable
