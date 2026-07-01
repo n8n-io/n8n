@@ -62,6 +62,7 @@ import { WorkflowValidationService } from './workflow-validation.service';
 
 import { WebhookService } from '@/webhooks/webhook.service';
 import * as WorkflowHelpers from '@/workflow-helpers';
+import { WorkflowPublicationNotifier } from './publication/workflow-publication-notifier';
 import { getErrorDescription, getErrorNodeId, getRequiredRedactionScopes } from './utils';
 import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
@@ -94,6 +95,7 @@ export class WorkflowService {
 		private readonly licenseState: LicenseState,
 		private readonly projectRepository: ProjectRepository,
 		private readonly redactionEnforcementService: RedactionEnforcementService,
+		private readonly workflowPublicationNotifier: WorkflowPublicationNotifier,
 	) {}
 
 	async getMany(
@@ -1433,6 +1435,10 @@ export class WorkflowService {
 
 			await this.outboxRepository.enqueue(workflowId, versionIdToActivate, trx);
 		});
+
+		// Wake the leader now that the record is committed, so it drains without
+		// waiting for the next poll cycle.
+		this.workflowPublicationNotifier.requestDrain();
 	}
 
 	/**
@@ -1470,5 +1476,9 @@ export class WorkflowService {
 
 			await this.outboxRepository.enqueue(workflowId, deactivatedVersionId, trx);
 		});
+
+		// Wake the leader now that the record is committed, so it drains without
+		// waiting for the next poll cycle.
+		this.workflowPublicationNotifier.requestDrain();
 	}
 }
