@@ -4,7 +4,6 @@ import { Service } from '@n8n/di';
 import { readFileSync } from 'fs';
 import type ivm from 'isolated-vm';
 import path from 'path';
-import { transform as sucraseTransform } from 'sucrase';
 
 import { AgentIsolatePool, type AgentIsolateSlot } from './agent-isolate-pool';
 import type { ToolExecutor } from '../json-config/from-json-config';
@@ -13,7 +12,7 @@ import type { ToolExecutor } from '../json-config/from-json-config';
  * Location of the pre-built library bundle (see scripts/bundle-agent-library.mjs).
  *
  * This path resolves the same way whether the current file is running from
- * `src/modules/agents/runtime/` (ts-jest) or `dist/modules/agents/runtime/`
+ * `src/modules/agents/runtime/` (ts-vi) or `dist/modules/agents/runtime/`
  * (production), because both trees have the same depth under the cli package.
  */
 const LIBRARY_BUNDLE_PATH = path.resolve(__dirname, '../../../../dist/agent-library-bundle.js');
@@ -154,8 +153,9 @@ export class AgentSecureRuntime {
 	 * sucrase is a pure-JS transpiler (no native binary), so it works in the
 	 * Docker image where esbuild's platform-specific binary is absent.
 	 */
-	private compileTs(tsCode: string): string {
-		const { code } = sucraseTransform(tsCode, {
+	private async compileTs(tsCode: string): Promise<string> {
+		const { transform } = await import('sucrase');
+		const { code } = transform(tsCode, {
 			transforms: ['typescript', 'imports'],
 		});
 		return code;
@@ -225,7 +225,7 @@ export class AgentSecureRuntime {
 	 * Expects `export default new Tool(...)` pattern (no .build() call needed).
 	 */
 	async describeToolSecurely(tsCode: string): Promise<ToolDescriptor> {
-		const jsCode = this.compileTs(tsCode);
+		const jsCode = await this.compileTs(tsCode);
 
 		return await this.withIsolate(
 			// eslint-disable-next-line @typescript-eslint/require-await -- `withIsolate` expects a Promise-returning callback
@@ -262,7 +262,7 @@ export class AgentSecureRuntime {
 	 * The tool code must follow `export default new Tool(...)` pattern.
 	 */
 	async executeToolInIsolate(toolCode: string, input: unknown, ctx: unknown): Promise<unknown> {
-		const jsCode = this.compileTs(toolCode);
+		const jsCode = await this.compileTs(toolCode);
 
 		return await this.withIsolate(async (slot) => {
 			const context = slot.createContext();

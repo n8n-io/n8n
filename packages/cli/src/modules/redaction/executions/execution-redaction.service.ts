@@ -1,15 +1,15 @@
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import { WorkflowExecuteMode, WorkflowSettings } from 'n8n-workflow';
+import { channelsToPolicy, WorkflowExecuteMode, WorkflowSettings } from 'n8n-workflow';
 
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ScopeForbiddenError } from '@/errors/response-errors/scope-forbidden.error';
+import { EventService } from '@/events/event.service';
 import type {
 	ExecutionRedaction,
 	ExecutionRedactionOptions,
 	RedactableExecution,
 } from '@/executions/execution-redaction';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { ScopeForbiddenError } from '@/errors/response-errors/scope-forbidden.error';
-import { EventService } from '@/events/event.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import type {
@@ -17,7 +17,6 @@ import type {
 	RedactionContext,
 } from './execution-redaction.interfaces';
 import { FullItemRedactionStrategy } from './strategies/full-item-redaction.strategy';
-import { NodeDefinedFieldRedactionStrategy } from './strategies/node-defined-field-redaction.strategy';
 
 const MANUAL_MODES: ReadonlySet<WorkflowExecuteMode> = new Set(['manual']);
 
@@ -41,7 +40,6 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly eventService: EventService,
 		private readonly fullItemRedactionStrategy: FullItemRedactionStrategy,
-		private readonly nodeDefinedFieldRedactionStrategy: NodeDefinedFieldRedactionStrategy,
 	) {}
 
 	async init(): Promise<void> {
@@ -79,9 +77,23 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 	): Promise<void> {
 		if (executions.length === 0) return;
 
+		// A queued/just-inserted execution row carries no run data yet
+		// (`executionData.data` is empty until the runner writes its first
+		// snapshot). The repository's unflatten step returns `data: undefined`
+		// for those rows. There is nothing to redact and no policy to apply,
+		// so short-circuit before any strategy reads `execution.data.*` and
+		// crashes on the undefined. Surfaces under parallel evaluations,
+		// which leave several rows in `new` state long enough for FE polling
+		// to catch them mid-flight.
+		const processable = executions.filter(
+			(e): e is RedactableExecution & { data: NonNullable<RedactableExecution['data']> } =>
+				e.data !== undefined && e.data !== null,
+		);
+		if (processable.length === 0) return;
+
 		// Single DB call shared by both the reveal and redact paths.
 		// Only executions where policy doesn't already grant access need a scope check.
-		const needsCheck = executions.filter((e) => !this.policyAllowsReveal(e));
+		const needsCheck = processable.filter((e) => !this.policyAllowsReveal(e));
 		let revealableIds = new Set<string>();
 		if (needsCheck.length > 0) {
 			const uniqueWorkflowIds = [...new Set(needsCheck.map((e) => e.workflowId))];
@@ -94,14 +106,26 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 
 		// Reveal path: validate all permissions atomically before any processing.
 		if (options.redactExecutionData === false) {
-			// Dynamic credential executions can never be revealed
-			for (const execution of executions) {
-				if (this.hasDynamicCredentials(execution)) {
+			// Dynamic credential executions are only revealable to the user the
+			// execution ran as — the `execution:reveal` scope deliberately does
+			// not bypass this check.
+			for (const execution of processable) {
+				if (
+					this.hasDynamicCredentials(execution) &&
+					!this.isOwnDynamicCredentialsExecution(execution, options.user.id)
+				) {
 					throw new ForbiddenError();
 				}
 			}
 
 			for (const execution of needsCheck) {
+				if (
+					this.hasDynamicCredentials(execution) &&
+					this.isOwnDynamicCredentialsExecution(execution, options.user.id)
+				) {
+					// Owner of a dyncred execution skips the scope check.
+					continue;
+				}
 				if (!revealableIds.has(execution.workflowId)) {
 					// Emit audit event before throwing error
 					this.eventService.emit('execution-data-reveal-failure', {
@@ -123,29 +147,48 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 		}
 
 		// Unified pipeline execution. buildPipeline excludes FullItemRedactionStrategy on the
-		// reveal path (redactExecutionData === false). NodeDefinedFieldRedactionStrategy
-		// always runs — node-declared sensitive fields are never revealable.
+		// reveal path (redactExecutionData === false).
 
 		for (let i = 0; i < executions.length; i++) {
 			const execution = executions[i];
+			// Pre-filtered above — skip data-less rows so the strategies and
+			// dynamic-credential checks below can rely on a populated payload.
+			if (execution.data === undefined || execution.data === null) continue;
 			const hasDynCreds = this.hasDynamicCredentials(execution);
+			const isOwnDynCreds =
+				hasDynCreds && this.isOwnDynamicCredentialsExecution(execution, options.user.id);
 			const policyAllowsReveal = this.policyAllowsReveal(execution);
-			// Dynamic credential executions can never be revealed regardless of permissions
+			// On dyncred executions, only the executing user may see unredacted data,
+			// and the `execution:reveal` scope does not grant a bypass.
 			const userCanReveal = hasDynCreds
-				? false
+				? isOwnDynCreds
 				: policyAllowsReveal || revealableIds.has(execution.workflowId);
+			const enforceDynCredRedaction = hasDynCreds && !isOwnDynCreds;
 			const context: RedactionContext = {
 				user: options.user,
 				redactExecutionData: options.redactExecutionData,
 				userCanReveal,
-				hasDynamicCredentials: hasDynCreds,
+				enforceDynCredRedaction,
 				memo: new Map(),
 			};
-			const pipeline = this.buildPipeline(execution, context, policyAllowsReveal, hasDynCreds);
+			const pipeline = this.buildPipeline(
+				execution,
+				context,
+				policyAllowsReveal,
+				enforceDynCredRedaction,
+			);
+
+			// `runtimeData.credentials` carries encrypted credential context that
+			// must be stripped from any API response, including for the owner
+			// viewing their own dyncred execution. Treat that strip as a reason
+			// to clone when `keepOriginal` is set, even if no strategy applies.
+			const needsCredentialStrip =
+				hasDynCreds && execution.data.executionData?.runtimeData?.credentials !== undefined;
 
 			let target = execution;
 			if (options.keepOriginal) {
-				const needsClone = pipeline.some((s) => s.requiresRedaction(execution, context));
+				const needsClone =
+					needsCredentialStrip || pipeline.some((s) => s.requiresRedaction(execution, context));
 				if (!needsClone) continue;
 				target = structuredClone(execution);
 				executions[i] = target;
@@ -155,16 +198,18 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 				await strategy.apply(target, context);
 			}
 
-			// runtimeData.credentials contains encrypted credential context that
-			// must never be exposed in API responses
-			if (hasDynCreds && target.data.executionData?.runtimeData) {
+			if (needsCredentialStrip && target.data.executionData?.runtimeData) {
 				delete target.data.executionData.runtimeData.credentials;
 			}
 		}
 
 		// Emit audit events after all executions have been successfully processed.
+		// Iterate over `processable` so a queued (data-undefined) row in the
+		// batch doesn't trip `resolvePolicy`. There is nothing to "reveal" on
+		// a row that carries no payload, so its omission from the audit trail
+		// matches reality — the API response for that entry has `data: null`.
 		if (options.redactExecutionData === false) {
-			for (const execution of executions) {
+			for (const execution of processable) {
 				this.eventService.emit('execution-data-revealed', {
 					user: options.user,
 					executionId: execution.id ?? '',
@@ -184,14 +229,18 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 	 *   explicit redact (`redactExecutionData === true`), policy=all, or
 	 *   policy=non-manual on a non-manual execution mode, or dynamic credentials.
 	 *   It is never included on the reveal path (`redactExecutionData === false`).
-	 * - `NodeDefinedFieldRedactionStrategy` is always appended last — node-declared
-	 *   sensitive fields are never revealable.
+	 *
+	 * Note: `NodeDefinedFieldRedactionStrategy` (node-declared `sensitiveOutputFields`)
+	 * is intentionally not wired in here. The previous always-on behaviour broke
+	 * partial/single-step execution because the FE replays the redacted push payload
+	 * back to the server, and is being redesigned. Re-introduce only after the
+	 * product approach (per-workflow gating + partial-run rehydration) is settled.
 	 */
 	private buildPipeline(
 		execution: RedactableExecution,
 		context: RedactionContext,
 		policyAllowsReveal: boolean,
-		hasDynamicCredentials: boolean,
+		enforceDynCredRedaction: boolean,
 	): IExecutionRedactionStrategy[] {
 		const pipeline: IExecutionRedactionStrategy[] = [];
 
@@ -199,7 +248,7 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 		const shouldClearItems =
 			context.redactExecutionData !== false &&
 			(context.redactExecutionData === true ||
-				hasDynamicCredentials ||
+				enforceDynCredRedaction ||
 				(!policyAllowsReveal &&
 					(policy === 'all' ||
 						(policy === 'non-manual' && !MANUAL_MODES.has(execution.mode)) ||
@@ -208,8 +257,6 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 		if (shouldClearItems) {
 			pipeline.push(this.fullItemRedactionStrategy);
 		}
-
-		pipeline.push(this.nodeDefinedFieldRedactionStrategy);
 
 		return pipeline;
 	}
@@ -226,6 +273,26 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 		return Object.values(execution.data.resultData?.runData ?? {}).some((taskDataList) =>
 			taskDataList.some((taskData) => taskData.usedDynamicCredentials),
 		);
+	}
+
+	/**
+	 * Returns true when the requesting user is the one the execution ran as.
+	 * Used to grant the executing user access to their own data on executions
+	 * that resolved private credentials, where everyone else is still redacted.
+	 *
+	 * Reads `runtimeData.executedByUserId`, set during credential resolution to
+	 * the n8n user a dynamic credential resolved to (covers both manual and
+	 * chat-hub runs). It is absent when the resolved identity isn't an n8n user
+	 * (external Slack/OAuth resolvers) or when no dynamic credential resolved, so
+	 * `undefined` will never strict-equal the requester's id: a single comparison
+	 * covers both the "no attributable user" and "different user" cases, falling
+	 * back to the redacted-for-everyone default.
+	 */
+	private isOwnDynamicCredentialsExecution(
+		execution: RedactableExecution,
+		userId: string,
+	): boolean {
+		return execution.data.executionData?.runtimeData?.executedByUserId === userId;
 	}
 
 	/**
@@ -248,18 +315,22 @@ export class ExecutionRedactionService implements ExecutionRedaction {
 	/**
 	 * Resolves the effective redaction policy for an execution.
 	 *
-	 * Prefers the policy captured in `runtimeData.redaction` at execution time,
-	 * falls back to `workflowData.settings` for older executions, and defaults to 'none'.
-	 * Returns 'none' when the data-redaction license is not active, so that
-	 * user-configured policies are not applied without the license.
+	 * Prefers the snapshot captured in `runtimeData.redaction` at execution time. That snapshot
+	 * is versioned: V2 stores per-channel booleans (reconstructed into the policy enum), while
+	 * V1 (older executions) stores the policy enum directly. Falls back to `workflowData.settings`
+	 * for executions captured before runtime snapshots existed, and defaults to 'none'.
+	 * Returns 'none' when the data-redaction license is not active, so that user-configured
+	 * policies are not applied without the license.
 	 */
 	private resolvePolicy(execution: RedactableExecution): WorkflowSettings.RedactionPolicy {
 		if (!this.licenseState.isDataRedactionLicensed()) return 'none';
 
-		return (
-			execution.data.executionData?.runtimeData?.redaction?.policy ??
-			execution.workflowData.settings?.redactionPolicy ??
-			'none'
-		);
+		const redaction = execution.data.executionData?.runtimeData?.redaction;
+
+		if (redaction?.version === 2) {
+			return channelsToPolicy({ production: redaction.production, manual: redaction.manual });
+		}
+
+		return redaction?.policy ?? execution.workflowData.settings?.redactionPolicy ?? 'none';
 	}
 }

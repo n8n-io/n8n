@@ -14,7 +14,7 @@ import {
 	EXTERNAL_SECRETS_SYSTEM_ROLES_ENABLED_SETTING,
 } from '@n8n/permissions';
 import type { EntityManager, FindManyOptions, Repository } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 const SHARING_SCOPES = PERSONAL_SPACE_SHARING_SETTING.scopes;
 
@@ -107,8 +107,8 @@ describe('AuthRolesService', () => {
 	}
 
 	beforeEach(() => {
-		jest.restoreAllMocks();
-		jest.clearAllMocks();
+		vi.restoreAllMocks();
+		vi.clearAllMocks();
 		// Re-setup the EntityManager mocks after restoreAllMocks
 		mockEntityManager.getRepository.mockImplementation((entity) => {
 			if (entity === Scope) return scopeRepository as never;
@@ -211,7 +211,8 @@ describe('AuthRolesService', () => {
 			});
 
 			scopeRepository.find.mockResolvedValueOnce([obsoleteScope, validScope]);
-			roleRepository.find.mockResolvedValueOnce([roleWithObsoleteScope]);
+			roleRepository.find.mockResolvedValueOnce([roleWithObsoleteScope]); // find affected role slugs
+			roleRepository.find.mockResolvedValueOnce([roleWithObsoleteScope]); // reload roles with full scopes
 			roleRepository.save.mockImplementation(async (entities) => entities as never);
 			scopeRepository.remove.mockImplementation(async (entities) => entities as never);
 			scopeRepository.find.mockResolvedValueOnce([validScope]);
@@ -241,7 +242,8 @@ describe('AuthRolesService', () => {
 			});
 
 			scopeRepository.find.mockResolvedValueOnce([obsoleteScope1, obsoleteScope2, validScope]);
-			roleRepository.find.mockResolvedValueOnce([role1, role2, role3]);
+			roleRepository.find.mockResolvedValueOnce([role1, role2, role3]); // find affected role slugs
+			roleRepository.find.mockResolvedValueOnce([role1, role2, role3]); // reload roles with full scopes
 			roleRepository.save.mockImplementation(async (entities) => entities as never);
 			scopeRepository.remove.mockImplementation(async (entities) => entities as never);
 			scopeRepository.find.mockResolvedValueOnce([validScope]);
@@ -482,7 +484,7 @@ describe('AuthRolesService', () => {
 				publishing: boolean | null,
 				sharing: boolean | null,
 			): void {
-				const rows: { key: string; value: string; loadOnStartup: boolean }[] = [];
+				const rows: Array<{ key: string; value: string; loadOnStartup: boolean }> = [];
 				if (publishing !== null) {
 					rows.push({
 						key: PERSONAL_SPACE_PUBLISHING_SETTING.key,

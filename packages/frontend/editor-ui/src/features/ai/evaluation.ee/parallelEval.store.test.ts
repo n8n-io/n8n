@@ -3,14 +3,7 @@ import { reactive } from 'vue';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { LOCAL_STORAGE_PARALLEL_EVAL_BY_WORKFLOW } from '@/app/constants/localStorage';
-import { usePostHog } from '@/app/stores/posthog.store';
 import { DEFAULT_PARALLEL_CONCURRENCY, useParallelEvalStore } from './parallelEval.store';
-
-vi.mock('@/app/stores/posthog.store', () => ({
-	usePostHog: vi.fn(() => ({
-		isFeatureEnabled: vi.fn(() => false),
-	})),
-}));
 
 // Singleton-shaped mock so the store keeps a stable `settingsStore` reference
 // across the test lifetime. Mutating `.settings.evaluationConcurrencyLimit`
@@ -42,25 +35,23 @@ describe('parallelEval.store', () => {
 		vi.clearAllMocks();
 	});
 
-	describe('isFeatureEnabled', () => {
-		it('reflects the PostHog flag (off by default)', () => {
-			vi.mocked(usePostHog).mockReturnValue({
-				isFeatureEnabled: vi.fn(() => false),
-			} as never);
-
+	describe('isConcurrencyAvailable (visibility gate)', () => {
+		it('is true when the effective limit is unlimited (-1)', () => {
+			mockEvaluationConcurrencyLimit(-1);
 			const store = useParallelEvalStore();
-
-			expect(store.isFeatureEnabled).toBe(false);
+			expect(store.isConcurrencyAvailable).toBe(true);
 		});
 
-		it('returns true when the rollout flag resolves true', () => {
-			vi.mocked(usePostHog).mockReturnValue({
-				isFeatureEnabled: vi.fn(() => true),
-			} as never);
-
+		it('is true when the effective limit is greater than 1', () => {
+			mockEvaluationConcurrencyLimit(3);
 			const store = useParallelEvalStore();
+			expect(store.isConcurrencyAvailable).toBe(true);
+		});
 
-			expect(store.isFeatureEnabled).toBe(true);
+		it('is false when the effective limit collapses to 1 (Community/Pro/explicit env=1)', () => {
+			mockEvaluationConcurrencyLimit(1);
+			const store = useParallelEvalStore();
+			expect(store.isConcurrencyAvailable).toBe(false);
 		});
 	});
 
@@ -218,6 +209,20 @@ describe('parallelEval.store', () => {
 			const store = useParallelEvalStore();
 			store.setConcurrencyValue('wf-a', 6);
 			store.setParallel('wf-a', false);
+			expect(store.effectiveConcurrency('wf-a')).toBe(1);
+		});
+
+		it('returns 1 when concurrency is unavailable on the instance, regardless of stored state', () => {
+			// Pre-existing per-workflow preference of 7 when the cap was open.
+			mockEvaluationConcurrencyLimit(-1);
+			const store = useParallelEvalStore();
+			store.setConcurrencyValue('wf-a', 7);
+			expect(store.effectiveConcurrency('wf-a')).toBe(7);
+
+			// Cap drops to 1 (e.g. operator sets env to 1, or tier=Community).
+			// Caller must send `1` — UI is gated to hide the slider anyway,
+			// but the store guards against stale per-workflow state too.
+			mockEvaluationConcurrencyLimit(1);
 			expect(store.effectiveConcurrency('wf-a')).toBe(1);
 		});
 	});

@@ -59,7 +59,7 @@ import DynamicCredentialsDrawer from './components/DynamicCredentialsDrawer.vue'
 import { useChatArtifacts } from './composables/useChatArtifacts';
 import { useChatInputFocus } from './composables/useChatInputFocus';
 import { useDynamicCredentialsStatus } from './composables/useDynamicCredentialsStatus';
-import { useDynamicCredentials } from '@/features/resolvers/composables/useDynamicCredentials';
+import { usePrivateCredentials } from '@/features/resolvers/composables/usePrivateCredentials';
 
 const router = useRouter();
 const route = useRoute();
@@ -241,9 +241,9 @@ const { credentialsByProvider, selectCredential } = useChatCredentials(
 );
 
 // Dynamic credentials
-const { isEnabled: dynamicCredentialsEnabled } = useDynamicCredentials();
+const { isEnabled: privateCredentialsEnabled } = usePrivateCredentials();
 const dynamicCredsWorkflowId = computed(() =>
-	selectedModel.value?.model.provider === 'n8n' && dynamicCredentialsEnabled.value
+	selectedModel.value?.model.provider === 'n8n' && privateCredentialsEnabled.value
 		? selectedModel.value.model.workflowId
 		: null,
 );

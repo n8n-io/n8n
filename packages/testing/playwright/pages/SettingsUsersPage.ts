@@ -1,8 +1,11 @@
 import type { Locator } from '@playwright/test';
 
 import { BasePage } from './BasePage';
+import { ActionToggle } from './components/ActionToggle';
 
 export class SettingsUsersPage extends BasePage {
+	readonly actionToggle = new ActionToggle(this.page);
+
 	async goto(): Promise<void> {
 		await this.page.goto('/settings/users');
 	}
@@ -32,7 +35,7 @@ export class SettingsUsersPage extends BasePage {
 	async transferData(emailOrName: string) {
 		await this.page
 			.getByRole('radio', {
-				name: 'Transfer their workflows and credentials to another user or project',
+				name: 'Transfer their workflows, credentials and data tables to another user or project',
 			})
 			// This doesn't work without force: true
 			// eslint-disable-next-line playwright/no-force-option
@@ -58,7 +61,7 @@ export class SettingsUsersPage extends BasePage {
 	async deleteData() {
 		await this.page
 			.getByRole('radio', {
-				name: 'Delete their workflows and credentials',
+				name: 'Delete their workflows, credentials and data tables',
 			})
 			// This doesn't work without force: true
 			// eslint-disable-next-line playwright/no-force-option
@@ -77,11 +80,11 @@ export class SettingsUsersPage extends BasePage {
 	}
 
 	async openActions(email: string) {
-		await this.getRow(email).getByTestId('action-toggle').getByRole('button').click();
+		await this.actionToggle.open(this.getRow(email));
 	}
 
 	async clickDeleteUser(email: string) {
 		await this.openActions(email);
-		await this.page.getByTestId('action-delete').filter({ visible: true }).click();
+		await this.actionToggle.getAction('delete').filter({ visible: true }).click();
 	}
 }

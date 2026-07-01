@@ -1,159 +1,181 @@
 <script lang="ts" setup>
-import { ref, watch, nextTick, onBeforeUnmount, useTemplateRef } from 'vue';
-import { N8nText, N8nIcon, N8nIconButton } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
-import type { PushMessage } from '@n8n/api-types';
-import WorkflowPreview from '@/app/components/WorkflowPreview.vue';
-import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
-import type { IWorkflowDb } from '@/Interface';
+import { computed, provide, useTemplateRef } from 'vue';
+import { nodeIssuesToString, type IRunData } from 'n8n-workflow';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import WorkflowCanvasHost from '@/app/components/WorkflowCanvasHost.vue';
+import {
+	EditorEnabledFeaturesKey,
+	type EditorEnabledFeatures,
+} from '@/app/constants/injectionKeys';
+import {
+	InstanceAiEditorCapabilityKey,
+	type InstanceAiEditorCapability,
+} from '@/app/composables/useInstanceAiEditorCapability';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
+import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
+import { isAgentEditingWorkflow, type ExecutionResult } from '../canvasPreview.utils';
+import { buildInstanceAiArtifactCredentialQuestion } from '../composables/useInstanceAiHandoff';
+import { useInstanceAiWorkflowPreviewExecution } from '../composables/useInstanceAiWorkflowPreviewExecution';
+import type { FixWithAiError } from '../fixWithAi';
+import { useThread } from '../instanceAi.store';
+
+export interface WorkflowFailuresReport {
+	workflowId: string;
+	executionId: string;
+	errors: FixWithAiError[];
+}
 
 const props = withDefaults(
 	defineProps<{
-		workflowId: string | null;
-		/** Incremented to force re-fetch even when workflowId stays the same (e.g. workflow was modified). */
+		workflowId: string;
+		/** Incremented to force re-init even when workflowId stays the same (e.g. workflow was modified). */
 		refreshKey?: number;
+		/** Latest completed execution produced by the agent for this workflow. */
+		executionResult?: ExecutionResult;
 	}>(),
-	{ refreshKey: 0 },
+	{ refreshKey: 0, executionResult: undefined },
 );
 
 const emit = defineEmits<{
-	'iframe-ready': [];
-	/** Fires after a workflow fetch resolves and the new workflow has been
-	 * propagated to the embedded WorkflowPreview (which sends `openWorkflow` to
-	 * the iframe). Used by `useEventRelay` to gate buffered-event replay so the
-	 * iframe always receives `openWorkflow` before the `executionEvent`s. */
-	'workflow-loaded': [workflowId: string];
+	'workflow-failures': [report: WorkflowFailuresReport];
 }>();
 
-const i18n = useI18n();
-const workflowsListStore = useWorkflowsListStore();
-const previewRef = useTemplateRef<InstanceType<typeof WorkflowPreview>>('previewComponent');
+const hostRef = useTemplateRef<InstanceType<typeof WorkflowCanvasHost>>('host');
 
-const workflow = ref<IWorkflowDb | null>(null);
-const isLoading = ref(false);
-const fetchError = ref<string | null>(null);
-let fetchGeneration = 0;
+function requestFitView() {
+	hostRef.value?.requestFitView();
+}
 
-function handleIframeMessage(event: MessageEvent) {
-	if (typeof event.data !== 'string' || !event.data.includes('"command"')) return;
-	try {
-		const json = JSON.parse(event.data);
-		if (json.command === 'n8nReady') {
-			emit('iframe-ready');
-		}
-	} catch {
-		// Ignore parse errors
+defineExpose({ requestFitView });
+
+// On executionFinished with errors, surface a structured failures report so
+// InstanceAiThreadView can offer "Fix with AI". This used to come via
+// postMessage from the iframe (useReportWorkflowFailuresToParent); now we read
+// the per-execution data directly.
+
+function collectNodeErrors(runData: IRunData | null | undefined): FixWithAiError[] {
+	const errors: FixWithAiError[] = [];
+	for (const [nodeName, tasks] of Object.entries(runData ?? {})) {
+		const error = tasks?.at(-1)?.error;
+		if (!error) continue;
+		const description = error.description ? ` (${error.description})` : '';
+		errors.push({ nodeName, errorMessage: `${error.message ?? 'Unknown error'}${description}` });
 	}
+	return errors;
 }
 
-function relayPushEvent(event: PushMessage) {
-	const iframe = (previewRef.value as { iframeRef?: HTMLIFrameElement | null } | undefined)
-		?.iframeRef;
-	if (!iframe?.contentWindow) return;
-	iframe.contentWindow.postMessage(
-		JSON.stringify({ command: 'executionEvent', event }),
-		window.location.origin,
-	);
+// A pre-execution validation abort ("The 'X' node has issues — Parameter Y
+// required") executes no nodes, so it leaves no live error. But the FE has
+// already validated the workflow with the same NodeHelpers the backend aborts
+// on, so the failing node's issues are already on the document store — read
+// them synchronously instead of round-tripping for the execution.
+function collectValidationIssues(workflowId: string): FixWithAiError[] {
+	const docStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+	const errors: FixWithAiError[] = [];
+	for (const node of docStore.allNodes) {
+		if (!node.issues) continue;
+		const messages = nodeIssuesToString(node.issues, node);
+		if (messages.length === 0) continue;
+		errors.push({ nodeName: node.name, errorMessage: messages.join(' ') });
+	}
+	return errors;
 }
 
-function openWorkflowInEditor() {
-	const workflowId = workflow.value?.id ?? props.workflowId;
-	if (!workflowId) return;
-	window.open(`/workflow/${workflowId}`, '_blank', 'noopener');
-}
+function reportWorkflowFailures(executionId: string, workflowId: string) {
+	// Node-level runtime errors stream into the store live during the run, so
+	// they're already present when it finishes.
+	const execStore = useExecutionDataStore(createExecutionDataId(executionId));
+	let errors = collectNodeErrors(execStore.executionRunData);
 
-async function fetchWorkflow(id: string) {
-	const isRefresh = workflow.value?.id === id;
-	const generation = ++fetchGeneration;
-	fetchError.value = null;
-	if (!isRefresh) {
-		isLoading.value = true;
-		workflow.value = null;
+	// A pre-execution validation abort runs no nodes, so there's no live error —
+	// but the FE has already validated the workflow, so read the failing node's
+	// issues straight from the document store (see collectValidationIssues).
+	if (errors.length === 0) {
+		errors = collectValidationIssues(workflowId);
 	}
 
-	try {
-		const result = await workflowsListStore.fetchWorkflow(id);
-		if (generation !== fetchGeneration) return;
-		workflow.value = result;
-		// Wait for Vue to propagate the new workflow to <WorkflowPreview>'s
-		// reactive watcher, which posts `openWorkflow` to the iframe. Emitting
-		// after this tick lets parents replay buffered execution events
-		// without racing the workflow load.
-		await nextTick();
-		if (generation !== fetchGeneration) return;
-		emit('workflow-loaded', id);
-	} catch {
-		if (generation !== fetchGeneration) return;
-		workflow.value = null;
-		fetchError.value = i18n.baseText('instanceAi.workflowPreview.fetchError');
-	} finally {
-		if (generation === fetchGeneration) {
-			isLoading.value = false;
-		}
-	}
+	if (errors.length === 0) return;
+	emit('workflow-failures', { workflowId, executionId, errors });
 }
 
-// Re-fetch when workflowId changes OR when refreshKey increments (same workflow modified).
-watch(
-	() => [props.workflowId, props.refreshKey] as const,
-	async ([id]) => {
-		if (id) {
-			await fetchWorkflow(id);
-		} else {
-			workflow.value = null;
-			fetchError.value = null;
-		}
-	},
-	{ immediate: true },
-);
-
-// Listen for iframe ready signal
-window.addEventListener('message', handleIframeMessage);
-
-onBeforeUnmount(() => {
-	window.removeEventListener('message', handleIframeMessage);
+const { restoreExecutionResult } = useInstanceAiWorkflowPreviewExecution({
+	workflowId: () => props.workflowId,
+	executionResult: () => props.executionResult,
+	reportWorkflowFailures,
 });
 
-defineExpose({ relayPushEvent });
+// === Editing lock ===
+// Lock the artifact's editor while the agent is actively mutating THIS
+// workflow, so the user can't drag nodes into a mid-stream conflict.
+// `isAgentEditingWorkflow` defines the signals that trigger the lock.
+const thread = useThread();
+
+// The workflow + execution the editor handed off, applied once when this
+// preview first opens. Consumed (cleared) here, so it never re-applies on a
+// later reload or re-open — it only reflects the redirect. Both snapshots are
+// passed to the canvas host, which opens/seeds them directly (no refetch).
+const handoff = thread.consumePendingHandoff(props.workflowId);
+const initialWorkflow = handoff?.workflow;
+const initialExecution = handoff?.execution;
+
+const isAgentEditingThisWorkflow = computed(() => {
+	for (const message of thread.messages) {
+		if (!message.agentTree) continue;
+		if (isAgentEditingWorkflow(message.agentTree, props.workflowId)) return true;
+	}
+	return false;
+});
+
+// Per-editor host overrides for the embedded editor. Instance AI supersedes the
+// standalone AI helpers (`false`), forces the canvas read-only while a
+// workflow-builder agent is mutating this workflow, and suppresses workflow
+// execution result toasts (success + error) — the agent surfaces run outcomes
+// in the thread UI, so the canvas would only duplicate them. NodeView derives
+// its read-only state from these via useEditorContext(); usePushConnection
+// reads the toast flags to gate execution result notifications.
+const enabledFeatures = computed<EditorEnabledFeatures>(() => ({
+	aiAssistant: false,
+	aiBuilder: false,
+	askAi: false,
+	readOnly: isAgentEditingThisWorkflow.value,
+	executionSuccessToasts: false,
+	executionErrorToasts: false,
+}));
+provide(EditorEnabledFeaturesKey, enabledFeatures);
+
+const rootStore = useRootStore();
+
+// The artifact already lives inside an Instance AI thread, so its entry points
+// append guidance to that conversation rather than opening a new one. It offers
+// only `openCredential` — `openWorkflow` is omitted because the workflow is
+// already the thread's subject, which hides the editor hand-off button here.
+const instanceAiCapability: InstanceAiEditorCapability = {
+	openCredential: async (credential) => {
+		void thread.sendMessage(
+			buildInstanceAiArtifactCredentialQuestion(credential),
+			undefined,
+			rootStore.pushRef,
+		);
+		// Appends to the current thread → close the modal so the conversation shows.
+		return true;
+	},
+};
+provide(InstanceAiEditorCapabilityKey, instanceAiCapability);
 </script>
 
 <template>
 	<div :class="$style.content">
-		<!-- Error (only when no workflow to show) -->
-		<div v-if="fetchError && !workflow" :class="$style.centerState">
-			<N8nText color="text-light">{{ fetchError }}</N8nText>
-		</div>
-
-		<!-- Always mounted so the iframe boots before any artifact exists; it hides itself
-		     internally when no workflow is set. Live execution state is painted onto
-		     the canvas via `relayPushEvent` from SDK push events. -->
-		<WorkflowPreview
-			ref="previewComponent"
-			mode="workflow"
-			:workflow="workflow ?? undefined"
-			:can-open-ndv="true"
-			:can-execute="true"
-			:hide-controls="false"
-			:suppress-notifications="true"
-			:allow-error-notifications="false"
-			loader-type="spinner"
+		<WorkflowCanvasHost
+			ref="host"
+			:workflow-id="workflowId"
+			:refresh-key="refreshKey"
+			:initial-workflow="initialWorkflow"
+			:initial-execution="initialExecution"
+			@workflow-loaded="restoreExecutionResult"
 		/>
-
-		<N8nIconButton
-			v-if="workflow"
-			icon="external-link"
-			variant="subtle"
-			size="large"
-			:class="$style.openWorkflowButton"
-			:aria-label="i18n.baseText('instanceAi.previewTabBar.openWorkflowInEditor')"
-			data-test-id="instance-ai-workflow-preview-open-editor"
-			@click="openWorkflowInEditor"
-		/>
-
-		<!-- Loading overlay (shown during initial load or when no workflow yet) -->
-		<div v-if="isLoading && !workflow" :class="$style.centerState">
-			<N8nIcon icon="loader-circle" :size="80" spin />
-		</div>
 	</div>
 </template>
 
@@ -163,21 +185,5 @@ defineExpose({ relayPushEvent });
 	min-height: 0;
 	position: relative;
 	height: 100%;
-}
-
-.centerState {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	justify-content: center;
-	gap: var(--spacing--xs);
-	height: 100%;
-}
-
-.openWorkflowButton {
-	position: absolute;
-	top: var(--spacing--xs);
-	right: var(--spacing--xs);
-	z-index: 1;
 }
 </style>

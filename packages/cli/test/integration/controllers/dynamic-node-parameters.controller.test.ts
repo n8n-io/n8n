@@ -1,12 +1,12 @@
 import { randomCredentialPayload, testDb } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 import type {
 	INodeListSearchResult,
 	IWorkflowExecuteAdditionalData,
 	ResourceMapperFields,
 	NodeParameterValueType,
 } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import * as AdditionalData from '@/workflow-execute-additional-data';
@@ -28,12 +28,12 @@ describe('DynamicNodeParametersController', () => {
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
-		jest.spyOn(AdditionalData, 'getBase').mockResolvedValue(additionalData);
+		vi.clearAllMocks();
+		vi.spyOn(AdditionalData, 'getBase').mockResolvedValue(additionalData);
 	});
 
 	afterEach(() => {
-		jest.restoreAllMocks();
+		vi.restoreAllMocks();
 	});
 
 	const commonRequestParams = {
@@ -48,7 +48,7 @@ describe('DynamicNodeParametersController', () => {
 			const owner = await createOwner();
 			ownerAgent = testServer.authAgentFor(owner);
 
-			jest.spyOn(service, 'getOptionsViaMethodName').mockResolvedValue([]);
+			vi.spyOn(service, 'getOptionsViaMethodName').mockResolvedValue([]);
 
 			await ownerAgent
 				.post('/dynamic-node-parameters/options')
@@ -64,7 +64,7 @@ describe('DynamicNodeParametersController', () => {
 			ownerAgent = testServer.authAgentFor(owner);
 
 			const expectedResult = [{ name: 'Test Option', value: 'test' }];
-			jest.spyOn(service, 'getOptionsViaLoadOptions').mockResolvedValue(expectedResult);
+			vi.spyOn(service, 'getOptionsViaLoadOptions').mockResolvedValue(expectedResult);
 
 			const response = await ownerAgent
 				.post('/dynamic-node-parameters/options')
@@ -98,7 +98,7 @@ describe('DynamicNodeParametersController', () => {
 			ownerAgent = testServer.authAgentFor(owner);
 
 			const expectedResult: INodeListSearchResult = { results: [] };
-			jest.spyOn(service, 'getResourceLocatorResults').mockResolvedValue(expectedResult);
+			vi.spyOn(service, 'getResourceLocatorResults').mockResolvedValue(expectedResult);
 
 			const response = await ownerAgent
 				.post('/dynamic-node-parameters/resource-locator-results')
@@ -117,7 +117,7 @@ describe('DynamicNodeParametersController', () => {
 			const owner = await createOwner();
 			ownerAgent = testServer.authAgentFor(owner);
 
-			jest.spyOn(service, 'getResourceLocatorResults').mockResolvedValue({ results: [] });
+			vi.spyOn(service, 'getResourceLocatorResults').mockResolvedValue({ results: [] });
 
 			await ownerAgent
 				.post('/dynamic-node-parameters/resource-locator-results')
@@ -145,7 +145,7 @@ describe('DynamicNodeParametersController', () => {
 			ownerAgent = testServer.authAgentFor(owner);
 
 			const expectedResult: ResourceMapperFields = { fields: [] };
-			jest.spyOn(service, 'getResourceMappingFields').mockResolvedValue(expectedResult);
+			vi.spyOn(service, 'getResourceMappingFields').mockResolvedValue(expectedResult);
 
 			const response = await ownerAgent
 				.post('/dynamic-node-parameters/resource-mapper-fields')
@@ -176,7 +176,7 @@ describe('DynamicNodeParametersController', () => {
 			ownerAgent = testServer.authAgentFor(owner);
 
 			const expectedResult: ResourceMapperFields = { fields: [] };
-			jest.spyOn(service, 'getLocalResourceMappingFields').mockResolvedValue(expectedResult);
+			vi.spyOn(service, 'getLocalResourceMappingFields').mockResolvedValue(expectedResult);
 
 			const response = await ownerAgent
 				.post('/dynamic-node-parameters/local-resource-mapper-fields')
@@ -206,7 +206,7 @@ describe('DynamicNodeParametersController', () => {
 			ownerAgent = testServer.authAgentFor(owner);
 
 			const expectedResult: NodeParameterValueType = { test: true };
-			jest.spyOn(service, 'getActionResult').mockResolvedValue(expectedResult);
+			vi.spyOn(service, 'getActionResult').mockResolvedValue(expectedResult);
 
 			const response = await ownerAgent
 				.post('/dynamic-node-parameters/action-result')
@@ -335,7 +335,7 @@ describe('DynamicNodeParametersController', () => {
 				role: 'credential:owner',
 			});
 
-			jest.spyOn(service, 'getOptionsViaMethodName').mockResolvedValue([]);
+			vi.spyOn(service, 'getOptionsViaMethodName').mockResolvedValue([]);
 
 			const { status } = await memberAgent.post('/dynamic-node-parameters/options').send({
 				...commonRequestParams,
@@ -347,7 +347,7 @@ describe('DynamicNodeParametersController', () => {
 		});
 
 		it('should not return 403 when no credentials are supplied', async () => {
-			jest.spyOn(service, 'getOptionsViaMethodName').mockResolvedValue([]);
+			vi.spyOn(service, 'getOptionsViaMethodName').mockResolvedValue([]);
 
 			const { status } = await memberAgent.post('/dynamic-node-parameters/options').send({
 				...commonRequestParams,

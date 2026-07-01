@@ -2,21 +2,22 @@ import moment from 'moment-timezone';
 import { deepCopy } from 'n8n-workflow';
 
 import * as GenericFunctions from '../shared/GenericFunctions';
+import type { Mock } from 'vitest';
 
-jest.mock('../shared/GenericFunctions', () => ({
-	...jest.requireActual<typeof GenericFunctions>('../shared/GenericFunctions'),
-	notionApiRequest: jest.fn(),
+vi.mock('../shared/GenericFunctions', async () => ({
+	...(await vi.importActual<typeof GenericFunctions>('../shared/GenericFunctions')),
+	notionApiRequest: vi.fn(),
 }));
 
-const mockNotionApiRequest = GenericFunctions.notionApiRequest as jest.Mock;
+const mockNotionApiRequest = GenericFunctions.notionApiRequest as Mock;
 
 function createPollContext(
 	staticData: Record<string, unknown> = {},
 	mode: 'trigger' | 'manual' = 'trigger',
 ) {
 	return {
-		getWorkflowStaticData: jest.fn().mockReturnValue(staticData),
-		getNodeParameter: jest.fn().mockImplementation((name: string) => {
+		getWorkflowStaticData: vi.fn().mockReturnValue(staticData),
+		getNodeParameter: vi.fn().mockImplementation((name: string) => {
 			const params: Record<string, unknown> = {
 				databaseId: 'test-db-id',
 				event: 'pageAddedToDatabase',
@@ -24,10 +25,10 @@ function createPollContext(
 			};
 			return params[name];
 		}),
-		getMode: jest.fn().mockReturnValue(mode),
-		getNode: jest.fn().mockReturnValue({ typeVersion: 1, name: 'Notion Trigger' }),
+		getMode: vi.fn().mockReturnValue(mode),
+		getNode: vi.fn().mockReturnValue({ typeVersion: 1, name: 'Notion Trigger' }),
 		helpers: {
-			returnJsonArray: jest
+			returnJsonArray: vi
 				.fn()
 				.mockImplementation((data: unknown[]) => data.map((d) => ({ json: d }))),
 		},
@@ -36,7 +37,7 @@ function createPollContext(
 
 describe('NotionTrigger', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('staticData serialization', () => {
@@ -107,6 +108,27 @@ describe('NotionTrigger', () => {
 	describe('poll behavior', () => {
 		it('should return null when no new pages are found', async () => {
 			mockNotionApiRequest.mockResolvedValueOnce({ results: [] });
+
+			const ctx = createPollContext();
+
+			const { NotionTrigger } = await import('../NotionTrigger.node');
+			const trigger = new NotionTrigger();
+			const result = await trigger.poll.call(ctx as never);
+
+			expect(result).toBeNull();
+		});
+
+		it('should return null when the probe returns a record but the follow-up fetch returns an empty page', async () => {
+			const page = {
+				id: 'page-1',
+				created_time: '2026-04-30T12:00:00.000Z',
+				last_edited_time: '2026-04-30T12:00:00.000Z',
+				properties: {},
+			};
+
+			mockNotionApiRequest
+				.mockResolvedValueOnce({ results: [page] })
+				.mockResolvedValueOnce({ results: [], has_more: false, next_cursor: null });
 
 			const ctx = createPollContext();
 

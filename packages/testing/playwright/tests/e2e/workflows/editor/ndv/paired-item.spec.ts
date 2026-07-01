@@ -98,27 +98,21 @@ test.describe(
 			await expect(n8n.ndv.getParameterExpressionPreviewValue()).toContainText('1111');
 
 			// Select different input node and check that the hover state is updated
-			await n8n.ndv.inputPanel.getNodeInputOptions().click();
-			await n8n.page.getByRole('option', { name: 'Set1' }).click();
+			await n8n.ndv.selectInputNode('Set1');
 			await expect(hoveringItem).toContainText('1000');
 
 			// Hover on input item and verify output hover state
-			await n8n.ndv.inputPanel.getTable().locator('text=1000').hover();
-			await expect(
-				n8n.ndv.outputPanel.get().locator('[data-test-id="hovering-item"]'),
-			).toContainText('1000');
+			await n8n.ndv.inputPanel.getTableCellByText('1000').hover();
+			await expect(n8n.ndv.outputPanel.getHoveringItems()).toContainText('1000');
 			await expect(n8n.ndv.getParameterExpressionPreviewValue()).toContainText('1000');
 
 			// Switch back to Sort input
-			await n8n.ndv.inputPanel.getNodeInputOptions().click();
-			await n8n.page.getByRole('option', { name: 'Sort' }).click();
+			await n8n.ndv.selectInputNode('Sort');
 			await n8n.ndv.changeOutputRunSelector('1 of 2 (6 items)');
 
 			await expect(hoveringItem).toContainText('1111');
-			await n8n.ndv.inputPanel.getTable().locator('text=1111').hover();
-			await expect(
-				n8n.ndv.outputPanel.get().locator('[data-test-id="hovering-item"]'),
-			).toContainText('1111');
+			await n8n.ndv.inputPanel.getTableCellByText('1111').hover();
+			await expect(n8n.ndv.outputPanel.getHoveringItems()).toContainText('1111');
 			await expect(n8n.ndv.getParameterExpressionPreviewValue()).toContainText('1111');
 		});
 
@@ -195,7 +189,7 @@ test.describe(
 			await n8n.ndv.outputPanel.switchDisplayMode('table');
 
 			// Switch to False Branch
-			await n8n.ndv.outputPanel.get().getByText('False Branch (2 items)').click();
+			await n8n.ndv.outputPanel.getBranchTab('False Branch (2 items)').click();
 			await expect(n8n.ndv.outputPanel.getTableRow(1)).toContainText('8888');
 			await n8n.ndv.outputPanel.getTableRow(1).hover();
 
@@ -219,14 +213,14 @@ test.describe(
 			await n8n.canvas.openNode('Set5');
 
 			// Switch to True Branch for input
-			await n8n.ndv.inputPanel.get().getByText('True Branch').click();
+			await n8n.ndv.inputPanel.getBranchTab('True Branch').click();
 
 			await n8n.ndv.changeOutputRunSelector('(2 items)');
 			await expect(n8n.ndv.outputPanel.getTableRow(1)).toContainText('8888');
 			await n8n.ndv.outputPanel.getTableRow(1).hover();
 
 			// Should not have matching hover state when branches don't match
-			const hoveringItems = n8n.ndv.inputPanel.get().locator('[data-test-id="hovering-item"]');
+			const hoveringItems = n8n.ndv.inputPanel.getHoveringItems();
 			await expect(hoveringItems).toHaveCount(0);
 
 			await expect(n8n.ndv.inputPanel.getTableRow(1)).toContainText('1111');
@@ -235,7 +229,7 @@ test.describe(
 			await expect(outputHoveringItems).toHaveCount(0);
 
 			// Switch to False Branch
-			await n8n.ndv.inputPanel.get().getByText('False Branch').click();
+			await n8n.ndv.inputPanel.getBranchTab('False Branch').click();
 			await expect(n8n.ndv.inputPanel.getTableRow(1)).toContainText('8888');
 			await n8n.ndv.inputPanel.getTableRow(1).hover();
 
@@ -246,9 +240,7 @@ test.describe(
 			await n8n.ndv.changeOutputRunSelector('(2 items)');
 			await expect(n8n.ndv.inputPanel.getTableRow(1)).toContainText('8888');
 			await n8n.ndv.inputPanel.getTableRow(1).hover();
-			await expect(
-				n8n.ndv.outputPanel.get().locator('[data-test-id="hovering-item"]'),
-			).toContainText('8888');
+			await expect(n8n.ndv.outputPanel.getHoveringItems()).toContainText('8888');
 		});
 
 		test('should auto-fix pairedItem when multiple inputs create single output', async ({

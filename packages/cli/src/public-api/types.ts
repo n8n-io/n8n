@@ -35,6 +35,7 @@ export declare namespace ExecutionRequest {
 			cursor?: string;
 			offset?: number;
 			includeData?: boolean;
+			ignoreDataSizeLimit?: boolean;
 			redactExecutionData?: boolean;
 			workflowId?: string;
 			lastId?: string;
@@ -46,7 +47,7 @@ export declare namespace ExecutionRequest {
 		{ id: string },
 		{},
 		{},
-		{ includeData?: boolean; redactExecutionData?: boolean }
+		{ includeData?: boolean; ignoreDataSizeLimit?: boolean; redactExecutionData?: boolean }
 	>;
 	type Delete = Get;
 	type Retry = AuthenticatedRequest<{ id: string }, {}, { loadWorkflow?: boolean }, {}>;
@@ -120,6 +121,15 @@ export declare namespace WorkflowRequest {
 	type UpdateTags = AuthenticatedRequest<{ id: string }, {}, TagEntity[]>;
 	type Transfer = AuthenticatedRequest<{ id: string }, {}, { destinationProjectId: string }>;
 	type GetVersion = AuthenticatedRequest<{ id: string; versionId: string }, {}, {}, {}>;
+}
+
+export declare namespace PackageRequest {
+	type Import = AuthenticatedRequest<
+		{},
+		{},
+		{ projectId?: string; folderId?: string },
+		Record<string, never>
+	>;
 }
 
 export declare namespace UserRequest {
@@ -229,12 +239,10 @@ export type OffsetPagination = PaginationBase & { offset: number; numberOfTotalR
 export type CursorPagination = PaginationBase & { lastId: string; numberOfNextRecords: number };
 export interface IRequired {
 	required?: string[];
-	not?: { required?: string[] };
 }
 export interface IDependency {
-	if?: { properties: {} };
+	if?: { properties: {}; required?: string[] };
 	then?: { allOf: IRequired[] };
-	else?: { allOf: IRequired[] };
 }
 
 export interface IJsonSchema {

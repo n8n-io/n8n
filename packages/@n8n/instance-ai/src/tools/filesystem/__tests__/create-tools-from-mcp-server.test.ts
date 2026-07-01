@@ -1,8 +1,12 @@
 import { GATEWAY_CONFIRMATION_REQUIRED_PREFIX } from '@n8n/api-types';
 import type { McpTool, McpToolCallResult } from '@n8n/api-types';
+import type { Mock, Mocked } from 'vitest';
 
+import { executeTool } from '../../../__tests__/tool-test-utils';
 import type { LocalMcpServer } from '../../../types';
 import { createToolsFromLocalMcpServer } from '../create-tools-from-mcp-server';
+
+const mockLogger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } as never;
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -64,6 +68,26 @@ const SUCCESS_RESULT: McpToolCallResult = {
 	content: [{ type: 'text', text: 'file written' }],
 };
 
+const SCREENSHOT_RESULT: McpToolCallResult = {
+	content: [
+		{ type: 'text', text: 'current browser screenshot' },
+		{ type: 'image', data: 'base64-screenshot', mimeType: 'image/png' },
+	],
+};
+
+const PDF_RESULT: McpToolCallResult = {
+	content: [
+		{
+			type: 'resource',
+			resource: {
+				uri: 'file:///doc.pdf',
+				mimeType: 'application/pdf',
+				blob: 'base64-pdf',
+			},
+		},
+	],
+};
+
 const GENERIC_ERROR_RESULT: McpToolCallResult = {
 	content: [{ type: 'text', text: 'Permission denied' }],
 	isError: true,
@@ -73,31 +97,29 @@ const GENERIC_ERROR_RESULT: McpToolCallResult = {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function makeMockServer(tools: McpTool[] = [SAMPLE_TOOL]): jest.Mocked<LocalMcpServer> {
+function makeMockServer(tools: McpTool[] = [SAMPLE_TOOL]): Mocked<LocalMcpServer> {
 	return {
-		getAvailableTools: jest.fn().mockReturnValue(tools),
-		getToolsByCategory: jest.fn().mockReturnValue([]),
-		callTool: jest.fn(),
+		getAvailableTools: vi.fn().mockReturnValue(tools),
+		getToolsByCategory: vi.fn().mockReturnValue([]),
+		callTool: vi.fn(),
 	};
 }
 
 /** Build the tool and return its execute function. */
 function getExecute(server: LocalMcpServer, toolName = 'write_file') {
-	const tools = createToolsFromLocalMcpServer(server);
-	const tool = tools[toolName];
-	if (!tool?.execute) throw new Error(`Tool '${toolName}' has no execute function`);
-	return tool.execute.bind(tool) as (
-		args: Record<string, unknown>,
-		ctx: unknown,
-	) => Promise<McpToolCallResult>;
+	const tools = createToolsFromLocalMcpServer(server, mockLogger);
+	const tool = tools.get(toolName);
+	if (!tool) throw new Error(`Tool '${toolName}' was not created`);
+	return async (args: Record<string, unknown>, ctx: unknown) =>
+		await executeTool<McpToolCallResult>(tool, args, ctx);
 }
 
 /** Build a ctx object with suspend/resumeData for use in execute calls. */
 function makeCtx(opts: {
-	suspend?: jest.Mock;
+	suspend?: Mock;
 	resumeData?: Record<string, unknown> | null;
 }): unknown {
-	return { agent: { suspend: opts.suspend ?? jest.fn(), resumeData: opts.resumeData ?? null } };
+	return { suspend: opts.suspend ?? vi.fn(), resumeData: opts.resumeData ?? null };
 }
 
 // ---------------------------------------------------------------------------
@@ -108,9 +130,9 @@ describe('createToolsFromLocalMcpServer', () => {
 	describe('tool creation', () => {
 		it('creates a tool for each advertised tool', () => {
 			const server = makeMockServer([SAMPLE_TOOL, { ...SAMPLE_TOOL, name: 'read_file' }]);
-			const tools = createToolsFromLocalMcpServer(server);
-			expect(Object.keys(tools)).toContain('write_file');
-			expect(Object.keys(tools)).toContain('read_file');
+			const tools = createToolsFromLocalMcpServer(server, mockLogger);
+			expect(tools.has('write_file')).toBe(true);
+			expect(tools.has('read_file')).toBe(true);
 		});
 
 		it('falls back to record schema when inputSchema conversion fails', () => {
@@ -122,12 +144,12 @@ describe('createToolsFromLocalMcpServer', () => {
 				},
 			]);
 			// Should not throw — the tool must be created even with a bad schema
-			expect(() => createToolsFromLocalMcpServer(server)).not.toThrow();
-			expect(createToolsFromLocalMcpServer(server)['bad_tool']).toBeDefined();
+			expect(() => createToolsFromLocalMcpServer(server, mockLogger)).not.toThrow();
+			expect(createToolsFromLocalMcpServer(server, mockLogger).get('bad_tool')).toBeDefined();
 		});
 
 		it('skips tools with invalid names', () => {
-			const logger = { warn: jest.fn() };
+			const logger = { warn: vi.fn() };
 			const server = makeMockServer([
 				{ ...SAMPLE_TOOL, name: 'bad tool' },
 				{ ...SAMPLE_TOOL, name: 'read_file' },
@@ -135,8 +157,8 @@ describe('createToolsFromLocalMcpServer', () => {
 
 			const tools = createToolsFromLocalMcpServer(server, logger as never);
 
-			expect(tools['bad tool']).toBeUndefined();
-			expect(tools.read_file).toBeDefined();
+			expect(tools.get('bad tool')).toBeUndefined();
+			expect(tools.get('read_file')).toBeDefined();
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Skipped local gateway MCP tool with unsafe name',
 				expect.objectContaining({
@@ -147,7 +169,7 @@ describe('createToolsFromLocalMcpServer', () => {
 		});
 
 		it('skips tools with unsafe object key names', () => {
-			const logger = { warn: jest.fn() };
+			const logger = { warn: vi.fn() };
 			const server = makeMockServer([
 				{ ...SAMPLE_TOOL, name: 'constructor' },
 				{ ...SAMPLE_TOOL, name: 'read_file' },
@@ -155,8 +177,8 @@ describe('createToolsFromLocalMcpServer', () => {
 
 			const tools = createToolsFromLocalMcpServer(server, logger as never);
 
-			expect(Object.prototype.hasOwnProperty.call(tools, 'constructor')).toBe(false);
-			expect(tools.read_file).toBeDefined();
+			expect(tools.has('constructor')).toBe(false);
+			expect(tools.get('read_file')).toBeDefined();
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Skipped local gateway MCP tool with unsafe name',
 				expect.objectContaining({
@@ -167,7 +189,7 @@ describe('createToolsFromLocalMcpServer', () => {
 		});
 
 		it('skips normalized name collisions between local gateway tools', () => {
-			const logger = { warn: jest.fn() };
+			const logger = { warn: vi.fn() };
 			const server = makeMockServer([
 				{ ...SAMPLE_TOOL, name: 'custom_tool' },
 				{ ...SAMPLE_TOOL, name: 'custom-tool' },
@@ -175,8 +197,8 @@ describe('createToolsFromLocalMcpServer', () => {
 
 			const tools = createToolsFromLocalMcpServer(server, logger as never);
 
-			expect(tools.custom_tool).toBeDefined();
-			expect(tools['custom-tool']).toBeUndefined();
+			expect(tools.get('custom_tool')).toBeDefined();
+			expect(tools.get('custom-tool')).toBeUndefined();
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Skipped local gateway MCP tool with unsafe name',
 				expect.objectContaining({
@@ -187,7 +209,7 @@ describe('createToolsFromLocalMcpServer', () => {
 		});
 
 		it('skips compatibility-normalized non-ASCII tool names', () => {
-			const logger = { warn: jest.fn() };
+			const logger = { warn: vi.fn() };
 			const server = makeMockServer([
 				{ ...SAMPLE_TOOL, name: 'ＴＯＯＬ' },
 				{ ...SAMPLE_TOOL, name: 'read_file' },
@@ -195,8 +217,8 @@ describe('createToolsFromLocalMcpServer', () => {
 
 			const tools = createToolsFromLocalMcpServer(server, logger as never);
 
-			expect(tools['ＴＯＯＬ']).toBeUndefined();
-			expect(tools.read_file).toBeDefined();
+			expect(tools.get('ＴＯＯＬ')).toBeUndefined();
+			expect(tools.get('read_file')).toBeDefined();
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Skipped local gateway MCP tool with unsafe name',
 				expect.objectContaining({
@@ -207,7 +229,7 @@ describe('createToolsFromLocalMcpServer', () => {
 		});
 
 		it('skips oversized raw schemas before tool construction', () => {
-			const logger = { warn: jest.fn() };
+			const logger = { warn: vi.fn() };
 			const properties = Object.fromEntries(
 				Array.from({ length: 251 }, (_, index) => [`field_${index}`, { type: 'string' }]),
 			);
@@ -222,8 +244,8 @@ describe('createToolsFromLocalMcpServer', () => {
 
 			const tools = createToolsFromLocalMcpServer(server, logger as never);
 
-			expect(tools.huge_tool).toBeUndefined();
-			expect(tools.read_file).toBeDefined();
+			expect(tools.get('huge_tool')).toBeUndefined();
+			expect(tools.get('read_file')).toBeDefined();
 			expect(logger.warn).toHaveBeenCalledWith(
 				'Skipped local gateway MCP tool with unsupported schema',
 				expect.objectContaining({
@@ -232,6 +254,77 @@ describe('createToolsFromLocalMcpServer', () => {
 					limitType: 'objectProperties',
 				}),
 			);
+		});
+	});
+
+	describe('media output', () => {
+		it('returns native file parts from toMessage for gateway image results', () => {
+			const server = makeMockServer();
+			const tool = createToolsFromLocalMcpServer(server, mockLogger).get('write_file');
+
+			const message = tool?.toMessage?.(SCREENSHOT_RESULT);
+
+			expect(message).toEqual({
+				role: 'assistant',
+				content: [
+					{ type: 'text', text: 'current browser screenshot' },
+					{ type: 'file', data: 'base64-screenshot', mediaType: 'image/png' },
+				],
+			});
+		});
+
+		it('does not create an extra message for text-only results', () => {
+			const server = makeMockServer();
+			const tool = createToolsFromLocalMcpServer(server, mockLogger).get('write_file');
+
+			expect(tool?.toMessage?.(SUCCESS_RESULT)).toBeUndefined();
+		});
+
+		it('returns AI SDK content output for gateway image results', () => {
+			const server = makeMockServer();
+			const tool = createToolsFromLocalMcpServer(server, mockLogger).get('write_file');
+
+			expect(tool?.toModelOutput?.(SCREENSHOT_RESULT)).toEqual({
+				type: 'content',
+				value: [
+					{ type: 'text', text: 'current browser screenshot' },
+					{ type: 'image-data', data: 'base64-screenshot', mediaType: 'image/png' },
+				],
+			});
+		});
+
+		it('returns a native file part from toMessage for gateway resource results', () => {
+			const server = makeMockServer();
+			const tool = createToolsFromLocalMcpServer(server, mockLogger).get('write_file');
+
+			expect(tool?.toMessage?.(PDF_RESULT)).toEqual({
+				role: 'assistant',
+				content: [{ type: 'file', data: 'base64-pdf', mediaType: 'application/pdf' }],
+			});
+		});
+
+		it('falls back to application/octet-stream when resource has no mimeType', () => {
+			const server = makeMockServer();
+			const tool = createToolsFromLocalMcpServer(server, mockLogger).get('write_file');
+
+			const result: McpToolCallResult = {
+				content: [{ type: 'resource', resource: { uri: 'file:///x', blob: 'base64-bytes' } }],
+			};
+
+			expect(tool?.toMessage?.(result)).toEqual({
+				role: 'assistant',
+				content: [{ type: 'file', data: 'base64-bytes', mediaType: 'application/octet-stream' }],
+			});
+		});
+
+		it('returns AI SDK content output for gateway resource results', () => {
+			const server = makeMockServer();
+			const tool = createToolsFromLocalMcpServer(server, mockLogger).get('write_file');
+
+			expect(tool?.toModelOutput?.(PDF_RESULT)).toEqual({
+				type: 'content',
+				value: [{ type: 'file-data', data: 'base64-pdf', mediaType: 'application/pdf' }],
+			});
 		});
 	});
 
@@ -266,7 +359,7 @@ describe('createToolsFromLocalMcpServer', () => {
 		it('passes through a generic error result unchanged', async () => {
 			const server = makeMockServer();
 			server.callTool.mockResolvedValue(GENERIC_ERROR_RESULT);
-			const suspend = jest.fn();
+			const suspend = vi.fn();
 			const execute = getExecute(server);
 
 			const result = await execute({}, makeCtx({ suspend }));
@@ -278,13 +371,13 @@ describe('createToolsFromLocalMcpServer', () => {
 		it('calls suspend() for a plain-text GATEWAY_CONFIRMATION_REQUIRED error', async () => {
 			const server = makeMockServer();
 			server.callTool.mockResolvedValue(PLAIN_CONFIRMATION_ERROR);
-			const suspend = jest.fn().mockResolvedValue(undefined);
+			const suspend = vi.fn().mockResolvedValue(undefined);
 			const execute = getExecute(server);
 
 			await execute({ filePath: 'test.ts' }, makeCtx({ suspend }));
 
 			expect(suspend).toHaveBeenCalledTimes(1);
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+
 			expect(suspend.mock.calls[0][0]).toMatchObject({
 				inputType: 'resource-decision',
 				severity: 'warning',
@@ -297,7 +390,7 @@ describe('createToolsFromLocalMcpServer', () => {
 		it('filters unsupported confirmation options after parsing the daemon payload', async () => {
 			const server = makeMockServer();
 			server.callTool.mockResolvedValue(PLAIN_CONFIRMATION_ERROR_WITH_UNSUPPORTED_OPTION);
-			const suspend = jest.fn().mockResolvedValue(undefined);
+			const suspend = vi.fn().mockResolvedValue(undefined);
 			const execute = getExecute(server);
 
 			await execute({ filePath: 'test.ts' }, makeCtx({ suspend }));
@@ -313,25 +406,25 @@ describe('createToolsFromLocalMcpServer', () => {
 		it('calls suspend() for a JSON-envelope GATEWAY_CONFIRMATION_REQUIRED error', async () => {
 			const server = makeMockServer();
 			server.callTool.mockResolvedValue(JSON_ENVELOPE_CONFIRMATION_ERROR);
-			const suspend = jest.fn().mockResolvedValue(undefined);
+			const suspend = vi.fn().mockResolvedValue(undefined);
 			const execute = getExecute(server);
 
 			await execute({}, makeCtx({ suspend }));
 
 			expect(suspend).toHaveBeenCalledTimes(1);
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+
 			expect(suspend.mock.calls[0][0]).toMatchObject({
 				inputType: 'resource-decision',
 				resourceDecision: CONFIRMATION_PAYLOAD,
 			});
 		});
 
-		it('does NOT call suspend() when ctx.agent is absent', async () => {
+		it('does NOT call suspend() when suspend is absent from the tool context', async () => {
 			const server = makeMockServer();
 			server.callTool.mockResolvedValue(PLAIN_CONFIRMATION_ERROR);
 			const execute = getExecute(server);
 
-			// ctx without agent — suspend is unavailable
+			// Context without suspend — confirmation cannot interrupt.
 			const result = await execute({}, {});
 
 			// Returns the raw error result unchanged

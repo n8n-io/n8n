@@ -1,21 +1,17 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import type { Span } from '@opentelemetry/api';
+import type { Exception, Span } from '@opentelemetry/api';
 import { context, propagation, SpanStatusCode, trace } from '@opentelemetry/api';
-import {
-	ATTR_EXCEPTION_MESSAGE,
-	ATTR_EXCEPTION_TYPE,
-	ATTR_EXCEPTION_STACKTRACE,
-} from '@opentelemetry/semantic-conventions';
 import type { ExecutionStatus } from 'n8n-workflow';
 
-import type {
-	StartWorkflowParams,
-	EndWorkflowParams,
-	StartNodeParams,
-	EndNodeParams,
+import {
+	type StartWorkflowParams,
+	type EndWorkflowParams,
+	type StartNodeParams,
+	type EndNodeParams,
+	isEndNodeError,
 } from './execution-level-tracer.types';
-import { OtelConfig } from './otel.config';
+import { OtelSettingsService } from './otel-settings.service';
 import { ATTR } from './otel.constants';
 import type { TracingContext } from './tracing-context';
 
@@ -30,10 +26,19 @@ type TrackedSpan = { span: Span };
 export class ExecutionLevelTracer {
 	private readonly activeWorkflowSpans = new Map<string, TrackedSpan>();
 	private readonly activeNodeSpansByExecutionId = new Map<string, Map<string, TrackedSpan>>();
-	private readonly tracer = trace.getTracer(TRACER_NAME);
+	private tracer = trace.getTracer(TRACER_NAME);
+
+	/**
+	 * Called by OtelService after a SDK restart so this instance picks up the
+	 * new NodeTracerProvider. Without this, the cached NodeTracer stays bound
+	 * to the old (shutdown) provider and all spans are silently dropped.
+	 */
+	refreshTracer(): void {
+		this.tracer = trace.getTracer(TRACER_NAME);
+	}
 
 	constructor(
-		private readonly config: OtelConfig,
+		private readonly otelSettingsService: OtelSettingsService,
 		private readonly logger: Logger,
 	) {}
 
@@ -41,6 +46,7 @@ export class ExecutionLevelTracer {
 		try {
 			const parentCtx = this.parseTraceParentHeaders(params.tracingContext);
 			const links = this.buildContinuationLinks(params.linkTo);
+
 			const span = this.tracer.startSpan(
 				'workflow.execute',
 				{
@@ -50,13 +56,21 @@ export class ExecutionLevelTracer {
 						[ATTR.WORKFLOW_VERSION_ID]: params.workflow.versionId ?? '',
 						[ATTR.WORKFLOW_NODE_COUNT]: params.workflow.nodeCount,
 						[ATTR.EXECUTION_ID]: params.executionId,
+						...(params.project?.id && { [ATTR.PROJECT_ID]: params.project.id }),
+						...buildCustomAttributes(
+							ATTR.WORKFLOW_CUSTOM_PREFIX,
+							params.workflow?.customAttributes,
+						),
+						...buildCustomAttributes(ATTR.PROJECT_CUSTOM_PREFIX, params.project?.customAttributes),
 					},
 					links,
 				},
 				parentCtx,
 			);
 
-			this.activeWorkflowSpans.set(params.executionId, { span });
+			this.activeWorkflowSpans.set(params.executionId, {
+				span,
+			});
 			return toTracingParentContext(span);
 		} catch (error) {
 			this.logger.warn('Failed to start workflow span', {
@@ -83,6 +97,10 @@ export class ExecutionLevelTracer {
 			span.setStatus({ code: isError(params.status) ? SpanStatusCode.ERROR : SpanStatusCode.OK });
 			if (isError(params.status) && params.error) {
 				span.setAttribute(ATTR.EXECUTION_ERROR_TYPE, getErrorType(params.error));
+				const recordableException = toRecordableException(params.error);
+				if (recordableException) {
+					span.recordException(recordableException);
+				}
 			}
 
 			//	We don't expect any to be open but we should close any children still running
@@ -101,7 +119,7 @@ export class ExecutionLevelTracer {
 
 	startNode(params: StartNodeParams): void {
 		try {
-			//	We should always have the node running in a workflow so parentCtx shuold never be null
+			//	We should always have the node running in a workflow so parentCtx should never be null
 			const parentCtx = this.findWorkflowSpanContext(params.executionId);
 
 			if (!parentCtx) {
@@ -152,15 +170,15 @@ export class ExecutionLevelTracer {
 
 			const { span: activeNodeSpan } = nodeStart;
 			activeNodeSpan.setAttributes(buildNodeEndAttributes(params));
-			activeNodeSpan.setStatus({ code: SpanStatusCode.OK });
 
 			if (params.error) {
 				activeNodeSpan.setStatus({ code: SpanStatusCode.ERROR });
-				activeNodeSpan.addEvent('exception', {
-					[ATTR_EXCEPTION_MESSAGE]: params.error.message,
-					[ATTR_EXCEPTION_TYPE]: params.error.constructor.name,
-					[ATTR_EXCEPTION_STACKTRACE]: params.error.stack,
-				});
+				const recordableException = toRecordableException(params.error);
+				if (recordableException) {
+					activeNodeSpan.recordException(recordableException);
+				}
+			} else {
+				activeNodeSpan.setStatus({ code: SpanStatusCode.OK });
 			}
 
 			activeNodeSpan.end();
@@ -181,7 +199,7 @@ export class ExecutionLevelTracer {
 		headers: Record<string, string>,
 	): void {
 		try {
-			if (!this.config.injectOutbound) return;
+			if (!this.otelSettingsService.getSettings().injectOutbound) return;
 
 			const span = this.findMostSpecificSpan(executionId, nodeName);
 			if (!span) return;
@@ -240,18 +258,24 @@ export class ExecutionLevelTracer {
 	}
 }
 
+function buildCustomAttributes(
+	prefix: string,
+	attrs: Record<string, string> | undefined,
+): Record<string, string> {
+	if (!attrs) return {};
+	const result: Record<string, string> = {};
+	for (const [k, v] of Object.entries(attrs)) {
+		result[`${prefix}${k}`] = v;
+	}
+	return result;
+}
+
 function buildNodeEndAttributes(params: EndNodeParams): Record<string, string | number> {
 	const attrs: Record<string, string | number> = {
 		[ATTR.NODE_ITEMS_INPUT]: params.inputItemCount,
 		[ATTR.NODE_ITEMS_OUTPUT]: params.outputItemCount,
+		...buildCustomAttributes(ATTR.NODE_CUSTOM_PREFIX, params.customAttributes),
 	};
-
-	if (params.customAttributes) {
-		for (const [key, value] of Object.entries(params.customAttributes)) {
-			attrs[`n8n.node.custom.${key}`] = value;
-		}
-	}
-
 	return attrs;
 }
 
@@ -275,8 +299,22 @@ function getErrorType(error: unknown): string {
 	const name = record.name;
 	if (typeof name === 'string' && name.trim() !== '') return name;
 
-	const ctor = record.constructor;
-	if (typeof ctor === 'function' && ctor.name && ctor.name !== 'Object') return ctor.name;
+	if (isEndNodeError(error)) {
+		return error.constructor.name;
+	}
 
 	return 'UnknownError';
+}
+
+function toRecordableException(error: unknown): Exception | undefined {
+	if (error instanceof Error || typeof error === 'string') return error;
+	if (isEndNodeError(error)) {
+		return {
+			message: error.message,
+			name: error.constructor.name,
+			stack: error.stack,
+		};
+	}
+
+	return undefined;
 }

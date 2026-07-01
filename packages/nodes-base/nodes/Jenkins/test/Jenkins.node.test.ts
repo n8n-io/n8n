@@ -1,23 +1,25 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type { ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
 
 import * as GenericFunctions from '../GenericFunctions';
 import { Jenkins } from '../Jenkins.node';
+import type { Mocked, MockInstance } from 'vitest';
 
 describe('Jenkins node', () => {
 	let node: Jenkins;
-	let loadOptionsFunctions: jest.Mocked<ILoadOptionsFunctions>;
-	const jenkinsApiRequestSpy = jest.spyOn(GenericFunctions, 'jenkinsApiRequest');
+	let loadOptionsFunctions: Mocked<ILoadOptionsFunctions>;
+	let jenkinsApiRequestSpy: MockInstance;
 
 	beforeEach(() => {
 		node = new Jenkins();
 		loadOptionsFunctions = mockDeep<ILoadOptionsFunctions>();
 		loadOptionsFunctions.getCurrentNodeParameter.mockReturnValue('demo-job');
-		jest.clearAllMocks();
+		vi.clearAllMocks();
+		jenkinsApiRequestSpy = vi.spyOn(GenericFunctions, 'jenkinsApiRequest');
 	});
 
 	afterEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('loadOptions.getJobParameters', () => {

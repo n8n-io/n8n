@@ -11,6 +11,7 @@ import {
 import { WorkflowRepository, WorkflowDependencyRepository, WorkflowDependencies } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
+
 import { createWorkflowHistoryItem } from '@test-integration/db/workflow-history';
 
 import { createTestRun } from '../../shared/db/evaluation';
@@ -148,6 +149,27 @@ describe('WorkflowRepository', () => {
 			expect(updatedWorkflow?.activeVersionId).toBe(workflow.versionId);
 			expect(updatedWorkflow?.active).toBe(true);
 		});
+
+		it('should throw when workflow does not exist', async () => {
+			const workflowRepository = Container.get(WorkflowRepository);
+
+			await expect(workflowRepository.publishVersion('non-existent-id')).rejects.toThrow(
+				'Workflow "non-existent-id" not found.',
+			);
+		});
+
+		it('should throw when workflow is archived', async () => {
+			const workflowRepository = Container.get(WorkflowRepository);
+			const workflow = await createWorkflowWithTriggerAndHistory({ isArchived: true });
+
+			await expect(workflowRepository.publishVersion(workflow.id)).rejects.toThrow(
+				'Cannot publish archived Workflow',
+			);
+
+			const updatedWorkflow = await getWorkflowById(workflow.id);
+			expect(updatedWorkflow?.activeVersionId).toBeNull();
+			expect(updatedWorkflow?.active).toBe(false);
+		});
 	});
 
 	describe('unpublishAll', () => {
@@ -227,6 +249,19 @@ describe('WorkflowRepository', () => {
 		});
 	});
 
+	describe('getAllActiveIds', () => {
+		it('should exclude archived workflows', async () => {
+			const workflowRepository = Container.get(WorkflowRepository);
+			const activeNonArchived = await createActiveWorkflow();
+			const activeArchived = await createActiveWorkflow();
+			await workflowRepository.update(activeArchived.id, { isArchived: true });
+
+			const activeIds = await workflowRepository.getAllActiveIds();
+
+			expect(activeIds).toEqual([activeNonArchived.id]);
+		});
+	});
+
 	describe('getWorkflowsWithEvaluationCount', () => {
 		it('should return 0 when no workflows have test runs', async () => {
 			//
@@ -296,6 +331,94 @@ describe('WorkflowRepository', () => {
 		});
 	});
 
+	describe('versionCounter trigger', () => {
+		it('should bump versionCounter when nodes change', async () => {
+			const workflowRepository = Container.get(WorkflowRepository);
+			const workflow = await createWorkflow();
+			const initialVersion = workflow.versionCounter;
+
+			await workflowRepository.update(workflow.id, {
+				nodes: [
+					{
+						id: 'new-node',
+						name: 'New Node',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+			});
+
+			const updated = await getWorkflowById(workflow.id);
+			expect(updated?.versionCounter).toBe(initialVersion + 1);
+		});
+
+		it('should bump versionCounter when settings change', async () => {
+			const workflowRepository = Container.get(WorkflowRepository);
+			const workflow = await createWorkflow();
+			const initialVersion = workflow.versionCounter;
+
+			await workflowRepository.update(workflow.id, {
+				settings: { errorWorkflow: 'some-other-workflow' },
+			});
+
+			const updated = await getWorkflowById(workflow.id);
+			expect(updated?.versionCounter).toBe(initialVersion + 1);
+		});
+
+		it('should not bump versionCounter when triggerCount changes', async () => {
+			const workflowRepository = Container.get(WorkflowRepository);
+			const workflow = await createWorkflow();
+			const initialVersion = workflow.versionCounter;
+
+			await workflowRepository.updateWorkflowTriggerCount(workflow.id, 42);
+
+			const updated = await getWorkflowById(workflow.id);
+			expect(updated?.versionCounter).toBe(initialVersion);
+			expect(updated?.triggerCount).toBe(42);
+		});
+
+		it('should not bump versionCounter when active state changes', async () => {
+			const workflowRepository = Container.get(WorkflowRepository);
+			const workflow = await createWorkflowWithHistory();
+			const initialVersion = workflow.versionCounter;
+
+			await workflowRepository.update(workflow.id, {
+				active: true,
+				activeVersionId: workflow.versionId,
+			});
+
+			const updated = await getWorkflowById(workflow.id);
+			expect(updated?.versionCounter).toBe(initialVersion);
+		});
+
+		it('should not bump versionCounter when name or description changes', async () => {
+			const workflowRepository = Container.get(WorkflowRepository);
+			const workflow = await createWorkflow();
+			const initialVersion = workflow.versionCounter;
+
+			await workflowRepository.update(workflow.id, {
+				name: 'Renamed Workflow',
+				description: 'Something new',
+			});
+
+			const updated = await getWorkflowById(workflow.id);
+			expect(updated?.versionCounter).toBe(initialVersion);
+		});
+
+		it('should not bump versionCounter when isArchived changes', async () => {
+			const workflowRepository = Container.get(WorkflowRepository);
+			const workflow = await createWorkflow();
+			const initialVersion = workflow.versionCounter;
+
+			await workflowRepository.update(workflow.id, { isArchived: true });
+
+			const updated = await getWorkflowById(workflow.id);
+			expect(updated?.versionCounter).toBe(initialVersion);
+		});
+	});
+
 	describe('isActive()', () => {
 		it('should return `true` for active workflow in storage', async () => {
 			const workflowRepository = Container.get(WorkflowRepository);
@@ -323,11 +446,11 @@ describe('WorkflowRepository', () => {
 			const workflowRepository = Container.get(WorkflowRepository);
 			const workflowDependencyRepository = Container.get(WorkflowDependencyRepository);
 
-			// Workflow 1: No dependencies
-			const workflow1 = await createWorkflow({ versionCounter: 5 });
+			// Workflow 1: No dependencies (empty nodes so no auto-added dependencies)
+			const workflow1 = await createWorkflow({ versionCounter: 5, nodes: [] });
 
 			// Workflow 2: Has dependencies but with outdated version
-			const workflow2 = await createWorkflow({ versionCounter: 10 });
+			const workflow2 = await createWorkflow({ versionCounter: 10, nodes: [] });
 			const dependencies2 = new WorkflowDependencies(workflow2.id, 7);
 			dependencies2.add({
 				dependencyType: 'credentialId',
@@ -337,7 +460,7 @@ describe('WorkflowRepository', () => {
 			await workflowDependencyRepository.updateDependenciesForWorkflow(workflow2.id, dependencies2);
 
 			// Workflow 3: Has up-to-date dependencies
-			const workflow3 = await createWorkflow({ versionCounter: 15 });
+			const workflow3 = await createWorkflow({ versionCounter: 15, nodes: [] });
 			const dependencies3 = new WorkflowDependencies(workflow3.id, 15);
 			dependencies3.add({
 				dependencyType: 'nodeType',
@@ -367,9 +490,9 @@ describe('WorkflowRepository', () => {
 			//
 			const workflowRepository = Container.get(WorkflowRepository);
 
-			// Create 5 workflows with no dependencies
+			// Create 5 workflows with no dependencies (empty nodes so no auto-added dependencies)
 			for (let i = 0; i < 5; i++) {
-				await createWorkflow({ versionCounter: 1 });
+				await createWorkflow({ versionCounter: 1, nodes: [] });
 			}
 
 			//
@@ -383,6 +506,192 @@ describe('WorkflowRepository', () => {
 			// ASSERT
 			//
 			expect(workflowsNeedingIndexing).toHaveLength(batchSize);
+		});
+	});
+
+	describe('findWorkflowsWithNodeType', () => {
+		it('should return workflows that have the specified node type in workflow_dependency', async () => {
+			//
+			// ARRANGE
+			//
+			const workflowRepository = Container.get(WorkflowRepository);
+
+			// Workflow 1: Has chat trigger node type
+			const workflow1 = await createWorkflow({
+				nodes: [
+					{
+						id: 'node1',
+						type: 'n8n-nodes-base.chatTrigger',
+						name: 'Chat',
+						parameters: {},
+						typeVersion: 1,
+						position: [0, 0],
+					},
+				],
+			});
+
+			// Workflow 2: Has HTTP request node type (different)
+			const workflow2 = await createWorkflow({
+				nodes: [
+					{
+						id: 'node2',
+						type: 'n8n-nodes-base.httpRequest',
+						name: 'HTTP',
+						parameters: {},
+						typeVersion: 1,
+						position: [0, 0],
+					},
+				],
+			});
+
+			// Workflow 3: Also has chat trigger node type
+			const workflow3 = await createWorkflow({
+				nodes: [
+					{
+						id: 'node3',
+						type: 'n8n-nodes-base.chatTrigger',
+						name: 'Chat 2',
+						parameters: {},
+						typeVersion: 1,
+						position: [0, 0],
+					},
+				],
+			});
+
+			//
+			// ACT
+			//
+			const workflows = await workflowRepository.findWorkflowsWithNodeType([
+				'n8n-nodes-base.chatTrigger',
+			]);
+
+			//
+			// ASSERT
+			//
+			expect(workflows).toHaveLength(2);
+			const workflowIds = workflows.map((w) => w.id);
+			expect(workflowIds).toContain(workflow1.id);
+			expect(workflowIds).toContain(workflow3.id);
+			expect(workflowIds).not.toContain(workflow2.id);
+		});
+
+		it('should return workflows matching any of the specified node types', async () => {
+			//
+			// ARRANGE
+			//
+			const workflowRepository = Container.get(WorkflowRepository);
+
+			// Workflow 1: Has chat trigger
+			const workflow1 = await createWorkflow({
+				nodes: [
+					{
+						id: 'node1',
+						type: 'n8n-nodes-base.chatTrigger',
+						name: 'Chat',
+						parameters: {},
+						typeVersion: 1,
+						position: [0, 0],
+					},
+				],
+			});
+
+			// Workflow 2: Has webhook trigger
+			const workflow2 = await createWorkflow({
+				nodes: [
+					{
+						id: 'node2',
+						type: 'n8n-nodes-base.webhook',
+						name: 'Webhook',
+						parameters: {},
+						typeVersion: 1,
+						position: [0, 0],
+					},
+				],
+			});
+
+			// Workflow 3: Has neither (just set node)
+			const workflow3 = await createWorkflow({
+				nodes: [
+					{
+						id: 'node3',
+						type: 'n8n-nodes-base.set',
+						name: 'Set',
+						parameters: {},
+						typeVersion: 1,
+						position: [0, 0],
+					},
+				],
+			});
+
+			//
+			// ACT
+			//
+			const workflows = await workflowRepository.findWorkflowsWithNodeType([
+				'n8n-nodes-base.chatTrigger',
+				'n8n-nodes-base.webhook',
+			]);
+
+			//
+			// ASSERT
+			//
+			expect(workflows).toHaveLength(2);
+			const workflowIds = workflows.map((w) => w.id);
+			expect(workflowIds).toContain(workflow1.id);
+			expect(workflowIds).toContain(workflow2.id);
+			expect(workflowIds).not.toContain(workflow3.id);
+		});
+
+		it('should return empty array when no workflows match', async () => {
+			//
+			// ARRANGE
+			//
+			const workflowRepository = Container.get(WorkflowRepository);
+
+			await createWorkflow({
+				nodes: [
+					{
+						id: 'node1',
+						type: 'n8n-nodes-base.httpRequest',
+						name: 'HTTP',
+						parameters: {},
+						typeVersion: 1,
+						position: [0, 0],
+					},
+				],
+			});
+
+			//
+			// ACT
+			//
+			const workflows = await workflowRepository.findWorkflowsWithNodeType([
+				'n8n-nodes-base.chatTrigger',
+			]);
+
+			//
+			// ASSERT
+			//
+			expect(workflows).toHaveLength(0);
+		});
+
+		it('should return empty array when workflow_dependency table is empty', async () => {
+			//
+			// ARRANGE
+			//
+			const workflowRepository = Container.get(WorkflowRepository);
+			// Create workflow with no nodes, so no dependencies are added
+			await createWorkflow({ nodes: [] });
+
+			//
+			// ACT
+			//
+			const workflows = await workflowRepository.findWorkflowsWithNodeType([
+				'n8n-nodes-base.chatTrigger',
+			]);
+
+			//
+			// ASSERT
+			//
+			expect(workflows).toHaveLength(0);
 		});
 	});
 

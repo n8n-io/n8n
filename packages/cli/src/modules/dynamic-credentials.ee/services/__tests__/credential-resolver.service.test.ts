@@ -5,38 +5,42 @@ import {
 	type CredentialResolverConfiguration,
 	type ICredentialResolver,
 } from '@n8n/decorators';
+import { Not } from '@n8n/typeorm';
 import type { Cipher } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
+import type { Mocked } from 'vitest';
 
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
 
+import { SYSTEM_RESOLVER_ID, SYSTEM_RESOLVER_TYPE } from '../../constants';
 import { DynamicCredentialResolver } from '../../database/entities/credential-resolver';
 import type { DynamicCredentialResolverRepository } from '../../database/repositories/credential-resolver.repository';
 import { DynamicCredentialResolverNotFoundError } from '../../errors/credential-resolver-not-found.error';
+import { SystemResolverModificationError } from '../../errors/system-resolver-modification.error';
 import type { DynamicCredentialResolverRegistry } from '../credential-resolver-registry.service';
 import { DynamicCredentialResolverService } from '../credential-resolver.service';
 import type { ResolverConfigExpressionService } from '../resolver-config-expression.service';
 
 describe('DynamicCredentialResolverService', () => {
 	let service: DynamicCredentialResolverService;
-	let mockLogger: jest.Mocked<Logger>;
-	let mockRepository: jest.Mocked<DynamicCredentialResolverRepository>;
-	let mockRegistry: jest.Mocked<DynamicCredentialResolverRegistry>;
-	let mockCipher: jest.Mocked<Cipher>;
-	let mockExpressionService: jest.Mocked<ResolverConfigExpressionService>;
-	let mockWorkflowRepository: jest.Mocked<WorkflowRepository>;
-	let mockActiveWorkflowManager: jest.Mocked<ActiveWorkflowManager>;
+	let mockLogger: Mocked<Logger>;
+	let mockRepository: Mocked<DynamicCredentialResolverRepository>;
+	let mockRegistry: Mocked<DynamicCredentialResolverRegistry>;
+	let mockCipher: Mocked<Cipher>;
+	let mockExpressionService: Mocked<ResolverConfigExpressionService>;
+	let mockWorkflowRepository: Mocked<WorkflowRepository>;
+	let mockActiveWorkflowManager: Mocked<ActiveWorkflowManager>;
 
 	const mockResolverImplementation = {
 		metadata: {
 			name: 'test.resolver',
 			description: 'A test resolver',
 		},
-		getSecret: jest.fn(),
-		setSecret: jest.fn(),
-		validateOptions: jest.fn(),
-		deleteAllSecrets: jest.fn(),
-	} as jest.Mocked<ICredentialResolver>;
+		getSecret: vi.fn(),
+		setSecret: vi.fn(),
+		validateOptions: vi.fn(),
+		deleteAllSecrets: vi.fn(),
+	} as Mocked<ICredentialResolver>;
 
 	const createMockEntity = (
 		overrides: Partial<DynamicCredentialResolver> = {},
@@ -60,54 +64,55 @@ describe('DynamicCredentialResolverService', () => {
 	};
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		mockLogger = {
-			debug: jest.fn(),
-			info: jest.fn(),
-			warn: jest.fn(),
-			error: jest.fn(),
-			scoped: jest.fn().mockReturnThis(),
-		} as unknown as jest.Mocked<Logger>;
+			debug: vi.fn(),
+			info: vi.fn(),
+			warn: vi.fn(),
+			error: vi.fn(),
+			scoped: vi.fn().mockReturnThis(),
+		} as unknown as Mocked<Logger>;
 
 		mockRepository = {
-			create: jest.fn(),
-			save: jest.fn(),
-			find: jest.fn(),
-			findOneBy: jest.fn(),
-			remove: jest.fn(),
+			create: vi.fn(),
+			save: vi.fn(),
+			find: vi.fn(),
+			findOneBy: vi.fn(),
+			remove: vi.fn(),
 			manager: {
-				transaction: jest.fn(async (cb: (trx: unknown) => Promise<void>) => {
+				transaction: vi.fn(async (cb: (trx: unknown) => Promise<void>) => {
 					const trx = { remove: mockRepository.remove };
 					await cb(trx);
 				}),
 			},
-		} as unknown as jest.Mocked<DynamicCredentialResolverRepository>;
+		} as unknown as Mocked<DynamicCredentialResolverRepository>;
 
 		mockRegistry = {
-			getResolverByTypename: jest.fn(),
-		} as unknown as jest.Mocked<DynamicCredentialResolverRegistry>;
+			getResolverByTypename: vi.fn(),
+			getAllResolvers: vi.fn(),
+		} as unknown as Mocked<DynamicCredentialResolverRegistry>;
 
 		mockCipher = {
-			encryptV2: jest.fn(),
-			decryptV2: jest.fn(),
-		} as unknown as jest.Mocked<Cipher>;
+			encryptV2: vi.fn(),
+			decryptV2: vi.fn(),
+		} as unknown as Mocked<Cipher>;
 
 		mockExpressionService = {
-			resolve: jest.fn(async (config) => await Promise.resolve(config)),
-		} as unknown as jest.Mocked<ResolverConfigExpressionService>;
+			resolve: vi.fn(async (config) => await Promise.resolve(config)),
+		} as unknown as Mocked<ResolverConfigExpressionService>;
 
 		mockWorkflowRepository = {
-			findByCredentialResolverId: jest.fn().mockResolvedValue([]),
-			findActiveByCredentialResolverId: jest.fn().mockResolvedValue([]),
-			clearCredentialResolverId: jest.fn().mockResolvedValue(undefined),
-			update: jest.fn().mockResolvedValue(undefined),
-		} as unknown as jest.Mocked<WorkflowRepository>;
+			findByCredentialResolverId: vi.fn().mockResolvedValue([]),
+			findActiveByCredentialResolverId: vi.fn().mockResolvedValue([]),
+			clearCredentialResolverId: vi.fn().mockResolvedValue(undefined),
+			update: vi.fn().mockResolvedValue(undefined),
+		} as unknown as Mocked<WorkflowRepository>;
 
 		mockActiveWorkflowManager = {
-			remove: jest.fn().mockResolvedValue(undefined),
-			add: jest.fn().mockResolvedValue(undefined),
-		} as unknown as jest.Mocked<ActiveWorkflowManager>;
+			remove: vi.fn().mockResolvedValue(undefined),
+			add: vi.fn().mockResolvedValue(undefined),
+		} as unknown as Mocked<ActiveWorkflowManager>;
 
 		service = new DynamicCredentialResolverService(
 			mockLogger,
@@ -377,12 +382,12 @@ describe('DynamicCredentialResolverService', () => {
 			const decryptedConfig = { prefix: 'test' };
 			const resolverWithDeleteAllSecrets = {
 				...mockResolverImplementation,
-				deleteAllSecrets: jest.fn().mockResolvedValue(undefined),
+				deleteAllSecrets: vi.fn().mockResolvedValue(undefined),
 			};
 
 			mockRepository.findOneBy.mockResolvedValue(entity);
 			mockRegistry.getResolverByTypename.mockReturnValue(
-				resolverWithDeleteAllSecrets as jest.Mocked<ICredentialResolver>,
+				resolverWithDeleteAllSecrets as Mocked<ICredentialResolver>,
 			);
 			mockRepository.save.mockResolvedValue(updatedEntity);
 			mockCipher.decryptV2.mockResolvedValue(JSON.stringify(decryptedConfig));
@@ -466,7 +471,7 @@ describe('DynamicCredentialResolverService', () => {
 
 			mockRepository.findOneBy.mockResolvedValue(entity);
 			mockRegistry.getResolverByTypename.mockReturnValue(
-				resolverWithoutDeleteAllSecrets as jest.Mocked<ICredentialResolver>,
+				resolverWithoutDeleteAllSecrets as Mocked<ICredentialResolver>,
 			);
 			mockRepository.save.mockResolvedValue(updatedEntity);
 			mockCipher.decryptV2.mockResolvedValue(JSON.stringify(decryptedConfig));
@@ -641,6 +646,94 @@ describe('DynamicCredentialResolverService', () => {
 			);
 
 			expect(mockWorkflowRepository.clearCredentialResolverId).not.toHaveBeenCalled();
+			expect(mockRepository.remove).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('findAllPublic', () => {
+		it('excludes the system resolver at the database layer', async () => {
+			const customRow = createMockEntity({
+				id: 'custom-1',
+				name: 'Custom',
+				type: 'credential-resolver.oauth2-1.0',
+			});
+			mockRepository.find.mockResolvedValue([customRow]);
+			mockCipher.decryptV2.mockResolvedValue('{}');
+
+			const result = await service.findAllPublic();
+
+			expect(mockRepository.find).toHaveBeenCalledWith({
+				where: { id: Not(SYSTEM_RESOLVER_ID) },
+			});
+			expect(result).toHaveLength(1);
+			expect(result[0].id).toBe('custom-1');
+		});
+	});
+
+	describe('getAvailablePublicTypes', () => {
+		it('omits the system N8N resolver type', () => {
+			const systemType = {
+				metadata: { name: SYSTEM_RESOLVER_TYPE, displayName: 'N8N Resolver', options: [] },
+			} as unknown as ICredentialResolver;
+			const oauthType = {
+				metadata: { name: 'credential-resolver.oauth2-1.0', displayName: 'OAuth2', options: [] },
+			} as unknown as ICredentialResolver;
+			mockRegistry.getAllResolvers.mockReturnValue([systemType, oauthType]);
+
+			const result = service.getAvailablePublicTypes();
+
+			expect(result.map((r) => r.metadata.name)).toEqual(['credential-resolver.oauth2-1.0']);
+		});
+	});
+
+	describe('create — system resolver guard', () => {
+		it('refuses to create a resolver of the system type and does not touch the repository', async () => {
+			await expect(
+				service.create({
+					name: 'Sneaky',
+					type: SYSTEM_RESOLVER_TYPE,
+					config: {},
+					user: createMockUser(),
+				}),
+			).rejects.toThrow(SystemResolverModificationError);
+
+			expect(mockRegistry.getResolverByTypename).not.toHaveBeenCalled();
+			expect(mockCipher.encryptV2).not.toHaveBeenCalled();
+			expect(mockRepository.create).not.toHaveBeenCalled();
+			expect(mockRepository.save).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('update — system resolver guard', () => {
+		it('refuses to update the system resolver and does not touch the repository', async () => {
+			await expect(
+				service.update(SYSTEM_RESOLVER_ID, { name: 'tampered', user: createMockUser() }),
+			).rejects.toThrow(SystemResolverModificationError);
+
+			expect(mockRepository.findOneBy).not.toHaveBeenCalled();
+			expect(mockRepository.save).not.toHaveBeenCalled();
+		});
+
+		it('refuses to change a non-system resolver to the system type', async () => {
+			await expect(
+				service.update('resolver-id-123', {
+					type: SYSTEM_RESOLVER_TYPE,
+					user: createMockUser(),
+				}),
+			).rejects.toThrow(SystemResolverModificationError);
+
+			expect(mockRepository.findOneBy).not.toHaveBeenCalled();
+			expect(mockRepository.save).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('delete — system resolver guard', () => {
+		it('refuses to delete the system resolver and does not touch the repository', async () => {
+			await expect(service.delete(SYSTEM_RESOLVER_ID)).rejects.toThrow(
+				SystemResolverModificationError,
+			);
+
+			expect(mockRepository.findOneBy).not.toHaveBeenCalled();
 			expect(mockRepository.remove).not.toHaveBeenCalled();
 		});
 	});

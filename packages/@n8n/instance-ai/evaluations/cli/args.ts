@@ -7,6 +7,11 @@
 
 import { z } from 'zod';
 
+import { BASELINE_EXPERIMENT_PREFIX } from '../comparison/fetch-baseline';
+
+/** Default LangSmith dataset — the shared Instance AI cohort. */
+export const DEFAULT_DATASET = 'instance-ai-workflow-evals';
+
 // ---------------------------------------------------------------------------
 // Public types
 // ---------------------------------------------------------------------------
@@ -35,6 +40,8 @@ export interface CliArgs {
 	prebuiltWorkflows?: string;
 	/** Keep built workflows after evaluation instead of deleting them */
 	keepWorkflows: boolean;
+	/** Delete successfully used workflows from --prebuilt-workflows after evaluation */
+	deletePrebuiltWorkflows: boolean;
 	/** Directory to write eval-results.json (defaults to cwd) */
 	outputDir?: string;
 	/** LangSmith dataset name (synced from JSON test cases before each run) */
@@ -47,6 +54,26 @@ export interface CliArgs {
 	/** Number of iterations to run each test case (default: 1). Each iteration
 	 *  gets a fresh build so pass@k / pass^k capture real builder variance. */
 	iterations: number;
+	/** AI root nodes (Agent, Chain) to keep pinned — opt-out from the default-on
+	 *  wire-server interception path. Useful for A/B comparison or when a
+	 *  specific root needs to stay on the pinned baseline. CSV of node names. */
+	pinAiRoots?: string[];
+	/** Filter test cases by the `datasets` field (e.g. `pr`, `full`). When set,
+	 *  only test cases whose `datasets` array contains this value will run, and
+	 *  LangSmith examples are queried via the matching split. Defaults to
+	 *  unset → run everything matched by `--filter` / `--exclude`. */
+	tier?: string;
+	/** Experiment-name prefix the regression comparison uses to find the
+	 *  baseline. Defaults to the Instance AI baseline (`instance-ai-baseline-`).
+	 *  Override for an isolated cohort (e.g. `mcp-baseline-`) so the run compares
+	 *  against its own baselines instead of the Instance AI one. Pair with a
+	 *  dedicated `--dataset` to keep MCP runs fully separate. */
+	baselinePrefix: string;
+	/** Test-case source: `disk` (default) reads data/workflows/, `langtracer` pulls a
+	 *  suite over MCP (needs LANGTRACER_URL + LANGTRACER_API_KEY). */
+	source: 'disk' | 'langtracer';
+	/** lang-tracer suite slug (or numeric id) to export when `--source langtracer`. */
+	suite?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -63,11 +90,25 @@ const cliArgsSchema = z.object({
 	exclude: z.string().optional(),
 	prebuiltWorkflows: z.string().optional(),
 	keepWorkflows: z.boolean().default(false),
+	deletePrebuiltWorkflows: z.boolean().default(false),
 	outputDir: z.string().optional(),
-	dataset: z.string().default('instance-ai-workflow-evals'),
+	dataset: z.string().default(DEFAULT_DATASET),
 	concurrency: z.number().int().positive().default(16),
 	experimentName: z.string().optional(),
 	iterations: z.number().int().positive().default(1),
+	pinAiRoots: z.array(z.string().min(1)).optional(),
+	tier: z.string().min(1).optional(),
+	// Normalize to a trailing hyphen. The baseline lookup matches by prefix and
+	// LangSmith always appends `-<suffix>` to the experiment name, so the hyphen
+	// anchors the match to that separator — without it `mcp-baseline` would also
+	// match unrelated names like `mcp-baseline2-...`. Mirrors BASELINE_EXPERIMENT_PREFIX.
+	baselinePrefix: z
+		.string()
+		.min(1)
+		.transform((s) => (s.endsWith('-') ? s : `${s}-`))
+		.default(BASELINE_EXPERIMENT_PREFIX),
+	source: z.enum(['disk', 'langtracer']).default('disk'),
+	suite: z.string().min(1).optional(),
 });
 
 // ---------------------------------------------------------------------------
@@ -77,6 +118,28 @@ const cliArgsSchema = z.object({
 export function parseCliArgs(argv: string[]): CliArgs {
 	const raw = parseRawArgs(argv);
 	const validated = cliArgsSchema.parse(raw);
+	if (validated.deletePrebuiltWorkflows && !validated.prebuiltWorkflows) {
+		throw new Error('--delete-prebuilt-workflows requires --prebuilt-workflows');
+	}
+	if (validated.deletePrebuiltWorkflows && validated.keepWorkflows) {
+		throw new Error('--delete-prebuilt-workflows cannot be used with --keep-workflows');
+	}
+	if (validated.source === 'langtracer' && !validated.suite) {
+		throw new Error('--source langtracer requires --suite <slug>');
+	}
+
+	// In langtracer mode, default the dataset + baseline to a suite-scoped, eval-tagged
+	// name so runs don't pollute the shared cohort and re-runs upsert one stable dataset.
+	let dataset = validated.dataset;
+	let baselinePrefix = validated.baselinePrefix;
+	if (validated.source === 'langtracer' && validated.suite) {
+		const suiteSlug = validated.suite
+			.toLowerCase()
+			.replace(/[^a-z0-9]+/g, '-')
+			.replace(/^-+|-+$/g, '');
+		if (!raw.datasetProvided) dataset = `instance-ai-langtracer-${suiteSlug}`;
+		if (!raw.baselineProvided) baselinePrefix = `instance-ai-langtracer-${suiteSlug}-baseline-`;
+	}
 
 	return {
 		timeoutMs: validated.timeoutMs,
@@ -88,12 +151,43 @@ export function parseCliArgs(argv: string[]): CliArgs {
 		exclude: validated.exclude,
 		prebuiltWorkflows: validated.prebuiltWorkflows,
 		keepWorkflows: validated.keepWorkflows,
+		deletePrebuiltWorkflows: validated.deletePrebuiltWorkflows,
 		outputDir: validated.outputDir,
-		dataset: validated.dataset,
+		dataset,
 		concurrency: validated.concurrency,
 		experimentName: validated.experimentName,
 		iterations: validated.iterations,
+		pinAiRoots: validated.pinAiRoots,
+		tier: validated.tier,
+		baselinePrefix,
+		source: validated.source,
+		suite: validated.suite,
 	};
+}
+
+/**
+ * A dedicated `--dataset` and a dedicated `--baseline-prefix` are the two halves
+ * of LangSmith cohort isolation (e.g. for MCP runs). Overriding exactly one of
+ * them still writes to / compares against shared Instance AI data, which is
+ * almost always a mistake. Returns a warning for that mismatched case, or
+ * `undefined` when the pairing is consistent (both shared, or both isolated).
+ *
+ * Leaving BOTH at their defaults is a normal Instance AI run — including
+ * `--tier pr`/`mcp` against the shared dataset, whose example upserts are
+ * idempotent — so it is intentionally not flagged.
+ */
+export function partialIsolationWarning(
+	dataset: string,
+	baselinePrefix: string,
+): string | undefined {
+	const datasetIsolated = dataset !== DEFAULT_DATASET;
+	const baselineIsolated = baselinePrefix !== BASELINE_EXPERIMENT_PREFIX;
+	if (datasetIsolated === baselineIsolated) return undefined;
+	return (
+		`Partial LangSmith isolation: --dataset="${dataset}" with --baseline-prefix="${baselinePrefix}". ` +
+		'Override BOTH for an isolated cohort (e.g. MCP), or leave BOTH at their defaults for an ' +
+		'Instance AI run — overriding only one still touches shared Instance AI data.'
+	);
 }
 
 // ---------------------------------------------------------------------------
@@ -110,11 +204,21 @@ interface RawArgs {
 	exclude?: string;
 	prebuiltWorkflows?: string;
 	keepWorkflows: boolean;
+	deletePrebuiltWorkflows: boolean;
 	outputDir?: string;
 	dataset: string;
 	concurrency: number;
 	experimentName?: string;
 	iterations: number;
+	pinAiRoots?: string[];
+	tier?: string;
+	baselinePrefix: string;
+	source: string;
+	suite?: string;
+	/** Whether --dataset / --baseline-prefix were explicitly passed (langtracer mode
+	 *  derives suite-scoped defaults otherwise). */
+	datasetProvided: boolean;
+	baselineProvided: boolean;
 }
 
 function parseRawArgs(argv: string[]): RawArgs {
@@ -123,11 +227,17 @@ function parseRawArgs(argv: string[]): RawArgs {
 		baseUrls: ['http://localhost:5678'],
 		verbose: false,
 		keepWorkflows: false,
+		deletePrebuiltWorkflows: false,
 		outputDir: undefined,
-		dataset: 'instance-ai-workflow-evals',
+		dataset: DEFAULT_DATASET,
 		concurrency: 16,
 		experimentName: undefined,
 		iterations: 1,
+		pinAiRoots: undefined,
+		baselinePrefix: BASELINE_EXPERIMENT_PREFIX,
+		source: 'disk',
+		datasetProvided: false,
+		baselineProvided: false,
 	};
 
 	for (let i = 0; i < argv.length; i++) {
@@ -182,6 +292,10 @@ function parseRawArgs(argv: string[]): RawArgs {
 				result.keepWorkflows = true;
 				break;
 
+			case '--delete-prebuilt-workflows':
+				result.deletePrebuiltWorkflows = true;
+				break;
+
 			case '--output-dir':
 				result.outputDir = nextArg(argv, i, '--output-dir');
 				i++;
@@ -194,6 +308,7 @@ function parseRawArgs(argv: string[]): RawArgs {
 
 			case '--dataset':
 				result.dataset = nextArg(argv, i, '--dataset');
+				result.datasetProvided = true;
 				i++;
 				break;
 
@@ -204,6 +319,37 @@ function parseRawArgs(argv: string[]): RawArgs {
 
 			case '--experiment-name':
 				result.experimentName = nextArg(argv, i, '--experiment-name');
+				i++;
+				break;
+
+			case '--pin-ai-roots': {
+				const raw = nextArg(argv, i, '--pin-ai-roots');
+				result.pinAiRoots = raw
+					.split(',')
+					.map((s) => s.trim())
+					.filter((s) => s.length > 0);
+				i++;
+				break;
+			}
+
+			case '--tier':
+				result.tier = nextArg(argv, i, '--tier');
+				i++;
+				break;
+
+			case '--baseline-prefix':
+				result.baselinePrefix = nextArg(argv, i, '--baseline-prefix');
+				result.baselineProvided = true;
+				i++;
+				break;
+
+			case '--source':
+				result.source = nextArg(argv, i, '--source');
+				i++;
+				break;
+
+			case '--suite':
+				result.suite = nextArg(argv, i, '--suite');
 				i++;
 				break;
 

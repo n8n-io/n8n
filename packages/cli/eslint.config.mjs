@@ -1,8 +1,23 @@
 import { defineConfig, globalIgnores } from 'eslint/config';
 import { nodeConfig } from '@n8n/eslint-config/node';
 
+const INSTANCE_AI_LAZY_IMPORT_MESSAGE =
+	'Use an existing lazy loader, or add one near first use. Static runtime imports of this dependency undo the Instance AI idle-memory guardrail.';
+
+const instanceAiLazyRuntimeImports = [
+	'@joplin/turndown-plugin-gfm',
+	'@mozilla/readability',
+	'linkedom',
+	'pdf-parse',
+	'turndown',
+].map((name) => ({
+	name,
+	allowTypeImports: true,
+	message: INSTANCE_AI_LAZY_IMPORT_MESSAGE,
+}));
+
 export default defineConfig(
-	globalIgnores(['scripts/**/*.mjs', 'jest.config*.js', 'test/*-testcontainers.js', 'coverage/**']),
+	globalIgnores(['scripts/**/*.mjs', 'vitest.*.ts', 'coverage/**']),
 	nodeConfig,
 	{
 		rules: {
@@ -51,6 +66,16 @@ export default defineConfig(
 		},
 	},
 	{
+		files: ['./src/modules/instance-ai/**/*.ts'],
+		ignores: ['./src/modules/instance-ai/**/__tests__/**/*.ts'],
+		rules: {
+			'@typescript-eslint/no-restricted-imports': [
+				'error',
+				{ paths: instanceAiLazyRuntimeImports },
+			],
+		},
+	},
+	{
 		files: ['./src/databases/migrations/**/*.ts'],
 		rules: {
 			'unicorn/filename-case': 'off',
@@ -89,6 +114,9 @@ export default defineConfig(
 	{
 		files: ['./test/**/*.ts', './src/**/__tests__/**/*.ts'],
 		rules: {
+			// Allow inline `typeof import('x')` type annotations — the idiomatic shape for
+			// `vi.importActual<typeof import('x')>('x')` in mock factories.
+			'@typescript-eslint/consistent-type-imports': ['error', { disallowTypeAnnotations: false }],
 			'id-denylist': 'warn',
 			'prefer-const': 'warn',
 			'n8n-local-rules/no-dynamic-import-template': 'off',

@@ -1,5 +1,6 @@
 get:
   x-eov-operation-id: getWorkflowTags
+  x-required-scope: workflowTags:list
   x-eov-operation-handler: v1/handlers/workflows/workflows.handler
   tags:
     - Workflow
@@ -22,6 +23,7 @@ get:
       $ref: '../../../../shared/spec/responses/notFound.yml'
 put:
   x-eov-operation-id: updateWorkflowTags
+  x-required-scope: workflowTags:update
   x-eov-operation-handler: v1/handlers/workflows/workflows.handler
   tags:
     - Workflow
@@ -34,7 +36,7 @@ put:
     content:
       application/json:
         schema:
-            $ref: '../schemas/tagIds.yml'
+          $ref: '../schemas/tagIds.yml'
     required: true
   responses:
     '200':

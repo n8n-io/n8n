@@ -1,11 +1,11 @@
-import { computed } from 'vue';
+import { reactive, watch } from 'vue';
 import type {
 	InstanceAiMessage,
 	InstanceAiAgentNode,
 	InstanceAiToolCallState,
 } from '@n8n/api-types';
 
-export interface ResourceEntry {
+export type ResourceEntry = {
 	type: 'workflow' | 'credential' | 'data-table';
 	id: string;
 	name: string;
@@ -19,7 +19,7 @@ export interface ResourceEntry {
 	 * "Archived" label.
 	 */
 	archived?: boolean;
-}
+};
 
 // ---------------------------------------------------------------------------
 // Internal helpers (defined before use to satisfy no-use-before-define)
@@ -91,7 +91,6 @@ const ARTIFACT_TOOLS = new Set([
 	'workflows',
 	'credentials',
 	'data-tables',
-	'data-table-agent',
 	'insert-data-table-rows',
 	'update-data-table-rows',
 	'delete-data-table-rows',
@@ -182,12 +181,16 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 		}
 	}
 
-	// Data table mutation results (insert/update/delete-data-table-rows):
-	// { dataTableId, projectId, tableName? } — produced. Preserves an
-	// existing name if the mutation result doesn't carry `tableName`.
+	// Data table metadata results (schema/query and row mutations):
+	// { dataTableId, projectId, tableName? | dataTableName? } — produced.
+	// Preserves an existing name if the result doesn't carry a name.
 	if (typeof result.dataTableId === 'string' && typeof result.projectId === 'string') {
 		const existing = col.produced.get(result.dataTableId);
-		const name = optionalString(result.tableName) ?? existing?.name ?? result.dataTableId;
+		const name =
+			optionalString(result.tableName) ??
+			optionalString(result.dataTableName) ??
+			existing?.name ??
+			result.dataTableId;
 		recordProduced(col, {
 			type: 'data-table',
 			id: result.dataTableId,
@@ -197,12 +200,46 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 	}
 }
 
+/**
+ * Register the agent's `targetResource` as a produced artifact when it carries
+ * a concrete resource id (e.g. a workflow-builder spawned to edit an existing
+ * workflow). Surfacing this at spawn time — before the first build-workflow
+ * tool result arrives — lets the artifacts panel show the workflow as soon as
+ * the sub-agent starts, instead of waiting for the first edit.
+ */
+function extractFromTargetResource(node: InstanceAiAgentNode, col: Collections): void {
+	const target = node.targetResource;
+	if (!target?.id) return;
+	if (target.type !== 'workflow' && target.type !== 'data-table') return;
+
+	const existing = col.produced.get(target.id);
+	const name = optionalString(target.name) ?? existing?.name ?? 'Untitled';
+	recordProduced(col, { type: target.type, id: target.id, name });
+}
+
 function collectFromAgentNode(node: InstanceAiAgentNode, col: Collections): void {
+	extractFromTargetResource(node, col);
 	for (const tc of node.toolCalls) {
 		extractFromToolCall(tc, col);
 	}
 	for (const child of node.children) {
 		collectFromAgentNode(child, col);
+	}
+}
+
+/**
+ * Register workflow attachments on a (user) message as produced artifacts —
+ * e.g. the editor hand-off attaches the current workflow, which then shows as
+ * an artifact tab even before the agent acts on it.
+ */
+function collectFromMessageAttachments(message: InstanceAiMessage, col: Collections): void {
+	for (const attachment of message.attachments ?? []) {
+		if (attachment.type !== 'workflow') continue;
+		recordProduced(col, {
+			type: 'workflow',
+			id: attachment.id,
+			name: attachment.name ?? 'Untitled',
+		});
 	}
 }
 
@@ -243,35 +280,77 @@ export function useResourceRegistry(
 	workflowNameLookup?: (id: string) => string | undefined,
 	archivedWorkflowIds?: () => ReadonlySet<string>,
 ) {
-	const collections = computed((): Collections => {
-		const col: Collections = {
-			produced: new Map<string, ResourceEntry>(),
-			byName: new Map<string, ResourceEntry>(),
-		};
+	// Long-lived reactive maps, reconciled in place: rebuilds that change
+	// nothing trigger nothing.
+	const producedArtifacts = reactive(new Map<string, ResourceEntry>());
+	const resourceNameIndex = reactive(new Map<string, ResourceEntry>());
 
-		for (const msg of messages()) {
-			if (!msg.agentTree) continue;
-			collectFromAgentNode(msg.agentTree, col);
-		}
+	// Derived from `messages` so every state-arrival path (hydration, run-sync
+	// replacement, rollback, reset) self-heals on the next derivation. Must
+	// stay a watch: the handler reads the target maps, so a watchEffect would
+	// re-trigger itself.
+	watch(
+		(): Collections => {
+			const col: Collections = {
+				produced: new Map<string, ResourceEntry>(),
+				byName: new Map<string, ResourceEntry>(),
+			};
 
-		if (workflowNameLookup) {
-			enrichWorkflowNames(col, workflowNameLookup);
-		}
+			for (const msg of messages()) {
+				collectFromMessageAttachments(msg, col);
+				if (msg.agentTree) collectFromAgentNode(msg.agentTree, col);
+			}
 
-		const archived = archivedWorkflowIds?.();
-		if (archived && archived.size > 0) {
-			for (const entry of col.produced.values()) {
-				if (entry.type === 'workflow' && archived.has(entry.id)) {
-					entry.archived = true;
+			if (workflowNameLookup) {
+				enrichWorkflowNames(col, workflowNameLookup);
+			}
+
+			const archived = archivedWorkflowIds?.();
+			if (archived && archived.size > 0) {
+				for (const entry of col.produced.values()) {
+					if (entry.type === 'workflow' && archived.has(entry.id)) {
+						entry.archived = true;
+					}
 				}
 			}
+
+			return col;
+		},
+		(col) => {
+			reconcileMap(producedArtifacts, col.produced);
+			reconcileMap(resourceNameIndex, col.byName);
+		},
+		{ immediate: true },
+	);
+
+	return { producedArtifacts, resourceNameIndex };
+}
+
+/** Sync `target` to `next` with minimal writes — unchanged entries trigger no subscribers. */
+function reconcileMap(target: Map<string, ResourceEntry>, next: Map<string, ResourceEntry>): void {
+	for (const key of [...target.keys()]) {
+		if (!next.has(key)) target.delete(key);
+	}
+	for (const [key, entry] of next) {
+		const existing = target.get(key);
+		if (existing) {
+			reconcileEntryFields(existing, entry);
+		} else {
+			target.set(key, entry);
 		}
+	}
+}
 
-		return col;
-	});
-
-	return {
-		producedArtifacts: computed(() => collections.value.produced),
-		resourceNameIndex: computed(() => collections.value.byName),
-	};
+/**
+ * Per-field sync: `Object.assign` writes through the proxy (equal values
+ * trigger nothing), the sweep deletes fields the new entry no longer carries.
+ */
+function reconcileEntryFields(
+	existing: Record<string, unknown>,
+	next: Record<string, unknown>,
+): void {
+	for (const key of Object.keys(existing)) {
+		if (!(key in next)) Reflect.deleteProperty(existing, key);
+	}
+	Object.assign(existing, next);
 }

@@ -16,6 +16,7 @@ import type {
 	NodeOperationError,
 	NodeParameterValueType,
 } from 'n8n-workflow';
+import { computed } from 'vue';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -28,6 +29,7 @@ import type { AssistantProcessOptions, ChatRequest } from '../assistant.types';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
+	injectWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import { useDataSchema } from '@/app/composables/useDataSchema';
 import { AI_ASSISTANT_MAX_CONTENT_LENGTH, VIEWS } from '@/app/constants';
@@ -41,7 +43,8 @@ const WORKFLOW_LIST_VIEWS = [VIEWS.WORKFLOWS, VIEWS.PROJECTS_WORKFLOWS];
 const CREDENTIALS_LIST_VIEWS = [VIEWS.CREDENTIALS, VIEWS.PROJECTS_CREDENTIALS];
 
 export const useAIAssistantHelpers = () => {
-	const ndvStore = useNDVStore();
+	const workflowDocumentStore = injectWorkflowDocumentStore();
+	const ndvStore = computed(() => useNDVStore(workflowDocumentStore.value.documentId));
 	const nodeTypesStore = useNodeTypesStore();
 
 	const workflowHelpers = useWorkflowHelpers();
@@ -250,10 +253,10 @@ export const useAIAssistantHelpers = () => {
 		let nodeInputData: { inputNodeName?: string; inputData?: IDataObject } | undefined = {};
 		// Only include input data if the node references it and we are allowed to send it
 		if (!options?.excludeParameterValues) {
-			const ndvInput = ndvStore.ndvInputData;
+			const ndvInput = ndvStore.value.ndvInputData;
 			if (isNodeReferencingInputData(node) && ndvInput?.length) {
-				const inputData = ndvStore.ndvInputData[0].json;
-				const inputNodeName = ndvStore.input.nodeName;
+				const inputData = ndvStore.value.ndvInputData[0].json;
+				const inputNodeName = ndvStore.value.input.nodeName;
 				nodeInputData = {
 					inputNodeName,
 					inputData,
@@ -312,7 +315,7 @@ export const useAIAssistantHelpers = () => {
 			if (!node) {
 				continue;
 			}
-			if (workflowDocumentStore.pinData?.[node.name]) {
+			if (workflowDocumentStore.pinnedDataByNodeName?.[node.name]) {
 				pinnedNodeNames.push(node.name);
 			}
 			const { getSchemaForExecutionData, getInputDataWithPinned } = useDataSchema();

@@ -18,7 +18,6 @@ import {
 import { Container } from '@n8n/di';
 
 import { McpSettingsService } from '@/modules/mcp/mcp.settings.service';
-
 import { createFolder } from '@test-integration/db/folders';
 import { createMember, createOwner, createUser } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
@@ -357,9 +356,11 @@ describe('PATCH /mcp/workflows/toggle-access', () => {
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data.updatedCount).toBe(2);
+		expect(response.body.data.unchangedCount).toBe(0);
 		expect(response.body.data.updatedIds.sort()).toEqual(
 			[ownedByMember.id, ownedByMember2.id].sort(),
 		);
+		expect(response.body.data.unchangedIds).toEqual([]);
 		expect(response.body.data.skippedCount).toBe(1);
 
 		expect(await readAvailableInMCP(ownedByMember.id)).toBe(true);
@@ -389,6 +390,8 @@ describe('PATCH /mcp/workflows/toggle-access', () => {
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data.updatedIds).toEqual([live.id]);
+		expect(response.body.data.unchangedIds).toEqual([]);
+		expect(response.body.data.unchangedCount).toBe(0);
 		expect(response.body.data.skippedCount).toBe(1);
 		expect(await readAvailableInMCP(archived.id)).toBeUndefined();
 	});
@@ -407,7 +410,12 @@ describe('PATCH /mcp/workflows/toggle-access', () => {
 			.send({ availableInMCP: true, projectId: project.id });
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body.data).toEqual({ updatedCount: 2, skippedCount: 0, failedCount: 0 });
+		expect(response.body.data).toEqual({
+			updatedCount: 2,
+			unchangedCount: 0,
+			skippedCount: 0,
+			failedCount: 0,
+		});
 		expect(await readAvailableInMCP(projectWf1.id)).toBe(true);
 		expect(await readAvailableInMCP(projectWf2.id)).toBe(true);
 		expect(await readAvailableInMCP(unrelatedWf.id)).toBeUndefined();
@@ -437,7 +445,12 @@ describe('PATCH /mcp/workflows/toggle-access', () => {
 			.send({ availableInMCP: true, folderId: rootFolder.id });
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body.data).toEqual({ updatedCount: 2, skippedCount: 0, failedCount: 0 });
+		expect(response.body.data).toEqual({
+			updatedCount: 2,
+			unchangedCount: 0,
+			skippedCount: 0,
+			failedCount: 0,
+		});
 		expect(await readAvailableInMCP(workflowInRoot.id)).toBe(true);
 		expect(await readAvailableInMCP(workflowInChild.id)).toBe(true);
 		expect(await readAvailableInMCP(workflowOutsideFolder.id)).toBeUndefined();
@@ -470,9 +483,10 @@ describe('PATCH /mcp/workflows/toggle-access', () => {
 			.send({ availableInMCP: true, folderId: folder.id });
 
 		expect(response.statusCode).toBe(200);
-		// Folder-scoped — `updatedIds` is omitted from the response.
+		// Folder-scoped — workflow id arrays are omitted from the response.
 		expect(response.body.data).toEqual({
 			updatedCount: 1,
+			unchangedCount: 0,
 			skippedCount: 0,
 			failedCount: 0,
 		});
@@ -492,6 +506,8 @@ describe('PATCH /mcp/workflows/toggle-access', () => {
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data.updatedIds).toEqual([wf.id]);
+		expect(response.body.data.unchangedIds).toEqual([]);
+		expect(response.body.data.unchangedCount).toBe(0);
 		expect(await readAvailableInMCP(wf.id)).toBe(false);
 	});
 
@@ -514,13 +530,13 @@ describe('PATCH /mcp/workflows/toggle-access', () => {
 			});
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body.data.updatedCount).toBe(2);
-		expect(response.body.data.updatedIds.sort()).toEqual(
-			[alreadyEnabled.id, freshlyChanged.id].sort(),
-		);
+		expect(response.body.data.updatedCount).toBe(1);
+		expect(response.body.data.unchangedCount).toBe(1);
+		expect(response.body.data.updatedIds).toEqual([freshlyChanged.id]);
+		expect(response.body.data.unchangedIds).toEqual([alreadyEnabled.id]);
 		expect(response.body.data.skippedCount).toBe(0);
 
-		// Re-submitting the same request is a no-op but still reports both as updated.
+		// Re-submitting the same request is a no-op and reports both as unchanged.
 		const second = await testServer
 			.authAgentFor(toggleOwner)
 			.patch('/mcp/workflows/toggle-access')
@@ -530,7 +546,12 @@ describe('PATCH /mcp/workflows/toggle-access', () => {
 			});
 
 		expect(second.statusCode).toBe(200);
-		expect(second.body.data.updatedCount).toBe(2);
+		expect(second.body.data.updatedCount).toBe(0);
+		expect(second.body.data.unchangedCount).toBe(2);
+		expect(second.body.data.updatedIds).toEqual([]);
+		expect(second.body.data.unchangedIds.sort()).toEqual(
+			[alreadyEnabled.id, freshlyChanged.id].sort(),
+		);
 		expect(second.body.data.skippedCount).toBe(0);
 	});
 

@@ -1,6 +1,7 @@
 import { setTimeout as wait } from 'node:timers/promises';
 import type { Readable } from 'stream';
 import type { StartedTestContainer } from 'testcontainers';
+import { Wait } from 'testcontainers';
 
 /**
  * Create a logger that prefixes messages with elapsed time since creation.
@@ -39,7 +40,34 @@ export function createSilentLogConsumer() {
 		throw error;
 	};
 
-	return { consumer, throwWithLogs };
+	const getLogs = (): string => logs.join('\n');
+
+	return { consumer, throwWithLogs, getLogs };
+}
+
+export function createReadinessProbe(
+	path: string,
+	port: number,
+	options: { startupTimeoutMs: number; readTimeoutMs: number },
+) {
+	let lastBody: string | null = null;
+
+	// Body predicate must be registered before status predicate: HttpWaitStrategy
+	// short-circuits on the first `false`, so a status-first order would skip the
+	// body capture for the non-200 responses we want to record.
+	const strategy = Wait.forHttp(path, port)
+		.forResponsePredicate((body) => {
+			lastBody = body;
+			return true;
+		})
+		.forStatusCode(200)
+		.withStartupTimeout(options.startupTimeoutMs)
+		.withReadTimeout(options.readTimeoutMs);
+
+	return {
+		strategy,
+		getLastBody: (): string | null => lastBody,
+	};
 }
 
 /**

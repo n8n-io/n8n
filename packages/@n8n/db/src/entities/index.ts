@@ -11,6 +11,7 @@ import {
 } from './credential-dependency-entity';
 import { CredentialsEntity } from './credentials-entity';
 import { DeploymentKey } from './deployment-key';
+import { EvaluationCollection } from './evaluation-collection.ee';
 import { EvaluationConfig } from './evaluation-config.ee';
 import { ExecutionAnnotation } from './execution-annotation.ee';
 import { ExecutionData } from './execution-data';
@@ -27,6 +28,8 @@ import { ProjectSecretsProviderAccess } from './project-secrets-provider-access'
 import type { SecretsProviderAccessRole } from './project-secrets-provider-access';
 import { Role } from './role';
 import { RoleMappingRule } from './role-mapping-rule';
+import { ScheduledJob, ScheduledJobKind } from './scheduled-job';
+import { ScheduledTask, ScheduledTaskStatus } from './scheduled-task';
 import { Scope } from './scope';
 import { SecretsProviderConnection } from './secrets-provider-connection';
 import { Settings } from './settings';
@@ -41,6 +44,14 @@ import { WebhookEntity } from './webhook-entity';
 import { WorkflowDependency } from './workflow-dependency-entity';
 import { WorkflowEntity } from './workflow-entity';
 import { WorkflowHistory } from './workflow-history';
+import {
+	WorkflowPublicationOutbox,
+	WorkflowPublicationOutboxStatus,
+} from './workflow-publication-outbox';
+import {
+	WorkflowPublicationTriggerStatus,
+	type WorkflowPublicationTriggerStatusType,
+} from './workflow-publication-trigger-status';
 import { WorkflowPublishHistory } from './workflow-publish-history';
 import { WorkflowPublishedVersion } from './workflow-published-version';
 import { WorkflowStatistics } from './workflow-statistics';
@@ -63,12 +74,17 @@ export {
 	CredentialDependency,
 	type CredentialDependencyType,
 	DeploymentKey,
+	EvaluationCollection,
 	EvaluationConfig,
 	Folder,
 	Project,
 	ProjectRelation,
 	RoleMappingRule,
 	Role,
+	ScheduledJob,
+	ScheduledJobKind,
+	ScheduledTask,
+	ScheduledTaskStatus,
 	Scope,
 	SharedCredentials,
 	SharedWorkflow,
@@ -81,6 +97,10 @@ export {
 	FolderTagMapping,
 	AuthProviderSyncHistory,
 	WorkflowHistory,
+	WorkflowPublicationOutbox,
+	WorkflowPublicationOutboxStatus,
+	WorkflowPublicationTriggerStatus,
+	type WorkflowPublicationTriggerStatusType,
 	WorkflowPublishedVersion,
 	WorkflowPublishHistory,
 	ExecutionData,
@@ -109,6 +129,7 @@ export const entities = {
 	CredentialsEntity,
 	CredentialDependency,
 	DeploymentKey,
+	EvaluationCollection,
 	EvaluationConfig,
 	Folder,
 	Project,
@@ -126,6 +147,8 @@ export const entities = {
 	FolderTagMapping,
 	AuthProviderSyncHistory,
 	WorkflowHistory,
+	WorkflowPublicationOutbox,
+	WorkflowPublicationTriggerStatus,
 	WorkflowPublishedVersion,
 	WorkflowPublishHistory,
 	ExecutionData,
@@ -137,6 +160,8 @@ export const entities = {
 	TestCaseExecution,
 	ExecutionEntity,
 	Role,
+	ScheduledJob,
+	ScheduledTask,
 	ProjectSecretsProviderAccess,
 	SecretsProviderConnection,
 };

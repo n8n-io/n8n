@@ -1,5 +1,4 @@
 import type { IWorkflowDb } from '@/Interface';
-import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { WorkflowData } from '@n8n/rest-api-client/api/workflows';
 import { resolveParameter, useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { createTestingPinia } from '@pinia/testing';
@@ -8,32 +7,29 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import {
-	createMockNodeTypes,
-	createTestExpressionLocalResolveContext,
-	createTestNode,
-	createTestTaskData,
-	createTestWorkflow,
-	createTestWorkflowExecutionResponse,
-	createTestWorkflowObject,
-	mockLoadedNodeType,
-	mockNodeTypeDescription,
-} from '@/__tests__/mocks';
+import { createTestNode, createTestWorkflow, mockNodeTypeDescription } from '@/__tests__/mocks';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import {
-	CHAT_TRIGGER_NODE_TYPE,
-	createRunExecutionData,
-	NodeConnectionTypes,
-	WEBHOOK_NODE_TYPE,
-} from 'n8n-workflow';
-import type { AssignmentCollectionValue, IConnections } from 'n8n-workflow';
+import { CHAT_TRIGGER_NODE_TYPE, WEBHOOK_NODE_TYPE } from 'n8n-workflow';
+import type { AssignmentCollectionValue, IConnections, IRunData } from 'n8n-workflow';
 import * as apiWebhooks from '@n8n/rest-api-client/api/webhooks';
 import { mockedStore } from '@/__tests__/utils';
-import { SLACK_TRIGGER_NODE_TYPE, SET_NODE_TYPE } from '../constants';
+import { SET_NODE_TYPE, SLACK_TRIGGER_NODE_TYPE } from '../constants';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+
+// The current workflow id is resolved via the route/document store. These tests
+// drive it through `workflowsStore.workflowId`, so resolve it from there.
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	const { useWorkflowsStore } = await import('@/app/stores/workflows.store');
+	return {
+		useWorkflowId: () => computed(() => useWorkflowsStore().workflowId),
+		useRouteWorkflowId: () => computed(() => useWorkflowsStore().workflowId),
+	};
+});
 
 describe('useWorkflowHelpers', () => {
 	let workflowsStore: ReturnType<typeof mockedStore<typeof useWorkflowsStore>>;
@@ -687,6 +683,19 @@ describe('useWorkflowHelpers', () => {
 	});
 
 	describe('executeData', () => {
+		// Production reads run data from the execution-state store (keyed by document
+		// id), not the workflows store. `createTestingPinia` exposes store getters as
+		// writable for stubbing, so override the computed run data directly (mirrors
+		// how this suite previously stubbed the removed `workflowsStore.getWorkflowRunData`).
+		function seedActiveRunData(runData: IRunData | null) {
+			const executionStateStore = useWorkflowExecutionStateStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
+			(
+				executionStateStore as unknown as { activeExecutionRunData: IRunData | null }
+			).activeExecutionRunData = runData;
+		}
+
 		it('should return empty execute data if no parent nodes', () => {
 			const { executeData } = useWorkflowHelpers();
 
@@ -724,29 +733,23 @@ describe('useWorkflowHelpers', () => {
 				},
 			};
 
-			workflowsStore.workflowExecutionData = {
-				data: {
-					resultData: {
-						runData: {
-							[parentNodes[0]]: [
+			seedActiveRunData({
+				[parentNodes[0]]: [
+					{
+						startTime: 0,
+						executionTime: 0,
+						data: {
+							main: [
 								{
-									startTime: 0,
-									executionTime: 0,
-									data: {
-										main: [
-											{
-												json: jsonData,
-												index: 0,
-											},
-										],
-									},
-									source: [],
+									json: jsonData,
+									index: 0,
 								},
 							],
 						},
+						source: [],
 					},
-				},
-			} as unknown as IExecutionResponse;
+				],
+			} as unknown as IRunData);
 
 			const result = executeData(
 				connectionsBySourceNode,
@@ -798,29 +801,23 @@ describe('useWorkflowHelpers', () => {
 				},
 			};
 
-			workflowsStore.workflowExecutionData = {
-				data: {
-					resultData: {
-						runData: {
-							[parentNodes[1]]: [
+			seedActiveRunData({
+				[parentNodes[1]]: [
+					{
+						startTime: 0,
+						executionTime: 0,
+						data: {
+							main: [
 								{
-									startTime: 0,
-									executionTime: 0,
-									data: {
-										main: [
-											{
-												json: jsonData,
-												index: 0,
-											},
-										],
-									},
-									source: [],
+									json: jsonData,
+									index: 0,
 								},
 							],
 						},
+						source: [],
 					},
-				},
-			} as unknown as IExecutionResponse;
+				],
+			} as unknown as IRunData);
 
 			const result = executeData(
 				connectionsBySourceNode,
@@ -883,44 +880,38 @@ describe('useWorkflowHelpers', () => {
 				},
 			};
 
-			workflowsStore.workflowExecutionData = {
-				data: {
-					resultData: {
-						runData: {
-							[parentNodes[0]]: [
+			seedActiveRunData({
+				[parentNodes[0]]: [
+					{
+						startTime: 0,
+						executionTime: 0,
+						data: {
+							main: [
 								{
-									startTime: 0,
-									executionTime: 0,
-									data: {
-										main: [
-											{
-												json: jsonDataA,
-												index: 0,
-											},
-										],
-									},
-									source: [],
-								},
-							],
-							[parentNodes[1]]: [
-								{
-									startTime: 0,
-									executionTime: 0,
-									data: {
-										main: [
-											{
-												json: jsonDataB,
-												index: 0,
-											},
-										],
-									},
-									source: [],
+									json: jsonDataA,
+									index: 0,
 								},
 							],
 						},
+						source: [],
 					},
-				},
-			} as unknown as IExecutionResponse;
+				],
+				[parentNodes[1]]: [
+					{
+						startTime: 0,
+						executionTime: 0,
+						data: {
+							main: [
+								{
+									json: jsonDataB,
+									index: 0,
+								},
+							],
+						},
+						source: [],
+					},
+				],
+			} as unknown as IRunData);
 
 			const result = executeData(
 				connectionsBySourceNode,
@@ -982,13 +973,13 @@ describe('useWorkflowHelpers', () => {
 			const inputName = 'main';
 			const runIndex = 0;
 
-			workflowsStore.getWorkflowRunData = {
+			seedActiveRunData({
 				ParentNode: [
 					{
 						data: { main: [[{ json: { key: 'valueFromRunData' } }]] },
 					} as never,
 				],
-			};
+			});
 
 			const connectionsBySourceNode: IConnections = {
 				CurrentNode: {
@@ -1021,14 +1012,14 @@ describe('useWorkflowHelpers', () => {
 			const runIndex = 0;
 			const parentRunIndex = 1;
 
-			workflowsStore.getWorkflowRunData = {
+			seedActiveRunData({
 				ParentNode: [
 					{ data: {} } as never,
 					{
 						data: { main: [[{ json: { key: 'valueFromRunData' } }]] },
 					} as never,
 				],
-			};
+			});
 
 			const connectionsBySourceNode: IConnections = {
 				CurrentNode: {
@@ -1062,7 +1053,7 @@ describe('useWorkflowHelpers', () => {
 			const inputName = 'main';
 			const runIndex = 0;
 
-			workflowsStore.getWorkflowRunData = null;
+			seedActiveRunData(null);
 
 			const result = executeData({}, parentNodes, currentNode, inputName, runIndex);
 
@@ -1190,94 +1181,54 @@ describe('useWorkflowHelpers', () => {
 });
 
 describe(resolveParameter, () => {
+	beforeEach(() => {
+		setActivePinia(createTestingPinia({ stubActions: false }));
+	});
+
 	describe('with local resolve context', () => {
 		it('should resolve parameter without execution data', async () => {
+			const workflowData = createTestWorkflow({
+				nodes: [createTestNode({ name: 'n0' })],
+			});
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowData.id),
+			);
+			workflowDocumentStore.hydrate(workflowData);
 			const result = await resolveParameter(
 				{
 					f0: '={{ 2 + 2 }}',
-					f1: '={{ $vars.foo }}',
 					f2: '={{ String($exotic).toUpperCase() }}',
 				},
+				workflowDocumentStore.documentId,
 				{
 					localResolve: true,
-					envVars: {
-						foo: 'hello!',
-					},
 					additionalKeys: {
 						$exotic: true,
 					},
-					workflow: createTestWorkflowObject({
-						nodes: [createTestNode({ name: 'n0' })],
-					}),
-					execution: null,
 					nodeName: 'n0',
 				},
 			);
 
-			expect(result).toEqual({ f0: 4, f1: 'hello!', f2: 'TRUE' });
-		});
-
-		it('should resolve parameter with execution data', async () => {
-			const workflowData = createTestWorkflow({
-				nodes: [createTestNode({ name: 'n0' }), createTestNode({ name: 'n1' })],
-				connections: {
-					n0: {
-						[NodeConnectionTypes.Main]: [
-							[{ type: NodeConnectionTypes.Main, index: 0, node: 'n1' }],
-						],
-					},
-				},
-			});
-			const result = await resolveParameter(
-				{
-					f0: '={{ $json }}',
-					f1: '={{ $("n0").item.json }}',
-				},
-				createTestExpressionLocalResolveContext({
-					workflow: createTestWorkflowObject(workflowData),
-					execution: createTestWorkflowExecutionResponse({
-						workflowData,
-						data: createRunExecutionData({
-							resultData: {
-								runData: {
-									n0: [
-										createTestTaskData({
-											data: { [NodeConnectionTypes.Main]: [[{ json: { foo: 777 } }]] },
-										}),
-									],
-								},
-							},
-						}),
-					}),
-					nodeName: 'n1',
-					inputNode: { name: 'n0', branchIndex: 0, runIndex: 0 },
-				}),
-			);
-
-			expect(result).toEqual({
-				f0: { foo: 777 },
-				f1: { foo: 777 },
-			});
+			expect(result).toEqual({ f0: 4, f2: 'TRUE' });
 		});
 
 		it('should include $tool in additionalKeys for hitl tool node types', async () => {
 			const toolNodeType = 'n8n-nodes-base.someHitlTool';
-			const toolNodeTypes = createMockNodeTypes({
-				[toolNodeType]: mockLoadedNodeType(toolNodeType),
+			const workflowData = createTestWorkflow({
+				nodes: [createTestNode({ name: 'toolNode', type: toolNodeType })],
 			});
-
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowData.id),
+			);
+			workflowDocumentStore.hydrate(workflowData);
 			const result = await resolveParameter(
 				{
 					toolName: '={{ $tool.name }}',
 					toolParams: '={{ $tool.parameters }}',
 				},
+				workflowDocumentStore.documentId,
 				{
 					localResolve: true,
-					workflow: createTestWorkflowObject({
-						nodes: [createTestNode({ name: 'toolNode', type: toolNodeType })],
-						nodeTypes: toolNodeTypes,
-					}),
-					execution: null,
 					nodeName: 'toolNode',
 					additionalKeys: {},
 				},
@@ -1288,16 +1239,20 @@ describe(resolveParameter, () => {
 		});
 
 		it('should not include $tool in additionalKeys for non-tool node types', async () => {
+			const workflowData = createTestWorkflow({
+				nodes: [createTestNode({ name: 'regularNode', type: SET_NODE_TYPE })],
+			});
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowData.id),
+			);
+			workflowDocumentStore.hydrate(workflowData);
 			const result = await resolveParameter(
 				{
 					toolCheck: '={{ $tool }}',
 				},
+				workflowDocumentStore.documentId,
 				{
 					localResolve: true,
-					workflow: createTestWorkflowObject({
-						nodes: [createTestNode({ name: 'regularNode', type: SET_NODE_TYPE })],
-					}),
-					execution: null,
 					nodeName: 'regularNode',
 					additionalKeys: {},
 				},
@@ -1308,21 +1263,21 @@ describe(resolveParameter, () => {
 
 		it('should resolve $tool.name expression for tool nodes', async () => {
 			const toolNodeType = 'n8n-nodes-base.someHitlTool';
-			const toolNodeTypes = createMockNodeTypes({
-				[toolNodeType]: mockLoadedNodeType(toolNodeType),
+			const workflowData = createTestWorkflow({
+				nodes: [createTestNode({ name: 'hitlTool', type: toolNodeType })],
 			});
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowData.id),
+			);
+			workflowDocumentStore.hydrate(workflowData);
 
 			const result = await resolveParameter(
 				{
 					message: '={{ "The agent wants to call " + $tool.name }}',
 				},
+				workflowDocumentStore.documentId,
 				{
 					localResolve: true,
-					workflow: createTestWorkflowObject({
-						nodes: [createTestNode({ name: 'hitlTool', type: toolNodeType })],
-						nodeTypes: toolNodeTypes,
-					}),
-					execution: null,
 					nodeName: 'hitlTool',
 					additionalKeys: {},
 				},
@@ -1333,21 +1288,21 @@ describe(resolveParameter, () => {
 
 		it('should resolve $tool.parameters expression for hitl tool nodes', async () => {
 			const toolNodeType = 'n8n-nodes-base.someHitlTool';
-			const toolNodeTypes = createMockNodeTypes({
-				[toolNodeType]: mockLoadedNodeType(toolNodeType),
+			const workflowData = createTestWorkflow({
+				nodes: [createTestNode({ name: 'someTool', type: toolNodeType })],
 			});
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowData.id),
+			);
+			workflowDocumentStore.hydrate(workflowData);
 
 			const result = await resolveParameter(
 				{
 					params: '={{ $tool.parameters }}',
 				},
+				workflowDocumentStore.documentId,
 				{
 					localResolve: true,
-					workflow: createTestWorkflowObject({
-						nodes: [createTestNode({ name: 'someTool', type: toolNodeType })],
-						nodeTypes: toolNodeTypes,
-					}),
-					execution: null,
 					nodeName: 'someTool',
 					additionalKeys: {},
 				},

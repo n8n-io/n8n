@@ -1,5 +1,4 @@
 import { readdirSync, readFileSync } from 'fs';
-import { mock } from 'jest-mock-extended';
 import type {
 	IDataObject,
 	IDeferredPromise,
@@ -13,8 +12,9 @@ import type {
 	WorkflowTestData,
 	INodeTypeData,
 } from 'n8n-workflow';
-import { ApplicationError, NodeHelpers } from 'n8n-workflow';
+import { NodeHelpers, UnexpectedError } from 'n8n-workflow';
 import path from 'path';
+import { mock } from 'vitest-mock-extended';
 
 import { UnrecognizedNodeTypeError } from '@/errors';
 import { ExecutionLifecycleHooks } from '@/execution-engine/execution-lifecycle-hooks';
@@ -64,6 +64,7 @@ export function WorkflowExecuteAdditionalData(
 		// e.g. `if (!this.additionalData.restartExecutionId)`. This would for
 		// example skip running the `workflowExecuteBefore` hook in the tests.
 		restartExecutionId: undefined,
+		encryptedRunnerIdentity: undefined,
 	});
 }
 
@@ -138,7 +139,7 @@ export const workflowToTests = (dirname: string, testFolder = 'workflows') => {
 		const description = filePath.replace('.json', '');
 		const workflowData = readJsonFileSync<IWorkflowBase>(filePath);
 		if (workflowData.pinData === undefined) {
-			throw new ApplicationError('Workflow data does not contain pinData');
+			throw new UnexpectedError('Workflow data does not contain pinData');
 		}
 
 		const nodeData = preparePinData(workflowData.pinData);

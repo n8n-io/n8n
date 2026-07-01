@@ -1,6 +1,6 @@
 import get from 'lodash/get';
 import set from 'lodash/set';
-import { ApplicationError, type IDataObject } from 'n8n-workflow';
+import { UserError, type IDataObject } from 'n8n-workflow';
 
 export function splitAndTrim(str: string | string[]) {
 	if (typeof str === 'string') {
@@ -10,6 +10,18 @@ export function splitAndTrim(str: string | string[]) {
 			.filter((tag) => tag);
 	}
 	return str;
+}
+
+// The "Analyzers" field is a multiOptions parameter, so it normally resolves to
+// an array of "analyzerId::cortexId" entries. When its value comes from an
+// expression wrapped in surrounding text/whitespace, n8n switches to string
+// interpolation and the array is coerced to a comma-joined string. Normalize
+// both shapes so the operation does not throw "(...).map is not a function".
+export function parseAnalyzers(value: string | string[]) {
+	return splitAndTrim(value).map((analyzer) => {
+		const [analyzerId, cortexId] = analyzer.split('::');
+		return { analyzerId, cortexId };
+	});
 }
 
 export function fixFieldType(fields: IDataObject) {
@@ -53,7 +65,7 @@ export function prepareInputItem(item: IDataObject, schema: IDataObject[], i: nu
 			set(returnData, id, value);
 		} else {
 			if (entry.required) {
-				throw new ApplicationError(`Required field "${id}" is missing in item ${i}`, {
+				throw new UserError(`Required field "${id}" is missing in item ${i}`, {
 					level: 'warning',
 				});
 			}

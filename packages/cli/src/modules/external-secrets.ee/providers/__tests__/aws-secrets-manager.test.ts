@@ -1,9 +1,13 @@
+import type { Mock } from 'vitest';
 import { SecretsManager } from '@aws-sdk/client-secrets-manager';
-import { mock } from 'jest-mock-extended';
+import type { OutboundHttp, HttpTransport } from '@n8n/backend-network';
+import { mock } from 'vitest-mock-extended';
+import type { Agent as HttpAgent } from 'node:http';
+import type { Agent as HttpsAgent } from 'node:https';
 
 import { AwsSecretsManager, type AwsSecretsManagerContext } from '../aws-secrets-manager';
 
-jest.mock('@aws-sdk/client-secrets-manager');
+vi.mock('@aws-sdk/client-secrets-manager');
 
 describe('AwsSecretsManager', () => {
 	const region = 'eu-central-1';
@@ -11,15 +15,43 @@ describe('AwsSecretsManager', () => {
 	const secretAccessKey = 'FAKE-SECRET';
 
 	const context = mock<AwsSecretsManagerContext>();
-	const listSecretsSpy = jest.spyOn(SecretsManager.prototype, 'listSecrets');
-	const batchGetSpy = jest.spyOn(SecretsManager.prototype, 'batchGetSecretValue');
+	const listSecretsSpy = vi.spyOn(SecretsManager.prototype, 'listSecrets');
+	const batchGetSpy = vi.spyOn(SecretsManager.prototype, 'batchGetSecretValue');
 
 	let awsSecretsManager: AwsSecretsManager;
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 
 		awsSecretsManager = new AwsSecretsManager();
+	});
+
+	describe('transport wiring', () => {
+		it('drives the SDK through the outbound HTTP transport with SSRF disabled', async () => {
+			const httpAgent = mock<HttpAgent>();
+			const httpsAgent = mock<HttpsAgent>();
+			const transport = mock<HttpTransport>();
+			transport.getNodeAgent.mockReturnValue({ httpAgent, httpsAgent });
+			const outboundHttp = mock<OutboundHttp>();
+			outboundHttp.transport.mockReturnValue(transport);
+
+			const provider = new AwsSecretsManager(undefined, outboundHttp);
+			await provider.init(
+				mock<AwsSecretsManagerContext>({
+					settings: { region, authMethod: 'iamUser', accessKeyId, secretAccessKey },
+				}),
+			);
+
+			expect(outboundHttp.transport).toHaveBeenCalledWith({ ssrf: 'disabled' });
+
+			// The SDK client is built with our agents as its requestHandler, while the
+			// region and credentials it was already given are left untouched.
+			const SecretsManagerMock = SecretsManager as unknown as Mock;
+			const clientConfig = SecretsManagerMock.mock.calls.at(-1)?.[0];
+			expect(clientConfig.requestHandler).toEqual({ httpAgent, httpsAgent });
+			expect(clientConfig.region).toBe(region);
+			expect(clientConfig.credentials).toEqual({ accessKeyId, secretAccessKey });
+		});
 	});
 
 	describe('IAM User authentication', () => {
