@@ -46,8 +46,9 @@ describe('CreateSchedulerTables Migration', () => {
 		return rows.length === 1;
 	}
 
-	async function insertWorkflow(context: TestMigrationContext): Promise<string> {
+	async function insertPublishedWorkflow(context: TestMigrationContext): Promise<string> {
 		const workflowId = randomUUID();
+		const versionId = randomUUID();
 		const now = new Date();
 		await context.runQuery(
 			`INSERT INTO ${context.escape.tableName('workflow_entity')} ("id", "name", "active", "nodes", "connections", "triggerCount", "versionId", "createdAt", "updatedAt")
@@ -59,10 +60,28 @@ describe('CreateSchedulerTables Migration', () => {
 				nodes: '[]',
 				connections: '{}',
 				triggerCount: 0,
-				versionId: randomUUID(),
+				versionId,
 				createdAt: now,
 				updatedAt: now,
 			},
+		);
+		await context.runQuery(
+			`INSERT INTO ${context.escape.tableName('workflow_history')} ("versionId", "workflowId", "nodes", "connections", "authors", "createdAt", "updatedAt")
+			 VALUES (:versionId, :workflowId, :nodes, :connections, :authors, :createdAt, :updatedAt)`,
+			{
+				versionId,
+				workflowId,
+				nodes: '[]',
+				connections: '{}',
+				authors: 'test',
+				createdAt: now,
+				updatedAt: now,
+			},
+		);
+		await context.runQuery(
+			`INSERT INTO ${context.escape.tableName('workflow_published_version')} ("workflowId", "publishedVersionId", "createdAt", "updatedAt")
+			 VALUES (:workflowId, :publishedVersionId, :createdAt, :updatedAt)`,
+			{ workflowId, publishedVersionId: versionId, createdAt: now, updatedAt: now },
 		);
 		return workflowId;
 	}
@@ -214,7 +233,7 @@ describe('CreateSchedulerTables Migration', () => {
 		it('allows multiple jobs on the same (workflowId, nodeId) trigger node', async () => {
 			const context = createTestMigrationContext(dataSource);
 			const table = context.escape.tableName('scheduled_job');
-			const workflowId = await insertWorkflow(context);
+			const workflowId = await insertPublishedWorkflow(context);
 			const nodeId = randomUUID();
 			const now = new Date();
 			const insert = async () =>
@@ -288,7 +307,7 @@ describe('CreateSchedulerTables Migration', () => {
 		it('allows multiple non-trigger jobs on the same workflow (NULL nodeId)', async () => {
 			const context = createTestMigrationContext(dataSource);
 			const table = context.escape.tableName('scheduled_job');
-			const workflowId = await insertWorkflow(context);
+			const workflowId = await insertPublishedWorkflow(context);
 			const now = new Date();
 			const insert = async () =>
 				await context.runQuery(
@@ -459,29 +478,16 @@ describe('CreateSchedulerTables Migration', () => {
 			await context.queryRunner.release();
 		});
 
-		it('cascades deletes from workflow_entity to its scheduled_job rows', async () => {
+		it('cascades deletes from workflow_published_version to its scheduled_job rows', async () => {
 			const context = createTestMigrationContext(dataSource);
-			const workflowId = randomUUID();
-			const workflowTable = context.escape.tableName('workflow_entity');
-			const now = new Date();
-			await context.runQuery(
-				`INSERT INTO ${workflowTable} ("id", "name", "active", "nodes", "connections", "triggerCount", "versionId", "createdAt", "updatedAt")
-				 VALUES (:id, :name, :active, :nodes, :connections, :triggerCount, :versionId, :createdAt, :updatedAt)`,
-				{
-					id: workflowId,
-					name: 'Scheduler test workflow',
-					active: false,
-					nodes: '[]',
-					connections: '{}',
-					triggerCount: 0,
-					versionId: randomUUID(),
-					createdAt: now,
-					updatedAt: now,
-				},
-			);
+			const workflowId = await insertPublishedWorkflow(context);
 			const jobId = await insertJob(context, { workflowId });
 
-			await context.runQuery(`DELETE FROM ${workflowTable} WHERE "id" = :id`, { id: workflowId });
+			// Unpublishing drops the published-version row, which cascades to its jobs.
+			await context.runQuery(
+				`DELETE FROM ${context.escape.tableName('workflow_published_version')} WHERE "workflowId" = :workflowId`,
+				{ workflowId },
+			);
 
 			const remaining = await context.runQuery<unknown[]>(
 				`SELECT * FROM ${context.escape.tableName('scheduled_job')} WHERE "id" = :id`,

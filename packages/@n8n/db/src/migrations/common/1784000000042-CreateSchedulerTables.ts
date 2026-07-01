@@ -26,7 +26,7 @@ export class CreateSchedulerTables1784000000042 implements ReversibleMigration {
 				column('workflowId')
 					.varchar(36)
 					.comment(
-						'Workflow this job belongs to; NULL for system jobs not tied to a workflow. Deleting the workflow deletes its jobs.',
+						"References the workflow's published version, since only published trigger nodes get scheduled; NULL for system jobs not tied to a workflow. Unpublishing the workflow deletes its jobs.",
 					),
 				column('nodeId')
 					.varchar(36)
@@ -73,8 +73,8 @@ export class CreateSchedulerTables1784000000042 implements ReversibleMigration {
 					.comment('Retry ceiling copied onto each occurrence this job materializes.'),
 			)
 			.withTimestamps.withForeignKey('workflowId', {
-				tableName: 'workflow_entity',
-				columnName: 'id',
+				tableName: 'workflow_published_version',
+				columnName: 'workflowId',
 				onDelete: 'CASCADE',
 				name: `FK_${tablePrefix}scheduled_job_workflowId`,
 			})

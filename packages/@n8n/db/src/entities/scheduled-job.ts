@@ -50,9 +50,11 @@ export class ScheduledJob extends WithTimestamps {
 	name: string;
 
 	/**
-	 * Workflow this job belongs to.
+	 * Workflow this job belongs to,
+	 * referenced via its published version
+	 * (only published trigger nodes get scheduled).
 	 * `null` for well-known system jobs that aren't tied to a workflow.
-	 * A deleted workflow cascades its jobs away.
+	 * Unpublishing the workflow cascades its jobs away.
 	 */
 	@Column({ type: 'varchar', length: 36, nullable: true })
 	workflowId: string | null;

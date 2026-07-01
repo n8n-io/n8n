@@ -20,7 +20,7 @@
 | taskType | varchar(128) |  | false |  |  | Selects which registered handler runs the task. |
 | timezone | varchar(64) |  | true |  |  | IANA timezone the cron expression is evaluated in; NULL uses the instance default. |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| workflowId | varchar(36) |  | true |  | [public.workflow_entity](public.workflow_entity.md) | Workflow this job belongs to; NULL for system jobs not tied to a workflow. Deleting the workflow deletes its jobs. |
+| workflowId | varchar(36) |  | true |  | [public.workflow_published_version](public.workflow_published_version.md) | References the workflow's published version, since only published trigger nodes get scheduled; NULL for system jobs not tied to a workflow. Unpublishing the workflow deletes its jobs. |
 
 ## Constraints
 
@@ -30,7 +30,7 @@
 | CHK_scheduled_job_fire_at | CHECK | CHECK ((((kind)::text <> 'one_off'::text) OR ("fireAt" IS NOT NULL))) |
 | CHK_scheduled_job_interval_seconds | CHECK | CHECK ((((kind)::text <> 'interval'::text) OR ("intervalSeconds" IS NOT NULL))) |
 | CHK_scheduled_job_kind | CHECK | CHECK (((kind)::text = ANY ((ARRAY['cron'::character varying, 'interval'::character varying, 'one_off'::character varying])::text[]))) |
-| FK_scheduled_job_workflowId | FOREIGN KEY | FOREIGN KEY ("workflowId") REFERENCES workflow_entity(id) ON DELETE CASCADE |
+| FK_scheduled_job_workflowId | FOREIGN KEY | FOREIGN KEY ("workflowId") REFERENCES workflow_published_version("workflowId") ON DELETE CASCADE |
 | PK_893185383f029ca8d57bb781fa8 | PRIMARY KEY | PRIMARY KEY (id) |
 | scheduled_job_createdAt_not_null | n | NOT NULL "createdAt" |
 | scheduled_job_enabled_not_null | n | NOT NULL enabled |
@@ -57,7 +57,7 @@
 erDiagram
 
 "public.scheduled_task" }o--|| "public.scheduled_job" : "FOREIGN KEY (#quot;jobId#quot;) REFERENCES scheduled_job(id) ON DELETE CASCADE"
-"public.scheduled_job" }o--o| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
+"public.scheduled_job" }o--o| "public.workflow_published_version" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_published_version(#quot;workflowId#quot;) ON DELETE CASCADE"
 
 "public.scheduled_job" {
   timestamp_3__with_time_zone createdAt
@@ -96,27 +96,11 @@ erDiagram
   varchar_16_ status
   varchar_128_ taskType
 }
-"public.workflow_entity" {
-  boolean active
-  varchar_36_ activeVersionId FK
-  json connections
+"public.workflow_published_version" {
   timestamp_3__with_time_zone createdAt
-  text description
-  varchar_36_ id
-  boolean isArchived
-  json meta
-  varchar_128_ name
-  json nodeGroups
-  json nodes
-  varchar_36_ parentFolderId FK
-  json pinData
-  json settings
-  varchar sourceWorkflowId
-  json staticData
-  integer triggerCount
+  varchar_36_ publishedVersionId FK
   timestamp_3__with_time_zone updatedAt
-  integer versionCounter
-  character_36_ versionId
+  varchar_36_ workflowId FK
 }
 ```
 

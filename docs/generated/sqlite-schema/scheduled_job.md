@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "scheduled_job" ("id" integer PRIMARY KEY NOT NULL, "name" varchar(255) NOT NULL, "workflowId" varchar(36), "nodeId" varchar(36), "taskType" varchar(128) NOT NULL, "payload" text NOT NULL DEFAULT ('{}'), "kind" varchar(16) NOT NULL, "cronExpression" varchar(255), "timezone" varchar(64), "intervalSeconds" integer, "fireAt" datetime(3), "enabled" boolean NOT NULL DEFAULT (true), "nextRunAt" datetime(3), "lastFiredAt" datetime(3), "maxAttempts" integer NOT NULL DEFAULT (1), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_scheduled_job_cron_expression" CHECK ("kind" <> 'cron' OR "cronExpression" IS NOT NULL), CONSTRAINT "CHK_scheduled_job_interval_seconds" CHECK ("kind" <> 'interval' OR "intervalSeconds" IS NOT NULL), CONSTRAINT "CHK_scheduled_job_fire_at" CHECK ("kind" <> 'one_off' OR "fireAt" IS NOT NULL), CONSTRAINT "CHK_scheduled_job_kind" CHECK ("kind" IN ('cron', 'interval', 'one_off')), CONSTRAINT "FK_scheduled_job_workflowId" FOREIGN KEY ("workflowId") REFERENCES "workflow_entity" ("id") ON DELETE CASCADE)
+CREATE TABLE "scheduled_job" ("id" integer PRIMARY KEY NOT NULL, "name" varchar(255) NOT NULL, "workflowId" varchar(36), "nodeId" varchar(36), "taskType" varchar(128) NOT NULL, "payload" text NOT NULL DEFAULT ('{}'), "kind" varchar(16) NOT NULL, "cronExpression" varchar(255), "timezone" varchar(64), "intervalSeconds" integer, "fireAt" datetime(3), "enabled" boolean NOT NULL DEFAULT (true), "nextRunAt" datetime(3), "lastFiredAt" datetime(3), "maxAttempts" integer NOT NULL DEFAULT (1), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_scheduled_job_cron_expression" CHECK ("kind" <> 'cron' OR "cronExpression" IS NOT NULL), CONSTRAINT "CHK_scheduled_job_interval_seconds" CHECK ("kind" <> 'interval' OR "intervalSeconds" IS NOT NULL), CONSTRAINT "CHK_scheduled_job_fire_at" CHECK ("kind" <> 'one_off' OR "fireAt" IS NOT NULL), CONSTRAINT "CHK_scheduled_job_kind" CHECK ("kind" IN ('cron', 'interval', 'one_off')), CONSTRAINT "FK_scheduled_job_workflowId" FOREIGN KEY ("workflowId") REFERENCES "workflow_published_version" ("workflowId") ON DELETE CASCADE)
 ```
 
 </details>
@@ -31,7 +31,7 @@ CREATE TABLE "scheduled_job" ("id" integer PRIMARY KEY NOT NULL, "name" varchar(
 | taskType | varchar(128) |  | false |  |  |  |
 | timezone | varchar(64) |  | true |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
-| workflowId | varchar(36) |  | true |  | [workflow_entity](workflow_entity.md) |  |
+| workflowId | varchar(36) |  | true |  | [workflow_published_version](workflow_published_version.md) |  |
 
 ## Constraints
 
@@ -41,7 +41,7 @@ CREATE TABLE "scheduled_job" ("id" integer PRIMARY KEY NOT NULL, "name" varchar(
 | - | CHECK | CHECK ("kind" <> 'interval' OR "intervalSeconds" IS NOT NULL) |
 | - | CHECK | CHECK ("kind" <> 'one_off' OR "fireAt" IS NOT NULL) |
 | - | CHECK | CHECK ("kind" IN ('cron', 'interval', 'one_off')) |
-| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
+| - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (workflowId) REFERENCES workflow_published_version (workflowId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | id | PRIMARY KEY | PRIMARY KEY (id) |
 
 ## Indexes
@@ -58,7 +58,7 @@ CREATE TABLE "scheduled_job" ("id" integer PRIMARY KEY NOT NULL, "name" varchar(
 erDiagram
 
 "scheduled_task" }o--|| "scheduled_job" : "FOREIGN KEY (jobId) REFERENCES scheduled_job (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
-"scheduled_job" }o--o| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"scheduled_job" }o--o| "workflow_published_version" : "FOREIGN KEY (workflowId) REFERENCES workflow_published_version (workflowId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "scheduled_job" {
   datetime_3_ createdAt
@@ -97,27 +97,11 @@ erDiagram
   varchar_16_ status
   varchar_128_ taskType
 }
-"workflow_entity" {
-  boolean active
-  varchar_36_ activeVersionId FK
-  TEXT connections
+"workflow_published_version" {
   datetime_3_ createdAt
-  TEXT description
-  varchar_36_ id PK
-  boolean isArchived
-  TEXT meta
-  varchar_128_ name
-  TEXT nodeGroups
-  TEXT nodes
-  varchar_36_ parentFolderId FK
-  TEXT pinData
-  TEXT settings
-  varchar sourceWorkflowId
-  TEXT staticData
-  INTEGER triggerCount
+  varchar_36_ publishedVersionId FK
   datetime_3_ updatedAt
-  INTEGER versionCounter
-  varchar_36_ versionId
+  varchar_36_ workflowId PK
 }
 ```
 
