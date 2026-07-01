@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, useCssModule, watch } from 'vue';
-import { useRouter } from 'vue-router';
 import type { INodeParameterResourceLocator, INodeProperties } from 'n8n-workflow';
 import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -12,7 +11,6 @@ import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store
 import { useAgentCapabilitySummary } from '@/features/agents/composables/useAgentCapabilitySummary';
 import { useAgentIntegrationsCatalog } from '@/features/agents/composables/useAgentIntegrationsCatalog';
 import { useModelCatalog } from '@/features/agents/composables/useModelCatalog';
-import { AGENT_BUILDER_VIEW } from '@/features/agents/constants';
 import {
 	AGENT_MODEL_PROVIDER_DEFINITIONS,
 	isAgentModelProvider,
@@ -22,6 +20,7 @@ import AgentSelectorParameterInput from '@/features/ndv/parameters/components/Ag
 import CanvasNodeStatusIcons from './parts/CanvasNodeStatusIcons.vue';
 import CanvasNodeAgentChips from './parts/CanvasNodeAgentChips.vue';
 import { buildAgentCardChips } from './parts/canvasNodeAgentChips.utils';
+import { useAgentNavigation } from '@/features/agents/composables/useAgentNavigation';
 
 const emit = defineEmits<{
 	update: [parameters: Record<string, unknown>];
@@ -31,9 +30,9 @@ const emit = defineEmits<{
 
 const $style = useCssModule();
 const i18n = useI18n();
-const router = useRouter();
 const projectsStore = useProjectsStore();
 const nodeTypesStore = useNodeTypesStore();
+const nav = useAgentNavigation();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const { catalog: integrationsCatalog, ensureLoaded: ensureIntegrationsLoaded } =
 	useAgentIntegrationsCatalog();
@@ -154,10 +153,7 @@ function onOpenContextMenu(event: MouseEvent) {
 function openAgent() {
 	if (!isConfigured.value || !projectId.value) return;
 
-	void router.push({
-		name: AGENT_BUILDER_VIEW,
-		params: { projectId: projectId.value, agentId: agentId.value },
-	});
+	nav.openBuilder(projectId.value, agentId.value);
 }
 
 // Resolve chip labels/icons (channel names/icons + friendly model name) once the
