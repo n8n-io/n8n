@@ -20,6 +20,9 @@ import { useResourceLocatorModes } from '../../composables/useResourceLocatorMod
 import { useAgentResourcesLocator } from '../../composables/useAgentResourcesLocator';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useRouter } from 'vue-router';
+import { useAgentPermissions } from '@/features/agents/composables/useAgentPermissions';
+import { NEW_AGENT_VIEW } from '@/features/agents/constants';
 
 import { N8nButton, N8nIcon, N8nInput, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
 
@@ -35,6 +38,11 @@ export interface Props {
 	parameterIssues?: string[];
 	parameter: INodeProperties;
 	newResourceLabel?: string;
+	/**
+	 * Hide the list/ID mode selector and render the list picker on its own. Used
+	 * on the canvas card, where the agent is always picked from the list.
+	 */
+	hideModeSelector?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -46,6 +54,7 @@ const props = withDefaults(defineProps<Props>(), {
 	expressionDisplayValue: '',
 	newResourceLabel: '',
 	parameterIssues: () => [],
+	hideModeSelector: false,
 });
 
 const emit = defineEmits<{
@@ -58,6 +67,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const router = useRouter();
 const projectStore = useProjectsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 
@@ -119,6 +129,10 @@ const { hideDropdown, isDropdownVisible, showDropdown } = useResourceLocatorDrop
 	inputRef,
 );
 
+// Show "Create agent" only when the user can create one in the scoped project
+// (project/global agent:create scope).
+const { canCreate } = useAgentPermissions(projectId);
+
 const currentProjectName = computed(() => {
 	if (!projectStore.isTeamProjectFeatureEnabled) return '';
 
@@ -144,13 +158,9 @@ const getCreateResourceLabel = computed(() => {
 	});
 });
 
-// The create action is hidden until AGENT-277 wires the eager-create + Agent
-// Builder navigation. The handler (`onAddResourceClicked`) and label stay
-// implemented so re-enabling it is a one-line change.
-const isAgentCreationEnabled = false;
-
+// Surfaced whenever the user has create permission (NDV + canvas card alike).
 const newResourceOptions = computed(() =>
-	isAgentCreationEnabled ? { label: getCreateResourceLabel.value } : {},
+	canCreate.value ? { label: getCreateResourceLabel.value } : {},
 );
 
 const valueToDisplay = computed<INodeParameterResourceLocator['value']>(() => {
@@ -167,7 +177,7 @@ const valueToDisplay = computed<INodeParameterResourceLocator['value']>(() => {
 
 const placeholder = computed(() => {
 	if (isListMode.value) {
-		return i18n.baseText('resourceLocator.mode.list.placeholder');
+		return i18n.baseText('agentSelector.mode.list.placeholder');
 	}
 
 	return i18n.baseText('resourceLocator.id.placeholder');
@@ -227,9 +237,9 @@ function onKeyDown(e: KeyboardEvent) {
 
 function onAddResourceClicked() {
 	hideDropdown();
-	// The eager-create + Agent Builder navigation is wired by AGENT-277. Here we
-	// only surface the intent so the parent can drive the create round-trip.
 	emit('agentCreateRequested');
+	// Open the standalone new-agent flow scoped to the picker's project
+	void router.push({ name: NEW_AGENT_VIEW, query: { projectId: projectId.value } });
 }
 
 async function onRetry() {
@@ -305,10 +315,11 @@ defineExpose({ showDropdown });
 			<div
 				:class="{
 					[$style.resourceLocator]: true,
-					[$style.multipleModes]: true,
+					[$style.multipleModes]: !hideModeSelector,
+					[$style.singleMode]: hideModeSelector,
 				}"
 			>
-				<div :class="$style.modeSelector">
+				<div v-if="!hideModeSelector" :class="$style.modeSelector">
 					<N8nSelect
 						:model-value="selectedMode"
 						:size="inputSize"
@@ -403,4 +414,13 @@ defineExpose({ showDropdown });
 
 <style lang="scss" module>
 @use '../ResourceLocator/resourceLocator.scss';
+
+// Without the mode selector the input stands alone, so restore the left corner
+// radii that the multi-mode layout squares off to butt against the selector.
+.singleMode {
+	.inputContainer {
+		--input--radius--top-left: var(--radius);
+		--input--radius--bottom-left: var(--radius);
+	}
+}
 </style>
