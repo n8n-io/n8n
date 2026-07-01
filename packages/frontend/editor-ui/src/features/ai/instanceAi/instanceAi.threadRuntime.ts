@@ -36,7 +36,7 @@ import {
 	fetchThreadStatus as fetchThreadStatusApi,
 } from './instanceAi.memory.api';
 import { handleEvent as reduceEvent, createRunStateFromTree } from './instanceAi.reducer';
-import { getLatestBuildResult } from './canvasPreview.utils';
+import { getLatestBuildResult, type RememberedManualExecution } from './canvasPreview.utils';
 import { useResourceRegistry } from './useResourceRegistry';
 import { useResponseFeedback } from './useResponseFeedback';
 
@@ -298,6 +298,25 @@ export function createThreadRuntime(
 		if (pending?.workflowId !== workflowId) return undefined;
 		pendingHandoff.value = null;
 		return { workflow: pending.workflow, execution: pending.execution };
+	}
+
+	// Latest user-triggered (non-agent) preview run per workflow. Lives on the
+	// thread runtime so it survives the preview canvas unmounting on a tab switch
+	// and is re-seeded on remount; a fresh runtime per thread resets it (INS-611).
+	// Plain Map: only read imperatively (on push events / remount), never rendered.
+	const rememberedManualExecutions = new Map<string, RememberedManualExecution>();
+	function rememberManualExecution(
+		workflowId: string,
+		executionId: string,
+		agentExecutionId: string | undefined,
+	): void {
+		rememberedManualExecutions.set(workflowId, { executionId, agentExecutionId });
+	}
+	function getRememberedManualExecution(workflowId: string): RememberedManualExecution | undefined {
+		return rememberedManualExecutions.get(workflowId);
+	}
+	function forgetManualExecution(workflowId: string): void {
+		rememberedManualExecutions.delete(workflowId);
 	}
 
 	// --- Reducer routing state ---
@@ -1073,6 +1092,9 @@ export function createThreadRuntime(
 		// actions
 		setPendingHandoff,
 		consumePendingHandoff,
+		rememberManualExecution,
+		getRememberedManualExecution,
+		forgetManualExecution,
 		resetState,
 		dispose,
 		connectSSE,

@@ -110,7 +110,6 @@ catalog:
   agent-browser: 0.26.0
   ai: ^6.0.197
   axios: 1.18.0
-  babel-jest: ^29.7.0
   basic-auth: 2.0.1
   cache-manager: 5.2.3
   callsites: 3.1.0
