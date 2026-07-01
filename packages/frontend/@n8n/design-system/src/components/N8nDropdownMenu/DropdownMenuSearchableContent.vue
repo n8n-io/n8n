@@ -53,6 +53,7 @@ const searchRef = ref<{ focus: (options?: FocusOptions) => void } | null>(null);
 const searchTerm = ref('');
 const openSubMenuIndex = ref(-1);
 const instanceId = Math.random().toString(36).slice(2);
+let searchSequence = 0;
 
 const highlightedIndex = ref(-1);
 
@@ -81,27 +82,7 @@ const openHighlightedSubMenu = () => {
 
 	const item = props.items[highlightedIndex.value];
 	if (item && !item.disabled && hasSubMenu(item)) {
-		openSubMenuIndex.value = highlightedIndex.value;
-	}
-};
-
-const selectHighlightedItem = () => {
-	if (highlightedIndex.value < 0) return;
-
-	const item = props.items[highlightedIndex.value];
-	if (!item || item.disabled) return;
-
-	if (hasSubMenu(item)) {
-		openSubMenuIndex.value = highlightedIndex.value;
-	} else {
-		emit('select', item.id);
-		emit('close');
-	}
-};
-
-const closeOpenSubMenu = () => {
-	if (openSubMenuIndex.value >= 0) {
-		openSubMenuIndex.value = -1;
+		handleSubMenuOpenChange(highlightedIndex.value, true);
 	}
 };
 
@@ -109,16 +90,21 @@ const resetHighlightedItem = () => {
 	highlightedIndex.value = -1;
 };
 
-const debouncedEmitSearch = useDebounceFn((term: string) => {
-	emit('search', term);
+const debouncedEmitSearch = useDebounceFn((term: string, sequence: number) => {
+	if (sequence === searchSequence) {
+		emit('search', term);
+	}
 }, props.searchDebounce);
 
 const handleSearchUpdate = async (value: string) => {
 	searchTerm.value = value;
-	await debouncedEmitSearch(value);
+	searchSequence++;
+	await debouncedEmitSearch(value, searchSequence);
 };
 
 const resetSearch = () => {
+	searchSequence++;
+
 	if (searchTerm.value === '') return;
 
 	searchTerm.value = '';
@@ -145,6 +131,26 @@ const handleSubMenuOpenChange = (index: number, open: boolean) => {
 			highlightedIndex.value = index;
 			searchRef.value?.focus({ preventScroll: true });
 		});
+	}
+};
+
+const selectHighlightedItem = () => {
+	if (highlightedIndex.value < 0) return;
+
+	const item = props.items[highlightedIndex.value];
+	if (!item || item.disabled) return;
+
+	if (hasSubMenu(item)) {
+		handleSubMenuOpenChange(highlightedIndex.value, true);
+	} else {
+		emit('select', item.id);
+		emit('close');
+	}
+};
+
+const closeOpenSubMenu = () => {
+	if (openSubMenuIndex.value >= 0) {
+		handleSubMenuOpenChange(openSubMenuIndex.value, false);
 	}
 };
 

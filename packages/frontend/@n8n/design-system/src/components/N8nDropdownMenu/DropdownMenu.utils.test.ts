@@ -1,7 +1,9 @@
 import userEvent from '@testing-library/user-event';
 import { fireEvent, render, waitFor } from '@testing-library/vue';
+import { vi } from 'vitest';
 import { h } from 'vue';
 
+import { useDropdownSearch } from './composables/useDropdownSearch';
 import type { DropdownMenuItemProps } from './DropdownMenu.types';
 import {
 	getItemDomId,
@@ -118,9 +120,10 @@ const renderSearchableContent = (
 	items: DropdownMenuItemProps[],
 	open = true,
 	pointerOpensSubmenus = false,
+	searchDebounce = 0,
 ) => {
 	return render(DropdownMenuSearchableContent, {
-		props: { open, items, searchDebounce: 0 },
+		props: { open, items, searchDebounce },
 		slots: {
 			default: ({
 				highlightedIndex,
@@ -153,6 +156,28 @@ const renderSearchableContent = (
 		},
 	});
 };
+
+describe('useDropdownSearch', () => {
+	it('should not fall back to unfiltered children when parent matches', () => {
+		const { filteredItems, handleSearch } = useDropdownSearch(
+			[
+				{
+					id: 'parent',
+					label: 'Parent',
+					children: [
+						{ id: 'child', label: 'Child' },
+						{ id: 'other', label: 'Other' },
+					],
+				},
+			],
+			{ includeChildrenWhenParentMatches: false },
+		);
+
+		handleSearch('parent');
+
+		expect(filteredItems.value).toEqual([{ id: 'parent', label: 'Parent', children: [] }]);
+	});
+});
 
 describe('DropdownMenuSearchableContent keyboard navigation', () => {
 	it('should highlight the first enabled item when pressing ArrowDown', async () => {
@@ -207,6 +232,7 @@ describe('DropdownMenuSearchableContent keyboard navigation', () => {
 				'data-open-submenu-index',
 				'0',
 			);
+			expect(wrapper.emitted('submenu:toggle')?.at(-1)).toEqual(['parent', true]);
 			expect(wrapper.emitted('select')).toBeUndefined();
 		});
 	});
@@ -369,6 +395,24 @@ describe('DropdownMenuSearchableContent keyboard navigation', () => {
 
 		expect(wrapper.getByRole('textbox')).toHaveValue('');
 		expect(wrapper.emitted('search')?.at(-1)).toEqual(['']);
+	});
+
+	it('should ignore pending debounced search after resetting search on close', async () => {
+		vi.useFakeTimers();
+		try {
+			const items = createItems(2);
+			const wrapper = renderSearchableContent(items, true, false, 100);
+
+			await userEvent.type(wrapper.getByRole('textbox'), 'test', {
+				advanceTimers: vi.advanceTimersByTime,
+			});
+			await wrapper.rerender({ open: false, items, searchDebounce: 100 });
+			await vi.advanceTimersByTimeAsync(100);
+
+			expect(wrapper.emitted('search')).toEqual([['']]);
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it('should reset the highlighted item when items change', async () => {

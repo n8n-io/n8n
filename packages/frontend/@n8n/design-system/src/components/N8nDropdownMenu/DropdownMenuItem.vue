@@ -188,10 +188,14 @@ watch(
 											v-bind="child"
 											:html-id="searchableContent.getItemDomId(childIndex)"
 											:highlighted="searchableContent.highlightedIndex === childIndex"
+											:sub-menu-open="searchableContent.openSubMenuIndex === childIndex"
 											:disable-pointer-focus="true"
 											:divided="child.divided && childIndex > 0"
 											@select="handleSelect"
 											@search="handleChildSearch"
+											@update:sub-menu-open="
+												searchableContent.onSubMenuOpenChange(childIndex, $event)
+											"
 											@pointermove="searchableContent.onItemHover(childIndex)"
 										>
 											<template #item-leading="leadingProps">
@@ -207,6 +211,7 @@ watch(
 									</template>
 								</div>
 							</template>
+							<div v-else :class="$style['empty-state']">No items</div>
 						</template>
 					</DropdownMenuSearchableContent>
 

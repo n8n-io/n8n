@@ -104,7 +104,7 @@ function filterNestedItems<T, D>(
 			return [
 				{
 					...options.mapResult(item, [item]),
-					children: filteredChildren.length > 0 ? filteredChildren : item.children,
+					children: filteredChildren,
 				},
 			];
 		}
