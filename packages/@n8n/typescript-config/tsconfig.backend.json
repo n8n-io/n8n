@@ -1,10 +1,6 @@
 {
 	"extends": "./tsconfig.common.json",
 	"compilerOptions": {
-<<<<<<< hoisting-cleanup
 		"types": ["node"]
-=======
-		"types": ["node", "vitest/globals"]
->>>>>>> master
 	}
 }
