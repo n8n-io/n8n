@@ -15,17 +15,6 @@ export const ScheduledJobKind = {
 export type ScheduledJobKind = (typeof ScheduledJobKind)[keyof typeof ScheduledJobKind];
 
 /**
- * How to handle fires missed while the scheduler was down.
- */
-export const MisfirePolicy = {
-	Coalesce: 'coalesce',
-	Skip: 'skip',
-	FireAll: 'fire_all',
-} as const;
-
-export type MisfirePolicy = (typeof MisfirePolicy)[keyof typeof MisfirePolicy];
-
-/**
  * A scheduled job: the rule for when something should run,
  * plus the bookkeeping the scheduler needs to act on it.
  *
@@ -146,19 +135,6 @@ export class ScheduledJob extends WithTimestamps {
 	 */
 	@DateTimeColumn({ nullable: true })
 	lastFiredAt: Date | null;
-
-	/**
-	 * What to do with fires that were missed while the scheduler was down.
-	 */
-	@Column({ type: 'varchar', length: 16, default: MisfirePolicy.Coalesce })
-	misfirePolicy: MisfirePolicy;
-
-	/**
-	 * How late a fire may be before it counts as missed
-	 * and the misfire policy applies.
-	 */
-	@Column({ type: 'int', default: 60 })
-	misfireGraceSeconds: number;
 
 	/**
 	 * Retry ceiling copied onto each occurrence this job materializes.

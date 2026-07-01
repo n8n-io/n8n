@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "scheduled_job" ("id" integer PRIMARY KEY NOT NULL, "name" varchar(255), "workflowId" varchar(36), "nodeId" varchar(36), "taskType" varchar(128) NOT NULL, "payload" text NOT NULL DEFAULT ('{}'), "kind" varchar(16) NOT NULL, "cronExpression" varchar(255), "timezone" varchar(64), "intervalSeconds" integer, "fireAt" datetime(3), "enabled" boolean NOT NULL DEFAULT (true), "nextRunAt" datetime(3), "lastFiredAt" datetime(3), "misfirePolicy" varchar(16) NOT NULL DEFAULT ('coalesce'), "misfireGraceSeconds" integer NOT NULL DEFAULT (60), "maxAttempts" integer NOT NULL DEFAULT (1), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_scheduled_job_kind" CHECK ("kind" IN ('cron', 'interval', 'one_off')), CONSTRAINT "CHK_scheduled_job_misfirePolicy" CHECK ("misfirePolicy" IN ('coalesce', 'skip', 'fire_all')), CONSTRAINT "FK_scheduled_job_workflowId" FOREIGN KEY ("workflowId") REFERENCES "workflow_entity" ("id") ON DELETE CASCADE)
+CREATE TABLE "scheduled_job" ("id" integer PRIMARY KEY NOT NULL, "name" varchar(255), "workflowId" varchar(36), "nodeId" varchar(36), "taskType" varchar(128) NOT NULL, "payload" text NOT NULL DEFAULT ('{}'), "kind" varchar(16) NOT NULL, "cronExpression" varchar(255), "timezone" varchar(64), "intervalSeconds" integer, "fireAt" datetime(3), "enabled" boolean NOT NULL DEFAULT (true), "nextRunAt" datetime(3), "lastFiredAt" datetime(3), "maxAttempts" integer NOT NULL DEFAULT (1), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_scheduled_job_kind" CHECK ("kind" IN ('cron', 'interval', 'one_off')), CONSTRAINT "FK_scheduled_job_workflowId" FOREIGN KEY ("workflowId") REFERENCES "workflow_entity" ("id") ON DELETE CASCADE)
 ```
 
 </details>
@@ -24,8 +24,6 @@ CREATE TABLE "scheduled_job" ("id" integer PRIMARY KEY NOT NULL, "name" varchar(
 | kind | varchar(16) |  | false |  |  |  |
 | lastFiredAt | datetime(3) |  | true |  |  |  |
 | maxAttempts | INTEGER | 1 | false |  |  |  |
-| misfireGraceSeconds | INTEGER | 60 | false |  |  |  |
-| misfirePolicy | varchar(16) | 'coalesce' | false |  |  |  |
 | name | varchar(255) |  | true |  |  |  |
 | nextRunAt | datetime(3) |  | true |  |  |  |
 | nodeId | varchar(36) |  | true |  |  |  |
@@ -40,7 +38,6 @@ CREATE TABLE "scheduled_job" ("id" integer PRIMARY KEY NOT NULL, "name" varchar(
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
 | - | CHECK | CHECK ("kind" IN ('cron', 'interval', 'one_off')) |
-| - | CHECK | CHECK ("misfirePolicy" IN ('coalesce', 'skip', 'fire_all')) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | id | PRIMARY KEY | PRIMARY KEY (id) |
 
@@ -70,8 +67,6 @@ erDiagram
   varchar_16_ kind
   datetime_3_ lastFiredAt
   INTEGER maxAttempts
-  INTEGER misfireGraceSeconds
-  varchar_16_ misfirePolicy
   varchar_255_ name
   datetime_3_ nextRunAt
   varchar_36_ nodeId

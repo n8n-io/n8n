@@ -231,8 +231,6 @@ erDiagram
   varchar_16_ kind
   datetime_3_ lastFiredAt
   INTEGER maxAttempts
-  INTEGER misfireGraceSeconds
-  varchar_16_ misfirePolicy
   varchar_255_ name
   datetime_3_ nextRunAt
   varchar_36_ nodeId
