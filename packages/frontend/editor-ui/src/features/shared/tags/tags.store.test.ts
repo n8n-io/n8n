@@ -17,7 +17,7 @@ const { hasPermission, mockApi } = vi.hoisted(() => ({
 }));
 
 vi.mock('@/app/utils/rbac/permissions', () => ({
-	hasPermission: (...args: unknown[]) => hasPermission(...args),
+	hasPermission,
 }));
 
 vi.mock('@/app/stores/workflowDocument.store', () => ({

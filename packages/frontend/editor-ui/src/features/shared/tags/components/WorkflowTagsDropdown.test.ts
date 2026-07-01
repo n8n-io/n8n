@@ -5,9 +5,12 @@ import WorkflowTagsDropdown from './WorkflowTagsDropdown.vue';
 import { mockedStore } from '@/__tests__/utils';
 import { useTagsStore } from '../tags.store';
 
-const hasPermission = vi.fn(() => true);
+const hasPermission = vi.hoisted(() =>
+	vi.fn<(_checks: unknown, opts?: { rbac?: { scope?: string } }) => boolean>(() => true),
+);
+
 vi.mock('@/app/utils/rbac/permissions', () => ({
-	hasPermission: (...args: unknown[]) => hasPermission(...args),
+	hasPermission,
 }));
 
 // Stub the inner TagsDropdown so we can inspect the props the wrapper passes to it

@@ -5,7 +5,6 @@ import type { ITagRow } from '../../../tags.types';
 import { useI18n } from '@n8n/i18n';
 import TagsTableHeader from './TagsTableHeader.vue';
 import TagsTable from './TagsTable.vue';
-import { useTagPermissions } from '../../../useTagPermissions';
 import type { BaseTextKey } from '@n8n/i18n';
 
 defineOptions({ name: 'TagsView' });
@@ -16,6 +15,9 @@ const props = withDefaults(
 		usageLocaleKey?: BaseTextKey;
 		tags: ITag[];
 		isLoading: boolean;
+		canCreate: boolean;
+		canUpdate: boolean;
+		canDelete: boolean;
 	}>(),
 	{
 		usageColumnTitleLocaleKey: 'tagsTable.usage',
@@ -34,7 +36,6 @@ const matches = (name: string, filter: string) =>
 	name.toLowerCase().trim().includes(filter.toLowerCase().trim());
 
 const i18n = useI18n();
-const { canCreate, canUpdate, canDelete } = useTagPermissions();
 
 const createEnabled = ref(false);
 const deleteId = ref('');
@@ -45,7 +46,7 @@ const stickyIds = ref(new Set());
 const isSaving = ref(false);
 
 const isCreateEnabled = computed(
-	() => canCreate.value && (props.tags.length === 0 || createEnabled.value),
+	() => props.canCreate && (props.tags.length === 0 || createEnabled.value),
 );
 
 const rows = computed(() => {
@@ -64,8 +65,8 @@ const rows = computed(() => {
 				disable: disabled && tag.id !== deleteId.value && tag.id !== updateId.value,
 				update: disabled && tag.id === updateId.value,
 				delete: disabled && tag.id === deleteId.value,
-				canDelete: canDelete.value,
-				canUpdate: canUpdate.value,
+				canDelete: props.canDelete,
+				canUpdate: props.canUpdate,
 			}),
 		);
 

@@ -7,8 +7,6 @@ import Modal from '@/app/components/Modal.vue';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
-import { useTagPermissions } from '../../useTagPermissions';
-
 import { ElRow } from 'element-plus';
 import { N8nButton } from '@n8n/design-system';
 interface TagsManagerProps {
@@ -21,6 +19,9 @@ interface TagsManagerProps {
 	noTagsCreateLocaleKey?: BaseTextKey;
 	tags: ITag[];
 	isLoading: boolean;
+	canCreate: boolean;
+	canUpdate: boolean;
+	canDelete: boolean;
 	onFetchTags: () => Promise<void>;
 	onCreateTag: (name: string) => Promise<ITag>;
 	onUpdateTag: (id: string, name: string) => Promise<ITag>;
@@ -43,7 +44,6 @@ const emit = defineEmits<{
 const tagIds = ref(props.tags.map((tag) => tag.id));
 const isCreating = ref(false);
 const modalBus = createEventBus();
-const { canCreate } = useTagPermissions();
 
 const tags = computed(() =>
 	tagIds.value
@@ -143,7 +143,7 @@ async function onDelete(id: string, deleteCallback: (deleted: boolean, error?: E
 function onEnter() {
 	if (props.isLoading) {
 		return;
-	} else if (!hasTags.value && canCreate.value) {
+	} else if (!hasTags.value && props.canCreate) {
 		onEnableCreate();
 	} else {
 		modalBus.emit('close');
@@ -168,6 +168,9 @@ function onEnter() {
 					:tags="tags"
 					:usage-locale-key="usageLocaleKey"
 					:usage-column-title-locale-key="usageColumnTitleLocaleKey"
+					:can-create="canCreate"
+					:can-update="canUpdate"
+					:can-delete="canDelete"
 					@create="onCreate"
 					@update="onUpdate"
 					@delete="onDelete"

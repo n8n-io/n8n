@@ -6,14 +6,34 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref } from 'vue';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import type { Scope } from '@n8n/permissions';
 
 const apiMapping = {
 	[STORES.TAGS]: createTagsApi('/tags'),
 	[STORES.ANNOTATION_TAGS]: createTagsApi('/annotation-tags'),
 } as const;
 
+const scopeMapping: Record<
+	typeof STORES.TAGS | typeof STORES.ANNOTATION_TAGS,
+	{ list: Scope; create: Scope; update: Scope; delete: Scope }
+> = {
+	[STORES.TAGS]: {
+		list: 'tag:list',
+		create: 'tag:create',
+		update: 'tag:update',
+		delete: 'tag:delete',
+	},
+	[STORES.ANNOTATION_TAGS]: {
+		list: 'annotationTag:list',
+		create: 'annotationTag:create',
+		update: 'annotationTag:update',
+		delete: 'annotationTag:delete',
+	},
+};
+
 const createTagsStore = (id: typeof STORES.TAGS | typeof STORES.ANNOTATION_TAGS) => {
 	const tagsApi = apiMapping[id];
+	const scopes = scopeMapping[id];
 
 	return defineStore(
 		id,
@@ -75,7 +95,7 @@ const createTagsStore = (id: typeof STORES.TAGS | typeof STORES.ANNOTATION_TAGS)
 			};
 
 			const fetchAll = async (params?: { force?: boolean; withUsageCount?: boolean }) => {
-				if (!hasPermission(['rbac'], { rbac: { scope: 'tag:list' } })) {
+				if (!hasPermission(['rbac'], { rbac: { scope: scopes.list } })) {
 					return [];
 				}
 
@@ -97,7 +117,7 @@ const createTagsStore = (id: typeof STORES.TAGS | typeof STORES.ANNOTATION_TAGS)
 				name: string,
 				{ incrementExisting }: { incrementExisting?: boolean } = {},
 			) => {
-				if (!hasPermission(['rbac'], { rbac: { scope: 'tag:create' } })) {
+				if (!hasPermission(['rbac'], { rbac: { scope: scopes.create } })) {
 					throw new Error('Insufficient permissions to create tags');
 				}
 
@@ -117,7 +137,7 @@ const createTagsStore = (id: typeof STORES.TAGS | typeof STORES.ANNOTATION_TAGS)
 			};
 
 			const rename = async ({ id, name }: { id: string; name: string }) => {
-				if (!hasPermission(['rbac'], { rbac: { scope: 'tag:update' } })) {
+				if (!hasPermission(['rbac'], { rbac: { scope: scopes.update } })) {
 					throw new Error('Insufficient permissions to update tags');
 				}
 
@@ -127,7 +147,7 @@ const createTagsStore = (id: typeof STORES.TAGS | typeof STORES.ANNOTATION_TAGS)
 			};
 
 			const deleteTagById = async (id: string) => {
-				if (!hasPermission(['rbac'], { rbac: { scope: 'tag:delete' } })) {
+				if (!hasPermission(['rbac'], { rbac: { scope: scopes.delete } })) {
 					throw new Error('Insufficient permissions to delete tags');
 				}
 
