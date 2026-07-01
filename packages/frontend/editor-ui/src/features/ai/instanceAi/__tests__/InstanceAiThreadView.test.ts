@@ -334,13 +334,22 @@ describe('InstanceAiThreadView', () => {
 		];
 		vi.mocked(thread.loadHistoricalMessages).mockResolvedValue('skipped');
 
+		const callOrder: string[] = [];
+		vi.mocked(thread.loadThreadStatus).mockImplementation(async () => {
+			callOrder.push('loadThreadStatus');
+		});
+		vi.mocked(thread.connectSSE).mockImplementation(() => {
+			callOrder.push('connectSSE');
+		});
+
 		renderView({ props: { threadId: 'thread-1' } });
 
 		await vi.waitFor(() => {
 			expect(thread.loadHistoricalMessages).toHaveBeenCalledWith();
 		});
-		expect(thread.loadThreadStatus).toHaveBeenCalledWith();
-		expect(thread.connectSSE).toHaveBeenCalledWith();
+		await vi.waitFor(() => {
+			expect(callOrder).toEqual(['loadThreadStatus', 'connectSSE']);
+		});
 	});
 
 	it('keeps the chat input visible when no floating-eligible confirmation is pending', () => {

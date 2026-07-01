@@ -88,3 +88,5 @@ lefthook-local.yml
 IMPROVEMENTS.md
 .playwright-mcp
 stryker.log
+.agents
+.claude
