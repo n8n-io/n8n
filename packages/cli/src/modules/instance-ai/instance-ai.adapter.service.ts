@@ -109,9 +109,10 @@ import { NodeTypes } from '@/node-types';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { MCP_REGISTRY_PACKAGE_NAME } from '@/modules/mcp-registry/node-description-transform';
-import { synthesizeMcpRegistryTypeDef } from '@/modules/mcp-registry/synthesize-type-def';
+import { synthesizeNodeTypeDef } from '@/modules/mcp-registry/synthesize-type-def';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import { AiGatewayService } from '@/services/ai-gateway.service';
 import { FolderService } from '@/services/folder.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
@@ -232,6 +233,7 @@ export class InstanceAiAdapterService {
 		private readonly aiBuilderTemporaryWorkflowRepository: AiBuilderTemporaryWorkflowRepository,
 		private readonly ssrfProtectionService: SsrfProtectionService,
 		private readonly outboundHttp: OutboundHttp,
+		private readonly aiGatewayService: AiGatewayService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
@@ -1163,7 +1165,12 @@ export class InstanceAiAdapterService {
 		boundProjectId?: string,
 		credentialIdAllowlist?: string[],
 	): InstanceAiCredentialService {
-		const { credentialsService, credentialsFinderService, loadNodesAndCredentials } = this;
+		const {
+			credentialsService,
+			credentialsFinderService,
+			loadNodesAndCredentials,
+			aiGatewayService,
+		} = this;
 
 		const adapter: InstanceAiCredentialService = {
 			async list(options) {
@@ -1442,6 +1449,17 @@ export class InstanceAiAdapterService {
 					return { accountIdentifier: undefined };
 				} catch {
 					return { accountIdentifier: undefined };
+				}
+			},
+
+			async isAiGatewayCredentialType(credType: string): Promise<boolean> {
+				try {
+					const config = await aiGatewayService.getGatewayConfig();
+					return config.credentialTypes.includes(credType);
+				} catch {
+					// Fail open if the gateway config is unavailable — the credential
+					// type check is a best-effort validation, not a security gate.
+					return false;
 				}
 			},
 		};
@@ -2096,7 +2114,7 @@ export class InstanceAiAdapterService {
 				if (registryNode) {
 					const builderHint = registryNode.builderHint?.searchHint;
 					return {
-						content: synthesizeMcpRegistryTypeDef(registryNode),
+						content: synthesizeNodeTypeDef(registryNode),
 						...(builderHint ? { builderHint } : {}),
 					};
 				}
@@ -3002,6 +3020,9 @@ function sdkNodeGroupsToRuntime(
 
 function hasCredentialId(value: unknown): boolean {
 	if (typeof value !== 'object' || value === null) return false;
+	if (Reflect.get(value, 'id') === null && Reflect.get(value, '__aiGatewayManaged') === true) {
+		return true;
+	}
 	const id = Reflect.get(value, 'id');
 	return typeof id === 'string' && id.trim() !== '';
 }

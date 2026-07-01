@@ -9,15 +9,15 @@ import type {
 } from '@n8n/db';
 import { GLOBAL_MEMBER_ROLE, GLOBAL_OWNER_ROLE } from '@n8n/db';
 import type { NextFunction, Response } from 'express';
-import { mock } from 'jest-mock-extended';
 import jwt from 'jsonwebtoken';
+import { mock } from 'vitest-mock-extended';
 
 import { AuthService } from '@/auth/auth.service';
 import { AUTH_COOKIE_NAME } from '@/constants';
+import type { License } from '@/license';
 import type { MfaService } from '@/mfa/mfa.service';
 import { JwtService } from '@/services/jwt.service';
 import type { UrlService } from '@/services/url.service';
-import type { License } from '@/license';
 
 describe('AuthService', () => {
 	const browserId = 'test-browser-id';
@@ -53,7 +53,7 @@ describe('AuthService', () => {
 	);
 
 	const now = new Date('2024-02-01T01:23:45.678Z');
-	jest.useFakeTimers({ now });
+	vi.useFakeTimers({ now });
 
 	const validToken =
 		'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMyIsImhhc2giOiJtSkFZeDRXYjdrIiwiYnJvd3NlcklkIjoiOFpDVXE1YU1uSFhnMFZvcURLcm9hMHNaZ0NwdWlPQ1AzLzB2UmZKUXU0MD0iLCJ1c2VkTWZhIjpmYWxzZSwiaWF0IjoxNzA2NzUwNjI1LCJleHAiOjE3MDczNTU0MjV9.N7JgwETmO41o4FUDVb4pA1HM3Clj4jyjDK-lE8Fa1Zw'; // Generated using `authService.issueJWT(user, false, browserId)`
@@ -62,8 +62,8 @@ describe('AuthService', () => {
 		'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjEyMyIsImhhc2giOiJtSkFZeDRXYjdrIiwiYnJvd3NlcklkIjoiOFpDVXE1YU1uSFhnMFZvcURLcm9hMHNaZ0NwdWlPQ1AzLzB2UmZKUXU0MD0iLCJ1c2VkTWZhIjp0cnVlLCJpYXQiOjE3MDY3NTA2MjUsImV4cCI6MTcwNzM1NTQyNX0.9kTTue-ZdBQ0CblH0IrqW9K-k0WWfxfsWTglyPB10ko'; // Generated using `authService.issueJWT(user, true, browserId)`
 
 	beforeEach(() => {
-		jest.resetAllMocks();
-		jest.setSystemTime(now);
+		vi.resetAllMocks();
+		vi.setSystemTime(now);
 		globalConfig.userManagement.jwtSessionDurationHours = 168;
 		globalConfig.userManagement.jwtRefreshTimeoutHours = 0;
 		globalConfig.auth.cookie = { secure: true, samesite: 'lax' };
@@ -114,7 +114,7 @@ describe('AuthService', () => {
 				browserId,
 			});
 		const res = mock<Response>();
-		const next = jest.fn() as NextFunction;
+		const next = vi.fn() as NextFunction;
 
 		beforeEach(() => {
 			res.status.mockReturnThis();
@@ -137,7 +137,7 @@ describe('AuthService', () => {
 			const req = mockReq();
 			req.cookies[AUTH_COOKIE_NAME] = validToken;
 			invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
-			jest.advanceTimersByTime(365 * Time.days.toMilliseconds);
+			vi.advanceTimersByTime(365 * Time.days.toMilliseconds);
 
 			const middleware = authService.createAuthMiddleware({ allowSkipMFA: true });
 
@@ -187,7 +187,7 @@ describe('AuthService', () => {
 		it('should refresh the cookie before it expires', async () => {
 			const req = mockReq();
 			req.cookies[AUTH_COOKIE_NAME] = validToken;
-			jest.advanceTimersByTime(6 * Time.days.toMilliseconds);
+			vi.advanceTimersByTime(6 * Time.days.toMilliseconds);
 			invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
 			userRepository.findOne.mockResolvedValue(user);
 
@@ -211,7 +211,7 @@ describe('AuthService', () => {
 				// Store original value
 				originalPreviewMode = process.env.N8N_PREVIEW_MODE;
 				// Reset mocks
-				jest.resetAllMocks();
+				vi.resetAllMocks();
 				res.status.mockReturnThis();
 			});
 
@@ -362,7 +362,7 @@ describe('AuthService', () => {
 				const req = mockReq();
 				req.cookies[AUTH_COOKIE_NAME] = validToken;
 				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
-				jest.advanceTimersByTime(365 * Time.days.toMilliseconds);
+				vi.advanceTimersByTime(365 * Time.days.toMilliseconds);
 
 				const middleware = authService.createAuthMiddleware({
 					allowSkipMFA: false,
@@ -583,7 +583,7 @@ describe('AuthService', () => {
 				expect(authService.jwtExpiration).toBe(defaultInSeconds);
 				const decodedToken = jwtService.verify(token);
 				if (decodedToken.exp === undefined || decodedToken.iat === undefined) {
-					fail('Expected exp and iat to be defined');
+					expect.fail('Expected exp and iat to be defined');
 				}
 
 				expect(decodedToken.exp - decodedToken.iat).toBe(defaultInSeconds);
@@ -600,7 +600,7 @@ describe('AuthService', () => {
 
 				const decodedToken = jwtService.verify(token);
 				if (decodedToken.exp === undefined || decodedToken.iat === undefined) {
-					fail('Expected exp and iat to be defined on decodedToken');
+					expect.fail('Expected exp and iat to be defined on decodedToken');
 				}
 				expect(decodedToken.exp - decodedToken.iat).toBe(testDurationSeconds);
 			});
@@ -634,7 +634,7 @@ describe('AuthService', () => {
 		});
 
 		it('should throw on expired tokens', async () => {
-			jest.advanceTimersByTime(365 * Time.days.toMilliseconds);
+			vi.advanceTimersByTime(365 * Time.days.toMilliseconds);
 
 			await expect(authService.resolveJwt(validToken, req, res)).rejects.toThrow('jwt expired');
 			expect(res.cookie).not.toHaveBeenCalled();
@@ -725,7 +725,7 @@ describe('AuthService', () => {
 			]);
 			expect(res.cookie).not.toHaveBeenCalled();
 
-			jest.advanceTimersByTime(6 * Time.days.toMilliseconds); // 6 Days
+			vi.advanceTimersByTime(6 * Time.days.toMilliseconds); // 6 Days
 			expect(await authService.resolveJwt(validToken, req, res)).toEqual([
 				user,
 				{ usedMfa: false },
@@ -753,14 +753,14 @@ describe('AuthService', () => {
 			]);
 			expect(res.cookie).not.toHaveBeenCalled();
 
-			jest.advanceTimersByTime(5 * Time.days.toMilliseconds);
+			vi.advanceTimersByTime(5 * Time.days.toMilliseconds);
 			expect(await authService.resolveJwt(validToken, req, res)).toEqual([
 				user,
 				{ usedMfa: false },
 			]);
 			expect(res.cookie).not.toHaveBeenCalled();
 
-			jest.advanceTimersByTime(1 * Time.days.toMilliseconds);
+			vi.advanceTimersByTime(1 * Time.days.toMilliseconds);
 			expect(await authService.resolveJwt(validToken, req, res)).toEqual([
 				user,
 				{ usedMfa: false },
@@ -772,7 +772,7 @@ describe('AuthService', () => {
 			userRepository.findOne.mockResolvedValue(user);
 			const embedToken = authService.issueJWT(user, false, browserId, true);
 
-			jest.advanceTimersByTime(6 * Time.days.toMilliseconds);
+			vi.advanceTimersByTime(6 * Time.days.toMilliseconds);
 			await authService.resolveJwt(embedToken, req, res);
 
 			expect(res.cookie).toHaveBeenCalledWith('n8n-auth', expect.any(String), {
@@ -797,7 +797,7 @@ describe('AuthService', () => {
 			]);
 			expect(res.cookie).not.toHaveBeenCalled();
 
-			jest.advanceTimersByTime(6 * Time.days.toMilliseconds); // 6 Days
+			vi.advanceTimersByTime(6 * Time.days.toMilliseconds); // 6 Days
 			expect(await authService.resolveJwt(validToken, req, res)).toEqual([
 				user,
 				{ usedMfa: false },
@@ -822,8 +822,8 @@ describe('AuthService', () => {
 
 			const decoded = jwt.decode(token) as jwt.JwtPayload;
 
-			if (!decoded.exp) fail('Token does not contain expiry');
-			if (!decoded.iat) fail('Token does not contain issued-at');
+			if (!decoded.exp) expect.fail('Token does not contain expiry');
+			if (!decoded.iat) expect.fail('Token does not contain issued-at');
 
 			expect(decoded.sub).toEqual(user.id);
 			expect(decoded.exp - decoded.iat).toEqual(1200); // Expires in 20 minutes
@@ -998,7 +998,7 @@ describe('AuthService', () => {
 
 	describe('validateCookieToken', () => {
 		beforeEach(() => {
-			jest.resetAllMocks();
+			vi.resetAllMocks();
 		});
 
 		it('should resolve with the user for a valid token', async () => {
@@ -1028,7 +1028,7 @@ describe('AuthService', () => {
 		it('should throw when token is expired', async () => {
 			const token = authService.issueJWT(user, false, browserId);
 			invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
-			jest.advanceTimersByTime(365 * Time.days.toMilliseconds);
+			vi.advanceTimersByTime(365 * Time.days.toMilliseconds);
 
 			await expect(authService.validateCookieToken(token)).rejects.toThrow('jwt expired');
 		});
@@ -1055,7 +1055,7 @@ describe('AuthService', () => {
 		const endpoint = '/api/users';
 
 		beforeEach(() => {
-			jest.resetAllMocks();
+			vi.resetAllMocks();
 		});
 
 		describe('successful authentication', () => {
@@ -1137,7 +1137,7 @@ describe('AuthService', () => {
 			it('should throw when JWT is expired', async () => {
 				const token = authService.issueJWT(user, false, browserId);
 				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
-				jest.advanceTimersByTime(365 * Time.days.toMilliseconds);
+				vi.advanceTimersByTime(365 * Time.days.toMilliseconds);
 
 				await expect(
 					authService.authenticateUserBasedOnToken(token, method, endpoint, browserId),
@@ -1370,7 +1370,7 @@ describe('AuthService', () => {
 
 	describe('authenticateUserByCookie', () => {
 		beforeEach(() => {
-			jest.resetAllMocks();
+			vi.resetAllMocks();
 		});
 
 		describe('token validation failures', () => {
@@ -1385,7 +1385,7 @@ describe('AuthService', () => {
 			it('should throw when JWT is expired', async () => {
 				const token = authService.issueJWT(user, true, browserId);
 				invalidAuthTokenRepository.existsBy.mockResolvedValue(false);
-				jest.advanceTimersByTime(365 * Time.days.toMilliseconds);
+				vi.advanceTimersByTime(365 * Time.days.toMilliseconds);
 
 				await expect(authService.authenticateUserByCookie(token)).rejects.toThrow('jwt expired');
 			});

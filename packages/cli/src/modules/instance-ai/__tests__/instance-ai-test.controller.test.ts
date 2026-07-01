@@ -1,19 +1,19 @@
 import { z } from 'zod';
 
-jest.mock('@n8n/instance-ai', () => ({
+vi.mock('@n8n/instance-ai', () => ({
 	workflowLoopStateSchema: z.string(),
 	attemptRecordSchema: z.object({}),
 	workflowBuildOutcomeSchema: z.string(),
-	buildAgentTreeFromEvents: jest.fn(),
+	buildAgentTreeFromEvents: vi.fn(),
 }));
 
-jest.mock('../eval/execution.service', () => ({
-	EvalExecutionService: jest.fn(),
+vi.mock('../eval/execution.service', () => ({
+	EvalExecutionService: vi.fn(),
 }));
 
 import type { ProjectRepository, UserRepository, WorkflowRepository } from '@n8n/db';
 import type { Request, Response } from 'express';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
@@ -41,7 +41,7 @@ describe('InstanceAiTestController', () => {
 	const originalEnv = process.env;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		process.env = { ...originalEnv, E2E_TESTS: 'true' };
 	});
 
@@ -200,9 +200,9 @@ describe('InstanceAiTestController', () => {
 		it('should clear per-thread state and delete threads + workflows', async () => {
 			threadRepo.find.mockResolvedValue([{ id: 't1' }, { id: 't2' }] as never);
 			workflowRepo.find.mockResolvedValue([{ id: 'w1' }, { id: 'w2' }, { id: 'w3' }] as never);
-			const deleteExecute = jest.fn().mockResolvedValue(undefined);
+			const deleteExecute = vi.fn().mockResolvedValue(undefined);
 			const deleteQb = { execute: deleteExecute };
-			const queryBuilder = { delete: jest.fn().mockReturnValue(deleteQb) };
+			const queryBuilder = { delete: vi.fn().mockReturnValue(deleteQb) };
 			threadRepo.createQueryBuilder.mockReturnValue(queryBuilder as never);
 
 			const result = await controller.reset();

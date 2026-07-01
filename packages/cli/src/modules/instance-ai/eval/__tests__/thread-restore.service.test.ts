@@ -1,5 +1,5 @@
 import type { Project, SharedWorkflowRepository, WorkflowRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type { DataTable } from '@/modules/data-table/data-table.entity';
@@ -26,7 +26,7 @@ describe('EvalThreadRestoreService', () => {
 	const service = new EvalThreadRestoreService(workflowRepo, sharedWorkflowRepo, dataTableService);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		workflowRepo.create.mockImplementation((entity) => entity as never);
 		sharedWorkflowRepo.getWorkflowOwningProject.mockResolvedValue(undefined);
 	});

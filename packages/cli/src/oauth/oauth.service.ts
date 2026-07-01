@@ -26,6 +26,7 @@ import { UrlService } from '@/services/url.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import {
 	ClientOAuth2,
+	resolveClientAuthOptions,
 	type ClientOAuth2Options,
 	type ClientOAuth2TokenData,
 	type OAuth2AuthenticationMethod,
@@ -688,7 +689,7 @@ export class OauthService {
 
 		const oAuthClient = new ClientOAuth2({
 			clientId: oauthCredentials.clientId,
-			clientSecret: oauthCredentials.clientSecret,
+			...resolveClientAuthOptions(oauthCredentials),
 			accessTokenUri: oauthCredentials.accessTokenUrl,
 			scopes: scopes?.length ? scopes : undefined,
 			ignoreSSLIssues: oauthCredentials.ignoreSSLIssues,
@@ -1208,6 +1209,11 @@ export class OauthService {
 		return Object.fromEntries(new URLSearchParams(response).entries());
 	}
 
+	// Builds options for the authorization-redirect leg, consumed by the `oauth2.authenticate`
+	// hook and `code.getUri()`. Neither authenticates the client. The certificate is deliberately
+	// not mapped here — it would only leak the private key to the hook with no benefit. `clientSecret`
+	// is also unused by `getUri()` and reaches only the hook (pre-existing). The resulting asymmetry
+	// (secret reaches the hook, certificate does not) is intentional.
 	private convertCredentialToOptions(credential: OAuth2CredentialData): ClientOAuth2Options {
 		const options: ClientOAuth2Options = {
 			clientId: credential.clientId,

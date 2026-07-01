@@ -1,28 +1,29 @@
+import type { Mock, Mocked, MockedFunction } from 'vitest';
 import type { Logger } from '@n8n/backend-common';
 import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { AgentChatIntegrationContext } from '../agent-chat-integration';
 import { LinearIntegration } from '../platforms/linear-integration';
 
-jest.mock('../esm-loader', () => ({
-	loadLinearAdapter: jest.fn(),
+vi.mock('../esm-loader', () => ({
+	loadLinearAdapter: vi.fn(),
 }));
 
 import { loadLinearAdapter } from '../esm-loader';
 
-const mockedLoadLinearAdapter = loadLinearAdapter as jest.MockedFunction<typeof loadLinearAdapter>;
+const mockedLoadLinearAdapter = loadLinearAdapter as MockedFunction<typeof loadLinearAdapter>;
 
 describe('LinearIntegration', () => {
 	const logger = mock<Logger>();
 	let integration: LinearIntegration;
-	let outboundHttp: jest.Mocked<OutboundHttp>;
-	let requestMock: jest.Mock;
-	const createLinearAdapter = jest.fn();
+	let outboundHttp: Mocked<OutboundHttp>;
+	let requestMock: Mock;
+	const createLinearAdapter = vi.fn();
 
 	beforeEach(() => {
 		const httpClient = mock<HttpRequestClient>();
-		requestMock = httpClient.request as jest.Mock;
+		requestMock = httpClient.request as Mock;
 		outboundHttp = mock<OutboundHttp>();
 		outboundHttp.requests.mockReturnValue(httpClient);
 		integration = new LinearIntegration(logger, outboundHttp);

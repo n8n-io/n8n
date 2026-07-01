@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
+
 import { LicenseState } from '@n8n/backend-common';
 import type { CredentialsEntity, ICredentialsDb } from '@n8n/db';
 import { CredentialsRepository, SecretsProviderConnectionRepository } from '@n8n/db';
@@ -38,15 +37,15 @@ import {
 	isExpression,
 } from 'n8n-workflow';
 
-import { RESPONSE_ERROR_MESSAGES } from './constants';
-import { DynamicCredentialsProxy } from './credentials/dynamic-credentials-proxy';
-import { CredentialMissingIdError } from './errors/credential-missing-id.error';
-import { CredentialNotFoundError } from './errors/credential-not-found.error';
-
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import { AiGatewayService } from '@/services/ai-gateway.service';
+
+import { RESPONSE_ERROR_MESSAGES } from './constants';
+import { DynamicCredentialsProxy } from './credentials/dynamic-credentials-proxy';
+import { CredentialMissingIdError } from './errors/credential-missing-id.error';
+import { CredentialNotFoundError } from './errors/credential-not-found.error';
 
 const mockNode = {
 	name: '',

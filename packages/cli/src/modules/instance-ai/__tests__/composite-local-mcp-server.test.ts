@@ -20,8 +20,8 @@ function ok(text: string): McpToolCallResult {
 }
 
 function fakeServer(tools: McpTool[], result: McpToolCallResult) {
-	const callTool = jest.fn(async (_req: McpToolCallRequest) => result);
-	const getToolsByCategory = jest.fn((category: string) =>
+	const callTool = vi.fn(async (_req: McpToolCallRequest) => result);
+	const getToolsByCategory = vi.fn((category: string) =>
 		tools.filter((t) => t.annotations?.category === category),
 	);
 	const server: LocalMcpServer = {
