@@ -1,3 +1,4 @@
+import { AuthenticationError } from '@azure/identity';
 import type { SecretClient } from '@azure/keyvault-secrets';
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
@@ -6,13 +7,52 @@ import { ensureError, type INodeProperties, UnexpectedError } from 'n8n-workflow
 import { DOCS_HELP_NOTICE } from '../../constants';
 import {
 	buildUpdateFailureSummary,
+	type HttpProviderErrorLogContext,
+	type LogContext,
 	logProviderFailure,
 	type SafeContextValue,
 	type SecretsProviderOperation,
 } from '../../errors/secrets-provider-errors';
 import { SecretsProvider } from '../../types';
-import { azureErrorContext, type AzureKeyVaultLogContext } from './azure-error-context';
 import type { AzureKeyVaultContext } from './types';
+
+type AzureHttpLikeError = Error & {
+	statusCode?: number;
+	code?: string;
+};
+
+function isAzureHttpLikeError(error: unknown): error is AzureHttpLikeError {
+	if (!(error instanceof Error)) return false;
+
+	const candidate = error as AzureHttpLikeError;
+	return (
+		error.name === 'RestError' ||
+		typeof candidate.statusCode === 'number' ||
+		typeof candidate.code === 'string'
+	);
+}
+
+export function azureErrorContext(error: unknown): HttpProviderErrorLogContext {
+	if (error instanceof AuthenticationError) {
+		return {
+			statusCode: error.statusCode,
+			errorCode: error.errorResponse?.error,
+		};
+	}
+
+	if (isAzureHttpLikeError(error)) {
+		return {
+			statusCode: error.statusCode,
+			errorCode: error.code,
+		};
+	}
+
+	if (error instanceof Error) {
+		return { errorCode: error.name };
+	}
+
+	return {};
+}
 
 export class AzureKeyVault extends SecretsProvider {
 	name = 'azureKeyVault';
@@ -204,7 +244,7 @@ export class AzureKeyVault extends SecretsProvider {
 		message: string,
 		operation: SecretsProviderOperation,
 		error: unknown,
-		extra: AzureKeyVaultLogContext = {},
+		extra: LogContext = {},
 	): void {
 		logProviderFailure({
 			logger: this.logger,

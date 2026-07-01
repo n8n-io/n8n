@@ -5,7 +5,11 @@ import { UserError } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { GcpSecretsManager } from '../gcp-secrets-manager/gcp-secrets-manager';
+import {
+	GcpSecretsManager,
+	gcpErrorContext,
+	getGcpErrorCode,
+} from '../gcp-secrets-manager/gcp-secrets-manager';
 import type { GcpSecretsManagerContext } from '../gcp-secrets-manager/types';
 
 vi.mock('@google-cloud/secret-manager');
@@ -20,6 +24,10 @@ const VALID_SERVICE_ACCOUNT_KEY = (projectId: string) =>
 			'-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC\n-----END PRIVATE KEY-----',
 	});
 
+function createGrpcError(message: string, code: number): Error {
+	return Object.assign(new Error(message), { code });
+}
+
 describe('GCP Secrets Manager', () => {
 	const logger = mock<Logger>();
 	let gcpSecretsManager: GcpSecretsManager;
@@ -28,6 +36,38 @@ describe('GCP Secrets Manager', () => {
 		vi.clearAllMocks();
 		logger.scoped.mockReturnValue(logger);
 		gcpSecretsManager = new GcpSecretsManager(logger);
+	});
+
+	describe('error context', () => {
+		it('extracts numeric gRPC status codes', () => {
+			expect(getGcpErrorCode(createGrpcError('NOT_FOUND', 5))).toBe(5);
+			expect(getGcpErrorCode(createGrpcError('PERMISSION_DENIED', 7))).toBe(7);
+			expect(gcpErrorContext(createGrpcError('NOT_FOUND', 5))).toEqual({ errorCode: 5 });
+			expect(gcpErrorContext(createGrpcError('PERMISSION_DENIED', 7))).toEqual({
+				errorCode: 7,
+			});
+		});
+
+		it('extracts string error codes', () => {
+			const error = Object.assign(new Error('Connection failed'), { code: 'ECONNREFUSED' });
+
+			expect(getGcpErrorCode(error)).toBe('ECONNREFUSED');
+			expect(gcpErrorContext(error)).toEqual({ errorCode: 'ECONNREFUSED' });
+		});
+
+		it('falls back to Error.name for generic errors', () => {
+			expect(getGcpErrorCode(new Error('Something went wrong'))).toBe('Error');
+			expect(gcpErrorContext(new Error('Something went wrong'))).toEqual({
+				errorCode: 'Error',
+			});
+		});
+
+		it('returns empty context for non-error values', () => {
+			expect(getGcpErrorCode('not an error')).toBeUndefined();
+			expect(getGcpErrorCode(null)).toBeUndefined();
+			expect(gcpErrorContext('not an error')).toEqual({});
+			expect(gcpErrorContext(null)).toEqual({});
+		});
 	});
 
 	describe('init validation', () => {

@@ -3,11 +3,6 @@ import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import { jsonParse, UserError, type INodeProperties } from 'n8n-workflow';
 
-import {
-	getGcpErrorCode,
-	gcpErrorContext,
-	type GcpSecretsManagerLogContext,
-} from './gcp-error-context';
 import type {
 	GcpSecretsManagerContext,
 	GcpSecretAccountKey,
@@ -16,11 +11,33 @@ import type {
 import { DOCS_HELP_NOTICE } from '../../constants';
 import {
 	buildUpdateFailureSummary,
+	type HttpProviderErrorLogContext,
+	type LogContext,
 	logProviderFailure,
 	type SafeContextValue,
 	type SecretsProviderOperation,
 } from '../../errors/secrets-provider-errors';
 import { SecretsProvider } from '../../types';
+
+export function getGcpErrorCode(error: unknown): number | string | undefined {
+	if (typeof error === 'object' && error !== null && 'code' in error) {
+		const { code } = error;
+		if (typeof code === 'number' || typeof code === 'string') {
+			return code;
+		}
+	}
+
+	if (error instanceof Error) {
+		return error.name;
+	}
+
+	return undefined;
+}
+
+export function gcpErrorContext(error: unknown): HttpProviderErrorLogContext {
+	const errorCode = getGcpErrorCode(error);
+	return errorCode !== undefined ? { errorCode } : {};
+}
 
 export class GcpSecretsManager extends SecretsProvider {
 	name = 'gcpSecretsManager';
@@ -237,9 +254,9 @@ export class GcpSecretsManager extends SecretsProvider {
 		message: string,
 		operation: SecretsProviderOperation,
 		error: unknown,
-		extra: GcpSecretsManagerLogContext = {},
+		extra: LogContext = {},
 	): void {
-		const settingsContext: GcpSecretsManagerLogContext = {};
+		const settingsContext: LogContext = {};
 		if (this.settings?.projectId) {
 			settingsContext.projectId = this.settings.projectId;
 		}
