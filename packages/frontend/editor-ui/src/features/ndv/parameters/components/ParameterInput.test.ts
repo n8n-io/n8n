@@ -291,7 +291,7 @@ describe('ParameterInput.vue', () => {
 	 * N8nInput and N8nSelect don't have aligned size tokens.
 	 * What is 'medium' for one isn't the same the other.
 	 * This has caused a few bugs where coding models have mixed the sizes up and they've slipped through the review.
-	 * For now, we'll use these tests to prevent futher regression mixing the two up.
+	 * For now, we'll use these tests to prevent further regression mixing the two up.
 	 */
 	test('uses medium input size by default', () => {
 		const { getByTestId } = renderComponent({
@@ -303,7 +303,6 @@ describe('ParameterInput.vue', () => {
 					type: 'string',
 				}),
 				modelValue: '',
-				inputSize: 'medium',
 			},
 			global: {
 				stubs: {
