@@ -2952,5 +2952,18 @@ describe('InstanceAiService — cross-main task-control routing', () => {
 			expect(service.clearThreadState).toHaveBeenCalledWith('thread-a');
 			expect(service.publisher.publishCommand).not.toHaveBeenCalled();
 		});
+
+		it('swallows and logs errors from a local action (no unhandled rejection on the sibling main)', async () => {
+			const service = buildTaskControlService(true);
+			service.clearThreadState.mockRejectedValue(new Error('db exploded'));
+
+			await expect(
+				service.handleRelayTaskControl({ threadId: 'thread-a', action: 'clear-thread' }),
+			).resolves.toBeUndefined();
+			expect(service.logger.error).toHaveBeenCalledWith(
+				'Failed to apply relayed Instance AI task-control',
+				expect.objectContaining({ threadId: 'thread-a', action: 'clear-thread' }),
+			);
+		});
 	});
 });

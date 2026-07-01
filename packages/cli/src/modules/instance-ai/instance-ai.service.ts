@@ -1097,21 +1097,33 @@ export class InstanceAiService {
 		action,
 		correction,
 	}: PubSubCommandMap['relay-instance-ai-task-control']): Promise<void> {
-		switch (action) {
-			case 'correct':
-				if (taskId && correction !== undefined) {
-					this.sendCorrectionToTask(threadId, taskId, correction);
-				}
-				break;
-			case 'cancel-task':
-				if (taskId) this.cancelBackgroundTask(threadId, taskId);
-				break;
-			case 'cancel-thread':
-				this.cancelRun(threadId);
-				break;
-			case 'clear-thread':
-				await this.clearThreadState(threadId);
-				break;
+		// Guard the whole handler: it runs as a fire-and-forget pubsub listener, so
+		// a throw (e.g. from the async clearThreadState) would surface as an
+		// unhandled rejection on this sibling main instead of being contained.
+		try {
+			switch (action) {
+				case 'correct':
+					if (taskId && correction !== undefined) {
+						this.sendCorrectionToTask(threadId, taskId, correction);
+					}
+					break;
+				case 'cancel-task':
+					if (taskId) this.cancelBackgroundTask(threadId, taskId);
+					break;
+				case 'cancel-thread':
+					this.cancelRun(threadId);
+					break;
+				case 'clear-thread':
+					await this.clearThreadState(threadId);
+					break;
+			}
+		} catch (error) {
+			this.logger.error('Failed to apply relayed Instance AI task-control', {
+				threadId,
+				taskId,
+				action,
+				error,
+			});
 		}
 	}
 
