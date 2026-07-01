@@ -44,8 +44,14 @@ export class StreamSink implements RunOutputSink<void> {
 		// The just-completed turn is now folded into `usage`; its raw capture is
 		// stale and must not be re-added to a later between-turns abort total.
 		this.rawUsageReader = undefined;
-		// The completed turn's full messages are about to be added to the list, so
-		// drop the partial text — otherwise a later abort would duplicate it.
+	}
+
+	/**
+	 * The just-returned turn's messages are now in the list, so the retained streamed
+	 * text is redundant — drop it. Deferred until here (not `reportUsage`) so a stop
+	 * landing after the model completes but before the fold still recovers the turn.
+	 */
+	onTurnFolded(): void {
 		this.partialText = '';
 	}
 

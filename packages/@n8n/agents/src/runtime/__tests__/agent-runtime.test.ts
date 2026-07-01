@@ -951,6 +951,7 @@ describe('AgentRuntime — eager input persistence', () => {
 			fullStream: (async function* () {
 				yield { type: 'text-delta', id: 't1', text: 'Here is my ' };
 				yield { type: 'text-delta', id: 't1', text: 'partial answer' };
+				await Promise.resolve();
 				controller.abort();
 			})(),
 			finishReason: silentReject(abortError),
@@ -972,6 +973,38 @@ describe('AgentRuntime — eager input persistence', () => {
 			.filter((m) => (m as { role?: string }).role === 'assistant')
 			.map((m) => textOf(m));
 		expect(assistantTexts).toContain('Here is my partial answer');
+	});
+
+	it('persists a completed streamed turn when the stop lands before it is folded in', async () => {
+		const { runtime, memory } = makeMemoryRuntime();
+		const controller = new AbortController();
+
+		// The model finishes streaming (finishReason/response resolve), but the stop
+		// fires as the stream closes — before the loop folds the turn into the list. The
+		// completed text must still be recovered (the clear is deferred until the fold).
+		streamText.mockReturnValueOnce({
+			fullStream: (async function* () {
+				yield { type: 'text-delta', id: 't1', text: 'Complete answer' };
+				await Promise.resolve();
+				controller.abort();
+			})(),
+			finishReason: Promise.resolve('stop'),
+			usage: Promise.resolve({ inputTokens: 5, outputTokens: 3, totalTokens: 8 }),
+			response: Promise.resolve({
+				messages: [{ role: 'assistant', content: [{ type: 'text', text: 'Complete answer' }] }],
+			}),
+			toolCalls: Promise.resolve([]),
+		});
+
+		const { stream } = await runtime.stream('hi', { ...PERSIST, abortSignal: controller.signal });
+		await collectChunks(stream);
+
+		expect(runtime.getState().status).toBe('cancelled');
+		const persisted = await memory.getMessages('t1', { resourceId: 'u1' });
+		const assistantTexts = persisted
+			.filter((m) => (m as { role?: string }).role === 'assistant')
+			.map((m) => textOf(m));
+		expect(assistantTexts).toContain('Complete answer');
 	});
 });
 

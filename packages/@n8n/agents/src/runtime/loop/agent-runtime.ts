@@ -678,6 +678,9 @@ export class AgentRuntime {
 
 			lastFinishReason = turn.finishReason;
 			list.addResponse(turn.newMessages);
+			// The turn is now in the list; drop any retained streamed text so a later
+			// abort's snapshot can't duplicate it (a stop before this point recovers it).
+			sink.onTurnFolded?.();
 
 			if (turn.aiFinishReason !== 'tool-calls') {
 				structuredOutput = turn.structuredOutput;

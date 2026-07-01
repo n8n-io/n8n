@@ -100,6 +100,13 @@ export interface RunOutputSink<TResult> {
 	 * finish chunk carrying the tokens consumed before the stop.
 	 */
 	reportUsage(usage: TokenUsage | undefined): void;
+	/**
+	 * Signal that the just-returned turn's messages have been folded into the list.
+	 * Streaming implementations drop the retained streamed text here so a later abort
+	 * can't duplicate a turn that is already in the list — while a stop landing before
+	 * this call still recovers the turn from the retained text.
+	 */
+	onTurnFolded?(): void;
 	/** Emit the results/errors of a completed tool-call batch. */
 	emitToolBatch(batch: ToolCallBatchResult): Promise<void>;
 	/** Produce the terminal result when the run suspends for HITL / suspend-resume. */
