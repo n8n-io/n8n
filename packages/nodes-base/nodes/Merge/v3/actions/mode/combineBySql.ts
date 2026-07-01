@@ -84,7 +84,7 @@ export const properties: INodeProperties[] = [
 				default: '',
 				placeholder: 'value1,value2,value3',
 				description:
-					'Comma-separated list of values to use as query parameters. Reference them in the query with ? placeholders.',
+					'Comma-separated list of values to use as query parameters. Reference them in the query with ? placeholders. <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.merge/#use-query-parameters" target="_blank">More info</a>.',
 				hint: 'Reference query parameters with ? placeholders',
 			},
 		],
