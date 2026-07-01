@@ -35,4 +35,4 @@ export { InvalidScheduleError } from './errors';
 export { computeNextRunAt } from './recurrence/next-run';
 export { validateSchedule } from './recurrence/validate';
 
-export type { SchedulerStore } from './storage/storage';
+export { SchedulerStore } from './storage/scheduler-store';

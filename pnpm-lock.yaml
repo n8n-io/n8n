@@ -3179,6 +3179,12 @@ importers:
       '@n8n/db':
         specifier: workspace:*
         version: link:../db
+      '@n8n/di':
+        specifier: workspace:*
+        version: link:../di
+      '@n8n/typeorm':
+        specifier: workspace:*
+        version: link:../typeorm
       cron-parser:
         specifier: 'catalog:'
         version: 5.6.1
@@ -4078,6 +4084,9 @@ importers:
       '@n8n/playwright-janitor':
         specifier: workspace:*
         version: link:../testing/janitor
+      '@n8n/scheduler':
+        specifier: workspace:*
+        version: link:../@n8n/scheduler
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../@n8n/typescript-config
