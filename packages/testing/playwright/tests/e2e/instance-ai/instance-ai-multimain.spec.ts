@@ -27,8 +27,16 @@ async function collectSseUntil(opts: {
 	cookieHeader: string;
 	until: (event: SseEvent) => boolean;
 	timeoutMs: number;
+	/**
+	 * Called once the response headers arrive. At that point the server has
+	 * already registered the SSE subscription: the `/events` handler calls
+	 * `subscribe()` synchronously right after `res.flushHeaders()` (for a fresh
+	 * thread with no live group there are no awaits in between), so receiving
+	 * headers is a race-free "subscribed" signal — no fixed delay needed.
+	 */
+	onSubscribed?: () => void;
 }): Promise<SseEvent[]> {
-	const { baseUrl, threadId, cookieHeader, until, timeoutMs } = opts;
+	const { baseUrl, threadId, cookieHeader, until, timeoutMs, onSubscribed } = opts;
 	const url = new URL(`${baseUrl}/rest/instance-ai/events/${threadId}`);
 	const transport = url.protocol === 'https:' ? https : http;
 	const events: SseEvent[] = [];
@@ -43,6 +51,7 @@ async function collectSseUntil(opts: {
 					reject(new Error(`SSE on ${baseUrl} returned HTTP ${res.statusCode}`));
 					return;
 				}
+				onSubscribed?.();
 				const timer = setTimeout(() => {
 					req.destroy();
 					reject(
@@ -127,16 +136,23 @@ test.describe(
 			expect(authCookie, 'auth cookie present for main A').toBeTruthy();
 			const cookieHeader = `${authCookie!.name}=${authCookie!.value}`;
 
-			// Subscribe to the SSE on main A BEFORE producing on main B, then post the
-			// chat to main B. The agent runs on B and its events must reach A's stream.
+			// Subscribe to the SSE on main A and wait until the subscription is
+			// registered (headers received) BEFORE producing on main B — otherwise
+			// A's relay handler drops B's events (it gates on `hasSubscribers`) and
+			// A never buffers them (it's not the producer). Deterministic, no sleep.
+			let onSubscribed!: () => void;
+			const subscribed = new Promise<void>((resolve) => {
+				onSubscribed = resolve;
+			});
 			const ssePromise = collectSseUntil({
 				baseUrl: mainUrls[0],
 				threadId: thread.id,
 				cookieHeader,
 				until: (event) => event.name === 'run-finish',
 				timeoutMs: 120_000,
+				onSubscribed: () => onSubscribed(),
 			});
-			await new Promise((resolve) => setTimeout(resolve, 1000)); // let the subscription establish
+			await subscribed;
 
 			const { runId } = await mainB.startInstanceAiChat(
 				thread.id,
