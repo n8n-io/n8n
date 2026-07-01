@@ -203,6 +203,8 @@ describe('SourceControlExportService', () => {
 				type: 'oauth2',
 				data: cipher.encrypt(credentialData),
 				isGlobal: true,
+				isResolvable: false,
+				resolvableAllowFallback: false,
 			});
 
 			sharedCredentialsRepository.findByCredentialIds.mockResolvedValue([
@@ -248,6 +250,8 @@ describe('SourceControlExportService', () => {
 					teamName: 'Test Team',
 				},
 				isGlobal: true,
+				isResolvable: false,
+				resolvableAllowFallback: false,
 			});
 		});
 
@@ -259,6 +263,8 @@ describe('SourceControlExportService', () => {
 				type: 'oauth2',
 				data: cipher.encrypt(credentialData),
 				isGlobal: false,
+				isResolvable: false,
+				resolvableAllowFallback: false,
 			});
 
 			sharedCredentialsRepository.findByCredentialIds.mockResolvedValue([
@@ -306,7 +312,47 @@ describe('SourceControlExportService', () => {
 					personalEmail: 'user@example.com',
 				},
 				isGlobal: false,
+				isResolvable: false,
+				resolvableAllowFallback: false,
 			});
+		});
+
+		it('should export isResolvable and resolvableAllowFallback for private credentials', async () => {
+			// Arrange
+			const mockResolvableCredential = mock({
+				id: 'resolvable-cred1',
+				name: 'Resolvable Credential',
+				type: 'oauth2',
+				data: cipher.encrypt(credentialData),
+				isGlobal: false,
+				isResolvable: true,
+				resolvableAllowFallback: true,
+			});
+
+			// Ownership is not asserted here, so a minimal sharing mock is enough.
+			sharedCredentialsRepository.findByCredentialIds.mockResolvedValue([
+				mock<SharedCredentials>({
+					credentials: mockResolvableCredential,
+				}),
+			]);
+
+			// Act
+			const result = await service.exportCredentialsToWorkFolder([
+				mock<SourceControlledFile>({ id: 'resolvable-cred1' }),
+			]);
+
+			// Assert
+			expect(result.count).toBe(1);
+
+			const dataCaptor = captor<string>();
+			expect(fsWriteFile).toHaveBeenCalledWith(
+				'/mock/n8n/git/credential_stubs/resolvable-cred1.json',
+				dataCaptor,
+			);
+
+			const exportedData = JSON.parse(dataCaptor.value);
+			expect(exportedData.isResolvable).toBe(true);
+			expect(exportedData.resolvableAllowFallback).toBe(true);
 		});
 
 		it('should default isGlobal to false when not specified', async () => {

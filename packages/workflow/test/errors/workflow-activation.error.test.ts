@@ -29,4 +29,19 @@ describe('WorkflowActivationError', () => {
 
 		expect(error.level).toBe('warning');
 	});
+
+	it('should surface the cause message in `description`', () => {
+		const error = new WorkflowActivationError('Generic wrapper message', { cause });
+
+		expect(error.description).toBe('Some error message');
+	});
+
+	it("should prefer the cause's own `description` over its message", () => {
+		const richCause = new WorkflowActivationError('Cause message');
+		richCause.description = 'Actionable detail';
+
+		const error = new WorkflowActivationError('Generic wrapper message', { cause: richCause });
+
+		expect(error.description).toBe('Actionable detail');
+	});
 });

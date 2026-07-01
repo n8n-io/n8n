@@ -1,0 +1,29 @@
+{
+	"extends": "@tsconfig/node16/tsconfig.json",
+	"compilerOptions": {
+		"ignoreDeprecations": "6.0",
+		"lib": ["ES2022.Error"],
+		"allowSyntheticDefaultImports": true,
+		"declaration": true,
+		"downlevelIteration": true,
+		"emitDecoratorMetadata": true,
+		"experimentalDecorators": true,
+		"importHelpers": true,
+		"module": "commonjs",
+		"moduleResolution": "node",
+		"noFallthroughCasesInSwitch": true,
+		"noImplicitAny": true,
+		"noImplicitReturns": true,
+		"noUnusedLocals": true,
+		"outDir": "build/compiled",
+		"pretty": true,
+		"sourceMap": true,
+		"incremental": true,
+		"strictFunctionTypes": false,
+		"strictPropertyInitialization": false,
+		"stripInternal": true,
+		"useUnknownInCatchVariables": false
+	},
+	"include": ["sample", "src", "test"],
+	"exclude": ["build", "dist", "node_modules", "temp", "tmp"]
+}
