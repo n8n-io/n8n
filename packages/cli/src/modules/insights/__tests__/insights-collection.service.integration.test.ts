@@ -9,7 +9,6 @@ import type { Project, WorkflowEntity, IWorkflowDb, SharedWorkflowRepository } f
 import type { WorkflowExecuteAfterContext } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { In } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
 import {
 	createDeferredPromise,
@@ -18,6 +17,7 @@ import {
 	type WorkflowExecuteMode,
 } from 'n8n-workflow';
 import assert from 'node:assert';
+import { mock } from 'vitest-mock-extended';
 
 import type { TypeUnit } from '@/modules/insights/database/entities/insights-shared';
 import { InsightsMetadataRepository } from '@/modules/insights/database/repositories/insights-metadata.repository';
@@ -259,10 +259,10 @@ describe('workflowExecuteAfterHandler - cacheMetadata', () => {
 
 	// Mock the repositories functions
 	const repositoryMocks = {
-		find: jest.fn(),
-		findBy: jest.fn(),
-		upsert: jest.fn(),
-		insert: jest.fn(),
+		find: vi.fn(),
+		findBy: vi.fn(),
+		upsert: vi.fn(),
+		insert: vi.fn(),
 	};
 	const sharedWorkflowRepositoryMock = mock<SharedWorkflowRepository>(repositoryMocks);
 	const metadataRepositoryMock = mock<InsightsMetadataRepository>(repositoryMocks);
@@ -295,7 +295,7 @@ describe('workflowExecuteAfterHandler - cacheMetadata', () => {
 		project = await createTeamProject();
 		workflow = await createWorkflow({}, project);
 
-		repositoryMocks.find = jest.fn().mockResolvedValue([
+		repositoryMocks.find = vi.fn().mockResolvedValue([
 			{
 				workflow,
 				workflowId: workflow.id,
@@ -303,7 +303,7 @@ describe('workflowExecuteAfterHandler - cacheMetadata', () => {
 				project: { name: 'project-name' },
 			},
 		]);
-		repositoryMocks.findBy = jest.fn().mockResolvedValue([
+		repositoryMocks.findBy = vi.fn().mockResolvedValue([
 			{
 				metaId: 'meta-id',
 				workflowId: workflow.id,
@@ -397,10 +397,10 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 	let insightsCollectionService: InsightsCollectionService;
 
 	const repoMocks = {
-		findSharedWorkflowRepositoryMock: jest.fn(),
-		findByMetadata: jest.fn(),
-		upsertMetadata: jest.fn(),
-		insertInsightsRaw: jest.fn(),
+		findSharedWorkflowRepositoryMock: vi.fn(),
+		findByMetadata: vi.fn(),
+		upsertMetadata: vi.fn(),
+		insertInsightsRaw: vi.fn(),
 	};
 	const sharedWorkflowRepositoryMock = mock<SharedWorkflowRepository>({
 		find: repoMocks.findSharedWorkflowRepositoryMock,
@@ -481,7 +481,7 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 
 	test('flushes events to the database after a timeout', async () => {
 		// ARRANGE
-		jest.useFakeTimers();
+		vi.useFakeTimers();
 		repoMocks.insertInsightsRaw.mockClear();
 		insightsCollectionService.init();
 		const ctx = mock<WorkflowExecuteAfterContext>({ workflow, runData });
@@ -495,18 +495,18 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 			expect(repoMocks.insertInsightsRaw).not.toHaveBeenCalled();
 
 			// ACT
-			await jest.advanceTimersByTimeAsync(31 * 1000);
+			await vi.advanceTimersByTimeAsync(31 * 1000);
 
 			// ASSERT
 			expect(repoMocks.insertInsightsRaw).toHaveBeenCalledTimes(1);
 		} finally {
-			jest.useRealTimers();
+			vi.useRealTimers();
 		}
 	});
 
 	test('reschedule flush on flushing end', async () => {
 		// ARRANGE
-		jest.useFakeTimers();
+		vi.useFakeTimers();
 		repoMocks.insertInsightsRaw.mockClear();
 		insightsCollectionService.init();
 		const ctx = mock<WorkflowExecuteAfterContext>({ workflow });
@@ -514,41 +514,41 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 		try {
 			// ACT
 			await insightsCollectionService.handleWorkflowExecuteAfter(ctx);
-			await jest.advanceTimersByTimeAsync(31 * 1000);
+			await vi.advanceTimersByTimeAsync(31 * 1000);
 
 			// ASSERT
 			expect(repoMocks.insertInsightsRaw).toHaveBeenCalledTimes(1);
 
 			// // ACT
 			await insightsCollectionService.handleWorkflowExecuteAfter(ctx);
-			await jest.advanceTimersByTimeAsync(31 * 1000);
+			await vi.advanceTimersByTimeAsync(31 * 1000);
 
 			expect(repoMocks.insertInsightsRaw).toHaveBeenCalledTimes(2);
 		} finally {
-			jest.useRealTimers();
+			vi.useRealTimers();
 		}
 	});
 
 	test('reschedule flush on no buffered insights', async () => {
 		// ARRANGE
-		jest.useFakeTimers();
+		vi.useFakeTimers();
 		repoMocks.insertInsightsRaw.mockClear();
 		insightsCollectionService.init();
-		const flushEventsSpy = jest.spyOn(insightsCollectionService, 'flushEvents');
+		const flushEventsSpy = vi.spyOn(insightsCollectionService, 'flushEvents');
 
 		try {
 			// ACT
-			await jest.advanceTimersByTimeAsync(31 * 1000);
+			await vi.advanceTimersByTimeAsync(31 * 1000);
 
 			// ASSERT
 			expect(flushEventsSpy).toHaveBeenCalledTimes(1);
 			expect(repoMocks.insertInsightsRaw).not.toHaveBeenCalled();
 
 			// ACT
-			await jest.advanceTimersByTimeAsync(31 * 1000);
+			await vi.advanceTimersByTimeAsync(31 * 1000);
 			expect(flushEventsSpy).toHaveBeenCalledTimes(2);
 		} finally {
-			jest.useRealTimers();
+			vi.useRealTimers();
 		}
 	});
 
@@ -604,7 +604,7 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 
 	test('restore buffer events on flushing error', async () => {
 		// ARRANGE
-		jest.useFakeTimers();
+		vi.useFakeTimers();
 		repoMocks.insertInsightsRaw.mockClear();
 		repoMocks.insertInsightsRaw.mockRejectedValueOnce(new Error('Test error'));
 		insightsCollectionService.init();
@@ -613,7 +613,7 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 		try {
 			// ACT
 			await insightsCollectionService.handleWorkflowExecuteAfter(ctx);
-			await jest.advanceTimersByTimeAsync(31 * 1000);
+			await vi.advanceTimersByTimeAsync(31 * 1000);
 
 			// ASSERT
 			expect(repoMocks.insertInsightsRaw).toHaveBeenCalledTimes(1);
@@ -628,7 +628,7 @@ describe('workflowExecuteAfterHandler - flushEvents', () => {
 			expect(newInsertArgs?.[0]).toHaveLength(3);
 			expect(newInsertArgs?.[0]).toEqual(insertArgs?.[0]);
 		} finally {
-			jest.useRealTimers();
+			vi.useRealTimers();
 		}
 	});
 

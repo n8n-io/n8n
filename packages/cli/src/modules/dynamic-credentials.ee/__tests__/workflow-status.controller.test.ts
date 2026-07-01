@@ -1,4 +1,5 @@
-import { mock } from 'jest-mock-extended';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 import type { WorkflowEntity } from '@n8n/db';
 import type { Request, Response } from 'express';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -11,43 +12,43 @@ import type { UrlService } from '@/services/url.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { GlobalConfig } from '@n8n/config';
 
-jest.mock('../utils', () => ({
-	getDynamicCredentialMiddlewares: jest.fn(() => undefined),
+vi.mock('../utils', () => ({
+	getDynamicCredentialMiddlewares: vi.fn(() => undefined),
 }));
 
 describe('WorkflowStatusController', () => {
 	let controller: WorkflowStatusController;
-	let mockService: jest.Mocked<CredentialResolverWorkflowService>;
-	let mockUrlService: jest.Mocked<UrlService>;
-	let mockGlobalConfig: jest.Mocked<GlobalConfig>;
-	let mockDynamicCredentialCorsService: jest.Mocked<DynamicCredentialCorsService>;
-	let mockDynamicCredentialWebService: jest.Mocked<DynamicCredentialWebService>;
-	let mockWorkflowFinderService: jest.Mocked<WorkflowFinderService>;
+	let mockService: Mocked<CredentialResolverWorkflowService>;
+	let mockUrlService: Mocked<UrlService>;
+	let mockGlobalConfig: Mocked<GlobalConfig>;
+	let mockDynamicCredentialCorsService: Mocked<DynamicCredentialCorsService>;
+	let mockDynamicCredentialWebService: Mocked<DynamicCredentialWebService>;
+	let mockWorkflowFinderService: Mocked<WorkflowFinderService>;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		mockService = {
-			getWorkflowStatus: jest.fn(),
-		} as unknown as jest.Mocked<CredentialResolverWorkflowService>;
+			getWorkflowStatus: vi.fn(),
+		} as unknown as Mocked<CredentialResolverWorkflowService>;
 
 		mockUrlService = {
-			getInstanceBaseUrl: jest.fn().mockReturnValue('https://n8n.example.com'),
-		} as unknown as jest.Mocked<UrlService>;
+			getInstanceBaseUrl: vi.fn().mockReturnValue('https://n8n.example.com'),
+		} as unknown as Mocked<UrlService>;
 
 		mockGlobalConfig = {
 			endpoints: {
 				rest: 'rest',
 			},
-		} as unknown as jest.Mocked<GlobalConfig>;
+		} as unknown as Mocked<GlobalConfig>;
 
 		mockDynamicCredentialCorsService = {
-			applyCorsHeadersIfEnabled: jest.fn(),
-			preflightHandler: jest.fn(),
-		} as unknown as jest.Mocked<DynamicCredentialCorsService>;
+			applyCorsHeadersIfEnabled: vi.fn(),
+			preflightHandler: vi.fn(),
+		} as unknown as Mocked<DynamicCredentialCorsService>;
 
 		mockDynamicCredentialWebService = mock<DynamicCredentialWebService>();
-		mockDynamicCredentialWebService.getCredentialContextFromRequest = jest.fn().mockReturnValue({
+		mockDynamicCredentialWebService.getCredentialContextFromRequest = vi.fn().mockReturnValue({
 			identity: 'mock-token',
 			version: 1,
 			metadata: {},

@@ -56,14 +56,14 @@ export class InsightsService {
 	}
 
 	@OnLeaderStepdown()
-	stopCompactionAndPruningTimers() {
-		this.compactionService.stopCompactionTimer();
+	async stopCompactionAndPruningTimers() {
 		this.pruningService.stopPruningTimer();
+		await this.compactionService.stopCompactionTimer();
 	}
 
 	async shutdown() {
 		await this.toggleCollectionService(false);
-		this.stopCompactionAndPruningTimers();
+		await this.stopCompactionAndPruningTimers();
 	}
 
 	async getInsightsSummary({

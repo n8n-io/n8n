@@ -4,9 +4,8 @@ import { Response } from 'express';
 import { ensureError, jsonStringify } from 'n8n-workflow';
 
 import { EventService } from '@/events/event.service';
-import { OAuthRequest } from '@/requests';
-
 import { OauthService, type OAuth1CredentialData } from '@/oauth/oauth.service';
+import { OAuthRequest } from '@/requests';
 
 @RestController('/oauth1-credential')
 export class OAuth1CredentialController {
@@ -19,7 +18,7 @@ export class OAuth1CredentialController {
 	/** Get Authorization url */
 	@Get('/auth')
 	async getAuthUri(req: OAuthRequest.OAuth1Credential.Auth, res: Response): Promise<string> {
-		const credential = await this.oauthService.getCredentialForUpdate(req);
+		const credential = await this.oauthService.getCredentialForAuthFlow(req);
 		const csrfData = await this.oauthService.buildCsrfStateData(credential, req);
 		const uri = await this.oauthService.generateAOauth1AuthUri(credential, csrfData, req, res);
 

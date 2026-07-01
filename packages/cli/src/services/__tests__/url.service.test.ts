@@ -1,5 +1,5 @@
 import type { GlobalConfig } from '@n8n/config';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { UrlService } from '../url.service';
 

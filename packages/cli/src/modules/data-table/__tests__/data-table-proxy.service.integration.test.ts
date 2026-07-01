@@ -1,8 +1,7 @@
+import type { ListDataTableQueryDto } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import { testDb, testModules } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
-import type { ListDataTableQueryDto } from '@n8n/api-types';
 import type {
 	AddDataTableColumnOptions,
 	INode,
@@ -11,9 +10,11 @@ import type {
 	UpsertDataTableRowOptions,
 	Workflow,
 } from 'n8n-workflow';
+import type { MockInstance } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
-import * as checkAccess from '@/permissions.ee/check-access';
 import type { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import * as checkAccess from '@/permissions.ee/check-access';
 import type { OwnershipService } from '@/services/ownership.service';
 
 import type { DataTableAggregateService } from '../data-table-aggregate.service';
@@ -288,7 +289,7 @@ describe('makeDataTableOperationsForUser', () => {
 	let loggerMock = mock<Logger>();
 	let sourceControlPreferencesServiceMock = mock<SourceControlPreferencesService>();
 	let dataTableProxyService: DataTableProxyService;
-	let userHasScopesSpy: jest.SpyInstance;
+	let userHasScopesSpy: MockInstance;
 
 	const user = mock<User>({ id: 'user-1' });
 
@@ -309,11 +310,11 @@ describe('makeDataTableOperationsForUser', () => {
 			sourceControlPreferencesServiceMock,
 		);
 
-		userHasScopesSpy = jest.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
+		userHasScopesSpy = vi.spyOn(checkAccess, 'userHasScopes').mockResolvedValue(true);
 	});
 
 	afterEach(() => {
-		jest.restoreAllMocks();
+		vi.restoreAllMocks();
 	});
 
 	describe('getManyAndCount', () => {
