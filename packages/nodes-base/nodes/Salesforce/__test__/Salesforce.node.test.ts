@@ -2595,6 +2595,37 @@ describe('Salesforce', () => {
 					}),
 				);
 			});
+
+			// A 204 No Content reply has no body: the axios-based JWT auth path resolves
+			// it as '', the legacy OAuth2 path as undefined. All must normalize alike.
+			it.each([
+				['empty string', ''],
+				['undefined', undefined],
+				['null', null],
+			])(
+				'should normalize a %s 204 response into a valid success item',
+				async (_label, emptyResponse) => {
+					mockExecuteFunctions.getNodeParameter.mockImplementation((param: string): any => {
+						const params: Record<string, unknown> = {
+							resource: 'customObject',
+							operation: 'update',
+							recordId: 'custom123',
+							customObject: 'CustomObject__c',
+							customFieldsUi: {
+								customFieldsValues: [{ fieldId: 'Name', value: 'Updated' }],
+							},
+							updateFields: {},
+						};
+						return params[param];
+					});
+
+					salesforceApiRequestSpy.mockResolvedValue(emptyResponse);
+
+					const result = await node.execute.call(mockExecuteFunctions);
+
+					expect(result[0][0].json).toEqual({ errors: [], success: true });
+				},
+			);
 		});
 
 		describe('CustomObject Other Operations', () => {
