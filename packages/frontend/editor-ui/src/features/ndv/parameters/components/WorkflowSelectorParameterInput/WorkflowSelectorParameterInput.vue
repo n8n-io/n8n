@@ -58,7 +58,7 @@ export interface Props {
 
 const props = withDefaults(defineProps<Props>(), {
 	eventBus: () => createEventBus(),
-	inputSize: 'medium',
+	inputSize: 'small',
 	isValueExpression: false,
 	isReadOnly: false,
 	forceShowExpression: false,
