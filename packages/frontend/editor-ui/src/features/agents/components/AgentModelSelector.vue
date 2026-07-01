@@ -49,7 +49,6 @@ const {
 	horizontal = false,
 	warnMissingCredentials = false,
 	disabled = false,
-	horizontal = false,
 } = defineProps<{
 	selectedModel: AgentModelOption | null;
 	credentials: AgentCredentialsByProvider | null;
