@@ -24,7 +24,9 @@ describe('instance ai browser use telemetry', () => {
 		useInstanceAiBrowserUseTelemetry().trackInstallExtensionClicked();
 
 		expect(track).toHaveBeenCalledTimes(1);
-		expect(track).toHaveBeenCalledWith('Instance AI Install Chrome Extension button clicked');
+		expect(track).toHaveBeenCalledWith(
+			'Instance AI Install Chrome Browser Extension button clicked',
+		);
 	});
 
 	test('tracks the open extension button click', () => {

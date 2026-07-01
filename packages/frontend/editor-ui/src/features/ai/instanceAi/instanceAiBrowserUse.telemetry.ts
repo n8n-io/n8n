@@ -7,7 +7,7 @@ export function useInstanceAiBrowserUseTelemetry() {
 			telemetry.track('Instance AI Connect Browser Use modal opened');
 		},
 		trackInstallExtensionClicked() {
-			telemetry.track('Instance AI Install Chrome Extension button clicked');
+			telemetry.track('Instance AI Install Chrome Browser Extension button clicked');
 		},
 		trackOpenExtensionClicked() {
 			telemetry.track('Instance AI Open Browser Use Extension button clicked');
