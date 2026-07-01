@@ -43,7 +43,7 @@ export function useWorkflowSetupSections(
 			const currentCredentialId =
 				credentialType === undefined
 					? null
-					: existingCred?.__aiGatewayManaged === true
+					: existingCred !== undefined && '__aiGatewayManaged' in existingCred
 						? AI_GATEWAY_MANAGED_TAG
 						: (existingCred?.id ?? null);
 
