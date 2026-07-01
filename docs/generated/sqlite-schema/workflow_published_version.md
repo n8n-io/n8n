@@ -18,7 +18,7 @@ CREATE TABLE "workflow_published_version" ("workflowId" varchar(36) PRIMARY KEY 
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | publishedVersionId | varchar(36) |  | false |  | [workflow_history](workflow_history.md) |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
-| workflowId | varchar(36) |  | false |  | [workflow_entity](workflow_entity.md) |  |
+| workflowId | varchar(36) |  | false | [scheduled_job](scheduled_job.md) | [workflow_entity](workflow_entity.md) |  |
 
 ## Constraints
 
@@ -46,6 +46,7 @@ erDiagram
 "workflow_published_version" }o--|| "workflow_history" : "FOREIGN KEY (publishedVersionId) REFERENCES workflow_history (versionId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_published_version" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
 "workflow_published_version" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"scheduled_job" }o--o| "workflow_published_version" : "FOREIGN KEY (workflowId) REFERENCES workflow_published_version (workflowId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "workflow_published_version" {
   datetime_3_ createdAt
@@ -87,6 +88,25 @@ erDiagram
   datetime_3_ updatedAt
   INTEGER versionCounter
   varchar_36_ versionId
+}
+"scheduled_job" {
+  datetime_3_ createdAt
+  varchar_255_ cronExpression
+  boolean enabled
+  datetime_3_ fireAt
+  INTEGER id
+  INTEGER intervalSeconds
+  varchar_16_ kind
+  datetime_3_ lastFiredAt
+  INTEGER maxAttempts
+  varchar_255_ name
+  datetime_3_ nextRunAt
+  varchar_36_ nodeId
+  TEXT payload
+  varchar_128_ taskType
+  varchar_64_ timezone
+  datetime_3_ updatedAt
+  varchar_36_ workflowId FK
 }
 ```
 
