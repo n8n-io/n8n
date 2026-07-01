@@ -854,6 +854,89 @@ describe('AgentRuntime — eager input persistence', () => {
 		const afterResume = await memory.getMessages('t1', { resourceId: 'u1' });
 		expect(afterResume.filter((m) => hasToolCall(m, 'tc-1'))).toHaveLength(1);
 	});
+
+	it("persists the turn's assistant output when an active turn is aborted (generate)", async () => {
+		const lookupTool: BuiltTool = {
+			name: 'lookup',
+			description: 'looks something up',
+			inputSchema: z.object({}),
+			handler: async () => await Promise.resolve({ ok: true }),
+		};
+		const memory = new InMemoryMemory();
+		const bus = new AgentEventBus();
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			tools: [lookupTool],
+			eventBus: bus,
+			memory,
+		});
+
+		// The model issues a tool call, so the assistant message is added to the list
+		// before the tool runs. Aborting once the tool starts mirrors a user hitting
+		// "stop" mid-run — after work was done, before the turn could complete.
+		generateText.mockResolvedValueOnce(makeGenerateWithToolCall('tc-1', 'lookup', {}));
+		bus.on(AgentEvent.ToolExecutionStart, () => bus.abort());
+
+		const result = await runtime.generate('please build it', PERSIST);
+
+		expect(result.finishReason).toBe('error');
+		expect(runtime.getState().status).toBe('cancelled');
+		// The assistant work done before the stop is now in memory, so the next turn sees it.
+		const persisted = await memory.getMessages('t1', { resourceId: 'u1' });
+		const assistantRows = persisted.filter(
+			(m) => (m as { role?: string }).role === 'assistant' && hasToolCall(m, 'tc-1'),
+		);
+		expect(assistantRows).toHaveLength(1);
+	});
+
+	it("persists the turn's assistant output when an active turn is aborted (stream)", async () => {
+		const lookupTool: BuiltTool = {
+			name: 'lookup',
+			description: 'looks something up',
+			inputSchema: z.object({}),
+			handler: async () => await Promise.resolve({ ok: true }),
+		};
+		const memory = new InMemoryMemory();
+		const bus = new AgentEventBus();
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			tools: [lookupTool],
+			eventBus: bus,
+			memory,
+		});
+
+		// Same shape as the generate case, on the streaming path (the one Instance AI uses):
+		// the abort is handled by the StreamSession, which must persist the turn-so-far.
+		streamText.mockReturnValueOnce({
+			fullStream: makeChunkStream([{ type: 'text-delta', textDelta: 'on it...' }]),
+			finishReason: Promise.resolve('tool-calls'),
+			usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
+			response: Promise.resolve({
+				messages: [
+					{
+						role: 'assistant',
+						content: [{ type: 'tool-call', toolCallId: 'tc-1', toolName: 'lookup', args: {} }],
+					},
+				],
+			}),
+			toolCalls: Promise.resolve([{ toolCallId: 'tc-1', toolName: 'lookup', input: {} }]),
+		});
+		bus.on(AgentEvent.ToolExecutionStart, () => bus.abort());
+
+		const { stream } = await runtime.stream('please build it', PERSIST);
+		await collectChunks(stream);
+
+		expect(runtime.getState().status).toBe('cancelled');
+		const persisted = await memory.getMessages('t1', { resourceId: 'u1' });
+		const assistantRows = persisted.filter(
+			(m) => (m as { role?: string }).role === 'assistant' && hasToolCall(m, 'tc-1'),
+		);
+		expect(assistantRows).toHaveLength(1);
+	});
 });
 
 // ---------------------------------------------------------------------------

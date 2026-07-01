@@ -246,7 +246,11 @@ export class AgentRuntime {
 			await this.telemetry.flush(options);
 			const isAbort = abortScope.isAborted;
 			this.updateState({ status: isAbort ? 'cancelled' : 'failed' });
-			if (!isAbort) {
+			if (isAbort) {
+				// Durably save the turn-so-far so a cancelled run still leaves its assistant
+				// work in memory (mirrors the suspend-time save). Best-effort.
+				if (list) await this.memory.persistTurnDelta(list, options);
+			} else {
 				this.eventBus.emit({ type: AgentEvent.Error, message: String(error), error });
 			}
 			return {
@@ -743,6 +747,9 @@ export class AgentRuntime {
 				await this.runAgentLoop(ctx, sink);
 			},
 			getAbortFinish: () => sink?.getAbortFinish() ?? {},
+			// Durably save the turn-so-far when a streaming run is aborted, so a cancelled
+			// run still leaves its assistant work in memory (mirrors the suspend-time save).
+			persistTurnOnAbort: async () => await this.memory.persistTurnDelta(ctx.list, ctx.options),
 			flushTelemetry: async (options) => await this.telemetry.flush(options),
 			cleanupRun: async () => await this.cleanupRun(),
 			updateState: (status) => this.updateState({ status }),
@@ -782,7 +789,7 @@ export class AgentRuntime {
 		};
 		await this.runState.suspend(this.runId, state);
 		this.updateState({ status: 'suspended', pendingToolCalls, messageList: list.serialize() });
-		await this.memory.persistTurnOnSuspend(list, options);
+		await this.memory.persistTurnDelta(list, options);
 
 		return this.runId;
 	}
