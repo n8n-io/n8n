@@ -102,7 +102,15 @@ export class CreateSchedulerTables1784000000042 implements ReversibleMigration {
 
 		// Index the workflowId FK so a workflow delete cascades without seq-scanning
 		// scheduled_job. Also serves lookups of all jobs owned by a workflow.
-		await createIndex('scheduled_job', ['workflowId'], false);
+		// Partial: system jobs (NULL workflowId) never use it, and a workflowId lookup implies
+		// NOT NULL so the planner can still use it for the cascade.
+		await createIndex(
+			'scheduled_job',
+			['workflowId'],
+			false,
+			undefined,
+			'"workflowId" IS NOT NULL',
+		);
 
 		// Names are unique across all jobs: well-known keys for system jobs, generated
 		// for workflow trigger jobs.

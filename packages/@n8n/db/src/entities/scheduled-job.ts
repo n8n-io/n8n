@@ -35,7 +35,7 @@ export type ScheduledJobKind = (typeof ScheduledJobKind)[keyof typeof ScheduledJ
 @Index(['nextRunAt'], {
 	where: '"enabled" = true AND "nextRunAt" IS NOT NULL',
 })
-@Index(['workflowId'])
+@Index(['workflowId'], { where: '"workflowId" IS NOT NULL' })
 @Index(['name'], { unique: true })
 export class ScheduledJob extends WithTimestamps {
 	@PrimaryGeneratedColumn()
