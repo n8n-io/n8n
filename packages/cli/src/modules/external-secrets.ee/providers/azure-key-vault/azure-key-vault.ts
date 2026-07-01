@@ -12,7 +12,7 @@ import {
 	type LogContext,
 	logSecretsProviderOperationFailure,
 	type SafeContextValue,
-	type SecretsProviderOperation,
+	type SecretsProviderOperationFailureParams,
 } from '../../errors/secrets-provider-errors';
 import { SecretsProvider } from '../../types';
 
@@ -265,11 +265,7 @@ export class AzureKeyVault extends SecretsProvider {
 
 	private logOperationFailure(
 		message: string,
-		params: {
-			operation: SecretsProviderOperation;
-			error: unknown;
-			context?: LogContext;
-		},
+		params: SecretsProviderOperationFailureParams,
 	): void {
 		const context: LogContext = { ...params.context };
 		if (this.settings?.vaultName) {

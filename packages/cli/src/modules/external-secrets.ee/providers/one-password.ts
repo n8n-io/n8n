@@ -8,7 +8,7 @@ import {
 	buildHttpProviderErrorContext,
 	logSecretsProviderOperationFailure,
 	type LogContext,
-	type SecretsProviderOperation,
+	type SecretsProviderOperationFailureParams,
 } from '../errors/secrets-provider-errors';
 import { SecretsProvider, type SecretsProviderSettings } from '../types';
 
@@ -203,11 +203,7 @@ export class OnePasswordProvider extends SecretsProvider {
 
 	private logOperationFailure(
 		message: string,
-		params: {
-			operation: SecretsProviderOperation;
-			error: unknown;
-			context?: LogContext;
-		},
+		params: SecretsProviderOperationFailureParams,
 	): void {
 		const context: LogContext = { ...params.context };
 		if (this.settings?.serverUrl) {

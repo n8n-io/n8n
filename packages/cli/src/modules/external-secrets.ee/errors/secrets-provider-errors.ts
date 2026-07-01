@@ -85,6 +85,9 @@ type LogSecretsProviderOperationFailureParams = {
 	message: string;
 	providerName: string;
 	providerDisplayName: string;
+} & SecretsProviderOperationFailureParams;
+
+export type SecretsProviderOperationFailureParams = {
 	operation: SecretsProviderOperation;
 	error: unknown;
 	context?: LogContext;

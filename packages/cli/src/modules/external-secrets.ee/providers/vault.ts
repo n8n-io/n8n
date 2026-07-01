@@ -17,8 +17,7 @@ import { DOCS_HELP_NOTICE } from '../constants';
 import {
 	buildHttpProviderErrorContext,
 	logSecretsProviderOperationFailure,
-	type LogContext,
-	type SecretsProviderOperation,
+	type SecretsProviderOperationFailureParams,
 } from '../errors/secrets-provider-errors';
 import { ExternalSecretsConfig } from '../external-secrets.config';
 import type { SecretsProviderSettings } from '../types';
@@ -723,11 +722,7 @@ export class VaultProvider extends SecretsProvider {
 
 	private logOperationFailure(
 		message: string,
-		params: {
-			operation: SecretsProviderOperation;
-			error: unknown;
-			context?: LogContext;
-		},
+		params: SecretsProviderOperationFailureParams,
 	): void {
 		logSecretsProviderOperationFailure({
 			logger: this.logger,

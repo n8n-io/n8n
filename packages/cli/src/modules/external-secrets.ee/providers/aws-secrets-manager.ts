@@ -8,7 +8,7 @@ import { DOCS_HELP_NOTICE } from '../constants';
 import {
 	logSecretsProviderOperationFailure,
 	type LogContext,
-	type SecretsProviderOperation,
+	type SecretsProviderOperationFailureParams,
 } from '../errors/secrets-provider-errors';
 import { UnknownAuthTypeError } from '../errors/unknown-auth-type.error';
 import { SecretsProvider, type SecretsProviderSettings } from '../types';
@@ -333,11 +333,7 @@ export class AwsSecretsManager extends SecretsProvider {
 
 	private logOperationFailure(
 		message: string,
-		params: {
-			operation: SecretsProviderOperation;
-			error: unknown;
-			context?: LogContext;
-		},
+		params: SecretsProviderOperationFailureParams,
 	): void {
 		const context: LogContext = { ...params.context };
 		if (this.settings?.region) {
