@@ -198,14 +198,16 @@ export function createLlmCompletionMockHandler(
 				.description("Submit the agent's next step: one tool call, or a final answer.")
 				.input(submitStepSchema)
 				.handler(async (input: CompletionStep) => {
-					if (input.kind === 'tool_call') {
-						if (!input.toolName) {
-							return 'Invalid: kind="tool_call" requires toolName. Call submit_agent_step again.';
-						}
+					// A named tool always wins, even on a step labeled "final" — structured-output
+					// agents finalize by calling the tool. Capture it regardless of `kind`.
+					if (input.toolName) {
 						capture.kind = 'tool_call';
 						capture.toolName = input.toolName;
 						capture.toolArguments = input.toolArguments ?? {};
 						return 'Accepted.';
+					}
+					if (input.kind === 'tool_call') {
+						return 'Invalid: kind="tool_call" requires toolName. Call submit_agent_step again.';
 					}
 					capture.kind = 'final';
 					capture.content = input.content ?? '';

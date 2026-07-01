@@ -19,7 +19,9 @@ import type {
 import { Agent, setGlobalDispatcher } from 'undici';
 import { z } from 'zod';
 
-// Disable undici's 300s timeouts — mocked eval runs take minutes; AbortSignal is the real bound.
+// Disable undici's 300s timeouts — mocked eval runs take minutes; the per-request
+// AbortSignal is the real bound. This is process-global: only ever imported by the
+// eval CLI harness — never import into the n8n server or shared runtime code.
 setGlobalDispatcher(new Agent({ headersTimeout: 0, bodyTimeout: 0 }));
 
 // -- Conversation seeding response shapes -------------------------------------

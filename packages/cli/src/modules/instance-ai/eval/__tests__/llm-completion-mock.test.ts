@@ -126,6 +126,28 @@ describe('createLlmCompletionMockHandler', () => {
 		expect(res?.body).toEqual({ tool_calls: [{ name: 'search_web', arguments: { q: 'x' } }] });
 	});
 
+	it('lets a named tool win even when the step is labeled "final"', async () => {
+		submitQueue.push({
+			kind: 'final',
+			toolName: 'format_response',
+			toolArguments: { text: 'x' },
+			content: 'ignored',
+		});
+		const handler = createLlmCompletionMockHandler();
+
+		const res = await handler(
+			chatRequest({
+				messages: [{ role: 'user', content: 'hi' }],
+				tools: [{ type: 'function', function: { name: 'format_response', parameters: {} } }],
+			}),
+			node,
+		);
+
+		expect(res?.body).toEqual({
+			tool_calls: [{ name: 'format_response', arguments: { text: 'x' } }],
+		});
+	});
+
 	it('emits content for a final answer', async () => {
 		submitQueue.push({ kind: 'final', content: 'done' });
 		const handler = createLlmCompletionMockHandler();
