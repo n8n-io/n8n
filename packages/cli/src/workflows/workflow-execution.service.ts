@@ -26,6 +26,7 @@ import type {
 import {
 	SubworkflowOperationError,
 	UnexpectedError,
+	UserError,
 	Workflow,
 	createRunExecutionData,
 } from 'n8n-workflow';
@@ -189,9 +190,18 @@ export class WorkflowExecutionService {
 
 		// Case 3: Full execution from an unknown trigger.
 		if (isFullExecutionFromUnknownTrigger(payload)) {
+			// A full manual run needs either a trigger to start from or a destination node
+			// to work back from. Without either we can't determine where to start, so reject
+			// the request explicitly instead of dereferencing an undefined destination.
+			if (payload.destinationNode === undefined) {
+				throw new UserError(
+					'To run the workflow manually, specify either a trigger to start from or a destination node.',
+				);
+			}
+
 			const pinnedTrigger = this.selectPinnedTrigger(
 				workflowData,
-				payload.destinationNode?.nodeName,
+				payload.destinationNode.nodeName,
 				workflowData.pinData ?? {},
 			);
 
@@ -520,25 +530,19 @@ export class WorkflowExecutionService {
 	 * that is a parent of the destination node. Webhook triggers are prioritized over other
 	 * trigger types in the sorting order.
 	 *
-	 * When no destination node is given (the whole workflow runs), the first pinned trigger is returned.
-	 *
 	 * @param workflow The workflow containing the nodes and connections
-	 * @param destinationNode The name of the node to find a pinned trigger for, or undefined to run the entire workflow
+	 * @param destinationNode The name of the node to find a pinned trigger for
 	 * @param pinData Pin data mapping node names to their pinned data
 	 * @returns The pinned trigger node if found, undefined otherwise
 	 */
 	selectPinnedTrigger(
 		workflow: IWorkflowBase,
-		destinationNode: string | undefined,
+		destinationNode: string,
 		pinData: IPinData,
 	): INode | undefined {
 		const allPinnedTriggers = this.findAllPinnedTriggers(workflow, pinData);
 
 		if (allPinnedTriggers.length === 0) return undefined;
-
-		if (destinationNode === undefined) {
-			return allPinnedTriggers[0];
-		}
 
 		const destinationParents = new Set(
 			new Workflow({

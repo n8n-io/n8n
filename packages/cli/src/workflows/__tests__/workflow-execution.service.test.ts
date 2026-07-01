@@ -11,6 +11,7 @@ import {
 	type IWorkflowExecuteAdditionalData,
 	type ExecutionError,
 	createRunExecutionData,
+	UserError,
 } from 'n8n-workflow';
 
 import type { IWorkflowErrorData } from '@/interfaces';
@@ -303,8 +304,7 @@ describe('WorkflowExecutionService', () => {
 			expect(result).toEqual({ executionId });
 		});
 
-		test('should run the entire workflow when no destination node is given and there is no pinned trigger', async () => {
-			const executionId = 'fake-execution-id';
+		test('should throw a UserError when neither a trigger nor a destination node is given', async () => {
 			const userId = 'user-id';
 			const user = mock<User>({ id: userId });
 
@@ -332,27 +332,13 @@ describe('WorkflowExecutionService', () => {
 
 			const runPayload: WorkflowRequest.FullManualExecutionFromUnknownTriggerPayload = {};
 
-			workflowRunner.run.mockResolvedValue(executionId);
-
-			const result = await workflowExecutionService.executeManually(workflowData, runPayload, user);
-
-			expect(workflowRunner.run).toHaveBeenCalledWith({
-				destinationNode: undefined,
-				executionMode: 'manual',
-				pinData: undefined,
-				pushRef: undefined,
-				workflowData,
-				userId,
-				agentRequest: undefined,
-				triggerToStartFrom: undefined,
-				projectId: 'test-project-id',
-				projectName: 'Test Project',
-			});
-			expect(result).toEqual({ executionId });
+			await expect(
+				workflowExecutionService.executeManually(workflowData, runPayload, user),
+			).rejects.toThrow(UserError);
+			expect(workflowRunner.run).not.toHaveBeenCalled();
 		});
 
-		test('should start from the first pinned trigger when no destination node is given', async () => {
-			const executionId = 'fake-execution-id';
+		test('should throw a UserError when no destination node is given even with a pinned trigger', async () => {
 			const userId = 'user-id';
 			const user = mock<User>({ id: userId });
 
@@ -380,23 +366,10 @@ describe('WorkflowExecutionService', () => {
 
 			const runPayload: WorkflowRequest.FullManualExecutionFromUnknownTriggerPayload = {};
 
-			workflowRunner.run.mockResolvedValue(executionId);
-
-			const result = await workflowExecutionService.executeManually(workflowData, runPayload, user);
-
-			expect(workflowRunner.run).toHaveBeenCalledWith({
-				destinationNode: undefined,
-				executionMode: 'manual',
-				pinData: workflowData.pinData,
-				pushRef: undefined,
-				workflowData,
-				userId,
-				agentRequest: undefined,
-				triggerToStartFrom: { name: pinnedTrigger.name },
-				projectId: 'test-project-id',
-				projectName: 'Test Project',
-			});
-			expect(result).toEqual({ executionId });
+			await expect(
+				workflowExecutionService.executeManually(workflowData, runPayload, user),
+			).rejects.toThrow(UserError);
+			expect(workflowRunner.run).not.toHaveBeenCalled();
 		});
 
 		test('should ignore pinned trigger and start from unexecuted trigger', async () => {
