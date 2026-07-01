@@ -23,9 +23,11 @@ let mcpTestEndpoint: string;
 let registrations: TestWebhookRegistrationsService;
 
 const webhookBaseUrl = () => Container.get(UrlService).getWebhookBaseUrl().replace(/\/$/, '');
+const testWebhookBaseUrl = () =>
+	Container.get(UrlService).getTestWebhookBaseUrl().replace(/\/$/, '');
 
 const testResourceUrlFor = (webhookPath: string) =>
-	`${webhookBaseUrl()}/${mcpTestEndpoint}/${webhookPath}`;
+	`${testWebhookBaseUrl()}/${mcpTestEndpoint}/${webhookPath}`;
 
 const prmPathFor = (webhookPath: string) =>
 	`/.well-known/oauth-protected-resource/${mcpTestEndpoint}/${webhookPath}`;
