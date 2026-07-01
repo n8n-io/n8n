@@ -2,6 +2,7 @@ import { createWorkflow, createWorkflowHistory, testDb } from '@n8n/backend-test
 import type { IWorkflowDb } from '@n8n/db';
 import {
 	WorkflowHistoryRepository,
+	WorkflowPublicationOutboxRepository,
 	WorkflowPublicationTriggerStatusRepository,
 	WorkflowRepository,
 } from '@n8n/db';
@@ -16,6 +17,7 @@ async function seedVersions(workflow: IWorkflowDb, versionIds: string[]): Promis
 
 describe('WorkflowPublicationTriggerStatusRepository', () => {
 	let repo: WorkflowPublicationTriggerStatusRepository;
+	let outboxRepo: WorkflowPublicationOutboxRepository;
 	let workflowRepository: WorkflowRepository;
 	let workflowHistoryRepository: WorkflowHistoryRepository;
 
@@ -26,6 +28,7 @@ describe('WorkflowPublicationTriggerStatusRepository', () => {
 	beforeAll(async () => {
 		await testDb.init();
 		repo = Container.get(WorkflowPublicationTriggerStatusRepository);
+		outboxRepo = Container.get(WorkflowPublicationOutboxRepository);
 		workflowRepository = Container.get(WorkflowRepository);
 		workflowHistoryRepository = Container.get(WorkflowHistoryRepository);
 
@@ -33,7 +36,7 @@ describe('WorkflowPublicationTriggerStatusRepository', () => {
 		await seedVersions(workflow, ['v1', 'v2']);
 	});
 	afterEach(async () => {
-		await testDb.truncate(['WorkflowPublicationTriggerStatus']);
+		await testDb.truncate(['WorkflowPublicationTriggerStatus', 'WorkflowPublicationOutbox']);
 	});
 	afterAll(async () => await testDb.terminate());
 
@@ -85,5 +88,51 @@ describe('WorkflowPublicationTriggerStatusRepository', () => {
 		await workflowHistoryRepository.delete({ versionId: 'v-version-cascade' });
 
 		expect(await repo.findByWorkflowId(ownWorkflow.id)).toEqual([]);
+	});
+
+	it('findInFlightByWorkflowId prefers the in_progress record when a pending one coexists', async () => {
+		const wf = await createWorkflow();
+		// A pending and an in_progress record can coexist for the same workflow:
+		// their (workflowId, status) tuples differ, so the partial unique index allows both.
+		await outboxRepo.save(
+			outboxRepo.create({
+				workflowId: wf.id,
+				publishedVersionId: 'v-pending',
+				status: 'pending',
+				errorMessage: null,
+			}),
+		);
+		await outboxRepo.save(
+			outboxRepo.create({
+				workflowId: wf.id,
+				publishedVersionId: 'v-in-progress',
+				status: 'in_progress',
+				errorMessage: null,
+			}),
+		);
+
+		const inFlight = await outboxRepo.findInFlightByWorkflowId(wf.id);
+		expect(inFlight).not.toBeNull();
+		expect(inFlight!.status).toBe('in_progress');
+		expect(inFlight!.publishedVersionId).toBe('v-in-progress');
+	});
+
+	it('findInFlightByWorkflowId ignores terminal records', async () => {
+		const wf = await createWorkflow();
+		await outboxRepo.save(
+			outboxRepo.create({
+				workflowId: wf.id,
+				publishedVersionId: 'v1',
+				status: 'completed',
+				errorMessage: null,
+			}),
+		);
+
+		expect(await outboxRepo.findInFlightByWorkflowId(wf.id)).toBeNull();
+	});
+
+	it('findInFlightByWorkflowId returns null when no outbox records exist', async () => {
+		const wf = await createWorkflow();
+		expect(await outboxRepo.findInFlightByWorkflowId(wf.id)).toBeNull();
 	});
 });

@@ -119,6 +119,7 @@ catalog:
   cheerio: 1.1.0
   chokidar: 4.0.3
   cron: 4.4.0
+  cron-parser: 5.6.1
   cross-env: ^7.0.3
   csv-parse: 6.2.1
   dotenv: 17.2.3
