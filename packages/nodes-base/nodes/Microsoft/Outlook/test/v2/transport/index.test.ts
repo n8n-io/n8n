@@ -295,6 +295,32 @@ describe('MicrosoftOutlookV2 - microsoftApiRequest', () => {
 			);
 		});
 
+		it('should carry a B2B guest (#EXT#) mailbox end-to-end into an encoded /users/{id} uri', async () => {
+			setupSP({ mailbox: 'user_contoso.com#EXT#@tenant.onmicrosoft.com' });
+
+			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/messages');
+
+			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
+				'microsoftEntraServicePrincipalApi',
+				expect.objectContaining({
+					uri: 'https://graph.microsoft.com/v1.0/users/user_contoso.com%23EXT%23%40tenant.onmicrosoft.com/messages',
+				}),
+			);
+		});
+
+		it('should carry a "^"/"!" mailbox end-to-end into an encoded /users/{id} uri', async () => {
+			setupSP({ mailbox: 'joe^smith@contoso.com' });
+
+			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/messages');
+
+			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
+				'microsoftEntraServicePrincipalApi',
+				expect.objectContaining({
+					uri: 'https://graph.microsoft.com/v1.0/users/joe%5Esmith%40contoso.com/messages',
+				}),
+			);
+		});
+
 		it('should target the sovereign cloud base for the SP mailbox', async () => {
 			setupSP({ mailbox: 'user@example.com', graphApiBaseUrl: 'https://graph.microsoft.us' });
 

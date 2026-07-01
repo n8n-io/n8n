@@ -17,6 +17,7 @@ export const mailboxRLC: INodeProperties = {
 	type: 'resourceLocator',
 	default: { mode: 'id', value: '' },
 	required: true,
+	noDataExpression: true,
 	description: 'The mailbox the Service Principal should act on',
 	modes: [
 		{
