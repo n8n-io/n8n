@@ -211,7 +211,7 @@ ci-filter (in install-and-build)
         │
         └─→ CHANGED_FILES forwarded to test jobs
               │
-              └─→ janitor test-scoped --runner=vitest  (per-package)
+              └─→ janitor test-scoped  (per-package)
                     │
                     ├─→ SKIP        → exit 0 (no in-package changes)
                     ├─→ RUN_FULL    → spawn runner with no scope flags
@@ -225,10 +225,10 @@ ci-filter (in install-and-build)
 CHANGED_FILES="packages/workflow/src/x.ts" janitor affected-packages
 
 # Compute scope for the cwd package. Output: SKIP | RUN_FULL | <files>
-janitor scope --runner=vitest
+janitor scope
 
 # Compute scope AND spawn the runner. Unrecognised flags forward to runner.
-janitor test-scoped --runner=vitest --shard=1/2 --coverage
+janitor test-scoped --shard=1/2 --coverage
 ```
 
 **Bailout triggers (force ALL packages):** `pnpm-lock.yaml`, root `package.json`.
