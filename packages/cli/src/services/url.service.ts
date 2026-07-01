@@ -12,15 +12,16 @@ export class UrlService {
 
 	/** Returns the base URL of the production webhooks */
 	getWebhookBaseUrl() {
-		// N8N_WEBHOOK_URL (via config webhookUrl) is the successor to the deprecated WEBHOOK_URL, so we prefer it when set.
-		const configured = this.globalConfig.webhookUrl || process.env.WEBHOOK_URL;
-		let base = this.trimQuotes(configured) || this.baseUrl;
+		// N8N_WEBHOOK_URL (config `webhookUrl`, already normalized by @n8n/config) is the successor to the
+		// deprecated WEBHOOK_URL; we prefer it when set. Only the legacy env var still needs quote trimming.
+		let base =
+			this.globalConfig.webhookUrl || this.trimQuotes(process.env.WEBHOOK_URL) || this.baseUrl;
 		if (!base.endsWith('/')) base += '/';
 		return base;
 	}
 
 	getTestWebhookBaseUrl() {
-		let base = this.trimQuotes(this.globalConfig.webhookUrl) || this.getInstanceBaseUrl();
+		let base = this.globalConfig.webhookUrl || this.getInstanceBaseUrl();
 		if (!base.endsWith('/')) base += '/';
 		return base;
 	}
@@ -48,6 +49,6 @@ export class UrlService {
 
 	/** Remove leading and trailing double quotes from a URL. */
 	private trimQuotes(url?: string) {
-		return typeof url === 'string' ? url.replace(/^["]+|["]+$/g, '') : '';
+		return url?.replace(/^["]+|["]+$/g, '') ?? '';
 	}
 }
