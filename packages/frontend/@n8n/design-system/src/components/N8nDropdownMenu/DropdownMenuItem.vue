@@ -345,7 +345,7 @@ watch(
 }
 
 .sub-trigger {
-	& &:not([data-disabled]) {
+	&:not([data-disabled]) {
 		&:hover,
 		&[data-highlighted],
 		&[aria-selected='true'] {
