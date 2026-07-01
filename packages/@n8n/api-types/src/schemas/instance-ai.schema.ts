@@ -218,7 +218,15 @@ export const workflowSetupNodeSchema = z.object({
 		type: z.string(),
 		typeVersion: z.number(),
 		parameters: z.record(z.unknown()),
-		credentials: z.record(z.object({ id: z.string(), name: z.string() })).optional(),
+		credentials: z
+			.record(
+				z.object({
+					id: z.string().nullable(),
+					name: z.string(),
+					__aiGatewayManaged: z.boolean().optional(),
+				}),
+			)
+			.optional(),
 		position: z.tuple([z.number(), z.number()]),
 		id: z.string(),
 	}),
