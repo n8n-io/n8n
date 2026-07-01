@@ -8,9 +8,6 @@ import { WorkflowPublicationOutboxConsumer } from './workflow-publication-outbox
 /**
  * Signals the leader to drain the publication outbox immediately after a record
  * is enqueued, instead of waiting for the next poll cycle.
- *
- * Fire-and-forget by design: publication is asynchronous, so the enqueue path
- * must not block on the drain.
  */
 @Service()
 export class WorkflowPublicationNotifier {
@@ -21,7 +18,12 @@ export class WorkflowPublicationNotifier {
 		private readonly outboxConsumer: WorkflowPublicationOutboxConsumer,
 	) {}
 
-	/** Wake the leader's outbox consumer so a freshly enqueued record is drained promptly. */
+	/**
+	 * Wake the leader's outbox consumer so a freshly enqueued record is drained promptly.
+	 *
+	 * NOTE: this should only be called after a record is successfully enqueued,
+	 * otherwise we might try to drain the record before it's actually created.
+	 */
 	requestDrain(): void {
 		const wake = this.instanceSettings.isMultiMain
 			? this.publisher.publishCommand({ command: 'workflow-publish-wake-up' })
