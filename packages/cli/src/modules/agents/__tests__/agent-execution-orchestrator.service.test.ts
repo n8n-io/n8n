@@ -1,15 +1,17 @@
 import type { Agent as RuntimeAgent, StreamChunk } from '@n8n/agents';
 import { N8N_CHAT_INTEGRATION_TYPE, type AgentJsonConfig } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
-import { mock } from 'jest-mock-extended';
 import type { JSONSchema7 } from 'json-schema';
 import { OperationalError, UserError } from 'n8n-workflow';
+import type { ExecuteAgentWorkflowContext, IRunExecutionData } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { Telemetry } from '@/telemetry';
 
-import type { AgentExecutionService } from '../agent-execution.service';
 import { AgentExecutionOrchestratorService } from '../agent-execution-orchestrator.service';
+import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import type { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import type { Agent } from '../entities/agent.entity';
@@ -75,14 +77,14 @@ function makeRuntime(chunks: StreamChunk[] = [{ type: 'finish', finishReason: 's
 	return {
 		agent: {
 			name: 'Runtime Agent',
-			stream: jest.fn().mockResolvedValue({ stream: makeReadableStream(chunks) }),
-			resume: jest.fn().mockResolvedValue({ stream: makeReadableStream(chunks) }),
-			structuredOutput: jest.fn(),
-			close: jest.fn(),
+			stream: vi.fn().mockResolvedValue({ stream: makeReadableStream(chunks) }),
+			resume: vi.fn().mockResolvedValue({ stream: makeReadableStream(chunks) }),
+			structuredOutput: vi.fn(),
+			close: vi.fn(),
 		} as unknown as RuntimeAgent & {
-			stream: jest.Mock;
-			resume: jest.Mock;
-			structuredOutput: jest.Mock;
+			stream: Mock;
+			resume: Mock;
+			structuredOutput: Mock;
 		},
 		toolRegistry: mock<ToolRegistry>(),
 		projectId,
@@ -142,7 +144,7 @@ async function collect(generator: AsyncGenerator<StreamChunk>) {
 
 describe('AgentExecutionOrchestratorService', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('streams chat responses and records suspended executions', async () => {
@@ -373,7 +375,13 @@ describe('AgentExecutionOrchestratorService', () => {
 		const { service, executionService } = makeService();
 		executionService.getThreadDetail.mockResolvedValue({
 			thread: { id: 'thread-1' },
-			executions: [{ id: 'execution-1', userMessage: 'Hi', assistantResponse: 'Hello' }],
+			executions: [
+				{
+					id: 'execution-1',
+					userMessage: 'Hi',
+					timeline: [{ type: 'text', content: 'Hello', timestamp: 100 }],
+				},
+			],
 		} as never);
 
 		await expect(
@@ -431,7 +439,7 @@ describe('AgentExecutionOrchestratorService', () => {
 		expect(executionService.recordMessage).toHaveBeenCalledWith(
 			expect.objectContaining({
 				threadId: 'thread-1',
-				userMessage: '',
+				userMessage: null,
 				hitlStatus: 'resumed',
 				telemetry: {
 					runType: 'production',
@@ -470,7 +478,7 @@ describe('AgentExecutionOrchestratorService', () => {
 		);
 
 		expect(executionService.recordMessage).toHaveBeenCalledWith(
-			expect.objectContaining({ threadId: 'thread-1', userMessage: '', hitlStatus: 'suspended' }),
+			expect.objectContaining({ threadId: 'thread-1', userMessage: null, hitlStatus: 'suspended' }),
 		);
 	});
 
@@ -556,5 +564,157 @@ describe('AgentExecutionOrchestratorService', () => {
 			),
 		).rejects.toThrow(OperationalError);
 		expect(runtime.agent.structuredOutput).toHaveBeenCalledWith(outputSchema);
+	});
+
+	describe('workflow data tools', () => {
+		const baseContext = {
+			workflowId: 'wf-1',
+			workflowName: 'My workflow',
+			callingNodeName: 'Message an Agent',
+			inputData: [{ json: { a: 1 } }],
+			inputDataScope: 'item' as const,
+			nodes: [{ name: 'Webhook', type: 'n8n-nodes-base.webhook' }],
+			runExecutionData: { resultData: { runData: {} } } as unknown as IRunExecutionData,
+		};
+
+		const setupRuntimeWithToolSpy = (declaredTools: Array<{ name: string }> = []) => {
+			const { service, agentRepository, reconstructionService } = makeService();
+			const runtime = makeRuntime();
+			const toolFn = vi.fn();
+			Object.assign(runtime.agent, { tool: toolFn, declaredTools });
+			agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+			reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+			return { service, toolFn };
+		};
+
+		const toolNamesFrom = (toolFn: Mock): string[] => {
+			const [tools] = toolFn.mock.calls[0] as [Array<{ name: string }>];
+			return tools.map((t) => t.name);
+		};
+
+		it('always injects fetch_input_data when workflowContext is provided', async () => {
+			const { service, toolFn } = setupRuntimeWithToolSpy();
+			const workflowContext: ExecuteAgentWorkflowContext = {
+				...baseContext,
+				exposeWorkflowData: false,
+			};
+
+			await service.executeForWorkflow(
+				agentId,
+				'hello',
+				'execution-1',
+				'thread-1',
+				userId,
+				projectId,
+				undefined,
+				undefined,
+				undefined,
+				workflowContext,
+			);
+
+			expect(toolFn).toHaveBeenCalledTimes(1);
+			expect(toolNamesFrom(toolFn)).toEqual(['fetch_input_data']);
+		});
+
+		it('also injects fetch_workflow_context when exposeWorkflowData is true', async () => {
+			const { service, toolFn } = setupRuntimeWithToolSpy();
+			const workflowContext: ExecuteAgentWorkflowContext = {
+				...baseContext,
+				exposeWorkflowData: true,
+			};
+
+			await service.executeForWorkflow(
+				agentId,
+				'hello',
+				'execution-1',
+				'thread-1',
+				userId,
+				projectId,
+				undefined,
+				undefined,
+				undefined,
+				workflowContext,
+			);
+
+			expect(toolNamesFrom(toolFn)).toEqual(['fetch_input_data', 'fetch_workflow_context']);
+		});
+
+		it('injects no tools without workflowContext', async () => {
+			const { service, toolFn } = setupRuntimeWithToolSpy();
+
+			await service.executeForWorkflow(
+				agentId,
+				'hello',
+				'execution-1',
+				'thread-1',
+				userId,
+				projectId,
+			);
+
+			expect(toolFn).not.toHaveBeenCalled();
+		});
+
+		it('surfaces an error when the agent already declares a reserved tool name', async () => {
+			const { service, toolFn } = setupRuntimeWithToolSpy([{ name: 'fetch_input_data' }]);
+			const workflowContext: ExecuteAgentWorkflowContext = {
+				...baseContext,
+				exposeWorkflowData: false,
+			};
+
+			await expect(
+				service.executeForWorkflow(
+					agentId,
+					'hello',
+					'execution-1',
+					'thread-1',
+					userId,
+					projectId,
+					undefined,
+					undefined,
+					undefined,
+					workflowContext,
+				),
+			).rejects.toThrow('"fetch_input_data"');
+
+			expect(toolFn).not.toHaveBeenCalled();
+		});
+	});
+
+	it('maps structured-output stream reader errors before recording and rethrowing', async () => {
+		const { service, agentRepository, reconstructionService, executionService } = makeService();
+		const outputSchema: JSONSchema7 = {
+			type: 'object',
+			properties: { answer: { type: 'string' } },
+		};
+		const runtime = makeRuntime();
+		runtime.agent.stream.mockResolvedValue({
+			stream: makeFailingStream(new Error('No output generated. Check the stream for errors.')),
+		});
+
+		agentRepository.findByIdAndProjectId.mockResolvedValue(makeAgent());
+		reconstructionService.reconstructFromAgentEntity.mockResolvedValue(runtime);
+
+		const execution = service.executeForWorkflow(
+			agentId,
+			'hello',
+			'execution-1',
+			'thread-1',
+			userId,
+			projectId,
+			userId,
+			false,
+			outputSchema,
+		);
+
+		await expect(execution).rejects.toThrow(OperationalError);
+		await expect(execution).rejects.toThrow("Couldn't get structured output matching the schema");
+		await expect(execution).rejects.not.toThrow('Check the stream');
+		expect(executionService.recordMessage).toHaveBeenCalledWith(
+			expect.objectContaining({
+				record: expect.objectContaining({
+					error: expect.stringContaining("Couldn't get structured output matching the schema"),
+				}),
+			}),
+		);
 	});
 });

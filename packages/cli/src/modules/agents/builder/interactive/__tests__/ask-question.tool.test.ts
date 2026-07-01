@@ -1,14 +1,16 @@
+import type { Mock } from 'vitest';
+
 import { buildAskQuestionTool } from '../ask-question.tool';
 
 interface TestCtx {
 	resumeData?: unknown;
-	suspend: jest.Mock;
+	suspend: Mock;
 }
 
 function makeCtx(overrides?: { resumeData?: unknown }): TestCtx {
 	return {
 		resumeData: overrides?.resumeData,
-		suspend: jest.fn(async (x: unknown) => x),
+		suspend: vi.fn(async (x: unknown) => x),
 	};
 }
 

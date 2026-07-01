@@ -155,11 +155,18 @@ export class WorkflowTriggerActivator {
 			workflowSettings: dbWorkflow.settings,
 		});
 
-		return await this.webhookTriggerRegistrar.getNodesWithUnregisteredWebhooks(
-			workflow,
-			additionalData,
-			desiredNodes,
-		);
+		// Resolving webhook triggers evaluates each node's `path`/`httpMethod`
+		// expressions (e.g. the Form Trigger's dynamic path), which needs an isolate.
+		await workflow.expression.acquireIsolate();
+		try {
+			return await this.webhookTriggerRegistrar.getNodesWithUnregisteredWebhooks(
+				workflow,
+				additionalData,
+				desiredNodes,
+			);
+		} finally {
+			await workflow.expression.releaseIsolate();
+		}
 	}
 
 	/**
@@ -583,7 +590,7 @@ export class WorkflowTriggerActivator {
 
 	private createWorkflowDataResolver(dbWorkflow: WorkflowEntity): () => Promise<IWorkflowBase> {
 		return async () =>
-			await this.triggerExecutionContextFactory.loadPublishedWorkflowData(dbWorkflow);
+			await this.triggerExecutionContextFactory.loadPublishedWorkflowData(dbWorkflow.id);
 	}
 
 	private throwRejectedPhaseError(results: Array<PromiseSettledResult<unknown>>): void {

@@ -232,11 +232,19 @@ export class GoogleApi implements ICredentialType {
 			displayName: 'Region',
 			name: 'region',
 			type: 'options',
-			options: regions.map((r) => ({
-				name: `${r.displayName} (${r.location}) - ${r.name}`,
-				value: r.name,
-			})),
-			default: 'us-central1',
+			options: [
+				// Newer Gemini models (e.g. Gemini 3.x) are only served from `global` or the
+				// `eu`/`us` multi-region locations, not individual regions, so list them first.
+				{ name: 'Global (multi-region) - global', value: 'global' },
+				{ name: 'EU (multi-region) - eu', value: 'eu' },
+				{ name: 'US (multi-region) - us', value: 'us' },
+				...regions.map((r) => ({
+					name: `${r.displayName} (${r.location}) - ${r.name}`,
+					value: r.name,
+				})),
+			],
+			// Global is the only location that serves both Gemini 2.x and 3.x models.
+			default: 'global',
 			description:
 				'The region where the Google Cloud service is located. This applies only to specific nodes, like the Google Vertex Chat Model',
 		},

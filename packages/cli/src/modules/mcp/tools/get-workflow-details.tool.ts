@@ -1,6 +1,12 @@
 import type { User } from '@n8n/db';
 import z from 'zod';
 
+import type { CredentialsService } from '@/credentials/credentials.service';
+import type { ProjectService } from '@/services/project.service.ee';
+import type { RoleService } from '@/services/role.service';
+import type { Telemetry } from '@/telemetry';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+
 import { SUPPORTED_MCP_TRIGGERS, USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import type {
 	ToolDefinition,
@@ -10,12 +16,6 @@ import type {
 import { toTagSummary, workflowDetailsOutputSchema } from './schemas';
 import { getTriggerDetails, type WebhookEndpoints } from './webhook-utils';
 import { getMcpWorkflow } from './workflow-validation.utils';
-
-import type { CredentialsService } from '@/credentials/credentials.service';
-import type { ProjectService } from '@/services/project.service.ee';
-import type { RoleService } from '@/services/role.service';
-import type { Telemetry } from '@/telemetry';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 const inputSchema = {
 	workflowId: z.string().describe('The ID of the workflow to retrieve'),

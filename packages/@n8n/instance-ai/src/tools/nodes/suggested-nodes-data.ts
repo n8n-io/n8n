@@ -229,10 +229,7 @@ export const suggestedNodesData: Record<string, CategoryData> = {
 				name: 'n8n-nodes-base.dataTable',
 				note: 'PREFERRED for form data storage',
 			},
-			{
-				name: 'n8n-nodes-base.googleSheets',
-				note: 'When spreadsheet/document ID is unknown, use placeholder() in documentId __rl.value with cachedResultName from the user prompt — never an empty string. Setup collects the real ID later. For sheetName: list mode value must be the numeric tab id (0 for first tab); use mode name with the tab title when the user says Sheet1.',
-			},
+			{ name: 'n8n-nodes-base.googleSheets' },
 			{
 				name: '@n8n/n8n-nodes-langchain.openAi',
 				note: 'Confirmation/summary text: resource=text, operation=response. See open-ai-output-shape.md for downstream field paths (not $json.text).',
