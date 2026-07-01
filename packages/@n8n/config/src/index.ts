@@ -20,6 +20,11 @@ import { GenericConfig } from './configs/generic.config';
 import { HiringBannerConfig } from './configs/hiring-banner.config';
 import { LicenseConfig } from './configs/license.config';
 import { LoggingConfig } from './configs/logging.config';
+<<<<<<< HEAD
+=======
+import { McpClientConfig } from './configs/mcp-client.config';
+import { McpServerConfig } from './configs/mcp-server.config';
+>>>>>>> c3ce96110 (fix(MCP Server Trigger Node): Evict idle sessions to prevent memory leak (#33201))
 import { MfaConfig } from './configs/mfa.config';
 import { MultiMainSetupConfig } from './configs/multi-main-setup.config';
 import { NodesConfig } from './configs/nodes.config';
@@ -52,6 +57,11 @@ export type { LogScope } from './configs/logging.config';
 export { WorkflowsConfig } from './configs/workflows.config';
 export * from './custom-types';
 export { DeploymentConfig } from './configs/deployment.config';
+<<<<<<< HEAD
+=======
+export { McpClientConfig } from './configs/mcp-client.config';
+export { McpServerConfig } from './configs/mcp-server.config';
+>>>>>>> c3ce96110 (fix(MCP Server Trigger Node): Evict idle sessions to prevent memory leak (#33201))
 export { MfaConfig } from './configs/mfa.config';
 export { HiringBannerConfig } from './configs/hiring-banner.config';
 export { PersonalizationConfig } from './configs/personalization.config';
@@ -222,4 +232,43 @@ export class GlobalConfig {
 
 	@Nested
 	dataTable: DataTableConfig;
+<<<<<<< HEAD
+=======
+
+	@Nested
+	workflowHistoryCompaction: WorkflowHistoryCompactionConfig;
+
+	@Nested
+	chatHub: ChatHubConfig;
+
+	@Nested
+	chatTrigger: ChatTriggerConfig;
+
+	@Nested
+	collaboration: CollaborationConfig;
+
+	@Nested
+	compressionNode: CompressionNodeConfig;
+
+	@Nested
+	mcpClient: McpClientConfig;
+
+	@Nested
+	mcpServer: McpServerConfig;
+
+	@Nested
+	instanceAi: InstanceAiConfig;
+
+	@Nested
+	agents: AgentsConfig;
+
+	@Nested
+	expressionEngine: ExpressionEngineConfig;
+
+	@Nested
+	evaluation: EvaluationConfig;
+
+	@Nested
+	instanceSettingsLoader: InstanceSettingsLoaderConfig;
+>>>>>>> c3ce96110 (fix(MCP Server Trigger Node): Evict idle sessions to prevent memory leak (#33201))
 }
