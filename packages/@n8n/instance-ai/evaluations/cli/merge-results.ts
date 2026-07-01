@@ -321,10 +321,6 @@ function combineShardWorkflowChecks(shards: EvalResults[]): WorkflowChecksAggreg
 // Render
 // ---------------------------------------------------------------------------
 
-function pctOf(passed: number, total: number): number {
-	return total > 0 ? Math.round((passed / total) * 100) : 0;
-}
-
 /** Optional context layered onto the rendered summary (coverage, experiment, comparison). */
 export interface RenderContext {
 	/** Discovered shard artifacts that couldn't be read/parsed. */
