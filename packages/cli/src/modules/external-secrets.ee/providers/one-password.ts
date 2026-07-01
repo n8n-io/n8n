@@ -6,7 +6,7 @@ import { UserError, type IDataObject, type INodeProperties } from 'n8n-workflow'
 import { DOCS_HELP_NOTICE } from '../constants';
 import {
 	buildHttpProviderErrorContext,
-	logProviderFailure,
+	logSecretsProviderOperationFailure,
 	type LogContext,
 	type SecretsProviderOperation,
 } from '../errors/secrets-provider-errors';
@@ -214,7 +214,7 @@ export class OnePasswordProvider extends SecretsProvider {
 			context.serverUrl = this.settings.serverUrl;
 		}
 
-		logProviderFailure({
+		logSecretsProviderOperationFailure({
 			logger: this.logger,
 			message,
 			providerName: this.name,

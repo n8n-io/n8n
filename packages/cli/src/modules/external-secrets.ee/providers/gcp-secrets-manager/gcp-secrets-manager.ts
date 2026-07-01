@@ -12,7 +12,7 @@ import { DOCS_HELP_NOTICE } from '../../constants';
 import {
 	buildUpdateFailureSummary,
 	type LogContext,
-	logProviderFailure,
+	logSecretsProviderOperationFailure,
 	type SafeContextValue,
 	type SecretsProviderOperation,
 } from '../../errors/secrets-provider-errors';
@@ -270,7 +270,7 @@ export class GcpSecretsManager extends SecretsProvider {
 			context.projectId = this.settings.projectId;
 		}
 
-		logProviderFailure({
+		logSecretsProviderOperationFailure({
 			logger: this.logger,
 			message,
 			providerName: this.name,

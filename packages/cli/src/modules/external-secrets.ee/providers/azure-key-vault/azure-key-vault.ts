@@ -10,7 +10,7 @@ import {
 	buildUpdateFailureSummary,
 	type HttpProviderErrorLogContext,
 	type LogContext,
-	logProviderFailure,
+	logSecretsProviderOperationFailure,
 	type SafeContextValue,
 	type SecretsProviderOperation,
 } from '../../errors/secrets-provider-errors';
@@ -276,7 +276,7 @@ export class AzureKeyVault extends SecretsProvider {
 			context.vaultName = this.settings.vaultName;
 		}
 
-		logProviderFailure({
+		logSecretsProviderOperationFailure({
 			logger: this.logger,
 			message,
 			providerName: this.name,

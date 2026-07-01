@@ -80,7 +80,7 @@ export function buildUpdateFailureSummary(
 	};
 }
 
-type LogProviderFailureParams = {
+type LogSecretsProviderOperationFailureParams = {
 	logger: Logger;
 	message: string;
 	providerName: string;
@@ -90,7 +90,7 @@ type LogProviderFailureParams = {
 	context?: LogContext;
 };
 
-export function logProviderFailure({
+export function logSecretsProviderOperationFailure({
 	logger,
 	message,
 	providerName,
@@ -98,7 +98,7 @@ export function logProviderFailure({
 	operation,
 	error,
 	context = {},
-}: LogProviderFailureParams): void {
+}: LogSecretsProviderOperationFailureParams): void {
 	logger.warn(message, {
 		providerName,
 		providerDisplayName,

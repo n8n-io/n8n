@@ -17,7 +17,7 @@ import { DOCS_HELP_NOTICE } from '../constants';
 import {
 	buildHttpProviderErrorContext,
 	buildUpdateFailureSummary,
-	logProviderFailure,
+	logSecretsProviderOperationFailure,
 	type LogContext,
 	type SafeContextValue,
 	type SecretsProviderOperation,
@@ -760,7 +760,7 @@ export class VaultProvider extends SecretsProvider {
 			context?: LogContext;
 		},
 	): void {
-		logProviderFailure({
+		logSecretsProviderOperationFailure({
 			logger: this.logger,
 			message,
 			providerName: this.name,

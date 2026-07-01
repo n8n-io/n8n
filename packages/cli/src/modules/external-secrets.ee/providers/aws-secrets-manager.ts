@@ -6,7 +6,7 @@ import { type INodeProperties } from 'n8n-workflow';
 
 import { DOCS_HELP_NOTICE } from '../constants';
 import {
-	logProviderFailure,
+	logSecretsProviderOperationFailure,
 	type LogContext,
 	type SecretsProviderOperation,
 } from '../errors/secrets-provider-errors';
@@ -347,7 +347,7 @@ export class AwsSecretsManager extends SecretsProvider {
 			context.authMethod = this.settings.authMethod;
 		}
 
-		logProviderFailure({
+		logSecretsProviderOperationFailure({
 			logger: this.logger,
 			message,
 			providerName: this.name,
