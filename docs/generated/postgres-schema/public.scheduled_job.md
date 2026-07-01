@@ -13,7 +13,7 @@
 | kind | varchar(16) |  | false |  |  | Recurrence kind; selects which of the schedule columns below apply. |
 | lastFiredAt | timestamp(3) with time zone |  | true |  |  | Last time an occurrence was materialized; used to recompute nextRunAt. |
 | maxAttempts | integer | 1 | false |  |  | Retry ceiling copied onto each occurrence this job materializes. |
-| name | varchar(255) |  | true |  |  | Well-known scheduler key, e.g. a system job. NULL when the job is owned by a workflow trigger instead. |
+| name | varchar(255) |  | false |  |  | Human-readable job name. A well-known scheduler key for system jobs; generated for workflow trigger jobs. |
 | nextRunAt | timestamp(3) with time zone |  | true |  |  | Next time an occurrence is due; the scheduler sweep reads this to find work. NULL once disabled or a one-off has fired. |
 | nodeId | varchar(36) |  | true |  |  | Trigger node within the workflow that owns this job; NULL for non-trigger jobs. |
 | payload | json | '{}'::json | false |  |  | Input passed to the task handler when an occurrence runs. |
@@ -26,6 +26,9 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| CHK_scheduled_job_cron_expression | CHECK | CHECK ((((kind)::text <> 'cron'::text) OR ("cronExpression" IS NOT NULL))) |
+| CHK_scheduled_job_fire_at | CHECK | CHECK ((((kind)::text <> 'one_off'::text) OR ("fireAt" IS NOT NULL))) |
+| CHK_scheduled_job_interval_seconds | CHECK | CHECK ((((kind)::text <> 'interval'::text) OR ("intervalSeconds" IS NOT NULL))) |
 | CHK_scheduled_job_kind | CHECK | CHECK (((kind)::text = ANY ((ARRAY['cron'::character varying, 'interval'::character varying, 'one_off'::character varying])::text[]))) |
 | FK_scheduled_job_workflowId | FOREIGN KEY | FOREIGN KEY ("workflowId") REFERENCES workflow_entity(id) ON DELETE CASCADE |
 | PK_893185383f029ca8d57bb781fa8 | PRIMARY KEY | PRIMARY KEY (id) |
@@ -34,6 +37,7 @@
 | scheduled_job_id_not_null | n | NOT NULL id |
 | scheduled_job_kind_not_null | n | NOT NULL kind |
 | scheduled_job_maxAttempts_not_null | n | NOT NULL "maxAttempts" |
+| scheduled_job_name_not_null | n | NOT NULL name |
 | scheduled_job_payload_not_null | n | NOT NULL payload |
 | scheduled_job_taskType_not_null | n | NOT NULL "taskType" |
 | scheduled_job_updatedAt_not_null | n | NOT NULL "updatedAt" |
@@ -42,10 +46,9 @@
 
 | Name | Definition |
 | ---- | ---------- |
-| IDX_scheduled_job_name | CREATE UNIQUE INDEX "IDX_scheduled_job_name" ON public.scheduled_job USING btree (name) WHERE (name IS NOT NULL) |
+| IDX_scheduled_job_name | CREATE UNIQUE INDEX "IDX_scheduled_job_name" ON public.scheduled_job USING btree (name) |
 | IDX_scheduled_job_nextRunAt | CREATE INDEX "IDX_scheduled_job_nextRunAt" ON public.scheduled_job USING btree ("nextRunAt") WHERE ((enabled = true) AND ("nextRunAt" IS NOT NULL)) |
 | IDX_scheduled_job_workflowId | CREATE INDEX "IDX_scheduled_job_workflowId" ON public.scheduled_job USING btree ("workflowId") |
-| IDX_scheduled_job_workflowId_nodeId | CREATE UNIQUE INDEX "IDX_scheduled_job_workflowId_nodeId" ON public.scheduled_job USING btree ("workflowId", "nodeId") WHERE (("workflowId" IS NOT NULL) AND ("nodeId" IS NOT NULL)) |
 | PK_893185383f029ca8d57bb781fa8 | CREATE UNIQUE INDEX "PK_893185383f029ca8d57bb781fa8" ON public.scheduled_job USING btree (id) |
 
 ## Relations

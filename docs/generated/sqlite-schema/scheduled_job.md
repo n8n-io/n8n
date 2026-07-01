@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "scheduled_job" ("id" integer PRIMARY KEY NOT NULL, "name" varchar(255), "workflowId" varchar(36), "nodeId" varchar(36), "taskType" varchar(128) NOT NULL, "payload" text NOT NULL DEFAULT ('{}'), "kind" varchar(16) NOT NULL, "cronExpression" varchar(255), "timezone" varchar(64), "intervalSeconds" integer, "fireAt" datetime(3), "enabled" boolean NOT NULL DEFAULT (true), "nextRunAt" datetime(3), "lastFiredAt" datetime(3), "maxAttempts" integer NOT NULL DEFAULT (1), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_scheduled_job_kind" CHECK ("kind" IN ('cron', 'interval', 'one_off')), CONSTRAINT "FK_scheduled_job_workflowId" FOREIGN KEY ("workflowId") REFERENCES "workflow_entity" ("id") ON DELETE CASCADE)
+CREATE TABLE "scheduled_job" ("id" integer PRIMARY KEY NOT NULL, "name" varchar(255) NOT NULL, "workflowId" varchar(36), "nodeId" varchar(36), "taskType" varchar(128) NOT NULL, "payload" text NOT NULL DEFAULT ('{}'), "kind" varchar(16) NOT NULL, "cronExpression" varchar(255), "timezone" varchar(64), "intervalSeconds" integer, "fireAt" datetime(3), "enabled" boolean NOT NULL DEFAULT (true), "nextRunAt" datetime(3), "lastFiredAt" datetime(3), "maxAttempts" integer NOT NULL DEFAULT (1), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_scheduled_job_cron_expression" CHECK ("kind" <> 'cron' OR "cronExpression" IS NOT NULL), CONSTRAINT "CHK_scheduled_job_interval_seconds" CHECK ("kind" <> 'interval' OR "intervalSeconds" IS NOT NULL), CONSTRAINT "CHK_scheduled_job_fire_at" CHECK ("kind" <> 'one_off' OR "fireAt" IS NOT NULL), CONSTRAINT "CHK_scheduled_job_kind" CHECK ("kind" IN ('cron', 'interval', 'one_off')), CONSTRAINT "FK_scheduled_job_workflowId" FOREIGN KEY ("workflowId") REFERENCES "workflow_entity" ("id") ON DELETE CASCADE)
 ```
 
 </details>
@@ -24,7 +24,7 @@ CREATE TABLE "scheduled_job" ("id" integer PRIMARY KEY NOT NULL, "name" varchar(
 | kind | varchar(16) |  | false |  |  |  |
 | lastFiredAt | datetime(3) |  | true |  |  |  |
 | maxAttempts | INTEGER | 1 | false |  |  |  |
-| name | varchar(255) |  | true |  |  |  |
+| name | varchar(255) |  | false |  |  |  |
 | nextRunAt | datetime(3) |  | true |  |  |  |
 | nodeId | varchar(36) |  | true |  |  |  |
 | payload | TEXT | '{}' | false |  |  |  |
@@ -37,6 +37,9 @@ CREATE TABLE "scheduled_job" ("id" integer PRIMARY KEY NOT NULL, "name" varchar(
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| - | CHECK | CHECK ("kind" <> 'cron' OR "cronExpression" IS NOT NULL) |
+| - | CHECK | CHECK ("kind" <> 'interval' OR "intervalSeconds" IS NOT NULL) |
+| - | CHECK | CHECK ("kind" <> 'one_off' OR "fireAt" IS NOT NULL) |
 | - | CHECK | CHECK ("kind" IN ('cron', 'interval', 'one_off')) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | id | PRIMARY KEY | PRIMARY KEY (id) |
@@ -45,10 +48,9 @@ CREATE TABLE "scheduled_job" ("id" integer PRIMARY KEY NOT NULL, "name" varchar(
 
 | Name | Definition |
 | ---- | ---------- |
-| IDX_scheduled_job_name | CREATE UNIQUE INDEX "IDX_scheduled_job_name" ON "scheduled_job" ("name") WHERE "name" IS NOT NULL |
+| IDX_scheduled_job_name | CREATE UNIQUE INDEX "IDX_scheduled_job_name" ON "scheduled_job" ("name")  |
 | IDX_scheduled_job_nextRunAt | CREATE INDEX "IDX_scheduled_job_nextRunAt" ON "scheduled_job" ("nextRunAt") WHERE "enabled" = true AND "nextRunAt" IS NOT NULL |
 | IDX_scheduled_job_workflowId | CREATE INDEX "IDX_scheduled_job_workflowId" ON "scheduled_job" ("workflowId")  |
-| IDX_scheduled_job_workflowId_nodeId | CREATE UNIQUE INDEX "IDX_scheduled_job_workflowId_nodeId" ON "scheduled_job" ("workflowId", "nodeId") WHERE "workflowId" IS NOT NULL AND "nodeId" IS NOT NULL |
 
 ## Relations
 

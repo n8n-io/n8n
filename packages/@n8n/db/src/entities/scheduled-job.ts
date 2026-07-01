@@ -35,27 +35,19 @@ export type ScheduledJobKind = (typeof ScheduledJobKind)[keyof typeof ScheduledJ
 @Index(['nextRunAt'], {
 	where: '"enabled" = true AND "nextRunAt" IS NOT NULL',
 })
-@Index(['workflowId', 'nodeId'], {
-	unique: true,
-	where: '"workflowId" IS NOT NULL AND "nodeId" IS NOT NULL',
-})
 @Index(['workflowId'])
-@Index(['name'], {
-	unique: true,
-	where: '"name" IS NOT NULL',
-})
+@Index(['name'], { unique: true })
 export class ScheduledJob extends WithTimestamps {
 	@PrimaryGeneratedColumn()
 	id: number;
 
 	/**
-	 * Well-known scheduler key (e.g. a system maintenance job).
-	 * `null` for jobs owned by a workflow trigger,
-	 * which are identified by {@link workflowId}
-	 * and {@link nodeId} instead.
+	 * Human-readable job name, unique across all jobs.
+	 * A well-known scheduler key for system jobs (e.g. a maintenance job);
+	 * generated for jobs owned by a workflow trigger.
 	 */
-	@Column({ type: 'varchar', length: 255, nullable: true })
-	name: string | null;
+	@Column({ type: 'varchar', length: 255 })
+	name: string;
 
 	/**
 	 * Workflow this job belongs to.

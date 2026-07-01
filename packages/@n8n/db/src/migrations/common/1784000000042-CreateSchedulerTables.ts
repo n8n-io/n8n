@@ -20,8 +20,8 @@ export class CreateSchedulerTables1784000000042 implements ReversibleMigration {
 				column('id').int.primary.autoGenerate2,
 				column('name')
 					.varchar(255)
-					.comment(
-						'Well-known scheduler key, e.g. a system job. NULL when the job is owned by a workflow trigger instead.',
+					.notNull.comment(
+						'Human-readable job name. A well-known scheduler key for system jobs; generated for workflow trigger jobs.',
 					),
 				column('workflowId')
 					.varchar(36)
@@ -77,7 +77,20 @@ export class CreateSchedulerTables1784000000042 implements ReversibleMigration {
 				columnName: 'id',
 				onDelete: 'CASCADE',
 				name: `FK_${tablePrefix}scheduled_job_workflowId`,
-			});
+			})
+			// Each recurrence kind requires its own schedule column to be set.
+			.withCheck(
+				`CHK_${tablePrefix}scheduled_job_cron_expression`,
+				'"kind" <> \'cron\' OR "cronExpression" IS NOT NULL',
+			)
+			.withCheck(
+				`CHK_${tablePrefix}scheduled_job_interval_seconds`,
+				'"kind" <> \'interval\' OR "intervalSeconds" IS NOT NULL',
+			)
+			.withCheck(
+				`CHK_${tablePrefix}scheduled_job_fire_at`,
+				'"kind" <> \'one_off\' OR "fireAt" IS NOT NULL',
+			);
 
 		await createIndex(
 			'scheduled_job',
@@ -87,25 +100,13 @@ export class CreateSchedulerTables1784000000042 implements ReversibleMigration {
 			'"enabled" = true AND "nextRunAt" IS NOT NULL',
 		);
 
-		// One job per trigger node. Partial + unique so it only constrains
-		// workflow-bound trigger jobs; system jobs (NULL workflowId) and workflow-level
-		// non-trigger jobs (NULL nodeId) are exempt.
-		await createIndex(
-			'scheduled_job',
-			['workflowId', 'nodeId'],
-			true,
-			undefined,
-			'"workflowId" IS NOT NULL AND "nodeId" IS NOT NULL',
-		);
-
-		// Index the workflowId FK on its own: the partial index above can't serve the
-		// cascade (the planner can't prove a workflowId lookup stays within the partial
-		// predicate), so a workflow delete would otherwise seq-scan scheduled_job.
+		// Index the workflowId FK so a workflow delete cascades without seq-scanning
+		// scheduled_job. Also serves lookups of all jobs owned by a workflow.
 		await createIndex('scheduled_job', ['workflowId'], false);
 
-		// One job per well-known scheduler key. Partial so workflow-owned jobs
-		// (NULL name) are exempt.
-		await createIndex('scheduled_job', ['name'], true, undefined, '"name" IS NOT NULL');
+		// Names are unique across all jobs: well-known keys for system jobs, generated
+		// for workflow trigger jobs.
+		await createIndex('scheduled_job', ['name'], true);
 	}
 
 	private async createScheduledTaskTable(context: MigrationContext) {

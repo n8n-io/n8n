@@ -75,13 +75,14 @@ describe('CreateSchedulerTables Migration', () => {
 		const now = new Date();
 		const name = `job-${randomUUID()}`;
 		await context.runQuery(
-			`INSERT INTO ${table} ("name", "workflowId", "taskType", "kind", "createdAt", "updatedAt")
-			 VALUES (:name, :workflowId, :taskType, :kind, :createdAt, :updatedAt)`,
+			`INSERT INTO ${table} ("name", "workflowId", "taskType", "kind", "cronExpression", "createdAt", "updatedAt")
+			 VALUES (:name, :workflowId, :taskType, :kind, :cronExpression, :createdAt, :updatedAt)`,
 			{
 				name,
 				workflowId: overrides.workflowId ?? null,
 				taskType: 'scheduleTrigger',
 				kind: 'cron',
+				cronExpression: '* * * * *',
 				createdAt: now,
 				updatedAt: now,
 			},
@@ -112,7 +113,6 @@ describe('CreateSchedulerTables Migration', () => {
 			try {
 				for (const suffix of [
 					'scheduled_job_nextRunAt',
-					'scheduled_job_workflowId_nodeId',
 					'scheduled_job_workflowId',
 					'scheduled_task_jobId_scheduledFor',
 					'scheduled_task_runAt',
@@ -211,7 +211,7 @@ describe('CreateSchedulerTables Migration', () => {
 			await context.queryRunner.release();
 		});
 
-		it('enforces one job per (workflowId, nodeId) trigger node', async () => {
+		it('allows multiple jobs on the same (workflowId, nodeId) trigger node', async () => {
 			const context = createTestMigrationContext(dataSource);
 			const table = context.escape.tableName('scheduled_job');
 			const workflowId = await insertWorkflow(context);
@@ -219,33 +219,42 @@ describe('CreateSchedulerTables Migration', () => {
 			const now = new Date();
 			const insert = async () =>
 				await context.runQuery(
-					`INSERT INTO ${table} ("workflowId", "nodeId", "taskType", "kind", "createdAt", "updatedAt")
-					 VALUES (:workflowId, :nodeId, :taskType, :kind, :createdAt, :updatedAt)`,
+					`INSERT INTO ${table} ("name", "workflowId", "nodeId", "taskType", "kind", "cronExpression", "createdAt", "updatedAt")
+					 VALUES (:name, :workflowId, :nodeId, :taskType, :kind, :cronExpression, :createdAt, :updatedAt)`,
 					{
+						name: `job-${randomUUID()}`,
 						workflowId,
 						nodeId,
 						taskType: 'scheduleTrigger',
 						kind: 'cron',
+						cronExpression: '* * * * *',
 						createdAt: now,
 						updatedAt: now,
 					},
 				);
 
 			await insert();
-			await expect(insert()).rejects.toThrow();
+			await expect(insert()).resolves.not.toThrow();
 			await context.queryRunner.release();
 		});
 
-		it('enforces one job per well-known name', async () => {
+		it('enforces name uniqueness across jobs', async () => {
 			const context = createTestMigrationContext(dataSource);
 			const table = context.escape.tableName('scheduled_job');
 			const name = `job-${randomUUID()}`;
 			const now = new Date();
 			const insert = async () =>
 				await context.runQuery(
-					`INSERT INTO ${table} ("name", "taskType", "kind", "createdAt", "updatedAt")
-					 VALUES (:name, :taskType, :kind, :createdAt, :updatedAt)`,
-					{ name, taskType: 'scheduleTrigger', kind: 'cron', createdAt: now, updatedAt: now },
+					`INSERT INTO ${table} ("name", "taskType", "kind", "cronExpression", "createdAt", "updatedAt")
+					 VALUES (:name, :taskType, :kind, :cronExpression, :createdAt, :updatedAt)`,
+					{
+						name,
+						taskType: 'scheduleTrigger',
+						kind: 'cron',
+						cronExpression: '* * * * *',
+						createdAt: now,
+						updatedAt: now,
+					},
 				);
 
 			await insert();
@@ -259,9 +268,16 @@ describe('CreateSchedulerTables Migration', () => {
 			const now = new Date();
 			const insert = async () =>
 				await context.runQuery(
-					`INSERT INTO ${table} ("taskType", "kind", "createdAt", "updatedAt")
-					 VALUES (:taskType, :kind, :createdAt, :updatedAt)`,
-					{ taskType: 'scheduleTrigger', kind: 'cron', createdAt: now, updatedAt: now },
+					`INSERT INTO ${table} ("name", "taskType", "kind", "cronExpression", "createdAt", "updatedAt")
+					 VALUES (:name, :taskType, :kind, :cronExpression, :createdAt, :updatedAt)`,
+					{
+						name: `job-${randomUUID()}`,
+						taskType: 'scheduleTrigger',
+						kind: 'cron',
+						cronExpression: '* * * * *',
+						createdAt: now,
+						updatedAt: now,
+					},
 				);
 
 			await insert();
@@ -276,13 +292,81 @@ describe('CreateSchedulerTables Migration', () => {
 			const now = new Date();
 			const insert = async () =>
 				await context.runQuery(
-					`INSERT INTO ${table} ("workflowId", "taskType", "kind", "createdAt", "updatedAt")
-					 VALUES (:workflowId, :taskType, :kind, :createdAt, :updatedAt)`,
-					{ workflowId, taskType: 'scheduleTrigger', kind: 'cron', createdAt: now, updatedAt: now },
+					`INSERT INTO ${table} ("name", "workflowId", "taskType", "kind", "cronExpression", "createdAt", "updatedAt")
+					 VALUES (:name, :workflowId, :taskType, :kind, :cronExpression, :createdAt, :updatedAt)`,
+					{
+						name: `job-${randomUUID()}`,
+						workflowId,
+						taskType: 'scheduleTrigger',
+						kind: 'cron',
+						cronExpression: '* * * * *',
+						createdAt: now,
+						updatedAt: now,
+					},
 				);
 
 			await insert();
 			await expect(insert()).resolves.not.toThrow();
+			await context.queryRunner.release();
+		});
+
+		it('requires cronExpression when kind is cron', async () => {
+			const context = createTestMigrationContext(dataSource);
+			const table = context.escape.tableName('scheduled_job');
+			const now = new Date();
+			await expect(
+				context.runQuery(
+					`INSERT INTO ${table} ("name", "taskType", "kind", "createdAt", "updatedAt")
+					 VALUES (:name, :taskType, :kind, :createdAt, :updatedAt)`,
+					{
+						name: `job-${randomUUID()}`,
+						taskType: 'scheduleTrigger',
+						kind: 'cron',
+						createdAt: now,
+						updatedAt: now,
+					},
+				),
+			).rejects.toThrow();
+			await context.queryRunner.release();
+		});
+
+		it('requires intervalSeconds when kind is interval', async () => {
+			const context = createTestMigrationContext(dataSource);
+			const table = context.escape.tableName('scheduled_job');
+			const now = new Date();
+			await expect(
+				context.runQuery(
+					`INSERT INTO ${table} ("name", "taskType", "kind", "createdAt", "updatedAt")
+					 VALUES (:name, :taskType, :kind, :createdAt, :updatedAt)`,
+					{
+						name: `job-${randomUUID()}`,
+						taskType: 'scheduleTrigger',
+						kind: 'interval',
+						createdAt: now,
+						updatedAt: now,
+					},
+				),
+			).rejects.toThrow();
+			await context.queryRunner.release();
+		});
+
+		it('requires fireAt when kind is one_off', async () => {
+			const context = createTestMigrationContext(dataSource);
+			const table = context.escape.tableName('scheduled_job');
+			const now = new Date();
+			await expect(
+				context.runQuery(
+					`INSERT INTO ${table} ("name", "taskType", "kind", "createdAt", "updatedAt")
+					 VALUES (:name, :taskType, :kind, :createdAt, :updatedAt)`,
+					{
+						name: `job-${randomUUID()}`,
+						taskType: 'scheduleTrigger',
+						kind: 'one_off',
+						createdAt: now,
+						updatedAt: now,
+					},
+				),
+			).rejects.toThrow();
 			await context.queryRunner.release();
 		});
 
