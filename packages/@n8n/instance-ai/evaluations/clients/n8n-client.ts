@@ -16,6 +16,7 @@ import type {
 	InstanceAiEvalSeedDataTable,
 	InstanceAiEvalSeedWorkflow,
 } from '@n8n/api-types';
+import { Agent, fetch as undiciFetch } from 'undici';
 import { z } from 'zod';
 
 // -- Conversation seeding response shapes -------------------------------------
@@ -120,10 +121,32 @@ export class N8nApiError extends Error {
 	}
 }
 
+/**
+ * undici (Node's global `fetch`) defaults `headersTimeout` / `bodyTimeout` to
+ * 5 minutes. The `execute-with-llm-mock` endpoint legitimately runs longer than
+ * that on heavy multi-item scenarios — every intercepted HTTP call is answered
+ * by an LLM, so a 5-email digest or a 250-row array workflow can take >5min
+ * before the server sends response headers. At that point undici aborts with a
+ * bare `TypeError: fetch failed`, which the harness records as a non-builder
+ * failure and pollutes the baseline. Lift the transport ceiling well above any
+ * realistic execution so the per-request `AbortSignal.timeout(timeoutMs)` stays
+ * the authoritative deadline. Mirrors the outbound-call fix in
+ * `packages/cli/src/utils/ai-proxy-fetch.ts`.
+ */
+const TRANSPORT_TIMEOUT_MS = 60 * 60 * 1000; // 1 hour
+
 export class N8nClient {
 	private sessionCookie?: string;
 
-	constructor(private readonly baseUrl: string) {}
+	/** Shared dispatcher that lifts undici's aggressive default header/body timeouts (see {@link TRANSPORT_TIMEOUT_MS}). */
+	private readonly dispatcher: Agent;
+
+	constructor(private readonly baseUrl: string) {
+		this.dispatcher = new Agent({
+			headersTimeout: TRANSPORT_TIMEOUT_MS,
+			bodyTimeout: TRANSPORT_TIMEOUT_MS,
+		});
+	}
 
 	// -- Auth ----------------------------------------------------------------
 
@@ -638,10 +661,11 @@ export class N8nClient {
 
 		const method = options.method ?? 'GET';
 
-		const res = await fetch(`${this.baseUrl}${path}`, {
+		const res = await undiciFetch(`${this.baseUrl}${path}`, {
 			method,
 			headers,
 			body: options.body ? JSON.stringify(options.body) : undefined,
+			dispatcher: this.dispatcher,
 			...(options.timeoutMs ? { signal: AbortSignal.timeout(options.timeoutMs) } : {}),
 		});
 

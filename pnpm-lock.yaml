@@ -2395,6 +2395,9 @@ importers:
       turndown:
         specifier: 'catalog:'
         version: 7.2.2
+      undici:
+        specifier: catalog:undici-v7
+        version: 7.28.0
       xlsx:
         specifier: https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz
         version: https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz
