@@ -426,6 +426,16 @@ describe('GlobalConfig', () => {
 			ttl: 10,
 			interval: 3,
 		},
+		scheduler: {
+			enabled: false,
+			materializationWindow: 60,
+			sweepInterval: 10,
+			executorInterval: 5,
+			reaperInterval: 30,
+			leaseDuration: 60,
+			retention: 604800,
+			minInterval: 0,
+		},
 		evaluation: {
 			collectionsEnabled: false,
 		},
