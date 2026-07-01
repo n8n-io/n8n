@@ -21,7 +21,7 @@
 		"sourceMap": true,
 		"skipLibCheck": true,
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
-		"types": ["node", "vitest/globals"]
+		"types": ["node", "vitest/globals", "vite/client"]
 	},
 	"include": ["src/**/*.ts", "test/**/*.ts"],
 	"exclude": ["**/dist/**/*", "**/node_modules/**/*"]
