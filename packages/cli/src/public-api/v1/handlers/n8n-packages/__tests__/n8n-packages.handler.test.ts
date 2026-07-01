@@ -1,5 +1,4 @@
 import { mockInstance } from '@n8n/backend-test-utils';
-import { GlobalConfig } from '@n8n/config';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
@@ -8,7 +7,6 @@ import type { Mocked } from 'vitest';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import * as middlewares from '@/public-api/v1/shared/middlewares/global.middleware';
 
@@ -30,7 +28,6 @@ beforeAll(async () => {
 });
 
 describe('n8n-packages handler', () => {
-	let packagesEnabled: boolean;
 	let mockService: Mocked<N8nPackagesService>;
 
 	function makeRequest(
@@ -62,13 +59,9 @@ describe('n8n-packages handler', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		packagesEnabled = true;
 		mockService = mockInstance(N8nPackagesService);
 
 		vi.spyOn(Container, 'get').mockImplementation((serviceClass) => {
-			if (serviceClass === GlobalConfig) {
-				return { publicApi: { packagesEnabled } } as never;
-			}
 			if (
 				serviceClass === N8nPackagesService ||
 				(typeof serviceClass === 'function' && serviceClass.name === 'N8nPackagesService')
@@ -77,18 +70,6 @@ describe('n8n-packages handler', () => {
 			}
 			return {} as never;
 		});
-	});
-
-	it('throws NotFoundError when packages are disabled', async () => {
-		packagesEnabled = false;
-
-		const caught = await run(
-			makeRequest({ workflowIds: ['wf-1'] }, ['workflow:export']),
-			makeResponse(),
-		);
-
-		expect(caught).toBeInstanceOf(NotFoundError);
-		expect(mockService.exportPackage).not.toHaveBeenCalled();
 	});
 
 	it('throws BadRequestError when the payload fails DTO validation', async () => {
