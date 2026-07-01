@@ -19,7 +19,6 @@ import {
 	N8nActionDropdown,
 	N8nButton,
 	N8nIconButton,
-	N8nPopover,
 	N8nTooltip,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -344,8 +343,8 @@ const publishButtonConfig = computed(() => {
 			loading: false,
 			showIndicator: true,
 			indicatorClass: 'partial',
-			tooltip: '',
-			showVersionInfo: true,
+			tooltip: i18n.baseText('workflows.publish.partial.tooltip'),
+			showVersionInfo: false,
 		},
 		'publication-failed': {
 			text: i18n.baseText('workflows.publish'),
@@ -353,19 +352,13 @@ const publishButtonConfig = computed(() => {
 			loading: false,
 			showIndicator: true,
 			indicatorClass: 'error',
-			tooltip: '',
+			tooltip: i18n.baseText('workflows.publish.failed.tooltip'),
 			showVersionInfo: false,
 		},
 	};
 
 	return configs[workflowPublishState.value];
 });
-
-const showFailuresPopover = computed(
-	() =>
-		(publicationStatus.value === 'partial' || publicationStatus.value === 'failed') &&
-		publicationFailures.value.length > 0,
-);
 
 const shouldHidePublishButton = computed(() => {
 	if (props.isNewWorkflow) return false;
@@ -633,6 +626,13 @@ defineExpose({
 								><br />{{ i18n.baseText('workflowHistory.item.active') }}
 								<TimeAgo v-if="latestPublishDate" :date="latestPublishDate" />
 							</template>
+							<template v-if="publicationFailures.length > 0">
+								<br />
+								{{ i18n.baseText('workflows.publish.failures.label') }}<br />
+								<span v-for="failure in publicationFailures" :key="failure.nodeId">
+									{{ failure.nodeName }}<br />
+								</span>
+							</template>
 						</div>
 					</template>
 					<N8nButton
@@ -645,7 +645,7 @@ defineExpose({
 					>
 						<div :class="[$style.flex]">
 							<span
-								v-if="!showFailuresPopover && publishButtonConfig.showIndicator"
+								v-if="publishButtonConfig.showIndicator"
 								data-test-id="workflow-active-version-indicator"
 								:class="{
 									[$style.indicatorDot]: true,
@@ -665,50 +665,6 @@ defineExpose({
 						</div>
 					</N8nButton>
 				</N8nTooltip>
-				<!-- Failures popover sits outside the publish button to prevent click propagation -->
-				<N8nPopover
-					v-if="showFailuresPopover"
-					side="bottom"
-					align="start"
-					:side-offset="8"
-					width="320px"
-				>
-					<template #trigger>
-						<span
-							data-test-id="publication-failures-popover-trigger"
-							:class="$style.popoverTriggerWrapper"
-						>
-							<span
-								data-test-id="workflow-active-version-indicator"
-								:class="{
-									[$style.indicatorDot]: true,
-									[$style.indicatorPartial]: publishButtonConfig.indicatorClass === 'partial',
-									[$style.indicatorIssues]: publishButtonConfig.indicatorClass === 'error',
-								}"
-							/>
-						</span>
-					</template>
-					<template #content>
-						<div :class="$style.failuresPopover">
-							<p :class="$style.failuresTitle">
-								{{ i18n.baseText('workflows.publish.failures.title') }}
-							</p>
-							<p :class="$style.failuresRetryHint">
-								{{ i18n.baseText('workflows.publish.failures.retryHint') }}
-							</p>
-							<ul :class="$style.failuresList">
-								<li
-									v-for="failure in publicationFailures"
-									:key="failure.nodeId"
-									:class="$style.failuresItem"
-								>
-									<span :class="$style.failuresNodeName">{{ failure.nodeName }}</span>
-									<span :class="$style.failuresError">{{ failure.errorMessage }}</span>
-								</li>
-							</ul>
-						</div>
-					</template>
-				</N8nPopover>
 				<N8nActionDropdown
 					:items="versionMenuActions"
 					placement="bottom-end"
@@ -816,54 +772,6 @@ defineExpose({
 
 .indicatorPartial {
 	background-color: var(--color--warning);
-}
-
-.popoverTriggerWrapper {
-	display: inline-flex;
-	align-items: center;
-}
-
-.failuresPopover {
-	padding: var(--spacing--xs);
-}
-
-.failuresTitle {
-	font-size: var(--font-size--xs);
-	font-weight: var(--font-weight--bold);
-	color: var(--color--text--base);
-	margin: 0 0 var(--spacing--3xs);
-}
-
-.failuresRetryHint {
-	font-size: var(--font-size--xs);
-	color: var(--color--text--tint-1);
-	margin: 0 0 var(--spacing--xs);
-}
-
-.failuresList {
-	list-style: none;
-	padding: 0;
-	margin: 0;
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--3xs);
-}
-
-.failuresItem {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--5xs);
-}
-
-.failuresNodeName {
-	font-size: var(--font-size--xs);
-	font-weight: var(--font-weight--medium);
-	color: var(--color--text--base);
-}
-
-.failuresError {
-	font-size: var(--font-size--xs);
-	color: var(--color--text--tint-1);
 }
 
 .flex {
