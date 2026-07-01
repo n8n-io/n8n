@@ -506,11 +506,19 @@ const populateHiddenIssuesSet = () => {
 	workflowDocumentStore?.value?.setNodePristine(node.value.name, false);
 };
 
+const hiddenNodeSettings = computed(() => {
+	const version = node.value?.typeVersion ?? 0;
+	return (nodeType.value?.hiddenNodeSettings ?? [])
+		.filter((entry) => entry.minVersion === undefined || version >= entry.minVersion)
+		.map((entry) => entry.setting);
+});
+
 const nodeSettings = computed(() =>
 	createCommonNodeSettings(
 		isToolNode.value || isModelNode.value,
 		i18n.baseText.bind(i18n),
 		settingsStore.isOtelCustomSpanAttributesEnabled,
+		hiddenNodeSettings.value,
 	),
 );
 

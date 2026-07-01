@@ -20,7 +20,7 @@ export class IfV2 implements INodeType {
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {
 			...baseDescription,
-			version: [2, 2.1, 2.2, 2.3],
+			version: [2, 2.1, 2.2, 2.3, 2.4],
 			defaults: {
 				name: 'If',
 				color: '#408000',
@@ -28,6 +28,7 @@ export class IfV2 implements INodeType {
 			inputs: [NodeConnectionTypes.Main],
 			outputs: [NodeConnectionTypes.Main, NodeConnectionTypes.Main],
 			outputNames: ['true', 'false'],
+			hiddenNodeSettings: [{ setting: 'alwaysOutputData', minVersion: 2.4 }],
 			parameterPane: 'wide',
 			builderHint: {
 				searchHint:

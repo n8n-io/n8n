@@ -111,6 +111,7 @@
       "@opentelemetry/api": "1.9.0",
       "@opentelemetry/core": "2.8.0",
       "@types/node": "^20.17.50",
+      "@types/pg": "8.20.0",
       "chokidar": "4.0.3",
       "esbuild": "catalog:",
       "multer": "^2.2.0",

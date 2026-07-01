@@ -668,6 +668,7 @@ overrides:
   '@opentelemetry/api': 1.9.0
   '@opentelemetry/core': 2.8.0
   '@types/node': ^20.17.50
+  '@types/pg': 8.20.0
   chokidar: 4.0.3
   esbuild: ^0.28.1
   multer: ^2.2.0
@@ -3091,8 +3092,8 @@ importers:
         specifier: 'catalog:'
         version: 6.10.3
       '@types/pg':
-        specifier: ^8.15.6
-        version: 8.15.6
+        specifier: 8.20.0
+        version: 8.20.0
       '@types/sanitize-html':
         specifier: 'catalog:'
         version: 2.11.0
@@ -3459,7 +3460,7 @@ importers:
         specifier: ^20.17.50
         version: 20.19.41
       '@types/pg':
-        specifier: ^8.15.6
+        specifier: 8.20.0
         version: 8.20.0
       '@types/sha.js':
         specifier: ^2.4.0
@@ -12024,9 +12025,6 @@ packages:
 
   '@types/oracledb@6.10.3':
     resolution: {integrity: sha512-8SCGQF/VSiXnifVFTajmRNtjHUDTNxkd9SrBrvG2A/80uwLVee5xmv/juH4hnDNTfU9qxfd6HR4Mfmg2nC3RVw==}
-
-  '@types/pg@8.15.6':
-    resolution: {integrity: sha512-NoaMtzhxOrubeL/7UZuNTrejB4MPAJ0RpxZqXQf2qXuVlTPuG6Y8p4u9dKRaue4yjmC7ZhzVO2/Yyyn25znrPQ==}
 
   '@types/pg@8.20.0':
     resolution: {integrity: sha512-bEPFOaMAHTEP1EzpvHTbmwR8UsFyHSKsRisLIHVMXnpNefSbGA1bD6CVy+qKjGSqmZqNqBDV2azOBo8TgkcVow==}
@@ -28999,12 +28997,6 @@ snapshots:
   '@types/oracledb@6.10.3':
     dependencies:
       '@types/node': 20.19.41
-
-  '@types/pg@8.15.6':
-    dependencies:
-      '@types/node': 20.19.41
-      pg-protocol: 1.11.0
-      pg-types: 2.2.0
 
   '@types/pg@8.20.0':
     dependencies:

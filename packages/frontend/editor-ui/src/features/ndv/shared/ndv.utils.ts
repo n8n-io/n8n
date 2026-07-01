@@ -459,6 +459,7 @@ export function createCommonNodeSettings(
 	isToolOrModelNode: boolean,
 	t: (key: BaseTextKey) => string,
 	canUseOtelCustomSpanAttributes = false,
+	hiddenSettings: readonly string[] = [],
 ) {
 	const ret: INodeProperties[] = [];
 
@@ -616,7 +617,9 @@ export function createCommonNodeSettings(
 		});
 	}
 
-	return ret;
+	return hiddenSettings.length
+		? ret.filter((setting) => !hiddenSettings.includes(setting.name))
+		: ret;
 }
 
 export function collectSettings(node: INodeUi, nodeSettings: INodeProperties[]): INodeParameters {

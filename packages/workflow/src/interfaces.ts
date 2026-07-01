@@ -2697,6 +2697,18 @@ export interface IBuilderHint {
 	extraTypeDefContent?: IBuilderHintVariation[];
 }
 
+export type CommonNodeSetting =
+	| 'alwaysOutputData'
+	| 'executeOnce'
+	| 'retryOnFail'
+	| 'onError'
+	| 'notesInFlow';
+
+export interface HiddenNodeSetting {
+	setting: CommonNodeSetting;
+	minVersion?: number;
+}
+
 export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	version: number | number[];
 	defaults: NodeDefaults;
@@ -2725,6 +2737,7 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	triggerPanel?: TriggerPanelDefinition | boolean;
 	extendsCredential?: string;
 	hints?: NodeHint[];
+	hiddenNodeSettings?: HiddenNodeSetting[];
 	communityNodePackageVersion?: string;
 	waitingNodeTooltip?: string;
 	__loadOptionsMethods?: string[]; // only for validation during build
