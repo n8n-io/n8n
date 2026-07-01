@@ -11,9 +11,30 @@ vi.mock('@/services/proxy-token-manager', () => ({
 		constructor(fetchToken: () => Promise<unknown>) {
 			capturedTokenGetters.push(fetchToken);
 		}
-		getAuthHeaders = vi.fn();
+		getAuthHeaders = vi.fn().mockResolvedValue({ Authorization: 'Bearer ia-tok' });
 	},
 }));
+
+// Capture the `fetch` wrapper handed to `createAnthropic` so we can assert on the
+// headers it injects into proxied model requests.
+const capturedAnthropicOptions: Array<{ fetch: typeof fetch }> = [];
+vi.mock('@ai-sdk/anthropic', () => ({
+	createAnthropic: (options: { fetch: typeof fetch }) => {
+		capturedAnthropicOptions.push(options);
+		return (modelName: string) => `model:${modelName}`;
+	},
+}));
+
+// The proxy fetch just records what it was called with; return a minimal Response.
+const proxyFetchCalls: Array<{ init?: RequestInit }> = [];
+vi.mock('@/utils/ai-proxy-fetch', () => ({
+	createAiProxyFetch: () => async (_input: unknown, init?: RequestInit) => {
+		proxyFetchCalls.push({ init });
+		return await Promise.resolve(new Response(null, { status: 200 }));
+	},
+}));
+
+import { ProxyTokenManager } from '@/services/proxy-token-manager';
 
 import { InstanceAiModelService } from '../instance-ai-model.service';
 import type { InstanceAiSettingsService } from '../instance-ai-settings.service';
@@ -40,6 +61,8 @@ describe('InstanceAiModelService', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		capturedTokenGetters.length = 0;
+		capturedAnthropicOptions.length = 0;
+		proxyFetchCalls.length = 0;
 		service = new InstanceAiModelService(settingsService, aiService, outboundHttp);
 	});
 
@@ -100,6 +123,42 @@ describe('InstanceAiModelService', () => {
 				{ id: fakeUser.id },
 				expect.objectContaining({ userMessageId: expect.any(String) }),
 			);
+		});
+	});
+
+	describe('resolveProxyModel', () => {
+		async function invokeCapturedFetch() {
+			const options = capturedAnthropicOptions.at(-1);
+			if (!options) throw new Error('createAnthropic was not called');
+			await options.fetch('https://proxy.base/anthropic/v1/messages', { headers: {} });
+			const call = proxyFetchCalls.at(-1);
+			if (!call) throw new Error('proxy fetch was not called');
+			return new Headers(call.init?.headers);
+		}
+
+		beforeEach(() => {
+			settingsService.resolveModelName.mockReturnValue('claude-sonnet-4-6');
+		});
+
+		it('sends the x-n8n-thread-id header on proxied requests when a threadId is given', async () => {
+			const tokenManager = new ProxyTokenManager(() => Promise.resolve({}) as never);
+
+			await service.resolveProxyModel(fakeUser, 'https://proxy.base', tokenManager, 'thread-9');
+
+			const headers = await invokeCapturedFetch();
+			expect(headers.get('x-n8n-thread-id')).toBe('thread-9');
+			expect(headers.get('x-n8n-feature')).toBe('instance-ai');
+			expect(headers.get('Authorization')).toBe('Bearer ia-tok');
+		});
+
+		it('omits the x-n8n-thread-id header when no threadId is given', async () => {
+			const tokenManager = new ProxyTokenManager(() => Promise.resolve({}) as never);
+
+			await service.resolveProxyModel(fakeUser, 'https://proxy.base', tokenManager);
+
+			const headers = await invokeCapturedFetch();
+			expect(headers.get('x-n8n-thread-id')).toBeNull();
+			expect(headers.get('x-n8n-feature')).toBe('instance-ai');
 		});
 	});
 });

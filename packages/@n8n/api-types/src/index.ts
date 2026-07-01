@@ -516,6 +516,7 @@ export type { PublishTimelineEvent } from './schemas/workflow-publish-timeline.s
 export {
 	X_N8N_FEATURE_HEADER,
 	X_N8N_VERSION_HEADER,
+	X_N8N_THREAD_ID_HEADER,
 	N8N_PROXY_FEATURES,
 	buildProxyHeaders,
 	type N8nProxyFeature,

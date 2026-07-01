@@ -6,6 +6,7 @@
 
 export const X_N8N_FEATURE_HEADER = 'x-n8n-feature';
 export const X_N8N_VERSION_HEADER = 'x-n8n-version';
+export const X_N8N_THREAD_ID_HEADER = 'x-n8n-thread-id';
 
 export const N8N_PROXY_FEATURES = ['instance-ai', 'workflow-builder', 'agent-builder'] as const;
 export type N8nProxyFeature = (typeof N8N_PROXY_FEATURES)[number];
@@ -13,17 +14,25 @@ export type N8nProxyFeature = (typeof N8N_PROXY_FEATURES)[number];
 export interface ProxyHeaderInput {
 	feature: N8nProxyFeature;
 	n8nVersion: string;
+	/**
+	 * Instance AI thread id. When present, sent as `x-n8n-thread-id` so the
+	 * proxy can attribute per-thread credit billing to the originating thread.
+	 * Omitted for feature paths that have no thread context (e.g. eval).
+	 */
+	threadId?: string;
 }
 
 /**
  * Builds the headers required on every call to `/v1/api-proxy/*`. Every
  * caller on the n8n side must use this helper — types enforce both
  * `feature` (constrained union) and `n8nVersion` are supplied, so
- * omission becomes impossible at the call site.
+ * omission becomes impossible at the call site. The optional `threadId`
+ * adds `x-n8n-thread-id` only when supplied.
  */
 export function buildProxyHeaders(input: ProxyHeaderInput): Record<string, string> {
 	return {
 		[X_N8N_FEATURE_HEADER]: input.feature,
 		[X_N8N_VERSION_HEADER]: input.n8nVersion,
+		...(input.threadId ? { [X_N8N_THREAD_ID_HEADER]: input.threadId } : {}),
 	};
 }

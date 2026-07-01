@@ -81,11 +81,17 @@ export class InstanceAiModelService {
 	 * Auth headers are injected via a custom `fetch` wrapper so that each
 	 * request gets a fresh-or-cached token from the ProxyTokenManager,
 	 * avoiding 401s on long-running agent turns.
+	 *
+	 * When a `threadId` is supplied it is sent as `x-n8n-thread-id` on every
+	 * proxied LLM request so the proxy — now the billing authority — can
+	 * attribute the deducted credits to the originating thread. The eval path
+	 * has no thread context and omits it.
 	 */
 	async resolveProxyModel(
 		user: User,
 		proxyBaseUrl: string,
 		tokenManager: ProxyTokenManager,
+		threadId?: string,
 	): Promise<ModelConfig> {
 		const modelName = this.settingsService.resolveModelName(user);
 		const { createAnthropic } = await import('@ai-sdk/anthropic');
@@ -102,7 +108,7 @@ export class InstanceAiModelService {
 					headers.set(k, v);
 				}
 				for (const [k, v] of Object.entries(
-					buildProxyHeaders({ feature: 'instance-ai', n8nVersion: N8N_VERSION }),
+					buildProxyHeaders({ feature: 'instance-ai', n8nVersion: N8N_VERSION, threadId }),
 				)) {
 					headers.set(k, v);
 				}

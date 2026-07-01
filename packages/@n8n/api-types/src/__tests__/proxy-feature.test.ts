@@ -1,6 +1,7 @@
 import {
 	N8N_PROXY_FEATURES,
 	X_N8N_FEATURE_HEADER,
+	X_N8N_THREAD_ID_HEADER,
 	X_N8N_VERSION_HEADER,
 	buildProxyHeaders,
 } from '../constants/proxy-feature';
@@ -14,10 +15,28 @@ describe('buildProxyHeaders', () => {
 		}
 	});
 
-	it('should return exactly the two expected keys', () => {
+	it('should return exactly the two expected keys when no threadId is given', () => {
 		const headers = buildProxyHeaders({ feature: 'instance-ai', n8nVersion: '1.2.3' });
 		expect(Object.keys(headers).sort()).toEqual(
 			[X_N8N_FEATURE_HEADER, X_N8N_VERSION_HEADER].sort(),
 		);
+	});
+
+	it('should attach the thread-id header when a threadId is supplied', () => {
+		const headers = buildProxyHeaders({
+			feature: 'instance-ai',
+			n8nVersion: '1.2.3',
+			threadId: 'thread-9',
+		});
+		expect(headers[X_N8N_THREAD_ID_HEADER]).toBe('thread-9');
+	});
+
+	it('should omit the thread-id header when threadId is undefined', () => {
+		const headers = buildProxyHeaders({
+			feature: 'instance-ai',
+			n8nVersion: '1.2.3',
+			threadId: undefined,
+		});
+		expect(headers[X_N8N_THREAD_ID_HEADER]).toBeUndefined();
 	});
 });
