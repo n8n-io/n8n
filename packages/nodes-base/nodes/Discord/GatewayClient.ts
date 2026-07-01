@@ -1,6 +1,5 @@
 import { EventEmitter } from 'events';
 import type { IDataObject } from 'n8n-workflow';
-import { WebSocket, type RawData } from 'ws';
 
 const GATEWAY_VERSION = 10;
 const DEFAULT_GATEWAY_URL = 'wss://gateway.discord.gg';
@@ -50,7 +49,7 @@ export interface GatewayClientOptions {
  * Minimal Discord Gateway WebSocket client. Handles the connection lifecycle a
  * listener needs - HELLO/heartbeat (with ACK tracking), IDENTIFY, RESUME, and
  * reconnect with backoff - and emits every dispatched event for the node to
- * filter. Deliberately dependency-light: just `ws` and Node's EventEmitter.
+ * filter. Dependency-light: just Node's built-in WebSocket and EventEmitter.
  *
  * Socket errors are handled internally (logged, then recovered via the ensuing
  * close), so a network blip can never throw an unhandled 'error' at the host.
@@ -61,6 +60,7 @@ export interface GatewayClientOptions {
  */
 export class GatewayClient extends EventEmitter {
 	private ws?: WebSocket;
+	private wsAbort?: AbortController;
 	private heartbeatTimer?: NodeJS.Timeout;
 	private reconnectTimer?: NodeJS.Timeout;
 	private lastSequence: number | null = null;
@@ -82,17 +82,8 @@ export class GatewayClient extends EventEmitter {
 
 	connect(): void {
 		this.closing = false;
-
 		// Defensive: never leak a previous socket if one is still attached.
-		if (this.ws) {
-			this.ws.removeAllListeners();
-			try {
-				this.ws.close();
-			} catch {
-				// already closing/closed
-			}
-			this.ws = undefined;
-		}
+		this.teardownSocket();
 
 		const canResume = Boolean(
 			this.sessionId && this.resumeGatewayUrl && this.lastSequence !== null,
@@ -103,17 +94,25 @@ export class GatewayClient extends EventEmitter {
 
 		this.log(canResume ? 'connecting (will resume session)' : 'connecting');
 
+		const controller = new AbortController();
 		const socket = new WebSocket(url);
 		this.ws = socket;
+		this.wsAbort = controller;
+		const opts = { signal: controller.signal };
 
-		socket.on('message', (raw: RawData) => this.onMessage(raw, canResume));
-		socket.on('close', (code: number) => this.onClose(code));
-		socket.on('error', (error: Error) => {
-			// Handle internally: an 'error' with no listener would throw, so log it
-			// and let the ensuing 'close' reconnect (re-emit only if something listens).
-			this.warn(`socket error: ${error.message}`);
-			if (this.listenerCount('error') > 0) this.emit('error', error);
-		});
+		socket.addEventListener('message', (event) => this.onMessage(event.data, canResume), opts);
+		socket.addEventListener('close', (event) => this.onClose(event.code), opts);
+		socket.addEventListener(
+			'error',
+			(event) => {
+				// Handle internally: an 'error' with no listener would throw, so log it
+				// and let the ensuing 'close' reconnect (re-emit only if something listens).
+				const message = (event as ErrorEvent).message ?? 'connection error';
+				this.warn(`socket error: ${message}`);
+				if (this.listenerCount('error') > 0) this.emit('error', new Error(message));
+			},
+			opts,
+		);
 	}
 
 	private log(message: string): void {
@@ -130,14 +129,16 @@ export class GatewayClient extends EventEmitter {
 		this.closing = true;
 		this.clearTimers();
 		const socket = this.ws;
+		const controller = this.wsAbort;
 		this.ws = undefined;
+		this.wsAbort = undefined;
 		if (!socket) return;
 
 		await new Promise<void>((resolve) => {
 			// Resolve when the socket closes, with a grace cap so deactivation never hangs.
 			const timer = setTimeout(resolve, 1000);
 			if (typeof timer.unref === 'function') timer.unref();
-			socket.once('close', () => {
+			socket.addEventListener('close', () => {
 				clearTimeout(timer);
 				resolve();
 			});
@@ -149,13 +150,30 @@ export class GatewayClient extends EventEmitter {
 			}
 		});
 
-		socket.removeAllListeners();
+		controller?.abort();
 	}
 
-	private onMessage(raw: RawData, resuming: boolean): void {
+	/** Drop the current socket: remove its listeners (via abort) and close it. */
+	private teardownSocket(): void {
+		this.wsAbort?.abort();
+		this.wsAbort = undefined;
+		const socket = this.ws;
+		this.ws = undefined;
+		if (!socket) return;
+		try {
+			socket.close();
+		} catch {
+			// socket may already be closing/closed; nothing to do
+		}
+	}
+
+	private onMessage(data: unknown, resuming: boolean): void {
+		// Discord (encoding=json) sends text frames; ignore anything non-string.
+		if (typeof data !== 'string') return;
+
 		let payload: GatewayPayload;
 		try {
-			payload = JSON.parse(rawToString(raw)) as GatewayPayload;
+			payload = JSON.parse(data) as GatewayPayload;
 		} catch {
 			return;
 		}
@@ -271,15 +289,7 @@ export class GatewayClient extends EventEmitter {
 			this.lastSequence = null;
 		}
 
-		if (this.ws) {
-			this.ws.removeAllListeners();
-			try {
-				this.ws.close();
-			} catch {
-				// socket may already be closing/closed; nothing to do
-			}
-			this.ws = undefined;
-		}
+		this.teardownSocket();
 
 		// An explicit delay (e.g. after INVALID_SESSION) skips backoff and the attempt counter.
 		let delay = delayMs;
@@ -367,11 +377,4 @@ export class GatewayClient extends EventEmitter {
 // Deterministic-enough jitter; Math.random is fine here (not security sensitive).
 function jitter(): number {
 	return Math.random();
-}
-
-// Discord sends JSON text frames; `ws` gives Buffer / Buffer[] / ArrayBuffer — normalize.
-function rawToString(raw: RawData): string {
-	if (Array.isArray(raw)) return Buffer.concat(raw).toString('utf8');
-	if (Buffer.isBuffer(raw)) return raw.toString('utf8');
-	return Buffer.from(raw).toString('utf8'); // ArrayBuffer
 }

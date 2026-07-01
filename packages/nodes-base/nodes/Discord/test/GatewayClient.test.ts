@@ -2,57 +2,56 @@ import { jsonParse } from 'n8n-workflow';
 
 import { GatewayClient } from '../GatewayClient';
 
-interface TestSocket {
-	url: string;
-	readyState: number;
-	send: ReturnType<typeof vi.fn>;
-	close: ReturnType<typeof vi.fn>;
-	emit(event: string, ...args: unknown[]): void;
+interface Handler {
+	cb: (event: unknown) => void;
+	once?: boolean;
 }
 
-const { wsInstances } = vi.hoisted(() => ({ wsInstances: [] as TestSocket[] }));
+// Minimal stand-in for the built-in WebSocket: records instances, stores
+// addEventListener handlers (honouring { once } and an AbortController signal),
+// and exposes dispatch() so tests can drive 'message' / 'close' / 'error'.
+class FakeWebSocket {
+	static OPEN = 1;
+	readyState = 1;
+	url: string;
+	send = vi.fn();
+	// close() dispatches 'close' like the real socket so close()'s grace promise resolves.
+	close = vi.fn((code: number = 1000) => this.dispatch('close', { code }));
+	private handlers: Record<string, Handler[]> = {};
 
-vi.mock('ws', () => {
-	class FakeWebSocket {
-		static OPEN = 1;
-		readyState = 1;
-		url: string;
-		send = vi.fn();
-		// Emit 'close' like a real socket so close()'s grace promise resolves.
-		close = vi.fn((code: number = 1000) => this.emit('close', code));
-		private handlers: Record<string, Array<(...args: unknown[]) => void>> = {};
+	constructor(url: string) {
+		this.url = url;
+		wsInstances.push(this);
+	}
 
-		constructor(url: string) {
-			this.url = url;
-			wsInstances.push(this);
-		}
+	addEventListener(
+		type: string,
+		cb: (event: unknown) => void,
+		opts?: { once?: boolean; signal?: AbortSignal },
+	) {
+		const handler: Handler = { cb, once: opts?.once };
+		(this.handlers[type] ||= []).push(handler);
+		opts?.signal?.addEventListener('abort', () => {
+			this.handlers[type] = (this.handlers[type] ?? []).filter((h) => h !== handler);
+		});
+	}
 
-		on(event: string, callback: (...args: unknown[]) => void) {
-			(this.handlers[event] ||= []).push(callback);
-			return this;
-		}
-
-		once(event: string, callback: (...args: unknown[]) => void) {
-			(this.handlers[event] ||= []).push(callback);
-			return this;
-		}
-
-		removeAllListeners() {
-			this.handlers = {};
-			return this;
-		}
-
-		emit(event: string, ...args: unknown[]) {
-			(this.handlers[event] ?? []).forEach((cb) => cb.apply(undefined, args));
+	dispatch(type: string, event: unknown) {
+		for (const handler of [...(this.handlers[type] ?? [])]) {
+			if (handler.once) {
+				this.handlers[type] = (this.handlers[type] ?? []).filter((h) => h !== handler);
+			}
+			handler.cb(event);
 		}
 	}
-	return { default: FakeWebSocket, WebSocket: FakeWebSocket };
-});
+}
+
+const { wsInstances } = vi.hoisted(() => ({ wsInstances: [] as FakeWebSocket[] }));
 
 const lastWs = () => wsInstances[wsInstances.length - 1];
-const emitPayload = (ws: TestSocket, payload: unknown) =>
-	ws.emit('message', JSON.stringify(payload));
-const lastSent = (ws: TestSocket) =>
+const emitPayload = (ws: FakeWebSocket, payload: unknown) =>
+	ws.dispatch('message', { data: JSON.stringify(payload) });
+const lastSent = (ws: FakeWebSocket) =>
 	jsonParse<{ op: number; d: Record<string, unknown> }>(
 		ws.send.mock.calls[ws.send.mock.calls.length - 1][0] as string,
 	);
@@ -63,6 +62,11 @@ describe('GatewayClient', () => {
 	beforeEach(() => {
 		wsInstances.length = 0;
 		vi.clearAllMocks();
+		vi.stubGlobal('WebSocket', FakeWebSocket);
+	});
+
+	afterEach(() => {
+		vi.unstubAllGlobals();
 	});
 
 	it('sends IDENTIFY with the token and intents after HELLO', () => {
@@ -225,10 +229,10 @@ describe('GatewayClient', () => {
 
 			const before = wsInstances.length;
 			// No 'error' listener attached: must not throw (regression guard).
-			expect(() => lastWs().emit('error', new Error('ECONNRESET'))).not.toThrow();
+			expect(() => lastWs().dispatch('error', { message: 'ECONNRESET' })).not.toThrow();
 
 			// The socket then closes abnormally; the client should reconnect.
-			lastWs().emit('close', 1006);
+			lastWs().dispatch('close', { code: 1006 });
 			vi.runOnlyPendingTimers();
 
 			expect(wsInstances.length).toBe(before + 1);
@@ -265,7 +269,7 @@ describe('GatewayClient', () => {
 		expect(entries.some((e) => e.level === 'warn')).toBe(false);
 
 		// A fatal close is recovery-relevant -> warn.
-		lastWs().emit('close', 4014);
+		lastWs().dispatch('close', { code: 4014 });
 		expect(entries.some((e) => e.level === 'warn' && e.message.includes('fatal close'))).toBe(true);
 
 		void client.close();
@@ -279,7 +283,7 @@ describe('GatewayClient', () => {
 		emitPayload(lastWs(), HELLO);
 
 		const before = wsInstances.length;
-		lastWs().emit('close', 4014); // disallowed (privileged) intents
+		lastWs().dispatch('close', { code: 4014 }); // disallowed (privileged) intents
 
 		expect(onFatal).toHaveBeenCalledTimes(1);
 		expect(wsInstances.length).toBe(before); // no reconnect attempted
@@ -293,7 +297,7 @@ describe('GatewayClient', () => {
 		// HELLO without heartbeat_interval, and a structurally odd frame.
 		expect(() => emitPayload(lastWs(), { op: 10 })).not.toThrow();
 		expect(() => emitPayload(lastWs(), { op: 0, t: 'READY' })).not.toThrow();
-		expect(() => lastWs().emit('message', 'not json')).not.toThrow();
+		expect(() => lastWs().dispatch('message', { data: 'not json' })).not.toThrow();
 
 		void client.close();
 	});
@@ -311,7 +315,7 @@ describe('GatewayClient', () => {
 				d: { session_id: 's1', resume_gateway_url: 'wss://resume.example' },
 			});
 
-			lastWs().emit('close', 4009); // session timed out - not resumable
+			lastWs().dispatch('close', { code: 4009 }); // session timed out - not resumable
 			vi.runOnlyPendingTimers();
 
 			const fresh = lastWs();
@@ -334,7 +338,7 @@ describe('GatewayClient', () => {
 
 		// A close arriving after teardown must not spawn a new connection.
 		const before = wsInstances.length;
-		lastWs().emit('close', 1006);
+		lastWs().dispatch('close', { code: 1006 });
 		expect(wsInstances.length).toBe(before);
 	});
 });
