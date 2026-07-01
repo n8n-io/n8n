@@ -6,8 +6,8 @@ import {
 import { WorkflowDependencyRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { createMember, createOwner } from '../shared/db/users';
 import { saveCredential } from '../shared/db/credentials';
+import { createMember, createOwner } from '../shared/db/users';
 import * as utils from '../shared/utils';
 
 let testServer: ReturnType<typeof utils.setupTestServer>;

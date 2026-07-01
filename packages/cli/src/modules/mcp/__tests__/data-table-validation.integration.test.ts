@@ -3,15 +3,14 @@ import { GLOBAL_OWNER_ROLE, type Project, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
 
+import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
+import { DataTableService } from '@/modules/data-table/data-table.service';
 import { createUser } from '@test-integration/db/users';
 
 import {
 	validateDataTableReferencesForUpdate,
 	validateDataTableReferencesForWorkflow,
 } from '../tools/workflow-builder/data-table-validation';
-
-import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
-import { DataTableService } from '@/modules/data-table/data-table.service';
 
 beforeAll(async () => {
 	await testModules.loadModules(['data-table']);

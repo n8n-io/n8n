@@ -27,6 +27,8 @@ import { AgentChatSubscriptionStateService } from './agent-chat-subscription-sta
 import { ComponentMapper, type ShortenCallback } from './component-mapper';
 import { loadChatSdk, loadMemoryState } from './esm-loader';
 import { buildIntegrationConnectionId } from './integration-tools';
+import { channelIntegrationRecorder } from './recording/channel-integration-recorder';
+import { recordAdapterCalls } from './recording/recording-adapter';
 import type { Agent } from '../entities/agent.entity';
 import { AgentRepository } from '../repositories/agent.repository';
 
@@ -81,6 +83,10 @@ interface DisconnectOptions {
 	 * leader-stepdown so the cluster-wide remote release happens exactly once.
 	 */
 	skipExternalHooks?: boolean;
+}
+
+interface DisconnectChannelOptions {
+	deleteSubscriptions?: boolean;
 }
 
 async function getAgentExecutionOrchestratorService() {
@@ -201,7 +207,8 @@ export class ChatIntegrationService {
 		}
 
 		// Delegate adapter construction to the platform implementation.
-		const adapter = await integrationImpl.createAdapter(ctx);
+		const adapter = recordAdapterCalls(integration.type, await integrationImpl.createAdapter(ctx));
+		channelIntegrationRecorder.startFetchRecording();
 
 		// Dynamic imports — chat packages are ESM-only, use loader to bypass CJS transform
 		const { Chat } = await loadChatSdk();
@@ -312,6 +319,40 @@ export class ChatIntegrationService {
 	}
 
 	/**
+	 * Remove a chat channel everywhere. Persisted thread subscriptions are deleted
+	 * by default for real integration removals, but can be preserved for unpublish.
+	 */
+	async disconnectChannel(
+		agentId: string,
+		integration: AgentIntegrationConfig,
+		options: DisconnectChannelOptions = {},
+	): Promise<void> {
+		const { deleteSubscriptions = true } = options;
+
+		try {
+			await this.disconnect(agentId, integration);
+			await this.broadcastIntegrationChange(agentId, integration, 'disconnect');
+		} catch (error) {
+			this.logger.warn(
+				`[ChatIntegrationService] Disconnect failed for ${integration.type} on agent ${agentId}: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
+
+		if (!deleteSubscriptions) return;
+
+		try {
+			await this.chatSubscriptionStateService.deleteSubscriptionsForIntegration(
+				agentId,
+				integration,
+			);
+		} catch (error) {
+			this.logger.warn(
+				`[ChatIntegrationService] Subscription cleanup failed for ${integration.type} on agent ${agentId}: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
+	}
+
+	/**
 	 * Disconnect every active integration regardless of type. Used by tests and
 	 * for explicit shutdown paths; the leader-stepdown lifecycle uses
 	 * {@link disconnectLeaderOnlyIntegrations} so webhook integrations keep
@@ -372,25 +413,7 @@ export class ChatIntegrationService {
 
 		for (const integration of previous) {
 			if (!nextKeys.has(buildIntegrationConnectionId(integration))) {
-				try {
-					await this.disconnect(agent.id, integration);
-					await this.broadcastIntegrationChange(agent.id, integration, 'disconnect');
-				} catch (error) {
-					this.logger.warn(
-						`[ChatIntegrationService] Disconnect during sync failed for ${integration.type} on agent ${agent.id}: ${error instanceof Error ? error.message : String(error)}`,
-					);
-				}
-
-				try {
-					await this.chatSubscriptionStateService.deleteSubscriptionsForIntegration(
-						agent.id,
-						integration,
-					);
-				} catch (error) {
-					this.logger.warn(
-						`[ChatIntegrationService] Subscription cleanup during sync failed for ${integration.type} on agent ${agent.id}: ${error instanceof Error ? error.message : String(error)}`,
-					);
-				}
+				await this.disconnectChannel(agent.id, integration);
 			}
 		}
 

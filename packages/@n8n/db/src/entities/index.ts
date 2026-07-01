@@ -28,6 +28,8 @@ import { ProjectSecretsProviderAccess } from './project-secrets-provider-access'
 import type { SecretsProviderAccessRole } from './project-secrets-provider-access';
 import { Role } from './role';
 import { RoleMappingRule } from './role-mapping-rule';
+import { ScheduledJob, ScheduledJobKind } from './scheduled-job';
+import { ScheduledTask, ScheduledTaskStatus } from './scheduled-task';
 import { Scope } from './scope';
 import { SecretsProviderConnection } from './secrets-provider-connection';
 import { Settings } from './settings';
@@ -46,6 +48,10 @@ import {
 	WorkflowPublicationOutbox,
 	WorkflowPublicationOutboxStatus,
 } from './workflow-publication-outbox';
+import {
+	WorkflowPublicationTriggerStatus,
+	type WorkflowPublicationTriggerStatusType,
+} from './workflow-publication-trigger-status';
 import { WorkflowPublishHistory } from './workflow-publish-history';
 import { WorkflowPublishedVersion } from './workflow-published-version';
 import { WorkflowStatistics } from './workflow-statistics';
@@ -75,6 +81,10 @@ export {
 	ProjectRelation,
 	RoleMappingRule,
 	Role,
+	ScheduledJob,
+	ScheduledJobKind,
+	ScheduledTask,
+	ScheduledTaskStatus,
 	Scope,
 	SharedCredentials,
 	SharedWorkflow,
@@ -89,6 +99,8 @@ export {
 	WorkflowHistory,
 	WorkflowPublicationOutbox,
 	WorkflowPublicationOutboxStatus,
+	WorkflowPublicationTriggerStatus,
+	type WorkflowPublicationTriggerStatusType,
 	WorkflowPublishedVersion,
 	WorkflowPublishHistory,
 	ExecutionData,
@@ -136,6 +148,7 @@ export const entities = {
 	AuthProviderSyncHistory,
 	WorkflowHistory,
 	WorkflowPublicationOutbox,
+	WorkflowPublicationTriggerStatus,
 	WorkflowPublishedVersion,
 	WorkflowPublishHistory,
 	ExecutionData,
@@ -147,6 +160,8 @@ export const entities = {
 	TestCaseExecution,
 	ExecutionEntity,
 	Role,
+	ScheduledJob,
+	ScheduledTask,
 	ProjectSecretsProviderAccess,
 	SecretsProviderConnection,
 };

@@ -17,6 +17,7 @@ import type { ICredentialsResponse } from '../../credentials.types';
 import { within, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import type { ICredentialType, INode, INodeTypeDescription } from 'n8n-workflow';
+import type { Scope } from '@n8n/permissions';
 
 const { confirmMock, routerCurrentRouteMock, routerReplaceMock } = vi.hoisted(() => ({
 	confirmMock: vi.fn(),
@@ -977,6 +978,7 @@ describe('CredentialEdit', () => {
 
 		const setupExistingOAuthCredential = (
 			credentialModalState: Partial<NewCredentialsModal> = {},
+			dataOverrides: { scopes?: Scope[]; isResolvable?: boolean; connectedByMe?: boolean } = {},
 		) => {
 			vi.stubGlobal('BroadcastChannel', BroadcastChannelMock);
 			vi.stubGlobal(
@@ -1011,8 +1013,10 @@ describe('CredentialEdit', () => {
 				name: 'OAuth account',
 				type: oAuth2Api.name,
 				isManaged: false,
+				isResolvable: dataOverrides.isResolvable ?? false,
+				connectedByMe: dataOverrides.connectedByMe,
 				sharedWithProjects: [],
-				scopes: ['credential:update'],
+				scopes: dataOverrides.scopes ?? ['credential:update'],
 				oauthTokenData: false,
 			});
 			credentialsStore.updateCredential.mockResolvedValue(
@@ -1188,6 +1192,25 @@ describe('CredentialEdit', () => {
 
 			await waitFor(() => expect(credentialsStore.fetchAllCredentials).toHaveBeenCalled());
 			expect(uiStore.closeModal).not.toHaveBeenCalled();
+		});
+
+		test('authorizes a private credential without saving for a connect-only user', async () => {
+			const { credentialsStore, getByTestId } = setupExistingOAuthCredential(
+				{},
+				{
+					scopes: ['credential:read', 'credential:connect'],
+					isResolvable: true,
+					connectedByMe: false,
+				},
+			);
+
+			await waitFor(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+			await waitFor(() => expect(getByTestId('quick-connect-button')).toBeVisible());
+			await userEvent.click(getByTestId('quick-connect-button'));
+
+			await waitFor(() => expect(credentialsStore.oAuth2Authorize).toHaveBeenCalled());
+			// Connect-only users can't edit the blueprint, so it must not be re-saved.
+			expect(credentialsStore.updateCredential).not.toHaveBeenCalled();
 		});
 	});
 

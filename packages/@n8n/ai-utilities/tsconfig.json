@@ -10,7 +10,7 @@
 		},
 		"emitDecoratorMetadata": true,
 		"experimentalDecorators": true,
-		"types": ["node", "vitest/globals"]
+		"types": ["node", "vitest/globals", "vite/client"]
 	},
 	"include": ["src/**/*.ts", "test/**/*.ts", "integration-tests/**/*.ts"]
 }

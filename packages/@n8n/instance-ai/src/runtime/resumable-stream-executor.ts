@@ -1,6 +1,6 @@
 import type { RedactionOptions, StreamResult } from '@n8n/agents';
 import type { InstanceAiEvent } from '@n8n/api-types';
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 
 import type { InstanceAiEventBus } from '../event-bus';
 import type { Logger } from '../logger';
