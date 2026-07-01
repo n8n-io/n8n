@@ -102,7 +102,10 @@ const allCredentials = computed<Resource[]>(() =>
 		scopes: credential.scopes,
 		sharedWithProjects: credential.sharedWithProjects,
 		readOnly: !getResourcePermissions(credential.scopes).credential.update,
-		needsSetup: needsSetup(credential.data),
+		// Private (resolvable) credentials store their connection data per-user via
+		// a resolver, so their own `data` is always empty. The "Needs first setup"
+		// badge only applies to static credentials.
+		needsSetup: !credential.isResolvable && needsSetup(credential.data),
 		isGlobal: credential.isGlobal,
 		isResolvable: credential.isResolvable,
 		connectedByMe: credential.connectedByMe,
