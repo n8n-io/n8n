@@ -1195,7 +1195,7 @@ describe('AgentsBuilderToolsService', () => {
 				const normalizedConfig = {
 					...currentConfig,
 					instructions: 'Updated instructions.',
-					config: { promptCaching: { enabled: true, anthropic: { ttl: '5m' } } },
+					config: { promptCaching: { enabled: true, anthropic: { ttl: '5m' as const } } },
 				};
 				agentsService.findById.mockResolvedValue(makeAgent(baseAgent));
 				agentsService.updateConfig.mockResolvedValue({
