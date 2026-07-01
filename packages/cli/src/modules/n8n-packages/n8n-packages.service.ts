@@ -81,8 +81,8 @@ export class N8nPackagesService {
 		this.eventService.emit('n8n-package-exported', {
 			user: request.user,
 			counts: {
-				workflows: workflowEntries.length,
-				credentials: credentialEntries.length,
+				workflows: workflowExportResult?.entries.length ?? 0,
+				credentials: credentialExportResult.entries.length,
 			},
 		});
 
