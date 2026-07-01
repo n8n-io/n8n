@@ -952,6 +952,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 	describe('getBase', () => {
 		const mockWebhookBaseUrl = 'https://webhook.example.com/';
+		const mockTestWebhookBaseUrl = 'https://test-webhook.example.com/';
 		const mockInstanceBaseUrl = 'https://editor.example.com';
 
 		const globalConfig = mockInstance(GlobalConfig);
@@ -961,6 +962,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 		beforeEach(() => {
 			urlService.getWebhookBaseUrl.mockReturnValue(mockWebhookBaseUrl);
+			urlService.getTestWebhookBaseUrl.mockReturnValue(mockTestWebhookBaseUrl);
 			urlService.getInstanceBaseUrl.mockReturnValue(mockInstanceBaseUrl);
 			globalConfig.endpoints = mock<GlobalConfig['endpoints']>({
 				rest: '/rest/',
@@ -984,7 +986,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				formWaitingBaseUrl: `${mockWebhookBaseUrl}/form-waiting/`,
 				webhookBaseUrl: `${mockWebhookBaseUrl}/webhook/`,
 				webhookWaitingBaseUrl: `${mockWebhookBaseUrl}/webhook-waiting/`,
-				webhookTestBaseUrl: `${mockWebhookBaseUrl}/webhook-test/`,
+				webhookTestBaseUrl: `${mockTestWebhookBaseUrl}/webhook-test/`,
 				currentNodeParameters: undefined,
 				executionTimeoutTimestamp: undefined,
 				userId: undefined,
