@@ -23,6 +23,6 @@ rollback.
 
 ## Status
 
-Early foundation. Today the package ships the domain types, the schedule math and a
-thin storage boundary; the coordination engine (sweep, executor, reaper) lands in
+Early foundation. Today the package ships the domain types, the schedule math and an
+initial storage adapter; the coordination engine (sweep, executor, reaper) lands in
 later milestones.

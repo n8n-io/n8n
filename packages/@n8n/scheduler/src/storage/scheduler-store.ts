@@ -11,9 +11,10 @@ import type { ScheduledJob, ScheduledTask } from '../types';
  * scheduler's domain types and the `scheduled_job` / `scheduled_task` entities;
  * the repositories own the queries.
  *
- * Deliberately thin and provisional: it holds only what the schedule math and an
- * early sweep imply. The rest (claiming, leasing, fencing, retention) is added as
- * those loops are built.
+ * The method set grows with the engine: today it covers the schedule math and an
+ * early sweep, and claiming, leasing, fencing and retention are added here as those
+ * loops are built. It is not meant to stay small; depending on `@n8n/db` and
+ * `@n8n/typeorm` is intended, not something to work around.
  *
  * Every operation takes a caller-supplied transaction (`trx`) so the caller can
  * group several writes into one atomic unit; the store never opens its own. The
@@ -21,8 +22,8 @@ import type { ScheduledJob, ScheduledTask } from '../types';
  * the store is coupled to TypeORM (one backend, by design).
  *
  * Locking is not here yet; it lands with the sweep/claim loop that needs it, and
- * is dialect-split: Postgres claims rows with `FOR UPDATE SKIP LOCKED` in the
- * due-jobs read, while SQLite has no equivalent and opens the transaction with
+ * is dialect-split: Postgres reserves rows with `FOR UPDATE SKIP LOCKED` in the
+ * due-work read, while SQLite has no equivalent and opens the transaction with
  * `BEGIN IMMEDIATE` (TypeORM's `dataSource.transaction()` only issues a deferred
  * `BEGIN`, so {@link transaction} will need a queryRunner-based variant).
  */
