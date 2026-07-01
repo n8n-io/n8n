@@ -8,7 +8,7 @@ import {
 	MCP_CLIENT_TOOL_NODE_TYPE,
 	STICKY_NODE_TYPE,
 } from '../src/constants';
-import { ApplicationError, ExpressionError, NodeApiError } from '../src/errors';
+import { ExpressionError, NodeApiError, UnexpectedError } from '../src/errors';
 import type {
 	IConnections,
 	INode,
@@ -1356,7 +1356,7 @@ describe('generateNodesGraph', () => {
 		const workflow = mock<IWorkflowBase>({ nodes: [{ type: STICKY_NODE_TYPE }], connections: {} });
 
 		vi.mocked(nodeHelpers.getNodeParameters).mockImplementationOnce(() => {
-			throw new ApplicationError('Could not find property option');
+			throw new UnexpectedError('Could not find property option');
 		});
 
 		expect(() => generateNodesGraph(workflow, nodeTypes)).not.toThrow();

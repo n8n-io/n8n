@@ -645,9 +645,8 @@ export async function generateMockHints(options: GenerateMockHintsOptions): Prom
 				instructions: SYSTEM_PROMPT,
 			});
 
-			const result = await agent.generate(userPrompt, {
-				providerOptions: { anthropic: { maxTokens: 4096 } },
-			});
+			// No maxTokens cap — a low ceiling truncates hints for large workflows.
+			const result = await agent.generate(userPrompt);
 
 			const text = extractText(result)
 				.replace(/^```(?:json)?\s*\n?/i, '')

@@ -20,7 +20,7 @@ CREATE TABLE "workflow_entity" ("id" varchar(36) PRIMARY KEY NOT NULL, "name" va
 | connections | TEXT |  | true |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | description | TEXT |  | true |  |  |  |
-| id | varchar(36) |  | false | [ai_builder_temporary_workflow](ai_builder_temporary_workflow.md) [chat_hub_messages](chat_hub_messages.md) [chat_hub_sessions](chat_hub_sessions.md) [evaluation_collection](evaluation_collection.md) [evaluation_config](evaluation_config.md) [execution_entity](execution_entity.md) [insights_metadata](insights_metadata.md) [processed_data](processed_data.md) [shared_workflow](shared_workflow.md) [test_run](test_run.md) [workflow_builder_session](workflow_builder_session.md) [workflow_dependency](workflow_dependency.md) [workflow_history](workflow_history.md) [workflow_publish_history](workflow_publish_history.md) [workflow_published_version](workflow_published_version.md) [workflows_tags](workflows_tags.md) |  |  |
+| id | varchar(36) |  | false | [ai_builder_temporary_workflow](ai_builder_temporary_workflow.md) [chat_hub_messages](chat_hub_messages.md) [chat_hub_sessions](chat_hub_sessions.md) [evaluation_collection](evaluation_collection.md) [evaluation_config](evaluation_config.md) [execution_entity](execution_entity.md) [insights_metadata](insights_metadata.md) [processed_data](processed_data.md) [shared_workflow](shared_workflow.md) [test_run](test_run.md) [workflow_builder_session](workflow_builder_session.md) [workflow_dependency](workflow_dependency.md) [workflow_history](workflow_history.md) [workflow_publication_trigger_status](workflow_publication_trigger_status.md) [workflow_publish_history](workflow_publish_history.md) [workflow_published_version](workflow_published_version.md) [workflows_tags](workflows_tags.md) |  |  |
 | isArchived | boolean | FALSE | false |  |  |  |
 | meta | TEXT |  | true |  |  |  |
 | name | varchar(128) |  | false |  |  |  |
@@ -78,6 +78,7 @@ erDiagram
 "workflow_builder_session" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_dependency" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_history" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"workflow_publication_trigger_status" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_publish_history" }o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_published_version" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
 "workflow_published_version" |o--|| "workflow_entity" : "FOREIGN KEY (workflowId) REFERENCES workflow_entity (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
@@ -200,6 +201,7 @@ erDiagram
   datetime stoppedAt
   varchar_2_ storedAt
   TEXT tracingContext
+  BOOLEAN usedPrivateCredentials
   datetime waitTill
   varchar_36_ workflowId FK
   varchar_36_ workflowVersionId
@@ -264,6 +266,15 @@ erDiagram
   varchar_36_ publishedVersionId
   varchar_36_ workflowId FK
   INTEGER workflowVersionId
+}
+"workflow_publication_trigger_status" {
+  datetime_3_ createdAt
+  TEXT errorMessage
+  varchar_36_ nodeId PK
+  varchar_20_ status
+  datetime_3_ updatedAt
+  varchar_36_ versionId FK
+  varchar_36_ workflowId PK
 }
 "workflow_publish_history" {
   datetime_3_ createdAt

@@ -220,6 +220,7 @@ describe('GlobalConfig', () => {
 			useWorkflowPublicationService: false,
 			publicationOutboxPollIntervalMs: 15_000,
 			publicationOutboxLeaseSeconds: 120,
+			workflowPublicationConcurrency: 5,
 			publicationOutboxCompletedRetentionHours: 1,
 			publicationOutboxFailedRetentionHours: 168,
 			publicationOutboxCleanupIntervalSeconds: 1200,
@@ -358,6 +359,10 @@ describe('GlobalConfig', () => {
 					username: '',
 					clusterNodes: '',
 					tls: false,
+					tlsConfig: {
+						serverName: '',
+						rejectUnauthorized: true,
+					},
 					dualStack: false,
 					slotsRefreshInterval: 5_000,
 					slotsRefreshTimeout: 1_000,
@@ -399,6 +404,7 @@ describe('GlobalConfig', () => {
 			profilesSampleRate: 0,
 			tracesSampleRate: 0,
 			tracesSlowSpanThresholdMs: 1000,
+			webhookTracesSampleRate: 0.05,
 			eventLoopBlockDetectionEnabled: false,
 			eventLoopBlockThreshold: 500,
 			eventLoopBlockMaxEventsPerHour: 5,
@@ -421,6 +427,16 @@ describe('GlobalConfig', () => {
 			enabled: false,
 			ttl: 10,
 			interval: 3,
+		},
+		scheduler: {
+			enabled: false,
+			materializationWindow: 60,
+			sweepInterval: 10,
+			executorInterval: 5,
+			reaperInterval: 30,
+			leaseDuration: 60,
+			retention: 604800,
+			minInterval: 0,
 		},
 		evaluation: {
 			collectionsEnabled: false,
@@ -869,6 +885,21 @@ describe('GlobalConfig', () => {
 			process.env = { N8N_WORKFLOW_PUBLICATION_OUTBOX_CLEANUP_BATCH_SIZE: '50' };
 			const config = Container.get(GlobalConfig);
 			expect(config.workflows.publicationOutboxCleanupBatchSize).toBe(50);
+		});
+
+		it('should reject a consumer concurrency of 0 and fall back to the default', () => {
+			process.env = { N8N_WORKFLOW_PUBLICATION_CONCURRENCY: '0' };
+			const config = Container.get(GlobalConfig);
+			expect(config.workflows.workflowPublicationConcurrency).toBe(5);
+			expect(consoleWarnMock).toHaveBeenCalledWith(
+				expect.stringContaining('N8N_WORKFLOW_PUBLICATION_CONCURRENCY'),
+			);
+		});
+
+		it('should accept a positive consumer concurrency', () => {
+			process.env = { N8N_WORKFLOW_PUBLICATION_CONCURRENCY: '3' };
+			const config = Container.get(GlobalConfig);
+			expect(config.workflows.workflowPublicationConcurrency).toBe(3);
 		});
 	});
 

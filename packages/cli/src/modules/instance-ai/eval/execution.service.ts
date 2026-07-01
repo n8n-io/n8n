@@ -45,7 +45,9 @@ import { PostHogClient } from '@/posthog';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
+import { createLlmCompletionMockHandler } from './llm-completion-mock';
 import { EvalMockedCredentialsHelper } from './eval-mocked-credentials-helper';
+import { EvalTimings } from './eval-timings';
 import { type InterceptedTurn, LlmWireServer } from './llm-wire-server';
 import { createLlmMockHandler } from './mock-handler';
 import { generatePinData } from './pin-data-generator';
@@ -156,7 +158,13 @@ export class EvalExecutionService {
 		}
 
 		const unpinSet = unpinNodes.length > 0 ? new Set(unpinNodes) : undefined;
-		const hints = await this.analyzeWorkflow(workflowEntity, options.scenarioHints, unpinSet);
+		const timings = new EvalTimings();
+		const hints = await this.analyzeWorkflow(
+			workflowEntity,
+			timings,
+			options.scenarioHints,
+			unpinSet,
+		);
 		const vendorLlmRouting = interceptionEnabled
 			? buildVendorLlmRouting(workflowEntity, unpinNodes)
 			: undefined;
@@ -165,6 +173,7 @@ export class EvalExecutionService {
 			workflowEntity,
 			user,
 			hints,
+			timings,
 			options.scenarioHints,
 			interceptionEnabled,
 			vendorLlmRouting,
@@ -188,6 +197,7 @@ export class EvalExecutionService {
 
 	private async analyzeWorkflow(
 		workflowEntity: IWorkflowBase,
+		timings: EvalTimings,
 		scenarioHints?: string,
 		unpinSet?: Set<string>,
 	): Promise<MockHints> {
@@ -199,11 +209,16 @@ export class EvalExecutionService {
 			`[EvalMock] Generating hints for ${nodeNames.length} nodes: ${nodeNames.join(', ')}`,
 		);
 
-		const hints = await generateMockHints({
-			workflow: workflowEntity,
-			nodeNames,
-			scenarioHints,
-		});
+		const hints = await timings.time(
+			'hints',
+			undefined,
+			async () =>
+				await generateMockHints({
+					workflow: workflowEntity,
+					nodeNames,
+					scenarioHints,
+				}),
+		);
 
 		if (!hints.globalContext && nodeNames.length > 0) {
 			this.logger.warn(
@@ -227,6 +242,7 @@ export class EvalExecutionService {
 				workflowEntity,
 				bypassNodeNames,
 				hints.globalContext,
+				timings,
 				scenarioHints,
 			);
 			this.logger.debug(
@@ -248,17 +264,23 @@ export class EvalExecutionService {
 		workflowEntity: IWorkflowBase,
 		bypassNodeNames: string[],
 		globalContext: string,
+		timings: EvalTimings,
 		scenarioHints?: string,
 	): Promise<IPinData> {
 		if (bypassNodeNames.length === 0) return {};
 
 		try {
 			const dataDescription = [globalContext, scenarioHints].filter(Boolean).join('\n\n');
-			const result = await generatePinData({
-				workflow: workflowEntity as unknown as WorkflowJSON,
-				nodeNames: bypassNodeNames,
-				instructions: dataDescription ? { dataDescription } : undefined,
-			});
+			const result = await timings.time(
+				'bypass-pin',
+				undefined,
+				async () =>
+					await generatePinData({
+						workflow: workflowEntity as unknown as WorkflowJSON,
+						nodeNames: bypassNodeNames,
+						instructions: dataDescription ? { dataDescription } : undefined,
+					}),
+			);
 
 			return normalizePinData(result as unknown as IPinData);
 		} catch (error) {
@@ -278,6 +300,7 @@ export class EvalExecutionService {
 		workflowEntity: IWorkflowBase,
 		user: User,
 		hints: MockHints,
+		timings: EvalTimings,
 		scenarioHints?: string,
 		interceptionEnabled = false,
 		vendorLlmRouting?: VendorLlmRouting,
@@ -328,8 +351,20 @@ export class EvalExecutionService {
 		try {
 			let serverUrl: string | undefined;
 			if (interceptionEnabled) {
+				// Wire server mocks the agent's own model turns (not HTTP APIs) → LLM completion mock.
+				const llmCompletionMockHandler = createLlmCompletionMockHandler({
+					scenarioHints,
+					globalContext: hints.globalContext,
+					nodeHints: hints.nodeHints,
+				});
+				const timedAiTurnHandler: EvalLlmMockHandler = async (request, node) =>
+					await timings.time(
+						'ai-turn',
+						node.type,
+						async () => await llmCompletionMockHandler(request, node),
+					);
 				wireServer = new LlmWireServer({
-					mockHandler,
+					mockHandler: timedAiTurnHandler,
 					rootToSubNode: vendorLlmRouting?.rootToSubNode,
 					onIntercept: (turn) => this.recordWireServerTurn(turn, nodeResults),
 					logger: this.logger,
@@ -356,6 +391,7 @@ export class EvalExecutionService {
 					additionalData.evalLlmMockHandler = this.createInterceptingHandler(
 						mockHandler,
 						nodeResults,
+						timings,
 					);
 				},
 			};
@@ -399,6 +435,7 @@ export class EvalExecutionService {
 					});
 				}
 			}
+			timings.summary(this.logger);
 		}
 	}
 
@@ -618,6 +655,7 @@ export class EvalExecutionService {
 	private createInterceptingHandler(
 		mockHandler: EvalLlmMockHandler,
 		nodeResults: Record<string, InstanceAiEvalNodeResult>,
+		timings: EvalTimings,
 	): EvalLlmMockHandler {
 		return async (
 			requestOptions: IHttpRequestOptions,
@@ -633,7 +671,11 @@ export class EvalExecutionService {
 				executionMode: 'mocked',
 			});
 			entry.executionMode = 'mocked';
-			const response = await mockHandler(requestOptions, node);
+			const response = await timings.time(
+				'http-mock',
+				node.name,
+				async () => await mockHandler(requestOptions, node),
+			);
 
 			entry.interceptedRequests.push({
 				url: requestOptions.url,
