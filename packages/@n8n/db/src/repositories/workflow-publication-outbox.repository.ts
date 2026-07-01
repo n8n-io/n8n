@@ -366,36 +366,25 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	}
 
 	/**
-	 * Count of outbox records grouped by status, for metrics gauges. Statuses with
-	 * no rows are simply absent from the map.
+	 * Per-status record count and oldest `createdAt`, for the metrics gauges, in a
+	 * single grouped query. Statuses with no rows are absent from the map. The
+	 * oldest-record-age gauge only reads the active (`pending`/`in_progress`)
+	 * entries; the count gauge reads them all.
 	 */
-	async getRecordCountsByStatus(): Promise<Map<Status, number>> {
+	async getRecordStatsByStatus(): Promise<Map<Status, { count: number; oldestCreatedAt: Date }>> {
 		const rows = await this.createQueryBuilder('o')
 			.select('o.status', 'status')
 			.addSelect('COUNT(*)', 'count')
-			.groupBy('o.status')
-			.getRawMany<{ status: Status; count: string | number }>();
-
-		return new Map(rows.map((row) => [row.status, Number(row.count)]));
-	}
-
-	/**
-	 * The `createdAt` of the oldest active (`pending`/`in_progress`) record per
-	 * status, for an oldest-active-record-age gauge. A status with no active rows is
-	 * absent from the map.
-	 */
-	async getOldestActiveRecordCreatedAtByStatus(): Promise<Map<Status, Date>> {
-		const rows = await this.createQueryBuilder('o')
-			.select('o.status', 'status')
 			.addSelect('MIN(o.createdAt)', 'oldestCreatedAt')
-			.where('o.status IN (:pending, :inProgress)', {
-				pending: Status.Pending,
-				inProgress: Status.InProgress,
-			})
 			.groupBy('o.status')
-			.getRawMany<{ status: Status; oldestCreatedAt: string | Date }>();
+			.getRawMany<{ status: Status; count: string | number; oldestCreatedAt: string | Date }>();
 
-		return new Map(rows.map((row) => [row.status, this.parseTimestamp(row.oldestCreatedAt)]));
+		return new Map(
+			rows.map((row) => [
+				row.status,
+				{ count: Number(row.count), oldestCreatedAt: this.parseTimestamp(row.oldestCreatedAt) },
+			]),
+		);
 	}
 
 	/**

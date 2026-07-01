@@ -180,10 +180,10 @@ describe('PrometheusWorkflowPublicationMetricsService', () => {
 
 	describe('gauge collection', () => {
 		it('zero-fills statuses with no records on the outbox records gauge', async () => {
-			outboxRepository.getRecordCountsByStatus.mockResolvedValue(
+			outboxRepository.getRecordStatsByStatus.mockResolvedValue(
 				new Map([
-					['pending', 2],
-					['failed', 1],
+					['pending', { count: 2, oldestCreatedAt: new Date() }],
+					['failed', { count: 1, oldestCreatedAt: new Date() }],
 				]),
 			);
 			service.init();
@@ -200,8 +200,8 @@ describe('PrometheusWorkflowPublicationMetricsService', () => {
 
 		it('reports the oldest active record age in seconds and 0 for missing statuses', async () => {
 			const tenSecondsAgo = new Date(Date.now() - 10_000);
-			outboxRepository.getOldestActiveRecordCreatedAtByStatus.mockResolvedValue(
-				new Map([['pending', tenSecondsAgo]]),
+			outboxRepository.getRecordStatsByStatus.mockResolvedValue(
+				new Map([['pending', { count: 1, oldestCreatedAt: tenSecondsAgo }]]),
 			);
 			service.init();
 
@@ -215,31 +215,35 @@ describe('PrometheusWorkflowPublicationMetricsService', () => {
 			expect(set).toHaveBeenCalledWith({ status: 'in_progress' }, 0);
 		});
 
-		it('caches the record counts query with the configured interval as TTL', async () => {
-			outboxRepository.getRecordCountsByStatus.mockResolvedValue(new Map([['pending', 2]]));
+		it('caches the record stats query with the configured interval as TTL', async () => {
+			const createdAt = new Date();
+			outboxRepository.getRecordStatsByStatus.mockResolvedValue(
+				new Map([['pending', { count: 2, oldestCreatedAt: createdAt }]]),
+			);
 			service.init();
 
 			await gaugeOptsFor('n8n_workflow_publication_outbox_records').collect.call({ set: vi.fn() });
 
-			// 60s interval → 60_000ms TTL.
+			// 60s interval → 60_000ms TTL; Dates are serialized to epoch ms.
 			expect(cacheService.set).toHaveBeenCalledWith(
-				'metrics:workflow-publication:outbox-record-counts',
-				[['pending', 2]],
+				'metrics:workflow-publication:outbox-record-stats',
+				[['pending', { count: 2, oldestMs: createdAt.getTime() }]],
 				60_000,
 			);
 		});
 
-		it('serves the records gauge from cache without querying the database', async () => {
+		it('serves the gauges from cache without querying the database', async () => {
+			const tenSecondsAgo = Date.now() - 10_000;
 			cacheService.get.mockResolvedValue([
-				['pending', 5],
-				['completed', 7],
+				['pending', { count: 5, oldestMs: tenSecondsAgo }],
+				['completed', { count: 7, oldestMs: tenSecondsAgo }],
 			]);
 			service.init();
 
 			const set = vi.fn();
 			await gaugeOptsFor('n8n_workflow_publication_outbox_records').collect.call({ set });
 
-			expect(outboxRepository.getRecordCountsByStatus).not.toHaveBeenCalled();
+			expect(outboxRepository.getRecordStatsByStatus).not.toHaveBeenCalled();
 			expect(set).toHaveBeenCalledWith({ status: 'pending' }, 5);
 			expect(set).toHaveBeenCalledWith({ status: 'completed' }, 7);
 		});

@@ -17,11 +17,12 @@ const ACTIVE_STATUSES = [
 	WorkflowPublicationOutboxStatus.InProgress,
 ];
 
-const RECORD_COUNTS_CACHE_KEY = 'metrics:workflow-publication:outbox-record-counts';
-const OLDEST_ACTIVE_CACHE_KEY = 'metrics:workflow-publication:oldest-active-record';
+const RECORD_STATS_CACHE_KEY = 'metrics:workflow-publication:outbox-record-stats';
 
-/** Serializable cache shape for a `Map<status, value>` (Maps don't round-trip JSON). */
-type StatusEntries = Array<[WorkflowPublicationOutboxStatus, number]>;
+/** Per-status count and oldest-record epoch ms (`oldestMs`) for a single status. */
+type StatusStats = { count: number; oldestMs: number };
+/** Serializable cache shape for a `Map<status, StatusStats>` (Maps don't round-trip JSON). */
+type StatusStatsEntries = Array<[WorkflowPublicationOutboxStatus, StatusStats]>;
 
 /**
  * Collects Prometheus metrics for the workflow publication service. Opt-in via
@@ -61,24 +62,34 @@ export class PrometheusWorkflowPublicationMetricsService implements PrometheusMe
 		const repository = this.outboxRepository;
 		const cacheService = this.cacheService;
 		const prefix = this.config.prefix;
-		// Both gauges hit the DB on every scrape; cache the results so a tight scrape
-		// interval doesn't hammer the outbox table.
+		// One grouped query (COUNT + MIN createdAt per status) feeds both gauges;
+		// cache it so a tight scrape interval doesn't hammer the outbox table. Within
+		// a scrape, whichever gauge collects first populates the cache for the other.
 		const cacheTtl = this.config.workflowPublicationMetricInterval * Time.seconds.toMilliseconds;
+
+		const loadStats = async (): Promise<StatusStatsEntries> => {
+			let entries = await cacheService.get<StatusStatsEntries>(RECORD_STATS_CACHE_KEY);
+			if (entries === undefined) {
+				const stats = await repository.getRecordStatsByStatus();
+				entries = [...stats].map(
+					([status, { count, oldestCreatedAt }]): [
+						WorkflowPublicationOutboxStatus,
+						StatusStats,
+					] => [status, { count, oldestMs: oldestCreatedAt.getTime() }],
+				);
+				await cacheService.set(RECORD_STATS_CACHE_KEY, entries, cacheTtl);
+			}
+			return entries;
+		};
 
 		new promClient.Gauge({
 			name: `${prefix}workflow_publication_outbox_records`,
 			help: 'Number of workflow publication outbox records by status.',
 			labelNames: ['status'],
 			async collect() {
-				let entries = await cacheService.get<StatusEntries>(RECORD_COUNTS_CACHE_KEY);
-				if (entries === undefined) {
-					entries = [...(await repository.getRecordCountsByStatus())];
-					await cacheService.set(RECORD_COUNTS_CACHE_KEY, entries, cacheTtl);
-				}
-
-				const byStatus = new Map(entries);
+				const byStatus = new Map(await loadStats());
 				for (const status of ALL_STATUSES) {
-					this.set({ status }, byStatus.get(status) ?? 0);
+					this.set({ status }, byStatus.get(status)?.count ?? 0);
 				}
 			},
 		});
@@ -88,22 +99,10 @@ export class PrometheusWorkflowPublicationMetricsService implements PrometheusMe
 			help: 'Age in seconds of the oldest active (pending/in_progress) workflow publication outbox record by status.',
 			labelNames: ['status'],
 			async collect() {
-				let entries = await cacheService.get<StatusEntries>(OLDEST_ACTIVE_CACHE_KEY);
-				if (entries === undefined) {
-					const oldest = await repository.getOldestActiveRecordCreatedAtByStatus();
-					entries = [...oldest].map(
-						([status, createdAt]): [WorkflowPublicationOutboxStatus, number] => [
-							status,
-							createdAt.getTime(),
-						],
-					);
-					await cacheService.set(OLDEST_ACTIVE_CACHE_KEY, entries, cacheTtl);
-				}
-
-				const byStatus = new Map(entries);
+				const byStatus = new Map(await loadStats());
 				const now = Date.now();
 				for (const status of ACTIVE_STATUSES) {
-					const oldestMs = byStatus.get(status);
+					const oldestMs = byStatus.get(status)?.oldestMs;
 					this.set(
 						{ status },
 						oldestMs !== undefined ? (now - oldestMs) * Time.milliseconds.toSeconds : 0,

@@ -430,40 +430,16 @@ describe('WorkflowPublicationOutboxRepository', () => {
 		});
 	});
 
-	describe('getRecordCountsByStatus', () => {
-		it('returns counts grouped by status', async () => {
-			await repository.insert([
-				{ workflowId: 'wf-1', publishedVersionId: 'v', status: 'pending' },
-				{ workflowId: 'wf-2', publishedVersionId: 'v', status: 'in_progress' },
-				{ workflowId: 'wf-3', publishedVersionId: 'v', status: 'completed' },
-				{ workflowId: 'wf-4', publishedVersionId: 'v', status: 'completed' },
-				{ workflowId: 'wf-5', publishedVersionId: 'v', status: 'failed' },
-				{ workflowId: 'wf-6', publishedVersionId: 'v', status: 'partial_success' },
-			]);
-
-			const counts = await repository.getRecordCountsByStatus();
-
-			expect(Object.fromEntries(counts)).toEqual({
-				pending: 1,
-				in_progress: 1,
-				completed: 2,
-				failed: 1,
-				partial_success: 1,
-			});
-		});
-
-		it('returns an empty map when there are no records', async () => {
-			expect((await repository.getRecordCountsByStatus()).size).toBe(0);
-		});
-	});
-
-	describe('getOldestActiveRecordCreatedAtByStatus', () => {
-		it('returns the oldest createdAt per active status and omits inactive statuses', async () => {
+	describe('getRecordStatsByStatus', () => {
+		it('returns the count and oldest createdAt grouped by status in one query', async () => {
 			await repository.insert([
 				{ workflowId: 'wf-1', publishedVersionId: 'v', status: 'pending' },
 				{ workflowId: 'wf-2', publishedVersionId: 'v', status: 'pending' },
 				{ workflowId: 'wf-3', publishedVersionId: 'v', status: 'in_progress' },
 				{ workflowId: 'wf-4', publishedVersionId: 'v', status: 'completed' },
+				{ workflowId: 'wf-5', publishedVersionId: 'v', status: 'completed' },
+				{ workflowId: 'wf-6', publishedVersionId: 'v', status: 'failed' },
+				{ workflowId: 'wf-7', publishedVersionId: 'v', status: 'partial_success' },
 			]);
 
 			const all = await repository.find();
@@ -473,22 +449,23 @@ describe('WorkflowPublicationOutboxRepository', () => {
 					.map((record) => record.createdAt.getTime()),
 			);
 
-			const byStatus = await repository.getOldestActiveRecordCreatedAtByStatus();
+			const stats = await repository.getRecordStatsByStatus();
 
-			expect(byStatus.get('pending')?.getTime()).toBe(oldestPending);
-			expect(byStatus.get('in_progress')).toBeInstanceOf(Date);
-			// `completed` is terminal, not active, so it must not appear.
-			expect(byStatus.has('completed')).toBe(false);
-		});
-
-		it('returns an empty map when there are no active records', async () => {
-			await repository.insert({
-				workflowId: 'wf-1',
-				publishedVersionId: 'v',
-				status: 'completed',
+			const counts = Object.fromEntries([...stats].map(([status, s]) => [status, s.count]));
+			expect(counts).toEqual({
+				pending: 2,
+				in_progress: 1,
+				completed: 2,
+				failed: 1,
+				partial_success: 1,
 			});
 
-			expect((await repository.getOldestActiveRecordCreatedAtByStatus()).size).toBe(0);
+			expect(stats.get('pending')?.oldestCreatedAt.getTime()).toBe(oldestPending);
+			expect(stats.get('completed')?.oldestCreatedAt).toBeInstanceOf(Date);
+		});
+
+		it('returns an empty map when there are no records', async () => {
+			expect((await repository.getRecordStatsByStatus()).size).toBe(0);
 		});
 	});
 });
