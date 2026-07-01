@@ -14,6 +14,12 @@ import { TimeZoneSchema } from './timezone.schema';
  */
 export const UNLIMITED_CREDITS = -1;
 
+/**
+ * Transient setup-state tag for an AI Gateway managed credential selection.
+ * Handlers convert this tag to the Ai Gateway managed credential shape.
+ */
+export const AI_GATEWAY_MANAGED_TAG = '__AI_GATEWAY_MANAGED__';
+
 // ---------------------------------------------------------------------------
 // Session grant keys ("always allow")
 // ---------------------------------------------------------------------------
@@ -218,6 +224,7 @@ export const workflowSetupNodeSchema = z.object({
 		type: z.string(),
 		typeVersion: z.number(),
 		parameters: z.record(z.unknown()),
+		// `id` is null for AI Gateway managed credentials
 		credentials: z
 			.record(
 				z.object({

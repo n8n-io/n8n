@@ -1,8 +1,7 @@
+import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import type { NodeJSON } from '@n8n/workflow-sdk';
 
 import type { InstanceAiContext } from '../../types';
-
-export const AI_GATEWAY_SENTINEL = '__AI_GATEWAY_MANAGED__';
 
 export interface AiGatewayCredential {
 	id: null;
@@ -10,6 +9,7 @@ export interface AiGatewayCredential {
 	__aiGatewayManaged: true;
 }
 
+/** Canonical AI Gateway-managed credential written to workflow nodes at apply time. */
 export const AI_GATEWAY_CREDENTIAL: AiGatewayCredential = {
 	id: null,
 	name: '',
@@ -51,7 +51,7 @@ export async function resolveCredentialForApply(
 	credId: string,
 	context: Pick<InstanceAiContext, 'credentialService'>,
 ): Promise<ResolveCredentialResult> {
-	if (credId === AI_GATEWAY_SENTINEL) {
+	if (credId === AI_GATEWAY_MANAGED_TAG) {
 		return { resolved: true, credential: { ...AI_GATEWAY_CREDENTIAL } };
 	}
 
