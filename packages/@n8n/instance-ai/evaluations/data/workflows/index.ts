@@ -1,9 +1,10 @@
-import { readFileSync, readdirSync } from 'fs';
-import { basename, dirname, join, resolve } from 'path';
+import { readFileSync } from 'fs';
+import { basename, dirname, resolve } from 'path';
 
-import { WorkflowTestCaseSchema } from './schema';
 import { loadConversationSeed } from '../../harness/conversation-seed';
+import { EvalTestCaseSchema } from '../../harness/schema';
 import type { WorkflowTestCase } from '../../types';
+import { getJsonFiles } from '../../utils/get-json-files';
 
 export interface WorkflowTestCaseWithFile {
 	testCase: WorkflowTestCase;
@@ -23,7 +24,7 @@ function parseTestCaseFile(filePath: string): WorkflowTestCase {
 		);
 	}
 
-	const parsed = WorkflowTestCaseSchema.safeParse(raw);
+	const parsed = EvalTestCaseSchema.safeParse(raw);
 	if (!parsed.success) {
 		const issues = parsed.error.issues
 			.map((i) => `  - ${i.path.join('.') || '(root)'}: ${i.message}`)
@@ -48,47 +49,13 @@ function parseTestCaseFile(filePath: string): WorkflowTestCase {
 	return testCase;
 }
 
-/** Split a comma-separated CLI value into a normalized list of substring tokens. */
-export function parseSubstringList(value: string | undefined): string[] {
-	if (!value) return [];
-	return value
-		.split(',')
-		.map((s) => s.trim().toLowerCase())
-		.filter((s) => s.length > 0);
-}
-
-function getJsonFiles(filter?: string, exclude?: string): string[] {
-	const allFiles = readdirSync(__dirname)
-		.filter((f) => f.endsWith('.json'))
-		.map((f) => join(__dirname, f));
-
-	let files = allFiles;
-	const includeTokens = parseSubstringList(filter);
-	if (includeTokens.length > 0) {
-		files = files.filter((f) => {
-			const lower = basename(f).toLowerCase();
-			return includeTokens.some((t) => lower.includes(t));
-		});
-	}
-
-	const excludeTokens = parseSubstringList(exclude);
-	if (excludeTokens.length > 0) {
-		files = files.filter((f) => {
-			const lower = basename(f).toLowerCase();
-			return !excludeTokens.some((t) => lower.includes(t));
-		});
-	}
-
-	return files;
-}
-
 /** Load test cases with their file slugs (for LangSmith dataset sync derived IDs). */
 export function loadWorkflowTestCasesWithFiles(
 	filter?: string,
 	exclude?: string,
 	tier?: string,
 ): WorkflowTestCaseWithFile[] {
-	const cases = getJsonFiles(filter, exclude).map((f) => ({
+	const cases = getJsonFiles(__dirname, filter, exclude).map((f) => ({
 		testCase: parseTestCaseFile(f),
 		fileSlug: basename(f, '.json'),
 	}));

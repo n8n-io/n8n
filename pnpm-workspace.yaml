@@ -54,7 +54,6 @@ catalog:
   '@modelcontextprotocol/ext-apps': 1.3.2
   '@modelcontextprotocol/sdk': 1.26.0
   '@mozilla/readability': ^0.6.0
-  '@n8n/typeorm': 0.3.20-18
   '@n8n_io/ai-assistant-sdk': 1.22.0
   '@openrouter/ai-sdk-provider': ^2.8.0
   '@rudderstack/rudder-sdk-node': 3.0.5
@@ -106,7 +105,8 @@ catalog:
   '@types/uuid': ^11.0.0
   '@types/ws': ^8.18.1
   '@types/xml2js': ^0.4.14
-  '@vitest/coverage-v8': 4.1.1
+  '@vitest/browser-playwright': ^4.1.9
+  '@vitest/coverage-v8': 4.1.9
   agent-browser: 0.26.0
   ai: ^6.0.197
   axios: 1.18.0
@@ -196,7 +196,7 @@ catalog:
   vite: ^8.0.2
   vite-plugin-dts: ^4.5.4
   vite-plugin-singlefile: 2.3.3
-  vitest: ^4.1.1
+  vitest: ^4.1.9
   vitest-mock-extended: ^3.1.0
   vm2: 3.11.5
   xml2js: 0.6.2

@@ -11,6 +11,7 @@ import {
 	type ChatHubSessionDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { parseMessage } from '@n8n/chat-hub';
 import { GlobalConfig } from '@n8n/config';
 import { User } from '@n8n/db';
 import type { EntityManager } from '@n8n/db';
@@ -49,7 +50,6 @@ import {
 import { ChatHubMessageRepository } from './chat-message.repository';
 import { ChatHubSessionRepository } from './chat-session.repository';
 import { ChatStreamService } from './chat-stream.service';
-import { parseMessage } from '@n8n/chat-hub';
 
 @Service()
 export class ChatHubService {

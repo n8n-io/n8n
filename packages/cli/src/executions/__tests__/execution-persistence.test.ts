@@ -10,10 +10,10 @@ import {
 	type ExecutionRepository,
 } from '@n8n/db';
 import { QueryFailedError } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
 import type { BinaryDataService, ErrorReporter, StorageConfig } from 'n8n-core';
 import type { IBinaryData, IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
 import { createEmptyRunExecutionData, UnexpectedError } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';
 import type { EventService } from '@/events/event.service';
@@ -38,7 +38,7 @@ describe('ExecutionPersistence', () => {
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	const workflowData = mock<IWorkflowBase>({
@@ -74,7 +74,7 @@ describe('ExecutionPersistence', () => {
 	};
 
 	const createMockTx = (tx: EntityManager) =>
-		jest.fn().mockImplementation(async <T>(cb: (em: EntityManager) => Promise<T>) => await cb(tx));
+		vi.fn().mockImplementation(async <T>(cb: (em: EntityManager) => Promise<T>) => await cb(tx));
 
 	const createPersistenceService = (
 		modeTag: 'db' | 'fs' | 's3' | 'az',
@@ -273,7 +273,7 @@ describe('ExecutionPersistence', () => {
 
 			it('converts unique-violation into DuplicateExecutionError when payload has a deduplicationKey', async () => {
 				const uniqueViolation = makeUniqueViolationError();
-				executionRepository.manager.transaction = jest.fn().mockRejectedValue(uniqueViolation);
+				executionRepository.manager.transaction = vi.fn().mockRejectedValue(uniqueViolation);
 
 				const payloadWithKey: CreateExecutionPayload = {
 					...createPayload,
@@ -291,7 +291,7 @@ describe('ExecutionPersistence', () => {
 
 			it('rethrows original unique-violation when payload has no deduplicationKey', async () => {
 				const uniqueViolation = makeUniqueViolationError();
-				executionRepository.manager.transaction = jest.fn().mockRejectedValue(uniqueViolation);
+				executionRepository.manager.transaction = vi.fn().mockRejectedValue(uniqueViolation);
 
 				await expect(executionPersistence.create(createPayload)).rejects.toBe(uniqueViolation);
 			});
@@ -302,7 +302,7 @@ describe('ExecutionPersistence', () => {
 					[],
 					Object.assign(new Error('not null'), { code: '23502' }),
 				);
-				executionRepository.manager.transaction = jest.fn().mockRejectedValue(otherError);
+				executionRepository.manager.transaction = vi.fn().mockRejectedValue(otherError);
 
 				const payloadWithKey: CreateExecutionPayload = {
 					...createPayload,
@@ -316,7 +316,7 @@ describe('ExecutionPersistence', () => {
 				const otherUniqueViolation = makeUniqueViolationError(
 					'duplicate key value violates unique constraint on someOtherColumn',
 				);
-				executionRepository.manager.transaction = jest.fn().mockRejectedValue(otherUniqueViolation);
+				executionRepository.manager.transaction = vi.fn().mockRejectedValue(otherUniqueViolation);
 
 				const payloadWithKey: CreateExecutionPayload = {
 					...createPayload,
@@ -348,7 +348,7 @@ describe('ExecutionPersistence', () => {
 						[],
 						Object.assign(new Error(message), { code }),
 					);
-					executionRepository.manager.transaction = jest.fn().mockRejectedValue(sqliteError);
+					executionRepository.manager.transaction = vi.fn().mockRejectedValue(sqliteError);
 
 					const payloadWithKey: CreateExecutionPayload = {
 						...createPayload,
@@ -1867,7 +1867,7 @@ describe('ExecutionPersistence', () => {
 		const target = { workflowId: 'wf-1', executionId: 'exec-1', storedAt: 'db' as const };
 
 		it('should soft-delete with backdated `deletedAt` when pruning is enabled', async () => {
-			jest.useFakeTimers();
+			vi.useFakeTimers();
 			const now = Date.now();
 
 			executionsConfig.pruneData = true;
@@ -1881,7 +1881,7 @@ describe('ExecutionPersistence', () => {
 			});
 			expect(executionRepository.deleteByIds).not.toHaveBeenCalled();
 
-			jest.useRealTimers();
+			vi.useRealTimers();
 		});
 
 		it('should hard-delete immediately when pruning is disabled', async () => {

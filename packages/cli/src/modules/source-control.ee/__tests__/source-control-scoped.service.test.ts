@@ -1,6 +1,6 @@
 import type { AuthenticatedRequest, Project } from '@n8n/db';
 import { hasGlobalScope } from '@n8n/permissions';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
@@ -8,9 +8,9 @@ import type { SourceControlContextFactory } from '../source-control-context.fact
 import { SourceControlScopedService } from '../source-control-scoped.service';
 import type { SourceControlContext } from '../types/source-control-context';
 
-jest.mock('@n8n/permissions', () => ({
-	...jest.requireActual('@n8n/permissions'),
-	hasGlobalScope: jest.fn(),
+vi.mock('@n8n/permissions', async () => ({
+	...(await vi.importActual<typeof import('@n8n/permissions')>('@n8n/permissions')),
+	hasGlobalScope: vi.fn(),
 }));
 
 describe('SourceControlScopedService', () => {
@@ -20,13 +20,13 @@ describe('SourceControlScopedService', () => {
 	const req = mock<AuthenticatedRequest>({ user: {} });
 
 	beforeEach(() => {
-		jest.mocked(hasGlobalScope).mockReset().mockReturnValue(false);
+		vi.mocked(hasGlobalScope).mockReset().mockReturnValue(false);
 		contextFactory.createContext.mockReset();
 	});
 
 	describe('ensureIsAllowedToGetStatus', () => {
 		it('should allow callers holding any global source control scope without touching projects', async () => {
-			jest.mocked(hasGlobalScope).mockReturnValue(true);
+			vi.mocked(hasGlobalScope).mockReturnValue(true);
 
 			await expect(service.ensureIsAllowedToGetStatus(req)).resolves.toBeUndefined();
 

@@ -6,8 +6,8 @@ import type { Response } from 'express';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { resolveImportPackageUpload } from '@/modules/n8n-packages/utils/import-package-upload';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
+import { resolveImportPackageUpload } from '@/modules/n8n-packages/utils/import-package-upload';
 
 import type { PackageRequest } from '../../../types';
 import type { PublicAPIEndpoint } from '../../shared/handler.types';

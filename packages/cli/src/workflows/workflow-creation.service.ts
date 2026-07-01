@@ -221,6 +221,7 @@ export class WorkflowCreationService {
 				workflow,
 				workflow.id,
 				autosaved,
+				undefined,
 				transactionManager,
 			);
 

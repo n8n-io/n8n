@@ -13,6 +13,7 @@ import path from 'path';
 import { getTestCaseAnchorId } from './report-anchors';
 import { groupOutcomesByDimension } from '../binaryChecks/aggregate';
 import { CHECK_DIMENSIONS, type CheckDimension, type CheckOutcome } from '../binaryChecks/types';
+import { getCaseRunStatus, getCaseRunStatusLabel, getRunScoredCounts } from '../summary';
 import type {
 	BuildExpectationResult,
 	ConversationMetrics,
@@ -334,7 +335,8 @@ function plannerReview(result: WorkflowTestCaseResult): StageReview {
 	const workflowItems = planCalls
 		.map((call) => {
 			const item = asRecord(call.args.item);
-			const itemKind = getString(item?.kind);
+			if (!item) return undefined;
+			const itemKind = getString(item.kind);
 			if (itemKind !== 'workflow') return undefined;
 			const name = getString(item.name);
 			const summary =
@@ -346,7 +348,8 @@ function plannerReview(result: WorkflowTestCaseResult): StageReview {
 	const checkpointItems = planCalls
 		.map((call) => {
 			const item = asRecord(call.args.item);
-			const itemKind = getString(item?.kind);
+			if (!item) return undefined;
+			const itemKind = getString(item.kind);
 			if (itemKind !== 'checkpoint') return undefined;
 			return getString(item.title) ?? getString(item.instructions);
 		})
@@ -1159,17 +1162,15 @@ function renderWorkflowSummary(result: WorkflowTestCaseResult): string {
 
 function renderTestCase(result: WorkflowTestCaseResult, tcIndex: number): string {
 	// Pass rate counts scenarios AND build expectations as units (incomplete expectations excluded).
-	const scoredExpectations = (result.buildExpectationResults ?? []).filter((e) => !e.incomplete);
-	const passCount =
-		result.executionScenarioResults.filter((sr) => sr.success).length +
-		scoredExpectations.filter((e) => e.pass).length;
-	const totalCount = result.executionScenarioResults.length + scoredExpectations.length;
+	const { passCount, totalCount } = getRunScoredCounts(result);
 	const allPass = passCount === totalCount && totalCount > 0;
-	const statusClass = result.workflowBuildSuccess ? (allPass ? 'pass' : 'mixed') : 'fail';
+	const caseStatus = getCaseRunStatus(result);
+	const statusClass = caseStatus === 'build_failed' ? 'fail' : allPass ? 'pass' : 'mixed';
 
-	const buildBadge = result.workflowBuildSuccess
-		? '<span class="badge badge-pass">BUILT</span>'
-		: '<span class="badge badge-fail">BUILD FAILED</span>';
+	const buildBadge =
+		caseStatus === 'build_failed'
+			? '<span class="badge badge-fail">BUILD FAILED</span>'
+			: `<span class="badge badge-pass">${getCaseRunStatusLabel(result)}</span>`;
 
 	const scoreBadge =
 		totalCount > 0
@@ -1205,7 +1206,7 @@ function renderTestCase(result: WorkflowTestCaseResult, tcIndex: number): string
 		scenariosHtml = result.executionScenarioResults
 			.map((sr, i) => renderScenario(sr, tcIndex * 100 + i, result))
 			.join('');
-	} else if (!result.workflowBuildSuccess) {
+	} else if (caseStatus === 'build_failed') {
 		const errorDetail = result.buildError
 			? `<div class="error-box">${escapeHtml(result.buildError)}</div>`
 			: '';
@@ -1255,12 +1256,21 @@ function renderTestCase(result: WorkflowTestCaseResult, tcIndex: number): string
 
 export function generateWorkflowReport(results: WorkflowTestCaseResult[]): string {
 	const totalTestCases = results.length;
-	const builtCount = results.filter((r) => r.workflowBuildSuccess).length;
-	const allScenarios = results.flatMap((r) => r.executionScenarioResults);
-	const passCount = allScenarios.filter((sr) => sr.success).length;
-	const failCount = allScenarios.length - passCount;
-	const totalScenarios = allScenarios.length;
-	const passRate = totalScenarios > 0 ? Math.round((passCount / totalScenarios) * 100) : 0;
+	const checkedOrBuiltCount = results.filter((r) => getCaseRunStatus(r) !== 'build_failed').length;
+	const scoredCounts = results.reduce(
+		(counts, result) => {
+			const resultCounts = getRunScoredCounts(result);
+			counts.passCount += resultCounts.passCount;
+			counts.totalCount += resultCounts.totalCount;
+			return counts;
+		},
+		{ passCount: 0, totalCount: 0 },
+	);
+	const passCount = scoredCounts.passCount;
+	const failCount = scoredCounts.totalCount - passCount;
+	const totalChecks = scoredCounts.totalCount;
+	const totalScenarios = results.reduce((count, r) => count + r.executionScenarioResults.length, 0);
+	const passRate = totalChecks > 0 ? Math.round((passCount / totalChecks) * 100) : 0;
 
 	return `<!DOCTYPE html>
 <html lang="en">
@@ -1529,7 +1539,7 @@ export function generateWorkflowReport(results: WorkflowTestCaseResult[]): strin
 <body>
 
 <h1>Workflow evaluation report</h1>
-<p class="subtitle">Generated ${new Date().toLocaleString()} &mdash; ${String(totalScenarios)} scenarios across ${String(totalTestCases)} test cases</p>
+<p class="subtitle">Generated ${new Date().toLocaleString()} &mdash; ${String(totalChecks)} checks (${String(totalScenarios)} scenarios) across ${String(totalTestCases)} test cases</p>
 
 <div class="dashboard">
 	<div class="stat-card">
@@ -1545,8 +1555,8 @@ export function generateWorkflowReport(results: WorkflowTestCaseResult[]): strin
 		<div class="value${failCount > 0 ? ' fail' : ''}">${String(failCount)}</div>
 	</div>
 	<div class="stat-card">
-		<div class="label">Built</div>
-		<div class="value${builtCount === totalTestCases ? ' pass' : ' mixed'}">${String(builtCount)}/${String(totalTestCases)}</div>
+		<div class="label">Checked/Built</div>
+		<div class="value${checkedOrBuiltCount === totalTestCases ? ' pass' : ' mixed'}">${String(checkedOrBuiltCount)}/${String(totalTestCases)}</div>
 	</div>
 </div>
 

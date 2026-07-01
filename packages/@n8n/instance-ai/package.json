@@ -1,6 +1,6 @@
 {
   "name": "@n8n/instance-ai",
-  "version": "1.13.0",
+  "version": "1.14.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "typecheck": "tsc --noEmit",
@@ -14,6 +14,7 @@
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "eval:instance-ai": "tsx evaluations/cli/index.ts",
+    "eval:agents": "tsx evaluations/cli/index.ts --tier agents",
     "eval:build-mcp-manifest": "tsx evaluations/cli/build-mcp-manifest.ts",
     "eval:pairwise": "tsx evaluations/cli/pairwise.ts",
     "eval:pairwise:report": "tsx evaluations/cli/report.ts",

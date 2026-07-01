@@ -1,7 +1,7 @@
 import { UNLIMITED_CREDITS } from '@n8n/api-types';
 import type { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { AiService } from '@/services/ai.service';
 
@@ -12,12 +12,8 @@ const fakeUser = { id: 'user-1' } as User;
 
 function createClient() {
 	return {
-		getBuilderApiProxyToken: jest
-			.fn()
-			.mockResolvedValue({ tokenType: 'Bearer', accessToken: 'tok' }),
-		getBuilderInstanceCredits: jest
-			.fn()
-			.mockResolvedValue({ creditsQuota: 100, creditsClaimed: 5 }),
+		getBuilderApiProxyToken: vi.fn().mockResolvedValue({ tokenType: 'Bearer', accessToken: 'tok' }),
+		getBuilderInstanceCredits: vi.fn().mockResolvedValue({ creditsQuota: 100, creditsClaimed: 5 }),
 	};
 }
 
@@ -29,7 +25,7 @@ describe('InstanceAiModelService', () => {
 	let service: InstanceAiModelService;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		service = new InstanceAiModelService(settingsService, aiService, outboundHttp);
 	});
 

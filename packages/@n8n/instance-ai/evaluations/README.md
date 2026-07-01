@@ -2,9 +2,10 @@
 
 Tests whether workflows built by Instance AI actually work by executing them with LLM-generated mock HTTP responses. No real credentials or external services are involved.
 
-Four harnesses live here:
+Five harnesses live here:
 
 - **`eval:instance-ai`** — end-to-end build + mocked execution + LLM verification (drives a running n8n instance)
+- **`eval:agents`** — user-intent / agent-building rubric loaded from the `agents` dataset tier in `data/agents/`
 - **`eval:subagent`** — legacy command name for the workflow-build compatibility corpus; it drives the live orchestrator/skill build path, scored by binary checks
 - **`eval:discovery`** — orchestrator in-process, scored against required or forbidden tool/dispatch events (no n8n server)
 - **`eval:pairwise`** — live orchestrator workflow builds, scored by an LLM judge panel against do/don't lists. Intended for head-to-head comparison with `ai-workflow-builder.ee` on the same dataset
@@ -145,27 +146,28 @@ dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai --iterations 3
 | `--experiment-name` | auto | LangSmith experiment prefix (defaults to `{branch}-{sha}` in CI or `local-{branch}-{sha}-dirty?` locally) |
 | `--iterations` | `1` | Run each test case N times with fresh builds |
 | `--tier` | — | Filter to test cases whose `datasets` array contains this value (e.g. `--tier pr` for the PR-time set). Combines with `--filter`/`--exclude`. |
-| `--source` | `disk` | Where test cases come from. `disk` (default) reads `data/workflows/`; `langtracer` pulls a suite from LangTracer's REST API — see [Sourcing from LangTracer](#sourcing-test-cases-from-langtracer) |
+| `--source` | `disk` | Where test cases come from. `disk` (default) reads `data/workflows/` and `data/agents/`; `langtracer` pulls a suite from LangTracer's REST API — see [Sourcing from LangTracer](#sourcing-test-cases-from-langtracer) |
 | `--suite` | — | LangTracer suite slug (or numeric id) to pull when `--source langtracer` (required in that mode) |
 
 **pass@k / pass^k**: with `--iterations N`, each scenario runs N times. `pass@k` is the fraction of scenarios that passed *at least once*; `pass^k` is the fraction that passed *every* time. `pass@k` shows whether something is *possible*; `pass^k` shows whether it's *reliable*.
 
 ### Test-case datasets (logical groupings)
 
-Each test case declares a `datasets` array in its JSON (default `["full"]` if omitted). The value identifies one or more logical groupings the case belongs to. Two named groupings exist today:
+Each test case declares a `datasets` array in its JSON (default `["full"]` if omitted). The value identifies one or more logical groupings the case belongs to. Named groupings include:
 
 | Value | What it means |
 |------|----------------|
 | `full` | Default — every case runs in this grouping. Use for nightly / full-suite runs. |
 | `pr` | Curated thin set for PR-time runs. ~6 cases, chosen for capability diversity and high baseline reliability. |
+| `agents` | User-intent / agent-building rubric cases loaded from `data/agents/`. |
 
-A case can belong to multiple groupings — e.g. PR-tier cases declare `"datasets": ["pr", "full"]` so they run in both contexts. On sync, each value is propagated to the LangSmith example as a split alongside the file slug, so `--tier <name>` translates to a server-side splits filter.
+A case can belong to multiple groupings — e.g. PR-tier cases declare `"datasets": ["pr", "full"]` so they run in both contexts. Agent intent cases declare `"datasets": ["agents"]` and can be run with `pnpm eval:agents` or `pnpm eval:instance-ai --tier agents`. On sync, each value is propagated to the LangSmith example as a split alongside the file slug, so `--tier <name>` translates to a server-side splits filter.
 
 **Adding a case to `pr`**: edit the case's JSON, add `"pr"` to its `datasets` array, re-sync. No promotion process is enforced today — use judgment about reliability + capability coverage when curating.
 
 ### Sourcing test cases from LangTracer
 
-By default the runner reads the JSON cases in `data/workflows/` (disk). Pass `--source langtracer --suite <slug>` to instead pull a suite from [LangTracer](https://github.com/n8n-io/lang-tracer) over its REST API (`GET /api/v1/suites/:id/export`), validated through the same `WorkflowTestCaseSchema`. Disk stays the default, so existing local runs and CI (which never pass `--source`) are unaffected.
+By default the runner reads the JSON cases in `data/workflows/` (disk). Pass `--source langtracer --suite <slug>` to instead pull a suite from [LangTracer](https://github.com/n8n-io/lang-tracer) over its REST API (`GET /api/v1/suites/:id/export`), validated through the same `EvalTestCaseSchema`. Disk stays the default, so existing local runs and CI (which never pass `--source`) are unaffected.
 
 Set these in `.env.local`:
 
@@ -225,7 +227,7 @@ A test case can declare optional natural-language assertions, split by what they
 - **`processExpectations: string[]`** — about *how the build went* (clarifications asked, push-back, ordering). Judged from the **conversation transcript** (plus the workflow and conversation metrics). They require a transcript, so they are **skipped in prebuilt/MCP runs**. e.g. `"Before building, the agent asked which Slack channel to use."`
 - **`outcomeExpectations: string[]`** — about the **resulting workflow**. Judged from the **workflow JSON**, so they **also run in prebuilt/MCP runs** (which have no transcript). e.g. `"The final workflow splits the records envelope before posting."`
 
-Both are graded by the same Sonnet judge (`build-expectations/verifier.ts`) and **count as units in the pass rate**: evaluated expectations fold into the per-case and headline pass@k/pass^k alongside execution scenarios. They don't flip an individual scenario's pass/fail (each is its own unit), and a judge `incomplete` verdict is excluded from the count. A full build judges the union of both fields against the transcript; a prebuilt build judges only `outcomeExpectations` against the workflow.
+Both are graded by the same Sonnet judge (`build-expectations/verifier.ts`) and **count as units in the pass rate**: evaluated expectations fold into the per-case and headline pass@k/pass^k alongside execution scenarios. They don't flip an individual scenario's pass/fail (each is its own unit), and a judge `incomplete` verdict is excluded from the count. A full build judges the union of both fields against the transcript; a prebuilt build judges only `outcomeExpectations` against the workflow. A case may omit `executionScenarios` entirely — a **build-only** case — and is then graded by these expectations plus the always-on workflow checks.
 
 Use them for things the binary checks and `successCriteria` don't cover:
 
@@ -554,7 +556,7 @@ To record an isolated cohort without touching the shared dataset or baseline —
 
 ## Adding test cases
 
-Test cases live in `evaluations/data/workflows/*.json`. Drop a file in — the CLI and LangSmith sync pick it up, no registration step. Every case is validated against `data/workflows/schema.ts`.
+Test cases live in `evaluations/data/workflows/*.json`. Drop a file in — the CLI and LangSmith sync pick it up, no registration step. Every case is validated against `harness/schema.ts`.
 
 ```json
 {
@@ -576,7 +578,7 @@ Test cases live in `evaluations/data/workflows/*.json`. Drop a file in — the C
 }
 ```
 
-`conversation` (≥1 turn, first must be `user`) and `executionScenarios` (≥1), plus `complexity` and `tags`, are required. `description`, `triggerType`, `messageBudget`, `processExpectations`, `outcomeExpectations`, `credentials`, and `datasets` (default `["full"]`) are optional. A turn’s `text` may be a string or an array of strings joined with newlines — handy for long stage directions.
+`conversation` (≥1 turn, first must be `user`), plus `complexity` and `tags`, are required. `executionScenarios`, `description`, `triggerType`, `messageBudget`, `processExpectations`, `outcomeExpectations`, `credentials`, and `datasets` (default `["full"]`) are optional — but **a case must declare at least one `executionScenario`, or one process/outcome expectation** (a case that asserts nothing is rejected at load). A _build-only_ case omits `executionScenarios` and is graded by its `processExpectations`/`outcomeExpectations` plus the always-on workflow checks: the workflow is still built, only the mock-execution `successCriteria` pass is skipped. A turn’s `text` may be a string or an array of strings joined with newlines — handy for long stage directions.
 
 **One JSON file = one LangSmith split**, named from the filename slug. Pick a slug you're happy to also use as a `--filter` target.
 
@@ -739,6 +741,7 @@ evaluations/
 ├── clients/              # n8n REST + SSE clients
 ├── checklist/            # LLM verification with retry
 ├── credentials/          # Test credential seeding
+├── data/agents/          # user-intent / agent-building eval case JSON files
 ├── data/workflows/       # e2e test case JSON files
 ├── data/subagent/        # workflow-build compatibility fixture JSON files
 ├── data/pairwise/        # Local pairwise fixture (small smoke set)

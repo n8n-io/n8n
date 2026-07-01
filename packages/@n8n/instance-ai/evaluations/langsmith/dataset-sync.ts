@@ -178,6 +178,11 @@ export async function syncDataset(
 // Helpers
 // ---------------------------------------------------------------------------
 
+/** Scenario name for the single "build-only" row a 0-scenario case emits, so the
+ *  workflow still builds and its process/outcome expectations get judged. Shared
+ *  with target() and reshape so all three agree on the sentinel. */
+export const BUILD_ONLY_SCENARIO_NAME = '__build_only__';
+
 interface FlatScenario {
 	testCaseFile: string;
 	scenarioName: string;
@@ -200,13 +205,13 @@ interface FlatScenario {
 function buildRoundRobinScenarios(testCasesWithFiles: WorkflowTestCaseWithFile[]): FlatScenario[] {
 	const result: FlatScenario[] = [];
 	const maxScenarios = Math.max(
-		...testCasesWithFiles.map((tc) => tc.testCase.executionScenarios.length),
+		...testCasesWithFiles.map((tc) => (tc.testCase.executionScenarios ?? []).length),
 		0,
 	);
 
 	for (let i = 0; i < maxScenarios; i++) {
 		for (const { testCase, fileSlug } of testCasesWithFiles) {
-			const scenario = testCase.executionScenarios[i];
+			const scenario = testCase.executionScenarios?.[i];
 			if (scenario) {
 				result.push({
 					testCaseFile: fileSlug,
@@ -220,6 +225,23 @@ function buildRoundRobinScenarios(testCasesWithFiles: WorkflowTestCaseWithFile[]
 					datasets: testCase.datasets,
 				});
 			}
+		}
+	}
+
+	// Build-only cases (0 scenarios) emit one sentinel row so the workflow still builds and its expectations get judged.
+	for (const { testCase, fileSlug } of testCasesWithFiles) {
+		if ((testCase.executionScenarios?.length ?? 0) === 0) {
+			result.push({
+				testCaseFile: fileSlug,
+				scenarioName: BUILD_ONLY_SCENARIO_NAME,
+				scenarioDescription: '',
+				dataSetup: '',
+				successCriteria: '',
+				complexity: testCase.complexity,
+				tags: testCase.tags,
+				triggerType: testCase.triggerType,
+				datasets: testCase.datasets,
+			});
 		}
 	}
 

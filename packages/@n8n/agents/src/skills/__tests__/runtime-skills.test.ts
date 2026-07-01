@@ -309,6 +309,47 @@ Use the workflow SDK.`,
 		}
 	});
 
+	it('excludes filesystem-backed skills from the registry and file loader', async () => {
+		const root = mkdtempSync(join(tmpdir(), 'runtime-skills-'));
+		try {
+			const intentSkillDir = join(root, 'intent-recognition').replace(/\\/g, '/');
+			const workflowSkillDir = join(root, 'workflow-builder').replace(/\\/g, '/');
+			mkdirSync(join(intentSkillDir, 'references'), { recursive: true });
+			mkdirSync(workflowSkillDir, { recursive: true });
+			writeFileSync(
+				join(intentSkillDir, 'SKILL.md'),
+				`---
+name: intent-recognition
+description: Classify intent.
+---
+
+Classify automation intent.`,
+			);
+			writeFileSync(join(intentSkillDir, 'references', 'taxonomy.md'), 'Taxonomy text');
+			writeFileSync(
+				join(workflowSkillDir, 'SKILL.md'),
+				`---
+name: workflow-builder
+description: Build workflows.
+---
+
+Use the workflow SDK.`,
+			);
+
+			const source = loadRuntimeSkillSourceFromDirectory(root, {
+				exclude: ['intent-recognition'],
+			});
+
+			expect(source.registry.skills.map((skill) => skill.id)).toEqual(['workflow-builder']);
+			await expect(source.loadSkill('intent-recognition')).resolves.toBeNull();
+			await expect(
+				source.loadFile?.('intent-recognition', 'references/taxonomy.md'),
+			).resolves.toBeNull();
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
+	});
+
 	it('renders a compact skill catalog without skill bodies', () => {
 		const source = createRuntimeSkillSource([
 			{
@@ -564,6 +605,13 @@ Use the workflow SDK.`,
 			'list_skills',
 			'load_skill',
 		]);
+		const fileBackedList = await createListSkillsTool(fileBackedSource).handler?.({}, {});
+		const fileBackedSkill = (fileBackedList as { skills: Array<Record<string, unknown>> })
+			.skills[0];
+		expect(fileBackedSkill).toMatchObject({
+			name: 'Summarize notes',
+		});
+		expect(fileBackedSkill?.linkedFiles).toBeUndefined();
 
 		const unsupportedLoadTool = createSkillLoadTool(registeredFileSource);
 		expect(unsupportedLoadTool.description).toContain('do not pass filePath');
@@ -596,6 +644,12 @@ Use the workflow SDK.`,
 				filePath: 'references/guide.md',
 			}).data,
 		).toEqual({ skillId: 'summarize_notes', filePath: 'references/guide.md' });
+		expect(
+			loadTool.inputSchema.safeParse({ skillId: 'summarize_notes', filePath: '' }).data,
+		).toEqual({
+			skillId: 'summarize_notes',
+			filePath: '',
+		});
 		await expect(
 			loadTool.handler?.({ skillId: 'summarize_notes', filePath: 'references/missing.md' }, {}),
 		).resolves.toMatchObject({
@@ -605,6 +659,17 @@ Use the workflow SDK.`,
 				'File is not registered for skill Summarize notes: references/missing.md. To load the main skill instructions, retry without filePath.',
 		});
 		expect(loadFile).not.toHaveBeenCalledWith('summarize_notes', 'references/missing.md');
+
+		await expect(
+			loadTool.handler?.({ skillId: 'summarize_notes', filePath: '' }, {}),
+		).resolves.toMatchObject({
+			ok: true,
+			success: true,
+			skillId: 'summarize_notes',
+			name: 'Summarize notes',
+			content: 'Extract decisions.',
+			instructions: 'Extract decisions.',
+		});
 
 		await expect(
 			loadTool.handler?.({ skillId: 'summarize_notes', filePath: 'references/guide.md' }, {}),
