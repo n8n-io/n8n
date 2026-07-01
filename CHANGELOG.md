@@ -1,3 +1,18 @@
+## [2.29.2](https://github.com/n8n-io/n8n/compare/n8n@2.29.1...n8n@2.29.2) (2026-07-01)
+
+
+### Bug Fixes
+
+* **core:** Preserve Date values passed to the expression isolate ([#33362](https://github.com/n8n-io/n8n/issues/33362)) ([2e07474](https://github.com/n8n-io/n8n/commit/2e074742db62fc2a20405a35aaadd4b1b10b381b))
+* **editor:** Show Free credits badge for Tool-variant nodes in node creator panel ([#33347](https://github.com/n8n-io/n8n/issues/33347)) ([c2f1483](https://github.com/n8n-io/n8n/commit/c2f1483787eb25e6db1a3408d2798a4f559ecc2a))
+* **Salesforce Node:** Normalize empty 204 responses on JWT auth path ([#33354](https://github.com/n8n-io/n8n/issues/33354)) ([298025e](https://github.com/n8n-io/n8n/commit/298025edd91f5b2dde803bd5796c9e344b4445da))
+
+
+### Features
+
+* **editor:** Sets AIA v3 as default empty state & fixes display issues ([#33361](https://github.com/n8n-io/n8n/issues/33361)) ([6370ddf](https://github.com/n8n-io/n8n/commit/6370ddf2fc4d5ed56ae40bbb2b5b7f6fe1a8e283))
+
+
 ## [2.29.1](https://github.com/n8n-io/n8n/compare/n8n@2.29.0...n8n@2.29.1) (2026-07-01)
 
 
