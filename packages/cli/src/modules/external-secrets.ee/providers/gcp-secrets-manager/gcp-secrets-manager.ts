@@ -54,11 +54,10 @@ export class GcpSecretsManager extends SecretsProvider {
 		try {
 			this.settings = this.parseSecretAccountKey(context.settings.serviceAccountKey);
 		} catch (error) {
-			this.logOperationFailure(
-				'Failed to initialize GCP Secrets Manager provider',
-				'initialize',
+			this.logOperationFailure('Failed to initialize GCP Secrets Manager provider', {
+				operation: 'initialize',
 				error,
-			);
+			});
 			throw error;
 		}
 	}
@@ -80,7 +79,11 @@ export class GcpSecretsManager extends SecretsProvider {
 
 			this.logger.debug('GCP Secrets Manager provider connected');
 		} catch (error) {
-			this.logOperationFailure('Failed to connect GCP Secrets Manager provider', 'connect', error);
+			this.logOperationFailure('Failed to connect GCP Secrets Manager provider', {
+				operation: 'connect',
+				error,
+				context: this.gcpErrorContext(error),
+			});
 			throw error;
 		}
 	}
@@ -92,7 +95,11 @@ export class GcpSecretsManager extends SecretsProvider {
 			await this.client.initialize();
 			return [true];
 		} catch (error: unknown) {
-			this.logOperationFailure('GCP Secrets Manager provider test failed', 'test', error);
+			this.logOperationFailure('GCP Secrets Manager provider test failed', {
+				operation: 'test',
+				error,
+				context: this.gcpErrorContext(error),
+			});
 			return [false, error instanceof Error ? error.message : 'Unknown error'];
 		}
 	}
@@ -120,6 +127,7 @@ export class GcpSecretsManager extends SecretsProvider {
 			}, []);
 
 			const skippedSecrets: Array<{ name: string; errorCode: SafeContextValue }> = [];
+			let firstSkippedError: unknown;
 
 			const promises = secretNames.map(async (name) => {
 				let versions:
@@ -139,6 +147,9 @@ export class GcpSecretsManager extends SecretsProvider {
 					// PERMISSION_DENIED (7), NOT_FOUND (5), UNAVAILABLE (14)
 					const errorCode = this.getGcpErrorCode(error);
 					if (errorCode === 7 || errorCode === 5 || errorCode === 14) {
+						if (firstSkippedError === undefined) {
+							firstSkippedError = error;
+						}
 						this.logger.debug('Skipping inaccessible GCP secret version', {
 							providerName: this.name,
 							operation: 'update',
@@ -178,21 +189,26 @@ export class GcpSecretsManager extends SecretsProvider {
 
 			const summary = buildUpdateFailureSummary(skippedSecrets);
 			if (summary) {
-				this.logOperationFailure(
-					'Skipped inaccessible GCP secret versions during update',
-					'update',
-					new Error('One or more GCP secret versions were inaccessible'),
-					summary,
-				);
+				this.logOperationFailure('Skipped inaccessible GCP secret versions during update', {
+					operation: 'update',
+					error:
+						firstSkippedError instanceof Error
+							? firstSkippedError
+							: new Error('One or more GCP secret versions were inaccessible'),
+					context: {
+						...(firstSkippedError !== undefined ? this.gcpErrorContext(firstSkippedError) : {}),
+						...summary,
+					},
+				});
 			}
 
 			this.logger.debug('GCP Secrets Manager provider secrets updated');
 		} catch (error) {
-			this.logOperationFailure(
-				'Failed to update GCP Secrets Manager provider secrets',
-				'update',
+			this.logOperationFailure('Failed to update GCP Secrets Manager provider secrets', {
+				operation: 'update',
 				error,
-			);
+				context: this.gcpErrorContext(error),
+			});
 			throw error;
 		}
 	}
@@ -252,11 +268,13 @@ export class GcpSecretsManager extends SecretsProvider {
 
 	private logOperationFailure(
 		message: string,
-		operation: SecretsProviderOperation,
-		error: unknown,
-		extra: LogContext = {},
+		params: {
+			operation: SecretsProviderOperation;
+			error: unknown;
+			context?: LogContext;
+		},
 	): void {
-		const context: LogContext = this.gcpErrorContext(error);
+		const context: LogContext = { ...params.context };
 		if (this.settings?.projectId) {
 			context.projectId = this.settings.projectId;
 		}
@@ -266,12 +284,9 @@ export class GcpSecretsManager extends SecretsProvider {
 			message,
 			providerName: this.name,
 			providerDisplayName: this.displayName,
-			operation,
-			error,
-			context: {
-				...context,
-				...extra,
-			},
+			operation: params.operation,
+			error: params.error,
+			context,
 		});
 	}
 }
