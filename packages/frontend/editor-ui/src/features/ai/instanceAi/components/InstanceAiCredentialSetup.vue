@@ -1,19 +1,28 @@
 <script lang="ts" setup>
+import { INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY } from '@/app/constants/modals';
 import { useUIStore } from '@/app/stores/ui.store';
 import { getAppNameFromCredType } from '@/app/utils/nodeTypesUtils';
+import { useInstanceAiBrowserCredentialSetupExperiment } from '@/experiments/instanceAiBrowserCredentialSetup';
 import { useWizardNavigation } from '@/features/ai/shared/composables/useWizardNavigation';
+import { useCredentialOAuth } from '@/features/credentials/composables/useCredentialOAuth';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
+import { useUsersStore } from '@/features/settings/users/users.store';
 import type { INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
 import type { InstanceAiCredentialFlow, InstanceAiCredentialRequest } from '@n8n/api-types';
-import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nActionDropdown, N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
+import type { ActionDropdownItem } from '@n8n/design-system/types';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { useThread } from '../instanceAi.store';
 import ConfirmationFooter from './ConfirmationFooter.vue';
+
+type CredentialSetupChoice = 'ai' | 'manual';
 
 const props = defineProps<{
 	requestId: string;
@@ -29,6 +38,13 @@ const rootStore = useRootStore();
 const thread = useThread();
 const credentialsStore = useCredentialsStore();
 const uiStore = useUIStore();
+const usersStore = useUsersStore();
+const settingsStore = useInstanceAiSettingsStore();
+
+const { isFeatureEnabled: isBrowserCredentialSetupEnabled } =
+	useInstanceAiBrowserCredentialSetupExperiment();
+const { getQuickConnectOptionByCredentialTypes } = useQuickConnect();
+const { canOAuthCredentialQuickConnect } = useCredentialOAuth();
 
 // ---------------------------------------------------------------------------
 // Navigation
@@ -101,6 +117,7 @@ const stopCreateListener = credentialsStore.$onAction(({ name, after }) => {
 onBeforeUnmount(() => {
 	stopDeleteListener();
 	stopCreateListener();
+	stopWatchingBrowserConnect();
 });
 
 // ---------------------------------------------------------------------------
@@ -161,6 +178,10 @@ watch(allSelected, async (nowComplete, wasComplete) => {
 });
 
 onMounted(async () => {
+	if (isBrowserCredentialSetupEnabled.value) {
+		void settingsStore.fetchBrowserStatus();
+	}
+
 	// Ensure the credentials store is populated so NodeCredentials can show
 	// existing credentials in the dropdown. The Instance AI page may not have
 	// fetched them yet.
@@ -200,6 +221,35 @@ const hasExistingCredentials = computed(() => {
 		(credentialsStore.getUsableCredentialByType(credType)?.length ?? 0) > 0
 	);
 });
+
+function hasEasySetup(credentialType: string): boolean {
+	return (
+		!!getQuickConnectOptionByCredentialTypes([credentialType]) ||
+		canOAuthCredentialQuickConnect(credentialType)
+	);
+}
+
+const showSetupChoice = computed(() => {
+	if (!currentRequest.value) return false;
+	if (!isBrowserCredentialSetupEnabled.value) return false;
+	if (hasExistingCredentials.value) return false;
+	return !hasEasySetup(currentRequest.value.credentialType);
+});
+
+const setupChoiceOptions = computed<Array<ActionDropdownItem<CredentialSetupChoice>>>(() => [
+	{
+		id: 'ai',
+		label: i18n.baseText('instanceAi.credential.autoSetup'),
+		description: i18n.baseText('instanceAi.credential.autoSetup.description'),
+		icon: 'wand-sparkles',
+	},
+	{
+		id: 'manual',
+		label: i18n.baseText('instanceAi.credential.manualSetup'),
+		description: i18n.baseText('instanceAi.credential.manualSetup.description'),
+		icon: 'square-pen',
+	},
+]);
 
 function openNewCredentialModal() {
 	const req = currentRequest.value;
@@ -303,6 +353,9 @@ async function handleContinue() {
 
 async function handleLater() {
 	trackCredentialInput();
+	if (showSetupChoice.value) {
+		trackSetupChoiceClicked('skip');
+	}
 
 	isSubmitted.value = true;
 	isDeferred.value = true;
@@ -317,6 +370,90 @@ async function handleLater() {
 		isSubmitted.value = false;
 		isDeferred.value = false;
 	}
+}
+
+// ---------------------------------------------------------------------------
+// Browser-use setup choice (094 experiment)
+// ---------------------------------------------------------------------------
+
+function trackSetupChoiceClicked(choice: CredentialSetupChoice | 'skip') {
+	telemetry.track('Instance AI Browser Use User clicked credential setup option', {
+		user_id: usersStore.currentUser?.id,
+		credential_type: currentRequest.value?.credentialType,
+		choice,
+	});
+}
+
+const shownChoiceTypes = new Set<string>();
+watch(
+	() => (showSetupChoice.value ? currentRequest.value?.credentialType : undefined),
+	(credentialType) => {
+		if (!credentialType || shownChoiceTypes.has(credentialType)) return;
+		shownChoiceTypes.add(credentialType);
+		telemetry.track('Instance AI Browser Use credential setup choice shown', {
+			user_id: usersStore.currentUser?.id,
+			credential_type: credentialType,
+		});
+	},
+	{ immediate: true },
+);
+
+let stopBrowserConnectWatch: (() => void) | undefined;
+
+function stopWatchingBrowserConnect() {
+	stopBrowserConnectWatch?.();
+	stopBrowserConnectWatch = undefined;
+}
+
+function onSetupChoiceSelected(choice: CredentialSetupChoice) {
+	if (choice === 'ai') {
+		void handleSetupAutomatically();
+	} else {
+		handleSetupManually();
+	}
+}
+
+function handleSetupManually() {
+	trackSetupChoiceClicked('manual');
+	openNewCredentialModal();
+}
+
+async function submitAutoSetup(credentialType: string) {
+	isSubmitted.value = true;
+	const success = await thread.confirmAction(props.requestId, {
+		kind: 'credentialAutoSetup',
+		credentialType,
+	});
+	if (success) {
+		thread.resolveConfirmation(props.requestId, 'approved');
+	} else {
+		isSubmitted.value = false;
+	}
+}
+
+async function handleSetupAutomatically() {
+	const credentialType = currentRequest.value?.credentialType;
+	if (!credentialType) return;
+
+	trackSetupChoiceClicked('ai');
+
+	if (settingsStore.browserConnected) {
+		await submitAutoSetup(credentialType);
+		return;
+	}
+
+	// Browser not connected — open the connect modal and resume once it connects.
+	uiStore.openModal(INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY);
+	stopWatchingBrowserConnect();
+	stopBrowserConnectWatch = watch(
+		() => settingsStore.browserConnected,
+		async (connected) => {
+			if (!connected) return;
+			stopWatchingBrowserConnect();
+			uiStore.closeModal(INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY);
+			await submitAutoSetup(credentialType);
+		},
+	);
 }
 </script>
 
@@ -361,6 +498,26 @@ async function handleLater() {
 							hide-ask-assistant
 							@credential-selected="onCredentialSelected(currentRequest.credentialType, $event)"
 						/>
+						<N8nActionDropdown
+							v-else-if="showSetupChoice"
+							:items="setupChoiceOptions"
+							placement="bottom-start"
+							data-test-id="instance-ai-credential-setup-choice"
+							@select="onSetupChoiceSelected"
+						>
+							<template #activator>
+								<N8nButton data-test-id="instance-ai-credential-setup-button">
+									{{ i18n.baseText('instanceAi.credential.setupCredentialButton') }}
+									<N8nIcon icon="chevron-down" size="xsmall" />
+								</N8nButton>
+							</template>
+							<template #menuItem="item">
+								<div :class="$style.setupChoiceItem">
+									<N8nText size="small" color="text-dark" bold>{{ item.label }}</N8nText>
+									<N8nText size="xsmall" color="text-light">{{ item.description }}</N8nText>
+								</div>
+							</template>
+						</N8nActionDropdown>
 						<N8nButton
 							v-else
 							:label="i18n.baseText('instanceAi.credential.setupButton')"
@@ -493,6 +650,12 @@ async function handleLater() {
 	:global(.node-credentials) {
 		margin-top: 0;
 	}
+}
+
+.setupChoiceItem {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
 }
 
 .footerNav {

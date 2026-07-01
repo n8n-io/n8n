@@ -41,6 +41,13 @@ const credentialSelectionConfirmSchema = z.object({
 	credentials: credentialIdByTypeSchema,
 });
 
+/** Hand a single credential off to the agent's browser-use setup flow. Approval is
+ *  implied; the service maps this to the setup resume's `autoSetup` field. */
+const credentialAutoSetupConfirmSchema = z.object({
+	kind: z.literal('credentialAutoSetup'),
+	credentialType: z.string(),
+});
+
 /** Domain-access approval — `domainAccessAction` carries which scope the user picked. */
 const domainAccessApproveSchema = z.object({
 	kind: z.literal('domainAccessApprove'),
@@ -90,6 +97,7 @@ export const InstanceAiConfirmRequestDto = z.discriminatedUnion('kind', [
 	approvalConfirmSchema,
 	questionsConfirmSchema,
 	credentialSelectionConfirmSchema,
+	credentialAutoSetupConfirmSchema,
 	domainAccessApproveSchema,
 	domainAccessDenySchema,
 	planDenySchema,

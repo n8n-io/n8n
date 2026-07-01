@@ -370,6 +370,12 @@ function toConfirmationData(request: InstanceAiConfirmRequest): ConfirmationData
 			return { approved: true, answers: request.answers };
 		case 'credentialSelection':
 			return { approved: true, credentials: request.credentials };
+		case 'credentialAutoSetup':
+			return {
+				approved: true,
+				autoSetup: { credentialType: request.credentialType },
+				requiresAgentRebuild: true,
+			};
 		case 'resourceDecision':
 			return { approved: true, resourceDecision: request.resourceDecision };
 		case 'setupWorkflowApply':
@@ -3797,6 +3803,64 @@ export class InstanceAiService {
 	}
 
 	/**
+	 * Given a freshly built execution environment, construct the agent that
+	 * runs on top of it. Split out from `createExecutionEnvironment` so
+	 * callers that need fine-grained failure reporting (e.g. orphan recovery)
+	 * can catch environment vs. agent construction separately.
+	 */
+	private async createAgentFromEnvironment(
+		environment: Awaited<ReturnType<InstanceAiService['createExecutionEnvironment']>>,
+		threadId: string,
+		runId: string,
+	): Promise<Awaited<ReturnType<typeof createInstanceAgent>>> {
+		const mcpServers = this.parseMcpServers(this.instanceAiConfig.mcpServers);
+		const agent = await createInstanceAgent({
+			modelId: environment.modelId,
+			context: environment.context,
+			orchestrationContext: environment.orchestrationContext,
+			mcpServers,
+			mcpManager: this.mcpClientManager,
+			memoryConfig: this.createAgentMemoryOptions(),
+			memory: environment.memory,
+			checkpointStore: this.checkpointStore,
+			onMemoryTaskEvent: this.memoryTaskObserverFor(threadId),
+			thinkingEnabled: this.instanceAiConfig.thinkingEnabled,
+		});
+		this.subscribeToAgentErrors(agent, threadId, runId);
+		return agent;
+	}
+
+	/**
+	 * Fresh environment discovery (`createExecutionEnvironment`) + a fresh
+	 * agent (`createAgentFromEnvironment`) for the given (existing) run
+	 * identifiers. Used wherever a frozen agent's tool list / system prompt
+	 * would be stale — e.g. a mid-run resume that needs a newly available
+	 * capability (a browser session connecting after run start).
+	 */
+	private async buildFreshInstanceAgent(
+		user: User,
+		threadId: string,
+		runId: string,
+		abortSignal: AbortSignal,
+		messageGroupId?: string,
+		pushRef?: string,
+	): Promise<{
+		agent: Awaited<ReturnType<typeof createInstanceAgent>>;
+		modelId: ModelConfig;
+	}> {
+		const environment = await this.createExecutionEnvironment(
+			user,
+			threadId,
+			runId,
+			abortSignal,
+			messageGroupId,
+			pushRef,
+		);
+		const agent = await this.createAgentFromEnvironment(environment, threadId, runId);
+		return { agent, modelId: environment.modelId };
+	}
+
+	/**
 	 * Rebuild the in-memory pieces a suspended run needs (user, agent,
 	 * execution environment) from a persisted orphan row + checkpoint, and
 	 * package them into a `SuspendedRunState`. The caller wraps the result in
@@ -3840,23 +3904,10 @@ export class InstanceAiService {
 			return { kind: 'env-failure', error };
 		}
 
-		const mcpServers = this.parseMcpServers(this.instanceAiConfig.mcpServers);
 		const runControl = createOrchestratorRunControl(environment.orchestrationContext);
 		let agent;
 		try {
-			agent = await createInstanceAgent({
-				modelId: environment.modelId,
-				context: environment.context,
-				orchestrationContext: environment.orchestrationContext,
-				mcpServers,
-				mcpManager: this.mcpClientManager,
-				memoryConfig: this.createAgentMemoryOptions(),
-				memory: environment.memory,
-				checkpointStore: this.checkpointStore,
-				onMemoryTaskEvent: this.memoryTaskObserverFor(orphan.threadId),
-				thinkingEnabled: this.instanceAiConfig.thinkingEnabled,
-			});
-			this.subscribeToAgentErrors(agent, orphan.threadId, orphan.runId);
+			agent = await this.createAgentFromEnvironment(environment, orphan.threadId, orphan.runId);
 		} catch (error: unknown) {
 			return { kind: 'agent-failure', error };
 		}
@@ -3900,6 +3951,39 @@ export class InstanceAiService {
 				error: getErrorMessage(error),
 			});
 			return null;
+		}
+	}
+
+	/**
+	 * Rebuild the agent for a resume that flagged `requiresAgentRebuild`,
+	 * falling back to the original (frozen) agent if the rebuild fails —
+	 * the pre-existing behavior is a safer failure mode than breaking resume.
+	 */
+	private async rebuildAgentForResumeOrFallback(
+		original: { agent: unknown; modelId?: ModelConfig },
+		user: User,
+		threadId: string,
+		runId: string,
+		requestId: string,
+		abortController: AbortController,
+		messageGroupId?: string,
+	): Promise<{ agent: unknown; modelId?: ModelConfig }> {
+		try {
+			return await this.buildFreshInstanceAgent(
+				user,
+				threadId,
+				runId,
+				abortController.signal,
+				messageGroupId,
+				this.threadPushRef.get(threadId),
+			);
+		} catch (error: unknown) {
+			this.logger.warn('Failed to rebuild agent for resume; continuing with the existing agent', {
+				threadId,
+				requestId,
+				error: getErrorMessage(error),
+			});
+			return original;
 		}
 	}
 
@@ -3970,7 +4054,20 @@ export class InstanceAiService {
 			...(data.answers ? { answers: data.answers } : {}),
 			...(data.resourceDecision ? { resourceDecision: data.resourceDecision } : {}),
 			...(data.scope ? { scope: data.scope } : {}),
+			...(data.autoSetup ? { autoSetup: data.autoSetup } : {}),
 		};
+
+		const { agent: resumeAgent, modelId: resumeModelId } = data.requiresAgentRebuild
+			? await this.rebuildAgentForResumeOrFallback(
+					{ agent, modelId },
+					activeUser,
+					threadId,
+					runId,
+					requestId,
+					abortController,
+					messageGroupId,
+				)
+			: { agent, modelId };
 
 		const resumeTracing = await this.tracing.createOrchestratorResumeTraceContext({
 			baseTracing: tracing,
@@ -3979,7 +4076,7 @@ export class InstanceAiService {
 			messageGroupId,
 			runId,
 			userId: activeUser.id,
-			modelId,
+			modelId: resumeModelId,
 			input: {
 				requestId,
 				toolCallId,
@@ -4000,7 +4097,7 @@ export class InstanceAiService {
 			},
 		});
 
-		this.startProcessResumedStream(agent, resumeData, {
+		this.startProcessResumedStream(resumeAgent, resumeData, {
 			runId,
 			agentRunId,
 			threadId,
@@ -4012,7 +4109,7 @@ export class InstanceAiService {
 			abortController,
 			snapshotStorage: this.dbSnapshotStorage,
 			tracing: resumeTracing ?? tracing,
-			modelId,
+			modelId: resumeModelId,
 			checkpoint,
 			plannedBuild,
 			runHandoff,
