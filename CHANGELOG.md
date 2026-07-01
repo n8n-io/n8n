@@ -1,3 +1,19 @@
+## [2.29.1](https://github.com/n8n-io/n8n/compare/n8n@2.29.0...n8n@2.29.1) (2026-07-01)
+
+
+### Bug Fixes
+
+* **AI Agent Node:** Preserve parallel tool call structure in chat memory ([#33306](https://github.com/n8n-io/n8n/issues/33306)) ([db3ebd6](https://github.com/n8n-io/n8n/commit/db3ebd6076a8ca16a3985f43dc3cd1d1fc0c82de))
+* **core:** Skip AI Gateway managed credentials in pre-execution permission check ([#33277](https://github.com/n8n-io/n8n/issues/33277)) ([b21f291](https://github.com/n8n-io/n8n/commit/b21f291a8950492c5026db47128a54ad29d900de))
+* **editor:** Restore Instance AI credential card without a loaded workflow ([#33301](https://github.com/n8n-io/n8n/issues/33301)) ([c52b356](https://github.com/n8n-io/n8n/commit/c52b35663558717be0f71f9a6e659292f05cd4f0))
+
+
+### Features
+
+* **core:** Add N8N_RUNNERS_ALLOW_TRANSITIVE_IMPORTS for the Python task runner ([#33265](https://github.com/n8n-io/n8n/issues/33265)) ([73809dc](https://github.com/n8n-io/n8n/commit/73809dccff02e4c2a12c15002bc99a8dc6d1d963))
+* **editor:** Hide gateway-incompatible node parameters under managed credentials ([#33287](https://github.com/n8n-io/n8n/issues/33287)) ([20c11c0](https://github.com/n8n-io/n8n/commit/20c11c09d0e6f8f24bd71ffc8809b7ea72f8a9d0))
+
+
 # [2.29.0](https://github.com/n8n-io/n8n/compare/n8n@2.28.0...n8n@2.29.0) (2026-06-30)
 
 
