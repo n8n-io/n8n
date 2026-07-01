@@ -34,39 +34,27 @@ describe('GCP Secrets Manager', () => {
 		gcpSecretsManager = new GcpSecretsManager(logger);
 	});
 
-	describe('error context', () => {
+	describe('error codes', () => {
 		it('extracts numeric gRPC status codes', () => {
 			expect(gcpSecretsManager['getGcpErrorCode'](createGrpcError('NOT_FOUND', 5))).toBe(5);
 			expect(gcpSecretsManager['getGcpErrorCode'](createGrpcError('PERMISSION_DENIED', 7))).toBe(7);
-			expect(gcpSecretsManager['gcpErrorContext'](createGrpcError('NOT_FOUND', 5))).toEqual({
-				errorCode: 5,
-			});
-			expect(gcpSecretsManager['gcpErrorContext'](createGrpcError('PERMISSION_DENIED', 7))).toEqual(
-				{
-					errorCode: 7,
-				},
-			);
 		});
 
 		it('extracts string error codes', () => {
 			const error = Object.assign(new Error('Connection failed'), { code: 'ECONNREFUSED' });
 
 			expect(gcpSecretsManager['getGcpErrorCode'](error)).toBe('ECONNREFUSED');
-			expect(gcpSecretsManager['gcpErrorContext'](error)).toEqual({ errorCode: 'ECONNREFUSED' });
 		});
 
-		it('falls back to Error.name for generic errors', () => {
-			expect(gcpSecretsManager['getGcpErrorCode'](new Error('Something went wrong'))).toBe('Error');
-			expect(gcpSecretsManager['gcpErrorContext'](new Error('Something went wrong'))).toEqual({
-				errorCode: 'Error',
-			});
+		it('returns undefined for generic errors without a code', () => {
+			expect(
+				gcpSecretsManager['getGcpErrorCode'](new Error('Something went wrong')),
+			).toBeUndefined();
 		});
 
-		it('returns empty context for non-error values', () => {
+		it('returns undefined for non-error values', () => {
 			expect(gcpSecretsManager['getGcpErrorCode']('not an error')).toBeUndefined();
 			expect(gcpSecretsManager['getGcpErrorCode'](null)).toBeUndefined();
-			expect(gcpSecretsManager['gcpErrorContext']('not an error')).toEqual({});
-			expect(gcpSecretsManager['gcpErrorContext'](null)).toEqual({});
 		});
 	});
 
@@ -155,7 +143,6 @@ describe('GCP Secrets Manager', () => {
 				operation: 'connect',
 				projectId: PROJECT_ID,
 				errorName: expect.any(String),
-				errorCode: expect.any(String),
 			}),
 		);
 	});
@@ -246,7 +233,6 @@ describe('GCP Secrets Manager', () => {
 				providerDisplayName: 'GCP Secrets Manager',
 				operation: 'test',
 				errorName: 'Error',
-				errorCode: 'Error',
 				projectId: PROJECT_ID,
 			}),
 		);
@@ -301,7 +287,6 @@ describe('GCP Secrets Manager', () => {
 				providerDisplayName: 'GCP Secrets Manager',
 				operation: 'update',
 				errorName: 'Error',
-				errorCode: 'Error',
 				projectId: PROJECT_ID,
 			}),
 		);

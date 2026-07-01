@@ -11,7 +11,6 @@ import type {
 import { DOCS_HELP_NOTICE } from '../../constants';
 import {
 	buildUpdateFailureSummary,
-	type HttpProviderErrorLogContext,
 	type LogContext,
 	logProviderFailure,
 	type SafeContextValue,
@@ -82,7 +81,6 @@ export class GcpSecretsManager extends SecretsProvider {
 			this.logOperationFailure('Failed to connect GCP Secrets Manager provider', {
 				operation: 'connect',
 				error,
-				context: this.gcpErrorContext(error),
 			});
 			throw error;
 		}
@@ -98,7 +96,6 @@ export class GcpSecretsManager extends SecretsProvider {
 			this.logOperationFailure('GCP Secrets Manager provider test failed', {
 				operation: 'test',
 				error,
-				context: this.gcpErrorContext(error),
 			});
 			return [false, error instanceof Error ? error.message : 'Unknown error'];
 		}
@@ -155,7 +152,7 @@ export class GcpSecretsManager extends SecretsProvider {
 							operation: 'update',
 							projectId,
 							secretName: name,
-							...this.gcpErrorContext(error),
+							errorCode,
 						});
 						skippedSecrets.push({
 							name,
@@ -195,10 +192,7 @@ export class GcpSecretsManager extends SecretsProvider {
 						firstSkippedError instanceof Error
 							? firstSkippedError
 							: new Error('One or more GCP secret versions were inaccessible'),
-					context: {
-						...(firstSkippedError !== undefined ? this.gcpErrorContext(firstSkippedError) : {}),
-						...summary,
-					},
+					context: summary,
 				});
 			}
 
@@ -207,7 +201,6 @@ export class GcpSecretsManager extends SecretsProvider {
 			this.logOperationFailure('Failed to update GCP Secrets Manager provider secrets', {
 				operation: 'update',
 				error,
-				context: this.gcpErrorContext(error),
 			});
 			throw error;
 		}
@@ -234,6 +227,9 @@ export class GcpSecretsManager extends SecretsProvider {
 		const projectId = secretAccountKey.project_id?.trim();
 
 		if (!clientEmail || !privateKey) {
+			this.logger.warn(
+				'Service account key must contain "client_email" and "private_key" fields. Use the downloaded service account JSON key file from Google Cloud Console.',
+			);
 			throw new UserError(
 				'Service account key must contain "client_email" and "private_key" fields. Use the downloaded service account JSON key file from Google Cloud Console.',
 			);
@@ -254,16 +250,7 @@ export class GcpSecretsManager extends SecretsProvider {
 			}
 		}
 
-		if (error instanceof Error) {
-			return error.name;
-		}
-
 		return undefined;
-	}
-
-	private gcpErrorContext(error: unknown): HttpProviderErrorLogContext {
-		const errorCode = this.getGcpErrorCode(error);
-		return errorCode !== undefined ? { errorCode } : {};
 	}
 
 	private logOperationFailure(
@@ -275,6 +262,10 @@ export class GcpSecretsManager extends SecretsProvider {
 		},
 	): void {
 		const context: LogContext = { ...params.context };
+		const errorCode = this.getGcpErrorCode(params.error);
+		if (errorCode !== undefined) {
+			context.errorCode = errorCode;
+		}
 		if (this.settings?.projectId) {
 			context.projectId = this.settings.projectId;
 		}
