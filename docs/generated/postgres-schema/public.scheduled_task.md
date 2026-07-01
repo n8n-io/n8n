@@ -45,10 +45,10 @@
 
 | Name | Definition |
 | ---- | ---------- |
-| IDX_scheduled_task_done | CREATE INDEX "IDX_scheduled_task_done" ON public.scheduled_task USING btree ("finishedAt") WHERE ("finishedAt" IS NOT NULL) |
-| IDX_scheduled_task_leases | CREATE INDEX "IDX_scheduled_task_leases" ON public.scheduled_task USING btree ("leaseExpiresAt") WHERE ((status)::text = 'running'::text) |
-| IDX_scheduled_task_occurrence | CREATE UNIQUE INDEX "IDX_scheduled_task_occurrence" ON public.scheduled_task USING btree ("jobId", "scheduledFor") |
-| IDX_scheduled_task_ready | CREATE INDEX "IDX_scheduled_task_ready" ON public.scheduled_task USING btree ("runAt") WHERE ((status)::text = 'pending'::text) |
+| IDX_scheduled_task_finishedAt | CREATE INDEX "IDX_scheduled_task_finishedAt" ON public.scheduled_task USING btree ("finishedAt") WHERE ("finishedAt" IS NOT NULL) |
+| IDX_scheduled_task_jobId_scheduledFor | CREATE UNIQUE INDEX "IDX_scheduled_task_jobId_scheduledFor" ON public.scheduled_task USING btree ("jobId", "scheduledFor") |
+| IDX_scheduled_task_leaseExpiresAt | CREATE INDEX "IDX_scheduled_task_leaseExpiresAt" ON public.scheduled_task USING btree ("leaseExpiresAt") WHERE ((status)::text = 'running'::text) |
+| IDX_scheduled_task_runAt | CREATE INDEX "IDX_scheduled_task_runAt" ON public.scheduled_task USING btree ("runAt") WHERE ((status)::text = 'pending'::text) |
 | PK_d690af24e57e30594c1948af1e6 | CREATE UNIQUE INDEX "PK_d690af24e57e30594c1948af1e6" ON public.scheduled_task USING btree (id) |
 
 ## Relations

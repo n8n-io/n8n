@@ -110,12 +110,13 @@ describe('CreateSchedulerTables Migration', () => {
 		it('creates all engine indexes', async () => {
 			const context = createTestMigrationContext(dataSource);
 			for (const name of [
-				'IDX_scheduled_job_due',
-				'IDX_scheduled_job_workflow',
-				'IDX_scheduled_task_occurrence',
-				'IDX_scheduled_task_ready',
-				'IDX_scheduled_task_leases',
-				'IDX_scheduled_task_done',
+				'IDX_scheduled_job_nextRunAt',
+				'IDX_scheduled_job_workflowId_nodeId',
+				'IDX_scheduled_job_workflowId',
+				'IDX_scheduled_task_jobId_scheduledFor',
+				'IDX_scheduled_task_runAt',
+				'IDX_scheduled_task_leaseExpiresAt',
+				'IDX_scheduled_task_finishedAt',
 			]) {
 				expect(await indexExists(context, name)).toBe(true);
 			}
@@ -280,6 +281,23 @@ describe('CreateSchedulerTables Migration', () => {
 					`INSERT INTO ${table} ("taskType", "kind", "createdAt", "updatedAt")
 					 VALUES (:taskType, :kind, :createdAt, :updatedAt)`,
 					{ taskType: 'scheduleTrigger', kind: 'cron', createdAt: now, updatedAt: now },
+				);
+
+			await insert();
+			await expect(insert()).resolves.not.toThrow();
+			await context.queryRunner.release();
+		});
+
+		it('allows multiple non-trigger jobs on the same workflow (NULL nodeId)', async () => {
+			const context = createTestMigrationContext(dataSource);
+			const table = context.escape.tableName('scheduled_job');
+			const workflowId = await insertWorkflow(context);
+			const now = new Date();
+			const insert = async () =>
+				await context.runQuery(
+					`INSERT INTO ${table} ("workflowId", "taskType", "kind", "createdAt", "updatedAt")
+					 VALUES (:workflowId, :taskType, :kind, :createdAt, :updatedAt)`,
+					{ workflowId, taskType: 'scheduleTrigger', kind: 'cron', createdAt: now, updatedAt: now },
 				);
 
 			await insert();

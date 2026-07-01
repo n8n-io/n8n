@@ -13,6 +13,7 @@ export class CreateSchedulerTables1784000000042 implements ReversibleMigration {
 
 	private async createScheduledJobTable({
 		schemaBuilder: { createTable, createIndex, column },
+		tablePrefix,
 	}: MigrationContext) {
 		await createTable('scheduled_job')
 			.withColumns(
@@ -85,44 +86,43 @@ export class CreateSchedulerTables1784000000042 implements ReversibleMigration {
 				tableName: 'workflow_entity',
 				columnName: 'id',
 				onDelete: 'CASCADE',
-				name: 'FK_scheduled_job_workflowId',
+				name: `FK_${tablePrefix}scheduled_job_workflowId`,
 			});
 
 		await createIndex(
 			'scheduled_job',
 			['nextRunAt'],
 			false,
-			'IDX_scheduled_job_due',
+			undefined,
 			'"enabled" = true AND "nextRunAt" IS NOT NULL',
 		);
 
 		// One job per trigger node. Partial + unique so it only constrains
-		// workflow-bound trigger jobs; system jobs and workflow-level jobs without a
-		// node (NULL workflowId or nodeId) are exempt. The workflowId prefix also
-		// indexes the FK for cascade deletes.
+		// workflow-bound trigger jobs; system jobs (NULL workflowId) and workflow-level
+		// non-trigger jobs (NULL nodeId) are exempt.
 		await createIndex(
 			'scheduled_job',
 			['workflowId', 'nodeId'],
 			true,
-			'IDX_scheduled_job_workflow',
+			undefined,
 			'"workflowId" IS NOT NULL AND "nodeId" IS NOT NULL',
 		);
 
+		// Index the workflowId FK on its own: the partial index above can't serve the
+		// cascade (the planner can't prove a workflowId lookup stays within the partial
+		// predicate), so a workflow delete would otherwise seq-scan scheduled_job.
+		await createIndex('scheduled_job', ['workflowId'], false);
+
 		// One job per well-known scheduler key. Partial so workflow-owned jobs
 		// (NULL name) are exempt.
-		await createIndex(
-			'scheduled_job',
-			['name'],
-			true,
-			'IDX_scheduled_job_name',
-			'"name" IS NOT NULL',
-		);
+		await createIndex('scheduled_job', ['name'], true, undefined, '"name" IS NOT NULL');
 	}
 
 	private async createScheduledTaskTable(context: MigrationContext) {
 		const {
 			schemaBuilder: { createTable, createIndex, column },
 			isSqlite,
+			tablePrefix,
 		} = context;
 
 		const idColumn = isSqlite
@@ -193,40 +193,26 @@ export class CreateSchedulerTables1784000000042 implements ReversibleMigration {
 				tableName: 'scheduled_job',
 				columnName: 'id',
 				onDelete: 'CASCADE',
-				name: 'FK_scheduled_task_jobId',
+				name: `FK_${tablePrefix}scheduled_task_jobId`,
 			})
-			// A claimed (running) occurrence must carry a lease deadline, otherwise the
-			// reaper has no expiry to reclaim it by. Pending and terminal rows have no
-			// lease, so they're exempt.
 			.withCheck(
-				'CHK_scheduled_task_running_lease',
+				`CHK_${tablePrefix}scheduled_task_running_lease`,
 				'"status" <> \'running\' OR "leaseExpiresAt" IS NOT NULL',
 			);
 
 		// Layer-1 dedup: at most one occurrence per (job, scheduled time). Its
 		// jobId prefix also indexes the FK for cascade deletes.
-		await createIndex(
-			'scheduled_task',
-			['jobId', 'scheduledFor'],
-			true,
-			'IDX_scheduled_task_occurrence',
-		);
+		await createIndex('scheduled_task', ['jobId', 'scheduledFor'], true);
 
 		// Pending-claim scan: the executor pulls the next due, pending occurrences.
-		await createIndex(
-			'scheduled_task',
-			['runAt'],
-			false,
-			'IDX_scheduled_task_ready',
-			'"status" = \'pending\'',
-		);
+		await createIndex('scheduled_task', ['runAt'], false, undefined, '"status" = \'pending\'');
 
 		// Lease-reaper scan: only running occurrences carry a live lease.
 		await createIndex(
 			'scheduled_task',
 			['leaseExpiresAt'],
 			false,
-			'IDX_scheduled_task_leases',
+			undefined,
 			'"status" = \'running\'',
 		);
 
@@ -240,7 +226,7 @@ export class CreateSchedulerTables1784000000042 implements ReversibleMigration {
 			'scheduled_task',
 			['finishedAt'],
 			false,
-			'IDX_scheduled_task_done',
+			undefined,
 			'"finishedAt" IS NOT NULL',
 		);
 	}

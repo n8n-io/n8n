@@ -34,10 +34,10 @@ export type ScheduledTaskStatus = (typeof ScheduledTaskStatus)[keyof typeof Sche
  * so if the worker dies mid-run another worker can take over.
  */
 @Entity({ name: 'scheduled_task' })
-@Index('IDX_scheduled_task_occurrence', ['jobId', 'scheduledFor'], { unique: true })
-@Index('IDX_scheduled_task_ready', ['runAt'], { where: '"status" = \'pending\'' })
-@Index('IDX_scheduled_task_leases', ['leaseExpiresAt'], { where: '"status" = \'running\'' })
-@Index('IDX_scheduled_task_done', ['finishedAt'], { where: '"finishedAt" IS NOT NULL' })
+@Index(['jobId', 'scheduledFor'], { unique: true })
+@Index(['runAt'], { where: '"status" = \'pending\'' })
+@Index(['leaseExpiresAt'], { where: '"status" = \'running\'' })
+@Index(['finishedAt'], { where: '"finishedAt" IS NOT NULL' })
 export class ScheduledTask extends WithCreatedAt {
 	/**
 	 * 64-bit identity.

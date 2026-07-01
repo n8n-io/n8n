@@ -45,10 +45,10 @@ CREATE TABLE "scheduled_task" ("id" integer PRIMARY KEY NOT NULL, "jobId" intege
 
 | Name | Definition |
 | ---- | ---------- |
-| IDX_scheduled_task_done | CREATE INDEX "IDX_scheduled_task_done" ON "scheduled_task" ("finishedAt") WHERE "finishedAt" IS NOT NULL |
-| IDX_scheduled_task_leases | CREATE INDEX "IDX_scheduled_task_leases" ON "scheduled_task" ("leaseExpiresAt") WHERE "status" = 'running' |
-| IDX_scheduled_task_occurrence | CREATE UNIQUE INDEX "IDX_scheduled_task_occurrence" ON "scheduled_task" ("jobId", "scheduledFor")  |
-| IDX_scheduled_task_ready | CREATE INDEX "IDX_scheduled_task_ready" ON "scheduled_task" ("runAt") WHERE "status" = 'pending' |
+| IDX_scheduled_task_finishedAt | CREATE INDEX "IDX_scheduled_task_finishedAt" ON "scheduled_task" ("finishedAt") WHERE "finishedAt" IS NOT NULL |
+| IDX_scheduled_task_jobId_scheduledFor | CREATE UNIQUE INDEX "IDX_scheduled_task_jobId_scheduledFor" ON "scheduled_task" ("jobId", "scheduledFor")  |
+| IDX_scheduled_task_leaseExpiresAt | CREATE INDEX "IDX_scheduled_task_leaseExpiresAt" ON "scheduled_task" ("leaseExpiresAt") WHERE "status" = 'running' |
+| IDX_scheduled_task_runAt | CREATE INDEX "IDX_scheduled_task_runAt" ON "scheduled_task" ("runAt") WHERE "status" = 'pending' |
 
 ## Relations
 

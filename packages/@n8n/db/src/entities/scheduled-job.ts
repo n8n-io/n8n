@@ -43,14 +43,15 @@ export type MisfirePolicy = (typeof MisfirePolicy)[keyof typeof MisfirePolicy];
  * Those task rows are what actually get picked up and run.
  */
 @Entity({ name: 'scheduled_job' })
-@Index('IDX_scheduled_job_due', ['nextRunAt'], {
+@Index(['nextRunAt'], {
 	where: '"enabled" = true AND "nextRunAt" IS NOT NULL',
 })
-@Index('IDX_scheduled_job_workflow', ['workflowId', 'nodeId'], {
+@Index(['workflowId', 'nodeId'], {
 	unique: true,
 	where: '"workflowId" IS NOT NULL AND "nodeId" IS NOT NULL',
 })
-@Index('IDX_scheduled_job_name', ['name'], {
+@Index(['workflowId'])
+@Index(['name'], {
 	unique: true,
 	where: '"name" IS NOT NULL',
 })
