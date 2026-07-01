@@ -137,4 +137,14 @@ describe('project package export', () => {
 			'1 project(s) not found or not accessible. Export aborted.',
 		);
 	});
+
+	it("rejects exporting another user's personal project", async () => {
+		const projectOwner = await createMember();
+		const otherUser = await createMember();
+		const personalProject = await getPersonalProject(projectOwner);
+
+		await expect(exportSingleProject(otherUser, personalProject.id)).rejects.toThrow(
+			'1 project(s) not found or not accessible. Export aborted.',
+		);
+	});
 });
