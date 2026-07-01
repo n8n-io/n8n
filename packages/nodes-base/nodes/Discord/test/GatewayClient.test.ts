@@ -249,6 +249,28 @@ describe('GatewayClient', () => {
 		void client.close();
 	});
 
+	it('logs routine lifecycle at debug and recovery-relevant events at warn', () => {
+		const entries: Array<{ message: string; level: string }> = [];
+		const client = new GatewayClient({
+			token: 't',
+			intents: 1,
+			log: (message, level) => entries.push({ message, level }),
+		});
+		client.on('fatal', () => {}); // consume the fatal so it isn't an unhandled 'error'
+		client.connect();
+		emitPayload(lastWs(), HELLO);
+
+		// Routine lifecycle -> debug.
+		expect(entries.some((e) => e.level === 'debug' && e.message.includes('connecting'))).toBe(true);
+		expect(entries.some((e) => e.level === 'warn')).toBe(false);
+
+		// A fatal close is recovery-relevant -> warn.
+		lastWs().emit('close', 4014);
+		expect(entries.some((e) => e.level === 'warn' && e.message.includes('fatal close'))).toBe(true);
+
+		void client.close();
+	});
+
 	it('emits a fatal error on an unrecoverable close code and does not reconnect', () => {
 		const client = new GatewayClient({ token: 't', intents: 1 });
 		const onFatal = vi.fn();

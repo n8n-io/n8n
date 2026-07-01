@@ -32,12 +32,18 @@ interface GatewayPayload {
 	t?: string | null;
 }
 
+export type GatewayLogLevel = 'debug' | 'warn';
+
 export interface GatewayClientOptions {
 	token: string;
 	/** OR-ed Gateway intent bits selecting which events Discord should send. */
 	intents: number;
-	/** Optional sink for lifecycle messages (connect/reconnect/errors). */
-	log?: (message: string) => void;
+	/**
+	 * Optional sink for lifecycle messages. `debug` is routine breadcrumbs
+	 * (connecting, identifying, heartbeats); `warn` is recovery-relevant trouble
+	 * (socket errors, unacknowledged heartbeats, invalid/fatal sessions).
+	 */
+	log?: (message: string, level: GatewayLogLevel) => void;
 }
 
 /**
@@ -107,13 +113,18 @@ export class GatewayClient extends EventEmitter {
 			// Handle internally: EventEmitter throws if 'error' is emitted with no
 			// listener, so never rely on one. Log it and let the ensuing 'close'
 			// drive reconnection. Only re-emit when something is actually listening.
-			this.log(`socket error: ${error.message}`);
+			this.warn(`socket error: ${error.message}`);
 			if (this.listenerCount('error') > 0) this.emit('error', error);
 		});
 	}
 
 	private log(message: string): void {
-		this.options.log?.(message);
+		this.options.log?.(message, 'debug');
+	}
+
+	/** Recovery-relevant trouble an operator would want to see above debug. */
+	private warn(message: string): void {
+		this.options.log?.(message, 'warn');
 	}
 
 	/** Permanently close the connection and stop reconnecting. */
@@ -157,7 +168,7 @@ export class GatewayClient extends EventEmitter {
 		try {
 			this.handlePayload(payload, resuming);
 		} catch (error) {
-			this.log(`failed to process frame (op ${payload.op}): ${(error as Error).message}`);
+			this.warn(`failed to process frame (op ${payload.op}): ${(error as Error).message}`);
 		}
 	}
 
@@ -171,7 +182,7 @@ export class GatewayClient extends EventEmitter {
 				const interval = (payload.d as { heartbeat_interval?: number } | undefined)
 					?.heartbeat_interval;
 				if (!interval) {
-					this.log('received HELLO without a heartbeat interval; ignoring');
+					this.warn('received HELLO without a heartbeat interval; ignoring');
 					break;
 				}
 				this.startHeartbeat(interval);
@@ -218,7 +229,7 @@ export class GatewayClient extends EventEmitter {
 			case Op.INVALID_SESSION: {
 				// d === true means the session can still be resumed.
 				const resumable = payload.d === true;
-				this.log(`invalid session (resumable=${resumable})`);
+				this.warn(`invalid session (resumable=${resumable})`);
 				if (resumable) {
 					this.reconnect(true);
 				} else {
@@ -239,7 +250,7 @@ export class GatewayClient extends EventEmitter {
 		if (this.closing) return;
 
 		if (FATAL_CLOSE_CODES.has(code)) {
-			this.log(`fatal close (code ${code}) - not reconnecting`);
+			this.warn(`fatal close (code ${code}) - not reconnecting`);
 			this.emit(
 				'fatal',
 				new Error(
@@ -306,7 +317,7 @@ export class GatewayClient extends EventEmitter {
 	private sendHeartbeat(): void {
 		// A missing ACK since the last beat means the connection is a zombie.
 		if (!this.heartbeatAcked) {
-			this.log('heartbeat not acknowledged - connection looks dead, reconnecting');
+			this.warn('heartbeat not acknowledged - connection looks dead, reconnecting');
 			this.reconnect(true);
 			return;
 		}

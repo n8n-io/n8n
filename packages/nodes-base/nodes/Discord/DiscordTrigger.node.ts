@@ -238,7 +238,11 @@ export class DiscordTrigger implements INodeType {
 		const client = new GatewayClient({
 			token: credentials.botToken as string,
 			intents: computeIntents(events),
-			log: (message) => this.logger.debug(`[Discord Trigger] ${message}`),
+			log: (message, level) => {
+				const line = `[Discord Trigger] ${message}`;
+				if (level === 'warn') this.logger.warn(line);
+				else this.logger.debug(line);
+			},
 		});
 
 		// botUserId is read per-dispatch - it's known once READY arrives, which
