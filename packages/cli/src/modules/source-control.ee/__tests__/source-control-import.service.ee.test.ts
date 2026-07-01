@@ -1,5 +1,6 @@
 import type { SourceControlledFile } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
 import {
 	type Variables,
 	type VariablesRepository,
@@ -12,7 +13,9 @@ import {
 	type ProjectRelation,
 	type ProjectRelationRepository,
 	type ProjectRepository,
+	SharedWorkflow,
 	type SharedWorkflowRepository,
+	type SettingsRepository,
 	type TagRepository,
 	type WorkflowTagMappingRepository,
 	User,
@@ -20,6 +23,7 @@ import {
 	WorkflowEntity,
 	type WorkflowRepository,
 } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { In } from '@n8n/typeorm';
 import * as fastGlob from 'fast-glob';
 import { mock } from 'jest-mock-extended';
@@ -27,10 +31,14 @@ import { type InstanceSettings } from 'n8n-core';
 import fsp from 'node:fs/promises';
 
 import type { VariablesService } from '@/environments.ee/variables/variables.service.ee';
+import type { EventService } from '@/events/event.service';
 import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import type { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository';
 import type { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
 import type { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
+import { CacheService } from '@/services/cache/cache.service';
+import { OwnershipService } from '@/services/ownership.service';
+import type { PasswordUtility } from '@/services/password.utility';
 
 import { SourceControlImportService } from '../source-control-import.service.ee';
 import type { SourceControlContextFactory } from '../source-control-context.factory';
@@ -1312,6 +1320,126 @@ describe('SourceControlImportService', () => {
 
 				expect(workflowRepository.upsert).toHaveBeenCalled();
 			});
+		});
+	});
+
+	// T-75831: project-scoped variables resolve as undefined at execution time after a
+	// source-control pull reassigns a workflow to a different project. Root cause: execution
+	// resolves the owning project via `OwnershipService.getWorkflowProjectCached`, a cache that
+	// is never invalidated by this import path (unlike `WorkflowService.transferWorkflowOwnership`,
+	// which explicitly calls `setWorkflowProjectCacheEntry` after moving a workflow).
+	describe('importWorkflowFromWorkFolder — workflow-ownership cache staleness', () => {
+		it('still resolves the pre-import owning project from cache after import moves the workflow to a new project', async () => {
+			// Arrange: Project A currently owns the workflow (pre-import DB state); the git-tracked
+			// workflow file says it should now belong to Project B.
+			const projectA = Object.assign(new Project(), {
+				id: 'project-A',
+				name: 'Dev Team',
+				type: 'team',
+			});
+			const projectB = Object.assign(new Project(), {
+				id: 'project-B',
+				name: 'Staging Team',
+				type: 'team',
+			});
+
+			const sharedWorkflowOwnedByA = Object.assign(new SharedWorkflow(), {
+				workflowId: 'wf-1',
+				role: 'workflow:owner',
+				project: projectA,
+			});
+			const sharedWorkflowOwnedByB = Object.assign(new SharedWorkflow(), {
+				workflowId: 'wf-1',
+				role: 'workflow:owner',
+				project: projectB,
+			});
+
+			// `findOneOrFail` models the DB truth at each point in time: Project A before the
+			// import runs, Project B after (if the cache were ever bypassed to re-check the DB).
+			sharedWorkflowRepository.findOneOrFail
+				.mockResolvedValueOnce(sharedWorkflowOwnedByA)
+				.mockResolvedValue(sharedWorkflowOwnedByB);
+
+			const globalConfig = Container.get(GlobalConfig);
+			globalConfig.cache.backend = 'memory';
+			const cacheService = new CacheService(globalConfig);
+			await cacheService.init();
+
+			const ownershipService = new OwnershipService(
+				cacheService,
+				mock<EventService>(),
+				mockLogger,
+				mock<PasswordUtility>(),
+				projectRelationRepository,
+				projectRepository,
+				sharedWorkflowRepository,
+				userRepository,
+				mock<SettingsRepository>(),
+			);
+
+			// Simulate a worker that already executed this workflow before today's deploy,
+			// which populates the ownership cache with the pre-import owner (Project A).
+			const ownerBeforeImport = await ownershipService.getWorkflowProjectCached('wf-1');
+			expect(ownerBeforeImport.id).toBe(projectA.id);
+
+			// Act: run the real source-control import, reassigning the workflow to Project B.
+			projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue(
+				Object.assign(new Project(), {
+					id: 'personal-1',
+					name: 'Personal',
+					type: 'personal',
+				}),
+			);
+			workflowRepository.findByIds.mockResolvedValue([]);
+			folderRepository.find.mockResolvedValue([]);
+			sharedWorkflowRepository.findWithFields.mockResolvedValue([
+				Object.assign(new SharedWorkflow(), {
+					workflowId: 'wf-1',
+					role: 'workflow:owner',
+					projectId: projectA.id,
+				}),
+			]);
+			projectRepository.findOne.mockResolvedValue(projectB);
+			workflowRepository.upsert.mockResolvedValue({
+				identifiers: [{ id: 'wf-1' }],
+				generatedMaps: [],
+				raw: [],
+			});
+
+			const importedWorkflowData = {
+				id: 'wf-1',
+				name: 'Nightly Sync',
+				active: false,
+				nodes: [],
+				connections: {},
+				versionId: 'v2',
+				owner: { type: 'team' as const, teamId: projectB.id, teamName: projectB.name },
+				parentFolderId: null,
+				nodeGroups: [],
+			};
+			fsReadFile.mockResolvedValueOnce(JSON.stringify(importedWorkflowData));
+
+			const candidates = [mock<SourceControlledFile>({ file: '/mock/wf-1.json', id: 'wf-1' })];
+
+			await service.importWorkflowFromWorkFolder(candidates, 'importing-user');
+
+			// Sanity check: the import did reassign ownership at the DB layer.
+			expect(sharedWorkflowRepository.deleteByIds).toHaveBeenCalledWith(
+				['wf-1'],
+				projectA.id,
+				expect.anything(),
+			);
+			expect(sharedWorkflowRepository.makeOwner).toHaveBeenCalledWith(
+				['wf-1'],
+				projectB.id,
+				expect.anything(),
+			);
+
+			// Assert: a subsequent lookup — e.g. resolving `$vars` for this workflow's next
+			// execution — should now see Project B. It doesn't: the import never invalidated
+			// the cache, so it still serves the stale, pre-import Project A.
+			const ownerAfterImport = await ownershipService.getWorkflowProjectCached('wf-1');
+			expect(ownerAfterImport.id).toBe(projectB.id);
 		});
 	});
 
