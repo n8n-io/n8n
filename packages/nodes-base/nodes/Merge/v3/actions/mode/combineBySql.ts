@@ -25,6 +25,8 @@ type OperationOptions = {
 	queryParameters?: string | number | unknown[];
 };
 
+type QueryParameterValue = string | number | boolean | null;
+
 export const properties: INodeProperties[] = [
 	numberInputsProperty,
 	{
@@ -126,10 +128,41 @@ function parseQueryParameterValue(value: string): string | number {
 	return value !== '' && !Number.isNaN(numberValue) ? numberValue : value;
 }
 
-function getQueryParameterValues(queryParameters: OperationOptions['queryParameters']): unknown[] {
+function validateQueryParameterValue(
+	node: INode,
+	value: unknown,
+	index: number,
+): QueryParameterValue {
+	if (
+		value === null ||
+		typeof value === 'string' ||
+		typeof value === 'number' ||
+		typeof value === 'boolean'
+	) {
+		return value;
+	}
+
+	throw new NodeOperationError(
+		node,
+		`Query parameter ${index + 1} must be a string, number, boolean, or null`,
+		{ itemIndex: 0 },
+	);
+}
+
+function getQueryParameterValues(
+	node: INode,
+	queryParameters: OperationOptions['queryParameters'],
+): QueryParameterValue[] {
 	if (queryParameters === undefined || queryParameters === '') return [];
-	if (Array.isArray(queryParameters)) return queryParameters;
+	if (Array.isArray(queryParameters)) {
+		return queryParameters.map((value, index) => validateQueryParameterValue(node, value, index));
+	}
 	if (typeof queryParameters === 'number') return [queryParameters];
+	if (typeof queryParameters !== 'string') {
+		throw new NodeOperationError(node, 'Query parameters must be a string, number, or array', {
+			itemIndex: 0,
+		});
+	}
 
 	return queryParameters.split(',').map((entry) => parseQueryParameterValue(entry.trim()));
 }
@@ -188,7 +221,8 @@ export async function execute(
 		query = query.replace(resolvable, this.evaluateExpression(resolvable, 0) as string);
 	}
 
-	const parameters = getQueryParameterValues(options.queryParameters);
+	// the value is resolved once, not on each execution, because merge mode runs once for all items
+	const parameters = getQueryParameterValues(node, options.queryParameters);
 
 	const isSelectQuery = node.typeVersion >= 3.1 ? query.toLowerCase().startsWith('select') : false;
 	const returnSuccessItemIfEmpty =
