@@ -216,7 +216,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 				started.push(record.id);
 				startedSignals.get(record.id)!();
 				await new Promise<void>((resolve) => releases.set(record.id, resolve));
-				return { type: 'completed' };
+				return { type: 'completed', triggerStatuses: [] };
 			});
 
 			consumer.startPolling();
