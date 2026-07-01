@@ -175,7 +175,7 @@ describe('Test MergeV3, combineBySql operation', () => {
 				inputsData,
 			),
 		).rejects.toMatchObject({
-			message: 'Query parameter 1 must be a string or number',
+			message: 'Query parameter 1 must be a string, number, boolean, or null',
 		});
 	});
 
@@ -194,7 +194,7 @@ describe('Test MergeV3, combineBySql operation', () => {
 				inputsData,
 			),
 		).rejects.toMatchObject({
-			message: 'Query parameter 1 must be a string or number',
+			message: 'Query parameter 1 must be a string, number, boolean, or null',
 		});
 	});
 
