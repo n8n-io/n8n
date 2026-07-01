@@ -19,6 +19,7 @@ import {
 	N8nActionDropdown,
 	N8nButton,
 	N8nIconButton,
+	N8nSpinner,
 	N8nTooltip,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -637,7 +638,7 @@ defineExpose({
 					</template>
 					<N8nButton
 						:class="$style.groupButtonLeft"
-						:loading="autoSaveForPublish || publishButtonConfig.loading"
+						:loading="autoSaveForPublish"
 						:disabled="!publishButtonConfig.enabled || shouldDisablePublishButton"
 						variant="ghost"
 						data-test-id="workflow-open-publish-modal-button"
@@ -654,6 +655,12 @@ defineExpose({
 									[$style.indicatorIssues]: publishButtonConfig.indicatorClass === 'error',
 									[$style.indicatorPartial]: publishButtonConfig.indicatorClass === 'partial',
 								}"
+							/>
+							<N8nSpinner
+								v-if="publishButtonConfig.loading"
+								:class="$style.publishingSpinner"
+								size="xsmall"
+								data-test-id="publishing-spinner"
 							/>
 							<span
 								:class="[
@@ -751,6 +758,10 @@ defineExpose({
 	width: var(--spacing--2xs);
 	border-radius: 50%;
 	display: inline-block;
+	margin-right: var(--spacing--2xs);
+}
+
+.publishingSpinner {
 	margin-right: var(--spacing--2xs);
 }
 

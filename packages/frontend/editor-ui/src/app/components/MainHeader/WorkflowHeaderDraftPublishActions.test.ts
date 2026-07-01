@@ -741,16 +741,16 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			uiStore.markStateClean();
 		});
 
-		it('should show "Publishing…" text, be disabled, and have loading=true when status is publishing', () => {
+		it('should show "Publishing…" text alongside an inline spinner, and be disabled when status is publishing', () => {
 			workflowDocumentStore.setPublicationStatus({ status: 'publishing' });
 
-			const { getByTestId } = renderComponent();
+			const { getByTestId, getByText } = renderComponent();
 
 			const publishButton = getByTestId('workflow-open-publish-modal-button');
-			expect(publishButton).toHaveTextContent('Publishing…');
 			expect(publishButton).toBeDisabled();
-			// The loading spinner is rendered by N8nButton when :loading is truthy
-			expect(publishButton.querySelector('.el-loading-spinner, [class*="loading"]')).not.toBeNull();
+			// Text and spinner coexist — text visible alongside the spinner
+			expect(getByText('Publishing…')).toBeInTheDocument();
+			expect(getByTestId('publishing-spinner')).toBeInTheDocument();
 		});
 
 		it('should show publish button enabled with error indicator when status is partial', () => {
