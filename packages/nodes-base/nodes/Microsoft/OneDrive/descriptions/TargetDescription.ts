@@ -44,6 +44,7 @@ export const userTargetRLC: INodeProperties = {
 	type: 'resourceLocator',
 	default: { mode: 'id', value: '' },
 	required: true,
+	noDataExpression: true,
 	modes: [
 		{
 			displayName: 'By ID',
@@ -68,6 +69,7 @@ export const driveTargetRLC: INodeProperties = {
 	type: 'resourceLocator',
 	default: { mode: 'id', value: '' },
 	required: true,
+	noDataExpression: true,
 	modes: [
 		{
 			displayName: 'By ID',
