@@ -93,8 +93,11 @@ export type ImportPackageEventCounts = {
 		updated: number;
 		skipped: number;
 	};
-	/** Number of distinct credentials the package's workflows declare a need for. */
-	credentialRequirements: number;
+	credentials: {
+		matched: number;
+		created: number;
+		requirements: number;
+	};
 };
 
 /** Per-entity counts for an export, carried on `n8n-package-exported` for telemetry. */

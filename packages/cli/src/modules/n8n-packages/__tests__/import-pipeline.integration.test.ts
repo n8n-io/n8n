@@ -1165,7 +1165,11 @@ describe('ImportPipeline event emission', () => {
 					updated: 0,
 					skipped: 0,
 				},
-				credentialRequirements: 0,
+				credentials: {
+					matched: 0,
+					created: 0,
+					requirements: 0,
+				},
 			});
 		} finally {
 			emitSpy.mockRestore();
@@ -1235,7 +1239,11 @@ describe('ImportPipeline event emission', () => {
 					updated: 0,
 					skipped: 0,
 				},
-				credentialRequirements: 3,
+				credentials: {
+					matched: 2,
+					created: 1,
+					requirements: 3,
+				},
 			});
 		} finally {
 			emitSpy.mockRestore();
@@ -1274,7 +1282,11 @@ describe('ImportPipeline event emission', () => {
 					updated: 0,
 					skipped: 1,
 				},
-				credentialRequirements: 0,
+				credentials: {
+					matched: 0,
+					created: 0,
+					requirements: 0,
+				},
 			});
 		} finally {
 			emitSpy.mockRestore();
@@ -1315,7 +1327,11 @@ describe('ImportPipeline event emission', () => {
 					updated: 1,
 					skipped: 0,
 				},
-				credentialRequirements: 0,
+				credentials: {
+					matched: 0,
+					created: 0,
+					requirements: 0,
+				},
 			});
 		} finally {
 			emitSpy.mockRestore();

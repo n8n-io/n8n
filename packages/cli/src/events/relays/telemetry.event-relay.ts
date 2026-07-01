@@ -954,12 +954,7 @@ export class TelemetryEventRelay extends EventRelay {
 		});
 	}
 
-	private packageImported({
-		user,
-		options,
-		credentialIds,
-		counts,
-	}: RelayEventMap['n8n-package-imported']) {
+	private packageImported({ user, options, counts }: RelayEventMap['n8n-package-imported']) {
 		this.telemetry.track('User imported n8n package', {
 			user_id: user.id,
 			workflow_conflict_policy: options.workflowConflictPolicy,
@@ -970,8 +965,9 @@ export class TelemetryEventRelay extends EventRelay {
 			workflows_created: counts.workflows.created,
 			workflows_updated: counts.workflows.updated,
 			workflows_skipped: counts.workflows.skipped,
-			credentials_matched: credentialIds.matched.length,
-			credential_requirements: counts.credentialRequirements,
+			credentials_matched: counts.credentials.matched,
+			credentials_created: counts.credentials.created,
+			credential_requirements: counts.credentials.requirements,
 		});
 	}
 

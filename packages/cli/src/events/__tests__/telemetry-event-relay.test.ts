@@ -1999,7 +1999,11 @@ describe('TelemetryEventRelay', () => {
 						updated: 1,
 						skipped: 1,
 					},
-					credentialRequirements: 3,
+					credentials: {
+						matched: 2,
+						created: 1,
+						requirements: 3,
+					},
 				},
 			};
 
@@ -2016,6 +2020,7 @@ describe('TelemetryEventRelay', () => {
 				workflows_updated: 1,
 				workflows_skipped: 1,
 				credentials_matched: 2,
+				credentials_created: 1,
 				credential_requirements: 3,
 			});
 		});

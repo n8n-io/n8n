@@ -87,7 +87,11 @@ describe('LogStreamingEventRelay', () => {
 						updated: 1,
 						skipped: 0,
 					},
-					credentialRequirements: 1,
+					credentials: {
+						matched: 1,
+						created: 0,
+						requirements: 1,
+					},
 				},
 			};
 

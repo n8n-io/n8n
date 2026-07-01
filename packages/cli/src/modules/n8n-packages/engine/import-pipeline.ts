@@ -139,7 +139,11 @@ export class ImportPipeline {
 					updated: countByStatus('updated'),
 					skipped: countByStatus('skipped'),
 				},
-				credentialRequirements: credentialRequest.requirements?.length ?? 0,
+				credentials: {
+					matched: credentialApply.matched.length,
+					created: credentialApply.stubbed.length,
+					requirements: credentialRequest.requirements?.length ?? 0,
+				},
 			},
 		});
 
