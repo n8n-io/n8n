@@ -255,8 +255,8 @@ describe('workflow package export — with credentials', () => {
 				expect(exportedEvents).toHaveLength(1);
 
 				const payload = exportedEvents[0][1] as RelayEventMap['package-exported'];
-				expect(payload.workflowCount).toBe(3);
-				expect(payload.credentialCount).toBe(2);
+				expect(payload.counts.workflows).toBe(3);
+				expect(payload.counts.credentials).toBe(2);
 				expect(payload.user.id).toBe(owner.id);
 			} finally {
 				emitSpy.mockRestore();
@@ -267,7 +267,7 @@ describe('workflow package export — with credentials', () => {
 			const owner = await createOwner();
 			const project = await createTeamProject('Project A', owner);
 			// An orphan credential reference becomes a requirement but is never bundled,
-			// so credentialCount must track bundled entries (0), not requirements (1).
+			// so counts.credentials must track bundled entries (0), not requirements (1).
 			const workflow = await buildWorkflowReferencingCredentialById({
 				name: 'WF with orphan cred',
 				project,
@@ -285,8 +285,8 @@ describe('workflow package export — with credentials', () => {
 				expect(exportedEvents).toHaveLength(1);
 
 				const payload = exportedEvents[0][1] as RelayEventMap['package-exported'];
-				expect(payload.workflowCount).toBe(1);
-				expect(payload.credentialCount).toBe(0);
+				expect(payload.counts.workflows).toBe(1);
+				expect(payload.counts.credentials).toBe(0);
 			} finally {
 				emitSpy.mockRestore();
 			}

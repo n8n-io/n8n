@@ -13,6 +13,7 @@ import type {
 
 import type { ConcurrencyQueueType } from '@/concurrency/concurrency-control.service';
 import type {
+	ExportPackageEventCounts,
 	ImportAuditCredentialIds,
 	ImportPackageEventCounts,
 	ImportPackageEventOptions,
@@ -89,7 +90,7 @@ export type RelayEventMap = {
 		source?: WorkflowActionSource;
 	};
 
-	'workflows-imported': {
+	'package-imported': {
 		user: UserLike;
 		projectId: string;
 		folderId: string | null;
@@ -103,8 +104,7 @@ export type RelayEventMap = {
 
 	'package-exported': {
 		user: UserLike;
-		workflowCount: number;
-		credentialCount: number;
+		counts: ExportPackageEventCounts;
 	};
 
 	'workflow-deleted': {

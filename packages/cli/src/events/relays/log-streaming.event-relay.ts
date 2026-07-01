@@ -41,7 +41,7 @@ export class LogStreamingEventRelay extends EventRelay {
 
 	init() {
 		this.setupListeners({
-			'workflows-imported': (event) => this.workflowsImported(event),
+			'package-imported': (event) => this.packageImported(event),
 			'workflow-created': (event) => this.workflowCreated(event),
 			'workflow-deleted': (event) => this.workflowDeleted(event),
 			'workflow-archived': (event) => this.workflowArchived(event),
@@ -143,8 +143,7 @@ export class LogStreamingEventRelay extends EventRelay {
 	// #region Workflow
 
 	@Redactable()
-	private workflowsImported({ user, counts, ...rest }: RelayEventMap['workflows-imported']) {
-		// `counts` is telemetry-only; the audit payload carries ids, not aggregate counts.
+	private packageImported({ user, counts, ...rest }: RelayEventMap['package-imported']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.n8n-package.imported',
 			payload: { ...user, ...rest },

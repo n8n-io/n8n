@@ -1973,8 +1973,8 @@ describe('TelemetryEventRelay', () => {
 	});
 
 	describe('package import/export events', () => {
-		it('should track on `workflows-imported` event with params and counts', () => {
-			const event: RelayEventMap['workflows-imported'] = {
+		it('should track on `package-imported` event with params and counts', () => {
+			const event: RelayEventMap['package-imported'] = {
 				user: { id: 'user123' },
 				projectId: 'project123',
 				folderId: 'folder123',
@@ -1994,14 +1994,16 @@ describe('TelemetryEventRelay', () => {
 					updated: [],
 				},
 				counts: {
-					workflowsCreated: 2,
-					workflowsUpdated: 1,
-					workflowsSkipped: 1,
+					workflows: {
+						created: 2,
+						updated: 1,
+						skipped: 1,
+					},
 					credentialRequirements: 3,
 				},
 			};
 
-			eventService.emit('workflows-imported', event);
+			eventService.emit('package-imported', event);
 
 			expect(telemetry.track).toHaveBeenCalledWith('User imported package', {
 				user_id: 'user123',
@@ -2021,8 +2023,10 @@ describe('TelemetryEventRelay', () => {
 		it('should track on `package-exported` event with entity counts', () => {
 			const event: RelayEventMap['package-exported'] = {
 				user: { id: 'user123' },
-				workflowCount: 3,
-				credentialCount: 2,
+				counts: {
+					workflows: 3,
+					credentials: 2,
+				},
 			};
 
 			eventService.emit('package-exported', event);

@@ -114,7 +114,7 @@ export class ImportPipeline {
 		const imported = outcomes.filter(({ status }) => status !== 'skipped');
 		const countByStatus = (status: WorkflowImportOutcome['status']) =>
 			outcomes.filter((outcome) => outcome.status === status).length;
-		this.eventService.emit('workflows-imported', {
+		this.eventService.emit('package-imported', {
 			user: context.user,
 			projectId: context.projectId,
 			folderId: context.folderId,
@@ -134,9 +134,11 @@ export class ImportPipeline {
 				updated: [],
 			},
 			counts: {
-				workflowsCreated: countByStatus('created'),
-				workflowsUpdated: countByStatus('updated'),
-				workflowsSkipped: countByStatus('skipped'),
+				workflows: {
+					created: countByStatus('created'),
+					updated: countByStatus('updated'),
+					skipped: countByStatus('skipped'),
+				},
 				credentialRequirements: credentialRequest.requirements?.length ?? 0,
 			},
 		});

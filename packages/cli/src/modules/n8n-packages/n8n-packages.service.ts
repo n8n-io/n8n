@@ -60,8 +60,10 @@ export class N8nPackagesService {
 
 		this.eventService.emit('package-exported', {
 			user: request.user,
-			workflowCount: workflowEntries.length,
-			credentialCount: credentialEntries.length,
+			counts: {
+				workflows: workflowEntries.length,
+				credentials: credentialEntries.length,
+			},
 		});
 
 		return writer.finalize();

@@ -161,7 +161,7 @@ export class TelemetryEventRelay extends EventRelay {
 			'workflow-unarchived': (event) => this.workflowUnarchived(event),
 			'workflow-deleted': (event) => this.workflowDeleted(event),
 			'workflow-sharing-updated': (event) => this.workflowSharingUpdated(event),
-			'workflows-imported': (event) => this.workflowsImported(event),
+			'package-imported': (event) => this.packageImported(event),
 			'package-exported': (event) => this.packageExported(event),
 			'workflow-saved': async (event) => await this.workflowSaved(event),
 			'workflow-activated': (event) => this.workflowActivated(event),
@@ -954,12 +954,12 @@ export class TelemetryEventRelay extends EventRelay {
 		});
 	}
 
-	private workflowsImported({
+	private packageImported({
 		user,
 		options,
 		credentialIds,
 		counts,
-	}: RelayEventMap['workflows-imported']) {
+	}: RelayEventMap['package-imported']) {
 		this.telemetry.track('User imported package', {
 			user_id: user.id,
 			workflow_conflict_policy: options.workflowConflictPolicy,
@@ -967,23 +967,19 @@ export class TelemetryEventRelay extends EventRelay {
 			credential_matching_mode: options.credentialMatchingMode,
 			credential_missing_mode: options.credentialMissingMode,
 			workflow_publishing_policy: options.workflowPublishingPolicy,
-			workflows_created: counts.workflowsCreated,
-			workflows_updated: counts.workflowsUpdated,
-			workflows_skipped: counts.workflowsSkipped,
+			workflows_created: counts.workflows.created,
+			workflows_updated: counts.workflows.updated,
+			workflows_skipped: counts.workflows.skipped,
 			credentials_matched: credentialIds.matched.length,
 			credential_requirements: counts.credentialRequirements,
 		});
 	}
 
-	private packageExported({
-		user,
-		workflowCount,
-		credentialCount,
-	}: RelayEventMap['package-exported']) {
+	private packageExported({ user, counts }: RelayEventMap['package-exported']) {
 		this.telemetry.track('User exported package', {
 			user_id: user.id,
-			workflow_count: workflowCount,
-			credential_count: credentialCount,
+			workflow_count: counts.workflows,
+			credential_count: counts.credentials,
 		});
 	}
 
