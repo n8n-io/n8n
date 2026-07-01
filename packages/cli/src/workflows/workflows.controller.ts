@@ -5,6 +5,7 @@ import {
 	DeactivateWorkflowDto,
 	ExecutionRedactionQueryDtoSchema,
 	ImportWorkflowFromUrlDto,
+	ManualRunDto,
 	TransferWorkflowBodyDto,
 	UpdateWorkflowDto,
 } from '@n8n/api-types';
@@ -496,7 +497,7 @@ export class WorkflowsController {
 
 	@Post('/:workflowId/run')
 	@ProjectScope('workflow:execute')
-	async runManually(req: WorkflowRequest.ManualRun, _res: unknown) {
+	async runManually(req: WorkflowRequest.ManualRun, _res: unknown, @Body body: ManualRunDto) {
 		const workflowId = req.params.workflowId;
 
 		// Always load the stored workflow from the database.
@@ -512,7 +513,7 @@ export class WorkflowsController {
 
 		const result = await this.workflowExecutionService.executeManually(
 			dbWorkflow,
-			req.body,
+			body,
 			req.user,
 			req.headers['push-ref'],
 			n8nAuthCookie,

@@ -11,7 +11,6 @@ import {
 	type IWorkflowExecuteAdditionalData,
 	type ExecutionError,
 	createRunExecutionData,
-	UserError,
 } from 'n8n-workflow';
 
 import type { IWorkflowErrorData } from '@/interfaces';
@@ -302,74 +301,6 @@ describe('WorkflowExecutionService', () => {
 				projectName: 'Test Project',
 			});
 			expect(result).toEqual({ executionId });
-		});
-
-		test('should throw a UserError when neither a trigger nor a destination node is given', async () => {
-			const userId = 'user-id';
-			const user = mock<User>({ id: userId });
-
-			const trigger: INode = {
-				id: '1',
-				typeVersion: 1,
-				position: [1, 2],
-				parameters: {},
-				name: 'trigger',
-				type: 'n8n-nodes-base.manualTrigger',
-			};
-
-			const workflowData: IWorkflowBase = {
-				id: 'abc',
-				name: 'test',
-				active: false,
-				activeVersionId: null,
-				isArchived: false,
-				pinData: undefined,
-				nodes: [trigger, hackerNewsNode],
-				connections: { ...createMainConnection(hackerNewsNode.name, trigger.name) },
-				createdAt: new Date(),
-				updatedAt: new Date(),
-			};
-
-			const runPayload: WorkflowRequest.FullManualExecutionFromUnknownTriggerPayload = {};
-
-			await expect(
-				workflowExecutionService.executeManually(workflowData, runPayload, user),
-			).rejects.toThrow(UserError);
-			expect(workflowRunner.run).not.toHaveBeenCalled();
-		});
-
-		test('should throw a UserError when no destination node is given even with a pinned trigger', async () => {
-			const userId = 'user-id';
-			const user = mock<User>({ id: userId });
-
-			const pinnedTrigger: INode = {
-				id: '1',
-				typeVersion: 1,
-				position: [1, 2],
-				parameters: {},
-				name: 'pinned',
-				type: 'n8n-nodes-base.airtableTrigger',
-			};
-
-			const workflowData: IWorkflowBase = {
-				id: 'abc',
-				name: 'test',
-				active: false,
-				activeVersionId: null,
-				isArchived: false,
-				pinData: { [pinnedTrigger.name]: [{ json: {} }] },
-				nodes: [pinnedTrigger, hackerNewsNode],
-				connections: { ...createMainConnection(hackerNewsNode.name, pinnedTrigger.name) },
-				createdAt: new Date(),
-				updatedAt: new Date(),
-			};
-
-			const runPayload: WorkflowRequest.FullManualExecutionFromUnknownTriggerPayload = {};
-
-			await expect(
-				workflowExecutionService.executeManually(workflowData, runPayload, user),
-			).rejects.toThrow(UserError);
-			expect(workflowRunner.run).not.toHaveBeenCalled();
 		});
 
 		test('should ignore pinned trigger and start from unexecuted trigger', async () => {

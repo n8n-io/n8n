@@ -4719,7 +4719,7 @@ describe('POST /workflows/:workflowId/run', () => {
 
 		const response = await authOwnerAgent
 			.post(`/workflows/${dbWorkflow.id}/run`)
-			.send({ workflowData: tamperedWorkflowData });
+			.send({ triggerToStartFrom: { name: 'Start' }, workflowData: tamperedWorkflowData });
 
 		// The endpoint should accept the request (the DB workflow exists)
 		// It should NOT use the tampered workflowData
@@ -4732,7 +4732,7 @@ describe('POST /workflows/:workflowId/run', () => {
 
 		const response = await authOwnerAgent
 			.post(`/workflows/${nonExistentId}/run`)
-			.send({ workflowData: fakeWorkflow });
+			.send({ triggerToStartFrom: { name: 'Start' }, workflowData: fakeWorkflow });
 
 		expect(response.statusCode).toBe(404);
 	});

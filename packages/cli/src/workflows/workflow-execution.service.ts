@@ -26,7 +26,6 @@ import type {
 import {
 	SubworkflowOperationError,
 	UnexpectedError,
-	UserError,
 	Workflow,
 	createRunExecutionData,
 } from 'n8n-workflow';
@@ -190,15 +189,6 @@ export class WorkflowExecutionService {
 
 		// Case 3: Full execution from an unknown trigger.
 		if (isFullExecutionFromUnknownTrigger(payload)) {
-			// A full manual run needs either a trigger to start from or a destination node
-			// to work back from. Without either we can't determine where to start, so reject
-			// the request explicitly instead of dereferencing an undefined destination.
-			if (payload.destinationNode === undefined) {
-				throw new UserError(
-					'To run the workflow manually, specify either a trigger to start from or a destination node.',
-				);
-			}
-
 			const pinnedTrigger = this.selectPinnedTrigger(
 				workflowData,
 				payload.destinationNode.nodeName,
@@ -621,7 +611,8 @@ function isFullExecutionFromKnownTrigger(
 /**
  * Type guard to check if payload is a FullManualExecutionFromUnknownTriggerPayload.
  *
- * An unknown trigger payload has neither `triggerToStartFrom` nor `runData`.
+ * An unknown trigger payload has a `destinationNode` to work back from,
+ * but neither `triggerToStartFrom` nor `runData`.
  * The trigger will need to be determined.
  */
 function isFullExecutionFromUnknownTrigger(
@@ -630,7 +621,10 @@ function isFullExecutionFromUnknownTrigger(
 	if ('triggerToStartFrom' in payload) {
 		return false;
 	}
-	return !('runData' in payload);
+	if ('runData' in payload) {
+		return false;
+	}
+	return payload.destinationNode !== undefined;
 }
 
 function triggerHasNoPinnedData(

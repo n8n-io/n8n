@@ -1,3 +1,4 @@
+import type { ManualRunDto } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import type {
 	INode,
@@ -44,7 +45,7 @@ export declare namespace WorkflowRequest {
 	type FullManualExecutionFromUnknownTriggerPayload = {
 		agentRequest?: AiAgentRequest;
 
-		destinationNode?: IDestinationNode;
+		destinationNode: IDestinationNode;
 	};
 
 	// 3. Partial Manual Execution to Destination
@@ -56,10 +57,7 @@ export declare namespace WorkflowRequest {
 		dirtyNodeNames: string[];
 	};
 
-	type ManualRunPayload =
-		| FullManualExecutionFromKnownTriggerPayload
-		| FullManualExecutionFromUnknownTriggerPayload
-		| PartialManualExecutionToDestinationPayload;
+	type ManualRunPayload = ManualRunDto;
 
 	type Create = AuthenticatedRequest<{}, {}, CreateUpdatePayload>;
 
