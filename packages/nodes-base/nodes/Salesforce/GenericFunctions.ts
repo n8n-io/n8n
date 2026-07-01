@@ -337,9 +337,9 @@ const SALESFORCE_DATE_LITERALS = new Set([
 ]);
 
 // Salesforce node typeVersion at which numeric-looking strings stopped being
-// auto-coerced to unquoted SOQL numbers. See NODE-5116: string-typed Salesforce
-// fields (e.g. external IDs) need quoted literals regardless of content. Older
-// typeVersions keep the legacy coercion for backwards compatibility.
+// auto-coerced to unquoted SOQL numbers. String-typed Salesforce fields (e.g.
+// external IDs) need quoted literals regardless of content. Older typeVersions
+// keep the legacy coercion for backwards compatibility.
 const NUMERIC_STRING_QUOTING_VERSION = 1.1;
 
 export function getValue(value: any, nodeVersion = 1): string | number | boolean {
@@ -418,7 +418,7 @@ export function getValue(value: any, nodeVersion = 1): string | number | boolean
 
 		// Legacy behavior (typeVersion < 1.1): auto-coerce numeric strings to unquoted
 		// SOQL numbers. Kept for existing workflows that rely on it for numeric SF fields
-		// (e.g. `AnnualRevenue > '0'`). Fixed in typeVersion 1.1 — see NODE-5116.
+		// (e.g. `AnnualRevenue > '0'`). Fixed in typeVersion 1.1.
 		if (nodeVersion < NUMERIC_STRING_QUOTING_VERSION && /^-?(0|[1-9]\d*)(\.\d+)?$/.test(value)) {
 			const numericValue = Number(value);
 			if (Number.isFinite(numericValue)) {
