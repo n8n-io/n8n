@@ -144,6 +144,14 @@ const claudeSessionSchema = z
 	.passthrough();
 export type ClaudeSession = z.infer<typeof claudeSessionSchema>;
 
+/** Default per-attempt wall-clock cap for a `claude` build. Generous enough for
+ *  legitimately slow builds (the heaviest mcp cases average ~18 min) while still
+ *  bounding a wedged subprocess so it can't hold an eval lane indefinitely. */
+export const DEFAULT_MCP_BUILD_TIMEOUT_MS = 1_800_000; // 30 min
+
+/** Grace period between SIGTERM and SIGKILL when killing a timed-out build. */
+const KILL_GRACE_MS = 5_000;
+
 /** Everything a single `claude -p` build needs beyond the prompt + MCP config. */
 export interface McpBuildSettings {
 	/** MCP server name in the staged config; also derives the tool allowlist. */
@@ -152,8 +160,13 @@ export interface McpBuildSettings {
 	model: string;
 	/** Retries per build when no WORKFLOW_ID is returned. */
 	maxAttempts: number;
-	/** MCP_TIMEOUT (ms) env passed to the subprocess. */
+	/** MCP_TIMEOUT (ms) env passed to the subprocess — bounds a single MCP tool call. */
 	mcpTimeoutMs: number;
+	/** Wall-clock cap (ms) for the whole `claude` subprocess per attempt. On expiry
+	 *  the process is killed (SIGTERM→SIGKILL) so a hung build can't strand its lane.
+	 *  Omit or set 0 to disable (e.g. the standalone batch builder, which can't
+	 *  deadlock a lane). Distinct from `mcpTimeoutMs`, which is per MCP call. */
+	buildTimeoutMs?: number;
 	/** Working directory for the subprocess (loads that project's Claude config/skills). */
 	buildCwd?: string;
 	/** When set, instruct the model to create the workflow in this n8n project. */
@@ -163,6 +176,8 @@ export interface McpBuildSettings {
 interface BuildAttempt {
 	session: ClaudeSession | undefined;
 	logFile: string;
+	/** True when the attempt was killed by the build timeout rather than exiting. */
+	timedOut: boolean;
 }
 
 async function runClaude(
@@ -193,6 +208,25 @@ async function runClaude(
 		});
 		let stdout = '';
 		let stderr = '';
+		let timedOut = false;
+		let settled = false;
+		let timeoutTimer: ReturnType<typeof setTimeout> | undefined;
+		let killTimer: ReturnType<typeof setTimeout> | undefined;
+
+		const clearTimers = () => {
+			if (timeoutTimer) clearTimeout(timeoutTimer);
+			if (killTimer) clearTimeout(killTimer);
+		};
+
+		// Resolve only once, and only after the process is actually dead (so the
+		// caller — and the lane allocator — never overlaps with a live subprocess).
+		const settle = (session: ClaudeSession | undefined) => {
+			if (settled) return;
+			settled = true;
+			clearTimers();
+			resolve({ session, logFile, timedOut });
+		};
+
 		child.stdout.on('data', (chunk: Buffer) => {
 			stdout += chunk.toString();
 		});
@@ -201,19 +235,37 @@ async function runClaude(
 		});
 		child.on('close', () => {
 			// Persist stdout (or stderr fallback) for forensics regardless of parse success.
-			writeFileSync(logFile, stdout || stderr || '{}');
+			writeFileSync(logFile, stdout || stderr || (timedOut ? '{"subtype":"timeout"}' : '{}'));
 			let session: ClaudeSession | undefined;
-			try {
-				const parsed = claudeSessionSchema.safeParse(JSON.parse(stdout));
-				if (parsed.success) session = parsed.data;
-			} catch {
-				// stdout wasn't JSON — caller treats undefined session as failure.
+			if (!timedOut) {
+				try {
+					const parsed = claudeSessionSchema.safeParse(JSON.parse(stdout));
+					if (parsed.success) session = parsed.data;
+				} catch {
+					// stdout wasn't JSON — caller treats undefined session as failure.
+				}
 			}
-			resolve({ session, logFile });
+			settle(session);
 		});
 		child.on('error', () => {
-			resolve({ session: undefined, logFile });
+			settle(undefined);
 		});
+
+		if (settings.buildTimeoutMs && settings.buildTimeoutMs > 0) {
+			timeoutTimer = setTimeout(() => {
+				// Mark first so the eventual 'close' is reported as a timeout, then kill
+				// (escalating to SIGKILL). We settle from 'close' once the process dies.
+				timedOut = true;
+				child.kill('SIGTERM');
+				killTimer = setTimeout(() => {
+					try {
+						child.kill('SIGKILL');
+					} catch {
+						// process may already be gone
+					}
+				}, KILL_GRACE_MS);
+			}, settings.buildTimeoutMs);
+		}
 	});
 }
 
@@ -320,7 +372,7 @@ export async function buildWorkflowViaMcp(opts: {
 			`${slug}-iter${String(iteration)}-attempt${String(attempt)}-${ts}.json`,
 		);
 		lastLogFile = logFile;
-		const { session } = await runClaude(
+		const { session, timedOut } = await runClaude(
 			userMessage,
 			settings,
 			mcpConfigPath,
@@ -332,6 +384,16 @@ export async function buildWorkflowViaMcp(opts: {
 		if (id) {
 			workflowId = id;
 			failureReason = undefined;
+			break;
+		}
+		if (timedOut) {
+			// A timeout means the build hung, not that it failed fast — retrying would
+			// likely hang again and burn another full timeout. Stop here so the lane is
+			// freed promptly; the case is recorded as a build failure.
+			failureReason = 'timeout';
+			log(
+				`  [${slug}#${String(iteration)}] attempt ${String(attempt)}: build timed out after ${String(settings.buildTimeoutMs)}ms — killed, not retrying (log: ${logFile})`,
+			);
 			break;
 		}
 		failureReason = session?.subtype ?? 'no-stdout';

@@ -7,6 +7,7 @@
 
 import { z } from 'zod';
 
+import { DEFAULT_MCP_BUILD_TIMEOUT_MS } from './mcp-builder';
 import { BASELINE_EXPERIMENT_PREFIX } from '../comparison/fetch-baseline';
 
 /** Default LangSmith dataset — the shared Instance AI cohort. */
@@ -91,8 +92,13 @@ export interface CliArgs {
 	buildCwd?: string;
 	/** Retries per workflow when `claude` returns no WORKFLOW_ID (`--build-via-mcp`). */
 	buildMaxAttempts: number;
-	/** MCP_TIMEOUT (ms) passed to the `claude` build subprocess (`--build-via-mcp`). */
+	/** MCP_TIMEOUT (ms) passed to the `claude` build subprocess (`--build-via-mcp`);
+	 *  bounds a single MCP tool call. */
 	buildMcpTimeoutMs: number;
+	/** Wall-clock cap (ms) for the whole `claude` build subprocess per attempt
+	 *  (`--build-via-mcp`). On expiry the process is killed so a hung build can't
+	 *  hold its lane. 0 disables. Distinct from `buildMcpTimeoutMs` (per MCP call). */
+	buildTimeoutMs: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -134,6 +140,7 @@ const cliArgsSchema = z.object({
 	buildCwd: z.string().min(1).optional(),
 	buildMaxAttempts: z.number().int().positive().default(3),
 	buildMcpTimeoutMs: z.number().int().positive().default(120_000),
+	buildTimeoutMs: z.number().int().nonnegative().default(DEFAULT_MCP_BUILD_TIMEOUT_MS),
 });
 
 // ---------------------------------------------------------------------------
@@ -205,6 +212,7 @@ export function parseCliArgs(argv: string[]): CliArgs {
 		buildCwd: validated.buildCwd,
 		buildMaxAttempts: validated.buildMaxAttempts,
 		buildMcpTimeoutMs: validated.buildMcpTimeoutMs,
+		buildTimeoutMs: validated.buildTimeoutMs,
 	};
 }
 
@@ -264,6 +272,7 @@ interface RawArgs {
 	buildCwd?: string;
 	buildMaxAttempts: number;
 	buildMcpTimeoutMs: number;
+	buildTimeoutMs: number;
 	/** Whether --dataset / --baseline-prefix were explicitly passed (langtracer mode
 	 *  derives suite-scoped defaults otherwise). */
 	datasetProvided: boolean;
@@ -290,6 +299,7 @@ function parseRawArgs(argv: string[]): RawArgs {
 		buildModel: 'claude-sonnet-4-6',
 		buildMaxAttempts: 3,
 		buildMcpTimeoutMs: 120_000,
+		buildTimeoutMs: DEFAULT_MCP_BUILD_TIMEOUT_MS,
 		datasetProvided: false,
 		baselineProvided: false,
 	};
@@ -433,6 +443,11 @@ function parseRawArgs(argv: string[]): RawArgs {
 
 			case '--build-mcp-timeout-ms':
 				result.buildMcpTimeoutMs = parseIntArg(argv, i, '--build-mcp-timeout-ms');
+				i++;
+				break;
+
+			case '--build-timeout-ms':
+				result.buildTimeoutMs = parseIntArg(argv, i, '--build-timeout-ms');
 				i++;
 				break;
 

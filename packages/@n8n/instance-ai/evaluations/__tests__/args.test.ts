@@ -184,6 +184,7 @@ describe('parseCliArgs --build-via-mcp', () => {
 		expect(args.buildCwd).toBeUndefined();
 		expect(args.buildMaxAttempts).toBe(3);
 		expect(args.buildMcpTimeoutMs).toBe(120_000);
+		expect(args.buildTimeoutMs).toBe(1_800_000);
 	});
 
 	it('enables the mode and parses the build knobs', () => {
@@ -199,6 +200,8 @@ describe('parseCliArgs --build-via-mcp', () => {
 			'5',
 			'--build-mcp-timeout-ms',
 			'90000',
+			'--build-timeout-ms',
+			'600000',
 		]);
 		expect(args.buildViaMcp).toBe(true);
 		expect(args.mcpServerName).toBe('n8n-eval');
@@ -206,6 +209,11 @@ describe('parseCliArgs --build-via-mcp', () => {
 		expect(args.buildCwd).toBe('/tmp/mcp-workspace');
 		expect(args.buildMaxAttempts).toBe(5);
 		expect(args.buildMcpTimeoutMs).toBe(90_000);
+		expect(args.buildTimeoutMs).toBe(600_000);
+	});
+
+	it('allows --build-timeout-ms 0 to disable the build killer', () => {
+		expect(parseCliArgs(['--build-via-mcp', '--build-timeout-ms', '0']).buildTimeoutMs).toBe(0);
 	});
 
 	it('works with multiple --base-url lanes (unlike --prebuilt-workflows)', () => {

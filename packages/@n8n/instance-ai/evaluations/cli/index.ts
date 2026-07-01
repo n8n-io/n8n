@@ -134,6 +134,7 @@ function mcpBuildSettingsFromArgs(args: CliArgs): McpBuildSettings {
 		model: args.buildModel,
 		maxAttempts: args.buildMaxAttempts,
 		mcpTimeoutMs: args.buildMcpTimeoutMs,
+		buildTimeoutMs: args.buildTimeoutMs,
 		buildCwd: args.buildCwd,
 	};
 }

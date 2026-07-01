@@ -34,9 +34,9 @@ on:
         required: false
         default: '3'
       eval-concurrency:
-        description: 'Concurrent scenario executions in the verifier (keep >= lanes * 4)'
+        description: 'Concurrent scenario executions in the verifier (empty = lanes * 2). Higher risks Anthropic-budget starvation → verifier/MCP timeouts.'
         required: false
-        default: '24'
+        default: ''
       build-model:
         description: 'Anthropic model id for the claude MCP build step'
         required: false
@@ -65,7 +65,8 @@ jobs:
       filter: ${{ inputs.filter || '' }}
       lanes: ${{ inputs.lanes || '6' }}
       iterations: ${{ inputs.iterations || '3' }}
-      eval-concurrency: ${{ inputs.eval-concurrency || '24' }}
+      # Empty → the reusable workflow defaults concurrency to lanes * 2.
+      eval-concurrency: ${{ inputs.eval-concurrency }}
       build-model: ${{ inputs.build-model || 'claude-sonnet-4-6' }}
       experiment-name: ${{ inputs.experiment-name || '' }}
     # Pass only the secrets the reusable workflow needs (not `secrets: inherit`).

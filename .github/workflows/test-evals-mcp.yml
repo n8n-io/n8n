@@ -41,10 +41,10 @@ on:
         type: string
         default: '3'
       eval-concurrency:
-        description: 'Concurrent scenario executions in the verifier (keep >= lanes * 4 to saturate lanes)'
+        description: 'Concurrent scenario executions in the verifier (empty = lanes * 2). Raise it to push throughput, but too high starves the shared Anthropic budget and causes verifier/MCP timeouts.'
         required: false
         type: string
-        default: '24'
+        default: ''
       build-model:
         description: 'Anthropic model id for the claude MCP build step'
         required: false
@@ -94,9 +94,9 @@ on:
         required: false
         default: '3'
       eval-concurrency:
-        description: 'Concurrent scenario executions in the verifier (keep >= lanes * 4 to saturate lanes)'
+        description: 'Concurrent scenario executions in the verifier (empty = lanes * 2). Raise it to push throughput, but too high starves the shared Anthropic budget and causes verifier/MCP timeouts.'
         required: false
-        default: '24'
+        default: ''
       build-model:
         description: 'Anthropic model id for the claude MCP build step'
         required: false
@@ -240,6 +240,7 @@ jobs:
           LANGSMITH_REVISION_ID: ${{ github.sha }}
           LANGSMITH_BRANCH: ${{ github.event.pull_request.head.ref || github.head_ref || github.ref_name }}
           BASE_URLS: ${{ steps.lanes.outputs.base_urls }}
+          LANES: ${{ inputs.lanes || '6' }}
           TIER: ${{ inputs.tier }}
           FILTER: ${{ inputs.filter }}
           ITERATIONS: ${{ inputs.iterations }}
@@ -247,6 +248,13 @@ jobs:
           BUILD_MODEL: ${{ inputs.build-model }}
           EXPERIMENT_NAME: ${{ inputs.experiment-name }}
         run: |
+          # Default concurrency to lanes * 2. Each lane already caps builds at 4,
+          # but running all lanes flat-out (lanes * 4) floods the shared Anthropic
+          # budget — builds, verifier checks, and AI-node mocks all contend — which
+          # surfaces as verifier/MCP timeouts. lanes * 2 keeps that in check.
+          CONCURRENCY="${EVAL_CONCURRENCY:-$((LANES * 2))}"
+          echo "Lanes: $LANES | eval concurrency: $CONCURRENCY"
+
           # --dataset + --baseline-prefix keep the MCP cohort isolated from the
           # Instance AI dataset/baseline in LangSmith (both halves required).
           ARGS=(
@@ -254,7 +262,7 @@ jobs:
             --build-via-mcp
             --tier "${TIER:-mcp}"
             --iterations "${ITERATIONS:-3}"
-            --concurrency "${EVAL_CONCURRENCY:-24}"
+            --concurrency "$CONCURRENCY"
             --build-model "$BUILD_MODEL"
             --dataset mcp-workflow-evals
             --baseline-prefix mcp-baseline-
