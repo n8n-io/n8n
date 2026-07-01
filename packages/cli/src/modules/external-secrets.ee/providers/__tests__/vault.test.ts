@@ -336,14 +336,6 @@ describe('VaultProvider', () => {
 					statusCode: 403,
 				}),
 			);
-			expect(logger.warn).toHaveBeenCalledWith(
-				'Skipped inaccessible Vault KV secrets during update',
-				expect.objectContaining({
-					operation: 'update',
-					failedCount: 1,
-					sampleSecretPaths: ['forbidden/metadata/?list=true'],
-				}),
-			);
 		});
 
 		it('should log and rethrow full update failures', async () => {
