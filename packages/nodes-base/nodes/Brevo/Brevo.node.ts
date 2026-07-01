@@ -14,7 +14,8 @@ export class Brevo implements INodeType {
 		name: 'sendInBlue',
 		icon: 'file:brevo.svg',
 		group: ['transform'],
-		version: 1,
+		version: [1, 2],
+		defaultVersion: 2,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Brevo API',
 		defaults: {
