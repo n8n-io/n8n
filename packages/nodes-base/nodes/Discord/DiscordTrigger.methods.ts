@@ -38,13 +38,19 @@ export async function guildSearch(this: ILoadOptionsFunctions): Promise<INodeLis
 	};
 }
 
+// Container channel types that only hold other channels/threads and can never
+// be a message or reaction `channel_id`: category (4), forum (15), media (16).
+// Excluding these (rather than allow-listing messageable types) avoids dropping
+// channels that do carry messages, e.g. text-in-voice.
+const CONTAINER_CHANNEL_TYPES = new Set([4, 15, 16]);
+
 export async function getChannels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const guildId = this.getNodeParameter('guildId', '', { extractValue: true }) as string;
 	if (!guildId) return [];
 
 	const channels = await discordBotApiRequest.call(this, 'GET', `/guilds/${guildId}/channels`);
 	return channels
-		.filter((channel) => channel.type !== 4) // skip categories
+		.filter((channel) => !CONTAINER_CHANNEL_TYPES.has(channel.type as number))
 		.map((channel) => ({ name: channel.name as string, value: channel.id as string }));
 }
 

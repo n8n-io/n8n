@@ -103,6 +103,45 @@ describe('GatewayClient', () => {
 		void client.close();
 	});
 
+	it('reconnects when a heartbeat goes unacknowledged (zombie connection)', () => {
+		vi.useFakeTimers();
+		try {
+			const client = new GatewayClient({ token: 't', intents: 1 });
+			client.connect();
+			emitPayload(lastWs(), HELLO); // heartbeat_interval 45s; first beat is staggered
+			const before = wsInstances.length;
+
+			vi.advanceTimersByTime(45_000); // first beat sent -> awaiting ACK
+			vi.advanceTimersByTime(45_000); // next beat: still no ACK -> treat as dead
+			vi.runOnlyPendingTimers(); // fire the reconnect backoff -> new connection
+
+			expect(wsInstances.length).toBe(before + 1);
+			void client.close();
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('stays on the same connection while heartbeats are acknowledged', () => {
+		vi.useFakeTimers();
+		try {
+			const client = new GatewayClient({ token: 't', intents: 1 });
+			client.connect();
+			emitPayload(lastWs(), HELLO);
+			const before = wsInstances.length;
+
+			vi.advanceTimersByTime(45_000); // first beat
+			emitPayload(lastWs(), { op: 11 }); // HEARTBEAT_ACK
+			vi.advanceTimersByTime(45_000); // next beat, previous one acked -> no reconnect
+			emitPayload(lastWs(), { op: 11 });
+
+			expect(wsInstances.length).toBe(before); // no new connection spawned
+			void client.close();
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
 	it('responds to a heartbeat request immediately', () => {
 		const client = new GatewayClient({ token: 't', intents: 1 });
 		client.connect();

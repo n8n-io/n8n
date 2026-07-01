@@ -31,12 +31,15 @@ describe('DiscordTrigger listSearch methods', () => {
 		]);
 	});
 
-	it('getChannels scopes to the selected guild and skips categories', async () => {
+	it('getChannels scopes to the selected guild and skips container channels', async () => {
 		const { ctx, requestWithAuthentication } = buildContext();
 		ctx.getNodeParameter.mockReturnValue('111');
 		requestWithAuthentication.mockResolvedValue([
-			{ id: 'c1', name: 'General', type: 0 },
-			{ id: 'cat', name: 'A Category', type: 4 }, // filtered out
+			{ id: 'c1', name: 'General', type: 0 }, // text
+			{ id: 'c2', name: 'Voice', type: 2 }, // voice (text-in-voice) - kept
+			{ id: 'cat', name: 'A Category', type: 4 }, // container - dropped
+			{ id: 'forum', name: 'A Forum', type: 15 }, // container - dropped
+			{ id: 'media', name: 'A Media', type: 16 }, // container - dropped
 		]);
 
 		const result = await getChannels.call(ctx);
@@ -45,7 +48,10 @@ describe('DiscordTrigger listSearch methods', () => {
 			'discordBotApi',
 			expect.objectContaining({ url: expect.stringContaining('/guilds/111/channels') }),
 		);
-		expect(result).toEqual([{ name: 'General', value: 'c1' }]);
+		expect(result).toEqual([
+			{ name: 'General', value: 'c1' },
+			{ name: 'Voice', value: 'c2' },
+		]);
 	});
 
 	it('getChannels returns [] when no guild is selected', async () => {

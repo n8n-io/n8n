@@ -248,9 +248,14 @@ export class DiscordTrigger implements INodeType {
 
 		const manualTriggerFunction = async () =>
 			await new Promise<void>((resolve, reject) => {
+				// Emit only the first matching event, then resolve. Guard against later
+				// dispatches arriving before closeFunction runs.
+				let done = false;
 				client.on('dispatch', (gatewayEvent: string, data: IDataObject) => {
+					if (done) return;
 					const items = buildItems(gatewayEvent, data);
 					if (items) {
+						done = true;
 						this.emit([items]);
 						resolve();
 					}
