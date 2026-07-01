@@ -313,17 +313,23 @@ function applyNodeTags(element: INodeCreateElement): INodeCreateElement {
 			type: 'info',
 			text: i18n.baseText('generic.betaProper'),
 		};
-	} else if (
-		useSettingsStore().isAiGatewayEnabled &&
-		useAiGatewayStore().isNodeSupported(element.properties.name)
-	) {
-		const versions = useNodeTypesStore().getNodeVersions(element.properties.name);
-		const latestVersion = versions.length > 0 ? Math.max(...versions) : 1;
-		if (useAiGatewayStore().isNodeTypeVersionSupported(element.properties.name, latestVersion)) {
-			element.properties.tag = {
-				text: i18n.baseText('generic.freeCredits'),
-				pill: true,
-			};
+	} else if (useSettingsStore().isAiGatewayEnabled) {
+		const aiGatewayStore = useAiGatewayStore();
+		// Tool-variant node types carry a "Tool" suffix (e.g. "llamaParsePlatformTool"),
+		// but the gateway config lists the base name ("llamaParsePlatform").
+		const baseName = element.properties.name.replace(/Tool$/, '');
+		const supportedName = [element.properties.name, baseName].find((n) =>
+			aiGatewayStore.isNodeSupported(n),
+		);
+		if (supportedName) {
+			const versions = useNodeTypesStore().getNodeVersions(supportedName);
+			const latestVersion = versions.length > 0 ? Math.max(...versions) : 1;
+			if (aiGatewayStore.isNodeTypeVersionSupported(supportedName, latestVersion)) {
+				element.properties.tag = {
+					text: i18n.baseText('generic.freeCredits'),
+					pill: true,
+				};
+			}
 		}
 	}
 

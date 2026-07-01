@@ -234,7 +234,7 @@ describe('TaskBroker', () => {
 				taskType: 'taskType1',
 			};
 
-			vi.spyOn(taskBroker, 'acceptOffer').mockResolvedValue(); // allow Jest to exit cleanly
+			vi.spyOn(taskBroker, 'acceptOffer').mockResolvedValue();
 
 			taskBroker.taskRequested(request);
 

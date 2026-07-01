@@ -38,6 +38,10 @@ export class WorkflowsConfig {
 	@Env('N8N_WORKFLOW_PUBLICATION_OUTBOX_LEASE_SECONDS')
 	publicationOutboxLeaseSeconds: number = 2 * Time.minutes.toSeconds;
 
+	/** Number of workflow publication outbox records the leader processes in parallel per drain. */
+	@Env('N8N_WORKFLOW_PUBLICATION_CONCURRENCY', positiveIntSchema)
+	workflowPublicationConcurrency: number = 5;
+
 	/** Hours to keep `completed` workflow publication outbox records before the cleanup deletes them. */
 	@Env('N8N_WORKFLOW_PUBLICATION_OUTBOX_COMPLETED_RETENTION_HOURS')
 	publicationOutboxCompletedRetentionHours: number = 1;
