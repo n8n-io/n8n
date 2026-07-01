@@ -1,4 +1,5 @@
-import { Service } from '@n8n/di';
+import { WorkflowsConfig } from '@n8n/config';
+import { Container, Service } from '@n8n/di';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
 
 import { Publisher } from '@/scaling/pubsub/publisher.service';
@@ -8,6 +9,15 @@ import { WorkflowPublicationOutboxConsumer } from './workflow-publication-outbox
 /**
  * Signals the leader to drain the publication outbox immediately after a record
  * is enqueued, instead of waiting for the next poll cycle.
+ *
+ * Callers use a single method; the single-main vs multi-main split is hidden here
+ * so it can be collapsed once single-main also loops pubsub back to itself:
+ * - multi-main: the leader may be a different process, so route through pubsub
+ *   (the `workflow-publish-wake-up` command self-delivers to the leader).
+ * - single-main: pubsub is inert (no Redis), so wake the local consumer directly.
+ *
+ * Fire-and-forget by design: publication is asynchronous, so the enqueue path
+ * must not block on the drain.
  */
 @Service()
 export class WorkflowPublicationNotifier {
@@ -15,7 +25,7 @@ export class WorkflowPublicationNotifier {
 		private readonly errorReporter: ErrorReporter,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly publisher: Publisher,
-		private readonly outboxConsumer: WorkflowPublicationOutboxConsumer,
+		private readonly workflowsConfig: WorkflowsConfig,
 	) {}
 
 	/**
@@ -25,9 +35,14 @@ export class WorkflowPublicationNotifier {
 	 * otherwise we might try to drain the record before it's actually created.
 	 */
 	requestDrain(): void {
+		if (!this.workflowsConfig.useWorkflowPublicationService) return;
+
 		const wake = this.instanceSettings.isMultiMain
 			? this.publisher.publishCommand({ command: 'workflow-publish-wake-up' })
-			: this.outboxConsumer.wakeUp();
+			: // Resolve the consumer lazily: its dependency chain (WorkflowTriggerActivator)
+				// asserts the publication service is enabled in its constructor, so it must
+				// only ever be constructed on this flag-gated path, never eagerly via DI.
+				Container.get(WorkflowPublicationOutboxConsumer).wakeUp();
 
 		void wake.catch((error) => this.errorReporter.error(error, { shouldBeLogged: true }));
 	}
