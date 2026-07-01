@@ -131,8 +131,10 @@ test.describe(
 
 			// A page of list options is 5 items. The dropdown auto-fetches a second
 			// page when the first one doesn't fill the viewport, so assert a full
-			// first page is visible rather than an exact total count.
-			await expect(n8n.ndv.getVisiblePopper()).toHaveCount(1);
+			// first page is visible rather than an exact total count. Item
+			// visibility already proves the dropdown is open, so avoid asserting on
+			// the popper count — unrelated tooltips (e.g. the error tooltip induced
+			// below) also match the visible-popper selector and make it flaky.
 			await expect(n8n.ndv.getResourceLocatorItems().nth(4)).toBeVisible();
 
 			await n8n.ndv.setInvalidExpression({ fieldName: 'fieldId' });
@@ -144,7 +146,6 @@ test.describe(
 
 			await n8n.ndv.getResourceLocatorInput('rlc').click();
 
-			await expect(n8n.ndv.getVisiblePopper()).toHaveCount(1);
 			await expect(n8n.ndv.getResourceLocatorItems().nth(4)).toBeVisible();
 		});
 	},
