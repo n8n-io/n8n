@@ -33,7 +33,7 @@ const NON_IMPACTFUL: Array<(f: string) => boolean> = [
 	(f) => f.startsWith('scripts/'),
 	// Named build / lint / test-runner config (NOT all json/yaml)
 	(f) =>
-		/(^|\/)(turbo\.json|tsconfig([.\w-]*)\.json|biome\.jsonc?|jest\.config\.[cm]?[jt]s|\.eslintrc[\w.]*|\.prettierrc[\w.]*)$/.test(
+		/(^|\/)(turbo\.json|tsconfig([.\w-]*)\.json|biome\.jsonc?|vitest\.config\.[cm]?[jt]s|\.eslintrc[\w.]*|\.prettierrc[\w.]*)$/.test(
 			f,
 		),
 ];
