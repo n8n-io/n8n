@@ -459,6 +459,28 @@ describe('NodeCatalogService', () => {
 			expect(mockGenerateNodeTypeFile).not.toHaveBeenCalled();
 		});
 
+		test('does not cache error results', async () => {
+			mockGetNodeTypeDefinition
+				.mockReturnValueOnce({
+					nodeId: 'n8n-nodes-base.set',
+					content: '',
+					error: 'temporary lookup error',
+				})
+				.mockReturnValueOnce({
+					nodeId: 'n8n-nodes-base.set',
+					version: 'v1',
+					content: 'builtin-raw-result',
+				});
+			await service.initialize();
+
+			const errorResult = await service.getNodeTypeDefinition({ nodeId: 'n8n-nodes-base.set' });
+			const successResult = await service.getNodeTypeDefinition({ nodeId: 'n8n-nodes-base.set' });
+
+			expect(errorResult).toEqual({ content: '', error: 'temporary lookup error' });
+			expect(successResult).toEqual({ content: 'builtin-raw-result', version: 'v1' });
+			expect(mockGetNodeTypeDefinition).toHaveBeenCalledTimes(2);
+		});
+
 		test('synthesizes type definitions for a community node', async () => {
 			loadNodesAndCredentials.collectTypes.mockResolvedValue({
 				nodes: [

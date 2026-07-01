@@ -240,7 +240,9 @@ export class NodeCatalogService {
 			? await this.getBuiltinNodeTypeDefinition(request)
 			: this.getSynthesizedNodeTypeDefinition(request);
 
-		this.getDefinitionCache.set(cacheKey, result);
+		if (!result.error) {
+			this.getDefinitionCache.set(cacheKey, result);
+		}
 		return result;
 	}
 

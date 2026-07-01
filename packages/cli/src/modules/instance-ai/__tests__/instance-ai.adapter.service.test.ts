@@ -1325,6 +1325,14 @@ describe('createNodeAdapter', () => {
 		});
 
 		expect(postProcessor).toBeDefined();
+		expect(
+			(
+				service as unknown as {
+					nodesCache: unknown;
+				}
+			).nodesCache,
+		).not.toBeNull();
+
 		await postProcessor!();
 
 		expect(
