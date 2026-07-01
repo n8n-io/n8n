@@ -28,7 +28,6 @@ import {
 	registerWorkflowPreviewApp,
 	WORKFLOW_PREVIEW_APP_URI,
 } from '@n8n/mcp-apps/server';
-import { MCP_APPS_FLAG, MCP_APPS_VARIANT_CONTROL, MCP_APPS_VARIANT_ENABLED } from '@n8n/api-types';
 
 import { MCP_PREVIEW_RENDER_REQUESTED_EVENT } from '../mcp.constants';
 import { ActiveExecutions } from '@/active-executions';
