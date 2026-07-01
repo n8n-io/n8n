@@ -216,9 +216,8 @@ export class WorkflowPublicationApplier {
 		const triggerStatuses = this.buildTriggerStatuses(desiredTriggerNodes, outcome);
 		if (outcome.failures.length === 0) return { type: 'completed', triggerStatuses };
 
-		// No desired trigger running — including unchanged triggers left in place, which
-		// `outcome.activated` (only the newly-added nodes) omits — means the publication
-		// failed outright. Otherwise some triggers run and some failed: partial.
+		// Check whether this is a partial or full failure: If at least one trigger
+		// has been activated successfully, it's partial.
 		const hasRunningTrigger = triggerStatuses.some((s) => s.status === 'activated');
 		if (!hasRunningTrigger) {
 			return { type: 'failed', error: this.toActivationError(outcome.failures), triggerStatuses };
