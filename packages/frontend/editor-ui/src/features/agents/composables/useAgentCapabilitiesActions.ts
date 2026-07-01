@@ -12,7 +12,10 @@ import {
 	AGENT_TOOL_CONFIG_MODAL_KEY,
 	AGENT_SKILL_MODAL_KEY,
 } from '../constants';
+import { formatToolNameForDisplay } from '../utils/toolDisplayName';
+import { normalizeAgentSkillForSave } from '../utils/agentSkill';
 import type { ToolOpenTarget } from '../components/AgentCapabilitiesSection.types';
+import type { AgentSkillAllowedToolOption } from '../components/AgentSkillViewer.vue';
 import type {
 	AgentResource,
 	AgentJsonConfig,
@@ -51,6 +54,15 @@ export interface UseAgentCapabilitiesActionsDeps {
 	 * the partial update they computed.
 	 */
 	scheduleConfigUpdate: (updates: Partial<AgentJsonConfig>) => void;
+	/**
+	 * Persists an edit to an *existing* skill's body (name/description/
+	 * instructions/allowedTools/references). Each host owns its own skill
+	 * autosave lifecycle (the builder + NDV each run a dedicated
+	 * `useAgentConfigAutosave`), so the seam is injected rather than the
+	 * builder's autosave being hard-wired here. Creating a *new* skill stays in
+	 * `onOpenAddSkillModal` via the shared `createAgentSkill` API call.
+	 */
+	scheduleSkillSave: (payload: { skillId: string; skill: AgentSkill }) => void;
 	telemetry?: AgentCapabilitiesTelemetry;
 }
 
@@ -71,6 +83,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		agentId,
 		connectedTriggers,
 		scheduleConfigUpdate,
+		scheduleSkillSave,
 		telemetry,
 	} = deps;
 
@@ -212,15 +225,17 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				agentId: agentId.value,
 				skill,
 				skillId: id,
+				availableTools: configuredToolOptions(),
 				onRemove: (skillId: string) => onRemoveSkill(skillId),
 				onConfirm: ({ id: skillId, skill: updatedSkill }: { id?: string; skill: AgentSkill }) => {
 					if (!skillId) return;
 					if (agent.value?.id !== agentId.value) return;
+					const sanitizedSkill = filterSkillAllowedTools(updatedSkill);
 					agent.value = {
 						...agent.value,
 						skills: {
 							...(agent.value.skills ?? {}),
-							[skillId]: updatedSkill,
+							[skillId]: sanitizedSkill,
 						},
 					};
 					const nextSkills = [...(localConfig.value?.skills ?? [])];
@@ -229,9 +244,40 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 						nextSkills[skillRefIndex] = { type: 'skill', id: skillId };
 						scheduleConfigUpdate({ skills: nextSkills });
 					}
+					scheduleSkillSave({ skillId, skill: sanitizedSkill });
 				},
 			},
 		});
+	}
+
+	function configuredToolOptions(): AgentSkillAllowedToolOption[] {
+		const tools: AgentSkillAllowedToolOption[] = [];
+		for (const tool of localConfig.value?.tools ?? []) {
+			if (tool.type === 'custom') {
+				const name = agent.value?.tools?.[tool.id]?.descriptor.name ?? tool.id;
+				if (name) {
+					tools.push({ name, label: formatToolNameForDisplay(name) || name, icon: 'code' });
+				}
+			} else if (tool.type === 'workflow') {
+				const name = tool.name ?? tool.workflow;
+				tools.push({ name, label: formatToolNameForDisplay(name) || name, icon: 'workflow' });
+			} else {
+				tools.push({
+					name: tool.name,
+					label: formatToolNameForDisplay(tool.name) || tool.name,
+					icon: 'globe',
+				});
+			}
+		}
+		return tools;
+	}
+
+	function configuredToolNames(): Set<string> {
+		return new Set(configuredToolOptions().map((tool) => tool.name));
+	}
+
+	function filterSkillAllowedTools(skill: AgentSkill): AgentSkill {
+		return normalizeAgentSkillForSave(skill, configuredToolNames());
 	}
 
 	function onRemoveTool(index: number) {
@@ -261,8 +307,10 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 			data: {
 				projectId: projectId.value,
 				agentId: agentId.value,
+				availableTools: configuredToolOptions(),
 				onConfirm: ({ skill }: { id?: string; skill: AgentSkill }) => {
 					void (async () => {
+						const sanitizedSkill = filterSkillAllowedTools(skill);
 						let created: AgentSkill;
 						let versionId: string | null;
 						let skillId: string;
@@ -271,7 +319,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 								rootStore.restApiContext,
 								projectId.value,
 								agentId.value,
-								skill,
+								sanitizedSkill,
 							);
 							skillId = result.id;
 							created = result.skill;

@@ -19,7 +19,7 @@ import type { INodeUi } from '@/Interface';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
 import { agentsEventBus } from '@/features/agents/agents.eventBus';
-import { getAgent } from '@/features/agents/composables/useAgentApi';
+import { getAgent, updateAgentSkill } from '@/features/agents/composables/useAgentApi';
 import { useAgentConfig } from '@/features/agents/composables/useAgentConfig';
 import { useAgentConfigAutosave } from '@/features/agents/composables/useAgentConfigAutosave';
 import { useAgentPermissions } from '@/features/agents/composables/useAgentPermissions';
@@ -27,12 +27,19 @@ import {
 	useAgentCapabilitiesActions,
 	type AgentCapabilitiesTelemetry,
 } from '@/features/agents/composables/useAgentCapabilitiesActions';
-import type { AgentJsonConfig, AgentResource } from '@/features/agents/types';
+import type { AgentJsonConfig, AgentResource, AgentSkill } from '@/features/agents/types';
 
 interface ConfigSnapshot {
 	projectId: string;
 	agentId: string;
 	config: AgentJsonConfig;
+}
+
+interface SkillSnapshot {
+	projectId: string;
+	agentId: string;
+	skillId: string;
+	skill: AgentSkill;
 }
 
 /**
@@ -148,6 +155,34 @@ export function useNdvAgentConfig(
 		},
 	});
 
+	async function saveSkill(snapshot: SkillSnapshot) {
+		const result = await updateAgentSkill(
+			rootStore.restApiContext,
+			snapshot.projectId,
+			snapshot.agentId,
+			snapshot.skillId,
+			snapshot.skill,
+		);
+		if (agent.value?.id !== snapshot.agentId) return;
+		agent.value = {
+			...agent.value,
+			versionId: result.versionId,
+			skills: {
+				...(agent.value.skills ?? {}),
+				[snapshot.skillId]: result.skill,
+			},
+		};
+	}
+
+	// Skill-body edits persist on their own autosave, mirroring the builder — so
+	// the capability actions' skill-save seam has a flushable funnel here too.
+	const skillAutosave = useAgentConfigAutosave<SkillSnapshot>({
+		save: saveSkill,
+		onError: (error: unknown) => {
+			toast.showError(error, i18n.baseText('agents.builder.skills.saveError'));
+		},
+	});
+
 	/** The host config-update funnel handed to the capability actions + panels. */
 	function scheduleConfigUpdate(updates: Partial<AgentJsonConfig>) {
 		if (!localConfig.value || !canUpdate.value || isUnavailable.value) return;
@@ -159,6 +194,37 @@ export function useNdvAgentConfig(
 		});
 	}
 
+	/** Skill-save seam handed to the capability actions (edit-existing-skill path). */
+	function scheduleSkillSave(payload: { skillId: string; skill: AgentSkill }) {
+		if (!canUpdate.value || isUnavailable.value) return;
+		skillAutosave.scheduleAutosave({
+			projectId: projectId.value,
+			agentId: agentId.value,
+			skillId: payload.skillId,
+			skill: payload.skill,
+		});
+	}
+
+	// Both funnels are flushed/settled together (mirrors the builder) so a pending
+	// skill save can't outlive an NDV close or a node/agent switch.
+	async function flush() {
+		await Promise.all([autosave.flushAutosave(), skillAutosave.flushAutosave()]);
+	}
+
+	async function settle() {
+		await Promise.all([autosave.settleAutosave(), skillAutosave.settleAutosave()]);
+	}
+
+	const saveStatus = computed(() => {
+		if (autosave.saveStatus.value === 'saving' || skillAutosave.saveStatus.value === 'saving') {
+			return 'saving';
+		}
+		if (autosave.saveStatus.value === 'saved' || skillAutosave.saveStatus.value === 'saved') {
+			return 'saved';
+		}
+		return 'idle';
+	});
+
 	const caps = useAgentCapabilitiesActions({
 		localConfig,
 		agent,
@@ -166,6 +232,7 @@ export function useNdvAgentConfig(
 		agentId,
 		connectedTriggers,
 		scheduleConfigUpdate,
+		scheduleSkillSave,
 		telemetry: options.telemetry,
 	});
 
@@ -184,7 +251,7 @@ export function useNdvAgentConfig(
 		agentId,
 		async (id, previous) => {
 			if (id === previous) return;
-			if (previous) await autosave.flushAutosave().catch(() => {});
+			if (previous) await flush().catch(() => {});
 			if (id && isAgentNode.value) {
 				await load(projectId.value, id);
 			} else {
@@ -229,7 +296,7 @@ export function useNdvAgentConfig(
 		loadError,
 		isUnavailable,
 		isPublished,
-		saveStatus: autosave.saveStatus,
+		saveStatus,
 		appliedSkills: caps.appliedSkills,
 		actions: caps,
 		scheduleConfigUpdate,
@@ -237,8 +304,8 @@ export function useNdvAgentConfig(
 		reload: async () => {
 			if (agentId.value) await load(projectId.value, agentId.value);
 		},
-		flush: autosave.flushAutosave,
-		settle: autosave.settleAutosave,
+		flush,
+		settle,
 	};
 }
 
