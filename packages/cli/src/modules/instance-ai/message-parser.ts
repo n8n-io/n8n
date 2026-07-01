@@ -210,7 +210,8 @@ function buildTimeline(
 
 /**
  * Build a flat agent tree (orchestrator only) from tool invocations.
- * Used when no snapshot is available for a given run.
+ * Used when no snapshot is available, or when falling back from a degenerate one.
+ * `status` is inherited from the snapshot so a `cancelled` run still reads as cancelled.
  */
 function buildFlatAgentTree(
 	runId: string,
@@ -218,16 +219,55 @@ function buildFlatAgentTree(
 	reasoning: string,
 	toolCalls: InstanceAiToolCallState[],
 	parts?: StoredContentPart[],
+	status: InstanceAiAgentNode['status'] = 'completed',
 ): InstanceAiAgentNode {
 	return {
 		agentId: orchestratorAgentId(runId),
 		role: 'orchestrator',
-		status: 'completed',
+		status,
 		textContent,
 		reasoning,
 		toolCalls,
 		children: [],
 		timeline: buildTimeline(textContent, toolCalls, parts),
+	};
+}
+
+/**
+ * Whether a snapshot tree carries anything worth rendering. An empty terminal tree —
+ * e.g. a `cancelled` run whose events were evicted from the in-memory bus before the
+ * snapshot was built — has none of these, so the message-derived flat tree is preferred.
+ */
+function isRenderableTree(tree: InstanceAiAgentNode): boolean {
+	return (
+		tree.children.length > 0 ||
+		tree.toolCalls.length > 0 ||
+		tree.timeline.length > 0 ||
+		tree.textContent.length > 0 ||
+		tree.reasoning.length > 0 ||
+		(tree.planItems?.length ?? 0) > 0 ||
+		!!tree.statusMessage ||
+		!!tree.result ||
+		!!tree.error
+	);
+}
+
+/**
+ * Merge an earlier flat orchestrator tree into a later one (earlier content first).
+ * Aggregates the assistant rows of a turn whose snapshot is empty so the whole turn's
+ * orchestrator activity renders as one bubble after the dedup collapse, instead of
+ * keeping only the last row.
+ */
+function mergeFlatAgentTrees(
+	earlier: InstanceAiAgentNode,
+	later: InstanceAiAgentNode,
+): InstanceAiAgentNode {
+	return {
+		...later,
+		textContent: [earlier.textContent, later.textContent].filter(Boolean).join('\n\n'),
+		reasoning: [earlier.reasoning, later.reasoning].filter(Boolean).join('\n\n'),
+		toolCalls: [...earlier.toolCalls, ...later.toolCalls],
+		timeline: [...earlier.timeline, ...later.timeline],
 	};
 }
 
@@ -383,11 +423,21 @@ export function parseStoredMessages(
 			// Use the native runId from the snapshot (matches SSE events),
 			// falling back to the user-message ID if no snapshot exists.
 			const runId = snapshot?.runId ?? lastUserMessageId ?? msg.id;
-			const agentTree =
-				snapshot?.tree ??
-				(toolCalls.length > 0 || text
-					? buildFlatAgentTree(runId, text, reasoning, toolCalls, parts)
-					: undefined);
+			const messageFlatTree =
+				toolCalls.length > 0 || text
+					? buildFlatAgentTree(runId, text, reasoning, toolCalls, parts, snapshot?.tree.status)
+					: undefined;
+			// Carry the cancellation cause onto the fallback tree so a stopped run is
+			// still attributable (user/timeout/shutdown) after the snapshot was lost.
+			if (messageFlatTree && snapshot?.tree.cancellationReason) {
+				messageFlatTree.cancellationReason = snapshot.tree.cancellationReason;
+			}
+			// Prefer the snapshot tree, but when it carries no renderable content (e.g. an
+			// empty `cancelled` tree from a run whose events were lost before the snapshot
+			// was built) fall back to the message-derived flat tree so the turn's work still
+			// renders on reload.
+			const snapshotIsRenderable = snapshot !== undefined && isRenderableTree(snapshot.tree);
+			const agentTree = snapshotIsRenderable ? snapshot.tree : (messageFlatTree ?? snapshot?.tree);
 
 			const assistantMessage: InstanceAiMessage = {
 				id: msg.id,
@@ -401,7 +451,10 @@ export function parseStoredMessages(
 				isStreaming: false,
 				agentTree,
 			};
-			if (snapshot) messagesWithSnapshotTree.add(assistantMessage);
+			// Only treat the message as snapshot-backed when the snapshot tree is the one
+			// being rendered — a degenerate snapshot must not suppress the flat-tree
+			// aggregation in the dedup pass below.
+			if (snapshotIsRenderable) messagesWithSnapshotTree.add(assistantMessage);
 			messages.push(assistantMessage);
 			continue;
 		}
@@ -452,10 +505,19 @@ export function parseStoredMessages(
 		}
 		const kept = messages[keptIdx];
 		const candidate = messages[i];
-		if (!messagesWithSnapshotTree.has(kept) && messagesWithSnapshotTree.has(candidate)) {
-			kept.agentTree = candidate.agentTree;
-			kept.runIds = candidate.runIds;
-			messagesWithSnapshotTree.add(kept);
+		if (!messagesWithSnapshotTree.has(kept)) {
+			if (messagesWithSnapshotTree.has(candidate)) {
+				kept.agentTree = candidate.agentTree;
+				kept.runIds = candidate.runIds;
+				messagesWithSnapshotTree.add(kept);
+			} else if (candidate.agentTree) {
+				// Neither row is snapshot-backed (degenerate-snapshot turn): aggregate the
+				// earlier row's flat-tree activity into the kept bubble so the whole turn's
+				// orchestrator work survives the collapse instead of just the last row.
+				kept.agentTree = kept.agentTree
+					? mergeFlatAgentTrees(candidate.agentTree, kept.agentTree)
+					: candidate.agentTree;
+			}
 		}
 		toRemove.add(i);
 	}
