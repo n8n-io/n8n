@@ -28,7 +28,7 @@ import { ProjectSecretsProviderAccess } from './project-secrets-provider-access'
 import type { SecretsProviderAccessRole } from './project-secrets-provider-access';
 import { Role } from './role';
 import { RoleMappingRule } from './role-mapping-rule';
-import { ScheduledJob, ScheduledJobKind, MisfirePolicy } from './scheduled-job';
+import { ScheduledJob, ScheduledJobKind } from './scheduled-job';
 import { ScheduledTask, ScheduledTaskStatus } from './scheduled-task';
 import { Scope } from './scope';
 import { SecretsProviderConnection } from './secrets-provider-connection';
@@ -83,7 +83,6 @@ export {
 	Role,
 	ScheduledJob,
 	ScheduledJobKind,
-	MisfirePolicy,
 	ScheduledTask,
 	ScheduledTaskStatus,
 	Scope,

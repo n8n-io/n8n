@@ -128,13 +128,12 @@ describe('CreateSchedulerTables Migration', () => {
 			const jobId = await insertJob(context);
 
 			const [job] = await context.runQuery<
-				Array<{ enabled: boolean | number; misfirePolicy: string; maxAttempts: number }>
+				Array<{ enabled: boolean | number; maxAttempts: number }>
 			>(
-				`SELECT "enabled", "misfirePolicy", "maxAttempts" FROM ${context.escape.tableName('scheduled_job')} WHERE "id" = :id`,
+				`SELECT "enabled", "maxAttempts" FROM ${context.escape.tableName('scheduled_job')} WHERE "id" = :id`,
 				{ id: jobId },
 			);
 			expect(Boolean(job.enabled)).toBe(true);
-			expect(job.misfirePolicy).toBe('coalesce');
 			expect(Number(job.maxAttempts)).toBe(1);
 			await context.queryRunner.release();
 		});
@@ -201,27 +200,6 @@ describe('CreateSchedulerTables Migration', () => {
 						name: `job-${randomUUID()}`,
 						taskType: 'scheduleTrigger',
 						kind: 'bogus',
-						createdAt: now,
-						updatedAt: now,
-					},
-				),
-			).rejects.toThrow();
-			await context.queryRunner.release();
-		});
-
-		it('rejects an out-of-set misfirePolicy via the CHECK constraint', async () => {
-			const context = createTestMigrationContext(dataSource);
-			const table = context.escape.tableName('scheduled_job');
-			const now = new Date();
-			await expect(
-				context.runQuery(
-					`INSERT INTO ${table} ("name", "taskType", "kind", "misfirePolicy", "createdAt", "updatedAt")
-					 VALUES (:name, :taskType, :kind, :misfirePolicy, :createdAt, :updatedAt)`,
-					{
-						name: `job-${randomUUID()}`,
-						taskType: 'scheduleTrigger',
-						kind: 'cron',
-						misfirePolicy: 'bogus',
 						createdAt: now,
 						updatedAt: now,
 					},

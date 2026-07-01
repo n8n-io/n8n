@@ -68,16 +68,6 @@ export class CreateSchedulerTables1784000000042 implements ReversibleMigration {
 				column('lastFiredAt')
 					.timestampTimezone()
 					.comment('Last time an occurrence was materialized; used to recompute nextRunAt.'),
-				column('misfirePolicy')
-					.varchar(16)
-					.notNull.default("'coalesce'")
-					.withEnumCheck(['coalesce', 'skip', 'fire_all'])
-					.comment('What to do with fires that were missed while the scheduler was down.'),
-				column('misfireGraceSeconds')
-					.int.notNull.default(60)
-					.comment(
-						'How late a fire may be before it counts as missed and the misfire policy applies.',
-					),
 				column('maxAttempts')
 					.int.notNull.default(1)
 					.comment('Retry ceiling copied onto each occurrence this job materializes.'),
