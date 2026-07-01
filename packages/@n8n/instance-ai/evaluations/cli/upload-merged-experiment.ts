@@ -161,7 +161,7 @@ export interface UploadOptions {
  */
 export async function uploadUnifiedExperiment(
 	opts: UploadOptions,
-): Promise<{ experimentName: string; outcome: ComparisonOutcome }> {
+): Promise<{ experimentName: string; experimentUrl?: string; outcome: ComparisonOutcome }> {
 	const logger = createLogger(opts.verbose ?? false);
 	const client = new Client();
 	const slugs = [...new Set(opts.combined.testCases.map((tc) => tc.testCaseFile ?? tc.name))];
@@ -238,11 +238,22 @@ export async function uploadUnifiedExperiment(
 	logger.info(`Unified experiment: ${experimentResults.experimentName}`);
 	await client.awaitPendingTraceBatches();
 
+	// Best-effort deep link to the experiment (o/<tenant>/projects/p/<id>).
+	// Never fail the merge over a URL lookup.
+	let experimentUrl: string | undefined;
+	try {
+		experimentUrl = await client.getProjectUrl({ projectName: experimentResults.experimentName });
+	} catch (error: unknown) {
+		logger.verbose(
+			`Could not resolve experiment URL: ${error instanceof Error ? error.message : String(error)}`,
+		);
+	}
+
 	const outcome = await runComparison(
 		client,
 		experimentResults.experimentName,
 		opts.combined,
 		opts.baselinePrefix,
 	);
-	return { experimentName: experimentResults.experimentName, outcome };
+	return { experimentName: experimentResults.experimentName, experimentUrl, outcome };
 }

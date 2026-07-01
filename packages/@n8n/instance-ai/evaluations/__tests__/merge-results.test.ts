@@ -202,6 +202,20 @@ describe('renderSummaryMarkdown', () => {
 		expect(md).toContain('1 shard artifact(s) missing');
 		expect(md).toContain('`slug-b/s1`'); // failure detail for the failed scenario
 	});
+
+	it('links the unified experiment when a URL is provided, else shows the bare name', () => {
+		const combined = combineShards([parseShardFileFrom(shardA), parseShardFileFrom(shardB)]);
+		const url = 'https://smith.langchain.com/o/tenant/projects/p/exp-123';
+		const linked = renderSummaryMarkdown(combined, {
+			experimentName: 'mcp-merged-abc',
+			experimentUrl: url,
+		});
+		expect(linked).toContain(`_Unified LangSmith experiment: [mcp-merged-abc](${url})_`);
+
+		const noLink = renderSummaryMarkdown(combined, { experimentName: 'mcp-merged-abc' });
+		expect(noLink).toContain('_Unified LangSmith experiment: `mcp-merged-abc`_');
+		expect(noLink).not.toContain('](http');
+	});
 });
 
 describe('resolveInputPaths', () => {

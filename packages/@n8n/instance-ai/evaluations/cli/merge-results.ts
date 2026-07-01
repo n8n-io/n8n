@@ -334,7 +334,12 @@ function pctOf(passed: number, total: number): number {
  */
 export function renderSummaryMarkdown(
 	combined: CombinedResults,
-	context: { missingShards?: string[]; experimentName?: string; outcome?: ComparisonOutcome } = {},
+	context: {
+		missingShards?: string[];
+		experimentName?: string;
+		experimentUrl?: string;
+		outcome?: ComparisonOutcome;
+	} = {},
 ): string {
 	const { totalRuns, summary, testCases } = combined;
 	const lines: string[] = [];
@@ -363,7 +368,10 @@ export function renderSummaryMarkdown(
 	}
 	if (context.experimentName) {
 		lines.push('');
-		lines.push(`_Unified LangSmith experiment: \`${context.experimentName}\`_`);
+		const label = context.experimentUrl
+			? `[${context.experimentName}](${context.experimentUrl})`
+			: `\`${context.experimentName}\``;
+		lines.push(`_Unified LangSmith experiment: ${label}_`);
 	}
 	lines.push('');
 
@@ -641,6 +649,7 @@ async function main(): Promise<void> {
 	// experiment per run for run-over-run comparison. Best-effort — a LangSmith
 	// outage must not sink the merge, whose core value is the combined summary.
 	let experimentName: string | undefined;
+	let experimentUrl: string | undefined;
 	let outcome: ComparisonOutcome | undefined;
 	let comparisonStatus: ComparisonOutcome['kind'] | 'not_attempted' = 'not_attempted';
 	if (args.uploadExperiment) {
@@ -659,6 +668,7 @@ async function main(): Promise<void> {
 					shardCount: shards.length,
 				});
 				experimentName = result.experimentName;
+				experimentUrl = result.experimentUrl;
 				outcome = result.outcome;
 				comparisonStatus = result.outcome.kind;
 			} catch (error: unknown) {
@@ -669,7 +679,12 @@ async function main(): Promise<void> {
 		}
 	}
 
-	const markdown = renderSummaryMarkdown(combined, { missingShards, experimentName, outcome });
+	const markdown = renderSummaryMarkdown(combined, {
+		missingShards,
+		experimentName,
+		experimentUrl,
+		outcome,
+	});
 
 	mkdirSync(args.outputDir, { recursive: true });
 	const report = {
@@ -677,6 +692,7 @@ async function main(): Promise<void> {
 		duration: combined.durationMs,
 		totalRuns: combined.totalRuns,
 		experimentName,
+		experimentUrl,
 		summary: combined.summary,
 		comparison:
 			outcome?.kind === 'ok'
