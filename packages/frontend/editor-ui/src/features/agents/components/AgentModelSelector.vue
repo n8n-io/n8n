@@ -54,11 +54,10 @@ const {
 	credentials: AgentCredentialsByProvider | null;
 	modelsByProvider: AgentModelsByProvider;
 	isLoading: boolean;
-	projectId?: string;
+	projectId: string;
 	horizontal?: boolean;
 	warnMissingCredentials?: boolean;
 	disabled?: boolean;
-	horizontal?: boolean;
 }>();
 
 const emit = defineEmits<{
