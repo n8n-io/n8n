@@ -168,34 +168,41 @@ export class WebhookTriggerRegistrar {
 		additionalData: IWorkflowExecuteAdditionalData,
 		desiredNodes: Set<INode['id']>,
 	): Promise<Set<INode['id']>> {
-		const desiredWebhooks = this.getWebhookTriggers(workflow, additionalData).filter(
-			(webhookData) => desiredNodes.has(workflow.getNode(webhookData.node)?.id ?? ''),
-		);
-		if (desiredWebhooks.length === 0) {
-			return new Set();
-		}
-
-		const registeredKeys = new Set(
-			(await this.webhookService.getRegisteredWebhooks(workflow.id)).map((webhook) =>
-				this.buildWebhookKey(webhook.method, webhook.webhookPath),
-			),
-		);
-
-		const unregistered = new Set<INode['id']>();
-		for (const webhookData of desiredWebhooks) {
-			const node = workflow.getNode(webhookData.node);
-			if (!node) {
-				continue;
+		// Resolving webhook triggers evaluates each node's `path`/`httpMethod`
+		// expressions (e.g. the Form Trigger's dynamic path), which needs an isolate.
+		await workflow.expression.acquireIsolate();
+		try {
+			const desiredWebhooks = this.getWebhookTriggers(workflow, additionalData).filter(
+				(webhookData) => desiredNodes.has(workflow.getNode(webhookData.node)?.id ?? ''),
+			);
+			if (desiredWebhooks.length === 0) {
+				return new Set();
 			}
 
-			const webhook = this.buildNormalizedWebhook(workflow, webhookData);
-			const key = this.buildWebhookKey(webhook.method, webhook.webhookPath);
-			if (!registeredKeys.has(key)) {
-				unregistered.add(node.id);
-			}
-		}
+			const registeredKeys = new Set(
+				(await this.webhookService.getRegisteredWebhooks(workflow.id)).map((webhook) =>
+					this.buildWebhookKey(webhook.method, webhook.webhookPath),
+				),
+			);
 
-		return unregistered;
+			const unregistered = new Set<INode['id']>();
+			for (const webhookData of desiredWebhooks) {
+				const node = workflow.getNode(webhookData.node);
+				if (!node) {
+					continue;
+				}
+
+				const webhook = this.buildNormalizedWebhook(workflow, webhookData);
+				const key = this.buildWebhookKey(webhook.method, webhook.webhookPath);
+				if (!registeredKeys.has(key)) {
+					unregistered.add(node.id);
+				}
+			}
+
+			return unregistered;
+		} finally {
+			await workflow.expression.releaseIsolate();
+		}
 	}
 
 	/**

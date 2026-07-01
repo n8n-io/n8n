@@ -3,7 +3,7 @@ import type { WebhookEntity } from '@n8n/db';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 import type { ErrorReporter, Span, Tracing } from 'n8n-core';
 import type { IWebhookData, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
-import { WebhookPathTakenError } from 'n8n-workflow';
+import { WebhookPathTakenError, WorkflowExpression } from 'n8n-workflow';
 
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import type { WebhookService } from '@/webhooks/webhook.service';
@@ -351,6 +351,50 @@ describe('WebhookTriggerRegistrar', () => {
 			);
 
 			expect(result).toEqual(new Set());
+		});
+
+		test('brackets expression resolution with an acquired isolate', async () => {
+			const callOrder: string[] = [];
+			vi.spyOn(WorkflowExpression.prototype, 'acquireIsolate').mockImplementation(async () => {
+				callOrder.push('acquire');
+			});
+			vi.spyOn(WorkflowExpression.prototype, 'releaseIsolate').mockImplementation(async () => {
+				callOrder.push('release');
+			});
+			vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockImplementation(() => {
+				callOrder.push('resolve');
+				return [];
+			});
+			const workflow = createWorkflow([node('webhook-node', 'webhook', { name: 'Webhook' })]);
+
+			await registrar.getNodesWithUnregisteredWebhooks(
+				workflow,
+				additionalData,
+				new Set(['webhook-node']),
+			);
+
+			expect(callOrder).toEqual(['acquire', 'resolve', 'release']);
+		});
+
+		test('releases the isolate when resolution throws', async () => {
+			vi.spyOn(WorkflowExpression.prototype, 'acquireIsolate').mockResolvedValue(undefined);
+			const releaseIsolate = vi
+				.spyOn(WorkflowExpression.prototype, 'releaseIsolate')
+				.mockResolvedValue(undefined);
+			vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockImplementation(() => {
+				throw new Error('boom');
+			});
+			const workflow = createWorkflow([node('webhook-node', 'webhook', { name: 'Webhook' })]);
+
+			await expect(
+				registrar.getNodesWithUnregisteredWebhooks(
+					workflow,
+					additionalData,
+					new Set(['webhook-node']),
+				),
+			).rejects.toThrow('boom');
+
+			expect(releaseIsolate).toHaveBeenCalledTimes(1);
 		});
 	});
 });
