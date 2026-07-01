@@ -1,9 +1,8 @@
+import { AgentModelSchema, RunnableAgentJsonConfigSchema } from '@n8n/api-types';
 import type { JSONSchema7 } from 'json-schema';
 import type { ZodObject, ZodRawShape } from 'zod';
 import { z } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
-
-import { AgentModelSchema, RunnableAgentJsonConfigSchema } from '@n8n/api-types';
 
 import { jsonSchemaToCompactText } from '../../json-config/schema-text-serializer';
 
@@ -56,8 +55,8 @@ export function getConfigRulesSection(): string {
   \`memory: { "enabled": true, "storage": "n8n" }\`
   unless the user explicitly asks to disable memory.
 - \`memory.storage\` must be "n8n".
-- \`memory.episodicMemory\` requires \`ask_credential\` with
-  \`credentialType: "openAiApi"\`.
+- \`memory.episodicMemory\` requires \`ask_embedding_credential\` with
+  \`credentialType: "openAiApi"\`; use its returned \`credentialId\` value.
 - Memory worker model fields use \`{ "model": "provider/model-name", "credential": "<credentialId>" }\`;
   use only credential IDs returned by \`resolve_llm\`, \`ask_llm\`, or \`ask_credential\`.
 - Sub-agent configuration lives at top level under \`subAgents\`. Load

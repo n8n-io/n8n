@@ -45,6 +45,26 @@ export const commonProperties: INodeProperties[] = [
 		},
 	},
 	{
+		displayName: 'Invoke Agent',
+		name: 'invokeMode',
+		type: 'options',
+		noDataExpression: true,
+		default: 'allItems',
+		description: 'Whether to call the agent once per input item or a single time for all items',
+		options: [
+			{
+				name: 'Once for All Items',
+				value: 'allItems',
+				description: 'Call the agent a single time; it can read all input items',
+			},
+			{
+				name: 'Once Per Item',
+				value: 'perItem',
+				description: 'Call the agent separately for each input item',
+			},
+		],
+	},
+	{
 		displayName: 'Require Specific Output Format',
 		name: 'useStructuredOutput',
 		type: 'boolean',
@@ -103,6 +123,14 @@ export const commonProperties: INodeProperties[] = [
 				default: '',
 				description:
 					'Reuse an agent session to keep memory across runs. Leave empty to start a fresh session per execution.',
+			},
+			{
+				displayName: "Allow Agent to Access Other Nodes' Data",
+				name: 'allowOtherNodesData',
+				type: 'boolean',
+				default: false,
+				description:
+					"Whether to give the agent a tool to read other workflow nodes' execution data, beyond its own input",
 			},
 		],
 	},
@@ -174,8 +202,11 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 	const items = this.getInputData();
 	const returnData: INodeExecutionData[] = [];
 	const executionId = this.getExecutionId() ?? crypto.randomUUID();
+	const invokeMode = this.getNodeParameter('invokeMode', 0, 'allItems') as string;
+	const runOnceForAll = invokeMode === 'allItems';
+	const loopCount = runOnceForAll ? Math.min(1, items.length) : items.length;
 
-	for (let i = 0; i < items.length; i++) {
+	for (let i = 0; i < loopCount; i++) {
 		try {
 			const agentIdRlc = this.getNodeParameter('agentId', i) as {
 				mode: string;
@@ -183,8 +214,12 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			};
 			const agentId = agentIdRlc.value;
 			const message = this.getNodeParameter('message', i) as string;
-			const advanced = this.getNodeParameter('advanced', i, {}) as { sessionId?: string };
+			const advanced = this.getNodeParameter('advanced', i, {}) as {
+				sessionId?: string;
+				allowOtherNodesData?: boolean;
+			};
 			const sessionIdOverride = advanced.sessionId?.trim();
+			const allowOtherNodesData = advanced.allowOtherNodesData ?? false;
 
 			if (!message.trim()) {
 				throw new NodeOperationError(this.getNode(), 'Message cannot be empty', {
@@ -195,7 +230,13 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			const outputSchema = getStructuredOutputSchema(this, i);
 
 			const result = await this.executeAgent(
-				{ agentId, sessionId: sessionIdOverride || undefined, outputSchema },
+				{
+					agentId,
+					sessionId: sessionIdOverride || undefined,
+					outputSchema,
+					inputDataScope: runOnceForAll ? 'all' : 'item',
+					exposeWorkflowData: allowOtherNodesData,
+				},
 				message,
 				executionId,
 				i,

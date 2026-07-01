@@ -1,6 +1,7 @@
 import type { ConversationTurn, TranscriptTurn } from '../types';
 import {
 	conversationUserTurnsAsText,
+	lastAgentText,
 	perTurnToolCallCounts,
 	transcriptAsText,
 	userTurnsAsText,
@@ -159,5 +160,18 @@ describe('perTurnToolCallCounts', () => {
 		expect(perTurnToolCallCounts([{ steps: [{ kind: 'agent-text', text: 'hi' }] }])).toBe(
 			'(no tool calls in any turn)',
 		);
+	});
+});
+
+describe('lastAgentText', () => {
+	it('returns the most recent turn agent narration, skipping trailing turns with none', () => {
+		expect(lastAgentText([])).toBe('');
+		const transcript: TranscriptTurn[] = [
+			{ steps: [{ kind: 'agent-text', text: 'first' }], seeded: true },
+			{ steps: [{ kind: 'agent-text', text: 'latest' }], seeded: true },
+			// Live turn that produced no narration (the no-op fallback case).
+			{ userMessage: 'and now?', steps: [] },
+		];
+		expect(lastAgentText(transcript)).toBe('latest');
 	});
 });

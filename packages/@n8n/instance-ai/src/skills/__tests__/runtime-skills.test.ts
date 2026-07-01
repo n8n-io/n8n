@@ -149,6 +149,9 @@ describe('Instance AI runtime skills', () => {
 		);
 		expect(loaded?.instructions).toContain('SDK node `output` mocks are raw `$json` objects');
 		expect(loaded?.instructions).toMatch(/inline setup card in the AI\s+Assistant panel/);
+		expect(loaded?.instructions).toContain(
+			'Do not ask for missing setup values before the first successful build',
+		);
 		expect(loaded?.instructions).toContain('Do not call `delegate`');
 		expect(loaded?.instructions).toContain('.to(isImportant)');
 		expect(loaded?.instructions).toContain('.onTrue(handleImportant)');

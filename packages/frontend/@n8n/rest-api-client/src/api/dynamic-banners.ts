@@ -1,5 +1,4 @@
 import type { BannerName } from '@n8n/api-types';
-import type { Role } from '@n8n/api-types/dist/schemas/user.schema';
 
 import { get } from '../utils';
 
@@ -20,7 +19,7 @@ type DynamicBannerFilters = {
 	userId?: string;
 	userCreatedAt?: string;
 	isOwner?: boolean;
-	role?: Role;
+	role?: string;
 	publishedWorkflowCount?: number;
 };
 

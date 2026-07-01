@@ -1,11 +1,11 @@
 import { ExecutionBaseError } from './abstract/execution-base.error';
-import type { ApplicationError } from '@n8n/errors';
+import type { ErrorLevel } from '@n8n/errors';
 import type { INode } from '../interfaces';
 
 interface WorkflowActivationErrorOptions {
 	cause?: Error;
 	node?: INode;
-	level?: ApplicationError['level'];
+	level?: ErrorLevel;
 	workflowId?: string;
 }
 
@@ -32,10 +32,16 @@ export class WorkflowActivationError extends ExecutionBaseError {
 		this.node = node;
 		this.workflowId = workflowId;
 		this.message = message;
+		if (cause && !this.description) {
+			this.description =
+				'description' in cause && typeof cause.description === 'string'
+					? cause.description
+					: cause.message;
+		}
 		this.setLevel(level);
 	}
 
-	private setLevel(level?: ApplicationError['level']) {
+	private setLevel(level?: ErrorLevel) {
 		if (level) {
 			this.level = level;
 			return;

@@ -147,7 +147,7 @@ type Props = {
 const props = withDefaults(defineProps<Props>(), {
 	rows: 5,
 	hint: undefined,
-	inputSize: undefined,
+	inputSize: 'medium',
 	eventSource: undefined,
 	documentationUrl: undefined,
 	isReadOnly: false,
