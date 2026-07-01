@@ -848,10 +848,43 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		it('should show non-empty tooltip text when publishing', () => {
 			workflowDocumentStore.setPublicationStatus({ status: 'publishing' });
 
+			const { getByText } = renderComponent();
+			// The N8nTooltip stub renders the content slot unconditionally — assert the
+			// informative text is actually present in the DOM.
+			expect(getByText('Activating triggers — this can take a moment.')).toBeInTheDocument();
+		});
+
+		it('should not trigger publish when clicking the failures popover trigger', async () => {
+			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
+			workflowDocumentStore.setPublicationStatus({
+				status: 'partial',
+				failures: [{ nodeId: 'n1', nodeName: 'Webhook', errorMessage: 'Connection refused' }],
+			});
+
 			const { getByTestId } = renderComponent();
-			// The tooltip content slot renders unconditionally in the stub
-			// Verify the button still renders (tooltip wrapper present)
-			expect(getByTestId('workflow-open-publish-modal-button')).toBeInTheDocument();
+
+			await userEvent.click(getByTestId('publication-failures-popover-trigger'));
+
+			// Clicking the failures indicator should open the popover, not publish
+			expect(openModalSpy).not.toHaveBeenCalledWith(
+				expect.objectContaining({ name: WORKFLOW_PUBLISH_MODAL_KEY }),
+			);
+		});
+
+		it('should not render publication failures popover trigger when partial with no failures', () => {
+			workflowDocumentStore.setPublicationStatus({ status: 'partial', failures: [] });
+
+			const { queryByTestId } = renderComponent();
+
+			expect(queryByTestId('publication-failures-popover-trigger')).not.toBeInTheDocument();
+		});
+
+		it('should not render publication failures popover trigger when status is publishing', () => {
+			workflowDocumentStore.setPublicationStatus({ status: 'publishing' });
+
+			const { queryByTestId } = renderComponent();
+
+			expect(queryByTestId('publication-failures-popover-trigger')).not.toBeInTheDocument();
 		});
 
 		it('should render publication failures popover trigger when partial with failures', () => {

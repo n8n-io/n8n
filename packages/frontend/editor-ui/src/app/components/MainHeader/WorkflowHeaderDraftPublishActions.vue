@@ -617,7 +617,8 @@ defineExpose({
 					:disabled="
 						(workflowPublishState === 'not-published-eligible' &&
 							props.workflowPermissions.publish) ||
-						(!publishButtonConfig.tooltip && !publishButtonConfig.showVersionInfo)
+						(!publishButtonConfig.tooltip &&
+							!(publishButtonConfig.showVersionInfo && activeVersion))
 					"
 					:show-after="300"
 					:offset="15"
@@ -643,57 +644,15 @@ defineExpose({
 						@click="onPublishButtonClick"
 					>
 						<div :class="[$style.flex]">
-							<N8nPopover
-								v-if="showFailuresPopover"
-								side="bottom"
-								align="start"
-								:side-offset="8"
-								width="320px"
-							>
-								<template #trigger>
-									<span
-										data-test-id="publication-failures-popover-trigger"
-										:class="$style.popoverTriggerWrapper"
-									>
-										<span
-											data-test-id="workflow-active-version-indicator"
-											:class="{
-												[$style.indicatorDot]: true,
-												[$style.indicatorPartial]: publishButtonConfig.indicatorClass === 'partial',
-												[$style.indicatorIssues]: publishButtonConfig.indicatorClass === 'error',
-											}"
-										/>
-									</span>
-								</template>
-								<template #content>
-									<div :class="$style.failuresPopover">
-										<p :class="$style.failuresTitle">
-											{{ i18n.baseText('workflows.publish.failures.title') }}
-										</p>
-										<p :class="$style.failuresRetryHint">
-											{{ i18n.baseText('workflows.publish.failures.retryHint') }}
-										</p>
-										<ul :class="$style.failuresList">
-											<li
-												v-for="failure in publicationFailures"
-												:key="failure.nodeId"
-												:class="$style.failuresItem"
-											>
-												<span :class="$style.failuresNodeName">{{ failure.nodeName }}</span>
-												<span :class="$style.failuresError">{{ failure.errorMessage }}</span>
-											</li>
-										</ul>
-									</div>
-								</template>
-							</N8nPopover>
 							<span
-								v-else-if="publishButtonConfig.showIndicator"
+								v-if="!showFailuresPopover && publishButtonConfig.showIndicator"
 								data-test-id="workflow-active-version-indicator"
 								:class="{
 									[$style.indicatorDot]: true,
 									[$style.indicatorPublished]: publishButtonConfig.indicatorClass === 'published',
 									[$style.indicatorChanges]: publishButtonConfig.indicatorClass === 'changes',
 									[$style.indicatorIssues]: publishButtonConfig.indicatorClass === 'error',
+									[$style.indicatorPartial]: publishButtonConfig.indicatorClass === 'partial',
 								}"
 							/>
 							<span
@@ -706,6 +665,50 @@ defineExpose({
 						</div>
 					</N8nButton>
 				</N8nTooltip>
+				<!-- Failures popover sits outside the publish button to prevent click propagation -->
+				<N8nPopover
+					v-if="showFailuresPopover"
+					side="bottom"
+					align="start"
+					:side-offset="8"
+					width="320px"
+				>
+					<template #trigger>
+						<span
+							data-test-id="publication-failures-popover-trigger"
+							:class="$style.popoverTriggerWrapper"
+						>
+							<span
+								data-test-id="workflow-active-version-indicator"
+								:class="{
+									[$style.indicatorDot]: true,
+									[$style.indicatorPartial]: publishButtonConfig.indicatorClass === 'partial',
+									[$style.indicatorIssues]: publishButtonConfig.indicatorClass === 'error',
+								}"
+							/>
+						</span>
+					</template>
+					<template #content>
+						<div :class="$style.failuresPopover">
+							<p :class="$style.failuresTitle">
+								{{ i18n.baseText('workflows.publish.failures.title') }}
+							</p>
+							<p :class="$style.failuresRetryHint">
+								{{ i18n.baseText('workflows.publish.failures.retryHint') }}
+							</p>
+							<ul :class="$style.failuresList">
+								<li
+									v-for="failure in publicationFailures"
+									:key="failure.nodeId"
+									:class="$style.failuresItem"
+								>
+									<span :class="$style.failuresNodeName">{{ failure.nodeName }}</span>
+									<span :class="$style.failuresError">{{ failure.errorMessage }}</span>
+								</li>
+							</ul>
+						</div>
+					</template>
+				</N8nPopover>
 				<N8nActionDropdown
 					:items="versionMenuActions"
 					placement="bottom-end"

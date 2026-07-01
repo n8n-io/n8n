@@ -4366,8 +4366,6 @@
 	"workflows.publish.personalSpaceRestricted": "Workflow publishing is disabled in personal spaces. Move the workflow to a team space to activate",
 	"workflows.publish.publishing": "Publishing…",
 	"workflows.publish.publishing.tooltip": "Activating triggers — this can take a moment.",
-	"workflows.publish.partial.tooltip": "",
-	"workflows.publish.failed.tooltip": "",
 	"workflows.publish.failures.title": "Triggers that failed to activate",
 	"workflows.publish.failures.retryHint": "Publish again to retry",
 	"workflows.unpublish": "Unpublish",
