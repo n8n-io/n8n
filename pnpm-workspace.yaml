@@ -261,3 +261,6 @@ minimumReleaseAge: 4320
 minimumReleaseAgeExclude:
   - '@n8n/*'
   - '@n8n_io/*'
+  # Exact name in addition to the scope glob: pnpm's scoped-wildcard exclude
+  # can miss catalog-pinned registry deps (pnpm/pnpm#9983, #10266).
+  - '@n8n_io/ai-assistant-sdk'
