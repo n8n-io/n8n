@@ -1,6 +1,6 @@
 import {
 	buildHttpProviderErrorContext,
-	buildUpdateFailureSummary,
+	buildFailureSummaryLogContext,
 } from '../secrets-provider-errors';
 
 describe('buildHttpProviderErrorContext', () => {
@@ -27,14 +27,14 @@ describe('buildHttpProviderErrorContext', () => {
 	});
 });
 
-describe('buildUpdateFailureSummary', () => {
+describe('buildFailureSummaryLogContext', () => {
 	it('returns null when there are no failures', () => {
-		expect(buildUpdateFailureSummary([])).toBeNull();
+		expect(buildFailureSummaryLogContext([])).toBeNull();
 	});
 
 	it('summarizes failures with capped sample names', () => {
 		expect(
-			buildUpdateFailureSummary([
+			buildFailureSummaryLogContext([
 				{ name: 'secret-a', errorCode: 5 },
 				{ name: 'secret-b', errorCode: 5 },
 				{ name: 'secret-c', errorCode: 7 },

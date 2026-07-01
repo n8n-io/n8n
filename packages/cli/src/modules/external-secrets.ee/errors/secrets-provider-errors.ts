@@ -56,7 +56,7 @@ export function buildHttpProviderErrorContext(error: unknown): HttpProviderError
 	return context;
 }
 
-export function buildUpdateFailureSummary(
+export function buildFailureSummaryLogContext(
 	failures: Array<{ name: string; errorCode: SafeContextValue }>,
 ): {
 	failedCount: number;

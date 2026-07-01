@@ -7,7 +7,7 @@ import { ensureError, type INodeProperties, UnexpectedError } from 'n8n-workflow
 import type { AzureKeyVaultContext } from './types';
 import { DOCS_HELP_NOTICE } from '../../constants';
 import {
-	buildUpdateFailureSummary,
+	buildFailureSummaryLogContext,
 	type HttpProviderErrorLogContext,
 	type LogContext,
 	logSecretsProviderOperationFailure,
@@ -171,18 +171,18 @@ export class AzureKeyVault extends SecretsProvider {
 				}
 			}
 
-			const summary = buildUpdateFailureSummary(failedSecrets);
+			const failureSummary = buildFailureSummaryLogContext(failedSecrets);
 			const isTotalFailure =
 				secretNames.length > 0 && Object.keys(updated).length === 0 && readErrors.length > 0;
 
-			if (summary && !isTotalFailure) {
+			if (failureSummary && !isTotalFailure) {
 				this.logOperationFailure('Skipped unreadable Azure Key Vault secrets during update', {
 					operation: 'update',
 					error:
 						readErrors[0] ?? new Error('One or more Azure Key Vault secrets could not be read'),
 					context: {
 						...this.azureErrorContext(readErrors[0]),
-						...summary,
+						...failureSummary,
 					},
 				});
 			}
@@ -194,7 +194,7 @@ export class AzureKeyVault extends SecretsProvider {
 					error,
 					context: {
 						...this.azureErrorContext(error),
-						...summary,
+						...failureSummary,
 					},
 				});
 				throw new UnexpectedError('Could not read any secrets from Azure Key Vault', {

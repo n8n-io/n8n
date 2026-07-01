@@ -10,7 +10,7 @@ import type {
 } from './types';
 import { DOCS_HELP_NOTICE } from '../../constants';
 import {
-	buildUpdateFailureSummary,
+	buildFailureSummaryLogContext,
 	type LogContext,
 	logSecretsProviderOperationFailure,
 	type SafeContextValue,
@@ -184,15 +184,15 @@ export class GcpSecretsManager extends SecretsProvider {
 				return acc;
 			}, {});
 
-			const summary = buildUpdateFailureSummary(skippedSecrets);
-			if (summary) {
+			const failureSummary = buildFailureSummaryLogContext(skippedSecrets);
+			if (failureSummary) {
 				this.logOperationFailure('Skipped inaccessible GCP secret versions during update', {
 					operation: 'update',
 					error:
 						firstSkippedError instanceof Error
 							? firstSkippedError
 							: new Error('One or more GCP secret versions were inaccessible'),
-					context: summary,
+					context: failureSummary,
 				});
 			}
 
