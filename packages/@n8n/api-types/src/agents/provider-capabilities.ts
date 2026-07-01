@@ -45,8 +45,8 @@ export const NATIVE_WEB_SEARCH_DEFAULTS_BY_PROVIDER = {
 
 export interface ProviderCapabilities {
 	thinking: false | 'budgetTokens' | 'reasoningEffort';
-	/** false = unsupported; 'ttl' = Anthropic (renders TTL select); true = supported, no sub-control (OpenAI). */
-	promptCaching: false | 'ttl' | true;
+	/** Whether the provider supports prompt caching (opt-out toggle only; no sub-control). */
+	promptCaching: boolean;
 	webSearch: false | NativeWebSearchCanonicalTool;
 	providerTools: ReadonlyArray<NativeWebSearchCanonicalTool | 'openai.image_generation'>;
 }
@@ -54,7 +54,7 @@ export interface ProviderCapabilities {
 export const PROVIDER_CAPABILITIES: Record<string, ProviderCapabilities> = {
 	anthropic: {
 		thinking: 'budgetTokens',
-		promptCaching: 'ttl',
+		promptCaching: true,
 		webSearch: 'anthropic.web_search',
 		providerTools: ['anthropic.web_search'],
 	},
@@ -81,9 +81,6 @@ export const PROVIDER_CAPABILITIES: Record<string, ProviderCapabilities> = {
 
 export const REASONING_EFFORT_OPTIONS = ['low', 'medium', 'high'] as const;
 export type ReasoningEffort = (typeof REASONING_EFFORT_OPTIONS)[number];
-
-export const ANTHROPIC_CACHE_TTL_OPTIONS = ['5m', '1h'] as const;
-export type AnthropicCacheTtl = (typeof ANTHROPIC_CACHE_TTL_OPTIONS)[number];
 
 export function getValidProviderToolNames(): string[] {
 	return [

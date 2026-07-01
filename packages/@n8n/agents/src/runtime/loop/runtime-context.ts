@@ -132,13 +132,15 @@ export class RuntimeContextBuilder {
 	/**
 	 * Name of the tool eligible for an Anthropic tool-definitions cache
 	 * breakpoint, or `undefined` if the tool set isn't fully static. Deferred
-	 * (controller/loaded) tools can appear mid-conversation, and the episodic
-	 * recall tool's presence can vary by run, so both disqualify caching —
-	 * marking a tool block that later changes would invalidate the cache.
+	 * (controller/loaded) tools can appear mid-conversation via `load_tool`, so
+	 * they disqualify caching — marking a tool block that later changes would
+	 * invalidate the cache. The episodic recall tool is exempt: its definition
+	 * is static and it never mutates the tool set within a run (calling it only
+	 * appends tool output to the conversation), so it can safely anchor the
+	 * breakpoint.
 	 */
 	private getStaticToolCacheName(allUserTools: BuiltTool[]): string | undefined {
 		if (this.deferredToolManager?.hasTools) return undefined;
-		if (allUserTools.some((tool) => tool.name === RECALL_MEMORY_TOOL_NAME)) return undefined;
 		return allUserTools.at(-1)?.name;
 	}
 

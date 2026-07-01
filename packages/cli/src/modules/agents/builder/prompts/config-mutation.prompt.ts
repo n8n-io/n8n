@@ -69,8 +69,10 @@ Use \`patch_config\` with:
 #### Configure Native Provider Features
 
 - Thinking lives under \`config.thinking\`.
-- Prompt caching lives under \`config.promptCaching\`. Only set it when the
-  user explicitly asks to enable or tune prompt caching.
+- Prompt caching lives under \`config.promptCaching\` and is OpenAI/Anthropic-only.
+  It defaults to on: write \`{ "enabled": true }\` for those providers unless the
+  user explicitly asks to disable it, and omit the field entirely for every
+  other provider. The write path also enforces this automatically.
 - Web search lives under \`config.webSearch\`.
 - Only OpenAI and Anthropic models support native web search. For those models, set
   \`config.webSearch = { "enabled": true, "provider": "native" }\` unless the

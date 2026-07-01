@@ -1,10 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-	PROVIDER_CAPABILITIES,
-	REASONING_EFFORT_OPTIONS,
-	ANTHROPIC_CACHE_TTL_OPTIONS,
-} from '../provider-capabilities';
+import { PROVIDER_CAPABILITIES, REASONING_EFFORT_OPTIONS } from '../provider-capabilities';
 
 describe('provider-capabilities', () => {
 	it('keeps the canonical reasoning-effort order', () => {
@@ -18,13 +14,8 @@ describe('provider-capabilities', () => {
 		expect(PROVIDER_CAPABILITIES.openai.thinking).toBe('reasoningEffort');
 	});
 
-	it('keeps the canonical Anthropic cache-ttl order', () => {
-		// AgentAdvancedPanel renders this as a select in this exact order.
-		expect([...ANTHROPIC_CACHE_TTL_OPTIONS]).toEqual(['5m', '1h']);
-	});
-
-	it('uses ttl for Anthropic and a plain toggle for OpenAI prompt caching', () => {
-		expect(PROVIDER_CAPABILITIES.anthropic.promptCaching).toBe('ttl');
+	it('enables prompt caching (plain opt-out toggle, no sub-control) for Anthropic and OpenAI', () => {
+		expect(PROVIDER_CAPABILITIES.anthropic.promptCaching).toBe(true);
 		expect(PROVIDER_CAPABILITIES.openai.promptCaching).toBe(true);
 	});
 

@@ -24,6 +24,26 @@ new Agent('assistant')
   .instructions(LONG_SYSTEM_PROMPT);
 ```
 
+## The n8n Agent JSON config is a simplified, opt-out surface
+
+The richer SDK shape above (per-provider TTL, OpenAI key/retention overrides)
+is for direct SDK callers. The n8n Agent product (JSON config / builder UI)
+exposes only `config.promptCaching: { enabled: boolean }` — no TTL or
+per-provider tuning — and maps it straight to `agent.promptCaching({ enabled })`.
+Two differences from the SDK default worth knowing:
+
+- **Opt-out, not opt-in.** For OpenAI and Anthropic agents, the config is
+  written with `{ enabled: true }` by default (by the builder agent's
+  write-path normalizer and the model picker) unless the user explicitly
+  disables it; the explicit `{ enabled: false }` is preserved across
+  switching between OpenAI and Anthropic. Every other provider never gets
+  the field at all. As with the SDK, a missing `promptCaching` field is
+  still just "disabled" at runtime — the opt-out default lives in the config
+  producers (builder tools, model picker), not in the runtime default.
+- **TTL is fixed at `1h`**, matching the SDK default described below; there
+  is no way to request `5m` from the JSON config. Use the SDK directly
+  (`Agent.promptCaching({ anthropic: { ttl: '5m' } })`) if you need it.
+
 ## Prefix stability (always on, both providers)
 
 Unlike everything else in this doc, this part is not gated by
@@ -92,14 +112,16 @@ back to memory, checkpoints, or `AgentMessageList`):
   read the cached prefix instead of reprocessing the whole transcript on
   every call.
 - **Tool-definitions breakpoint.** A `cacheControl` marker on the last tool
-  definition, added only when the tool set is **fully static** for that
-  call — no deferred/loaded tools configured and no episodic-recall tool
-  present. A large, stable tool block then stays cached independently of the
-  conversation prefix, so it survives even if the history breakpoint above
-  gets invalidated (e.g. by a burst of unrelated system-message churn).
-  Deferred, MCP-loaded, and episodic-recall tool sets are skipped — the tool
-  list can change mid-conversation, and caching a block that gets
-  invalidated would just pay the write premium for no read.
+  definition, added only when the tool set is **static** for the run — i.e. no
+  deferred/loaded tools are configured. A large, stable tool block then stays
+  cached independently of the conversation prefix, so it survives even if the
+  history breakpoint above gets invalidated (e.g. by a burst of unrelated
+  system-message churn). Deferred / MCP-loaded tool sets are skipped — the
+  tool list can change mid-conversation via `load_tool`, and caching a block
+  that gets invalidated would just pay the write premium for no read. The
+  episodic-recall tool does **not** disqualify this breakpoint: its definition
+  is static and calling it only appends tool output to the conversation, never
+  changing the tool set.
 
 Both markers reuse the configured Anthropic TTL (`getAnthropicCacheTtl`).
 
@@ -156,9 +178,10 @@ up a separate 1h rate from the catalog.
 ## What this does not do
 
 - The tool-definitions breakpoint only ever covers a **single, static**
-  snapshot of the tool set (see above) — deferred/loaded and episodic-recall
-  tool sets get no automatic tool caching in v1. Mark such tools explicitly
-  with `Tool.providerOptions({ anthropic: { cacheControl: { type: 'ephemeral' } } })`
+  snapshot of the tool set (see above) — deferred/loaded tool sets get no
+  automatic tool caching in v1 (the episodic-recall tool is fine, since it is
+  static within a run). Mark deferred tools explicitly with
+  `Tool.providerOptions({ anthropic: { cacheControl: { type: 'ephemeral' } } })`
   if needed.
 - Only one moving conversation-history breakpoint is added per call — there
   is no second/dual breakpoint for splitting "older, stable" history from

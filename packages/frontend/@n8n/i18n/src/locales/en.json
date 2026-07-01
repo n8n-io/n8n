@@ -6736,7 +6736,6 @@
 	"agents.builder.advanced.promptCaching.hint": "Cache repeated parts of the prompt to reduce latency and cost.",
 	"agents.builder.advanced.promptCaching.unsupportedTooltip": "{provider} does not support prompt caching",
 	"agents.builder.advanced.promptCaching.unsupportedProviderFallback": "This provider",
-	"agents.builder.advanced.promptCachingTtl.label": "Cache duration",
 	"agents.builder.advanced.concurrency.label": "Tool call concurrency",
 	"agents.builder.advanced.concurrency.hint": "How many tool calls the agent can run in parallel.",
 	"agents.builder.advanced.recentMessages.label": "Session memory window",

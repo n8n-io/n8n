@@ -76,13 +76,10 @@ const ThinkingConfigSchema = z.object({
 	reasoningEffort: z.string().optional(),
 });
 
+// Opt-out toggle only — provider-specific tuning (e.g. Anthropic TTL) is
+// backend-decided (fixed at 1h) and not exposed in the JSON config.
 const PromptCachingConfigSchema = z.object({
-	enabled: z.boolean().optional(),
-	anthropic: z
-		.union([z.literal(false), z.object({ ttl: z.enum(['5m', '1h']).optional() })])
-		.optional(),
-	// Retention is backend-decided; openai only supports explicit disable, no sub-config.
-	openai: z.literal(false).optional(),
+	enabled: z.boolean(),
 });
 
 const WebSearchConfigSchema = z.object({

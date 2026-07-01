@@ -9,6 +9,7 @@ import {
 	agentSkillSchema,
 	agentTaskSchema,
 	formatZodErrors,
+	PROVIDER_CAPABILITIES,
 	RunnableAgentJsonConfigSchema,
 	sanitizeAgentJsonConfig,
 	tryParseConfigJson,
@@ -62,6 +63,7 @@ import { SKILL_BODY_GUIDANCE, SKILL_DESCRIPTION_RULE } from './skill-body-templa
 import { TASK_OBJECTIVE_GUIDANCE } from './task-objective-template';
 import { buildVerifyMcpServerTool } from './verify-mcp-server.tool';
 import { composeJsonConfig } from '../json-config/agent-config-composition';
+import { getProviderPrefix } from '../json-config/model-id';
 import {
 	getNativeWebSearchProviderTools,
 	hasNativeWebSearchProvider,
@@ -257,6 +259,37 @@ function applyNativeWebSearchBuilderDefaults(config: AgentJsonConfig): AgentJson
 			webSearch: { enabled: true },
 		},
 		providerTools,
+	};
+}
+
+/**
+ * Prompt caching is opt-out for OpenAI/Anthropic: this write-path normalizer
+ * guarantees `config.promptCaching` is `{ enabled: true }` for those providers
+ * unless the config explicitly opted out (`{ enabled: false }`, preserved),
+ * and strips the field entirely for every other provider — regardless of what
+ * the builder LLM wrote.
+ */
+function applyPromptCachingBuilderDefaults(config: AgentJsonConfig): AgentJsonConfig {
+	const providerPrefix = getProviderPrefix(config.model);
+	const supportsPromptCaching = PROVIDER_CAPABILITIES[providerPrefix]?.promptCaching === true;
+
+	if (!supportsPromptCaching) {
+		if (!config.config || !('promptCaching' in config.config)) return config;
+		const { promptCaching: _promptCaching, ...restConfig } = config.config;
+		const { config: _config, ...restAgentConfig } = config;
+		return {
+			...restAgentConfig,
+			...(Object.keys(restConfig).length > 0 ? { config: restConfig } : {}),
+		};
+	}
+
+	const explicitlyDisabled = config.config?.promptCaching?.enabled === false;
+	return {
+		...config,
+		config: {
+			...(config.config ?? {}),
+			promptCaching: { enabled: !explicitlyDisabled },
+		},
 	};
 }
 
@@ -457,7 +490,9 @@ export class AgentsBuilderToolsService {
 					if (dynamicSelectorFromAi) {
 						return { ok: false, errors: dynamicSelectorFromAi.errors };
 					}
-					const normalizedConfig = applyNativeWebSearchBuilderDefaults(zodResult.data);
+					const normalizedConfig = applyPromptCachingBuilderDefaults(
+						applyNativeWebSearchBuilderDefaults(zodResult.data),
+					);
 					try {
 						const result = await this.agentConfigService.updateConfig(
 							agentId,
@@ -572,7 +607,9 @@ export class AgentsBuilderToolsService {
 					if (dynamicSelectorFromAi) {
 						return { ok: false, stage: 'schema', errors: dynamicSelectorFromAi.errors };
 					}
-					const normalizedConfig = applyNativeWebSearchBuilderDefaults(zodResult.data);
+					const normalizedConfig = applyPromptCachingBuilderDefaults(
+						applyNativeWebSearchBuilderDefaults(zodResult.data),
+					);
 
 					try {
 						const result = await this.agentConfigService.updateConfig(

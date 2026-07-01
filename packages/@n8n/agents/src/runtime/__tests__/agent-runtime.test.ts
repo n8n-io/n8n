@@ -4690,6 +4690,34 @@ describe('promptCaching', () => {
 		}
 	});
 
+	it('adds a tool cache breakpoint on recall_memory for an episodic Anthropic agent (no deferred tools)', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+		const memory = new InMemoryMemory();
+		const fakeEmbedder = { specificationVersion: 'v2' } as never;
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'anthropic/claude-sonnet-4-5',
+			instructions: 'You are a test assistant.',
+			memory,
+			episodicMemory: { embedder: fakeEmbedder },
+			promptCaching: { enabled: true },
+		});
+
+		await runtime.generate('hello', {
+			persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
+		});
+
+		// recall_memory is static within a run, so it is eligible to anchor the
+		// tool breakpoint (it is the last tool in getCurrentTools).
+		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
+		const tools = callArgs.tools as Record<string, { providerOptions?: unknown }>;
+		expect(tools).toHaveProperty('recall_memory');
+		expect(tools.recall_memory.providerOptions).toEqual({
+			anthropic: { cacheControl: { type: 'ephemeral', ttl: '1h' } },
+		});
+	});
+
 	it('does not add message or tool cache breakpoints for OpenAI', async () => {
 		generateText.mockResolvedValue(makeGenerateSuccess());
 		const toolA = makeMockTool('tool_a', async () => await Promise.resolve({ ok: true }));

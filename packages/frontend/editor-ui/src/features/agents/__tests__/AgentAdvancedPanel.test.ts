@@ -330,19 +330,18 @@ describe('AgentAdvancedPanel', () => {
 		expect((last.config as { thinking: { provider: string } }).thinking.provider).toBe('anthropic');
 	});
 
-	it('shows the ttl select for Anthropic when prompt caching is on', async () => {
+	it('shows no sub-control for Anthropic when prompt caching is on', async () => {
 		const config = makeConfig({
-			config: { promptCaching: { enabled: true, anthropic: { ttl: '1h' } } },
+			config: { promptCaching: { enabled: true } },
 		} as Partial<AgentJsonConfig>);
 		const wrapper = mount(AgentAdvancedPanel, {
 			props: { config },
 			global: { stubs: globalStubs },
 		});
 		await nextTick();
-		expect(wrapper.find('[data-testid="agent-prompt-caching-ttl-select"]').exists()).toBe(true);
-		expect(wrapper.find('[data-testid="agent-prompt-caching-retention-select"]').exists()).toBe(
-			false,
-		);
+		expect(wrapper.find('[data-testid="agent-prompt-caching-toggle"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="agent-prompt-caching-settings"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-prompt-caching-ttl-select"]').exists()).toBe(false);
 	});
 
 	it('shows no sub-control for OpenAI when prompt caching is on', async () => {
@@ -358,9 +357,6 @@ describe('AgentAdvancedPanel', () => {
 		expect(wrapper.find('[data-testid="agent-prompt-caching-toggle"]').exists()).toBe(true);
 		expect(wrapper.find('[data-testid="agent-prompt-caching-settings"]').exists()).toBe(false);
 		expect(wrapper.find('[data-testid="agent-prompt-caching-ttl-select"]').exists()).toBe(false);
-		expect(wrapper.find('[data-testid="agent-prompt-caching-retention-select"]').exists()).toBe(
-			false,
-		);
 	});
 
 	it('disables the prompt caching toggle for providers that do not support it', () => {
@@ -374,7 +370,7 @@ describe('AgentAdvancedPanel', () => {
 		expect(toggle.attributes('disabled')).toBeDefined();
 	});
 
-	it('emits update:config with the promptCaching subtree when the toggle flips on', async () => {
+	it('emits { enabled: true } when the toggle flips on for Anthropic', async () => {
 		const config = makeConfig();
 		const wrapper = mount(AgentAdvancedPanel, {
 			props: { config },
@@ -384,13 +380,10 @@ describe('AgentAdvancedPanel', () => {
 		const events = wrapper.emitted('update:config') ?? [];
 		expect(events.length).toBeGreaterThan(0);
 		const last = events[events.length - 1][0] as Partial<AgentJsonConfig>;
-		expect(
-			(last.config as { promptCaching: { anthropic: { ttl: string } } }).promptCaching.anthropic
-				.ttl,
-		).toBe('1h');
+		expect(last.config?.promptCaching).toEqual({ enabled: true });
 	});
 
-	it('emits { enabled: true } with no openai key when toggled on for OpenAI', async () => {
+	it('emits { enabled: true } when toggled on for OpenAI', async () => {
 		const config = makeConfig({ model: 'openai/gpt-4o' });
 		const wrapper = mount(AgentAdvancedPanel, {
 			props: { config },
@@ -401,6 +394,21 @@ describe('AgentAdvancedPanel', () => {
 		expect(events.length).toBeGreaterThan(0);
 		const last = events[events.length - 1][0] as Partial<AgentJsonConfig>;
 		expect(last.config?.promptCaching).toEqual({ enabled: true });
+	});
+
+	it('persists { enabled: false } (opt-out) when the toggle flips off', async () => {
+		const config = makeConfig({
+			config: { promptCaching: { enabled: true } },
+		} as Partial<AgentJsonConfig>);
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: { config },
+			global: { stubs: globalStubs },
+		});
+		await wrapper.find('[data-testid="agent-prompt-caching-toggle"]').trigger('click');
+		const events = wrapper.emitted('update:config') ?? [];
+		expect(events.length).toBeGreaterThan(0);
+		const last = events[events.length - 1][0] as Partial<AgentJsonConfig>;
+		expect(last.config?.promptCaching).toEqual({ enabled: false });
 	});
 
 	it('disables every control when the disabled prop is true', () => {

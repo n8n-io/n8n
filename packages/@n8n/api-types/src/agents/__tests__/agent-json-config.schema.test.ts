@@ -103,15 +103,7 @@ describe('AgentJsonConfigSchema — tools', () => {
 });
 
 describe('AgentJsonConfigSchema — config.promptCaching', () => {
-	it('accepts an Anthropic ttl config', () => {
-		const result = AgentJsonConfigSchema.safeParse({
-			...minimalConfig,
-			config: { promptCaching: { enabled: true, anthropic: { ttl: '1h' } } },
-		});
-		expect(result.success).toBe(true);
-	});
-
-	it('accepts enabling caching without provider sub-config', () => {
+	it('accepts enabling caching', () => {
 		const result = AgentJsonConfigSchema.safeParse({
 			...minimalConfig,
 			config: { promptCaching: { enabled: true } },
@@ -119,34 +111,31 @@ describe('AgentJsonConfigSchema — config.promptCaching', () => {
 		expect(result.success).toBe(true);
 	});
 
-	it('accepts disabling a provider explicitly with false', () => {
+	it('accepts disabling caching explicitly', () => {
 		const result = AgentJsonConfigSchema.safeParse({
 			...minimalConfig,
-			config: { promptCaching: { anthropic: false } },
+			config: { promptCaching: { enabled: false } },
 		});
 		expect(result.success).toBe(true);
-
-		const openaiResult = AgentJsonConfigSchema.safeParse({
-			...minimalConfig,
-			config: { promptCaching: { openai: false } },
-		});
-		expect(openaiResult.success).toBe(true);
 	});
 
-	it('rejects an invalid Anthropic ttl value', () => {
+	it('rejects promptCaching without an enabled field', () => {
 		const result = AgentJsonConfigSchema.safeParse({
 			...minimalConfig,
-			config: { promptCaching: { anthropic: { ttl: '1d' } } },
+			config: { promptCaching: {} },
 		});
 		expect(result.success).toBe(false);
 	});
 
-	it('rejects an OpenAI promptCacheRetention config (retention is backend-decided)', () => {
+	it('strips legacy per-provider sub-config (anthropic ttl, openai retention)', () => {
 		const result = AgentJsonConfigSchema.safeParse({
 			...minimalConfig,
-			config: { promptCaching: { openai: { promptCacheRetention: '24h' } } },
+			config: { promptCaching: { enabled: true, anthropic: { ttl: '1h' } } },
 		});
-		expect(result.success).toBe(false);
+		expect(result.success).toBe(true);
+		if (result.success) {
+			expect(result.data.config?.promptCaching).toEqual({ enabled: true });
+		}
 	});
 });
 
