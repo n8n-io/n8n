@@ -4,6 +4,7 @@ import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import { ensureError, type INodeProperties, UnexpectedError } from 'n8n-workflow';
 
+import type { AzureKeyVaultContext } from './types';
 import { DOCS_HELP_NOTICE } from '../../constants';
 import {
 	buildUpdateFailureSummary,
@@ -14,7 +15,6 @@ import {
 	type SecretsProviderOperation,
 } from '../../errors/secrets-provider-errors';
 import { SecretsProvider } from '../../types';
-import type { AzureKeyVaultContext } from './types';
 
 type AzureHttpLikeError = Error & {
 	statusCode?: number;
@@ -101,7 +101,11 @@ export class AzureKeyVault extends SecretsProvider {
 
 			this.logger.debug('Azure Key Vault provider connected');
 		} catch (error) {
-			this.logOperationFailure('Failed to connect Azure Key Vault provider', 'connect', error);
+			this.logOperationFailure('Failed to connect Azure Key Vault provider', {
+				operation: 'connect',
+				error,
+				context: this.azureErrorContext(error),
+			});
 			throw error;
 		}
 	}
@@ -113,7 +117,11 @@ export class AzureKeyVault extends SecretsProvider {
 			await this.client.listPropertiesOfSecrets().next();
 			return [true];
 		} catch (error: unknown) {
-			this.logOperationFailure('Azure Key Vault provider test failed', 'test', error);
+			this.logOperationFailure('Azure Key Vault provider test failed', {
+				operation: 'test',
+				error,
+				context: this.azureErrorContext(error),
+			});
 			return [false, error instanceof Error ? error.message : 'Unknown error'];
 		}
 	}
@@ -164,18 +172,33 @@ export class AzureKeyVault extends SecretsProvider {
 			}
 
 			const summary = buildUpdateFailureSummary(failedSecrets);
-			if (summary) {
-				this.logOperationFailure(
-					'Skipped unreadable Azure Key Vault secrets during update',
-					'update',
-					readErrors[0] ?? new Error('One or more Azure Key Vault secrets could not be read'),
-					summary,
-				);
+			const isTotalFailure =
+				secretNames.length > 0 && Object.keys(updated).length === 0 && readErrors.length > 0;
+
+			if (summary && !isTotalFailure) {
+				this.logOperationFailure('Skipped unreadable Azure Key Vault secrets during update', {
+					operation: 'update',
+					error:
+						readErrors[0] ?? new Error('One or more Azure Key Vault secrets could not be read'),
+					context: {
+						...this.azureErrorContext(readErrors[0]),
+						...summary,
+					},
+				});
 			}
 
-			if (secretNames.length > 0 && Object.keys(updated).length === 0 && readErrors.length > 0) {
+			if (isTotalFailure) {
+				const error = readErrors[0];
+				this.logOperationFailure('Could not read any secrets from Azure Key Vault', {
+					operation: 'update',
+					error,
+					context: {
+						...this.azureErrorContext(error),
+						...summary,
+					},
+				});
 				throw new UnexpectedError('Could not read any secrets from Azure Key Vault', {
-					cause: readErrors[0],
+					cause: error,
 				});
 			}
 
@@ -186,11 +209,11 @@ export class AzureKeyVault extends SecretsProvider {
 				throw error;
 			}
 
-			this.logOperationFailure(
-				'Failed to update Azure Key Vault provider secrets',
-				'update',
+			this.logOperationFailure('Failed to update Azure Key Vault provider secrets', {
+				operation: 'update',
 				error,
-			);
+				context: this.azureErrorContext(error),
+			});
 			throw error;
 		}
 	}
@@ -242,22 +265,25 @@ export class AzureKeyVault extends SecretsProvider {
 
 	private logOperationFailure(
 		message: string,
-		operation: SecretsProviderOperation,
-		error: unknown,
-		extra: LogContext = {},
+		params: {
+			operation: SecretsProviderOperation;
+			error: unknown;
+			context?: LogContext;
+		},
 	): void {
+		const context: LogContext = { ...params.context };
+		if (this.settings?.vaultName) {
+			context.vaultName = this.settings.vaultName;
+		}
+
 		logProviderFailure({
 			logger: this.logger,
 			message,
 			providerName: this.name,
 			providerDisplayName: this.displayName,
-			operation,
-			error,
-			context: {
-				...this.azureErrorContext(error),
-				vaultName: this.settings.vaultName,
-				...extra,
-			},
+			operation: params.operation,
+			error: params.error,
+			context,
 		});
 	}
 }

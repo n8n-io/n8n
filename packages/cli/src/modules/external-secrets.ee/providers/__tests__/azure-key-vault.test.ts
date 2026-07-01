@@ -350,14 +350,19 @@ describe('AzureKeyVault', () => {
 			expect(thrown.cause).toEqual(expect.objectContaining({ message: 'Key Vault unavailable' }));
 		}
 		expect(logger.warn).toHaveBeenCalledWith(
-			'Skipped unreadable Azure Key Vault secrets during update',
+			'Could not read any secrets from Azure Key Vault',
 			expect.objectContaining({
 				providerName: 'azureKeyVault',
 				operation: 'update',
 				vaultName: 'my-vault',
 				failedCount: 1,
 				sampleSecretNames: ['only-secret'],
+				errorName: 'Error',
 			}),
+		);
+		expect(logger.warn).not.toHaveBeenCalledWith(
+			'Skipped unreadable Azure Key Vault secrets during update',
+			expect.anything(),
 		);
 		expect(azureKeyVault.getSecret('only-secret')).toBe('cached-value');
 	});
