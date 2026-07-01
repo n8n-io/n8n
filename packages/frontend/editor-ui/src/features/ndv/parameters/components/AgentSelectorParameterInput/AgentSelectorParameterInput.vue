@@ -20,6 +20,7 @@ import { useResourceLocatorModes } from '../../composables/useResourceLocatorMod
 import { useAgentResourcesLocator } from '../../composables/useAgentResourcesLocator';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
+import { useAgentPermissions } from '@/features/agents/composables/useAgentPermissions';
 import { injectNDVStoreIfProvided } from '@/features/ndv/shared/ndv.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -48,6 +49,11 @@ export interface Props {
 	parameter: INodeProperties;
 	newResourceLabel?: string;
 	/**
+	 * Hide the list/ID mode selector and render the list picker on its own. Used
+	 * on the canvas card, where the agent is always picked from the list.
+	 */
+	hideModeSelector?: boolean;
+	/**
 	 * Origin node id for the "Back to workflow" return context. Set by the canvas
 	 * agent card (AGENT-274), which renders this picker outside the NDV; in the
 	 * NDV the active node is resolved from the NDV store instead.
@@ -64,6 +70,7 @@ const props = withDefaults(defineProps<Props>(), {
 	expressionDisplayValue: '',
 	newResourceLabel: '',
 	parameterIssues: () => [],
+	hideModeSelector: false,
 });
 
 const emit = defineEmits<{
@@ -147,6 +154,10 @@ const { hideDropdown, isDropdownVisible, showDropdown } = useResourceLocatorDrop
 	inputRef,
 );
 
+// Show "Create agent" only when the user can create one in the scoped project
+// (project/global agent:create scope).
+const { canCreate } = useAgentPermissions(projectId);
+
 const currentProjectName = computed(() => {
 	if (!projectStore.isTeamProjectFeatureEnabled) return '';
 
@@ -172,7 +183,10 @@ const getCreateResourceLabel = computed(() => {
 	});
 });
 
-const newResourceOptions = computed(() => ({ label: getCreateResourceLabel.value }));
+// Surfaced whenever the user has create permission (NDV + canvas card alike).
+const newResourceOptions = computed(() =>
+	canCreate.value ? { label: getCreateResourceLabel.value } : {},
+);
 
 const valueToDisplay = computed<INodeParameterResourceLocator['value']>(() => {
 	if (typeof props.modelValue !== 'object') {
@@ -188,7 +202,7 @@ const valueToDisplay = computed<INodeParameterResourceLocator['value']>(() => {
 
 const placeholder = computed(() => {
 	if (isListMode.value) {
-		return i18n.baseText('resourceLocator.mode.list.placeholder');
+		return i18n.baseText('agentSelector.mode.list.placeholder');
 	}
 
 	return i18n.baseText('resourceLocator.id.placeholder');
@@ -416,10 +430,11 @@ defineExpose({ showDropdown });
 			<div
 				:class="{
 					[$style.resourceLocator]: true,
-					[$style.multipleModes]: true,
+					[$style.multipleModes]: !hideModeSelector,
+					[$style.singleMode]: hideModeSelector,
 				}"
 			>
-				<div :class="$style.modeSelector">
+				<div v-if="!hideModeSelector" :class="$style.modeSelector">
 					<N8nSelect
 						:model-value="selectedMode"
 						:size="inputSize"
@@ -514,4 +529,13 @@ defineExpose({ showDropdown });
 
 <style lang="scss" module>
 @use '../ResourceLocator/resourceLocator.scss';
+
+// Without the mode selector the input stands alone, so restore the left corner
+// radii that the multi-mode layout squares off to butt against the selector.
+.singleMode {
+	.inputContainer {
+		--input--radius--top-left: var(--radius);
+		--input--radius--bottom-left: var(--radius);
+	}
+}
 </style>

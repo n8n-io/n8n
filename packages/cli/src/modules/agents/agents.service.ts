@@ -16,8 +16,8 @@ import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentTestChatService } from './agent-test-chat.service';
 import { Agent } from './entities/agent.entity';
 import { splitModelId } from './json-config/model-id';
-import { AgentRepository } from './repositories/agent.repository';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
+import { AgentRepository } from './repositories/agent.repository';
 
 @Service()
 export class AgentsService {
@@ -95,7 +95,14 @@ export class AgentsService {
 				case 'workflow':
 					return [{ type: 'workflow', name: tool.name ?? tool.workflow }];
 				case 'node':
-					return [{ type: 'node', name: tool.name }];
+					return [
+						{
+							type: 'node',
+							name: tool.name,
+							nodeType: tool.node?.nodeType,
+							nodeTypeVersion: tool.node?.nodeTypeVersion,
+						},
+					];
 				default:
 					// Unknown tool type from an unvalidated persisted config (import,
 					// history restore, version skew): drop it rather than emit an

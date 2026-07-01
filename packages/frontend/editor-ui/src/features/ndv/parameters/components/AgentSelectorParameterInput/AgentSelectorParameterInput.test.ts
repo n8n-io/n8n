@@ -26,6 +26,8 @@ const { routerPush } = vi.hoisted(() => ({
 	routerPush: vi.fn(),
 }));
 
+const { canCreateHolder } = vi.hoisted(() => ({ canCreateHolder: { value: false } }));
+
 const flushPromises = async () => await new Promise(setImmediate);
 
 vi.mock('@/features/agents/composables/useAgentApi', () => ({
@@ -74,6 +76,10 @@ vi.mock('vue-router', () => ({
 	RouterLink: vi.fn(),
 }));
 
+vi.mock('@/features/agents/composables/useAgentPermissions', () => ({
+	useAgentPermissions: () => ({ canCreate: canCreateHolder }),
+}));
+
 const renderComponent = createComponentRenderer(AgentSelectorParameterInput);
 
 let projectsStore: MockedStore<typeof useProjectsStore>;
@@ -101,6 +107,10 @@ describe('AgentSelectorParameterInput', () => {
 		projectsStore = mockedStore(useProjectsStore);
 		projectsStore.isTeamProjectFeatureEnabled = false;
 		projectsStore.currentProjectId = 'proj-1';
+
+		// Default to having create permission so the create-action flow tests
+		// see the action; the permission-gating test overrides this to false.
+		canCreateHolder.value = true;
 
 		listAgentsPage.mockResolvedValue({ count: 0, data: [] });
 		listAgentsPageGlobal.mockResolvedValue({ count: 0, data: [] });
@@ -208,6 +218,17 @@ describe('AgentSelectorParameterInput', () => {
 		await flushPromises();
 
 		expect(getByTestId('rlc-item-add-resource')).toBeInTheDocument();
+	});
+
+	it('hides the create-agent action without create permission', async () => {
+		canCreateHolder.value = false;
+		const { getByTestId, queryByTestId } = renderComponent({ props: makeProps() });
+		await flushPromises();
+
+		await userEvent.click(getByTestId('rlc-input'));
+		await flushPromises();
+
+		expect(queryByTestId('rlc-item-add-resource')).toBeNull();
 	});
 
 	it('eagerly creates a draft agent, references it on the node, and opens the builder', async () => {
@@ -337,5 +358,23 @@ describe('AgentSelectorParameterInput', () => {
 		await flushPromises();
 
 		expect(listAgentsPage).toHaveBeenCalledTimes(2);
+	});
+
+	it('renders the list/ID mode selector by default', async () => {
+		const { getByTestId } = renderComponent({ props: makeProps() });
+		await flushPromises();
+
+		expect(getByTestId('rlc-mode-selector')).toBeInTheDocument();
+	});
+
+	it('hides the mode selector when hideModeSelector is set (canvas usage)', async () => {
+		const { getByTestId, queryByTestId } = renderComponent({
+			props: makeProps({ hideModeSelector: true }),
+		});
+		await flushPromises();
+
+		expect(queryByTestId('rlc-mode-selector')).toBeNull();
+		// The list input itself is still available.
+		expect(getByTestId('rlc-input')).toBeInTheDocument();
 	});
 });
