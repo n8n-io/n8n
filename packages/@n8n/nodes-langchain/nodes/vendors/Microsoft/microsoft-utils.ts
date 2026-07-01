@@ -243,8 +243,10 @@ async function getMcpServerConfigsWithoutAudienceTokens(
 	const payload: unknown = await response.json();
 	const rawServers = getRawMcpServers(payload);
 	if (!rawServers) {
+		// Log only the payload type, never the raw body: it's an untrusted external
+		// response that may carry sensitive values.
 		console.error('Microsoft MCP server discovery returned an unsupported payload shape', {
-			payload,
+			payloadType: Array.isArray(payload) ? 'array' : typeof payload,
 		});
 		throw new Error('Failed to read MCP servers from endpoint: response is not a server list');
 	}
