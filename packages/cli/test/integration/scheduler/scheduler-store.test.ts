@@ -126,6 +126,9 @@ describe('SchedulerStore', () => {
 					enabled: true,
 					nextRunAt,
 					lastFiredAt,
+					taskType: 'scheduleTrigger',
+					payload: {},
+					maxAttempts: 1,
 				});
 			});
 
@@ -145,6 +148,9 @@ describe('SchedulerStore', () => {
 					enabled: true,
 					nextRunAt: null,
 					lastFiredAt: new Date('2026-06-01T10:00:00.000Z'),
+					taskType: 'scheduleTrigger',
+					payload: {},
+					maxAttempts: 1,
 				});
 			});
 
@@ -181,6 +187,9 @@ describe('SchedulerStore', () => {
 						enabled: true,
 						nextRunAt: new Date('2026-06-01T11:00:00.000Z'),
 						lastFiredAt: new Date('2026-06-01T10:00:00.000Z'),
+						taskType: 'scheduleTrigger',
+						payload: {},
+						maxAttempts: 1,
 					});
 					throw new Error('boom');
 				}),

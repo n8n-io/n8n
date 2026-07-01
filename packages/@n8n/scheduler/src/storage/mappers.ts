@@ -53,6 +53,9 @@ export function entityToScheduledJob(entity: ScheduledJobEntity): ScheduledJob {
 		enabled: entity.enabled,
 		nextRunAt: entity.nextRunAt,
 		lastFiredAt: entity.lastFiredAt,
+		taskType: entity.taskType,
+		payload: entity.payload,
+		maxAttempts: entity.maxAttempts,
 	};
 }
 

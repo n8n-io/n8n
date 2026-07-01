@@ -51,4 +51,7 @@ export interface ScheduledJob {
 	enabled: boolean;
 	nextRunAt: Date | null;
 	lastFiredAt: Date | null;
+	taskType: string;
+	payload: unknown;
+	maxAttempts: number;
 }
