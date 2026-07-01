@@ -4,7 +4,7 @@ import { test, expect } from '../../../fixtures/base';
 test.describe('Node Creator Navigation', () => {
 	test.beforeEach(async ({ n8n }) => {
 		// Stub community node types to keep tests deterministic
-		await n8n.page.route('/community-node-types', async (route) => {
+		await n8n.page.route('**/community-node-types', async (route) => {
 			await route.fulfill({ status: 200, json: { data: [] } });
 		});
 		await n8n.start.fromBlankCanvas();
