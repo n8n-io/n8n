@@ -133,6 +133,7 @@ describe('CreateSchedulerTables Migration', () => {
 				for (const suffix of [
 					'scheduled_job_nextRunAt',
 					'scheduled_job_workflowId',
+					'scheduled_job_name',
 					'scheduled_task_jobId_scheduledFor',
 					'scheduled_task_runAt',
 					'scheduled_task_leaseExpiresAt',
@@ -494,6 +495,29 @@ describe('CreateSchedulerTables Migration', () => {
 				{ id: jobId },
 			);
 			expect(remaining).toEqual([]);
+			await context.queryRunner.release();
+		});
+
+		it('rejects a workflow-bound job when the workflow is not published', async () => {
+			const context = createTestMigrationContext(dataSource);
+			const table = context.escape.tableName('scheduled_job');
+			const now = new Date();
+			// No workflow_published_version row for this id, so the FK must reject it.
+			await expect(
+				context.runQuery(
+					`INSERT INTO ${table} ("name", "workflowId", "taskType", "kind", "cronExpression", "createdAt", "updatedAt")
+					 VALUES (:name, :workflowId, :taskType, :kind, :cronExpression, :createdAt, :updatedAt)`,
+					{
+						name: `job-${randomUUID()}`,
+						workflowId: randomUUID(),
+						taskType: 'scheduleTrigger',
+						kind: 'cron',
+						cronExpression: '* * * * *',
+						createdAt: now,
+						updatedAt: now,
+					},
+				),
+			).rejects.toThrow();
 			await context.queryRunner.release();
 		});
 	});

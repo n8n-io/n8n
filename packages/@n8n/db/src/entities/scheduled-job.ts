@@ -78,7 +78,7 @@ export class ScheduledJob extends WithTimestamps {
 	/**
 	 * Input handed to the task handler when an occurrence runs.
 	 */
-	@JsonColumn()
+	@JsonColumn({ default: '{}' })
 	payload: Record<string, unknown>;
 
 	@Column({ type: 'varchar', length: 16 })

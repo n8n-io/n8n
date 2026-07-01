@@ -83,7 +83,7 @@ export class ScheduledTask extends WithCreatedAt {
 	 *
 	 * See {@link taskType} for why these two are denormalized.
 	 */
-	@JsonColumn()
+	@JsonColumn({ default: '{}' })
 	payload: Record<string, unknown>;
 
 	/**
