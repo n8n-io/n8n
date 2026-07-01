@@ -1,3 +1,12 @@
+## [2.29.2](https://github.com/n8n-io/n8n/compare/n8n@2.29.1...n8n@2.29.2) (2026-07-01)
+
+
+### Bug Fixes
+
+* **editor:** Show Free credits badge for Tool-variant nodes in node creator panel ([#33347](https://github.com/n8n-io/n8n/issues/33347)) ([c2f1483](https://github.com/n8n-io/n8n/commit/c2f1483787eb25e6db1a3408d2798a4f559ecc2a))
+* **Salesforce Node:** Normalize empty 204 responses on JWT auth path ([#33354](https://github.com/n8n-io/n8n/issues/33354)) ([298025e](https://github.com/n8n-io/n8n/commit/298025edd91f5b2dde803bd5796c9e344b4445da))
+
+
 ## [2.29.1](https://github.com/n8n-io/n8n/compare/n8n@2.29.0...n8n@2.29.1) (2026-07-01)
 
 
