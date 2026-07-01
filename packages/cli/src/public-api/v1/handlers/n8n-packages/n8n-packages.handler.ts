@@ -14,7 +14,6 @@ import {
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import { resolveImportPackageUpload } from '@/modules/n8n-packages/utils/import-package-upload';
 
