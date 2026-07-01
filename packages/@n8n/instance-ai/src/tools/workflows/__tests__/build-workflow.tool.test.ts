@@ -82,6 +82,12 @@ type BuildToolOutput = {
 		reason?: string;
 		guidance?: string;
 	};
+	postBuildFlow?: {
+		required: boolean;
+		skillId: string;
+		reason: string;
+		guidance: string;
+	};
 	warnings?: string[];
 	errors?: string[];
 	remediation?: {
@@ -183,7 +189,16 @@ describe('createBuildWorkflowTool', () => {
 			workflowId: 'wf-1',
 			workflowName: 'Daily Weather to Slack',
 			workItemId: filePath,
+			postBuildFlow: {
+				required: true,
+				skillId: 'post-build-flow',
+				reason: 'direct-build-succeeded',
+			},
 		});
+		expect(result.postBuildFlow?.guidance).toContain('Load post-build-flow now');
+		expect(result.postBuildFlow?.guidance).toContain(
+			'then error-workflow opt-in for direct new primary workflows',
+		);
 		expect(compileWorkflowSource).toHaveBeenCalledWith(context, filePath, source);
 		expect(context.workflowService.createFromWorkflowJSON).toHaveBeenCalledWith(
 			expect.objectContaining({ name: 'Daily Weather to Slack' }),
@@ -731,6 +746,7 @@ describe('createBuildWorkflowTool', () => {
 			workflowId: 'wf-1',
 			workItemId: 'wi-planned',
 		});
+		expect(result.postBuildFlow).toBeUndefined();
 		const storedOutcome = onBuildOutcome.mock.calls[0]?.[0] as WorkflowBuildOutcome | undefined;
 		expect(storedOutcome).toMatchObject({
 			workItemId: 'wi-planned',
