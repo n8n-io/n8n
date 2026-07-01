@@ -21,7 +21,8 @@ import {
 } from '../../helpers/sandbox-utils';
 
 type OperationOptions = {
-	emptyQueryResult: 'success' | 'empty';
+	emptyQueryResult?: 'success' | 'empty';
+	queryParameters?: string | number | unknown[];
 };
 
 export const properties: INodeProperties[] = [
@@ -39,6 +40,13 @@ export const properties: INodeProperties[] = [
 			rows: 5,
 			editor: 'sqlEditor',
 		},
+	},
+	{
+		displayName:
+			'Use query parameters for dynamic values. Expressions in the query text become part of the SQL. Add values in <b>Options > Query Parameters</b> and reference them with <code>?</code> placeholders.',
+		name: 'queryParametersNotice',
+		type: 'notice',
+		default: '',
 	},
 	{
 		displayName: 'Options',
@@ -63,13 +71,23 @@ export const properties: INodeProperties[] = [
 					},
 				],
 				default: 'empty',
+				displayOptions: {
+					show: {
+						'@version': [3.2],
+					},
+				},
+			},
+			{
+				displayName: 'Query Parameters',
+				name: 'queryParameters',
+				type: 'string',
+				default: '',
+				placeholder: 'value1,value2,value3',
+				description:
+					'Comma-separated list of values to use as query parameters. Reference them in the query with ? placeholders.',
+				hint: 'Reference query parameters with ? placeholders',
 			},
 		],
-		displayOptions: {
-			show: {
-				'@version': [3.2],
-			},
-		},
 	},
 ];
 
@@ -102,10 +120,25 @@ const prepareError = (node: INode, error: Error) => {
 	throw new NodeOperationError(node, error, { message, description, itemIndex: 0 });
 };
 
+function parseQueryParameterValue(value: string): string | number {
+	const numberValue = Number(value);
+
+	return value !== '' && !Number.isNaN(numberValue) ? numberValue : value;
+}
+
+function getQueryParameterValues(queryParameters: OperationOptions['queryParameters']): unknown[] {
+	if (queryParameters === undefined || queryParameters === '') return [];
+	if (Array.isArray(queryParameters)) return queryParameters;
+	if (typeof queryParameters === 'number') return [queryParameters];
+
+	return queryParameters.split(',').map((entry) => parseQueryParameterValue(entry.trim()));
+}
+
 async function executeSelectWithMappedPairedItems(
 	node: INode,
 	inputsData: INodeExecutionData[][],
 	query: string,
+	parameters: unknown[],
 	returnSuccessItemIfEmpty: boolean,
 ): Promise<INodeExecutionData[][]> {
 	const returnData: INodeExecutionData[] = [];
@@ -115,7 +148,11 @@ async function executeSelectWithMappedPairedItems(
 	);
 
 	try {
-		const result = await runAlaSqlInSandbox(tableData, modifySelectQuery(query, inputsData.length));
+		const result = await runAlaSqlInSandbox(
+			tableData,
+			modifySelectQuery(query, inputsData.length),
+			parameters,
+		);
 
 		for (const item of result) {
 			if (Array.isArray(item)) {
@@ -151,6 +188,8 @@ export async function execute(
 		query = query.replace(resolvable, this.evaluateExpression(resolvable, 0) as string);
 	}
 
+	const parameters = getQueryParameterValues(options.queryParameters);
+
 	const isSelectQuery = node.typeVersion >= 3.1 ? query.toLowerCase().startsWith('select') : false;
 	const returnSuccessItemIfEmpty =
 		node.typeVersion <= 3.1 ? true : options.emptyQueryResult === 'success';
@@ -161,6 +200,7 @@ export async function execute(
 				node,
 				inputsData,
 				query,
+				parameters,
 				returnSuccessItemIfEmpty,
 			);
 		} catch (error) {
@@ -217,7 +257,7 @@ export async function execute(
 	);
 
 	try {
-		const result = await runAlaSqlInSandbox(tableData, query);
+		const result = await runAlaSqlInSandbox(tableData, query, parameters);
 
 		for (const item of result) {
 			if (Array.isArray(item)) {
