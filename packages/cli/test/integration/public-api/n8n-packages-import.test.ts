@@ -44,11 +44,6 @@ beforeEach(async () => {
 		'SharedCredentials',
 	]);
 	authOwnerAgent = testServer.publicApiAgentFor(owner);
-	Container.get(GlobalConfig).publicApi.packagesEnabled = true;
-});
-
-afterEach(() => {
-	Container.get(GlobalConfig).publicApi.packagesEnabled = false;
 });
 
 const testWithAPIKey = (method: 'post', url: string, apiKey: string | null) => async () => {
