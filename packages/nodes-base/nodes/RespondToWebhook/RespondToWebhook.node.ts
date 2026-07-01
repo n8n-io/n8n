@@ -433,9 +433,9 @@ export class RespondToWebhook implements INodeType {
 				}
 
 				if (shouldStream) {
-					this.sendChunk('begin', 0);
-					this.sendChunk('item', 0, responseBody as IDataObject);
-					this.sendChunk('end', 0);
+					this.sendChunk({ type: 'begin', itemIndex: 0 });
+					this.sendChunk({ type: 'webhook-response', response: responseBody, itemIndex: 0 });
+					this.sendChunk({ type: 'end', itemIndex: 0 });
 				}
 			} else if (respondWith === 'jwt') {
 				try {
@@ -458,9 +458,9 @@ export class RespondToWebhook implements INodeType {
 					responseBody = { token };
 
 					if (shouldStream) {
-						this.sendChunk('begin', 0);
-						this.sendChunk('item', 0, responseBody as IDataObject);
-						this.sendChunk('end', 0);
+						this.sendChunk({ type: 'begin', itemIndex: 0 });
+						this.sendChunk({ type: 'webhook-response', response: responseBody, itemIndex: 0 });
+						this.sendChunk({ type: 'end', itemIndex: 0 });
 					}
 				} catch (error) {
 					throw new NodeOperationError(this.getNode(), error as Error, {
@@ -469,9 +469,11 @@ export class RespondToWebhook implements INodeType {
 				}
 			} else if (respondWith === 'allIncomingItems') {
 				const respondItems = items.map((item, index) => {
-					this.sendChunk('begin', index);
-					this.sendChunk('item', index, item.json);
-					this.sendChunk('end', index);
+					if (shouldStream) {
+						this.sendChunk({ type: 'begin', itemIndex: index });
+						this.sendChunk({ type: 'webhook-response', response: item.json, itemIndex: index });
+						this.sendChunk({ type: 'end', itemIndex: index });
+					}
 					return item.json;
 				});
 				responseBody = options.responseKey
@@ -482,9 +484,9 @@ export class RespondToWebhook implements INodeType {
 					? set({}, options.responseKey as string, items[0].json)
 					: items[0].json;
 				if (shouldStream) {
-					this.sendChunk('begin', 0);
-					this.sendChunk('item', 0, items[0].json);
-					this.sendChunk('end', 0);
+					this.sendChunk({ type: 'begin', itemIndex: 0 });
+					this.sendChunk({ type: 'webhook-response', response: items[0].json, itemIndex: 0 });
+					this.sendChunk({ type: 'end', itemIndex: 0 });
 				}
 			} else if (respondWith === 'text') {
 				const rawBody = this.getNodeParameter('responseBody', 0) as string;
@@ -492,9 +494,9 @@ export class RespondToWebhook implements INodeType {
 
 				// Send the raw body to the stream
 				if (shouldStream) {
-					this.sendChunk('begin', 0);
-					this.sendChunk('item', 0, rawBody);
-					this.sendChunk('end', 0);
+					this.sendChunk({ type: 'begin', itemIndex: 0 });
+					this.sendChunk({ type: 'webhook-response', response: rawBody, itemIndex: 0 });
+					this.sendChunk({ type: 'end', itemIndex: 0 });
 				}
 			} else if (respondWith === 'binary') {
 				const item = items[0];

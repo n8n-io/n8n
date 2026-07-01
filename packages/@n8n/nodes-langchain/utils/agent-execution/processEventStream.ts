@@ -4,6 +4,23 @@ import type { AIMessageChunk, MessageContentText } from '@langchain/core/message
 import type { IExecuteFunctions } from 'n8n-workflow';
 
 import type { AgentResult, ToolCallRequest } from './types';
+import { stringifyToolOutput } from './toolOutput';
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null;
+}
+
+function hasOwnProperty(data: object, property: string): boolean {
+	return Object.prototype.hasOwnProperty.call(data, property);
+}
+
+function getToolOutputFromStreamEventData(data: unknown): string | undefined {
+	if (isRecord(data) && hasOwnProperty(data, 'output')) {
+		return stringifyToolOutput(data.output);
+	}
+
+	return stringifyToolOutput(data);
+}
 
 /**
  * Processes the event stream from a streaming agent execution.
@@ -27,8 +44,9 @@ export async function processEventStream(
 	};
 
 	const toolCalls: ToolCallRequest[] = [];
+	const pendingToolCalls: Array<{ toolId?: string; toolName: string; toolType?: string }> = [];
 
-	ctx.sendChunk('begin', itemIndex);
+	ctx.sendChunk({ type: 'begin', itemIndex });
 	for await (const event of eventStream) {
 		// Stream chat model tokens as they come in
 		switch (event.event) {
@@ -46,7 +64,7 @@ export async function processEventStream(
 					} else if (typeof chunkContent === 'string') {
 						chunkText = chunkContent;
 					}
-					ctx.sendChunk('item', itemIndex, chunkText);
+					ctx.sendChunk({ type: 'item', content: chunkText, itemIndex });
 
 					agentResult.output += chunkText;
 				}
@@ -63,6 +81,20 @@ export async function processEventStream(
 						// Note: For Gemini, we pass additional_kwargs to ALL tool calls
 						// so the signature can be applied to each when rebuilding
 						for (const toolCall of output.tool_calls) {
+							const toolMetadata = {
+								...(toolCall.id ? { toolId: toolCall.id } : {}),
+								toolName: toolCall.name,
+								...(toolCall.type ? { toolType: toolCall.type } : {}),
+							};
+							const toolInput = JSON.stringify(toolCall.args);
+							pendingToolCalls.push(toolMetadata);
+							ctx.sendChunk({
+								type: 'tool-call-start',
+								metadata: {
+									...toolMetadata,
+									...(toolInput === undefined ? {} : { toolInput }),
+								},
+							});
 							toolCalls.push({
 								tool: toolCall.name,
 								toolInput: toolCall.args,
@@ -79,11 +111,30 @@ export async function processEventStream(
 					}
 				}
 				break;
+			case 'on_tool_end':
+				if (event.data) {
+					const matchingToolCallIndex = pendingToolCalls.findIndex(
+						(toolCall) => toolCall.toolName === event.name,
+					);
+					const matchingToolCall =
+						matchingToolCallIndex === -1
+							? { toolName: event.name ?? 'unknown' }
+							: pendingToolCalls.splice(matchingToolCallIndex, 1)[0];
+					const toolOutput = getToolOutputFromStreamEventData(event.data);
+					ctx.sendChunk({
+						type: 'tool-call-end',
+						metadata: {
+							...matchingToolCall,
+							...(toolOutput === undefined ? {} : { toolOutput }),
+						},
+					});
+				}
+				break;
 			default:
 				break;
 		}
 	}
-	ctx.sendChunk('end', itemIndex);
+	ctx.sendChunk({ type: 'end', itemIndex });
 
 	// Include collected tool calls in the result
 	if (toolCalls.length > 0) {

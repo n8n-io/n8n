@@ -1,7 +1,12 @@
 import type { AgentRunnableSequence } from '@langchain/classic/agents';
 import type { Tool } from '@langchain/classic/tools';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import type { IExecuteFunctions, INode, EngineResponse } from 'n8n-workflow';
+import {
+	NodeConnectionTypes,
+	type EngineResponse,
+	type IExecuteFunctions,
+	type INode,
+} from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -270,6 +275,222 @@ describe('runAgent - iteration count tracking', () => {
 		expect(result).toHaveProperty('output');
 		expect(result).not.toHaveProperty('actions');
 		expect(result).not.toHaveProperty('metadata');
+	});
+});
+
+describe('runAgent - streaming chunks', () => {
+	const responseWithCompletedToolCall: EngineResponse<RequestResponseMetadata> = {
+		actionResponses: [
+			{
+				action: {
+					actionType: 'ExecutionNodeAction',
+					nodeName: 'Search Tool',
+					input: { query: 'n8n' },
+					type: NodeConnectionTypes.AiTool,
+					id: 'call_123',
+					metadata: { itemIndex: 0, toolName: 'Search' },
+				},
+				data: {
+					startTime: 0,
+					executionTime: 0,
+					executionIndex: 0,
+					executionStatus: 'success',
+					source: [],
+					data: {
+						[NodeConnectionTypes.AiTool]: [[{ json: { output: 'search result' } }]],
+					},
+				},
+			},
+		],
+		metadata: { itemIndex: 0, previousRequests: [], iterationCount: 1 },
+	};
+
+	const responseWithDateTimeToolCall: EngineResponse<RequestResponseMetadata> = {
+		actionResponses: [
+			{
+				action: {
+					actionType: 'ExecutionNodeAction',
+					nodeName: 'Date & Time',
+					input: { Include_Current_Time: true },
+					type: NodeConnectionTypes.AiTool,
+					id: 'call_date_time',
+					metadata: { itemIndex: 0, toolName: 'Date_Time' },
+				},
+				data: {
+					startTime: 0,
+					executionTime: 0,
+					executionIndex: 0,
+					executionStatus: 'success',
+					source: [],
+					data: {
+						[NodeConnectionTypes.AiTool]: [
+							[{ json: { response: [{ currentDate: '2026-06-16T09:53:11.699Z' }] } }],
+						],
+					},
+				},
+			},
+		],
+		metadata: { itemIndex: 0, previousRequests: [], iterationCount: 1 },
+	};
+
+	it('should stream completed tool calls from a previous agent turn', async () => {
+		const mockEventStream = (async function* () {})();
+		const mockStreamEvents = vi.fn().mockReturnValue(mockEventStream);
+		const mockExecutor = mock<AgentRunnableSequence>({
+			withConfig: vi.fn().mockReturnValue({ streamEvents: mockStreamEvents }),
+		});
+		const mockModel = mock<BaseChatModel>();
+
+		const itemContext: ItemContext = {
+			itemIndex: 0,
+			input: 'test input',
+			steps: [],
+			tools: [],
+			prompt: mock(),
+			options: {
+				maxIterations: 10,
+				returnIntermediateSteps: false,
+				enableStreaming: true,
+			},
+			outputParser: undefined,
+		};
+
+		const sendChunk = vi.fn();
+		const streamingContext = mock<IExecuteFunctions>({
+			getNode: vi.fn().mockReturnValue({ ...mockNode, typeVersion: 2.1 }),
+			isStreaming: vi.fn().mockReturnValue(true),
+			getExecutionCancelSignal: vi.fn().mockReturnValue(new AbortController().signal),
+			sendChunk,
+		});
+		streamingContext.getExecuteData = vi.fn() as any;
+
+		vi.spyOn(agentExecution, 'loadMemory').mockResolvedValue([]);
+		vi.spyOn(agentExecution, 'processEventStream').mockResolvedValue({
+			output: 'Streamed answer',
+		});
+
+		await runAgent(
+			streamingContext,
+			mockExecutor,
+			itemContext,
+			mockModel,
+			undefined,
+			responseWithCompletedToolCall,
+		);
+
+		expect(sendChunk).toHaveBeenCalledWith({
+			type: 'tool-call-end',
+			metadata: {
+				toolId: 'call_123',
+				toolName: 'Search',
+				toolType: 'tool_call',
+				toolOutput: JSON.stringify('search result'),
+			},
+		});
+	});
+
+	it('should stream completed tool call responses without output fields', async () => {
+		const mockEventStream = (async function* () {})();
+		const mockStreamEvents = vi.fn().mockReturnValue(mockEventStream);
+		const mockExecutor = mock<AgentRunnableSequence>({
+			withConfig: vi.fn().mockReturnValue({ streamEvents: mockStreamEvents }),
+		});
+		const mockModel = mock<BaseChatModel>();
+
+		const itemContext: ItemContext = {
+			itemIndex: 0,
+			input: 'test input',
+			steps: [],
+			tools: [],
+			prompt: mock(),
+			options: {
+				maxIterations: 10,
+				returnIntermediateSteps: false,
+				enableStreaming: true,
+			},
+			outputParser: undefined,
+		};
+
+		const sendChunk = vi.fn();
+		const streamingContext = mock<IExecuteFunctions>({
+			getNode: vi.fn().mockReturnValue({ ...mockNode, typeVersion: 2.1 }),
+			isStreaming: vi.fn().mockReturnValue(true),
+			getExecutionCancelSignal: vi.fn().mockReturnValue(new AbortController().signal),
+			sendChunk,
+		});
+		streamingContext.getExecuteData = vi.fn() as any;
+
+		vi.spyOn(agentExecution, 'loadMemory').mockResolvedValue([]);
+		vi.spyOn(agentExecution, 'processEventStream').mockResolvedValue({
+			output: 'Streamed answer',
+		});
+
+		await runAgent(
+			streamingContext,
+			mockExecutor,
+			itemContext,
+			mockModel,
+			undefined,
+			responseWithDateTimeToolCall,
+		);
+
+		expect(sendChunk).toHaveBeenCalledWith({
+			type: 'tool-call-end',
+			metadata: {
+				toolId: 'call_date_time',
+				toolName: 'Date_Time',
+				toolType: 'tool_call',
+				toolOutput: JSON.stringify([{ currentDate: '2026-06-16T09:53:11.699Z' }]),
+			},
+		});
+	});
+
+	it('should not stream completed tool calls when streaming is disabled', async () => {
+		const mockInvoke = vi.fn().mockResolvedValue({
+			returnValues: {
+				output: 'Final answer',
+			},
+		});
+		const mockExecutor = mock<AgentRunnableSequence>({
+			withConfig: vi.fn().mockReturnValue({ invoke: mockInvoke }),
+		});
+		const mockModel = mock<BaseChatModel>();
+
+		const itemContext: ItemContext = {
+			itemIndex: 0,
+			input: 'test input',
+			steps: [],
+			tools: [],
+			prompt: mock(),
+			options: {
+				maxIterations: 10,
+				returnIntermediateSteps: false,
+				enableStreaming: false,
+			},
+			outputParser: undefined,
+		};
+
+		const sendChunk = vi.fn();
+		const nonStreamingContext = mock<IExecuteFunctions>({
+			getNode: vi.fn().mockReturnValue({ ...mockNode, typeVersion: 2.1 }),
+			isStreaming: vi.fn().mockReturnValue(false),
+			getExecutionCancelSignal: vi.fn().mockReturnValue(new AbortController().signal),
+			sendChunk,
+		});
+		nonStreamingContext.getExecuteData = vi.fn() as any;
+
+		vi.spyOn(agentExecution, 'loadMemory').mockResolvedValue([]);
+
+		await runAgent(
+			nonStreamingContext,
+			mockExecutor,
+			itemContext,
+			mockModel,
+			undefined,
+			responseWithCompletedToolCall,
+		);
+
+		expect(sendChunk).not.toHaveBeenCalled();
 	});
 });
 

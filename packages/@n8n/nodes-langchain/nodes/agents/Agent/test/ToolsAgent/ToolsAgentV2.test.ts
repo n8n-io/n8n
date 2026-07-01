@@ -632,10 +632,18 @@ describe('toolsAgentExecute', () => {
 
 			const result = await toolsAgentExecute.call(mockContext);
 
-			expect(mockContext.sendChunk).toHaveBeenCalledWith('begin', 0);
-			expect(mockContext.sendChunk).toHaveBeenCalledWith('item', 0, 'Hello ');
-			expect(mockContext.sendChunk).toHaveBeenCalledWith('item', 0, 'world!');
-			expect(mockContext.sendChunk).toHaveBeenCalledWith('end', 0);
+			expect(mockContext.sendChunk).toHaveBeenCalledWith({ type: 'begin', itemIndex: 0 });
+			expect(mockContext.sendChunk).toHaveBeenCalledWith({
+				type: 'item',
+				content: 'Hello ',
+				itemIndex: 0,
+			});
+			expect(mockContext.sendChunk).toHaveBeenCalledWith({
+				type: 'item',
+				content: 'world!',
+				itemIndex: 0,
+			});
+			expect(mockContext.sendChunk).toHaveBeenCalledWith({ type: 'end', itemIndex: 0 });
 			expect(mockExecutor.streamEvents).toHaveBeenCalledTimes(1);
 			expect(result[0]).toHaveLength(1);
 			expect(result[0][0].json.output).toBe('Hello world!');
@@ -748,6 +756,24 @@ describe('toolsAgentExecute', () => {
 			expect(messageLogEntry.tool_calls).toEqual([
 				{ id: 'call_123', name: 'TestTool', args: { input: 'test data' }, type: 'function' },
 			]);
+			expect(mockContext.sendChunk).toHaveBeenCalledWith({
+				type: 'tool-call-start',
+				metadata: {
+					toolId: 'call_123',
+					toolName: 'TestTool',
+					toolType: 'function',
+					toolInput: JSON.stringify({ input: 'test data' }),
+				},
+			});
+			expect(mockContext.sendChunk).toHaveBeenCalledWith({
+				type: 'tool-call-end',
+				metadata: {
+					toolId: 'call_123',
+					toolName: 'TestTool',
+					toolType: 'function',
+					toolOutput: JSON.stringify('Tool execution result'),
+				},
+			});
 		});
 
 		it('should use regular execution on version 2.2 when enableStreaming is false', async () => {
@@ -888,9 +914,13 @@ describe('toolsAgentExecute', () => {
 
 			const result = await toolsAgentExecute.call(mockContext);
 
-			expect(mockContext.sendChunk).toHaveBeenCalledWith('begin', 0);
-			expect(mockContext.sendChunk).toHaveBeenCalledWith('item', 0, 'Hello world!');
-			expect(mockContext.sendChunk).toHaveBeenCalledWith('end', 0);
+			expect(mockContext.sendChunk).toHaveBeenCalledWith({ type: 'begin', itemIndex: 0 });
+			expect(mockContext.sendChunk).toHaveBeenCalledWith({
+				type: 'item',
+				content: 'Hello world!',
+				itemIndex: 0,
+			});
+			expect(mockContext.sendChunk).toHaveBeenCalledWith({ type: 'end', itemIndex: 0 });
 			expect(result[0]).toHaveLength(1);
 			expect(result[0][0].json.output).toBe('Hello world!');
 		});
@@ -922,9 +952,13 @@ describe('toolsAgentExecute', () => {
 
 			const result = await toolsAgentExecute.call(mockContext);
 
-			expect(mockContext.sendChunk).toHaveBeenCalledWith('begin', 0);
-			expect(mockContext.sendChunk).toHaveBeenCalledWith('item', 0, 'Direct string content');
-			expect(mockContext.sendChunk).toHaveBeenCalledWith('end', 0);
+			expect(mockContext.sendChunk).toHaveBeenCalledWith({ type: 'begin', itemIndex: 0 });
+			expect(mockContext.sendChunk).toHaveBeenCalledWith({
+				type: 'item',
+				content: 'Direct string content',
+				itemIndex: 0,
+			});
+			expect(mockContext.sendChunk).toHaveBeenCalledWith({ type: 'end', itemIndex: 0 });
 			expect(result[0]).toHaveLength(1);
 			expect(result[0][0].json.output).toBe('Direct string content');
 		});
@@ -960,9 +994,13 @@ describe('toolsAgentExecute', () => {
 
 			const result = await toolsAgentExecute.call(mockContext);
 
-			expect(mockContext.sendChunk).toHaveBeenCalledWith('begin', 0);
-			expect(mockContext.sendChunk).toHaveBeenCalledWith('item', 0, '');
-			expect(mockContext.sendChunk).toHaveBeenCalledWith('end', 0);
+			expect(mockContext.sendChunk).toHaveBeenCalledWith({ type: 'begin', itemIndex: 0 });
+			expect(mockContext.sendChunk).toHaveBeenCalledWith({
+				type: 'item',
+				content: '',
+				itemIndex: 0,
+			});
+			expect(mockContext.sendChunk).toHaveBeenCalledWith({ type: 'end', itemIndex: 0 });
 			expect(result[0]).toHaveLength(1);
 			expect(result[0][0].json.output).toBe('');
 		});
@@ -1000,8 +1038,8 @@ describe('toolsAgentExecute', () => {
 
 			const result = await toolsAgentExecute.call(mockContext);
 
-			expect(mockContext.sendChunk).toHaveBeenCalledWith('begin', 0);
-			expect(mockContext.sendChunk).toHaveBeenCalledWith('end', 0);
+			expect(mockContext.sendChunk).toHaveBeenCalledWith({ type: 'begin', itemIndex: 0 });
+			expect(mockContext.sendChunk).toHaveBeenCalledWith({ type: 'end', itemIndex: 0 });
 			expect(result[0]).toHaveLength(1);
 			expect(result[0][0].json.output).toBe('');
 		});

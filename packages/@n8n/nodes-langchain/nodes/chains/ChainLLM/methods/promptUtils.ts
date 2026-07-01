@@ -154,11 +154,44 @@ const isAgentFinish = (value: unknown): value is AgentFinish => {
 	return typeof value === 'object' && value !== null && 'returnValues' in value;
 };
 
+const isRecord = (value: unknown): value is Record<string, unknown> => {
+	return typeof value === 'object' && value !== null;
+};
+
+const getTextFromContent = (content: unknown): string | undefined => {
+	if (typeof content === 'string') return content;
+
+	if (!Array.isArray(content)) return undefined;
+
+	const text = content
+		.map((part) => {
+			if (typeof part === 'string') return part;
+			if (!isRecord(part)) return '';
+
+			if (typeof part.text === 'string') return part.text;
+			if (typeof part.content === 'string') return part.content;
+
+			const nestedContent = getTextFromContent(part.content);
+			return nestedContent ?? '';
+		})
+		.join('');
+
+	return text.length > 0 ? text : undefined;
+};
+
+const getTextFromMessageLike = (value: unknown): string | undefined => {
+	if (isMessage(value)) return value.text || getTextFromContent(value.content);
+
+	if (!isRecord(value)) return undefined;
+
+	if (typeof value.text === 'string') return value.text;
+
+	return getTextFromContent(value.content);
+};
+
 export const getAgentStepsParser =
 	(outputParser: N8nOutputParser) =>
-	async (
-		steps: AgentFinish | BaseMessage | AgentAction[] | string,
-	): Promise<string | Record<string, unknown>> => {
+	async (steps: AgentFinish | BaseMessage | AgentAction[] | string): Promise<unknown> => {
 		if (typeof steps === 'string') {
 			return (await outputParser.parse(steps)) as Record<string, unknown>;
 		}
@@ -173,11 +206,15 @@ export const getAgentStepsParser =
 				const parsedOutput = (await outputParser.parse(parserInput)) as Record<string, unknown>;
 				return parsedOutput;
 			}
+
+			const parserInput = getTextFromContent(steps);
+			if (parserInput) {
+				return await outputParser.parse(parserInput);
+			}
 		}
 
-		if (typeof steps === 'object' && isMessage(steps)) {
-			const output = steps.text;
-
+		const output = getTextFromMessageLike(steps);
+		if (output) {
 			const parsedOutput = (await outputParser.parse(output)) as Record<string, unknown>;
 			return parsedOutput;
 		}

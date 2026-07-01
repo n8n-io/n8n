@@ -1129,6 +1129,13 @@ type BaseExecutionFunctions = FunctionsBaseWithRequiredKeys<'getMode'> & {
 	logAiEvent(eventName: AiEvent, msg?: string): void;
 };
 
+export type SendChunkInput =
+	| { type: 'begin'; itemIndex?: number }
+	| { type: 'end'; itemIndex?: number }
+	| { type: 'webhook-response'; response: IN8nHttpResponse; itemIndex: number }
+	| { type: 'tool-call-start' | 'tool-call-end'; metadata: ToolCallInputMetadata }
+	| { type: 'item'; content: string; itemIndex: number };
+
 // TODO: Create later own type only for Config-Nodes
 export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 	BaseExecutionFunctions & {
@@ -1162,7 +1169,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 		putExecutionToWait(waitTill: Date): Promise<void>;
 		sendMessageToUI(message: any): void;
 		sendResponse(response: IExecuteResponsePromiseData): void;
-		sendChunk(type: ChunkType, itemIndex: number, content?: IDataObject | string): void;
+		sendChunk(input: SendChunkInput): void;
 		isStreaming(): boolean;
 		/** Returns true if the node is being executed as an AI Agent tool */
 		isToolExecution(): boolean;
@@ -4005,16 +4012,85 @@ export type IPersonalizationSurveyAnswersV4 = {
 };
 
 export type ChunkType = 'begin' | 'item' | 'end' | 'error';
-export interface StructuredChunk {
-	type: ChunkType;
-	content?: string;
-	metadata: {
-		nodeId: string;
-		nodeName: string;
-		runIndex: number;
-		itemIndex: number;
-		timestamp: number;
-	};
+
+export interface CommonChunkMetadata {
+	timestamp: number;
 }
+
+export interface NodeChunkMetadata extends CommonChunkMetadata {
+	nodeId: string;
+	nodeName: string;
+	nodeType: string;
+	runIndex: number;
+}
+
+export interface ItemChunkMetadata extends NodeChunkMetadata {
+	itemIndex: number;
+}
+
+export interface ToolCallInputMetadata {
+	toolId?: string;
+	toolName: string;
+	toolType?: string;
+	toolInput?: string;
+	toolOutput?: string;
+}
+
+export interface ToolCallChunkMetadata extends NodeChunkMetadata, ToolCallInputMetadata {}
+
+export interface BeginChunk {
+	type: 'begin';
+	metadata: CommonChunkMetadata | ItemChunkMetadata;
+}
+
+export interface EndChunk {
+	type: 'end';
+	metadata: CommonChunkMetadata | ItemChunkMetadata;
+}
+
+export interface ItemChunk {
+	type: 'item';
+	content: string;
+	metadata: ItemChunkMetadata;
+}
+
+export interface ErrorChunk {
+	type: 'error';
+	content?: string;
+	message?: string;
+	metadata: NodeChunkMetadata & { itemIndex?: number };
+}
+
+export interface NodeExecuteBeforeChunk {
+	type: 'node-execute-before';
+	metadata: NodeChunkMetadata;
+}
+
+export interface NodeExecuteAfterChunk {
+	type: 'node-execute-after';
+	metadata: NodeChunkMetadata;
+}
+
+export interface ToolCallStartChunk {
+	type: 'tool-call-start';
+	metadata: ToolCallChunkMetadata;
+}
+
+export interface ToolCallEndChunk {
+	type: 'tool-call-end';
+	metadata: ToolCallChunkMetadata;
+}
+
+export type StructuredChunk =
+	| BeginChunk
+	| EndChunk
+	| ItemChunk
+	| ErrorChunk
+	| NodeExecuteBeforeChunk
+	| NodeExecuteAfterChunk
+	| ToolCallStartChunk
+	| ToolCallEndChunk;
+
+export type SendStructuredChunk = StructuredChunk;
 
 export type ApiKeyAudience = 'public-api' | 'mcp-server-api';

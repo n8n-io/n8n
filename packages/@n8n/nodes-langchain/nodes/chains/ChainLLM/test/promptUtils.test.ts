@@ -324,6 +324,42 @@ describe('promptUtils', () => {
 			expect(result).toEqual(parsedResult);
 		});
 
+		it('should parse response content arrays directly', async () => {
+			const parser = getAgentStepsParser(mockOutputParser);
+			const steps = [
+				{ type: 'output_text', text: 'item1\n' },
+				{ type: 'output_text', text: 'item2' },
+			];
+
+			const parsedResult = ['item1', 'item2'];
+			mockOutputParser.parse.mockResolvedValue(parsedResult);
+
+			const result = await parser(steps as unknown as AgentAction[]);
+
+			expect(mockOutputParser.parse).toHaveBeenCalledWith('item1\nitem2');
+			expect(result).toEqual(parsedResult);
+		});
+
+		it('should parse message-like objects from compatible LangChain outputs', async () => {
+			const parser = getAgentStepsParser(mockOutputParser);
+			const message = {
+				content: [
+					{
+						type: 'message',
+						content: [{ type: 'output_text', text: 'Structured response text' }],
+					},
+				],
+			};
+
+			const parsedResult = { content: 'Structured response text' };
+			mockOutputParser.parse.mockResolvedValue(parsedResult);
+
+			const result = await parser(message as unknown as HumanMessage);
+
+			expect(mockOutputParser.parse).toHaveBeenCalledWith('Structured response text');
+			expect(result).toEqual(parsedResult);
+		});
+
 		it('should parse AgentFinish returnValues', async () => {
 			const parser = getAgentStepsParser(mockOutputParser);
 			const agentFinish: AgentFinish = {

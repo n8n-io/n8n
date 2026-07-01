@@ -13,7 +13,7 @@ import type { AIMessageChunk, MessageContentText } from '@langchain/core/message
 import type { ChatPromptTemplate } from '@langchain/core/prompts';
 import { RunnableSequence } from '@langchain/core/runnables';
 import { ChatOpenAI } from '@langchain/openai';
-import { loadMemory } from '@utils/agent-execution';
+import { loadMemory, stringifyToolOutput } from '@utils/agent-execution';
 import { getPromptInputByType } from '@utils/helpers';
 import {
 	getOptionalOutputParser,
@@ -143,7 +143,9 @@ async function processEventStream(
 		agentResult.intermediateSteps = [];
 	}
 
-	ctx.sendChunk('begin', itemIndex);
+	const pendingToolCalls: Array<{ toolId?: string; toolName: string; toolType?: string }> = [];
+
+	ctx.sendChunk({ type: 'begin', itemIndex });
 	for await (const event of eventStream) {
 		// Stream chat model tokens as they come in
 		switch (event.event) {
@@ -161,46 +163,81 @@ async function processEventStream(
 					} else if (typeof chunkContent === 'string') {
 						chunkText = chunkContent;
 					}
-					ctx.sendChunk('item', itemIndex, chunkText);
+					ctx.sendChunk({ type: 'item', content: chunkText, itemIndex });
 
 					agentResult.output += chunkText;
 				}
 				break;
 			case 'on_chat_model_end':
 				// Capture full LLM response with tool calls for intermediate steps
-				if (returnIntermediateSteps && event.data) {
+				if (event.data) {
 					const chatModelData = event.data as any;
 					const output = chatModelData.output;
 
 					// Check if this LLM response contains tool calls
 					if (output?.tool_calls && output.tool_calls.length > 0) {
 						for (const toolCall of output.tool_calls) {
-							agentResult.intermediateSteps!.push({
-								action: {
-									tool: toolCall.name,
-									toolInput: toolCall.args,
-									log:
-										output.content ||
-										`Calling ${toolCall.name} with input: ${JSON.stringify(toolCall.args)}`,
-									messageLog: [output], // Include the full LLM response
-									toolCallId: toolCall.id,
-									type: toolCall.type,
+							const toolMetadata = {
+								...(toolCall.id ? { toolId: toolCall.id } : {}),
+								toolName: toolCall.name,
+								...(toolCall.type ? { toolType: toolCall.type } : {}),
+							};
+							const toolInput = JSON.stringify(toolCall.args);
+							pendingToolCalls.push(toolMetadata);
+							ctx.sendChunk({
+								type: 'tool-call-start',
+								metadata: {
+									...toolMetadata,
+									...(toolInput === undefined ? {} : { toolInput }),
 								},
 							});
+
+							if (returnIntermediateSteps) {
+								agentResult.intermediateSteps!.push({
+									action: {
+										tool: toolCall.name,
+										toolInput: toolCall.args,
+										log:
+											output.content ||
+											`Calling ${toolCall.name} with input: ${JSON.stringify(toolCall.args)}`,
+										messageLog: [output], // Include the full LLM response
+										toolCallId: toolCall.id,
+										type: toolCall.type,
+									},
+								});
+							}
 						}
 					}
 				}
 				break;
 			case 'on_tool_end':
 				// Capture tool execution results and match with action
-				if (returnIntermediateSteps && event.data && agentResult.intermediateSteps!.length > 0) {
+				if (event.data) {
 					const toolData = event.data as any;
-					// Find the matching intermediate step for this tool call
-					const matchingStep = agentResult.intermediateSteps!.find(
-						(step) => !step.observation && step.action.tool === event.name,
+					const matchingToolCallIndex = pendingToolCalls.findIndex(
+						(toolCall) => toolCall.toolName === event.name,
 					);
-					if (matchingStep) {
-						matchingStep.observation = toolData.output;
+					const matchingToolCall =
+						matchingToolCallIndex === -1
+							? { toolName: event.name ?? 'unknown' }
+							: pendingToolCalls.splice(matchingToolCallIndex, 1)[0];
+					const toolOutput = stringifyToolOutput(toolData.output);
+					ctx.sendChunk({
+						type: 'tool-call-end',
+						metadata: {
+							...matchingToolCall,
+							...(toolOutput === undefined ? {} : { toolOutput }),
+						},
+					});
+
+					// Find the matching intermediate step for this tool call
+					if (returnIntermediateSteps && agentResult.intermediateSteps!.length > 0) {
+						const matchingStep = agentResult.intermediateSteps!.find(
+							(step) => !step.observation && step.action.tool === event.name,
+						);
+						if (matchingStep) {
+							matchingStep.observation = toolData.output;
+						}
 					}
 				}
 				break;
@@ -208,7 +245,7 @@ async function processEventStream(
 				break;
 		}
 	}
-	ctx.sendChunk('end', itemIndex);
+	ctx.sendChunk({ type: 'end', itemIndex });
 
 	return agentResult;
 }
