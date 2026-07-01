@@ -898,7 +898,7 @@ watch(
 				:dependent-parameters-values="item.dependentParametersValues"
 				:is-read-only="isReadOnly"
 				:allow-empty-strings="item.parameter.typeOptions?.resourceMapper?.allowEmptyValues"
-				input-size="medium"
+				input-size="small"
 				label-size="small"
 				@value-changed="valueChanged"
 			/>

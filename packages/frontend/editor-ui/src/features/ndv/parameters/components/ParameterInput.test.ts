@@ -277,6 +277,13 @@ describe('ParameterInput.vue', () => {
 		);
 	});
 
+	/**
+	 * TODO DS-579:
+	 * N8nInput and N8nSelect don't have aligned size tokens.
+	 * What is 'medium' for one isn't the same the other.
+	 * This has caused a few bugs where coding models have mixed the sizes up and they've slipped through the review.
+	 * For now, we'll use these tests to prevent further regression mixing the two up.
+	 */
 	test('uses medium input size by default', () => {
 		const { getByTestId } = renderComponent({
 			props: {
@@ -299,6 +306,23 @@ describe('ParameterInput.vue', () => {
 		});
 
 		expect(getByTestId('parameter-input-field')).toHaveAttribute('data-size', 'medium');
+	});
+
+	test('uses small select size by default', () => {
+		const { container } = renderComponent({
+			props: {
+				path: 'operation',
+				parameter: createTestNodeProperties({
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					options: [{ name: 'Append Row', value: 'append' }],
+				}),
+				modelValue: 'append',
+			},
+		});
+
+		expect(container.querySelector('.el-select')).toHaveClass('el-select--small');
 	});
 
 	test('should render a string parameter', async () => {
