@@ -56,10 +56,6 @@ export interface InfisicalListSecretsResponse {
 	imports: InfisicalImport[];
 }
 
-export function infisicalErrorContext(error: unknown): HttpProviderErrorLogContext {
-	return buildHttpProviderErrorContext(error);
-}
-
 const TOKEN_REFRESH_LEEWAY_SECONDS = 60;
 const MIN_REFRESH_DELAY_MS = 60 * 1000;
 
@@ -418,6 +414,10 @@ export class InfisicalProvider extends SecretsProvider {
 		return {};
 	}
 
+	private infisicalErrorContext(error: unknown): HttpProviderErrorLogContext {
+		return buildHttpProviderErrorContext(error);
+	}
+
 	private logOperationFailure(
 		message: string,
 		operation: SecretsProviderOperation,
@@ -443,7 +443,7 @@ export class InfisicalProvider extends SecretsProvider {
 			providerDisplayName: this.displayName,
 			operation,
 			error,
-			errorContext: infisicalErrorContext(error),
+			errorContext: this.infisicalErrorContext(error),
 			settingsContext,
 			extra,
 		});

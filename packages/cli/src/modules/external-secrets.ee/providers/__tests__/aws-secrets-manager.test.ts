@@ -6,12 +6,7 @@ import { mock } from 'vitest-mock-extended';
 import type { Agent as HttpAgent } from 'node:http';
 import type { Agent as HttpsAgent } from 'node:https';
 
-import {
-	AwsSecretsManager,
-	awsErrorContext,
-	getAwsErrorCode,
-	type AwsSecretsManagerContext,
-} from '../aws-secrets-manager';
+import { AwsSecretsManager, type AwsSecretsManagerContext } from '../aws-secrets-manager';
 
 vi.mock('@aws-sdk/client-secrets-manager');
 
@@ -51,20 +46,26 @@ describe('AwsSecretsManager', () => {
 		it('extracts legacy Code property', () => {
 			const error = Object.assign(new Error('Access denied'), { Code: 'AccessDenied' });
 
-			expect(getAwsErrorCode(error)).toBe('AccessDenied');
-			expect(awsErrorContext(error)).toEqual({ errorCode: 'AccessDenied' });
+			expect(awsSecretsManager['getAwsErrorCode'](error)).toBe('AccessDenied');
+			expect(awsSecretsManager['awsErrorContext'](error)).toEqual({ errorCode: 'AccessDenied' });
 		});
 
 		it('extracts string and numeric error codes from code property', () => {
 			expect(
-				getAwsErrorCode(Object.assign(new Error('Connection failed'), { code: 'ECONNREFUSED' })),
+				awsSecretsManager['getAwsErrorCode'](
+					Object.assign(new Error('Connection failed'), { code: 'ECONNREFUSED' }),
+				),
 			).toBe('ECONNREFUSED');
-			expect(getAwsErrorCode(Object.assign(new Error('Timeout'), { code: 408 }))).toBe(408);
+			expect(
+				awsSecretsManager['getAwsErrorCode'](Object.assign(new Error('Timeout'), { code: 408 })),
+			).toBe(408);
 		});
 
 		it('extracts AWS SDK exception name and HTTP status code', () => {
 			expect(
-				awsErrorContext(createAwsSdkError('AccessDeniedException', { httpStatusCode: 403 })),
+				awsSecretsManager['awsErrorContext'](
+					createAwsSdkError('AccessDeniedException', { httpStatusCode: 403 }),
+				),
 			).toEqual({
 				errorCode: 'AccessDeniedException',
 				statusCode: 403,
@@ -72,17 +73,17 @@ describe('AwsSecretsManager', () => {
 		});
 
 		it('falls back to Error.name for generic errors', () => {
-			expect(getAwsErrorCode(new Error('Something went wrong'))).toBe('Error');
-			expect(awsErrorContext(new Error('Something went wrong'))).toEqual({
+			expect(awsSecretsManager['getAwsErrorCode'](new Error('Something went wrong'))).toBe('Error');
+			expect(awsSecretsManager['awsErrorContext'](new Error('Something went wrong'))).toEqual({
 				errorCode: 'Error',
 			});
 		});
 
 		it('returns empty context for non-error values', () => {
-			expect(getAwsErrorCode('not an error')).toBeUndefined();
-			expect(getAwsErrorCode(null)).toBeUndefined();
-			expect(awsErrorContext('not an error')).toEqual({});
-			expect(awsErrorContext(null)).toEqual({});
+			expect(awsSecretsManager['getAwsErrorCode']('not an error')).toBeUndefined();
+			expect(awsSecretsManager['getAwsErrorCode'](null)).toBeUndefined();
+			expect(awsSecretsManager['awsErrorContext']('not an error')).toEqual({});
+			expect(awsSecretsManager['awsErrorContext'](null)).toEqual({});
 		});
 	});
 

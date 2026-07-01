@@ -27,10 +27,6 @@ import { ExternalSecretsConfig } from '../external-secrets.config';
 import type { SecretsProviderSettings } from '../types';
 import { SecretsProvider } from '../types';
 
-export function vaultErrorContext(error: unknown): HttpProviderErrorLogContext {
-	return buildHttpProviderErrorContext(error);
-}
-
 type VaultAuthMethod = 'token' | 'usernameAndPassword' | 'appRole';
 
 interface VaultSettings {
@@ -479,7 +475,7 @@ export class VaultProvider extends SecretsProvider {
 		} catch (error) {
 			const shouldPreferGet = Container.get(ExternalSecretsConfig).preferGet;
 			const vaultApiPath = `${listPath}${shouldPreferGet ? '?list=true' : ''}`;
-			const errorContext = vaultErrorContext(error);
+			const errorContext = this.vaultErrorContext(error);
 			this.logger.debug('Vault provider failed to list KV secrets', {
 				providerName: this.name,
 				operation: 'update',
@@ -517,7 +513,7 @@ export class VaultProvider extends SecretsProvider {
 								kvVersion === '2' ? (secretBody.data.data as IDataObject) : secretBody.data,
 							];
 						} catch (error) {
-							const errorContext = vaultErrorContext(error);
+							const errorContext = this.vaultErrorContext(error);
 							this.logger.debug('Vault provider failed to read KV secret', {
 								providerName: this.name,
 								operation: 'update',
@@ -735,6 +731,10 @@ export class VaultProvider extends SecretsProvider {
 		);
 	}
 
+	private vaultErrorContext(error: unknown): HttpProviderErrorLogContext {
+		return buildHttpProviderErrorContext(error);
+	}
+
 	private logOperationFailure(
 		message: string,
 		operation: SecretsProviderOperation,
@@ -748,7 +748,7 @@ export class VaultProvider extends SecretsProvider {
 			providerDisplayName: this.displayName,
 			operation,
 			error,
-			errorContext: vaultErrorContext(error),
+			errorContext: this.vaultErrorContext(error),
 			extra,
 		});
 	}

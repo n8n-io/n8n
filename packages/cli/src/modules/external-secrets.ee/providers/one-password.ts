@@ -23,10 +23,6 @@ type OnePasswordSettings = {
 	accessToken: string;
 };
 
-export function onePasswordErrorContext(error: unknown): HttpProviderErrorLogContext {
-	return buildHttpProviderErrorContext(error);
-}
-
 export class OnePasswordProvider extends SecretsProvider {
 	name = 'onePassword';
 
@@ -191,6 +187,10 @@ export class OnePasswordProvider extends SecretsProvider {
 		return Object.keys(this.cachedSecrets);
 	}
 
+	private onePasswordErrorContext(error: unknown): HttpProviderErrorLogContext {
+		return buildHttpProviderErrorContext(error);
+	}
+
 	private logOperationFailure(
 		message: string,
 		operation: SecretsProviderOperation,
@@ -209,7 +209,7 @@ export class OnePasswordProvider extends SecretsProvider {
 			providerDisplayName: this.displayName,
 			operation,
 			error,
-			errorContext: onePasswordErrorContext(error),
+			errorContext: this.onePasswordErrorContext(error),
 			settingsContext,
 			extra,
 		});

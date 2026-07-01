@@ -6,7 +6,7 @@ import { UnexpectedError } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { AzureKeyVault, azureErrorContext } from '../azure-key-vault/azure-key-vault';
+import { AzureKeyVault } from '../azure-key-vault/azure-key-vault';
 import type { AzureKeyVaultContext } from '../azure-key-vault/types';
 
 vi.mock('@azure/identity');
@@ -40,7 +40,7 @@ describe('AzureKeyVault', () => {
 				code: 'Forbidden',
 			});
 
-			expect(azureErrorContext(error)).toEqual({
+			expect(azureKeyVault['azureErrorContext'](error)).toEqual({
 				statusCode: 403,
 				errorCode: 'Forbidden',
 			});
@@ -51,7 +51,7 @@ describe('AzureKeyVault', () => {
 				code: 'REQUEST_SEND_ERROR',
 			});
 
-			expect(azureErrorContext(error)).toEqual({
+			expect(azureKeyVault['azureErrorContext'](error)).toEqual({
 				errorCode: 'REQUEST_SEND_ERROR',
 			});
 		});
@@ -68,21 +68,21 @@ describe('AzureKeyVault', () => {
 				},
 			);
 
-			expect(azureErrorContext(error)).toEqual({
+			expect(azureKeyVault['azureErrorContext'](error)).toEqual({
 				statusCode: 401,
 				errorCode: 'invalid_client',
 			});
 		});
 
 		it('falls back to Error.name for generic errors', () => {
-			expect(azureErrorContext(new Error('Something went wrong'))).toEqual({
+			expect(azureKeyVault['azureErrorContext'](new Error('Something went wrong'))).toEqual({
 				errorCode: 'Error',
 			});
 		});
 
 		it('returns empty context for non-error values', () => {
-			expect(azureErrorContext('not an error')).toEqual({});
-			expect(azureErrorContext(null)).toEqual({});
+			expect(azureKeyVault['azureErrorContext']('not an error')).toEqual({});
+			expect(azureKeyVault['azureErrorContext'](null)).toEqual({});
 		});
 	});
 

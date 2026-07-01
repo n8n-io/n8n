@@ -21,39 +21,6 @@ type AzureHttpLikeError = Error & {
 	code?: string;
 };
 
-function isAzureHttpLikeError(error: unknown): error is AzureHttpLikeError {
-	if (!(error instanceof Error)) return false;
-
-	const candidate = error as AzureHttpLikeError;
-	return (
-		error.name === 'RestError' ||
-		typeof candidate.statusCode === 'number' ||
-		typeof candidate.code === 'string'
-	);
-}
-
-export function azureErrorContext(error: unknown): HttpProviderErrorLogContext {
-	if (error instanceof AuthenticationError) {
-		return {
-			statusCode: error.statusCode,
-			errorCode: error.errorResponse?.error,
-		};
-	}
-
-	if (isAzureHttpLikeError(error)) {
-		return {
-			statusCode: error.statusCode,
-			errorCode: error.code,
-		};
-	}
-
-	if (error instanceof Error) {
-		return { errorCode: error.name };
-	}
-
-	return {};
-}
-
 export class AzureKeyVault extends SecretsProvider {
 	name = 'azureKeyVault';
 
@@ -181,7 +148,7 @@ export class AzureKeyVault extends SecretsProvider {
 					const error = ensureError(promiseResult.reason);
 					readErrors.push(error);
 					const secretName = secretNames[index];
-					const errorContext = azureErrorContext(error);
+					const errorContext = this.azureErrorContext(error);
 					this.logger.debug(`Could not read Azure Key Vault secret "${secretName}"`, {
 						providerName: this.name,
 						operation: 'update',
@@ -240,6 +207,39 @@ export class AzureKeyVault extends SecretsProvider {
 		return Object.keys(this.cachedSecrets);
 	}
 
+	private isAzureHttpLikeError(error: unknown): error is AzureHttpLikeError {
+		if (!(error instanceof Error)) return false;
+
+		const candidate = error as AzureHttpLikeError;
+		return (
+			error.name === 'RestError' ||
+			typeof candidate.statusCode === 'number' ||
+			typeof candidate.code === 'string'
+		);
+	}
+
+	private azureErrorContext(error: unknown): HttpProviderErrorLogContext {
+		if (error instanceof AuthenticationError) {
+			return {
+				statusCode: error.statusCode,
+				errorCode: error.errorResponse?.error,
+			};
+		}
+
+		if (this.isAzureHttpLikeError(error)) {
+			return {
+				statusCode: error.statusCode,
+				errorCode: error.code,
+			};
+		}
+
+		if (error instanceof Error) {
+			return { errorCode: error.name };
+		}
+
+		return {};
+	}
+
 	private logOperationFailure(
 		message: string,
 		operation: SecretsProviderOperation,
@@ -253,7 +253,7 @@ export class AzureKeyVault extends SecretsProvider {
 			providerDisplayName: this.displayName,
 			operation,
 			error,
-			errorContext: azureErrorContext(error),
+			errorContext: this.azureErrorContext(error),
 			settingsContext: { vaultName: this.settings.vaultName },
 			extra,
 		});

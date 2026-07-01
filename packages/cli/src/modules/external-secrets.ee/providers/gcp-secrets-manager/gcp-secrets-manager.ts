@@ -19,26 +19,6 @@ import {
 } from '../../errors/secrets-provider-errors';
 import { SecretsProvider } from '../../types';
 
-export function getGcpErrorCode(error: unknown): number | string | undefined {
-	if (typeof error === 'object' && error !== null && 'code' in error) {
-		const { code } = error;
-		if (typeof code === 'number' || typeof code === 'string') {
-			return code;
-		}
-	}
-
-	if (error instanceof Error) {
-		return error.name;
-	}
-
-	return undefined;
-}
-
-export function gcpErrorContext(error: unknown): HttpProviderErrorLogContext {
-	const errorCode = getGcpErrorCode(error);
-	return errorCode !== undefined ? { errorCode } : {};
-}
-
 export class GcpSecretsManager extends SecretsProvider {
 	name = 'gcpSecretsManager';
 
@@ -157,14 +137,14 @@ export class GcpSecretsManager extends SecretsProvider {
 				} catch (error) {
 					// Only handle expected error codes that indicate the secret is not accessible
 					// PERMISSION_DENIED (7), NOT_FOUND (5), UNAVAILABLE (14)
-					const errorCode = getGcpErrorCode(error);
+					const errorCode = this.getGcpErrorCode(error);
 					if (errorCode === 7 || errorCode === 5 || errorCode === 14) {
 						this.logger.debug('Skipping inaccessible GCP secret version', {
 							providerName: this.name,
 							operation: 'update',
 							projectId,
 							secretName: name,
-							...gcpErrorContext(error),
+							...this.gcpErrorContext(error),
 						});
 						skippedSecrets.push({
 							name,
@@ -250,6 +230,26 @@ export class GcpSecretsManager extends SecretsProvider {
 		};
 	}
 
+	private getGcpErrorCode(error: unknown): number | string | undefined {
+		if (typeof error === 'object' && error !== null && 'code' in error) {
+			const { code } = error;
+			if (typeof code === 'number' || typeof code === 'string') {
+				return code;
+			}
+		}
+
+		if (error instanceof Error) {
+			return error.name;
+		}
+
+		return undefined;
+	}
+
+	private gcpErrorContext(error: unknown): HttpProviderErrorLogContext {
+		const errorCode = this.getGcpErrorCode(error);
+		return errorCode !== undefined ? { errorCode } : {};
+	}
+
 	private logOperationFailure(
 		message: string,
 		operation: SecretsProviderOperation,
@@ -268,7 +268,7 @@ export class GcpSecretsManager extends SecretsProvider {
 			providerDisplayName: this.displayName,
 			operation,
 			error,
-			errorContext: gcpErrorContext(error),
+			errorContext: this.gcpErrorContext(error),
 			settingsContext,
 			extra,
 		});

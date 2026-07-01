@@ -3,7 +3,7 @@ import { createFakeOutboundHttp, type Route } from '@n8n/backend-network/testing
 import { mockInstance } from '@n8n/backend-test-utils';
 
 import { ExternalSecretsConfig } from '../../external-secrets.config';
-import { VaultProvider, vaultErrorContext } from '../vault';
+import { VaultProvider } from '../vault';
 
 const VAULT_BASE_URL = 'https://vault.test.com';
 const VAULT_URL = `${VAULT_BASE_URL}/v1/`;
@@ -86,24 +86,28 @@ describe('VaultProvider', () => {
 				response: { status: 403 },
 			});
 
-			expect(vaultErrorContext(error)).toEqual({ statusCode: 403 });
+			expect(createProvider([]).provider['vaultErrorContext'](error)).toEqual({ statusCode: 403 });
 		});
 
 		it('extracts errorCode from transport errors', () => {
 			const error = Object.assign(new Error('Connection refused'), { code: 'ECONNREFUSED' });
 
-			expect(vaultErrorContext(error)).toEqual({ errorCode: 'ECONNREFUSED' });
+			expect(createProvider([]).provider['vaultErrorContext'](error)).toEqual({
+				errorCode: 'ECONNREFUSED',
+			});
 		});
 
 		it('falls back to Error.name for generic errors', () => {
-			expect(vaultErrorContext(new Error('Something went wrong'))).toEqual({
+			expect(
+				createProvider([]).provider['vaultErrorContext'](new Error('Something went wrong')),
+			).toEqual({
 				errorCode: 'Error',
 			});
 		});
 
 		it('returns empty context for non-error values', () => {
-			expect(vaultErrorContext('not an error')).toEqual({});
-			expect(vaultErrorContext(null)).toEqual({});
+			expect(createProvider([]).provider['vaultErrorContext']('not an error')).toEqual({});
+			expect(createProvider([]).provider['vaultErrorContext'](null)).toEqual({});
 		});
 	});
 

@@ -5,11 +5,7 @@ import { UserError } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import {
-	GcpSecretsManager,
-	gcpErrorContext,
-	getGcpErrorCode,
-} from '../gcp-secrets-manager/gcp-secrets-manager';
+import { GcpSecretsManager } from '../gcp-secrets-manager/gcp-secrets-manager';
 import type { GcpSecretsManagerContext } from '../gcp-secrets-manager/types';
 
 vi.mock('@google-cloud/secret-manager');
@@ -40,33 +36,37 @@ describe('GCP Secrets Manager', () => {
 
 	describe('error context', () => {
 		it('extracts numeric gRPC status codes', () => {
-			expect(getGcpErrorCode(createGrpcError('NOT_FOUND', 5))).toBe(5);
-			expect(getGcpErrorCode(createGrpcError('PERMISSION_DENIED', 7))).toBe(7);
-			expect(gcpErrorContext(createGrpcError('NOT_FOUND', 5))).toEqual({ errorCode: 5 });
-			expect(gcpErrorContext(createGrpcError('PERMISSION_DENIED', 7))).toEqual({
-				errorCode: 7,
+			expect(gcpSecretsManager['getGcpErrorCode'](createGrpcError('NOT_FOUND', 5))).toBe(5);
+			expect(gcpSecretsManager['getGcpErrorCode'](createGrpcError('PERMISSION_DENIED', 7))).toBe(7);
+			expect(gcpSecretsManager['gcpErrorContext'](createGrpcError('NOT_FOUND', 5))).toEqual({
+				errorCode: 5,
 			});
+			expect(gcpSecretsManager['gcpErrorContext'](createGrpcError('PERMISSION_DENIED', 7))).toEqual(
+				{
+					errorCode: 7,
+				},
+			);
 		});
 
 		it('extracts string error codes', () => {
 			const error = Object.assign(new Error('Connection failed'), { code: 'ECONNREFUSED' });
 
-			expect(getGcpErrorCode(error)).toBe('ECONNREFUSED');
-			expect(gcpErrorContext(error)).toEqual({ errorCode: 'ECONNREFUSED' });
+			expect(gcpSecretsManager['getGcpErrorCode'](error)).toBe('ECONNREFUSED');
+			expect(gcpSecretsManager['gcpErrorContext'](error)).toEqual({ errorCode: 'ECONNREFUSED' });
 		});
 
 		it('falls back to Error.name for generic errors', () => {
-			expect(getGcpErrorCode(new Error('Something went wrong'))).toBe('Error');
-			expect(gcpErrorContext(new Error('Something went wrong'))).toEqual({
+			expect(gcpSecretsManager['getGcpErrorCode'](new Error('Something went wrong'))).toBe('Error');
+			expect(gcpSecretsManager['gcpErrorContext'](new Error('Something went wrong'))).toEqual({
 				errorCode: 'Error',
 			});
 		});
 
 		it('returns empty context for non-error values', () => {
-			expect(getGcpErrorCode('not an error')).toBeUndefined();
-			expect(getGcpErrorCode(null)).toBeUndefined();
-			expect(gcpErrorContext('not an error')).toEqual({});
-			expect(gcpErrorContext(null)).toEqual({});
+			expect(gcpSecretsManager['getGcpErrorCode']('not an error')).toBeUndefined();
+			expect(gcpSecretsManager['getGcpErrorCode'](null)).toBeUndefined();
+			expect(gcpSecretsManager['gcpErrorContext']('not an error')).toEqual({});
+			expect(gcpSecretsManager['gcpErrorContext'](null)).toEqual({});
 		});
 	});
 

@@ -36,53 +36,6 @@ export type AwsSecretsManagerContext = SecretsProviderSettings<
 	)
 >;
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null;
-}
-
-export function getAwsErrorCode(error: unknown): string | number | undefined {
-	if (isRecord(error)) {
-		if ('Code' in error && typeof error.Code === 'string') {
-			return error.Code;
-		}
-
-		if ('code' in error) {
-			const { code } = error;
-			if (typeof code === 'string' || typeof code === 'number') {
-				return code;
-			}
-		}
-	}
-
-	if (error instanceof Error) {
-		return error.name;
-	}
-
-	if (isRecord(error) && typeof error.name === 'string') {
-		return error.name;
-	}
-
-	return undefined;
-}
-
-export function awsErrorContext(error: unknown): LogContext {
-	const context: LogContext = {};
-
-	const errorCode = getAwsErrorCode(error);
-	if (errorCode !== undefined) {
-		context.errorCode = errorCode;
-	}
-
-	if (isRecord(error) && '$metadata' in error) {
-		const metadata = error.$metadata;
-		if (isRecord(metadata) && typeof metadata.httpStatusCode === 'number') {
-			context.statusCode = metadata.httpStatusCode;
-		}
-	}
-
-	return context;
-}
-
 export class AwsSecretsManager extends SecretsProvider {
 	name = 'awsSecretsManager';
 
@@ -327,6 +280,53 @@ export class AwsSecretsManager extends SecretsProvider {
 		);
 	}
 
+	private isRecord(value: unknown): value is Record<string, unknown> {
+		return typeof value === 'object' && value !== null;
+	}
+
+	private getAwsErrorCode(error: unknown): string | number | undefined {
+		if (this.isRecord(error)) {
+			if ('Code' in error && typeof error.Code === 'string') {
+				return error.Code;
+			}
+
+			if ('code' in error) {
+				const { code } = error;
+				if (typeof code === 'string' || typeof code === 'number') {
+					return code;
+				}
+			}
+		}
+
+		if (error instanceof Error) {
+			return error.name;
+		}
+
+		if (this.isRecord(error) && typeof error.name === 'string') {
+			return error.name;
+		}
+
+		return undefined;
+	}
+
+	private awsErrorContext(error: unknown): LogContext {
+		const context: LogContext = {};
+
+		const errorCode = this.getAwsErrorCode(error);
+		if (errorCode !== undefined) {
+			context.errorCode = errorCode;
+		}
+
+		if (this.isRecord(error) && '$metadata' in error) {
+			const metadata = error.$metadata;
+			if (this.isRecord(metadata) && typeof metadata.httpStatusCode === 'number') {
+				context.statusCode = metadata.httpStatusCode;
+			}
+		}
+
+		return context;
+	}
+
 	private logOperationFailure(
 		message: string,
 		operation: SecretsProviderOperation,
@@ -348,7 +348,7 @@ export class AwsSecretsManager extends SecretsProvider {
 			providerDisplayName: this.displayName,
 			operation,
 			error,
-			errorContext: awsErrorContext(error),
+			errorContext: this.awsErrorContext(error),
 			settingsContext,
 			extra,
 		});

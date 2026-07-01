@@ -4,7 +4,7 @@ import { createFakeOutboundHttp, type Route } from '@n8n/backend-network/testing
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { IHttpRequestOptions } from 'n8n-workflow';
 
-import { InfisicalProvider, infisicalErrorContext } from '../infisical';
+import { InfisicalProvider } from '../infisical';
 
 const SITE_URL = 'https://app.infisical.com';
 const PROJECT_ID = 'project-123';
@@ -95,24 +95,30 @@ describe('InfisicalProvider', () => {
 			});
 
 			expect(httpStatusFromError(error)).toBe(403);
-			expect(infisicalErrorContext(error)).toEqual({ statusCode: 403 });
+			expect(createProvider([]).provider['infisicalErrorContext'](error)).toEqual({
+				statusCode: 403,
+			});
 		});
 
 		it('extracts errorCode from transport errors', () => {
 			const error = Object.assign(new Error('Connection refused'), { code: 'ECONNREFUSED' });
 
-			expect(infisicalErrorContext(error)).toEqual({ errorCode: 'ECONNREFUSED' });
+			expect(createProvider([]).provider['infisicalErrorContext'](error)).toEqual({
+				errorCode: 'ECONNREFUSED',
+			});
 		});
 
 		it('falls back to Error.name for generic errors', () => {
-			expect(infisicalErrorContext(new Error('Something went wrong'))).toEqual({
+			expect(
+				createProvider([]).provider['infisicalErrorContext'](new Error('Something went wrong')),
+			).toEqual({
 				errorCode: 'Error',
 			});
 		});
 
 		it('returns empty context for non-error values', () => {
-			expect(infisicalErrorContext('not an error')).toEqual({});
-			expect(infisicalErrorContext(null)).toEqual({});
+			expect(createProvider([]).provider['infisicalErrorContext']('not an error')).toEqual({});
+			expect(createProvider([]).provider['infisicalErrorContext'](null)).toEqual({});
 		});
 	});
 

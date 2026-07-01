@@ -3,11 +3,7 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import {
-	OnePasswordProvider,
-	onePasswordErrorContext,
-	type OnePasswordContext,
-} from '../one-password';
+import { OnePasswordProvider, type OnePasswordContext } from '../one-password';
 
 const mockListVaults = vi.fn();
 const mockListItems = vi.fn();
@@ -38,13 +34,13 @@ describe('OnePasswordProvider', () => {
 				response: { status: 403 },
 			});
 
-			expect(onePasswordErrorContext(error)).toEqual({ statusCode: 403 });
+			expect(provider['onePasswordErrorContext'](error)).toEqual({ statusCode: 403 });
 		});
 
 		it('extracts errorCode from transport errors', () => {
 			const error = Object.assign(new Error('Connection refused'), { code: 'ECONNREFUSED' });
 
-			expect(onePasswordErrorContext(error)).toEqual({ errorCode: 'ECONNREFUSED' });
+			expect(provider['onePasswordErrorContext'](error)).toEqual({ errorCode: 'ECONNREFUSED' });
 		});
 
 		it('extracts SDK error code when present alongside HTTP status', () => {
@@ -53,21 +49,21 @@ describe('OnePasswordProvider', () => {
 				code: 'FORBIDDEN',
 			});
 
-			expect(onePasswordErrorContext(error)).toEqual({
+			expect(provider['onePasswordErrorContext'](error)).toEqual({
 				statusCode: 403,
 				errorCode: 'FORBIDDEN',
 			});
 		});
 
 		it('falls back to Error.name for generic errors', () => {
-			expect(onePasswordErrorContext(new Error('Something went wrong'))).toEqual({
+			expect(provider['onePasswordErrorContext'](new Error('Something went wrong'))).toEqual({
 				errorCode: 'Error',
 			});
 		});
 
 		it('returns empty context for non-error values', () => {
-			expect(onePasswordErrorContext('not an error')).toEqual({});
-			expect(onePasswordErrorContext(null)).toEqual({});
+			expect(provider['onePasswordErrorContext']('not an error')).toEqual({});
+			expect(provider['onePasswordErrorContext'](null)).toEqual({});
 		});
 	});
 
