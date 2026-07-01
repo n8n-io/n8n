@@ -117,7 +117,7 @@ const onSelect = (operatorId: string): void => {
 	gap: var(--spacing--3xs);
 	width: 100%;
 	height: 100%;
-	min-height: 32px;
+	min-height: var(--height--md);
 	padding: 0 var(--spacing--2xs);
 	border: var(--border-width) var(--border-style) var(--input--border-color, var(--border-color));
 	border-top-left-radius: var(--input--radius--top-left, var(--input--radius, 0));
