@@ -112,7 +112,9 @@ export class ImportPipeline {
 		);
 
 		const imported = outcomes.filter(({ status }) => status !== 'skipped');
-		this.eventService.emit('workflows-imported', {
+		const countByStatus = (status: WorkflowImportOutcome['status']) =>
+			outcomes.filter((outcome) => outcome.status === status).length;
+		this.eventService.emit('n8n-package-imported', {
 			user: context.user,
 			projectId: context.projectId,
 			folderId: context.folderId,
@@ -130,6 +132,18 @@ export class ImportPipeline {
 				matched: credentialApply.matched.map((sourceId) => credentialApply.bindings.get(sourceId)!),
 				created: credentialApply.stubbed.map((sourceId) => credentialApply.bindings.get(sourceId)!),
 				updated: [],
+			},
+			counts: {
+				workflows: {
+					created: countByStatus('created'),
+					updated: countByStatus('updated'),
+					skipped: countByStatus('skipped'),
+				},
+				credentials: {
+					matched: credentialApply.matched.length,
+					created: credentialApply.stubbed.length,
+					requirements: credentialRequest.requirements?.length ?? 0,
+				},
 			},
 		});
 
