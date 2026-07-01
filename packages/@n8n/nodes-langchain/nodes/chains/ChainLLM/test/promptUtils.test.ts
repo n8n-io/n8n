@@ -331,7 +331,7 @@ describe('promptUtils', () => {
 				type: 'human',
 				content: 'Cross-module text content',
 				get text() {
-					return this.content;
+					return (this as { content: string }).content;
 				},
 			} as unknown as BaseMessage;
 
