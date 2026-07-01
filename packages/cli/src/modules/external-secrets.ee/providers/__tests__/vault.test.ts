@@ -80,37 +80,6 @@ describe('VaultProvider', () => {
 		mockInstance(ExternalSecretsConfig, { preferGet: true });
 	});
 
-	describe('error context', () => {
-		it('extracts statusCode from HTTP request errors without duplicating it in errorCode', () => {
-			const error = Object.assign(new Error('Request failed'), {
-				response: { status: 403 },
-			});
-
-			expect(createProvider([]).provider['vaultErrorContext'](error)).toEqual({ statusCode: 403 });
-		});
-
-		it('extracts errorCode from transport errors', () => {
-			const error = Object.assign(new Error('Connection refused'), { code: 'ECONNREFUSED' });
-
-			expect(createProvider([]).provider['vaultErrorContext'](error)).toEqual({
-				errorCode: 'ECONNREFUSED',
-			});
-		});
-
-		it('falls back to Error.name for generic errors', () => {
-			expect(
-				createProvider([]).provider['vaultErrorContext'](new Error('Something went wrong')),
-			).toEqual({
-				errorCode: 'Error',
-			});
-		});
-
-		it('returns empty context for non-error values', () => {
-			expect(createProvider([]).provider['vaultErrorContext']('not an error')).toEqual({});
-			expect(createProvider([]).provider['vaultErrorContext'](null)).toEqual({});
-		});
-	});
-
 	function createProvider(routes: Route[], settings = vaultSettings) {
 		const { outboundHttp, httpRequest, requests } = createFakeOutboundHttp(
 			routes,
