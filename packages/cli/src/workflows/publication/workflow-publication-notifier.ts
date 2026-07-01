@@ -40,7 +40,8 @@ export class WorkflowPublicationNotifier {
 	 * chain (WorkflowTriggerActivator) asserts the publication service is enabled in
 	 * its constructor, and it registers @OnShutdown/@OnPubSubEvent handlers that the
 	 * shutdown/pubsub registries eagerly `Container.get`. Loading it only on this
-	 * flag-gated path keeps it off the default graph, matching start.ts.
+	 * flag-gated path keeps it off the default graph, matching start.ts. Node caches
+	 * the module after the first import, so later calls resolve it from cache.
 	 */
 	private async wakeLocalConsumer(): Promise<void> {
 		const { WorkflowPublicationOutboxConsumer } = await import(
