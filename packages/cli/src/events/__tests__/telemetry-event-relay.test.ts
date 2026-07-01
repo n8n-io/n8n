@@ -2021,7 +2021,7 @@ describe('TelemetryEventRelay', () => {
 				workflows_skipped: 1,
 				credentials_matched: 2,
 				credentials_created: 1,
-				credential_requirements: 3,
+				credentials_required: 3,
 			});
 		});
 

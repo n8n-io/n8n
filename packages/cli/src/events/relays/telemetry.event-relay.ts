@@ -967,7 +967,7 @@ export class TelemetryEventRelay extends EventRelay {
 			workflows_skipped: counts.workflows.skipped,
 			credentials_matched: counts.credentials.matched,
 			credentials_created: counts.credentials.created,
-			credential_requirements: counts.credentials.requirements,
+			credentials_required: counts.credentials.requirements,
 		});
 	}
 
