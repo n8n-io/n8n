@@ -19,6 +19,7 @@ import { Response } from 'express';
 import { ErrorReporter } from 'n8n-core';
 
 import { AuthService } from '@/auth/auth.service';
+import { LoginSessionService } from '@/auth/login-session.service';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -53,6 +54,7 @@ export class PasswordResetController {
 		private readonly userRepository: UserRepository,
 		private readonly eventService: EventService,
 		private readonly errorReporter: ErrorReporter,
+		private readonly loginSessionService: LoginSessionService,
 	) {}
 
 	/**
@@ -221,7 +223,17 @@ export class PasswordResetController {
 
 		this.logger.info('User password updated successfully', { userId: user.id });
 
-		this.authService.issueCookie(res, user, user.mfaEnabled, req.browserId);
+		const sessionId = await this.authService.issueCookie(
+			res,
+			user,
+			user.mfaEnabled,
+			req.browserId,
+			undefined,
+			undefined,
+			this.authService.getSessionContext(req),
+		);
+		// The password change invalidates every other token; drop their session rows too.
+		await this.loginSessionService.revokeAllOthers(user.id, sessionId);
 
 		this.eventService.emit('user-updated', { user, fieldsChanged: ['password'] });
 

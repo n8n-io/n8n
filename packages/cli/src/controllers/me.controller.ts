@@ -1,6 +1,8 @@
 import {
 	createPasswordSchema,
+	type LoginSessionList,
 	PasswordUpdateRequestDto,
+	type RevokeAllOtherSessionsResponse,
 	UserSelfSettingsUpdateRequestDto,
 	UserUpdateRequestDto,
 } from '@n8n/api-types';
@@ -8,11 +10,21 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { User, PublicUser, AuthIdentity } from '@n8n/db';
 import { UserRepository, AuthenticatedRequest } from '@n8n/db';
-import { Body, createUserKeyedRateLimiter, Patch, Post, RestController } from '@n8n/decorators';
+import {
+	Body,
+	createUserKeyedRateLimiter,
+	Delete,
+	Get,
+	Param,
+	Patch,
+	Post,
+	RestController,
+} from '@n8n/decorators';
 import { plainToInstance } from 'class-transformer';
 import { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
+import { LoginSessionService } from '@/auth/login-session.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
@@ -39,6 +51,7 @@ export class MeController {
 		private readonly eventService: EventService,
 		private readonly mfaService: MfaService,
 		private readonly globalConfig: GlobalConfig,
+		private readonly loginSessionService: LoginSessionService,
 	) {}
 
 	/**
@@ -101,12 +114,26 @@ export class MeController {
 
 		this.logger.info('User updated successfully', { userId });
 
-		this.authService.issueCookie(res, user, req.authInfo?.usedMfa ?? false, req.browserId);
+		// Re-issue on the same session (the email change would otherwise invalidate the current token).
+		const sessionId = await this.authService.issueCookie(
+			res,
+			user,
+			req.authInfo?.usedMfa ?? false,
+			req.browserId,
+			undefined,
+			undefined,
+			{ ...this.authService.getSessionContext(req), jti: this.authService.getSessionId(req) },
+		);
 
 		const changeableFields = ['email', 'firstName', 'lastName'] as const;
 		const fieldsChanged = changeableFields.filter(
 			(key) => key in payload && payload[key] !== preUpdateUser[key],
 		);
+
+		// An email change rotates the token hash, so every other session is now dead — clear their rows.
+		if (isEmailBeingChanged) {
+			await this.loginSessionService.revokeAllOthers(userId, sessionId);
+		}
 
 		this.eventService.emit('user-updated', { user, fieldsChanged });
 
@@ -248,13 +275,65 @@ export class MeController {
 		const updatedUser = await this.userRepository.save(user, { transaction: false });
 		this.logger.info('Password updated successfully', { userId: user.id });
 
-		this.authService.issueCookie(res, updatedUser, req.authInfo?.usedMfa ?? false, req.browserId);
+		const sessionId = await this.authService.issueCookie(
+			res,
+			updatedUser,
+			req.authInfo?.usedMfa ?? false,
+			req.browserId,
+			undefined,
+			undefined,
+			{ ...this.authService.getSessionContext(req), jti: this.authService.getSessionId(req) },
+		);
+		// The password change invalidates every other token; drop their session rows too.
+		await this.loginSessionService.revokeAllOthers(updatedUser.id, sessionId);
 
 		this.eventService.emit('user-updated', { user: updatedUser, fieldsChanged: ['password'] });
 
 		await this.externalHooks.run('user.password.update', [updatedUser.email, updatedUser.password]);
 
 		return { success: true };
+	}
+
+	/**
+	 * List the logged-in user's active login sessions. Self-scoped: operates on
+	 * `req.user` only, matching the other `/me` routes.
+	 */
+	@Get('/login-sessions')
+	async getLoginSessions(req: AuthenticatedRequest): Promise<LoginSessionList> {
+		const items = await this.loginSessionService.listForUser(
+			req.user.id,
+			this.authService.getSessionId(req),
+		);
+		return { items };
+	}
+
+	/** Revoke one of the logged-in user's own sessions. */
+	@Delete('/login-sessions/:id')
+	async revokeLoginSession(
+		req: AuthenticatedRequest,
+		res: Response,
+		@Param('id') id: string,
+	): Promise<{ success: true }> {
+		await this.loginSessionService.revokeForUser(req.user.id, id);
+		// Revoking your own current session is a logout: clear the cookie so it
+		// takes effect immediately rather than on the next request.
+		if (id === this.authService.getSessionId(req)) {
+			this.authService.clearCookie(res);
+		}
+		return { success: true };
+	}
+
+	/** Revoke every session except the one making this request. */
+	@Post('/login-sessions/revoke-all-others')
+	async revokeAllOtherLoginSessions(
+		req: AuthenticatedRequest,
+	): Promise<RevokeAllOtherSessionsResponse> {
+		const currentJti = this.authService.getSessionId(req);
+		// Without a current session id we can't tell which row to keep, so revoke nothing.
+		const revokedCount = currentJti
+			? await this.loginSessionService.revokeAllOthers(req.user.id, currentJti)
+			: 0;
+		return { revokedCount };
 	}
 
 	/**
