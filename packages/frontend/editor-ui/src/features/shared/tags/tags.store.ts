@@ -97,6 +97,10 @@ const createTagsStore = (id: typeof STORES.TAGS | typeof STORES.ANNOTATION_TAGS)
 				name: string,
 				{ incrementExisting }: { incrementExisting?: boolean } = {},
 			) => {
+				if (!hasPermission(['rbac'], { rbac: { scope: 'tag:create' } })) {
+					throw new Error('Insufficient permissions to create tags');
+				}
+
 				let tagName = name;
 
 				if (incrementExisting) {
@@ -113,12 +117,20 @@ const createTagsStore = (id: typeof STORES.TAGS | typeof STORES.ANNOTATION_TAGS)
 			};
 
 			const rename = async ({ id, name }: { id: string; name: string }) => {
+				if (!hasPermission(['rbac'], { rbac: { scope: 'tag:update' } })) {
+					throw new Error('Insufficient permissions to update tags');
+				}
+
 				const updatedTag = await tagsApi.updateTag(rootStore.restApiContext, id, { name });
 				upsertTags([updatedTag]);
 				return updatedTag;
 			};
 
 			const deleteTagById = async (id: string) => {
+				if (!hasPermission(['rbac'], { rbac: { scope: 'tag:delete' } })) {
+					throw new Error('Insufficient permissions to delete tags');
+				}
+
 				const deleted = await tagsApi.deleteTag(rootStore.restApiContext, id);
 
 				if (deleted) {

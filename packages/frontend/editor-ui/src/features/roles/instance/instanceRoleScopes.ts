@@ -66,8 +66,10 @@ export const INSTANCE_SCOPE_GROUPS = {
 		],
 	},
 	tag: {
-		View: ['tag:read', 'tag:list'],
-		Manage: ['tag:create', 'tag:update', 'tag:delete'],
+		// read/list are bundled with write scopes: tags on workflows you can already
+		// read are always visible (they come embedded in the workflow response), so
+		// there is no meaningful "view-only" tier for tag definitions.
+		Manage: ['tag:read', 'tag:list', 'tag:create', 'tag:update', 'tag:delete'],
 	},
 	project: {
 		Create: ['project:create'],

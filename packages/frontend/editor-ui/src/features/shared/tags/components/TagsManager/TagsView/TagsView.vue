@@ -5,7 +5,7 @@ import type { ITagRow } from '../../../tags.types';
 import { useI18n } from '@n8n/i18n';
 import TagsTableHeader from './TagsTableHeader.vue';
 import TagsTable from './TagsTable.vue';
-import { useRBACStore } from '@/app/stores/rbac.store';
+import { useTagPermissions } from '../../../useTagPermissions';
 import type { BaseTextKey } from '@n8n/i18n';
 
 defineOptions({ name: 'TagsView' });
@@ -34,7 +34,7 @@ const matches = (name: string, filter: string) =>
 	name.toLowerCase().trim().includes(filter.toLowerCase().trim());
 
 const i18n = useI18n();
-const rbacStore = useRBACStore();
+const { canCreate, canUpdate, canDelete } = useTagPermissions();
 
 const createEnabled = ref(false);
 const deleteId = ref('');
@@ -44,7 +44,9 @@ const newName = ref('');
 const stickyIds = ref(new Set());
 const isSaving = ref(false);
 
-const isCreateEnabled = computed(() => props.tags.length === 0 || createEnabled.value);
+const isCreateEnabled = computed(
+	() => canCreate.value && (props.tags.length === 0 || createEnabled.value),
+);
 
 const rows = computed(() => {
 	const getUsage = (count: number | undefined) =>
@@ -62,7 +64,8 @@ const rows = computed(() => {
 				disable: disabled && tag.id !== deleteId.value && tag.id !== updateId.value,
 				update: disabled && tag.id === updateId.value,
 				delete: disabled && tag.id === deleteId.value,
-				canDelete: rbacStore.hasScope('tag:delete'),
+				canDelete: canDelete.value,
+				canUpdate: canUpdate.value,
 			}),
 		);
 
@@ -179,6 +182,7 @@ const cancelOperation = (): void => {
 		<TagsTableHeader
 			:search="search"
 			:disabled="isHeaderDisabled()"
+			:can-create="canCreate"
 			@search-change="onSearchChange"
 			@create-enable="onCreateEnable"
 		/>

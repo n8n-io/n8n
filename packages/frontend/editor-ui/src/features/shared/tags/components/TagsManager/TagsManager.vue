@@ -7,6 +7,7 @@ import Modal from '@/app/components/Modal.vue';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
+import { useTagPermissions } from '../../useTagPermissions';
 
 import { ElRow } from 'element-plus';
 import { N8nButton } from '@n8n/design-system';
@@ -42,6 +43,7 @@ const emit = defineEmits<{
 const tagIds = ref(props.tags.map((tag) => tag.id));
 const isCreating = ref(false);
 const modalBus = createEventBus();
+const { canCreate } = useTagPermissions();
 
 const tags = computed(() =>
 	tagIds.value
@@ -141,7 +143,7 @@ async function onDelete(id: string, deleteCallback: (deleted: boolean, error?: E
 function onEnter() {
 	if (props.isLoading) {
 		return;
-	} else if (!hasTags.value) {
+	} else if (!hasTags.value && canCreate.value) {
 		onEnableCreate();
 	} else {
 		modalBus.emit('close');
@@ -176,6 +178,7 @@ function onEnter() {
 					:title-locale-key="noTagsTitleLocaleKey"
 					:description-locale-key="noTagsDescriptionLocaleKey"
 					:create-locale-key="noTagsCreateLocaleKey"
+					:can-create="canCreate"
 					@enable-create="onEnableCreate"
 				/>
 			</ElRow>
