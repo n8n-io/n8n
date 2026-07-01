@@ -16,10 +16,8 @@ import {
 import { DOCS_HELP_NOTICE } from '../constants';
 import {
 	buildHttpProviderErrorContext,
-	buildUpdateFailureSummary,
 	logSecretsProviderOperationFailure,
 	type LogContext,
-	type SafeContextValue,
 	type SecretsProviderOperation,
 } from '../errors/secrets-provider-errors';
 import { ExternalSecretsConfig } from '../external-secrets.config';
@@ -266,8 +264,6 @@ export class VaultProvider extends SecretsProvider {
 
 	private cachedSecrets: Record<string, IDataObject> = {};
 
-	private updatePathFailures: Array<{ secretPath: string; errorCode: SafeContextValue }> = [];
-
 	private settings: VaultSettings;
 
 	#currentToken: string | null = null;
@@ -497,10 +493,6 @@ export class VaultProvider extends SecretsProvider {
 				vaultApiPath,
 				...errorContext,
 			});
-			this.updatePathFailures.push({
-				secretPath: vaultApiPath,
-				errorCode: errorContext.errorCode ?? 'unknown',
-			});
 			return null;
 		}
 		const data = Object.fromEntries(
@@ -534,10 +526,6 @@ export class VaultProvider extends SecretsProvider {
 								kvVersion,
 								secretPath,
 								...errorContext,
-							});
-							this.updatePathFailures.push({
-								secretPath,
-								errorCode: errorContext.errorCode ?? 'unknown',
 							});
 							return null;
 						}
@@ -617,7 +605,6 @@ export class VaultProvider extends SecretsProvider {
 	}
 
 	async update(): Promise<void> {
-		this.updatePathFailures = [];
 		try {
 			const kvMounts = await this.discoverKvMounts();
 
@@ -635,24 +622,6 @@ export class VaultProvider extends SecretsProvider {
 				).filter((entry): entry is [string, IDataObject] => entry !== null),
 			);
 			this.cachedSecrets = secrets;
-
-			const summary = buildUpdateFailureSummary(
-				this.updatePathFailures.map((failure) => ({
-					name: failure.secretPath,
-					errorCode: failure.errorCode,
-				})),
-			);
-			if (summary) {
-				this.logOperationFailure('Skipped inaccessible Vault KV secrets during update', {
-					operation: 'update',
-					error: new Error('One or more Vault KV secrets were inaccessible'),
-					context: {
-						failedCount: summary.failedCount,
-						errorCodes: summary.errorCodes,
-						sampleSecretPaths: summary.sampleSecretNames,
-					},
-				});
-			}
 
 			this.logger.debug('Vault provider secrets updated');
 		} catch (error) {
