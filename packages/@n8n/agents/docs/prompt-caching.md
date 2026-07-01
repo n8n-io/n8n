@@ -24,6 +24,40 @@ new Agent('assistant')
   .instructions(LONG_SYSTEM_PROMPT);
 ```
 
+## Prefix stability (always on, both providers)
+
+Unlike everything else in this doc, this part is not gated by
+`.promptCaching()` — it's baseline hygiene that keeps the system-instructions
+prefix byte-stable, which both OpenAI's automatic caching and Anthropic's
+`cacheControl` breakpoint depend on regardless of whether the SDK feature is
+enabled.
+
+Tools can attach a `systemInstruction` fragment (`Tool.systemInstruction(...)`)
+that gets merged into the system prompt. Deferred tools loaded mid-conversation
+via `load_tool` are a special case: if a newly loaded tool has a
+`systemInstruction`, merging it into the same cached instructions string the
+moment it loads would change that string's bytes — a full-prefix cache miss
+for OpenAI, and an invalidated breakpoint for Anthropic, for the rest of the
+conversation.
+
+`RuntimeContextBuilder.composeEffectiveInstructions()` avoids this by
+splitting fragments by stability:
+
+- **Stable** (base tools, the deferred-tool controllers `search_tools` /
+  `load_tool`, the episodic-recall tool) stay in the cached instructions
+  message — this set never changes for the life of a run.
+- **Volatile** (tools loaded via `load_tool` during the conversation) are
+  routed into the same uncached second system message that observation-log
+  memory uses (see `buildSystemMessages`), not dropped — the model still
+  sees the instruction the moment the tool loads, just outside the cached
+  prefix.
+
+Other prefix-stability hygiene, already true or verified: tool ordering is
+append-only (`getCurrentTools()` only ever appends), and none of the current
+built-in `systemInstruction` sources (`delegate_subagent`, `write_todos`,
+`recall_memory`) interpolate timestamps, run IDs, or other per-request
+nondeterminism into their text.
+
 ## Anthropic: instruction-level cache breakpoint
 
 `.promptCaching()` attaches `providerOptions.anthropic.cacheControl` to the
@@ -43,6 +77,44 @@ the cache breakpoint on instructions survives append-only memory growth).
   tokens for the Sonnet family, 4,096 tokens for Opus 4.5 / Haiku 4.5).
   Below that, the request still succeeds — it's just never cached.
 - Only Anthropic models get this option; it's a no-op for other providers.
+
+## Anthropic: runtime breakpoints (conversation history + tools)
+
+On top of the instruction breakpoint above, every model call for an Anthropic
+agent with `.promptCaching()` enabled adds up to two more breakpoints,
+applied only to the per-call AI SDK `messages` / tool set (never persisted
+back to memory, checkpoints, or `AgentMessageList`):
+
+- **Conversation-history breakpoint.** A single moving `cacheControl` marker
+  on the last message of the call. Because Anthropic matches cached content
+  by byte-exact prefix, and the conversation only ever grows by appending
+  new messages, this lets multi-step tool loops and multi-turn conversations
+  read the cached prefix instead of reprocessing the whole transcript on
+  every call.
+- **Tool-definitions breakpoint.** A `cacheControl` marker on the last tool
+  definition, added only when the tool set is **fully static** for that
+  call — no deferred/loaded tools configured and no episodic-recall tool
+  present. A large, stable tool block then stays cached independently of the
+  conversation prefix, so it survives even if the history breakpoint above
+  gets invalidated (e.g. by a burst of unrelated system-message churn).
+  Deferred, MCP-loaded, and episodic-recall tool sets are skipped — the tool
+  list can change mid-conversation, and caching a block that gets
+  invalidated would just pay the write premium for no read.
+
+Both markers reuse the configured Anthropic TTL (`getAnthropicCacheTtl`).
+
+**4-breakpoint budget.** Anthropic hard-errors past 4 `cacheControl`
+breakpoints per request. Before adding either runtime breakpoint, the
+runtime counts every existing marker (system instructions, caller-supplied
+markers via `.instructions(text, { providerOptions })` or
+`Tool.providerOptions(...)`, and any already present on tools/messages) and
+only adds a runtime breakpoint while the running total stays `<= 4`. Caller
+breakpoints are counted first and are never evicted; when the budget is
+already exhausted (e.g. 4 caller-supplied markers), neither runtime
+breakpoint is added. When exactly one slot remains, the conversation-history
+breakpoint takes priority over the tool breakpoint — it recurs every turn,
+while a static tool block is already covered as part of the history
+breakpoint's prefix.
 
 ## OpenAI: cache key + retention
 
@@ -83,11 +155,22 @@ up a separate 1h rate from the catalog.
 
 ## What this does not do
 
-- Tool schemas are not automatically marked for Anthropic caching — use
-  `Tool.providerOptions({ anthropic: { cacheControl: { type: 'ephemeral' } } })`
-  explicitly if a tool's schema is large and stable.
-- Conversation history, user messages, and tool results are never
-  automatically cached.
-- Multi-breakpoint layering (e.g. caching tools and system instructions
-  separately from recent messages) is not implemented — `.promptCaching()`
-  only covers the single instruction-level breakpoint described above.
+- The tool-definitions breakpoint only ever covers a **single, static**
+  snapshot of the tool set (see above) — deferred/loaded and episodic-recall
+  tool sets get no automatic tool caching in v1. Mark such tools explicitly
+  with `Tool.providerOptions({ anthropic: { cacheControl: { type: 'ephemeral' } } })`
+  if needed.
+- Only one moving conversation-history breakpoint is added per call — there
+  is no second/dual breakpoint for splitting "older, stable" history from
+  "recent, volatile" history.
+- Provider-defined tools (e.g. Anthropic's built-in `web_search`) are never
+  automatically marked.
+- OpenAI has no equivalent runtime breakpoints — its caching is fully
+  automatic server-side prefix matching, so `.promptCaching()` only ever
+  affects the call-level `promptCacheKey` / `promptCacheRetention` options
+  described above.
+- Once a deferred tool is loaded, its `systemInstruction` fragment stays in
+  the volatile (uncached) message for the rest of that conversation,
+  including future turns — it's never "promoted" back into the cached
+  instructions message. This repeats a small, fixed string on every call
+  rather than growing it, so it doesn't affect cache stability.

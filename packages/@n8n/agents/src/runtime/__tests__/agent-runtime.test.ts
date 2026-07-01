@@ -4406,6 +4406,61 @@ describe('tool systemInstruction merging', () => {
 		expect(text).not.toContain('<built_in_rules>');
 		expect(text).toContain('You are a helpful assistant.');
 	});
+
+	it("moves a newly loaded deferred tool's systemInstruction into the uncached system message without changing the cached one", async () => {
+		const deferredTool: BuiltTool = {
+			name: 'deferred_capability',
+			description: 'Deferred capability',
+			systemInstruction: 'Always confirm before using deferred_capability.',
+			inputSchema: z.object({ value: z.string().optional() }),
+			handler: async () => await Promise.resolve({ ok: true }),
+		};
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			deferredTools: [deferredTool],
+		});
+
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([
+					{
+						toolCallId: 'tc-load',
+						toolName: 'load_tool',
+						args: { toolName: 'deferred_capability' },
+					},
+				]),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('done'));
+
+		await runtime.generate('load the deferred capability');
+
+		const calls = generateText.mock.calls as Array<
+			[{ system: Array<{ content: string }> | { content: string } }]
+		>;
+		const beforeLoadSystem = calls[0][0].system;
+		const afterLoadSystem = calls[1][0].system;
+
+		const beforeFirst = Array.isArray(beforeLoadSystem)
+			? beforeLoadSystem[0].content
+			: beforeLoadSystem.content;
+		const afterFirst = Array.isArray(afterLoadSystem)
+			? afterLoadSystem[0].content
+			: afterLoadSystem.content;
+		const afterSecond = Array.isArray(afterLoadSystem) ? afterLoadSystem[1]?.content : undefined;
+
+		// Before loading, the tool's instruction appears nowhere.
+		expect(beforeFirst).not.toContain('Always confirm before using deferred_capability.');
+
+		// The cached (first) system message must stay byte-identical after the load.
+		expect(afterFirst).toBe(beforeFirst);
+
+		// After loading, the instruction reaches the model via the uncached second message.
+		expect(afterSecond).toContain('Always confirm before using deferred_capability.');
+		expect(afterFirst).not.toContain('Always confirm before using deferred_capability.');
+	});
 });
 
 describe('instruction providerOptions', () => {
@@ -4565,6 +4620,95 @@ describe('promptCaching', () => {
 		expect(openaiOpts.promptCacheRetention).toBe('24h');
 		expect(typeof openaiOpts.promptCacheKey).toBe('string');
 		expect(openaiOpts.strictJsonSchema).toBe(false);
+	});
+
+	it('adds a moving cache breakpoint to the last conversation message for Anthropic', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'anthropic/claude-sonnet-4-5',
+			instructions: 'You are a test assistant.',
+			promptCaching: { enabled: true },
+		});
+
+		await runtime.generate('hello');
+
+		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
+		const messages = callArgs.messages as Array<Record<string, unknown>>;
+		expect(messages[messages.length - 1].providerOptions).toEqual({
+			anthropic: { cacheControl: { type: 'ephemeral', ttl: '1h' } },
+		});
+	});
+
+	it('adds a cache breakpoint to the last tool definition for a fully-static Anthropic tool set', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+		const toolA = makeMockTool('tool_a', async () => await Promise.resolve({ ok: true }));
+		const toolB = makeMockTool('tool_b', async () => await Promise.resolve({ ok: true }));
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'anthropic/claude-sonnet-4-5',
+			instructions: 'You are a test assistant.',
+			tools: [toolA, toolB],
+			promptCaching: { enabled: true },
+		});
+
+		await runtime.generate('hello');
+
+		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
+		const tools = callArgs.tools as Record<string, { providerOptions?: unknown }>;
+		expect(tools.tool_a.providerOptions).toBeUndefined();
+		expect(tools.tool_b.providerOptions).toEqual({
+			anthropic: { cacheControl: { type: 'ephemeral', ttl: '1h' } },
+		});
+	});
+
+	it('does not add a tool cache breakpoint when deferred tools are configured (Anthropic)', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+		const coreTool = makeMockTool('core_tool', async () => await Promise.resolve({ ok: true }));
+		const deferredTool = makeMockTool(
+			'deferred_capability',
+			async () => await Promise.resolve({ ok: true }),
+		);
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'anthropic/claude-sonnet-4-5',
+			instructions: 'You are a test assistant.',
+			tools: [coreTool],
+			deferredTools: [deferredTool],
+			promptCaching: { enabled: true },
+		});
+
+		await runtime.generate('hello');
+
+		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
+		const tools = callArgs.tools as Record<string, { providerOptions?: unknown }>;
+		for (const tool of Object.values(tools)) {
+			expect(tool.providerOptions).toBeUndefined();
+		}
+	});
+
+	it('does not add message or tool cache breakpoints for OpenAI', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+		const toolA = makeMockTool('tool_a', async () => await Promise.resolve({ ok: true }));
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-5.1',
+			instructions: 'You are a test assistant.',
+			tools: [toolA],
+			promptCaching: { enabled: true },
+		});
+
+		await runtime.generate('hello');
+
+		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
+		const messages = callArgs.messages as Array<Record<string, unknown>>;
+		expect(messages[messages.length - 1].providerOptions).toBeUndefined();
+		const tools = callArgs.tools as Record<string, { providerOptions?: unknown }>;
+		expect(tools.tool_a.providerOptions).toBeUndefined();
 	});
 });
 

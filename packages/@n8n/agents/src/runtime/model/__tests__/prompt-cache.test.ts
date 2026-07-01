@@ -1,10 +1,32 @@
+import type { ModelMessage, SystemModelMessage, ToolSet } from 'ai';
+
 import {
+	applyRuntimeCacheBreakpoints,
 	buildCallPromptCacheOptions,
 	buildInstructionPromptCacheOptions,
+	countAnthropicBreakpoints,
 	createOpenAIPromptCacheKey,
 	getAnthropicCacheTtl,
 	mergeProviderOptions,
 } from '../prompt-cache';
+
+const ANTHROPIC_CACHE_CONTROL = { anthropic: { cacheControl: { type: 'ephemeral' as const } } };
+
+const anthropicSystem: SystemModelMessage = {
+	role: 'system',
+	content: 'Base instructions',
+	providerOptions: ANTHROPIC_CACHE_CONTROL,
+};
+
+const plainSystem: SystemModelMessage = { role: 'system', content: 'Base instructions' };
+
+function makeUserMessage(text: string, providerOptions?: Record<string, unknown>): ModelMessage {
+	return { role: 'user', content: [{ type: 'text', text }], providerOptions } as ModelMessage;
+}
+
+function makeTool(providerOptions?: Record<string, unknown>): ToolSet[string] {
+	return { inputSchema: {}, providerOptions } as ToolSet[string];
+}
 
 describe('buildInstructionPromptCacheOptions — Anthropic', () => {
 	it('defaults to a 1h cache breakpoint when enabled with no ttl override', () => {
@@ -147,5 +169,144 @@ describe('mergeProviderOptions', () => {
 		).toEqual({
 			anthropic: { cacheControl: { type: 'ephemeral', ttl: '1h' } },
 		});
+	});
+});
+
+describe('countAnthropicBreakpoints', () => {
+	it('counts markers across the system message, tools, and message/content-part providerOptions', () => {
+		const messageWithPartMarker = {
+			role: 'user',
+			content: [{ type: 'text', text: 'hi', providerOptions: ANTHROPIC_CACHE_CONTROL }],
+		} as ModelMessage;
+		const messageWithMessageMarker = {
+			role: 'assistant',
+			content: 'ok',
+			providerOptions: ANTHROPIC_CACHE_CONTROL,
+		} as ModelMessage;
+
+		const count = countAnthropicBreakpoints(
+			anthropicSystem,
+			{ tool_a: makeTool(ANTHROPIC_CACHE_CONTROL) },
+			[messageWithPartMarker, messageWithMessageMarker],
+		);
+
+		// system + tool + part-level marker + message-level marker
+		expect(count).toBe(4);
+	});
+
+	it('returns 0 when nothing is marked', () => {
+		expect(countAnthropicBreakpoints(plainSystem, {}, [makeUserMessage('hi')])).toBe(0);
+	});
+});
+
+describe('applyRuntimeCacheBreakpoints', () => {
+	it('marks the last conversation message with an Anthropic cache breakpoint', () => {
+		const messages = [makeUserMessage('hi'), makeUserMessage('there')];
+
+		const { messages: result } = applyRuntimeCacheBreakpoints({
+			system: anthropicSystem,
+			messages,
+			aiTools: {},
+			promptCaching: { enabled: true },
+			modelId: 'anthropic/claude-sonnet-4-5',
+			staticToolCacheName: undefined,
+		});
+
+		expect(result[0].providerOptions).toBeUndefined();
+		expect(result[1].providerOptions).toEqual({
+			anthropic: { cacheControl: { type: 'ephemeral', ttl: '1h' } },
+		});
+	});
+
+	it('marks the static tool with a cache breakpoint when staticToolCacheName is provided', () => {
+		const aiTools = { tool_a: makeTool(), tool_b: makeTool() };
+
+		const { aiTools: result } = applyRuntimeCacheBreakpoints({
+			system: anthropicSystem,
+			messages: [],
+			aiTools,
+			promptCaching: { enabled: true },
+			modelId: 'anthropic/claude-sonnet-4-5',
+			staticToolCacheName: 'tool_b',
+		});
+
+		expect(result.tool_a?.providerOptions).toBeUndefined();
+		expect(result.tool_b?.providerOptions).toEqual({
+			anthropic: { cacheControl: { type: 'ephemeral', ttl: '1h' } },
+		});
+	});
+
+	it('is a no-op for non-Anthropic models', () => {
+		const messages = [makeUserMessage('hi')];
+		const aiTools = { tool_a: makeTool() };
+
+		const result = applyRuntimeCacheBreakpoints({
+			system: plainSystem,
+			messages,
+			aiTools,
+			promptCaching: { enabled: true },
+			modelId: 'openai/gpt-5.1',
+			staticToolCacheName: 'tool_a',
+		});
+
+		expect(result.messages).toBe(messages);
+		expect(result.aiTools).toBe(aiTools);
+	});
+
+	it('is a no-op when Anthropic prompt caching is disabled', () => {
+		const messages = [makeUserMessage('hi')];
+
+		const result = applyRuntimeCacheBreakpoints({
+			system: plainSystem,
+			messages,
+			aiTools: {},
+			promptCaching: { anthropic: false },
+			modelId: 'anthropic/claude-sonnet-4-5',
+			staticToolCacheName: undefined,
+		});
+
+		expect(result.messages).toBe(messages);
+	});
+
+	it('clamps at the 4-breakpoint limit and preserves caller-supplied breakpoints', () => {
+		const messages = [
+			makeUserMessage('a', ANTHROPIC_CACHE_CONTROL),
+			makeUserMessage('b', ANTHROPIC_CACHE_CONTROL),
+		];
+		const aiTools = { tool_a: makeTool(ANTHROPIC_CACHE_CONTROL), tool_b: makeTool() };
+
+		// Budget already exhausted: system (1) + 2 messages (2) + tool_a (1) = 4.
+		const result = applyRuntimeCacheBreakpoints({
+			system: anthropicSystem,
+			messages,
+			aiTools,
+			promptCaching: { enabled: true },
+			modelId: 'anthropic/claude-sonnet-4-5',
+			staticToolCacheName: 'tool_b',
+		});
+
+		expect(result.messages).toBe(messages);
+		expect(result.aiTools).toBe(aiTools);
+		expect(result.aiTools.tool_b?.providerOptions).toBeUndefined();
+	});
+
+	it('prioritizes the message breakpoint over the tool breakpoint when only one slot remains', () => {
+		const messages = [makeUserMessage('a', ANTHROPIC_CACHE_CONTROL), makeUserMessage('b')];
+		const aiTools = { tool_a: makeTool(ANTHROPIC_CACHE_CONTROL), tool_b: makeTool() };
+
+		// Budget before this call: system (1) + first message (1) + tool_a (1) = 3, one slot left.
+		const result = applyRuntimeCacheBreakpoints({
+			system: anthropicSystem,
+			messages,
+			aiTools,
+			promptCaching: { enabled: true },
+			modelId: 'anthropic/claude-sonnet-4-5',
+			staticToolCacheName: 'tool_b',
+		});
+
+		expect(result.messages[1]?.providerOptions).toEqual({
+			anthropic: { cacheControl: { type: 'ephemeral', ttl: '1h' } },
+		});
+		expect(result.aiTools.tool_b?.providerOptions).toBeUndefined();
 	});
 });

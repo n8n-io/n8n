@@ -52,6 +52,7 @@ import { generateThreadTitle } from '../memory/title-generation';
 import { AgentMessageList, type SerializedMessageList } from '../model/message-list';
 import type { FetchFn } from '../model/model-factory';
 import {
+	applyRuntimeCacheBreakpoints,
 	buildInstructionPromptCacheOptions,
 	getAnthropicCacheTtl,
 	mergeProviderOptions,
@@ -654,21 +655,41 @@ export class AgentRuntime {
 
 			this.eventBus.emit({ type: AgentEvent.TurnStart });
 
-			const { toolMap, aiTools, hasTools, effectiveInstructions } =
-				this.context.buildToolLoopContext(
-					staticLoopContext.aiProviderTools,
-					options?.persistence,
-					options?.executionCounter,
-				);
-			const { system, messages } = list.forLlm(effectiveInstructions, instructionProviderOptions);
+			const {
+				toolMap,
+				aiTools,
+				hasTools,
+				effectiveInstructions,
+				volatileInstructions,
+				staticToolCacheName,
+			} = this.context.buildToolLoopContext(
+				staticLoopContext.aiProviderTools,
+				options?.persistence,
+				options?.executionCounter,
+			);
+			const { system, messages } = list.forLlm(
+				effectiveInstructions,
+				instructionProviderOptions,
+				volatileInstructions,
+			);
+			// Runtime breakpoints (conversation history, static tools) are per-call
+			// only — never persisted back to the message list or tool set.
+			const cached = applyRuntimeCacheBreakpoints({
+				system,
+				messages,
+				aiTools,
+				promptCaching: this.config.promptCaching,
+				modelId: this.modelIdString,
+				staticToolCacheName,
+			});
 
 			const turn = await sink.callModel({
 				model: staticLoopContext.model,
 				system,
-				messages,
+				messages: cached.messages,
 				abortSignal: abortScope.signal,
 				hasTools,
-				aiTools,
+				aiTools: cached.aiTools,
 				providerOptions: staticLoopContext.providerOptions,
 				outputSpec: staticLoopContext.outputSpec,
 				aiSdkOptions: this.buildAiSdkOptions(toolMap, options),

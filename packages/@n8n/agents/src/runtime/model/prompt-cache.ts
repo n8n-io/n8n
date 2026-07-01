@@ -1,8 +1,13 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
+import { isRecord } from '@n8n/utils/is-record';
+import type { ModelMessage, SystemModelMessage, ToolSet } from 'ai';
 import { createHash } from 'crypto';
 
 import type { PromptCachingConfig } from '../../types/sdk/agent';
 import type { JSONObject } from '../../types/utils/json';
+
+/** Anthropic hard-errors past this many `cacheControl` breakpoints in one request. */
+const MAX_ANTHROPIC_CACHE_BREAKPOINTS = 4;
 
 /** Shallow-merge provider-specific keys across provider option objects. Later objects win per key. */
 export function mergeProviderOptions(
@@ -57,6 +62,51 @@ export function createOpenAIPromptCacheKey(input: {
 	return `n8n-agent:${input.agentName}:${hash}`;
 }
 
+/** `{ anthropic: { cacheControl: { type: 'ephemeral', ttl } } }` using the configured TTL. */
+export function buildAnthropicCacheControl(
+	config: PromptCachingConfig | undefined,
+): ProviderOptions {
+	return {
+		anthropic: { cacheControl: { type: 'ephemeral', ttl: getAnthropicCacheTtl(config) } },
+	};
+}
+
+/** True when `providerOptions` carries an Anthropic `cacheControl` marker. */
+export function hasAnthropicCacheControl(providerOptions: ProviderOptions | undefined): boolean {
+	const anthropic = providerOptions?.anthropic;
+	return isRecord(anthropic) && isRecord(anthropic.cacheControl);
+}
+
+/**
+ * Count Anthropic `cacheControl` breakpoints already present across the system
+ * message(s), tool definitions, and conversation messages (message-level and
+ * per-content-part) — used to stay within Anthropic's 4-breakpoint limit before
+ * adding any runtime-generated breakpoints.
+ */
+export function countAnthropicBreakpoints(
+	system: SystemModelMessage | SystemModelMessage[],
+	aiTools: ToolSet,
+	messages: ModelMessage[],
+): number {
+	let count = 0;
+	const systemMessages = Array.isArray(system) ? system : [system];
+	for (const msg of systemMessages) {
+		if (hasAnthropicCacheControl(msg.providerOptions)) count++;
+	}
+	for (const tool of Object.values(aiTools)) {
+		if (hasAnthropicCacheControl(tool.providerOptions)) count++;
+	}
+	for (const msg of messages) {
+		if (hasAnthropicCacheControl(msg.providerOptions)) count++;
+		if (!Array.isArray(msg.content)) continue;
+		for (const part of msg.content) {
+			const partProviderOptions = 'providerOptions' in part ? part.providerOptions : undefined;
+			if (hasAnthropicCacheControl(partProviderOptions)) count++;
+		}
+	}
+	return count;
+}
+
 /** Anthropic instruction-level cache breakpoint. Undefined for non-Anthropic models or when disabled. */
 export function buildInstructionPromptCacheOptions(
 	config: PromptCachingConfig | undefined,
@@ -66,9 +116,7 @@ export function buildInstructionPromptCacheOptions(
 		return undefined;
 	}
 
-	return {
-		anthropic: { cacheControl: { type: 'ephemeral', ttl: getAnthropicCacheTtl(config) } },
-	};
+	return buildAnthropicCacheControl(config);
 }
 
 /** OpenAI call-level cache options (routing key + retention). Undefined for non-OpenAI models or when disabled. */
@@ -89,4 +137,73 @@ export function buildCallPromptCacheOptions(
 			promptCacheRetention: openaiConfig?.promptCacheRetention ?? '24h',
 		},
 	};
+}
+
+/**
+ * Anthropic-only, opt-in runtime cache breakpoints layered on top of the static
+ * instruction breakpoint:
+ *  - a moving breakpoint on the last message, so agentic tool loops and
+ *    multi-turn conversations read the cached prefix instead of reprocessing
+ *    the whole transcript every call;
+ *  - a breakpoint on `staticToolCacheName` (when the tool set is fully static),
+ *    so a large stable tool block stays cached independently of the
+ *    conversation prefix.
+ *
+ * Anthropic's `cacheControl` marker applies to the *last content part* of a
+ * message, whether set directly on that part or (as done here) on the message
+ * itself — the AI SDK's Anthropic converter falls back to message-level
+ * `providerOptions` for the last part of system/user/assistant/tool messages.
+ *
+ * Both breakpoints are added only while the running total of Anthropic
+ * `cacheControl` markers stays within the 4-breakpoint limit, so pre-existing
+ * caller breakpoints (via `.instructions()` / `Tool.providerOptions()`) are
+ * never pushed over the limit and always take priority. No-op for non-Anthropic
+ * models or when prompt caching is disabled.
+ */
+export function applyRuntimeCacheBreakpoints(params: {
+	system: SystemModelMessage | SystemModelMessage[];
+	messages: ModelMessage[];
+	aiTools: ToolSet;
+	promptCaching: PromptCachingConfig | undefined;
+	modelId: string;
+	staticToolCacheName: string | undefined;
+}): { messages: ModelMessage[]; aiTools: ToolSet } {
+	const { system, messages, aiTools, promptCaching, modelId, staticToolCacheName } = params;
+	if (
+		getModelProvider(modelId) !== 'anthropic' ||
+		!isEnabledForProvider(promptCaching, 'anthropic')
+	) {
+		return { messages, aiTools };
+	}
+
+	let used = countAnthropicBreakpoints(system, aiTools, messages);
+	const cacheControl = buildAnthropicCacheControl(promptCaching);
+
+	let nextMessages = messages;
+	if (messages.length > 0 && used < MAX_ANTHROPIC_CACHE_BREAKPOINTS) {
+		const lastIndex = messages.length - 1;
+		const lastMessage = messages[lastIndex];
+		nextMessages = [...messages];
+		nextMessages[lastIndex] = {
+			...lastMessage,
+			providerOptions: mergeProviderOptions(lastMessage.providerOptions, cacheControl),
+		};
+		used++;
+	}
+
+	let nextTools = aiTools;
+	if (staticToolCacheName && used < MAX_ANTHROPIC_CACHE_BREAKPOINTS) {
+		const staticTool = aiTools[staticToolCacheName];
+		if (staticTool) {
+			nextTools = {
+				...aiTools,
+				[staticToolCacheName]: {
+					...staticTool,
+					providerOptions: mergeProviderOptions(staticTool.providerOptions, cacheControl),
+				},
+			};
+		}
+	}
+
+	return { messages: nextMessages, aiTools: nextTools };
 }
