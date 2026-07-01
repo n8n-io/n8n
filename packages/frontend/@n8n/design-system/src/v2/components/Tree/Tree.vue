@@ -32,12 +32,23 @@ const props = withDefaults(defineProps<TreeProps>(), {
 });
 
 const emit = defineEmits<TreeEmits>();
-const slots = defineSlots<TreeSlots>();
+defineSlots<TreeSlots>();
 
-const resolvedGetKey = computed(() => props.getKey ?? ((item: TreeBranch) => item.id));
-const resolvedGetChildren = computed(
-	() => props.getChildren ?? ((item: TreeBranch) => item.children),
-);
+function resolvedGetKey(item: TreeBranch) {
+	if (props.getKey) {
+		return props.getKey(item);
+	}
+
+	return item.id;
+}
+
+function resolvedGetChildren(item: TreeBranch) {
+	if (props.getChildren) {
+		return props.getChildren(item);
+	}
+
+	return item.children;
+}
 
 function findItemsByKeys(items: TreeBranch[], keys: readonly string[]): TreeBranch[] {
 	if (keys.length === 0) return [];
@@ -47,12 +58,12 @@ function findItemsByKeys(items: TreeBranch[], keys: readonly string[]): TreeBran
 
 	function walk(nodes: readonly TreeBranch[]) {
 		for (const node of nodes) {
-			const key = resolvedGetKey.value(node);
+			const key = resolvedGetKey(node);
 			if (keySet.has(key)) {
 				result.push(node);
 			}
 
-			const children = resolvedGetChildren.value(node);
+			const children = resolvedGetChildren(node);
 			if (children?.length) {
 				walk(children);
 			}
@@ -99,7 +110,7 @@ function handleModelValueUpdate(value: TreeBranch | TreeBranch[] | undefined) {
 	const selectedItems = value === undefined ? [] : Array.isArray(value) ? value : [value];
 	emit(
 		'update:modelValue',
-		selectedItems.map((item) => resolvedGetKey.value(item)),
+		selectedItems.map((item) => resolvedGetKey(item)),
 	);
 }
 
@@ -109,31 +120,33 @@ function getDefaultNodeProps(context: TreeDefaultSlotProps): TreeDefaultNodeProp
 		return { label: item.label };
 	}
 
-	return { label: resolvedGetKey.value(item) };
+	return { label: resolvedGetKey(item) };
 }
 
-const resolvedGetNodeProps = computed(() => props.getNodeProps ?? getDefaultNodeProps);
+function resolvedGetNodeProps(context: TreeDefaultSlotProps): TreeDefaultNodeProps {
+	return (props.getNodeProps ?? getDefaultNodeProps)(context);
+}
 
 function getSharedTreeNodeProps() {
 	return {
 		disabled: props.disabled,
 		showExpandArrow: props.showExpandArrow,
-		getNodeProps: resolvedGetNodeProps.value,
+		getNodeProps: resolvedGetNodeProps,
 		node: props.node,
 	};
 }
 
-const resolvedTextContent = computed(
-	() =>
-		props.textContent ??
-		((item: TreeBranch) => {
-			if ('label' in item && typeof item.label === 'string') {
-				return item.label;
-			}
+function defaultTextContent(item: TreeBranch): string {
+	if ('label' in item && typeof item.label === 'string') {
+		return item.label;
+	}
 
-			return resolvedGetKey.value(item);
-		}),
-);
+	return resolvedGetKey(item);
+}
+
+function resolvedTextContent(item: TreeBranch): string {
+	return (props.textContent ?? defaultTextContent)(item);
+}
 
 function isTreeBranch(value: unknown): value is TreeBranch {
 	return (
@@ -146,17 +159,13 @@ function isTreeBranch(value: unknown): value is TreeBranch {
 	);
 }
 
-const virtualTextContent = computed(() => {
-	const resolve = resolvedTextContent.value;
+function virtualTextContent(item: Record<string, unknown>): string {
+	if (!isTreeBranch(item)) {
+		return '';
+	}
 
-	return (item: Record<string, unknown>) => {
-		if (!isTreeBranch(item)) {
-			return '';
-		}
-
-		return resolve(item);
-	};
-});
+	return resolvedTextContent(item);
+}
 
 function mapVirtualFlattenedItem(
 	item: FlattenedItem<Record<string, unknown>>,
@@ -203,16 +212,16 @@ function mapVirtualFlattenedItem(
 				:flattened-item="mapVirtualFlattenedItem(flattenedItem)"
 				v-bind="getSharedTreeNodeProps()"
 			>
-				<template v-if="slots.default" #default="slotProps">
+				<template v-if="$slots.default" #default="slotProps">
 					<slot v-bind="slotProps" />
 				</template>
-				<template v-if="slots.icon" #icon="iconProps">
+				<template v-if="$slots.icon" #icon="iconProps">
 					<slot name="icon" v-bind="iconProps" />
 				</template>
-				<template v-if="slots.label" #label="labelProps">
+				<template v-if="$slots.label" #label="labelProps">
 					<slot name="label" v-bind="labelProps" />
 				</template>
-				<template v-if="slots.toggle" #toggle="toggleProps">
+				<template v-if="$slots.toggle" #toggle="toggleProps">
 					<slot name="toggle" v-bind="toggleProps" />
 				</template>
 			</TreeNode>
@@ -225,16 +234,16 @@ function mapVirtualFlattenedItem(
 				:flattened-item="flattenedItem"
 				v-bind="getSharedTreeNodeProps()"
 			>
-				<template v-if="slots.default" #default="slotProps">
+				<template v-if="$slots.default" #default="slotProps">
 					<slot v-bind="slotProps" />
 				</template>
-				<template v-if="slots.icon" #icon="iconProps">
+				<template v-if="$slots.icon" #icon="iconProps">
 					<slot name="icon" v-bind="iconProps" />
 				</template>
-				<template v-if="slots.label" #label="labelProps">
+				<template v-if="$slots.label" #label="labelProps">
 					<slot name="label" v-bind="labelProps" />
 				</template>
-				<template v-if="slots.toggle" #toggle="toggleProps">
+				<template v-if="$slots.toggle" #toggle="toggleProps">
 					<slot name="toggle" v-bind="toggleProps" />
 				</template>
 			</TreeNode>

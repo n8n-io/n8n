@@ -1,13 +1,10 @@
 <script setup lang="ts">
 import { TreeItem as RekaTreeItem } from 'reka-ui';
 import type { Component } from 'vue';
-import { computed, useCssModule } from 'vue';
+import { computed } from 'vue';
 
 import type { TreeDefaultSlotProps, TreeGetNodeProps, TreeNodeDefaultSlots } from './Tree.types';
-import treeVariables from './Tree.variables.module.css';
 import TreeNodeDefault from './TreeNodeDefault.vue';
-
-const $style = useCssModule();
 
 const props = withDefaults(
 	defineProps<{
@@ -66,6 +63,7 @@ function getDefaultNodeBindings(
 		isExpanded,
 		hasChildren: props.flattenedItem.hasChildren,
 		showExpandArrow: props.showExpandArrow,
+		indentLevel: indentLevel.value,
 		handleToggle,
 		handleSelect,
 	};
@@ -85,96 +83,40 @@ function getCustomNodeProps(
 		disabled: isItemDisabled.value,
 		isSelected,
 		showExpandArrow: props.showExpandArrow,
+		indentLevel: indentLevel.value,
 	};
 }
 </script>
 
 <template>
 	<RekaTreeItem
+		as-child
 		v-bind="flattenedItem.bind"
 		:disabled="isItemDisabled"
 		v-slot="{ handleToggle, handleSelect, isExpanded, isSelected }"
 	>
-		<div
-			:class="[treeVariables.root, $style.treeItemRow]"
-			:style="{ '--tree-indent': indentLevel }"
-		>
-			<template v-if="indentLevel > 0">
-				<div
-					v-for="n in indentLevel"
-					:key="n"
-					:class="$style.trackline"
-					:style="{ '--indent': n - 1 }"
-					aria-hidden="true"
-				/>
-			</template>
-
-			<div
-				:class="[$style.treeItemContent]"
-				data-test-id="tree-node"
-				:data-selected="isSelected ? '' : undefined"
+		<slot v-bind="buildNodeContext(handleToggle, handleSelect, isExpanded)">
+			<component
+				v-if="node"
+				:is="node"
+				v-bind="getCustomNodeProps(handleToggle, handleSelect, isExpanded, isSelected)"
+			/>
+			<TreeNodeDefault
+				v-else
+				v-bind="getDefaultNodeBindings(handleToggle, handleSelect, isExpanded, isSelected)"
 				:data-disabled="isItemDisabled ? '' : undefined"
+				:data-selected="isSelected ? '' : undefined"
 			>
-				<slot v-bind="buildNodeContext(handleToggle, handleSelect, isExpanded)">
-					<component
-						v-if="node"
-						:is="node"
-						v-bind="getCustomNodeProps(handleToggle, handleSelect, isExpanded, isSelected)"
-					/>
-					<TreeNodeDefault
-						v-else
-						v-bind="getDefaultNodeBindings(handleToggle, handleSelect, isExpanded, isSelected)"
-					>
-						<template v-if="slots.icon" #icon="iconProps">
-							<slot name="icon" v-bind="iconProps" />
-						</template>
-						<template v-if="slots.label" #label="labelProps">
-							<slot name="label" v-bind="labelProps" />
-						</template>
-						<template v-if="slots.toggle" #toggle="toggleProps">
-							<slot name="toggle" v-bind="toggleProps" />
-						</template>
-					</TreeNodeDefault>
-				</slot>
-			</div>
-		</div>
+				<template v-if="slots.icon" #icon="iconProps">
+					<slot name="icon" v-bind="iconProps" />
+				</template>
+				<template v-if="slots.label" #label="labelProps">
+					<slot name="label" v-bind="labelProps" />
+				</template>
+				<template v-if="slots.toggle" #toggle="toggleProps">
+					<slot name="toggle" v-bind="toggleProps" />
+				</template>
+			</TreeNodeDefault>
+		</slot>
 	</RekaTreeItem>
 </template>
-
-<style module>
-.treeItemRow {
-	position: relative;
-	width: 100%;
-}
-
-.trackline {
-	position: absolute;
-	top: 0;
-	bottom: 0;
-	left: calc(
-		var(--tree-item-padding-inline) + var(--tree-indent-unit) * var(--indent) +
-			var(--tree-icon-size) / 2
-	);
-	z-index: 1;
-	width: 1px;
-	background-color: var(--border-color--subtle);
-	pointer-events: none;
-}
-
-.treeItemContent {
-	position: relative;
-	z-index: 0;
-	width: 100%;
-	min-width: 0;
-}
-
-:global([role='treeitem']) {
-	display: block;
-	width: 100%;
-	list-style: none;
-	outline: none;
-	margin: 0;
-	padding: 0;
-	margin-bottom: var(--tree-item-gap);
-}
-</style>

@@ -1,6 +1,5 @@
 .root {
 	--tree-item-height: var(--spacing--xl);
-	--tree-item-row-size: calc(var(--tree-item-height) + var(--tree-item-gap));
 	--tree-icon-size: var(--spacing--lg);
 	--tree-item-padding-block: var(--spacing--4xs);
 	--tree-item-padding-inline: var(--tree-item-padding-block);

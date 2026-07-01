@@ -136,9 +136,18 @@ export const Default: Story = {
 			return { args, treeVariables, noop };
 		},
 		template: `
-			<div role="treeitem" tabindex="0" :class="treeVariables.root" style="width: 320px;">
-				<TreeNodeDefault v-bind="args" :handle-toggle="noop" :handle-select="noop" />
-			</div>
+			<ul
+				role="tree"
+				:class="treeVariables.root"
+				style="width: 320px; list-style: none; padding: 0; margin: 0;"
+			>
+				<TreeNodeDefault
+					v-bind="args"
+					tabindex="0"
+					:handle-toggle="noop"
+					:handle-select="noop"
+				/>
+			</ul>
 		`,
 	}),
 };
@@ -173,18 +182,32 @@ export const Variants: Story = {
 					<span style="font-size: var(--font-size--2xs); color: var(--color--text--tint-1);">
 						{{ variant.name }}
 					</span>
-					<div role="treeitem" tabindex="0" :class="treeVariables.root" style="width: 320px;">
-						<TreeNodeDefault v-bind="variant.props" :handle-toggle="noop" :handle-select="noop" />
-					</div>
+					<ul
+						role="tree"
+						:class="treeVariables.root"
+						style="width: 320px; list-style: none; padding: 0; margin: 0;"
+					>
+						<TreeNodeDefault
+							v-bind="variant.props"
+							tabindex="0"
+							:handle-toggle="noop"
+							:handle-select="noop"
+						/>
+					</ul>
 				</div>
 
 				<div style="display: flex; flex-direction: column; gap: var(--spacing--4xs);">
 					<span style="font-size: var(--font-size--2xs); color: var(--color--text--tint-1);">
 						Checkbox icon (interactive)
 					</span>
-					<div role="treeitem" tabindex="0" :class="treeVariables.root" style="width: 320px;">
+					<ul
+						role="tree"
+						:class="treeVariables.root"
+						style="width: 320px; list-style: none; padding: 0; margin: 0;"
+					>
 						<TreeNodeDefault
 							label="Workflows"
+							tabindex="0"
 							:is-expanded="false"
 							:is-selected="checkboxSelected"
 							:has-children="true"
@@ -202,16 +225,21 @@ export const Variants: Story = {
 								</span>
 							</template>
 						</TreeNodeDefault>
-					</div>
+					</ul>
 				</div>
 
 				<div style="display: flex; flex-direction: column; gap: var(--spacing--4xs);">
 					<span style="font-size: var(--font-size--2xs); color: var(--color--text--tint-1);">
 						Checkbox icon (disabled)
 					</span>
-					<div role="treeitem" tabindex="0" :class="treeVariables.root" style="width: 320px;">
+					<ul
+						role="tree"
+						:class="treeVariables.root"
+						style="width: 320px; list-style: none; padding: 0; margin: 0;"
+					>
 						<TreeNodeDefault
 							label="Credentials"
+							tabindex="0"
 							disabled
 							:is-expanded="false"
 							:is-selected="checkboxDisabledSelected"
@@ -225,7 +253,7 @@ export const Variants: Story = {
 								</span>
 							</template>
 						</TreeNodeDefault>
-					</div>
+					</ul>
 				</div>
 			</div>
 		`,

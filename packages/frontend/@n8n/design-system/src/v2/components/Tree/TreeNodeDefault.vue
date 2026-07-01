@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, useCssModule } from 'vue';
+import { useCssModule } from 'vue';
 
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 
 import type { TreeNodeDefaultSlots } from './Tree.types';
+import treeVariables from './Tree.variables.module.css';
 
 const $style = useCssModule();
 
@@ -17,39 +18,50 @@ withDefaults(
 		isExpanded: boolean;
 		isSelected: boolean;
 		hasChildren: boolean;
+		indentLevel?: number;
 		handleToggle: () => void;
 		handleSelect: () => void;
 	}>(),
 	{
 		showExpandArrow: true,
+		indentLevel: 0,
 	},
 );
 
 defineSlots<TreeNodeDefaultSlots>();
-
-const iconUi = computed(() => ({ class: $style.treeItemIcon }));
-const labelUi = computed(() => ({ class: $style.treeItemLabel }));
-const toggleUi = computed(() => ({
-	class: $style.treeItemToggle,
-	iconClass: $style.treeItemToggleIcon,
-	iconExpandedClass: $style.treeItemToggleIconExpanded,
-}));
 </script>
 
 <template>
-	<div
+	<li
+		data-test-id="tree-node"
 		:class="[
+			treeVariables.root,
 			$style.treeItem,
 			{
 				[$style.treeItemSelected]: isSelected,
 				[$style.treeItemDisabled]: disabled,
 			},
 		]"
-		:data-disabled="disabled ? '' : undefined"
+		:style="{ '--tree-indent': indentLevel }"
 		:data-has-toggle="showExpandArrow && hasChildren ? '' : undefined"
-		@click.stop="!disabled && handleSelect()"
 	>
-		<slot name="icon" :icon="icon" :disabled="disabled" :is-selected="isSelected" :ui="iconUi">
+		<template v-if="indentLevel > 0">
+			<div
+				v-for="n in indentLevel"
+				:key="n"
+				:class="$style.trackline"
+				:style="{ '--indent': n - 1 }"
+				aria-hidden="true"
+			/>
+		</template>
+
+		<slot
+			name="icon"
+			:icon="icon"
+			:disabled="disabled"
+			:is-selected="isSelected"
+			:ui="{ class: $style.treeItemIcon }"
+		>
 			<span v-if="icon" :class="$style.treeItemIcon" data-test-id="tree-node-icon">
 				<Icon :icon="icon" size="small" />
 			</span>
@@ -60,7 +72,7 @@ const toggleUi = computed(() => ({
 			:label="label"
 			:disabled="disabled"
 			:handle-select="handleSelect"
-			:ui="labelUi"
+			:ui="{ class: $style.treeItemLabel }"
 		>
 			<span
 				:class="$style.treeItemLabel"
@@ -78,10 +90,15 @@ const toggleUi = computed(() => ({
 			:disabled="disabled"
 			:is-expanded="isExpanded"
 			:handle-toggle="handleToggle"
-			:ui="toggleUi"
+			:ui="{
+				class: $style.treeItemToggle,
+				iconClass: $style.treeItemToggleIcon,
+				iconExpandedClass: $style.treeItemToggleIconExpanded,
+			}"
 		>
 			<button
 				type="button"
+				tabindex="-1"
 				:class="$style.treeItemToggle"
 				:aria-label="isExpanded ? `Collapse ${label}` : `Expand ${label}`"
 				:aria-expanded="isExpanded"
@@ -92,14 +109,17 @@ const toggleUi = computed(() => ({
 				<Icon
 					icon="chevron-right"
 					size="small"
+					aria-hidden="true"
 					:class="[$style.treeItemToggleIcon, { [$style.treeItemToggleIconExpanded]: isExpanded }]"
 				/>
 			</button>
 		</slot>
-	</div>
+	</li>
 </template>
 
-<style module>
+<style lang="scss" module>
+@use '@n8n/design-system/css/mixins/focus';
+
 .treeItem {
 	display: flex;
 	align-items: center;
@@ -112,9 +132,10 @@ const toggleUi = computed(() => ({
 		var(--tree-item-padding-inline) + var(--tree-indent-unit) * var(--tree-indent, 0)
 	);
 	border-radius: var(--radius);
+	outline: none;
 	cursor: pointer;
 	user-select: none;
-	color: var(--color--text--shade-1);
+	color: var(--text-color);
 	background-color: transparent;
 	transition: background-color 0.15s ease;
 
@@ -123,38 +144,60 @@ const toggleUi = computed(() => ({
 	}
 
 	&:hover:not([data-disabled]) {
-		background-color: var(--color--background--light-2);
+		background-color: var(--background--hover);
 	}
 
 	&:active:not([data-disabled]) {
-		background-color: var(--color--background--light-3);
+		background-color: var(--background--active);
 	}
 
-	:global([role='treeitem']:focus-visible) & {
-		background-color: var(--color--background--light-2);
-		outline: var(--focus--border-width) solid var(--focus--outline-color);
-		outline-offset: 0;
+	&:focus-visible:not([data-disabled]) {
+		background-color: var(--background--hover);
+		@include focus.focus-ring;
+	}
+
+	&:focus-visible[data-selected]:not([data-disabled]) {
+		background-color: var(--table--row--color--background--hover);
 	}
 }
 
 .treeItemSelected {
-	color: var(--color--primary);
-	background-color: var(--color--background--light-1);
+	color: var(--button--color--text--highlight-fill--hover-active-focus);
+	background-color: var(--table--row--color--background--hover);
 
 	&:hover:not([data-disabled]),
 	&:active:not([data-disabled]),
-	:global([role='treeitem']:focus-visible) & {
-		background-color: var(--color--background--light-1);
+	&:focus-visible:not([data-disabled]) {
+		background-color: var(--table--row--color--background--hover);
 	}
 }
 
 .treeItemSelected .treeItemIcon {
-	color: var(--color--primary);
+	color: var(--button--color--text--highlight-fill--hover-active-focus);
 }
 
 .treeItemDisabled {
 	cursor: not-allowed;
-	opacity: 0.5;
+	color: var(--text-color--disabled);
+}
+
+.treeItemDisabled .treeItemIcon,
+.treeItemDisabled .treeItemToggle {
+	color: var(--text-color--disabled);
+}
+
+.trackline {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: calc(
+		var(--tree-item-padding-inline) + var(--tree-indent-unit) * var(--indent) +
+			var(--tree-icon-size) / 2
+	);
+	z-index: 1;
+	width: 1px;
+	background-color: var(--border-color--subtle);
+	pointer-events: none;
 }
 
 .treeItemIcon {
@@ -165,7 +208,7 @@ const toggleUi = computed(() => ({
 	width: var(--tree-icon-size);
 	height: var(--tree-icon-size);
 	border-radius: var(--radius--sm);
-	color: var(--color--text--tint-1);
+	color: var(--icon-color);
 }
 
 .treeItemToggle {
@@ -174,9 +217,10 @@ const toggleUi = computed(() => ({
 	align-items: center;
 	justify-content: center;
 	margin-left: auto;
+	padding: 0;
 	border: none;
-	background: transparent;
-	color: var(--color--text--tint-1);
+	background: none;
+	color: var(--icon-color);
 	cursor: pointer;
 
 	&:disabled {
