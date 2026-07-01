@@ -256,9 +256,9 @@ export class GcpSecretsManager extends SecretsProvider {
 		error: unknown,
 		extra: LogContext = {},
 	): void {
-		const settingsContext: LogContext = {};
+		const context: LogContext = this.gcpErrorContext(error);
 		if (this.settings?.projectId) {
-			settingsContext.projectId = this.settings.projectId;
+			context.projectId = this.settings.projectId;
 		}
 
 		logProviderFailure({
@@ -268,9 +268,10 @@ export class GcpSecretsManager extends SecretsProvider {
 			providerDisplayName: this.displayName,
 			operation,
 			error,
-			errorContext: this.gcpErrorContext(error),
-			settingsContext,
-			extra,
+			context: {
+				...context,
+				...extra,
+			},
 		});
 	}
 }

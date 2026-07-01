@@ -253,9 +253,11 @@ export class AzureKeyVault extends SecretsProvider {
 			providerDisplayName: this.displayName,
 			operation,
 			error,
-			errorContext: this.azureErrorContext(error),
-			settingsContext: { vaultName: this.settings.vaultName },
-			extra,
+			context: {
+				...this.azureErrorContext(error),
+				vaultName: this.settings.vaultName,
+				...extra,
+			},
 		});
 	}
 }

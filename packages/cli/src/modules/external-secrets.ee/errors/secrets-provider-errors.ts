@@ -87,9 +87,7 @@ type LogProviderFailureParams = {
 	providerDisplayName: string;
 	operation: SecretsProviderOperation;
 	error: unknown;
-	errorContext?: LogContext;
-	settingsContext?: LogContext;
-	extra?: LogContext;
+	context?: LogContext;
 };
 
 export function logProviderFailure({
@@ -99,17 +97,13 @@ export function logProviderFailure({
 	providerDisplayName,
 	operation,
 	error,
-	errorContext = {},
-	settingsContext = {},
-	extra = {},
+	context = {},
 }: LogProviderFailureParams): void {
 	logger.warn(message, {
 		providerName,
 		providerDisplayName,
 		operation,
 		errorName: error instanceof Error ? error.name : undefined,
-		...errorContext,
-		...settingsContext,
-		...extra,
+		...context,
 	});
 }

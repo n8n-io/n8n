@@ -333,12 +333,12 @@ export class AwsSecretsManager extends SecretsProvider {
 		error: unknown,
 		extra: LogContext = {},
 	): void {
-		const settingsContext: LogContext = {};
+		const context: LogContext = this.awsErrorContext(error);
 		if (this.settings?.region) {
-			settingsContext.region = this.settings.region;
+			context.region = this.settings.region;
 		}
 		if (this.settings?.authMethod) {
-			settingsContext.authMethod = this.settings.authMethod;
+			context.authMethod = this.settings.authMethod;
 		}
 
 		logProviderFailure({
@@ -348,9 +348,10 @@ export class AwsSecretsManager extends SecretsProvider {
 			providerDisplayName: this.displayName,
 			operation,
 			error,
-			errorContext: this.awsErrorContext(error),
-			settingsContext,
-			extra,
+			context: {
+				...context,
+				...extra,
+			},
 		});
 	}
 }

@@ -748,8 +748,10 @@ export class VaultProvider extends SecretsProvider {
 			providerDisplayName: this.displayName,
 			operation,
 			error,
-			errorContext: this.vaultErrorContext(error),
-			extra,
+			context: {
+				...this.vaultErrorContext(error),
+				...extra,
+			},
 		});
 	}
 }

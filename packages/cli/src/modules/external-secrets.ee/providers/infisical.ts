@@ -425,14 +425,14 @@ export class InfisicalProvider extends SecretsProvider {
 		extra: LogContext = {},
 		settingsScope: 'connect' | 'test' | 'update' | 'tokenRefresh' = 'connect',
 	): void {
-		const settingsContext: LogContext = {};
+		const context: LogContext = this.infisicalErrorContext(error);
 		if (this.settings) {
 			const { siteURL, projectId, authMethod, environment, secretPath } = this.settings;
-			Object.assign(settingsContext, { siteURL, projectId });
+			Object.assign(context, { siteURL, projectId });
 			if (settingsScope === 'connect' || settingsScope === 'tokenRefresh') {
-				settingsContext.authMethod = authMethod;
+				context.authMethod = authMethod;
 			} else if (settingsScope === 'update') {
-				Object.assign(settingsContext, { environment, secretPath });
+				Object.assign(context, { environment, secretPath });
 			}
 		}
 
@@ -443,9 +443,10 @@ export class InfisicalProvider extends SecretsProvider {
 			providerDisplayName: this.displayName,
 			operation,
 			error,
-			errorContext: this.infisicalErrorContext(error),
-			settingsContext,
-			extra,
+			context: {
+				...context,
+				...extra,
+			},
 		});
 	}
 }

@@ -197,9 +197,9 @@ export class OnePasswordProvider extends SecretsProvider {
 		error: unknown,
 		extra: LogContext = {},
 	): void {
-		const settingsContext: LogContext = {};
+		const context: LogContext = this.onePasswordErrorContext(error);
 		if (this.settings?.serverUrl) {
-			settingsContext.serverUrl = this.settings.serverUrl;
+			context.serverUrl = this.settings.serverUrl;
 		}
 
 		logProviderFailure({
@@ -209,9 +209,10 @@ export class OnePasswordProvider extends SecretsProvider {
 			providerDisplayName: this.displayName,
 			operation,
 			error,
-			errorContext: this.onePasswordErrorContext(error),
-			settingsContext,
-			extra,
+			context: {
+				...context,
+				...extra,
+			},
 		});
 	}
 }
