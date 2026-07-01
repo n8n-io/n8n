@@ -1,7 +1,7 @@
 import { type Project, type ProjectRepository, type User, WorkflowEntity } from '@n8n/db';
 import z from 'zod';
 
-import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check';
+import { detectInvalidAiToolSource } from './connection-structure-check';
 import { MCP_CREATE_WORKFLOW_FROM_CODE_TOOL, CODE_BUILDER_VALIDATE_TOOL } from './constants';
 import { validateWorkflowCredentialReferences } from './credential-validation';
 import { autoPopulateNodeCredentials, stripNullCredentialStubs } from './credentials-auto-assign';
@@ -9,6 +9,7 @@ import { validateDataTableReferencesForWorkflow } from './data-table-validation'
 import { sanitizeSkillsUsed } from './skills-used';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
+import { errorResult, successResult } from '../tool-response';
 import { getSdkReferenceHint } from '../workflow-validation.utils';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
@@ -70,18 +71,14 @@ const inputSchema = {
 		),
 } satisfies z.ZodRawShape;
 
-// The MCP SDK publishes this schema with `additionalProperties: false` and
-// validates `structuredContent` against it on every response. Success returns
-// the full payload below; the error path returns only `{ error }` (optionally
-// with `hint`). To keep both shapes valid under strict clients, the success
-// fields are optional and `error` is a declared, optional property — otherwise
-// a thrown handler error surfaces as an opaque `-32602` schema mismatch
-// instead of the real message.
+// Strict success schema: every required field below is present on the success
+// path. Failures go through `errorResult`, which omits `structuredContent`, so
+// this schema never has to accommodate an error shape.
 const outputSchema = {
-	workflowId: z.string().optional().describe('The ID of the created workflow'),
-	name: z.string().optional().describe('The name of the created workflow'),
-	nodeCount: z.number().optional().describe('The number of nodes in the workflow'),
-	url: z.string().optional().describe('The URL to open the workflow in n8n'),
+	workflowId: z.string().describe('The ID of the created workflow'),
+	name: z.string().describe('The name of the created workflow'),
+	nodeCount: z.number().describe('The number of nodes in the workflow'),
+	url: z.string().describe('The URL to open the workflow in n8n'),
 	autoAssignedCredentials: z
 		.array(
 			z.object({
@@ -90,7 +87,6 @@ const outputSchema = {
 				credentialType: z.string().describe('The credential type that was auto-assigned'),
 			}),
 		)
-		.optional()
 		.describe('List of credentials that were automatically assigned to nodes'),
 	targetProject: z
 		.object({
@@ -100,19 +96,12 @@ const outputSchema = {
 				.enum(['personal', 'team'])
 				.describe('Whether the workflow landed in a personal or team project'),
 		})
-		.optional()
 		.describe('The project the workflow was actually created in.'),
 	note: z
 		.string()
 		.optional()
 		.describe(
 			'Additional notes about the workflow creation, such as any nodes that were skipped during credential auto-assignment.',
-		),
-	hint: z
-		.string()
-		.optional()
-		.describe(
-			'Actionable hint for recovering from the error. When present, follow the suggested action before retrying.',
 		),
 	warnings: z
 		.array(
@@ -130,10 +119,6 @@ const outputSchema = {
 		.describe(
 			'Validation warnings emitted while parsing the submitted code. Surface these to the user so they can correct the workflow.',
 		),
-	error: z
-		.string()
-		.optional()
-		.describe('Error message explaining why the creation failed. Present only on failure.'),
 } satisfies z.ZodRawShape;
 
 /**
@@ -196,11 +181,7 @@ export const createCreateWorkflowFromCodeTool = (
 			const errorMessage = 'projectId is required when folderId is provided';
 			telemetryPayload.results = { success: false, error: errorMessage };
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
-			return {
-				content: [{ type: 'text', text: JSON.stringify({ error: errorMessage }, null, 2) }],
-				structuredContent: { error: errorMessage },
-				isError: true,
-			};
+			return errorResult(errorMessage);
 		}
 
 		let newWorkflow: WorkflowEntity | undefined;
@@ -222,14 +203,13 @@ export const createCreateWorkflowFromCodeTool = (
 			const { description: workflowDescription, truncated: descriptionTruncated } =
 				normalizeWorkflowDescription(description);
 
-			const invalidToolSourceResponse = buildInvalidAiToolSourceErrorResponse(
+			const invalidToolSourceError = detectInvalidAiToolSource(
 				workflowJson,
 				nodeTypes,
-				(errorMessage) => ({ error: errorMessage }),
 				telemetryPayload,
 				telemetry,
 			);
-			if (invalidToolSourceResponse) return invalidToolSourceResponse;
+			if (invalidToolSourceError) return errorResult(invalidToolSourceError);
 
 			newWorkflow = new WorkflowEntity();
 			Object.assign(newWorkflow, {
@@ -316,7 +296,7 @@ export const createCreateWorkflowFromCodeTool = (
 					: undefined,
 			].filter((note): note is string => note !== undefined);
 
-			const baseOutput = {
+			return successResult(outputSchema, {
 				workflowId: savedWorkflow.id,
 				name: savedWorkflow.name,
 				nodeCount: savedWorkflow.nodes.length,
@@ -328,14 +308,8 @@ export const createCreateWorkflowFromCodeTool = (
 					type: landingProject.type,
 				},
 				note: notes.length ? notes.join(' ') : undefined,
-			};
-			const output =
-				result.warnings.length > 0 ? { ...baseOutput, warnings: result.warnings } : baseOutput;
-
-			return {
-				content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],
-				structuredContent: output,
-			};
+				...(result.warnings.length > 0 ? { warnings: result.warnings } : {}),
+			});
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
 
@@ -368,7 +342,7 @@ export const createCreateWorkflowFromCodeTool = (
 					};
 					telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-					const output = {
+					return successResult(outputSchema, {
 						workflowId: persisted.id,
 						name: persisted.name,
 						nodeCount: persisted.nodes.length,
@@ -380,12 +354,7 @@ export const createCreateWorkflowFromCodeTool = (
 							type: landingProject.type,
 						},
 						note: `Workflow was created successfully, but a post-save operation failed: ${errorMessage}`,
-					};
-
-					return {
-						content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],
-						structuredContent: output,
-					};
+					});
 				}
 			}
 
@@ -398,13 +367,8 @@ export const createCreateWorkflowFromCodeTool = (
 			const hint = getSdkReferenceHint(error, {
 				afterReference: `Rewrite the code, call ${CODE_BUILDER_VALIDATE_TOOL.toolName} until it returns valid=true, then call ${MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName} again.`,
 			});
-			const output = { error: errorMessage, ...(hint ? { hint } : {}) };
 
-			return {
-				content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],
-				structuredContent: output,
-				isError: true,
-			};
+			return errorResult(errorMessage, hint ? { hint } : undefined);
 		}
 	},
 });

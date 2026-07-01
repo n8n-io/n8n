@@ -787,11 +787,10 @@ describe('test-workflow MCP tool', () => {
 				{} as any,
 			);
 
-			expect(result.structuredContent).toMatchObject({
-				executionId: 'exec-timeout',
-				status: 'error',
-				error: expect.stringContaining('timed out'),
-			});
+			expect(result.isError).toBe(true);
+			expect(result.structuredContent).toBeUndefined();
+			const text = (result.content?.[0] as { text?: string })?.text ?? '';
+			expect(text).toContain('timed out');
 		});
 
 		test('WorkflowAccessError returns error with null executionId', async () => {
@@ -816,11 +815,10 @@ describe('test-workflow MCP tool', () => {
 				{} as any,
 			);
 
-			expect(result.structuredContent).toMatchObject({
-				executionId: null,
-				status: 'error',
-				error: expect.stringContaining("not found or you don't have permission"),
-			});
+			expect(result.isError).toBe(true);
+			expect(result.structuredContent).toBeUndefined();
+			const text = (result.content?.[0] as { text?: string })?.text ?? '';
+			expect(text).toContain("not found or you don't have permission");
 		});
 	});
 

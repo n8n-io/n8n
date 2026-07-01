@@ -6,6 +6,18 @@ import type { Mcpauth_type } from '@/services/oauth-token-verifier-proxy.service
 
 import type { SUPPORTED_PRODUCTION_MCP_TRIGGERS } from './mcp.constants';
 import type { WorkflowDetailsOutputSchema } from './tools/get-workflow-details.tool';
+import type { McpToolResult } from './tools/tool-response';
+
+/**
+ * A tool handler with the SDK's argument inference but a return type locked to
+ * {@link McpToolResult}, which only `successResult`/`errorResult` can produce.
+ * This forces every tool to build its envelope through those helpers. The
+ * branded result is a subtype of the SDK's `CallToolResult`, so it stays
+ * assignable to `ToolCallback` when passed to `server.registerTool`.
+ */
+export type McpToolHandler<InputArgs extends z.ZodRawShape = z.ZodRawShape> = (
+	...args: Parameters<ToolCallback<InputArgs>>
+) => McpToolResult | Promise<McpToolResult>;
 
 export type ToolDefinition<InputArgs extends z.ZodRawShape = z.ZodRawShape> = {
 	name: string;
@@ -21,7 +33,7 @@ export type ToolDefinition<InputArgs extends z.ZodRawShape = z.ZodRawShape> = {
 			openWorldHint?: boolean;
 		};
 	};
-	handler: ToolCallback<InputArgs>;
+	handler: McpToolHandler<InputArgs>;
 };
 
 // Shared MCP tool types

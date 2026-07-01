@@ -84,7 +84,9 @@ describe('create_data_table MCP tool', () => {
 		});
 
 		expect(result.isError).toBe(true);
-		expect(result.structuredContent).toEqual({ error: 'Duplicate name' });
+		expect(result.structuredContent).toBeUndefined();
+		const text = (result.content?.[0] as { text?: string })?.text ?? '';
+		expect(text).toContain('Duplicate name');
 	});
 
 	test('tracks telemetry on success', async () => {

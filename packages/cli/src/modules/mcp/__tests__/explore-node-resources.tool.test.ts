@@ -83,7 +83,7 @@ describe('explore-node-resources MCP tool', () => {
 			builderHint: 'Pick a public channel',
 		});
 		expect(result.content).toEqual([
-			{ type: 'text', text: JSON.stringify(result.structuredContent) },
+			{ type: 'text', text: JSON.stringify(result.structuredContent, null, 2) },
 		]);
 	});
 

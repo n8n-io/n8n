@@ -10,6 +10,7 @@ import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import { WorkflowAccessError } from '../mcp.errors';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
 import { createLimitSchema } from './schemas';
+import { errorResult, successResult } from './tool-response';
 import { getMcpWorkflow } from './workflow-validation.utils';
 
 const MAX_RESULTS = 50;
@@ -42,7 +43,6 @@ const outputSchema = {
 		.array(versionSummarySchema)
 		.describe('Versions ordered newest first. Older versions may be pruned by retention settings.'),
 	count: z.number().describe('Number of versions returned in this page'),
-	error: z.string().optional(),
 } satisfies z.ZodRawShape;
 
 type GetWorkflowHistoryParams = { workflowId: string; limit?: number; offset?: number };
@@ -51,7 +51,7 @@ type GetWorkflowHistoryResult = {
 	versions: Array<z.infer<typeof versionSummarySchema>>;
 	count: number;
 };
-type GetWorkflowHistoryOutput = GetWorkflowHistoryResult & { success: boolean; error?: string };
+type GetWorkflowHistoryOutput = GetWorkflowHistoryResult & { success: boolean };
 
 /**
  * Creates the MCP tool definition for listing a workflow's version history
@@ -101,21 +101,10 @@ export const createGetWorkflowHistoryTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			return {
-				content: [{ type: 'text', text: JSON.stringify(output) }],
-				structuredContent: output,
-			};
+			return successResult(outputSchema, output);
 		} catch (er) {
 			const error = ensureError(er);
 			const isAccessError = error instanceof WorkflowAccessError;
-
-			const output: GetWorkflowHistoryOutput = {
-				success: false,
-				workflowId,
-				versions: [],
-				count: 0,
-				error: error.message,
-			};
 
 			telemetryPayload.results = {
 				success: false,
@@ -124,11 +113,7 @@ export const createGetWorkflowHistoryTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			return {
-				content: [{ type: 'text', text: JSON.stringify(output) }],
-				structuredContent: output,
-				isError: true,
-			};
+			return errorResult(error.message);
 		}
 	},
 });

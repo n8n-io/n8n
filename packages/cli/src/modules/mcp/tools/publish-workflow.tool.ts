@@ -1,5 +1,5 @@
 import type { User } from '@n8n/db';
-import { jsonStringify, ensureError } from 'n8n-workflow';
+import { ensureError } from 'n8n-workflow';
 import z from 'zod';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
@@ -10,6 +10,7 @@ import type { WorkflowService } from '@/workflows/workflow.service';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import { WorkflowAccessError } from '../mcp.errors';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
+import { errorResult, successResult } from './tool-response';
 import { getMcpWorkflow } from './workflow-validation.utils';
 
 const inputSchema = z.object({
@@ -22,18 +23,11 @@ const inputSchema = z.object({
 		),
 });
 
-type PublishWorkflowOutput = {
-	success: boolean;
-	workflowId: string;
-	activeVersionId: string | null;
-	error?: string;
-};
-
+// Strict success shape; failures use errorResult instead of structuredContent.
 const outputSchema = {
 	success: z.boolean(),
 	workflowId: z.string(),
 	activeVersionId: z.string().nullable(),
-	error: z.string().optional(),
 } satisfies z.ZodRawShape;
 
 export const createPublishWorkflowTool = (
@@ -76,12 +70,6 @@ export const createPublishWorkflowTool = (
 
 			void collaborationService.broadcastWorkflowUpdate(workflowId, user.id).catch(() => {});
 
-			const output: PublishWorkflowOutput = {
-				success: true,
-				workflowId: activatedWorkflow.id,
-				activeVersionId: activatedWorkflow.activeVersionId,
-			};
-
 			telemetryPayload.results = {
 				success: true,
 				data: {
@@ -91,20 +79,14 @@ export const createPublishWorkflowTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			return {
-				content: [{ type: 'text', text: jsonStringify(output) }],
-				structuredContent: output,
-			};
+			return successResult(outputSchema, {
+				success: true,
+				workflowId: activatedWorkflow.id,
+				activeVersionId: activatedWorkflow.activeVersionId,
+			});
 		} catch (er) {
 			const error = ensureError(er);
 			const isAccessError = error instanceof WorkflowAccessError;
-
-			const output: PublishWorkflowOutput = {
-				success: false,
-				workflowId,
-				activeVersionId: null,
-				error: error.message,
-			};
 
 			telemetryPayload.results = {
 				success: false,
@@ -113,10 +95,7 @@ export const createPublishWorkflowTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			return {
-				content: [{ type: 'text', text: jsonStringify(output) }],
-				structuredContent: output,
-			};
+			return errorResult(error.message);
 		}
 	},
 });

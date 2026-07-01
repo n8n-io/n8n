@@ -10,6 +10,7 @@ import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import { WorkflowAccessError } from '../mcp.errors';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
 import { createLimitSchema } from './schemas';
+import { errorResult, successResult } from './tool-response';
 import { getMcpWorkflow } from './workflow-validation.utils';
 
 const MAX_RESULTS = 200;
@@ -58,7 +59,6 @@ const outputSchema = {
 		.union([z.literal(-1), z.number().int().min(0)])
 		.describe('Total matching executions, or -1 if the count is unavailable'),
 	estimated: z.boolean().describe('Whether the count is an estimate (for large datasets)'),
-	error: z.string().optional().describe('Error message if the query failed'),
 } satisfies z.ZodRawShape;
 
 export const createSearchExecutionsTool = (
@@ -136,12 +136,13 @@ export const createSearchExecutionsTool = (
 				workflowId: execution.workflowId,
 				status: execution.status,
 				mode: execution.mode,
-				startedAt: execution.startedAt ?? null,
-				stoppedAt: execution.stoppedAt ?? null,
-				waitTill: execution.waitTill ?? null,
+				// Serialize to ISO strings to match the declared schema: the SDK
+				// validates structuredContent in-memory (before JSON transport), where
+				// these are Date instances that a `z.string()` field would reject.
+				startedAt: execution.startedAt ? new Date(execution.startedAt).toISOString() : null,
+				stoppedAt: execution.stoppedAt ? new Date(execution.stoppedAt).toISOString() : null,
+				waitTill: execution.waitTill ? new Date(execution.waitTill).toISOString() : null,
 			}));
-
-			const payload = { data, count, estimated };
 
 			telemetryPayload.results = {
 				success: true,
@@ -149,10 +150,7 @@ export const createSearchExecutionsTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			return {
-				structuredContent: payload,
-				content: [{ type: 'text', text: JSON.stringify(payload) }],
-			};
+			return successResult(outputSchema, { data, count, estimated });
 		} catch (er) {
 			const error = er instanceof Error ? er : new Error(String(er));
 			const isAccessError = error instanceof WorkflowAccessError;
@@ -164,12 +162,7 @@ export const createSearchExecutionsTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			const output = { data: [], count: 0, estimated: false, error: error.message };
-			return {
-				content: [{ type: 'text', text: JSON.stringify(output) }],
-				structuredContent: output,
-				isError: true,
-			};
+			return errorResult(error.message);
 		}
 	},
 });

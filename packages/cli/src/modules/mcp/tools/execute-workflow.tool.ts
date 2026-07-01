@@ -28,6 +28,7 @@ import type {
 	UserCalledMCPToolEventPayload,
 } from '../mcp.types';
 import { findMcpSupportedTrigger } from '../mcp.utils';
+import { errorResult, successResult } from './tool-response';
 import { getMcpWorkflow, type FoundWorkflow } from './workflow-validation.utils';
 
 import type { McpService } from '@/modules/mcp/mcp.service';
@@ -84,15 +85,14 @@ const inputSchema = z.object({
 });
 
 type ExecuteWorkflowOutput = {
-	executionId: string | null;
-	status: 'started' | 'error';
-	error?: string;
+	executionId: string;
+	status: 'started';
 };
 
+// Strict success schema; failures use errorResult and carry no structuredContent.
 const outputSchema = {
-	executionId: z.string().nullable(),
-	status: z.enum(['started', 'error']).describe('The status of the execution'),
-	error: z.string().optional().describe('Error message if the execution failed'),
+	executionId: z.string().describe('The ID of the started execution'),
+	status: z.literal('started').describe('The status of the execution'),
 } satisfies z.ZodRawShape;
 
 export const createExecuteWorkflowTool = (
@@ -146,10 +146,7 @@ export const createExecuteWorkflowTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			return {
-				content: [{ type: 'text', text: jsonStringify(output) }],
-				structuredContent: output,
-			};
+			return successResult(outputSchema, output);
 		} catch (er) {
 			const error = ensureError(er);
 			const isAccessError = error instanceof WorkflowAccessError;
@@ -167,12 +164,6 @@ export const createExecuteWorkflowTool = (
 					error.cause instanceof Error ? error.cause.message : jsonStringify(error.cause);
 			}
 
-			const output: ExecuteWorkflowOutput = {
-				executionId: null,
-				status: 'error',
-				error: error.message ?? `${error.constructor.name}: (no message)`,
-			};
-
 			telemetryPayload.results = {
 				success: false,
 				error: errorInfo,
@@ -180,10 +171,7 @@ export const createExecuteWorkflowTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			return {
-				content: [{ type: 'text', text: jsonStringify(output) }],
-				structuredContent: output,
-			};
+			return errorResult(error.message ?? `${error.constructor.name}: (no message)`);
 		}
 	},
 });

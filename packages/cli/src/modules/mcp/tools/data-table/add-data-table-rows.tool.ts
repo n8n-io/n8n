@@ -7,6 +7,7 @@ import type { Telemetry } from '@/telemetry';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
 import { dataTableProjectIdSchema } from '../schemas';
+import { errorResult, successResult } from '../tool-response';
 
 const ADD_ROWS_MAX = 1000;
 
@@ -75,10 +76,7 @@ export const createAddDataTableRowsTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			return {
-				content: [{ type: 'text', text: JSON.stringify(output) }],
-				structuredContent: output,
-			};
+			return successResult(addRowsOutputSchema, output);
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
 			telemetryPayload.results = {
@@ -87,12 +85,7 @@ export const createAddDataTableRowsTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			const output = { success: false, insertedCount: 0, error: errorMessage };
-			return {
-				content: [{ type: 'text', text: JSON.stringify(output) }],
-				structuredContent: output,
-				isError: true,
-			};
+			return errorResult(errorMessage);
 		}
 	},
 });

@@ -141,13 +141,8 @@ describe('restore-workflow-version MCP tool', () => {
 			const result = await tool.handler({ workflowId: 'wf-1', versionId: 'v1' }, callContext);
 
 			expect(result.isError).toBe(true);
-			expect(result.structuredContent).toMatchObject({
-				success: false,
-				workflowId: 'wf-1',
-				restoredFromVersionId: 'v1',
-				newVersionId: null,
-				error: expect.any(String),
-			});
+			expect(result.structuredContent).toBeUndefined();
+			expect((result.content?.[0] as { text?: string })?.text).toBeTruthy();
 			expect(workflowService.update).not.toHaveBeenCalled();
 			expect(telemetry.track).toHaveBeenCalledWith(
 				'User called mcp tool',
@@ -171,10 +166,10 @@ describe('restore-workflow-version MCP tool', () => {
 			const result = await tool.handler({ workflowId: 'wf-1', versionId: 'missing' }, callContext);
 
 			expect(result.isError).toBe(true);
-			expect(result.structuredContent).toMatchObject({
-				success: false,
-				error: expect.stringContaining("Version 'missing' was not found"),
-			});
+			expect(result.structuredContent).toBeUndefined();
+			expect((result.content?.[0] as { text?: string })?.text ?? '').toContain(
+				"Version 'missing' was not found",
+			);
 			expect(workflowService.update).not.toHaveBeenCalled();
 		});
 
@@ -187,10 +182,11 @@ describe('restore-workflow-version MCP tool', () => {
 			const tool = buildTool();
 			const result = await tool.handler({ workflowId: 'wf-1', versionId: 'v1' }, callContext);
 
-			expect(result.structuredContent).toMatchObject({
-				success: false,
-				error: expect.stringContaining('being edited by a user'),
-			});
+			expect(result.isError).toBe(true);
+			expect(result.structuredContent).toBeUndefined();
+			expect((result.content?.[0] as { text?: string })?.text ?? '').toContain(
+				'being edited by a user',
+			);
 			expect(workflowService.update).not.toHaveBeenCalled();
 		});
 	});

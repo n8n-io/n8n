@@ -112,9 +112,10 @@ describe('archive-workflow MCP tool', () => {
 			const tool = createTool();
 			const result = await tool.handler({ workflowId: 'wf-1' }, {} as never);
 
-			const response = parseResult(result);
 			expect(result.isError).toBe(true);
-			expect(response.error).toContain('being edited by a user');
+			expect(result.structuredContent).toBeUndefined();
+			const text = (result.content?.[0] as { text?: string })?.text ?? '';
+			expect(text).toContain('being edited by a user');
 			expect(workflowService.archive).not.toHaveBeenCalled();
 		});
 
@@ -141,10 +142,11 @@ describe('archive-workflow MCP tool', () => {
 			const tool = createTool();
 			const result = await tool.handler({ workflowId: 'wf-missing' }, {} as never);
 
-			const response = parseResult(result);
 			expect(result.isError).toBe(true);
-			expect(response.error).toContain('not found or');
-			expect(response.error).toContain('permission to access');
+			expect(result.structuredContent).toBeUndefined();
+			const text = (result.content?.[0] as { text?: string })?.text ?? '';
+			expect(text).toContain('not found or');
+			expect(text).toContain('permission to access');
 		});
 
 		test('returns error when service throws', async () => {
@@ -153,9 +155,10 @@ describe('archive-workflow MCP tool', () => {
 			const tool = createTool();
 			const result = await tool.handler({ workflowId: 'wf-1' }, {} as never);
 
-			const response = parseResult(result);
 			expect(result.isError).toBe(true);
-			expect(response.error).toBe('Database connection lost');
+			expect(result.structuredContent).toBeUndefined();
+			const text = (result.content?.[0] as { text?: string })?.text ?? '';
+			expect(text).toBe('Database connection lost');
 		});
 
 		test('tracks telemetry on success', async () => {

@@ -7,6 +7,7 @@ import type { Telemetry } from '@/telemetry';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
 import { createLimitSchema } from './schemas';
+import { errorResult, successResult } from './tool-response';
 
 const MAX_RESULTS = 100;
 
@@ -47,9 +48,8 @@ const outputSchema = {
 	count: z.number().int().min(0).describe('Total number of matching projects'),
 	teamProjectsEnabled: z
 		.boolean()
-		.optional()
 		.describe(
-			"Whether team projects are licensed on this n8n instance. When false, default to omitting projectId on create_workflow_from_code so the workflow lands in the caller's personal project, unless the user explicitly picked one of the returned accessible projects (legacy team projects can still appear here after a license downgrade). Omitted on error responses.",
+			"Whether team projects are licensed on this n8n instance. When false, default to omitting projectId on create_workflow_from_code so the workflow lands in the caller's personal project, unless the user explicitly picked one of the returned accessible projects (legacy team projects can still appear here after a license downgrade).",
 		),
 	hint: z
 		.string()
@@ -165,11 +165,12 @@ export const createSearchProjectsTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			const output = { data, count, teamProjectsEnabled, ...(hint ? { hint } : {}) };
-			return {
-				content: [{ type: 'text', text: JSON.stringify(output) }],
-				structuredContent: output,
-			};
+			return successResult(outputSchema, {
+				data,
+				count,
+				teamProjectsEnabled,
+				...(hint ? { hint } : {}),
+			});
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
 			telemetryPayload.results = {
@@ -178,12 +179,7 @@ export const createSearchProjectsTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			const output = { data: [], count: 0, error: errorMessage };
-			return {
-				content: [{ type: 'text', text: JSON.stringify(output) }],
-				structuredContent: output,
-				isError: true,
-			};
+			return errorResult(errorMessage);
 		}
 	},
 });

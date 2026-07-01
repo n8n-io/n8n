@@ -74,11 +74,9 @@ describe('add_data_table_rows MCP tool', () => {
 		});
 
 		expect(result.isError).toBe(true);
-		expect(result.structuredContent).toEqual({
-			success: false,
-			insertedCount: 0,
-			error: 'Column mismatch',
-		});
+		expect(result.structuredContent).toBeUndefined();
+		const text = (result.content?.[0] as { text?: string })?.text ?? '';
+		expect(text).toContain('Column mismatch');
 	});
 
 	test('tracks telemetry on success', async () => {

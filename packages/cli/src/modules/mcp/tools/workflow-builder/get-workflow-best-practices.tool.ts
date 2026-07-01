@@ -12,6 +12,7 @@ import type { Telemetry } from '@/telemetry';
 import { MCP_GET_WORKFLOW_BEST_PRACTICES_TOOL } from './constants';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
+import { successResult } from '../tool-response';
 
 const LIST_SENTINEL = 'list';
 
@@ -139,10 +140,7 @@ export const createGetWorkflowBestPracticesTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			return {
-				content: [{ type: 'text', text: response.text }],
-				structuredContent: response.structured,
-			};
+			return successResult(outputSchema, response.structured, { text: response.text });
 		} catch (error) {
 			telemetryPayload.results = {
 				success: false,

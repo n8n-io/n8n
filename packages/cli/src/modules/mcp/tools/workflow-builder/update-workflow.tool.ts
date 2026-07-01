@@ -7,7 +7,8 @@ import z from 'zod';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
-import { buildInvalidAiToolSourceErrorResponse } from './connection-structure-check';
+import { errorResult, successResult } from '../tool-response';
+import { detectInvalidAiToolSource } from './connection-structure-check';
 import { MCP_UPDATE_WORKFLOW_TOOL } from './constants';
 import { validateCredentialReferences } from './credential-validation';
 import { autoPopulateNodeCredentials } from './credentials-auto-assign';
@@ -217,18 +218,15 @@ const inputSchema: z.ZodRawShape = {
 		),
 };
 
-// The MCP SDK publishes this schema with `additionalProperties: false` and
-// validates `structuredContent` against it on every response. Success returns
-// the full payload below; the error path returns only `{ error }`. To keep
-// both shapes valid under strict clients, the success fields are optional and
-// `error` is a declared, optional property — otherwise a thrown handler error
-// surfaces as an opaque `-32602` schema mismatch instead of the real message.
+// Strict success schema: every field below is present on the success path.
+// Failures go through `errorResult`, which omits `structuredContent`, so this
+// schema never has to accommodate an error shape.
 const outputSchema = {
-	workflowId: z.string().optional(),
-	name: z.string().optional(),
-	nodeCount: z.number().optional(),
-	url: z.string().optional(),
-	appliedOperations: z.number().optional().describe('Number of operations applied.'),
+	workflowId: z.string(),
+	name: z.string(),
+	nodeCount: z.number(),
+	url: z.string(),
+	appliedOperations: z.number().describe('Number of operations applied.'),
 	autoAssignedCredentials: z
 		.array(
 			z.object({
@@ -237,7 +235,6 @@ const outputSchema = {
 				credentialType: z.string(),
 			}),
 		)
-		.optional()
 		.describe('Credentials auto-assigned to nodes that were added in this update.'),
 	validationWarnings: z
 		.array(
@@ -247,7 +244,6 @@ const outputSchema = {
 				nodeName: z.string().optional(),
 			}),
 		)
-		.optional()
 		.describe(
 			'Graph and JSON validation warnings on the resulting workflow. Use these to self-correct on the next call.',
 		),
@@ -258,10 +254,6 @@ const outputSchema = {
 		.describe(
 			'Resulting workflow-level settings after the update. Present only when a setWorkflowSettings operation ran. Reflects server-side cleanup (e.g. "DEFAULT" values are removed).',
 		),
-	error: z
-		.string()
-		.optional()
-		.describe('Error message explaining why the update failed. Present only on failure.'),
 } satisfies z.ZodRawShape;
 
 /**
@@ -518,14 +510,13 @@ export const createUpdateWorkflowTool = (
 				throw new Error(credentialCheck.error);
 			}
 
-			const invalidToolSourceResponse = buildInvalidAiToolSourceErrorResponse(
+			const invalidToolSourceError = detectInvalidAiToolSource(
 				{ nodes: result.workflow.nodes, connections: result.workflow.connections },
 				nodeTypes,
-				(errorMessage) => ({ error: errorMessage }),
 				telemetryPayload,
 				telemetry,
 			);
-			if (invalidToolSourceResponse) return invalidToolSourceResponse;
+			if (invalidToolSourceError) return errorResult(invalidToolSourceError);
 
 			const { projectId: workflowProjectId } = await sharedWorkflowRepository.findOneOrFail({
 				where: { workflowId, role: 'workflow:owner' },
@@ -716,7 +707,7 @@ export const createUpdateWorkflowTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			const output = {
+			return successResult(outputSchema, {
 				workflowId: updatedWorkflow.id,
 				name: updatedWorkflow.name,
 				nodeCount: updatedWorkflow.nodes.length,
@@ -727,13 +718,10 @@ export const createUpdateWorkflowTool = (
 				note: skippedHttpNodes.length
 					? `HTTP Request nodes (${skippedHttpNodes.join(', ')}) were skipped during credential auto-assignment. Their credentials must be configured manually.`
 					: undefined,
-				settings: hasSettingsOperations ? (updatedWorkflow.settings ?? {}) : undefined,
-			};
-
-			return {
-				content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],
-				structuredContent: output,
-			};
+				settings: hasSettingsOperations
+					? ((updatedWorkflow.settings ?? {}) as Record<string, unknown>)
+					: undefined,
+			});
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
 
@@ -743,13 +731,7 @@ export const createUpdateWorkflowTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			const output = { error: errorMessage };
-
-			return {
-				content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],
-				structuredContent: output,
-				isError: true,
-			};
+			return errorResult(errorMessage);
 		}
 	},
 });

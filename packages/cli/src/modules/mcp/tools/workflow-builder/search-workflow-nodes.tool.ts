@@ -7,6 +7,7 @@ import type { Telemetry } from '@/telemetry';
 import { CODE_BUILDER_SEARCH_NODES_TOOL } from './constants';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
+import { successResult } from '../tool-response';
 
 const inputSchema = {
 	queries: z
@@ -66,10 +67,7 @@ export const createSearchWorkflowNodesTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			return {
-				content: [{ type: 'text', text: results }],
-				structuredContent: { results },
-			};
+			return successResult(outputSchema, { results }, { text: results });
 		} catch (error) {
 			telemetryPayload.results = {
 				success: false,

@@ -1,5 +1,5 @@
 import type { User } from '@n8n/db';
-import { jsonStringify, ensureError } from 'n8n-workflow';
+import { ensureError } from 'n8n-workflow';
 import z from 'zod';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
@@ -10,22 +10,17 @@ import type { WorkflowService } from '@/workflows/workflow.service';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import { WorkflowAccessError } from '../mcp.errors';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
+import { errorResult, successResult } from './tool-response';
 import { getMcpWorkflow } from './workflow-validation.utils';
 
 const inputSchema = z.object({
 	workflowId: z.string().describe('The ID of the workflow to unpublish'),
 });
 
-type UnpublishWorkflowOutput = {
-	success: boolean;
-	workflowId: string;
-	error?: string;
-};
-
+// Strict success shape; failures use errorResult instead of structuredContent.
 const outputSchema = {
 	success: z.boolean(),
 	workflowId: z.string(),
-	error: z.string().optional(),
 } satisfies z.ZodRawShape;
 
 export const createUnpublishWorkflowTool = (
@@ -67,11 +62,6 @@ export const createUnpublishWorkflowTool = (
 
 			void collaborationService.broadcastWorkflowUpdate(workflowId, user.id).catch(() => {});
 
-			const output: UnpublishWorkflowOutput = {
-				success: true,
-				workflowId,
-			};
-
 			telemetryPayload.results = {
 				success: true,
 				data: {
@@ -80,19 +70,13 @@ export const createUnpublishWorkflowTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			return {
-				content: [{ type: 'text', text: jsonStringify(output) }],
-				structuredContent: output,
-			};
+			return successResult(outputSchema, {
+				success: true,
+				workflowId,
+			});
 		} catch (er) {
 			const error = ensureError(er);
 			const isAccessError = error instanceof WorkflowAccessError;
-
-			const output: UnpublishWorkflowOutput = {
-				success: false,
-				workflowId,
-				error: error.message,
-			};
 
 			telemetryPayload.results = {
 				success: false,
@@ -101,10 +85,7 @@ export const createUnpublishWorkflowTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			return {
-				content: [{ type: 'text', text: jsonStringify(output) }],
-				structuredContent: output,
-			};
+			return errorResult(error.message);
 		}
 	},
 });

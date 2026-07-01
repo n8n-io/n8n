@@ -8,6 +8,7 @@ import type { Telemetry } from '@/telemetry';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
 import { createLimitSchema } from './schemas';
+import { successResult } from './tool-response';
 
 const MAX_RESULTS = 500;
 
@@ -95,10 +96,7 @@ export const createListTagsTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			return {
-				content: [{ type: 'text', text: JSON.stringify(payload) }],
-				structuredContent: payload,
-			};
+			return successResult(outputSchema, payload);
 		} catch (error) {
 			telemetryPayload.results = {
 				success: false,

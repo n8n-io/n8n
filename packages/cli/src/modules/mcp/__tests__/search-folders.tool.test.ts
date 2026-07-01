@@ -132,11 +132,9 @@ describe('search-folders MCP tool', () => {
 		const result = await callHandler(tool, { projectId: 'proj-no-access' });
 
 		expect(result.isError).toBe(true);
-		expect(result.structuredContent).toMatchObject({
-			data: [],
-			count: 0,
-			error: 'Project not found or access denied',
-		});
+		expect(result.structuredContent).toBeUndefined();
+		const text = (result.content?.[0] as { text?: string })?.text ?? '';
+		expect(text).toContain('Project not found or access denied');
 		expect(folderRepository.getManyAndCount).not.toHaveBeenCalled();
 	});
 
@@ -159,10 +157,8 @@ describe('search-folders MCP tool', () => {
 		const result = await callHandler(tool, { projectId: 'proj-1' });
 
 		expect(result.isError).toBe(true);
-		expect(result.structuredContent).toMatchObject({
-			data: [],
-			count: 0,
-			error: 'DB error',
-		});
+		expect(result.structuredContent).toBeUndefined();
+		const text = (result.content?.[0] as { text?: string })?.text ?? '';
+		expect(text).toContain('DB error');
 	});
 });

@@ -7,6 +7,7 @@ import type { Telemetry } from '@/telemetry';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
 import { createLimitSchema } from './schemas';
+import { errorResult, successResult } from './tool-response';
 
 const MAX_RESULTS = 100;
 
@@ -70,14 +71,10 @@ export const createSearchFoldersTool = (
 		try {
 			const project = await projectService.getProjectWithScope(user, projectId, ['folder:list']);
 			if (!project) {
-				const output = { data: [], count: 0, error: 'Project not found or access denied' };
-				telemetryPayload.results = { success: false, error: output.error };
+				const errorMessage = 'Project not found or access denied';
+				telemetryPayload.results = { success: false, error: errorMessage };
 				telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
-				return {
-					content: [{ type: 'text', text: JSON.stringify(output) }],
-					structuredContent: output,
-					isError: true,
-				};
+				return errorResult(errorMessage);
 			}
 
 			const safeLimit = Math.min(Math.max(1, limit), MAX_RESULTS);
@@ -102,11 +99,7 @@ export const createSearchFoldersTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			const output = { data, count };
-			return {
-				content: [{ type: 'text', text: JSON.stringify(output) }],
-				structuredContent: output,
-			};
+			return successResult(outputSchema, { data, count });
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
 			telemetryPayload.results = {
@@ -115,12 +108,7 @@ export const createSearchFoldersTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			const output = { data: [], count: 0, error: errorMessage };
-			return {
-				content: [{ type: 'text', text: JSON.stringify(output) }],
-				structuredContent: output,
-				isError: true,
-			};
+			return errorResult(errorMessage);
 		}
 	},
 });

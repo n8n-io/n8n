@@ -109,11 +109,9 @@ describe('search_data_tables MCP tool', () => {
 		const result = await callHandler(tool, {});
 
 		expect(result.isError).toBe(true);
-		expect(result.structuredContent).toMatchObject({
-			data: [],
-			count: 0,
-			error: 'DB error',
-		});
+		expect(result.structuredContent).toBeUndefined();
+		const text = (result.content?.[0] as { text?: string })?.text ?? '';
+		expect(text).toContain('DB error');
 	});
 
 	test('tracks telemetry on success', async () => {

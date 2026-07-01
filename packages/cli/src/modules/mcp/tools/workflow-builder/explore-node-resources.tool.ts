@@ -5,6 +5,7 @@ import { MCP_EXPLORE_NODE_RESOURCES_TOOL } from './constants';
 
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
+import { successResult } from '../tool-response';
 
 import type { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import type { Telemetry } from '@/telemetry';
@@ -127,10 +128,7 @@ export const createExploreNodeResourcesTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			return {
-				content: [{ type: 'text', text: JSON.stringify(result) }],
-				structuredContent: { ...result },
-			};
+			return successResult(outputSchema, { ...result });
 		} catch (error) {
 			// Send the error class name only — error.message may contain credential IDs
 			// or fragments of upstream API responses we don't want in product analytics.

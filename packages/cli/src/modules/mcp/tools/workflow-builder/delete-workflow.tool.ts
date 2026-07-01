@@ -9,6 +9,7 @@ import type { WorkflowService } from '@/workflows/workflow.service';
 import { MCP_ARCHIVE_WORKFLOW_TOOL } from './constants';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
+import { errorResult, successResult } from '../tool-response';
 import { getMcpWorkflow } from '../workflow-validation.utils';
 
 const inputSchema = {
@@ -70,16 +71,11 @@ export const createArchiveWorkflowTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			const output = {
+			return successResult(outputSchema, {
 				archived: true,
 				workflowId,
 				name: workflow.name,
-			};
-
-			return {
-				content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],
-				structuredContent: output,
-			};
+			});
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
 
@@ -89,13 +85,7 @@ export const createArchiveWorkflowTool = (
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			const output = { error: errorMessage };
-
-			return {
-				content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],
-				structuredContent: output,
-				isError: true,
-			};
+			return errorResult(errorMessage);
 		}
 	},
 });

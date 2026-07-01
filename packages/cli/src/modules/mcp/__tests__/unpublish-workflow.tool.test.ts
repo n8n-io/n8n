@@ -67,11 +67,10 @@ describe('unpublish-workflow MCP tool', () => {
 					{} as Parameters<typeof tool.handler>[1],
 				);
 
-				expect(result.structuredContent).toMatchObject({
-					success: false,
-					workflowId: 'any-workflow',
-					error: expect.any(String),
-				});
+				expect(result.isError).toBe(true);
+				expect(result.structuredContent).toBeUndefined();
+				const text = (result.content?.[0] as { text?: string })?.text ?? '';
+				expect(text).toEqual(expect.any(String));
 			});
 		});
 
@@ -96,10 +95,10 @@ describe('unpublish-workflow MCP tool', () => {
 					{} as Parameters<typeof tool.handler>[1],
 				);
 
-				expect(result.structuredContent).toMatchObject({
-					success: false,
-					error: expect.stringContaining('being edited by a user'),
-				});
+				expect(result.isError).toBe(true);
+				expect(result.structuredContent).toBeUndefined();
+				const text = (result.content?.[0] as { text?: string })?.text ?? '';
+				expect(text).toContain('being edited by a user');
 				expect(workflowService.deactivateWorkflow).not.toHaveBeenCalled();
 			});
 		});
@@ -225,11 +224,10 @@ describe('unpublish-workflow MCP tool', () => {
 					{} as Parameters<typeof tool.handler>[1],
 				);
 
-				expect(result.structuredContent).toMatchObject({
-					success: false,
-					workflowId: 'wf-1',
-					error: 'Deactivation failed',
-				});
+				expect(result.isError).toBe(true);
+				expect(result.structuredContent).toBeUndefined();
+				const text = (result.content?.[0] as { text?: string })?.text ?? '';
+				expect(text).toContain('Deactivation failed');
 			});
 		});
 	});

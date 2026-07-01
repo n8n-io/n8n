@@ -12,6 +12,7 @@ import {
 	dataTableProjectIdSchema,
 	successMessageOutputSchema,
 } from '../schemas';
+import { errorResult, successResult } from '../tool-response';
 
 const inputSchema = {
 	dataTableId: z.string().describe('The ID of the data table containing the column'),
@@ -74,21 +75,13 @@ export const createRenameDataTableColumnTool = (
 			telemetryPayload.results = { success: true };
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			return {
-				content: [{ type: 'text', text: JSON.stringify(output) }],
-				structuredContent: output,
-			};
+			return successResult(outputSchema, output);
 		} catch (error) {
 			const errorMessage = error instanceof Error ? error.message : String(error);
 			telemetryPayload.results = { success: false, error: errorMessage };
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
-			const output = { success: false, message: errorMessage };
-			return {
-				content: [{ type: 'text', text: JSON.stringify(output) }],
-				structuredContent: output,
-				isError: true,
-			};
+			return errorResult(errorMessage);
 		}
 	},
 });
