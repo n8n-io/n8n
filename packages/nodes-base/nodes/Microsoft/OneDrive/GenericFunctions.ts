@@ -94,10 +94,17 @@ const DRIVE_TARGET_ID = /^[A-Za-z0-9!._-]+$/;
  * dots-only → drive-id checks with drive-specific wording.
  */
 export function validateResourceTargetId(target: string, id: string, node: INode): void {
-	// `user` (and any unknown target) validates via the shared user-target validator.
-	if (target !== 'drive') {
+	// The `resourceTarget` param only offers `user` and `drive`. Handle each explicitly and
+	// fail loudly on anything else, so a target added later without updating this validator
+	// can't silently fall through to a user-shape check.
+	if (target === 'user') {
 		validateUserTargetId(id, node);
 		return;
+	}
+	if (target !== 'drive') {
+		throw new NodeOperationError(node, 'The target ID is not valid', {
+			description: 'Unknown target type.',
+		});
 	}
 
 	// Drive target: empty → dots-only → drive-id shape, with drive-specific wording.

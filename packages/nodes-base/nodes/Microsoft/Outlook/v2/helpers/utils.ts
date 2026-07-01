@@ -343,10 +343,11 @@ export function prepareApiError(
 }
 
 /**
- * Throws a `NodeOperationError` (fully static message, never echoing the id) unless the
- * mailbox is a valid GUID or UPN. Delegates to the shared `validateUserTargetId` with
- * "mailbox" wording (see `MAILBOX_MESSAGES` above) — that is the single interpolation gate
- * for user-scoped Graph targets and carries the accepted-shape / validate-before-encode logic.
+ * Validates a mailbox (a user object ID or UPN) before it is used to compose a Graph URL.
+ * Delegates to the shared `validateUserTargetId` with "mailbox" wording (see `MAILBOX_MESSAGES`
+ * above), which throws a `NodeOperationError` with a fully static message (never echoing the id)
+ * on a bad shape — that shared validator is the single interpolation gate for user-scoped Graph
+ * targets and carries the accepted-shape / validate-before-encode logic.
  */
 export function validateMailbox(id: string, node: INode): void {
 	validateUserTargetId(id, node, MAILBOX_MESSAGES);

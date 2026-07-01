@@ -590,6 +590,14 @@ describe('Microsoft OneDrive GenericFunctions', () => {
 			);
 		});
 
+		it('throws for an unexpected target type instead of treating it as a user', () => {
+			// A valid UPN would pass the user validator; an unknown target must still throw,
+			// proving the value is not silently routed through the user shape.
+			expect(() => validateResourceTargetId('site', 'jane@contoso.com', mockNode)).toThrow(
+				'The target ID is not valid',
+			);
+		});
+
 		it('rejects a drive-shaped id ("b!abc") as a user (the "!" is not a valid user id)', () => {
 			expect(() => validateResourceTargetId('user', 'b!abc', mockNode)).toThrow();
 		});

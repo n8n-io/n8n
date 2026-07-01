@@ -368,6 +368,17 @@ describe('MicrosoftOutlookV2 - microsoftApiRequest', () => {
 			).rejects.toThrow('A mailbox is required for the Service Principal');
 			expect(mockRequestWithAuthentication).not.toHaveBeenCalled();
 		});
+
+		it('should reject a malformed (non-empty) mailbox and make no request', async () => {
+			// A bare host is a plausible-looking string but not a GUID/UPN, so it must be
+			// rejected before any request is issued — symmetric with the empty-mailbox case.
+			setupSP({ mailbox: 'contoso.com' });
+
+			await expect(
+				microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/messages'),
+			).rejects.toThrow('The mailbox is not valid');
+			expect(mockRequestWithAuthentication).not.toHaveBeenCalled();
+		});
 	});
 });
 
