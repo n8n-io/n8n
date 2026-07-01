@@ -79,7 +79,7 @@ export function getServicePrincipalResourceRoot(
 	}
 }
 
-/** Appends `/drive` to a user/site root; `/drives/{id}` is already a drive and used as-is. */
+/** Appends `/drive` to a user root; `/drives/{id}` is already a drive and used as-is. */
 export function driveEndpoint(root: string): string {
 	return root.startsWith('/drives/') ? root : `${root}/drive`;
 }
