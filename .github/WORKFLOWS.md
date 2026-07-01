@@ -202,15 +202,18 @@ override `tier` to `full` for broader coverage on a specific PR. The lighter
 `test-evals-discovery.yml` still runs on every push as part of `ci-pull-requests.yml`.
 
 **MCP workflow evals (`ci-mcp-evals.yml`) are manual only (`workflow_dispatch`),
-never per-PR or scheduled in this first version.** They reuse the Instance AI
-verifier but build each workflow through the instance MCP server by driving the
-`claude` CLI, which adds Anthropic build cost on top of the verifier — too
-expensive to run automatically. The job boots one n8n container, generates an MCP
-cohort (`eval:build-mcp-manifest`), then scores it with
-`eval:instance-ai --prebuilt-workflows`, recording to the isolated
-`mcp-workflow-evals` LangSmith dataset. Dispatch from the Actions tab (set
-`experiment-name=mcp-baseline` to refresh the baseline, or `filter=<slug>` to run
-a single case). See `packages/cli/src/modules/mcp/evaluations/README.md`.
+never per-PR or scheduled.** They reuse the Instance AI verifier but build each
+workflow through the instance MCP server by driving the `claude` CLI, which adds
+Anthropic build cost on top of the verifier — too expensive to run
+automatically. The job boots `lanes` n8n containers on one runner and runs a
+single `eval:instance-ai --build-via-mcp` process: each case is built by driving
+its lane's own MCP server with `claude`, then verified on that same lane
+(work-stealing across lanes, capped per-lane). One process → one experiment in
+the isolated `mcp-workflow-evals` LangSmith dataset, so there is no shard/merge
+step. Dispatch from the Actions tab (set `experiment-name=mcp-baseline` to
+refresh the baseline, `filter=<slug>` to run a single case, or `lanes` to widen
+parallelism). See the `--build-via-mcp` section in
+`packages/@n8n/instance-ai/evaluations/README.md`.
 
 ### On PR Close/Merge
 

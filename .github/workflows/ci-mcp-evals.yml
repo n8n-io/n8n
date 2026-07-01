@@ -2,9 +2,14 @@ name: 'CI: MCP Workflow Evals'
 
 # MCP workflow evals are manual only (workflow_dispatch). The build phase drives
 # the `claude` CLI (Anthropic cost + rate limits), so there is no per-PR or
-# scheduled run in this first version. Dispatch from the Actions tab (or `gh
-# workflow run ci-mcp-evals.yml`); set experiment-name=mcp-baseline to refresh
-# the LangSmith baseline, or filter=<slug> to run a single case.
+# scheduled run. Dispatch from the Actions tab (or `gh workflow run
+# ci-mcp-evals.yml`); set experiment-name=mcp-baseline to refresh the LangSmith
+# baseline, or filter=<slug> to run a single case.
+#
+# Parallelism: a single job starts `lanes` n8n containers on one runner and runs
+# one `eval:instance-ai --build-via-mcp` process that builds + verifies each case
+# on its own lane (work-stealing). One process → one LangSmith experiment, so no
+# shard/merge step is needed.
 on:
   workflow_dispatch:
     inputs:
@@ -20,20 +25,20 @@ on:
         description: 'Only build + eval test cases whose slug matches (comma-separated; empty = whole tier)'
         required: false
         default: ''
-      iterations:
-        description: 'Builds per test case (-n) and verifier iterations (use 10 for a baseline)'
+      lanes:
+        description: 'Number of parallel n8n lanes (containers) on the runner'
         required: false
-        default: '3'
-      build-concurrency:
-        description: 'Parallel claude build processes (-j)'
+        default: '6'
+      iterations:
+        description: 'Builds per test case and verifier iterations (use 10 for a baseline)'
         required: false
         default: '3'
       eval-concurrency:
-        description: 'Concurrent scenario executions in the verifier'
+        description: 'Concurrent scenario executions in the verifier (keep >= lanes * 4)'
         required: false
-        default: '6'
-      model:
-        description: 'Anthropic model id for the claude build step'
+        default: '24'
+      build-model:
+        description: 'Anthropic model id for the claude MCP build step'
         required: false
         default: 'claude-sonnet-4-6'
       experiment-name:
@@ -58,10 +63,10 @@ jobs:
       branch: ${{ inputs.branch || github.sha }}
       tier: ${{ inputs.tier || 'mcp' }}
       filter: ${{ inputs.filter || '' }}
+      lanes: ${{ inputs.lanes || '6' }}
       iterations: ${{ inputs.iterations || '3' }}
-      build-concurrency: ${{ inputs.build-concurrency || '3' }}
-      eval-concurrency: ${{ inputs.eval-concurrency || '6' }}
-      model: ${{ inputs.model || 'claude-sonnet-4-6' }}
+      eval-concurrency: ${{ inputs.eval-concurrency || '24' }}
+      build-model: ${{ inputs.build-model || 'claude-sonnet-4-6' }}
       experiment-name: ${{ inputs.experiment-name || '' }}
     # Pass only the secrets the reusable workflow needs (not `secrets: inherit`).
     secrets:

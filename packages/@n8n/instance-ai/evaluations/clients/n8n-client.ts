@@ -491,6 +491,47 @@ export class N8nClient {
 	}
 
 	/**
+	 * Enable MCP access for this instance (owner scope required).
+	 * PATCH /rest/mcp/settings  body: { mcpAccessEnabled: true }
+	 *
+	 * `/rest/e2e/reset` truncates the settings table and clears the cache, so MCP
+	 * access is off after a reset regardless of startup env — the fused
+	 * `--build-via-mcp` lane setup calls this after seeding. Throws if the server
+	 * reports MCP still disabled (e.g. N8N_MCP_MANAGED_BY_ENV refuses the PATCH).
+	 */
+	async enableMcpAccess(): Promise<void> {
+		const data = this.unwrapRestData<{ mcpAccessEnabled?: boolean }>(
+			await this.fetch('/rest/mcp/settings', {
+				method: 'PATCH',
+				body: { mcpAccessEnabled: true },
+			}),
+		);
+		if (data.mcpAccessEnabled !== true) {
+			throw new Error(
+				`Failed to enable MCP access (server reported mcpAccessEnabled=${String(data.mcpAccessEnabled)})`,
+			);
+		}
+	}
+
+	/**
+	 * Get (or create) the MCP API key for the authenticated user.
+	 * GET /rest/mcp/api-key
+	 *
+	 * The FIRST call on a fresh user returns the UNREDACTED JWT (getOrCreateApiKey
+	 * creates + returns it raw); later calls redact it. Call this exactly once per
+	 * freshly-reset lane, before staging the `claude` MCP config.
+	 */
+	async getMcpApiKey(): Promise<string> {
+		const data = this.unwrapRestData<{ apiKey?: string }>(
+			await this.fetch('/rest/mcp/api-key', { method: 'GET' }),
+		);
+		if (!data.apiKey) {
+			throw new Error('MCP api-key endpoint returned no apiKey');
+		}
+		return data.apiKey;
+	}
+
+	/**
 	 * Delete a credential by ID.
 	 * DELETE /rest/credentials/:id
 	 */

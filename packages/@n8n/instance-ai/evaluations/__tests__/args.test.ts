@@ -174,3 +174,63 @@ describe('parseCliArgs --source langtracer dataset isolation', () => {
 		expect(args.dataset).toBe('instance-ai-langtracer-my-suite');
 	});
 });
+
+describe('parseCliArgs --build-via-mcp', () => {
+	it('defaults to disabled with sensible build knobs', () => {
+		const args = parseCliArgs([]);
+		expect(args.buildViaMcp).toBe(false);
+		expect(args.mcpServerName).toBe('n8n-local');
+		expect(args.buildModel).toBe('claude-sonnet-4-6');
+		expect(args.buildCwd).toBeUndefined();
+		expect(args.buildMaxAttempts).toBe(3);
+		expect(args.buildMcpTimeoutMs).toBe(120_000);
+	});
+
+	it('enables the mode and parses the build knobs', () => {
+		const args = parseCliArgs([
+			'--build-via-mcp',
+			'--mcp-server',
+			'n8n-eval',
+			'--build-model',
+			'claude-opus-4-5',
+			'--build-cwd',
+			'/tmp/mcp-workspace',
+			'--build-max-attempts',
+			'5',
+			'--build-mcp-timeout-ms',
+			'90000',
+		]);
+		expect(args.buildViaMcp).toBe(true);
+		expect(args.mcpServerName).toBe('n8n-eval');
+		expect(args.buildModel).toBe('claude-opus-4-5');
+		expect(args.buildCwd).toBe('/tmp/mcp-workspace');
+		expect(args.buildMaxAttempts).toBe(5);
+		expect(args.buildMcpTimeoutMs).toBe(90_000);
+	});
+
+	it('works with multiple --base-url lanes (unlike --prebuilt-workflows)', () => {
+		const args = parseCliArgs([
+			'--build-via-mcp',
+			'--base-url',
+			'http://localhost:5678,http://localhost:5679',
+		]);
+		expect(args.buildViaMcp).toBe(true);
+		expect(args.baseUrls).toHaveLength(2);
+	});
+
+	it('rejects combining --build-via-mcp with --prebuilt-workflows', () => {
+		expect(() =>
+			parseCliArgs(['--build-via-mcp', '--prebuilt-workflows', '/tmp/manifest.json']),
+		).toThrow(/incompatible with --prebuilt-workflows/);
+	});
+
+	it('rejects --delete-prebuilt-workflows with --build-via-mcp', () => {
+		expect(() => parseCliArgs(['--build-via-mcp', '--delete-prebuilt-workflows'])).toThrow(
+			/applies to --prebuilt-workflows/,
+		);
+	});
+
+	it('rejects a non-integer --build-max-attempts', () => {
+		expect(() => parseCliArgs(['--build-max-attempts', 'lots'])).toThrow();
+	});
+});

@@ -8,7 +8,7 @@
 // ---------------------------------------------------------------------------
 
 import type { InstanceAiRunDebugResponse } from '@n8n/api-types';
-import { mkdirSync, writeFileSync } from 'fs';
+import { mkdirSync, unlinkSync, writeFileSync } from 'fs';
 import { Client } from 'langsmith';
 import { evaluate } from 'langsmith/evaluation';
 import type { EvaluationResult } from 'langsmith/evaluation';
@@ -18,9 +18,11 @@ import { join } from 'path';
 
 import { aggregateResults, passAtK, passHatK } from './aggregator';
 import { parseCliArgs, partialIsolationWarning } from './args';
+import type { CliArgs } from './args';
 import { buildCIMetadata, computeExperimentPrefix } from './ci-metadata';
 import { LaneAllocator } from './lane-allocator';
 import { expandWithIterations, partitionRoundRobin } from './lanes';
+import { buildWorkflowViaMcp, stageLaneMcpConfig, type McpBuildSettings } from './mcp-builder';
 import {
 	isPlainObject,
 	parseTargetOutput,
@@ -101,15 +103,89 @@ interface Lane {
 	claimedWorkflowIds: Set<string>;
 	/** Credentials created for test cases on this lane; cleaned up after the run. */
 	createdCredentialIds: Set<string>;
+	/** Workflows built/fetched on THIS lane to delete after the run (opt-in). Kept
+	 *  per-lane because prebuilt/MCP-built workflows only exist on their own lane —
+	 *  deleting them via another lane's client would 404. */
+	workflowIdsToDelete: Set<string>;
+	/** Staged `claude` MCP config for this lane (`--build-via-mcp` only). Points
+	 *  `claude -p` at this lane's own MCP server + minted API key. Cleaned up on exit. */
+	mcpConfigPath?: string;
 }
 
 interface RunConfig {
-	args: ReturnType<typeof parseCliArgs>;
+	args: CliArgs;
 	lanes: Lane[];
 	logger: EvalLogger;
 	testCasesWithFiles: WorkflowTestCaseWithFile[];
 	prebuiltManifest?: PrebuiltManifest;
-	prebuiltWorkflowIdsToDelete?: Set<string>;
+	/** When true, workflows built/fetched this run are deleted afterwards: prebuilt
+	 *  workflows opted in via --delete-prebuilt-workflows, or throwaway workflows
+	 *  built by --build-via-mcp (unless --keep-workflows). Tracked per-lane on
+	 *  `lane.workflowIdsToDelete`. */
+	cleanupBuiltWorkflows: boolean;
+	/** Directory for per-build `claude` logs (`--build-via-mcp` only). */
+	mcpBuildLogDir?: string;
+}
+
+/** Map eval CLI args to the shared MCP builder's settings. */
+function mcpBuildSettingsFromArgs(args: CliArgs): McpBuildSettings {
+	return {
+		serverName: args.mcpServerName,
+		model: args.buildModel,
+		maxAttempts: args.buildMaxAttempts,
+		mcpTimeoutMs: args.buildMcpTimeoutMs,
+		buildCwd: args.buildCwd,
+	};
+}
+
+/**
+ * Build a workflow on `lane` by driving that lane's MCP server with `claude -p`,
+ * then adapt it into a BuildResult by fetching it back (prebuilt-style) — so the
+ * verify path is identical to `--prebuilt-workflows`. Never throws: a failed
+ * build resolves to an unsuccessful BuildResult. The workflow lives on `lane`,
+ * so the caller must verify it on that same lane.
+ */
+async function buildWorkflowViaMcpOnLane(config: {
+	lane: Lane;
+	conversation: WorkflowTestCase['conversation'];
+	slug: string;
+	iteration: number;
+	args: CliArgs;
+	logDir: string;
+	logger: EvalLogger;
+}): Promise<BuildResult> {
+	const { lane, conversation, slug, iteration, args, logDir, logger } = config;
+	if (!lane.mcpConfigPath) {
+		return {
+			success: false,
+			error: `Lane ${lane.baseUrl} has no staged MCP config — cannot build via MCP`,
+			workflowJsons: [],
+			createdWorkflowIds: [],
+			createdDataTableIds: [],
+		};
+	}
+
+	const result = await buildWorkflowViaMcp({
+		conversation: conversation ?? [],
+		slug,
+		iteration,
+		mcpConfigPath: lane.mcpConfigPath,
+		settings: mcpBuildSettingsFromArgs(args),
+		logDir,
+		log: (message) => logger.info(message),
+	});
+
+	if (!result.workflowId) {
+		return {
+			success: false,
+			error: `MCP build produced no workflow (${result.failureReason ?? 'unknown'})`,
+			workflowJsons: [],
+			createdWorkflowIds: [],
+			createdDataTableIds: [],
+		};
+	}
+
+	return await fetchPrebuiltBuild(lane.client, result.workflowId, logger);
 }
 
 async function main(): Promise<void> {
@@ -161,6 +237,13 @@ async function main(): Promise<void> {
 		testCasesWithFiles = covered;
 	}
 
+	// Per-build `claude` logs (--build-via-mcp only). One shared dir; filenames
+	// are slug/iteration/attempt-scoped so concurrent lanes never collide.
+	const mcpBuildLogDir = args.buildViaMcp
+		? join(args.outputDir ?? process.cwd(), 'mcp-build-logs')
+		: undefined;
+	if (mcpBuildLogDir) mkdirSync(mcpBuildLogDir, { recursive: true });
+
 	// One lane per base URL. The LangSmith path then uses a work-stealing
 	// allocator (lane-allocator.ts) to dispatch builds across lanes; the direct
 	// path partitions test cases statically per lane.
@@ -183,15 +266,60 @@ async function main(): Promise<void> {
 				logger.info(`Skipped MCP registry seed (test endpoint unavailable)${tag}`);
 			}
 
+			// --build-via-mcp: enable MCP, mint this lane's own API key, and stage a
+			// `claude` MCP config pointing at this lane's MCP server. Each lane is a
+			// self-contained build+verify target — a workflow built here is verified
+			// here, so N lanes parallelize the whole pipeline within one process.
+			let mcpConfigPath: string | undefined;
+			if (args.buildViaMcp) {
+				await client.enableMcpAccess();
+				const apiKey = await client.getMcpApiKey();
+				mcpConfigPath = stageLaneMcpConfig({
+					serverName: args.mcpServerName,
+					url: `${baseUrl}/mcp-server/http`,
+					apiKey,
+				});
+				logger.info(`Staged MCP build config${tag}`);
+			}
+
 			const preRunWorkflowIds = await snapshotWorkflowIds(client);
 			const claimedWorkflowIds = new Set<string>();
 			const createdCredentialIds = new Set<string>();
-			return { client, baseUrl, preRunWorkflowIds, claimedWorkflowIds, createdCredentialIds };
+			const workflowIdsToDelete = new Set<string>();
+			return {
+				client,
+				baseUrl,
+				preRunWorkflowIds,
+				claimedWorkflowIds,
+				createdCredentialIds,
+				workflowIdsToDelete,
+				mcpConfigPath,
+			};
 		}),
 	);
 
+	// Remove staged MCP configs (they embed the lane's bearer token) on exit,
+	// belt-and-suspenders alongside the explicit finally cleanup below.
+	const stagedMcpConfigPaths = lanes
+		.map((lane) => lane.mcpConfigPath)
+		.filter((path): path is string => path !== undefined);
+	const cleanupStagedMcpConfigs = () => {
+		for (const path of stagedMcpConfigPaths) {
+			try {
+				unlinkSync(path);
+			} catch {
+				// best-effort
+			}
+		}
+	};
+	if (stagedMcpConfigPaths.length > 0) process.on('exit', cleanupStagedMcpConfigs);
+
 	const startTime = Date.now();
-	const prebuiltWorkflowIdsToDelete = args.deletePrebuiltWorkflows ? new Set<string>() : undefined;
+	// Delete workflows after the run when they're throwaway: prebuilt opt-in
+	// (--delete-prebuilt-workflows) or MCP builds (--build-via-mcp, unless
+	// --keep-workflows). Tracked per-lane on lane.workflowIdsToDelete.
+	const cleanupBuiltWorkflows =
+		args.deletePrebuiltWorkflows || (args.buildViaMcp && !args.keepWorkflows);
 
 	try {
 		const hasLangSmith = Boolean(process.env.LANGSMITH_API_KEY);
@@ -209,7 +337,8 @@ async function main(): Promise<void> {
 				logger,
 				testCasesWithFiles,
 				prebuiltManifest,
-				prebuiltWorkflowIdsToDelete,
+				cleanupBuiltWorkflows,
+				mcpBuildLogDir,
 			});
 			evaluation = langsmithRun.evaluation;
 			experimentName = langsmithRun.experimentName;
@@ -223,7 +352,8 @@ async function main(): Promise<void> {
 				logger,
 				testCasesWithFiles,
 				prebuiltManifest,
-				prebuiltWorkflowIdsToDelete,
+				cleanupBuiltWorkflows,
+				mcpBuildLogDir,
 			});
 			evaluation = directRun.evaluation;
 			slugByTestCase = directRun.slugByTestCase;
@@ -255,14 +385,18 @@ async function main(): Promise<void> {
 			'\n' + formatComparisonTerminal(evaluation, outcome, { commitSha, slugByTestCase, gate }),
 		);
 	} finally {
-		if (prebuiltWorkflowIdsToDelete && lanes[0]) {
-			await cleanupPrebuiltWorkflows(lanes[0].client, prebuiltWorkflowIdsToDelete, logger);
-		}
+		// Per-lane cleanup: each lane only holds the workflows built/fetched on it,
+		// so delete them via that lane's own client (multi-lane MCP builds spread
+		// workflows across lanes; a single-lane cleanup would 404 on the rest).
 		await Promise.all(
 			lanes.map(async (lane) => {
+				if (cleanupBuiltWorkflows && lane.workflowIdsToDelete.size > 0) {
+					await cleanupPrebuiltWorkflows(lane.client, lane.workflowIdsToDelete, logger);
+				}
 				await cleanupCredentials(lane.client, [...lane.createdCredentialIds]).catch(() => {});
 			}),
 		);
+		cleanupStagedMcpConfigs();
 	}
 }
 
@@ -276,8 +410,15 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 	outcome: ComparisonOutcome | undefined;
 	slugByTestCase: Map<WorkflowTestCase, string>;
 }> {
-	const { args, lanes, logger, testCasesWithFiles, prebuiltManifest, prebuiltWorkflowIdsToDelete } =
-		config;
+	const {
+		args,
+		lanes,
+		logger,
+		testCasesWithFiles,
+		prebuiltManifest,
+		cleanupBuiltWorkflows,
+		mcpBuildLogDir,
+	} = config;
 
 	if (testCasesWithFiles.length === 0) {
 		logger.info('No workflow test cases selected (check --source / --filter / --exclude / --tier)');
@@ -420,6 +561,48 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		const existing = buildCache.get(key);
 		if (existing) return await existing;
 		const promise = (async () => {
+			if (args.buildViaMcp) {
+				// Fused MCP build: acquire a lane (work-stealing, capped per-lane),
+				// drive its MCP server with `claude` to build the workflow, then
+				// verify on that SAME lane. This is what lets N lanes parallelize the
+				// whole build+verify pipeline in one process (no manifest, no merge).
+				const entry = testCaseByFileSlug.get(fileSlug);
+				if (!entry) throw new Error(`No conversation found for fileSlug=${fileSlug}`);
+				const lane = await allocator.acquire(fileSlug);
+				try {
+					const start = Date.now();
+					const build = await buildWorkflowViaMcpOnLane({
+						lane: lane.runner,
+						conversation: entry.conversation,
+						slug: fileSlug,
+						iteration,
+						args,
+						logDir: mcpBuildLogDir ?? process.cwd(),
+						logger,
+					});
+					if (cleanupBuiltWorkflows && build.success && build.workflowId) {
+						lane.runner.workflowIdsToDelete.add(build.workflowId);
+					}
+					const buildDurationMs = Date.now() - start;
+					buildDurations.set(key, buildDurationMs);
+					stashTranscript(build);
+					// isPrebuilt=true: MCP builds have no build transcript, so only
+					// outcome expectations are judged (against the workflow), like prebuilt.
+					stashBuildExpectations(key, fileSlug, build, true);
+					stashRunDebug(lane.runner.client, build);
+					if (build.success && !build.workflowChecks) {
+						build.workflowChecks = await runWorkflowChecks({
+							workflow: build.workflowJsons[0],
+							prompt: conversationUserTurnsAsText(entry.conversation ?? []),
+							agentText: undefined,
+							logger,
+						});
+					}
+					return { build, lane, buildDurationMs };
+				} finally {
+					allocator.release(lane, fileSlug);
+				}
+			}
 			const prebuiltId = pickPrebuiltWorkflowId(prebuiltManifest, fileSlug, iteration);
 			if (prebuiltId !== undefined) {
 				// Prebuilt path: no orchestrator concurrency to manage — just
@@ -428,8 +611,8 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				const lane = laneStates[0];
 				const start = Date.now();
 				const build = await fetchPrebuiltBuild(lane.runner.client, prebuiltId, logger);
-				if (build.success && build.workflowId) {
-					prebuiltWorkflowIdsToDelete?.add(build.workflowId);
+				if (cleanupBuiltWorkflows && build.success && build.workflowId) {
+					lane.runner.workflowIdsToDelete.add(build.workflowId);
 				}
 				const buildDurationMs = Date.now() - start;
 				buildDurations.set(key, buildDurationMs);
@@ -963,8 +1146,15 @@ async function runDirectLoop(config: RunConfig): Promise<{
 	evaluation: MultiRunEvaluation;
 	slugByTestCase: Map<WorkflowTestCase, string>;
 }> {
-	const { args, lanes, logger, testCasesWithFiles, prebuiltManifest, prebuiltWorkflowIdsToDelete } =
-		config;
+	const {
+		args,
+		lanes,
+		logger,
+		testCasesWithFiles,
+		prebuiltManifest,
+		cleanupBuiltWorkflows,
+		mcpBuildLogDir,
+	} = config;
 
 	const slugByTestCase = new Map<WorkflowTestCase, string>(
 		testCasesWithFiles.map(({ testCase, fileSlug }) => [testCase, fileSlug]),
@@ -1007,6 +1197,22 @@ async function runDirectLoop(config: RunConfig): Promise<{
 								tc.fileSlug,
 								iter,
 							);
+							// --build-via-mcp: build this case on THIS lane via `claude`,
+							// then verify it here. The static lane partitioning already
+							// keeps build + verify on the same lane (required — the
+							// workflow only exists on the lane that built it).
+							const buildOverride = args.buildViaMcp
+								? async () =>
+										await buildWorkflowViaMcpOnLane({
+											lane,
+											conversation: tc.testCase.conversation,
+											slug: tc.fileSlug,
+											iteration: iter,
+											args,
+											logDir: mcpBuildLogDir ?? process.cwd(),
+											logger,
+										})
+								: undefined;
 							const result = await runWorkflowTestCase({
 								client: lane.client,
 								baseUrl: lane.baseUrl,
@@ -1019,14 +1225,16 @@ async function runDirectLoop(config: RunConfig): Promise<{
 								keepWorkflows: args.keepWorkflows,
 								laneTag,
 								prebuiltWorkflowId,
+								buildOverride,
 								pinAiRoots: args.pinAiRoots,
 							});
 							if (
-								prebuiltWorkflowId !== undefined &&
+								(prebuiltWorkflowId !== undefined || args.buildViaMcp) &&
+								cleanupBuiltWorkflows &&
 								result.workflowBuildSuccess &&
 								result.workflowId
 							) {
-								prebuiltWorkflowIdsToDelete?.add(result.workflowId);
+								lane.workflowIdsToDelete.add(result.workflowId);
 							}
 							return result;
 						},

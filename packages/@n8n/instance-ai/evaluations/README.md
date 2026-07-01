@@ -147,6 +147,12 @@ dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai --iterations 3
 | `--tier` | — | Filter to test cases whose `datasets` array contains this value (e.g. `--tier pr` for the PR-time set). Combines with `--filter`/`--exclude`. |
 | `--source` | `disk` | Where test cases come from. `disk` (default) reads `data/workflows/`; `langtracer` pulls a suite from LangTracer's REST API — see [Sourcing from LangTracer](#sourcing-test-cases-from-langtracer) |
 | `--suite` | — | LangTracer suite slug (or numeric id) to pull when `--source langtracer` (required in that mode) |
+| `--build-via-mcp` | `false` | Build each workflow by driving the lane's MCP server with `claude -p`, then verify it on that same lane — see [Building via MCP (`--build-via-mcp`)](#building-via-mcp---build-via-mcp). Works across multiple `--base-url` lanes; mutually exclusive with `--prebuilt-workflows` |
+| `--mcp-server` | `n8n-local` | MCP server name for the staged `claude` config + tool allowlist (`--build-via-mcp`) |
+| `--build-model` | `claude-sonnet-4-6` | Anthropic model for the `claude` MCP build (`--build-via-mcp`); distinct from the verifier model |
+| `--build-cwd` | — | Working directory for the `claude` build subprocess (`--build-via-mcp`); loads that project's Claude config/skills |
+| `--build-max-attempts` | `3` | Retries per workflow when `claude` returns no id (`--build-via-mcp`) |
+| `--build-mcp-timeout-ms` | `120000` | `MCP_TIMEOUT` passed to the `claude` build subprocess (`--build-via-mcp`) |
 
 **pass@k / pass^k**: with `--iterations N`, each scenario runs N times. `pass@k` is the fraction of scenarios that passed *at least once*; `pass^k` is the fraction that passed *every* time. `pass@k` shows whether something is *possible*; `pass^k` shows whether it's *reliable*.
 
@@ -374,6 +380,60 @@ For runs that need to leave the n8n repo (for example, driving the build from a 
 - `--project-id <id>` — instructs the model to pass `projectId` to `create_workflow_from_code` so workflows land in a specific n8n project instead of the user's personal one.
 
 Run `pnpm eval:build-mcp-manifest --help` for the full flag list.
+
+## Building via MCP (`--build-via-mcp`)
+
+`--build-via-mcp` folds the MCP build into the eval run: instead of the two-phase
+`eval:build-mcp-manifest` → `--prebuilt-workflows` flow, one `eval:instance-ai`
+process builds each workflow by driving a lane's own MCP server with `claude -p`,
+then verifies it on that **same** lane. This is the recommended way to run the
+`mcp` tier — one process means one LangSmith experiment (no manifest hop, no
+shard/merge step), and the work-stealing allocator spreads builds across lanes
+(capped per-lane), so N lanes parallelize the whole build+verify pipeline.
+
+How it differs from the manifest flow:
+
+- **No manifest.** Each `(slug, iteration)` is built on demand and verified in
+  place, so every iteration gets a genuinely fresh build (clean `pass@k`/`pass^k`
+  variance) instead of rotating a fixed list of prebuilt IDs.
+- **Multi-lane.** Unlike `--prebuilt-workflows` (single instance), `--build-via-mcp`
+  accepts a comma-separated `--base-url`. Each lane enables MCP, mints its own API
+  key, and stages its own `claude` MCP config — the CLI does this setup for you.
+- **Throwaway cleanup.** Built workflows are deleted after the run unless you pass
+  `--keep-workflows`.
+
+**Prerequisites**: the `claude` CLI installed and authenticated (the build
+subprocess reads `ANTHROPIC_API_KEY`); each lane reachable and seeded with the
+E2E owner. The MCP module is on by default, so no server-side config is needed
+beyond a running instance.
+
+Local run against a pool of container lanes (reuses `scripts/run-eval-lanes.sh`,
+which starts + seeds the lanes and forwards everything after `--`):
+
+```bash
+# 6 lanes; build via MCP + verify the mcp tier, one experiment
+./scripts/run-eval-lanes.sh --instance-count 6 --tier mcp -- \
+  --build-via-mcp \
+  --dataset mcp-workflow-evals \
+  --baseline-prefix mcp-baseline-
+```
+
+Or point at lanes you started yourself:
+
+```bash
+dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai \
+  --base-url http://localhost:5678,http://localhost:5679 \
+  --build-via-mcp \
+  --tier mcp \
+  --iterations 3 \
+  --concurrency 8 \
+  --dataset mcp-workflow-evals \
+  --baseline-prefix mcp-baseline-
+```
+
+In CI this is what `ci-mcp-evals.yml` runs (see `test-evals-mcp.yml`): a single
+job starts `lanes` containers and runs one `--build-via-mcp` process. Keep
+`--concurrency` at roughly `lanes * 4` so no lane sits idle.
 
 ## Discovery evals
 

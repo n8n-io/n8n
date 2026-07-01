@@ -74,6 +74,25 @@ export interface CliArgs {
 	source: 'disk' | 'langtracer';
 	/** lang-tracer suite slug (or numeric id) to export when `--source langtracer`. */
 	suite?: string;
+	/** Fused MCP build mode: instead of the Instance AI orchestrator, build each
+	 *  workflow by driving the lane's own MCP server with `claude -p`, then verify
+	 *  it on that same lane. Works across multiple `--base-url` lanes (each lane
+	 *  builds + verifies its own slice). Mutually exclusive with
+	 *  `--prebuilt-workflows`. See cli/mcp-builder.ts. */
+	buildViaMcp: boolean;
+	/** MCP server name used in the per-lane staged `claude` config + tool allowlist
+	 *  (`--build-via-mcp` only). Arbitrary — the eval CLI stages the config itself. */
+	mcpServerName: string;
+	/** Anthropic model id passed to `claude -p` for the MCP build (`--build-via-mcp`).
+	 *  Distinct from the verifier model (N8N_INSTANCE_AI_MODEL). */
+	buildModel: string;
+	/** Working directory for the `claude` build subprocess (`--build-via-mcp`); loads
+	 *  that project's Claude config/skills. Defaults to the subprocess default. */
+	buildCwd?: string;
+	/** Retries per workflow when `claude` returns no WORKFLOW_ID (`--build-via-mcp`). */
+	buildMaxAttempts: number;
+	/** MCP_TIMEOUT (ms) passed to the `claude` build subprocess (`--build-via-mcp`). */
+	buildMcpTimeoutMs: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -109,6 +128,12 @@ const cliArgsSchema = z.object({
 		.default(BASELINE_EXPERIMENT_PREFIX),
 	source: z.enum(['disk', 'langtracer']).default('disk'),
 	suite: z.string().min(1).optional(),
+	buildViaMcp: z.boolean().default(false),
+	mcpServerName: z.string().min(1).default('n8n-local'),
+	buildModel: z.string().min(1).default('claude-sonnet-4-6'),
+	buildCwd: z.string().min(1).optional(),
+	buildMaxAttempts: z.number().int().positive().default(3),
+	buildMcpTimeoutMs: z.number().int().positive().default(120_000),
 });
 
 // ---------------------------------------------------------------------------
@@ -118,6 +143,18 @@ const cliArgsSchema = z.object({
 export function parseCliArgs(argv: string[]): CliArgs {
 	const raw = parseRawArgs(argv);
 	const validated = cliArgsSchema.parse(raw);
+	// --build-via-mcp checks first: they give clearer guidance than the generic
+	// --delete-prebuilt-workflows check below when both are combined.
+	if (validated.buildViaMcp && validated.prebuiltWorkflows) {
+		throw new Error(
+			'--build-via-mcp is incompatible with --prebuilt-workflows. --build-via-mcp builds fresh workflows via the MCP server on each lane; --prebuilt-workflows verifies existing ones.',
+		);
+	}
+	if (validated.buildViaMcp && validated.deletePrebuiltWorkflows) {
+		throw new Error(
+			'--delete-prebuilt-workflows applies to --prebuilt-workflows. --build-via-mcp already cleans up the workflows it builds unless --keep-workflows is set.',
+		);
+	}
 	if (validated.deletePrebuiltWorkflows && !validated.prebuiltWorkflows) {
 		throw new Error('--delete-prebuilt-workflows requires --prebuilt-workflows');
 	}
@@ -162,6 +199,12 @@ export function parseCliArgs(argv: string[]): CliArgs {
 		baselinePrefix,
 		source: validated.source,
 		suite: validated.suite,
+		buildViaMcp: validated.buildViaMcp,
+		mcpServerName: validated.mcpServerName,
+		buildModel: validated.buildModel,
+		buildCwd: validated.buildCwd,
+		buildMaxAttempts: validated.buildMaxAttempts,
+		buildMcpTimeoutMs: validated.buildMcpTimeoutMs,
 	};
 }
 
@@ -215,6 +258,12 @@ interface RawArgs {
 	baselinePrefix: string;
 	source: string;
 	suite?: string;
+	buildViaMcp: boolean;
+	mcpServerName: string;
+	buildModel: string;
+	buildCwd?: string;
+	buildMaxAttempts: number;
+	buildMcpTimeoutMs: number;
 	/** Whether --dataset / --baseline-prefix were explicitly passed (langtracer mode
 	 *  derives suite-scoped defaults otherwise). */
 	datasetProvided: boolean;
@@ -236,6 +285,11 @@ function parseRawArgs(argv: string[]): RawArgs {
 		pinAiRoots: undefined,
 		baselinePrefix: BASELINE_EXPERIMENT_PREFIX,
 		source: 'disk',
+		buildViaMcp: false,
+		mcpServerName: 'n8n-local',
+		buildModel: 'claude-sonnet-4-6',
+		buildMaxAttempts: 3,
+		buildMcpTimeoutMs: 120_000,
 		datasetProvided: false,
 		baselineProvided: false,
 	};
@@ -350,6 +404,35 @@ function parseRawArgs(argv: string[]): RawArgs {
 
 			case '--suite':
 				result.suite = nextArg(argv, i, '--suite');
+				i++;
+				break;
+
+			case '--build-via-mcp':
+				result.buildViaMcp = true;
+				break;
+
+			case '--mcp-server':
+				result.mcpServerName = nextArg(argv, i, '--mcp-server');
+				i++;
+				break;
+
+			case '--build-model':
+				result.buildModel = nextArg(argv, i, '--build-model');
+				i++;
+				break;
+
+			case '--build-cwd':
+				result.buildCwd = nextArg(argv, i, '--build-cwd');
+				i++;
+				break;
+
+			case '--build-max-attempts':
+				result.buildMaxAttempts = parseIntArg(argv, i, '--build-max-attempts');
+				i++;
+				break;
+
+			case '--build-mcp-timeout-ms':
+				result.buildMcpTimeoutMs = parseIntArg(argv, i, '--build-mcp-timeout-ms');
 				i++;
 				break;
 
