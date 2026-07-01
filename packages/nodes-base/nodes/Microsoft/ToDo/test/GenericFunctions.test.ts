@@ -368,6 +368,32 @@ describe('Microsoft ToDo GenericFunctions', () => {
 			);
 		});
 
+		it('carries a B2B guest (#EXT#) UPN end-to-end into an encoded /users/{id} uri', async () => {
+			setSpParams({ userTarget: { value: 'user_contoso.com#EXT#@tenant.onmicrosoft.com' } });
+
+			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/todo/lists');
+
+			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
+				'microsoftEntraServicePrincipalApi',
+				expect.objectContaining({
+					uri: `${baseUrl}/v1.0/users/user_contoso.com%23EXT%23%40tenant.onmicrosoft.com/todo/lists`,
+				}),
+			);
+		});
+
+		it('carries a "^"/"!" UPN end-to-end into an encoded /users/{id} uri', async () => {
+			setSpParams({ userTarget: { value: 'joe^smith@contoso.com' } });
+
+			await microsoftApiRequest.call(mockExecuteFunctions, 'GET', '/todo/lists');
+
+			expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
+				'microsoftEntraServicePrincipalApi',
+				expect.objectContaining({
+					uri: `${baseUrl}/v1.0/users/joe%5Esmith%40contoso.com/todo/lists`,
+				}),
+			);
+		});
+
 		it('uses an absolute @odata.nextLink uri verbatim (pagination bypasses scoping)', async () => {
 			const nextLink =
 				'https://graph.microsoft.com/v1.0/users/jane%40contoso.com/todo/lists?$skiptoken=abc';

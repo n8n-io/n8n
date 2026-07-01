@@ -8,7 +8,9 @@ import type {
 	IHttpRequestMethods,
 	IRequestOptions,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
+
+import { validateUserTargetId } from '../GenericFunctions';
 
 export type ToDoCredentialType =
 	| 'microsoftToDoOAuth2Api'
@@ -37,45 +39,11 @@ export function getToDoCredentialType(
 
 // App-only Microsoft Graph has no `/me`, and To Do lists/tasks belong to a user, so under
 // the Service Principal credential the request is addressed under an explicit `/users/{id}`
-// root. The user id shape is validated BEFORE encoding — `encodeURIComponent` leaves `..`
-// intact, so shape validation (not encoding) is what keeps the value safe to interpolate
-// into a Graph URL path. Validation messages are static, so the id is never echoed back.
-//
-// NOTE: To Do is user-only — a Graph `/users/{id}` is only a user object ID (GUID) or a UPN
-// (has `@`); there is no bare host/domain form. The UPN character set follows Entra's
-// documented userPrincipalName policy; ENT-92 should lift a shared helper and bring the
-// Outlook node's `validateMailbox` to the same set.
-const USER_TARGET_GUID = /^[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}$/;
-// Local part = Entra's documented userPrincipalName set (A-Z a-z 0-9 ' . - _ ! # ^ ~) plus
-// `+`, and covers B2B guest UPNs (`user_contoso.com#EXT#@tenant.onmicrosoft.com`). It excludes
-// `%`, so an encoded-traversal payload like `..%2f..%2fx@y.com` is rejected; for the rest,
-// `encodeURIComponent` makes `#`/`^` path-safe (`%23`/`%5E`) before they reach the URL.
-const USER_TARGET_UPN = /^[A-Za-z0-9._+'!#^~-]+@[A-Za-z0-9.-]+$/;
-
-/**
- * Validates an app-only user target id before it is encoded and used to compose a Graph
- * URL. Throws a `NodeOperationError` with a fully static message (never interpolating the
- * id). Empty / dots-only are rejected first, then the accepted user shapes (GUID / UPN).
- */
-export function validateUserTargetId(id: string, node: INode): void {
-	if (id === '') {
-		throw new NodeOperationError(node, 'A target ID is required for the Service Principal', {
-			description:
-				'Set the User ID under "Access As" — app-only Microsoft Graph has no personal context to default to.',
-		});
-	}
-	if (/^\.+$/.test(id)) {
-		throw new NodeOperationError(node, 'The target ID is not valid', {
-			description: 'A target ID cannot consist only of dots.',
-		});
-	}
-	const valid = USER_TARGET_GUID.test(id) || USER_TARGET_UPN.test(id);
-	if (!valid) {
-		throw new NodeOperationError(node, 'The target ID is not valid', {
-			description: 'Remove any slashes, backslashes, colons, commas, or spaces and try again.',
-		});
-	}
-}
+// root. To Do is user-only, so it validates via the shared `validateUserTargetId` (default
+// "target ID" wording) and re-exports it here — the id shape is checked BEFORE encoding.
+// ENT-123 lifted that validator to `Microsoft/GenericFunctions.ts`; SharePoint (ENT-92)
+// adopts the same validator when Service Principal support lands there.
+export { validateUserTargetId };
 
 /**
  * Builds the `/users/{id}` Graph root for an app-only request. The id is validated before
