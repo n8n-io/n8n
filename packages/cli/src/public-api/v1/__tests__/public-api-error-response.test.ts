@@ -1,5 +1,5 @@
-import { BadRequest } from 'express-openapi-validator/dist/framework/types';
 import type { Response } from 'express';
+import { BadRequest } from 'express-openapi-validator/dist/framework/types';
 import { UnexpectedError, UserError, OperationalError } from 'n8n-workflow';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -12,8 +12,8 @@ describe('sendPublicApiErrorResponse', () => {
 		const payload: { statusCode?: number; body?: unknown } = {};
 		const res = {
 			_payload: payload,
-			status: jest.fn(),
-			json: jest.fn(),
+			status: vi.fn(),
+			json: vi.fn(),
 		};
 		res.status.mockImplementation((code: number) => {
 			payload.statusCode = code;

@@ -1,8 +1,9 @@
+import type { Mocked } from 'vitest';
 import type { SerializableAgentState } from '@n8n/agents';
 import type { Logger } from '@n8n/backend-common';
 import type { AgentsConfig } from '@n8n/config';
 import type { AgentCheckpoint } from '../entities/agent-checkpoint.entity';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { AgentsService } from '../agents.service';
 import type { AgentCheckpointRepository } from '../repositories/agent-checkpoint.repository';
@@ -36,7 +37,7 @@ function checkpointRow(
 	} as AgentCheckpoint;
 }
 
-function makeService(agentCheckpointRepository: jest.Mocked<AgentCheckpointRepository>) {
+function makeService(agentCheckpointRepository: Mocked<AgentCheckpointRepository>) {
 	return new AgentsBuilderService(
 		mock<Logger>(),
 		mock<AgentsService>(),

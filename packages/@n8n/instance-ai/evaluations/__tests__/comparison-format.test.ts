@@ -405,8 +405,8 @@ describe('formatComparisonMarkdown', () => {
 			slugByTestCase: slugMap(evalWithFailures, ['cross-team-linear-report']),
 		});
 
-		expect(md).toMatch(/<summary>Failure details<\/summary>/);
-		expect(md).toMatch(/\*\*`cross-team-linear-report\/no-cross-team-issues`\*\* — 3 failed/);
+		expect(md).toMatch(/<summary>Failures \(1\)<\/summary>/);
+		expect(md).toMatch(/\*\*`cross-team-linear-report\/no-cross-team-issues`\*\* — passed 0\/3/);
 	});
 
 	it('attaches per-scenario failures to the right file slug when names collide', () => {

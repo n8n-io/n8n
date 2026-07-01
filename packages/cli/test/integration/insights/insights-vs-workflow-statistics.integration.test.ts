@@ -98,9 +98,10 @@ describe('Insights vs Workflow Statistics Integration', () => {
 		insightsCompactionService.startCompactionTimer();
 	});
 
-	afterAll(() => {
-		// Stop compaction timer
-		insightsCompactionService.stopCompactionTimer();
+	afterAll(async () => {
+		// Stop compaction timer and wait for any in-flight run to finish before the
+		// sibling afterAll terminates the DB connection.
+		await insightsCompactionService.stopCompactionTimer();
 	});
 
 	beforeEach(async () => {

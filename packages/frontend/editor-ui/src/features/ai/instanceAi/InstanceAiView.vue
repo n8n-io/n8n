@@ -1,10 +1,12 @@
 <script lang="ts" setup>
 import { onMounted, onUnmounted, provide, ref, watch } from 'vue';
-import { onBeforeRouteLeave, RouterView, useRoute } from 'vue-router';
+import { onBeforeRouteLeave, RouterView, useRoute, useRouter } from 'vue-router';
 import { N8nResizeWrapper } from '@n8n/design-system';
-import { useSessionStorage } from '@vueuse/core';
+import { useEventListener, useSessionStorage } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
+import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useInstanceAiStore } from './instanceAi.store';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import InstanceAiThreadList from './components/InstanceAiThreadList.vue';
@@ -16,6 +18,9 @@ const settingsStore = useInstanceAiSettingsStore();
 const i18n = useI18n();
 const documentTitle = useDocumentTitle();
 const route = useRoute();
+const router = useRouter();
+const uiStore = useUIStore();
+const { isCtrlKeyPressed } = useDeviceSupport();
 
 documentTitle.set(i18n.baseText('instanceAi.view.title'));
 
@@ -52,6 +57,19 @@ onBeforeRouteLeave((to) => {
 	const name = typeof to.name === 'string' ? to.name : undefined;
 	if (!name || !CHAT_ROUTE_NAMES.has(name)) {
 		sidebarCollapsed.value = true;
+	}
+});
+
+useEventListener(document, 'keydown', (event: KeyboardEvent) => {
+	if (
+		event.key.toLowerCase() === 'o' &&
+		isCtrlKeyPressed(event) &&
+		event.shiftKey &&
+		!uiStore.isAnyModalOpen
+	) {
+		event.preventDefault();
+		event.stopPropagation();
+		void router.push({ name: INSTANCE_AI_VIEW, force: true });
 	}
 });
 
@@ -127,7 +145,7 @@ onUnmounted(() => {
 			</N8nResizeWrapper>
 		</Transition>
 
-		<!-- Inner route — Empty for `/instance-ai`, Thread for `/instance-ai/:threadId` -->
+		<!-- Inner route — Empty for `/assistant`, Thread for `/assistant/:threadId` -->
 		<RouterView v-slot="{ Component }">
 			<component :is="Component" :key="String(route.params.threadId ?? 'empty')" />
 		</RouterView>

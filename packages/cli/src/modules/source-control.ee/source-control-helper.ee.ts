@@ -510,6 +510,8 @@ export function areSameCredentials(
 		credA.type === credB.type &&
 		!hasOwnerChanged(credA.ownedBy, credB.ownedBy) &&
 		Boolean(credA.isGlobal) === Boolean(credB.isGlobal) &&
+		Boolean(credA.isResolvable) === Boolean(credB.isResolvable) &&
+		Boolean(credA.resolvableAllowFallback) === Boolean(credB.resolvableAllowFallback) &&
 		!hasSynchableCredentialDataChanged(credA.data, credB.data)
 	);
 }

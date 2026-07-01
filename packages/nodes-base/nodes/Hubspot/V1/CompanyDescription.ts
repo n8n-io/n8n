@@ -169,7 +169,7 @@ export const companyFields: INodeProperties[] = [
 								name: 'property',
 								type: 'options',
 								typeOptions: {
-									loadOptionsMethod: 'getCompanyCustomProperties',
+									loadOptionsMethod: 'getCompanyProperties',
 								},
 								default: '',
 								description:
@@ -523,7 +523,7 @@ export const companyFields: INodeProperties[] = [
 								name: 'property',
 								type: 'options',
 								typeOptions: {
-									loadOptionsMethod: 'getCompanyCustomProperties',
+									loadOptionsMethod: 'getCompanyProperties',
 								},
 								default: '',
 								description:

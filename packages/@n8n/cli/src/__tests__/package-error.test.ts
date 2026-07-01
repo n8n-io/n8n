@@ -9,14 +9,6 @@ describe('toPackagesError', () => {
 		expect(toPackagesError(error)).toBe(error);
 	});
 
-	it('adds a beta-enablement hint for a 404', () => {
-		const result = toPackagesError(new ApiError(404, 'Not Found'));
-
-		expect(result).toBeInstanceOf(ApiError);
-		expect((result as ApiError).statusCode).toBe(404);
-		expect((result as ApiError).hint).toContain('N8N_PUBLIC_API_PACKAGES_ENABLED=true');
-	});
-
 	it('lists workflow-conflict issues for a 409', () => {
 		const result = toPackagesError(
 			new ApiError(409, 'Import blocked', undefined, {

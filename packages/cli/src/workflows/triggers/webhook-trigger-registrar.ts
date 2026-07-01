@@ -238,6 +238,7 @@ export class WebhookTriggerRegistrar {
 	}
 
 	private normalizeWebhookPath(webhook: WebhookEntity, nodeWebhookId?: string) {
+		webhook.webhookPath = webhook.webhookPath.trim();
 		if (webhook.webhookPath.startsWith('/')) {
 			webhook.webhookPath = webhook.webhookPath.slice(1);
 		}

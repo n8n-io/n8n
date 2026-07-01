@@ -1,7 +1,7 @@
 import type { CredentialProvider } from '@n8n/agents';
 import type { AgentJsonMcpServerConfig } from '@n8n/api-types';
 import type { CustomFetch } from '@n8n/backend-network';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { UserError } from 'n8n-workflow';
 
 import type { OauthService } from '@/oauth/oauth.service';
@@ -12,16 +12,16 @@ import { buildMcpClientForServer, mapApprovalToSdk } from '../mcp-client-factory
 // Module mocks
 // ---------------------------------------------------------------------------
 
-const mcpClientCtor = jest.fn();
-jest.mock('@n8n/agents', () => ({
-	McpClient: jest.fn(function (configs: unknown) {
+const mcpClientCtor = vi.fn();
+vi.mock('@n8n/agents', () => ({
+	McpClient: vi.fn(function (configs: unknown) {
 		mcpClientCtor(configs);
-		return { configs, close: jest.fn() };
+		return { configs, close: vi.fn() };
 	}),
 }));
 
 // Stands in for the proxy-aware transport fetch the caller injects via deps.
-const proxyFetchMock = jest.fn();
+const proxyFetchMock = vi.fn();
 const proxyFetch = ((...args: unknown[]) => proxyFetchMock(...args)) as unknown as CustomFetch;
 
 // ---------------------------------------------------------------------------
