@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 import { jsonParse } from 'n8n-workflow';
 
 import type {

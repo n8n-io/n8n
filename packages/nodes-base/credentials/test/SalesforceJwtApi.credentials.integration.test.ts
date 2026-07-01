@@ -9,7 +9,7 @@ import { SalesforceJwtApi } from '../SalesforceJwtApi.credentials';
 vi.mock('jsonwebtoken', () => ({
 	default: { sign: vi.fn(() => 'signed-jwt') },
 }));
-vi.mock('@n8n/utils', () => ({
+vi.mock('@n8n/utils/format-pem-block', () => ({
 	formatPemBlock: (key: string) => key,
 }));
 

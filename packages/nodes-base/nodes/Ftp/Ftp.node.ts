@@ -1,4 +1,4 @@
-import { formatPemBlock } from '@n8n/utils';
+import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import { generatePairedItemData } from '@utils/utilities';
 import { createWriteStream } from 'fs';
 import { BINARY_ENCODING, NodeApiError, NodeConnectionTypes } from 'n8n-workflow';

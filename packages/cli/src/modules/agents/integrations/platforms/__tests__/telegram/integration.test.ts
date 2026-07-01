@@ -11,13 +11,13 @@ import type { InstanceSettings } from 'n8n-core';
 import { ConflictError } from '@/errors/response-errors/conflict.error';
 import type { UrlService } from '@/services/url.service';
 
-import type { Agent } from '../../../entities/agent.entity';
-import type { AgentRepository } from '../../../repositories/agent.repository';
-import type { AgentChatIntegrationContext } from '../../agent-chat-integration';
-import { loadTelegramAdapter } from '../../esm-loader';
-import { TelegramIntegration } from '../telegram-integration';
+import type { Agent } from '../../../../entities/agent.entity';
+import type { AgentRepository } from '../../../../repositories/agent.repository';
+import type { AgentChatIntegrationContext } from '../../../agent-chat-integration';
+import { loadTelegramAdapter } from '../../../esm-loader';
+import { TelegramIntegration } from '../../telegram-integration';
 
-vi.mock('../../esm-loader', () => ({
+vi.mock('../../../esm-loader', () => ({
 	loadTelegramAdapter: vi.fn(),
 }));
 
@@ -236,6 +236,60 @@ describe('TelegramIntegration.isUserAllowed', () => {
 				} as never,
 			),
 		).toThrow();
+	});
+});
+
+describe('TelegramIntegration.normalizeComponents', () => {
+	const { integration } = makeIntegration();
+
+	it('converts select and radio select options to individual buttons', () => {
+		expect(
+			integration.normalizeComponents([
+				{
+					type: 'select',
+					options: [
+						{ label: 'Approve', value: 'approve' },
+						{ label: 'Reject', value: 'reject' },
+					],
+				},
+				{
+					type: 'radio_select',
+					options: [{ label: 'Escalate', value: 'escalate' }],
+				},
+			]),
+		).toEqual([
+			{ type: 'button', label: 'Approve', value: 'approve' },
+			{ type: 'button', label: 'Reject', value: 'reject' },
+			{ type: 'button', label: 'Escalate', value: 'escalate' },
+		]);
+	});
+
+	it('converts image components to markdown link sections', () => {
+		expect(
+			integration.normalizeComponents([
+				{
+					type: 'image',
+					url: 'https://example.com/chart.png',
+					altText: 'Workflow chart',
+				},
+			]),
+		).toEqual([
+			{
+				type: 'section',
+				text: '[Workflow chart](https://example.com/chart.png)',
+			},
+		]);
+	});
+
+	it('passes supported Telegram components through unchanged', () => {
+		const components = [
+			{ type: 'section', text: 'Review this change' },
+			{ type: 'button', label: 'Approve', value: 'approve', style: 'primary' },
+			{ type: 'divider' },
+			{ type: 'fields', fields: [{ label: 'Risk', value: 'Low' }] },
+		];
+
+		expect(integration.normalizeComponents(components)).toEqual(components);
 	});
 });
 

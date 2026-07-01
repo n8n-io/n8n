@@ -1,4 +1,4 @@
-import { formatPemBlock } from '@n8n/utils';
+import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import { createPrivateKey, createSign, randomUUID, X509Certificate } from 'node:crypto';
 
 // private_key_jwt (RFC 7521/7523): the client proves its identity with a JWT
