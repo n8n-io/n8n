@@ -89,6 +89,9 @@ const isOpen = computed({
 		if (!value) uiStore.closeModal(props.modalName);
 	},
 });
+// Hide tools connection modal when the credential modal is open
+// because it's not properly rendered on top of the tools modal
+const isToolsConnectionModalOpen = computed(() => isOpen.value && !isCredentialModalOpen.value);
 
 const activeItemId = ref(readConnectionIdPayload(modalState.value?.data));
 
@@ -392,8 +395,7 @@ async function handleConnect(item: ToolConnectionItem) {
 
 <template>
 	<ToolsConnectionModal
-		v-model:open="isOpen"
-		:modal="!isCredentialModalOpen"
+		v-model:open="isToolsConnectionModalOpen"
 		:items="items"
 		:sections="['connected', 'built-in-services', 'nodes']"
 		:detail-item="detailItem"

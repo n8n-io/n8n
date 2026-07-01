@@ -25,14 +25,12 @@ const props = withDefaults(
 		sections: SectionKey[];
 		detailItem?: ToolConnectionItem | null;
 		detailMode?: 'detail' | 'settings';
-		modal?: boolean;
 		hideBackButton?: boolean;
 	}>(),
 	{
 		open: false,
 		detailItem: null,
 		detailMode: 'detail',
-		modal: true,
 	},
 );
 
@@ -219,7 +217,6 @@ function handleOpenChange(value: boolean) {
 <template>
 	<N8nDialog
 		:open="open"
-		:modal="modal"
 		size="xlarge"
 		:header="detailItem ? '' : i18n.baseText('tools.connection.title')"
 		:show-close-button="!detailItem"
