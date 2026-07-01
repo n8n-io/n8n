@@ -3,8 +3,8 @@ import type { DatabaseConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { DataSource } from '@n8n/typeorm';
 import type { PostgresDriver } from '@n8n/typeorm/driver/postgres/PostgresDriver';
-import type { ErrorReporter } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
+import type { ErrorReporter } from 'n8n-core';
 import { OperationalError } from 'n8n-workflow';
 import { setTimeout as setTimeoutP } from 'timers/promises';
 
