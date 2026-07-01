@@ -45,7 +45,7 @@ tags:
   - name: Folders
     description: Operations about folders
   - name: N8nPackage
-    description: Beta — breaking changes may still occur without major version bump.`.
+    description: Beta — breaking changes may still occur without major version bump.
 
 paths:
   /audit:
