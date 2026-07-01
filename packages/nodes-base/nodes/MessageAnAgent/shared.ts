@@ -31,18 +31,51 @@ export const sharedVersionDescription: Pick<
 
 /** Every property after `agentId` is identical across versions. */
 export const commonProperties: INodeProperties[] = [
+	// Prompt source selector, mirroring the legacy `@n8n/n8n-nodes-langchain.agent`
+	// node (promptType + text). Defined inline to avoid a cross-package dependency
+	// on nodes-langchain.
 	{
-		displayName: 'Message',
-		name: 'message',
+		displayName: 'Source for Prompt (User Message)',
+		name: 'promptType',
+		type: 'options',
+		options: [
+			{
+				name: 'Connected Chat Trigger Node',
+				value: 'auto',
+				description:
+					"Looks for an input field called 'chatInput' that is coming from a directly connected Chat Trigger",
+			},
+			{
+				name: 'Define Below',
+				value: 'define',
+				description: 'Use an expression to reference data in previous nodes or enter static text',
+			},
+		],
+		default: 'auto',
+	},
+	{
+		displayName: 'Prompt (User Message)',
+		name: 'text',
 		type: 'string',
-		default: '',
 		required: true,
-		description: 'The message to send to the agent',
-		placeholder:
-			'Process the refund for order {{ $json.order_id }} — confirm with the customer that it was approved.',
+		default: '={{ $json.chatInput }}',
 		typeOptions: {
-			rows: 4,
+			rows: 2,
 		},
+		disabledOptions: { show: { promptType: ['auto'] } },
+		displayOptions: { show: { promptType: ['auto'] } },
+	},
+	{
+		displayName: 'Prompt (User Message)',
+		name: 'text',
+		type: 'string',
+		required: true,
+		default: '',
+		placeholder: 'e.g. Hello, how can you help me?',
+		typeOptions: {
+			rows: 2,
+		},
+		displayOptions: { show: { promptType: ['define'] } },
 	},
 	{
 		displayName: 'Invoke Agent',
@@ -213,7 +246,23 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				value: string;
 			};
 			const agentId = agentIdRlc.value;
-			const message = this.getNodeParameter('message', i) as string;
+			// Resolve the prompt the same way the legacy AI Agent node does. `auto`
+			// reads `chatInput` from a connected Chat Trigger; otherwise the `text`
+			// param is used. `text` is also consulted as a fallback so the node still
+			// works when invoked as a tool (no Chat Trigger present), and a legacy
+			// `message` value from pre-existing workflows is honored last.
+			const promptType = this.getNodeParameter('promptType', i, 'define') as string;
+			let prompt = '';
+			if (promptType === 'auto') {
+				prompt = (this.evaluateExpression('{{ $json["chatInput"] }}', i) as string) || '';
+			}
+			if (!prompt) {
+				prompt = (this.getNodeParameter('text', i, '') as string) || '';
+			}
+			if (!prompt) {
+				prompt = (this.getNodeParameter('message', i, '') as string) || '';
+			}
+
 			const advanced = this.getNodeParameter('advanced', i, {}) as {
 				sessionId?: string;
 				allowOtherNodesData?: boolean;
@@ -221,8 +270,8 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			const sessionIdOverride = advanced.sessionId?.trim();
 			const allowOtherNodesData = advanced.allowOtherNodesData ?? false;
 
-			if (!message.trim()) {
-				throw new NodeOperationError(this.getNode(), 'Message cannot be empty', {
+			if (!prompt.trim()) {
+				throw new NodeOperationError(this.getNode(), 'Prompt cannot be empty', {
 					itemIndex: i,
 				});
 			}
@@ -237,7 +286,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 					inputDataScope: runOnceForAll ? 'all' : 'item',
 					exposeWorkflowData: allowOtherNodesData,
 				},
-				message,
+				prompt,
 				executionId,
 				i,
 			);

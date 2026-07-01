@@ -23,6 +23,9 @@ import { buildToolRows } from './AgentCapabilitiesSection.utils';
 import AgentChipButton from './AgentChipButton.vue';
 import AgentChannelModal, { type ChannelView } from './AgentChannelModal.vue';
 
+/** Capability rows this section can render. */
+export type AgentCapabilitySection = 'channels' | 'tools' | 'tasks' | 'skills' | 'subAgents';
+
 const props = withDefaults(
 	defineProps<{
 		config: AgentJsonConfig | null;
@@ -36,9 +39,25 @@ const props = withDefaults(
 		isPublished: boolean;
 		taskRefs?: AgentJsonTaskConfig[];
 		reloadKey?: number;
+		/**
+		 * Allowlist of sections to render. Defaults to all — the Agent Builder
+		 * shows everything; the NDV passes `['tools', 'tasks', 'skills']` to hide
+		 * Channels (avoids the channel-connect auto-publish) and Sub-agents.
+		 * Suppressing `channels` also suppresses the inline `AgentChannelModal`.
+		 */
+		sections?: AgentCapabilitySection[];
 	}>(),
-	{ disabled: false, taskRefs: () => [] },
+	{
+		disabled: false,
+		taskRefs: () => [],
+		sections: () => ['channels', 'tools', 'skills', 'subAgents', 'tasks'],
+	},
 );
+
+const visibleSections = computed(() => new Set(props.sections));
+function showSection(section: AgentCapabilitySection): boolean {
+	return visibleSections.value.has(section);
+}
 
 const emit = defineEmits<{
 	'open-tool': [target: ToolOpenTarget];
@@ -156,12 +175,13 @@ async function reloadTasks() {
 }
 
 onMounted(() => {
-	void reloadTasks();
-	void ensureProjectAgentsLoaded().catch(() => {});
+	if (showSection('tasks')) void reloadTasks();
+	// Sub-agent picker needs the project agent list; skip when the section is hidden.
+	if (showSection('subAgents')) void ensureProjectAgentsLoaded().catch(() => {});
 });
 
 watch([() => props.reloadKey, () => props.projectId, () => props.agentId], () => {
-	void reloadTasks();
+	if (showSection('tasks')) void reloadTasks();
 });
 
 function openTaskModal(task: TaskRow | null) {
@@ -436,7 +456,7 @@ function handleChannelDisconnected(channelType: string) {
 			:inert="props.disabled || undefined"
 			data-testid="agent-capabilities-section"
 		>
-			<div :class="$style.capabilityRow">
+			<div v-if="showSection('channels')" :class="$style.capabilityRow">
 				<N8nText size="small" color="text-light" :class="$style.rowLabel">
 					{{ i18n.baseText('agents.builder.triggers.title') }}
 				</N8nText>
@@ -475,7 +495,7 @@ function handleChannelDisconnected(channelType: string) {
 				</div>
 			</div>
 
-			<div :class="$style.capabilityRow">
+			<div v-if="showSection('tools')" :class="$style.capabilityRow">
 				<N8nText size="small" color="text-light" :class="$style.rowLabel">
 					{{ i18n.baseText('agents.builder.tools.title') }}
 				</N8nText>
@@ -556,7 +576,7 @@ function handleChannelDisconnected(channelType: string) {
 				</div>
 			</div>
 
-			<div :class="$style.capabilityRow">
+			<div v-if="showSection('skills')" :class="$style.capabilityRow">
 				<N8nText size="small" color="text-light" :class="$style.rowLabel">
 					{{ i18n.baseText('agents.builder.skills.title') }}
 				</N8nText>
@@ -594,7 +614,7 @@ function handleChannelDisconnected(channelType: string) {
 					</N8nTooltip>
 				</div>
 			</div>
-			<div :class="$style.capabilityRow">
+			<div v-if="showSection('subAgents')" :class="$style.capabilityRow">
 				<N8nText size="small" color="text-light" :class="$style.rowLabel">
 					{{ i18n.baseText('agents.builder.subAgents.title') }}
 				</N8nText>
@@ -629,7 +649,7 @@ function handleChannelDisconnected(channelType: string) {
 					</N8nTooltip>
 				</div>
 			</div>
-			<div :class="$style.capabilityRow">
+			<div v-if="showSection('tasks')" :class="$style.capabilityRow">
 				<N8nText size="small" color="text-light" :class="$style.rowLabel">
 					{{ i18n.baseText('agents.builder.tasks.title') }}
 				</N8nText>
@@ -674,7 +694,7 @@ function handleChannelDisconnected(channelType: string) {
 		</div>
 
 		<AgentChannelModal
-			v-if="channelModalOpen"
+			v-if="showSection('channels') && channelModalOpen"
 			v-model:open="channelModalOpen"
 			v-model:view="channelModalView"
 			:agent-id="agentId"

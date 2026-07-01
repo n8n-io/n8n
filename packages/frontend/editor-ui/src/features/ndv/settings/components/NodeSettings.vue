@@ -12,7 +12,7 @@ import type {
 	NodeParameterValue,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeHelpers, deepCopy, isCommunityPackageName } from 'n8n-workflow';
-import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { computed, inject, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from 'vue';
 
 import { BASE_NODE_SURVEY_URL, VIEWS } from '@/app/constants';
 
@@ -22,6 +22,10 @@ import NodeSettingsHeader from './NodeSettingsHeader.vue';
 import NodeSettingsTabs from './NodeSettingsTabs.vue';
 import NodeWebhooks from './NodeWebhooks.vue';
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
+import AgentNdvReferencedControls from '@/features/ndv/agents/components/AgentNdvReferencedControls.vue';
+import AgentNdvSettings from '@/features/ndv/agents/components/AgentNdvSettings.vue';
+import { NdvAgentConfigKey } from '@/features/ndv/agents/composables/useNdvAgentConfig';
+import { MESSAGE_AN_AGENT_NODE_TYPE } from '@/app/constants/nodeTypes';
 import get from 'lodash/get';
 
 import ExperimentalEmbeddedNdvHeader from '@/features/workflows/canvas/experimental/components/ExperimentalEmbeddedNdvHeader.vue';
@@ -514,6 +518,22 @@ const nodeSettings = computed(() =>
 	),
 );
 
+// The AI Agent node renders its referenced-agent controls + a custom settings
+// tab (from the NDV container's provided orchestrator) in place of the default
+// node settings. Guarded on the orchestrator being provided so NodeSettings
+// still works if ever mounted outside the NDV container.
+const ndvAgentConfig = inject(NdvAgentConfigKey, null);
+const isAgentNode = computed(() => node.value?.type === MESSAGE_AN_AGENT_NODE_TYPE);
+const showAgentNdvControls = computed(() => isAgentNode.value && ndvAgentConfig !== null);
+/** Node-execution settings kept for the agent node alongside its custom agent settings. */
+const agentNodeRetainedSettings = computed(() =>
+	nodeSettings.value.filter((setting) =>
+		['notes', 'notesInFlow', 'retryOnFail', 'maxTries', 'waitBetweenTries', 'onError'].includes(
+			setting.name,
+		),
+	),
+);
+
 const iconSource = useNodeIconSource(nodeType, node);
 
 const onParameterBlur = (parameterName: string) => {
@@ -803,6 +823,7 @@ function handleSelectAction(params: INodeParameters) {
 						@blur="onParameterBlur"
 					/>
 				</ParameterInputList>
+				<AgentNdvReferencedControls v-if="showAgentNdvControls" />
 				<div v-if="showNoParametersNotice" class="no-parameters">
 					<N8nText>
 						{{ i18n.baseText('nodeSettings.thisNodeDoesNotHaveAnyParameters') }}
@@ -831,26 +852,41 @@ function handleSelectAction(params: INodeParameters) {
 					style="margin-top: var(--spacing--sm)"
 					source="node settings"
 				/>
-				<ParameterInputList
-					:parameters="parametersByTab.settings"
-					:node-values="nodeValues"
-					:is-read-only="isReadOnly"
-					:hide-delete="true"
-					:hidden-issues-inputs="hiddenIssuesInputs"
-					path="parameters"
-					@value-changed="valueChanged"
-					@parameter-blur="onParameterBlur"
-				/>
-				<ParameterInputList
-					:parameters="nodeSettings"
-					:hide-delete="true"
-					:node-values="nodeValues"
-					:is-read-only="isReadOnly"
-					:hidden-issues-inputs="hiddenIssuesInputs"
-					path=""
-					@value-changed="valueChanged"
-					@parameter-blur="onParameterBlur"
-				/>
+				<template v-if="showAgentNdvControls">
+					<AgentNdvSettings />
+					<ParameterInputList
+						:parameters="agentNodeRetainedSettings"
+						:hide-delete="true"
+						:node-values="nodeValues"
+						:is-read-only="isReadOnly"
+						:hidden-issues-inputs="hiddenIssuesInputs"
+						path=""
+						@value-changed="valueChanged"
+						@parameter-blur="onParameterBlur"
+					/>
+				</template>
+				<template v-else>
+					<ParameterInputList
+						:parameters="parametersByTab.settings"
+						:node-values="nodeValues"
+						:is-read-only="isReadOnly"
+						:hide-delete="true"
+						:hidden-issues-inputs="hiddenIssuesInputs"
+						path="parameters"
+						@value-changed="valueChanged"
+						@parameter-blur="onParameterBlur"
+					/>
+					<ParameterInputList
+						:parameters="nodeSettings"
+						:hide-delete="true"
+						:node-values="nodeValues"
+						:is-read-only="isReadOnly"
+						:hidden-issues-inputs="hiddenIssuesInputs"
+						path=""
+						@value-changed="valueChanged"
+						@parameter-blur="onParameterBlur"
+					/>
+				</template>
 				<div class="node-version" data-test-id="node-version">
 					{{
 						i18n.baseText('nodeSettings.nodeVersion', {

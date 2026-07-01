@@ -30,6 +30,25 @@ describe('MessageAnAgent Node', () => {
 		session: mockSession,
 	};
 
+	/**
+	 * Mock `getNodeParameter` with sensible defaults for the prompt source
+	 * (promptType=define + a non-empty `text`). Tests pass `overrides` keyed by
+	 * param name; an override value of `undefined`/`''` is honored (not replaced).
+	 */
+	function mockParams(overrides: Record<string, unknown> = {}) {
+		executeFunctions.getNodeParameter.mockImplementation(
+			(param: string, _itemIndex?: number, fallback?: unknown) => {
+				if (param in overrides) return overrides[param] as NodeParameterValueType;
+				if (param === 'agentId') return { mode: 'id', value: 'agent-1' };
+				if (param === 'promptType') return 'define';
+				if (param === 'text') return 'Hello agent';
+				if (param === 'invokeMode') return 'perItem';
+				if (param === 'advanced') return fallback ?? {};
+				return undefined;
+			},
+		);
+	}
+
 	beforeEach(() => {
 		node = new MessageAnAgentV2(baseDescription);
 		executeFunctions = mockDeep<IExecuteFunctions>();
@@ -39,7 +58,7 @@ describe('MessageAnAgent Node', () => {
 			id: 'test-node-id',
 			name: 'Message an Agent',
 			type: 'n8n-nodes-base.messageAnAgent',
-			typeVersion: 1,
+			typeVersion: 2,
 			position: [0, 0],
 			parameters: {},
 		});
@@ -49,15 +68,7 @@ describe('MessageAnAgent Node', () => {
 
 	it('should send a message and return the agent response', async () => {
 		executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
-		executeFunctions.getNodeParameter.mockImplementation(
-			(param: string, _itemIndex?: number, fallback?: unknown) => {
-				if (param === 'agentId') return { mode: 'id', value: 'agent-1' };
-				if (param === 'message') return 'Hello agent';
-				if (param === 'advanced') return fallback ?? {};
-				if (param === 'invokeMode') return 'perItem';
-				return fallback as NodeParameterValueType;
-			},
-		);
+		mockParams();
 		executeFunctions.executeAgent.mockResolvedValue(mockAgentResult);
 
 		const result = await node.execute.call(executeFunctions);
@@ -92,15 +103,7 @@ describe('MessageAnAgent Node', () => {
 
 	it('should forward a user-supplied sessionId from the Advanced collection', async () => {
 		executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
-		executeFunctions.getNodeParameter.mockImplementation(
-			(param: string, _itemIndex?: number, fallback?: unknown) => {
-				if (param === 'agentId') return { mode: 'id', value: 'agent-1' };
-				if (param === 'message') return 'Hello agent';
-				if (param === 'advanced') return { sessionId: '  thread-42  ' };
-				if (param === 'invokeMode') return 'perItem';
-				return fallback as NodeParameterValueType;
-			},
-		);
+		mockParams({ advanced: { sessionId: '  thread-42  ' } });
 		executeFunctions.executeAgent.mockResolvedValue(mockAgentResult);
 
 		await node.execute.call(executeFunctions);
@@ -120,15 +123,7 @@ describe('MessageAnAgent Node', () => {
 
 	it('should treat a whitespace-only sessionId as no override', async () => {
 		executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
-		executeFunctions.getNodeParameter.mockImplementation(
-			(param: string, _itemIndex?: number, fallback?: unknown) => {
-				if (param === 'agentId') return { mode: 'id', value: 'agent-1' };
-				if (param === 'message') return 'Hello agent';
-				if (param === 'advanced') return { sessionId: '   ' };
-				if (param === 'invokeMode') return 'perItem';
-				return fallback as NodeParameterValueType;
-			},
-		);
+		mockParams({ advanced: { sessionId: '   ' } });
 		executeFunctions.executeAgent.mockResolvedValue(mockAgentResult);
 
 		await node.execute.call(executeFunctions);
@@ -146,21 +141,82 @@ describe('MessageAnAgent Node', () => {
 		);
 	});
 
-	it('should throw NodeOperationError when message is empty', async () => {
-		executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
-		executeFunctions.getNodeParameter.mockImplementation(
-			(param: string, _itemIndex?: number, fallback?: unknown) => {
-				if (param === 'agentId') return { mode: 'id', value: 'agent-1' };
-				if (param === 'message') return '   ';
-				if (param === 'advanced') return fallback ?? {};
-				if (param === 'invokeMode') return 'perItem';
-				return fallback as NodeParameterValueType;
-			},
-		);
-		executeFunctions.continueOnFail.mockReturnValue(false);
+	describe('prompt resolution', () => {
+		it('uses the text param when promptType is "define"', async () => {
+			executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
+			mockParams({ promptType: 'define', text: 'Process the refund' });
+			executeFunctions.executeAgent.mockResolvedValue(mockAgentResult);
 
-		await expect(node.execute.call(executeFunctions)).rejects.toThrow(NodeOperationError);
-		await expect(node.execute.call(executeFunctions)).rejects.toThrow('Message cannot be empty');
+			await node.execute.call(executeFunctions);
+
+			expect(executeFunctions.executeAgent).toHaveBeenCalledWith(
+				expect.objectContaining({ agentId: 'agent-1' }),
+				'Process the refund',
+				'exec-123',
+				0,
+			);
+		});
+
+		it('reads chatInput from a connected chat trigger when promptType is "auto"', async () => {
+			executeFunctions.getInputData.mockReturnValue([{ json: { chatInput: 'hi from chat' } }]);
+			mockParams({ promptType: 'auto' });
+			executeFunctions.evaluateExpression.mockReturnValue('hi from chat');
+			executeFunctions.executeAgent.mockResolvedValue(mockAgentResult);
+
+			await node.execute.call(executeFunctions);
+
+			expect(executeFunctions.evaluateExpression).toHaveBeenCalledWith(
+				'{{ $json["chatInput"] }}',
+				0,
+			);
+			expect(executeFunctions.executeAgent).toHaveBeenCalledWith(
+				expect.objectContaining({ agentId: 'agent-1' }),
+				'hi from chat',
+				'exec-123',
+				0,
+			);
+		});
+
+		it('falls back to the text param when "auto" yields no chatInput (e.g. used as a tool)', async () => {
+			executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
+			mockParams({ promptType: 'auto', text: 'tool-provided prompt' });
+			executeFunctions.evaluateExpression.mockReturnValue('');
+			executeFunctions.executeAgent.mockResolvedValue(mockAgentResult);
+
+			await node.execute.call(executeFunctions);
+
+			expect(executeFunctions.executeAgent).toHaveBeenCalledWith(
+				expect.objectContaining({ agentId: 'agent-1' }),
+				'tool-provided prompt',
+				'exec-123',
+				0,
+			);
+		});
+
+		it('honors a legacy "message" value from a pre-existing workflow', async () => {
+			executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
+			// New prompt fields empty, but the node still has a stored legacy `message`.
+			mockParams({ promptType: 'define', text: '', message: 'legacy message' });
+			executeFunctions.executeAgent.mockResolvedValue(mockAgentResult);
+
+			await node.execute.call(executeFunctions);
+
+			expect(executeFunctions.executeAgent).toHaveBeenCalledWith(
+				expect.objectContaining({ agentId: 'agent-1' }),
+				'legacy message',
+				'exec-123',
+				0,
+			);
+		});
+
+		it('throws NodeOperationError when the resolved prompt is empty', async () => {
+			executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
+			mockParams({ promptType: 'define', text: '   ' });
+			executeFunctions.continueOnFail.mockReturnValue(false);
+
+			await expect(node.execute.call(executeFunctions)).rejects.toThrow(NodeOperationError);
+			await expect(node.execute.call(executeFunctions)).rejects.toThrow('Prompt cannot be empty');
+		});
 	});
 
 	it('should process multiple items with different itemIndex values', async () => {
@@ -168,7 +224,8 @@ describe('MessageAnAgent Node', () => {
 		executeFunctions.getNodeParameter.mockImplementation(
 			(param: string, itemIndex?: number, fallback?: unknown) => {
 				if (param === 'agentId') return { mode: 'id', value: `agent-${(itemIndex ?? 0) + 1}` };
-				if (param === 'message') return `Message ${(itemIndex ?? 0) + 1}`;
+				if (param === 'promptType') return 'define';
+				if (param === 'text') return `Message ${(itemIndex ?? 0) + 1}`;
 				if (param === 'advanced') return fallback ?? {};
 				if (param === 'invokeMode') return 'perItem';
 				return fallback as NodeParameterValueType;
@@ -222,15 +279,7 @@ describe('MessageAnAgent Node', () => {
 
 	it('should return error item instead of throwing when continueOnFail is true', async () => {
 		executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
-		executeFunctions.getNodeParameter.mockImplementation(
-			(param: string, _itemIndex?: number, fallback?: unknown) => {
-				if (param === 'agentId') return { mode: 'id', value: 'agent-1' };
-				if (param === 'message') return 'Hello';
-				if (param === 'advanced') return fallback ?? {};
-				if (param === 'invokeMode') return 'perItem';
-				return fallback as NodeParameterValueType;
-			},
-		);
+		mockParams({ text: 'Hello' });
 		executeFunctions.continueOnFail.mockReturnValue(true);
 		executeFunctions.executeAgent.mockRejectedValue(new Error('Agent unavailable'));
 
@@ -254,15 +303,7 @@ describe('MessageAnAgent Node', () => {
 		};
 
 		executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
-		executeFunctions.getNodeParameter.mockImplementation(
-			(param: string, _itemIndex?: number, fallback?: unknown) => {
-				if (param === 'agentId') return { mode: 'list', value: 'agent-1' };
-				if (param === 'message') return 'Structured query';
-				if (param === 'advanced') return fallback ?? {};
-				if (param === 'invokeMode') return 'perItem';
-				return fallback as NodeParameterValueType;
-			},
-		);
+		mockParams({ agentId: { mode: 'list', value: 'agent-1' }, text: 'Structured query' });
 		executeFunctions.executeAgent.mockResolvedValue(structuredResult);
 
 		const result = await node.execute.call(executeFunctions);
@@ -284,17 +325,7 @@ describe('MessageAnAgent Node', () => {
 		});
 
 		executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
-		executeFunctions.getNodeParameter.mockImplementation(
-			(param: string, _itemIndex?: number, fallback?: unknown) => {
-				if (param === 'agentId') return { mode: 'id', value: 'agent-1' };
-				if (param === 'message') return 'Hello agent';
-				if (param === 'advanced') return fallback ?? {};
-				if (param === 'useStructuredOutput') return true;
-				if (param === 'outputSchema') return schemaString;
-				if (param === 'invokeMode') return 'perItem';
-				return fallback as NodeParameterValueType;
-			},
-		);
+		mockParams({ useStructuredOutput: true, outputSchema: schemaString });
 		executeFunctions.executeAgent.mockResolvedValue(mockAgentResult);
 
 		await node.execute.call(executeFunctions);
@@ -319,16 +350,7 @@ describe('MessageAnAgent Node', () => {
 
 	it('should throw NodeOperationError when the output schema is not valid JSON', async () => {
 		executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
-		executeFunctions.getNodeParameter.mockImplementation(
-			(param: string, _itemIndex?: number, fallback?: unknown) => {
-				if (param === 'agentId') return { mode: 'id', value: 'agent-1' };
-				if (param === 'message') return 'Hello agent';
-				if (param === 'advanced') return fallback ?? {};
-				if (param === 'useStructuredOutput') return true;
-				if (param === 'outputSchema') return '{ not valid json';
-				return fallback as NodeParameterValueType;
-			},
-		);
+		mockParams({ useStructuredOutput: true, outputSchema: '{ not valid json' });
 		executeFunctions.continueOnFail.mockReturnValue(false);
 
 		await expect(node.execute.call(executeFunctions)).rejects.toThrow(NodeOperationError);
@@ -340,16 +362,7 @@ describe('MessageAnAgent Node', () => {
 
 	it('should throw NodeOperationError when structured output is enabled with an empty schema', async () => {
 		executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
-		executeFunctions.getNodeParameter.mockImplementation(
-			(param: string, _itemIndex?: number, fallback?: unknown) => {
-				if (param === 'agentId') return { mode: 'id', value: 'agent-1' };
-				if (param === 'message') return 'Hello agent';
-				if (param === 'advanced') return fallback ?? {};
-				if (param === 'useStructuredOutput') return true;
-				if (param === 'outputSchema') return '   ';
-				return fallback as NodeParameterValueType;
-			},
-		);
+		mockParams({ useStructuredOutput: true, outputSchema: '   ' });
 		executeFunctions.continueOnFail.mockReturnValue(false);
 
 		await expect(node.execute.call(executeFunctions)).rejects.toThrow('Output schema is empty');
@@ -366,17 +379,7 @@ describe('MessageAnAgent Node', () => {
 		};
 
 		executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
-		executeFunctions.getNodeParameter.mockImplementation(
-			(param: string, _itemIndex?: number, fallback?: unknown) => {
-				if (param === 'agentId') return { mode: 'id', value: 'agent-1' };
-				if (param === 'message') return 'Hello agent';
-				if (param === 'advanced') return fallback ?? {};
-				if (param === 'useStructuredOutput') return true;
-				if (param === 'outputSchema') return schemaObject;
-				if (param === 'invokeMode') return 'perItem';
-				return fallback as NodeParameterValueType;
-			},
-		);
+		mockParams({ useStructuredOutput: true, outputSchema: schemaObject });
 		executeFunctions.executeAgent.mockResolvedValue(mockAgentResult);
 
 		await node.execute.call(executeFunctions);
@@ -397,16 +400,7 @@ describe('MessageAnAgent Node', () => {
 
 	it('throws NodeOperationError when the output schema resolves to an array', async () => {
 		executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
-		executeFunctions.getNodeParameter.mockImplementation(
-			(param: string, _itemIndex?: number, fallback?: unknown) => {
-				if (param === 'agentId') return { mode: 'id', value: 'agent-1' };
-				if (param === 'message') return 'Hello agent';
-				if (param === 'advanced') return fallback ?? {};
-				if (param === 'useStructuredOutput') return true;
-				if (param === 'outputSchema') return [{ type: 'object' }];
-				return fallback as NodeParameterValueType;
-			},
-		);
+		mockParams({ useStructuredOutput: true, outputSchema: [{ type: 'object' }] });
 		executeFunctions.continueOnFail.mockReturnValue(false);
 
 		await expect(node.execute.call(executeFunctions)).rejects.toThrow(
@@ -417,16 +411,7 @@ describe('MessageAnAgent Node', () => {
 
 	it('throws NodeOperationError when the output schema resolves to a non-object, non-string value', async () => {
 		executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
-		executeFunctions.getNodeParameter.mockImplementation(
-			(param: string, _itemIndex?: number, fallback?: unknown) => {
-				if (param === 'agentId') return { mode: 'id', value: 'agent-1' };
-				if (param === 'message') return 'Hello agent';
-				if (param === 'advanced') return fallback ?? {};
-				if (param === 'useStructuredOutput') return true;
-				if (param === 'outputSchema') return 42;
-				return fallback as NodeParameterValueType;
-			},
-		);
+		mockParams({ useStructuredOutput: true, outputSchema: 42 });
 		executeFunctions.continueOnFail.mockReturnValue(false);
 
 		await expect(node.execute.call(executeFunctions)).rejects.toThrow(
@@ -537,5 +522,17 @@ describe('MessageAnAgent versioning', () => {
 
 		expect(v2.description.version).toBe(2);
 		expect(agentId?.type).toBe('agentSelector');
+	});
+
+	it('exposes the promptType source selector and drops the legacy message field on both versions', () => {
+		// `commonProperties` is shared by V1 and V2, so the prompt-source change
+		// applies to both. Safe because the whole node is `hidden` and unreleased.
+		for (const NodeVersion of [MessageAnAgentV1, MessageAnAgentV2]) {
+			const instance = new NodeVersion(baseDescription);
+			const names = instance.description.properties.map((p) => p.name);
+			expect(names).toContain('promptType');
+			expect(names).toContain('text');
+			expect(names).not.toContain('message');
+		}
 	});
 });
