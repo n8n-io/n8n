@@ -12,6 +12,13 @@ import type { IConnections, INode } from 'n8n-workflow';
 import { getParentNodes, mapConnectionsByDestination } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
+import {
+	assignCredentialToNode,
+	isAiGatewayManagedCredential,
+	resolveCredentialForApply,
+	toSetupNodeCredential,
+	type SetupNodeCredential,
+} from './credential-utils';
 import type { SetupRequest } from './setup-workflow.schema';
 import type { InstanceAiContext } from '../../types';
 
@@ -313,12 +320,17 @@ async function resolveCredentialState(
 	const existingCredentials = sortedCreds.map((c) => ({ id: c.id, name: c.name }));
 
 	const existingOnNode = node.credentials?.[credentialType];
+	const existingCredentialId =
+		typeof existingOnNode?.id === 'string' && existingOnNode.id ? existingOnNode.id : undefined;
+	const hasExistingOnNode =
+		existingCredentialId !== undefined || isAiGatewayManagedCredential(existingOnNode);
 	// Only auto-apply when there is exactly one candidate. With multiple
 	// candidates, picking the first is a silent guess — surface the list
 	// so the setup wizard can prompt the user to choose.
-	const isAutoApplied = !existingOnNode?.id && existingCredentials.length === 1;
+	const isAutoApplied = !hasExistingOnNode && existingCredentials.length === 1;
 
-	const credToTest = existingOnNode?.id ?? (isAutoApplied ? existingCredentials[0]?.id : undefined);
+	const credToTest =
+		existingCredentialId ?? (isAutoApplied ? existingCredentials[0]?.id : undefined);
 	if (!credToTest) return { existingCredentials, isAutoApplied };
 
 	let testabilityPromise = cache?.testability.get(credentialType);
@@ -347,7 +359,7 @@ type RequestNodeCredentials = NonNullable<SetupRequest['node']['credentials']>;
 
 /** Build the optional `credentials` slice of a setup request's node, merging an auto-applied credential. */
 function buildRequestCredentials(
-	nodeCredentials: Record<string, { id: string; name?: string }> | undefined,
+	nodeCredentials: Record<string, SetupNodeCredential> | undefined,
 	isAutoApplied: boolean,
 	credentialType: string | undefined,
 	existingCredentials: Array<{ id: string; name: string }>,
@@ -381,7 +393,7 @@ async function resolveAppliedCredentialState(
 	credentialType: string | undefined,
 	cache: CredentialCache | undefined,
 	workflowId: string | undefined,
-	nodeCredentials: Record<string, { id: string; name?: string }> | undefined,
+	nodeCredentials: Record<string, SetupNodeCredential> | undefined,
 ): Promise<CredentialState> {
 	if (!credentialType) {
 		return { existingCredentials: [], isAutoApplied: false };
@@ -426,8 +438,10 @@ async function buildRequestForCredentialType(
 	const nodeCredentials = node.credentials
 		? Object.fromEntries(
 				Object.entries(node.credentials)
-					.filter(([, v]) => v.id !== undefined)
-					.map(([k, v]) => [k, { id: v.id!, name: v.name }]),
+					.map(([key, value]) => [key, toSetupNodeCredential(value)] as const)
+					.filter(
+						(entry): entry is readonly [string, SetupNodeCredential] => entry[1] !== undefined,
+					),
 			)
 		: undefined;
 
@@ -453,7 +467,7 @@ async function buildRequestForCredentialType(
 	if (credentialType) {
 		const existingOnNode = node.credentials?.[credentialType];
 		const hasValidCredential =
-			existingOnNode?.id !== undefined &&
+			(typeof existingOnNode?.id === 'string' || isAiGatewayManagedCredential(existingOnNode)) &&
 			(credentialTestResult === undefined || credentialTestResult.success);
 		needsAction = !hasValidCredential;
 	}
@@ -733,25 +747,14 @@ export async function applyNodeCredentials(
 
 		let nodeSucceeded = true;
 		for (const [credType, credId] of Object.entries(credsMap)) {
-			try {
-				const cred = await context.credentialService.get(credId);
-				if (cred) {
-					node.credentials = {
-						...node.credentials,
-						[credType]: { id: cred.id, name: cred.name },
-					};
-				} else {
-					nodeSucceeded = false;
-					result.failed.push({
-						nodeName: node.name,
-						error: `Credential ${credId} (type: ${credType}) not found — it may have been deleted`,
-					});
-				}
-			} catch (error) {
+			const resolved = await resolveCredentialForApply(credType, credId, context);
+			if (resolved.resolved) {
+				assignCredentialToNode(node, credType, resolved.credential);
+			} else {
 				nodeSucceeded = false;
 				result.failed.push({
 					nodeName: node.name,
-					error: `Failed to resolve credential ${credId} (type: ${credType}): ${error instanceof Error ? error.message : 'Unknown error'}`,
+					error: resolved.error,
 				});
 			}
 		}
@@ -826,25 +829,14 @@ async function applyCredentialsToNode(
 ): Promise<boolean> {
 	let nodeSucceeded = true;
 	for (const [credType, credId] of Object.entries(credsMap)) {
-		try {
-			const cred = await context.credentialService.get(credId);
-			if (cred) {
-				node.credentials = {
-					...node.credentials,
-					[credType]: { id: cred.id, name: cred.name },
-				};
-			} else {
-				nodeSucceeded = false;
-				result.failed.push({
-					nodeName,
-					error: `Credential ${credId} (type: ${credType}) not found — it may have been deleted`,
-				});
-			}
-		} catch (error) {
+		const resolved = await resolveCredentialForApply(credType, credId, context);
+		if (resolved.resolved) {
+			assignCredentialToNode(node, credType, resolved.credential);
+		} else {
 			nodeSucceeded = false;
 			result.failed.push({
 				nodeName,
-				error: `Failed to resolve credential ${credId} (type: ${credType}): ${error instanceof Error ? error.message : 'Unknown error'}`,
+				error: resolved.error,
 			});
 		}
 	}
