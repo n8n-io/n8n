@@ -285,9 +285,20 @@ const scale = computed(() => {
 	return Math.min(scaleX, scaleY, 1);
 });
 
-const effectiveCanvasWidth = computed(() =>
-	canvasRenderedWidth.value > 0 ? canvasRenderedWidth.value : CANVAS_WIDTH,
+const renderScale = computed(() =>
+	canvasRenderedWidth.value > 0 ? Math.min(canvasRenderedWidth.value / CANVAS_WIDTH, 1) : 1,
 );
+
+const contentStyle = computed(() => {
+	const rs = renderScale.value;
+	const verticalOffset = (CANVAS_HEIGHT * (1 - rs)) / 2;
+	return {
+		width: `${CANVAS_WIDTH}px`,
+		height: `${CANVAS_HEIGHT}px`,
+		transform: `translateY(${verticalOffset}px) scale(${rs})`,
+		transformOrigin: 'top left',
+	};
+});
 
 const containerStyle = computed(() => {
 	const { width, height } = bounds.value;
@@ -300,7 +311,7 @@ const containerStyle = computed(() => {
 		height: `${height}px`,
 		transform: `scale(${s})`,
 		transformOrigin: 'top left',
-		left: `${(effectiveCanvasWidth.value - scaledWidth) / 2}px`,
+		left: `${(CANVAS_WIDTH - scaledWidth) / 2}px`,
 		top: `${(CANVAS_HEIGHT - scaledHeight) / 2}px`,
 	};
 });
@@ -312,7 +323,7 @@ const viewBox = computed(
 const canvasMarginLeft = computed(() => {
 	const s = scale.value;
 	const scaledWidth = bounds.value.width * s;
-	return (effectiveCanvasWidth.value - scaledWidth) / 2;
+	return (CANVAS_WIDTH - scaledWidth) / 2;
 });
 
 const canvasMarginTop = computed(() => {
@@ -399,57 +410,59 @@ function isEdgeSuccess(connection: PreviewWorkflowConnection): boolean {
 
 <template>
 	<div ref="canvasRef" :class="$style.canvas">
-		<div :class="$style.viewport" :style="containerStyle">
-			<svg :class="$style.edges" :viewBox="viewBox">
-				<path
-					v-for="(conn, idx) in props.workflow.connections"
-					:key="`edge-${idx}`"
-					:d="getEdgePath(conn)"
-					:class="[$style.edge, isEdgeSuccess(conn) && $style.edgeSuccess]"
-				/>
-			</svg>
-			<div :class="$style.nodesLayer">
-				<WorkflowPreviewNode
-					v-for="node in props.workflow.nodes"
-					:key="node.id"
-					:node="node"
-					:state="nodeStates[node.id] ?? 'idle'"
-					:trigger="triggerNodeIds.has(node.id)"
-					:offset-x="bounds.minX"
-					:offset-y="bounds.minY"
-					:icon-override="
-						crmCycleNodeIds.has(node.id) && crmCycleVisible ? crmCurrentVariant?.icon : undefined
-					"
+		<div :class="$style.canvasContent" :style="contentStyle">
+			<div :class="$style.viewport" :style="containerStyle">
+				<svg :class="$style.edges" :viewBox="viewBox">
+					<path
+						v-for="(conn, idx) in props.workflow.connections"
+						:key="`edge-${idx}`"
+						:d="getEdgePath(conn)"
+						:class="[$style.edge, isEdgeSuccess(conn) && $style.edgeSuccess]"
+					/>
+				</svg>
+				<div :class="$style.nodesLayer">
+					<WorkflowPreviewNode
+						v-for="node in props.workflow.nodes"
+						:key="node.id"
+						:node="node"
+						:state="nodeStates[node.id] ?? 'idle'"
+						:trigger="triggerNodeIds.has(node.id)"
+						:offset-x="bounds.minX"
+						:offset-y="bounds.minY"
+						:icon-override="
+							crmCycleNodeIds.has(node.id) && crmCycleVisible ? crmCurrentVariant?.icon : undefined
+						"
+					/>
+				</div>
+			</div>
+
+			<div v-if="inputVizComponent" :class="$style.vizSlot" :style="inputSlotStyle">
+				<component
+					:is="inputVizComponent"
+					:active="animationPhase !== 'idle'"
+					v-bind="props.workflow.inputVisualization?.props"
+					:icon-override="inputVizIcon"
+					slide-from="left"
+					@complete="handleInputComplete"
 				/>
 			</div>
-		</div>
 
-		<div v-if="inputVizComponent" :class="$style.vizSlot" :style="inputSlotStyle">
-			<component
-				:is="inputVizComponent"
-				:active="animationPhase !== 'idle'"
-				v-bind="props.workflow.inputVisualization?.props"
-				:icon-override="inputVizIcon"
-				slide-from="left"
-				@complete="handleInputComplete"
-			/>
-		</div>
-
-		<div
-			v-for="(outputViz, idx) in outputVizItems"
-			:key="`output-viz-${idx}`"
-			:class="[$style.vizSlot, outputVizItems.length > 1 && $style.vizSlotCompact]"
-			:style="outputSlotStyles[idx]"
-		>
-			<component
-				:is="visualizationComponents[outputViz.type]"
-				:active="animationPhase === 'output' || animationPhase === 'done'"
-				v-bind="outputViz.props"
-				:icon-override="
-					outputViz.type === 'salesforce-card' && crmCycleVisible ? inputVizIcon : undefined
-				"
-				@complete="handleOutputComplete"
-			/>
+			<div
+				v-for="(outputViz, idx) in outputVizItems"
+				:key="`output-viz-${idx}`"
+				:class="[$style.vizSlot, outputVizItems.length > 1 && $style.vizSlotCompact]"
+				:style="outputSlotStyles[idx]"
+			>
+				<component
+					:is="visualizationComponents[outputViz.type]"
+					:active="animationPhase === 'output' || animationPhase === 'done'"
+					v-bind="outputViz.props"
+					:icon-override="
+						outputViz.type === 'salesforce-card' && crmCycleVisible ? inputVizIcon : undefined
+					"
+					@complete="handleOutputComplete"
+				/>
+			</div>
 		</div>
 	</div>
 </template>
@@ -470,6 +483,12 @@ function isEdgeSuccess(connection: PreviewWorkflowConnection): boolean {
 	background-size: 16px 16px;
 	border: 1px solid var(--border-color);
 	border-radius: var(--radius--xl);
+}
+
+.canvasContent {
+	position: absolute;
+	top: 0;
+	left: 0;
 }
 
 .viewport {
