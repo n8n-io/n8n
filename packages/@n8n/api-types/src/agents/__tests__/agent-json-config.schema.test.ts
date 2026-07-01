@@ -102,6 +102,54 @@ describe('AgentJsonConfigSchema — tools', () => {
 	});
 });
 
+describe('AgentJsonConfigSchema — config.promptCaching', () => {
+	it('accepts an Anthropic ttl config', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			config: { promptCaching: { enabled: true, anthropic: { ttl: '1h' } } },
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('accepts enabling caching without provider sub-config', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			config: { promptCaching: { enabled: true } },
+		});
+		expect(result.success).toBe(true);
+	});
+
+	it('accepts disabling a provider explicitly with false', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			config: { promptCaching: { anthropic: false } },
+		});
+		expect(result.success).toBe(true);
+
+		const openaiResult = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			config: { promptCaching: { openai: false } },
+		});
+		expect(openaiResult.success).toBe(true);
+	});
+
+	it('rejects an invalid Anthropic ttl value', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			config: { promptCaching: { anthropic: { ttl: '1d' } } },
+		});
+		expect(result.success).toBe(false);
+	});
+
+	it('rejects an OpenAI promptCacheRetention config (retention is backend-decided)', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			config: { promptCaching: { openai: { promptCacheRetention: '24h' } } },
+		});
+		expect(result.success).toBe(false);
+	});
+});
+
 describe('AgentJsonConfigSchema — skills', () => {
 	it('rejects multiple skill refs with the same id', () => {
 		const result = AgentJsonConfigSchema.safeParse({

@@ -76,6 +76,15 @@ const ThinkingConfigSchema = z.object({
 	reasoningEffort: z.string().optional(),
 });
 
+const PromptCachingConfigSchema = z.object({
+	enabled: z.boolean().optional(),
+	anthropic: z
+		.union([z.literal(false), z.object({ ttl: z.enum(['5m', '1h']).optional() })])
+		.optional(),
+	// Retention is backend-decided; openai only supports explicit disable, no sub-config.
+	openai: z.literal(false).optional(),
+});
+
 const WebSearchConfigSchema = z.object({
 	enabled: z.boolean(),
 	provider: z.enum(['auto', 'native', 'brave', 'searxng']).optional(),
@@ -332,6 +341,7 @@ export const AgentJsonConfigSchema = z.object({
 	config: z
 		.object({
 			thinking: ThinkingConfigSchema.optional(),
+			promptCaching: PromptCachingConfigSchema.optional(),
 			webSearch: WebSearchConfigSchema.optional(),
 			toolCallConcurrency: z.number().int().min(1).max(100).optional(),
 			maxIterations: z

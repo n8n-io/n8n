@@ -4439,6 +4439,136 @@ describe('instruction providerOptions', () => {
 });
 
 // ---------------------------------------------------------------------------
+// promptCaching()
+// ---------------------------------------------------------------------------
+
+describe('promptCaching', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('attaches a 1h Anthropic cache breakpoint to the system message by default', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'anthropic/claude-sonnet-4-5',
+			instructions: 'You are a test assistant.',
+			promptCaching: { enabled: true },
+		});
+
+		await runtime.generate('hello');
+
+		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
+		const systemMsg = callArgs.system as Record<string, unknown>;
+		expect(systemMsg.providerOptions).toEqual({
+			anthropic: { cacheControl: { type: 'ephemeral', ttl: '1h' } },
+		});
+	});
+
+	it('respects an explicit 5m ttl override for Anthropic', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'anthropic/claude-sonnet-4-5',
+			instructions: 'You are a test assistant.',
+			promptCaching: { anthropic: { ttl: '5m' } },
+		});
+
+		await runtime.generate('hello');
+
+		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
+		const systemMsg = callArgs.system as Record<string, unknown>;
+		expect(systemMsg.providerOptions).toEqual({
+			anthropic: { cacheControl: { type: 'ephemeral', ttl: '5m' } },
+		});
+	});
+
+	it('lets explicit instruction providerOptions override the generated Anthropic breakpoint', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'anthropic/claude-sonnet-4-5',
+			instructions: 'You are a test assistant.',
+			promptCaching: { enabled: true },
+			instructionProviderOptions: {
+				anthropic: { cacheControl: { type: 'ephemeral', ttl: '5m' } },
+			},
+		});
+
+		await runtime.generate('hello');
+
+		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
+		const systemMsg = callArgs.system as Record<string, unknown>;
+		expect(systemMsg.providerOptions).toEqual({
+			anthropic: { cacheControl: { type: 'ephemeral', ttl: '5m' } },
+		});
+	});
+
+	it('defaults OpenAI to 24h retention with an auto-generated promptCacheKey', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-5.1',
+			instructions: 'You are a test assistant.',
+			promptCaching: { enabled: true },
+		});
+
+		await runtime.generate('hello');
+
+		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
+		const openaiOpts = (callArgs.providerOptions as Record<string, Record<string, unknown>>).openai;
+		expect(openaiOpts.promptCacheRetention).toBe('24h');
+		expect(typeof openaiOpts.promptCacheKey).toBe('string');
+	});
+
+	it('lets explicit call-level providerOptions override the generated OpenAI defaults', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-5.1',
+			instructions: 'You are a test assistant.',
+			promptCaching: { enabled: true },
+		});
+
+		await runtime.generate('hello', {
+			providerOptions: { openai: { promptCacheKey: 'explicit-key' } },
+		});
+
+		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
+		const openaiOpts = (callArgs.providerOptions as Record<string, Record<string, unknown>>).openai;
+		expect(openaiOpts).toEqual({ promptCacheKey: 'explicit-key', promptCacheRetention: '24h' });
+	});
+
+	it('merges thinking config with generated prompt caching and caller providerOptions for OpenAI', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-5.1',
+			instructions: 'You are a test assistant.',
+			thinking: { reasoningEffort: 'high' },
+			promptCaching: { enabled: true },
+		});
+
+		await runtime.generate('hello', {
+			providerOptions: { openai: { strictJsonSchema: false } },
+		});
+
+		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
+		const openaiOpts = (callArgs.providerOptions as Record<string, Record<string, unknown>>).openai;
+		expect(openaiOpts.reasoningEffort).toBe('high');
+		expect(openaiOpts.promptCacheRetention).toBe('24h');
+		expect(typeof openaiOpts.promptCacheKey).toBe('string');
+		expect(openaiOpts.strictJsonSchema).toBe(false);
+	});
+});
+
+// ---------------------------------------------------------------------------
 // Observation log background jobs
 // ---------------------------------------------------------------------------
 

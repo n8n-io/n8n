@@ -62,6 +62,11 @@ describe('sanitizeAgentJsonConfig', () => {
 			config: {
 				toolCallConcurrency: 2,
 				webSearch: { enabled: true, provider: 'native', legacyProviderSetting: true },
+				promptCaching: {
+					enabled: true,
+					anthropic: { ttl: '1h' },
+					legacyPromptCachingSetting: true,
+				},
 				nodeTools: { enabled: true, legacyNodeToolSetting: true },
 				legacyRuntimeSetting: true,
 			},
@@ -76,6 +81,7 @@ describe('sanitizeAgentJsonConfig', () => {
 			config: {
 				toolCallConcurrency: 2,
 				webSearch: { enabled: true, provider: 'native' },
+				promptCaching: { enabled: true, anthropic: { ttl: '1h' } },
 			},
 		});
 		expect(AgentJsonConfigSchema.safeParse(sanitized).success).toBe(true);

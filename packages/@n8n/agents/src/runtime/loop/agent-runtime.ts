@@ -8,9 +8,9 @@ import { GenerateSink } from './generate-sink';
 import type { RunOutputSink, RunServices } from './run-output-sink';
 import { RuntimeContextBuilder, getModelIdString } from './runtime-context';
 import {
-	accumulateUsage,
 	extractSettledToolCalls,
 	makeErrorStream,
+	mergeUsage,
 	normalizeInput,
 } from './runtime-helpers';
 import { StreamSink } from './stream-sink';
@@ -41,6 +41,7 @@ import type {
 	ExecutionOptions,
 	ModelConfig,
 	PersistedExecutionOptions,
+	PromptCachingConfig,
 } from '../../types/sdk/agent';
 import type { AgentMessage, ContentToolCall } from '../../types/sdk/message';
 import type { JSONValue } from '../../types/utils/json';
@@ -50,6 +51,11 @@ import type { ScopedMemoryTaskEvent } from '../memory/scoped-memory-task-runner'
 import { generateThreadTitle } from '../memory/title-generation';
 import { AgentMessageList, type SerializedMessageList } from '../model/message-list';
 import type { FetchFn } from '../model/model-factory';
+import {
+	buildInstructionPromptCacheOptions,
+	getAnthropicCacheTtl,
+	mergeProviderOptions,
+} from '../model/prompt-cache';
 import { BackgroundTaskTracker } from '../state/background-task-tracker';
 import { AgentEventBus, type AgentAbortScope } from '../state/event-bus';
 import { generateRunId, RunStateManager } from '../state/run-state';
@@ -87,6 +93,7 @@ export interface AgentRuntimeConfig {
 	structuredOutput?: z.ZodType | JSONSchema7;
 	checkpointStorage?: 'memory' | CheckpointStore;
 	thinking?: ThinkingConfig;
+	promptCaching?: PromptCachingConfig;
 	eventBus?: AgentEventBus;
 	/** Number of tool calls to execute concurrently. Default `1` (sequential). */
 	toolCallConcurrency?: number;
@@ -591,6 +598,12 @@ export class AgentRuntime {
 			...options,
 			persistence: options?.persistence,
 		});
+		// Anthropic cache breakpoints are Anthropic-only and don't change across
+		// iterations, so compute once. Explicit .instructions() providerOptions win.
+		const instructionProviderOptions = mergeProviderOptions(
+			buildInstructionPromptCacheOptions(this.config.promptCaching, this.modelIdString),
+			this.config.instructionProviderOptions,
+		);
 		const maxIterations = options?.maxIterations ?? MAX_LOOP_ITERATIONS;
 		let iterationCount = options?.iterationCount ?? 0;
 		let reachedStopCondition = false;
@@ -647,10 +660,7 @@ export class AgentRuntime {
 					options?.persistence,
 					options?.executionCounter,
 				);
-			const { system, messages } = list.forLlm(
-				effectiveInstructions,
-				this.config.instructionProviderOptions,
-			);
+			const { system, messages } = list.forLlm(effectiveInstructions, instructionProviderOptions);
 
 			const turn = await sink.callModel({
 				model: staticLoopContext.model,
@@ -666,7 +676,7 @@ export class AgentRuntime {
 
 			// Fold the just-finished turn's usage in before the abort check so a
 			// stop that lands right after the model call still bills its tokens.
-			totalUsage = accumulateUsage(totalUsage, turn.usage);
+			totalUsage = mergeUsage(totalUsage, turn.usage);
 			incrementTokenCountFromUsage(options?.executionCounter, turn.usage);
 			sink.reportUsage(totalUsage);
 
@@ -824,7 +834,8 @@ export class AgentRuntime {
 	/** Apply cost to a TokenUsage object using catalog pricing. */
 	private applyCost(usage: TokenUsage | undefined): TokenUsage | undefined {
 		if (!usage || !this.modelCost) return usage;
-		return { ...usage, cost: computeCost(usage, this.modelCost) };
+		const anthropicCacheTtl = getAnthropicCacheTtl(this.config.promptCaching);
+		return { ...usage, cost: computeCost(usage, this.modelCost, { anthropicCacheTtl }) };
 	}
 
 	/**

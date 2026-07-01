@@ -24,6 +24,7 @@ import {
 import { loadAi } from '../model/lazy-ai';
 import type { AgentMessageList } from '../model/message-list';
 import { createModel } from '../model/model-factory';
+import { buildCallPromptCacheOptions, mergeProviderOptions } from '../model/prompt-cache';
 import type { DeferredToolManager } from '../tools/deferred-tool-manager';
 import { buildToolMap, toAiSdkProviderTools, toAiSdkTools } from '../tools/tool-adapter';
 
@@ -264,25 +265,20 @@ export class RuntimeContextBuilder {
 	}
 
 	/**
-	 * Deep-merge thinking providerOptions with caller-supplied providerOptions.
-	 * Per-provider keys are merged shallowly so `.thinking()` + cache control coexist.
+	 * Merge thinking providerOptions, generated OpenAI cache options, and
+	 * caller-supplied providerOptions. Per-provider keys are merged shallowly
+	 * (later wins) so `.thinking()` + prompt caching + caller overrides coexist.
 	 */
 	private buildCallProviderOptions(
 		runProviderOptions?: ProviderOptions,
 	): Record<string, Record<string, unknown>> | undefined {
-		const thinkingOpts = this.buildThinkingProviderOptions();
-		if (!thinkingOpts && !runProviderOptions) return undefined;
-		if (!thinkingOpts) return runProviderOptions as Record<string, Record<string, unknown>>;
-		if (!runProviderOptions) return thinkingOpts;
-
-		const merged: Record<string, Record<string, unknown>> = { ...thinkingOpts };
-		for (const [provider, opts] of Object.entries(runProviderOptions)) {
-			if (provider in merged) {
-				merged[provider] = { ...merged[provider], ...(opts as Record<string, unknown>) };
-			} else {
-				merged[provider] = opts as Record<string, unknown>;
-			}
-		}
-		return merged;
+		const thinkingOpts = this.buildThinkingProviderOptions() as ProviderOptions | undefined;
+		const cacheOpts = buildCallPromptCacheOptions(this.config.promptCaching, this.modelId, {
+			agentName: this.config.name,
+			instructions: this.config.instructions,
+		});
+		return mergeProviderOptions(thinkingOpts, cacheOpts, runProviderOptions) as
+			| Record<string, Record<string, unknown>>
+			| undefined;
 	}
 }
