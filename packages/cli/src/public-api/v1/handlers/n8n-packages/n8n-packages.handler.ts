@@ -1,5 +1,4 @@
 import { ExportPackageRequestDto, ImportPackageRequestDto } from '@n8n/api-types';
-import { GlobalConfig } from '@n8n/config';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ApiKeyScope } from '@n8n/permissions';
@@ -15,7 +14,6 @@ import {
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import { resolveImportPackageUpload } from '@/modules/n8n-packages/utils/import-package-upload';
 
@@ -80,10 +78,6 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 	exportPackage: [
 		publicApiCompositeScope(PACKAGE_EXPORT_SCOPES),
 		async (req, res) => {
-			if (!Container.get(GlobalConfig).publicApi.packagesEnabled) {
-				throw new NotFoundError('Not Found');
-			}
-
 			const payload = ExportPackageRequestDto.safeParse(req.body);
 			if (!payload.success) {
 				throw new BadRequestError(payload.error.errors.map(({ message }) => message).join('; '));
@@ -113,10 +107,6 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 	importPackage: [
 		publicApiScope('workflow:import'),
 		async (req, res) => {
-			if (!Container.get(GlobalConfig).publicApi.packagesEnabled) {
-				throw new NotFoundError('Not Found');
-			}
-
 			const packageFile = resolveImportPackageUpload(req);
 
 			const payload = ImportPackageRequestDto.safeParse(req.body ?? {});
