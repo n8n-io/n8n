@@ -250,10 +250,14 @@ describe('AgentPublishService', () => {
 		await service.unpublishAgent(agentId, projectId);
 		expect(agent.activeVersionId).toBeNull();
 		expect(agent.versionId).not.toBe('v1');
-		expect(chatIntegrationService.disconnectChannel).toHaveBeenCalledWith(agentId, {
-			type: 'slack',
-			credentialId: 'slack-1',
-		});
+		expect(chatIntegrationService.disconnectChannel).toHaveBeenCalledWith(
+			agentId,
+			{
+				type: 'slack',
+				credentialId: 'slack-1',
+			},
+			{ deleteSubscriptions: false },
+		);
 
 		const draftVersion = agent.versionId;
 		if (!draftVersion) throw new Error('Expected unpublish to assign a draft version');

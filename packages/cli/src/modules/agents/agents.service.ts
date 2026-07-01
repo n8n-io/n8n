@@ -118,16 +118,7 @@ export class AgentsService {
 
 		const chatIntegrationService = Container.get(ChatIntegrationService);
 		for (const integration of agent.integrations ?? []) {
-			try {
-				await chatIntegrationService.disconnectChannel(agentId, integration);
-			} catch (error) {
-				this.logger.warn('Failed to disconnect channel on agent delete', {
-					agentId,
-					integrationType: integration.type,
-					credentialId: integration.credentialId,
-					error: error instanceof Error ? error.message : error,
-				});
-			}
+			await chatIntegrationService.disconnectChannel(agentId, integration);
 		}
 
 		await this.agentRepository.remove(agent);

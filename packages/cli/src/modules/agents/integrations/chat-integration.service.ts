@@ -85,6 +85,10 @@ interface DisconnectOptions {
 	skipExternalHooks?: boolean;
 }
 
+interface DisconnectChannelOptions {
+	deleteSubscriptions?: boolean;
+}
+
 async function getAgentExecutionOrchestratorService() {
 	// eslint-disable-next-line import-x/no-cycle
 	const { AgentExecutionOrchestratorService } = await import(
@@ -315,10 +319,16 @@ export class ChatIntegrationService {
 	}
 
 	/**
-	 * Remove a chat channel everywhere: local runtime state, peer main runtime
-	 * state, and persisted thread subscriptions.
+	 * Remove a chat channel everywhere. Persisted thread subscriptions are deleted
+	 * by default for real integration removals, but can be preserved for unpublish.
 	 */
-	async disconnectChannel(agentId: string, integration: AgentIntegrationConfig): Promise<void> {
+	async disconnectChannel(
+		agentId: string,
+		integration: AgentIntegrationConfig,
+		options: DisconnectChannelOptions = {},
+	): Promise<void> {
+		const { deleteSubscriptions = true } = options;
+
 		try {
 			await this.disconnect(agentId, integration);
 			await this.broadcastIntegrationChange(agentId, integration, 'disconnect');
@@ -327,6 +337,8 @@ export class ChatIntegrationService {
 				`[ChatIntegrationService] Disconnect failed for ${integration.type} on agent ${agentId}: ${error instanceof Error ? error.message : String(error)}`,
 			);
 		}
+
+		if (!deleteSubscriptions) return;
 
 		try {
 			await this.chatSubscriptionStateService.deleteSubscriptionsForIntegration(

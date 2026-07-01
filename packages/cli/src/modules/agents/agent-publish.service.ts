@@ -136,7 +136,9 @@ export class AgentPublishService {
 
 		const chatIntegrationService = Container.get(ChatIntegrationService);
 		for (const integration of agent.integrations ?? []) {
-			await chatIntegrationService.disconnectChannel(agentId, integration);
+			await chatIntegrationService.disconnectChannel(agentId, integration, {
+				deleteSubscriptions: false,
+			});
 		}
 
 		const { AgentTaskService } = await import('./agent-task.service');

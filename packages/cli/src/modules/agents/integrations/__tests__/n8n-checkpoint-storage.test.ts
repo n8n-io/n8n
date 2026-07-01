@@ -3,7 +3,6 @@ import { mockLogger } from '@n8n/backend-test-utils';
 import type { AgentsConfig } from '@n8n/config';
 import type { ModuleRegistry } from '@n8n/backend-common';
 import type { InstanceSettings } from 'n8n-core';
-import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentCheckpoint } from '../../entities/agent-checkpoint.entity';
@@ -38,7 +37,7 @@ function makeService() {
 }
 
 describe('N8NCheckpointStorage', () => {
-	it('claims a suspended checkpoint before returning it so concurrent resumes cannot both proceed', async () => {
+	it('loads a suspended checkpoint without claiming it', async () => {
 		const { service, repository } = makeService();
 		const storedState = JSON.stringify(suspendedState);
 		repository.findOneBy.mockResolvedValue({
@@ -46,16 +45,22 @@ describe('N8NCheckpointStorage', () => {
 			expired: false,
 			state: storedState,
 		} as AgentCheckpoint);
-		repository.claimForResume.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
 
 		await expect(service.load('run-1')).resolves.toEqual(suspendedState);
 
+		expect(repository.claimForResume).not.toHaveBeenCalled();
+	});
+
+	it('claims a checkpoint for resume with the original suspended state', async () => {
+		const { service, repository } = makeService();
+		repository.claimForResume.mockResolvedValueOnce(true).mockResolvedValueOnce(false);
+
+		await expect(service.claimForResume('run-1', suspendedState)).resolves.toBe(true);
 		expect(repository.claimForResume).toHaveBeenCalledWith(
 			'run-1',
-			storedState,
+			JSON.stringify(suspendedState),
 			JSON.stringify({ ...suspendedState, status: 'running' }),
 		);
-		await expect(service.load('run-1')).rejects.toThrow(UserError);
-		await expect(service.load('run-1')).rejects.toThrow('This action has already been handled');
+		await expect(service.claimForResume('run-1', suspendedState)).resolves.toBe(false);
 	});
 });

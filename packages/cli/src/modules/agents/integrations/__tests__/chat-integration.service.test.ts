@@ -181,6 +181,14 @@ describe('ChatIntegrationService.syncToConfig — publish gate', () => {
 		);
 	});
 
+	it('can disconnect a channel while preserving persisted subscriptions', async () => {
+		await service.disconnectChannel('agent-1', slackIntegration, { deleteSubscriptions: false });
+
+		expect(disconnectSpy).toHaveBeenCalledWith('agent-1', slackIntegration);
+		expect(broadcastSpy).toHaveBeenCalledWith('agent-1', slackIntegration, 'disconnect');
+		expect(chatSubscriptionStateService.deleteSubscriptionsForIntegration).not.toHaveBeenCalled();
+	});
+
 	it('does not reconnect an already-live integration when republishing', async () => {
 		const agent = makeAgent({ activeVersionId: 'published-version-1' });
 		projectRelationRepository.findUserIdsByProjectId.mockResolvedValue(['user-1']);
