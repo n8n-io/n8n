@@ -60,15 +60,22 @@ describe('MicrosoftOAuth2Api Credential', () => {
 			}
 		});
 
-		it('should render the selector immediately after Client ID once merged with the base', () => {
+		it('should render the auth block contiguously after Client ID once merged with the base', () => {
 			const merged: INodeProperties[] = [];
 			NodeHelpers.mergeNodeProperties(merged, new OAuth2Api().properties);
 			NodeHelpers.mergeNodeProperties(merged, microsoftOAuth2Api.properties);
 
 			const names = merged.map((p) => p.name);
-			const selector = merged[names.indexOf('clientId') + 1];
-			expect(selector.name).toBe('clientCredentialType');
-			expect(selector.type).toBe('options');
+			const start = names.indexOf('clientId');
+
+			// Selector → secret → key → cert render together right after Client ID, not appended last.
+			expect(names.slice(start + 1, start + 5)).toEqual([
+				'clientCredentialType',
+				'clientSecret',
+				'privateKey',
+				'certificate',
+			]);
+			expect(merged[start + 1].type).toBe('options');
 		});
 	});
 });

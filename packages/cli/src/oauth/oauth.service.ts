@@ -26,6 +26,7 @@ import { UrlService } from '@/services/url.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import {
 	ClientOAuth2,
+	resolveClientAuthOptions,
 	type ClientOAuth2Options,
 	type ClientOAuth2TokenData,
 	type OAuth2AuthenticationMethod,
@@ -686,21 +687,9 @@ export class OauthService {
 			.map((s) => s.trim())
 			.filter(Boolean);
 
-		const useCertificate =
-			oauthCredentials.clientCredentialType === 'certificate' &&
-			!!oauthCredentials.privateKey &&
-			!!oauthCredentials.certificate;
-
 		const oAuthClient = new ClientOAuth2({
 			clientId: oauthCredentials.clientId,
-			clientCredentialType: oauthCredentials.clientCredentialType,
-			clientSecret: oauthCredentials.clientSecret,
-			...(useCertificate && {
-				clientCertificate: {
-					privateKey: oauthCredentials.privateKey as string,
-					certificate: oauthCredentials.certificate as string,
-				},
-			}),
+			...resolveClientAuthOptions(oauthCredentials),
 			accessTokenUri: oauthCredentials.accessTokenUrl,
 			scopes: scopes?.length ? scopes : undefined,
 			ignoreSSLIssues: oauthCredentials.ignoreSSLIssues,

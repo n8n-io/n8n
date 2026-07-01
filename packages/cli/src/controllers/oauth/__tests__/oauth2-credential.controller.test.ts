@@ -147,12 +147,12 @@ describe('OAuth2CredentialController', () => {
 
 		it('should build the client with a certificate when certificate authentication is selected', async () => {
 			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
-			const mockGetToken = jest.fn().mockResolvedValue({
+			const mockGetToken = vi.fn().mockResolvedValue({
 				data: { access_token: 'new_token', refresh_token: 'refresh_token' },
 			});
-			jest
-				.mocked(ClientOAuth2)
-				.mockImplementation(() => mock<ClientOAuth2>({ code: { getToken: mockGetToken } }));
+			vi.mocked(ClientOAuth2).mockImplementation(function () {
+				return { code: { getToken: mockGetToken } } as unknown as ClientOAuth2;
+			});
 
 			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1' });
 			const mockState = {
@@ -203,12 +203,12 @@ describe('OAuth2CredentialController', () => {
 
 		it('should not send a client secret when certificate authentication is selected but a stale secret is stored', async () => {
 			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
-			const mockGetToken = jest.fn().mockResolvedValue({
+			const mockGetToken = vi.fn().mockResolvedValue({
 				data: { access_token: 'new_token', refresh_token: 'refresh_token' },
 			});
-			jest
-				.mocked(ClientOAuth2)
-				.mockImplementation(() => mock<ClientOAuth2>({ code: { getToken: mockGetToken } }));
+			vi.mocked(ClientOAuth2).mockImplementation(function () {
+				return { code: { getToken: mockGetToken } } as unknown as ClientOAuth2;
+			});
 
 			const mockResolvedCredential = mock<CredentialsEntity>({ id: '1' });
 			const mockState = {

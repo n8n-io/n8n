@@ -113,6 +113,20 @@ export class OAuth2Api implements ICredentialType {
 			default: '',
 			required: true,
 		},
+		{
+			// Hidden ordering anchors (see `clientCredentialType` above): let extending credentials
+			// render the certificate fields right after Client Secret instead of appended at the end.
+			displayName: 'Private Key',
+			name: 'privateKey',
+			type: 'hidden',
+			default: '',
+		},
+		{
+			displayName: 'Certificate',
+			name: 'certificate',
+			type: 'hidden',
+			default: '',
+		},
 		// WARNING: if you are extending from this credentials and allow user to set their own scopes
 		// you HAVE TO add it to GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE in packages/cli/src/constants.ts
 		// track any updates to this behavior in N8N-7424
