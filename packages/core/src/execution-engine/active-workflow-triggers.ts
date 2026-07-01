@@ -1,3 +1,4 @@
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type {
@@ -9,7 +10,6 @@ import type {
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { ensureError } from '@n8n/utils/errors/ensure-error';
 import {
 	toCronExpression,
 	TriggerCloseError,

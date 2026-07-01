@@ -1,3 +1,4 @@
+import type { Result } from '@n8n/utils/result';
 import get from 'lodash/get';
 import type {
 	Workflow,
@@ -25,7 +26,6 @@ import type {
 	IExecuteFunctions,
 	ExecuteAgentWorkflowContext,
 } from 'n8n-workflow';
-import type { Result } from '@n8n/utils/result';
 import {
 	UnexpectedError,
 	OperationalError,

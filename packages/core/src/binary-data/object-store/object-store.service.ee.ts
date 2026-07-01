@@ -17,8 +17,8 @@ import {
 import { Logger } from '@n8n/backend-common';
 import { streamToBuffer } from '@n8n/backend-network';
 import { Service } from '@n8n/di';
-import chunk from 'lodash/chunk';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
+import chunk from 'lodash/chunk';
 import { UnexpectedError } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
 import { PassThrough, Readable, pipeline } from 'node:stream';
