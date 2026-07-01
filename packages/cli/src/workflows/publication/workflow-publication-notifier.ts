@@ -4,11 +4,18 @@ import { ErrorReporter, InstanceSettings } from 'n8n-core';
 
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
-import { WorkflowPublicationOutboxConsumer } from './workflow-publication-outbox-consumer';
-
 /**
  * Signals the leader to drain the publication outbox immediately after a record
  * is enqueued, instead of waiting for the next poll cycle.
+ *
+ * Callers use a single method; the single-main vs multi-main split is hidden here
+ * so it can be collapsed once single-main also loops pubsub back to itself:
+ * - multi-main: the leader may be a different process, so route through pubsub
+ *   (the `workflow-publish-wake-up` command self-delivers to the leader).
+ * - single-main: pubsub is inert (no Redis), so wake the local consumer directly.
+ *
+ * Fire-and-forget by design: publication is asynchronous, so the enqueue path
+ * must not block on the drain.
  */
 @Service()
 export class WorkflowPublicationNotifier {
@@ -30,11 +37,24 @@ export class WorkflowPublicationNotifier {
 
 		const wake = this.instanceSettings.isMultiMain
 			? this.publisher.publishCommand({ command: 'workflow-publish-wake-up' })
-			: // Resolve the consumer lazily: its dependency chain (WorkflowTriggerActivator)
-				// asserts the publication service is enabled in its constructor, so it must
-				// only ever be constructed on this flag-gated path, never eagerly via DI.
-				Container.get(WorkflowPublicationOutboxConsumer).wakeUp();
+			: this.wakeLocalConsumer();
 
 		void wake.catch((error) => this.errorReporter.error(error, { shouldBeLogged: true }));
+	}
+
+	/**
+	 * Wake the local leader's consumer in-process.
+	 *
+	 * The consumer module is imported dynamically, never statically: its dependency
+	 * chain (WorkflowTriggerActivator) asserts the publication service is enabled in
+	 * its constructor, and it registers @OnShutdown/@OnPubSubEvent handlers that the
+	 * shutdown/pubsub registries eagerly `Container.get`. Loading it only on this
+	 * flag-gated path keeps it off the default graph, matching start.ts.
+	 */
+	private async wakeLocalConsumer(): Promise<void> {
+		const { WorkflowPublicationOutboxConsumer } = await import(
+			'./workflow-publication-outbox-consumer'
+		);
+		await Container.get(WorkflowPublicationOutboxConsumer).wakeUp();
 	}
 }
