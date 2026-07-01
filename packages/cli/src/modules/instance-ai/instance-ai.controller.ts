@@ -695,6 +695,7 @@ export class InstanceAiController {
 
 	// ── Evaluation endpoints ──────────────────────────────────────────────────
 
+	// Runs for minutes; the eval client (N8nClient) disables undici's 300s timeout for it.
 	@Post('/eval/execute-with-llm-mock/:workflowId')
 	@GlobalScope('instanceAi:eval')
 	async executeWithLlmMock(

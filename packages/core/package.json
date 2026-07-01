@@ -46,9 +46,9 @@
     "@n8n/vitest-config": "workspace:*",
     "@vitest/coverage-v8": "catalog:",
     "axios": "catalog:",
-    "jest-mock-extended": "^3.0.4",
     "nock": "catalog:",
     "reflect-metadata": "catalog:",
+    "vite": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"
   },

@@ -106,6 +106,7 @@ export const defaultSettings: FrontendSettings = {
 	timezone: '',
 	urlBaseEditor: '',
 	urlBaseWebhook: '',
+	urlBaseWebhookTest: '',
 	authCookie: {
 		secure: false,
 	},
