@@ -24,10 +24,11 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 
 	const POLL_INTERVAL_MS = 15_000;
 
-	function createConsumer(useWorkflowPublicationService = true, isLeader = true) {
+	function createConsumer(useWorkflowPublicationService = true, isLeader = true, concurrency = 1) {
 		const workflowsConfig = mock<WorkflowsConfig>({
 			useWorkflowPublicationService,
 			publicationOutboxPollIntervalMs: POLL_INTERVAL_MS,
+			workflowPublicationConcurrency: concurrency,
 		});
 		return new WorkflowPublicationOutboxConsumer(
 			logger,
@@ -187,6 +188,55 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			expect(reporter.report).toHaveBeenCalledTimes(1);
 			expect(firstProcessed).toBe(1);
 			expect(secondProcessed).toBe(1);
+		});
+	});
+
+	describe('parallel drains', () => {
+		test('processes up to the configured concurrency in parallel and returns the total', async () => {
+			consumer = createConsumer(true, true, 2);
+
+			// Distinct workflowIds so the per-workflow lifecycle lock never serializes them.
+			const r1 = makeRecord({ id: 1, workflowId: 'wf-1' });
+			const r2 = makeRecord({ id: 2, workflowId: 'wf-2' });
+			const r3 = makeRecord({ id: 3, workflowId: 'wf-3' });
+			outboxRepository.claimNextPendingRecord
+				.mockResolvedValueOnce(r1)
+				.mockResolvedValueOnce(r2)
+				.mockResolvedValueOnce(r3)
+				.mockResolvedValue(null);
+
+			const started: number[] = [];
+			const releases = new Map<number, () => void>();
+			const startedSignals = new Map<number, () => void>();
+			const startedPromises = new Map<number, Promise<void>>();
+			for (const id of [1, 2, 3]) {
+				startedPromises.set(id, new Promise<void>((resolve) => startedSignals.set(id, resolve)));
+			}
+			applier.apply.mockImplementation(async (record) => {
+				started.push(record.id);
+				startedSignals.get(record.id)!();
+				await new Promise<void>((resolve) => releases.set(record.id, resolve));
+				return { type: 'completed', triggerStatuses: [] };
+			});
+
+			consumer.startPolling();
+			const drain = consumer.drainPending();
+
+			// Two workers enter apply() in parallel before either completes; the third waits.
+			await Promise.all([startedPromises.get(1), startedPromises.get(2)]);
+			expect(started.length).toBe(2);
+			expect(started).toEqual(expect.arrayContaining([1, 2]));
+			expect(started).not.toContain(3);
+
+			// Freeing one worker lets it claim and start the third record.
+			releases.get(1)!();
+			await startedPromises.get(3);
+			expect(started).toContain(3);
+
+			releases.get(2)!();
+			releases.get(3)!();
+			const processed = await drain;
+			expect(processed).toBe(3);
 		});
 	});
 

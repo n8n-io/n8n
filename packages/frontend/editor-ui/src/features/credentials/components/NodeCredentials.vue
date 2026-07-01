@@ -644,7 +644,7 @@ function onAiGatewaySelector(credentialType: string, enable: boolean, isUserActi
 		name: props.node.name,
 		properties: { credentials },
 	});
-	void aiGateway.saveAfterToggle();
+	if (!props.standalone) void aiGateway.saveAfterToggle();
 }
 
 function getIssues(credentialTypeName: string): string[] {

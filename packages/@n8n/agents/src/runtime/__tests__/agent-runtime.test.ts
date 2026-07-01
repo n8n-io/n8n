@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { createCancellation } from '../../sdk/cancellation';
 import { isLlmMessage } from '../../sdk/message';
 import { Tool, Tool as ToolBuilder } from '../../sdk/tool';
+import type { CheckpointStore, SerializableAgentState } from '../../types';
 import { AgentEvent } from '../../types/runtime/event';
 import type { AgentEventData } from '../../types/runtime/event';
 import type { StreamChunk } from '../../types/sdk/agent';
@@ -1420,6 +1421,51 @@ function createRuntimeWithTools(
 	return { runtime, bus };
 }
 
+type ClaimForResume = (key: string, state: SerializableAgentState) => Promise<boolean>;
+type ClaimingCheckpointStore = CheckpointStore & {
+	claimForResume: MockedFunction<ClaimForResume>;
+};
+
+function createRuntimeWithCheckpointStore(
+	tools: BuiltTool[],
+	checkpointStorage: CheckpointStore,
+): AgentRuntime {
+	return new AgentRuntime({
+		name: 'test',
+		model: 'openai/gpt-4o-mini',
+		instructions: 'You are a test assistant.',
+		tools,
+		checkpointStorage,
+	});
+}
+
+function makeClaimingCheckpointStore(): ClaimingCheckpointStore {
+	const checkpoints = new Map<string, SerializableAgentState>();
+
+	return {
+		save: vi.fn(async (key: string, state: SerializableAgentState): Promise<void> => {
+			await Promise.resolve();
+			checkpoints.set(key, structuredClone(state));
+		}),
+		load: vi.fn(async (key: string): Promise<SerializableAgentState | undefined> => {
+			await Promise.resolve();
+			const state = checkpoints.get(key);
+			return state ? structuredClone(state) : undefined;
+		}),
+		delete: vi.fn(async (key: string): Promise<void> => {
+			await Promise.resolve();
+			checkpoints.delete(key);
+		}),
+		claimForResume: vi.fn<ClaimForResume>(async (key, state) => {
+			await Promise.resolve();
+			const current = checkpoints.get(key);
+			if (!current || JSON.stringify(current) !== JSON.stringify(state)) return false;
+			checkpoints.set(key, { ...state, status: 'running' });
+			return true;
+		}),
+	};
+}
+
 /** Create a generateText response that triggers tool calls, then a follow-up stop. */
 function makeGenerateWithToolCalls(
 	toolCalls: Array<{ toolCallId: string; toolName: string; args: Record<string, unknown> }>,
@@ -2523,6 +2569,54 @@ describe('AgentRuntime — concurrent tool execution', () => {
 		const finishChunks = chunks.filter((c) => c.type === 'finish');
 		expect(finishChunks.length).toBe(1);
 		expect((finishChunks[0] as StreamChunk & { type: 'finish' }).finishReason).toBe('tool-calls');
+	});
+
+	it('stamps the consumed usage and model on the terminal finish chunk when a stream suspends', async () => {
+		const suspendTool = makeSuspendingTool('suspend_tool', async (_input, ctx) => {
+			return await ctx.suspend({ reason: 'needs approval' });
+		});
+
+		const { runtime } = createRuntimeWithTools([suspendTool], 1);
+
+		streamText.mockReturnValue({
+			fullStream: makeChunkStream([{ type: 'text-delta', textDelta: 'thinking...' }]),
+			finishReason: Promise.resolve('tool-calls'),
+			usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
+			response: Promise.resolve({
+				messages: [
+					{
+						role: 'assistant',
+						content: [
+							{
+								type: 'tool-call',
+								toolCallId: 'tc-1',
+								toolName: 'suspend_tool',
+								args: { value: 'a' },
+							},
+						],
+					},
+				],
+			}),
+			toolCalls: Promise.resolve([
+				{ toolCallId: 'tc-1', toolName: 'suspend_tool', input: { value: 'a' } },
+			]),
+		});
+
+		const { stream: readableStream } = await runtime.stream('run tools');
+		const chunks = await collectChunks(readableStream);
+
+		const finishChunks = chunks.filter((c) => c.type === 'finish') as Array<
+			StreamChunk & { type: 'finish' }
+		>;
+		expect(finishChunks.length).toBe(1);
+		// The tokens consumed to reach the suspension must ride out on the finish
+		// chunk so the host can bill them, mirroring the completion path.
+		expect(finishChunks[0].usage).toMatchObject({
+			promptTokens: 10,
+			completionTokens: 5,
+			totalTokens: 15,
+		});
+		expect(finishChunks[0].model).toBeTruthy();
 	});
 
 	it('bridges subagent lifecycle events from tool context into stream chunks', async () => {
@@ -4255,6 +4349,61 @@ describe('AgentRuntime.resume() — checkpoint lifecycle', () => {
 		await expect(
 			runtime.resume('stream', { approved: true }, { runId, toolCallId }),
 		).rejects.toThrow(`No suspended run found for runId: ${runId}`);
+	});
+
+	it('claims the checkpoint after resume validation passes', async () => {
+		const checkpointStore = makeClaimingCheckpointStore();
+		const runtime = createRuntimeWithCheckpointStore([makeApprovalTool()], checkpointStore);
+
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([{ toolCallId: 'tc-1', toolName: 'suspend_tool', args: {} }]),
+		);
+		const first = await runtime.generate('run tool');
+		const { runId, toolCallId } = first.pendingSuspend![0];
+
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('done'));
+		const resumed = await runtime.resume('generate', { approved: true }, { runId, toolCallId });
+
+		expect(resumed.finishReason).toBe('stop');
+		expect(checkpointStore.claimForResume).toHaveBeenCalledTimes(1);
+		expect(checkpointStore.claimForResume).toHaveBeenCalledWith(
+			runId,
+			expect.objectContaining({ status: 'suspended' }),
+		);
+	});
+
+	it('does not claim the checkpoint when the resume payload is invalid', async () => {
+		const checkpointStore = makeClaimingCheckpointStore();
+		const runtime = createRuntimeWithCheckpointStore([makeApprovalTool()], checkpointStore);
+
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([{ toolCallId: 'tc-1', toolName: 'suspend_tool', args: {} }]),
+		);
+		const first = await runtime.generate('run tool');
+		const { runId, toolCallId } = first.pendingSuspend![0];
+
+		await expect(
+			runtime.resume('generate', { approved: 'yes' }, { runId, toolCallId }),
+		).rejects.toThrow('Invalid resume payload');
+
+		expect(checkpointStore.claimForResume).not.toHaveBeenCalled();
+	});
+
+	it('does not claim the checkpoint when the tool call id is invalid', async () => {
+		const checkpointStore = makeClaimingCheckpointStore();
+		const runtime = createRuntimeWithCheckpointStore([makeApprovalTool()], checkpointStore);
+
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([{ toolCallId: 'tc-1', toolName: 'suspend_tool', args: {} }]),
+		);
+		const first = await runtime.generate('run tool');
+		const { runId } = first.pendingSuspend![0];
+
+		await expect(
+			runtime.resume('generate', { approved: true }, { runId, toolCallId: 'tc-missing' }),
+		).rejects.toThrow('No tool call found for toolCallId: tc-missing');
+
+		expect(checkpointStore.claimForResume).not.toHaveBeenCalled();
 	});
 });
 

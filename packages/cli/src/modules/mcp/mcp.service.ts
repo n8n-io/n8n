@@ -278,6 +278,7 @@ export class McpService {
 			this.telemetry,
 			this.roleService,
 			this.projectService,
+			this.urlService.getTestWebhookBaseUrl(),
 		);
 		server.registerTool(
 			workflowDetailsTool.name,
