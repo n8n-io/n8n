@@ -9,13 +9,6 @@ import { WorkflowPublicationOutboxConsumer } from './workflow-publication-outbox
  * Signals the leader to drain the publication outbox immediately after a record
  * is enqueued, instead of waiting for the next poll cycle.
  *
- * Callers use a single method; the single-main vs multi-main split is hidden here
- * so it can be collapsed once single-main also loops pubsub back to itself:
- * - multi-main: the leader may be a different process, so route through pubsub
- *   (the `workflow-publish-wake-up` command self-delivers to the leader).
- * - single-main: this process is the leader and pubsub is inert (no Redis), so
- *   wake the local consumer directly.
- *
  * Fire-and-forget by design: publication is asynchronous, so the enqueue path
  * must not block on the drain.
  */
