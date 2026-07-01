@@ -83,8 +83,7 @@ export class GatewayClient extends EventEmitter {
 	connect(): void {
 		this.closing = false;
 
-		// Defensive: never leak a previous socket if connect() is ever called
-		// with one still attached.
+		// Defensive: never leak a previous socket if one is still attached.
 		if (this.ws) {
 			this.ws.removeAllListeners();
 			try {
@@ -110,9 +109,8 @@ export class GatewayClient extends EventEmitter {
 		socket.on('message', (raw: RawData) => this.onMessage(raw, canResume));
 		socket.on('close', (code: number) => this.onClose(code));
 		socket.on('error', (error: Error) => {
-			// Handle internally: EventEmitter throws if 'error' is emitted with no
-			// listener, so never rely on one. Log it and let the ensuing 'close'
-			// drive reconnection. Only re-emit when something is actually listening.
+			// Handle internally: an 'error' with no listener would throw, so log it
+			// and let the ensuing 'close' reconnect (re-emit only if something listens).
 			this.warn(`socket error: ${error.message}`);
 			if (this.listenerCount('error') > 0) this.emit('error', error);
 		});
@@ -136,8 +134,7 @@ export class GatewayClient extends EventEmitter {
 		if (!socket) return;
 
 		await new Promise<void>((resolve) => {
-			// Resolve when the socket reports closed, with a grace cap so
-			// deactivation never hangs if the close frame is slow.
+			// Resolve when the socket closes, with a grace cap so deactivation never hangs.
 			const timer = setTimeout(resolve, 1000);
 			if (typeof timer.unref === 'function') timer.unref();
 			socket.once('close', () => {
@@ -163,8 +160,7 @@ export class GatewayClient extends EventEmitter {
 			return;
 		}
 
-		// A malformed frame must never throw out of the ws 'message' listener
-		// (that would surface as an uncaught exception on the host).
+		// A malformed frame must never throw out of 'message' (uncaught on the host).
 		try {
 			this.handlePayload(payload, resuming);
 		} catch (error) {
@@ -233,8 +229,7 @@ export class GatewayClient extends EventEmitter {
 				if (resumable) {
 					this.reconnect(true);
 				} else {
-					// Fresh start: reconnect() drops the dead session. Re-identify after
-					// the 1-5s Discord recommends, not the inherited outage backoff.
+					// Fresh start: drop the session and re-identify after Discord's 1-5s.
 					this.reconnectAttempts = 0;
 					this.reconnect(false, 1000 + Math.floor(jitter() * 4000));
 				}
@@ -286,8 +281,7 @@ export class GatewayClient extends EventEmitter {
 			this.ws = undefined;
 		}
 
-		// An explicit delay (e.g. the 1-5s after INVALID_SESSION) bypasses the
-		// exponential backoff and doesn't count against the attempt counter.
+		// An explicit delay (e.g. after INVALID_SESSION) skips backoff and the attempt counter.
 		let delay = delayMs;
 		if (delay === undefined) {
 			const backoff = Math.min(
@@ -375,8 +369,7 @@ function jitter(): number {
 	return Math.random();
 }
 
-// Discord sends JSON text frames; `ws` surfaces them as a Buffer (or Buffer[] /
-// ArrayBuffer). Normalize to a string without relying on default stringification.
+// Discord sends JSON text frames; `ws` gives Buffer / Buffer[] / ArrayBuffer — normalize.
 function rawToString(raw: RawData): string {
 	if (Array.isArray(raw)) return Buffer.concat(raw).toString('utf8');
 	if (Buffer.isBuffer(raw)) return raw.toString('utf8');

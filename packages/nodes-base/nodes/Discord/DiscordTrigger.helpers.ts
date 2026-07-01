@@ -125,10 +125,8 @@ function mimeMatches(contentType: string, pattern: string): boolean {
 }
 
 /**
- * Whether the actor that triggered the event is a bot, when the payload tells us.
- * Returns `undefined` when the actor's bot status isn't in the payload
- * (reaction-removed and message-deleted carry no actor user object) - callers
- * treat that as pass-through.
+ * Whether the event's actor is a bot, when the payload says so. `undefined` when
+ * unknown (reaction-removed / message-deleted carry no actor) - treated as pass-through.
  */
 function getActorBotFlag(eventValue: string, data: IDataObject): boolean | undefined {
 	if (eventValue === 'messageCreate' || eventValue === 'messageUpdate') {
@@ -161,9 +159,8 @@ function getActorId(eventValue: string, data: IDataObject): string | undefined {
 }
 
 /**
- * The actor's guild role ids, where the gateway payload carries them.
- * Returns `undefined` when role data isn't present (e.g. message-delete,
- * member-left, webhook/system messages) - callers treat that as pass-through.
+ * The actor's guild role ids, where the payload carries them. `undefined` when
+ * absent (message-delete, member-left, webhook/system) - treated as pass-through.
  */
 function getActorRoleIds(eventValue: string, data: IDataObject): string[] | undefined {
 	// Member add/update carry the member's roles at the top level.
