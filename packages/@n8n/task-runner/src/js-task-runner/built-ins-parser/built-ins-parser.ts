@@ -1,7 +1,7 @@
+import { toResult, type Result } from '@n8n/utils/result';
 import type { CallExpression, Identifier, Node, Program } from 'acorn';
 import { parse } from 'acorn';
 import { ancestor } from 'acorn-walk';
-import { toResult, type Result } from '@n8n/utils/result';
 
 import {
 	isAssignmentExpression,

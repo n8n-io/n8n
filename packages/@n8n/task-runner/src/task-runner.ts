@@ -1,5 +1,5 @@
-import { isSerializedBuffer, toBuffer } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { isSerializedBuffer, toBuffer } from 'n8n-core';
 import { OperationalError, randomInt, UnexpectedError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { EventEmitter } from 'node:events';
