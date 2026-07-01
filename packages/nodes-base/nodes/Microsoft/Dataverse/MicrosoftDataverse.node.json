@@ -1,0 +1,18 @@
+{
+	"node": "n8n-nodes-base.microsoftDataverse",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Data & Storage", "Finance & Accounting", "Sales", "Development"],
+	"resources": {
+		"credentialDocumentation": [
+			{
+				"url": "https://github.com/microsoft/n8n-nodes-microsoft-dataverse?tab=readme-ov-file#credentials"
+			}
+		],
+		"primaryDocumentation": [
+			{
+				"url": "https://github.com/microsoft/n8n-nodes-microsoft-dataverse?tab=readme-ov-file"
+			}
+		]
+	}
+}
