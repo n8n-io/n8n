@@ -9,6 +9,8 @@ import { I18nT } from 'vue-i18n';
 import { toDayMonth, toTime } from '@/app/utils/formatters/dateFormatter';
 import LogsViewNodeName from '@/features/execution/logs/components/LogsViewNodeName.vue';
 import {
+	getGroupExecutionStatus,
+	getGroupTiming,
 	getSubtreeTotalConsumedTokens,
 	hasSubExecution,
 	isGroupLog,
@@ -52,8 +54,16 @@ const displayName = computed(() =>
 		? groupData.value.group.name
 		: (props.latestInfo?.name ?? nodeData.value?.node.name ?? ''),
 );
-const isRunning = computed(() => runData.value?.executionStatus === 'running');
-const isWaiting = computed(() => runData.value?.executionStatus === 'waiting');
+// Groups have no run data of their own; derive their status from members
+const groupStatus = computed(() =>
+	groupData.value ? getGroupExecutionStatus(groupData.value) : undefined,
+);
+const isRunning = computed(() =>
+	groupData.value ? groupStatus.value === 'running' : runData.value?.executionStatus === 'running',
+);
+const isWaiting = computed(() =>
+	groupData.value ? groupStatus.value === 'waiting' : runData.value?.executionStatus === 'waiting',
+);
 const isSettled = computed(() => !isRunning.value && !isWaiting.value);
 const isError = computed(() =>
 	groupData.value ? groupData.value.hasError : !!runData.value?.error,
@@ -61,14 +71,22 @@ const isError = computed(() =>
 const statusTextKeyPath = computed<BaseTextKey>(() =>
 	isSettled.value ? 'logs.overview.body.summaryText.in' : 'logs.overview.body.summaryText.for',
 );
+// Groups have no run data of their own; aggregate their members instead.
+// Feed the live clock while unsettled so the total ticks up during execution.
+const groupTiming = computed(() =>
+	groupData.value
+		? getGroupTiming(groupData.value, isSettled.value ? undefined : now.value)
+		: undefined,
+);
+const startTime = computed(() =>
+	groupData.value ? groupTiming.value?.startTime : runData.value?.startTime,
+);
 const startedAtText = computed(() => {
-	const startTime = runData.value?.startTime;
-
-	if (startTime === undefined) {
+	if (startTime.value === undefined) {
 		return '—';
 	}
 
-	const time = new Date(startTime);
+	const time = new Date(startTime.value);
 
 	return locale.baseText('logs.overview.body.started', {
 		interpolate: {
@@ -76,17 +94,32 @@ const startedAtText = computed(() => {
 		},
 	});
 });
-const statusText = computed(() => upperFirst(runData.value?.executionStatus ?? ''));
-const timeText = computed(() =>
-	runData.value
+const statusText = computed(() =>
+	upperFirst(groupData.value ? (groupStatus.value ?? '') : (runData.value?.executionStatus ?? '')),
+);
+const timeText = computed(() => {
+	if (groupData.value) {
+		if (!groupTiming.value) {
+			return undefined;
+		}
+
+		return locale.displayTimer(
+			isSettled.value
+				? groupTiming.value.executionTime
+				: Math.floor(groupTiming.value.executionTime / 1000) * 1000,
+			true,
+		);
+	}
+
+	return runData.value
 		? locale.displayTimer(
 				isSettled.value
 					? runData.value.executionTime
 					: Math.floor((now.value - runData.value.startTime) / 1000) * 1000,
 				true,
 			)
-		: undefined,
-);
+		: undefined;
+});
 
 const subtreeConsumedTokens = computed(() =>
 	props.shouldShowTokenCountColumn ? getSubtreeTotalConsumedTokens(props.data, false) : undefined,
@@ -164,13 +197,7 @@ watch(
 			:is-error="isError"
 			:is-deleted="latestInfo?.deleted ?? false"
 		/>
-		<N8nText
-			v-if="!isCompact && !groupData"
-			tag="div"
-			color="text-light"
-			size="small"
-			:class="$style.timeTook"
-		>
+		<N8nText v-if="!isCompact" tag="div" color="text-light" size="small" :class="$style.timeTook">
 			<I18nT v-if="timeText !== undefined" :keypath="statusTextKeyPath" scope="global">
 				<template #status>
 					<N8nText :color="isError ? 'danger' : undefined" :bold="isError" size="small">
@@ -185,7 +212,7 @@ watch(
 			<template v-else>—</template>
 		</N8nText>
 		<N8nText
-			v-if="!isCompact && !groupData"
+			v-if="!isCompact"
 			tag="div"
 			color="text-light"
 			size="small"
@@ -242,6 +269,11 @@ watch(
 			:disabled="props.latestInfo?.deleted || props.latestInfo?.disabled"
 			@click.stop="emit('triggerPartialExecution')"
 		/>
+		<!-- Groups omit the action buttons above; reserve their width so columns stay aligned with node rows -->
+		<template v-if="groupData && !isCompact">
+			<div v-if="canOpenNdv" :class="$style.buttonSpacer" />
+			<div :class="$style.buttonSpacer" />
+		</template>
 		<template v-if="isCompact && !hasChildren">
 			<AnimatedSpinner v-if="isRunning" :class="$style.statusIcon" />
 			<N8nIcon v-else-if="isWaiting" icon="status-waiting" :class="$style.statusIcon" />
@@ -429,6 +461,13 @@ watch(
 
 .toggleButton {
 	display: inline-flex;
+}
+
+/* Matches a single small icon button's footprint (row padding comes from .container > *) */
+.buttonSpacer {
+	flex-grow: 0;
+	flex-shrink: 0;
+	width: var(--height--sm);
 }
 
 .statusIcon {

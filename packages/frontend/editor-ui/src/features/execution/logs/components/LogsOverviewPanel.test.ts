@@ -228,6 +228,59 @@ describe('LogsOverviewPanel', () => {
 		expect(groupRow.queryByRole('img')).not.toBeInTheDocument();
 	});
 
+	it('reflects a running member in the group row status', async () => {
+		const workflow = createTestWorkflowObject({
+			id: 'w1',
+			nodes: [
+				createTestNode({ id: 'A', name: 'A' }),
+				createTestNode({ id: 'B', name: 'B' }),
+				createTestNode({ id: 'C', name: 'C' }),
+			],
+			connections: {
+				A: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
+				B: { main: [[{ node: 'C', type: NodeConnectionTypes.Main, index: 0 }]] },
+			},
+		});
+		const execution = createTestWorkflowExecutionResponse({
+			id: 'e1',
+			data: createRunExecutionData({
+				resultData: {
+					runData: {
+						A: [createTestTaskData({ startTime: 0, executionIndex: 0 })],
+						B: [createTestTaskData({ startTime: 1, executionIndex: 1 })],
+						C: [
+							createTestTaskData({
+								startTime: 2,
+								executionIndex: 2,
+								executionStatus: 'running',
+								executionTime: 0,
+							}),
+						],
+					},
+				},
+			}),
+		});
+		const logs = createLogTree(workflow, execution, {}, {}, undefined, [
+			{ id: 'group-1', name: 'My Group', nodeIds: ['B', 'C'] },
+		]);
+		const rendered = render({
+			isOpen: true,
+			execution,
+			entries: logs,
+			flatLogEntries: flattenLogEntries(logs, {}),
+		});
+
+		await fireEvent.click(rendered.getByText('Overview'));
+
+		const tree = within(rendered.getByRole('tree'));
+		const groupRow = await waitFor(() =>
+			within(tree.getByText('My Group').closest('[role=treeitem]')!),
+		);
+
+		expect(groupRow.queryByText('Running')).toBeInTheDocument();
+		expect(groupRow.queryByText('Success')).not.toBeInTheDocument();
+	});
+
 	it('should trigger partial execution if the button is clicked', async () => {
 		const spyRun = vi.spyOn(workflowsStore, 'runWorkflow');
 

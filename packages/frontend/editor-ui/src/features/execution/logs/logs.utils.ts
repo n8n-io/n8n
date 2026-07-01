@@ -198,6 +198,59 @@ export function getSubtreeTotalConsumedTokens(
 	return calculate(treeNode);
 }
 
+/**
+ * Aggregate timing for a group segment: summed execution time of its member
+ * node runs, and the start time of the first one. Pass `now` to count elapsed
+ * time for still-running members so the total ticks up during live executions.
+ */
+export function getGroupTiming(
+	group: GroupLogEntry,
+	now?: number,
+): { startTime: number; executionTime: number } | undefined {
+	let startTime: number | undefined;
+	let executionTime = 0;
+
+	for (const child of group.children) {
+		if (!isNodeLog(child) || child.runData === undefined) {
+			continue;
+		}
+
+		const memberRunData = child.runData;
+		const isActive =
+			memberRunData.executionStatus === 'running' || memberRunData.executionStatus === 'waiting';
+
+		executionTime +=
+			isActive && now !== undefined
+				? Math.max(0, now - memberRunData.startTime)
+				: memberRunData.executionTime;
+		startTime =
+			startTime === undefined
+				? memberRunData.startTime
+				: Math.min(startTime, memberRunData.startTime);
+	}
+
+	return startTime === undefined ? undefined : { startTime, executionTime };
+}
+
+/**
+ * Aggregate execution status for a group segment. Groups have no run data of
+ * their own, so surface the most relevant member state: an active member keeps
+ * the group live, otherwise reflect error/success.
+ */
+export function getGroupExecutionStatus(
+	group: GroupLogEntry,
+): 'running' | 'waiting' | 'error' | 'success' {
+	const hasMemberWithStatus = (status: 'running' | 'waiting') =>
+		findLogEntryRec(
+			(e) => isNodeLog(e) && e.runData?.executionStatus === status,
+			group.children,
+		) !== undefined;
+
+	if (hasMemberWithStatus('running')) return 'running';
+	if (hasMemberWithStatus('waiting')) return 'waiting';
+	return group.hasError ? 'error' : 'success';
+}
+
 function findLogEntryToAutoSelect(subTree: LogEntry[]): LogEntry | undefined {
 	const entryWithError = findLogEntryRec((e) => isNodeLog(e) && !!e.runData?.error, subTree);
 

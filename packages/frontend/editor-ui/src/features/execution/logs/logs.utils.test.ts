@@ -10,6 +10,7 @@ import {
 	findSelectedLogEntry,
 	findSubExecutionLocator,
 	getDefaultCollapsedEntries,
+	getGroupTiming,
 	getSubtreeTotalConsumedTokens,
 	getTreeNodeData,
 	isGroupLog,
@@ -1846,6 +1847,63 @@ describe('createLogTree with canvas groups', () => {
 		const groupEntry = expectGroup(logs[1]);
 
 		expect(getSubtreeTotalConsumedTokens(groupEntry, false).totalTokens).toBe(15);
+	});
+
+	it('sums member execution time and takes the first start time', () => {
+		const response = createTestWorkflowExecutionResponse({
+			id: 'e1',
+			data: createRunExecutionData({
+				resultData: {
+					runData: {
+						A: [taskAt(0)],
+						B: [taskAt(2, { executionTime: 30 })],
+						C: [taskAt(1, { executionTime: 12 })],
+					},
+				},
+			}),
+		});
+
+		const logs = createLogTree(createLinearWorkflow(), response, {}, {}, undefined, [group]);
+		const groupEntry = expectGroup(logs[1]);
+
+		expect(getGroupTiming(groupEntry)).toEqual({
+			startTime: Date.parse('2025-01-01T00:00:01.000Z'), // earliest member (C)
+			executionTime: 42,
+		});
+	});
+
+	it('counts elapsed time for a running member when now is provided', () => {
+		const response = createTestWorkflowExecutionResponse({
+			id: 'e1',
+			data: createRunExecutionData({
+				resultData: {
+					runData: {
+						A: [taskAt(0)],
+						B: [taskAt(1, { executionTime: 12 })],
+						C: [taskAt(2, { executionStatus: 'running', executionTime: 0 })],
+					},
+				},
+			}),
+		});
+
+		const logs = createLogTree(createLinearWorkflow(), response, {}, {}, undefined, [group]);
+		const groupEntry = expectGroup(logs[1]);
+		const now = Date.parse('2025-01-01T00:00:05.000Z'); // 3s after C started
+
+		// settled member B (12ms) + running member C elapsed (3000ms)
+		expect(getGroupTiming(groupEntry, now)).toEqual({
+			startTime: Date.parse('2025-01-01T00:00:01.000Z'),
+			executionTime: 3012,
+		});
+	});
+
+	it('returns undefined group timing when no member has run data', () => {
+		const groupEntry = expectGroup(
+			createLogTree(createLinearWorkflow(), linearResponse(), {}, {}, undefined, [group])[1],
+		);
+		groupEntry.children = [];
+
+		expect(getGroupTiming(groupEntry)).toBeUndefined();
 	});
 
 	// Grouped nodes must stay main-flow nodes: a false sub-node match makes their input pane show their own output
