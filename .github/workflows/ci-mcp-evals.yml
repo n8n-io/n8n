@@ -73,6 +73,7 @@ jobs:
       contents: read
     outputs:
       matrix: ${{ steps.plan.outputs.matrix }}
+      shard-count: ${{ steps.plan.outputs.shard-count }}
     steps:
       - name: Checkout
         uses: useblacksmith/checkout@41cdeedae8edb2e684ba22896a5fd2a3cb85db6b # v1
@@ -161,6 +162,9 @@ jobs:
           LANGSMITH_REVISION_ID: ${{ github.sha }}
           LANGSMITH_BRANCH: ${{ github.event.pull_request.head.ref || github.head_ref || github.ref_name }}
           EXPERIMENT_NAME: ${{ inputs.experiment-name || '' }}
+          # Planned shard count so the merge can detect a shard that died before
+          # uploading and skip the unified upload rather than record partial coverage.
+          EXPECTED_SHARDS: ${{ needs.plan-shards.outputs.shard-count }}
         run: |
           ARGS=(
             --input-dir "$GITHUB_WORKSPACE/shard-artifacts"
@@ -170,6 +174,7 @@ jobs:
             --baseline-prefix mcp-baseline-
           )
           [ -n "$EXPERIMENT_NAME" ] && ARGS+=(--experiment-name "$EXPERIMENT_NAME")
+          [ -n "$EXPECTED_SHARDS" ] && ARGS+=(--expected-shards "$EXPECTED_SHARDS")
           pnpm eval:merge-results "${ARGS[@]}"
 
       # Refresh per-slug shard weights from this run's build stats and merge them

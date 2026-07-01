@@ -325,6 +325,21 @@ function pctOf(passed: number, total: number): number {
 	return total > 0 ? Math.round((passed / total) * 100) : 0;
 }
 
+/** Optional context layered onto the rendered summary (coverage, experiment, comparison). */
+export interface RenderContext {
+	/** Discovered shard artifacts that couldn't be read/parsed. */
+	malformedArtifacts?: string[];
+	/** Shards the planner expected (from plan-shards); enables coverage validation. */
+	expectedShards?: number;
+	/** Shards that reported usable results. */
+	reportedShards?: number;
+	/** Whether the unified LangSmith upload was skipped due to incomplete coverage. */
+	uploadSkipped?: boolean;
+	experimentName?: string;
+	experimentUrl?: string;
+	outcome?: ComparisonOutcome;
+}
+
 /**
  * Render the combined run as markdown for `$GITHUB_STEP_SUMMARY` /
  * `eval-pr-comment.md`. Mirrors the no-comparison layout of
@@ -334,25 +349,14 @@ function pctOf(passed: number, total: number): number {
  */
 export function renderSummaryMarkdown(
 	combined: CombinedResults,
-	context: {
-		missingShards?: string[];
-		experimentName?: string;
-		experimentUrl?: string;
-		outcome?: ComparisonOutcome;
-	} = {},
+	context: RenderContext = {},
 ): string {
 	const { totalRuns, summary, testCases } = combined;
 	const lines: string[] = [];
 	lines.push('### MCP Workflow Eval (sharded)');
 	lines.push('');
 
-	if (context.missingShards && context.missingShards.length > 0) {
-		lines.push('> [!WARNING]');
-		lines.push(
-			`> ${context.missingShards.length} shard artifact(s) missing or empty — results below cover the shards that reported.`,
-		);
-		lines.push('');
-	}
+	lines.push(...renderCoverageWarning(context));
 
 	lines.push(...renderComparisonAlert(context.outcome));
 
@@ -381,6 +385,47 @@ export function renderSummaryMarkdown(
 	lines.push(...renderFailureDetails(testCases));
 
 	return lines.join('\n');
+}
+
+/**
+ * Warn when the merge covered fewer shards than the planner expected (a shard
+ * died before uploading, so it never appears in the glob) or when a discovered
+ * artifact was malformed. Without an expected count we can only flag malformed
+ * artifacts — an absent shard is then indistinguishable from "never planned".
+ */
+function renderCoverageWarning(context: RenderContext): string[] {
+	const malformed = context.malformedArtifacts ?? [];
+	const { expectedShards, reportedShards } = context;
+	const missing =
+		expectedShards !== undefined && reportedShards !== undefined
+			? Math.max(0, expectedShards - reportedShards)
+			: 0;
+	if (missing === 0 && malformed.length === 0) return [];
+
+	const lines = ['> [!WARNING]'];
+	if (missing > 0) {
+		lines.push(
+			`> Incomplete coverage: only ${reportedShards} of ${expectedShards} shard(s) reported usable results — ${missing} did not report. Metrics below cover only the shards that reported.`,
+		);
+		if (malformed.length > 0) {
+			lines.push(
+				'>',
+				`> ${malformed.length} of the discovered artifact(s) were unreadable or malformed.`,
+			);
+		}
+		if (context.uploadSkipped) {
+			lines.push(
+				'>',
+				'> The unified LangSmith experiment was **not uploaded**: partial coverage must not overwrite the baseline. Re-run to record a complete experiment.',
+			);
+		}
+	} else {
+		lines.push(
+			`> ${malformed.length} shard artifact(s) were unreadable or malformed — results below cover the shards that reported.`,
+		);
+	}
+	lines.push('');
+	return lines;
 }
 
 /** One-line baseline-comparison verdict, mirroring format.ts's top alert. */
@@ -559,6 +604,8 @@ interface MergeArgs {
 	dataset: string;
 	baselinePrefix: string;
 	experimentName?: string;
+	/** Shards the planner expected; lets the merge detect a shard that never reported. */
+	expectedShards?: number;
 }
 
 function parseArgs(argv: string[]): MergeArgs {
@@ -597,6 +644,15 @@ function parseArgs(argv: string[]): MergeArgs {
 				result.experimentName = nextArg(argv, i, '--experiment-name');
 				i++;
 				break;
+			case '--expected-shards': {
+				const parsed = Number.parseInt(nextArg(argv, i, '--expected-shards'), 10);
+				if (!Number.isInteger(parsed) || parsed < 1) {
+					throw new Error('--expected-shards must be a positive integer');
+				}
+				result.expectedShards = parsed;
+				i++;
+				break;
+			}
 			default:
 				if (arg.startsWith('--')) throw new Error(`Unknown flag: ${arg.split('=', 1)[0]}`);
 				result.inputs.push(arg);
@@ -624,6 +680,15 @@ export function resolveInputPaths(args: MergeArgs): string[] {
 	return [...new Set(paths)].sort();
 }
 
+/**
+ * Coverage is complete when every planned shard reported a usable result. With
+ * no expected count (e.g. a local merge with no planner) we can't detect an
+ * absent shard, so we optimistically treat coverage as complete.
+ */
+export function isCoverageComplete(reportedShards: number, expectedShards?: number): boolean {
+	return expectedShards === undefined || reportedShards >= expectedShards;
+}
+
 async function main(): Promise<void> {
 	const args = parseArgs(process.argv.slice(2));
 	const paths = resolveInputPaths(args);
@@ -633,17 +698,25 @@ async function main(): Promise<void> {
 	process.stderr.write(`Merging ${paths.length} shard artifact(s):\n`);
 
 	const shards: EvalResults[] = [];
-	const missingShards: string[] = [];
+	const malformedArtifacts: string[] = [];
 	for (const path of paths) {
 		const parsed = parseShardFile(path);
 		if (parsed) shards.push(parsed);
-		else missingShards.push(path);
+		else malformedArtifacts.push(path);
 	}
 	if (shards.length === 0) {
 		throw new Error('No usable shard results — every artifact was missing or malformed.');
 	}
 
 	const combined = combineShards(shards);
+
+	// Validate coverage against the planner's expected shard count. A shard that
+	// died before uploading its artifact never appears in the glob, so without
+	// this the merge would silently report — and upload — partial coverage.
+	const reportedShards = shards.length;
+	const coverageComplete = isCoverageComplete(reportedShards, args.expectedShards);
+	const missingShardCount =
+		args.expectedShards !== undefined ? Math.max(0, args.expectedShards - reportedShards) : 0;
 
 	// Option b: re-upload one unified experiment so LangSmith keeps a single
 	// experiment per run for run-over-run comparison. Best-effort — a LangSmith
@@ -652,8 +725,16 @@ async function main(): Promise<void> {
 	let experimentUrl: string | undefined;
 	let outcome: ComparisonOutcome | undefined;
 	let comparisonStatus: ComparisonOutcome['kind'] | 'not_attempted' = 'not_attempted';
+	let uploadSkipped = false;
 	if (args.uploadExperiment) {
-		if (!process.env.LANGSMITH_API_KEY) {
+		if (!coverageComplete) {
+			// Skip rather than record a partial experiment: a partial baseline
+			// refresh would silently corrupt every future run-over-run comparison.
+			uploadSkipped = true;
+			process.stderr.write(
+				`  ! incomplete coverage (${reportedShards}/${String(args.expectedShards)} shards reported) — skipping unified LangSmith upload\n`,
+			);
+		} else if (!process.env.LANGSMITH_API_KEY) {
 			process.stderr.write(
 				'  ! --upload-experiment set but LANGSMITH_API_KEY is missing — skipping upload\n',
 			);
@@ -680,7 +761,10 @@ async function main(): Promise<void> {
 	}
 
 	const markdown = renderSummaryMarkdown(combined, {
-		missingShards,
+		malformedArtifacts,
+		expectedShards: args.expectedShards,
+		reportedShards,
+		uploadSkipped,
 		experimentName,
 		experimentUrl,
 		outcome,
@@ -699,7 +783,13 @@ async function main(): Promise<void> {
 				? { baseline: outcome.result.baseline.experimentName, result: outcome.result }
 				: undefined,
 		comparisonStatus,
-		merged: { shardCount: shards.length, missingShards },
+		merged: {
+			shardCount: reportedShards,
+			expectedShardCount: args.expectedShards ?? null,
+			missingShardCount,
+			malformedArtifacts,
+			uploadSkipped,
+		},
 		testCases: combined.testCases,
 	};
 	const jsonPath = join(args.outputDir, 'eval-results.json');

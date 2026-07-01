@@ -243,7 +243,13 @@ function main() {
 			'\n',
 	);
 	if (process.env.GITHUB_OUTPUT) {
-		appendFileSync(process.env.GITHUB_OUTPUT, `matrix=${compact}\n`);
+		// `shard-count` is the ACTUAL planned width (capped at slug count when
+		// slugs < requested shards), so the merge job can validate coverage
+		// against the real fan-out rather than the requested `--shards`.
+		appendFileSync(
+			process.env.GITHUB_OUTPUT,
+			`matrix=${compact}\nshard-count=${matrix.include.length}\n`,
+		);
 	}
 	process.stdout.write(`${compact}\n`);
 }

@@ -4,6 +4,7 @@ import { join } from 'node:path';
 
 import {
 	combineShards,
+	isCoverageComplete,
 	parseShardFile,
 	recomputeSummary,
 	renderSummaryMarkdown,
@@ -193,14 +194,34 @@ describe('combineShards', () => {
 });
 
 describe('renderSummaryMarkdown', () => {
-	it('renders the aggregate headline and a missing-shard warning', () => {
+	it('renders the aggregate headline and a malformed-artifact warning', () => {
 		const combined = combineShards([parseShardFileFrom(shardA), parseShardFileFrom(shardB)]);
-		const md = renderSummaryMarkdown(combined, { missingShards: ['/x/eval-results.json'] });
+		const md = renderSummaryMarkdown(combined, { malformedArtifacts: ['/x/eval-results.json'] });
 		expect(md).toContain('### MCP Workflow Eval (sharded)');
 		expect(md).toContain('pass@2 75%');
 		expect(md).toContain('2/2 built');
-		expect(md).toContain('1 shard artifact(s) missing');
+		expect(md).toContain('1 shard artifact(s) were unreadable or malformed');
 		expect(md).toContain('`slug-b/s1`'); // failure detail for the failed scenario
+	});
+
+	it('warns on incomplete coverage and notes the skipped unified upload', () => {
+		const combined = combineShards([parseShardFileFrom(shardA), parseShardFileFrom(shardB)]);
+		const md = renderSummaryMarkdown(combined, {
+			expectedShards: 4,
+			reportedShards: 2,
+			uploadSkipped: true,
+		});
+		expect(md).toContain('> [!WARNING]');
+		expect(md).toContain('only 2 of 4 shard(s) reported');
+		expect(md).toContain('2 did not report');
+		expect(md).toContain('not uploaded');
+	});
+
+	it('omits the coverage warning when every planned shard reported', () => {
+		const combined = combineShards([parseShardFileFrom(shardA), parseShardFileFrom(shardB)]);
+		const md = renderSummaryMarkdown(combined, { expectedShards: 2, reportedShards: 2 });
+		expect(md).not.toContain('[!WARNING]');
+		expect(md).not.toContain('Incomplete coverage');
 	});
 
 	it('links the unified experiment when a URL is provided, else shows the bare name', () => {
@@ -227,6 +248,21 @@ describe('resolveInputPaths', () => {
 		const paths = resolveInputPaths({ inputDir: dir, inputs: [explicit], outputDir: dir });
 		expect(paths.length).toBe(3);
 		expect(new Set(paths).size).toBe(3);
+	});
+});
+
+describe('isCoverageComplete', () => {
+	it('is complete when the reported shards meet or exceed the expected count', () => {
+		expect(isCoverageComplete(4, 4)).toBe(true);
+		expect(isCoverageComplete(5, 4)).toBe(true);
+	});
+
+	it('is incomplete when fewer shards reported than planned', () => {
+		expect(isCoverageComplete(3, 4)).toBe(false);
+	});
+
+	it('is optimistically complete when no expected count is known (local merge)', () => {
+		expect(isCoverageComplete(1)).toBe(true);
 	});
 });
 
