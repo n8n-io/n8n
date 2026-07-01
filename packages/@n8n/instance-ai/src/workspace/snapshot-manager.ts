@@ -177,10 +177,9 @@ export class SnapshotManager {
 	}
 
 	/**
-	 * Invalidate the in-memory image/bundle caches (e.g., when the base image
-	 * changes). The shared staging directory is owned by the per-key cache in
-	 * `stageWorkspaceFilesForImage` and is intentionally not removed here — doing
-	 * so would delete a directory other in-flight sandbox creations may still read.
+	 * Invalidate the in-memory image/bundle caches. The shared staging dir is owned
+	 * by the per-key cache in `stageWorkspaceFilesForImage` and intentionally not
+	 * removed here (in-flight creations may still be reading it).
 	 */
 	invalidate(): void {
 		this.cachedImage = null;

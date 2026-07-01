@@ -39,8 +39,7 @@ describe('snapshot-image-context', () => {
 	});
 
 	it('stages once per cache key and reuses the directory read-only', async () => {
-		// Same cache key ⇒ same content in production (key is the n8n version or a
-		// content hash), so a repeat call reuses the first staging without re-writing.
+		// Same key ⇒ same content in prod, so the repeat reuses the first staging (filesB ignored).
 		const filesA = new Map([[`${WORKSPACE_ROOT}/package.json`, '{"name":"a"}']]);
 		const filesB = new Map([[`${WORKSPACE_ROOT}/package.json`, '{"name":"b"}']]);
 		const cacheKey = 'aaaaaaaaaaaa-bbbbbbbbbbbb';
@@ -71,8 +70,7 @@ describe('snapshot-image-context', () => {
 		);
 		tempDirs.push(results[0].stagingDir);
 
-		// All callers resolve to the same directory, and every staged file is intact —
-		// no caller's rm clobbered another's write.
+		// All callers share one directory and every file is intact — no rm clobbered a write.
 		for (const result of results) {
 			expect(result.stagingDir).toBe(results[0].stagingDir);
 		}

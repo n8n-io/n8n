@@ -9,13 +9,9 @@ export interface SnapshotImageContext {
 }
 
 /**
- * Concurrent sandbox creations for the same n8n version stage identical files
- * (`cacheKey` is the n8n version or a content hash, so same key ⇒ same content).
- * Dedupe by key so the destructive `rm`+`mkdir`+`writeFile` runs exactly once per
- * key per process; concurrent and subsequent callers await it and reuse the same
- * directory read-only. Without this, overlapping stagings raced on the shared path
- * — one caller's recursive `rm` deleting files another was writing (ENOTEMPTY) or
- * that Daytona was still reading for `addLocalDir` (ENOENT).
+ * Dedupe staging by key: the destructive `rm`+`mkdir`+`writeFile` runs once per
+ * key, and concurrent callers await it and reuse the directory read-only. Same key
+ * ⇒ same content, so reuse both avoids re-writing and prevents rm/write races.
  */
 const stagingByCacheKey = new Map<string, Promise<SnapshotImageContext>>();
 
@@ -46,9 +42,8 @@ async function writeStagedFiles(
 
 /**
  * Writes sandbox workspace files to a host directory for Daytona `addLocalDir` / COPY.
- * When `cacheKey` is set, reuses `os.tmpdir()/n8n-snapshot-context-<cacheKey>` and stages
- * the files exactly once per key per process (see `stagingByCacheKey`), so repeated and
- * concurrent image builds share one read-only directory instead of racing rm/write on it.
+ * With a `cacheKey`, stages into `os.tmpdir()/n8n-snapshot-context-<cacheKey>` once per key
+ * (see `stagingByCacheKey`) so repeated and concurrent builds share one directory.
  */
 export async function stageWorkspaceFilesForImage(
 	files: Map<string, string>,
@@ -71,7 +66,7 @@ export async function stageWorkspaceFilesForImage(
 		await writeStagedFiles(stagingDir, files, workspaceRoot);
 		return { stagingDir };
 	})().catch((error) => {
-		// Don't leave a rejected promise cached — let the next caller retry from scratch.
+		// Evict a rejected staging so the next caller retries.
 		stagingByCacheKey.delete(cacheKey);
 		throw error;
 	});
