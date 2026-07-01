@@ -12,7 +12,6 @@ import { ensureError } from 'n8n-workflow';
 
 import type { PublicationResult } from '@/workflows/publication/publication-result';
 import { computeTriggerDiff } from '@/workflows/publication/trigger-diff';
-import { isTransientActivationError } from '@/workflows/triggers/trigger-activation-retry';
 import {
 	WorkflowTriggerActivator,
 	type TriggerActivationFailure,
@@ -196,11 +195,19 @@ export class WorkflowPublicationApplier {
 	private classifyActivationOutcome(outcome: TriggerActivationOutcome): PublicationResult {
 		if (outcome.failures.length === 0) return { type: 'completed' };
 
+<<<<<<< HEAD
 		const allDeterministic = outcome.failures.every(
 			(failure) => !isTransientActivationError(failure.error),
 		);
 		if (outcome.activated.length === 0 && allDeterministic) {
 			return { type: 'failed', error: this.toActivationError(outcome.failures) };
+=======
+		// Check whether this is a partial or full failure: If at least one trigger
+		// has been activated successfully, it's partial.
+		const hasRunningTrigger = triggerStatuses.some((s) => s.status === 'activated');
+		if (!hasRunningTrigger) {
+			return { type: 'failed', error: this.toActivationError(outcome.failures), triggerStatuses };
+>>>>>>> d9869329 (fix(core): Classify workflow publication failure vs partial by running triggers (no-changelog) (#33339))
 		}
 
 		return {

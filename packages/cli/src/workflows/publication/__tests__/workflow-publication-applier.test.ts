@@ -473,7 +473,7 @@ describe('WorkflowPublicationApplier', () => {
 		);
 	});
 
-	test('returns partial when no trigger activated but the failures are not all deterministic', async () => {
+	test('returns failed when nothing activated even if a failure is transient', async () => {
 		setTriggerSets([], [triggerNode('b'), triggerNode('c')]);
 		const deterministic = new WebhookPathTakenError('b');
 		const transient = new Error('third-party unavailable');
@@ -485,7 +485,46 @@ describe('WorkflowPublicationApplier', () => {
 
 		const result = await applier.apply(makeRecord());
 
+<<<<<<< HEAD
 		expect(result).toEqual({ type: 'partial', activatedNodeIds: [], failures });
+=======
+		// Nothing is running, so the publication failed; the combined error names both nodes.
+		expect(result).toEqual({
+			type: 'failed',
+			error: expect.objectContaining({
+				message: `Triggers failed to activate: "b": ${deterministic.message}; "c": third-party unavailable`,
+			}),
+			triggerStatuses: [
+				{ nodeId: 'b', nodeName: 'b', status: 'failed', errorMessage: deterministic.message },
+				{ nodeId: 'c', nodeName: 'c', status: 'failed', errorMessage: 'third-party unavailable' },
+			],
+		});
+>>>>>>> d9869329 (fix(core): Classify workflow publication failure vs partial by running triggers (no-changelog) (#33339))
+	});
+
+	test('returns partial when a newly-added trigger fails but an unchanged trigger keeps running', async () => {
+		// `a` is unchanged (old ∩ desired) and stays running; only `b` is added and fails.
+		setTriggerSets([triggerNode('a')], [triggerNode('a'), triggerNode('b')]);
+		const error = new WebhookPathTakenError('b');
+		workflowTriggerActivator.activate.mockResolvedValue({
+			// `a` is unchanged, so it never appears in the activation outcome.
+			activated: [],
+			failures: [{ nodeId: 'b', nodeName: 'b', error }],
+		});
+
+		const result = await applier.apply(makeRecord());
+
+		expect(result).toEqual({
+			type: 'partial',
+			triggerStatuses: [
+				{ nodeId: 'a', nodeName: 'a', status: 'activated' },
+				{ nodeId: 'b', nodeName: 'b', status: 'failed', errorMessage: error.message },
+			],
+		});
+		expect(workflowPublishedVersionRepository.setPublishedVersion).toHaveBeenCalledWith(
+			'wf-1',
+			'v-2',
+		);
 	});
 
 	test('treats a first publication (no published-version mapping yet) as all-added', async () => {
