@@ -137,14 +137,14 @@ describe('Microsoft shared validateUserTargetId', () => {
 	});
 
 	describe('the rejected id is never echoed in the message or description', () => {
-		it.each([
+		it.each<[string, UserTargetMessages | undefined]>([
 			['default messages', undefined],
 			['overridden messages', MAILBOX_MESSAGES],
 		])('%s', (_label, messages) => {
 			const evil = 'evil/../%2fsecret@attacker.com';
 			let caught: NodeOperationError | undefined;
 			try {
-				validateUserTargetId(evil, node, messages as UserTargetMessages | undefined);
+				validateUserTargetId(evil, node, messages);
 			} catch (error) {
 				caught = error as NodeOperationError;
 			}

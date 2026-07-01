@@ -40,10 +40,9 @@ export function getToDoCredentialType(
 // App-only Microsoft Graph has no `/me`, and To Do lists/tasks belong to a user, so under
 // the Service Principal credential the request is addressed under an explicit `/users/{id}`
 // root. To Do is user-only, so it validates via the shared `validateUserTargetId` (default
-// "target ID" wording) and re-exports it here — the id shape is checked BEFORE encoding.
-// ENT-123 lifted that validator to `Microsoft/GenericFunctions.ts`; SharePoint (ENT-92)
-// adopts the same validator when Service Principal support lands there.
-export { validateUserTargetId };
+// "target ID" wording) — the id shape is checked BEFORE encoding. ENT-123 lifted that
+// validator to `Microsoft/GenericFunctions.ts`; SharePoint (ENT-92) adopts the same
+// validator when Service Principal support lands there.
 
 /**
  * Builds the `/users/{id}` Graph root for an app-only request. The id is validated before

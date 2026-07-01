@@ -8,12 +8,12 @@ import {
 import type { Mock, Mocked } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 
+import { validateUserTargetId } from '../../GenericFunctions';
 import {
 	getServicePrincipalResourceRoot,
 	getToDoCredentialType,
 	microsoftApiRequest,
 	resolveScopeRoot,
-	validateUserTargetId,
 } from '../GenericFunctions';
 import { MicrosoftToDo } from '../MicrosoftToDo.node';
 
