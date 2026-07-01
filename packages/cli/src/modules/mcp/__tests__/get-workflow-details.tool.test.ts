@@ -102,7 +102,7 @@ describe('get-workflow-details MCP tool', () => {
 				{ id: 'tag-2', name: 'billing' },
 			];
 			const workflow = createWorkflow({ tags } as Partial<WorkflowEntity>);
-			const findWorkflowForUser = jest.fn().mockResolvedValue(workflow);
+			const findWorkflowForUser = vi.fn().mockResolvedValue(workflow);
 			const workflowFinderService = mockInstance(WorkflowFinderService, {
 				findWorkflowForUser,
 			});
