@@ -9,6 +9,7 @@ import { augmentArray, augmentObject } from './augment-object';
 import { AGENT_LANGCHAIN_NODE_TYPE, SCRIPTING_NODE_TYPES, BINARY_MODE_COMBINED } from './constants';
 import { UnexpectedError } from './errors';
 import { ExpressionError, type ExpressionErrorOptions } from './errors/expression.error';
+import { isExpression } from './expressions/expression-helpers';
 import { getGlobalState } from './global-state';
 import { NodeConnectionTypes } from './interfaces';
 import type {
@@ -199,7 +200,32 @@ export class WorkflowDataProxy {
 				get(_, name) {
 					if (name === 'isProxy') return true;
 					name = name.toString();
-					return that.selfData[name];
+					const value = that.selfData[name];
+
+					// A credential field saved in expression mode keeps n8n's leading "="
+					// marker in its stored value. Returning it verbatim leaks the marker
+					// (or an unevaluated `{{ }}` expression) into the consuming template —
+					// e.g. a `$self` reference embedded mid-URL in an OAuth2
+					// authUrl/accessTokenUrl. Resolve it here so callers receive the
+					// evaluated value.
+					if (isExpression(value)) {
+						return that.workflow.expression.getParameterValue(
+							value,
+							that.runExecutionData,
+							that.runIndex,
+							that.itemIndex,
+							that.activeNodeName,
+							that.connectionInputData,
+							that.mode,
+							that.additionalKeys,
+							that.executeData,
+							false,
+							{},
+							that.contextNodeName,
+						);
+					}
+
+					return value;
 				},
 			},
 		);

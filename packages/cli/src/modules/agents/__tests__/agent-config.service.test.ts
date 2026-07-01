@@ -1,6 +1,7 @@
+import type { Mocked } from 'vitest';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import { mockLogger } from '@n8n/backend-test-utils';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 
@@ -74,7 +75,7 @@ function makeService() {
 }
 
 function mockAccessibleCredentials(
-	credentialsService: jest.Mocked<CredentialsService>,
+	credentialsService: Mocked<CredentialsService>,
 	credentialIds: string[],
 ) {
 	credentialsService.findAllCredentialIdsForProject.mockResolvedValue(
@@ -84,7 +85,7 @@ function mockAccessibleCredentials(
 
 describe('AgentConfigService', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('validateConfig', () => {

@@ -9,6 +9,7 @@
 import { Tool } from '@n8n/agents';
 import { z } from 'zod';
 
+import { assignCredentialToNode, resolveCredentialForApply } from './credential-utils';
 import type { OrchestrationContext } from '../../types';
 
 export const applyWorkflowCredentialsInputSchema = z.object({
@@ -45,7 +46,7 @@ export function createApplyWorkflowCredentialsTool(context: OrchestrationContext
 			}
 
 			const { mockedCredentialsByNode } = buildOutcome;
-			const { credentialService, workflowService } = context.domainContext;
+			const { workflowService } = context.domainContext;
 
 			// Load the workflow
 			let json;
@@ -68,15 +69,9 @@ export function createApplyWorkflowCredentialsTool(context: OrchestrationContext
 					const credId = input.credentials[credType];
 					if (!credId) continue;
 
-					try {
-						const credDetail = await credentialService.get(credId);
-						node.credentials[credType] = { id: credDetail.id, name: credDetail.name };
-					} catch {
-						return {
-							success: false,
-							error: `Credential ${credId} for type ${credType} no longer exists.`,
-						};
-					}
+					const resolved = await resolveCredentialForApply(credType, credId, context.domainContext);
+					if (!resolved.resolved) return { success: false, error: resolved.error };
+					assignCredentialToNode(node, credType, resolved.credential);
 				}
 				appliedNodes.push(nodeName);
 			}

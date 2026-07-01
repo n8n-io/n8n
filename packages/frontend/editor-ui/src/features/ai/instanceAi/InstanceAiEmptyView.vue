@@ -72,6 +72,8 @@ const INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_PLACEHOLDER_KEY =
 	'experiments.instanceAiWorkflowPreviewSuggestions.input.placeholder' as BaseTextKey;
 const INSTANCE_AI_SPLIT_EMPTY_STATE_PLACEHOLDER_KEY: BaseTextKey =
 	'experiments.instanceAiSplitEmptyState.input.placeholder';
+const INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_PLACEHOLDER_KEY: BaseTextKey =
+	'experiments.instanceAiPersonalizedPromptSuggestions.input.placeholder';
 // Experiment cleanup: remove with instanceAiSplitEmptyState. The split layout
 // locks the composer to a constant height so hovering an example only swaps
 // the placeholder text — the examples list below it never shifts.
@@ -223,7 +225,7 @@ const emptyStatePromptSuggestionProps = computed(() => {
 		if (!resolution) {
 			return {
 				suggestions: [],
-				placeholderKey: INSTANCE_AI_PROMPT_SUGGESTIONS_V2_PLACEHOLDER_KEY,
+				placeholderKey: INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_PLACEHOLDER_KEY,
 			};
 		}
 
@@ -241,7 +243,7 @@ const emptyStatePromptSuggestionProps = computed(() => {
 				personalizedPromptSuggestionsVariant.value,
 				resolution.telemetryPayload,
 			),
-			placeholderKey: INSTANCE_AI_PROMPT_SUGGESTIONS_V2_PLACEHOLDER_KEY,
+			placeholderKey: INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_PLACEHOLDER_KEY,
 		};
 	}
 
@@ -297,7 +299,7 @@ useResizeObserver(emptyLayoutRef, () => {
 	const bottomPadding = parseFloat(layoutStyles.paddingBottom);
 	const gap = parseFloat(layoutStyles.gap) || 0;
 	const remainingSpace = containerRect.bottom - inputRect.bottom - bottomPadding - gap;
-	previewScale.value = Math.min(1, Math.max(0, remainingSpace / CANVAS_NATURAL_HEIGHT_PX));
+	previewScale.value = Math.max(0, Math.min(1, remainingSpace / CANVAS_NATURAL_HEIGHT_PX));
 });
 
 const hasSpaceForPreview = computed(() => previewScale.value >= PREVIEW_MIN_SCALE);
@@ -333,7 +335,7 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 	isStartingThread.value = true;
 
 	// Persist the thread on the BE first. Otherwise we'd navigate to
-	// `/instance-ai/:threadId` for a thread the BE doesn't know about, and the
+	// `/assistant/:threadId` for a thread the BE doesn't know about, and the
 	// follow-up `postMessage` would 404.
 	try {
 		await store.syncThread(threadId, selectedProject.value);
@@ -448,7 +450,7 @@ function handleShelfSuggestionInsert(payload: {
 				</template>
 			</InstanceAiSplitEmptyState>
 			<div v-else ref="emptyLayout" :class="$style.emptyLayout">
-				<InstanceAiEmptyState :title-key="emptyStateTitleKey" />
+				<InstanceAiEmptyState :title-key="emptyStateTitleKey" :show-title-icon="true" />
 				<div ref="centeredInput" :class="$style.centeredInput">
 					<CreditWarningBanner
 						v-if="creditBanner.visible.value"

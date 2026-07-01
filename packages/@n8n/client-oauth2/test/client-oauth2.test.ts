@@ -128,16 +128,50 @@ describe('ClientOAuth2', () => {
 				contentType: 'text/plain',
 				body: 'Hello, world!',
 			},
-		])('should reject content type $contentType', async ({ contentType, body }) => {
+		])(
+			'should report a body preview for non-JSON content type $contentType',
+			async ({ contentType, body }) => {
+				mockTokenResponse({
+					status: 200,
+					headers: { 'Content-Type': contentType },
+					body,
+				});
+
+				const result = await makeTokenCall().catch((err) => err);
+				expect(result).toBeInstanceOf(ResponseError);
+				expect(result.message).toContain('Expected JSON response from OAuth2 token endpoint');
+				expect(result.message).toContain(`(content-type: ${contentType})`);
+			},
+		);
+
+		it('should parse a JSON body served with a non-JSON content type', async () => {
 			mockTokenResponse({
 				status: 200,
-				headers: { 'Content-Type': contentType },
-				body,
+				headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+				body: JSON.stringify({
+					access_token: config.accessToken,
+					refresh_token: config.refreshToken,
+				}),
+			});
+
+			const response = await makeTokenCall();
+
+			expect(response).toEqual({
+				access_token: config.accessToken,
+				refresh_token: config.refreshToken,
+			});
+		});
+
+		it('should surface auth errors served with a non-JSON content type', async () => {
+			mockTokenResponse({
+				status: 400,
+				headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+				body: JSON.stringify({ error: 'invalid_grant' }),
 			});
 
 			const result = await makeTokenCall().catch((err) => err);
-			expect(result).toBeInstanceOf(Error);
-			expect(result.message).toEqual(`Unsupported content type: ${contentType}`);
+			expect(result).toBeInstanceOf(AuthError);
+			expect(result.body).toEqual({ error: 'invalid_grant' });
 		});
 
 		it('should throw ResponseError when application/json response contains invalid JSON', async () => {
@@ -152,9 +186,8 @@ describe('ClientOAuth2', () => {
 			expect(result).toBeInstanceOf(ResponseError);
 			expect(result.status).toBe(200);
 			expect(result.body).toBe(htmlBody);
-			expect(result.message).toContain(
-				'Expected JSON response from OAuth2 token endpoint but received:',
-			);
+			expect(result.message).toContain('Expected JSON response from OAuth2 token endpoint');
+			expect(result.message).toContain('(content-type: application/json)');
 			expect(result.message).toContain('<!DOCTYPE html>');
 		});
 
