@@ -46,6 +46,8 @@ const {
 	showCreateButton,
 	hasUnsavedChanges,
 	displayNameValidationRules,
+	submitted,
+	isDisplayNameValid,
 	resetForm,
 } = useRoleEditorForm({
 	roleSlug: () => props.roleSlug,
@@ -131,6 +133,17 @@ function toggleScope(scope: string) {
 }
 
 async function createProjectRole() {
+	submitted.value = true;
+
+	if (!isDisplayNameValid.value) {
+		showMessage({
+			type: 'error',
+			title: i18n.baseText('projectRoles.action.create.error'),
+			message: i18n.baseText('roles.create.validation.nameMinLength'),
+		});
+		return;
+	}
+
 	try {
 		const role = await rolesStore.createRole({
 			...form.value,
@@ -313,6 +326,7 @@ const editorLabels = computed<RoleEditorLabels>(() => ({
 		:back-button-text="backButtonText"
 		:labels="editorLabels"
 		:display-name-validation-rules="displayNameValidationRules"
+		:show-display-name-error="submitted"
 		@back="onBackClick"
 		@save="handleSubmit"
 		@discard="resetForm(initialState)"

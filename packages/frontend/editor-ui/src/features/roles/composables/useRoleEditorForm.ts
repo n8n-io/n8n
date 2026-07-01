@@ -8,6 +8,8 @@ import sortBy from 'lodash/sortBy';
 import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
+const DISPLAY_NAME_MIN_LENGTH = 2;
+
 export type RoleEditorForm = {
 	displayName: string;
 	description: string | null | undefined;
@@ -103,10 +105,17 @@ export function useRoleEditorForm({
 
 	const displayNameValidationRules = [
 		{ name: 'REQUIRED' },
-		{ name: 'MIN_LENGTH', config: { minimum: 2 } },
+		{ name: 'MIN_LENGTH', config: { minimum: DISPLAY_NAME_MIN_LENGTH } },
 	];
 
+	const submitted = ref(false);
+
+	const isDisplayNameValid = computed(
+		() => form.value.displayName.trim().length >= DISPLAY_NAME_MIN_LENGTH,
+	);
+
 	function resetForm(payload: Role | undefined): void {
+		submitted.value = false;
 		form.value = payload
 			? {
 					displayName: payload.displayName,
@@ -128,6 +137,8 @@ export function useRoleEditorForm({
 		showCreateButton,
 		hasUnsavedChanges,
 		displayNameValidationRules,
+		submitted,
+		isDisplayNameValid,
 		resetForm,
 	};
 }
