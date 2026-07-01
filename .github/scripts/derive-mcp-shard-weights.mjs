@@ -95,11 +95,32 @@ function parseArgs(argv) {
 	return args;
 }
 
+/**
+ * Surface a message as a GitHub Actions warning annotation (visible on the run
+ * summary), not just a buried stderr line. Workflow commands are read from
+ * stdout; this workflow always passes --out, so the merged JSON goes to a file
+ * and stdout is free for the annotation. A no-op outside Actions.
+ */
+function emitCIWarning(message) {
+	if (process.env.GITHUB_ACTIONS === 'true') {
+		process.stdout.write(`::warning title=MCP shard weights::${message}\n`);
+	}
+}
+
 function main() {
 	const args = parseArgs(process.argv.slice(2));
 	const statsFiles = findManifestStats(args.inputDir);
 	if (statsFiles.length === 0) {
-		process.stderr.write(`No manifest-stats.json found under ${args.inputDir}\n`);
+		// Zero stats => rebalancing is fully skipped and the committed base weights
+		// are kept. Weights are only a balancing HINT (never affect coverage), so
+		// this isn't fatal — but make it visible rather than a silent no-op, since
+		// it usually means the eval shards didn't upload manifest-stats.json.
+		const message =
+			`No manifest-stats.json found under ${args.inputDir} — keeping base shard weights ` +
+			'unchanged (rebalancing skipped). Check that eval shards uploaded ' +
+			'eval-mcp-cohort/manifest-stats.json.';
+		process.stderr.write(`${message}\n`);
+		emitCIWarning(message);
 	}
 	const statsObjects = statsFiles.map((f) => JSON.parse(readFileSync(f, 'utf8')));
 	const measured = weightsFromStats(statsObjects);

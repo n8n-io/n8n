@@ -409,6 +409,9 @@ jobs:
           # Suffix per shard so matrix shards don't collide on one artifact name
           # (upload-artifact v4+ errors on duplicates). The merge job globs these.
           name: ${{ inputs.shard-id != '' && format('mcp-workflow-eval-results-{0}', inputs.shard-id) || 'mcp-workflow-eval-results' }}
+          # NB: manifest-stats.json feeds the merge job's "Derive shard weights"
+          # step (derive-mcp-shard-weights.mjs). Removing it silently defeats
+          # LPT rebalancing (the derive step warns but keeps stale base weights).
           path: |
             packages/@n8n/instance-ai/eval-results.json
             packages/@n8n/instance-ai/eval-pr-comment.md
