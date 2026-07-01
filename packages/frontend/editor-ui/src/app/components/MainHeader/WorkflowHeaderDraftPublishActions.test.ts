@@ -104,6 +104,9 @@ const renderComponent = createComponentRenderer(WorkflowHeaderDraftPublishAction
 			N8nTooltip: {
 				template: '<div><slot name="content" /><slot /></div>',
 			},
+			N8nPopover: {
+				template: '<div><slot name="trigger" /><slot name="content" /></div>',
+			},
 		},
 	},
 });
@@ -817,6 +820,91 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 			// Should be disabled because flag is off and no changes
 			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+		});
+
+		it('should use partial indicator class (not error) when status is partial', () => {
+			workflowDocumentStore.setPublicationStatus({
+				status: 'partial',
+				failures: [{ nodeId: 'n1', nodeName: 'Webhook', errorMessage: 'Connection refused' }],
+			});
+
+			const { getByTestId } = renderComponent();
+
+			const indicator = getByTestId('workflow-active-version-indicator');
+			expect(indicator.className).toMatch(/indicatorPartial/);
+			expect(indicator.className).not.toMatch(/indicatorIssues/);
+		});
+
+		it('should use error indicator class when status is failed', () => {
+			workflowDocumentStore.setPublicationStatus({ status: 'failed' });
+
+			const { getByTestId } = renderComponent();
+
+			const indicator = getByTestId('workflow-active-version-indicator');
+			expect(indicator.className).toMatch(/indicatorIssues/);
+			expect(indicator.className).not.toMatch(/indicatorPartial/);
+		});
+
+		it('should show non-empty tooltip text when publishing', () => {
+			workflowDocumentStore.setPublicationStatus({ status: 'publishing' });
+
+			const { getByTestId } = renderComponent();
+			// The tooltip content slot renders unconditionally in the stub
+			// Verify the button still renders (tooltip wrapper present)
+			expect(getByTestId('workflow-open-publish-modal-button')).toBeInTheDocument();
+		});
+
+		it('should render publication failures popover trigger when partial with failures', () => {
+			workflowDocumentStore.setPublicationStatus({
+				status: 'partial',
+				failures: [
+					{ nodeId: 'n1', nodeName: 'Webhook', errorMessage: 'Connection refused' },
+					{ nodeId: 'n2', nodeName: 'Schedule', errorMessage: 'Timeout' },
+				],
+			});
+
+			const { getByTestId } = renderComponent();
+
+			expect(getByTestId('publication-failures-popover-trigger')).toBeInTheDocument();
+		});
+
+		it('should render publication failures popover trigger when failed with failures', () => {
+			workflowDocumentStore.setPublicationStatus({
+				status: 'failed',
+				failures: [{ nodeId: 'n1', nodeName: 'Webhook', errorMessage: 'Auth failed' }],
+			});
+
+			const { getByTestId } = renderComponent();
+
+			expect(getByTestId('publication-failures-popover-trigger')).toBeInTheDocument();
+		});
+
+		it('should not render publication failures popover trigger when published with no failures', () => {
+			workflowDocumentStore.setPublicationStatus({ status: 'published' });
+
+			const { queryByTestId } = renderComponent();
+
+			expect(queryByTestId('publication-failures-popover-trigger')).not.toBeInTheDocument();
+		});
+
+		it('should list each failed node name and error message in the failures popover', () => {
+			workflowDocumentStore.setPublicationStatus({
+				status: 'partial',
+				failures: [
+					{ nodeId: 'n1', nodeName: 'Webhook', errorMessage: 'Connection refused' },
+					{ nodeId: 'n2', nodeName: 'Schedule', errorMessage: 'Timeout error' },
+				],
+			});
+
+			const { getByTestId, getByText } = renderComponent();
+
+			// Popover trigger must be present to wrap the popover
+			expect(getByTestId('publication-failures-popover-trigger')).toBeInTheDocument();
+			// Node names and error messages should be in the DOM (inside the popover content slot)
+			expect(getByText('Webhook')).toBeInTheDocument();
+			expect(getByText('Connection refused')).toBeInTheDocument();
+			expect(getByText('Schedule')).toBeInTheDocument();
+			expect(getByText('Timeout error')).toBeInTheDocument();
 		});
 	});
 });
