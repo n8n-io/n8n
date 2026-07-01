@@ -1,5 +1,6 @@
 import { ref } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { AI_GATEWAY_MANAGED_TAG } from '../../constants';
 import { makeSetupRequest } from '../__tests__/factories';
 import { useWorkflowSetupSections } from './useWorkflowSetupSections';
 
@@ -127,6 +128,23 @@ describe('useWorkflowSetupSections', () => {
 		const { sections } = useWorkflowSetupSections(setupRequests);
 
 		expect(sections.value[0].currentCredentialId).toBe('node-cred');
+	});
+
+	it('seeds the AI Gateway-managed tag for gateway-managed node credentials', () => {
+		const setupRequests = ref([
+			makeSetupRequest({
+				credentialType: 'googlePalmApi',
+				node: {
+					credentials: {
+						googlePalmApi: { id: null, name: '', __aiGatewayManaged: true },
+					},
+				},
+			}),
+		]);
+
+		const { sections } = useWorkflowSetupSections(setupRequests);
+
+		expect(sections.value[0].currentCredentialId).toBe(AI_GATEWAY_MANAGED_TAG);
 	});
 
 	it('does not preselect unrelated store credentials', () => {
