@@ -12,12 +12,12 @@
  * still never executes), downstream data coverage degrades.
  */
 
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { getParentNodes, mapConnectionsByDestination, type IConnections } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { HAIKU_MODEL } from '../../utils/eval-agents';
+import { SONNET_MODEL } from '../../utils/eval-agents';
 import { generateValidatedJson } from '../../utils/generate-validated-json';
 import type { NodeSimulationVerdict } from '../../workflow-loop/workflow-loop-state';
 
@@ -149,7 +149,7 @@ export async function generateSimulationFixtures(
 	].join('\n');
 
 	const result = await generateValidatedJson('verification-simulation-fixtures', {
-		model: HAIKU_MODEL,
+		model: SONNET_MODEL,
 		instructions: SYSTEM_INSTRUCTIONS,
 		userText,
 		schema: FixturesResponseSchema,

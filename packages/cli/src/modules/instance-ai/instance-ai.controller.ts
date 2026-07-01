@@ -44,6 +44,7 @@ import { EvalExecutionService } from './eval/execution.service';
 import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service';
 import { EvalThreadRestoreService } from './eval/thread-restore.service';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
+import { InstanceAiErrorReporterService } from './instance-ai-error-reporter.service';
 import { InstanceAiGatewayService } from './instance-ai-gateway.service';
 import { InstanceAiMemoryService } from './instance-ai-memory.service';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
@@ -112,6 +113,7 @@ export class InstanceAiController {
 		private readonly userRepository: UserRepository,
 		private readonly credentialsService: CredentialsService,
 		private readonly projectService: ProjectService,
+		private readonly instanceAiErrorReporter: InstanceAiErrorReporterService,
 		globalConfig: GlobalConfig,
 	) {
 		this.gatewayApiKey = globalConfig.instanceAi.gatewayApiKey;
@@ -476,6 +478,10 @@ export class InstanceAiController {
 		const result = await this.settingsService.updateAdminSettings(payload);
 		await this.moduleRegistry.refreshModuleSettings('instance-ai');
 
+		if (payload.enabled === false || payload.browserUseEnabled === false) {
+			await this.browserSessionService.shutdown();
+		}
+
 		if (payload.enabled === false || payload.localGatewayDisabled === true) {
 			const disconnectedUserIds = this.gatewayService.disconnectAllGateways();
 			if (disconnectedUserIds.length > 0) {
@@ -554,7 +560,21 @@ export class InstanceAiController {
 		}
 		const requestedThreadId = payload.threadId ?? randomUUID();
 		await this.assertThreadAccess(req.user.id, requestedThreadId, { allowNew: true });
-		return await this.memoryService.ensureThread(req.user.id, requestedThreadId, payload.projectId);
+		try {
+			return await this.memoryService.ensureThread(
+				req.user.id,
+				requestedThreadId,
+				payload.projectId,
+			);
+		} catch (error) {
+			this.instanceAiErrorReporter.report(error, {
+				component: 'instance-ai-ensure-thread',
+				threadId: requestedThreadId,
+				userId: req.user.id,
+				projectId: payload.projectId,
+			});
+			throw error;
+		}
 	}
 
 	@Delete('/threads/:threadId')
@@ -852,15 +872,17 @@ export class InstanceAiController {
 		await this.assertGatewayEnabled(userId);
 
 		this.gatewayService.initGateway(userId, payload);
+		this.gatewayService.applyToolPolicy(userId);
 
+		const status = this.gatewayService.getGatewayStatus(userId);
 		this.push.sendToUsers(
 			{
 				type: 'instanceAiGatewayStateChanged',
 				data: {
-					connected: true,
-					directory: payload.rootPath,
-					hostIdentifier: payload.hostIdentifier ?? null,
-					toolCategories: payload.toolCategories ?? [],
+					connected: status.connected,
+					directory: status.directory,
+					hostIdentifier: status.hostIdentifier,
+					toolCategories: status.toolCategories,
 				},
 			},
 			[userId],
@@ -928,6 +950,7 @@ export class InstanceAiController {
 	@GlobalScope('instanceAi:gateway')
 	async gatewayStatus(req: AuthenticatedRequest) {
 		await this.assertGatewayEnabled(req.user.id);
+		this.gatewayService.applyToolPolicy(req.user.id);
 		return this.gatewayService.getGatewayStatus(req.user.id);
 	}
 
@@ -980,8 +1003,8 @@ export class InstanceAiController {
 	// ── Helpers ──────────────────────────────────────────────────────────────
 
 	private assertBrowserChannelEnabled(): void {
-		if (this.settingsService.getAdminSettings().localGatewayDisabled) {
-			throw new ForbiddenError('Local gateway is disabled');
+		if (!this.settingsService.getAdminSettings().browserUseEnabled) {
+			throw new ForbiddenError('Browser Use is disabled');
 		}
 	}
 

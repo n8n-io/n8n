@@ -63,7 +63,7 @@ describe('instance ai prompt suggestions telemetry', () => {
 				suggestion_source: 'matrix',
 				metadata_load_state: 'loaded',
 				variant: 'variant-cards',
-				'$feature/090_instance_ai_personalized_prompt_suggestions': 'variant-cards',
+				'$feature/093_instance_ai_personalized_prompt_suggestions': 'variant-cards',
 			},
 		});
 
@@ -74,7 +74,7 @@ describe('instance ai prompt suggestions telemetry', () => {
 			suggestion_source: 'matrix',
 			metadata_load_state: 'loaded',
 			variant: 'variant-cards',
-			'$feature/090_instance_ai_personalized_prompt_suggestions': 'variant-cards',
+			'$feature/093_instance_ai_personalized_prompt_suggestions': 'variant-cards',
 		});
 	});
 

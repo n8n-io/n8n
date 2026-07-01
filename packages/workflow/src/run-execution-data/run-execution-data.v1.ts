@@ -42,12 +42,6 @@ export interface IRunExecutionDataV1 {
 		pinData?: IPinData;
 		lastNodeExecuted?: string;
 		metadata?: Record<string, string>;
-		/**
-		 * Nodes whose output was simulated (mocked via per-execution pin data)
-		 * instead of executed, keyed by node name. Set for AI-driven workflow
-		 * verification runs so the editor can label simulated outputs.
-		 */
-		simulation?: Record<string, { reason: string }>;
 	};
 	executionData?: {
 		contextData: IExecuteContextData;

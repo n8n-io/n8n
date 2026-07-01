@@ -1,7 +1,8 @@
 import type { Logger } from '@n8n/backend-common';
 import type { ICredentialResolver } from '@n8n/decorators';
 import type { InstanceSettings, Cipher } from 'n8n-core';
-import { mock } from 'jest-mock-extended';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { SYSTEM_RESOLVER_ID, SYSTEM_RESOLVER_NAME, SYSTEM_RESOLVER_TYPE } from '../../constants';
 import { DynamicCredentialResolver } from '../../database/entities/credential-resolver';
@@ -17,11 +18,11 @@ describe('N8nResolverSeeder', () => {
 	logger.scoped.mockReturnValue(logger);
 
 	const insertBuilder = {
-		insert: jest.fn().mockReturnThis(),
-		into: jest.fn().mockReturnThis(),
-		values: jest.fn().mockReturnThis(),
-		orIgnore: jest.fn().mockReturnThis(),
-		execute: jest.fn(),
+		insert: vi.fn().mockReturnThis(),
+		into: vi.fn().mockReturnThis(),
+		values: vi.fn().mockReturnThis(),
+		orIgnore: vi.fn().mockReturnThis(),
+		execute: vi.fn(),
 	};
 
 	const buildSeeder = (isLeader: boolean) =>
@@ -34,11 +35,11 @@ describe('N8nResolverSeeder', () => {
 		);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		cipher.encryptV2.mockResolvedValue('encrypted-empty-config');
 		// `createQueryBuilder` returns a chainable insert builder whose execute() result
 		// is set per-test to simulate either a real insert or a no-op-on-conflict.
-		(repository.createQueryBuilder as unknown as jest.Mock).mockReturnValue(insertBuilder);
+		(repository.createQueryBuilder as unknown as Mock).mockReturnValue(insertBuilder);
 		// Default: the system resolver class is registered. Drift tests override.
 		registry.getResolverByTypename.mockReturnValue(mock<ICredentialResolver>());
 	});

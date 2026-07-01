@@ -7,6 +7,7 @@ import type {
 	InstanceAiLivenessSurface,
 	InstanceAiLivenessTimeoutReason,
 } from './liveness-policy';
+import type { OrchestratorRunHandoffState } from './orchestrator-run-control';
 import type { WorkflowBuildOutcome } from '../workflow-loop/workflow-loop-state';
 
 export interface ActiveRunState {
@@ -26,6 +27,8 @@ export interface SuspendedRunState<TUser = unknown> extends ActiveRunState {
 	threadId: string;
 	user: TUser;
 	toolCallId: string;
+	toolName?: string;
+	suspendPayload?: Record<string, unknown>;
 	requestId: string;
 	createdAt: number;
 	/** Set when the suspended run was a planned-task checkpoint follow-up.
@@ -40,6 +43,8 @@ export interface SuspendedRunState<TUser = unknown> extends ActiveRunState {
 		isSupportingWorkflowTask?: boolean;
 		savedOutcome?: WorkflowBuildOutcome;
 	};
+	/** Shared signal used to stop resumed orchestration after durable work is handed off. */
+	runHandoff?: OrchestratorRunHandoffState;
 }
 
 /**

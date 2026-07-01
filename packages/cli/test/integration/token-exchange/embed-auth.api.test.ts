@@ -1,13 +1,11 @@
 process.env.N8N_ENV_FEAT_TOKEN_EXCHANGE = 'true';
 
-import { generateKeyPairSync, randomUUID } from 'node:crypto';
-
 import { testDb } from '@n8n/backend-test-utils';
 import { AuthIdentity, AuthIdentityRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import jwt from 'jsonwebtoken';
-
 import { InstanceSettings } from 'n8n-core';
+import { generateKeyPairSync, randomUUID } from 'node:crypto';
 
 import { EventService } from '@/events/event.service';
 import { qualifiedProviderId } from '@/modules/token-exchange/services/identity-resolution.service';
@@ -84,14 +82,14 @@ beforeEach(async () => {
 	await testDb.truncate(['AuthIdentity', 'ProjectRelation', 'Project', 'User']);
 	// Every test needs an owner for the license check in issueCookie
 	await createOwner();
-	jest.restoreAllMocks();
+	vi.restoreAllMocks();
 });
 
 describe('Embed Auth API (integration)', () => {
 	it('GET /auth/embed — valid token sets cookie, emits audit event, and redirects', async () => {
 		const sub = `ext-${randomUUID()}`;
 		const token = signEmbedToken({ sub, email: 'get-test@test.example.com' });
-		const emitSpy = jest.spyOn(eventService, 'emit');
+		const emitSpy = vi.spyOn(eventService, 'emit');
 
 		const res = await testServer.authlessAgent
 			.get(`/auth/embed?token=${encodeURIComponent(token)}`)

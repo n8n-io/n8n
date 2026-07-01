@@ -33,6 +33,26 @@ on:
         required: false
         type: string
         default: ''
+      pr-number:
+        description: 'PR number to post results back to. Empty = derive from the pull_request event.'
+        required: false
+        type: string
+        default: ''
+      cache-sha:
+        description: 'SHA for the docker image cache key. Empty = github.sha. Set to the tested commit on dispatch re-runs so the image matches the code under test.'
+        required: false
+        type: string
+        default: ''
+      revision-sha:
+        description: 'Commit SHA under test, for LangSmith revision tagging. Empty = github.sha.'
+        required: false
+        type: string
+        default: ''
+      head-ref:
+        description: 'Branch name under test, for LangSmith branch tagging. Empty = derive from context.'
+        required: false
+        type: string
+        default: ''
   workflow_dispatch:
     inputs:
       branch:
@@ -90,6 +110,8 @@ jobs:
       # via build-n8n-docker.
       - name: Load n8n Docker image
         uses: ./.github/actions/load-n8n-docker
+        with:
+          cache-sha: ${{ inputs.cache-sha }}
 
       - name: Start sandbox service
         if: ${{ inputs.sandbox-provider == 'n8n-sandbox' }}
@@ -224,12 +246,15 @@ jobs:
           LANGSMITH_TRACING: 'true'
           LANGSMITH_ENDPOINT: ${{ secrets.EVALS_LANGSMITH_ENDPOINT }}
           LANGSMITH_API_KEY: ${{ secrets.EVALS_LANGSMITH_API_KEY }}
-          LANGSMITH_REVISION_ID: ${{ github.sha }}
-          LANGSMITH_BRANCH: ${{ github.event.pull_request.head.ref || github.head_ref || github.ref_name }}
+          LANGSMITH_REVISION_ID: ${{ inputs.revision-sha || github.sha }}
+          LANGSMITH_BRANCH: ${{ inputs.head-ref || github.event.pull_request.head.ref || github.head_ref || github.ref_name }}
+          # Dedicated project so eval build traces don't pollute the default 'instance-ai' corpus.
+          LANGSMITH_PROJECT: instance-ai-evals
           FILTER: ${{ inputs.filter }}
           TIER: ${{ inputs.tier }}
           ITERATIONS: ${{ inputs.iterations }}
           EXPERIMENT_NAME: ${{ inputs.experiment-name }}
+          EVAL_PR_NUMBER: ${{ inputs.pr-number || github.event.pull_request.number }}
         run: |
           IFS=',' read -ra PORTS <<< "$LANE_PORTS"
           URLS=()
@@ -320,9 +345,11 @@ jobs:
           docker network rm n8n-eval-net 2>/dev/null || true
 
       - name: Post eval results to PR
-        if: ${{ always() && github.event.pull_request.number }}
+        if: ${{ always() && (inputs.pr-number || github.event.pull_request.number) }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ inputs.pr-number || github.event.pull_request.number }}
         run: |
           # The eval CLI writes the full PR comment as eval-pr-comment.md
           # (see comparison/format.ts:formatComparisonMarkdown). It includes
@@ -336,13 +363,13 @@ jobs:
           cp "$COMMENT_FILE" /tmp/eval-comment.md
 
           # Find and update existing eval comment, or create new one
-          COMMENT_ID=$(gh api "repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments" \
+          COMMENT_ID=$(gh api "repos/$REPO/issues/$PR_NUMBER/comments" \
             --jq '.[] | select(.body | startswith("### Instance AI Workflow Eval")) | .id' | tail -1)
 
           if [ -n "$COMMENT_ID" ]; then
-            gh api "repos/${{ github.repository }}/issues/comments/${COMMENT_ID}" -X PATCH -F body=@/tmp/eval-comment.md
+            gh api "repos/$REPO/issues/comments/${COMMENT_ID}" -X PATCH -F body=@/tmp/eval-comment.md
           else
-            gh pr comment "${{ github.event.pull_request.number }}" --body-file /tmp/eval-comment.md
+            gh pr comment "$PR_NUMBER" --body-file /tmp/eval-comment.md
           fi
 
       - name: Upload Results

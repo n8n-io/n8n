@@ -18,6 +18,7 @@ export type FetchFn = typeof globalThis.fetch;
 type EmbeddingProviderOptions = {
 	apiKey?: string;
 	baseURL?: string;
+	fetch?: FetchFn;
 };
 type CreateEmbeddingProviderFn = (opts?: EmbeddingProviderOptions) => {
 	embeddingModel(model: string): EmbeddingModel;

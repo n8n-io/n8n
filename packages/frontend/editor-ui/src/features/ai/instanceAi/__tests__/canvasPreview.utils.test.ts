@@ -874,6 +874,32 @@ describe('getLatestWorkflowUpdateResult', () => {
 });
 
 describe('isAgentEditingWorkflow', () => {
+	test('locks while an active agent run has already built the workflow', () => {
+		const node = makeAgentNode({
+			status: 'active',
+			toolCalls: [
+				makeToolCall({
+					toolName: 'build-workflow',
+					result: { success: true, workflowId: 'wf-1' },
+				}),
+			],
+		});
+		expect(isAgentEditingWorkflow(node, 'wf-1')).toBe(true);
+	});
+
+	test('does not lock for a completed agent run that built the workflow', () => {
+		const node = makeAgentNode({
+			status: 'completed',
+			toolCalls: [
+				makeToolCall({
+					toolName: 'build-workflow',
+					result: { success: true, workflowId: 'wf-1' },
+				}),
+			],
+		});
+		expect(isAgentEditingWorkflow(node, 'wf-1')).toBe(false);
+	});
+
 	test('locks while a workflow-builder sub-agent is active on the workflow', () => {
 		const node = makeAgentNode({
 			role: 'workflow-builder',
@@ -901,18 +927,33 @@ describe('isAgentEditingWorkflow', () => {
 		expect(isAgentEditingWorkflow(node, 'wf-1')).toBe(false);
 	});
 
-	test('locks while a build/setup tool call is in flight on the workflow', () => {
+	test('locks while a build/setup/verification tool call is in flight on the workflow', () => {
 		for (const toolName of [
 			'build-workflow',
 			'build-workflow-with-agent',
 			'apply-workflow-credentials',
 			'setup-workflow',
+			'verify-built-workflow',
 		]) {
 			const node = makeAgentNode({
 				toolCalls: [makeToolCall({ toolName, isLoading: true, args: { workflowId: 'wf-1' } })],
 			});
 			expect(isAgentEditingWorkflow(node, 'wf-1')).toBe(true);
 		}
+	});
+
+	test('locks while an agent workflow execution is in flight on the workflow', () => {
+		const node = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolName: 'executions',
+					isLoading: true,
+					args: { action: 'run', workflowId: 'wf-1' },
+				}),
+			],
+		});
+
+		expect(isAgentEditingWorkflow(node, 'wf-1')).toBe(true);
 	});
 
 	test('locks while a workflows update / restore-version / setup is in flight on the workflow', () => {

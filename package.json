@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "2.28.0",
+  "version": "2.29.0",
   "private": true,
   "engines": {
     "node": ">=22.22",
@@ -195,9 +195,11 @@
       "@turbo/darwin-64@<=2.9.18": "2.9.18",
       "@turbo/linux-64@<=2.9.18": "2.9.18",
       "@turbo/windows-64@<=2.9.18": "2.9.18",
+      "ibm-cloud-sdk-core": "^5.5.0",
       "undici@5": "catalog:undici-v6",
       "undici@6": "catalog:undici-v6",
-      "undici@7": "catalog:undici-v7"
+      "undici@7": "catalog:undici-v7",
+      "@babel/traverse": "^7.23.2"
     },
     "patchedDependencies": {
       "bull@4.16.4": "patches/bull@4.16.4.patch",

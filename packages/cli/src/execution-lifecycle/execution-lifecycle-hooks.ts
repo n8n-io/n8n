@@ -45,6 +45,7 @@ import {
 	updateExistingExecution,
 	updateExistingExecutionMetadata,
 } from './shared/shared-hook-functions';
+
 import { type ExecutionSaveSettings, toSaveSettings } from './to-save-settings';
 
 @Service()
@@ -66,7 +67,7 @@ class ModulesHooksRegistry {
 							executionId: this.executionId,
 							retryOf: this.retryOf,
 						};
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+
 						return await instance[methodName].call(instance, context);
 					});
 					break;
@@ -80,7 +81,7 @@ class ModulesHooksRegistry {
 							taskData,
 							executionId: this.executionId,
 						};
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+
 						return await instance[methodName].call(instance, context);
 					});
 					break;
@@ -95,7 +96,7 @@ class ModulesHooksRegistry {
 							executionData,
 							executionId: this.executionId,
 						};
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+
 						return await instance[methodName].call(instance, context);
 					});
 					break;
@@ -109,7 +110,7 @@ class ModulesHooksRegistry {
 							executionData,
 							executionId: this.executionId,
 						};
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+
 						return await instance[methodName].call(instance, context);
 					});
 					break;
@@ -123,7 +124,7 @@ class ModulesHooksRegistry {
 							executionData,
 							executionId: this.executionId,
 						};
-						// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+
 						return await instance[methodName].call(instance, context);
 					});
 					break;
@@ -603,6 +604,14 @@ function hookFunctionsSave(
 				fullExecutionData.data.pushRef = pushRef;
 			}
 
+			fullExecutionData.usedPrivateCredentials = Object.values(
+				fullRunData.data?.resultData?.runData ?? {},
+			).some((taskDataList) =>
+				taskDataList.some(
+					(t) => t.usedDynamicCredentials === true || t.attemptedDynamicCredentials === true,
+				),
+			);
+
 			await updateExistingExecution({
 				executionId: this.executionId,
 				workflowId: this.workflowData.id,
@@ -684,6 +693,14 @@ function hookFunctionsSaveWorker(
 			if (fullRunData.waitTill && isManualMode) {
 				fullExecutionData.data.pushRef = pushRef;
 			}
+
+			fullExecutionData.usedPrivateCredentials = Object.values(
+				fullRunData.data?.resultData?.runData ?? {},
+			).some((taskDataList) =>
+				taskDataList.some(
+					(t) => t.usedDynamicCredentials === true || t.attemptedDynamicCredentials === true,
+				),
+			);
 
 			// In scaling mode, worker saves execution without metadata
 			// Main process will save metadata after deletion decisions to avoid FK violations

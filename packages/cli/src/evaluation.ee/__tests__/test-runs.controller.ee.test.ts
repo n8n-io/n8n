@@ -1,3 +1,4 @@
+import type { Mock, Mocked } from 'vitest';
 import type { TestCaseExecutionRepository, TestRun, TestRunRepository, User } from '@n8n/db';
 import type express from 'express';
 
@@ -9,53 +10,53 @@ import type { TestRunsRequest } from '@/evaluation.ee/test-runs.types.ee';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
-jest.mock('@/evaluation.ee/test-runner/test-runner.service.ee');
+vi.mock('@/evaluation.ee/test-runner/test-runner.service.ee');
 
 describe('TestRunsController', () => {
 	let testRunsController: TestRunsController;
-	let mockTestRunRepository: jest.Mocked<TestRunRepository>;
-	let mockWorkflowFinderService: jest.Mocked<WorkflowFinderService>;
-	let mockTestCaseExecutionRepository: jest.Mocked<TestCaseExecutionRepository>;
-	let mockTestRunnerService: jest.Mocked<TestRunnerService>;
-	let mockTelemetry: jest.Mocked<Telemetry>;
+	let mockTestRunRepository: Mocked<TestRunRepository>;
+	let mockWorkflowFinderService: Mocked<WorkflowFinderService>;
+	let mockTestCaseExecutionRepository: Mocked<TestCaseExecutionRepository>;
+	let mockTestRunnerService: Mocked<TestRunnerService>;
+	let mockTelemetry: Mocked<Telemetry>;
 	let mockUser: User;
 	let mockWorkflowId: string;
 	let mockTestRunId: string;
 
 	beforeEach(() => {
 		mockTestRunRepository = {
-			findOne: jest.fn(),
-			getMany: jest.fn(),
-			delete: jest.fn(),
-			createTestRun: jest.fn(),
-		} as unknown as jest.Mocked<TestRunRepository>;
+			findOne: vi.fn(),
+			getMany: vi.fn(),
+			delete: vi.fn(),
+			createTestRun: vi.fn(),
+		} as unknown as Mocked<TestRunRepository>;
 
 		mockWorkflowFinderService = {
-			findWorkflowForUser: jest.fn(),
-		} as unknown as jest.Mocked<WorkflowFinderService>;
+			findWorkflowForUser: vi.fn(),
+		} as unknown as Mocked<WorkflowFinderService>;
 
 		mockTestCaseExecutionRepository = {
-			find: jest.fn(),
-			markAllPendingAsCancelled: jest.fn(),
-			cancelIfNew: jest.fn(),
-		} as unknown as jest.Mocked<TestCaseExecutionRepository>;
+			find: vi.fn(),
+			markAllPendingAsCancelled: vi.fn(),
+			cancelIfNew: vi.fn(),
+		} as unknown as Mocked<TestCaseExecutionRepository>;
 
 		mockTestRunnerService = {
-			runTest: jest.fn(),
+			runTest: vi.fn(),
 			// `startTestRun` returns the new run row and a `finished` promise;
 			// resolve `finished` immediately so tests that don't care about
 			// the detached execution don't dangle on an unresolved promise.
-			startTestRun: jest.fn().mockResolvedValue({
+			startTestRun: vi.fn().mockResolvedValue({
 				testRun: { id: 'testrun123' },
 				finished: Promise.resolve(),
 			}),
-			canBeCancelled: jest.fn(),
-			cancelTestRun: jest.fn(),
-		} as unknown as jest.Mocked<TestRunnerService>;
+			canBeCancelled: vi.fn(),
+			cancelTestRun: vi.fn(),
+		} as unknown as Mocked<TestRunnerService>;
 
 		mockTelemetry = {
-			track: jest.fn(),
-		} as unknown as jest.Mocked<Telemetry>;
+			track: vi.fn(),
+		} as unknown as Mocked<Telemetry>;
 
 		testRunsController = new TestRunsController(
 			mockTestRunRepository,
@@ -78,7 +79,7 @@ describe('TestRunsController', () => {
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('getMany', () => {
@@ -212,9 +213,9 @@ describe('TestRunsController', () => {
 			}) as TestRunsRequest.Cancel;
 
 		const mockResponse = () => {
-			const res = { status: jest.fn(), json: jest.fn() } as unknown as express.Response;
-			(res.status as jest.Mock).mockReturnValue(res);
-			(res.json as jest.Mock).mockReturnValue(res);
+			const res = { status: vi.fn(), json: vi.fn() } as unknown as express.Response;
+			(res.status as Mock).mockReturnValue(res);
+			(res.json as Mock).mockReturnValue(res);
 			return res;
 		};
 
@@ -347,9 +348,9 @@ describe('TestRunsController', () => {
 			}) as unknown as TestRunsRequest.Create;
 
 		const mockResponse = () => {
-			const res = { status: jest.fn(), json: jest.fn() } as unknown as express.Response;
-			(res.status as jest.Mock).mockReturnValue(res);
-			(res.json as jest.Mock).mockReturnValue(res);
+			const res = { status: vi.fn(), json: vi.fn() } as unknown as express.Response;
+			(res.status as Mock).mockReturnValue(res);
+			(res.json as Mock).mockReturnValue(res);
 			return res;
 		};
 

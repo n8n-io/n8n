@@ -8,7 +8,8 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { type Scope } from '@n8n/permissions';
-import { mock } from 'jest-mock-extended';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -17,21 +18,21 @@ import { RoleService } from '@/services/role.service';
 import { userHasScopes } from '../check-access';
 
 describe('userHasScopes', () => {
-	let findByWorkflowMock: jest.Mock;
-	let findByCredentialMock: jest.Mock;
-	let findByGlobalCredentialMock: jest.Mock;
-	let findGlobalCredentialByIdMock: jest.Mock;
-	let hasGlobalReadOnlyAccessMock: jest.Mock;
-	let roleServiceMock: jest.Mock;
+	let findByWorkflowMock: Mock;
+	let findByCredentialMock: Mock;
+	let findByGlobalCredentialMock: Mock;
+	let findGlobalCredentialByIdMock: Mock;
+	let hasGlobalReadOnlyAccessMock: Mock;
+	let roleServiceMock: Mock;
 	let mockQueryBuilder: any;
 
 	beforeAll(() => {
-		findByWorkflowMock = jest.fn();
-		findByCredentialMock = jest.fn();
-		findByGlobalCredentialMock = jest.fn();
-		findGlobalCredentialByIdMock = jest.fn();
-		hasGlobalReadOnlyAccessMock = jest.fn();
-		roleServiceMock = jest.fn();
+		findByWorkflowMock = vi.fn();
+		findByCredentialMock = vi.fn();
+		findByGlobalCredentialMock = vi.fn();
+		findGlobalCredentialByIdMock = vi.fn();
+		hasGlobalReadOnlyAccessMock = vi.fn();
+		roleServiceMock = vi.fn();
 
 		Container.set(
 			SharedWorkflowRepository,
@@ -63,19 +64,19 @@ describe('userHasScopes', () => {
 		);
 
 		mockQueryBuilder = {
-			innerJoin: jest.fn().mockReturnThis(),
-			where: jest.fn().mockReturnThis(),
-			andWhere: jest.fn().mockReturnThis(),
-			groupBy: jest.fn().mockReturnThis(),
-			having: jest.fn().mockReturnThis(),
-			select: jest.fn().mockReturnThis(),
-			getRawMany: jest.fn().mockResolvedValue([{ id: 'projectId' }]),
+			innerJoin: vi.fn().mockReturnThis(),
+			where: vi.fn().mockReturnThis(),
+			andWhere: vi.fn().mockReturnThis(),
+			groupBy: vi.fn().mockReturnThis(),
+			having: vi.fn().mockReturnThis(),
+			select: vi.fn().mockReturnThis(),
+			getRawMany: vi.fn().mockResolvedValue([{ id: 'projectId' }]),
 		};
 
 		Container.set(
 			ProjectRepository,
 			mock<ProjectRepository>({
-				createQueryBuilder: jest.fn().mockReturnValue(mockQueryBuilder),
+				createQueryBuilder: vi.fn().mockReturnValue(mockQueryBuilder),
 			}),
 		);
 
@@ -88,7 +89,7 @@ describe('userHasScopes', () => {
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		findByWorkflowMock.mockReset();
 		findByCredentialMock.mockReset();
 		findByGlobalCredentialMock.mockReset();

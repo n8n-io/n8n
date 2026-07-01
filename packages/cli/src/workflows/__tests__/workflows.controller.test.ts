@@ -1,3 +1,4 @@
+import type { Mock } from 'vitest';
 import type { ImportWorkflowFromUrlDto } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { HttpRequestClient, OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
@@ -5,7 +6,7 @@ import { SsrfBlockedIpError } from '@n8n/backend-network';
 import type { SsrfProtectionConfig } from '@n8n/config';
 import type { AuthenticatedRequest, IExecutionResponse } from '@n8n/db';
 import type { Response } from 'express';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { WorkflowsController } from '../workflows.controller';
 
@@ -24,7 +25,7 @@ describe('WorkflowsController', () => {
 	const ssrfProtectionService = mock<SsrfProtectionService>();
 	const httpClient = mock<HttpRequestClient>();
 	const outboundHttp = mock<OutboundHttp>();
-	const requestMock = httpClient.request as jest.Mock;
+	const requestMock = httpClient.request as Mock;
 
 	beforeEach(() => {
 		controller.projectService = projectService;
@@ -33,7 +34,7 @@ describe('WorkflowsController', () => {
 		controller.ssrfProtectionService = ssrfProtectionService;
 		controller.outboundHttp = outboundHttp;
 		ssrfConfig.enabled = false;
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		outboundHttp.requests.mockReturnValue(httpClient);
 	});
 

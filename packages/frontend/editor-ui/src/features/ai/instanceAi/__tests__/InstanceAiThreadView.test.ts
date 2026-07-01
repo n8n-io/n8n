@@ -175,6 +175,7 @@ const renderView = createComponentRenderer(InstanceAiThreadView, {
 const defaultModuleSettings: NonNullable<FrontendModuleSettings['instance-ai']> = {
 	enabled: true,
 	localGatewayDisabled: false,
+	browserUseEnabled: true,
 	proxyEnabled: false,
 	cloudManaged: false,
 	sandboxEnabled: true,

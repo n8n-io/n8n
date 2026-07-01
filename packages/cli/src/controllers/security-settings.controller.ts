@@ -6,7 +6,7 @@ import {
 	PERSONAL_SPACE_PUBLISHING_SETTING,
 	PERSONAL_SPACE_SHARING_SETTING,
 } from '@n8n/permissions';
-import type { DistributiveOmit } from '@n8n/utils';
+import type { DistributiveOmit } from '@n8n/utils/types';
 import type { Response } from 'express';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';

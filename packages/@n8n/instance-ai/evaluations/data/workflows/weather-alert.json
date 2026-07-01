@@ -30,13 +30,13 @@
 		{
 			"name": "happy-path",
 			"description": "Email is sent warning of rain",
-			"dataSetup": "Weather API call returns precipitation value of 0.5mm",
+			"dataSetup": "Weather forecast for today is heavy rain: 12mm of precipitation and a 100% chance of rain.",
 			"successCriteria": "The workflow executes without errors. An email is sent to the email specified mentioning that it will rain today."
 		},
 		{
 			"name": "rain-not-expected",
 			"description": "No email is sent",
-			"dataSetup": "Weather API call returns precipitation value of 0mm",
+			"dataSetup": "Weather forecast for today is completely dry: 0mm of precipitation and a 0% chance of rain.",
 			"successCriteria": "The workflow executes without errors. No email is sent mentioning that it will rain today, and no email sending node is executed."
 		}
 	]
