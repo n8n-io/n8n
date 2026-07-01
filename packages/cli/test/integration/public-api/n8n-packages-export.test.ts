@@ -1,5 +1,4 @@
 import { testDb } from '@n8n/backend-test-utils';
-import { GlobalConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
@@ -20,11 +19,9 @@ beforeAll(async () => {
 
 beforeEach(async () => {
 	authOwnerAgent = testServer.publicApiAgentFor(owner);
-	Container.get(GlobalConfig).publicApi.packagesEnabled = true;
 });
 
 afterEach(async () => {
-	Container.get(GlobalConfig).publicApi.packagesEnabled = false;
 	await testDb.truncate(['WorkflowEntity', 'SharedWorkflow', 'ProjectRelation', 'Project']);
 });
 
