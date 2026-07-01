@@ -3176,6 +3176,9 @@ importers:
 
   packages/@n8n/scheduler:
     dependencies:
+      '@n8n/db':
+        specifier: workspace:*
+        version: link:../db
       cron-parser:
         specifier: 'catalog:'
         version: 5.6.1

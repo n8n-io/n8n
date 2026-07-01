@@ -12,15 +12,20 @@
  * math is confined to this boundary (see `recurrence/`).
  */
 
-export { ScheduleKindList, TaskStatusList } from './types';
+// These enums live in `@n8n/db` (the schema is their source of truth), re-exported
+// here so consumers use them through the scheduler's own API.
+export {
+	ScheduledJobKind,
+	ScheduledJobKindList,
+	ScheduledTaskStatus,
+	ScheduledTaskStatusList,
+} from '@n8n/db';
 
 export type {
-	ScheduleKind,
 	CronSchedule,
 	IntervalSchedule,
 	OneOffSchedule,
 	Schedule,
-	TaskStatus,
 	ScheduledJob,
 	ScheduledTask,
 } from './types';

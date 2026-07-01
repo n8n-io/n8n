@@ -23,6 +23,7 @@
     "dist/**/*"
   ],
   "dependencies": {
+    "@n8n/db": "workspace:*",
     "cron-parser": "catalog:",
     "luxon": "catalog:",
     "n8n-workflow": "workspace:*"

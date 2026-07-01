@@ -28,8 +28,8 @@ import { ProjectSecretsProviderAccess } from './project-secrets-provider-access'
 import type { SecretsProviderAccessRole } from './project-secrets-provider-access';
 import { Role } from './role';
 import { RoleMappingRule } from './role-mapping-rule';
-import { ScheduledJob, ScheduledJobKind } from './scheduled-job';
-import { ScheduledTask, ScheduledTaskStatus } from './scheduled-task';
+import { ScheduledJob, ScheduledJobKind, ScheduledJobKindList } from './scheduled-job';
+import { ScheduledTask, ScheduledTaskStatus, ScheduledTaskStatusList } from './scheduled-task';
 import { Scope } from './scope';
 import { SecretsProviderConnection } from './secrets-provider-connection';
 import { Settings } from './settings';
@@ -83,8 +83,10 @@ export {
 	Role,
 	ScheduledJob,
 	ScheduledJobKind,
+	ScheduledJobKindList,
 	ScheduledTask,
 	ScheduledTaskStatus,
+	ScheduledTaskStatusList,
 	Scope,
 	SharedCredentials,
 	SharedWorkflow,
