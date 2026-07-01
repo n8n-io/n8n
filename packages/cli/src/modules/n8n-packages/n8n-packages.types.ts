@@ -35,9 +35,10 @@ export type WorkflowConflictPolicy =
 
 export type WorkflowIdPolicy = (typeof WorkflowIdPolicy)[keyof typeof WorkflowIdPolicy];
 
-export interface ExportWorkflowsRequest {
+export interface ExportPackageRequest {
 	user: User;
-	workflowIds: string[];
+	workflowIds?: string[];
+	projectIds?: string[];
 }
 
 export type ImportPackageRequest = {

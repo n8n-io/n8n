@@ -554,6 +554,7 @@ type TerminalGuardOrderServiceInternals = {
 		clearActiveRun: Mock;
 		hasSuspendedRun: Mock;
 		getActiveRun: Mock;
+		suspendRun: Mock;
 	};
 	eventService: { emit: Mock };
 	eventBus: {
@@ -564,7 +565,7 @@ type TerminalGuardOrderServiceInternals = {
 	};
 	liveness: { consumeRunTimeout: Mock };
 	telemetry: { track: Mock };
-	suspendedThreads: { dropPendingConfirmationsForThread: Mock };
+	suspendedThreads: { dropPendingConfirmationsForThread: Mock; persistPendingConfirmation: Mock };
 	logger: { warn: Mock; error: Mock };
 	instanceAiErrorReporter: ReturnType<typeof createInstanceAiErrorReporterMock>;
 	instanceAiConfig: {
@@ -589,6 +590,7 @@ type TerminalGuardOrderServiceInternals = {
 	taskProjector: { syncFromWorkflowLoop: Mock };
 	maybeStartWorkflowSetupFollowUp: Mock;
 	finalizeRun: Mock;
+	preserveHitlOnShutdown: Set<string>;
 	processResumedStream: (
 		agent: unknown,
 		resumeData: unknown,
@@ -641,6 +643,7 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 		clearActiveRun: vi.fn(),
 		hasSuspendedRun: vi.fn(() => true),
 		getActiveRun: vi.fn(() => undefined),
+		suspendRun: vi.fn(),
 	};
 	service.eventService = { emit: vi.fn() };
 	service.eventBus = {
@@ -653,7 +656,10 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	};
 	service.liveness = { consumeRunTimeout: vi.fn(() => ({ timedOut: false })) };
 	service.telemetry = { track: vi.fn() };
-	service.suspendedThreads = { dropPendingConfirmationsForThread: vi.fn(async () => {}) };
+	service.suspendedThreads = {
+		dropPendingConfirmationsForThread: vi.fn(async () => {}),
+		persistPendingConfirmation: vi.fn(async () => {}),
+	};
 	service.logger = { warn: vi.fn(), error: vi.fn() };
 	service.instanceAiErrorReporter = createInstanceAiErrorReporterMock();
 	service.instanceAiConfig = {
@@ -675,6 +681,7 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	service.creditService = { claimRunUsage: vi.fn(async () => {}) };
 	service.schedulePlannedTasks = vi.fn(async () => {});
 	service.drainPendingCheckpointReentries = vi.fn(async () => {});
+	service.preserveHitlOnShutdown = new Set();
 
 	service.terminalOutcome = new InstanceAiTerminalOutcomeService({
 		eventBus: service.eventBus,
@@ -2201,6 +2208,232 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			status: 'completed',
 			user_id: 'user-1',
 		});
+	});
+
+	it('claims credits for the consumed segment when a resumed run suspends again', async () => {
+		const service = createTerminalGuardOrderService();
+		vi.spyOn(service.terminalOutcome, 'evaluateWaitingResponse').mockReturnValue(undefined);
+		const abortController = new AbortController();
+		const usageItem = {
+			type: 'llmTokens' as const,
+			model: 'claude',
+			uncachedInput: 10,
+			cacheRead: 0,
+			cacheWrite: 0,
+			output: 5,
+		};
+		vi.mocked(resumeAgentRun).mockResolvedValueOnce({
+			status: 'suspended',
+			agentRunId: 'agent-run-1',
+			text: Promise.resolve(''),
+			workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
+			usage: {
+				promptTokens: 10,
+				completionTokens: 5,
+				totalTokens: 15,
+				costUsd: 0,
+				usage: [usageItem],
+			},
+			suspension: { toolCallId: 'tool-call-1', requestId: 'req-1', suspendPayload: {} },
+		});
+
+		await service.processResumedStream(
+			{},
+			{},
+			{
+				runId: 'run-1',
+				agentRunId: 'agent-run-1',
+				threadId: 'thread-a',
+				user: fakeUser,
+				toolCallId: 'tool-call-1',
+				signal: abortController.signal,
+				abortController,
+				snapshotStorage: {},
+			},
+		);
+
+		// Every segment of a HITL run shares one agentRunId, so the suspension claim
+		// must use a per-suspension dedupeId (agentRunId + requestId) to avoid
+		// colliding with the terminal claim (bare agentRunId).
+		expect(service.creditService.claimRunUsage).toHaveBeenCalledWith(
+			fakeUser,
+			'thread-a',
+			'agent-run-1:req-1',
+			[usageItem],
+			'suspended',
+		);
+	});
+
+	it('bills each segment once under disjoint keys across suspend -> resume -> continue', async () => {
+		const service = createTerminalGuardOrderService();
+		vi.spyOn(service.terminalOutcome, 'evaluateWaitingResponse').mockReturnValue(undefined);
+		const abortController = new AbortController();
+		const segmentOneUsage = {
+			type: 'llmTokens' as const,
+			model: 'claude',
+			uncachedInput: 10,
+			cacheRead: 0,
+			cacheWrite: 0,
+			output: 5,
+		};
+		const segmentTwoUsage = {
+			type: 'llmTokens' as const,
+			model: 'claude',
+			uncachedInput: 20,
+			cacheRead: 3,
+			cacheWrite: 0,
+			output: 8,
+		};
+		const resumeOpts = {
+			runId: 'run-1',
+			agentRunId: 'agent-run-1',
+			threadId: 'thread-a',
+			user: fakeUser,
+			toolCallId: 'tool-call-1',
+			signal: abortController.signal,
+			abortController,
+			snapshotStorage: {},
+		};
+
+		// Segment A: the resumed run suspends again on HITL.
+		vi.mocked(resumeAgentRun).mockResolvedValueOnce({
+			status: 'suspended',
+			agentRunId: 'agent-run-1',
+			text: Promise.resolve(''),
+			workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
+			usage: {
+				promptTokens: 10,
+				completionTokens: 5,
+				totalTokens: 15,
+				costUsd: 0,
+				usage: [segmentOneUsage],
+			},
+			suspension: { toolCallId: 'tool-call-1', requestId: 'req-1', suspendPayload: {} },
+		});
+		await service.processResumedStream({}, {}, resumeOpts);
+
+		// Segment B: the user continues and the run completes.
+		vi.mocked(resumeAgentRun).mockResolvedValueOnce({
+			status: 'completed',
+			agentRunId: 'agent-run-1',
+			text: Promise.resolve('done'),
+			workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
+			usage: {
+				promptTokens: 20,
+				completionTokens: 8,
+				totalTokens: 28,
+				costUsd: 0,
+				usage: [segmentTwoUsage],
+			},
+		});
+		await service.processResumedStream({}, {}, resumeOpts);
+
+		// Both segments share one agentRunId; the suspension bills under the
+		// per-suspension key and the completion under the bare key, so the two
+		// claims never dedupe against each other and no tokens are double-billed.
+		expect(service.creditService.claimRunUsage).toHaveBeenCalledTimes(2);
+		expect(service.creditService.claimRunUsage).toHaveBeenNthCalledWith(
+			1,
+			fakeUser,
+			'thread-a',
+			'agent-run-1:req-1',
+			[segmentOneUsage],
+			'suspended',
+		);
+		expect(service.creditService.claimRunUsage).toHaveBeenNthCalledWith(
+			2,
+			fakeUser,
+			'thread-a',
+			'agent-run-1',
+			[segmentTwoUsage],
+			'completed',
+		);
+	});
+
+	it('bills each segment once under disjoint keys across suspend -> resume -> abort', async () => {
+		const service = createTerminalGuardOrderService();
+		vi.spyOn(service.terminalOutcome, 'evaluateWaitingResponse').mockReturnValue(undefined);
+		const abortController = new AbortController();
+		const segmentOneUsage = {
+			type: 'llmTokens' as const,
+			model: 'claude',
+			uncachedInput: 10,
+			cacheRead: 0,
+			cacheWrite: 0,
+			output: 5,
+		};
+		const segmentTwoUsage = {
+			type: 'llmTokens' as const,
+			model: 'claude',
+			uncachedInput: 20,
+			cacheRead: 3,
+			cacheWrite: 0,
+			output: 8,
+		};
+		const resumeOpts = {
+			runId: 'run-1',
+			agentRunId: 'agent-run-1',
+			threadId: 'thread-a',
+			user: fakeUser,
+			toolCallId: 'tool-call-1',
+			signal: abortController.signal,
+			abortController,
+			snapshotStorage: {},
+		};
+
+		// Segment A: the resumed run suspends again on HITL.
+		vi.mocked(resumeAgentRun).mockResolvedValueOnce({
+			status: 'suspended',
+			agentRunId: 'agent-run-1',
+			text: Promise.resolve(''),
+			workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
+			usage: {
+				promptTokens: 10,
+				completionTokens: 5,
+				totalTokens: 15,
+				costUsd: 0,
+				usage: [segmentOneUsage],
+			},
+			suspension: { toolCallId: 'tool-call-1', requestId: 'req-1', suspendPayload: {} },
+		});
+		await service.processResumedStream({}, {}, resumeOpts);
+
+		// Segment B: the user continues, then stops mid-generation. The abort path
+		// recovers the tokens consumed so far and reports a cancelled terminal.
+		vi.mocked(resumeAgentRun).mockResolvedValueOnce({
+			status: 'cancelled',
+			agentRunId: 'agent-run-1',
+			text: Promise.resolve(''),
+			workSummary: { toolCalls: [], totalToolCalls: 0, totalToolErrors: 0 },
+			usage: {
+				promptTokens: 20,
+				completionTokens: 8,
+				totalTokens: 28,
+				costUsd: 0,
+				usage: [segmentTwoUsage],
+			},
+		});
+		await service.processResumedStream({}, {}, resumeOpts);
+
+		// A user stop is not a shutdown, so the cancelled segment still bills — under
+		// the bare agentRunId, disjoint from the earlier suspension claim.
+		expect(service.creditService.claimRunUsage).toHaveBeenCalledTimes(2);
+		expect(service.creditService.claimRunUsage).toHaveBeenNthCalledWith(
+			1,
+			fakeUser,
+			'thread-a',
+			'agent-run-1:req-1',
+			[segmentOneUsage],
+			'suspended',
+		);
+		expect(service.creditService.claimRunUsage).toHaveBeenNthCalledWith(
+			2,
+			fakeUser,
+			'thread-a',
+			'agent-run-1',
+			[segmentTwoUsage],
+			'cancelled',
+		);
 	});
 
 	it('rebinds resumed agents to resume trace telemetry', async () => {

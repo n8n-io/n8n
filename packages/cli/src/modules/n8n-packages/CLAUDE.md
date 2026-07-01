@@ -46,14 +46,14 @@ flowchart LR
 
 ### Adding an EXPORT property
 
-1. **Module** — `n8n-packages.types.ts` `ExportWorkflowsRequest`; implement in
-   `n8n-packages.service.ts` `exportWorkflows` (+ `io/` writer or
+1. **Module** — `n8n-packages.types.ts` `ExportPackageRequest`; implement in
+   `n8n-packages.service.ts` `exportPackage` (+ `io/` writer or
    `entities/*/` exporter as needed).
-2. **DTO** — `@n8n/api-types/src/dto/packages/export-workflows-request.dto.ts`
-   (`ExportWorkflowsRequestDto`, zod).
-3. **Public API** — `n8n-packages.handler.ts` `exportWorkflows` reads from
+2. **DTO** — `@n8n/api-types/src/dto/packages/export-package-request.dto.ts`
+   (`ExportPackageRequestDto`, zod).
+3. **Public API** — `n8n-packages.handler.ts` `exportPackage` reads from
    `payload.data`; update the **separate** schema file
-   `spec/schemas/exportWorkflowsRequest.yml` (export's request schema is a
+   `spec/schemas/exportPackageRequest.yml` (export's request schema is a
    `$ref`, unlike import's inline schema).
 4. **CLI** — `src/client.ts` `exportPackage(...)`,
    `src/commands/package/export.ts` flag, and the docs/README.
