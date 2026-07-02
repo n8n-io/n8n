@@ -391,6 +391,39 @@ describe('mapAgentChunkToEvent', () => {
 		});
 	});
 
+	it('maps channel-config confirmations with channelConfig payload', () => {
+		expect(
+			map({
+				type: 'tool-call-suspended',
+				toolCallId: 'tc-1',
+				toolName: 'configure_channel',
+				suspendPayload: {
+					requestId: 'request-1',
+					inputType: 'channel-config',
+					severity: 'info',
+					message: 'Set up the slack channel',
+					projectId: 'project-1',
+					channelConfig: { integrationType: 'slack', agentId: 'agent-9' },
+				},
+			}),
+		).toEqual({
+			type: 'confirmation-request',
+			runId,
+			agentId,
+			payload: {
+				requestId: 'request-1',
+				toolCallId: 'tc-1',
+				toolName: 'configure_channel',
+				args: {},
+				severity: 'info',
+				message: 'Set up the slack channel',
+				projectId: 'project-1',
+				inputType: 'channel-config',
+				channelConfig: { integrationType: 'slack', agentId: 'agent-9' },
+			},
+		});
+	});
+
 	it('returns null for suspensions without a tool call id', () => {
 		expect(
 			map({ type: 'tool-call-suspended', suspendPayload: { requestId: 'request-1' } }),

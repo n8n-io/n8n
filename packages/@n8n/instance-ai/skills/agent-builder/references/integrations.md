@@ -43,15 +43,25 @@ The `integrations` array controls how the target agent is triggered.
 - Call `agent_builder` (`action: "list_integration_types"`) first.
 - Read the returned `capabilities`, `useIntegrationWhen`, and
   `useNodeToolWhen` fields before deciding to add an integration.
-- Pick one returned `credentialTypes` entry and resolve a credential of that
-  type (`credentials({ action: "list" })` + `ask-user`; see SKILL.md "Asking the
-  user, credentials, and the LLM").
-- Persist only `type` and `credentialId`; never invent credential IDs or names.
-- Preserve existing chat integrations unless the user asked to remove them.
+- Only connect a channel when the **user explicitly asks** to connect the agent
+  to Slack, Telegram, Linear, or another chat platform. Do not suggest it
+  unprompted.
+- To connect a channel, call the standalone `configure_channel` tool with the
+  chosen `integrationType` (e.g. `configure_channel({ integrationType: "slack" })`).
+  It opens the channel setup UI in the chat, where the user creates a **new**
+  credential and connects — a new agent always needs its **own** credential for
+  its own identity, so **never reuse an existing credential** for a channel.
+- **Never** call the `credentials` tool for a channel, and **never** write channel
+  entries into `integrations` via `write_config`/`patch_config`. The setup UI
+  persists the connection itself; leave the `integrations` array untouched for
+  channels (do not clobber it on later config writes).
+- `configure_channel` returns `{ connected }`. If `connected` is `false` the
+  user skipped — proceed without the channel and do not re-prompt.
 
 ## Gotchas
 
-- Chat integration credential types must come from `list_integration_types`.
+- Connect chat channels only through `configure_channel`; never reuse an
+  existing credential and never resolve one with the `credentials` tool.
 - Do not add a Linear integration just because the agent needs Linear issue
   CRUD. Use Linear node tools unless Linear itself is the chat/trigger context.
 - For recurring or scheduled runs, create a task (`agent_builder` `action:
@@ -59,8 +69,8 @@ The `integrations` array controls how the target agent is triggered.
 
 ## Verify
 
-- Connected chat integrations use a credential id resolved via the `credentials`
-  tool (action `list`, chosen with the user via `ask-user`).
+- Chat channels were connected via `configure_channel` (which creates a new
+  credential through the setup UI), not by writing to `integrations` directly.
 - The chosen integration matches `useIntegrationWhen`; otherwise use node or
   workflow tools.
 - The final `integrations` array keeps unrelated integrations intact.

@@ -38,6 +38,7 @@ const props = withDefaults(
 		loading?: boolean;
 		errorMessage?: string;
 		errorIsConflict?: boolean;
+		forceNewCredential?: boolean;
 	}>(),
 	{
 		connected: false,
@@ -56,6 +57,7 @@ const props = withDefaults(
 		loading: false,
 		errorMessage: '',
 		errorIsConflict: false,
+		forceNewCredential: false,
 	},
 );
 
@@ -403,6 +405,7 @@ defineExpose({ credentialId, validationError: null });
 					:loading="loading"
 					:error-message="!connected ? errorMessage : ''"
 					:error-is-conflict="errorIsConflict"
+					:force-new-credential="forceNewCredential"
 					@create="emit('create')"
 					@edit="emit('edit')"
 					@connect="emit('connect')"

@@ -26,6 +26,7 @@ export function isPendingItemFloating(item: PendingConfirmationItem): boolean {
 		case 'text':
 		case 'resource-decision':
 		case 'continue':
+		case 'channel-config':
 			return false;
 		case 'approval':
 		case undefined:

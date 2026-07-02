@@ -11,6 +11,7 @@ import { useToolLabel } from '../toolLabels';
 import ApprovalOptionList, { type ApprovalOption } from './ApprovalOptionList.vue';
 import DomainAccessApproval from './DomainAccessApproval.vue';
 import GatewayResourceDecision from './GatewayResourceDecision.vue';
+import InstanceAiChannelSetup from './InstanceAiChannelSetup.vue';
 import InstanceAiCredentialSetup from './InstanceAiCredentialSetup.vue';
 import type { QuestionAnswer } from './InstanceAiQuestions.vue';
 import InstanceAiQuestions from './InstanceAiQuestions.vue';
@@ -539,6 +540,19 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 					:resource="chunk.item.toolCall.confirmation.resourceDecision.resource"
 					:description="chunk.item.toolCall.confirmation.resourceDecision.description"
 					:options="chunk.item.toolCall.confirmation.resourceDecision.options"
+				/>
+
+				<!-- Chat-channel setup (agent-builder configure_channel) -->
+				<InstanceAiChannelSetup
+					v-else-if="
+						chunk.item.toolCall.confirmation.inputType === 'channel-config' &&
+						chunk.item.toolCall.confirmation.channelConfig
+					"
+					:key="'channel-' + chunk.item.toolCall.confirmation.requestId"
+					:request-id="chunk.item.toolCall.confirmation.requestId"
+					:integration-type="chunk.item.toolCall.confirmation.channelConfig.integrationType"
+					:agent-id="chunk.item.toolCall.confirmation.channelConfig.agentId"
+					:project-id="chunk.item.toolCall.confirmation.projectId ?? ''"
 				/>
 			</template>
 

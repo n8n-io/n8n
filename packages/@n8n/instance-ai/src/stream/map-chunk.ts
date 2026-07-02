@@ -6,6 +6,7 @@ import {
 	plannedTaskArgSchema,
 	gatewayConfirmationRequiredPayloadSchema,
 	webSearchMetaSchema,
+	channelConfigSchema,
 } from '@n8n/api-types';
 import type { InstanceAiEvent } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils';
@@ -162,7 +163,8 @@ type ConfirmationInputType =
 	| 'questions'
 	| 'plan-review'
 	| 'resource-decision'
-	| 'continue';
+	| 'continue'
+	| 'channel-config';
 
 /** A non-empty string, or undefined for anything else (matches the legacy `value ? value : undefined` gate). */
 function presentString(value: unknown): string | undefined {
@@ -199,6 +201,7 @@ function parseInputType(value: unknown): ConfirmationInputType | undefined {
 		'plan-review',
 		'resource-decision',
 		'continue',
+		'channel-config',
 	] as const;
 	return (valid as readonly string[]).includes(raw ?? '')
 		? (raw as (typeof valid)[number])
@@ -287,6 +290,7 @@ function mapSuspendedChunk(
 		suspendPayload.resourceDecision,
 		gatewayConfirmationRequiredPayloadSchema,
 	);
+	const channelConfig = parseSchemaRecord(suspendPayload.channelConfig, channelConfigSchema);
 
 	return {
 		type: 'confirmation-request',
@@ -314,6 +318,7 @@ function mapSuspendedChunk(
 			...(tasks ? { tasks } : {}),
 			...(planItems ? { planItems } : {}),
 			...(resourceDecision ? { resourceDecision } : {}),
+			...(channelConfig ? { channelConfig } : {}),
 		},
 	};
 }
