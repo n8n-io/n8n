@@ -213,11 +213,11 @@ export {
 export { DownloadDataTableCsvQueryDto } from './data-table/download-data-table-csv-query.dto';
 export { ImportCsvToDataTableDto } from './data-table/import-csv-to-data-table.dto';
 
-export { ExportWorkflowsRequestDto } from './packages/export-workflows-request.dto';
 export {
 	ImportPackageRequestDto,
 	IMPORT_PACKAGE_REQUEST_FORM_FIELDS,
 } from './packages/import-package-request.dto';
+export { ExportPackageRequestDto } from './packages/export-package-request.dto';
 
 export * from './evaluations';
 

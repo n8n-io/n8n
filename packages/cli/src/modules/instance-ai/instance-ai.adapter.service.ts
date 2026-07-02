@@ -34,12 +34,14 @@ import type {
 	FolderSummary,
 	ServiceProxyConfig,
 	CredentialTypeSearchResult,
+	CredentialHostInfo,
 } from '@n8n/instance-ai';
 import { braveSearch, searxngSearch, type WebSearchResponse } from '@n8n/ai-utilities';
 import {
 	BuilderTemplatesService,
 	builderTemplatesOptionsFromEnv,
 	wrapUntrustedData,
+	deriveCredentialHosts,
 } from '@n8n/instance-ai';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { GlobalConfig } from '@n8n/config';
@@ -162,6 +164,10 @@ function resolveDisplayedDefaults(
 	);
 	return resolved ?? (parameters as INodeParameters);
 }
+
+// Credential types are loaded once at boot, so the derived host index is
+// process-global and safe to memoize across users.
+let httpCredentialHostsCache: CredentialHostInfo[] | undefined;
 
 @Service()
 export class InstanceAiAdapterService {
@@ -1390,6 +1396,39 @@ export class InstanceAiAdapterService {
 				}
 
 				return results;
+			},
+
+			async listHttpCredentialHosts(): Promise<CredentialHostInfo[]> {
+				if (httpCredentialHostsCache) return httpCredentialHostsCache;
+
+				const { knownCredentials } = loadNodesAndCredentials;
+				const result: CredentialHostInfo[] = [];
+
+				for (const typeName of Object.keys(knownCredentials)) {
+					let credType;
+					try {
+						credType = loadNodesAndCredentials.getCredential(typeName).type;
+					} catch {
+						// Type not loadable — skip.
+						continue;
+					}
+
+					// Only credentials selectable in the HTTP node (authenticate / OAuth).
+					const usableInHttpNode =
+						Boolean(credType.authenticate) ||
+						(knownCredentials[typeName]?.extends ?? []).some(
+							(parent) => parent === 'oAuth2Api' || parent === 'oAuth1Api',
+						);
+					if (!usableInHttpNode) continue;
+
+					const hosts = deriveCredentialHosts(credType);
+					if (hosts.length === 0) continue;
+
+					result.push({ type: typeName, displayName: credType.displayName, hosts });
+				}
+
+				httpCredentialHostsCache = result;
+				return result;
 			},
 
 			async getAccountContext(credentialId: string) {

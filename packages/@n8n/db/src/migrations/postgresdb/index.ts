@@ -215,6 +215,7 @@ import { SetChatHubEnabledFromUsage1784000000038 } from '../common/1784000000038
 import { DropAgentExecutionFallbackColumns1784000000039 } from '../common/1784000000039-DropAgentExecutionFallbackColumns';
 import { CreateWorkflowPublicationTriggerStatusTable1784000000040 } from '../common/1784000000040-CreateWorkflowPublicationTriggerStatusTable';
 import { AddUsedPrivateCredentialsToExecutionEntity1784000000041 } from '../common/1784000000041-AddUsedPrivateCredentialsToExecutionEntity';
+import { CreateSchedulerTables1784000000042 } from '../common/1784000000042-CreateSchedulerTables';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -435,4 +436,5 @@ export const postgresMigrations: Migration[] = [
 	DropAgentExecutionFallbackColumns1784000000039,
 	CreateWorkflowPublicationTriggerStatusTable1784000000040,
 	AddUsedPrivateCredentialsToExecutionEntity1784000000041,
+	CreateSchedulerTables1784000000042,
 ];

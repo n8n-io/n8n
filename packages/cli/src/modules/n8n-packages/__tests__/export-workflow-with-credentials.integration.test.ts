@@ -64,7 +64,7 @@ describe('workflow package export — with credentials', () => {
 			credential,
 		});
 
-		const stream = await service.exportWorkflows({ user: owner, workflowIds: [workflow.id] });
+		const stream = await service.exportPackage({ user: owner, workflowIds: [workflow.id] });
 		const { manifest, entries } = await readExport(stream);
 
 		expect(manifest.credentials).toEqual([
@@ -122,7 +122,7 @@ describe('workflow package export — with credentials', () => {
 			credential,
 		});
 
-		const stream = await service.exportWorkflows({
+		const stream = await service.exportPackage({
 			user: owner,
 			workflowIds: [wfA.id, wfB.id],
 		});
@@ -152,7 +152,7 @@ describe('workflow package export — with credentials', () => {
 			credentialType: 'httpHeaderAuth',
 		});
 
-		const stream = await service.exportWorkflows({ user: owner, workflowIds: [workflow.id] });
+		const stream = await service.exportPackage({ user: owner, workflowIds: [workflow.id] });
 		const { manifest, entries } = await readExport(stream);
 
 		expect(manifest.credentials).toBeUndefined();
@@ -195,7 +195,7 @@ describe('workflow package export — with credentials', () => {
 		// credential was never shared with them. The export must still succeed,
 		// recording the credential as a requirement using the name+type carried
 		// in the workflow JSON.
-		const stream = await service.exportWorkflows({
+		const stream = await service.exportPackage({
 			user: sharee,
 			workflowIds: [workflow.id],
 		});
@@ -249,7 +249,7 @@ describe('workflow package export — with credentials', () => {
 			const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
 
 			try {
-				await service.exportWorkflows({ user: owner, workflowIds: [wfA.id, wfB.id, wfC.id] });
+				await service.exportPackage({ user: owner, workflowIds: [wfA.id, wfB.id, wfC.id] });
 
 				const exportedEvents = emitSpy.mock.calls.filter(
 					([name]) => name === 'n8n-package-exported',
@@ -281,7 +281,7 @@ describe('workflow package export — with credentials', () => {
 			const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
 
 			try {
-				await service.exportWorkflows({ user: owner, workflowIds: [workflow.id] });
+				await service.exportPackage({ user: owner, workflowIds: [workflow.id] });
 
 				const exportedEvents = emitSpy.mock.calls.filter(
 					([name]) => name === 'n8n-package-exported',
@@ -303,7 +303,7 @@ describe('workflow package export — with credentials', () => {
 
 			try {
 				await expect(
-					service.exportWorkflows({ user: owner, workflowIds: ['does-not-exist'] }),
+					service.exportPackage({ user: owner, workflowIds: ['does-not-exist'] }),
 				).rejects.toThrow(/not found or not accessible/i);
 
 				const exportedEvents = emitSpy.mock.calls.filter(
