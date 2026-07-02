@@ -96,6 +96,7 @@ import {
 	TimeoutExecutionCancelledError,
 	UnexpectedError,
 	jsonParse,
+	createRunExecutionData,
 } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -201,7 +202,7 @@ export class InstanceAiAdapterService {
 
 	constructor(
 		logger: Logger,
-		globalConfig: GlobalConfig,
+		private readonly globalConfig: GlobalConfig,
 		private readonly workflowService: WorkflowService,
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly workflowRepository: WorkflowRepository,
@@ -826,6 +827,7 @@ export class InstanceAiAdapterService {
 			roleService,
 			telemetry,
 			logger,
+			globalConfig,
 		} = this;
 		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('executions');
 
@@ -979,6 +981,31 @@ export class InstanceAiAdapterService {
 				runData.telemetryMetadata = {
 					mockDataSources: pinDataPlan.mockDataSources,
 				};
+
+				// When manual executions are offloaded to workers (queue mode), the worker
+				// rebuilds the run from the persisted `execution.data`. The adapter's manual
+				// run details otherwise live in transient top-level fields that don't survive
+				// serialization, so wrap them into `executionData` — mirroring
+				// `workflow-execution.service`. A trigger run already carries its stack in
+				// `executionData`, so only wrap when it's absent.
+				const offloadingManualExecutionsInQueueMode =
+					globalConfig.executions?.mode === 'queue' &&
+					process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true';
+				if (
+					runData.executionMode === 'manual' &&
+					offloadingManualExecutionsInQueueMode &&
+					!runData.executionData
+				) {
+					runData.executionData = createRunExecutionData({
+						startData: { startNodes: runData.startNodes },
+						resultData: { pinData: runData.pinData, runData: null },
+						manualData: {
+							userId: runData.userId,
+							triggerToStartFrom: runData.triggerToStartFrom,
+						},
+						executionData: null,
+					});
+				}
 
 				const trackBuilderExecutedWorkflow = (
 					status: ExecutionResult['status'],
