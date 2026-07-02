@@ -1,11 +1,10 @@
 import { Logger } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
+import { DatabaseConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { DbConnection, DbLock, DbLockService, WorkflowStatisticsRepository } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
-import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { InstanceSettings } from 'n8n-core';
+import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import { OperationalError } from 'n8n-workflow';
 import { strict } from 'node:assert';
 
@@ -29,23 +28,31 @@ const BUSY_INTERVAL_MS = 250;
 export class WorkflowStatisticsRollupService {
 	private timeout: NodeJS.Timeout | undefined;
 
+	/**
+	 * Whether the timer loop is currently scheduled. Distinct from a live `isLeader` check: it is the
+	 * loop's own run-state (set on takeover, cleared on stepdown/shutdown) and gates the async
+	 * reschedule, so a tick that resolves after `stop()` does not requeue itself.
+	 */
 	private isActive = false;
 
 	private isShuttingDown = false;
 
 	constructor(
 		private readonly logger: Logger,
+		private readonly errorReporter: ErrorReporter,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly dbConnection: DbConnection,
-		private readonly globalConfig: GlobalConfig,
+		private readonly databaseConfig: DatabaseConfig,
 		private readonly dbLockService: DbLockService,
 		private readonly repository: WorkflowStatisticsRepository,
 		private readonly statisticsService: WorkflowStatisticsService,
-	) {}
+	) {
+		this.logger = this.logger.scoped('workflow-statistics');
+	}
 
 	get shouldRun() {
 		return (
-			this.globalConfig.database.type === 'postgresdb' &&
+			this.databaseConfig.type === 'postgresdb' &&
 			this.dbConnection.connectionState.migrated &&
 			this.instanceSettings.instanceType === 'main' &&
 			this.instanceSettings.isLeader &&
@@ -87,49 +94,56 @@ export class WorkflowStatisticsRollupService {
 		if (!this.isActive) return;
 
 		this.timeout = setTimeout(() => {
+			let nextDelayMs = STEADY_INTERVAL_MS;
 			void this.rollup()
-				.then((deltaRows) => {
-					if (!this.isActive) return;
-					const newDelayMs = deltaRows >= BATCH_SIZE ? BUSY_INTERVAL_MS : STEADY_INTERVAL_MS;
-					this.scheduleNext(newDelayMs);
+				.then((increments) => {
+					if (increments >= BATCH_SIZE) nextDelayMs = BUSY_INTERVAL_MS; // backlog remaining
 				})
 				.catch((error) => {
-					this.logger.error('Workflow statistics rollup failed', { error: ensureError(error) });
-					if (!this.isActive) return;
-					this.scheduleNext(STEADY_INTERVAL_MS);
+					this.errorReporter.error(error, { shouldBeLogged: true });
+				})
+				.finally(() => {
+					if (this.isActive) this.scheduleNext(nextDelayMs);
 				});
 		}, delayMs);
 	}
 
-	/** Fold a batch of increments under an advisory lock. Returns increment rows folded. */
+	/** Fold one batch of increments and fire any resulting milestones. Returns increments folded. */
 	private async rollup(): Promise<number> {
-		let result: RollupResult;
+		const result = await this.foldBatch();
+		if (!result) return 0;
 
+		await this.emitMilestones(result.firstOccurrences);
+
+		return result.increments;
+	}
+
+	/** Fold a batch under an advisory lock. Returns null if another instance holds the lock. */
+	private async foldBatch(): Promise<RollupResult | null> {
 		try {
-			result = await this.dbLockService.tryWithLock(
+			return await this.dbLockService.tryWithLock(
 				DbLock.WORKFLOW_STATISTICS_ROLLUP,
 				async (tx) => await this.repository.rollupIncrements(tx, BATCH_SIZE),
 			);
 		} catch (error) {
-			if (error instanceof OperationalError) return 0; // another instance held the lock, skip this tick
+			if (error instanceof OperationalError) return null; // another instance holds the lock
 			throw error;
 		}
+	}
 
-		for (const fo of result.firstOccurrences) {
+	/** Fire the one-time milestone event for each workflow whose counter row was just created. */
+	private async emitMilestones(firstOccurrences: RollupResult['firstOccurrences']): Promise<void> {
+		for (const occurrence of firstOccurrences) {
 			try {
 				await this.statisticsService.emitFirstOccurrenceEvent(
-					fo.name,
-					fo.workflowId,
-					fo.workflowName,
-					fo.firstEventMs,
+					occurrence.name,
+					occurrence.workflowId,
+					occurrence.workflowName,
+					occurrence.firstEventMs,
 				);
 			} catch (error) {
-				this.logger.debug('Failed to emit workflow statistics milestone', {
-					error: ensureError(error),
-				});
+				this.errorReporter.error(error, { shouldBeLogged: true });
 			}
 		}
-
-		return result.increments;
 	}
 }

@@ -4,8 +4,8 @@
 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
+| createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP | false |  |  |  |
 | id | bigint |  | false |  |  |  |
-| latestEvent | timestamp(3) with time zone | CURRENT_TIMESTAMP | false |  |  |  |
 | name | varchar(128) |  | false |  |  |  |
 | rootCountDelta | smallint |  | false |  |  |  |
 | workflowId | varchar(36) |  | false |  |  |  |
@@ -15,8 +15,8 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
+| workflow_statistics_delta_createdAt_not_null | n | NOT NULL "createdAt" |
 | workflow_statistics_delta_id_not_null | n | NOT NULL id |
-| workflow_statistics_delta_latestEvent_not_null | n | NOT NULL "latestEvent" |
 | workflow_statistics_delta_name_not_null | n | NOT NULL name |
 | workflow_statistics_delta_pkey | PRIMARY KEY | PRIMARY KEY (id) |
 | workflow_statistics_delta_rootCountDelta_not_null | n | NOT NULL "rootCountDelta" |
@@ -35,8 +35,8 @@ erDiagram
 
 
 "public.workflow_statistics_delta" {
+  timestamp_3__with_time_zone createdAt
   bigint id
-  timestamp_3__with_time_zone latestEvent
   varchar_128_ name
   smallint rootCountDelta
   varchar_36_ workflowId

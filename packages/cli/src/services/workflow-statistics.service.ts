@@ -1,5 +1,5 @@
 import { Logger, TypedEmitter } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
+import { DatabaseConfig } from '@n8n/config';
 import {
 	SettingsRepository,
 	StatisticsNames,
@@ -95,7 +95,7 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 		private readonly eventService: EventService,
 		private readonly settingsRepository: SettingsRepository,
 		private readonly workflowRepository: WorkflowRepository,
-		private readonly globalConfig: GlobalConfig,
+		private readonly databaseConfig: DatabaseConfig,
 	) {
 		super({ captureRejections: true });
 		if ('SKIP_STATISTICS_EVENTS' in process.env) return;
@@ -127,7 +127,7 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 			 * For performance reasons, in Postgres we append and fold out of band,
 			 * whereas in SQLite we upsert directly.
 			 */
-			if (this.globalConfig.database.type === 'postgresdb') {
+			if (this.databaseConfig.type === 'postgresdb') {
 				await this.repository.appendIncrement(
 					statisticsName,
 					workflowId,

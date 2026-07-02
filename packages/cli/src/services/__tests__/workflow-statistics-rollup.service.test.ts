@@ -1,9 +1,9 @@
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { GlobalConfig } from '@n8n/config';
+import type { DatabaseConfig } from '@n8n/config';
 import type { DbConnection, DbLockService, WorkflowStatisticsRepository } from '@n8n/db';
 import { StatisticsNames } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
-import type { InstanceSettings } from 'n8n-core';
+import type { ErrorReporter, InstanceSettings } from 'n8n-core';
 import { OperationalError } from 'n8n-workflow';
 
 import type { WorkflowStatisticsService } from '../workflow-statistics.service';
@@ -24,22 +24,22 @@ describe('WorkflowStatisticsRollupService', () => {
 			instanceType: opts.instanceType ?? 'main',
 			instanceRole: 'leader',
 		});
-		const globalConfig = mock<GlobalConfig>({
-			database: { type: opts.dbType ?? 'postgresdb' },
-		});
+		const databaseConfig = mock<DatabaseConfig>({ type: opts.dbType ?? 'postgresdb' });
+		const errorReporter = mock<ErrorReporter>();
 		const dbLockService = mock<DbLockService>();
 		const repository = mock<WorkflowStatisticsRepository>();
 		const statisticsService = mock<WorkflowStatisticsService>();
 		const service = new WorkflowStatisticsRollupService(
 			mockLogger(),
+			errorReporter,
 			instanceSettings,
 			dbConnection,
-			globalConfig,
+			databaseConfig,
 			dbLockService,
 			repository,
 			statisticsService,
 		);
-		return { service, dbLockService, repository, statisticsService };
+		return { service, errorReporter, dbLockService, repository, statisticsService };
 	};
 
 	/** Invoke the private rollup tick directly. */

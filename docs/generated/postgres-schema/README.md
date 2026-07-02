@@ -1374,8 +1374,8 @@ erDiagram
   varchar_128_ workflowName
 }
 "public.workflow_statistics_delta" {
+  timestamp_3__with_time_zone createdAt
   bigint id
-  timestamp_3__with_time_zone latestEvent
   varchar_128_ name
   smallint rootCountDelta
   varchar_36_ workflowId

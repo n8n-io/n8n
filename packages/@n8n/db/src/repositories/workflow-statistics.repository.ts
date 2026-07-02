@@ -180,17 +180,20 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 			`WITH batch AS (
 				DELETE FROM ${delta}
 				WHERE id IN (SELECT id FROM ${delta} ORDER BY id LIMIT $1)
-				RETURNING "workflowId", "name", "rootCountDelta", "latestEvent", "workflowName"
+				RETURNING "workflowId", "name", "rootCountDelta", "createdAt", "workflowName"
 			),
 			agg AS (
-				SELECT "workflowId", "name", COUNT(*) AS c, SUM("rootCountDelta") AS rc,
-					MAX("latestEvent") AS le, MIN("latestEvent") AS "firstEvent",
-					(ARRAY_AGG("workflowName" ORDER BY "latestEvent" DESC NULLS LAST))[1] AS wn
+				SELECT "workflowId", "name",
+					COUNT(*) AS "countIncrement",
+					SUM("rootCountDelta") AS "rootCountIncrement",
+					MAX("createdAt") AS "latestEvent",
+					MIN("createdAt") AS "firstEvent",
+					(ARRAY_AGG("workflowName" ORDER BY "createdAt" DESC NULLS LAST))[1] AS "workflowName"
 				FROM batch GROUP BY "workflowId", "name"
 			),
 			upsert AS (
 				INSERT INTO ${stats} ("workflowId", "name", "count", "rootCount", "latestEvent", "workflowName")
-				SELECT "workflowId", "name", c, rc, le, wn FROM agg
+				SELECT "workflowId", "name", "countIncrement", "rootCountIncrement", "latestEvent", "workflowName" FROM agg
 				ON CONFLICT ("name", "workflowId") DO UPDATE SET
 					"count" = ${stats}."count" + EXCLUDED."count",
 					"rootCount" = ${stats}."rootCount" + EXCLUDED."rootCount",
@@ -199,7 +202,7 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 				RETURNING "workflowId", "name", ("xmax" = 0) AS inserted
 			)
 			SELECT (SELECT COUNT(*) FROM batch)::int AS delta_rows,
-				u."workflowId", u."name", u.inserted, a.wn AS "workflowName", a."firstEvent"
+				u."workflowId", u."name", u.inserted, a."workflowName", a."firstEvent"
 			FROM upsert u JOIN agg a ON a."workflowId" = u."workflowId" AND a."name" = u."name"`,
 			[batchSize],
 		);

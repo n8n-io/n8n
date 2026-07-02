@@ -6,7 +6,7 @@ import {
 	testDb,
 	mockInstance,
 } from '@n8n/backend-test-utils';
-import { GlobalConfig } from '@n8n/config';
+import { DatabaseConfig, GlobalConfig } from '@n8n/config';
 import type { IWorkflowDb, Project, WorkflowEntity, WorkflowRepository, User } from '@n8n/db';
 import { SettingsRepository, StatisticsNames, WorkflowStatisticsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -342,7 +342,7 @@ describe('WorkflowStatisticsService', () => {
 				Container.get(EventService),
 				settingsRepository,
 				workflowRepositoryNoErrorWorkflows,
-				Container.get(GlobalConfig),
+				Container.get(DatabaseConfig),
 			);
 			const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
 
@@ -385,7 +385,7 @@ describe('WorkflowStatisticsService', () => {
 				Container.get(EventService),
 				settingsRepository,
 				workflowRepositoryNoErrorWorkflows,
-				Container.get(GlobalConfig),
+				Container.get(DatabaseConfig),
 			);
 
 			// First failure - this will set the instance.firstProductionFailure setting
@@ -426,7 +426,7 @@ describe('WorkflowStatisticsService', () => {
 				Container.get(EventService),
 				settingsRepository,
 				workflowRepositoryWithErrorWorkflows,
-				Container.get(GlobalConfig),
+				Container.get(DatabaseConfig),
 			);
 			const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
 
@@ -544,7 +544,7 @@ describe('WorkflowStatisticsService', () => {
 				Container.get(EventService),
 				settingsRepository,
 				workflowRepositoryNoErrorWorkflows,
-				Container.get(GlobalConfig),
+				Container.get(DatabaseConfig),
 			);
 			const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
 
@@ -771,7 +771,7 @@ describe('WorkflowStatisticsService', () => {
 				const earliest = new Date('2030-01-01T00:00:00.000Z');
 				const latest = new Date('2030-01-02T00:00:00.000Z');
 				await dataSource.query(
-					`INSERT INTO ${deltaTable()} ("workflowId", "name", "rootCountDelta", "latestEvent", "workflowName")
+					`INSERT INTO ${deltaTable()} ("workflowId", "name", "rootCountDelta", "createdAt", "workflowName")
 					 VALUES ($1, $2, 1, $3, 'older'), ($4, $5, 1, $6, 'newer')`,
 					[
 						workflow.id,
@@ -789,10 +789,10 @@ describe('WorkflowStatisticsService', () => {
 				);
 
 				expect(firstOccurrences).toHaveLength(1);
-				expect(firstOccurrences[0].firstEventMs).toBe(earliest.getTime()); // MIN(latestEvent)
+				expect(firstOccurrences[0].firstEventMs).toBe(earliest.getTime()); // MIN(createdAt)
 
 				const [counter] = await workflowStatisticsRepository.find();
-				expect(counter.latestEvent.getTime()).toBe(latest.getTime()); // MAX(latestEvent)
+				expect(counter.latestEvent.getTime()).toBe(latest.getTime()); // MAX(createdAt)
 				expect(counter.workflowName).toBe('newer'); // name from the most recent delta
 			});
 		});
@@ -814,6 +814,7 @@ describe('WorkflowStatisticsService', () => {
 			ownershipService = mockInstance(OwnershipService);
 			userService = mockInstance(UserService);
 			const globalConfig = Container.get(GlobalConfig);
+			const databaseConfig = Container.get(DatabaseConfig);
 
 			entityManager = mock<EntityManager>();
 			const dataSource = mock<DataSource>({
@@ -840,7 +841,7 @@ describe('WorkflowStatisticsService', () => {
 				eventService,
 				settingsRepository,
 				workflowRepository,
-				globalConfig,
+				databaseConfig,
 			);
 			globalConfig.diagnostics.enabled = true;
 			globalConfig.deployment.type = 'n8n-testing';
