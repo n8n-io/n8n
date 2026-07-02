@@ -20,7 +20,11 @@ export interface MockQuirk {
 	 * service equality OR any hostname pattern matching is enough to apply.
 	 */
 	hostnames?: string[];
-	/** `${METHOD} ${path}` pattern (no query, no host). Omit to apply service-wide. */
+	/**
+	 * `${METHOD} ${path}` pattern (no query, no host). A `*` path segment
+	 * matches exactly one segment — use it for dynamic IDs (see the Gmail
+	 * messages.get entry). Omit to apply service-wide.
+	 */
 	endpoint?: string;
 	guidance: string;
 	rationale: string;
@@ -82,6 +86,18 @@ export const MOCK_QUIRKS: MockQuirk[] = [
 		addedAt: '2026-06-12',
 	},
 	{
+		service: 'Googleapis',
+		endpoint: 'GET /gmail/v1/users/*/messages/*',
+		guidance:
+			'Gmail messages.get — the response shape depends on the `format` query param, and the n8n Gmail node crashes on the wrong one:\n' +
+			'  * `format=raw` (what the node sends whenever "Simplify" is off): the message JSON MUST include `raw` containing the FULL RFC822 email source — header lines (`From:`, `To:`, `Subject:`, `Date:`, `Content-Type:`), a blank line, then the body — alongside `id`, `threadId`, `labelIds`, `sizeEstimate`. Write `raw` as PLAIN multi-line text; the harness applies the base64 transport encoding for you. Prefer a simple single-part `Content-Type: text/plain; charset="UTF-8"` message unless the scenario needs attachments. NEVER answer a `format=raw` request with a `payload`-only message — the node decodes `raw` unconditionally.\n' +
+			'  * `format=metadata` → `{ id, threadId, labelIds, snippet, sizeEstimate, payload: { headers: [{ name, value }, ...] } }` — headers array only, no body data, no `raw`.\n' +
+			'  * `format=full` → `payload` tree where EVERY leaf part carries `body: { size: <n>, data: "<base64url>" }`; multipart containers use `mimeType: "multipart/..."`, `body: { size: 0 }`, and a `parts` array. Never emit a leaf part whose `body` has only `size` — nodes decode `body.data` and crash on undefined.',
+		rationale:
+			'The Gmail node fetches messages with format=raw and runs Buffer.from(message.raw, "base64") unconditionally; a payload-style mock without `raw` crashes it ("first argument must be of type string... Received undefined" — observed in eval run 28593025895, emails-with-action-items). Multipart `full` responses with data-less leaf parts crash the decode path the same way.',
+		addedAt: '2026-07-02',
+	},
+	{
 		service: 'Slack',
 		// Covers files.slack.com (PUT /upload/v1/<token>), hooks.slack.com (incoming
 		// webhooks), and any future subdomain — the service-name extractor maps these
@@ -136,7 +152,11 @@ export const MOCK_QUIRKS: MockQuirk[] = [
 	},
 ];
 
-/** Exact match on `${METHOD} ${pathname}` (case-insensitive), or any endpoint if `quirk.endpoint` is omitted. Exported for testing. */
+/**
+ * Match on `${METHOD} ${pathname}` (case-insensitive; `*` in the pattern path
+ * matches one path segment), or any endpoint if `quirk.endpoint` is omitted.
+ * Exported for testing.
+ */
 export function quirkMatches(
 	quirk: MockQuirk,
 	service: string,
@@ -151,8 +171,27 @@ export function quirkMatches(
 		quirk.hostnames.some((pattern) => hostnameMatchesPattern(pattern, hostname));
 	if (!serviceMatch && !hostnameMatch) return false;
 	if (!quirk.endpoint) return true;
-	const key = `${method.toUpperCase()} ${pathname}`;
-	return quirk.endpoint.toUpperCase() === key.toUpperCase();
+	return endpointMatchesPattern(quirk.endpoint, method, pathname);
+}
+
+/**
+ * Match an endpoint pattern (`METHOD /path`, `*` = one path segment) against a
+ * request method + pathname. Case-insensitive; without `*` it's an exact match.
+ * Exported for testing.
+ */
+export function endpointMatchesPattern(pattern: string, method: string, pathname: string): boolean {
+	const spaceIdx = pattern.indexOf(' ');
+	if (spaceIdx === -1) return false;
+	const patternMethod = pattern.slice(0, spaceIdx);
+	const patternPath = pattern.slice(spaceIdx + 1);
+	if (patternMethod.toUpperCase() !== method.toUpperCase()) return false;
+	if (!patternPath.includes('*')) {
+		return patternPath.toUpperCase() === pathname.toUpperCase();
+	}
+	const parts = patternPath
+		.split('/')
+		.map((p) => (p === '*' ? '[^/]+' : p.replace(/[.+^${}()|[\]\\?*]/g, '\\$&')));
+	return new RegExp(`^${parts.join('/')}$`, 'i').test(pathname);
 }
 
 /** Returns all matching guidance lines (composes service-wide + endpoint-specific). */

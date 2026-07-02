@@ -78,8 +78,8 @@ import {
 } from '../harness/runner';
 import {
 	extractErrorMessage,
-	isTransientNetworkError,
 	MAX_EXEC_ATTEMPTS,
+	shouldRetryScenarioExecution,
 } from '../harness/transient-error';
 import {
 	BUILD_ONLY_SCENARIO_NAME,
@@ -859,7 +859,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				break;
 			} catch (error: unknown) {
 				const errorMessage = extractErrorMessage(error);
-				if (isTransientNetworkError(errorMessage) && attempt < MAX_EXEC_ATTEMPTS) {
+				if (shouldRetryScenarioExecution(errorMessage, attempt)) {
 					logger.warn(
 						`    [${scenario.name}] execution attempt ${attempt}/${MAX_EXEC_ATTEMPTS} failed (${errorMessage}); retrying`,
 					);

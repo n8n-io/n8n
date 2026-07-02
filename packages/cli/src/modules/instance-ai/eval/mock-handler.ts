@@ -16,10 +16,14 @@ import { synthesizeBinaryFixture } from 'n8n-core';
 import { z } from 'zod';
 
 import { fetchApiDocs } from './api-docs';
+import { buildDateAnchors } from './date-anchors';
 import { findMockQuirks } from './mock-quirks';
 import { extractNodeConfig } from './node-config';
 import { redactBinaryBody } from './request-binary-redactor';
 import { redactSecretKeys, truncateForLlm } from './request-sanitizer';
+
+// Re-export: existing consumers/tests import buildDateAnchors from this module.
+export { buildDateAnchors } from './date-anchors';
 
 // ---------------------------------------------------------------------------
 // System prompt
@@ -42,6 +46,8 @@ Each request is mocked independently. Even when the same node makes multiple sim
 Response SHAPE comes from the API docs; DATA VALUES come from the node config. Use names/IDs from the config exactly (case-sensitive).
 
 **Honor explicit values from the scenario and hints.** When the scenarioHints, nodeHint, or globalContext state a specific value — a quantity with a unit, a percentage, a monetary amount ("$1,200"), a count ("3 rows"), a threshold, an ID, or a name — reproduce that EXACT value in the response. Do NOT round it, soften it toward a "more typical" reading, or substitute your own estimate: the stated value is the test's intent, and downstream nodes (IF/Switch gates, filters, sums) compare against it. Emit the exact number of enumerated items the context describes. Only invent a value when the context gives none for that field. If a nodeHint and the scenario disagree, the scenario wins.
+
+**Honor request filters.** When the request narrows results — a date-range constraint (\`gte\`/\`lte\`/\`since\`/\`after\`/\`before\` params, or filter variables inside a GraphQL query), a status/type filter, a search query, or a \`limit\` — EVERY record in your response MUST satisfy it. Never include records outside the requested window "for realism": workflows re-filter and count your records against the real clock, and one out-of-window item changes the counts the test asserts. For date filters, resolve the requested window against the Date anchors and double-check every returned timestamp falls inside it. When the scenario says records exist "in the last N days", place them safely inside that window (e.g. 2–5 days ago), never on the boundary and never on training-data dates.
 
 **Node response-handling options are not part of the body.** The node config may include options that control how n8n post-processes the response — \`fullResponse\`, \`responseFormat\`, \`outputPropertyName\`, pagination. These are applied AFTER you return and must NOT change the body you produce: always return the raw body the real API sends over the wire. Never reshape the body to mimic them — a body shaped like \`{ statusCode, headers, body }\` (mimicking \`fullResponse\`) or \`{ <outputPropertyName>: ... }\` is wrong.
 
@@ -70,6 +76,13 @@ const DEFAULT_MAX_RETRIES = 1;
 const ERROR_PREVIEW_MAX = 400;
 const ERROR_DETAIL_MAX = 300;
 
+/**
+ * Hang guard for a single mock-generation LLM call (including tool turns).
+ * Provider stalls otherwise eat the whole scenario execution budget — the
+ * outer retry in `generateMockResponse` still applies after an abort.
+ */
+const LLM_CALL_TIMEOUT_MS = 120_000;
+
 interface MockHandlerOptions {
 	/** Steers the LLM toward specific behavior (errors, edge cases). */
 	scenarioHints?: string;
@@ -96,20 +109,84 @@ interface MockResponseSpec {
 
 export function createLlmMockHandler(options?: MockHandlerOptions): EvalLlmMockHandler {
 	const nodeConfigCache = new Map<string, string>();
+	// Identical repeated requests (multi-item loops fanning out one HTTP call
+	// per item) are served from cache: one LLM round-trip per distinct request
+	// keeps large workflows inside the scenario time budget, and repeats can't
+	// drift between items. Promises are cached so concurrent identical requests
+	// share one in-flight generation; failed generations (the `_evalMockError`
+	// sentinel) are evicted so a later identical request gets a fresh attempt.
+	const responseCache = new Map<string, Promise<EvalMockHttpResponse>>();
 
 	return async (requestOptions, node) => {
 		if (!nodeConfigCache.has(node.name)) {
 			nodeConfigCache.set(node.name, extractNodeConfig(node));
 		}
 
-		return await generateMockResponse(requestOptions, node, {
+		const cacheKey = buildMockCacheKey(requestOptions, node.name);
+		const cached = cacheKey ? responseCache.get(cacheKey) : undefined;
+		if (cached) {
+			Container.get(Logger).debug(
+				`[EvalMock] Serving cached mock for ${requestOptions.method ?? 'GET'} ${extractEndpoint(requestOptions.url)} ("${node.name}")`,
+			);
+			return await cached;
+		}
+
+		const pending = generateMockResponse(requestOptions, node, {
 			scenarioHints: options?.scenarioHints,
 			globalContext: options?.globalContext,
 			nodeHint: options?.nodeHints?.[node.name],
 			nodeConfig: nodeConfigCache.get(node.name) ?? '',
 			maxRetries: options?.maxRetries ?? DEFAULT_MAX_RETRIES,
 		});
+
+		if (cacheKey) {
+			responseCache.set(cacheKey, pending);
+			void pending.then(
+				(response) => {
+					if (isMockErrorSentinel(response)) responseCache.delete(cacheKey);
+				},
+				() => responseCache.delete(cacheKey),
+			);
+		}
+
+		return await pending;
 	};
+}
+
+/**
+ * Stable identity for a mock request: node + method + URL + query + redacted
+ * body. Binary bodies are reduced to structural metadata first so Buffers
+ * don't blow up the key. Returns undefined (no caching) when the body can't
+ * be serialized.
+ */
+function buildMockCacheKey(
+	request: {
+		url: string;
+		method?: string;
+		body?: unknown;
+		qs?: Record<string, unknown>;
+		headers?: Record<string, unknown>;
+	},
+	nodeName: string,
+): string | undefined {
+	try {
+		const bodyKey =
+			request.body === undefined
+				? ''
+				: JSON.stringify(redactBinaryBody(request.body, getContentType(request.headers)));
+		const qsKey = request.qs ? JSON.stringify(request.qs) : '';
+		return [nodeName, request.method ?? 'GET', request.url, qsKey, bodyKey].join('\u0000');
+	} catch {
+		return undefined;
+	}
+}
+
+/** True for the fallback body `generateMockResponse` returns when all attempts failed. */
+function isMockErrorSentinel(response: EvalMockHttpResponse): boolean {
+	const body = response.body;
+	return (
+		typeof body === 'object' && body !== null && !Array.isArray(body) && '_evalMockError' in body
+	);
 }
 
 // ---------------------------------------------------------------------------
@@ -220,6 +297,7 @@ async function generateMockResponse(
 				pathname: requestPath,
 				hostname: requestHostname,
 			});
+			applyEndpointNormalizers(request, spec);
 			return materializeSpec(spec);
 		} catch (error) {
 			lastError = error instanceof Error ? error.message : String(error);
@@ -398,7 +476,9 @@ async function callLlm(
 		)
 		.tool(createSubmitResponseTool(capture));
 
-	const result = await agent.generate(userPrompt);
+	const result = await agent.generate(userPrompt, {
+		abortSignal: AbortSignal.timeout(LLM_CALL_TIMEOUT_MS),
+	});
 
 	if (!capture.spec) {
 		const text = extractText(result);
@@ -426,6 +506,53 @@ async function callLlm(
 	}
 
 	return capture.spec;
+}
+
+// ---------------------------------------------------------------------------
+// Endpoint-specific spec normalization
+// ---------------------------------------------------------------------------
+
+/**
+ * Deterministic spec fix-ups for endpoints where the LLM reliably gets the
+ * transport encoding wrong. Kept minimal — response shape is the LLM's job;
+ * only mechanical encodings that models can't produce reliably belong here.
+ */
+function applyEndpointNormalizers(
+	request: { url: string; qs?: Record<string, unknown> },
+	spec: MockResponseSpec,
+): void {
+	normalizeGmailRawMessage(request, spec);
+}
+
+/**
+ * Gmail `messages.get?format=raw` responses carry the RFC822 source
+ * base64-encoded in `raw` — the n8n Gmail node does `Buffer.from(raw,
+ * 'base64')` unconditionally. The endpoint quirk instructs the model to write
+ * `raw` as plain RFC822 text (models produce valid base64 unreliably); the
+ * encoding happens here. Already-encoded values don't match the RFC822 shape
+ * and pass through untouched.
+ */
+function normalizeGmailRawMessage(
+	request: { url: string; qs?: Record<string, unknown> },
+	spec: MockResponseSpec,
+): void {
+	if (spec.type !== 'json') return;
+	if (typeof spec.body !== 'object' || spec.body === null || Array.isArray(spec.body)) return;
+	if (!/\/gmail\/v1\/users\/[^/]+\/messages\//.test(extractEndpointPath(request.url))) return;
+
+	const body = spec.body as Record<string, unknown>;
+	if (typeof body.raw !== 'string' || body.raw.length === 0) return;
+	if (!looksLikeRfc822(body.raw)) return;
+
+	body.raw = Buffer.from(body.raw, 'utf8').toString('base64url');
+}
+
+/**
+ * Header line (`Name: value`) plus a blank-line separator — the RFC822 shape.
+ * Base64 text can't match: its alphabet has no `: ` sequence or blank lines.
+ */
+function looksLikeRfc822(text: string): boolean {
+	return /^[A-Za-z][A-Za-z0-9-]*:\s/m.test(text) && /\r?\n\r?\n/.test(text);
 }
 
 // ---------------------------------------------------------------------------
@@ -538,29 +665,4 @@ function extractHostname(url: string): string | undefined {
 	} catch {
 		return undefined;
 	}
-}
-
-/**
- * Renders a stable block of relative-time anchors (today, yesterday,
- * 7 days ago, etc.) the model integrates as data rather than a rule.
- */
-export function buildDateAnchors(now: Date): string {
-	const labels: Array<[string, number]> = [
-		['today', 0],
-		['yesterday', -1],
-		['7 days ago', -7],
-		['14 days ago', -14],
-		['30 days ago', -30],
-		['1 day from now', 1],
-		['7 days from now', 7],
-	];
-	const lines = labels.map(([label, dayOffset]) => {
-		const d = new Date(now);
-		d.setUTCDate(d.getUTCDate() + dayOffset);
-		const isoDate = d.toISOString().slice(0, 10);
-		return label === 'today'
-			? `- ${label}: ${isoDate} (full timestamp ${now.toISOString()})`
-			: `- ${label}: ${isoDate}`;
-	});
-	return lines.join('\n');
 }

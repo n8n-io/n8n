@@ -11,6 +11,7 @@ import {
 	UserError,
 } from 'n8n-workflow';
 
+import { buildDateAnchors } from './date-anchors';
 import { extractNodeConfig } from './node-config';
 
 /**
@@ -566,7 +567,8 @@ RULES:
 5. Ensure data flows logically through the workflow. If node A fetches items that node B processes, the items in A's hint should match what B expects.
 6. Use realistic but clearly fake values (e.g., "jane@example.com", "U_abc123").
 7. **If a "Test Scenario" section is provided, it OVERRIDES your default data generation.** Use the exact names, emails, numeric magnitudes (amounts, percentages, counts, thresholds), and conditions described in the scenario. If the scenario says "no name field", do NOT include a name. If it says "email is not-an-email", use that exact value. The scenario defines the test — follow it precisely.
-8. Return ONLY valid JSON, no explanation or markdown fencing.`;
+8. **Dates and timestamps.** The user prompt ends with a "## Date anchors" block listing today's real date plus relative anchors. EVERY date or timestamp you emit — in globalContext, triggerContent, and nodeHints — MUST be derived from those anchors, never from training data. Workflows compare mock data against the real execution clock ($now, Date.now()): a "recent" record dated months ago gets silently filtered out and the test fails. When the scenario describes a relative window ("issues from the last 2 weeks", "yesterday's orders"), compute concrete dates from the anchors and place records safely INSIDE the window (e.g. 2-5 days ago), never on its boundary. State those concrete dates in globalContext and nodeHints so every node's mock uses the same ones.
+9. Return ONLY valid JSON, no explanation or markdown fencing.`;
 
 function buildUserPrompt(
 	workflow: IWorkflowBase,
@@ -617,10 +619,20 @@ function buildUserPrompt(
 	if (nodeNames.length > 3) sections.push('    ...');
 	sections.push('  }', '}', '```');
 
+	// Anchors go last so they are the freshest context before generation.
+	sections.push('', '## Date anchors', buildDateAnchors(new Date()));
+
 	return sections.join('\n');
 }
 
 const MAX_HINT_ATTEMPTS = 2;
+
+/**
+ * Hang guard for one hint-generation LLM call. A stalled provider call
+ * otherwise eats the whole scenario execution budget; aborting lets the
+ * attempt loop retry (or degrade to empty hints) instead.
+ */
+const HINT_LLM_TIMEOUT_MS = 120_000;
 
 /** One LLM call → globalContext + triggerContent + per-node hints. Retried once on structural issues. */
 export async function generateMockHints(options: GenerateMockHintsOptions): Promise<MockHints> {
@@ -646,7 +658,9 @@ export async function generateMockHints(options: GenerateMockHintsOptions): Prom
 			});
 
 			// No maxTokens cap — a low ceiling truncates hints for large workflows.
-			const result = await agent.generate(userPrompt);
+			const result = await agent.generate(userPrompt, {
+				abortSignal: AbortSignal.timeout(HINT_LLM_TIMEOUT_MS),
+			});
 
 			const text = extractText(result)
 				.replace(/^```(?:json)?\s*\n?/i, '')

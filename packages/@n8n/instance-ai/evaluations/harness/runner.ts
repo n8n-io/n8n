@@ -31,7 +31,11 @@ import {
 import { reconstructSeedFromThread, type SeedThreadRef } from './langsmith-seed';
 import { type EvalLogger } from './logger';
 import { fetchPrebuiltBuild } from './prebuilt-workflows';
-import { extractErrorMessage, isTransientNetworkError, MAX_EXEC_ATTEMPTS } from './transient-error';
+import {
+	extractErrorMessage,
+	MAX_EXEC_ATTEMPTS,
+	shouldRetryScenarioExecution,
+} from './transient-error';
 import { buildWorkflowContextBlock } from './workflow-context';
 import { SONNET_MODEL } from '../../src/utils/eval-agents';
 import { runBinaryChecks } from '../binaryChecks/index';
@@ -303,7 +307,7 @@ export async function runWorkflowTestCase(
 					);
 				} catch (error: unknown) {
 					const errorMessage = extractErrorMessage(error);
-					if (isTransientNetworkError(errorMessage) && attempt < MAX_EXEC_ATTEMPTS) {
+					if (shouldRetryScenarioExecution(errorMessage, attempt)) {
 						logger.warn(
 							`    [${scenario.name}] execution attempt ${attempt}/${MAX_EXEC_ATTEMPTS} failed (${errorMessage}); retrying`,
 						);
