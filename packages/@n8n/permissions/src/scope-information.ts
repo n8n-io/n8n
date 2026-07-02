@@ -100,4 +100,12 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		displayName: 'Read Insights',
 		description: 'Allows reading insights data.',
 	},
+	'testRun:read': {
+		displayName: 'Read Test Run',
+		description: 'Allows reading evaluation test runs and their per-case results.',
+	},
+	'testRun:list': {
+		displayName: 'List Test Runs',
+		description: 'Allows listing evaluation test runs for a workflow.',
+	},
 };
