@@ -17,7 +17,9 @@
     "axios": "catalog:",
     "@n8n/eslint-plugin-community-nodes": "workspace:*",
     "@typescript-eslint/parser": "^8.35.0",
+    "eslint-plugin-n8n-nodes-base": "catalog:",
     "semver": "catalog:",
+    "typescript": "catalog:",
     "tmp": "0.2.4"
   },
   "devDependencies": {

@@ -1297,6 +1297,9 @@ importers:
       '@n8n/di':
         specifier: workspace:*
         version: link:../di
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../utils
       callsites:
         specifier: 'catalog:'
         version: 3.1.0
@@ -1364,6 +1367,9 @@ importers:
       '@n8n/di':
         specifier: workspace:*
         version: link:../di
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../utils
       axios:
         specifier: 1.18.0
         version: 1.18.0(debug@4.4.3)
@@ -3157,6 +3163,9 @@ importers:
       eslint:
         specifier: 'catalog:'
         version: 9.29.0(jiti@2.6.1)
+      eslint-plugin-n8n-nodes-base:
+        specifier: 'catalog:'
+        version: 1.16.7(eslint@9.29.0(jiti@2.6.1))(typescript@6.0.2)
       fast-glob:
         specifier: 'catalog:'
         version: 3.2.12
@@ -3166,6 +3175,9 @@ importers:
       tmp:
         specifier: 0.2.7
         version: 0.2.7
+      typescript:
+        specifier: 6.0.2
+        version: 6.0.2
     devDependencies:
       '@n8n/vitest-config':
         specifier: workspace:*
@@ -3287,6 +3299,9 @@ importers:
       '@n8n/errors':
         specifier: workspace:*
         version: link:../errors
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../utils
       '@sentry/core':
         specifier: catalog:sentry
         version: 10.55.0
@@ -4273,6 +4288,9 @@ importers:
       '@n8n/errors':
         specifier: workspace:*
         version: link:../@n8n/errors
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../@n8n/utils
       '@n8n/workflow-sdk':
         specifier: workspace:*
         version: link:../@n8n/workflow-sdk
@@ -6315,6 +6333,9 @@ importers:
       '@n8n/tournament':
         specifier: workspace:*
         version: link:../@n8n/tournament
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../@n8n/utils
       '@sentry/core':
         specifier: catalog:sentry
         version: 10.55.0
