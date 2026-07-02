@@ -93,7 +93,8 @@ function makeAgentNode(agentId: string): INodeUi {
 		id: 'node-1',
 		name: 'Message an Agent',
 		type: MESSAGE_AN_AGENT_NODE_TYPE,
-		typeVersion: 1,
+		// The NDV agent experience is v2-gated (v1 keeps the raw layout).
+		typeVersion: 2,
 		position: [0, 0],
 		parameters: { agentId: { __rl: true, mode: 'list', value: agentId } },
 	} as unknown as INodeUi;

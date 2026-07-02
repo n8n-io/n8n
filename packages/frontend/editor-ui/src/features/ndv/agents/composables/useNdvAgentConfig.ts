@@ -1,6 +1,5 @@
 import {
 	computed,
-	inject,
 	onBeforeUnmount,
 	ref,
 	toValue,
@@ -12,13 +11,12 @@ import { deepCopy } from 'n8n-workflow';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
-import { MESSAGE_AN_AGENT_NODE_TYPE } from '@/app/constants/nodeTypes';
-import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import { useToast } from '@/app/composables/useToast';
 import type { INodeUi } from '@/Interface';
-import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
 import { agentsEventBus, type AgentUpdatedEvent } from '@/features/agents/agents.eventBus';
+import { isAgentNodeV2 } from '@/features/agents/utils/agentNode';
+import { useAgentScopeProjectId } from '@/features/agents/composables/useAgentScopeProjectId';
 import { getAgent, updateAgentSkill } from '@/features/agents/composables/useAgentApi';
 import { useAgentConfig } from '@/features/agents/composables/useAgentConfig';
 import { useAgentConfigAutosave } from '@/features/agents/composables/useAgentConfigAutosave';
@@ -56,8 +54,8 @@ let instanceSeq = 0;
  *
  * MUST be created in the stable NDV container (`NodeDetailsViewV2`), NOT in
  * `NodeSettings`: the container survives node switches and its `close()` /
- * node-switch paths are where `flush()` / `settle()` are awaited. Provide the
- * return via {@link NdvAgentConfigKey}; `NodeSettings` injects it.
+ * node-switch paths are where `flush()` is awaited. Provide the return via
+ * {@link NdvAgentConfigKey}; `NodeSettings` injects it.
  *
  * No-ops for non-agent nodes (guarded by `isAgentNode`), so it is safe to
  * instantiate unconditionally for every node the NDV opens.
@@ -67,15 +65,13 @@ export function useNdvAgentConfig(
 	options: { telemetry?: AgentCapabilitiesTelemetry } = {},
 ) {
 	const rootStore = useRootStore();
-	const projectsStore = useProjectsStore();
 	const nav = useAgentNavigation();
 	const toast = useToast();
 	const i18n = useI18n();
-	// Non-strict inject: the workflow document store is provided in the NDV tree,
-	// but falling back to `null` keeps the composable unit-testable in isolation.
-	const workflowDocumentStore = inject(WorkflowDocumentStoreKey, null);
 
-	const isAgentNode = computed(() => toValue(activeNode)?.type === MESSAGE_AN_AGENT_NODE_TYPE);
+	// The rich NDV agent experience targets the v2 node only, matching the
+	// canvas gate (v1 keeps the legacy default rendering + raw NDV layout).
+	const isAgentNode = computed(() => isAgentNodeV2(toValue(activeNode)));
 
 	const eventSource = `ndv-agent-config-${++instanceSeq}`;
 
@@ -84,18 +80,10 @@ export function useNdvAgentConfig(
 		agentsEventBus.emit('agentUpdated', { agentId: forAgentId, source: eventSource });
 	}
 
-	// Scope to the workflow's owning project, matching how the agent picker
-	// resolved the project when the agent was referenced (see
-	// AgentSelectorParameterInput) so we read/write the same agent record.
-	// `currentProjectId` can drift on cross-route navigation; the 404 → terminal
-	// handling in `load`/`saveConfig` covers that edge.
-	const projectId = computed(
-		() =>
-			projectsStore.currentProjectId ??
-			workflowDocumentStore?.value?.homeProject?.id ??
-			projectsStore.personalProject?.id ??
-			'',
-	);
+	// Shared scope resolution (picker / canvas card / NDV must all read/write
+	// the same agent record). `currentProjectId` can drift on cross-route
+	// navigation; the 404 → terminal handling in `load`/`saveConfig` covers it.
+	const projectId = useAgentScopeProjectId();
 
 	const agentId = computed(() => {
 		if (!isAgentNode.value) return '';
@@ -127,7 +115,11 @@ export function useNdvAgentConfig(
 	}
 
 	async function fetchAgent(pId: string, aId: string) {
-		agent.value = await getAgent(rootStore.restApiContext, pId, aId);
+		const fresh = await getAgent(rootStore.restApiContext, pId, aId);
+		// Concurrent loads can race (node switch fires a new load while the
+		// previous one is in flight); `fetchConfig` drops stale resolutions
+		// internally, so guard the agent record the same way.
+		if (agentId.value === aId && projectId.value === pId) agent.value = fresh;
 	}
 
 	async function load(pId: string, aId: string) {
@@ -139,6 +131,8 @@ export function useNdvAgentConfig(
 			// tool/credential pickers work without a redundant fetch here.
 			await Promise.all([fetchConfig(pId, aId), fetchAgent(pId, aId)]);
 		} catch (error) {
+			// A stale load's failure must not mark the *current* agent unavailable.
+			if (agentId.value !== aId || projectId.value !== pId) return;
 			if (isPermanentError(error)) isUnavailable.value = true;
 			loadError.value = error;
 		}
@@ -256,24 +250,27 @@ export function useNdvAgentConfig(
 		localConfig.value = fresh ? deepCopy(fresh) : null;
 	});
 
-	// (Re)load when the referenced agent changes (node switch, or an in-NDV agent
-	// swap). FLUSH — not settle — the previous agent's pending save first, so a
+	// (Re)load when the referenced agent OR the project scope changes (node
+	// switch, in-NDV agent swap, or `projectId` resolving late / drifting).
+	// FLUSH — not settle — the previous scope's pending save first, so a
 	// sub-debounce edit isn't dropped. The snapshot is self-addressed to the
-	// previous agent, so a late-landing save targets the right record; `useAgentConfig`
-	// drops its stale local write. Covers node-switch without touching the shared
-	// container's switch handler.
+	// previous project/agent, so a late-landing save targets the right record;
+	// `useAgentConfig` drops its stale local write. Covers node-switch without
+	// touching the shared container's switch handler.
 	watch(
-		agentId,
-		async (id, previous) => {
-			if (id === previous) return;
-			if (previous) await flush().catch(() => {});
-			if (id && isAgentNode.value) {
-				await load(projectId.value, id);
-			} else {
+		[agentId, projectId] as const,
+		async ([id, pId], previous) => {
+			const [previousId] = previous ?? [];
+			if (previousId) await flush().catch(() => {});
+			if (id && pId && isAgentNode.value) {
+				await load(pId, id);
+			} else if (!id) {
 				localConfig.value = null;
 				agent.value = null;
 				connectedTriggers.value = [];
 			}
+			// `id && !pId`: project scope not resolved yet — skip the load instead
+			// of latching a 404 terminal state; the watcher refires once it resolves.
 		},
 		{ immediate: true },
 	);
@@ -286,7 +283,15 @@ export function useNdvAgentConfig(
 	function onAgentUpdated(event?: AgentUpdatedEvent) {
 		if (event?.source === eventSource) return;
 		if (event?.agentId && event.agentId !== agentId.value) return;
-		if (agentId.value) void load(projectId.value, agentId.value);
+		if (!agentId.value) return;
+		void (async () => {
+			// Persist pending local edits before reloading: the reload replaces
+			// `localConfig` with server state, and a still-queued whole-config
+			// snapshot firing afterwards would clobber the other surface's write
+			// with the pre-reload copy.
+			await flush().catch(() => {});
+			await load(projectId.value, agentId.value);
+		})();
 	}
 	agentsEventBus.on('agentUpdated', onAgentUpdated);
 	onBeforeUnmount(() => agentsEventBus.off('agentUpdated', onAgentUpdated));
@@ -310,6 +315,10 @@ export function useNdvAgentConfig(
 	 */
 	async function openBuilder() {
 		if (!agentId.value) return;
+		// Persist pending debounced edits first: the builder fetches the config on
+		// mount, and an unflushed save landing after that fetch would be clobbered
+		// by the builder's next whole-config autosave.
+		await flush().catch(() => {});
 		await nav.openBuilder(projectId.value, agentId.value, toValue(activeNode)?.id);
 	}
 

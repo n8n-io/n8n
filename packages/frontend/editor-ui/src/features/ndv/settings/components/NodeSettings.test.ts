@@ -63,7 +63,7 @@ const httpNodeType = {
 const agentNode = createTestNode({
 	name: 'Message an Agent',
 	type: MESSAGE_AN_AGENT_NODE_TYPE,
-	typeVersion: 1,
+	typeVersion: 2,
 });
 
 const agentNodeType = {
@@ -71,7 +71,7 @@ const agentNodeType = {
 	name: MESSAGE_AN_AGENT_NODE_TYPE,
 	group: ['transform'],
 	description: 'Message an agent',
-	version: 1,
+	version: 2,
 	defaults: { name: 'Message an Agent' },
 	inputs: ['main'],
 	outputs: ['main'],

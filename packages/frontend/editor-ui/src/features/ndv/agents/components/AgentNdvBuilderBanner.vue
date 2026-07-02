@@ -69,12 +69,16 @@ async function onLinkClick() {
 		<N8nIcon icon="sparkles" size="medium" :class="$style.icon" />
 		<p :class="$style.text">
 			{{ i18n.baseText('agentNode.ndv.banner.prefix') }}
-			<a
+			<!-- Button (not an href-less anchor) so the builder entry point stays
+			     keyboard-focusable and Enter/Space-activatable. -->
+			<button
 				v-if="isLinkEnabled"
+				type="button"
 				:class="$style.link"
 				data-test-id="agent-ndv-banner-open-builder"
 				@click.prevent="onLinkClick"
-				>{{ i18n.baseText('agentNode.ndv.banner.link') }}</a
+			>
+				{{ i18n.baseText('agentNode.ndv.banner.link') }}</button
 			><template v-else>{{ i18n.baseText('agentNode.ndv.banner.link') }}</template
 			>{{ i18n.baseText('agentNode.ndv.banner.suffix') }}
 		</p>
@@ -124,6 +128,11 @@ async function onLinkClick() {
 }
 
 .link {
+	/* Reset button chrome so it reads as an inline link. */
+	padding: 0;
+	border: none;
+	background: none;
+	font: inherit;
 	color: inherit;
 	text-decoration: underline;
 	text-underline-position: from-font;

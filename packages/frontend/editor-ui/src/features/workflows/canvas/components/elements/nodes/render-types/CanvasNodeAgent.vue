@@ -5,10 +5,9 @@ import { N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useCanvasNode } from '../../../../composables/useCanvasNode';
 import type { CanvasNodeAgentRender } from '../../../../canvas.types';
-import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useAgentCapabilitySummary } from '@/features/agents/composables/useAgentCapabilitySummary';
+import { useAgentScopeProjectId } from '@/features/agents/composables/useAgentScopeProjectId';
 import { useModelCatalog } from '@/features/agents/composables/useModelCatalog';
 import {
 	AGENT_MODEL_PROVIDER_DEFINITIONS,
@@ -29,10 +28,8 @@ const emit = defineEmits<{
 
 const $style = useCssModule();
 const i18n = useI18n();
-const projectsStore = useProjectsStore();
 const nodeTypesStore = useNodeTypesStore();
 const nav = useAgentNavigation();
-const workflowDocumentStore = injectWorkflowDocumentStore();
 const { catalog: modelCatalog, ensureLoaded: ensureModelsLoaded } = useModelCatalog();
 
 const {
@@ -71,13 +68,9 @@ const agentId = computed(() => {
 
 const isConfigured = computed(() => agentId.value !== '');
 
-const projectId = computed(
-	() =>
-		projectsStore.currentProjectId ??
-		workflowDocumentStore.value?.homeProject?.id ??
-		projectsStore.personalProject?.id ??
-		'',
-);
+// Shared scope resolution (picker / canvas card / NDV must all read/write
+// the same agent record).
+const projectId = useAgentScopeProjectId();
 
 const { summary, error } = useAgentCapabilitySummary(projectId, agentId);
 
@@ -148,7 +141,9 @@ function onOpenContextMenu(event: MouseEvent) {
 function openAgent() {
 	if (!isConfigured.value || !projectId.value) return;
 
-	nav.openBuilder(projectId.value, agentId.value);
+	// Pass this node as the origin so the builder's "Back to workflow" banner
+	// can re-focus it on return (same round-trip the NDV banner uses).
+	void nav.openBuilder(projectId.value, agentId.value, id.value);
 }
 
 // Resolve the friendly model name once the project scope is known. projectId is
@@ -224,6 +219,7 @@ watch(
 							:model-value="agentResourceLocator"
 							path="parameters.agentId"
 							:is-read-only="isReadOnly"
+							:origin-node-id="id"
 							input-size="medium"
 							hide-mode-selector
 							@update:model-value="onPickAgent"

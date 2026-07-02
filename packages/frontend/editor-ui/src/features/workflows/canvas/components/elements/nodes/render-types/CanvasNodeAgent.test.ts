@@ -167,7 +167,7 @@ describe('CanvasNodeAgent', () => {
 		expect(queryByTestId('agent-picker-stub')).toBeNull();
 	});
 
-	it('navigates to the agent detail view when the open affordance is clicked', async () => {
+	it('navigates to the agent builder when the open affordance is clicked', async () => {
 		summaryHolder.value = {
 			id: 'agent-1',
 			name: 'Configured Agent',

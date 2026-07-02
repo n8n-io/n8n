@@ -765,7 +765,9 @@ async function onHeaderAction(action: string) {
 		// doesn't keep rendering data for an agent that no longer exists.
 		agent.value = null;
 		localConfig.value = null;
-		agentsEventBus.emit('agentUpdated');
+		// Targeted: an untargeted emit clears the whole capability-summary cache
+		// and forces every mounted card/NDV for *unrelated* agents to refetch.
+		agentsEventBus.emit('agentUpdated', { agentId: agentId.value, source: 'agent-builder' });
 
 		// Target path. Built as a plain string rather than via a named route so
 		// there's no risk of a named-route resolution race during the agent

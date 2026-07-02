@@ -26,7 +26,7 @@ import AgentNdvReferencedControls from '@/features/ndv/agents/components/AgentNd
 import AgentNdvBuilderBanner from '@/features/ndv/agents/components/AgentNdvBuilderBanner.vue';
 import AgentNdvAdvancedSection from '@/features/ndv/agents/components/AgentNdvAdvancedSection.vue';
 import { NdvAgentConfigKey } from '@/features/ndv/agents/composables/useNdvAgentConfig';
-import { MESSAGE_AN_AGENT_NODE_TYPE } from '@/app/constants/nodeTypes';
+import { isAgentNodeV2 } from '@/features/agents/utils/agentNode';
 import get from 'lodash/get';
 
 import ExperimentalEmbeddedNdvHeader from '@/features/workflows/canvas/experimental/components/ExperimentalEmbeddedNdvHeader.vue';
@@ -525,7 +525,8 @@ const nodeSettings = computed(() =>
 // orchestrator. Guarded on the orchestrator being provided so NodeSettings
 // still works if ever mounted outside the NDV container.
 const ndvAgentConfig = inject(NdvAgentConfigKey, null);
-const isAgentNode = computed(() => node.value?.type === MESSAGE_AN_AGENT_NODE_TYPE);
+// v2-gated to match the canvas card: v1 nodes keep the raw NDV layout.
+const isAgentNode = computed(() => isAgentNodeV2(node.value));
 const showAgentNdvControls = computed(() => isAgentNode.value && ndvAgentConfig !== null);
 /** Node-execution settings kept for the agent node on the Settings tab. */
 const agentNodeRetainedSettings = computed(() =>
@@ -841,7 +842,7 @@ function handleSelectAction(params: INodeParameters) {
 						@blur="onParameterBlur"
 					/>
 				</ParameterInputList>
-				<AgentNdvReferencedControls v-if="showAgentNdvControls" />
+				<AgentNdvReferencedControls v-if="showAgentNdvControls" :is-read-only="isReadOnly" />
 				<AgentNdvAdvancedSection
 					v-if="showAgentNdvControls && agentAdvancedCollection && nodeValuesInitialized"
 					:parameter="agentAdvancedCollection"

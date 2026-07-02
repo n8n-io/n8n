@@ -158,13 +158,13 @@ describe('AgentNdvReferencedControls', () => {
 	it('renders nothing when the node is not an agent node', () => {
 		const stub = createNdvStub({ isAgentNode: false });
 		const wrapper = mountControls(stub);
-		expect(wrapper.find('[data-testid="agent-ndv-referenced-controls"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="agent-ndv-referenced-controls"]').exists()).toBe(false);
 	});
 
 	it('renders nothing when no agent is referenced', () => {
 		const stub = createNdvStub({ agentId: '' });
 		const wrapper = mountControls(stub);
-		expect(wrapper.find('[data-testid="agent-ndv-referenced-controls"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="agent-ndv-referenced-controls"]').exists()).toBe(false);
 	});
 
 	it('renders the panels + capabilities with the tools/tasks/skills allowlist', () => {
@@ -192,28 +192,28 @@ describe('AgentNdvReferencedControls', () => {
 	it('shows a skeleton while loading with no config yet', () => {
 		const stub = createNdvStub({ loading: true, localConfig: null });
 		const wrapper = mountControls(stub);
-		expect(wrapper.find('[data-testid="agent-ndv-loading"]').exists()).toBe(true);
+		expect(wrapper.find('[data-test-id="agent-ndv-loading"]').exists()).toBe(true);
 		expect(wrapper.findComponent(CapabilitiesStub).exists()).toBe(false);
 	});
 
 	it('shows a terminal unavailable message and no controls when the agent is gone', () => {
 		const stub = createNdvStub({ isUnavailable: true });
 		const wrapper = mountControls(stub);
-		expect(wrapper.find('[data-testid="agent-ndv-unavailable"]').exists()).toBe(true);
+		expect(wrapper.find('[data-test-id="agent-ndv-unavailable"]').exists()).toBe(true);
 		expect(wrapper.find('[data-testid="capabilities-stub"]').exists()).toBe(false);
 	});
 
 	it('surfaces the save status on the section header row, mirroring the builder header', () => {
 		const stub = createNdvStub({ saveStatus: 'saving' });
 		const wrapper = mountControls(stub);
-		expect(wrapper.find('[data-testid="agent-ndv-save-status"]').exists()).toBe(true);
+		expect(wrapper.find('[data-test-id="agent-ndv-save-status"]').exists()).toBe(true);
 		expect(wrapper.text()).toContain('agents.builder.header.saving');
 	});
 
 	it('hides the save status while idle', () => {
 		const stub = createNdvStub({ saveStatus: 'idle' });
 		const wrapper = mountControls(stub);
-		expect(wrapper.find('[data-testid="agent-ndv-save-status"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="agent-ndv-save-status"]').exists()).toBe(false);
 	});
 
 	it('forwards capability emits to the injected action handlers', () => {

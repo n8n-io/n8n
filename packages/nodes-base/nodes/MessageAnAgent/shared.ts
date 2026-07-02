@@ -237,6 +237,15 @@ export function getStructuredOutputSchema(
 }
 
 /**
+ * Expressions can resolve to any JSON value (object, number, …); only string
+ * values are usable prompts. Non-strings fall through to the next fallback and
+ * ultimately to the "Prompt cannot be empty" error instead of crashing `.trim()`.
+ */
+function asPromptString(value: unknown): string {
+	return typeof value === 'string' ? value : '';
+}
+
+/**
  * Shared execution for every version. The stored `agentId` is a resource-locator
  * value regardless of version (resourceLocator in v1, agentSelector in v2), so
  * reading `.value` works for both.
@@ -257,20 +266,20 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			};
 			const agentId = agentIdRlc.value;
 			// Resolve the prompt the same way the legacy AI Agent node does. `auto`
-			// reads `chatInput` from a connected Chat Trigger; otherwise the `text`
-			// param is used. `text` is also consulted as a fallback so the node still
-			// works when invoked as a tool (no Chat Trigger present), and a legacy
-			// `message` value from pre-existing workflows is honored last.
+			// reads `chatInput` from a connected Chat Trigger (and nothing else);
+			// `define` uses the `text` param, honoring a legacy `message` value
+			// from pre-existing (v1) workflows as a fallback.
 			const promptType = this.getNodeParameter('promptType', i, 'define') as string;
 			let prompt = '';
 			if (promptType === 'auto') {
-				prompt = (this.evaluateExpression('{{ $json["chatInput"] }}', i) as string) || '';
-			}
-			if (!prompt) {
-				prompt = (this.getNodeParameter('text', i, '') as string) || '';
-			}
-			if (!prompt) {
-				prompt = (this.getNodeParameter('message', i, '') as string) || '';
+				prompt = asPromptString(this.evaluateExpression('{{ $json["chatInput"] }}', i));
+			} else {
+				if (!prompt) {
+					prompt = asPromptString(this.getNodeParameter('text', i, ''));
+				}
+				if (!prompt) {
+					prompt = asPromptString(this.getNodeParameter('message', i, ''));
+				}
 			}
 
 			const advanced = this.getNodeParameter('advanced', i, {}) as {

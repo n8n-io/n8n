@@ -59,7 +59,8 @@ const activeNode = computed(() => ndvStore.value.activeNode);
 const collectionPath = computed(() => `parameters.${props.parameter.name}`);
 
 const localConfig = computed(() => ndv?.localConfig.value ?? null);
-const canUpdate = computed(() => ndv?.canUpdate.value ?? false);
+// A read-only NDV must not edit the shared agent, regardless of agent:update.
+const canUpdate = computed(() => (ndv?.canUpdate.value ?? false) && !props.isReadOnly);
 
 // Agent settings need a loaded, editable agent config to write to.
 const agentOptionsAvailable = computed(
@@ -214,10 +215,21 @@ function onAddOptionSelected(id: string) {
 	// option can be added (mirrors the standard collection's add select).
 	selectedOption.value = undefined;
 }
+
+// Keep typing in the embedded controls from triggering canvas shortcuts, but
+// let Escape through — the NDV's document-level Escape-to-close listens at the
+// bubble phase and a blanket stop would silently disable it here.
+function onSectionKeydown(event: KeyboardEvent) {
+	if (event.key !== 'Escape') event.stopPropagation();
+}
 </script>
 
 <template>
-	<div :class="$style.advancedSection" data-testid="agent-ndv-advanced-section" @keydown.stop>
+	<div
+		:class="$style.advancedSection"
+		data-test-id="agent-ndv-advanced-section"
+		@keydown="onSectionKeydown"
+	>
 		<N8nSectionHeader :title="sectionTitle" bordered :class="$style.sectionHeader" />
 
 		<Suspense v-if="chosenNodeProperties.length > 0">

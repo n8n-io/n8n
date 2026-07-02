@@ -32,6 +32,7 @@ import type {
 	CanvasNodeStickyNoteRender,
 } from '@/features/workflows/canvas/canvas.types';
 import { CanvasNodeRenderType } from '@/features/workflows/canvas/canvas.types';
+import { isAgentNodeV2 } from '@/features/agents/utils/agentNode';
 import { CHANGE_ACTION } from './types';
 import type {
 	NodeAddedPayload,
@@ -320,9 +321,9 @@ export function useWorkflowDocumentRenderData(workflowDocumentId: WorkflowDocume
 			case `${CanvasNodeRenderType.ChoicePrompt}`:
 				return createChoicePromptRenderType();
 			case `${CanvasNodeRenderType.Agent}`:
-				// The rich agent card targets the v2 node.
-				// v1 keeps its legacy default node rendering.
-				return (node.typeVersion ?? 0) >= 2
+				// The rich agent card targets the v2 node (same gate as the NDV
+				// agent controls); v1 keeps its legacy default node rendering.
+				return isAgentNodeV2(node)
 					? createAgentRenderType(node)
 					: createDefaultNodeRenderType(node);
 			default:

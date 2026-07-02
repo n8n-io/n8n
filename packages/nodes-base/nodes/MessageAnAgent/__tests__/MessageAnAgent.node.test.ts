@@ -177,20 +177,15 @@ describe('MessageAnAgent Node', () => {
 			);
 		});
 
-		it('falls back to the text param when "auto" yields no chatInput (e.g. used as a tool)', async () => {
+		it('does not fall back to the text param when "auto" yields no chatInput', async () => {
 			executeFunctions.getInputData.mockReturnValue([{ json: {} }]);
 			mockParams({ promptType: 'auto', text: 'tool-provided prompt' });
 			executeFunctions.evaluateExpression.mockReturnValue('');
+			executeFunctions.continueOnFail.mockReturnValue(false);
 			executeFunctions.executeAgent.mockResolvedValue(mockAgentResult);
 
-			await node.execute.call(executeFunctions);
-
-			expect(executeFunctions.executeAgent).toHaveBeenCalledWith(
-				expect.objectContaining({ agentId: 'agent-1' }),
-				'tool-provided prompt',
-				'exec-123',
-				0,
-			);
+			await expect(node.execute.call(executeFunctions)).rejects.toThrow('Prompt cannot be empty');
+			expect(executeFunctions.executeAgent).not.toHaveBeenCalled();
 		});
 
 		it('honors a legacy "message" value from a pre-existing workflow', async () => {

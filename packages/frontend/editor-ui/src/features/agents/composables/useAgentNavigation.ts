@@ -8,10 +8,10 @@ import { AGENT_BUILDER_VIEW, AGENT_VIEW } from '../constants';
  * Navigates into the agent feature while remembering the workflow + node the
  * user came from, so `AgentView` can render a "Back to workflow" banner.
  *
- * `openBuilder` powers the AI Agent node's inline-create round-trip; `openAgent`
- * is the shared seam the canvas agent card (AGENT-274) routes its open (→)
- * affordance through, so opening an existing agent from the card also sets the
- * return context.
+ * `openBuilder` powers the AI Agent node's inline-create round-trip and the
+ * canvas agent card's open (→) affordance (AGENT-274), so opening an existing
+ * agent from the card also sets the return context. `openAgent` is the same
+ * seam for the agent detail view.
  */
 export function useAgentNavigation() {
 	const router = useRouter();
@@ -30,14 +30,32 @@ export function useAgentNavigation() {
 		returnContext.set({ workflowId: wfId, nodeId: originNodeId ?? '', agentId });
 	}
 
-	async function openBuilder(projectId: string, agentId: string, originNodeId?: string) {
+	async function navigateWithOrigin(
+		name: string,
+		projectId: string,
+		agentId: string,
+		originNodeId?: string,
+	) {
+		// Set before push so the destination view finds the context on mount, but
+		// clear it if the navigation is aborted (e.g. an unsaved-changes guard
+		// declined) — otherwise a stale "Back to workflow" banner shows on a
+		// later, unrelated visit to this agent's pages.
 		rememberOrigin(agentId, originNodeId);
-		await router.push({ name: AGENT_BUILDER_VIEW, params: { projectId, agentId } });
+		try {
+			const failure = await router.push({ name, params: { projectId, agentId } });
+			if (failure) returnContext.clear();
+		} catch (error) {
+			returnContext.clear();
+			throw error;
+		}
+	}
+
+	async function openBuilder(projectId: string, agentId: string, originNodeId?: string) {
+		await navigateWithOrigin(AGENT_BUILDER_VIEW, projectId, agentId, originNodeId);
 	}
 
 	async function openAgent(projectId: string, agentId: string, originNodeId?: string) {
-		rememberOrigin(agentId, originNodeId);
-		await router.push({ name: AGENT_VIEW, params: { projectId, agentId } });
+		await navigateWithOrigin(AGENT_VIEW, projectId, agentId, originNodeId);
 	}
 
 	return { rememberOrigin, openBuilder, openAgent };

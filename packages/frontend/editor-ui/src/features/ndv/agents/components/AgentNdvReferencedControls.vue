@@ -26,6 +26,14 @@ import AgentCapabilitiesSection from '@/features/agents/components/AgentCapabili
 
 import { NdvAgentConfigKey } from '../composables/useNdvAgentConfig';
 
+const props = withDefaults(
+	defineProps<{
+		/** NDV-level read-only state (execution preview, history, read-only share). */
+		isReadOnly?: boolean;
+	}>(),
+	{ isReadOnly: false },
+);
+
 const i18n = useI18n();
 
 const ndv = inject(NdvAgentConfigKey);
@@ -33,7 +41,8 @@ const ndv = inject(NdvAgentConfigKey);
 const isAgentNode = computed(() => ndv?.isAgentNode.value ?? false);
 const agentId = computed(() => ndv?.agentId.value ?? '');
 const projectId = computed(() => ndv?.projectId.value ?? '');
-const canUpdate = computed(() => ndv?.canUpdate.value ?? false);
+// A read-only NDV must not edit the shared agent, regardless of agent:update.
+const canUpdate = computed(() => (ndv?.canUpdate.value ?? false) && !props.isReadOnly);
 const localConfig = computed(() => ndv?.localConfig.value ?? null);
 const agent = computed(() => ndv?.agent.value ?? null);
 const appliedSkills = computed(() => ndv?.appliedSkills.value ?? []);
@@ -59,7 +68,7 @@ const actions = computed(() => ndv?.actions);
 	<div
 		v-if="isAgentNode && agentId"
 		:class="$style.referencedControls"
-		data-testid="agent-ndv-referenced-controls"
+		data-test-id="agent-ndv-referenced-controls"
 	>
 		<N8nSectionHeader :title="i18n.baseText('agentNode.ndv.section.agent')" bordered>
 			<template #actions>
@@ -67,7 +76,7 @@ const actions = computed(() => ndv?.actions);
 					v-if="saveStatusText"
 					size="xsmall"
 					color="text-light"
-					data-testid="agent-ndv-save-status"
+					data-test-id="agent-ndv-save-status"
 				>
 					{{ saveStatusText }}
 				</N8nText>
@@ -80,21 +89,23 @@ const actions = computed(() => ndv?.actions);
 			:class="$style.unavailable"
 			color="danger"
 			size="small"
-			data-testid="agent-ndv-unavailable"
+			data-test-id="agent-ndv-unavailable"
 		>
 			{{ i18n.baseText('agentNode.ndv.unavailable') }}
 		</N8nText>
 
 		<!-- Skeleton keeps the pane height stable during the config fetch. -->
-		<N8nLoading v-else-if="loading && !localConfig" :rows="5" data-testid="agent-ndv-loading" />
+		<N8nLoading v-else-if="loading && !localConfig" :rows="5" data-test-id="agent-ndv-loading" />
 
 		<template v-else>
 			<div :class="$style.infoPanelWrapper">
+				<!-- Compact editor cap so the instructions can't bury the call-site prompt. -->
 				<AgentInfoPanel
 					:config="localConfig"
 					:project-id="projectId"
 					:disabled="!canUpdate"
 					embedded
+					instructions-max-height="240px"
 					@update:config="ndv?.scheduleConfigUpdate"
 				/>
 			</div>
@@ -140,11 +151,5 @@ const actions = computed(() => ndv?.actions);
 	display: flex;
 	flex-direction: column;
 	width: 100%;
-
-	// Cap the embedded instructions editor so it can't bury the call-site prompt
-	// (AgentInfoPanel hardcodes a 640px editor max — see report follow-up).
-	:global(.instructionsEditor) {
-		max-height: 240px;
-	}
 }
 </style>
