@@ -783,6 +783,7 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 										/>
 										<CreditWarningBanner
 											v-if="creditBanner.visible.value"
+											variant="standalone"
 											:credits-remaining="store.creditsRemaining"
 											:credits-quota="store.creditsQuota"
 											@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
