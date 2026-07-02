@@ -1,6 +1,6 @@
 {
   "name": "@n8n/db",
-  "version": "0.34.39",
+  "version": "0.34.40",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
