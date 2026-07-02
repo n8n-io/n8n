@@ -8,6 +8,7 @@ import {
 	type InstanceAiFileAttachment,
 	type InstanceAiWorkflowAttachment,
 	type InstanceAiConfirmRequest,
+	type InstanceAiConfirmResponse,
 	type InstanceAiEvent,
 	type InstanceAiThreadStatusResponse,
 } from '@n8n/api-types';
@@ -3811,7 +3812,7 @@ export class InstanceAiService {
 		requestingUserId: string,
 		requestId: string,
 		request: InstanceAiConfirmRequest,
-	): Promise<boolean> {
+	): Promise<InstanceAiConfirmResponse | null> {
 		const data = toConfirmationData(request);
 		const freshUser = await this.revalidateActiveUser(requestingUserId);
 		if (!freshUser) {
@@ -3824,16 +3825,25 @@ export class InstanceAiService {
 				userId: requestingUserId,
 				requestId,
 			});
-			return false;
+			return null;
 		}
 
-		if (this.runState.resolvePendingConfirmation(freshUser.id, requestId, data)) {
+		const pending = this.runState.getPendingConfirmation(requestId);
+		if (
+			pending &&
+			pending.userId === freshUser.id &&
+			this.runState.resolvePendingConfirmation(freshUser.id, requestId, data)
+		) {
 			void this.suspendedThreads.dropPendingConfirmation(requestId);
 			this.logger.debug('Resolved pending confirmation (sub-agent HITL)', {
 				requestId,
 				approved: data.approved,
 			});
-			return true;
+			const runId = this.runState.getActiveRunId(pending.threadId);
+			return {
+				ok: true,
+				...(runId ? { runId } : {}),
+			};
 		}
 
 		this.logger.debug('Pending confirmation not found, trying suspended run resume', {
@@ -3841,8 +3851,9 @@ export class InstanceAiService {
 			approved: data.approved,
 		});
 
-		if (await this.resumeSuspendedRun(requestingUserId, requestId, data)) {
-			return true;
+		const resumed = await this.resumeSuspendedRun(requestingUserId, requestId, data);
+		if (resumed) {
+			return resumed;
 		}
 
 		// Last resort: the in-memory state is gone, but a persisted index row
@@ -3970,14 +3981,14 @@ export class InstanceAiService {
 		requestingUserId: string,
 		requestId: string,
 		data: ConfirmationData,
-	): Promise<boolean> {
+	): Promise<InstanceAiConfirmResponse | null> {
 		const suspended = this.runState.findSuspendedByRequestId(requestId);
 		if (!suspended) {
 			this.logger.warn('Confirmation target not found: no pending confirmation or suspended run', {
 				requestId,
 				approved: data.approved,
 			});
-			return false;
+			return null;
 		}
 
 		const {
@@ -3997,7 +4008,7 @@ export class InstanceAiService {
 			plannedBuild,
 			runHandoff,
 		} = suspended;
-		if (user.id !== requestingUserId) return false;
+		if (user.id !== requestingUserId) return null;
 
 		const activeUser = await this.revalidateActiveUser(user.id);
 		if (!activeUser) {
@@ -4007,7 +4018,7 @@ export class InstanceAiService {
 				requestId,
 			});
 			this.cancelRun(threadId);
-			return false;
+			return null;
 		}
 
 		this.runState.activateSuspendedRun(threadId);
@@ -4080,7 +4091,7 @@ export class InstanceAiService {
 			plannedBuild,
 			runHandoff,
 		});
-		return true;
+		return { ok: true, runId };
 	}
 
 	/**

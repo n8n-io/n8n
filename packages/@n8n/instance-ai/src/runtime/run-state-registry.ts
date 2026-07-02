@@ -170,9 +170,14 @@ export class RunStateRegistry<TUser = unknown> {
 		threadId: string,
 		backgroundTasks: BackgroundTaskStatusSnapshot[],
 	): InstanceAiThreadStatusResponse {
+		const activeRun = this.activeRuns.get(threadId);
+		const suspendedRun = this.suspendedRuns.get(threadId);
+		const liveRun = activeRun ?? suspendedRun;
+
 		return {
-			hasActiveRun: this.activeRuns.has(threadId),
-			isSuspended: this.suspendedRuns.has(threadId),
+			hasActiveRun: activeRun !== undefined,
+			isSuspended: suspendedRun !== undefined,
+			...(liveRun ? { runId: liveRun.runId } : {}),
 			backgroundTasks: backgroundTasks
 				.filter((task) => task.threadId === threadId)
 				.map((task) => ({
