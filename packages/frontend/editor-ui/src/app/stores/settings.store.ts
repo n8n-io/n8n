@@ -325,6 +325,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 		rootStore.setUrlBaseWebhook(fetchedSettings.urlBaseWebhook);
 		rootStore.setUrlBaseEditor(fetchedSettings.urlBaseEditor);
+		rootStore.setUrlBaseWebhookTest(fetchedSettings.urlBaseWebhookTest);
 		rootStore.setEndpointForm(fetchedSettings.endpointForm);
 		rootStore.setEndpointFormTest(fetchedSettings.endpointFormTest);
 		rootStore.setEndpointFormWaiting(fetchedSettings.endpointFormWaiting);

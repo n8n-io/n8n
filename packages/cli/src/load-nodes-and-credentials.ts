@@ -1,7 +1,7 @@
 import { inTest, isContainedWithin, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Container, Service } from '@n8n/di';
-import { isWindowsFilePath } from '@n8n/utils';
+import { isWindowsFilePath } from '@n8n/utils/files/is-windows-file-path';
 import type ParcelWatcher from '@parcel/watcher';
 import glob from 'fast-glob';
 import fsPromises from 'fs/promises';
@@ -30,12 +30,8 @@ import type {
 	LoadedNodesAndCredentials,
 	NodeLoader,
 } from 'n8n-workflow';
-import {
-	ensureError,
-	injectDomainRestrictionFields,
-	UnexpectedError,
-	UserError,
-} from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { injectDomainRestrictionFields, UnexpectedError, UserError } from 'n8n-workflow';
 import path from 'path';
 import picocolors from 'picocolors';
 

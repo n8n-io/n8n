@@ -49,6 +49,7 @@ import { cleanupCredentials } from '../credentials/seeder';
 import { loadTestCases } from '../data/source';
 import type { WorkflowTestCaseWithFile } from '../data/workflows';
 import { captureThreadRunDebug } from '../harness/capture-run-debug';
+import { EVAL_WORKSPACE_NAME, resolveEvalWorkspaceId } from '../harness/langsmith-seed';
 import { createLogger } from '../harness/logger';
 import type { EvalLogger } from '../harness/logger';
 import {
@@ -68,7 +69,16 @@ import {
 	runWithConcurrency,
 	type BuildResult,
 } from '../harness/runner';
-import { syncDataset, type DatasetExampleInputs } from '../langsmith/dataset-sync';
+import {
+	extractErrorMessage,
+	isTransientNetworkError,
+	MAX_EXEC_ATTEMPTS,
+} from '../harness/transient-error';
+import {
+	BUILD_ONLY_SCENARIO_NAME,
+	syncDataset,
+	type DatasetExampleInputs,
+} from '../langsmith/dataset-sync';
 import { seedMcpRegistry } from '../mcp-registry/seeder';
 import { snapshotWorkflowIds } from '../outcome/workflow-discovery';
 import { writeRunDebugReport } from '../report/run-debug-report';
@@ -290,7 +300,14 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 	const isolationWarning = partialIsolationWarning(args.dataset, args.baselinePrefix);
 	if (isolationWarning) logger.warn(isolationWarning);
 
-	const lsClient = new Client();
+	// Pin eval writes to the eval workspace; our PAT would otherwise default to Prod.
+	const workspaceId = await resolveEvalWorkspaceId();
+	if (workspaceId) {
+		logger.info(
+			`Pinning eval experiments to LangSmith workspace "${EVAL_WORKSPACE_NAME}" (${workspaceId})`,
+		);
+	}
+	const lsClient = new Client(workspaceId ? { workspaceId } : {});
 	const datasetName = await syncDataset(lsClient, args.dataset, logger, testCasesWithFiles);
 
 	// Stash transcripts by threadId so reshapeLangSmithRuns can merge them in —
@@ -556,9 +573,29 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			};
 		}
 
+		// Build-only case — the build plus its expectation judging (in getOrBuild) is the whole
+		// test; skip execution. A failed build returns above with its error reasoning; reflect
+		// the real build status here rather than assuming success.
+		if (inputs.scenarioName === BUILD_ONLY_SCENARIO_NAME) {
+			return {
+				buildSuccess: build.success,
+				workflowId: build.workflowId,
+				passed: false,
+				score: 0,
+				reasoning: 'Build-only case — graded by process/outcome expectations',
+				execErrors: [],
+				buildDurationMs,
+				execDurationMs: 0,
+				nodeCount: build.workflowJsons[0]?.nodes.length ?? 0,
+				threadId: build.threadId,
+				workflowChecks: build.workflowChecks,
+				workflowJson: build.workflowJsons[0],
+				buildTrace: build.buildTrace,
+			};
+		}
+
 		const execStart = Date.now();
 		const nodeCount = build.workflowJsons[0]?.nodes.length ?? 0;
-		const maxExecAttempts = 5;
 		let result;
 		for (let attempt = 1; ; attempt++) {
 			try {
@@ -570,21 +607,10 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				});
 				break;
 			} catch (error: unknown) {
-				const baseError = error instanceof Error ? error : new Error(String(error));
-				const cause = baseError.cause;
-				const causeText =
-					cause instanceof Error ? cause.message : typeof cause === 'string' ? cause : undefined;
-				const errorMessage =
-					causeText && causeText !== baseError.message
-						? `${baseError.message}: ${causeText}`
-						: baseError.message;
-				const isTransient =
-					/fetch failed|ECONNRESET|ECONNREFUSED|ETIMEDOUT|EAI_AGAIN|socket hang up/i.test(
-						errorMessage,
-					);
-				if (isTransient && attempt < maxExecAttempts) {
+				const errorMessage = extractErrorMessage(error);
+				if (isTransientNetworkError(errorMessage) && attempt < MAX_EXEC_ATTEMPTS) {
 					logger.warn(
-						`    [${scenario.name}] execution attempt ${attempt}/${maxExecAttempts} failed (${errorMessage}); retrying`,
+						`    [${scenario.name}] execution attempt ${attempt}/${MAX_EXEC_ATTEMPTS} failed (${errorMessage}); retrying`,
 					);
 					await new Promise((resolve) => setTimeout(resolve, 500 * attempt));
 					continue;
@@ -667,10 +693,10 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		if (output.buildDurationMs !== undefined) {
 			feedback.push({ key: 'build_duration_s', score: output.buildDurationMs / 1000 });
 		}
-		// Skip N/A so LangSmith column averages reduce to per-check pass-rate.
+		// Skip N/A and errored so LangSmith column averages reduce to per-check pass-rate.
 		if (output.workflowChecks) {
 			for (const outcome of output.workflowChecks) {
-				if (outcome.status === 'n_a') continue;
+				if (outcome.status === 'n_a' || outcome.status === 'error') continue;
 				feedback.push({
 					key: `evals.workflows.${outcome.dimension}.${outcome.name}`,
 					score: outcome.status === 'pass' ? 1 : 0,
@@ -950,7 +976,7 @@ async function runDirectLoop(config: RunConfig): Promise<{
 	}
 
 	const totalScenarios = testCasesWithFiles.reduce(
-		(sum, { testCase }) => sum + testCase.executionScenarios.length,
+		(sum, { testCase }) => sum + (testCase.executionScenarios ?? []).length,
 		0,
 	);
 	logger.info(

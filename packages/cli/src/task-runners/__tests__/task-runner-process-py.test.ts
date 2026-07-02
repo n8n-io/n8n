@@ -47,6 +47,7 @@ describe('PyTaskRunnerProcess', () => {
 			'PATH',
 			'N8N_RUNNERS_STDLIB_ALLOW',
 			'N8N_RUNNERS_EXTERNAL_ALLOW',
+			'N8N_RUNNERS_ALLOW_TRANSITIVE_IMPORTS',
 			'N8N_RUNNERS_BUILTINS_DENY',
 			'N8N_BLOCK_RUNNER_ENV_ACCESS',
 		])('should propagate %s from env as is', async (envVar) => {

@@ -2,7 +2,8 @@ import { Service } from '@n8n/di';
 import chunk from 'lodash/chunk';
 import { ErrorReporter } from 'n8n-core';
 import { ObjectStoreService } from 'n8n-core/dist/binary-data/object-store/object-store.service.ee';
-import { ensureError, jsonParse, jsonStringify } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { jsonParse, jsonStringify } from 'n8n-workflow';
 
 import { EXECUTION_DATA_BUNDLE_FILENAME, EXECUTION_DATA_BUNDLE_VERSION } from './constants';
 import { CorruptedExecutionDataError } from './corrupted-execution-data.error';

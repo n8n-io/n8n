@@ -1,4 +1,4 @@
-import { formatPemBlock } from '@n8n/utils';
+import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import { ConnectionPoolManager } from '@utils/connection-pool-manager';
 import { LOCALHOST } from '@utils/constants';
 import type {

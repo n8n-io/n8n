@@ -26,7 +26,7 @@ import {
 	builderTemplatesOptionsFromEnv,
 } from './builder-templates-service';
 import { PACKAGE_JSON, TSCONFIG_JSON, BUILD_MJS } from './sandbox-setup';
-import { disposeSnapshotImageContext, stageWorkspaceFilesForImage } from './snapshot-image-context';
+import { stageWorkspaceFilesForImage } from './snapshot-image-context';
 import { buildRuntimeSkillWorkspaceBundle } from '../skills/materialize-runtime-skills';
 import { loadInstanceAiRuntimeSkillSource } from '../skills/runtime-skills';
 
@@ -51,8 +51,6 @@ export class SnapshotManager {
 		null;
 
 	private knowledgeBaseBundlePromise: Promise<KnowledgeBaseWorkspaceBundle> | null = null;
-
-	private stagingDir: string | null = null;
 
 	constructor(
 		private readonly baseImage: string | undefined,
@@ -88,7 +86,6 @@ export class SnapshotManager {
 			DAYTONA_WORKSPACE_ROOT,
 			cacheKey,
 		);
-		this.stagingDir = stagingDir;
 
 		const { Image } = loadDaytona();
 		const layoutDirs = SNAPSHOT_WORKSPACE_LAYOUT_DIRS.map(
@@ -179,15 +176,14 @@ export class SnapshotManager {
 		});
 	}
 
-	/** Invalidate cached image (e.g., when base image changes). */
+	/**
+	 * Invalidate the in-memory image/bundle caches. The shared staging dir is owned
+	 * by the per-key cache in `stageWorkspaceFilesForImage` and intentionally not
+	 * removed here (in-flight creations may still be reading it).
+	 */
 	invalidate(): void {
-		const stagingDir = this.stagingDir;
 		this.cachedImage = null;
 		this.runtimeSkillBundlePromise = null;
 		this.knowledgeBaseBundlePromise = null;
-		this.stagingDir = null;
-		if (stagingDir) {
-			void disposeSnapshotImageContext(stagingDir);
-		}
 	}
 }

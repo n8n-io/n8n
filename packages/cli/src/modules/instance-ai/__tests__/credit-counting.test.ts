@@ -60,28 +60,30 @@ function createMockAiService(
 		claimError,
 		failuresBeforeSuccess = 0,
 	} = opts;
-	let markBuilderTokenUsage: Mock;
+	let markInstanceAiTokenUsage: Mock;
 	if (claimError) {
-		markBuilderTokenUsage = vi.fn().mockRejectedValue(claimError);
+		markInstanceAiTokenUsage = vi.fn().mockRejectedValue(claimError);
 	} else if (failuresBeforeSuccess > 0) {
 		let calls = 0;
-		markBuilderTokenUsage = vi.fn().mockImplementation(async () => {
+		markInstanceAiTokenUsage = vi.fn().mockImplementation(async () => {
 			calls += 1;
 			if (calls <= failuresBeforeSuccess) throw new Error('transient');
 			return claimResult;
 		});
 	} else {
-		markBuilderTokenUsage = vi.fn().mockResolvedValue(claimResult);
+		markInstanceAiTokenUsage = vi.fn().mockResolvedValue(claimResult);
 	}
+	const getInstanceAiApiProxyToken = vi
+		.fn()
+		.mockResolvedValue({ tokenType: 'Bearer', accessToken: 'ia-tok' });
 	return {
 		isProxyEnabled: vi.fn().mockReturnValue(proxyEnabled),
 		getClient: vi.fn().mockResolvedValue({
-			getBuilderApiProxyToken: vi
-				.fn()
-				.mockResolvedValue({ tokenType: 'Bearer', accessToken: 'tok' }),
-			markBuilderTokenUsage,
+			getInstanceAiApiProxyToken,
+			markInstanceAiTokenUsage,
 		}),
-		__markBuilderTokenUsage: markBuilderTokenUsage,
+		__markInstanceAiTokenUsage: markInstanceAiTokenUsage,
+		__getInstanceAiApiProxyToken: getInstanceAiApiProxyToken,
 	};
 }
 
@@ -131,10 +133,10 @@ describe('claimRunUsage', () => {
 		const service = createService({ threadRepo, aiService: ai, push, telemetry });
 		const delta = await callClaim(service);
 
-		expect(ai.__markBuilderTokenUsage).toHaveBeenCalledWith(
+		expect(ai.__markInstanceAiTokenUsage).toHaveBeenCalledWith(
 			{ id: 'user-1' },
-			{ Authorization: 'Bearer tok' },
-			{ dedupeId: 'run-1', usage },
+			{ Authorization: 'Bearer ia-tok' },
+			{ dedupeId: 'run-1', usage, threadId: 't1' },
 		);
 		expect(threadRepo.save).toHaveBeenCalledWith(
 			expect.objectContaining({ metadata: expect.objectContaining({ creditsUsed: 2.5 }) }),
@@ -185,7 +187,7 @@ describe('claimRunUsage', () => {
 		const service = createService({ threadRepo, aiService: ai, push, telemetry });
 		await callClaim(service, { status: 'cancelled' });
 
-		expect(ai.__markBuilderTokenUsage).toHaveBeenCalledTimes(1);
+		expect(ai.__markInstanceAiTokenUsage).toHaveBeenCalledTimes(1);
 		expect(telemetry.track).toHaveBeenCalledWith(
 			'Builder credits claimed',
 			expect.objectContaining({ status: 'cancelled', success: true }),
@@ -202,7 +204,7 @@ describe('claimRunUsage', () => {
 		await callClaim(service, { dedupeId: 'run-1' });
 		await callClaim(service, { dedupeId: 'run-1' });
 
-		expect(ai.__markBuilderTokenUsage).toHaveBeenCalledTimes(1);
+		expect(ai.__markInstanceAiTokenUsage).toHaveBeenCalledTimes(1);
 	});
 
 	it('caps the in-memory dedup guard, evicting the oldest run ids', async () => {
@@ -248,7 +250,7 @@ describe('claimRunUsage', () => {
 		const service = createService({ threadRepo, aiService: ai, push, telemetry });
 		const delta = await callClaim(service);
 
-		expect(ai.__markBuilderTokenUsage).toHaveBeenCalledTimes(2);
+		expect(ai.__markInstanceAiTokenUsage).toHaveBeenCalledTimes(2);
 		expect(delta).toBe(0.5);
 		expect(telemetry.track).toHaveBeenCalledWith(
 			'Builder credits claimed',
@@ -265,7 +267,7 @@ describe('claimRunUsage', () => {
 		const service = createService({ threadRepo, aiService: ai, push, telemetry });
 		const delta = await callClaim(service);
 
-		expect(ai.__markBuilderTokenUsage).toHaveBeenCalledTimes(3);
+		expect(ai.__markInstanceAiTokenUsage).toHaveBeenCalledTimes(3);
 		expect(delta).toBeUndefined();
 		expect(telemetry.track).toHaveBeenCalledWith(
 			'Builder credits claimed',
@@ -396,6 +398,27 @@ describe('claimRunUsage', () => {
 			expect(telemetry.track).not.toHaveBeenCalledWith(
 				'User exhausted assistant quota',
 				expect.anything(),
+			);
+		});
+	});
+
+	describe('instance-ai pool', () => {
+		it('always mints and claims against the instance-ai pool, forwarding threadId', async () => {
+			const threadRepo = createMockThreadRepo({ id: 't1', metadata: {} });
+			const ai = createMockAiService();
+			const push = { sendToUsers: vi.fn() };
+			const telemetry = { track: vi.fn() };
+
+			const service = createService({ threadRepo, aiService: ai, push, telemetry });
+			await callClaim(service, { threadId: 'thread-9', dedupeId: 'run-1' });
+
+			expect(ai.__getInstanceAiApiProxyToken).toHaveBeenCalledTimes(1);
+			// The threadId in scope is forwarded into the IA claim payload so the
+			// service can attach it to the claim telemetry.
+			expect(ai.__markInstanceAiTokenUsage).toHaveBeenCalledWith(
+				{ id: 'user-1' },
+				{ Authorization: 'Bearer ia-tok' },
+				{ dedupeId: 'run-1', usage, threadId: 'thread-9' },
 			);
 		});
 	});
