@@ -6,7 +6,7 @@ class FakeBackend implements TimerBackend {
 
 	private nextId = 1;
 
-	/** Every delay handed to setTimer, so tests can pin the clamp/floor. */
+	/** Every delay handed to setTimer, so tests can assert the clamp/floor. */
 	readonly delays: number[] = [];
 
 	private timers: Array<{

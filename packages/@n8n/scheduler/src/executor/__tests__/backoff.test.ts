@@ -23,7 +23,7 @@ describe('backoff', () => {
 		expect(backoff(10, opts)).toBe(5000);
 	});
 
-	it('uses the built-in defaults when no opts are given (the executor relies on these)', () => {
+	it('uses the built-in defaults when no opts are given', () => {
 		expect(backoff(1)).toBe(5_000); // baseMs
 		expect(backoff(2)).toBe(10_000); // baseMs * 2
 		expect(backoff(20)).toBe(5 * 60_000); // capped at maxMs

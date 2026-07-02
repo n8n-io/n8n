@@ -77,11 +77,9 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	private async claimWithPostgres(opts: ClaimDueTasksOptions): Promise<ScheduledTask[]> {
 		const table = this.tableName();
 
-		// Raw SQL: the query builder can't express UPDATE ... WHERE id IN (SELECT ...
-		// FOR UPDATE SKIP LOCKED) ... RETURNING as one atomic statement. TypeORM's
-		// Postgres driver returns `[rows, affectedCount]` from a raw UPDATE ... RETURNING;
-		// the raw rows carry driver-native types (Date, parsed json, bigint id as
-		// string), which the domain mapper expects.
+		// TypeORM's Postgres driver returns `[rows, affectedCount]` from a raw UPDATE
+		// ... RETURNING; the raw rows carry driver-native types (Date, parsed json,
+		// bigint id as string), which the domain mapper expects.
 		const [rows]: [ScheduledTask[], number] = await this.query(
 			`UPDATE ${table}
 			   SET "status" = '${ScheduledTaskStatus.Running}', "claimedBy" = $1,
@@ -112,10 +110,9 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 				.createQueryBuilder(ScheduledTask, 't')
 				.where('t.status = :pending', { pending: ScheduledTaskStatus.Pending })
 				.andWhere('t.taskType IN (:...taskTypes)', { taskTypes: opts.taskTypes })
-				// Reach `lookaheadMs` past now, not just up to now: a task due before the
-				// next poll tick is then claimed on this tick and handed to the in-memory
-				// precision timer, which fires it at its exact `runAt` rather than a whole
-				// poll interval late. STRFTIME takes the offset as whole seconds.
+				// Reach `lookaheadMs` past now so a task due before the next poll is claimed
+				// early and fired precisely by the timer. STRFTIME takes the offset as whole
+				// seconds.
 				.andWhere("t.runAt <= STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW', :lookahead)", {
 					lookahead: `+${opts.lookaheadMs / 1000} seconds`,
 				})
@@ -220,10 +217,10 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	}
 
 	/**
-	 * Apply a guarded update: only a row that is still `running` and claimed by
-	 * `host` is touched, so a task reaped and reclaimed after a lease expiry can't be
-	 * double-transitioned. Returns rows affected; the executor treats 0 as benign (the
-	 * row was deleted or reclaimed), unlike a hard assert-exactly-one.
+	 * Apply a guarded update: only touch a row that is still `running` and claimed
+	 * by `host`, so a task reaped and reclaimed after a lease expiry can't be
+	 * double-transitioned. Returns rows affected; the executor treats 0 as benign
+	 * (the row was deleted or reclaimed).
 	 */
 	private async runGuardedUpdate(
 		host: string,

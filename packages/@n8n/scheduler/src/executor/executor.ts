@@ -23,10 +23,10 @@ const DEFAULT_CLAIM_BATCH_SIZE = 100;
  * {@link claimAndSchedule} on a cadence and supplies the instance host id. The
  * reaper that reclaims tasks whose lease expired is a separate concern.
  *
- * The terminal transitions are guarded on `claimed_by` (not the lease epoch), so a
+ * The terminal transitions are guarded on `claimedBy` (not the lease epoch), so a
  * handler must finish within the lease: fencing against a stalled-then-reclaimed
  * owner is added with the reaper. Handlers are expected to hand off quickly; the
- * lease-renewal heartbeat for longer ones lands with the reaper (B4), which is what
+ * lease-renewal heartbeat for longer ones lands with the reaper, which is what
  * makes renewal matter.
  */
 @Service()
@@ -53,11 +53,9 @@ export class Executor {
 		config: SchedulerConfig,
 	) {
 		this.leaseMs = config.leaseDuration * 1000;
-		// Claim one poll interval ahead: a task falling due between now and the next
-		// tick is claimed on this tick and handed to the precision timer, which fires
-		// it at its exact `runAt` rather than on the next poll. This is what turns a
-		// coarse poll cadence into ms-accurate firing; the cost is holding the claim
-		// (and its lease) for up to one interval before the task actually fires.
+		// Claim one poll interval ahead so a task due before the next tick is claimed
+		// now and fired precisely by the timer, at the cost of holding its claim for
+		// up to one interval before it actually fires.
 		this.lookaheadMs = config.executorInterval * 1000;
 	}
 
@@ -152,9 +150,9 @@ export class Executor {
 		}
 
 		// Only the handler is guarded by the retry path: a handler failure is a task
-		// failure. Recording success is done after the try so that a failure to record
-		// it is not misrecorded as a task failure — it propagates out of fire() (caught
-		// by the detached `.catch` in claimAndSchedule) and leaves the row `running` for
+		// failure. Recording success happens after the try, so a failure to record it
+		// is not misrecorded as a task failure. It propagates out of fire() (caught by
+		// the detached `.catch` in claimAndSchedule) and leaves the row `running` for
 		// the reaper to recover.
 		try {
 			await handler.execute(task);
@@ -178,10 +176,11 @@ export class Executor {
 	 * `running`+leased and are orphaned until the reaper reclaims them.
 	 *
 	 * Driver contract: the caller must stop invoking {@link claimAndSchedule} before
-	 * calling this. There is no in-flight guard, so a `claimAndSchedule` still running
-	 * concurrently could schedule timers after `cancelAll` and add entries the
-	 * `claimed.clear()` below then drops, leaving those tasks to fire post-stop and go
-	 * unreleased (recovered only by the reaper). A tick and stop must not overlap.
+	 * calling this. There is no in-flight guard: a `claimAndSchedule` running
+	 * concurrently could still schedule timers after `cancelAll`, and the entries it
+	 * adds would be dropped by `claimed.clear()` below, leaving those tasks to fire
+	 * post-stop and never get released (recovered only by the reaper). A tick and
+	 * stop must not overlap.
 	 */
 	async stop(): Promise<void> {
 		this.timer.cancelAll();

@@ -111,7 +111,7 @@ describe('Executor.claimAndSchedule', () => {
 });
 
 describe('Executor.fire', () => {
-	it('does not dispatch when the row is gone or reclaimed (markStarted affects 0 rows)', async () => {
+	it('does not dispatch when the row is gone or reclaimed', async () => {
 		const { taskRepository, registry, executor } = setup();
 		taskRepository.markStarted.mockResolvedValue(0);
 
@@ -152,7 +152,7 @@ describe('Executor.fire', () => {
 		expect(taskRepository.rescheduleTask).not.toHaveBeenCalled();
 	});
 
-	it('re-queues with backoff(nextAttempt) when the handler fails and attempts remain', async () => {
+	it('retries with backoff for the next attempt when the handler fails and attempts remain', async () => {
 		const { taskRepository, registry, executor } = setup();
 		const handler: TaskHandler = { execute: vi.fn().mockRejectedValue(new Error('boom')) };
 		taskRepository.markStarted.mockResolvedValue(1);
@@ -194,7 +194,7 @@ describe('Executor.fire', () => {
 		expect(taskRepository.completeTask).not.toHaveBeenCalled();
 	});
 
-	it('fails terminally on the final attempt of a multi-attempt task (>= boundary)', async () => {
+	it('fails terminally on the final attempt of a multi-attempt task', async () => {
 		const { taskRepository, registry, executor } = setup();
 		const handler: TaskHandler = { execute: vi.fn().mockRejectedValue(new Error('boom')) };
 		taskRepository.markStarted.mockResolvedValue(1);
@@ -208,7 +208,7 @@ describe('Executor.fire', () => {
 		expect(taskRepository.rescheduleTask).not.toHaveBeenCalled();
 	});
 
-	it('releases the claim without burning an attempt when no handler resolves at fire time', async () => {
+	it('releases the claim without counting an attempt when no handler resolves at fire time', async () => {
 		const { taskRepository, registry, logger, executor } = setup();
 		taskRepository.markStarted.mockResolvedValue(1);
 		registry.resolve.mockReturnValue(undefined);
