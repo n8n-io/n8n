@@ -31,6 +31,7 @@ import {
 import { reconstructSeedFromThread, type SeedThreadRef } from './langsmith-seed';
 import { type EvalLogger } from './logger';
 import { fetchPrebuiltBuild } from './prebuilt-workflows';
+import { extractErrorMessage, isTransientNetworkError, MAX_EXEC_ATTEMPTS } from './transient-error';
 import { buildWorkflowContextBlock } from './workflow-context';
 import { SONNET_MODEL } from '../../src/utils/eval-agents';
 import { runBinaryChecks } from '../binaryChecks/index';
@@ -297,27 +298,42 @@ export async function runWorkflowTestCase(
 	const scenariosPromise = runWithConcurrency(
 		testCase.executionScenarios ?? [],
 		async (scenario) => {
-			try {
-				return await executeScenario(
-					client,
-					build.workflowId!,
-					scenario,
-					build.workflowJsons,
-					logger,
-					timeoutMs,
-					testCaseArtifactName,
-					build.buildTrace,
-					config.pinAiRoots,
-				);
-			} catch (error: unknown) {
-				const errorMessage = error instanceof Error ? error.message : String(error);
-				logger.error(`    ERROR [${scenario.name}]: ${errorMessage}`);
-				return {
-					scenario,
-					success: false,
-					score: 0,
-					reasoning: `Error: ${errorMessage}`,
-				} satisfies ExecutionScenarioResult;
+			for (let attempt = 1; ; attempt++) {
+				try {
+					return await executeScenario(
+						client,
+						build.workflowId!,
+						scenario,
+						build.workflowJsons,
+						logger,
+						timeoutMs,
+						testCaseArtifactName,
+						build.buildTrace,
+						config.pinAiRoots,
+					);
+				} catch (error: unknown) {
+					const errorMessage = extractErrorMessage(error);
+					if (isTransientNetworkError(errorMessage) && attempt < MAX_EXEC_ATTEMPTS) {
+						logger.warn(
+							`    [${scenario.name}] execution attempt ${attempt}/${MAX_EXEC_ATTEMPTS} failed (${errorMessage}); retrying`,
+						);
+						await delay(500 * attempt);
+						continue;
+					}
+					// executeScenario categorizes builder/mock/verification failures
+					// internally; an error escaping it is an infra/framework problem
+					// (network drop, n8n API error, verifier timeout). Tag it
+					// framework_issue so the report and baseline keep it out of builder
+					// regressions instead of scoring it as an uncategorized failure.
+					logger.error(`    ERROR [${scenario.name}]: ${errorMessage}`);
+					return {
+						scenario,
+						success: false,
+						score: 0,
+						reasoning: `Scenario execution error: ${errorMessage}`,
+						failureCategory: 'framework_issue',
+					} satisfies ExecutionScenarioResult;
+				}
 			}
 		},
 		MAX_CONCURRENT_SCENARIOS,
