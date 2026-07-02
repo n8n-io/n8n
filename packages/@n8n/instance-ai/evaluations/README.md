@@ -2,12 +2,15 @@
 
 Tests whether workflows built by Instance AI actually work by executing them with LLM-generated mock HTTP responses. No real credentials or external services are involved.
 
-Four harnesses live here:
+Five harnesses live here:
 
 - **`eval:instance-ai`** — end-to-end build + mocked execution + LLM verification (drives a running n8n instance)
 - **`eval:subagent`** — legacy command name for the workflow-build compatibility corpus; it drives the live orchestrator/skill build path, scored by binary checks
 - **`eval:discovery`** — orchestrator in-process, scored against required or forbidden tool/dispatch events (no n8n server)
 - **`eval:pairwise`** — live orchestrator workflow builds, scored by an LLM judge panel against do/don't lists. Intended for head-to-head comparison with `ai-workflow-builder.ee` on the same dataset
+- **`eval:computer-use`** — grades the computer-use agent (file / OAuth / doc-reading tasks) against fixtures; see [`computer-use/README.md`](computer-use/README.md)
+
+> **Writing a test case?** This README is the reference and quick-start. The step-by-step *how* — the four case archetypes (build / behaviour / credential / seeded), right-sizing assertions, director-note scripts for multi-turn cases, seeding vs synthetic, and running/lanes/baselines — lives in the [`create-instance-ai-eval` skill](../../../../.agents/skills/create-instance-ai-eval/SKILL.md). To source cases from real failures, see [sourcing from LangTracer + LangSmith](../../../../.agents/skills/create-instance-ai-eval/sourcing-cases.md).
 
 Sections:
 
@@ -555,6 +558,8 @@ To record an isolated cohort without touching the shared dataset or baseline —
 ## Adding test cases
 
 Test cases live in `evaluations/data/workflows/*.json`. Drop a file in — the CLI and LangSmith sync pick it up, no registration step. Every case is validated against `data/workflows/schema.ts`.
+
+> The essentials are below. For the full authoring guide — picking a case archetype, sizing assertions so a wrong build fails, multi-turn director scripts, seeding vs synthetic, and calibrating against a real build — follow the [`create-instance-ai-eval` skill](../../../../.agents/skills/create-instance-ai-eval/SKILL.md) (with [`case-shapes.md`](../../../../.agents/skills/create-instance-ai-eval/case-shapes.md) and [`running-evals.md`](../../../../.agents/skills/create-instance-ai-eval/running-evals.md)).
 
 ```json
 {
