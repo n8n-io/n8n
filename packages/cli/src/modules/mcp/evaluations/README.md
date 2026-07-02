@@ -1,14 +1,25 @@
 # MCP workflow evaluations
 
 Use the Instance AI evaluation harness to score workflows built through the MCP
-module. The MCP step creates workflows in a running n8n instance and writes a
-manifest of workflow IDs. The evaluation step then runs the normal
-`eval:instance-ai` verifier against those prebuilt workflows.
+module: build each workflow by driving the instance MCP server with Claude, then
+run the normal `eval:instance-ai` verifier against it.
 
 For the full framework documentation, argument reference, outputs, and
 troubleshooting, use the [Instance AI workflow evaluation README](../../../../../@n8n/instance-ai/evaluations/README.md).
 
-The usual flow is:
+## Two ways to run
+
+- **Fused — recommended.** `eval:instance-ai --build-via-mcp` builds each
+  workflow through the MCP server and verifies it in the **same run**, across one
+  or more lanes. One command, one LangSmith experiment — and it's what CI
+  (`ci-mcp-evals.yml`) runs. See
+  [Building via MCP](../../../../../@n8n/instance-ai/evaluations/README.md#building-via-mcp---build-via-mcp).
+- **Two-phase — decoupled (documented below).** `eval:build-mcp-manifest` writes
+  a manifest of workflow IDs, then `eval:instance-ai --prebuilt-workflows` scores
+  them. Reach for this when you want to build once and evaluate many times, A/B
+  different builders or models, or keep the built cohort around.
+
+The rest of this guide covers the two-phase flow:
 
 1. Start a local n8n instance with Instance AI enabled.
 2. Generate an MCP-built workflow cohort with `eval:build-mcp-manifest`.
