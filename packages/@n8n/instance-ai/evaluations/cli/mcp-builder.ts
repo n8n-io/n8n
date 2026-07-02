@@ -20,7 +20,7 @@ import { homedir, tmpdir } from 'os';
 import { join } from 'path';
 import { z } from 'zod';
 
-import type { ConversationTurn } from '../types';
+import type { ConversationTurn, WorkflowTestCase } from '../types';
 
 // ---------------------------------------------------------------------------
 // MCP config staging — the `--mcp-config` file `claude -p` is pointed at
@@ -127,6 +127,27 @@ export function sanitizeServerName(name: string): string {
 
 export function buildAllowedTools(serverName: string): readonly string[] {
 	return [`mcp__${sanitizeServerName(serverName)}`];
+}
+
+/**
+ * Build-side setup fields a test case declares that the `claude -p` MCP build
+ * path cannot honor. The orchestrator build seeds these before driving the
+ * in-product agent (credential creation, conversation/thread seeding), while
+ * `claude` receives only the flattened conversation prompt — a case relying on
+ * them would build without its prerequisites and fail misleadingly, so callers
+ * should skip cases where this returns a non-empty list. `messageBudget` is
+ * deliberately not flagged: it caps user-proxy follow-ups in the orchestrator
+ * chat loop and simply doesn't apply to a single-shot `claude` build.
+ */
+export function unsupportedMcpBuildSetupFields(testCase: WorkflowTestCase): string[] {
+	const fields: string[] = [];
+	if (testCase.credentials && testCase.credentials.length > 0) fields.push('credentials');
+	if (testCase.seedFile) fields.push('seedFile');
+	if (testCase.priorConversation && testCase.priorConversation.length > 0) {
+		fields.push('priorConversation');
+	}
+	if (testCase.seedThread) fields.push('seedThread');
+	return fields;
 }
 
 // ---------------------------------------------------------------------------

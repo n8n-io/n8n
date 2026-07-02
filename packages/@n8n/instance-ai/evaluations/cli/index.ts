@@ -22,7 +22,12 @@ import type { CliArgs } from './args';
 import { buildCIMetadata, computeExperimentPrefix } from './ci-metadata';
 import { LaneAllocator } from './lane-allocator';
 import { expandWithIterations, partitionRoundRobin } from './lanes';
-import { buildWorkflowViaMcp, stageLaneMcpConfig, type McpBuildSettings } from './mcp-builder';
+import {
+	buildWorkflowViaMcp,
+	stageLaneMcpConfig,
+	unsupportedMcpBuildSetupFields,
+	type McpBuildSettings,
+} from './mcp-builder';
 import {
 	isPlainObject,
 	parseTargetOutput,
@@ -242,6 +247,30 @@ async function main(): Promise<void> {
 			throw new Error('Prebuilt manifest covers none of the selected test cases — nothing to run.');
 		}
 		testCasesWithFiles = covered;
+	}
+
+	// `claude -p` builds get only the flattened conversation — build-side setup
+	// (credentials, seeds) is orchestrator-only. Skip cases that declare it
+	// rather than building them without prerequisites and reporting misleading
+	// failures (mirrors the prebuilt-coverage partition above).
+	if (args.buildViaMcp) {
+		const skippedMcp: string[] = [];
+		testCasesWithFiles = testCasesWithFiles.filter(({ testCase, fileSlug }) => {
+			const fields = unsupportedMcpBuildSetupFields(testCase);
+			if (fields.length === 0) return true;
+			skippedMcp.push(`${fileSlug} (${fields.join(', ')})`);
+			return false;
+		});
+		if (skippedMcp.length > 0) {
+			logger.warn(
+				`MCP build: skipping ${String(skippedMcp.length)} selected case(s) with setup fields the \`claude\` build path cannot honor: ${skippedMcp.join('; ')}`,
+			);
+		}
+		if (testCasesWithFiles.length === 0) {
+			throw new Error(
+				'--build-via-mcp supports none of the selected test cases (all declare orchestrator-only setup fields) — nothing to run.',
+			);
+		}
 	}
 
 	// Per-build `claude` logs (--build-via-mcp only). One shared dir; filenames

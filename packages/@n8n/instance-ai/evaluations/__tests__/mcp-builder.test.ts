@@ -7,11 +7,20 @@ import {
 	stageLaneMcpConfig,
 	tailWorkflowId,
 	uniqueProjectScopes,
+	unsupportedMcpBuildSetupFields,
 } from '../cli/mcp-builder';
-import type { ConversationTurn } from '../types';
+import type { ConversationTurn, WorkflowTestCase } from '../types';
 
 const user = (text: string): ConversationTurn => ({ role: 'user', text });
 const assistant = (text: string): ConversationTurn => ({ role: 'assistant', text });
+
+const testCase = (overrides: Partial<WorkflowTestCase> = {}): WorkflowTestCase => ({
+	conversation: [user('Build a contact form')],
+	complexity: 'simple',
+	tags: [],
+	datasets: ['full'],
+	...overrides,
+});
 
 describe('buildPromptFromConversation', () => {
 	it('returns the single user turn verbatim', () => {
@@ -90,6 +99,40 @@ describe('uniqueProjectScopes', () => {
 			'/b',
 			'/c',
 		]);
+	});
+});
+
+describe('unsupportedMcpBuildSetupFields', () => {
+	it('returns no fields for a plain conversation-only case', () => {
+		expect(unsupportedMcpBuildSetupFields(testCase())).toEqual([]);
+	});
+
+	it('treats an empty credentials array as supported', () => {
+		expect(unsupportedMcpBuildSetupFields(testCase({ credentials: [] }))).toEqual([]);
+	});
+
+	it('does not flag messageBudget (inapplicable to a single-shot claude build)', () => {
+		expect(unsupportedMcpBuildSetupFields(testCase({ messageBudget: 6 }))).toEqual([]);
+	});
+
+	it.each<[string, Partial<WorkflowTestCase>]>([
+		['credentials', { credentials: [{ type: 'slackApi' }] }],
+		['seedFile', { seedFile: 'seeds/some-thread.seed.json' }],
+		['priorConversation', { priorConversation: [user('We already agreed on #alerts')] }],
+		['seedThread', { seedThread: { threadId: 't1' } }],
+	])('flags %s', (field, overrides) => {
+		expect(unsupportedMcpBuildSetupFields(testCase(overrides))).toEqual([field]);
+	});
+
+	it('flags multiple declared fields together', () => {
+		expect(
+			unsupportedMcpBuildSetupFields(
+				testCase({
+					credentials: [{ type: 'slackApi' }],
+					priorConversation: [user('prelude')],
+				}),
+			),
+		).toEqual(['credentials', 'priorConversation']);
 	});
 });
 
