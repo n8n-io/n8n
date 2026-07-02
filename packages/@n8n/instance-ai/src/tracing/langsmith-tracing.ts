@@ -7,6 +7,7 @@ import {
 	type InterruptibleToolContext,
 	type ToolContext,
 } from '@n8n/agents';
+import { isRecord } from '@n8n/utils/is-record';
 import {
 	ROOT_CONTEXT,
 	SpanStatusCode,
@@ -51,7 +52,6 @@ import {
 } from './trace-payloads';
 import type { IdRemapper, TraceIndex, TraceWriter } from './trace-replay';
 import { PURE_REPLAY_TOOLS } from './trace-replay';
-import { isRecord } from '../utils/stream-helpers';
 
 export {
 	buildAgentTraceInputs,
@@ -1278,11 +1278,20 @@ function recordWrapTool(
 			const resumeData = isInterruptibleToolContext(context) ? context.resumeData : undefined;
 			const inputRecord = (input ?? {}) as Record<string, unknown>;
 			let capturedSuspendPayload: Record<string, unknown> | undefined;
+			let recordedSuspend = false;
 			const wrappedContext: NativeToolContext = isInterruptibleToolContext(context)
 				? {
 						...context,
 						suspend: async (suspendPayload: unknown) => {
 							capturedSuspendPayload = isRecord(suspendPayload) ? suspendPayload : {};
+							traceWriter.recordToolSuspend(
+								agentRole,
+								tool.name,
+								inputRecord,
+								{},
+								capturedSuspendPayload,
+							);
+							recordedSuspend = true;
 							return await context.suspend(suspendPayload);
 						},
 					}
@@ -1300,13 +1309,15 @@ function recordWrapTool(
 					resumeData as Record<string, unknown>,
 				);
 			} else if (capturedSuspendPayload) {
-				traceWriter.recordToolSuspend(
-					agentRole,
-					tool.name,
-					inputRecord,
-					{},
-					capturedSuspendPayload,
-				);
+				if (!recordedSuspend) {
+					traceWriter.recordToolSuspend(
+						agentRole,
+						tool.name,
+						inputRecord,
+						{},
+						capturedSuspendPayload,
+					);
+				}
 			} else {
 				traceWriter.recordToolCall(agentRole, tool.name, inputRecord, outputRecord);
 			}

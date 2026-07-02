@@ -2,20 +2,28 @@ import { CredentialsRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
+import { FULL_ACCESS_NODE_TYPES } from 'n8n-core';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import {
 	validateWorkflowHasTriggerLikeNode,
 	NodeHelpers,
-	ensureError,
 	mapConnectionsByDestination,
 	validateNodeCredentials,
 	isNodeConnected,
 	isTriggerLikeNode,
-	toExecutionContextEstablishmentHookParameter,
-	CHAT_TRIGGER_NODE_TYPE,
+	classifyTriggerIdentity,
 } from 'n8n-workflow';
-import type { INode, INodes, IConnections, INodeType, IWorkflowSettings } from 'n8n-workflow';
+import type {
+	INode,
+	INodes,
+	IConnections,
+	INodeType,
+	IWorkflowSettings,
+	ICredentialType,
+} from 'n8n-workflow';
 
 import { STARTING_NODES } from '@/constants';
+import { CredentialTypes } from '@/credential-types';
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import type { NodeTypes } from '@/node-types';
 
@@ -38,12 +46,18 @@ export interface WorkflowStatus {
 	name?: string;
 }
 
+/** Formats credential names as a quoted, comma-separated list for error messages. */
+function formatCredentialNames(credentials: Array<{ name: string }>): string {
+	return credentials.map((c) => `"${c.name}"`).join(', ');
+}
+
 @Service()
 export class WorkflowValidationService {
 	constructor(
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly credentialsRepository: CredentialsRepository,
 		private readonly dynamicCredentialsProxy: DynamicCredentialsProxy,
+		private readonly credentialTypes: CredentialTypes,
 	) {}
 
 	/**
@@ -163,12 +177,99 @@ export class WorkflowValidationService {
 		return issues;
 	}
 
+	/**
+	 * Rejects workflows that bind a credential whose type sets
+	 * `restrictToSupportedNodes: true` to a node not listed in its `supportedNodes`.
+	 * Runs on every save — illegal bindings should never be persisted.
+	 */
+	validateCredentialNodeRestrictions(nodes: INode[]): WorkflowValidationResult {
+		const violations: string[] = [];
+
+		for (const node of nodes) {
+			// Validate disabled nodes too — illegal bindings must never be persisted.
+			// A disabled node can be re-enabled later (separate save, direct DB write,
+			// workflow import), and the DB state should remain consistent regardless.
+			if (!node.credentials) continue;
+
+			const activeCredentialTypes = this.getActiveCredentialTypes(node);
+
+			for (const credentialType of activeCredentialTypes) {
+				if (!node.credentials[credentialType]) continue;
+
+				let typeDef: ICredentialType | undefined;
+				try {
+					typeDef = this.credentialTypes.getByName(credentialType);
+				} catch {
+					continue; // unknown type — let other validators surface it
+				}
+
+				if (!typeDef?.restrictToSupportedNodes) continue;
+
+				// `typeDef.supportedNodes` from the loader holds short node names
+				// (e.g. "mattermost"), but `node.type` is fully qualified
+				// (e.g. "n8n-nodes-base.mattermost"). `getSupportedNodes` returns
+				// the post-processed FQ list so the comparison can match.
+				const supportedNodes = this.credentialTypes.getSupportedNodes(credentialType);
+				if (supportedNodes.includes(node.type)) continue;
+
+				violations.push(
+					`Node "${node.name}" (${node.type}) cannot use credential type "${credentialType}" — it is restricted to: ${
+						supportedNodes.length > 0 ? supportedNodes.join(', ') : '(no nodes)'
+					}.`,
+				);
+			}
+		}
+
+		if (violations.length === 0) return { isValid: true };
+
+		return {
+			isValid: false,
+			error: `Cannot save workflow: ${violations.join(' ')}`,
+		};
+	}
+
+	/**
+	 * Returns the credential types that are actively in use on a node — the
+	 * subset of `node.credentials` keys we should validate against.
+	 *
+	 * For "full-access" nodes (HTTP Request + its tool variants), the editor
+	 * spreads `node.credentials` instead of replacing it when the user switches
+	 * credential type, leaving inactive keys behind. Only the credential
+	 * pointed at by the active `authentication` parameter is in use, so we
+	 * limit the check to that one — otherwise the validator would reject a
+	 * save based on an entry the user can't even see in the UI.
+	 *
+	 * For all other nodes, every entry in `node.credentials` corresponds to a
+	 * declared credential the node may use (gated by `displayOptions` at
+	 * runtime), so all keys remain candidates.
+	 */
+	private getActiveCredentialTypes(node: INode): string[] {
+		if (!node.credentials) return [];
+
+		if (!FULL_ACCESS_NODE_TYPES.has(node.type)) {
+			return Object.keys(node.credentials);
+		}
+
+		const params = (node.parameters ?? {}) as Record<string, unknown>;
+		const auth = typeof params.authentication === 'string' ? params.authentication : null;
+
+		if (auth === 'predefinedCredentialType') {
+			const cred = params.nodeCredentialType;
+			return typeof cred === 'string' && cred.length > 0 ? [cred] : [];
+		}
+		if (auth === 'genericCredentialType') {
+			const cred = params.genericAuthType;
+			return typeof cred === 'string' && cred.length > 0 ? [cred] : [];
+		}
+		return [];
+	}
+
 	validateForActivation(
 		nodes: INodes,
 		connections: IConnections,
 		nodeTypes: NodeTypes,
 	): WorkflowValidationResult {
-		// Validate trigger nodes
+		// Validate workflow entry points: active, poll, webhook, or schedule triggers.
 		const triggerValidation = validateWorkflowHasTriggerLikeNode(nodes, nodeTypes, STARTING_NODES);
 
 		if (!triggerValidation.isValid) {
@@ -176,7 +277,7 @@ export class WorkflowValidationService {
 				isValid: false,
 				error:
 					triggerValidation.error ??
-					'Workflow cannot be activated because it has no trigger node. At least one trigger, webhook, or polling node is required.',
+					'Workflow cannot be activated because it has no trigger node. At least one active trigger, poll trigger, webhook trigger, or schedule trigger node is required.',
 			};
 		}
 
@@ -192,88 +293,121 @@ export class WorkflowValidationService {
 	}
 
 	/**
-	 * Validates that workflows using dynamic (resolvable) credentials have:
-	 * 1. A resolver configured on each dynamic credential.
-	 * 2. At least one trigger node with context establishment hooks configured.
-	 * These hooks extract identity from trigger data (e.g., bearer tokens from HTTP headers)
-	 * and are required for dynamic credential resolution.
+	 * Validates that a workflow using dynamic (resolvable) credentials has a
+	 * resolver configured and a trigger that provides the identity it needs.
+	 *
+	 * The resolver is workflow-level (`settings.credentialResolverId` override or
+	 * the seeded system resolver):
+	 * - A custom resolver (OAuth, Slack, …) keys on an external identity extracted
+	 *   from trigger data, so it needs a trigger with a context establishment hook.
+	 * - The default/system resolver keys on the n8n user identity, so it needs a
+	 *   manual, chat, or sub-workflow trigger.
 	 */
 	async validateDynamicCredentials(
 		nodes: INode[],
 		nodeTypes: NodeTypes,
 		workflowSettings?: IWorkflowSettings,
 	): Promise<WorkflowValidationResult> {
-		const credentialIds = new Set<string>();
-		for (const node of nodes) {
-			if (node.disabled) continue;
-			for (const credName of Object.keys(node.credentials ?? {})) {
-				const credData = node.credentials?.[credName];
-				if (credData?.id) {
-					credentialIds.add(credData.id);
-				}
-			}
-		}
-
+		const credentialIds = this.collectCredentialIds(nodes);
 		if (credentialIds.size === 0) {
 			return { isValid: true };
 		}
 
 		const resolvableCredentials = await this.credentialsRepository.find({
 			where: { id: In([...credentialIds]), isResolvable: true },
-			select: ['id', 'name', 'resolverId'],
+			select: ['id', 'name'],
 		});
 
 		if (resolvableCredentials.length === 0) {
 			return { isValid: true };
 		}
 
-		const errors: string[] = [];
+		const credNames = formatCredentialNames(resolvableCredentials);
 
-		// A credential is covered if it has its own resolver OR the workflow has a defined resolver
-		// (workflow override, or the seeded system resolver looked up via the proxy).
+		// Workflow override if present, otherwise the seeded system resolver (null when neither).
 		const workflowResolverId =
 			this.dynamicCredentialsProxy.getEffectiveResolverId(workflowSettings);
+		const triggers = this.classifyTriggerIdentities(nodes, nodeTypes);
+
+		const error = this.getDynamicCredentialsError(workflowResolverId, credNames, triggers);
+
+		return error
+			? { isValid: false, error: `Cannot publish workflow: ${error}` }
+			: { isValid: true };
+	}
+
+	/**
+	 * Returns the publish error for the workflow's resolvable credentials, or
+	 * `undefined` when they are valid.
+	 */
+	private getDynamicCredentialsError(
+		workflowResolverId: string | null,
+		credNames: string,
+		triggers: { hasExternalIdentityTrigger: boolean; hasN8nIdentityTrigger: boolean },
+	): string | undefined {
 		if (!workflowResolverId) {
-			const credentialsWithoutResolver = resolvableCredentials.filter((c) => !c.resolverId);
-			if (credentialsWithoutResolver.length > 0) {
-				const credNames = credentialsWithoutResolver.map((c) => `"${c.name}"`).join(', ');
-				errors.push(`dynamic credentials (${credNames}) require a resolver to be configured.`);
-			}
+			return `dynamic credentials (${credNames}) require a resolver to be configured.`;
 		}
 
-		const hasExtractorHook = nodes.some((node) => {
-			if (node.disabled) return false;
+		const { hasExternalIdentityTrigger, hasN8nIdentityTrigger } = triggers;
+
+		if (workflowResolverId === this.dynamicCredentialsProxy.getSystemResolverId()) {
+			// System resolver: needs the n8n user identity.
+			return hasN8nIdentityTrigger
+				? undefined
+				: `private credentials (${credNames}) are only supported in workflows triggered manually, via chat, or as a sub-workflow.`;
+		}
+
+		// Custom resolver: needs an external identity from the trigger.
+		return hasExternalIdentityTrigger
+			? undefined
+			: `dynamic credentials (${credNames}) require a trigger with an identity extractor configured. Please configure an identity extractor on the trigger node.`;
+	}
+
+	/** Collects the ids of all credentials referenced by enabled nodes. */
+	private collectCredentialIds(nodes: INode[]): Set<string> {
+		const credentialIds = new Set<string>();
+		for (const node of nodes) {
+			if (node.disabled) continue;
+			for (const credName of Object.keys(node.credentials ?? {})) {
+				const credId = node.credentials?.[credName]?.id;
+				if (credId) {
+					credentialIds.add(credId);
+				}
+			}
+		}
+		return credentialIds;
+	}
+
+	/**
+	 * Classifies a workflow's triggers by the identity they can provide:
+	 * - `hasExternalIdentityTrigger`: external identity (context hook, Chat Hub, sub-workflow).
+	 * - `hasN8nIdentityTrigger`: n8n user identity (manual/chat, Chat Hub, sub-workflow).
+	 *
+	 * The per-trigger classification lives in `classifyTriggerIdentity` (n8n-workflow)
+	 * so the editor's trigger-compatibility warning can reuse the exact same rules.
+	 */
+	private classifyTriggerIdentities(
+		nodes: INode[],
+		nodeTypes: NodeTypes,
+	): { hasExternalIdentityTrigger: boolean; hasN8nIdentityTrigger: boolean } {
+		let hasExternalIdentityTrigger = false;
+		let hasN8nIdentityTrigger = false;
+
+		for (const node of nodes) {
+			if (node.disabled) continue;
 			const nodeType = nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-			if (!nodeType || !isTriggerLikeNode(nodeType)) return false;
+			if (!nodeType || !isTriggerLikeNode(nodeType)) continue;
 
-			// Chat Trigger nodes with availableInChat have identity injected at runtime by Chat Hub
-			if (node.type === CHAT_TRIGGER_NODE_TYPE && node.parameters.availableInChat === true) {
-				return true;
-			}
-
-			const hookParams = toExecutionContextEstablishmentHookParameter(node.parameters);
-			return (
-				hookParams !== null &&
-				hookParams.success &&
-				hookParams.data.contextEstablishmentHooks.hooks.length > 0
+			const { providesExternalIdentity, providesN8nIdentity } = classifyTriggerIdentity(
+				node.type,
+				node.parameters,
 			);
-		});
-
-		if (!hasExtractorHook) {
-			const credNames = resolvableCredentials.map((c) => `"${c.name}"`).join(', ');
-			errors.push(
-				`dynamic credentials (${credNames}) require a trigger with an identity extractor configured. Please configure an identity extractor on the trigger node.`,
-			);
+			hasExternalIdentityTrigger ||= providesExternalIdentity;
+			hasN8nIdentityTrigger ||= providesN8nIdentity;
 		}
 
-		if (errors.length > 0) {
-			return {
-				isValid: false,
-				error: `Cannot publish workflow: ${errors.join(' ')}`,
-			};
-		}
-
-		return { isValid: true };
+		return { hasExternalIdentityTrigger, hasN8nIdentityTrigger };
 	}
 
 	/**

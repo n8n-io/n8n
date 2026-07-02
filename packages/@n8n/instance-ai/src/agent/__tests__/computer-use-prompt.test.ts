@@ -313,30 +313,9 @@ describe('getComputerUsePrompt', () => {
 			expect(result).toContain('browser_create_credential');
 		});
 
-		it('documents both element union shapes (redactedKey and ref)', () => {
+		it('routes detailed setup guidance through the Computer Use credential skill', () => {
 			const result = browserPrompt();
-			expect(result).toContain('"redactedKey"');
-			expect(result).toContain('"ref"');
-		});
-
-		it('points to non-interactive snapshots for plain-text secrets', () => {
-			expect(browserPrompt()).toContain('interactive: false');
-		});
-
-		it('distinguishes data (literal fields) from resolveData (buffer field names)', () => {
-			const result = browserPrompt();
-			expect(result).toContain('`data`');
-			expect(result).toContain('`resolveData`');
-		});
-
-		it('warns about reusing the same credentialsKey across calls', () => {
-			expect(browserPrompt()).toContain('same `credentialsKey`');
-		});
-
-		it('tells the agent to capture by ref instead of clicking a "show" reveal button', () => {
-			expect(browserPrompt()).toContain(
-				'directly capture the secret with the ref and don\'t click the "show" button',
-			);
+			expect(result).toMatch(/load\s+the `credential-setup-with-computer-use` skill and follow it/);
 		});
 
 		it('is absent when browser is not available', () => {
@@ -376,6 +355,30 @@ describe('getComputerUsePrompt', () => {
 			});
 
 			expect(result).not.toContain('Sensitive content on screen');
+		});
+	});
+
+	describe('browser runtime-failure guidance', () => {
+		it('tells the agent that browser_navigate needs an open tab and to fall back to browser_tab_open', () => {
+			const result = getComputerUsePrompt({
+				browserAvailable: true,
+				localGateway: { status: 'connected', capabilities: ['browser'] },
+			});
+
+			const line = result
+				.split('\n')
+				.find((l) => l.includes('browser_navigate') && l.includes('browser_tab_open'));
+			expect(line).toBeDefined();
+			expect(line).toContain('requires a connected tab');
+		});
+
+		it('is absent when browser is not available', () => {
+			const result = getComputerUsePrompt({
+				browserAvailable: false,
+				localGateway: { status: 'connected', capabilities: ['browser'] },
+			});
+
+			expect(result).not.toContain('browser_tab_open');
 		});
 	});
 });

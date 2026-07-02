@@ -72,7 +72,7 @@ import { useI18n } from '@n8n/i18n';
 import camelCase from 'lodash/camelCase';
 import type { INodeTypeDescription, NodeConnectionType, Themed } from 'n8n-workflow';
 import { EVALUATION_TRIGGER_NODE_TYPE, isHitlToolType, NodeConnectionTypes } from 'n8n-workflow';
-import { getAiTemplatesCallout } from '../nodeCreator.utils';
+import { getAiTemplatesCallout, getSendAndWaitNodes } from '../nodeCreator.utils';
 
 export interface NodeViewItemSection {
 	key: string;
@@ -522,12 +522,6 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 		DATETIME_NODE_TYPE,
 		AI_TRANSFORM_NODE_TYPE,
 	];
-
-	const getSendAndWaitNodes = (nodes: SimplifiedNodeType[]) => {
-		return (nodes ?? [])
-			.filter((node) => node.codex?.categories?.includes(HUMAN_IN_THE_LOOP_CATEGORY))
-			.map((node) => node.name);
-	};
 
 	const view: NodeView = {
 		value: REGULAR_NODE_CREATOR_VIEW,

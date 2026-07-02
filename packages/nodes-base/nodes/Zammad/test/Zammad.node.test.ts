@@ -8,25 +8,27 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import * as GenericFunctions from '../GenericFunctions';
 import { Zammad } from '../Zammad.node';
+import type { Mock } from 'vitest';
+import type * as _importType0 from '../GenericFunctions';
 
-jest.mock('../GenericFunctions', () => ({
-	...jest.requireActual('../GenericFunctions'),
-	zammadApiRequest: jest.fn(),
-	zammadApiRequestAllItems: jest.fn(),
-	getAllFields: jest.fn(),
-	getGroupCustomFields: jest.fn(),
-	getOrganizationCustomFields: jest.fn(),
-	getUserCustomFields: jest.fn(),
-	getTicketCustomFields: jest.fn(),
-	getGroupFields: jest.fn(),
-	getOrganizationFields: jest.fn(),
-	getTicketFields: jest.fn(),
-	getUserFields: jest.fn(),
-	doesNotBelongToZammad: jest.fn(),
-	fieldToLoadOption: jest.fn(),
-	isCustomer: jest.fn(),
-	isNotZammadFoundation: jest.fn(),
-	throwOnEmptyUpdate: jest.fn(),
+vi.mock('../GenericFunctions', async () => ({
+	...(await vi.importActual<typeof _importType0>('../GenericFunctions')),
+	zammadApiRequest: vi.fn(),
+	zammadApiRequestAllItems: vi.fn(),
+	getAllFields: vi.fn(),
+	getGroupCustomFields: vi.fn(),
+	getOrganizationCustomFields: vi.fn(),
+	getUserCustomFields: vi.fn(),
+	getTicketCustomFields: vi.fn(),
+	getGroupFields: vi.fn(),
+	getOrganizationFields: vi.fn(),
+	getTicketFields: vi.fn(),
+	getUserFields: vi.fn(),
+	doesNotBelongToZammad: vi.fn(),
+	fieldToLoadOption: vi.fn(),
+	isCustomer: vi.fn(),
+	isNotZammadFoundation: vi.fn(),
+	throwOnEmptyUpdate: vi.fn(),
 }));
 
 describe('Zammad Node', () => {
@@ -37,33 +39,33 @@ describe('Zammad Node', () => {
 
 	beforeEach(() => {
 		node = new Zammad();
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		mockExecuteFunctions = {
-			getInputData: jest.fn().mockReturnValue([{}]),
-			getNodeParameter: jest.fn(),
-			getNode: jest.fn().mockReturnValue({ id: 'test-node', name: 'Test Node', type: 'zammad' }),
-			continueOnFail: jest.fn().mockReturnValue(false),
+			getInputData: vi.fn().mockReturnValue([{}]),
+			getNodeParameter: vi.fn(),
+			getNode: vi.fn().mockReturnValue({ id: 'test-node', name: 'Test Node', type: 'zammad' }),
+			continueOnFail: vi.fn().mockReturnValue(false),
 			helpers: {
-				constructExecutionMetaData: jest
+				constructExecutionMetaData: vi
 					.fn()
 					.mockImplementation((data: any, meta: any) =>
 						data.map((item: any) => ({ json: item, itemData: meta.itemData })),
 					),
-				returnJsonArray: jest
+				returnJsonArray: vi
 					.fn()
 					.mockImplementation((data: any) => (Array.isArray(data) ? data : [data])),
 			},
 		} as unknown as Partial<IExecuteFunctions>;
 
 		mockLoadOptionsFunctions = {
-			getCredentials: jest.fn(),
-			getNode: jest.fn(),
+			getCredentials: vi.fn(),
+			getNode: vi.fn(),
 		} as Partial<ILoadOptionsFunctions>;
 
 		mockCredentialTestFunctions = {
 			helpers: {
-				request: jest.fn(),
+				request: vi.fn(),
 			},
 		} as unknown as Partial<ICredentialTestFunctions>;
 	});
@@ -111,7 +113,7 @@ describe('Zammad Node', () => {
 				},
 			};
 
-			(mockCredentialTestFunctions.helpers!.request as jest.Mock).mockResolvedValue({
+			(mockCredentialTestFunctions.helpers!.request as Mock).mockResolvedValue({
 				success: true,
 			});
 
@@ -149,7 +151,7 @@ describe('Zammad Node', () => {
 				},
 			};
 
-			(mockCredentialTestFunctions.helpers!.request as jest.Mock).mockResolvedValue({
+			(mockCredentialTestFunctions.helpers!.request as Mock).mockResolvedValue({
 				success: true,
 			});
 
@@ -188,7 +190,7 @@ describe('Zammad Node', () => {
 			};
 
 			const error = new Error('Unauthorized');
-			(mockCredentialTestFunctions.helpers!.request as jest.Mock).mockRejectedValue(error);
+			(mockCredentialTestFunctions.helpers!.request as Mock).mockRejectedValue(error);
 
 			const result = await node.methods.credentialTest.zammadBasicAuthApiTest.call(
 				mockCredentialTestFunctions as ICredentialTestFunctions,
@@ -204,17 +206,17 @@ describe('Zammad Node', () => {
 
 	describe('Load Options', () => {
 		beforeEach(() => {
-			(GenericFunctions.getAllFields as jest.Mock).mockResolvedValue([
+			(GenericFunctions.getAllFields as Mock).mockResolvedValue([
 				{ id: 1, name: 'Test Field', object: 'User' },
 				{ id: 2, name: 'Custom Field', object: 'User' },
 			]);
 		});
 
 		it('should load group custom fields', async () => {
-			(GenericFunctions.getGroupCustomFields as jest.Mock).mockReturnValue([
+			(GenericFunctions.getGroupCustomFields as Mock).mockReturnValue([
 				{ id: 1, name: 'Group Custom Field' },
 			]);
-			(GenericFunctions.fieldToLoadOption as jest.Mock).mockReturnValue({
+			(GenericFunctions.fieldToLoadOption as Mock).mockReturnValue({
 				name: 'Group Custom Field',
 				value: 1,
 			});
@@ -233,7 +235,7 @@ describe('Zammad Node', () => {
 				{ id: 1, name: 'Open' },
 				{ id: 2, name: 'Closed' },
 			];
-			(GenericFunctions.zammadApiRequest as jest.Mock).mockResolvedValue(mockStates);
+			(GenericFunctions.zammadApiRequest as Mock).mockResolvedValue(mockStates);
 
 			const result = await node.methods.loadOptions.loadTicketStates.call(
 				mockLoadOptionsFunctions as ILoadOptionsFunctions,
@@ -251,7 +253,7 @@ describe('Zammad Node', () => {
 				{ id: 1, name: 'Support' },
 				{ id: 2, name: 'Sales' },
 			];
-			(GenericFunctions.zammadApiRequest as jest.Mock).mockResolvedValue(mockGroups);
+			(GenericFunctions.zammadApiRequest as Mock).mockResolvedValue(mockGroups);
 
 			const result = await node.methods.loadOptions.loadGroups.call(
 				mockLoadOptionsFunctions as ILoadOptionsFunctions,
@@ -269,7 +271,7 @@ describe('Zammad Node', () => {
 				{ id: 1, name: 'Support' },
 				{ id: 2, name: 'Sales' },
 			];
-			(GenericFunctions.zammadApiRequest as jest.Mock).mockResolvedValue(mockGroups);
+			(GenericFunctions.zammadApiRequest as Mock).mockResolvedValue(mockGroups);
 
 			const result = await node.methods.loadOptions.loadGroupNames.call(
 				mockLoadOptionsFunctions as ILoadOptionsFunctions,
@@ -288,8 +290,8 @@ describe('Zammad Node', () => {
 				{ id: 2, name: 'Beta Inc' },
 				{ id: 3, name: 'Zammad Foundation' }, // This should be filtered out
 			];
-			(GenericFunctions.zammadApiRequest as jest.Mock).mockResolvedValue(mockOrganizations);
-			(GenericFunctions.isNotZammadFoundation as jest.Mock).mockImplementation(
+			(GenericFunctions.zammadApiRequest as Mock).mockResolvedValue(mockOrganizations);
+			(GenericFunctions.isNotZammadFoundation as Mock).mockImplementation(
 				(org) => org.name !== 'Zammad Foundation',
 			);
 
@@ -310,10 +312,8 @@ describe('Zammad Node', () => {
 				{ id: 2, email: 'agent@example.com', role: 'agent' },
 				{ id: 3, email: 'customer2@example.com', role: 'customer' },
 			];
-			(GenericFunctions.zammadApiRequest as jest.Mock).mockResolvedValue(mockUsers);
-			(GenericFunctions.isCustomer as jest.Mock).mockImplementation(
-				(user) => user.role === 'customer',
-			);
+			(GenericFunctions.zammadApiRequest as Mock).mockResolvedValue(mockUsers);
+			(GenericFunctions.isCustomer as Mock).mockImplementation((user) => user.role === 'customer');
 
 			const result = await node.methods.loadOptions.loadCustomerEmails.call(
 				mockLoadOptionsFunctions as ILoadOptionsFunctions,
@@ -329,7 +329,7 @@ describe('Zammad Node', () => {
 
 	describe('Execute - User Operations', () => {
 		beforeEach(() => {
-			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation(
 				(paramName, _itemIndex) => {
 					if (paramName === 'resource') return 'user';
 					if (paramName === 'operation') return 'create';
@@ -341,7 +341,7 @@ describe('Zammad Node', () => {
 		it('should create a user', async () => {
 			const mockUser = { id: 1, firstname: 'John', lastname: 'Doe' };
 
-			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation(
 				(paramName, _itemIndex) => {
 					switch (paramName) {
 						case 'resource':
@@ -360,7 +360,7 @@ describe('Zammad Node', () => {
 				},
 			);
 
-			(GenericFunctions.zammadApiRequest as jest.Mock).mockResolvedValue(mockUser);
+			(GenericFunctions.zammadApiRequest as Mock).mockResolvedValue(mockUser);
 
 			const result = await node.execute.call(mockExecuteFunctions as IExecuteFunctions);
 
@@ -374,7 +374,7 @@ describe('Zammad Node', () => {
 		it('should update a user', async () => {
 			const mockUser = { id: 1, firstname: 'John', lastname: 'Smith' };
 
-			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation(
 				(paramName, _itemIndex) => {
 					switch (paramName) {
 						case 'resource':
@@ -391,7 +391,7 @@ describe('Zammad Node', () => {
 				},
 			);
 
-			(GenericFunctions.zammadApiRequest as jest.Mock).mockResolvedValue(mockUser);
+			(GenericFunctions.zammadApiRequest as Mock).mockResolvedValue(mockUser);
 
 			const result = await node.execute.call(mockExecuteFunctions as IExecuteFunctions);
 
@@ -402,7 +402,7 @@ describe('Zammad Node', () => {
 		});
 
 		it('should throw error on empty update', async () => {
-			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation(
 				(paramName, _itemIndex) => {
 					switch (paramName) {
 						case 'resource':
@@ -419,7 +419,7 @@ describe('Zammad Node', () => {
 				},
 			);
 
-			(GenericFunctions.throwOnEmptyUpdate as jest.Mock).mockImplementation(() => {
+			(GenericFunctions.throwOnEmptyUpdate as Mock).mockImplementation(() => {
 				throw new NodeOperationError(
 					mockExecuteFunctions.getNode!(),
 					'Please enter at least one field to update for the user resource',
@@ -434,7 +434,7 @@ describe('Zammad Node', () => {
 		});
 
 		it('should delete a user', async () => {
-			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation(
 				(paramName, _itemIndex) => {
 					switch (paramName) {
 						case 'resource':
@@ -449,7 +449,7 @@ describe('Zammad Node', () => {
 				},
 			);
 
-			(GenericFunctions.zammadApiRequest as jest.Mock).mockResolvedValue({});
+			(GenericFunctions.zammadApiRequest as Mock).mockResolvedValue({});
 
 			const result = await node.execute.call(mockExecuteFunctions as IExecuteFunctions);
 
@@ -460,7 +460,7 @@ describe('Zammad Node', () => {
 		it('should get a user', async () => {
 			const mockUser = { id: 1, firstname: 'John', lastname: 'Doe' };
 
-			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation(
 				(paramName, _itemIndex) => {
 					switch (paramName) {
 						case 'resource':
@@ -475,7 +475,7 @@ describe('Zammad Node', () => {
 				},
 			);
 
-			(GenericFunctions.zammadApiRequest as jest.Mock).mockResolvedValue(mockUser);
+			(GenericFunctions.zammadApiRequest as Mock).mockResolvedValue(mockUser);
 
 			const result = await node.execute.call(mockExecuteFunctions as IExecuteFunctions);
 
@@ -489,7 +489,7 @@ describe('Zammad Node', () => {
 				{ id: 2, firstname: 'Jane', lastname: 'Smith', _preferences: {} },
 			];
 
-			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation(
 				(paramName, _itemIndex) => {
 					switch (paramName) {
 						case 'resource':
@@ -506,7 +506,7 @@ describe('Zammad Node', () => {
 				},
 			);
 
-			(GenericFunctions.zammadApiRequestAllItems as jest.Mock).mockResolvedValue(mockUsers);
+			(GenericFunctions.zammadApiRequestAllItems as Mock).mockResolvedValue(mockUsers);
 
 			const result = await node.execute.call(mockExecuteFunctions as IExecuteFunctions);
 
@@ -527,7 +527,7 @@ describe('Zammad Node', () => {
 		it('should get current user', async () => {
 			const mockUser = { id: 1, firstname: 'Current', lastname: 'User' };
 
-			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation(
 				(paramName, _itemIndex) => {
 					switch (paramName) {
 						case 'resource':
@@ -540,7 +540,7 @@ describe('Zammad Node', () => {
 				},
 			);
 
-			(GenericFunctions.zammadApiRequest as jest.Mock).mockResolvedValue(mockUser);
+			(GenericFunctions.zammadApiRequest as Mock).mockResolvedValue(mockUser);
 
 			const result = await node.execute.call(mockExecuteFunctions as IExecuteFunctions);
 
@@ -551,7 +551,7 @@ describe('Zammad Node', () => {
 
 	describe('Execute - Ticket Operations', () => {
 		beforeEach(() => {
-			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation(
 				(paramName, _itemIndex) => {
 					if (paramName === 'resource') return 'ticket';
 					return null;
@@ -563,7 +563,7 @@ describe('Zammad Node', () => {
 			const mockTicket = { id: 1, title: 'Test Ticket' };
 			const mockArticles = [{ id: 1, body: 'Test article' }];
 
-			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation(
 				(paramName, _itemIndex) => {
 					switch (paramName) {
 						case 'resource':
@@ -597,7 +597,7 @@ describe('Zammad Node', () => {
 				},
 			);
 
-			(GenericFunctions.zammadApiRequest as jest.Mock)
+			(GenericFunctions.zammadApiRequest as Mock)
 				.mockResolvedValueOnce(mockTicket)
 				.mockResolvedValueOnce(mockArticles);
 
@@ -620,7 +620,7 @@ describe('Zammad Node', () => {
 			const mockTicket = { id: 2, title: 'Email Ticket' };
 			const mockArticles = [{ id: 2, body: 'Email body' }];
 
-			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation(
 				(paramName, _itemIndex) => {
 					switch (paramName) {
 						case 'resource':
@@ -652,7 +652,7 @@ describe('Zammad Node', () => {
 				},
 			);
 
-			(GenericFunctions.zammadApiRequest as jest.Mock)
+			(GenericFunctions.zammadApiRequest as Mock)
 				.mockResolvedValueOnce(mockTicket)
 				.mockResolvedValueOnce(mockArticles);
 
@@ -674,7 +674,7 @@ describe('Zammad Node', () => {
 		});
 
 		it('should throw error when creating ticket without article', async () => {
-			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation(
 				(paramName, _itemIndex) => {
 					switch (paramName) {
 						case 'resource':
@@ -705,7 +705,7 @@ describe('Zammad Node', () => {
 		it('should update a ticket`s note', async () => {
 			const mockTicket = { id: 1, title: 'Updated Ticket' };
 
-			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation(
 				(paramName, _itemIndex) => {
 					switch (paramName) {
 						case 'resource':
@@ -725,7 +725,7 @@ describe('Zammad Node', () => {
 				},
 			);
 
-			(GenericFunctions.zammadApiRequest as jest.Mock).mockResolvedValue(mockTicket);
+			(GenericFunctions.zammadApiRequest as Mock).mockResolvedValue(mockTicket);
 
 			const result = await node.execute.call(mockExecuteFunctions as IExecuteFunctions);
 
@@ -744,7 +744,7 @@ describe('Zammad Node', () => {
 		it('should handle pending_time removal in ticket update', async () => {
 			const mockTicket = { id: 1, title: 'Test Ticket' };
 
-			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation(
 				(paramName, _itemIndex) => {
 					switch (paramName) {
 						case 'resource':
@@ -764,7 +764,7 @@ describe('Zammad Node', () => {
 				},
 			);
 
-			(GenericFunctions.zammadApiRequest as jest.Mock).mockResolvedValue(mockTicket);
+			(GenericFunctions.zammadApiRequest as Mock).mockResolvedValue(mockTicket);
 
 			await node.execute.call(mockExecuteFunctions as IExecuteFunctions);
 
@@ -776,7 +776,7 @@ describe('Zammad Node', () => {
 
 	describe('Execute - Organization Operations', () => {
 		beforeEach(() => {
-			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation(
 				(paramName, _itemIndex) => {
 					if (paramName === 'resource') return 'organization';
 					return null;
@@ -787,7 +787,7 @@ describe('Zammad Node', () => {
 		it('should create an organization', async () => {
 			const mockOrg = { id: 1, name: 'Test Org' };
 
-			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation(
 				(paramName, _itemIndex) => {
 					switch (paramName) {
 						case 'resource':
@@ -804,7 +804,7 @@ describe('Zammad Node', () => {
 				},
 			);
 
-			(GenericFunctions.zammadApiRequest as jest.Mock).mockResolvedValue(mockOrg);
+			(GenericFunctions.zammadApiRequest as Mock).mockResolvedValue(mockOrg);
 
 			const result = await node.execute.call(mockExecuteFunctions as IExecuteFunctions);
 
@@ -820,7 +820,7 @@ describe('Zammad Node', () => {
 				{ id: 2, name: 'Org 2' },
 			];
 
-			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation(
 				(paramName, _itemIndex) => {
 					switch (paramName) {
 						case 'resource':
@@ -837,7 +837,7 @@ describe('Zammad Node', () => {
 				},
 			);
 
-			(GenericFunctions.zammadApiRequestAllItems as jest.Mock).mockResolvedValue(mockOrgs);
+			(GenericFunctions.zammadApiRequestAllItems as Mock).mockResolvedValue(mockOrgs);
 
 			const result = await node.execute.call(mockExecuteFunctions as IExecuteFunctions);
 
@@ -854,7 +854,7 @@ describe('Zammad Node', () => {
 
 	describe('Execute - Group Operations', () => {
 		beforeEach(() => {
-			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation(
 				(paramName, _itemIndex) => {
 					if (paramName === 'resource') return 'group';
 					return null;
@@ -865,7 +865,7 @@ describe('Zammad Node', () => {
 		it('should create a group', async () => {
 			const mockGroup = { id: 1, name: 'Test Group' };
 
-			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation(
 				(paramName, _itemIndex) => {
 					switch (paramName) {
 						case 'resource':
@@ -882,7 +882,7 @@ describe('Zammad Node', () => {
 				},
 			);
 
-			(GenericFunctions.zammadApiRequest as jest.Mock).mockResolvedValue(mockGroup);
+			(GenericFunctions.zammadApiRequest as Mock).mockResolvedValue(mockGroup);
 
 			const result = await node.execute.call(mockExecuteFunctions as IExecuteFunctions);
 
@@ -898,7 +898,7 @@ describe('Zammad Node', () => {
 				{ id: 2, name: 'Group 2' },
 			];
 
-			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation(
 				(paramName, _itemIndex) => {
 					switch (paramName) {
 						case 'resource':
@@ -915,7 +915,7 @@ describe('Zammad Node', () => {
 				},
 			);
 
-			(GenericFunctions.zammadApiRequestAllItems as jest.Mock).mockResolvedValue(mockGroups);
+			(GenericFunctions.zammadApiRequestAllItems as Mock).mockResolvedValue(mockGroups);
 
 			const result = await node.execute.call(mockExecuteFunctions as IExecuteFunctions);
 
@@ -932,7 +932,7 @@ describe('Zammad Node', () => {
 
 	describe('Error Handling', () => {
 		beforeEach(() => {
-			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation(
 				(paramName, _itemIndex) => {
 					if (paramName === 'resource') return 'user';
 					if (paramName === 'operation') return 'get';
@@ -944,8 +944,8 @@ describe('Zammad Node', () => {
 
 		it('should handle API errors and continue on fail', async () => {
 			const error = new Error('User not found');
-			(GenericFunctions.zammadApiRequest as jest.Mock).mockRejectedValue(error);
-			(mockExecuteFunctions.continueOnFail as jest.Mock).mockReturnValue(true);
+			(GenericFunctions.zammadApiRequest as Mock).mockRejectedValue(error);
+			(mockExecuteFunctions.continueOnFail as Mock).mockReturnValue(true);
 
 			const result = await node.execute.call(mockExecuteFunctions as IExecuteFunctions);
 
@@ -954,8 +954,8 @@ describe('Zammad Node', () => {
 
 		it('should throw error when continue on fail is false', async () => {
 			const error = new Error('User not found');
-			(GenericFunctions.zammadApiRequest as jest.Mock).mockRejectedValue(error);
-			(mockExecuteFunctions.continueOnFail as jest.Mock).mockReturnValue(false);
+			(GenericFunctions.zammadApiRequest as Mock).mockRejectedValue(error);
+			(mockExecuteFunctions.continueOnFail as Mock).mockReturnValue(false);
 
 			await expect(node.execute.call(mockExecuteFunctions as IExecuteFunctions)).rejects.toThrow(
 				'User not found',
@@ -967,7 +967,7 @@ describe('Zammad Node', () => {
 		it('should handle custom fields in user creation', async () => {
 			const mockUser = { id: 1, firstname: 'John', lastname: 'Doe', custom_field: 'value' };
 
-			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation(
 				(paramName, _itemIndex) => {
 					switch (paramName) {
 						case 'resource':
@@ -990,7 +990,7 @@ describe('Zammad Node', () => {
 				},
 			);
 
-			(GenericFunctions.zammadApiRequest as jest.Mock).mockResolvedValue(mockUser);
+			(GenericFunctions.zammadApiRequest as Mock).mockResolvedValue(mockUser);
 
 			const result = await node.execute.call(mockExecuteFunctions as IExecuteFunctions);
 
@@ -1005,7 +1005,7 @@ describe('Zammad Node', () => {
 		it('should handle custom fields in ticket update', async () => {
 			const mockTicket = { id: 1, title: 'Test Ticket', custom_priority: 'high' };
 
-			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation(
 				(paramName, _itemIndex) => {
 					switch (paramName) {
 						case 'resource':
@@ -1026,7 +1026,7 @@ describe('Zammad Node', () => {
 				},
 			);
 
-			(GenericFunctions.zammadApiRequest as jest.Mock).mockResolvedValue(mockTicket);
+			(GenericFunctions.zammadApiRequest as Mock).mockResolvedValue(mockTicket);
 
 			const result = await node.execute.call(mockExecuteFunctions as IExecuteFunctions);
 

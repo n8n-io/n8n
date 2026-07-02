@@ -1,6 +1,7 @@
 import type { ModuleContext, ModuleInterface } from '@n8n/decorators';
 import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
+import { InstanceSettings } from 'n8n-core';
 
 @BackendModule({
 	name: 'otel',
@@ -8,29 +9,23 @@ import { Container } from '@n8n/di';
 })
 export class OtelModule implements ModuleInterface {
 	async init() {
-		const { OtelConfig } = await import('./otel.config');
-		const config = Container.get(OtelConfig);
-		if (!config.enabled) return;
+		await import('./otel-lifecycle-handler');
 
 		const { OtelService } = await import('./otel.service');
-		Container.get(OtelService).init();
+		await Container.get(OtelService).init();
 
-		// Importing the lifecycle handler triggers @OnLifecycleEvent registration
-		await import('./otel-lifecycle-handler');
+		if (Container.get(InstanceSettings).instanceType === 'main') {
+			await import('./otel-settings.controller');
+		}
 	}
 
 	async settings() {
-		const { OtelConfig } = await import('./otel.config');
-		const config = Container.get(OtelConfig);
-
-		return { enabled: config.enabled };
+		const { OtelSettingsService } = await import('./otel-settings.service');
+		const { enabled } = Container.get(OtelSettingsService).getSettings();
+		return { enabled };
 	}
 
 	async context(): Promise<ModuleContext> {
-		const { OtelConfig } = await import('./otel.config');
-		const config = Container.get(OtelConfig);
-		if (!config.enabled) return {};
-
 		const { ExecutionLevelTracer } = await import('./execution-level-tracer');
 		const tracer = Container.get(ExecutionLevelTracer);
 
@@ -41,10 +36,6 @@ export class OtelModule implements ModuleInterface {
 
 	@OnShutdown()
 	async shutdown() {
-		const { OtelConfig } = await import('./otel.config');
-		const config = Container.get(OtelConfig);
-		if (!config.enabled) return;
-
 		const { OtelService } = await import('./otel.service');
 		await Container.get(OtelService).shutdown();
 	}

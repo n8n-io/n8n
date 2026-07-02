@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { AuthenticatedRequest } from '@n8n/db';
-import { Get, Head, Post, RootLevelController } from '@n8n/decorators';
+import { createIpRateLimit, Get, Head, Post, RootLevelController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { Request, Response } from 'express';
 import { ErrorReporter } from 'n8n-core';
@@ -8,6 +8,7 @@ import { ErrorReporter } from 'n8n-core';
 import { Telemetry } from '@/telemetry';
 
 import { McpServerMiddlewareService } from './mcp-server-middleware.service';
+import { McpConfig } from './mcp.config';
 import {
 	USER_CONNECTED_TO_MCP_EVENT,
 	MCP_ACCESS_DISABLED_ERROR_MESSAGE,
@@ -22,6 +23,8 @@ import { getClientInfo } from './mcp.utils';
 export type FlushableResponse = Response & { flush: () => void };
 
 const getAuthMiddleware = () => Container.get(McpServerMiddlewareService).getAuthMiddleware();
+
+const mcpConfig = Container.get(McpConfig);
 
 @RootLevelController('/mcp-server')
 export class McpController {
@@ -72,7 +75,7 @@ export class McpController {
 	 * Allows clients like Gemini CLI to establish an SSE stream for server-to-client notifications.
 	 */
 	@Get('/http', {
-		ipRateLimit: { limit: 100 },
+		ipRateLimit: createIpRateLimit(mcpConfig.rateLimitServer),
 		middlewares: [getAuthMiddleware()],
 		skipAuth: true,
 		usesTemplates: true,
@@ -87,7 +90,8 @@ export class McpController {
 		}
 
 		try {
-			await this.handleTransportRequest(req, res);
+			const { enabled: mcpAppsEnabled } = await this.mcpService.resolveMcpAppsVariant(req.user);
+			await this.handleTransportRequest(req, res, mcpAppsEnabled);
 		} catch (error) {
 			this.errorReporter.error(error);
 			if (!res.headersSent) {
@@ -104,7 +108,7 @@ export class McpController {
 	}
 
 	@Post('/http', {
-		ipRateLimit: { limit: 100 },
+		ipRateLimit: createIpRateLimit(mcpConfig.rateLimitServer),
 		middlewares: [getAuthMiddleware()],
 		skipAuth: true,
 		usesTemplates: true,
@@ -119,7 +123,7 @@ export class McpController {
 		const isToolCallRequest = isJSONRPCRequest(body) ? body.method === 'toolCall' : false;
 		const clientInfo = getClientInfo(req);
 
-		const telemetryPayload: Partial<UserConnectedToMCPEventPayload> = {
+		const baseTelemetryPayload: Partial<UserConnectedToMCPEventPayload> = {
 			user_id: req.user.id,
 			client_name: clientInfo?.name,
 			client_version: clientInfo?.version,
@@ -128,13 +132,12 @@ export class McpController {
 			).mcpAuthType,
 		};
 
-		// Deny if MCP access is disabled
 		const enabled = await this.mcpSettingsService.getEnabled();
 
 		if (!enabled) {
 			if (isInitializationRequest) {
 				this.trackConnectionEvent({
-					...telemetryPayload,
+					...baseTelemetryPayload,
 					mcp_connection_status: 'error',
 					error: MCP_ACCESS_DISABLED_ERROR_MESSAGE,
 				});
@@ -143,11 +146,20 @@ export class McpController {
 			res.status(403).json({ message: MCP_ACCESS_DISABLED_ERROR_MESSAGE });
 			return;
 		}
+
+		const mcpAppsResolution = await this.mcpService.resolveMcpAppsVariant(req.user);
+
+		const telemetryPayload: Partial<UserConnectedToMCPEventPayload> = {
+			...baseTelemetryPayload,
+			mcp_apps_enabled: mcpAppsResolution.enabled,
+			mcp_apps_variant: mcpAppsResolution.variant,
+		};
+
 		// In stateless mode, create a new instance of transport and server for each request
 		// to ensure complete isolation. A single instance would cause request ID collisions
 		// when multiple clients connect concurrently.
 		try {
-			await this.handleTransportRequest(req, res, req.body);
+			await this.handleTransportRequest(req, res, mcpAppsResolution.enabled, req.body);
 			if (isInitializationRequest) {
 				this.trackConnectionEvent({
 					...telemetryPayload,
@@ -182,12 +194,13 @@ export class McpController {
 	private async handleTransportRequest(
 		req: AuthenticatedRequest,
 		res: FlushableResponse,
+		mcpAppsEnabled: boolean,
 		body?: unknown,
 	) {
 		const { StreamableHTTPServerTransport } = await import(
 			'@modelcontextprotocol/sdk/server/streamableHttp.js'
 		);
-		const server = await this.mcpService.getServer(req.user);
+		const server = await this.mcpService.getServer(req.user, mcpAppsEnabled, getClientInfo(req));
 		const transport = new StreamableHTTPServerTransport({
 			sessionIdGenerator: undefined,
 		});

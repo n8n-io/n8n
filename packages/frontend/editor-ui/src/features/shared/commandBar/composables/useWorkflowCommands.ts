@@ -283,6 +283,8 @@ export function useWorkflowCommands(): CommandGroup {
 									id: workflowsStore.workflowId,
 									name: workflowDocumentStore.value.name,
 									tags: workflowDocumentStore.value.tags,
+									// Place the copy in the source workflow's folder
+									parentFolderId: workflowDocumentStore.value.parentFolder?.id,
 								},
 							});
 						},

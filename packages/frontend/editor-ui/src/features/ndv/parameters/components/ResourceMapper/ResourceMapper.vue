@@ -27,7 +27,7 @@ import {
 import { isFullExecutionResponse, isResourceMapperValue } from '@/app/utils/typeGuards';
 import { i18n as locale } from '@n8n/i18n';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
 import isEqual from 'lodash/isEqual';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -49,7 +49,7 @@ type Props = {
 
 const nodeTypesStore = useNodeTypesStore();
 const ndvStore = injectNDVStore();
-const workflowsStore = useWorkflowsStore();
+const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 const projectsStore = useProjectsStore();
 const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
 const workflowDocumentStore = injectWorkflowDocumentStore();
@@ -140,7 +140,7 @@ async function checkStaleFields(): Promise<void> {
 
 // Reload fields to map when node is executed
 watch(
-	() => workflowsStore.getWorkflowExecution,
+	() => workflowExecutionStateStore.value.activeExecution,
 	async (data) => {
 		if (
 			data &&

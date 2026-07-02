@@ -76,18 +76,41 @@ describe('affectedPackages', () => {
 	});
 
 	it('includes transitive downstream packages', () => {
+		// Uses non-global-trigger package names so this exercises the dep-graph
+		// walk, not the workspace-wide bailout (workflow/core ARE global triggers).
 		const rootDir = makeFixture({
 			patterns: ['packages/*'],
 			packages: {
-				'packages/workflow': { name: 'workflow' },
-				'packages/core': { name: 'core', deps: ['workflow'] },
-				'packages/cli': { name: 'cli', deps: ['core'] },
+				'packages/lib': { name: 'lib' },
+				'packages/mid': { name: 'mid', deps: ['lib'] },
+				'packages/app': { name: 'app', deps: ['mid'] },
 				'packages/unrelated': { name: 'unrelated' },
 			},
 		});
-		expect(affectedPackages({ rootDir, changedFiles: ['packages/workflow/src/index.ts'] })).toEqual(
-			['cli', 'core', 'workflow'],
-		);
+		expect(affectedPackages({ rootDir, changedFiles: ['packages/lib/src/index.ts'] })).toEqual([
+			'app',
+			'lib',
+			'mid',
+		]);
+	});
+
+	it('expands all packages when a universal sink (workflow/core) changes', () => {
+		const rootDir = makeFixture({
+			patterns: ['packages/*'],
+			packages: {
+				'packages/workflow': { name: 'n8n-workflow' },
+				'packages/core': { name: 'n8n-core' },
+				'packages/unrelated': { name: 'unrelated' },
+			},
+		});
+		expect(
+			affectedPackages({ rootDir, changedFiles: ['packages/workflow/src/Workflow.ts'] }),
+		).toEqual(['n8n-core', 'n8n-workflow', 'unrelated']);
+		expect(affectedPackages({ rootDir, changedFiles: ['packages/core/src/x.ts'] })).toEqual([
+			'n8n-core',
+			'n8n-workflow',
+			'unrelated',
+		]);
 	});
 
 	it('expands all packages when pnpm-lock.yaml changes', () => {
@@ -104,6 +127,23 @@ describe('affectedPackages', () => {
 			packages: { 'packages/a': { name: 'a' }, 'packages/b': { name: 'b' } },
 		});
 		expect(affectedPackages({ rootDir, changedFiles: ['package.json'] })).toEqual(['a', 'b']);
+	});
+
+	it('expands all packages when packages/@n8n/db/** changes (runtime-coupled schema)', () => {
+		const rootDir = makeFixture({
+			patterns: ['packages/*', 'packages/@n8n/*'],
+			packages: {
+				'packages/@n8n/db': { name: '@n8n/db' },
+				'packages/cli': { name: 'n8n' },
+				'packages/unrelated': { name: 'unrelated' },
+			},
+		});
+		expect(
+			affectedPackages({
+				rootDir,
+				changedFiles: ['packages/@n8n/db/src/entities/user.entity.ts'],
+			}),
+		).toEqual(['@n8n/db', 'n8n', 'unrelated']);
 	});
 
 	it('handles turbo extra-inputs pointing at another package', () => {

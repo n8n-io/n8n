@@ -1,0 +1,108 @@
+{
+  "httpRequest": {
+    "method": "POST",
+    "path": "/v1/messages",
+    "body": {
+      "type": "REGEX",
+      "regex": "[\\s\\S]*You are the n8n Instance Agent — an AI assistant embedded in an n8n instance\\. Yo[\\s\\S]*\"role\"\\s*:\\s*\"user\"[\\s\\S]{0,1500}\"type\"\\s*:\\s*\"tool_result\"[\\s\\S]{0,2000}\\{\\\\\"definitions\\\\\":\\[\\{\\\\\"nodeType\\\\\":\\\\\"n8n-nodes-base\\.set\\\\\",\\\\\"version\\\\\":\\\\\"v34\\\\\",\\\\\"content\\\\\":\\\\\"/\\*\\*\\\\\\\\n \\* Edit Fields \\(Set\\) Node - Version 3\\.4[\\s\\S]*"
+    }
+  },
+  "httpResponse": {
+    "statusCode": 200,
+    "reasonPhrase": "OK",
+    "headers": {
+      "vary": [
+        "Accept-Encoding"
+      ],
+      "traceresponse": [
+        "00-e129ec26ac7251f007aab2b0cc089021-e0785f018803d600-01"
+      ],
+      "strict-transport-security": [
+        "max-age=31536000; includeSubDomains; preload"
+      ],
+      "set-cookie": [
+        "_cfuvid=pPI4iamew.pIDhkbhLqBuXHHFnFr96IDON7ZPgtKlPY-1782156889.5946727-1.0.1.1-UqMExr4LGGuET8Nm.ZKZMbJ8ISFYKNXlnb4Tg7nLK2Y; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com"
+      ],
+      "request-id": [
+        "req_011CcJrmk7Hmvxa6pEGE4tTo"
+      ],
+      "cf-cache-status": [
+        "DYNAMIC"
+      ],
+      "anthropic-ratelimit-tokens-reset": [
+        "2026-06-22T19:34:49Z"
+      ],
+      "anthropic-ratelimit-tokens-remaining": [
+        "26990000"
+      ],
+      "anthropic-ratelimit-tokens-limit": [
+        "27000000"
+      ],
+      "anthropic-ratelimit-requests-reset": [
+        "2026-06-22T19:34:49Z"
+      ],
+      "anthropic-ratelimit-requests-remaining": [
+        "19999"
+      ],
+      "anthropic-ratelimit-requests-limit": [
+        "20000"
+      ],
+      "anthropic-ratelimit-output-tokens-reset": [
+        "2026-06-22T19:34:49Z"
+      ],
+      "anthropic-ratelimit-output-tokens-remaining": [
+        "4500000"
+      ],
+      "anthropic-ratelimit-output-tokens-limit": [
+        "4500000"
+      ],
+      "anthropic-ratelimit-input-tokens-reset": [
+        "2026-06-22T19:34:49Z"
+      ],
+      "anthropic-ratelimit-input-tokens-remaining": [
+        "22490000"
+      ],
+      "anthropic-ratelimit-input-tokens-limit": [
+        "22500000"
+      ],
+      "X-Robots-Tag": [
+        "none"
+      ],
+      "Server": [
+        "cloudflare"
+      ],
+      "Date": [
+        "Mon, 22 Jun 2026 19:34:51 GMT"
+      ],
+      "Content-Type": [
+        "text/event-stream; charset=utf-8"
+      ],
+      "Content-Security-Policy": [
+        "default-src 'none'; frame-ancestors 'none'"
+      ],
+      "Cache-Control": [
+        "no-cache"
+      ],
+      "CF-RAY": [
+        "a0fdb14ffb70f035-HEL"
+      ]
+    },
+    "cookies": {
+      "_cfuvid": "pPI4iamew.pIDhkbhLqBuXHHFnFr96IDON7ZPgtKlPY-1782156889.5946727-1.0.1.1-UqMExr4LGGuET8Nm.ZKZMbJ8ISFYKNXlnb4Tg7nLK2Y"
+    },
+    "body": {
+      "type": "STRING",
+      "string": "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"model\":\"claude-sonnet-4-6\",\"id\":\"msg_018MtWUp69uMqPZcbsUiSmtt\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[],\"stop_reason\":null,\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1,\"cache_creation_input_tokens\":1213,\"cache_read_input_tokens\":41876,\"cache_creation\":{\"ephemeral_5m_input_tokens\":1213,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":33,\"service_tier\":\"standard\",\"inference_geo\":\"global\"}}    }\n\nevent: content_block_start\ndata: {\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"tool_use\",\"id\":\"toolu_01FSonF7nUbECZA2ymVWkNtT\",\"name\":\"workspace_write_file\",\"input\":{},\"caller\":{\"type\":\"direct\"}}    }\n\nevent: ping\ndata: {\"type\": \"ping\"}\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"\"}             }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"{\\\"path\\\": \\\"src\"}            }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"/workflows/deny-test.workflow.ts\"}               }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"\\\", \\\"content\\\": \\\"import {\\\\n  workflow,\\\\n  node,\\\\n  trigger,\\\\n  expr,\\\\n} from '@n8n/workflow-sdk\"}   }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"';\\\\n\\\\nconst manualTrigger = trigger({\\\\n  type: 'n8n-nodes-base.manualTrigger',\\\\n  version: 1,\\\\n  config\"}             }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\": { name: 'When clicking 'Test workflow'' },\\\\n});\\\\n\\\\nconst d\"}   }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"enyTest = node({\\\\n  type: 'n8n-nodes-base.set',\\\\n  version: 3.4,\\\\n  config: {\\\\n    name: 'deny test\"}      }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"',\\\\n    parameters: {\\\\n      mode: 'manual',\\\\n      assignments: {\\\\n        assignments: [\\\\n          {\\\\n            id: 'result-field\"}        }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"',\\\\n            name: 'result',\\\\n            value: 'deny test passed',\\\\n            type: 'string',\\\\n          },\\\\n        ],\\\\n      },\\\\n    \"}       }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"},\\\\n  },\\\\n});\\\\n\\\\nexport default workflow('deny-test', 'deny test workflow')\"}               }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"\\\\n  .add(manualTrigger)\\\\n  .to(denyTest);\\\\n\"}         }\n\nevent: content_block_delta\ndata: {\"type\":\"content_block_delta\",\"index\":0,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"\\\"}\"}           }\n\nevent: content_block_stop\ndata: {\"type\":\"content_block_stop\",\"index\":0    }\n\nevent: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null},\"usage\":{\"input_tokens\":1,\"cache_creation_input_tokens\":1213,\"cache_read_input_tokens\":41876,\"output_tokens\":329}       }\n\nevent: message_stop\ndata: {\"type\":\"message_stop\"        }\n\n",
+      "rawBytes": "ZXZlbnQ6IG1lc3NhZ2Vfc3RhcnQKZGF0YTogeyJ0eXBlIjoibWVzc2FnZV9zdGFydCIsIm1lc3NhZ2UiOnsibW9kZWwiOiJjbGF1ZGUtc29ubmV0LTQtNiIsImlkIjoibXNnXzAxOE10V1VwNjl1TXFQWmNic1VpU210dCIsInR5cGUiOiJtZXNzYWdlIiwicm9sZSI6ImFzc2lzdGFudCIsImNvbnRlbnQiOltdLCJzdG9wX3JlYXNvbiI6bnVsbCwic3RvcF9zZXF1ZW5jZSI6bnVsbCwic3RvcF9kZXRhaWxzIjpudWxsLCJ1c2FnZSI6eyJpbnB1dF90b2tlbnMiOjEsImNhY2hlX2NyZWF0aW9uX2lucHV0X3Rva2VucyI6MTIxMywiY2FjaGVfcmVhZF9pbnB1dF90b2tlbnMiOjQxODc2LCJjYWNoZV9jcmVhdGlvbiI6eyJlcGhlbWVyYWxfNW1faW5wdXRfdG9rZW5zIjoxMjEzLCJlcGhlbWVyYWxfMWhfaW5wdXRfdG9rZW5zIjowfSwib3V0cHV0X3Rva2VucyI6MzMsInNlcnZpY2VfdGllciI6InN0YW5kYXJkIiwiaW5mZXJlbmNlX2dlbyI6Imdsb2JhbCJ9fSAgICB9CgpldmVudDogY29udGVudF9ibG9ja19zdGFydApkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX3N0YXJ0IiwiaW5kZXgiOjAsImNvbnRlbnRfYmxvY2siOnsidHlwZSI6InRvb2xfdXNlIiwiaWQiOiJ0b29sdV8wMUZTb25GN25VYkVDWkEyeW1WV2tOdFQiLCJuYW1lIjoid29ya3NwYWNlX3dyaXRlX2ZpbGUiLCJpbnB1dCI6e30sImNhbGxlciI6eyJ0eXBlIjoiZGlyZWN0In19ICAgIH0KCmV2ZW50OiBwaW5nCmRhdGE6IHsidHlwZSI6ICJwaW5nIn0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX2RlbHRhCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfZGVsdGEiLCJpbmRleCI6MCwiZGVsdGEiOnsidHlwZSI6ImlucHV0X2pzb25fZGVsdGEiLCJwYXJ0aWFsX2pzb24iOiIifSAgICAgICAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJpbnB1dF9qc29uX2RlbHRhIiwicGFydGlhbF9qc29uIjoie1wicGF0aFwiOiBcInNyYyJ9ICAgICAgICAgICAgfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfZGVsdGEKZGF0YTogeyJ0eXBlIjoiY29udGVudF9ibG9ja19kZWx0YSIsImluZGV4IjowLCJkZWx0YSI6eyJ0eXBlIjoiaW5wdXRfanNvbl9kZWx0YSIsInBhcnRpYWxfanNvbiI6Ii93b3JrZmxvd3MvZGVueS10ZXN0LndvcmtmbG93LnRzIn0gICAgICAgICAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJpbnB1dF9qc29uX2RlbHRhIiwicGFydGlhbF9qc29uIjoiXCIsIFwiY29udGVudFwiOiBcImltcG9ydCB7XFxuICB3b3JrZmxvdyxcXG4gIG5vZGUsXFxuICB0cmlnZ2VyLFxcbiAgZXhwcixcXG59IGZyb20gJ0BuOG4vd29ya2Zsb3ctc2RrIn0gICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJpbnB1dF9qc29uX2RlbHRhIiwicGFydGlhbF9qc29uIjoiJztcXG5cXG5jb25zdCBtYW51YWxUcmlnZ2VyID0gdHJpZ2dlcih7XFxuICB0eXBlOiAnbjhuLW5vZGVzLWJhc2UubWFudWFsVHJpZ2dlcicsXFxuICB2ZXJzaW9uOiAxLFxcbiAgY29uZmlnIn0gICAgICAgICAgICAgfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfZGVsdGEKZGF0YTogeyJ0eXBlIjoiY29udGVudF9ibG9ja19kZWx0YSIsImluZGV4IjowLCJkZWx0YSI6eyJ0eXBlIjoiaW5wdXRfanNvbl9kZWx0YSIsInBhcnRpYWxfanNvbiI6IjogeyBuYW1lOiAnV2hlbiBjbGlja2luZyAnVGVzdCB3b3JrZmxvdycnIH0sXFxufSk7XFxuXFxuY29uc3QgZCJ9ICAgfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfZGVsdGEKZGF0YTogeyJ0eXBlIjoiY29udGVudF9ibG9ja19kZWx0YSIsImluZGV4IjowLCJkZWx0YSI6eyJ0eXBlIjoiaW5wdXRfanNvbl9kZWx0YSIsInBhcnRpYWxfanNvbiI6ImVueVRlc3QgPSBub2RlKHtcXG4gIHR5cGU6ICduOG4tbm9kZXMtYmFzZS5zZXQnLFxcbiAgdmVyc2lvbjogMy40LFxcbiAgY29uZmlnOiB7XFxuICAgIG5hbWU6ICdkZW55IHRlc3QifSAgICAgIH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX2RlbHRhCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfZGVsdGEiLCJpbmRleCI6MCwiZGVsdGEiOnsidHlwZSI6ImlucHV0X2pzb25fZGVsdGEiLCJwYXJ0aWFsX2pzb24iOiInLFxcbiAgICBwYXJhbWV0ZXJzOiB7XFxuICAgICAgbW9kZTogJ21hbnVhbCcsXFxuICAgICAgYXNzaWdubWVudHM6IHtcXG4gICAgICAgIGFzc2lnbm1lbnRzOiBbXFxuICAgICAgICAgIHtcXG4gICAgICAgICAgICBpZDogJ3Jlc3VsdC1maWVsZCJ9ICAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJpbnB1dF9qc29uX2RlbHRhIiwicGFydGlhbF9qc29uIjoiJyxcXG4gICAgICAgICAgICBuYW1lOiAncmVzdWx0JyxcXG4gICAgICAgICAgICB2YWx1ZTogJ2RlbnkgdGVzdCBwYXNzZWQnLFxcbiAgICAgICAgICAgIHR5cGU6ICdzdHJpbmcnLFxcbiAgICAgICAgICB9LFxcbiAgICAgICAgXSxcXG4gICAgICB9LFxcbiAgICAifSAgICAgICB9CgpldmVudDogY29udGVudF9ibG9ja19kZWx0YQpkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX2RlbHRhIiwiaW5kZXgiOjAsImRlbHRhIjp7InR5cGUiOiJpbnB1dF9qc29uX2RlbHRhIiwicGFydGlhbF9qc29uIjoifSxcXG4gIH0sXFxufSk7XFxuXFxuZXhwb3J0IGRlZmF1bHQgd29ya2Zsb3coJ2RlbnktdGVzdCcsICdkZW55IHRlc3Qgd29ya2Zsb3cnKSJ9ICAgICAgICAgICAgICAgfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfZGVsdGEKZGF0YTogeyJ0eXBlIjoiY29udGVudF9ibG9ja19kZWx0YSIsImluZGV4IjowLCJkZWx0YSI6eyJ0eXBlIjoiaW5wdXRfanNvbl9kZWx0YSIsInBhcnRpYWxfanNvbiI6IlxcbiAgLmFkZChtYW51YWxUcmlnZ2VyKVxcbiAgLnRvKGRlbnlUZXN0KTtcXG4ifSAgICAgICAgIH0KCmV2ZW50OiBjb250ZW50X2Jsb2NrX2RlbHRhCmRhdGE6IHsidHlwZSI6ImNvbnRlbnRfYmxvY2tfZGVsdGEiLCJpbmRleCI6MCwiZGVsdGEiOnsidHlwZSI6ImlucHV0X2pzb25fZGVsdGEiLCJwYXJ0aWFsX2pzb24iOiJcIn0ifSAgICAgICAgICAgfQoKZXZlbnQ6IGNvbnRlbnRfYmxvY2tfc3RvcApkYXRhOiB7InR5cGUiOiJjb250ZW50X2Jsb2NrX3N0b3AiLCJpbmRleCI6MCAgICB9CgpldmVudDogbWVzc2FnZV9kZWx0YQpkYXRhOiB7InR5cGUiOiJtZXNzYWdlX2RlbHRhIiwiZGVsdGEiOnsic3RvcF9yZWFzb24iOiJ0b29sX3VzZSIsInN0b3Bfc2VxdWVuY2UiOm51bGwsInN0b3BfZGV0YWlscyI6bnVsbH0sInVzYWdlIjp7ImlucHV0X3Rva2VucyI6MSwiY2FjaGVfY3JlYXRpb25faW5wdXRfdG9rZW5zIjoxMjEzLCJjYWNoZV9yZWFkX2lucHV0X3Rva2VucyI6NDE4NzYsIm91dHB1dF90b2tlbnMiOjMyOX0gICAgICAgfQoKZXZlbnQ6IG1lc3NhZ2Vfc3RvcApkYXRhOiB7InR5cGUiOiJtZXNzYWdlX3N0b3AiICAgICAgICB9Cgo=",
+      "contentType": "text/event-stream; charset=utf-8"
+    }
+  },
+  "id": "0007-1782156983541-unknown-host-POST-_v1_messages-18726485.json",
+  "priority": 0,
+  "timeToLive": {
+    "unlimited": true
+  },
+  "times": {
+    "unlimited": true
+  }
+}

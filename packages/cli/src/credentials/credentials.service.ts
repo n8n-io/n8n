@@ -42,8 +42,8 @@ import {
 
 import { CredentialTypes } from '@/credential-types';
 import { createCredentialsFromCredentialsEntity, CredentialsHelper } from '@/credentials-helper';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ExternalHooks } from '@/external-hooks';
@@ -75,6 +75,19 @@ const CUSTOM_AUTH_JSON_REDACTED_VALUE = '***';
 export type CredentialsGetSharedOptions =
 	| { allowGlobalScope: true; globalScope: Scope }
 	| { allowGlobalScope: false };
+
+type PrepareUpdateDataOptions = {
+	/**
+	 * When true, the existing oauthTokenData is NOT carried forward into the
+	 * updated credential blob. Used on Static→Private toggle.
+	 */
+	clearOauthTokenData?: boolean;
+};
+
+type UpdateOptions = {
+	/** When true, delete all per-user entries for this credential (Private→Static toggle). */
+	deleteUserEntries?: boolean;
+};
 
 type CreateCredentialOptions = CreateCredentialDto & {
 	isManaged: boolean;
@@ -137,6 +150,10 @@ export class CredentialsService {
 	 * Mutates in place; callers may pass entities, decrypted DTOs, or plain
 	 * object literals — any shape that carries `id` and `isResolvable`.
 	 */
+	async countConnectedUsers(credentialId: string): Promise<number> {
+		return await this.connectionStatusProxy.countConnectedUsers(credentialId);
+	}
+
 	async populateConnectedByMe<T extends { id: string; isResolvable?: boolean }>(
 		credentials: T[],
 		user: User,
@@ -685,6 +702,7 @@ export class CredentialsService {
 		user: User,
 		data: CredentialRequest.CredentialProperties,
 		existingCredential: CredentialsEntity,
+		options?: PrepareUpdateDataOptions,
 	): Promise<CredentialsEntity> {
 		const decryptedData = await this.decrypt(existingCredential, true);
 
@@ -726,7 +744,8 @@ export class CredentialsService {
 
 		// Do not overwrite the oauth data else data like the access or refresh token would get lost
 		// every time anybody changes anything on the credentials even if it is just the name.
-		if (decryptedData.oauthTokenData) {
+		// Exception: when toggling to private (Static→Private), the shared token must be cleared.
+		if (decryptedData.oauthTokenData && !options?.clearOauthTokenData) {
 			// @ts-ignore
 			updateData.data.oauthTokenData = decryptedData.oauthTokenData;
 		}
@@ -789,12 +808,17 @@ export class CredentialsService {
 		credentialId: string,
 		newCredentialData: ICredentialsDb,
 		decryptedCredentialData?: ICredentialDataDecryptedObject,
+		options?: UpdateOptions,
 	) {
 		await this.externalHooks.run('credentials.update', [newCredentialData]);
 
 		return await this.credentialsRepository.manager.transaction(async (transactionManager) => {
 			// Update the credentials in DB
 			await transactionManager.update(CredentialsEntity, credentialId, newCredentialData);
+
+			if (options?.deleteUserEntries) {
+				await this.connectionStatusProxy.deleteAllUserEntries(credentialId, transactionManager);
+			}
 
 			if (decryptedCredentialData) {
 				await this.credentialDependencyService.syncExternalSecretProviderDependenciesForCredential({
@@ -983,7 +1007,7 @@ export class CredentialsService {
 		for (const dataKey of Object.keys(data)) {
 			// The frontend only cares that this value isn't falsy.
 			if (dataKey === 'oauthTokenData' || dataKey === 'csrfSecret') {
-				if (data[dataKey].toString().length > 0) {
+				if (String(data[dataKey] ?? '').length > 0) {
 					data[dataKey] = CREDENTIAL_BLANKING_VALUE;
 				} else {
 					data[dataKey] = CREDENTIAL_EMPTY_VALUE;
@@ -1007,9 +1031,9 @@ export class CredentialsService {
 
 			if (
 				prop.typeOptions?.password &&
-				(!data[dataKey].toString().startsWith('={{') || prop.noDataExpression)
+				(!String(data[dataKey] ?? '').startsWith('={{') || prop.noDataExpression)
 			) {
-				if (data[dataKey].toString().length > 0) {
+				if (String(data[dataKey] ?? '').length > 0) {
 					data[dataKey] = CREDENTIAL_BLANKING_VALUE;
 				} else {
 					data[dataKey] = CREDENTIAL_EMPTY_VALUE;
@@ -1177,8 +1201,12 @@ export class CredentialsService {
 
 		const { data: _, ...rest } = credential;
 
-		const enriched: typeof rest & { connectedByMe?: boolean } = rest;
+		const enriched: typeof rest & { connectedByMe?: boolean; connectedUserCount?: number } = rest;
 		await this.populateConnectedByMe([enriched], user);
+
+		if (credential.isResolvable) {
+			enriched.connectedUserCount = await this.countConnectedUsers(credential.id);
+		}
 
 		if (decryptedData) {
 			// We never want to expose the oauthTokenData to the frontend, but it
@@ -1294,6 +1322,31 @@ export class CredentialsService {
 	 */
 	async createUnmanagedCredential(dto: CreateCredentialDto, user: User) {
 		return await this.createCredential({ ...dto, isManaged: false }, user);
+	}
+
+	/**
+	 * Creates an empty credential placeholder for package import. Skips field
+	 * validation so every known type can be stubbed; {@link save} still enforces
+	 * `credential:create` on the target project.
+	 */
+	async createStubCredential(
+		opts: { name: string; type: string; projectId: string },
+		user: User,
+	): Promise<CredentialsEntity> {
+		const encryptedCredential = await this.createEncryptedData({
+			id: null,
+			name: opts.name,
+			type: opts.type,
+			data: {},
+		});
+
+		const credentialEntity = this.credentialsRepository.create({
+			...encryptedCredential,
+			isManaged: false,
+			isResolvable: false,
+		});
+
+		return await this.save(credentialEntity, encryptedCredential, user, opts.projectId, {});
 	}
 
 	/**

@@ -6,7 +6,7 @@ import { credentials } from '../credentials';
 describe('Microsoft SharePoint Node', () => {
 	const { baseUrl } = credentials.microsoftSharePointOAuth2Api;
 	beforeEach(() => {
-		jest.spyOn(CredentialsHelper.prototype, 'getParentTypes').mockReturnValue(['oAuth2Api']);
+		vi.spyOn(CredentialsHelper.prototype, 'getParentTypes').mockReturnValue(['oAuth2Api']);
 	});
 	new NodeTestHarness().setupTests({
 		credentials,

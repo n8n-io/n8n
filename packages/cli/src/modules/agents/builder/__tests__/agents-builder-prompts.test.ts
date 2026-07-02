@@ -1,10 +1,10 @@
-import { getBuilderSkillRoutingSection } from '../agents-builder-prompts';
-import { getConfigMutationPrompt } from '../prompts/config-mutation.prompt';
+import { SUB_AGENT_MAX_CHILDREN_MAX, SUB_AGENT_MAX_CHILDREN_MIN } from '@n8n/api-types';
+
 import { getBuilderRuntimeSkills } from '../skills';
 
 describe('agents builder integrations prompt', () => {
 	it('does not tell the builder to prefer Slack OAuth credentials for chat integrations', () => {
-		const integrationsSkill = getBuilderRuntimeSkills({ enabledModules: [] }).find(
+		const integrationsSkill = getBuilderRuntimeSkills().find(
 			(skill) => skill.id === 'agent-builder-integrations',
 		);
 
@@ -13,40 +13,45 @@ describe('agents builder integrations prompt', () => {
 	});
 });
 
-describe('MCP skill gating', () => {
-	it('does not include the MCP skill when the "mcp" module is disabled', () => {
-		const skills = getBuilderRuntimeSkills({
-			enabledModules: [],
-		});
-		expect(skills.find((s) => s.id === 'agent-builder-mcp')).toBeUndefined();
-	});
-
-	it('includes the MCP skill when the "mcp" module is enabled', () => {
-		const skills = getBuilderRuntimeSkills({
-			enabledModules: ['mcp'],
-		});
+describe('MCP skill availability', () => {
+	it('includes the MCP skill', () => {
+		const skills = getBuilderRuntimeSkills();
 		expect(skills.find((s) => s.id === 'agent-builder-mcp')).toBeDefined();
-	});
-
-	it('omits the MCP skill from the routing section when the module is disabled', () => {
-		const section = getBuilderSkillRoutingSection([]);
-		expect(section).not.toContain('agent-builder-mcp');
-	});
-
-	it('lists the MCP skill in the routing section when the module is enabled', () => {
-		const section = getBuilderSkillRoutingSection(['mcp']);
-		expect(section).toContain('agent-builder-mcp');
 	});
 });
 
-describe('Config mutation prompt gating', () => {
-	it('doesn\'t include the MCP servers section when the "mcp" module is disabled', () => {
-		const prompt = getConfigMutationPrompt([]);
-		expect(prompt).not.toContain('mcpServers');
-	});
+describe('resource locator skill availability', () => {
+	it('includes builder guidance for node dynamic selectors', () => {
+		const skills = getBuilderRuntimeSkills();
+		const skill = skills.find((s) => s.id === 'agent-builder-resource-locators');
 
-	it('includes the MCP servers section when the "mcp" module is enabled', () => {
-		const prompt = getConfigMutationPrompt(['mcp']);
-		expect(prompt).toContain('mcpServers');
+		expect(skill).toBeDefined();
+		expect(skill?.description).toContain('write_config/patch_config rejects $fromAI');
+		expect(skill?.instructions).toContain('Linear `teamId`');
+		expect(skill?.instructions).toContain('get_resource_locator_options');
+		expect(skill?.instructions).toContain('parameterValue');
+	});
+});
+
+describe('sub-agent skill availability', () => {
+	it('contains the moved sub-agent delegation guidance', () => {
+		const skill = getBuilderRuntimeSkills().find((s) => s.id === 'agent-builder-sub-agents');
+
+		expect(skill).toBeDefined();
+		expect(skill?.instructions).toContain('`delegate_subagent`');
+		expect(skill?.instructions).toContain('Call `list_sub_agents`');
+		expect(skill?.instructions).toContain('`allowMultiple: true`');
+		expect(skill?.instructions).toContain('subAgentId: "inline"');
+		expect(skill?.instructions).toContain('`subAgents.maxChildren`');
+		expect(skill?.instructions).toContain(
+			'{ "agentId": "<returned-agent-id>", "useWhen": "Use for ..." }',
+		);
+		expect(skill?.instructions).toContain(
+			'If it is unclear when a selected saved subagent should be used, ask the user',
+		);
+		expect(skill?.instructions).toContain('Do not write vague values');
+		expect(skill?.instructions).toContain(
+			`from ${SUB_AGENT_MAX_CHILDREN_MIN} to ${SUB_AGENT_MAX_CHILDREN_MAX}`,
+		);
 	});
 });

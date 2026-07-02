@@ -6,6 +6,7 @@ import {
 	onUnmounted,
 	provide,
 	ref,
+	shallowReactive,
 	useTemplateRef,
 	watch,
 } from 'vue';
@@ -20,7 +21,7 @@ import {
 	N8nTooltip,
 	TOOLTIP_DELAY_MS,
 } from '@n8n/design-system';
-import { useElementSize, useScroll, useSessionStorage, useWindowSize } from '@vueuse/core';
+import { onClickOutside, useElementSize, useScroll, useWindowSize } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import type { InstanceAiAttachment } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -28,10 +29,12 @@ import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHe
 import { COLLAPSED_MAIN_SIDEBAR_WIDTH, useSidebarLayout } from '@/app/composables/useSidebarLayout';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { provideThread, useInstanceAiStore } from './instanceAi.store';
+import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import { isPendingItemFloating } from './confirmationKinds';
-import { scrubSecretsInText } from './scrubSecrets';
+import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { useCanvasPreview } from './useCanvasPreview';
 import { useCreditWarningBanner } from './composables/useCreditWarningBanner';
+import { consumePendingFirstMessage } from './composables/useInstanceAiHandoff';
 import { useTransitionGate } from './useTransitionGate';
 import { INSTANCE_AI_VIEW, NEW_CONVERSATION_TITLE } from './constants';
 import { useSidebarState } from './instanceAiLayout';
@@ -44,6 +47,7 @@ import InstanceAiConfirmationPanel from './components/InstanceAiConfirmationPane
 import InstanceAiFixWithAiPanel from './components/InstanceAiFixWithAiPanel.vue';
 import InstanceAiPreviewTabBar from './components/InstanceAiPreviewTabBar.vue';
 import InstanceAiViewHeader from './components/InstanceAiViewHeader.vue';
+import WorkflowBuilderUnavailableNotice from './components/WorkflowBuilderUnavailableNotice.vue';
 import AgentSection from './components/AgentSection.vue';
 import { collectActiveBuilderAgents, messageHasVisibleContent } from './builderAgents';
 import CreditWarningBanner from '@/features/ai/assistant/components/Agent/CreditWarningBanner.vue';
@@ -59,6 +63,7 @@ const props = defineProps<{
 }>();
 
 const store = useInstanceAiStore();
+const settingsStore = useInstanceAiSettingsStore();
 const thread = provideThread(props.threadId);
 const { isLowCredits } = storeToRefs(store);
 const rootStore = useRootStore();
@@ -79,7 +84,22 @@ const builderAgents = computed(() => collectActiveBuilderAgents(thread.messages)
 // Assistant messages whose only content has been extracted to the bottom
 // builder section (or which haven't produced anything renderable yet) would
 // otherwise leave an empty wrapper in the list — filter them out.
-const displayedMessages = computed(() => thread.messages.filter(messageHasVisibleContent));
+// Reconciled in place: spliced only when membership changes, so streamed
+// tokens don't re-render the list.
+const displayedMessages = shallowReactive<typeof thread.messages>([]);
+watch(
+	() => thread.messages.filter(messageHasVisibleContent),
+	(next) => {
+		const unchanged =
+			next.length === displayedMessages.length &&
+			next.every((msg, i) => msg === displayedMessages[i]);
+		if (!unchanged) displayedMessages.splice(0, displayedMessages.length, ...next);
+	},
+	{ immediate: true },
+);
+
+// Show the input disclaimer only once the AI has produced a visible response.
+const hasAssistantResponse = computed(() => displayedMessages.some((m) => m.role === 'assistant'));
 
 // True when at least one pending confirmation should occupy the chat-input
 // slot (generic approvals + domain/web-search access). Drives the swap
@@ -148,8 +168,8 @@ watch(
 const showDebugPanel = ref(false);
 const isDebugEnabled = computed(() => localStorage.getItem('instanceAi.debugMode') === 'true');
 const hasPreviewTabs = computed(() => preview.allArtifactTabs.value.length > 0);
-const isArtifactsPanelPinned = useSessionStorage('instanceAi.artifactsPanelPinned', true);
 const isArtifactsPanelRevealed = ref(false);
+const isArtifactsPanelDismissedInLayout = ref(false);
 const DEFAULT_INSTANCE_AI_SIDEBAR_WIDTH = 260;
 const MIN_AVAILABLE_WIDTH_FOR_PINNED_ARTIFACTS_PANEL = 900;
 const artifactsPanelTransitionGate = useTransitionGate({
@@ -168,6 +188,13 @@ const artifactsPreviewToggleLabel = computed(() =>
 			: 'instanceAi.artifactsPanel.showPreview',
 	),
 );
+const artifactsPanelToggleLabel = computed(() =>
+	i18n.baseText(
+		showArtifactsPanel.value
+			? 'instanceAi.artifactsPanel.hidePanel'
+			: 'instanceAi.artifactsPanel.showPanel',
+	),
+);
 const artifactsPanelTransitionName = computed(() =>
 	isPreviewPanelTransitioning.value ? 'artifacts-panel-preview' : 'artifacts-panel-fade',
 );
@@ -184,35 +211,26 @@ function toggleArtifactsPreview() {
 	}
 }
 
-function revealArtifactsPanel() {
-	if (
-		!canShowArtifactsPanel.value ||
-		isArtifactsPanelEffectivelyPinned.value ||
-		preview.isPreviewVisible.value
-	) {
+function toggleArtifactsPanel() {
+	if (!canShowArtifactsPanel.value || preview.isPreviewVisible.value) {
 		return;
 	}
+
+	if (showArtifactsPanel.value) {
+		if (isArtifactsPanelInLayout.value) {
+			isArtifactsPanelDismissedInLayout.value = true;
+			return;
+		}
+		isArtifactsPanelRevealed.value = false;
+		return;
+	}
+
+	if (isArtifactsPanelInLayout.value) {
+		isArtifactsPanelDismissedInLayout.value = false;
+		return;
+	}
+
 	isArtifactsPanelRevealed.value = true;
-}
-
-function hideArtifactsPanel(event?: FocusEvent) {
-	if (isArtifactsPanelEffectivelyPinned.value) return;
-	if (
-		event?.currentTarget instanceof HTMLElement &&
-		event.relatedTarget instanceof Node &&
-		event.currentTarget.contains(event.relatedTarget)
-	) {
-		return;
-	}
-	isArtifactsPanelRevealed.value = false;
-}
-
-function toggleArtifactsPanelPinned() {
-	if (!isArtifactsPanelPinningAvailable.value) return;
-
-	const nextPinned = !isArtifactsPanelPinned.value;
-	isArtifactsPanelPinned.value = nextPinned;
-	isArtifactsPanelRevealed.value = !nextPinned;
 }
 
 function enablePanelTransitionsAfterStableRender() {
@@ -239,34 +257,34 @@ const instanceAiSidebarOccupiedWidth = computed(() =>
 const availableWidthForPinnedArtifactsPanel = computed(
 	() => windowWidth.value - mainSidebarOccupiedWidth.value - instanceAiSidebarOccupiedWidth.value,
 );
-const isArtifactsPanelPinningAvailable = computed(
+const isArtifactsPanelInLayout = computed(
 	() =>
 		availableWidthForPinnedArtifactsPanel.value >= MIN_AVAILABLE_WIDTH_FOR_PINNED_ARTIFACTS_PANEL,
 );
-const isArtifactsPanelEffectivelyPinned = computed(
-	() => isArtifactsPanelPinningAvailable.value && isArtifactsPanelPinned.value,
-);
 const canShowArtifactsPanel = computed(
 	() => thread.hasMessages || (Boolean(props.threadId) && thread.isHydratingThread),
-);
-const showArtifactsPanelEdge = computed(
-	() =>
-		canShowArtifactsPanel.value &&
-		!preview.isPreviewVisible.value &&
-		!isArtifactsPanelEffectivelyPinned.value,
 );
 const showArtifactsPanel = computed(
 	() =>
 		canShowArtifactsPanel.value &&
 		!preview.isPreviewVisible.value &&
-		(isArtifactsPanelEffectivelyPinned.value || isArtifactsPanelRevealed.value),
+		(isArtifactsPanelInLayout.value
+			? !isArtifactsPanelDismissedInLayout.value
+			: isArtifactsPanelRevealed.value),
+);
+const showArtifactsPanelToggle = computed(
+	() => canShowArtifactsPanel.value && !preview.isPreviewVisible.value,
 );
 const reserveArtifactsPanelLayout = computed(
-	() => showArtifactsPanel.value && isArtifactsPanelEffectivelyPinned.value,
+	() => showArtifactsPanel.value && isArtifactsPanelInLayout.value,
+);
+const shouldAnimateArtifactsPanel = computed(
+	() => isArtifactsPanelTransitionEnabled.value && isArtifactsPanelInLayout.value,
 );
 const shouldSuppressContentLayoutTransitions = computed(
 	() => !isPreviewPanelTransitionEnabled.value,
 );
+const artifactsPanelSlotRef = useTemplateRef<HTMLElement>('artifactsPanelSlot');
 const previewPanelWidth = ref(0);
 const isResizingPreview = ref(false);
 const isPreviewExpanded = ref(false);
@@ -327,17 +345,29 @@ watch(threadAreaWidth, (width) => {
 	}
 });
 
-watch(isArtifactsPanelPinningAvailable, (isAvailable) => {
-	if (!isAvailable) {
-		isArtifactsPanelRevealed.value = false;
+watch(isArtifactsPanelInLayout, (isInLayout) => {
+	isArtifactsPanelRevealed.value = false;
+
+	if (isInLayout) {
+		isArtifactsPanelDismissedInLayout.value = false;
 	}
 });
 
 watch(canShowArtifactsPanel, (canShow) => {
 	if (!canShow) {
 		isArtifactsPanelRevealed.value = false;
+		isArtifactsPanelDismissedInLayout.value = false;
 	}
 });
+
+onClickOutside(
+	artifactsPanelSlotRef,
+	() => {
+		if (isArtifactsPanelInLayout.value) return;
+		isArtifactsPanelRevealed.value = false;
+	},
+	{ ignore: ['[data-test-id="instance-ai-artifacts-panel-toggle"]', '.n8n-tooltip'] },
+);
 
 watch(
 	() => props.threadId,
@@ -446,64 +476,22 @@ watch(
 	},
 );
 
-// --- Floating input dynamic padding ---
-const inputContainerRef = useTemplateRef<HTMLElement>('inputContainer');
-const inputSwapRef = useTemplateRef<HTMLElement>('inputSwap');
-const inputAreaHeight = ref(120);
-const scrollButtonBottomOffset = ref(144);
-let inputContainerResizeObserver: ResizeObserver | null = null;
-let inputSwapResizeObserver: ResizeObserver | null = null;
-
-function updateScrollButtonBottomOffset() {
-	const container = inputContainerRef.value;
-	const inputSwap = inputSwapRef.value;
-	if (!container || !inputSwap) {
-		scrollButtonBottomOffset.value = inputAreaHeight.value + 24;
-		return;
-	}
-
-	const containerBottom = container.getBoundingClientRect().bottom;
-	const inputSwapTop = inputSwap.getBoundingClientRect().top;
-	scrollButtonBottomOffset.value = Math.max(24, containerBottom - inputSwapTop + 24);
-}
-
-watch(
-	inputContainerRef,
-	(el) => {
-		inputContainerResizeObserver?.disconnect();
-		if (el) {
-			inputContainerResizeObserver = new ResizeObserver((entries) => {
-				for (const entry of entries) {
-					inputAreaHeight.value = entry.borderBoxSize[0]?.blockSize ?? entry.contentRect.height;
-				}
-				updateScrollButtonBottomOffset();
-			});
-			inputContainerResizeObserver.observe(el);
-		}
-	},
-	{ immediate: true },
-);
-
-watch(
-	inputSwapRef,
-	(el) => {
-		inputSwapResizeObserver?.disconnect();
-		if (el) {
-			inputSwapResizeObserver = new ResizeObserver(() => {
-				updateScrollButtonBottomOffset();
-			});
-			inputSwapResizeObserver.observe(el);
-			updateScrollButtonBottomOffset();
-		}
-	},
-	{ immediate: true },
-);
-
 function reconnectThreadAfterHydration(): void {
 	void thread.loadHistoricalMessages().then((hydrationStatus) => {
 		if (hydrationStatus === 'stale') return;
 		void thread.loadThreadStatus();
 		thread.connectSSE();
+		// Replay an opening message handed off from another tab (e.g. credential help
+		// opened in a new tab) as if typed here, so it shows and streams in this runtime.
+		const pending = consumePendingFirstMessage(props.threadId);
+		if (pending) {
+			void thread.sendMessage(
+				pending.message,
+				pending.attachments,
+				rootStore.pushRef,
+				pending.context,
+			);
+		}
 	});
 }
 
@@ -533,10 +521,12 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-	thread.closeSSE();
+	// This view owns its thread's runtime, so it disposes it here (closes the
+	// SSE, clears state, drops it from the store). Per-thread ownership means a
+	// late-firing unmount only ever tears down its own thread — never a sibling
+	// or a freshly handed-off thread, which a bulk dispose-all would nuke.
+	store.disposeRuntime(props.threadId);
 	contentResizeObserver?.disconnect();
-	inputContainerResizeObserver?.disconnect();
-	inputSwapResizeObserver?.disconnect();
 });
 
 const workflowPreviewRef =
@@ -544,6 +534,10 @@ const workflowPreviewRef =
 
 // --- Message handlers ---
 function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
+	if (!settingsStore.isWorkflowBuilderAvailable) {
+		return;
+	}
+
 	// Reset scroll on new user message
 	userScrolledUp.value = false;
 
@@ -565,6 +559,7 @@ function handleSubmit(message: string, attachments?: InstanceAiAttachment[]) {
 			skipped_inputs: [],
 			num_tasks: planEdit.taskCount,
 			feedback: scrubSecretsInText(message),
+			plan_feedback_type: 'changes_requested',
 		});
 		thread.markPlanUpdatePending(planEdit.requestId);
 		void thread
@@ -620,7 +615,15 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 		<div :class="$style.chatArea">
 			<InstanceAiViewHeader>
 				<template #title>
-					<N8nHeading v-if="currentThreadTitle" tag="h2" size="small" :class="$style.headerTitle">
+					<N8nHeading
+						v-if="currentThreadTitle"
+						tag="h2"
+						size="small"
+						:class="[
+							$style.headerTitle,
+							{ [$style.headerTitleWithSidebar]: !sidebar.collapsed.value },
+						]"
+					>
 						{{ currentThreadTitle }}
 					</N8nHeading>
 					<N8nText
@@ -645,6 +648,26 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 							store.debugMode = showDebugPanel;
 						"
 					/>
+					<N8nTooltip
+						:content="artifactsPanelToggleLabel"
+						placement="bottom"
+						:show-after="TOOLTIP_DELAY_MS"
+					>
+						<Transition name="preview-toggle-opacity" :css="isArtifactsPanelTransitionEnabled">
+							<N8nIconButton
+								v-if="showArtifactsPanelToggle"
+								icon="list"
+								variant="ghost"
+								size="small"
+								icon-size="large"
+								data-test-id="instance-ai-artifacts-panel-toggle"
+								:aria-label="artifactsPanelToggleLabel"
+								:aria-pressed="showArtifactsPanel"
+								:disabled="!canShowArtifactsPanel"
+								@click="toggleArtifactsPanel"
+							/>
+						</Transition>
+					</N8nTooltip>
 					<N8nTooltip
 						:content="artifactsPreviewToggleLabel"
 						placement="bottom"
@@ -681,141 +704,132 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 				data-test-id="instance-ai-content-area"
 			>
 				<div :class="$style.chatContent">
-					<N8nScrollArea :class="$style.scrollArea">
-						<div
-							ref="scrollable"
-							:class="$style.messageList"
-							:style="{ paddingBottom: `calc(${inputAreaHeight}px + var(--spacing--sm))` }"
-						>
-							<TransitionGroup name="message-slide">
-								<InstanceAiMessage
-									v-for="message in displayedMessages"
-									:key="message.id"
-									:message="message"
-								/>
-							</TransitionGroup>
-							<!-- Builder sub-agents are extracted from their parent assistant
-     messages and rendered here so they always sit at the bottom
-     of the conversation. -->
-							<div v-if="builderAgents.length" :class="$style.builderAgents">
-								<AgentSection
-									v-for="builder in builderAgents"
-									:key="builder.agentId"
-									:agent-node="builder"
-								/>
-							</div>
-							<!-- Inline confirmations (questions, plan review, text, setup,
-								 credential, gateway resource-decision, continue) render in
-								 the chat flow. Floating-eligible items take over the chat
-								 input slot below instead — see `hasFloatingConfirmation`. -->
-							<InstanceAiConfirmationPanel kind="inline" />
-							<Transition name="confirmation-slide">
-								<InstanceAiFixWithAiPanel
-									v-if="activeFixWithAiOffer"
-									:node-name="activeFixWithAiOffer.errors[0].nodeName"
-									:error-message="activeFixWithAiOffer.errors[0].errorMessage"
-									:failed-count="activeFixWithAiOffer.errors.length"
-									@fix-with-ai="handleFixWithAiFromOffer"
-									@dismiss="dismissFixWithAiOffer"
-								/>
-							</Transition>
-						</div>
-					</N8nScrollArea>
-
-					<!-- Scroll to bottom button -->
-					<div
-						:class="$style.scrollButtonContainer"
-						:style="{ bottom: `${scrollButtonBottomOffset}px` }"
-					>
-						<Transition name="scroll-button-fade">
-							<N8nIconButton
-								v-if="userScrolledUp && thread.hasMessages"
-								variant="outline"
-								icon="arrow-down"
-								size="large"
-								icon-size="large"
-								:class="$style.scrollToBottomButton"
-								@click="
-									scrollToBottom(true);
-									userScrolledUp = false;
-								"
-							/>
-						</Transition>
-					</div>
-
-					<!-- Floating input — replaced by the confirmation panel while a
-						 floating-eligible approval is pending. StatusBar and credit
-						 banner stay anchored above the slot in both states. The
-						 leaving child is positioned absolutely during the cross-fade
-						 so the in-flow child can size the slot to its natural
-						 height. -->
-					<div ref="inputContainer" :class="$style.inputContainer">
-						<div :class="$style.inputConstraint">
-							<InstanceAiStatusBar />
-							<CreditWarningBanner
-								v-if="creditBanner.visible.value"
-								:credits-remaining="store.creditsRemaining"
-								:credits-quota="store.creditsQuota"
-								@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
-								@dismiss="creditBanner.dismiss()"
-							/>
-							<div ref="inputSwap" :class="$style.inputSwap">
-								<Transition name="input-swap">
-									<InstanceAiConfirmationPanel
-										v-if="hasFloatingConfirmation"
-										key="floating-confirmation"
-										kind="floating"
+					<N8nScrollArea as-child type="auto" :class="$style.scrollArea">
+						<div ref="scrollable" :class="$style.scrollContent">
+							<div :class="$style.messageList">
+								<TransitionGroup name="message-slide">
+									<InstanceAiMessage
+										v-for="message in displayedMessages"
+										:key="message.id"
+										:message="message"
 									/>
-									<InstanceAiInput
-										v-else
-										ref="chatInputRef"
-										key="chat-input"
-										:is-streaming="thread.isStreaming"
-										:is-submitting="thread.isSendingMessage"
-										:is-awaiting-confirmation="thread.isAwaitingConfirmation"
-										:is-plan-edit-mode="thread.activePlanEdit !== null"
-										:current-thread-id="thread.id"
-										:amend-context="thread.amendContext"
-										:contextual-suggestion="thread.contextualSuggestion"
-										@submit="handleSubmit"
-										@stop="handleStop"
-										@cancel-plan-edit="thread.cancelPlanEdit"
+								</TransitionGroup>
+								<!-- Builder sub-agents are extracted from their parent assistant
+	     messages and rendered here so they always sit at the bottom
+	     of the conversation. -->
+								<div v-if="builderAgents.length" :class="$style.builderAgents">
+									<AgentSection
+										v-for="builder in builderAgents"
+										:key="builder.agentId"
+										:agent-node="builder"
+									/>
+								</div>
+								<!-- Inline confirmations (questions, plan review, text, setup,
+									 credential, gateway resource-decision, continue) render in
+									 the chat flow. Floating-eligible items take over the chat
+									 input slot below instead - see `hasFloatingConfirmation`. -->
+								<InstanceAiConfirmationPanel kind="inline" />
+
+								<Transition name="confirmation-slide">
+									<InstanceAiFixWithAiPanel
+										v-if="activeFixWithAiOffer"
+										:node-name="activeFixWithAiOffer.errors[0].nodeName"
+										:error-message="activeFixWithAiOffer.errors[0].errorMessage"
+										:failed-count="activeFixWithAiOffer.errors.length"
+										@fix-with-ai="handleFixWithAiFromOffer"
+										@dismiss="dismissFixWithAiOffer"
 									/>
 								</Transition>
+								<!-- Live activity indicator. Sits at the very end of the
+									 conversation flow — below any pending questions/confirmations
+									 and not pinned above the input — so it trails the active
+									 content and scrolls away when reading back. -->
+								<InstanceAiStatusBar />
+							</div>
+
+							<!-- Floating input slot - replaced by the confirmation panel while a
+								 floating-eligible approval is pending. The credit banner stays
+								 anchored above the slot in both states. The leaving child is
+								 positioned absolutely during the cross-fade so the in-flow child
+								 can size the slot to its natural height. -->
+							<div :class="$style.inputDock">
+								<!-- Scroll to bottom button -->
+								<div :class="$style.scrollButtonContainer">
+									<Transition name="scroll-button-fade">
+										<N8nIconButton
+											v-if="userScrolledUp && thread.hasMessages"
+											variant="outline"
+											icon="arrow-down"
+											size="large"
+											icon-size="large"
+											:class="$style.scrollToBottomButton"
+											@click="
+												scrollToBottom(true);
+												userScrolledUp = false;
+											"
+										/>
+									</Transition>
+								</div>
+
+								<div :class="$style.inputContainer">
+									<div :class="$style.inputConstraint">
+										<WorkflowBuilderUnavailableNotice
+											v-if="!settingsStore.isWorkflowBuilderAvailable"
+										/>
+										<CreditWarningBanner
+											v-if="creditBanner.visible.value"
+											:credits-remaining="store.creditsRemaining"
+											:credits-quota="store.creditsQuota"
+											@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
+											@dismiss="creditBanner.dismiss()"
+										/>
+										<div :class="$style.inputSwap">
+											<Transition name="input-swap">
+												<InstanceAiConfirmationPanel
+													v-if="hasFloatingConfirmation"
+													key="floating-confirmation"
+													kind="floating"
+												/>
+												<InstanceAiInput
+													v-else
+													ref="chatInputRef"
+													key="chat-input"
+													:is-streaming="thread.isStreaming"
+													:is-submitting="thread.isSendingMessage"
+													:is-awaiting-confirmation="thread.isAwaitingConfirmation"
+													:is-plan-edit-mode="thread.activePlanEdit !== null"
+													:is-workflow-builder-available="settingsStore.isWorkflowBuilderAvailable"
+													:current-thread-id="thread.id"
+													:amend-context="thread.amendContext"
+													:contextual-suggestion="thread.contextualSuggestion"
+													@submit="handleSubmit"
+													@stop="handleStop"
+													@cancel-plan-edit="thread.cancelPlanEdit"
+												/>
+											</Transition>
+										</div>
+										<p v-if="hasAssistantResponse" :class="$style.disclaimer">
+											{{ i18n.baseText('instanceAi.input.disclaimer') }}
+										</p>
+									</div>
+								</div>
 							</div>
 						</div>
-					</div>
+					</N8nScrollArea>
 				</div>
 
 				<!-- Artifacts panel (below header, beside chat) -->
-				<div
-					v-if="showArtifactsPanelEdge"
-					:class="$style.artifactsPanelEdge"
-					role="button"
-					tabindex="0"
-					:aria-label="i18n.baseText('instanceAi.artifactsPanel.showPanel')"
-					data-test-id="instance-ai-artifacts-sidebar-edge"
-					@click="revealArtifactsPanel"
-					@mouseenter="revealArtifactsPanel"
-					@focusin="revealArtifactsPanel"
-					@keydown.enter.prevent="revealArtifactsPanel"
-					@keydown.space.prevent="revealArtifactsPanel"
-				/>
-				<Transition :name="artifactsPanelTransitionName" :css="isArtifactsPanelTransitionEnabled">
+				<Transition :name="artifactsPanelTransitionName" :css="shouldAnimateArtifactsPanel">
 					<div
 						v-if="showArtifactsPanel"
-						:class="$style.artifactsPanelSlot"
+						ref="artifactsPanelSlot"
+						:class="[
+							$style.artifactsPanelSlot,
+							{ [$style.artifactsPanelSlotOverlay]: !reserveArtifactsPanelLayout },
+						]"
 						data-test-id="instance-ai-artifacts-sidebar-slot"
-						@mouseenter="revealArtifactsPanel"
-						@mouseleave="hideArtifactsPanel()"
-						@focusin="revealArtifactsPanel"
-						@focusout="hideArtifactsPanel"
 					>
-						<InstanceAiArtifactsPanel
-							:is-pinned="isArtifactsPanelEffectivelyPinned"
-							:is-pinning-available="isArtifactsPanelPinningAvailable"
-							@toggle-pinned="toggleArtifactsPanelPinned"
-						/>
+						<InstanceAiArtifactsPanel />
 					</div>
 				</Transition>
 
@@ -880,6 +894,7 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 								]"
 								:workflow-id="preview.activeWorkflowId.value"
 								:refresh-key="preview.workflowRefreshKey.value"
+								:execution-result="preview.activeWorkflowExecutionResult.value"
 								@workflow-failures="handleWorkflowFailures"
 							/>
 							<InstanceAiDataTablePreview
@@ -913,14 +928,6 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 	display: flex;
 	min-width: 0;
 	overflow: hidden;
-	position: relative;
-	z-index: 0;
-
-	// Drop the stacking context while the workflow preview iframe NDV is
-	// fullscreen so its `z-index` can escape and paint above the sidebar.
-	&:has([data-test-id='workflow-preview-iframe'][data-ndv-open]) {
-		z-index: auto;
-	}
 }
 
 .chatArea {
@@ -980,6 +987,10 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 	color: var(--color--text);
 }
 
+.headerTitleWithSidebar {
+	padding-left: var(--spacing--4xs);
+}
+
 .activeButton {
 	color: var(--color--primary);
 }
@@ -999,21 +1010,6 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 		var(--instance-ai-panel-transition-easing);
 }
 
-.artifactsPanelEdge {
-	position: absolute;
-	top: 0;
-	right: 0;
-	bottom: 0;
-	z-index: 3;
-	width: var(--spacing--xl);
-	cursor: default;
-	outline: none;
-
-	&:focus-visible {
-		box-shadow: inset calc(-1 * var(--spacing--5xs)) 0 0 var(--color--primary);
-	}
-}
-
 .artifactsPanelSlot {
 	position: absolute;
 	top: 0;
@@ -1024,6 +1020,13 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 	min-width: var(--instance-ai-artifacts-panel-width);
 	display: flex;
 	overflow: hidden;
+	// Keep the transparent right padding from intercepting the chat scrollbar.
+	clip-path: inset(0 var(--spacing--2xs) 0 0);
+}
+
+.artifactsPanelSlotOverlay {
+	bottom: auto;
+	max-height: calc(100% - var(--spacing--sm));
 }
 
 .chatContent {
@@ -1038,6 +1041,28 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 	flex: 1;
 	// Allow flex item to shrink below content size so reka-ui viewport scrolls
 	min-height: 0;
+
+	:global([data-orientation='vertical'][data-orientation='vertical']) {
+		background: transparent;
+		padding: 0;
+		// Sit above the sticky input dock (z-index: 3) so its gradient doesn't cover the scrollbar
+		z-index: 4;
+	}
+
+	:global([data-orientation='vertical'][data-orientation='vertical'] > *) {
+		background: light-dark(var(--color--neutral-400), var(--color--neutral-600));
+
+		&:hover {
+			background: light-dark(var(--color--neutral-500), var(--color--neutral-500));
+		}
+	}
+}
+
+.scrollContent {
+	width: 100%;
+	min-height: 100%;
+	display: flex;
+	flex-direction: column;
 }
 
 .messageList {
@@ -1072,14 +1097,19 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 	margin-top: var(--spacing--xs);
 }
 
+.inputDock {
+	position: sticky;
+	bottom: 0;
+	margin-top: auto;
+	z-index: 3;
+	pointer-events: none;
+}
+
 .scrollButtonContainer {
-	position: absolute;
-	left: 0;
-	right: 0;
 	display: flex;
 	justify-content: center;
 	pointer-events: none;
-	z-index: 3;
+	margin-bottom: var(--spacing--sm);
 	transform: translateX(calc(var(--instance-ai-artifacts-layout-width) / -2));
 }
 
@@ -1116,14 +1146,9 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 }
 
 .inputContainer {
-	position: absolute;
-	bottom: 0;
-	left: 0;
-	right: 0;
 	padding: 0 var(--spacing--lg) var(--spacing--sm);
 	background: linear-gradient(transparent 0%, var(--color--background--light-2) 30%);
 	pointer-events: none;
-	z-index: 2;
 
 	& > * {
 		pointer-events: auto;
@@ -1135,6 +1160,17 @@ function handleWorkflowFailures(report: WorkflowFailuresReport) {
 	max-width: 750px;
 	margin: 0 auto;
 	transform: translateX(calc(var(--instance-ai-artifacts-layout-width) / -2));
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+}
+
+.disclaimer {
+	margin: 0;
+	text-align: center;
+	color: var(--color--text--tint-1);
+	font-size: var(--font-size--3xs);
+	line-height: var(--line-height--md);
 }
 
 @media (prefers-reduced-motion: reduce) {

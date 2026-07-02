@@ -1,8 +1,8 @@
 {
   "name": "@n8n/scan-community-package",
-  "version": "0.20.0",
+  "version": "0.25.0",
   "description": "Static code analyser for n8n community packages",
-  "license": "none",
+  "license": "LicenseRef-n8n-sustainable-use",
   "bin": "scanner/cli.mjs",
   "scripts": {
     "test": "vitest run",
@@ -17,7 +17,9 @@
     "axios": "catalog:",
     "@n8n/eslint-plugin-community-nodes": "workspace:*",
     "@typescript-eslint/parser": "^8.35.0",
-    "semver": "^7.5.4",
+    "eslint-plugin-n8n-nodes-base": "catalog:",
+    "semver": "catalog:",
+    "typescript": "catalog:",
     "tmp": "0.2.4"
   },
   "devDependencies": {

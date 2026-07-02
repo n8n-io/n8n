@@ -23,7 +23,7 @@ export const InstanceAiModule: FrontendModuleDescription = {
 	icon: 'sparkles',
 	routes: [
 		{
-			path: '/instance-ai',
+			path: '/assistant',
 			component: InstanceAiView,
 			meta: {
 				layout: 'instanceAi',
@@ -43,8 +43,22 @@ export const InstanceAiModule: FrontendModuleDescription = {
 				},
 			],
 		},
+		// Permanent redirects from the legacy `/instance-ai` path to `/assistant`.
 		{
-			path: 'instance-ai',
+			path: '/instance-ai',
+			redirect: (to) => ({ name: INSTANCE_AI_VIEW, query: to.query, hash: to.hash }),
+		},
+		{
+			path: '/instance-ai/:threadId',
+			redirect: (to) => ({
+				name: INSTANCE_AI_THREAD_VIEW,
+				params: { threadId: to.params.threadId },
+				query: to.query,
+				hash: to.hash,
+			}),
+		},
+		{
+			path: 'assistant',
 			name: INSTANCE_AI_SETTINGS_VIEW,
 			component: SettingsInstanceAiView,
 			meta: {
@@ -55,6 +69,16 @@ export const InstanceAiModule: FrontendModuleDescription = {
 						scope: 'instanceAi:message',
 					},
 				},
+				telemetry: {
+					pageCategory: 'settings',
+				},
+			},
+		},
+		// Permanent redirect from the legacy `/settings/instance-ai` path.
+		{
+			path: 'instance-ai',
+			redirect: (to) => ({ name: INSTANCE_AI_SETTINGS_VIEW, query: to.query, hash: to.hash }),
+			meta: {
 				telemetry: {
 					pageCategory: 'settings',
 				},

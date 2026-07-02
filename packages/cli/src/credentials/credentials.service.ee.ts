@@ -114,6 +114,19 @@ export class EnterpriseCredentialsService {
 			credential = await this.credentialsFinderService.findCredentialForUser(credentialId, user, [
 				'credential:read',
 			]);
+
+			// Connect-capable users of a private credential need the redacted blueprint
+			// (secrets stay masked) so the UI can detect the OAuth type and render the
+			// per-user connect flow, even without edit rights.
+			if (
+				includeDecryptedData &&
+				credential?.isResolvable &&
+				(await this.credentialsFinderService.findCredentialForUser(credentialId, user, [
+					'credential:connect',
+				]))
+			) {
+				decryptedData = await this.credentialsService.decrypt(credential);
+			}
 		}
 
 		if (!credential) {
@@ -126,8 +139,14 @@ export class EnterpriseCredentialsService {
 
 		const { data: _, ...rest } = credential;
 
-		const enriched: typeof rest & { connectedByMe?: boolean } = rest;
+		const enriched: typeof rest & { connectedByMe?: boolean; connectedUserCount?: number } = rest;
 		await this.credentialsService.populateConnectedByMe([enriched], user);
+
+		if (credential.isResolvable) {
+			enriched.connectedUserCount = await this.credentialsService.countConnectedUsers(
+				credential.id,
+			);
+		}
 
 		if (decryptedData) {
 			// We never want to expose the oauthTokenData to the frontend, but it

@@ -1,27 +1,30 @@
 import { UnexpectedError } from 'n8n-workflow';
 import nock from 'nock';
 
-const mockAsyncExec = jest.fn();
-const mockAccess = jest.fn();
+const { mockAsyncExec, mockAccess, mockExecFile } = vi.hoisted(() => ({
+	mockAsyncExec: vi.fn(),
+	mockAccess: vi.fn(),
+	mockExecFile: vi.fn(),
+}));
 
 const isWindowsAbsolutePath = (path: string): boolean => /^[a-zA-Z]:[\\/]/.test(path);
 
-jest.mock('node:child_process', () => ({
-	...jest.requireActual('node:child_process'),
-	execFile: jest.fn(),
+vi.mock('node:child_process', async () => ({
+	...(await vi.importActual<typeof import('node:child_process')>('node:child_process')),
+	execFile: mockExecFile,
 }));
 
-jest.mock('node:fs/promises', () => ({
-	...jest.requireActual('node:fs/promises'),
-	access: jest.fn((...args) => mockAccess(...args)),
+vi.mock('node:fs/promises', async () => ({
+	...(await vi.importActual<typeof import('node:fs/promises')>('node:fs/promises')),
+	access: vi.fn((...args) => mockAccess(...args)),
 }));
 
-jest.mock('node:path', () => {
-	const actual = jest.requireActual('node:path');
+vi.mock('node:path', async () => {
+	const actual = await vi.importActual<typeof import('node:path')>('node:path');
 
 	return {
 		...actual,
-		isAbsolute: jest.fn((path: string) => {
+		isAbsolute: vi.fn((path: string) => {
 			if (process.platform === 'win32' && isWindowsAbsolutePath(path)) {
 				return true;
 			}
@@ -31,12 +34,12 @@ jest.mock('node:path', () => {
 	};
 });
 
-jest.mock('node:util', () => {
-	const actual = jest.requireActual('node:util');
+vi.mock('node:util', async () => {
+	const actual = await vi.importActual<typeof import('node:util')>('node:util');
 	return {
 		...actual,
-		promisify: jest.fn((fn) => {
-			if (fn === require('node:child_process').execFile) {
+		promisify: vi.fn((fn) => {
+			if (fn === mockExecFile) {
 				return mockAsyncExec;
 			}
 			return actual.promisify(fn);
@@ -83,7 +86,7 @@ describe('executeNpmCommand', () => {
 	};
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		mockAsyncExec.mockReset();
 		mockAccess.mockReset();
 		setProcessPlatform(originalPlatform);
@@ -91,7 +94,7 @@ describe('executeNpmCommand', () => {
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('successful execution', () => {
@@ -232,7 +235,7 @@ describe('executeNpmCommand', () => {
 
 			try {
 				await executeNpmCommand(['install', 'some-package']);
-				fail('Should have thrown an error');
+				expect.fail('Should have thrown an error');
 			} catch (error) {
 				expect(error).toBeInstanceOf(UnexpectedError);
 				expect((error as UnexpectedError).cause).toBe(originalError);
@@ -256,7 +259,7 @@ describe('executeNpmCommand', () => {
 
 			try {
 				await executeNpmCommand(['install', 'nonexistent'], { doNotHandleError: true });
-				fail('Should have thrown an error');
+				expect.fail('Should have thrown an error');
 			} catch (error) {
 				expect(error).toBe(rawError);
 				expect(error).not.toBeInstanceOf(UnexpectedError);
@@ -310,7 +313,7 @@ describe('executeNpmCommand', () => {
 					authToken: 'leak-me',
 					doNotHandleError: true,
 				});
-				fail('Should have thrown');
+				expect.fail('Should have thrown');
 			} catch (error) {
 				expect((error as Error).message).not.toContain('leak-me');
 				expect((error as Error).message).toContain('_authToken=*****');
@@ -449,7 +452,7 @@ describe('executeNpmCommand', () => {
 		const nodeDirectory = 'C:/Program Files/nodejs';
 
 		const importFreshModule = async () => {
-			jest.resetModules();
+			vi.resetModules();
 			return await import('../npm-utils');
 		};
 
@@ -591,13 +594,13 @@ describe('verifyIntegrity', () => {
 	const integrity = 'sha512-hash==';
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		mockAsyncExec.mockReset();
 	});
 
 	afterEach(() => {
 		nock.cleanAll();
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should verify integrity successfully', async () => {
@@ -817,13 +820,13 @@ describe('checkIfVersionExistsOrThrow', () => {
 	const version = '1.0.0';
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		mockAsyncExec.mockReset();
 	});
 
 	afterEach(() => {
 		nock.cleanAll();
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should return true when package version exists', async () => {
@@ -1192,13 +1195,13 @@ describe('verifyIntegrity with auth token', () => {
 	const authToken = 'my-secret-token';
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		mockAsyncExec.mockReset();
 	});
 
 	afterEach(() => {
 		nock.cleanAll();
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should include Authorization header in axios request when authToken is provided', async () => {
@@ -1278,13 +1281,13 @@ describe('checkIfVersionExistsOrThrow with auth token', () => {
 	const authToken = 'my-secret-token';
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		mockAsyncExec.mockReset();
 	});
 
 	afterEach(() => {
 		nock.cleanAll();
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should include Authorization header in axios request when authToken is provided', async () => {

@@ -253,6 +253,114 @@ describe('CodeBuilderNodeSearchEngine', () => {
 		});
 	});
 
+	describe('searchByName - multi-word queries', () => {
+		// Nodes representative of the real-world queries that previously returned
+		// no results (tracked via MCP `queriesWithNoResults` telemetry). Before the
+		// multi-word split, sublimeSearch matched the whole query as one ordered
+		// subsequence against a single field, so none of these resolved.
+		const multiWordNodes = [
+			createNodeType({
+				name: 'n8n-nodes-base.webhook',
+				displayName: 'Webhook',
+				description: 'Starts the workflow on a webhook call',
+				group: ['trigger'],
+			}),
+			createNodeType({
+				name: 'n8n-nodes-base.telegram',
+				displayName: 'Telegram',
+				description: 'Sends data to Telegram',
+			}),
+			createNodeType({
+				name: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
+				displayName: 'Anthropic Chat Model',
+				description: 'Language model from Anthropic',
+				outputs: ['ai_languageModel'],
+			}),
+			createNodeType({
+				name: 'n8n-nodes-base.set',
+				displayName: 'Edit Fields',
+				description: 'Modify, add, or remove item fields',
+			}),
+			createNodeType({
+				name: 'n8n-nodes-base.code',
+				displayName: 'Code',
+				description: 'Run custom JavaScript code',
+			}),
+			createNodeType({
+				name: 'n8n-nodes-base.gmail',
+				displayName: 'Gmail',
+				description: 'Consume the Gmail API',
+			}),
+			createNodeType({
+				name: 'n8n-nodes-base.googleSheets',
+				displayName: 'Google Sheets',
+				description: 'Read, update and write data to Google Sheets',
+			}),
+			createNodeType({
+				name: 'n8n-nodes-base.slack',
+				displayName: 'Slack',
+				description: 'Consume the Slack API',
+			}),
+			createNodeType({
+				name: '@n8n/n8n-nodes-langchain.agent',
+				displayName: 'AI Agent',
+				description: 'Generates an action plan and executes it',
+			}),
+			createNodeType({
+				name: '@n8n/n8n-nodes-langchain.memoryBufferWindow',
+				displayName: 'Simple Memory',
+				description: 'Stores the last N messages in a buffer window',
+				codex: { alias: ['Window Buffer Memory'] },
+				outputs: ['ai_memory'],
+			}),
+		];
+
+		let engine: CodeBuilderNodeSearchEngine;
+
+		beforeEach(() => {
+			engine = new CodeBuilderNodeSearchEngine(multiWordNodes);
+		});
+
+		it.each([
+			['webhook trigger', 'n8n-nodes-base.webhook'],
+			['telegram send message', 'n8n-nodes-base.telegram'],
+			['anthropic claude', '@n8n/n8n-nodes-langchain.lmChatAnthropic'],
+			['set edit fields', 'n8n-nodes-base.set'],
+			['code javascript', 'n8n-nodes-base.code'],
+			['gmail send email', 'n8n-nodes-base.gmail'],
+			['google sheets append', 'n8n-nodes-base.googleSheets'],
+			['slack send message', 'n8n-nodes-base.slack'],
+			['langchain agent', '@n8n/n8n-nodes-langchain.agent'],
+			['ai agent langchain', '@n8n/n8n-nodes-langchain.agent'],
+			['memory buffer window', '@n8n/n8n-nodes-langchain.memoryBufferWindow'],
+			['window buffer memory', '@n8n/n8n-nodes-langchain.memoryBufferWindow'],
+		])('resolves "%s" to %s (previously no results)', (query, expectedNodeName) => {
+			const results = engine.searchByName(query);
+
+			expect(results.map((r) => r.name)).toContain(expectedNodeName);
+		});
+
+		it('splits a multi-word query and merges per-term matches', () => {
+			// "webhook" matches the trigger, "trigger" alone does not narrow it away
+			const results = engine.searchByName('webhook trigger');
+
+			expect(results.map((r) => r.name)).toContain('n8n-nodes-base.webhook');
+		});
+
+		it('matches an alias term within a multi-word query', () => {
+			// Only the alias "Window Buffer Memory" carries these words in this order
+			const results = engine.searchByName('window buffer memory');
+
+			expect(results.map((r) => r.name)).toContain('@n8n/n8n-nodes-langchain.memoryBufferWindow');
+		});
+
+		it('still returns no results for genuinely unknown multi-word queries', () => {
+			const results = engine.searchByName('nonexistent imaginary integration');
+
+			expect(results).toEqual([]);
+		});
+	});
+
 	describe('searchByConnectionType', () => {
 		it('should find nodes with exact connection type match', () => {
 			const results = searchEngine.searchByConnectionType(NodeConnectionTypes.AiTool);
@@ -660,6 +768,30 @@ describe('CodeBuilderNodeSearchEngine', () => {
 
 			// Check builder hint message
 			expect(results[0].builderHintMessage).toBe('Use with output parser for structured output');
+		});
+
+		it('should filter out null/undefined entries in builderHint.inputs', () => {
+			const agentNode = createNodeType({
+				name: '@n8n/n8n-nodes-langchain.agent',
+				displayName: 'AI Agent',
+				builderHint: {
+					inputs: {
+						ai_languageModel: { required: true },
+						// JSON-sourced data can carry `null`; a Partial config can be `undefined`.
+						// Both must be skipped instead of throwing on `config.required`.
+						ai_memory: undefined,
+						ai_tool: null,
+					} as unknown as NonNullable<INodeTypeDescription['builderHint']>['inputs'],
+				},
+			});
+			const engine = new CodeBuilderNodeSearchEngine([agentNode]);
+
+			const results = engine.searchByName('agent');
+
+			expect(results).toHaveLength(1);
+			expect(results[0].subnodeRequirements).toEqual([
+				{ connectionType: 'ai_languageModel', required: true },
+			]);
 		});
 
 		it('should not include subnodeRequirements for nodes without builderHint.inputs', () => {

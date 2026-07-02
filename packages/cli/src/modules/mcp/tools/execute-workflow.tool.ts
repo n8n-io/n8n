@@ -1,4 +1,6 @@
+import type { WorkflowsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
@@ -8,7 +10,6 @@ import {
 	type IPinData,
 	type IWorkflowExecutionDataProcess,
 	type WorkflowExecuteMode,
-	ensureError,
 	jsonStringify,
 	SCHEDULE_TRIGGER_NODE_TYPE,
 	createRunExecutionData,
@@ -33,6 +34,7 @@ import type { McpService } from '@/modules/mcp/mcp.service';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import type { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 
 export { type FoundWorkflow };
 
@@ -99,6 +101,8 @@ export const createExecuteWorkflowTool = (
 	workflowRunner: WorkflowRunner,
 	telemetry: Telemetry,
 	mcpService: McpService,
+	workflowsConfig: WorkflowsConfig,
+	workflowPublishedDataService: WorkflowPublishedDataService,
 ): ToolDefinition<typeof inputSchema.shape> => ({
 	name: 'execute_workflow',
 	config: {
@@ -126,6 +130,8 @@ export const createExecuteWorkflowTool = (
 				workflowFinderService,
 				workflowRunner,
 				mcpService,
+				workflowsConfig,
+				workflowPublishedDataService,
 				workflowId,
 				inputs,
 				executionMode,
@@ -193,6 +199,8 @@ export const executeWorkflow = async (
 	workflowFinderService: WorkflowFinderService,
 	workflowRunner: WorkflowRunner,
 	mcpService: McpService,
+	workflowsConfig: WorkflowsConfig,
+	workflowPublishedDataService: WorkflowPublishedDataService,
 	workflowId: string,
 	inputs?: z.infer<typeof inputSchema>['inputs'],
 	executionMode: z.infer<typeof inputSchema>['executionMode'] = 'production',
@@ -211,6 +219,8 @@ export const executeWorkflow = async (
 		executionMode,
 		inputs,
 		mcpService,
+		workflowsConfig,
+		workflowPublishedDataService,
 	);
 
 	const executionId = await workflowRunner.run(runData);
@@ -221,26 +231,47 @@ export const executeWorkflow = async (
 	};
 };
 
-const getVersionDataForExecution = (
+const getVersionDataForExecution = async (
 	workflow: FoundWorkflow,
 	workflowId: string,
 	executionMode: z.infer<typeof inputSchema>['executionMode'],
+	workflowsConfig: WorkflowsConfig,
+	workflowPublishedDataService: WorkflowPublishedDataService,
 ) => {
-	if (executionMode === 'production' && !workflow.activeVersionId) {
+	if (executionMode !== 'production') {
+		return { nodes: workflow.nodes ?? [], connections: workflow.connections ?? {} };
+	}
+
+	// Behind the flag, the workflow_published_version mapping is the source of
+	// truth — consult it directly rather than gating on activeVersionId. This
+	// issues a second query on top of the permission-check load; collapsing them
+	// is a deferred refactor.
+	// TODO: collapse to a single query — https://linear.app/n8n/issue/CAT-3443
+	if (workflowsConfig.useWorkflowPublicationService) {
+		const publishedData = await workflowPublishedDataService.getPublishedWorkflowData(workflowId);
+		if (publishedData === null) {
+			throw new WorkflowAccessError(
+				`Workflow '${workflowId}' has no published (active) version to execute`,
+				'workflow_not_active',
+			);
+		}
+		return {
+			nodes: publishedData.publishedVersion.nodes,
+			connections: publishedData.publishedVersion.connections,
+		};
+	}
+
+	if (!workflow.activeVersionId) {
 		throw new WorkflowAccessError(
 			`Workflow '${workflowId}' has no published (active) version to execute`,
 			'workflow_not_active',
 		);
 	}
 
-	const nodes =
-		executionMode === 'production' ? (workflow.activeVersion?.nodes ?? []) : (workflow.nodes ?? []);
-	const connections =
-		executionMode === 'production'
-			? (workflow.activeVersion?.connections ?? {})
-			: (workflow.connections ?? {});
-
-	return { nodes, connections };
+	return {
+		nodes: workflow.activeVersion?.nodes ?? [],
+		connections: workflow.activeVersion?.connections ?? {},
+	};
 };
 
 const buildRunData = async (
@@ -250,8 +281,16 @@ const buildRunData = async (
 	executionMode: z.infer<typeof inputSchema>['executionMode'],
 	inputs: z.infer<typeof inputSchema>['inputs'],
 	mcpService: McpService,
+	workflowsConfig: WorkflowsConfig,
+	workflowPublishedDataService: WorkflowPublishedDataService,
 ): Promise<IWorkflowExecutionDataProcess> => {
-	const { nodes, connections } = getVersionDataForExecution(workflow, workflowId, executionMode);
+	const { nodes, connections } = await getVersionDataForExecution(
+		workflow,
+		workflowId,
+		executionMode,
+		workflowsConfig,
+		workflowPublishedDataService,
+	);
 	const triggerNode = findMcpSupportedTrigger(nodes, executionMode);
 
 	if (!triggerNode) {

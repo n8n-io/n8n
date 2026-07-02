@@ -67,6 +67,17 @@ export class NodeCreator {
 		return this.getCategoryItems().filter({ hasText: text });
 	}
 
+	getCategoryContainer(text: string): Locator {
+		return this.getCategoryItem(text).locator('..');
+	}
+
+	async expectCategoryCollapsed(text: string, collapsed: boolean): Promise<void> {
+		await expect(this.getCategoryContainer(text)).toHaveAttribute(
+			'data-category-collapsed',
+			String(collapsed),
+		);
+	}
+
 	// Actions
 	async open(): Promise<void> {
 		await this.page.getByTestId('node-creator-plus-button').click();
@@ -100,5 +111,9 @@ export class NodeCreator {
 
 	async goBackFromSubcategory(): Promise<void> {
 		await this.getActiveSubcategory().locator('button').click();
+	}
+
+	async clickInsertOneLink(): Promise<void> {
+		await this.page.getByText('Insert one').click();
 	}
 }

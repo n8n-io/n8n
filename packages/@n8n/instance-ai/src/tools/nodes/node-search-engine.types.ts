@@ -66,6 +66,7 @@ export interface SearchableNodeType {
 	};
 	builderHint?: {
 		message?: string;
+		searchHint?: string;
 		inputs?: BuilderHintInputs;
 		/**
 		 * Multi-line content variations emitted into generated `.d.ts` only;
@@ -93,6 +94,12 @@ export interface SubnodeRequirement {
 	required: boolean;
 	/** Conditions under which this subnode is required. */
 	displayOptions?: Record<string, unknown>;
+	/**
+	 * Preferred node to satisfy this requirement, matching a provider the user
+	 * already has a credential for. Set for ai_languageModel when an LLM
+	 * credential exists; use it instead of the generic default.
+	 */
+	suggestedNode?: string;
 }
 
 /** Node search result with scoring and subnode requirements. */
@@ -104,7 +111,7 @@ export interface NodeSearchResult {
 	score: number;
 	inputs: string[] | string;
 	outputs: string[] | string;
-	/** General hint message for workflow builders (from builderHint.message). */
+	/** General hint message for workflow builders (from builderHint.message/searchHint). */
 	builderHintMessage?: string;
 	/** Subnode requirements extracted from builderHint.inputs. */
 	subnodeRequirements?: SubnodeRequirement[];

@@ -1,10 +1,21 @@
-import type { INodeProperties, IExecuteFunctions, IDataObject } from 'n8n-workflow';
+import {
+	NodeOperationError,
+	type INodeProperties,
+	type IExecuteFunctions,
+	type IDataObject,
+} from 'n8n-workflow';
 
 import { updateDisplayOptions } from '@utils/utilities';
 
 import { channelRLC, teamRLC } from '../../descriptions';
 import { prepareMessage } from '../../helpers/utils';
-import { microsoftApiRequest } from '../../transport';
+import {
+	buildTeamsPath,
+	getTeamsCredentialType,
+	microsoftApiRequest,
+	SERVICE_PRINCIPAL_AUTH,
+	SP_HIDE,
+} from '../../transport';
 
 const properties: INodeProperties[] = [
 	teamRLC,
@@ -71,6 +82,9 @@ const displayOptions = {
 		resource: ['channelMessage'],
 		operation: ['create'],
 	},
+	hide: {
+		...SP_HIDE,
+	},
 };
 
 export const description = updateDisplayOptions(displayOptions, properties);
@@ -83,6 +97,20 @@ export async function execute(
 ) {
 	//https://docs.microsoft.com/en-us/graph/api/channel-post-messages?view=graph-rest-beta&tabs=http
 	//https://docs.microsoft.com/en-us/graph/api/channel-post-messagereply?view=graph-rest-beta&tabs=http
+
+	// App-only Graph exposes channel-message posting only via migration import, so
+	// it has no usable form here; fail before any request for hand-edited workflows.
+	if (getTeamsCredentialType.call(this) === SERVICE_PRINCIPAL_AUTH) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'Sending channel messages is not available with the Service Principal credential',
+			{
+				itemIndex: i,
+				description:
+					'App-only Microsoft Graph supports only migration import for channel messages. Use an OAuth2 credential to post messages.',
+			},
+		);
+	}
 
 	const teamId = this.getNodeParameter('teamId', i, '', { extractValue: true }) as string;
 	const channelId = this.getNodeParameter('channelId', i, '', { extractValue: true }) as string;
@@ -108,14 +136,28 @@ export async function execute(
 		return await microsoftApiRequest.call(
 			this,
 			'POST',
-			`/beta/teams/${teamId}/channels/${channelId}/messages/${replyToId}/replies`,
+			buildTeamsPath.call(this, [
+				'/beta/teams/',
+				{ id: teamId },
+				'/channels/',
+				{ id: channelId },
+				'/messages/',
+				{ id: replyToId },
+				'/replies',
+			]),
 			body,
 		);
 	} else {
 		return await microsoftApiRequest.call(
 			this,
 			'POST',
-			`/beta/teams/${teamId}/channels/${channelId}/messages`,
+			buildTeamsPath.call(this, [
+				'/beta/teams/',
+				{ id: teamId },
+				'/channels/',
+				{ id: channelId },
+				'/messages',
+			]),
 			body,
 		);
 	}

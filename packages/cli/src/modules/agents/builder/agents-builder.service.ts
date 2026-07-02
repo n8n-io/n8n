@@ -9,6 +9,7 @@ import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { IsNull } from '@n8n/typeorm';
 import { jsonParse, UserError } from 'n8n-workflow';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -20,6 +21,7 @@ import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import { N8nMemory } from '../integrations/n8n-memory';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import { AgentCheckpointRepository } from '../repositories/agent-checkpoint.repository';
+import { streamAgentChunks } from '../utils/agent-stream';
 import { buildAgentPreviewPath } from './agent-builder-preview-path';
 import { buildBuilderPrompt } from './agents-builder-prompts';
 import { AgentsBuilderToolsService, getAgentConfigHash } from './agents-builder-tools.service';
@@ -28,6 +30,10 @@ import { AgentsBuilderSettingsService } from './agents-builder-settings.service'
 import { buildBuilderTelemetry } from '../tracing/builder-telemetry';
 import { getModelRecommendationsSection } from './agents-builder-model-recommendations';
 import { getBuilderRuntimeSkills } from './skills';
+
+interface FindSuspendedCheckpointOptions {
+	includeUnscoped?: boolean;
+}
 
 /** Derive a stable thread ID for the builder chat of a given agent. */
 function builderThreadId(agentId: string): string {
@@ -167,7 +173,8 @@ export class AgentsBuilderService {
 		// Resolve the model the builder should run on. Throws
 		// `BuilderNotConfiguredError` when none of custom-credential / proxy /
 		// env-var fallback is available.
-		const { config: modelConfig } = await this.builderSettings.resolveModelConfig(user);
+		const { config: modelConfig, tracingProxyConfig } =
+			await this.builderSettings.resolveModelConfig(user);
 
 		const currentConfig = composeJsonConfig(agent) as unknown as AgentJsonConfig | null;
 		const currentToolsMap = agent.tools ?? {};
@@ -188,23 +195,20 @@ export class AgentsBuilderService {
 			modelRecommendationsSection,
 			enabledModules,
 		});
-		const runtimeSkills = getBuilderRuntimeSkills({
-			enabledModules,
-		});
+		const runtimeSkills = getBuilderRuntimeSkills();
 
 		const tools = this.agentsBuilderToolsService.getTools(
 			agentId,
 			projectId,
 			credentialProvider,
 			user,
-			enabledModules,
 		);
 
 		const { Agent, Memory } = await import('@n8n/agents');
 
 		const builderMemory = new Memory()
 			.storage(this.n8nMemory.getImplementation(agentId))
-			.lastMessages(40);
+			.observationalMemory();
 
 		const builder = new Agent('agent-builder')
 			.model(modelConfig)
@@ -220,6 +224,7 @@ export class AgentsBuilderService {
 			userId: user.id,
 			threadId: builderThreadId(agentId),
 			model: modelConfig,
+			tracingProxyConfig,
 		});
 		if (telemetry) builder.telemetry(telemetry);
 
@@ -236,15 +241,8 @@ export class AgentsBuilderService {
 	 * plain reader→generator adapter.
 	 */
 	private async *streamFromAgent(resultStream: StreamResult): AsyncGenerator<StreamChunk> {
-		const reader = resultStream.stream.getReader();
-		try {
-			while (true) {
-				const { done, value } = await reader.read();
-				if (done) break;
-				yield value;
-			}
-		} finally {
-			reader.releaseLock();
+		for await (const value of streamAgentChunks(resultStream.stream)) {
+			yield value;
 		}
 	}
 
@@ -259,10 +257,45 @@ export class AgentsBuilderService {
 	 * don't need a separate runId from this helper.
 	 */
 	async findOpenCheckpoint(agentId: string): Promise<SerializableAgentState | null> {
+		return await this.findSuspendedCheckpoint(agentId);
+	}
+
+	/**
+	 * Like {@link findOpenCheckpoint}, but scoped to one chat thread. Used by
+	 * the chat history endpoints to rebuild open interactive cards (with
+	 * runIds) after a page refresh.
+	 */
+	async findOpenCheckpointForThread(
+		agentId: string,
+		threadId: string,
+		options: FindSuspendedCheckpointOptions = {},
+	): Promise<SerializableAgentState | null> {
+		return await this.findSuspendedCheckpoint(agentId, threadId, options);
+	}
+
+	/**
+	 * Like {@link findOpenCheckpointForThread}, scoped to the builder thread for
+	 * this agent. Prevents preview-chat suspensions from bleeding into builder
+	 * history.
+	 */
+	async findOpenBuilderCheckpoint(agentId: string): Promise<SerializableAgentState | null> {
+		return await this.findSuspendedCheckpoint(agentId, builderThreadId(agentId));
+	}
+
+	private async findSuspendedCheckpoint(
+		agentId: string,
+		threadId?: string,
+		options: FindSuspendedCheckpointOptions = {},
+	): Promise<SerializableAgentState | null> {
 		const rows = await this.agentCheckpointRepository.find({
-			where: { agentId, expired: false },
+			where: options.includeUnscoped
+				? [
+						{ agentId, expired: false },
+						{ agentId: IsNull(), expired: false },
+					]
+				: { agentId, expired: false },
 			order: { updatedAt: 'DESC' },
-			take: 5,
+			...(threadId === undefined && { take: 5 }),
 		});
 		for (const row of rows) {
 			if (!row.state) continue;
@@ -272,9 +305,9 @@ export class AgentsBuilderService {
 			} catch {
 				continue;
 			}
-			if (parsed.status === 'suspended') {
-				return parsed;
-			}
+			if (parsed.status !== 'suspended') continue;
+			if (threadId !== undefined && parsed.persistence?.threadId !== threadId) continue;
+			return parsed;
 		}
 		return null;
 	}

@@ -1,15 +1,15 @@
 import { UserError } from 'n8n-workflow';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { OnePasswordProvider } from '../one-password';
 import type { OnePasswordContext } from '../one-password';
 
-const mockListVaults = jest.fn();
-const mockListItems = jest.fn();
-const mockGetItemById = jest.fn();
+const mockListVaults = vi.fn();
+const mockListItems = vi.fn();
+const mockGetItemById = vi.fn();
 
-jest.mock('@1password/connect', () => ({
-	OnePasswordConnect: jest.fn(() => ({
+vi.mock('@1password/connect', () => ({
+	OnePasswordConnect: vi.fn(() => ({
 		listVaults: mockListVaults,
 		listItems: mockListItems,
 		getItemById: mockGetItemById,
@@ -20,7 +20,7 @@ describe('OnePasswordProvider', () => {
 	const provider = new OnePasswordProvider();
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('init validation', () => {

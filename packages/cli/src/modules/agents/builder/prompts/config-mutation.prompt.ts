@@ -1,6 +1,6 @@
 import { getConfigRulesSection, getSchemaReferenceSection } from './config-rules.prompt';
 
-export function getConfigMutationPrompt(enabledModules: string[]): string {
+export function getConfigMutationPrompt(): string {
 	return `\
 ## Config Mutation Guidance
 
@@ -24,12 +24,12 @@ Use this after deciding a config change is needed and before calling
 
 ${getConfigRulesSection()}
 
-${getSchemaReferenceSection(enabledModules)}
+${getSchemaReferenceSection()}
 
 - Follow the Config schema reference exactly; do not invent top-level fields.
 - Keep each feature in the schema path where it belongs.
 - Preserve unrelated existing config unless the user asked to change it.
-- Never write placeholder instructions.
+- Never write placeholder instructions, tool descriptions, or skill descriptions.
 - Never copy credential IDs from \`list_credentials\`; use \`resolve_llm\`, \`ask_llm\`, or \`ask_credential\`.
 - Valid provider tool keys are complete provider tool IDs documented in the Tool Guidance section.
 - \`providerTools\` keys must be complete provider tool IDs from the valid key list.
@@ -124,7 +124,7 @@ Bad: replacing \`config\` while dropping unrelated settings
 - \`patch_config\` cannot create a config when none exists; use \`write_config\` first.
 - \`/array/-\` appends to an array; \`/array/0\` inserts before the current first item.
 - Model-only changes must preserve existing Brave or SearXNG \`config.webSearch\`.
-- Empty, placeholder, or guessed \`instructions\` are rejected; ask for details instead.
+- Empty, placeholder, or guessed \`instructions\` values are rejected; ask for details instead.
 
 ### Verify
 

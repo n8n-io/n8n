@@ -1,26 +1,27 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import moment from 'moment-timezone';
 import type { IPollFunctions, INode } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
 import * as GenericFunctions from '../GenericFunctions';
 import { GoogleCalendarTrigger } from '../GoogleCalendarTrigger.node';
+import type { Mock, Mocked } from 'vitest';
 
-jest.mock('../GenericFunctions', () => ({
-	googleApiRequest: jest.fn(),
-	googleApiRequestAllItems: jest.fn(),
-	encodeURIComponentOnce: jest.fn(),
-	getCalendars: jest.fn(),
+vi.mock('../GenericFunctions', () => ({
+	googleApiRequest: vi.fn(),
+	googleApiRequestAllItems: vi.fn(),
+	encodeURIComponentOnce: vi.fn(),
+	getCalendars: vi.fn(),
 }));
 
 describe('GoogleCalendarTrigger', () => {
 	let trigger: GoogleCalendarTrigger;
-	let mockPollFunctions: jest.Mocked<IPollFunctions>;
+	let mockPollFunctions: Mocked<IPollFunctions>;
 	let mockNode: INode;
 
-	const googleApiRequestSpy = jest.spyOn(GenericFunctions, 'googleApiRequest');
-	const googleApiRequestAllItemsSpy = jest.spyOn(GenericFunctions, 'googleApiRequestAllItems');
-	const encodeURIComponentOnceSpy = jest.spyOn(GenericFunctions, 'encodeURIComponentOnce');
+	const googleApiRequestSpy = vi.spyOn(GenericFunctions, 'googleApiRequest');
+	const googleApiRequestAllItemsSpy = vi.spyOn(GenericFunctions, 'googleApiRequestAllItems');
+	const encodeURIComponentOnceSpy = vi.spyOn(GenericFunctions, 'encodeURIComponentOnce');
 
 	beforeEach(() => {
 		trigger = new GoogleCalendarTrigger();
@@ -34,18 +35,18 @@ describe('GoogleCalendarTrigger', () => {
 			parameters: {},
 		};
 
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		mockPollFunctions.getNode.mockReturnValue(mockNode);
 		mockPollFunctions.getWorkflowStaticData.mockReturnValue({});
-		(mockPollFunctions.helpers.returnJsonArray as jest.Mock).mockImplementation((data: any[]) =>
+		(mockPollFunctions.helpers.returnJsonArray as Mock).mockImplementation((data: any[]) =>
 			data.map((item: any, index: number) => ({ json: item, pairedItem: { item: index } })),
 		);
 		encodeURIComponentOnceSpy.mockImplementation((uri) => encodeURIComponent(uri));
 	});
 
 	afterEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('Node Description', () => {

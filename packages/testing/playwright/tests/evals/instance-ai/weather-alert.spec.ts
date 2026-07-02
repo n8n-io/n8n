@@ -48,18 +48,24 @@ function stubBuildWorkflow(_prompt: string): Promise<StubBuildResult> {
 
 const fixture = loadFixture();
 
-test.describe('eval: weather-alert', () => {
-	for (const scenario of fixture.scenarios) {
-		// eslint-disable-next-line playwright/valid-title
-		test(scenario.name, async ({ traced }) => {
-			const result = await traced(`weather-alert/${scenario.name}`, () =>
-				stubBuildWorkflow(fixture.prompt),
-			);
+test.describe(
+	'eval: weather-alert',
+	{ annotation: [{ type: 'owner', description: 'instanceAI' }] },
+	() => {
+		for (const scenario of fixture.scenarios) {
+			// eslint-disable-next-line playwright/valid-title
+			test(scenario.name, async ({ traced }) => {
+				const result = await traced(`weather-alert/${scenario.name}`, () =>
+					stubBuildWorkflow(fixture.prompt),
+				);
 
-			expect(result.workflow.nodes.map((n) => n.type)).toContain('n8n-nodes-base.scheduleTrigger');
-			expect(result.workflow.nodes.map((n) => n.type)).toContain('n8n-nodes-base.gmail');
-			expect(result.workflow.nodes.map((n) => n.type)).toContain('n8n-nodes-base.if');
-			expect(result.tokensUsed).toBeGreaterThan(0);
-		});
-	}
-});
+				expect(result.workflow.nodes.map((n) => n.type)).toContain(
+					'n8n-nodes-base.scheduleTrigger',
+				);
+				expect(result.workflow.nodes.map((n) => n.type)).toContain('n8n-nodes-base.gmail');
+				expect(result.workflow.nodes.map((n) => n.type)).toContain('n8n-nodes-base.if');
+				expect(result.tokensUsed).toBeGreaterThan(0);
+			});
+		}
+	},
+);

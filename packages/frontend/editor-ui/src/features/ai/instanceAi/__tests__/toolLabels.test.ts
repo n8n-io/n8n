@@ -11,6 +11,10 @@ vi.mock('@n8n/i18n', () => ({
 				'instanceAi.tools.workspace_execute_command': 'Running command',
 				'instanceAi.tools.workspace_execute_command.skill': 'Running skill script',
 				'instanceAi.tools.workspace_execute_command.skillScript': 'Running',
+				'instanceAi.tools.n8n-docs': 'Reading n8n docs',
+				'instanceAi.tools.n8n-docs.lookup': 'Reading n8n docs',
+				'instanceAi.tools.n8n-docs.search': 'Searching n8n docs',
+				'instanceAi.tools.n8n-docs.read': 'Opening n8n docs',
 				'instanceAi.tools.list_skills': 'Checking available skills',
 				'instanceAi.tools.load_skill': 'Opening skill',
 				'instanceAi.tools.load_skill.asset': 'Opening',
@@ -74,15 +78,17 @@ describe('getToolIcon', () => {
 		expect(getToolIcon('research')).toBe('search');
 	});
 
-	test('returns brain for memory/planning tools', () => {
+	test('returns brain for memory/task-control tools', () => {
 		expect(getToolIcon('updateWorkingMemory')).toBe('brain');
-		expect(getToolIcon('plan')).toBe('brain');
 		expect(getToolIcon('task-control')).toBe('brain');
+	});
+
+	test('treats removed plan tool as an ordinary unknown icon', () => {
+		expect(getToolIcon('plan')).toBe('settings');
 	});
 
 	test('returns key-round for credential tools', () => {
 		expect(getToolIcon('credentials')).toBe('key-round');
-		expect(getToolIcon('browser-credential-setup')).toBe('key-round');
 	});
 
 	test('returns file-text for filesystem tools', () => {
@@ -98,6 +104,10 @@ describe('getToolIcon', () => {
 	test('returns book-open for skill tools', () => {
 		expect(getToolIcon('list_skills')).toBe('book-open');
 		expect(getToolIcon('load_skill')).toBe('book-open');
+	});
+
+	test('returns book-open for n8n docs tool', () => {
+		expect(getToolIcon('n8n-docs')).toBe('book-open');
 	});
 
 	test('returns settings as default', () => {
@@ -147,6 +157,14 @@ describe('useToolLabel', () => {
 		expect(getToolLabel('unknown-tool')).toBe('unknown-tool');
 	});
 
+	test('getToolLabel returns action-specific n8n docs labels', () => {
+		const { getToolLabel } = useToolLabel();
+		expect(getToolLabel('n8n-docs')).toBe('Reading n8n docs');
+		expect(getToolLabel('n8n-docs', { action: 'lookup' })).toBe('Reading n8n docs');
+		expect(getToolLabel('n8n-docs', { action: 'search' })).toBe('Searching n8n docs');
+		expect(getToolLabel('n8n-docs', { action: 'read' })).toBe('Opening n8n docs');
+	});
+
 	test('getToggleLabel returns show data for regular tools', () => {
 		const { getToggleLabel } = useToolLabel();
 		expect(getToggleLabel(makeToolCall({ toolName: 'workflows' }))).toBe('Show data');
@@ -160,8 +178,12 @@ describe('useToolLabel', () => {
 	test('getToggleLabel returns undefined for no-toggle tools', () => {
 		const { getToggleLabel } = useToolLabel();
 		expect(getToggleLabel(makeToolCall({ toolName: 'updateWorkingMemory' }))).toBeUndefined();
-		expect(getToggleLabel(makeToolCall({ toolName: 'plan' }))).toBeUndefined();
 		expect(getToggleLabel(makeToolCall({ toolName: 'task-control' }))).toBeUndefined();
+	});
+
+	test('getToggleLabel treats removed plan tool as an ordinary unknown tool', () => {
+		const { getToggleLabel } = useToolLabel();
+		expect(getToggleLabel(makeToolCall({ toolName: 'plan' }))).toBe('Show data');
 	});
 
 	test('getHideLabel returns hide data for regular tools', () => {
@@ -176,6 +198,11 @@ describe('useToolLabel', () => {
 
 	test('getHideLabel returns undefined for no-toggle tools', () => {
 		const { getHideLabel } = useToolLabel();
-		expect(getHideLabel(makeToolCall({ toolName: 'plan' }))).toBeUndefined();
+		expect(getHideLabel(makeToolCall({ toolName: 'task-control' }))).toBeUndefined();
+	});
+
+	test('getHideLabel treats removed plan tool as an ordinary unknown tool', () => {
+		const { getHideLabel } = useToolLabel();
+		expect(getHideLabel(makeToolCall({ toolName: 'plan' }))).toBe('Hide data');
 	});
 });

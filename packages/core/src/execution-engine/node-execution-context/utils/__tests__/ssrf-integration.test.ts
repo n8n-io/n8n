@@ -1,35 +1,22 @@
 import type { Logger } from '@n8n/backend-common';
+import type { DnsResolver, SsrfBridge } from '@n8n/backend-network';
+import { httpRequest, SsrfProtectionService } from '@n8n/backend-network';
 import { SsrfProtectionConfig } from '@n8n/config';
 import type {
+	IHttpRequestOptions,
 	INode,
 	IWorkflowExecuteAdditionalData,
-	IHttpRequestOptions,
 	Workflow,
 } from 'n8n-workflow';
 import { UserError } from 'n8n-workflow';
 import nock from 'nock';
-import type { LookupAddress, LookupOptions } from 'node:dns';
-import type { Mocked } from 'vitest';
+import type { LookupAddress } from 'node:dns';
+import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 
-import type { SsrfBridge } from '@/execution-engine';
 import type { ExecutionLifecycleHooks } from '@/execution-engine/execution-lifecycle-hooks';
 
-import { getRequestHelperFunctions, httpRequest } from '../request-helper-functions';
-
-type DnsResolverLike = {
-	lookup(hostname: string, options?: LookupOptions): Promise<LookupAddress[]>;
-};
-
-type SsrfProtectionServiceCtor = new (
-	config: SsrfProtectionConfig,
-	dnsResolver: DnsResolverLike,
-	logger: Logger,
-) => SsrfBridge;
-
-// Lazy import via `await` inside `beforeAll` since require() can't resolve cross-package TS.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let SsrfProtectionService: SsrfProtectionServiceCtor = null as any;
+import { getRequestHelperFunctions } from '../request-helper-functions';
 
 function createConfig(overrides: Partial<SsrfProtectionConfig> = {}): SsrfProtectionConfig {
 	const config = new SsrfProtectionConfig();
@@ -39,22 +26,20 @@ function createConfig(overrides: Partial<SsrfProtectionConfig> = {}): SsrfProtec
 
 function createMockDnsResolver(
 	entries: Record<string, LookupAddress[]> = {},
-): Mocked<DnsResolverLike> {
-	return {
-		lookup: vi.fn(async (hostname) => entries[hostname] ?? []),
-	};
+): MockProxy<DnsResolver> {
+	const resolver = mock<DnsResolver>();
+	resolver.lookup.mockImplementation(async (hostname) => entries[hostname] ?? []);
+	return resolver;
 }
 
 function createSsrfBridge(
 	configOverrides: Partial<SsrfProtectionConfig> = {},
 	dnsResolver = createMockDnsResolver(),
-): { ssrfBridge: SsrfBridge; dnsResolver: Mocked<DnsResolverLike> } {
+): { ssrfBridge: SsrfBridge; dnsResolver: MockProxy<DnsResolver> } {
 	const scopedLogger = mock<Logger>();
 	const logger = mock<Logger>({ scoped: vi.fn().mockReturnValue(scopedLogger) });
 	const config = createConfig(configOverrides);
-
 	const ssrfBridge = new SsrfProtectionService(config, dnsResolver, logger);
-
 	return { ssrfBridge, dnsResolver };
 }
 
@@ -71,13 +56,6 @@ function createRequestHelpers(ssrfBridge?: SsrfBridge) {
 }
 
 describe('SSRF end-to-end integration', () => {
-	beforeAll(async () => {
-		const mod = (await import(
-			'../../../../../../cli/src/services/ssrf/ssrf-protection.service'
-		)) as unknown as { SsrfProtectionService: SsrfProtectionServiceCtor };
-		SsrfProtectionService = mod.SsrfProtectionService;
-	});
-
 	afterEach(() => {
 		nock.cleanAll();
 		vi.clearAllMocks();
@@ -137,6 +115,59 @@ describe('SSRF end-to-end integration', () => {
 		).resolves.toEqual({ ok: true });
 	});
 
+	test('blocks request to a deny-listed hostname even when it resolves to a public IP', async () => {
+		const dnsResolver = createMockDnsResolver({
+			'exfil.example.com': [{ address: '93.184.216.34', family: 4 }],
+		});
+		const { ssrfBridge } = createSsrfBridge(
+			{ blockedHostnames: ['exfil.example.com'] },
+			dnsResolver,
+		);
+		const helpers = createRequestHelpers(ssrfBridge);
+
+		await expect(
+			helpers.httpRequest({ method: 'GET', url: 'https://exfil.example.com/data' }),
+		).rejects.toThrow('The request was blocked because the destination hostname is restricted');
+		// Denied by name, so DNS resolution never runs.
+		expect(dnsResolver.lookup).not.toHaveBeenCalled();
+	});
+
+	test('blocks redirects to a deny-listed hostname', async () => {
+		const dnsResolver = createMockDnsResolver({
+			'public.example': [{ address: '93.184.216.34', family: 4 }],
+		});
+		const { ssrfBridge } = createSsrfBridge(
+			{ blockedHostnames: ['exfil.example.com'] },
+			dnsResolver,
+		);
+		const helpers = createRequestHelpers(ssrfBridge);
+
+		nock('http://public.example')
+			.get('/redirect')
+			.reply(301, '', { Location: 'http://exfil.example.com/data' });
+
+		await expect(
+			helpers.httpRequest({ method: 'GET', url: 'http://public.example/redirect' }),
+		).rejects.toThrow('The request was blocked because the destination hostname is restricted');
+	});
+
+	test('allows a hostname carved out of a broad deny via the allow-list', async () => {
+		const dnsResolver = createMockDnsResolver({
+			'api.example.com': [{ address: '93.184.216.34', family: 4 }],
+		});
+		const { ssrfBridge } = createSsrfBridge(
+			{ allowedHostnames: ['api.example.com'], blockedHostnames: ['*.example.com'] },
+			dnsResolver,
+		);
+		const helpers = createRequestHelpers(ssrfBridge);
+
+		nock('https://api.example.com').get('/health').reply(200, { ok: true });
+
+		await expect(
+			helpers.httpRequest({ method: 'GET', url: 'https://api.example.com/health' }),
+		).resolves.toEqual({ ok: true });
+	});
+
 	test('allows private IP within configured allowlisted range', async () => {
 		const { ssrfBridge } = createSsrfBridge({ allowedIpRanges: ['10.0.0.0/24'] });
 		const helpers = createRequestHelpers(ssrfBridge);
@@ -169,5 +200,39 @@ describe('SSRF end-to-end integration', () => {
 		};
 
 		await expect(httpRequest(requestOptions)).resolves.toEqual({ ok: true });
+	});
+
+	describe('getSecureEgressFilter', () => {
+		test('returns the configured filter when egress filtering is enabled', () => {
+			const { ssrfBridge } = createSsrfBridge();
+			const additionalData = mock<IWorkflowExecuteAdditionalData>();
+			additionalData.ssrfBridge = ssrfBridge;
+			const helpers = getRequestHelperFunctions(
+				mock<Workflow>(),
+				mock<INode>(),
+				additionalData,
+				null,
+				[],
+			);
+
+			expect(helpers.getSecureEgressFilter()).toBe(ssrfBridge);
+		});
+
+		test('returns undefined when egress filtering is not configured', () => {
+			const helpers = createRequestHelpers(undefined);
+
+			expect(helpers.getSecureEgressFilter()).toBeUndefined();
+		});
+	});
+
+	describe('validateUrl', () => {
+		test('validates a direct link-local address without DNS resolution', async () => {
+			const { ssrfBridge, dnsResolver } = createSsrfBridge();
+
+			const result = await ssrfBridge.validateUrl('http://169.254.169.254');
+
+			expect(result.ok).toBe(false);
+			expect(dnsResolver.lookup).not.toHaveBeenCalled();
+		});
 	});
 });

@@ -1,11 +1,33 @@
+import type { Mocked } from 'vitest';
 import type { CredentialProvider } from '@n8n/agents';
-import { AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH, type AgentJsonConfig } from '@n8n/api-types';
+import {
+	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
+	type AgentJsonConfig,
+	type AgentTaskDto,
+} from '@n8n/api-types';
+import type {
+	CustomFetch,
+	HttpTransport,
+	OutboundHttp,
+	SsrfProtectionService,
+} from '@n8n/backend-network';
+import type { SsrfProtectionConfig } from '@n8n/config';
 import type { User, WorkflowRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
+import type { CredentialTypes } from '@/credential-types';
+import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
+import type { NodeTypes } from '@/node-types';
+import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
+
+import type { AgentConfigService } from '../agent-config.service';
+import type { AgentCustomToolsService } from '../agent-custom-tools.service';
+import type { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
+import type { AgentSkillsService } from '../agent-skills.service';
+import type { AgentTaskService } from '../agent-task.service';
 import type { AgentsToolsService } from '../agents-tools.service';
 import type { AgentsService } from '../agents.service';
-import type { CredentialTypes } from '@/credential-types';
 import {
 	AgentsBuilderToolsService,
 	getAgentConfigHash,
@@ -13,35 +35,91 @@ import {
 import type { BuilderModelLookupService } from '../builder/builder-model-lookup.service';
 import { BUILDER_TOOLS } from '../builder/builder-tool-names';
 import type { Agent } from '../entities/agent.entity';
+import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
+import type { AiService } from '@/services/ai.service';
 
 const ctx = {
 	resumeData: undefined,
-	suspend: jest.fn().mockResolvedValue(undefined as never),
+	suspend: vi.fn().mockResolvedValue(undefined as never),
 	parentTelemetry: undefined,
 };
 
+type BuilderPurposeServices = Pick<AgentsService, 'findById' | 'findByProjectId'> &
+	Pick<AgentConfigService, 'updateConfig'> &
+	Pick<AgentCustomToolsService, 'buildCustomTool'> &
+	Pick<AgentIntegrationPersistenceService, 'listChatIntegrations'> &
+	Pick<AgentSkillsService, 'createSkill'>;
+
 function makeService() {
-	const agentsService = mock<AgentsService>();
+	const agentsService = mock<Pick<AgentsService, 'findById' | 'findByProjectId'>>();
+	const agentConfigService = mock<Pick<AgentConfigService, 'updateConfig'>>();
+	const agentCustomToolsService = mock<Pick<AgentCustomToolsService, 'buildCustomTool'>>();
+	const agentIntegrationPersistenceService =
+		mock<Pick<AgentIntegrationPersistenceService, 'listChatIntegrations'>>();
+	const agentSkillsService = mock<Pick<AgentSkillsService, 'createSkill'>>();
+	const purposeServices = {
+		findById: agentsService.findById,
+		findByProjectId: agentsService.findByProjectId,
+		updateConfig: agentConfigService.updateConfig,
+		buildCustomTool: agentCustomToolsService.buildCustomTool,
+		listChatIntegrations: agentIntegrationPersistenceService.listChatIntegrations,
+		createSkill: agentSkillsService.createSkill,
+	} as Mocked<BuilderPurposeServices>;
 	const secureRuntime = mock<AgentSecureRuntime>();
 	const workflowRepository = mock<WorkflowRepository>();
 	const agentsToolsService = mock<AgentsToolsService>();
 	const builderModelLookupService = mock<BuilderModelLookupService>();
 	const credentialTypes = mock<CredentialTypes>();
+	const mcpRegistryService = mock<McpRegistryService>();
+	const agentTaskService = mock<AgentTaskService>();
+	const agentRepository = mock<AgentRepository>();
+	const aiService = mock<AiService>();
+	aiService.isProxyEnabled.mockReturnValue(false);
+	const dynamicNodeParametersService = mock<DynamicNodeParametersService>();
+	const nodeTypes = mock<NodeTypes>();
 	agentsToolsService.getSharedTools.mockReturnValue([]);
 	credentialTypes.recognizes.mockReturnValue(true);
+	agentsToolsService.getSharedTools.mockReturnValue([]);
+	mcpRegistryService.getAll.mockResolvedValue([]);
+
+	const transport = mock<HttpTransport>();
+	transport.asCustomFetch.mockReturnValue(vi.fn() as unknown as CustomFetch);
+	const outboundHttp = mock<OutboundHttp>();
+	outboundHttp.transport.mockReturnValue(transport);
 
 	const service = new AgentsBuilderToolsService(
-		agentsService,
+		agentsService as unknown as AgentsService,
+		agentConfigService as unknown as AgentConfigService,
+		agentCustomToolsService as unknown as AgentCustomToolsService,
+		agentIntegrationPersistenceService as unknown as AgentIntegrationPersistenceService,
+		agentSkillsService as unknown as AgentSkillsService,
 		secureRuntime,
 		workflowRepository,
 		agentsToolsService,
 		builderModelLookupService,
+		mcpRegistryService,
 		mock(),
 		credentialTypes,
+		agentTaskService,
+		agentRepository,
+		aiService,
+		outboundHttp,
+		dynamicNodeParametersService,
+		nodeTypes,
+		mock<SsrfProtectionConfig>({ enabled: true }),
+		mock<SsrfProtectionService>(),
 	);
 
-	return { service, agentsService, secureRuntime };
+	return {
+		service,
+		agentsService: purposeServices,
+		secureRuntime,
+		agentTaskService,
+		agentRepository,
+		nodeTypes,
+		outboundHttp,
+	};
 }
 
 const baseConfig: AgentJsonConfig = {
@@ -52,6 +130,75 @@ const baseConfig: AgentJsonConfig = {
 	tools: [],
 	skills: [],
 };
+
+const fromAiTeamId =
+	"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('teamId', 'The Linear team ID to create the issue in', 'string') }}";
+
+const fromAiTitle = "={{ $fromAI('title', 'Issue title', 'string') }}";
+
+function makeLinearNodeTypeWithDynamicTeamId(): ReturnType<NodeTypes['getByNameAndVersion']> {
+	return {
+		description: {
+			displayName: 'Linear Tool',
+			name: 'n8n-nodes-base.linearTool',
+			group: ['transform'],
+			description: 'Use Linear in an agent tool.',
+			version: 1.1,
+			defaults: { name: 'Linear Tool' },
+			inputs: [NodeConnectionTypes.Main],
+			outputs: [NodeConnectionTypes.Main],
+			properties: [
+				{
+					displayName: 'Team Name or ID',
+					name: 'teamId',
+					type: 'options',
+					default: '',
+					required: true,
+					typeOptions: {
+						loadOptionsMethod: 'getTeams',
+					},
+				},
+				{
+					displayName: 'Title',
+					name: 'title',
+					type: 'string',
+					default: '',
+				},
+			],
+		},
+	} as ReturnType<NodeTypes['getByNameAndVersion']>;
+}
+
+function makeLinearToolWithFromAiTeamId(): NonNullable<AgentJsonConfig['tools']>[number] {
+	return makeLinearToolWithParameters({
+		resource: 'issue',
+		operation: 'create',
+		authentication: 'oAuth2',
+		teamId: fromAiTeamId,
+		title: fromAiTitle,
+	});
+}
+
+function makeLinearToolWithParameters(
+	nodeParameters: Record<string, unknown>,
+): NonNullable<AgentJsonConfig['tools']>[number] {
+	return {
+		type: 'node',
+		name: 'Linear: Create Issue',
+		description: 'Create a Linear issue',
+		node: {
+			nodeType: 'n8n-nodes-base.linearTool',
+			nodeTypeVersion: 1.1,
+			nodeParameters,
+			credentials: {
+				linearOAuth2Api: {
+					id: 'linear-credential-id',
+					name: 'Linear account',
+				},
+			},
+		},
+	};
+}
 
 function makeAgent(config: AgentJsonConfig = baseConfig): Agent {
 	return {
@@ -71,7 +218,7 @@ describe('AgentsBuilderToolsService', () => {
 	const user = mock<User>();
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('JSON config tools', () => {
@@ -80,6 +227,25 @@ describe('AgentsBuilderToolsService', () => {
 				.getTools(agentId, projectId, credentialProvider, user)
 				.json.find((tool) => tool.name === name)!;
 		}
+
+		it('registers MCP-specific tools in the builder toolset', () => {
+			const { service } = makeService();
+
+			const tools = service.getTools(agentId, projectId, credentialProvider, user).json;
+			const toolNames = tools.map((tool) => tool.name);
+			expect(toolNames).toContain(BUILDER_TOOLS.VERIFY_MCP_SERVER);
+			expect(toolNames).toContain(BUILDER_TOOLS.SEARCH_MCP_SERVERS);
+		});
+
+		it('builds verify_mcp_server with OutboundHttp SSRF protection enabled', () => {
+			const { service, outboundHttp } = makeService();
+
+			service.getTools(agentId, projectId, credentialProvider, user);
+
+			expect(outboundHttp.transport).toHaveBeenCalledWith(
+				expect.not.objectContaining({ ssrf: 'disabled' }),
+			);
+		});
 
 		it('read_config returns the current config snapshot metadata', async () => {
 			const { service, agentsService } = makeService();
@@ -116,7 +282,6 @@ describe('AgentsBuilderToolsService', () => {
 			);
 
 			expect(result).toEqual([
-				{ type: 'schedule', label: 'Schedule', icon: 'clock', credentialTypes: [] },
 				{
 					type: 'linear',
 					label: 'Linear',
@@ -129,10 +294,52 @@ describe('AgentsBuilderToolsService', () => {
 			]);
 		});
 
+		it('list_sub_agents returns published same-project agents except the target agent', async () => {
+			const { service, agentsService } = makeService();
+			agentsService.findByProjectId.mockResolvedValue([
+				{
+					id: agentId,
+					name: 'Current Agent',
+					activeVersionId: 'active-current',
+				},
+				{
+					id: 'agent-research',
+					name: 'Research Agent',
+					activeVersionId: 'active-research',
+				},
+				{
+					id: 'agent-draft',
+					name: 'Draft Agent',
+					activeVersionId: null,
+				},
+				{
+					id: 'agent-risk',
+					name: 'Risk Agent',
+					activeVersionId: 'active-risk',
+				},
+			] as Agent[]);
+
+			const result = await getJsonTool(service, BUILDER_TOOLS.LIST_SUB_AGENTS).handler!({}, ctx);
+
+			expect(agentsService.findByProjectId).toHaveBeenCalledWith(projectId);
+			expect(result).toEqual({
+				agents: [
+					{
+						agentId: 'agent-research',
+						name: 'Research Agent',
+					},
+					{
+						agentId: 'agent-risk',
+						name: 'Risk Agent',
+					},
+				],
+			});
+		});
+
 		it('patch_config applies a patch when baseConfigHash matches', async () => {
 			const { service, agentsService } = makeService();
 			const currentConfig = { ...baseConfig, integrations: [] };
-			const updatedConfig = { ...currentConfig, description: 'Updated description' };
+			const updatedConfig = { ...currentConfig, instructions: 'Updated instructions' };
 			const normalizedConfig = {
 				...updatedConfig,
 				config: { webSearch: { enabled: true } },
@@ -149,7 +356,7 @@ describe('AgentsBuilderToolsService', () => {
 				{
 					baseConfigHash: getAgentConfigHash(currentConfig),
 					operations: JSON.stringify([
-						{ op: 'add', path: '/description', value: 'Updated description' },
+						{ op: 'replace', path: '/instructions', value: 'Updated instructions' },
 					]),
 				},
 				ctx,
@@ -174,7 +381,7 @@ describe('AgentsBuilderToolsService', () => {
 				{
 					baseConfigHash: 'stale-hash',
 					operations: JSON.stringify([
-						{ op: 'add', path: '/description', value: 'Updated description' },
+						{ op: 'replace', path: '/instructions', value: 'Updated instructions' },
 					]),
 				},
 				ctx,
@@ -190,6 +397,47 @@ describe('AgentsBuilderToolsService', () => {
 				updatedAt: '2026-01-01T00:00:00.000Z',
 				versionId: 'v1',
 			});
+		});
+
+		it('patch_config strips legacy schedule integrations from the current snapshot', async () => {
+			const { service, agentsService } = makeService();
+			const scheduleIntegration = {
+				type: 'schedule',
+				active: false,
+				cronExpression: '0 8 * * 1',
+			};
+			const currentConfig = {
+				...baseConfig,
+				integrations: [scheduleIntegration],
+			} as unknown as AgentJsonConfig;
+			const agent = makeAgent(baseConfig);
+			agent.integrations = [scheduleIntegration] as unknown as Agent['integrations'];
+			agentsService.findById.mockResolvedValue(agent);
+			agentsService.updateConfig.mockResolvedValue({
+				config: { ...currentConfig, integrations: [], instructions: 'Updated instructions' },
+				updatedAt: '2026-01-02T00:00:00.000Z',
+				versionId: 'v2',
+			});
+
+			const result = await getJsonTool(service, BUILDER_TOOLS.PATCH_CONFIG).handler!(
+				{
+					baseConfigHash: getAgentConfigHash(currentConfig),
+					operations: JSON.stringify([
+						{ op: 'replace', path: '/instructions', value: 'Updated instructions' },
+					]),
+				},
+				ctx,
+			);
+
+			expect(result).toEqual(expect.objectContaining({ ok: true }));
+			expect(agentsService.updateConfig).toHaveBeenCalledWith(
+				agentId,
+				projectId,
+				expect.objectContaining({
+					integrations: [],
+					instructions: 'Updated instructions',
+				}),
+			);
 		});
 
 		it('write_config applies a full config when baseConfigHash matches', async () => {
@@ -212,6 +460,303 @@ describe('AgentsBuilderToolsService', () => {
 				{
 					baseConfigHash: getAgentConfigHash(currentConfig),
 					json: JSON.stringify(updatedConfig),
+				},
+				ctx,
+			);
+
+			expect(agentsService.updateConfig).toHaveBeenCalledWith(agentId, projectId, normalizedConfig);
+			expect(result).toEqual({
+				ok: true,
+				config: normalizedConfig,
+				configHash: getAgentConfigHash(normalizedConfig),
+				updatedAt: '2026-01-02T00:00:00.000Z',
+				versionId: 'v2',
+			});
+		});
+
+		it('write_config strips legacy schedule integrations before saving', async () => {
+			const { service, agentsService } = makeService();
+			const currentConfig = { ...baseConfig, integrations: [] };
+			const updatedConfig = {
+				...currentConfig,
+				integrations: [{ type: 'schedule', active: false, cronExpression: '0 8 * * 1' }],
+			};
+			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
+			agentsService.updateConfig.mockResolvedValue({
+				config: { ...updatedConfig, integrations: [] },
+				updatedAt: '2026-01-02T00:00:00.000Z',
+				versionId: 'v2',
+			});
+
+			const result = await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
+				{
+					baseConfigHash: getAgentConfigHash(currentConfig),
+					json: JSON.stringify(updatedConfig),
+				},
+				ctx,
+			);
+
+			expect(result).toEqual(expect.objectContaining({ ok: true }));
+			expect(agentsService.updateConfig).toHaveBeenCalledWith(
+				agentId,
+				projectId,
+				expect.objectContaining({ integrations: [] }),
+			);
+		});
+
+		it('write_config rejects $fromAI on dynamic node selector parameters', async () => {
+			const { service, agentsService, nodeTypes } = makeService();
+			const currentConfig = { ...baseConfig, integrations: [] };
+			const updatedConfig: AgentJsonConfig = {
+				...currentConfig,
+				tools: [makeLinearToolWithFromAiTeamId()],
+			};
+			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
+			nodeTypes.getByNameAndVersion.mockReturnValue(makeLinearNodeTypeWithDynamicTeamId());
+
+			const result = await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
+				{
+					baseConfigHash: getAgentConfigHash(currentConfig),
+					json: JSON.stringify(updatedConfig),
+				},
+				ctx,
+			);
+
+			expect(agentsService.updateConfig).not.toHaveBeenCalled();
+			expect(nodeTypes.getByNameAndVersion).toHaveBeenCalledWith('n8n-nodes-base.linearTool', 1.1);
+			expect(result).toEqual({
+				ok: false,
+				errors: [
+					expect.objectContaining({
+						path: '/tools/0/node/nodeParameters/teamId',
+						message: expect.stringContaining('get_resource_locator_options'),
+					}),
+				],
+			});
+		});
+
+		it('patch_config rejects $fromAI on dynamic node selector parameters', async () => {
+			const { service, agentsService, nodeTypes } = makeService();
+			const currentConfig = { ...baseConfig, integrations: [] };
+			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
+			nodeTypes.getByNameAndVersion.mockReturnValue(makeLinearNodeTypeWithDynamicTeamId());
+
+			const result = await getJsonTool(service, BUILDER_TOOLS.PATCH_CONFIG).handler!(
+				{
+					baseConfigHash: getAgentConfigHash(currentConfig),
+					operations: JSON.stringify([
+						{ op: 'replace', path: '/tools', value: [makeLinearToolWithFromAiTeamId()] },
+					]),
+				},
+				ctx,
+			);
+
+			expect(agentsService.updateConfig).not.toHaveBeenCalled();
+			expect(result).toEqual({
+				ok: false,
+				stage: 'schema',
+				errors: [
+					expect.objectContaining({
+						path: '/tools/0/node/nodeParameters/teamId',
+						message: expect.stringContaining('agent-builder-resource-locators'),
+					}),
+				],
+			});
+		});
+
+		it.each([
+			[
+				'top-level runtime string fields',
+				{
+					resource: 'issue',
+					operation: 'create',
+					authentication: 'oAuth2',
+					teamId: 'TEAM-123',
+					title: fromAiTitle,
+				},
+			],
+			[
+				'nested runtime fields',
+				{
+					resource: 'issue',
+					operation: 'create',
+					authentication: 'oAuth2',
+					teamId: 'TEAM-123',
+					title: fromAiTitle,
+					additionalFields: {
+						description: "={{ $fromAI('description', 'Issue description', 'string') }}",
+					},
+				},
+			],
+			[
+				'array runtime fields',
+				{
+					resource: 'issue',
+					operation: 'create',
+					authentication: 'oAuth2',
+					teamId: 'TEAM-123',
+					title: fromAiTitle,
+					labels: ["={{ $fromAI('label', 'Issue label', 'string') }}"],
+				},
+			],
+		])('write_config allows $fromAI on %s', async (_caseName, nodeParameters) => {
+			const { service, agentsService, nodeTypes } = makeService();
+			const currentConfig = { ...baseConfig, integrations: [] };
+			const updatedConfig: AgentJsonConfig = {
+				...currentConfig,
+				tools: [makeLinearToolWithParameters(nodeParameters)],
+			};
+			const normalizedConfig = {
+				...updatedConfig,
+				config: { webSearch: { enabled: true } },
+				providerTools: { 'anthropic.web_search': { maxUses: 5 } },
+			};
+			agentsService.findById.mockResolvedValue(makeAgent(currentConfig));
+			agentsService.updateConfig.mockResolvedValue({
+				config: normalizedConfig,
+				updatedAt: '2026-01-02T00:00:00.000Z',
+				versionId: 'v2',
+			});
+			nodeTypes.getByNameAndVersion.mockReturnValue(makeLinearNodeTypeWithDynamicTeamId());
+
+			const result = await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
+				{
+					baseConfigHash: getAgentConfigHash(currentConfig),
+					json: JSON.stringify(updatedConfig),
+				},
+				ctx,
+			);
+
+			expect(agentsService.updateConfig).toHaveBeenCalledWith(agentId, projectId, normalizedConfig);
+			expect(result).toEqual({
+				ok: true,
+				config: normalizedConfig,
+				configHash: getAgentConfigHash(normalizedConfig),
+				updatedAt: '2026-01-02T00:00:00.000Z',
+				versionId: 'v2',
+			});
+		});
+
+		it('patch_config allows $fromAI on runtime fields when dynamic selectors are fixed', async () => {
+			const { service, agentsService, nodeTypes } = makeService();
+			const currentConfig = { ...baseConfig, integrations: [] };
+			const nodeTool = makeLinearToolWithParameters({
+				resource: 'issue',
+				operation: 'create',
+				authentication: 'oAuth2',
+				teamId: 'TEAM-123',
+				title: fromAiTitle,
+				additionalFields: {
+					description: "={{ $fromAI('description', 'Issue description', 'string') }}",
+				},
+			});
+			const updatedConfig: AgentJsonConfig = {
+				...currentConfig,
+				tools: [nodeTool],
+			};
+			const normalizedConfig = {
+				...updatedConfig,
+				config: { webSearch: { enabled: true } },
+				providerTools: { 'anthropic.web_search': { maxUses: 5 } },
+			};
+			agentsService.findById.mockResolvedValue(makeAgent(currentConfig));
+			agentsService.updateConfig.mockResolvedValue({
+				config: normalizedConfig,
+				updatedAt: '2026-01-02T00:00:00.000Z',
+				versionId: 'v2',
+			});
+			nodeTypes.getByNameAndVersion.mockReturnValue(makeLinearNodeTypeWithDynamicTeamId());
+
+			const result = await getJsonTool(service, BUILDER_TOOLS.PATCH_CONFIG).handler!(
+				{
+					baseConfigHash: getAgentConfigHash(currentConfig),
+					operations: JSON.stringify([{ op: 'replace', path: '/tools', value: [nodeTool] }]),
+				},
+				ctx,
+			);
+
+			expect(agentsService.updateConfig).toHaveBeenCalledWith(agentId, projectId, normalizedConfig);
+			expect(result).toEqual({
+				ok: true,
+				config: normalizedConfig,
+				configHash: getAgentConfigHash(normalizedConfig),
+				updatedAt: '2026-01-02T00:00:00.000Z',
+				versionId: 'v2',
+			});
+		});
+
+		it('write_config allows unrelated edits when an existing dynamic selector already uses $fromAI', async () => {
+			const { service, agentsService, nodeTypes } = makeService();
+			const currentConfig: AgentJsonConfig = {
+				...baseConfig,
+				integrations: [],
+				tools: [makeLinearToolWithFromAiTeamId()],
+			};
+			const updatedConfig = {
+				...currentConfig,
+				instructions: 'Help with approved support tickets.',
+			};
+			const normalizedConfig = {
+				...updatedConfig,
+				config: { webSearch: { enabled: true } },
+				providerTools: { 'anthropic.web_search': { maxUses: 5 } },
+			};
+			agentsService.findById.mockResolvedValue(makeAgent(currentConfig));
+			agentsService.updateConfig.mockResolvedValue({
+				config: normalizedConfig,
+				updatedAt: '2026-01-02T00:00:00.000Z',
+				versionId: 'v2',
+			});
+			nodeTypes.getByNameAndVersion.mockReturnValue(makeLinearNodeTypeWithDynamicTeamId());
+
+			const result = await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
+				{
+					baseConfigHash: getAgentConfigHash(currentConfig),
+					json: JSON.stringify(updatedConfig),
+				},
+				ctx,
+			);
+
+			expect(agentsService.updateConfig).toHaveBeenCalledWith(agentId, projectId, normalizedConfig);
+			expect(result).toEqual({
+				ok: true,
+				config: normalizedConfig,
+				configHash: getAgentConfigHash(normalizedConfig),
+				updatedAt: '2026-01-02T00:00:00.000Z',
+				versionId: 'v2',
+			});
+		});
+
+		it('patch_config allows unrelated edits when an existing dynamic selector already uses $fromAI', async () => {
+			const { service, agentsService, nodeTypes } = makeService();
+			const currentConfig: AgentJsonConfig = {
+				...baseConfig,
+				integrations: [],
+				tools: [makeLinearToolWithFromAiTeamId()],
+			};
+			const updatedConfig = {
+				...currentConfig,
+				instructions: 'Updated instructions',
+			};
+			const normalizedConfig = {
+				...updatedConfig,
+				config: { webSearch: { enabled: true } },
+				providerTools: { 'anthropic.web_search': { maxUses: 5 } },
+			};
+			agentsService.findById.mockResolvedValue(makeAgent(currentConfig));
+			agentsService.updateConfig.mockResolvedValue({
+				config: normalizedConfig,
+				updatedAt: '2026-01-02T00:00:00.000Z',
+				versionId: 'v2',
+			});
+			nodeTypes.getByNameAndVersion.mockReturnValue(makeLinearNodeTypeWithDynamicTeamId());
+
+			const result = await getJsonTool(service, BUILDER_TOOLS.PATCH_CONFIG).handler!(
+				{
+					baseConfigHash: getAgentConfigHash(currentConfig),
+					operations: JSON.stringify([
+						{ op: 'replace', path: '/instructions', value: 'Updated instructions' },
+					]),
 				},
 				ctx,
 			);
@@ -518,7 +1063,7 @@ describe('AgentsBuilderToolsService', () => {
 				.shared.find((tool) => tool.name === BUILDER_TOOLS.BUILD_CUSTOM_TOOL)!;
 		}
 
-		it('stores a custom tool and returns the generated tool id', async () => {
+		it('stores a custom tool and returns the tool name as id', async () => {
 			const { service, agentsService, secureRuntime } = makeService();
 			const descriptor = {
 				name: 'seo_analyzer',
@@ -535,7 +1080,7 @@ describe('AgentsBuilderToolsService', () => {
 			secureRuntime.describeToolSecurely.mockResolvedValue(descriptor);
 			agentsService.buildCustomTool.mockResolvedValue({
 				ok: true,
-				id: 'tool_0Ab9ZkLm3Pq7Xy2N',
+				id: 'seo_analyzer',
 				descriptor,
 			});
 
@@ -552,7 +1097,7 @@ describe('AgentsBuilderToolsService', () => {
 			);
 			expect(result).toEqual({
 				ok: true,
-				id: 'tool_0Ab9ZkLm3Pq7Xy2N',
+				id: 'seo_analyzer',
 				descriptor,
 			});
 		});
@@ -574,6 +1119,33 @@ describe('AgentsBuilderToolsService', () => {
 			expect(tool.description).toContain('does NOT attach the skill to the agent config');
 			expect(tool.description).toContain('patch_config');
 			expect(tool.description).toContain('when to load it');
+			expect(tool.description).toContain('ask the user clarifying');
+			expect(tool.description).toContain('Gotchas');
+			expect(tool.description).toContain('References are not automatically loaded');
+			expect(tool.description).toContain('instructions must say exactly when to load each one');
+			expect(tool.systemInstruction).toContain(
+				'explicit conditions for loading each referenced file',
+			);
+		});
+
+		it('puts the structured body template in the instructions parameter', () => {
+			const { service } = makeService();
+
+			const tool = getCreateSkillTool(service);
+			const instructionsSchema = (
+				tool.inputSchema as unknown as { shape: { instructions: { description?: string } } }
+			).shape.instructions;
+
+			for (const heading of [
+				'## Overview',
+				'## Inputs',
+				'## Steps',
+				'## Rules',
+				'## Example',
+				'## Gotchas',
+			]) {
+				expect(instructionsSchema.description).toContain(heading);
+			}
 		});
 
 		it('creates a skill and returns the generated skill id', async () => {
@@ -592,7 +1164,7 @@ describe('AgentsBuilderToolsService', () => {
 				{
 					name: 'Summarize Meetings',
 					description: 'Use when summarizing meeting notes',
-					body: 'Extract decisions and action items.',
+					instructions: 'Extract decisions and action items.',
 				},
 				ctx,
 			);
@@ -613,62 +1185,138 @@ describe('AgentsBuilderToolsService', () => {
 			});
 		});
 
-		it('rejects oversized names and skill bodies before creating the skill', async () => {
-			const { service, agentsService } = makeService();
+		it('enforces name and instruction size limits via the input schema', () => {
+			const { service } = makeService();
 
-			const result = await getCreateSkillTool(service).handler!(
-				{
-					name: 'a'.repeat(129),
-					description: 'Use when summarizing meeting notes',
-					body: 'a'.repeat(AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH + 1),
-				},
-				ctx,
-			);
-
-			expect(result).toEqual({
-				ok: false,
-				errors: expect.arrayContaining([
-					expect.objectContaining({ path: 'name' }),
-					expect.objectContaining({ path: 'instructions' }),
-				]),
+			const result = (
+				getCreateSkillTool(service).inputSchema as unknown as {
+					safeParse: (input: unknown) => { success: boolean };
+				}
+			).safeParse({
+				name: 'a'.repeat(129),
+				description: 'Use when summarizing meeting notes',
+				instructions: 'a'.repeat(AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH + 1),
 			});
-			expect(agentsService.createSkill).not.toHaveBeenCalled();
+
+			expect(result.success).toBe(false);
 		});
 	});
 
-	describe('MCP module gating', () => {
-		it('does not include verify_mcp_server when the "mcp" module is not enabled', () => {
+	describe('create_task tool', () => {
+		function getCreateTaskTool(service: AgentsBuilderToolsService) {
+			return service
+				.getTools(agentId, projectId, credentialProvider, user)
+				.shared.find((tool) => tool.name === BUILDER_TOOLS.CREATE_TASK)!;
+		}
+
+		const publishedAgent = { activeVersionId: 'v1' } as unknown as Agent;
+		const unpublishedAgent = { activeVersionId: null } as unknown as Agent;
+
+		const taskInput = {
+			name: 'Daily summary',
+			objective: 'Summarize the team Slack #general channel from the last 24h and post a recap.',
+			cronExpression: '0 9 * * *',
+		};
+
+		function makeTaskDto(): AgentTaskDto {
+			return {
+				id: 'task-1',
+				...taskInput,
+				createdAt: '2026-01-01T00:00:00.000Z',
+				updatedAt: '2026-01-01T00:00:00.000Z',
+			};
+		}
+
+		it('instructs the builder to clarify before creating a task', () => {
 			const { service } = makeService();
 
-			const tools = service.getTools(agentId, projectId, credentialProvider, user).json;
+			const tool = getCreateTaskTool(service);
 
-			expect(tools.find((t) => t.name === BUILDER_TOOLS.VERIFY_MCP_SERVER)).toBeUndefined();
+			expect(tool).toBeDefined();
+			expect(tool.description).toContain('ask the user clarifying questions');
+			expect(tool.description).toContain('self-contained');
+			expect(tool.description).toContain('MUST NOT');
+			expect(tool.description).toContain('Success criteria');
 		});
 
-		it('does not include verify_mcp_server when enabledModules is an empty list', () => {
+		it('puts the structured objective template in the objective parameter', () => {
 			const { service } = makeService();
 
-			const tools = service.getTools(agentId, projectId, credentialProvider, user, []).json;
+			const tool = getCreateTaskTool(service);
+			const objectiveSchema = (
+				tool.inputSchema as unknown as { shape: { objective: { description?: string } } }
+			).shape.objective;
 
-			expect(tools.find((t) => t.name === BUILDER_TOOLS.VERIFY_MCP_SERVER)).toBeUndefined();
+			for (const heading of [
+				'## Objective',
+				'## Context',
+				'## Steps',
+				'## Output',
+				'## Constraints',
+				'## Success criteria',
+			]) {
+				expect(objectiveSchema.description).toContain(heading);
+			}
 		});
 
-		it('includes verify_mcp_server when the "mcp" module is enabled', () => {
-			const { service } = makeService();
+		it('creates a task with the config ref enabled by default', async () => {
+			const { service, agentTaskService, agentRepository } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(publishedAgent);
+			agentTaskService.create.mockResolvedValue(makeTaskDto());
 
-			const tools = service.getTools(agentId, projectId, credentialProvider, user, ['mcp']).json;
+			const result = await getCreateTaskTool(service).handler!(taskInput, ctx);
 
-			expect(tools.find((t) => t.name === BUILDER_TOOLS.VERIFY_MCP_SERVER)).toBeDefined();
+			expect(agentRepository.findByIdAndProjectId).toHaveBeenCalledWith(agentId, projectId);
+			expect(agentTaskService.create).toHaveBeenCalledWith(agentId, {
+				...taskInput,
+				enabled: true,
+			});
+			expect(result).toEqual({ ok: true, task: makeTaskDto() });
 		});
 
-		it('does not include verify_mcp_server when other modules are enabled but not "mcp"', () => {
+		it('enables the task even when the agent is not published', async () => {
+			const { service, agentTaskService, agentRepository } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(unpublishedAgent);
+			agentTaskService.create.mockResolvedValue(makeTaskDto());
+
+			await getCreateTaskTool(service).handler!(taskInput, ctx);
+
+			expect(agentTaskService.create).toHaveBeenCalledWith(agentId, {
+				...taskInput,
+				enabled: true,
+			});
+		});
+
+		it('requires a non-empty objective via the input schema', () => {
 			const { service } = makeService();
 
-			const tools = service.getTools(agentId, projectId, credentialProvider, user, [
-				'someOtherModule',
-			]).json;
+			const result = (
+				getCreateTaskTool(service).inputSchema as unknown as {
+					safeParse: (input: unknown) => { success: boolean };
+				}
+			).safeParse({ name: 'x', objective: '', cronExpression: '0 9 * * *' });
 
-			expect(tools.find((t) => t.name === BUILDER_TOOLS.VERIFY_MCP_SERVER)).toBeUndefined();
+			expect(result.success).toBe(false);
+		});
+
+		it('surfaces a service error (e.g. invalid cron) to the model', async () => {
+			const { service, agentTaskService, agentRepository } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(publishedAgent);
+			agentTaskService.create.mockRejectedValue(new Error('Invalid cron expression'));
+
+			const result = await getCreateTaskTool(service).handler!(taskInput, ctx);
+
+			expect(result).toEqual({ ok: false, errors: [{ message: 'Invalid cron expression' }] });
+		});
+
+		it('returns an error when the agent is not in the project', async () => {
+			const { service, agentTaskService, agentRepository } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(null);
+
+			const result = await getCreateTaskTool(service).handler!(taskInput, ctx);
+
+			expect(result).toEqual({ ok: false, errors: [{ message: 'Agent not found' }] });
+			expect(agentTaskService.create).not.toHaveBeenCalled();
 		});
 	});
 });

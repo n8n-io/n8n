@@ -42,6 +42,9 @@ const projectId = computed(() => {
 });
 
 const isTeamProject = computed(() => projectStore.currentProject?.type === ProjectTypes.Team);
+const isPersonalProject = computed(
+	() => projectStore.currentProject?.type === ProjectTypes.Personal,
+);
 
 const getRouteConfigs = () => {
 	// For project pages
@@ -110,7 +113,7 @@ const options = computed<Array<TabOptions<string>>>(() => {
 		tabs.push(createTab('mainSidebar.executions', 'executions', routes));
 	}
 
-	if (props.pageType === 'overview' || isTeamProject.value) {
+	if (props.pageType === 'overview' || isTeamProject.value || isPersonalProject.value) {
 		tabs.push(createTab('mainSidebar.variables', 'variables', routes));
 	}
 

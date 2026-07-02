@@ -1,7 +1,7 @@
-import { Service } from '@n8n/di';
-import { EventEmitter } from 'node:events';
 import type { InstanceAiEvent } from '@n8n/api-types';
+import { Service } from '@n8n/di';
 import type { InstanceAiEventBus, StoredEvent } from '@n8n/instance-ai';
+import { EventEmitter } from 'node:events';
 
 const MAX_EVENTS_PER_THREAD = 500;
 const MAX_BYTES_PER_THREAD = 2 * 1024 * 1024; // 2 MB

@@ -202,6 +202,14 @@ export class WorkflowToolService {
 					}
 
 					if (tryIndex === maxTries - 1) {
+						// When called by the engine (manualLogging=false), throw so
+						// workflow-execute records the failure against this tool run.
+						// Continue-on-fail for AI tools still surfaces the error to the
+						// agent so it can iterate. The legacy agent-direct path keeps
+						// returning the error string for backwards compatibility.
+						if (!manualLogging) {
+							throw executionError;
+						}
 						return errorResponse;
 					}
 				}

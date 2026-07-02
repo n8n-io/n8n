@@ -1,6 +1,6 @@
-// Jest Snapshot v1, https://goo.gl/fbAQLP
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`GmailTrigger should handle duplicates and different date fields 1`] = `
+exports[`GmailTrigger > should handle duplicates and different date fields 1`] = `
 [
   [
     {

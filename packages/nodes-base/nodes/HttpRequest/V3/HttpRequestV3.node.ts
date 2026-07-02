@@ -15,6 +15,7 @@ import type {
 	IHttpRequestMethods,
 	ICredentialDataDecryptedObject,
 } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import {
 	BINARY_ENCODING,
 	NodeApiError,
@@ -23,7 +24,6 @@ import {
 	jsonParse,
 	removeCircularRefs,
 	sleep,
-	ensureError,
 	setSafeObjectProperty,
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
@@ -407,7 +407,7 @@ export class HttpRequestV3 implements INodeType {
 						accumulator[cur.name] = {
 							value: uploadData,
 							options: {
-								filename: binaryData.fileName,
+								filename: binaryData.fileName ?? 'file',
 								contentType: binaryData.mimeType,
 								...(knownLength !== undefined && { knownLength }),
 							},
@@ -717,6 +717,8 @@ export class HttpRequestV3 implements INodeType {
 						paginationData.binaryResult = true;
 					}
 
+					const sanitizedRequest = sanitizeUiMessage(requestOptions, authDataKeys);
+
 					const requestPromise = this.helpers.requestWithAuthenticationPaginated
 						.call(
 							this,
@@ -724,6 +726,8 @@ export class HttpRequestV3 implements INodeType {
 							itemIndex,
 							paginationData,
 							nodeCredentialType ?? genericCredentialType,
+							undefined,
+							sanitizedRequest,
 						)
 						.catch((error) => {
 							if (error instanceof NodeOperationError && error.type === 'invalid_url') {

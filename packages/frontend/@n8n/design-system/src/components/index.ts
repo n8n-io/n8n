@@ -41,6 +41,7 @@ export { default as N8nFormInputs } from './N8nFormInputs';
 export { default as N8nFormInput } from './N8nFormInput';
 export { default as N8nHeading } from './N8nHeading';
 export { default as N8nHeaderAction } from './N8nHeaderAction';
+export { default as N8nHoverCard } from './N8nHoverCard';
 export {
 	default as N8nIcon,
 	type IconName,
@@ -66,16 +67,24 @@ export { default as N8nNodeCreatorNode } from './N8nNodeCreatorNode';
 export { default as N8nNodeIcon } from './N8nNodeIcon';
 export { default as N8nNotice } from './N8nNotice';
 export { default as N8nOption } from './N8nOption';
+export { default as N8nPagination } from './N8nPagination';
 export { default as N8nSectionHeader } from './N8nSectionHeader';
 export { default as N8nSelectableList } from './N8nSelectableList';
 export { default as N8nPreviewTag } from './PreviewTag/PreviewTag.vue';
 export { default as N8nActionPill } from './N8nActionPill/ActionPill.vue';
 export { default as N8nPopover } from './N8nPopover';
 export { default as N8nPopoverReka } from './N8nPopover'; // Alias for backwards compatibility
-export { default as N8nPromptInput } from './N8nPromptInput';
+export {
+	default as N8nChatInput,
+	useChatInputAutoFocus,
+	type ChatInputAutoFocusOptions,
+	type ChatInputAutoFocusTarget,
+} from './N8nChatInput';
 export { default as N8nPulse } from './N8nPulse';
 export { default as N8nSendStopButton } from './N8nSendStopButton';
 export { default as N8nRadioButtons } from './N8nRadioButtons';
+export { default as N8nRadioGroup } from './N8nRadioGroup';
+export type { RadioGroupOption } from './N8nRadioGroup';
 export { default as N8nRoute } from './N8nRoute';
 export { default as N8nRecycleScroller } from './N8nRecycleScroller';
 export { default as N8nResizeWrapper } from './N8nResizeWrapper';

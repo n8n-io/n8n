@@ -10,11 +10,11 @@
  */
 
 import { Tool } from '@n8n/agents';
+import { getWorkspaceRoot } from '@n8n/agents/sandbox';
 import { z } from 'zod';
 
 import type { InstanceAiContext } from '../../types';
 import { runInSandbox, type SandboxWorkspace } from '../../workspace/sandbox-fs';
-import { getWorkspaceRoot } from '../../workspace/sandbox-setup';
 
 const nodeRequestSchema = z.union([
 	z.string().describe('Simple node ID, e.g. "n8n-nodes-base.httpRequest"'),

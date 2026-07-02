@@ -15,11 +15,12 @@ import type { IWorkflowBase, WorkflowId } from 'n8n-workflow';
 import { jsonParse, UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { BaseCommand } from '../base-command';
-
 import { UM_FIX_INSTRUCTION } from '@/constants';
 import type { IWorkflowToImport, IWorkflowWithVersionMetadata } from '@/interfaces';
 import { ImportService } from '@/services/import.service';
+import { EventService } from '@/events/event.service';
+
+import { BaseCommand } from '../base-command';
 
 function assertHasWorkflowsToImport(
 	workflows: unknown[],
@@ -131,6 +132,12 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 
 		const project = await this.getProject(flags.userId, flags.projectId);
 
+		const ownerUser = await Container.get(UserRepository).findOneByOrFail({
+			role: { slug: GLOBAL_OWNER_ROLE.slug },
+		});
+		// This userId will be used as the actor for publish/unpublish workflow actions
+		const userId = flags.userId ?? ownerUser.id;
+
 		const workflows = await this.readWorkflows(flags.input, flags.separate);
 
 		const result = await this.checkRelations(workflows, flags.projectId, flags.userId);
@@ -141,11 +148,17 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 
 		this.logger.info(`Importing ${workflows.length} workflows...`);
 
-		await Container.get(ImportService).importWorkflows(workflows, project.id, {
+		await Container.get(ImportService).importWorkflows(workflows, project.id, userId, {
 			activeState: flags.activeState,
 		});
 
 		this.reportSuccess(workflows.length);
+
+		Container.get(EventService).emit('server-cli-import', {
+			activeState: flags.activeState,
+			workflowCount: workflows.length,
+			separate: flags.separate,
+		});
 	}
 
 	private async checkRelations(workflows: IWorkflowBase[], projectId?: string, userId?: string) {

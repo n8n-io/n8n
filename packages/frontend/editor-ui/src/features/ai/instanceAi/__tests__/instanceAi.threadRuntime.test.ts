@@ -12,9 +12,10 @@ import { createThreadRuntime, type ThreadRuntime } from '../instanceAi.threadRun
 // Mocks
 // ---------------------------------------------------------------------------
 
+const { mockShowError } = vi.hoisted(() => ({ mockShowError: vi.fn() }));
 vi.mock('@/app/composables/useToast', () => ({
 	useToast: vi.fn().mockReturnValue({
-		showError: vi.fn(),
+		showError: mockShowError,
 	}),
 }));
 
@@ -676,13 +677,13 @@ describe('createThreadRuntime - SSE and hydration', () => {
 				isStreaming: false,
 			},
 		];
-		mockFetchThreadMessages.mockResolvedValueOnce({
-			threadId: activeThreadId,
-			messages: [],
-			nextEventId: 10,
-		});
 
 		await expect(activeRuntime(registry).loadHistoricalMessages()).resolves.toBe('skipped');
+		// The skip happens before the fetch — fetchThreadMessages must not be
+		// called (and must not be mocked here: vi.clearAllMocks() does not drain
+		// once-queues, so an unconsumed mockResolvedValueOnce leaks into the next
+		// test's hydration).
+		expect(mockFetchThreadMessages).not.toHaveBeenCalled();
 		expect(activeRuntime(registry).messages).toHaveLength(1);
 		expect(activeRuntime(registry).lastEventId).toBeUndefined();
 	});
@@ -733,10 +734,111 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			}),
 		);
 
+		// The unsafe group id got no routing entry (and thus no run state), so
+		// the event must not reduce anywhere: the message is still found via the
+		// runId fallback (no phantom), but stays untouched.
 		expect(activeRuntime(registry).messages).toHaveLength(1);
-		expect(activeRuntime(registry).messages[0].messageGroupId).toBe('safe-run');
-		expect(activeRuntime(registry).messages[0].agentTree?.agentId).toBe('fresh-root');
-		expect(activeRuntime(registry).messages[0].content).toBe('restored safely');
+		const hydratedMsg = activeRuntime(registry).messages[0];
+		expect(hydratedMsg.messageGroupId).toBe('__proto__');
+		expect(hydratedMsg.agentTree?.agentId).toBe('agent-root');
+		expect(hydratedMsg.agentTree?.textContent).toBe('');
+		expect(hydratedMsg.content).toBe('');
+	});
+
+	test('hydration adopts message trees so live events mutate the rendered tree', async () => {
+		mockFetchThreadMessages.mockResolvedValueOnce({
+			threadId: activeThreadId,
+			messages: [
+				{
+					id: 'msg-restored',
+					runId: 'run-h',
+					messageGroupId: 'group-h',
+					role: 'assistant',
+					createdAt: new Date().toISOString(),
+					content: 'restored',
+					reasoning: '',
+					isStreaming: false,
+					agentTree: {
+						agentId: 'agent-root',
+						role: 'orchestrator',
+						status: 'active',
+						textContent: 'restored',
+						reasoning: '',
+						toolCalls: [],
+						children: [],
+						timeline: [{ type: 'text', content: 'restored' }],
+					},
+				},
+			],
+			nextEventId: 11,
+		});
+
+		await activeRuntime(registry).loadHistoricalMessages();
+
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'text-delta',
+				runId: 'run-h',
+				agentId: 'agent-root',
+				payload: { text: ' + live' },
+			}),
+		);
+
+		// Identity contract: the hydrated run state ADOPTS msg.agentTree's nodes,
+		// so the live event must mutate the very tree the message renders. A
+		// defensive copy anywhere on this path would freeze the rendered tree at
+		// the snapshot while events mutate an orphaned state.
+		expect(activeRuntime(registry).messages).toHaveLength(1);
+		const msg = activeRuntime(registry).messages[0];
+		expect(msg.agentTree?.textContent).toBe('restored + live');
+		expect(msg.agentTree?.timeline).toEqual([{ type: 'text', content: 'restored + live' }]);
+		expect(msg.content).toBe('restored + live');
+	});
+
+	test('run-sync adopts the snapshot tree so subsequent live events mutate the rendered tree', () => {
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'run-start',
+				runId: 'run-s',
+				agentId: 'agent-root',
+				payload: { messageId: 'msg-1', messageGroupId: 'group-s' },
+			}),
+		);
+
+		capturedInstance!.dispatchNamedEvent('run-sync', {
+			runId: 'run-s',
+			messageGroupId: 'group-s',
+			runIds: ['run-s'],
+			agentTree: {
+				agentId: 'agent-root',
+				role: 'orchestrator',
+				status: 'active',
+				textContent: 'synced',
+				reasoning: '',
+				toolCalls: [],
+				children: [],
+				timeline: [{ type: 'text', content: 'synced' }],
+			},
+			status: 'active',
+			backgroundTasks: [],
+		});
+
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'text-delta',
+				runId: 'run-s',
+				agentId: 'agent-root',
+				payload: { text: ' + live' },
+			}),
+		);
+
+		// Identity contract: run-sync rebuilds the run state by ADOPTING the
+		// snapshot tree it assigns to msg.agentTree, so post-sync live events
+		// must mutate the rendered tree (not an orphaned copy).
+		expect(activeRuntime(registry).messages).toHaveLength(1);
+		const msg = activeRuntime(registry).messages[0];
+		expect(msg.agentTree?.textContent).toBe('synced + live');
+		expect(msg.agentTree?.timeline).toEqual([{ type: 'text', content: 'synced + live' }]);
 	});
 
 	test('run-sync skips unsafe group identifiers instead of registering them', () => {
@@ -818,8 +920,34 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			activeThreadId,
 			'hello',
 			undefined,
+			undefined,
 			expect.any(String),
 			'iframe-push-ref-123',
+		);
+	});
+
+	test('sendMessage forwards handoff context to postMessage', async () => {
+		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
+		const context = {
+			source: 'credential-modal' as const,
+			credential: {
+				credentialType: 'gmailOAuth2Api',
+				displayName: 'Gmail OAuth2 API',
+				documentationUrl:
+					'https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/',
+			},
+		};
+
+		await activeRuntime(registry).sendMessage('hello', undefined, undefined, context);
+
+		expect(mockPostMessage).toHaveBeenCalledWith(
+			expect.anything(),
+			activeThreadId,
+			'hello',
+			undefined,
+			context,
+			expect.any(String),
+			undefined,
 		);
 	});
 
@@ -832,6 +960,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			expect.anything(),
 			activeThreadId,
 			'hello',
+			undefined,
 			undefined,
 			expect.any(String),
 			undefined,
@@ -984,6 +1113,41 @@ describe('createThreadRuntime - gateway resource-decision confirmation', () => {
 		// postConfirmation was called once (inside confirmAction) but threw
 		expect(mockPostConfirmation).toHaveBeenCalledOnce();
 	});
+
+	it('confirmAction surfaces the server UserError message on a 400 response', async () => {
+		const { ResponseError } = await import('@n8n/rest-api-client');
+		const serverError = new ResponseError(
+			'This confirmation was lost when the assistant restarted. Send a new message to continue.',
+		);
+		(serverError as { httpStatusCode?: number }).httpStatusCode = 400;
+		mockPostConfirmation.mockRejectedValueOnce(serverError);
+		mockShowError.mockClear();
+
+		const ok = await activeRuntime(registry).confirmAction('req-lost', {
+			kind: 'approval',
+			approved: true,
+		});
+
+		expect(ok).toBe(false);
+		expect(mockShowError).toHaveBeenCalledTimes(1);
+		const [errorArg, titleArg] = mockShowError.mock.calls[0];
+		expect((errorArg as Error).message).toContain('lost when the assistant restarted');
+		expect(titleArg).toBe('Confirmation failed');
+	});
+
+	it('confirmAction falls back to a generic message on non-400 errors', async () => {
+		mockPostConfirmation.mockRejectedValueOnce(new Error('network error'));
+		mockShowError.mockClear();
+
+		await activeRuntime(registry).confirmAction('req-network', {
+			kind: 'approval',
+			approved: true,
+		});
+
+		expect(mockShowError).toHaveBeenCalledTimes(1);
+		const [errorArg] = mockShowError.mock.calls[0];
+		expect((errorArg as Error).message).toBe('Failed to send confirmation. Try again.');
+	});
 });
 
 describe('createThreadRuntime - session always-allow', () => {
@@ -1104,6 +1268,30 @@ describe('createThreadRuntime - session always-allow', () => {
 		expect(runtime.resolvedConfirmationIds.has('req-update')).toBe(false);
 	});
 
+	it('scopes executions run grants per workflow', async () => {
+		const runtime = registry.getOrCreateRuntime(activeThreadId);
+		runtime.addAlwaysAllowKey('executions', { action: 'run', workflowId: 'wf-1' });
+
+		pushPendingApproval(runtime, {
+			messageId: 'msg-wf-1',
+			requestId: 'req-wf-1',
+			toolName: 'executions',
+			args: { action: 'run', workflowId: 'wf-1' },
+		});
+		await vi.waitFor(() => {
+			expect(runtime.resolvedConfirmationIds.get('req-wf-1')).toBe('approved');
+		});
+
+		pushPendingApproval(runtime, {
+			messageId: 'msg-wf-2',
+			requestId: 'req-wf-2',
+			toolName: 'executions',
+			args: { action: 'run', workflowId: 'wf-2' },
+		});
+		await new Promise((resolve) => setTimeout(resolve, 10));
+		expect(runtime.resolvedConfirmationIds.has('req-wf-2')).toBe(false);
+	});
+
 	it('clears keys on resetState', () => {
 		const runtime = registry.getOrCreateRuntime(activeThreadId);
 		runtime.addAlwaysAllowKey('workflows', { action: 'run' });
@@ -1132,5 +1320,189 @@ describe('createThreadRuntime - session always-allow', () => {
 			});
 		});
 		expect(runtime.resolvedConfirmationIds.has('req-fail')).toBe(false);
+	});
+});
+
+describe('createThreadRuntime - "User viewed new builder workflow" telemetry', () => {
+	let registry: RuntimeRegistry;
+
+	/** A run-sync snapshot whose agent tree contains one successful build-workflow tool call. */
+	function runSyncWithBuild(opts: {
+		runId: string;
+		messageGroupId: string;
+		workflowId: string;
+		toolCallId: string;
+	}) {
+		return {
+			runId: opts.runId,
+			messageGroupId: opts.messageGroupId,
+			runIds: [opts.runId],
+			agentTree: {
+				agentId: 'agent-root',
+				role: 'orchestrator',
+				status: 'completed',
+				textContent: '',
+				reasoning: '',
+				toolCalls: [
+					{
+						toolCallId: opts.toolCallId,
+						toolName: 'build-workflow',
+						args: {},
+						isLoading: false,
+						result: { success: true, workflowId: opts.workflowId },
+					},
+				],
+				children: [],
+				timeline: [],
+			},
+			status: 'completed',
+			backgroundTasks: [],
+		};
+	}
+
+	beforeEach(async () => {
+		setupRuntimePinia();
+		capturedOnMessage = null;
+		registry = createRuntimeRegistry();
+		activeThreadId = 'thread-active';
+		activeRuntime(registry).connectSSE();
+		await vi.waitFor(() => {
+			expect(capturedOnMessage).not.toBeNull();
+		});
+	});
+
+	afterEach(() => {
+		activeRuntime(registry).closeSSE();
+		vi.clearAllMocks();
+		mockFetchThreadMessages.mockResolvedValue({
+			threadId: 'thread-1',
+			messages: [],
+			nextEventId: 0,
+		});
+	});
+
+	test('tracks "User viewed new builder workflow" when the builder produces a workflow', () => {
+		capturedInstance!.dispatchNamedEvent(
+			'run-sync',
+			runSyncWithBuild({
+				runId: 'run-1',
+				messageGroupId: 'mg-1',
+				workflowId: 'wf-123',
+				toolCallId: 'tc-1',
+			}),
+		);
+
+		expect(mockTelemetryTrack).toHaveBeenCalledWith('User viewed new builder workflow', {
+			thread_id: 'thread-active',
+			instance_id: 'instance-1',
+			workflow_id: 'wf-123',
+		});
+	});
+
+	test('fires exactly once per workflow even when the same workflow is rebuilt', () => {
+		// First build, then a rebuild of the same workflow with a fresh toolCallId.
+		// The rebuild DOES re-trigger the watcher (toolCallId changes), so a count of
+		// exactly 1 proves the dedup ran — not that nothing fired at all.
+		capturedInstance!.dispatchNamedEvent(
+			'run-sync',
+			runSyncWithBuild({
+				runId: 'run-1',
+				messageGroupId: 'mg-1',
+				workflowId: 'wf-123',
+				toolCallId: 'tc-1',
+			}),
+		);
+		capturedInstance!.dispatchNamedEvent(
+			'run-sync',
+			runSyncWithBuild({
+				runId: 'run-1',
+				messageGroupId: 'mg-1',
+				workflowId: 'wf-123',
+				toolCallId: 'tc-2',
+			}),
+		);
+
+		const builderCreatedCalls = mockTelemetryTrack.mock.calls.filter(
+			([event]) => event === 'User viewed new builder workflow',
+		);
+		expect(builderCreatedCalls).toHaveLength(1);
+		expect(builderCreatedCalls[0][1]).toMatchObject({ workflow_id: 'wf-123' });
+	});
+
+	test('tracks again when a different workflow is built later', () => {
+		capturedInstance!.dispatchNamedEvent(
+			'run-sync',
+			runSyncWithBuild({
+				runId: 'run-1',
+				messageGroupId: 'mg-1',
+				workflowId: 'wf-1',
+				toolCallId: 'tc-1',
+			}),
+		);
+		capturedInstance!.dispatchNamedEvent(
+			'run-sync',
+			runSyncWithBuild({
+				runId: 'run-2',
+				messageGroupId: 'mg-2',
+				workflowId: 'wf-2',
+				toolCallId: 'tc-2',
+			}),
+		);
+
+		expect(mockTelemetryTrack).toHaveBeenCalledWith(
+			'User viewed new builder workflow',
+			expect.objectContaining({ workflow_id: 'wf-1' }),
+		);
+		expect(mockTelemetryTrack).toHaveBeenCalledWith(
+			'User viewed new builder workflow',
+			expect.objectContaining({ workflow_id: 'wf-2' }),
+		);
+	});
+
+	test('does not track for a workflow that only appears in hydrated history', async () => {
+		mockFetchThreadMessages.mockResolvedValueOnce({
+			threadId: activeThreadId,
+			messages: [
+				{
+					id: 'msg-hist',
+					runId: 'run-hist',
+					messageGroupId: 'mg-hist',
+					role: 'assistant',
+					createdAt: new Date().toISOString(),
+					content: '',
+					reasoning: '',
+					isStreaming: false,
+					agentTree: {
+						agentId: 'agent-root',
+						role: 'orchestrator',
+						status: 'completed',
+						textContent: '',
+						reasoning: '',
+						toolCalls: [
+							{
+								toolCallId: 'tc-hist',
+								toolName: 'build-workflow',
+								args: {},
+								isLoading: false,
+								result: { success: true, workflowId: 'wf-hist' },
+							},
+						],
+						children: [],
+						timeline: [],
+					},
+				},
+			],
+			nextEventId: 11,
+		});
+
+		await activeRuntime(registry).loadHistoricalMessages();
+
+		// The historical build really was hydrated (so "not tracked" is meaningful,
+		// not just an empty no-op hydration).
+		expect(activeRuntime(registry).messages).toHaveLength(1);
+		expect(mockTelemetryTrack).not.toHaveBeenCalledWith(
+			'User viewed new builder workflow',
+			expect.anything(),
+		);
 	});
 });

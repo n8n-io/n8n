@@ -16,14 +16,23 @@ export default mergeConfig(
 				// `./dist/cjs/index.js` for `require`) — two separate files with two separate
 				// `ZodType` classes. @n8n/config dist CJS-requires zod, test files ESM-import
 				// it, and `instanceof` fails between them. Pin the top-level `zod` import to the
-				// CJS file so both code paths share a single module instance. Subpaths like
-				// `zod/v4` keep their normal resolution.
+				// CJS file so both code paths share a single module instance. `require.resolve`
+				// follows zod's `require` export condition, so it tracks the installed (catalog)
+				// version automatically. Subpaths like `zod/v4` keep their normal resolution.
 				{
 					find: /^zod$/,
-					replacement: path.resolve(
-						__dirname,
-						'../../node_modules/.pnpm/zod@3.25.67/node_modules/zod/dist/cjs/index.js',
-					),
+					replacement: require.resolve('zod'),
+				},
+				// `n8n-workflow` has dual ESM/CJS builds (`./dist/esm/index.js` for `import`,
+				// `./dist/cjs/index.js` for `require`), each with its own `UserError` class.
+				// `@n8n/backend-network` is loaded from its CJS dist and `require`s the CJS copy,
+				// so `SsrfBlockedIpError extends UserError` (CJS), while test files ESM-import
+				// `UserError` (ESM) — and `instanceof` fails between them. Pin the top-level
+				// `n8n-workflow` import to the CJS file so both code paths share one module
+				// instance. `require.resolve` follows the `require` export condition.
+				{
+					find: /^n8n-workflow$/,
+					replacement: require.resolve('n8n-workflow'),
 				},
 			],
 		},

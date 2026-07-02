@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
 import { addPostExecutionWarning } from '../utils';
@@ -7,7 +7,7 @@ describe('addPostExecutionWarning', () => {
 	const context = mock<IExecuteFunctions>();
 	const inputItemsLength = 2;
 
-	beforeEach(() => jest.resetAllMocks());
+	beforeEach(() => vi.resetAllMocks());
 
 	it('should add execution hints when returnData length differs from inputItemsLength', () => {
 		const returnData: INodeExecutionData[] = [{ json: {}, pairedItem: 0 }];
