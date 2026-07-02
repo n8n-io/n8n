@@ -1,0 +1,20 @@
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.import.yml
+  h_c63dce324dfc7b 9
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/n8n-packages.export.yml
+  h_c63dce324dfc7b 9
+packages/@n8n/cli/docs/commands/package.md
+  h_c63dce324dfc7b 5
+packages/cli/src/public-api/v1/openapi.yml
+  h_c63dce324dfc7b 48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.5",
+  "base_commit_sha": "6a3bd596cf2b844fd0c066c7ffd727f499e28788",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,97 @@
+packages/@n8n/local-gateway/src/renderer/chat/chat-thread.test.ts
+  s_53b05fe21441a7::t_c5ccf72326396d 98-127
+packages/@n8n/local-gateway/src/renderer/permissions/use-permission-prompts.ts
+  s_53b05fe21441a7::t_991c3f3c646fb1 9
+  s_53b05fe21441a7::t_4292be3ee66f88 36-38,47,49
+  s_53b05fe21441a7::t_c0fa103e3f56b2 63-77
+  s_53b05fe21441a7::t_51f0a1d99d05dc 10
+  s_53b05fe21441a7::t_713d19db0db7e9 34-35,39-46,48,50-54,57
+packages/@n8n/local-gateway/src/renderer/chat/visible-chat-threads.ts
+  s_53b05fe21441a7::t_9ff1b5307d7671 1-26
+packages/@n8n/instance-ai/src/agent/computer-use-prompt.ts
+  s_53b05fe21441a7::t_6705750172b7b2 51-52
+  h_44f8d1c0f2f8c4 53
+packages/@n8n/local-gateway/src/renderer/chat/chat-thread.ts
+  s_53b05fe21441a7::t_16b1053f49c982 25-30
+  s_53b05fe21441a7::t_0719a9f252402e 89-93
+  s_53b05fe21441a7::t_81806061d34c94 120-127
+packages/@n8n/local-gateway/src/main/thread-service.ts
+  s_53b05fe21441a7::t_9dd5e1f8c2480b 243-245
+packages/@n8n/computer-use/src/tools/filesystem/list-files.test.ts
+  s_53b05fe21441a7::t_08fb2c0cfbc919 50-52
+  s_53b05fe21441a7::t_5eeadd7dd22345 77-78
+  s_53b05fe21441a7::t_8d3a764eeb75b6 123-135
+packages/@n8n/local-gateway/src/renderer/permissions/permission-prompt-store.ts
+  s_53b05fe21441a7::t_7abf5a2b606cb0 4,8
+  s_53b05fe21441a7::t_9a51c52c3966c2 91-116,120-122
+packages/@n8n/local-gateway/src/renderer/components/ChatView.vue
+  s_53b05fe21441a7::t_30cbed4bf619b9 8,20-23
+packages/@n8n/local-gateway/src/renderer/chat/chat-overlay.test.ts
+  s_53b05fe21441a7::t_3709787949e46b 10-11,31
+packages/@n8n/instance-ai/src/agent/desktop-assistant-profile.ts
+  s_53b05fe21441a7::t_2126a21081b089 63,67-70,72,74,76-77
+  s_53b05fe21441a7::t_547cd04030017d 15-18
+  s_53b05fe21441a7::t_0e38465983e167 56
+packages/@n8n/instance-ai/src/agent/__tests__/computer-use-prompt.test.ts
+  s_53b05fe21441a7::t_2ab983aa6a53b7 91,97,102,108-109,117,123
+  s_53b05fe21441a7::t_111080b25a6c08 179,185
+packages/@n8n/local-gateway/src/renderer/permissions/thread-prompt-watcher.ts
+  s_53b05fe21441a7::t_4f6bd96d00bcc0 42
+packages/@n8n/local-gateway/src/renderer/permissions/use-permission-prompts.test.ts
+  s_53b05fe21441a7::t_ed0613117f8870 6-8,10-11,13,15-16,18-30
+  s_53b05fe21441a7::t_ac8bd5a577fd5d 123,125-151,153-166
+  s_53b05fe21441a7::t_ccbab0684ca57c 14
+  s_53b05fe21441a7::t_40273dc28055b0 167-182
+  s_53b05fe21441a7::t_4f2ac9f338f892 124
+  s_53b05fe21441a7::t_88078e962f35bc 152
+packages/@n8n/local-gateway/src/renderer/components/ChatMessages.vue
+  s_53b05fe21441a7::t_80aa00ed005d1e 7-15,17,23-30,32
+  s_53b05fe21441a7::t_10d74ee017a7a2 227,244-253
+  s_53b05fe21441a7::t_7b37120bbbc579 139-148
+  s_53b05fe21441a7::t_48ef419967feb4 196,200,202-205
+  s_53b05fe21441a7::t_eea2885503de61 65,73-74,76
+  s_53b05fe21441a7::t_3a8c23b4a267d6 95-105,107-138,149-158,166-172
+  s_53b05fe21441a7::t_1a27fe4a8d07e6 106
+packages/@n8n/local-gateway/src/renderer/components/ChatPanel.vue
+  s_53b05fe21441a7::t_16162de2b7a66a 10,19-21,23
+packages/@n8n/local-gateway/src/renderer/components/TaskComposer.vue
+  s_53b05fe21441a7::t_f12696b4e7cf2f 13
+  s_53b05fe21441a7::t_37e955a6d042c6 26-27,29-31
+  s_53b05fe21441a7::t_bbded3112fb840 173
+  s_53b05fe21441a7::t_f9fe6f24bccf3b 171-172
+packages/@n8n/computer-use/src/tools/filesystem/list-files.ts
+  s_53b05fe21441a7::t_f2179b110e3f7b 8-13
+  s_53b05fe21441a7::t_46d19d69ddce56 23-24
+packages/@n8n/local-gateway/src/renderer/permissions/permission-prompt-store.test.ts
+  s_53b05fe21441a7::t_5eaa12e512df97 163-187,189-193
+  s_53b05fe21441a7::t_8797b11e2eb366 8,11,13
+  s_53b05fe21441a7::t_5a9b07a4bae4c4 236-253
+packages/@n8n/local-gateway/src/renderer/chat/chat-overlay.ts
+  s_53b05fe21441a7::t_52ce4dcd7f11e6 20-21,23
+packages/@n8n/local-gateway/src/renderer/permissions/prompt-classification.ts
+  s_53b05fe21441a7::t_815ae8854a91dc 199,208,219,223-225
+  s_53b05fe21441a7::t_3388681fb957ad 52-53,59-62
+  s_53b05fe21441a7::t_3defbfbd3c6908 154,166,178-181
+  s_53b05fe21441a7::t_80bc6437ade3a6 75-82,85-86,92-101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "17cd719c3cf5bc13bcfd303a6966a9e2f6136604",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_53b05fe21441a7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3d914a37-639d-493f-bf19-e3d7e4014518",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

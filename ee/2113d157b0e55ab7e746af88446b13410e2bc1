@@ -1,0 +1,21 @@
+packages/@n8n/api-types/src/dto/api-keys/list-api-keys-query.dto.ts
+  s_b00f88b5d02ace::t_cc64fbd1f8a850 31-34
+packages/@n8n/api-types/src/dto/api-keys/__tests__/list-api-keys-query.dto.test.ts
+  s_b00f88b5d02ace::t_266afd5c6431f2 1-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.8",
+  "base_commit_sha": "ee2113d157b0e55ab7e746af88446b13410e2bc1",
+  "prompts": {},
+  "sessions": {
+    "s_b00f88b5d02ace": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4d2b7954-1b2a-4748-b82e-f3dc76c64fc3",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

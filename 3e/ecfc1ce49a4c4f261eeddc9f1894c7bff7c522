@@ -1,0 +1,24 @@
+packages/@n8n/client-oauth2/test/config.ts
+  s_863ef8b0566038::t_cb2c7bb72a3986 16-21
+packages/@n8n/client-oauth2/test/code-flow.test.ts
+  s_863ef8b0566038::t_341975a498a322 3,6
+  s_863ef8b0566038::t_dbc171fdca356b 204-229,231-238,241-249,251-256,259-260
+  s_863ef8b0566038::t_88eb74402cb372 230,239-240
+  s_863ef8b0566038::t_cad6aaa015b1f2 250,257-258
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3eecfc1ce49a4c4f261eeddc9f1894c7bff7c522",
+  "prompts": {},
+  "sessions": {
+    "s_863ef8b0566038": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "96074e9a-5fc0-4251-ad73-6755b86613cb",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

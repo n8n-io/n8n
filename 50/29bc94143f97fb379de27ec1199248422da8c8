@@ -1,0 +1,93 @@
+packages/@n8n/local-gateway/src/main/deeplink.ts
+  s_f4037ec3e84992::t_032b5777bc8e33 1-2,4-8,10-11,20,22-26,35-36,38
+packages/@n8n/local-gateway/src/main/preload.ts
+  s_f4037ec3e84992::t_28652def68bd3c 3,18-25
+packages/@n8n/local-gateway/src/main/index.ts
+  s_f4037ec3e84992::t_8bb3e90220a2da 7,9-10,14,31,43-45,50-55,57,59-74,81-83,86-91,118-120,123,126-127,129-139
+packages/@n8n/local-gateway/src/main/oauth/token-store.ts
+  s_f4037ec3e84992::t_1478bcfa109944 1-116
+packages/@n8n/local-gateway/src/main/oauth/oauth-client.ts
+  s_f4037ec3e84992::t_d63ee4ad669ec3 48-52
+packages/@n8n/local-gateway/src/main/daemon-controller.test.ts
+  s_f4037ec3e84992::t_61d75d479a5976 111-115,125-129,138-142,156-160,167-171,183-192,199-203,217-221
+  s_f4037ec3e84992::t_f8bd538f0ca0be 9
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.controller.test.ts
+  s_f4037ec3e84992::t_9ef07359ead070 27-30
+  s_f4037ec3e84992::t_3e818627f3ee4e 71
+  s_f4037ec3e84992::t_9d099b9df6a73d 1184,1192,1198-1253
+  s_f4037ec3e84992::t_e2fc00d0599d37 1020,1025,1038,1043,1045,1054,1060
+packages/@n8n/local-gateway/src/renderer/index.html
+  s_f4037ec3e84992::t_61d75d479a5976 48,51-52
+packages/@n8n/computer-use/src/gateway-client.ts
+  s_f4037ec3e84992::t_81083601807481 344-345,348
+  s_f4037ec3e84992::t_c8d4a9ab258956 359,363
+  s_f4037ec3e84992::t_63a2770efe001a 128-140
+  s_f4037ec3e84992::t_4033c82b21da4c 492
+  s_f4037ec3e84992::t_1bddac24e90e4c 185
+  s_f4037ec3e84992::t_bc07e95c26c0f9 57-67
+  s_f4037ec3e84992::t_6d3cbed6701c1f 324
+  s_f4037ec3e84992::t_69a533ba64bb21 573
+packages/@n8n/local-gateway/src/main/settings-store.test.ts
+  s_f4037ec3e84992::t_3efa57a462b038 69-73
+packages/@n8n/local-gateway/src/main/oauth/token-store.test.ts
+  s_f4037ec3e84992::t_9a8aeb2df4fa90 1-7
+  s_f4037ec3e84992::t_2ecafa5737dc9f 8-120
+packages/@n8n/local-gateway/src/renderer/settings.ts
+  s_f4037ec3e84992::t_56b6e795654f10 195-214
+  s_f4037ec3e84992::t_29e02a7c1bdd25 1-7,16-18,24-38
+packages/@n8n/local-gateway/src/main/oauth/oauth-flow.ts
+  s_f4037ec3e84992::t_6042fe4120de47 1-11,13-96,99,102-103,105-113,115-150
+  s_f4037ec3e84992::t_48936c8e66c14c 12
+  s_f4037ec3e84992::t_6edbb00f71af87 97-98,100-101,104,114
+packages/@n8n/local-gateway/electron-builder.config.js
+  s_f4037ec3e84992::t_3a41359b7bd14d 6-7
+packages/@n8n/local-gateway/src/main/oauth/oauth-client.test.ts
+  s_f4037ec3e84992::t_a5b8cde912ea91 1-2,4-45,48-96,104-109
+  s_f4037ec3e84992::t_61d75d479a5976 3,46-47,97-103
+packages/@n8n/local-gateway/src/main/deeplink.test.ts
+  s_f4037ec3e84992::t_d3c7510c3ea204 4-6,8-10,13-14,17-18,21-25,29,31-32,36-38,41-43,48,52-55
+packages/@n8n/local-gateway/src/main/oauth/oauth-config.ts
+  s_f4037ec3e84992::t_bca7537a5f71d8 1-26
+packages/cli/src/modules/instance-ai/instance-ai.controller.ts
+  s_f4037ec3e84992::t_20c800ba6f848e 22
+  s_f4037ec3e84992::t_3a91caeaef67d2 1021-1022
+  s_f4037ec3e84992::t_2882e4a9e0b969 660
+  s_f4037ec3e84992::t_1c60d5e1e26653 804
+  s_f4037ec3e84992::t_eccf1ac8b5cf21 748-755
+  s_f4037ec3e84992::t_56a0845bfce591 725
+  s_f4037ec3e84992::t_7119b981964605 778,784
+  s_f4037ec3e84992::t_60e4d87869550a 761-762
+packages/@n8n/local-gateway/src/main/daemon-controller.ts
+  s_f4037ec3e84992::t_76e3a36dc0f20c 71-75,77,88
+packages/@n8n/local-gateway/src/main/ipc-handlers.ts
+  s_f4037ec3e84992::t_5d2289deff1d27 6-17,22,56,59-80
+packages/@n8n/local-gateway/src/main/settings-store.ts
+  s_f4037ec3e84992::t_ab306a28b525b8 13
+packages/@n8n/local-gateway/src/main/ipc-handlers.test.ts
+  s_f4037ec3e84992::t_d1e54072bcb46e 128
+  s_f4037ec3e84992::t_61d75d479a5976 71-75,104,148,170-174,194
+  s_f4037ec3e84992::t_b16f0f07950219 33,43-50
+packages/@n8n/local-gateway/src/shared/types.ts
+  s_f4037ec3e84992::t_41f8d73f8cc7b0 23-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "5029bc94143f97fb379de27ec1199248422da8c8",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_f4037ec3e84992": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c047bb52-f9ff-424b-8fe6-ebf66afb06bf",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

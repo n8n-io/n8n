@@ -1,0 +1,37 @@
+packages/frontend/editor-ui/src/features/roles/instance/InstanceRoleAssignmentsTab.vue
+  s_89f93849c46d72::t_803e9278eb57c4 1-212,214-261
+  s_89f93849c46d72::t_a4a2829620a348 213
+packages/frontend/editor-ui/src/app/stores/roles.store.ts
+  s_89f93849c46d72::t_f3b26a4d0b3fc6 129
+  s_89f93849c46d72::t_f7da58175b5d35 15
+  s_89f93849c46d72::t_f16d47ed914265 112-115
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_89f93849c46d72::t_1244542239b697 2821-2828
+packages/frontend/editor-ui/src/features/roles/instance/InstanceRoleAssignmentsTab.test.ts
+  s_89f93849c46d72::t_2d9a353f55d60b 1-172
+packages/frontend/@n8n/rest-api-client/src/api/roles.ts
+  s_89f93849c46d72::t_64e41ed97ae086 58-64
+  s_89f93849c46d72::t_74f74acf128fa0 4
+packages/frontend/@n8n/rest-api-client/src/api/users.ts
+  s_89f93849c46d72::t_1b8dca273b44ba 217-218
+  s_89f93849c46d72::t_dd428ba873fa53 11
+packages/frontend/editor-ui/src/features/roles/instance/InstanceRoleView.vue
+  s_89f93849c46d72::t_72f4f12ad19a40 14
+  s_89f93849c46d72::t_04f10d14c7f81b 238-240
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "2f942f3b87db7f7c19467ba087c258c44247310c",
+  "prompts": {},
+  "sessions": {
+    "s_89f93849c46d72": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9d69f941-b69f-4837-9fc4-d327e6ee2b4a",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}
