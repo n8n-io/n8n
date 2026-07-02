@@ -192,7 +192,7 @@ function mapVirtualFlattenedItem(
 	<TreeRoot
 		v-slot="{ flattenItems }"
 		v-bind="{ ...rootProps, ...rootAttrs }"
-		:class="['n8n-tree', treeVariables.root, rootClass, { [$style.virtualized]: virtualized }]"
+		:class="[treeVariables.root, rootClass, { [$style.virtualized]: virtualized }]"
 		:items="items"
 		:get-key="resolvedGetKey"
 		:get-children="resolvedGetChildren"
