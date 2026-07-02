@@ -64,34 +64,36 @@ onMounted(() => {
 </script>
 
 <template>
-	<p
-		:class="[
-			$style.description,
-			props.compact && $style.descriptionCompact,
-			props.extraCompact && $style.descriptionExtraCompact,
-		]"
-	>
-		{{ i18n.baseText('experiments.instanceAiTemplateExamples.description' as BaseTextKey) }}
-	</p>
+	<div>
+		<p
+			:class="[
+				$style.description,
+				props.compact && $style.descriptionCompact,
+				props.extraCompact && $style.descriptionExtraCompact,
+			]"
+		>
+			{{ i18n.baseText('experiments.instanceAiTemplateExamples.description' as BaseTextKey) }}
+		</p>
 
-	<div :class="$style.wrapper">
-		<div v-if="showLeftFade" :class="$style.fadeLeft" />
-		<div ref="scrollRef" :class="$style.container" @scroll="updateFades">
-			<button
-				v-for="(category, index) in sortedCategories"
-				:key="category.id"
-				:class="[
-					$style.pill,
-					selectedCategoryId === String(category.id) && $style.active,
-					revealed && $style.visible,
-				]"
-				:style="{ '--entrance-delay': `${index * 30}ms` }"
-				@click="selectCategory(String(category.id), category.name)"
-			>
-				{{ category.name }}
-			</button>
+		<div :class="$style.wrapper">
+			<div v-if="showLeftFade" :class="$style.fadeLeft" />
+			<div ref="scrollRef" :class="$style.container" @scroll="updateFades">
+				<button
+					v-for="(category, index) in sortedCategories"
+					:key="category.id"
+					:class="[
+						$style.pill,
+						selectedCategoryId === String(category.id) && $style.active,
+						revealed && $style.visible,
+					]"
+					:style="{ '--entrance-delay': `${index * 30}ms` }"
+					@click="selectCategory(String(category.id), category.name)"
+				>
+					{{ category.name }}
+				</button>
+			</div>
+			<div v-if="showRightFade" :class="$style.fadeRight" />
 		</div>
-		<div v-if="showRightFade" :class="$style.fadeRight" />
 	</div>
 </template>
 
