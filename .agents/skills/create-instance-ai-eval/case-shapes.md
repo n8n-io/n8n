@@ -158,6 +158,25 @@ everything built or said after the seed**: what the agent does with the restored
 state, how it responds to the triggering message, what the workflow looks like
 after the correction. Asserting on the seeded prelude itself proves nothing.
 
+### Which mode — and when to avoid seedThread
+
+Default to a **synthetic** case (an authored prompt + director script, or a
+`priorConversation` / `seedFile` prelude): it's durable, carries no PII, never
+expires, and you control the setup exactly. Reach for **`seedThread`** only when
+the misbehaviour genuinely needs real prior context that's impractical to
+synthesize — a long accumulated thread, specific built workflows/tables — **and**
+the issue is in a *later* turn. (A turn-0 issue can't be isolated by seeding: it
+lands inside the seed, so you'd bake the bug into the prelude.) Two standing
+costs keep it a last resort, not a default:
+
+- **PII.** It pulls real conversation content into the eval instance, model, and
+  traces — handle per team data policy; never for sensitive threads.
+- **Transience.** It depends on LangSmith trace retention (~14 days); the case
+  stops running once the source trace ages out (tag it `seeded`, keep it out of
+  `full`/`pr`).
+
+If a plain prompt + director script can reproduce the situation, prefer that.
+
 ### `seedThread` — reproduce a real conversation
 
 ```json

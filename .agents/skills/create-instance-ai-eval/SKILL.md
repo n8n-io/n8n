@@ -19,6 +19,18 @@ auto-discovers `*.json` and validates against
 [README](../../../packages/@n8n/instance-ai/evaluations/README.md) is the
 exhaustive field reference; this skill is the opinionated *how*.
 
+## Where the best cases come from
+
+The strongest cases encode a **real** failure, not an invented premise. Two
+connections help you find and verify one: **LangTracer** clusters real
+conversations into capability-gap themes (discover what actually fails, at
+scale), and **LangSmith** holds the raw traces (verify exactly what happened in a
+run). LangTracer is the discovery layer; the durable artifact is almost always a
+synthetic case you author from what you learn (use `seedThread` only per
+[`case-shapes.md`](case-shapes.md)). See
+[`sourcing-cases.md`](sourcing-cases.md) for connecting the MCPs and the
+discover → verify → encode workflow.
+
 ## Pick the case shape first
 
 The corpus is four archetypes. Decide which you're writing before you draft — it
@@ -79,6 +91,9 @@ Request node").
 `--iterations N` is available to measure flakiness (pass@k / pass^k) — reach for
 it when you suspect a case is non-deterministic or before promoting it to a
 gated tier, not as a routine step (each iteration is a full build + execution).
+
+Gut-check: if you can't picture a plausible *wrong* build that this case
+reliably turns **red**, the assertions are too loose to guard anything.
 
 ## Example
 
