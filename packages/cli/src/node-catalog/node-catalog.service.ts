@@ -410,7 +410,7 @@ export class NodeCatalogService {
 			});
 			return {
 				content: '',
-				error: `Type definition for '${request.nodeId}' is unavailable because the node uses a dynamic structure.`,
+				error: `Type definition for '${request.nodeId}' could not be generated from the node's description.`,
 			};
 		}
 	}

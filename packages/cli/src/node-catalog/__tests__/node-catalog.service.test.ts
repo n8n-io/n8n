@@ -326,11 +326,11 @@ describe('NodeCatalogService', () => {
 						outputs: ['main'],
 					},
 					{
-						// Expression-computed inputs can't be expressed as an SDK type.
-						name: 'n8n-nodes-dynamic.dynamic',
-						group: ['transform'],
+						// A malformed description can't be expressed as an SDK type.
+						name: 'n8n-nodes-malformed.malformed',
+						group: 'transform',
 						properties: [],
-						inputs: '={{ $json.connections }}',
+						inputs: ['main'],
 						outputs: ['main'],
 					},
 				],
@@ -339,13 +339,13 @@ describe('NodeCatalogService', () => {
 
 			const result = await service.getNodeTypes([
 				'n8n-nodes-resend.resend',
-				'n8n-nodes-dynamic.dynamic',
+				'n8n-nodes-malformed.malformed',
 			]);
 
 			// The resolvable node still comes through; the unresolvable one is noted, not thrown.
 			expect(result).toContain('synth-result');
 			expect(result).toContain('# Errors');
-			expect(result).toContain('n8n-nodes-dynamic.dynamic');
+			expect(result).toContain('n8n-nodes-malformed.malformed');
 		});
 
 		test('synthesizes the latest version of a versioned node by default', async () => {
@@ -608,7 +608,7 @@ describe('NodeCatalogService', () => {
 			);
 		});
 
-		test('returns a structured error when a node cannot be synthesized', async () => {
+		test('synthesizes type definitions for a node with expression connections', async () => {
 			loadNodesAndCredentials.collectTypes.mockResolvedValue({
 				nodes: [
 					{
@@ -616,7 +616,7 @@ describe('NodeCatalogService', () => {
 						version: 1,
 						group: ['transform'],
 						properties: [],
-						inputs: '={{ $json.connections }}',
+						inputs: '={{ $parameter.connections }}',
 						outputs: ['main'],
 					},
 				],
@@ -625,8 +625,31 @@ describe('NodeCatalogService', () => {
 
 			const result = await service.getNodeTypeDefinition({ nodeId: 'n8n-nodes-dynamic.dynamic' });
 
+			expect(result.content).toBe('synth-result');
+			expect(result.error).toBeUndefined();
+		});
+
+		test('returns a structured error when a node cannot be synthesized', async () => {
+			loadNodesAndCredentials.collectTypes.mockResolvedValue({
+				nodes: [
+					{
+						name: 'n8n-nodes-malformed.malformed',
+						version: 1,
+						group: 'transform',
+						properties: [],
+						inputs: ['main'],
+						outputs: ['main'],
+					},
+				],
+			} as never);
+			await service.initialize();
+
+			const result = await service.getNodeTypeDefinition({
+				nodeId: 'n8n-nodes-malformed.malformed',
+			});
+
 			expect(result.content).toBe('');
-			expect(result.error).toContain('unavailable because the node uses a dynamic structure');
+			expect(result.error).toContain("could not be generated from the node's description");
 		});
 	});
 
