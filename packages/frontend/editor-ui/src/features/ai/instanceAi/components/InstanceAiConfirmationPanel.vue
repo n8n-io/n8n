@@ -38,7 +38,7 @@ const thread = useThread();
 // Every thread is created with a project and hydration populates thread.projectId,
 // so it's the reliable fallback when a setup confirmation carries no explicit projectId
 // (the tool's projectId input is LLM-optional).
-const threadProjectId = computed(() => thread.projectId.value);
+const threadProjectId = computed(() => thread.projectId);
 const i18n = useI18n();
 const rootStore = useRootStore();
 const telemetry = useTelemetry();

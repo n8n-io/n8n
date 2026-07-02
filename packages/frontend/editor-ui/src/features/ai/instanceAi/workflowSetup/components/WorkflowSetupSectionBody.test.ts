@@ -17,6 +17,8 @@ const workflowSetupContext = vi.hoisted(() => ({
 
 const credentialsStore = vi.hoisted(() => ({
 	getCredentialById: vi.fn(),
+	// Non-empty so the inline-form gate resolves to the NodeCredentials selector.
+	getUsableCredentialByType: vi.fn(() => [{ id: 'cred-1', name: 'Existing' }]),
 }));
 
 const nodeTypesStore = vi.hoisted(() => ({
@@ -43,6 +45,14 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 
 vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: () => nodeTypesStore,
+}));
+
+vi.mock('@/app/composables/useAiGateway', () => ({
+	useAiGateway: () => ({
+		isEnabled: { value: false },
+		isNodeTypeVersionSupported: () => false,
+		isCredentialTypeSupported: () => false,
+	}),
 }));
 
 vi.mock('@/features/credentials/components/NodeCredentials.vue', async () => {
