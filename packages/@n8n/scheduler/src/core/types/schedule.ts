@@ -12,13 +12,6 @@ import type { CronExpression } from 'n8n-workflow';
  */
 
 /**
- * The recurrence kinds as a runtime list (not a bare union) so the schema column
- * and validation share one source of truth. Same idiom as `ExecutionStatusList`.
- */
-export const ScheduleKindList = ['cron', 'interval', 'one_off'] as const;
-export type ScheduleKind = (typeof ScheduleKindList)[number];
-
-/**
  * A 6-field cron expression (seconds included) evaluated in an IANA timezone.
  * Wall-clock: fires at the given local time, so DST shifts the absolute instant.
  * `timezone === null` means the instance default, resolved by the caller before
@@ -58,4 +51,7 @@ export interface ScheduledJob {
 	enabled: boolean;
 	nextRunAt: Date | null;
 	lastFiredAt: Date | null;
+	taskType: string;
+	payload: unknown;
+	maxAttempts: number;
 }

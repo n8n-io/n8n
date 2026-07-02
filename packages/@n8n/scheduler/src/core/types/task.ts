@@ -7,19 +7,7 @@
  * trivially. Instants are `Date` (absolute UTC).
  */
 
-/**
- * Occurrence lifecycle (`scheduled_task.status`) as a runtime list, so the schema
- * column and validation share one source of truth.
- */
-export const TaskStatusList = [
-	'pending',
-	'running',
-	'succeeded',
-	'failed',
-	'missed',
-	'cancelled',
-] as const;
-export type TaskStatus = (typeof TaskStatusList)[number];
+import type { ScheduledTaskStatus } from '../enums';
 
 /**
  * A materialised occurrence of a job (`scheduled_task`): one queued run.
@@ -36,7 +24,7 @@ export interface ScheduledTask {
 	payload: unknown;
 	scheduledFor: Date;
 	runAt: Date;
-	status: TaskStatus;
+	status: ScheduledTaskStatus;
 	attempts: number;
 	maxAttempts: number;
 }

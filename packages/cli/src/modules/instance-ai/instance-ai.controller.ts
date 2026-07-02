@@ -390,7 +390,7 @@ export class InstanceAiController {
 		if (!resolved) {
 			throw new NotFoundError('Confirmation request not found or not authorized');
 		}
-		return { ok: true };
+		return resolved;
 	}
 
 	@Post('/chat/:threadId/cancel')

@@ -28,7 +28,7 @@ const checkOutcomeSchema = z.object({
 	description: z.string(),
 	kind: z.enum(['deterministic', 'llm']),
 	dimension: z.enum(CHECK_DIMENSIONS),
-	status: z.enum(['pass', 'fail', 'n_a']),
+	status: z.enum(['pass', 'fail', 'n_a', 'error']),
 	comment: z.string().optional(),
 });
 

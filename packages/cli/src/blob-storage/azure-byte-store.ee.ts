@@ -1,7 +1,7 @@
 import { Service } from '@n8n/di';
 import chunk from 'lodash/chunk';
 import { AzureBlobService } from 'n8n-core/dist/binary-data/azure-blob/azure-blob.service.ee';
-import { ensureError } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 import type { ByteStore, ByteStoreKey } from './types';
 
