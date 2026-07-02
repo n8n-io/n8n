@@ -46,6 +46,17 @@ way. Don't transcribe one observed build into assertions — that overfits the
 eval into "did the agent reproduce that run" instead of "did it solve the
 problem."
 
+**Keep the conversation in the user's voice.** State the goal and real
+constraints the way a user would — don't name node types, wire up the structure,
+or restate your `outcomeExpectations` in the prompt. If the conversation spells
+out the build, the case only tests whether the agent can follow instructions and
+the expectations become tautological; the gap between what the user asks for and
+how a correct workflow realizes it is the capability under test. Even when the
+anchor *is* honoring a user's stated technical preference, phrase it as their
+need + constraint ("I need field X and the built-in node doesn't expose it, so
+pull it straight from the API") — not as an implementation spec ("use an HTTP
+Request node").
+
 ## Workflow
 
 1. **State the must-haves first.** From the conversation alone, list what every
