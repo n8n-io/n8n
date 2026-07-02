@@ -180,7 +180,7 @@ describe('parseCliArgs --build-via-mcp', () => {
 		const args = parseCliArgs([]);
 		expect(args.buildViaMcp).toBe(false);
 		expect(args.mcpServerName).toBe('n8n-local');
-		expect(args.buildModel).toBe('claude-sonnet-4-6');
+		expect(args.buildModel).toBe('claude-opus-4-8');
 		expect(args.buildCwd).toBeUndefined();
 		expect(args.buildMaxAttempts).toBe(3);
 		expect(args.buildMcpTimeoutMs).toBe(120_000);
