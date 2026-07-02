@@ -37,7 +37,7 @@ const {
 	hasUnsavedChanges,
 	displayNameValidationRules,
 	submitted,
-	isDisplayNameValid,
+	validateOnSubmit,
 	resetForm,
 } = useRoleEditorForm({
 	roleSlug: () => props.roleSlug,
@@ -75,14 +75,7 @@ function setPreset(slug: string) {
 }
 
 async function createInstanceRole() {
-	submitted.value = true;
-
-	if (!isDisplayNameValid.value) {
-		showMessage({
-			type: 'error',
-			title: i18n.baseText('roles.instance.action.create.error'),
-			message: i18n.baseText('roles.create.validation.nameMinLength'),
-		});
+	if (!validateOnSubmit('roles.instance.action.create.error')) {
 		return;
 	}
 

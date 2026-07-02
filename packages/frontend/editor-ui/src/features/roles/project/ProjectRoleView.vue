@@ -47,7 +47,7 @@ const {
 	hasUnsavedChanges,
 	displayNameValidationRules,
 	submitted,
-	isDisplayNameValid,
+	validateOnSubmit,
 	resetForm,
 } = useRoleEditorForm({
 	roleSlug: () => props.roleSlug,
@@ -133,14 +133,7 @@ function toggleScope(scope: string) {
 }
 
 async function createProjectRole() {
-	submitted.value = true;
-
-	if (!isDisplayNameValid.value) {
-		showMessage({
-			type: 'error',
-			title: i18n.baseText('projectRoles.action.create.error'),
-			message: i18n.baseText('roles.create.validation.nameMinLength'),
-		});
+	if (!validateOnSubmit('projectRoles.action.create.error')) {
 		return;
 	}
 
