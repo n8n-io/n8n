@@ -156,6 +156,15 @@ const distanceStrategyField: INodeProperties = {
 	],
 };
 
+const createExtensionField: INodeProperties = {
+	displayName: 'Create Extension',
+	name: 'createExtension',
+	type: 'boolean',
+	default: false,
+	description:
+		'Whether to create the pgvector extension if it does not exist. Requires database superuser privileges.',
+};
+
 const insertFields: INodeProperties[] = [
 	{
 		displayName: 'Options',
@@ -163,7 +172,7 @@ const insertFields: INodeProperties[] = [
 		type: 'collection',
 		placeholder: 'Add Option',
 		default: {},
-		options: [collectionField, columnNamesField],
+		options: [collectionField, columnNamesField, createExtensionField],
 	},
 ];
 
@@ -174,7 +183,13 @@ const retrieveFields: INodeProperties[] = [
 		type: 'collection',
 		placeholder: 'Add Option',
 		default: {},
-		options: [distanceStrategyField, collectionField, columnNamesField, metadataFilterField],
+		options: [
+			distanceStrategyField,
+			collectionField,
+			columnNamesField,
+			metadataFilterField,
+			createExtensionField,
+		],
 	},
 ];
 
@@ -185,9 +200,20 @@ const retrieveFields: INodeProperties[] = [
  * expecting it from the parameter
  */
 export class ExtendedPGVectorStore extends PGVectorStore {
+	private readonly _createExtension: boolean;
+
+	constructor(
+		embeddings: EmbeddingsInterface,
+		args: PGVectorStoreArgs & { createExtension?: boolean },
+	) {
+		const { createExtension, ...rest } = args;
+		super(embeddings, rest);
+		this._createExtension = createExtension ?? false;
+	}
+
 	static async initialize(
 		embeddings: EmbeddingsInterface,
-		args: PGVectorStoreArgs & { dimensions?: number },
+		args: PGVectorStoreArgs & { dimensions?: number; createExtension?: boolean },
 	): Promise<ExtendedPGVectorStore> {
 		const { dimensions, ...rest } = args;
 		const postgresqlVectorStore = new this(embeddings, rest);
@@ -199,6 +225,38 @@ export class ExtendedPGVectorStore extends PGVectorStore {
 		}
 
 		return postgresqlVectorStore;
+	}
+
+	/**
+	 * Creates the destination table (and, if opted in, the pgvector extension) if they
+	 * don't already exist. Extension creation is opt-in because it requires database
+	 * superuser privileges, which many managed Postgres users don't have.
+	 */
+	override async ensureTableInDatabase(dimensions?: number): Promise<void> {
+		if (this.skipInitializationCheck) return;
+
+		if (this._createExtension) {
+			const vectorQuery =
+				this.extensionSchemaName == null
+					? 'CREATE EXTENSION IF NOT EXISTS vector;'
+					: `CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA "${this.extensionSchemaName}";`;
+			await this.pool.query(vectorQuery);
+		}
+
+		const extensionName =
+			this.extensionSchemaName == null ? 'vector' : `"${this.extensionSchemaName}"."vector"`;
+		const vectorColumnType = dimensions ? `${extensionName}(${dimensions})` : extensionName;
+
+		const tableQuery = `
+      CREATE TABLE IF NOT EXISTS ${this.computedTableName} (
+        "${this.idColumnName}" uuid NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
+        "${this.contentColumnName}" text,
+        "${this.metadataColumnName}" jsonb,
+        "${this.vectorColumnName}" ${vectorColumnType}
+      );
+    `;
+
+		await this.pool.query(tableQuery);
 	}
 
 	async similaritySearchVectorWithScore(
@@ -270,7 +328,13 @@ export class VectorStorePGVector extends createVectorStoreNode<ExtendedPGVectorS
 			'cosine',
 		) as DistanceStrategy;
 
-		return await ExtendedPGVectorStore.initialize(embeddings, config);
+		const createExtension = context.getNodeParameter(
+			'options.createExtension',
+			0,
+			false,
+		) as boolean;
+
+		return await ExtendedPGVectorStore.initialize(embeddings, { ...config, createExtension });
 	},
 
 	async populateVectorStore(context, embeddings, documents, itemIndex) {
@@ -306,7 +370,17 @@ export class VectorStorePGVector extends createVectorStoreNode<ExtendedPGVectorS
 			metadataColumnName: 'metadata',
 		}) as ColumnOptions;
 
-		const vectorStore = await PGVectorStore.fromDocuments(documents, embeddings, config);
+		const createExtension = context.getNodeParameter(
+			'options.createExtension',
+			0,
+			false,
+		) as boolean;
+
+		const vectorStore = await ExtendedPGVectorStore.initialize(embeddings, {
+			...config,
+			createExtension,
+		});
+		await vectorStore.addDocuments(documents);
 		vectorStore.client?.release();
 	},
 
