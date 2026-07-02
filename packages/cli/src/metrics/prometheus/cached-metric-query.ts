@@ -37,6 +37,8 @@ export class CachedMetricQuery<T extends JsonValue> {
 	}
 
 	private async load(): Promise<T> {
+		// We let the cache store handle the serialization and deserialization of the
+		// value. In-memory cache stores it as is, redis does JSON stringify/parse.
 		const cached = await this.cacheService.get<T>(this.cacheKey);
 		if (cached !== undefined) return cached;
 
