@@ -350,3 +350,17 @@ jobs:
             packages/@n8n/instance-ai/mcp-build-logs
           if-no-files-found: ignore
           retention-days: 14
+
+      # The eval step runs with continue-on-error so the summary/logs/artifacts
+      # above always land — but a run that never wrote eval-results.json (bad
+      # EVALS_ANTHROPIC_KEY, MCP setup breakage, CLI crash before any results)
+      # must still fail the job rather than end green on a summary note.
+      # Per-case build failures DO write results and stay green by design.
+      - name: Fail when no results were produced
+        if: ${{ always() }}
+        working-directory: packages/@n8n/instance-ai
+        run: |
+          if [ ! -f eval-results.json ]; then
+            echo "::error::Eval run produced no eval-results.json — it failed before writing any results. Check the 'Run MCP Evals' step logs and the uploaded artifacts."
+            exit 1
+          fi
