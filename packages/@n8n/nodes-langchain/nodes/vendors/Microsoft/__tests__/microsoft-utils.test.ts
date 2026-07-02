@@ -805,6 +805,39 @@ describe('microsoft-utils', () => {
 			);
 		});
 
+		test('should log only the payload type, not the raw body, when discovery returns an unexpected shape', async () => {
+			mockConfigService.listToolServers.mockRejectedValue(new Error('insufficient permissions'));
+			// Untrusted discovery response with an unrecognized shape carrying a token-like value
+			(proxyFetch as Mock).mockResolvedValueOnce({
+				ok: true,
+				json: vi.fn().mockResolvedValue({
+					error: 'unauthorized',
+					accessToken: 'tok_secret_123',
+				}),
+			});
+
+			const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+			const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+			try {
+				await expect(
+					getMicrosoftMcpTools(mockTurnContext, mockAuthorization, 'test-token', undefined),
+				).rejects.toThrow(
+					'Failed to read MCP servers from endpoint: response is not a server list',
+				);
+
+				expect(consoleErrorSpy).toHaveBeenCalledWith(
+					'Microsoft MCP server discovery returned an unsupported payload shape',
+					{ payloadType: 'object' },
+				);
+				// The untrusted response body must never reach the logs
+				expect(JSON.stringify(consoleErrorSpy.mock.calls)).not.toContain('tok_secret_123');
+			} finally {
+				consoleErrorSpy.mockRestore();
+				consoleWarnSpy.mockRestore();
+			}
+		});
+
 		test('should handle connection errors gracefully', async () => {
 			const mockServers = [
 				{ mcpServerName: 'mcp_CalendarTools', url: 'http://calendar-server' },
