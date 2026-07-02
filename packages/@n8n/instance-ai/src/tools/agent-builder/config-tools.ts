@@ -24,7 +24,7 @@ import {
 	type HashedSnapshot,
 } from './config-helpers';
 import {
-	applyNativeWebSearchBuilderDefaults,
+	applyNativeWebSearchDefaultOn,
 	rejectIfUnsupportedNativeWebSearch,
 } from './native-web-search';
 import type { InstanceAiAgentBuilderService, InstanceAiContext } from '../../types';
@@ -133,11 +133,17 @@ async function validateAndPersist(
 		return { ok: false as const, stage: failureStage, errors: dynamicSelector.errors };
 	}
 
-	// Normalize native web-search provider tools so builder-saved configs are deterministic.
-	const normalized = applyNativeWebSearchBuilderDefaults(candidate);
+	// Seed the "native model gets web search by default" ergonomic as an explicit
+	// flag; the host's updateConfig owns provider-tool reconciliation so the write
+	// and read paths stay in agreement.
+	const configWithDefaults = applyNativeWebSearchDefaultOn(candidate);
 
 	try {
-		const result = await deps.service.updateConfig(deps.agentId, deps.projectId, normalized);
+		const result = await deps.service.updateConfig(
+			deps.agentId,
+			deps.projectId,
+			configWithDefaults,
+		);
 		return { ok: true as const, ...withConfigHash(result) };
 	} catch (e) {
 		return {

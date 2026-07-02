@@ -5,12 +5,14 @@
  * (`agentBuilderService`) so they get exact parity with the CLI builder: the
  * agent-tool node filter, and resource-locator resolution across all lookup
  * kinds (incl. loadOptions routing) with the full credentials map.
- * `get_node_types` stays on `nodeService.getNodeTypeDefinition` (TS defs).
+ * `get_node_types` reuses `resolveNodeTypeDefinitions` from the consolidated
+ * `nodes` tool (both resolve TS defs via `nodeService.getNodeTypeDefinition`).
  */
 import { Tool } from '@n8n/agents';
 import { z } from 'zod';
 
 import type { InstanceAiContext } from '../../types';
+import { nodeRequestSchema, resolveNodeTypeDefinitions } from '../nodes.tool';
 import { AGENT_BUILDER_TOOL_IDS } from '../tool-ids';
 
 const NODE_TOOLS_UNAVAILABLE = {
@@ -41,17 +43,6 @@ export function createSearchNodesTool(context: InstanceAiContext) {
 		.build();
 }
 
-const nodeTypeRequestSchema = z.union([
-	z.string().describe('Node type ID, e.g. "n8n-nodes-base.httpRequest"'),
-	z.object({
-		nodeType: z.string(),
-		version: z.string().optional(),
-		resource: z.string().optional(),
-		operation: z.string().optional(),
-		mode: z.string().optional(),
-	}),
-]);
-
 export function createGetNodeTypesTool(context: InstanceAiContext) {
 	return new Tool(AGENT_BUILDER_TOOL_IDS.GET_NODE_TYPES)
 		.description(
@@ -59,37 +50,8 @@ export function createGetNodeTypesTool(context: InstanceAiContext) {
 				'credential types, display conditions, and `@searchListMethod` / `@loadOptionsMethod` / ' +
 				'`@builderHint` annotations. Call before configuring a node tool in the agent config.',
 		)
-		.input(z.object({ nodeTypes: z.array(nodeTypeRequestSchema).min(1).max(5) }))
-		.handler(async ({ nodeTypes }) => {
-			if (!context.nodeService.getNodeTypeDefinition) {
-				return {
-					definitions: nodeTypes.map((req) => ({
-						nodeType: typeof req === 'string' ? req : req.nodeType,
-						content: '',
-						error: 'Node type definitions are not available.',
-					})),
-				};
-			}
-
-			const definitions = await Promise.all(
-				nodeTypes.map(async (req) => {
-					const nodeType = typeof req === 'string' ? req : req.nodeType;
-					const options = typeof req === 'string' ? undefined : req;
-					const result = await context.nodeService.getNodeTypeDefinition!(nodeType, options);
-					if (!result) {
-						return { nodeType, content: '', error: `No type definition found for '${nodeType}'.` };
-					}
-					if (result.error) return { nodeType, content: '', error: result.error };
-					return {
-						nodeType,
-						version: result.version,
-						content: result.content,
-						...(result.builderHint ? { builderHint: result.builderHint } : {}),
-					};
-				}),
-			);
-			return { definitions };
-		})
+		.input(z.object({ nodeTypes: z.array(nodeRequestSchema).min(1).max(5) }))
+		.handler(async ({ nodeTypes }) => await resolveNodeTypeDefinitions(context, nodeTypes))
 		.build();
 }
 

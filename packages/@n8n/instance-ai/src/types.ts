@@ -819,6 +819,15 @@ export interface ResolveResourceLocatorParams {
  * validation, hashing, RFC-6902 patching, and `$fromAI` dynamic-selector
  * enforcement is reimplemented in the tool handlers, not delegated here. The CLI
  * provides the adapter; pure-package contexts leave this undefined.
+ *
+ * Scope model: the mutating methods (`createAgent`, `updateConfig`, `createSkill`,
+ * `createTask`, `buildCustomTool`) are asserted by the host adapter against the
+ * caller's agent project scopes (`agent:create` / `agent:update`). The read
+ * methods are intentionally NOT independently scope-checked — they operate on the
+ * project the session is already bound to, so any participant of that Instance AI
+ * session may read agent config and metadata. The one exception is
+ * `listAttachableWorkflows`: workflows are a separate resource, so it is filtered
+ * to the caller's `workflow:read` access rather than every workflow in the project.
  */
 export interface InstanceAiAgentBuilderService {
 	/**
@@ -878,7 +887,11 @@ export interface InstanceAiAgentBuilderService {
 	 * result blob the tool relays to the model (host owns the dynamic-params runtime).
 	 */
 	resolveResourceLocatorOptions(params: ResolveResourceLocatorParams): Promise<unknown>;
-	/** Workflows attachable as `type: "workflow"` tools (filtered to supported triggers). */
+	/**
+	 * Workflows attachable as `type: "workflow"` tools (filtered to supported
+	 * triggers). Scoped to the caller's `workflow:read` access — it never returns
+	 * workflows the user cannot already see.
+	 */
 	listAttachableWorkflows(projectId?: string): Promise<AttachableWorkflow[]>;
 }
 

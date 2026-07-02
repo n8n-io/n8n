@@ -18,6 +18,7 @@ import { AgentSkillsService } from './agent-skills.service';
 import type { Agent } from './entities/agent.entity';
 import { syncAgentIntegrations } from './integrations/integrations-sync';
 import { composeJsonConfig, decomposeJsonConfig } from './json-config/agent-config-composition';
+import { reconcileNativeWebSearch } from './json-config/config-normalization';
 import { sanitizeUnknownAgentCredentials } from './json-config/sanitize-unknown-agent-credentials';
 import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
@@ -117,6 +118,13 @@ export class AgentConfigService {
 		if (!result.valid) {
 			throw new UserError(`Invalid agent config: ${result.error}`);
 		}
+
+		// Reconcile native web-search provider tools with the config's explicit
+		// `webSearch` state. This is the single write path, so the persisted config
+		// always agrees with the read/compose path — the builder tool layers no
+		// longer normalize, which is what let an explicit `webSearch.enabled: false`
+		// get stripped on write and resurrected on read.
+		result.config = reconcileNativeWebSearch(result.config);
 
 		const tasksProvided = result.config.tasks !== undefined;
 		const existingTaskIds = tasksProvided

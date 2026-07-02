@@ -1,11 +1,6 @@
 import type { BuiltTool, CredentialProvider } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
 import {
-	findNodeParameterProperty,
-	getDynamicNodeParameterLookup,
-	normalizeParameterPath,
-} from '@n8n/ai-utilities/node-catalog';
-import {
 	agentSkillSchema,
 	agentTaskSchema,
 	formatZodErrors,
@@ -19,7 +14,6 @@ import {
 import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import { SsrfProtectionConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
-import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils';
 import type { Operation } from 'fast-json-patch';
@@ -41,13 +35,9 @@ import { AgentSkillsService } from '../agent-skills.service';
 import { AgentTaskService } from '../agent-task.service';
 import { AgentsToolsService } from '../agents-tools.service';
 import { AgentsService } from '../agents.service';
+import { AttachableWorkflowsService } from '../attachable-workflows.service';
 import { BuilderModelLookupService } from './builder-model-lookup.service';
 import { BUILDER_TOOLS } from './builder-tool-names';
-import {
-	collectFromAiParameterReferences,
-	hasMatchingFromAiParameterReference,
-	type FromAiParameterReference,
-} from './from-ai-node-parameters';
 import { buildGetResourceLocatorOptionsTool } from './get-resource-locator-options.tool';
 import {
 	buildAskCredentialTool,
@@ -63,17 +53,13 @@ import { TASK_OBJECTIVE_GUIDANCE } from './task-objective-template';
 import { buildVerifyMcpServerTool } from './verify-mcp-server.tool';
 import { composeJsonConfig } from '../json-config/agent-config-composition';
 import {
-	getNativeWebSearchProviderTools,
-	hasNativeWebSearchProvider,
-} from '../json-config/native-web-search-provider-tools';
+	applyNativeWebSearchDefaultOn,
+	rejectIfDynamicSelectorUsesFromAi,
+	rejectIfEmptyInstructions,
+	rejectIfUnsupportedNativeWebSearch,
+} from '../json-config/config-normalization';
 import { AgentRepository } from '../repositories/agent.repository';
 import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
-
-const EMPTY_INSTRUCTIONS_ERROR: ConfigValidationError = {
-	path: '/instructions',
-	message:
-		'Refusing to write an agent with empty instructions. Ask the user what the agent should do before calling write_config or patch_config again.',
-};
 
 const STALE_CONFIG_ERROR: ConfigValidationError = {
 	path: '(root)',
@@ -104,84 +90,6 @@ export interface AgentConfigSnapshot {
 	configHash: string | null;
 	updatedAt: string | null;
 	versionId: string | null;
-}
-
-function rejectIfEmptyInstructions(
-	config: AgentJsonConfig,
-): { errors: ConfigValidationError[] } | null {
-	if (!config.instructions.trim()) {
-		return { errors: [EMPTY_INSTRUCTIONS_ERROR] };
-	}
-	return null;
-}
-
-function rejectIfUnsupportedNativeWebSearch(
-	config: AgentJsonConfig,
-): { errors: ConfigValidationError[] } | null {
-	const webSearch = config.config?.webSearch;
-	const requestsNativeWebSearch =
-		webSearch?.enabled === true &&
-		(webSearch.provider === undefined ||
-			webSearch.provider === 'auto' ||
-			webSearch.provider === 'native');
-	if (!requestsNativeWebSearch || hasNativeWebSearchProvider(config.model)) return null;
-	return {
-		errors: [
-			{
-				path: '/config/webSearch/provider',
-				message:
-					'Native web search is only supported for Anthropic and OpenAI models. Use Brave or SearXNG fallback web search for this model.',
-			},
-		],
-	};
-}
-
-type AgentConfigTool = NonNullable<AgentJsonConfig['tools']>[number];
-type AgentConfigNodeTool = Extract<AgentConfigTool, { type: 'node' }>;
-
-function isNodeTool(tool: AgentConfigTool | undefined): tool is AgentConfigNodeTool {
-	return tool?.type === 'node';
-}
-
-function hasSameNodeType(left: AgentConfigNodeTool, right: AgentConfigNodeTool): boolean {
-	return (
-		left.node.nodeType === right.node.nodeType &&
-		left.node.nodeTypeVersion === right.node.nodeTypeVersion
-	);
-}
-
-function hasSameNodeToolIdentity(left: AgentConfigNodeTool, right: AgentConfigNodeTool): boolean {
-	return left.name === right.name && hasSameNodeType(left, right);
-}
-
-function findPreviousNodeTool(
-	previousConfig: AgentJsonConfig | null,
-	currentTool: AgentConfigNodeTool,
-	currentToolIndex: number,
-): AgentConfigNodeTool | null {
-	const previousTools = previousConfig?.tools ?? [];
-	const sameIndexTool = previousTools[currentToolIndex];
-	if (isNodeTool(sameIndexTool) && hasSameNodeToolIdentity(sameIndexTool, currentTool)) {
-		return sameIndexTool;
-	}
-
-	const matchingTools = previousTools.filter(
-		(tool): tool is AgentConfigNodeTool =>
-			isNodeTool(tool) && hasSameNodeToolIdentity(tool, currentTool),
-	);
-
-	return matchingTools.length === 1 ? matchingTools[0] : null;
-}
-
-function getPreviousFromAiReferences(
-	previousConfig: AgentJsonConfig | null,
-	currentTool: AgentConfigNodeTool,
-	currentToolIndex: number,
-): FromAiParameterReference[] {
-	const previousTool = findPreviousNodeTool(previousConfig, currentTool, currentToolIndex);
-	if (!previousTool) return [];
-
-	return collectFromAiParameterReferences(previousTool.node.nodeParameters);
 }
 
 function canonicalizeJson(value: unknown): unknown {
@@ -218,48 +126,6 @@ function snapshotFromConfig(
 	};
 }
 
-/**
- * The builder expresses web-search intent through `config.webSearch`; this
- * write-path normalizer persists provider-specific native tool details so
- * builder-saved configs are deterministic. Runtime reconstruction uses the
- * same policy defensively for configs saved through other entry points.
- */
-function applyNativeWebSearchBuilderDefaults(config: AgentJsonConfig): AgentJsonConfig {
-	const providerTools = getNativeWebSearchProviderTools(config, {
-		includeDefaultArgs: true,
-		defaultEnabled: true,
-	});
-	const webSearch = config.config?.webSearch;
-	const fallbackWebSearch =
-		webSearch?.enabled === true &&
-		(webSearch.provider === 'brave' || webSearch.provider === 'searxng');
-	const hasNativeWebSearch =
-		!fallbackWebSearch && webSearch?.enabled !== false && hasNativeWebSearchProvider(config.model);
-
-	if (!hasNativeWebSearch) {
-		const { webSearch, ...restConfig } = config.config ?? {};
-		const { config: _config, providerTools: _providerTools, ...restAgentConfig } = config;
-		const normalizedConfig = {
-			...restConfig,
-			...(fallbackWebSearch ? { webSearch } : {}),
-		};
-		return {
-			...restAgentConfig,
-			...(Object.keys(normalizedConfig).length > 0 ? { config: normalizedConfig } : {}),
-			...(Object.keys(providerTools).length > 0 ? { providerTools } : {}),
-		};
-	}
-
-	return {
-		...config,
-		config: {
-			...(config.config ?? {}),
-			webSearch: { enabled: true },
-		},
-		providerTools,
-	};
-}
-
 export interface BuilderTools {
 	json: BuiltTool[];
 	shared: BuiltTool[];
@@ -274,7 +140,7 @@ export class AgentsBuilderToolsService {
 		private readonly agentIntegrationPersistenceService: AgentIntegrationPersistenceService,
 		private readonly agentSkillsService: AgentSkillsService,
 		private readonly secureRuntime: AgentSecureRuntime,
-		private readonly workflowRepository: WorkflowRepository,
+		private readonly attachableWorkflowsService: AttachableWorkflowsService,
 		private readonly agentsToolsService: AgentsToolsService,
 		private readonly builderModelLookupService: BuilderModelLookupService,
 		private readonly mcpRegistryService: McpRegistryService,
@@ -289,77 +155,6 @@ export class AgentsBuilderToolsService {
 		private readonly ssrfConfig: SsrfProtectionConfig,
 		private readonly ssrfProtectionService: SsrfProtectionService,
 	) {}
-
-	private getDynamicSelectorPath(
-		nodeTypeDescription: ReturnType<NodeTypes['getByNameAndVersion']>,
-		parameterPath: string,
-	): string | null {
-		const normalizedPath = normalizeParameterPath(parameterPath);
-		const pathParts = normalizedPath.split('.');
-
-		for (let length = pathParts.length; length > 0; length--) {
-			const candidatePath = pathParts.slice(0, length).join('.');
-			const property = findNodeParameterProperty(
-				nodeTypeDescription.description.properties,
-				candidatePath,
-			);
-			if (!property) continue;
-
-			const lookup = getDynamicNodeParameterLookup(property);
-			if (lookup) return candidatePath;
-		}
-
-		return null;
-	}
-
-	private rejectIfDynamicSelectorUsesFromAi(
-		config: AgentJsonConfig,
-		previousConfig: AgentJsonConfig | null,
-	): { errors: ConfigValidationError[] } | null {
-		const errors: ConfigValidationError[] = [];
-
-		for (const [toolIndex, tool] of (config.tools ?? []).entries()) {
-			if (tool.type !== 'node') continue;
-
-			const fromAiReferences = collectFromAiParameterReferences(tool.node.nodeParameters);
-			if (fromAiReferences.length === 0) continue;
-
-			let nodeTypeDescription: ReturnType<NodeTypes['getByNameAndVersion']>;
-			try {
-				nodeTypeDescription = this.nodeTypes.getByNameAndVersion(
-					tool.node.nodeType,
-					tool.node.nodeTypeVersion,
-				);
-			} catch {
-				continue;
-			}
-
-			const previousFromAiReferences = getPreviousFromAiReferences(previousConfig, tool, toolIndex);
-			const reportedDynamicPaths = new Set<string>();
-			for (const fromAiReference of fromAiReferences) {
-				const { parameterPath, jsonPointer } = fromAiReference;
-				const dynamicPath = this.getDynamicSelectorPath(nodeTypeDescription, parameterPath);
-				if (!dynamicPath || reportedDynamicPaths.has(dynamicPath)) continue;
-				if (hasMatchingFromAiParameterReference(previousFromAiReferences, fromAiReference)) {
-					continue;
-				}
-
-				reportedDynamicPaths.add(dynamicPath);
-				errors.push({
-					path: `/tools/${toolIndex}/node/nodeParameters/${jsonPointer}`,
-					message:
-						`Node tool "${tool.name}" parameter "${dynamicPath}" is a dynamic selector. ` +
-						'Do not use $fromAI for this value. Load skill agent-builder-resource-locators, ' +
-						'use ask_credential if credentials are missing, then call get_resource_locator_options ' +
-						'and write the returned parameterValue into nodeParameters.',
-				});
-			}
-		}
-
-		if (errors.length === 0) return null;
-
-		return { errors };
-	}
 
 	getTools(
 		agentId: string,
@@ -444,25 +239,29 @@ export class AgentsBuilderToolsService {
 					}
 					const emptyInstructions = rejectIfEmptyInstructions(zodResult.data);
 					if (emptyInstructions) {
-						return { ok: false, errors: emptyInstructions.errors };
+						return { ok: false, errors: emptyInstructions };
 					}
 					const unsupportedNativeWebSearch = rejectIfUnsupportedNativeWebSearch(zodResult.data);
 					if (unsupportedNativeWebSearch) {
-						return { ok: false, errors: unsupportedNativeWebSearch.errors };
+						return { ok: false, errors: unsupportedNativeWebSearch };
 					}
-					const dynamicSelectorFromAi = this.rejectIfDynamicSelectorUsesFromAi(
+					const dynamicSelectorFromAi = rejectIfDynamicSelectorUsesFromAi(
 						zodResult.data,
 						snapshot.config,
+						this.nodeTypes,
 					);
 					if (dynamicSelectorFromAi) {
-						return { ok: false, errors: dynamicSelectorFromAi.errors };
+						return { ok: false, errors: dynamicSelectorFromAi };
 					}
-					const normalizedConfig = applyNativeWebSearchBuilderDefaults(zodResult.data);
+					// Seed the builder's "native model gets web search by default" ergonomic
+					// as an explicit flag; updateConfig owns the actual provider-tool
+					// reconciliation so the write and read paths can't disagree.
+					const configWithDefaults = applyNativeWebSearchDefaultOn(zodResult.data);
 					try {
 						const result = await this.agentConfigService.updateConfig(
 							agentId,
 							projectId,
-							normalizedConfig,
+							configWithDefaults,
 						);
 						return {
 							ok: true,
@@ -559,26 +358,27 @@ export class AgentsBuilderToolsService {
 					}
 					const emptyInstructions = rejectIfEmptyInstructions(zodResult.data);
 					if (emptyInstructions) {
-						return { ok: false, stage: 'schema', errors: emptyInstructions.errors };
+						return { ok: false, stage: 'schema', errors: emptyInstructions };
 					}
 					const unsupportedNativeWebSearch = rejectIfUnsupportedNativeWebSearch(zodResult.data);
 					if (unsupportedNativeWebSearch) {
-						return { ok: false, stage: 'schema', errors: unsupportedNativeWebSearch.errors };
+						return { ok: false, stage: 'schema', errors: unsupportedNativeWebSearch };
 					}
-					const dynamicSelectorFromAi = this.rejectIfDynamicSelectorUsesFromAi(
+					const dynamicSelectorFromAi = rejectIfDynamicSelectorUsesFromAi(
 						zodResult.data,
 						snapshot.config,
+						this.nodeTypes,
 					);
 					if (dynamicSelectorFromAi) {
-						return { ok: false, stage: 'schema', errors: dynamicSelectorFromAi.errors };
+						return { ok: false, stage: 'schema', errors: dynamicSelectorFromAi };
 					}
-					const normalizedConfig = applyNativeWebSearchBuilderDefaults(zodResult.data);
+					const configWithDefaults = applyNativeWebSearchDefaultOn(zodResult.data);
 
 					try {
 						const result = await this.agentConfigService.updateConfig(
 							agentId,
 							projectId,
-							normalizedConfig,
+							configWithDefaults,
 						);
 						return {
 							ok: true,
@@ -835,41 +635,7 @@ export class AgentsBuilderToolsService {
 			)
 			.input(z.object({}))
 			.handler(async () => {
-				const workflows = await this.workflowRepository.find({
-					select: ['id', 'name', 'nodes', 'active', 'updatedAt'],
-					where: { shared: { projectId } },
-					relations: ['shared'],
-					order: { updatedAt: 'DESC' },
-					take: 100,
-				});
-
-				// Keys are n8n node type IDs, which use the dotted "package.nodeName"
-				// format — the naming-convention rule doesn't apply to those.
-				/* eslint-disable @typescript-eslint/naming-convention */
-				const SUPPORTED_TRIGGERS: Record<string, string> = {
-					'n8n-nodes-base.manualTrigger': 'manual',
-					'n8n-nodes-base.executeWorkflowTrigger': 'executeWorkflow',
-					'n8n-nodes-base.chatTrigger': 'chat',
-					'n8n-nodes-base.scheduleTrigger': 'schedule',
-					'n8n-nodes-base.formTrigger': 'form',
-				};
-				/* eslint-enable @typescript-eslint/naming-convention */
-
-				const compatible = workflows
-					.map((w) => {
-						const triggerNode = (w.nodes ?? []).find(
-							(n: { type: string }) => SUPPORTED_TRIGGERS[n.type],
-						);
-						if (!triggerNode) return null;
-						return {
-							name: w.name,
-							active: w.active,
-							triggerType: SUPPORTED_TRIGGERS[triggerNode.type],
-						};
-					})
-					.filter(Boolean);
-
-				return { workflows: compatible };
+				return { workflows: await this.attachableWorkflowsService.list(user, projectId) };
 			})
 			.build();
 

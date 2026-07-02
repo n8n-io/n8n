@@ -1,14 +1,14 @@
 /**
- * Native web-search provider-tool policy, ported from the CLI agent builder
- * (`json-config/native-web-search-provider-tools.ts`). Pure: depends only on the
- * `@n8n/api-types` provider-capability constants. `config.webSearch` is the
- * source of truth; provider-tool entries are derived execution details kept in
- * sync with the selected model provider.
+ * Native web-search policy helpers for the instance-ai agent builder. Pure:
+ * depends only on the `@n8n/api-types` provider-capability constants.
+ *
+ * The write-path normalizer that used to live here has moved: provider-tool
+ * reconciliation now happens once in the host's `AgentConfigService.updateConfig`
+ * (the single write path), so the persisted config can't disagree with the read
+ * path. What remains is the builder ergonomic (`applyNativeWebSearchDefaultOn`)
+ * and the unsupported-provider guard the tool layer reports back to the model.
  */
 import {
-	NATIVE_WEB_SEARCH_DEFAULTS_BY_PROVIDER,
-	NATIVE_WEB_SEARCH_PROVIDER_BY_TOOL,
-	NATIVE_WEB_SEARCH_PROVIDER_TOOLS,
 	NATIVE_WEB_SEARCH_TOOL_BY_PROVIDER,
 	type AgentJsonConfig,
 	type ConfigValidationError,
@@ -38,49 +38,6 @@ function isNativeWebSearchRequested(config: AgentJsonConfig): boolean {
 	);
 }
 
-export function getNativeWebSearchProviderTools(
-	config: AgentJsonConfig,
-	options: { includeDefaultArgs: boolean; defaultEnabled?: boolean },
-): Record<string, Record<string, unknown>> {
-	const providerTools = { ...(config.providerTools ?? {}) };
-	const providerPrefix = getProviderPrefix(config.model);
-	const nativeWebSearch = isNativeWebSearchProvider(providerPrefix)
-		? NATIVE_WEB_SEARCH_DEFAULTS_BY_PROVIDER[providerPrefix]
-		: undefined;
-	const explicitDisabled = config.config?.webSearch?.enabled === false;
-	const isEnabled =
-		!!nativeWebSearch &&
-		isNativeWebSearchRequested(config) &&
-		!explicitDisabled &&
-		(options.defaultEnabled === true || config.config?.webSearch?.enabled === true);
-
-	for (const key of NATIVE_WEB_SEARCH_PROVIDER_TOOLS) {
-		const toolProvider = NATIVE_WEB_SEARCH_PROVIDER_BY_TOOL[key];
-		if (!isEnabled || toolProvider !== providerPrefix) {
-			delete providerTools[key];
-		}
-	}
-
-	if (isEnabled) {
-		const hasProviderWebSearchTool = Object.entries(NATIVE_WEB_SEARCH_PROVIDER_BY_TOOL).some(
-			([toolName, toolProvider]) => toolProvider === providerPrefix && toolName in providerTools,
-		);
-		if (!hasProviderWebSearchTool) {
-			providerTools[nativeWebSearch.toolName] = {};
-		}
-
-		if (options.includeDefaultArgs) {
-			for (const [toolName, toolProvider] of Object.entries(NATIVE_WEB_SEARCH_PROVIDER_BY_TOOL)) {
-				if (toolProvider === providerPrefix && toolName in providerTools) {
-					providerTools[toolName] = { ...nativeWebSearch.args, ...providerTools[toolName] };
-				}
-			}
-		}
-	}
-
-	return providerTools;
-}
-
 /** Reject configs that request native web search on a provider that doesn't support it. */
 export function rejectIfUnsupportedNativeWebSearch(
 	config: AgentJsonConfig,
@@ -104,38 +61,26 @@ export function rejectIfUnsupportedNativeWebSearch(
 }
 
 /**
- * Persist provider-specific native web-search tool details so builder-saved
- * configs are deterministic. Mirrors the CLI write-path normalizer.
+ * Builder ergonomic: turn native web search ON by default for a native-capable
+ * model unless the user explicitly disabled it or chose a fallback provider.
+ * Makes the default explicit in `config.webSearch` so the host's reconcile-only
+ * write path derives the provider tools deterministically.
  */
-export function applyNativeWebSearchBuilderDefaults(config: AgentJsonConfig): AgentJsonConfig {
-	const providerTools = getNativeWebSearchProviderTools(config, {
-		includeDefaultArgs: true,
-		defaultEnabled: true,
-	});
+export function applyNativeWebSearchDefaultOn(config: AgentJsonConfig): AgentJsonConfig {
 	const webSearch = config.config?.webSearch;
-	const fallbackWebSearch =
-		webSearch?.enabled === true &&
-		(webSearch.provider === 'brave' || webSearch.provider === 'searxng');
-	const hasNativeWebSearch =
-		!fallbackWebSearch && webSearch?.enabled !== false && hasNativeWebSearchProvider(config.model);
+	const explicitlyDisabled = webSearch?.enabled === false;
+	const usesFallbackProvider = webSearch?.provider === 'brave' || webSearch?.provider === 'searxng';
+	const shouldDefaultOn =
+		hasNativeWebSearchProvider(config.model) &&
+		isNativeWebSearchRequested(config) &&
+		!explicitlyDisabled &&
+		!usesFallbackProvider &&
+		webSearch?.enabled !== true;
 
-	if (!hasNativeWebSearch) {
-		const { webSearch: currentWebSearch, ...restConfig } = config.config ?? {};
-		const { config: _config, providerTools: _providerTools, ...restAgentConfig } = config;
-		const normalizedConfig = {
-			...restConfig,
-			...(fallbackWebSearch ? { webSearch: currentWebSearch } : {}),
-		};
-		return {
-			...restAgentConfig,
-			...(Object.keys(normalizedConfig).length > 0 ? { config: normalizedConfig } : {}),
-			...(Object.keys(providerTools).length > 0 ? { providerTools } : {}),
-		};
-	}
+	if (!shouldDefaultOn) return config;
 
 	return {
 		...config,
-		config: { ...(config.config ?? {}), webSearch: { enabled: true } },
-		providerTools,
+		config: { ...(config.config ?? {}), webSearch: { ...webSearch, enabled: true } },
 	};
 }

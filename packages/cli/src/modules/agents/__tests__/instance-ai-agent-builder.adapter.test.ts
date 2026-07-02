@@ -2,7 +2,7 @@
 // exercise the MCP path.
 vi.mock('@/utils/ai-proxy-fetch', () => ({ createAiMcpFetch: vi.fn() }));
 
-import type { User, WorkflowRepository } from '@n8n/db';
+import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -13,6 +13,7 @@ import type { AgentCustomToolsService } from '../agent-custom-tools.service';
 import type { AgentSkillsService } from '../agent-skills.service';
 import type { AgentTaskService } from '../agent-task.service';
 import type { AgentsService } from '../agents.service';
+import type { AttachableWorkflowsService } from '../attachable-workflows.service';
 import { InstanceAiAgentBuilderAdapterService } from '../instance-ai-agent-builder.adapter';
 
 // The adapter only imports types from `@n8n/instance-ai`, so the barrel never
@@ -24,6 +25,7 @@ function setup() {
 	const agentSkillsService = mock<AgentSkillsService>();
 	const agentTaskService = mock<AgentTaskService>();
 	const agentCustomToolsService = mock<AgentCustomToolsService>();
+	const attachableWorkflowsService = mock<AttachableWorkflowsService>();
 
 	const service = new InstanceAiAgentBuilderAdapterService(
 		agentsService,
@@ -44,7 +46,7 @@ function setup() {
 		mock(),
 		mock(),
 		mock(),
-		mock<WorkflowRepository>(),
+		attachableWorkflowsService,
 	);
 
 	const user = mock<User>({ id: 'user-1' });
@@ -58,6 +60,7 @@ function setup() {
 		agentSkillsService,
 		agentTaskService,
 		agentCustomToolsService,
+		attachableWorkflowsService,
 	};
 }
 
@@ -187,6 +190,17 @@ describe('InstanceAiAgentBuilderAdapterService scope enforcement', () => {
 				objective: 'o',
 				cronExpression: '0 9 * * *',
 			});
+		});
+
+		it('listAttachableWorkflows delegates to the RBAC-scoped workflows service', async () => {
+			const { adapter, user, attachableWorkflowsService } = setup();
+			const workflows = [{ name: 'Send Email', active: true, triggerType: 'manual' }];
+			attachableWorkflowsService.list.mockResolvedValue(workflows);
+
+			const result = await adapter.listAttachableWorkflows('project-1');
+
+			expect(attachableWorkflowsService.list).toHaveBeenCalledWith(user, 'project-1');
+			expect(result).toBe(workflows);
 		});
 	});
 });

@@ -12,7 +12,7 @@ import type {
 	SsrfProtectionService,
 } from '@n8n/backend-network';
 import type { SsrfProtectionConfig } from '@n8n/config';
-import type { User, WorkflowRepository } from '@n8n/db';
+import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
@@ -28,6 +28,7 @@ import type { AgentSkillsService } from '../agent-skills.service';
 import type { AgentTaskService } from '../agent-task.service';
 import type { AgentsToolsService } from '../agents-tools.service';
 import type { AgentsService } from '../agents.service';
+import type { AttachableWorkflowsService } from '../attachable-workflows.service';
 import {
 	AgentsBuilderToolsService,
 	getAgentConfigHash,
@@ -67,7 +68,7 @@ function makeService() {
 		createSkill: agentSkillsService.createSkill,
 	} as Mocked<BuilderPurposeServices>;
 	const secureRuntime = mock<AgentSecureRuntime>();
-	const workflowRepository = mock<WorkflowRepository>();
+	const attachableWorkflowsService = mock<AttachableWorkflowsService>();
 	const agentsToolsService = mock<AgentsToolsService>();
 	const builderModelLookupService = mock<BuilderModelLookupService>();
 	const credentialTypes = mock<CredentialTypes>();
@@ -95,7 +96,7 @@ function makeService() {
 		agentIntegrationPersistenceService as unknown as AgentIntegrationPersistenceService,
 		agentSkillsService as unknown as AgentSkillsService,
 		secureRuntime,
-		workflowRepository,
+		attachableWorkflowsService,
 		agentsToolsService,
 		builderModelLookupService,
 		mcpRegistryService,
@@ -340,10 +341,11 @@ describe('AgentsBuilderToolsService', () => {
 			const { service, agentsService } = makeService();
 			const currentConfig = { ...baseConfig, integrations: [] };
 			const updatedConfig = { ...currentConfig, instructions: 'Updated instructions' };
+			// updateConfig owns web-search reconciliation now; the builder tool only
+			// seeds the default-on flag, so that's all it forwards.
 			const normalizedConfig = {
 				...updatedConfig,
 				config: { webSearch: { enabled: true } },
-				providerTools: { 'anthropic.web_search': { maxUses: 5 } },
 			};
 			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
 			agentsService.updateConfig.mockResolvedValue({
@@ -444,10 +446,11 @@ describe('AgentsBuilderToolsService', () => {
 			const { service, agentsService } = makeService();
 			const currentConfig = { ...baseConfig, integrations: [] };
 			const updatedConfig = { ...currentConfig, instructions: 'Help with support tickets.' };
+			// updateConfig owns web-search reconciliation now; the builder tool only
+			// seeds the default-on flag, so that's all it forwards.
 			const normalizedConfig = {
 				...updatedConfig,
 				config: { webSearch: { enabled: true } },
-				providerTools: { 'anthropic.web_search': { maxUses: 5 } },
 			};
 			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
 			agentsService.updateConfig.mockResolvedValue({
@@ -606,10 +609,11 @@ describe('AgentsBuilderToolsService', () => {
 				...currentConfig,
 				tools: [makeLinearToolWithParameters(nodeParameters)],
 			};
+			// updateConfig owns web-search reconciliation now; the builder tool only
+			// seeds the default-on flag, so that's all it forwards.
 			const normalizedConfig = {
 				...updatedConfig,
 				config: { webSearch: { enabled: true } },
-				providerTools: { 'anthropic.web_search': { maxUses: 5 } },
 			};
 			agentsService.findById.mockResolvedValue(makeAgent(currentConfig));
 			agentsService.updateConfig.mockResolvedValue({
@@ -654,10 +658,11 @@ describe('AgentsBuilderToolsService', () => {
 				...currentConfig,
 				tools: [nodeTool],
 			};
+			// updateConfig owns web-search reconciliation now; the builder tool only
+			// seeds the default-on flag, so that's all it forwards.
 			const normalizedConfig = {
 				...updatedConfig,
 				config: { webSearch: { enabled: true } },
-				providerTools: { 'anthropic.web_search': { maxUses: 5 } },
 			};
 			agentsService.findById.mockResolvedValue(makeAgent(currentConfig));
 			agentsService.updateConfig.mockResolvedValue({
@@ -696,10 +701,11 @@ describe('AgentsBuilderToolsService', () => {
 				...currentConfig,
 				instructions: 'Help with approved support tickets.',
 			};
+			// updateConfig owns web-search reconciliation now; the builder tool only
+			// seeds the default-on flag, so that's all it forwards.
 			const normalizedConfig = {
 				...updatedConfig,
 				config: { webSearch: { enabled: true } },
-				providerTools: { 'anthropic.web_search': { maxUses: 5 } },
 			};
 			agentsService.findById.mockResolvedValue(makeAgent(currentConfig));
 			agentsService.updateConfig.mockResolvedValue({
@@ -738,10 +744,11 @@ describe('AgentsBuilderToolsService', () => {
 				...currentConfig,
 				instructions: 'Updated instructions',
 			};
+			// updateConfig owns web-search reconciliation now; the builder tool only
+			// seeds the default-on flag, so that's all it forwards.
 			const normalizedConfig = {
 				...updatedConfig,
 				config: { webSearch: { enabled: true } },
-				providerTools: { 'anthropic.web_search': { maxUses: 5 } },
 			};
 			agentsService.findById.mockResolvedValue(makeAgent(currentConfig));
 			agentsService.updateConfig.mockResolvedValue({
@@ -771,107 +778,10 @@ describe('AgentsBuilderToolsService', () => {
 			});
 		});
 
-		it('write_config adds OpenAI native web search defaults', async () => {
-			const { service, agentsService } = makeService();
-			const currentConfig = { ...baseConfig, integrations: [] };
-			const updatedConfig = {
-				...currentConfig,
-				model: 'openai/gpt-5',
-				credential: 'OpenAI Key',
-			};
-			const normalizedConfig = {
-				...updatedConfig,
-				config: { webSearch: { enabled: true } },
-				providerTools: {
-					'openai.web_search': { externalWebAccess: true, searchContextSize: 'medium' },
-				},
-			};
-			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
-			agentsService.updateConfig.mockResolvedValue({
-				config: normalizedConfig,
-				updatedAt: '2026-01-02T00:00:00.000Z',
-				versionId: 'v2',
-			});
-
-			await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
-				{
-					baseConfigHash: getAgentConfigHash(currentConfig),
-					json: JSON.stringify(updatedConfig),
-				},
-				ctx,
-			);
-
-			expect(agentsService.updateConfig).toHaveBeenCalledWith(agentId, projectId, normalizedConfig);
-		});
-
-		it('write_config fills missing native web search default settings', async () => {
-			const { service, agentsService } = makeService();
-			const currentConfig = { ...baseConfig, integrations: [] };
-			const updatedConfig: AgentJsonConfig = {
-				...currentConfig,
-				config: { webSearch: { enabled: true } },
-				providerTools: { 'anthropic.web_search': {} },
-			};
-			const normalizedConfig = {
-				...updatedConfig,
-				providerTools: { 'anthropic.web_search': { maxUses: 5 } },
-			};
-			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
-			agentsService.updateConfig.mockResolvedValue({
-				config: normalizedConfig,
-				updatedAt: '2026-01-02T00:00:00.000Z',
-				versionId: 'v2',
-			});
-
-			await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
-				{
-					baseConfigHash: getAgentConfigHash(currentConfig),
-					json: JSON.stringify(updatedConfig),
-				},
-				ctx,
-			);
-
-			expect(agentsService.updateConfig).toHaveBeenCalledWith(agentId, projectId, normalizedConfig);
-		});
-
-		it('patch_config swaps native web search defaults when changing supported providers', async () => {
-			const { service, agentsService } = makeService();
-			const currentConfig: AgentJsonConfig = {
-				...baseConfig,
-				model: 'openai/gpt-5',
-				credential: 'OpenAI Key',
-				config: { webSearch: { enabled: true } },
-				providerTools: {
-					'openai.web_search': { externalWebAccess: true, searchContextSize: 'medium' },
-				},
-				integrations: [],
-			};
-			const normalizedConfig = {
-				...currentConfig,
-				model: 'anthropic/claude-sonnet-4-5',
-				credential: 'Anthropic Key',
-				providerTools: { 'anthropic.web_search': { maxUses: 5 } },
-			};
-			agentsService.findById.mockResolvedValue(makeAgent(currentConfig));
-			agentsService.updateConfig.mockResolvedValue({
-				config: normalizedConfig,
-				updatedAt: '2026-01-02T00:00:00.000Z',
-				versionId: 'v2',
-			});
-
-			await getJsonTool(service, BUILDER_TOOLS.PATCH_CONFIG).handler!(
-				{
-					baseConfigHash: getAgentConfigHash(currentConfig),
-					operations: JSON.stringify([
-						{ op: 'replace', path: '/model', value: 'anthropic/claude-sonnet-4-5' },
-						{ op: 'replace', path: '/credential', value: 'Anthropic Key' },
-					]),
-				},
-				ctx,
-			);
-
-			expect(agentsService.updateConfig).toHaveBeenCalledWith(agentId, projectId, normalizedConfig);
-		});
+		// Native web-search provider-tool derivation (add defaults, fill missing
+		// settings, swap on provider change, strip stale tools for fallback
+		// providers) now lives in AgentConfigService.updateConfig and is covered by
+		// config-normalization.test.ts.
 
 		it('write_config rejects native web search for unsupported providers', async () => {
 			const { service, agentsService } = makeService();
@@ -937,72 +847,6 @@ describe('AgentsBuilderToolsService', () => {
 				],
 			});
 			expect(agentsService.updateConfig).not.toHaveBeenCalled();
-		});
-
-		it('write_config preserves fallback web search config for unsupported providers', async () => {
-			const { service, agentsService } = makeService();
-			const currentConfig = { ...baseConfig, integrations: [] };
-			const updatedConfig: AgentJsonConfig = {
-				...currentConfig,
-				model: 'xai/grok-4',
-				config: { webSearch: { enabled: true, provider: 'brave', credential: 'brave-key' } },
-				providerTools: {
-					'anthropic.web_search': { maxUses: 5 },
-				},
-			};
-			const normalizedConfig: AgentJsonConfig = {
-				...currentConfig,
-				model: 'xai/grok-4',
-				config: { webSearch: { enabled: true, provider: 'brave', credential: 'brave-key' } },
-			};
-			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
-			agentsService.updateConfig.mockResolvedValue({
-				config: normalizedConfig,
-				updatedAt: '2026-01-02T00:00:00.000Z',
-				versionId: 'v2',
-			});
-
-			await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
-				{
-					baseConfigHash: getAgentConfigHash(currentConfig),
-					json: JSON.stringify(updatedConfig),
-				},
-				ctx,
-			);
-
-			expect(agentsService.updateConfig).toHaveBeenCalledWith(agentId, projectId, normalizedConfig);
-		});
-
-		it('write_config preserves fallback web search config for native-capable providers', async () => {
-			const { service, agentsService } = makeService();
-			const currentConfig = { ...baseConfig, integrations: [] };
-			const updatedConfig: AgentJsonConfig = {
-				...currentConfig,
-				config: { webSearch: { enabled: true, provider: 'brave', credential: 'brave-key' } },
-				providerTools: {
-					'anthropic.web_search': { maxUses: 5 },
-				},
-			};
-			const normalizedConfig: AgentJsonConfig = {
-				...currentConfig,
-				config: { webSearch: { enabled: true, provider: 'brave', credential: 'brave-key' } },
-			};
-			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
-			agentsService.updateConfig.mockResolvedValue({
-				config: normalizedConfig,
-				updatedAt: '2026-01-02T00:00:00.000Z',
-				versionId: 'v2',
-			});
-
-			await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
-				{
-					baseConfigHash: getAgentConfigHash(currentConfig),
-					json: JSON.stringify(updatedConfig),
-				},
-				ctx,
-			);
-
-			expect(agentsService.updateConfig).toHaveBeenCalledWith(agentId, projectId, normalizedConfig);
 		});
 
 		it('write_config rejects draft LLM config without updating', async () => {
