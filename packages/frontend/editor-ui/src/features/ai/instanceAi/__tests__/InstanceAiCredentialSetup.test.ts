@@ -66,6 +66,18 @@ vi.mock('../components/InstanceAiCredentialForm.vue', () => ({
 
 const renderComponent = createThreadComponentRenderer(InstanceAiCredentialSetup);
 
+// getUsableCredentialByType is a computed returning a function — vi.spyOn's accessor
+// overloads can't type a getter whose value is a function, so override it directly.
+function stubUsableCredentials(
+	store: ReturnType<typeof useCredentialsStore>,
+	getCredentials: (type: string) => ICredentialsResponse[],
+) {
+	Object.defineProperty(store, 'getUsableCredentialByType', {
+		configurable: true,
+		get: () => getCredentials,
+	});
+}
+
 /** Creates requests with no existing credentials (shows setup button) */
 function makeCredentialRequests(count: number): InstanceAiCredentialRequest[] {
 	return Array.from({ length: count }, (_, i) => ({
@@ -102,7 +114,7 @@ describe('InstanceAiCredentialSetup', () => {
 		vi.spyOn(credentialsStore, 'fetchCredentialTypes').mockResolvedValue(undefined);
 		// The card renders the NodeCredentials picker when the store has a usable
 		// credential of the type; default to one so the picker-based tests render it.
-		vi.spyOn(credentialsStore, 'getUsableCredentialByType', 'get').mockReturnValue(() => [
+		stubUsableCredentials(credentialsStore, () => [
 			{ id: 'existing-1', name: 'Existing Cred' } as ICredentialsResponse,
 		]);
 	});
@@ -151,7 +163,7 @@ describe('InstanceAiCredentialSetup', () => {
 
 		it('renders the inline credential form when no usable credentials exist', () => {
 			const credentialsStore = useCredentialsStore();
-			vi.spyOn(credentialsStore, 'getUsableCredentialByType', 'get').mockReturnValue(() => []);
+			stubUsableCredentials(credentialsStore, () => []);
 
 			const requests = makeCredentialRequests(1);
 			const { getByTestId, queryByTestId } = renderComponent({
