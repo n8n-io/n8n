@@ -16,6 +16,7 @@ const mockAgentInstances: Array<{
 
 const mockMemoryBuilder = {
 	storage: vi.fn(),
+	historyTransform: vi.fn(),
 	observationalMemory: vi.fn(),
 	build: vi.fn(),
 };
@@ -141,6 +142,7 @@ describe('createInstanceAgent', () => {
 		Agent.mockClear();
 		Memory.mockClear();
 		mockMemoryBuilder.storage.mockReset().mockReturnValue(mockMemoryBuilder);
+		mockMemoryBuilder.historyTransform.mockReset().mockReturnValue(mockMemoryBuilder);
 		mockMemoryBuilder.observationalMemory.mockReset().mockReturnValue(mockMemoryBuilder);
 		mockMemoryBuilder.build.mockReset().mockReturnValue({
 			memory: {},

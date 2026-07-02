@@ -25,6 +25,7 @@ import type {
 	EpisodicMemoryConfig,
 	FinishReason,
 	GenerateResult,
+	MemoryConfig,
 	ObservationalMemoryConfig,
 	ObservationLogMemoryConfig,
 	PendingToolCall,
@@ -84,6 +85,7 @@ export interface AgentRuntimeConfig {
 	observationLog?: ObservationLogMemoryConfig;
 	observationalMemory?: ObservationalMemoryConfig;
 	episodicMemory?: EpisodicMemoryConfig;
+	historyTransform?: MemoryConfig['historyTransform'];
 	structuredOutput?: z.ZodType | JSONSchema7;
 	checkpointStorage?: 'memory' | CheckpointStore;
 	thinking?: ThinkingConfig;

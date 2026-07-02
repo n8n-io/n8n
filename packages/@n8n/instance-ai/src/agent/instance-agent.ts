@@ -6,6 +6,7 @@ import {
 	createClaimedToolNames,
 	type McpToolNameValidationError,
 } from './mcp-tool-name-validation';
+import { pruneSupersededArtifacts } from './prune-superseded-artifacts';
 import { attachRuntimeWorkspaceCapabilities } from './runtime-workspace';
 import { getSystemPrompt } from './system-prompt';
 import { hasRuntimeSkills } from '../skills/runtime-skills';
@@ -179,7 +180,7 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 	});
 
 	if (options.memory) {
-		const mem = new Memory().storage(options.memory);
+		const mem = new Memory().storage(options.memory).historyTransform(pruneSupersededArtifacts);
 
 		if (memoryConfig.observationalMemory) {
 			const { observerThresholdTokens, reflectorThresholdTokens } =

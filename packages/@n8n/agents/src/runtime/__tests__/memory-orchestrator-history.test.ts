@@ -2,6 +2,7 @@ import type { AgentDbMessage } from '../../types/sdk/message';
 import type { AgentRuntimeConfig } from '../loop/agent-runtime';
 import { MemoryOrchestrator } from '../memory/memory-orchestrator';
 import { InMemoryMemory } from '../memory/memory-store';
+import { AgentMessageList } from '../model/message-list';
 import { BackgroundTaskTracker } from '../state/background-task-tracker';
 import { AgentEventBus } from '../state/event-bus';
 
@@ -91,5 +92,33 @@ describe('MemoryOrchestrator.loadHistoryMessages with observational memory', () 
 		});
 
 		expect(loaded.map((m) => m.id)).toEqual(['m1', 'm2', 'm3']);
+	});
+});
+
+describe('MemoryOrchestrator.loadInto with historyTransform', () => {
+	const m1 = message('m1', 'first', new Date(2026, 4, 12, 14, 30));
+	const m2 = message('m2', 'second', new Date(2026, 4, 12, 14, 31));
+
+	it('applies the transform to the prompt view without touching stored messages', async () => {
+		const store = new InMemoryMemory();
+		await seedThread(store, [m1, m2]);
+		const config = {
+			memory: store,
+			historyTransform: (messages: AgentDbMessage[]) => messages.filter((m) => m.id !== 'm1'),
+		} as unknown as AgentRuntimeConfig;
+		const orchestrator = new MemoryOrchestrator(
+			config,
+			new BackgroundTaskTracker(),
+			new AgentEventBus(),
+		);
+
+		const list = new AgentMessageList();
+		await orchestrator.loadInto(list, {
+			persistence: { threadId: THREAD_ID, resourceId: RESOURCE_ID },
+		});
+
+		expect(list.serialize().messages.map((m) => m.id)).toEqual(['m2']);
+		const stored = await store.getMessages(THREAD_ID, { resourceId: RESOURCE_ID });
+		expect(stored.map((m) => m.id)).toEqual(['m1', 'm2']);
 	});
 });

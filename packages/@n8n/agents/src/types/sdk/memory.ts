@@ -309,6 +309,12 @@ interface MemoryConfigBase {
 	observationLog?: ObservationLogMemoryConfig;
 	episodicMemory?: EpisodicMemoryConfig;
 	titleGeneration?: TitleGenerationConfig;
+	/**
+	 * Transform loaded thread history before it enters the prompt (e.g. prune
+	 * superseded tool results). Applied to the in-memory view only — persisted
+	 * messages are never modified. Must preserve message ids and ordering.
+	 */
+	historyTransform?: (messages: AgentDbMessage[]) => AgentDbMessage[];
 }
 
 /** Full memory configuration bundle passed from builder to runtime. */

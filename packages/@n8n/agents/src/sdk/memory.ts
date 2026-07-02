@@ -172,6 +172,8 @@ export class Memory {
 
 	private observationalMemoryConfig?: ObservationalMemoryConfig;
 
+	private historyTransformFn?: MemoryConfig['historyTransform'];
+
 	/**
 	 * Set the storage backend for conversation history.
 	 *
@@ -223,6 +225,16 @@ export class Memory {
 	}
 
 	/**
+	 * Transform loaded thread history before it enters the prompt (e.g. prune
+	 * superseded tool results). In-memory view only — persisted messages are
+	 * never modified. Must preserve message ids and ordering.
+	 */
+	historyTransform(fn: NonNullable<MemoryConfig['historyTransform']>): this {
+		this.historyTransformFn = fn;
+		return this;
+	}
+
+	/**
 	 * Validate configuration and produce a `MemoryConfig`.
 	 */
 	build(): MemoryConfig {
@@ -240,6 +252,7 @@ export class Memory {
 			memory,
 			episodicMemory: this.episodicMemoryConfig,
 			titleGeneration: this.titleGenerationConfig,
+			historyTransform: this.historyTransformFn,
 		};
 
 		if (!this.observationalMemoryConfig) {
