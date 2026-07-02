@@ -8,6 +8,7 @@ import {
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
 import type { PushHandlerOptions } from './types';
+import type { INodeUi } from '@/Interface';
 
 const { mockToast, mockI18n, mockSettingsStore, mockWorkflowsStore } = vi.hoisted(() => ({
 	mockToast: {
@@ -95,6 +96,35 @@ describe('workflowFailedToActivate', () => {
 			expect(workflowDocumentStore.publicationStatus).toBe('failed');
 			expect(workflowDocumentStore.publicationFailures).toEqual([
 				{ nodeId: 'node-x', nodeName: 'node-x', errorMessage: 'Path conflict' },
+			]);
+		});
+
+		it('resolves nodeName from getNodeById when available', async () => {
+			vi.spyOn(workflowDocumentStore, 'getNodeById').mockReturnValue({
+				name: 'My Webhook',
+			} as INodeUi);
+
+			await workflowFailedToActivate(
+				makeEvent({ nodeId: 'node-x', errorMessage: 'Path conflict' }),
+				options,
+			);
+
+			expect(workflowDocumentStore.getNodeById).toHaveBeenCalledWith('node-x');
+			expect(workflowDocumentStore.publicationFailures).toEqual([
+				{ nodeId: 'node-x', nodeName: 'My Webhook', errorMessage: 'Path conflict' },
+			]);
+		});
+
+		it('falls back to nodeId as nodeName when getNodeById returns undefined', async () => {
+			vi.spyOn(workflowDocumentStore, 'getNodeById').mockReturnValue(undefined);
+
+			await workflowFailedToActivate(
+				makeEvent({ nodeId: 'unknown-node', errorMessage: 'err' }),
+				options,
+			);
+
+			expect(workflowDocumentStore.publicationFailures).toEqual([
+				{ nodeId: 'unknown-node', nodeName: 'unknown-node', errorMessage: 'err' },
 			]);
 		});
 

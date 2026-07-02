@@ -1,5 +1,6 @@
 import { onBeforeUnmount, onMounted, toValue, watch } from 'vue';
 import type { MaybeRefOrGetter } from 'vue';
+import type { WorkflowPublicationStatus } from '@n8n/api-types';
 import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -12,7 +13,9 @@ import type { PublicationLifecycle } from '@/app/stores/workflowDocument/useWork
 /** Tunable: delay before re-checking the status API while still publishing. */
 export const PUBLICATION_STATUS_POLL_INTERVAL_MS = 8000;
 
-const API_TO_LIFECYCLE: Record<string, PublicationLifecycle> = {
+// Exhaustively typed so a new API status value is a compile error rather than a
+// silent 'idle' fallthrough. Keep the ?? 'idle' below as defensive runtime fallback.
+const API_TO_LIFECYCLE: Record<WorkflowPublicationStatus['status'], PublicationLifecycle> = {
 	in_progress: 'publishing',
 	published: 'published',
 	partial: 'partial',
@@ -26,6 +29,11 @@ export function useWorkflowPublicationStatusSync(documentId: MaybeRefOrGetter<Wo
 	const { onDocumentVisible } = useDocumentVisibility();
 	let timer: ReturnType<typeof setTimeout> | undefined;
 
+	function armPoll() {
+		clearTimeout(timer);
+		timer = setTimeout(() => void refetch(), PUBLICATION_STATUS_POLL_INTERVAL_MS);
+	}
+
 	async function refetch() {
 		if (!settingsStore.isWorkflowPublicationServiceEnabled) return;
 
@@ -38,23 +46,27 @@ export function useWorkflowPublicationStatusSync(documentId: MaybeRefOrGetter<Wo
 		// Cancel any pending poll before awaiting so an overlapping call can't re-arm a stale timer.
 		clearTimeout(timer);
 
-		const result = await workflowsStore.fetchPublicationStatus(workflowId);
-		workflowDocumentStore.setPublicationStatus({
-			status: API_TO_LIFECYCLE[result.status] ?? 'idle',
-			failures: result.triggers
-				.filter((t) => t.status === 'failed')
-				.map((t) => ({
-					nodeId: t.nodeId,
-					// The status API returns only the stable nodeId; resolve the current
-					// display name from the live workflow (falls back to the id).
-					nodeName: workflowDocumentStore.getNodeById(t.nodeId)?.name ?? t.nodeId,
-					errorMessage: t.errorMessage ?? '',
-				}))
-				.sort((a, b) => a.nodeName.localeCompare(b.nodeName)),
-		});
+		try {
+			const result = await workflowsStore.fetchPublicationStatus(workflowId);
+			workflowDocumentStore.setPublicationStatus({
+				status: API_TO_LIFECYCLE[result.status] ?? 'idle',
+				failures: result.triggers
+					.filter((t) => t.status === 'failed')
+					.map((t) => ({
+						nodeId: t.nodeId,
+						// The status API returns only the stable nodeId; resolve the current
+						// display name from the live workflow (falls back to the id).
+						nodeName: workflowDocumentStore.getNodeById(t.nodeId)?.name ?? t.nodeId,
+						errorMessage: t.errorMessage ?? '',
+					}))
+					.sort((a, b) => a.nodeName.localeCompare(b.nodeName)),
+			});
 
-		if (result.status === 'in_progress') {
-			timer = setTimeout(() => void refetch(), PUBLICATION_STATUS_POLL_INTERVAL_MS);
+			if (result.status === 'in_progress') armPoll();
+		} catch {
+			// A transient failure must not permanently freeze the spinner: keep polling
+			// while we still believe a publication is in progress.
+			if (workflowDocumentStore.publicationStatus === 'publishing') armPoll();
 		}
 	}
 
@@ -62,6 +74,15 @@ export function useWorkflowPublicationStatusSync(documentId: MaybeRefOrGetter<Wo
 	watch(
 		() => toValue(documentId),
 		() => void refetch(),
+	);
+
+	// Back every "publishing" state with an authoritative poll so a state clobbered
+	// before its confirming push (multi-main race) self-heals within one interval.
+	watch(
+		() => useWorkflowDocumentStore(toValue(documentId)).publicationStatus,
+		(status) => {
+			if (status === 'publishing') armPoll();
+		},
 	);
 
 	onMounted(() => void refetch());

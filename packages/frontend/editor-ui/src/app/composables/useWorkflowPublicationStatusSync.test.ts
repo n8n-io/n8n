@@ -211,6 +211,64 @@ describe('useWorkflowPublicationStatusSync', () => {
 		expect(workflowDocumentStore.publicationFailures[0].nodeName).toBe('FailNode');
 	});
 
+	it('(Issue 2) a rejected fetch while status is publishing does not throw unhandled and re-arms the poll', async () => {
+		// Set up: first call rejects, second call resolves published
+		vi.spyOn(workflowsStore, 'fetchPublicationStatus')
+			.mockRejectedValueOnce(new Error('network error'))
+			.mockResolvedValueOnce(makeStatus('published'));
+
+		// Seed the document store with 'publishing' so the catch branch re-arms
+		workflowDocumentStore.setPublicationStatus({ status: 'publishing' });
+
+		// Track any unhandled rejections
+		const unhandledRejections: Error[] = [];
+		const handler = (event: PromiseRejectionEvent) => unhandledRejections.push(event.reason);
+		window.addEventListener('unhandledrejection', handler);
+
+		try {
+			// Manually call refetch (simulates the poll timer callback or onMounted)
+			const composable = await mountComposable();
+			// mountComposable calls refetch via onMounted which rejects — verify no unhandled rejection
+			await nextTick();
+
+			// Status should still be 'publishing' (catch did not update it)
+			expect(workflowDocumentStore.publicationStatus).toBe('publishing');
+
+			// The catch block should have re-armed the poll; advance to trigger it
+			await vi.advanceTimersByTimeAsync(PUBLICATION_STATUS_POLL_INTERVAL_MS);
+
+			// Second call (the re-armed poll) resolves successfully
+			expect(workflowsStore.fetchPublicationStatus).toHaveBeenCalledTimes(2);
+			expect(workflowDocumentStore.publicationStatus).toBe('published');
+
+			expect(unhandledRejections).toHaveLength(0);
+
+			// Suppress unused variable lint warning
+			void composable;
+		} finally {
+			window.removeEventListener('unhandledrejection', handler);
+		}
+	});
+
+	it('(Issue 1) setting publicationStatus to publishing externally arms a poll', async () => {
+		// Start idle — no in_progress response, so no poll armed from refetch
+		vi.spyOn(workflowsStore, 'fetchPublicationStatus')
+			.mockResolvedValueOnce(makeStatus('published')) // initial mount fetch
+			.mockResolvedValueOnce(makeStatus('published')); // poll after external set
+
+		await mountComposable();
+		expect(workflowsStore.fetchPublicationStatus).toHaveBeenCalledTimes(1);
+
+		// Simulate the publish action (UI or multi-main push) writing 'publishing' directly
+		workflowDocumentStore.setPublicationStatus({ status: 'publishing' });
+		await nextTick(); // let the watcher fire
+
+		// Watcher sees 'publishing' and calls armPoll() — advance to trigger it
+		await vi.advanceTimersByTimeAsync(PUBLICATION_STATUS_POLL_INTERVAL_MS);
+
+		expect(workflowsStore.fetchPublicationStatus).toHaveBeenCalledTimes(2);
+	});
+
 	it('should re-sync when documentId changes (workflow switch without remount)', async () => {
 		const WF_A_ID = 'wf-react-a';
 		const WF_B_ID = 'wf-react-b';

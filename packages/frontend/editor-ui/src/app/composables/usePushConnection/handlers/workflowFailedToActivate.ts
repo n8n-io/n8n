@@ -25,7 +25,13 @@ export async function workflowFailedToActivate(
 		workflowDocumentStore.setPublicationStatus({
 			status: 'failed',
 			failures: data.nodeId
-				? [{ nodeId: data.nodeId, nodeName: data.nodeId, errorMessage: data.errorMessage }]
+				? [
+						{
+							nodeId: data.nodeId,
+							nodeName: workflowDocumentStore.getNodeById(data.nodeId)?.name ?? data.nodeId,
+							errorMessage: data.errorMessage,
+						},
+					]
 				: [],
 		});
 	} else {
