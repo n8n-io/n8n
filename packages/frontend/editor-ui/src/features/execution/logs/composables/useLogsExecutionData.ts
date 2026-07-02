@@ -1,6 +1,11 @@
 import { watch, computed, ref, type ComputedRef } from 'vue';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
-import { Workflow, type IRunExecutionData, type ITaskStartedData } from 'n8n-workflow';
+import {
+	Workflow,
+	type IRunExecutionData,
+	type ITaskStartedData,
+	type IWorkflowGroup,
+} from 'n8n-workflow';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
@@ -58,6 +63,7 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 
 	const subWorkflowExecData = ref<Record<string, IRunExecutionData>>({});
 	const subWorkflows = ref<Record<string, Workflow>>({});
+	const subWorkflowNodeGroups = ref<Record<string, IWorkflowGroup[]>>({});
 	const workflow = ref<Workflow>();
 
 	const latestNodeNameById = computed(() =>
@@ -113,6 +119,7 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 			subWorkflowExecData.value,
 			filter?.value,
 			nodeGroups,
+			subWorkflowNodeGroups.value,
 		);
 	});
 
@@ -145,6 +152,11 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 				...subExecution.workflowData,
 				nodeTypes: nodeTypesStore.getAllNodeTypes(),
 			});
+
+			if (isGroupingEnabled.value) {
+				subWorkflowNodeGroups.value[locator.workflowId] =
+					subExecution.workflowData.nodeGroups ?? [];
+			}
 		} catch (e) {
 			toast.showError(e, 'Unable to load sub execution');
 		}
@@ -173,6 +185,7 @@ export function useLogsExecutionData({ isEnabled, filter }: UseLogsExecutionData
 					// Reset sub workflow data when top-level execution changes
 					subWorkflowExecData.value = {};
 					subWorkflows.value = {};
+					subWorkflowNodeGroups.value = {};
 				}
 			},
 			updateInterval,

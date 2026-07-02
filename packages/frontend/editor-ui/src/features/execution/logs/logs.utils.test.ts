@@ -1940,6 +1940,61 @@ describe('createLogTree with canvas groups', () => {
 		expect(expectNode(logs[2]).node.name).toBe('D');
 	});
 
+	it('folds a sub-workflow using its own canvas groups', () => {
+		const rootWorkflow = createTestWorkflowObject({
+			id: 'root-workflow-id',
+			nodes: [createTestNode({ id: 'A', name: 'A' })],
+		});
+		const subWorkflow = createTestWorkflowObject({
+			id: 'sub-workflow-id',
+			nodes: [createTestNode({ id: 'S1', name: 'S1' }), createTestNode({ id: 'S2', name: 'S2' })],
+			connections: {
+				S1: { main: [[{ node: 'S2', type: NodeConnectionTypes.Main, index: 0 }]] },
+			},
+		});
+		const rootResponse = createTestWorkflowExecutionResponse({
+			id: 'root-exec-id',
+			data: createRunExecutionData({
+				resultData: {
+					runData: {
+						A: [
+							taskAt(0, {
+								metadata: {
+									subExecution: { workflowId: 'sub-workflow-id', executionId: 'sub-exec-id' },
+								},
+							}),
+						],
+					},
+				},
+			}),
+		});
+		const subExecutionData = createRunExecutionData({
+			resultData: {
+				runData: {
+					S1: [taskAt(1)],
+					S2: [taskAt(2, { source: [{ previousNode: 'S1', previousNodeRun: 0 }] })],
+				},
+			},
+		});
+
+		const logs = createLogTree(
+			rootWorkflow,
+			rootResponse,
+			{ 'sub-workflow-id': subWorkflow },
+			{ 'sub-exec-id': subExecutionData },
+			undefined,
+			[], // no groups on the root workflow
+			{ 'sub-workflow-id': [{ id: 'sub-group', name: 'Sub Group', nodeIds: ['S1', 'S2'] }] },
+		);
+
+		// A (root) -> its sub-execution children fold into a single group row
+		expect(expectNode(logs[0]).node.name).toBe('A');
+		const subGroup = expectGroup(logs[0].children[0]);
+		expect(subGroup.group.id).toBe('sub-group');
+		expect(subGroup.executionId).toBe('sub-exec-id');
+		expect(subGroup.children.map((c) => expectNode(c).node.name)).toEqual(['S1', 'S2']);
+	});
+
 	it('wraps a single executed member in a group row', () => {
 		const singleMemberGroup = { id: 'g-single', name: 'Solo', nodeIds: ['B'] };
 		const logs = createLogTree(createLinearWorkflow(), linearResponse(), {}, {}, undefined, [

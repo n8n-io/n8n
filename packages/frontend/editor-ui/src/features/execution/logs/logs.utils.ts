@@ -114,8 +114,7 @@ function getChildNodes(
 			executionId: subExecutionLocator.executionId,
 			data: subWorkflowRunData,
 			isSubExecution: true,
-			// Sub-workflow groups aren't plumbed yet; disable folding for sub-executions
-			nodeGroups: [],
+			nodeGroups: context.subWorkflowNodeGroups[subExecutionLocator.workflowId] ?? [],
 		});
 	}
 
@@ -554,6 +553,7 @@ export function createLogTree(
 	subWorkflowData: Record<string, IRunExecutionData> = {},
 	filter?: LogTreeFilter,
 	nodeGroups: IWorkflowGroup[] = [],
+	subWorkflowNodeGroups: Record<string, IWorkflowGroup[]> = {},
 ): LogEntry[] {
 	return createLogTreeRec(filter, {
 		parent: undefined,
@@ -565,6 +565,7 @@ export function createLogTree(
 		subWorkflowData,
 		isSubExecution: false,
 		nodeGroups,
+		subWorkflowNodeGroups,
 	});
 }
 
