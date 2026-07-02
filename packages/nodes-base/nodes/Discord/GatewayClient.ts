@@ -16,13 +16,14 @@ const Op = {
 	HEARTBEAT_ACK: 11,
 } as const;
 
-// Close codes Discord uses to signal an unrecoverable problem (bad token,
-// invalid or disallowed intents, ...). Reconnecting on these just loops, so we
-// surface them as a fatal error instead.
+// Close codes signalling an unrecoverable problem (bad token, bad intents).
+// Reconnecting on these just loops, so we surface them as fatal instead.
 const FATAL_CLOSE_CODES = new Set([4004, 4010, 4011, 4012, 4013, 4014]);
 
 const MAX_RECONNECT_DELAY_MS = 30_000;
 const BASE_RECONNECT_DELAY_MS = 1_000;
+// Consecutive failed reconnects before the instability is surfaced at warn.
+const PERSISTENT_FAILURE_ATTEMPTS = 5;
 
 interface GatewayPayload {
 	op: number;
@@ -38,9 +39,8 @@ export interface GatewayClientOptions {
 	/** OR-ed Gateway intent bits selecting which events Discord should send. */
 	intents: number;
 	/**
-	 * Optional sink for lifecycle messages. `debug` is routine breadcrumbs
-	 * (connecting, identifying, heartbeats); `warn` is recovery-relevant trouble
-	 * (socket errors, unacknowledged heartbeats, invalid/fatal sessions).
+	 * Optional sink for lifecycle messages. Routine/self-healing lifecycle uses
+	 * `debug`; `warn` is reserved for unrecoverable or persistently-failing states.
 	 */
 	log?: (message: string, level: GatewayLogLevel) => void;
 }
@@ -50,9 +50,6 @@ export interface GatewayClientOptions {
  * listener needs - HELLO/heartbeat (with ACK tracking), IDENTIFY, RESUME, and
  * reconnect with backoff - and emits every dispatched event for the node to
  * filter. Dependency-light: just Node's built-in WebSocket and EventEmitter.
- *
- * Socket errors are handled internally (logged, then recovered via the ensuing
- * close), so a network blip can never throw an unhandled 'error' at the host.
  *
  * Events:
  *  - 'dispatch' (type: string, data: IDataObject) - a Gateway DISPATCH event
@@ -108,7 +105,7 @@ export class GatewayClient extends EventEmitter {
 				// Handle internally: an 'error' with no listener would throw, so log it
 				// and let the ensuing 'close' reconnect (re-emit only if something listens).
 				const message = (event as ErrorEvent).message ?? 'connection error';
-				this.warn(`socket error: ${message}`);
+				this.log(`socket error: ${message}`);
 				if (this.listenerCount('error') > 0) this.emit('error', new Error(message));
 			},
 			opts,
@@ -241,9 +238,9 @@ export class GatewayClient extends EventEmitter {
 				this.reconnect(true);
 				break;
 			case Op.INVALID_SESSION: {
-				// d === true means the session can still be resumed.
+				// d === true means resumable. Routine + self-healing (concurrent identifies).
 				const resumable = payload.d === true;
-				this.warn(`invalid session (resumable=${resumable})`);
+				this.log(`session reset by Discord (resumable=${resumable}); re-establishing`);
 				if (resumable) {
 					this.reconnect(true);
 				} else {
@@ -300,6 +297,9 @@ export class GatewayClient extends EventEmitter {
 			);
 			delay = backoff + Math.floor(jitter() * 500);
 			this.reconnectAttempts += 1;
+			if (this.reconnectAttempts === PERSISTENT_FAILURE_ATTEMPTS) {
+				this.warn(`gateway connection unstable after ${this.reconnectAttempts} reconnect attempts`);
+			}
 		}
 		this.log(
 			`reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}, resumable=${resumable})`,
@@ -321,7 +321,7 @@ export class GatewayClient extends EventEmitter {
 	private sendHeartbeat(): void {
 		// A missing ACK since the last beat means the connection is a zombie.
 		if (!this.heartbeatAcked) {
-			this.warn('heartbeat not acknowledged - connection looks dead, reconnecting');
+			this.log('heartbeat not acknowledged; reconnecting');
 			this.reconnect(true);
 			return;
 		}

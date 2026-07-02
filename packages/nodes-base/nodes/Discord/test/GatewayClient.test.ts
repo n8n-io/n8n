@@ -253,7 +253,31 @@ describe('GatewayClient', () => {
 		void client.close();
 	});
 
-	it('logs routine lifecycle at debug and recovery-relevant events at warn', () => {
+	it('logs routine lifecycle and self-healing recovery at debug, not warn', () => {
+		const entries: Array<{ message: string; level: string }> = [];
+		const client = new GatewayClient({
+			token: 't',
+			intents: 1,
+			log: (message, level) => entries.push({ message, level }),
+		});
+		client.connect();
+		emitPayload(lastWs(), HELLO);
+
+		// Routine lifecycle -> debug, nothing at warn.
+		expect(entries.some((e) => e.level === 'debug' && e.message.includes('connecting'))).toBe(true);
+		expect(entries.some((e) => e.level === 'warn')).toBe(false);
+
+		// A recovered (self-healing) invalid session -> debug, not warn.
+		emitPayload(lastWs(), { op: 9, d: false });
+		expect(
+			entries.some((e) => e.level === 'debug' && e.message.includes('session reset by Discord')),
+		).toBe(true);
+		expect(entries.some((e) => e.level === 'warn')).toBe(false);
+
+		void client.close();
+	});
+
+	it('surfaces an unrecoverable fatal close at warn', () => {
 		const entries: Array<{ message: string; level: string }> = [];
 		const client = new GatewayClient({
 			token: 't',
@@ -264,15 +288,36 @@ describe('GatewayClient', () => {
 		client.connect();
 		emitPayload(lastWs(), HELLO);
 
-		// Routine lifecycle -> debug.
-		expect(entries.some((e) => e.level === 'debug' && e.message.includes('connecting'))).toBe(true);
-		expect(entries.some((e) => e.level === 'warn')).toBe(false);
-
-		// A fatal close is recovery-relevant -> warn.
-		lastWs().dispatch('close', { code: 4014 });
+		lastWs().dispatch('close', { code: 4014 }); // disallowed (privileged) intents - unrecoverable
 		expect(entries.some((e) => e.level === 'warn' && e.message.includes('fatal close'))).toBe(true);
 
 		void client.close();
+	});
+
+	it('escalates to warn only after persistent reconnect failures', () => {
+		vi.useFakeTimers();
+		try {
+			const entries: Array<{ message: string; level: string }> = [];
+			const client = new GatewayClient({
+				token: 't',
+				intents: 1,
+				log: (message, level) => entries.push({ message, level }),
+			});
+			client.connect();
+			emitPayload(lastWs(), HELLO);
+
+			// Repeated abnormal closes with no successful READY in between: each
+			// transient reconnect stays at debug until the connection is clearly stuck.
+			for (let i = 0; i < 5; i++) {
+				lastWs().dispatch('close', { code: 1006 });
+				vi.runOnlyPendingTimers(); // fire the backoff -> new connection
+			}
+
+			expect(entries.some((e) => e.level === 'warn' && e.message.includes('unstable'))).toBe(true);
+			void client.close();
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it('emits a fatal error on an unrecoverable close code and does not reconnect', () => {

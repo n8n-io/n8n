@@ -100,9 +100,8 @@ export interface EventFilters {
 }
 
 /**
- * Normalize a comma-separated content-type filter into clean patterns.
- * Trims, lowercases, and drops blank entries so " ", ", ," or stray spaces
- * collapse to an empty list (i.e. no filtering).
+ * Normalize a comma-separated content-type filter: trim, lowercase, drop blanks
+ * so " ", ", ," or stray spaces collapse to an empty list (no filtering).
  */
 export function parseContentTypeFilter(raw: string | undefined): string[] {
 	if (!raw) return [];
