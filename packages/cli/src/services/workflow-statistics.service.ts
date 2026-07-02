@@ -1,5 +1,3 @@
-/* eslint-disable import-x/extensions */
-
 import { Logger, TypedEmitter } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import {
@@ -9,6 +7,7 @@ import {
 	WorkflowStatisticsRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import {
 	isCompletedExecutionStatus,
 	type ExecutionStatus,
@@ -18,10 +17,10 @@ import {
 	type WorkflowExecuteMode,
 } from 'n8n-workflow';
 
-import { OwnershipService } from './ownership.service';
-
 import { EventService } from '@/events/event.service';
 import { UserService } from '@/services/user.service';
+
+import { OwnershipService } from './ownership.service';
 
 const isStatusRootExecution = {
 	success: true,
@@ -121,6 +120,8 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 
 		const isRoot = isRootExecutionForRun(runData);
 
+		let upsertResult: Awaited<ReturnType<WorkflowStatisticsRepository['upsertWorkflowStatistics']>>;
+
 		try {
 			/**
 			 * For performance reasons, in Postgres we append and fold out of band,
@@ -136,15 +137,20 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 				return;
 			}
 
-			const upsertResult = await this.repository.upsertWorkflowStatistics(
+			upsertResult = await this.repository.upsertWorkflowStatistics(
 				statisticsName,
 				workflowId,
 				isRoot,
 				workflowData.name,
 			);
+		} catch (error) {
+			this.logger.error('Failed to record workflow statistic', { error: ensureError(error) });
+			return;
+		}
 
-			if (upsertResult !== 'insert') return;
+		if (upsertResult !== 'insert') return;
 
+		try {
 			await this.emitFirstOccurrenceEvent(
 				statisticsName,
 				workflowId,
@@ -152,7 +158,9 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 				runData.startedAt.getTime(),
 			);
 		} catch (error) {
-			this.logger.error('Failed to record workflow statistic');
+			this.logger.debug('Failed to emit workflow statistics milestone', {
+				error: ensureError(error),
+			});
 		}
 	}
 

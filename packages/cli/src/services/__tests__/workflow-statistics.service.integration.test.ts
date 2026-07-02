@@ -92,7 +92,7 @@ describe('WorkflowStatisticsService', () => {
 
 		beforeEach(async () => {
 			vi.restoreAllMocks();
-			await testDb.truncate(['WorkflowStatistics']);
+			await testDb.truncate(['WorkflowStatistics', 'WorkflowStatisticsDelta']);
 			// Clear first production failure setting
 			const settingsRepository = Container.get(SettingsRepository);
 			await settingsRepository.delete({ key: 'instance.firstProductionFailure' });
@@ -566,13 +566,9 @@ describe('WorkflowStatisticsService', () => {
 
 		// The fold is Postgres-only (raw CTE). These exercise its mechanics directly via the repository.
 		describe('rollupIncrements (Postgres append path)', () => {
+			// The delta table is cleared by the outer beforeEach via testDb.truncate.
 			const deltaTable = () =>
 				`${Container.get(GlobalConfig).database.tablePrefix}workflow_statistics_delta`;
-
-			beforeEach(async () => {
-				if (!isPostgres) return;
-				await dataSource.query(`DELETE FROM ${deltaTable()}`);
-			});
 
 			const append = async (isRoot: boolean) =>
 				await workflowStatisticsRepository.appendIncrement(

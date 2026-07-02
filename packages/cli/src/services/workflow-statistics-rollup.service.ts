@@ -61,7 +61,7 @@ export class WorkflowStatisticsRollupService {
 
 	@OnLeaderTakeover()
 	start() {
-		if (this.isActive) return;
+		if (!this.shouldRun || this.isActive) return;
 
 		this.isActive = true;
 		this.scheduleNext(0);

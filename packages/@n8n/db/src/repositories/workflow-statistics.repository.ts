@@ -17,6 +17,10 @@ import { StatisticsNames } from '../entities/types-db';
 type StatisticsInsertResult = 'insert' | 'failed' | 'alreadyExists';
 type StatisticsUpsertResult = StatisticsInsertResult | 'update';
 
+/**
+ * A counter row the fold just created for the first time, i.e. a workflow's first-ever
+ * production success or failure. The rollup uses these to fire one-time milestone events.
+ */
 export type FirstOccurrenceRow = {
 	name: StatisticsNames;
 	workflowId: string;
@@ -24,13 +28,14 @@ export type FirstOccurrenceRow = {
 	firstEventMs: number;
 };
 
+/** One row returned by the fold query: the batch total (`delta_rows`) plus per-counter fold results. */
 type FoldRow = {
-	delta_rows: number | string;
+	delta_rows: number; // `::int` cast in the query -> pg returns int4 as a JS number
 	workflowId: string;
 	name: StatisticsNames;
 	inserted: boolean;
 	workflowName: string | null;
-	firstEvent: string | Date;
+	firstEvent: Date; // timestamptz -> pg driver parses to a JS Date
 };
 
 @Service()
@@ -109,6 +114,9 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 
 				return (counter?.count ?? 0) > 1 ? 'update' : counter?.count === 1 ? 'insert' : 'failed';
 			} else if (dbType === 'postgresdb') {
+				// On Postgres, per-execution recording does NOT call this method: `workflowExecutionCompleted`
+				// uses `appendIncrement` and the rollup folds the deltas into the counter. This branch is
+				// reached only by direct callers (e.g. tests seeding the counter).
 				const queryResult = (await this.query(
 					`INSERT INTO ${escapedTableName} ("count", "rootCount", "name", "workflowId", "workflowName", "latestEvent")
 					VALUES (1, $1, $2, $3, $4, CURRENT_TIMESTAMP)
@@ -154,14 +162,14 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 		manager: EntityManager,
 		batchSize: number,
 	): Promise<{ increments: number; firstOccurrences: FirstOccurrenceRow[] }> {
-		const counter = this.manager.connection.driver.escape(this.metadata.tableName);
+		const stats = this.manager.connection.driver.escape(this.metadata.tableName);
 		const delta = this.deltaTableName();
 
 		/**
 		 * Query walkthrough
 		 *
 		 * Fold a batch of increments into the target in one atomic statement, so concurrent appends and crashes
-		 * cannot double-count or drop rows. Wwhatever was not claimed-and-folded stays for next tick.
+		 * cannot double-count or drop rows. Whatever was not claimed-and-folded stays for next tick.
 		 *
 		 * - `batch`    Claim the oldest increments (DELETE + RETURNING, so they cannot be folded twice).
 		 * - `agg`      Sum the claimed rows per (workflowId, name) into the totals to add.
@@ -181,12 +189,12 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 				FROM batch GROUP BY "workflowId", "name"
 			),
 			upsert AS (
-				INSERT INTO ${counter} ("workflowId", "name", "count", "rootCount", "latestEvent", "workflowName")
+				INSERT INTO ${stats} ("workflowId", "name", "count", "rootCount", "latestEvent", "workflowName")
 				SELECT "workflowId", "name", c, rc, le, wn FROM agg
 				ON CONFLICT ("name", "workflowId") DO UPDATE SET
-					"count" = ${counter}."count" + EXCLUDED."count",
-					"rootCount" = ${counter}."rootCount" + EXCLUDED."rootCount",
-					"latestEvent" = GREATEST(${counter}."latestEvent", EXCLUDED."latestEvent"),
+					"count" = ${stats}."count" + EXCLUDED."count",
+					"rootCount" = ${stats}."rootCount" + EXCLUDED."rootCount",
+					"latestEvent" = GREATEST(${stats}."latestEvent", EXCLUDED."latestEvent"),
 					"workflowName" = EXCLUDED."workflowName"
 				RETURNING "workflowId", "name", ("xmax" = 0) AS inserted
 			)
@@ -209,10 +217,10 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 				name: r.name,
 				workflowId: r.workflowId,
 				workflowName: r.workflowName,
-				firstEventMs: new Date(r.firstEvent).getTime(),
+				firstEventMs: r.firstEvent.getTime(),
 			}));
 
-		return { increments: Number(rows[0].delta_rows), firstOccurrences };
+		return { increments: rows[0].delta_rows, firstOccurrences };
 	}
 
 	async queryNumWorkflowsUserHasWithFiveOrMoreProdExecs(userId: User['id']): Promise<number> {

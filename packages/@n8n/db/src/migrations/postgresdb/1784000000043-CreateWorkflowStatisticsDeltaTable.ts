@@ -2,12 +2,24 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 /**
- * Append-only table for storing statistics increments that are regularly folded into
- * the `workflow_statistics`. Only for Postgres.
+ * Create `workflow_statistics_delta` to store increments to workflow statistics
+ * that we will later fold into the `workflow_statistics`. This prevents hot-row
+ * contention on the `workflow_statistics` table in high-throughput scenarios.
+ *
+ * This table is a high-churn buffer (insert per execution, delete on fold), so
+ * its autovacuum is tuned to reclaim the fold's dead tuples aggressively
+ * instead of letting the table and its PK index bloat.
+ *
+ * - `scale_factor = 0` removes the size-proportional part of the vacuum trigger,
+ *   so dead-tuple cleanup does not back off as the table grows during a backlog.
+ * - `threshold = 1000` fires a vacuum at a flat 1000 dead tuples regardless of
+ *   table size, keeping it responsive.
+ * - `cost_delay = 0` drops autovacuum's throttling pauses so it runs at full
+ *   speed and keeps up with the delete rate.
  */
 export class CreateWorkflowStatisticsDeltaTable1784000000043 implements ReversibleMigration {
 	async up({ escape, runQuery }: MigrationContext) {
-		const deltaTable = escape.tableName('workflow_statistics_delta');
+		const delta = escape.tableName('workflow_statistics_delta');
 		const id = escape.columnName('id');
 		const workflowId = escape.columnName('workflowId');
 		const name = escape.columnName('name');
@@ -16,7 +28,7 @@ export class CreateWorkflowStatisticsDeltaTable1784000000043 implements Reversib
 		const workflowName = escape.columnName('workflowName');
 
 		await runQuery(
-			`CREATE TABLE ${deltaTable} (
+			`CREATE TABLE ${delta} (
 				${id} BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
 				${workflowId} VARCHAR(36) NOT NULL,
 				${name} VARCHAR(128) NOT NULL,
@@ -24,10 +36,6 @@ export class CreateWorkflowStatisticsDeltaTable1784000000043 implements Reversib
 				${latestEvent} TIMESTAMP(3) WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
 				${workflowName} VARCHAR(128)
 			) WITH (
-				-- This table is a high-churn buffer (insert per execution, delete on fold). 
-				-- Hence we vacuum the dead tuples from the fold's deletes at a flat trigger 
-				-- (not scaled with size, so it stays responsive during a backlog) and 
-				-- unthrottled, so autovacuum keeps up instead of letting the table index bloat.
 				autovacuum_vacuum_scale_factor = 0.0,
 				autovacuum_vacuum_threshold = 1000,
 				autovacuum_vacuum_cost_delay = 0
@@ -36,8 +44,8 @@ export class CreateWorkflowStatisticsDeltaTable1784000000043 implements Reversib
 	}
 
 	async down({ escape, runQuery }: MigrationContext) {
-		const counter = escape.tableName('workflow_statistics');
-		const deltaTable = escape.tableName('workflow_statistics_delta');
+		const stats = escape.tableName('workflow_statistics');
+		const statsDelta = escape.tableName('workflow_statistics_delta');
 		const workflowId = escape.columnName('workflowId');
 		const name = escape.columnName('name');
 		const count = escape.columnName('count');
@@ -47,18 +55,18 @@ export class CreateWorkflowStatisticsDeltaTable1784000000043 implements Reversib
 		const workflowName = escape.columnName('workflowName');
 
 		await runQuery(
-			`INSERT INTO ${counter} (${workflowId}, ${name}, ${count}, ${rootCount}, ${latestEvent}, ${workflowName})
+			`INSERT INTO ${stats} (${workflowId}, ${name}, ${count}, ${rootCount}, ${latestEvent}, ${workflowName})
 			SELECT ${workflowId}, ${name}, COUNT(*), SUM(${rootCountDelta}), MAX(${latestEvent}),
 				(ARRAY_AGG(${workflowName} ORDER BY ${latestEvent} DESC NULLS LAST))[1]
-			FROM ${deltaTable}
+			FROM ${statsDelta}
 			GROUP BY ${workflowId}, ${name}
 			ON CONFLICT (${name}, ${workflowId}) DO UPDATE SET
-				${count} = ${counter}.${count} + EXCLUDED.${count},
-				${rootCount} = ${counter}.${rootCount} + EXCLUDED.${rootCount},
-				${latestEvent} = GREATEST(${counter}.${latestEvent}, EXCLUDED.${latestEvent}),
+				${count} = ${stats}.${count} + EXCLUDED.${count},
+				${rootCount} = ${stats}.${rootCount} + EXCLUDED.${rootCount},
+				${latestEvent} = GREATEST(${stats}.${latestEvent}, EXCLUDED.${latestEvent}),
 				${workflowName} = EXCLUDED.${workflowName}`,
 		);
 
-		await runQuery(`DROP TABLE ${deltaTable}`);
+		await runQuery(`DROP TABLE ${statsDelta}`);
 	}
 }

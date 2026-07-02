@@ -46,7 +46,7 @@ describe('WorkflowStatisticsRollupService', () => {
 	const rollup = async (service: WorkflowStatisticsRollupService) =>
 		await (service as unknown as { rollup: () => Promise<number> }).rollup();
 
-	describe('isEnabled', () => {
+	describe('shouldRun', () => {
 		it('is true for a leader main on Postgres', () => {
 			const { service } = makeService({
 				isLeader: true,
@@ -92,6 +92,17 @@ describe('WorkflowStatisticsRollupService', () => {
 			expect(service.shouldRun).toBe(true);
 			service.shutdown();
 			expect(service.shouldRun).toBe(false);
+		});
+	});
+
+	describe('start', () => {
+		const isActive = (service: WorkflowStatisticsRollupService) =>
+			(service as unknown as { isActive: boolean }).isActive;
+
+		it('does not activate on a takeover when it should not run', () => {
+			const { service } = makeService({ dbType: 'sqlite' });
+			service.start();
+			expect(isActive(service)).toBe(false);
 		});
 	});
 
