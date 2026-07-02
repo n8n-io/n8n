@@ -963,6 +963,9 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			buildDurations,
 			totalDurationMs,
 			logger,
+			// Only meaningful when we drove the build via MCP; otherwise the builder
+			// is the in-n8n agent and args.buildModel is unused.
+			buildModel: args.buildViaMcp ? args.buildModel : undefined,
 		});
 
 		await writePerRunPassMetrics({
@@ -1052,6 +1055,11 @@ async function updateExperimentAggregates(config: {
 	buildDurations: Map<string, number>;
 	totalDurationMs: number;
 	logger: EvalLogger;
+	/** MCP build model (only meaningful for --build-via-mcp). Recorded as
+	 *  experiment metadata so LangSmith can surface/filter it as a column — the
+	 *  built-in "Models" column stays empty because the external `claude` build
+	 *  isn't traced as an LLM run. */
+	buildModel?: string;
 }): Promise<void> {
 	const { lsClient, experimentName, runs, evaluation, buildDurations, totalDurationMs, logger } =
 		config;
@@ -1073,6 +1081,7 @@ async function updateExperimentAggregates(config: {
 		avg_exec_s: Math.round(avgExecMs / 100) / 10,
 		unique_builds: uniqueBuilds,
 		pass_rate_per_iter: computePassRatePerIter(evaluation),
+		...(config.buildModel ? { build_model: config.buildModel } : {}),
 	};
 
 	try {
