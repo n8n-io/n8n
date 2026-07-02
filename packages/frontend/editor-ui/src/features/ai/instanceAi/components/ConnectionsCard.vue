@@ -18,8 +18,14 @@ import { useInstanceAiMcpTelemetry } from '../instanceAiMcp.telemetry';
 import ConnectionRow, { ConnectionRowIcon } from './ConnectionRow.vue';
 import { iconForTool } from '../toolIcons';
 import type { McpRegistryServerIconResponse } from '@n8n/api-types';
+import {
+	BROWSER_USE_CONNECTION_TYPE,
+	COMPUTER_USE_CONNECTION_TYPE,
+	type BrowserUseConnectionType,
+	type ComputerUseConnectionType,
+} from '../constants';
 
-type SingletonConnectionType = 'computer-use' | 'browser-use';
+type SingletonConnectionType = ComputerUseConnectionType | BrowserUseConnectionType;
 type RowAction = 'connect' | 'disconnect' | 'settings' | 'remove';
 type ConnectionStatus = 'connected' | 'waiting' | 'disconnected';
 
@@ -39,8 +45,8 @@ const props = defineProps<{
 const isMcpEnabled = computed(() => isMcpFeatureEnabled.value && store.settings?.mcpAccessEnabled);
 const singletonConnections = computed(() => {
 	const filteredTypes: SingletonConnectionType[] = [];
-	if (!isBrowserUseEnabled.value) filteredTypes.push('browser-use');
-	if (!isComputerUseEnabled.value) filteredTypes.push('computer-use');
+	if (!isBrowserUseEnabled.value) filteredTypes.push(BROWSER_USE_CONNECTION_TYPE);
+	if (!isComputerUseEnabled.value) filteredTypes.push(COMPUTER_USE_CONNECTION_TYPE);
 	return !filteredTypes.length
 		? store.connections
 		: store.connections.filter(({ type }) => !filteredTypes.includes(type));
@@ -67,8 +73,8 @@ if (isMcpFeatureEnabled.value) {
 }
 
 const ICON_MAP: Record<SingletonConnectionType, IconName> = {
-	'computer-use': 'mouse-pointer',
-	'browser-use': 'globe',
+	[COMPUTER_USE_CONNECTION_TYPE]: 'mouse-pointer',
+	[BROWSER_USE_CONNECTION_TYPE]: 'globe',
 };
 
 const hasAddableComputerUse = computed(() => {
@@ -77,7 +83,7 @@ const hasAddableComputerUse = computed(() => {
 	const addedSingletonConnections = new Set(
 		singletonConnections.value.map((connection) => connection.type),
 	);
-	return !addedSingletonConnections.has('computer-use');
+	return !addedSingletonConnections.has(COMPUTER_USE_CONNECTION_TYPE);
 });
 
 const hasAddableConnection = computed(() => isMcpEnabled.value || hasAddableComputerUse.value);
@@ -87,7 +93,7 @@ function getSingletonRowActions(
 	type: SingletonConnectionType,
 	status: ConnectionStatus,
 ): RowAction[] {
-	if (type === 'browser-use') {
+	if (type === BROWSER_USE_CONNECTION_TYPE) {
 		return status === 'connected' ? ['disconnect'] : ['connect'];
 	}
 	if (status === 'connected') return ['settings', 'disconnect', 'remove'];
@@ -104,14 +110,14 @@ function getIconForConnection(icons: McpRegistryServerIconResponse[]) {
 
 async function openSingletonModal(type: SingletonConnectionType) {
 	if (
-		type === 'computer-use' &&
+		type === COMPUTER_USE_CONNECTION_TYPE &&
 		!store.isLocalGatewayDisabledByAdmin &&
 		store.isLocalGatewayDisabled
 	) {
 		await store.persistLocalGatewayPreference(false);
 	}
 
-	if (type === 'computer-use') {
+	if (type === COMPUTER_USE_CONNECTION_TYPE) {
 		uiStore.openModal(INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY);
 	} else {
 		uiStore.openModal(INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY);
@@ -124,15 +130,15 @@ function openToolsConnectionModal() {
 }
 
 async function handleSingletonDisconnect(type: SingletonConnectionType) {
-	if (type === 'computer-use') {
+	if (type === COMPUTER_USE_CONNECTION_TYPE) {
 		await store.disconnectComputerUse();
-	} else if (type === 'browser-use') {
+	} else if (type === BROWSER_USE_CONNECTION_TYPE) {
 		await store.disconnectBrowserUse();
 	}
 }
 
 async function handleSingletonRemove(type: SingletonConnectionType) {
-	if (type === 'computer-use') {
+	if (type === COMPUTER_USE_CONNECTION_TYPE) {
 		await store.removeComputerUse();
 	}
 }

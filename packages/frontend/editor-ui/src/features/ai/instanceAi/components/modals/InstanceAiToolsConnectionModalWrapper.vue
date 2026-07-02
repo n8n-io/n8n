@@ -34,9 +34,7 @@ import BrowserUseSetupContent from './BrowserUseSetupContent.vue';
 import ComputerUseSetupContent from './ComputerUseSetupContent.vue';
 import { useInstanceAiComputerUseExperiment } from '@/experiments/instanceAiComputerUse';
 import { useInstanceAiBrowserUseExperiment } from '@/experiments/instanceAiBrowserUse';
-
-const COMPUTER_USE_ITEM_ID = 'computer-use';
-const BROWSER_USE_ITEM_ID = 'browser-use';
+import { BROWSER_USE_CONNECTION_TYPE, COMPUTER_USE_CONNECTION_TYPE } from '../../constants';
 
 interface ServiceConnectionDefinition {
 	id: string;
@@ -201,7 +199,7 @@ function buildItem(
 const builtInServiceDefinitions = computed<ServiceConnectionDefinition[]>(() => {
 	const out: ServiceConnectionDefinition[] = [];
 	out.push({
-		id: BROWSER_USE_ITEM_ID,
+		id: BROWSER_USE_CONNECTION_TYPE,
 		titleKey: 'instanceAi.connections.add.browserUse',
 		descriptionKey: 'instanceAi.connections.types.browserUse.description',
 		iconSource: { type: 'icon', name: 'globe' },
@@ -211,7 +209,7 @@ const builtInServiceDefinitions = computed<ServiceConnectionDefinition[]>(() => 
 		isConnected: settingsStore.isBrowserUseConnected,
 	});
 	out.push({
-		id: COMPUTER_USE_ITEM_ID,
+		id: COMPUTER_USE_CONNECTION_TYPE,
 		titleKey: 'instanceAi.connections.add.computerUse',
 		descriptionKey: 'instanceAi.connections.types.computerUse.description',
 		iconSource: { type: 'icon', name: 'mouse-pointer' },
