@@ -265,6 +265,7 @@ describe('MicrosoftEntraServicePrincipalApi Credential', () => {
 				authentication: 'certificate',
 				tenantId: 'tenant-id',
 				clientId: 'client-id',
+				clientSecret: 'stale-secret-should-not-be-sent',
 				privateKey: TEST_PRIVATE_KEY,
 				certificate: TEST_CERTIFICATE,
 			};
@@ -282,6 +283,9 @@ describe('MicrosoftEntraServicePrincipalApi Credential', () => {
 					'urn:ietf:params:oauth:client-assertion-type:jwt-bearer',
 				);
 				expect(body.has('client_secret')).toBe(false);
+				expect((requestMock.mock.calls[0][0] as { body: string }).body).not.toContain(
+					'stale-secret-should-not-be-sent',
+				);
 
 				// The assertion is a JWT (header.payload.signature) whose `aud` is the token endpoint.
 				const assertion = body.get('client_assertion') ?? '';
