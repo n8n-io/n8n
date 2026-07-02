@@ -248,9 +248,11 @@ function resolveCacheWriteRate(
  * Compute the cost in USD from token usage and per-million-token pricing.
  * When `usage.inputTokenDetails` is present, prompt tokens are billed per
  * cache tier (no-cache / cache read / cache write) using the catalog's cache
- * rates, falling back to the flat input rate when a tier's rate is unavailable.
- * `anthropicCacheTtl` scales the cache-write rate for Anthropic's 1h tier (see
- * {@link resolveCacheWriteRate}); ignored when there are no cache-write tokens.
+ * rates. When a tier's catalog rate is unavailable, cache reads fall back to
+ * the flat input rate; cache writes fall back to the input rate scaled by
+ * Anthropic's write premium (see {@link resolveCacheWriteRate}).
+ * `anthropicCacheTtl` scales the cache-write rate for Anthropic's 1h tier;
+ * ignored when there are no cache-write tokens.
  */
 export function computeCost(
 	usage: {

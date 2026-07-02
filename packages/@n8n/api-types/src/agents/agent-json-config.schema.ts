@@ -78,7 +78,7 @@ const ThinkingConfigSchema = z.object({
 
 // Mandatory for supporting providers (the user cannot disable it). Anthropic
 // exposes a cache-breakpoint TTL; OpenAI has no sub-config.
-const PromptCachingConfigSchema = z.object({
+export const PromptCachingConfigSchema = z.object({
 	enabled: z.boolean(),
 	anthropic: z.object({ ttl: z.enum(['5m', '1h']).optional() }).optional(),
 });

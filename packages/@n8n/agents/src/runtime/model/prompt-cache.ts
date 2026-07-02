@@ -26,9 +26,24 @@ export function mergeProviderOptions(
 }
 
 /** Resolve the effective Anthropic cache TTL from config. Defaults to `'1h'`. */
-export function getAnthropicCacheTtl(config: PromptCachingConfig | undefined): '5m' | '1h' {
+function getAnthropicCacheTtl(config: PromptCachingConfig | undefined): '5m' | '1h' {
 	const anthropicConfig = config?.anthropic;
 	return anthropicConfig && anthropicConfig.ttl ? anthropicConfig.ttl : '1h';
+}
+
+/**
+ * TTL to use for cache-write cost scaling: only defined when the model is
+ * Anthropic and prompt caching is enabled for it. Manual caller markers
+ * (without `.promptCaching()`) default to Anthropic's 5m write premium.
+ */
+export function getEffectiveAnthropicCacheTtl(
+	config: PromptCachingConfig | undefined,
+	modelId: string,
+): '5m' | '1h' | undefined {
+	if (getModelProvider(modelId) !== 'anthropic' || !isEnabledForProvider(config, 'anthropic')) {
+		return undefined;
+	}
+	return getAnthropicCacheTtl(config);
 }
 
 function isEnabledForProvider(
@@ -51,7 +66,7 @@ export function getModelProvider(modelId: string): string {
  * instructions) changes. Never embeds raw instructions, user input, thread
  * ids, or tenant/user identifiers.
  */
-export function createOpenAIPromptCacheKey(input: {
+function createOpenAIPromptCacheKey(input: {
 	agentName: string;
 	modelId: string;
 	instructions: string;
@@ -99,7 +114,7 @@ function lastContentPartHasAnthropicCacheControl(message: ModelMessage): boolean
  * per-content-part) — used to stay within Anthropic's 4-breakpoint limit before
  * adding any runtime-generated breakpoints.
  */
-export function countAnthropicBreakpoints(
+function countAnthropicBreakpoints(
 	system: SystemModelMessage | SystemModelMessage[],
 	aiTools: ToolSet,
 	messages: ModelMessage[],
@@ -216,7 +231,9 @@ export function applyRuntimeCacheBreakpoints(params: {
 	let nextTools = aiTools;
 	if (staticToolCacheName && used < MAX_ANTHROPIC_CACHE_BREAKPOINTS) {
 		const staticTool = aiTools[staticToolCacheName];
-		if (staticTool) {
+		// A caller marker on the static tool already anchors this breakpoint (and
+		// is counted in `used`); re-marking would evict the caller's cacheControl.
+		if (staticTool && !hasAnthropicCacheControl(staticTool.providerOptions)) {
 			nextTools = {
 				...aiTools,
 				[staticToolCacheName]: {

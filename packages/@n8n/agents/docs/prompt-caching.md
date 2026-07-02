@@ -175,7 +175,10 @@ model catalog's cache rates when available. One known approximation: the
 catalog's `cacheWrite` rate reflects Anthropic's 5-minute write premium
 (1.25x base input); when the effective TTL is `1h` the runtime scales that
 rate by ~1.6x (2x/1.25x) to approximate the 1h premium, rather than looking
-up a separate 1h rate from the catalog.
+up a separate 1h rate from the catalog. This 1h scaling only applies when
+`.promptCaching()` is enabled for an Anthropic model — cache writes from a
+manual, caller-supplied `cacheControl` marker (without `.promptCaching()`)
+are billed at the catalog's 5-minute rate.
 
 ## What this does not do
 

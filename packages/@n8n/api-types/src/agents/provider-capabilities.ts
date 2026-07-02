@@ -1,3 +1,7 @@
+import type { z } from 'zod';
+
+import type { PromptCachingConfigSchema } from './agent-json-config.schema';
+
 /**
  * Static capability map for LLM providers the agent runtime can target.
  */
@@ -93,10 +97,7 @@ export function getValidProviderToolNames(): string[] {
 	];
 }
 
-export interface ResolvedPromptCachingConfig {
-	enabled: boolean;
-	anthropic?: { ttl?: AnthropicCacheTtl };
-}
+export type ResolvedPromptCachingConfig = z.infer<typeof PromptCachingConfigSchema>;
 
 /**
  * Shared, mandatory decision for prompt caching. Always enables caching for

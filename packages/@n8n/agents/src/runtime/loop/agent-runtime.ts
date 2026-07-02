@@ -54,7 +54,7 @@ import type { FetchFn } from '../model/model-factory';
 import {
 	applyRuntimeCacheBreakpoints,
 	buildInstructionPromptCacheOptions,
-	getAnthropicCacheTtl,
+	getEffectiveAnthropicCacheTtl,
 	mergeProviderOptions,
 } from '../model/prompt-cache';
 import { BackgroundTaskTracker } from '../state/background-task-tracker';
@@ -855,7 +855,10 @@ export class AgentRuntime {
 	/** Apply cost to a TokenUsage object using catalog pricing. */
 	private applyCost(usage: TokenUsage | undefined): TokenUsage | undefined {
 		if (!usage || !this.modelCost) return usage;
-		const anthropicCacheTtl = getAnthropicCacheTtl(this.config.promptCaching);
+		const anthropicCacheTtl = getEffectiveAnthropicCacheTtl(
+			this.config.promptCaching,
+			this.modelIdString,
+		);
 		return { ...usage, cost: computeCost(usage, this.modelCost, { anthropicCacheTtl }) };
 	}
 

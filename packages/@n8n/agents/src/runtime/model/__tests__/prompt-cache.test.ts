@@ -4,9 +4,7 @@ import {
 	applyRuntimeCacheBreakpoints,
 	buildCallPromptCacheOptions,
 	buildInstructionPromptCacheOptions,
-	countAnthropicBreakpoints,
-	createOpenAIPromptCacheKey,
-	getAnthropicCacheTtl,
+	getEffectiveAnthropicCacheTtl,
 	mergeProviderOptions,
 } from '../prompt-cache';
 
@@ -110,39 +108,59 @@ describe('buildCallPromptCacheOptions — OpenAI', () => {
 	});
 });
 
-describe('createOpenAIPromptCacheKey', () => {
-	const input = {
+describe('createOpenAIPromptCacheKey (via buildCallPromptCacheOptions)', () => {
+	const modelId = 'openai/gpt-5.1';
+	const context = {
 		agentName: 'assistant',
-		modelId: 'openai/gpt-5.1',
 		instructions: 'You are a helpful assistant with very specific secret instructions.',
 	};
 
+	function generatedKey(instructions: string): string {
+		const result = buildCallPromptCacheOptions({ enabled: true }, modelId, {
+			...context,
+			instructions,
+		});
+		return (result?.openai as { promptCacheKey: string }).promptCacheKey;
+	}
+
 	it('is deterministic for the same agent, model, and instructions', () => {
-		expect(createOpenAIPromptCacheKey(input)).toBe(createOpenAIPromptCacheKey({ ...input }));
+		expect(generatedKey(context.instructions)).toBe(generatedKey(context.instructions));
 	});
 
 	it('changes when the instructions change (per-agent-version granularity)', () => {
-		expect(createOpenAIPromptCacheKey(input)).not.toBe(
-			createOpenAIPromptCacheKey({ ...input, instructions: 'Different instructions.' }),
-		);
+		expect(generatedKey(context.instructions)).not.toBe(generatedKey('Different instructions.'));
 	});
 
 	it('never embeds the raw instructions text', () => {
-		expect(createOpenAIPromptCacheKey(input)).not.toContain('secret instructions');
+		expect(generatedKey(context.instructions)).not.toContain('secret instructions');
 	});
 });
 
-describe('getAnthropicCacheTtl', () => {
-	it('defaults to 1h when config is set with no ttl override', () => {
-		expect(getAnthropicCacheTtl({ enabled: true })).toBe('1h');
+describe('getEffectiveAnthropicCacheTtl', () => {
+	it('returns the configured TTL (default 1h) for an Anthropic model with caching enabled', () => {
+		expect(getEffectiveAnthropicCacheTtl({ enabled: true }, 'anthropic/claude-sonnet-4-5')).toBe(
+			'1h',
+		);
 	});
 
-	it('defaults to 1h when config is unset', () => {
-		expect(getAnthropicCacheTtl(undefined)).toBe('1h');
+	it('returns an explicit 5m override for an Anthropic model', () => {
+		expect(
+			getEffectiveAnthropicCacheTtl({ anthropic: { ttl: '5m' } }, 'anthropic/claude-sonnet-4-5'),
+		).toBe('5m');
 	});
 
-	it('returns an explicit 5m override', () => {
-		expect(getAnthropicCacheTtl({ anthropic: { ttl: '5m' } })).toBe('5m');
+	it('returns undefined for an Anthropic model with no promptCaching config', () => {
+		expect(getEffectiveAnthropicCacheTtl(undefined, 'anthropic/claude-sonnet-4-5')).toBeUndefined();
+	});
+
+	it('returns undefined when the anthropic scope is disabled', () => {
+		expect(
+			getEffectiveAnthropicCacheTtl({ anthropic: false }, 'anthropic/claude-sonnet-4-5'),
+		).toBeUndefined();
+	});
+
+	it('returns undefined for a non-Anthropic model even when enabled', () => {
+		expect(getEffectiveAnthropicCacheTtl({ enabled: true }, 'openai/gpt-5.1')).toBeUndefined();
 	});
 });
 
@@ -169,33 +187,6 @@ describe('mergeProviderOptions', () => {
 		).toEqual({
 			anthropic: { cacheControl: { type: 'ephemeral', ttl: '1h' } },
 		});
-	});
-});
-
-describe('countAnthropicBreakpoints', () => {
-	it('counts markers across the system message, tools, and message/content-part providerOptions', () => {
-		const messageWithPartMarker = {
-			role: 'user',
-			content: [{ type: 'text', text: 'hi', providerOptions: ANTHROPIC_CACHE_CONTROL }],
-		} as ModelMessage;
-		const messageWithMessageMarker = {
-			role: 'assistant',
-			content: 'ok',
-			providerOptions: ANTHROPIC_CACHE_CONTROL,
-		} as ModelMessage;
-
-		const count = countAnthropicBreakpoints(
-			anthropicSystem,
-			{ tool_a: makeTool(ANTHROPIC_CACHE_CONTROL) },
-			[messageWithPartMarker, messageWithMessageMarker],
-		);
-
-		// system + tool + part-level marker + message-level marker
-		expect(count).toBe(4);
-	});
-
-	it('returns 0 when nothing is marked', () => {
-		expect(countAnthropicBreakpoints(plainSystem, {}, [makeUserMessage('hi')])).toBe(0);
 	});
 });
 
@@ -335,6 +326,33 @@ describe('applyRuntimeCacheBreakpoints', () => {
 		expect(result.messages[1]?.providerOptions).toEqual(ANTHROPIC_CACHE_CONTROL);
 		// The tool breakpoint is still added — the existing marker was not double-counted.
 		expect(result.aiTools.tool_b?.providerOptions).toEqual({
+			anthropic: { cacheControl: { type: 'ephemeral', ttl: '1h' } },
+		});
+	});
+
+	it('leaves a caller-supplied cacheControl on the static tool untouched', () => {
+		const aiTools = {
+			tool_a: makeTool(),
+			tool_b: makeTool({ anthropic: { cacheControl: { type: 'ephemeral', ttl: '5m' } } }),
+		};
+		const messages = [makeUserMessage('hi')];
+
+		const result = applyRuntimeCacheBreakpoints({
+			system: plainSystem,
+			messages,
+			aiTools,
+			promptCaching: { enabled: true },
+			modelId: 'anthropic/claude-sonnet-4-5',
+			staticToolCacheName: 'tool_b',
+		});
+
+		// The caller's 5m marker on the static tool must survive untouched, not be
+		// overwritten by the runtime's (1h default) marker.
+		expect(result.aiTools.tool_b?.providerOptions).toEqual({
+			anthropic: { cacheControl: { type: 'ephemeral', ttl: '5m' } },
+		});
+		// The message breakpoint is unaffected by the tool already being marked.
+		expect(result.messages[0]?.providerOptions).toEqual({
 			anthropic: { cacheControl: { type: 'ephemeral', ttl: '1h' } },
 		});
 	});

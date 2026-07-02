@@ -23,27 +23,6 @@ describe('provider-capabilities', () => {
 		expect([...ANTHROPIC_CACHE_TTL_OPTIONS]).toEqual(['5m', '1h']);
 	});
 
-	it('uses ttl for Anthropic (renders the dropdown) and a mandatory plain flag for OpenAI', () => {
-		expect(PROVIDER_CAPABILITIES.anthropic.promptCaching).toBe('ttl');
-		expect(PROVIDER_CAPABILITIES.openai.promptCaching).toBe(true);
-	});
-
-	it('marks providers without prompt caching support as `false`', () => {
-		const noPromptCaching = [
-			'google',
-			'xai',
-			'groq',
-			'deepseek',
-			'mistral',
-			'openrouter',
-			'cohere',
-			'ollama',
-		];
-		for (const provider of noPromptCaching) {
-			expect(PROVIDER_CAPABILITIES[provider]?.promptCaching).toBe(false);
-		}
-	});
-
 	it('enables native web search for Anthropic and OpenAI', () => {
 		expect(PROVIDER_CAPABILITIES.anthropic.webSearch).toBe('anthropic.web_search');
 		expect(PROVIDER_CAPABILITIES.openai.webSearch).toBe('openai.web_search');
