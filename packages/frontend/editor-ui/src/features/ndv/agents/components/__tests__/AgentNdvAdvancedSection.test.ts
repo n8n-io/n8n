@@ -126,18 +126,20 @@ function mountSection(
 	});
 }
 
-// The design-system dropdown is generically typed, which defeats
-// `findComponent(N8nDropdownMenu)`'s overloads — look it up by name instead.
-function findDropdown(wrapper: ReturnType<typeof mountSection>) {
-	return wrapper.findComponent({ name: 'DropdownMenu' });
+// Design-system components are generically typed, which defeats
+// `findComponent(Component)`'s overloads — look them up by name instead.
+function findAddSelect(wrapper: ReturnType<typeof mountSection>) {
+	return wrapper.findComponent({ name: 'Select' });
 }
 
 function dropdownItems(wrapper: ReturnType<typeof mountSection>) {
-	return (findDropdown(wrapper).props('items') as Array<{ id: string }>).map((item) => item.id);
+	return wrapper
+		.findAllComponents({ name: 'Option' })
+		.map((option) => option.props('value') as string);
 }
 
 async function selectOption(wrapper: ReturnType<typeof mountSection>, id: string) {
-	findDropdown(wrapper).vm.$emit('select', id);
+	findAddSelect(wrapper).vm.$emit('update:modelValue', id);
 	await wrapper.vm.$nextTick();
 }
 
@@ -263,6 +265,6 @@ describe('AgentNdvAdvancedSection', () => {
 
 	it('renders no add affordances in read-only mode', () => {
 		const wrapper = mountSection(createNdvStub(), { isReadOnly: true });
-		expect(findDropdown(wrapper).exists()).toBe(false);
+		expect(findAddSelect(wrapper).exists()).toBe(false);
 	});
 });

@@ -19,8 +19,7 @@ import { deepCopy, isINodeProperties } from 'n8n-workflow';
 import type { INodeParameters, INodeProperties } from 'n8n-workflow';
 import get from 'lodash/get';
 
-import { N8nButton, N8nDropdownMenu, N8nIconButton, N8nSectionHeader } from '@n8n/design-system';
-import type { DropdownMenuItemProps } from '@n8n/design-system';
+import { N8nIconButton, N8nOption, N8nSectionHeader, N8nSelect } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 import type { IUpdateInformation } from '@/Interface';
@@ -152,10 +151,12 @@ function removeAgentOption(option: AgentOption) {
 }
 
 // ---------------------------------------------------------------------------
-// Combined dropdown
+// Combined "Add option" select (same control as the standard collection's)
 // ---------------------------------------------------------------------------
 
-const dropdownOptions = computed((): Array<DropdownMenuItemProps<string>> => {
+const selectedOption = ref<string | undefined>(undefined);
+
+const addableOptions = computed((): Array<{ id: string; label: string }> => {
 	const nodeItems = nodeOptions.value
 		.filter((option) => !chosenNodeOptionNames.value.includes(option.name))
 		.map((option) => ({
@@ -175,7 +176,7 @@ const dropdownOptions = computed((): Array<DropdownMenuItemProps<string>> => {
 	return [...nodeItems, ...agentItems];
 });
 
-const isAddDisabled = computed(() => dropdownOptions.value.length === 0);
+const isAddDisabled = computed(() => addableOptions.value.length === 0);
 
 const addLabel = computed(
 	() =>
@@ -205,6 +206,13 @@ function optionSelected(id: string) {
 		value: deepCopy(option.default),
 	});
 	newlyAddedParameters.value.add(option.name);
+}
+
+function onAddOptionSelected(id: string) {
+	optionSelected(id);
+	// Clear the selection after emitting so the placeholder returns and another
+	// option can be added (mirrors the standard collection's add select).
+	selectedOption.value = undefined;
 }
 </script>
 
@@ -262,22 +270,24 @@ function optionSelected(id: string) {
 		</template>
 
 		<div v-if="!isReadOnly && !isAddDisabled" :class="$style.paramOptions">
-			<N8nDropdownMenu
-				:items="dropdownOptions"
-				:class="$style.addDropdown"
-				data-test-id="agent-ndv-advanced-add-dropdown"
-				@select="optionSelected"
-			>
-				<template #trigger>
-					<N8nButton
-						class="n8n-button--highlightFill"
-						variant="subtle"
-						size="small"
-						icon="plus"
-						:label="addLabel"
+			<div :class="$style.addOption">
+				<N8nSelect
+					v-model="selectedOption"
+					:placeholder="addLabel"
+					size="small"
+					filterable
+					data-test-id="agent-ndv-advanced-add"
+					@update:model-value="onAddOptionSelected"
+				>
+					<N8nOption
+						v-for="item in addableOptions"
+						:key="item.id"
+						:label="item.label"
+						:value="item.id"
+						data-test-id="agent-ndv-advanced-add-option"
 					/>
-				</template>
-			</N8nDropdownMenu>
+				</N8nSelect>
+			</div>
 		</div>
 	</div>
 </template>
@@ -298,8 +308,9 @@ function optionSelected(id: string) {
 // by --spacing--sm, hover-delete floating in the gutter on the left.
 .agentOptionRow {
 	position: relative;
-	margin-top: var(--spacing--xs);
+	margin: var(--spacing--xs) 0;
 	padding-left: var(--spacing--sm);
+	padding-top: 2px;
 
 	&:hover .removeAgentOption {
 		opacity: 1;
@@ -320,9 +331,38 @@ function optionSelected(id: string) {
 
 .paramOptions {
 	margin-top: var(--spacing--xs);
+	padding-left: var(--spacing--sm);
 }
 
-.addDropdown {
-	display: inline-flex;
+// The select styled as the standard collection's "Add Option" control
+// (copied from CollectionParameterLegacy).
+.addOption {
+	> * {
+		border: none;
+	}
+
+	:global(.el-select .el-input:not(.is-disabled) .el-input__icon) {
+		color: var(--color--text--shade-1);
+	}
+	:global(.el-input .el-input__inner) {
+		text-align: center;
+	}
+	:global(.el-input:not(.is-disabled) .el-input__inner) {
+		&,
+		&:hover,
+		&:focus {
+			padding-left: 35px;
+			border-radius: var(--radius);
+			color: var(--color--text--shade-1);
+			background-color: var(--color--background);
+			border-color: var(--color--foreground);
+			text-align: center;
+		}
+
+		&::placeholder {
+			color: var(--color--text--shade-1);
+			opacity: 1;
+		}
+	}
 }
 </style>
