@@ -27,6 +27,7 @@ import { PROVIDER_CAPABILITIES } from '../provider-capabilities';
 import type { AgentJsonConfig } from '../types';
 import { parseModelString, modelToString, sanitizeModelId } from '../utils/model-string';
 import { normalizeWebSearchForModelChange } from '../utils/nativeWebSearch';
+import { normalizePromptCachingForModelChange } from '../utils/promptCaching';
 import AgentModelSelector from './AgentModelSelector.vue';
 import AgentPanelHeader from './AgentPanelHeader.vue';
 
@@ -99,11 +100,19 @@ function onModelChange(selection: AgentModelSelection) {
 		return;
 	}
 	const model = `${selection.provider}/${sanitizeModelId(selection.provider, selection.model)}`;
-	const nextProviderTool = PROVIDER_CAPABILITIES[selection.provider]?.webSearch ?? false;
+	const capabilities = PROVIDER_CAPABILITIES[selection.provider];
+	const webSearchChanges = normalizeWebSearchForModelChange(
+		props.config,
+		capabilities?.webSearch ?? false,
+	);
 	emit('update:config', {
 		model,
 		credential: credentialId,
-		...normalizeWebSearchForModelChange(props.config, nextProviderTool),
+		...webSearchChanges,
+		...normalizePromptCachingForModelChange(
+			webSearchChanges.config ?? props.config?.config,
+			capabilities?.promptCaching ?? false,
+		),
 	});
 }
 
