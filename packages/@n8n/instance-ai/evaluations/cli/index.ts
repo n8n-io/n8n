@@ -123,6 +123,14 @@ interface Lane {
 	mcpConfigPath?: string;
 }
 
+/** One `claude` build's Anthropic spend (`--build-via-mcp` only). Mirrors
+ *  McpBuildResult: the numbers cover the LAST attempt, so totals are a lower
+ *  bound when retries happened (same semantics as the manifest flow's stats). */
+interface McpBuildSpend {
+	costUsd: number;
+	turns: number;
+}
+
 interface RunConfig {
 	args: CliArgs;
 	lanes: Lane[];
@@ -136,6 +144,11 @@ interface RunConfig {
 	cleanupBuiltWorkflows: boolean;
 	/** Directory for per-build `claude` logs (`--build-via-mcp` only). */
 	mcpBuildLogDir?: string;
+	/** Per-build `claude` spend, appended by buildWorkflowViaMcpOnLane across all
+	 *  lanes (`--build-via-mcp` only; stays empty otherwise). Aggregated into
+	 *  LangSmith experiment metadata and eval-results.json — the run's only spend
+	 *  record beyond raw session logs, for a suite that's manual-only due to cost. */
+	mcpBuildSpend: McpBuildSpend[];
 }
 
 /** Map eval CLI args to the shared MCP builder's settings. */
@@ -165,8 +178,10 @@ async function buildWorkflowViaMcpOnLane(config: {
 	args: CliArgs;
 	logDir: string;
 	logger: EvalLogger;
+	/** Run-wide spend collector; every attempt is recorded, success or not. */
+	buildSpend: McpBuildSpend[];
 }): Promise<BuildResult> {
-	const { lane, conversation, slug, iteration, args, logDir, logger } = config;
+	const { lane, conversation, slug, iteration, args, logDir, logger, buildSpend } = config;
 	if (!lane.mcpConfigPath) {
 		return {
 			success: false,
@@ -186,6 +201,10 @@ async function buildWorkflowViaMcpOnLane(config: {
 		logDir,
 		log: (message) => logger.info(message),
 	});
+
+	// Record spend whether or not the build produced a workflow — failed builds
+	// cost money too, and this is the run's spend record.
+	buildSpend.push({ costUsd: result.cost, turns: result.turns });
 
 	// Register for cleanup the moment the id exists. If the fetch-back below
 	// fails, the failure BuildResult carries no workflowId, so success-guarded
@@ -374,6 +393,7 @@ async function main(): Promise<void> {
 		let experimentName: string | undefined;
 		let outcome: ComparisonOutcome | undefined;
 		let slugByTestCase: Map<WorkflowTestCase, string> | undefined;
+		const mcpBuildSpend: McpBuildSpend[] = [];
 
 		if (hasLangSmith) {
 			logger.info('LangSmith API key detected, using evaluate() with experiment tracking');
@@ -385,6 +405,7 @@ async function main(): Promise<void> {
 				prebuiltManifest,
 				cleanupBuiltWorkflows,
 				mcpBuildLogDir,
+				mcpBuildSpend,
 			});
 			evaluation = langsmithRun.evaluation;
 			experimentName = langsmithRun.experimentName;
@@ -400,6 +421,7 @@ async function main(): Promise<void> {
 				prebuiltManifest,
 				cleanupBuiltWorkflows,
 				mcpBuildLogDir,
+				mcpBuildSpend,
 			});
 			evaluation = directRun.evaluation;
 			slugByTestCase = directRun.slugByTestCase;
@@ -419,6 +441,7 @@ async function main(): Promise<void> {
 			slugByTestCase,
 			ciRerunHint(),
 			gate,
+			mcpBuildSpend,
 		);
 		console.log(`Results:    ${jsonPath}`);
 		console.log(`PR comment: ${prCommentPath}`);
@@ -464,6 +487,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		prebuiltManifest,
 		cleanupBuiltWorkflows,
 		mcpBuildLogDir,
+		mcpBuildSpend,
 	} = config;
 
 	if (testCasesWithFiles.length === 0) {
@@ -633,6 +657,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 						args,
 						logDir: mcpBuildLogDir ?? process.cwd(),
 						logger,
+						buildSpend: mcpBuildSpend,
 					});
 				} finally {
 					// Release as soon as the build (incl. fetch-back) is done — the
@@ -1008,6 +1033,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			// Only meaningful when we drove the build via MCP; otherwise the builder
 			// is the in-n8n agent and args.buildModel is unused.
 			buildModel: args.buildViaMcp ? args.buildModel : undefined,
+			mcpBuildSpend,
 		});
 
 		await writePerRunPassMetrics({
@@ -1102,6 +1128,10 @@ async function updateExperimentAggregates(config: {
 	 *  built-in "Models" column stays empty because the external `claude` build
 	 *  isn't traced as an LLM run. */
 	buildModel?: string;
+	/** Per-build `claude` spend (--build-via-mcp only; empty otherwise). Recorded
+	 *  next to build_model so the experiment carries its own cost record — the
+	 *  external build isn't traced, so LangSmith can't compute this itself. */
+	mcpBuildSpend?: McpBuildSpend[];
 }): Promise<void> {
 	const { lsClient, experimentName, runs, evaluation, buildDurations, totalDurationMs, logger } =
 		config;
@@ -1117,6 +1147,7 @@ async function updateExperimentAggregates(config: {
 	const avgExecMs =
 		execTimes.length > 0 ? execTimes.reduce((sum, d) => sum + d, 0) / execTimes.length : 0;
 
+	const spend = summarizeMcpBuildSpend(config.mcpBuildSpend);
 	const aggregates = {
 		duration_s: Math.round(totalDurationMs / 100) / 10,
 		avg_build_s: Math.round(avgBuildMs / 100) / 10,
@@ -1124,6 +1155,7 @@ async function updateExperimentAggregates(config: {
 		unique_builds: uniqueBuilds,
 		pass_rate_per_iter: computePassRatePerIter(evaluation),
 		...(config.buildModel ? { build_model: config.buildModel } : {}),
+		...(spend ? { total_build_cost_usd: spend.totalCostUsd, avg_build_turns: spend.avgTurns } : {}),
 	};
 
 	try {
@@ -1141,6 +1173,25 @@ async function updateExperimentAggregates(config: {
 		const msg = error instanceof Error ? error.message : String(error);
 		logger.verbose(`Could not update experiment metadata: ${msg}`);
 	}
+}
+
+/**
+ * Sum per-build `claude` spend into run-level numbers, or undefined when no
+ * MCP builds were recorded (so non-MCP runs add nothing to their outputs).
+ * Last-attempt semantics (see McpBuildSpend): totals are a lower bound when
+ * builds were retried.
+ */
+function summarizeMcpBuildSpend(
+	spend: McpBuildSpend[] | undefined,
+): { builds: number; totalCostUsd: number; avgTurns: number } | undefined {
+	if (!spend || spend.length === 0) return undefined;
+	const totalCost = spend.reduce((sum, s) => sum + s.costUsd, 0);
+	const totalTurns = spend.reduce((sum, s) => sum + s.turns, 0);
+	return {
+		builds: spend.length,
+		totalCostUsd: Math.round(totalCost * 100) / 100,
+		avgTurns: Math.round((totalTurns / spend.length) * 10) / 10,
+	};
 }
 
 /**
@@ -1207,6 +1258,7 @@ async function runDirectLoop(config: RunConfig): Promise<{
 		prebuiltManifest,
 		cleanupBuiltWorkflows,
 		mcpBuildLogDir,
+		mcpBuildSpend,
 	} = config;
 
 	const slugByTestCase = new Map<WorkflowTestCase, string>(
@@ -1264,6 +1316,7 @@ async function runDirectLoop(config: RunConfig): Promise<{
 											args,
 											logDir: mcpBuildLogDir ?? process.cwd(),
 											logger,
+											buildSpend: mcpBuildSpend,
 										})
 								: undefined;
 							const result = await runWorkflowTestCase({
@@ -1439,6 +1492,7 @@ function writeEvalResults(
 	slugByTestCase: Map<WorkflowTestCase, string> | undefined,
 	rerun: RerunHint | undefined,
 	gate: GateResult | undefined,
+	mcpBuildSpend?: McpBuildSpend[],
 ): { jsonPath: string; prCommentPath: string } {
 	const { totalRuns, testCases } = evaluation;
 	const metrics = computeAggregateMetrics(evaluation);
@@ -1446,6 +1500,9 @@ function writeEvalResults(
 	const result = outcome?.kind === 'ok' ? outcome.result : undefined;
 
 	const checksSummary = aggregateWorkflowChecks(evaluation);
+	// `claude` build spend (--build-via-mcp only) — keeps a cost record in the
+	// artifact even when LangSmith isn't configured.
+	const buildSpendSummary = summarizeMcpBuildSpend(mcpBuildSpend);
 
 	const report = {
 		timestamp: new Date().toISOString(),
@@ -1460,6 +1517,7 @@ function writeEvalResults(
 			passHatK: metrics.passHatK,
 			passRatePerIter: metrics.passRatePerIter,
 			...(checksSummary ? { workflowChecks: checksSummary } : {}),
+			...(buildSpendSummary ? { mcpBuild: buildSpendSummary } : {}),
 		},
 		// Structured comparison payload only — the rendered markdown lives in
 		// the sibling `eval-pr-comment.md` file so consumers can pick the format
