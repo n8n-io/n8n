@@ -18,7 +18,7 @@ import { useToast } from '@/app/composables/useToast';
 import type { INodeUi } from '@/Interface';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
-import { agentsEventBus } from '@/features/agents/agents.eventBus';
+import { agentsEventBus, type AgentUpdatedEvent } from '@/features/agents/agents.eventBus';
 import { getAgent, updateAgentSkill } from '@/features/agents/composables/useAgentApi';
 import { useAgentConfig } from '@/features/agents/composables/useAgentConfig';
 import { useAgentConfigAutosave } from '@/features/agents/composables/useAgentConfigAutosave';
@@ -42,6 +42,11 @@ interface SkillSnapshot {
 	skillId: string;
 	skill: AgentSkill;
 }
+
+// Distinguishes each orchestrator instance's own `agentUpdated` emissions from
+// other surfaces', so its listener doesn't reload (and clobber in-flight local
+// edits) in response to its own writes.
+let instanceSeq = 0;
 
 /**
  * Orchestrates reading + autosaving the *shared agent primitive* referenced by
@@ -71,6 +76,13 @@ export function useNdvAgentConfig(
 	const workflowDocumentStore = inject(WorkflowDocumentStoreKey, null);
 
 	const isAgentNode = computed(() => toValue(activeNode)?.type === MESSAGE_AN_AGENT_NODE_TYPE);
+
+	const eventSource = `ndv-agent-config-${++instanceSeq}`;
+
+	/** Notify other surfaces (canvas cards, other listeners) that the agent was written. */
+	function emitAgentUpdated(forAgentId: string) {
+		agentsEventBus.emit('agentUpdated', { agentId: forAgentId, source: eventSource });
+	}
 
 	// Scope to the workflow's owning project, matching how the agent picker
 	// resolved the project when the agent was referenced (see
@@ -135,6 +147,8 @@ export function useNdvAgentConfig(
 	async function saveConfig(snapshot: ConfigSnapshot) {
 		try {
 			const result = await updateConfig(snapshot.projectId, snapshot.agentId, snapshot.config);
+			// The write landed regardless of staleness below — tell other surfaces.
+			emitAgentUpdated(snapshot.agentId);
 			// Drop the response if the active node switched agents mid-flight.
 			if (result.stale) return;
 			if (agent.value && agent.value.id === snapshot.agentId && result.versionId !== undefined) {
@@ -163,6 +177,7 @@ export function useNdvAgentConfig(
 			snapshot.skillId,
 			snapshot.skill,
 		);
+		emitAgentUpdated(snapshot.agentId);
 		if (agent.value?.id !== snapshot.agentId) return;
 		agent.value = {
 			...agent.value,
@@ -266,18 +281,25 @@ export function useNdvAgentConfig(
 	// Cross-surface: another surface (the Agent Builder) wrote the same agent —
 	// refetch so our view doesn't silently diverge. Last-write-wins otherwise
 	// (a true fix needs a backend version precondition; out of scope for v1).
-	function onAgentUpdated() {
+	// Our own emissions are skipped: reloading on them would overwrite
+	// `localConfig` with the just-saved snapshot, dropping in-flight edits.
+	function onAgentUpdated(event?: AgentUpdatedEvent) {
+		if (event?.source === eventSource) return;
+		if (event?.agentId && event.agentId !== agentId.value) return;
 		if (agentId.value) void load(projectId.value, agentId.value);
 	}
 	agentsEventBus.on('agentUpdated', onAgentUpdated);
 	onBeforeUnmount(() => agentsEventBus.off('agentUpdated', onAgentUpdated));
 
 	/**
-	 * Refresh after a skill modal change (mirrors the builder's `onConfigUpdated`):
-	 * refetch config + agent so the capabilities section re-pulls skill bodies.
+	 * Refresh after a capability modal change (mirrors the builder's
+	 * `onConfigUpdated`): refetch config + agent so the capabilities section
+	 * re-pulls skill bodies. Modal flows (e.g. skill creation) write through
+	 * their own API calls, not `saveConfig`, so notify other surfaces here.
 	 */
 	async function onConfigUpdated() {
 		if (!agentId.value) return;
+		emitAgentUpdated(agentId.value);
 		await load(projectId.value, agentId.value);
 	}
 

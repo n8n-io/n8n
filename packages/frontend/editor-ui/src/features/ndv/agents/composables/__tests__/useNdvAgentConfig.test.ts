@@ -387,6 +387,41 @@ describe('useNdvAgentConfig', () => {
 		expect(getAgentConfigMock).toHaveBeenLastCalledWith(expect.anything(), PROJECT_ID, 'agent-1');
 	});
 
+	it('does not refetch on agentUpdated events for a different agent', async () => {
+		const node = ref<INodeUi | null>(makeAgentNode('agent-1'));
+		mountComposable(node);
+		await flushPromises();
+		getAgentConfigMock.mockClear();
+
+		agentsEventBus.emit('agentUpdated', { agentId: 'agent-other', source: 'agent-builder' });
+		await flushPromises();
+
+		expect(getAgentConfigMock).not.toHaveBeenCalled();
+	});
+
+	it('emits agentUpdated after a config save, and ignores its own emission', async () => {
+		const node = ref<INodeUi | null>(makeAgentNode('agent-1'));
+		const { api } = mountComposable(node);
+		await flushPromises();
+
+		const received: Array<{ agentId?: string; source?: string } | undefined> = [];
+		const listener = (event?: { agentId?: string; source?: string }) => received.push(event);
+		agentsEventBus.on('agentUpdated', listener);
+		getAgentConfigMock.mockClear();
+
+		api.scheduleConfigUpdate({ instructions: 'edit' });
+		await vi.advanceTimersByTimeAsync(500);
+		await flushPromises();
+
+		agentsEventBus.off('agentUpdated', listener);
+
+		// Canvas cards (and other surfaces) are notified about the write...
+		expect(received).toEqual([{ agentId: 'agent-1', source: expect.stringContaining('ndv') }]);
+		// ...but the emitter must not reload itself: that would overwrite
+		// `localConfig` with the just-saved snapshot, dropping in-flight edits.
+		expect(getAgentConfigMock).not.toHaveBeenCalled();
+	});
+
 	it('stops reacting to agentUpdated once the host component unmounts', async () => {
 		const node = ref<INodeUi | null>(makeAgentNode('agent-1'));
 		const { wrapper } = mountComposable(node);

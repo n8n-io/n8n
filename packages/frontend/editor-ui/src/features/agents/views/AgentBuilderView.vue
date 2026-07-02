@@ -554,6 +554,9 @@ interface SkillAutosaveSnapshot {
 
 async function saveConfig(snapshot: ConfigAutosaveSnapshot): Promise<void> {
 	const result = await updateConfig(snapshot.projectId, snapshot.agentId, snapshot.config);
+	// The write landed regardless of staleness below — tell other surfaces
+	// (e.g. canvas agent cards invalidate their capability-summary cache).
+	agentsEventBus.emit('agentUpdated', { agentId: snapshot.agentId, source: 'agent-builder' });
 	// Drop the response if the user has switched to a different agent in the
 	// meantime — both `config` (handled inside useAgentConfig) and
 	// `agent.versionId` would otherwise be polluted with values for the
@@ -573,6 +576,7 @@ async function saveSkill(snapshot: SkillAutosaveSnapshot): Promise<void> {
 		snapshot.skillId,
 		snapshot.skill,
 	);
+	agentsEventBus.emit('agentUpdated', { agentId: snapshot.agentId, source: 'agent-builder' });
 	if (agent.value?.id !== snapshot.agentId) return;
 	agent.value = {
 		...agent.value,
@@ -701,6 +705,9 @@ const caps = useAgentCapabilitiesActions({
 const appliedSkills = caps.appliedSkills;
 
 async function onConfigUpdated() {
+	// Modal flows (e.g. skill creation) write through their own API calls, not
+	// `saveConfig` — notify other surfaces (canvas agent cards) here too.
+	agentsEventBus.emit('agentUpdated', { agentId: agentId.value, source: 'agent-builder' });
 	await Promise.all([fetchAgent(), fetchConfig(projectId.value, agentId.value)]);
 	// Refresh the connected-trigger list so chips reflect builder writes
 	// without waiting for a tab switch. Mirrors the initial baseline fetch.

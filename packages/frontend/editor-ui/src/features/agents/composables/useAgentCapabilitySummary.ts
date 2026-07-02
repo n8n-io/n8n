@@ -1,11 +1,15 @@
 import { ref, watch, type Ref } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { AgentCapabilitySummary } from '@n8n/api-types';
+import { agentsEventBus } from '../agents.eventBus';
 import { getAgentCapabilitySummary } from './useAgentApi';
 
-// Shared across all agent cards. Capability chips are static (no live updates), so the
-// same agent referenced by multiple nodes is fetched once.
+// Shared across all agent cards, so the same agent referenced by multiple
+// nodes is fetched once. Invalidated through the `agentUpdated` bus event.
 const summaryCache = new Map<string, AgentCapabilitySummary>();
+
+// Bumped on every invalidation so mounted cards refetch reactively.
+const cacheVersion = ref(0);
 
 function cacheKey(projectId: string, agentId: string) {
 	return `${projectId}:${agentId}`;
@@ -15,9 +19,24 @@ export function clearAgentCapabilitySummaryCache() {
 	summaryCache.clear();
 }
 
+// Module-level (not per instance): agent edits can happen while no card is
+// mounted (e.g. on the Agent Builder route, where the canvas is torn down),
+// and remounted cards must not serve the stale pre-edit summary.
+agentsEventBus.on('agentUpdated', (event) => {
+	if (event?.agentId) {
+		for (const key of [...summaryCache.keys()]) {
+			if (key.endsWith(`:${event.agentId}`)) summaryCache.delete(key);
+		}
+	} else {
+		summaryCache.clear();
+	}
+	cacheVersion.value++;
+});
+
 /**
  * Fetches the capability summary (model + capability chip labels) for the agent rendered on
- * a canvas card. Re-fetches when the selected agent or project scope changes.
+ * a canvas card. Re-fetches when the selected agent or project scope changes, or when an
+ * `agentUpdated` bus event invalidates the cache (edits in the NDV or the Agent Builder).
  */
 export function useAgentCapabilitySummary(projectId: Ref<string>, agentId: Ref<string>) {
 	const rootStore = useRootStore();
@@ -78,7 +97,7 @@ export function useAgentCapabilitySummary(projectId: Ref<string>, agentId: Ref<s
 		}
 	}
 
-	watch([projectId, agentId], fetch, { immediate: true });
+	watch([projectId, agentId, cacheVersion], fetch, { immediate: true });
 
 	return { summary, isLoading, error, fetch };
 }
