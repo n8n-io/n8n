@@ -1,6 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import { HttpRequestConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
+import { jsonParse } from 'n8n-workflow';
 import nock from 'nock';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
@@ -124,7 +125,7 @@ describe('OutboundHttp.requests requestLegacy', () => {
 				})) as { statusCode: number; body: string };
 
 				expect(response.statusCode).toBe(200);
-				const forwardedHeaders = JSON.parse(response.body);
+				const forwardedHeaders = jsonParse<Record<string, string>>(response.body);
 				expect(forwardedHeaders.authorization).toBe(basicAuth);
 				expect(forwardedHeaders['x-other-header']).toBe('otherHeaderContent');
 			},
@@ -146,7 +147,7 @@ describe('OutboundHttp.requests requestLegacy', () => {
 			})) as { statusCode: number; body: string };
 
 			expect(response.statusCode).toBe(200);
-			const forwardedHeaders = JSON.parse(response.body);
+			const forwardedHeaders = jsonParse<Record<string, string>>(response.body);
 			expect(forwardedHeaders.authorization).toBeUndefined();
 			expect(forwardedHeaders['x-other-header']).toBe('otherHeaderContent');
 		});
@@ -169,7 +170,7 @@ describe('OutboundHttp.requests requestLegacy', () => {
 				})) as { statusCode: number; body: string };
 
 				expect(response.statusCode).toBe(200);
-				const forwardedHeaders = JSON.parse(response.body);
+				const forwardedHeaders = jsonParse<Record<string, string>>(response.body);
 				expect(forwardedHeaders.authorization).toBe(basicAuth);
 				expect(forwardedHeaders['x-other-header']).toBe('otherHeaderContent');
 			},
@@ -299,6 +300,45 @@ describe('OutboundHttp.requests requestLegacy', () => {
 			await expect(
 				client.requestLegacy({ url: 'https://blocked.com/data', allowedDomains: '*.example.com' }),
 			).rejects.toThrow('Domain not allowed');
+		});
+	});
+
+	describe('digest auth', () => {
+		const baseUrl = 'https://digest.test';
+
+		// A strict Digest-only server: it issues its WWW-Authenticate challenge only to
+		// an unauthenticated first request. A stray `Basic` header gets a bare 401 with
+		// no challenge, so the client can never derive the Digest header.
+		const mockStrictDigestServer = () => {
+			// No auth header -> issue the Digest challenge.
+			nock(baseUrl, { badheaders: ['authorization'] })
+				.get('/get_file')
+				.reply(401, '', {
+					'www-authenticate': 'Digest realm="test", nonce="abc123", qop="auth"',
+				});
+
+			// A stray Basic header -> reject without a usable challenge.
+			nock(baseUrl, { reqheaders: { authorization: /^Basic /i } })
+				.get('/get_file')
+				.reply(401, 'Unauthorized');
+
+			// A proper Digest response -> serve the file.
+			nock(baseUrl, { reqheaders: { authorization: /^Digest /i } })
+				.get('/get_file')
+				.reply(200, 'FILE_CONTENTS');
+		};
+
+		it('authenticates against a Digest-only server when sendImmediately is false', async () => {
+			mockStrictDigestServer();
+			const client = makeFacade().requests({ ssrf: 'disabled' });
+
+			const body = await client.requestLegacy({
+				url: `${baseUrl}/get_file`,
+				method: 'GET',
+				auth: { user: 'user', pass: 'pass', sendImmediately: false },
+			});
+
+			expect(body).toBe('FILE_CONTENTS');
 		});
 	});
 

@@ -17,6 +17,7 @@ import type { ICredentialsResponse } from '../../credentials.types';
 import { within, waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import type { ICredentialType, INode, INodeTypeDescription } from 'n8n-workflow';
+import type { Scope } from '@n8n/permissions';
 
 const { confirmMock, routerCurrentRouteMock, routerReplaceMock } = vi.hoisted(() => ({
 	confirmMock: vi.fn(),
@@ -977,6 +978,7 @@ describe('CredentialEdit', () => {
 
 		const setupExistingOAuthCredential = (
 			credentialModalState: Partial<NewCredentialsModal> = {},
+			dataOverrides: { scopes?: Scope[]; isResolvable?: boolean; connectedByMe?: boolean } = {},
 		) => {
 			vi.stubGlobal('BroadcastChannel', BroadcastChannelMock);
 			vi.stubGlobal(
@@ -1011,8 +1013,10 @@ describe('CredentialEdit', () => {
 				name: 'OAuth account',
 				type: oAuth2Api.name,
 				isManaged: false,
+				isResolvable: dataOverrides.isResolvable ?? false,
+				connectedByMe: dataOverrides.connectedByMe,
 				sharedWithProjects: [],
-				scopes: ['credential:update'],
+				scopes: dataOverrides.scopes ?? ['credential:update'],
 				oauthTokenData: false,
 			});
 			credentialsStore.updateCredential.mockResolvedValue(
@@ -1189,6 +1193,25 @@ describe('CredentialEdit', () => {
 			await waitFor(() => expect(credentialsStore.fetchAllCredentials).toHaveBeenCalled());
 			expect(uiStore.closeModal).not.toHaveBeenCalled();
 		});
+
+		test('authorizes a private credential without saving for a connect-only user', async () => {
+			const { credentialsStore, getByTestId } = setupExistingOAuthCredential(
+				{},
+				{
+					scopes: ['credential:read', 'credential:connect'],
+					isResolvable: true,
+					connectedByMe: false,
+				},
+			);
+
+			await waitFor(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+			await waitFor(() => expect(getByTestId('quick-connect-button')).toBeVisible());
+			await userEvent.click(getByTestId('quick-connect-button'));
+
+			await waitFor(() => expect(credentialsStore.oAuth2Authorize).toHaveBeenCalled());
+			// Connect-only users can't edit the blueprint, so it must not be re-saved.
+			expect(credentialsStore.updateCredential).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('per-user OAuth banner', () => {
@@ -1349,7 +1372,7 @@ describe('CredentialEdit', () => {
 			await retry(() => expect(queryByTestId('oauth-not-connected-banner')).not.toBeVisible());
 		});
 
-		test('does not show the not-connected warning banner for static OAuth credentials', async () => {
+		test('shows the not-connected warning banner for static OAuth credentials that are not yet connected', async () => {
 			const pinia = createPiniaForBannerTest();
 			const credentialsStore = setupOAuthCredential({
 				isResolvable: false,
@@ -1365,7 +1388,7 @@ describe('CredentialEdit', () => {
 			});
 
 			await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
-			await retry(() => expect(queryByTestId('oauth-not-connected-banner')).not.toBeVisible());
+			await retry(() => expect(queryByTestId('oauth-not-connected-banner')).toBeVisible());
 		});
 
 		describe('switching a connected private credential to static', () => {
@@ -1380,7 +1403,7 @@ describe('CredentialEdit', () => {
 					connectedUserCount: 0,
 				});
 
-				const { getByRole } = renderComponent({
+				const { getByTestId } = renderComponent({
 					props: {
 						activeId: 'cred-banner',
 						modalName: CREDENTIAL_EDIT_MODAL_KEY,
@@ -1391,7 +1414,7 @@ describe('CredentialEdit', () => {
 
 				await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
 
-				await userEvent.click(getByRole('switch'));
+				await userEvent.click(getByTestId('credential-type-card-fixed'));
 
 				await retry(() => expect(confirmMock).toHaveBeenCalled());
 				expect(confirmMock.mock.calls[0][0]).toContain('1 user(s)');
@@ -1406,7 +1429,7 @@ describe('CredentialEdit', () => {
 					connectedUserCount: 0,
 				});
 
-				const { getByRole } = renderComponent({
+				const { getByTestId } = renderComponent({
 					props: {
 						activeId: 'cred-banner',
 						modalName: CREDENTIAL_EDIT_MODAL_KEY,
@@ -1417,7 +1440,7 @@ describe('CredentialEdit', () => {
 
 				await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
 
-				await userEvent.click(getByRole('switch'));
+				await userEvent.click(getByTestId('credential-type-card-fixed'));
 
 				expect(confirmMock).not.toHaveBeenCalled();
 			});
@@ -1446,9 +1469,9 @@ describe('CredentialEdit', () => {
 				});
 
 				await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
-				await retry(() => expect(getByTestId('dynamic-credentials-toggle')).toBeVisible());
+				await retry(() => expect(getByTestId('credential-type-card-end-user')).toBeVisible());
 
-				await userEvent.click(getByTestId('dynamic-credentials-toggle'));
+				await userEvent.click(getByTestId('credential-type-card-end-user'));
 
 				await retry(() => expect(queryByTestId('oauth-not-connected-banner')).toBeVisible());
 				expect(queryByTestId('oauth-connect-success-banner')).not.toBeVisible();

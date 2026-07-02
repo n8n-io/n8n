@@ -1,7 +1,7 @@
 import { GLOBAL_OWNER_ROLE, type IWorkflowDb } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import type { INode, IRun, IWorkflowBase, IWorkflowExecutionDataProcess } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from '@/events/event.service';
@@ -16,7 +16,7 @@ describe('LogStreamingEventRelay', () => {
 	new LogStreamingEventRelay(eventService, eventBus, instanceSettings).init();
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('workflow events', () => {
@@ -50,6 +50,78 @@ describe('LogStreamingEventRelay', () => {
 					globalRole: 'owner',
 					workflowId: 'wf123',
 					workflowName: 'Test Workflow',
+				},
+			});
+		});
+
+		it('should log on `n8n-package-imported` event', () => {
+			const event: RelayEventMap['n8n-package-imported'] = {
+				user: {
+					id: 'user-import',
+					email: 'importer@example.com',
+					firstName: 'Import',
+					lastName: 'User',
+					role: { slug: 'global:admin' },
+				},
+				projectId: 'proj-brie',
+				folderId: 'folder-cheese',
+				workflowIds: ['wf-cheddar', 'wf-brie'],
+				options: {
+					workflowConflictPolicy: 'new-version',
+					workflowIdPolicy: 'new',
+					credentialMatchingMode: 'id-only',
+					credentialMissingMode: 'must-preexist',
+					workflowPublishingPolicy: 'preserve-published-state',
+				},
+				packageSourceId: 'source-instance-1',
+				packageVersion: '1',
+				credentialIds: {
+					matched: ['cred-1'],
+					created: [],
+					updated: [],
+				},
+				// Telemetry-only; must not appear in the audit payload below.
+				counts: {
+					workflows: {
+						created: 1,
+						updated: 1,
+						skipped: 0,
+					},
+					credentials: {
+						matched: 1,
+						created: 0,
+						requirements: 1,
+					},
+				},
+			};
+
+			eventService.emit('n8n-package-imported', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.n8n-package.imported',
+				payload: {
+					userId: 'user-import',
+					_email: 'importer@example.com',
+					_firstName: 'Import',
+					_lastName: 'User',
+					globalRole: 'global:admin',
+					projectId: 'proj-brie',
+					folderId: 'folder-cheese',
+					workflowIds: ['wf-cheddar', 'wf-brie'],
+					options: {
+						workflowConflictPolicy: 'new-version',
+						workflowIdPolicy: 'new',
+						credentialMatchingMode: 'id-only',
+						credentialMissingMode: 'must-preexist',
+						workflowPublishingPolicy: 'preserve-published-state',
+					},
+					packageSourceId: 'source-instance-1',
+					packageVersion: '1',
+					credentialIds: {
+						matched: ['cred-1'],
+						created: [],
+						updated: [],
+					},
 				},
 			});
 		});
@@ -434,7 +506,7 @@ describe('LogStreamingEventRelay', () => {
 					status: 'success',
 					mode: 'manual',
 					data: { resultData: {} },
-				}),
+				} as never),
 				projectId: 'proj-456',
 				projectName: 'My Project',
 			});
@@ -465,7 +537,7 @@ describe('LogStreamingEventRelay', () => {
 				mode: 'manual',
 				jobId: '12345',
 				data: { resultData: {} },
-			});
+			} as never);
 
 			const event = {
 				executionId: 'exec-123',
@@ -495,7 +567,6 @@ describe('LogStreamingEventRelay', () => {
 				data: {
 					resultData: {
 						lastNodeExecuted: 'some-node',
-						// @ts-expect-error Partial mock
 						error: {
 							node: mock<INode>({ type: 'some-type' }),
 							message: 'some-message',
@@ -503,7 +574,7 @@ describe('LogStreamingEventRelay', () => {
 						errorMessage: 'some-message',
 					},
 				},
-			}) as unknown as IRun;
+			} as never) as unknown as IRun;
 
 			const event = {
 				executionId: 'some-id',
@@ -545,7 +616,6 @@ describe('LogStreamingEventRelay', () => {
 				data: {
 					resultData: {
 						lastNodeExecuted: 'some-node',
-						// @ts-expect-error Partial mock
 						error: {
 							node: mock<INode>({ type: 'some-type' }),
 							message: 'some-message',
@@ -553,7 +623,7 @@ describe('LogStreamingEventRelay', () => {
 						errorMessage: 'some-message',
 					},
 				},
-			}) as unknown as IRun;
+			} as never) as unknown as IRun;
 
 			const event = {
 				executionId: 'exec-456',

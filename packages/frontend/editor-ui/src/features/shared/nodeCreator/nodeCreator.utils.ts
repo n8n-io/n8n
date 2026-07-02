@@ -9,6 +9,7 @@ import type {
 	SectionCreateElement,
 	SimplifiedNodeType,
 	SubcategorizedNodeTypes,
+	SubcategoryCreateElement,
 } from '@/Interface';
 import {
 	AI_CATEGORY_AGENTS,
@@ -23,6 +24,7 @@ import {
 	CORE_NODES_CATEGORY,
 	DEFAULT_SUBCATEGORY,
 	DISCORD_NODE_TYPE,
+	HITL_SUBCATEGORY,
 	HUMAN_IN_THE_LOOP_CATEGORY,
 	MICROSOFT_TEAMS_NODE_TYPE,
 	RECOMMENDED_NODES,
@@ -30,8 +32,8 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 
 import { i18n } from '@n8n/i18n';
-import { reRankSearchResults } from '@n8n/utils/search/reRankSearchResults';
-import { sublimeSearch } from '@n8n/utils/search/sublimeSearch';
+import { reRankSearchResults } from '@n8n/utils/search/re-rank-search-results';
+import { sublimeSearch } from '@n8n/utils/search/sublime-search';
 import * as changeCase from 'change-case';
 import sortBy from 'lodash/sortBy';
 import type { NodeViewItemSection } from './views/viewsData';
@@ -311,17 +313,23 @@ function applyNodeTags(element: INodeCreateElement): INodeCreateElement {
 			type: 'info',
 			text: i18n.baseText('generic.betaProper'),
 		};
-	} else if (
-		useSettingsStore().isAiGatewayEnabled &&
-		useAiGatewayStore().isNodeSupported(element.properties.name)
-	) {
-		const versions = useNodeTypesStore().getNodeVersions(element.properties.name);
-		const latestVersion = versions.length > 0 ? Math.max(...versions) : 1;
-		if (useAiGatewayStore().isNodeTypeVersionSupported(element.properties.name, latestVersion)) {
-			element.properties.tag = {
-				text: i18n.baseText('generic.freeCredits'),
-				pill: true,
-			};
+	} else if (useSettingsStore().isAiGatewayEnabled) {
+		const aiGatewayStore = useAiGatewayStore();
+		// Tool-variant node types carry a "Tool" suffix (e.g. "llamaParsePlatformTool"),
+		// but the gateway config lists the base name ("llamaParsePlatform").
+		const baseName = element.properties.name.replace(/Tool$/, '');
+		const supportedName = [element.properties.name, baseName].find((n) =>
+			aiGatewayStore.isNodeSupported(n),
+		);
+		if (supportedName) {
+			const versions = useNodeTypesStore().getNodeVersions(supportedName);
+			const latestVersion = versions.length > 0 ? Math.max(...versions) : 1;
+			if (aiGatewayStore.isNodeTypeVersionSupported(supportedName, latestVersion)) {
+				element.properties.tag = {
+					text: i18n.baseText('generic.freeCredits'),
+					pill: true,
+				};
+			}
 		}
 	}
 
@@ -469,13 +477,54 @@ export function getAiTemplatesCallout(aiTemplatesURL: string): LinkCreateElement
 	};
 }
 
-export function getRootSearchCallouts(search: string, { isRagStarterCalloutVisible = false } = {}) {
+// Nodes that expose a "send and wait" operation and are grouped under the
+// Human-in-the-Loop ("Human review") subcategory in the node creator.
+export function getSendAndWaitNodes(nodes: SimplifiedNodeType[]) {
+	return (nodes ?? [])
+		.filter((node) => node.codex?.categories?.includes(HUMAN_IN_THE_LOOP_CATEGORY))
+		.map((node) => node.name);
+}
+
+// Synthetic search result that mirrors the "Human review" subcategory tile shown
+// in the RegularView. Selecting it navigates into the existing HITL subcategory,
+// because subcategory tiles themselves are not part of the searchable node base.
+export function getHumanInTheLoopCallout(nodes: SimplifiedNodeType[]): SubcategoryCreateElement {
+	return {
+		key: HITL_SUBCATEGORY,
+		type: 'subcategory',
+		properties: {
+			title: HITL_SUBCATEGORY,
+			icon: 'badge-check',
+			sections: [
+				{
+					key: 'sendAndWait',
+					title: i18n.baseText('nodeCreator.sectionNames.sendAndWait'),
+					items: getSendAndWaitNodes(nodes),
+				},
+			],
+		},
+	};
+}
+
+export function getRootSearchCallouts(
+	search: string,
+	{ isRagStarterCalloutVisible = false } = {},
+	nodes: SimplifiedNodeType[] = [],
+) {
 	const results: INodeCreateElement[] = [];
+	const normalizedSearch = search.toLowerCase();
 
 	const ragKeywords = ['rag', 'vec', 'know'];
-	if (isRagStarterCalloutVisible && ragKeywords.some((x) => search.toLowerCase().startsWith(x))) {
+	if (isRagStarterCalloutVisible && ragKeywords.some((x) => normalizedSearch.startsWith(x))) {
 		results.push(getRagStarterCallout());
 	}
+
+	// "human in the loop" is covered by the "human" prefix.
+	const hitlKeywords = ['human', 'hitl', 'approval', 'review'];
+	if (hitlKeywords.some((x) => normalizedSearch.startsWith(x))) {
+		results.push(getHumanInTheLoopCallout(nodes));
+	}
+
 	return results;
 }
 

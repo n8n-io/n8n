@@ -1,6 +1,6 @@
 import type { Project, SharedCredentialsRepository, User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { CredentialTypes } from '@/credential-types';
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
@@ -44,10 +44,10 @@ describe('IdBasedCredentialMatcher', () => {
 	let matcherFactory: CredentialMatcherFactory;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		credentialTypes.recognizes.mockReturnValue(true);
 		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
-		context = { targetProject, user };
+		context = { projectId: targetProject.id, user };
 		matcherFactory = createMatcherFactory();
 	});
 

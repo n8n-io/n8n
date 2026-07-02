@@ -12,6 +12,7 @@
  */
 
 import type { BuiltTool } from '@n8n/agents';
+import { isRecord } from '@n8n/utils/is-record';
 import { z } from 'zod';
 
 import type { InstanceAiToolRegistry } from '../types';
@@ -89,10 +90,6 @@ interface JsonSchemaValidationContext {
 	maxObjectProperties: number;
 	maxUnionOptions: number;
 	budget: SanitizeBudget;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function throwJsonSchemaLimitError(

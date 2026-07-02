@@ -1,19 +1,33 @@
+import type { Mocked } from 'vitest';
 import type { CredentialProvider } from '@n8n/agents';
 import {
 	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
 	type AgentJsonConfig,
 	type AgentTaskDto,
 } from '@n8n/api-types';
+import type {
+	CustomFetch,
+	HttpTransport,
+	OutboundHttp,
+	SsrfProtectionService,
+} from '@n8n/backend-network';
+import type { SsrfProtectionConfig } from '@n8n/config';
 import type { User, WorkflowRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
+import type { CredentialTypes } from '@/credential-types';
+import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
+import type { NodeTypes } from '@/node-types';
+import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
+
+import type { AgentConfigService } from '../agent-config.service';
+import type { AgentCustomToolsService } from '../agent-custom-tools.service';
+import type { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
+import type { AgentSkillsService } from '../agent-skills.service';
 import type { AgentTaskService } from '../agent-task.service';
 import type { AgentsToolsService } from '../agents-tools.service';
 import type { AgentsService } from '../agents.service';
-import type { CredentialTypes } from '@/credential-types';
-import type { NodeTypes } from '@/node-types';
-import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
-import { NodeConnectionTypes } from 'n8n-workflow';
 import {
 	AgentsBuilderToolsService,
 	getAgentConfigHash,
@@ -23,16 +37,35 @@ import { BUILDER_TOOLS } from '../builder/builder-tool-names';
 import type { Agent } from '../entities/agent.entity';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
-import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
+import type { AiService } from '@/services/ai.service';
 
 const ctx = {
 	resumeData: undefined,
-	suspend: jest.fn().mockResolvedValue(undefined as never),
+	suspend: vi.fn().mockResolvedValue(undefined as never),
 	parentTelemetry: undefined,
 };
 
+type BuilderPurposeServices = Pick<AgentsService, 'findById' | 'findByProjectId'> &
+	Pick<AgentConfigService, 'updateConfig'> &
+	Pick<AgentCustomToolsService, 'buildCustomTool'> &
+	Pick<AgentIntegrationPersistenceService, 'listChatIntegrations'> &
+	Pick<AgentSkillsService, 'createSkill'>;
+
 function makeService() {
-	const agentsService = mock<AgentsService>();
+	const agentsService = mock<Pick<AgentsService, 'findById' | 'findByProjectId'>>();
+	const agentConfigService = mock<Pick<AgentConfigService, 'updateConfig'>>();
+	const agentCustomToolsService = mock<Pick<AgentCustomToolsService, 'buildCustomTool'>>();
+	const agentIntegrationPersistenceService =
+		mock<Pick<AgentIntegrationPersistenceService, 'listChatIntegrations'>>();
+	const agentSkillsService = mock<Pick<AgentSkillsService, 'createSkill'>>();
+	const purposeServices = {
+		findById: agentsService.findById,
+		findByProjectId: agentsService.findByProjectId,
+		updateConfig: agentConfigService.updateConfig,
+		buildCustomTool: agentCustomToolsService.buildCustomTool,
+		listChatIntegrations: agentIntegrationPersistenceService.listChatIntegrations,
+		createSkill: agentSkillsService.createSkill,
+	} as Mocked<BuilderPurposeServices>;
 	const secureRuntime = mock<AgentSecureRuntime>();
 	const workflowRepository = mock<WorkflowRepository>();
 	const agentsToolsService = mock<AgentsToolsService>();
@@ -41,6 +74,8 @@ function makeService() {
 	const mcpRegistryService = mock<McpRegistryService>();
 	const agentTaskService = mock<AgentTaskService>();
 	const agentRepository = mock<AgentRepository>();
+	const aiService = mock<AiService>();
+	aiService.isProxyEnabled.mockReturnValue(false);
 	const dynamicNodeParametersService = mock<DynamicNodeParametersService>();
 	const nodeTypes = mock<NodeTypes>();
 	agentsToolsService.getSharedTools.mockReturnValue([]);
@@ -48,8 +83,17 @@ function makeService() {
 	agentsToolsService.getSharedTools.mockReturnValue([]);
 	mcpRegistryService.getAll.mockResolvedValue([]);
 
+	const transport = mock<HttpTransport>();
+	transport.asCustomFetch.mockReturnValue(vi.fn() as unknown as CustomFetch);
+	const outboundHttp = mock<OutboundHttp>();
+	outboundHttp.transport.mockReturnValue(transport);
+
 	const service = new AgentsBuilderToolsService(
-		agentsService,
+		agentsService as unknown as AgentsService,
+		agentConfigService as unknown as AgentConfigService,
+		agentCustomToolsService as unknown as AgentCustomToolsService,
+		agentIntegrationPersistenceService as unknown as AgentIntegrationPersistenceService,
+		agentSkillsService as unknown as AgentSkillsService,
 		secureRuntime,
 		workflowRepository,
 		agentsToolsService,
@@ -59,11 +103,23 @@ function makeService() {
 		credentialTypes,
 		agentTaskService,
 		agentRepository,
+		aiService,
+		outboundHttp,
 		dynamicNodeParametersService,
 		nodeTypes,
+		mock<SsrfProtectionConfig>({ enabled: true }),
+		mock<SsrfProtectionService>(),
 	);
 
-	return { service, agentsService, secureRuntime, agentTaskService, agentRepository, nodeTypes };
+	return {
+		service,
+		agentsService: purposeServices,
+		secureRuntime,
+		agentTaskService,
+		agentRepository,
+		nodeTypes,
+		outboundHttp,
+	};
 }
 
 const baseConfig: AgentJsonConfig = {
@@ -162,7 +218,7 @@ describe('AgentsBuilderToolsService', () => {
 	const user = mock<User>();
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('JSON config tools', () => {
@@ -179,6 +235,16 @@ describe('AgentsBuilderToolsService', () => {
 			const toolNames = tools.map((tool) => tool.name);
 			expect(toolNames).toContain(BUILDER_TOOLS.VERIFY_MCP_SERVER);
 			expect(toolNames).toContain(BUILDER_TOOLS.SEARCH_MCP_SERVERS);
+		});
+
+		it('builds verify_mcp_server with OutboundHttp SSRF protection enabled', () => {
+			const { service, outboundHttp } = makeService();
+
+			service.getTools(agentId, projectId, credentialProvider, user);
+
+			expect(outboundHttp.transport).toHaveBeenCalledWith(
+				expect.not.objectContaining({ ssrf: 'disabled' }),
+			);
 		});
 
 		it('read_config returns the current config snapshot metadata', async () => {
@@ -234,25 +300,21 @@ describe('AgentsBuilderToolsService', () => {
 				{
 					id: agentId,
 					name: 'Current Agent',
-					description: 'The agent being edited',
 					activeVersionId: 'active-current',
 				},
 				{
 					id: 'agent-research',
 					name: 'Research Agent',
-					description: 'Finds information on the web',
 					activeVersionId: 'active-research',
 				},
 				{
 					id: 'agent-draft',
 					name: 'Draft Agent',
-					description: 'Not published yet',
 					activeVersionId: null,
 				},
 				{
 					id: 'agent-risk',
 					name: 'Risk Agent',
-					description: null,
 					activeVersionId: 'active-risk',
 				},
 			] as Agent[]);
@@ -265,7 +327,6 @@ describe('AgentsBuilderToolsService', () => {
 					{
 						agentId: 'agent-research',
 						name: 'Research Agent',
-						description: 'Finds information on the web',
 					},
 					{
 						agentId: 'agent-risk',
@@ -278,7 +339,7 @@ describe('AgentsBuilderToolsService', () => {
 		it('patch_config applies a patch when baseConfigHash matches', async () => {
 			const { service, agentsService } = makeService();
 			const currentConfig = { ...baseConfig, integrations: [] };
-			const updatedConfig = { ...currentConfig, description: 'Updated description' };
+			const updatedConfig = { ...currentConfig, instructions: 'Updated instructions' };
 			const normalizedConfig = {
 				...updatedConfig,
 				config: { webSearch: { enabled: true } },
@@ -295,7 +356,7 @@ describe('AgentsBuilderToolsService', () => {
 				{
 					baseConfigHash: getAgentConfigHash(currentConfig),
 					operations: JSON.stringify([
-						{ op: 'add', path: '/description', value: 'Updated description' },
+						{ op: 'replace', path: '/instructions', value: 'Updated instructions' },
 					]),
 				},
 				ctx,
@@ -320,7 +381,7 @@ describe('AgentsBuilderToolsService', () => {
 				{
 					baseConfigHash: 'stale-hash',
 					operations: JSON.stringify([
-						{ op: 'add', path: '/description', value: 'Updated description' },
+						{ op: 'replace', path: '/instructions', value: 'Updated instructions' },
 					]),
 				},
 				ctx,
@@ -353,7 +414,7 @@ describe('AgentsBuilderToolsService', () => {
 			agent.integrations = [scheduleIntegration] as unknown as Agent['integrations'];
 			agentsService.findById.mockResolvedValue(agent);
 			agentsService.updateConfig.mockResolvedValue({
-				config: { ...currentConfig, integrations: [], description: 'Updated description' },
+				config: { ...currentConfig, integrations: [], instructions: 'Updated instructions' },
 				updatedAt: '2026-01-02T00:00:00.000Z',
 				versionId: 'v2',
 			});
@@ -362,7 +423,7 @@ describe('AgentsBuilderToolsService', () => {
 				{
 					baseConfigHash: getAgentConfigHash(currentConfig),
 					operations: JSON.stringify([
-						{ op: 'add', path: '/description', value: 'Updated description' },
+						{ op: 'replace', path: '/instructions', value: 'Updated instructions' },
 					]),
 				},
 				ctx,
@@ -374,7 +435,7 @@ describe('AgentsBuilderToolsService', () => {
 				projectId,
 				expect.objectContaining({
 					integrations: [],
-					description: 'Updated description',
+					instructions: 'Updated instructions',
 				}),
 			);
 		});
@@ -675,7 +736,7 @@ describe('AgentsBuilderToolsService', () => {
 			};
 			const updatedConfig = {
 				...currentConfig,
-				description: 'Updated description',
+				instructions: 'Updated instructions',
 			};
 			const normalizedConfig = {
 				...updatedConfig,
@@ -694,7 +755,7 @@ describe('AgentsBuilderToolsService', () => {
 				{
 					baseConfigHash: getAgentConfigHash(currentConfig),
 					operations: JSON.stringify([
-						{ op: 'add', path: '/description', value: 'Updated description' },
+						{ op: 'replace', path: '/instructions', value: 'Updated instructions' },
 					]),
 				},
 				ctx,
@@ -1002,7 +1063,7 @@ describe('AgentsBuilderToolsService', () => {
 				.shared.find((tool) => tool.name === BUILDER_TOOLS.BUILD_CUSTOM_TOOL)!;
 		}
 
-		it('stores a custom tool and returns the generated tool id', async () => {
+		it('stores a custom tool and returns the tool name as id', async () => {
 			const { service, agentsService, secureRuntime } = makeService();
 			const descriptor = {
 				name: 'seo_analyzer',
@@ -1019,7 +1080,7 @@ describe('AgentsBuilderToolsService', () => {
 			secureRuntime.describeToolSecurely.mockResolvedValue(descriptor);
 			agentsService.buildCustomTool.mockResolvedValue({
 				ok: true,
-				id: 'tool_0Ab9ZkLm3Pq7Xy2N',
+				id: 'seo_analyzer',
 				descriptor,
 			});
 
@@ -1036,7 +1097,7 @@ describe('AgentsBuilderToolsService', () => {
 			);
 			expect(result).toEqual({
 				ok: true,
-				id: 'tool_0Ab9ZkLm3Pq7Xy2N',
+				id: 'seo_analyzer',
 				descriptor,
 			});
 		});
@@ -1060,15 +1121,20 @@ describe('AgentsBuilderToolsService', () => {
 			expect(tool.description).toContain('when to load it');
 			expect(tool.description).toContain('ask the user clarifying');
 			expect(tool.description).toContain('Gotchas');
+			expect(tool.description).toContain('References are not automatically loaded');
+			expect(tool.description).toContain('instructions must say exactly when to load each one');
+			expect(tool.systemInstruction).toContain(
+				'explicit conditions for loading each referenced file',
+			);
 		});
 
-		it('puts the structured body template in the body parameter', () => {
+		it('puts the structured body template in the instructions parameter', () => {
 			const { service } = makeService();
 
 			const tool = getCreateSkillTool(service);
-			const bodySchema = (
-				tool.inputSchema as unknown as { shape: { body: { description?: string } } }
-			).shape.body;
+			const instructionsSchema = (
+				tool.inputSchema as unknown as { shape: { instructions: { description?: string } } }
+			).shape.instructions;
 
 			for (const heading of [
 				'## Overview',
@@ -1078,7 +1144,7 @@ describe('AgentsBuilderToolsService', () => {
 				'## Example',
 				'## Gotchas',
 			]) {
-				expect(bodySchema.description).toContain(heading);
+				expect(instructionsSchema.description).toContain(heading);
 			}
 		});
 
@@ -1098,7 +1164,7 @@ describe('AgentsBuilderToolsService', () => {
 				{
 					name: 'Summarize Meetings',
 					description: 'Use when summarizing meeting notes',
-					body: 'Extract decisions and action items.',
+					instructions: 'Extract decisions and action items.',
 				},
 				ctx,
 			);
@@ -1119,7 +1185,7 @@ describe('AgentsBuilderToolsService', () => {
 			});
 		});
 
-		it('enforces name and body size limits via the input schema', () => {
+		it('enforces name and instruction size limits via the input schema', () => {
 			const { service } = makeService();
 
 			const result = (
@@ -1129,7 +1195,7 @@ describe('AgentsBuilderToolsService', () => {
 			).safeParse({
 				name: 'a'.repeat(129),
 				description: 'Use when summarizing meeting notes',
-				body: 'a'.repeat(AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH + 1),
+				instructions: 'a'.repeat(AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH + 1),
 			});
 
 			expect(result.success).toBe(false);

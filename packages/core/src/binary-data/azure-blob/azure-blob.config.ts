@@ -17,7 +17,7 @@ export class AzureBlobConfig {
 	@Env('N8N_EXTERNAL_STORAGE_AZURE_ACCOUNT_KEY')
 	accountKey: string = '';
 
-	/** Name of the blob container to store execution data in. */
+	/** Name of the blob container to store execution data and/or binary data in. */
 	@Env('N8N_EXTERNAL_STORAGE_AZURE_CONTAINER_NAME')
 	containerName: string = '';
 

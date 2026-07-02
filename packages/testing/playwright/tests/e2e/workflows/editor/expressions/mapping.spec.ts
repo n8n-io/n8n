@@ -156,7 +156,7 @@ test.describe(
 			await expect(addValueButton).toBeVisible();
 			await addValueButton.click();
 
-			await n8n.page.getByRole('option', { name: 'String' }).click();
+			await n8n.ndv.selectFromVisibleDropdown('String');
 
 			await expect(n8n.ndv.getParameterInputField('name')).toHaveValue('propertyName');
 			await expect(n8n.ndv.getParameterInputField('value')).toHaveValue('');

@@ -1,6 +1,7 @@
+import { isRecord } from '@n8n/utils/is-record';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
-import { isRecord, connectionSlotTargetsNode } from './column-ref-utils';
+import { connectionSlotTargetsNode } from './column-ref-utils';
 import type { MetricId } from './metric-catalog';
 
 type RecommendedMetricId = Exclude<MetricId, 'helpfulness'>;

@@ -5,7 +5,7 @@ import type { ICredentialContext } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { IdentifierValidationError, ITokenIdentifier } from './identifier-interface';
-import { OAuth2MetadataHttpClient, REQUEST_TIMEOUT } from './oauth2-metadata-http-client';
+import { OAuth2MetadataHttpClient } from './oauth2-metadata-http-client';
 import { OAuth2OptionsSchema, sha256 } from './oauth2-utils';
 
 import { CacheService } from '@/services/cache/cache.service';
@@ -233,7 +233,6 @@ export class OAuth2TokenIntrospectionIdentifier implements ITokenIdentifier {
 			body: params,
 			headers: { 'Content-Type': 'application/x-www-form-urlencoded', ...authHeaders },
 			json: true,
-			timeout: REQUEST_TIMEOUT,
 		});
 
 		if (response.statusCode !== 200) {

@@ -1,3 +1,4 @@
+import type { Tool } from '@langchain/core/tools';
 import type { RunningJobSummary } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig } from '@n8n/config';
@@ -9,7 +10,6 @@ import {
 	WorkflowExecute,
 	SupplyDataContext,
 } from 'n8n-core';
-import type { Tool } from '@langchain/core/tools';
 import type {
 	ExecutionStatus,
 	IDataObject,
@@ -165,6 +165,9 @@ export class JobProcessor {
 		});
 		additionalData.streamingEnabled = job.data.streamingEnabled;
 		additionalData.restartExecutionId = job.data.restartExecutionId;
+		additionalData.evaluationRunId = execution.data.manualData?.evaluationRunId;
+		// Rehydrate the manual-execution identity for private credential resolution.
+		additionalData.encryptedRunnerIdentity = job.data.encryptedRunnerIdentity;
 
 		const { pushRef } = job.data;
 
@@ -181,7 +184,6 @@ export class JobProcessor {
 		additionalData.hooks = lifecycleHooks;
 
 		if (pushRef) {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			additionalData.sendDataToUI = WorkflowExecuteAdditionalData.sendDataToUI.bind({
 				pushRef,
 			}) as (type: string, data: IDataObject | IDataObject[]) => void;

@@ -1,4 +1,3 @@
-import { ensureError } from 'n8n-workflow';
 import type { Dispatcher } from 'undici';
 import { Agent, EnvHttpProxyAgent, ProxyAgent, fetch as undiciFetch } from 'undici';
 
@@ -9,6 +8,20 @@ import type { ProxyOption, SsrfOption } from '../node-agents';
  * Drop-in replacement type for the global `fetch`.
  */
 export type CustomFetch = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+
+/**
+ * Per-request authorization gate run against the target of every dispatched request
+ * (the initial request and every redirect hop).
+ *
+ * Resolve to allow the request throug.
+ * **throw to block it** (the rejection surfaces as the fetch error).
+ *
+ * The mechanism lives here. The policy (what to authorize) is the caller's.
+ *
+ * Used e.g. for human-in-the-loop domain gating where each redirect
+ * target must be approved before it is fetched.
+ */
+export type RequestAuthorizer = (url: URL) => Promise<void>;
 
 /**
  * Undici agent timeout overrides for a transport, in milliseconds.
@@ -35,6 +48,8 @@ export interface CreateDispatcherTransportOptions {
 	ssrf?: SsrfOption;
 	/** Undici agent timeout overrides. */
 	timeouts?: TransportTimeoutOptions;
+	/** When set, it runs on every dispatched request (including each redirect hop) after the SSRF check */
+	authorize?: RequestAuthorizer;
 }
 
 /**
@@ -48,21 +63,39 @@ export interface DispatcherTransport {
 	getDispatcher(): Dispatcher;
 }
 
+/** Optional knobs for {@link buildDispatcher}, beyond the required proxy + SSRF policy. */
+export interface BuildDispatcherOptions {
+	/** Undici agent timeout overrides. */
+	timeouts?: TransportTimeoutOptions;
+	/** When set, it runs on every dispatched request (including each redirect hop) after the SSRF check. */
+	authorize?: RequestAuthorizer;
+}
+
 /**
  * Builds the undici dispatcher for a given proxy + SSRF policy,
  * The transport plumbing behind `OutboundHttp.transport()`.
  * When SSRF is active the dispatcher is composed with {@link createSsrfInterceptor},
- * so every dispatched request, including each redirect hop, is validated, and a
- * connect-time secure DNS lookup is installed for direct connections (see
- * {@link buildDispatcherFromProxy}).
+ * so every dispatched request, including each redirect hop, is validated.
+ *
+ * When an {@link RequestAuthorizer} is given it is composed too, gating every dispatched target the same way.
+ *
+ * Compose order matters:
+ * - the SSRF interceptor runs **first**
+ * - a target that fails the SSRF policy is hard-rejected
  */
 export function buildDispatcher(
 	proxy: ProxyOption,
 	ssrf: SsrfOption,
-	timeouts?: TransportTimeoutOptions,
+	options: BuildDispatcherOptions = {},
 ): Dispatcher {
-	const dispatcher = buildDispatcherFromProxy(proxy, ssrf, timeouts);
-	return ssrf === 'disabled' ? dispatcher : dispatcher.compose(createSsrfInterceptor(ssrf));
+	let dispatcher = buildDispatcherFromProxy(proxy, ssrf, options?.timeouts);
+	if (options?.authorize) {
+		dispatcher = dispatcher.compose(createAuthorizationInterceptor(options?.authorize));
+	}
+	if (ssrf !== 'disabled') {
+		dispatcher = dispatcher.compose(createSsrfInterceptor(ssrf));
+	}
+	return dispatcher;
 }
 
 function buildDispatcherFromProxy(
@@ -118,8 +151,9 @@ export function createDispatcherTransport(
 	const proxy = options?.proxy ?? 'env';
 	const ssrf = options?.ssrf ?? 'disabled';
 	const timeouts = options?.timeouts;
+	const authorize = options?.authorize;
 
-	const lazyDispatcher = lazyValue(() => buildDispatcher(proxy, ssrf, timeouts));
+	const lazyDispatcher = lazyValue(() => buildDispatcher(proxy, ssrf, { timeouts, authorize }));
 
 	return {
 		asCustomFetch: () => async (input, init) =>
@@ -171,12 +205,50 @@ export function createSsrfInterceptor(bridge: SsrfBridge): Dispatcher.Dispatcher
 }
 
 /**
+ * undici `compose` interceptor that runs a {@link RequestAuthorizer} against the target URL of every dispatched request.
+ *
+ * Like {@link createSsrfInterceptor}, it benefits from `fetch` re-dispatching per redirect hop:
+ * - the authorizer runs on the initial request
+ * - **and** every redirect target before that hop is fetched.
+ *
+ * The authorizer resolves to allow the request through, or throws to block it (fail-closed).
+ */
+export function createAuthorizationInterceptor(
+	authorize: RequestAuthorizer,
+): Dispatcher.DispatcherComposeInterceptor {
+	return (dispatch) => (opts, handler) => {
+		let targetUrl: URL;
+		try {
+			targetUrl = new URL(opts.path, opts.origin?.toString());
+			authorize(targetUrl).then(
+				() => dispatch(opts, handler),
+				(error: unknown) => failDispatch(handler, ensureError(error)),
+			);
+		} catch (error: unknown) {
+			failDispatch(handler, ensureError(error));
+		}
+
+		return true;
+	};
+}
+
+/**
  * Declared locally so it does not depend on undici's namespaced `DispatchHandler` / `DispatchController` types,
  * whose resolution varies across undici versions in the tree)
  */
 interface FailableDispatchHandler {
 	onResponseError?(controller: unknown, error: Error): void;
 	onError?(error: Error): void;
+}
+
+/**
+ * Coerces an unknown throw into an `Error`. Kept local so the pure transport core
+ * (`@n8n/backend-network/transport`) has no runtime dependency beyond `undici`.
+ */
+function ensureError(error: unknown): Error {
+	return error instanceof Error
+		? error
+		: new Error('Error that was not an instance of Error was thrown', { cause: error });
 }
 
 /**

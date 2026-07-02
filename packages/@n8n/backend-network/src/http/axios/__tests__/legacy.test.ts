@@ -68,7 +68,7 @@ describe('buildAxiosConfigFromLegacyRequest', () => {
 		expect(axiosOptions.headers).toMatchObject({
 			accept: '*/*',
 			'content-length': 163,
-			'content-type': expect.stringMatching(/^multipart\/form-data; boundary=/),
+			'content-type': expect.stringMatching(/^multipart\/form-data; boundary=/) as string,
 		});
 
 		expect(axiosOptions.data).toBeInstanceOf(FormData);
@@ -81,7 +81,7 @@ describe('buildAxiosConfigFromLegacyRequest', () => {
 		realFormData.append('key', 'value');
 
 		// Create a wrapper that breaks instanceof but preserves the interface
-		const foreignFormData: Record<string, unknown> = Object.create(null);
+		const foreignFormData = Object.create(null) as Record<string, unknown>;
 		for (const prop of Object.getOwnPropertyNames(Object.getPrototypeOf(realFormData))) {
 			const value = (realFormData as unknown as Record<string, unknown>)[prop];
 			if (typeof value === 'function') {
@@ -104,7 +104,7 @@ describe('buildAxiosConfigFromLegacyRequest', () => {
 		});
 
 		expect(axiosOptions.headers).toMatchObject({
-			'content-type': expect.stringMatching(/^multipart\/form-data; boundary=/),
+			'content-type': expect.stringMatching(/^multipart\/form-data; boundary=/) as string,
 		});
 	});
 
@@ -169,8 +169,12 @@ describe('buildAxiosConfigFromLegacyRequest', () => {
 		test('on redirected requests', async () => {
 			const axiosOptions = await buildAxiosConfigFromLegacyRequest(requestObject);
 			expect(axiosOptions.beforeRedirect).toBeDefined();
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			const redirectOptions: Record<string, any> = {
+			const redirectOptions: {
+				agents: { http?: HttpsAgent; https?: HttpsAgent };
+				hostname: string;
+				href?: string;
+				agent?: HttpsAgent;
+			} = {
 				agents: {},
 				hostname: 'example.de',
 				href: requestObject.uri,

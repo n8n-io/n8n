@@ -297,13 +297,18 @@ describe('createPlanTool — approval and revision flow', () => {
 	});
 
 	it('flips graph to active via approvePlan before scheduling on approval', async () => {
-		const context = createMockContext({ currentUserMessage: 'ordinary message' });
+		const requestRunHandoff = vi.fn();
+		const context = createMockContext({
+			currentUserMessage: 'ordinary message',
+			requestRunHandoff,
+		});
 		const tool = createPlanTool(context);
 
 		await executeTool(tool, planInput(), { resumeData: { approved: true } });
 
 		expect(context.plannedTaskService!.approvePlan).toHaveBeenCalledWith('test-thread');
 		expect(context.schedulePlannedTasks).toHaveBeenCalled();
+		expect(requestRunHandoff).toHaveBeenCalledWith('planned-tasks-scheduled');
 	});
 
 	it('returns the rejection result even when taskStorage.save fails so the revision flow can proceed', async () => {

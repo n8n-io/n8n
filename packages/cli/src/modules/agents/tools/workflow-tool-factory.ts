@@ -7,6 +7,7 @@ import {
 } from '@n8n/api-types';
 import type { UserRepository, WorkflowRepository, WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import type {
 	IDataObject,
 	IExecuteResponsePromiseData,
@@ -68,10 +69,6 @@ const INCOMPATIBLE_NODE_TYPES = new Set<string>(INCOMPATIBLE_WORKFLOW_TOOL_BODY_
 const DEFAULT_TIMEOUT_MS = 120_000;
 const MAX_RESULT_CHARS = 20_000;
 const MAX_NODE_OUTPUT_BYTES = 5_000;
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function isWorkflowToolResponse(value: unknown): value is IExecuteResponsePromiseData {
 	return isRecord(value) && ('body' in value || 'headers' in value || 'statusCode' in value);

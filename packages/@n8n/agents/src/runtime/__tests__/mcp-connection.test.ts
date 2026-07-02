@@ -1,3 +1,4 @@
+import { McpClient } from '../../sdk/mcp-client';
 import { McpConnection } from '../mcp/mcp-connection';
 
 const sseCtor = vi.fn();
@@ -116,6 +117,34 @@ describe('McpConnection — custom fetch forwarding', () => {
 		];
 		expect(options.fetch).toBeUndefined();
 		expect(options.eventSourceInit).toBeUndefined();
+	});
+});
+
+describe('McpClient — connection error formatting', () => {
+	beforeEach(() => {
+		clientConnect.mockReset();
+		clientListTools.mockReset();
+		clientClose.mockReset();
+	});
+
+	it('includes nested fetch causes in the aggregated connection error', async () => {
+		clientConnect.mockRejectedValueOnce(
+			new TypeError('fetch failed', {
+				cause: new Error('The request was blocked because it resolves to a restricted IP address'),
+			}),
+		);
+
+		const client = new McpClient([
+			{
+				name: 'custom_mcp',
+				url: 'http://localhost:5678/mcp/my-mcp-server',
+				transport: 'streamableHttp',
+			},
+		]);
+
+		await expect(client.listTools()).rejects.toThrow(
+			'MCP connection failed:\n\tcustom_mcp: fetch failed. The request was blocked because it resolves to a restricted IP address',
+		);
 	});
 });
 

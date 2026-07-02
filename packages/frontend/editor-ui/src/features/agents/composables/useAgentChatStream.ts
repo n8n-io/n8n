@@ -19,12 +19,18 @@ import {
 import {
 	applyOpenSuspensions,
 	convertDbMessages,
+	findOpenInteractive,
+	getMessageInteractive,
+	getMessageInteractives,
+	isApprovalSuspendInput,
+	isInteractiveToolName,
 	rebuildInteractiveFromHistory,
-	type ChatMessage,
-	type ToolCall,
-} from './agentChatMessages';
+	setMessageInteractives,
+	upsertMessageInteractive,
+} from '@/features/ai/shared/agentsChat/messageMappers';
+import type { ChatMessage, ToolCall } from '@/features/ai/shared/agentsChat/types';
 import { CHAT_MESSAGE_STATUS, TOOL_CALL_STATE } from '../constants';
-import { summariseToolCall } from '../utils/interactive-summary';
+import { summariseToolCall } from '@/features/ai/shared/agentsChat/interactiveSummary';
 import { isFailedDelegateOutput } from '../utils/delegate-tool';
 
 export interface FatalAgentError {
@@ -100,18 +106,22 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				dbMessages = envelope.messages;
 				openSuspensions = envelope.openSuspensions;
 			} else if (continueId) {
-				dbMessages = await getChatMessages(
+				const envelope = await getChatMessages(
 					rootStore.restApiContext,
 					params.projectId.value,
 					params.agentId.value,
 					continueId,
 				);
+				dbMessages = envelope.messages;
+				openSuspensions = envelope.openSuspensions;
 			} else {
-				dbMessages = await getTestChatMessages(
+				const envelope = await getTestChatMessages(
 					rootStore.restApiContext,
 					params.projectId.value,
 					params.agentId.value,
 				);
+				dbMessages = envelope.messages;
+				openSuspensions = envelope.openSuspensions;
 			}
 			if (dbMessages.length > 0) {
 				messages.value = applyOpenSuspensions(convertDbMessages(dbMessages), openSuspensions);
@@ -200,6 +210,14 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			if (found) return { msg: m, tc: found };
 		}
 		return null;
+	}
+
+	function markMessageSuccessIfSettled(msg: ChatMessage): void {
+		if (msg.status !== CHAT_MESSAGE_STATUS.AWAITING_USER) return;
+		const hasOpenInteractive = getMessageInteractives(msg).some(
+			(payload) => payload.resolvedAt === undefined,
+		);
+		if (!hasOpenInteractive) msg.status = CHAT_MESSAGE_STATUS.SUCCESS;
 	}
 
 	function dropOrphanMintedBubbles(session: StreamSession): void {
@@ -336,34 +354,44 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					found.tc.canceled = toolResultEvent.canceled === true;
 					found.tc.displaySummary = summariseToolCall(found.tc.tool, event.output, found.tc.input);
 					// If this was an interactive tool call, the result IS the user's
-					// resume payload — refresh the card so it flips to its resolved
-					// (disabled) state immediately. No separate "resumed" event needed.
-					if (found.msg.interactive) {
-						const updated = rebuildInteractiveFromHistory(found.tc);
-						if (updated) found.msg.interactive = updated;
-					}
-					if (found.msg.status === CHAT_MESSAGE_STATUS.AWAITING_USER)
-						found.msg.status = CHAT_MESSAGE_STATUS.SUCCESS;
+					// resume payload — refresh the matching card so it flips to its
+					// resolved (disabled) state immediately. Display-only n8n chat
+					// cards never suspend, so they are also born here when the tool
+					// settles.
+					const updated = rebuildInteractiveFromHistory(found.tc);
+					if (updated) upsertMessageInteractive(found.msg, updated);
+					markMessageSuccessIfSettled(found.msg);
 				}
 				break;
 			}
 			case 'tool-call-suspended': {
 				const { payload } = event;
 				const found = findToolCallById(payload.toolCallId);
+				// Builder interactive tools (ask_* / approval) suspend with their
+				// renderable input; integration actions suspend with a sidecar —
+				// keep the card-bearing tool input and store the sidecar separately.
+				const suspendIsRenderableInput =
+					isInteractiveToolName(payload.toolName) || isApprovalSuspendInput(payload.input);
 				let msg: ChatMessage;
 				let tc: ToolCall;
 				if (found) {
 					msg = found.msg;
 					tc = found.tc;
 					tc.state = TOOL_CALL_STATE.SUSPENDED;
-					tc.input = payload.input;
+					if (suspendIsRenderableInput) {
+						tc.input = payload.input;
+					} else {
+						tc.suspendPayload = payload.input;
+					}
 				} else {
 					msg = ensureCurrent(session);
 					tc = {
 						tool: payload.toolName,
 						toolCallId: payload.toolCallId,
-						input: payload.input,
 						state: TOOL_CALL_STATE.SUSPENDED,
+						...(suspendIsRenderableInput
+							? { input: payload.input }
+							: { suspendPayload: payload.input }),
 					};
 					msg.toolCalls = [...(msg.toolCalls ?? []), tc];
 				}
@@ -373,7 +401,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				});
 				if (interactive) {
 					interactive.runId = payload.runId;
-					msg.interactive = interactive;
+					upsertMessageInteractive(msg, interactive);
 					msg.status = CHAT_MESSAGE_STATUS.AWAITING_USER;
 				}
 				break;
@@ -572,6 +600,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					msg: found.msg,
 					prevStatus: found.msg.status,
 					prevInteractive: found.msg.interactive,
+					prevInteractives: found.msg.interactives ? [...found.msg.interactives] : undefined,
 				}
 			: null;
 		let optimisticUserMessageId: string | undefined;
@@ -580,12 +609,13 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			if (isCancellation) {
 				found.tc.state = TOOL_CALL_STATE.CANCELLED;
 				found.tc.canceled = true;
-				if (found.msg.interactive) {
-					found.msg.interactive = {
-						...found.msg.interactive,
+				const interactive = getMessageInteractive(found.msg, payload.toolCallId);
+				if (interactive) {
+					upsertMessageInteractive(found.msg, {
+						...interactive,
 						resolvedAt: Date.now(),
 						cancelled: true,
-					};
+					});
 				}
 			} else {
 				found.tc.state = TOOL_CALL_STATE.DONE;
@@ -597,10 +627,9 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					found.tc.input,
 				);
 				const updated = rebuildInteractiveFromHistory(found.tc);
-				if (updated) found.msg.interactive = updated;
+				if (updated) upsertMessageInteractive(found.msg, updated);
 			}
-			if (found.msg.status === CHAT_MESSAGE_STATUS.AWAITING_USER)
-				found.msg.status = CHAT_MESSAGE_STATUS.SUCCESS;
+			markMessageSuccessIfSettled(found.msg);
 		}
 
 		const resumeData: unknown = isCancellation
@@ -635,7 +664,13 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 			snapshot.tc.canceled = snapshot.prevCanceled;
 			snapshot.tc.displaySummary = snapshot.prevSummary;
 			snapshot.msg.status = snapshot.prevStatus;
-			snapshot.msg.interactive = snapshot.prevInteractive;
+			if (snapshot.prevInteractives) {
+				setMessageInteractives(snapshot.msg, snapshot.prevInteractives);
+			} else if (snapshot.prevInteractive) {
+				setMessageInteractives(snapshot.msg, [snapshot.prevInteractive]);
+			} else {
+				setMessageInteractives(snapshot.msg, []);
+			}
 		}
 		if (!ok && optimisticUserMessageId) {
 			messages.value = messages.value.filter((m) => m.id !== optimisticUserMessageId);
@@ -643,12 +678,12 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 	}
 
 	async function cancelAndSteer(text: string): Promise<void> {
-		const openMsg = messages.value.find((m) => m.interactive && !m.interactive.resolvedAt);
-		if (!openMsg?.interactive?.runId) return;
+		const openInteractive = findOpenInteractive(messages.value);
+		if (!openInteractive?.runId) return;
 
 		await resume({
-			runId: openMsg.interactive.runId,
-			toolCallId: openMsg.interactive.toolCallId,
+			runId: openInteractive.runId,
+			toolCallId: openInteractive.toolCallId,
 			cancelled: true,
 			text,
 		});

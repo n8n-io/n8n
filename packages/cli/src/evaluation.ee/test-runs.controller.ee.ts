@@ -99,6 +99,7 @@ export class TestRunsController {
 	async delete(req: TestRunsRequest.Delete) {
 		const { id: testRunId } = req.params;
 
+		// Deleting mutates run state — require workflow:execute
 		await this.getTestRun(req.params.id, req.params.workflowId, req.user, ['workflow:execute']);
 
 		await this.testRunRepository.delete({ id: testRunId });
@@ -112,6 +113,7 @@ export class TestRunsController {
 	async cancel(req: TestRunsRequest.Cancel, res: express.Response) {
 		const { id: testRunId } = req.params;
 
+		// Cancelling mutates execution state — require workflow:execute
 		const testRun = await this.getTestRun(req.params.id, req.params.workflowId, req.user, [
 			'workflow:execute',
 		]);
@@ -130,13 +132,7 @@ export class TestRunsController {
 	async cancelCase(req: TestRunsRequest.CancelCase) {
 		const { caseId } = req.params;
 
-		// Confirm the run exists + access first; this also surfaces 404 for an
-		// invalid runId before we touch the case row. Requires
-		// `workflow:execute` (not just `workflow:read`) because cancelling a
-		// pending case mutates execution state — a read-only user must not be
-		// able to reach this path. Cross-workflow / no-access lookups still
-		// return 404 (same response shape as missing runs) so existence isn't
-		// leaked.
+		// Cancelling a pending case mutates execution state — require workflow:execute
 		await this.getTestRun(req.params.id, req.params.workflowId, req.user, ['workflow:execute']);
 
 		const cancelled = await this.testCaseExecutionRepository.cancelIfNew(req.params.id, caseId);
@@ -162,6 +158,7 @@ export class TestRunsController {
 	) {
 		const { workflowId } = req.params;
 
+		// Starting a run triggers real executions — require workflow:execute
 		await this.assertUserHasAccessToWorkflow(workflowId, req.user, ['workflow:execute']);
 
 		const concurrency = payload.concurrency ?? 1;

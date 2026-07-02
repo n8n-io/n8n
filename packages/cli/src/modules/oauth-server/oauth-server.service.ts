@@ -58,6 +58,11 @@ export class OAuthServerService implements OAuthServerProvider {
 					return undefined;
 				}
 
+				// Some clients echo back the `scope` they saw on registration and
+				// reject responses that include `scope: ''`. Omit the field
+				// entirely when no scopes are advertised.
+				const supportedScopes = this.resourceRegistry.getAllScopes();
+
 				return {
 					client_id: client.id,
 					client_name: client.name,
@@ -69,7 +74,7 @@ export class OAuthServerService implements OAuthServerProvider {
 						client_secret_expires_at: client.clientSecretExpiresAt,
 					}),
 					response_types: ['code'],
-					scope: this.resourceRegistry.getAllScopes().join(' '),
+					...(supportedScopes.length > 0 && { scope: supportedScopes.join(' ') }),
 					logo_uri: undefined,
 					tos_uri: undefined,
 				};
@@ -159,6 +164,52 @@ export class OAuthServerService implements OAuthServerProvider {
 		}
 	}
 
+	/**
+	 * Checks a requested redirect URI against the configured allowlist.
+	 *
+	 * Non-loopback URIs must match an allowlist entry exactly. Loopback URIs
+	 * (localhost / 127.0.0.1 / [::1]) match a loopback allowlist entry that
+	 * shares the same scheme, host and path regardless of port: native clients
+	 * bind an ephemeral port at request time, so the port cannot be known in
+	 * advance (RFC 8252 §7.3).
+	 */
+	private isRedirectUriAllowed(allowedUris: string[], redirectUri: string): boolean {
+		if (allowedUris.includes(redirectUri)) {
+			return true;
+		}
+
+		let requested: URL;
+		try {
+			requested = new URL(redirectUri);
+		} catch {
+			return false;
+		}
+
+		if (!this.isLoopbackHost(requested.hostname)) {
+			return false;
+		}
+
+		return allowedUris.some((allowed) => {
+			let candidate: URL;
+			try {
+				candidate = new URL(allowed);
+			} catch {
+				return false;
+			}
+
+			return (
+				this.isLoopbackHost(candidate.hostname) &&
+				candidate.protocol === requested.protocol &&
+				candidate.hostname === requested.hostname &&
+				candidate.pathname === requested.pathname
+			);
+		});
+	}
+
+	private isLoopbackHost(hostname: string): boolean {
+		return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]';
+	}
+
 	async authorize(
 		client: OAuthClientInformationFull,
 		params: AuthorizationParams,
@@ -168,6 +219,25 @@ export class OAuthServerService implements OAuthServerProvider {
 
 		try {
 			const resource = await this.resolveAndValidateResourceIndicator(params.resource?.toString());
+
+			const targetResource = resource
+				? await this.resourceRegistry.getByResourceUrl(resource)
+				: this.resourceRegistry.getDefaultResource();
+			const allowedUris = (await targetResource?.getAllowedRedirectUris?.()) ?? [];
+			if (allowedUris.length > 0 && !this.isRedirectUriAllowed(allowedUris, params.redirectUri)) {
+				this.logger.warn(
+					'MCP OAuth authorization rejected: requested redirect URI is not in the configured allowlist',
+					{
+						clientId: client.client_id,
+						attemptedUri: params.redirectUri,
+					},
+				);
+				res.status(400).json({
+					error: 'invalid_request',
+					error_description: 'Redirect URI not in allowed list',
+				});
+				return;
+			}
 
 			this.oauthSessionService.createSession(res, {
 				clientId: client.client_id,

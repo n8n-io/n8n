@@ -181,6 +181,13 @@ describe('CLI', () => {
 	let mockExit: MockInstance;
 	const originalEnv = process.env;
 
+	// Warm the module cache once so the first test's `await import('../cli')`
+	// doesn't pay cold-compile cost against the default 5s test timeout on a
+	// loaded CI runner. Later imports resolve from cache.
+	beforeAll(async () => {
+		await import('../cli');
+	}, 30_000);
+
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mockExit = vi.spyOn(process, 'exit').mockImplementation((code) => {

@@ -1,6 +1,6 @@
 import { OutboundHttp, type HttpRequestClient } from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { paginatedRequest, buildStrapiUpdateQuery } from '../strapi-utils';
 
@@ -20,12 +20,12 @@ const page = <T>(
 });
 
 describe('Strapi utils', () => {
-	const request = jest.fn();
-	const requests = jest.fn().mockReturnValue(mock<HttpRequestClient>({ request }));
+	const request = vi.fn();
+	const requests = vi.fn().mockReturnValue(mock<HttpRequestClient>({ request }));
 	mockInstance(OutboundHttp, { requests });
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		requests.mockReturnValue(mock<HttpRequestClient>({ request }));
 	});
 
@@ -99,14 +99,13 @@ describe('Strapi utils', () => {
 
 			await paginatedRequest(baseUrl, { pagination: { page: 1, pageSize: 25 } });
 
-			expect(requests).toHaveBeenCalledWith({ ssrf: 'disabled' });
+			expect(requests).toHaveBeenCalledWith({ ssrf: 'disabled', timeout: 6000 });
 			expect(request).toHaveBeenCalledWith({
 				url: baseUrl,
 				method: 'GET',
 				headers: { 'Content-Type': 'application/json' },
 				qs: { pagination: { page: 1, pageSize: 25 } },
 				json: true,
-				timeout: 6000,
 			});
 		});
 
@@ -121,7 +120,7 @@ describe('Strapi utils', () => {
 			const result = await paginatedRequest(baseUrl, { pagination: { page: 1, pageSize: 25 } });
 
 			expect(result).toEqual([]);
-			expect(request).toHaveBeenCalledWith(expect.objectContaining({ timeout: 6000 }));
+			expect(requests).toHaveBeenCalledWith(expect.objectContaining({ timeout: 6000 }));
 		});
 
 		it('should always include entry IDs in results', async () => {
@@ -188,6 +187,87 @@ describe('Strapi utils', () => {
 					}),
 				}),
 			);
+		});
+		describe('Strapi v5 (flattened) schema support', () => {
+			it('should flatten v5 entities and drop documentId', async () => {
+				request.mockResolvedValueOnce({
+					data: [{ id: 1, documentId: 'doc-1', name: 'Node1', version: '1.0.0' }],
+					meta: { pagination: { page: 1, pageSize: 25, pageCount: 1, total: 1 } },
+				});
+
+				const result = await paginatedRequest<{ name: string; version: string }>(baseUrl, {
+					pagination: { page: 1, pageSize: 25 },
+				});
+
+				expect(result).toEqual([{ id: 1, name: 'Node1', version: '1.0.0' }]);
+			});
+
+			it('should paginate across multiple pages of v5 entities', async () => {
+				request
+					.mockResolvedValueOnce({
+						data: [{ id: 1, documentId: 'doc-1', name: 'Node1' }],
+						meta: { pagination: { page: 1, pageSize: 25, pageCount: 2, total: 2 } },
+					})
+					.mockResolvedValueOnce({
+						data: [{ id: 2, documentId: 'doc-2', name: 'Node2' }],
+						meta: { pagination: { page: 2, pageSize: 25, pageCount: 2, total: 2 } },
+					});
+
+				const result = await paginatedRequest<{ name: string }>(baseUrl, {
+					pagination: { page: 1, pageSize: 25 },
+				});
+
+				expect(result).toEqual([
+					{ id: 1, name: 'Node1' },
+					{ id: 2, name: 'Node2' },
+				]);
+			});
+
+			it('should flatten v5 entities that have no documentId', async () => {
+				request.mockResolvedValueOnce({
+					data: [{ id: 1, name: 'Node1', version: '2.0.0' }],
+					meta: { pagination: { page: 1, pageSize: 25, pageCount: 1, total: 1 } },
+				});
+
+				const result = await paginatedRequest<{ name: string; version: string }>(baseUrl, {
+					pagination: { page: 1, pageSize: 25 },
+				});
+
+				expect(result).toEqual([{ id: 1, name: 'Node1', version: '2.0.0' }]);
+			});
+
+			it('should treat a non-object "attributes" field as v5 data and keep sibling fields', async () => {
+				request.mockResolvedValueOnce({
+					data: [{ id: 1, documentId: 'doc-1', name: 'Node1', attributes: null }],
+					meta: { pagination: { page: 1, pageSize: 25, pageCount: 1, total: 1 } },
+				});
+
+				const result = await paginatedRequest<{ name: string; attributes: null }>(baseUrl, {
+					pagination: { page: 1, pageSize: 25 },
+				});
+
+				// `attributes: null` is real data, not the v4 wrapper, so sibling fields must survive
+				expect(result).toEqual([{ id: 1, name: 'Node1', attributes: null }]);
+			});
+
+			it('should handle a response that mixes v4 (wrapped) and v5 (flattened) entities', async () => {
+				request.mockResolvedValueOnce({
+					data: [
+						{ id: 1, attributes: { name: 'WrappedNode', version: '1.0.0' } },
+						{ id: 2, documentId: 'doc-2', name: 'FlatNode', version: '2.0.0' },
+					],
+					meta: { pagination: { page: 1, pageSize: 25, pageCount: 1, total: 1 } },
+				});
+
+				const result = await paginatedRequest<{ name: string; version: string }>(baseUrl, {
+					pagination: { page: 1, pageSize: 25 },
+				});
+
+				expect(result).toEqual([
+					{ id: 1, name: 'WrappedNode', version: '1.0.0' },
+					{ id: 2, name: 'FlatNode', version: '2.0.0' },
+				]);
+			});
 		});
 	});
 

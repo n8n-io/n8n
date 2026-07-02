@@ -86,7 +86,7 @@ const getColumnTypeOptions = (compatibleTypes: ColumnType[]) => {
 };
 
 const validateColumnName = (columnName: string): string | undefined => {
-	if (DATA_TABLE_SYSTEM_COLUMNS.includes(columnName)) {
+	if (DATA_TABLE_SYSTEM_COLUMNS.some((sc) => sc.toLowerCase() === columnName.toLowerCase())) {
 		return i18n.baseText('dataTable.import.systemColumnName', {
 			interpolate: { columnName },
 		});

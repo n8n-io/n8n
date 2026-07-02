@@ -42,7 +42,8 @@ describe('GET /.well-known/oauth-authorization-server', () => {
 			grant_types_supported: ['authorization_code', 'refresh_token'],
 			token_endpoint_auth_methods_supported: ['none', 'client_secret_post', 'client_secret_basic'],
 			code_challenge_methods_supported: ['S256'],
-			scopes_supported: SUPPORTED_SCOPES,
+			authorization_response_iss_parameter_supported: true,
+			...(SUPPORTED_SCOPES.length > 0 && { scopes_supported: SUPPORTED_SCOPES }),
 		});
 	});
 
@@ -99,7 +100,7 @@ describe('GET /.well-known/oauth-protected-resource/mcp-server/http', () => {
 			resource: expect.stringContaining('/mcp-server/http'),
 			bearer_methods_supported: ['header'],
 			authorization_servers: [expect.any(String)],
-			scopes_supported: SUPPORTED_SCOPES,
+			...(SUPPORTED_SCOPES.length > 0 && { scopes_supported: SUPPORTED_SCOPES }),
 		});
 	});
 
@@ -127,14 +128,13 @@ describe('GET /.well-known/oauth-protected-resource/mcp-server/http', () => {
 		expect(response.body.bearer_methods_supported).toEqual(['header']);
 	});
 
-	test('should list supported scopes', async () => {
+	test('should omit scopes_supported when no scopes are advertised', async () => {
 		const response = await testServer.restlessAgent.get(
 			'/.well-known/oauth-protected-resource/mcp-server/http',
 		);
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body.scopes_supported).toEqual(SUPPORTED_SCOPES);
-		expect(response.body.scopes_supported.length).toBeGreaterThan(0);
+		expect(response.body).not.toHaveProperty('scopes_supported');
 	});
 
 	test('should be accessible without authentication', async () => {
@@ -305,7 +305,7 @@ describe('POST /mcp-oauth/register', () => {
 
 		// Stub the pre-check guard to always pass, simulating two concurrent
 		// registrations that both saw count < limit and made it past the guard.
-		const guardSpy = jest
+		const guardSpy = vi
 			.spyOn(OAuthServerService.prototype, 'isClientLimitReached')
 			.mockResolvedValue(false);
 

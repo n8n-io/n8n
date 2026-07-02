@@ -45,6 +45,23 @@ describe('HostnameMatcher', () => {
 		});
 	});
 
+	describe('trailing dot (FQDN) normalization', () => {
+		it('should match a hostname with a trailing dot against an exact pattern', () => {
+			const matcher = new HostnameMatcher(['internal.n8n.io']);
+			expect(matcher.matches('internal.n8n.io.')).toBe(true);
+		});
+
+		it('should match a hostname with a trailing dot against a wildcard pattern', () => {
+			const matcher = new HostnameMatcher(['*.example.com']);
+			expect(matcher.matches('api.example.com.')).toBe(true);
+		});
+
+		it('should match when the configured pattern carries a trailing dot', () => {
+			const matcher = new HostnameMatcher(['internal.n8n.io.']);
+			expect(matcher.matches('internal.n8n.io')).toBe(true);
+		});
+	});
+
 	it('should trim configured patterns', () => {
 		const matcher = new HostnameMatcher([' *.example.com ', ' exact.example.com ']);
 		expect(matcher.matches('api.example.com')).toBe(true);

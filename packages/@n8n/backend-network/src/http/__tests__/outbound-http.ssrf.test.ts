@@ -133,9 +133,11 @@ function makeBridge(blockedPath: string): { bridge: SsrfBridge; error: Error } {
 	const bridge = makeSsrfBridge({
 		validateUrl: vi.fn(async (url: string | URL) => {
 			const href = typeof url === 'string' ? url : url.href;
-			return href.includes(blockedPath)
-				? { ok: false as const, error }
-				: { ok: true as const, result: undefined };
+			return await Promise.resolve(
+				href.includes(blockedPath)
+					? { ok: false as const, error }
+					: { ok: true as const, result: undefined },
+			);
 		}),
 	});
 	return { bridge, error };

@@ -2,7 +2,8 @@ import type { InstanceAiTraceContext } from '@n8n/instance-ai';
 
 export type InstanceAiObservabilityContext = {
 	threadId: string;
-	runId: string;
+	runId?: string;
+	projectId?: string;
 	tracing?: InstanceAiTraceContext;
 	agentId?: string;
 	userId?: string;
@@ -18,11 +19,12 @@ export function buildInstanceAiObservabilityContext(
 	return {
 		source: 'instance-ai',
 		threadId: context.threadId,
-		runId: context.runId,
-		...(context.tracing?.rootRun.otelTraceId
+		...(context.runId ? { runId: context.runId } : {}),
+		...(context.projectId ? { projectId: context.projectId } : {}),
+		...(context.tracing?.rootRun?.otelTraceId
 			? { traceId: context.tracing.rootRun.otelTraceId }
 			: {}),
-		...(context.tracing?.rootRun.traceId
+		...(context.tracing?.rootRun?.traceId
 			? { langsmithTraceId: context.tracing.rootRun.traceId }
 			: {}),
 		...(context.agentId ? { agentId: context.agentId } : {}),

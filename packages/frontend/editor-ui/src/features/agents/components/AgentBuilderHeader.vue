@@ -21,7 +21,7 @@ import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Brea
 import type { DropdownMenuItemProps } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system/types/action-dropdown';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { NEW_AGENT_VIEW, PROJECT_AGENTS } from '@/features/agents/constants';
+import { AGENT_PREVIEW_VIEW, NEW_AGENT_VIEW, PROJECT_AGENTS } from '@/features/agents/constants';
 
 import AgentPublishButton from './AgentPublishButton.vue';
 import { useProjectAgentsList } from '../composables/useProjectAgentsList';
@@ -61,6 +61,11 @@ const projectRoute = computed<RouteLocationRaw>(() => ({
 	params: { projectId: props.projectId },
 }));
 
+const previewRoute = computed<RouteLocationRaw>(() => ({
+	name: AGENT_PREVIEW_VIEW,
+	params: { projectId: props.projectId, agentId: props.agentId },
+}));
+
 const breadcrumbItems = computed<PathItem[]>(() => [
 	{
 		id: props.projectId,
@@ -73,6 +78,9 @@ const breadcrumbItems = computed<PathItem[]>(() => [
 const agentDisplayName = computed(() => props.agent?.name ?? '…');
 
 const isPreviewDisabled = computed(() => props.agent?.isRunnable !== true);
+const previewHref = computed(() =>
+	isPreviewDisabled.value ? undefined : router.resolve(previewRoute.value).href,
+);
 const previewDisabledTooltip = computed(() =>
 	i18n.baseText('agents.builder.preview.disabledTooltip' as BaseTextKey),
 );
@@ -108,8 +116,21 @@ function onBreadcrumbSelect(item: PathItem) {
 	void router.push(projectRoute.value);
 }
 
-function onOpenPreview() {
-	if (isPreviewDisabled.value) return;
+function onPreviewClick(event: MouseEvent) {
+	if (isPreviewDisabled.value) {
+		event.preventDefault();
+		return;
+	}
+	if (
+		event.defaultPrevented ||
+		event.button !== 0 ||
+		event.metaKey ||
+		event.ctrlKey ||
+		event.shiftKey
+	) {
+		return;
+	}
+	event.preventDefault();
 	emit('open-preview');
 }
 
@@ -176,9 +197,10 @@ const isVersionHistoryDisabled = computed(() => !props.agent?.hasPublishHistory)
 					variant="ghost"
 					size="medium"
 					icon="play"
+					:href="previewHref"
 					:disabled="isPreviewDisabled"
 					data-testid="agent-header-preview-btn"
-					@click="onOpenPreview"
+					@click="onPreviewClick"
 				>
 					{{ i18n.baseText('agents.builder.preview.button' as BaseTextKey) }}
 				</N8nButton>
@@ -234,24 +256,32 @@ const isVersionHistoryDisabled = computed(() => !props.agent?.hasPublishHistory)
 	border-bottom: var(--border);
 	flex-shrink: 0;
 	height: var(--height--4xl);
+	overflow-x: auto;
+	overflow-y: hidden;
+	scrollbar-width: thin;
+	scrollbar-color: var(--border-color) transparent;
 }
 
 .left {
 	display: flex;
 	align-items: center;
-	flex: 1 1 auto;
-	min-width: 0;
+	flex: 0 0 auto;
+	min-width: max-content;
 }
 
 .left :global(.n8n-breadcrumbs) {
-	min-width: 0;
+	min-width: max-content;
 }
 
 .left :global(.n8n-breadcrumbs [data-test-id='breadcrumbs-item']) {
 	display: flex;
 	align-items: center;
-	height: var(--height--md);
+	min-height: var(--height--md);
 	padding: var(--spacing--2xs) var(--spacing--xs);
+}
+
+.left :global(.n8n-breadcrumbs [data-test-id='breadcrumbs-item'] *) {
+	line-height: var(--line-height--sm);
 }
 
 .crumbSeparator {
@@ -264,6 +294,7 @@ const isVersionHistoryDisabled = computed(() => !props.agent?.hasPublishHistory)
 .switcherButton {
 	font-size: var(--font-size--sm);
 	gap: var(--spacing--4xs);
+	flex-shrink: 0;
 }
 
 .switcherLabel {
@@ -271,6 +302,7 @@ const isVersionHistoryDisabled = computed(() => !props.agent?.hasPublishHistory)
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+	line-height: var(--line-height--sm);
 }
 
 .agentSwitcherLabel {
@@ -288,6 +320,7 @@ const isVersionHistoryDisabled = computed(() => !props.agent?.hasPublishHistory)
 	align-items: center;
 	gap: var(--spacing--2xs);
 	flex-shrink: 0;
+	white-space: nowrap;
 }
 
 .saveStatus {

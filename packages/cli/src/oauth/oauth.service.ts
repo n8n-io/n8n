@@ -26,6 +26,7 @@ import { UrlService } from '@/services/url.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import {
 	ClientOAuth2,
+	resolveClientAuthOptions,
 	type ClientOAuth2Options,
 	type ClientOAuth2TokenData,
 	type OAuth2AuthenticationMethod,
@@ -133,6 +134,7 @@ export class OauthService {
 		// In the future, enabling SSRF "per feature" could be refined through configuration.
 		this.http = outboundHttp.requests({
 			ssrf: ssrfProtectionConfig.enabled ? ssrfProtectionService : 'disabled',
+			timeout: OAUTH_REQUEST_TIMEOUT_MS,
 		});
 	}
 
@@ -250,7 +252,7 @@ export class OauthService {
 		return `${restUrl}/oauth${oauthVersion}-credential`;
 	}
 
-	async getCredentialForUpdate(
+	async getCredentialForAuthFlow(
 		req: OAuthRequest.OAuth1Credential.Auth | OAuthRequest.OAuth2Credential.Auth,
 	): Promise<CredentialsEntity> {
 		const { id: credentialId } = req.query;
@@ -259,10 +261,18 @@ export class OauthService {
 			throw new BadRequestError('Required credential ID is missing');
 		}
 
+		// Private credentials are connected per-user, so executing users can authorize
+		// their own account without edit rights. Shared/static credentials store the
+		// token on the shared credential itself, so connecting them still requires edit.
+		const existingCredential = await this.credentialsFinderService.findCredentialById(credentialId);
+		const requiredScope = existingCredential?.isResolvable
+			? 'credential:connect'
+			: 'credential:update';
+
 		const credential = await this.credentialsFinderService.findCredentialForUser(
 			credentialId,
 			req.user,
-			['credential:update'],
+			[requiredScope],
 		);
 
 		if (!credential) {
@@ -679,7 +689,7 @@ export class OauthService {
 
 		const oAuthClient = new ClientOAuth2({
 			clientId: oauthCredentials.clientId,
-			clientSecret: oauthCredentials.clientSecret,
+			...resolveClientAuthOptions(oauthCredentials),
 			accessTokenUri: oauthCredentials.accessTokenUrl,
 			scopes: scopes?.length ? scopes : undefined,
 			ignoreSSLIssues: oauthCredentials.ignoreSSLIssues,
@@ -1031,7 +1041,6 @@ export class OauthService {
 			method: 'POST',
 			body: registerPayload,
 			json: true,
-			timeout: OAUTH_REQUEST_TIMEOUT_MS,
 		});
 		const registrationValidation =
 			dynamicClientRegistrationResponseSchema.safeParse(registerResult);
@@ -1103,7 +1112,6 @@ export class OauthService {
 			method: 'POST',
 			headers: { ...data },
 			encoding: 'text',
-			timeout: OAUTH_REQUEST_TIMEOUT_MS,
 		});
 
 		// Response comes as x-www-form-urlencoded string so convert it to JSON
@@ -1189,7 +1197,6 @@ export class OauthService {
 				'content-type': 'application/x-www-form-urlencoded',
 			},
 			encoding: 'text',
-			timeout: OAUTH_REQUEST_TIMEOUT_MS,
 		});
 
 		// Response comes as x-www-form-urlencoded string so convert it to JSON
@@ -1202,6 +1209,11 @@ export class OauthService {
 		return Object.fromEntries(new URLSearchParams(response).entries());
 	}
 
+	// Builds options for the authorization-redirect leg, consumed by the `oauth2.authenticate`
+	// hook and `code.getUri()`. Neither authenticates the client. The certificate is deliberately
+	// not mapped here — it would only leak the private key to the hook with no benefit. `clientSecret`
+	// is also unused by `getUri()` and reaches only the hook (pre-existing). The resulting asymmetry
+	// (secret reaches the hook, certificate does not) is intentional.
 	private convertCredentialToOptions(credential: OAuth2CredentialData): ClientOAuth2Options {
 		const options: ClientOAuth2Options = {
 			clientId: credential.clientId,
@@ -1242,7 +1254,6 @@ export class OauthService {
 			method: 'GET',
 			json: true,
 			returnFullResponse: true,
-			timeout: OAUTH_REQUEST_TIMEOUT_MS,
 		});
 		if (response.statusCode !== 200) {
 			throw new OperationalError(`Request failed with status code ${response.statusCode}`);

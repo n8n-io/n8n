@@ -91,6 +91,14 @@ export class RunDataPanel {
 		return this.root.locator('tr').nth(index);
 	}
 
+	getTableRowHighlights(index: number) {
+		return this.getTableRow(index).locator('mark');
+	}
+
+	getTableCellByText(text: string) {
+		return this.getTable().locator(`text=${text}`);
+	}
+
 	getTbodyCell(row: number, col: number) {
 		return this.root.locator('table tbody tr').nth(row).locator('td').nth(col);
 	}
@@ -153,6 +161,10 @@ export class RunDataPanel {
 
 	getNodeErrorMessageHeader(): Locator {
 		return this.root.getByTestId('node-error-message');
+	}
+
+	getErrorMessage(): Locator {
+		return this.getNodeErrorMessageHeader().first();
 	}
 
 	async toggleInputRunLinking() {

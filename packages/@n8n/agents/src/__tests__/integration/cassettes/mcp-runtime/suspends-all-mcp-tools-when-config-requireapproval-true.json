@@ -1,0 +1,118 @@
+[
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "Use tools_echo to echo messages. Be concise."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Echo \"needs approval\" using tools_echo."
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "tools_echo",
+					"description": "Echo the message back as-is",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"message": {
+								"type": "string",
+								"description": "Message to echo"
+							}
+						},
+						"required": ["message"]
+					},
+					"eager_input_streaming": true
+				},
+				{
+					"name": "tools_add",
+					"description": "Add two numbers together",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"a": {
+								"type": "number",
+								"description": "First number"
+							},
+							"b": {
+								"type": "number",
+								"description": "Second number"
+							}
+						},
+						"required": ["a", "b"]
+					},
+					"eager_input_streaming": true
+				},
+				{
+					"name": "tools_image",
+					"description": "Return a small image with a caption",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"caption": {
+								"type": "string",
+								"description": "Image caption"
+							}
+						},
+						"required": ["caption"]
+					},
+					"eager_input_streaming": true
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			},
+			"stream": true
+		},
+		"status": 200,
+		"response": [
+			"1f8b0800000000000013c5544d8fd33010bdf75744734ea5b44ba8f00d84b42710da452b0145d6d49e6dbd756cafed14962aff1db96ddaa41fec5e80dcfcded8f3decc64684526b2aca210704e3c44f471203122cbd6109f1c01831e09797b06b686ca4ad2c04068ac250d17a896f5f0d5b01c8e8b71392a8a11e4a0647a23cc79312aaf6fc71fcbd7fec3fb3bf7a97a7cf37473fd70f516f2a34c9083b73a0118820a114d4a2bac896422b06fdf7308d13aee098335c04cadf50e0af4589311d4032545543ab458ddaa57c6d59147bb2413804dae8a1c048a0571e109a3b286f723f6bc279497b8f66e4a406e411579d4bcac4ee30fec6871cc3639d83a76a1b2cc21905f29413c2af2c0205546a297a9c8e69e7c32cee7648181b191e30a95c69926689aacf73583016d1bbf2b2a9f692b96e7db7f26649350d2cfaded2e9f5cefee456b35af03b52390ce352f461357ddde7cfe8abfee50bc9b7db13f9c9d4c02e460b06aef054e626137695c1d81ad9b545ead93ed7d02a93c89d83177b0e594991ff9c8208170c9ba241df1cfd637213deb5be4a068dbc48760cd3ed8a18f0af5060406d03cdf857f24653d6dffb729b06c0a8648860c9df37685ba15fa9f454ea1d929b93cb3d63d37b2d67564f4de6a77db593b3d123af27bdba73be82fdc41cddf5b42275be3ecc01d56fa69f1ba1cf4f7467ae1371f99b6e332060000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "10000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-23T12:20:22Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-23T12:20:22Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-23T12:20:22Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "12000000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-23T12:20:22Z",
+			"cache-control": "no-cache",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a103723ffddee1a5-VIE",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "text/event-stream; charset=utf-8",
+			"date": "Tue, 23 Jun 2026 12:20:23 GMT",
+			"request-id": "req_011CcLBT4QopUpkfwvUWDTak",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=Flu7tJzgXrcFoFVx9AuekYRtmag42sefg7TI2.OB2Bg-1782217221.115891-1.0.1.1-QzgeVg.cpsz8UMMAbId7H_68woDR_jMxsHahr9AbtNo; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-fe8f7f2a51c873b92054030c390889a4-7be1d9a29d2f4845-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	}
+]

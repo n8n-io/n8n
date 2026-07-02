@@ -1,6 +1,6 @@
 import type { AuthenticatedRequest } from '@n8n/db';
 import type { Role } from '@n8n/permissions';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { EventService } from '@/events/event.service';
 import type { RoleService } from '@/services/role.service';
@@ -13,7 +13,7 @@ describe('RoleController', () => {
 	const controller = new RoleController(roleService, eventService);
 
 	beforeEach(() => {
-		jest.restoreAllMocks();
+		vi.restoreAllMocks();
 	});
 
 	describe('emits action events', () => {

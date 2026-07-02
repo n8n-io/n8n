@@ -5,6 +5,7 @@ import {
 	type RedactionOptions,
 	type RuntimeSkillRegistry,
 } from '@n8n/agents';
+import { isRecord } from '@n8n/utils/is-record';
 import { createHash } from 'node:crypto';
 
 import {
@@ -15,7 +16,6 @@ import {
 } from '../tools/tool-ids';
 import type { InstanceAiToolRegistry } from '../types';
 import { formatAgentRoleLabel, formatTraceLabel } from './trace-labels';
-import { isRecord } from '../utils/stream-helpers';
 
 const MAX_TRACE_DEPTH = 4;
 const MAX_PROMPT_SCHEMA_TRACE_DEPTH = 12;

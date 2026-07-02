@@ -920,8 +920,34 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			activeThreadId,
 			'hello',
 			undefined,
+			undefined,
 			expect.any(String),
 			'iframe-push-ref-123',
+		);
+	});
+
+	test('sendMessage forwards handoff context to postMessage', async () => {
+		mockPostMessage.mockResolvedValue({ runId: 'run-1' });
+		const context = {
+			source: 'credential-modal' as const,
+			credential: {
+				credentialType: 'gmailOAuth2Api',
+				displayName: 'Gmail OAuth2 API',
+				documentationUrl:
+					'https://docs.n8n.io/integrations/builtin/credentials/google/oauth-single-service/',
+			},
+		};
+
+		await activeRuntime(registry).sendMessage('hello', undefined, undefined, context);
+
+		expect(mockPostMessage).toHaveBeenCalledWith(
+			expect.anything(),
+			activeThreadId,
+			'hello',
+			undefined,
+			context,
+			expect.any(String),
+			undefined,
 		);
 	});
 
@@ -934,6 +960,7 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			expect.anything(),
 			activeThreadId,
 			'hello',
+			undefined,
 			undefined,
 			expect.any(String),
 			undefined,
@@ -1239,6 +1266,30 @@ describe('createThreadRuntime - session always-allow', () => {
 		});
 		await new Promise((resolve) => setTimeout(resolve, 10));
 		expect(runtime.resolvedConfirmationIds.has('req-update')).toBe(false);
+	});
+
+	it('scopes executions run grants per workflow', async () => {
+		const runtime = registry.getOrCreateRuntime(activeThreadId);
+		runtime.addAlwaysAllowKey('executions', { action: 'run', workflowId: 'wf-1' });
+
+		pushPendingApproval(runtime, {
+			messageId: 'msg-wf-1',
+			requestId: 'req-wf-1',
+			toolName: 'executions',
+			args: { action: 'run', workflowId: 'wf-1' },
+		});
+		await vi.waitFor(() => {
+			expect(runtime.resolvedConfirmationIds.get('req-wf-1')).toBe('approved');
+		});
+
+		pushPendingApproval(runtime, {
+			messageId: 'msg-wf-2',
+			requestId: 'req-wf-2',
+			toolName: 'executions',
+			args: { action: 'run', workflowId: 'wf-2' },
+		});
+		await new Promise((resolve) => setTimeout(resolve, 10));
+		expect(runtime.resolvedConfirmationIds.has('req-wf-2')).toBe(false);
 	});
 
 	it('clears keys on resetState', () => {

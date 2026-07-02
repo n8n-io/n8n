@@ -1,5 +1,15 @@
 import type { INodeUi } from '@/Interface';
 import { useContextMenu } from './useContextMenu';
+
+// Instantiates the builder store transitively, which derives the workflow id from
+// the route. This composable test runs without a router, so resolve the id directly.
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	return {
+		useWorkflowId: () => computed(() => ''),
+		useRouteWorkflowId: () => computed(() => ''),
+	};
+});
 import {
 	BASIC_CHAIN_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
@@ -256,7 +266,7 @@ describe('useContextMenu', () => {
 		const { open, isOpen, actions, targetNodeIds } = useContextMenu();
 		const subNode = nodeFactory({ type: 'n8n-nodes-base.hackerNewsTool' });
 		vi.spyOn(workflowDocumentStore, 'getNodeById').mockReturnValue(subNode);
-		vi.spyOn(NodeHelpers, 'isExecutable').mockReturnValueOnce(false);
+		vi.spyOn(NodeHelpers, 'isExecutable').mockReturnValueOnce(false).mockReturnValueOnce(false);
 		open(mockEvent, { source: 'node-right-click', nodeId: subNode.id });
 
 		expect(isOpen.value).toBe(true);

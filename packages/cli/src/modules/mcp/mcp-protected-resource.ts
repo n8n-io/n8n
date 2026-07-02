@@ -1,12 +1,19 @@
 import { Service } from '@n8n/di';
 
+import { McpSettingsService } from './mcp.settings.service';
 import type { ProtectedResource } from '@/services/protected-resource.registry';
 import { UrlService } from '@/services/url.service';
 
 export const INSTANCE_MCP_RESOURCE_ID = 'instance-mcp';
 
-/** OAuth scopes advertised for the instance MCP server in discovery documents. */
-export const SUPPORTED_SCOPES = ['tool:listWorkflows', 'tool:getWorkflowDetails'];
+/**
+ * Reserved for future granular per-tool delegation. Today MCP OAuth tokens are
+ * user-delegations: a successful consent authorizes the client to act on
+ * behalf of the user with the user's full permission set, equivalent to a
+ * Personal API Key. Advertising scopes we don't enforce would misrepresent
+ * that contract, so this stays empty until per-tool enforcement ships.
+ */
+export const SUPPORTED_SCOPES: string[] = [];
 
 const MCP_RESOURCE_PATH = '/mcp-server/http';
 
@@ -36,7 +43,10 @@ export class McpProtectedResource implements ProtectedResource {
 	 */
 	readonly isDefault = true;
 
-	constructor(private readonly urlService: UrlService) {}
+	constructor(
+		private readonly urlService: UrlService,
+		private readonly mcpSettingsService: McpSettingsService,
+	) {}
 
 	getResourceUrl(): string {
 		const baseUrl = this.urlService.getInstanceBaseUrl().replace(/\/$/, '');
@@ -47,5 +57,9 @@ export class McpProtectedResource implements ProtectedResource {
 		// The legacy audience stays scoped to this resource only — it must never
 		// be accepted at another protected resource's gate.
 		return [this.getResourceUrl(), LEGACY_MCP_AUDIENCE];
+	}
+
+	async getAllowedRedirectUris(): Promise<string[]> {
+		return await this.mcpSettingsService.getAllowedRedirectUris();
 	}
 }

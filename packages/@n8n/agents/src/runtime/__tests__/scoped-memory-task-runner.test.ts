@@ -102,7 +102,7 @@ describe('ScopedMemoryTaskRunner', () => {
 		await expect(handle.done).resolves.toMatchObject({ status: 'failed', error });
 		await expect(runner.flush()).resolves.toBeUndefined();
 		expect(runner.getCapturedErrors()).toMatchObject([{ error }]);
-		expect(seenEvents).toEqual(['started', 'failed']);
+		expect(seenEvents).toEqual(['queued', 'started', 'failed']);
 	});
 
 	it('treats negative maxCapturedErrors as zero', async () => {

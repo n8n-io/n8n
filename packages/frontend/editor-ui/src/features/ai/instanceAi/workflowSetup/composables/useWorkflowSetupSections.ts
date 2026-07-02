@@ -6,6 +6,7 @@ import { isHttpRequestNodeType } from '@/features/setupPanel/setupPanel.utils';
 import { NodeHelpers, type INodeParameters } from 'n8n-workflow';
 import type { WorkflowSetupSection } from '../workflowSetup.types';
 import { buildSectionId } from '../workflowSetup.helpers';
+import { AI_GATEWAY_MANAGED_TAG } from '../../constants';
 
 export function useWorkflowSetupSections(
 	setupRequests: Ref<InstanceAiWorkflowSetupNode[]> | ComputedRef<InstanceAiWorkflowSetupNode[]>,
@@ -38,8 +39,13 @@ export function useWorkflowSetupSections(
 				...req.node,
 				parameters: resolveParameterDefaults(req.node),
 			};
+			const existingCred = credentialType ? req.node.credentials?.[credentialType] : undefined;
 			const currentCredentialId =
-				credentialType === undefined ? null : (req.node.credentials?.[credentialType]?.id ?? null);
+				credentialType === undefined
+					? null
+					: existingCred !== undefined && '__aiGatewayManaged' in existingCred
+						? AI_GATEWAY_MANAGED_TAG
+						: (existingCred?.id ?? null);
 
 			const section: WorkflowSetupSection = {
 				id: buildSectionId(req.node.name, credentialType),

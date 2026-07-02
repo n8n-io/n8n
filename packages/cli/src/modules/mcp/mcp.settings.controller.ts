@@ -9,6 +9,7 @@ import { listQueryMiddleware } from '@/middlewares';
 import type { ListQuery } from '@/requests';
 import { WorkflowService } from '@/workflows/workflow.service';
 
+import { UpdateAllowedRedirectUrisDto } from './dto/update-allowed-redirect-uris.dto';
 import { UpdateMcpSettingsDto } from './dto/update-mcp-settings.dto';
 import { UpdateWorkflowsAvailabilityDto } from './dto/update-workflows-availability.dto';
 import { McpServerApiKeyService } from './mcp-api-key.service';
@@ -57,6 +58,24 @@ export class McpSettingsController {
 	@Post('/api-key/rotate')
 	async rotateApiKeyForMcpServer(req: AuthenticatedRequest) {
 		return await this.mcpServerApiKeyService.rotateMcpServerApiKey(req.user);
+	}
+
+	@GlobalScope('mcp:manage')
+	@Get('/oauth/allowed-redirect-uris')
+	async getAllowedRedirectUris() {
+		const uris = await this.mcpSettingsService.getAllowedRedirectUris();
+		return { uris };
+	}
+
+	@GlobalScope('mcp:manage')
+	@Patch('/oauth/allowed-redirect-uris')
+	async updateAllowedRedirectUris(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Body dto: UpdateAllowedRedirectUrisDto,
+	) {
+		await this.mcpSettingsService.setAllowedRedirectUris(dto.uris);
+		return { success: true };
 	}
 
 	@Get('/workflows', { middlewares: listQueryMiddleware })

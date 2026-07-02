@@ -264,6 +264,7 @@ export class NotionTrigger implements INodeType {
 				}
 				// Only stop when we reach records strictly before last recorded time to be sure we catch records from the same minute
 			} while (
+				records.length > 0 &&
 				!moment(records[records.length - 1][sortProperty] as string).isBefore(lastTimeChecked) &&
 				hasMore
 			);
