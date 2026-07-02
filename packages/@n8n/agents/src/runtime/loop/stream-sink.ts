@@ -11,7 +11,7 @@ import type { ExecutionOptions, TokenUsage } from '../../types/sdk/agent';
 import { loadAi } from '../model/lazy-ai';
 import { fromAiFinishReason, fromAiMessages } from '../model/messages';
 import { createRawUsageReader, type RawUsageReader } from '../model/raw-usage';
-import { convertChunk } from '../streaming/stream';
+import { convertChunk, toTokenUsage } from '../streaming/stream';
 import type { StreamWriterGuard } from '../streaming/stream-writer-guard';
 import type { ToolCallBatchResult } from '../tools/tool-call-executor';
 
@@ -136,12 +136,13 @@ export class StreamSink implements RunOutputSink<void> {
 
 		const aiFinishReason = await result.finishReason;
 		const usage = await result.usage;
+		const providerMetadata = await result.providerMetadata;
 		const response = await result.response;
 
 		return {
 			aiFinishReason,
 			finishReason: fromAiFinishReason(aiFinishReason),
-			usage,
+			usage: toTokenUsage(usage, providerMetadata),
 			newMessages: fromAiMessages(response.messages),
 			toolCalls: await result.toolCalls,
 			structuredOutput:
@@ -186,7 +187,18 @@ export class StreamSink implements RunOutputSink<void> {
 				resumeSchema: s.resumeSchema,
 			});
 		}
-		await this.guard.write({ type: 'finish', finishReason: 'tool-calls' });
+		// Stamp the tokens consumed to reach this suspension on the finish chunk,
+		// as the completion path does. A HITL run reuses one runId across segments,
+		// so each segment must bill its own usage here — otherwise the pre-suspension
+		// tokens are never emitted and go unbilled (worse, a stop while suspended
+		// never reaches a completion finish at all).
+		const costUsage = this.services.applyCost(emission.usage);
+		await this.guard.write({
+			type: 'finish',
+			finishReason: 'tool-calls',
+			...(costUsage && { usage: costUsage }),
+			model: this.services.modelId,
+		});
 		await this.guard.close();
 	}
 

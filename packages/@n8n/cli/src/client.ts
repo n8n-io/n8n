@@ -421,9 +421,11 @@ export class N8nClient {
 
 	// ─── Packages (beta) ───────────────────────────────────────────
 
-	async exportPackage(workflowIds: string[]): Promise<Buffer> {
+	async exportPackage(
+		fields: { workflowIds: string[] } | { projectIds: string[] },
+	): Promise<Buffer> {
 		return await this.request<Buffer>('POST', '/n8n-packages/export', {
-			body: { workflowIds },
+			body: fields,
 			responseType: 'binary',
 		});
 	}

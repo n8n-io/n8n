@@ -61,10 +61,15 @@ Avoid alert storms by:
 Implement multiple layers of error handling:
 
 1. Node-level: Enable "Continue On Fail" on check nodes
-2. Workflow-level: Create Error Trigger workflow to catch monitoring failures
+2. Workflow-level: Create and publish an Error Trigger workflow, then assign
+   its workflow ID in the settings of each monitoring workflow that should use
+   it
 3. Heartbeat: Ping external service (healthchecks.io) to verify monitoring is running
 
-Configure Error Workflow in settings to alert when monitoring itself fails - otherwise you have blind spots.
+Configure a workflow-level error workflow on each monitoring workflow that
+should alert when monitoring itself fails. The referenced error workflow must be
+published first; there is no global error workflow setting for the instance.
+Otherwise you have blind spots.
 
 ## Logging & State Management
 
@@ -162,7 +167,9 @@ Monitoring too many services in one workflow or setting intervals too frequent c
 
 ### No Monitoring of Monitoring
 
-If the monitoring workflow fails, you're blind to service issues. Implement Error Trigger workflows and external heartbeat monitoring for the monitoring system itself.`;
+If the monitoring workflow fails, you're blind to service issues. Implement
+published Error Trigger workflows assigned per monitoring workflow, plus external
+heartbeat monitoring for the monitoring system itself.`;
 
 	getDocumentation(): string {
 		return this.documentation;

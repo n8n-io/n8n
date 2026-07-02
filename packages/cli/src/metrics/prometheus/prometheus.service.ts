@@ -22,6 +22,7 @@ import { PrometheusVersionMetricsService } from './version-metrics.service';
 import { PrometheusWebhookAndFormMetricsService } from './webhook-and-form-metrics.service';
 import { PrometheusWorkflowExecutionDurationMetricsService } from './workflow-execution-duration-metrics.service';
 import { PrometheusWorkflowInfoMetricsService } from './workflow-info-metrics.service';
+import { PrometheusWorkflowPublicationMetricsService } from './workflow-publication-metrics.service';
 import { PrometheusWorkflowStatisticsMetricsService } from './workflow-statistics-metrics.service';
 
 @Service()
@@ -51,6 +52,7 @@ export class PrometheusMetricsService {
 		workflowInfo: PrometheusWorkflowInfoMetricsService,
 		instanceAi: PrometheusInstanceAiMetricsService,
 		dbPool: PrometheusDbPoolMetricsService,
+		workflowPublication: PrometheusWorkflowPublicationMetricsService,
 	) {
 		this.logger = logger.scoped('metrics');
 		this.collectors = [
@@ -73,6 +75,7 @@ export class PrometheusMetricsService {
 			workflowInfo,
 			instanceAi,
 			dbPool,
+			workflowPublication,
 		];
 	}
 

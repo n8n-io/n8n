@@ -69,7 +69,6 @@ type Props = {
 	isManaged?: boolean;
 	isPrivateCredentialsEnabled?: boolean;
 	isResolvable?: boolean;
-	isShared?: boolean;
 	connectedByMe?: boolean;
 	isNewCredential?: boolean;
 	managedOauthAvailable?: boolean;
@@ -114,10 +113,6 @@ const chatPanelStore = useChatPanelStore();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const { getQuickConnectOption } = useQuickConnect();
-
-// A shared credential can't be turned into a dynamic credential (they're mutually exclusive).
-// Toggling back from dynamic to static stays allowed.
-const isDynamicToggleDisabled = computed(() => Boolean(props.isShared) && !props.isResolvable);
 
 onBeforeMount(async () => {
 	uiStore.activeCredentialType = props.credentialType.name;
@@ -496,12 +491,6 @@ watch(showOAuthSuccessBanner, (newValue, oldValue) => {
 						canWrite
 					"
 					:model-value="Boolean(isResolvable)"
-					:end-user-disabled="isDynamicToggleDisabled"
-					:end-user-disabled-tooltip="
-						i18n.baseText(
-							'credentialEdit.credentialConfig.dynamicCredentials.sharedDisabledTooltip',
-						)
-					"
 					:info-tip="i18n.baseText('credentialEdit.credentialConfig.dynamicCredentials.infoTip')"
 					@update:model-value="(val) => $emit('update:isResolvable', val)"
 				/>

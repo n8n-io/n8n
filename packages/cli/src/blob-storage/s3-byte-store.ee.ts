@@ -1,6 +1,6 @@
 import { Service } from '@n8n/di';
 import { ObjectStoreService } from 'n8n-core/dist/binary-data/object-store/object-store.service.ee';
-import { ensureError } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 import type { ByteStore, ByteStoreKey } from './types';
 

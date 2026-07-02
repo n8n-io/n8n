@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { createCancellation } from '../../sdk/cancellation';
 import { isLlmMessage } from '../../sdk/message';
 import { Tool, Tool as ToolBuilder } from '../../sdk/tool';
+import type { CheckpointStore, SerializableAgentState } from '../../types';
 import { AgentEvent } from '../../types/runtime/event';
 import type { AgentEventData } from '../../types/runtime/event';
 import type { StreamChunk } from '../../types/sdk/agent';
@@ -1420,6 +1421,51 @@ function createRuntimeWithTools(
 	return { runtime, bus };
 }
 
+type ClaimForResume = (key: string, state: SerializableAgentState) => Promise<boolean>;
+type ClaimingCheckpointStore = CheckpointStore & {
+	claimForResume: MockedFunction<ClaimForResume>;
+};
+
+function createRuntimeWithCheckpointStore(
+	tools: BuiltTool[],
+	checkpointStorage: CheckpointStore,
+): AgentRuntime {
+	return new AgentRuntime({
+		name: 'test',
+		model: 'openai/gpt-4o-mini',
+		instructions: 'You are a test assistant.',
+		tools,
+		checkpointStorage,
+	});
+}
+
+function makeClaimingCheckpointStore(): ClaimingCheckpointStore {
+	const checkpoints = new Map<string, SerializableAgentState>();
+
+	return {
+		save: vi.fn(async (key: string, state: SerializableAgentState): Promise<void> => {
+			await Promise.resolve();
+			checkpoints.set(key, structuredClone(state));
+		}),
+		load: vi.fn(async (key: string): Promise<SerializableAgentState | undefined> => {
+			await Promise.resolve();
+			const state = checkpoints.get(key);
+			return state ? structuredClone(state) : undefined;
+		}),
+		delete: vi.fn(async (key: string): Promise<void> => {
+			await Promise.resolve();
+			checkpoints.delete(key);
+		}),
+		claimForResume: vi.fn<ClaimForResume>(async (key, state) => {
+			await Promise.resolve();
+			const current = checkpoints.get(key);
+			if (!current || JSON.stringify(current) !== JSON.stringify(state)) return false;
+			checkpoints.set(key, { ...state, status: 'running' });
+			return true;
+		}),
+	};
+}
+
 /** Create a generateText response that triggers tool calls, then a follow-up stop. */
 function makeGenerateWithToolCalls(
 	toolCalls: Array<{ toolCallId: string; toolName: string; args: Record<string, unknown> }>,
@@ -2523,6 +2569,54 @@ describe('AgentRuntime — concurrent tool execution', () => {
 		const finishChunks = chunks.filter((c) => c.type === 'finish');
 		expect(finishChunks.length).toBe(1);
 		expect((finishChunks[0] as StreamChunk & { type: 'finish' }).finishReason).toBe('tool-calls');
+	});
+
+	it('stamps the consumed usage and model on the terminal finish chunk when a stream suspends', async () => {
+		const suspendTool = makeSuspendingTool('suspend_tool', async (_input, ctx) => {
+			return await ctx.suspend({ reason: 'needs approval' });
+		});
+
+		const { runtime } = createRuntimeWithTools([suspendTool], 1);
+
+		streamText.mockReturnValue({
+			fullStream: makeChunkStream([{ type: 'text-delta', textDelta: 'thinking...' }]),
+			finishReason: Promise.resolve('tool-calls'),
+			usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
+			response: Promise.resolve({
+				messages: [
+					{
+						role: 'assistant',
+						content: [
+							{
+								type: 'tool-call',
+								toolCallId: 'tc-1',
+								toolName: 'suspend_tool',
+								args: { value: 'a' },
+							},
+						],
+					},
+				],
+			}),
+			toolCalls: Promise.resolve([
+				{ toolCallId: 'tc-1', toolName: 'suspend_tool', input: { value: 'a' } },
+			]),
+		});
+
+		const { stream: readableStream } = await runtime.stream('run tools');
+		const chunks = await collectChunks(readableStream);
+
+		const finishChunks = chunks.filter((c) => c.type === 'finish') as Array<
+			StreamChunk & { type: 'finish' }
+		>;
+		expect(finishChunks.length).toBe(1);
+		// The tokens consumed to reach the suspension must ride out on the finish
+		// chunk so the host can bill them, mirroring the completion path.
+		expect(finishChunks[0].usage).toMatchObject({
+			promptTokens: 10,
+			completionTokens: 5,
+			totalTokens: 15,
+		});
+		expect(finishChunks[0].model).toBeTruthy();
 	});
 
 	it('bridges subagent lifecycle events from tool context into stream chunks', async () => {
@@ -4256,6 +4350,61 @@ describe('AgentRuntime.resume() — checkpoint lifecycle', () => {
 			runtime.resume('stream', { approved: true }, { runId, toolCallId }),
 		).rejects.toThrow(`No suspended run found for runId: ${runId}`);
 	});
+
+	it('claims the checkpoint after resume validation passes', async () => {
+		const checkpointStore = makeClaimingCheckpointStore();
+		const runtime = createRuntimeWithCheckpointStore([makeApprovalTool()], checkpointStore);
+
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([{ toolCallId: 'tc-1', toolName: 'suspend_tool', args: {} }]),
+		);
+		const first = await runtime.generate('run tool');
+		const { runId, toolCallId } = first.pendingSuspend![0];
+
+		generateText.mockResolvedValueOnce(makeGenerateSuccess('done'));
+		const resumed = await runtime.resume('generate', { approved: true }, { runId, toolCallId });
+
+		expect(resumed.finishReason).toBe('stop');
+		expect(checkpointStore.claimForResume).toHaveBeenCalledTimes(1);
+		expect(checkpointStore.claimForResume).toHaveBeenCalledWith(
+			runId,
+			expect.objectContaining({ status: 'suspended' }),
+		);
+	});
+
+	it('does not claim the checkpoint when the resume payload is invalid', async () => {
+		const checkpointStore = makeClaimingCheckpointStore();
+		const runtime = createRuntimeWithCheckpointStore([makeApprovalTool()], checkpointStore);
+
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([{ toolCallId: 'tc-1', toolName: 'suspend_tool', args: {} }]),
+		);
+		const first = await runtime.generate('run tool');
+		const { runId, toolCallId } = first.pendingSuspend![0];
+
+		await expect(
+			runtime.resume('generate', { approved: 'yes' }, { runId, toolCallId }),
+		).rejects.toThrow('Invalid resume payload');
+
+		expect(checkpointStore.claimForResume).not.toHaveBeenCalled();
+	});
+
+	it('does not claim the checkpoint when the tool call id is invalid', async () => {
+		const checkpointStore = makeClaimingCheckpointStore();
+		const runtime = createRuntimeWithCheckpointStore([makeApprovalTool()], checkpointStore);
+
+		generateText.mockResolvedValueOnce(
+			makeGenerateWithToolCalls([{ toolCallId: 'tc-1', toolName: 'suspend_tool', args: {} }]),
+		);
+		const first = await runtime.generate('run tool');
+		const { runId } = first.pendingSuspend![0];
+
+		await expect(
+			runtime.resume('generate', { approved: true }, { runId, toolCallId: 'tc-missing' }),
+		).rejects.toThrow('No tool call found for toolCallId: tc-missing');
+
+		expect(checkpointStore.claimForResume).not.toHaveBeenCalled();
+	});
 });
 
 // ---------------------------------------------------------------------------
@@ -4406,6 +4555,61 @@ describe('tool systemInstruction merging', () => {
 		expect(text).not.toContain('<built_in_rules>');
 		expect(text).toContain('You are a helpful assistant.');
 	});
+
+	it("moves a newly loaded deferred tool's systemInstruction into the uncached system message without changing the cached one", async () => {
+		const deferredTool: BuiltTool = {
+			name: 'deferred_capability',
+			description: 'Deferred capability',
+			systemInstruction: 'Always confirm before using deferred_capability.',
+			inputSchema: z.object({ value: z.string().optional() }),
+			handler: async () => await Promise.resolve({ ok: true }),
+		};
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			deferredTools: [deferredTool],
+		});
+
+		generateText
+			.mockResolvedValueOnce(
+				makeGenerateWithToolCalls([
+					{
+						toolCallId: 'tc-load',
+						toolName: 'load_tool',
+						args: { toolName: 'deferred_capability' },
+					},
+				]),
+			)
+			.mockResolvedValueOnce(makeGenerateSuccess('done'));
+
+		await runtime.generate('load the deferred capability');
+
+		const calls = generateText.mock.calls as Array<
+			[{ system: Array<{ content: string }> | { content: string } }]
+		>;
+		const beforeLoadSystem = calls[0][0].system;
+		const afterLoadSystem = calls[1][0].system;
+
+		const beforeFirst = Array.isArray(beforeLoadSystem)
+			? beforeLoadSystem[0].content
+			: beforeLoadSystem.content;
+		const afterFirst = Array.isArray(afterLoadSystem)
+			? afterLoadSystem[0].content
+			: afterLoadSystem.content;
+		const afterSecond = Array.isArray(afterLoadSystem) ? afterLoadSystem[1]?.content : undefined;
+
+		// Before loading, the tool's instruction appears nowhere.
+		expect(beforeFirst).not.toContain('Always confirm before using deferred_capability.');
+
+		// The cached (first) system message must stay byte-identical after the load.
+		expect(afterFirst).toBe(beforeFirst);
+
+		// After loading, the instruction reaches the model via the uncached second message.
+		expect(afterSecond).toContain('Always confirm before using deferred_capability.');
+		expect(afterFirst).not.toContain('Always confirm before using deferred_capability.');
+	});
 });
 
 describe('instruction providerOptions', () => {
@@ -4435,6 +4639,178 @@ describe('instruction providerOptions', () => {
 		expect(systemMsg.providerOptions).toEqual({
 			anthropic: { cacheControl: { type: 'ephemeral' } },
 		});
+	});
+});
+
+// ---------------------------------------------------------------------------
+// promptCaching()
+// ---------------------------------------------------------------------------
+
+describe('promptCaching', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('applies default 1h Anthropic cache breakpoints to the system message and the last conversation message', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'anthropic/claude-sonnet-4-5',
+			instructions: 'You are a test assistant.',
+			promptCaching: { enabled: true },
+		});
+
+		await runtime.generate('hello');
+
+		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
+		const systemMsg = callArgs.system as Record<string, unknown>;
+		expect(systemMsg.providerOptions).toEqual({
+			anthropic: { cacheControl: { type: 'ephemeral', ttl: '1h' } },
+		});
+		const messages = callArgs.messages as Array<Record<string, unknown>>;
+		expect(messages[messages.length - 1].providerOptions).toEqual({
+			anthropic: { cacheControl: { type: 'ephemeral', ttl: '1h' } },
+		});
+	});
+
+	it('defaults OpenAI to 24h retention with an auto-generated promptCacheKey', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-5.1',
+			instructions: 'You are a test assistant.',
+			promptCaching: { enabled: true },
+		});
+
+		await runtime.generate('hello');
+
+		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
+		const openaiOpts = (callArgs.providerOptions as Record<string, Record<string, unknown>>).openai;
+		expect(openaiOpts.promptCacheRetention).toBe('24h');
+		expect(typeof openaiOpts.promptCacheKey).toBe('string');
+	});
+
+	it('merges thinking config with generated prompt caching and caller providerOptions for OpenAI', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-5.1',
+			instructions: 'You are a test assistant.',
+			thinking: { reasoningEffort: 'high' },
+			promptCaching: { enabled: true },
+		});
+
+		await runtime.generate('hello', {
+			providerOptions: { openai: { strictJsonSchema: false } },
+		});
+
+		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
+		const openaiOpts = (callArgs.providerOptions as Record<string, Record<string, unknown>>).openai;
+		expect(openaiOpts.reasoningEffort).toBe('high');
+		expect(openaiOpts.promptCacheRetention).toBe('24h');
+		expect(typeof openaiOpts.promptCacheKey).toBe('string');
+		expect(openaiOpts.strictJsonSchema).toBe(false);
+	});
+
+	it('adds a cache breakpoint to the last tool definition for a fully-static Anthropic tool set', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+		const toolA = makeMockTool('tool_a', async () => await Promise.resolve({ ok: true }));
+		const toolB = makeMockTool('tool_b', async () => await Promise.resolve({ ok: true }));
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'anthropic/claude-sonnet-4-5',
+			instructions: 'You are a test assistant.',
+			tools: [toolA, toolB],
+			promptCaching: { enabled: true },
+		});
+
+		await runtime.generate('hello');
+
+		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
+		const tools = callArgs.tools as Record<string, { providerOptions?: unknown }>;
+		expect(tools.tool_a.providerOptions).toBeUndefined();
+		expect(tools.tool_b.providerOptions).toEqual({
+			anthropic: { cacheControl: { type: 'ephemeral', ttl: '1h' } },
+		});
+	});
+
+	it('does not add a tool cache breakpoint when deferred tools are configured (Anthropic)', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+		const coreTool = makeMockTool('core_tool', async () => await Promise.resolve({ ok: true }));
+		const deferredTool = makeMockTool(
+			'deferred_capability',
+			async () => await Promise.resolve({ ok: true }),
+		);
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'anthropic/claude-sonnet-4-5',
+			instructions: 'You are a test assistant.',
+			tools: [coreTool],
+			deferredTools: [deferredTool],
+			promptCaching: { enabled: true },
+		});
+
+		await runtime.generate('hello');
+
+		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
+		const tools = callArgs.tools as Record<string, { providerOptions?: unknown }>;
+		for (const tool of Object.values(tools)) {
+			expect(tool.providerOptions).toBeUndefined();
+		}
+	});
+
+	it('adds a tool cache breakpoint on recall_memory for an episodic Anthropic agent (no deferred tools)', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+		const memory = new InMemoryMemory();
+		const fakeEmbedder = { specificationVersion: 'v2' } as never;
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'anthropic/claude-sonnet-4-5',
+			instructions: 'You are a test assistant.',
+			memory,
+			episodicMemory: { embedder: fakeEmbedder },
+			promptCaching: { enabled: true },
+		});
+
+		await runtime.generate('hello', {
+			persistence: { threadId: 'thread-1', resourceId: 'resource-1' },
+		});
+
+		// recall_memory is static within a run, so it is eligible to anchor the
+		// tool breakpoint (it is the last tool in getCurrentTools).
+		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
+		const tools = callArgs.tools as Record<string, { providerOptions?: unknown }>;
+		expect(tools).toHaveProperty('recall_memory');
+		expect(tools.recall_memory.providerOptions).toEqual({
+			anthropic: { cacheControl: { type: 'ephemeral', ttl: '1h' } },
+		});
+	});
+
+	it('does not add message or tool cache breakpoints for OpenAI', async () => {
+		generateText.mockResolvedValue(makeGenerateSuccess());
+		const toolA = makeMockTool('tool_a', async () => await Promise.resolve({ ok: true }));
+
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-5.1',
+			instructions: 'You are a test assistant.',
+			tools: [toolA],
+			promptCaching: { enabled: true },
+		});
+
+		await runtime.generate('hello');
+
+		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
+		const messages = callArgs.messages as Array<Record<string, unknown>>;
+		expect(messages[messages.length - 1].providerOptions).toBeUndefined();
+		const tools = callArgs.tools as Record<string, { providerOptions?: unknown }>;
+		expect(tools.tool_a.providerOptions).toBeUndefined();
 	});
 });
 

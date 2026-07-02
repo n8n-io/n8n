@@ -4,8 +4,6 @@ import { mergeConfig } from 'vite';
 
 export default mergeConfig(
 	createVitestConfigWithDecorators({
-		// The n8n root jest.config sets `restoreMocks: true`, and test files silently rely on
-		// it — omit this and mocks bleed between tests.
 		restoreMocks: true,
 		testTimeout: 10_000,
 	}),
