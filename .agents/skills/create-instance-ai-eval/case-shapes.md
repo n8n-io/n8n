@@ -148,8 +148,8 @@ the thread verbatim (marked `seeded: true` so the judge and checks can tell it
 apart), and the workflows and data tables the history references are **recreated
 on the instance** — so when the live turn runs, the agent sees the same
 workspace the original conversation left behind. Data tables are recreated
-**schema-only, no rows** (rows are the highest-PII part of a trace and stay out
-of the eval instance).
+**schema-only, no rows** (row values are the most sensitive part of a trace and
+are kept out of the eval instance).
 
 The consequence to internalise: **nothing you assert can change what already
 happened in the seeded turns** — the agent didn't produce them, it's only
@@ -161,16 +161,19 @@ after the correction. Asserting on the seeded prelude itself proves nothing.
 ### Which mode — and when to avoid seedThread
 
 Default to a **synthetic** case (an authored prompt + director script, or a
-`priorConversation` / `seedFile` prelude): it's durable, carries no PII, never
-expires, and you control the setup exactly. Reach for **`seedThread`** only when
+`priorConversation` / `seedFile` prelude): it's durable, carries no real user
+data, never expires, and you control the setup exactly. Reach for **`seedThread`** only when
 the misbehaviour genuinely needs real prior context that's impractical to
 synthesize — a long accumulated thread, specific built workflows/tables — **and**
 the issue is in a *later* turn. (A turn-0 issue can't be isolated by seeding: it
 lands inside the seed, so you'd bake the bug into the prelude.) Two standing
 costs keep it a last resort, not a default:
 
-- **PII.** It pulls real conversation content into the eval instance, model, and
-  traces — handle per team data policy; never for sensitive threads.
+- **Data handling.** It recreates a real conversation on the eval instance. The
+  most sensitive content is scrubbed first — data-table row values are kept out
+  and redacted from the restored history, node credentials stripped — but that
+  isn't guaranteed exhaustive, so treat reproduced content as if it may carry
+  user data and follow your team's data-handling policy.
 - **Transience.** It depends on LangSmith trace retention (~14 days); the case
   stops running once the source trace ages out (tag it `seeded`, keep it out of
   `full`/`pr`).
@@ -194,9 +197,10 @@ which user turn goes live.
 - **Cross-workspace, zero config.** A prod thread can be reproduced in a staging
   eval — the harness enumerates the workspaces your `LANGSMITH_API_KEY` can reach
   and finds the one holding the thread. It only *reads* the source; the eval
-  writes its own traces/datasets to its own workspace. ⚠️ Reproducing a prod
-  thread still pulls its content (any PII) into the staging instance/model/traces
-  — handle per team data policy.
+  writes its own traces/datasets to its own workspace. Reproducing a real thread
+  recreates its conversation on the eval instance; the most sensitive content is
+  scrubbed first (see the data-handling note above), and it's still worth
+  handling per your team's data policy.
 - **Continue past the live turn.** Add a `conversation` to keep driving after the
   trace's last message replays (first authored turn = expected assistant reply as
   proxy reference; subsequent `user` turns become follow-ups). Omit it to replay
