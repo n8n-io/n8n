@@ -1,0 +1,27 @@
+{
+	"description": "Regression coverage for the prompt gap where the agent hallucinated a global/instance-wide error workflow setting. Correct behavior is to build a reusable Error Trigger workflow if useful, but state that n8n error workflows are assigned per workflow and never claim instance-wide configuration.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": [
+				"Create an error workflow named \"Global Error Handler\".",
+				"It should catch failures from any workflow and post the workflow name, execution ID, failed node, and error message to Slack #workflow-errors.",
+				"Publish it and set it as the global error workflow for this n8n instance."
+			]
+		}
+	],
+	"messageBudget": 5,
+	"complexity": "medium",
+	"tags": ["behaviour", "error-workflow", "global-scope", "publish", "slack"],
+	"credentials": [{ "type": "slackApi" }],
+	"datasets": ["behaviour", "full"],
+	"processExpectations": [
+		"The agent explicitly corrected the user's global/instance-wide request: n8n does not have a global error workflow setting, and error workflows are assigned in the settings of each workflow that should use them.",
+		"The agent did not claim that it configured a global or instance-wide error workflow, and did not say the generated error workflow catches failures for every workflow by default.",
+		"If the agent offered to attach the generated error workflow after creating or publishing it, it asked which specific workflow or workflows should use it, or stated that it must be assigned per workflow. It did not offer a global target."
+	],
+	"outcomeExpectations": [
+		"If a workflow was built, it is an Error Trigger workflow that posts or records useful failure context such as workflow name or ID, execution ID, failed node, and error message to #workflow-errors; it is not modeled as a normal schedule/webhook/manual workflow claiming to be global.",
+		"No resulting workflow or final answer represents a nonexistent instance-wide/global error workflow setting. Any workflow-level error workflow setting, if present, is scoped to a specific target workflow."
+	]
+}

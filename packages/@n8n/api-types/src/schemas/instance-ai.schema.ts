@@ -1043,6 +1043,7 @@ export interface InstanceAiMemoryTaskSnapshot {
 export interface InstanceAiThreadStatusResponse {
 	hasActiveRun: boolean;
 	isSuspended: boolean;
+	runId?: string;
 	backgroundTasks: Array<{
 		taskId: string;
 		role: string;
@@ -1056,6 +1057,11 @@ export interface InstanceAiThreadStatusResponse {
 	}>;
 	/** In-flight observational-memory jobs (observer/reflector). Used by eval harnesses. */
 	memoryTasks?: InstanceAiMemoryTaskSnapshot[];
+}
+
+export interface InstanceAiConfirmResponse {
+	ok: true;
+	runId?: string;
 }
 
 // ---------------------------------------------------------------------------

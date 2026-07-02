@@ -476,10 +476,15 @@ watch(
 	},
 );
 
+function isCurrentThreadRuntime(): boolean {
+	return store.getRuntime(props.threadId) === thread;
+}
+
 function reconnectThreadAfterHydration(): void {
-	void thread.loadHistoricalMessages().then((hydrationStatus) => {
+	void thread.loadHistoricalMessages().then(async (hydrationStatus) => {
 		if (hydrationStatus === 'stale') return;
-		void thread.loadThreadStatus();
+		await thread.loadThreadStatus();
+		if (!isCurrentThreadRuntime()) return;
 		thread.connectSSE();
 		// Replay an opening message handed off from another tab (e.g. credential help
 		// opened in a new tab) as if typed here, so it shows and streams in this runtime.
