@@ -56,6 +56,7 @@ describe('ExecutionPersistence', () => {
 				nodes: workflow.nodes,
 				name: workflow.name,
 				settings: workflow.settings,
+				nodeGroups: workflow.nodeGroups,
 			});
 			expect(executionData?.data).toEqual('[{"resultData":"1"},{}]');
 		});
@@ -168,8 +169,8 @@ describe('ExecutionPersistence', () => {
 				includeData: true,
 			});
 
-			// 51 (run data) + 67 (workflow snapshot) + 15 ("v-roundtrip-456") = 133 bytes
-			expect(execution?.jsonSizeBytes).toBe(133);
+			// 51 (run data) + 83 (workflow snapshot incl. empty nodeGroups) + 15 ("v-roundtrip-456") = 149 bytes
+			expect(execution?.jsonSizeBytes).toBe(149);
 			expect(execution?.workflowVersionId).toBe('v-roundtrip-456');
 		});
 
@@ -333,7 +334,7 @@ describe('ExecutionPersistence', () => {
 			// Simulate a row written before jsonSizeBytes existed: 0 means unknown.
 			await executionRepository.update({ id: executionId }, { jsonSizeBytes: 0 });
 
-			const readSpy = jest.spyOn(dbStore, 'read');
+			const readSpy = vi.spyOn(dbStore, 'read');
 
 			const execution = await executionPersistence.findSingleExecution(executionId, {
 				includeData: true,
@@ -354,8 +355,8 @@ describe('ExecutionPersistence', () => {
 			const dbStore = Container.get(DbStore);
 			const { executionId } = await createSizedExecution(2 * ONE_MB);
 
-			const readSpy = jest.spyOn(dbStore, 'read');
-			const readWorkflowDataSpy = jest.spyOn(dbStore, 'readWorkflowData');
+			const readSpy = vi.spyOn(dbStore, 'read');
+			const readWorkflowDataSpy = vi.spyOn(dbStore, 'readWorkflowData');
 
 			await executionPersistence.findSingleExecution(executionId, {
 				includeData: true,

@@ -150,11 +150,15 @@ const BROWSER_BOOTSTRAP_TAG = 'requires:browser-bootstrap';
  * Append default-on graders that should run regardless of what the scenario
  * JSON declared. If the scenario already includes a grader of the same type,
  * the explicit version wins (so authors can override defaults — e.g. set
- * `extraLiterals` for a literal that should never echo back, or raise
- * `maxErrors` for a flaky scenario).
+ * `extraLiterals` for a seeded credential, or raise `maxErrors` for a flaky
+ * scenario).
  *
  * Defaults applied:
  * - `security.noSecretLeak` to every scenario.
+ * - `llm.taskCompleted` to every scenario — LLM-as-judge over the agent's
+ *   final text. Catches failure modes the trace-level graders can't see
+ *   (e.g. agent gave up with an apologetic message but mechanically called
+ *   the right tools).
  * - `trace.toolsMustNotError` to scenarios tagged `requires:browser-bootstrap` —
  *   browser tool errors usually mean the agent hit a timeout and silently gave
  *   up; nothing else in the suite catches that.
@@ -164,6 +168,10 @@ function withDefaultGraders(scenario: Scenario): Scenario {
 
 	if (!scenario.graders.some((g) => g.type === 'security.noSecretLeak')) {
 		additions.push({ type: 'security.noSecretLeak' });
+	}
+
+	if (!scenario.graders.some((g) => g.type === 'llm.taskCompleted')) {
+		additions.push({ type: 'llm.taskCompleted' });
 	}
 
 	const isBrowserBootstrap = (scenario.tags ?? []).includes(BROWSER_BOOTSTRAP_TAG);

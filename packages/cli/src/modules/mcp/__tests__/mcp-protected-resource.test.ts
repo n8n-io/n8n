@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { McpSettingsService } from '../mcp.settings.service';
 import type { UrlService } from '@/services/url.service';
@@ -11,7 +11,7 @@ describe('McpProtectedResource', () => {
 	const resource = new McpProtectedResource(urlService, mcpSettingsService);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('getResourceUrl', () => {

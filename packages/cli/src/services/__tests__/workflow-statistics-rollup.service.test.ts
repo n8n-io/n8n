@@ -2,7 +2,7 @@ import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import type { DbConnection, DbLockService, WorkflowStatisticsRepository } from '@n8n/db';
 import { StatisticsNames } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import { OperationalError } from 'n8n-workflow';
 
@@ -75,14 +75,14 @@ describe('WorkflowStatisticsRollupService', () => {
 	describe('init', () => {
 		it('starts the rollup on a leader main (Postgres)', () => {
 			const { service } = makeService({ isLeader: true });
-			const startSpy = jest.spyOn(service, 'start').mockImplementation(() => {});
+			const startSpy = vi.spyOn(service, 'start').mockImplementation(() => {});
 			service.init();
 			expect(startSpy).toHaveBeenCalled();
 		});
 
 		it('does not start on a follower', () => {
 			const { service } = makeService({ isLeader: false });
-			const startSpy = jest.spyOn(service, 'start').mockImplementation(() => {});
+			const startSpy = vi.spyOn(service, 'start').mockImplementation(() => {});
 			service.init();
 			expect(startSpy).not.toHaveBeenCalled();
 		});

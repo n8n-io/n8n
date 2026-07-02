@@ -157,7 +157,7 @@ export class AwsAssumeRole implements ICredentialType {
 			region,
 		);
 
-		return signOptions(requestOptions, signOpts, securityHeaders, url, method);
+		return await signOptions(requestOptions, signOpts, securityHeaders, url, method);
 	}
 
 	test = awsCredentialsTest;

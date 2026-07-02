@@ -4,7 +4,7 @@ const defaultScopes = [
 	'openid',
 	'offline_access',
 	'User.Read.All',
-	'Group.ReadWrite.All',
+	'Group.Read.All',
 	'Chat.ReadWrite',
 	'ChannelMessage.Read.All',
 ];

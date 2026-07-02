@@ -1,7 +1,8 @@
+import type { Mock } from 'vitest';
 import type { Agent as RuntimeAgent } from '@n8n/agents';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { OperationalError, UserError } from 'n8n-workflow';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
@@ -33,8 +34,8 @@ function makeAgent(overrides: Partial<Agent> = {}): Agent {
 
 function makeRuntime() {
 	return {
-		agent: { close: jest.fn().mockResolvedValue(undefined) } as unknown as RuntimeAgent & {
-			close: jest.Mock;
+		agent: { close: vi.fn().mockResolvedValue(undefined) } as unknown as RuntimeAgent & {
+			close: Mock;
 		},
 		toolRegistry: mock<ToolRegistry>(),
 	};
@@ -63,7 +64,7 @@ function makeService({ multiMain = false }: { multiMain?: boolean } = {}) {
 
 describe('AgentRuntimeCacheService', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('reconstructs a draft runtime once and reuses the cached instance', async () => {

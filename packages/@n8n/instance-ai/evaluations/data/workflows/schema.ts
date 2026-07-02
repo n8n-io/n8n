@@ -6,14 +6,18 @@ import { SUPPORTED_CREDENTIAL_TYPES } from '../../credentials/seeder';
  *  source of truth shared by the loader schema and the mcp-manifest tier reader. */
 export const DEFAULT_DATASETS = ['full'];
 
-const ConversationTurnSchema = z.object({
+/** A conversation turn's `text`: a string, or an array of lines joined with
+ *  newlines. The array form lets long stage directions be authored readably
+ *  (one line per element) in the JSON file; every consumer still receives a
+ *  single string. Exported as the single source of truth so non-harness readers
+ *  (e.g. the mcp-manifest builder) normalize identically. */
+export const conversationTurnTextSchema = z
+	.union([z.string(), z.array(z.string())])
+	.transform((t) => (Array.isArray(t) ? t.join('\n') : t));
+
+export const ConversationTurnSchema = z.object({
 	role: z.enum(['user', 'assistant']),
-	// A string, or an array of lines joined with newlines. The array form lets
-	// long stage directions be authored readably (one line per element) in the
-	// JSON file; every consumer still receives a single string.
-	text: z
-		.union([z.string(), z.array(z.string())])
-		.transform((t) => (Array.isArray(t) ? t.join('\n') : t)),
+	text: conversationTurnTextSchema,
 });
 
 const ExecutionScenarioSchema = z.object({
@@ -34,7 +38,7 @@ const workflowTestCaseObjectSchema = z
 		complexity: z.enum(['simple', 'medium', 'complex']),
 		tags: z.array(z.string()),
 		triggerType: z.enum(['manual', 'webhook', 'schedule', 'form']).optional(),
-		executionScenarios: z.array(ExecutionScenarioSchema).min(1),
+		executionScenarios: z.array(ExecutionScenarioSchema).optional(),
 		messageBudget: z.number().int().positive().optional(),
 		/** Optional NL assertions about the build CONVERSATION (process: clarifications, push-back,
 		 *  ordering). LLM-judged from the transcript, so skipped in prebuilt/MCP runs. Counted as units. */
@@ -84,7 +88,18 @@ const workflowTestCaseObjectSchema = z
 		 *  id; workspace auto-discovered. Supplies the live turn, so `conversation` is
 		 *  optional (continues after it). */
 		seedThread: z
-			.object({ threadId: z.string().min(1), project: z.string().min(1).optional() })
+			.object({
+				threadId: z.string().min(1),
+				project: z.string().min(1).optional(),
+				/** LangSmith host the source trace lives on (dual-tenant reads during the
+				 *  US→EU migration). Omit ⇒ the eval's home (EU) tenant, so existing cases
+				 *  are unchanged. A US-sourced case carries the US host; the harness maps
+				 *  host→key via env (LANGSMITH_API_KEY_US). */
+				endpoint: z.string().url().optional(),
+				/** Pin which user turn is sent live (its LangSmith run id); everything before it
+				 *  is seeded. Omit ⇒ the thread's last user turn (default). */
+				liveTurnRunId: z.string().min(1).optional(),
+			})
 			.optional(),
 		/**
 		 * Logical groupings this case belongs to (e.g. `['pr', 'full']`). Used by
@@ -98,6 +113,13 @@ const workflowTestCaseObjectSchema = z
 	// `outcomeExpectaiton`, etc.) fails at case-load instead of being silently stripped.
 	.strict();
 
+/** The keys n8n's case schema accepts. Exported so non-harness emitters (the
+ *  lang-tracer normalizer) can WHITELIST an exported case down to exactly these —
+ *  the schema is `.strict()`, so any extra key LangTracer attaches (id, name,
+ *  suiteId, timestamps, …) fails the whole suite load. Whitelisting the allowed
+ *  set is robust where blacklisting the few keys we happen to know today is not. */
+export const WORKFLOW_TEST_CASE_KEYS = Object.keys(workflowTestCaseObjectSchema.shape);
+
 // At most one seeding mode, and a source for the live turn.
 export const WorkflowTestCaseSchema = workflowTestCaseObjectSchema
 	.refine((c) => [c.seedFile, c.priorConversation, c.seedThread].filter(Boolean).length <= 1, {
@@ -107,6 +129,16 @@ export const WorkflowTestCaseSchema = workflowTestCaseObjectSchema
 	.refine((c) => c.seedThread !== undefined || c.conversation !== undefined, {
 		message:
 			'a case needs a conversation, or a seedThread (which supplies the live turn from the trace)',
-	});
+	})
+	.refine(
+		(c) =>
+			(c.executionScenarios?.length ?? 0) > 0 ||
+			(c.processExpectations?.length ?? 0) > 0 ||
+			(c.outcomeExpectations?.length ?? 0) > 0,
+		{
+			message:
+				'a case needs at least one executionScenario, or a process/outcome expectation to grade',
+		},
+	);
 
 export type WorkflowTestCaseInput = z.infer<typeof WorkflowTestCaseSchema>;

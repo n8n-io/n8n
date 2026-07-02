@@ -127,6 +127,9 @@ export class ExecutionEntity {
 	@Column({ type: 'varchar', length: 36, nullable: true })
 	workflowVersionId: string | null;
 
+	@Column({ default: false })
+	usedPrivateCredentials: boolean;
+
 	@OneToMany('ExecutionMetadata', 'execution')
 	metadata: ExecutionMetadata[];
 

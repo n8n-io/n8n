@@ -1,4 +1,3 @@
-import { IWorkflowToImport } from '@/interfaces';
 import {
 	PullWorkFolderRequestDto,
 	PushWorkFolderRequestDto,
@@ -26,6 +25,7 @@ import type { SourceControlPreferences } from './types/source-control-preference
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
+import { IWorkflowToImport } from '@/interfaces';
 
 @RestController('/source-control')
 export class SourceControlController {
@@ -202,11 +202,6 @@ export class SourceControlController {
 		await this.sourceControlScopedService.ensureIsAllowedToPush(req);
 
 		try {
-			await this.sourceControlService.setGitUserDetails(
-				`${req.user.firstName} ${req.user.lastName}`,
-				req.user.email,
-			);
-
 			const result = await this.sourceControlService.pushWorkfolder(req.user, payload);
 			res.statusCode = result.statusCode;
 

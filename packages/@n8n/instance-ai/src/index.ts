@@ -182,6 +182,8 @@ const loadValidateAttachments = lazyModule(
 );
 
 export { MAX_STEPS } from './constants/max-steps';
+export { deriveCredentialHosts } from './tools/workflows/credential-url-resolver';
+export type { CredentialHostMeta } from './tools/workflows/credential-url-resolver';
 export type {
 	AgentDbMessage,
 	AgentMessage,
@@ -480,6 +482,7 @@ export type RunStateRegistry<TUser = unknown> = RunStateRegistryMod.RunStateRegi
 export const RunStateRegistry: typeof RunStateRegistryMod.RunStateRegistry = lazyClass(
 	() => loadRunStateRegistry().RunStateRegistry,
 );
+export { orchestratorAgentId } from './runtime/orchestrator-identity';
 export type { RunDebugRecord } from './debug/run-debug-buffer';
 export {
 	RunDebugBuffer,
@@ -648,6 +651,7 @@ export type {
 	CredentialSummary,
 	CredentialDetail,
 	CredentialTypeSearchResult,
+	CredentialHostInfo,
 	NodeSummary,
 	NodeDescription,
 	SearchableNodeDescription,
@@ -662,6 +666,13 @@ export type {
 	FolderSummary,
 	ServiceProxyConfig,
 } from './types';
+export type {
+	OrchestratorRunHandoffReason,
+	OrchestratorRunHandoffState,
+	OrchestratorRunStopSignal,
+} from './runtime/orchestrator-run-control';
+export { createOrchestratorRunControl } from './runtime/orchestrator-run-control';
+export { createOrchestratorRunControlForState } from './runtime/orchestrator-run-control';
 export type { DetachedDelegateTaskResult } from './tools/orchestration/delegate.tool';
 export const classifyAttachments: typeof StructuredFileParserMod.classifyAttachments = lazyFunction(
 	() => loadStructuredFileParser().classifyAttachments,

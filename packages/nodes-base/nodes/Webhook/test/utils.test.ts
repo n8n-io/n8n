@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 import {
-	ApplicationError,
+	UnexpectedError,
 	type IWebhookFunctions,
 	type INodeExecutionData,
 	type IDataObject,
@@ -511,7 +511,7 @@ describe('Webhook Utils', () => {
 				getHeaderData: vi.fn().mockReturnValue(headers),
 			};
 			(jwt.verify as Mock).mockImplementationOnce(() => {
-				throw new ApplicationError('jwt malformed');
+				throw new UnexpectedError('jwt malformed');
 			});
 			const authPropertyName = 'authentication';
 			await expect(

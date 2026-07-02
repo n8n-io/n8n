@@ -8,16 +8,20 @@ import {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ensureError } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import type { INode } from 'n8n-workflow';
 
-import type { PublicationResult } from '@/workflows/publication/publication-result';
+import type {
+	PublicationResult,
+	TriggerPublicationStatus,
+} from '@/workflows/publication/publication-result';
 import { computeTriggerDiff } from '@/workflows/publication/trigger-diff';
-import { isTransientActivationError } from '@/workflows/triggers/trigger-activation-retry';
 import {
 	WorkflowTriggerActivator,
 	type TriggerActivationFailure,
 	type TriggerActivationOutcome,
 } from '@/workflows/triggers/workflow-trigger-activator';
+import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 
 /**
  * Reconciles a workflow's triggers to a published version, one outbox record at
@@ -36,6 +40,7 @@ export class WorkflowPublicationApplier {
 		private readonly workflowHistoryRepository: WorkflowHistoryRepository,
 		private readonly workflowPublishedVersionRepository: WorkflowPublishedVersionRepository,
 		private readonly workflowTriggerActivator: WorkflowTriggerActivator,
+		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
 	) {
 		this.logger = this.logger.scoped('workflow-publication');
 	}
@@ -125,7 +130,13 @@ export class WorkflowPublicationApplier {
 		// triggers keep running and re-read the new version on their next fire.
 		if (toAdd.size === 0 && toRemove.size === 0) {
 			await this.advancePublishedVersion(record);
-			return { type: 'completed' };
+			return {
+				type: 'completed',
+				triggerStatuses: this.buildTriggerStatuses(desiredTriggerNodes, {
+					activated: [],
+					failures: [],
+				}),
+			};
 		}
 
 		// Must happen BEFORE advancing the version, using the currently published
@@ -140,7 +151,7 @@ export class WorkflowPublicationApplier {
 		try {
 			if (toAdd.size > 0) {
 				const outcome = await this.workflowTriggerActivator.activate(workflow, newVersion, toAdd);
-				return this.classifyActivationOutcome(outcome);
+				return this.classifyActivationOutcome(outcome, desiredTriggerNodes);
 			}
 
 			if (toRemove.size > 0) {
@@ -150,7 +161,13 @@ export class WorkflowPublicationApplier {
 			return { type: 'failed', error: ensureError(e) };
 		}
 
-		return { type: 'completed' };
+		return {
+			type: 'completed',
+			triggerStatuses: this.buildTriggerStatuses(desiredTriggerNodes, {
+				activated: [],
+				failures: [],
+			}),
+		};
 	}
 
 	/**
@@ -179,29 +196,57 @@ export class WorkflowPublicationApplier {
 			await this.workflowTriggerActivator.deactivate(workflow, oldVersion, toRemove);
 		}
 
+		// Invalidate before the mapping is removed, so reads fall through to the
+		// database instead of the cache ever serving a version for an unpublished
+		// workflow. No repopulation follows: the end state has no published version.
+		await this.workflowPublishedDataService.invalidateCache(record.workflowId);
 		await this.workflowPublishedVersionRepository.removePublishedVersion(record.workflowId);
 
 		return { type: 'unpublished' };
 	}
 
 	/**
-	 * Maps a per-node activation outcomes to a combined publication result.
+	 * Maps per-node activation outcomes to a combined publication result, attaching
+	 * the full desired trigger set's statuses to every version-advancing result.
 	 */
-	private classifyActivationOutcome(outcome: TriggerActivationOutcome): PublicationResult {
-		if (outcome.failures.length === 0) return { type: 'completed' };
+	private classifyActivationOutcome(
+		outcome: TriggerActivationOutcome,
+		desiredTriggerNodes: INode[],
+	): PublicationResult {
+		const triggerStatuses = this.buildTriggerStatuses(desiredTriggerNodes, outcome);
+		if (outcome.failures.length === 0) return { type: 'completed', triggerStatuses };
 
-		const allDeterministic = outcome.failures.every(
-			(failure) => !isTransientActivationError(failure.error),
-		);
-		if (outcome.activated.length === 0 && allDeterministic) {
-			return { type: 'failed', error: this.toActivationError(outcome.failures) };
+		// Check whether this is a partial or full failure: If at least one trigger
+		// has been activated successfully, it's partial.
+		const hasRunningTrigger = triggerStatuses.some((s) => s.status === 'activated');
+		if (!hasRunningTrigger) {
+			return { type: 'failed', error: this.toActivationError(outcome.failures), triggerStatuses };
 		}
 
-		return {
-			type: 'partial',
-			activatedNodeIds: outcome.activated,
-			failures: outcome.failures,
-		};
+		return { type: 'partial', triggerStatuses };
+	}
+
+	/**
+	 * Builds per-trigger statuses for the full set of desired trigger nodes.
+	 * Nodes in `outcome.failures` are marked `failed`; all others are `activated`,
+	 * including unchanged-but-still-running triggers that were not in `toAdd`.
+	 */
+	private buildTriggerStatuses(
+		desiredTriggerNodes: INode[],
+		outcome: TriggerActivationOutcome,
+	): TriggerPublicationStatus[] {
+		const failureByNodeId = new Map(outcome.failures.map((f) => [f.nodeId, f]));
+		return desiredTriggerNodes.map((node): TriggerPublicationStatus => {
+			const failure = failureByNodeId.get(node.id);
+			return failure
+				? {
+						nodeId: node.id,
+						nodeName: node.name,
+						status: 'failed',
+						errorMessage: failure.error.message,
+					}
+				: { nodeId: node.id, nodeName: node.name, status: 'activated' };
+		});
 	}
 
 	/**
@@ -250,9 +295,14 @@ export class WorkflowPublicationApplier {
 	 * the previous one.
 	 */
 	private async advancePublishedVersion(record: WorkflowPublicationOutbox) {
+		// Invalidate → write → refresh: with the cache empty across the write, reads
+		// fall through to the database (the source of truth) rather than ever serving
+		// a stale version, before the new version is cached again.
+		await this.workflowPublishedDataService.invalidateCache(record.workflowId);
 		await this.workflowPublishedVersionRepository.setPublishedVersion(
 			record.workflowId,
 			record.publishedVersionId,
 		);
+		await this.workflowPublishedDataService.refreshCache(record.workflowId);
 	}
 }

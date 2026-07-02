@@ -14,6 +14,7 @@ import { descriptiveNodeNames } from './descriptive-node-names';
 import { errorRoutesConsistent } from './error-routes-consistent';
 import { expressionsReferenceExistingNodes } from './expressions-reference-existing-nodes';
 import { fulfillsUserRequest } from './fulfills-user-request';
+import { googleSheetsRlcDefaultMode } from './google-sheets-rlc-default-mode';
 import { handlesMultipleItems } from './handles-multiple-items';
 import { hasNodes } from './has-nodes';
 import { hasStartNode } from './has-start-node';
@@ -65,6 +66,7 @@ export const PARAMETER_CORRECTNESS_CHECKS: BinaryCheck[] = [
 	httpGenericAuthTypeMatchesPrompt,
 	correctNodeOperations,
 	validDataFlow,
+	googleSheetsRlcDefaultMode,
 ];
 
 export const INTENT_MATCH_CHECKS: BinaryCheck[] = [fulfillsUserRequest];
