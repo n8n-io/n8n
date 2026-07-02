@@ -96,6 +96,28 @@ export function buildUpdateVersionMetadata(
 }
 
 /**
+ * Deterministic version metadata for a version created by restoring a previous
+ * one. A restore is fully described by its source version, so there is no
+ * client-provided variant.
+ */
+export function buildRestoreVersionMetadata(restoredFrom: {
+	versionId: string;
+	name: string | null;
+	createdAt: Date;
+}): VersionMetadata {
+	const label = restoredFrom.name
+		? `"${restoredFrom.name}"`
+		: `version ${restoredFrom.versionId.slice(0, 8)}`;
+	return {
+		name: truncate(`Restored ${label}`, MAX_VERSION_NAME_LENGTH),
+		description: truncate(
+			`Restored to version ${restoredFrom.versionId} (created ${restoredFrom.createdAt.toISOString()})`,
+			MAX_VERSION_DESCRIPTION_LENGTH,
+		),
+	};
+}
+
+/**
  * Resolves the version metadata to persist: the MCP client's own summary when
  * provided, otherwise the deterministic fallback.
  */

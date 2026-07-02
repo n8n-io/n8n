@@ -2,6 +2,7 @@ import type { IConnections, INode } from 'n8n-workflow';
 
 import {
 	buildCreateVersionMetadata,
+	buildRestoreVersionMetadata,
 	buildUpdateVersionMetadata,
 	MAX_VERSION_DESCRIPTION_LENGTH,
 	MAX_VERSION_NAME_LENGTH,
@@ -124,6 +125,41 @@ describe('buildUpdateVersionMetadata', () => {
 
 		expect(metadata.name.length).toBeLessThanOrEqual(MAX_VERSION_NAME_LENGTH);
 		expect(metadata.name.endsWith('…')).toBe(true);
+	});
+});
+
+describe('buildRestoreVersionMetadata', () => {
+	test('uses the restored version name when it has one', () => {
+		const metadata = buildRestoreVersionMetadata({
+			versionId: 'abcdef1234567890',
+			name: 'Added Slack alert',
+			createdAt: new Date('2024-01-01T00:00:00.000Z'),
+		});
+
+		expect(metadata.name).toBe('Restored "Added Slack alert"');
+		expect(metadata.description).toBe(
+			'Restored to version abcdef1234567890 (created 2024-01-01T00:00:00.000Z)',
+		);
+	});
+
+	test('falls back to a shortened version id for unnamed versions', () => {
+		const metadata = buildRestoreVersionMetadata({
+			versionId: 'abcdef1234567890',
+			name: null,
+			createdAt: new Date('2024-01-01T00:00:00.000Z'),
+		});
+
+		expect(metadata.name).toBe('Restored version abcdef12');
+	});
+
+	test('caps the name when the restored version name is very long', () => {
+		const metadata = buildRestoreVersionMetadata({
+			versionId: 'abcdef1234567890',
+			name: 'x'.repeat(200),
+			createdAt: new Date('2024-01-01T00:00:00.000Z'),
+		});
+
+		expect(metadata.name.length).toBeLessThanOrEqual(MAX_VERSION_NAME_LENGTH);
 	});
 });
 
