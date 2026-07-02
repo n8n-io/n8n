@@ -23,8 +23,10 @@ export const DEFAULT_MCP_BUILD_MODEL = 'claude-opus-4-8';
  *  default, and the resolved value is passed explicitly to `claude --model`
  *  and recorded as `build_model` experiment metadata. */
 function resolveBuildModel(env: NodeJS.ProcessEnv = process.env): string {
-	const fromEnv = env.ANTHROPIC_MODEL?.trim();
-	return fromEnv ? fromEnv : DEFAULT_MCP_BUILD_MODEL;
+	// Blank counts as unset: CI passes ANTHROPIC_MODEL through from an optional
+	// workflow input, so an empty value must still pin the default.
+	const fromEnv = env.ANTHROPIC_MODEL?.trim() ?? '';
+	return fromEnv === '' ? DEFAULT_MCP_BUILD_MODEL : fromEnv;
 }
 
 // ---------------------------------------------------------------------------
