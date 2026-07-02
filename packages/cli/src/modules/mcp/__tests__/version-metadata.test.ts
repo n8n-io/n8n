@@ -81,6 +81,16 @@ describe('buildUpdateVersionMetadata', () => {
 		expect(metadata.description).toBe('Updated nodes: Set');
 	});
 
+	test('reports a renamed node by its new name', () => {
+		const metadata = buildUpdateVersionMetadata(
+			{ nodes: [webhook, makeNode('2', 'Slack')], connections: {} },
+			{ nodes: [webhook, makeNode('2', 'Gmail')], connections: {} },
+		);
+
+		expect(metadata.name).toBe('Updated Gmail');
+		expect(metadata.description).toBe('Updated nodes: Gmail');
+	});
+
 	test('combines added, removed, and updated clauses', () => {
 		const metadata = buildUpdateVersionMetadata(
 			{ nodes: [webhook, set], connections: {} },

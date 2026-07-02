@@ -54,6 +54,9 @@ export function buildUpdateVersionMetadata(
 	next: { nodes: INode[]; connections: IConnections },
 ): VersionMetadata {
 	const nodeDiff = compareWorkflowsNodes(previous.nodes, next.nodes);
+	// The diff stores the pre-change node for modified entries; report the
+	// post-change name so a renamed node is listed by a name that still exists.
+	const nextNodesById = new Map(next.nodes.map((node) => [node.id, node]));
 
 	const added: string[] = [];
 	const removed: string[] = [];
@@ -61,7 +64,9 @@ export function buildUpdateVersionMetadata(
 	for (const { status, node } of nodeDiff.values()) {
 		if (status === NodeDiffStatus.Added) added.push(node.name);
 		else if (status === NodeDiffStatus.Deleted) removed.push(node.name);
-		else if (status === NodeDiffStatus.Modified) modified.push(node.name);
+		else if (status === NodeDiffStatus.Modified) {
+			modified.push(nextNodesById.get(node.id)?.name ?? node.name);
+		}
 	}
 
 	const connectionsDiff = compareConnections(previous.connections, next.connections);
