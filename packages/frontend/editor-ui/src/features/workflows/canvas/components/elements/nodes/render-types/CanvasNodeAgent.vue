@@ -280,6 +280,15 @@ watch(
 	isolation: isolate;
 	width: 384px;
 	border-radius: var(--agent-card--radius);
+
+	// The embedded picker dropdown renders inside this card's stacking context
+	// (isolation above), so it can't escape on its own. While the picker is open
+	// (its focused search input keeps the card :focus-within), lift the whole card
+	// over the sibling node toolbar and connection handles (both z-index 1), or
+	// they paint over the open dropdown.
+	&:focus-within {
+		z-index: 2;
+	}
 }
 
 .surface {
