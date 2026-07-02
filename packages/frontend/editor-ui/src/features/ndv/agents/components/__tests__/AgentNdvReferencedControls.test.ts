@@ -6,7 +6,6 @@ import AgentNdvReferencedControls from '../AgentNdvReferencedControls.vue';
 import { NdvAgentConfigKey } from '../../composables/useNdvAgentConfig';
 import type { UseNdvAgentConfigReturn } from '../../composables/useNdvAgentConfig';
 import type { AgentJsonConfig, AgentResource } from '@/features/agents/types';
-import { AGENT_BUILDER_VIEW } from '@/features/agents/constants';
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
@@ -111,6 +110,7 @@ function createNdvStub(overrides: NdvOverrides = {}) {
 	};
 	const scheduleConfigUpdate = vi.fn();
 	const onConfigUpdated = vi.fn();
+	const openBuilder = vi.fn();
 
 	const value = {
 		isAgentNode: computed(() => overrides.isAgentNode ?? true),
@@ -121,7 +121,6 @@ function createNdvStub(overrides: NdvOverrides = {}) {
 		localConfig: ref('localConfig' in overrides ? overrides.localConfig : makeConfig()),
 		agent: ref('agent' in overrides ? overrides.agent : makeAgent()),
 		connectedTriggers: ref<string[]>([]),
-		tasksReloadKey: ref(0),
 		loading: ref(overrides.loading ?? false),
 		loadError: ref<unknown>(null),
 		isUnavailable: ref(overrides.isUnavailable ?? false),
@@ -134,9 +133,10 @@ function createNdvStub(overrides: NdvOverrides = {}) {
 		reload: vi.fn(),
 		flush: vi.fn(),
 		settle: vi.fn(),
+		openBuilder,
 	} as unknown as UseNdvAgentConfigReturn;
 
-	return { value, actions, scheduleConfigUpdate, onConfigUpdated };
+	return { value, actions, scheduleConfigUpdate, onConfigUpdated, openBuilder };
 }
 
 function mountControls(stub: { value: UseNdvAgentConfigReturn }) {
@@ -153,9 +153,9 @@ function mountControls(stub: { value: UseNdvAgentConfigReturn }) {
 				},
 				N8nText: { template: '<span><slot /></span>', props: ['size', 'color'] },
 				N8nLoading: { template: '<div data-testid="loading-stub" />', props: ['rows'] },
-				N8nRoute: {
-					template: '<a :data-to="JSON.stringify(to)"><slot /></a>',
-					props: ['to'],
+				N8nLink: {
+					template: '<a v-bind="$attrs"><slot /></a>',
+					props: ['theme'],
 				},
 			},
 		},
@@ -182,21 +182,20 @@ describe('AgentNdvReferencedControls', () => {
 		expect(wrapper.find('[data-testid="info-panel-stub"]').exists()).toBe(true);
 		const caps = wrapper.findComponent(CapabilitiesStub);
 		expect(caps.exists()).toBe(true);
-		expect(caps.props('sections')).toEqual(['tools', 'tasks', 'skills']);
+		expect(caps.props('sections')).toEqual(['tools', 'skills']);
 		// Channels are excluded, so no connected-triggers are wired through.
 		expect(caps.props('connectedTriggers')).toEqual([]);
 	});
 
-	it('links "Open Agent Builder" to the AGENT_BUILDER_VIEW route with project + agent params', () => {
-		const stub = createNdvStub({ projectId: 'p9', agentId: 'a9' });
+	it('opens the Agent Builder via the orchestrator (saving the return context) on click', async () => {
+		const stub = createNdvStub();
 		const wrapper = mountControls(stub);
 
 		const link = wrapper.find('[data-test-id="agent-ndv-open-builder"]');
 		expect(link.exists()).toBe(true);
-		expect(JSON.parse(link.attributes('data-to') ?? '{}')).toEqual({
-			name: AGENT_BUILDER_VIEW,
-			params: { projectId: 'p9', agentId: 'a9' },
-		});
+		await link.trigger('click');
+
+		expect(stub.openBuilder).toHaveBeenCalled();
 	});
 
 	it('names the shared agent in the scope notice', () => {
@@ -246,9 +245,8 @@ describe('AgentNdvReferencedControls', () => {
 		caps.vm.$emit('add-skill');
 		caps.vm.$emit('open-skill', 'skill-1');
 		caps.vm.$emit('remove-skill', 'skill-1');
-		caps.vm.$emit('toggle-task', { id: 't1', enabled: false });
 		caps.vm.$emit('update:config', { instructions: 'new' });
-		caps.vm.$emit('tasks-changed');
+		caps.vm.$emit('agent-changed');
 
 		expect(stub.actions.onOpenAddToolModal).toHaveBeenCalled();
 		expect(stub.actions.onOpenToolFromList).toHaveBeenCalledWith({
@@ -260,7 +258,6 @@ describe('AgentNdvReferencedControls', () => {
 		expect(stub.actions.onOpenAddSkillModal).toHaveBeenCalled();
 		expect(stub.actions.onOpenSkillFromList).toHaveBeenCalledWith('skill-1');
 		expect(stub.actions.onRemoveSkill).toHaveBeenCalledWith('skill-1');
-		expect(stub.actions.onToggleTask).toHaveBeenCalledWith({ id: 't1', enabled: false });
 		expect(stub.scheduleConfigUpdate).toHaveBeenCalledWith({ instructions: 'new' });
 		expect(stub.onConfigUpdated).toHaveBeenCalled();
 	});

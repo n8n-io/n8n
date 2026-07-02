@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useI18n } from '@n8n/i18n';
-import { computed, onBeforeUnmount, onMounted } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { computed, onMounted } from 'vue';
+import { onBeforeRouteLeave, useRoute, useRouter } from 'vue-router';
 import { VIEWS } from '@/app/constants';
 import { useAgentReturnContextStore } from '@/features/agents/agentReturnContext.store';
 import BackToWorkflowBanner from '@/features/agents/components/BackToWorkflowBanner.vue';
@@ -27,12 +27,18 @@ onMounted(async () => {
 	documentTitle.set(locale.baseText('agents.heading'));
 });
 
-// Clear the round-trip context when leaving the agent feature entirely. This
-// parent route wraps the builder/preview/sessions, so switching agents or
-// sub-pages keeps it mounted; it only unmounts on a real exit. Without this an
-// abandoned round-trip (e.g. browser back) would resurface the banner the next
-// time the same agent is opened.
-onBeforeUnmount(() => returnContext.clear());
+// Clear the round-trip context when actually leaving the agent feature. Uses a
+// route-leave guard rather than onBeforeUnmount: this parent component can be
+// transiently unmounted+remounted by <Suspense> while an async child-route
+// chunk resolves on the first (uncached) navigation in, and an onBeforeUnmount
+// clear there would wipe the just-set context — making the "Back to workflow"
+// banner blink and vanish. onBeforeRouteLeave fires only on a real route-level
+// exit (never on the Suspense swap, never on builder/preview/sessions
+// sub-page switches), so the banner survives. Still covers the abandoned
+// round-trip (browser back), which would otherwise resurface the banner.
+onBeforeRouteLeave(() => {
+	returnContext.clear();
+});
 
 async function onBackToWorkflow() {
 	const ctx = returnContext.context;

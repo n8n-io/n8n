@@ -9,7 +9,6 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useAgentCapabilitySummary } from '@/features/agents/composables/useAgentCapabilitySummary';
-import { useAgentIntegrationsCatalog } from '@/features/agents/composables/useAgentIntegrationsCatalog';
 import { useModelCatalog } from '@/features/agents/composables/useModelCatalog';
 import {
 	AGENT_MODEL_PROVIDER_DEFINITIONS,
@@ -34,8 +33,6 @@ const projectsStore = useProjectsStore();
 const nodeTypesStore = useNodeTypesStore();
 const nav = useAgentNavigation();
 const workflowDocumentStore = injectWorkflowDocumentStore();
-const { catalog: integrationsCatalog, ensureLoaded: ensureIntegrationsLoaded } =
-	useAgentIntegrationsCatalog();
 const { catalog: modelCatalog, ensureLoaded: ensureModelsLoaded } = useModelCatalog();
 
 const {
@@ -122,9 +119,7 @@ function resolveNodeTypeLabel(nodeType: string, version?: number): string | unde
 }
 
 const chips = computed(() =>
-	summary.value
-		? buildAgentCardChips(summary.value, integrationsCatalog.value, resolveNodeTypeLabel)
-		: [],
+	summary.value ? buildAgentCardChips(summary.value, resolveNodeTypeLabel) : [],
 );
 
 // The picker is NDV-parameter-input shaped; it only reads `parameter.name`, so a
@@ -156,15 +151,14 @@ function openAgent() {
 	nav.openBuilder(projectId.value, agentId.value);
 }
 
-// Resolve chip labels/icons (channel names/icons + friendly model name) once the
-// project scope is known. projectId is often empty at mount and resolves async,
-// so watch it (immediate) rather than firing once in onMounted, which would skip
-// the load on a cold canvas and leave chips on raw-type/raw-id fallbacks.
+// Resolve the friendly model name once the project scope is known. projectId is
+// often empty at mount and resolves async, so watch it (immediate) rather than
+// firing once in onMounted, which would skip the load on a cold canvas and leave
+// the model name on its raw-id fallback.
 watch(
 	projectId,
 	(id) => {
 		if (!id) return;
-		void ensureIntegrationsLoaded(id).catch(() => {});
 		void ensureModelsLoaded(id).catch(() => {});
 	},
 	{ immediate: true },

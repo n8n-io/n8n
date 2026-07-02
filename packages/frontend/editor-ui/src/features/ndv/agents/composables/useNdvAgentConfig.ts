@@ -23,6 +23,7 @@ import { getAgent, updateAgentSkill } from '@/features/agents/composables/useAge
 import { useAgentConfig } from '@/features/agents/composables/useAgentConfig';
 import { useAgentConfigAutosave } from '@/features/agents/composables/useAgentConfigAutosave';
 import { useAgentPermissions } from '@/features/agents/composables/useAgentPermissions';
+import { useAgentNavigation } from '@/features/agents/composables/useAgentNavigation';
 import {
 	useAgentCapabilitiesActions,
 	type AgentCapabilitiesTelemetry,
@@ -62,6 +63,7 @@ export function useNdvAgentConfig(
 ) {
 	const rootStore = useRootStore();
 	const projectsStore = useProjectsStore();
+	const nav = useAgentNavigation();
 	const toast = useToast();
 	const i18n = useI18n();
 	// Non-strict inject: the workflow document store is provided in the NDV tree,
@@ -99,8 +101,6 @@ export function useNdvAgentConfig(
 	const localConfig = ref<AgentJsonConfig | null>(null);
 	const agent = ref<AgentResource | null>(null);
 	const connectedTriggers = ref<string[]>([]);
-	/** Bumped after a task/skill modal change so the capabilities section reloads. */
-	const tasksReloadKey = ref(0);
 	const loadError = ref<unknown | null>(null);
 	/** Terminal state: the referenced agent was deleted or access was lost. */
 	const isUnavailable = ref(false);
@@ -273,17 +273,26 @@ export function useNdvAgentConfig(
 	onBeforeUnmount(() => agentsEventBus.off('agentUpdated', onAgentUpdated));
 
 	/**
-	 * Refresh after a task/skill modal change (mirrors the builder's
-	 * `onConfigUpdated`): refetch config + agent and bump the reload key so the
-	 * capabilities section re-pulls task bodies.
+	 * Refresh after a skill modal change (mirrors the builder's `onConfigUpdated`):
+	 * refetch config + agent so the capabilities section re-pulls skill bodies.
 	 */
 	async function onConfigUpdated() {
 		if (!agentId.value) return;
 		await load(projectId.value, agentId.value);
-		tasksReloadKey.value += 1;
+	}
+
+	/**
+	 * Open the referenced agent in the Agent Builder, remembering this node as the
+	 * origin so the builder shows a "Back to workflow" banner (same round-trip the
+	 * canvas card's open affordance uses).
+	 */
+	async function openBuilder() {
+		if (!agentId.value) return;
+		await nav.openBuilder(projectId.value, agentId.value, toValue(activeNode)?.id);
 	}
 
 	return {
+		openBuilder,
 		isAgentNode,
 		projectId,
 		agentId,
@@ -291,7 +300,6 @@ export function useNdvAgentConfig(
 		localConfig,
 		agent,
 		connectedTriggers,
-		tasksReloadKey,
 		loading,
 		loadError,
 		isUnavailable,

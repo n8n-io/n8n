@@ -41,9 +41,10 @@ const props = withDefaults(
 		reloadKey?: number;
 		/**
 		 * Allowlist of sections to render. Defaults to all — the Agent Builder
-		 * shows everything; the NDV passes `['tools', 'tasks', 'skills']` to hide
-		 * Channels (avoids the channel-connect auto-publish) and Sub-agents.
-		 * Suppressing `channels` also suppresses the inline `AgentChannelModal`.
+		 * shows everything; the NDV passes `['tools', 'skills']` to hide Channels,
+		 * Tasks and Sub-agents (all standalone-agent concepts that don't apply when
+		 * the agent is invoked by the embedding workflow). Suppressing `channels`
+		 * also suppresses the inline `AgentChannelModal`.
 		 */
 		sections?: AgentCapabilitySection[];
 	}>(),

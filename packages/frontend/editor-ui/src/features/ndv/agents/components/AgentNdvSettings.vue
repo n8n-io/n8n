@@ -12,10 +12,9 @@
  * config/autosave instance with the Parameters tab.
  */
 import { computed, inject } from 'vue';
-import { N8nCallout, N8nCard, N8nLoading, N8nRoute, N8nText } from '@n8n/design-system';
+import { N8nCallout, N8nCard, N8nLink, N8nLoading, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
-import { AGENT_BUILDER_VIEW } from '@/features/agents/constants';
 import AgentMemoryPanel from '@/features/agents/components/AgentMemoryPanel.vue';
 import AgentAdvancedPanel from '@/features/agents/components/AgentAdvancedPanel.vue';
 
@@ -27,7 +26,6 @@ const ndv = inject(NdvAgentConfigKey);
 
 const isAgentNode = computed(() => ndv?.isAgentNode.value ?? false);
 const agentId = computed(() => ndv?.agentId.value ?? '');
-const projectId = computed(() => ndv?.projectId.value ?? '');
 const canUpdate = computed(() => ndv?.canUpdate.value ?? false);
 const localConfig = computed(() => ndv?.localConfig.value ?? null);
 const agent = computed(() => ndv?.agent.value ?? null);
@@ -53,10 +51,12 @@ const scopeNotice = computed(() =>
 		: i18n.baseText('agentNode.ndv.scope.notice'),
 );
 
-const builderRoute = computed(() => ({
-	name: AGENT_BUILDER_VIEW,
-	params: { projectId: projectId.value, agentId: agentId.value },
-}));
+// Open the builder through the shared orchestrator so it remembers this node as
+// the origin (sets the "Back to workflow" return context), rather than a plain
+// route link that would navigate without it.
+function onOpenBuilder() {
+	void ndv?.openBuilder();
+}
 
 const saveStatusText = computed(() => {
 	if (saveStatus.value === 'saving') return i18n.baseText('agentNode.ndv.saveStatus.saving');
@@ -86,13 +86,14 @@ const saveStatusText = computed(() => {
 							>
 								{{ saveStatusText }}
 							</N8nText>
-							<N8nRoute
-								:to="builderRoute"
+							<N8nLink
+								theme="primary"
 								:class="$style.builderLink"
 								data-test-id="agent-ndv-settings-open-builder"
+								@click.prevent="onOpenBuilder"
 							>
 								{{ i18n.baseText('agentNode.ndv.openBuilder') }}
-							</N8nRoute>
+							</N8nLink>
 						</div>
 					</template>
 				</N8nCallout>

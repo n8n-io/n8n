@@ -2,21 +2,23 @@
 /**
  * Referenced-agent controls for the AI Agent node's NDV Parameters tab.
  *
- * Edits the *shared agent primitive* (model, instructions, tools, tasks,
- * skills) — global, applies everywhere the agent is used — so it carries a
- * visible scope boundary + an "Open Agent Builder" deep-link. Channels and
- * sub-agents are intentionally excluded (channel-connect auto-publishes the
- * agent; sub-agents stay builder-only), via the `sections` allowlist.
+ * Edits the *shared agent primitive* (model, instructions, tools, skills) —
+ * global, applies everywhere the agent is used — so it carries a visible scope
+ * boundary + an "Open Agent Builder" deep-link. Channels, tasks and sub-agents
+ * are intentionally excluded via the `sections` allowlist: channels and tasks
+ * only make sense for a standalone agent (a channel isn't aware of — and won't
+ * trigger — the workflow this node is embedded in; a task is the agent running a
+ * capability on its own schedule, which the invoking workflow already controls),
+ * and sub-agents stay builder-only.
  *
  * Consumes the shared {@link NdvAgentConfigKey} orchestrator (owned by the
  * stable NDV container) so it shares one config/autosave/actions instance with
  * the Settings tab.
  */
 import { computed, inject } from 'vue';
-import { N8nCallout, N8nCard, N8nLoading, N8nRoute, N8nText } from '@n8n/design-system';
+import { N8nCallout, N8nCard, N8nLink, N8nLoading, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
-import { AGENT_BUILDER_VIEW } from '@/features/agents/constants';
 import AgentInfoPanel from '@/features/agents/components/AgentInfoPanel.vue';
 import AgentCapabilitiesSection from '@/features/agents/components/AgentCapabilitiesSection.vue';
 
@@ -33,7 +35,6 @@ const canUpdate = computed(() => ndv?.canUpdate.value ?? false);
 const localConfig = computed(() => ndv?.localConfig.value ?? null);
 const agent = computed(() => ndv?.agent.value ?? null);
 const appliedSkills = computed(() => ndv?.appliedSkills.value ?? []);
-const tasksReloadKey = computed(() => ndv?.tasksReloadKey.value ?? 0);
 const loading = computed(() => ndv?.loading.value ?? false);
 const isUnavailable = computed(() => ndv?.isUnavailable.value ?? false);
 const isPublished = computed(() => ndv?.isPublished.value ?? false);
@@ -58,10 +59,12 @@ const scopeNotice = computed(() =>
 		: i18n.baseText('agentNode.ndv.scope.notice'),
 );
 
-const builderRoute = computed(() => ({
-	name: AGENT_BUILDER_VIEW,
-	params: { projectId: projectId.value, agentId: agentId.value },
-}));
+// Open the builder through the shared orchestrator so it remembers this node as
+// the origin (sets the "Back to workflow" return context), rather than a plain
+// route link that would navigate without it.
+function onOpenBuilder() {
+	void ndv?.openBuilder();
+}
 
 const saveStatusText = computed(() => {
 	if (saveStatus.value === 'saving') return i18n.baseText('agentNode.ndv.saveStatus.saving');
@@ -94,13 +97,14 @@ const actions = computed(() => ndv?.actions);
 							>
 								{{ saveStatusText }}
 							</N8nText>
-							<N8nRoute
-								:to="builderRoute"
+							<N8nLink
+								theme="primary"
 								:class="$style.builderLink"
 								data-test-id="agent-ndv-open-builder"
+								@click.prevent="onOpenBuilder"
 							>
 								{{ i18n.baseText('agentNode.ndv.openBuilder') }}
-							</N8nRoute>
+							</N8nLink>
 						</div>
 					</template>
 				</N8nCallout>
@@ -149,18 +153,14 @@ const actions = computed(() => ndv?.actions);
 						:project-id="projectId"
 						:agent-id="agentId"
 						:is-published="isPublished"
-						:task-refs="localConfig?.tasks ?? []"
-						:reload-key="tasksReloadKey"
-						:sections="['tools', 'tasks', 'skills']"
+						:sections="['tools', 'skills']"
 						@add-tool="actions?.onOpenAddToolModal"
 						@open-tool="actions?.onOpenToolFromList"
 						@remove-tool="actions?.onRemoveTool"
 						@add-skill="actions?.onOpenAddSkillModal"
 						@open-skill="actions?.onOpenSkillFromList"
 						@remove-skill="actions?.onRemoveSkill"
-						@toggle-task="actions?.onToggleTask"
 						@update:config="ndv?.scheduleConfigUpdate"
-						@tasks-changed="ndv?.onConfigUpdated"
 						@agent-changed="ndv?.onConfigUpdated"
 					/>
 				</template>

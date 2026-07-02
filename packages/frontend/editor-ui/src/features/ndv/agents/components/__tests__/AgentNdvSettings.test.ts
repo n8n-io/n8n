@@ -6,7 +6,6 @@ import AgentNdvSettings from '../AgentNdvSettings.vue';
 import { NdvAgentConfigKey } from '../../composables/useNdvAgentConfig';
 import type { UseNdvAgentConfigReturn } from '../../composables/useNdvAgentConfig';
 import type { AgentJsonConfig, AgentResource } from '@/features/agents/types';
-import { AGENT_BUILDER_VIEW } from '@/features/agents/constants';
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
@@ -72,6 +71,7 @@ type NdvOverrides = Partial<{
 
 function createNdvStub(overrides: NdvOverrides = {}) {
 	const scheduleConfigUpdate = vi.fn();
+	const openBuilder = vi.fn();
 
 	const value = {
 		isAgentNode: computed(() => overrides.isAgentNode ?? true),
@@ -82,7 +82,6 @@ function createNdvStub(overrides: NdvOverrides = {}) {
 		localConfig: ref('localConfig' in overrides ? overrides.localConfig : makeConfig()),
 		agent: ref('agent' in overrides ? overrides.agent : makeAgent()),
 		connectedTriggers: ref<string[]>([]),
-		tasksReloadKey: ref(0),
 		loading: ref(overrides.loading ?? false),
 		loadError: ref<unknown>(null),
 		isUnavailable: ref(overrides.isUnavailable ?? false),
@@ -95,9 +94,10 @@ function createNdvStub(overrides: NdvOverrides = {}) {
 		reload: vi.fn(),
 		flush: vi.fn(),
 		settle: vi.fn(),
+		openBuilder,
 	} as unknown as UseNdvAgentConfigReturn;
 
-	return { value, scheduleConfigUpdate };
+	return { value, scheduleConfigUpdate, openBuilder };
 }
 
 function mountSettings(stub: { value: UseNdvAgentConfigReturn }) {
@@ -114,9 +114,9 @@ function mountSettings(stub: { value: UseNdvAgentConfigReturn }) {
 				},
 				N8nText: { template: '<span><slot /></span>', props: ['size', 'color'] },
 				N8nLoading: { template: '<div data-testid="loading-stub" />', props: ['rows'] },
-				N8nRoute: {
-					template: '<a :data-to="JSON.stringify(to)"><slot /></a>',
-					props: ['to'],
+				N8nLink: {
+					template: '<a v-bind="$attrs"><slot /></a>',
+					props: ['theme'],
 				},
 			},
 		},
@@ -154,14 +154,13 @@ describe('AgentNdvSettings', () => {
 		expect(wrapper.findComponent(AdvancedPanelStub).props('disabled')).toBe(true);
 	});
 
-	it('links "Open Agent Builder" to the AGENT_BUILDER_VIEW route', () => {
-		const stub = createNdvStub({ projectId: 'p3', agentId: 'a3' });
+	it('opens the Agent Builder via the orchestrator (saving the return context) on click', async () => {
+		const stub = createNdvStub();
 		const wrapper = mountSettings(stub);
 		const link = wrapper.find('[data-test-id="agent-ndv-settings-open-builder"]');
-		expect(JSON.parse(link.attributes('data-to') ?? '{}')).toEqual({
-			name: AGENT_BUILDER_VIEW,
-			params: { projectId: 'p3', agentId: 'a3' },
-		});
+		expect(link.exists()).toBe(true);
+		await link.trigger('click');
+		expect(stub.openBuilder).toHaveBeenCalled();
 	});
 
 	it('shows a skeleton while loading with no config yet', () => {

@@ -25,10 +25,6 @@ vi.mock('@/features/agents/composables/useAgentCapabilitySummary', () => ({
 	clearAgentCapabilitySummaryCache: vi.fn(),
 }));
 
-vi.mock('@/features/agents/composables/useAgentIntegrationsCatalog', () => ({
-	useAgentIntegrationsCatalog: () => ({ catalog: { value: null }, ensureLoaded: ensureLoadedSpy }),
-}));
-
 vi.mock('@/features/agents/composables/useModelCatalog', () => ({
 	useModelCatalog: () => ({ catalog: modelCatalogHolder, ensureLoaded: ensureLoadedSpy }),
 }));
@@ -107,7 +103,7 @@ describe('CanvasNodeAgent', () => {
 		]);
 	});
 
-	it('renders the agent name, friendly model name and capability chips (configured state)', () => {
+	it('renders the agent name, friendly model name and tool/skill chips, omitting channels + tasks', () => {
 		summaryHolder.value = {
 			id: 'agent-1',
 			name: 'Configured Agent',
@@ -115,21 +111,27 @@ describe('CanvasNodeAgent', () => {
 			channels: [{ type: 'slack' }],
 			tools: [{ type: 'node', name: 'get_available_dates' }],
 			skills: [{ id: 's1', name: 'PR Reviewer' }],
-			tasks: [],
+			tasks: [{ id: 't1', name: 'Weekly Summary', enabled: true }],
 		};
 		// Resolves the friendly catalog name in place of the raw model id.
 		modelCatalogHolder.value = {
 			anthropic: { models: { 'claude-opus-4-8': { name: 'Claude Opus 4.8' } } },
 		};
 
-		const { getByText, getAllByTestId, queryByTestId } = renderWithAgent('agent-1', 'Rob');
+		const { getByText, getAllByTestId, queryByTestId, queryByText } = renderWithAgent(
+			'agent-1',
+			'Rob',
+		);
 
 		// Summary name wins over the resource-locator cached name.
 		expect(getByText('Configured Agent')).toBeInTheDocument();
 		expect(getByText('Claude Opus 4.8')).toBeInTheDocument();
 		// Raw node tool id is humanized like the edit page.
 		expect(getByText('Get available dates')).toBeInTheDocument();
-		expect(getAllByTestId('canvas-node-agent-chip')).toHaveLength(3);
+		expect(getByText('PR Reviewer')).toBeInTheDocument();
+		// Channels + tasks belong to standalone agents and aren't shown on the card.
+		expect(getAllByTestId('canvas-node-agent-chip')).toHaveLength(2);
+		expect(queryByText('Weekly Summary')).toBeNull();
 		expect(queryByTestId('agent-picker-stub')).toBeNull();
 	});
 
