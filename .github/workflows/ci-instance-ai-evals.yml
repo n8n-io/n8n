@@ -1,4 +1,4 @@
-name: 'CI: Instance AI Evals'
+name: 'Instance AI Evals: PR Gate'
 
 # The PR gate for Instance AI workflow evals. Auto-runs on PR open/reopen/ready
 # (non-draft, non-fork, path-filtered); manual dispatch re-runs a specific PR
@@ -6,7 +6,7 @@ name: 'CI: Instance AI Evals'
 #
 # This workflow is deliberately NOT the experimentation surface. For baselines,
 # model experiments, or arbitrary branch runs, dispatch test-evals-instance-ai.yml
-# ("Test: Instance AI Exec Evals") directly: it exposes the full knob set
+# ("Instance AI Evals: Experiments") directly: it exposes the full knob set
 # (branch, filter, iterations, experiment-name, model), runs dispatches in
 # parallel (no per-PR cancellation), and hits the SHA-keyed docker image cache.
 on:
@@ -20,7 +20,7 @@ on:
   workflow_dispatch:
     inputs:
       pr:
-        description: 'PR number to re-run against its latest commit. Resolves the PR head at dispatch time and posts results back. For branch/experiment runs use "Test: Instance AI Exec Evals" instead.'
+        description: 'PR number to re-run against its latest commit. Resolves the PR head at dispatch time and posts results back. For branch/experiment runs use "Instance AI Evals: Experiments" instead.'
         required: true
       tier:
         description: 'Test-case dataset for the re-run (e.g. `full` for broader coverage). Empty = `pr`.'

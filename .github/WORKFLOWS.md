@@ -205,8 +205,8 @@ of `ci-pull-requests.yml`.
 **`ci-instance-ai-evals.yml` is the PR gate; `test-evals-instance-ai.yml` is
 the lab bench.** The gate deliberately exposes only PR re-runs. Anything that
 isn't PR gating — baselines, model experiments, arbitrary branch runs — goes
-through `test-evals-instance-ai.yml`'s own dispatch form ("Test: Instance AI
-Exec Evals"): full knob set (branch, filter, tier, iterations, experiment-name,
+through `test-evals-instance-ai.yml`'s own dispatch form ("Instance AI
+Evals: Experiments"): full knob set (branch, filter, tier, iterations, experiment-name,
 model), no per-PR cancellation (dispatches run in parallel, e.g. concurrent
 model-comparison arms), and SHA-keyed docker cache hits on master. Evals never
 run on fork PRs: the event trigger gates on `head.repo.fork`, and the `pr`
