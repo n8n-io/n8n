@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { N8nInlineTextEdit } from '@n8n/design-system';
+import { N8nIcon, N8nInlineTextEdit } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 import type { AgentJsonConfig } from '../types';
@@ -28,11 +28,18 @@ function onNameUpdate(value: string) {
 
 <template>
 	<div :class="$style.text" data-testid="agent-identity-header">
+		<div
+			:class="$style.personalisationIcon"
+			aria-hidden="true"
+			data-testid="agent-personalisation-icon"
+		>
+			<N8nIcon icon="bot" :size="24" />
+		</div>
 		<N8nInlineTextEdit
 			:model-value="name"
 			:placeholder="i18n.baseText('agents.builder.agent.name.placeholder')"
 			:disabled="props.disabled"
-			max-width="80%"
+			max-width="100%"
 			:min-width="96"
 			:class="$style.title"
 			data-testid="agent-name-inline-edit"
@@ -45,15 +52,32 @@ function onNameUpdate(value: string) {
 .text {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--4xs);
+	align-items: flex-start;
+	gap: var(--spacing--sm);
 	flex: 1;
 	min-width: 0;
+}
+
+.personalisationIcon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: var(--spacing--2xl);
+	height: var(--spacing--2xl);
+	border: var(--border);
+	border-radius: 50%;
+	color: var(--icon-color--strong);
+	background-color: light-dark(
+		var(--color--background--light-1),
+		var(--color--background--light-3)
+	);
 }
 
 .title {
 	font-size: var(--font-size--xl);
 	font-weight: var(--font-weight--medium);
 	line-height: var(--line-height--lg);
+	text-align: left;
 	color: var(--text-color);
 }
 </style>

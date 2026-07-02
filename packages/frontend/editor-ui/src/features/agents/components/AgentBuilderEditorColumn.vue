@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { N8nCard, N8nRadioButtons } from '@n8n/design-system';
+import { N8nCard, N8nTabs } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { AgentFileDto } from '@n8n/api-types';
 
@@ -12,11 +12,10 @@ import AgentAdvancedPanel from './AgentAdvancedPanel.vue';
 import AgentCapabilitiesSection from './AgentCapabilitiesSection.vue';
 import AgentIdentityHeader from './AgentIdentityHeader.vue';
 import AgentInfoPanel from './AgentInfoPanel.vue';
-import AgentJsonEditor from './AgentJsonEditor.vue';
 import AgentFilesPanel from './AgentFilesPanel.vue';
 import AgentMemoryPanel from './AgentMemoryPanel.vue';
-import AgentPanelHeader from './AgentPanelHeader.vue';
 import AgentSubAgentsPanel from './AgentSubAgentsPanel.vue';
+import AgentBuilderTabPanel from './AgentBuilderTabPanel.vue';
 
 const props = defineProps<{
 	activeMainTab: AgentBuilderMainTab;
@@ -68,26 +67,17 @@ const i18n = useI18n();
 		data-testid="agent-builder-editor-column"
 	>
 		<div :class="$style.panelArea">
-			<div :class="$style.panelAreaContainer">
-				<div :class="$style.panelHeaderRow">
-					<AgentIdentityHeader
-						v-if="activeMainTab === 'agent'"
-						:config="localConfig"
-						:disabled="childrenDisabled"
-						@update:config="emit('update:config', $event)"
-					/>
-					<AgentPanelHeader
-						v-else-if="activeMainTab === 'executions'"
-						:title="i18n.baseText('agents.builder.header.tab.executions')"
-						:description="executionsDescription"
-					/>
-					<AgentPanelHeader
-						v-else-if="activeMainTab === 'raw'"
-						:title="i18n.baseText('agents.builder.header.tab.raw')"
-						:description="i18n.baseText('agents.builder.raw.description')"
-					/>
-					<div v-else />
-					<N8nRadioButtons
+			<div :class="$style.identityHeaderRow" data-testid="agent-builder-identity-header">
+				<AgentIdentityHeader
+					:config="localConfig"
+					:disabled="childrenDisabled"
+					:class="$style.identityHeader"
+					@update:config="emit('update:config', $event)"
+				/>
+			</div>
+			<div :class="$style.tabsRow" data-testid="agent-tabs-row">
+				<div :class="$style.tabsRule" data-testid="agent-tabs-rule">
+					<N8nTabs
 						:model-value="activeMainTab"
 						:options="mainTabOptions"
 						:class="$style.mainTabs"
@@ -95,8 +85,9 @@ const i18n = useI18n();
 						@update:model-value="emit('update:activeMainTab', $event)"
 					/>
 				</div>
-
-				<div v-if="activeMainTab === 'agent'" :class="$style.agentCards">
+			</div>
+			<div :class="$style.panelAreaContainer">
+				<AgentBuilderTabPanel v-if="activeMainTab === 'agent'" data-testid="agent-tab-content">
 					<N8nCard variant="outlined" :class="$style.card">
 						<AgentCapabilitiesSection
 							:config="localConfig"
@@ -134,16 +125,6 @@ const i18n = useI18n();
 						/>
 					</N8nCard>
 
-					<N8nCard variant="outlined" :class="$style.card">
-						<AgentSubAgentsPanel
-							:config="localConfig"
-							:disabled="childrenDisabled"
-							:project-id="projectId"
-							:agent-id="agentId"
-							@update:config="emit('update:config', $event)"
-						/>
-					</N8nCard>
-
 					<N8nCard v-if="knowledgeBaseEnabled" variant="outlined" :class="$style.card">
 						<AgentFilesPanel
 							:files="agentFiles"
@@ -156,7 +137,28 @@ const i18n = useI18n();
 							@delete-file="emit('delete-file', $event)"
 						/>
 					</N8nCard>
+				</AgentBuilderTabPanel>
 
+				<AgentBuilderTabPanel
+					v-else-if="activeMainTab === 'sessions'"
+					data-testid="agent-sessions-tab-content"
+				>
+					<AgentSessionsListView :embedded="true" data-testid="agent-executions-panel" />
+				</AgentBuilderTabPanel>
+
+				<AgentBuilderTabPanel
+					v-else-if="activeMainTab === 'settings'"
+					data-testid="agent-settings-tab-content"
+				>
+					<N8nCard variant="outlined" :class="$style.card">
+						<AgentSubAgentsPanel
+							:config="localConfig"
+							:disabled="childrenDisabled"
+							:project-id="projectId"
+							:agent-id="agentId"
+							@update:config="emit('update:config', $event)"
+						/>
+					</N8nCard>
 					<N8nCard variant="outlined" :class="$style.card">
 						<AgentMemoryPanel
 							:config="localConfig"
@@ -166,7 +168,6 @@ const i18n = useI18n();
 							@update:config="emit('update:config', $event)"
 						/>
 					</N8nCard>
-
 					<N8nCard variant="outlined" :class="$style.card">
 						<AgentAdvancedPanel
 							:config="localConfig"
@@ -175,21 +176,7 @@ const i18n = useI18n();
 							@update:config="emit('update:config', $event)"
 						/>
 					</N8nCard>
-				</div>
-
-				<AgentSessionsListView
-					v-else-if="activeMainTab === 'executions'"
-					data-testid="agent-executions-panel"
-				/>
-
-				<div v-else-if="activeMainTab === 'raw'" :class="$style.rawPanel">
-					<AgentJsonEditor
-						:value="localConfig"
-						:read-only="childrenDisabled"
-						copy-button-test-id="agent-config-json-copy"
-						@update:value="emit('update:config', $event)"
-					/>
-				</div>
+				</AgentBuilderTabPanel>
 			</div>
 		</div>
 	</section>
@@ -223,51 +210,57 @@ const i18n = useI18n();
 	position: relative;
 	display: flex;
 	flex-direction: column;
+	flex: 1;
+	min-height: 0;
 	max-width: 72rem;
 	width: 100%;
 	padding: var(--spacing--sm);
 	margin: 0 auto;
-	height: 100%;
 }
 
-.panelHeaderRow {
+.identityHeaderRow {
+	flex-shrink: 0;
+	display: flex;
+	width: 100%;
+	background-color: light-dark(
+		var(--color--background--light-1),
+		var(--color--background--light-2)
+	);
+}
+
+.identityHeader {
+	width: 100%;
+	max-width: 72rem;
+	margin: 0 auto;
+	padding: var(--spacing--2xl) calc(var(--spacing--sm) + var(--spacing--lg)) var(--spacing--xl);
+}
+
+.tabsRow {
 	flex-shrink: 0;
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
-	gap: var(--spacing--lg);
-	padding: var(--spacing--lg) var(--spacing--lg) 0;
-
-	> *:first-child {
-		width: 100%;
-	}
-
-	> .mainTabs {
-		margin-left: auto;
-	}
+	width: 100%;
+	background-color: light-dark(
+		var(--color--background--light-1),
+		var(--color--background--light-2)
+	);
 }
 
-.rawPanel {
-	display: flex;
-	flex: 1;
-	min-height: 0;
+.tabsRule {
+	box-sizing: border-box;
 	width: 100%;
-	padding: var(--spacing--lg);
-}
-
-.agentCards {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--lg);
-	padding: var(--spacing--lg);
-	width: 100%;
+	max-width: 72rem;
 	margin: 0 auto;
+	padding: 0 calc(var(--spacing--sm) + var(--spacing--lg));
 }
 
-.panel {
-	display: flex;
-	flex-direction: column;
+.mainTabs {
 	width: 100%;
+	border-bottom: calc(var(--border-width, 1px) * 2) var(--border-style, solid) var(--border-color);
+
+	:global([data-test-id='tab-agent'] > *) {
+		padding-left: 0;
+	}
 }
 
 .card {

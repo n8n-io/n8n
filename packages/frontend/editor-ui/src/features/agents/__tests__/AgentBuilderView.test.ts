@@ -14,6 +14,9 @@ const openModalWithDataMock = vi.fn();
 const closeModalMock = vi.fn();
 const showMessageMock = vi.fn();
 const showErrorMock = vi.fn();
+let createObjectURLSpy: ReturnType<typeof vi.spyOn> | undefined;
+let revokeObjectURLSpy: ReturnType<typeof vi.spyOn> | undefined;
+let anchorClickSpy: ReturnType<typeof vi.spyOn> | undefined;
 const {
 	fetchAllCredentialsForWorkflowMock,
 	fetchAllCredentialsMock,
@@ -138,6 +141,16 @@ vi.mock('../composables/useAgentBuilderStatus', () => ({
 	}),
 }));
 
+vi.mock('../composables/useAgentPermissions', () => ({
+	useAgentPermissions: () => ({
+		canCreate: ref(true),
+		canUpdate: ref(true),
+		canDelete: ref(false),
+		canPublish: ref(true),
+		canUnpublish: ref(true),
+	}),
+}));
+
 // Real ref so the view's `watch(config, ...)` fires and populates `localConfig`.
 // Tests that need an unbuilt agent flip this to empty instructions before render.
 interface TestAgentConfig {
@@ -232,8 +245,8 @@ const baseTextFn = (key: string) => {
 		'agents.builder.chatMode.build': 'Build',
 		'agents.builder.chatMode.test': 'Test',
 		'agents.builder.chatMode.ariaLabel': 'Switch chat mode',
-		'agents.builder.chat.fullWidth.expand.ariaLabel': 'Expand',
-		'agents.builder.chat.fullWidth.collapse.ariaLabel': 'Collapse',
+		'agents.builder.chat.hide.ariaLabel': 'Hide builder',
+		'agents.builder.chat.show.ariaLabel': 'Show builder',
 		'agents.builder.preview.button': 'Preview',
 		'agents.builder.preview.close.ariaLabel': 'Close preview',
 		'projects.menu.personal': 'Personal',
@@ -277,6 +290,15 @@ async function renderView({
 	});
 	if (waitForAsyncSetup) await flushPromises();
 	return wrapper;
+}
+
+async function readBlobText(blob: Blob): Promise<string> {
+	return await new Promise<string>((resolve, reject) => {
+		const reader = new FileReader();
+		reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
+		reader.onerror = () => reject(reader.error);
+		reader.readAsText(blob);
+	});
 }
 
 const commonStubs = {
@@ -422,6 +444,11 @@ const commonStubs = {
 		name: 'AgentBuilderUnconfiguredEmptyState',
 		template: '<div data-testid="stub-agent-builder-unconfigured-empty-state" />',
 	},
+	N8nButton: {
+		template:
+			'<button v-bind="$attrs" @click="$emit(\'click\')"><slot /><slot name="icon" /></button>',
+		emits: ['click'],
+	},
 	N8nIcon: {
 		template: '<i v-bind="$attrs" :data-icon="icon"></i>',
 		props: ['icon', 'size', 'spin'],
@@ -440,6 +467,12 @@ describe('AgentBuilderView — preview routing', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		createObjectURLSpy?.mockRestore();
+		revokeObjectURLSpy?.mockRestore();
+		anchorClickSpy?.mockRestore();
+		createObjectURLSpy = undefined;
+		revokeObjectURLSpy = undefined;
+		anchorClickSpy = undefined;
 		routerPush.mockReset();
 		routerReplace.mockReset();
 		openModalWithDataMock.mockReset();
@@ -739,35 +772,40 @@ describe('AgentBuilderView — three-column shell', () => {
 		fetchConfigMock.mockClear();
 	});
 
-	it('renders the two-column shell: chat and editor', async () => {
+	it('hides the build chat by default while keeping the editor visible', async () => {
 		const wrapper = await renderView();
+
+		expect(wrapper.find('[data-testid="agent-builder-chat-column"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-builder-editor-column"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="agent-build-chat-show-button"]').exists()).toBe(true);
+	});
+
+	it('restores and hides the build chat from the floating controls', async () => {
+		const wrapper = await renderView();
+
+		await wrapper.find('[data-testid="agent-build-chat-show-button"]').trigger('click');
+		await nextTick();
+
 		expect(wrapper.find('[data-testid="agent-builder-chat-column"]').exists()).toBe(true);
 		expect(wrapper.find('[data-testid="agent-builder-editor-column"]').exists()).toBe(true);
-	});
-
-	it('hides the editor column when the chat full-width toggle is enabled', async () => {
-		const wrapper = await renderView();
+		expect(wrapper.find('[data-testid="agent-build-chat-show-button"]').exists()).toBe(false);
 
 		const chatColumn = wrapper.findComponent({ name: 'AgentBuilderChatColumn' });
-		chatColumn.vm.$emit('update:full-width', true);
+		chatColumn.vm.$emit('hide');
 		await nextTick();
 
-		expect(wrapper.find('[data-testid="agent-builder-editor-column"]').exists()).toBe(false);
-		expect(chatColumn.props('isFullWidth')).toBe(true);
-
-		wrapper.findComponent({ name: 'AgentBuilderChatColumn' }).vm.$emit('update:full-width', false);
-		await nextTick();
-
+		expect(wrapper.find('[data-testid="agent-builder-chat-column"]').exists()).toBe(false);
 		expect(wrapper.find('[data-testid="agent-builder-editor-column"]').exists()).toBe(true);
-		expect(wrapper.findComponent({ name: 'AgentBuilderChatColumn' }).props('isFullWidth')).toBe(
-			false,
-		);
+		expect(wrapper.find('[data-testid="agent-build-chat-show-button"]').exists()).toBe(true);
 	});
 
-	it('renders a floating full-width toggle in build chat mode', async () => {
+	it('renders a floating hide control in build chat mode', async () => {
 		const wrapper = await renderView();
 
-		expect(wrapper.find('[data-testid="agent-build-chat-full-width-toggle"]').exists()).toBe(true);
+		await wrapper.find('[data-testid="agent-build-chat-show-button"]').trigger('click');
+		await nextTick();
+
+		expect(wrapper.find('[data-testid="agent-build-chat-hide-toggle"]').exists()).toBe(true);
 	});
 
 	it('renders seeded initial builds from the URL as full-width once initialization settles', async () => {
@@ -875,6 +913,98 @@ describe('AgentBuilderView — three-column shell', () => {
 	it('renders the new top header above the three columns', async () => {
 		const wrapper = await renderView();
 		expect(wrapper.find('[data-testid="stub-agent-builder-header"]').exists()).toBe(true);
+	});
+
+	it('adds JSON import and export actions to the header menu', async () => {
+		const wrapper = await renderView();
+		const header = wrapper.findComponent({ name: 'AgentBuilderHeader' });
+
+		expect(header.props('headerActions')).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ id: 'export-json', label: 'agents.builder.exportJson' }),
+				expect.objectContaining({ id: 'import-json', label: 'agents.builder.importJson' }),
+			]),
+		);
+	});
+
+	it('exports the current agent config as a JSON file from the header menu', async () => {
+		Object.defineProperty(URL, 'createObjectURL', {
+			configurable: true,
+			value: vi.fn(),
+		});
+		Object.defineProperty(URL, 'revokeObjectURL', {
+			configurable: true,
+			value: vi.fn(),
+		});
+		createObjectURLSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:agent-json');
+		revokeObjectURLSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+		anchorClickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+		const createdAnchors: HTMLAnchorElement[] = [];
+		const originalCreateElement = document.createElement.bind(document);
+		const createElementSpy = vi.spyOn(document, 'createElement').mockImplementation((tagName) => {
+			const element = originalCreateElement(tagName);
+			if (tagName === 'a') {
+				createdAnchors.push(element as HTMLAnchorElement);
+			}
+			return element;
+		});
+
+		const wrapper = await renderView();
+		wrapper.findComponent({ name: 'AgentBuilderHeader' }).vm.$emit('header-action', 'export-json');
+		await flushPromises();
+
+		expect(createObjectURLSpy).toHaveBeenCalledWith(expect.any(Blob));
+		const blob = createObjectURLSpy.mock.calls[0][0] as Blob;
+		await expect(readBlobText(blob)).resolves.toBe(
+			`${JSON.stringify(withDefaultLlm(intendedConfig), null, 2)}\n`,
+		);
+		expect(createdAnchors[0]?.download).toBe('Agent One.json');
+		expect(anchorClickSpy).toHaveBeenCalled();
+		expect(revokeObjectURLSpy).toHaveBeenCalledWith('blob:agent-json');
+
+		createElementSpy.mockRestore();
+	});
+
+	it('opens the JSON import modal and saves imported config from the header menu', async () => {
+		const wrapper = await renderView();
+		wrapper.findComponent({ name: 'AgentBuilderHeader' }).vm.$emit('header-action', 'import-json');
+		await nextTick();
+
+		expect(openModalWithDataMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				name: 'agentJsonImportModal',
+				data: expect.objectContaining({
+					onConfirm: expect.any(Function),
+				}),
+			}),
+		);
+
+		const importedConfig = {
+			name: 'Imported agent',
+			model: 'openai/gpt-4o-mini',
+			credential: 'cred-openai',
+			instructions: 'Use the imported settings.',
+		};
+		openModalWithDataMock.mock.calls[0][0].data.onConfirm(importedConfig);
+		await nextTick();
+
+		expect((wrapper.vm as unknown as { localConfig: unknown }).localConfig).toMatchObject(
+			importedConfig,
+		);
+		expect((wrapper.vm as unknown as { agent: { name: string } }).agent.name).toBe(
+			'Imported agent',
+		);
+
+		await (wrapper.vm as unknown as { flushAutosave: () => Promise<void> }).flushAutosave();
+
+		expect(updateConfigMock).toHaveBeenCalledWith(
+			'p1',
+			'a1',
+			expect.objectContaining({
+				...importedConfig,
+				memory: { enabled: true, storage: 'n8n' },
+			}),
+		);
 	});
 
 	it('no longer renders the old editor-column action dropdown', async () => {

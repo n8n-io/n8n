@@ -1,7 +1,13 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onBeforeUnmount, useTemplateRef } from 'vue';
 import { useRoute, useRouter, type RouteLocationRaw } from 'vue-router';
-import { N8nIcon, N8nResizeWrapper, type DropdownMenuItemProps } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nIcon,
+	N8nResizeWrapper,
+	type DropdownMenuItemProps,
+} from '@n8n/design-system';
+import type { ActionDropdownItem } from '@n8n/design-system/types/action-dropdown';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import {
@@ -61,6 +67,7 @@ import {
 	AGENT_TOOLS_MODAL_KEY,
 	AGENT_TOOL_CONFIG_MODAL_KEY,
 	AGENT_SKILL_MODAL_KEY,
+	AGENT_JSON_IMPORT_MODAL_KEY,
 	CONTINUE_SESSION_ID_PARAM,
 	PROJECT_AGENTS,
 } from '../constants';
@@ -78,6 +85,8 @@ const AGENT_CHAT_PANEL_MIN_WIDTH = 320;
 const AGENT_CHAT_PANEL_DEFAULT_WIDTH = 460;
 const AGENT_CHAT_PANEL_MAX_WIDTH = 720;
 const AGENT_EDITOR_MIN_WIDTH = 560;
+
+type AgentBuilderHeaderAction = 'export-json' | 'import-json' | 'delete';
 
 const route = useRoute();
 const router = useRouter();
@@ -170,7 +179,11 @@ function shouldAutoExpandInitialBuild(): boolean {
 
 const shouldStartWithExpandedBuildChat = shouldAutoExpandInitialBuild();
 const isChatFullWidth = ref(shouldStartWithExpandedBuildChat);
+const isBuildChatHidden = ref(false);
 const shouldCollapseChatAfterInitialBuild = ref(shouldStartWithExpandedBuildChat);
+const showBuildChatLabel = computed(() =>
+	locale.baseText('agents.builder.chat.show.ariaLabel' as BaseTextKey),
+);
 const executionsCount = computed(() => sessionsStore.threads.length);
 const { activeMainTab, mainTabOptions, executionsDescription } = useAgentBuilderMainTabs({
 	executionsCount,
@@ -690,6 +703,18 @@ function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>) {
 	});
 }
 
+function replaceConfigAndScheduleSave(nextConfig: AgentJsonConfig) {
+	builderTelemetry.recordConfigEdit(nextConfig);
+	localConfig.value = deepCopy(nextConfig);
+	syncAgentIdentityFromConfig(localConfig.value);
+	configAutosave.scheduleAutosave({
+		projectId: projectId.value,
+		agentId: agentId.value,
+		type: 'config',
+		config: normalizeAgentMemoryConfig(deepCopy(localConfig.value)),
+	});
+}
+
 async function onConfigUpdated() {
 	await Promise.all([fetchAgent(), fetchConfig(projectId.value, agentId.value)]);
 	// Refresh the connected-trigger list so chips reflect builder writes
@@ -711,13 +736,92 @@ function onBuildDone() {
 	shouldCollapseChatAfterInitialBuild.value = false;
 }
 
-const headerActions = computed(() =>
-	canDeleteAgent.value
-		? [{ id: 'delete', label: locale.baseText('agents.builder.deleteAgent') }]
-		: [],
-);
+function hideBuildChat() {
+	isChatFullWidth.value = false;
+	isBuildChatHidden.value = true;
+}
+
+function showBuildChat() {
+	isBuildChatHidden.value = false;
+}
+
+const headerActions = computed<Array<ActionDropdownItem<AgentBuilderHeaderAction>>>(() => {
+	const actions: Array<ActionDropdownItem<AgentBuilderHeaderAction>> = [
+		{
+			id: 'export-json',
+			label: locale.baseText('agents.builder.exportJson' as BaseTextKey),
+			icon: 'download',
+		},
+	];
+
+	if (canEditAgent.value) {
+		actions.push({
+			id: 'import-json',
+			label: locale.baseText('agents.builder.importJson' as BaseTextKey),
+			icon: 'upload',
+		});
+	}
+
+	if (canDeleteAgent.value) {
+		actions.push({
+			id: 'delete',
+			label: locale.baseText('agents.builder.deleteAgent'),
+			icon: 'trash-2',
+			divided: actions.length > 0,
+		});
+	}
+
+	return actions;
+});
+
+function agentJsonFileName(name: string | undefined): string {
+	const cleaned = (name ?? '').trim().replace(/[\\/:*?"<>|]+/g, '-');
+	return `${cleaned || 'agent'}.json`;
+}
+
+async function exportAgentJson() {
+	if (!localConfig.value) return;
+
+	try {
+		await flushAutosave();
+	} catch {
+		return;
+	}
+	if (!localConfig.value) return;
+
+	const blob = new Blob([`${JSON.stringify(localConfig.value, null, 2)}\n`], {
+		type: 'application/json',
+	});
+	const url = URL.createObjectURL(blob);
+	const link = document.createElement('a');
+	link.href = url;
+	link.download = agentJsonFileName(localConfig.value.name);
+	document.body.appendChild(link);
+	link.click();
+	link.remove();
+	URL.revokeObjectURL(url);
+}
+
+function openImportJsonModal() {
+	if (!canEditAgent.value) return;
+
+	uiStore.openModalWithData({
+		name: AGENT_JSON_IMPORT_MODAL_KEY,
+		data: {
+			onConfirm: replaceConfigAndScheduleSave,
+		},
+	});
+}
 
 async function onHeaderAction(action: string) {
+	if (action === 'export-json') {
+		await exportAgentJson();
+		return;
+	}
+	if (action === 'import-json') {
+		openImportJsonModal();
+		return;
+	}
 	if (action === 'delete') {
 		const confirmed = await openAgentConfirmationModal({
 			title: locale.baseText('agents.delete.modal.title', {
@@ -1264,6 +1368,18 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 					@continue-loaded="onContinueLoaded"
 					@open-build="onOpenBuildFromChat"
 				/>
+				<N8nButton
+					v-else-if="isBuildChatHidden"
+					variant="ghost"
+					icon-only
+					size="small"
+					:class="$style.showBuildChatButton"
+					:aria-label="showBuildChatLabel"
+					data-testid="agent-build-chat-show-button"
+					@click="showBuildChat"
+				>
+					<N8nIcon icon="panel-left" :size="14" />
+				</N8nButton>
 				<N8nResizeWrapper
 					v-else
 					:class="{
@@ -1303,7 +1419,7 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 						@update:tools="onQuickActionAddTool"
 						@update:mcp-servers="onQuickActionAddMcpServers"
 						@update:connected-triggers="onConnectedTriggersUpdate"
-						@update:full-width="isChatFullWidth = $event"
+						@hide="hideBuildChat"
 						@trigger-added="onTriggerAdded"
 						@agent-published="onPublished"
 						@agent-changed="refreshAgentAfterIntegrationChange"
@@ -1311,7 +1427,7 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 				</N8nResizeWrapper>
 
 				<AgentBuilderEditorColumn
-					v-if="!isPreviewMode && !isChatFullWidth"
+					v-if="!isPreviewMode && (!isChatFullWidth || isBuildChatHidden)"
 					:class="$style.editorColumn"
 					v-model:active-main-tab="activeMainTab"
 					:local-config="localConfig"
@@ -1377,6 +1493,7 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 }
 
 .builder {
+	position: relative;
 	display: flex;
 	height: 100%;
 	min-height: 0;
@@ -1427,6 +1544,13 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 
 .chatResizerFullWidth {
 	flex: 1 1 auto;
+}
+
+.showBuildChatButton {
+	position: absolute;
+	top: var(--spacing--sm);
+	left: var(--spacing--sm);
+	z-index: 3;
 }
 
 .isResizingChat {

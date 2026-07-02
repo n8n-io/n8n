@@ -16,6 +16,13 @@ import { N8nActionDropdown, N8nButton, N8nTableBase } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system';
 import { ElSkeletonItem } from 'element-plus';
 
+const props = withDefaults(
+	defineProps<{
+		embedded?: boolean;
+	}>(),
+	{ embedded: false },
+);
+
 const i18n = useI18n();
 const threadTitleOf = useThreadTitle();
 const route = useRoute();
@@ -151,7 +158,7 @@ async function loadMore() {
 </script>
 
 <template>
-	<div :class="$style.wrapper">
+	<div :class="[$style.wrapper, { [$style.embedded]: props.embedded }]">
 		<div :class="$style.tableContainer">
 			<N8nTableBase>
 				<thead>
@@ -237,6 +244,12 @@ async function loadMore() {
 	overflow-y: auto;
 	scrollbar-width: thin;
 	scrollbar-color: var(--border-color) transparent;
+}
+
+.embedded {
+	height: auto;
+	padding: 0;
+	overflow-y: visible;
 }
 
 .tableContainer {

@@ -8,7 +8,13 @@ import {
 	type SubAgentTaskDifficulty,
 } from '@n8n/api-types';
 import type { BaseTextKey } from '@n8n/i18n';
-import { N8nIconButton, N8nInputNumber2, N8nText, N8nTooltip } from '@n8n/design-system';
+import {
+	N8nIconButton,
+	N8nInputNumber2,
+	N8nSwitch2,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
 import { useUsersStore } from '@/features/settings/users/users.store';
@@ -148,6 +154,29 @@ function hasDifficultyMapping(difficulty: SubAgentTaskDifficulty): boolean {
 	return Boolean(props.config?.subAgents?.modelsByDifficulty?.[difficulty]);
 }
 
+const hasAnyDifficultyMapping = computed(() =>
+	SUB_AGENT_TASK_DIFFICULTIES.some((difficulty) => hasDifficultyMapping(difficulty)),
+);
+
+const customModelRoutingEnabled = ref(hasAnyDifficultyMapping.value);
+
+watch(
+	hasAnyDifficultyMapping,
+	(hasMapping) => {
+		if (hasMapping) {
+			customModelRoutingEnabled.value = true;
+		}
+	},
+	{ immediate: true },
+);
+
+watch(
+	() => props.agentId,
+	() => {
+		customModelRoutingEnabled.value = hasAnyDifficultyMapping.value;
+	},
+);
+
 function emitModelsByDifficulty(
 	difficulty: SubAgentTaskDifficulty,
 	mapping: { model: string; credential: string } | undefined,
@@ -166,6 +195,17 @@ function emitModelsByDifficulty(
 		delete subAgents.modelsByDifficulty;
 	}
 
+	emit('update:config', { subAgents });
+}
+
+function onCustomModelRoutingToggle(enabled: boolean) {
+	if (props.disabled) return;
+
+	customModelRoutingEnabled.value = enabled;
+	if (enabled) return;
+
+	const subAgents = { ...(props.config?.subAgents ?? {}) };
+	delete subAgents.modelsByDifficulty;
 	emit('update:config', { subAgents });
 }
 
@@ -246,7 +286,28 @@ function clearDifficultyMapping(difficulty: SubAgentTaskDifficulty) {
 			/>
 		</div>
 
-		<div :class="$style.inlineModelsSection" data-testid="agent-sub-agents-inline-models">
+		<div :class="$style.settingRow">
+			<div :class="$style.settingLabel">
+				<N8nText size="small" :bold="true">
+					{{ i18n.baseText('agents.builder.subAgents.customModelRouting.label' as BaseTextKey) }}
+				</N8nText>
+				<N8nText size="xsmall" color="text-light">
+					{{ i18n.baseText('agents.builder.subAgents.customModelRouting.hint' as BaseTextKey) }}
+				</N8nText>
+			</div>
+			<N8nSwitch2
+				:model-value="customModelRoutingEnabled"
+				:disabled="disabled"
+				data-testid="agent-sub-agents-custom-model-routing-toggle"
+				@update:model-value="onCustomModelRoutingToggle"
+			/>
+		</div>
+
+		<div
+			v-if="customModelRoutingEnabled"
+			:class="$style.inlineModelsSection"
+			data-testid="agent-sub-agents-inline-models"
+		>
 			<div :class="$style.inlineModelsIntro">
 				<N8nText size="small" :bold="true">
 					{{ i18n.baseText('agents.builder.subAgents.modelsByDifficulty.title') }}

@@ -2,13 +2,13 @@ import type { ComputedRef } from 'vue';
 import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import type { LocationQueryValue } from 'vue-router';
-import { useI18n } from '@n8n/i18n';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
 import { EXECUTIONS_SECTION_KEY } from '../constants';
 
-export type AgentBuilderMainTab = 'agent' | 'executions' | 'raw';
+export type AgentBuilderMainTab = 'agent' | 'sessions' | 'settings';
 
-type AgentBuilderSection = typeof EXECUTIONS_SECTION_KEY | 'raw' | null;
+type AgentBuilderSection = typeof EXECUTIONS_SECTION_KEY | 'settings' | null;
 
 const SECTION_QUERY_PARAM = 'section';
 
@@ -16,15 +16,15 @@ function getSectionFromQuery(
 	section: LocationQueryValue | LocationQueryValue[] | undefined,
 ): AgentBuilderSection {
 	const value = Array.isArray(section) ? section[0] : section;
-	if (value === EXECUTIONS_SECTION_KEY || value === 'raw') {
+	if (value === EXECUTIONS_SECTION_KEY || value === 'settings') {
 		return value;
 	}
 	return null;
 }
 
 function getSectionFromTab(tab: AgentBuilderMainTab): AgentBuilderSection {
-	if (tab === 'executions') return EXECUTIONS_SECTION_KEY;
-	if (tab === 'raw') return 'raw';
+	if (tab === 'sessions') return EXECUTIONS_SECTION_KEY;
+	if (tab === 'settings') return 'settings';
 	return null;
 }
 
@@ -47,8 +47,8 @@ export function useAgentBuilderMainTabs({
 
 	const activeMainTab = computed<AgentBuilderMainTab>({
 		get() {
-			if (selectedSection.value === EXECUTIONS_SECTION_KEY) return 'executions';
-			if (selectedSection.value === 'raw') return 'raw';
+			if (selectedSection.value === EXECUTIONS_SECTION_KEY) return 'sessions';
+			if (selectedSection.value === 'settings') return 'settings';
 			return 'agent';
 		},
 		set(tab) {
@@ -60,9 +60,12 @@ export function useAgentBuilderMainTabs({
 		{ label: i18n.baseText('agents.builder.header.tab.agent'), value: 'agent' as const },
 		{
 			label: i18n.baseText('agents.builder.header.tab.executions'),
-			value: 'executions' as const,
+			value: 'sessions' as const,
 		},
-		{ label: i18n.baseText('agents.builder.header.tab.raw'), value: 'raw' as const },
+		{
+			label: i18n.baseText('agents.builder.header.tab.settings' as BaseTextKey),
+			value: 'settings' as const,
+		},
 	]);
 
 	const executionsDescription = computed(() =>
