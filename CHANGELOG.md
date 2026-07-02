@@ -1,3 +1,13 @@
+## [2.28.5](https://github.com/n8n-io/n8n/compare/n8n@2.28.4...n8n@2.28.5) (2026-07-02)
+
+
+### Bug Fixes
+
+* **core:** Preserve Date values passed to the expression isolate ([#33363](https://github.com/n8n-io/n8n/issues/33363)) ([c3676bd](https://github.com/n8n-io/n8n/commit/c3676bd63a9e680428c3391635023ef8de2eef94))
+* **editor:** Show Free credits badge for Tool-variant nodes in node creator panel ([#33348](https://github.com/n8n-io/n8n/issues/33348)) ([9625e75](https://github.com/n8n-io/n8n/commit/9625e7507bb48bacd1c63dbdbc64f3eb21478134))
+* **Salesforce Node:** Normalize empty 204 responses on JWT auth path ([#33355](https://github.com/n8n-io/n8n/issues/33355)) ([e194baf](https://github.com/n8n-io/n8n/commit/e194baffef4ddc64725c5ba1972c2f49ffa8b32d))
+
+
 ## [2.28.4](https://github.com/n8n-io/n8n/compare/n8n@2.28.3...n8n@2.28.4) (2026-07-01)
 
 
