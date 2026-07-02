@@ -6,7 +6,12 @@ import {
 	type ScenarioCounts,
 } from '../comparison/compare';
 import { formatComparisonMarkdown, formatComparisonTerminal } from '../comparison/format';
-import type { MultiRunEvaluation, WorkflowTestCase, ExecutionScenarioResult } from '../types';
+import type {
+	MultiRunEvaluation,
+	WorkflowTestCase,
+	ExecutionScenarioResult,
+	BuildExpectationResult,
+} from '../types';
 
 function ok(result: ComparisonResult): ComparisonOutcome {
 	return { kind: 'ok', result };
@@ -40,6 +45,10 @@ function evaluation(
 				passes: boolean[]; // per-iteration pass/fail
 				reasoning?: string;
 				failureCategory?: string;
+			}>;
+			expectations?: Array<{
+				text: string;
+				passes: Array<boolean | 'incomplete'>;
 			}>;
 		}>;
 	} = {},
@@ -76,6 +85,29 @@ function evaluation(
 					}),
 				),
 			}));
+			const buildExpectations = (tc.expectations ?? []).map((ea) => {
+				const runs = ea.passes.map(
+					(pass): BuildExpectationResult => ({
+						expectation: ea.text,
+						pass: pass === true,
+						reason: pass === 'incomplete' ? '' : 'reason',
+						...(pass === 'incomplete' ? { incomplete: true } : {}),
+					}),
+				);
+				const evaluated = runs.filter((run) => !run.incomplete);
+				const passCount = evaluated.filter((run) => run.pass).length;
+				return {
+					expectation: ea.text,
+					runs,
+					evaluatedCount: evaluated.length,
+					passCount,
+					passRate: evaluated.length > 0 ? passCount / evaluated.length : 0,
+					passAtK: new Array(evaluated.length).fill(passCount > 0 ? 1 : 0) as number[],
+					passHatK: new Array(evaluated.length).fill(
+						passCount === evaluated.length ? 1 : 0,
+					) as number[],
+				};
+			});
 			return {
 				testCase,
 				workflowBuildSuccess: buildSuccessCount > 0,
@@ -87,7 +119,7 @@ function evaluation(
 					executionScenarioResults: [],
 				})),
 				buildSuccessCount,
-				buildExpectations: [],
+				buildExpectations,
 			};
 		}),
 	};
@@ -146,6 +178,43 @@ describe('formatComparisonMarkdown', () => {
 		expect(md).toMatch(/> \[!NOTE\]/);
 		expect(md).toMatch(/LangSmith disabled/);
 		expect(md).not.toMatch(/#### Regressions/);
+	});
+
+	it('counts build expectations in no-baseline build-only summaries', () => {
+		const buildOnly = evaluation({
+			totalRuns: 1,
+			testCases: [
+				{
+					userText: 'Build a workflow and ask a follow-up',
+					expectations: [
+						{ text: 'The workflow was built', passes: [true] },
+						{ text: 'The follow-up was asked', passes: [true] },
+					],
+				},
+			],
+		});
+		const slugs = slugMap(buildOnly, ['build-only']);
+
+		const md = formatComparisonMarkdown(
+			buildOnly,
+			{ kind: 'no_baseline' },
+			{ slugByTestCase: slugs },
+		);
+		expect(md).toContain(
+			'**Aggregate**: 100.0% pass (2/2 trials, 0 scenarios + 2 expectations, N=1)',
+		);
+		expect(md).toMatch(/\| `build-only` \| ✓ \| 2\/2 \|/);
+
+		const terminal = formatComparisonTerminal(
+			buildOnly,
+			{ kind: 'no_baseline' },
+			{
+				slugByTestCase: slugs,
+			},
+		);
+		expect(terminal).toContain(
+			'Aggregate: 100.0% pass (2/2 trials, 0 scenarios + 2 expectations, N=1)',
+		);
 	});
 
 	it('renders distinct alerts per skip reason', () => {
