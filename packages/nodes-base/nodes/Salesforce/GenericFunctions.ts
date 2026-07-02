@@ -1,3 +1,4 @@
+import FormData from 'form-data';
 import { DateTime } from 'luxon';
 import type {
 	IExecuteFunctions,
@@ -65,6 +66,24 @@ function assignOptions(options: IRequestOptions | IHttpRequestOptions, option: I
 	Object.assign(options, rest);
 }
 
+/**
+ * Builds a `FormData` instance from the legacy `formData` option shape
+ * (`{ value, options }` per field), which the JWT path's request helper needs
+ * since it only understands a `FormData` body, not the `formData` option.
+ */
+function toFormData(fields: IDataObject): FormData {
+	const form = new FormData();
+	for (const [key, field] of Object.entries(fields)) {
+		if (typeof field === 'object' && field !== null && 'value' in field && 'options' in field) {
+			const { value, options } = field as { value: unknown; options: FormData.AppendOptions };
+			form.append(key, value, options);
+		} else {
+			form.append(key, field);
+		}
+	}
+	return form;
+}
+
 export async function salesforceApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: IHttpRequestMethods,
@@ -83,6 +102,7 @@ export async function salesforceApiRequest(
 			// across requests; the credential's authenticate hook attaches the Bearer
 			// header and resolves the relative URL against the cached instance URL.
 			const credentialsType = 'salesforceJwtApi';
+			const { formData, ...restOption } = option;
 			const options: IHttpRequestOptions = {
 				headers: {
 					'Content-Type': 'application/json',
@@ -94,11 +114,17 @@ export async function salesforceApiRequest(
 				json: true,
 			};
 
-			if (!Object.keys(options.body as IDataObject).length) {
+			if (formData) {
+				// The authenticated helper only understands a FormData body; convert the
+				// legacy `formData` option and drop the JSON Content-Type so form-data can
+				// set the multipart boundary itself.
+				options.body = toFormData(formData as IDataObject);
+				delete options.headers!['Content-Type'];
+			} else if (!Object.keys(options.body as IDataObject).length) {
 				delete options.body;
 			}
 
-			assignOptions(options, option);
+			assignOptions(options, restOption);
 			this.logger.debug(
 				`Authentication for "Salesforce" node is using "jwt". Invoking URI ${options.url}`,
 			);

@@ -1,3 +1,4 @@
+import FormData from 'form-data';
 import { mockDeep } from 'vitest-mock-extended';
 import type { IDataObject, INodePropertyOptions, IExecuteFunctions } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
@@ -52,6 +53,19 @@ import jwt from 'jsonwebtoken';
 import type { Mock, Mocked } from 'vitest';
 
 const mockJwt = jwt as Mocked<typeof jwt>;
+
+// The `formData` option shape the node builds for a ContentVersion upload; only
+// the `entity_content` payload varies between tests.
+const uploadFormData = (entityContent: IDataObject) => ({
+	entity_content: {
+		value: JSON.stringify(entityContent),
+		options: { contentType: 'application/json' },
+	},
+	VersionData: {
+		value: Buffer.from('file content'),
+		options: { filename: 'Doc.pdf' },
+	},
+});
 
 describe('Salesforce -> GenericFunctions', () => {
 	describe('getValue', () => {
@@ -649,6 +663,43 @@ describe('Salesforce -> GenericFunctions', () => {
 		});
 	});
 
+	describe('salesforceApiRequest - OAuth2 form data', () => {
+		let mockExecuteFunctions: Mocked<IExecuteFunctions>;
+		let mockRequest: Mock;
+
+		beforeEach(() => {
+			mockExecuteFunctions = mockDeep<IExecuteFunctions>();
+			mockRequest = vi.fn();
+			mockExecuteFunctions.helpers.requestOAuth2 = mockRequest;
+			mockExecuteFunctions.getNodeParameter.mockImplementation((param: string) =>
+				param === 'authentication' ? 'oAuth2' : undefined,
+			);
+			mockExecuteFunctions.getCredentials.mockResolvedValue({
+				oauthTokenData: { instance_url: 'https://test.salesforce.com' },
+			});
+		});
+
+		it('forwards the formData option to the OAuth2 request helper for multipart uploads', async () => {
+			mockRequest.mockResolvedValue({ id: 'cv1', success: true });
+
+			const formData = uploadFormData({ Title: 'Doc' });
+
+			await salesforceApiRequest.call(
+				mockExecuteFunctions,
+				'POST',
+				'/sobjects/ContentVersion',
+				{},
+				{},
+				undefined,
+				{ formData },
+			);
+
+			// The legacy OAuth2 request helper builds the multipart body from the
+			// `formData` option, so the node forwards it unchanged.
+			expect(mockRequest.mock.calls[0][1]).toMatchObject({ formData });
+		});
+	});
+
 	describe('salesforceApiRequest - JWT Authentication', () => {
 		let mockExecuteFunctions: Mocked<IExecuteFunctions>;
 		let mockRequest: Mock;
@@ -814,6 +865,59 @@ describe('Salesforce -> GenericFunctions', () => {
 				expect(mockExecuteFunctions.logger.debug).toHaveBeenCalledWith(
 					'Authentication for "Salesforce" node is using "jwt". Invoking URI /services/data/v59.0/test-endpoint',
 				);
+			});
+
+			it('sends the formData option as a multipart FormData body', async () => {
+				mockRequest.mockResolvedValue({ id: 'cv1', success: true });
+
+				const formData = uploadFormData({
+					Title: 'Doc',
+					ContentLocation: 'S',
+					PathOnClient: 'Doc.pdf',
+				});
+
+				await salesforceApiRequest.call(
+					mockExecuteFunctions,
+					'POST',
+					'/sobjects/ContentVersion',
+					{},
+					{},
+					undefined,
+					{ formData },
+				);
+
+				// The authenticated helper only understands a FormData body, not the legacy
+				// `formData` option, so the option must be converted to a FormData instance
+				// and the JSON Content-Type dropped so form-data can set the boundary.
+				const sentOptions = mockRequest.mock.calls[0][1];
+				expect(sentOptions).not.toHaveProperty('formData');
+				expect(sentOptions.body).toBeInstanceOf(FormData);
+				expect(sentOptions.headers?.['Content-Type']).toBeUndefined();
+				expect((sentOptions.body as FormData).getHeaders()['content-type']).toMatch(
+					/^multipart\/form-data/,
+				);
+			});
+
+			it('preserves each formData field, its per-part content type and filename', async () => {
+				mockRequest.mockResolvedValue({ id: 'cv1', success: true });
+
+				await salesforceApiRequest.call(
+					mockExecuteFunctions,
+					'POST',
+					'/sobjects/ContentVersion',
+					{},
+					{},
+					undefined,
+					{ formData: uploadFormData({ Title: 'Doc' }) },
+				);
+
+				const body = mockRequest.mock.calls[0][1].body as FormData;
+				const serialized = body.getBuffer().toString();
+				expect(serialized).toContain('name="entity_content"');
+				expect(serialized).toContain('Content-Type: application/json');
+				expect(serialized).toContain('name="VersionData"');
+				expect(serialized).toContain('filename="Doc.pdf"');
+				expect(serialized).toContain('file content');
 			});
 		});
 
