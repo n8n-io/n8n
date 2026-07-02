@@ -371,11 +371,7 @@ function toConfirmationData(request: InstanceAiConfirmRequest): ConfirmationData
 		case 'credentialSelection':
 			return { approved: true, credentials: request.credentials };
 		case 'credentialAutoSetup':
-			return {
-				approved: true,
-				autoSetup: { credentialType: request.credentialType },
-				requiresAgentRebuild: true,
-			};
+			return { approved: true, autoSetup: { credentialType: request.credentialType } };
 		case 'resourceDecision':
 			return { approved: true, resourceDecision: request.resourceDecision };
 		case 'setupWorkflowApply':
@@ -2875,24 +2871,6 @@ export class InstanceAiService {
 				return;
 			}
 
-			const staticMcpServers = this.parseMcpServers(this.instanceAiConfig.mcpServers);
-			const registryMcpServers = this.settingsService.isMcpAccessEnabled()
-				? await this.instanceAiErrorReporter.withBoundary(
-						'instance-ai-mcp-setup',
-						{
-							threadId,
-							runId,
-							tracing,
-							agentId: orchestratorAgentId(runId),
-							userId: user.id,
-							messageGroupId,
-							messageId,
-						},
-						async () => await this.mcpRegistryService.getRegistryMcpServers(user),
-					)
-				: [];
-			const mcpServers = [...staticMcpServers, ...registryMcpServers];
-
 			const executionPushRef = this.threadPushRef.get(threadId);
 			const environment = await this.createExecutionEnvironment(
 				user,
@@ -2973,7 +2951,6 @@ export class InstanceAiService {
 			if (fileAttachments.length > 0) {
 				context.currentUserAttachments = fileAttachments;
 			}
-			const memoryConfig = this.createAgentMemoryOptions();
 
 			// When trace replay is enabled but LangSmith isn't configured,
 			// create a minimal context that only supports replay/record wrapping.
@@ -3139,19 +3116,13 @@ export class InstanceAiService {
 			const runControl = createOrchestratorRunControl(orchestrationContext);
 			const stopSignal = (): OrchestratorRunStopSignal | undefined => runControl.getStopSignal();
 
-			const agent = await createInstanceAgent({
-				modelId,
-				context,
-				orchestrationContext,
-				mcpServers,
-				mcpManager: this.mcpClientManager,
-				memoryConfig,
-				memory,
-				checkpointStore: this.checkpointStore,
-				onMemoryTaskEvent: this.memoryTaskObserverFor(threadId),
-				thinkingEnabled: this.instanceAiConfig.thinkingEnabled,
-			});
-			this.subscribeToAgentErrors(agent, threadId, runId);
+			const agent = await this.createAgentFromEnvironment(
+				environment,
+				threadId,
+				runId,
+				user,
+				tracing,
+			);
 
 			const streamOptions = this.buildOrchestratorAgentStreamOptions(user, threadId, runId, signal);
 
@@ -3802,18 +3773,48 @@ export class InstanceAiService {
 		);
 	}
 
-	/**
-	 * Given a freshly built execution environment, construct the agent that
-	 * runs on top of it. Split out from `createExecutionEnvironment` so
-	 * callers that need fine-grained failure reporting (e.g. orphan recovery)
-	 * can catch environment vs. agent construction separately.
-	 */
+	private async buildMcpServers(
+		user: User,
+		threadId: string,
+		runId: string,
+		tracing: InstanceAiTraceContext | undefined,
+		messageGroupId?: string,
+	): Promise<McpServerConfig[]> {
+		const staticMcpServers = this.parseMcpServers(this.instanceAiConfig.mcpServers);
+		const registryMcpServers = this.settingsService.isMcpAccessEnabled()
+			? await this.instanceAiErrorReporter.withBoundary(
+					'instance-ai-mcp-setup',
+					{
+						threadId,
+						runId,
+						tracing,
+						agentId: orchestratorAgentId(runId),
+						userId: user.id,
+						messageGroupId,
+					},
+					async () => await this.mcpRegistryService.getRegistryMcpServers(user),
+				)
+			: [];
+		return [...staticMcpServers, ...registryMcpServers];
+	}
+
 	private async createAgentFromEnvironment(
 		environment: Awaited<ReturnType<InstanceAiService['createExecutionEnvironment']>>,
 		threadId: string,
 		runId: string,
+		user: User,
+		tracing: InstanceAiTraceContext | undefined,
 	): Promise<Awaited<ReturnType<typeof createInstanceAgent>>> {
-		const mcpServers = this.parseMcpServers(this.instanceAiConfig.mcpServers);
+		if (tracing) {
+			environment.orchestrationContext.tracing = tracing;
+		}
+		const mcpServers = await this.buildMcpServers(
+			user,
+			threadId,
+			runId,
+			tracing,
+			environment.orchestrationContext.messageGroupId,
+		);
 		const agent = await createInstanceAgent({
 			modelId: environment.modelId,
 			context: environment.context,
@@ -3830,23 +3831,18 @@ export class InstanceAiService {
 		return agent;
 	}
 
-	/**
-	 * Fresh environment discovery (`createExecutionEnvironment`) + a fresh
-	 * agent (`createAgentFromEnvironment`) for the given (existing) run
-	 * identifiers. Used wherever a frozen agent's tool list / system prompt
-	 * would be stale — e.g. a mid-run resume that needs a newly available
-	 * capability (a browser session connecting after run start).
-	 */
 	private async buildFreshInstanceAgent(
 		user: User,
 		threadId: string,
 		runId: string,
 		abortSignal: AbortSignal,
+		tracing: InstanceAiTraceContext | undefined,
 		messageGroupId?: string,
 		pushRef?: string,
 	): Promise<{
 		agent: Awaited<ReturnType<typeof createInstanceAgent>>;
 		modelId: ModelConfig;
+		orchestrationContext: OrchestrationContext;
 	}> {
 		const environment = await this.createExecutionEnvironment(
 			user,
@@ -3856,8 +3852,18 @@ export class InstanceAiService {
 			messageGroupId,
 			pushRef,
 		);
-		const agent = await this.createAgentFromEnvironment(environment, threadId, runId);
-		return { agent, modelId: environment.modelId };
+		const agent = await this.createAgentFromEnvironment(
+			environment,
+			threadId,
+			runId,
+			user,
+			tracing,
+		);
+		return {
+			agent,
+			modelId: environment.modelId,
+			orchestrationContext: environment.orchestrationContext,
+		};
 	}
 
 	/**
@@ -3907,7 +3913,13 @@ export class InstanceAiService {
 		const runControl = createOrchestratorRunControl(environment.orchestrationContext);
 		let agent;
 		try {
-			agent = await this.createAgentFromEnvironment(environment, orphan.threadId, orphan.runId);
+			agent = await this.createAgentFromEnvironment(
+				environment,
+				orphan.threadId,
+				orphan.runId,
+				user,
+				undefined,
+			);
 		} catch (error: unknown) {
 			return { kind: 'agent-failure', error };
 		}
@@ -3954,36 +3966,36 @@ export class InstanceAiService {
 		}
 	}
 
-	/**
-	 * Rebuild the agent for a resume that flagged `requiresAgentRebuild`,
-	 * falling back to the original (frozen) agent if the rebuild fails —
-	 * the pre-existing behavior is a safer failure mode than breaking resume.
-	 */
-	private async rebuildAgentForResumeOrFallback(
-		original: { agent: unknown; modelId?: ModelConfig },
+	private async rebuildAgentForAutoSetupResume(
 		user: User,
 		threadId: string,
 		runId: string,
-		requestId: string,
 		abortController: AbortController,
+		tracing: InstanceAiTraceContext | undefined,
+		runHandoff: OrchestratorRunHandoffState | undefined,
 		messageGroupId?: string,
-	): Promise<{ agent: unknown; modelId?: ModelConfig }> {
+	): Promise<
+		{ agent: Awaited<ReturnType<typeof createInstanceAgent>>; modelId: ModelConfig } | undefined
+	> {
 		try {
-			return await this.buildFreshInstanceAgent(
+			const rebuilt = await this.buildFreshInstanceAgent(
 				user,
 				threadId,
 				runId,
 				abortController.signal,
+				tracing,
 				messageGroupId,
 				this.threadPushRef.get(threadId),
 			);
+			createOrchestratorRunControl(rebuilt.orchestrationContext, runHandoff ?? {});
+			return { agent: rebuilt.agent, modelId: rebuilt.modelId };
 		} catch (error: unknown) {
-			this.logger.warn('Failed to rebuild agent for resume; continuing with the existing agent', {
+			this.logger.warn('Failed to rebuild agent for credential auto-setup resume', {
 				threadId,
-				requestId,
+				runId,
 				error: getErrorMessage(error),
 			});
-			return original;
+			return undefined;
 		}
 	}
 
@@ -4057,18 +4069,6 @@ export class InstanceAiService {
 			...(data.autoSetup ? { autoSetup: data.autoSetup } : {}),
 		};
 
-		const { agent: resumeAgent, modelId: resumeModelId } = data.requiresAgentRebuild
-			? await this.rebuildAgentForResumeOrFallback(
-					{ agent, modelId },
-					activeUser,
-					threadId,
-					runId,
-					requestId,
-					abortController,
-					messageGroupId,
-				)
-			: { agent, modelId };
-
 		const resumeTracing = await this.tracing.createOrchestratorResumeTraceContext({
 			baseTracing: tracing,
 			threadId,
@@ -4076,7 +4076,7 @@ export class InstanceAiService {
 			messageGroupId,
 			runId,
 			userId: activeUser.id,
-			modelId: resumeModelId,
+			modelId,
 			input: {
 				requestId,
 				toolCallId,
@@ -4096,6 +4096,27 @@ export class InstanceAiService {
 					: {}),
 			},
 		});
+		const effectiveTracing = resumeTracing ?? tracing;
+
+		let resumeAgent = agent;
+		let resumeModelId = modelId;
+		if (data.autoSetup) {
+			const rebuilt = await this.rebuildAgentForAutoSetupResume(
+				activeUser,
+				threadId,
+				runId,
+				abortController,
+				effectiveTracing,
+				runHandoff,
+				messageGroupId,
+			);
+			if (!rebuilt) {
+				this.cancelRun(threadId, 'agent_rebuild_failed');
+				return false;
+			}
+			resumeAgent = rebuilt.agent;
+			resumeModelId = rebuilt.modelId;
+		}
 
 		this.startProcessResumedStream(resumeAgent, resumeData, {
 			runId,

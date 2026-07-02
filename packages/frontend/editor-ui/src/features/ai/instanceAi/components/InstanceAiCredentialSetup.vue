@@ -372,10 +372,6 @@ async function handleLater() {
 	}
 }
 
-// ---------------------------------------------------------------------------
-// Browser-use setup choice (094 experiment)
-// ---------------------------------------------------------------------------
-
 function trackSetupChoiceClicked(choice: CredentialSetupChoice | 'skip') {
 	telemetry.track('Instance AI Browser Use User clicked credential setup option', {
 		user_id: usersStore.currentUser?.id,
@@ -404,6 +400,17 @@ function stopWatchingBrowserConnect() {
 	stopBrowserConnectWatch?.();
 	stopBrowserConnectWatch = undefined;
 }
+
+watch(currentStepIndex, () => stopWatchingBrowserConnect());
+
+watch(
+	() => uiStore.modalsById[INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY]?.open,
+	(isOpen, wasOpen) => {
+		if (wasOpen && !isOpen && !settingsStore.browserConnected) {
+			stopWatchingBrowserConnect();
+		}
+	},
+);
 
 function onSetupChoiceSelected(choice: CredentialSetupChoice) {
 	if (choice === 'ai') {
@@ -442,7 +449,6 @@ async function handleSetupAutomatically() {
 		return;
 	}
 
-	// Browser not connected — open the connect modal and resume once it connects.
 	uiStore.openModal(INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY);
 	stopWatchingBrowserConnect();
 	stopBrowserConnectWatch = watch(

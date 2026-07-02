@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import userEvent from '@testing-library/user-event';
-import { computed, defineComponent, h } from 'vue';
+import { computed, defineComponent, h, nextTick } from 'vue';
 import { createThreadComponentRenderer } from './createThreadComponentRenderer';
 import type { InstanceAiCredentialRequest } from '@n8n/api-types';
 import InstanceAiCredentialSetup from '../components/InstanceAiCredentialSetup.vue';
@@ -529,6 +529,41 @@ describe('InstanceAiCredentialSetup', () => {
 				});
 			});
 			expect(closeModalSpy).toHaveBeenCalledWith(INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY);
+		});
+
+		it('does not submit auto setup for a step the user has navigated away from', async () => {
+			experiment.enabled = true;
+			settingsStore.browserConnected = false;
+			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+
+			const requests = makeCredentialRequests(2);
+			const { getByTestId } = renderCard(requests);
+			await userEvent.click(getByTestId('setup-choice-ai'));
+
+			await userEvent.click(getByTestId('instance-ai-credential-next'));
+
+			settingsStore.browserConnected = true;
+			await new Promise((resolve) => setTimeout(resolve, 0));
+
+			expect(confirmSpy).not.toHaveBeenCalled();
+		});
+
+		it('does not submit auto setup once the connect modal is dismissed without connecting', async () => {
+			experiment.enabled = true;
+			settingsStore.browserConnected = false;
+			const uiStore = useUIStore();
+			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+
+			const { getByTestId } = renderCard(makeCredentialRequests(1));
+			await userEvent.click(getByTestId('setup-choice-ai'));
+
+			uiStore.closeModal(INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY);
+			await nextTick();
+
+			settingsStore.browserConnected = true;
+			await new Promise((resolve) => setTimeout(resolve, 0));
+
+			expect(confirmSpy).not.toHaveBeenCalled();
 		});
 
 		it('tracks skip when deferring while the choice is shown', async () => {

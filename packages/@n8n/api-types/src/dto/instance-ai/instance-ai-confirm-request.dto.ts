@@ -41,8 +41,6 @@ const credentialSelectionConfirmSchema = z.object({
 	credentials: credentialIdByTypeSchema,
 });
 
-/** Hand a single credential off to the agent's browser-use setup flow. Approval is
- *  implied; the service maps this to the setup resume's `autoSetup` field. */
 const credentialAutoSetupConfirmSchema = z.object({
 	kind: z.literal('credentialAutoSetup'),
 	credentialType: z.string(),

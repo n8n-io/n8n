@@ -75,13 +75,7 @@ export interface ConfirmationData {
 	/** `'session'` means the user chose "always allow": the resuming tool should
 	 *  persist a thread-level grant so the same action isn't re-asked. */
 	scope?: 'once' | 'session';
-	/** Hand a credential off to the agent's browser-use setup flow. */
 	autoSetup?: { credentialType: string };
-	/** Set by a confirm-request mapping when the resume needs a freshly built
-	 *  agent (fresh MCP/tool discovery + system prompt) instead of the frozen
-	 *  one from run start — e.g. because a capability (like a browser session)
-	 *  connected mid-run. Not forwarded to the tool's resumeData. */
-	requiresAgentRebuild?: boolean;
 }
 
 export interface PendingConfirmation {

@@ -160,6 +160,7 @@ import {
 	createAllTools,
 	createLazyRuntimeWorkspace,
 	createLazyWorkspaceRuntimeSkillSource,
+	createOrchestratorRunControl,
 	createSandbox,
 	createWorkspace,
 	loadInstanceAiRuntimeSkillSource,
@@ -1544,7 +1545,6 @@ type SuspendedRunResumeServiceInternals = {
 		data: {
 			approved: boolean;
 			autoSetup?: { credentialType: string };
-			requiresAgentRebuild?: boolean;
 		},
 	) => Promise<boolean>;
 	revalidateActiveUser: Mock<(...args: [string]) => Promise<User | null>>;
@@ -1559,7 +1559,7 @@ type SuspendedRunResumeServiceInternals = {
 	processResumedStream: Mock;
 	suspendedThreads: { dropPendingConfirmation: Mock };
 	trackInFlightExecution: Mock;
-	buildFreshInstanceAgent: Mock;
+	rebuildAgentForAutoSetupResume: Mock;
 	threadPushRef: { get: Mock };
 };
 
@@ -1586,6 +1586,7 @@ function createSuspendedRunResumeService(): SuspendedRunResumeServiceInternals {
 			modelId: undefined,
 			messageGroupId: 'group-1',
 			checkpoint: undefined,
+			runHandoff: undefined,
 		})),
 		activateSuspendedRun: vi.fn(),
 	};
@@ -1593,7 +1594,7 @@ function createSuspendedRunResumeService(): SuspendedRunResumeServiceInternals {
 	service.dbSnapshotStorage = {};
 	service.tracing = { createOrchestratorResumeTraceContext: vi.fn(async () => undefined) };
 	service.processResumedStream = vi.fn();
-	service.buildFreshInstanceAgent = vi.fn();
+	service.rebuildAgentForAutoSetupResume = vi.fn();
 	service.threadPushRef = { get: vi.fn(() => undefined) };
 	return service;
 }
@@ -2035,12 +2036,12 @@ describe('InstanceAiService — suspended run user revalidation', () => {
 		);
 	});
 
-	it('rebuilds the agent when requiresAgentRebuild is set, and resumes with the rebuilt one', async () => {
+	it('rebuilds the agent when autoSetup is set, and resumes with the rebuilt one', async () => {
 		const service = createSuspendedRunResumeService();
 		const freshUser = { id: 'user-1', disabled: false } as User;
 		service.revalidateActiveUser.mockResolvedValue(freshUser);
 		const rebuiltAgent = { id: 'rebuilt-agent' };
-		service.buildFreshInstanceAgent.mockResolvedValue({
+		service.rebuildAgentForAutoSetupResume.mockResolvedValue({
 			agent: rebuiltAgent,
 			modelId: { provider: 'anthropic', model: 'claude' },
 		});
@@ -2048,53 +2049,44 @@ describe('InstanceAiService — suspended run user revalidation', () => {
 		const result = await service.resumeSuspendedRun('user-1', 'req-1', {
 			approved: true,
 			autoSetup: { credentialType: 'datadogApi' },
-			requiresAgentRebuild: true,
 		});
 
 		expect(result).toBe(true);
-		expect(service.buildFreshInstanceAgent).toHaveBeenCalledWith(
+		expect(service.rebuildAgentForAutoSetupResume).toHaveBeenCalledWith(
 			freshUser,
 			'thread-a',
 			'run-1',
-			expect.any(AbortSignal),
-			'group-1',
+			expect.any(AbortController),
 			undefined,
+			undefined,
+			'group-1',
 		);
 		expect(service.processResumedStream).toHaveBeenCalledWith(
 			rebuiltAgent,
 			expect.objectContaining({ autoSetup: { credentialType: 'datadogApi' } }),
 			expect.objectContaining({ modelId: { provider: 'anthropic', model: 'claude' } }),
 		);
-		// requiresAgentRebuild is a service-internal signal, not part of the tool's resume contract.
 		const [, resumeDataArg] = service.processResumedStream.mock.calls[0] as [unknown, object];
 		expect(resumeDataArg).not.toHaveProperty('requiresAgentRebuild');
 	});
 
-	it('falls back to the original agent when the rebuild fails', async () => {
+	it('fails the resume and cancels the run when the rebuild fails', async () => {
 		const service = createSuspendedRunResumeService();
 		const freshUser = { id: 'user-1', disabled: false } as User;
 		service.revalidateActiveUser.mockResolvedValue(freshUser);
-		service.buildFreshInstanceAgent.mockRejectedValue(new Error('boom'));
+		service.rebuildAgentForAutoSetupResume.mockResolvedValue(undefined);
 
 		const result = await service.resumeSuspendedRun('user-1', 'req-1', {
 			approved: true,
 			autoSetup: { credentialType: 'datadogApi' },
-			requiresAgentRebuild: true,
 		});
 
-		expect(result).toBe(true);
-		expect(service.logger.warn).toHaveBeenCalledWith(
-			'Failed to rebuild agent for resume; continuing with the existing agent',
-			expect.objectContaining({ threadId: 'thread-a', requestId: 'req-1' }),
-		);
-		expect(service.processResumedStream).toHaveBeenCalledWith(
-			{}, // the original agent stub from findSuspendedByRequestId
-			expect.anything(),
-			expect.anything(),
-		);
+		expect(result).toBe(false);
+		expect(service.cancelRun).toHaveBeenCalledWith('thread-a', 'agent_rebuild_failed');
+		expect(service.processResumedStream).not.toHaveBeenCalled();
 	});
 
-	it('does not rebuild the agent for a plain resume without requiresAgentRebuild', async () => {
+	it('does not rebuild the agent for a plain resume without autoSetup', async () => {
 		const service = createSuspendedRunResumeService();
 		const freshUser = { id: 'user-1', disabled: false } as User;
 		service.revalidateActiveUser.mockResolvedValue(freshUser);
@@ -2102,7 +2094,105 @@ describe('InstanceAiService — suspended run user revalidation', () => {
 		const result = await service.resumeSuspendedRun('user-1', 'req-1', { approved: true });
 
 		expect(result).toBe(true);
-		expect(service.buildFreshInstanceAgent).not.toHaveBeenCalled();
+		expect(service.rebuildAgentForAutoSetupResume).not.toHaveBeenCalled();
+	});
+});
+
+describe('InstanceAiService — rebuildAgentForAutoSetupResume', () => {
+	type RebuildAgentServiceInternals = {
+		rebuildAgentForAutoSetupResume: (
+			user: User,
+			threadId: string,
+			runId: string,
+			abortController: AbortController,
+			tracing: InstanceAiTraceContext | undefined,
+			runHandoff: { handoffReason?: string } | undefined,
+			messageGroupId?: string,
+		) => Promise<{ agent: unknown; modelId?: unknown } | undefined>;
+		buildFreshInstanceAgent: Mock;
+		threadPushRef: { get: Mock };
+		logger: { warn: Mock };
+	};
+
+	function createRebuildAgentService(): RebuildAgentServiceInternals {
+		const service = Object.create(
+			InstanceAiService.prototype,
+		) as unknown as RebuildAgentServiceInternals;
+		service.buildFreshInstanceAgent = vi.fn();
+		service.threadPushRef = { get: vi.fn(() => undefined) };
+		service.logger = { warn: vi.fn() };
+		return service;
+	}
+
+	it('reconnects the rebuilt context to the existing runHandoff state', async () => {
+		const service = createRebuildAgentService();
+		const orchestrationContext = {};
+		const rebuiltAgent = { id: 'rebuilt-agent' };
+		service.buildFreshInstanceAgent.mockResolvedValue({
+			agent: rebuiltAgent,
+			modelId: { provider: 'anthropic', model: 'claude' },
+			orchestrationContext,
+		});
+		const runHandoff = { handoffReason: undefined };
+
+		const result = await service.rebuildAgentForAutoSetupResume(
+			fakeUser,
+			'thread-a',
+			'run-1',
+			new AbortController(),
+			undefined,
+			runHandoff,
+			'group-1',
+		);
+
+		expect(result).toEqual({
+			agent: rebuiltAgent,
+			modelId: { provider: 'anthropic', model: 'claude' },
+		});
+		expect(createOrchestratorRunControl).toHaveBeenCalledWith(orchestrationContext, runHandoff);
+	});
+
+	it('defaults to an empty handoff state when the run never had one', async () => {
+		const service = createRebuildAgentService();
+		const orchestrationContext = {};
+		service.buildFreshInstanceAgent.mockResolvedValue({
+			agent: {},
+			modelId: { provider: 'anthropic', model: 'claude' },
+			orchestrationContext,
+		});
+
+		await service.rebuildAgentForAutoSetupResume(
+			fakeUser,
+			'thread-a',
+			'run-1',
+			new AbortController(),
+			undefined,
+			undefined,
+			'group-1',
+		);
+
+		expect(createOrchestratorRunControl).toHaveBeenCalledWith(orchestrationContext, {});
+	});
+
+	it('returns undefined and logs a warning when the rebuild throws', async () => {
+		const service = createRebuildAgentService();
+		service.buildFreshInstanceAgent.mockRejectedValue(new Error('boom'));
+
+		const result = await service.rebuildAgentForAutoSetupResume(
+			fakeUser,
+			'thread-a',
+			'run-1',
+			new AbortController(),
+			undefined,
+			undefined,
+			'group-1',
+		);
+
+		expect(result).toBeUndefined();
+		expect(service.logger.warn).toHaveBeenCalledWith(
+			'Failed to rebuild agent for credential auto-setup resume',
+			expect.objectContaining({ threadId: 'thread-a', runId: 'run-1' }),
+		);
 	});
 });
 
