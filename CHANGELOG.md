@@ -1,3 +1,16 @@
+## [2.29.3](https://github.com/n8n-io/n8n/compare/n8n@2.29.2...n8n@2.29.3) (2026-07-02)
+
+
+### Bug Fixes
+
+* **editor:** Align parameter input sizes ([#33381](https://github.com/n8n-io/n8n/issues/33381)) ([995f5a7](https://github.com/n8n-io/n8n/commit/995f5a79dd3d0e2380ff74462bf84027e5e24d08))
+
+
+### Features
+
+* **core:** Route Instance AI billing to a dedicated credit pool ([#33388](https://github.com/n8n-io/n8n/issues/33388)) ([6632f49](https://github.com/n8n-io/n8n/commit/6632f4943ae3fe4f4d91ba80766698add031ce44))
+
+
 ## [2.29.2](https://github.com/n8n-io/n8n/compare/n8n@2.29.1...n8n@2.29.2) (2026-07-01)
 
 
