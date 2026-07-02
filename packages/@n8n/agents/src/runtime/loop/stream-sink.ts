@@ -186,7 +186,18 @@ export class StreamSink implements RunOutputSink<void> {
 				resumeSchema: s.resumeSchema,
 			});
 		}
-		await this.guard.write({ type: 'finish', finishReason: 'tool-calls' });
+		// Stamp the tokens consumed to reach this suspension on the finish chunk,
+		// as the completion path does. A HITL run reuses one runId across segments,
+		// so each segment must bill its own usage here — otherwise the pre-suspension
+		// tokens are never emitted and go unbilled (worse, a stop while suspended
+		// never reaches a completion finish at all).
+		const costUsage = this.services.applyCost(emission.usage);
+		await this.guard.write({
+			type: 'finish',
+			finishReason: 'tool-calls',
+			...(costUsage && { usage: costUsage }),
+			model: this.services.modelId,
+		});
 		await this.guard.close();
 	}
 

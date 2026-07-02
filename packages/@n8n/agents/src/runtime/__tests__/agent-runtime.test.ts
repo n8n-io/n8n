@@ -2525,6 +2525,54 @@ describe('AgentRuntime — concurrent tool execution', () => {
 		expect((finishChunks[0] as StreamChunk & { type: 'finish' }).finishReason).toBe('tool-calls');
 	});
 
+	it('stamps the consumed usage and model on the terminal finish chunk when a stream suspends', async () => {
+		const suspendTool = makeSuspendingTool('suspend_tool', async (_input, ctx) => {
+			return await ctx.suspend({ reason: 'needs approval' });
+		});
+
+		const { runtime } = createRuntimeWithTools([suspendTool], 1);
+
+		streamText.mockReturnValue({
+			fullStream: makeChunkStream([{ type: 'text-delta', textDelta: 'thinking...' }]),
+			finishReason: Promise.resolve('tool-calls'),
+			usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
+			response: Promise.resolve({
+				messages: [
+					{
+						role: 'assistant',
+						content: [
+							{
+								type: 'tool-call',
+								toolCallId: 'tc-1',
+								toolName: 'suspend_tool',
+								args: { value: 'a' },
+							},
+						],
+					},
+				],
+			}),
+			toolCalls: Promise.resolve([
+				{ toolCallId: 'tc-1', toolName: 'suspend_tool', input: { value: 'a' } },
+			]),
+		});
+
+		const { stream: readableStream } = await runtime.stream('run tools');
+		const chunks = await collectChunks(readableStream);
+
+		const finishChunks = chunks.filter((c) => c.type === 'finish') as Array<
+			StreamChunk & { type: 'finish' }
+		>;
+		expect(finishChunks.length).toBe(1);
+		// The tokens consumed to reach the suspension must ride out on the finish
+		// chunk so the host can bill them, mirroring the completion path.
+		expect(finishChunks[0].usage).toMatchObject({
+			promptTokens: 10,
+			completionTokens: 5,
+			totalTokens: 15,
+		});
+		expect(finishChunks[0].model).toBeTruthy();
+	});
+
 	it('bridges subagent lifecycle events from tool context into stream chunks', async () => {
 		const lifecycleTool: BuiltTool = {
 			name: 'delegate_subagent',
