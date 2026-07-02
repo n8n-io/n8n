@@ -1429,11 +1429,13 @@ type ResolveConfirmationServiceInternals = {
 		requestingUserId: string,
 		requestId: string,
 		request: { kind: 'approval'; approved: boolean; userInput?: string },
-	) => Promise<boolean>;
+	) => Promise<{ ok: true; runId?: string } | null>;
 	revalidateActiveUser: Mock<(...args: [string]) => Promise<User | null>>;
 	cancelRun: Mock<(...args: [string]) => void>;
 	runState: {
 		resolvePendingConfirmation: Mock;
+		getPendingConfirmation: Mock;
+		getActiveRunId: Mock;
 		findSuspendedByRequestId: Mock;
 		rejectPendingConfirmation: Mock;
 	};
@@ -1455,12 +1457,14 @@ function createResolveConfirmationService(): ResolveConfirmationServiceInternals
 	service.cancelRun = vi.fn();
 	service.runState = {
 		resolvePendingConfirmation: vi.fn(),
+		getPendingConfirmation: vi.fn(),
+		getActiveRunId: vi.fn(),
 		findSuspendedByRequestId: vi.fn(),
 		rejectPendingConfirmation: vi.fn(),
 	};
-	service.resumeSuspendedRun = vi.fn(async () => false);
+	service.resumeSuspendedRun = vi.fn(async () => null);
 	service.suspendedRunRestorer = {
-		resolveOrphanedConfirmation: vi.fn(async () => false),
+		resolveOrphanedConfirmation: vi.fn(async () => null),
 	};
 	service.suspendedThreads = {
 		dropPendingConfirmation: vi.fn(async () => {}),
@@ -1550,7 +1554,7 @@ type SuspendedRunResumeServiceInternals = {
 		requestingUserId: string,
 		requestId: string,
 		data: { approved: boolean },
-	) => Promise<boolean>;
+	) => Promise<{ ok: true; runId: string } | null>;
 	revalidateActiveUser: Mock<(...args: [string]) => Promise<User | null>>;
 	cancelRun: Mock;
 	runState: {
@@ -1608,7 +1612,7 @@ describe('InstanceAiService — resolveConfirmation', () => {
 
 		const result = await service.resolveConfirmation('user-1', 'req-1', approval);
 
-		expect(result).toBe(false);
+		expect(result).toBeNull();
 		expect(service.runState.rejectPendingConfirmation).toHaveBeenCalledWith('req-1');
 		expect(service.runState.resolvePendingConfirmation).not.toHaveBeenCalled();
 		expect(service.cancelRun).not.toHaveBeenCalled();
@@ -1628,7 +1632,7 @@ describe('InstanceAiService — resolveConfirmation', () => {
 
 		const result = await service.resolveConfirmation('user-1', 'req-1', approval);
 
-		expect(result).toBe(false);
+		expect(result).toBeNull();
 		expect(service.runState.rejectPendingConfirmation).toHaveBeenCalledWith('req-1');
 		expect(service.cancelRun).toHaveBeenCalledWith('thread-1');
 	});
@@ -1643,18 +1647,23 @@ describe('InstanceAiService — resolveConfirmation', () => {
 
 		const result = await service.resolveConfirmation('user-1', 'req-1', approval);
 
-		expect(result).toBe(false);
+		expect(result).toBeNull();
 		expect(service.cancelRun).not.toHaveBeenCalled();
 	});
 
 	it('resolves the pending sub-agent confirmation when the user is still authorized', async () => {
 		const service = createResolveConfirmationService();
 		service.revalidateActiveUser.mockResolvedValue({ id: 'user-1' } as unknown as User);
+		service.runState.getPendingConfirmation.mockReturnValue({
+			userId: 'user-1',
+			threadId: 'thread-1',
+		});
 		service.runState.resolvePendingConfirmation.mockReturnValue(true);
+		service.runState.getActiveRunId.mockReturnValue('run-1');
 
 		const result = await service.resolveConfirmation('user-1', 'req-1', approval);
 
-		expect(result).toBe(true);
+		expect(result).toEqual({ ok: true, runId: 'run-1' });
 		expect(service.runState.resolvePendingConfirmation).toHaveBeenCalledWith(
 			'user-1',
 			'req-1',
@@ -1671,13 +1680,20 @@ describe('InstanceAiService — resolveConfirmation', () => {
 		// fallthrough wiring once in-memory resolution + resume both miss.
 		const service = createResolveConfirmationService();
 		service.revalidateActiveUser.mockResolvedValue({ id: 'user-1' } as unknown as User);
+		service.runState.getPendingConfirmation.mockReturnValue(undefined);
 		service.runState.resolvePendingConfirmation.mockReturnValue(false);
-		service.resumeSuspendedRun.mockResolvedValue(false);
-		service.suspendedRunRestorer.resolveOrphanedConfirmation.mockResolvedValue(true);
+		service.resumeSuspendedRun.mockResolvedValue(null);
+		service.suspendedRunRestorer.resolveOrphanedConfirmation.mockResolvedValue({
+			ok: true,
+			runId: 'run-1',
+		});
 
 		const result = await service.resolveConfirmation('user-1', 'req-1', approval);
 
-		expect(result).toBe(true);
+		expect(result).toEqual({
+			ok: true,
+			runId: 'run-1',
+		});
 		expect(service.suspendedRunRestorer.resolveOrphanedConfirmation).toHaveBeenCalledWith(
 			'user-1',
 			'req-1',
@@ -1688,8 +1704,9 @@ describe('InstanceAiService — resolveConfirmation', () => {
 	it('propagates the terminal UserError thrown by the orphan-restoration path', async () => {
 		const service = createResolveConfirmationService();
 		service.revalidateActiveUser.mockResolvedValue({ id: 'user-1' } as unknown as User);
+		service.runState.getPendingConfirmation.mockReturnValue(undefined);
 		service.runState.resolvePendingConfirmation.mockReturnValue(false);
-		service.resumeSuspendedRun.mockResolvedValue(false);
+		service.resumeSuspendedRun.mockResolvedValue(null);
 		service.suspendedRunRestorer.resolveOrphanedConfirmation.mockRejectedValue(
 			new UserError('This confirmation was lost when the assistant restarted.'),
 		);
@@ -1702,12 +1719,19 @@ describe('InstanceAiService — resolveConfirmation', () => {
 	it('does not reach the orphan-restoration path when a live run resumes', async () => {
 		const service = createResolveConfirmationService();
 		service.revalidateActiveUser.mockResolvedValue({ id: 'user-1' } as unknown as User);
+		service.runState.getPendingConfirmation.mockReturnValue(undefined);
 		service.runState.resolvePendingConfirmation.mockReturnValue(false);
-		service.resumeSuspendedRun.mockResolvedValue(true);
+		service.resumeSuspendedRun.mockResolvedValue({
+			ok: true,
+			runId: 'run-1',
+		});
 
 		const result = await service.resolveConfirmation('user-1', 'req-1', approval);
 
-		expect(result).toBe(true);
+		expect(result).toEqual({
+			ok: true,
+			runId: 'run-1',
+		});
 		expect(service.suspendedRunRestorer.resolveOrphanedConfirmation).not.toHaveBeenCalled();
 	});
 });
@@ -2005,7 +2029,7 @@ describe('InstanceAiService — suspended run user revalidation', () => {
 
 		const result = await service.resumeSuspendedRun('user-1', 'req-1', { approved: true });
 
-		expect(result).toBe(false);
+		expect(result).toBeNull();
 		expect(service.cancelRun).toHaveBeenCalledWith('thread-a');
 		expect(service.runState.activateSuspendedRun).not.toHaveBeenCalled();
 		expect(service.processResumedStream).not.toHaveBeenCalled();
@@ -2022,7 +2046,10 @@ describe('InstanceAiService — suspended run user revalidation', () => {
 
 		const result = await service.resumeSuspendedRun('user-1', 'req-1', { approved: true });
 
-		expect(result).toBe(true);
+		expect(result).toEqual({
+			ok: true,
+			runId: 'run-1',
+		});
 		expect(service.runState.activateSuspendedRun).toHaveBeenCalledWith('thread-a');
 		expect(service.processResumedStream).toHaveBeenCalledWith(
 			expect.any(Object),

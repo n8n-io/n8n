@@ -57,6 +57,43 @@ interface FormatOptions {
 	gate?: GateResult;
 }
 
+function evaluatedBuildExpectations(tc: TestCaseAggregation) {
+	return tc.buildExpectations.filter((ea) => ea.evaluatedCount > 0);
+}
+
+function aggregateMeasuredUnits(testCases: TestCaseAggregation[]) {
+	let passed = 0;
+	let total = 0;
+	let scenarios = 0;
+	let expectations = 0;
+
+	for (const tc of testCases) {
+		scenarios += tc.executionScenarios.length;
+		for (const sa of tc.executionScenarios) {
+			passed += sa.passCount;
+			total += sa.runs.length;
+		}
+
+		const buildExpectations = evaluatedBuildExpectations(tc);
+		expectations += buildExpectations.length;
+		for (const ea of buildExpectations) {
+			passed += ea.passCount;
+			total += ea.evaluatedCount;
+		}
+	}
+
+	return { passed, total, scenarios, expectations };
+}
+
+function unitCountLabel(summary: { scenarios: number; expectations: number }, totalRuns: number) {
+	const scenarioLabel = `${summary.scenarios} scenario${summary.scenarios === 1 ? '' : 's'}`;
+	const expectationLabel =
+		summary.expectations > 0
+			? ` + ${summary.expectations} expectation${summary.expectations === 1 ? '' : 's'}`
+			: '';
+	return `${scenarioLabel}${expectationLabel}, N=${totalRuns}`;
+}
+
 // ---------------------------------------------------------------------------
 // Markdown PR comment
 // ---------------------------------------------------------------------------
@@ -326,13 +363,13 @@ function renderWorkflowChecksSection(evaluation: MultiRunEvaluation): string[] {
 		rowByName[name] = {
 			dimension: entry.dimension,
 			failed: entry.fails > 0,
-			row: `| \`${entry.dimension}\` | \`${name}\` | ${entry.kind} | ${String(entry.passes)} | ${String(entry.fails)} | ${String(entry.nA)} | ${rate} |`,
+			row: `| \`${entry.dimension}\` | \`${name}\` | ${entry.kind} | ${String(entry.passes)} | ${String(entry.fails)} | ${String(entry.nA)} | ${String(entry.errors)} | ${rate} |`,
 		};
 	}
 
 	const header = [
-		'| Dimension | Check | Kind | Pass | Fail | N/A | Pass rate |',
-		'|---|---|---|---|---|---|---|',
+		'| Dimension | Check | Kind | Pass | Fail | N/A | Error | Pass rate |',
+		'|---|---|---|---|---|---|---|---|',
 	];
 	const rowsWhere = (keep: (name: string) => boolean): string[] => {
 		const byDimension: Record<string, string[]> = {};
@@ -345,7 +382,7 @@ function renderWorkflowChecksSection(evaluation: MultiRunEvaluation): string[] {
 	const lines: string[] = [
 		'#### Workflow checks',
 		'',
-		`_Scored over ${String(aggregate.scoredBuilds)} successful build(s). N/A = check did not apply to that workflow._`,
+		`_Scored over ${String(aggregate.scoredBuilds)} successful build(s). N/A = check did not apply to that workflow. Error = check could not be measured (e.g. judge timeout)._`,
 		'',
 	];
 
@@ -450,11 +487,9 @@ function formatAggregateBlock(
 	comparison?: ComparisonResult,
 ): string {
 	if (!comparison) {
-		const allScenarios = evaluation.testCases.flatMap((tc) => tc.executionScenarios);
-		const passed = allScenarios.reduce((sum, sa) => sum + sa.passCount, 0);
-		const total = allScenarios.reduce((sum, sa) => sum + sa.runs.length, 0);
-		const rate = total > 0 ? (passed / total) * 100 : 0;
-		return `**Aggregate**: ${rate.toFixed(1)}% pass (${passed}/${total} trials, ${allScenarios.length} scenarios × N=${evaluation.totalRuns})`;
+		const summary = aggregateMeasuredUnits(evaluation.testCases);
+		const rate = summary.total > 0 ? (summary.passed / summary.total) * 100 : 0;
+		return `**Aggregate**: ${rate.toFixed(1)}% pass (${summary.passed}/${summary.total} trials, ${unitCountLabel(summary, evaluation.totalRuns)})`;
 	}
 
 	const { aggregate } = comparison;
@@ -606,17 +641,18 @@ function renderPerTestCaseDetails(
 		lines.push(`| Workflow | Built | pass@${totalRuns} | pass^${totalRuns} |`);
 		lines.push('|---|---|---|---|');
 		for (const tc of testCases) {
-			const meanPassAtK = tc.executionScenarios.length
+			const units = [...tc.executionScenarios, ...evaluatedBuildExpectations(tc)];
+			const meanPassAtK = units.length
 				? Math.round(
-						(tc.executionScenarios.reduce((sum, sa) => sum + (sa.passAtK[totalRuns - 1] ?? 0), 0) /
-							tc.executionScenarios.length) *
+						(units.reduce((sum, unit) => sum + (unit.passAtK[unit.passAtK.length - 1] ?? 0), 0) /
+							units.length) *
 							100,
 					)
 				: 0;
-			const meanPassHatK = tc.executionScenarios.length
+			const meanPassHatK = units.length
 				? Math.round(
-						(tc.executionScenarios.reduce((sum, sa) => sum + (sa.passHatK[totalRuns - 1] ?? 0), 0) /
-							tc.executionScenarios.length) *
+						(units.reduce((sum, unit) => sum + (unit.passHatK[unit.passHatK.length - 1] ?? 0), 0) /
+							units.length) *
 							100,
 					)
 				: 0;
@@ -629,8 +665,11 @@ function renderPerTestCaseDetails(
 		lines.push('|---|---|---|');
 		for (const tc of testCases) {
 			const built = tc.runs[0]?.workflowBuildSuccess ? '✓' : '✗';
-			const passed = tc.executionScenarios.filter((sa) => sa.runs[0]?.success).length;
-			const total = tc.executionScenarios.length;
+			const scenariosPassed = tc.executionScenarios.filter((sa) => sa.runs[0]?.success).length;
+			const buildExpectations = evaluatedBuildExpectations(tc);
+			const expectationsPassed = buildExpectations.filter((ea) => ea.runs[0]?.pass).length;
+			const passed = scenariosPassed + expectationsPassed;
+			const total = tc.executionScenarios.length + buildExpectations.length;
 			lines.push(`| ${renderName(tc)} | ${built} | ${passed}/${total} |`);
 		}
 	}
@@ -1006,13 +1045,11 @@ function formatTerminalAggregate(
 ): string[] {
 	const lines: string[] = [];
 	if (!comparison) {
-		const allScenarios = evaluation.testCases.flatMap((tc) => tc.executionScenarios);
-		const passed = allScenarios.reduce((sum, sa) => sum + sa.passCount, 0);
-		const total = allScenarios.reduce((sum, sa) => sum + sa.runs.length, 0);
-		const rate = total > 0 ? (passed / total) * 100 : 0;
+		const summary = aggregateMeasuredUnits(evaluation.testCases);
+		const rate = summary.total > 0 ? (summary.passed / summary.total) * 100 : 0;
 		lines.push(
 			TERMINAL_INDENT +
-				`Aggregate: ${rate.toFixed(1)}% pass (${passed}/${total} trials, ${allScenarios.length} scenarios × N=${evaluation.totalRuns})`,
+				`Aggregate: ${rate.toFixed(1)}% pass (${summary.passed}/${summary.total} trials, ${unitCountLabel(summary, evaluation.totalRuns)})`,
 		);
 		return lines;
 	}
@@ -1066,10 +1103,7 @@ function formatTerminalPerTestCase(
 
 	if (totalRuns > 1) {
 		const rows = testCases.map((tc) => {
-			const units = [
-				...tc.executionScenarios,
-				...tc.buildExpectations.filter((ea) => ea.evaluatedCount > 0),
-			];
+			const units = [...tc.executionScenarios, ...evaluatedBuildExpectations(tc)];
 			const meanPassAtK =
 				units.length > 0
 					? Math.round(
