@@ -46,5 +46,15 @@ export function getOperationModeOptions<T extends VectorStore>(
 /** Surfaces provider SDK errors (Pinecone, Supabase, …) as actionable n8n errors instead of raw exceptions */
 export function normalizeVectorStoreError(node: INode, error: unknown, itemIndex?: number): never {
 	if (error instanceof ExecutionBaseError) throw error;
-	throw new NodeApiError(node, error as JsonObject, { itemIndex });
+	// warning-level errors are treated as user-facing and skipped by error reporting,
+	// so keep programming errors at error level to preserve their visibility
+	const isProgrammerError =
+		error instanceof TypeError ||
+		error instanceof RangeError ||
+		error instanceof ReferenceError ||
+		error instanceof SyntaxError;
+	throw new NodeApiError(node, error as JsonObject, {
+		itemIndex,
+		level: isProgrammerError ? 'error' : 'warning',
+	});
 }

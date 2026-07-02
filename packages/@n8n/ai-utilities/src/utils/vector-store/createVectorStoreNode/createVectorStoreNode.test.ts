@@ -457,6 +457,32 @@ describe('createVectorStoreNode', () => {
 			});
 		});
 
+		it('keeps programmer errors at error level so they stay report-visible', async () => {
+			// ARRANGE
+			executeContext.getNodeParameter.mockImplementation(
+				(parameterName: string): NodeParameterValueType | object => loadParameters[parameterName],
+			);
+			executeContext.getInputData.mockReturnValue([{ json: {} }]);
+
+			vectorStore.similaritySearchVectorWithScore.mockRejectedValueOnce(
+				new TypeError("Cannot read properties of undefined (reading 'matches')"),
+			);
+
+			// ACT
+			const VectorStoreNodeType = createVectorStoreNode(vectorStoreNodeArgs);
+			const nodeType = new VectorStoreNodeType();
+			const thrown: unknown = await nodeType.execute
+				.call(executeContext)
+				.catch((error: unknown) => error);
+
+			// ASSERT
+			expect(thrown).toBeInstanceOf(NodeApiError);
+			expect(thrown).toMatchObject({
+				level: 'error',
+				message: "Cannot read properties of undefined (reading 'matches')",
+			});
+		});
+
 		it('rethrows n8n errors from execute unchanged', async () => {
 			// ARRANGE
 			executeContext.getNodeParameter.mockImplementation(
