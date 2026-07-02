@@ -130,7 +130,7 @@ export function resolveVersionMetadata(
 	provided: { versionName?: string; versionDescription?: string },
 	fallback: VersionMetadata,
 ): VersionMetadata {
-	// ponytail: no re-truncation of provided values — the tool input schemas cap lengths
+	// No re-truncation of provided values; the tool input schemas cap lengths.
 	return {
 		name: provided.versionName?.trim() || fallback.name,
 		description: provided.versionDescription?.trim() || fallback.description,
