@@ -95,6 +95,7 @@ const ARTIFACT_TOOLS = new Set([
 	'update-data-table-rows',
 	'delete-data-table-rows',
 ]);
+const WORKFLOW_MUTATING_ACTIONS = new Set(['update', 'restore-version', 'setup']);
 
 function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): void {
 	if (!ARTIFACT_TOOLS.has(tc.toolName)) return;
@@ -121,6 +122,31 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 			existing?.name ??
 			'Untitled';
 		recordProduced(col, { type: 'workflow', id: result.workflowId, name });
+	}
+
+	if (
+		tc.toolName === 'workflows' &&
+		result.success === true &&
+		typeof tc.args?.workflowId === 'string' &&
+		typeof tc.args.action === 'string' &&
+		WORKFLOW_MUTATING_ACTIONS.has(tc.args.action)
+	) {
+		const workflowId = tc.args.workflowId;
+		const existing = col.produced.get(workflowId);
+		const name =
+			optionalString(result.workflowName) ??
+			optionalString(tc.args.name) ??
+			existing?.name ??
+			'Untitled';
+		recordProduced(col, { type: 'workflow', id: workflowId, name });
+	}
+
+	// workflows action=get-json returns the workflow document itself, not under
+	// a `workflow` key. Surface it so existing workflows loaded for editing can
+	// be previewed even before a later update result is observed.
+	if (tc.toolName === 'workflows' && Array.isArray(result.nodes)) {
+		const entry = entryFromListItem('workflow', result);
+		if (entry) recordProduced(col, entry);
 	}
 
 	// Single workflow object: { workflow: { id, name, ... } } — produced.
