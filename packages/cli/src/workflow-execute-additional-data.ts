@@ -14,6 +14,7 @@ import type {
 	AiEvent,
 	EnvProviderState,
 	ExecuteAgentData,
+	ExecuteAgentWorkflowContext,
 	ExecuteWorkflowData,
 	ExecuteWorkflowOptions,
 	ExecutionError,
@@ -348,6 +349,7 @@ export async function executeAgent(
 	additionalData: IWorkflowExecuteAdditionalData,
 	executionMode: WorkflowExecuteMode,
 	outputSchema?: JSONSchema7,
+	workflowContext?: ExecuteAgentWorkflowContext,
 ): Promise<ExecuteAgentData> {
 	let userId = additionalData.userId;
 	const telemetryUserId = additionalData.userId;
@@ -395,6 +397,7 @@ export async function executeAgent(
 		telemetryUserId,
 		useDraftVersion,
 		outputSchema,
+		workflowContext,
 	);
 }
 
@@ -679,6 +682,7 @@ export async function getBase({
 } = {}): Promise<IWorkflowExecuteAdditionalData> {
 	const urlService = Container.get(UrlService);
 	const urlBaseWebhook = urlService.getWebhookBaseUrl();
+	const urlBaseTestWebhook = urlService.getTestWebhookBaseUrl();
 	const instanceBaseUrl = urlService.getInstanceBaseUrl();
 
 	const globalConfig = Container.get(GlobalConfig);
@@ -698,9 +702,9 @@ export async function getBase({
 		formWaitingBaseUrl: urlBaseWebhook + globalConfig.endpoints.formWaiting,
 		webhookBaseUrl: urlBaseWebhook + globalConfig.endpoints.webhook,
 		webhookWaitingBaseUrl: urlBaseWebhook + globalConfig.endpoints.webhookWaiting,
-		webhookTestBaseUrl: urlBaseWebhook + globalConfig.endpoints.webhookTest,
+		webhookTestBaseUrl: urlBaseTestWebhook + globalConfig.endpoints.webhookTest,
 		mcpBaseUrl: urlBaseWebhook + globalConfig.endpoints.mcp,
-		mcpTestBaseUrl: urlBaseWebhook + globalConfig.endpoints.mcpTest,
+		mcpTestBaseUrl: urlBaseTestWebhook + globalConfig.endpoints.mcpTest,
 		currentNodeParameters,
 		executionTimeoutTimestamp,
 		userId,

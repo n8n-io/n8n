@@ -31,6 +31,7 @@ import {
 import { reconstructSeedFromThread, type SeedThreadRef } from './langsmith-seed';
 import { type EvalLogger } from './logger';
 import { fetchPrebuiltBuild } from './prebuilt-workflows';
+import { extractErrorMessage, isTransientNetworkError, MAX_EXEC_ATTEMPTS } from './transient-error';
 import { buildWorkflowContextBlock } from './workflow-context';
 import { SONNET_MODEL } from '../../src/utils/eval-agents';
 import { runBinaryChecks } from '../binaryChecks/index';
@@ -40,7 +41,11 @@ import { allFailVerdicts, verifyBuildExpectations } from '../build-expectations/
 import { type VerifierAttemptDebug, verifyChecklist } from '../checklist/verifier';
 import { N8nApiError, type N8nClient, type WorkflowResponse } from '../clients/n8n-client';
 import { createDeclaredCredentials } from '../credentials/seeder';
-import { buildConversationMetrics, extractOutcomeFromEvents } from '../outcome/event-parser';
+import {
+	buildConversationMetrics,
+	extractOutcomeFromEvents,
+	mergeSeededConversationMetrics,
+} from '../outcome/event-parser';
 import { buildTranscriptFromEvents } from '../outcome/transcript-from-events';
 import { buildAgentOutcome, extractWorkflowIdsFromMessages } from '../outcome/workflow-discovery';
 import type {
@@ -61,6 +66,7 @@ import type {
 import {
 	conversationUserTurnsAsText,
 	failedBuildsPerTurn,
+	lastAgentText,
 	userTurnsAsText,
 } from '../utils/conversation-text';
 import { UserProxyLlm, type ProxyDecisionStats } from '../utils/user-proxy';
@@ -279,29 +285,44 @@ export async function runWorkflowTestCase(
 
 	const scenarioStart = Date.now();
 	const scenariosPromise = runWithConcurrency(
-		testCase.executionScenarios,
+		testCase.executionScenarios ?? [],
 		async (scenario) => {
-			try {
-				return await executeScenario(
-					client,
-					build.workflowId!,
-					scenario,
-					build.workflowJsons,
-					logger,
-					timeoutMs,
-					testCaseArtifactName,
-					build.buildTrace,
-					config.pinAiRoots,
-				);
-			} catch (error: unknown) {
-				const errorMessage = error instanceof Error ? error.message : String(error);
-				logger.error(`    ERROR [${scenario.name}]: ${errorMessage}`);
-				return {
-					scenario,
-					success: false,
-					score: 0,
-					reasoning: `Error: ${errorMessage}`,
-				} satisfies ExecutionScenarioResult;
+			for (let attempt = 1; ; attempt++) {
+				try {
+					return await executeScenario(
+						client,
+						build.workflowId!,
+						scenario,
+						build.workflowJsons,
+						logger,
+						timeoutMs,
+						testCaseArtifactName,
+						build.buildTrace,
+						config.pinAiRoots,
+					);
+				} catch (error: unknown) {
+					const errorMessage = extractErrorMessage(error);
+					if (isTransientNetworkError(errorMessage) && attempt < MAX_EXEC_ATTEMPTS) {
+						logger.warn(
+							`    [${scenario.name}] execution attempt ${attempt}/${MAX_EXEC_ATTEMPTS} failed (${errorMessage}); retrying`,
+						);
+						await delay(500 * attempt);
+						continue;
+					}
+					// executeScenario categorizes builder/mock/verification failures
+					// internally; an error escaping it is an infra/framework problem
+					// (network drop, n8n API error, verifier timeout). Tag it
+					// framework_issue so the report and baseline keep it out of builder
+					// regressions instead of scoring it as an uncategorized failure.
+					logger.error(`    ERROR [${scenario.name}]: ${errorMessage}`);
+					return {
+						scenario,
+						success: false,
+						score: 0,
+						reasoning: `Scenario execution error: ${errorMessage}`,
+						failureCategory: 'framework_issue',
+					} satisfies ExecutionScenarioResult;
+				}
 			}
 		},
 		MAX_CONCURRENT_SCENARIOS,
@@ -621,7 +642,10 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		abortController.abort();
 		await ssePromise.catch(() => {});
 
-		const conversationMetrics = buildConversationMetrics(events);
+		const conversationMetrics = mergeSeededConversationMetrics(
+			seededTranscript,
+			buildConversationMetrics(events),
+		);
 		const transcript = [
 			...seededTranscript,
 			...buildTranscriptFromEvents({
@@ -647,7 +671,8 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			...new Set([...eventOutcome.workflowIds, ...messageWorkflowIds, ...restoredWorkflowIds]),
 		];
 		const buildTrace: BuildTrace = {
-			finalText: eventOutcome.finalText,
+			finalText:
+				eventOutcome.finalText.length > 0 ? eventOutcome.finalText : lastAgentText(transcript),
 			toolCalls: eventOutcome.toolCalls,
 			agentActivities: eventOutcome.agentActivities,
 		};

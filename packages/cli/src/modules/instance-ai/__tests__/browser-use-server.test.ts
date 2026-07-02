@@ -1,5 +1,5 @@
 import express from 'express';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { AddressInfo, Socket } from 'net';
 import { createServer, type Server as HttpServer, get as httpGet } from 'node:http';
 import { WebSocket } from 'ws';
@@ -47,7 +47,7 @@ describe('BrowserUseServer', () => {
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('routes a /browser-use/extension upgrade to handleExtensionUpgrade', async () => {

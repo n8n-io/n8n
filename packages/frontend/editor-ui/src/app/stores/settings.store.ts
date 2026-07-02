@@ -171,7 +171,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 	const isDataTableFeatureEnabled = computed(() => isModuleActive('data-table'));
 
 	const isChatFeatureEnabled = computed(
-		() => isModuleActive('chat-hub') && moduleSettings.value['chat-hub']?.enabled !== false,
+		() => isModuleActive('chat-hub') && moduleSettings.value['chat-hub']?.enabled === true,
 	);
 
 	const isOtelCustomSpanAttributesEnabled = computed(() => {
@@ -325,6 +325,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 		rootStore.setUrlBaseWebhook(fetchedSettings.urlBaseWebhook);
 		rootStore.setUrlBaseEditor(fetchedSettings.urlBaseEditor);
+		rootStore.setUrlBaseWebhookTest(fetchedSettings.urlBaseWebhookTest);
 		rootStore.setEndpointForm(fetchedSettings.endpointForm);
 		rootStore.setEndpointFormTest(fetchedSettings.endpointFormTest);
 		rootStore.setEndpointFormWaiting(fetchedSettings.endpointFormWaiting);

@@ -6,24 +6,19 @@ import type { IWorkflowDb, WorkflowEntity } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter, SpanStatus, Tracing } from 'n8n-core';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { createResultError, createResultOk, type Result } from '@n8n/utils/result';
 import type {
 	IConnections,
 	INode,
 	IWebhookData,
 	IWorkflowBase,
 	IWorkflowExecuteAdditionalData,
-	Result,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 	WorkflowId,
 } from 'n8n-workflow';
-import {
-	Workflow,
-	WorkflowActivationError,
-	createResultError,
-	createResultOk,
-	ensureError,
-} from 'n8n-workflow';
+import { Workflow, WorkflowActivationError } from 'n8n-workflow';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
 import { TRIGGER_ACTIVATION_MAX_ATTEMPTS } from '@/constants';
@@ -155,11 +150,18 @@ export class WorkflowTriggerActivator {
 			workflowSettings: dbWorkflow.settings,
 		});
 
-		return await this.webhookTriggerRegistrar.getNodesWithUnregisteredWebhooks(
-			workflow,
-			additionalData,
-			desiredNodes,
-		);
+		// Resolving webhook triggers evaluates each node's `path`/`httpMethod`
+		// expressions (e.g. the Form Trigger's dynamic path), which needs an isolate.
+		await workflow.expression.acquireIsolate();
+		try {
+			return await this.webhookTriggerRegistrar.getNodesWithUnregisteredWebhooks(
+				workflow,
+				additionalData,
+				desiredNodes,
+			);
+		} finally {
+			await workflow.expression.releaseIsolate();
+		}
 	}
 
 	/**
@@ -583,7 +585,7 @@ export class WorkflowTriggerActivator {
 
 	private createWorkflowDataResolver(dbWorkflow: WorkflowEntity): () => Promise<IWorkflowBase> {
 		return async () =>
-			await this.triggerExecutionContextFactory.loadPublishedWorkflowData(dbWorkflow);
+			await this.triggerExecutionContextFactory.loadPublishedWorkflowData(dbWorkflow.id);
 	}
 
 	private throwRejectedPhaseError(results: Array<PromiseSettledResult<unknown>>): void {

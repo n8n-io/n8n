@@ -54,8 +54,7 @@ catalog:
   '@modelcontextprotocol/ext-apps': 1.3.2
   '@modelcontextprotocol/sdk': 1.26.0
   '@mozilla/readability': ^0.6.0
-  '@n8n/typeorm': 0.3.20-17
-  '@n8n_io/ai-assistant-sdk': 1.22.0
+  '@n8n_io/ai-assistant-sdk': 1.24.0
   '@openrouter/ai-sdk-provider': ^2.8.0
   '@rudderstack/rudder-sdk-node': 3.0.5
   '@sentry/node': ^10.55.0
@@ -106,11 +105,11 @@ catalog:
   '@types/uuid': ^11.0.0
   '@types/ws': ^8.18.1
   '@types/xml2js': ^0.4.14
-  '@vitest/coverage-v8': 4.1.1
+  '@vitest/browser-playwright': ^4.1.9
+  '@vitest/coverage-v8': 4.1.9
   agent-browser: 0.26.0
   ai: ^6.0.197
   axios: 1.18.0
-  babel-jest: ^29.7.0
   basic-auth: 2.0.1
   cache-manager: 5.2.3
   callsites: 3.1.0
@@ -119,6 +118,7 @@ catalog:
   cheerio: 1.1.0
   chokidar: 4.0.3
   cron: 4.4.0
+  cron-parser: 5.6.1
   cross-env: ^7.0.3
   csv-parse: 6.2.1
   dotenv: 17.2.3
@@ -132,6 +132,7 @@ catalog:
   fast-glob: 3.2.12
   fast-json-patch: ^3.1.1
   fastest-levenshtein: 1.0.16
+  file-type: 21.3.2
   flatted: 3.4.2
   form-data: 4.0.6
   get-tsconfig: ^4.13.0
@@ -166,6 +167,7 @@ catalog:
   oxlint: ^1.61.0
   oxlint-tsgolint: ^0.21.1
   pdf-parse: 2.4.5
+  pdfjs-dist: 5.4.296
   pg: 8.17.0
   picocolors: 1.0.1
   playwright-core: 1.60.0
@@ -194,7 +196,7 @@ catalog:
   vite: ^8.0.2
   vite-plugin-dts: ^4.5.4
   vite-plugin-singlefile: 2.3.3
-  vitest: ^4.1.1
+  vitest: ^4.1.9
   vitest-mock-extended: ^3.1.0
   vm2: 3.11.5
   xml2js: 0.6.2

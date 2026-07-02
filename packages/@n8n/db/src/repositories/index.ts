@@ -35,6 +35,8 @@ export { ProjectRelationRepository } from './project-relation.repository';
 export { ProjectRepository, type ProjectListOptions } from './project.repository';
 export { RoleRepository } from './role.repository';
 export { RoleMappingRuleRepository } from './role-mapping-rule.repository';
+export { ScheduledJobRepository } from './scheduled-job.repository';
+export { ScheduledTaskRepository } from './scheduled-task.repository';
 export { ProcessedDataRepository } from './processed-data.repository';
 export { SettingsRepository } from './settings.repository';
 export { TagRepository } from './tag.repository';
@@ -48,7 +50,14 @@ export { SharedWorkflowRepository } from './shared-workflow.repository';
 export { SharedCredentialsRepository } from './shared-credentials.repository';
 export { WorkflowRepository } from './workflow.repository';
 export { WorkflowPublicationOutboxRepository } from './workflow-publication-outbox.repository';
-export { WorkflowPublishedVersionRepository } from './workflow-published-version.repository';
+export {
+	WorkflowPublicationTriggerStatusRepository,
+	type TriggerStatusRow,
+} from './workflow-publication-trigger-status.repository';
+export {
+	WorkflowPublishedVersionRepository,
+	type PublishedWorkflowDataForExecution,
+} from './workflow-published-version.repository';
 export { WorkflowPublishHistoryRepository } from './workflow-publish-history.repository';
 export {
 	WorkflowDependencyRepository,

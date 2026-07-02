@@ -1,10 +1,11 @@
+import type { Mock } from 'vitest';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { PrometheusMetricsConfig } from '@n8n/config';
 import promClient from 'prom-client';
 
 import { PrometheusWebhookAndFormMetricsService } from '../webhook-and-form-metrics.service';
 
-jest.mock('prom-client');
+vi.mock('prom-client');
 
 describe('PrometheusWebhookAndFormMetricsService', () => {
 	const config = mockInstance(PrometheusMetricsConfig, {
@@ -14,7 +15,7 @@ describe('PrometheusWebhookAndFormMetricsService', () => {
 	});
 
 	let service: PrometheusWebhookAndFormMetricsService;
-	let mockHistogramObserve: jest.Mock;
+	let mockHistogramObserve: Mock;
 
 	beforeEach(() => {
 		Object.assign(config, {
@@ -23,12 +24,12 @@ describe('PrometheusWebhookAndFormMetricsService', () => {
 			includeFormMetrics: true,
 		});
 		service = new PrometheusWebhookAndFormMetricsService(config);
-		mockHistogramObserve = jest.fn();
+		mockHistogramObserve = vi.fn();
 		promClient.Histogram.prototype.observe = mockHistogramObserve;
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('enabled', () => {

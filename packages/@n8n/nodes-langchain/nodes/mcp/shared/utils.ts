@@ -2,21 +2,15 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import type { ClientOAuth2TokenData } from '@n8n/client-oauth2';
+import { createResultError, createResultOk, type Result } from '@n8n/utils/result';
 import type {
 	ICredentialDataDecryptedObject,
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
 	INode,
 	ISupplyDataFunctions,
-	Result,
 } from 'n8n-workflow';
-import {
-	assertCredentialAllowsUrl,
-	assertUrlAllowed,
-	createResultError,
-	createResultOk,
-	NodeOperationError,
-} from 'n8n-workflow';
+import { assertCredentialAllowsUrl, assertUrlAllowed, NodeOperationError } from 'n8n-workflow';
 
 import { fetchFollowingRedirects, proxyFetch } from '@n8n/ai-utilities';
 

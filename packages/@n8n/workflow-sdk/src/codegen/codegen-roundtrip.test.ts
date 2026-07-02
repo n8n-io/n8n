@@ -1119,6 +1119,85 @@ export default workflow('test-id', 'Test Workflow')
 				"={{ $('Node A').item.json.a + $('Node B').item.json.b }}",
 			);
 		});
+
+		it('should escape single-quoted bracket-access keys in expressions', () => {
+			// AI emits an expression with bracket access using single quotes, e.g.
+			// $('Settings').item.json['my key'] — the inner ['my key'] quotes must be
+			// escaped too, not just the $('...') ones, or the outer string breaks.
+			const code = `
+export default workflow('test-id', 'Test Workflow')
+  .add(trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} }))
+  .to(node({ type: 'n8n-nodes-base.set', version: 3.4, config: {
+    parameters: {
+      mode: 'raw',
+      jsonOutput: '={{ $('Settings').item.json['my key'] }}'
+    }
+  } }))
+`;
+			const parsedJson = parseWorkflowCode(code);
+			const setNode = parsedJson.nodes.find((n) => n.type === 'n8n-nodes-base.set');
+			expect((setNode?.parameters as Record<string, unknown>)?.jsonOutput).toBe(
+				"={{ $('Settings').item.json['my key'] }}",
+			);
+		});
+
+		it('should escape apostrophes inside single-quoted bracket-access keys', () => {
+			// A bracket key can itself contain an apostrophe (e.g. ['it's a key']).
+			// Only the quote before the closing ] terminates the key; the inner one
+			// must be escaped, mirroring the $('...') handling.
+			const code = `
+export default workflow('test-id', 'Test Workflow')
+  .add(trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} }))
+  .to(node({ type: 'n8n-nodes-base.set', version: 3.4, config: {
+    parameters: {
+      mode: 'raw',
+      jsonOutput: '={{ $('Settings').item.json['it's a key'] }}'
+    }
+  } }))
+`;
+			const parsedJson = parseWorkflowCode(code);
+			const setNode = parsedJson.nodes.find((n) => n.type === 'n8n-nodes-base.set');
+			expect((setNode?.parameters as Record<string, unknown>)?.jsonOutput).toBe(
+				"={{ $('Settings').item.json['it's a key'] }}",
+			);
+		});
+
+		it('should fail loudly on an unterminated bracket key instead of swallowing the rest', () => {
+			// A ['... with no closing '] is malformed. The fixer must not run to
+			// end-of-code consuming everything; it stops at the bare quote and lets
+			// the outer logic resume, which surfaces a clear syntax error.
+			const code = `
+export default workflow('test-id', 'Test Workflow')
+  .add(trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} }))
+  .to(node({ type: 'n8n-nodes-base.set', version: 3.4, config: {
+    parameters: {
+      mode: 'raw',
+      jsonOutput: '={{ $json['unterminated }}'
+    }
+  } }))
+`;
+			expect(() => parseWorkflowCode(code)).toThrow(/Failed to parse workflow code/);
+		});
+
+		it('should escape apostrophes inside node names in $() references', () => {
+			// A node name containing an apostrophe (e.g. "Bob's Node") has an inner
+			// quote that is not the closing quote — it must be escaped too.
+			const code = `
+export default workflow('test-id', 'Test Workflow')
+  .add(trigger({ type: 'n8n-nodes-base.manualTrigger', version: 1, config: {} }))
+  .to(node({ type: 'n8n-nodes-base.set', version: 3.4, config: {
+    parameters: {
+      mode: 'raw',
+      jsonOutput: '={{ $('Bob's Node').item.json.x }}'
+    }
+  } }))
+`;
+			const parsedJson = parseWorkflowCode(code);
+			const setNode = parsedJson.nodes.find((n) => n.type === 'n8n-nodes-base.set');
+			expect((setNode?.parameters as Record<string, unknown>)?.jsonOutput).toBe(
+				"={{ $('Bob's Node').item.json.x }}",
+			);
+		});
 	});
 
 	describe('parses placeholder() in workflow code', () => {

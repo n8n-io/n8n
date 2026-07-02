@@ -1,7 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
 import type { CredentialsEntity, SettingsRepository, User } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
@@ -35,10 +35,10 @@ describe('AgentsBuilderSettingsService', () => {
 	let service: AgentsBuilderSettingsService;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		clearEnvKeys();
 		const transport = mock<HttpTransport>();
-		transport.asCustomFetch.mockReturnValue(jest.fn() as unknown as CustomFetch);
+		transport.asCustomFetch.mockReturnValue(vi.fn() as unknown as CustomFetch);
 		outboundHttp.transport.mockReturnValue(transport);
 		service = new AgentsBuilderSettingsService(
 			logger,
@@ -83,7 +83,7 @@ describe('AgentsBuilderSettingsService', () => {
 		it('mode=default + proxy enabled → returns proxy LanguageModel', async () => {
 			mockPersistedSettings({ mode: 'default' });
 			const proxyToken = makeJwt(Math.floor(Date.now() / 1000) + 600);
-			const getBuilderApiProxyToken = jest
+			const getBuilderApiProxyToken = vi
 				.fn()
 				.mockResolvedValue({ accessToken: proxyToken, tokenType: 'Bearer' });
 			aiService.isProxyEnabled.mockReturnValue(true);

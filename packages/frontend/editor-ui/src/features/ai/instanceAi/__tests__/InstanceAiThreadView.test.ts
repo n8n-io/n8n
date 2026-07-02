@@ -175,6 +175,7 @@ const renderView = createComponentRenderer(InstanceAiThreadView, {
 const defaultModuleSettings: NonNullable<FrontendModuleSettings['instance-ai']> = {
 	enabled: true,
 	localGatewayDisabled: false,
+	browserUseEnabled: true,
 	proxyEnabled: false,
 	cloudManaged: false,
 	sandboxEnabled: true,
@@ -262,6 +263,7 @@ describe('InstanceAiThreadView', () => {
 			currentTasks: null,
 			producedArtifacts: new Map(),
 			resourceNameIndex: new Map(),
+			linkableResourceNameIndex: new Map(),
 			feedbackByResponseId: {},
 			rateableResponseId: null,
 			pendingConfirmations: [],

@@ -5,7 +5,7 @@ export class UniqueFilenameAllocator {
 
 	constructor(
 		private readonly baseDir: string,
-		private readonly fallback?: string,
+		private readonly fallback: string,
 	) {}
 
 	allocate(name: string): string {

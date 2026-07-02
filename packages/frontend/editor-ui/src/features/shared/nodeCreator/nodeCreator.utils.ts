@@ -32,8 +32,8 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 
 import { i18n } from '@n8n/i18n';
-import { reRankSearchResults } from '@n8n/utils/search/reRankSearchResults';
-import { sublimeSearch } from '@n8n/utils/search/sublimeSearch';
+import { reRankSearchResults } from '@n8n/utils/search/re-rank-search-results';
+import { sublimeSearch } from '@n8n/utils/search/sublime-search';
 import * as changeCase from 'change-case';
 import sortBy from 'lodash/sortBy';
 import type { NodeViewItemSection } from './views/viewsData';
@@ -313,17 +313,23 @@ function applyNodeTags(element: INodeCreateElement): INodeCreateElement {
 			type: 'info',
 			text: i18n.baseText('generic.betaProper'),
 		};
-	} else if (
-		useSettingsStore().isAiGatewayEnabled &&
-		useAiGatewayStore().isNodeSupported(element.properties.name)
-	) {
-		const versions = useNodeTypesStore().getNodeVersions(element.properties.name);
-		const latestVersion = versions.length > 0 ? Math.max(...versions) : 1;
-		if (useAiGatewayStore().isNodeTypeVersionSupported(element.properties.name, latestVersion)) {
-			element.properties.tag = {
-				text: i18n.baseText('generic.freeCredits'),
-				pill: true,
-			};
+	} else if (useSettingsStore().isAiGatewayEnabled) {
+		const aiGatewayStore = useAiGatewayStore();
+		// Tool-variant node types carry a "Tool" suffix (e.g. "llamaParsePlatformTool"),
+		// but the gateway config lists the base name ("llamaParsePlatform").
+		const baseName = element.properties.name.replace(/Tool$/, '');
+		const supportedName = [element.properties.name, baseName].find((n) =>
+			aiGatewayStore.isNodeSupported(n),
+		);
+		if (supportedName) {
+			const versions = useNodeTypesStore().getNodeVersions(supportedName);
+			const latestVersion = versions.length > 0 ? Math.max(...versions) : 1;
+			if (aiGatewayStore.isNodeTypeVersionSupported(supportedName, latestVersion)) {
+				element.properties.tag = {
+					text: i18n.baseText('generic.freeCredits'),
+					pill: true,
+				};
+			}
 		}
 	}
 

@@ -3,15 +3,23 @@ import { mock } from 'vitest-mock-extended';
 import { MicrosoftTeamsTrigger } from '../../MicrosoftTeamsTrigger.node';
 import { microsoftApiRequest, microsoftApiRequestAllItems } from '../../v2/transport';
 import type { Mock } from 'vitest';
+import type * as _transport from '../../v2/transport';
 
-vi.mock('../../v2/transport', () => ({
-	microsoftApiRequest: {
-		call: vi.fn(),
-	},
-	microsoftApiRequestAllItems: {
-		call: vi.fn(),
-	},
-}));
+// Preserve the real transport exports (the node description references
+// SERVICE_PRINCIPAL_AUTH/SP_HIDE at construction, and getResourcePath uses the real
+// credential resolver); only stub the network helpers.
+vi.mock('../../v2/transport', async () => {
+	const actual = await vi.importActual<typeof _transport>('../../v2/transport');
+	return {
+		...actual,
+		microsoftApiRequest: {
+			call: vi.fn(),
+		},
+		microsoftApiRequestAllItems: {
+			call: vi.fn(),
+		},
+	};
+});
 
 describe('Microsoft Teams Trigger Node', () => {
 	let mockWebhookFunctions: any;
