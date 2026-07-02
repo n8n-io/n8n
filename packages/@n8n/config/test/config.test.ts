@@ -73,6 +73,7 @@ describe('GlobalConfig', () => {
 		ssl_cert: '',
 		canvasOnly: false,
 		editorBaseUrl: '',
+		webhookUrl: '',
 		dataTable: {
 			maxSize: 200 * 1024 * 1024,
 			sizeCheckCacheDuration: 5 * 1000,
@@ -193,7 +194,6 @@ describe('GlobalConfig', () => {
 			disabled: false,
 			path: 'api',
 			swaggerUiDisabled: false,
-			packagesEnabled: false,
 		},
 		templates: {
 			enabled: true,

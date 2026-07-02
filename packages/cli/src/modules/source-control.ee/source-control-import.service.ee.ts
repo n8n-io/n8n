@@ -31,13 +31,8 @@ import glob from 'fast-glob';
 import isEqual from 'lodash/isEqual';
 import { Credentials, ErrorReporter, InstanceSettings } from 'n8n-core';
 import type { AutoPublishMode } from 'n8n-workflow';
-import {
-	shouldAutoPublishWorkflow,
-	ensureError,
-	jsonParse,
-	UnexpectedError,
-	UserError,
-} from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { shouldAutoPublishWorkflow, jsonParse, UnexpectedError, UserError } from 'n8n-workflow';
 import { readFile as fsReadFile } from 'node:fs/promises';
 import path from 'path';
 

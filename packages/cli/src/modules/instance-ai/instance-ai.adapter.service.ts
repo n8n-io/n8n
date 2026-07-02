@@ -34,12 +34,14 @@ import type {
 	FolderSummary,
 	ServiceProxyConfig,
 	CredentialTypeSearchResult,
+	CredentialHostInfo,
 } from '@n8n/instance-ai';
 import { braveSearch, searxngSearch, type WebSearchResponse } from '@n8n/ai-utilities';
 import {
 	BuilderTemplatesService,
 	builderTemplatesOptionsFromEnv,
 	wrapUntrustedData,
+	deriveCredentialHosts,
 } from '@n8n/instance-ai';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { GlobalConfig } from '@n8n/config';
@@ -112,6 +114,7 @@ import { MCP_REGISTRY_PACKAGE_NAME } from '@/modules/mcp-registry/node-descripti
 import { synthesizeNodeTypeDef } from '@/modules/mcp-registry/synthesize-type-def';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import { AiGatewayService } from '@/services/ai-gateway.service';
 import { FolderService } from '@/services/folder.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
@@ -161,6 +164,10 @@ function resolveDisplayedDefaults(
 	);
 	return resolved ?? (parameters as INodeParameters);
 }
+
+// Credential types are loaded once at boot, so the derived host index is
+// process-global and safe to memoize across users.
+let httpCredentialHostsCache: CredentialHostInfo[] | undefined;
 
 @Service()
 export class InstanceAiAdapterService {
@@ -232,6 +239,7 @@ export class InstanceAiAdapterService {
 		private readonly aiBuilderTemporaryWorkflowRepository: AiBuilderTemporaryWorkflowRepository,
 		private readonly ssrfProtectionService: SsrfProtectionService,
 		private readonly outboundHttp: OutboundHttp,
+		private readonly aiGatewayService: AiGatewayService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
@@ -1163,7 +1171,12 @@ export class InstanceAiAdapterService {
 		boundProjectId?: string,
 		credentialIdAllowlist?: string[],
 	): InstanceAiCredentialService {
-		const { credentialsService, credentialsFinderService, loadNodesAndCredentials } = this;
+		const {
+			credentialsService,
+			credentialsFinderService,
+			loadNodesAndCredentials,
+			aiGatewayService,
+		} = this;
 
 		const adapter: InstanceAiCredentialService = {
 			async list(options) {
@@ -1385,6 +1398,39 @@ export class InstanceAiAdapterService {
 				return results;
 			},
 
+			async listHttpCredentialHosts(): Promise<CredentialHostInfo[]> {
+				if (httpCredentialHostsCache) return httpCredentialHostsCache;
+
+				const { knownCredentials } = loadNodesAndCredentials;
+				const result: CredentialHostInfo[] = [];
+
+				for (const typeName of Object.keys(knownCredentials)) {
+					let credType;
+					try {
+						credType = loadNodesAndCredentials.getCredential(typeName).type;
+					} catch {
+						// Type not loadable — skip.
+						continue;
+					}
+
+					// Only credentials selectable in the HTTP node (authenticate / OAuth).
+					const usableInHttpNode =
+						Boolean(credType.authenticate) ||
+						(knownCredentials[typeName]?.extends ?? []).some(
+							(parent) => parent === 'oAuth2Api' || parent === 'oAuth1Api',
+						);
+					if (!usableInHttpNode) continue;
+
+					const hosts = deriveCredentialHosts(credType);
+					if (hosts.length === 0) continue;
+
+					result.push({ type: typeName, displayName: credType.displayName, hosts });
+				}
+
+				httpCredentialHostsCache = result;
+				return result;
+			},
+
 			async getAccountContext(credentialId: string) {
 				const credential = await credentialsFinderService.findCredentialForUser(
 					credentialId,
@@ -1442,6 +1488,17 @@ export class InstanceAiAdapterService {
 					return { accountIdentifier: undefined };
 				} catch {
 					return { accountIdentifier: undefined };
+				}
+			},
+
+			async isAiGatewayCredentialType(credType: string): Promise<boolean> {
+				try {
+					const config = await aiGatewayService.getGatewayConfig();
+					return config.credentialTypes.includes(credType);
+				} catch {
+					// Fail open if the gateway config is unavailable — the credential
+					// type check is a best-effort validation, not a security gate.
+					return false;
 				}
 			},
 		};
@@ -3002,6 +3059,9 @@ function sdkNodeGroupsToRuntime(
 
 function hasCredentialId(value: unknown): boolean {
 	if (typeof value !== 'object' || value === null) return false;
+	if (Reflect.get(value, 'id') === null && Reflect.get(value, '__aiGatewayManaged') === true) {
+		return true;
+	}
 	const id = Reflect.get(value, 'id');
 	return typeof id === 'string' && id.trim() !== '';
 }

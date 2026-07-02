@@ -641,7 +641,7 @@ export class InstanceAiService {
 		const client = await this.aiService.getClient();
 		const proxyBaseUrl = client.getApiProxyBaseUrl();
 		const tokenManager = new ProxyTokenManager(async () => {
-			return await client.getBuilderApiProxyToken({ id: user.id }, { userMessageId: nanoid() });
+			return await client.getInstanceAiApiProxyToken({ id: user.id }, { userMessageId: nanoid() });
 		});
 		const featureHeaders = buildProxyHeaders({
 			feature: 'instance-ai',
@@ -2757,6 +2757,36 @@ export class InstanceAiService {
 		}
 	}
 
+	/** Save the user's prompt when Stop is hit before the stream starts; the SDK only persists it once the stream is invoked. */
+	private async persistInterruptedUserMessage(
+		threadId: string,
+		userId: string,
+		message: string,
+		createdAt: Date,
+	): Promise<void> {
+		if (!message) return;
+		try {
+			await this.agentMemory.saveMessages({
+				threadId,
+				resourceId: userId,
+				messages: [
+					{
+						id: nanoid(),
+						createdAt,
+						type: 'llm',
+						role: 'user',
+						content: [{ type: 'text', text: message }],
+					},
+				],
+			});
+		} catch (error) {
+			this.logger.warn('Failed to persist user message on cancel', {
+				threadId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
 	/**
 	 * Run body for a fresh orchestrator turn. Never call directly — go through
 	 * `startExecuteRun` so the promise is registered with `inFlightExecutions`
@@ -2794,6 +2824,8 @@ export class InstanceAiService {
 		let aiCreatedWorkflowIds: Set<string> | undefined;
 		let activeSnapshotStorage: DbSnapshotStorage | undefined;
 		let messageId = '';
+		let streamReached = false;
+		const turnStartedAt = new Date();
 
 		try {
 			this.instanceAiErrorReporter.beginRun(runId);
@@ -2864,6 +2896,7 @@ export class InstanceAiService {
 
 			// Check if already cancelled before starting agent work
 			if (signal.aborted) {
+				await this.persistInterruptedUserMessage(threadId, user.id, message, turnStartedAt);
 				this.terminalOutcome.evaluateTerminalResponse(threadId, runId, 'cancelled', {
 					messageGroupId,
 					correlationId: messageId,
@@ -3157,6 +3190,7 @@ export class InstanceAiService {
 
 			const streamOptions = this.buildOrchestratorAgentStreamOptions(user, threadId, runId, signal);
 
+			streamReached = true;
 			const result = tracing
 				? await tracing.withActiveSpan(tracing.actorRun, async () => {
 						return await streamAgentRun(agent as StreamableAgent, streamInput, streamOptions, {
@@ -3216,6 +3250,20 @@ export class InstanceAiService {
 						checkpointKey: result.agentRunId,
 						checkpointTaskId: checkpoint?.checkpointTaskId,
 					});
+
+					// Bill the tokens this segment consumed to reach the suspension. Every
+					// segment of a HITL run shares one agentRunId (resume reuses it), so the
+					// terminal claim would otherwise be the only claim and swallow this usage
+					// — worse, a stop while suspended never reaches a terminal claim at all.
+					// Key on the per-suspension requestId so this never collides with the
+					// terminal claim (bare agentRunId) or another suspension.
+					void this.creditService.claimRunUsage(
+						user,
+						threadId,
+						`${result.agentRunId || runId}:${result.suspension.requestId}`,
+						result.usage?.usage ?? [],
+						'suspended',
+					);
 				}
 
 				// Track intermediate message (text streamed before suspension)
@@ -3393,6 +3441,9 @@ export class InstanceAiService {
 				// to see on reload, so just bail out.
 				if (this.shouldPreserveHitlOnShutdown(runId)) {
 					return;
+				}
+				if (!streamReached) {
+					await this.persistInterruptedUserMessage(threadId, user.id, message, turnStartedAt);
 				}
 				const runTimeout = this.liveness.consumeRunTimeout(runId);
 				const cancellationReason = runTimeout.timedOut
@@ -4157,6 +4208,20 @@ export class InstanceAiService {
 						checkpointKey: result.agentRunId,
 						checkpointTaskId: opts.checkpoint?.checkpointTaskId,
 					});
+
+					// Bill the tokens this segment consumed to reach the suspension. Every
+					// segment of a HITL run shares one agentRunId (resume reuses it), so the
+					// terminal claim would otherwise be the only claim and swallow this usage
+					// — worse, a stop while suspended never reaches a terminal claim at all.
+					// Key on the per-suspension requestId so this never collides with the
+					// terminal claim (bare agentRunId) or another suspension.
+					void this.creditService.claimRunUsage(
+						opts.user,
+						opts.threadId,
+						`${result.agentRunId || opts.runId}:${result.suspension.requestId}`,
+						result.usage?.usage ?? [],
+						'suspended',
+					);
 				}
 
 				// Track intermediate message (text streamed before suspension)
