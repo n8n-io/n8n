@@ -11,9 +11,10 @@
 // Runs from release-publish-post-release.yml on a minor release.
 
 import { ensureEnvVar, initGithub, addLabel, removeLabel } from './github-helpers.mjs';
-
-export const STABLE_LABEL = 'Backport to Stable';
-export const BETA_LABEL = 'Backport to Beta';
+import {
+	BACKPORT_TO_STABLE_LABEL as STABLE_LABEL,
+	BACKPORT_TO_BETA_LABEL as BETA_LABEL,
+} from './compute-backport-targets.mjs';
 
 const BOT_MARKER = '<!-- promote-backport-labels-on-minor -->';
 
