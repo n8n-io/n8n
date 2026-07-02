@@ -296,7 +296,7 @@ async function main(): Promise<void> {
 			let mcpConfigPath: string | undefined;
 			if (args.buildViaMcp) {
 				await client.enableMcpAccess();
-				const apiKey = await client.getMcpApiKey();
+				const apiKey = await client.rotateMcpApiKey();
 				mcpConfigPath = stageLaneMcpConfig({
 					serverName: args.mcpServerName,
 					url: `${baseUrl}/mcp-server/http`,

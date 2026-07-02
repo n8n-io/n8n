@@ -514,19 +514,28 @@ export class N8nClient {
 	}
 
 	/**
-	 * Get (or create) the MCP API key for the authenticated user.
-	 * GET /rest/mcp/api-key
+	 * Mint a fresh MCP API key for the authenticated user.
+	 * POST /rest/mcp/api-key/rotate
 	 *
-	 * The FIRST call on a fresh user returns the UNREDACTED JWT (getOrCreateApiKey
-	 * creates + returns it raw); later calls redact it. Call this exactly once per
-	 * freshly-reset lane, before staging the `claude` MCP config.
+	 * Uses rotate rather than GET /rest/mcp/api-key because the GET only returns
+	 * the raw JWT when it creates the key; a pre-existing key comes back redacted
+	 * (`******abcd`), which would silently break MCP auth if staged into a
+	 * `claude` config. Rotate deletes + recreates, so the response is always
+	 * unredacted — at the cost of invalidating any prior MCP key for this user.
 	 */
-	async getMcpApiKey(): Promise<string> {
+	async rotateMcpApiKey(): Promise<string> {
 		const data = this.unwrapRestData<{ apiKey?: string }>(
-			await this.fetch('/rest/mcp/api-key', { method: 'GET' }),
+			await this.fetch('/rest/mcp/api-key/rotate', { method: 'POST' }),
 		);
 		if (!data.apiKey) {
-			throw new Error('MCP api-key endpoint returned no apiKey');
+			throw new Error('MCP api-key rotate endpoint returned no apiKey');
+		}
+		// JWTs are base64url segments and never contain "*" — its presence means
+		// the server redacted the key, which would fail MCP auth downstream.
+		if (data.apiKey.includes('*')) {
+			throw new Error(
+				'MCP api-key rotate endpoint returned a redacted key — cannot stage it for `claude` MCP auth',
+			);
 		}
 		return data.apiKey;
 	}
