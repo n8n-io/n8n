@@ -44,6 +44,8 @@ export const userTargetRLC: INodeProperties = {
 	type: 'resourceLocator',
 	default: { mode: 'id', value: '' },
 	required: true,
+	// UI guard only: unlike a plain string param, this does NOT neutralize an expression
+	// injected into the RLC's value via import/API — the resolved value is validated regardless.
 	noDataExpression: true,
 	modes: [
 		{
@@ -69,6 +71,8 @@ export const driveTargetRLC: INodeProperties = {
 	type: 'resourceLocator',
 	default: { mode: 'id', value: '' },
 	required: true,
+	// UI guard only: unlike a plain string param, this does NOT neutralize an expression
+	// injected into the RLC's value via import/API — the resolved value is validated regardless.
 	noDataExpression: true,
 	modes: [
 		{
