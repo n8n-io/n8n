@@ -75,7 +75,6 @@ const DEAD_SANDBOX_STATES = new Set<SandboxState>([
 
 const DEFAULT_SANDBOX_IMAGE = 'daytonaio/sandbox:0.5.0';
 const AUTO_STOP_INTERVAL_MINUTES = 5;
-const SANDBOX_LIST_PAGE_SIZE = 100;
 
 interface KnowledgeVolumeMount {
 	volumeId: string;
@@ -503,22 +502,6 @@ export class AgentKnowledgeSandboxService {
 		if (sandboxByName) {
 			this.logger.debug('Reused agent knowledge sandbox', { projectId, agentId, name });
 			return sandboxByName;
-		}
-
-		// list() is a cursor-paginated async iterator in the Daytona SDK; it transparently fetches
-		// subsequent pages as we iterate.
-		for await (const sandbox of daytona.list({ labels, limit: SANDBOX_LIST_PAGE_SIZE })) {
-			if (!isUsableSandbox(sandbox) || !hasMatchingVolumeMount(sandbox, volumeMount)) {
-				continue;
-			}
-
-			if (sandbox.state !== SANDBOX_STATE_STARTED) {
-				await sandbox.start(timeoutSeconds);
-			}
-
-			const reusableSandbox = await this.resolveReusableSandbox(daytona, sandbox, connection);
-			this.logger.debug('Reused agent knowledge sandbox', { projectId, agentId });
-			return reusableSandbox;
 		}
 
 		const image = connection.image;

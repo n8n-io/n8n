@@ -43,12 +43,6 @@ interface MockSandbox {
 	process: MockProcess;
 }
 
-async function* asyncSandboxes(...items: MockSandbox[]): AsyncIterableIterator<MockSandbox> {
-	for (const item of items) {
-		yield item;
-	}
-}
-
 class DaytonaNotFoundError extends Error {
 	constructor(message: string) {
 		super(message);
@@ -179,7 +173,6 @@ describe('AgentKnowledgeSandboxService', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		daytonaInstances.length = 0;
-		listMock.mockReturnValue(asyncSandboxes());
 		createMock.mockResolvedValue(makeSandbox('started'));
 		getMock.mockRejectedValue(new DaytonaNotFoundError('not found'));
 	});
@@ -198,7 +191,7 @@ describe('AgentKnowledgeSandboxService', () => {
 			apiKey: 'test-key',
 		});
 		expect(getMock).toHaveBeenCalledWith(expectedName);
-		expect(getMock.mock.invocationCallOrder[0]).toBeLessThan(listMock.mock.invocationCallOrder[0]);
+		expect(listMock).not.toHaveBeenCalled();
 		expect(createMock).toHaveBeenCalledTimes(1);
 		const [params, options] = createMock.mock.calls[0];
 		expect(params.name).toBe(expectedName);
@@ -271,20 +264,6 @@ describe('AgentKnowledgeSandboxService', () => {
 		expect(sandbox.delete).toHaveBeenCalledWith(300);
 		expect(createMock).toHaveBeenCalledTimes(1);
 		expect(createMock.mock.calls[0][0].name).toBe(expectedName);
-	});
-
-	it('falls back to label scan for old random-name sandboxes', async () => {
-		const legacySandbox = makeSandbox('started', [expectedVolumeMount], {
-			name: 'agents-knowledgebase-legacy-random-name',
-		});
-		listMock.mockReturnValue(asyncSandboxes(legacySandbox));
-		const service = makeService();
-
-		await service.withKnowledgeFilesystem(projectId, agentId, async () => {});
-
-		expect(getMock).toHaveBeenCalledWith(buildExpectedSandboxName());
-		expect(listMock).toHaveBeenCalledTimes(1);
-		expect(createMock).not.toHaveBeenCalled();
 	});
 
 	it('creates a sandbox from configured snapshot', async () => {
