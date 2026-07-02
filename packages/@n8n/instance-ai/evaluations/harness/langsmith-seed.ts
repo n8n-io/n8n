@@ -4,7 +4,7 @@
 // reconstruct each seed workflow from its source at the build boundary. Transient:
 // traces retain ~14 days.
 
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 import { Client } from 'langsmith';
 import type { Run } from 'langsmith/schemas';
 
@@ -132,6 +132,23 @@ async function listAccessibleWorkspaces(
 	} catch {
 		return [];
 	}
+}
+
+/** Workspace eval writes are pinned to; resolved to an id by name so no UUID lives in the repo. */
+export const EVAL_WORKSPACE_NAME = 'Staging';
+
+/** Eval workspace id by name; undefined for a workspace-scoped key (already locked to one), throws when a PAT lacks it. */
+export async function resolveEvalWorkspaceId(
+	name: string = EVAL_WORKSPACE_NAME,
+): Promise<string | undefined> {
+	const { apiUrl, apiKey } = configFor();
+	const workspaces = await listAccessibleWorkspaces(apiUrl, apiKey);
+	const match = workspaces.find((w) => w.name === name);
+	if (match) return match.id;
+	if (workspaces.length <= 1) return undefined; // scoped/single-workspace key: nothing to choose
+	throw new Error(
+		`LangSmith workspace "${name}" not found among [${workspaces.map((w) => w.name).join(', ')}]. Check LANGSMITH_API_KEY (org PAT) + LANGSMITH_ENDPOINT (region).`,
+	);
 }
 
 /** Seams for unit-testing workspace discovery without the network. */

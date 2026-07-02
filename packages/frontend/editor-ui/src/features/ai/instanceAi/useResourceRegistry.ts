@@ -28,13 +28,19 @@ export type ResourceEntry = {
 interface Collections {
 	/** Resources produced/mutated by the agent in this thread, keyed by resource ID. */
 	produced: Map<string, ResourceEntry>;
-	/** Every resource seen in any tool call, keyed by lowercased name — for markdown linking. */
+	/** Every resource seen in any tool call, keyed by lowercased name. */
 	byName: Map<string, ResourceEntry>;
+	/** Produced resources keyed by lowercased name; safe for markdown auto-linking. */
+	linkableByName: Map<string, ResourceEntry>;
 }
 
 function optionalString(val: unknown): string | undefined {
 	return typeof val === 'string' ? val : undefined;
 }
+
+type RecordProducedOptions = {
+	linkable?: boolean;
+};
 
 /**
  * Upsert a produced artifact. When an entry for the same `id` already exists,
@@ -44,8 +50,16 @@ function optionalString(val: unknown): string | undefined {
  * `build-workflow` call that carries only a `workflowId`) don't regress a
  * known name to 'Untitled'.
  */
-function recordProduced(col: Collections, entry: ResourceEntry): void {
+function recordProduced(
+	col: Collections,
+	entry: ResourceEntry,
+	options: RecordProducedOptions = {},
+): void {
 	const existing = col.produced.get(entry.id);
+	const existingLinkKey = existing?.name.toLowerCase();
+	const wasLinkable =
+		existingLinkKey !== undefined && col.linkableByName.get(existingLinkKey)?.id === entry.id;
+	const shouldLink = options.linkable !== false || wasLinkable;
 	const merged: ResourceEntry = existing
 		? {
 				type: entry.type,
@@ -59,8 +73,10 @@ function recordProduced(col: Collections, entry: ResourceEntry): void {
 	col.produced.set(entry.id, merged);
 	if (existing && existing.name.toLowerCase() !== merged.name.toLowerCase()) {
 		col.byName.delete(existing.name.toLowerCase());
+		if (wasLinkable) col.linkableByName.delete(existing.name.toLowerCase());
 	}
 	col.byName.set(merged.name.toLowerCase(), merged);
+	if (shouldLink) col.linkableByName.set(merged.name.toLowerCase(), merged);
 }
 
 function indexByName(col: Collections, entry: ResourceEntry): void {
@@ -191,12 +207,20 @@ function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): voi
 			optionalString(result.dataTableName) ??
 			existing?.name ??
 			result.dataTableId;
-		recordProduced(col, {
-			type: 'data-table',
-			id: result.dataTableId,
-			name,
-			projectId: result.projectId,
-		});
+		const dataTableAction = optionalString(tc.args?.action);
+		const isReadOnlyLookup =
+			tc.toolName === 'data-tables' &&
+			(dataTableAction === 'schema' || dataTableAction === 'query');
+		recordProduced(
+			col,
+			{
+				type: 'data-table',
+				id: result.dataTableId,
+				name,
+				projectId: result.projectId,
+			},
+			{ linkable: !isReadOnlyLookup },
+		);
 	}
 }
 
@@ -252,8 +276,10 @@ function enrichWorkflowNames(
 		const storeName = workflowNameLookup(entry.id);
 		if (storeName && storeName !== entry.name) {
 			col.byName.delete(entry.name.toLowerCase());
+			col.linkableByName.delete(entry.name.toLowerCase());
 			entry.name = storeName;
 			col.byName.set(storeName.toLowerCase(), entry);
+			col.linkableByName.set(storeName.toLowerCase(), entry);
 		}
 	}
 }
@@ -271,9 +297,12 @@ function enrichWorkflowNames(
  *   existing entry instead of creating a duplicate.
  *
  * - `resourceNameIndex` (keyed by lowercased name) — every named resource
- *   seen in any tool call, including list results. Used only for markdown
- *   name→link replacement so references to listed workflows/tables still
- *   resolve.
+ *   seen in any tool call, including list results. Used for resource metadata
+ *   lookups after explicit links have rendered.
+ *
+ * - `linkableResourceNameIndex` (keyed by lowercased name) — only resources
+ *   produced or mutated by the agent. Used for markdown name→link replacement
+ *   so passive list/search results cannot rewrite ordinary prose.
  */
 export function useResourceRegistry(
 	messages: () => InstanceAiMessage[],
@@ -284,6 +313,7 @@ export function useResourceRegistry(
 	// nothing trigger nothing.
 	const producedArtifacts = reactive(new Map<string, ResourceEntry>());
 	const resourceNameIndex = reactive(new Map<string, ResourceEntry>());
+	const linkableResourceNameIndex = reactive(new Map<string, ResourceEntry>());
 
 	// Derived from `messages` so every state-arrival path (hydration, run-sync
 	// replacement, rollback, reset) self-heals on the next derivation. Must
@@ -294,6 +324,7 @@ export function useResourceRegistry(
 			const col: Collections = {
 				produced: new Map<string, ResourceEntry>(),
 				byName: new Map<string, ResourceEntry>(),
+				linkableByName: new Map<string, ResourceEntry>(),
 			};
 
 			for (const msg of messages()) {
@@ -319,11 +350,12 @@ export function useResourceRegistry(
 		(col) => {
 			reconcileMap(producedArtifacts, col.produced);
 			reconcileMap(resourceNameIndex, col.byName);
+			reconcileMap(linkableResourceNameIndex, col.linkableByName);
 		},
 		{ immediate: true },
 	);
 
-	return { producedArtifacts, resourceNameIndex };
+	return { producedArtifacts, resourceNameIndex, linkableResourceNameIndex };
 }
 
 /** Sync `target` to `next` with minimal writes — unchanged entries trigger no subscribers. */

@@ -1,24 +1,30 @@
-import { sign } from 'aws4';
 import type { IHttpRequestOptions } from 'n8n-workflow';
-import type { Mock } from 'vitest';
 
 import { AwsAssumeRole } from '../AwsAssumeRole.credentials';
 import type { AwsAssumeRoleCredentialsType } from '../common/aws/types';
 
 // Mock the SDK provider factory so assumeRole() doesn't make a real STS call.
-// Match the structure of nodes-langchain's resolveAwsCredentials.test.ts.
-const { mockProvider, mockFromTemporaryCredentials } = vi.hoisted(() => {
-	const mockProvider = vi.fn().mockResolvedValue({
-		accessKeyId: 'ASSUMED-KEY',
-		secretAccessKey: 'ASSUMED-SECRET',
-		sessionToken: 'ASSUMED-SESSION',
+const { mockProvider, mockFromTemporaryCredentials, mockSmithySignFn, MockSignatureV4 } =
+	vi.hoisted(() => {
+		const mockProvider = vi.fn().mockResolvedValue({
+			accessKeyId: 'ASSUMED-KEY',
+			secretAccessKey: 'ASSUMED-SECRET',
+			sessionToken: 'ASSUMED-SESSION',
+		});
+		const mockFromTemporaryCredentials = vi.fn().mockReturnValue(mockProvider);
+		const mockSmithySignFn = vi.fn();
+		const MockSignatureV4 = vi.fn(function (this: { sign: typeof mockSmithySignFn }) {
+			this.sign = mockSmithySignFn;
+		});
+		return { mockProvider, mockFromTemporaryCredentials, mockSmithySignFn, MockSignatureV4 };
 	});
-	const mockFromTemporaryCredentials = vi.fn().mockReturnValue(mockProvider);
-	return { mockProvider, mockFromTemporaryCredentials };
-});
 
 vi.mock('@aws-sdk/credential-providers', () => ({
 	fromTemporaryCredentials: mockFromTemporaryCredentials,
+}));
+
+vi.mock('@smithy/signature-v4', () => ({
+	SignatureV4: MockSignatureV4,
 }));
 
 vi.mock('@n8n/backend-network/proxy', () => ({
@@ -36,7 +42,6 @@ vi.mock('aws4', () => ({
 
 describe('AwsAssumeRole Credential', () => {
 	const aws = new AwsAssumeRole();
-	let mockSign: Mock;
 
 	const credentials: AwsAssumeRoleCredentialsType = {
 		region: 'us-east-1',
@@ -50,7 +55,7 @@ describe('AwsAssumeRole Credential', () => {
 	};
 
 	beforeEach(() => {
-		mockSign = sign as unknown as Mock;
+		mockSmithySignFn.mockResolvedValue({ headers: {} });
 		mockProvider.mockResolvedValue({
 			accessKeyId: 'ASSUMED-KEY',
 			secretAccessKey: 'ASSUMED-SECRET',
@@ -75,12 +80,17 @@ describe('AwsAssumeRole Credential', () => {
 
 		await aws.authenticate(credentials, requestOptions);
 
-		const finalCall = mockSign.mock.calls.at(-1);
-		expect(finalCall?.[0]).toEqual(
+		// assumeRole uses fromTemporaryCredentials (SDK); signOptions uses SignatureV4 directly.
+		// Verify signOptions received the bedrock service namespace.
+		expect(MockSignatureV4).toHaveBeenLastCalledWith(
 			expect.objectContaining({
-				host: 'bedrock-runtime.us-east-1.amazonaws.com',
 				region: 'us-east-1',
 				service: 'bedrock',
+			}),
+		);
+		expect(mockSmithySignFn).toHaveBeenLastCalledWith(
+			expect.objectContaining({
+				hostname: 'bedrock-runtime.us-east-1.amazonaws.com',
 			}),
 		);
 	});

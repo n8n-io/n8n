@@ -6,7 +6,8 @@ import { Time } from '@n8n/constants';
 import { UserRepository, withTransaction } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { MoreThanOrEqual } from '@n8n/typeorm';
-import { ensureError, UnexpectedError } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { UnexpectedError } from 'n8n-workflow';
 import { randomBytes, randomUUID } from 'node:crypto';
 
 import { AccessToken } from './database/entities/oauth-access-token.entity';

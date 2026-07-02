@@ -1,6 +1,5 @@
 import type {
 	LanguageModel,
-	LanguageModelUsage,
 	ModelMessage,
 	Output,
 	SystemModelMessage,
@@ -23,7 +22,8 @@ export interface ModelTurnResult {
 	/** Raw AI SDK finish reason (used to detect the `tool-calls` continuation). */
 	aiFinishReason: string;
 	finishReason: FinishReason;
-	usage: LanguageModelUsage | undefined;
+	/** Normalized usage, including any cache-token details available from the provider. */
+	usage: TokenUsage | undefined;
 	newMessages: AgentMessage[];
 	toolCalls: Array<{
 		toolCallId: string;
