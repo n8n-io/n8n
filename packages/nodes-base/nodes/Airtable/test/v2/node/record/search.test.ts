@@ -19,6 +19,7 @@ vi.mock('../../../../v2/transport', async () => {
 							},
 						},
 					],
+					offset: 'itrNextPage/recYYY',
 				};
 			}
 		}),
@@ -165,6 +166,110 @@ describe('Test AirtableV2, search operation', () => {
 				},
 			],
 		});
+	});
+
+	it('should send pagination options and return the next offset for v2.3', async () => {
+		const nodeParameters = {
+			operation: 'search',
+			filterByFormula: '',
+			returnAll: false,
+			limit: 100,
+			options: {
+				pageSize: 50,
+				offset: 'itrPreviousPage/recXXX',
+			},
+			sort: {},
+		};
+
+		const items = [{ json: {} }];
+
+		const result = await search.execute.call(
+			createMockExecuteFunction(nodeParameters, 2.3),
+			items,
+			'appYoLbase',
+			'tblltable',
+		);
+
+		// maxRecords must not be sent, it suppresses the next-page offset in the response
+		expect(transport.apiRequest).toHaveBeenCalledTimes(1);
+		expect(transport.apiRequest).toHaveBeenCalledWith(
+			'GET',
+			'appYoLbase/tblltable',
+			{},
+			{ pageSize: 50, offset: 'itrPreviousPage/recXXX' },
+		);
+
+		expect(result).toHaveLength(1);
+		expect(result[0]).toEqual({
+			json: {
+				id: 'recYYY',
+				fields: { foo: 'foo 2', bar: 'bar 2' },
+				offset: 'itrNextPage/recYYY',
+			},
+			pairedItem: [
+				{
+					item: 0,
+				},
+			],
+		});
+	});
+
+	it('should cap the page size to the limit for v2.3', async () => {
+		const nodeParameters = {
+			operation: 'search',
+			filterByFormula: '',
+			returnAll: false,
+			limit: 1,
+			options: {
+				pageSize: 50,
+			},
+			sort: {},
+		};
+
+		const items = [{ json: {} }];
+
+		await search.execute.call(
+			createMockExecuteFunction(nodeParameters, 2.3),
+			items,
+			'appYoLbase',
+			'tblltable',
+		);
+
+		expect(transport.apiRequest).toHaveBeenCalledWith(
+			'GET',
+			'appYoLbase/tblltable',
+			{},
+			{ pageSize: 1 },
+		);
+	});
+
+	it('should pass the page size when returning all records for v2.3', async () => {
+		const nodeParameters = {
+			operation: 'search',
+			filterByFormula: '',
+			returnAll: true,
+			options: {
+				pageSize: 25,
+			},
+			sort: {},
+		};
+
+		const items = [{ json: {} }];
+
+		await search.execute.call(
+			createMockExecuteFunction(nodeParameters, 2.3),
+			items,
+			'appYoLbase',
+			'tblltable',
+		);
+
+		expect(transport.apiRequestAllItems).toHaveBeenCalledTimes(1);
+		expect(transport.apiRequestAllItems).toHaveBeenCalledWith(
+			'GET',
+			'appYoLbase/tblltable',
+			{},
+			{ pageSize: 25 },
+		);
 	});
 
 	afterEach(() => vi.clearAllMocks());

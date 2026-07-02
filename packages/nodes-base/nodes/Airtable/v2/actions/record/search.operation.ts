@@ -67,6 +67,20 @@ const properties: INodeProperties[] = [
 				description: "The fields of type 'attachment' that should be downloaded",
 			},
 			{
+				displayName: 'Offset',
+				name: 'offset',
+				type: 'string',
+				default: '',
+				placeholder: 'e.g. itrLXPvNkVIEDMLos/rec0KcTCi7apBl8IV',
+				description:
+					'The pagination token to continue from, as returned in the "offset" field of a previous run\'s output. Used to fetch the next page of records when "Return All" is disabled.',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 2.3 } }],
+					},
+				},
+			},
+			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
 				displayName: 'Output Fields',
 				name: 'fields',
@@ -78,6 +92,22 @@ const properties: INodeProperties[] = [
 				default: [],
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-multi-options
 				description: 'The fields you want to include in the output',
+			},
+			{
+				displayName: 'Page Size',
+				name: 'pageSize',
+				type: 'number',
+				typeOptions: {
+					minValue: 1,
+					maxValue: 100,
+				},
+				default: 100,
+				description: 'The number of records returned in each API request (page)',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 2.3 } }],
+					},
+				},
 			},
 			viewRLC,
 		],
@@ -194,14 +224,33 @@ export async function execute(
 				qs.view = (options.view as IDataObject).value as string;
 			}
 
+			if (options.pageSize) {
+				qs.pageSize = options.pageSize;
+			}
+
+			if (options.offset) {
+				qs.offset = options.offset;
+			}
+
 			let responseData;
 
 			if (returnAll) {
 				responseData = await apiRequestAllItems.call(this, 'GET', endpoint, body, qs);
 			} else {
-				qs.maxRecords = this.getNodeParameter('limit', i);
+				const limit = this.getNodeParameter('limit', i) as number;
+				if (nodeVersion >= 2.3) {
+					// Airtable omits the next-page offset once maxRecords is reached,
+					// so cap the request via pageSize instead to keep manual pagination working
+					qs.pageSize = Math.min(limit, (qs.pageSize as number) ?? 100);
+				} else {
+					qs.maxRecords = limit;
+				}
 				responseData = await apiRequest.call(this, 'GET', endpoint, body, qs);
 			}
+
+			// so the next page can be requested via the 'offset' option
+			const pagination =
+				nodeVersion >= 2.3 && responseData.offset ? { offset: responseData.offset } : {};
 
 			if (options.downloadFields) {
 				const itemWithAttachments = await downloadRecordAttachments.call(
@@ -213,7 +262,7 @@ export async function execute(
 				returnData.push(
 					...itemWithAttachments.map((item) => ({
 						...item,
-						json: legacyFlattenOutput(item.json, nodeVersion),
+						json: { ...legacyFlattenOutput(item.json, nodeVersion), ...pagination },
 					})),
 				);
 				continue;
@@ -222,7 +271,7 @@ export async function execute(
 			let records = responseData.records;
 
 			records = (records as IDataObject[]).map((record) => ({
-				json: legacyFlattenOutput(record, nodeVersion),
+				json: { ...legacyFlattenOutput(record, nodeVersion), ...pagination },
 			})) as INodeExecutionData[];
 
 			const itemData = fallbackPairedItems || [{ item: i }];
