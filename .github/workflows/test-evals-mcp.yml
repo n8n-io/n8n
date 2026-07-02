@@ -115,9 +115,10 @@ jobs:
   run-evals:
     name: 'Run MCP Evals'
     runs-on: blacksmith-4vcpu-ubuntu-2204
-    # Generous cap: a full-tier baseline run (e.g. --iterations 5/10) is ~350+
-    # build+verify units and, with the heaviest cases, runs a few hours. Lower it
-    # per-dispatch isn't possible, so size for the baseline case.
+    # Generous cap: a full-tier baseline run (--iterations 5, the high-confidence
+    # maximum both dispatch forms offer) is ~350+ build+verify units and, with the
+    # heaviest cases, runs a few hours. Lowering it per-dispatch isn't possible,
+    # so size for the baseline case.
     timeout-minutes: 240
     permissions:
       contents: read
