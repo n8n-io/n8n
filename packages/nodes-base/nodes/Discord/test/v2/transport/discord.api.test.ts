@@ -3,29 +3,31 @@ import { sleep } from 'n8n-workflow';
 
 import { discordApiMultiPartRequest, discordApiRequest } from '../../../v2/transport/discord.api';
 import { handleRateLimitHeaders, requestApi } from '../../../v2/transport/helpers';
+import type { Mock, Mocked } from 'vitest';
+import type * as _importType0 from 'n8n-workflow';
 
-jest.mock('n8n-workflow', () => ({
-	...jest.requireActual('n8n-workflow'),
-	sleep: jest.fn().mockResolvedValue(undefined),
+vi.mock('n8n-workflow', async () => ({
+	...(await vi.importActual<typeof _importType0>('n8n-workflow')),
+	sleep: vi.fn().mockResolvedValue(undefined),
 }));
 
-const sleepMock = sleep as unknown as jest.Mock;
+const sleepMock = sleep as unknown as Mock;
 
 function createMockContext(authentication = 'botToken') {
-	const requestWithAuthentication = jest.fn();
-	const request = jest.fn();
+	const requestWithAuthentication = vi.fn();
+	const request = vi.fn();
 	const context = {
 		helpers: { requestWithAuthentication, request },
-		getCredentials: jest.fn(),
-		getNodeParameter: jest.fn().mockReturnValue(authentication),
-		getNode: jest.fn().mockReturnValue({ type: 'n8n-nodes-base.discord', typeVersion: 2 }),
-	} as unknown as jest.Mocked<IExecuteFunctions>;
+		getCredentials: vi.fn(),
+		getNodeParameter: vi.fn().mockReturnValue(authentication),
+		getNode: vi.fn().mockReturnValue({ type: 'n8n-nodes-base.discord', typeVersion: 2 }),
+	} as unknown as Mocked<IExecuteFunctions>;
 	return { context, requestWithAuthentication, request };
 }
 
 describe('Discord v2 > transport', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('handleRateLimitHeaders', () => {
@@ -182,7 +184,7 @@ describe('Discord v2 > transport', () => {
 
 		it('fetches OAuth2 credentials once even across retries', async () => {
 			const { context, request } = createMockContext('oAuth2');
-			const getCredentials = context.getCredentials as jest.Mock;
+			const getCredentials = context.getCredentials as Mock;
 			getCredentials.mockResolvedValue({ botToken: 'abc' });
 			request
 				.mockRejectedValueOnce({

@@ -1,13 +1,13 @@
-import { Logger } from '@n8n/backend-common';
+import { Logger, TypedEmitter } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { MultiMainMetadata } from '@n8n/decorators';
+import type { MultiMainEventHandler } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import assert from 'node:assert';
 
 import { LeaderElectionClient } from '@/scaling/leader-election-client';
-import { TypedEmitter } from '@/typed-emitter';
 
 type MultiMainEvents = {
 	/**
@@ -87,14 +87,17 @@ export class MultiMainSetup extends TypedEmitter<MultiMainEvents> {
 	}
 
 	registerEventHandlers() {
-		const handlers = this.metadata.getHandlers();
+		this.metadata.subscribe((handler) => this.attachHandler(handler));
+	}
 
-		for (const { eventHandlerClass, methodName, eventName } of handlers) {
+	private attachHandler({ eventHandlerClass, methodName, eventName }: MultiMainEventHandler) {
+		// Resolve the instance lazily, when the event fires. A handler can register
+		// while its class is still being decorated (method decorators run before the
+		// `@Service` class decorator), so the class may not be DI-resolvable yet.
+		this.on(eventName, async () => {
 			const instance = Container.get(eventHandlerClass);
-			this.on(eventName, async () => {
-				return await instance[methodName].call(instance);
-			});
-		}
+			return await instance[methodName].call(instance);
+		});
 	}
 
 	private async checkLeader() {

@@ -1,7 +1,7 @@
 {
   "name": "@n8n/i18n",
   "type": "module",
-  "version": "2.23.0",
+  "version": "2.29.0",
   "files": [
     "dist"
   ],
@@ -21,8 +21,10 @@
     }
   },
   "scripts": {
+    "clean": "rimraf dist .turbo",
     "dev": "tsdown --watch",
     "build": "tsdown",
+    "build:unchecked": "pnpm run build",
     "preview": "vite preview",
     "typecheck": "vue-tsc --noEmit",
     "test": "vitest run",
@@ -35,7 +37,8 @@
   },
   "dependencies": {
     "n8n-workflow": "workspace:*",
-    "vue-i18n": "catalog:frontend"
+    "vue-i18n": "catalog:frontend",
+    "vue": "catalog:frontend"
   },
   "devDependencies": {
     "@n8n/eslint-config": "workspace:*",
@@ -55,8 +58,5 @@
     "vitest": "catalog:",
     "vue-tsc": "catalog:frontend"
   },
-  "peerDependencies": {
-    "vue": "catalog:frontend"
-  },
-  "license": "See LICENSE.md file in the root of the repository"
+  "license": "LicenseRef-n8n-sustainable-use"
 }

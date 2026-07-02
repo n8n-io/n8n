@@ -19,8 +19,8 @@ export const NODE_CREATOR_OPEN_SOURCES: Record<
 	NOTICE_ERROR_MESSAGE: 'notice_error_message',
 	CONTEXT_MENU: 'context_menu',
 	ADD_EVALUATION_NODE_BUTTON: 'add_evaluation_node_button',
-	ADD_EVALUATION_TRIGGER_BUTTON: 'add_evaluation_trigger_button',
 	TEMPLATES_CALLOUT: 'templates_callout',
+	INSTANCE_AI: 'instance_ai',
 	'': '',
 };
 export const CORE_NODES_CATEGORY = 'Core Nodes';

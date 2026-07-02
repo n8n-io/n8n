@@ -121,7 +121,6 @@ const skillLoadInputWithFilesSchema = skillLoadBaseInputSchema
 	.extend({
 		filePath: z
 			.string()
-			.min(1)
 			.optional()
 			.describe('Optional linked file path relative to the skill directory.'),
 	})
@@ -228,17 +227,18 @@ async function loadSkill(
 		};
 	}
 
-	const loadMainSkill = filePath === undefined || filePath.trim() === RUNTIME_SKILL_FILE_NAME;
+	const loadMainSkill = isMainSkillFilePath(filePath);
 	if (!loadMainSkill) {
-		const linkedFile = findRegisteredLinkedFile(skillEntry.linkedFiles, filePath);
+		const linkedFilePath = filePath ?? '';
+		const linkedFile = findRegisteredLinkedFile(skillEntry.linkedFiles, linkedFilePath);
 		if (!linkedFile) {
 			return {
 				ok: false,
 				success: false,
 				skillId: skillEntry.id,
 				name: skillEntry.name,
-				filePath,
-				error: `File is not registered for skill ${skillEntry.name}: ${filePath}. To load the main skill instructions, retry without filePath.`,
+				filePath: linkedFilePath,
+				error: `File is not registered for skill ${skillEntry.name}: ${linkedFilePath}. To load the main skill instructions, retry without filePath.`,
 				linkedFiles: skillEntry.linkedFiles,
 			};
 		}
@@ -249,7 +249,7 @@ async function loadSkill(
 				success: false,
 				skillId: skillEntry.id,
 				name: skillEntry.name,
-				filePath,
+				filePath: linkedFilePath,
 				error: 'This skill source does not support loading linked files.',
 				linkedFiles: skillEntry.linkedFiles,
 			};
@@ -262,8 +262,8 @@ async function loadSkill(
 				success: false,
 				skillId: skillEntry.id,
 				name: skillEntry.name,
-				filePath,
-				error: `File is not registered for skill ${skillEntry.name}: ${filePath}`,
+				filePath: linkedFilePath,
+				error: `File is not registered for skill ${skillEntry.name}: ${linkedFilePath}`,
 				linkedFiles: skillEntry.linkedFiles,
 			};
 		}
@@ -374,6 +374,17 @@ function findRegisteredLinkedFile(
 		if (linkedFile) return linkedFile;
 	}
 	return undefined;
+}
+
+function isMainSkillFilePath(filePath?: string): boolean {
+	if (filePath === undefined) return true;
+	const normalized = filePath.trim();
+	return (
+		normalized === '' ||
+		normalized === '/' ||
+		normalized === '.' ||
+		normalized === RUNTIME_SKILL_FILE_NAME
+	);
 }
 
 function envelopeValue(value: string): string {

@@ -1,11 +1,5 @@
 import crypto from 'crypto';
-import { mock } from 'jest-mock-extended';
-import {
-	NodeOperationError,
-	type INode,
-	type INodeProperties,
-	type INodePropertyOptions,
-} from 'n8n-workflow';
+import { NodeOperationError, type INodeProperties, type INodePropertyOptions } from 'n8n-workflow';
 
 type VersionCnd = { lte?: number; gte?: number };
 type VersionedAuthParam = Omit<INodeProperties, 'options'> & {
@@ -24,7 +18,7 @@ const INBOUND_TRIGGER_AUTHENTICATION_BUILDER_HINT =
 
 describe('FormTrigger', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should tell builders to keep inbound authentication disabled unless requested', () => {
@@ -248,43 +242,40 @@ describe('FormTrigger', () => {
 
 	describe('Respond to Webhook', () => {
 		it('should throw when misconfigured', async () => {
-			await expect(
-				testVersionedWebhookTriggerNode(FormTrigger, 2, {
-					node: {
-						parameters: {
-							responseMode: 'responseNode',
-						},
+			const missingRespondNode = testVersionedWebhookTriggerNode(FormTrigger, 2, {
+				node: {
+					parameters: {
+						responseMode: 'responseNode',
 					},
-					request: { method: 'POST' },
-					childNodes: [],
-				}),
-			).rejects.toEqual(
-				new NodeOperationError(mock<INode>(), 'No Respond to Webhook node found in the workflow'),
+				},
+				request: { method: 'POST' },
+				childNodes: [],
+			});
+			await expect(missingRespondNode).rejects.toThrow(NodeOperationError);
+			await expect(missingRespondNode).rejects.toThrow(
+				'No Respond to Webhook node found in the workflow',
 			);
 
-			await expect(
-				testVersionedWebhookTriggerNode(FormTrigger, 2.1, {
-					node: {
-						typeVersion: 2.1,
-						parameters: {
-							responseMode: 'onReceived',
-						},
+			const unusedRespondNode = testVersionedWebhookTriggerNode(FormTrigger, 2.1, {
+				node: {
+					typeVersion: 2.1,
+					parameters: {
+						responseMode: 'onReceived',
 					},
-					request: { method: 'POST' },
-					childNodes: [
-						{
-							name: 'Test Respond To Webhook',
-							type: 'n8n-nodes-base.respondToWebhook',
-							typeVersion: 1,
-							disabled: false,
-						},
-					],
-				}),
-			).rejects.toEqual(
-				new NodeOperationError(
-					mock<INode>(),
-					'Unused Respond to Webhook node found in the workflow',
-				),
+				},
+				request: { method: 'POST' },
+				childNodes: [
+					{
+						name: 'Test Respond To Webhook',
+						type: 'n8n-nodes-base.respondToWebhook',
+						typeVersion: 1,
+						disabled: false,
+					},
+				],
+			});
+			await expect(unusedRespondNode).rejects.toThrow(NodeOperationError);
+			await expect(unusedRespondNode).rejects.toThrow(
+				'Unused Respond to Webhook node found in the workflow',
 			);
 		});
 	});

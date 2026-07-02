@@ -1,5 +1,5 @@
 import type { ProjectRelation } from '@n8n/api-types';
-import type { ModuleRegistry } from '@n8n/backend-common';
+import type { Logger, ModuleRegistry } from '@n8n/backend-common';
 import {
 	type Project,
 	type ProjectRepository,
@@ -7,17 +7,20 @@ import {
 	type SharedWorkflowRepository,
 	type ProjectRelationRepository,
 	type SharedCredentials,
+	ProjectRelation as ProjectRelationEntity,
 	PROJECT_ADMIN_ROLE,
+	PROJECT_VIEWER_ROLE,
 } from '@n8n/db';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import type { EntityManager } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
+import type { ICredentialConnectionStatusProvider } from '@/credentials/credential-connection-status-provider.interface';
 import type { AgentKnowledgeService } from '@/modules/agents/agent-knowledge.service';
 import type { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 
 import type { OwnershipService } from '../ownership.service';
-
 import { ProjectService } from '../project.service.ee';
 import type { RoleService } from '../role.service';
 
@@ -32,6 +35,7 @@ describe('ProjectService', () => {
 	const agentRepository = mock<AgentRepository>();
 	const agentKnowledgeService = mock<AgentKnowledgeService>();
 	const ownershipService = mock<OwnershipService>();
+	const logger = mock<Logger>();
 	const projectService = new ProjectService(
 		sharedWorkflowRepository,
 		projectRepository,
@@ -41,10 +45,11 @@ describe('ProjectService', () => {
 		mock(),
 		moduleRegistry,
 		ownershipService,
+		logger,
 	);
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('getAccessibleProjectsAndCount', () => {
@@ -199,11 +204,164 @@ describe('ProjectService', () => {
 				]),
 			).resolves.not.toThrow();
 		});
+
+		describe('cleanup for orphaned credential entries', () => {
+			let mockProxy: Mocked<ICredentialConnectionStatusProvider>;
+
+			beforeEach(() => {
+				mockProxy = mock<ICredentialConnectionStatusProvider>();
+				Object.defineProperty(projectService, 'connectionStatusProxy', {
+					configurable: true,
+					get: async () => mockProxy,
+				});
+			});
+
+			it('calls cleanupOrphanedEntriesForUsers with the IDs of removed members', async () => {
+				// ARRANGE — project has two members; incoming relations keep only user1
+				projectRepository.findOne.mockResolvedValueOnce(
+					mock<Project>({
+						id: projectId,
+						type: 'team',
+						projectRelations: [
+							{ userId: 'user1', role: PROJECT_ADMIN_ROLE },
+							{ userId: 'user2', role: PROJECT_VIEWER_ROLE },
+						],
+					}),
+				);
+				roleService.isRoleLicensed.mockReturnValue(true);
+
+				// ACT
+				await projectService.syncProjectRelations(projectId, [
+					{ userId: 'user1', role: 'project:admin' },
+				]);
+
+				// ASSERT — user2 was removed → cleanup must run for user2
+				expect(mockProxy.cleanupOrphanedEntriesForUsers).toHaveBeenCalledWith(['user2'], manager);
+			});
+
+			it('calls cleanupOrphanedEntriesForUsers with union of removed and role-changed IDs', async () => {
+				// ARRANGE — user2 removed, user3 role changed
+				projectRepository.findOne.mockResolvedValueOnce(
+					mock<Project>({
+						id: projectId,
+						type: 'team',
+						projectRelations: [
+							{ userId: 'user1', role: PROJECT_ADMIN_ROLE },
+							{ userId: 'user2', role: PROJECT_VIEWER_ROLE },
+							{ userId: 'user3', role: PROJECT_VIEWER_ROLE },
+						],
+					}),
+				);
+				roleService.isRoleLicensed.mockReturnValue(true);
+
+				// ACT — user2 dropped, user3 role changed viewer → admin
+				await projectService.syncProjectRelations(projectId, [
+					{ userId: 'user1', role: 'project:admin' },
+					{ userId: 'user3', role: 'project:admin' },
+				]);
+
+				// ASSERT — both user2 (removed) and user3 (role changed) are in the set
+				expect(mockProxy.cleanupOrphanedEntriesForUsers).toHaveBeenCalledWith(
+					expect.arrayContaining(['user2', 'user3']),
+					manager,
+				);
+				const [affectedIds] = mockProxy.cleanupOrphanedEntriesForUsers.mock.calls[0] as [
+					string[],
+					EntityManager,
+				];
+				expect(affectedIds).toHaveLength(2);
+			});
+
+			it('does not call cleanupOrphanedEntriesForUsers when no members are affected', async () => {
+				// ARRANGE — incoming relations are identical to current ones
+				projectRepository.findOne.mockResolvedValueOnce(
+					mock<Project>({
+						id: projectId,
+						type: 'team',
+						projectRelations: [
+							{ userId: 'user1', role: PROJECT_ADMIN_ROLE },
+							{ userId: 'user2', role: PROJECT_VIEWER_ROLE },
+						],
+					}),
+				);
+				roleService.isRoleLicensed.mockReturnValue(true);
+
+				// ACT — no changes; same users, same roles
+				await projectService.syncProjectRelations(projectId, [
+					{ userId: 'user1', role: 'project:admin' },
+					{ userId: 'user2', role: 'project:viewer' },
+				]);
+
+				// ASSERT — no affected users → cleanup must not be called
+				expect(mockProxy.cleanupOrphanedEntriesForUsers).not.toHaveBeenCalled();
+			});
+		});
+	});
+
+	describe('deleteUserFromProject', () => {
+		let mockProxy: Mocked<ICredentialConnectionStatusProvider>;
+
+		beforeEach(() => {
+			mockProxy = mock<ICredentialConnectionStatusProvider>();
+			Object.defineProperty(projectService, 'connectionStatusProxy', {
+				configurable: true,
+				get: async () => mockProxy,
+			});
+			manager.transaction.mockImplementation(async (arg1: unknown, arg2?: unknown) => {
+				const runInTransaction = (arg2 ?? arg1) as (
+					entityManager: EntityManager,
+				) => Promise<unknown>;
+				return await runInTransaction(manager);
+			});
+		});
+
+		it('calls cleanupOrphanedEntriesForUsers with the removed userId', async () => {
+			// ARRANGE
+			const projectId = 'proj-1';
+			const userId = 'user-to-remove';
+			projectRepository.findOne.mockResolvedValueOnce(
+				mock<Project>({
+					id: projectId,
+					type: 'team',
+					projectRelations: [
+						{ userId, role: PROJECT_VIEWER_ROLE },
+						{ userId: 'owner', role: PROJECT_ADMIN_ROLE },
+					],
+				}),
+			);
+
+			// ACT
+			await projectService.deleteUserFromProject(projectId, userId);
+
+			// ASSERT — member removed → cleanup must run inside the same transaction
+			expect(mockProxy.cleanupOrphanedEntriesForUsers).toHaveBeenCalledWith([userId], manager);
+		});
+
+		it('throws when trying to remove the project owner', async () => {
+			// ARRANGE
+			const projectId = 'proj-1';
+			const ownerId = 'owner-user';
+			projectRepository.findOne.mockResolvedValueOnce(
+				mock<Project>({
+					id: projectId,
+					type: 'team',
+					projectRelations: [
+						{ userId: ownerId, role: { ...PROJECT_ADMIN_ROLE, slug: PROJECT_OWNER_ROLE_SLUG } },
+					],
+				}),
+			);
+
+			// ACT & ASSERT
+			await expect(projectService.deleteUserFromProject(projectId, ownerId)).rejects.toThrow(
+				'Project owner cannot be removed from the project',
+			);
+			expect(mockProxy.cleanupOrphanedEntriesForUsers).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('updateProject', () => {
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			ownershipService.invalidateWorkflowProjectCacheForProject.mockResolvedValue(undefined);
 		});
 
@@ -285,7 +443,14 @@ describe('ProjectService', () => {
 			{ userId: 'user2', role: { slug: 'project:viewer' } },
 		];
 
+		let mockProxy: Mocked<ICredentialConnectionStatusProvider>;
+
 		beforeEach(() => {
+			mockProxy = mock<ICredentialConnectionStatusProvider>();
+			Object.defineProperty(projectService, 'connectionStatusProxy', {
+				configurable: true,
+				get: async () => mockProxy,
+			});
 			manager.transaction.mockImplementation(async (arg1: unknown, arg2?: unknown) => {
 				const runInTransaction = (arg2 ?? arg1) as (
 					entityManager: EntityManager,
@@ -311,10 +476,12 @@ describe('ProjectService', () => {
 				relations: { projectRelations: { role: true } },
 			});
 
-			expect(projectRelationRepository.update).toHaveBeenCalledWith(
+			expect(manager.update).toHaveBeenCalledWith(
+				ProjectRelationEntity,
 				{ projectId, userId: 'user2' },
 				{ role: { slug: 'project:admin' } },
 			);
+			expect(mockProxy.cleanupOrphanedEntriesForUsers).toHaveBeenCalledWith(['user2'], manager);
 		});
 
 		it('should throw if the user is not part of the project', async () => {
@@ -359,17 +526,77 @@ describe('ProjectService', () => {
 	});
 
 	describe('deleteProject', () => {
-		it('cleans agent knowledge files before project deletion cascades agent files', async () => {
-			const user = { id: 'user-1', role: { scopes: [{ slug: 'project:delete' }] } } as any;
-			const project = mock<Project>({ id: 'project-1', type: 'team' });
+		const user = { id: 'user-1', role: { scopes: [{ slug: 'project:delete' }] } } as any;
+
+		beforeEach(() => {
 			Object.defineProperty(projectService, 'workflowService', {
 				configurable: true,
-				get: async () => ({ delete: jest.fn() }),
+				get: async () => ({ delete: vi.fn() }),
 			});
 			Object.defineProperty(projectService, 'credentialsService', {
 				configurable: true,
-				get: async () => ({ delete: jest.fn() }),
+				get: async () => ({ delete: vi.fn() }),
 			});
+		});
+
+		it('calls cleanupOrphanedEntriesForUsers with member IDs after project is deleted', async () => {
+			// ARRANGE
+			const project = mock<Project>({ id: 'project-1', type: 'team' });
+			const mockProxy = mock<ICredentialConnectionStatusProvider>();
+			Object.defineProperty(projectService, 'connectionStatusProxy', {
+				configurable: true,
+				get: async () => mockProxy,
+			});
+			manager.findOne.mockResolvedValueOnce(project);
+			projectRepository.remove.mockResolvedValueOnce(project);
+			sharedWorkflowRepository.find.mockResolvedValueOnce([]);
+			sharedCredentialsRepository.find.mockResolvedValueOnce([]);
+			moduleRegistry.isActive.mockReturnValue(false);
+			// Two members in the project
+			projectRelationRepository.findBy.mockResolvedValueOnce([
+				{ userId: 'member-1' },
+				{ userId: 'member-2' },
+			] as never);
+
+			// ACT
+			await projectService.deleteProject(user, project.id);
+
+			// ASSERT — project removed first, then cleanup for former members
+			expect(projectRepository.remove).toHaveBeenCalledWith(project);
+			expect(mockProxy.cleanupOrphanedEntriesForUsers).toHaveBeenCalledWith([
+				'member-1',
+				'member-2',
+			]);
+			expect(projectRepository.remove.mock.invocationCallOrder[0]).toBeLessThan(
+				mockProxy.cleanupOrphanedEntriesForUsers.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('skips credential cleanup when the project had no members', async () => {
+			// ARRANGE
+			const project = mock<Project>({ id: 'project-1', type: 'team' });
+			const mockProxy = mock<ICredentialConnectionStatusProvider>();
+			Object.defineProperty(projectService, 'connectionStatusProxy', {
+				configurable: true,
+				get: async () => mockProxy,
+			});
+			manager.findOne.mockResolvedValueOnce(project);
+			projectRepository.remove.mockResolvedValueOnce(project);
+			sharedWorkflowRepository.find.mockResolvedValueOnce([]);
+			sharedCredentialsRepository.find.mockResolvedValueOnce([]);
+			moduleRegistry.isActive.mockReturnValue(false);
+			projectRelationRepository.findBy.mockResolvedValueOnce([]);
+
+			// ACT
+			await projectService.deleteProject(user, project.id);
+
+			// ASSERT — no members → cleanup must not be called
+			expect(projectRepository.remove).toHaveBeenCalledWith(project);
+			expect(mockProxy.cleanupOrphanedEntriesForUsers).not.toHaveBeenCalled();
+		});
+
+		it('cleans agent knowledge files before project deletion cascades agent files', async () => {
+			const project = mock<Project>({ id: 'project-1', type: 'team' });
 			Object.defineProperty(projectService, 'agentRepository', {
 				configurable: true,
 				get: async () => agentRepository,
@@ -383,6 +610,7 @@ describe('ProjectService', () => {
 			sharedWorkflowRepository.find.mockResolvedValueOnce([]);
 			sharedCredentialsRepository.find.mockResolvedValueOnce([]);
 			moduleRegistry.isActive.mockImplementation((moduleName) => moduleName === 'agents');
+			projectRelationRepository.findBy.mockResolvedValueOnce([]);
 			agentRepository.findByProjectId.mockResolvedValueOnce([
 				{ id: 'agent-1' },
 				{ id: 'agent-2' },
@@ -391,35 +619,19 @@ describe('ProjectService', () => {
 			await projectService.deleteProject(user, project.id);
 
 			expect(agentRepository.findByProjectId).toHaveBeenCalledWith(project.id);
-			expect(agentKnowledgeService.deleteAllFilesForAgent).toHaveBeenCalledWith('agent-1');
-			expect(agentKnowledgeService.deleteAllFilesForAgent).toHaveBeenCalledWith('agent-2');
+			expect(agentKnowledgeService.deleteAllFilesForAgent).toHaveBeenCalledWith(
+				project.id,
+				'agent-1',
+				user.id,
+			);
+			expect(agentKnowledgeService.deleteAllFilesForAgent).toHaveBeenCalledWith(
+				project.id,
+				'agent-2',
+				user.id,
+			);
 			expect(agentKnowledgeService.deleteAllFilesForAgent.mock.invocationCallOrder[1]).toBeLessThan(
 				projectRepository.remove.mock.invocationCallOrder[0],
 			);
-		});
-
-		it('skips agent knowledge cleanup when the agents module is inactive', async () => {
-			const user = { id: 'user-1', role: { scopes: [{ slug: 'project:delete' }] } } as any;
-			const project = mock<Project>({ id: 'project-1', type: 'team' });
-			Object.defineProperty(projectService, 'workflowService', {
-				configurable: true,
-				get: async () => ({ delete: jest.fn() }),
-			});
-			Object.defineProperty(projectService, 'credentialsService', {
-				configurable: true,
-				get: async () => ({ delete: jest.fn() }),
-			});
-			manager.findOne.mockResolvedValueOnce(project);
-			projectRepository.remove.mockResolvedValueOnce(project);
-			sharedWorkflowRepository.find.mockResolvedValueOnce([]);
-			sharedCredentialsRepository.find.mockResolvedValueOnce([]);
-			moduleRegistry.isActive.mockReturnValue(false);
-
-			await projectService.deleteProject(user, project.id);
-
-			expect(agentRepository.findByProjectId).not.toHaveBeenCalled();
-			expect(agentKnowledgeService.deleteAllFilesForAgent).not.toHaveBeenCalled();
-			expect(projectRepository.remove).toHaveBeenCalledWith(project);
 		});
 	});
 });

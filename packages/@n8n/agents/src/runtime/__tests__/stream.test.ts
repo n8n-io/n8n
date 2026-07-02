@@ -1,9 +1,42 @@
 import type { TextStreamPart, ToolSet } from 'ai';
 
-import { convertChunk } from '../stream';
+import { convertChunk, toTokenUsage } from '../streaming/stream';
 
 type ToolCallChunk = Extract<TextStreamPart<ToolSet>, { type: 'tool-call' }>;
+type ToolErrorChunk = Extract<TextStreamPart<ToolSet>, { type: 'tool-error' }>;
 type ToolResultChunk = Extract<TextStreamPart<ToolSet>, { type: 'tool-result' }>;
+
+describe('toTokenUsage — input token details', () => {
+	it('maps noCacheTokens to inputTokenDetails.noCache', () => {
+		const result = toTokenUsage({
+			inputTokens: 16718,
+			outputTokens: 200,
+			totalTokens: 16918,
+			inputTokenDetails: {
+				noCacheTokens: 1,
+				cacheReadTokens: 15252,
+				cacheWriteTokens: 15465,
+			},
+		});
+
+		expect(result?.inputTokenDetails).toEqual({
+			noCache: 1,
+			cacheRead: 15252,
+			cacheWrite: 15465,
+		});
+	});
+
+	it('includes noCache even when cache tokens are absent', () => {
+		const result = toTokenUsage({
+			inputTokens: 100,
+			outputTokens: 10,
+			totalTokens: 110,
+			inputTokenDetails: { noCacheTokens: 100 },
+		});
+
+		expect(result?.inputTokenDetails).toEqual({ noCache: 100 });
+	});
+});
 
 describe('convertChunk — tool-call invalid/error handling', () => {
 	it('returns a tool-result with isError when c.invalid is true', () => {
@@ -135,6 +168,28 @@ describe('convertChunk — tool-result output passthrough', () => {
 			toolCallId: '',
 			toolName: '',
 			output: 'plain text result',
+		});
+	});
+});
+
+describe('convertChunk — tool-error handling', () => {
+	it('maps provider-executed tool-error to tool-result with isError', () => {
+		const error = new Error('search failed');
+		const chunk = {
+			type: 'tool-error',
+			toolCallId: 'tc-err',
+			toolName: 'web_search',
+			input: { query: 'n8n' },
+			error,
+			providerExecuted: true,
+		} as unknown as ToolErrorChunk;
+
+		expect(convertChunk(chunk)).toEqual({
+			type: 'tool-result',
+			toolCallId: 'tc-err',
+			toolName: 'web_search',
+			output: error,
+			isError: true,
 		});
 	});
 });

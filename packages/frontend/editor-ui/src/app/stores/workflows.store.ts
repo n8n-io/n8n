@@ -14,16 +14,7 @@ import type {
 import type { IWorkflowTemplateNode } from '@n8n/rest-api-client/api/templates';
 import type { WorkflowDataCreate, WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { defineStore } from 'pinia';
-import type {
-	IDataObject,
-	ExecutionSummary,
-	INodeCredentials,
-	IRunData,
-	IRunExecutionData,
-	ITaskData,
-	IWorkflowSettings,
-	ITaskStartedData,
-} from 'n8n-workflow';
+import type { IDataObject, INodeCredentials, IWorkflowSettings } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -39,7 +30,6 @@ import type { ExecutionRedactionQueryDto } from '@n8n/api-types';
 import { useSettingsStore } from './settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { updateCurrentUserSettings } from '@n8n/rest-api-client/api/users';
-import type { NodeExecuteBefore } from '@n8n/api-types/push/execution';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import { hasRole } from '@/app/utils/rbac/checks';
@@ -62,58 +52,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	 * @deprecated use useWorkflowId() in Vue components/composables instead.
 	 */
 	const workflowId = ref('');
-
-	// --- Compatibility adapter wiring ---
-	//
-	// Per-workflow session state (active/previous execution id, webhook wait,
-	// debug mode, chat, trigger selection, current executions list, last
-	// successful execution) lives in `workflowExecutionState` keyed by
-	// workflowId. The fields below are writable computeds that route through
-	// the session store so existing direct-state mutations via
-	// `createTestingPinia` keep working.
-	//
-	// Execution-data refs (`workflowExecutionData`, `workflowExecutionStartedData`,
-	// `workflowExecutionResultDataLastUpdate`, `workflowExecutionPairedItemMappings`)
-	// remain workflow-store-local for now. They will migrate to the
-	// per-execution `executionData` store in M5/M6 alongside push-handler and
-	// read-consumer migrations, where the refactor of writers/readers can be
-	// done together to preserve test contracts.
-
-	const currentExecutionStateStore = computed(() =>
-		useWorkflowExecutionStateStore(createWorkflowDocumentId(workflowId.value)),
-	);
-
-	const currentWorkflowExecutions = computed<ExecutionSummary[]>({
-		get: () => currentExecutionStateStore.value.currentWorkflowExecutions as ExecutionSummary[],
-		set: (value) => currentExecutionStateStore.value.setCurrentWorkflowExecutions([...value]),
-	});
-
-	const workflowExecutionData = computed<IExecutionResponse | null>(() => {
-		// Touch the timestamp so consumers still see updates even when the
-		// underlying execution object reference is preserved across in-place
-		// mutations. The resolved-id timestamp lives on the executionData store.
-		void currentExecutionStateStore.value.activeExecutionResultDataLastUpdate;
-		return currentExecutionStateStore.value.activeExecution as IExecutionResponse | null;
-	});
-	const lastSuccessfulExecution = computed<IExecutionResponse | null>(
-		() => currentExecutionStateStore.value.lastSuccessfulExecution as IExecutionResponse | null,
-	);
-	const workflowExecutionStartedData = computed(
-		() =>
-			currentExecutionStateStore.value.activeExecutionStartedData as
-				| [executionId: string, data: { [nodeName: string]: ITaskStartedData[] }]
-				| undefined,
-	);
-	const workflowExecutionResultDataLastUpdate = computed(
-		() => currentExecutionStateStore.value.activeExecutionResultDataLastUpdate,
-	);
-	const workflowExecutionPairedItemMappings = computed(
-		() =>
-			currentExecutionStateStore.value.activeExecutionPairedItemMappings as Record<
-				string,
-				Set<string>
-			>,
-	);
 
 	// A workflow is new if it hasn't been saved to the backend yet.
 	// TODO: move to workflowDocumentStore after `workflow` ref is removed from this store.
@@ -139,37 +77,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		);
 	});
 
-	const getWorkflowRunData = computed<IRunData | null>(() => {
-		if (!workflowExecutionData.value?.data?.resultData) {
-			return null;
-		}
-
-		return workflowExecutionData.value.data.resultData.runData;
-	});
-
-	const executedNode = computed(() => workflowExecutionData.value?.executedNode);
-
-	const getAllLoadedFinishedExecutions = computed(() => {
-		return currentWorkflowExecutions.value.filter(
-			(ex) => ex.finished === true || ex.stoppedAt !== undefined,
-		);
-	});
-
-	const getWorkflowExecution = computed(() => workflowExecutionData.value);
-
 	const canViewWorkflows = computed(
 		() => !settingsStore.isChatFeatureEnabled || !hasRole(['global:chatUser']),
 	);
-
-	function getWorkflowResultDataByNodeName(nodeName: string): ITaskData[] | null {
-		if (getWorkflowRunData.value === null) {
-			return null;
-		}
-		if (!getWorkflowRunData.value.hasOwnProperty(nodeName)) {
-			return null;
-		}
-		return getWorkflowRunData.value[nodeName];
-	}
 
 	// Finds a uniquely identifying partial id for a node, relying on order for uniqueness in edge cases
 	function getPartialIdForNode(fullId: string): string {
@@ -184,10 +94,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			}
 		}
 		return fullId;
-	}
-
-	function getExecutionDataById(id: string): ExecutionSummary | undefined {
-		return currentWorkflowExecutions.value.find((execution) => execution.id === id);
 	}
 
 	function convertTemplateNodeToNodeUi(node: IWorkflowTemplateNode): INodeUi {
@@ -238,7 +144,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				return;
 			}
 
-			currentExecutionStateStore.value.setLastSuccessfulExecution(
+			useWorkflowExecutionStateStore(
+				createWorkflowDocumentId(workflowId.value),
+			).setLastSuccessfulExecution(
 				await workflowsApi.getLastSuccessfulExecution(rootStore.restApiContext, workflowId.value),
 			);
 		} catch (e: unknown) {
@@ -258,8 +166,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflowId.value = id || '';
 	}
 
-	function resetWorkflow() {
-		const previousId = workflowId.value;
+	function resetWorkflow(outgoingWorkflowId?: string) {
+		// Reset the workflow being torn down. Callers pass it explicitly (the route may
+		// already point at the next workflow); fall back to the current id otherwise.
+		const previousId = outgoingWorkflowId ?? workflowId.value;
 		workflowId.value = '';
 		if (previousId) {
 			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(previousId));
@@ -337,42 +247,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			newName = newWorkflow.name;
 		} catch (e) {}
 		return newName;
-	}
-
-	function setWorkflowExecutionRunData(workflowResultData: IRunExecutionData) {
-		currentExecutionStateStore.value.setActiveExecutionRunData(workflowResultData);
-	}
-
-	function setWorkflowExecutionData(execution: IExecutionResponse | null): void {
-		currentExecutionStateStore.value.setActiveExecution(execution);
-	}
-
-	function clearExecutionStartedData(): void {
-		currentExecutionStateStore.value.clearActiveExecutionStartedData();
-	}
-
-	function setLastSuccessfulExecution(execution: IExecutionResponse | null): void {
-		currentExecutionStateStore.value.setLastSuccessfulExecution(execution);
-	}
-
-	function clearCurrentWorkflowExecutions(): void {
-		currentExecutionStateStore.value.clearCurrentWorkflowExecutions();
-	}
-
-	function setCurrentWorkflowExecutions(executions: ExecutionSummary[]): void {
-		currentExecutionStateStore.value.setCurrentWorkflowExecutions(executions);
-	}
-
-	function renameNodeSelectedAndExecution(nameData: { old: string; new: string }): void {
-		currentExecutionStateStore.value.renameActiveExecutionNode(nameData);
-	}
-
-	function addNodeExecutionStartedData(data: NodeExecuteBefore['data']): void {
-		currentExecutionStateStore.value.addActiveNodeExecutionStartedData(data);
-	}
-
-	function clearNodeExecutionData(nodeName: string): void {
-		currentExecutionStateStore.value.clearActiveNodeExecutionData(nodeName);
 	}
 
 	// TODO: For sure needs some kind of default filter like last day, with max 10 results, ...
@@ -626,14 +500,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return response && unflattenExecutionData(response);
 	}
 
-	function deleteExecution(execution: ExecutionSummary): void {
-		currentExecutionStateStore.value.deleteExecution(execution);
-	}
-
-	function addToCurrentExecutions(executions: ExecutionSummary[]): void {
-		currentExecutionStateStore.value.addToCurrentExecutions(executions);
-	}
-
 	function getBinaryUrl(
 		binaryDataId: string,
 		action: 'view' | 'download',
@@ -651,40 +517,20 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	return {
-		currentWorkflowExecutions,
-		workflowExecutionData,
-		workflowExecutionPairedItemMappings,
-		workflowExecutionResultDataLastUpdate,
-		workflowExecutionStartedData,
 		workflowId,
 		isNewWorkflow,
 		isWorkflowSaved,
-		getWorkflowRunData,
-		getWorkflowResultDataByNodeName,
-		executedNode,
-		getAllLoadedFinishedExecutions,
-		getWorkflowExecution,
-		getExecutionDataById,
 		convertTemplateNodeToNodeUi,
 		getWorkflowFromUrl,
 		getActivationError,
 		setWorkflowId,
 		resetWorkflow,
-		addNodeExecutionStartedData,
 		setWorkflowActiveVersion,
 		archiveWorkflow,
 		unarchiveWorkflow,
 		setWorkflowActive,
 		setWorkflowInactive,
 		getDuplicateCurrentWorkflowName,
-		setWorkflowExecutionRunData,
-		setWorkflowExecutionData,
-		clearExecutionStartedData,
-		setLastSuccessfulExecution,
-		clearCurrentWorkflowExecutions,
-		setCurrentWorkflowExecutions,
-		renameNodeSelectedAndExecution,
-		clearNodeExecutionData,
 		getPastExecutions,
 		getExecution,
 		createNewWorkflow,
@@ -695,12 +541,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		runWorkflow,
 		removeTestWebhook,
 		fetchExecutionDataById,
-		deleteExecution,
-		addToCurrentExecutions,
 		getBinaryUrl,
 		getPartialIdForNode,
 		fetchLastSuccessfulExecution,
-		lastSuccessfulExecution,
 		canViewWorkflows,
 	};
 });

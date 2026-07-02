@@ -225,6 +225,42 @@ describe('LmChatAnthropic', () => {
 			);
 		});
 
+		it('should default streaming to false when option is omitted', async () => {
+			const mockContext = setupMockContext();
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'claude-sonnet-4-20250514';
+				if (paramName === 'options') return {};
+				return undefined;
+			});
+
+			await lmChatAnthropic.supplyData.call(mockContext, 0);
+
+			expect(MockedChatAnthropic).toHaveBeenCalledWith(
+				expect.objectContaining({
+					streaming: false,
+				}),
+			);
+		});
+
+		it('should pass streaming=true to ChatAnthropic when option is set', async () => {
+			const mockContext = setupMockContext();
+
+			mockContext.getNodeParameter = vi.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'model.value') return 'claude-sonnet-4-20250514';
+				if (paramName === 'options') return { streaming: true };
+				return undefined;
+			});
+
+			await lmChatAnthropic.supplyData.call(mockContext, 0);
+
+			expect(MockedChatAnthropic).toHaveBeenCalledWith(
+				expect.objectContaining({
+					streaming: true,
+				}),
+			);
+		});
+
 		it('should remove topP from model when not explicitly set', async () => {
 			const mockContext = setupMockContext();
 

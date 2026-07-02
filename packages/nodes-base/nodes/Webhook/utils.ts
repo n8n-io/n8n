@@ -1,3 +1,4 @@
+import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import basicAuth from 'basic-auth';
 import { rm } from 'fs/promises';
 import jwt from 'jsonwebtoken';
@@ -15,7 +16,6 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import { BlockList, isIPv6 } from 'node:net';
 
 import { WebhookAuthorizationError } from './error';
-import { formatPrivateKey } from '../../utils/utilities';
 
 export type WebhookParameters = {
 	httpMethod: string | string[];
@@ -236,14 +236,14 @@ export async function validateWebhookAuthentication(
 	ctx: IWebhookFunctions,
 	authPropertyName: string,
 ): Promise<IDataObject | undefined> {
-	const authentication = ctx.getNodeParameter(authPropertyName) as string;
+	const authentication = ctx.getNodeParameter(authPropertyName, 'none') as string;
 	if (authentication === 'none') return;
 
 	const req = ctx.getRequestObject();
 	const headers = ctx.getHeaderData();
 
 	if (authentication === 'basicAuth') {
-		// Basic authorization is needed to call webhook
+		// Basic authentication is needed to call webhook
 		let expectedAuth: ICredentialDataDecryptedObject | undefined;
 		try {
 			expectedAuth = await ctx.getCredentials<ICredentialDataDecryptedObject>('httpBasicAuth');
@@ -276,7 +276,7 @@ export async function validateWebhookAuthentication(
 			providedAuth.pass !== expectedAuth.password
 		) {
 			// Provided authentication data is wrong
-			throw new WebhookAuthorizationError(403);
+			throw new WebhookAuthorizationError(401, 'Authentication data is wrong!');
 		}
 	} else if (authentication === 'bearerAuth') {
 		let expectedAuth: ICredentialDataDecryptedObject | undefined;
@@ -342,7 +342,7 @@ export async function validateWebhookAuthentication(
 		if (expectedAuth.keyType === 'passphrase') {
 			secretOrPublicKey = expectedAuth.secret;
 		} else {
-			secretOrPublicKey = formatPrivateKey(expectedAuth.publicKey, true);
+			secretOrPublicKey = formatPemBlock(expectedAuth.publicKey, true);
 		}
 
 		try {
@@ -426,7 +426,7 @@ export async function generateFormPostBasicAuthToken(
 ) {
 	const node = context.getNode();
 
-	const authentication = context.getNodeParameter(authPropertyName);
+	const authentication = context.getNodeParameter(authPropertyName, 'none');
 	if (authentication === 'none') return;
 
 	let credentials: ICredentialDataDecryptedObject | undefined;

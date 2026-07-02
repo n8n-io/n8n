@@ -1,5 +1,5 @@
 expect.extend({
-	toBeEmptyArray(this: jest.MatcherContext, actual: unknown) {
+	toBeEmptyArray(actual: unknown) {
 		const pass = Array.isArray(actual) && actual.length === 0;
 
 		return {
@@ -10,7 +10,7 @@ expect.extend({
 		};
 	},
 
-	toBeEmptySet(this: jest.MatcherContext, actual: unknown) {
+	toBeEmptySet(actual: unknown) {
 		const pass = actual instanceof Set && actual.size === 0;
 
 		return {
@@ -21,7 +21,7 @@ expect.extend({
 		};
 	},
 
-	toBeSetContaining(this: jest.MatcherContext, actual: unknown, ...expectedElements: string[]) {
+	toBeSetContaining(actual: unknown, ...expectedElements: string[]) {
 		const pass = actual instanceof Set && expectedElements.every((e) => actual.has(e));
 
 		return {

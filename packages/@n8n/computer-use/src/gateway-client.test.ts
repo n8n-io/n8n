@@ -1,3 +1,4 @@
+import type { Mock, Mocked } from 'vitest';
 /**
  * Unit tests for GatewayClient.checkPermissions (tested indirectly via dispatchToolCall).
  *
@@ -11,38 +12,46 @@
 // ---------------------------------------------------------------------------
 
 // Suppress logger noise during tests
-jest.mock('./logger', () => ({
-	logger: { debug: jest.fn(), info: jest.fn(), error: jest.fn(), warn: jest.fn() },
-	printAuthFailure: jest.fn(),
-	printDisconnected: jest.fn(),
-	printReconnecting: jest.fn(),
-	printReinitFailed: jest.fn(),
-	printReinitializing: jest.fn(),
-	printToolCall: jest.fn(),
-	printToolResult: jest.fn(),
+vi.mock('./logger', () => ({
+	logger: { debug: vi.fn(), info: vi.fn(), error: vi.fn(), warn: vi.fn() },
+	printAuthFailure: vi.fn(),
+	printDisconnected: vi.fn(),
+	printReconnecting: vi.fn(),
+	printReinitFailed: vi.fn(),
+	printReinitializing: vi.fn(),
+	printToolCall: vi.fn(),
+	printToolResult: vi.fn(),
 }));
 
 // Mock tool modules that pull in native/ESM-only dependencies
-jest.mock('./tools/shell', () => ({
-	['ShellModule']: { isSupported: jest.fn().mockResolvedValue(false), definitions: [] },
+vi.mock('./tools/shell', () => ({
+	['ShellModule']: { isSupported: vi.fn().mockResolvedValue(false), definitions: [] },
 }));
-jest.mock('./tools/filesystem', () => ({
+vi.mock('./tools/filesystem', () => ({
 	filesystemReadTools: [],
 	filesystemWriteTools: [],
 }));
-jest.mock('./tools/screenshot', () => ({
-	['ScreenshotModule']: { isSupported: jest.fn().mockResolvedValue(false), definitions: [] },
+vi.mock('./tools/screenshot', () => ({
+	['ScreenshotModule']: { isSupported: vi.fn().mockResolvedValue(false), definitions: [] },
 }));
-jest.mock('./tools/mouse-keyboard', () => ({
-	['MouseKeyboardModule']: { isSupported: jest.fn().mockResolvedValue(false), definitions: [] },
+vi.mock('./tools/mouse-keyboard', () => ({
+	['MouseKeyboardModule']: { isSupported: vi.fn().mockResolvedValue(false), definitions: [] },
 }));
-jest.mock('./tools/browser', () => ({
-	['BrowserModule']: { create: jest.fn().mockResolvedValue(null) },
+vi.mock('./tools/browser', () => ({
+	['BrowserModule']: { create: vi.fn().mockResolvedValue(null) },
+}));
+vi.mock('@vscode/ripgrep', () => ({ rgPath: '/usr/bin/rg' }));
+vi.mock('@anthropic-ai/sandbox-runtime', () => ({
+	['SandboxManager']: {
+		initialize: vi.fn().mockResolvedValue(undefined),
+		wrapWithSandbox: vi.fn().mockImplementation(async (cmd: string) => await Promise.resolve(cmd)),
+	},
 }));
 
 import type { GatewayConfig } from './config';
 import { GatewayAuthError, GatewayClient } from './gateway-client';
 import type { GatewaySession } from './gateway-session';
+import { shellExecuteTool } from './tools/shell/shell-execute';
 import type { AffectedResource, ConfirmResourceAccess, ToolDefinition } from './tools/types';
 import { INSTANCE_RESOURCE_DECISION_KEYS } from './tools/types';
 
@@ -62,27 +71,27 @@ function makeConfig(permissionConfirmation: 'client' | 'instance' = 'client'): G
 	};
 }
 
-function makeSession(overrides: Partial<GatewaySession> = {}): jest.Mocked<GatewaySession> {
+function makeSession(overrides: Partial<GatewaySession> = {}): Mocked<GatewaySession> {
 	return {
 		dir: '/tmp',
-		check: jest.fn().mockReturnValue('ask'),
-		getAllPermissions: jest.fn().mockReturnValue({
+		check: vi.fn().mockReturnValue('ask'),
+		getAllPermissions: vi.fn().mockReturnValue({
 			filesystemRead: 'allow',
 			filesystemWrite: 'ask',
 			shell: 'ask',
 			computer: 'deny',
 			browser: 'ask',
 		}),
-		setPermissions: jest.fn(),
-		setDir: jest.fn(),
-		getGroupMode: jest.fn().mockReturnValue('allow'),
-		allowForSession: jest.fn(),
-		clearSession: jest.fn(),
-		alwaysAllow: jest.fn(),
-		alwaysDeny: jest.fn(),
-		flush: jest.fn().mockResolvedValue(undefined),
+		setPermissions: vi.fn(),
+		setDir: vi.fn(),
+		getGroupMode: vi.fn().mockReturnValue('allow'),
+		allowForSession: vi.fn(),
+		clearSession: vi.fn(),
+		alwaysAllow: vi.fn(),
+		alwaysDeny: vi.fn(),
+		flush: vi.fn().mockResolvedValue(undefined),
 		...overrides,
-	} as unknown as jest.Mocked<GatewaySession>;
+	} as unknown as Mocked<GatewaySession>;
 }
 
 const SHELL_RESOURCE: AffectedResource = {
@@ -98,8 +107,8 @@ function makeTool(resources: AffectedResource[]): ToolDefinition {
 		description: 'Test tool',
 		inputSchema: { parse: (x: unknown) => x } as ToolDefinition['inputSchema'],
 		annotations: {},
-		execute: jest.fn().mockResolvedValue({ content: [{ type: 'text', text: 'ok' }] }),
-		getAffectedResources: jest.fn().mockResolvedValue(resources),
+		execute: vi.fn().mockResolvedValue({ content: [{ type: 'text', text: 'ok' }] }),
+		getAffectedResources: vi.fn().mockResolvedValue(resources),
 	};
 }
 
@@ -108,7 +117,7 @@ function makeTool(resources: AffectedResource[]): ToolDefinition {
  * normal async initialisation (uploadCapabilities / getAllDefinitions).
  */
 function makeClient(
-	session: jest.Mocked<GatewaySession>,
+	session: Mocked<GatewaySession>,
 	confirmResourceAccess: ConfirmResourceAccess,
 	permissionConfirmation: 'client' | 'instance' = 'client',
 	resources: AffectedResource[] = [SHELL_RESOURCE],
@@ -132,6 +141,29 @@ function makeClient(
 	return client;
 }
 
+function makeClientWithTool(
+	session: Mocked<GatewaySession>,
+	confirmResourceAccess: ConfirmResourceAccess,
+	permissionConfirmation: 'client' | 'instance',
+	tool: ToolDefinition,
+): GatewayClient {
+	const client = new GatewayClient({
+		url: 'http://localhost:5678',
+		apiKey: 'tok',
+		config: makeConfig(permissionConfirmation),
+		session,
+		confirmResourceAccess,
+	});
+
+	// Inject the tool directly so dispatchToolCall finds it without network I/O.
+	// @ts-expect-error — accessing private field for testing
+	client.allDefinitions = [tool];
+	// @ts-expect-error — accessing private field for testing
+	client.definitionMap = new Map([[tool.name, tool]]);
+
+	return client;
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -140,7 +172,7 @@ describe('GatewayClient.checkPermissions', () => {
 	describe('client mode', () => {
 		it('allowOnce — does not modify session permissions', async () => {
 			const session = makeSession();
-			const confirmResourceAccess = jest.fn().mockResolvedValue('allowOnce');
+			const confirmResourceAccess = vi.fn().mockResolvedValue('allowOnce');
 			const client = makeClient(session, confirmResourceAccess);
 
 			await client['dispatchToolCall']('test_tool', {});
@@ -152,7 +184,7 @@ describe('GatewayClient.checkPermissions', () => {
 
 		it('allowForSession — allows the specific resource for the session', async () => {
 			const session = makeSession();
-			const confirmResourceAccess = jest.fn().mockResolvedValue('allowForSession');
+			const confirmResourceAccess = vi.fn().mockResolvedValue('allowForSession');
 			const client = makeClient(session, confirmResourceAccess);
 
 			await client['dispatchToolCall']('test_tool', {});
@@ -163,7 +195,7 @@ describe('GatewayClient.checkPermissions', () => {
 
 		it('alwaysAllow — delegates to session.alwaysAllow', async () => {
 			const session = makeSession();
-			const confirmResourceAccess = jest.fn().mockResolvedValue('alwaysAllow');
+			const confirmResourceAccess = vi.fn().mockResolvedValue('alwaysAllow');
 			const client = makeClient(session, confirmResourceAccess);
 
 			await client['dispatchToolCall']('test_tool', {});
@@ -173,7 +205,7 @@ describe('GatewayClient.checkPermissions', () => {
 
 		it('denyOnce — throws without persisting', async () => {
 			const session = makeSession();
-			const confirmResourceAccess = jest.fn().mockResolvedValue('denyOnce');
+			const confirmResourceAccess = vi.fn().mockResolvedValue('denyOnce');
 			const client = makeClient(session, confirmResourceAccess);
 
 			await expect(client['dispatchToolCall']('test_tool', {})).rejects.toThrow(
@@ -185,7 +217,7 @@ describe('GatewayClient.checkPermissions', () => {
 
 		it('alwaysDeny — persists and throws', async () => {
 			const session = makeSession();
-			const confirmResourceAccess = jest.fn().mockResolvedValue('alwaysDeny');
+			const confirmResourceAccess = vi.fn().mockResolvedValue('alwaysDeny');
 			const client = makeClient(session, confirmResourceAccess);
 
 			await expect(client['dispatchToolCall']('test_tool', {})).rejects.toThrow(
@@ -195,8 +227,8 @@ describe('GatewayClient.checkPermissions', () => {
 		});
 
 		it('skips confirmation when session.check returns allow', async () => {
-			const session = makeSession({ check: jest.fn().mockReturnValue('allow') });
-			const confirmResourceAccess = jest.fn();
+			const session = makeSession({ check: vi.fn().mockReturnValue('allow') });
+			const confirmResourceAccess = vi.fn();
 			const client = makeClient(session, confirmResourceAccess);
 
 			await client['dispatchToolCall']('test_tool', {});
@@ -204,9 +236,47 @@ describe('GatewayClient.checkPermissions', () => {
 			expect(confirmResourceAccess).not.toHaveBeenCalled();
 		});
 
+		it('does not reuse a bare shell command session allow for shell_execute with explicit cwd', async () => {
+			const execute = vi.fn().mockResolvedValue({ content: [{ type: 'text', text: 'ok' }] });
+			const shellTool = { ...shellExecuteTool, execute } as ToolDefinition;
+			const session = makeSession({
+				check: vi.fn((_toolGroup, resource) => (resource === 'ls' ? 'allow' : 'ask')),
+			});
+			const confirmResourceAccess = vi.fn();
+			const client = makeClientWithTool(session, confirmResourceAccess, 'instance', shellTool);
+
+			let errorMessage = '';
+			try {
+				await client['dispatchToolCall']('shell_execute', {
+					command: 'ls',
+					cwd: '/custom/path',
+				});
+			} catch (e) {
+				errorMessage = e instanceof Error ? e.message : '';
+			}
+
+			expect(errorMessage).toMatch(/^GATEWAY_CONFIRMATION_REQUIRED::/);
+			let payload: AffectedResource & { options: string[] };
+			try {
+				payload = JSON.parse(
+					errorMessage.slice('GATEWAY_CONFIRMATION_REQUIRED::'.length),
+				) as AffectedResource & { options: string[] };
+			} catch {
+				throw new Error(`Failed to parse GATEWAY_CONFIRMATION_REQUIRED payload: ${errorMessage}`);
+			}
+			expect(payload).toMatchObject({
+				toolGroup: 'shell',
+				resource: '/custom/path: ls',
+				description: 'Execute shell command: ls in /custom/path',
+			});
+			expect(session.check).toHaveBeenCalledWith('shell', '/custom/path: ls');
+			expect(execute).not.toHaveBeenCalled();
+			expect(confirmResourceAccess).not.toHaveBeenCalled();
+		});
+
 		it('throws immediately when session.check returns deny', async () => {
-			const session = makeSession({ check: jest.fn().mockReturnValue('deny') });
-			const confirmResourceAccess = jest.fn();
+			const session = makeSession({ check: vi.fn().mockReturnValue('deny') });
+			const confirmResourceAccess = vi.fn();
 			const client = makeClient(session, confirmResourceAccess);
 
 			await expect(client['dispatchToolCall']('test_tool', {})).rejects.toThrow(
@@ -219,7 +289,7 @@ describe('GatewayClient.checkPermissions', () => {
 	describe('instance mode', () => {
 		it('throws GATEWAY_CONFIRMATION_REQUIRED with the 3-option list', async () => {
 			const session = makeSession();
-			const confirmResourceAccess = jest.fn();
+			const confirmResourceAccess = vi.fn();
 			const client = makeClient(session, confirmResourceAccess, 'instance');
 
 			await expect(client['dispatchToolCall']('test_tool', {})).rejects.toThrow(
@@ -246,7 +316,7 @@ describe('GatewayClient.checkPermissions', () => {
 
 		it('applies _confirmation decision in instance mode without prompting', async () => {
 			const session = makeSession();
-			const confirmResourceAccess = jest.fn();
+			const confirmResourceAccess = vi.fn();
 			const client = makeClient(session, confirmResourceAccess, 'instance');
 
 			// Simulate the agent sending back _confirmation=allowForSession
@@ -262,7 +332,7 @@ describe('GatewayClient.uploadCapabilities', () => {
 	const originalFetch = global.fetch;
 
 	beforeEach(() => {
-		global.fetch = jest.fn();
+		global.fetch = vi.fn();
 	});
 
 	afterEach(() => {
@@ -275,7 +345,7 @@ describe('GatewayClient.uploadCapabilities', () => {
 			apiKey: 'tok',
 			config: makeConfig(),
 			session: makeSession(),
-			confirmResourceAccess: jest.fn(),
+			confirmResourceAccess: vi.fn(),
 		});
 
 		// Bypass tool discovery — uploadCapabilities only needs definitions to exist.
@@ -288,11 +358,11 @@ describe('GatewayClient.uploadCapabilities', () => {
 	}
 
 	function mockFetchResponse(status: number, body = ''): void {
-		(global.fetch as jest.Mock).mockResolvedValueOnce({
+		(global.fetch as Mock).mockResolvedValueOnce({
 			ok: status >= 200 && status < 300,
 			status,
-			text: jest.fn().mockResolvedValue(body),
-			json: jest.fn().mockResolvedValue({ data: { ok: true } }),
+			text: vi.fn().mockResolvedValue(body),
+			json: vi.fn().mockResolvedValue({ data: { ok: true } }),
 		});
 	}
 

@@ -1,6 +1,7 @@
 import { expect, it } from 'vitest';
 
 import { collectStreamChunks, chunksOfType, describeIf } from './helpers';
+import { IS_REPLAY_MODE } from './vcr';
 import { Agent } from '../../index';
 
 const describe = describeIf('anthropic');
@@ -167,9 +168,9 @@ describe('thinking + cacheControl coexistence', () => {
 // ---------------------------------------------------------------------------
 // External abort signal
 // ---------------------------------------------------------------------------
-
+// TODO: mock aborted requests
 describe('external abort signal', () => {
-	it('cancels a generate() call via external AbortSignal', async () => {
+	it.skipIf(IS_REPLAY_MODE)('cancels a generate() call via external AbortSignal', async () => {
 		const agent = new Agent('abort-signal-test')
 			.model('anthropic/claude-haiku-4-5')
 			.instructions('You are a helpful assistant. Tell me a very long story.');
@@ -183,10 +184,10 @@ describe('external abort signal', () => {
 		});
 
 		expect(result.finishReason).toBe('error');
-		expect(agent.getState().status).toBe('cancelled');
+		expect(result.getState().status).toBe('cancelled');
 	});
 
-	it('cancels a stream() call via external AbortSignal', async () => {
+	it.skipIf(IS_REPLAY_MODE)('cancels a stream() call via external AbortSignal', async () => {
 		const agent = new Agent('abort-stream-signal-test')
 			.model('anthropic/claude-haiku-4-5')
 			.instructions('You are a helpful assistant. Tell me a very long story.');

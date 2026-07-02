@@ -1,5 +1,6 @@
 import { computed, nextTick, ref, type ComputedRef, type Ref } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { AI_GATEWAY_MANAGED_TAG } from '../../constants';
 import { makeWorkflowSetupSection } from '../__tests__/factories';
 import type { WorkflowSetupSection } from '../workflowSetup.types';
 import { useWorkflowSetupInputs } from './useWorkflowSetupInputs';
@@ -139,6 +140,23 @@ describe('useWorkflowSetupInputs', () => {
 		expect(h.inputs.isSectionComplete(h.sectionA)).toBe(true);
 	});
 
+	it('treats AI Gateway-managed credentials as complete without testing them', () => {
+		credentialTest.testableTypes.add('httpBasicAuth');
+		const h = setupHarness();
+		h.inputs.markSectionSkipped(h.sectionA);
+
+		h.inputs.setCredential(h.sectionA, AI_GATEWAY_MANAGED_TAG);
+
+		expect(h.inputs.isSectionComplete(h.sectionA)).toBe(true);
+		expect(credentialTest.testCredentialInBackground).not.toHaveBeenCalled();
+		expect(h.inputs.isSectionSkipped(h.sectionA)).toBe(false);
+		expect(h.inputs.buildCompletedSetupPayload()).toEqual({
+			nodeCredentials: {
+				'HTTP Request': { httpBasicAuth: AI_GATEWAY_MANAGED_TAG },
+			},
+		});
+	});
+
 	it('reports credential test failures only for selected testable credentials', () => {
 		const h = setupHarness();
 		h.inputs.setCredential(h.sectionA, 'cred-1');
@@ -207,6 +225,22 @@ describe('useWorkflowSetupInputs', () => {
 			'Current credential',
 			'httpBasicAuth',
 		);
+	});
+
+	it('seeds AI Gateway-managed credentials without testing them', async () => {
+		const section = makeWorkflowSetupSection({
+			targetNodeName: 'HTTP Request',
+			credentialType: 'httpBasicAuth',
+			currentCredentialId: AI_GATEWAY_MANAGED_TAG,
+		});
+
+		const h = setupHarness([section]);
+		await nextTick();
+
+		expect(h.inputs.credentialSelections.value).toEqual({
+			'HTTP Request': { httpBasicAuth: AI_GATEWAY_MANAGED_TAG },
+		});
+		expect(credentialTest.testCredentialInBackground).not.toHaveBeenCalled();
 	});
 
 	it('does not overwrite an existing user selection when sections refresh', async () => {

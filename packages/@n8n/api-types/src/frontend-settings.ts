@@ -66,6 +66,7 @@ export interface IEnterpriseSettings {
 	customRoles: boolean;
 	personalSpacePolicy: boolean;
 	dataRedaction: boolean;
+	otelCustomSpanAttributes: boolean;
 }
 
 export interface FrontendSettings {
@@ -97,6 +98,7 @@ export interface FrontendSettings {
 	timezone: string;
 	urlBaseWebhook: string;
 	urlBaseEditor: string;
+	urlBaseWebhookTest: string;
 	versionCli: string;
 	nodeJsVersion: string;
 	nodeEnv: string | undefined;
@@ -105,7 +107,7 @@ export interface FrontendSettings {
 	authCookie: {
 		secure: boolean;
 	};
-	binaryDataMode: 'default' | 'filesystem' | 's3' | 'database';
+	binaryDataMode: 'default' | 'filesystem' | 's3' | 'azure' | 'database';
 	releaseChannel: 'stable' | 'beta' | 'nightly' | 'dev' | 'rc';
 	n8nMetadata?: {
 		userId?: string;
@@ -115,6 +117,9 @@ export interface FrontendSettings {
 	dynamicBanners: {
 		endpoint: string;
 		enabled: boolean;
+		filters: {
+			publishedWorkflowCount: number;
+		};
 	};
 	instanceId: string;
 	telemetry: ITelemetrySettings;
@@ -212,6 +217,9 @@ export interface FrontendSettings {
 	folders: {
 		enabled: boolean;
 	};
+	collaboration: {
+		crdt: 'off' | 'local' | 'server';
+	};
 	banners: {
 		dismissed: string[];
 	};
@@ -265,6 +273,7 @@ export type FrontendModuleSettings = {
 		summary: boolean;
 		dashboard: boolean;
 		dateRanges: InsightsDateRange[];
+		earliestDataDate: string | null;
 	};
 
 	/**
@@ -293,8 +302,14 @@ export type FrontendModuleSettings = {
 	'instance-ai'?: {
 		enabled: boolean;
 		localGatewayDisabled: boolean;
+		browserUseEnabled: boolean;
 		proxyEnabled: boolean;
 		cloudManaged: boolean;
+		sandboxEnabled: boolean;
+		workflowBuilderAvailable: boolean;
+		sandboxUnavailableReason: string | null;
+		/** When true, orchestrator LLM step / workflow code debug is captured (`N8N_INSTANCE_AI_RUN_DEBUG_ENABLED`). */
+		runDebugEnabled: boolean;
 	};
 
 	/**
@@ -337,6 +352,12 @@ export type FrontendModuleSettings = {
 		 * `N8N_AGENTS_MODULES`
 		 */
 		modules: string[];
+		/**
+		 * Whether the agent knowledge base is enabled. Requires
+		 * `N8N_AGENTS_AI_SANDBOX_ENABLED=true` and
+		 * `N8N_AGENTS_AI_SANDBOX_PROVIDER=daytona` on the backend.
+		 */
+		knowledgeBaseEnabled: boolean;
 	};
 };
 

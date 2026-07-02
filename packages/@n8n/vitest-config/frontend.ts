@@ -1,5 +1,7 @@
-import { defineConfig } from 'vitest/config';
+import { coverageConfigDefaults, defineConfig } from 'vitest/config';
 import type { InlineConfig } from 'vitest/node';
+
+import { coverageExcludes } from './coverage-excludes.js';
 
 export const createVitestConfig = (options: InlineConfig = {}) => {
 	const vitestConfig = defineConfig({
@@ -13,6 +15,7 @@ export const createVitestConfig = (options: InlineConfig = {}) => {
 			coverage: {
 				enabled: false,
 				include: ['src/**/*.{ts,vue}'],
+				exclude: [...coverageConfigDefaults.exclude, ...coverageExcludes],
 				provider: 'v8',
 				reporter: ['text-summary', 'lcov', 'html-spa'],
 			},
@@ -29,8 +32,8 @@ export const createVitestConfig = (options: InlineConfig = {}) => {
 		const { coverage } = vitestConfig.test;
 		coverage.enabled = true;
 		if (process.env.CI === 'true' && coverage.provider === 'v8') {
-			coverage.include = ['src/**'];
-			coverage.reporter = ['cobertura'];
+			coverage.include = ['src/**/*.{ts,vue}'];
+			coverage.reporter = ['lcov'];
 		}
 	}
 

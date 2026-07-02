@@ -1,10 +1,12 @@
 import { Agent, Memory } from '@n8n/agents';
 
+import { applyAgentThinking } from './apply-agent-thinking';
 import {
 	addSafeMcpTools,
 	createClaimedToolNames,
 	type McpToolNameValidationError,
 } from './mcp-tool-name-validation';
+import { attachRuntimeWorkspaceCapabilities } from './runtime-workspace';
 import { getSystemPrompt } from './system-prompt';
 import { hasRuntimeSkills } from '../skills/runtime-skills';
 import { createToolRegistry, mergeToolRegistries, toolRegistryValues } from '../tool-registry';
@@ -53,7 +55,12 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 
 	// Load MCP tools (cached by config hash inside the manager — only spawns
 	// processes / opens connections on first call or config change).
-	const mcpTools = await mcpManager.getRegularTools(mcpServers, context.logger);
+	const requireMcpToolApproval = context.permissions?.executeMcpTool !== 'always_allow';
+	const mcpTools = await mcpManager.getRegularTools(
+		mcpServers,
+		context.logger,
+		requireMcpToolApproval,
+	);
 	const rawLocalMcpTools = context.localMcpServer
 		? createToolsFromLocalMcpServer(context.localMcpServer, context.logger)
 		: createToolRegistry();
@@ -63,7 +70,7 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 	);
 
 	const warnSkippedMcpTool = (error: McpToolNameValidationError) => {
-		context.logger?.warn('Skipped MCP tool with unsafe name', {
+		context.logger.warn('Skipped MCP tool with unsafe name', {
 			toolName: error.toolName,
 			source: error.source,
 			reason: error.message,
@@ -131,13 +138,14 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		localGateway: context.localGatewayStatus,
 		toolSearchEnabled: hasDeferrableTools,
 		licenseHints: context.licenseHints,
-		timeZone: options.timeZone,
 		browserAvailable: browserToolNames.size > 0,
 		branchReadOnly: context.branchReadOnly,
+		workspaceRoot:
+			orchestrationContext?.workspace && orchestrationContext.workspaceRoot
+				? orchestrationContext.workspaceRoot
+				: undefined,
 	});
 
-	// The orchestrator intentionally does not receive a workspace. Sandbox access
-	// is attached only to sandbox-capable sub-agents.
 	const telemetry = orchestrationContext?.tracing?.getTelemetry?.({
 		agentRole: 'orchestrator',
 		functionId: 'instance-ai.orchestrator',
@@ -152,6 +160,9 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		})
 		.tool(toolRegistryValues(runtimeTools))
 		.checkpoint(options.checkpointStore ?? 'memory');
+	if (options.thinkingEnabled !== false) {
+		applyAgentThinking(agent, modelId);
+	}
 	if (hasDeferrableTools) {
 		agent.deferredTool(toolRegistryValues(deferredTools), { search: { topK: 5 } });
 	}
@@ -162,6 +173,10 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 	if (telemetry) {
 		agent.telemetry(telemetry);
 	}
+	attachRuntimeWorkspaceCapabilities(agent, {
+		workspace: orchestrationContext?.workspace,
+		runtimeSkills: orchestrationContext?.runtimeSkills,
+	});
 
 	if (options.memory) {
 		const mem = new Memory().storage(options.memory);
@@ -176,6 +191,9 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		}
 
 		agent.memory(mem);
+	}
+	if (options.onMemoryTaskEvent) {
+		agent.memoryTaskObserver(options.onMemoryTaskEvent);
 	}
 	mergeTraceRunInputs(
 		orchestrationContext?.tracing?.actorRun,

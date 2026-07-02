@@ -5,12 +5,6 @@
 		"noEmit": true,
 		"moduleResolution": "bundler",
 		"types": ["vite/client", "unplugin-icons/types/vue", "vitest/globals"],
-		"typeRoots": [
-			"./node_modules/@testing-library",
-			"./node_modules/@types",
-			"../../../../node_modules",
-			"../../../../node_modules/@types"
-		],
 		"paths": {
 			"@n8n/design-system*": ["./src*"],
 			"@n8n/composables*": ["../composables/src*"],

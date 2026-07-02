@@ -30,8 +30,8 @@ describe('SecuritySettingsService', () => {
 	const PERSONAL_OWNER_ROLE_SLUG = 'project:personalOwner';
 
 	beforeEach(() => {
-		jest.restoreAllMocks();
-		jest.clearAllMocks();
+		vi.restoreAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('setPersonalSpacePublishing', () => {

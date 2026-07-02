@@ -10,11 +10,11 @@ import type {
 } from '../run-state-registry';
 import { RunStateRegistry } from '../run-state-registry';
 
-jest.mock('nanoid', () => ({
-	nanoid: jest.fn(),
+vi.mock('nanoid', () => ({
+	nanoid: vi.fn(),
 }));
 
-const mockedNanoid = jest.mocked(nanoid);
+const mockedNanoid = vi.mocked(nanoid);
 const day = 24 * 60 * 60_000;
 
 interface TestUser {
@@ -293,23 +293,30 @@ describe('RunStateRegistry', () => {
 
 	describe('getThreadStatus', () => {
 		it('reflects active run state', () => {
-			registry.startRun({ threadId: 'thread-1', user: { id: 'u1', name: 'A' } });
+			const started = registry.startRun({ threadId: 'thread-1', user: { id: 'u1', name: 'A' } });
 
 			const status = registry.getThreadStatus('thread-1', []);
 
 			expect(status.hasActiveRun).toBe(true);
 			expect(status.isSuspended).toBe(false);
+			expect(status.runId).toBe(started.runId);
 			expect(status.backgroundTasks).toEqual([]);
 		});
 
 		it('reflects suspended run state', () => {
 			registry.startRun({ threadId: 'thread-1', user: { id: 'u1', name: 'A' } });
-			registry.suspendRun('thread-1', createSuspendedRunState({ threadId: 'thread-1' }));
+			const suspendedState = createSuspendedRunState({
+				threadId: 'thread-1',
+				runId: 'run-suspended',
+				messageGroupId: 'mg-1',
+			});
+			registry.suspendRun('thread-1', suspendedState);
 
 			const status = registry.getThreadStatus('thread-1', []);
 
 			expect(status.hasActiveRun).toBe(false);
 			expect(status.isSuspended).toBe(true);
+			expect(status.runId).toBe('run-suspended');
 		});
 
 		it('reflects idle state with no runs', () => {
@@ -677,7 +684,7 @@ describe('RunStateRegistry', () => {
 	describe('confirmation flow', () => {
 		describe('registerPendingConfirmation + resolvePendingConfirmation', () => {
 			it('resolves pending confirmation with matching userId', () => {
-				const resolve = jest.fn();
+				const resolve = vi.fn();
 				const pending: PendingConfirmation = {
 					resolve,
 					threadId: 'thread-1',
@@ -695,7 +702,7 @@ describe('RunStateRegistry', () => {
 			});
 
 			it('removes the confirmation after resolving', () => {
-				const resolve = jest.fn();
+				const resolve = vi.fn();
 				const pending: PendingConfirmation = {
 					resolve,
 					threadId: 'thread-1',
@@ -715,7 +722,7 @@ describe('RunStateRegistry', () => {
 		});
 
 		it('returns false when userId does not match', () => {
-			const resolve = jest.fn();
+			const resolve = vi.fn();
 			const pending: PendingConfirmation = {
 				resolve,
 				threadId: 'thread-1',
@@ -743,7 +750,7 @@ describe('RunStateRegistry', () => {
 
 		describe('pending confirmation queries', () => {
 			it('returns pending confirmation metadata without consuming it', () => {
-				const resolve = jest.fn();
+				const resolve = vi.fn();
 				const pending: PendingConfirmation = {
 					resolve,
 					threadId: 'thread-1',
@@ -771,7 +778,7 @@ describe('RunStateRegistry', () => {
 
 		describe('rejectPendingConfirmation', () => {
 			it('auto-rejects with { approved: false }', () => {
-				const resolve = jest.fn();
+				const resolve = vi.fn();
 				const pending: PendingConfirmation = {
 					resolve,
 					threadId: 'thread-1',
@@ -788,7 +795,7 @@ describe('RunStateRegistry', () => {
 			});
 
 			it('removes the confirmation after rejecting', () => {
-				const resolve = jest.fn();
+				const resolve = vi.fn();
 				registry.registerPendingConfirmation('req-1', {
 					resolve,
 					threadId: 'thread-1',
@@ -819,7 +826,7 @@ describe('RunStateRegistry', () => {
 			// Re-add an active run (to test both active and suspended)
 			registry.startRun({ threadId: 'thread-1', user: { id: 'u1', name: 'A' } });
 
-			const resolve = jest.fn();
+			const resolve = vi.fn();
 			registry.registerPendingConfirmation('req-1', {
 				resolve,
 				threadId: 'thread-1',
@@ -835,7 +842,7 @@ describe('RunStateRegistry', () => {
 		});
 
 		it('uses custom cancellation data when provided', () => {
-			const resolve = jest.fn();
+			const resolve = vi.fn();
 			registry.registerPendingConfirmation('req-1', {
 				resolve,
 				threadId: 'thread-1',
@@ -866,8 +873,8 @@ describe('RunStateRegistry', () => {
 		});
 
 		it('only resolves confirmations belonging to the target thread', () => {
-			const resolveThread1 = jest.fn();
-			const resolveThread2 = jest.fn();
+			const resolveThread1 = vi.fn();
+			const resolveThread2 = vi.fn();
 
 			registry.registerPendingConfirmation('req-1', {
 				resolve: resolveThread1,
@@ -898,7 +905,7 @@ describe('RunStateRegistry', () => {
 				user: { id: 'u1', name: 'Alice' },
 			});
 
-			const resolve = jest.fn();
+			const resolve = vi.fn();
 			registry.registerPendingConfirmation('req-1', {
 				resolve,
 				threadId: 'thread-1',
@@ -967,8 +974,8 @@ describe('RunStateRegistry', () => {
 			// tool to run to completion as "denied" and mutate the snapshot
 			// mid-shutdown; we intentionally let them dangle so the user sees
 			// the original confirmation card on reload.
-			const resolve1 = jest.fn();
-			const resolve2 = jest.fn();
+			const resolve1 = vi.fn();
+			const resolve2 = vi.fn();
 
 			registry.registerPendingConfirmation('req-1', {
 				resolve: resolve1,
@@ -992,13 +999,13 @@ describe('RunStateRegistry', () => {
 
 		it('deduplicates pendingThreadIds when one thread has multiple confirmations', () => {
 			registry.registerPendingConfirmation('req-1', {
-				resolve: jest.fn(),
+				resolve: vi.fn(),
 				threadId: 'thread-shared',
 				userId: 'user-1',
 				createdAt: Date.now(),
 			});
 			registry.registerPendingConfirmation('req-2', {
-				resolve: jest.fn(),
+				resolve: vi.fn(),
 				threadId: 'thread-shared',
 				userId: 'user-1',
 				createdAt: Date.now(),
@@ -1015,7 +1022,7 @@ describe('RunStateRegistry', () => {
 				user: { id: 'u1', name: 'A' },
 			});
 			registry.registerPendingConfirmation('req-1', {
-				resolve: jest.fn(),
+				resolve: vi.fn(),
 				threadId: 'thread-1',
 				userId: 'user-1',
 				createdAt: Date.now(),
@@ -1075,14 +1082,14 @@ describe('RunStateRegistry', () => {
 			const now = Date.now();
 
 			registry.registerPendingConfirmation('req-old', {
-				resolve: jest.fn(),
+				resolve: vi.fn(),
 				threadId: 'thread-1',
 				userId: 'user-1',
 				createdAt: now - 60_000,
 			});
 
 			registry.registerPendingConfirmation('req-new', {
-				resolve: jest.fn(),
+				resolve: vi.fn(),
 				threadId: 'thread-2',
 				userId: 'user-2',
 				createdAt: now - 10_000,
@@ -1105,7 +1112,7 @@ describe('RunStateRegistry', () => {
 			registry.startRun({ threadId: 'thread-1', user: { id: 'u1', name: 'A' } });
 			registry.touchActiveRun('thread-1', 0);
 			registry.registerPendingConfirmation('req-1', {
-				resolve: jest.fn(),
+				resolve: vi.fn(),
 				threadId: 'thread-1',
 				userId: 'user-1',
 				createdAt: 20_000,
@@ -1126,7 +1133,7 @@ describe('RunStateRegistry', () => {
 			);
 
 			registry.registerPendingConfirmation('req-1', {
-				resolve: jest.fn(),
+				resolve: vi.fn(),
 				threadId: 'thread-1',
 				userId: 'user-1',
 				createdAt: now - 60_000,

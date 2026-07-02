@@ -80,7 +80,7 @@ vi.mock('./ProjectMembersRoleCell.vue', () => ({
 			roles: { type: Object, required: true },
 			actions: { type: Array, required: true },
 		},
-		emits: ['update:role', 'badge-click'],
+		emits: ['update:role', 'show-role-upgrade-dialog'],
 		template: `
 			<div data-test-id="role-cell">
 				<button
@@ -89,15 +89,12 @@ vi.mock('./ProjectMembersRoleCell.vue', () => ({
 				>
 					{{ roles.find(role => role.slug === data.role)?.displayName || data.role }}
 				</button>
-				<template v-for="action in actions" :key="action.id">
-					<span
-						v-if="action.badge"
-						:data-test-id="'badge-' + action.id"
-						@click="action.disabled && $emit('badge-click', action.id)"
-					>
-						{{ action.badge }}
-					</span>
-				</template>
+				<button
+					:data-test-id="'role-upgrade-' + data.id"
+					@click="$emit('show-role-upgrade-dialog')"
+				>
+					Upgrade
+				</button>
 			</div>
 		`,
 	},
@@ -294,6 +291,15 @@ describe('ProjectMembersTable', () => {
 					userId: '1',
 				},
 			]);
+		});
+
+		it('should emit show-role-upgrade-dialog when role cell requests it', async () => {
+			const { emitted } = renderComponent();
+			const user = userEvent.setup();
+
+			await user.click(screen.getByTestId('role-upgrade-1'));
+
+			expect(emitted()).toHaveProperty('show-role-upgrade-dialog');
 		});
 	});
 

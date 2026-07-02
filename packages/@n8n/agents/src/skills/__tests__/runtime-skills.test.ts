@@ -13,6 +13,7 @@ import {
 	parseRuntimeSkillMarkdown,
 	renderSkillCatalogPrompt,
 } from '..';
+import type { AgentRuntimeConfig } from '../../runtime/loop/agent-runtime';
 import { Agent } from '../../sdk/agent';
 import { isZodSchema } from '../../utils/zod';
 
@@ -156,11 +157,9 @@ description: Has no instructions.
 	});
 
 	it('uses locale-independent ordering for registry hashes', () => {
-		const localeCompareSpy = jest
-			.spyOn(String.prototype, 'localeCompare')
-			.mockImplementation(() => {
-				throw new Error('localeCompare must not be used for registry ordering');
-			});
+		const localeCompareSpy = vi.spyOn(String.prototype, 'localeCompare').mockImplementation(() => {
+			throw new Error('localeCompare must not be used for registry ordering');
+		});
 
 		try {
 			expect(() =>
@@ -416,7 +415,7 @@ Use the workflow SDK.`,
 				instructions: 'Full private skill body: Extract decisions.',
 			},
 		]);
-		const prepare = jest.fn(async () => {
+		const prepare = vi.fn(async () => {
 			await Promise.resolve();
 			source.registry = {
 				...source.registry,
@@ -460,7 +459,7 @@ Use the workflow SDK.`,
 				instructions: 'Extract decisions.',
 			},
 		]);
-		const prepare = jest.fn(async () => {
+		const prepare = vi.fn(async () => {
 			await Promise.resolve();
 			source.registry = {
 				...source.registry,
@@ -476,8 +475,10 @@ Use the workflow SDK.`,
 			.model('anthropic/claude-sonnet-4-5')
 			.instructions('Base instructions.')
 			.skills(source);
-		const runtime = await (agent as unknown as { build(): Promise<unknown> }).build();
-		const instructions = (runtime as { config: { instructions: string } }).config.instructions;
+		const runtimeConfig = await (
+			agent as unknown as { build(): Promise<AgentRuntimeConfig> }
+		).build();
+		const { instructions } = runtimeConfig;
 
 		expect(prepare).toHaveBeenCalledTimes(1);
 		expect(instructions).toContain('name: "Summarize notes"');
@@ -542,7 +543,7 @@ Use the workflow SDK.`,
 				},
 			},
 		]);
-		const loadFile = jest.fn(
+		const loadFile = vi.fn(
 			async (_skillId: string, filePath: string) =>
 				await Promise.resolve({
 					skillId: 'summarize_notes',
@@ -563,6 +564,13 @@ Use the workflow SDK.`,
 			'list_skills',
 			'load_skill',
 		]);
+		const fileBackedList = await createListSkillsTool(fileBackedSource).handler?.({}, {});
+		const fileBackedSkill = (fileBackedList as { skills: Array<Record<string, unknown>> })
+			.skills[0];
+		expect(fileBackedSkill).toMatchObject({
+			name: 'Summarize notes',
+		});
+		expect(fileBackedSkill?.linkedFiles).toBeUndefined();
 
 		const unsupportedLoadTool = createSkillLoadTool(registeredFileSource);
 		expect(unsupportedLoadTool.description).toContain('do not pass filePath');
@@ -595,6 +603,12 @@ Use the workflow SDK.`,
 				filePath: 'references/guide.md',
 			}).data,
 		).toEqual({ skillId: 'summarize_notes', filePath: 'references/guide.md' });
+		expect(
+			loadTool.inputSchema.safeParse({ skillId: 'summarize_notes', filePath: '' }).data,
+		).toEqual({
+			skillId: 'summarize_notes',
+			filePath: '',
+		});
 		await expect(
 			loadTool.handler?.({ skillId: 'summarize_notes', filePath: 'references/missing.md' }, {}),
 		).resolves.toMatchObject({
@@ -604,6 +618,17 @@ Use the workflow SDK.`,
 				'File is not registered for skill Summarize notes: references/missing.md. To load the main skill instructions, retry without filePath.',
 		});
 		expect(loadFile).not.toHaveBeenCalledWith('summarize_notes', 'references/missing.md');
+
+		await expect(
+			loadTool.handler?.({ skillId: 'summarize_notes', filePath: '' }, {}),
+		).resolves.toMatchObject({
+			ok: true,
+			success: true,
+			skillId: 'summarize_notes',
+			name: 'Summarize notes',
+			content: 'Extract decisions.',
+			instructions: 'Extract decisions.',
+		});
 
 		await expect(
 			loadTool.handler?.({ skillId: 'summarize_notes', filePath: 'references/guide.md' }, {}),

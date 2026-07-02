@@ -1,11 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import {
 	computeIdleRanges,
+	builtinToolLabelKey,
 	itemFilterKey,
 	sessionBounds,
 	kindColorToken,
 	formatDuration,
 	IDLE_THRESHOLD_MS,
+	flattenExecutionsToTimelineItems,
+	matchesSearch,
 } from '../session-timeline.utils';
 import type { TimelineItem } from '../session-timeline.types';
 
@@ -106,6 +109,27 @@ describe('kindColorToken', () => {
 	});
 });
 
+describe('matchesSearch', () => {
+	const labelForKey = (key: string) => key;
+
+	it('matches tool call input and output values', () => {
+		const toolItem = item({
+			kind: 'tool',
+			toolName: 'fetch_urlscan_results',
+			toolInput: {
+				url: 'https://urlscan.io/api/v1/search/?q=domain%3Aapp.n8n.cloud',
+			},
+			toolOutput: {
+				domain: 'monicasue.app.n8n.cloud',
+				stats: { uniqIPs: 1 },
+			},
+		});
+
+		expect(matchesSearch(toolItem, 'monicasue', labelForKey)).toBe(true);
+		expect(matchesSearch(toolItem, 'uniqIPs', labelForKey)).toBe(true);
+	});
+});
+
 describe('formatDuration', () => {
 	it('returns empty string for zero or negative input', () => {
 		expect(formatDuration(0)).toBe('');
@@ -129,7 +153,20 @@ describe('formatDuration', () => {
 	});
 });
 
-import { flattenExecutionsToTimelineItems } from '../session-timeline.utils';
+describe('builtinToolLabelKey', () => {
+	it('uses the chat display key for native and fallback web search tools', () => {
+		expect(builtinToolLabelKey('web_search')).toBe('agents.chat.toolNames.webSearch');
+		expect(builtinToolLabelKey('anthropic.web_search_20250305')).toBe(
+			'agents.chat.toolNames.webSearch',
+		);
+		expect(builtinToolLabelKey('openai.web_search')).toBe('agents.chat.toolNames.webSearch');
+	});
+
+	it('does not label unrelated tools as web search', () => {
+		expect(builtinToolLabelKey('custom_web_search')).toBeNull();
+	});
+});
+
 import type {
 	AgentExecution,
 	AgentExecutionTimelineEvent,
@@ -145,14 +182,12 @@ function exec(overrides: Partial<AgentExecution> = {}): AgentExecution {
 		startedAt: '2026-04-24T10:00:00Z',
 		stoppedAt: null,
 		duration: 0,
-		userMessage: '',
-		assistantResponse: '',
+		userMessage: null,
 		model: null,
 		promptTokens: null,
 		completionTokens: null,
 		totalTokens: null,
 		cost: null,
-		toolCalls: null,
 		timeline: null,
 		error: null,
 		hitlStatus: null,
@@ -169,6 +204,45 @@ function withTimeline(
 }
 
 describe('flattenExecutionsToTimelineItems', () => {
+	it('marks the resumed record of a suspended tool call as user feedback', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline(
+				[
+					{
+						type: 'tool-call',
+						kind: 'tool',
+						name: 'chat_action',
+						toolCallId: 'tc-1',
+						input: { action: 'respond' },
+						startTime: 100,
+					},
+					{ type: 'suspension', toolName: 'chat_action', toolCallId: 'tc-1', timestamp: 110 },
+				],
+				{ id: 'e-suspended', hitlStatus: 'suspended' },
+			),
+			withTimeline(
+				[
+					{
+						type: 'tool-call',
+						kind: 'tool',
+						name: 'chat_action',
+						toolCallId: 'tc-1',
+						output: { type: 'button', value: 'approve' },
+						startTime: 200,
+					},
+				],
+				{ id: 'e-resumed', hitlStatus: 'resumed' },
+			),
+		]);
+
+		const toolItems = items.filter((item) => item.kind === 'tool');
+		expect(toolItems).toHaveLength(2);
+		// The original card-creating call is a normal tool call…
+		expect(toolItems[0].isUserFeedback).toBeUndefined();
+		// …the post-suspension record carries the user's answer.
+		expect(toolItems[1].isUserFeedback).toBe(true);
+	});
+
 	it('emits a user item from userMessage using execution startedAt', () => {
 		const items = flattenExecutionsToTimelineItems([exec({ userMessage: 'hello' })]);
 		expect(items[0]).toMatchObject({
@@ -244,7 +318,7 @@ describe('flattenExecutionsToTimelineItems', () => {
 		expect(tool?.workflowId).toBeUndefined();
 	});
 
-	it('maps workflow and rich-interaction timeline calls from the same execution', () => {
+	it('maps workflow and tool timeline calls from the same execution', () => {
 		const items = flattenExecutionsToTimelineItems([
 			withTimeline([
 				{
@@ -264,10 +338,12 @@ describe('flattenExecutionsToTimelineItems', () => {
 				{
 					type: 'tool-call',
 					kind: 'tool',
-					name: 'rich_interaction',
-					toolCallId: 'tc-card',
-					input: { components: [{ type: 'image', url: 'https://example.com/giphy.gif' }] },
-					output: { displayOnly: true },
+					name: 'card_sender',
+					toolCallId: 'tc-tool',
+					input: {
+						card: { components: [{ type: 'image', url: 'https://example.com/giphy.gif' }] },
+					},
+					output: { ok: true },
 					startTime: 1600,
 					endTime: 1700,
 					success: true,
@@ -276,7 +352,7 @@ describe('flattenExecutionsToTimelineItems', () => {
 		]);
 
 		expect(items.filter((i) => i.toolName === 'giphy-gif-search')).toHaveLength(1);
-		expect(items.filter((i) => i.toolName === 'rich_interaction')).toHaveLength(1);
+		expect(items.filter((i) => i.toolName === 'card_sender')).toHaveLength(1);
 		expect(items.find((i) => i.toolName === 'giphy-gif-search')).toMatchObject({
 			kind: 'workflow',
 			workflowName: 'Giphy GIF Search',

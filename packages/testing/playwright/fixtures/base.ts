@@ -9,12 +9,14 @@ import { CAPABILITIES, type Capability } from './capabilities';
 import { consoleErrorFixtures } from './console-error-monitor';
 import { N8N_AUTH_COOKIE } from '../config/constants';
 import { setupDefaultInterceptors } from '../config/intercepts';
+import { backendV8CoverageFixtures } from '../fixtures/backend-v8-coverage';
 import { observabilityFixtures, type ObservabilityTestFixtures } from '../fixtures/observability';
 import {
 	quarantineFixtures,
 	type QuarantineTestFixtures,
 	type QuarantineWorkerFixtures,
 } from '../fixtures/quarantine';
+import { v8CoverageFixtures } from '../fixtures/v8-coverage';
 import { n8nPage } from '../pages/n8nPage';
 import { ApiHelpers } from '../services/api-helper';
 import { TestError, type TestRequirements } from '../Types';
@@ -40,6 +42,9 @@ type TestFixtures = {
 	 * @param mainIndex - 0-based index of the main (0 = main-1, 1 = main-2, etc.)
 	 */
 	createApiForMain: (mainIndex: number) => Promise<ApiHelpers>;
+	/** Internal auto fixture: per-spec backend V8 coverage (DEVP-370). No-op
+	 *  unless COVERAGE_ENABLED. */
+	backendCoverage: undefined;
 };
 
 type WorkerFixtures = {
@@ -79,7 +84,8 @@ export const test = base.extend<
 	WorkerFixtures & CurrentsWorkerFixtures & QuarantineWorkerFixtures
 >({
 	...currentsFixtures.baseFixtures,
-	...currentsFixtures.coverageFixtures,
+	...v8CoverageFixtures,
+	...backendV8CoverageFixtures,
 	...currentsFixtures.actionFixtures,
 	...observabilityFixtures,
 	...consoleErrorFixtures,
@@ -113,6 +119,9 @@ export const test = base.extend<
 					E2E_TESTS: 'true',
 					N8N_RESTRICT_FILE_ACCESS_TO: '',
 				},
+				// Coverage pipeline opt-in: when the coverage runner sets N8N_COVERAGE_DIR,
+				// bridge it to the stack's typed config so containers collect V8 coverage.
+				...(process.env.N8N_COVERAGE_DIR ? { coverageHostDir: process.env.N8N_COVERAGE_DIR } : {}),
 			};
 
 			await use(config);

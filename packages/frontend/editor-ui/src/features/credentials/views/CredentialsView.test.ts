@@ -191,7 +191,7 @@ describe('CredentialsView', () => {
 			}));
 			const { rerender } = renderComponent();
 			await rerender({ credentialId: 'abc123' });
-			expect(uiStore.openExistingCredential).toHaveBeenCalledWith('abc123');
+			expect(uiStore.openExistingCredential).toHaveBeenCalledWith('abc123', expect.anything());
 		});
 
 		it('should not show the modal on the route if the user has no permission to read or update', async () => {
@@ -429,7 +429,7 @@ describe('CredentialsView', () => {
 				type: 'oAuth2Api',
 				createdAt: '2021-05-05T00:00:00Z',
 				updatedAt: '2021-05-05T00:00:00Z',
-				scopes: ['credential:update'],
+				scopes: ['credential:connect'],
 				isManaged: false,
 				isResolvable: true,
 				connectedByMe: false,
@@ -447,7 +447,7 @@ describe('CredentialsView', () => {
 			expect(getByTestId('card-badge')).toBeInTheDocument();
 		});
 
-		it('renders the Connected label for connected private credentials', () => {
+		it('shows no connect prompt or connected label for connected private credentials', () => {
 			enableDynamicCredentials();
 			const credentialsStore = mockedStore(useCredentialsStore);
 			credentialsStore.allCredentials = [
@@ -457,7 +457,7 @@ describe('CredentialsView', () => {
 			const { getByTestId, queryByTestId } = renderComponent();
 
 			expect(queryByTestId('credential-card-connect')).not.toBeInTheDocument();
-			expect(getByTestId('credential-card-connected')).toBeInTheDocument();
+			expect(queryByTestId('credential-card-connected')).not.toBeInTheDocument();
 			expect(getByTestId('card-badge')).toBeInTheDocument();
 		});
 

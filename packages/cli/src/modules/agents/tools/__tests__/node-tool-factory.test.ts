@@ -51,8 +51,8 @@ describe('resolveNodeTool → tool name sanitization', () => {
 	});
 
 	it('executes the mirrored tool node when config stores the base node type', async () => {
-		const executeInline = jest.fn().mockResolvedValue({ status: 'success', data: [] });
-		const getByNameAndVersion = jest.fn().mockReturnValue({
+		const executeInline = vi.fn().mockResolvedValue({ status: 'success', data: [] });
+		const getByNameAndVersion = vi.fn().mockReturnValue({
 			description: { description: 'HTTP Request Tool' },
 		});
 		Container.set(NodeTypes, { getByNameAndVersion } as unknown as NodeTypes);
@@ -101,7 +101,7 @@ describe('resolveNodeTool → tool name sanitization', () => {
 	});
 
 	it('passes node parameters through unchanged at execution time', async () => {
-		const executeInline = jest.fn().mockResolvedValue({ status: 'success', data: [] });
+		const executeInline = vi.fn().mockResolvedValue({ status: 'success', data: [] });
 		const tool = await resolveNodeTool(
 			{
 				...baseToolSchema,
@@ -131,11 +131,11 @@ describe('resolveNodeTool → tool name sanitization', () => {
 
 	it('uses the introspected supplyData schema directly', async () => {
 		const inputSchema = z.object({ query: z.string() });
-		const introspectSupplyDataToolSchema = jest.fn().mockResolvedValue(inputSchema);
+		const introspectSupplyDataToolSchema = vi.fn().mockResolvedValue(inputSchema);
 		Container.set(NodeTypes, {
-			getByNameAndVersion: jest.fn().mockReturnValue({
+			getByNameAndVersion: vi.fn().mockReturnValue({
 				description: { description: 'Search Wikipedia' },
-				supplyData: jest.fn(),
+				supplyData: vi.fn(),
 			}),
 		} as unknown as NodeTypes);
 
@@ -156,5 +156,57 @@ describe('resolveNodeTool → tool name sanitization', () => {
 
 		expect(tool.inputSchema).toBe(inputSchema);
 		expect(introspectSupplyDataToolSchema).toHaveBeenCalled();
+	});
+
+	it('uses a string-compatible object schema when native string tool introspection returns null', async () => {
+		const executeInline = vi.fn().mockResolvedValue({ status: 'success', data: [] });
+		const introspectSupplyDataToolSchema = vi.fn().mockResolvedValue(null);
+		Container.set(NodeTypes, {
+			getByNameAndVersion: vi.fn().mockReturnValue({
+				description: { description: 'Think about something' },
+				supplyData: vi.fn(),
+			}),
+		} as unknown as NodeTypes);
+
+		const tool = await resolveNodeTool(
+			{
+				...baseToolSchema,
+				description: 'Use this to think',
+				node: {
+					nodeType: '@n8n/n8n-nodes-langchain.toolThink',
+					nodeTypeVersion: 1.1,
+					nodeParameters: {},
+				},
+			},
+			{
+				executor: {
+					executeInline,
+					introspectSupplyDataToolSchema,
+				} as unknown as EphemeralNodeExecutor,
+				projectId: 'p1',
+			},
+		);
+
+		const schema = tool.inputSchema as z.ZodType;
+		const parsedString = schema.safeParse('thinking about this problem');
+		const parsedObject = schema.safeParse({ input: 'thinking about this problem' });
+
+		expect(parsedString).toEqual({
+			success: true,
+			data: { input: 'thinking about this problem' },
+		});
+		expect(parsedObject).toEqual({
+			success: true,
+			data: { input: 'thinking about this problem' },
+		});
+
+		if (!parsedString.success) throw new Error('Expected string input to parse');
+		await tool.handler?.(parsedString.data, {} as never);
+
+		expect(executeInline).toHaveBeenCalledWith(
+			expect.objectContaining({
+				inputData: [{ json: { input: 'thinking about this problem' } }],
+			}),
+		);
 	});
 });

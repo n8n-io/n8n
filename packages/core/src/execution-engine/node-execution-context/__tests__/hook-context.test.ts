@@ -1,4 +1,4 @@
-import { ApplicationError } from '@n8n/errors';
+import { UnexpectedError } from 'n8n-workflow';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsHelper,
@@ -134,7 +134,7 @@ describe('HookContext', () => {
 				activation,
 			);
 
-			expect(() => hookContextWithoutWebhookData.getWebhookName()).toThrow(ApplicationError);
+			expect(() => hookContextWithoutWebhookData.getWebhookName()).toThrow(UnexpectedError);
 		});
 	});
 

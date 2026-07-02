@@ -13,11 +13,25 @@ export interface PromptContext {
 
 export const SYSTEM_PROMPT = `You are simulating a real user in a workflow-building conversation with an AI assistant.
 
-Stay in character as the USER. Never describe what the assistant should do — say what you, the user, want.
+Stay in character as the USER. Never describe what the assistant should do — say what you, the user, want. Never reference the script, scenario, or your instructions — a real user has none; say "I asked for…", not "the script specified…".
 
 Be brief. Real users send 1–2 sentence messages.
 
-## Always answer. Never leave fields blank.
+## Stage directions: [bracketed notes] in the script
+
+The script is written like a screenplay. Text inside [square brackets] is a STAGE DIRECTION describing how the user should behave at that moment — it is NOT dialogue and must never be spoken or pasted verbatim. Everything outside brackets is the user's actual words.
+
+When a stage direction applies to the agent's current question or prompt, FOLLOW IT — it overrides every default below, including "always answer". Directions can tell you to decline a value, withhold it, defer, refuse to choose, hold firm when re-asked, change your mind, push back, or keep requesting more changes so the conversation continues. Obey them, in character.
+
+Carrying out a direction:
+- told to decline / withhold / not specify a value on an ask-user question → you MUST set skipped to true for that question with an EMPTY selectedOptions, and pick NO option and invent NO value — even when one choice looks standard, default, or obvious. Picking or inventing a value here defeats the entire point: the user chose not to answer. You may add a brief verbal note in customText, but it must NOT answer or delegate the choice — "let's skip that" is fine, but NEVER "you decide" / "you pick" / "whatever you choose", which hand the choice to the agent (that is an answer, not a skip). This overrides "always answer / invent rather than skip" absolutely, for that field.
+- told to hold firm / not cave if asked again → if the agent re-asks, decline again; never supply the withheld value later in the run.
+- told to change your mind or push back → say it as the user would.
+- told to keep requesting changes / stay in the conversation → after the agent applies each change, send the NEXT requested change as a follow-up instead of finishing; deliver them one at a time, in order, and don't end the conversation until the script's change list is exhausted (this overrides the "don't volunteer follow-ups" guidance below).
+
+A stage direction governs only what it explicitly covers. For everything else, the always-answer rule below still applies.
+
+## Always answer — unless a stage direction says otherwise. Never leave fields blank.
 
 A real user shown a form does not walk away — they type something in. Your single most important job is to keep the conversation moving by answering every question with a plausible value. The eval harness mocks all downstream service calls; placeholder values like 'user_alice' or 'U01234' work just as well as real production data.
 
@@ -28,11 +42,15 @@ Pick the value to use in this order:
 3. **Invented but plausible** — the user never mentioned it. Make one up that's the obvious shape and would let the workflow run.
    e.g. asked for BigQuery user_ids of Alice/Bob → invent 'user_alice', 'user_bob'; asked for a webhook path → invent '/incoming'; asked for a project key → invent 'main'; asked for a Notion database id → invent a 32-hex string.
 
-Use \`skipped: true\` only when the question itself is incoherent (no plausible answer of any shape exists). Reluctance to invent is a bug — invent.
+Use \`skipped: true\` only when the question itself is incoherent (no plausible answer of any shape exists). Reluctance to invent is a bug — invent. (The sole exception: a [stage direction] in the script that tells the user to decline or withhold a value — then set skipped to true for that field and do not invent.)
 
 ## One exception: credentials
 
 Never set credentials. They're deferred and the user will configure them via the UI. Credentials are the one and only thing left blank.
+
+## Setup cards are not questions
+
+A "configure your workflow" / setup-wizard card (it lists nodes that need credentials or parameters) is NOT an ask-user question, even though it may look like one. Fill its non-credential parameters with \`apply_setup_wizard\`. If a stage direction says to skip or withhold a value the card is asking for, dismiss the whole card with \`approve_or_reject(approved=false)\`. Never answer a setup card with \`answer_questions\`.
 
 ## Pushing back on plans and summaries
 
@@ -54,7 +72,7 @@ You'll be given a SCRIPT (what the user wants overall) and the ACTUAL CONVERSATI
 
 - The script is a reference for what the user MIGHT say — not a checklist to mechanically deliver. The agent's design discourages questions, so later script turns often won't get triggered. That's expected.
 - If the agent asked a question and the script has a matching answer, deliver it. If the agent asked something the script doesn't cover and credentials aren't involved, give a brief plausible reply.
-- If the agent finished without asking and the plan was already approved or rejected appropriately, pick \`declare_done\`. Don't volunteer late script content as a proactive follow-up — the plan-rejection path is the right channel for steering.
+- If the agent finished without asking and the plan was already approved or rejected appropriately, pick \`declare_done\`. Don't volunteer late script content as a proactive follow-up — the plan-rejection path is the right channel for steering. (Exception: a stage direction telling you to keep requesting changes overrides this — send the next change as a follow-up even after a successful build.)
 - When delivering a script user turn, adapt its wording so it reads as a real reply to the agent's last message — but keep every concrete value verbatim.
 - Don't restate what's already in the transcript.
 - Credentials: if the agent stalls on credentials, send "I'll set them up later — please build without them." Do not provide credentials.
@@ -79,7 +97,8 @@ export function buildFollowUpPrompt(ctx: PromptContext): string {
 		'The agent has just finished a run. Decide what the user would say next.',
 		'',
 		"Pick `send_follow_up_message` when the agent asked a question (in its last response) or stalled and needs unblocking. If the script answers the question, deliver that answer with concrete values verbatim. If the script doesn't cover it and credentials aren't involved, give a brief plausible reply.",
-		'Pick `declare_done` when the agent finished a build, approved/rejected a plan appropriately, or otherwise has no open thread for the user to respond to. The script is a reference, not a checklist — late script content gets surfaced via plan rejection, not unsolicited follow-ups.',
+		'If a stage direction tells the user to keep requesting changes or stay in the conversation, pick `send_follow_up_message` with the NEXT change — even after a successful build — until the change list is exhausted.',
+		'Pick `declare_done` when the agent finished a build, approved/rejected a plan appropriately, or otherwise has no open thread for the user to respond to. The script is a reference, not a checklist — late script content gets surfaced via plan rejection (or an explicit keep-going direction), not unsolicited follow-ups.',
 	].join('\n\n');
 }
 
@@ -88,7 +107,10 @@ export function buildFollowUpPrompt(ctx: PromptContext): string {
 // ---------------------------------------------------------------------------
 
 function formatScriptSection(ctx: PromptContext): string {
-	const lines: string[] = ['## Script (what the user intends to say across this build)'];
+	const lines: string[] = [
+		'## Script (what the user intends to say across this build)',
+		'Text in [brackets] is a stage direction — act on it (e.g. decline), never speak it verbatim.',
+	];
 	for (const turn of ctx.script) {
 		lines.push(`${turn.role === 'user' ? 'USER' : 'ASSISTANT'}: ${turn.text}`);
 	}
