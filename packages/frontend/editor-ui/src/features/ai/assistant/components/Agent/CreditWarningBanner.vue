@@ -2,6 +2,7 @@
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nButton, N8nIcon, N8nTooltip } from '@n8n/design-system';
+import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { round2 } from './creditFormatting';
 
 const props = defineProps<{
@@ -18,9 +19,13 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const cloudPlanStore = useCloudPlanStore();
 
 const bannerText = computed(() => {
-	return i18n.baseText('aiAssistant.builder.creditBanner.text', {
+	const key = cloudPlanStore.userIsTrialing
+		? 'aiAssistant.builder.creditBanner.trialText'
+		: 'aiAssistant.builder.creditBanner.text';
+	return i18n.baseText(key, {
 		interpolate: {
 			remaining: String(round2(props.creditsRemaining ?? 0)),
 			total: String(round2(props.creditsQuota ?? 0)),
