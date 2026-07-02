@@ -1782,12 +1782,6 @@ export class InstanceAiService {
 			context.branchReadOnly = true;
 		}
 
-		let domainTracker = this.domainAccessTrackersByThread.get(threadId);
-		if (!domainTracker) {
-			domainTracker = createDomainAccessTracker();
-			this.domainAccessTrackersByThread.set(threadId, domainTracker);
-		}
-		context.domainAccessTracker = domainTracker;
 		context.runId = runId;
 
 		// Per-user, thread-level "always allow" grants are persisted in the DB so they survive
@@ -1797,10 +1791,22 @@ export class InstanceAiService {
 		// run — the next run reloads it from the DB anyway.
 		const sessionGrants = await this.loadThreadSessionGrants(threadId, user.id);
 		context.sessionApprovedToolKeys = sessionGrants;
-		context.grantSessionToolApproval = async (key: string) => {
+		const grantSessionToolApproval = async (key: string) => {
 			await this.persistThreadSessionGrant(threadId, user.id, key);
 			sessionGrants.add(key);
 		};
+		context.grantSessionToolApproval = grantSessionToolApproval;
+
+		// Domain-access approvals are stored as grant keys in `instance_ai_thread_grants` (via
+		// the same load/persist path as above), so they survive restart and are visible
+		// cross-main. Recreate the tracker per run seeded from the freshly loaded grants;
+		// transient (allow_once) approvals are run-scoped and don't carry across runs.
+		const domainTracker = createDomainAccessTracker({
+			grantedKeys: sessionGrants,
+			persistGrant: grantSessionToolApproval,
+		});
+		this.domainAccessTrackersByThread.set(threadId, domainTracker);
+		context.domainAccessTracker = domainTracker;
 		if (this.isRunDebugEnabled()) {
 			context.recordWorkflowCodeSnapshot = (snapshot) => {
 				this.runDebugBuffer.ensure(runId, threadId);
