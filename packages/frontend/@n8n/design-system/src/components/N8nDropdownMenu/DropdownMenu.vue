@@ -369,7 +369,7 @@ defineExpose({ open, close });
 	display: flex;
 	flex-direction: column;
 	width: fit-content;
-	min-width: calc(var(--n8n--dropdown-menu-width) / 4);
+	min-width: var(--spacing--4xl);
 	max-width: var(--n8n--dropdown-menu-width);
 	max-height: min(var(--reka-dropdown-menu-content-available-height), calc(var(--height--5xl) * 3));
 	overflow-y: auto;
