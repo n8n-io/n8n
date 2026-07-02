@@ -39,7 +39,7 @@ import type {
 	WorkflowExecuteModeValues as WorkflowExecuteMode,
 } from './execution-context';
 import type { ExecutionStatus } from './execution-status';
-import type { Result } from './result';
+import type { Result } from '@n8n/utils/result';
 import type { Workflow } from './workflow';
 import type { EnvProviderState } from './workflow-data-proxy-env-provider';
 import type { IRunExecutionData } from './run-execution-data/run-execution-data';
@@ -1721,6 +1721,7 @@ export interface INodePropertyTypeOptions {
 	password?: boolean; // Supported by: string
 	copyButton?: boolean; // Supported by: string — renders a readonly value with a click-to-copy affordance
 	redactJsonLeaves?: boolean; // Supported by: json (credential fields only) — redacts leaf values instead of the whole field
+	ignoreCredentialExpressionResolveError?: boolean; // Supported by credentials fields outside execution contexts
 	rows?: number; // Supported by: string
 	showAlpha?: boolean; // Supported by: color
 	sortable?: boolean; // Supported when "multipleValues" set to true
@@ -2252,12 +2253,6 @@ type EngineAction<T = unknown> = ExecuteNodeAction<T>;
  * containing the results of all requested actions.
  *
  * @template T - The type of metadata associated with this request
- *
- * @todo This should use `unknown`, but jest-mock-extended will turn this into
- * `Partial<unknown>` which `unknown` cannot be assigned to, which leads to a
- * lot of type errors in our tests.
- * The correct fix is to make a PR to jest-mock-extended and make it handle
- * `unknown` special, turning it into `unknown` instead of `Partial<unknown>`.
  */
 export type EngineRequest<T = object> = {
 	/** Array of actions that the requesting node wants the engine to fulfill */
@@ -3659,6 +3654,7 @@ export interface INodeGraphItem {
 	package_version?: string; // only for community nodes
 	used_guardrails?: string[]; // only for @n8n/n8n-nodes-langchain.guardrails
 	mcp_client_auth_method?: string; // for @n8n/n8n-nodes-langchain.mcpClientTool and @n8n/n8n-nodes-langchain.mcpClient
+	mcp_server_domain_base?: string; // registrable domain of MCP server URL, for mcpClientTool / mcpClient
 	ai_model?: string; // AI model for model nodes and standalone AI nodes
 	ai_input_tokens?: number; // AI input (prompt) tokens for model nodes
 	ai_output_tokens?: number; // AI output (completion) tokens for model nodes
@@ -3735,6 +3731,7 @@ export interface ExecutionSummary {
 	nodeExecutionStatus?: {
 		[key: string]: IExecutionSummaryNodeExecutionResult;
 	};
+	usedPrivateCredentials?: boolean;
 	annotation?: {
 		vote: AnnotationVote;
 		tags: Array<{

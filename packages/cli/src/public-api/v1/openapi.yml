@@ -45,7 +45,7 @@ tags:
   - name: Folders
     description: Operations about folders
   - name: N8nPackage
-    description: Beta — operations about n8n packages. Disabled by default; enable with `N8N_PUBLIC_API_PACKAGES_ENABLED=true`.
+    description: Beta — breaking changes may still occur without major version bump.
 
 paths:
   /audit:

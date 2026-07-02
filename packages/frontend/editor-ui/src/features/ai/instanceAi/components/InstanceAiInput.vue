@@ -38,6 +38,8 @@ type SuggestionsCyclePayload = {
 };
 type SuggestionPreviewPayload = BaseTextKey | { prompt: string } | null;
 const SUGGESTIONS_TRANSITION_DURATION = { enter: 450, leave: 320 };
+const DEFAULT_AUTOSIZE_ROWS = 3;
+const DEFAULT_MAX_AUTOSIZE_ROWS = 6;
 
 const props = withDefaults(
 	defineProps<{
@@ -413,9 +415,9 @@ const resizable = computed(() => {
 		return { minRows: props.fixedRows, maxRows: props.fixedRows };
 	}
 	if (previewPrompt.value) {
-		return { minRows: 2, maxRows: 2 };
+		return { minRows: DEFAULT_AUTOSIZE_ROWS, maxRows: DEFAULT_AUTOSIZE_ROWS };
 	}
-	return undefined;
+	return { minRows: DEFAULT_AUTOSIZE_ROWS, maxRows: DEFAULT_MAX_AUTOSIZE_ROWS };
 });
 </script>
 

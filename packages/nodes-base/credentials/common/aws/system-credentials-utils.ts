@@ -4,8 +4,16 @@ import { UserError } from 'n8n-workflow';
 import { readFile } from 'fs/promises';
 
 import { getAwsDomain, type AWSRegion } from './regions';
+import {
+	resolveContainerMetadataViaSdk,
+	resolveEnvironmentViaSdk,
+	resolveInstanceMetadataViaSdk,
+	resolvePodIdentityViaSdk,
+	resolveWebIdentityViaSdk,
+	usesSdk,
+} from './system-credentials-sdk';
 
-type Resolvers =
+export type Resolvers =
 	| 'environment'
 	| 'roleForServiceAccount'
 	| 'podIdentity'
@@ -72,6 +80,8 @@ export async function getSystemCredentials(region: AWSRegion) {
 }
 
 async function getEnvironmentCredentials() {
+	if (usesSdk('environment')) return await resolveEnvironmentViaSdk();
+
 	const accessKeyId = envGetter('AWS_ACCESS_KEY_ID');
 	const secretAccessKey = envGetter('AWS_SECRET_ACCESS_KEY');
 	const sessionToken = envGetter('AWS_SESSION_TOKEN');
@@ -98,6 +108,8 @@ async function getEnvironmentCredentials() {
  * @see {@link https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/iam-roles-for-amazon-ec2.html IAM Roles for Amazon EC2}
  */
 async function getInstanceMetadataCredentials() {
+	if (usesSdk('instanceMetadata')) return await resolveInstanceMetadataViaSdk();
+
 	try {
 		const baseUrl = 'http://169.254.169.254/latest';
 		const headers: Record<string, string> = {
@@ -179,6 +191,8 @@ async function getInstanceMetadataCredentials() {
  * @see {@link https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-iam-roles.html IAM Roles for Tasks}
  */
 async function getContainerMetadataCredentials() {
+	if (usesSdk('containerMetadata')) return await resolveContainerMetadataViaSdk();
+
 	try {
 		const relativeUri = envGetter('AWS_CONTAINER_CREDENTIALS_RELATIVE_URI');
 		if (!relativeUri) {
@@ -233,6 +247,8 @@ async function getContainerMetadataCredentials() {
  * @see {@link https://docs.aws.amazon.com/eks/latest/userguide/pod-identities.html EKS Pod Identities}
  */
 async function getPodIdentityCredentials() {
+	if (usesSdk('podIdentity')) return await resolvePodIdentityViaSdk();
+
 	const fullUri = envGetter('AWS_CONTAINER_CREDENTIALS_FULL_URI');
 	if (!fullUri) {
 		return null;
@@ -299,6 +315,8 @@ async function getPodIdentityCredentials() {
  * @see {@link https://github.com/aws/aws-sdk-js-v3/blob/main/packages-internal/credential-provider-web-identity/src/fromWebToken.ts AWS SDK v3 implementation}
  */
 export async function getRoleForServiceAccountCredentials(region: AWSRegion) {
+	if (usesSdk('roleForServiceAccount')) return await resolveWebIdentityViaSdk(region);
+
 	const iamRole = envGetter('AWS_ROLE_ARN');
 	const webIdentityTokenFile = envGetter('AWS_WEB_IDENTITY_TOKEN_FILE');
 

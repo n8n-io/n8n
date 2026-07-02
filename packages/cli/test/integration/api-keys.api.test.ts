@@ -9,6 +9,7 @@ import {
 	getOwnerOnlyApiKeyScopes,
 	type ApiKeyScope,
 } from '@n8n/permissions';
+
 import { PublicApiKeyService } from '@/services/public-api-key.service';
 
 import {

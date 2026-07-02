@@ -23,7 +23,7 @@ export const RESOURCES = {
 	license: ['manage'] as const,
 	logStreaming: ['manage'] as const,
 	orchestration: ['read', 'list'] as const,
-	project: [...DEFAULT_OPERATIONS] as const,
+	project: [...DEFAULT_OPERATIONS, 'export'] as const,
 	saml: ['manage'] as const,
 	securityAudit: ['generate'] as const,
 	securitySettings: ['manage'] as const,
@@ -88,7 +88,7 @@ export const API_KEY_RESOURCES = {
 	workflow: [...DEFAULT_OPERATIONS, 'move', 'activate', 'deactivate', 'export', 'import'] as const,
 	variable: ['create', 'update', 'delete', 'list'] as const,
 	securityAudit: ['generate'] as const,
-	project: ['create', 'update', 'delete', 'list'] as const,
+	project: ['create', 'update', 'delete', 'list', 'export'] as const,
 	user: ['read', 'list', 'create', 'changeRole', 'delete'] as const,
 	execution: ['delete', 'read', 'retry', 'list', 'stop'] as const,
 	credential: ['create', 'read', 'update', 'move', 'delete', 'list'] as const,
@@ -104,6 +104,7 @@ export const API_KEY_RESOURCES = {
 } as const;
 
 export const GLOBAL_OWNER_ROLE_SLUG = 'global:owner';
+export const GLOBAL_CHAT_USER_ROLE_SLUG = 'global:chatUser';
 export const PROJECT_OWNER_ROLE_SLUG = 'project:personalOwner';
 export const PROJECT_ADMIN_ROLE_SLUG = 'project:admin';
 export const PROJECT_EDITOR_ROLE_SLUG = 'project:editor';

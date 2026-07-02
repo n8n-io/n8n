@@ -23,7 +23,7 @@ describe('POST /source-control/pull (Public API)', () => {
 
 	beforeEach(() => {
 		testServer.license.reset();
-		jest.restoreAllMocks();
+		vi.restoreAllMocks();
 	});
 
 	const pullUrl = '/source-control/pull';
@@ -92,18 +92,18 @@ describe('POST /source-control/pull (Public API)', () => {
 	it('should return 200 and import result when pull succeeds', async () => {
 		testServer.license.enable('feat:sourceControl');
 		const preferences = Container.get(SourceControlPreferencesService);
-		jest.spyOn(preferences, 'isSourceControlConnected').mockReturnValue(true);
+		vi.spyOn(preferences, 'isSourceControlConnected').mockReturnValue(true);
 
 		const statusResult: SourceControlledFile[] = [
 			sourceControlledFileFixture('wf-1'),
 			sourceControlledFileFixture('wf-2'),
 			sourceControlledFileFixture('wf-3'),
 		];
-		const pullSpy = jest
+		const pullSpy = vi
 			.spyOn(Container.get(SourceControlService), 'pullWorkfolder')
 			.mockResolvedValue({ statusCode: 200, statusResult });
 
-		const emitSpy = jest.spyOn(Container.get(EventService), 'emit').mockImplementation(() => true);
+		const emitSpy = vi.spyOn(Container.get(EventService), 'emit').mockImplementation(() => true);
 
 		const response = await testServer.publicApiAgentFor(owner).post(pullUrl).send(validBody);
 
@@ -119,10 +119,10 @@ describe('POST /source-control/pull (Public API)', () => {
 	it('should return 409 when pull reports conflicts', async () => {
 		testServer.license.enable('feat:sourceControl');
 		const preferences = Container.get(SourceControlPreferencesService);
-		jest.spyOn(preferences, 'isSourceControlConnected').mockReturnValue(true);
+		vi.spyOn(preferences, 'isSourceControlConnected').mockReturnValue(true);
 
 		const statusResult: SourceControlledFile[] = [];
-		jest.spyOn(Container.get(SourceControlService), 'pullWorkfolder').mockResolvedValue({
+		vi.spyOn(Container.get(SourceControlService), 'pullWorkfolder').mockResolvedValue({
 			statusCode: 409,
 			statusResult,
 		});
@@ -136,11 +136,11 @@ describe('POST /source-control/pull (Public API)', () => {
 	it('should return 400 as plain text when pullWorkfolder throws', async () => {
 		testServer.license.enable('feat:sourceControl');
 		const preferences = Container.get(SourceControlPreferencesService);
-		jest.spyOn(preferences, 'isSourceControlConnected').mockReturnValue(true);
+		vi.spyOn(preferences, 'isSourceControlConnected').mockReturnValue(true);
 
-		jest
-			.spyOn(Container.get(SourceControlService), 'pullWorkfolder')
-			.mockRejectedValue(new Error('Git operation failed'));
+		vi.spyOn(Container.get(SourceControlService), 'pullWorkfolder').mockRejectedValue(
+			new Error('Git operation failed'),
+		);
 
 		const response = await testServer.publicApiAgentFor(owner).post(pullUrl).send(validBody);
 
@@ -151,7 +151,7 @@ describe('POST /source-control/pull (Public API)', () => {
 	it('should return 400 as plain text when body fails PullWorkFolderRequestDto validation', async () => {
 		testServer.license.enable('feat:sourceControl');
 		const preferences = Container.get(SourceControlPreferencesService);
-		jest.spyOn(preferences, 'isSourceControlConnected').mockReturnValue(true);
+		vi.spyOn(preferences, 'isSourceControlConnected').mockReturnValue(true);
 
 		const response = await testServer
 			.publicApiAgentFor(owner)
