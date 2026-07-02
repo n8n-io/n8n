@@ -13,15 +13,9 @@ export const DOMAIN_TOOL_IDS = {
 	PARSE_FILE: 'parse-file',
 } as const;
 
-/**
- * Name of the trace-only child run that `build-workflow` emits carrying the
- * compiled workflow JSON. It is NOT an agent-facing tool — it never enters the
- * agent's context — it exists so eval seed reconstruction can consume the compiled
- * JSON directly instead of re-parsing SDK source, which is fragile across
- * `@n8n/workflow-sdk` versions (the builder that produced a trace may accept syntax
- * the harness's current parser rejects). Producer: `build-workflow.tool.ts`.
- * Consumer: the eval harness `langsmith-seed.ts`.
- */
+/** Trace-only child run emitted by `build-workflow` with the compiled workflow
+ *  JSON — not an agent-facing tool. Consumed by the eval harness
+ *  (`langsmith-seed.ts`) so seed reconstruction can skip the SDK re-parse. */
 export const COMPILED_WORKFLOW_TRACE_RUN_NAME = 'compiled-workflow';
 
 export const ORCHESTRATION_TOOL_IDS = {

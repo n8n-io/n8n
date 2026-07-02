@@ -51,9 +51,8 @@ import { BuildFailureTracker } from '../../workflow-builder/build-failure-tracke
 import { createRemediation } from '../../workflow-loop/remediation';
 import { remediationMetadataSchema } from '../../workflow-loop/workflow-loop-state';
 
-/** Size gate for the compiled-workflow trace payload (serialized length). Over
- *  the gate only a `truncated` marker is emitted — the seed consumer then falls
- *  back to source replay instead of receiving a partial workflow. */
+/** Over this serialized length only a `truncated` marker is emitted; the seed
+ *  consumer falls back to source replay. */
 const MAX_COMPILED_WORKFLOW_TRACE_CHARS = 1_000_000;
 
 const confirmationSuspendSchema = z.object({
@@ -565,14 +564,8 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						workflowVersionId: saved.versionId,
 						sourceHash,
 					});
-					// Capture the compiled workflow JSON as a trace-only child run (never part
-					// of the tool result, so it never enters the agent's context). Lets eval seed
-					// reconstruction consume the JSON directly instead of re-parsing SDK source,
-					// which is fragile across @n8n/workflow-sdk versions. Emitted raw (no
-					// structural sanitization — the consumer needs lossless structure) with a
-					// size gate, on the current turn's ambient trace: a build suspended for
-					// approval and resumed in a later turn holds a stale per-turn handle that
-					// exports nothing.
+					// Trace-only compiled-JSON event for eval seed reconstruction — never part
+					// of the tool result, so it never enters the agent's context.
 					try {
 						const payload = { workflowId: saved.id, sourceHash, workflow: json };
 						const withinSizeGate =

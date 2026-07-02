@@ -642,8 +642,7 @@ describe('reconstructSeedFromThread — filesystem-based builds (post-#32545)', 
 		const runs: FakeRun[] = [
 			{ ...turn('r1', 1, 'Build it'), outputs: { response: 'Building…' } },
 			tool('w1', 2, 'workspace_write_file', { path: FILE, content: 'CODE_V1' }),
-			// Compiled event from the FIRST build only — the rebuild's event was dropped
-			// (e.g. approval-resumed build). Its hash no longer matches the latest build.
+			// Event from the first build only (the rebuild's was dropped) — stale hash.
 			tool(
 				'c1',
 				3,

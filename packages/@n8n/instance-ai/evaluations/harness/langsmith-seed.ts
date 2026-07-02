@@ -542,10 +542,8 @@ function buildSeedWorkflows(
 	const files = new Map<string, string>();
 	const divergedPaths = new Set<string>();
 	const getAsCodeByWorkflowId = new Map<string, string>();
-	// workflowId -> compiled workflow JSON captured by the build-workflow trace event
-	// (COMPILED_WORKFLOW_TRACE_RUN_NAME). Used when its sourceHash matches the latest
-	// successful build's — drift-immune, no SDK re-parse — superseding the
-	// code-replay fallbacks below.
+	// workflowId -> compiled JSON from the build's trace event; supersedes code
+	// replay when its sourceHash matches the latest successful build.
 	const compiledByWorkflowId = new Map<
 		string,
 		{ workflow: ParsedSeedWorkflow; sourceHash?: string }
@@ -566,8 +564,7 @@ function buildSeedWorkflows(
 			const out = isRecord(tool.outputs) ? tool.outputs : {};
 			const compiledWorkflowId = asString(out.workflowId);
 			if (!compiledWorkflowId) continue;
-			// Producer size gate tripped — the latest build's compiled state is
-			// unavailable, so an older event must not serve for it either.
+			// Size gate tripped — an older event must not serve for this id either.
 			if (out.truncated === true) {
 				compiledByWorkflowId.delete(compiledWorkflowId);
 				continue;
@@ -659,11 +656,8 @@ function buildSeedWorkflows(
 	for (const [workflowId, built] of builtByWorkflowId) {
 		const compiled = compiledByWorkflowId.get(workflowId);
 		if (compiled) {
-			// Drift-immune: the builder's own compiled JSON, captured in the trace event —
-			// no SDK re-parse, so it can't break on @n8n/workflow-sdk version drift. Only
-			// when it matches the LATEST successful build: emission is best-effort per
-			// build, so a rebuild whose event was dropped would otherwise be seeded from
-			// the stale earlier payload.
+			// Drift-immune: the builder's own compiled JSON — used only when it matches
+			// the latest build (emission is best-effort; a stale event must not seed).
 			const matchesLatestBuild =
 				compiled.sourceHash !== undefined &&
 				built.sourceHash !== undefined &&
@@ -761,17 +755,14 @@ type ParsedSeedWorkflow = {
 	connections: Record<string, unknown>;
 };
 
-/** Markers the trace pipeline substitutes for structure it dropped (size
- *  sanitizer placeholders, depth-capped scrubber). Their presence means the
- *  compiled JSON is not the full workflow. */
+/** Markers the trace pipeline substitutes for dropped structure — the compiled
+ *  JSON is incomplete when present. */
 const STRUCTURAL_PLACEHOLDER =
 	/\[array\(\d+\)\]|\[object \d+ keys\]|\[redacted-depth-limit\]|__truncatedKeys/;
 
-/** Validate + extract a compiled workflow JSON captured by the build-workflow trace
- *  event (COMPILED_WORKFLOW_TRACE_RUN_NAME). `undefined` = not workflow-shaped;
- *  `{ rejected }` = workflow-shaped but structurally incomplete (the trace pipeline
- *  dropped structure) — in both cases the caller falls back to source reconstruction
- *  instead of seeding a silently corrupt workflow. */
+/** Extract a compiled workflow from the trace event. `undefined` = not
+ *  workflow-shaped, `{ rejected }` = structurally incomplete — callers fall back
+ *  to source reconstruction either way. */
 function extractCompiledWorkflow(
 	value: unknown,
 ): { workflow: ParsedSeedWorkflow } | { rejected: string } | undefined {
@@ -783,8 +774,7 @@ function extractCompiledWorkflow(
 		};
 	}
 	const nodes = (value.nodes as Array<Record<string, unknown>>).map((node) => {
-		// The export scrubber redacts a node's credentials block to a plain string —
-		// drop the key entirely (seeding attaches per-case credentials anyway).
+		// Scrubbed to a string by the exporter — drop; seeding re-attaches credentials.
 		if ('credentials' in node && !isRecord(node.credentials)) {
 			const { credentials: _dropped, ...rest } = node;
 			return rest;
@@ -800,9 +790,8 @@ function extractCompiledWorkflow(
 	};
 }
 
-/** Trace scrubbing can leave value-level redaction markers inside parameters
- *  (secrets, PII, URLs captured before structure-preserving scrubbing). The
- *  workflow still seeds — flag it, since execution may differ from the original. */
+/** Value-level redaction markers survive into the seed — flag them, since
+ *  execution may differ from the original. */
 function warnRedactionMarkers(
 	threadId: string,
 	workflowId: string,

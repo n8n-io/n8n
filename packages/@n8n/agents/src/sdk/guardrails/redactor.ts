@@ -11,14 +11,9 @@ export interface RedactionOptions {
 	detect?: readonly PiiDetectionType[];
 	/** Replacement text for a match. Defaults to `[REDACTED]`. */
 	placeholder?: string;
-	/**
-	 * For `url` matches, keep the routable identity (origin + pathname + query
-	 * param names) and redact only the value-bearing parts (query values,
-	 * userinfo, fragment). Off by default so guardrail behavior is unchanged.
-	 * Telemetry/trace scrubbing enables it: whole-URL redaction destroys machine
-	 * payloads (workflow definitions) without adding protection — secret
-	 * patterns run first and already redact tokens inside URLs.
-	 */
+	/** For `url` matches, keep origin + pathname + query names and redact only the
+	 *  value-bearing parts (query values, userinfo, fragment). Off by default so
+	 *  guardrail behavior is unchanged; telemetry/trace scrubbing opts in. */
 	preserveUrlStructure?: boolean;
 }
 
@@ -61,11 +56,8 @@ export function redactText(input: string, opts: RedactionOptions = {}): Redactio
 		text = text.replace(pattern.regex, (match) => {
 			if (pattern.validate && !pattern.validate(match)) return match;
 			if (opts.preserveUrlStructure && pattern.category === 'url') {
-				// A placeholder inside the match ⇒ an earlier pattern (secrets,
-				// email, …) already redacted part of this URL — leave it as-is,
-				// which also keeps the pass idempotent. The URL regex's stop-set
-				// can clip the placeholder's final char (e.g. `]`), so test for
-				// the placeholder minus its last character.
+				// Already redacted by an earlier pattern ⇒ leave as-is (also keeps the pass
+				// idempotent). The URL regex's stop-set can clip the placeholder's trailing `]`.
 				const placeholderMark = placeholder.length > 1 ? placeholder.slice(0, -1) : placeholder;
 				if (match.includes(placeholderMark)) return match;
 				const rebuilt = stripUrlSensitiveParts(match, placeholder);
@@ -80,12 +72,8 @@ export function redactText(input: string, opts: RedactionOptions = {}): Redactio
 	return { text, matches };
 }
 
-/**
- * Rebuild a matched URL keeping its routable identity (origin + pathname +
- * query param names) while redacting the value-bearing parts: query values,
- * userinfo (excluded from `origin`) and fragment. Unparseable matches fall
- * back to full redaction.
- */
+/** Keep origin + pathname + query names; redact query values, drop userinfo and
+ *  fragment. Unparseable ⇒ fully redacted. */
 function stripUrlSensitiveParts(match: string, placeholder: string): string {
 	try {
 		const url = new URL(match);

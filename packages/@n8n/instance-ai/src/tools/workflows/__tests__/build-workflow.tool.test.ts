@@ -234,8 +234,7 @@ describe('createBuildWorkflowTool', () => {
 		const [finishedRun, finishOpts] = finishRun.mock.calls[0];
 		expect(finishedRun).toMatchObject({ id: 'compiled-run-1' });
 		expect(finishOpts).toMatchObject({
-			// Raw payload: skips structural trace sanitization (the consumer needs
-			// lossless nodes/connections); export-time scrubbing still applies.
+			// Raw: skips structural sanitization; export scrubbing still applies.
 			rawOutputs: true,
 			outputs: {
 				workflowId: 'wf-1',
@@ -280,8 +279,7 @@ describe('createBuildWorkflowTool', () => {
 		expect(result.success).toBe(true);
 		expect(finishRun).toHaveBeenCalledTimes(1);
 		const [, finishOpts] = finishRun.mock.calls[0];
-		// Marker only — the consumer falls back to source replay rather than
-		// receiving a partial workflow. Marker payloads are small ⇒ not raw.
+		// Marker only, and small ⇒ not raw; the consumer falls back to source replay.
 		expect(finishOpts).toMatchObject({
 			outputs: { workflowId: 'wf-1', sourceHash: hashWorkflowSource(source), truncated: true },
 		});

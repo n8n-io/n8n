@@ -341,9 +341,7 @@ async function finishProductSpan(
 		let completion: string | undefined;
 		let runOutputs: Record<string, unknown> | undefined;
 		if (options.rawOutputs) {
-			// Lossless machine payload (pre-bounded by the caller) — the export
-			// scrubber still redacts secrets/PII inside it. Falls through to the
-			// sanitized path if the payload can't be serialized (e.g. cycles).
+			// Lossless pre-bounded payload; the export scrubber still redacts inside it.
 			const raw = rawTracePayload(options.outputs);
 			try {
 				completion = JSON.stringify(raw);
@@ -983,12 +981,9 @@ async function startAndFinishProductChildSpan(
 }
 
 /**
- * Emit a trace-only child run, preferring the CURRENT turn's ambient product
- * trace over the caller's captured handle. A tool suspended in one turn and
- * resumed in a later one holds a stale handle whose runtime was shut down when
- * the original turn ended — emitting through it silently exports nothing (the
- * fallback run has no OTel span, so finishing is a no-op). The ambient store
- * always points at the live turn. Returns which path emitted, for debug logs.
+ * Emit a trace-only child run, preferring the current turn's ambient trace: a
+ * tool suspended in one turn and resumed in a later one holds a stale handle
+ * whose shut-down runtime silently exports nothing. Returns the path taken.
  */
 export async function emitTraceOnlyChildRun(
 	fallbackTracing: InstanceAiTraceContext | undefined,

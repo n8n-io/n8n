@@ -4,12 +4,8 @@ import { describe, it, expect } from 'vitest';
 import { COMPILED_WORKFLOW_TRACE_RUN_NAME } from '../../tools/tool-ids';
 import { GEN_AI_COMPLETION, redactLangSmithTelemetrySpan } from '../trace-payloads';
 
-/**
- * A realistic compiled workflow that the trace pipeline used to destroy:
- * connections' inner arrays sat at the size sanitizer's depth cap and Switch
- * conditions exceeded the scrubber's depth-8 tier (observed live on thread
- * c94f234c: connections → "[array(1)]", nested params → "[object N keys]").
- */
+/** A compiled workflow the trace pipeline used to destroy: connections sat at the
+ *  size sanitizer's depth cap; Switch conditions exceed the scrubber's depth-8 tier. */
 function deepWorkflow() {
 	return {
 		name: 'Router',
