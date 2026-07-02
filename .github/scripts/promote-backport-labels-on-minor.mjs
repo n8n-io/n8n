@@ -1,12 +1,14 @@
-// On a minor release, reconcile backport labels across all PRs that carry them.
+// On a minor release, reconcile backport labels across open PRs that carry them.
 //
 // A minor release promotes the current beta to stable, so:
 //   - `Backport to Stable` is cleared (that line moves forward with this release)
 //   - a PR marked `Backport to Beta` now needs `Backport to Stable` instead
-//   - if that beta change is already in this minor's branch cut, `Backport to
-//     Beta` is dropped too (nothing left to backport)
+//     (the beta line it targeted is now stable)
 //
-// Runs from release-publish.yml when the minor release PR is merged.
+// Only open PRs are touched — they haven't shipped in this release yet, so
+// `Backport to Beta` is left in place.
+//
+// Runs from release-publish-post-release.yml on a minor release.
 
 import { ensureEnvVar, initGithub, addLabel, removeLabel } from './github-helpers.mjs';
 
@@ -16,44 +18,15 @@ export const BETA_LABEL = 'Backport to Beta';
 const BOT_MARKER = '<!-- promote-backport-labels-on-minor -->';
 
 /**
- * Pure closed-form of the reconciliation rules. Given a PR's current labels and
- * whether its change already landed in this minor's branch cut, return the
- * desired end state. Keeping this pure makes it unit-testable without GitHub.
+ * Pure closed-form of the reconciliation rule for open PRs: a PR should carry
+ * `Backport to Stable` iff it carried `Backport to Beta` (remove stable, then
+ * re-add it for beta PRs). `Backport to Beta` is never modified.
  *
- * @param {{ hadStable: boolean, hadBeta: boolean, includedInRelease: boolean }} input
- * @returns {{ wantStable: boolean, wantBeta: boolean }}
+ * @param {{ hadBeta: boolean }} input
+ * @returns {{ wantStable: boolean }}
  */
-export function computeDesiredLabels({ hadStable, hadBeta, includedInRelease }) {
-	// remove stable → if beta, add stable back → so stable ends present iff beta.
-	const wantStable = hadBeta;
-	// beta stays unless it already shipped in this minor.
-	const wantBeta = hadBeta && !includedInRelease;
-	return { wantStable, wantBeta };
-}
-
-/**
- * True if the PR's merge commit is reachable from the release cut (i.e. the
- * change is already part of this minor release). Uses the compare API so no
- * local git history is required.
- *
- * @param {import('@actions/github/lib/utils').GitHub} octokit
- * @param {string} owner
- * @param {string} repo
- * @param {string} releaseRef ref (tag/sha) the minor release was cut at
- * @param {string | null} mergeSha PR's merge commit
- */
-async function isIncludedInRelease(octokit, owner, repo, releaseRef, mergeSha) {
-	if (!mergeSha) return false; // not merged yet → nothing shipped
-
-	const { data } = await octokit.rest.repos.compareCommitsWithBasehead({
-		owner,
-		repo,
-		basehead: `${releaseRef}...${mergeSha}`,
-	});
-
-	// base=releaseRef, head=mergeSha. "behind"/"identical" ⇒ mergeSha is an
-	// ancestor of the release cut ⇒ change is in the cut.
-	return data.status === 'behind' || data.status === 'identical';
+export function computeDesiredLabels({ hadBeta }) {
+	return { wantStable: hadBeta };
 }
 
 /** @param {string[]} reasons */
@@ -67,14 +40,13 @@ function commentBody(version, reasons) {
 }
 
 async function main() {
-	const releaseRef = ensureEnvVar('RELEASE_REF');
 	const version = ensureEnvVar('RELEASE_VERSION');
 	const dryRun = process.env.DRY_RUN === 'true';
 
 	const { octokit, owner, repo } = initGithub();
 
-	// Union of PRs carrying either label (issues.listForRepo requires ALL labels,
-	// so query each label and merge).
+	// Union of open PRs carrying either label (issues.listForRepo requires ALL
+	// labels, so query each label and merge).
 	/** @type {Map<number, Set<string>>} */
 	const prLabels = new Map();
 	for (const label of [STABLE_LABEL, BETA_LABEL]) {
@@ -82,7 +54,7 @@ async function main() {
 			owner,
 			repo,
 			labels: label,
-			state: 'all',
+			state: 'open',
 			per_page: 100,
 		});
 		for (const issue of issues) {
@@ -92,26 +64,13 @@ async function main() {
 		}
 	}
 
-	console.log(`Found ${prLabels.size} PR(s) with backport labels.`);
+	console.log(`Found ${prLabels.size} open PR(s) with backport labels.`);
 
 	for (const [number, labels] of prLabels) {
 		const hadStable = labels.has(STABLE_LABEL);
 		const hadBeta = labels.has(BETA_LABEL);
 
-		// Only resolve ancestry when it can affect the outcome (beta PRs).
-		let includedInRelease = false;
-		if (hadBeta) {
-			const { data: pr } = await octokit.rest.pulls.get({ owner, repo, pull_number: number });
-			includedInRelease = await isIncludedInRelease(
-				octokit,
-				owner,
-				repo,
-				releaseRef,
-				pr.merge_commit_sha,
-			);
-		}
-
-		const { wantStable, wantBeta } = computeDesiredLabels({ hadStable, hadBeta, includedInRelease });
+		const { wantStable } = computeDesiredLabels({ hadBeta });
 
 		/** @type {string[]} */
 		const reasons = [];
@@ -124,10 +83,6 @@ async function main() {
 		if (!hadStable && wantStable) {
 			ops.push(() => addLabel(number, STABLE_LABEL));
 			reasons.push(`Added \`${STABLE_LABEL}\` — promoted from \`${BETA_LABEL}\` (beta is now stable).`);
-		}
-		if (hadBeta && !wantBeta) {
-			ops.push(() => removeLabel(number, BETA_LABEL));
-			reasons.push(`Removed \`${BETA_LABEL}\` — already included in the ${version} minor release.`);
 		}
 
 		if (ops.length === 0) continue;
