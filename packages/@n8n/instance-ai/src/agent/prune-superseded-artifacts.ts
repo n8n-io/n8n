@@ -4,12 +4,6 @@ type ResolvedToolCall = Extract<ContentToolCall, { state: 'resolved' }>;
 
 interface SupersessionRule {
 	toolName: string;
-	/**
-	 * 'latest' keeps the newest occurrence per artifact and stubs older ones;
-	 * 'none' stubs every history occurrence (the turn that fetched it already
-	 * consumed the content, and the stub says how to re-fetch).
-	 */
-	retain: 'latest' | 'none';
 	/** Stable artifact key, or undefined when the block isn't a supersedable artifact. */
 	artifactKey: (block: ResolvedToolCall) => string | undefined;
 }
@@ -22,9 +16,6 @@ const MAX_RETAINED_FILE_CHARS = 32_000;
 
 const SUPERSEDED_NOTE =
 	'Superseded: a newer version of this artifact appears later in the conversation. Re-fetch with the same tool if the old state is needed.';
-
-const CONSUMED_NOTE =
-	'Pruned from context to save tokens. Re-fetch with the same tool if the content is needed again.';
 
 function isJsonObject(value: unknown): value is { [key: string]: unknown } {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -49,7 +40,6 @@ const RULES: SupersessionRule[] = [
 	{
 		// Full workflow snapshots (get-json / get-version / get-as-code / mutation echoes).
 		toolName: 'workflows',
-		retain: 'latest',
 		artifactKey: (block) => {
 			const output = block.output;
 			if (!isJsonObject(output)) return undefined;
@@ -68,7 +58,6 @@ const RULES: SupersessionRule[] = [
 		// workflow JSON files share the workflows-tool key so the same workflow
 		// isn't retained under two representations.
 		toolName: 'workspace_read_file',
-		retain: 'latest',
 		artifactKey: (block) => {
 			if (!isJsonObject(block.input) || typeof block.input.path !== 'string') return undefined;
 			const workflowId = workflowIdFromFileContent(block.output);
@@ -76,11 +65,10 @@ const RULES: SupersessionRule[] = [
 		},
 	},
 	{
-		// Skill instructions are consumed in the turn that loaded them; later
-		// turns get a stub and can re-load on demand instead of carrying ~16k
-		// tokens of skill text on every LLM call.
+		// Keep the newest copy of each skill; stub older duplicate loads only.
+		// Eval-measured: dropping skills from history entirely regresses
+		// multi-turn build quality — the guidance must survive across turns.
 		toolName: 'load_skill',
-		retain: 'none',
 		artifactKey: (block) => {
 			const output = block.output;
 			if (!isJsonObject(output) || typeof output.skillId !== 'string') return undefined;
@@ -109,7 +97,7 @@ function fileDataChars(data: ContentFile['data']): number {
 /**
  * Shrink stale artifact payloads in thread history:
  * - tool results covered by a supersession rule are replaced with a small stub
- *   (keeping the newest occurrence per artifact for 'latest' rules);
+ *   (only the newest occurrence per artifact is kept);
  * - large inline file/image blocks are replaced with a text note (their content
  *   was seen in the turn they arrived in).
  * Large tool results (full workflow JSON, file reads, skill text) dominate the
@@ -152,17 +140,11 @@ export function pruneSupersededArtifacts(messages: AgentDbMessage[]): AgentDbMes
 			if (block.type !== 'tool-call' || block.state !== 'resolved') return block;
 			const match = artifactKeyOf(block);
 			if (!match) return block;
-			const [rule, key] = match;
-			if (
-				rule.retain === 'latest' &&
-				latestBlockPerArtifact.get(key) === `${messageIndex}:${blockIndex}`
-			) {
-				return block;
-			}
+			const [, key] = match;
+			if (latestBlockPerArtifact.get(key) === `${messageIndex}:${blockIndex}`) return block;
 			if (JSON.stringify(block.output ?? null).length < MIN_PRUNABLE_OUTPUT_CHARS) return block;
 			changed = true;
-			const note = rule.retain === 'latest' ? SUPERSEDED_NOTE : CONSUMED_NOTE;
-			return { ...block, output: { superseded: true, artifact: key, note } };
+			return { ...block, output: { superseded: true, artifact: key, note: SUPERSEDED_NOTE } };
 		});
 		return changed ? { ...message, content } : message;
 	});

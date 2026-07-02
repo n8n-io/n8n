@@ -257,19 +257,27 @@ describe('pruneSupersededArtifacts', () => {
 		expect(pruneSupersededArtifacts(messages)).toBe(messages);
 	});
 
-	it('stubs every load_skill result in history, even without a newer load', () => {
-		const skill = toolCallMessage(
+	it('keeps a single load_skill result intact and stubs older duplicate loads', () => {
+		const older = toolCallMessage(
+			'load_skill',
+			{ skillId: 'workflow-builder' },
+			{ ok: true, success: true, skillId: 'workflow-builder', content: '#'.repeat(5000) },
+		);
+		const newer = toolCallMessage(
 			'load_skill',
 			{ skillId: 'workflow-builder' },
 			{ ok: true, success: true, skillId: 'workflow-builder', content: '#'.repeat(5000) },
 		);
 
-		const result = pruneSupersededArtifacts([skill]);
+		const single = pruneSupersededArtifacts([older]);
+		expect(firstBlock(single[0]).output).toMatchObject({ ok: true });
 
+		const result = pruneSupersededArtifacts([older, newer]);
 		expect(firstBlock(result[0]).output).toMatchObject({
 			superseded: true,
 			artifact: 'skill:workflow-builder',
 		});
+		expect(firstBlock(result[1]).output).toMatchObject({ ok: true });
 	});
 
 	it('leaves small load_skill results (e.g. errors) alone', () => {
