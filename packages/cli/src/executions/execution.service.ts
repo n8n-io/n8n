@@ -28,6 +28,7 @@ import type {
 	IWorkflowExecutionDataProcess,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import {
 	ExecutionStatusList,
 	ManualExecutionCancelledError,
@@ -37,7 +38,6 @@ import {
 	WorkflowOperationError,
 	createEmptyRunExecutionData,
 	createErrorExecutionData,
-	ensureError,
 } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';

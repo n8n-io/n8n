@@ -64,9 +64,3 @@ The in-tree addition of `workflowIdPolicy` is the canonical example — it lande
 in the module types + importer, the DTO (+ form-fields list), the handler, and
 the CLI. Grep `workflowIdPolicy` to see every site a new import knob must touch.
 
-## More context
-
-See the module structure and import-pipeline flow notes in the root
-`AGENTS.md` and the package import/export RFC. Licensed behind
-`feat:n8nPackages`; the public-API endpoints are beta and gated by
-`N8N_PUBLIC_API_PACKAGES_ENABLED`.

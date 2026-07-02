@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { Get, RestController } from '@n8n/decorators';
 import { Response } from 'express';
-import { ensureError } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 import { EventService } from '@/events/event.service';
 import { OauthService, type OAuth1CredentialData } from '@/oauth/oauth.service';
