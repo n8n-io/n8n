@@ -137,7 +137,6 @@ defineSlots<TreeNodeDefaultSlots>();
 	user-select: none;
 	color: var(--text-color);
 	background-color: transparent;
-	transition: background-color 0.15s ease;
 
 	&[data-has-toggle] {
 		padding-right: calc(var(--tree-item-padding-inline) * 2);
@@ -157,18 +156,18 @@ defineSlots<TreeNodeDefaultSlots>();
 	}
 
 	&:focus-visible[data-selected]:not([data-disabled]) {
-		background-color: var(--table--row--color--background--hover);
+		background-color: var(--background--hover);
 	}
 }
 
 .treeItemSelected {
 	color: var(--button--color--text--highlight-fill--hover-active-focus);
-	background-color: var(--table--row--color--background--hover);
+	background-color: var(--background--active);
 
 	&:hover:not([data-disabled]),
 	&:active:not([data-disabled]),
 	&:focus-visible:not([data-disabled]) {
-		background-color: var(--table--row--color--background--hover);
+		background-color: var(--background--active);
 	}
 }
 
@@ -228,14 +227,6 @@ defineSlots<TreeNodeDefaultSlots>();
 	}
 }
 
-.treeItemToggleIcon {
-	transition: transform var(--duration--snappy) var(--easing--ease-out);
-
-	@media (prefers-reduced-motion: reduce) {
-		transition: none;
-	}
-}
-
 .treeItemToggleIconExpanded {
 	transform: rotate(90deg);
 }
@@ -243,8 +234,9 @@ defineSlots<TreeNodeDefaultSlots>();
 .treeItemLabel {
 	flex: 1;
 	min-width: 0;
-	font-size: var(--font-size--2xs);
+	font-size: var(--font-size--xs);
 	line-height: var(--line-height--md);
+	font-weight: var(--font-weight--medium);
 	text-align: left;
 	overflow: hidden;
 	text-overflow: ellipsis;
