@@ -91,6 +91,16 @@ describe('agent_builder router', () => {
 		expect(result.errors?.[0].message).toContain('Unknown agent_builder action');
 	});
 
+	it('surfaces the wrapped tools’ systemInstructions on the router tool', () => {
+		// Only the router is registered, so the runtime injects only ITS
+		// systemInstruction — the create_skill/create_task guidance must ride along.
+		const routerTool = createAgentBuilderRouterTool(createContext(createService()));
+		expect(routerTool.systemInstruction).toContain('create_skill:');
+		expect(routerTool.systemInstruction).toContain('create_task:');
+		expect(routerTool.systemInstruction).toContain('placeholder skill');
+		expect(routerTool.systemInstruction).toContain('placeholder objective');
+	});
+
 	it('does not expose interactive tools as router actions', async () => {
 		const result = await executeTool<{ ok: boolean }>(
 			createAgentBuilderRouterTool(createContext(createService())),

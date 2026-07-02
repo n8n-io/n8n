@@ -104,7 +104,7 @@ export function createCreateTaskTool(context: InstanceAiContext) {
 			const deps = resolveCreationDeps(context);
 			if (!deps) return NOT_CONFIGURED;
 			try {
-				const task = await deps.service.createTask(deps.agentId, {
+				const task = await deps.service.createTask(deps.agentId, deps.projectId, {
 					name,
 					objective,
 					cronExpression,

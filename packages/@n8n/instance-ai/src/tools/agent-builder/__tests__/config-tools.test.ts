@@ -219,5 +219,29 @@ describe('agent-builder config tools', () => {
 			expect(result).toMatchObject({ ok: false, stage: 'stale' });
 			expect(updateConfig).not.toHaveBeenCalled();
 		});
+
+		it('returns a structured patch error for a prototype-pollution op instead of throwing', async () => {
+			const updateConfig = vi.fn();
+			const service = createService({
+				getConfigSnapshot: vi
+					.fn()
+					.mockResolvedValue({ config: VALID_CONFIG, updatedAt: 't', versionId: 'v1' }),
+				updateConfig,
+			});
+
+			// The __proto__ guard in fast-json-patch throws a plain TypeError (not a
+			// JsonPatchError); without a try/catch this crashes the handler.
+			const result = await executeTool<{ ok: boolean; stage?: string }>(
+				createPatchConfigTool(createContext(service)),
+				{
+					operations: JSON.stringify([{ op: 'add', path: '/__proto__/polluted', value: true }]),
+					baseConfigHash: getAgentConfigHash(VALID_CONFIG),
+				},
+				{},
+			);
+
+			expect(result).toMatchObject({ ok: false, stage: 'patch' });
+			expect(updateConfig).not.toHaveBeenCalled();
+		});
 	});
 });

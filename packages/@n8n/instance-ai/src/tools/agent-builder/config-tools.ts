@@ -232,23 +232,37 @@ export async function handlePatchConfig(
 		};
 	}
 
-	const patchError = validate(ops, snapshot.config);
-	if (patchError) {
-		// `JsonPatchError.operation` is typed `any` upstream — parse defensively.
-		const failedOp = z.object({ path: z.string() }).safeParse(patchError.operation);
+	let patched: unknown;
+	try {
+		const patchError = validate(ops, snapshot.config);
+		if (patchError) {
+			// `JsonPatchError.operation` is typed `any` upstream — parse defensively.
+			const failedOp = z.object({ path: z.string() }).safeParse(patchError.operation);
+			return {
+				ok: false as const,
+				stage: 'patch',
+				errors: [
+					{
+						path: failedOp.success ? failedOp.data.path : '(root)',
+						message: patchError.message ?? 'Invalid patch operation',
+					},
+				],
+			};
+		}
+
+		patched = applyPatch(deepClone(snapshot.config), ops).newDocument;
+	} catch (e) {
+		// `validate`/`applyPatch` return a JsonPatchError for RFC-6902 violations but
+		// re-throw anything else — notably the TypeError from the built-in
+		// __proto__/constructor prototype-pollution guard. Surface those as a
+		// structured patch error instead of letting them crash the handler.
 		return {
 			ok: false as const,
 			stage: 'patch',
-			errors: [
-				{
-					path: failedOp.success ? failedOp.data.path : '(root)',
-					message: patchError.message ?? 'Invalid patch operation',
-				},
-			],
+			errors: [{ path: '(root)', message: e instanceof Error ? e.message : String(e) }],
 		};
 	}
 
-	const patched: unknown = applyPatch(deepClone(snapshot.config), ops).newDocument;
 	const zodResult = RunnableAgentJsonConfigSchema.safeParse(sanitizeAgentJsonConfig(patched));
 	if (!zodResult.success) {
 		return { ok: false as const, stage: 'schema', errors: formatZodErrors(zodResult.error) };

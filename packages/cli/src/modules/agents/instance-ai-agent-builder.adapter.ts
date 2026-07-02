@@ -17,15 +17,18 @@ import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import { SsrfProtectionConfig } from '@n8n/config';
 import { WorkflowRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { type Scope } from '@n8n/permissions';
 import { camelCase } from 'change-case';
 
 import { CredentialsService } from '@/credentials/credentials.service';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import type { McpRegistryServer } from '@/modules/mcp-registry/registry/mcp-registry.types';
 import { MCP_REGISTRY_PACKAGE_NAME } from '@/modules/mcp-registry/node-description-transform';
 import { NodeCatalogService } from '@/node-catalog/node-catalog.service';
 import { NodeTypes } from '@/node-types';
 import { OauthService } from '@/oauth/oauth.service';
+import { userHasScopes } from '@/permissions.ee/check-access';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { createAiMcpFetch } from '@/utils/ai-proxy-fetch';
@@ -126,6 +129,16 @@ export class InstanceAiAgentBuilderAdapterService {
 			return personal.id;
 		};
 
+		// Mirror the `@ProjectScope('agent:*')` guards on the agent REST routes. The
+		// adapter calls the agents services directly, bypassing the controller
+		// middleware, so a user reaching agent-building via Instance AI must still
+		// hold the corresponding project scope before any agent mutation.
+		const assertProjectScope = async (scope: Scope, projectId: string): Promise<void> => {
+			if (!(await userHasScopes(user, [scope], false, { projectId }))) {
+				throw new ForbiddenError('You do not have permission to modify agents in this project.');
+			}
+		};
+
 		const proxyFetch = createAiMcpFetch(
 			this.outboundHttp,
 			this.ssrfConfig,
@@ -135,6 +148,7 @@ export class InstanceAiAgentBuilderAdapterService {
 		return {
 			createAgent: async (name, projectId) => {
 				const resolvedProjectId = await resolveProjectId(projectId);
+				await assertProjectScope('agent:create', resolvedProjectId);
 				const agent = await this.agentsService.create(resolvedProjectId, name);
 				return { agentId: agent.id, projectId: resolvedProjectId, name: agent.name };
 			},
@@ -154,16 +168,19 @@ export class InstanceAiAgentBuilderAdapterService {
 				projectId,
 				config: AgentJsonConfig,
 			): Promise<AgentConfigSnapshot> => {
+				await assertProjectScope('agent:update', projectId);
 				const result = await this.agentConfigService.updateConfig(agentId, projectId, config);
 				return { config: result.config, updatedAt: result.updatedAt, versionId: result.versionId };
 			},
 
 			createSkill: async (agentId, projectId, skill: AgentBuilderSkill) => {
+				await assertProjectScope('agent:update', projectId);
 				const created = await this.agentSkillsService.createSkill(agentId, projectId, skill);
 				return { id: created.id, skill: created.skill };
 			},
 
-			createTask: async (agentId, task) => {
+			createTask: async (agentId, projectId, task) => {
+				await assertProjectScope('agent:update', projectId);
 				const created = await this.agentTaskService.create(agentId, {
 					name: task.name,
 					objective: task.objective,
@@ -182,6 +199,7 @@ export class InstanceAiAgentBuilderAdapterService {
 				await this.secureRuntime.describeToolSecurely(code),
 
 			buildCustomTool: async (agentId, projectId, code, descriptor) => {
+				await assertProjectScope('agent:update', projectId);
 				const built = await this.agentCustomToolsService.buildCustomTool(
 					agentId,
 					projectId,

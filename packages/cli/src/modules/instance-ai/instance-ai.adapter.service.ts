@@ -282,9 +282,9 @@ export class InstanceAiAdapterService {
 	/**
 	 * Resolve the agent-builder adapter only when the `agents` module is active.
 	 * The adapter class is statically imported (so its `@Service` is always
-	 * registered), so the module-enabled check — not DI resolution — is what gates
+	 * registered), so the module-enabled check is what gates
 	 * agent-building. Returns null when the module is off, so the tools are simply
-	 * absent. The try/catch is a defensive fallback for DI resolution failures.
+	 * absent.
 	 */
 	private getAgentBuilderAdapter(): InstanceAiAgentBuilderAdapterService | null {
 		if (!Container.get(ModuleRegistry).isActive('agents')) return null;

@@ -81,6 +81,17 @@ export function createAgentBuilderRouterTool(context: InstanceAiContext): BuiltT
 		...mergedShape,
 	});
 
+	// The router is the only registered tool, so the runtime only injects ITS
+	// `systemInstruction`. The wrapped tools (e.g. create_skill / create_task)
+	// carry their own guidance, which would otherwise be dropped — collect it and
+	// attach it here, keyed by action so each rule stays actionable.
+	const wrappedInstructions = builtTools
+		.flatMap((tool) => {
+			const instruction = tool.systemInstruction?.trim();
+			return instruction ? [`${tool.name}: ${instruction}`] : [];
+		})
+		.join('\n');
+
 	return new Tool(AGENT_BUILDER_TOOL_IDS.AGENT_BUILDER)
 		.description(
 			'Build and configure an n8n agent. Pass `action` plus that action’s fields. Actions: ' +
@@ -91,6 +102,7 @@ export function createAgentBuilderRouterTool(context: InstanceAiContext): BuiltT
 				'search_mcp_servers, verify_mcp_server, resolve_llm. To ask the user anything (a choice, ' +
 				'which credential, which model) use the native `ask-user` tool.',
 		)
+		.systemInstruction(wrappedInstructions)
 		.input(inputSchema)
 		.handler(async (input, ctx) => {
 			const tool = toolsByAction.get(input.action);

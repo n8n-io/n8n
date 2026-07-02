@@ -845,6 +845,7 @@ export interface InstanceAiAgentBuilderService {
 	): Promise<{ id: string; skill: AgentBuilderSkill }>;
 	createTask(
 		agentId: string,
+		projectId: string,
 		task: AgentTaskConfig & { enabled: boolean },
 	): Promise<{ id: string; name: string; objective: string; cronExpression: string }>;
 	/** Sandbox-validate custom tool TypeScript source and return its descriptor. */

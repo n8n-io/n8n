@@ -14,8 +14,10 @@ import type { InstanceAiAgentBuilderService, InstanceAiContext } from '../../typ
 import { AGENT_BUILDER_TOOL_IDS } from '../tool-ids';
 
 function findProviderDefault(provider: string): [string, LlmProviderDefault] | undefined {
-	const requested = provider.trim();
-	return Object.entries(LLM_PROVIDER_DEFAULTS).find(([, d]) => d.provider === requested);
+	const requested = provider.trim().toLowerCase();
+	return Object.entries(LLM_PROVIDER_DEFAULTS).find(
+		([, d]) => d.provider.toLowerCase() === requested,
+	);
 }
 
 function toLlmResolution(
