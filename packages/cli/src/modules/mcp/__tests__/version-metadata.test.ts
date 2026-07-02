@@ -4,7 +4,6 @@ import {
 	buildCreateVersionMetadata,
 	buildRestoreVersionMetadata,
 	buildUpdateVersionMetadata,
-	MAX_VERSION_DESCRIPTION_LENGTH,
 	MAX_VERSION_NAME_LENGTH,
 	resolveVersionMetadata,
 } from '../tools/workflow-builder/version-metadata';
@@ -195,18 +194,5 @@ describe('resolveVersionMetadata', () => {
 		);
 
 		expect(metadata).toEqual(fallback);
-	});
-
-	test('truncates over-long client values', () => {
-		const metadata = resolveVersionMetadata(
-			{
-				versionName: 'x'.repeat(MAX_VERSION_NAME_LENGTH + 10),
-				versionDescription: 'y'.repeat(MAX_VERSION_DESCRIPTION_LENGTH + 10),
-			},
-			fallback,
-		);
-
-		expect(metadata.name.length).toBe(MAX_VERSION_NAME_LENGTH);
-		expect(metadata.description.length).toBe(MAX_VERSION_DESCRIPTION_LENGTH);
 	});
 });

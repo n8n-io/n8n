@@ -130,12 +130,9 @@ export function resolveVersionMetadata(
 	provided: { versionName?: string; versionDescription?: string },
 	fallback: VersionMetadata,
 ): VersionMetadata {
-	const name = provided.versionName?.trim();
-	const description = provided.versionDescription?.trim();
+	// ponytail: no re-truncation of provided values — the tool input schemas cap lengths
 	return {
-		name: name ? truncate(name, MAX_VERSION_NAME_LENGTH) : fallback.name,
-		description: description
-			? truncate(description, MAX_VERSION_DESCRIPTION_LENGTH)
-			: fallback.description,
+		name: provided.versionName?.trim() || fallback.name,
+		description: provided.versionDescription?.trim() || fallback.description,
 	};
 }
