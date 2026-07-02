@@ -2,7 +2,7 @@ import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { DataSource, type EntityManager, QueryFailedError, Repository } from '@n8n/typeorm';
-import assert from 'node:assert';
+import { UnexpectedError } from 'n8n-workflow';
 
 import {
 	ProjectRelation,
@@ -86,54 +86,37 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 		isRootExecution: boolean,
 		workflowName?: string,
 	): Promise<StatisticsUpsertResult> {
-		const dbType = this.globalConfig.database.type;
+		if (this.globalConfig.database.type !== 'sqlite') {
+			throw new UnexpectedError(
+				'upsertWorkflowStatistics is SQLite-only; use appendIncrement + rollup on Postgres',
+			);
+		}
+
 		const escapedTableName = this.manager.connection.driver.escape(this.metadata.tableName);
 
 		try {
 			const rootCountIncrement = isRootExecution ? 1 : 0;
-			if (dbType === 'sqlite') {
-				await this.query(
-					`INSERT INTO ${escapedTableName} ("count", "rootCount", "name", "workflowId", "workflowName", "latestEvent")
-					VALUES (1, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-					ON CONFLICT (workflowId, name)
-					DO UPDATE SET
-						count = count + 1,
-						rootCount = rootCount + ?,
-						workflowName = excluded.workflowName,
-						latestEvent = CURRENT_TIMESTAMP`,
-					[rootCountIncrement, eventName, workflowId, workflowName ?? null, rootCountIncrement],
-				);
+			await this.query(
+				`INSERT INTO ${escapedTableName} ("count", "rootCount", "name", "workflowId", "workflowName", "latestEvent")
+				VALUES (1, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+				ON CONFLICT (workflowId, name)
+				DO UPDATE SET
+					count = count + 1,
+					rootCount = rootCount + ?,
+					workflowName = excluded.workflowName,
+					latestEvent = CURRENT_TIMESTAMP`,
+				[rootCountIncrement, eventName, workflowId, workflowName ?? null, rootCountIncrement],
+			);
 
-				// SQLite does not offer a reliable way to know whether or not an insert or update happened.
-				// We'll use a naive approach in this case. Query again after and it might cause us to miss the
-				// first production execution sometimes due to concurrency, but it's the only way.
-				const counter = await this.findOne({
-					select: ['count'],
-					where: { name: eventName, workflowId },
-				});
+			// SQLite does not offer a reliable way to know whether or not an insert or update happened.
+			// We'll use a naive approach in this case. Query again after and it might cause us to miss the
+			// first production execution sometimes due to concurrency, but it's the only way.
+			const counter = await this.findOne({
+				select: ['count'],
+				where: { name: eventName, workflowId },
+			});
 
-				return (counter?.count ?? 0) > 1 ? 'update' : counter?.count === 1 ? 'insert' : 'failed';
-			} else if (dbType === 'postgresdb') {
-				// On Postgres, per-execution recording does NOT call this method: `workflowExecutionCompleted`
-				// uses `appendIncrement` and the rollup folds the deltas into the counter. This branch is
-				// reached only by direct callers (e.g. tests seeding the counter).
-				const queryResult = (await this.query(
-					`INSERT INTO ${escapedTableName} ("count", "rootCount", "name", "workflowId", "workflowName", "latestEvent")
-					VALUES (1, $1, $2, $3, $4, CURRENT_TIMESTAMP)
-					ON CONFLICT ("name", "workflowId")
-					DO UPDATE SET
-						"count" = ${escapedTableName}."count" + 1,
-						"rootCount" = ${escapedTableName}."rootCount" + $5,
-						"workflowName" = $4,
-						"latestEvent" = CURRENT_TIMESTAMP
-					RETURNING *;`,
-					[rootCountIncrement, eventName, workflowId, workflowName ?? null, rootCountIncrement],
-				)) as Array<{ count: string | number }>;
-
-				return Number(queryResult[0].count) === 1 ? 'insert' : 'update';
-			}
-
-			assert.fail('Unknown database type');
+			return (counter?.count ?? 0) > 1 ? 'update' : counter?.count === 1 ? 'insert' : 'failed';
 		} catch (error) {
 			if (error instanceof QueryFailedError) return 'failed';
 			throw error;
