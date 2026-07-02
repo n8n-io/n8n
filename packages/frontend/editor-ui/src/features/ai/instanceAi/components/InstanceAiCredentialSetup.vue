@@ -241,7 +241,7 @@ const setupChoiceOptions = computed<Array<ActionDropdownItem<CredentialSetupChoi
 		id: 'ai',
 		label: i18n.baseText('instanceAi.credential.autoSetup'),
 		description: i18n.baseText('instanceAi.credential.autoSetup.description'),
-		icon: 'wand-sparkles',
+		icon: 'bot',
 	},
 	{
 		id: 'manual',
