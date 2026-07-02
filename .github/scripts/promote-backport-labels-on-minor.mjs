@@ -17,26 +17,8 @@ export const BETA_LABEL = 'Backport to Beta';
 
 const BOT_MARKER = '<!-- promote-backport-labels-on-minor -->';
 
-/**
- * Pure closed-form of the reconciliation rule for open PRs: a PR should carry
- * `Backport to Stable` iff it carried `Backport to Beta` (remove stable, then
- * re-add it for beta PRs). `Backport to Beta` is never modified.
- *
- * @param {{ hadBeta: boolean }} input
- * @returns {{ wantStable: boolean }}
- */
-export function computeDesiredLabels({ hadBeta }) {
-	return { wantStable: hadBeta };
-}
-
-/** @param {string[]} reasons */
-function commentBody(version, reasons) {
-	return [
-		BOT_MARKER,
-		`Backport labels updated for the **${version}** minor release:`,
-		'',
-		...reasons.map((r) => `- ${r}`),
-	].join('\n');
+function commentBody(version, reason) {
+	return `${BOT_MARKER}\nBackport labels updated for the **${version}** minor release: ${reason}`;
 }
 
 async function main() {
@@ -70,32 +52,22 @@ async function main() {
 		const hadStable = labels.has(STABLE_LABEL);
 		const hadBeta = labels.has(BETA_LABEL);
 
-		const { wantStable } = computeDesiredLabels({ hadBeta });
+		// Stable should be present iff beta is. Both/neither → already consistent.
+		if (hadStable === hadBeta) continue;
 
-		/** @type {string[]} */
-		const reasons = [];
-		const ops = [];
+		const reason = hadBeta
+			? `added \`${STABLE_LABEL}\` — promoted from \`${BETA_LABEL}\` (beta is now stable).`
+			: `removed \`${STABLE_LABEL}\` — cleared on every minor release.`;
 
-		if (hadStable && !wantStable) {
-			ops.push(() => removeLabel(number, STABLE_LABEL));
-			reasons.push(`Removed \`${STABLE_LABEL}\` — cleared on every minor release.`);
-		}
-		if (!hadStable && wantStable) {
-			ops.push(() => addLabel(number, STABLE_LABEL));
-			reasons.push(`Added \`${STABLE_LABEL}\` — promoted from \`${BETA_LABEL}\` (beta is now stable).`);
-		}
-
-		if (ops.length === 0) continue;
-
-		console.log(`PR #${number}: ${reasons.join(' ')}${dryRun ? ' (dry-run)' : ''}`);
+		console.log(`PR #${number}: ${reason}${dryRun ? ' (dry-run)' : ''}`);
 		if (dryRun) continue;
 
-		for (const op of ops) await op();
+		await (hadBeta ? addLabel(number, STABLE_LABEL) : removeLabel(number, STABLE_LABEL));
 		await octokit.rest.issues.createComment({
 			owner,
 			repo,
 			issue_number: number,
-			body: commentBody(version, reasons),
+			body: commentBody(version, reason),
 		});
 	}
 }
