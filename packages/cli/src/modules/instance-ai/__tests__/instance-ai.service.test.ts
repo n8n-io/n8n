@@ -1480,6 +1480,9 @@ type ResolveConfirmationServiceInternals = {
 	suspendedThreads: {
 		dropPendingConfirmation: Mock;
 	};
+	pendingConfirmationRepo: {
+		isPastExpiry: Mock<(...args: [string, Date]) => Promise<boolean>>;
+	};
 	logger: { debug: Mock; warn: Mock; error: Mock; info: Mock };
 };
 
@@ -1495,6 +1498,9 @@ function createResolveConfirmationService(): ResolveConfirmationServiceInternals
 		getActiveRunId: vi.fn(),
 		findSuspendedByRequestId: vi.fn(),
 		rejectPendingConfirmation: vi.fn(),
+	};
+	service.pendingConfirmationRepo = {
+		isPastExpiry: vi.fn(async () => false),
 	};
 	service.resumeSuspendedRun = vi.fn(async () => null);
 	service.suspendedRunRestorer = {
@@ -1706,6 +1712,44 @@ describe('InstanceAiService — resolveConfirmation', () => {
 		expect(service.runState.rejectPendingConfirmation).not.toHaveBeenCalled();
 		expect(service.cancelRun).not.toHaveBeenCalled();
 		expect(service.suspendedThreads.dropPendingConfirmation).toHaveBeenCalledWith('req-1');
+	});
+
+	it('refuses a click on a confirmation whose row is already past its expiry', async () => {
+		const service = createResolveConfirmationService();
+		service.revalidateActiveUser.mockResolvedValue({ id: 'user-1' } as unknown as User);
+		service.pendingConfirmationRepo.isPastExpiry.mockResolvedValue(true);
+		// A still-present in-memory entry must not be resolved once the row expired.
+		service.runState.getPendingConfirmation.mockReturnValue({
+			userId: 'user-1',
+			threadId: 'thread-1',
+		});
+
+		await expect(service.resolveConfirmation('user-1', 'req-1', approval)).rejects.toThrow(
+			/expired/i,
+		);
+
+		expect(service.pendingConfirmationRepo.isPastExpiry).toHaveBeenCalledWith(
+			'req-1',
+			expect.any(Date),
+		);
+		expect(service.runState.resolvePendingConfirmation).not.toHaveBeenCalled();
+		expect(service.suspendedRunRestorer.resolveOrphanedConfirmation).not.toHaveBeenCalled();
+	});
+
+	it('resolves normally when the row is not past its expiry', async () => {
+		const service = createResolveConfirmationService();
+		service.revalidateActiveUser.mockResolvedValue({ id: 'user-1' } as unknown as User);
+		service.pendingConfirmationRepo.isPastExpiry.mockResolvedValue(false);
+		service.runState.getPendingConfirmation.mockReturnValue({
+			userId: 'user-1',
+			threadId: 'thread-1',
+		});
+		service.runState.resolvePendingConfirmation.mockReturnValue(true);
+		service.runState.getActiveRunId.mockReturnValue('run-1');
+
+		const result = await service.resolveConfirmation('user-1', 'req-1', approval);
+
+		expect(result).toEqual({ ok: true, runId: 'run-1' });
 	});
 
 	it('delegates to the orphan-restoration path when no live run resumes', async () => {

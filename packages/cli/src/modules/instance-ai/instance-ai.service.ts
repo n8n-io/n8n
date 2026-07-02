@@ -237,6 +237,9 @@ function isTelemetryConfigurableAgent(
 const INSTANCE_AI_CHECKPOINT_PRUNE_RETRY_MS = 30 * 1000;
 const WORKFLOW_SETUP_ROUTING_CLAIM_TTL_MS = 15 * 60 * 1000;
 
+const CONFIRMATION_EXPIRED_MESSAGE =
+	'This confirmation has expired. Send a new message to continue.';
+
 /**
  * Upper bound on how long `shutdown()` will wait for in-flight executeRun /
  * processResumedStream promises to drain after their abortControllers fire.
@@ -3853,6 +3856,17 @@ export class InstanceAiService {
 				requestId,
 			});
 			return null;
+		}
+
+		// Close the same-process window: a click on a pre-rendered card can still
+		// reach the in-memory fast path after the row's `expiresAt` but before the
+		// prune/liveness sweep drops it. The persisted row is the source of truth
+		// for expiry, so consult it first and refuse a stale click; the sweep still
+		// owns releasing the suspended run. One extra SELECT per click — the click
+		// path isn't hot.
+		if (await this.pendingConfirmationRepo.isPastExpiry(requestId, new Date())) {
+			this.logger.debug('Rejecting expired confirmation', { requestId });
+			throw new UserError(CONFIRMATION_EXPIRED_MESSAGE);
 		}
 
 		const pending = this.runState.getPendingConfirmation(requestId);

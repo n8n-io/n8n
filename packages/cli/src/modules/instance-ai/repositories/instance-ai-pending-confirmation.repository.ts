@@ -65,6 +65,16 @@ export class InstanceAiPendingConfirmationRepository extends Repository<Instance
 		return result.affected ?? 0;
 	}
 
+	/**
+	 * True when a confirmation row exists and its `expiresAt` is already in the
+	 * past. Rows with a null `expiresAt` (timeout disabled) — and a missing row
+	 * — are not expired; the caller handles "not found" on its own path.
+	 */
+	async isPastExpiry(requestId: string, now: Date): Promise<boolean> {
+		const count = await this.count({ where: { requestId, expiresAt: LessThan(now) } });
+		return count > 0;
+	}
+
 	async findByThreadId(threadId: string): Promise<InstanceAiPendingConfirmation[]> {
 		return await this.find({ where: { threadId } });
 	}
