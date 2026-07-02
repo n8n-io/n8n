@@ -9,9 +9,9 @@ import { FolderSerializer } from './folder.serializer';
 import type { PackageWriter } from '../../io/package-writer';
 import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator';
 import type { ManifestEntry } from '../../spec/manifest.schema';
-import type { WorkflowCredentialRequirement } from '../credential/credential.types';
+import { mergeRequirements } from '../requirements.types';
+import type { WorkflowExportRequirements } from '../requirements.types';
 import { WorkflowExporter } from '../workflow/workflow.exporter';
-import type { WorkflowExportRequirements } from '../workflow/workflow.exporter';
 
 export interface FolderExportRequest {
 	user: User;
@@ -30,7 +30,7 @@ export interface FolderExportResult {
 	entries: ManifestEntry[];
 	/** Workflows contained in the exported folders → `manifest.workflows[]`. */
 	workflowEntries: ManifestEntry[];
-	/** Credentials referenced by contained workflows, gathered at the package top level. */
+	/** What the contained workflows need, gathered at the package top level (credentials today). */
 	requirements: WorkflowExportRequirements;
 }
 
@@ -122,7 +122,7 @@ export class FolderExporter {
 		if (reservedName) allocator.reserve(reservedName);
 		const entries: ManifestEntry[] = [];
 		const workflowEntries: ManifestEntry[] = [];
-		const credentials: WorkflowCredentialRequirement[] = [];
+		const requirementParts: WorkflowExportRequirements[] = [];
 
 		for (const folder of this.orderedByCreation(siblings)) {
 			const target = allocator.allocate(folder.name);
@@ -144,7 +144,7 @@ export class FolderExporter {
 					basePrefix: target,
 				});
 				workflowEntries.push(...contained.entries);
-				credentials.push(...contained.requirements.credentials);
+				requirementParts.push(contained.requirements);
 			}
 
 			const children = childrenByParent.get(folder.id) ?? [];
@@ -160,10 +160,10 @@ export class FolderExporter {
 			);
 			entries.push(...descendants.entries);
 			workflowEntries.push(...descendants.workflowEntries);
-			credentials.push(...descendants.requirements.credentials);
+			requirementParts.push(descendants.requirements);
 		}
 
-		return { entries, workflowEntries, requirements: { credentials } };
+		return { entries, workflowEntries, requirements: mergeRequirements(...requirementParts) };
 	}
 
 	/**

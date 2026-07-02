@@ -9,6 +9,7 @@ import { ImportPipeline } from './engine/import-pipeline';
 import { CredentialExporter } from './entities/credential/credential.exporter';
 import { FolderExporter } from './entities/folder/folder.exporter';
 import { ProjectExporter } from './entities/project/project.exporter';
+import { mergeRequirements } from './entities/requirements.types';
 import { WorkflowExporter } from './entities/workflow/workflow.exporter';
 import { TarPackageWriter } from './io/tar/tar-package-writer';
 import type {
@@ -72,12 +73,16 @@ export class N8nPackagesService {
 					})
 				: undefined;
 
+		// Merge every export result's requirements once, grouped by type; each
+		// exporter is then handed its own slice (credentials today).
+		const requirements = mergeRequirements(
+			workflowExportResult?.requirements,
+			folderExportResult?.requirements,
+		);
+
 		const credentialExportResult = await this.credentialExporter.export({
 			user: request.user,
-			requirements: [
-				...(workflowExportResult?.requirements.credentials ?? []),
-				...(folderExportResult?.requirements.credentials ?? []),
-			],
+			requirements: requirements.credentials,
 			writer,
 		});
 

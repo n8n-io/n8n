@@ -8,6 +8,7 @@ import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator';
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import { CredentialRequirementsExtractor } from '../credential/credential-requirements.extractor';
 import type { WorkflowCredentialRequirement } from '../credential/credential.types';
+import type { WorkflowExportRequirements } from '../requirements.types';
 
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -21,10 +22,6 @@ export interface WorkflowExportRequest {
 	 * so contained workflows nest under `<folderTarget>/workflows/...`.
 	 */
 	basePrefix?: string;
-}
-
-export interface WorkflowExportRequirements {
-	credentials: WorkflowCredentialRequirement[];
 }
 
 export interface WorkflowExportResult {
