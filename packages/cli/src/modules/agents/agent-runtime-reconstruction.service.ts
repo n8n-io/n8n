@@ -27,7 +27,7 @@ import {
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
 import { AgentsConfig, SsrfProtectionConfig } from '@n8n/config';
-import { UserRepository, WorkflowRepository } from '@n8n/db';
+import { WorkflowRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
@@ -41,7 +41,6 @@ import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { createAiMcpFetch, createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 import { WorkflowRunner } from '@/workflow-runner';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { Agent } from './entities/agent.entity';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
@@ -132,8 +131,6 @@ export class AgentRuntimeReconstructionService {
 		private readonly agentFileRepository: AgentFileRepository,
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly workflowRepository: WorkflowRepository,
-		private readonly userRepository: UserRepository,
-		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly urlService: UrlService,
 		private readonly n8nCheckpointStorage: N8NCheckpointStorage,
 		private readonly secureRuntime: AgentSecureRuntime,
@@ -235,7 +232,7 @@ export class AgentRuntimeReconstructionService {
 		} = options;
 
 		const toolExecutor = this.secureRuntime.createToolExecutor(toolCodeByName);
-		const toolResolver = this.makeToolResolver(projectId, userId);
+		const toolResolver = this.makeToolResolver(projectId);
 		const resolvedTools: BuiltTool[] = [];
 
 		// Transport for LLM calls
@@ -350,20 +347,14 @@ export class AgentRuntimeReconstructionService {
 			},
 		};
 	}
-	private makeToolResolver(projectId: string, userId: string): ToolResolver {
+	private makeToolResolver(projectId: string): ToolResolver {
 		return async (ref: AgentJsonToolConfig) => {
 			if (ref.type === 'workflow') {
-				if (!userId) {
-					throw new UserError('userId is required when agent uses workflow tools');
-				}
 				const { resolveWorkflowTool } = await import('./tools/workflow-tool-factory');
 				return await resolveWorkflowTool(ref, {
 					workflowRepository: this.workflowRepository,
 					workflowRunner: await getWorkflowRunner(),
 					activeExecutions: this.activeExecutions,
-					workflowFinderService: this.workflowFinderService,
-					userRepository: this.userRepository,
-					userId,
 					projectId,
 					webhookBaseUrl: this.urlService.getWebhookBaseUrl(),
 				});
