@@ -28,3 +28,15 @@ export interface ScheduledTask {
 	attempts: number;
 	maxAttempts: number;
 }
+
+/**
+ * A `ScheduledTask` the executor has claimed: `running` and owned for the lease's
+ * duration, carrying the coordination fields the claim sets (see the claim in
+ * `ScheduledTaskRepository`). `startedAt` stays null until the task actually fires.
+ */
+export interface ClaimedTask extends ScheduledTask {
+	claimedBy: string;
+	leaseExpiresAt: Date;
+	leaseEpoch: number;
+	startedAt: Date | null;
+}
