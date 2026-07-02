@@ -263,6 +263,7 @@ describe('InstanceAiThreadView', () => {
 			currentTasks: null,
 			producedArtifacts: new Map(),
 			resourceNameIndex: new Map(),
+			linkableResourceNameIndex: new Map(),
 			feedbackByResponseId: {},
 			rateableResponseId: null,
 			pendingConfirmations: [],

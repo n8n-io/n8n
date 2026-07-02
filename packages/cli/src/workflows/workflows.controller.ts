@@ -37,7 +37,8 @@ import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, type FindOptionsRelations } from '@n8n/typeorm';
 import express from 'express';
-import { calculateWorkflowChecksum, ensureError } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { calculateWorkflowChecksum } from 'n8n-workflow';
 
 import { CollaborationService } from '../collaboration/collaboration.service';
 import { WorkflowPublicationStatusService } from './publication/workflow-publication-status.service';
