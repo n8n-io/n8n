@@ -27,7 +27,6 @@ import {
 } from '../model-providers';
 
 const MAX_MODEL_NAME_CHARS = 45;
-const MAX_SELECTED_NAME_CHARS = 30;
 const MAX_SEARCH_RESULTS_PER_PROVIDER = 10;
 const FREE_OPENAI_CREDITS_PROVIDER = 'openai';
 const FREE_OPENAI_CREDITS_MODEL = 'gpt-5-mini';
@@ -46,7 +45,6 @@ const {
 	modelsByProvider,
 	isLoading,
 	projectId,
-	horizontal = false,
 	warnMissingCredentials = false,
 	disabled = false,
 } = defineProps<{
@@ -55,7 +53,6 @@ const {
 	modelsByProvider: AgentModelsByProvider;
 	isLoading: boolean;
 	projectId: string;
-	horizontal?: boolean;
 	warnMissingCredentials?: boolean;
 	disabled?: boolean;
 }>();
@@ -423,13 +420,10 @@ defineExpose({
 		:selected-label="selectedLabel"
 		:selected-credential-name="selectedCredentialName"
 		:credentials-missing="isCredentialsMissing"
-		:credentials-missing-label="i18n.baseText('agents.modelSelector.credentialsMissing')"
 		:no-match-label="i18n.baseText('agents.modelSelector.noMatch')"
-		:horizontal="horizontal"
 		:disabled="disabled"
 		data-test-id="agent-model-selector"
 		credential-data-test-id="agent-model-selector-credential"
-		:max-selected-name-chars="MAX_SELECTED_NAME_CHARS"
 		@search="handleSearch"
 		@select="onSelect"
 	>

@@ -113,7 +113,6 @@ vi.mock('../components/AgentModelSelector.vue', () => ({
 			'isLoading',
 			'projectId',
 			'warnMissingCredentials',
-			'horizontal',
 			'disabled',
 		],
 		emits: ['change', 'selectCredential'],

@@ -7,6 +7,7 @@ import { truncateBeforeLast } from '@n8n/utils/string/truncate';
 import { Primitive } from 'reka-ui';
 import { computed, getCurrentInstance, useCssModule, useTemplateRef } from 'vue';
 
+import { useI18n } from '../../composables/useI18n';
 import type {
 	AiModelSelectorMenuItem,
 	AiModelSelectorMenuItemData,
@@ -17,6 +18,8 @@ import N8nIcon from '../N8nIcon';
 import N8nText from '../N8nText';
 import N8nTooltip from '../N8nTooltip';
 
+const MAX_SELECTED_NAME_CHARS = 30;
+
 const {
 	items,
 	selectedLabel,
@@ -24,25 +27,31 @@ const {
 	credentialsMissing = false,
 	credentialsMissingLabel,
 	noMatchLabel,
-	horizontal = false,
-	text = false,
+	showBorder = true,
 	disabled = false,
 	dataTestId,
 	credentialDataTestId,
-	maxSelectedNameChars,
 } = defineProps<{
+	/** Menu items to render in the dropdown. */
 	items: Array<AiModelSelectorMenuItem<TData>>;
+	/** Label for the currently selected model shown in the trigger. */
 	selectedLabel: string;
+	/** Credential name shown below the selected model, when available. */
 	selectedCredentialName?: string;
+	/** Whether to show the missing-credentials state in the trigger. */
 	credentialsMissing?: boolean;
-	credentialsMissingLabel: string;
+	/** Text shown when credentials are required but missing. */
+	credentialsMissingLabel?: string;
+	/** Empty-state text shown when search returns no matching items. */
 	noMatchLabel: string;
-	horizontal?: boolean;
-	text?: boolean;
+	/** Whether the trigger button should render with a border. */
+	showBorder?: boolean;
+	/** Whether the trigger is disabled and cannot open the dropdown. */
 	disabled?: boolean;
+	/** Test id applied to the trigger button. */
 	dataTestId: string;
+	/** Test id applied to the selected credential label. */
 	credentialDataTestId: string;
-	maxSelectedNameChars: number;
 }>();
 
 const emit = defineEmits<{
@@ -62,7 +71,11 @@ defineSlots<{
 const dropdownRef = useTemplateRef('dropdownRef');
 const $style = useCssModule();
 const instance = getCurrentInstance();
+const { t } = useI18n();
 
+const resolvedCredentialsMissingLabel = computed(
+	() => credentialsMissingLabel ?? t('aiModelSelector.credentialsMissing'),
+);
 const hasSearchListener = computed(() => Boolean(instance?.vnode.props?.onSearch));
 
 const extraPopperClass = computed(() => $style.component);
@@ -100,35 +113,31 @@ defineExpose({
 		<template #trigger>
 			<Primitive
 				as="button"
-				:class="[
-					$style.dropdownButton,
-					horizontal && $style.dropdownButtonHorizontal,
-					text && $style.dropdownButtonText,
-				]"
+				:class="[$style.dropdownButton, !showBorder && $style.dropdownButtonBorderless]"
 				:disabled="disabled"
 				:data-test-id="dataTestId"
 			>
-				<div :class="[$style.selected, horizontal && $style.selectedHorizontal]">
+				<div :class="$style.selected">
 					<slot name="trigger-leading" :ui="{ class: $style.icon }" />
 					<N8nText bold truncate :class="$style.selectedLabel">
-						{{ truncateBeforeLast(selectedLabel, maxSelectedNameChars) }}
+						{{ truncateBeforeLast(selectedLabel, MAX_SELECTED_NAME_CHARS) }}
 					</N8nText>
-					<N8nText
-						v-if="selectedCredentialName"
-						size="small"
-						bold
-						color="text-light"
-						:data-test-id="credentialDataTestId"
-					>
-						{{ truncateBeforeLast(selectedCredentialName, maxSelectedNameChars) }}
-					</N8nText>
-					<N8nText v-else-if="credentialsMissing" size="xsmall" color="danger">
+					<N8nText v-if="credentialsMissing" size="xsmall" color="danger">
 						<N8nIcon
 							icon="node-validation-error"
 							size="xsmall"
 							:class="$style.credentialsMissingIcon"
 						/>
-						{{ credentialsMissingLabel }}
+						{{ resolvedCredentialsMissingLabel }}
+					</N8nText>
+					<N8nText
+						v-else-if="selectedCredentialName"
+						size="small"
+						bold
+						color="text-light"
+						:data-test-id="credentialDataTestId"
+					>
+						{{ truncateBeforeLast(selectedCredentialName, MAX_SELECTED_NAME_CHARS) }}
 					</N8nText>
 				</div>
 				<N8nIcon :class="$style.chevron" icon="chevron-down" size="medium" />
@@ -236,12 +245,7 @@ defineExpose({
 	}
 }
 
-.dropdownButtonHorizontal {
-	width: 100%;
-	justify-content: stretch;
-}
-
-.dropdownButtonText {
+.dropdownButtonBorderless {
 	border-color: transparent;
 	background-color: transparent;
 
@@ -264,10 +268,6 @@ defineExpose({
 	min-width: 0;
 	gap: var(--spacing--2xs);
 	overflow: hidden;
-}
-
-.selectedHorizontal {
-	gap: var(--spacing--xs);
 }
 
 .chevron {

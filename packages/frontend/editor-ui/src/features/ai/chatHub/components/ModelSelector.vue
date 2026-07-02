@@ -12,7 +12,6 @@ import type {
 import {
 	CHAT_CREDENTIAL_SELECTOR_MODAL_KEY,
 	CHAT_MODEL_BY_ID_SELECTOR_MODAL_KEY,
-	MAX_AGENT_NAME_CHARS,
 	NEW_AGENT_MENU_ID,
 	providerDisplayNames,
 } from '@/features/ai/chatHub/constants';
@@ -38,7 +37,7 @@ const {
 	selectedAgent,
 	includeCustomAgents = true,
 	credentials,
-	text,
+	showBorder = true,
 	warnMissingCredentials = false,
 	agents,
 	isLoading,
@@ -46,7 +45,7 @@ const {
 	selectedAgent: ChatModelDto | null;
 	includeCustomAgents?: boolean;
 	credentials: CredentialsMap | null;
-	text?: boolean;
+	showBorder?: boolean;
 	warnMissingCredentials?: boolean;
 	agents: ChatModelsResponse;
 	isLoading: boolean;
@@ -191,12 +190,10 @@ defineExpose({
 		:selected-label="selectedLabel"
 		:selected-credential-name="credentialsName"
 		:credentials-missing="isCredentialsMissing"
-		:credentials-missing-label="i18n.baseText('chatHub.agent.credentialsMissing')"
 		:no-match-label="i18n.baseText('chatHub.models.selector.noMatch')"
-		:text="text"
+		:show-border="showBorder"
 		data-test-id="chat-model-selector"
 		credential-data-test-id="chat-model-selector-credential"
-		:max-selected-name-chars="MAX_AGENT_NAME_CHARS"
 		@search="handleSearch"
 		@select="onSelect"
 	>

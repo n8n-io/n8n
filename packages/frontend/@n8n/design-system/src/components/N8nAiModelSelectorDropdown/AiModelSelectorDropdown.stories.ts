@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 import type {
 	AiModelSelectorMenuItem,
@@ -337,6 +337,32 @@ type GenericMeta<C> = Omit<Meta<C>, 'component'> & {
 	component: Record<keyof C, unknown>;
 };
 
+function findItemById(
+	itemsToSearch: AiModelSelectorMenuItem[],
+	id: string,
+): AiModelSelectorMenuItem | undefined {
+	for (const item of itemsToSearch) {
+		if (item.id === id) return item;
+		const child = item.children ? findItemById(item.children, id) : undefined;
+		if (child) return child;
+	}
+
+	return undefined;
+}
+
+function findItemByLabel(
+	itemsToSearch: AiModelSelectorMenuItem[],
+	label: string,
+): AiModelSelectorMenuItem | undefined {
+	for (const item of itemsToSearch) {
+		if (item.label === label) return item;
+		const child = item.children ? findItemByLabel(item.children, label) : undefined;
+		if (child) return child;
+	}
+
+	return undefined;
+}
+
 const meta = {
 	title: 'AI/AiModelSelectorDropdown',
 	component: N8nAiModelSelectorDropdown,
@@ -351,8 +377,13 @@ const meta = {
 	render: (args) => ({
 		components: { N8nAiModelSelectorDropdown },
 		setup: () => {
+			const selectedItem = ref(findItemByLabel(args.items ?? [], args.selectedLabel));
+			const selectedLabel = ref(args.selectedLabel);
 			const getProviderId = (id: string) => id.split('::')[0];
 			const getProviderLogo = (id: string) => `https://models.dev/logos/${getProviderId(id)}.svg`;
+			const selectedProviderLogo = computed(() =>
+				selectedItem.value ? getProviderLogo(selectedItem.value.id) : undefined,
+			);
 			const { search, filteredItems, handleSearch } = useDropdownSearch(() => args.items ?? [], {
 				flatList: true,
 				searchFields: (item) => [item.label, item.data?.fullName],
@@ -368,16 +399,34 @@ const meta = {
 			const storyArgs = computed(() => ({
 				...args,
 				items: search.value.trim() ? filteredItems.value : args.items,
+				selectedLabel: selectedLabel.value,
 			}));
 
-			return { storyArgs, getProviderLogo, handleSearch };
+			function handleSelect(id: string) {
+				const item = findItemById(args.items ?? [], id);
+				if (!item) return;
+
+				selectedItem.value = item;
+				selectedLabel.value = item.label;
+			}
+
+			watch(
+				() => [args.items, args.selectedLabel] as const,
+				([nextItems, nextSelectedLabel]) => {
+					selectedItem.value = findItemByLabel(nextItems ?? [], nextSelectedLabel);
+					selectedLabel.value = nextSelectedLabel;
+				},
+			);
+
+			return { storyArgs, selectedProviderLogo, getProviderLogo, handleSearch, handleSelect };
 		},
 		template: `
-			<N8nAiModelSelectorDropdown v-bind="storyArgs" @search="handleSearch">
+			<N8nAiModelSelectorDropdown v-bind="storyArgs" @search="handleSearch" @select="handleSelect">
 				<template #trigger-leading="{ ui }">
 					<img
+						v-if="selectedProviderLogo"
 						:class="ui.class"
-						src="https://models.dev/logos/openai.svg"
+						:src="selectedProviderLogo"
 						alt="OpenAI"
 						style="width: 20px; height: 20px; border-radius: 999px;"
 					/>
@@ -404,11 +453,9 @@ export const Default: Story = {
 		items,
 		selectedLabel: 'GPT-5.2',
 		selectedCredentialName: 'Production OpenAI credential',
-		credentialsMissingLabel: 'Credentials missing',
 		noMatchLabel: 'No models found',
 		dataTestId: 'ai-model-selector',
 		credentialDataTestId: 'ai-model-selector-credential',
-		maxSelectedNameChars: 30,
 	},
 };
 

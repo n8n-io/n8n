@@ -33,11 +33,9 @@ const baseItems: AiModelSelectorMenuItem[] = [
 const defaultProps = {
 	items: baseItems,
 	selectedLabel: 'GPT-4.1',
-	credentialsMissingLabel: 'Credentials missing',
 	noMatchLabel: 'No models found',
 	dataTestId: 'ai-model-selector',
 	credentialDataTestId: 'ai-model-selector-credential',
-	maxSelectedNameChars: 30,
 };
 
 describe('N8nAiModelSelectorDropdown', () => {
@@ -60,15 +58,32 @@ describe('N8nAiModelSelectorDropdown', () => {
 		);
 	});
 
-	it('shows the missing credentials state when no credential name is provided', () => {
-		const { getByText } = render(N8nAiModelSelectorDropdown, {
+	it('shows the fallback missing credentials state when credentials are missing', () => {
+		const { getByText, queryByTestId } = render(N8nAiModelSelectorDropdown, {
 			props: {
 				...defaultProps,
+				selectedCredentialName: 'Production OpenAI credential',
 				credentialsMissing: true,
 			},
 		});
 
 		expect(getByText('Credentials missing')).toBeVisible();
+		expect(queryByTestId('ai-model-selector-credential')).not.toBeInTheDocument();
+	});
+
+	it('truncates selected model and credential names longer than 30 characters', () => {
+		const { getByText, getByTestId } = render(N8nAiModelSelectorDropdown, {
+			props: {
+				...defaultProps,
+				selectedLabel: 'This is a selected model name that is long',
+				selectedCredentialName: 'Production OpenAI credential name',
+			},
+		});
+
+		expect(getByText('This is a selected model …long')).toBeVisible();
+		expect(getByTestId('ai-model-selector-credential')).toHaveTextContent(
+			'Production OpenAI credent…name',
+		);
 	});
 
 	it('renders flattened search result labels with their path context', async () => {
