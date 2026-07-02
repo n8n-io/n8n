@@ -179,6 +179,7 @@ export class WorkflowHistoryService {
 		autosaved = false,
 		source?: WorkflowActionSource,
 		transactionManager?: EntityManager,
+		versionMetadata?: { name?: string; description?: string },
 	) {
 		if (!workflow.nodes || !workflow.connections) {
 			throw new UnexpectedError(
@@ -202,6 +203,8 @@ export class WorkflowHistoryService {
 				versionId: workflow.versionId,
 				workflowId,
 				autosaved,
+				...(versionMetadata?.name ? { name: versionMetadata.name } : {}),
+				...(versionMetadata?.description ? { description: versionMetadata.description } : {}),
 			});
 		} catch (e) {
 			const error = ensureError(e);
