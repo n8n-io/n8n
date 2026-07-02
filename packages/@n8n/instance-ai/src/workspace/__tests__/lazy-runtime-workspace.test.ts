@@ -180,8 +180,8 @@ describe('createLazyRuntimeWorkspace', () => {
 		});
 
 		// Before resolution: the stable text, not the "on first use" fallback.
-		const sandboxBefore = lazyWorkspace.sandbox?.getInstructions();
-		const filesystemBefore = lazyWorkspace.filesystem?.getInstructions();
+		const sandboxBefore = lazyWorkspace.sandbox?.getInstructions?.();
+		const filesystemBefore = lazyWorkspace.filesystem?.getInstructions?.();
 		expect(sandboxBefore).toBe('Stable sandbox instructions.');
 		expect(filesystemBefore).toBe('Stable filesystem instructions.');
 
@@ -190,8 +190,8 @@ describe('createLazyRuntimeWorkspace', () => {
 		// After resolution: byte-identical — the live resolved text must not leak
 		// in, since that would shift the agent's cached prompt prefix on resume.
 		expect(lazyWorkspace.sandbox?.status).toBe('running');
-		expect(lazyWorkspace.sandbox?.getInstructions()).toBe(sandboxBefore);
-		expect(lazyWorkspace.filesystem?.getInstructions()).toBe(filesystemBefore);
+		expect(lazyWorkspace.sandbox?.getInstructions?.()).toBe(sandboxBefore);
+		expect(lazyWorkspace.filesystem?.getInstructions?.()).toBe(filesystemBefore);
 		expect(lazyWorkspace.getInstructions()).not.toContain('Real sandbox instructions.');
 		expect(lazyWorkspace.getInstructions()).not.toContain('Real filesystem instructions.');
 	});
