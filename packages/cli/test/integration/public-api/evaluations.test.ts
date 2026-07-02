@@ -89,6 +89,13 @@ describe('GET /workflows/:id/test-runs', () => {
 		await authOwnerAgent.get(`/workflows/${workflow.id}/test-runs`).expect(402);
 	});
 
+	test('should allow access on an unlimited evaluations quota (-1)', async () => {
+		const workflow = await createWorkflow(undefined, owner);
+		licenseSpy.mockReturnValue(-1);
+
+		await authOwnerAgent.get(`/workflows/${workflow.id}/test-runs`).expect(200);
+	});
+
 	test('should return 403 when the API key lacks the testRun:list scope', async () => {
 		const restricted = await createOwnerWithApiKey({ scopes: ['workflow:read'] });
 		const restrictedAgent = testServer.publicApiAgentFor(restricted);

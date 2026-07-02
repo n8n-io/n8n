@@ -259,6 +259,11 @@ export class LicenseState {
 		return this.getValue('quota:evaluations:maxWorkflows') ?? 0;
 	}
 
+	isEvaluationsLicensed() {
+		const quota = this.getMaxWorkflowsWithEvaluations();
+		return quota === UNLIMITED_LICENSE_QUOTA || quota > 0;
+	}
+
 	/**
 	 * Effective evaluation concurrency cap issued by the license server.
 	 * Returns `undefined` (not a number) when the quota is absent so callers

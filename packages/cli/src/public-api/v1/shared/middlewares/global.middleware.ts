@@ -161,13 +161,14 @@ export const isLicensed = (feature: BooleanLicenseFeature) => {
 
 // Evaluations are gated by a license quota (`quota:evaluations:maxWorkflows`)
 // rather than a boolean feature. A zero quota means the plan does not include
-// evaluations, so we respond 402 Payment Required.
+// evaluations, so we respond 402 Payment Required. `isEvaluationsLicensed`
+// treats the `-1` unlimited sentinel as licensed.
 export const evaluationsLicensed = (
 	_: AuthenticatedRequest,
 	res: express.Response,
 	next: express.NextFunction,
 ): express.Response | void => {
-	if (Container.get(LicenseState).getMaxWorkflowsWithEvaluations() > 0) return next();
+	if (Container.get(LicenseState).isEvaluationsLicensed()) return next();
 
 	return res.status(402).json({
 		message: 'Evaluations are not available on your plan. See https://n8n.io/pricing/',
