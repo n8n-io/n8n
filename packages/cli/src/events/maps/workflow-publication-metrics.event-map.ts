@@ -40,7 +40,7 @@ export type WorkflowPublicationMetricsEventMap = {
 	};
 
 	'workflow-publication-trigger-node-operations': {
-		operation: 'activate' | 'deactivate';
+		operation: PublicationTriggerOperation;
 		result: PublicationOperationResult;
 		count: number;
 	};
