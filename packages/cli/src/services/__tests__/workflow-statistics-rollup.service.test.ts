@@ -96,13 +96,13 @@ describe('WorkflowStatisticsRollupService', () => {
 	});
 
 	describe('start', () => {
-		const isActive = (service: WorkflowStatisticsRollupService) =>
-			(service as unknown as { isActive: boolean }).isActive;
+		const isRunning = (service: WorkflowStatisticsRollupService) =>
+			(service as unknown as { timeout: NodeJS.Timeout | undefined }).timeout !== undefined;
 
-		it('does not activate on a takeover when it should not run', () => {
+		it('does not schedule on a takeover when it should not run', () => {
 			const { service } = makeService({ dbType: 'sqlite' });
 			service.start();
-			expect(isActive(service)).toBe(false);
+			expect(isRunning(service)).toBe(false);
 		});
 	});
 

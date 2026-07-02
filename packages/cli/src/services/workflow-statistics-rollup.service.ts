@@ -28,13 +28,6 @@ const BUSY_INTERVAL_MS = 250;
 export class WorkflowStatisticsRollupService {
 	private timeout: NodeJS.Timeout | undefined;
 
-	/**
-	 * Whether the timer loop is currently scheduled. Distinct from a live `isLeader` check: it is the
-	 * loop's own run-state (set on takeover, cleared on stepdown/shutdown) and gates the async
-	 * reschedule, so a tick that resolves after `stop()` does not requeue itself.
-	 */
-	private isActive = false;
-
 	private isShuttingDown = false;
 
 	constructor(
@@ -68,16 +61,14 @@ export class WorkflowStatisticsRollupService {
 
 	@OnLeaderTakeover()
 	start() {
-		if (!this.shouldRun || this.isActive) return;
+		if (!this.shouldRun || this.timeout !== undefined) return;
 
-		this.isActive = true;
 		this.scheduleNext(0);
 		this.logger.debug('Workflow statistics rollup interval started');
 	}
 
 	@OnLeaderStepdown()
 	stop() {
-		this.isActive = false;
 		clearTimeout(this.timeout);
 		this.timeout = undefined;
 	}
@@ -85,14 +76,11 @@ export class WorkflowStatisticsRollupService {
 	@OnShutdown()
 	shutdown() {
 		this.isShuttingDown = true;
-		this.isActive = false;
 		clearTimeout(this.timeout);
 		this.timeout = undefined;
 	}
 
 	private scheduleNext(delayMs: number) {
-		if (!this.isActive) return;
-
 		this.timeout = setTimeout(() => {
 			let nextDelayMs = STEADY_INTERVAL_MS;
 			void this.rollup()
@@ -103,7 +91,7 @@ export class WorkflowStatisticsRollupService {
 					this.errorReporter.error(error, { shouldBeLogged: true });
 				})
 				.finally(() => {
-					if (this.isActive) this.scheduleNext(nextDelayMs);
+					if (this.timeout !== undefined) this.scheduleNext(nextDelayMs);
 				});
 		}, delayMs);
 	}
