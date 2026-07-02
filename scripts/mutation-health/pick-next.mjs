@@ -125,7 +125,7 @@ export const ELIGIBLE_PACKAGES = [
 	{ name: '@n8n/crdt', dir: 'packages/@n8n/crdt' },
 	{ name: '@n8n/decorators', dir: 'packages/@n8n/decorators' },
 	{ name: '@n8n/expression-runtime', dir: 'packages/@n8n/expression-runtime' },
-	{ name: '@n8n/cli', dir: 'packages/cli' },
+	{ name: 'n8n', dir: 'packages/cli' },
 ];
 
 export function isEligible(pkgName) {
