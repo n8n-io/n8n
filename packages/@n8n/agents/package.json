@@ -86,8 +86,10 @@
     "langsmith": "catalog:",
     "undici": "catalog:undici-v7",
     "yaml": "catalog:",
-    "zod": "catalog:",
     "zod-to-json-schema": "catalog:"
+  },
+  "peerDependencies": {
+    "zod": "catalog:"
   },
   "peerDependenciesMeta": {
     "langsmith": {
@@ -112,7 +114,8 @@
     "cross-env": "catalog:",
     "nock": "catalog:",
     "vitest": "catalog:",
-    "vitest-mock-extended": "catalog:"
+    "vitest-mock-extended": "catalog:",
+    "zod": "catalog:"
   },
   "license": "LicenseRef-n8n-sustainable-use"
 }
