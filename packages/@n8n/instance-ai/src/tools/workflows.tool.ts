@@ -18,6 +18,11 @@ import {
 	applyNodeChanges,
 	buildCompletedReport,
 } from './workflows/setup-workflow.service';
+import {
+	STRUCTURE_ONLY_NOTE,
+	summarizeConnections,
+	summarizeNodes,
+} from './workflows/summarize-workflow';
 import { validateWorkflowConfig } from './workflows/validate-workflow.service';
 import { getReferencedWorkflowIds } from './workflows/workflow-json-utils';
 
@@ -46,7 +51,9 @@ const listAction = z.object({
 const getAction = z.object({
 	action: z
 		.literal('get')
-		.describe('Get full details of a specific workflow. Use for workflow inspection.'),
+		.describe(
+			'Inspect a workflow: metadata, node names/types, and connection structure. Node parameters are omitted — use get-json or get-as-code when you need them.',
+		),
 	workflowId: z.string().describe('ID of the workflow'),
 });
 
@@ -145,9 +152,17 @@ const listVersionsAction = z.object({
 });
 
 const getVersionAction = z.object({
-	action: z.literal('get-version').describe('Get full details of a specific workflow version'),
+	action: z
+		.literal('get-version')
+		.describe(
+			'Get details of a specific workflow version. Returns structure only by default; pass full: true for node parameters.',
+		),
 	workflowId: z.string().describe('ID of the workflow'),
 	versionId: z.string().describe('Version ID'),
+	full: z
+		.boolean()
+		.optional()
+		.describe('Return complete node data including parameters (large). Default false.'),
 });
 
 const restoreVersionAction = z.object({
@@ -371,7 +386,14 @@ async function handleList(context: InstanceAiContext, input: Extract<Input, { ac
 async function handleGet(context: InstanceAiContext, input: Extract<Input, { action: 'get' }>) {
 	// Convert hallucinated-id errors into structured not-found responses so the agent stops guessing.
 	try {
-		return await context.workflowService.get(input.workflowId);
+		const { nodes, connections, ...meta } = await context.workflowService.get(input.workflowId);
+		return {
+			...meta,
+			nodeCount: nodes.length,
+			nodes: summarizeNodes(nodes),
+			connections: summarizeConnections(connections),
+			note: STRUCTURE_ONLY_NOTE,
+		};
 	} catch (error) {
 		const message = error instanceof Error ? error.message : 'Failed to fetch workflow';
 		const available = await context.workflowService
@@ -1010,7 +1032,16 @@ async function handleGetVersion(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'get-version' }>,
 ) {
-	return await context.workflowService.getVersion!(input.workflowId, input.versionId);
+	const version = await context.workflowService.getVersion!(input.workflowId, input.versionId);
+	if (input.full) return version;
+	const { nodes, connections, ...meta } = version;
+	return {
+		...meta,
+		nodeCount: nodes.length,
+		nodes: summarizeNodes(nodes),
+		connections: summarizeConnections(connections),
+		note: 'Node parameters omitted to keep context small. Pass full: true when you need the complete version payload.',
+	};
 }
 
 async function handleRestoreVersion(

@@ -207,6 +207,44 @@ describe('pruneSupersededArtifacts', () => {
 		expect(result.map((m) => m.id)).toEqual(['msg-user', 'msg-custom', older.id, newer.id]);
 	});
 
+	it('unifies workflow-JSON file reads with workflows-tool snapshots of the same workflow', () => {
+		const fileRead = toolCallMessage(
+			'workspace_read_file',
+			{ path: '/workspace/my.workflow.json' },
+			{ content: JSON.stringify({ id: 'wf-1', name: 'WF', nodes: bigNodes, connections: {} }) },
+		);
+		const snapshot = toolCallMessage(
+			'workflows',
+			{ action: 'get-json' },
+			{ id: 'wf-1', nodes: bigNodes },
+		);
+
+		const result = pruneSupersededArtifacts([fileRead, snapshot]);
+
+		expect(firstBlock(result[0]).output).toMatchObject({
+			superseded: true,
+			artifact: 'workflow:wf-1',
+		});
+		expect(firstBlock(result[1]).output).toEqual({ id: 'wf-1', nodes: bigNodes });
+	});
+
+	it('keeps the path key for file reads that are not workflow JSON', () => {
+		const readmeRead = toolCallMessage(
+			'workspace_read_file',
+			{ path: '/workspace/README.md' },
+			{ content: '#'.repeat(2000) },
+		);
+		const snapshot = toolCallMessage(
+			'workflows',
+			{ action: 'get-json' },
+			{ id: 'wf-1', nodes: bigNodes },
+		);
+
+		const result = pruneSupersededArtifacts([readmeRead, snapshot]);
+
+		expect(firstBlock(result[0]).output).toEqual({ content: '#'.repeat(2000) });
+	});
+
 	it('returns the same array when nothing matches', () => {
 		const user: AgentDbMessage = {
 			id: 'msg-user',

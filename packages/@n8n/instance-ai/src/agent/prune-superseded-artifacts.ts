@@ -18,6 +18,21 @@ function isJsonObject(value: unknown): value is { [key: string]: unknown } {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+/** Workflow id when a read file's content is a serialized workflow snapshot. */
+function workflowIdFromFileContent(output: unknown): string | undefined {
+	if (!isJsonObject(output) || typeof output.content !== 'string') return undefined;
+	if (!output.content.trimStart().startsWith('{')) return undefined;
+	try {
+		const parsed: unknown = JSON.parse(output.content);
+		if (isJsonObject(parsed) && typeof parsed.id === 'string' && Array.isArray(parsed.nodes)) {
+			return parsed.id;
+		}
+	} catch {
+		return undefined;
+	}
+	return undefined;
+}
+
 const RULES: SupersessionRule[] = [
 	{
 		// Full workflow snapshots (get-json / get-version / get-as-code / mutation echoes).
@@ -36,12 +51,15 @@ const RULES: SupersessionRule[] = [
 		},
 	},
 	{
-		// A later read of the same path supersedes earlier reads of it.
+		// A later read of the same path supersedes earlier reads of it. Reads of
+		// workflow JSON files share the workflows-tool key so the same workflow
+		// isn't retained under two representations.
 		toolName: 'workspace_read_file',
-		artifactKey: (block) =>
-			isJsonObject(block.input) && typeof block.input.path === 'string'
-				? `file:${block.input.path}`
-				: undefined,
+		artifactKey: (block) => {
+			if (!isJsonObject(block.input) || typeof block.input.path !== 'string') return undefined;
+			const workflowId = workflowIdFromFileContent(block.output);
+			return workflowId === undefined ? `file:${block.input.path}` : `workflow:${workflowId}`;
+		},
 	},
 ];
 
