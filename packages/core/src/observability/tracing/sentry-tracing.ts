@@ -7,7 +7,7 @@ import { SpanStatus, type Span, type StartSpanOpts, type Tracer } from './tracin
  * Tracing implementation that uses Sentry to trace spans
  */
 export class SentryTracing implements Tracer {
-	constructor(private readonly sentry: Pick<typeof Sentry, 'startSpan'>) {}
+	constructor(private readonly sentry: Pick<typeof Sentry, 'startSpan' | 'startNewTrace'>) {}
 
 	async startSpan<T>(options: StartSpanOpts, spanCb: (span: Span) => Promise<T>): Promise<T> {
 		return await this.sentry.startSpan(options, async (span) => {
@@ -23,5 +23,12 @@ export class SentryTracing implements Tracer {
 				throw e;
 			}
 		});
+	}
+
+	async startNewTraceSpan<T>(
+		options: StartSpanOpts,
+		spanCb: (span: Span) => Promise<T>,
+	): Promise<T> {
+		return await this.sentry.startNewTrace(async () => await this.startSpan(options, spanCb));
 	}
 }
