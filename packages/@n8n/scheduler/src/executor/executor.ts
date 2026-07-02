@@ -24,9 +24,18 @@ type ClaimedEntry = { host: string; task: ClaimedTask };
  * {@link claimAndSchedule} on a cadence with the host id; reclaiming expired leases
  * is a separate concern (the reaper).
  *
- * Guarded transitions match the task's lease epoch, so an owner that stalled and was
- * reclaimed can't write over the reclaimed run. No reclaim happens until the reaper
- * exists, so the epoch guard is inert until then.
+ * This is the executor logic only: a driver (the multi-main loop) calls
+ * {@link claimAndSchedule} on a cadence and supplies the instance host id. The
+ * reaper that reclaims tasks whose lease expired is a separate concern (see
+ * {@link Reaper}).
+ *
+ * The terminal transitions are fenced on the lease epoch (the claim's `leaseEpoch`,
+ * threaded into every terminal call as a {@link ClaimRef}), so a handler that stalls
+ * past its lease and is reaped can't write its stale result over the recovered run:
+ * while the row sits `pending` the `status = 'running'` guard rejects it, and once
+ * another claim takes it the epoch has advanced, so the stale owner's guarded update
+ * matches no row. Handlers are still expected to hand off quickly; the lease-renewal
+ * heartbeat for longer ones is future work.
  */
 export class Executor {
 	private readonly leaseMs: number;

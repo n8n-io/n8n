@@ -223,17 +223,72 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	}
 
 	/**
+	 * Find `running` tasks whose lease has expired (candidates for the reaper).
+	 * Ordered oldest-expiry first and capped at `limit` so a large backlog is drained
+	 * across passes. Due-ness uses the DB clock. Backed by the partial index on
+	 * `leaseExpiresAt WHERE status = 'running'`.
+	 */
+	async findExpiredLeases(limit: number): Promise<ScheduledTask[]> {
+		return await this.createQueryBuilder('t')
+			.where('t.status = :running', { running: ScheduledTaskStatus.Running })
+			.andWhere(`t.leaseExpiresAt < ${this.makeDbNowLiteral()}`)
+			.orderBy('t.leaseExpiresAt', 'ASC')
+			.limit(limit)
+			.getMany();
+	}
+
+	/**
+	 * Reaper reclaim: an expired-lease `running` task back to `pending`, counting the
+	 * attempt, pushing `runAt` out by the backoff, and bumping the lease epoch.
+	 * Clears the claim and lease. Guarded on the epoch read during the sweep and a
+	 * re-asserted expiry, so a row the owner finished, another reaper reclaimed, or a
+	 * renewed lease moved out is a benign 0-row no-op. Returns rows affected. (The
+	 * epoch bump is defence in depth, not what fences the stalled owner; the status
+	 * change and the next claim's own bump do that. See the `Reaper` class.)
+	 */
+	async reclaimExpired(
+		id: string,
+		claimedEpoch: number,
+		backoffMs: number,
+		errorMessage: string,
+	): Promise<number> {
+		return await this.runReaperUpdate(id, claimedEpoch, {
+			status: ScheduledTaskStatus.Pending,
+			runAt: () => this.makeDbNowPlusMsLiteral(backoffMs),
+			attempts: () => 'attempts + 1',
+			leaseEpoch: () => 'leaseEpoch + 1',
+			claimedBy: null,
+			leaseExpiresAt: null,
+			errorMessage,
+		});
+	}
+
+	/**
+	 * Reaper dead-letter: an expired-lease `running` task at its last attempt to
+	 * terminal `failed`. Same guard as {@link reclaimExpired}; terminal, so no epoch
+	 * bump (the `status` change alone fences a stale owner). Returns rows affected.
+	 */
+	async deadLetterExpired(id: string, claimedEpoch: number, errorMessage: string): Promise<number> {
+		return await this.runReaperUpdate(id, claimedEpoch, {
+			status: ScheduledTaskStatus.Failed,
+			finishedAt: () => this.makeDbNowLiteral(),
+			attempts: () => 'attempts + 1',
+			errorMessage,
+		});
+	}
+
+	/**
 	 * Apply a guarded update: only touch the row this `claim` still owns (`running`,
 	 * same `host` and `leaseEpoch`). Returns rows affected; 0 is benign (the row was
 	 * deleted or reclaimed). The `leaseEpoch` match fences a stalled owner whose lease
-	 * was reclaimed, once a reaper exists to bump the epoch on reclaim.
+	 * was reclaimed by the reaper, which bumps the epoch on reclaim.
 	 */
 	private async runGuardedUpdate(
 		claim: ClaimRef,
 		values: QueryDeepPartialEntity<ScheduledTask>,
 	): Promise<number> {
 		// Object criteria (not a raw where string) so TypeORM quotes the camelCase
-		// `claimedBy` column correctly on Postgres.
+		// `claimedBy`/`leaseEpoch` columns correctly on Postgres.
 		const result = await this.update(
 			{
 				id: claim.id,
@@ -243,6 +298,30 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 			},
 			values,
 		);
+		return result.affected ?? 0;
+	}
+
+	/**
+	 * Apply a reaper update: only touch a row still `running`, at the epoch read
+	 * during the sweep, and still lease-expired. Unlike {@link runGuardedUpdate} it
+	 * does not guard on `claimedBy` (the reaper is not the owner) and re-asserts the
+	 * expiry so a lease renewed between the sweep's read and this write is left alone.
+	 * Returns rows affected; 0 is benign (another reaper won it, or the owner finished).
+	 */
+	private async runReaperUpdate(
+		id: string,
+		claimedEpoch: number,
+		values: QueryDeepPartialEntity<ScheduledTask>,
+	): Promise<number> {
+		// No alias on an UPDATE builder, so quote the camelCase column ourselves for
+		// Postgres (SQLite accepts the same double-quoted identifier).
+		const leaseExpiresAt = this.manager.connection.driver.escape('leaseExpiresAt');
+		const result = await this.createQueryBuilder()
+			.update(ScheduledTask)
+			.set(values)
+			.where({ id, status: ScheduledTaskStatus.Running, leaseEpoch: claimedEpoch })
+			.andWhere(`${leaseExpiresAt} < ${this.dbNow()}`)
+			.execute();
 		return result.affected ?? 0;
 	}
 
