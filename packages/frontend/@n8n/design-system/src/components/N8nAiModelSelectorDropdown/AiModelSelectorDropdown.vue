@@ -7,11 +7,11 @@ import { truncateBeforeLast } from '@n8n/utils/string/truncate';
 import { Primitive } from 'reka-ui';
 import { computed, getCurrentInstance, useCssModule, useTemplateRef } from 'vue';
 
-import { useI18n } from '../../composables/useI18n';
 import type {
 	AiModelSelectorMenuItem,
 	AiModelSelectorMenuItemData,
 } from './AiModelSelectorDropdown.types';
+import { useI18n } from '../../composables/useI18n';
 import N8nBadge from '../N8nBadge';
 import N8nDropdownMenu from '../N8nDropdownMenu/DropdownMenu.vue';
 import N8nIcon from '../N8nIcon';
