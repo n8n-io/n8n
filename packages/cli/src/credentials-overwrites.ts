@@ -234,9 +234,9 @@ export class CredentialsOverwrites {
 		const overwrites = this.get(type);
 		if (overwrites === undefined) return false;
 
-		return Object.keys(overwrites).some((key) => {
-			const value = data[key];
-			return value === null || value === undefined || value === '';
-		});
+		// Managed iff applying the overwrite actually injects a value. Delegating to
+		// applyOverwrite keeps this in lockstep with the skip-list / customization rules.
+		const applied = this.applyOverwrite(type, data as ICredentialDataDecryptedObject);
+		return Object.keys(overwrites).some((key) => applied[key] !== data[key]);
 	}
 }

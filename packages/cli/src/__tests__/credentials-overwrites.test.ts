@@ -227,6 +227,17 @@ describe('CredentialsOverwrites', () => {
 				false,
 			);
 		});
+
+		it('should return false for a skip-list type when the user customized an overwritten field', () => {
+			// applyOverwrite skips injection entirely here, so the credential is not managed
+			globalConfig.credentials.overwrite.skipTypes = [
+				'test',
+			] as unknown as CommaSeparatedStringArray<string>;
+
+			expect(
+				credentialsOverwrites.usesManagedAuth('test', { username: 'custom-user', password: '' }),
+			).toBe(false);
+		});
 	});
 
 	describe('getOverwrites', () => {
