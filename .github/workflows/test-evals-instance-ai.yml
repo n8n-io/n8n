@@ -124,6 +124,10 @@ jobs:
           N8N_LICENSE_CERT: ${{ secrets.N8N_LICENSE_CERT }}
           N8N_ENCRYPTION_KEY: ${{ secrets.N8N_ENCRYPTION_KEY }}
           DAYTONA_API_KEY: ${{ secrets.DAYTONA_API_KEY }}
+          # LangSmith creds for backend thread traces, routed to the same
+          # dedicated project as the eval CLI to keep the 'instance-ai' corpus clean.
+          LANGSMITH_API_KEY: ${{ secrets.EVALS_LANGSMITH_API_KEY }}
+          LANGSMITH_ENDPOINT: ${{ secrets.EVALS_LANGSMITH_ENDPOINT }}
           # Prefer head_ref: inputs.branch may be a merge ref (refs/pull/N/merge).
           SANDBOX_NAME_PREFIX: evals-ci-${{ github.head_ref || inputs.branch || github.ref_name }}
           SANDBOX_PROVIDER: ${{ inputs.sandbox-provider || 'n8n-sandbox' }}
@@ -163,6 +167,10 @@ jobs:
               -e N8N_AI_ASSISTANT_BASE_URL="" \
               -e N8N_INSTANCE_AI_SANDBOX_ENABLED=true \
               "${SANDBOX_ARGS[@]}" \
+              -e LANGSMITH_TRACING=true \
+              -e LANGSMITH_API_KEY="$LANGSMITH_API_KEY" \
+              -e LANGSMITH_ENDPOINT="$LANGSMITH_ENDPOINT" \
+              -e LANGSMITH_PROJECT=instance-ai-evals \
               -e N8N_LICENSE_ACTIVATION_KEY="$N8N_LICENSE_ACTIVATION_KEY" \
               -e N8N_LICENSE_CERT="$N8N_LICENSE_CERT" \
               -e N8N_ENCRYPTION_KEY="$N8N_ENCRYPTION_KEY" \
@@ -291,6 +299,7 @@ jobs:
           N8N_LICENSE_ACTIVATION_KEY: ${{ secrets.N8N_LICENSE_ACTIVATION_KEY }}
           N8N_LICENSE_CERT: ${{ secrets.N8N_LICENSE_CERT }}
           N8N_ENCRYPTION_KEY: ${{ secrets.N8N_ENCRYPTION_KEY }}
+          EVALS_LANGSMITH_API_KEY: ${{ secrets.EVALS_LANGSMITH_API_KEY }}
         run: |
           # Layer 2 — defense in depth: explicitly mask each secret's value.
           # ::add-mask:: is a single-line workflow command. Multi-line secrets
@@ -298,7 +307,7 @@ jobs:
           # a time, otherwise only the first line is registered.
           for v in "$EVALS_ANTHROPIC_KEY" "$DAYTONA_API_KEY" \
                    "$N8N_LICENSE_ACTIVATION_KEY" "$N8N_LICENSE_CERT" \
-                   "$N8N_ENCRYPTION_KEY"; do
+                   "$N8N_ENCRYPTION_KEY" "$EVALS_LANGSMITH_API_KEY"; do
             [ -z "$v" ] && continue
             while IFS= read -r line; do
               [ -n "$line" ] && echo "::add-mask::$line"
