@@ -80,7 +80,7 @@ describe('PrometheusWorkflowInfoMetricsService', () => {
 		];
 
 		it('should use cached value when cache hits', async () => {
-			cacheService.get.mockResolvedValue(JSON.stringify(workflows));
+			cacheService.get.mockResolvedValue(workflows);
 			const collectFn = extractCollectFn();
 			const mockLabels = vi.fn().mockReturnValue({ set: vi.fn() });
 			const mockGauge = { reset: vi.fn(), labels: mockLabels };
@@ -110,11 +110,7 @@ describe('PrometheusWorkflowInfoMetricsService', () => {
 			await collectFn.call(mockGauge as unknown as promClient.Gauge<string>);
 
 			expect(workflowRepository.find).toHaveBeenCalledWith({ select: ['id', 'name'] });
-			expect(cacheService.set).toHaveBeenCalledWith(
-				'metrics:workflow-info',
-				JSON.stringify(workflows),
-				60 * 1000,
-			);
+			expect(cacheService.set).toHaveBeenCalledWith('metrics:workflow-info', workflows, 60 * 1000);
 			expect(mockLabels).toHaveBeenCalledWith({
 				workflow_id: 'wf_1',
 				workflow_name: 'My First Workflow',
@@ -126,7 +122,7 @@ describe('PrometheusWorkflowInfoMetricsService', () => {
 		});
 
 		it('should reset the gauge before setting new values', async () => {
-			cacheService.get.mockResolvedValue(JSON.stringify(workflows));
+			cacheService.get.mockResolvedValue(workflows);
 			const collectFn = extractCollectFn();
 			const mockLabels = vi.fn().mockReturnValue({ set: vi.fn() });
 			const mockGauge = { reset: vi.fn(), labels: mockLabels };
@@ -148,24 +144,13 @@ describe('PrometheusWorkflowInfoMetricsService', () => {
 
 			expect(cacheService.set).toHaveBeenCalledWith(
 				'metrics:workflow-info',
-				expect.any(String),
+				expect.any(Array),
 				120 * 1000,
 			);
 		});
 
-		it('should fall back to an empty array when cache contains invalid JSON', async () => {
-			cacheService.get.mockResolvedValue('not-valid-json');
-			const collectFn = extractCollectFn();
-			const mockLabels = vi.fn().mockReturnValue({ set: vi.fn() });
-			const mockGauge = { reset: vi.fn(), labels: mockLabels };
-
-			await collectFn.call(mockGauge as unknown as promClient.Gauge<string>);
-
-			expect(mockLabels).not.toHaveBeenCalled();
-		});
-
 		it('should set each workflow label entry to 1', async () => {
-			cacheService.get.mockResolvedValue(JSON.stringify([{ id: 'wf_1', name: 'Test' }]));
+			cacheService.get.mockResolvedValue([{ id: 'wf_1', name: 'Test' }]);
 			const collectFn = extractCollectFn();
 			const mockSet = vi.fn();
 			const mockGauge = { reset: vi.fn(), labels: vi.fn().mockReturnValue({ set: mockSet }) };
