@@ -7,7 +7,16 @@ import { useI18n } from '@n8n/i18n';
 import type { BaseTextKey } from '@n8n/i18n';
 import { N8nIcon, N8nLoading, N8nText } from '@n8n/design-system';
 import { useInstanceAiTemplateExamplesStore } from '../instanceAiTemplateExamples.store';
-import { GRID_REVEAL_DELAY_MS } from '../constants';
+import {
+	GRID_REVEAL_DELAY_MS,
+	MAX_VISIBLE_FULL,
+	MAX_VISIBLE_COMPACT,
+	MIN_HEIGHT_FOR_FULL_PX,
+	MIN_HEIGHT_FOR_COMPACT_PX,
+	NAV_BUTTON_OFFSET_PX,
+	GRID_HEIGHT_FULL_PX,
+	GRID_HEIGHT_COMPACT_PX,
+} from '../constants';
 import TemplateCategoryBar from './TemplateCategoryBar.vue';
 import TemplateSubcategoryBar from './TemplateSubcategoryBar.vue';
 import TemplateExampleCard from './TemplateExampleCard.vue';
@@ -31,14 +40,6 @@ const {
 	hasNextPage,
 	hasPrevPage,
 } = storeToRefs(store);
-
-const MAX_VISIBLE_FULL = 4;
-const MAX_VISIBLE_COMPACT = 2;
-const MIN_HEIGHT_FOR_FULL_PX = 430;
-const MIN_HEIGHT_FOR_COMPACT_PX = 250;
-const NAV_BUTTON_OFFSET_PX = 48;
-const GRID_HEIGHT_FULL_PX = 212;
-const GRID_HEIGHT_COMPACT_PX = 100;
 const compact = ref(false);
 const extraCompact = ref(false);
 const navAtBottom = ref(false);
@@ -50,6 +51,7 @@ const gridAreaStyle = computed(() => {
 	return { height: value };
 });
 
+// Handles prevention of horizontal and vertical overflow of the templates grid and lateral buttons
 useResizeObserver(document.body, () => {
 	if (!containerRef.value) return;
 	const rect = containerRef.value.getBoundingClientRect();

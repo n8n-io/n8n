@@ -1,3 +1,4 @@
+// Experiment cleanup: remove with InstanceAiTemplateExamplesExperiment
 import { InstanceAiExamplesQueryDto } from '@n8n/api-types';
 import { Get, Query, RestController } from '@n8n/decorators';
 import path from 'node:path';

@@ -29,7 +29,13 @@ const {
 	appSettingsStoreMock,
 	replaceMock,
 	showErrorMock,
+	templateExamplesStoreMock,
+	templateExamplesEnabled,
 } = vi.hoisted(() => ({
+	templateExamplesStoreMock: {
+		hasLoadFailed: false,
+	},
+	templateExamplesEnabled: { value: false },
 	experimentMocks: {
 		proactiveAgentEnabled: { value: false },
 		promptSuggestionsV2Enabled: { value: false },
@@ -220,6 +226,38 @@ vi.mock('@/experiments/instanceAiWorkflowPreviewSuggestions', () => ({
 	getPreviewWorkflow: () => null,
 }));
 
+vi.mock('@/experiments/instanceAiTemplateExamples', async () => {
+	const { computed, h } = await import('vue');
+	type VueSetupContext = {
+		emit: (event: string, ...args: unknown[]) => void;
+	};
+	return {
+		useInstanceAiTemplateExamplesExperiment: () => ({
+			isFeatureEnabled: computed(() => templateExamplesEnabled.value),
+		}),
+		useInstanceAiTemplateExamplesStore: () => templateExamplesStoreMock,
+		TEMPLATE_PROMPT_SUFFIX:
+			'\n\nAsk me questions to narrow down my use case and the tools I use to best personalize the example for my needs.',
+		TemplateExamplesCatalog: {
+			name: 'TemplateExamplesCatalogStub',
+			emits: ['hover-prompt', 'hover-end', 'select-prompt'],
+			setup(_props: Record<string, unknown>, { emit }: VueSetupContext) {
+				return () =>
+					h('div', { 'data-test-id': 'template-examples-catalog' }, [
+						h(
+							'button',
+							{
+								'data-test-id': 'template-example-card',
+								onClick: () => emit('select-prompt', 'Build me an invoice automation'),
+							},
+							'example card',
+						),
+					]);
+			},
+		},
+	};
+});
+
 vi.mock('@/app/composables/usePageRedirectionHelper', () => ({
 	usePageRedirectionHelper: () => ({ goToUpgrade: vi.fn() }),
 }));
@@ -266,14 +304,19 @@ const InstanceAiInputStub = defineComponent({
 	emits: ['submit'],
 	setup(props, { emit, expose, slots }) {
 		const i18n = useI18n();
+		const currentText = ref('');
 		expose({
 			focus: vi.fn(),
+			setText: (text: string) => {
+				currentText.value = text;
+			},
 			// Mirror the real submitSuggestion: resolve the prompt + emit submit.
 			submitSuggestion: (payload: { promptKey: BaseTextKey }) =>
 				emit('submit', i18n.baseText(payload.promptKey)),
 		});
 		return () =>
 			h('div', { 'data-test-id': 'instance-ai-input-stub' }, [
+				h('span', { 'data-test-id': 'instance-ai-input-text' }, currentText.value),
 				h(
 					'span',
 					{ 'data-test-id': 'instance-ai-input-suggestions' },
@@ -322,7 +365,7 @@ const InstanceAiInputStub = defineComponent({
 					'button',
 					{
 						'data-test-id': 'instance-ai-input-stub-submit',
-						onClick: () => emit('submit', 'hello'),
+						onClick: () => emit('submit', currentText.value || 'hello'),
 					},
 					'submit',
 				),
@@ -399,6 +442,8 @@ describe('InstanceAiEmptyView', () => {
 		cloudPlanStoreMock.state.initialized = false;
 		cloudPlanStoreMock.currentUserCloudInfo = null;
 		appSettingsStoreMock.isCloudDeployment = false;
+		templateExamplesStoreMock.hasLoadFailed = false;
+		templateExamplesEnabled.value = false;
 	});
 
 	afterEach(() => {
@@ -724,5 +769,20 @@ describe('InstanceAiEmptyView', () => {
 		expect(store.getOrCreateRuntime).not.toHaveBeenCalled();
 		expect(thread.sendMessage).not.toHaveBeenCalled();
 		expect(replaceMock).not.toHaveBeenCalled();
+	});
+
+	it('injects the prompt into the input when a template example card is clicked', async () => {
+		templateExamplesEnabled.value = true;
+
+		const { getByTestId } = renderView();
+
+		expect(getByTestId('template-examples-catalog')).toBeInTheDocument();
+
+		await fireEvent.click(getByTestId('template-example-card'));
+		await flushPromises();
+
+		expect(getByTestId('instance-ai-input-text')).toHaveTextContent(
+			'Build me an invoice automation',
+		);
 	});
 });

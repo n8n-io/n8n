@@ -4,9 +4,6 @@ import { INSTANCE_AI_TEMPLATE_EXAMPLES_EXPERIMENT } from '@/app/constants/experi
 import { usePostHog } from '@/app/stores/posthog.store';
 
 export function useInstanceAiTemplateExamplesExperiment() {
-	return {
-		isFeatureEnabled: computed(() => true),
-	};
 	const posthogStore = usePostHog();
 
 	const isFeatureEnabled = computed(

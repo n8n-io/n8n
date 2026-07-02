@@ -30,9 +30,10 @@ const scrollRef = ref<HTMLElement | null>(null);
 const showLeftFade = ref(false);
 const showRightFade = ref(false);
 const revealed = ref(false);
+const wrapperHovered = ref(false);
 
-const showScrollHintRight = computed(() => showRightFade.value);
-const showScrollHintLeft = computed(() => showLeftFade.value);
+const showScrollHintRight = computed(() => showRightFade.value && wrapperHovered.value);
+const showScrollHintLeft = computed(() => showLeftFade.value && wrapperHovered.value);
 
 const SCROLL_JUMP_PX = 150;
 const SCROLL_JUMP_DURATION_MS = 300;
@@ -138,9 +139,18 @@ onMounted(() => {
 
 useResizeObserver(scrollRef, updateFades);
 
+let prevSubcategories: string[] = [];
+
 watch(
 	() => props.subcategories,
-	() => {
+	(newVal) => {
+		const changed =
+			newVal.length !== prevSubcategories.length ||
+			newVal.some((v, i) => v !== prevSubcategories[i]);
+		prevSubcategories = [...newVal];
+
+		if (!changed) return;
+
 		revealed.value = false;
 		if (scrollRef.value) {
 			scrollRef.value.scrollLeft = 0;
@@ -154,7 +164,11 @@ watch(
 </script>
 
 <template>
-	<div :class="$style.wrapper">
+	<div
+		:class="$style.wrapper"
+		@mouseenter="wrapperHovered = true"
+		@mouseleave="wrapperHovered = false"
+	>
 		<div v-if="showLeftFade" :class="$style.fadeLeft" />
 		<div ref="scrollRef" :class="$style.container" @scroll="updateFades">
 			<button
@@ -298,18 +312,19 @@ watch(
 	position: absolute;
 	top: 50%;
 	transform: translateY(-50%);
-	color: var(--color--text--tint-1);
+	color: var(--color--text);
 	opacity: 0;
 	pointer-events: none;
 	transition: opacity 0.2s ease;
-	background: none;
+	background: var(--color--background--light-2);
 	border: none;
+	border-radius: 50%;
 	padding: var(--spacing--3xs);
 	cursor: pointer;
 }
 
 .scrollHintVisible {
-	opacity: 0.4;
+	opacity: 0.7;
 	pointer-events: auto;
 
 	&:hover {
@@ -318,7 +333,8 @@ watch(
 }
 
 .scrollHintRight {
-	right: -24px;
+	right: -12px;
+	z-index: 2;
 }
 
 .scrollHintRight.scrollHintVisible {
@@ -326,7 +342,8 @@ watch(
 }
 
 .scrollHintLeft {
-	left: -24px;
+	left: -12px;
+	z-index: 2;
 }
 
 .scrollHintLeft.scrollHintVisible {

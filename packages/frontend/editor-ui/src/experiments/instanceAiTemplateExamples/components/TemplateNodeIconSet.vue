@@ -16,6 +16,7 @@ const DARK_MODE_INVERT_NODES = new Set([
 	'n8n-nodes-base.perplexity',
 	'n8n-nodes-base.openAi',
 	'n8n-nodes-base.github',
+	'n8n-nodes-base.mailchimp',
 	'@n8n/n8n-nodes-langchain.openAi',
 ]);
 
