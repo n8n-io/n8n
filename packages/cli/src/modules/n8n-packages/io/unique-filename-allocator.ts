@@ -8,12 +8,6 @@ export class UniqueFilenameAllocator {
 		private readonly fallback: string,
 	) {}
 
-	/**
-	 * Marks an already-slugified `segment` under `baseDir` as taken, so a later
-	 * `allocate()` that slugifies to it gets suffixed instead of colliding. Used to
-	 * reserve a fixed sibling dir (e.g. a folder's `workflows/` container) before
-	 * allocating names that could clash with it.
-	 */
 	reserve(segment: string): void {
 		this.used.add(`${this.baseDir}/${segment}`);
 	}

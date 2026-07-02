@@ -16,11 +16,8 @@ export interface WorkflowExportRequest {
 	user: User;
 	workflowIds: string[];
 	writer: PackageWriter;
-	/**
-	 * Directory the workflows are written under. Empty for a plain workflow
-	 * export (`workflows/...`); the folder exporter passes the folder's target
-	 * so contained workflows nest under `<folderTarget>/workflows/...`.
-	 */
+
+	// Directory the workflow is written under. e.g. folders/{folderId}/
 	basePrefix?: string;
 }
 

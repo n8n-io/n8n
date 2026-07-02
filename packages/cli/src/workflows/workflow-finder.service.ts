@@ -178,10 +178,6 @@ export class WorkflowFinderService {
 		return workflows;
 	}
 
-	/**
-	 * Workflow ids grouped by their parent folder, for the given folders. No access
-	 * filter — export access is gated per folder by WorkflowExporter (workflow:export).
-	 */
 	async findWorkflowIdsByFolder(folderIds: string[]): Promise<Map<string, string[]>> {
 		if (folderIds.length === 0) return new Map();
 

@@ -47,8 +47,8 @@ describe('UniqueFilenameAllocator', () => {
 	});
 
 	it('suffixes a name that slugifies to a reserved segment', () => {
-		// A folder reserves its `workflows` container so a sibling folder named
-		// "workflows" can't take the same directory.
+		// the word "workflows" needs to be protected otherwise you could create a workflow
+		// with the name "workflows" and overwrite the "workflows" directory of the folder
 		const allocator = new UniqueFilenameAllocator('folders/in-progress', 'folder');
 		allocator.reserve('workflows');
 

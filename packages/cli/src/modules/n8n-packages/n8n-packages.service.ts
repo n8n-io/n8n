@@ -18,7 +18,7 @@ import type {
 	ImportResult,
 } from './n8n-packages.types';
 import { FORMAT_VERSION } from './spec/constants';
-import { packageManifestSchema } from './spec/manifest.schema';
+import { type ManifestEntry, packageManifestSchema } from './spec/manifest.schema';
 
 @Service()
 export class N8nPackagesService {
@@ -38,9 +38,6 @@ export class N8nPackagesService {
 		const folderIds = request.folderIds ?? [];
 		const projectIds = request.projectIds ?? [];
 
-		// Folders are exported before workflows so any workflow a folder already
-		// placed can be dropped from the explicit top-level set below — otherwise it
-		// would be written twice and duplicated in the manifest.
 		const folderExportResult =
 			folderIds.length > 0
 				? await this.folderExporter.export({
@@ -50,16 +47,16 @@ export class N8nPackagesService {
 					})
 				: undefined;
 
-		const folderWorkflowIds = new Set(
-			folderExportResult?.workflowEntries.map((entry) => entry.id) ?? [],
+		const workflowsForExport = this.filterWorkflowsAlreadyInFolders(
+			folderExportResult?.workflowEntries,
+			workflowIds,
 		);
-		const topLevelWorkflowIds = workflowIds.filter((id) => !folderWorkflowIds.has(id));
 
 		const workflowExportResult =
-			topLevelWorkflowIds.length > 0
+			workflowsForExport.length > 0
 				? await this.workflowExporter.export({
 						user: request.user,
-						workflowIds: topLevelWorkflowIds,
+						workflowIds: workflowsForExport,
 						writer,
 					})
 				: undefined;
@@ -73,8 +70,6 @@ export class N8nPackagesService {
 					})
 				: undefined;
 
-		// Merge every export result's requirements once, grouped by type; each
-		// exporter is then handed its own slice (credentials today).
 		const requirements = mergeRequirements(
 			workflowExportResult?.requirements,
 			folderExportResult?.requirements,
@@ -86,9 +81,7 @@ export class N8nPackagesService {
 			writer,
 		});
 
-		// Top-level and folder-contained workflows are disjoint (the subtraction
-		// above guarantees it), so concatenation needs no dedupe.
-		const workflowEntries = [
+		const allWorkflowsInPackage = [
 			...(workflowExportResult?.entries ?? []),
 			...(folderExportResult?.workflowEntries ?? []),
 		];
@@ -104,14 +97,13 @@ export class N8nPackagesService {
 			...(credentialExportResult.requirements.length > 0
 				? { requirements: { credentials: credentialExportResult.requirements } }
 				: {}),
-			...(workflowEntries.length > 0 ? { workflows: workflowEntries } : {}),
+			...(allWorkflowsInPackage.length > 0 ? { workflows: allWorkflowsInPackage } : {}),
 			...(folderExportResult?.entries ? { folders: folderExportResult.entries } : {}),
 			...(projectExportResult?.entries ? { projects: projectExportResult.entries } : {}),
 		});
 
 		writer.writeFile('manifest.json', JSON.stringify(manifest, null, '\t'));
 
-		// Finalize before emitting so a failed finalization doesn't report a phantom export.
 		const stream = writer.finalize();
 
 		this.eventService.emit('n8n-package-exported', {
@@ -126,7 +118,7 @@ export class N8nPackagesService {
 				? { projectIds: projectExportResult.entries.map(({ id }) => id) }
 				: {}),
 			counts: {
-				workflows: workflowEntries.length,
+				workflows: allWorkflowsInPackage.length,
 				folders: folderExportResult?.entries.length ?? 0,
 				credentials: credentialExportResult.entries.length,
 			},
@@ -137,5 +129,10 @@ export class N8nPackagesService {
 
 	async importPackage(request: ImportPackageRequest): Promise<ImportResult> {
 		return await this.importPipeline.run(request);
+	}
+
+	filterWorkflowsAlreadyInFolders(workflowsInFolders: ManifestEntry[] = [], workflowIds: string[]) {
+		const folderWorkflowIds = new Set(workflowsInFolders.map((entry) => entry.id) ?? []);
+		return workflowIds.filter((id) => !folderWorkflowIds.has(id));
 	}
 }
