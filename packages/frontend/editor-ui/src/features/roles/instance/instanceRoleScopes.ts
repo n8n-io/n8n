@@ -37,6 +37,12 @@ export const INSTANCE_SCOPE_GROUPS = {
 			'logStreaming:manage', // Log Streaming
 			'ldap:manage', // LDAP
 			'otel:manage', // OpenTelemetry
+			'eventBusDestination:create', // Log Streaming
+			'eventBusDestination:read',
+			'eventBusDestination:update',
+			'eventBusDestination:delete',
+			'eventBusDestination:list',
+			'eventBusDestination:test',
 		],
 	},
 	user: {
