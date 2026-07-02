@@ -8,6 +8,7 @@ import type { InstanceSettings } from 'n8n-core';
 
 import type { AiService } from '../../../services/ai.service';
 
+import type { AgentFile } from '../entities/agent-file.entity';
 import { AGENT_KNOWLEDGE_VOLUME_MOUNT_PATH } from '../agent-knowledge-storage';
 import {
 	AGENT_KNOWLEDGE_SANDBOX_NAME_PREFIX,
@@ -107,6 +108,8 @@ function makeService(
 	logger: Logger = mock<Logger>(),
 	aiService: AiService = makeAiService(),
 	instanceSettings: InstanceSettings = mock<InstanceSettings>({ instanceId }),
+	agentFileRepository: AgentFileRepository = mock<AgentFileRepository>(),
+	agentRepository: AgentRepository = mock<AgentRepository>(),
 ): AgentKnowledgeSandboxService {
 	return new AgentKnowledgeSandboxService(
 		{
@@ -124,9 +127,24 @@ function makeService(
 		logger,
 		aiService,
 		instanceSettings,
-		mock<AgentFileRepository>(),
-		mock<AgentRepository>(),
+		agentFileRepository,
+		agentRepository,
 	);
+}
+
+function makeAgentFile(overrides: Partial<AgentFile> = {}): AgentFile {
+	const fileName = overrides.fileName ?? 'file.txt';
+	return {
+		id: 'file-id',
+		agentId,
+		binaryDataId: `daytona-volume:${fileName}`,
+		fileName,
+		mimeType: 'text/plain',
+		fileSizeBytes: 100,
+		createdAt: new Date('2024-01-01T00:00:00.000Z'),
+		updatedAt: new Date('2024-01-01T00:00:00.000Z'),
+		...overrides,
+	} as AgentFile;
 }
 
 function makeFilesystem(): MockFilesystem {
@@ -338,5 +356,81 @@ describe('AgentKnowledgeSandboxService', () => {
 			{ id: projectId },
 			expect.anything(),
 		);
+	});
+
+	describe('globKnowledgeFiles', () => {
+		const fixtureFiles = [
+			makeAgentFile({ id: 'file-alpha', fileName: 'alpha.pdf' }),
+			makeAgentFile({ id: 'file-bravo', fileName: 'bravo.pdf' }),
+			makeAgentFile({ id: 'file-charlie', fileName: 'charlie.txt' }),
+			makeAgentFile({ id: 'file-delta', fileName: 'delta.md' }),
+		];
+
+		function makeGlobService(): AgentKnowledgeSandboxService {
+			const agentFileRepository = mock<AgentFileRepository>();
+			agentFileRepository.findByAgentId.mockResolvedValue(fixtureFiles);
+			const agentRepository = mock<AgentRepository>();
+			agentRepository.existsBy.mockResolvedValue(true);
+			return makeService(
+				{},
+				mock<Logger>(),
+				makeAiService(),
+				mock<InstanceSettings>({ instanceId }),
+				agentFileRepository,
+				agentRepository,
+			);
+		}
+
+		it('lists all files with a catch-all pattern, sorted by display name', async () => {
+			const service = makeGlobService();
+
+			const result = await service.globKnowledgeFiles(projectId, agentId, { pattern: '*' });
+
+			expect(result.files.map((file) => file.displayName)).toEqual([
+				'alpha.pdf',
+				'bravo.pdf',
+				'charlie.txt',
+				'delta.md',
+			]);
+			expect(result.hasMore).toBe(false);
+		});
+
+		it('filters by extension pattern', async () => {
+			const service = makeGlobService();
+
+			const result = await service.globKnowledgeFiles(projectId, agentId, { pattern: '*.pdf' });
+
+			expect(result.files.map((file) => file.displayName)).toEqual(['alpha.pdf', 'bravo.pdf']);
+		});
+
+		it('pages with offset', async () => {
+			const service = makeGlobService();
+
+			const firstPage = await service.globKnowledgeFiles(projectId, agentId, {
+				pattern: '*',
+				limit: 2,
+				offset: 0,
+			});
+			expect(firstPage.files.map((file) => file.displayName)).toEqual(['alpha.pdf', 'bravo.pdf']);
+			expect(firstPage.offset).toBe(0);
+			expect(firstPage.hasMore).toBe(true);
+
+			const secondPage = await service.globKnowledgeFiles(projectId, agentId, {
+				pattern: '*',
+				limit: 2,
+				offset: 2,
+			});
+			expect(secondPage.files.map((file) => file.displayName)).toEqual(['charlie.txt', 'delta.md']);
+			expect(secondPage.offset).toBe(2);
+			expect(secondPage.hasMore).toBe(false);
+		});
+
+		it('still rejects unsafe patterns', async () => {
+			const service = makeGlobService();
+
+			await expect(
+				service.globKnowledgeFiles(projectId, agentId, { pattern: '../secrets' }),
+			).rejects.toThrow('Invalid knowledge file pattern');
+		});
 	});
 });
