@@ -1437,10 +1437,11 @@ export class InstanceAiService {
 
 	/**
 	 * One tick of the recurring leader prune cycle: expire stale checkpoints,
-	 * drop expired pending confirmations, and delete expired conversation
-	 * threads, then schedule the next run. A checkpoint failure reschedules
-	 * with a shorter retry delay; the confirmation and thread steps swallow
-	 * their own errors so they never disrupt the cycle.
+	 * hard-delete tombstones past the GC horizon, drop expired pending
+	 * confirmations, and delete expired conversation threads, then schedule the
+	 * next run. A checkpoint failure reschedules with a shorter retry delay; the
+	 * confirmation and thread steps swallow their own errors so they never
+	 * disrupt the cycle.
 	 */
 	private async runScheduledPrune(now = Date.now()): Promise<void> {
 		const olderThan = new Date(now - this.instanceAiConfig.snapshotRetention);
@@ -1452,6 +1453,7 @@ export class InstanceAiService {
 			} else {
 				this.logger.debug('No stale Instance AI checkpoints to expire');
 			}
+			await this.hardDeleteExpiredCheckpoints(now);
 			await this.suspendedThreads.pruneStalePendingConfirmations(now);
 			await this.pruneExpiredThreads();
 			this.scheduleCheckpointPrune();
@@ -1460,6 +1462,31 @@ export class InstanceAiService {
 				error: getErrorMessage(error),
 			});
 			this.scheduleCheckpointPrune(INSTANCE_AI_CHECKPOINT_PRUNE_RETRY_MS);
+		}
+	}
+
+	/**
+	 * Hard-delete expired checkpoint tombstones (`markExpiredOlderThan` releases
+	 * the blob but keeps the row so a stale resume gets a clear "expired" error;
+	 * this drops the row entirely once it's past the GC horizon so tombstones
+	 * don't grow unbounded). Has its own try/catch so a GC failure never forces
+	 * the checkpoint prune into its short retry cadence. No-op when
+	 * `checkpointGcRetention` is 0.
+	 */
+	private async hardDeleteExpiredCheckpoints(now: number): Promise<void> {
+		const retention = this.instanceAiConfig.checkpointGcRetention;
+		if (retention <= 0) return;
+
+		try {
+			const olderThan = new Date(now - retention);
+			const count = await this.checkpointStore.hardDeleteExpiredOlderThan(olderThan);
+			if (count > 0) {
+				this.logger.info('Hard-deleted expired Instance AI checkpoint tombstones', { count });
+			}
+		} catch (error: unknown) {
+			this.logger.warn('Failed to hard-delete expired Instance AI checkpoint tombstones', {
+				error: getErrorMessage(error),
+			});
 		}
 	}
 
