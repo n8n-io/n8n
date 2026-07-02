@@ -861,9 +861,6 @@ importers:
       yaml:
         specifier: 'catalog:'
         version: 2.8.3
-      zod:
-        specifier: 3.25.67
-        version: 3.25.67
       zod-to-json-schema:
         specifier: 'catalog:'
         version: 3.23.3(zod@3.25.67)
@@ -886,6 +883,9 @@ importers:
       vitest-mock-extended:
         specifier: 'catalog:'
         version: 3.1.0(typescript@6.0.2)(vitest@4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))
+      zod:
+        specifier: 3.25.67
+        version: 3.25.67
 
   packages/@n8n/ai-node-sdk:
     dependencies:
@@ -1123,9 +1123,6 @@ importers:
       xss:
         specifier: 'catalog:'
         version: 1.0.15
-      zod:
-        specifier: 3.25.67
-        version: 3.25.67
     devDependencies:
       '@n8n/config':
         specifier: workspace:*
@@ -1148,6 +1145,9 @@ importers:
       vitest-mock-extended:
         specifier: 'catalog:'
         version: 3.1.0(typescript@6.0.2)(vitest@4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))
+      zod:
+        specifier: 3.25.67
+        version: 3.25.67
 
   packages/@n8n/backend-common:
     dependencies:
@@ -3876,9 +3876,6 @@ importers:
       xml2js:
         specifier: 'catalog:'
         version: 0.6.2
-      zod:
-        specifier: 3.25.67
-        version: 3.25.67
     devDependencies:
       '@n8n/playwright-janitor':
         specifier: workspace:*
@@ -3928,6 +3925,9 @@ importers:
       vitest-mock-extended:
         specifier: 'catalog:'
         version: 3.1.0(typescript@6.0.2)(vitest@4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))
+      zod:
+        specifier: 3.25.67
+        version: 3.25.67
 
   packages/extensions/insights:
     dependencies:
@@ -5671,9 +5671,6 @@ importers:
       xml2js:
         specifier: 'catalog:'
         version: 0.6.2
-      zod:
-        specifier: 3.25.67
-        version: 3.25.67
     devDependencies:
       '@langchain/core':
         specifier: 'catalog:'
@@ -5723,6 +5720,9 @@ importers:
       vitest-mock-extended:
         specifier: 'catalog:'
         version: 3.1.0(typescript@6.0.2)(vitest@4.1.1(@opentelemetry/api@1.9.0)(@types/node@20.19.41)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(vite@8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)))
+      zod:
+        specifier: 3.25.67
+        version: 3.25.67
 
 packages:
 
