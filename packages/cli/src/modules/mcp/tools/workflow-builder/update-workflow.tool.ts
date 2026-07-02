@@ -218,10 +218,10 @@ const inputSchema: z.ZodRawShape = {
 		),
 	versionName: z
 		.string()
+		.min(1)
 		.max(80)
-		.optional()
 		.describe(
-			'Short summary of what this update changes, shown in the workflow\'s version history (e.g. "Added Slack notification after HTTP request"). Always provide it.',
+			'Short summary of what this update changes, shown in the workflow\'s version history (e.g. "Added Slack notification after HTTP request").',
 		),
 	versionDescription: z
 		.string()
@@ -478,7 +478,7 @@ export const createUpdateWorkflowTool = (
 		workflowId: string;
 		skillsUsed?: string[];
 		operations: OperationInput[];
-		versionName?: string;
+		versionName: string;
 		versionDescription?: string;
 	}) => {
 		const sanitizedSkillsUsed = sanitizeSkillsUsed(skillsUsed);
@@ -490,7 +490,6 @@ export const createUpdateWorkflowTool = (
 				...(sanitizedSkillsUsed !== undefined ? { skillsUsed: sanitizedSkillsUsed } : {}),
 				opCount: operations.length,
 				opTypes: operations.map((op) => op.type),
-				hasVersionName: !!versionName,
 				hasVersionDescription: !!versionDescription,
 			},
 		};

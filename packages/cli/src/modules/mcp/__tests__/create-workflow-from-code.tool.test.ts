@@ -349,8 +349,8 @@ describe('create-workflow-from-code MCP tool', () => {
 			);
 		});
 
-		test('falls back to generated version metadata when the client omits it', async () => {
-			await callHandler({ code: 'const wf = ...' });
+		test('falls back to generated version metadata when the client sends blank values', async () => {
+			await callHandler({ code: 'const wf = ...', versionName: '   ' });
 
 			expect(workflowCreationService.createWorkflow).toHaveBeenCalledWith(
 				user,

@@ -59,10 +59,10 @@ const inputSchema = {
 		.describe('Workflow description. Longer text is shortened to 255 chars before saving.'),
 	versionName: z
 		.string()
+		.min(1)
 		.max(80)
-		.optional()
 		.describe(
-			'Short summary of this initial version, shown in the workflow\'s version history (e.g. "Initial Slack notification workflow"). Always provide it.',
+			'Short summary of this initial version, shown in the workflow\'s version history (e.g. "Initial Slack notification workflow").',
 		),
 	versionDescription: z
 		.string()
@@ -193,7 +193,7 @@ export const createCreateWorkflowFromCodeTool = (
 		skillsUsed?: string[];
 		name?: string;
 		description?: string;
-		versionName?: string;
+		versionName: string;
 		versionDescription?: string;
 		projectId?: string;
 		folderId?: string;
@@ -208,7 +208,6 @@ export const createCreateWorkflowFromCodeTool = (
 				hasName: !!name,
 				hasProjectId: !!projectId,
 				hasFolderId: !!folderId,
-				hasVersionName: !!versionName,
 				hasVersionDescription: !!versionDescription,
 			},
 		};

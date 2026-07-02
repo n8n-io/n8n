@@ -309,12 +309,13 @@ describe('update-workflow MCP tool', () => {
 			);
 		});
 
-		test('falls back to diff-based version metadata when the client omits it', async () => {
+		test('falls back to diff-based version metadata when the client sends a blank name', async () => {
 			await callHandler({
 				workflowId: 'wf-1',
 				operations: [
 					{ type: 'updateNodeParameters', nodeName: 'B', parameters: { url: 'https://new' } },
 				],
+				versionName: '   ',
 			});
 
 			expect(updateMock.mock.calls[0][3]).toEqual(
