@@ -250,12 +250,9 @@ function editCredential(credentialId: string) {
 		.rowEdit {
 			opacity: 1;
 			pointer-events: auto;
+			color: var(--color--text);
 		}
 	}
-}
-
-.rowActive {
-	color: var(--color--text);
 }
 
 .rowLabel {
@@ -290,12 +287,6 @@ function editCredential(credentialId: string) {
 	pointer-events: none;
 	color: var(--color--text--tint-1);
 	cursor: pointer;
-
-	&:hover {
-		opacity: 1;
-		pointer-events: auto;
-		color: var(--color--text);
-	}
 }
 
 .emptyRow {

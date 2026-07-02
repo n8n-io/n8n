@@ -24,7 +24,6 @@ const i18n = useI18n();
 const placeholderIcon = computed(() => {
 	switch (props.item.kind) {
 		case 'service':
-			return 'plug';
 		case 'mcp-server':
 			return 'plug';
 		case 'workflow':

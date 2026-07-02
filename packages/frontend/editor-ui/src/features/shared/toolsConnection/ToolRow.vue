@@ -35,7 +35,6 @@ const shouldShowCredentialPicker = computed(() => {
 const placeholderIcon = computed(() => {
 	switch (props.item.kind) {
 		case 'service':
-			return 'plug';
 		case 'mcp-server':
 			return 'plug';
 		case 'workflow':

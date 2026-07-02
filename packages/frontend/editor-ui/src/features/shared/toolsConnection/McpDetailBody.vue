@@ -144,10 +144,9 @@ const hasMetadata = computed(
 
 .description {
 	margin: 0;
-	color: var(--color--text);
+	color: var(--text-color--subtler);
 	font-size: var(--font-size--2xs);
 	line-height: var(--line-height--md);
-	color: var(--text-color--subtler);
 }
 
 .metadata {
