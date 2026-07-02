@@ -34,3 +34,8 @@ export { InvalidScheduleError, CorruptStorageRowError } from './errors';
 
 export { computeNextRunAt } from './recurrence/next-run';
 export { validateSchedule } from './recurrence/validate';
+
+export { sweep, DEFAULT_SWEEP_OPTIONS } from './sweep';
+export type { SweepSummary, SweepOptions, OnJobPlanError } from './sweep';
+
+export type { DueJobs, PlannedJob, RunInTransaction, SweepTransaction } from './sweep';

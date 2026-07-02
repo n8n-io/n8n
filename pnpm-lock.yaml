@@ -3191,6 +3191,15 @@ importers:
 
   packages/@n8n/scheduler:
     dependencies:
+      '@n8n/backend-common':
+        specifier: workspace:*
+        version: link:../backend-common
+      '@n8n/config':
+        specifier: workspace:*
+        version: link:../config
+      '@n8n/constants':
+        specifier: workspace:*
+        version: link:../constants
       '@n8n/db':
         specifier: workspace:*
         version: link:../db

@@ -21,7 +21,7 @@ export interface ScheduledTask {
 	id: string;
 	jobId: string;
 	taskType: string;
-	payload: unknown;
+	payload: Record<string, unknown>;
 	scheduledFor: Date;
 	runAt: Date;
 	status: ScheduledTaskStatus;

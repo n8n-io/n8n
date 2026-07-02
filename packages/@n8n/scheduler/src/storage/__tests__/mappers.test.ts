@@ -1,6 +1,8 @@
 import type { ScheduledJob as ScheduledJobEntity } from '@n8n/db';
 
-import { entityToScheduledJob, scheduledTaskToRow } from '../mappers';
+import { entityToScheduledJob } from '../mappers';
+
+const INSTANCE_TZ = 'America/New_York';
 
 /** Build a `scheduled_job` entity row with sensible defaults, overridable per test. */
 function jobEntity(overrides: Partial<ScheduledJobEntity> = {}): ScheduledJobEntity {
@@ -35,6 +37,7 @@ describe('entityToScheduledJob', () => {
 				timezone: 'Europe/Berlin',
 				intervalSeconds: null,
 			}),
+			INSTANCE_TZ,
 		);
 
 		expect(job.schedule).toEqual({
@@ -44,15 +47,39 @@ describe('entityToScheduledJob', () => {
 		});
 	});
 
+	it('resolves a null cron timezone to the instance default', () => {
+		const job = entityToScheduledJob(
+			jobEntity({
+				kind: 'cron',
+				cronExpression: '0 0 9 * * *',
+				timezone: null,
+				intervalSeconds: null,
+			}),
+			INSTANCE_TZ,
+		);
+
+		expect(job.schedule).toEqual({
+			kind: 'cron',
+			cronExpression: '0 0 9 * * *',
+			timezone: INSTANCE_TZ,
+		});
+	});
+
 	it('assembles an interval schedule', () => {
-		const job = entityToScheduledJob(jobEntity({ kind: 'interval', intervalSeconds: 30 }));
+		const job = entityToScheduledJob(
+			jobEntity({ kind: 'interval', intervalSeconds: 30 }),
+			INSTANCE_TZ,
+		);
 
 		expect(job.schedule).toEqual({ kind: 'interval', intervalSeconds: 30 });
 	});
 
 	it('assembles a one_off schedule', () => {
 		const fireAt = new Date('2026-06-01T12:00:00.000Z');
-		const job = entityToScheduledJob(jobEntity({ kind: 'one_off', intervalSeconds: null, fireAt }));
+		const job = entityToScheduledJob(
+			jobEntity({ kind: 'one_off', intervalSeconds: null, fireAt }),
+			INSTANCE_TZ,
+		);
 
 		expect(job.schedule).toEqual({ kind: 'one_off', fireAt });
 	});
@@ -61,6 +88,7 @@ describe('entityToScheduledJob', () => {
 		const nextRunAt = new Date('2026-02-02T00:00:00.000Z');
 		const job = entityToScheduledJob(
 			jobEntity({ id: 123, enabled: false, nextRunAt, lastFiredAt: null }),
+			INSTANCE_TZ,
 		);
 
 		expect(job.id).toBe('123');
@@ -71,29 +99,7 @@ describe('entityToScheduledJob', () => {
 
 	it('throws when a column required by the kind is missing', () => {
 		expect(() =>
-			entityToScheduledJob(jobEntity({ kind: 'interval', intervalSeconds: null })),
+			entityToScheduledJob(jobEntity({ kind: 'interval', intervalSeconds: null }), INSTANCE_TZ),
 		).toThrow();
-	});
-});
-
-describe('scheduledTaskToRow', () => {
-	it('converts jobId to a number and omits the generated id', () => {
-		const scheduledFor = new Date('2026-03-03T00:00:00.000Z');
-		const row = scheduledTaskToRow({
-			id: 'ignored',
-			jobId: '8',
-			taskType: 'scheduleTrigger',
-			payload: { a: 1 },
-			scheduledFor,
-			runAt: scheduledFor,
-			status: 'pending',
-			attempts: 0,
-			maxAttempts: 3,
-		});
-
-		expect(row).not.toHaveProperty('id');
-		expect(row.jobId).toBe(8);
-		expect(row.scheduledFor).toBe(scheduledFor);
-		expect(row.maxAttempts).toBe(3);
 	});
 });
