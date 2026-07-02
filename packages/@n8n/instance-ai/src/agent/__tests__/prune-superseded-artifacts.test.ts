@@ -256,4 +256,54 @@ describe('pruneSupersededArtifacts', () => {
 		const messages = [user];
 		expect(pruneSupersededArtifacts(messages)).toBe(messages);
 	});
+
+	it('stubs every load_skill result in history, even without a newer load', () => {
+		const skill = toolCallMessage(
+			'load_skill',
+			{ skillId: 'workflow-builder' },
+			{ ok: true, success: true, skillId: 'workflow-builder', content: '#'.repeat(5000) },
+		);
+
+		const result = pruneSupersededArtifacts([skill]);
+
+		expect(firstBlock(result[0]).output).toMatchObject({
+			superseded: true,
+			artifact: 'skill:workflow-builder',
+		});
+	});
+
+	it('leaves small load_skill results (e.g. errors) alone', () => {
+		const failed = toolCallMessage(
+			'load_skill',
+			{ skillId: 'nope' },
+			{ ok: false, success: false, skillId: 'nope', error: 'Unknown skill: nope' },
+		);
+
+		const result = pruneSupersededArtifacts([failed]);
+
+		expect(firstBlock(result[0]).output).toMatchObject({ ok: false });
+	});
+
+	it('replaces large inline file blocks with a text note and keeps small ones', () => {
+		const withFiles: AgentDbMessage = {
+			id: 'msg-files',
+			createdAt: new Date('2026-01-01T00:00:00Z'),
+			role: 'user',
+			content: [
+				{ type: 'text', text: 'see attached' },
+				{ type: 'file', mediaType: 'image/png', data: 'A'.repeat(100_000) },
+				{ type: 'file', mediaType: 'image/png', data: 'B'.repeat(100) },
+			],
+		};
+
+		const result = pruneSupersededArtifacts([withFiles]);
+
+		if (result[0].type === 'custom') throw new Error('unexpected custom message');
+		const [text, bigFile, smallFile] = result[0].content;
+		expect(text).toEqual({ type: 'text', text: 'see attached' });
+		expect(bigFile).toMatchObject({ type: 'text' });
+		if (bigFile.type !== 'text') throw new Error('expected text stub');
+		expect(bigFile.text).toContain('image/png');
+		expect(smallFile).toMatchObject({ type: 'file', data: 'B'.repeat(100) });
+	});
 });

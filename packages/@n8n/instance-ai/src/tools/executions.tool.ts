@@ -11,7 +11,7 @@ import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
-import type { InstanceAiContext } from '../types';
+import type { InstanceAiContext, NodeOutputResult } from '../types';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -294,14 +294,43 @@ async function handleDebug(context: InstanceAiContext, input: Extract<Input, { a
 	return await context.executionService.getDebugInfo(input.executionId);
 }
 
+/** Item counts are already paged, but a single item can be hundreds of KB. */
+const MAX_NODE_OUTPUT_CHARS = 50_000;
+
+function capNodeOutputItems(result: NodeOutputResult) {
+	let used = 0;
+	const items: unknown[] = [];
+	let truncated = false;
+	for (const item of result.items) {
+		const serialized = JSON.stringify(item) ?? 'null';
+		if (used + serialized.length > MAX_NODE_OUTPUT_CHARS) {
+			truncated = true;
+			if (items.length === 0) {
+				items.push(`${serialized.slice(0, MAX_NODE_OUTPUT_CHARS)}… [item truncated]`);
+			}
+			break;
+		}
+		items.push(item);
+		used += serialized.length;
+	}
+	if (!truncated) return result;
+	return {
+		...result,
+		items,
+		truncated: true,
+		note: `Output capped at ~${MAX_NODE_OUTPUT_CHARS / 1000}k chars: returning ${items.length} of ${result.items.length} fetched items (${result.totalItems} total). Use startIndex/maxItems to page through the rest.`,
+	};
+}
+
 async function handleGetNodeOutput(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'get-node-output' }>,
 ) {
-	return await context.executionService.getNodeOutput(input.executionId, input.nodeName, {
+	const result = await context.executionService.getNodeOutput(input.executionId, input.nodeName, {
 		startIndex: input.startIndex,
 		maxItems: input.maxItems,
 	});
+	return capNodeOutputItems(result);
 }
 
 async function handleGetResolvedNodeParameters(
