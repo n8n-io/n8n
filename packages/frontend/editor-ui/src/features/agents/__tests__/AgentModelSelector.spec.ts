@@ -8,6 +8,7 @@ type Credential = { id: string; name: string; type: string };
 type TestMenuItem = {
 	id: string;
 	label: string;
+	checked?: boolean;
 	children?: TestMenuItem[];
 	data?: { badgeLabel?: string; description?: string; descriptionTooltipTeleported?: boolean };
 };
@@ -26,6 +27,7 @@ const freeAiCreditsState = vi.hoisted(() => ({
 }));
 const canCreateCredentials = vi.hoisted(() => ({ value: true }));
 const openNewCredential = vi.hoisted(() => vi.fn());
+const openModalWithData = vi.hoisted(() => vi.fn());
 const baseText = vi.hoisted(() =>
 	vi.fn((key: string, options?: { interpolate?: Record<string, string | number> }) => {
 		const template =
@@ -115,7 +117,7 @@ vi.mock('@/features/collaboration/projects/projects.store', () => ({
 }));
 
 vi.mock('@/app/stores/ui.store', () => ({
-	useUIStore: () => ({ openNewCredential }),
+	useUIStore: () => ({ openNewCredential, openModalWithData }),
 }));
 
 const modelsByProvider: AgentModelsByProvider = {
@@ -204,9 +206,29 @@ describe('AgentModelSelector', () => {
 		expect(dropdown.props('credentialsMissing')).toBe(false);
 		expect(dropdown.props('selectedCredentialName')).toBe('Anthropic credential');
 		expect(JSON.stringify(anthropicItem?.children ?? [])).toContain('Claude Sonnet 4.5');
+		expect(getMenuItemByLabel(anthropicItem?.children ?? [], 'Claude Sonnet 4.5')?.checked).toBe(
+			true,
+		);
 	});
 
-	it('hides the assistant when opening credential creation from the configure action', async () => {
+	it('opens the credential selector from the configure action when credentials exist', async () => {
+		const wrapper = await mountSelector({ anthropic: null });
+		const dropdown = wrapper.findComponent({ name: 'AiModelSelectorDropdown' });
+
+		dropdown.vm.$emit('select', 'anthropic::configure::anthropicApi');
+
+		expect(openModalWithData).toHaveBeenCalledWith({
+			name: 'agentModelCredentialModal',
+			data: expect.objectContaining({
+				credentialType: 'anthropicApi',
+				displayName: 'anthropicApi',
+				initialValue: null,
+			}),
+		});
+	});
+
+	it('hides the assistant when creating credentials from configure without existing credentials', async () => {
+		credentialsByType.value = {};
 		const wrapper = await mountSelector({ anthropic: null });
 		const dropdown = wrapper.findComponent({ name: 'AiModelSelectorDropdown' });
 

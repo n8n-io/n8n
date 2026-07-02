@@ -25,6 +25,7 @@ import {
 	type AgentModelSelection,
 	type AgentModelsByProvider,
 } from '../model-providers';
+import { AGENT_MODEL_CREDENTIAL_MODAL_KEY } from '../constants';
 
 const MAX_MODEL_NAME_CHARS = 45;
 const MAX_SEARCH_RESULTS_PER_PROVIDER = 10;
@@ -141,10 +142,6 @@ function modelItemId(provider: AgentModelProvider, model: string): string {
 	return `${provider}::model::${encodeURIComponent(model)}`;
 }
 
-function credentialItemId(provider: AgentModelProvider, credentialId: string): string {
-	return `${provider}::credential::${encodeURIComponent(credentialId)}`;
-}
-
 function configureCredentialItemId(provider: AgentModelProvider, credentialType: string): string {
 	return `${provider}::configure::${encodeURIComponent(credentialType)}`;
 }
@@ -172,14 +169,6 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 	const hasProviderCredential =
 		selectedProviderCredentialId !== null &&
 		credentialOptions.some((credential) => credential.id === selectedProviderCredentialId);
-
-	const credentialItems = credentialOptions.map<MenuItem>((credential) => ({
-		id: credentialItemId(provider, credential.id),
-		label: credential.name,
-		icon: { type: 'icon', value: 'key-round' },
-		checked: credential.id === selectedProviderCredentialId,
-		data: { provider, credentialType: credential.type },
-	}));
 
 	const configureCredentialItems: MenuItem[] = canCreateCredentials.value
 		? credentialTypes.length === 1
@@ -234,6 +223,7 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 				label: truncateBeforeLast(model.name, MAX_MODEL_NAME_CHARS),
 				disabled: false,
 				divided: index === 0,
+				checked: selectedModel?.provider === provider && selectedModel.model === model.model,
 				data: {
 					provider,
 					description: model.description ?? undefined,
@@ -279,7 +269,6 @@ function providerToMenuItem(provider: AgentModelProvider): MenuItem {
 		children: [
 			...freeOpenAiCreditsItems,
 			...configureCredentialItems,
-			...credentialItems,
 			...modelItems,
 			...statusItems,
 		],
@@ -369,6 +358,27 @@ function openNewCredential(credentialType: string) {
 	}
 }
 
+function openCredentialsSelectorOrCreate(provider: AgentModelProvider, credentialType: string) {
+	if (disabled) return;
+
+	const existingCredentials = credentialsStore.getCredentialsByType(credentialType);
+
+	if (existingCredentials.length === 0 && canCreateCredentials.value) {
+		openNewCredential(credentialType);
+		return;
+	}
+
+	uiStore.openModalWithData({
+		name: AGENT_MODEL_CREDENTIAL_MODAL_KEY,
+		data: {
+			credentialType,
+			displayName: getCredentialTypeDisplayName(credentialType),
+			initialValue: credentials?.[provider] ?? null,
+			onSelect: (credentialId: string | null) => emit('selectCredential', provider, credentialId),
+		},
+	});
+}
+
 async function onSelect(id: string) {
 	if (disabled) return;
 
@@ -376,13 +386,8 @@ async function onSelect(id: string) {
 	if (!isAgentModelProvider(providerId) || !rawValue) return;
 
 	const value = decodeURIComponent(rawValue);
-	if (action === 'credential') {
-		emit('selectCredential', providerId, value);
-		return;
-	}
-
 	if (action === 'configure') {
-		openNewCredential(value);
+		openCredentialsSelectorOrCreate(providerId, value);
 		return;
 	}
 
