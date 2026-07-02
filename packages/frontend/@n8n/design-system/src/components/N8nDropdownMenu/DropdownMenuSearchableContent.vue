@@ -57,11 +57,18 @@ let searchSequence = 0;
 
 const highlightedIndex = ref(-1);
 
+const refocusSearchInput = () => {
+	searchRef.value?.focus({ preventScroll: true });
+};
+
 const scrollHighlightedItem = () => {
 	scrollHighlightedItemIntoView(itemsContainerRef.value);
 	// Reka/browser focus work can reset the scroll after Vue's update,
 	// so re-apply it on the next frame.
-	requestAnimationFrame(() => scrollHighlightedItemIntoView(itemsContainerRef.value));
+	requestAnimationFrame(() => {
+		scrollHighlightedItemIntoView(itemsContainerRef.value);
+		refocusSearchInput();
+	});
 };
 
 const navigate = async (direction: 'up' | 'down') => {
@@ -88,6 +95,17 @@ const openHighlightedSubMenu = () => {
 
 const resetHighlightedItem = () => {
 	highlightedIndex.value = -1;
+};
+
+const updateHighlightedItem = (
+	newItems: Array<DropdownMenuItemProps<T, D>>,
+	oldItems: Array<DropdownMenuItemProps<T, D>>,
+) => {
+	if (highlightedIndex.value < 0) return;
+
+	const highlightedItem = oldItems[highlightedIndex.value];
+	const newIndex = newItems.findIndex((item) => item.id === highlightedItem?.id);
+	highlightedIndex.value = newItems[newIndex]?.disabled ? -1 : newIndex;
 };
 
 const debouncedEmitSearch = useDebounceFn((term: string, sequence: number) => {
@@ -129,7 +147,7 @@ const handleSubMenuOpenChange = (index: number, open: boolean) => {
 		openSubMenuIndex.value = -1;
 		void nextTick(() => {
 			highlightedIndex.value = index;
-			searchRef.value?.focus({ preventScroll: true });
+			refocusSearchInput();
 		});
 	}
 };
@@ -161,7 +179,7 @@ const handleItemHover = (index: number) => {
 	highlightedIndex.value = index;
 
 	requestAnimationFrame(() => {
-		searchRef.value?.focus({ preventScroll: true });
+		refocusSearchInput();
 	});
 };
 
@@ -220,7 +238,7 @@ watch(
 	(open) => {
 		if (open) {
 			void nextTick(() => {
-				searchRef.value?.focus({ preventScroll: true });
+				refocusSearchInput();
 			});
 		} else {
 			resetNavigation();
@@ -232,8 +250,8 @@ watch(
 
 watch(
 	() => props.items,
-	() => {
-		resetHighlightedItem();
+	(newItems, oldItems) => {
+		updateHighlightedItem(newItems, oldItems);
 	},
 );
 

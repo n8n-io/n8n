@@ -304,6 +304,16 @@ describe('DropdownMenuSearchableContent keyboard navigation', () => {
 		expect(wrapper.emitted('close')).toHaveLength(2);
 	});
 
+	it('should keep focus on the search input after keyboard navigation with a search query', async () => {
+		const wrapper = renderSearchableContent(createItems(2));
+		const input = wrapper.getByRole('textbox');
+
+		await userEvent.type(input, 'Item');
+		await userEvent.keyboard('{ArrowDown}');
+
+		await waitFor(() => expect(document.activeElement).toBe(input));
+	});
+
 	it('should wire aria-activedescendant to the highlighted item', async () => {
 		const wrapper = renderSearchableContent(createItems(2));
 		const input = wrapper.getByRole('textbox');
@@ -415,7 +425,24 @@ describe('DropdownMenuSearchableContent keyboard navigation', () => {
 		}
 	});
 
-	it('should reset the highlighted item when items change', async () => {
+	it('should keep the highlighted item when the items array changes and the item still exists', async () => {
+		const items = createItems(4);
+		const wrapper = renderSearchableContent(items);
+
+		await userEvent.click(wrapper.getByRole('textbox'));
+		await userEvent.keyboard('{ArrowDown}{ArrowDown}{ArrowDown}');
+
+		await waitFor(() => {
+			expect(wrapper.getByText('Item 2')).toHaveAttribute('aria-selected', 'true');
+		});
+
+		await wrapper.rerender({ open: true, items: createItems(4), searchDebounce: 0 });
+		await userEvent.keyboard('{ArrowDown}');
+
+		expect(wrapper.getByText('Item 3')).toHaveAttribute('aria-selected', 'true');
+	});
+
+	it('should reset the highlighted item when items change and the highlighted item no longer exists', async () => {
 		const items = createItems(2);
 		const wrapper = renderSearchableContent(items);
 
@@ -426,8 +453,12 @@ describe('DropdownMenuSearchableContent keyboard navigation', () => {
 			expect(wrapper.getByText('Item 0')).toHaveAttribute('aria-selected', 'true');
 		});
 
-		await wrapper.rerender({ open: true, items: createItems(3), searchDebounce: 0 });
+		await wrapper.rerender({
+			open: true,
+			items: [{ id: 'item-1', label: 'Item 1' }],
+			searchDebounce: 0,
+		});
 
-		expect(wrapper.getByText('Item 0')).not.toHaveAttribute('aria-selected');
+		expect(wrapper.getByText('Item 1')).not.toHaveAttribute('aria-selected');
 	});
 });
