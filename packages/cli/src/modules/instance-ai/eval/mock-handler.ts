@@ -45,7 +45,7 @@ Each request is mocked independently. Even when the same node makes multiple sim
 
 Response SHAPE comes from the API docs; DATA VALUES come from the node config. Use names/IDs from the config exactly (case-sensitive).
 
-**Honor explicit values from the scenario and hints.** When the scenarioHints, nodeHint, or globalContext state a specific value — a quantity with a unit, a percentage, a monetary amount ("$1,200"), a count ("3 rows"), a threshold, an ID, or a name — reproduce that EXACT value in the response. Do NOT round it, soften it toward a "more typical" reading, or substitute your own estimate: the stated value is the test's intent, and downstream nodes (IF/Switch gates, filters, sums) compare against it. Emit the exact number of enumerated items the context describes. Only invent a value when the context gives none for that field. If a nodeHint and the scenario disagree, the scenario wins.
+**Honor explicit values from the scenario and hints.** When the scenarioHints, nodeHint, or globalContext state a specific value — a quantity with a unit, a percentage, a monetary amount ("$1,200"), a count ("3 rows"), a threshold, an ID, or a name — reproduce that EXACT value in the response. Do NOT round it, soften it toward a "more typical" reading, or substitute your own estimate: the stated value is the test's intent, and downstream nodes (IF/Switch gates, filters, sums) compare against it. Emit the exact number of enumerated items the context describes. Only invent a value when the context gives none for that field. If a nodeHint and the scenario disagree, the scenario wins. When the context assigns an error or missing-data condition to a specific entity (one channel, one user, one record), compare THIS request's parameters (URL, query, body) against that entity: return the error response ONLY when this request targets it, and a normal success response for every other entity — an error scenario is only tested if the matching request actually fails.
 
 **Honor request filters.** When the request narrows results — a date-range constraint (\`gte\`/\`lte\`/\`since\`/\`after\`/\`before\` params, or filter variables inside a GraphQL query), a status/type filter, a search query, or a \`limit\` — EVERY record in your response MUST satisfy it. Never include records outside the requested window "for realism": workflows re-filter and count your records against the real clock, and one out-of-window item changes the counts the test asserts. For date filters, resolve the requested window against the Date anchors and double-check every returned timestamp falls inside it. When the scenario says records exist "in the last N days", place them safely inside that window (e.g. 2–5 days ago), never on the boundary and never on training-data dates.
 
@@ -61,6 +61,8 @@ Node-config patterns to know:
 **Time-relative fields.** The user prompt ends with a "## Date anchors" block listing today's date plus a handful of relative anchors (yesterday, 7 days ago, etc.). EVERY timestamp, date, hourly/daily entry, and time-relative field in your response MUST be derived from those anchors — never from training data or from the example dates in the API documentation. Workflows commonly filter mock responses by today's date; values outside the current window are silently discarded and the scenario fails.
 
 Match THIS request only (URL + method): a node may make multiple sequential calls; reply to the specific one shown. Echo identifiers, placeholders, and reference values from the request back into the response. Return a single page (don't expect multi-page cursor follow-up), but keep the API's real envelope and mark it as the final page (e.g. \`nextCursor: null\`, \`has_more: false\`).
+
+**Keep list responses small.** Generate the MINIMUM data that satisfies the request, scenario, and workflow logic. For list/feed/forecast endpoints, return only as many entries as the downstream logic needs — a 5-day hourly forecast does not need all 40 entries, just enough to cover the window the workflow filters on (default 5-8 entries, at most ~20). Exception: when the scenario, hints, or the request's own parameters state an exact count or a larger dataset, honor that exactly — never shrink an explicitly-specified dataset. Oversized responses are slow to generate and risk aborting the whole request.
 
 For APIs that return empty responses on success (204/202), call submit_response with type="json" and body={}.
 
@@ -79,9 +81,14 @@ const ERROR_DETAIL_MAX = 300;
 /**
  * Hang guard for a single mock-generation LLM call (including tool turns).
  * Provider stalls otherwise eat the whole scenario execution budget — the
- * outer retry in `generateMockResponse` still applies after an abort.
+ * outer retry in `generateMockResponse` still applies after an abort. The
+ * retry gets extra headroom: large legitimate payloads (multi-entry forecasts,
+ * list responses) can exceed the first-attempt budget under provider
+ * contention, and aborting both attempts turns a slow success into a
+ * mock_issue.
  */
 const LLM_CALL_TIMEOUT_MS = 120_000;
+const LLM_CALL_RETRY_TIMEOUT_MS = 180_000;
 
 interface MockHandlerOptions {
 	/** Steers the LLM toward specific behavior (errors, edge cases). */
@@ -118,38 +125,71 @@ export function createLlmMockHandler(options?: MockHandlerOptions): EvalLlmMockH
 	const responseCache = new Map<string, Promise<EvalMockHttpResponse>>();
 
 	return async (requestOptions, node) => {
-		if (!nodeConfigCache.has(node.name)) {
-			nodeConfigCache.set(node.name, extractNodeConfig(node));
+		// Catch-all: a defect anywhere in the mock pipeline must surface as an
+		// `_evalMockError` sentinel (verifier categorizes it mock_issue) with a
+		// full stack in the server log — never as an opaque crash of the
+		// executing node. Observed in CI as deterministic node crashes with no
+		// recorded intercepted request and no stack to debug from.
+		try {
+			if (!nodeConfigCache.has(node.name)) {
+				nodeConfigCache.set(node.name, extractNodeConfig(node));
+			}
+
+			const cacheKey = buildMockCacheKey(requestOptions, node.name);
+			const cached = cacheKey ? responseCache.get(cacheKey) : undefined;
+			if (cached) {
+				Container.get(Logger).debug(
+					`[EvalMock] Serving cached mock for ${requestOptions.method ?? 'GET'} ${extractEndpoint(requestOptions.url)} ("${node.name}")`,
+				);
+				return await cached;
+			}
+
+			const pending = generateMockResponse(requestOptions, node, {
+				scenarioHints: options?.scenarioHints,
+				globalContext: options?.globalContext,
+				nodeHint: options?.nodeHints?.[node.name],
+				nodeConfig: nodeConfigCache.get(node.name) ?? '',
+				maxRetries: options?.maxRetries ?? DEFAULT_MAX_RETRIES,
+			});
+
+			if (cacheKey) {
+				responseCache.set(cacheKey, pending);
+				void pending.then(
+					(response) => {
+						if (isMockErrorSentinel(response)) responseCache.delete(cacheKey);
+					},
+					() => responseCache.delete(cacheKey),
+				);
+			}
+
+			return await pending;
+		} catch (error) {
+			return buildPipelineErrorResponse(error, requestOptions, node.name);
 		}
+	};
+}
 
-		const cacheKey = buildMockCacheKey(requestOptions, node.name);
-		const cached = cacheKey ? responseCache.get(cacheKey) : undefined;
-		if (cached) {
-			Container.get(Logger).debug(
-				`[EvalMock] Serving cached mock for ${requestOptions.method ?? 'GET'} ${extractEndpoint(requestOptions.url)} ("${node.name}")`,
-			);
-			return await cached;
-		}
-
-		const pending = generateMockResponse(requestOptions, node, {
-			scenarioHints: options?.scenarioHints,
-			globalContext: options?.globalContext,
-			nodeHint: options?.nodeHints?.[node.name],
-			nodeConfig: nodeConfigCache.get(node.name) ?? '',
-			maxRetries: options?.maxRetries ?? DEFAULT_MAX_RETRIES,
-		});
-
-		if (cacheKey) {
-			responseCache.set(cacheKey, pending);
-			void pending.then(
-				(response) => {
-					if (isMockErrorSentinel(response)) responseCache.delete(cacheKey);
-				},
-				() => responseCache.delete(cacheKey),
-			);
-		}
-
-		return await pending;
+/**
+ * Convert an unexpected mock-pipeline exception into the `_evalMockError`
+ * sentinel. The stack is collapsed onto one line because the CI container-log
+ * capture filters log output line-by-line — a multi-line stack would be
+ * stripped down to just its first line.
+ */
+function buildPipelineErrorResponse(
+	error: unknown,
+	request: { url?: string; method?: string },
+	nodeName: string,
+): EvalMockHttpResponse {
+	const message = error instanceof Error ? error.message : String(error);
+	const stack =
+		error instanceof Error && error.stack ? error.stack.replace(/\s*\n\s*/g, ' <- ') : '(no stack)';
+	Container.get(Logger).error(
+		`[EvalMock] Mock pipeline error for "${nodeName}" (${request.method ?? 'GET'} ${extractEndpoint(request.url ?? '')}): ${message} | stack: ${stack}`,
+	);
+	return {
+		body: { _evalMockError: true, message: `Mock pipeline error: ${message}` },
+		headers: { 'content-type': 'application/json' },
+		statusCode: 200,
 	};
 }
 
@@ -291,12 +331,16 @@ async function generateMockResponse(
 
 	for (let attempt = 0; attempt <= context.maxRetries; attempt++) {
 		try {
-			const spec = await callLlm(userPrompt, {
-				serviceName,
-				method: requestMethod,
-				pathname: requestPath,
-				hostname: requestHostname,
-			});
+			const spec = await callLlm(
+				userPrompt,
+				{
+					serviceName,
+					method: requestMethod,
+					pathname: requestPath,
+					hostname: requestHostname,
+				},
+				attempt === 0 ? LLM_CALL_TIMEOUT_MS : LLM_CALL_RETRY_TIMEOUT_MS,
+			);
 			applyEndpointNormalizers(request, spec);
 			return materializeSpec(spec);
 		} catch (error) {
@@ -458,6 +502,7 @@ function createQuirksLookupTool(
 async function callLlm(
 	userPrompt: string,
 	requestInfo: { serviceName: string; method: string; pathname: string; hostname?: string },
+	timeoutMs: number,
 ): Promise<MockResponseSpec> {
 	const capture: SubmitCapture = {};
 
@@ -477,7 +522,7 @@ async function callLlm(
 		.tool(createSubmitResponseTool(capture));
 
 	const result = await agent.generate(userPrompt, {
-		abortSignal: AbortSignal.timeout(LLM_CALL_TIMEOUT_MS),
+		abortSignal: AbortSignal.timeout(timeoutMs),
 	});
 
 	if (!capture.spec) {

@@ -282,7 +282,25 @@ export class EvalExecutionService {
 					}),
 			);
 
-			return normalizePinData(result as unknown as IPinData);
+			const normalized = normalizePinData(result as unknown as IPinData);
+
+			// generatePinData swallows internal failures (LLM timeout, parse error)
+			// and returns {} or a partial map instead of throwing, so the catch
+			// fallback below never fires for those. An unpinned bypass node
+			// EXECUTES for real — for AI roots the vendor SDK then makes real
+			// network calls (observed in CI: un-mocked Anthropic request →
+			// "Authorization failed"). Guarantee every bypass node is pinned,
+			// even if only with an empty item.
+			for (const nodeName of bypassNodeNames) {
+				if (!normalized[nodeName] || normalized[nodeName].length === 0) {
+					this.logger.warn(
+						`[EvalMock] Phase 1.5 produced no pin data for bypass node "${nodeName}" — pinning an empty item to prevent real execution`,
+					);
+					normalized[nodeName] = [{ json: {} }];
+				}
+			}
+
+			return normalized;
 		} catch (error) {
 			const errorMsg = error instanceof Error ? error.message : String(error);
 			this.logger.error(`[EvalMock] Phase 1.5 pin data generation failed: ${errorMsg}`);
