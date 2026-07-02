@@ -7,7 +7,8 @@ import omit from 'lodash/omit';
 import set from 'lodash/set';
 import split from 'lodash/split';
 import type { ICredentialDataDecryptedObject, IDataObject } from 'n8n-workflow';
-import { ensureError, jsonParse, jsonStringify } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { jsonParse, jsonStringify } from 'n8n-workflow';
 
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';

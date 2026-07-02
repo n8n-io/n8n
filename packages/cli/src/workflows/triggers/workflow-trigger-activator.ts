@@ -6,24 +6,19 @@ import type { IWorkflowDb, WorkflowEntity } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter, SpanStatus, Tracing } from 'n8n-core';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { createResultError, createResultOk, type Result } from '@n8n/utils/result';
 import type {
 	IConnections,
 	INode,
 	IWebhookData,
 	IWorkflowBase,
 	IWorkflowExecuteAdditionalData,
-	Result,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 	WorkflowId,
 } from 'n8n-workflow';
-import {
-	Workflow,
-	WorkflowActivationError,
-	createResultError,
-	createResultOk,
-	ensureError,
-} from 'n8n-workflow';
+import { Workflow, WorkflowActivationError } from 'n8n-workflow';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
 import { TRIGGER_ACTIVATION_MAX_ATTEMPTS } from '@/constants';

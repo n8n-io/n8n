@@ -49,6 +49,7 @@ import { cleanupCredentials } from '../credentials/seeder';
 import { loadTestCases } from '../data/source';
 import type { WorkflowTestCaseWithFile } from '../data/workflows';
 import { captureThreadRunDebug } from '../harness/capture-run-debug';
+import { EVAL_WORKSPACE_NAME, resolveEvalWorkspaceId } from '../harness/langsmith-seed';
 import { createLogger } from '../harness/logger';
 import type { EvalLogger } from '../harness/logger';
 import {
@@ -294,7 +295,14 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 	const isolationWarning = partialIsolationWarning(args.dataset, args.baselinePrefix);
 	if (isolationWarning) logger.warn(isolationWarning);
 
-	const lsClient = new Client();
+	// Pin eval writes to the eval workspace; our PAT would otherwise default to Prod.
+	const workspaceId = await resolveEvalWorkspaceId();
+	if (workspaceId) {
+		logger.info(
+			`Pinning eval experiments to LangSmith workspace "${EVAL_WORKSPACE_NAME}" (${workspaceId})`,
+		);
+	}
+	const lsClient = new Client(workspaceId ? { workspaceId } : {});
 	const datasetName = await syncDataset(lsClient, args.dataset, logger, testCasesWithFiles);
 
 	// Stash transcripts by threadId so reshapeLangSmithRuns can merge them in —

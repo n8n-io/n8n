@@ -5,7 +5,8 @@ import type { Scope } from '@n8n/permissions';
 import { Container } from '@n8n/di';
 import { Request, Response } from 'express';
 import { Cipher } from 'n8n-core';
-import { ensureError, jsonParse } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { jsonParse } from 'n8n-workflow';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
