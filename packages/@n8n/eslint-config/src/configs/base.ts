@@ -351,7 +351,6 @@ export const baseConfig = tseslint.config(
 						'**/scripts/*.js',
 					],
 					optionalDependencies: false,
-					peerDependencies: false,
 				},
 			],
 
