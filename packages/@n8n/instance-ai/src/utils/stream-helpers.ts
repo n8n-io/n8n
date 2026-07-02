@@ -3,16 +3,15 @@
  * Eliminates duplication across agent tools and the service layer.
  */
 
-/** Type guard for plain objects. */
-export function isRecord(value: unknown): value is Record<string, unknown> {
-	return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
+import { isRecord } from '@n8n/utils/is-record';
 
 /** Parsed suspension data from a `tool-call-suspended` chunk. */
 export interface SuspensionInfo {
 	toolCallId: string;
 	requestId: string;
 	toolName?: string;
+	/** The raw suspend payload as passed to `ctx.suspend()` by the inner tool. */
+	suspendPayload: Record<string, unknown>;
 }
 
 /** Extract suspension info from a stream chunk. */
@@ -29,7 +28,7 @@ export function parseSuspension(chunk: unknown): SuspensionInfo | null {
 	const toolName = typeof sp.toolName === 'string' ? sp.toolName : undefined;
 
 	if (!reqId || !tcId) return null;
-	return { toolCallId: tcId, requestId: reqId, toolName };
+	return { toolCallId: tcId, requestId: reqId, toolName, suspendPayload: suspPayload };
 }
 
 export interface Resumable {

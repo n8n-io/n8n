@@ -269,6 +269,35 @@ export interface ParameterBuilderHint {
 	placeholderSupported?: boolean;
 }
 
+export interface NodePropertyOption {
+	name: string;
+	value?: string | number | boolean;
+	description?: string;
+	displayName?: string;
+	builderHint?: ParameterBuilderHint;
+	values?: NodeProperty[];
+	type?: string;
+	default?: unknown;
+	required?: boolean;
+	options?: NodePropertyOption[];
+	displayOptions?: {
+		show?: Record<string, unknown[]>;
+		hide?: Record<string, unknown[]>;
+	};
+	disabledOptions?: {
+		show?: Record<string, unknown[]>;
+		hide?: Record<string, unknown[]>;
+	};
+	typeOptions?: Record<string, unknown>;
+	noDataExpression?: boolean;
+	modes?: Array<{
+		name: string;
+		displayName?: string;
+		type?: string;
+		typeOptions?: Record<string, unknown>;
+	}>;
+}
+
 export interface NodeProperty {
 	name: string;
 	displayName: string;
@@ -278,14 +307,7 @@ export interface NodeProperty {
 	builderHint?: ParameterBuilderHint;
 	default?: unknown;
 	required?: boolean;
-	options?: Array<{
-		name: string;
-		value?: string | number | boolean;
-		description?: string;
-		displayName?: string;
-		builderHint?: ParameterBuilderHint;
-		values?: NodeProperty[];
-	}>;
+	options?: NodePropertyOption[];
 	displayOptions?: {
 		show?: Record<string, unknown[]>;
 		hide?: Record<string, unknown[]>;
@@ -313,8 +335,15 @@ export interface NodeTypeDescription {
 	defaultVersion?: number;
 	properties: NodeProperty[];
 	credentials?: Array<{ name: string; required?: boolean }>;
-	inputs: string[] | Array<{ type: string; displayName?: string }>;
-	outputs: string[] | Array<{ type: string; displayName?: string }>;
+	/**
+	 * Connections may be a runtime expression string (`={{ ... }}`) for nodes
+	 * whose shape depends on parameters (e.g. AI Agent, Merge). Generation
+	 * handles those lexically: `ai_*` connection types are extracted from the
+	 * expression source, and dynamic `main` connections don't influence
+	 * heuristics like trigger detection.
+	 */
+	inputs: string | string[] | Array<{ type: string; displayName?: string }>;
+	outputs: string | string[] | Array<{ type: string; displayName?: string }>;
 	subtitle?: string;
 	usableAsTool?: boolean;
 	hidden?: boolean;

@@ -80,7 +80,7 @@ test.describe(
 
 				await n8n.ndv.execute();
 
-				await expect(n8n.ndv.outputPanel.get().getByText('5 items')).toBeVisible();
+				await expect(n8n.ndv.outputPanel.getItemsCountText('5 items')).toBeVisible();
 
 				await n8n.ndv.outputPanel.switchDisplayMode('schema');
 
@@ -96,12 +96,12 @@ test.describe(
 				await n8n.canvas.openNode('Set');
 
 				// 26 items with page size 25 = 2 pages, so pagination is visible
-				await expect(n8n.ndv.outputPanel.get().getByText('26 items')).toBeVisible();
-				await expect(n8n.ndv.getOutputPagination()).toBeVisible();
+				await expect(n8n.ndv.outputPanel.getItemsCountText('26 items')).toBeVisible();
+				await expect(n8n.ndv.outputPanel.getPagination()).toBeVisible();
 
 				await n8n.ndv.outputPanel.switchDisplayMode('schema');
 
-				await expect(n8n.ndv.getOutputPagination()).toBeHidden();
+				await expect(n8n.ndv.outputPanel.getPagination()).toBeHidden();
 			});
 		});
 
@@ -118,7 +118,7 @@ test.describe(
 
 				await n8n.ndv.searchOutputData('US');
 
-				await expect(n8n.ndv.outputPanel.getTableRow(1).locator('mark')).toContainText('US');
+				await expect(n8n.ndv.outputPanel.getTableRowHighlights(1)).toContainText('US');
 
 				await n8n.ndv.execute();
 
@@ -133,7 +133,7 @@ test.describe(
 				);
 				await n8n.canvas.openNode('Edit Fields');
 
-				await expect(n8n.ndv.outputPanel.get().locator('[class*="active"]')).toContainText('Table');
+				await expect(n8n.ndv.outputPanel.getActiveDisplayMode()).toContainText('Table');
 
 				await expect(n8n.ndv.outputPanel.getTableRow(1)).toContainText(
 					'<?xml version="1.0" encoding="UTF-8"?> <library>',
@@ -145,11 +145,11 @@ test.describe(
 				await expect(searchInput).toBeFocused();
 				await searchInput.fill('<lib');
 
-				await expect(n8n.ndv.outputPanel.getTableRow(1).locator('mark')).toContainText('<lib');
+				await expect(n8n.ndv.outputPanel.getTableRowHighlights(1)).toContainText('<lib');
 
 				await n8n.ndv.outputPanel.switchDisplayMode('json');
 
-				await expect(n8n.ndv.outputPanel.getDataContainer().locator('.json-data')).toBeVisible();
+				await expect(n8n.ndv.outputPanel.getJsonDataContainer()).toBeVisible();
 			});
 		});
 
@@ -252,9 +252,7 @@ test.describe(
 				await n8n.ndv.searchOutputData('foo');
 
 				await expect(
-					n8n.ndv.outputPanel
-						.get()
-						.getByText('To search field values, switch to table or JSON view.'),
+					n8n.ndv.outputPanel.getBranchTab('To search field values, switch to table or JSON view.'),
 				).toBeVisible();
 			});
 		});

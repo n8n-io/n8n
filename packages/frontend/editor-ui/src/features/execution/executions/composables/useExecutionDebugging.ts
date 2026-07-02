@@ -3,7 +3,6 @@ import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
-import { injectWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
 import { EnterpriseEditionFeature, MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { DEBUG_PAYWALL_MODAL_KEY } from '../executions.constants';
 import type { INodeUi } from '@/Interface';
@@ -22,12 +21,7 @@ import { sanitizeHtml } from '@/app/utils/htmlUtils';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { isTrimmedNodeExecutionData } from 'n8n-workflow';
 
-/**
- * @param providedWorkflowState - Optional workflow state to use instead of injecting.
- *   This is needed when called from the same component that provides WorkflowStateKey
- *   (e.g., WorkflowLayout), since Vue's provide/inject works parent-to-child only.
- */
-export const useExecutionDebugging = (providedWorkflowState?: WorkflowState) => {
+export const useExecutionDebugging = () => {
 	const telemetry = useTelemetry();
 
 	const router = useRouter();
@@ -36,7 +30,6 @@ export const useExecutionDebugging = (providedWorkflowState?: WorkflowState) => 
 	const toast = useToast();
 	const workflowsStore = useWorkflowsStore();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
-	const workflowState = providedWorkflowState ?? injectWorkflowState();
 	const settingsStore = useSettingsStore();
 	const uiStore = useUIStore();
 	const { markStateDirty } = uiStore;
@@ -55,7 +48,7 @@ export const useExecutionDebugging = (providedWorkflowState?: WorkflowState) => 
 			return;
 		}
 
-		const { runData } = execution.data.resultData;
+		const { runData, pinData = {} } = execution.data.resultData;
 
 		const executionNodeNames = Object.keys(runData);
 		const missingNodeNames = executionNodeNames.filter(
@@ -65,7 +58,8 @@ export const useExecutionDebugging = (providedWorkflowState?: WorkflowState) => 
 		// Using the pinned data of the workflow to check if the node is pinned
 		// because workflowsStore.getCurrentWorkflow() returns a cached workflow without the updated pinned data
 		const workflowPinnedNodeNames = Object.keys(workflowDocumentStore.value.pinnedDataByNodeName);
-		const matchingPinnedNodeNames = executionNodeNames.filter((name) =>
+		const executionDataNodeNames = new Set([...executionNodeNames, ...Object.keys(pinData)]);
+		const matchingPinnedNodeNames = [...executionDataNodeNames].filter((name) =>
 			workflowPinnedNodeNames.includes(name),
 		);
 
@@ -106,7 +100,9 @@ export const useExecutionDebugging = (providedWorkflowState?: WorkflowState) => 
 
 		// Set execution data
 		workflowDocumentStore.value.resetAllNodesIssues();
-		workflowState.setWorkflowExecutionData(execution);
+		useWorkflowExecutionStateStore(workflowDocumentStore.value.documentId).setWorkflowExecutionData(
+			execution,
+		);
 
 		// Pin data of all nodes which do not have a parent node
 		const pinnableNodes = workflowNodes.filter(

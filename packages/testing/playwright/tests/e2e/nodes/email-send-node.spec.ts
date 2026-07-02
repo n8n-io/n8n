@@ -74,7 +74,7 @@ test(
 		);
 
 		// Execute the workflow via UI API endpoint by navigating to the canvas and clicking run
-		await n8n.page.goto(`/workflow/${workflowId}`);
+		await n8n.start.fromExistingWorkflow(workflowId);
 		await n8n.workflowComposer.executeWorkflowAndWaitForNotification(
 			'Workflow executed successfully',
 		);

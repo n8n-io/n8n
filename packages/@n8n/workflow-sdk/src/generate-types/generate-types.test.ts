@@ -78,8 +78,8 @@ interface NodeTypeDescription {
 	defaultVersion?: number;
 	properties: NodeProperty[];
 	credentials?: Array<{ name: string; required?: boolean }>;
-	inputs: string[] | Array<{ type: string; displayName?: string; required?: boolean }>;
-	outputs: string[] | Array<{ type: string; displayName?: string }>;
+	inputs: string | string[] | Array<{ type: string; displayName?: string; required?: boolean }>;
+	outputs: string | string[] | Array<{ type: string; displayName?: string }>;
 	subtitle?: string;
 	usableAsTool?: boolean;
 	hidden?: boolean;
@@ -366,7 +366,9 @@ describe('generate-types', () => {
 		} catch {
 			// Module doesn't export functions yet - tests will fail as expected in TDD
 		}
-	});
+		// Cold module compilation can exceed the default 10s hook timeout on a
+		// loaded CI runner, so give the import ample headroom.
+	}, 30_000);
 
 	// =========================================================================
 	// Property Type Mapping Tests
@@ -2307,6 +2309,64 @@ describe('generate-types', () => {
 			const result = generateTypes.generateNodeTypeFile(subToolNode);
 
 			expect(result).not.toContain('isTrigger: true');
+		});
+
+		it('should generate types for constant expression connections (community node pattern)', () => {
+			// Community nodes often wrap static connections in an expression
+			// (e.g. firecrawl's `={{["main"]}}`); generation must not depend on
+			// evaluating it.
+			const dynamicNode: NodeTypeDescription = {
+				name: 'n8n-nodes-firecrawl.firecrawl',
+				displayName: 'Firecrawl',
+				description: 'Scrape and crawl websites',
+				group: ['transform'],
+				version: 1,
+				inputs: '={{["main"]}}',
+				outputs: '={{["main"]}}',
+				properties: [{ name: 'url', displayName: 'URL', type: 'string', default: '' }],
+			};
+
+			const result = generateTypes.generateNodeTypeFile(dynamicNode);
+
+			expect(result).toContain("type: 'n8n-nodes-firecrawl.firecrawl'");
+			expect(result).toContain('url');
+			// No ai_* literals in the expression: no subnode config, not a trigger
+			expect(result).not.toContain('SubnodeConfig');
+			expect(result).not.toContain('isTrigger: true');
+		});
+
+		it('should generate types for dynamic expression inputs (agent pattern)', () => {
+			const dynamicAgentNode: NodeTypeDescription = {
+				name: 'n8n-nodes-custom.customAgent',
+				displayName: 'Custom Agent',
+				description: 'Agent with parameter-dependent inputs',
+				group: ['transform'],
+				version: 1,
+				inputs: `={{
+					((hasMemory) => {
+						const inputs = [{ type: "main" }, { type: "ai_languageModel", required: true }];
+						if (hasMemory) inputs.push({ type: "ai_memory" });
+						return inputs;
+					})($parameter.hasMemory)
+				}}`,
+				outputs: ['main'],
+				properties: [{ name: 'prompt', displayName: 'Prompt', type: 'string', default: '' }],
+			};
+
+			// Legacy single-file generator (runtime synthesis path): generates
+			// the parameter types; it emits no subnode config for any node.
+			const legacyResult = generateTypes.generateNodeTypeFile(dynamicAgentNode);
+			expect(legacyResult).toContain('CustomAgentV1Params');
+			expect(legacyResult).toContain('prompt');
+
+			// Per-version generator (build-time path): ai_* types are extracted
+			// lexically from the expression source. Required status can't be
+			// reliably determined from expressions, so all are optional unless
+			// declared via builderHint.inputs.
+			const versionResult = generateTypes.generateSingleVersionTypeFile(dynamicAgentNode, 1);
+			expect(versionResult).toContain('SubnodeConfig');
+			expect(versionResult).toContain('model?: LanguageModelInstance');
+			expect(versionResult).toContain('memory?: MemoryInstance');
 		});
 
 		it('should emit helper type for resourceMapper properties', () => {
@@ -5085,7 +5145,9 @@ describe('orchestrateGeneration', () => {
 
 	beforeAll(async () => {
 		mod = await import('../generate-types/generate-types');
-	});
+		// Cold module compilation can exceed the default 10s hook timeout on a
+		// loaded CI runner, so give the import ample headroom.
+	}, 30_000);
 
 	afterAll(async () => {
 		await fs.promises.rm(outputDir, { recursive: true, force: true });

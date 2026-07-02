@@ -1,4 +1,4 @@
-import cheerio from 'cheerio';
+import * as cheerio from 'cheerio';
 import get from 'lodash/get';
 import type {
 	INodeExecutionData,

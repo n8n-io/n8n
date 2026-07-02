@@ -1,33 +1,40 @@
+import type { Mock } from 'vitest';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { ProjectRepository, User, WorkflowEntity } from '@n8n/db';
 import { NodeConnectionTypes, type INode } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { createCreateWorkflowFromCodeTool } from '../tools/workflow-builder/create-workflow-from-code.tool';
-
 import { CredentialsService } from '@/credentials/credentials.service';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { NodeTypes } from '@/node-types';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
+import { createCreateWorkflowFromCodeTool } from '../tools/workflow-builder/create-workflow-from-code.tool';
+
+// Mocks referenced inside vi.mock factories must come from vi.hoisted, otherwise the
+// factory (hoisted above these declarations) silently loads the real module.
+const { mockAutoPopulateNodeCredentials, mockParseAndValidate, mockStripImportStatements } =
+	vi.hoisted(() => ({
+		mockAutoPopulateNodeCredentials: vi.fn(),
+		mockParseAndValidate: vi.fn(),
+		mockStripImportStatements: vi.fn((code: string) => code),
+	}));
+
 // Mock credentials auto-assign
-const mockAutoPopulateNodeCredentials = jest.fn();
-jest.mock('../tools/workflow-builder/credentials-auto-assign', () => ({
+vi.mock('../tools/workflow-builder/credentials-auto-assign', () => ({
 	autoPopulateNodeCredentials: (...args: unknown[]) =>
 		mockAutoPopulateNodeCredentials(...args) as unknown,
-	stripNullCredentialStubs: jest.fn(),
+	stripNullCredentialStubs: vi.fn(),
 }));
 
 // Mock dynamic imports
-const mockParseAndValidate = jest.fn();
-const mockStripImportStatements = jest.fn((code: string) => code);
-
-jest.mock('@n8n/ai-workflow-builder', () => ({
-	ParseValidateHandler: jest.fn().mockImplementation(() => ({
-		parseAndValidate: mockParseAndValidate,
-	})),
+vi.mock('@n8n/ai-workflow-builder', () => ({
+	ParseValidateHandler: vi.fn(function () {
+		return { parseAndValidate: mockParseAndValidate };
+	}),
 	stripImportStatements: (code: string) => mockStripImportStatements(code),
 	CODE_BUILDER_VALIDATE_TOOL: { toolName: 'validate_workflow_code', displayTitle: 'Validate' },
 	MCP_CREATE_WORKFLOW_FROM_CODE_TOOL: {
@@ -74,22 +81,22 @@ const parseResult = (result: { content: Array<{ type: string; text?: string }> }
 	JSON.parse((result.content[0] as { type: 'text'; text: string }).text) as Record<string, unknown>;
 
 type DataTableOpsMock = {
-	getManyAndCount: jest.Mock;
+	getManyAndCount: Mock;
 };
 
 describe('create-workflow-from-code MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
 	let workflowCreationService: WorkflowCreationService;
-	let createWorkflowMock: jest.Mock;
+	let createWorkflowMock: Mock;
 	let urlService: UrlService;
 	let telemetry: Telemetry;
 	let nodeTypes: ReturnType<typeof mockInstance<NodeTypes>>;
 	let dataTableOps: DataTableOpsMock;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
-		createWorkflowMock = jest
+		createWorkflowMock = vi
 			.fn()
 			.mockImplementation(async (_user, workflow) =>
 				Object.assign(new WorkflowEntity(), { ...workflow, id: 'wf-saved-1' }),
@@ -98,10 +105,10 @@ describe('create-workflow-from-code MCP tool', () => {
 			createWorkflow: createWorkflowMock,
 		});
 		urlService = mockInstance(UrlService, {
-			getInstanceBaseUrl: jest.fn().mockReturnValue('https://n8n.example.com'),
+			getInstanceBaseUrl: vi.fn().mockReturnValue('https://n8n.example.com'),
 		});
 		telemetry = mockInstance(Telemetry, {
-			track: jest.fn(),
+			track: vi.fn(),
 		});
 		nodeTypes = mockInstance(NodeTypes);
 		nodeTypes.getByNameAndVersion.mockImplementation(((type: string) => {
@@ -114,17 +121,17 @@ describe('create-workflow-from-code MCP tool', () => {
 			return { description: {} };
 		}) as typeof nodeTypes.getByNameAndVersion);
 
-		mockParseAndValidate.mockResolvedValue({ workflow: mockWorkflowJson });
+		mockParseAndValidate.mockResolvedValue({ workflow: mockWorkflowJson, warnings: [] });
 		mockStripImportStatements.mockImplementation((code: string) => code);
 		mockAutoPopulateNodeCredentials.mockResolvedValue({ assignments: [], skippedHttpNodes: [] });
 
 		dataTableOps = {
-			getManyAndCount: jest.fn().mockResolvedValue({ data: [], count: 0 }),
+			getManyAndCount: vi.fn().mockResolvedValue({ data: [], count: 0 }),
 		};
 	});
 
 	const credentialsService = mockInstance(CredentialsService, {
-		getCredentialsAUserCanUseInAWorkflow: jest.fn().mockResolvedValue([]),
+		getCredentialsAUserCanUseInAWorkflow: vi.fn().mockResolvedValue([]),
 	});
 	const personalProjectEntity = {
 		id: 'personal-project-1',
@@ -132,8 +139,8 @@ describe('create-workflow-from-code MCP tool', () => {
 		type: 'personal' as const,
 	};
 	const projectRepository = mockInstance(ProjectRepository, {
-		getPersonalProjectForUserOrFail: jest.fn().mockResolvedValue(personalProjectEntity),
-		findOneBy: jest.fn().mockImplementation(async ({ id }: { id: string }) => {
+		getPersonalProjectForUserOrFail: vi.fn().mockResolvedValue(personalProjectEntity),
+		findOneBy: vi.fn().mockImplementation(async ({ id }: { id: string }) => {
 			if (id === 'personal-project-1') return personalProjectEntity;
 			if (id === 'custom-project-id') {
 				return { id: 'custom-project-id', name: 'Marketing', type: 'team' as const };
@@ -142,7 +149,7 @@ describe('create-workflow-from-code MCP tool', () => {
 		}),
 	});
 	const workflowFinderService = mockInstance(WorkflowFinderService, {
-		findWorkflowForUser: jest.fn().mockResolvedValue(null),
+		findWorkflowForUser: vi.fn().mockResolvedValue(null),
 	});
 
 	const createTool = () =>
@@ -162,6 +169,7 @@ describe('create-workflow-from-code MCP tool', () => {
 	const callHandler = async (
 		input: {
 			code: string;
+			skillsUsed?: string[];
 			name?: string;
 			description?: string;
 			projectId?: string;
@@ -172,6 +180,7 @@ describe('create-workflow-from-code MCP tool', () => {
 		await tool.handler(
 			{
 				code: input.code,
+				skillsUsed: input.skillsUsed,
 				name: input.name as string,
 				description: input.description as string,
 				projectId: input.projectId as string,
@@ -222,6 +231,30 @@ describe('create-workflow-from-code MCP tool', () => {
 			expect(result.isError).toBeUndefined();
 		});
 
+		test('surfaces validation warnings in the response', async () => {
+			const warning = {
+				code: 'INVALID_OUTPUT_INDEX',
+				message: "'Fetch Google' has a connection from its error output (index 1).",
+				nodeName: 'Fetch Google',
+			};
+			mockParseAndValidate.mockResolvedValue({ workflow: mockWorkflowJson, warnings: [warning] });
+
+			const result = await callHandler({ code: 'const wf = ...' });
+
+			const response = parseResult(result);
+			expect(response.warnings).toEqual([warning]);
+			expect(result.isError).toBeUndefined();
+		});
+
+		test('omits the warnings field when validation produced none', async () => {
+			mockParseAndValidate.mockResolvedValue({ workflow: mockWorkflowJson, warnings: [] });
+
+			const result = await callHandler({ code: 'const wf = ...' });
+
+			const response = parseResult(result);
+			expect(response).not.toHaveProperty('warnings');
+		});
+
 		test('sets correct workflow entity defaults', async () => {
 			await callHandler({ code: 'const wf = ...' });
 
@@ -254,6 +287,7 @@ describe('create-workflow-from-code MCP tool', () => {
 
 		test('falls back to "Untitled Workflow" when neither name nor code name exists', async () => {
 			mockParseAndValidate.mockResolvedValue({
+				warnings: [],
 				workflow: { ...mockWorkflowJson, name: undefined },
 			});
 
@@ -337,7 +371,7 @@ describe('create-workflow-from-code MCP tool', () => {
 				workflow.id = 'wf-recovery-1';
 				throw new Error('Post-save hook failed');
 			});
-			(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValueOnce({
+			(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValueOnce({
 				id: 'wf-recovery-1',
 				name: 'Recovered',
 				nodes: mockNodes,
@@ -404,13 +438,16 @@ describe('create-workflow-from-code MCP tool', () => {
 		});
 
 		test('tracks telemetry on success', async () => {
-			await callHandler({ code: 'const wf = ...' });
+			await callHandler({ code: 'const wf = ...', skillsUsed: ['workflow-builder'] });
 
 			expect(telemetry.track).toHaveBeenCalledWith(
 				'User called mcp tool',
 				expect.objectContaining({
 					user_id: 'user-1',
 					tool_name: 'create_workflow_from_code',
+					parameters: expect.objectContaining({
+						skillsUsed: ['workflow-builder'],
+					}),
 					results: expect.objectContaining({
 						success: true,
 						data: expect.objectContaining({
@@ -420,6 +457,51 @@ describe('create-workflow-from-code MCP tool', () => {
 					}),
 				}),
 			);
+		});
+
+		test('omits skillsUsed from telemetry when not provided', async () => {
+			await callHandler({ code: 'const wf = ...' });
+
+			const trackedPayload = (telemetry.track as Mock).mock.calls[0][1] as {
+				parameters: Record<string, unknown>;
+			};
+			expect(trackedPayload.parameters).not.toHaveProperty('skillsUsed');
+		});
+
+		test('omits skillsUsed from telemetry when an empty array is passed', async () => {
+			await callHandler({ code: 'const wf = ...', skillsUsed: [] });
+
+			const trackedPayload = (telemetry.track as Mock).mock.calls[0][1] as {
+				parameters: Record<string, unknown>;
+			};
+			expect(trackedPayload.parameters).not.toHaveProperty('skillsUsed');
+		});
+
+		test('normalizes skillsUsed before tracking telemetry', async () => {
+			await callHandler({
+				code: 'const wf = ...',
+				skillsUsed: ['  Workflow-Builder  ', 'workflow-builder', 'has spaces', 'NODE-SELECTION'],
+			});
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				'User called mcp tool',
+				expect.objectContaining({
+					parameters: expect.objectContaining({
+						skillsUsed: ['workflow-builder', 'node-selection'],
+					}),
+				}),
+			);
+		});
+
+		test('does not reject the call when skillsUsed overflows the cap', async () => {
+			const oversized = Array.from({ length: 60 }, (_, i) => `skill-${i}`);
+			const result = await callHandler({ code: 'const wf = ...', skillsUsed: oversized });
+
+			expect(result.isError).toBeUndefined();
+			const trackedPayload = (telemetry.track as Mock).mock.calls[0][1] as {
+				parameters: { skillsUsed: string[] };
+			};
+			expect(trackedPayload.parameters.skillsUsed).toHaveLength(50);
 		});
 
 		test('assigns webhookId to webhook nodes before saving', async () => {
@@ -479,6 +561,7 @@ describe('create-workflow-from-code MCP tool', () => {
 
 			test('rejects workflow whose data table id does not exist', async () => {
 				mockParseAndValidate.mockResolvedValue({
+					warnings: [],
 					workflow: {
 						...mockWorkflowJson,
 						nodes: [dataTableNode(dataTableLocator('id', 'missing'))],
@@ -496,6 +579,7 @@ describe('create-workflow-from-code MCP tool', () => {
 
 			test('rejects workflow whose data table name does not exist', async () => {
 				mockParseAndValidate.mockResolvedValue({
+					warnings: [],
 					workflow: {
 						...mockWorkflowJson,
 						nodes: [dataTableNode(dataTableLocator('name', 'missing-table'))],
@@ -516,6 +600,7 @@ describe('create-workflow-from-code MCP tool', () => {
 					count: 1,
 				});
 				mockParseAndValidate.mockResolvedValue({
+					warnings: [],
 					workflow: {
 						...mockWorkflowJson,
 						nodes: [dataTableNode(dataTableLocator('id', 'dt-existing'))],
@@ -540,6 +625,7 @@ describe('create-workflow-from-code MCP tool', () => {
 					count: 1,
 				});
 				mockParseAndValidate.mockResolvedValue({
+					warnings: [],
 					workflow: {
 						...mockWorkflowJson,
 						nodes: [dataTableNode(dataTableLocator('id', 'dt-existing'))],
@@ -564,6 +650,7 @@ describe('create-workflow-from-code MCP tool', () => {
 
 			test('skips validation when dataTableId is an expression', async () => {
 				mockParseAndValidate.mockResolvedValue({
+					warnings: [],
 					workflow: {
 						...mockWorkflowJson,
 						nodes: [dataTableNode(dataTableLocator('id', '={{ $json.id }}'))],
@@ -574,6 +661,94 @@ describe('create-workflow-from-code MCP tool', () => {
 
 				expect(result.isError).toBeUndefined();
 				expect(dataTableOps.getManyAndCount).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('credential validation', () => {
+			const httpNodeWithGithub = (credentialId: string): INode => ({
+				id: 'http-1',
+				name: 'Fetch PR Comments',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4,
+				position: [0, 0],
+				parameters: {
+					authentication: 'predefinedCredentialType',
+					nodeCredentialType: 'githubApi',
+				},
+				credentials: { githubApi: { id: credentialId, name: 'GitHub account' } },
+			});
+
+			afterEach(() => {
+				// Restore module-scoped defaults so later suites aren't polluted.
+				(credentialsService.getCredentialsAUserCanUseInAWorkflow as Mock).mockResolvedValue([]);
+				(credentialsService.getOne as Mock).mockReset();
+			});
+
+			test('rejects a credential id that belongs to another project', async () => {
+				(credentialsService.getCredentialsAUserCanUseInAWorkflow as Mock).mockResolvedValue([]);
+				(credentialsService.getOne as Mock).mockResolvedValue({
+					id: '6CoUMkVOJRNsbmr2',
+					name: 'GitHub account',
+					type: 'githubApi',
+				});
+
+				mockParseAndValidate.mockResolvedValue({
+					warnings: [],
+					workflow: {
+						...mockWorkflowJson,
+						nodes: [httpNodeWithGithub('6CoUMkVOJRNsbmr2')],
+					},
+				});
+
+				const result = await callHandler({ code: 'const wf = ...' });
+
+				const response = parseResult(result);
+				expect(result.isError).toBe(true);
+				expect(response.error).toContain('Fetch PR Comments');
+				expect(response.error).toContain("credential '6CoUMkVOJRNsbmr2' is not usable");
+				expect(response.error).toContain("this workflow's project");
+				expect(workflowCreationService.createWorkflow).not.toHaveBeenCalled();
+			});
+
+			test('rejects a credential id that does not exist', async () => {
+				(credentialsService.getCredentialsAUserCanUseInAWorkflow as Mock).mockResolvedValue([]);
+				(credentialsService.getOne as Mock).mockRejectedValue(
+					new NotFoundError('Credential with ID "ghost" could not be found.'),
+				);
+
+				mockParseAndValidate.mockResolvedValue({
+					warnings: [],
+					workflow: {
+						...mockWorkflowJson,
+						nodes: [httpNodeWithGithub('ghost')],
+					},
+				});
+
+				const result = await callHandler({ code: 'const wf = ...' });
+
+				const response = parseResult(result);
+				expect(result.isError).toBe(true);
+				expect(response.error).toContain("credential 'ghost' not found or not accessible");
+				expect(workflowCreationService.createWorkflow).not.toHaveBeenCalled();
+			});
+
+			test('accepts a credential id that is reachable from the project', async () => {
+				(credentialsService.getCredentialsAUserCanUseInAWorkflow as Mock).mockResolvedValue([
+					{ id: 'in-project-cred', name: 'GitHub account 2', type: 'githubApi' },
+				]);
+
+				mockParseAndValidate.mockResolvedValue({
+					warnings: [],
+					workflow: {
+						...mockWorkflowJson,
+						nodes: [httpNodeWithGithub('in-project-cred')],
+					},
+				});
+
+				const result = await callHandler({ code: 'const wf = ...' });
+
+				expect(result.isError).toBeUndefined();
+				expect(workflowCreationService.createWorkflow).toHaveBeenCalled();
 			});
 		});
 
@@ -634,16 +809,46 @@ describe('create-workflow-from-code MCP tool', () => {
 			};
 
 			const envelopeShape = tool.config.outputSchema as z.ZodRawShape;
-			const itemsField = envelopeShape.autoAssignedCredentials as z.ZodArray<
-				z.ZodObject<z.ZodRawShape>
-			>;
+			// `autoAssignedCredentials` is optional in the schema, so unwrap the
+			// ZodOptional to reach the inner array before tightening its items.
+			const itemsField = (
+				envelopeShape.autoAssignedCredentials as z.ZodOptional<
+					z.ZodArray<z.ZodObject<z.ZodRawShape>>
+				>
+			).unwrap();
 			const strictSchema = z
 				.object({
 					...envelopeShape,
-					autoAssignedCredentials: z.array(itemsField.element.strict()),
+					autoAssignedCredentials: z.array(itemsField.element.strict()).optional(),
 				})
 				.strict();
 
+			expect(() => strictSchema.parse(result.structuredContent)).not.toThrow();
+		});
+
+		test('error-path structuredContent conforms to declared outputSchema', async () => {
+			// Regression for ADO-5448 / GH #32503: a thrown handler error returned
+			// `structuredContent: { error }`, which violated the declared
+			// outputSchema (additionalProperties: false + required success fields)
+			// and made strict MCP clients reject the response with an opaque
+			// `-32602` schema mismatch that masked the real error.
+			mockParseAndValidate.mockRejectedValue(new Error('boom: invalid SDK code'));
+
+			const tool = createTool();
+			const result = (await tool.handler({ code: 'const wf = ...' } as never, {} as never)) as {
+				isError?: boolean;
+				structuredContent: unknown;
+			};
+
+			// The real, previously-masked error is now surfaced...
+			expect(result.isError).toBe(true);
+			const structured = result.structuredContent as { error?: string };
+			expect(structured.error).toContain('boom: invalid SDK code');
+			expect(createWorkflowMock).not.toHaveBeenCalled();
+
+			// ...and the error envelope validates against the published schema,
+			// so strict clients no longer reject it with -32602.
+			const strictSchema = z.object(tool.config.outputSchema as z.ZodRawShape).strict();
 			expect(() => strictSchema.parse(result.structuredContent)).not.toThrow();
 		});
 	});

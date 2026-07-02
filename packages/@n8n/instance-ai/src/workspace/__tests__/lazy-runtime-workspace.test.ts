@@ -8,9 +8,8 @@ import {
 import { createLazyRuntimeWorkspace } from '../lazy-runtime-workspace';
 
 function createMockWorkspace() {
-	const executeCommand = jest.fn<
-		Promise<CommandResult>,
-		Parameters<NonNullable<WorkspaceSandbox['executeCommand']>>
+	const executeCommand = vi.fn<
+		(...args: Parameters<NonNullable<WorkspaceSandbox['executeCommand']>>) => Promise<CommandResult>
 	>(
 		async (_command, _args, options) =>
 			await Promise.resolve({
@@ -26,22 +25,22 @@ function createMockWorkspace() {
 		name: 'Filesystem',
 		provider: 'test',
 		status: 'ready',
-		destroy: jest.fn(async () => {
+		destroy: vi.fn(async () => {
 			filesystem.status = 'destroyed';
 			await Promise.resolve();
 		}),
-		getInstructions: jest.fn(() => 'Real filesystem instructions.'),
-		readFile: jest.fn(async () => await Promise.resolve('hello')),
-		writeFile: jest.fn(async () => await Promise.resolve()),
-		appendFile: jest.fn(async () => await Promise.resolve()),
-		deleteFile: jest.fn(async () => await Promise.resolve()),
-		copyFile: jest.fn(async () => await Promise.resolve()),
-		moveFile: jest.fn(async () => await Promise.resolve()),
-		mkdir: jest.fn(async () => await Promise.resolve()),
-		rmdir: jest.fn(async () => await Promise.resolve()),
-		readdir: jest.fn(async () => await Promise.resolve([])),
-		exists: jest.fn(async () => await Promise.resolve(true)),
-		stat: jest.fn(
+		getInstructions: vi.fn(() => 'Real filesystem instructions.'),
+		readFile: vi.fn(async () => await Promise.resolve('hello')),
+		writeFile: vi.fn(async () => await Promise.resolve()),
+		appendFile: vi.fn(async () => await Promise.resolve()),
+		deleteFile: vi.fn(async () => await Promise.resolve()),
+		copyFile: vi.fn(async () => await Promise.resolve()),
+		moveFile: vi.fn(async () => await Promise.resolve()),
+		mkdir: vi.fn(async () => await Promise.resolve()),
+		rmdir: vi.fn(async () => await Promise.resolve()),
+		readdir: vi.fn(async () => await Promise.resolve([])),
+		exists: vi.fn(async () => await Promise.resolve(true)),
+		stat: vi.fn(
 			async (path: string) =>
 				await Promise.resolve({
 					name: path,
@@ -58,16 +57,16 @@ function createMockWorkspace() {
 		name: 'Sandbox',
 		provider: 'test',
 		status: 'running',
-		stop: jest.fn(async () => {
+		stop: vi.fn(async () => {
 			sandbox.status = 'stopped';
 			await Promise.resolve();
 		}),
-		destroy: jest.fn(async () => {
+		destroy: vi.fn(async () => {
 			sandbox.status = 'destroyed';
 			await Promise.resolve();
 		}),
-		getInstructions: jest.fn(() => 'Real sandbox instructions.'),
-		getDefaultCommandEnv: jest.fn(() => ({ CUSTOM_ENV: 'enabled' })),
+		getInstructions: vi.fn(() => 'Real sandbox instructions.'),
+		getDefaultCommandEnv: vi.fn(() => ({ CUSTOM_ENV: 'enabled' })),
 		executeCommand,
 	};
 
@@ -82,7 +81,7 @@ function createMockWorkspace() {
 describe('createLazyRuntimeWorkspace', () => {
 	it('advertises workspace tools without creating the real workspace', async () => {
 		const { workspace } = createMockWorkspace();
-		const ensureWorkspace = jest.fn(async () => await Promise.resolve(workspace));
+		const ensureWorkspace = vi.fn(async () => await Promise.resolve(workspace));
 		const lazyWorkspace = createLazyRuntimeWorkspace({ ensureWorkspace });
 
 		const tools = lazyWorkspace.getTools();
@@ -100,7 +99,7 @@ describe('createLazyRuntimeWorkspace', () => {
 
 	it('merges sandbox default env after the real workspace is created', async () => {
 		const { workspace, executeCommand } = createMockWorkspace();
-		const ensureWorkspace = jest.fn(async () => await Promise.resolve(workspace));
+		const ensureWorkspace = vi.fn(async () => await Promise.resolve(workspace));
 		const lazyWorkspace = createLazyRuntimeWorkspace({ ensureWorkspace });
 		const executeCommandTool = lazyWorkspace
 			.getTools()
@@ -118,7 +117,7 @@ describe('createLazyRuntimeWorkspace', () => {
 
 	it('retries workspace creation after the first lazy initialization fails', async () => {
 		const { workspace } = createMockWorkspace();
-		const ensureWorkspace = jest
+		const ensureWorkspace = vi
 			.fn()
 			.mockRejectedValueOnce(new Error('setup failed'))
 			.mockResolvedValueOnce(workspace);
@@ -137,7 +136,7 @@ describe('createLazyRuntimeWorkspace', () => {
 
 	it('retries workspace creation after the first lazy initialization returns unavailable', async () => {
 		const { workspace } = createMockWorkspace();
-		const ensureWorkspace = jest
+		const ensureWorkspace = vi
 			.fn()
 			.mockResolvedValueOnce(undefined)
 			.mockResolvedValueOnce(workspace);
@@ -156,7 +155,7 @@ describe('createLazyRuntimeWorkspace', () => {
 
 	it('reflects resolved provider statuses and instructions', async () => {
 		const { workspace } = createMockWorkspace();
-		const ensureWorkspace = jest.fn(async () => await Promise.resolve(workspace));
+		const ensureWorkspace = vi.fn(async () => await Promise.resolve(workspace));
 		const lazyWorkspace = createLazyRuntimeWorkspace({ ensureWorkspace });
 
 		expect(lazyWorkspace.filesystem?.status).toBe('pending');
@@ -173,7 +172,7 @@ describe('createLazyRuntimeWorkspace', () => {
 
 	it('destroys the resolved workspace when the lazy workspace is destroyed', async () => {
 		const { workspace, filesystem, sandbox } = createMockWorkspace();
-		const ensureWorkspace = jest.fn(async () => await Promise.resolve(workspace));
+		const ensureWorkspace = vi.fn(async () => await Promise.resolve(workspace));
 		const lazyWorkspace = createLazyRuntimeWorkspace({ ensureWorkspace });
 
 		await lazyWorkspace.filesystem?.readFile('/workspace/report.md');

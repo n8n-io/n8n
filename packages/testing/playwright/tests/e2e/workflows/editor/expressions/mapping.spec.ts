@@ -58,7 +58,7 @@ test.describe(
 			const expectedJsonText =
 				'[  {    "input": [      {        "count": 0,        "with space": "!!",        "with.dot": "!!",        "with"quotes": "!!"      }    ]  },  {    "input": [      {        "count": 1      }    ]  }]';
 			await expect(async () => {
-				await expect(n8n.ndv.inputPanel.get().getByText(expectedJsonText)).toBeVisible();
+				await expect(n8n.ndv.inputPanel.getJsonDataContainer()).toContainText(expectedJsonText);
 			}).toPass({ timeout: 1000 });
 
 			await expect(n8n.ndv.inputPanel.getJsonDataContainer()).toBeVisible();
@@ -104,7 +104,7 @@ test.describe(
 			await n8n.canvas.openNode('Set1');
 			await n8n.ndv.executePrevious();
 
-			const scheduleNode = n8n.ndv.inputPanel.get().getByText('Schedule Trigger');
+			const scheduleNode = n8n.ndv.inputPanel.getBranchTab('Schedule Trigger');
 			await expect(scheduleNode).toBeVisible();
 			await scheduleNode.click();
 
@@ -156,7 +156,7 @@ test.describe(
 			await expect(addValueButton).toBeVisible();
 			await addValueButton.click();
 
-			await n8n.page.getByRole('option', { name: 'String' }).click();
+			await n8n.ndv.selectFromVisibleDropdown('String');
 
 			await expect(n8n.ndv.getParameterInputField('name')).toHaveValue('propertyName');
 			await expect(n8n.ndv.getParameterInputField('value')).toHaveValue('');

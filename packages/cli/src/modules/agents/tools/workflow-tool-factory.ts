@@ -5,12 +5,9 @@ import {
 	type AgentJsonToolConfig,
 	type SUPPORTED_WORKFLOW_TOOL_TRIGGERS,
 } from '@n8n/api-types';
-import type {
-	ExecutionRepository,
-	UserRepository,
-	WorkflowRepository,
-	WorkflowEntity,
-} from '@n8n/db';
+import type { UserRepository, WorkflowRepository, WorkflowEntity } from '@n8n/db';
+import { Container } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import type {
 	IDataObject,
 	IExecuteResponsePromiseData,
@@ -33,6 +30,7 @@ import {
 import { z } from 'zod';
 
 import type { ActiveExecutions } from '@/active-executions';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -72,10 +70,6 @@ const DEFAULT_TIMEOUT_MS = 120_000;
 const MAX_RESULT_CHARS = 20_000;
 const MAX_NODE_OUTPUT_BYTES = 5_000;
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
 function isWorkflowToolResponse(value: unknown): value is IExecuteResponsePromiseData {
 	return isRecord(value) && ('body' in value || 'headers' in value || 'statusCode' in value);
 }
@@ -88,7 +82,6 @@ export interface WorkflowToolContext {
 	workflowRepository: WorkflowRepository;
 	workflowRunner: WorkflowRunner;
 	activeExecutions: ActiveExecutions;
-	executionRepository: ExecutionRepository;
 	workflowFinderService: WorkflowFinderService;
 	userRepository: UserRepository;
 	userId: string;
@@ -316,7 +309,7 @@ export async function executeWorkflow(
 	data?: Record<string, unknown>;
 	error?: string;
 }> {
-	const { workflowRunner, activeExecutions, executionRepository } = context;
+	const { workflowRunner, activeExecutions } = context;
 
 	// Build pin data for the trigger
 	const triggerPinData = normalizeTriggerInput(triggerNode, triggerType, inputData);
@@ -406,7 +399,7 @@ export async function executeWorkflow(
 		}
 	}
 
-	const result = await extractResult(executionRepository, executionId, allOutputs);
+	const result = await extractResult(executionId, allOutputs);
 	if (isWorkflowToolResponse(webhookResponse)) {
 		result.data = {
 			...(result.data ?? {}),
@@ -469,7 +462,6 @@ function collectResultData(
 }
 
 export async function extractResult(
-	executionRepository: ExecutionRepository,
 	executionId: string,
 	allOutputs: boolean,
 ): Promise<{
@@ -478,7 +470,7 @@ export async function extractResult(
 	data?: Record<string, unknown>;
 	error?: string;
 }> {
-	const execution = await executionRepository.findSingleExecution(executionId, {
+	const execution = await Container.get(ExecutionPersistence).findSingleExecution(executionId, {
 		includeData: true,
 		unflattenData: true,
 	});

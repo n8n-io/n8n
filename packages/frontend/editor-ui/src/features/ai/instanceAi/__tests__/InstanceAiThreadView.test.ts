@@ -9,9 +9,14 @@ import InstanceAiThreadView from '../InstanceAiThreadView.vue';
 import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
 import type { PlanEditContext } from '../instanceAi.threadRuntime';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { SidebarStateKey } from '../instanceAiLayout';
 import type { WorkflowFailuresReport } from '../components/InstanceAiWorkflowPreview.vue';
-import type { InstanceAiAgentNode, InstanceAiMessage } from '@n8n/api-types';
+import type {
+	FrontendModuleSettings,
+	InstanceAiAgentNode,
+	InstanceAiMessage,
+} from '@n8n/api-types';
 
 const mockWindowSizeState = vi.hoisted(() => ({
 	width: { value: 1200 },
@@ -22,9 +27,32 @@ const planEditSubmitState = vi.hoisted(() => ({
 }));
 
 const telemetryTrackSpy = vi.hoisted(() => vi.fn());
+const localStorageState = vi.hoisted(() => ({
+	store: new Map<string, string>(),
+}));
+
+Object.defineProperty(globalThis, 'localStorage', {
+	configurable: true,
+	value: {
+		getItem: vi.fn((key: string) => localStorageState.store.get(key) ?? null),
+		setItem: vi.fn((key: string, value: string) => {
+			localStorageState.store.set(key, value);
+		}),
+		removeItem: vi.fn((key: string) => {
+			localStorageState.store.delete(key);
+		}),
+		clear: vi.fn(() => {
+			localStorageState.store.clear();
+		}),
+	},
+});
 
 vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: telemetryTrackSpy }),
+}));
+
+vi.mock('@/app/composables/useToast', () => ({
+	useToast: () => ({ showError: vi.fn(), showMessage: vi.fn() }),
 }));
 
 vi.mock('@/app/composables/usePageRedirectionHelper', () => ({
@@ -59,6 +87,7 @@ const InstanceAiInputStub = defineComponent({
 		suggestions: { type: Array, required: false },
 		isStreaming: { type: Boolean, required: false },
 		isPlanEditMode: { type: Boolean, required: false },
+		isWorkflowBuilderAvailable: { type: Boolean, required: false },
 	},
 	emits: ['submit', 'cancel-plan-edit'],
 	setup(props, { emit, expose }) {
@@ -70,6 +99,11 @@ const InstanceAiInputStub = defineComponent({
 					'span',
 					{ 'data-test-id': 'instance-ai-input-mode' },
 					props.isPlanEditMode ? 'plan-edit' : 'normal',
+				),
+				h(
+					'span',
+					{ 'data-test-id': 'instance-ai-input-availability' },
+					props.isWorkflowBuilderAvailable === false ? 'unavailable' : 'available',
 				),
 				h(
 					'button',
@@ -138,17 +172,29 @@ const renderView = createComponentRenderer(InstanceAiThreadView, {
 	},
 });
 
+const defaultModuleSettings: NonNullable<FrontendModuleSettings['instance-ai']> = {
+	enabled: true,
+	localGatewayDisabled: false,
+	browserUseEnabled: true,
+	proxyEnabled: false,
+	cloudManaged: false,
+	sandboxEnabled: true,
+	workflowBuilderAvailable: true,
+	sandboxUnavailableReason: null,
+	runDebugEnabled: false,
+};
+
 function makePlanReviewMessage(): InstanceAiMessage {
-	const planner: InstanceAiAgentNode = {
-		agentId: 'planner-1',
-		role: 'planner',
+	const orchestrator: InstanceAiAgentNode = {
+		agentId: 'root',
+		role: 'orchestrator',
 		status: 'completed',
 		textContent: '',
 		reasoning: '',
 		toolCalls: [
 			{
 				toolCallId: 'tc-plan',
-				toolName: 'submit-plan',
+				toolName: 'create-tasks',
 				args: {},
 				isLoading: true,
 				confirmationStatus: 'pending',
@@ -171,7 +217,7 @@ function makePlanReviewMessage(): InstanceAiMessage {
 			},
 		],
 		children: [],
-		timeline: [],
+		timeline: [{ type: 'tool-call', toolCallId: 'tc-plan' }],
 	};
 
 	return {
@@ -182,14 +228,8 @@ function makePlanReviewMessage(): InstanceAiMessage {
 		isStreaming: true,
 		createdAt: '2026-04-01T00:00:00.000Z',
 		agentTree: {
-			agentId: 'root',
-			role: 'orchestrator',
+			...orchestrator,
 			status: 'active',
-			textContent: '',
-			reasoning: '',
-			toolCalls: [],
-			children: [planner],
-			timeline: [{ type: 'child', agentId: 'planner-1' }],
 		},
 	};
 }
@@ -203,6 +243,9 @@ describe('InstanceAiThreadView', () => {
 		const pinia = createTestingPinia();
 		setActivePinia(pinia);
 
+		useSettingsStore().moduleSettings = {
+			'instance-ai': { ...defaultModuleSettings },
+		};
 		workflowPreviewEmit = null;
 
 		thread = reactive({
@@ -220,6 +263,7 @@ describe('InstanceAiThreadView', () => {
 			currentTasks: null,
 			producedArtifacts: new Map(),
 			resourceNameIndex: new Map(),
+			linkableResourceNameIndex: new Map(),
 			feedbackByResponseId: {},
 			rateableResponseId: null,
 			pendingConfirmations: [],
@@ -309,6 +353,26 @@ describe('InstanceAiThreadView', () => {
 		expect(getByTestId('instance-ai-confirmation-panel-inline')).toBeTruthy();
 	});
 
+	it('shows an upfront unavailable state and blocks sends when the builder is unavailable', async () => {
+		useSettingsStore().moduleSettings = {
+			'instance-ai': {
+				...defaultModuleSettings,
+				sandboxEnabled: false,
+				workflowBuilderAvailable: false,
+			},
+		};
+
+		const { getByTestId, getByText } = renderView({ props: { threadId: 'thread-1' } });
+
+		expect(getByTestId('instance-ai-workflow-builder-unavailable')).toBeVisible();
+		expect(getByText('Workflow builder unavailable')).toBeVisible();
+		expect(getByTestId('instance-ai-input-availability')).toHaveTextContent('unavailable');
+
+		await userEvent.click(getByTestId('instance-ai-input-submit'));
+
+		expect(thread.sendMessage).not.toHaveBeenCalled();
+	});
+
 	it('swaps the chat input for the floating panel when a generic approval is pending', () => {
 		thread.pendingConfirmations = [
 			{
@@ -379,7 +443,7 @@ describe('InstanceAiThreadView', () => {
 		expect(thread.loadHistoricalMessages).toHaveBeenCalledWith();
 	});
 
-	it('uses edge reveal when the viewport is too narrow for pinned artifacts', async () => {
+	it('opens the artifacts panel from the header toggle when too narrow for pinned artifacts', async () => {
 		mockWindowSizeState.width.value = 900;
 		thread.messages = [
 			{
@@ -392,12 +456,52 @@ describe('InstanceAiThreadView', () => {
 		] as typeof thread.messages;
 		Object.defineProperty(thread, 'hasMessages', { value: true, configurable: true });
 
+		const user = userEvent.setup();
 		const { getByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
 
 		await vi.waitFor(() => {
-			expect(getByTestId('instance-ai-artifacts-sidebar-edge')).toBeInTheDocument();
+			expect(getByTestId('instance-ai-artifacts-panel-toggle')).toBeInTheDocument();
 		});
+		expect(queryByTestId('instance-ai-artifacts-sidebar-edge')).not.toBeInTheDocument();
 		expect(queryByTestId('instance-ai-artifacts-sidebar-slot')).not.toBeInTheDocument();
+
+		await user.click(getByTestId('instance-ai-artifacts-panel-toggle'));
+
+		expect(getByTestId('instance-ai-artifacts-sidebar-slot')).toBeInTheDocument();
+
+		await user.click(getByTestId('instance-ai-content-area'));
+
+		expect(queryByTestId('instance-ai-artifacts-sidebar-slot')).not.toBeInTheDocument();
+	});
+
+	it('keeps the artifacts panel toggle available when the panel is in the layout', async () => {
+		mockWindowSizeState.width.value = 1700;
+		thread.messages = [
+			{
+				id: 'msg-1',
+				role: 'assistant',
+				content: 'already loaded',
+				isStreaming: false,
+				createdAt: '2026-04-01T00:00:00.000Z',
+			},
+		] as typeof thread.messages;
+		Object.defineProperty(thread, 'hasMessages', { value: true, configurable: true });
+
+		const user = userEvent.setup();
+		const { getByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		await vi.waitFor(() => {
+			expect(getByTestId('instance-ai-artifacts-panel-toggle')).toBeInTheDocument();
+		});
+		expect(getByTestId('instance-ai-artifacts-sidebar-slot')).toBeInTheDocument();
+
+		await user.click(getByTestId('instance-ai-artifacts-panel-toggle'));
+
+		expect(queryByTestId('instance-ai-artifacts-sidebar-slot')).not.toBeInTheDocument();
+
+		await user.click(getByTestId('instance-ai-artifacts-panel-toggle'));
+
+		expect(getByTestId('instance-ai-artifacts-sidebar-slot')).toBeInTheDocument();
 	});
 
 	describe('Fix with AI card', () => {
@@ -538,7 +642,10 @@ describe('InstanceAiThreadView', () => {
 
 		expect(telemetryTrackSpy).toHaveBeenCalledWith(
 			'User finished providing input',
-			expect.objectContaining({ feedback: 'use [REDACTED] to call the API' }),
+			expect.objectContaining({
+				feedback: 'use [REDACTED] to call the API',
+				plan_feedback_type: 'changes_requested',
+			}),
 		);
 		expect(thread.confirmAction).toHaveBeenCalledWith('req-plan', {
 			kind: 'approval',

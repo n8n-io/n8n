@@ -4,14 +4,16 @@ import type {
 	BuiltMemory,
 	BuiltTool,
 	CheckpointStore,
+	RedactionOptions,
 	RuntimeSkillSource,
 	ModelConfig as NativeModelConfig,
+	ScopedMemoryTaskEvent,
 	Telemetry,
 	Workspace,
 } from '@n8n/agents';
 import type {
 	TaskList,
-	InstanceAiAttachment,
+	InstanceAiFileAttachment,
 	InstanceAiPermissions,
 	McpTool,
 	McpToolCallRequest,
@@ -29,17 +31,21 @@ import type {
 // Service interfaces — dependency inversion so the package stays decoupled from n8n internals.
 // The backend module provides concrete implementations via InstanceAiAdapterService.
 
+import type { WorkflowCodeSnapshotInput } from './debug/run-debug-buffer';
 import type { DomainAccessTracker } from './domain-access/domain-access-tracker';
 import type { InstanceAiEventBus } from './event-bus/event-bus.interface';
 import type { Logger } from './logger';
 import type { McpClientManager } from './mcp/mcp-client-manager';
+import type { OrchestratorRunHandoffReason } from './runtime/orchestrator-run-control';
 import type { IterationLog } from './storage/iteration-log';
+import type { PatchableThreadMemory } from './storage/thread-patch';
 import type { IdRemapper, TraceIndex, TraceWriter } from './tracing/trace-replay';
 import type {
 	VerificationResult,
 	WorkflowBuildOutcome,
 	WorkflowLoopAction,
 	WorkflowLoopState,
+	WorkflowVerificationObligation,
 } from './workflow-loop/workflow-loop-state';
 import type { BuilderTemplatesService } from './workspace/builder-templates-service';
 
@@ -76,6 +82,14 @@ export interface ExecutionResult {
 	executionId: string;
 	status: 'running' | 'success' | 'error' | 'waiting' | 'unknown';
 	data?: Record<string, unknown>;
+	/**
+	 * Every node that ran, including those whose last run produced zero output
+	 * items (`data` omits those). Lets verification tell "ran and returned
+	 * nothing" apart from "never reached".
+	 */
+	executedNodeNames?: string[];
+	/** Name of the last node the execution processed, when available. */
+	lastNodeExecuted?: string;
 	error?: string;
 	startedAt?: string;
 	finishedAt?: string;
@@ -247,10 +261,21 @@ export interface InstanceAiWorkflowService {
 		query?: string;
 		limit?: number;
 		status?: WorkflowListStatus;
+		scope?: 'project' | 'instance';
 	}): Promise<WorkflowSummary[]>;
 	get(workflowId: string): Promise<WorkflowDetail>;
 	/** Get the workflow as the SDK's WorkflowJSON (full node data for generateWorkflowCode). */
 	getAsWorkflowJSON(workflowId: string): Promise<WorkflowJSON>;
+	/** Cheap version-only lookup. The adapter projects just `versionId` and
+	 *  `updatedAt` from the workflow row, skipping `nodes`/`connections`/etc.
+	 *  Use to validate per-session caches when the body isn't needed. */
+	getWorkflowHead(workflowId: string): Promise<{ versionId: string; updatedAt: number }>;
+	/** Single fetch returning the SDK WorkflowJSON together with the version it
+	 *  was derived from. Use on cache miss (or drift) so the fresh body and the
+	 *  versionId you'll pin to it land in one round-trip. */
+	getWorkflowSnapshot(
+		workflowId: string,
+	): Promise<{ json: WorkflowJSON; versionId: string; updatedAt: number }>;
 	/** Create a workflow from SDK-produced WorkflowJSON (full NodeJSON with typeVersion, credentials, etc.). */
 	createFromWorkflowJSON(
 		json: WorkflowJSON,
@@ -324,7 +349,7 @@ export interface InstanceAiExecutionService {
 		inputData?: Record<string, unknown>,
 		options?: {
 			timeout?: number;
-			pinData?: Record<string, unknown[]>;
+			verificationPinData?: Record<string, unknown[]>;
 			/** When set, execute this specific trigger node instead of auto-detecting. */
 			triggerNodeName?: string;
 		},
@@ -356,6 +381,15 @@ export interface CredentialTypeSearchResult {
 	displayName: string;
 }
 
+/** An HTTP-usable credential type with the API host(s) it authenticates against,
+ *  derived from credential metadata. Used to steer the builder toward predefined
+ *  credentials instead of generic auth. */
+export interface CredentialHostInfo {
+	type: string;
+	displayName?: string;
+	hosts: string[];
+}
+
 export interface InstanceAiCredentialService {
 	/**
 	 * List credentials.
@@ -384,7 +418,13 @@ export interface InstanceAiCredentialService {
 	): CredentialFieldInfo[] | Promise<CredentialFieldInfo[]>;
 	/** Search available credential types by keyword. Returns matching types with display names. */
 	searchCredentialTypes?(query: string): Promise<CredentialTypeSearchResult[]>;
+	/** HTTP-usable credential types with the API host(s) they authenticate against,
+	 *  derived from credential metadata. Powers steering generic HTTP-node auth toward
+	 *  a predefined credential when one already exists for the target service. */
+	listHttpCredentialHosts?(): Promise<CredentialHostInfo[]>;
 	getAccountContext?(credentialId: string): Promise<{ accountIdentifier?: string }>;
+	/** Whether the given credential type is supported by AI Gateway. */
+	isAiGatewayCredentialType?(credType: string): Promise<boolean>;
 }
 
 export interface CredentialFieldInfo {
@@ -414,7 +454,7 @@ export interface ExploreResourcesResult {
 		url?: string;
 		description?: string;
 	}>;
-	paginationToken?: unknown;
+	paginationToken?: string;
 	/** The `@builderHint` from the node property whose method was queried, if any.
 	 *  Surfaced alongside results so agents that skip the `type-definition` step
 	 *  still receive selection guidance at the point of decision. */
@@ -426,7 +466,7 @@ export interface InstanceAiNodeService {
 	getDescription(nodeType: string, version?: number): Promise<NodeDescription>;
 	/** Return all node types with the richer fields needed by NodeSearchEngine. */
 	listSearchable(): Promise<SearchableNodeDescription[]>;
-	/** Return the TypeScript type definition for a node (from dist/node-definitions/). */
+	/** Return the TypeScript type definition for a node, resolved by the host n8n instance. */
 	getNodeTypeDefinition?(
 		nodeType: string,
 		options?: {
@@ -707,17 +747,14 @@ export type LocalGatewayStatus =
 
 export interface InstanceAiContext {
 	userId: string;
+	projectId?: string;
 	workflowService: InstanceAiWorkflowService;
 	executionService: InstanceAiExecutionService;
 	credentialService: InstanceAiCredentialService;
 	nodeService: InstanceAiNodeService;
 	dataTableService: InstanceAiDataTableService;
 	webResearchService?: InstanceAiWebResearchService;
-	/**
-	 * Curated workflow-template provider for the sandbox setup. When absent or
-	 * when the service returns an empty bundle, the sandbox is created without
-	 * an `examples/` directory and the agent operates without template hints.
-	 */
+	/** Curated workflow-template provider — materializes `knowledge-base/templates/` in the sandbox. */
 	templatesService?: BuilderTemplatesService;
 	workspaceService?: InstanceAiWorkspaceService;
 	/**
@@ -732,6 +769,17 @@ export interface InstanceAiContext {
 	 *  Used by checkpoint follow-up runs to scope the override to the workflows the checkpoint is
 	 *  verifying — `executions(action="run")` on any other workflow still requires user approval. */
 	allowedRunWorkflowIds?: ReadonlySet<string>;
+	/** Fallback scope for checkpoint follow-up runs when replay/runtime workflow IDs are remapped. */
+	allowedRunWorkflowNames?: ReadonlySet<string>;
+	/** Force `executions(action="run")` through HITL even when a scoped checkpoint override exists. */
+	requireRunWorkflowApproval?: boolean;
+	/** Thread-level "always allow" grants the user has approved (keys like `executions:run`).
+	 *  Loaded per run from persisted thread state so a grant survives reload/navigation and
+	 *  is visible across mains. Tools consult this to skip HITL for already-granted actions. */
+	sessionApprovedToolKeys?: ReadonlySet<string>;
+	/** Persist a thread-level "always allow" grant for the given key. Invoked by a tool when it
+	 *  resumes from a `scope: 'session'` approval. No-op in contexts without persistence. */
+	grantSessionToolApproval?: (key: string) => Promise<void>;
 	/** When true, the instance is in read-only mode (source control branchReadOnly). */
 	branchReadOnly?: boolean;
 	/** When `false`, callers must avoid surfacing node parameter values (or anything derived from them
@@ -745,11 +793,13 @@ export interface InstanceAiContext {
 	domainAccessTracker?: DomainAccessTracker;
 	/** Current run ID — used for transient (allow_once) domain approvals. */
 	runId?: string;
+	/** Records workflow code snapshots for the run debug buffer (dev tooling). */
+	recordWorkflowCodeSnapshot?: (snapshot: WorkflowCodeSnapshotInput) => void;
 	/**
 	 * IDs of workflows the agent created during the **currently active plan
-	 * cycle**. Populated by build-workflow and submit-workflow on every
-	 * successful create, and hydrated at run start from the persisted plan
-	 * graph when — and only when — the plan is still `active` or
+	 * cycle**. Populated by build-workflow on every successful create, and
+	 * hydrated at run start from the persisted plan graph when — and only when —
+	 * the plan is still `active` or
 	 * `awaiting_replan`, so replan follow-up runs keep the bypass active but
 	 * the window closes as soon as the plan settles. Consumed by the delete
 	 * handler to skip the confirmation gate when the agent cleans up its own
@@ -757,17 +807,47 @@ export interface InstanceAiContext {
 	 */
 	aiCreatedWorkflowIds?: Set<string>;
 	/**
-	 * Attachments from the current user message. Runtime-only — not persisted.
-	 * Used to register `parse-file` and supply data to the parser.
+	 * File attachments from the current user message. Runtime-only — not
+	 * persisted. Used to register `parse-file` and supply data to the parser.
+	 * Workflow (resource) attachments are handled separately by the adapter.
 	 */
-	currentUserAttachments?: InstanceAiAttachment[];
-	/** Optional logger for diagnostics from domain tools. */
-	logger?: Logger;
+	currentUserAttachments?: InstanceAiFileAttachment[];
+	/** Logger for diagnostics from domain tools. */
+	logger: Logger;
+	/** Optional telemetry sink for domain tools. */
+	trackTelemetry?: (eventName: string, properties: Record<string, GenericValue>) => void;
+	/** Shared runtime workspace for workflow source files and other sandbox-backed artifacts. */
+	workspace?: Workspace;
+	/** Current thread identity, used by workflow source file bindings and other thread-local state. */
+	threadId?: string;
+	/** Thread memory adapter used for thread-local metadata. */
+	threadMemory?: PatchableThreadMemory;
 	/** Synchronous node-types provider used by host-side schema validation
 	 *  (`validateWorkflow` from `@n8n/workflow-sdk`). Plumbed from the CLI
 	 *  adapter; absent in pure-package contexts where no NodeTypes instance
 	 *  is reachable. */
 	nodeTypesProvider?: INodeTypes;
+	/**
+	 * Runtime-only workflow build loop context. The direct `build-workflow` tool
+	 * reports build outcomes here so planned build follow-ups and verification
+	 * tools can share the same work item without a detached builder sub-agent.
+	 */
+	workflowBuildContext?: {
+		threadId: string;
+		runId: string;
+		taskId: string;
+		workItemId: string;
+		/**
+		 * True for replan/checkpoint follow-ups where an approved plan already
+		 * exists and the builder may retry directly without creating a new plan.
+		 */
+		allowPostPlanWorkflowCreate?: boolean;
+		/** True when the active planned build task's final deliverable is a supporting workflow. */
+		isSupportingWorkflowTask?: boolean;
+		plannedTaskService?: PlannedTaskService;
+		workflowTaskService?: WorkflowTaskService;
+		onBuildOutcome?: (outcome: WorkflowBuildOutcome) => void | Promise<void>;
+	};
 }
 
 // ── Task storage ─────────────────────────────────────────────────────────────
@@ -792,6 +872,12 @@ export interface PlannedTask {
 	tools?: string[];
 	/** Existing workflow ID for build-workflow tasks that modify an existing workflow. */
 	workflowId?: string;
+	/**
+	 * True when the build-workflow task's final deliverable is intentionally a
+	 * supporting sub-workflow. Auxiliary supporting workflows created inside a
+	 * larger main-workflow task should not set this.
+	 */
+	isSupportingWorkflow?: boolean;
 }
 
 export type PlannedTaskStatus = 'planned' | 'running' | 'succeeded' | 'failed' | 'cancelled';
@@ -817,14 +903,27 @@ export type PlannedTaskGraphStatus =
 export interface PlannedTaskGraph {
 	planRunId: string;
 	messageGroupId?: string;
+	postBuildRunApprovalRequired?: boolean;
 	status: PlannedTaskGraphStatus;
 	tasks: PlannedTaskRecord[];
+}
+
+export interface PlannedWorkflowVerification {
+	task: PlannedTaskRecord;
+	obligation: WorkflowVerificationObligation;
+	outcome?: WorkflowBuildOutcome;
 }
 
 export type PlannedTaskSchedulerAction =
 	| { type: 'none'; graph: PlannedTaskGraph | null }
 	| { type: 'dispatch'; graph: PlannedTaskGraph; tasks: PlannedTaskRecord[] }
+	| { type: 'orchestrate-build-workflow'; graph: PlannedTaskGraph; tasks: PlannedTaskRecord[] }
 	| { type: 'orchestrate-checkpoint'; graph: PlannedTaskGraph; tasks: PlannedTaskRecord[] }
+	| {
+			type: 'orchestrate-workflow-verification';
+			graph: PlannedTaskGraph;
+			verification: PlannedWorkflowVerification;
+	  }
 	| { type: 'replan'; graph: PlannedTaskGraph; failedTask: PlannedTaskRecord }
 	| { type: 'synthesize'; graph: PlannedTaskGraph };
 
@@ -832,7 +931,11 @@ export interface PlannedTaskService {
 	createPlan(
 		threadId: string,
 		tasks: PlannedTask[],
-		metadata: { planRunId: string; messageGroupId?: string },
+		metadata: {
+			planRunId: string;
+			messageGroupId?: string;
+			postBuildRunApprovalRequired?: boolean;
+		},
 	): Promise<PlannedTaskGraph>;
 	getGraph(threadId: string): Promise<PlannedTaskGraph | null>;
 	markRunning(
@@ -875,9 +978,15 @@ export interface PlannedTaskService {
 	 *  prevented its follow-up from starting. Non-destructive — dependents are
 	 *  untouched and the next tick re-emits `orchestrate-checkpoint`. */
 	revertCheckpointToPlanned(threadId: string, taskId: string): Promise<CheckpointSettleResult>;
+	/** Rewind a running build-workflow task after a scheduling race prevented
+	 *  its orchestrator follow-up from starting. */
+	revertBuildWorkflowToPlanned(threadId: string, taskId: string): Promise<CheckpointSettleResult>;
 	tick(
 		threadId: string,
-		options?: { availableSlots?: number },
+		options?: {
+			availableSlots?: number;
+			pendingWorkflowVerification?: PlannedWorkflowVerification;
+		},
 	): Promise<PlannedTaskSchedulerAction>;
 	clear(threadId: string): Promise<void>;
 	/** Transition an `awaiting_approval` graph → `active` after the user
@@ -909,15 +1018,23 @@ export type CheckpointSettleResult =
 export interface McpServerConfig {
 	name: string;
 	url?: string;
+	transport?: 'sse' | 'streamableHttp';
 	command?: string;
 	args?: string[];
 	env?: Record<string, string>;
+	toolFilter?: { mode: 'allow' | 'exclude'; tools: string[] };
+	fetch?: typeof fetch;
+	/**
+	 * Optional cache discriminator used by `McpClientManager` when a server's
+	 * connection behavior depends on runtime context (for example, per-user auth
+	 * in a custom `fetch` implementation).
+	 */
+	cacheKey?: string;
 }
 
 // ── Memory ───────────────────────────────────────────────────────────────────
 
 export interface InstanceAiMemoryConfig {
-	lastMessages?: number;
 	/** Thread TTL in days. Threads older than this are auto-expired on cleanup. 0 = no expiration. */
 	threadTtlDays?: number;
 	observationalMemory?: {
@@ -1124,6 +1241,7 @@ export interface WorkflowTaskService {
 	reportBuildOutcome(outcome: WorkflowBuildOutcome): Promise<WorkflowLoopAction>;
 	reportVerificationVerdict(verdict: VerificationResult): Promise<WorkflowLoopAction>;
 	getBuildOutcome(workItemId: string): Promise<WorkflowBuildOutcome | undefined>;
+	getLatestBuildOutcomeForWorkflow(workflowId: string): Promise<WorkflowBuildOutcome | undefined>;
 	getWorkflowLoopState(workItemId: string): Promise<WorkflowLoopState | undefined>;
 	updateBuildOutcome(workItemId: string, update: Partial<WorkflowBuildOutcome>): Promise<void>;
 }
@@ -1135,12 +1253,15 @@ export interface OrchestrationContext {
 	runId: string;
 	messageGroupId?: string;
 	userId: string;
+	projectId?: string;
 	orchestratorAgentId: string;
 	modelId: ModelConfig;
 	checkpointStore?: CheckpointStore;
 	subAgentMaxSteps: number;
 	eventBus: InstanceAiEventBus;
 	logger: Logger;
+	/** Output-redaction policy for sub-agent streams: omit for the safe default, or `false` to disable. */
+	outputRedaction?: RedactionOptions | false;
 	trackTelemetry?: (eventName: string, properties: Record<string, GenericValue>) => void;
 	domainTools: InstanceAiToolRegistry;
 	abortSignal: AbortSignal;
@@ -1189,8 +1310,12 @@ export interface OrchestrationContext {
 	plannedTaskService?: PlannedTaskService;
 	/** Run one scheduler pass after plan/task state changes. */
 	schedulePlannedTasks?: () => Promise<void>;
+	/** Hand off durable work to follow-up tasks once the current tool result reaches the UI. */
+	requestRunHandoff?: (reason: OrchestratorRunHandoffReason) => void;
 	/** Shared runtime workspace for the current orchestration context. */
 	workspace?: Workspace;
+	/** Absolute or host-relative sandbox workspace root for `<workspace_root>` paths in prompts. */
+	workspaceRoot?: string;
 	/** Directories containing node type definition files (.ts) for materializing into sandbox */
 	nodeDefinitionDirs?: string[];
 	/** Native memory store — used to retrieve thread message history for sub-agents. */
@@ -1252,6 +1377,7 @@ export interface CreateInstanceAgentOptions {
 	 * Intended for tests and fallback paths that need the full toolset visible immediately.
 	 */
 	disableDeferredTools?: boolean;
-	/** IANA time zone for the current user (e.g. "Europe/Helsinki"). Falls back to instance default. */
-	timeZone?: string;
+	/** When false, extended thinking / reasoning is not enabled. Defaults to true. */
+	thinkingEnabled?: boolean;
+	onMemoryTaskEvent?: (event: ScopedMemoryTaskEvent) => void;
 }

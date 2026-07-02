@@ -7,7 +7,12 @@ import { In } from '@n8n/typeorm';
 import pick from 'lodash/pick';
 import { UserError } from 'n8n-workflow';
 
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { EventService } from '@/events/event.service';
+import { ExportableTagEntity } from '@/modules/source-control.ee/types/exportable-tags';
+
 import { SOURCE_CONTROL_DATATABLES_EXPORT_FOLDER } from './constants';
+import { SourceControlContextFactory } from './source-control-context.factory';
 import { SourceControlGitService } from './source-control-git.service.ee';
 import {
 	hasOwnerChanged,
@@ -23,7 +28,6 @@ import {
 } from './source-control-helper.ee';
 import { SourceControlImportService } from './source-control-import.service.ee';
 import { SourceControlPreferencesService } from './source-control-preferences.service.ee';
-import { SourceControlContextFactory } from './source-control-context.factory';
 import type { StatusExportableCredential } from './types/exportable-credential';
 import type {
 	DataTableResourceOwner,
@@ -40,10 +44,6 @@ import type {
 	SourceControlGetStatusVerboseResult,
 } from './types/source-control-get-status';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
-
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { EventService } from '@/events/event.service';
-import { ExportableTagEntity } from '@/modules/source-control.ee/types/exportable-tags';
 
 @Service()
 export class SourceControlStatusService {

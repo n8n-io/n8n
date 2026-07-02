@@ -1,18 +1,19 @@
-import { McpConnection } from '../mcp-connection';
+import { McpClient } from '../../sdk/mcp-client';
+import { McpConnection } from '../mcp/mcp-connection';
 
-const sseCtor = jest.fn();
-const streamableHttpCtor = jest.fn();
-const stdioCtor = jest.fn();
+const sseCtor = vi.fn();
+const streamableHttpCtor = vi.fn();
+const stdioCtor = vi.fn();
 
-const clientConnect = jest.fn().mockResolvedValue(undefined);
-const clientListTools = jest.fn().mockResolvedValue({
+const clientConnect = vi.fn().mockResolvedValue(undefined);
+const clientListTools = vi.fn().mockResolvedValue({
 	tools: [
 		{ name: 'echo', description: '', inputSchema: { type: 'object' } },
 		{ name: 'add', description: '', inputSchema: { type: 'object' } },
 		{ name: 'subtract', description: '', inputSchema: { type: 'object' } },
 	],
 });
-const clientClose = jest.fn().mockResolvedValue(undefined);
+const clientClose = vi.fn().mockResolvedValue(undefined);
 
 class FakeClient {
 	connect = clientConnect;
@@ -20,32 +21,34 @@ class FakeClient {
 	close = clientClose;
 }
 
-jest.mock('@modelcontextprotocol/sdk/client/index.js', () => ({
-	Client: jest.fn(() => new FakeClient()),
+vi.mock('@modelcontextprotocol/sdk/client/index.js', () => ({
+	Client: vi.fn(function () {
+		return new FakeClient();
+	}),
 }));
 
-jest.mock('@modelcontextprotocol/sdk/client/sse.js', () => ({
-	SSEClientTransport: jest.fn((url: URL, options: unknown) => {
+vi.mock('@modelcontextprotocol/sdk/client/sse.js', () => ({
+	SSEClientTransport: vi.fn(function (url: URL, options: unknown) {
 		sseCtor(url, options);
 		return { type: 'sse', url, options };
 	}),
 }));
 
-jest.mock('@modelcontextprotocol/sdk/client/stdio.js', () => ({
-	StdioClientTransport: jest.fn((options: unknown) => {
+vi.mock('@modelcontextprotocol/sdk/client/stdio.js', () => ({
+	StdioClientTransport: vi.fn(function (options: unknown) {
 		stdioCtor(options);
 		return { type: 'stdio', options };
 	}),
 }));
 
-jest.mock('@modelcontextprotocol/sdk/client/streamableHttp.js', () => ({
-	StreamableHTTPClientTransport: jest.fn((url: URL, options: unknown) => {
+vi.mock('@modelcontextprotocol/sdk/client/streamableHttp.js', () => ({
+	StreamableHTTPClientTransport: vi.fn(function (url: URL, options: unknown) {
 		streamableHttpCtor(url, options);
 		return { type: 'streamableHttp', url, options };
 	}),
 }));
 
-jest.mock('@modelcontextprotocol/sdk/types.js', () => ({
+vi.mock('@modelcontextprotocol/sdk/types.js', () => ({
 	CallToolResultSchema: {},
 }));
 
@@ -63,7 +66,7 @@ describe('McpConnection — custom fetch forwarding', () => {
 	});
 
 	it('forwards `fetch` to StreamableHTTPClientTransport when provided', async () => {
-		const customFetch = jest.fn();
+		const customFetch = vi.fn();
 		const conn = new McpConnection({
 			name: 's1',
 			url: 'https://example.test/mcp',
@@ -79,7 +82,7 @@ describe('McpConnection — custom fetch forwarding', () => {
 	});
 
 	it('forwards `fetch` to SSEClientTransport and to its eventSourceInit when provided', async () => {
-		const customFetch = jest.fn();
+		const customFetch = vi.fn();
 		const conn = new McpConnection({
 			name: 's2',
 			url: 'https://example.test/mcp',
@@ -114,5 +117,114 @@ describe('McpConnection — custom fetch forwarding', () => {
 		];
 		expect(options.fetch).toBeUndefined();
 		expect(options.eventSourceInit).toBeUndefined();
+	});
+});
+
+describe('McpClient — connection error formatting', () => {
+	beforeEach(() => {
+		clientConnect.mockReset();
+		clientListTools.mockReset();
+		clientClose.mockReset();
+	});
+
+	it('includes nested fetch causes in the aggregated connection error', async () => {
+		clientConnect.mockRejectedValueOnce(
+			new TypeError('fetch failed', {
+				cause: new Error('The request was blocked because it resolves to a restricted IP address'),
+			}),
+		);
+
+		const client = new McpClient([
+			{
+				name: 'custom_mcp',
+				url: 'http://localhost:5678/mcp/my-mcp-server',
+				transport: 'streamableHttp',
+			},
+		]);
+
+		await expect(client.listTools()).rejects.toThrow(
+			'MCP connection failed:\n\tcustom_mcp: fetch failed. The request was blocked because it resolves to a restricted IP address',
+		);
+	});
+});
+
+describe('McpConnection — tool filtering', () => {
+	beforeEach(() => {
+		clientConnect.mockClear();
+		clientListTools.mockClear();
+		clientListTools.mockResolvedValue({
+			tools: [
+				{ name: 'echo', description: '', inputSchema: { type: 'object' } },
+				{ name: 'add', description: '', inputSchema: { type: 'object' } },
+				{ name: 'subtract', description: '', inputSchema: { type: 'object' } },
+			],
+		});
+	});
+
+	it('returns all tools when no filter is configured', async () => {
+		const conn = new McpConnection({
+			name: 's1',
+			url: 'https://example.test/mcp',
+			transport: 'streamableHttp',
+		});
+
+		await conn.connect();
+		const tools = await conn.listTools();
+
+		expect(tools.map((tool) => tool.name)).toEqual(['s1_echo', 's1_add', 's1_subtract']);
+	});
+
+	it('keeps only allowed tools when allow filter is configured', async () => {
+		const conn = new McpConnection({
+			name: 's1',
+			url: 'https://example.test/mcp',
+			transport: 'streamableHttp',
+			toolFilter: { mode: 'allow', tools: ['echo', 'subtract'] },
+		});
+
+		await conn.connect();
+		const tools = await conn.listTools();
+
+		expect(tools.map((tool) => tool.name)).toEqual(['s1_echo', 's1_subtract']);
+	});
+
+	it('removes excluded tools when exclude filter is configured', async () => {
+		const conn = new McpConnection({
+			name: 's1',
+			url: 'https://example.test/mcp',
+			transport: 'streamableHttp',
+			toolFilter: { mode: 'exclude', tools: ['add'] },
+		});
+
+		await conn.connect();
+		const tools = await conn.listTools();
+
+		expect(tools.map((tool) => tool.name)).toEqual(['s1_echo', 's1_subtract']);
+	});
+
+	it('returns no tools for allow mode with an empty list', async () => {
+		const allowConn = new McpConnection({
+			name: 's1',
+			url: 'https://example.test/mcp',
+			transport: 'streamableHttp',
+			toolFilter: { mode: 'allow', tools: [] },
+		});
+		await allowConn.connect();
+		const allowTools = await allowConn.listTools();
+
+		expect(allowTools).toHaveLength(0);
+	});
+
+	it('keeps all tools for exclude mode with an empty list', async () => {
+		const excludeConn = new McpConnection({
+			name: 's2',
+			url: 'https://example.test/mcp',
+			transport: 'streamableHttp',
+			toolFilter: { mode: 'exclude', tools: [] },
+		});
+		await excludeConn.connect();
+		const excludeTools = await excludeConn.listTools();
+
+		expect(excludeTools.map((tool) => tool.name)).toEqual(['s2_echo', 's2_add', 's2_subtract']);
 	});
 });

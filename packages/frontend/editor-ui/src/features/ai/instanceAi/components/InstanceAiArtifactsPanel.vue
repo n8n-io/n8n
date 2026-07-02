@@ -1,28 +1,36 @@
 <script lang="ts" setup>
-import { computed, inject, ref } from 'vue';
-import {
-	N8nHeading,
-	N8nIcon,
-	N8nIconButton,
-	N8nTooltip,
-	TOOLTIP_DELAY_MS,
-} from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
-import { useThread } from '../instanceAi.store';
+import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
 import type { TaskItem } from '@n8n/api-types';
 import type { IconName } from '@n8n/design-system';
+import { isIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
+import { N8nHeading, N8nIcon } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
+import { computed, inject, ref } from 'vue';
+import { useThread } from '../instanceAi.store';
 import type { ResourceEntry } from '../useResourceRegistry';
 import ConnectionsCard from './ConnectionsCard.vue';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
-const props = withDefaults(defineProps<{ isPinned?: boolean; isPinningAvailable?: boolean }>(), {
-	isPinned: true,
-	isPinningAvailable: true,
-});
-
-const emit = defineEmits<{ togglePinned: [] }>();
+const projectsStore = useProjectsStore();
 
 const i18n = useI18n();
 const thread = useThread();
+const project = computed(() => {
+	const match = projectsStore.myProjects.find((p) => p.id === thread.projectId);
+	if (!match)
+		return {
+			name: i18n.baseText('instanceAi.artifactsPanel.unknownProject'),
+			icon: { type: 'icon' as const, value: 'circle-help' as const },
+		};
+	const isPersonal = match.type === 'personal';
+	const icon = isIconOrEmoji(match.icon)
+		? match.icon
+		: { type: 'icon' as const, value: 'layers' as const };
+	return {
+		name: isPersonal ? i18n.baseText('instanceAi.artifactsPanel.personalSpace') : match.name,
+		icon: isPersonal ? { type: 'icon' as const, value: 'user-round' as const } : icon,
+	};
+});
 const panelRef = ref<HTMLElement>();
 const openPreview = inject<((id: string) => void) | undefined>('openWorkflowPreview', undefined);
 const openDataTablePreview = inject<((id: string, projectId: string) => void) | undefined>(
@@ -89,41 +97,35 @@ function artifactHref(artifact: ResourceEntry) {
 function openArtifactLabel(name: string) {
 	return i18n.baseText('instanceAi.artifactsPanel.openArtifact', { interpolate: { name } });
 }
-
-const pinButtonLabel = computed(() =>
-	i18n.baseText(
-		props.isPinned ? 'instanceAi.artifactsPanel.unpinPanel' : 'instanceAi.artifactsPanel.pinPanel',
-	),
-);
 </script>
 
 <template>
 	<aside ref="panelRef" :class="$style.panel" data-test-id="instance-ai-artifacts-sidebar">
 		<div :class="$style.group" data-test-id="instance-ai-artifacts-sidebar-group">
+			<!-- Project section -->
+			<div :class="$style.section">
+				<div :class="$style.sectionHeader">
+					<N8nHeading tag="h3" size="small" :class="$style.sectionTitle">
+						{{ i18n.baseText('instanceAi.artifactsPanel.project') }}
+					</N8nHeading>
+				</div>
+
+				<div :class="$style.artifactList">
+					<div :class="[$style.artifactRow]">
+						<span :class="$style.artifactIconWrap">
+							<ProjectIcon :icon="project.icon" size="small" border-less />
+						</span>
+						<span :class="$style.artifactName">{{ project.name }}</span>
+					</div>
+				</div>
+			</div>
+
 			<!-- Artifacts section -->
 			<div :class="$style.section">
 				<div :class="$style.sectionHeader">
 					<N8nHeading tag="h3" size="small" :class="$style.sectionTitle">
 						{{ i18n.baseText('instanceAi.artifactsPanel.title') }}
 					</N8nHeading>
-					<N8nTooltip
-						v-if="props.isPinningAvailable"
-						:content="pinButtonLabel"
-						placement="left"
-						:show-after="TOOLTIP_DELAY_MS"
-					>
-						<N8nIconButton
-							icon="pin"
-							variant="ghost"
-							size="small"
-							icon-size="medium"
-							:aria-label="pinButtonLabel"
-							:aria-pressed="props.isPinned"
-							:class="[$style.pinButton, { [$style.pinButtonPinned]: props.isPinned }]"
-							data-test-id="instance-ai-artifacts-sidebar-pin"
-							@click="emit('togglePinned')"
-						/>
-					</N8nTooltip>
 				</div>
 
 				<div v-if="artifacts.length > 0" :class="$style.artifactList">
@@ -201,6 +203,7 @@ const pinButtonLabel = computed(() =>
 	flex-direction: column;
 	padding: 0 var(--spacing--sm) var(--spacing--sm);
 	overflow-y: auto;
+	max-height: 100%;
 }
 
 .group {
@@ -216,6 +219,10 @@ const pinButtonLabel = computed(() =>
 	display: flex;
 	flex-direction: column;
 	padding: var(--spacing--2xs);
+
+	&:first-child {
+		padding-top: calc(var(--spacing--2xs) + var(--spacing--3xs));
+	}
 
 	& + & {
 		padding-top: var(--spacing--sm);
@@ -244,24 +251,6 @@ const pinButtonLabel = computed(() =>
 	color: var(--text-color--subtle);
 }
 
-.pinButton {
-	color: var(--color--text--tint-1);
-
-	&:hover,
-	&:focus-visible {
-		color: var(--color--text--shade-1);
-	}
-}
-
-.pinButtonPinned {
-	color: var(--color--text--shade-1);
-
-	:deep(svg),
-	:deep(path) {
-		fill: currentColor;
-	}
-}
-
 /* Artifact list */
 .artifactList {
 	display: flex;
@@ -273,21 +262,23 @@ const pinButtonLabel = computed(() =>
 	align-items: center;
 	gap: var(--spacing--2xs);
 	padding: var(--spacing--2xs);
-	cursor: pointer;
 	border-radius: var(--radius);
 	color: var(--color--text);
 	text-decoration: none;
 	transition: background-color var(--animation--duration--snappy) var(--animation--easing);
 
-	&:hover,
-	&:focus-visible {
-		background: var(--background--hover);
-		outline: none;
-		text-decoration: none;
-	}
+	&:is(a) {
+		cursor: pointer;
+		&:hover,
+		&:focus-visible {
+			background: var(--background--hover);
+			outline: none;
+			text-decoration: none;
+		}
 
-	&:visited {
-		color: var(--color--text);
+		&:visited {
+			color: var(--color--text);
+		}
 	}
 }
 

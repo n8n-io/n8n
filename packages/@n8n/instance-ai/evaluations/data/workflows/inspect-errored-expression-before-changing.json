@@ -1,0 +1,43 @@
+{
+	"description": "INS-640: when the user reports a node showing a red expression error, the agent must inspect the node's actual failure (run the workflow and read the real execution error / resolved parameters) before changing anything — not guess at the cause and start making unrelated edits.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Build a workflow with a Manual Trigger feeding a Set node named 'Build Greeting'. In 'Build Greeting', add a string field 'greeting' set to 'Hello ' followed by the trigger's 'name' field, referenced with a node-reference expression (the $('NodeName').item.json.name form)."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[The build finished and the agent said it's done. Tell it that when you open the 'Build Greeting' node after running, the 'greeting' field is red with an expression error.",
+				"Provide no further details: do not paste the expression, do not say what is wrong with it, do not mention escaping or quotes, do not suggest a cause.",
+				"If the agent rewrites the expression or makes any other change before first checking the real error, tell it the node still shows the red expression error.",
+				"Only accept the turn as resolved if it FIRST inspects the actual failure — by running the workflow and reading the node's real execution error or resolved parameters — before editing anything.]"
+			]
+		}
+	],
+	"messageBudget": 6,
+	"complexity": "medium",
+	"tags": [
+		"behaviour",
+		"verification",
+		"expression-error",
+		"inspect-before-change",
+		"errored-node",
+		"manual"
+	],
+	"triggerType": "manual",
+	"datasets": ["behaviour", "full"],
+	"processExpectations": [
+		"The agent's first action after the user reported the red expression error on the 'Build Greeting' node was to inspect the actual failure — running the workflow (run / verify-built-workflow / executions) and reading the failing node's real error and resolved parameters — rather than editing the node.",
+		"The agent did not speculate about the cause of the error (e.g. 'probably smart/curly quotes') and then edit the node before it had inspected the real execution result. Editing AFTER inspecting is fine.",
+		"The agent's diagnosis and response were grounded in the inspected execution result rather than a guess. If the inspection showed the expression actually resolves (no failing expression), reporting that and asking the user for specifics is an acceptable grounded outcome."
+	],
+	"executionScenarios": [
+		{
+			"name": "happy-path",
+			"description": "Manual Trigger -> Set node 'Build Greeting' that builds a 'greeting' string from the trigger's name. The user reports an expression error, so the agent must inspect the real result rather than blindly re-editing.",
+			"dataSetup": "The Manual Trigger emits one item with { name: 'Ada' }. The Set node resolves its expression when executed.",
+			"successCriteria": "The built workflow is a Manual Trigger feeding a Set node named 'Build Greeting' that produces a 'greeting' field combining 'Hello ' with the trigger's name. Judge only the built workflow's structure and the greeting field — not the conversation. If the greeting expression resolves when run, that is a pass; a node-reference expression that is well-formed is acceptable."
+		}
+	]
+}

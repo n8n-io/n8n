@@ -1,7 +1,8 @@
 import type { SecretClient } from '@azure/keyvault-secrets';
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
-import { ensureError, type INodeProperties, UnexpectedError } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { type INodeProperties, UnexpectedError } from 'n8n-workflow';
 
 import type { AzureKeyVaultContext } from './types';
 import { DOCS_HELP_NOTICE } from '../../constants';
@@ -80,6 +81,7 @@ export class AzureKeyVault extends SecretsProvider {
 		const { ClientSecretCredential } = await import('@azure/identity');
 		const { SecretClient } = await import('@azure/keyvault-secrets');
 
+		// TODO: Not routed through OutboundHttp for now. It would require `@azure/core-rest-pipeline`, which is not worth it just to share agents.
 		const credential = new ClientSecretCredential(tenantId, clientId, clientSecret);
 		this.client = new SecretClient(`https://${vaultName}.vault.azure.net/`, credential);
 

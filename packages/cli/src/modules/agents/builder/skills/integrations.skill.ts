@@ -5,7 +5,15 @@ export function integrationsSkill(): RuntimeSkill {
 		id: 'agent-builder-integrations',
 		name: 'Agent Builder Integrations',
 		description:
-			'Use when deciding whether Slack, Linear, Telegram, or another external platform should be a target-agent chat integration/trigger versus a node tool, and when adding or changing schedule or chat integrations; not for built-in Build chat or Preview chat behavior.',
+			'Use when deciding whether Slack, Linear, Telegram, or another external platform should be a target-agent chat integration/trigger versus a node tool, and when adding or changing chat integrations; not for built-in Build chat or Preview chat behavior.',
+		recommendedTools: ['list_integration_types', 'ask_credential', 'read_config', 'patch_config'],
+		allowedTools: [
+			'list_integration_types',
+			'ask_credential',
+			'read_config',
+			'patch_config',
+			'write_config',
+		],
 		instructions: `\
 ## Purpose
 
@@ -17,7 +25,6 @@ or a normal node/workflow tool for an external product, then configure
 
 - The user asks to add, update, or remove entries in the target agent's
   \`integrations\` array.
-- The user asks to configure a schedule trigger for the target agent.
 - The user asks to connect the target agent to an external chat platform with
   credentials.
 
@@ -39,19 +46,12 @@ Examples:
 - Linear integration: the agent should be triggered from Linear issues/comments,
   understand the current Linear subject, or reply in the same Linear
   conversation.
-- Linear node tools: the agent is triggered from Slack, Preview, schedule, or a
+- Linear node tools: the agent is triggered from Slack, Preview, a task, or a
   workflow and only needs to search/create/update Linear tickets.
 
 ## Workflow
 
 The \`integrations\` array controls how the target agent is triggered.
-
-### Schedule
-
-- One schedule integration per agent.
-- Use \`{ "type": "schedule", "active": false, "cronExpression": "0 9 * * *", "wakeUpPrompt": "..." }\`.
-- Keep \`active: false\`; schedules run only after publish and activation.
-- Use standard 5-field cron.
 
 ### Chat Integrations
 
@@ -61,19 +61,18 @@ The \`integrations\` array controls how the target agent is triggered.
   \`useNodeToolWhen\` fields before deciding to add an integration.
 - Pick one returned \`credentialTypes\` entry and pass it to \`ask_credential\`.
 - Persist only \`type\` and \`credentialId\`; never invent credential IDs or names.
-- Preserve existing schedule and chat integrations unless the user asked to remove them.
+- Preserve existing chat integrations unless the user asked to remove them.
 
 ## Gotchas
 
-- Active schedules are rejected until the agent is published; create or update schedules as inactive.
-- The schedule \`wakeUpPrompt\` is the message sent when the schedule fires, not target-agent system instructions.
 - Chat integration credential types must come from \`list_integration_types\`.
 - Do not add a Linear integration just because the agent needs Linear issue
   CRUD. Use Linear node tools unless Linear itself is the chat/trigger context.
+- For recurring or scheduled runs, create a task (\`create_task\`), not an
+  integration.
 
 ## Verify
 
-- Schedule configs include \`type\`, \`active\`, \`cronExpression\`, and \`wakeUpPrompt\`.
 - Connected chat integrations use a credential id returned by \`ask_credential\`.
 - The chosen integration matches \`useIntegrationWhen\`; otherwise use node or
   workflow tools.

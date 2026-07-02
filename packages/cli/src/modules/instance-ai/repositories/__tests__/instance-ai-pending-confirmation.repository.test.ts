@@ -1,5 +1,5 @@
 import type { DeleteResult, EntityManager, Repository } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { InstanceAiPendingConfirmation } from '../../entities/instance-ai-pending-confirmation.entity';
 import { InstanceAiPendingConfirmationRepository } from '../instance-ai-pending-confirmation.repository';
@@ -36,7 +36,7 @@ describe('InstanceAiPendingConfirmationRepository.claim', () => {
 		};
 
 		const outerManager = {
-			transaction: jest.fn(async (cb: (m: EntityManager) => Promise<unknown>) => await cb(manager)),
+			transaction: vi.fn(async (cb: (m: EntityManager) => Promise<unknown>) => await cb(manager)),
 		};
 
 		const repo = Object.create(
@@ -60,9 +60,11 @@ describe('InstanceAiPendingConfirmationRepository.claim', () => {
 
 		expect(result).toBe(row);
 		expect(txRepo.findOne).toHaveBeenCalledWith({
-			where: { requestId: 'req-1', userId: 'user-1' },
+			where: expect.objectContaining({ requestId: 'req-1', userId: 'user-1' }),
 		});
-		expect(txRepo.delete).toHaveBeenCalledWith({ requestId: 'req-1', userId: 'user-1' });
+		expect(txRepo.delete).toHaveBeenCalledWith(
+			expect.objectContaining({ requestId: 'req-1', userId: 'user-1' }),
+		);
 	});
 
 	it('returns undefined when no row matches the requestId+userId', async () => {
@@ -96,7 +98,24 @@ describe('InstanceAiPendingConfirmationRepository.claim', () => {
 
 		expect(result).toBeUndefined();
 		expect(txRepo.findOne).toHaveBeenCalledWith({
-			where: { requestId: 'req-1', userId: 'attacker-user' },
+			where: expect.objectContaining({ requestId: 'req-1', userId: 'attacker-user' }),
 		});
+	});
+
+	it('treats expired rows as already gone — same predicate as findLiveRequestIds', async () => {
+		// Driver behavior: an expired row would not match the live-where
+		// predicate, so findOne returns null even though the row physically
+		// exists. The expired-prune sweep is responsible for the physical row
+		// — the claim path treats it as unclaimable in the meantime.
+		const txRepo = mock<Repository<InstanceAiPendingConfirmation>>();
+		txRepo.findOne.mockResolvedValueOnce(null);
+		const { repo } = buildRepoWithTxRepo(txRepo);
+
+		const result = await repo.claim('req-expired', 'user-1');
+
+		expect(result).toBeUndefined();
+		expect(txRepo.delete).not.toHaveBeenCalled();
+		const where = (txRepo.findOne.mock.calls[0][0] as { where: Record<string, unknown> }).where;
+		expect(where).toHaveProperty('expiresAt');
 	});
 });

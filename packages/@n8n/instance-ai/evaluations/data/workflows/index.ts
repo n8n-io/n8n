@@ -1,7 +1,8 @@
 import { readFileSync, readdirSync } from 'fs';
-import { basename, join } from 'path';
+import { basename, dirname, join, resolve } from 'path';
 
 import { WorkflowTestCaseSchema } from './schema';
+import { loadConversationSeed } from '../../harness/conversation-seed';
 import type { WorkflowTestCase } from '../../types';
 
 export interface WorkflowTestCaseWithFile {
@@ -30,11 +31,25 @@ function parseTestCaseFile(filePath: string): WorkflowTestCase {
 		throw new Error(`Invalid test case ${filePath}:\n${issues}`);
 	}
 
-	return parsed.data as WorkflowTestCase;
+	const testCase = parsed.data;
+	if (testCase.seedFile) {
+		// Resolve relative to the case file and validate now, so an authoring
+		// typo fails at load time instead of per-build as an agent failure.
+		const resolved = resolve(dirname(filePath), testCase.seedFile);
+		try {
+			loadConversationSeed(resolved);
+		} catch (error) {
+			throw new Error(
+				`Invalid test case ${filePath}: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
+		testCase.seedFile = resolved;
+	}
+	return testCase;
 }
 
 /** Split a comma-separated CLI value into a normalized list of substring tokens. */
-function parseSubstringList(value: string | undefined): string[] {
+export function parseSubstringList(value: string | undefined): string[] {
 	if (!value) return [];
 	return value
 		.split(',')
@@ -71,9 +86,20 @@ function getJsonFiles(filter?: string, exclude?: string): string[] {
 export function loadWorkflowTestCasesWithFiles(
 	filter?: string,
 	exclude?: string,
+	tier?: string,
 ): WorkflowTestCaseWithFile[] {
-	return getJsonFiles(filter, exclude).map((f) => ({
+	const cases = getJsonFiles(filter, exclude).map((f) => ({
 		testCase: parseTestCaseFile(f),
 		fileSlug: basename(f, '.json'),
 	}));
+	if (!tier) return cases;
+
+	const matched = cases.filter(({ testCase }) => testCase.datasets.includes(tier));
+	if (matched.length === 0) {
+		const known = [...new Set(cases.flatMap(({ testCase }) => testCase.datasets))].sort();
+		throw new Error(
+			`No test cases match --tier "${tier}". Known tiers: ${known.join(', ') || '(none)'}.`,
+		);
+	}
+	return matched;
 }

@@ -80,7 +80,7 @@ test.describe(
 			// Personal projects show "Name (Personal space)" instead of email
 			const adminName = `${admin.firstName} ${admin.lastName}`;
 			await expect(
-				adminN8n.credentials.credentialModal.getVisibleDropdown().getByText(adminName),
+				adminN8n.credentials.credentialModal.getVisibleDropdownOption(adminName),
 			).toBeVisible();
 		});
 
@@ -140,9 +140,8 @@ test.describe(
 			await n8n.canvas.getFirstAction().click();
 
 			await n8n.ndv.getNodeCredentialsSelect().click();
-			const credentialDropdown = n8n.ndv.getVisiblePopper();
-			await expect(credentialDropdown.getByText(testCredName)).toBeVisible();
-			await expect(credentialDropdown.getByText(devCredName)).toBeHidden();
+			await expect(n8n.ndv.credentials.getOptionByText(testCredName)).toBeVisible();
+			await expect(n8n.ndv.credentials.getOptionByText(devCredName)).toBeHidden();
 		});
 
 		test('should prevent sharing team project workflows', async ({ n8n, api }) => {
@@ -153,6 +152,7 @@ test.describe(
 
 			await n8n.navigate.toWorkflow(teamWorkflow.id);
 			await n8n.canvas.openShareModal();
+			await expect(n8n.workflowSharingModal.container).toBeVisible();
 
 			// Team project workflows cannot be shared - no user selector shown
 			await expect(n8n.workflowSharingModal.getUsersSelect()).toBeHidden();

@@ -1,9 +1,12 @@
+import { IANAZone } from 'luxon';
 import type {
 	IConnection,
 	IConnections,
 	INode,
 	INodeParameters,
 	IWorkflowBase,
+	IWorkflowGroup,
+	IWorkflowSettings,
 	NodeConnectionType,
 } from 'n8n-workflow';
 import { isSafeObjectProperty, NodeConnectionTypes } from 'n8n-workflow';
@@ -20,6 +23,97 @@ const positionSchema = () =>
 const credentialsSchema = z.record(
 	z.string(),
 	z.object({ id: z.string().optional(), name: z.string() }),
+);
+
+/**
+ * True when `tz` is a zone the runtime accepts. Uses Luxon's `IANAZone.isValidZone`
+ * to match downstream semantics exactly — the same check the expression runtime
+ * applies before setting the default zone, and what Schedule Trigger/cron paths
+ * rely on — rather than calling `Intl` directly, which can drift across Node/ICU
+ * builds.
+ */
+const isValidIanaTimezone = (tz: string): boolean => IANAZone.isValidZone(tz);
+
+/**
+ * Curated subset of `IWorkflowSettings` that is safe and useful to set from MCP.
+ * Each key is optional and only the keys provided are written; omitted keys are
+ * left unchanged. Enterprise/internal settings (redactionPolicy,
+ * credentialResolverId, customTelemetryTags, binaryMode) are intentionally
+ * excluded — they need dedicated license/scope handling. `availableInMCP` is
+ * excluded so an agent cannot silently revoke a workflow's own MCP access.
+ */
+export const workflowSettingsObjectSchema = z.object({
+	errorWorkflow: z
+		.string()
+		.describe(
+			'ID of a SEPARATE workflow to run whenever THIS workflow fails — the common best-practice way to send failure alerts (email, Slack, etc.) or log errors via a shared, reusable handler. The referenced workflow must contain an Error Trigger node; find its ID with search_workflows. Pass "DEFAULT" to clear it. There are two ways to handle failures: (a) a dedicated/shared error workflow set here, or (b) an Error Trigger node placed directly inside THIS workflow (n8n fires it automatically on failure, no setting needed). When the user asks for error handling, ask which pattern they prefer before choosing. When errorWorkflow is set, it takes precedence over a same-workflow Error Trigger for the failing run. Failure handling fires for production executions only, not manual/test runs. Distinct from per-node onError/retry (setNodeSettings).',
+		)
+		.optional(),
+	timezone: z
+		.string()
+		.refine((tz) => tz === 'DEFAULT' || isValidIanaTimezone(tz), {
+			message:
+				'timezone must be a valid IANA timezone (e.g. "America/New_York"), or "DEFAULT" to inherit the instance timezone',
+		})
+		.describe(
+			'IANA timezone used by Schedule Triggers and date/time operations, e.g. "America/New_York". Pass "DEFAULT" to inherit the instance timezone.',
+		)
+		.optional(),
+	executionOrder: z
+		.enum(['v0', 'v1'])
+		.describe('Node execution order. "v1" is the default for new workflows; "v0" is legacy.')
+		.optional(),
+	saveExecutionProgress: z
+		.union([z.boolean(), z.literal('DEFAULT')])
+		.describe(
+			'Save execution data after each node finishes. Allows resuming/inspecting partial runs at the cost of speed.',
+		)
+		.optional(),
+	saveManualExecutions: z
+		.union([z.boolean(), z.literal('DEFAULT')])
+		.describe('Whether manual (test) executions are saved to the execution list.')
+		.optional(),
+	saveDataErrorExecution: z
+		.enum(['DEFAULT', 'all', 'none'])
+		.describe('Whether to store execution data for failed runs.')
+		.optional(),
+	saveDataSuccessExecution: z
+		.enum(['DEFAULT', 'all', 'none'])
+		.describe('Whether to store execution data for successful runs.')
+		.optional(),
+	executionTimeout: z
+		.number()
+		.int()
+		.refine((n) => n === -1 || n >= 1, {
+			message: 'executionTimeout must be a positive number of seconds, or -1 for unlimited',
+		})
+		.describe(
+			'Maximum execution time in seconds before a run is stopped. Use a positive number of seconds (not exceeding the instance maximum, enforced server-side), or -1 for unlimited (no timeout).',
+		)
+		.optional(),
+	timeSavedPerExecution: z
+		.number()
+		.int()
+		.nonnegative()
+		.describe('Estimated time saved per execution, in minutes (used for insights/reporting).')
+		.optional(),
+	callerPolicy: z
+		.enum(['any', 'none', 'workflowsFromAList', 'workflowsFromSameOwner'])
+		.describe(
+			'Which workflows may call this one via the Execute Sub-workflow node. Defaults to "workflowsFromSameOwner".',
+		)
+		.optional(),
+	callerIds: z
+		.string()
+		.describe(
+			'Comma-separated workflow IDs allowed to call this workflow (only used with callerPolicy "workflowsFromAList").',
+		)
+		.optional(),
+});
+
+export const workflowSettingsInputSchema = workflowSettingsObjectSchema.refine(
+	(s) => Object.keys(s).length > 0,
+	{ message: 'settings must specify at least one field' },
 );
 
 export const partialUpdateOperationSchema = z.discriminatedUnion('type', [
@@ -128,9 +222,83 @@ export const partialUpdateOperationSchema = z.discriminatedUnion('type', [
 		disabled: z.boolean(),
 	}),
 	z.object({
+		type: z.literal('setNodeSettings'),
+		nodeName: z.string().describe('Name of the existing node to update.'),
+		settings: z
+			.object({
+				onError: z
+					.enum(['stopWorkflow', 'continueRegularOutput', 'continueErrorOutput'])
+					.optional()
+					.describe(
+						'How the node behaves on error. "stopWorkflow" halts the run; "continueRegularOutput" forwards an empty item on the main output; "continueErrorOutput" routes the failure to the node\'s error output. Required for sub-nodes (LLM model, memory, tools) since the canvas UI does not expose this setting for them.',
+					),
+				retryOnFail: z.boolean().optional(),
+				maxTries: z
+					.number()
+					.int()
+					.min(2)
+					.max(5)
+					.optional()
+					.describe('Number of attempts when retryOnFail is true (2–5).'),
+				waitBetweenTries: z
+					.number()
+					.int()
+					.min(0)
+					.max(5000)
+					.optional()
+					.describe('Milliseconds to wait between retry attempts (0–5000).'),
+				alwaysOutputData: z.boolean().optional(),
+				executeOnce: z.boolean().optional(),
+			})
+			.refine((s) => Object.keys(s).length > 0, {
+				message: 'settings must specify at least one field',
+			})
+			.describe(
+				'Node-level execution settings. Only the keys you include are written; omitted keys are left unchanged.',
+			),
+	}),
+	z.object({
 		type: z.literal('setWorkflowMetadata'),
 		name: z.string().max(128).optional(),
 		description: z.string().max(255).optional(),
+	}),
+	z.object({
+		type: z.literal('setWorkflowSettings'),
+		settings: workflowSettingsInputSchema.describe(
+			'Workflow-level settings to update. Only the keys you include are written; omitted keys are left unchanged.',
+		),
+	}),
+	z.object({
+		type: z.literal('addTags'),
+		names: z
+			.array(z.string().trim().min(1).max(24))
+			.min(1)
+			.max(50)
+			.describe('Tag names to attach. Unknown names are auto-created. Idempotent.'),
+	}),
+	z.object({
+		type: z.literal('removeTags'),
+		names: z
+			.array(z.string().trim().min(1).max(24))
+			.min(1)
+			.max(50)
+			.describe('Tag names to detach from the workflow. Unknown names are ignored.'),
+	}),
+	z.object({
+		type: z.literal('setNodeGroups'),
+		nodeGroups: z
+			.array(
+				z.object({
+					id: z.string().trim().min(1).optional().describe('Group id. Generated if omitted.'),
+					name: z.string().trim().min(1).describe('Unique group name.'),
+					nodeIds: z
+						.array(z.string().trim().min(1))
+						.describe('IDs of the nodes that belong to this group.'),
+				}),
+			)
+			.describe(
+				'Replaces the workflow node groups entirely. Pass [] to remove all groups. Each nodeId must reference an existing node, and every group must form a valid, connected, trigger-free section of the graph (validated on save).',
+			),
 	}),
 ]);
 
@@ -141,12 +309,20 @@ interface WorkflowSlice {
 	description?: string;
 	nodes: INode[];
 	connections: IConnections;
+	/** Workflow-level settings. Undefined when the workflow has no stored settings. */
+	settings?: IWorkflowSettings;
+	/** Node groups on the workflow. Undefined when never touched; set by setNodeGroups. */
+	nodeGroups?: IWorkflowGroup[];
+	/** Existing tag names on the workflow. Undefined when not loaded; tag ops require this. */
+	tagNames?: string[];
 }
 
 export interface ApplyOperationsSuccess {
 	success: true;
 	workflow: WorkflowSlice;
 	addedNodeNames: string[];
+	/** Final tag set after applying tag ops. Undefined means "leave unchanged". */
+	tagNames?: string[];
 }
 
 export interface ApplyOperationsFailure {
@@ -162,6 +338,9 @@ const cloneWorkflow = (workflow: WorkflowSlice): WorkflowSlice => ({
 	description: workflow.description,
 	nodes: workflow.nodes.map((node) => structuredClone(node)),
 	connections: structuredClone(workflow.connections),
+	settings: workflow.settings ? structuredClone(workflow.settings) : undefined,
+	nodeGroups: workflow.nodeGroups ? structuredClone(workflow.nodeGroups) : undefined,
+	tagNames: workflow.tagNames ? [...workflow.tagNames] : undefined,
 });
 
 const isPlainObject = (value: unknown): value is Record<string, unknown> =>
@@ -344,6 +523,9 @@ export function applyOperations(
 	const workflow = cloneWorkflow(input);
 	const nodeByName = new Map(workflow.nodes.map((n) => [n.name, n]));
 	const addedNodeNames = new Set<string>();
+	// Tag set is null until the first tag op runs; that keeps "no tag ops"
+	// distinguishable from "tag ops applied to an empty set" at return time.
+	let tagSet: Set<string> | null = null;
 
 	for (let i = 0; i < operations.length; i++) {
 		const op = operations[i];
@@ -511,9 +693,52 @@ export function applyOperations(
 				break;
 			}
 
+			case 'setNodeSettings': {
+				const node = nodeByName.get(op.nodeName);
+				if (!node) return fail(i, `node '${op.nodeName}' not found`);
+				const s = op.settings;
+				if (s.onError !== undefined) node.onError = s.onError;
+				if (s.retryOnFail !== undefined) node.retryOnFail = s.retryOnFail;
+				if (s.maxTries !== undefined) node.maxTries = s.maxTries;
+				if (s.waitBetweenTries !== undefined) node.waitBetweenTries = s.waitBetweenTries;
+				if (s.alwaysOutputData !== undefined) node.alwaysOutputData = s.alwaysOutputData;
+				if (s.executeOnce !== undefined) node.executeOnce = s.executeOnce;
+				break;
+			}
+
 			case 'setWorkflowMetadata': {
 				if (op.name !== undefined) workflow.name = op.name;
 				if (op.description !== undefined) workflow.description = op.description;
+				break;
+			}
+
+			case 'setWorkflowSettings': {
+				// Shallow merge: only the provided keys overwrite, others are kept.
+				// `WorkflowService.update` later strips 'DEFAULT'/default values.
+				workflow.settings = { ...(workflow.settings ?? {}), ...op.settings };
+				break;
+			}
+
+			case 'setNodeGroups': {
+				workflow.nodeGroups = op.nodeGroups.map((group) => ({
+					id: group.id ?? uuid(),
+					name: group.name,
+					nodeIds: [...group.nodeIds],
+				}));
+				break;
+			}
+
+			case 'addTags':
+			case 'removeTags': {
+				if (workflow.tagNames === undefined) {
+					return fail(i, 'tag operations require existing tags to be loaded');
+				}
+				if (tagSet === null) tagSet = new Set(workflow.tagNames);
+				if (op.type === 'addTags') {
+					for (const name of op.names) tagSet.add(name);
+				} else {
+					for (const name of op.names) tagSet.delete(name);
+				}
 				break;
 			}
 
@@ -524,18 +749,41 @@ export function applyOperations(
 		}
 	}
 
-	return { success: true, workflow, addedNodeNames: [...addedNodeNames] };
+	if (tagSet !== null) {
+		workflow.tagNames = [...tagSet];
+	}
+
+	return {
+		success: true,
+		workflow,
+		addedNodeNames: [...addedNodeNames],
+		tagNames: tagSet !== null ? [...tagSet] : undefined,
+	};
 }
 
 /**
  * Pick only the fields the partial-update path needs from a workflow entity.
  * Keeps the surface explicit and avoids mutating the loaded entity.
  */
-export function toWorkflowSlice(workflow: IWorkflowBase): WorkflowSlice {
+export function toWorkflowSlice(
+	workflow: IWorkflowBase,
+	options: { includeTags?: boolean } = {},
+): WorkflowSlice {
+	let tagNames: string[] | undefined;
+	if (options.includeTags) {
+		const tags = (workflow as { tags?: Array<{ name: string }> }).tags;
+		if (tags === undefined) {
+			throw new Error('toWorkflowSlice: includeTags=true requires the tags relation to be loaded.');
+		}
+		tagNames = tags.map((t) => t.name);
+	}
 	return {
 		name: workflow.name ?? '',
 		description: (workflow as { description?: string }).description,
 		nodes: workflow.nodes,
 		connections: workflow.connections,
+		settings: workflow.settings,
+		nodeGroups: workflow.nodeGroups,
+		tagNames,
 	};
 }

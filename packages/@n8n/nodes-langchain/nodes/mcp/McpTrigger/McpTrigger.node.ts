@@ -1,11 +1,19 @@
-import { McpServer, MCP_LIST_TOOLS_REQUEST_MARKER } from './McpServer';
-import type { CompressionResponse } from './transport';
 import { WebhookAuthorizationError } from 'n8n-nodes-base/dist/nodes/Webhook/error';
 import { validateWebhookAuthentication } from 'n8n-nodes-base/dist/nodes/Webhook/utils';
-import type { INodeTypeDescription, IWebhookFunctions, IWebhookResponseData } from 'n8n-workflow';
+import type {
+	CredentialCheckResult,
+	INodeTypeDescription,
+	IWebhookFunctions,
+	IWebhookResponseData,
+} from 'n8n-workflow';
 import { NodeConnectionTypes, Node, nodeNameToToolName } from 'n8n-workflow';
 
 import { getConnectedTools } from '@utils/helpers';
+
+import { McpServer, MCP_LIST_TOOLS_REQUEST_MARKER } from './McpServer';
+import { n8nOAuth2Auth } from './n8n-oauth2-auth';
+import { MessageParser } from './protocol/MessageParser';
+import type { CompressionResponse } from './transport';
 
 const MCP_SSE_SETUP_PATH = 'sse';
 const MCP_SSE_MESSAGES_PATH = 'messages';
@@ -87,6 +95,14 @@ export class McpTrigger extends Node {
 				type: 'options',
 				options: [
 					{ name: 'None', value: 'none' },
+					{
+						// n8n is a brand name and should be lowercase
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'n8n User Auth (OAuth2)',
+						value: 'n8nOAuth2',
+						description: 'Require user to give consent to use their n8n account',
+						displayOptions: { show: { '@version': [{ _cnd: { gte: 2 } }] } },
+					},
 					{ name: 'Bearer Auth', value: 'bearerAuth' },
 					{ name: 'Header Auth', value: 'headerAuth' },
 				],
@@ -146,15 +162,28 @@ export class McpTrigger extends Node {
 		const req = context.getRequestObject();
 		const resp = context.getResponseObject() as unknown as CompressionResponse;
 
-		try {
-			await validateWebhookAuthentication(context, 'authentication');
-		} catch (error) {
-			if (error instanceof WebhookAuthorizationError) {
-				resp.writeHead(error.responseCode);
-				resp.end(error.message);
+		if (context.getNodeParameter('authentication') === 'n8nOAuth2') {
+			if (context.getNode().typeVersion < 2) {
+				resp.writeHead(401);
+				resp.end('OAuth2 authentication requires mcp trigger node v2.0 or higher');
 				return { noWebhookResponse: true };
 			}
-			throw error;
+			const authResult = await n8nOAuth2Auth(context);
+			if (authResult === 'handled') {
+				return { noWebhookResponse: true };
+			}
+			await context.establishTriggerIdentity(authResult.token, authResult.resource);
+		} else {
+			try {
+				await validateWebhookAuthentication(context, 'authentication');
+			} catch (error) {
+				if (error instanceof WebhookAuthorizationError) {
+					resp.writeHead(error.responseCode);
+					resp.end(error.message);
+					return { noWebhookResponse: true };
+				}
+				throw error;
+			}
 		}
 
 		const node = context.getNode();
@@ -181,15 +210,27 @@ export class McpTrigger extends Node {
 
 				if (sessionId) {
 					const connectedTools = await getConnectedTools(context, true);
+
+					// For a tool call, check the triggering user's private-credential status
+					// before executing. Returns undefined (no gate) unless an OAuth2 identity
+					// was established and the dynamic-credentials module is enabled.
+					let gateResult: CredentialCheckResult | undefined;
+					if (MessageParser.isToolCall(req.rawBody.toString())) {
+						gateResult = await context.checkTriggerCredentialStatus();
+					}
+
 					const { wasToolCall, toolCallInfo, messageId, relaySessionId, needsListToolsRelay } =
-						await mcpServer.handlePostMessage(req, resp, connectedTools, serverName);
+						await mcpServer.handlePostMessage(req, resp, connectedTools, serverName, gateResult);
 
 					if (wasToolCall) {
 						const workflowData = {
 							...(toolCallInfo && { mcpToolCall: toolCallInfo }),
 							...(messageId && { mcpMessageId: messageId }),
 						};
-						return { noWebhookResponse: true, workflowData: [[{ json: workflowData }]] };
+						return {
+							noWebhookResponse: true,
+							workflowData: [[{ json: workflowData }]],
+						};
 					}
 
 					if (needsListToolsRelay && relaySessionId && messageId) {
@@ -200,7 +241,10 @@ export class McpTrigger extends Node {
 								marker: MCP_LIST_TOOLS_REQUEST_MARKER,
 							},
 						};
-						return { noWebhookResponse: true, workflowData: [[{ json: workflowData }]] };
+						return {
+							noWebhookResponse: true,
+							workflowData: [[{ json: workflowData }]],
+						};
 					}
 				} else {
 					const connectedTools = await getConnectedTools(context, true);

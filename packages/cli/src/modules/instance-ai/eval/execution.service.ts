@@ -5,6 +5,8 @@ import {
 	type InstanceAiEvalExecutionResult,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { ensureHostsBypassProxy } from '@n8n/backend-network/proxy';
+import { ExecutionsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
@@ -13,8 +15,6 @@ import {
 	BinaryDataService,
 	type EvalLlmMockHandler,
 	type EvalMockHttpResponse,
-	ExecutionLifecycleHooks,
-	WorkflowExecute,
 	synthesizeBinaryFixture,
 } from 'n8n-core';
 import {
@@ -24,28 +24,33 @@ import {
 	type IHttpRequestOptions,
 	type INode,
 	type INodeExecutionData,
+	type INodeParameters,
 	type IPinData,
 	type IRun,
 	type IRunExecutionData,
 	type IWorkflowBase,
 	type IWorkflowExecuteAdditionalData,
+	type IWorkflowExecutionDataProcess,
 	createRunExecutionData,
+	fileTypeFromMimeType,
 	NodeHelpers,
 	UserError,
 	Workflow,
 } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
+import { ActiveExecutions } from '@/active-executions';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
-import { getBase } from '@/workflow-execute-additional-data';
+import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
+import { createLlmCompletionMockHandler } from './llm-completion-mock';
 import { EvalMockedCredentialsHelper } from './eval-mocked-credentials-helper';
+import { EvalTimings } from './eval-timings';
 import { type InterceptedTurn, LlmWireServer } from './llm-wire-server';
 import { createLlmMockHandler } from './mock-handler';
 import { generatePinData } from './pin-data-generator';
-import { patchNoProxyForLoopback } from './proxy-loopback';
 import {
 	buildVendorLlmRouting,
 	detectBinaryDependencies,
@@ -62,8 +67,8 @@ import {
 // Constants
 // ---------------------------------------------------------------------------
 
-/** Max output items per node kept in the artifact. The full count lives in `outputCount`. */
-const MAX_OUTPUT_ITEMS_PER_NODE = 10;
+/** Max output items per branch kept in the artifact. The full count lives in `outputCount`. */
+const MAX_OUTPUT_ITEMS_PER_BRANCH = 10;
 
 // ---------------------------------------------------------------------------
 // Service
@@ -79,6 +84,9 @@ export class EvalExecutionService {
 		private readonly nodeTypes: NodeTypes,
 		private readonly logger: Logger,
 		private readonly postHogClient: PostHogClient,
+		private readonly workflowRunner: WorkflowRunner,
+		private readonly activeExecutions: ActiveExecutions,
+		private readonly executionsConfig: ExecutionsConfig,
 		private readonly binaryDataService: BinaryDataService,
 	) {}
 
@@ -87,14 +95,32 @@ export class EvalExecutionService {
 		user: User,
 		options: InstanceAiEvalExecutionRequest = {},
 	): Promise<InstanceAiEvalExecutionResult> {
-		const executionId = randomUUID();
+		// Eval routes through WorkflowRunner with a configureAdditionalData closure
+		// that doesn't survive queue serialization. Refuse upfront so vendor calls
+		// can never leak to real providers from a worker that never wires the mock.
+		if (this.executionsConfig.mode === 'queue') {
+			return this.errorResult(
+				randomUUID(),
+				'Eval execution requires main process mode — queue mode is not supported.',
+			);
+		}
 
-		const workflowEntity = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
+		// Retry transient lookup misses from concurrent eval runs.
+		let workflowEntity = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:execute',
 		]);
+		if (!workflowEntity) {
+			for (const delayMs of [200, 500, 1000]) {
+				await new Promise((resolve) => setTimeout(resolve, delayMs));
+				workflowEntity = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
+					'workflow:execute',
+				]);
+				if (workflowEntity) break;
+			}
+		}
 
 		if (!workflowEntity) {
-			return this.errorResult(executionId, `Workflow ${workflowId} not found or not accessible`);
+			return this.errorResult(randomUUID(), `Workflow ${workflowId} not found or not accessible`);
 		}
 
 		// Partition AI roots into "intercept via wire server" vs "leave pinned".
@@ -106,7 +132,7 @@ export class EvalExecutionService {
 			partitioned = partitionAiRoots(workflowEntity, options.pinNodes ?? []);
 		} catch (error) {
 			if (error instanceof UserError) {
-				return this.errorResult(executionId, error.message);
+				return this.errorResult(randomUUID(), error.message);
 			}
 			throw error;
 		}
@@ -132,7 +158,13 @@ export class EvalExecutionService {
 		}
 
 		const unpinSet = unpinNodes.length > 0 ? new Set(unpinNodes) : undefined;
-		const hints = await this.analyzeWorkflow(workflowEntity, options.scenarioHints, unpinSet);
+		const timings = new EvalTimings();
+		const hints = await this.analyzeWorkflow(
+			workflowEntity,
+			timings,
+			options.scenarioHints,
+			unpinSet,
+		);
 		const vendorLlmRouting = interceptionEnabled
 			? buildVendorLlmRouting(workflowEntity, unpinNodes)
 			: undefined;
@@ -140,8 +172,8 @@ export class EvalExecutionService {
 		return await this.execute(
 			workflowEntity,
 			user,
-			executionId,
 			hints,
+			timings,
 			options.scenarioHints,
 			interceptionEnabled,
 			vendorLlmRouting,
@@ -165,6 +197,7 @@ export class EvalExecutionService {
 
 	private async analyzeWorkflow(
 		workflowEntity: IWorkflowBase,
+		timings: EvalTimings,
 		scenarioHints?: string,
 		unpinSet?: Set<string>,
 	): Promise<MockHints> {
@@ -176,11 +209,16 @@ export class EvalExecutionService {
 			`[EvalMock] Generating hints for ${nodeNames.length} nodes: ${nodeNames.join(', ')}`,
 		);
 
-		const hints = await generateMockHints({
-			workflow: workflowEntity,
-			nodeNames,
-			scenarioHints,
-		});
+		const hints = await timings.time(
+			'hints',
+			undefined,
+			async () =>
+				await generateMockHints({
+					workflow: workflowEntity,
+					nodeNames,
+					scenarioHints,
+				}),
+		);
 
 		if (!hints.globalContext && nodeNames.length > 0) {
 			this.logger.warn(
@@ -204,6 +242,7 @@ export class EvalExecutionService {
 				workflowEntity,
 				bypassNodeNames,
 				hints.globalContext,
+				timings,
 				scenarioHints,
 			);
 			this.logger.debug(
@@ -225,17 +264,23 @@ export class EvalExecutionService {
 		workflowEntity: IWorkflowBase,
 		bypassNodeNames: string[],
 		globalContext: string,
+		timings: EvalTimings,
 		scenarioHints?: string,
 	): Promise<IPinData> {
 		if (bypassNodeNames.length === 0) return {};
 
 		try {
 			const dataDescription = [globalContext, scenarioHints].filter(Boolean).join('\n\n');
-			const result = await generatePinData({
-				workflow: workflowEntity as unknown as WorkflowJSON,
-				nodeNames: bypassNodeNames,
-				instructions: dataDescription ? { dataDescription } : undefined,
-			});
+			const result = await timings.time(
+				'bypass-pin',
+				undefined,
+				async () =>
+					await generatePinData({
+						workflow: workflowEntity as unknown as WorkflowJSON,
+						nodeNames: bypassNodeNames,
+						instructions: dataDescription ? { dataDescription } : undefined,
+					}),
+			);
 
 			return normalizePinData(result as unknown as IPinData);
 		} catch (error) {
@@ -254,8 +299,8 @@ export class EvalExecutionService {
 	private async execute(
 		workflowEntity: IWorkflowBase,
 		user: User,
-		executionId: string,
 		hints: MockHints,
+		timings: EvalTimings,
 		scenarioHints?: string,
 		interceptionEnabled = false,
 		vendorLlmRouting?: VendorLlmRouting,
@@ -266,7 +311,7 @@ export class EvalExecutionService {
 		const startNode = this.findStartNode(workflow);
 
 		if (!startNode) {
-			return this.errorResult(executionId, 'No trigger or start node found in the workflow');
+			return this.errorResult(randomUUID(), 'No trigger or start node found in the workflow');
 		}
 
 		const mockHandler = createLlmMockHandler({
@@ -275,66 +320,105 @@ export class EvalExecutionService {
 			nodeHints: hints.nodeHints,
 		});
 
-		const additionalData = await getBase({
-			userId: user.id,
-			workflowId: workflowEntity.id,
-			workflowSettings: workflowEntity.settings ?? {},
-		});
+		const binaryRequirement = detectBinaryDependencies(workflowEntity);
+		const triggerPinData = this.buildTriggerPinData(
+			startNode,
+			hints.triggerContent,
+			binaryRequirement,
+		);
+		const pinData: IPinData = { ...triggerPinData, ...hints.bypassPinData };
+		const pinDataNodeNames = Object.keys(pinData);
+
+		// Check config completeness before execution — detect missing required parameters
+		this.checkNodeConfig(workflow, nodeResults, pinDataNodeNames);
+		this.patchParameterIssuesForEval(workflow, pinDataNodeNames);
+		const executionData = this.buildExecutionData(startNode, pinData);
+
+		// Mark the trigger node as pinned (it gets its output from pin data, not execution).
+		if (Object.keys(triggerPinData).length > 0) {
+			this.markNodeAsPinned(startNode.name, nodeResults);
+		}
+		for (const nodeName of Object.keys(hints.bypassPinData)) {
+			this.markNodeAsPinned(nodeName, nodeResults);
+		}
 
 		// try/finally wraps boot so a throw never leaks the server or NO_PROXY patch.
 		let wireServer: LlmWireServer | undefined;
 		let restoreNoProxy: (() => void) | undefined;
 		let credentialsHelper: EvalMockedCredentialsHelper | undefined;
+		let dbExecutionId: string | undefined;
+
 		try {
 			let serverUrl: string | undefined;
 			if (interceptionEnabled) {
+				// Wire server mocks the agent's own model turns (not HTTP APIs) → LLM completion mock.
+				const llmCompletionMockHandler = createLlmCompletionMockHandler({
+					scenarioHints,
+					globalContext: hints.globalContext,
+					nodeHints: hints.nodeHints,
+				});
+				const timedAiTurnHandler: EvalLlmMockHandler = async (request, node) =>
+					await timings.time(
+						'ai-turn',
+						node.type,
+						async () => await llmCompletionMockHandler(request, node),
+					);
 				wireServer = new LlmWireServer({
-					mockHandler,
+					mockHandler: timedAiTurnHandler,
 					rootToSubNode: vendorLlmRouting?.rootToSubNode,
 					onIntercept: (turn) => this.recordWireServerTurn(turn, nodeResults),
 					logger: this.logger,
 				});
 				serverUrl = await wireServer.start();
-				restoreNoProxy = patchNoProxyForLoopback();
+				restoreNoProxy = ensureHostsBypassProxy(['127.0.0.1', 'localhost']);
 				this.logger.debug(`[EvalMock] Wire server listening at ${serverUrl}`);
 			}
 
-			credentialsHelper = new EvalMockedCredentialsHelper(
-				additionalData.credentialsHelper,
-				serverUrl,
-				this.logger,
-				vendorLlmRouting?.subNodeToRoot,
-			);
-			additionalData.credentialsHelper = credentialsHelper;
-			additionalData.evalLlmMockHandler = this.createInterceptingHandler(mockHandler, nodeResults);
-			additionalData.hooks = new ExecutionLifecycleHooks('evaluation', executionId, workflowEntity);
+			const runData: IWorkflowExecutionDataProcess = {
+				executionMode: 'evaluation',
+				workflowData: workflowEntity,
+				userId: user.id,
+				executionData,
+				pinData,
+				configureAdditionalData: (additionalData: IWorkflowExecuteAdditionalData) => {
+					credentialsHelper = new EvalMockedCredentialsHelper(
+						additionalData.credentialsHelper,
+						serverUrl,
+						this.logger,
+						vendorLlmRouting?.subNodeToRoot,
+					);
+					additionalData.credentialsHelper = credentialsHelper;
+					additionalData.evalLlmMockHandler = this.createInterceptingHandler(
+						mockHandler,
+						nodeResults,
+						timings,
+					);
+				},
+			};
 
-			const binaryRequirement = detectBinaryDependencies(workflowEntity);
-			const triggerPinData = this.buildTriggerPinData(
-				startNode,
-				hints.triggerContent,
-				binaryRequirement,
-			);
-			const pinData: IPinData = { ...triggerPinData, ...hints.bypassPinData };
-			const pinDataNodeNames = Object.keys(pinData);
+			dbExecutionId = await this.workflowRunner.run(runData);
+			const runResult = await this.activeExecutions.getPostExecutePromise(dbExecutionId);
 
-			// Check config completeness before execution — detect missing required parameters
-			this.checkNodeConfig(workflow, nodeResults, pinDataNodeNames);
-			const executionData = this.buildExecutionData(startNode, pinData);
-
-			// Mark the trigger node as pinned (it gets its output from pin data, not execution).
-			if (Object.keys(triggerPinData).length > 0) {
-				this.markNodeAsPinned(startNode.name, nodeResults);
+			if (!runResult) {
+				return this.buildPartialFailureResult(
+					dbExecutionId,
+					new Error('Execution finished with no run data'),
+					nodeResults,
+					hints,
+					credentialsHelper,
+				);
 			}
-			for (const nodeName of Object.keys(hints.bypassPinData)) {
-				this.markNodeAsPinned(nodeName, nodeResults);
-			}
 
-			const result = await this.runWorkflow(workflow, additionalData, executionData);
-			return await this.buildResult(executionId, result, nodeResults, hints, credentialsHelper);
+			return await this.buildResult(
+				dbExecutionId,
+				runResult,
+				nodeResults,
+				hints,
+				credentialsHelper,
+			);
 		} catch (error: unknown) {
 			return this.buildPartialFailureResult(
-				executionId,
+				dbExecutionId ?? randomUUID(),
 				error,
 				nodeResults,
 				hints,
@@ -351,6 +435,7 @@ export class EvalExecutionService {
 					});
 				}
 			}
+			timings.summary(this.logger);
 		}
 	}
 
@@ -410,12 +495,50 @@ export class EvalExecutionService {
 
 			if (issues?.parameters && Object.keys(issues.parameters).length > 0) {
 				const entry = (nodeResults[node.name] ??= {
-					output: null,
+					outputs: {},
+					outputCount: 0,
+					iterationCount: 0,
 					interceptedRequests: [],
 					executionMode: 'real',
 				});
 				entry.configIssues = issues.parameters;
 			}
+		}
+	}
+
+	/**
+	 * Keep recorded config issues, but patch eval-only placeholders and empty
+	 * params so one incomplete node does not stop the entire mocked execution.
+	 */
+	private patchParameterIssuesForEval(workflow: Workflow, pinDataNodeNames: string[]): void {
+		for (const node of Object.values(workflow.nodes)) {
+			if (node.disabled) continue;
+			if (pinDataNodeNames.includes(node.name)) continue;
+
+			if (node.parameters) {
+				node.parameters = scrubPlaceholderValues(node.parameters) as INodeParameters;
+			}
+
+			const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+			if (!nodeType) continue;
+
+			const issues = NodeHelpers.getNodeParametersIssues(
+				nodeType.description.properties,
+				node,
+				nodeType.description,
+				pinDataNodeNames,
+			);
+
+			const paramIssues = issues?.parameters;
+			if (!paramIssues || Object.keys(paramIssues).length === 0) continue;
+
+			const params = node.parameters ?? {};
+			for (const paramName of Object.keys(paramIssues)) {
+				params[paramName] = synthesizeMissingParamValue(
+					params[paramName],
+				) as INodeParameters[string];
+			}
+			node.parameters = params;
 		}
 	}
 
@@ -431,51 +554,42 @@ export class EvalExecutionService {
 		triggerContent: Record<string, unknown>,
 		binaryRequirement?: TriggerBinaryRequirement,
 	): IPinData {
-		const classifyBinaryFileType = (contentType: string): IBinaryData['fileType'] => {
-			const lc = contentType.toLowerCase();
-			if (lc.startsWith('image/')) return 'image';
-			if (lc.startsWith('audio/')) return 'audio';
-			if (lc.startsWith('video/')) return 'video';
-			if (lc === 'application/pdf') return 'pdf';
-			if (lc.startsWith('text/html')) return 'html';
-			if (lc === 'application/json' || lc.startsWith('text/json')) return 'json';
-			if (lc.startsWith('text/')) return 'text';
-			return undefined;
-		};
-
 		if (Object.keys(triggerContent).length === 0 && !binaryRequirement) return {};
 
+		// Mirror any LLM-embedded binary map as real item-level binary; json stays
+		// untouched so $json.binary.* references keep resolving.
+		const embedded = readEmbeddedBinaryMeta(triggerContent);
 		const item: INodeExecutionData = { json: triggerContent as IDataObject };
+		const binary: IBinaryKeyData = {};
 
 		if (binaryRequirement) {
-			const bytes = synthesizeBinaryFixture(
-				binaryRequirement.contentType,
-				binaryRequirement.filename,
+			// Requirement wins for its key, except embedded meta beats the generic fallback.
+			const embeddedMeta = embedded[binaryRequirement.propertyName];
+			const isGenericFallback =
+				binaryRequirement.contentType === 'application/octet-stream' &&
+				binaryRequirement.filename === 'input.bin';
+			binary[binaryRequirement.propertyName] = synthesizeBinaryEntry(
+				(isGenericFallback && embeddedMeta?.mimeType) || binaryRequirement.contentType,
+				(isGenericFallback && embeddedMeta?.fileName) || binaryRequirement.filename,
 			);
-			const extension = binaryRequirement.filename.includes('.')
-				? binaryRequirement.filename.slice(binaryRequirement.filename.lastIndexOf('.') + 1)
-				: 'bin';
-			const binary: IBinaryKeyData = {
-				[binaryRequirement.propertyName]: {
-					mimeType: binaryRequirement.contentType,
-					fileName: binaryRequirement.filename,
-					fileExtension: extension,
-					fileType: classifyBinaryFileType(binaryRequirement.contentType),
-					data: bytes.toString('base64'),
-				},
-			};
-			item.binary = binary;
 		}
+
+		for (const [key, meta] of Object.entries(embedded)) {
+			if (binary[key]) continue;
+			binary[key] = synthesizeBinaryEntry(
+				meta.mimeType ?? 'application/octet-stream',
+				meta.fileName ?? 'input.bin',
+			);
+		}
+
+		if (Object.keys(binary).length > 0) item.binary = binary;
 
 		return { [startNode.name]: [item] };
 	}
 
 	/**
-	 * Build execution data with the trigger node on the execution stack.
-	 * We use processRunExecutionData() instead of run() because run() relies on
-	 * getStartNode() which doesn't find webhook nodes (they define `webhook`,
-	 * not `trigger`). This follows the same pattern as InstanceAiAdapterService.
-	 * Pin data carries the trigger's output; the execution stack just marks where to start.
+	 * Build execution data with the trigger node on the execution stack so
+	 * webhook-style triggers (which don't define `trigger`) get a known start.
 	 */
 	private buildExecutionData(startNode: INode, pinData: IPinData): IRunExecutionData {
 		return createRunExecutionData({
@@ -497,15 +611,6 @@ export class EvalExecutionService {
 		});
 	}
 
-	private async runWorkflow(
-		workflow: Workflow,
-		additionalData: IWorkflowExecuteAdditionalData,
-		executionData: IRunExecutionData,
-	): Promise<IRun> {
-		const workflowExecute = new WorkflowExecute(additionalData, 'evaluation', executionData);
-		return await workflowExecute.processRunExecutionData(workflow);
-	}
-
 	// ── Request interception ─────────────────────────────────────────────
 
 	/**
@@ -519,7 +624,9 @@ export class EvalExecutionService {
 		nodeResults: Record<string, InstanceAiEvalNodeResult>,
 	): void {
 		const entry = (nodeResults[turn.rootName] ??= {
-			output: null,
+			outputs: {},
+			outputCount: 0,
+			iterationCount: 0,
 			interceptedRequests: [],
 			executionMode: 'mocked',
 		});
@@ -548,6 +655,7 @@ export class EvalExecutionService {
 	private createInterceptingHandler(
 		mockHandler: EvalLlmMockHandler,
 		nodeResults: Record<string, InstanceAiEvalNodeResult>,
+		timings: EvalTimings,
 	): EvalLlmMockHandler {
 		return async (
 			requestOptions: IHttpRequestOptions,
@@ -556,12 +664,18 @@ export class EvalExecutionService {
 			// A node may make multiple HTTP requests — ensure it's marked as mocked.
 			// checkNodeConfig may have pre-created the entry as 'real', so always override.
 			const entry = (nodeResults[node.name] ??= {
-				output: null,
+				outputs: {},
+				outputCount: 0,
+				iterationCount: 0,
 				interceptedRequests: [],
 				executionMode: 'mocked',
 			});
 			entry.executionMode = 'mocked';
-			const response = await mockHandler(requestOptions, node);
+			const response = await timings.time(
+				'http-mock',
+				node.name,
+				async () => await mockHandler(requestOptions, node),
+			);
 
 			entry.interceptedRequests.push({
 				url: requestOptions.url,
@@ -592,7 +706,9 @@ export class EvalExecutionService {
 	): void {
 		const existing = nodeResults[nodeName];
 		nodeResults[nodeName] = {
-			output: null,
+			outputs: {},
+			outputCount: 0,
+			iterationCount: 0,
 			interceptedRequests: [],
 			executionMode: 'pinned',
 			...(existing?.configIssues ? { configIssues: existing.configIssues } : {}),
@@ -663,7 +779,7 @@ export class EvalExecutionService {
 		result: IRun,
 		nodeResults: Record<string, InstanceAiEvalNodeResult>,
 		hints: MockHints,
-		credentialsHelper: EvalMockedCredentialsHelper,
+		credentialsHelper: EvalMockedCredentialsHelper | undefined,
 	): Promise<InstanceAiEvalExecutionResult> {
 		const errors: string[] = [];
 
@@ -672,24 +788,46 @@ export class EvalExecutionService {
 			// Nodes already in nodeResults were intercepted (mocked) or pinned.
 			// Nodes appearing here for the first time executed for real (logic nodes).
 			const entry = (nodeResults[nodeName] ??= {
-				output: null,
+				outputs: {},
+				outputCount: 0,
+				iterationCount: 0,
 				interceptedRequests: [],
 				executionMode: 'real',
 			});
+			entry.iterationCount = nodeRuns.length;
+			const firstErrorIdx = nodeRuns.findIndex((run) => run?.error !== undefined);
+			if (firstErrorIdx !== -1) {
+				entry.firstErrorIteration = firstErrorIdx;
+			}
+
 			const lastRun = nodeRuns[nodeRuns.length - 1];
 			if (lastRun?.startTime) {
 				entry.startTime = lastRun.startTime;
 			}
-			if (lastRun?.data?.main) {
-				// Capture output from all branches (Switch/IF nodes have multiple outputs)
-				const flattened = lastRun.data.main
-					.flat()
-					.filter((item): item is INodeExecutionData => item !== null);
-				entry.outputCount = flattened.length;
-				const allOutputs = flattened.slice(0, MAX_OUTPUT_ITEMS_PER_NODE);
-				if (allOutputs.length > 0) {
-					entry.output = await this.hydrateBinaryData(allOutputs);
+			if (lastRun?.data) {
+				// Preserve per-connection-type, per-output-port structure so verifiers can
+				// distinguish Filter/IF/Switch branches and AI sub-node outputs.
+				let totalCount = 0;
+				let truncated = false;
+				const outputs: Record<string, unknown[][]> = {};
+				for (const [connectionType, branches] of Object.entries(lastRun.data)) {
+					if (!Array.isArray(branches)) continue;
+					outputs[connectionType] = await Promise.all(
+						branches.map(async (branch) => {
+							if (!Array.isArray(branch)) return [];
+							totalCount += branch.length;
+							let kept = branch;
+							if (branch.length > MAX_OUTPUT_ITEMS_PER_BRANCH) {
+								truncated = true;
+								kept = branch.slice(0, MAX_OUTPUT_ITEMS_PER_BRANCH);
+							}
+							return await this.hydrateBinaryData(kept);
+						}),
+					);
 				}
+				entry.outputs = outputs;
+				entry.outputCount = totalCount;
+				if (truncated) entry.truncated = true;
 			}
 			if (lastRun?.error) {
 				errors.push(`Node "${nodeName}": ${lastRun.error.message}`);
@@ -700,15 +838,17 @@ export class EvalExecutionService {
 		if (executionError) {
 			errors.push(`Workflow error: ${executionError.message}`);
 		}
+		const configIssueErrors = collectConfigIssueErrors(nodeResults);
+		const allErrors = [...errors, ...configIssueErrors];
 
 		return {
 			executionId,
-			success: executionError === undefined && errors.length === 0,
+			success: allErrors.length === 0,
 			nodeResults,
-			errors,
+			errors: allErrors,
 			hints,
-			mockedCredentials: credentialsHelper.mockedCredentials,
-			rewrittenCredentials: credentialsHelper.rewrittenCredentials,
+			mockedCredentials: credentialsHelper?.mockedCredentials ?? [],
+			rewrittenCredentials: credentialsHelper?.rewrittenCredentials ?? [],
 		};
 	}
 
@@ -729,4 +869,148 @@ export class EvalExecutionService {
 			rewrittenCredentials: [],
 		};
 	}
+}
+
+/** Synthesize a structurally valid binary entry (real bytes, base64-inlined). */
+function synthesizeBinaryEntry(contentType: string, filename: string): IBinaryData {
+	const bytes = synthesizeBinaryFixture(contentType, filename);
+	const extension = filename.includes('.') ? filename.slice(filename.lastIndexOf('.') + 1) : 'bin';
+	return {
+		mimeType: contentType,
+		fileName: filename,
+		fileExtension: extension,
+		fileType: fileTypeFromMimeType(contentType.toLowerCase()),
+		data: bytes.toString('base64'),
+	};
+}
+
+interface EmbeddedBinaryMeta {
+	mimeType?: string;
+	fileName?: string;
+}
+
+function nonEmptyString(value: unknown): string | undefined {
+	return typeof value === 'string' && value.trim().length > 0 ? value : undefined;
+}
+
+/**
+ * Read an LLM-embedded binary map from the trigger json. Qualifies only when
+ * EVERY entry under a top-level `binary` key carries real file metadata
+ * (mime type or file name — a bare `name` alone doesn't count).
+ */
+function readEmbeddedBinaryMeta(
+	triggerContent: Record<string, unknown>,
+): Record<string, EmbeddedBinaryMeta> {
+	const candidate = triggerContent.binary;
+	if (candidate === null || typeof candidate !== 'object' || Array.isArray(candidate)) {
+		return {};
+	}
+
+	const entries = Object.entries(candidate as Record<string, unknown>);
+	if (entries.length === 0) return {};
+
+	const embedded: Record<string, EmbeddedBinaryMeta> = {};
+	for (const [key, value] of entries) {
+		if (value === null || typeof value !== 'object' || Array.isArray(value)) return {};
+		const v = value as Record<string, unknown>;
+		const mimeType =
+			nonEmptyString(v.mimeType) ?? nonEmptyString(v.mimetype) ?? nonEmptyString(v.contentType);
+		const strictFileName = nonEmptyString(v.fileName) ?? nonEmptyString(v.filename);
+		if (!mimeType && !strictFileName) return {};
+		embedded[key] = {
+			mimeType,
+			// `name` is a fileName fallback, not qualification evidence.
+			fileName: strictFileName ?? nonEmptyString(v.name),
+		};
+	}
+
+	return embedded;
+}
+
+const PLACEHOLDER_PREFIX = '<__PLACEHOLDER_VALUE__';
+const PLACEHOLDER_SUFFIX = '__>';
+
+function synthesizePlaceholderValue(hint: string): string {
+	const h = hint.toLowerCase();
+	if (h.includes('email')) return 'eval-mock@example.com';
+	if (h.includes('url') || h.includes('endpoint') || h.includes('webhook')) {
+		return 'https://eval-mock.invalid/';
+	}
+	if (h.includes('phone')) return '+10000000000';
+	if (h.includes('slack channel') || h.includes('channel')) return 'C00000000EVAL';
+	if (h.includes('chat') && h.includes('id')) return '100000000';
+	if (h.includes('telegram')) return '100000000';
+	const selectedResourceValue = synthesizeSelectedResourcePlaceholderValue(h);
+	if (selectedResourceValue) return selectedResourceValue;
+	return '__evalMockValue';
+}
+
+function synthesizeSelectedResourcePlaceholderValue(hint: string): string | undefined {
+	if (!hint.includes('select')) return undefined;
+	if (hint.includes('spreadsheet') || hint.includes('document')) return 'eval-spreadsheet-id';
+	if (hint.includes('sheet')) return '0';
+	if (hint.includes('calendar')) return 'eval-calendar-id';
+	if (hint.includes('folder')) return 'eval-folder-id';
+	if (hint.includes('file')) return 'eval-file-id';
+	if (hint.includes('drive')) return 'eval-drive-id';
+	return undefined;
+}
+
+function scrubPlaceholderValues(value: unknown): unknown {
+	if (typeof value === 'string') {
+		if (!value.startsWith(PLACEHOLDER_PREFIX) || !value.endsWith(PLACEHOLDER_SUFFIX)) {
+			return value;
+		}
+		const hint = value.slice(PLACEHOLDER_PREFIX.length, -PLACEHOLDER_SUFFIX.length);
+		return synthesizePlaceholderValue(hint);
+	}
+	if (Array.isArray(value)) return value.map(scrubPlaceholderValues);
+	if (value !== null && typeof value === 'object') {
+		const out: Record<string, unknown> = {};
+		for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
+			out[key] = scrubPlaceholderValues(child);
+		}
+		return out;
+	}
+	return value;
+}
+
+function synthesizeMissingParamValue(current: unknown): unknown {
+	if (
+		current !== null &&
+		typeof current === 'object' &&
+		!Array.isArray(current) &&
+		'__rl' in (current as Record<string, unknown>)
+	) {
+		const rl = current as Record<string, unknown>;
+		const mode = typeof rl.mode === 'string' && rl.mode.length > 0 ? rl.mode : 'id';
+		const rawValue = rl.value;
+		const hasValue =
+			(typeof rawValue === 'string' && rawValue.length > 0) ||
+			(typeof rawValue === 'number' && Number.isFinite(rawValue));
+		return {
+			...rl,
+			mode,
+			value: hasValue ? rawValue : '__evalMockResource',
+		};
+	}
+
+	if (typeof current === 'string' && current.length === 0) return '__evalMockValue';
+	if (current === null || current === undefined) return '__evalMockValue';
+
+	return current;
+}
+
+function collectConfigIssueErrors(nodeResults: Record<string, InstanceAiEvalNodeResult>): string[] {
+	const errors: string[] = [];
+	for (const [nodeName, result] of Object.entries(nodeResults)) {
+		const issues = result.configIssues;
+		if (!issues || Object.keys(issues).length === 0) continue;
+		const issueMessages = Object.values(issues).flat();
+		if (issueMessages.length === 0) continue;
+		errors.push(
+			`Node "${nodeName}" has missing or invalid configuration: ${issueMessages.join('; ')}`,
+		);
+	}
+	return errors;
 }

@@ -1,11 +1,12 @@
 {
   "name": "@n8n/syslog-client",
-  "version": "1.4.0",
+  "version": "1.6.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
+    "build:unchecked": "tsc -p tsconfig.build.json --noCheck",
     "format": "biome format --write src test",
     "format:check": "biome ci src test",
     "lint": "eslint . --quiet",
@@ -28,8 +29,10 @@
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@vitest/coverage-v8": "catalog:",
+    "vite": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:",
     "get-port": "^7.1.0"
-  }
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }

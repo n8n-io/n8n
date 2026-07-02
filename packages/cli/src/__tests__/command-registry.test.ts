@@ -2,12 +2,13 @@ import type { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { CliParser } from '@n8n/backend-common';
 import { CommandMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import type { Mock, MockInstance } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
 
 import { CommandRegistry } from '../command-registry';
 
-jest.mock('fast-glob');
+vi.mock('fast-glob');
 
 import glob from 'fast-glob';
 
@@ -17,28 +18,28 @@ describe('CommandRegistry', () => {
 	const moduleRegistry = mock<ModuleRegistry>();
 	const logger = mock<Logger>();
 	let originalProcessArgv: string[];
-	let mockProcessExit: jest.SpyInstance;
+	let mockProcessExit: MockInstance;
 	const cliParser = new CliParser(logger);
 
 	class TestCommand {
 		flags: any;
 
-		init = jest.fn();
+		init = vi.fn();
 
-		run = jest.fn();
+		run = vi.fn();
 
-		catch = jest.fn();
+		catch = vi.fn();
 
-		finally = jest.fn();
+		finally = vi.fn();
 	}
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 
 		originalProcessArgv = process.argv;
-		mockProcessExit = jest.spyOn(process, 'exit').mockImplementation((() => {}) as any);
+		mockProcessExit = vi.spyOn(process, 'exit').mockImplementation((() => {}) as any);
 
-		(glob as unknown as jest.Mock).mockResolvedValue([]);
+		(glob as unknown as Mock).mockResolvedValue([]);
 
 		commandMetadata = new CommandMetadata();
 		Container.set(CommandMetadata, commandMetadata);
@@ -60,7 +61,7 @@ describe('CommandRegistry', () => {
 	afterEach(() => {
 		process.argv = originalProcessArgv;
 		mockProcessExit.mockRestore();
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	it('should execute the specified command', async () => {
@@ -83,7 +84,7 @@ describe('CommandRegistry', () => {
 		const error = new Error('Test error');
 		const commandClass = commandMetadata.get('test-command')!.class;
 		const commandInstance = Container.get(commandClass);
-		commandInstance.run = jest.fn().mockRejectedValue(error);
+		commandInstance.run = vi.fn().mockRejectedValue(error);
 
 		commandRegistry = new CommandRegistry(commandMetadata, moduleRegistry, logger, cliParser);
 		await commandRegistry.execute();

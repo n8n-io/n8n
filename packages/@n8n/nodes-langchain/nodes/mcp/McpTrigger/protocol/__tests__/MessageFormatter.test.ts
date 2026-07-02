@@ -1,3 +1,5 @@
+import type { CredentialCheckResult } from 'n8n-workflow';
+
 import { MessageFormatter } from '../MessageFormatter';
 
 describe('MessageFormatter', () => {
@@ -113,6 +115,95 @@ describe('MessageFormatter', () => {
 		});
 	});
 
+	describe('isErrorResult', () => {
+		it('should detect queue mode error objects with error.message', () => {
+			expect(
+				MessageFormatter.isErrorResult({ error: { message: 'Bad request', name: 'NodeApiError' } }),
+			).toBe(true);
+		});
+
+		it('should detect queue mode error objects with just error.message', () => {
+			expect(MessageFormatter.isErrorResult({ error: { message: 'something failed' } })).toBe(true);
+		});
+
+		it('should detect direct mode error strings from N8nTool toString()', () => {
+			expect(
+				MessageFormatter.isErrorResult('NodeApiError: Bad request - please check your parameters'),
+			).toBe(true);
+		});
+
+		it('should detect HTTP error strings from ToolHttpRequest', () => {
+			expect(MessageFormatter.isErrorResult('HTTP 401 There was an error: "Unauthorized"')).toBe(
+				true,
+			);
+		});
+
+		it('should detect generic error strings from ToolHttpRequest', () => {
+			expect(MessageFormatter.isErrorResult('There was an error: "Token not found"')).toBe(true);
+		});
+
+		it('should detect TypeError strings', () => {
+			expect(MessageFormatter.isErrorResult('TypeError: Cannot read property of undefined')).toBe(
+				true,
+			);
+		});
+
+		it('should not flag normal string results as errors', () => {
+			expect(MessageFormatter.isErrorResult('Hello world')).toBe(false);
+		});
+
+		it('should not flag normal object results as errors', () => {
+			expect(MessageFormatter.isErrorResult({ data: 'value', count: 42 })).toBe(false);
+		});
+
+		it('should not flag tool outputs with a non-envelope error field as errors', () => {
+			expect(MessageFormatter.isErrorResult({ error: 'no errors found' })).toBe(false);
+			expect(MessageFormatter.isErrorResult({ error: false })).toBe(false);
+			expect(MessageFormatter.isErrorResult({ error: 0 })).toBe(false);
+			expect(MessageFormatter.isErrorResult({ error: null })).toBe(false);
+			expect(MessageFormatter.isErrorResult({ error: { code: 500 } })).toBe(false);
+			expect(MessageFormatter.isErrorResult({ error: { message: 42 } })).toBe(false);
+		});
+
+		it('should not flag null/undefined as errors', () => {
+			expect(MessageFormatter.isErrorResult(null)).toBe(false);
+			expect(MessageFormatter.isErrorResult(undefined)).toBe(false);
+		});
+
+		it('should not flag numbers as errors', () => {
+			expect(MessageFormatter.isErrorResult(42)).toBe(false);
+		});
+
+		it('should not flag empty string as error', () => {
+			expect(MessageFormatter.isErrorResult('')).toBe(false);
+		});
+	});
+
+	describe('formatToolResult with isError flag', () => {
+		it('should set isError when flag is true', () => {
+			const result = MessageFormatter.formatToolResult('There was an error: "Unauthorized"', true);
+			expect(result.isError).toBe(true);
+			expect(result.content[0].text).toBe('There was an error: "Unauthorized"');
+		});
+
+		it('should not set isError when flag is false', () => {
+			const result = MessageFormatter.formatToolResult('hello world', false);
+			expect(result.isError).toBeUndefined();
+		});
+
+		it('should not set isError by default', () => {
+			const result = MessageFormatter.formatToolResult('hello world');
+			expect(result.isError).toBeUndefined();
+		});
+
+		it('should set isError for object results', () => {
+			const errorObj = { error: { message: 'Bad request', name: 'NodeApiError' } };
+			const result = MessageFormatter.formatToolResult(errorObj, true);
+			expect(result.isError).toBe(true);
+			expect(result.content[0].text).toBe(JSON.stringify(errorObj));
+		});
+	});
+
 	describe('formatError', () => {
 		it('should format error with isError flag set to true', () => {
 			const error = new Error('Something went wrong');
@@ -177,6 +268,81 @@ describe('MessageFormatter', () => {
 
 			expect(result.content[0].text).toBe('Error: Test error');
 			expect(result.content[0].text).not.toContain('internal/path');
+		});
+	});
+
+	describe('formatCredentialGate', () => {
+		it('should list each missing credential with its connection URL and flag an error', () => {
+			const gateResult: CredentialCheckResult = {
+				readyToExecute: false,
+				credentials: [
+					{
+						credentialId: 'cred-1',
+						credentialName: 'My Slack',
+						credentialType: 'slackOAuth2Api',
+						resolverId: 'n8n',
+						status: 'missing',
+						authorizationUrl: 'https://n8n.test/rest/credentials/cred-1/authorize?resolverId=n8n',
+					},
+				],
+			};
+
+			const result = MessageFormatter.formatCredentialGate(gateResult);
+
+			expect(result.isError).toBe(true);
+			expect(result.content[0].text).toContain('My Slack (slackOAuth2Api)');
+			// The URL is emitted raw on its own line (not wrapped in prose).
+			expect(result.content[0].text.split('\n')).toContain(
+				'https://n8n.test/rest/credentials/cred-1/authorize?resolverId=n8n',
+			);
+			// The structured field carries the full result (raw URLs) for programmatic clients.
+			expect(result.credentialGate).toEqual(gateResult);
+		});
+
+		it('should only list credentials that are not configured', () => {
+			const gateResult: CredentialCheckResult = {
+				readyToExecute: false,
+				credentials: [
+					{
+						credentialId: 'cred-ok',
+						credentialName: 'Connected Cred',
+						credentialType: 'githubOAuth2Api',
+						resolverId: 'n8n',
+						status: 'configured',
+					},
+					{
+						credentialId: 'cred-missing',
+						credentialName: 'Missing Cred',
+						credentialType: 'notionOAuth2Api',
+						resolverId: 'n8n',
+						status: 'missing',
+						authorizationUrl: 'https://n8n.test/authorize',
+					},
+				],
+			};
+
+			const text = MessageFormatter.formatCredentialGate(gateResult).content[0].text;
+
+			expect(text).toContain('Missing Cred (notionOAuth2Api)');
+			expect(text).not.toContain('Connected Cred');
+		});
+
+		it('should describe a missing credential without an authorization URL as not connected', () => {
+			const gateResult: CredentialCheckResult = {
+				readyToExecute: false,
+				credentials: [
+					{
+						credentialId: 'cred-2',
+						credentialName: 'No URL Cred',
+						credentialType: 'httpHeaderAuth',
+						status: 'missing',
+					},
+				],
+			};
+
+			const text = MessageFormatter.formatCredentialGate(gateResult).content[0].text;
+
+			expect(text).toContain('No URL Cred (httpHeaderAuth): not connected');
 		});
 	});
 });
