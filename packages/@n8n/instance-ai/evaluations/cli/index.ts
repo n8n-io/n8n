@@ -251,6 +251,22 @@ async function main(): Promise<void> {
 		: undefined;
 	if (mcpBuildLogDir) mkdirSync(mcpBuildLogDir, { recursive: true });
 
+	// Remove staged MCP configs (they embed the lane's bearer token) on exit,
+	// belt-and-suspenders alongside the explicit finally cleanup below.
+	// Registered before lane init and populated as configs are staged, so a
+	// lane failing setup can't strand another lane's already-staged token file.
+	const stagedMcpConfigPaths: string[] = [];
+	const cleanupStagedMcpConfigs = () => {
+		for (const path of stagedMcpConfigPaths) {
+			try {
+				unlinkSync(path);
+			} catch {
+				// best-effort
+			}
+		}
+	};
+	if (args.buildViaMcp) process.on('exit', cleanupStagedMcpConfigs);
+
 	// One lane per base URL. The LangSmith path then uses a work-stealing
 	// allocator (lane-allocator.ts) to dispatch builds across lanes; the direct
 	// path partitions test cases statically per lane.
@@ -286,6 +302,7 @@ async function main(): Promise<void> {
 					url: `${baseUrl}/mcp-server/http`,
 					apiKey,
 				});
+				stagedMcpConfigPaths.push(mcpConfigPath);
 				logger.info(`Staged MCP build config${tag}`);
 			}
 
@@ -304,22 +321,6 @@ async function main(): Promise<void> {
 			};
 		}),
 	);
-
-	// Remove staged MCP configs (they embed the lane's bearer token) on exit,
-	// belt-and-suspenders alongside the explicit finally cleanup below.
-	const stagedMcpConfigPaths = lanes
-		.map((lane) => lane.mcpConfigPath)
-		.filter((path): path is string => path !== undefined);
-	const cleanupStagedMcpConfigs = () => {
-		for (const path of stagedMcpConfigPaths) {
-			try {
-				unlinkSync(path);
-			} catch {
-				// best-effort
-			}
-		}
-	};
-	if (stagedMcpConfigPaths.length > 0) process.on('exit', cleanupStagedMcpConfigs);
 
 	const startTime = Date.now();
 	// Delete workflows after the run when they're throwaway: prebuilt opt-in
