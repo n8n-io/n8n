@@ -579,6 +579,18 @@ const isAiGatewayUnsupportedAction = computed(() => {
 	return !aiGateway.isActionSupported(node.value.type, resource, operation);
 });
 
+// The unsupported-action notice must render exactly once.
+const aiGatewayUnsupportedNoticeIndex = computed(() => {
+	if (!isAiGatewayUnsupportedAction.value) return -1;
+	const items = parameterItems.value;
+	const selectorIndex = items.findIndex(
+		(item) => item.parameter.name === 'operation' && item.parameter.type === 'options',
+	);
+	return selectorIndex !== -1
+		? selectorIndex
+		: items.findIndex((item) => item.parameter.name === 'operation');
+});
+
 const aiGatewayOperationDisplayName = computed(() => {
 	const params = props.path
 		? (get(props.nodeValues, props.path) as INodeParameters | undefined)
@@ -952,7 +964,7 @@ watch(
 			</div>
 
 			<N8nNotice
-				v-if="item.parameter.name === 'operation' && isAiGatewayUnsupportedAction"
+				v-if="index === aiGatewayUnsupportedNoticeIndex"
 				theme="warning"
 				:class="$style.unsupportedActionNotice"
 				data-test-id="ai-gateway-unsupported-action-notice"
