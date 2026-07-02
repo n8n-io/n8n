@@ -1481,7 +1481,7 @@ type ResolveConfirmationServiceInternals = {
 		dropPendingConfirmation: Mock;
 	};
 	pendingConfirmationRepo: {
-		isPastExpiry: Mock<(...args: [string, Date]) => Promise<boolean>>;
+		isPastExpiry: Mock<(...args: [string, string, Date]) => Promise<boolean>>;
 	};
 	logger: { debug: Mock; warn: Mock; error: Mock; info: Mock };
 };
@@ -1730,6 +1730,7 @@ describe('InstanceAiService — resolveConfirmation', () => {
 
 		expect(service.pendingConfirmationRepo.isPastExpiry).toHaveBeenCalledWith(
 			'req-1',
+			'user-1',
 			expect.any(Date),
 		);
 		expect(service.runState.resolvePendingConfirmation).not.toHaveBeenCalled();

@@ -3862,9 +3862,11 @@ export class InstanceAiService {
 		// reach the in-memory fast path after the row's `expiresAt` but before the
 		// prune/liveness sweep drops it. The persisted row is the source of truth
 		// for expiry, so consult it first and refuse a stale click; the sweep still
-		// owns releasing the suspended run. One extra SELECT per click — the click
-		// path isn't hot.
-		if (await this.pendingConfirmationRepo.isPastExpiry(requestId, new Date())) {
+		// owns releasing the suspended run. Scoped by `freshUser.id` so another
+		// user's request ID falls through to the existing not-found handling
+		// rather than leaking an "expired" signal. One extra SELECT per click —
+		// the click path isn't hot.
+		if (await this.pendingConfirmationRepo.isPastExpiry(requestId, freshUser.id, new Date())) {
 			this.logger.debug('Rejecting expired confirmation', { requestId });
 			throw new UserError(CONFIRMATION_EXPIRED_MESSAGE);
 		}

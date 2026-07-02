@@ -130,20 +130,31 @@ describe('InstanceAiPendingConfirmationRepository.isPastExpiry', () => {
 		return { repo, countMock };
 	}
 
-	it('is true when a row exists with expiresAt in the past', async () => {
+	it('is true when the user owns a row with expiresAt in the past', async () => {
 		const now = new Date('2026-05-13T12:00:00.000Z');
 		const { repo, countMock } = buildRepoWithCount(1);
 
-		await expect(repo.isPastExpiry('req-1', now)).resolves.toBe(true);
-		// LessThan(now) excludes null expiresAt (timeout disabled) at the SQL layer.
+		await expect(repo.isPastExpiry('req-1', 'user-1', now)).resolves.toBe(true);
+		// Scoped by userId, and LessThan(now) excludes null expiresAt (timeout
+		// disabled) at the SQL layer.
 		const where = countMock.mock.calls[0][0]!.where;
-		expect(where).toMatchObject({ requestId: 'req-1' });
+		expect(where).toMatchObject({ requestId: 'req-1', userId: 'user-1' });
 		expect(where).toHaveProperty('expiresAt');
 	});
 
 	it('is false when no row is past its expiry', async () => {
 		const { repo } = buildRepoWithCount(0);
 
-		await expect(repo.isPastExpiry('req-1', new Date())).resolves.toBe(false);
+		await expect(repo.isPastExpiry('req-1', 'user-1', new Date())).resolves.toBe(false);
+	});
+
+	it('does not treat another user’s expired request as expired', async () => {
+		// The userId scope means the count query matches nothing for a request
+		// owned by someone else, so the caller falls through to its existing
+		// not-found/not-authorized handling instead of leaking an expired signal.
+		const { repo, countMock } = buildRepoWithCount(0);
+
+		await expect(repo.isPastExpiry('req-1', 'attacker-user', new Date())).resolves.toBe(false);
+		expect(countMock.mock.calls[0][0]!.where).toMatchObject({ userId: 'attacker-user' });
 	});
 });
