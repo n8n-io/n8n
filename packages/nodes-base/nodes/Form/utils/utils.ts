@@ -406,7 +406,7 @@ export function addFormResponseDataToReturnItem(
 		if (field.fieldType === 'number') {
 			value = Number(value);
 		}
-		if (field.fieldType === 'text') {
+		if (field.fieldType === 'text' || field.fieldType === 'email') {
 			value = String(value).trim();
 		}
 		if (
