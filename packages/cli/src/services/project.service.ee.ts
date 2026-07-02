@@ -713,6 +713,33 @@ export class ProjectService {
 		return projects.map((p) => p.id);
 	}
 
+	async findProjectsByIdsForUser(
+		user: User,
+		projectIds: string[],
+		scopes: Scope[],
+	): Promise<Project[]> {
+		if (projectIds.length === 0) {
+			return [];
+		}
+
+		const where: FindOptionsWhere<Project> = {
+			id: In(projectIds),
+		};
+
+		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
+			const projectRoles = await this.roleService.rolesWithScope('project', scopes);
+			where.projectRelations = {
+				role: In(projectRoles),
+				userId: user.id,
+			};
+		}
+
+		return await this.projectRepository.find({
+			where,
+			order: { createdAt: 'ASC', id: 'ASC' },
+		});
+	}
+
 	/**
 	 * Add a user to a team project with specified roles.
 	 *

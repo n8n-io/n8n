@@ -825,7 +825,12 @@ export class ActiveWorkflowManager {
 				await this.add(workflowId, activationMode, workflowData, { shouldPublish: false });
 			} catch (error) {
 				this.errorReporter.error(error);
-				let lastTimeout = this.queuedActivations[workflowId].lastTimeout;
+				const queuedActivation = this.queuedActivations[workflowId];
+				if (!queuedActivation) {
+					return;
+				}
+
+				let lastTimeout = queuedActivation.lastTimeout;
 				if (!(error instanceof IsolateError) && lastTimeout < WORKFLOW_REACTIVATE_MAX_TIMEOUT) {
 					lastTimeout = Math.min(lastTimeout * 2, WORKFLOW_REACTIVATE_MAX_TIMEOUT);
 				}
@@ -841,8 +846,8 @@ export class ActiveWorkflowManager {
 					},
 				);
 
-				this.queuedActivations[workflowId].lastTimeout = lastTimeout;
-				this.queuedActivations[workflowId].timeout = setTimeout(retryFunction, lastTimeout);
+				queuedActivation.lastTimeout = lastTimeout;
+				queuedActivation.timeout = setTimeout(retryFunction, lastTimeout);
 				return;
 			}
 			this.logger.info(`Activation of workflow "${workflowName}" (${workflowId}) was successful!`, {
