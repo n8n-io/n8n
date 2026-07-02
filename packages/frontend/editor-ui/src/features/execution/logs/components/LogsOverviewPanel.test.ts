@@ -43,8 +43,9 @@ const { mockDocumentStore } = vi.hoisted(() => ({
 			getChildNodes: vi.fn().mockReturnValue([]),
 			getParentNodesByDepth: vi.fn().mockReturnValue([]),
 		}),
+		documentId: 'test-workflow-id@latest',
 		connectionsBySourceNode: {},
-		pinData: {},
+		pinnedDataByNodeName: {},
 		incomingConnectionsByNodeName: vi.fn().mockReturnValue({}),
 		outgoingConnectionsByNodeName: vi.fn().mockReturnValue({}),
 		settings: {},
@@ -108,7 +109,7 @@ describe('LogsOverviewPanel', () => {
 		setActivePinia(pinia);
 
 		workflowsStore = mockedStore(useWorkflowsStore);
-		workflowsStore.workflowId = 'test-workflow-id';
+		workflowsStore.setWorkflowId('test-workflow-id');
 
 		pushConnectionStore = mockedStore(usePushConnectionStore);
 		pushConnectionStore.isConnected = true;
@@ -129,6 +130,20 @@ describe('LogsOverviewPanel', () => {
 		});
 
 		expect(rendered.queryByTestId('logs-overview-empty')).toBeInTheDocument();
+	});
+
+	it('should render a too-large message when the execution data was not loaded', () => {
+		const rendered = render({
+			isOpen: true,
+			flatLogEntries: [],
+			entries: [],
+			execution: { ...aiChatExecutionResponse, dataTooLargeToDisplay: true },
+		});
+
+		expect(rendered.queryByTestId('logs-overview-empty')).toBeInTheDocument();
+		expect(
+			rendered.queryByText("This execution's data is too large to display."),
+		).toBeInTheDocument();
 	});
 
 	it('should render summary text and executed nodes if there is an execution', async () => {

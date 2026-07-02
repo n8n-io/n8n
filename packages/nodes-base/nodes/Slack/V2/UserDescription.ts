@@ -37,6 +37,12 @@ export const userOperations: INodeProperties[] = [
 				action: "Get a user's presence status",
 			},
 			{
+				name: 'Look Up by Email',
+				value: 'lookupByEmail',
+				description: 'Find a user by their email address',
+				action: 'Look up a user by email',
+			},
+			{
 				name: "Update User's Profile",
 				value: 'updateProfile',
 				description: "Update a user's profile",
@@ -91,6 +97,24 @@ export const userFields: INodeProperties[] = [
 				placeholder: 'U123AB45JGM',
 			},
 		],
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                user:lookupByEmail                          */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Email',
+		name: 'email',
+		type: 'string',
+		placeholder: 'name@email.com',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: ['user'],
+				operation: ['lookupByEmail'],
+			},
+		},
+		description: 'The email address of the user to look up',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 user:getAll                                */

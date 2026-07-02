@@ -3,8 +3,9 @@ import type { GlobalConfig } from '@n8n/config';
 import type { Settings, SettingsRepository, User, WorkflowRepository } from '@n8n/db';
 import { WorkflowEntity } from '@n8n/db';
 import type { EntityManager, FindOperator } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
 import { calculateWorkflowChecksum } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -16,8 +17,8 @@ import { McpSettingsService } from '../mcp.settings.service';
 
 describe('McpSettingsService', () => {
 	let service: McpSettingsService;
-	let findByKey: jest.Mock<Promise<Settings | null>, [string]>;
-	let upsert: jest.Mock;
+	let findByKey: Mock<(...args: [string]) => Promise<Settings | null>>;
+	let upsert: Mock;
 	let settingsRepository: SettingsRepository;
 	const cacheService = mock<CacheService>();
 	const workflowRepository = mock<WorkflowRepository>();
@@ -29,9 +30,9 @@ describe('McpSettingsService', () => {
 	} as unknown as GlobalConfig;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
-		findByKey = jest.fn<Promise<Settings | null>, [string]>();
-		upsert = jest.fn();
+		vi.clearAllMocks();
+		findByKey = vi.fn<(...args: [string]) => Promise<Settings | null>>();
+		upsert = vi.fn();
 		settingsRepository = { findByKey, upsert } as unknown as SettingsRepository;
 		collaborationService.filterOpenWorkflowIds.mockImplementation(
 			async (workflowIds) => workflowIds,
@@ -96,6 +97,45 @@ describe('McpSettingsService', () => {
 		});
 	});
 
+	describe('getAllowedRedirectUris', () => {
+		test('returns empty array by default when no setting exists', async () => {
+			findByKey.mockResolvedValue(null);
+			cacheService.get.mockResolvedValue(undefined);
+
+			await expect(service.getAllowedRedirectUris()).resolves.toEqual([]);
+			expect(findByKey).toHaveBeenCalledWith('mcp.oauth.allowedRedirectUris');
+		});
+
+		test('returns URIs from cache when available', async () => {
+			cacheService.get.mockResolvedValue(JSON.stringify(['https://example.com/callback']));
+
+			await expect(service.getAllowedRedirectUris()).resolves.toEqual([
+				'https://example.com/callback',
+			]);
+			expect(findByKey).not.toHaveBeenCalled();
+		});
+
+		test('returns URIs from database when cache is empty', async () => {
+			cacheService.get.mockResolvedValue(undefined);
+			findByKey.mockResolvedValue(
+				mock<Settings>({
+					key: 'mcp.oauth.allowedRedirectUris',
+					value: JSON.stringify(['https://example.com/callback', 'http://localhost:3000/callback']),
+					loadOnStartup: true,
+				}),
+			);
+
+			await expect(service.getAllowedRedirectUris()).resolves.toEqual([
+				'https://example.com/callback',
+				'http://localhost:3000/callback',
+			]);
+			expect(cacheService.set).toHaveBeenCalledWith(
+				'mcp.oauth.allowedRedirectUris',
+				JSON.stringify(['https://example.com/callback', 'http://localhost:3000/callback']),
+			);
+		});
+	});
+
 	describe('bulkSetAvailableInMCP', () => {
 		const user = mock<User>({ id: 'user-1' });
 
@@ -106,7 +146,7 @@ describe('McpSettingsService', () => {
 				seeded.map((w) => [w.id, { ...w, isArchived: w.isArchived ?? false }]),
 			);
 
-			const find = jest.fn(
+			const find = vi.fn(
 				async (
 					_entity: unknown,
 					options: {
@@ -125,7 +165,7 @@ describe('McpSettingsService', () => {
 				},
 			);
 
-			const update = jest.fn(
+			const update = vi.fn(
 				async (_entity: unknown, where: { id: string }, patch: Partial<WorkflowEntity>) => {
 					const existing = storage.get(where.id);
 					if (!existing) return;
@@ -135,7 +175,7 @@ describe('McpSettingsService', () => {
 
 			const trx = { find, update } as unknown as EntityManager;
 			const manager = {
-				transaction: jest.fn(async (run: (trx: EntityManager) => Promise<unknown>) => {
+				transaction: vi.fn(async (run: (trx: EntityManager) => Promise<unknown>) => {
 					return await run(trx);
 				}),
 			};
@@ -194,6 +234,8 @@ describe('McpSettingsService', () => {
 			expect(result).toEqual({
 				updatedCount: 2,
 				updatedIds: ['wf-1', 'wf-2'],
+				unchangedCount: 0,
+				unchangedIds: [],
 				// wf-unauthorized was in the request but filtered out — counts as skipped.
 				skippedCount: 1,
 				failedCount: 0,
@@ -285,6 +327,8 @@ describe('McpSettingsService', () => {
 			expect(result).toEqual({
 				updatedCount: 1,
 				updatedIds: ['wf-1'],
+				unchangedCount: 0,
+				unchangedIds: [],
 				skippedCount: 1,
 				failedCount: 0,
 				changedWorkflows: [
@@ -321,11 +365,11 @@ describe('McpSettingsService', () => {
 			expect(stubs.find).toHaveBeenCalledTimes(2);
 			expect(stubs.find.mock.calls[0][1].select).toEqual(['id', 'settings']);
 			expect(stubs.find.mock.calls[1][1].where.id.value).toEqual(['wf-1']);
-			// Both ids are reported as updated (the DB is in the requested state
-			// for both). No-ops go last in the list.
 			expect(result).toEqual({
-				updatedCount: 2,
-				updatedIds: ['wf-1', 'wf-2'],
+				updatedCount: 1,
+				updatedIds: ['wf-1'],
+				unchangedCount: 1,
+				unchangedIds: ['wf-2'],
 				skippedCount: 0,
 				failedCount: 0,
 				changedWorkflows: [
@@ -358,8 +402,10 @@ describe('McpSettingsService', () => {
 			expect(stubs.update).not.toHaveBeenCalled();
 			expect(stubs.find).toHaveBeenCalledTimes(1);
 			expect(result).toEqual({
-				updatedCount: 2,
-				updatedIds: ['wf-1', 'wf-2'],
+				updatedCount: 0,
+				updatedIds: [],
+				unchangedCount: 2,
+				unchangedIds: ['wf-1', 'wf-2'],
 				skippedCount: 0,
 				failedCount: 0,
 				changedWorkflows: [],
@@ -408,13 +454,14 @@ describe('McpSettingsService', () => {
 			expect(stubs.manager.transaction).not.toHaveBeenCalled();
 			expect(result).toEqual({
 				updatedCount: 0,
+				unchangedCount: 0,
 				skippedCount: 0,
 				failedCount: 0,
 				changedWorkflows: [],
 			});
 		});
 
-		test('omits updatedIds from the response when scoped by projectId', async () => {
+		test('omits workflow ids from the response when scoped by projectId', async () => {
 			setupRepository([
 				{ id: 'wf-1', settings: {} },
 				{ id: 'wf-2', settings: {} },
@@ -430,6 +477,7 @@ describe('McpSettingsService', () => {
 
 			expect(result).toEqual({
 				updatedCount: 2,
+				unchangedCount: 0,
 				skippedCount: 0,
 				failedCount: 0,
 				changedWorkflows: [
@@ -446,9 +494,10 @@ describe('McpSettingsService', () => {
 				],
 			});
 			expect(result).not.toHaveProperty('updatedIds');
+			expect(result).not.toHaveProperty('unchangedIds');
 		});
 
-		test('omits updatedIds from the response when scoped by folderId', async () => {
+		test('omits workflow ids from the response when scoped by folderId', async () => {
 			setupRepository([{ id: 'wf-1', settings: {} }]);
 			workflowFinderService.findAllWorkflowIdsForUser.mockResolvedValue(['wf-1']);
 
@@ -461,6 +510,7 @@ describe('McpSettingsService', () => {
 
 			expect(result).toEqual({
 				updatedCount: 1,
+				unchangedCount: 0,
 				skippedCount: 0,
 				failedCount: 0,
 				changedWorkflows: [
@@ -472,6 +522,7 @@ describe('McpSettingsService', () => {
 				],
 			});
 			expect(result).not.toHaveProperty('updatedIds');
+			expect(result).not.toHaveProperty('unchangedIds');
 		});
 
 		test('resolves candidates via findAllWorkflowIdsForUser when scoped by folderId', async () => {
@@ -515,6 +566,7 @@ describe('McpSettingsService', () => {
 			expect(stubs.manager.transaction).not.toHaveBeenCalled();
 			expect(result).toEqual({
 				updatedCount: 0,
+				unchangedCount: 0,
 				skippedCount: 0,
 				failedCount: 0,
 				changedWorkflows: [],
@@ -535,14 +587,16 @@ describe('McpSettingsService', () => {
 			expect(stubs.manager.transaction).not.toHaveBeenCalled();
 			expect(result).toEqual({
 				updatedCount: 0,
+				unchangedCount: 0,
 				skippedCount: 0,
 				failedCount: 0,
 				changedWorkflows: [],
 			});
 			expect(result).not.toHaveProperty('updatedIds');
+			expect(result).not.toHaveProperty('unchangedIds');
 		});
 
-		test('returns an empty updatedIds array when scoped by workflowIds and none are accessible', async () => {
+		test('returns empty id arrays when scoped by workflowIds and none are accessible', async () => {
 			setupRepository([]);
 			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set());
 
@@ -555,10 +609,12 @@ describe('McpSettingsService', () => {
 
 			expect(result).toEqual({
 				updatedCount: 0,
+				unchangedCount: 0,
 				skippedCount: 2,
 				failedCount: 0,
 				changedWorkflows: [],
 				updatedIds: [],
+				unchangedIds: [],
 			});
 		});
 
@@ -597,12 +653,13 @@ describe('McpSettingsService', () => {
 			workflowFinderService.findAllWorkflowIdsForUser.mockResolvedValue(seeded.map((w) => w.id));
 
 			// Force the first chunk's transaction to fail; the second runs normally.
-			const originalTransaction = stubs.manager.transaction;
 			stubs.manager.transaction
 				.mockImplementationOnce(async () => {
 					throw new Error('chunk transaction failed');
 				})
-				.mockImplementationOnce(originalTransaction.getMockImplementation()!);
+				.mockImplementationOnce(
+					async (run: (trx: EntityManager) => Promise<unknown>) => await run(stubs.trx),
+				);
 
 			const dto = new UpdateWorkflowsAvailabilityDto({
 				availableInMCP: true,
@@ -629,7 +686,7 @@ describe('McpSettingsService', () => {
 			);
 		});
 
-		test('surfaces chunk failures in updatedIds when scoped by workflowIds', async () => {
+		test('surfaces chunk failures in id arrays when scoped by workflowIds', async () => {
 			const stubs = setupRepository([{ id: 'wf-1', settings: {} }]);
 			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set(['wf-1']));
 
@@ -646,10 +703,12 @@ describe('McpSettingsService', () => {
 
 			expect(result).toEqual({
 				updatedCount: 0,
+				unchangedCount: 0,
 				skippedCount: 0,
 				failedCount: 1,
 				changedWorkflows: [],
 				updatedIds: [],
+				unchangedIds: [],
 			});
 		});
 
@@ -699,6 +758,40 @@ describe('McpSettingsService', () => {
 				['wf-1'],
 				user,
 				['workflow:update'],
+			);
+		});
+	});
+
+	describe('setAllowedRedirectUris', () => {
+		test('persists the provided URIs to settings and cache', async () => {
+			const uris = ['https://example.com/callback', 'http://localhost:3000/callback'];
+
+			await service.setAllowedRedirectUris(uris);
+
+			expect(upsert).toHaveBeenCalledWith(
+				{
+					key: 'mcp.oauth.allowedRedirectUris',
+					value: JSON.stringify(uris),
+					loadOnStartup: true,
+				},
+				['key'],
+			);
+			expect(cacheService.set).toHaveBeenCalledWith(
+				'mcp.oauth.allowedRedirectUris',
+				JSON.stringify(uris),
+			);
+		});
+
+		test('persists an empty array', async () => {
+			await service.setAllowedRedirectUris([]);
+
+			expect(upsert).toHaveBeenCalledWith(
+				{
+					key: 'mcp.oauth.allowedRedirectUris',
+					value: JSON.stringify([]),
+					loadOnStartup: true,
+				},
+				['key'],
 			);
 		});
 	});

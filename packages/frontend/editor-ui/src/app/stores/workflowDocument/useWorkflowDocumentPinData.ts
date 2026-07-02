@@ -1,9 +1,24 @@
-import { ref, readonly } from 'vue';
+import {
+	computed,
+	effectScope,
+	ref,
+	readonly,
+	shallowReactive,
+	type ComputedRef,
+	type ShallowRef,
+} from 'vue';
 import { createEventHook } from '@vueuse/core';
 import type { INodeExecutionData, IDataObject, IPinData } from 'n8n-workflow';
+import type { INodeUi } from '@/Interface';
 import { isJsonKeyObject, stringSizeInBytes } from '@/app/utils/typesUtils';
 import { CHANGE_ACTION } from './types';
 import type { ChangeAction, ChangeEvent } from './types';
+import type {
+	NodeAddedPayload,
+	NodeRemovedPayload,
+	NodesChangeEvent,
+	NodesSetPayload,
+} from './useWorkflowDocumentNodes';
 
 export type PinDataNodePayload = {
 	nodeName: string;
@@ -66,27 +81,32 @@ export function getPinDataSize(
 	}, 0);
 }
 
-// TODO: Consider replacing the plain object ref with a reactive Map for per-node
-// reactivity and a more natural fit with CRDT Y.Map when collaborative editing lands.
-export function useWorkflowDocumentPinData() {
-	const pinData = ref<IPinData>({});
+export type WorkflowDocumentPinDataDeps = {
+	nodesById: ShallowRef<Map<string, INodeUi>>;
+	onNodesChange: (cb: (event: NodesChangeEvent) => void) => void;
+};
+
+export function useWorkflowDocumentPinData(deps: WorkflowDocumentPinDataDeps) {
+	const pinnedDataByNodeName = ref<IPinData>({});
 
 	const onPinnedDataChange = createEventHook<PinDataChangeEvent>();
 
 	function applyPinData(data: IPinData, action: ChangeAction = CHANGE_ACTION.UPDATE) {
-		pinData.value = data;
+		pinnedDataByNodeName.value = data;
 		void onPinnedDataChange.trigger({ action, payload: { pinData: data } });
 	}
 
 	function applyNodePinData(nodeName: string, data: INodeExecutionData[]) {
-		const action: ChangeAction = pinData.value[nodeName] ? CHANGE_ACTION.UPDATE : CHANGE_ACTION.ADD;
-		pinData.value = { ...pinData.value, [nodeName]: data };
+		const action: ChangeAction = pinnedDataByNodeName.value[nodeName]
+			? CHANGE_ACTION.UPDATE
+			: CHANGE_ACTION.ADD;
+		pinnedDataByNodeName.value = { ...pinnedDataByNodeName.value, [nodeName]: data };
 		void onPinnedDataChange.trigger({ action, payload: { nodeName, data } });
 	}
 
 	function applyUnpin(nodeName: string) {
-		const { [nodeName]: _, ...rest } = pinData.value;
-		pinData.value = rest;
+		const { [nodeName]: _, ...rest } = pinnedDataByNodeName.value;
+		pinnedDataByNodeName.value = rest;
 		void onPinnedDataChange.trigger({
 			action: CHANGE_ACTION.DELETE,
 			payload: { nodeName, data: undefined },
@@ -94,11 +114,11 @@ export function useWorkflowDocumentPinData() {
 	}
 
 	function applyRenamePinDataNode(oldName: string, newName: string) {
-		if (pinData.value[oldName]) {
-			const { [oldName]: renamed, ...rest } = pinData.value;
-			pinData.value = { ...rest, [newName]: renamed };
+		if (pinnedDataByNodeName.value[oldName]) {
+			const { [oldName]: renamed, ...rest } = pinnedDataByNodeName.value;
+			pinnedDataByNodeName.value = { ...rest, [newName]: renamed };
 		}
-		Object.values(pinData.value)
+		Object.values(pinnedDataByNodeName.value)
 			.flatMap((executionData) =>
 				executionData.flatMap((nodeExecution) =>
 					Array.isArray(nodeExecution.pairedItem)
@@ -113,7 +133,7 @@ export function useWorkflowDocumentPinData() {
 			});
 		void onPinnedDataChange.trigger({
 			action: CHANGE_ACTION.UPDATE,
-			payload: { nodeName: newName, data: pinData.value[newName] },
+			payload: { nodeName: newName, data: pinnedDataByNodeName.value[newName] },
 		});
 	}
 
@@ -134,15 +154,98 @@ export function useWorkflowDocumentPinData() {
 	}
 
 	function getPinDataSnapshot(): IPinData {
-		return { ...pinData.value };
+		return { ...pinnedDataByNodeName.value };
 	}
 
 	function getNodePinData(nodeName: string): INodeExecutionData[] | undefined {
-		return pinData.value[nodeName];
+		return pinnedDataByNodeName.value[nodeName];
 	}
 
+	// Per-node-id pin-data lookup. See useWorkflowDocumentRenderData for the
+	// general shallowReactive + per-entry computed pattern.
+	//
+	// Note: deliberately uses plain `computed` (Object.is gate) rather than
+	// `structuralComputed(..., isEqual)`. Pin data can reach ~10 MB per
+	// workflow, and every mutation replaces the inner array reference — so an
+	// isEqual gate would deep-compare megabytes on every change *and* never
+	// short-circuit (the immutable update pattern means no mutation ever
+	// produces a structurally-identical fresh array). Reference identity is
+	// the right gate here.
+	const pinnedDataByNodeId = shallowReactive(
+		new Map<string, ComputedRef<INodeExecutionData[] | undefined>>(),
+	);
+	const scopes = new Map<string, () => void>();
+
+	function computePinnedData(nodeId: string): INodeExecutionData[] | undefined {
+		const node = deps.nodesById.value.get(nodeId);
+		if (!node) return undefined;
+		return pinnedDataByNodeName.value[node.name];
+	}
+
+	function applyAddPinEntry(nodeId: string) {
+		if (scopes.has(nodeId)) return;
+		const scope = effectScope();
+		scope.run(() => {
+			pinnedDataByNodeId.set(
+				nodeId,
+				computed(() => computePinnedData(nodeId)),
+			);
+		});
+		scopes.set(nodeId, () => scope.stop());
+	}
+
+	function applyRemovePinEntry(nodeId: string) {
+		scopes.get(nodeId)?.();
+		scopes.delete(nodeId);
+		pinnedDataByNodeId.delete(nodeId);
+	}
+
+	function applyReconcilePinEntries(nodeIds: string[]) {
+		const nextIds = new Set(nodeIds);
+		for (const oldId of scopes.keys()) {
+			if (!nextIds.has(oldId)) applyRemovePinEntry(oldId);
+		}
+		for (const id of nodeIds) applyAddPinEntry(id);
+	}
+
+	deps.onNodesChange((event) => {
+		switch (event.action) {
+			case CHANGE_ACTION.ADD: {
+				const { node } = event.payload as NodeAddedPayload;
+				applyAddPinEntry(node.id);
+				break;
+			}
+			case CHANGE_ACTION.DELETE: {
+				const payload = event.payload as NodeRemovedPayload;
+				if (payload.id) {
+					applyRemovePinEntry(payload.id);
+				} else {
+					applyReconcilePinEntries([]);
+				}
+				// Orphan pin cleanup: removing a node also clears any pinned data
+				// keyed by its name. Previously this was a cross-cut owned by
+				// useWorkflowDocumentNodes via an injected `unpinNodeData` dep;
+				// pulling it into the pinData subscriber means nodes doesn't need
+				// to know about pinData at all (breaks the construction cycle).
+				// Skipped when the node has no pinned data: unpinning unconditionally
+				// would replace the pin-data object identity (dirtying every computed
+				// that reads it) and fire a spurious DELETE pin event.
+				if (payload.name && pinnedDataByNodeName.value[payload.name]) applyUnpin(payload.name);
+				break;
+			}
+			case CHANGE_ACTION.SET: {
+				const { nodeIds } = event.payload as NodesSetPayload;
+				applyReconcilePinEntries(nodeIds);
+				break;
+			}
+		}
+	});
+
+	applyReconcilePinEntries(Array.from(deps.nodesById.value.keys()));
+
 	return {
-		pinData: readonly(pinData),
+		pinnedDataByNodeName: readonly(pinnedDataByNodeName),
+		pinnedDataByNodeId,
 		setPinData,
 		pinNodeData,
 		unpinNodeData,

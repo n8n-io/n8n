@@ -21,10 +21,26 @@ export type Provider =
 
 // --- Per-Provider Thinking Configs ---
 
-export interface AnthropicThinkingConfig {
-	/** Token budget for extended thinking. Defaults to 10000. */
-	budgetTokens?: number;
-}
+/**
+ * Anthropic extended-thinking config. Discriminated by `mode`.
+ * - `'adaptive'`: the model decides how much to think per request.
+ * - `'enabled'` (default): a fixed token budget controlled by `budgetTokens`.
+ */
+export type AnthropicThinkingConfig =
+	| {
+			mode: 'adaptive';
+			/**
+			 * Controls whether thinking content is returned. Opus 4.7+ defaults to
+			 * `"omitted"` on the Anthropic API; we default to `"summarized"` so
+			 * reasoning streams and replay metadata are available.
+			 */
+			display?: 'omitted' | 'summarized';
+	  }
+	| {
+			mode?: 'enabled';
+			/** Token budget for extended thinking. Defaults to 10000. */
+			budgetTokens?: number;
+	  };
 
 export interface OpenAIThinkingConfig {
 	/** Reasoning effort level. Defaults to 'medium'. */

@@ -2,9 +2,11 @@ import type {
 	ExecutionStatus,
 	IConnections,
 	INodeConnections,
+	IWorkflowGroup,
 	NodeConnectionType,
 } from 'n8n-workflow';
 import type {
+	Connection,
 	DefaultEdge,
 	Node,
 	NodeProps,
@@ -18,6 +20,7 @@ import type { ComputedRef, Ref } from 'vue';
 import type { EventBus } from '@n8n/utils/event-bus';
 import type { CanvasLayoutSource } from '@/features/workflows/canvas/composables/useCanvasLayout';
 import type { NodeIconSource } from '@/app/utils/nodeIcon';
+import type { ExecutionOutputMap, ExecutionOutputMapData } from '@/app/types/executionData';
 
 export const enum CanvasConnectionMode {
 	Input = 'inputs',
@@ -71,12 +74,6 @@ export type CanvasNodeDefaultRender = {
 		configurable: boolean;
 		configuration: boolean;
 		trigger: boolean;
-		inputs: {
-			labelSize: CanvasNodeDefaultRenderLabelSize;
-		};
-		outputs: {
-			labelSize: CanvasNodeDefaultRenderLabelSize;
-		};
 		tooltip?: string;
 		dirtiness?: CanvasNodeDirtinessType;
 		icon?: NodeIconSource;
@@ -111,19 +108,12 @@ export interface CanvasNodeData {
 	type: INodeUi['type'];
 	typeVersion: INodeUi['typeVersion'];
 	disabled: INodeUi['disabled'];
-	inputs: CanvasConnectionPort[];
-	outputs: CanvasConnectionPort[];
 	connections: {
 		[CanvasConnectionMode.Input]: INodeConnections;
 		[CanvasConnectionMode.Output]: INodeConnections;
 	};
 	issues: {
-		execution: string[];
 		validation: string[];
-		visible: boolean;
-	};
-	pinnedData: {
-		count: number;
 		visible: boolean;
 	};
 	execution: {
@@ -146,11 +136,73 @@ export interface CanvasNodeData {
 
 export type CanvasNode = Node<CanvasNodeData>;
 
+export const CANVAS_NODE_GROUP_TYPE = 'canvas-node-group';
+export const CANVAS_NODE_GROUP_ID_PREFIX = 'group:';
+export const CANVAS_NODE_GROUP_HANDLE_LEFT = 'left';
+export const CANVAS_NODE_GROUP_HANDLE_RIGHT = 'right';
+
+// Host override for group expansion; leaves persisted view state untouched.
+export type GroupExpansionMode = 'all' | 'errored';
+
+export function createCanvasGroupNodeId(groupId: string): string {
+	return `${CANVAS_NODE_GROUP_ID_PREFIX}${groupId}`;
+}
+
+export function parseCanvasGroupNodeId(id: string): string | undefined {
+	return id.startsWith(CANVAS_NODE_GROUP_ID_PREFIX)
+		? id.slice(CANVAS_NODE_GROUP_ID_PREFIX.length)
+		: undefined;
+}
+
+/**
+ * The only execution states a group can surface — node-level statuses like
+ * `crashed` are folded into these during aggregation.
+ */
+export type GroupExecutionStatus =
+	| 'waiting'
+	| 'running'
+	| 'error'
+	| 'issues'
+	| 'warning'
+	| 'success';
+
+/** Per-node execution state used to roll a group up into one status. */
+export interface NodeExecutionSnapshot {
+	running: boolean;
+	waitingForNext: boolean;
+	waiting: string | undefined;
+	hasExecutionError: boolean;
+	hasValidationError: boolean;
+	status: ExecutionStatus | undefined;
+	/** Parameters changed since the last run — the single-node "dirty" warning. */
+	dirty: boolean;
+	iterations: number;
+}
+
+export interface CanvasGroupNodeData {
+	group: IWorkflowGroup;
+	nodesRect: { x: number; y: number; width: number; height: number };
+	isCollapsed: boolean;
+	executionStatus?: GroupExecutionStatus;
+}
+
+export type CanvasGroupNode = Node<CanvasGroupNodeData>;
+
+export type CanvasNodeOrGroup = CanvasNode | CanvasGroupNode;
+
+export function isCanvasGroupNode(node: CanvasNodeOrGroup): node is CanvasGroupNode;
+export function isCanvasGroupNode(node: { type?: string }): boolean;
+export function isCanvasGroupNode(node: { type?: string }): boolean {
+	return node.type === CANVAS_NODE_GROUP_TYPE;
+}
+
 export interface CanvasConnectionData {
 	source: CanvasConnectionPort;
 	target: CanvasConnectionPort;
 	status?: 'success' | 'error' | 'pinned' | 'running';
 	maxConnections?: number;
+	// Real workflow endpoints behind this collapsed-group edge, one per merged connection.
+	canonicals?: Connection[];
 }
 
 export type CanvasConnection = DefaultEdge<CanvasConnectionData>;
@@ -234,23 +286,6 @@ export type ConnectStartEvent = {
 } & OnConnectStartParams;
 
 export type CanvasNodeMoveEvent = { id: string; position: CanvasNode['position'] };
-
-export type ExecutionOutputMapData = {
-	total: number;
-	iterations: number;
-	byTarget?: {
-		[targetNodeId: string]: {
-			total: number;
-			iterations: number;
-		};
-	};
-};
-
-export type ExecutionOutputMap = {
-	[connectionType: string]: {
-		[outputIndex: string]: ExecutionOutputMapData;
-	};
-};
 
 export type BoundingBox = {
 	x: number;

@@ -21,15 +21,15 @@ import {
 import { strict as assert } from 'node:assert';
 import type PCancelable from 'p-cancelable';
 
-import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
+import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { IExecutingWorkflowData, IExecutionsCurrentSummary } from '@/interfaces';
 import { isWorkflowIdValid } from '@/utils';
 
+import { ConcurrencyCapacityReservation } from './concurrency/concurrency-capacity-reservation';
 import { ConcurrencyControlService } from './concurrency/concurrency-control.service';
 import { EventService } from './events/event.service';
-import { ConcurrencyCapacityReservation } from './concurrency/concurrency-capacity-reservation';
 
 @Service()
 export class ActiveExecutions {
@@ -67,6 +67,18 @@ export class ActiveExecutions {
 		const mode = executionData.executionMode;
 		const capacityReservation = new ConcurrencyCapacityReservation(this.concurrencyControl);
 
+		// Evaluation executions are already gated instance-wide by the
+		// test-runner fan-out, which throttles the shared evaluation
+		// concurrency queue before launching each case (see
+		// `test-runner.service.ee.ts`). Reserving capacity again here would
+		// consume a second slot from the same queue for the same case; once
+		// the fan-out fills the queue up to its cap, this nested reservation
+		// blocks forever — before `setRunning` runs — leaving the execution
+		// stuck at status 'new' with `startedAt` null (TRUST-144). Skip the
+		// reservation for evaluation mode; `release()` below is a no-op when
+		// nothing was reserved.
+		const shouldReserveCapacity = mode !== 'evaluation';
+
 		try {
 			if (maybeExecutionId === undefined) {
 				const fullExecutionData: CreateExecutionPayload = {
@@ -89,7 +101,9 @@ export class ActiveExecutions {
 				maybeExecutionId = await this.executionPersistence.create(fullExecutionData);
 				assert(maybeExecutionId);
 
-				await capacityReservation.reserve({ mode, executionId: maybeExecutionId });
+				if (shouldReserveCapacity) {
+					await capacityReservation.reserve({ mode, executionId: maybeExecutionId });
+				}
 
 				if (this.executionsConfig.mode === 'regular') {
 					await this.executionRepository.setRunning(maybeExecutionId);
@@ -98,7 +112,9 @@ export class ActiveExecutions {
 			} else {
 				// Is an existing execution we want to finish so update in DB
 
-				await capacityReservation.reserve({ mode, executionId: maybeExecutionId });
+				if (shouldReserveCapacity) {
+					await capacityReservation.reserve({ mode, executionId: maybeExecutionId });
+				}
 
 				const execution: Pick<IExecutionDb, 'id' | 'data' | 'waitTill' | 'status'> = {
 					id: maybeExecutionId,
@@ -108,7 +124,7 @@ export class ActiveExecutions {
 					// this is resuming, so keep `startedAt` as it was
 				};
 
-				const updateSucceeded = await this.executionRepository.updateExistingExecution(
+				const updateSucceeded = await this.executionPersistence.updateExistingExecution(
 					maybeExecutionId,
 					execution,
 					{ requireStatus: 'waiting' }, // Only update if status is 'waiting'

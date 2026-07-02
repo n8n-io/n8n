@@ -1,39 +1,79 @@
-import { gfm } from '@joplin/turndown-plugin-gfm';
-import { Readability } from '@mozilla/readability';
+import type * as JoplinTurndownGfm from '@joplin/turndown-plugin-gfm';
+import type { Readability as TReadability } from '@mozilla/readability';
+import type * as ReadabilityMod from '@mozilla/readability';
+import type { HttpTransport } from '@n8n/backend-network';
 import type { FetchedPage } from '@n8n/instance-ai';
-import { parseHTML } from 'linkedom';
-import type { SsrfBridge } from 'n8n-core';
-import TurndownService from 'turndown';
-import { Agent } from 'undici';
+import type * as LinkedomMod from 'linkedom';
+import type { parseHTML as TParseHtml } from 'linkedom';
+import type TTurndownService from 'turndown';
+import type * as TurndownMod from 'turndown';
+
+let _linkedom: typeof LinkedomMod | undefined;
+let _readability: typeof ReadabilityMod | undefined;
+let _turndown: typeof TurndownMod | undefined;
+let _turndownGfm: typeof JoplinTurndownGfm | undefined;
+
+function loadLinkedom(): typeof TParseHtml {
+	if (!_linkedom) {
+		// eslint-disable-next-line @typescript-eslint/no-require-imports
+		_linkedom = require('linkedom') as typeof LinkedomMod;
+	}
+	return _linkedom.parseHTML;
+}
+function loadReadability(): typeof TReadability {
+	if (!_readability) {
+		// eslint-disable-next-line @typescript-eslint/no-require-imports
+		_readability = require('@mozilla/readability') as typeof ReadabilityMod;
+	}
+	return _readability.Readability;
+}
+function loadTurndown(): typeof TTurndownService {
+	if (!_turndown) {
+		// eslint-disable-next-line @typescript-eslint/no-require-imports
+		_turndown = require('turndown') as typeof TurndownMod;
+	}
+	return _turndown as unknown as typeof TTurndownService;
+}
+function loadTurndownGfm(): typeof JoplinTurndownGfm.gfm {
+	if (!_turndownGfm) {
+		// eslint-disable-next-line @typescript-eslint/no-require-imports
+		_turndownGfm = require('@joplin/turndown-plugin-gfm') as typeof JoplinTurndownGfm;
+	}
+	return _turndownGfm.gfm;
+}
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 const MAX_TIMEOUT_MS = 120_000;
 const MAX_RESPONSE_BYTES = 5 * 1024 * 1024; // 5 MB
 const DEFAULT_MAX_CONTENT_LENGTH = 30_000;
-const MAX_REDIRECTS = 10;
 
 export interface FetchAndExtractOptions {
 	maxContentLength?: number;
 	maxResponseBytes?: number;
 	timeoutMs?: number;
 	/**
-	 * Called before following each redirect hop to validate the target URL.
-	 * Throw to abort the fetch (e.g. for HITL domain approval).
+	 * SSRF-validated fetch transport.
 	 */
-	authorizeUrl?: (url: string) => Promise<void>;
-	/**
-	 * SSRF guard. The same secure lookup function pins DNS for the actual
-	 * connect, so the IP that passes validation is the one fetch connects to.
-	 */
-	ssrf: SsrfBridge;
+	transport: HttpTransport;
+}
+
+/**
+ * undici's `fetch` reports a failure raised inside dispatch
+ * as an opaque `TypeError: fetch failed` with the real error on `.cause`.
+ */
+function unwrapFetchError(error: unknown): unknown {
+	let current = error;
+	const seen = new Set<unknown>();
+	while (current instanceof Error && current.cause instanceof Error && !seen.has(current)) {
+		seen.add(current);
+		current = current.cause;
+	}
+	return current;
 }
 
 /**
  * Fetch a URL, extract its main content, and convert to markdown.
  * Routes by content-type: HTML → Readability + Turndown, PDF → pdf-parse, text → passthrough.
- *
- * Every redirect hop is validated against the SSRF guard before following,
- * preventing open-redirect chains to internal/private addresses.
  */
 export async function fetchAndExtract(
 	url: string,
@@ -43,69 +83,34 @@ export async function fetchAndExtract(
 	const maxResponseBytes = options.maxResponseBytes ?? MAX_RESPONSE_BYTES;
 	const timeoutMs = Math.min(options.timeoutMs ?? DEFAULT_TIMEOUT_MS, MAX_TIMEOUT_MS);
 
-	const { authorizeUrl, ssrf } = options;
+	const customFetch = options.transport.asCustomFetch();
 
-	// Manual redirect handling — validate every hop against SSRF guard
-	let currentUrl = url;
-	let response!: Response;
-	let redirectCount = 0;
+	const controller = new AbortController();
+	const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
-	while (redirectCount <= MAX_REDIRECTS) {
-		const validation = await ssrf.validateUrl(currentUrl);
-		if (!validation.ok) throw validation.error;
-
-		const dispatcher = new Agent({ connect: { lookup: ssrf.createSecureLookup() } });
-		const controller = new AbortController();
-		const timeout = setTimeout(() => controller.abort(), timeoutMs);
-
-		try {
-			response = await fetch(currentUrl, {
-				signal: controller.signal,
-				headers: {
-					'User-Agent': 'n8n-instance-ai/1.0 (content extraction)',
-					Accept:
-						'text/html,application/xhtml+xml,application/xml;q=0.9,text/plain;q=0.8,application/pdf;q=0.7,*/*;q=0.5',
-				},
-				redirect: 'manual',
-				// @ts-expect-error dispatcher is a valid undici option for Node.js fetch
-				dispatcher,
-			});
-		} finally {
-			clearTimeout(timeout);
-			await dispatcher.close();
-		}
-
-		// Follow redirects manually so each hop is SSRF-checked
-		if (response.status >= 300 && response.status < 400) {
-			const location = response.headers.get('location');
-			if (!location) break;
-
-			redirectCount++;
-			if (redirectCount > MAX_REDIRECTS) {
-				throw new Error(`Too many redirects (max ${MAX_REDIRECTS})`);
-			}
-
-			// Resolve relative redirect URLs against the current URL
-			currentUrl = new URL(location, currentUrl).href;
-
-			// Direct-IP redirect targets are caught here; hostnames are caught by
-			// validateUrl on the next loop iteration before the dispatcher connects.
-			ssrf.validateRedirectSync(currentUrl);
-
-			// Domain-access authorization for the redirect target
-			if (authorizeUrl) {
-				await authorizeUrl(currentUrl);
-			}
-
-			continue;
-		}
-
-		break;
+	let response: Response;
+	try {
+		response = await customFetch(url, {
+			signal: controller.signal,
+			headers: {
+				'User-Agent': 'n8n-instance-ai/1.0 (content extraction)',
+				Accept:
+					'text/html,application/xhtml+xml,application/xml;q=0.9,text/plain;q=0.8,application/pdf;q=0.7,*/*;q=0.5',
+			},
+			redirect: 'follow',
+		});
+	} catch (error) {
+		throw unwrapFetchError(error);
+	} finally {
+		clearTimeout(timeout);
 	}
 
-	const finalUrl = currentUrl;
+	// `redirect: 'follow'` resolves to the final, non-redirect response.
+	const finalUrl = response.url || url;
 
 	if (!response.ok) {
+		// Release the connection back to the pool — we don't read the error body.
+		await response.body?.cancel().catch(() => {});
 		return {
 			url,
 			finalUrl,
@@ -141,6 +146,7 @@ async function readLimitedBody(response: Response, maxBytes: number): Promise<Bu
 	}
 
 	const reader = response.body.getReader();
+	let truncated = false;
 	try {
 		for (;;) {
 			const { done, value } = await reader.read();
@@ -151,12 +157,17 @@ async function readLimitedBody(response: Response, maxBytes: number): Promise<Bu
 
 			if (totalBytes > maxBytes) {
 				chunks.push(chunk.subarray(0, maxBytes - (totalBytes - chunk.length)));
+				truncated = true;
 				break;
 			}
 
 			chunks.push(chunk);
 		}
 	} finally {
+		if (truncated) {
+			// Cancel when we stopped early so the underlying connection is released back to the pool.
+			await reader.cancel().catch(() => {});
+		}
 		reader.releaseLock();
 	}
 
@@ -170,12 +181,13 @@ function extractHtml(
 	maxContentLength: number,
 ): FetchedPage {
 	const html = body.toString('utf-8');
-	const { document } = parseHTML(html);
+	const { document } = loadLinkedom()(html);
 
 	// Detect safety flags from raw HTML
 	const safetyFlags = detectSafetyFlags(html);
 
 	// Use Readability to extract main content
+	const Readability = loadReadability();
 	const reader = new Readability(document as unknown as Document);
 	const article = reader.parse();
 
@@ -224,19 +236,34 @@ async function extractPdf(
 	maxContentLength: number,
 ): Promise<FetchedPage> {
 	// Dynamic import to avoid loading pdf-parse unless needed
-	const pdfParse = (await import('pdf-parse')).default;
-	const result = await pdfParse(body);
+	const { PDFParse } = await import('pdf-parse');
+	const parser = new PDFParse({ data: body });
+	let textResult;
+	let title = '';
+	try {
+		textResult = await parser.getText();
+		try {
+			const infoResult = await parser.getInfo();
+			const titleField: unknown = infoResult.info?.Title;
+			if (typeof titleField === 'string') title = titleField;
+		} catch {
+			// Metadata is decorative — fall through with empty title rather than
+			// dropping the successfully extracted text.
+		}
+	} finally {
+		await parser.destroy();
+	}
 
-	const truncated = result.text.length > maxContentLength;
-	const content = truncated ? result.text.slice(0, maxContentLength) : result.text;
+	const truncated = textResult.text.length > maxContentLength;
+	const content = truncated ? textResult.text.slice(0, maxContentLength) : textResult.text;
 
 	return {
 		url,
 		finalUrl,
-		title: result.info?.Title ?? '',
+		title,
 		content,
 		truncated,
-		contentLength: result.text.length,
+		contentLength: textResult.text.length,
 	};
 }
 
@@ -260,12 +287,13 @@ function extractPlainText(
 	};
 }
 
-function createTurndownService(): TurndownService {
+function createTurndownService(): TTurndownService {
+	const TurndownService = loadTurndown();
 	const turndown = new TurndownService({
 		headingStyle: 'atx',
 		codeBlockStyle: 'fenced',
 	});
-	turndown.use(gfm);
+	turndown.use(loadTurndownGfm());
 	return turndown;
 }
 

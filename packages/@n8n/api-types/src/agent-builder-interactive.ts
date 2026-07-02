@@ -10,11 +10,20 @@ import { z } from 'zod';
  */
 export const ASK_LLM_TOOL_NAME = 'ask_llm' as const;
 export const ASK_CREDENTIAL_TOOL_NAME = 'ask_credential' as const;
+export const ASK_EMBEDDING_CREDENTIAL_TOOL_NAME = 'ask_embedding_credential' as const;
 export const ASK_QUESTION_TOOL_NAME = 'ask_question' as const;
+/**
+ * Frontend-only discriminator for generic approval cards.
+ *
+ * Approval suspensions keep the underlying tool name on the wire, so the FE
+ * maps them to this value before dispatching to the approval card component.
+ */
+export const APPROVAL_TOOL_NAME = 'approval' as const;
 
 export const interactiveToolNameSchema = z.union([
 	z.literal(ASK_LLM_TOOL_NAME),
 	z.literal(ASK_CREDENTIAL_TOOL_NAME),
+	z.literal(ASK_EMBEDDING_CREDENTIAL_TOOL_NAME),
 	z.literal(ASK_QUESTION_TOOL_NAME),
 ]);
 
@@ -53,12 +62,11 @@ export const askCredentialInputSchema = z.object({
 		.string()
 		.optional()
 		.describe('The n8n node type requiring this credential, e.g. "n8n-nodes-base.slack"'),
-	credentialType: z
+	credentialType: z.string().describe('The credential type name to request, e.g. "slackApi"'),
+	credentialSlot: z
 		.string()
-		.describe(
-			'The credential type name to request for this slot, e.g. "slackApi". When the slot accepts multiple credential types, pick the single best match (typically the OAuth or first listed type).',
-		),
-	slot: z.string().optional().describe('Credential slot name on the node, e.g. "slackApi"'),
+		.optional()
+		.describe('Credential key on node.credentials, e.g. "slackApi"'),
 });
 
 export const askCredentialResumeSchema = z.union([
@@ -68,6 +76,9 @@ export const askCredentialResumeSchema = z.union([
 
 export type AskCredentialInput = z.infer<typeof askCredentialInputSchema>;
 export type AskCredentialResume = z.infer<typeof askCredentialResumeSchema>;
+
+export const askEmbeddingCredentialResumeSchema = askCredentialResumeSchema;
+export type AskEmbeddingCredentialResume = AskCredentialResume;
 
 // ---------------------------------------------------------------------------
 // ask_question
@@ -83,9 +94,8 @@ export const askQuestionInputSchema = z.object({
 	question: z.string().describe('The question to display to the user'),
 	options: z
 		.array(askQuestionOptionSchema)
-		.min(1)
 		.describe(
-			'Choices to present. With a single option the tool auto-resolves to that option without rendering a card.',
+			'Choices to present. Pass an empty array for an open-ended question (the card shows only a freeform input). With a single non-multiple option the tool auto-resolves to that option without rendering a card.',
 		),
 	allowMultiple: z
 		.boolean()
@@ -94,7 +104,10 @@ export const askQuestionInputSchema = z.object({
 });
 
 export const askQuestionResumeSchema = z.object({
-	values: z.array(z.string()).min(1),
+	values: z
+		.array(z.string())
+		.min(1)
+		.describe('Selected option values, or freeform text entered in the Other field.'),
 });
 
 export type AskQuestionOption = z.infer<typeof askQuestionOptionSchema>;
@@ -105,10 +118,19 @@ export type AskQuestionResume = z.infer<typeof askQuestionResumeSchema>;
 // Discriminated union of all resume payloads (used by AgentBuildResumeDto)
 // ---------------------------------------------------------------------------
 
+export const cancellationResumeSchema = z.object({
+	_type: z.literal('agent.cancellation'),
+	message: z.string().min(1),
+});
+
+export type CancellationResumeData = z.infer<typeof cancellationResumeSchema>;
+
 export const interactiveResumeDataSchema = z.union([
 	askLlmResumeSchema,
+	askEmbeddingCredentialResumeSchema,
 	askCredentialResumeSchema,
 	askQuestionResumeSchema,
+	cancellationResumeSchema,
 ]);
 
 export type InteractiveResumeData = z.infer<typeof interactiveResumeDataSchema>;

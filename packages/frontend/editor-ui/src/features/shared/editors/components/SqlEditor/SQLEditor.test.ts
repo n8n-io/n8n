@@ -88,7 +88,7 @@ describe('SqlEditor.vue', () => {
 		setActivePinia(pinia);
 
 		const workflowsStore = useWorkflowsStore();
-		workflowsStore.workflow.id = 'test-workflow';
+		workflowsStore.setWorkflowId('test-workflow');
 
 		const workflowDocumentStore = useWorkflowDocumentStore(
 			createWorkflowDocumentId(workflowsStore.workflowId),

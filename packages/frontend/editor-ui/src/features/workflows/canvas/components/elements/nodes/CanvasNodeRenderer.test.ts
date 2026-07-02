@@ -8,6 +8,14 @@ import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { CanvasNodeRenderType } from '../../../canvas.types';
 
+vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@/features/workflows/canvas/canvas.utils')>();
+	return {
+		...actual,
+		injectCanvasRenderData: vi.fn(() => ({ value: actual.createEmptyCanvasRenderData() })),
+	};
+});
+
 const renderComponent = createComponentRenderer(CanvasNodeRenderer);
 
 beforeEach(() => {

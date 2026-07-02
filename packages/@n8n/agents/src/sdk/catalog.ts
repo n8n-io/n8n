@@ -1,5 +1,16 @@
 const MODELS_DEV_URL = 'https://models.dev/api.json';
 
+const MODELS_DEV_PROVIDER_ALIASES: Record<string, string> = {
+	'amazon-bedrock': 'aws-bedrock',
+	azure: 'azure-openai',
+	'azure-cognitive-services': 'azure-openai',
+};
+
+const AGENT_PROVIDER_NAMES: Record<string, string> = {
+	'aws-bedrock': 'AWS Bedrock',
+	'azure-openai': 'Azure OpenAI',
+};
+
 /** Cost per million tokens. */
 export interface ModelCost {
 	/** Cost per million input tokens (USD). */
@@ -26,6 +37,8 @@ export interface ModelInfo {
 	id: string;
 	/** Human-readable name (e.g. 'Claude Sonnet 4.5'). */
 	name: string;
+	/** Release date in ISO date format when available from models.dev. */
+	releaseDate?: string;
 	/** Whether the model supports reasoning / thinking. */
 	reasoning: boolean;
 	/** Whether the model supports tool calling. */
@@ -52,6 +65,7 @@ export type ProviderCatalog = Record<string, ProviderInfo>;
 interface ModelsDevModel {
 	id: string;
 	name: string;
+	release_date?: string;
 	reasoning?: boolean;
 	tool_call?: boolean;
 	cost?: { input?: number; output?: number; cache_read?: number; cache_write?: number };
@@ -62,6 +76,37 @@ interface ModelsDevProvider {
 	id: string;
 	name: string;
 	models?: Record<string, ModelsDevModel>;
+}
+
+function toAgentProviderId(modelsDevProviderId: string): string {
+	return MODELS_DEV_PROVIDER_ALIASES[modelsDevProviderId] ?? modelsDevProviderId;
+}
+
+const LATEST_NAME_SUFFIX = /\s*\(latest\)$/i;
+
+/**
+ * models.dev names versionless alias models with a " (latest)" suffix
+ * (e.g. `claude-opus-4-5` → "Claude Opus 4.5 (latest)"), which quickly goes
+ * stale as newer models ship. Strip the suffix from every model name, and when
+ * a pinned snapshot shares the resulting name with an alias (e.g.
+ * `claude-opus-4-5-20251101` "Claude Opus 4.5"), drop the snapshot so the
+ * alias is the single entry for that model.
+ */
+function normalizeLatestModelNames(models: Record<string, ModelInfo>): void {
+	const aliasNames = new Set<string>();
+	for (const model of Object.values(models)) {
+		if (LATEST_NAME_SUFFIX.test(model.name)) {
+			aliasNames.add(model.name.replace(LATEST_NAME_SUFFIX, ''));
+		}
+	}
+
+	for (const [modelId, model] of Object.entries(models)) {
+		if (LATEST_NAME_SUFFIX.test(model.name)) {
+			model.name = model.name.replace(LATEST_NAME_SUFFIX, '');
+		} else if (aliasNames.has(model.name)) {
+			delete models[modelId];
+		}
+	}
 }
 
 /**
@@ -96,6 +141,7 @@ export async function fetchProviderCatalog(): Promise<ProviderCatalog> {
 			const info: ModelInfo = {
 				id: model.id,
 				name: model.name,
+				...(model.release_date !== undefined && { releaseDate: model.release_date }),
 				reasoning: model.reasoning ?? false,
 				toolCall: model.tool_call ?? false,
 			};
@@ -116,11 +162,19 @@ export async function fetchProviderCatalog(): Promise<ProviderCatalog> {
 			models[modelId] = info;
 		}
 
-		catalog[key] = {
-			id: provider.id,
-			name: provider.name,
-			models,
+		const providerId = toAgentProviderId(key);
+		catalog[providerId] = {
+			id: providerId,
+			name: catalog[providerId]?.name ?? AGENT_PROVIDER_NAMES[providerId] ?? provider.name,
+			models: {
+				...(catalog[providerId]?.models ?? {}),
+				...models,
+			},
 		};
+	}
+
+	for (const provider of Object.values(catalog)) {
+		normalizeLatestModelNames(provider.models);
 	}
 
 	return catalog;

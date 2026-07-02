@@ -1,14 +1,16 @@
-import { mock } from 'jest-mock-extended';
-import type { WorkflowRepository, UserRepository } from '@n8n/db';
-import type { WorkflowEntity } from '@n8n/db';
+import type { WorkflowRepository, UserRepository, WorkflowEntity } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import type { WorkflowRunner } from '@/workflow-runner';
 import type { ActiveExecutions } from '@/active-executions';
-import type { ExecutionRepository } from '@n8n/db';
+import type { WorkflowRunner } from '@/workflow-runner';
+import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
-import { resolveWorkflowTool } from '../tools/workflow-tool-factory';
+import {
+	normalizeTriggerInput,
+	resolveWorkflowTool,
+	validateCompatibility,
+} from '../tools/workflow-tool-factory';
 import type { WorkflowToolContext } from '../tools/workflow-tool-factory';
 
 // ---------------------------------------------------------------------------
@@ -40,6 +42,31 @@ function makeFormTriggerNode(overrides: Partial<INode> = {}): INode {
 	};
 }
 
+function makeWebhookTriggerNode(overrides: Partial<INode> = {}): INode {
+	return {
+		id: 'webhook-node-id',
+		name: 'Webhook',
+		type: 'n8n-nodes-base.webhook',
+		typeVersion: 2,
+		position: [0, 0],
+		parameters: { responseMode: 'responseNode' },
+		webhookId: 'webhook-abc',
+		...overrides,
+	};
+}
+
+function makeRespondToWebhookNode(overrides: Partial<INode> = {}): INode {
+	return {
+		id: 'respond-node-id',
+		name: 'Respond to Webhook',
+		type: 'n8n-nodes-base.respondToWebhook',
+		typeVersion: 1.5,
+		position: [0, 0],
+		parameters: { respondWith: 'firstIncomingItem' },
+		...overrides,
+	};
+}
+
 function makeWorkflow(
 	overrides: Partial<WorkflowEntity> = {},
 	triggerNode: INode = makeManualTriggerNode(),
@@ -62,7 +89,6 @@ function makeContext(workflowForUser: WorkflowEntity | null): WorkflowToolContex
 	const workflowFinderService = mock<WorkflowFinderService>();
 	const workflowRunner = mock<WorkflowRunner>();
 	const activeExecutions = mock<ActiveExecutions>();
-	const executionRepository = mock<ExecutionRepository>();
 
 	// findOne returns a candidate workflow
 	workflowRepository.findOne.mockResolvedValue(workflowForUser ?? makeWorkflow());
@@ -77,7 +103,6 @@ function makeContext(workflowForUser: WorkflowEntity | null): WorkflowToolContex
 		workflowRepository,
 		workflowRunner,
 		activeExecutions,
-		executionRepository,
 		workflowFinderService,
 		userRepository,
 		userId: 'user-1',
@@ -145,6 +170,59 @@ describe('resolveWorkflowTool() — metadata attachment', () => {
 		expect(tool.metadata).toMatchObject({
 			workflowId: 'wf-id-99',
 			workflowName: 'canonical-name',
+		});
+	});
+});
+
+describe('workflow tool compatibility', () => {
+	it('allows Respond to Webhook nodes in workflow tools', () => {
+		const workflow = makeWorkflow({
+			nodes: [makeWebhookTriggerNode(), makeRespondToWebhookNode()],
+		});
+
+		expect(() => validateCompatibility(workflow)).not.toThrow();
+	});
+
+	it('attaches metadata with triggerType "webhook" for a webhook trigger workflow', async () => {
+		const workflow = makeWorkflow(
+			{ id: 'wf-webhook-1', name: 'Webhook Workflow' },
+			makeWebhookTriggerNode(),
+		);
+		const context = makeContext(workflow);
+
+		const tool = await resolveWorkflowTool(
+			{ type: 'workflow', workflow: 'Webhook Workflow' },
+			context,
+		);
+
+		expect(tool.metadata).toEqual({
+			kind: 'workflow',
+			workflowId: 'wf-webhook-1',
+			workflowName: 'Webhook Workflow',
+			triggerType: 'webhook',
+		});
+	});
+
+	it('normalizes webhook tool input into the webhook trigger output shape', () => {
+		const triggerNode = makeWebhookTriggerNode();
+		const pinData = normalizeTriggerInput(triggerNode, 'webhook', {
+			customerId: '123',
+			priority: 'high',
+		});
+
+		expect(pinData).toEqual({
+			Webhook: [
+				{
+					json: {
+						headers: {},
+						params: {},
+						query: {},
+						body: { customerId: '123', priority: 'high' },
+						webhookUrl: '',
+						executionMode: 'agent',
+					},
+				},
+			],
 		});
 	});
 });

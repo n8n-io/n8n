@@ -1,6 +1,10 @@
 import type { AgentRunnableSequence } from '@langchain/classic/agents';
 import type { BaseChatMemory } from '@langchain/classic/memory';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import { processHitlResponses } from '@utils/agent-execution';
+import type { RequestResponseMetadata } from '@utils/agent-execution/types';
+import { wrapLangChainParserError } from '@utils/output_parsers/langchainParserError';
+import { getOptionalOutputParser } from '@utils/output_parsers/N8nOutputParser';
 import { NodeOperationError, assertParamIsNumber } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
@@ -10,18 +14,16 @@ import type {
 	EngineRequest,
 } from 'n8n-workflow';
 
-import { processHitlResponses } from '@utils/agent-execution';
-import type { RequestResponseMetadata } from '@utils/agent-execution/types';
-import { getOptionalOutputParser } from '@utils/output_parsers/N8nOutputParser';
-
 import type { AgentResult } from '../types';
+import { checkMaxIterations } from './checkMaxIterations';
 import { createAgentSequence } from './createAgentSequence';
 import { finalizeResult } from './finalizeResult';
 import { prepareItemContext } from './prepareItemContext';
 import { runAgent } from './runAgent';
-import { checkMaxIterations } from './checkMaxIterations';
 
 type BatchResult = AgentResult | EngineRequest<RequestResponseMetadata>;
+
+export type AgentMemoryHitCounters = { loads: number; saves: number };
 /**
  * Executes a batch of items, handling both successful execution and errors.
  * Applies continue-on-fail logic when errors occur.
@@ -46,9 +48,11 @@ export async function executeBatch(
 ): Promise<{
 	returnData: INodeExecutionData[];
 	request: EngineRequest<RequestResponseMetadata> | undefined;
+	memoryHits: AgentMemoryHitCounters;
 }> {
 	const returnData: INodeExecutionData[] = [];
 	let request: EngineRequest<RequestResponseMetadata> | undefined = undefined;
+	const memoryHits: AgentMemoryHitCounters = { loads: 0, saves: 0 };
 
 	// Process HITL (Human-in-the-Loop) tool responses before running the agent
 	// If there are approved HITL tools, we need to execute the gated tools first
@@ -60,6 +64,7 @@ export async function executeBatch(
 		return {
 			returnData: [],
 			request: hitlResult.pendingGatedToolRequest,
+			memoryHits,
 		};
 	}
 
@@ -75,7 +80,7 @@ export async function executeBatch(
 
 		checkMaxIterations(response, maxIterations, ctx.getNode());
 
-		const itemContext = await prepareItemContext(ctx, itemIndex, processedResponse);
+		const itemContext = await prepareItemContext(ctx, itemIndex, processedResponse, model);
 
 		const { tools, prompt, options, outputParser } = itemContext;
 
@@ -91,7 +96,7 @@ export async function executeBatch(
 		);
 
 		// Run the agent with processed response
-		return await runAgent(ctx, executor, itemContext, model, memory, processedResponse);
+		return await runAgent(ctx, executor, itemContext, model, memory, processedResponse, memoryHits);
 	});
 
 	const batchResults = await Promise.allSettled(batchPromises);
@@ -102,7 +107,7 @@ export async function executeBatch(
 	batchResults.forEach((result, index) => {
 		const itemIndex = startIndex + index;
 		if (result.status === 'rejected') {
-			const error = result.reason as Error;
+			const error = wrapLangChainParserError(result.reason, ctx.getNode(), itemIndex);
 			if (ctx.continueOnFail()) {
 				returnData.push({
 					json: { error: error.message },
@@ -136,5 +141,5 @@ export async function executeBatch(
 		returnData.push(itemResult);
 	});
 
-	return { returnData, request };
+	return { returnData, request, memoryHits };
 }

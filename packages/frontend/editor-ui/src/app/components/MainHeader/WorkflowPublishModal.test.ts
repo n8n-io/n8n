@@ -5,16 +5,16 @@ import WorkflowPublishModal from '@/app/components/MainHeader/WorkflowPublishMod
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { WORKFLOW_PUBLISH_MODAL_KEY } from '@/app/constants';
 import { STORES } from '@n8n/stores';
 import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
-import { NodeConnectionTypes, WEBHOOK_NODE_TYPE, type INodeTypeDescription } from 'n8n-workflow';
+import { WEBHOOK_NODE_TYPE, NodeConnectionTypes, type INodeTypeDescription } from 'n8n-workflow';
 import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
-import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
 const mockPublishWorkflow = vi.fn();
 const mockShowMessage = vi.fn();
@@ -105,6 +105,7 @@ const AI_GATEWAY_NODE = {
 describe('WorkflowPublishModal', () => {
 	let workflowsStore: MockedStore<typeof useWorkflowsStore>;
 	let workflowsListStore: MockedStore<typeof useWorkflowsListStore>;
+	let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>;
 
 	beforeEach(() => {
 		workflowsStore = mockedStore(useWorkflowsStore);
@@ -114,7 +115,9 @@ describe('WorkflowPublishModal', () => {
 		const nodeTypesStore = useNodeTypesStore();
 		nodeTypesStore.setNodeTypes([WEBHOOK_NODE_TYPE_DESCRIPTION]);
 
-		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('workflow-1'));
+		workflowsStore.setWorkflowId('workflow-1');
+
+		workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('workflow-1'));
 		workflowDocumentStore.setActiveState({
 			activeVersionId: 'old-version',
 			activeVersion: {
@@ -128,37 +131,25 @@ describe('WorkflowPublishModal', () => {
 			},
 		});
 
-		workflowsStore.workflow = {
-			id: 'workflow-1',
-			name: 'Test Workflow',
-			active: false,
-			activeVersionId: null,
-			activeVersion: {
-				versionId: 'old-version',
-				authors: 'Test Author',
-				createdAt: new Date().toISOString(),
-				updatedAt: new Date().toISOString(),
-				workflowPublishHistory: [],
-				name: 'Published Version',
-				description: null,
-			},
+		// Set versionId different from activeVersion.versionId so wfHasAnyChanges is true
+		workflowDocumentStore.setVersionData({
 			versionId: 'new-version',
-			isArchived: false,
-			createdAt: Date.now(),
-			updatedAt: Date.now(),
-			nodes: [
-				{
-					id: 'trigger-1',
-					name: 'Webhook Trigger',
-					type: WEBHOOK_NODE_TYPE,
-					typeVersion: 1,
-					position: [0, 0],
-					parameters: {},
-					disabled: false,
-				},
-			],
-			connections: {},
-		};
+			name: null,
+			description: null,
+		});
+
+		// Add a trigger node to the document store so containsTrigger is true
+		workflowDocumentStore.setNodes([
+			{
+				id: 'trigger-1',
+				name: 'Webhook Trigger',
+				type: WEBHOOK_NODE_TYPE,
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+				disabled: false,
+			},
+		]);
 
 		mockPublishWorkflow.mockReset().mockResolvedValue({
 			success: true,
@@ -238,7 +229,7 @@ describe('WorkflowPublishModal', () => {
 
 		it('should not show warning when AI gateway is disabled', () => {
 			Object.assign(settingsStore.settings, { aiGateway: { enabled: false } });
-			workflowsStore.workflow = { ...workflowsStore.workflow, nodes: [AI_GATEWAY_NODE] };
+			workflowDocumentStore.setNodes([AI_GATEWAY_NODE]);
 
 			const { queryByTestId } = renderComponent();
 
@@ -246,20 +237,17 @@ describe('WorkflowPublishModal', () => {
 		});
 
 		it('should not show warning when no nodes have AI gateway credentials', () => {
-			workflowsStore.workflow = {
-				...workflowsStore.workflow,
-				nodes: [
-					{
-						id: 'regular-node',
-						name: 'Regular Node',
-						type: 'n8n-nodes-base.set',
-						typeVersion: 1,
-						position: [100, 100],
-						parameters: {},
-						disabled: false,
-					},
-				],
-			};
+			workflowDocumentStore.setNodes([
+				{
+					id: 'regular-node',
+					name: 'Regular Node',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 1,
+					position: [100, 100],
+					parameters: {},
+					disabled: false,
+				},
+			]);
 
 			const { queryByTestId } = renderComponent();
 
@@ -267,10 +255,7 @@ describe('WorkflowPublishModal', () => {
 		});
 
 		it('should not show warning when the only AI gateway node is disabled', () => {
-			workflowsStore.workflow = {
-				...workflowsStore.workflow,
-				nodes: [{ ...AI_GATEWAY_NODE, disabled: true }],
-			};
+			workflowDocumentStore.setNodes([{ ...AI_GATEWAY_NODE, disabled: true }]);
 
 			const { queryByTestId } = renderComponent();
 
@@ -278,7 +263,7 @@ describe('WorkflowPublishModal', () => {
 		});
 
 		it('should show warning with node name for a single active AI gateway node', () => {
-			workflowsStore.workflow = { ...workflowsStore.workflow, nodes: [AI_GATEWAY_NODE] };
+			workflowDocumentStore.setNodes([AI_GATEWAY_NODE]);
 
 			const { getByTestId } = renderComponent();
 
@@ -288,7 +273,7 @@ describe('WorkflowPublishModal', () => {
 		});
 
 		it('should show singular copy for a single active AI gateway node', () => {
-			workflowsStore.workflow = { ...workflowsStore.workflow, nodes: [AI_GATEWAY_NODE] };
+			workflowDocumentStore.setNodes([AI_GATEWAY_NODE]);
 
 			const { getByTestId } = renderComponent();
 
@@ -302,10 +287,10 @@ describe('WorkflowPublishModal', () => {
 		});
 
 		it('should show warning with all node names for multiple active AI gateway nodes', () => {
-			workflowsStore.workflow = {
-				...workflowsStore.workflow,
-				nodes: [AI_GATEWAY_NODE, { ...AI_GATEWAY_NODE, id: 'ai-node-2', name: 'Generate Image' }],
-			};
+			workflowDocumentStore.setNodes([
+				AI_GATEWAY_NODE,
+				{ ...AI_GATEWAY_NODE, id: 'ai-node-2', name: 'Generate Image' },
+			]);
 
 			const { getByTestId } = renderComponent();
 
@@ -316,10 +301,10 @@ describe('WorkflowPublishModal', () => {
 		});
 
 		it('should show plural copy for multiple active AI gateway nodes', () => {
-			workflowsStore.workflow = {
-				...workflowsStore.workflow,
-				nodes: [AI_GATEWAY_NODE, { ...AI_GATEWAY_NODE, id: 'ai-node-2', name: 'Generate Image' }],
-			};
+			workflowDocumentStore.setNodes([
+				AI_GATEWAY_NODE,
+				{ ...AI_GATEWAY_NODE, id: 'ai-node-2', name: 'Generate Image' },
+			]);
 
 			const { getByTestId } = renderComponent();
 

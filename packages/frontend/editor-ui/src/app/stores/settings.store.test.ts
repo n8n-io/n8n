@@ -7,6 +7,7 @@ const mockRootStore = {
 	restApiContext: {},
 	setUrlBaseWebhook: vi.fn(),
 	setUrlBaseEditor: vi.fn(),
+	setUrlBaseWebhookTest: vi.fn(),
 	setEndpointForm: vi.fn(),
 	setEndpointFormTest: vi.fn(),
 	setEndpointFormWaiting: vi.fn(),
@@ -118,6 +119,56 @@ describe('settings.store', () => {
 			await settingsStore.getSettings();
 
 			expect(settingsStore.isAutosaveEnabled).toBe(true);
+		});
+	});
+
+	describe('isCrdtCollaborationEnabled', () => {
+		it('should return true when collaboration.crdt is local', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				collaboration: { crdt: 'local' },
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+
+			expect(settingsStore.isCrdtCollaborationEnabled).toBe(true);
+		});
+
+		it('should return true when collaboration.crdt is server', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				collaboration: { crdt: 'server' },
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+
+			expect(settingsStore.isCrdtCollaborationEnabled).toBe(true);
+		});
+
+		it('should return false when collaboration.crdt is off', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				collaboration: { crdt: 'off' },
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+
+			expect(settingsStore.isCrdtCollaborationEnabled).toBe(false);
+		});
+
+		it('should return false when collaboration is undefined', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				collaboration: undefined,
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+
+			expect(settingsStore.isCrdtCollaborationEnabled).toBe(false);
 		});
 	});
 
@@ -236,6 +287,80 @@ describe('settings.store', () => {
 				// side effects
 				expect(sessionStarted).toHaveBeenCalled();
 			});
+		});
+	});
+
+	describe('isOtelCustomSpanAttributesEnabled', () => {
+		it('should return false when otel module is not active', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				activeModules: [],
+				enterprise: { otelCustomSpanAttributes: true },
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+			settingsStore.moduleSettings = {
+				otel: {
+					enabled: true,
+				},
+			};
+
+			expect(settingsStore.isOtelCustomSpanAttributesEnabled).toBe(false);
+		});
+
+		it('should return false when otel module is active but not enabled in moduleSettings', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				activeModules: ['otel'],
+				enterprise: { otelCustomSpanAttributes: true },
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+			settingsStore.moduleSettings = {
+				otel: {
+					enabled: false,
+				},
+			};
+
+			expect(settingsStore.isOtelCustomSpanAttributesEnabled).toBe(false);
+		});
+
+		it('should return false when otel module is active and enabled but not licensed', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				activeModules: ['otel'],
+				enterprise: { otelCustomSpanAttributes: false },
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+			settingsStore.moduleSettings = {
+				otel: {
+					enabled: true,
+				},
+			};
+
+			expect(settingsStore.isOtelCustomSpanAttributesEnabled).toBe(false);
+		});
+
+		it('should return true when otel module is active, enabled, and licensed', async () => {
+			getSettings.mockResolvedValueOnce({
+				...mockSettings,
+				activeModules: ['otel'],
+				enterprise: { otelCustomSpanAttributes: true },
+			});
+
+			const settingsStore = useSettingsStore();
+			await settingsStore.getSettings();
+			settingsStore.moduleSettings = {
+				otel: {
+					enabled: true,
+				},
+			};
+
+			expect(settingsStore.isOtelCustomSpanAttributesEnabled).toBe(true);
 		});
 	});
 });

@@ -1,8 +1,8 @@
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { ExecutionsConfig, GlobalConfig } from '@n8n/config';
 import type { Redis as SingleNodeClient } from 'ioredis';
-import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
+import { mock } from 'vitest-mock-extended';
 
 import type { RedisClientService } from '@/services/redis-client.service';
 
@@ -137,6 +137,34 @@ describe('Publisher', () => {
 					_isMockObject: true,
 					senderId: hostId,
 					selfSend: true,
+					debounce: false,
+				}),
+			);
+		});
+
+		it.each([
+			'display-workflow-activation',
+			'display-workflow-deactivation',
+			'display-workflow-activation-error',
+		] as const)('should not debounce `%s`', async (command) => {
+			const publisher = new Publisher(
+				logger,
+				redisClientService,
+				instanceSettings,
+				executionsConfig,
+				globalConfig,
+			);
+			const msg = mock<PubSub.Command>({ command });
+
+			await publisher.publishCommand(msg);
+
+			expect(client.publish).toHaveBeenCalledWith(
+				'n8n:n8n.commands',
+				JSON.stringify({
+					...msg,
+					_isMockObject: true,
+					senderId: hostId,
+					selfSend: false,
 					debounce: false,
 				}),
 			);

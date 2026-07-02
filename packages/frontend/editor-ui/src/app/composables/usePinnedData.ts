@@ -15,12 +15,9 @@ import {
 	PIN_DATA_NODE_TYPES_DENYLIST,
 } from '@/app/constants';
 import { stringSizeInBytes, toMegaBytes } from '@/app/utils/typesUtils';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import {
 	injectWorkflowDocumentStore,
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
 	getPinDataSize,
 	pinDataToExecutionData,
 } from '@/app/stores/workflowDocument.store';
@@ -28,7 +25,7 @@ import type { INodeUi, IRunDataDisplayMode } from '@/Interface';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import type { MaybeRef } from 'vue';
-import { computed, shallowRef, unref } from 'vue';
+import { computed, unref } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useNodeType } from '@/app/composables/useNodeType';
 import { useDataSchema } from './useDataSchema';
@@ -58,11 +55,8 @@ export function usePinnedData(
 	} = {},
 ) {
 	const rootStore = useRootStore();
-	const workflowsStore = useWorkflowsStore();
 	const uiStore = useUIStore();
-	const workflowDocumentStore =
-		injectWorkflowDocumentStore() ??
-		shallowRef(useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)));
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const toast = useToast();
 	const i18n = useI18n();
 	const telemetry = useTelemetry();
@@ -76,7 +70,9 @@ export function usePinnedData(
 	const data = computed<IDataObject[] | undefined>(() => {
 		const targetNode = unref(node);
 		if (!targetNode || !workflowDocumentStore.value) return undefined;
-		return pinDataToExecutionData(workflowDocumentStore.value.pinData)[targetNode.name];
+		return pinDataToExecutionData(workflowDocumentStore.value.pinnedDataByNodeName)[
+			targetNode.name
+		];
 	});
 
 	const hasData = computed<boolean>(() => {
@@ -186,7 +182,7 @@ export function usePinnedData(
 
 		const { pinData: _pinData, ...workflowObjectWithoutPinData } =
 			workflowDocumentStore.value?.getSnapshot() ?? {};
-		const currentPinData = (workflowDocumentStore.value?.pinData ?? {}) as IPinData;
+		const currentPinData = (workflowDocumentStore.value?.pinnedDataByNodeName ?? {}) as IPinData;
 		const workflowJson = jsonStringify(workflowObjectWithoutPinData, { replaceCircularRefs: true });
 
 		const newPinData = { ...currentPinData, [targetNode.name]: data };
@@ -237,7 +233,7 @@ export function usePinnedData(
 			data_size: stringSizeInBytes(data.value),
 			view: displayMode,
 			run_index: runIndex,
-			workflow_id: workflowsStore.workflowId,
+			workflow_id: workflowDocumentStore.value.workflowId,
 			node_id: targetNode?.id,
 		};
 
@@ -295,7 +291,7 @@ export function usePinnedData(
 		if (workflowDocumentStore.value) {
 			const nodeName = targetNode.name;
 			// Update metadata timestamp for existing pinned data
-			if ((workflowDocumentStore.value.pinData[nodeName] ?? []).length > 0) {
+			if ((workflowDocumentStore.value.pinnedDataByNodeName[nodeName] ?? []).length > 0) {
 				workflowDocumentStore.value.touchPinnedDataLastUpdatedAt(nodeName);
 			}
 			workflowDocumentStore.value.pinNodeData(nodeName, data as INodeExecutionData[]);

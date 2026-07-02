@@ -107,18 +107,18 @@ describe('CDPRelayServer', () => {
 	});
 
 	it('should reject waitForExtension after timeout', async () => {
-		jest.useFakeTimers();
+		vi.useFakeTimers();
 		relay.stop();
 		relay = new CDPRelayServer({ connectionTimeoutMs: 2_000 });
 		port = await relay.listen();
 
 		// Capture the promise before advancing timers
 		const promise = relay.waitForExtension().catch((e: unknown) => e);
-		await jest.advanceTimersByTimeAsync(2_100);
+		await vi.advanceTimersByTimeAsync(2_100);
 
 		const error = await promise;
 		expect(error).toBeInstanceOf(ExtensionNotConnectedError);
-		jest.useRealTimers();
+		vi.useRealTimers();
 	});
 
 	it('should report disconnect reason when extension closes with explicit reason', async () => {
@@ -176,7 +176,7 @@ describe('CDPRelayServer', () => {
 
 	it('should disconnect extension after heartbeat timeout', async () => {
 		// Enable fake timers before creating relay so setInterval is captured
-		jest.useFakeTimers();
+		vi.useFakeTimers();
 
 		relay.stop();
 		relay = new CDPRelayServer({ connectionTimeoutMs: 2_000 });
@@ -185,21 +185,52 @@ describe('CDPRelayServer', () => {
 		new WebSocket(relay.extensionEndpoint(port), { autoPong: false });
 
 		// Let WebSocket handshake complete through the event loop
-		await jest.advanceTimersByTimeAsync(100);
+		await vi.advanceTimersByTimeAsync(100);
 		await relay.waitForExtension();
 
 		const disconnectPromise = new Promise<string>((resolve) => {
 			relay.onExtensionDisconnect = (r) => resolve(r);
 		});
 
-		// Advance past heartbeat interval (5s) + timeout (15s)
-		await jest.advanceTimersByTimeAsync(20_000);
+		// Advance past heartbeat interval (5s) + timeout (15s) + one extra interval.
+		// With the sleep-aware heartbeat the first termination check that passes
+		// requires a ping to have been sent AFTER the last pong, which adds one
+		// extra 5s interval compared to the naive elapsed-only check.
+		await vi.advanceTimersByTimeAsync(25_000);
 
 		const reason = await disconnectPromise;
 		expect(reason).toBe('heartbeat_timeout');
 
 		// Restore real timers before afterEach cleanup (ws.close uses setTimeout)
-		jest.useRealTimers();
+		vi.useRealTimers();
+	});
+
+	it('should allow extension to connect after waitForExtension times out', async () => {
+		vi.useFakeTimers();
+
+		relay.stop();
+		relay = new CDPRelayServer({ connectionTimeoutMs: 2_000 });
+		port = await relay.listen();
+
+		// Timeout the waitForExtension call — relay stays alive
+		const waitPromise = relay.waitForExtension().catch((e: unknown) => e);
+		await vi.advanceTimersByTimeAsync(2_100);
+		const error = await waitPromise;
+		expect(error).toBeInstanceOf(ExtensionNotConnectedError);
+
+		vi.useRealTimers();
+
+		// Extension connects after the timeout — must be registered
+		const ext = connectExtension();
+		await waitForOpen(ext);
+		createFakeExtension(ext);
+
+		expect(relay.isExtensionConnected()).toBe(true);
+
+		const tabs = await relay.listTabs();
+		expect(tabs.length).toBeGreaterThan(0);
+
+		ext.close();
 	});
 
 	it('should return targetInfos shape from Target.getTargets', async () => {

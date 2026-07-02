@@ -5,16 +5,11 @@
  */
 import { DEFAULT_NEW_WORKFLOW_NAME } from '@/app/constants';
 import type { INodeUi } from '@/Interface';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { computed } from 'vue';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { canvasEventBus } from '@/features/workflows/canvas/canvas.eventBus';
@@ -42,7 +37,6 @@ export type UpdateWorkflowResult =
 	  };
 
 export function useWorkflowUpdate() {
-	const workflowsStore = useWorkflowsStore();
 	const credentialsStore = useCredentialsStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const builderStore = useBuilderStore();
@@ -50,9 +44,7 @@ export function useWorkflowUpdate() {
 	const canvasOperations = useCanvasOperations();
 	const nodeHelpers = useNodeHelpers();
 
-	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
-	);
+	const workflowDocumentStore = injectWorkflowDocumentStore();
 
 	/**
 	 * Categorize nodes into those to update, add, or remove.
@@ -319,13 +311,10 @@ export function useWorkflowUpdate() {
 	 * Update workflow name if initial generation and name starts with default
 	 */
 	function updateWorkflowNameIfNeeded(name?: string, isInitialGeneration?: boolean): void {
-		if (!name || !isInitialGeneration || !workflowsStore.workflowId) return;
+		if (!name || !isInitialGeneration || !workflowDocumentStore.value.workflowId) return;
 
-		const workflowDocumentStore = useWorkflowDocumentStore(
-			createWorkflowDocumentId(workflowsStore.workflowId),
-		);
-		if (workflowDocumentStore.name.startsWith(DEFAULT_NEW_WORKFLOW_NAME)) {
-			workflowDocumentStore.setName(name);
+		if (workflowDocumentStore.value.name.startsWith(DEFAULT_NEW_WORKFLOW_NAME)) {
+			workflowDocumentStore.value.setName(name);
 		}
 	}
 

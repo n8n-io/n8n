@@ -3,11 +3,13 @@ import { GlobalConfig } from '@n8n/config';
 import type { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import * as BullModule from 'bull';
-import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
-import { ApplicationError } from 'n8n-workflow';
+import { UnexpectedError } from 'n8n-workflow';
+import type { MockInstance } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
+import type { ExecutionPersistence } from '@/executions/execution-persistence';
 
 import { JOB_TYPE_NAME, QUEUE_NAME } from '../constants';
 import type { JobProcessor } from '../job-processor';
@@ -15,16 +17,20 @@ import { ScalingService } from '../scaling.service';
 import type { Job, JobData, JobId, JobQueue } from '../scaling.types';
 
 const queue = mock<JobQueue>({
-	client: { ping: jest.fn() },
+	client: { ping: vi.fn() },
 });
 
-jest.mock('bull', () => ({
+vi.mock('bull', () => ({
 	__esModule: true,
-	default: jest.fn(() => queue),
+	// Source does `new BullQueue(...)`; Vitest constructs the implementation, and
+	// arrows aren't constructable. Use a regular function.
+	default: vi.fn(function () {
+		return queue;
+	}),
 }));
 
 describe('ScalingService', () => {
-	const Bull = jest.mocked(BullModule.default);
+	const Bull = vi.mocked(BullModule.default);
 
 	const globalConfig = mockInstance(GlobalConfig, {
 		queue: {
@@ -50,21 +56,26 @@ describe('ScalingService', () => {
 				interval: 180,
 				batchSize: 100,
 			},
+			queueRetention: {
+				keepLastCompleted: 0,
+				keepLastFailed: 0,
+			},
 		},
 	});
 
 	const instanceSettings = Container.get(InstanceSettings);
 	const jobProcessor = mock<JobProcessor>();
 	const executionRepository = mock<ExecutionRepository>();
+	const executionPersistence = mock<ExecutionPersistence>();
 
 	let scalingService: ScalingService;
 
-	let registerMainOrWebhookListenersSpy: jest.SpyInstance;
-	let registerWorkerListenersSpy: jest.SpyInstance;
-	let scheduleQueueRecoverySpy: jest.SpyInstance;
-	let stopQueueRecoverySpy: jest.SpyInstance;
-	let stopQueueMetricsSpy: jest.SpyInstance;
-	let getRunningJobsCountSpy: jest.SpyInstance;
+	let registerMainOrWebhookListenersSpy: MockInstance;
+	let registerWorkerListenersSpy: MockInstance;
+	let scheduleQueueRecoverySpy: MockInstance;
+	let stopQueueRecoverySpy: MockInstance;
+	let stopQueueMetricsSpy: MockInstance;
+	let getRunningJobsCountSpy: MockInstance;
 
 	const bullConstructorArgs = [
 		QUEUE_NAME,
@@ -76,7 +87,7 @@ describe('ScalingService', () => {
 	];
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		// @ts-expect-error readonly property
 		instanceSettings.instanceType = 'main';
 		instanceSettings.markAsLeader();
@@ -88,28 +99,29 @@ describe('ScalingService', () => {
 			jobProcessor,
 			globalConfig,
 			executionRepository,
+			executionPersistence,
 			instanceSettings,
 			mock(),
 		);
 
-		getRunningJobsCountSpy = jest.spyOn(scalingService, 'getRunningJobsCount');
+		getRunningJobsCountSpy = vi.spyOn(scalingService, 'getRunningJobsCount');
 
 		// @ts-expect-error Private method
-		ScalingService.prototype.scheduleQueueRecovery = jest.fn();
-		registerMainOrWebhookListenersSpy = jest.spyOn(
+		ScalingService.prototype.scheduleQueueRecovery = vi.fn();
+		registerMainOrWebhookListenersSpy = vi.spyOn(
 			scalingService,
 			// @ts-expect-error Private method
 			'registerMainOrWebhookListeners',
 		);
 		// @ts-expect-error Private method
-		registerWorkerListenersSpy = jest.spyOn(scalingService, 'registerWorkerListeners');
+		registerWorkerListenersSpy = vi.spyOn(scalingService, 'registerWorkerListeners');
 		// @ts-expect-error Private method
-		scheduleQueueRecoverySpy = jest.spyOn(scalingService, 'scheduleQueueRecovery');
+		scheduleQueueRecoverySpy = vi.spyOn(scalingService, 'scheduleQueueRecovery');
 		// @ts-expect-error Private method
-		stopQueueRecoverySpy = jest.spyOn(scalingService, 'stopQueueRecovery');
+		stopQueueRecoverySpy = vi.spyOn(scalingService, 'stopQueueRecovery');
 
 		// @ts-expect-error Private method
-		stopQueueMetricsSpy = jest.spyOn(scalingService, 'stopQueueMetrics');
+		stopQueueMetricsSpy = vi.spyOn(scalingService, 'stopQueueMetrics');
 	});
 
 	describe('setupQueue', () => {
@@ -198,7 +210,7 @@ describe('ScalingService', () => {
 				await scalingService.setupQueue();
 				// @ts-expect-error readonly property
 				scalingService.queueRecoveryContext.timeout = 1;
-				jest.spyOn(scalingService, 'isQueueMetricsEnabled', 'get').mockReturnValue(true);
+				vi.spyOn(scalingService, 'isQueueMetricsEnabled', 'get').mockReturnValue(true);
 
 				await scalingService.stop();
 
@@ -236,7 +248,7 @@ describe('ScalingService', () => {
 	});
 
 	describe('addJob', () => {
-		it('should add a job', async () => {
+		it('should add a job with default retention (remove immediately)', async () => {
 			await scalingService.setupQueue();
 			queue.add.mockResolvedValue(mock<Job>({ id: '456' }));
 
@@ -245,9 +257,30 @@ describe('ScalingService', () => {
 
 			expect(queue.add).toHaveBeenCalledWith(JOB_TYPE_NAME, jobData, {
 				priority: 100,
-				removeOnComplete: true,
-				removeOnFail: true,
+				removeOnComplete: 0,
+				removeOnFail: 0,
 			});
+		});
+
+		it('should pass configured retention counts to Bull', async () => {
+			globalConfig.executions.queueRetention.keepLastCompleted = 1000;
+			globalConfig.executions.queueRetention.keepLastFailed = 500;
+
+			await scalingService.setupQueue();
+			queue.add.mockResolvedValue(mock<Job>({ id: '456' }));
+
+			const jobData = mock<JobData>({ executionId: '123' });
+			await scalingService.addJob(jobData, { priority: 100 });
+
+			expect(queue.add).toHaveBeenCalledWith(JOB_TYPE_NAME, jobData, {
+				priority: 100,
+				removeOnComplete: 1000,
+				removeOnFail: 500,
+			});
+
+			// reset for other tests
+			globalConfig.executions.queueRetention.keepLastCompleted = 0;
+			globalConfig.executions.queueRetention.keepLastFailed = 0;
 		});
 	});
 
@@ -290,7 +323,7 @@ describe('ScalingService', () => {
 	describe('stopJob', () => {
 		it('should stop an active job by sending abort signal only', async () => {
 			await scalingService.setupQueue();
-			const job = mock<Job>({ isActive: jest.fn().mockResolvedValue(true) });
+			const job = mock<Job>({ isActive: vi.fn().mockResolvedValue(true) });
 
 			const result = await scalingService.stopJob(job);
 
@@ -302,7 +335,7 @@ describe('ScalingService', () => {
 
 		it('should stop an inactive job', async () => {
 			await scalingService.setupQueue();
-			const job = mock<Job>({ isActive: jest.fn().mockResolvedValue(false) });
+			const job = mock<Job>({ isActive: vi.fn().mockResolvedValue(false) });
 
 			const result = await scalingService.stopJob(job);
 
@@ -313,8 +346,8 @@ describe('ScalingService', () => {
 		it('should report failure to stop a job', async () => {
 			await scalingService.setupQueue();
 			const job = mock<Job>({
-				isActive: jest.fn().mockImplementation(() => {
-					throw new ApplicationError('Something went wrong');
+				isActive: vi.fn().mockImplementation(() => {
+					throw new UnexpectedError('Something went wrong');
 				}),
 			});
 
@@ -333,6 +366,7 @@ describe('ScalingService', () => {
 				activeExecutions,
 				jobProcessor,
 				globalConfig,
+				mock(),
 				mock(),
 				instanceSettings,
 				mock(),
@@ -370,6 +404,7 @@ describe('ScalingService', () => {
 				jobProcessor,
 				globalConfig,
 				mock(),
+				mock(),
 				instanceSettings,
 				mock(),
 			);
@@ -400,6 +435,7 @@ describe('ScalingService', () => {
 				activeExecutions,
 				jobProcessor,
 				globalConfig,
+				mock(),
 				mock(),
 				instanceSettings,
 				mock(),

@@ -1,3 +1,4 @@
+import type { Mock } from 'vitest';
 import {
 	getPersonalProject,
 	createTeamProject,
@@ -15,9 +16,8 @@ import {
 	type EntityManager,
 	type EntityMetadata,
 } from '@n8n/typeorm';
-import { createUser } from '@test-integration/db/users';
-import { mocked } from 'jest-mock';
-import { mock } from 'jest-mock-extended';
+
+import { mock } from 'vitest-mock-extended';
 import {
 	createEmptyRunExecutionData,
 	type ExecutionStatus,
@@ -30,6 +30,7 @@ import { EventService } from '@/events/event.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { UserService } from '@/services/user.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
+import { createUser } from '@test-integration/db/users';
 
 describe('WorkflowStatisticsService', () => {
 	describe('workflowExecutionCompleted', () => {
@@ -55,14 +56,14 @@ describe('WorkflowStatisticsService', () => {
 		});
 
 		beforeEach(async () => {
-			jest.restoreAllMocks();
+			vi.restoreAllMocks();
 			await testDb.truncate(['WorkflowStatistics']);
 			// Clear first production failure setting
 			const settingsRepository = Container.get(SettingsRepository);
 			await settingsRepository.delete({ key: 'instance.firstProductionFailure' });
 		});
 
-		test.each<WorkflowExecuteMode>(['cli', 'error', 'retry', 'trigger', 'webhook', 'evaluation'])(
+		test.each<WorkflowExecuteMode>(['cli', 'retry', 'trigger', 'webhook', 'evaluation'])(
 			'should upsert `count` and `rootCount` for execution mode %s',
 			async (mode) => {
 				// ARRANGE
@@ -93,7 +94,7 @@ describe('WorkflowStatisticsService', () => {
 			},
 		);
 
-		test.each<WorkflowExecuteMode>(['manual', 'integrated', 'internal'])(
+		test.each<WorkflowExecuteMode>(['manual', 'integrated', 'internal', 'error'])(
 			'should upsert `count`, but not `rootCount` for execution mode %s',
 			async (mode) => {
 				// ARRANGE
@@ -126,24 +127,25 @@ describe('WorkflowStatisticsService', () => {
 			},
 		);
 
-		it('should not upsert statistics for execution mode chat', async () => {
-			// ARRANGE
-			const runData: IRun = {
-				finished: true,
-				status: 'success',
-				data: createEmptyRunExecutionData(),
-				mode: 'chat',
-				startedAt: new Date(),
-				storedAt: 'db',
-			};
+		test('should not upsert production statistics for chat execution mode', async () => {
+			const mode: WorkflowExecuteMode = 'chat';
+			for (const status of ['success', 'error', 'crashed'] as const) {
+				await testDb.truncate(['WorkflowStatistics']);
 
-			// ACT
-			await workflowStatisticsService.workflowExecutionCompleted(workflow, runData);
-			await workflowStatisticsService.workflowExecutionCompleted(workflow, runData);
+				const runData: IRun = {
+					finished: status === 'success',
+					status,
+					data: createEmptyRunExecutionData(),
+					mode,
+					startedAt: new Date(),
+					storedAt: 'db',
+				};
 
-			// ASSERT
-			const statistics = await workflowStatisticsRepository.find();
-			expect(statistics).toHaveLength(0);
+				await workflowStatisticsService.workflowExecutionCompleted(workflow, runData);
+
+				const statistics = await workflowStatisticsRepository.find();
+				expect(statistics).toHaveLength(0);
+			}
 		});
 
 		test.each<ExecutionStatus>(['success', 'crashed', 'error'])(
@@ -209,8 +211,8 @@ describe('WorkflowStatisticsService', () => {
 				startedAt: new Date(),
 				storedAt: 'db',
 			};
-			const emitSpy = jest.spyOn(Container.get(EventService), 'emit');
-			const updateSettingsSpy = jest.spyOn(userService, 'updateSettings');
+			const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+			const updateSettingsSpy = vi.spyOn(userService, 'updateSettings');
 
 			// ACT
 			await workflowStatisticsService.workflowExecutionCompleted(workflow, runData);
@@ -240,8 +242,8 @@ describe('WorkflowStatisticsService', () => {
 				startedAt: new Date(),
 				storedAt: 'db',
 			};
-			const emitSpy = jest.spyOn(Container.get(EventService), 'emit');
-			const updateSettingsSpy = jest.spyOn(userService, 'updateSettings');
+			const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+			const updateSettingsSpy = vi.spyOn(userService, 'updateSettings');
 
 			// ACT
 			await workflowStatisticsService.workflowExecutionCompleted(workflow, runData);
@@ -265,8 +267,8 @@ describe('WorkflowStatisticsService', () => {
 				storedAt: 'db',
 			};
 			await workflowStatisticsService.workflowExecutionCompleted(workflow, runData);
-			const emitSpy = jest.spyOn(Container.get(EventService), 'emit');
-			const updateSettingsSpy = jest.spyOn(Container.get(UserService), 'updateSettings');
+			const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+			const updateSettingsSpy = vi.spyOn(Container.get(UserService), 'updateSettings');
 
 			// ACT
 			await workflowStatisticsService.workflowExecutionCompleted(workflow, runData);
@@ -291,7 +293,7 @@ describe('WorkflowStatisticsService', () => {
 			const workflowRepositoryNoErrorWorkflows = mock<WorkflowRepository>();
 			(
 				workflowRepositoryNoErrorWorkflows as unknown as {
-					hasAnyWorkflowsWithErrorWorkflow: jest.Mock;
+					hasAnyWorkflowsWithErrorWorkflow: Mock;
 				}
 			).hasAnyWorkflowsWithErrorWorkflow.mockResolvedValue(false);
 			const settingsRepository = Container.get(SettingsRepository);
@@ -304,7 +306,7 @@ describe('WorkflowStatisticsService', () => {
 				settingsRepository,
 				workflowRepositoryNoErrorWorkflows,
 			);
-			const emitSpy = jest.spyOn(Container.get(EventService), 'emit');
+			const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
 
 			// ACT
 			await statisticsService.workflowExecutionCompleted(workflow, runData);
@@ -333,7 +335,7 @@ describe('WorkflowStatisticsService', () => {
 			const workflowRepositoryNoErrorWorkflows = mock<WorkflowRepository>();
 			(
 				workflowRepositoryNoErrorWorkflows as unknown as {
-					hasAnyWorkflowsWithErrorWorkflow: jest.Mock;
+					hasAnyWorkflowsWithErrorWorkflow: Mock;
 				}
 			).hasAnyWorkflowsWithErrorWorkflow.mockResolvedValue(false);
 			const settingsRepository = Container.get(SettingsRepository);
@@ -349,7 +351,7 @@ describe('WorkflowStatisticsService', () => {
 
 			// First failure - this will set the instance.firstProductionFailure setting
 			await statisticsService.workflowExecutionCompleted(workflow, runData);
-			const emitSpy = jest.spyOn(Container.get(EventService), 'emit');
+			const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
 
 			// ACT - Second failure
 			await statisticsService.workflowExecutionCompleted(workflow, runData);
@@ -373,7 +375,7 @@ describe('WorkflowStatisticsService', () => {
 			const workflowRepositoryWithErrorWorkflows = mock<WorkflowRepository>();
 			(
 				workflowRepositoryWithErrorWorkflows as unknown as {
-					hasAnyWorkflowsWithErrorWorkflow: jest.Mock;
+					hasAnyWorkflowsWithErrorWorkflow: Mock;
 				}
 			).hasAnyWorkflowsWithErrorWorkflow.mockResolvedValue(true);
 			const settingsRepository = Container.get(SettingsRepository);
@@ -386,7 +388,7 @@ describe('WorkflowStatisticsService', () => {
 				settingsRepository,
 				workflowRepositoryWithErrorWorkflows,
 			);
-			const emitSpy = jest.spyOn(Container.get(EventService), 'emit');
+			const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
 
 			// ACT
 			await statisticsService.workflowExecutionCompleted(workflow, runData);
@@ -408,7 +410,7 @@ describe('WorkflowStatisticsService', () => {
 				startedAt: new Date(),
 				storedAt: 'db',
 			};
-			const emitSpy = jest.spyOn(Container.get(EventService), 'emit');
+			const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
 
 			// ACT
 			await workflowStatisticsService.workflowExecutionCompleted(workflow, runData);
@@ -430,7 +432,7 @@ describe('WorkflowStatisticsService', () => {
 				startedAt: new Date(),
 				storedAt: 'db',
 			};
-			const emitSpy = jest.spyOn(Container.get(EventService), 'emit');
+			const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
 
 			// ACT
 			await workflowStatisticsService.workflowExecutionCompleted(workflow, runData);
@@ -456,8 +458,8 @@ describe('WorkflowStatisticsService', () => {
 				startedAt: new Date(),
 				storedAt: 'db',
 			};
-			const emitSpy = jest.spyOn(Container.get(EventService), 'emit');
-			const updateSettingsSpy = jest.spyOn(userService, 'updateSettings');
+			const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+			const updateSettingsSpy = vi.spyOn(userService, 'updateSettings');
 
 			// ACT
 			await workflowStatisticsService.workflowExecutionCompleted(teamWorkflow, runData);
@@ -489,7 +491,7 @@ describe('WorkflowStatisticsService', () => {
 			const workflowRepositoryNoErrorWorkflows = mock<WorkflowRepository>();
 			(
 				workflowRepositoryNoErrorWorkflows as unknown as {
-					hasAnyWorkflowsWithErrorWorkflow: jest.Mock;
+					hasAnyWorkflowsWithErrorWorkflow: Mock;
 				}
 			).hasAnyWorkflowsWithErrorWorkflow.mockResolvedValue(false);
 			const ownershipService = Container.get(OwnershipService);
@@ -503,7 +505,7 @@ describe('WorkflowStatisticsService', () => {
 				settingsRepository,
 				workflowRepositoryNoErrorWorkflows,
 			);
-			const emitSpy = jest.spyOn(Container.get(EventService), 'emit');
+			const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
 
 			// Get the instance owner to verify the userId
 			const instanceOwner = await ownershipService.getInstanceOwner();
@@ -546,7 +548,7 @@ describe('WorkflowStatisticsService', () => {
 					mock<EntityMetadata>({
 						tableName: 'workflow_statistics',
 					}),
-				driver: { escape: jest.fn((id) => id) },
+				driver: { escape: vi.fn((id) => id) },
 			});
 			Object.assign(entityManager, { connection: dataSource });
 			eventService = mock<EventService>();
@@ -554,7 +556,7 @@ describe('WorkflowStatisticsService', () => {
 			const settingsRepository = mock<SettingsRepository>();
 			const workflowRepository = mock<WorkflowRepository>();
 			(
-				workflowRepository as unknown as { hasAnyWorkflowsWithErrorWorkflow: jest.Mock }
+				workflowRepository as unknown as { hasAnyWorkflowsWithErrorWorkflow: Mock }
 			).hasAnyWorkflowsWithErrorWorkflow.mockResolvedValue(false);
 			workflowStatisticsService = new WorkflowStatisticsService(
 				mock(),
@@ -567,16 +569,16 @@ describe('WorkflowStatisticsService', () => {
 			);
 			globalConfig.diagnostics.enabled = true;
 			globalConfig.deployment.type = 'n8n-testing';
-			mocked(ownershipService.getWorkflowProjectCached).mockResolvedValue(project);
-			mocked(ownershipService.getPersonalProjectOwnerCached).mockResolvedValue(user);
+			vi.mocked(ownershipService.getWorkflowProjectCached).mockResolvedValue(project);
+			vi.mocked(ownershipService.getPersonalProjectOwnerCached).mockResolvedValue(user);
 		});
 
 		afterAll(() => {
-			jest.resetAllMocks();
+			vi.resetAllMocks();
 		});
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		test('should create metrics when the db is updated', async () => {
@@ -602,7 +604,7 @@ describe('WorkflowStatisticsService', () => {
 
 		test('should emit event with no `userId` if workflow is owned by team project', async () => {
 			const workflowId = '123';
-			mocked(ownershipService.getPersonalProjectOwnerCached).mockResolvedValueOnce(null);
+			vi.mocked(ownershipService.getPersonalProjectOwnerCached).mockResolvedValueOnce(null);
 			const node = mock<INode>({ id: '123', type: 'n8n-nodes-base.noOp', credentials: {} });
 
 			await workflowStatisticsService.nodeFetchedData(workflowId, node);
@@ -647,7 +649,7 @@ describe('WorkflowStatisticsService', () => {
 
 		test('should not send metrics for entries that already have the flag set', async () => {
 			// Fetch data for workflow 2 which is set up to not be altered in the mocks
-			mocked(entityManager.insert).mockRejectedValueOnce(
+			vi.mocked(entityManager.insert).mockRejectedValueOnce(
 				new QueryFailedError('', undefined, new Error()),
 			);
 			const workflowId = '1';

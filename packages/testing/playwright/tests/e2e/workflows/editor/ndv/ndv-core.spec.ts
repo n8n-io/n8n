@@ -118,7 +118,7 @@ test.describe(
 
 			await n8n.ndv.getParameterInputField('path').clear();
 
-			const webhookUrlsContainer = n8n.ndv.container.getByText('Webhook URLs').locator('..');
+			const webhookUrlsContainer = n8n.ndv.getWebhookUrlsContainer();
 			const urlText = await webhookUrlsContainer.textContent();
 			const uuidRegex = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 			expect(urlText).toMatch(uuidRegex);

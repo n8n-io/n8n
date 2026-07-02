@@ -6,9 +6,10 @@
  * only the right nodes.
  */
 
-import { createTool } from '@mastra/core/tools';
+import { Tool } from '@n8n/agents';
 import { z } from 'zod';
 
+import { assignCredentialToNode, resolveCredentialForApply } from './credential-utils';
 import type { OrchestrationContext } from '../../types';
 
 export const applyWorkflowCredentialsInputSchema = z.object({
@@ -18,18 +19,20 @@ export const applyWorkflowCredentialsInputSchema = z.object({
 });
 
 export function createApplyWorkflowCredentialsTool(context: OrchestrationContext) {
-	return createTool({
-		id: 'apply-workflow-credentials',
-		description:
+	return new Tool('apply-workflow-credentials')
+		.description(
 			'Apply real credentials to a workflow that was built with mocked credentials. ' +
-			'Only updates nodes that were mocked — never overwrites existing real credentials.',
-		inputSchema: applyWorkflowCredentialsInputSchema,
-		outputSchema: z.object({
-			success: z.boolean(),
-			appliedNodes: z.array(z.string()).optional(),
-			error: z.string().optional(),
-		}),
-		execute: async (input: z.infer<typeof applyWorkflowCredentialsInputSchema>) => {
+				'Only updates nodes that were mocked — never overwrites existing real credentials.',
+		)
+		.input(applyWorkflowCredentialsInputSchema)
+		.output(
+			z.object({
+				success: z.boolean(),
+				appliedNodes: z.array(z.string()).optional(),
+				error: z.string().optional(),
+			}),
+		)
+		.handler(async (input: z.infer<typeof applyWorkflowCredentialsInputSchema>) => {
 			if (!context.workflowTaskService || !context.domainContext) {
 				return { success: false, error: 'Credential application support not available.' };
 			}
@@ -43,7 +46,7 @@ export function createApplyWorkflowCredentialsTool(context: OrchestrationContext
 			}
 
 			const { mockedCredentialsByNode } = buildOutcome;
-			const { credentialService, workflowService } = context.domainContext;
+			const { workflowService } = context.domainContext;
 
 			// Load the workflow
 			let json;
@@ -66,15 +69,9 @@ export function createApplyWorkflowCredentialsTool(context: OrchestrationContext
 					const credId = input.credentials[credType];
 					if (!credId) continue;
 
-					try {
-						const credDetail = await credentialService.get(credId);
-						node.credentials[credType] = { id: credDetail.id, name: credDetail.name };
-					} catch {
-						return {
-							success: false,
-							error: `Credential ${credId} for type ${credType} no longer exists.`,
-						};
-					}
+					const resolved = await resolveCredentialForApply(credType, credId, context.domainContext);
+					if (!resolved.resolved) return { success: false, error: resolved.error };
+					assignCredentialToNode(node, credType, resolved.credential);
 				}
 				appliedNodes.push(nodeName);
 			}
@@ -102,6 +99,6 @@ export function createApplyWorkflowCredentialsTool(context: OrchestrationContext
 			});
 
 			return { success: true, appliedNodes };
-		},
-	});
+		})
+		.build();
 }

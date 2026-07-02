@@ -76,10 +76,10 @@ graph TB
 
     subgraph Sandbox ["Sandbox (Optional)"]
         Service -->|per-thread| WorkspaceManager[Workspace Manager]
+        WorkspaceManager --> N8nSandbox[n8n Sandbox Service]
         WorkspaceManager --> DaytonaSandbox[Daytona Container]
-        WorkspaceManager --> LocalSandbox[Local Sandbox]
+        N8nSandbox --> SandboxFS[Filesystem + execute_command]
         DaytonaSandbox --> SandboxFS[Filesystem + execute_command]
-        LocalSandbox --> SandboxFS
     end
 
 
@@ -95,10 +95,13 @@ The system implements the four pillars of the deep agent pattern:
 
 ### 1. Explicit Planning
 
-The orchestrator uses a `plan` tool to externalize its execution strategy.
-Between phases of the autonomous loop, the orchestrator reviews and updates the
-plan. This serves as a context engineering mechanism — writing the plan forces
-structured reasoning, and reading it back prevents goal drift over long loops.
+The orchestrator loads the `planning` skill to externalize its execution
+strategy for work that needs dependency coordination: multiple workflows, shared
+artifacts, cross-workflow data contracts, or ambiguous business process design.
+After normal discovery, it calls `create-tasks` to persist the task graph for
+user approval. Clear single-workflow builds, including new and one-off
+workflows, go directly to the builder and do not create a plan merely to obtain
+verification.
 
 Plans are stored in thread-scoped storage (see ADR-017).
 
@@ -116,7 +119,7 @@ directly to the event bus (ADR-014). They cannot spawn their own sub-agents.
 
 ### 3. Observational Memory
 
-Mastra's observational memory compresses old messages into dense observations via
+`@n8n/agents` observational memory compresses old messages into dense observations via
 background Observer and Reflector agents. Tool-heavy workloads (workflow
 definitions, execution results) get 5–40x compression. This prevents context
 degradation over 50+ step autonomous loops (see ADR-016).
@@ -132,48 +135,45 @@ prompts written by the orchestrator.
 ```mermaid
 graph TD
     O[Orchestrator Agent] -->|delegate| S1[Sub-Agent: role A]
-    O -->|build-workflow-with-agent| S2[Builder Agent]
-    O -->|plan| S3[Planned Tasks]
+    O -->|planning skill + create-tasks| S3[Planned Tasks]
     O -->|direct| T1[list-workflows]
     O -->|direct| T2[run-workflow]
     O -->|direct| T3[get-execution]
-    O -->|direct| T4[plan]
+    O -->|direct| T4[create-tasks]
+    O -->|direct| T5[data-tables]
 
-    S3 -->|kind: build-workflow| S4[Builder Agent]
-    S3 -->|kind: manage-data-tables| S5[Data Table Agent]
-    S3 -->|kind: research| S6[Research Agent]
+    S3 -->|kind: build-workflow| S4[Orchestrator Follow-Up]
     S3 -->|kind: delegate| S7[Custom Sub-Agent]
 
-    S1 -->|tools| T5[get-execution]
-    S1 -->|tools| T6[get-workflow]
-    S2 -->|tools| T7[search-nodes]
-    S2 -->|tools| T8[build-workflow]
+    S1 -->|tools| T6[get-execution]
+    S1 -->|tools| T7[get-workflow]
+    S4 -->|tools| T8[search-nodes]
+    S4 -->|tools| T9[workspace files]
+    S4 -->|tools| T10[build-workflow]
 
     style O fill:#f9f,stroke:#333
     style S1 fill:#bbf,stroke:#333
-    style S2 fill:#bbf,stroke:#333
     style S3 fill:#ffa,stroke:#333
     style S4 fill:#bbf,stroke:#333
-    style S5 fill:#bbf,stroke:#333
-    style S6 fill:#bbf,stroke:#333
     style S7 fill:#bbf,stroke:#333
 ```
 
 **Orchestrator** handles directly:
 - Read-only queries (list-workflows, get-execution, list-credentials)
 - Execution triggers (run-workflow)
-- Planning (plan tool — always direct)
+- Planning (`planning` skill + `create-tasks` — always direct)
 - Verification and credential application (verify-built-workflow, apply-workflow-credentials)
 
-**Single-task delegation** (`delegate`, `build-workflow-with-agent`):
-- Complex multi-step operations (building workflows, debugging failures)
+**Single-task delegation** (`delegate`):
+- Complex multi-step operations that are not handled by a planned build follow-up
 - Tasks that benefit from clean context (no accumulated noise)
-- Builder agent runs as a background task — returns immediately
 
-**Multi-task plans** (`plan` tool):
+**Multi-task plans** (`planning` skill + `create-tasks`):
 - Dependency-aware task graphs with parallel execution
-- Each task dispatched to a preconfigured agent (builder, data-table, research, or delegate)
+- Each task dispatched to a preconfigured executor (build-workflow, checkpoint, or delegate)
 - User approves the plan before execution starts
+- Workflow runtime verification is tracked separately as a workflow-loop
+  obligation, so routine "verify workflow" checkpoints are not required
 
 The orchestrator decides what to delegate based on complexity — simple reads
 stay direct, complex operations go to focused sub-agents.
@@ -186,19 +186,19 @@ The agent package — framework-agnostic business logic.
 
 - **Agent factory** (`agent/`) — creates orchestrator instances with tools, memory, MCP, and tool search
 - **Sub-agent factory** (`agent/`) — creates stateless sub-agents with mandatory protocol and tool subsets
-- **Orchestration tools** (`tools/orchestration/`) — `plan`, `delegate`, `build-workflow-with-agent`, `update-tasks`, `cancel-background-task`, `correct-background-task`, `verify-built-workflow`, `report-verification-verdict`, `apply-workflow-credentials`, `browser-credential-setup`
-- **Domain tools** (`tools/`) — native tools across workflows, executions, credentials, nodes, data tables, workspace, web research, filesystem, templates, and best practices
+- **Orchestration tools** (`tools/orchestration/`) — `create-tasks`, `delegate`, `update-tasks`, `cancel-background-task`, `correct-background-task`, `verify-built-workflow`, `report-verification-verdict`, `apply-workflow-credentials`
+- **Domain tools** (`tools/`) — native tools across workflows, executions, credentials, nodes, data tables, workspace, and web research
+- **Knowledge base** (`knowledge-base/`, `workspace/`) — best-practices guides and curated templates materialized in the builder sandbox for workspace tools to read
 - **Runtime** (`runtime/`) — stream execution engine, resumable streams with HITL suspension, background task manager, run state registry
 - **Planned tasks** (`planned-tasks/`) — task graph coordination, dependency resolution, scheduled execution
 - **Workflow loop** (`workflow-loop/`) — deterministic build→verify→debug state machine for workflow builder agents
-- **Workflow builder** (`workflow-builder/`) — TypeScript SDK code parsing, validation, patching, and prompt sections
-- **Workspace** (`workspace/`) — sandbox provisioning (Daytona / local), filesystem abstraction, snapshot management
+- **Workflow builder** (`workflow-builder/`) — TypeScript SDK source files, parsing, validation, and prompt sections
+- **Workspace** (`workspace/`) — sandbox provisioning (n8n sandbox service / Daytona), filesystem abstraction, snapshot management
 - **Memory** (`memory/`) — title generation, memory configuration
-- **Compaction** (`compaction/`) — LLM-based message history summarization for long conversations
 - **Storage** (`storage/`) — iteration logs, task storage, planned task storage, workflow loop storage, agent tree snapshots
 - **MCP client** (`mcp/`) — manages connections to external MCP servers, schema sanitization for Anthropic compatibility
 - **Domain access** (`domain-access/`) — domain gating and access tracking for external URL approval
-- **Stream mapping** (`stream/`) — Mastra chunk → canonical event translation, HITL consumption
+- **Stream mapping** (`stream/`) — agent chunk → canonical event translation, HITL consumption
 - **Event bus interface** (`event-bus/`) — publishing agent events to the thread channel
 - **Tracing** (`tracing/`) — LangSmith integration for step-level observability
 - **System prompt** (`agent/`) — dynamic context-aware prompt based on instance configuration
@@ -293,19 +293,19 @@ Instance AI uses n8n's module system (`@BackendModule`). This means:
 
 ## Runtime & Streaming
 
-The agent runtime is built on Mastra's streaming primitives with added
+The agent runtime is built on `@n8n/agents` streaming primitives with added
 resumability, HITL suspension, and background task management.
 
 ### Stream Execution
 
 ```
 streamAgentRun() → agent.stream() → executeResumableStream()
-  ├─ for each chunk: mapMastraChunkToEvent() → eventBus.publish()
+  ├─ for each chunk: mapAgentChunkToEvent() → eventBus.publish()
   ├─ on suspension: wait for confirmation → agent.resumeStream() → loop
-  └─ return StreamRunResult {status, mastraRunId, text}
+  └─ return StreamRunResult {status, agentRunId, text}
 ```
 
-The `executeResumableStream()` loop consumes Mastra chunks, translates them to
+The `executeResumableStream()` loop consumes agent chunks, translates them to
 canonical `InstanceAiEvent` schema, publishes to the event bus, and handles HITL
 suspension/resume cycles. Two control modes:
 
@@ -314,7 +314,7 @@ suspension/resume cycles. Two control modes:
 
 ### Background Task Manager
 
-Long-running tasks (workflow builds, data table operations, research) run as
+Long-running tasks (workflow builds and delegated work) run as
 background tasks with concurrency limits (default: 5 per thread). Features:
 
 - **Correction queueing** — users can steer running tasks mid-flight via
@@ -337,19 +337,25 @@ In-memory registry of active, suspended, and pending runs per thread. Manages:
 
 ### Planned Task System
 
-The `plan` tool creates dependency-aware task graphs for multi-step work. Each
-task has a `kind` that determines its executor:
+The `planning` skill guides discovery and `create-tasks` creates
+dependency-aware task graphs for multi-step work. Each task has a `kind` that
+determines its executor:
 
 | Kind | Executor | Tools |
 |------|----------|-------|
-| `build-workflow` | Builder agent | search-nodes, build-workflow, get-node-type-definition, etc. |
-| `manage-data-tables` | Data table agent | All `*-data-table*` tools |
-| `research` | Research agent | web-search, fetch-url |
+| `build-workflow` | Builder agent | search-nodes, workspace file tools, build-workflow, get-node-type-definition, etc. |
 | `delegate` | Custom sub-agent | Orchestrator-specified subset |
+| `checkpoint` | Orchestrator follow-up | Semantic or cross-workflow validation that standard runtime verification cannot cover |
 
-Tasks run detached as background agents. Dependencies are respected — a task
-only starts when all its `deps` have succeeded. The plan is shown to the user
-for approval before execution begins.
+Standalone data-table work bypasses planned tasks: the orchestrator loads the
+`data-table-manager` skill and uses `data-tables` / `parse-file` directly. A
+single workflow with a workflow-local table can use the direct builder path;
+planning is reserved for shared schema work or real dependency coordination.
+
+Build and delegate tasks run detached as background agents. Checkpoint tasks run
+as orchestrator follow-ups when the plan includes an exceptional semantic check.
+Dependencies are respected — a task only starts when all its `deps` have
+succeeded. The plan is shown to the user for approval before execution begins.
 
 ### Workflow Loop State Machine
 
@@ -364,7 +370,17 @@ build → submit → verify → (success | needs_patch | needs_rebuild | failed_
                                         verify          verify
 ```
 
-The `report-verification-verdict` tool feeds results into this state machine,
+Workflow-loop storage also derives a `WorkflowVerificationObligation` from each
+builder outcome. The service uses this obligation as the completion gate for both
+direct and planned workflow builds:
+
+- `ready_to_verify` schedules an internal workflow-verification follow-up.
+- `verified` reuses structured `verify-built-workflow` evidence.
+- `needs_setup` routes to `workflows(action="setup")`.
+- `not_verifiable` is a warning/manual-test completion state, not "verified".
+- `blocked` carries the build or verification blocker.
+
+The `report-verification-verdict` tool feeds results into the state machine,
 which returns guidance for the next action. Same failure signature twice triggers
 a terminal state to prevent infinite loops.
 
@@ -372,7 +388,7 @@ a terminal state to prevent infinite loops.
 
 To keep the orchestrator's context lean, tools are stratified into two tiers:
 
-- **Core tools** (always-loaded): `plan`, `delegate`, `ask-user`, `web-search`,
+- **Core tools** (always-loaded): `create-tasks`, `delegate`, `ask-user`, `web-search`,
   `fetch-url` — these are directly available to the LLM
 - **Deferred tools** (behind ToolSearchProcessor): all other domain tools —
   discovered on-demand via `search_tools` and activated via `load_tool`
@@ -385,9 +401,7 @@ The processor is configurable via `disableDeferredTools` flag.
 External MCP servers are owned by `McpClientManager` (`mcp/mcp-client-manager.ts`).
 The cli's `InstanceAiService` holds one manager instance and passes it to
 `createInstanceAgent` via options; the agent factory calls
-`mcpManager.getRegularTools(mcpServers)` and
-`mcpManager.getBrowserTools(orchestrationContext?.browserMcpConfig)`. Tool
-descriptions are:
+`mcpManager.getRegularTools(mcpServers)`. Tool descriptions are:
 
 1. **Schema-sanitized** for Anthropic compatibility (ZodNull → optional,
    discriminated unions → flattened objects, array types → recursive element fix)
@@ -398,9 +412,10 @@ descriptions are:
    instances are tracked so `mcpManager.disconnect()` (called during service
    shutdown) closes SSE / stdio connections cleanly.
 
-Browser MCP tools (Chrome DevTools) are excluded from the orchestrator to avoid
-context bloat from screenshots. They're available to `browser-credential-setup`
-sub-agents.
+The local Computer Use server is separate from external MCP configuration. Its
+browser tools are available directly to the orchestrator and are guided by the
+`credential-setup-with-computer-use` skill when credential setup requires a
+browser.
 
 ## Tracing & Observability
 
@@ -412,13 +427,6 @@ LangSmith integration provides step-level observability:
 - **Sub-agent traces** — child spans under parent agent runs
 - **Synthetic tool traces** — internal tools tracked separately from
   LLM-invoked tools
-
-## Message Compaction
-
-For conversations that exceed the context window, `generateCompactionSummary()`
-creates an LLM-generated summary of the conversation history. The summary uses
-a structured format (Goal, Important facts, Current state, Open issues, Next
-step) and is included as a `<conversation-summary>` block in subsequent requests.
 
 ## Domain Access Gating
 

@@ -6,7 +6,7 @@ import { LogStreamingInstanceSettingsLoader } from './loaders/log-streaming.inst
 import { McpSettingsLoader } from './loaders/mcp-settings.loader';
 import { OwnerInstanceSettingsLoader } from './loaders/owner.instance-settings-loader';
 import { SecurityPolicyInstanceSettingsLoader } from './loaders/security-policy.instance-settings-loader';
-import { SsoInstanceSettingsLoader } from './loaders/sso.instance-settings-loader';
+import { SsoInstanceSettingsLoader } from './loaders/sso/sso.instance-settings-loader';
 
 type LoaderResult = 'created' | 'skipped';
 

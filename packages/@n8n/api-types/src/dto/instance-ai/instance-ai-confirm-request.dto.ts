@@ -15,6 +15,9 @@ const approvalConfirmSchema = z.object({
 	kind: z.literal('approval'),
 	approved: z.boolean(),
 	userInput: z.string().optional(),
+	/** `'session'` grants the same tool/action without re-asking for the rest of the
+	 *  thread ("always allow"). Absent/`'once'` approves this single request only. */
+	scope: z.enum(['once', 'session']).optional(),
 });
 
 /** Q&A wizard submission (inputType='questions'). */
@@ -49,6 +52,12 @@ const domainAccessDenySchema = z.object({
 	kind: z.literal('domainAccessDeny'),
 });
 
+/** Plan-review denial — user rejected the proposed plan outright. Distinct from
+ *  `approval` with `approved: false + userInput`, which asks the agent to revise. */
+const planDenySchema = z.object({
+	kind: z.literal('planDeny'),
+});
+
 /** Gateway resource-access decision (inputType='resource-decision'). Approval is implied. */
 const resourceDecisionConfirmSchema = z.object({
 	kind: z.literal('resourceDecision'),
@@ -61,7 +70,7 @@ const nodeCredentialsRecord = z.record(credentialIdByTypeSchema).optional();
 const nodeParametersRecord = z.record(z.record(z.unknown())).optional();
 
 /** Workflow-setup wizard: apply the chosen credentials/parameters. Approval is implied;
- *  the service maps this to `action: 'apply'` for the underlying Mastra resume schema. */
+ *  the service maps this to `action: 'apply'` for the setup resume schema. */
 const setupWorkflowApplyConfirmSchema = z.object({
 	kind: z.literal('setupWorkflowApply'),
 	nodeCredentials: nodeCredentialsRecord,
@@ -69,7 +78,7 @@ const setupWorkflowApplyConfirmSchema = z.object({
 });
 
 /** Workflow-setup wizard: run a test-trigger against a specific node. Approval is implied;
- *  the service maps this to `action: 'test-trigger'` for the underlying Mastra resume schema. */
+ *  the service maps this to `action: 'test-trigger'` for the setup resume schema. */
 const setupWorkflowTestTriggerConfirmSchema = z.object({
 	kind: z.literal('setupWorkflowTestTrigger'),
 	testTriggerNode: z.string(),
@@ -83,6 +92,7 @@ export const InstanceAiConfirmRequestDto = z.discriminatedUnion('kind', [
 	credentialSelectionConfirmSchema,
 	domainAccessApproveSchema,
 	domainAccessDenySchema,
+	planDenySchema,
 	resourceDecisionConfirmSchema,
 	setupWorkflowApplyConfirmSchema,
 	setupWorkflowTestTriggerConfirmSchema,

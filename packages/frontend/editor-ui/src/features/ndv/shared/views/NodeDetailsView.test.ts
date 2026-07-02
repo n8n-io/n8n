@@ -22,7 +22,7 @@ import { WorkflowDocumentStoreKey, WorkflowIdKey } from '@/app/constants/injecti
 vi.mock('vue-router', () => {
 	return {
 		useRouter: () => ({}),
-		useRoute: () => ({ meta: {} }),
+		useRoute: () => ({ meta: {}, params: {} }),
 		RouterLink: vi.fn(),
 	};
 });
@@ -40,10 +40,10 @@ async function createPiniaStore(isActiveNode: boolean) {
 
 	const workflowsStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
-	const ndvStore = useNDVStore();
 
 	nodeTypesStore.setNodeTypes(defaultNodeDescriptions);
-	workflowsStore.workflow = workflow;
+	workflowsStore.setWorkflowId(workflow.id);
+	const ndvStore = useNDVStore(createWorkflowDocumentId(workflow.id));
 	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
 	workflowDocumentStore.setNodes(workflow.nodes);
 	workflowDocumentStore.setConnections(workflow.connections);
@@ -149,7 +149,7 @@ describe('NodeDetailsView', () => {
 
 		test('should unregister keydown listener on unmount', async () => {
 			const { pinia, workflow, workflowDocumentStoreRef, nodeName } = await createPiniaStore(false);
-			const ndvStore = useNDVStore(pinia);
+			const ndvStore = useNDVStore(createWorkflowDocumentId(workflow.id), pinia);
 
 			const renderComponent = createComponentRenderer(NodeDetailsView, {
 				global: {

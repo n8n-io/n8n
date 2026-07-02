@@ -9,6 +9,7 @@ import type { IMenuItem } from '@n8n/design-system/types';
 import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeMount, onBeforeUnmount, ref, watch } from 'vue';
 import { useProjectsStore } from '../projects.store';
+import { DEFAULT_PROJECT_ICON } from '../projects.constants';
 import type { ProjectListItem } from '../projects.types';
 import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
@@ -91,7 +92,7 @@ const shared = computed<IMenuItem>(() => ({
 const getProjectMenuItem = (project: ProjectListItem): IMenuItem => ({
 	id: project.id,
 	label: project.name ?? '',
-	icon: project.icon as IMenuItem['icon'],
+	icon: (project.icon ?? DEFAULT_PROJECT_ICON) as IMenuItem['icon'],
 	route: {
 		to: {
 			name: VIEWS.PROJECTS_WORKFLOWS,
@@ -150,6 +151,13 @@ onBeforeUnmount(() => {
 	<div :class="$style.projects">
 		<div :class="[$style.home, props.collapsed ? $style.collapsed : '']">
 			<N8nMenuItem
+				v-if="isInstanceAiNavVisible"
+				:item="instanceAi"
+				:compact="props.collapsed"
+				:active="activeTabId === 'instance-ai'"
+				data-test-id="project-instance-ai-menu-item"
+			/>
+			<N8nMenuItem
 				:item="home"
 				:compact="props.collapsed"
 				:active="activeTabId === 'home'"
@@ -171,13 +179,6 @@ onBeforeUnmount(() => {
 				:compact="props.collapsed"
 				:active="activeTabId === 'shared'"
 				data-test-id="project-shared-menu-item"
-			/>
-			<N8nMenuItem
-				v-if="isInstanceAiNavVisible"
-				:item="instanceAi"
-				:compact="props.collapsed"
-				:active="activeTabId === 'instance-ai'"
-				data-test-id="project-instance-ai-menu-item"
 			/>
 			<N8nMenuItem
 				v-if="isChatLinkAvailable"

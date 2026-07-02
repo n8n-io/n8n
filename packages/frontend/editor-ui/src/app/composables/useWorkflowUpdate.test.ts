@@ -12,9 +12,19 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 import { mockedStore } from '@/__tests__/utils';
 import { createTestNode } from '@/__tests__/mocks';
-import type { INodeUi, IWorkflowDb } from '@/Interface';
+import type { INodeUi } from '@/Interface';
 import { DEFAULT_NEW_WORKFLOW_NAME } from '@/app/constants';
 import type { Workflow } from 'n8n-workflow';
+
+// Instantiates a store that derives the workflow id from the route. These tests run
+// without a router, so resolve the id directly.
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	return {
+		useWorkflowId: () => computed(() => ''),
+		useRouteWorkflowId: () => computed(() => ''),
+	};
+});
 
 // Mock canvas event bus - using hoisted to ensure proper initialization order
 const canvasEventBusEmitMock = vi.hoisted(() => vi.fn());
@@ -33,6 +43,7 @@ vi.mock('@/features/workflows/canvas/canvas.utils', () => ({
 // Mock workflowDocumentStore - using hoisted for proper initialization
 const mockDocumentStore = vi.hoisted(() => ({
 	allNodes: [] as INodeUi[],
+	workflowId: 'test-workflow',
 	name: '',
 	setName: vi.fn(),
 	setNodes: vi.fn(),
@@ -55,14 +66,7 @@ const mockDocumentStore = vi.hoisted(() => ({
 vi.mock('@/app/stores/workflowDocument.store', () => ({
 	useWorkflowDocumentStore: vi.fn().mockReturnValue(mockDocumentStore),
 	createWorkflowDocumentId: vi.fn().mockReturnValue('test-id'),
-}));
-
-// Mock useWorkflowState - using hoisted for proper initialization
-const mockWorkflowState = vi.hoisted(() => ({
-	touchParametersLastUpdatedAt: vi.fn(),
-}));
-vi.mock('@/app/composables/useWorkflowState', () => ({
-	injectWorkflowState: vi.fn(() => mockWorkflowState),
+	injectWorkflowDocumentStore: vi.fn().mockReturnValue({ value: mockDocumentStore }),
 }));
 
 // Mock useCanvasOperations - using hoisted for proper initialization
@@ -77,8 +81,10 @@ vi.mock('@/app/composables/useCanvasOperations', () => ({
 	useCanvasOperations: vi.fn(() => mockCanvasOperations),
 }));
 
-// Mock nodeTypesUtils
-vi.mock('@/app/utils/nodeTypesUtils', () => ({
+// Mock nodeTypesUtils — keep real exports (e.g. getNodeSubtitle, used by
+// useNodeHelpers) and override only the auth helpers under test.
+vi.mock('@/app/utils/nodeTypesUtils', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@/app/utils/nodeTypesUtils')>()),
 	getMainAuthField: vi.fn(),
 	getAuthTypeForNodeCredential: vi.fn(),
 }));
@@ -114,13 +120,6 @@ describe('useWorkflowUpdate', () => {
 		vi.mocked(mockDocumentStore.getNodeByName).mockReturnValue(null);
 		vi.mocked(mockDocumentStore.setNodeIssue).mockClear();
 		vi.mocked(mockDocumentStore.updateNodeProperties).mockClear();
-		workflowsStore.workflowId = 'test-workflow';
-		workflowsStore.workflow = {
-			id: 'test-workflow',
-			name: DEFAULT_NEW_WORKFLOW_NAME,
-			nodes: [],
-			connections: {},
-		} as Partial<IWorkflowDb> as IWorkflowDb;
 		workflowsStore.workflowId = 'test-workflow';
 		vi.mocked(mockDocumentStore.cloneWorkflowObject).mockReturnValue({
 			nodes: {},

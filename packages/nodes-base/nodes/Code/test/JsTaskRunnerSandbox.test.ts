@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions } from 'n8n-workflow';
 import { createResultOk, createResultError } from 'n8n-workflow';
 
@@ -12,7 +12,7 @@ describe('JsTaskRunnerSandbox', () => {
 			const executeFunctions = mock<IExecuteFunctions>();
 			executeFunctions.helpers = {
 				...executeFunctions.helpers,
-				normalizeItems: jest
+				normalizeItems: vi
 					.fn()
 					// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-return
 					.mockImplementation((items: any) => (Array.isArray(items) ? items : [items])),
@@ -77,7 +77,7 @@ describe('JsTaskRunnerSandbox', () => {
 			const executeFunctions = mock<IExecuteFunctions>();
 			executeFunctions.helpers = {
 				...executeFunctions.helpers,
-				normalizeItems: jest
+				normalizeItems: vi
 					.fn()
 					// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-return
 					.mockImplementation((items: any) => (Array.isArray(items) ? items : [items])),
@@ -113,7 +113,7 @@ describe('JsTaskRunnerSandbox', () => {
 			const executeFunctions = mock<IExecuteFunctions>();
 			executeFunctions.helpers = {
 				...executeFunctions.helpers,
-				normalizeItems: jest
+				normalizeItems: vi
 					.fn()
 					// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-return
 					.mockImplementation((items: any) => (Array.isArray(items) ? items : [items])),
@@ -126,7 +126,7 @@ describe('JsTaskRunnerSandbox', () => {
 
 			// Mock throwExecutionError to throw an error for testing
 			const throwExecutionErrorModule = await import('../throw-execution-error');
-			const throwExecutionErrorSpy = jest
+			const throwExecutionErrorSpy = vi
 				.spyOn(throwExecutionErrorModule, 'throwExecutionError')
 				.mockImplementation(() => {
 					throw new Error('Execution failed');
@@ -210,7 +210,7 @@ describe('JsTaskRunnerSandbox', () => {
 
 			// Mock throwExecutionError to throw an error for testing
 			const throwExecutionErrorModule = await import('../throw-execution-error');
-			const throwExecutionErrorSpy = jest
+			const throwExecutionErrorSpy = vi
 				.spyOn(throwExecutionErrorModule, 'throwExecutionError')
 				.mockImplementation(() => {
 					throw new Error('Execution failed');
@@ -234,7 +234,7 @@ describe('JsTaskRunnerSandbox', () => {
 
 			// Mock throwExecutionError to throw an error for testing
 			const throwExecutionErrorModule = await import('../throw-execution-error');
-			const throwExecutionErrorSpy = jest
+			const throwExecutionErrorSpy = vi
 				.spyOn(throwExecutionErrorModule, 'throwExecutionError')
 				.mockImplementation(() => {
 					throw new Error('Execution failed');

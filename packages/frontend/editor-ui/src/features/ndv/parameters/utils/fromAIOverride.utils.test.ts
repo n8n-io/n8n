@@ -25,15 +25,19 @@ const makeContext = (
 	value: string,
 	path?: string,
 	type: NodePropertyTypes = 'string',
+	parameterOverrides: Partial<OverrideContext['parameter']> = {},
 ): OverrideContext => ({
 	parameter: {
 		name: PARAMETER_NAME,
 		displayName: DISPLAY_NAME,
 		type,
+		...parameterOverrides,
 	},
 	value,
 	path: path ?? `parameters.${PARAMETER_NAME}`,
 });
+
+const FROM_AI_OVERRIDE_VALUE = `={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('${DISPLAY_NAME}', \`Pick a priority\`, 'number') }}`;
 
 const MOCK_NODE_TYPE_MIXIN = {
 	version: 1,
@@ -172,6 +176,40 @@ describe('makeOverrideValue', () => {
 
 		expect(result).not.toBeNull();
 		expect(result?.type).toEqual('fromAI');
+	});
+
+	it('displays an existing fromAI override for static options parameters', () => {
+		getNodeType.mockReturnValue(AI_NODE_TYPE);
+		const result = makeOverrideValue(
+			makeContext(FROM_AI_OVERRIDE_VALUE, undefined, 'options'),
+			mockNodeFromType(AI_NODE_TYPE),
+		);
+
+		expect(result).not.toBeNull();
+		expect(result?.type).toEqual('fromAI');
+		expect(result?.extraPropValues.description).toEqual('Pick a priority');
+	});
+
+	it('does not create an override for options parameters without an existing fromAI value', () => {
+		getNodeType.mockReturnValue(AI_NODE_TYPE);
+		const result = makeOverrideValue(
+			makeContext('', undefined, 'options'),
+			mockNodeFromType(AI_NODE_TYPE),
+		);
+
+		expect(result).toBeNull();
+	});
+
+	it('does not display existing fromAI overrides for dynamic options parameters', () => {
+		getNodeType.mockReturnValue(AI_NODE_TYPE);
+		const result = makeOverrideValue(
+			makeContext(FROM_AI_OVERRIDE_VALUE, undefined, 'options', {
+				typeOptions: { loadOptionsMethod: 'getTeams' },
+			}),
+			mockNodeFromType(AI_NODE_TYPE),
+		);
+
+		expect(result).toBeNull();
 	});
 
 	describe('legacy tool-name node denylist', () => {

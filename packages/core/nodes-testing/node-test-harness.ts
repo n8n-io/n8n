@@ -1,7 +1,7 @@
 import { Memoized } from '@n8n/decorators';
 import callsites from 'callsites';
 import glob from 'fast-glob';
-import { mock } from 'jest-mock-extended';
+import { mock } from './mock-extended';
 import isEmpty from 'lodash/isEmpty';
 import type {
 	ICredentialDataDecryptedObject,
@@ -20,6 +20,7 @@ import nock from 'nock';
 import { readFileSync, mkdtempSync, existsSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { expect } from 'vitest';
 
 import { ExecutionLifecycleHooks } from '../dist/execution-engine/execution-lifecycle-hooks';
 import { WorkflowExecute } from '../dist/execution-engine/workflow-execute';
@@ -236,6 +237,7 @@ export class NodeTestHarness {
 			currentNodeParameters: undefined,
 			parentCallbackManager: undefined,
 			ssrfBridge: undefined,
+			encryptedRunnerIdentity: undefined,
 		});
 		additionalData.credentialsHelper = credentialsHelper;
 

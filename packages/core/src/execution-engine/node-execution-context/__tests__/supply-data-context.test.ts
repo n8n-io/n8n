@@ -1,4 +1,3 @@
-import { mock } from 'jest-mock-extended';
 import type {
 	INode,
 	IWorkflowExecuteAdditionalData,
@@ -17,11 +16,12 @@ import type {
 	WorkflowExpression,
 } from 'n8n-workflow';
 import {
-	ApplicationError,
+	UnexpectedError,
 	createRunExecutionData,
 	ManualExecutionCancelledError,
 	NodeConnectionTypes,
 } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { describeCommonTests } from './shared-tests';
 import { SupplyDataContext } from '../supply-data-context';
@@ -73,7 +73,7 @@ describe('SupplyDataContext', () => {
 	const inputData: ITaskDataConnections = { [connectionType]: [[{ json: { test: 'data' } }]] };
 	const executeData = mock<IExecuteData>();
 	const runIndex = 0;
-	const closeFn = jest.fn();
+	const closeFn = vi.fn();
 	const abortSignal = mock<AbortSignal>();
 
 	const supplyDataContext = new SupplyDataContext(
@@ -128,7 +128,7 @@ describe('SupplyDataContext', () => {
 			const inputIndex = 2;
 
 			expect(() => supplyDataContext.getInputData(inputIndex, connectionType)).toThrow(
-				ApplicationError,
+				UnexpectedError,
 			);
 		});
 
@@ -136,7 +136,7 @@ describe('SupplyDataContext', () => {
 			inputData.main[inputIndex] = null;
 
 			expect(() => supplyDataContext.getInputData(inputIndex, connectionType)).toThrow(
-				ApplicationError,
+				UnexpectedError,
 			);
 		});
 	});
@@ -164,6 +164,7 @@ describe('SupplyDataContext', () => {
 		it('should get decrypted credentials', async () => {
 			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
 			credentialsHelper.getDecrypted.mockResolvedValue({ secret: 'token' });
+			credentialsHelper.isCredentialUsableByNode.mockReturnValue(true);
 
 			const credentials = await supplyDataContext.getCredentials<ICredentialDataDecryptedObject>(
 				testCredentialType,
@@ -251,7 +252,7 @@ describe('SupplyDataContext', () => {
 				abortSignal,
 			);
 
-			const sendMessageSpy = jest.spyOn(supplyDataContext, 'sendMessageToUI');
+			const sendMessageSpy = vi.spyOn(supplyDataContext, 'sendMessageToUI');
 
 			supplyDataContext.logNodeOutput(json, numberArg, stringArg);
 
@@ -268,7 +269,7 @@ describe('SupplyDataContext', () => {
 			const errorData = new ManualExecutionCancelledError('Execution was aborted');
 			const abortedSignal = mock<AbortSignal>({ aborted: true });
 			const mockHooks = {
-				runHook: jest.fn().mockResolvedValue(undefined),
+				runHook: vi.fn().mockResolvedValue(undefined),
 			};
 			const testAdditionalData = mock<IWorkflowExecuteAdditionalData>({
 				credentialsHelper,
@@ -427,7 +428,7 @@ describe('SupplyDataContext', () => {
 
 		it('should attach hints to task data when adding output', async () => {
 			const mockHooks = {
-				runHook: jest.fn().mockResolvedValue(undefined),
+				runHook: vi.fn().mockResolvedValue(undefined),
 			};
 			const testAdditionalData = mock<IWorkflowExecuteAdditionalData>({
 				credentialsHelper,
@@ -496,7 +497,7 @@ describe('SupplyDataContext', () => {
 
 		it('should not add hints property to task data if no hints exist', async () => {
 			const mockHooks = {
-				runHook: jest.fn().mockResolvedValue(undefined),
+				runHook: vi.fn().mockResolvedValue(undefined),
 			};
 			const testAdditionalData = mock<IWorkflowExecuteAdditionalData>({
 				credentialsHelper,
@@ -564,7 +565,7 @@ describe('SupplyDataContext', () => {
 		it('should handle hints when tool is used in AI workflow', async () => {
 			// This test simulates the Google Sheets Update Row tool scenario
 			const mockHooks = {
-				runHook: jest.fn().mockResolvedValue(undefined),
+				runHook: vi.fn().mockResolvedValue(undefined),
 			};
 			const testAdditionalData = mock<IWorkflowExecuteAdditionalData>({
 				credentialsHelper,

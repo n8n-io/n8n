@@ -17,7 +17,6 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { executionDataToJson } from '@/app/utils/nodeTypesUtils';
 import {
 	ASK_AI_MAX_PROMPT_LENGTH,
@@ -25,10 +24,7 @@ import {
 	ASK_AI_LOADING_DURATION_MS,
 } from '@/app/constants';
 import type { AskAiRequest } from '@/features/ai/assistant/assistant.types';
-import {
-	createWorkflowDocumentId,
-	useWorkflowDocumentStore,
-} from '@/app/stores/workflowDocument.store';
+import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 const emit = defineEmits<{
 	submit: [code: string];
 	replaceCode: [code: string];
@@ -49,6 +45,7 @@ const props = withDefaults(
 const { getSchemaForExecutionData, getInputDataWithPinned } = useDataSchema();
 const i18n = useI18n();
 const ndvStore = injectNDVStore();
+const workflowDocumentStore = injectWorkflowDocumentStore();
 
 const loadingPhraseIndex = ref(0);
 const loaderProgress = ref(0);
@@ -64,12 +61,14 @@ const isSubmitEnabled = computed(() => {
 		hasExecutionData.value
 	);
 });
-const hasExecutionData = computed(() => (ndvStore.ndvInputDataWithPinnedData || []).length > 0);
+const hasExecutionData = computed(
+	() => (ndvStore.value.ndvInputDataWithPinnedData || []).length > 0,
+);
 const loadingString = computed(() =>
 	i18n.baseText(`codeNodeEditor.askAi.loadingPhrase${loadingPhraseIndex.value}` as BaseTextKey),
 );
 const isEachItemMode = computed(() => {
-	const mode = ndvStore.activeNode?.parameters.mode as CodeExecutionMode;
+	const mode = ndvStore.value.activeNode?.parameters.mode as CodeExecutionMode;
 
 	return mode === 'runOnceForEachItem';
 });
@@ -92,19 +91,16 @@ function getErrorMessageByStatusCode(statusCode: number, message: string | undef
 }
 
 function getParentNodes() {
-	const activeNode = ndvStore.activeNode;
-	const { workflowId } = useWorkflowsStore();
+	const activeNode = ndvStore.value.activeNode;
 
-	if (!activeNode || !workflowId) return [];
+	if (!activeNode) return [];
 
-	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
-
-	return workflowDocumentStore
+	return workflowDocumentStore.value
 		.getParentNodesByDepth(activeNode?.name)
 		.filter(({ name }, i, nodes) => {
 			return name !== activeNode.name && nodes.findIndex((node) => node.name === name) === i;
 		})
-		.map((n) => workflowDocumentStore.getNodeByName(n.name))
+		.map((n) => workflowDocumentStore.value.getNodeByName(n.name))
 		.filter((n) => n !== null);
 }
 
@@ -153,7 +149,7 @@ function stopLoading() {
 
 async function onSubmit() {
 	const { restApiContext } = useRootStore();
-	const { activeNode } = ndvStore;
+	const activeNode = ndvStore.value.activeNode;
 	const { showMessage } = useToast();
 	const { alert } = useMessage();
 	if (!activeNode) return;
@@ -181,7 +177,7 @@ async function onSubmit() {
 		context: {
 			schema: schemas.parentNodesSchemas,
 			inputSchema: schemas.inputSchema,
-			ndvPushRef: ndvStore.pushRef,
+			ndvPushRef: ndvStore.value.pushRef,
 			pushRef: rootStore.pushRef,
 		},
 		forNode: 'code',
@@ -196,7 +192,7 @@ async function onSubmit() {
 			type: 'success',
 			title: i18n.baseText('codeNodeEditor.askAi.generationCompleted'),
 		});
-		useTelemetry().trackAskAI('askAi.generationFinished', {
+		useTelemetry().trackAskAI('askAi.generationFinished', ndvStore.value.pushRef, {
 			prompt: prompt.value,
 			code,
 		});
@@ -210,7 +206,7 @@ async function onSubmit() {
 			),
 		});
 		stopLoading();
-		useTelemetry().trackAskAI('askAi.generationFinished', {
+		useTelemetry().trackAskAI('askAi.generationFinished', ndvStore.value.pushRef, {
 			prompt: prompt.value,
 			code: '',
 			hasError: true,
@@ -245,7 +241,7 @@ function triggerLoadingChange() {
 }
 
 function getSessionStoragePrompt() {
-	const codeNodeName = (ndvStore.activeNode?.name as string) ?? '';
+	const codeNodeName = (ndvStore.value.activeNode?.name as string) ?? '';
 	const hashedCode = snakeCase(codeNodeName);
 
 	return useSessionStorage(`ask_ai_prompt__${hashedCode}`, '');

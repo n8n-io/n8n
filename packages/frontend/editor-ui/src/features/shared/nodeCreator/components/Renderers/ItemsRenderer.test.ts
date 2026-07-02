@@ -100,7 +100,7 @@ describe('ItemsRenderer', () => {
 				) {
 					expect(emittedEvent[0].type).toBe(itemType);
 				} else {
-					fail('Emitted event is not an array or does not have a type property');
+					expect.fail('Emitted event is not an array or does not have a type property');
 				}
 			}
 		}

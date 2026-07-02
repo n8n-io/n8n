@@ -10,7 +10,6 @@ describe('ApiKeyScope', () => {
 			'credential:delete',
 			'credential:move',
 			'execution:delete',
-			'execution:get',
 			'execution:list',
 			'execution:read',
 			'project:create',

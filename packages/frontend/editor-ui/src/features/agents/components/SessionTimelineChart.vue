@@ -1,13 +1,18 @@
 <script lang="ts" setup>
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
-import { truncate } from '@n8n/utils';
+import { truncate } from '@n8n/utils/string/truncate';
 import { useI18n } from '@n8n/i18n';
-import { HoverCardContent, HoverCardPortal, HoverCardRoot, HoverCardTrigger } from 'reka-ui';
+import { N8nHoverCard } from '@n8n/design-system';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import type { CSSProperties } from 'vue';
 import type { IdleRange, TimelineItem } from '../session-timeline.types';
-import { builtinToolLabelKey, formatDuration, itemFilterKey } from '../session-timeline.utils';
-import { chartBlockStyle } from '../session-timeline.styles';
+import {
+	builtinToolLabelKey,
+	formatDuration,
+	isSubAgentTimelineItem,
+	itemFilterKey,
+} from '../session-timeline.utils';
+import { chartBlockStyleForItem } from '../session-timeline.styles';
 import { formatToolNameForDisplay } from '../utils/toolDisplayName';
 import SessionTimelinePill from './SessionTimelinePill.vue';
 
@@ -69,7 +74,7 @@ function cellStyle(seg: Segment): Record<string, string> {
 }
 
 function eventStyle(item: TimelineItem): CSSProperties {
-	const style: CSSProperties = chartBlockStyle(item.kind);
+	const style: CSSProperties = chartBlockStyleForItem(item);
 	if (isDimmed(item)) {
 		style.opacity = '0.15';
 		style.pointerEvents = 'none';
@@ -77,7 +82,12 @@ function eventStyle(item: TimelineItem): CSSProperties {
 	return style;
 }
 
+function popoverPillKind(item: TimelineItem) {
+	return isSubAgentTimelineItem(item) ? 'subagent' : item.kind;
+}
+
 function popoverLabel(item: TimelineItem): string {
+	if (isSubAgentTimelineItem(item)) return i18n.baseText('agentSessions.timeline.subAgent');
 	switch (item.kind) {
 		case 'user':
 			return i18n.baseText('agentSessions.timeline.user');
@@ -89,8 +99,6 @@ function popoverLabel(item: TimelineItem): string {
 			return i18n.baseText('agentSessions.timeline.workflow');
 		case 'node':
 			return i18n.baseText('agentSessions.timeline.node');
-		case 'working-memory':
-			return i18n.baseText('agentSessions.timeline.memory');
 		case 'suspension':
 			return i18n.baseText('agentSessions.timeline.suspension');
 		default:
@@ -99,6 +107,9 @@ function popoverLabel(item: TimelineItem): string {
 }
 
 function popoverName(item: TimelineItem): string {
+	if (isSubAgentTimelineItem(item)) {
+		return item.subAgentName ?? formatToolNameForDisplay(item.toolName);
+	}
 	switch (item.kind) {
 		case 'user':
 		case 'agent':
@@ -111,8 +122,6 @@ function popoverName(item: TimelineItem): string {
 			return item.workflowName ?? formatToolNameForDisplay(item.toolName);
 		case 'node':
 			return item.nodeDisplayName ?? formatToolNameForDisplay(item.toolName);
-		case 'working-memory':
-			return i18n.baseText('agentSessions.timeline.memoryUpdated');
 		case 'suspension':
 			return i18n.baseText('agentSessions.timeline.waitingForUser');
 		default:
@@ -231,40 +240,41 @@ onBeforeUnmount(clearShowPopoverTimer);
 
 <template>
 	<div ref="chartRef" :class="$style.chart">
-		<HoverCardRoot :open="popoverOpen" :close-delay="0">
+		<N8nHoverCard
+			:open="popoverOpen"
+			hide-trigger
+			:reference="activePopover?.reference"
+			side="top"
+			align="center"
+			:side-offset="8"
+			:close-delay="0"
+			max-width="none"
+			:content-class="$style.hoverCardContent"
+		>
 			<!-- One shared HoverCard avoids hundreds of tooltip instances; segment handlers set content and reference. -->
-			<HoverCardTrigger as="span" :class="$style.popoverTrigger" />
-			<HoverCardPortal>
-				<HoverCardContent
-					:reference="activePopover?.reference"
-					side="top"
-					align="center"
-					:side-offset="8"
-					:class="$style.tooltipContent"
-				>
-					<div v-if="activePopover?.segment.kind === 'idle'" :class="$style.popoverInner">
-						<SessionTimelinePill
-							kind="idle"
-							:label="i18n.baseText('agentSessions.timeline.idle')"
-							show-label
-						/>
-						<span :class="$style.popoverMeta">{{ idleDuration(activePopover.segment.range) }}</span>
-					</div>
-					<div v-else-if="activePopover" :class="$style.popoverInner">
-						<SessionTimelinePill
-							:kind="activePopover.segment.item.kind"
-							:label="popoverLabel(activePopover.segment.item)"
-							show-label
-						/>
-						<span :class="$style.popoverName">{{ popoverName(activePopover.segment.item) }}</span>
-						<span v-if="popoverDuration(activePopover.segment.item)" :class="$style.popoverMeta">
-							{{ popoverDuration(activePopover.segment.item) }}
-						</span>
-						<span :class="$style.popoverMeta">{{ popoverTime(activePopover.segment.item) }}</span>
-					</div>
-				</HoverCardContent>
-			</HoverCardPortal>
-		</HoverCardRoot>
+			<template #content>
+				<div v-if="activePopover?.segment.kind === 'idle'" :class="$style.popoverInner">
+					<SessionTimelinePill
+						kind="idle"
+						:label="i18n.baseText('agentSessions.timeline.idle')"
+						show-label
+					/>
+					<span :class="$style.popoverMeta">{{ idleDuration(activePopover.segment.range) }}</span>
+				</div>
+				<div v-else-if="activePopover" :class="$style.popoverInner">
+					<SessionTimelinePill
+						:kind="popoverPillKind(activePopover.segment.item)"
+						:label="popoverLabel(activePopover.segment.item)"
+						show-label
+					/>
+					<span :class="$style.popoverName">{{ popoverName(activePopover.segment.item) }}</span>
+					<span v-if="popoverDuration(activePopover.segment.item)" :class="$style.popoverMeta">
+						{{ popoverDuration(activePopover.segment.item) }}
+					</span>
+					<span :class="$style.popoverMeta">{{ popoverTime(activePopover.segment.item) }}</span>
+				</div>
+			</template>
+		</N8nHoverCard>
 		<div
 			v-for="(seg, segIdx) in segments"
 			:key="segIdx"
@@ -384,30 +394,19 @@ onBeforeUnmount(clearShowPopoverTimer);
 }
 
 /*
- * Override the design-system tooltip's fixed dark background with the page
- * background + a border so the tooltip adapts correctly to light and dark
- * mode. Also remove the 180px max-width so our single-line row layout
+ * Keep the shared hover card compact so the single-line row layout
  * (pill · name · duration · time) doesn't wrap.
  */
-.popoverTrigger {
-	display: none;
-}
-
-.tooltipContent {
+.hoverCardContent {
 	max-width: none;
 	min-height: var(--height--sm);
 	font-size: var(--font-size--xs);
 	font-weight: var(--font-weight--medium);
 	line-height: var(--line-height--md);
-	border-radius: var(--radius--xs);
-	box-shadow: var(--shadow--sm);
 	word-wrap: break-word;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	z-index: 999;
-	background: var(--background--surface);
-	border: var(--border);
 	color: var(--color--text);
 }
 
