@@ -157,6 +157,40 @@ describe('useResourceRegistry', () => {
 			);
 		});
 
+		test('registers workflow document returned by workflows get-json', async () => {
+			const { messages, producedArtifacts, resourceNameIndex } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolName: 'workflows',
+								args: { action: 'get-json', workflowId: 'wf-existing' },
+								result: {
+									id: 'wf-existing',
+									name: 'Existing Workflow',
+									nodes: [],
+									connections: {},
+									settings: {},
+								},
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('wf-existing')).toEqual(
+				expect.objectContaining({
+					type: 'workflow',
+					id: 'wf-existing',
+					name: 'Existing Workflow',
+				}),
+			);
+			expect(resourceNameIndex.get('existing workflow')?.id).toBe('wf-existing');
+		});
+
 		test('does not collide when multiple workflows have no name', async () => {
 			const { messages, producedArtifacts } = setup();
 
