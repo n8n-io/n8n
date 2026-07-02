@@ -335,7 +335,7 @@ watch(
 	border: none;
 	border-radius: var(--radius);
 	background: transparent;
-	color: var(--icon-color--subtle);
+	color: var(--canvas--label--color);
 	cursor: pointer;
 
 	&:hover {
