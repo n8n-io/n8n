@@ -103,6 +103,7 @@ defineExpose({
 		:empty-text="noMatchLabel"
 		v-bind="searchListenerAttrs"
 		placement="bottom-start"
+		teleported
 		searchable
 		@select="handleSelect"
 	>
@@ -185,8 +186,8 @@ defineExpose({
 				v-if="item.data?.description"
 				:content="truncateBeforeLast(item.data.description, 320, 0)"
 				:class="ui.class"
-				placement="left"
-				:teleported="item.data.descriptionTooltipTeleported ?? true"
+				placement="right"
+				:teleported="false"
 			>
 				<N8nIcon icon="info" size="medium" color="text-light" :class="$style.infoIcon" />
 			</N8nTooltip>
