@@ -131,7 +131,11 @@ test.describe(
 								'authUrl',
 								'accessTokenUrl',
 								'clientId',
+								'authentication',
+								'clientCredentialType',
 								'clientSecret',
+								'privateKey',
+								'certificate',
 								'graphApiBaseUrl',
 							],
 						};
@@ -150,9 +154,7 @@ test.describe(
 				await n8n.ndv.clickCreateNewCredential();
 
 				await expect(n8n.canvas.credentialModal.oauthConnectButton).toHaveCount(1);
-				// 3 visible fields: clientCredentialType (from microsoftOAuth2Api),
-				// customScopes + useShared (from microsoftOutlookOAuth2Api).
-				await expect(n8n.canvas.credentialModal.getCredentialInputs()).toHaveCount(3);
+				await expect(n8n.canvas.credentialModal.getCredentialInputs()).toHaveCount(2);
 				await expect(n8n.aiAssistant.getCredentialEditAssistantButton()).toHaveCount(0);
 			});
 		});
