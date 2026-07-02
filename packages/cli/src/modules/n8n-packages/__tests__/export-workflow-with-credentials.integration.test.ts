@@ -264,7 +264,7 @@ describe('workflow package export — with credentials', () => {
 				expect(payload.counts.workflows).toBe(3);
 				expect(payload.counts.credentials).toBe(2);
 				expect(payload.user.id).toBe(owner.id);
-				expect(payload.workflowIds).toEqual([wfA.id, wfB.id, wfC.id]);
+				expect([...payload.workflowIds!].sort()).toEqual([wfA.id, wfB.id, wfC.id].sort());
 				// Empty filter must be omitted entirely, not recorded as `[]`.
 				expect(payload).not.toHaveProperty('projectIds');
 			} finally {

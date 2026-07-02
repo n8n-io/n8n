@@ -71,7 +71,7 @@ describe('folder package export', () => {
 		});
 	});
 
-	it('emits n8n-package-exported with the requested folderIds', async () => {
+	it('emits n8n-package-exported with the exported folderIds', async () => {
 		const owner = await createOwner();
 		const project = await createTeamProject('Project A', owner);
 		const folder = await createFolder(project, { name: 'to_production' });

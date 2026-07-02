@@ -76,7 +76,7 @@ describe('project package export', () => {
 		});
 	});
 
-	it('emits n8n-package-exported with the requested projectIds', async () => {
+	it('emits n8n-package-exported with the exported projectIds', async () => {
 		const owner = await createOwner();
 		const firstProject = await createTeamProject('Alpha Project', owner);
 		const secondProject = await createTeamProject('Beta Project', owner);
@@ -93,7 +93,7 @@ describe('project package export', () => {
 			expect(exportedEvents).toHaveLength(1);
 
 			const payload = exportedEvents[0][1] as RelayEventMap['n8n-package-exported'];
-			expect(payload.projectIds).toEqual([firstProject.id, secondProject.id]);
+			expect([...payload.projectIds!].sort()).toEqual([firstProject.id, secondProject.id].sort());
 		} finally {
 			emitSpy.mockRestore();
 		}
