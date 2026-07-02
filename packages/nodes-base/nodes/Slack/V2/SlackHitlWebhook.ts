@@ -7,7 +7,7 @@ import { verifySignature } from '../SlackTriggerHelpers';
 
 interface SlackInteractionPayload {
 	user?: { id?: string; name?: string; username?: string };
-	actions?: Array<{ action_id?: string; value?: string }>;
+	actions?: Array<{ action_id?: string; value?: string; action_ts?: string }>;
 }
 
 /** Best-effort responder identity from a Slack interaction; email needs the users:read.email scope. */
@@ -75,8 +75,13 @@ export async function slackSendAndWaitWebhook(this: IWebhookFunctions) {
 	const approved = payload.actions?.[0]?.action_id === 'n8n_hitl_approve';
 	const responder = await extractSlackResponder(this, payload);
 
+	// Slack stamps the click in action_ts (epoch seconds); fall back to receipt time.
+	const actionTs = payload.actions?.[0]?.action_ts;
+	const actionMs = actionTs ? Number(actionTs) * 1000 : NaN;
+	const respondedAt = new Date(Number.isFinite(actionMs) ? actionMs : Date.now()).toISOString();
+
 	return {
 		webhookResponse: '',
-		workflowData: [[{ json: { data: { approved, responder } } }]],
+		workflowData: [[{ json: { data: { approved, responder, respondedAt } } }]],
 	};
 }

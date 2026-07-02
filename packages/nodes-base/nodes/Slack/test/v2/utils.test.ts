@@ -29,7 +29,7 @@ describe('slackSendAndWaitWebhook', () => {
 		// Slack wire format: form-encoded body with the interaction JSON in `payload`.
 		webhookFns.getBodyData.mockReturnValue({
 			payload: JSON.stringify({
-				actions: [{ action_id: 'n8n_hitl_approve' }],
+				actions: [{ action_id: 'n8n_hitl_approve', action_ts: '1719900000.123' }],
 				user: { id: 'U1', name: 'Ada' },
 			}),
 		} as any);
@@ -43,7 +43,11 @@ describe('slackSendAndWaitWebhook', () => {
 				[
 					{
 						json: {
-							data: { approved: true, responder: { id: 'U1', name: 'Ada', source: 'slack' } },
+							data: {
+								approved: true,
+								responder: { id: 'U1', name: 'Ada', source: 'slack' },
+								respondedAt: new Date(1719900000.123 * 1000).toISOString(),
+							},
 						},
 					},
 				],
@@ -98,9 +102,11 @@ describe('slackSendAndWaitWebhook', () => {
 
 		const result = await slackSendAndWaitWebhook.call(webhookFns);
 
+		// No action_ts in the payload, so respondedAt falls back to receipt time.
 		expect((result as any).workflowData[0][0].json.data).toEqual({
 			approved: true,
 			responder: { id: 'U1', source: 'slack' },
+			respondedAt: expect.any(String),
 		});
 	});
 
