@@ -416,4 +416,41 @@ describe('AgentAdvancedPanel', () => {
 		const last = events[events.length - 1][0] as Partial<AgentJsonConfig>;
 		expect(last.config?.toolCallConcurrency).toBe(5);
 	});
+
+	describe('fields allowlist', () => {
+		it('renders only the allow-listed field', () => {
+			const wrapper = mount(AgentAdvancedPanel, {
+				props: { config: makeConfig(), fields: ['maxIterations'] },
+				global: { stubs: globalStubs },
+			});
+
+			expect(wrapper.find('[data-testid="agent-max-iterations-input"]').exists()).toBe(true);
+			expect(wrapper.find('[data-testid="agent-web-search-method"]').exists()).toBe(false);
+			expect(wrapper.find('[data-testid="agent-thinking-toggle"]').exists()).toBe(false);
+			expect(wrapper.find('[data-testid="agent-concurrency-input"]').exists()).toBe(false);
+		});
+
+		it('marks the panel headerless when fields are set (host provides the section chrome)', () => {
+			const wrapper = mount(AgentAdvancedPanel, {
+				props: { config: makeConfig(), fields: ['webSearch'] },
+				global: { stubs: globalStubs },
+			});
+			const panel = wrapper.find('[data-testid="agent-behavior-panel"]');
+			expect(panel.classes().some((name) => name.includes('headerless'))).toBe(true);
+		});
+
+		it('keeps the full panel and title without fields', () => {
+			const wrapper = mount(AgentAdvancedPanel, {
+				props: { config: makeConfig() },
+				global: { stubs: globalStubs },
+			});
+
+			const panel = wrapper.find('[data-testid="agent-behavior-panel"]');
+			expect(panel.classes().some((name) => name.includes('headerless'))).toBe(false);
+			expect(wrapper.find('[data-testid="agent-web-search-method"]').exists()).toBe(true);
+			expect(wrapper.find('[data-testid="agent-thinking-toggle"]').exists()).toBe(true);
+			expect(wrapper.find('[data-testid="agent-concurrency-input"]').exists()).toBe(true);
+			expect(wrapper.find('[data-testid="agent-max-iterations-input"]').exists()).toBe(true);
+		});
+	});
 });

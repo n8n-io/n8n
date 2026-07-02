@@ -1,6 +1,7 @@
 import { mount } from '@vue/test-utils';
 import { computed, ref } from 'vue';
 import { describe, it, expect, vi } from 'vitest';
+import { N8nSectionHeader } from '@n8n/design-system';
 
 import AgentNdvReferencedControls from '../AgentNdvReferencedControls.vue';
 import { NdvAgentConfigKey } from '../../composables/useNdvAgentConfig';
@@ -146,17 +147,8 @@ function mountControls(stub: { value: UseNdvAgentConfigReturn }) {
 			stubs: {
 				AgentCapabilitiesSection: CapabilitiesStub,
 				AgentInfoPanel: InfoPanelStub,
-				N8nCard: { template: '<div><slot /></div>' },
-				N8nCallout: {
-					template: '<div><slot /><slot name="trailingContent" /></div>',
-					props: ['theme'],
-				},
 				N8nText: { template: '<span><slot /></span>', props: ['size', 'color'] },
 				N8nLoading: { template: '<div data-testid="loading-stub" />', props: ['rows'] },
-				N8nLink: {
-					template: '<a v-bind="$attrs"><slot /></a>',
-					props: ['theme'],
-				},
 			},
 		},
 	});
@@ -187,21 +179,14 @@ describe('AgentNdvReferencedControls', () => {
 		expect(caps.props('connectedTriggers')).toEqual([]);
 	});
 
-	it('opens the Agent Builder via the orchestrator (saving the return context) on click', async () => {
+	it('renders the "Agent" section header with a divider', () => {
 		const stub = createNdvStub();
 		const wrapper = mountControls(stub);
 
-		const link = wrapper.find('[data-test-id="agent-ndv-open-builder"]');
-		expect(link.exists()).toBe(true);
-		await link.trigger('click');
-
-		expect(stub.openBuilder).toHaveBeenCalled();
-	});
-
-	it('names the shared agent in the scope notice', () => {
-		const stub = createNdvStub({ agent: makeAgent({ name: 'Billing Bot' }) });
-		const wrapper = mountControls(stub);
-		expect(wrapper.text()).toContain('Billing Bot');
+		const header = wrapper.findComponent(N8nSectionHeader);
+		expect(header.exists()).toBe(true);
+		expect(header.props('title')).toBe('agentNode.ndv.section.agent');
+		expect(header.props('bordered')).toBe(true);
 	});
 
 	it('shows a skeleton while loading with no config yet', () => {
@@ -218,11 +203,17 @@ describe('AgentNdvReferencedControls', () => {
 		expect(wrapper.find('[data-testid="capabilities-stub"]').exists()).toBe(false);
 	});
 
-	it('surfaces the save status', () => {
+	it('surfaces the save status on the section header row, mirroring the builder header', () => {
 		const stub = createNdvStub({ saveStatus: 'saving' });
 		const wrapper = mountControls(stub);
 		expect(wrapper.find('[data-testid="agent-ndv-save-status"]').exists()).toBe(true);
-		expect(wrapper.text()).toContain('agentNode.ndv.saveStatus.saving');
+		expect(wrapper.text()).toContain('agents.builder.header.saving');
+	});
+
+	it('hides the save status while idle', () => {
+		const stub = createNdvStub({ saveStatus: 'idle' });
+		const wrapper = mountControls(stub);
+		expect(wrapper.find('[data-testid="agent-ndv-save-status"]').exists()).toBe(false);
 	});
 
 	it('shows the publish handoff hint when a published agent has a newer draft', () => {

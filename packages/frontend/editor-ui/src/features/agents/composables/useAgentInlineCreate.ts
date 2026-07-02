@@ -1,0 +1,87 @@
+import { ref, toValue, type MaybeRefOrGetter } from 'vue';
+import { useRouter } from 'vue-router';
+import { useI18n } from '@n8n/i18n';
+import { useRootStore } from '@n8n/stores/useRootStore';
+
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useToast } from '@/app/composables/useToast';
+import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
+
+import { createAgent } from './useAgentApi';
+import { upsertProjectAgentsListCache } from './useProjectAgentsList';
+import { useAgentNavigation } from './useAgentNavigation';
+import type { AgentResource } from '../types';
+
+/**
+ * Eagerly create a draft agent primitive, reference it on the node, and open
+ * the Agent Builder for it — mirroring the sub-workflow "+ Create" flow in
+ * WorkflowSelectorParameterInput. An abandoned create leaves a harmless draft
+ * in the catalog (the draft/published model keeps production executions safe).
+ *
+ * Shared by the agent picker's "+ Create agent" action and the NDV builder
+ * banner, which differ only in how they write the reference onto the node
+ * (`setReference`) and their telemetry source.
+ */
+export function useAgentInlineCreate(options: {
+	projectId: MaybeRefOrGetter<string>;
+	telemetrySource: string;
+	getOriginNodeId?: () => string | undefined;
+	setReference: (agent: AgentResource) => void;
+	onCreated?: (agent: AgentResource) => void;
+}) {
+	const i18n = useI18n();
+	const rootStore = useRootStore();
+	const toast = useToast();
+	const telemetry = useTelemetry();
+	const nav = useAgentNavigation();
+	const router = useRouter();
+	const { saveCurrentWorkflow } = useWorkflowSaving({ router });
+
+	const isCreating = ref(false);
+
+	async function createAndOpen() {
+		const projectId = toValue(options.projectId);
+		if (!projectId) {
+			toast.showError(
+				new Error(i18n.baseText('agentSelector.createAgentFailed')),
+				i18n.baseText('agentSelector.createAgentFailed'),
+			);
+			return;
+		}
+
+		if (isCreating.value) return;
+		isCreating.value = true;
+
+		try {
+			const agent = await createAgent(
+				rootStore.restApiContext,
+				projectId,
+				i18n.baseText('agents.new.defaultName'),
+			);
+			upsertProjectAgentsListCache(projectId, agent);
+
+			options.setReference(agent);
+			options.onCreated?.(agent);
+
+			telemetry.track('User created agent', {
+				agent_id: agent.id,
+				source: options.telemetrySource,
+			});
+
+			// Persist the workflow so the new agent reference is saved before navigating
+			// away. Otherwise leaving the (now-dirty) workflow and abandoning the builder
+			// would drop the reference, orphaning the freshly-created draft. Saving also
+			// clears the dirty state, so the route change doesn't prompt to save.
+			const saved = await saveCurrentWorkflow({}, false);
+			if (!saved) return;
+
+			await nav.openBuilder(projectId, agent.id, options.getOriginNodeId?.());
+		} catch (error) {
+			toast.showError(error, i18n.baseText('agentSelector.createAgentFailed'));
+		} finally {
+			isCreating.value = false;
+		}
+	}
+
+	return { createAndOpen, isCreating };
+}

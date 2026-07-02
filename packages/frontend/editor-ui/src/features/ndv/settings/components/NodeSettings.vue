@@ -23,7 +23,8 @@ import NodeSettingsTabs from './NodeSettingsTabs.vue';
 import NodeWebhooks from './NodeWebhooks.vue';
 import ParameterInputList from '@/features/ndv/parameters/components/ParameterInputList.vue';
 import AgentNdvReferencedControls from '@/features/ndv/agents/components/AgentNdvReferencedControls.vue';
-import AgentNdvSettings from '@/features/ndv/agents/components/AgentNdvSettings.vue';
+import AgentNdvBuilderBanner from '@/features/ndv/agents/components/AgentNdvBuilderBanner.vue';
+import AgentNdvAdvancedSection from '@/features/ndv/agents/components/AgentNdvAdvancedSection.vue';
 import { NdvAgentConfigKey } from '@/features/ndv/agents/composables/useNdvAgentConfig';
 import { MESSAGE_AN_AGENT_NODE_TYPE } from '@/app/constants/nodeTypes';
 import get from 'lodash/get';
@@ -518,20 +519,30 @@ const nodeSettings = computed(() =>
 	),
 );
 
-// The AI Agent node renders its referenced-agent controls + a custom settings
-// tab (from the NDV container's provided orchestrator) in place of the default
-// node settings. Guarded on the orchestrator being provided so NodeSettings
+// The AI Agent node renders extra Parameters-tab surfaces (builder banner,
+// referenced-agent section, unified Advanced section) and trims the Settings
+// tab to a retained subset — all driven by the NDV container's provided
+// orchestrator. Guarded on the orchestrator being provided so NodeSettings
 // still works if ever mounted outside the NDV container.
 const ndvAgentConfig = inject(NdvAgentConfigKey, null);
 const isAgentNode = computed(() => node.value?.type === MESSAGE_AN_AGENT_NODE_TYPE);
 const showAgentNdvControls = computed(() => isAgentNode.value && ndvAgentConfig !== null);
-/** Node-execution settings kept for the agent node alongside its custom agent settings. */
+/** Node-execution settings kept for the agent node on the Settings tab. */
 const agentNodeRetainedSettings = computed(() =>
 	nodeSettings.value.filter((setting) =>
 		['notes', 'notesInFlow', 'retryOnFail', 'maxTries', 'waitBetweenTries', 'onError'].includes(
 			setting.name,
 		),
 	),
+);
+// The agent node's `advanced` collection is pulled out of the main parameter
+// list and rendered by `AgentNdvAdvancedSection` (a unified "Add option"
+// section combining it with agent-config settings) *below* the Agent section.
+const agentMainParams = computed(() =>
+	parametersByTab.value.params.filter((parameter) => parameter.name !== 'advanced'),
+);
+const agentAdvancedCollection = computed(
+	() => parametersByTab.value.params.find((parameter) => parameter.name === 'advanced') ?? null,
 );
 
 const iconSource = useNodeIconSource(nodeType, node);
@@ -790,11 +801,18 @@ function handleSelectAction(params: INodeParameters) {
 				@blur="onParameterBlur"
 			/>
 			<div v-show="openPanel === 'params'">
+				<AgentNdvBuilderBanner
+					v-if="showAgentNdvControls"
+					:origin-node-id="node.id"
+					:is-read-only="isReadOnly"
+					@set-agent-reference="(value) => valueChanged({ name: 'parameters.agentId', value })"
+				/>
+
 				<NodeWebhooks :node="node" :node-type-description="nodeType" />
 
 				<ParameterInputList
 					v-if="nodeValuesInitialized"
-					:parameters="parametersByTab.params"
+					:parameters="showAgentNdvControls ? agentMainParams : parametersByTab.params"
 					:hide-delete="true"
 					:node-values="nodeValues"
 					:is-read-only="isReadOnly"
@@ -824,6 +842,14 @@ function handleSelectAction(params: INodeParameters) {
 					/>
 				</ParameterInputList>
 				<AgentNdvReferencedControls v-if="showAgentNdvControls" />
+				<AgentNdvAdvancedSection
+					v-if="showAgentNdvControls && agentAdvancedCollection && nodeValuesInitialized"
+					:parameter="agentAdvancedCollection"
+					:node-values="nodeValues"
+					:is-read-only="isReadOnly"
+					@value-changed="valueChanged"
+					@parameter-blur="onParameterBlur"
+				/>
 				<div v-if="showNoParametersNotice" class="no-parameters">
 					<N8nText>
 						{{ i18n.baseText('nodeSettings.thisNodeDoesNotHaveAnyParameters') }}
@@ -853,7 +879,6 @@ function handleSelectAction(params: INodeParameters) {
 					source="node settings"
 				/>
 				<template v-if="showAgentNdvControls">
-					<AgentNdvSettings />
 					<ParameterInputList
 						:parameters="agentNodeRetainedSettings"
 						:hide-delete="true"

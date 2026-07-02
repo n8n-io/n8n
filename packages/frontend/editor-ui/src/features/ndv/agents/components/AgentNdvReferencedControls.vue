@@ -1,10 +1,12 @@
 <script setup lang="ts">
 /**
- * Referenced-agent controls for the AI Agent node's NDV Parameters tab.
+ * Referenced-agent controls for the AI Agent node's NDV Parameters tab,
+ * rendered as a plain "Agent" section (title + divider, like the node's
+ * "Advanced" collection section) between the call-site parameters and the
+ * Advanced section.
  *
  * Edits the *shared agent primitive* (model, instructions, tools, skills) —
- * global, applies everywhere the agent is used — so it carries a visible scope
- * boundary + an "Open Agent Builder" deep-link. Channels, tasks and sub-agents
+ * global, applies everywhere the agent is used. Channels, tasks and sub-agents
  * are intentionally excluded via the `sections` allowlist: channels and tasks
  * only make sense for a standalone agent (a channel isn't aware of — and won't
  * trigger — the workflow this node is embedded in; a task is the agent running a
@@ -13,10 +15,10 @@
  *
  * Consumes the shared {@link NdvAgentConfigKey} orchestrator (owned by the
  * stable NDV container) so it shares one config/autosave/actions instance with
- * the Settings tab.
+ * the other NDV agent surfaces.
  */
 import { computed, inject } from 'vue';
-import { N8nCallout, N8nCard, N8nLink, N8nLoading, N8nText } from '@n8n/design-system';
+import { N8nLoading, N8nSectionHeader, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 import AgentInfoPanel from '@/features/agents/components/AgentInfoPanel.vue';
@@ -40,8 +42,6 @@ const isUnavailable = computed(() => ndv?.isUnavailable.value ?? false);
 const isPublished = computed(() => ndv?.isPublished.value ?? false);
 const saveStatus = computed(() => ndv?.saveStatus.value ?? 'idle');
 
-const agentName = computed(() => agent.value?.name ?? '');
-
 // A draft edit is ahead of the published version — the user must open the
 // Agent Builder to publish it (no publish affordance in the NDV in v1).
 const hasUnpublishedChanges = computed(
@@ -51,24 +51,11 @@ const hasUnpublishedChanges = computed(
 		agent.value?.versionId !== agent.value?.activeVersionId,
 );
 
-const scopeNotice = computed(() =>
-	agentName.value
-		? i18n.baseText('agentNode.ndv.scope.notice.named', {
-				interpolate: { agentName: agentName.value },
-			})
-		: i18n.baseText('agentNode.ndv.scope.notice'),
-);
-
-// Open the builder through the shared orchestrator so it remembers this node as
-// the origin (sets the "Back to workflow" return context), rather than a plain
-// route link that would navigate without it.
-function onOpenBuilder() {
-	void ndv?.openBuilder();
-}
-
+// Mirrors the Agent Builder header: visible only while saving / freshly saved
+// (`useAgentConfigAutosave` resets 'saved' → 'idle' after a short hold).
 const saveStatusText = computed(() => {
-	if (saveStatus.value === 'saving') return i18n.baseText('agentNode.ndv.saveStatus.saving');
-	if (saveStatus.value === 'saved') return i18n.baseText('agentNode.ndv.saveStatus.saved');
+	if (saveStatus.value === 'saving') return i18n.baseText('agents.builder.header.saving');
+	if (saveStatus.value === 'saved') return i18n.baseText('agents.builder.header.saved');
 	return '';
 });
 
@@ -83,89 +70,74 @@ const actions = computed(() => ndv?.actions);
 		:class="$style.referencedControls"
 		data-testid="agent-ndv-referenced-controls"
 	>
-		<N8nCard :class="$style.scopeCard">
-			<div :class="$style.scopeBody">
-				<N8nCallout theme="info" :class="$style.scopeCallout">
-					{{ scopeNotice }}
-					<template #trailingContent>
-						<div :class="$style.scopeActions">
-							<N8nText
-								v-if="saveStatusText"
-								size="xsmall"
-								color="text-light"
-								data-testid="agent-ndv-save-status"
-							>
-								{{ saveStatusText }}
-							</N8nText>
-							<N8nLink
-								theme="primary"
-								:class="$style.builderLink"
-								data-test-id="agent-ndv-open-builder"
-								@click.prevent="onOpenBuilder"
-							>
-								{{ i18n.baseText('agentNode.ndv.openBuilder') }}
-							</N8nLink>
-						</div>
-					</template>
-				</N8nCallout>
-
+		<N8nSectionHeader :title="i18n.baseText('agentNode.ndv.section.agent')" bordered>
+			<template #actions>
 				<N8nText
-					v-if="hasUnpublishedChanges"
+					v-if="saveStatusText"
 					size="xsmall"
 					color="text-light"
-					data-testid="agent-ndv-publish-hint"
+					data-testid="agent-ndv-save-status"
 				>
-					{{ i18n.baseText('agentNode.ndv.publishHint') }}
+					{{ saveStatusText }}
 				</N8nText>
+			</template>
+		</N8nSectionHeader>
 
-				<!-- Terminal state: the referenced agent was deleted or access was lost. -->
-				<N8nText
-					v-if="isUnavailable"
-					:class="$style.unavailable"
-					color="danger"
-					size="small"
-					data-testid="agent-ndv-unavailable"
-				>
-					{{ i18n.baseText('agentNode.ndv.unavailable') }}
-				</N8nText>
+		<N8nText
+			v-if="hasUnpublishedChanges"
+			size="xsmall"
+			color="text-light"
+			data-testid="agent-ndv-publish-hint"
+		>
+			{{ i18n.baseText('agentNode.ndv.publishHint') }}
+		</N8nText>
 
-				<!-- Skeleton keeps the pane height stable during the config fetch. -->
-				<N8nLoading v-else-if="loading && !localConfig" :rows="5" data-testid="agent-ndv-loading" />
+		<!-- Terminal state: the referenced agent was deleted or access was lost. -->
+		<N8nText
+			v-if="isUnavailable"
+			:class="$style.unavailable"
+			color="danger"
+			size="small"
+			data-testid="agent-ndv-unavailable"
+		>
+			{{ i18n.baseText('agentNode.ndv.unavailable') }}
+		</N8nText>
 
-				<template v-else>
-					<div :class="$style.infoPanelWrapper">
-						<AgentInfoPanel
-							:config="localConfig"
-							:project-id="projectId"
-							:disabled="!canUpdate"
-							embedded
-							@update:config="ndv?.scheduleConfigUpdate"
-						/>
-					</div>
+		<!-- Skeleton keeps the pane height stable during the config fetch. -->
+		<N8nLoading v-else-if="loading && !localConfig" :rows="5" data-testid="agent-ndv-loading" />
 
-					<AgentCapabilitiesSection
-						:config="localConfig"
-						:tools="localConfig?.tools ?? []"
-						:custom-tools="agent?.tools ?? {}"
-						:skills="appliedSkills"
-						:connected-triggers="[]"
-						:disabled="!canUpdate"
-						:project-id="projectId"
-						:agent-id="agentId"
-						:is-published="isPublished"
-						:sections="['tools', 'skills']"
-						@add-tool="actions?.onOpenAddToolModal"
-						@open-tool="actions?.onOpenToolFromList"
-						@remove-tool="actions?.onRemoveTool"
-						@add-skill="actions?.onOpenAddSkillModal"
-						@open-skill="actions?.onOpenSkillFromList"
-						@remove-skill="actions?.onRemoveSkill"
-						@update:config="ndv?.scheduleConfigUpdate"
-						@agent-changed="ndv?.onConfigUpdated"
-					/>
-				</template>
+		<template v-else>
+			<div :class="$style.infoPanelWrapper">
+				<AgentInfoPanel
+					:config="localConfig"
+					:project-id="projectId"
+					:disabled="!canUpdate"
+					embedded
+					@update:config="ndv?.scheduleConfigUpdate"
+				/>
 			</div>
-		</N8nCard>
+
+			<AgentCapabilitiesSection
+				:config="localConfig"
+				:tools="localConfig?.tools ?? []"
+				:custom-tools="agent?.tools ?? {}"
+				:skills="appliedSkills"
+				:connected-triggers="[]"
+				:disabled="!canUpdate"
+				:project-id="projectId"
+				:agent-id="agentId"
+				:is-published="isPublished"
+				:sections="['tools', 'skills']"
+				@add-tool="actions?.onOpenAddToolModal"
+				@open-tool="actions?.onOpenToolFromList"
+				@remove-tool="actions?.onRemoveTool"
+				@add-skill="actions?.onOpenAddSkillModal"
+				@open-skill="actions?.onOpenSkillFromList"
+				@remove-skill="actions?.onRemoveSkill"
+				@update:config="ndv?.scheduleConfigUpdate"
+				@agent-changed="ndv?.onConfigUpdated"
+			/>
+		</template>
 	</div>
 </template>
 
@@ -173,43 +145,9 @@ const actions = computed(() => ndv?.actions);
 .referencedControls {
 	display: flex;
 	flex-direction: column;
-	width: 100%;
-	margin-top: var(--spacing--sm);
-}
-
-.scopeCard {
-	--card--padding: var(--spacing--sm);
-}
-
-// N8nCard lays its slot out in a row; stack the referenced controls vertically.
-.scopeBody {
-	display: flex;
-	flex-direction: column;
 	gap: var(--spacing--sm);
 	width: 100%;
-}
-
-.scopeCallout {
-	width: 100%;
-}
-
-.scopeText {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--5xs);
-}
-
-.scopeActions {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--sm);
-	white-space: nowrap;
-}
-
-.builderLink {
-	color: var(--color--primary);
-	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--bold);
+	margin-top: var(--spacing--lg);
 }
 
 .unavailable {

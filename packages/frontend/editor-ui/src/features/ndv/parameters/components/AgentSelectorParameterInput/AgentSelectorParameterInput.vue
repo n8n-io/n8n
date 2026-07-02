@@ -22,17 +22,10 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useAgentPermissions } from '@/features/agents/composables/useAgentPermissions';
 import { injectNDVStoreIfProvided } from '@/features/ndv/shared/ndv.store';
-import { useRootStore } from '@n8n/stores/useRootStore';
-import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useToast } from '@/app/composables/useToast';
-import { createAgent } from '@/features/agents/composables/useAgentApi';
-import { upsertProjectAgentsListCache } from '@/features/agents/composables/useProjectAgentsList';
-import { useAgentNavigation } from '@/features/agents/composables/useAgentNavigation';
+import { useAgentInlineCreate } from '@/features/agents/composables/useAgentInlineCreate';
 import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
-import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { useDebounce } from '@/app/composables/useDebounce';
 import { DEBOUNCE_TIME } from '@/app/constants';
-import { useRouter } from 'vue-router';
 
 import { N8nButton, N8nIcon, N8nInput, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
 
@@ -85,15 +78,8 @@ const i18n = useI18n();
 const projectStore = useProjectsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const ndvStore = injectNDVStoreIfProvided();
-const rootStore = useRootStore();
-const toast = useToast();
-const telemetry = useTelemetry();
-const nav = useAgentNavigation();
 const { onDocumentVisible } = useDocumentVisibility();
-const router = useRouter();
-const { saveCurrentWorkflow } = useWorkflowSaving({ router });
 const { debounce } = useDebounce();
-const isCreating = ref(false);
 
 const container = ref<HTMLDivElement>();
 const dropdown = ref<ComponentPublicInstance<typeof ResourceLocatorDropdown>>();
@@ -276,60 +262,25 @@ function onKeyDown(e: KeyboardEvent) {
 	}
 }
 
-// Eagerly create a draft agent primitive, reference it on the node, and open the
-// Agent Builder for it — mirroring the sub-workflow "+ Create" flow in
-// WorkflowSelectorParameterInput. An abandoned create leaves a harmless draft in
-// the catalog (the draft/published model keeps production executions safe).
-async function onAddResourceClicked() {
-	hideDropdown();
-	if (!projectId.value) {
-		toast.showError(
-			new Error(i18n.baseText('agentSelector.createAgentFailed')),
-			i18n.baseText('agentSelector.createAgentFailed'),
-		);
-		return;
-	}
-
-	if (isCreating.value) return;
-	isCreating.value = true;
-
-	try {
-		const agent = await createAgent(
-			rootStore.restApiContext,
-			projectId.value,
-			i18n.baseText('agents.new.defaultName'),
-		);
-		upsertProjectAgentsListCache(projectId.value, agent);
-
+const inlineCreate = useAgentInlineCreate({
+	projectId,
+	telemetrySource: 'node_picker',
+	getOriginNodeId: () => props.originNodeId ?? ndvStore.value?.activeNode?.id,
+	setReference: (agent) => {
 		emit('update:modelValue', {
 			__rl: true,
 			value: agent.id,
 			mode: selectedMode.value,
 			cachedResultName: agent.name,
 		});
+	},
+	// Keep the picker's own list consistent if it is reopened.
+	onCreated: () => void setAgentsResources(),
+});
 
-		// Keep the picker's own list consistent if it is reopened.
-		void setAgentsResources();
-
-		telemetry.track('User created agent', { agent_id: agent.id, source: 'node_picker' });
-
-		// Persist the workflow so the new agent reference is saved before navigating
-		// away. Otherwise leaving the (now-dirty) workflow and abandoning the builder
-		// would drop the reference, orphaning the freshly-created draft. Saving also
-		// clears the dirty state, so the route change doesn't prompt to save.
-		const saved = await saveCurrentWorkflow({}, false);
-		if (!saved) return;
-
-		await nav.openBuilder(
-			projectId.value,
-			agent.id,
-			props.originNodeId ?? ndvStore.value?.activeNode?.id,
-		);
-	} catch (error) {
-		toast.showError(error, i18n.baseText('agentSelector.createAgentFailed'));
-	} finally {
-		isCreating.value = false;
-	}
+async function onAddResourceClicked() {
+	hideDropdown();
+	await inlineCreate.createAndOpen();
 }
 
 // Heal a stale `cachedResultName` (e.g. the agent was renamed in the builder) by

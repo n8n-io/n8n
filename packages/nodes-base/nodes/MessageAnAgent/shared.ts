@@ -167,6 +167,16 @@ export const commonProperties: INodeProperties[] = [
 			},
 		],
 	},
+	{
+		// Which agent-config settings the user surfaced in the NDV's Advanced
+		// section. Pure UI state persisted with the workflow (like any other
+		// parameter); the setting values themselves live in the agent config,
+		// and execution never reads this.
+		displayName: 'Agent Options',
+		name: 'agentOptions',
+		type: 'hidden',
+		default: [],
+	},
 ];
 
 /**
