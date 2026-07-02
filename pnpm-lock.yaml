@@ -207,7 +207,6 @@ overrides:
   prebuild-install: 7.1.3
   pug: ^3.0.3
   semver: ^7.5.4
-  tar-fs: 2.1.4
   tslib: ^2.6.2
   tsconfig-paths: ^4.2.0
   typescript: 5.9.2
@@ -254,9 +253,7 @@ overrides:
   openai: 6.21.0
   uuid@<=11.1.1: 11.1.1
   langsmith@<=0.6.0: 0.6.0
-  brace-expansion@<=2.1.0: 2.1.0
   qs@<=6.15.2: 6.15.2
-  tar: 7.5.16
   '@tootallnate/once@<=2.0.1': 2.0.1
   protobufjs@<=7.6.3: 7.6.3
   multer: 2.2.0
@@ -267,9 +264,12 @@ overrides:
   tmp: 0.2.7
   ws: 8.21.0
   axios: 1.18.0
-  vue-i18n@<=11.4.4: 11.4.4
   hono@<=4.12.27: 4.12.27
+  vue-i18n@<=11.4.4: 11.4.4
   linkify-it@<=5.0.1: 5.0.1
+  tar-fs: 2.1.5
+  tar: 7.5.17
+  brace-expansion@<=5.0.7: 5.0.7
 
 patchedDependencies:
   '@lezer/highlight':
@@ -9615,9 +9615,6 @@ packages:
     resolution: {integrity: sha512-GAwkz0AihzY5bkwIY5QDR+LvsRQgB/B+1foMPvi0FZPMl5fjD7ICiznUiBdLYMH1QYe6vqu4gWYytZOccLouFw==}
     engines: {node: '>= 10.0.0'}
 
-  balanced-match@1.0.2:
-    resolution: {integrity: sha512-3oSeUO0TMV67hN1AmbXsK4yaqU7tjiHlbxRDZOpH0KW9+CeX4bRAaX0Anxt0tx2MrpRpWwQaPwIlISEJhYU5Pw==}
-
   balanced-match@2.0.0:
     resolution: {integrity: sha512-1ugUSr8BHXRnK23KfuYS+gVMC3LB8QGH9W1iGtDPsNWoQbgtXSExkBu2aDR4epiGWZOjZsj6lDl/N/AqqTC3UA==}
 
@@ -9703,11 +9700,8 @@ packages:
   bowser@2.11.0:
     resolution: {integrity: sha512-AlcaJBi/pqqJBIQ8U9Mcpc9i8Aqxn88Skv5d+xBX006BY5u8N3mGLHa5Lgppa7L/HfwgwLgZ6NYs+Ag6uUmJRA==}
 
-  brace-expansion@2.1.0:
-    resolution: {integrity: sha512-TN1kCZAgdgweJhWWpgKYrQaMNHcDULHkWwQIspdtjV4Y5aurRdZpjAqn6yX3FPqTA9ngHCc4hJxMAMgGfve85w==}
-
-  brace-expansion@5.0.6:
-    resolution: {integrity: sha512-kLpxurY4Z4r9sgMsyG0Z9uzsBlgiU/EFKhj/h91/8yHu0edo7XuixOIH3VcJ8kkxs6/jPzoI6U9Vj3WqbMQ94g==}
+  brace-expansion@5.0.7:
+    resolution: {integrity: sha512-7oFy703dxfY3/NLxC1fh2SUCQ0H9rmAY+5EpDVfXjUTTs+HEwR2nYaqLv+GWcTsumwxPfiz6CzCNkwXwBUwqCA==}
     engines: {node: 18 || 20 || >=22}
 
   braces@3.0.3:
@@ -11584,8 +11578,8 @@ packages:
     resolution: {integrity: sha512-7OnTFAVPefgw2eBJ1xj2PGGR9FwYzSUso9decayHgCDX4sJkHLdcsYTytTg+tYv+wKF3U8gJuSBz2jJpQV4u/g==}
     engines: {node: '>=16.1.0'}
 
-  fast-uri@3.1.2:
-    resolution: {integrity: sha512-rVjf7ArG3LTk+FS6Yw81V1DLuZl1bRbNrev6Tmd/9RaroeeRRJhAt7jg/6YFxbvAQXUCavSoZhPPj6oOx+5KjQ==}
+  fast-uri@3.1.3:
+    resolution: {integrity: sha512-i70LwGWUduXqzicKXWshooq+sWL1K3WUU5rKZNG/0i3a1OSoX3HqhH5WbWwTmqWfor4urUakGPiRQcleRZTwOg==}
 
   fast-xml-builder@1.1.7:
     resolution: {integrity: sha512-Yh7/7rQuMXICNr0oMYDR2yHP6oUvmQsTToFeOWj/kIDhAwQ+c4Ol/lbcwOmEM5OHYQmh6S6EQSQ1sljCKP36bQ==}
@@ -16681,8 +16675,8 @@ packages:
     resolution: {integrity: sha512-Re10+NauLTMCudc7T5WLFLAwDhQ0JWdrMK+9B2M8zR5hRExKmsRDCBA7/aV/pNJFltmBFO5BAMlQFi/vq3nKOg==}
     engines: {node: '>=6'}
 
-  tar-fs@2.1.4:
-    resolution: {integrity: sha512-mDAjwmZdh7LTT6pNleZ05Yt65HC3E+NiQzl672vQG38jIrehtJk/J3mNwIg+vShQPcLF/LV7CMnDW6vjj6sfYQ==}
+  tar-fs@2.1.5:
+    resolution: {integrity: sha512-OboTd8mmMhZDNPV+UjQcK9yKAatXu2aJ+r1w4im1Otd4M4fl2hwvdoXUxIYHFTHWK/3y3FarBP70v3vwmGlOxw==}
 
   tar-stream@2.2.0:
     resolution: {integrity: sha512-ujeqbceABgwMZxEJnk2HDY2DlnUZ+9oEcb1KzTVfYHio0UE6dG71n60d8D2I4qNvleWrrXpmjpt7vZeF1LnMZQ==}
@@ -16691,8 +16685,8 @@ packages:
   tar-stream@3.1.7:
     resolution: {integrity: sha512-qJj60CXt7IU1Ffyc3NJMjh6EkuCFej46zUqJ4J7pqYlThyd9bO0XBTmcOIhSzZJVWfsLks0+nle/j538YAW9RQ==}
 
-  tar@7.5.16:
-    resolution: {integrity: sha512-56adEpPMouktRlBLXiaYFFzZ/3+JXa8P9n7WbR+ibIjtviN55mEaOkiysCnPnWm+7kkui1Dn8J9l+g6zV8731w==}
+  tar@7.5.17:
+    resolution: {integrity: sha512-wPEBwzapC+2PaTYPH6e2L+cNOEE227S47wUYFqlegcs8zlLLmeb9Fcff1HVZY4Fwku/1Eyv38n7GYwB2aaS71g==}
     engines: {node: '>=18'}
 
   tarn@3.0.2:
@@ -20997,7 +20991,7 @@ snapshots:
       '@currents/commit-info': 1.0.1-beta.0
       async-retry: 1.3.3
       axios: 1.18.0(debug@4.4.1)
-      axios-retry: 4.5.0(axios@1.18.0)
+      axios-retry: 4.5.0(axios@1.18.0(debug@4.4.1))
       c12: 1.11.2(magicast@0.3.5)
       chalk: 4.1.2
       commander: 12.1.0
@@ -23224,7 +23218,7 @@ snapshots:
   '@rudderstack/rudder-sdk-node@3.0.5':
     dependencies:
       axios: 1.18.0(debug@4.4.1)
-      axios-retry: 4.5.0(axios@1.18.0)
+      axios-retry: 4.5.0(axios@1.18.0(debug@4.4.1))
       component-type: 2.0.0
       join-component: 1.1.0
       lodash.clonedeep: 4.5.0
@@ -25908,7 +25902,7 @@ snapshots:
   ajv@8.18.0:
     dependencies:
       fast-deep-equal: 3.1.3
-      fast-uri: 3.1.2
+      fast-uri: 3.1.3
       json-schema-traverse: 1.0.0
       require-from-string: 2.0.2
 
@@ -26226,7 +26220,7 @@ snapshots:
 
   axe-core@4.7.2: {}
 
-  axios-retry@4.5.0(axios@1.18.0):
+  axios-retry@4.5.0(axios@1.18.0(debug@4.4.1)):
     dependencies:
       axios: 1.18.0(debug@4.4.1)
       is-retry-allowed: 2.2.0
@@ -26374,8 +26368,6 @@ snapshots:
     dependencies:
       '@babel/types': 7.28.5
 
-  balanced-match@1.0.2: {}
-
   balanced-match@2.0.0: {}
 
   balanced-match@4.0.4: {}
@@ -26458,11 +26450,7 @@ snapshots:
 
   bowser@2.11.0: {}
 
-  brace-expansion@2.1.0:
-    dependencies:
-      balanced-match: 1.0.2
-
-  brace-expansion@5.0.6:
+  brace-expansion@5.0.7:
     dependencies:
       balanced-match: 4.0.4
 
@@ -26674,7 +26662,7 @@ snapshots:
       promise-inflight: 1.0.1
       rimraf: 3.0.2
       ssri: 8.0.1
-      tar: 7.5.16
+      tar: 7.5.17
       unique-filename: 1.1.1
     transitivePeerDependencies:
       - bluebird
@@ -27794,7 +27782,7 @@ snapshots:
       '@grpc/proto-loader': 0.7.13
       docker-modem: 5.0.6
       protobufjs: 7.6.3
-      tar-fs: 2.1.4
+      tar-fs: 2.1.5
       uuid: 11.1.1
     transitivePeerDependencies:
       - supports-color
@@ -28823,7 +28811,7 @@ snapshots:
       '@babel/runtime': 7.28.4
       tslib: 2.8.1
 
-  fast-uri@3.1.2: {}
+  fast-uri@3.1.3: {}
 
   fast-xml-builder@1.1.7:
     dependencies:
@@ -29222,7 +29210,7 @@ snapshots:
       node-fetch-native: 1.6.6
       nypm: 0.5.4
       pathe: 2.0.3
-      tar: 7.5.16
+      tar: 7.5.17
 
   github-buttons@2.29.1: {}
 
@@ -31741,31 +31729,31 @@ snapshots:
 
   minimatch@10.0.1:
     dependencies:
-      brace-expansion: 2.1.0
+      brace-expansion: 5.0.7
 
   minimatch@10.2.1:
     dependencies:
-      brace-expansion: 5.0.6
+      brace-expansion: 5.0.7
 
   minimatch@10.2.3:
     dependencies:
-      brace-expansion: 5.0.6
+      brace-expansion: 5.0.7
 
   minimatch@5.1.8:
     dependencies:
-      brace-expansion: 2.1.0
+      brace-expansion: 5.0.7
 
   minimatch@9.0.1:
     dependencies:
-      brace-expansion: 2.1.0
+      brace-expansion: 5.0.7
 
   minimatch@9.0.3:
     dependencies:
-      brace-expansion: 2.1.0
+      brace-expansion: 5.0.7
 
   minimatch@9.0.9:
     dependencies:
-      brace-expansion: 2.1.0
+      brace-expansion: 5.0.7
 
   minimist@1.2.8: {}
 
@@ -32425,7 +32413,7 @@ snapshots:
       npmlog: 6.0.2
       rimraf: 3.0.2
       semver: 7.7.3
-      tar: 7.5.16
+      tar: 7.5.17
       which: 2.0.2
     transitivePeerDependencies:
       - bluebird
@@ -33359,7 +33347,7 @@ snapshots:
       pump: 3.0.0
       rc: 1.2.8
       simple-get: 4.0.1
-      tar-fs: 2.1.4
+      tar-fs: 2.1.5
       tunnel-agent: 0.6.0
 
   precinct@12.2.0:
@@ -34772,7 +34760,7 @@ snapshots:
       bindings: 1.5.0
       node-addon-api: 7.1.0
       prebuild-install: 7.1.3
-      tar: 7.5.16
+      tar: 7.5.17
     optionalDependencies:
       node-gyp: 8.4.1
     transitivePeerDependencies:
@@ -35285,7 +35273,7 @@ snapshots:
 
   tapable@2.2.2: {}
 
-  tar-fs@2.1.4:
+  tar-fs@2.1.5:
     dependencies:
       chownr: 1.1.4
       mkdirp-classic: 0.5.3
@@ -35306,7 +35294,7 @@ snapshots:
       fast-fifo: 1.3.2
       streamx: 2.22.1
 
-  tar@7.5.16:
+  tar@7.5.17:
     dependencies:
       '@isaacs/fs-minipass': 4.0.1
       chownr: 3.0.0
@@ -35385,7 +35373,7 @@ snapshots:
       proper-lockfile: 4.1.2
       properties-reader: 2.3.0
       ssh-remote-port-forward: 1.0.4
-      tar-fs: 2.1.4
+      tar-fs: 2.1.5
       tmp: 0.2.7
       undici: 7.28.0
     transitivePeerDependencies:
