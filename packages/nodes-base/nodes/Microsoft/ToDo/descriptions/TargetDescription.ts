@@ -16,9 +16,11 @@ export const userTargetRLC: INodeProperties = {
 	displayName: 'User',
 	name: 'userTarget',
 	type: 'resourceLocator',
-	// Node-level target, not per-item: `noDataExpression` keeps it a fixed value for the whole
-	// run, so the transport resolving it once (item 0) can never silently target the wrong user
-	// from a per-item expression like `={{ $json.user }}`.
+	// Node-level target, not per-item: resolved once (item 0) for the whole run.
+	// `noDataExpression` stops the editor offering a per-item expression toggle (which would
+	// silently apply item 0's user to every item). It's a UI guard only, though: unlike a plain
+	// string param it does NOT neutralize an expression injected into the RLC's value via
+	// import/API — the resolved value is validated regardless.
 	noDataExpression: true,
 	default: { mode: 'id', value: '' },
 	required: true,
