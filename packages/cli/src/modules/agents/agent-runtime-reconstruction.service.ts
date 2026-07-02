@@ -86,8 +86,6 @@ export interface ReconstructAgentRuntimeParams {
 	toolDescriptors: Record<string, ToolDescriptor>;
 	toolCodeByName: Record<string, string>;
 	skills: Record<string, AgentSkill>;
-	/** Required for workflow tool resolution. */
-	userId: string;
 	runtimeProfile: AgentRuntimeProfile;
 	/** Delegating parent agent id for sub-agent runs; defaults to memoryOwnerAgentId for top-level. */
 	parentAgentIdForDelegation?: string;
@@ -148,7 +146,6 @@ export class AgentRuntimeReconstructionService {
 	async reconstructFromAgentEntity(
 		agentEntity: Agent,
 		credentialProvider: CredentialProvider,
-		userId: string,
 		integrationType?: string,
 	): Promise<{ agent: RuntimeAgent; toolRegistry: ToolRegistry }> {
 		const config = agentEntity.schema;
@@ -176,7 +173,6 @@ export class AgentRuntimeReconstructionService {
 			toolDescriptors,
 			toolCodeByName: toolsByName,
 			skills: agentEntity.skills ?? {},
-			userId,
 			runtimeProfile: 'top-level',
 			parentAgentIdForDelegation: agentEntity.id,
 			integrationType,
@@ -208,7 +204,6 @@ export class AgentRuntimeReconstructionService {
 		toolDescriptors: Record<string, ToolDescriptor>;
 		toolCodeByName: Record<string, string>;
 		skills: Record<string, AgentSkill>;
-		userId: string;
 		runtimeProfile: AgentRuntimeProfile;
 		parentAgentIdForDelegation?: string;
 		integrationType?: string;
@@ -223,7 +218,6 @@ export class AgentRuntimeReconstructionService {
 			toolDescriptors,
 			toolCodeByName,
 			skills,
-			userId,
 			runtimeProfile,
 			parentAgentIdForDelegation,
 			integrationType,
@@ -273,7 +267,6 @@ export class AgentRuntimeReconstructionService {
 			agentId: memoryOwnerAgentId,
 			projectId,
 			credentialProvider,
-			userId,
 			runtimeProfile,
 			config,
 			subAgentDelegation,
@@ -378,7 +371,6 @@ export class AgentRuntimeReconstructionService {
 		agentId: string;
 		projectId: string;
 		credentialProvider: CredentialProvider;
-		userId: string;
 		runtimeProfile: AgentRuntimeProfile;
 		config: AgentJsonConfig;
 		subAgentDelegation: SubAgentDelegationConfig;
@@ -391,7 +383,6 @@ export class AgentRuntimeReconstructionService {
 			agentId,
 			projectId,
 			credentialProvider,
-			userId,
 			runtimeProfile,
 			config,
 			subAgentDelegation,
@@ -483,7 +474,6 @@ export class AgentRuntimeReconstructionService {
 				parentAgentId: parentAgentIdForDelegation,
 				projectId,
 				credentialProvider,
-				userId,
 				delegation: subAgentDelegation,
 			});
 			this.attachWriteTodosTool(agent, agentId);
@@ -500,11 +490,9 @@ export class AgentRuntimeReconstructionService {
 		parentAgentId: string;
 		projectId: string;
 		credentialProvider: CredentialProvider;
-		userId: string;
 		delegation: SubAgentDelegationConfig;
 	}): Promise<void> {
-		const { agent, config, parentAgentId, projectId, credentialProvider, userId, delegation } =
-			params;
+		const { agent, config, parentAgentId, projectId, credentialProvider, delegation } = params;
 		const inlineSubAgentModelsByDifficulty = await this.resolveInlineSubAgentModelsByDifficulty(
 			config,
 			credentialProvider,
@@ -515,7 +503,6 @@ export class AgentRuntimeReconstructionService {
 				...delegation,
 				projectId,
 				parentAgentId,
-				userId,
 				credentialProvider,
 				policy: this.buildSubAgentPolicy(config),
 				...(inlineSubAgentModelsByDifficulty !== undefined

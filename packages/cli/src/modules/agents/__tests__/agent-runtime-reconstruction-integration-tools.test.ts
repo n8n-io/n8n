@@ -336,7 +336,6 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 						agentId: string;
 						projectId: string;
 						credentialProvider: unknown;
-						userId: string;
 						runtimeProfile: 'top-level';
 						config: AgentJsonConfig;
 						subAgentDelegation: {
@@ -352,7 +351,6 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 				agentId,
 				projectId,
 				credentialProvider: mock(),
-				userId: 'user-1',
 				runtimeProfile: 'top-level',
 				config: {
 					name: 'Test Agent',
