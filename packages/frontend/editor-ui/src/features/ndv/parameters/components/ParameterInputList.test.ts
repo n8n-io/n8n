@@ -2063,6 +2063,49 @@ describe('ParameterInputList', () => {
 			expect(queryAllByTestId('ai-gateway-unsupported-action-notice')).toHaveLength(1);
 		});
 
+		it('should anchor the notice to the first "operation" property when there is no options selector', async () => {
+			// Fallback path: a node whose only `operation` property is not an options selector
+			// (e.g. a routing notice). The notice must still render exactly once, on that property.
+			vi.mocked(useAiGateway).mockReturnValue({
+				isEnabled: { value: true } as never,
+				isCredentialTypeSupported: vi.fn(() => true),
+				isNodeTypeVersionSupported: vi.fn(() => true),
+				isActionSupported: vi.fn(() => false),
+				isNodePropertyHidden: vi.fn(() => false),
+				balance: { value: undefined } as never,
+				budget: { value: undefined } as never,
+				fetchError: { value: null } as never,
+				fetchConfig: vi.fn(),
+				fetchWallet: vi.fn(),
+				saveAfterToggle: vi.fn(),
+			});
+
+			ndvStore.activeNode = {
+				...TEST_NODE_NO_ISSUES,
+				credentials: { openAiApi: { id: null, name: '', __aiGatewayManaged: true } },
+			};
+
+			const operationRoutingNotice: INodeProperties = {
+				displayName: 'GET /teamCreditUsage',
+				name: 'operation',
+				type: 'notice',
+				default: '',
+			};
+
+			const { queryAllByTestId } = renderComponent({
+				props: {
+					parameters: [resourceParameter, operationRoutingNotice],
+					nodeValues: {
+						parameters: { resource: 'audio', operation: 'transcribe' },
+					},
+					path: 'parameters',
+				},
+			});
+			await flushPromises();
+
+			expect(queryAllByTestId('ai-gateway-unsupported-action-notice')).toHaveLength(1);
+		});
+
 		it('should not show unsupported action notice when credential is not gateway-managed', async () => {
 			ndvStore.activeNode = {
 				...TEST_NODE_NO_ISSUES,
