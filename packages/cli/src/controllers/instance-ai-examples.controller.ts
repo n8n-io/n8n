@@ -3,6 +3,7 @@ import { InstanceAiExamplesQueryDto } from '@n8n/api-types';
 import { Get, Query, RestController } from '@n8n/decorators';
 import path from 'node:path';
 import { readFileSync } from 'node:fs';
+import { jsonParse } from 'n8n-workflow';
 
 interface ExampleNode {
 	name: string;
@@ -95,37 +96,40 @@ export class InstanceAiExamplesController {
 	}
 
 	private loadData(): ExamplesData {
-		if (!this.cachedData) {
-			const filePath = path.resolve(
-				__dirname,
-				'..',
-				'..',
-				'..',
-				'frontend',
-				'editor-ui',
-				'src',
-				'experiments',
-				'instanceAiTemplateExamples',
-				'instance-ai-examples.data.json',
-			);
-			const raw = readFileSync(filePath, 'utf-8');
-			const rawData = JSON.parse(raw) as RawExamplesData;
-
-			const workflows: ExampleWorkflow[] = rawData.workflows.map((w) => ({
-				...w,
-				nodes: w.nodes.map((n) => ({
-					...n,
-					iconData: rawData.nodeIcons[n.name],
-				})),
-			}));
-
-			this.cachedData = {
-				categories: rawData.categories,
-				subcategories: rawData.subcategories,
-				totalWorkflows: rawData.totalWorkflows,
-				workflows,
-			};
+		if (this.cachedData) {
+			return this.cachedData;
 		}
-		return this.cachedData!;
+
+		const filePath = path.resolve(
+			__dirname,
+			'..',
+			'..',
+			'..',
+			'frontend',
+			'editor-ui',
+			'src',
+			'experiments',
+			'instanceAiTemplateExamples',
+			'instance-ai-examples.data.json',
+		);
+		const raw = readFileSync(filePath, 'utf-8');
+		const rawData = jsonParse<RawExamplesData>(raw);
+
+		const workflows: ExampleWorkflow[] = rawData.workflows.map((w) => ({
+			...w,
+			nodes: w.nodes.map((n) => ({
+				...n,
+				iconData: rawData.nodeIcons[n.name],
+			})),
+		}));
+
+		this.cachedData = {
+			categories: rawData.categories,
+			subcategories: rawData.subcategories,
+			totalWorkflows: rawData.totalWorkflows,
+			workflows,
+		};
+
+		return this.cachedData;
 	}
 }
