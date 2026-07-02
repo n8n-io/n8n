@@ -130,6 +130,33 @@ describe('useResourceRegistry', () => {
 			);
 		});
 
+		test('registers successful workflow updates from workflowId in args', async () => {
+			const { messages, producedArtifacts } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolName: 'workflows',
+								args: { action: 'update', workflowId: 'wf-update', name: 'Updated Workflow' },
+								result: { success: true },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('wf-update')).toEqual(
+				expect.objectContaining({
+					type: 'workflow',
+					id: 'wf-update',
+					name: 'Updated Workflow',
+				}),
+			);
+		});
+
 		test('does not collide when multiple workflows have no name', async () => {
 			const { messages, producedArtifacts } = setup();
 
