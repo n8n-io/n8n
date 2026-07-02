@@ -412,8 +412,9 @@ Local run against a pool of container lanes (reuses `scripts/run-eval-lanes.sh`,
 which starts + seeds the lanes and forwards everything after `--`):
 
 ```bash
-# 6 lanes; build via MCP + verify the mcp tier, one experiment
-./scripts/run-eval-lanes.sh --instance-count 6 --tier mcp -- \
+# 6 lanes; build via MCP + verify the mcp tier, one experiment.
+# --concurrency 12 = lanes * 2 (the script's own default is lanes * 4).
+./scripts/run-eval-lanes.sh --instance-count 6 --tier mcp --concurrency 12 -- \
   --build-via-mcp \
   --dataset mcp-workflow-evals \
   --baseline-prefix mcp-baseline-
@@ -427,14 +428,18 @@ dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai \
   --build-via-mcp \
   --tier mcp \
   --iterations 3 \
-  --concurrency 8 \
+  --concurrency 4 \
   --dataset mcp-workflow-evals \
   --baseline-prefix mcp-baseline-
 ```
 
 In CI this is what `ci-mcp-evals.yml` runs (see `test-evals-mcp.yml`): a single
-job starts `lanes` containers and runs one `--build-via-mcp` process. Keep
-`--concurrency` at roughly `lanes * 4` so no lane sits idle.
+job starts `lanes` containers and runs one `--build-via-mcp` process, defaulting
+`--concurrency` to `lanes * 2`. Use the same ratio locally: `claude` builds,
+mock generation, and the verifier all draw on one Anthropic budget, and running
+lanes flat-out at `lanes * 4` (each lane's per-lane build cap) starves it,
+surfacing as verifier/MCP timeouts. Treat `lanes * 4` as an aggressive upper
+bound for keys with rate-limit headroom, not the starting point.
 
 ## Discovery evals
 
