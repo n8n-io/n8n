@@ -20,15 +20,14 @@ const i18n = useI18n();
 const credentialAdapter = inject(TOOL_CONNECTION_CREDENTIAL_ADAPTER_KEY, null);
 
 const shouldShowCredentialPicker = computed(() => {
-	const credentials = props.item.credentials;
-	if (!credentialAdapter || !credentials?.length) return false;
-
 	if (props.item.isConnected) {
 		return true;
 	}
 
-	return credentials.some(
-		({ authType }) => credentialAdapter.getCredentialsByType(authType).length > 0,
+	return Boolean(
+		props.item.credentials?.some(
+			({ authType }) => (credentialAdapter?.getCredentialsByType(authType).length ?? 0) > 0,
+		),
 	);
 });
 

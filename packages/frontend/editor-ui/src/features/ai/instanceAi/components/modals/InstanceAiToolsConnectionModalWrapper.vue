@@ -194,32 +194,26 @@ function buildItem(
 
 const builtInServiceDefinitions = computed<ServiceConnectionDefinition[]>(() => {
 	const out: ServiceConnectionDefinition[] = [];
-	if (isBrowserUseEnabled.value) {
-		out.push({
-			id: BROWSER_USE_ITEM_ID,
-			titleKey: 'instanceAi.connections.add.browserUse',
-			descriptionKey: 'instanceAi.connections.types.browserUse.description',
-			iconSource: { type: 'icon', name: 'globe' },
-			detailComponent: BrowserUseSetupContent,
-			detailProps: { embedded: true },
-			isAvailable: true,
-			isConnected: settingsStore.isBrowserUseConnected,
-		});
-	}
-
-	if (isComputerUseEnabled.value) {
-		out.push({
-			id: COMPUTER_USE_ITEM_ID,
-			titleKey: 'instanceAi.connections.add.computerUse',
-			descriptionKey: 'instanceAi.connections.types.computerUse.description',
-			iconSource: { type: 'icon', name: 'mouse-pointer' },
-			detailComponent: ComputerUseSetupContent,
-			detailProps: { embedded: true },
-			isAvailable: !settingsStore.isLocalGatewayDisabledByAdmin,
-			isConnected: settingsStore.isGatewayConnected,
-		});
-	}
-
+	out.push({
+		id: BROWSER_USE_ITEM_ID,
+		titleKey: 'instanceAi.connections.add.browserUse',
+		descriptionKey: 'instanceAi.connections.types.browserUse.description',
+		iconSource: { type: 'icon', name: 'globe' },
+		detailComponent: BrowserUseSetupContent,
+		detailProps: { embedded: true },
+		isAvailable: isBrowserUseEnabled.value,
+		isConnected: settingsStore.isBrowserUseConnected,
+	});
+	out.push({
+		id: COMPUTER_USE_ITEM_ID,
+		titleKey: 'instanceAi.connections.add.computerUse',
+		descriptionKey: 'instanceAi.connections.types.computerUse.description',
+		iconSource: { type: 'icon', name: 'mouse-pointer' },
+		detailComponent: ComputerUseSetupContent,
+		detailProps: { embedded: true },
+		isAvailable: isComputerUseEnabled.value,
+		isConnected: settingsStore.isGatewayConnected,
+	});
 	return out;
 });
 
@@ -245,19 +239,20 @@ const activeServiceDefinition = computed<ServiceConnectionDefinition | null>(() 
 
 const items = computed<ToolConnectionItem[]>(() => {
 	const out: ToolConnectionItem[] = [...serviceItems.value];
-	if (!isMcpEnabled.value) return out;
-
-	const catalog = mcpStore.catalog ?? [];
-	for (const server of catalog) {
-		const connections = mcpStore.connectionsByServerSlug.get(server.slug) ?? [];
-		if (connections.length === 0) {
-			out.push(buildItem(server, undefined));
-			continue;
-		}
-		for (const connection of connections) {
-			out.push(buildItem(server, connection));
+	if (isMcpEnabled.value) {
+		const catalog = mcpStore.catalog ?? [];
+		for (const server of catalog) {
+			const connections = mcpStore.connectionsByServerSlug.get(server.slug) ?? [];
+			if (connections.length === 0) {
+				out.push(buildItem(server, undefined));
+				continue;
+			}
+			for (const connection of connections) {
+				out.push(buildItem(server, connection));
+			}
 		}
 	}
+
 	return out;
 });
 
@@ -380,15 +375,17 @@ async function handleDisconnect(item: ToolConnectionItem) {
 }
 
 async function handleConnect(item: ToolConnectionItem) {
-	if (item.kind === 'service') {
-		activeItemId.value = item.id;
-		return;
+	switch (item.kind) {
+		case 'service':
+			activeItemId.value = item.id;
+			break;
+		case 'mcp-server':
+			const server = findServerForItem(item);
+			if (server) {
+				await createCredentialAndConnect(server);
+			}
+			break;
 	}
-
-	if (item.kind !== 'mcp-server') return;
-	const server = findServerForItem(item);
-	if (!server) return;
-	await createCredentialAndConnect(server);
 }
 </script>
 
