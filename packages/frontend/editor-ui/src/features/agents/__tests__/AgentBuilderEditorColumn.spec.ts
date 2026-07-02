@@ -70,7 +70,12 @@ vi.mock('../components/AgentIdentityHeader.vue', () => ({
 }));
 
 vi.mock('../components/AgentInfoPanel.vue', () => ({
-	default: { name: 'AgentInfoPanel', template: '<div />' },
+	default: {
+		name: 'AgentInfoPanel',
+		template:
+			'<div><div v-if="showModel !== false" data-testid="agent-model-panel" /><div v-if="showInstructions !== false" data-testid="agent-instructions-panel" /></div>',
+		props: ['showModel', 'showInstructions'],
+	},
 }));
 
 vi.mock('../components/AgentJsonEditor.vue', () => ({
@@ -98,6 +103,10 @@ const componentSource = readFileSync(
 	resolve(dirname(fileURLToPath(import.meta.url)), '../components/AgentBuilderEditorColumn.vue'),
 	'utf8',
 );
+const tabPanelSource = readFileSync(
+	resolve(dirname(fileURLToPath(import.meta.url)), '../components/AgentBuilderTabPanel.vue'),
+	'utf8',
+);
 
 // First mount of this SFC eats the Vite transform cost; give it headroom.
 vi.setConfig({ testTimeout: 30_000 });
@@ -106,6 +115,7 @@ async function mountColumn(
 	overrides: Partial<{
 		activeMainTab: 'agent' | 'sessions' | 'settings';
 		mainTabOptions: Array<{ label: string; value: 'agent' | 'sessions' | 'settings' }>;
+		knowledgeBaseEnabled: boolean;
 	}> = {},
 ) {
 	const { default: AgentBuilderEditorColumn } = await import(
@@ -131,7 +141,7 @@ async function mountColumn(
 			agentFiles: [],
 			agentFilesLoading: false,
 			agentFilesUploading: false,
-			knowledgeBaseEnabled: true,
+			knowledgeBaseEnabled: overrides.knowledgeBaseEnabled ?? true,
 			appliedSkills: [],
 			connectedTriggers: [],
 			isBuildChatStreaming: false,
@@ -142,7 +152,12 @@ async function mountColumn(
 			plugins: [createTestingPinia({ createSpy: vi.fn })],
 			stubs: {
 				AgentCapabilitiesSection: true,
-				AgentInfoPanel: true,
+				AgentInfoPanel: {
+					name: 'AgentInfoPanel',
+					template:
+						'<div><div v-if="showModel !== false" data-testid="agent-model-panel" /><div v-if="showInstructions !== false" data-testid="agent-instructions-panel" /></div>',
+					props: ['showModel', 'showInstructions'],
+				},
 				AgentPanelHeader: true,
 				AgentAdvancedPanel: true,
 				AgentSessionsListView: true,
@@ -226,14 +241,39 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(tabsRule.find('[data-testid="agent-header-tabs"]').exists()).toBe(true);
 	});
 
+	it('uses a narrower shared content width with larger side padding', () => {
+		expect(componentSource).toContain('--agent-builder-content-max-width: 56rem;');
+		expect(componentSource).toContain(
+			'--agent-builder-content-padding-inline: var(--spacing--2xl);',
+		);
+	});
+
+	it('removes tab panel top padding and keeps a 48px bottom buffer', () => {
+		expect(tabPanelSource).toContain('padding: 0 0 var(--spacing--2xl);');
+	});
+
+	it('lets the shared tab panel use content height so its bottom buffer remains scrollable', () => {
+		expect(tabPanelSource).toContain('flex: 0 0 auto;');
+		expect(tabPanelSource).not.toContain('flex: 1;');
+		expect(tabPanelSource).not.toContain('min-height: 0;');
+	});
+
+	it('does not wrap builder tab panels in outer cards', () => {
+		expect(componentSource).not.toContain('<N8nCard');
+	});
+
 	it('keeps the tab baseline inset to the content cards and thicker than the default border', () => {
 		expect(componentSource).toContain('box-sizing: border-box;');
 		expect(componentSource).toContain('calc(var(--border-width, 1px) * 2)');
 	});
 
+	it('reserves the scroll gutter so tab content does not shift when overflow changes', () => {
+		expect(componentSource).toContain('scrollbar-gutter: stable;');
+	});
+
 	it('keeps 48px above the identity header and 32px between it and the tabs', () => {
-		expect(componentSource).toContain(
-			'padding: var(--spacing--2xl) calc(var(--spacing--sm) + var(--spacing--lg))\n\t\tvar(--spacing--xl);',
+		expect(componentSource).toMatch(
+			/padding:\s+var\(--spacing--2xl\)\s+var\(--agent-builder-content-padding-inline\)\s+var\(--spacing--xl\);/,
 		);
 	});
 
@@ -274,5 +314,26 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(wrapper.findComponent({ name: 'AgentSubAgentsPanel' }).exists()).toBe(false);
 		expect(wrapper.findComponent({ name: 'AgentMemoryPanel' }).exists()).toBe(false);
 		expect(wrapper.findComponent({ name: 'AgentAdvancedPanel' }).exists()).toBe(false);
+	});
+
+	it('orders the Agent tab as model, capabilities, then instructions', async () => {
+		const wrapper = await mountColumn({ knowledgeBaseEnabled: false });
+		await flushPromises();
+
+		const model = wrapper.find('[data-testid="agent-model-panel"]');
+		const capabilities = wrapper.findComponent({ name: 'AgentCapabilitiesSection' });
+		const instructions = wrapper.find('[data-testid="agent-instructions-panel"]');
+
+		expect(model.exists()).toBe(true);
+		expect(capabilities.exists()).toBe(true);
+		expect(instructions.exists()).toBe(true);
+		expect(
+			model.element.compareDocumentPosition(capabilities.element) &
+				Node.DOCUMENT_POSITION_FOLLOWING,
+		).toBeTruthy();
+		expect(
+			capabilities.element.compareDocumentPosition(instructions.element) &
+				Node.DOCUMENT_POSITION_FOLLOWING,
+		).toBeTruthy();
 	});
 });

@@ -504,6 +504,9 @@ describe('AgentBuilderView — preview routing', () => {
 	it('renders the build chat in the editing experience without the old mode toggle', async () => {
 		const wrapper = await renderView();
 
+		await wrapper.find('[data-testid="agent-build-chat-show-button"]').trigger('click');
+		await nextTick();
+
 		expect(wrapper.find('[data-testid="agent-builder-chat-column"]').exists()).toBe(true);
 		expect(wrapper.find('[data-testid="agent-builder-editor-column"]').exists()).toBe(true);
 		expect(wrapper.find('[data-testid="chat-panel-stub"][data-endpoint="build"]').exists()).toBe(
@@ -589,18 +592,15 @@ describe('AgentBuilderView — preview routing', () => {
 		);
 	});
 
-	it('drops unbuilt agents straight into the build chat on load', async () => {
-		// Unbuilt agents go to the build chat unconditionally so the build
-		// panel mounts, triggers loadHistory, and any prior conversation with
-		// the builder is visible.
+	it('keeps unbuilt agents hidden on load until the builder chat is opened', async () => {
 		intendedConfig = { name: 'Agent One', instructions: '' };
 		mockConfig.value = withDefaultLlm(intendedConfig);
 		getAgentMock.mockResolvedValue(makeAgentResponse({ isRunnable: false }));
 
 		const wrapper = await renderView();
-		expect(wrapper.find('[data-testid="chat-panel-stub"][data-endpoint="build"]').exists()).toBe(
-			true,
-		);
+
+		expect(wrapper.find('[data-testid="agent-builder-chat-column"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-build-chat-show-button"]').exists()).toBe(true);
 	});
 
 	it('opens the preview route from the header preview action', async () => {
@@ -683,6 +683,7 @@ describe('AgentBuilderView — preview routing', () => {
 
 		// Agent has no instructions — isBuilt should be false.
 		expect(vm.isBuilt).toBe(false);
+		expect(wrapper.find('[data-testid="agent-builder-chat-column"]').exists()).toBe(false);
 
 		vm.startChat('Build me a Slack triage agent');
 		await nextTick();
@@ -878,6 +879,10 @@ describe('AgentBuilderView — three-column shell', () => {
 
 	it('passes build streaming state to the chat column', async () => {
 		const wrapper = await renderView();
+
+		await wrapper.find('[data-testid="agent-build-chat-show-button"]').trigger('click');
+		await nextTick();
+
 		const chatColumn = wrapper.findComponent({ name: 'AgentBuilderChatColumn' });
 
 		chatColumn.vm.$emit('update:streaming', true);
@@ -890,6 +895,10 @@ describe('AgentBuilderView — three-column shell', () => {
 
 	it('does not render the old Build/Test toggle inside the chat input footer', async () => {
 		const wrapper = await renderView();
+
+		await wrapper.find('[data-testid="agent-build-chat-show-button"]').trigger('click');
+		await nextTick();
+
 		const chatPanel = wrapper.find('[data-testid="chat-panel-stub"][data-endpoint="build"]');
 		expect(
 			chatPanel
@@ -1343,7 +1352,8 @@ describe('AgentBuilderView — three-column shell', () => {
 
 		// Spinner gone, content rendered.
 		expect(wrapper.find('[data-icon="spinner"]').exists()).toBe(false);
-		expect(wrapper.find('[data-testid="agent-builder-chat-column"]').exists()).toBe(true);
+		expect(wrapper.find('[data-testid="agent-builder-chat-column"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-build-chat-show-button"]').exists()).toBe(true);
 	});
 
 	it('clears the loading spinner and shows an error when initialize() throws (finally path)', async () => {

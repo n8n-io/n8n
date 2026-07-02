@@ -11,13 +11,12 @@ defineOptions({ name: 'AgentBuilderTabPanel' });
 <style lang="scss" module>
 .tabPanel {
 	display: flex;
-	flex: 1;
+	flex: 0 0 auto;
 	flex-direction: column;
 	gap: var(--spacing--lg);
 	box-sizing: border-box;
 	width: 100%;
-	min-height: 0;
-	padding: var(--spacing--lg);
+	padding: 0 0 var(--spacing--2xl);
 	margin: 0 auto;
 }
 </style>

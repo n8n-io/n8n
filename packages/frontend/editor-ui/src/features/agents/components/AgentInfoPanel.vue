@@ -37,10 +37,14 @@ const props = withDefaults(
 		disabled?: boolean;
 		embedded?: boolean;
 		projectId?: string;
+		showModel?: boolean;
+		showInstructions?: boolean;
 	}>(),
 	{
 		disabled: false,
 		embedded: false,
+		showModel: true,
+		showInstructions: true,
 	},
 );
 const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] }>();
@@ -91,6 +95,12 @@ const selectedAgent = computed<AgentModelOption | null>(() => {
 			available: true,
 		},
 	};
+});
+
+const panelTestId = computed(() => {
+	if (props.showModel && !props.showInstructions) return 'agent-model-panel';
+	if (!props.showModel && props.showInstructions) return 'agent-instructions-panel';
+	return 'agent-info-panel';
 });
 
 function onModelChange(selection: AgentModelSelection) {
@@ -145,14 +155,14 @@ function onInstructionsInput(value: string) {
 </script>
 
 <template>
-	<div :class="$style.panel" data-testid="agent-info-panel">
+	<div :class="$style.panel" :data-testid="panelTestId">
 		<AgentPanelHeader
 			v-if="!props.embedded"
 			:title="i18n.baseText('agents.builder.agent.title')"
 			:description="i18n.baseText('agents.builder.agent.description')"
 		/>
 
-		<div :class="[$style.field, props.disabled && shared.disabledOverlay]">
+		<div v-if="props.showModel" :class="[$style.field, props.disabled && shared.disabledOverlay]">
 			<label :class="$style.label"
 				><N8nText size="small" :bold="true">{{
 					i18n.baseText('agents.builder.agent.model.label')
@@ -172,7 +182,7 @@ function onInstructionsInput(value: string) {
 			/>
 		</div>
 
-		<div :class="[$style.field, $style.instructionsField]">
+		<div v-if="props.showInstructions" :class="[$style.field, $style.instructionsField]">
 			<label :class="$style.label">
 				<N8nText size="small" :bold="true">{{
 					i18n.baseText('agents.builder.agent.instructions.label')

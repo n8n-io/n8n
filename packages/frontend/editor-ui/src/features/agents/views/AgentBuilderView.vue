@@ -179,7 +179,7 @@ function shouldAutoExpandInitialBuild(): boolean {
 
 const shouldStartWithExpandedBuildChat = shouldAutoExpandInitialBuild();
 const isChatFullWidth = ref(shouldStartWithExpandedBuildChat);
-const isBuildChatHidden = ref(false);
+const isBuildChatHidden = ref(!shouldStartWithExpandedBuildChat);
 const shouldCollapseChatAfterInitialBuild = ref(shouldStartWithExpandedBuildChat);
 const showBuildChatLabel = computed(() =>
 	locale.baseText('agents.builder.chat.show.ariaLabel' as BaseTextKey),
@@ -483,6 +483,7 @@ function startChat(msg: string) {
 	} else {
 		// Fresh agent — route through the same build chat panel used for ongoing
 		// Build conversations.
+		isBuildChatHidden.value = false;
 		initialPrompt.value = msg;
 		telemetry.track('User started agent build', { agent_id: agentId.value });
 
@@ -566,6 +567,7 @@ function warmAgentKnowledgeSandboxForPage() {
 }
 
 function onOpenBuildFromChat() {
+	isBuildChatHidden.value = false;
 	closePreview();
 }
 

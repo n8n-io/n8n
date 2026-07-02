@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { N8nCard, N8nTabs } from '@n8n/design-system';
+import { N8nTabs } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { AgentFileDto } from '@n8n/api-types';
 
@@ -88,55 +88,59 @@ const i18n = useI18n();
 			</div>
 			<div :class="$style.panelAreaContainer">
 				<AgentBuilderTabPanel v-if="activeMainTab === 'agent'" data-testid="agent-tab-content">
-					<N8nCard variant="outlined" :class="$style.card">
-						<AgentCapabilitiesSection
-							:config="localConfig"
-							:tools="localConfig?.tools ?? []"
-							:custom-tools="agent?.tools ?? {}"
-							:skills="appliedSkills"
-							:connected-triggers="connectedTriggers"
-							:disabled="childrenDisabled"
-							:project-id="projectId"
-							:agent-id="agentId"
-							:is-published="Boolean(agent?.activeVersionId)"
-							:task-refs="localConfig?.tasks ?? []"
-							:reload-key="tasksReloadKey"
-							@open-tool="emit('open-tool', $event)"
-							@open-skill="emit('open-skill', $event)"
-							@add-tool="emit('add-tool')"
-							@add-skill="emit('add-skill')"
-							@update:config="emit('update:config', $event)"
-							@remove-tool="emit('remove-tool', $event)"
-							@remove-skill="emit('remove-skill', $event)"
-							@update:connected-triggers="emit('update:connected-triggers', $event)"
-							@trigger-added="emit('trigger-added', $event)"
-							@toggle-task="emit('toggle-task', $event)"
-							@tasks-changed="emit('tasks-changed')"
-							@agent-changed="emit('agent-changed')"
-						/>
-					</N8nCard>
-					<N8nCard variant="outlined" :class="$style.card">
-						<AgentInfoPanel
-							:config="localConfig"
-							:disabled="childrenDisabled"
-							:project-id="projectId"
-							embedded
-							@update:config="emit('update:config', $event)"
-						/>
-					</N8nCard>
+					<AgentInfoPanel
+						:config="localConfig"
+						:disabled="childrenDisabled"
+						:project-id="projectId"
+						:show-instructions="false"
+						embedded
+						@update:config="emit('update:config', $event)"
+					/>
+					<AgentCapabilitiesSection
+						:config="localConfig"
+						:tools="localConfig?.tools ?? []"
+						:custom-tools="agent?.tools ?? {}"
+						:skills="appliedSkills"
+						:connected-triggers="connectedTriggers"
+						:disabled="childrenDisabled"
+						:project-id="projectId"
+						:agent-id="agentId"
+						:is-published="Boolean(agent?.activeVersionId)"
+						:task-refs="localConfig?.tasks ?? []"
+						:reload-key="tasksReloadKey"
+						@open-tool="emit('open-tool', $event)"
+						@open-skill="emit('open-skill', $event)"
+						@add-tool="emit('add-tool')"
+						@add-skill="emit('add-skill')"
+						@update:config="emit('update:config', $event)"
+						@remove-tool="emit('remove-tool', $event)"
+						@remove-skill="emit('remove-skill', $event)"
+						@update:connected-triggers="emit('update:connected-triggers', $event)"
+						@trigger-added="emit('trigger-added', $event)"
+						@toggle-task="emit('toggle-task', $event)"
+						@tasks-changed="emit('tasks-changed')"
+						@agent-changed="emit('agent-changed')"
+					/>
 
-					<N8nCard v-if="knowledgeBaseEnabled" variant="outlined" :class="$style.card">
-						<AgentFilesPanel
-							:files="agentFiles"
-							:disabled="childrenDisabled"
-							:loading="agentFilesLoading"
-							:uploading="agentFilesUploading"
-							:deleting-file-id="deletingAgentFileId"
-							data-testid="agent-files-card"
-							@upload-files="emit('upload-files', $event)"
-							@delete-file="emit('delete-file', $event)"
-						/>
-					</N8nCard>
+					<AgentFilesPanel
+						v-if="knowledgeBaseEnabled"
+						:files="agentFiles"
+						:disabled="childrenDisabled"
+						:loading="agentFilesLoading"
+						:uploading="agentFilesUploading"
+						:deleting-file-id="deletingAgentFileId"
+						data-testid="agent-files-card"
+						@upload-files="emit('upload-files', $event)"
+						@delete-file="emit('delete-file', $event)"
+					/>
+					<AgentInfoPanel
+						:config="localConfig"
+						:disabled="childrenDisabled"
+						:project-id="projectId"
+						:show-model="false"
+						embedded
+						@update:config="emit('update:config', $event)"
+					/>
 				</AgentBuilderTabPanel>
 
 				<AgentBuilderTabPanel
@@ -150,32 +154,26 @@ const i18n = useI18n();
 					v-else-if="activeMainTab === 'settings'"
 					data-testid="agent-settings-tab-content"
 				>
-					<N8nCard variant="outlined" :class="$style.card">
-						<AgentSubAgentsPanel
-							:config="localConfig"
-							:disabled="childrenDisabled"
-							:project-id="projectId"
-							:agent-id="agentId"
-							@update:config="emit('update:config', $event)"
-						/>
-					</N8nCard>
-					<N8nCard variant="outlined" :class="$style.card">
-						<AgentMemoryPanel
-							:config="localConfig"
-							:disabled="childrenDisabled"
-							embedded
-							data-testid="agent-memory-panel"
-							@update:config="emit('update:config', $event)"
-						/>
-					</N8nCard>
-					<N8nCard variant="outlined" :class="$style.card">
-						<AgentAdvancedPanel
-							:config="localConfig"
-							:disabled="childrenDisabled"
-							collapsible
-							@update:config="emit('update:config', $event)"
-						/>
-					</N8nCard>
+					<AgentSubAgentsPanel
+						:config="localConfig"
+						:disabled="childrenDisabled"
+						:project-id="projectId"
+						:agent-id="agentId"
+						@update:config="emit('update:config', $event)"
+					/>
+					<AgentMemoryPanel
+						:config="localConfig"
+						:disabled="childrenDisabled"
+						embedded
+						data-testid="agent-memory-panel"
+						@update:config="emit('update:config', $event)"
+					/>
+					<AgentAdvancedPanel
+						:config="localConfig"
+						:disabled="childrenDisabled"
+						collapsible
+						@update:config="emit('update:config', $event)"
+					/>
 				</AgentBuilderTabPanel>
 			</div>
 		</div>
@@ -192,6 +190,9 @@ const i18n = useI18n();
 }
 
 .panelArea {
+	--agent-builder-content-max-width: 56rem;
+	--agent-builder-content-padding-inline: var(--spacing--2xl);
+
 	position: relative;
 	flex: 1;
 	min-height: 0;
@@ -204,6 +205,7 @@ const i18n = useI18n();
 	overflow: auto;
 	scrollbar-width: thin;
 	scrollbar-color: var(--border-color) transparent;
+	scrollbar-gutter: stable;
 }
 
 .panelAreaContainer {
@@ -212,9 +214,10 @@ const i18n = useI18n();
 	flex-direction: column;
 	flex: 1;
 	min-height: 0;
-	max-width: 72rem;
+	box-sizing: border-box;
+	max-width: var(--agent-builder-content-max-width);
 	width: 100%;
-	padding: var(--spacing--sm);
+	padding: var(--spacing--lg) var(--agent-builder-content-padding-inline);
 	margin: 0 auto;
 }
 
@@ -229,10 +232,11 @@ const i18n = useI18n();
 }
 
 .identityHeader {
+	box-sizing: border-box;
 	width: 100%;
-	max-width: 72rem;
+	max-width: var(--agent-builder-content-max-width);
 	margin: 0 auto;
-	padding: var(--spacing--2xl) calc(var(--spacing--sm) + var(--spacing--lg)) var(--spacing--xl);
+	padding: var(--spacing--2xl) var(--agent-builder-content-padding-inline) var(--spacing--xl);
 }
 
 .tabsRow {
@@ -249,9 +253,9 @@ const i18n = useI18n();
 .tabsRule {
 	box-sizing: border-box;
 	width: 100%;
-	max-width: 72rem;
+	max-width: var(--agent-builder-content-max-width);
 	margin: 0 auto;
-	padding: 0 calc(var(--spacing--sm) + var(--spacing--lg));
+	padding: 0 var(--agent-builder-content-padding-inline);
 }
 
 .mainTabs {
@@ -261,11 +265,5 @@ const i18n = useI18n();
 	:global([data-test-id='tab-agent'] > *) {
 		padding-left: 0;
 	}
-}
-
-.card {
-	display: flex;
-	flex-direction: column;
-	width: 100%;
 }
 </style>
