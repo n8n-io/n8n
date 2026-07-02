@@ -201,6 +201,13 @@ after pushing a fix, use the workflow's manual dispatch button — also lets you
 override `tier` to `full` for broader coverage on a specific PR. The lighter
 `test-evals-discovery.yml` still runs on every push as part of `ci-pull-requests.yml`.
 
+**Role split between dispatcher and runner:**
+
+| Layer | Workflow | Purpose |
+|-------|----------|---------|
+| **Dispatcher (PR gate)** | `ci-instance-ai-evals.yml` | Cost-policy PR gate: triggers on PR events and manual dispatch. Resolves the ref to test, enforces fork exclusion, and calls the runner. `workflow_dispatch` inputs pruned to only `pr` (required) and `tier` (optional). Removed: `branch`, `sandbox-provider`, `iterations`, `experiment-name` — those are lab-bench knobs for the runner's own dispatch form. |
+| **Runner (experimentation surface)** | `test-evals-instance-ai.yml` | Full evaluation surface: boots n8n containers, runs evals, posts results. Exposes `branch`, `filter`, `tier`, `sandbox-provider`, `iterations`, `experiment-name`, `model` via its own `workflow_dispatch` for direct experimentation. Fork protection lives in the dispatcher; the runner never runs on fork PRs on the caller path. |
+
 **MCP workflow evals (`ci-mcp-evals.yml`) are manual only (`workflow_dispatch`),
 never per-PR or scheduled in this first version.** They reuse the Instance AI
 verifier but build each workflow through the instance MCP server by driving the

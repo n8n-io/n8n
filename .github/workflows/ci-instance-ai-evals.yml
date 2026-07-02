@@ -13,27 +13,10 @@ on:
   workflow_dispatch:
     inputs:
       pr:
-        description: 'PR number to re-run against its latest commit. Resolves the PR head at dispatch time and posts results back; takes precedence over `branch`. Leave empty to use `branch`.'
-        required: false
-        default: ''
-      branch:
-        description: 'GitHub branch to test (ignored when `pr` is set)'
-        required: false
-        default: 'master'
+        description: 'PR number to re-run against its latest commit. Resolves the PR head at dispatch time and posts results back.'
+        required: true
       tier:
         description: 'Test-case dataset to run (e.g. `pr`, `full`). Empty => `pr` for a PR, `full` otherwise.'
-        required: false
-        default: ''
-      sandbox-provider:
-        description: 'Sandbox provider (n8n-sandbox or daytona)'
-        required: false
-        default: 'n8n-sandbox'
-      iterations:
-        description: 'Iterations per test case (use 10 for a baseline)'
-        required: false
-        default: '3'
-      experiment-name:
-        description: 'LangSmith experiment name (set to instance-ai-baseline to refresh the baseline)'
         required: false
         default: ''
 
@@ -52,7 +35,7 @@ jobs:
     name: Resolve eval target
     if: >-
       github.repository == 'n8n-io/n8n' &&
-      (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
+      (github.event_name != 'pull_request' || (github.event.pull_request.draft == false && github.event.pull_request.head.repo.fork == false))
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -91,6 +74,12 @@ jobs:
             pr_json=$(gh api "repos/$REPO/pulls/$INPUT_PR")
             head_sha=$(echo "$pr_json" | jq -r '.head.sha')
             head_ref=$(echo "$pr_json" | jq -r '.head.ref')
+            # Reject fork PRs — dispatched runs carry secrets
+            fork=$(echo "$pr_json" | jq -r '.head.repo.fork')
+            if [ "$fork" = "true" ]; then
+              echo "::error::evals never run on fork PRs"
+              exit 1
+            fi
             merge_sha=$(echo "$pr_json" | jq -r '.merge_commit_sha // empty')
             tested_sha="$head_sha"
             if [ -n "$merge_sha" ] && \
@@ -134,9 +123,9 @@ jobs:
     with:
       branch: ${{ needs.resolve.outputs.branch }}
       tier: ${{ needs.resolve.outputs.tier }}
-      sandbox-provider: ${{ inputs.sandbox-provider || 'n8n-sandbox' }}
-      iterations: ${{ inputs.iterations }}
-      experiment-name: ${{ inputs.experiment-name }}
+      sandbox-provider: 'n8n-sandbox'
+      iterations: '3'
+      experiment-name: ''
       pr-number: ${{ needs.resolve.outputs.pr_number }}
       cache-sha: ${{ needs.resolve.outputs.cache_sha }}
       revision-sha: ${{ needs.resolve.outputs.revision_sha }}
