@@ -309,17 +309,19 @@ export class AgentKnowledgeSandboxService {
 		const validatedRequest = parseGlobKnowledgeFilesRequest(request);
 		const references = await this.loadKnowledgeReferenceLookup(projectId, agentId);
 		const limit = validatedRequest.limit ?? DEFAULT_GLOB_FILES_LIMIT;
+		const offset = validatedRequest.offset ?? 0;
 
 		if (references.files.length === 0) {
-			return { files: [], limit, hasMore: false };
+			return { files: [], limit, offset, hasMore: false };
 		}
 
 		const matches = matchKnowledgeFilesByGlob(references.files, validatedRequest);
 
 		return {
-			files: matches.slice(0, limit),
+			files: matches.slice(offset, offset + limit),
 			limit,
-			hasMore: matches.length > limit,
+			offset,
+			hasMore: matches.length > offset + limit,
 		};
 	}
 
@@ -696,14 +698,15 @@ function matchKnowledgeFilesByGlob(
 	const regex = globPatternToRegExp(request.pattern, caseSensitive);
 	const patternTokens = tokenizeKnowledgeFilePattern(request.pattern, caseSensitive);
 	return files
-		.map((file, index) => ({ file, index }))
-		.filter(({ file }) => regex.test(file.file) || regex.test(file.displayName))
-		.map(({ file, index }) => ({
+		.filter((file) => regex.test(file.file) || regex.test(file.displayName))
+		.map((file) => ({
 			file,
-			index,
 			bucket: getKnowledgeFileMatchBucket(file, patternTokens, caseSensitive),
 		}))
-		.sort((left, right) => left.bucket - right.bucket || left.index - right.index)
+		.sort(
+			(left, right) =>
+				left.bucket - right.bucket || left.file.displayName.localeCompare(right.file.displayName),
+		)
 		.map(({ file }) => file);
 }
 
