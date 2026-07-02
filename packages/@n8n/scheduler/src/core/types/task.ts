@@ -7,7 +7,7 @@
  * trivially. Instants are `Date` (absolute UTC).
  */
 
-import type { ScheduledTaskStatus } from '@n8n/db';
+import type { ScheduledTaskStatus } from '../enums';
 
 /**
  * A materialised occurrence of a job (`scheduled_task`): one queued run.

@@ -5,7 +5,7 @@ import type {
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { type CronExpression, UnexpectedError } from 'n8n-workflow';
 
-import type { Schedule, ScheduledJob, ScheduledTask } from '../types';
+import type { Schedule, ScheduledJob, ScheduledTask } from '../core/types';
 
 /**
  * Maps between the flat `@n8n/db` entity rows and the scheduler's domain types.

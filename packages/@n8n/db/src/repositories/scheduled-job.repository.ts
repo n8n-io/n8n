@@ -26,7 +26,7 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 		});
 	}
 
-	/** Update a job's `nextRunAt` and `lastFiredAt`. */
+	/** Update a job's `nextRunAt` and `lastFiredAt` through the caller's transaction. */
 	async updateSchedulingState(
 		trx: EntityManager,
 		id: ScheduledJob['id'],

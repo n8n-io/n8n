@@ -2,7 +2,7 @@ import { testDb } from '@n8n/backend-test-utils';
 import type { ScheduledJob as ScheduledJobEntity } from '@n8n/db';
 import { ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { SchedulerStore } from '@n8n/scheduler';
+import { SchedulerStore } from '@n8n/scheduler/storage';
 
 describe('SchedulerStore', () => {
 	let store: SchedulerStore;
@@ -45,124 +45,34 @@ describe('SchedulerStore', () => {
 		);
 	}
 
-	describe('getDueJobs', () => {
-		it('returns due jobs ordered by nextRunAt, capped at limit', async () => {
-			const now = new Date('2026-06-01T12:00:00.000Z');
-			// Insert out of nextRunAt order so the result proves ORDER BY, not insertion order.
-			const dueLate = await createJob({ nextRunAt: new Date('2026-06-01T11:00:00.000Z') });
-			const dueEarly = await createJob({ nextRunAt: new Date('2026-06-01T10:00:00.000Z') });
-			await createJob({ nextRunAt: new Date('2026-06-01T11:30:00.000Z') }); // due, but past the limit
-
-			const due = await store.transaction(async (trx) => await store.getDueJobs(trx, now, 2));
-
-			expect(due.map((j) => j.id)).toEqual([String(dueEarly.id), String(dueLate.id)]);
-		});
-
-		it('includes a job due exactly at now (inclusive boundary)', async () => {
-			const now = new Date('2026-06-01T12:00:00.000Z');
-			const boundary = await createJob({ nextRunAt: now });
-
-			const due = await store.transaction(async (trx) => await store.getDueJobs(trx, now, 100));
-
-			expect(due.map((j) => j.id)).toContain(String(boundary.id));
-		});
-
-		it('excludes disabled, future, and null-nextRunAt jobs', async () => {
-			const now = new Date('2026-06-01T12:00:00.000Z');
-			await createJob({ enabled: false, nextRunAt: new Date('2026-06-01T10:00:00.000Z') });
-			await createJob({ nextRunAt: new Date('2026-06-01T13:00:00.000Z') });
-			await createJob({ nextRunAt: null });
-
-			const due = await store.transaction(async (trx) => await store.getDueJobs(trx, now, 100));
-
-			expect(due).toHaveLength(0);
-		});
-
-		it('reads each schedule kind back from its columns', async () => {
-			const now = new Date('2026-06-01T12:00:00.000Z');
-			const due = new Date('2026-06-01T10:00:00.000Z');
-			const fireAt = new Date('2026-06-01T09:00:00.000Z');
-			const cron = await createJob({
-				kind: 'cron',
-				cronExpression: '0 0 9 * * *',
-				timezone: 'Europe/Berlin',
-				intervalSeconds: null,
-				nextRunAt: due,
-			});
-			const interval = await createJob({ kind: 'interval', intervalSeconds: 30, nextRunAt: due });
-			const oneOff = await createJob({
-				kind: 'one_off',
-				intervalSeconds: null,
-				fireAt,
-				nextRunAt: due,
-			});
-
-			const jobs = await store.transaction(async (trx) => await store.getDueJobs(trx, now, 100));
-			const scheduleById = new Map(jobs.map((j) => [j.id, j.schedule]));
-
-			expect(scheduleById.get(String(cron.id))).toEqual({
-				kind: 'cron',
-				cronExpression: '0 0 9 * * *',
-				timezone: 'Europe/Berlin',
-			});
-			expect(scheduleById.get(String(interval.id))).toEqual({
-				kind: 'interval',
-				intervalSeconds: 30,
-			});
-			expect(scheduleById.get(String(oneOff.id))).toEqual({ kind: 'one_off', fireAt });
-		});
-	});
-
-	describe('saveJob', () => {
-		it('persists nextRunAt and lastFiredAt', async () => {
+	describe('transaction', () => {
+		it('commits repository calls made through the transaction manager', async () => {
 			const job = await createJob({ nextRunAt: new Date('2026-06-01T10:00:00.000Z') });
 			const nextRunAt = new Date('2026-06-01T11:00:00.000Z');
-			const lastFiredAt = new Date('2026-06-01T10:00:00.000Z');
+			const scheduledFor = new Date('2026-06-01T12:00:00.000Z');
 
 			await store.transaction(async (trx) => {
-				await store.saveJob(trx, {
-					id: String(job.id),
-					schedule: { kind: 'interval', intervalSeconds: 60 },
-					enabled: true,
+				await jobRepository.updateSchedulingState(trx, job.id, {
 					nextRunAt,
-					lastFiredAt,
+					lastFiredAt: scheduledFor,
+				});
+				await taskRepository.insertOccurrence(trx, {
+					jobId: job.id,
 					taskType: 'scheduleTrigger',
 					payload: {},
+					scheduledFor,
+					runAt: scheduledFor,
+					status: 'pending',
+					attempts: 0,
 					maxAttempts: 1,
 				});
 			});
 
 			const reloaded = await jobRepository.findOneByOrFail({ id: job.id });
 			expect(reloaded.nextRunAt).toEqual(nextRunAt);
-			expect(reloaded.lastFiredAt).toEqual(lastFiredAt);
+			expect(await taskRepository.findBy({ jobId: job.id })).toHaveLength(1);
 		});
 
-		it('clears nextRunAt so the job drops out of the sweep', async () => {
-			const now = new Date('2026-06-01T12:00:00.000Z');
-			const job = await createJob({ nextRunAt: new Date('2026-06-01T10:00:00.000Z') });
-
-			await store.transaction(async (trx) => {
-				await store.saveJob(trx, {
-					id: String(job.id),
-					schedule: { kind: 'interval', intervalSeconds: 60 },
-					enabled: true,
-					nextRunAt: null,
-					lastFiredAt: new Date('2026-06-01T10:00:00.000Z'),
-					taskType: 'scheduleTrigger',
-					payload: {},
-					maxAttempts: 1,
-				});
-			});
-
-			const reloaded = await jobRepository.findOneByOrFail({ id: job.id });
-			expect(reloaded.nextRunAt).toBeNull();
-
-			const due = await store.transaction(async (trx) => await store.getDueJobs(trx, now, 100));
-			expect(due.map((j) => j.id)).not.toContain(String(job.id));
-		});
-	});
-
-	describe('transaction', () => {
 		it('rolls back all writes when the callback throws', async () => {
 			const nextRunAt = new Date('2026-06-01T10:00:00.000Z');
 			const job = await createJob({ nextRunAt });
@@ -170,9 +80,8 @@ describe('SchedulerStore', () => {
 
 			await expect(
 				store.transaction(async (trx) => {
-					await store.createTask(trx, {
-						id: 'ignored',
-						jobId: String(job.id),
+					await taskRepository.insertOccurrence(trx, {
+						jobId: job.id,
 						taskType: 'scheduleTrigger',
 						payload: {},
 						scheduledFor,
@@ -181,15 +90,9 @@ describe('SchedulerStore', () => {
 						attempts: 0,
 						maxAttempts: 1,
 					});
-					await store.saveJob(trx, {
-						id: String(job.id),
-						schedule: { kind: 'interval', intervalSeconds: 60 },
-						enabled: true,
+					await jobRepository.updateSchedulingState(trx, job.id, {
 						nextRunAt: new Date('2026-06-01T11:00:00.000Z'),
 						lastFiredAt: new Date('2026-06-01T10:00:00.000Z'),
-						taskType: 'scheduleTrigger',
-						payload: {},
-						maxAttempts: 1,
 					});
 					throw new Error('boom');
 				}),
@@ -203,36 +106,144 @@ describe('SchedulerStore', () => {
 		});
 	});
 
-	describe('createTask', () => {
+	describe('ScheduledJobRepository.findDue', () => {
+		it('returns due jobs ordered by nextRunAt, capped at limit', async () => {
+			const now = new Date('2026-06-01T12:00:00.000Z');
+			// Insert out of nextRunAt order so the result proves ORDER BY, not insertion order.
+			const dueLate = await createJob({ nextRunAt: new Date('2026-06-01T11:00:00.000Z') });
+			const dueEarly = await createJob({ nextRunAt: new Date('2026-06-01T10:00:00.000Z') });
+			await createJob({ nextRunAt: new Date('2026-06-01T11:30:00.000Z') }); // due, but past the limit
+
+			const due = await store.transaction(async (trx) => await jobRepository.findDue(trx, now, 2));
+
+			expect(due.map((j) => j.id)).toEqual([dueEarly.id, dueLate.id]);
+		});
+
+		it('includes a job due exactly at now (inclusive boundary)', async () => {
+			const now = new Date('2026-06-01T12:00:00.000Z');
+			const boundary = await createJob({ nextRunAt: now });
+
+			const due = await store.transaction(
+				async (trx) => await jobRepository.findDue(trx, now, 100),
+			);
+
+			expect(due.map((j) => j.id)).toContain(boundary.id);
+		});
+
+		it('excludes disabled, future, and null-nextRunAt jobs', async () => {
+			const now = new Date('2026-06-01T12:00:00.000Z');
+			await createJob({ enabled: false, nextRunAt: new Date('2026-06-01T10:00:00.000Z') });
+			await createJob({ nextRunAt: new Date('2026-06-01T13:00:00.000Z') });
+			await createJob({ nextRunAt: null });
+
+			const due = await store.transaction(
+				async (trx) => await jobRepository.findDue(trx, now, 100),
+			);
+
+			expect(due).toHaveLength(0);
+		});
+
+		it('persists and reads back each schedule kind from its columns', async () => {
+			const now = new Date('2026-06-01T12:00:00.000Z');
+			const dueAt = new Date('2026-06-01T10:00:00.000Z');
+			const fireAt = new Date('2026-06-01T09:00:00.000Z');
+			const cron = await createJob({
+				kind: 'cron',
+				cronExpression: '0 0 9 * * *',
+				timezone: 'Europe/Berlin',
+				intervalSeconds: null,
+				nextRunAt: dueAt,
+			});
+			const interval = await createJob({ kind: 'interval', intervalSeconds: 30, nextRunAt: dueAt });
+			const oneOff = await createJob({
+				kind: 'one_off',
+				intervalSeconds: null,
+				fireAt,
+				nextRunAt: dueAt,
+			});
+
+			const due = await store.transaction(
+				async (trx) => await jobRepository.findDue(trx, now, 100),
+			);
+			const byId = new Map(due.map((j) => [j.id, j]));
+
+			expect(byId.get(cron.id)).toMatchObject({
+				kind: 'cron',
+				cronExpression: '0 0 9 * * *',
+				timezone: 'Europe/Berlin',
+			});
+			expect(byId.get(interval.id)).toMatchObject({ kind: 'interval', intervalSeconds: 30 });
+			expect(byId.get(oneOff.id)).toMatchObject({ kind: 'one_off', fireAt });
+		});
+	});
+
+	describe('ScheduledJobRepository.updateSchedulingState', () => {
+		it('persists nextRunAt and lastFiredAt', async () => {
+			const job = await createJob({ nextRunAt: new Date('2026-06-01T10:00:00.000Z') });
+			const nextRunAt = new Date('2026-06-01T11:00:00.000Z');
+			const lastFiredAt = new Date('2026-06-01T10:00:00.000Z');
+
+			await store.transaction(
+				async (trx) =>
+					await jobRepository.updateSchedulingState(trx, job.id, { nextRunAt, lastFiredAt }),
+			);
+
+			const reloaded = await jobRepository.findOneByOrFail({ id: job.id });
+			expect(reloaded.nextRunAt).toEqual(nextRunAt);
+			expect(reloaded.lastFiredAt).toEqual(lastFiredAt);
+		});
+
+		it('clears nextRunAt so the job drops out of the due read', async () => {
+			const now = new Date('2026-06-01T12:00:00.000Z');
+			const job = await createJob({ nextRunAt: new Date('2026-06-01T10:00:00.000Z') });
+
+			await store.transaction(
+				async (trx) =>
+					await jobRepository.updateSchedulingState(trx, job.id, {
+						nextRunAt: null,
+						lastFiredAt: new Date('2026-06-01T10:00:00.000Z'),
+					}),
+			);
+
+			const reloaded = await jobRepository.findOneByOrFail({ id: job.id });
+			expect(reloaded.nextRunAt).toBeNull();
+
+			const due = await store.transaction(
+				async (trx) => await jobRepository.findDue(trx, now, 100),
+			);
+			expect(due.map((j) => j.id)).not.toContain(job.id);
+		});
+	});
+
+	describe('ScheduledTaskRepository.insertOccurrence', () => {
 		it('inserts an occurrence', async () => {
 			const job = await createJob();
 			const scheduledFor = new Date('2026-06-01T12:00:00.000Z');
 
-			await store.transaction(async (trx) => {
-				await store.createTask(trx, {
-					id: 'ignored',
-					jobId: String(job.id),
-					taskType: 'scheduleTrigger',
-					payload: { foo: 'bar' },
-					scheduledFor,
-					runAt: scheduledFor,
-					status: 'pending',
-					attempts: 0,
-					maxAttempts: 1,
-				});
-			});
+			await store.transaction(
+				async (trx) =>
+					await taskRepository.insertOccurrence(trx, {
+						jobId: job.id,
+						taskType: 'scheduleTrigger',
+						payload: { foo: 'bar' },
+						scheduledFor,
+						runAt: scheduledFor,
+						status: 'pending',
+						attempts: 0,
+						maxAttempts: 1,
+					}),
+			);
 
-			const tasks = await taskRepository.findBy({ jobId: job.id });
-			expect(tasks).toHaveLength(1);
-			expect(tasks[0].scheduledFor).toEqual(scheduledFor);
+			const stored = await taskRepository.findBy({ jobId: job.id });
+			expect(stored).toHaveLength(1);
+			expect(stored[0].scheduledFor).toEqual(scheduledFor);
 		});
 
 		it('is idempotent on (jobId, scheduledFor): a duplicate is a no-op', async () => {
 			const job = await createJob();
 			const scheduledFor = new Date('2026-06-01T12:00:00.000Z');
-			const task = {
-				id: 'ignored',
-				jobId: String(job.id),
+			const occurrence = {
+				jobId: job.id,
 				taskType: 'scheduleTrigger',
 				payload: {},
 				scheduledFor,
@@ -242,11 +253,14 @@ describe('SchedulerStore', () => {
 				maxAttempts: 1,
 			};
 
-			await store.transaction(async (trx) => await store.createTask(trx, task));
-			await store.transaction(async (trx) => await store.createTask(trx, task));
+			await store.transaction(
+				async (trx) => await taskRepository.insertOccurrence(trx, occurrence),
+			);
+			await store.transaction(
+				async (trx) => await taskRepository.insertOccurrence(trx, occurrence),
+			);
 
-			const tasks = await taskRepository.findBy({ jobId: job.id });
-			expect(tasks).toHaveLength(1);
+			expect(await taskRepository.findBy({ jobId: job.id })).toHaveLength(1);
 		});
 	});
 });

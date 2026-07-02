@@ -15,10 +15,10 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	}
 
 	/**
-	 * Insert a task occurrence through the caller's transaction. Idempotent
-	 * on the occurrence identity `(jobId, scheduledFor)`: `orIgnore()` ->
-	 * `ON CONFLICT DO NOTHING` (Postgres) / `INSERT OR IGNORE` (SQLite), so a
-	 * repeated insert for the same occurrence is a no-op against the unique index.
+	 * Insert a task occurrence through the caller's transaction. Idempotent on the
+	 * occurrence identity `(jobId, scheduledFor)`: `orIgnore()` becomes
+	 * `ON CONFLICT DO NOTHING` (Postgres) / `INSERT OR IGNORE` (SQLite), so a repeated
+	 * insert for the same occurrence is a no-op against the unique index.
 	 */
 	async insertOccurrence(
 		trx: EntityManager,
