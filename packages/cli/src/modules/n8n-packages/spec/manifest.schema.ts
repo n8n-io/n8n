@@ -9,23 +9,23 @@ export const manifestEntrySchema = z.object({
 	target: z.string().min(1),
 });
 
-type ManifestEntryInput = z.infer<typeof manifestEntrySchema>;
+type ManifestEntryList = Array<z.infer<typeof manifestEntrySchema>>;
 
 function assertNoDuplicateIds(
-	items: Array<Pick<ManifestEntryInput, 'id'>> | undefined,
+	entries: ManifestEntryList | undefined,
+	label: string,
 	ctx: z.RefinementCtx,
-): void {
-	if (!items) return;
-
-	const seenIds = new Set<string>();
-	for (const item of items) {
-		if (seenIds.has(item.id)) {
+) {
+	if (!entries) return;
+	const seen = new Set<string>();
+	for (const entry of entries) {
+		if (seen.has(entry.id)) {
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
-				message: `Duplicate id in manifest: ${item.id}`,
+				message: `Duplicate ${label} id in manifest: ${entry.id}`,
 			});
 		}
-		seenIds.add(item.id);
+		seen.add(entry.id);
 	}
 }
 
@@ -36,14 +36,16 @@ export const packageManifestSchema = z
 		sourceN8nVersion: z.string().min(1),
 		sourceId: z.string().min(1),
 		workflows: z.array(manifestEntrySchema).optional(),
+		folders: z.array(manifestEntrySchema).optional(),
 		projects: z.array(manifestEntrySchema).optional(),
 		credentials: z.array(manifestEntrySchema).optional(),
 		requirements: packageRequirementsSchema.optional(),
 	})
 	.superRefine((manifest, ctx) => {
-		assertNoDuplicateIds(manifest.workflows, ctx);
-		assertNoDuplicateIds(manifest.projects, ctx);
-		assertNoDuplicateIds(manifest.credentials, ctx);
+		assertNoDuplicateIds(manifest.workflows, 'workflow', ctx);
+		assertNoDuplicateIds(manifest.folders, 'folder', ctx);
+		assertNoDuplicateIds(manifest.projects, 'project', ctx);
+		assertNoDuplicateIds(manifest.credentials, 'credential', ctx);
 	});
 
 export type ManifestEntry = z.infer<typeof manifestEntrySchema>;
