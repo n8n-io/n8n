@@ -78,8 +78,6 @@ const resolvedCredentialsMissingLabel = computed(
 );
 const hasSearchListener = computed(() => Boolean(instance?.vnode.props?.onSearch));
 
-const extraPopperClass = computed(() => $style.component);
-
 const searchListenerAttrs = computed(() =>
 	hasSearchListener.value && !disabled
 		? { onSearch: (query: string) => emit('search', query) }
@@ -102,12 +100,10 @@ defineExpose({
 	<N8nDropdownMenu
 		ref="dropdownRef"
 		:items="items"
-		v-bind="searchListenerAttrs"
-		teleported
-		placement="bottom-start"
-		:extra-popper-class="extraPopperClass"
-		searchable
 		:empty-text="noMatchLabel"
+		v-bind="searchListenerAttrs"
+		placement="bottom-start"
+		searchable
 		@select="handleSelect"
 	>
 		<template #trigger>
@@ -119,26 +115,22 @@ defineExpose({
 			>
 				<div :class="$style.selected">
 					<slot name="trigger-leading" :ui="{ class: $style.icon }" />
-					<N8nText bold truncate :class="$style.selectedLabel">
-						{{ truncateBeforeLast(selectedLabel, MAX_SELECTED_NAME_CHARS) }}
-					</N8nText>
-					<N8nText v-if="credentialsMissing" size="xsmall" color="danger">
-						<N8nIcon
-							icon="node-validation-error"
-							size="xsmall"
-							:class="$style.credentialsMissingIcon"
-						/>
-						{{ resolvedCredentialsMissingLabel }}
-					</N8nText>
-					<N8nText
-						v-else-if="selectedCredentialName"
-						size="small"
-						bold
-						color="text-light"
-						:data-test-id="credentialDataTestId"
-					>
-						{{ truncateBeforeLast(selectedCredentialName, MAX_SELECTED_NAME_CHARS) }}
-					</N8nText>
+					<div :class="$style.selectedLabel">
+						<N8nText bold truncate>
+							{{ truncateBeforeLast(selectedLabel, MAX_SELECTED_NAME_CHARS) }}
+						</N8nText>
+						<N8nText v-if="credentialsMissing" bold color="danger">
+							{{ resolvedCredentialsMissingLabel }}
+						</N8nText>
+						<N8nText
+							v-else-if="selectedCredentialName"
+							bold
+							color="text-light"
+							:data-test-id="credentialDataTestId"
+						>
+							{{ truncateBeforeLast(selectedCredentialName, MAX_SELECTED_NAME_CHARS) }}
+						</N8nText>
+					</div>
 				</div>
 				<N8nIcon :class="$style.chevron" icon="chevron-down" size="medium" />
 			</Primitive>
@@ -204,9 +196,6 @@ defineExpose({
 
 <style lang="scss" module>
 @use '../../css/mixins/focus';
-.component {
-	width: fit-content;
-}
 
 .dropdownButton {
 	flex: 1;
@@ -268,6 +257,16 @@ defineExpose({
 	min-width: 0;
 	gap: var(--spacing--2xs);
 	overflow: hidden;
+}
+
+.selectedLabel {
+	display: flex;
+	align-items: baseline;
+	flex: 1;
+	min-width: 0;
+	gap: var(--spacing--3xs);
+	overflow: hidden;
+	transform: translateY(1px);
 }
 
 .chevron {
