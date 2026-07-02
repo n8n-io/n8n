@@ -771,12 +771,16 @@ export class TelemetryEventRelay extends EventRelay {
 		user,
 		credentialId,
 		credentialType,
+		supportsManagedAuth,
+		usesManagedAuth,
 	}: RelayEventMap['private-credential-user-connected']) {
 		this.telemetry.track('User connected to private credential', {
 			user_id: user.id,
 			user_role: user.role?.slug,
 			credential_type: credentialType,
 			credential_id: credentialId,
+			credential_supports_managed_auth: supportsManagedAuth ?? false,
+			credential_uses_managed_auth: usesManagedAuth ?? false,
 		});
 	}
 

@@ -494,6 +494,8 @@ export type RelayEventMap = {
 		user: UserLike;
 		credentialType: string;
 		credentialId: string;
+		supportsManagedAuth?: boolean;
+		usesManagedAuth?: boolean;
 	};
 
 	// #endregion

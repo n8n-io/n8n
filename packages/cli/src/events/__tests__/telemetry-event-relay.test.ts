@@ -1157,6 +1157,8 @@ describe('TelemetryEventRelay', () => {
 				user: { id: 'user123' },
 				credentialId: 'cred123',
 				credentialType: 'gmailOAuth2',
+				supportsManagedAuth: true,
+				usesManagedAuth: true,
 			};
 
 			eventService.emit('private-credential-user-connected', event);
@@ -1166,6 +1168,8 @@ describe('TelemetryEventRelay', () => {
 				user_role: undefined,
 				credential_type: 'gmailOAuth2',
 				credential_id: 'cred123',
+				credential_supports_managed_auth: true,
+				credential_uses_managed_auth: true,
 			});
 		});
 	});

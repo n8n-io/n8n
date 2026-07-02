@@ -9,6 +9,7 @@ import split from 'lodash/split';
 import type { ICredentialDataDecryptedObject, IDataObject } from 'n8n-workflow';
 import { ensureError, jsonParse, jsonStringify } from 'n8n-workflow';
 
+import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';
@@ -23,6 +24,7 @@ export class OAuth2CredentialController {
 		private readonly externalHooks: ExternalHooks,
 		private readonly oauthJweServiceProxy: OAuthJweServiceProxy,
 		private readonly eventService: EventService,
+		private readonly credentialsOverwrites: CredentialsOverwrites,
 	) {}
 
 	/** Get Authorization url */
@@ -148,6 +150,11 @@ export class OAuth2CredentialController {
 						user: { id: state.userId },
 						credentialType: credential.type,
 						credentialId: credential.id,
+						supportsManagedAuth: this.credentialsOverwrites.supportsManagedAuth(credential.type),
+						usesManagedAuth: this.credentialsOverwrites.usesManagedAuth(
+							credential.type,
+							decryptedDataOriginal,
+						),
 					});
 				}
 
