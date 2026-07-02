@@ -36,6 +36,10 @@ on:
         description: 'LangSmith experiment name (set to instance-ai-baseline to refresh the baseline)'
         required: false
         default: ''
+      model:
+        description: 'Model for all Instance AI agents (provider/model). Empty = backend default (anthropic/claude-opus-4-8). For experiments: anthropic/claude-sonnet-4-6, anthropic/claude-sonnet-5.'
+        required: false
+        default: ''
 
 concurrency:
   # Key on the PR number for dispatched re-runs (github.ref would collapse all
@@ -137,6 +141,7 @@ jobs:
       sandbox-provider: ${{ inputs.sandbox-provider || 'n8n-sandbox' }}
       iterations: ${{ inputs.iterations }}
       experiment-name: ${{ inputs.experiment-name }}
+      model: ${{ inputs.model }}
       pr-number: ${{ needs.resolve.outputs.pr_number }}
       cache-sha: ${{ needs.resolve.outputs.cache_sha }}
       revision-sha: ${{ needs.resolve.outputs.revision_sha }}
