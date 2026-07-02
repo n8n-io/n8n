@@ -44,6 +44,23 @@ describe('getSystemPrompt', () => {
 		});
 	});
 
+	describe('clarifying questions', () => {
+		it('routes clarifying questions through ask-user instead of plain text', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('need clarification');
+			expect(prompt).toContain('use the `ask-user` tool instead of asking in plain text');
+		});
+
+		it('does not route missing workflow setup values through ask-user before build', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('use `ask-user` only for choices that change the workflow intent');
+			expect(prompt).toContain('Do not use `ask-user` before the first build');
+			expect(prompt).toContain('leave them for post-build workflow setup');
+		});
+	});
+
 	describe('license hints', () => {
 		it('includes License Limitations section when hints are provided', () => {
 			const prompt = getSystemPrompt({
@@ -173,12 +190,35 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain('Do not create a plan just for verification');
 		});
 
+		it('describes error workflows as per-workflow and publish-before-assign', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('n8n has no global/instance-wide error workflow setting');
+			expect(prompt).toContain('settings.errorWorkflow');
+			expect(prompt).toContain('only after that referenced error workflow is published');
+			expect(prompt).toContain(
+				'mention the missing global/instance-wide setting to the user only when they explicitly ask',
+			);
+			expect(prompt).not.toContain('global error workflow for this instance');
+		});
+
 		it('points post-build and follow-up work at dedicated skills', () => {
 			const prompt = getSystemPrompt({});
 
 			expect(prompt).toContain('`post-build-flow`');
+			expect(prompt).toContain('postBuildFlow.required: true');
+			expect(prompt).toContain('before verification, setup, error-workflow follow-up');
 			expect(prompt).toContain('`planned-task-runtime`');
 			expect(prompt).toContain('`debugging-executions`');
+		});
+
+		it('routes n8n docs and credential setup help through the docs skill', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('**n8n docs/product guidance**');
+			expect(prompt).toContain('credential setup');
+			expect(prompt).toContain('`n8n-docs-assistant`');
+			expect(prompt).toContain('`n8n-docs`');
 		});
 
 		it('keeps replan stall prevention in the core follow-up triggers', () => {
@@ -215,7 +255,8 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain('## Sandbox workspace');
 			expect(prompt).toContain('knowledge-base/index.json');
 			expect(prompt).toContain('knowledge-base/best-practices/index.json');
-			expect(prompt).toContain('knowledge-base/templates/index.json');
+			expect(prompt).toContain('knowledge-base/templates/');
+			expect(prompt).toContain('never load `templates/index.json` wholesale');
 			expect(prompt).toContain('knowledge-base/reference/index.json');
 			expect(prompt).not.toContain('knowledge-base/templates/index.txt');
 			expect(prompt).toContain('workspace_execute_command');

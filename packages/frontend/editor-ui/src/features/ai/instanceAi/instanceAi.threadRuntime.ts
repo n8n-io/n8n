@@ -2,10 +2,12 @@ import { computed, reactive, ref, triggerRef, watch } from 'vue';
 import { v4 as uuidv4 } from 'uuid';
 import { ResponseError } from '@n8n/rest-api-client';
 import {
+	buildRunWorkflowSessionGrantKey,
 	instanceAiEventSchema,
 	isSafeObjectKey,
 	type InstanceAiConfirmation,
 	type InstanceAiConfirmRequest,
+	type InstanceAiConfirmResponse,
 	type InstanceAiResourceDecision,
 	type InstanceAiAttachment,
 	type InstanceAiEvent,
@@ -13,6 +15,7 @@ import {
 	type InstanceAiAgentNode,
 	type InstanceAiToolCallState,
 	type InstanceAiSSEConnectionState,
+	type InstanceAiHandoffContext,
 	type TaskList,
 	type AgentRunState,
 } from '@n8n/api-types';
@@ -34,9 +37,17 @@ import {
 	fetchThreadStatus as fetchThreadStatusApi,
 } from './instanceAi.memory.api';
 import { handleEvent as reduceEvent, createRunStateFromTree } from './instanceAi.reducer';
-import { getLatestBuildResult } from './canvasPreview.utils';
+import { getLatestBuildResult, type RememberedManualExecution } from './canvasPreview.utils';
 import { useResourceRegistry } from './useResourceRegistry';
 import { useResponseFeedback } from './useResponseFeedback';
+import {
+	findToolCallInTree,
+	isOrchestratorLive,
+	markAssistantMessageStreaming,
+	resolveActiveRunId,
+	shouldRearmRunAfterConfirm,
+	syncLiveRunFromStatus,
+} from './instanceAi.liveRunState';
 
 export interface PlanEditContext {
 	requestId: string;
@@ -111,21 +122,6 @@ function collectPendingConfirmations(
 	for (const child of node.children) {
 		collectPendingConfirmations(child, messageId, resolved, out);
 	}
-}
-
-/** Find a tool call in an agent tree by its confirmation requestId. */
-function findToolCallInTree(
-	node: InstanceAiAgentNode,
-	requestId: string,
-): InstanceAiToolCallState | undefined {
-	for (const tc of node.toolCalls) {
-		if (tc.confirmation?.requestId === requestId) return tc;
-	}
-	for (const child of node.children) {
-		const found = findToolCallInTree(child, requestId);
-		if (found) return found;
-	}
-	return undefined;
 }
 
 function findLatestTasksFromMessages(messages: InstanceAiMessage[]): TaskList | null {
@@ -298,6 +294,25 @@ export function createThreadRuntime(
 		return { workflow: pending.workflow, execution: pending.execution };
 	}
 
+	// Latest user-triggered (non-agent) preview run per workflow. Lives on the
+	// thread runtime so it survives the preview canvas unmounting on a tab switch
+	// and is re-seeded on remount; a fresh runtime per thread resets it (INS-611).
+	// Plain Map: only read imperatively (on push events / remount), never rendered.
+	const rememberedManualExecutions = new Map<string, RememberedManualExecution>();
+	function rememberManualExecution(
+		workflowId: string,
+		executionId: string,
+		agentExecutionId: string | undefined,
+	): void {
+		rememberedManualExecutions.set(workflowId, { executionId, agentExecutionId });
+	}
+	function getRememberedManualExecution(workflowId: string): RememberedManualExecution | undefined {
+		return rememberedManualExecutions.get(workflowId);
+	}
+	function forgetManualExecution(workflowId: string): void {
+		rememberedManualExecutions.delete(workflowId);
+	}
+
 	// --- Reducer routing state ---
 	// Plain Maps: the routing tables themselves are never rendered. The run
 	// STATES they hold are reactive (created via `createRunState*` in the
@@ -316,7 +331,7 @@ export function createThreadRuntime(
 	const hasMessages = computed(() => messages.value.length > 0);
 	const isHydratingThread = computed(() => hydrationStatus.value === 'hydrating');
 
-	const { producedArtifacts, resourceNameIndex } = useResourceRegistry(
+	const { producedArtifacts, resourceNameIndex, linkableResourceNameIndex } = useResourceRegistry(
 		() => messages.value,
 		(id) => workflowsListStore.getWorkflowById(id)?.name,
 		() => archivedWorkflowIds.value,
@@ -427,6 +442,13 @@ export function createThreadRuntime(
 		return undefined;
 	}
 
+	function rearmRunState(runId: string | null | undefined): void {
+		if (!runId) return;
+		activeRunId.value = runId;
+		markAssistantMessageStreaming(messages.value, runId);
+		triggerRef(messages);
+	}
+
 	// --- Session "Always allow" ---
 	// Thread-scoped: cleared by `resetState()` so grants don't leak when the
 	// runtime is disposed and recreated. Key: `${toolName}:${args.action ?? ''}`
@@ -441,6 +463,12 @@ export function createThreadRuntime(
 			return `submit-workflow:${isUpdate ? 'update' : 'create'}`;
 		}
 		const action = typeof args.action === 'string' ? args.action : '';
+		// Running a workflow grants "always allow" per workflow, so the grant applies only to the
+		// workflow the user approved.
+		if (toolName === 'executions' && action === 'run') {
+			const workflowId = typeof args.workflowId === 'string' ? args.workflowId : '';
+			return buildRunWorkflowSessionGrantKey(workflowId);
+		}
 		return `${toolName}:${action}`;
 	}
 
@@ -791,16 +819,13 @@ export function createThreadRuntime(
 		try {
 			const status = await fetchThreadStatusApi(rootStore.restApiContext, threadId);
 
-			const hasActivity =
-				status.hasActiveRun || status.isSuspended || status.backgroundTasks.length > 0;
+			const hasActivity = isOrchestratorLive(status) || status.backgroundTasks.length > 0;
 			if (!hasActivity) return;
 
-			const lastAssistant = [...messages.value].reverse().find((m) => m.role === 'assistant');
-			if (!lastAssistant) return;
-
-			if (status.hasActiveRun || status.isSuspended) {
-				activeRunId.value = lastAssistant.runId ?? null;
-				lastAssistant.isStreaming = status.hasActiveRun;
+			const runId = syncLiveRunFromStatus(status, messages.value);
+			if (runId) {
+				activeRunId.value = runId;
+				triggerRef(messages);
 			}
 
 			// Background task visibility is handled by the run-sync control frame
@@ -858,6 +883,7 @@ export function createThreadRuntime(
 	async function dispatchUserMessage(
 		message: string,
 		attachments?: InstanceAiAttachment[],
+		handoffContext?: InstanceAiHandoffContext,
 		pushRef?: string,
 	): Promise<boolean> {
 		try {
@@ -866,6 +892,7 @@ export function createThreadRuntime(
 				threadId,
 				message,
 				attachments,
+				handoffContext,
 				Intl.DateTimeFormat().resolvedOptions().timeZone,
 				pushRef,
 			);
@@ -898,6 +925,7 @@ export function createThreadRuntime(
 		message: string,
 		attachments?: InstanceAiAttachment[],
 		pushRef?: string,
+		handoffContext?: InstanceAiHandoffContext,
 	): Promise<void> {
 		amendContext.value = null;
 		pendingMessageCount.value += 1;
@@ -907,7 +935,7 @@ export function createThreadRuntime(
 			const optimistic = pushOptimisticUserMessage(message, attachments);
 			trackUserMessageSent(isFirstMessage);
 
-			if (!(await dispatchUserMessage(message, attachments, pushRef))) {
+			if (!(await dispatchUserMessage(message, attachments, handoffContext, pushRef))) {
 				removeOptimisticMessage(optimistic);
 			}
 		} finally {
@@ -977,7 +1005,22 @@ export function createThreadRuntime(
 		payload: InstanceAiConfirmRequest,
 	): Promise<boolean> {
 		try {
-			await postConfirmation(rootStore.restApiContext, requestId, payload);
+			const response: InstanceAiConfirmResponse = await postConfirmation(
+				rootStore.restApiContext,
+				requestId,
+				payload,
+			);
+			ensureSSEConnected();
+			if (shouldRearmRunAfterConfirm(payload)) {
+				rearmRunState(
+					resolveActiveRunId({
+						confirmRunId: response.runId,
+						messages: messages.value,
+						requestId,
+					}),
+				);
+			}
+			await loadThreadStatus();
 			return true;
 		} catch (error: unknown) {
 			// Surface the server's UserError text when present (e.g. "This
@@ -1052,6 +1095,7 @@ export function createThreadRuntime(
 		isHydratingThread,
 		producedArtifacts,
 		resourceNameIndex,
+		linkableResourceNameIndex,
 		feedbackByResponseId,
 		rateableResponseId,
 		currentTasks,
@@ -1062,6 +1106,9 @@ export function createThreadRuntime(
 		// actions
 		setPendingHandoff,
 		consumePendingHandoff,
+		rememberManualExecution,
+		getRememberedManualExecution,
+		forgetManualExecution,
 		resetState,
 		dispose,
 		connectSSE,

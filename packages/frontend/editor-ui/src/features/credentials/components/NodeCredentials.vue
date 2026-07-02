@@ -7,7 +7,7 @@ import type {
 	INodeCredentialsDetails,
 	NodeParameterValueType,
 } from 'n8n-workflow';
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, inject, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import {
@@ -27,13 +27,13 @@ import {
 import TitledList from '@/app/components/TitledList.vue';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { CREDENTIAL_ONLY_NODE_PREFIX } from '@/app/constants';
+import { ChatHubToolContextKey, CREDENTIAL_ONLY_NODE_PREFIX } from '@/app/constants';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import { useCredentialsStore } from '../credentials.store';
 import { useQuickConnect } from '../quickConnect/composables/useQuickConnect';
 import { useCredentialOAuth } from '../composables/useCredentialOAuth';
 import QuickConnectButton from '../quickConnect/components/QuickConnectButton.vue';
-import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
+import { injectNDVStoreIfProvided } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -100,6 +100,7 @@ const NEW_CREDENTIALS_TEXT = i18n.baseText('nodeCredentials.createNew');
 
 const instanceAiCapability = useInstanceAiEditorCapability();
 const { instanceAi } = useEditorContext();
+const isToolContext = inject(ChatHubToolContextKey, false);
 
 // The host's credential-help behavior, handed to the (teleported) credential
 // modal that can't inject it. Undefined when Instance AI is off in this editor or
@@ -112,7 +113,7 @@ function instanceAiCredentialHelp(): InstanceAiCredentialHelpHandler | undefined
 
 const credentialsStore = useCredentialsStore();
 const nodeTypesStore = useNodeTypesStore();
-const ndvStore = injectNDVStore();
+const ndvStore = injectNDVStoreIfProvided();
 const uiStore = useUIStore();
 const projectsStore = useProjectsStore();
 const workflowsStore = useWorkflowsStore();
@@ -129,6 +130,7 @@ const {
 const { canOAuthCredentialQuickConnect, hasManualCredentialInputFields } = useCredentialOAuth();
 
 const aiGateway = useAiGateway();
+const hideAskAssistant = computed(() => props.hideAskAssistant || isToolContext);
 
 const canCreateCredentials = computed(
 	() =>
@@ -219,7 +221,7 @@ watch(
 	(newValue, oldValue) => {
 		// When active node parameters change, check if authentication type has been changed
 		// and set `subscribedToCredentialType` to corresponding credential type
-		const isActive = props.node.name === ndvStore.value.activeNode?.name;
+		const isActive = props.node.name === ndvStore.value?.activeNode?.name;
 		// Only do this for active node and if it's listening for auth change
 		if (isActive && nodeType.value && listeningForAuthChange.value) {
 			if (mainNodeAuthField.value && oldValue && newValue) {
@@ -459,7 +461,7 @@ function createNewCredential(
 		props.node.name,
 		props.node,
 		{
-			hideAskAssistant: props.hideAskAssistant,
+			hideAskAssistant: hideAskAssistant.value,
 			closeOnSave: true,
 			instanceAiCredentialHelp: instanceAiCredentialHelp(),
 		},
@@ -642,7 +644,7 @@ function onAiGatewaySelector(credentialType: string, enable: boolean, isUserActi
 		name: props.node.name,
 		properties: { credentials },
 	});
-	void aiGateway.saveAfterToggle();
+	if (!props.standalone) void aiGateway.saveAfterToggle();
 }
 
 function getIssues(credentialTypeName: string): string[] {
@@ -663,7 +665,7 @@ function editCredential(credentialType: string): void {
 	assert(credential?.id);
 
 	uiStore.openExistingCredential(credential.id, {
-		hideAskAssistant: props.hideAskAssistant,
+		hideAskAssistant: hideAskAssistant.value,
 		instanceAiCredentialHelp: instanceAiCredentialHelp(),
 	});
 

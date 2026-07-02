@@ -3,8 +3,12 @@ import {
 	ASK_CREDENTIAL_TOOL_NAME,
 	ASK_LLM_TOOL_NAME,
 	ASK_QUESTION_TOOL_NAME,
+	N8N_CHAT_ACTION_TOOL_NAME,
 } from '@n8n/api-types';
-import { summariseInteractiveOutput, summariseToolCall } from '../utils/interactive-summary';
+import {
+	summariseInteractiveOutput,
+	summariseToolCall,
+} from '@/features/ai/shared/agentsChat/interactiveSummary';
 import { DELEGATE_SUB_AGENT_TOOL_NAME } from '../utils/delegate-tool';
 import { WRITE_TODOS_TOOL_NAME } from '../utils/write-todos-tool';
 
@@ -66,6 +70,80 @@ describe('summariseInteractiveOutput', () => {
 				credentialName: 'My Anthropic',
 			}),
 		).toBe('anthropic/claude-sonnet-4-6 · My Anthropic');
+	});
+});
+
+describe('summariseInteractiveOutput — n8n_chat_action', () => {
+	const cardInput = {
+		action: 'respond',
+		input: {
+			message: {
+				card: {
+					components: [
+						{ type: 'button', label: 'Approve & Send', value: 'approve_send' },
+						{
+							type: 'radio_select',
+							id: 'next_step',
+							options: [{ label: 'Schedule a call', value: 'call' }],
+						},
+					],
+				},
+			},
+		},
+	};
+
+	it('resolves the clicked button to its label', () => {
+		expect(
+			summariseInteractiveOutput(
+				N8N_CHAT_ACTION_TOOL_NAME,
+				{ type: 'button', value: 'approve_send' },
+				cardInput,
+			),
+		).toBe('Approve & Send');
+	});
+
+	it('falls back to button text when label is absent (same precedence as the renderer)', () => {
+		const textButtonInput = {
+			action: 'respond',
+			input: {
+				message: {
+					card: { components: [{ type: 'button', text: 'Confirm & Send', value: 'confirm' }] },
+				},
+			},
+		};
+		expect(
+			summariseInteractiveOutput(
+				N8N_CHAT_ACTION_TOOL_NAME,
+				{ type: 'button', value: 'confirm' },
+				textButtonInput,
+			),
+		).toBe('Confirm & Send');
+	});
+
+	it('resolves a selected option to its label', () => {
+		expect(
+			summariseInteractiveOutput(
+				N8N_CHAT_ACTION_TOOL_NAME,
+				{ type: 'select', id: 'next_step', value: 'call' },
+				cardInput,
+			),
+		).toBe('Schedule a call');
+	});
+
+	it('falls back to the raw value when no component matches', () => {
+		expect(
+			summariseInteractiveOutput(
+				N8N_CHAT_ACTION_TOOL_NAME,
+				{ type: 'button', value: 'unknown' },
+				cardInput,
+			),
+		).toBe('unknown');
+	});
+
+	it('returns undefined for display-only action results', () => {
+		expect(
+			summariseInteractiveOutput(N8N_CHAT_ACTION_TOOL_NAME, { ok: true }, cardInput),
+		).toBeUndefined();
 	});
 });
 

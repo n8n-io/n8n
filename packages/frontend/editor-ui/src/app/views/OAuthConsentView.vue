@@ -2,9 +2,18 @@
 import { useConsentStore } from '@/app/stores/consent.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useI18n } from '@n8n/i18n';
-import { onMounted, computed, ref } from 'vue';
+import { onMounted, computed, ref, watch } from 'vue';
 import type { ConsentDetails } from '@n8n/rest-api-client/api/consent';
-import { N8nButton, N8nHeading, N8nIcon, N8nLogo, N8nNotice, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nCallout,
+	N8nCheckbox,
+	N8nHeading,
+	N8nIcon,
+	N8nLogo,
+	N8nNotice,
+	N8nText,
+} from '@n8n/design-system';
 import { MCP_DOCS_PAGE_URL } from '@/features/ai/mcpAccess/mcp.constants';
 import { useToast } from '@/app/composables/useToast';
 
@@ -16,6 +25,7 @@ const toast = useToast();
 
 // Success state:
 const waitingForRedirect = ref(false);
+const redirectUriTrusted = ref(false);
 
 const error = computed(() => consentStore.error);
 const loading = computed(() => consentStore.isLoading);
@@ -28,7 +38,17 @@ const errorMessage = computed(() => {
 	return consentStore.error;
 });
 
-const clentDetails = computed<ConsentDetails | null>(() => consentStore.consentDetails);
+const clientDetails = computed<ConsentDetails | null>(() => consentStore.consentDetails);
+const allowDisabled = computed(
+	() => loading.value || error.value !== null || !clientDetails.value || !redirectUriTrusted.value,
+);
+
+watch(
+	() => clientDetails.value?.redirectUri,
+	() => {
+		redirectUriTrusted.value = false;
+	},
+);
 
 const handleAllow = async () => {
 	try {
@@ -105,14 +125,14 @@ onMounted(async () => {
 				<N8nHeading v-if="resourceName" tag="h2" size="large" :bold="true">
 					{{
 						i18n.baseText('oauth.consentView.headingWithWorkflow', {
-							interpolate: { clientName: clentDetails?.clientName ?? '', resourceName },
+							interpolate: { clientName: clientDetails?.clientName ?? '', resourceName },
 						})
 					}}
 				</N8nHeading>
 				<N8nHeading v-else tag="h2" size="large" :bold="true">
 					{{
 						i18n.baseText('oauth.consentView.heading', {
-							interpolate: { clientName: clentDetails?.clientName ?? '' },
+							interpolate: { clientName: clientDetails?.clientName ?? '' },
 						})
 					}}
 				</N8nHeading>
@@ -120,14 +140,14 @@ onMounted(async () => {
 					<N8nText v-if="resourceName" color="text-base" size="small">
 						{{
 							i18n.baseText('oauth.consentView.descriptionWithWorkflow', {
-								interpolate: { clientName: clentDetails?.clientName ?? '' },
+								interpolate: { clientName: clientDetails?.clientName ?? '' },
 							})
 						}}
 					</N8nText>
 					<N8nText v-else color="text-base" size="small">
 						{{
 							i18n.baseText('oauth.consentView.description', {
-								interpolate: { clientName: clentDetails?.clientName ?? '' },
+								interpolate: { clientName: clientDetails?.clientName ?? '' },
 							})
 						}}
 					</N8nText>
@@ -151,6 +171,29 @@ onMounted(async () => {
 							"
 						></span>
 					</p>
+					<N8nCallout
+						v-if="clientDetails?.redirectUri"
+						theme="warning"
+						:class="$style['redirect-warning']"
+						data-test-id="consent-redirect-warning"
+					>
+						<div :class="$style['redirect-warning-content']">
+							<N8nText :bold="true">
+								{{ i18n.baseText('oauth.consentView.redirectWarning.title') }}
+							</N8nText>
+							<N8nText
+								:bold="true"
+								:class="$style['redirect-warning-url']"
+								data-test-id="consent-redirect-uri"
+							>
+								{{ clientDetails.redirectUri }}
+							</N8nText>
+							<N8nCheckbox
+								v-model="redirectUriTrusted"
+								:label="i18n.baseText('oauth.consentView.redirectWarning.confirm')"
+							/>
+						</div>
+					</N8nCallout>
 				</div>
 			</div>
 			<footer v-if="!waitingForRedirect" :class="$style.footer">
@@ -180,7 +223,7 @@ onMounted(async () => {
 							:data-test-id="'consent-allow-button'"
 							:size="'large'"
 							:loading="loading"
-							:disabled="loading"
+							:disabled="allowDisabled"
 							@click="handleAllow"
 						>
 							{{ i18n.baseText('generic.allow') }}
@@ -278,6 +321,20 @@ onMounted(async () => {
 .docs-link {
 	color: var(--color--text);
 	font-size: var(--font-size--2xs);
+}
+
+.redirect-warning {
+	margin-top: var(--spacing--2xs);
+}
+
+.redirect-warning-content {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--3xs);
+}
+
+.redirect-warning-url {
+	word-break: break-all;
 }
 
 .footer {

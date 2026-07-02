@@ -4,7 +4,6 @@
  */
 import type { StreamChunk, TokenUsage } from '../../types';
 import type { AgentMessage, ContentToolCall } from '../../types/sdk/message';
-import { toTokenUsage } from '../streaming/stream';
 
 /**
  * Normalize caller input to `AgentMessage[]` for the runtime. String input becomes a
@@ -56,12 +55,15 @@ export function mergeUsage(
 		totalTokens: current.totalTokens + next.totalTokens,
 	};
 
+	const noCache =
+		(current.inputTokenDetails?.noCache ?? 0) + (next.inputTokenDetails?.noCache ?? 0);
 	const cacheRead =
 		(current.inputTokenDetails?.cacheRead ?? 0) + (next.inputTokenDetails?.cacheRead ?? 0);
 	const cacheWrite =
 		(current.inputTokenDetails?.cacheWrite ?? 0) + (next.inputTokenDetails?.cacheWrite ?? 0);
-	if (cacheRead > 0 || cacheWrite > 0) {
+	if (noCache > 0 || cacheRead > 0 || cacheWrite > 0) {
 		merged.inputTokenDetails = {
+			...(noCache > 0 && { noCache }),
 			...(cacheRead > 0 && { cacheRead }),
 			...(cacheWrite > 0 && { cacheWrite }),
 		};
@@ -74,24 +76,4 @@ export function mergeUsage(
 	}
 
 	return merged;
-}
-
-/**
- * Accumulate token usage across loop iterations.
- * Wraps mergeUsage + toTokenUsage to keep call sites concise.
- */
-export function accumulateUsage(
-	current: TokenUsage | undefined,
-	raw:
-		| {
-				inputTokens?: number | undefined;
-				outputTokens?: number | undefined;
-				totalTokens?: number | undefined;
-				inputTokenDetails?: { cacheReadTokens?: number; cacheWriteTokens?: number };
-				outputTokenDetails?: { reasoningTokens?: number };
-		  }
-		| undefined,
-): TokenUsage | undefined {
-	if (!raw) return current;
-	return mergeUsage(current, toTokenUsage(raw));
 }

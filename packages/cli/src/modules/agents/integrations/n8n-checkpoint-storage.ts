@@ -43,6 +43,8 @@ export class N8NCheckpointStorage {
 		return {
 			save: async (key, state) => await this.save(key, state, agentId),
 			load: async (key) => await this.load(key),
+			claimForResume: async (key: string, state: SerializableAgentState) =>
+				await this.claimForResume(key, state),
 			delete: async (key) => await this.delete(key),
 		};
 	}
@@ -84,7 +86,20 @@ export class N8NCheckpointStorage {
 			throw new UserError('This action has expired and cannot be resumed');
 		}
 
-		return jsonParse<SerializableAgentState>(checkpoint.state);
+		const state = jsonParse<SerializableAgentState>(checkpoint.state);
+		if (state.status !== 'suspended') {
+			throw new UserError('This action has already been handled');
+		}
+
+		return state;
+	}
+
+	async claimForResume(key: string, state: SerializableAgentState): Promise<boolean> {
+		return await this.agentCheckpointRepository.claimForResume(
+			key,
+			JSON.stringify(state),
+			JSON.stringify({ ...state, status: 'running' }),
+		);
 	}
 
 	async getStatus(key: string): Promise<CheckpointStatus> {

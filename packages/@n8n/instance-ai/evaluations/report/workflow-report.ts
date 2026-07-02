@@ -23,6 +23,7 @@ import type {
 	TurnCounter,
 	WorkflowTestCaseResult,
 } from '../types';
+import { caseDisplayPrompt } from '../utils/conversation-text';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -287,7 +288,7 @@ function renderStageReview(stage: StageReview): string {
 }
 
 function firstPromptText(result: WorkflowTestCaseResult): string {
-	return result.testCase.conversation[0]?.text ?? '';
+	return caseDisplayPrompt(result.testCase, result.transcript);
 }
 
 function promptReview(result: WorkflowTestCaseResult, sr: ExecutionScenarioResult): StageReview {
@@ -776,7 +777,13 @@ function renderConversationTranscript(transcript: TranscriptTurn[] | undefined):
 }
 
 function renderTranscriptTurn(turn: TranscriptTurn, turnNum: number): string {
-	const parts: string[] = [`<div class="transcript-turn-header">Turn ${String(turnNum)}</div>`];
+	// Judged as part of the whole conversation; marked subtly only for human readers.
+	const seededTag = turn.seeded
+		? ' <span class="transcript-seeded" title="restored prior context — not part of the evaluated run">seeded</span>'
+		: '';
+	const parts: string[] = [
+		`<div class="transcript-turn-header">Turn ${String(turnNum)}${seededTag}</div>`,
+	];
 	if (turn.userMessage) {
 		parts.push(
 			`<div class="transcript-line transcript-user"><span class="transcript-icon">👤</span><span class="transcript-text">${escapeHtml(turn.userMessage)}</span></div>`,
@@ -786,7 +793,7 @@ function renderTranscriptTurn(turn: TranscriptTurn, turnNum: number): string {
 		const block = renderStep(step);
 		if (block) parts.push(block);
 	}
-	return `<div class="transcript-turn">${parts.join('')}</div>`;
+	return `<div class="transcript-turn${turn.seeded ? ' seeded' : ''}">${parts.join('')}</div>`;
 }
 
 function renderStep(step: TranscriptStep): string | null {
@@ -816,7 +823,9 @@ function renderInteraction(interaction: ToolInteraction): string | null {
 			const answerByQId = new Map<string, string>();
 			for (const a of interaction.answers ?? []) {
 				const selected = a.selectedOptions.join(', ');
-				const text = [selected, a.customText].filter(Boolean).join(' — ');
+				// A skipped answer is a real response — surface it so it's not mistaken
+				// for an unanswered question (mirrors the judge-text transcript).
+				const text = a.skipped ? '(skipped)' : [selected, a.customText].filter(Boolean).join(' — ');
 				if (text) answerByQId.set(a.questionId, text);
 			}
 			const lines = interaction.questions
@@ -979,17 +988,34 @@ function dimensionLabel(d: CheckDimension): string {
 	return d.replace(/_/g, ' ');
 }
 
-function renderDimensionGroup(dimension: CheckDimension, outcomes: CheckOutcome[]): string {
+function checkCountsSummary(outcomes: CheckOutcome[], fractionSuffix = ''): string {
 	const passed = outcomes.filter((o) => o.status === 'pass').length;
 	const failed = outcomes.filter((o) => o.status === 'fail').length;
 	const naCount = outcomes.filter((o) => o.status === 'n_a').length;
+	const errorCount = outcomes.filter((o) => o.status === 'error').length;
 	const scored = passed + failed;
-	const headerCounts = `${String(passed)}/${String(scored)}${naCount > 0 ? ` · ${String(naCount)} N/A` : ''}`;
+	const extras = [
+		...(naCount > 0 ? [`${String(naCount)} N/A`] : []),
+		...(errorCount > 0 ? [`${String(errorCount)} error`] : []),
+	];
+	return `${String(passed)}/${String(scored)}${fractionSuffix}${extras.length > 0 ? ` · ${extras.join(' · ')}` : ''}`;
+}
+
+function checkIcon(status: CheckOutcome['status']): string {
+	if (status === 'pass') return '&#10003;';
+	if (status === 'fail') return '&#10007;';
+	if (status === 'error') return '!';
+	return '⌀';
+}
+
+function renderDimensionGroup(dimension: CheckDimension, outcomes: CheckOutcome[]): string {
+	const failed = outcomes.filter((o) => o.status === 'fail').length;
+	const headerCounts = checkCountsSummary(outcomes);
 	const headerClass = failed > 0 ? 'fail' : 'pass';
 
 	const items = outcomes
 		.map((o) => {
-			const icon = o.status === 'pass' ? '&#10003;' : o.status === 'fail' ? '&#10007;' : '⌀';
+			const icon = checkIcon(o.status);
 			const kindTag = `<span class="check-kind check-kind-${o.kind}">${o.kind}</span>`;
 			const comment = o.comment ? ` — ${escapeHtml(o.comment)}` : '';
 			return `<li class="check ${o.status}"><span class="check-icon ${o.status}">${icon}</span> <code>${escapeHtml(o.name)}</code> ${kindTag}${comment}</li>`;
@@ -1002,11 +1028,8 @@ function renderDimensionGroup(dimension: CheckDimension, outcomes: CheckOutcome[
 function renderWorkflowChecks(outcomes: CheckOutcome[] | undefined): string {
 	if (!outcomes || outcomes.length === 0) return '';
 
-	const totalPassed = outcomes.filter((o) => o.status === 'pass').length;
 	const totalFailed = outcomes.filter((o) => o.status === 'fail').length;
-	const totalNa = outcomes.filter((o) => o.status === 'n_a').length;
-	const totalScored = totalPassed + totalFailed;
-	const summary = `${String(totalPassed)}/${String(totalScored)} passed${totalNa > 0 ? ` · ${String(totalNa)} N/A` : ''}`;
+	const summary = checkCountsSummary(outcomes, ' passed');
 	const summaryClass = totalFailed > 0 ? 'fail' : 'pass';
 	const openAttr = totalFailed > 0 ? 'open' : '';
 
@@ -1167,7 +1190,7 @@ function renderTestCase(result: WorkflowTestCaseResult, tcIndex: number): string
 			? `<span class="badge badge-${allPass ? 'pass' : 'fail'}">${String(passCount)}/${String(totalCount)}</span>`
 			: '';
 
-	const prompt = result.testCase.conversation[0].text;
+	const prompt = caseDisplayPrompt(result.testCase, result.transcript);
 	const truncatedPrompt = prompt.length > 100 ? prompt.slice(0, 100) + '...' : prompt;
 	// Header label = the source-file slug (the same identifier the PR comment
 	// uses), falling back to the description then the prompt. The full prompt
@@ -1358,6 +1381,8 @@ export function generateWorkflowReport(results: WorkflowTestCaseResult[]): strin
 	.check-icon.fail { color: var(--color-fail); }
 	.check-icon.n_a { color: var(--text-muted); }
 	.check.n_a code { color: var(--text-muted); }
+	.check-icon.error { color: var(--color-warn); }
+	.check.error code { color: var(--color-warn); }
 	.check-kind { color: var(--text-muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
 	.check-kind-llm { color: var(--color-purple); }
 	.expectation { padding: 5px 0; display: flex; align-items: baseline; gap: 8px; list-style: none; line-height: 1.5; }
@@ -1481,6 +1506,8 @@ export function generateWorkflowReport(results: WorkflowTestCaseResult[]): strin
 	.transcript-turn { padding: 8px 0; border-bottom: 1px dashed var(--border-light); }
 	.transcript-turn:last-child { border-bottom: none; }
 	.transcript-turn-header { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); margin-bottom: 6px; }
+	.transcript-turn.seeded { border-left: 2px solid var(--border-light); padding-left: 10px; }
+	.transcript-seeded { text-transform: none; letter-spacing: 0; color: var(--text-muted); border: 1px solid var(--border-light); border-radius: 3px; padding: 0 5px; margin-left: 6px; }
 	.transcript-line { display: flex; gap: 8px; padding: 4px 0; align-items: flex-start; font-size: 13px; line-height: 1.5; }
 	.transcript-icon { width: 18px; text-align: center; flex-shrink: 0; }
 	.transcript-text { color: var(--text-primary); white-space: pre-wrap; }

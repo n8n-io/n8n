@@ -35,6 +35,7 @@ export declare namespace ExecutionRequest {
 			cursor?: string;
 			offset?: number;
 			includeData?: boolean;
+			ignoreDataSizeLimit?: boolean;
 			redactExecutionData?: boolean;
 			workflowId?: string;
 			lastId?: string;
@@ -46,7 +47,7 @@ export declare namespace ExecutionRequest {
 		{ id: string },
 		{},
 		{},
-		{ includeData?: boolean; redactExecutionData?: boolean }
+		{ includeData?: boolean; ignoreDataSizeLimit?: boolean; redactExecutionData?: boolean }
 	>;
 	type Delete = Get;
 	type Retry = AuthenticatedRequest<{ id: string }, {}, { loadWorkflow?: boolean }, {}>;

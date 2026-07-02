@@ -267,6 +267,105 @@ describe('WorkflowPublicationOutboxRepository', () => {
 		});
 	});
 
+	describe('deleteTerminalOlderThan', () => {
+		const TEN_YEARS_SECONDS = 10 * 365 * 24 * 60 * 60;
+
+		// Backdate `updatedAt` via raw SQL: the `mark*` helpers re-stamp it.
+		const backdateUpdatedAt = async (id: number) => {
+			await repository.query(
+				`UPDATE ${repository.metadata.tableName} SET "updatedAt" = '2020-01-01 00:00:00.000' WHERE "id" = ${id}`,
+			);
+		};
+
+		const createTerminal = async (
+			workflowId: string,
+			outcome: 'completed' | 'failed' | 'partial',
+		) => {
+			await repository.enqueue(workflowId, 'v-1');
+			const claimed = await repository.claimNextPendingRecord();
+			assert(claimed);
+			if (outcome === 'completed') await repository.markCompleted(claimed.id);
+			else if (outcome === 'failed') await repository.markFailed(claimed.id, 'boom');
+			else await repository.markPartialSuccess(claimed.id, 'boom');
+			return claimed.id;
+		};
+
+		it('deletes completed rows past the completed retention but keeps failed/partial of the same age (split retention)', async () => {
+			const completedId = await createTerminal('wf-1', 'completed');
+			const failedId = await createTerminal('wf-2', 'failed');
+			const partialId = await createTerminal('wf-3', 'partial');
+			await backdateUpdatedAt(completedId);
+			await backdateUpdatedAt(failedId);
+			await backdateUpdatedAt(partialId);
+
+			// Completed retention is tiny so the old completed row is past it; failed
+			// retention is huge so the equally-old failed/partial rows are kept.
+			const deleted = await repository.deleteTerminalOlderThan(60, TEN_YEARS_SECONDS, 100);
+
+			expect(deleted).toBe(1);
+			expect(await repository.findOneBy({ id: completedId })).toBeNull();
+			expect(await repository.findOneBy({ id: failedId })).not.toBeNull();
+			expect(await repository.findOneBy({ id: partialId })).not.toBeNull();
+		});
+
+		it('deletes failed and partial rows once they pass the failed retention', async () => {
+			const failedId = await createTerminal('wf-1', 'failed');
+			const partialId = await createTerminal('wf-2', 'partial');
+			await backdateUpdatedAt(failedId);
+			await backdateUpdatedAt(partialId);
+
+			const deleted = await repository.deleteTerminalOlderThan(60, 60, 100);
+
+			expect(deleted).toBe(2);
+			expect(await repository.findOneBy({ id: failedId })).toBeNull();
+			expect(await repository.findOneBy({ id: partialId })).toBeNull();
+		});
+
+		it('keeps terminal rows that are still within their retention window', async () => {
+			const completedId = await createTerminal('wf-1', 'completed');
+			const failedId = await createTerminal('wf-2', 'failed');
+
+			// Just created, so within any positive retention window.
+			const deleted = await repository.deleteTerminalOlderThan(60, 60, 100);
+
+			expect(deleted).toBe(0);
+			expect(await repository.findOneBy({ id: completedId })).not.toBeNull();
+			expect(await repository.findOneBy({ id: failedId })).not.toBeNull();
+		});
+
+		it('never deletes pending or in_progress rows', async () => {
+			await repository.enqueue('wf-1', 'v-1'); // stays pending
+			await repository.enqueue('wf-2', 'v-1');
+			const inProgress = await repository.claimNextPendingRecord();
+			assert(inProgress);
+			await backdateUpdatedAt(inProgress.id);
+
+			const deleted = await repository.deleteTerminalOlderThan(0, 0, 100);
+
+			expect(deleted).toBe(0);
+			expect(await repository.find({ where: { status: 'pending' } })).toHaveLength(1);
+			expect(await repository.find({ where: { status: 'in_progress' } })).toHaveLength(1);
+		});
+
+		it('deletes at most batchSize rows per call and reports the count', async () => {
+			const ids: number[] = [];
+			for (let i = 0; i < 3; i++) {
+				const id = await createTerminal(`wf-${i}`, 'completed');
+				await backdateUpdatedAt(id);
+				ids.push(id);
+			}
+
+			const firstBatch = await repository.deleteTerminalOlderThan(60, 60, 2);
+			expect(firstBatch).toBe(2);
+
+			const secondBatch = await repository.deleteTerminalOlderThan(60, 60, 2);
+			expect(secondBatch).toBe(1);
+
+			const remaining = await repository.find({ where: { status: 'completed' } });
+			expect(remaining).toHaveLength(0);
+		});
+	});
+
 	// TODO: cover Postgres `FOR UPDATE SKIP LOCKED` concurrency control under
 	// parallel claimers in a follow-up.
 
@@ -328,6 +427,45 @@ describe('WorkflowPublicationOutboxRepository', () => {
 			const pending = await repository.find({ where: { status: 'pending' } });
 			expect(pending).toHaveLength(1);
 			expect(pending[0].workflowId).toBe(active.id);
+		});
+	});
+
+	describe('getRecordStatsByStatus', () => {
+		it('returns the count and oldest createdAt grouped by status in one query', async () => {
+			await repository.insert([
+				{ workflowId: 'wf-1', publishedVersionId: 'v', status: 'pending' },
+				{ workflowId: 'wf-2', publishedVersionId: 'v', status: 'pending' },
+				{ workflowId: 'wf-3', publishedVersionId: 'v', status: 'in_progress' },
+				{ workflowId: 'wf-4', publishedVersionId: 'v', status: 'completed' },
+				{ workflowId: 'wf-5', publishedVersionId: 'v', status: 'completed' },
+				{ workflowId: 'wf-6', publishedVersionId: 'v', status: 'failed' },
+				{ workflowId: 'wf-7', publishedVersionId: 'v', status: 'partial_success' },
+			]);
+
+			const all = await repository.find();
+			const oldestPending = Math.min(
+				...all
+					.filter((record) => record.status === 'pending')
+					.map((record) => record.createdAt.getTime()),
+			);
+
+			const stats = await repository.getRecordStatsByStatus();
+
+			const counts = Object.fromEntries([...stats].map(([status, s]) => [status, s.count]));
+			expect(counts).toEqual({
+				pending: 2,
+				in_progress: 1,
+				completed: 2,
+				failed: 1,
+				partial_success: 1,
+			});
+
+			expect(stats.get('pending')?.oldestCreatedAt.getTime()).toBe(oldestPending);
+			expect(stats.get('completed')?.oldestCreatedAt).toBeInstanceOf(Date);
+		});
+
+		it('returns an empty map when there are no records', async () => {
+			expect((await repository.getRecordStatsByStatus()).size).toBe(0);
 		});
 	});
 });

@@ -6,7 +6,12 @@ import {
 	type ScenarioCounts,
 } from '../comparison/compare';
 import { formatComparisonMarkdown, formatComparisonTerminal } from '../comparison/format';
-import type { MultiRunEvaluation, WorkflowTestCase, ExecutionScenarioResult } from '../types';
+import type {
+	MultiRunEvaluation,
+	WorkflowTestCase,
+	ExecutionScenarioResult,
+	BuildExpectationResult,
+} from '../types';
 
 function ok(result: ComparisonResult): ComparisonOutcome {
 	return { kind: 'ok', result };
@@ -40,6 +45,10 @@ function evaluation(
 				passes: boolean[]; // per-iteration pass/fail
 				reasoning?: string;
 				failureCategory?: string;
+			}>;
+			expectations?: Array<{
+				text: string;
+				passes: Array<boolean | 'incomplete'>;
 			}>;
 		}>;
 	} = {},
@@ -76,6 +85,29 @@ function evaluation(
 					}),
 				),
 			}));
+			const buildExpectations = (tc.expectations ?? []).map((ea) => {
+				const runs = ea.passes.map(
+					(pass): BuildExpectationResult => ({
+						expectation: ea.text,
+						pass: pass === true,
+						reason: pass === 'incomplete' ? '' : 'reason',
+						...(pass === 'incomplete' ? { incomplete: true } : {}),
+					}),
+				);
+				const evaluated = runs.filter((run) => !run.incomplete);
+				const passCount = evaluated.filter((run) => run.pass).length;
+				return {
+					expectation: ea.text,
+					runs,
+					evaluatedCount: evaluated.length,
+					passCount,
+					passRate: evaluated.length > 0 ? passCount / evaluated.length : 0,
+					passAtK: new Array(evaluated.length).fill(passCount > 0 ? 1 : 0) as number[],
+					passHatK: new Array(evaluated.length).fill(
+						passCount === evaluated.length ? 1 : 0,
+					) as number[],
+				};
+			});
 			return {
 				testCase,
 				workflowBuildSuccess: buildSuccessCount > 0,
@@ -87,7 +119,7 @@ function evaluation(
 					executionScenarioResults: [],
 				})),
 				buildSuccessCount,
-				buildExpectations: [],
+				buildExpectations,
 			};
 		}),
 	};
@@ -148,6 +180,43 @@ describe('formatComparisonMarkdown', () => {
 		expect(md).not.toMatch(/#### Regressions/);
 	});
 
+	it('counts build expectations in no-baseline build-only summaries', () => {
+		const buildOnly = evaluation({
+			totalRuns: 1,
+			testCases: [
+				{
+					userText: 'Build a workflow and ask a follow-up',
+					expectations: [
+						{ text: 'The workflow was built', passes: [true] },
+						{ text: 'The follow-up was asked', passes: [true] },
+					],
+				},
+			],
+		});
+		const slugs = slugMap(buildOnly, ['build-only']);
+
+		const md = formatComparisonMarkdown(
+			buildOnly,
+			{ kind: 'no_baseline' },
+			{ slugByTestCase: slugs },
+		);
+		expect(md).toContain(
+			'**Aggregate**: 100.0% pass (2/2 trials, 0 scenarios + 2 expectations, N=1)',
+		);
+		expect(md).toMatch(/\| `build-only` \| ✓ \| 2\/2 \|/);
+
+		const terminal = formatComparisonTerminal(
+			buildOnly,
+			{ kind: 'no_baseline' },
+			{
+				slugByTestCase: slugs,
+			},
+		);
+		expect(terminal).toContain(
+			'Aggregate: 100.0% pass (2/2 trials, 0 scenarios + 2 expectations, N=1)',
+		);
+	});
+
 	it('renders distinct alerts per skip reason', () => {
 		const noBase = formatComparisonMarkdown(evalFixture, { kind: 'no_baseline' });
 		expect(noBase).toMatch(/> \[!NOTE\]/);
@@ -192,6 +261,32 @@ describe('formatComparisonMarkdown', () => {
 		expect(md).not.toContain('abc12345');
 	});
 
+	it('renders a self-seeded re-run command and button when a rerun hint is given', () => {
+		const md = formatComparisonMarkdown(
+			evalFixture,
+			{ kind: 'no_baseline' },
+			{
+				rerun: {
+					prNumber: '4242',
+					dispatchUrl: 'https://github.com/n8n-io/n8n/actions/workflows/ci-instance-ai-evals.yml',
+				},
+			},
+		);
+		expect(md).toContain('does not re-run on new commits');
+		expect(md).toContain('gh workflow run ci-instance-ai-evals.yml -f pr=4242');
+		expect(md).toContain(
+			'[Run workflow button](https://github.com/n8n-io/n8n/actions/workflows/ci-instance-ai-evals.yml)',
+		);
+		expect(md).toContain('**pr** = `4242`');
+	});
+
+	it('falls back to a generic re-run instruction when no rerun hint is given', () => {
+		const md = formatComparisonMarkdown(evalFixture, { kind: 'no_baseline' });
+		expect(md).toContain('does not re-run on new commits');
+		expect(md).toContain('dispatching the **CI: Instance AI Evals** workflow');
+		expect(md).not.toContain('gh workflow run');
+	});
+
 	it('renders the Workflow checks table when at least one run has outcomes', () => {
 		const withChecks = evaluation({
 			totalRuns: 2,
@@ -224,6 +319,14 @@ describe('formatComparisonMarkdown', () => {
 				dimension: 'ai_nodes',
 				status: 'n_a',
 			},
+			{
+				name: 'fulfills_user_request',
+				description: 'd',
+				kind: 'llm',
+				dimension: 'intent_match',
+				status: 'error',
+				comment: 'LLM check "fulfills_user_request" timed out after 30000ms',
+			},
 		];
 		withChecks.testCases[0].runs[1].workflowChecks = [
 			{
@@ -247,6 +350,13 @@ describe('formatComparisonMarkdown', () => {
 				dimension: 'ai_nodes',
 				status: 'n_a',
 			},
+			{
+				name: 'fulfills_user_request',
+				description: 'd',
+				kind: 'llm',
+				dimension: 'intent_match',
+				status: 'pass',
+			},
 		];
 
 		const md = formatComparisonMarkdown(withChecks, { kind: 'no_baseline' });
@@ -256,17 +366,21 @@ describe('formatComparisonMarkdown', () => {
 		expect(md).toMatch(/`has_trigger`/);
 		expect(md).toMatch(/`valid_field_references`/);
 		expect(md).toMatch(/`agent_has_language_model`/);
-		// has_trigger → 2 pass, 0 fail, 0 N/A
+		// has_trigger → 2 pass, 0 fail, 0 N/A, 0 errors
 		expect(md).toMatch(
-			/\| `structure` \| `has_trigger` \| deterministic \| 2 \| 0 \| 0 \| 100% \|/,
+			/\| `structure` \| `has_trigger` \| deterministic \| 2 \| 0 \| 0 \| 0 \| 100% \|/,
 		);
-		// valid_field_references → 1 pass, 1 fail, 0 N/A → 50%
+		// valid_field_references → 1 pass, 1 fail, 0 N/A, 0 errors → 50%
 		expect(md).toMatch(
-			/\| `parameter_correctness` \| `valid_field_references` \| deterministic \| 1 \| 1 \| 0 \| 50% \|/,
+			/\| `parameter_correctness` \| `valid_field_references` \| deterministic \| 1 \| 1 \| 0 \| 0 \| 50% \|/,
 		);
 		// agent_has_language_model → 0/0 scored, 2 N/A
 		expect(md).toMatch(
-			/\| `ai_nodes` \| `agent_has_language_model` \| deterministic \| 0 \| 0 \| 2 \| — \|/,
+			/\| `ai_nodes` \| `agent_has_language_model` \| deterministic \| 0 \| 0 \| 2 \| 0 \| — \|/,
+		);
+		// fulfills_user_request → the errored run stays out of the denominator: 1/1 scored → 100%
+		expect(md).toMatch(
+			/\| `intent_match` \| `fulfills_user_request` \| llm \| 1 \| 0 \| 0 \| 1 \| 100% \|/,
 		);
 	});
 
@@ -379,8 +493,8 @@ describe('formatComparisonMarkdown', () => {
 			slugByTestCase: slugMap(evalWithFailures, ['cross-team-linear-report']),
 		});
 
-		expect(md).toMatch(/<summary>Failure details<\/summary>/);
-		expect(md).toMatch(/\*\*`cross-team-linear-report\/no-cross-team-issues`\*\* — 3 failed/);
+		expect(md).toMatch(/<summary>Failures \(1\)<\/summary>/);
+		expect(md).toMatch(/\*\*`cross-team-linear-report\/no-cross-team-issues`\*\* — passed 0\/3/);
 	});
 
 	it('attaches per-scenario failures to the right file slug when names collide', () => {

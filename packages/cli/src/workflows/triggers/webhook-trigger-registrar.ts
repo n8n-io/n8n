@@ -8,7 +8,8 @@ import type {
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { WebhookPathTakenError, Workflow, ensureError } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { WebhookPathTakenError, Workflow } from 'n8n-workflow';
 
 import { ErrorReporter, SpanStatus, Tracing } from 'n8n-core';
 
@@ -76,17 +77,7 @@ export class WebhookTriggerRegistrar {
 				},
 			},
 			async (span) => {
-				const node = workflow.getNode(webhookData.node) as INode;
-				node.name = webhookData.node;
-
-				const webhook = this.webhookService.createWebhook({
-					workflowId: webhookData.workflowId,
-					webhookPath: webhookData.path,
-					node: node.name,
-					method: webhookData.httpMethod,
-				});
-
-				this.normalizeWebhookPath(webhook, node.webhookId);
+				const webhook = this.buildNormalizedWebhook(workflow, webhookData);
 
 				let isStored = false;
 				try {
@@ -163,6 +154,75 @@ export class WebhookTriggerRegistrar {
 		await this.webhookService.deleteWorkflowWebhooksForNodes(workflowId, nodeNames);
 	}
 
+	/**
+	 * Of the given trigger nodes, returns the ids of those whose desired webhooks
+	 * are not all present in storage. If any one of a node's webhooks is missing,
+	 * the whole node is returned so it gets re-registered.
+	 *
+	 * This is used to recover from failures during registration.
+	 *
+	 * NOTE: it only considers the local registration, not any remote state
+	 * (e.g., a third-party service that has lost the webhook).
+	 */
+	async getNodesWithUnregisteredWebhooks(
+		workflow: Workflow,
+		additionalData: IWorkflowExecuteAdditionalData,
+		desiredNodes: Set<INode['id']>,
+	): Promise<Set<INode['id']>> {
+		const desiredWebhooks = this.getWebhookTriggers(workflow, additionalData).filter(
+			(webhookData) => desiredNodes.has(workflow.getNode(webhookData.node)?.id ?? ''),
+		);
+		if (desiredWebhooks.length === 0) {
+			return new Set();
+		}
+
+		const registeredKeys = new Set(
+			(await this.webhookService.getRegisteredWebhooks(workflow.id)).map((webhook) =>
+				this.buildWebhookKey(webhook.method, webhook.webhookPath),
+			),
+		);
+
+		const unregistered = new Set<INode['id']>();
+		for (const webhookData of desiredWebhooks) {
+			const node = workflow.getNode(webhookData.node);
+			if (!node) {
+				continue;
+			}
+
+			const webhook = this.buildNormalizedWebhook(workflow, webhookData);
+			const key = this.buildWebhookKey(webhook.method, webhook.webhookPath);
+			if (!registeredKeys.has(key)) {
+				unregistered.add(node.id);
+			}
+		}
+
+		return unregistered;
+	}
+
+	/**
+	 * Builds the storage entity for a webhook, normalizing its path so static and
+	 * dynamic paths match what is persisted.
+	 */
+	private buildNormalizedWebhook(workflow: Workflow, webhookData: IWebhookData): WebhookEntity {
+		const node = workflow.getNode(webhookData.node) as INode;
+
+		const webhook = this.webhookService.createWebhook({
+			workflowId: webhookData.workflowId,
+			webhookPath: webhookData.path,
+			node: node.name,
+			method: webhookData.httpMethod,
+		});
+
+		this.normalizeWebhookPath(webhook, node.webhookId);
+
+		return webhook;
+	}
+
+	/** Identity of a webhook row: its `(method, path)` primary key. */
+	private buildWebhookKey(method: string, webhookPath: string): string {
+		return `${method} ${webhookPath}`;
+	}
+
 	private async clearRegisteredWebhook(workflow: Workflow, webhookData: IWebhookData) {
 		try {
 			await this.deregister({ workflow, webhookData });
@@ -179,6 +239,7 @@ export class WebhookTriggerRegistrar {
 	}
 
 	private normalizeWebhookPath(webhook: WebhookEntity, nodeWebhookId?: string) {
+		webhook.webhookPath = webhook.webhookPath.trim();
 		if (webhook.webhookPath.startsWith('/')) {
 			webhook.webhookPath = webhook.webhookPath.slice(1);
 		}

@@ -23,6 +23,7 @@ import type {
 } from './workflow-import.types';
 import { WorkflowPublisher } from './workflow-publisher';
 import type {
+	ImportContext,
 	ImportWorkflowProperties,
 	PackageImportBindings,
 	WorkflowIdPolicy,
@@ -48,7 +49,7 @@ export class WorkflowImporter {
 	) {}
 
 	async plan(
-		context: WorkflowImportContext,
+		context: ImportContext,
 		prepared: PreparedWorkflow[],
 		options: ImportWorkflowProperties,
 	): Promise<WorkflowImportPlan> {
@@ -132,15 +133,15 @@ export class WorkflowImporter {
 	}
 
 	async apply(
-		plan: WorkflowImportPlan,
 		context: WorkflowImportContext,
+		plan: WorkflowImportPlan,
 		bindings: PackageImportBindings,
 	): Promise<WorkflowImportResult> {
 		const workflowBindings = new Map(bindings.workflows);
 		const outcomes: WorkflowImportOutcome[] = [];
 
 		for (const item of plan.items) {
-			const outcome = await this.applyItem(item, context, bindings);
+			const outcome = await this.applyItem(context, item, bindings);
 			outcomes.push(outcome);
 			// Works for every status: created/updated/skipped all resolve to a real target id.
 			workflowBindings.set(outcome.sourceWorkflowId, outcome.workflow.id);
@@ -150,8 +151,8 @@ export class WorkflowImporter {
 	}
 
 	private async applyItem(
-		item: WorkflowPlanItem,
 		context: WorkflowImportContext,
+		item: WorkflowPlanItem,
 		bindings: PackageImportBindings,
 	): Promise<WorkflowImportOutcome> {
 		if (item.action === 'skip') {

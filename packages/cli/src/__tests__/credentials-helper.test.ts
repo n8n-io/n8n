@@ -6,7 +6,6 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { EntityNotFoundError } from '@n8n/typeorm';
-import { mock } from 'jest-mock-extended';
 import {
 	type InstanceSettings,
 	Cipher,
@@ -14,6 +13,7 @@ import {
 	CipherAes256CBC,
 	EncryptionKeyProxy,
 } from 'n8n-core';
+import { SalesforceJwtApi } from 'n8n-nodes-base/credentials/SalesforceJwtApi.credentials';
 import type {
 	IAuthenticateGeneric,
 	ICredentialDataDecryptedObject,
@@ -28,13 +28,19 @@ import type {
 } from 'n8n-workflow';
 import { deepCopy, Workflow } from 'n8n-workflow';
 import { generateKeyPairSync } from 'node:crypto';
-import { SalesforceJwtApi } from 'n8n-nodes-base/credentials/SalesforceJwtApi.credentials';
+import type { MockInstance } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
-// The credential module resolves to nodes-base source, which uses a package-internal
-// path alias not mapped by cli's jest config.
-jest.mock('@utils/utilities', () => ({ formatPrivateKey: (key: string) => key }), {
-	virtual: true,
-});
+vi.mock('@n8n/utils/format-pem-block', () => ({ formatPemBlock: (key: string) => key }));
+
+// SalesforceJwtApi.preAuthentication exchanges its signed JWT for a token through the
+// shared outbound HTTP client (`getTokenRequestClient`), not `this.helpers.httpRequest`.
+// Mock that client so the token POST is observable and never hits the network.
+const mockTokenRequest = vi.fn();
+vi.mock('n8n-nodes-base/credentials/common/token-request', () => ({
+	getTokenRequestClient: () => ({ request: mockTokenRequest }),
+	TOKEN_REQUEST_TIMEOUT: 30_000,
+}));
 
 import { CredentialTypes } from '@/credential-types';
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
@@ -94,6 +100,134 @@ describe('CredentialsHelper', () => {
 			await expect(
 				credentialsHelper.getCredentials({ id: '1', name: 'foo' }, 'bar'),
 			).rejects.toThrow(errorMessage);
+		});
+	});
+
+	describe('applyDefaultsAndOverwrites', () => {
+		test('omits marked credential fields that cannot resolve without execution context', async () => {
+			const credentialType: ICredentialType = {
+				name: 'openAiApi',
+				displayName: 'OpenAI',
+				properties: [
+					{
+						displayName: 'API Key',
+						name: 'apiKey',
+						type: 'string',
+						required: true,
+						default: '',
+					},
+					{
+						displayName: 'Base URL',
+						name: 'url',
+						type: 'string',
+						default: 'https://api.openai.com/v1',
+					},
+					{
+						displayName: 'Add Custom Header',
+						name: 'header',
+						type: 'boolean',
+						default: false,
+					},
+					{
+						displayName: 'Header Name',
+						name: 'headerName',
+						type: 'string',
+						default: '',
+						typeOptions: {
+							ignoreCredentialExpressionResolveError: true,
+						},
+					},
+					{
+						displayName: 'Header Value',
+						name: 'headerValue',
+						type: 'string',
+						default: '',
+						typeOptions: {
+							ignoreCredentialExpressionResolveError: true,
+						},
+					},
+				],
+			};
+			mockNodesAndCredentials.getCredential.calledWith(credentialType.name).mockReturnValue({
+				type: credentialType,
+				sourcePath: '',
+			});
+			const credentialsOverwrites = mock<CredentialsOverwrites>();
+			credentialsOverwrites.applyOverwrite.mockImplementation((_type, data) => data);
+			const helper = new CredentialsHelper(
+				new CredentialTypes(mockNodesAndCredentials),
+				credentialsOverwrites,
+				credentialsRepository,
+				dynamicCredentialProxy,
+				secretsProviderRepository,
+				licenseState,
+				externalSecretsConfig,
+				mock<AiGatewayService>(),
+			);
+
+			const result = await helper.applyDefaultsAndOverwrites(
+				mock<IWorkflowExecuteAdditionalData>({ variables: {} }),
+				{
+					apiKey: 'test-api-key',
+					url: 'https://custom.example/v1',
+					header: true,
+					headerName: 'X-Workflow-Id',
+					headerValue: '={{$workflow.id}}',
+				},
+				credentialType.name,
+				'internal',
+			);
+
+			expect(result).toMatchObject({
+				apiKey: 'test-api-key',
+				url: 'https://custom.example/v1',
+				header: true,
+				headerName: 'X-Workflow-Id',
+			});
+			expect(result).not.toHaveProperty('headerValue');
+		});
+
+		test('throws when an unmarked credential field cannot resolve without execution context', async () => {
+			const credentialType: ICredentialType = {
+				name: 'openAiApi',
+				displayName: 'OpenAI',
+				properties: [
+					{
+						displayName: 'API Key',
+						name: 'apiKey',
+						type: 'string',
+						required: true,
+						default: '',
+					},
+				],
+			};
+			mockNodesAndCredentials.getCredential.calledWith(credentialType.name).mockReturnValue({
+				type: credentialType,
+				sourcePath: '',
+			});
+			const credentialsOverwrites = mock<CredentialsOverwrites>();
+			credentialsOverwrites.applyOverwrite.mockImplementation((_type, data) => data);
+			const helper = new CredentialsHelper(
+				new CredentialTypes(mockNodesAndCredentials),
+				credentialsOverwrites,
+				credentialsRepository,
+				dynamicCredentialProxy,
+				secretsProviderRepository,
+				licenseState,
+				externalSecretsConfig,
+				mock<AiGatewayService>(),
+			);
+
+			await expect(
+				helper.applyDefaultsAndOverwrites(
+					mock<IWorkflowExecuteAdditionalData>({ variables: {} }),
+					{
+						apiKey: '={{$workflow.id}}',
+					},
+					credentialType.name,
+					'internal',
+				),
+			).rejects.toThrow('save workflow to view');
 		});
 	});
 
@@ -444,12 +578,12 @@ describe('CredentialsHelper', () => {
 				},
 			};
 
-			let storeOAuthTokenDataSpy: jest.SpyInstance;
+			let storeOAuthTokenDataSpy: MockInstance;
 
 			beforeEach(() => {
-				jest.clearAllMocks();
+				vi.clearAllMocks();
 				// Spy on the dynamicCredentialProxy's storeOAuthTokenDataIfNeeded method
-				storeOAuthTokenDataSpy = jest
+				storeOAuthTokenDataSpy = vi
 					.spyOn(dynamicCredentialProxy, 'storeOAuthTokenDataIfNeeded')
 					.mockResolvedValue(undefined);
 			});
@@ -521,8 +655,8 @@ describe('CredentialsHelper', () => {
 				credentialsRepository.findOneByOrFail.mockResolvedValue(mockCredentialEntity);
 
 				const resolverProvider = {
-					resolveIfNeeded: jest.fn(),
-					getSystemResolverId: jest.fn().mockReturnValue('system-resolver'),
+					resolveIfNeeded: vi.fn(),
+					getSystemResolverId: vi.fn().mockReturnValue('system-resolver'),
 				};
 				dynamicCredentialProxy.setResolverProvider(resolverProvider);
 
@@ -662,7 +796,7 @@ describe('CredentialsHelper', () => {
 
 	describe('getDecrypted - AI Gateway managed credentials', () => {
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		it('should pass workflowId and projectId for owner resolution when userId is absent', async () => {
@@ -823,7 +957,7 @@ describe('CredentialsHelper', () => {
 		} as CredentialsEntity;
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			credentialsRepository.findOneByOrFail.mockResolvedValue(mockCredentialEntityForLicense);
 			secretsProviderRepository.findAllAccessibleProviderKeysByCredentialId.mockResolvedValue([]);
 			mockAdditionalDataForLicense.externalSecretProviderKeysAccessibleByCredential = undefined;
@@ -875,8 +1009,8 @@ describe('CredentialsHelper', () => {
 
 	describe('getDecrypted - credential resolution integration', () => {
 		const mockCredentialResolutionProvider = {
-			resolveIfNeeded: jest.fn(),
-			getSystemResolverId: jest.fn(),
+			resolveIfNeeded: vi.fn(),
+			getSystemResolverId: vi.fn(),
 		};
 
 		const mockAdditionalData = {
@@ -908,7 +1042,7 @@ describe('CredentialsHelper', () => {
 		} as CredentialsEntity;
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			credentialsRepository.findOneByOrFail.mockResolvedValue(mockCredentialEntity);
 			// Clear the provider between tests to ensure clean state
 			dynamicCredentialProxy.setResolverProvider(undefined as any);
@@ -1381,7 +1515,7 @@ describe('CredentialsHelper', () => {
 		} as any;
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			dynamicCredentialProxy.setResolverProvider(undefined as any);
 
 			credentialsRepository.findOneByOrFail.mockImplementation(async (query: any) => {
@@ -1569,7 +1703,7 @@ describe('CredentialsHelper', () => {
 		// Proves the framework performs the JWT login only when the cached token is
 		// missing or expired, so chained Salesforce actions reuse one session instead
 		// of authenticating on every request. The login is the credential's
-		// `preAuthentication` hook, which we observe through a counting `httpRequest`.
+		// `preAuthentication` hook, which we observe through a counting token request.
 		const { privateKey } = generateKeyPairSync('rsa', {
 			modulusLength: 2048,
 			publicKeyEncoding: { type: 'spki', format: 'pem' },
@@ -1588,29 +1722,27 @@ describe('CredentialsHelper', () => {
 			credentials: { salesforceJwtApi: { id: 'sf-cred', name: 'Salesforce JWT' } },
 		};
 
-		let httpRequest: jest.Mock;
-		let helpers: IHttpRequestHelper;
-		let updateSpy: jest.SpyInstance;
+		const helpers = mock<IHttpRequestHelper>();
+		let updateSpy: MockInstance;
 		let credentials: ICredentialDataDecryptedObject;
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			mockNodesAndCredentials.getCredential
 				.calledWith('salesforceJwtApi')
 				.mockReturnValue({ type: salesforceJwt, sourcePath: '' });
 
 			let logins = 0;
 			// eslint-disable-next-line @typescript-eslint/require-await
-			httpRequest = jest.fn().mockImplementation(async () => ({
+			mockTokenRequest.mockImplementation(async () => ({
 				access_token: `TOKEN_${++logins}`,
 				instance_url: 'https://acme.my.salesforce.com',
 			}));
-			helpers = { helpers: { httpRequest } } as unknown as IHttpRequestHelper;
 
 			// Stub persistence so the test does not touch the DB. The returned token is
 			// what the request helper merges back into the in-memory credentials for the
 			// next request (see httpRequestWithAuthentication).
-			updateSpy = jest.spyOn(credentialsHelper, 'updateCredentials').mockResolvedValue();
+			updateSpy = vi.spyOn(credentialsHelper, 'updateCredentials').mockResolvedValue();
 
 			credentials = {
 				accessToken: '',
@@ -1634,8 +1766,8 @@ describe('CredentialsHelper', () => {
 				false,
 			);
 
-			expect(httpRequest).toHaveBeenCalledTimes(1);
-			expect(httpRequest).toHaveBeenCalledWith(
+			expect(mockTokenRequest).toHaveBeenCalledTimes(1);
+			expect(mockTokenRequest).toHaveBeenCalledWith(
 				expect.objectContaining({
 					method: 'POST',
 					url: 'https://login.salesforce.com/services/oauth2/token',
@@ -1671,7 +1803,7 @@ describe('CredentialsHelper', () => {
 			expect(second).toBeUndefined();
 			expect(third).toBeUndefined();
 			// Still only the single login from request 1 across all three requests.
-			expect(httpRequest).toHaveBeenCalledTimes(1);
+			expect(mockTokenRequest).toHaveBeenCalledTimes(1);
 		});
 
 		test('re-authenticates when the cached token is reported expired (e.g. after a 401)', async () => {
@@ -1682,7 +1814,7 @@ describe('CredentialsHelper', () => {
 				node,
 				false,
 			);
-			expect(httpRequest).toHaveBeenCalledTimes(1);
+			expect(mockTokenRequest).toHaveBeenCalledTimes(1);
 			expect(credentials.accessToken).toBe('TOKEN_1');
 
 			// credentialsExpired = true mirrors the request helper's retry after a 401.
@@ -1694,7 +1826,7 @@ describe('CredentialsHelper', () => {
 				true,
 			);
 
-			expect(httpRequest).toHaveBeenCalledTimes(2);
+			expect(mockTokenRequest).toHaveBeenCalledTimes(2);
 			expect(refreshed).toMatchObject({ accessToken: 'TOKEN_2' });
 		});
 	});

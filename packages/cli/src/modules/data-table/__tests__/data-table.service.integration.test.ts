@@ -1,5 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import type { AddDataTableColumnDto, CreateDataTableColumnDto } from '@n8n/api-types';
+import type {
+	AddDataTableColumnDto,
+	CreateDataTableColumnDto,
+	ListDataTableContentQueryDto,
+} from '@n8n/api-types';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import type { Project } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -10,6 +14,7 @@ import { DataTableRepository } from '../data-table.repository';
 import { DataTableService } from '../data-table.service';
 import { mockDataTableSizeValidator } from './test-helpers';
 import { DataTableColumnNameConflictError } from '../errors/data-table-column-name-conflict.error';
+import { DataTableSystemColumnNameConflictError } from '../errors/data-table-system-column-name-conflict.error';
 import { DataTableColumnNotFoundError } from '../errors/data-table-column-not-found.error';
 import { DataTableNameConflictError } from '../errors/data-table-name-conflict.error';
 import { DataTableNotFoundError } from '../errors/data-table-not-found.error';
@@ -138,6 +143,25 @@ describe('dataTable', () => {
 			// ASSERT
 			expect(project.id).toBe(project1.id);
 			expect(project.name).toBe(project1.name);
+		});
+
+		it('should reject columns named after system columns (id, createdAt, updatedAt)', async () => {
+			for (const systemColumnName of [
+				'id',
+				'ID',
+				'Id',
+				'createdAt',
+				'CreatedAt',
+				'updatedAt',
+				'UpdatedAt',
+			]) {
+				await expect(
+					dataTableService.createDataTable(project1.id, {
+						name: `table_with_${systemColumnName}`,
+						columns: [{ name: systemColumnName, type: 'string' }],
+					}),
+				).rejects.toThrow(DataTableSystemColumnNameConflictError);
+			}
 		});
 
 		it('should return an error if name/project combination already exists', async () => {
@@ -987,6 +1011,45 @@ describe('dataTable', () => {
 		});
 	});
 
+	describe('getManyQuery ordering', () => {
+		// The node paginates rows with skip/take, which only stays consistent if every page query
+		// orders identically. The listing query must always end with a unique `id` tiebreaker.
+		async function buildListSql(sortBy?: [string, 'ASC' | 'DESC']) {
+			const { id: dataTableId, columns } = await dataTableService.createDataTable(project1.id, {
+				name: 'orderingTable',
+				columns: [{ name: 'name', type: 'string' }],
+			});
+			const em = dataTableRowsRepository['dataSource'].manager;
+			const [, query] = dataTableRowsRepository['getManyQuery'](
+				dataTableId,
+				{ sortBy } as ListDataTableContentQueryDto,
+				columns,
+				em,
+			);
+			return query.select('*').getQuery();
+		}
+
+		it('orders by id when no sortBy is given', async () => {
+			const sql = await buildListSql();
+			expect(sql).toContain('ORDER BY "dataTable"."id" ASC');
+		});
+
+		it('appends id as a tiebreaker after the sort column', async () => {
+			const sql = await buildListSql(['name', 'ASC']);
+			expect(sql).toContain('"dataTable"."name" ASC');
+			expect(sql).toContain('"dataTable"."id" ASC');
+			expect(sql.indexOf('"dataTable"."name" ASC')).toBeLessThan(
+				sql.indexOf('"dataTable"."id" ASC'),
+			);
+		});
+
+		it('does not append a redundant tiebreaker when already sorting by id', async () => {
+			const sql = await buildListSql(['id', 'DESC']);
+			expect(sql).toContain('"dataTable"."id" DESC');
+			expect(sql).not.toContain('"dataTable"."id" ASC');
+		});
+	});
+
 	describe('insertRows', () => {
 		it('inserts rows into an existing table', async () => {
 			// ARRANGE
@@ -1030,7 +1093,7 @@ describe('dataTable', () => {
 						...row,
 						id: i + 1,
 						c3: typeof row.c3 === 'string' ? new Date(row.c3) : row.c3,
-					}) as jest.AsymmetricMatcher,
+					}) as unknown as DataTableRow,
 			);
 
 			expect(data).toEqual(expected);
@@ -1624,7 +1687,7 @@ describe('dataTable', () => {
 						expect.objectContaining<DataTableRow>({
 							...row,
 							id: i + 1,
-						}) as jest.AsymmetricMatcher,
+						}) as unknown as DataTableRow,
 				);
 				expect(data).toEqual(expected);
 			});

@@ -2,7 +2,8 @@ import { Service } from '@n8n/di';
 import chunk from 'lodash/chunk';
 import { ErrorReporter } from 'n8n-core';
 import { AzureBlobService } from 'n8n-core/dist/binary-data/azure-blob/azure-blob.service.ee';
-import { ensureError, jsonParse, jsonStringify } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { jsonParse, jsonStringify } from 'n8n-workflow';
 
 import { EXECUTION_DATA_BUNDLE_FILENAME, EXECUTION_DATA_BUNDLE_VERSION } from './constants';
 import { CorruptedExecutionDataError } from './corrupted-execution-data.error';
@@ -31,7 +32,7 @@ export class AzureStore implements ExecutionDataStore {
 		);
 
 		try {
-			await this.azureBlob.put(this.key(ref), body);
+			await this.azureBlob.put(this.key(ref), body, { mimeType: 'application/json' });
 		} catch (error) {
 			throw new ExecutionDataWriteError(ref, error);
 		}
@@ -43,7 +44,7 @@ export class AzureStore implements ExecutionDataStore {
 		let content: string;
 
 		try {
-			const buffer = await this.azureBlob.get(this.key(ref));
+			const buffer = await this.azureBlob.get(this.key(ref), { mode: 'buffer' });
 			content = buffer.toString('utf-8');
 		} catch (error) {
 			if (this.isNotFound(error)) return null;

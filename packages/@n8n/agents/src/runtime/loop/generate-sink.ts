@@ -10,6 +10,7 @@ import type { GenerateResult } from '../../types';
 import type { ToolResultEntry } from '../../types/sdk/agent';
 import { loadAi } from '../model/lazy-ai';
 import { fromAiFinishReason, fromAiMessages } from '../model/messages';
+import { toTokenUsage } from '../streaming/stream';
 import type { ToolCallBatchResult } from '../tools/tool-call-executor';
 
 /**
@@ -21,6 +22,9 @@ export class GenerateSink implements RunOutputSink<GenerateResult> {
 	private readonly toolCallSummary: ToolResultEntry[] = [];
 
 	constructor(private readonly services: RunServices) {}
+
+	// The non-streaming path returns usage on its result; nothing to track here.
+	reportUsage(): void {}
 
 	async callModel(ctx: ModelCallContext): Promise<ModelTurnResult> {
 		const { generateText } = loadAi();
@@ -39,7 +43,7 @@ export class GenerateSink implements RunOutputSink<GenerateResult> {
 		return {
 			aiFinishReason,
 			finishReason: fromAiFinishReason(aiFinishReason),
-			usage: result.usage,
+			usage: toTokenUsage(result.usage, result.providerMetadata),
 			newMessages: fromAiMessages(result.response.messages),
 			toolCalls: result.toolCalls,
 			structuredOutput:

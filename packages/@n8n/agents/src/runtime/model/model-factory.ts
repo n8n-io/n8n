@@ -10,10 +10,15 @@ import {
 } from './provider-credentials';
 import type { ModelConfig } from '../../types/sdk/agent';
 
-type FetchFn = typeof globalThis.fetch;
+/**
+ * A `fetch`-compatible function. Callers may inject a proxy-aware `fetch` so
+ * model calls route through the configured HTTP(S)_PROXY.
+ */
+export type FetchFn = typeof globalThis.fetch;
 type EmbeddingProviderOptions = {
 	apiKey?: string;
 	baseURL?: string;
+	fetch?: FetchFn;
 };
 type CreateEmbeddingProviderFn = (opts?: EmbeddingProviderOptions) => {
 	embeddingModel(model: string): EmbeddingModel;
@@ -24,15 +29,18 @@ function isLanguageModel(config: unknown): config is LanguageModel {
 }
 
 /**
- * When HTTP_PROXY / HTTPS_PROXY is set (e.g. in e2e tests with MockServer),
- * return a fetch function that routes requests through the proxy. The default
- * globalThis.fetch in Node ≥18 does NOT respect these env vars, so AI SDK
- * providers would bypass the proxy without this.
+ * Env-proxy `fetch` fallback for standalone SDK use.
+ *
+ * `@n8n/agents` is a standalone SDK and deliberately does not depend on `@n8n/backend-network`,
+ * so it cannot build the backend's centrally-guarded transport itself.
+ * Inside the n8n backend that guarded `fetch` is always injected into {@link createModel} / {@link createEmbeddingModel}
+ * (see cli's `createAiProxyFetch`, which wraps `@n8n/backend-network`), and this fallback is never reached.
  */
 function getProxyFetch(): FetchFn | undefined {
 	const proxyUrl = process.env.HTTPS_PROXY ?? process.env.HTTP_PROXY;
 	if (!proxyUrl) return undefined;
 
+	// eslint-disable-next-line n8n-local-rules/no-uncentralized-http -- standalone SDK cannot depend on @n8n/backend-network; the backend always injects its guarded transport, so this env-proxy path runs only outside the backend (see doc comment above). To drop this: make `fetch` a required arg of createModel/createEmbeddingModel and delete the fallback, so standalone callers always supply their own transport
 	const { ProxyAgent } = require('undici') as typeof Undici;
 	const dispatcher = new ProxyAgent(proxyUrl);
 	return (async (url, init) =>
@@ -178,7 +186,7 @@ const SUPPORTED_PROVIDERS = Object.keys(LANGUAGE_PROVIDERS).join(', ');
  * Provider packages are loaded dynamically via require() so only the
  * provider needed at runtime must be installed.
  */
-export function createModel(config: ModelConfig): LanguageModel {
+export function createModel(config: ModelConfig, fetch?: FetchFn): LanguageModel {
 	if (isLanguageModel(config)) {
 		return config;
 	}
@@ -218,9 +226,14 @@ export function createModel(config: ModelConfig): LanguageModel {
 		throw new Error(`Invalid credentials for provider "${provider}":\n${issues}`);
 	}
 
-	const fetch = getProxyFetch();
+	// Caller-injected transport wins; fall back to the ambient env-proxy resolver.
+	const resolvedFetch = fetch ?? getProxyFetch();
 	// Type cast: the registry guarantees the schema and builder are aligned per provider.
-	return (entry.build as EntryBuilder<typeof provider>)(parsed.data as never, modelName, fetch);
+	return (entry.build as EntryBuilder<typeof provider>)(
+		parsed.data as never,
+		modelName,
+		resolvedFetch,
+	);
 }
 
 /**

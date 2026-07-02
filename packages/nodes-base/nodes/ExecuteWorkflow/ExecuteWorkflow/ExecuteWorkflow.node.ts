@@ -253,6 +253,18 @@ export class ExecuteWorkflow implements INodeType {
 				default: 'once',
 			},
 			{
+				displayName:
+					'"Run once for each item" is deprecated and will be removed in a future version. To run the sub-workflow once per item, add a "Loop Over Items" node before this node and use "Run once with all items".',
+				name: 'eachModeDeprecationNotice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						mode: ['each'],
+					},
+				},
+			},
+			{
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',

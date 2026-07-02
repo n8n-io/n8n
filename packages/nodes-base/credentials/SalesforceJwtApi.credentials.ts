@@ -1,7 +1,6 @@
+import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import jwt from 'jsonwebtoken';
 import moment from 'moment-timezone';
-
-import { formatPrivateKey } from '@utils/utilities';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialTestRequest,
@@ -11,6 +10,8 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 import { OperationalError } from 'n8n-workflow';
+
+import { getTokenRequestClient, TOKEN_REQUEST_TIMEOUT } from './common/token-request';
 
 export class SalesforceJwtApi implements ICredentialType {
 	name = 'salesforceJwtApi';
@@ -97,7 +98,7 @@ export class SalesforceJwtApi implements ICredentialType {
 	async preAuthentication(this: IHttpRequestHelper, credentials: ICredentialDataDecryptedObject) {
 		const now = moment().unix();
 		const authUrl = resolveAuthUrl(credentials);
-		const privateKey = formatPrivateKey(credentials.privateKey as string);
+		const privateKey = formatPemBlock(credentials.privateKey as string);
 		const signature = jwt.sign(
 			{
 				iss: credentials.clientId as string,
@@ -114,16 +115,21 @@ export class SalesforceJwtApi implements ICredentialType {
 			},
 		);
 
-		const response = (await this.helpers.httpRequest({
-			method: 'POST',
+		// `myDomainUrl` is a free-form credential string, so gate the token POST on SSRF protection.
+		const http = getTokenRequestClient('user-controlled');
+
+		const response = (await http.request({
 			url: `${authUrl}/services/oauth2/token`,
-			headers: {
-				'Content-Type': 'application/x-www-form-urlencoded',
-			},
+			method: 'POST',
 			body: new URLSearchParams({
 				grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
 				assertion: signature,
 			}).toString(),
+			headers: {
+				'Content-Type': 'application/x-www-form-urlencoded',
+			},
+			json: true,
+			timeout: TOKEN_REQUEST_TIMEOUT,
 		})) as { access_token?: string; instance_url?: string };
 
 		if (!response.access_token || !response.instance_url) {

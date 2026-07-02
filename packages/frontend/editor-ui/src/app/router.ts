@@ -6,7 +6,7 @@ import type {
 	RouteLocationNormalized,
 } from 'vue-router';
 import { createRouter, createWebHistory, isNavigationFailure, RouterView } from 'vue-router';
-import { generateNanoId } from '@n8n/utils';
+import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
@@ -801,7 +801,7 @@ export const routes: RouteRecordRaw[] = [
 			{
 				path: 'project-roles/view/:roleSlug',
 				name: VIEWS.PROJECT_ROLE_VIEW,
-				component: async () => await import('@/features/project-roles/ProjectRoleView.vue'),
+				component: async () => await import('@/features/roles/project/ProjectRoleView.vue'),
 				props: true,
 				meta: {
 					middleware: ['authenticated', 'enterprise'],
@@ -821,23 +821,111 @@ export const routes: RouteRecordRaw[] = [
 				},
 			},
 			{
+				path: 'roles',
+				name: VIEWS.ROLES_SETTINGS,
+				component: async () => await import('@/features/roles/RolesView.vue'),
+				beforeEnter: () => {
+					const { check } = useEnvFeatureFlag();
+					if (!check.value('CUSTOM_INSTANCE_ROLES')) {
+						return { name: VIEWS.PROJECT_ROLES_SETTINGS };
+					}
+					return true;
+				},
+				meta: {
+					middleware: ['authenticated', 'rbac'],
+					middlewareOptions: {
+						rbac: {
+							scope: ['role:manage'],
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'roles',
+							};
+						},
+					},
+				},
+			},
+			{
+				path: 'instance-roles',
+				component: RouterView,
+				// Instance role create/edit/view are gated behind the env flag; when off,
+				// fall back to the canonical project-roles page.
+				beforeEnter: () => {
+					const { check } = useEnvFeatureFlag();
+					if (!check.value('CUSTOM_INSTANCE_ROLES')) {
+						return { name: VIEWS.PROJECT_ROLES_SETTINGS };
+					}
+					return true;
+				},
+				children: [
+					{
+						path: 'new',
+						name: VIEWS.INSTANCE_NEW_ROLE,
+						component: async () => await import('@/features/roles/instance/InstanceRoleView.vue'),
+					},
+					{
+						path: 'edit/:roleSlug',
+						name: VIEWS.INSTANCE_ROLE_SETTINGS,
+						component: async () => await import('@/features/roles/instance/InstanceRoleView.vue'),
+						props: true,
+					},
+					{
+						path: 'view/:roleSlug',
+						name: VIEWS.INSTANCE_ROLE_VIEW,
+						component: async () => await import('@/features/roles/instance/InstanceRoleView.vue'),
+						props: true,
+					},
+				],
+				meta: {
+					middleware: ['authenticated', 'enterprise', 'rbac'],
+					middlewareOptions: {
+						enterprise: {
+							feature: EnterpriseEditionFeature.CustomRoles,
+						},
+						rbac: {
+							scope: ['role:manage'],
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'roles',
+							};
+						},
+					},
+				},
+			},
+			{
 				path: 'project-roles',
 				component: RouterView,
 				children: [
 					{
 						path: '',
 						name: VIEWS.PROJECT_ROLES_SETTINGS,
-						component: async () => await import('@/features/project-roles/ProjectRolesView.vue'),
+						component: async () => await import('@/features/roles/project/ProjectRolesView.vue'),
+						// When custom instance roles are enabled, the standalone project-roles page
+						// is superseded by the tabbed Roles shell; redirect old deep links there.
+						beforeEnter: () => {
+							const { check } = useEnvFeatureFlag();
+							if (check.value('CUSTOM_INSTANCE_ROLES')) {
+								return { name: VIEWS.ROLES_SETTINGS, query: { tab: 'project' } };
+							}
+							return true;
+						},
 					},
 					{
 						path: 'new',
 						name: VIEWS.PROJECT_NEW_ROLE,
-						component: async () => await import('@/features/project-roles/ProjectRoleView.vue'),
+						component: async () => await import('@/features/roles/project/ProjectRoleView.vue'),
 					},
 					{
 						path: 'edit/:roleSlug',
 						name: VIEWS.PROJECT_ROLE_SETTINGS,
-						component: async () => await import('@/features/project-roles/ProjectRoleView.vue'),
+						component: async () => await import('@/features/roles/project/ProjectRoleView.vue'),
 						props: true,
 					},
 				],

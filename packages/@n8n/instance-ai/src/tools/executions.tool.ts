@@ -3,7 +3,10 @@
  * get-resolved-node-parameters, stop.
  */
 import { Tool } from '@n8n/agents';
-import { instanceAiConfirmationSeveritySchema } from '@n8n/api-types';
+import {
+	buildRunWorkflowSessionGrantKey,
+	instanceAiConfirmationSeveritySchema,
+} from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
@@ -143,6 +146,9 @@ const suspendSchema = z.object({
 
 const resumeSchema = z.object({
 	approved: z.boolean(),
+	/** `'session'` — the user chose "always allow"; persist a thread-level grant so
+	 *  subsequent runs skip HITL for this action. */
+	scope: z.enum(['once', 'session']).optional(),
 });
 
 // ── Handlers ───────────────────────────────────────────────────────────────
@@ -244,7 +250,14 @@ async function handleRun(
 		context.requireRunWorkflowApproval !== true &&
 		context.permissions?.runWorkflow === 'always_allow' &&
 		(allowList === undefined || allowList.has(workflowId) || allowedByName);
-	const needsApproval = !allowedByScope;
+
+	// A per-workflow "always allow" grant skips HITL for the rest of the session, but an
+	// admin's `requireRunWorkflowApproval` always wins - same gate as `allowedByScope`.
+	const grantKey = buildRunWorkflowSessionGrantKey(workflowId);
+	const allowedBySessionGrant =
+		context.requireRunWorkflowApproval !== true &&
+		context.sessionApprovedToolKeys?.has(grantKey) === true;
+	const needsApproval = !allowedByScope && !allowedBySessionGrant;
 
 	// If approval is required and this is the first call, suspend for confirmation
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
@@ -264,6 +277,11 @@ async function handleRun(
 			denied: true,
 			reason: 'User denied the action',
 		};
+	}
+
+	// "Always allow" — persist the grant so subsequent runs of this workflow skip HITL.
+	if (resumeData?.approved && resumeData.scope === 'session') {
+		await context.grantSessionToolApproval?.(grantKey);
 	}
 
 	// Approved or always_allow — execute
@@ -311,7 +329,8 @@ export function createExecutionsTool(context: InstanceAiContext) {
 		.description(
 			'Manage workflow executions — list, inspect, run, debug, get node output, ' +
 				'get resolved node parameters for a past run, and stop. ' +
-				'Use action="run" for verification when the current turn is responsible for verification; prefer verify-built-workflow for standard post-build verification.',
+				'To verify a workflow you built, use verify-built-workflow, not action="run". ' +
+				'Reserve action="run" for runs the user explicitly asked for: it runs the workflow live with no pin data and prompts the user for approval.',
 		)
 		.input(inputSchema)
 		.suspend(suspendSchema)

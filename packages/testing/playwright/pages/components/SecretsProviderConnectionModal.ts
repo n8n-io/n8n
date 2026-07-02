@@ -98,13 +98,6 @@ export class SecretsProviderConnectionModal extends BaseModal {
 		await option.waitFor({ state: 'hidden' });
 	}
 
-	async close(): Promise<void> {
-		const closeBtn = this.container.locator('.el-dialog__close').first();
-		if (await closeBtn.isVisible()) {
-			await closeBtn.click();
-		}
-	}
-
 	async waitForModal(): Promise<void> {
 		await this.container.waitFor({ state: 'visible' });
 	}

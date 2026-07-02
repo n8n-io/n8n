@@ -2,23 +2,26 @@ import type { OutboundHttp } from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import type RudderStack from '@rudderstack/rudder-sdk-node';
-import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
+import type { MockInstance } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { PostHogClient } from '@/posthog';
 import { Telemetry } from '@/telemetry';
 
-jest.unmock('@/telemetry');
-jest.mock('@/posthog');
+vi.unmock('@/telemetry');
+vi.mock('@/posthog');
 
-const rudderStackConstructor = jest.fn().mockImplementation(() => mock<RudderStack>());
-jest.mock('@rudderstack/rudder-sdk-node', () => ({
+const rudderStackConstructor = vi.fn().mockImplementation(function () {
+	return mock<RudderStack>();
+});
+vi.mock('@rudderstack/rudder-sdk-node', () => ({
 	__esModule: true,
 	default: rudderStackConstructor,
 }));
 
 describe('Telemetry', () => {
-	let spyTrack: jest.SpyInstance;
+	let spyTrack: MockInstance;
 
 	const mockRudderStack = mock<RudderStack>();
 
@@ -32,21 +35,21 @@ describe('Telemetry', () => {
 	});
 
 	beforeAll(() => {
-		jest.useFakeTimers();
-		jest.setSystemTime(testDateTime);
+		vi.useFakeTimers();
+		vi.setSystemTime(testDateTime);
 		globalConfig.deployment.type = 'n8n-testing';
 	});
 
 	afterAll(async () => {
-		jest.clearAllTimers();
-		jest.useRealTimers();
+		vi.clearAllTimers();
+		vi.useRealTimers();
 		await telemetry.stopTracking();
 	});
 
 	beforeEach(async () => {
-		spyTrack = jest.spyOn(Telemetry.prototype, 'track').mockName('track');
+		spyTrack = vi.spyOn(Telemetry.prototype, 'track').mockName('track');
 		// @ts-expect-error Spying on private method
-		jest.spyOn(Telemetry.prototype, 'startPulse').mockImplementation(() => {});
+		vi.spyOn(Telemetry.prototype, 'startPulse').mockImplementation(function () {});
 
 		const postHog = new PostHogClient(instanceSettings, mock());
 		await postHog.init();
@@ -72,8 +75,8 @@ describe('Telemetry', () => {
 	describe('init', () => {
 		const httpAgent = mock();
 		const httpsAgent = mock();
-		const getNodeAgent = jest.fn().mockReturnValue({ httpAgent, httpsAgent });
-		const transport = jest.fn().mockReturnValue({ getNodeAgent });
+		const getNodeAgent = vi.fn().mockReturnValue({ httpAgent, httpsAgent });
+		const transport = vi.fn().mockReturnValue({ getNodeAgent });
 		const outboundHttp = mock<OutboundHttp>({ transport });
 
 		const initConfig = mock<GlobalConfig>({
@@ -134,7 +137,7 @@ describe('Telemetry', () => {
 
 	describe('trackWorkflowExecution', () => {
 		beforeEach(() => {
-			jest.setSystemTime(testDateTime);
+			vi.setSystemTime(testDateTime);
 		});
 
 		test('should count executions correctly', async () => {
@@ -147,30 +150,30 @@ describe('Telemetry', () => {
 
 			payload.is_manual = true;
 			payload.success = true;
-			const execTime1 = fakeJestSystemTime('2022-01-01 12:00:00');
+			const execTime1 = fakeTestSystemTime('2022-01-01 12:00:00');
 			telemetry.trackWorkflowExecution(payload);
-			fakeJestSystemTime('2022-01-01 12:30:00');
+			fakeTestSystemTime('2022-01-01 12:30:00');
 			telemetry.trackWorkflowExecution(payload);
 
 			payload.is_manual = false;
 			payload.success = true;
-			const execTime2 = fakeJestSystemTime('2022-01-01 13:00:00');
+			const execTime2 = fakeTestSystemTime('2022-01-01 13:00:00');
 			telemetry.trackWorkflowExecution(payload);
-			fakeJestSystemTime('2022-01-01 12:30:00');
+			fakeTestSystemTime('2022-01-01 12:30:00');
 			telemetry.trackWorkflowExecution(payload);
 
 			payload.is_manual = true;
 			payload.success = false;
-			const execTime3 = fakeJestSystemTime('2022-01-01 14:00:00');
+			const execTime3 = fakeTestSystemTime('2022-01-01 14:00:00');
 			telemetry.trackWorkflowExecution(payload);
-			fakeJestSystemTime('2022-01-01 12:30:00');
+			fakeTestSystemTime('2022-01-01 12:30:00');
 			telemetry.trackWorkflowExecution(payload);
 
 			payload.is_manual = false;
 			payload.success = false;
-			const execTime4 = fakeJestSystemTime('2022-01-01 15:00:00');
+			const execTime4 = fakeTestSystemTime('2022-01-01 15:00:00');
 			telemetry.trackWorkflowExecution(payload);
-			fakeJestSystemTime('2022-01-01 12:30:00');
+			fakeTestSystemTime('2022-01-01 12:30:00');
 			telemetry.trackWorkflowExecution(payload);
 
 			expect(spyTrack).toHaveBeenCalledTimes(0);
@@ -196,19 +199,19 @@ describe('Telemetry', () => {
 				execution_source: 'user',
 			};
 
-			const userManualExecTime = fakeJestSystemTime('2022-01-01 12:00:00');
+			const userManualExecTime = fakeTestSystemTime('2022-01-01 12:00:00');
 			telemetry.trackWorkflowExecution(payload);
 
 			payload.execution_source = 'instance_ai';
 			payload.mock_data_sources = 'trigger_input';
 
-			const instanceAiMockManualExecTime = fakeJestSystemTime('2022-01-01 13:00:00');
+			const instanceAiMockManualExecTime = fakeTestSystemTime('2022-01-01 13:00:00');
 			telemetry.trackWorkflowExecution(payload);
 
 			payload.is_manual = false;
 			delete payload.mock_data_sources;
 
-			const instanceAiRealProdExecTime = fakeJestSystemTime('2022-01-01 14:00:00');
+			const instanceAiRealProdExecTime = fakeTestSystemTime('2022-01-01 14:00:00');
 			telemetry.trackWorkflowExecution(payload);
 
 			const execBuffer = telemetry.getCountsBuffer();
@@ -237,9 +240,9 @@ describe('Telemetry', () => {
 				error_node_type: 'custom-nodes-base.node-type',
 			};
 
-			const execTime1 = fakeJestSystemTime('2022-01-01 12:00:00');
+			const execTime1 = fakeTestSystemTime('2022-01-01 12:00:00');
 			telemetry.trackWorkflowExecution(payload);
-			fakeJestSystemTime('2022-01-01 12:30:00');
+			fakeTestSystemTime('2022-01-01 12:30:00');
 			telemetry.trackWorkflowExecution(payload);
 
 			let execBuffer = telemetry.getCountsBuffer();
@@ -250,9 +253,9 @@ describe('Telemetry', () => {
 			expect(execBuffer['1'].manual_error?.first).toEqual(execTime1);
 
 			payload.error_node_type = 'n8n-nodes-base.node-type';
-			fakeJestSystemTime('2022-01-01 13:00:00');
+			fakeTestSystemTime('2022-01-01 13:00:00');
 			telemetry.trackWorkflowExecution(payload);
-			fakeJestSystemTime('2022-01-01 12:30:00');
+			fakeTestSystemTime('2022-01-01 12:30:00');
 			telemetry.trackWorkflowExecution(payload);
 
 			execBuffer = telemetry.getCountsBuffer();
@@ -273,7 +276,7 @@ describe('Telemetry', () => {
 			};
 
 			// successful execution
-			const execTime1 = fakeJestSystemTime('2022-01-01 12:00:00');
+			const execTime1 = fakeTestSystemTime('2022-01-01 12:00:00');
 			telemetry.trackWorkflowExecution(payload);
 
 			expect(spyTrack).toHaveBeenCalledTimes(0);
@@ -333,7 +336,7 @@ describe('Telemetry', () => {
 			expect(execBuffer['2'].prod_success?.first).toEqual(execTime1);
 
 			// failed execution
-			const execTime2 = fakeJestSystemTime('2022-01-01 12:00:00');
+			const execTime2 = fakeTestSystemTime('2022-01-01 12:00:00');
 			payload.error_node_type = 'custom-package.custom-node';
 			payload.success = false;
 			telemetry.trackWorkflowExecution(payload);
@@ -390,16 +393,16 @@ describe('Telemetry', () => {
 			};
 
 			// Manual crashed execution
-			const execTime1 = fakeJestSystemTime('2022-01-01 12:00:00');
+			const execTime1 = fakeTestSystemTime('2022-01-01 12:00:00');
 			telemetry.trackWorkflowExecution(payload);
-			fakeJestSystemTime('2022-01-01 12:30:00');
+			fakeTestSystemTime('2022-01-01 12:30:00');
 			telemetry.trackWorkflowExecution(payload);
 
 			// Production crashed execution
 			payload.is_manual = false;
-			const execTime2 = fakeJestSystemTime('2022-01-01 13:00:00');
+			const execTime2 = fakeTestSystemTime('2022-01-01 13:00:00');
 			telemetry.trackWorkflowExecution(payload);
-			fakeJestSystemTime('2022-01-01 13:30:00');
+			fakeTestSystemTime('2022-01-01 13:30:00');
 			telemetry.trackWorkflowExecution(payload);
 
 			// Should fire "Workflow execution errored" events for manual crashed executions with n8n-nodes-base
@@ -436,10 +439,10 @@ describe('Telemetry', () => {
 				error_node_type: 'n8n-nodes-base.another-node',
 			};
 
-			const execTime1 = fakeJestSystemTime('2022-01-01 12:00:00');
+			const execTime1 = fakeTestSystemTime('2022-01-01 12:00:00');
 			telemetry.trackWorkflowExecution(payload1);
 
-			const execTime2 = fakeJestSystemTime('2022-01-01 13:00:00');
+			const execTime2 = fakeTestSystemTime('2022-01-01 13:00:00');
 			telemetry.trackWorkflowExecution(payload2);
 
 			// Should fire one "Workflow execution errored" event for manual crashed execution with n8n-nodes-base
@@ -589,13 +592,248 @@ describe('Telemetry', () => {
 		});
 	});
 
+	describe('trackAgentTurnFinished', () => {
+		const configuration = {
+			model: 'anthropic/claude-sonnet-4-5',
+			channels: ['slack'],
+			tool_types: ['custom'],
+			tool_count: 1,
+			num_skills: 2,
+			memory_type: 'n8n_observational' as const,
+		};
+
+		test('should buffer agent session metrics without tracking immediately', () => {
+			telemetry.trackAgentTurnFinished({
+				agent_id: 'agent-1',
+				thread_id: 'thread-1',
+				run_type: 'test',
+				turn_status: 'succeeded',
+				configuration,
+				latency_ms: 100,
+				cost: 10,
+				tool_call_count: 1,
+			});
+
+			expect(spyTrack).toHaveBeenCalledTimes(0);
+			expect(Object.values(telemetry.getAgentSessionMetricsBuffer())).toEqual([
+				expect.objectContaining({
+					agent_id: 'agent-1',
+					run_type: 'test',
+					turn_status: 'succeeded',
+					configuration,
+					sessions: {
+						'thread-1': {
+							latency_ms: 100,
+							cost: 10,
+							tool_call_count: 1,
+							num_skills: 2,
+							turn_count: 1,
+						},
+					},
+				}),
+			]);
+		});
+
+		test('should flush session metrics with additive sums', () => {
+			for (const [thread_id, latency_ms, cost, tool_call_count] of [
+				['thread-1', 100, 10, 1],
+				['thread-1', 200, 20, 3],
+				['thread-2', 400, 40, 5],
+				['thread-3', 800, 80, 7],
+			] as const) {
+				telemetry.trackAgentTurnFinished({
+					agent_id: 'agent-1',
+					thread_id,
+					run_type: 'test',
+					turn_status: 'succeeded',
+					configuration,
+					latency_ms,
+					cost,
+					tool_call_count,
+				});
+			}
+
+			// @ts-expect-error Calling private method
+			telemetry.flushAgentSessionMetrics();
+
+			const payload = spyTrack.mock.calls.find(
+				([eventName]) => eventName === 'Agent session metrics',
+			)?.[1];
+			expect(payload).toEqual({
+				event_version: '1',
+				agent_id: 'agent-1',
+				...configuration,
+				run_type: 'test',
+				turn_status: 'succeeded',
+				session_count: 3,
+				turn_count: 4,
+				latency_ms_sum: 1500,
+				cost_sum: 150,
+				tool_call_count_sum: 16,
+				num_skills_sum: 6,
+			});
+			expect(payload).not.toHaveProperty('latency_ms_avg');
+			expect(payload).not.toHaveProperty('latency_ms_p25');
+			expect(payload).not.toHaveProperty('cost_avg');
+			expect(payload).not.toHaveProperty('tool_call_count_p50');
+			expect(payload).not.toHaveProperty('num_skills_p75');
+			expect(telemetry.getAgentSessionMetricsBuffer()).toEqual({});
+		});
+
+		test('should flush turn status and run type buckets separately', () => {
+			telemetry.trackAgentTurnFinished({
+				agent_id: 'agent-1',
+				thread_id: 'thread-1',
+				run_type: 'test',
+				turn_status: 'succeeded',
+				configuration,
+				latency_ms: 100,
+				cost: 10,
+				tool_call_count: 1,
+			});
+			telemetry.trackAgentTurnFinished({
+				agent_id: 'agent-1',
+				thread_id: 'thread-2',
+				run_type: 'production',
+				turn_status: 'failed',
+				configuration,
+				latency_ms: 200,
+				cost: 20,
+				tool_call_count: 2,
+			});
+
+			// @ts-expect-error Calling private method
+			telemetry.flushAgentSessionMetrics();
+
+			expect(spyTrack).toHaveBeenCalledWith(
+				'Agent session metrics',
+				expect.objectContaining({
+					run_type: 'test',
+					turn_status: 'succeeded',
+					latency_ms_sum: 100,
+				}),
+			);
+			expect(spyTrack).toHaveBeenCalledWith(
+				'Agent session metrics',
+				expect.objectContaining({
+					run_type: 'production',
+					turn_status: 'failed',
+					latency_ms_sum: 200,
+				}),
+			);
+		});
+
+		test('should keep mixed turn outcomes separate for the same session', () => {
+			telemetry.trackAgentTurnFinished({
+				agent_id: 'agent-1',
+				thread_id: 'thread-1',
+				run_type: 'production',
+				turn_status: 'succeeded',
+				configuration,
+				latency_ms: 100,
+				cost: 10,
+				tool_call_count: 1,
+			});
+			telemetry.trackAgentTurnFinished({
+				agent_id: 'agent-1',
+				thread_id: 'thread-1',
+				run_type: 'production',
+				turn_status: 'succeeded',
+				configuration,
+				latency_ms: 200,
+				cost: 20,
+				tool_call_count: 2,
+			});
+			telemetry.trackAgentTurnFinished({
+				agent_id: 'agent-1',
+				thread_id: 'thread-1',
+				run_type: 'production',
+				turn_status: 'failed',
+				configuration,
+				latency_ms: 400,
+				cost: 40,
+				tool_call_count: 4,
+			});
+
+			// @ts-expect-error Calling private method
+			telemetry.flushAgentSessionMetrics();
+
+			expect(spyTrack).toHaveBeenCalledWith(
+				'Agent session metrics',
+				expect.objectContaining({
+					run_type: 'production',
+					turn_status: 'succeeded',
+					session_count: 1,
+					turn_count: 2,
+					latency_ms_sum: 300,
+					cost_sum: 30,
+					tool_call_count_sum: 3,
+					num_skills_sum: 2,
+				}),
+			);
+			expect(spyTrack).toHaveBeenCalledWith(
+				'Agent session metrics',
+				expect.objectContaining({
+					run_type: 'production',
+					turn_status: 'failed',
+					session_count: 1,
+					turn_count: 1,
+					latency_ms_sum: 400,
+					cost_sum: 40,
+					tool_call_count_sum: 4,
+					num_skills_sum: 2,
+				}),
+			);
+		});
+
+		test('should not emit thread IDs', () => {
+			telemetry.trackAgentTurnFinished({
+				agent_id: 'agent-1',
+				thread_id: 'thread-1',
+				run_type: 'test',
+				turn_status: 'succeeded',
+				configuration,
+				latency_ms: 100,
+				cost: 10,
+				tool_call_count: 1,
+			});
+
+			// @ts-expect-error Calling private method
+			telemetry.flushAgentSessionMetrics();
+
+			const payload = spyTrack.mock.calls.find(
+				([eventName]) => eventName === 'Agent session metrics',
+			)?.[1];
+			expect(payload).not.toHaveProperty('thread_id');
+			expect(JSON.stringify(payload)).not.toContain('thread-1');
+		});
+
+		test('should not buffer when rudderStack is not initialized', () => {
+			// @ts-expect-error Assigning to private property
+			telemetry.rudderStack = undefined;
+
+			telemetry.trackAgentTurnFinished({
+				agent_id: 'agent-1',
+				thread_id: 'thread-1',
+				run_type: 'test',
+				turn_status: 'succeeded',
+				configuration,
+				latency_ms: 100,
+				cost: 10,
+				tool_call_count: 1,
+			});
+
+			expect(telemetry.getAgentSessionMetricsBuffer()).toEqual({});
+		});
+	});
+
 	describe('trackApiInvocation', () => {
 		beforeEach(() => {
-			jest.setSystemTime(testDateTime);
+			vi.setSystemTime(testDateTime);
 		});
 
 		test('should count calls per user and endpoint', () => {
-			const execTime1 = fakeJestSystemTime('2022-01-01 12:00:00');
+			const execTime1 = fakeTestSystemTime('2022-01-01 12:00:00');
 
 			telemetry.trackApiInvocation({
 				user_id: 'user1',
@@ -821,8 +1059,8 @@ describe('Telemetry', () => {
 	});
 });
 
-const fakeJestSystemTime = (dateTime: string | Date): Date => {
+const fakeTestSystemTime = (dateTime: string | Date): Date => {
 	const dt = new Date(dateTime);
-	jest.setSystemTime(dt);
+	vi.setSystemTime(dt);
 	return dt;
 };

@@ -11,12 +11,13 @@ import { NodeSslError } from 'n8n-workflow';
 import { IncomingMessage } from 'node:http';
 import { Readable } from 'node:stream';
 
-import { buildAxiosConfigFromLegacyRequest } from './axios/legacy';
-import { invokeAxios } from './axios/request';
+import type { SsrfBridge } from '../ssrf';
+import { invokeAxios } from './axios/invoke';
+import { buildAxiosConfigFromLegacyRequest, buildLegacyAgentOptions } from './axios/legacy';
+import { followSsrfRedirects, shouldFollowRedirectsManually } from './axios/redirect';
 import { resolveLegacyRequestUrl, throwIfDomainNotAllowed, validateUrlSsrf } from './axios/utils';
 import { binaryToString } from './binary-string';
 import { parseIncomingMessage } from './parse-incoming-message';
-import type { SsrfBridge } from '../ssrf';
 
 export interface LegacyRequestCallbacks {
 	/**
@@ -63,7 +64,17 @@ export async function executeLegacyRequest(
 	throwIfDomainNotAllowed(axiosConfig, requestObject.allowedDomains);
 
 	try {
-		const response = await invokeAxios(axiosConfig, requestObject.auth);
+		const response = shouldFollowRedirectsManually(axiosConfig, requestObject.proxy, ssrfBridge)
+			? await followSsrfRedirects(axiosConfig, {
+					ssrf: ssrfBridge,
+					proxyConfig: requestObject.proxy,
+					agentOptions: buildLegacyAgentOptions(requestObject),
+					allowedDomains: requestObject.allowedDomains,
+					sendCredentialsOnCrossOriginRedirect:
+						requestObject.sendCredentialsOnCrossOriginRedirect ?? true,
+					authSendImmediately: requestObject.auth?.sendImmediately,
+				})
+			: await invokeAxios(axiosConfig, requestObject.auth?.sendImmediately);
 		let body = response.data;
 		if (body instanceof IncomingMessage && axiosConfig.responseType === 'stream') {
 			parseIncomingMessage(body);

@@ -39,6 +39,7 @@ import {
 	CREDENTIAL_RESOLVER_EDIT_MODAL_KEY,
 	AI_BUILDER_DIFF_MODAL_KEY,
 	INSTANCE_AI_CREDENTIAL_SETUP_MODAL_KEY,
+	INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY,
 	AI_GATEWAY_TOP_UP_MODAL_KEY,
 	AGENT_CONFIRMATION_MODAL_KEY,
 } from '@/app/constants';
@@ -141,6 +142,7 @@ import AiGatewayTopUpModal from '@/features/ai/gateway/components/AiGatewayTopUp
 import InstanceAiCredentialSetupModal, {
 	type InstanceAiCredentialSetupModalData,
 } from '@/features/ai/instanceAi/components/InstanceAiCredentialSetupModal.vue';
+import InstanceAiToolsConnectionModalWrapper from '@/features/ai/instanceAi/components/modals/InstanceAiToolsConnectionModalWrapper.vue';
 </script>
 
 <template>
@@ -536,6 +538,12 @@ import InstanceAiCredentialSetupModal, {
 					:modal-name="modalName"
 					:data="data as InstanceAiCredentialSetupModalData"
 				/>
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY">
+			<template #default="{ modalName }">
+				<InstanceAiToolsConnectionModalWrapper :modal-name="modalName" />
 			</template>
 		</ModalRoot>
 

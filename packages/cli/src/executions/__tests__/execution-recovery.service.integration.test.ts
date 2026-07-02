@@ -10,11 +10,11 @@ import { ExecutionRepository, WorkflowRepository, ProjectRelationRepository } fr
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { stringify } from 'flatted';
-import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
 import { randomInt } from 'n8n-workflow';
 import assert from 'node:assert';
 import { v4 as uuid } from 'uuid';
+import { mock } from 'vitest-mock-extended';
 
 import { ARTIFICIAL_TASK_DATA } from '@/constants';
 import { NodeCrashedError } from '@/errors/node-crashed.error';
@@ -68,7 +68,7 @@ describe('ExecutionRecoveryService', () => {
 	});
 
 	afterEach(async () => {
-		jest.restoreAllMocks();
+		vi.restoreAllMocks();
 		globalConfig.executions.recovery.workflowDeactivationEnabled = false;
 		await testDb.truncate([
 			'ExecutionEntity',
@@ -91,7 +91,7 @@ describe('ExecutionRecoveryService', () => {
 				 */
 				instanceSettings.markAsFollower();
 				// @ts-expect-error Private method
-				const amendSpy = jest.spyOn(executionRecoveryService, 'amend');
+				const amendSpy = vi.spyOn(executionRecoveryService, 'amend');
 				const messages = setupMessages('123', 'Some workflow');
 
 				/**
@@ -149,7 +149,7 @@ describe('ExecutionRecoveryService', () => {
 				/**
 				 * Assert
 				 */
-				if (!amendedExecution) fail('Expected `amendedExecution` to exist');
+				if (!amendedExecution) expect.fail('Expected `amendedExecution` to exist');
 
 				expect(amendedExecution.status).toBe('crashed');
 				expect(amendedExecution.stoppedAt).not.toBe(execution.stoppedAt);
@@ -316,14 +316,14 @@ describe('ExecutionRecoveryService', () => {
 				 */
 				const resultData = amendedExecution?.data.resultData;
 
-				if (!resultData) fail('Expected `resultData` to be defined');
+				if (!resultData) expect.fail('Expected `resultData` to be defined');
 
 				expect(resultData.error).toBeInstanceOf(WorkflowCrashedError);
 				expect(resultData.lastNodeExecuted).toBe('DebugHelper');
 
 				const runData = resultData.runData;
 
-				if (!runData) fail('Expected `runData` to be defined');
+				if (!runData) expect.fail('Expected `runData` to be defined');
 
 				expect(runData['When clicking "Execute workflow"']?.at(0)?.executionStatus).toBe('success');
 				expect(runData.DebugHelper?.at(0)?.executionStatus).toBe('crashed');
@@ -372,20 +372,21 @@ describe('ExecutionRecoveryService', () => {
 
 				const resultData = amendedExecution?.data.resultData;
 
-				if (!resultData) fail('Expected `resultData` to be defined');
+				if (!resultData) expect.fail('Expected `resultData` to be defined');
 
 				expect(resultData.error).toBeInstanceOf(WorkflowCrashedError);
 				expect(resultData.lastNodeExecuted).toBe('DebugHelper');
 
 				const runData = resultData.runData;
 
-				if (!runData) fail('Expected `runData` to be defined');
+				if (!runData) expect.fail('Expected `runData` to be defined');
 
 				const manualTriggerTaskData = runData['When clicking "Execute workflow"'].at(0);
 				const debugHelperTaskData = runData.DebugHelper.at(0);
 
-				if (!manualTriggerTaskData) fail("Expected manual trigger's `taskData` to be defined");
-				if (!debugHelperTaskData) fail("Expected debug helper's `taskData` to be defined");
+				if (!manualTriggerTaskData)
+					expect.fail("Expected manual trigger's `taskData` to be defined");
+				if (!debugHelperTaskData) expect.fail("Expected debug helper's `taskData` to be defined");
 
 				const originalManualTriggerTaskData =
 					IN_PROGRESS_EXECUTION_DATA.resultData.runData['When clicking "Execute workflow"'].at(
@@ -452,14 +453,14 @@ describe('ExecutionRecoveryService', () => {
 
 				const resultData = amendedExecution?.data.resultData;
 
-				if (!resultData) fail('Expected `resultData` to be defined');
+				if (!resultData) expect.fail('Expected `resultData` to be defined');
 
 				expect(resultData.error).toBeUndefined();
 				expect(resultData.lastNodeExecuted).toBe('DebugHelper');
 
 				const runData = resultData.runData;
 
-				if (!runData) fail('Expected `runData` to be defined');
+				if (!runData) expect.fail('Expected `runData` to be defined');
 
 				const manualTriggerTaskData = runData['When clicking "Execute workflow"'].at(0);
 				const debugHelperTaskData = runData.DebugHelper.at(0);
@@ -501,7 +502,7 @@ describe('ExecutionRecoveryService', () => {
 				 * Assert
 				 */
 				const updatedWorkflow = await getWorkflowById(workflow.id);
-				if (!updatedWorkflow) fail('Expected `updatedWorkflow` to be defined');
+				if (!updatedWorkflow) expect.fail('Expected `updatedWorkflow` to be defined');
 				expect(updatedWorkflow.activeVersionId).toBeNull();
 			});
 		});

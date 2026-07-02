@@ -64,7 +64,12 @@ export type AgentEventData =
 			type: AgentEvent.Error;
 			message: string;
 			error: unknown;
-			source?: 'observer' | 'reflector' | 'episodic-memory';
+			source?:
+				| 'observer'
+				| 'reflector'
+				| 'episodic-memory'
+				| 'input-persistence'
+				| 'turn-suspend-persistence';
 	  };
 
 export type AgentEventHandler = (data: AgentEventData) => void;

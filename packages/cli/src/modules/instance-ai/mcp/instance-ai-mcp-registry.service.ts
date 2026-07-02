@@ -1,11 +1,13 @@
-import { isObjectLiteral, Logger } from '@n8n/backend-common';
 import type { InstanceAiMcpUpdateConnectionRequestDto } from '@n8n/api-types';
+import { isObjectLiteral, Logger } from '@n8n/backend-common';
+import { OutboundHttp, SsrfProtectionService } from '@n8n/backend-network';
+import { SsrfProtectionConfig } from '@n8n/config';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { McpServerConfig } from '@n8n/instance-ai';
 import { QueryFailedError } from '@n8n/typeorm';
-import { randomUUID } from 'node:crypto';
 import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
+import { randomUUID } from 'node:crypto';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -18,7 +20,8 @@ import type {
 	McpRegistryServer,
 } from '@/modules/mcp-registry/registry/mcp-registry.types';
 import { OauthService } from '@/oauth/oauth.service';
-import { createAuthFetch } from '@/utils/auth-fetch';
+import { createAiMcpFetch } from '@/utils/ai-proxy-fetch';
+import { createAuthFetch, resolveAllowedDomains } from '@/utils/auth-fetch';
 
 import type {
 	InstanceAiMcpRegistryConnection,
@@ -40,6 +43,7 @@ interface OAuth2FetchContext {
 	credentialId: string;
 	accessToken: string;
 	projectId: string;
+	credentialData: ICredentialDataDecryptedObject;
 }
 
 function readString(data: Record<string, unknown>, key: string): string | undefined {
@@ -127,6 +131,9 @@ export class InstanceAiMcpRegistryService {
 		private readonly credentialsService: CredentialsService,
 		private readonly oauthService: OauthService,
 		private readonly eventService: EventService,
+		private readonly outboundHttp: OutboundHttp,
+		private readonly ssrfConfig: SsrfProtectionConfig,
+		private readonly ssrfProtectionService: SsrfProtectionService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 	}
@@ -218,6 +225,10 @@ export class InstanceAiMcpRegistryService {
 			throw new NotFoundError('MCP registry connection not found');
 		}
 
+		if (payload.credentialId) {
+			await this.swapCredential(user, connection, payload.credentialId);
+		}
+
 		connection.toolFilter = resolveToolFilter(payload, connection.toolFilter);
 		return await this.connectionRepository.save(connection);
 	}
@@ -233,6 +244,13 @@ export class InstanceAiMcpRegistryService {
 		const servers = await this.mcpRegistryService.getBySlugs(slugs);
 		const serverBySlug = new Map(servers.map((server) => [server.slug, server]));
 		const slugCounts = new Map<string, number>();
+
+		// One proxy-aware, SSRF-protected transport shared across all resolved MCP connections.
+		const aiMcpFetch = createAiMcpFetch(
+			this.outboundHttp,
+			this.ssrfConfig,
+			this.ssrfProtectionService,
+		);
 
 		const resolved: McpServerConfig[] = [];
 		for (const connection of sortedConnections) {
@@ -278,6 +296,7 @@ export class InstanceAiMcpRegistryService {
 				}
 
 				serverConfig.fetch = createAuthFetch({
+					baseFetch: aiMcpFetch,
 					initialHeaders: { Authorization: `Bearer ${oauth2FetchContext.accessToken}` },
 					onUnauthorized: async () => {
 						if (!oauth2FetchContext.projectId) {
@@ -289,6 +308,7 @@ export class InstanceAiMcpRegistryService {
 							oauth2FetchContext.projectId,
 						);
 					},
+					allowedDomains: resolveAllowedDomains(oauth2FetchContext.credentialData),
 				});
 			}
 
@@ -373,6 +393,7 @@ export class InstanceAiMcpRegistryService {
 			credentialId: config.credentialId,
 			accessToken,
 			projectId,
+			credentialData: credentialWithData.data,
 		};
 	}
 
@@ -395,6 +416,36 @@ export class InstanceAiMcpRegistryService {
 		}
 
 		return { credential, data };
+	}
+
+	private async swapCredential(
+		user: User,
+		connection: InstanceAiMcpRegistryConnection,
+		newCredentialId: string,
+	) {
+		const currentCredential = await this.credentialsFinderService.findCredentialForUser(
+			connection.credentialId,
+			user,
+			['credential:read'],
+		);
+		if (!currentCredential) {
+			throw new NotFoundError('Credential not found or not accessible');
+		}
+
+		const newCredential = await this.credentialsFinderService.findCredentialForUser(
+			newCredentialId,
+			user,
+			['credential:read'],
+		);
+		if (!newCredential) {
+			throw new NotFoundError('Credential not found or not accessible');
+		}
+
+		if (currentCredential.type !== newCredential.type) {
+			throw new ConflictError('Cannot change credential to a different type');
+		}
+
+		connection.credentialId = newCredentialId;
 	}
 }
 

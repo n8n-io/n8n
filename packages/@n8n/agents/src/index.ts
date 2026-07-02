@@ -71,6 +71,9 @@ export type {
 	SmoothStreamOptions,
 	AgentExecutionCounter,
 	PersistedExecutionOptions,
+	AnthropicPromptCachingConfig,
+	OpenAIPromptCachingConfig,
+	PromptCachingConfig,
 	BuiltTelemetry,
 	AttributeValue,
 	ObservationCursor,
@@ -203,8 +206,6 @@ export {
 	isLlmMessage,
 } from './sdk/message';
 export { fetchProviderCatalog } from './sdk/catalog';
-export { providerCapabilities } from './sdk/provider-capabilities';
-export type { ProviderCapability } from './sdk/provider-capabilities';
 export type {
 	ProviderCatalog,
 	ProviderInfo,
@@ -216,6 +217,7 @@ export { BaseMemory } from './storage/base-memory';
 export type { ToolDescriptor } from './types/sdk/tool-descriptor';
 
 export { createModel } from './runtime/model/model-factory';
+export type { FetchFn } from './runtime/model/model-factory';
 export {
 	DEFAULT_SUB_AGENT_MAX_CHILDREN,
 	ROOT_SUB_AGENT_TASK_PATH,

@@ -22,6 +22,7 @@ import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialTypes } from '@/credential-types';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
+import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { affixRoleToSaveCredential, saveCredential } from '@test-integration/db/credentials';
 import { createFolder } from '@test-integration/db/folders';
 import { createMember, createOwner } from '@test-integration/db/users';
@@ -1118,10 +1119,10 @@ describe('ImportPipeline rejection cases', () => {
 });
 
 describe('ImportPipeline event emission', () => {
-	it('emits workflow-created per workflow plus one workflows-imported on success', async () => {
+	it('emits workflow-created per workflow plus one n8n-package-imported on success', async () => {
 		const owner = await createOwner();
 		const eventService = Container.get(EventService);
-		const emitSpy = jest.spyOn(eventService, 'emit');
+		const emitSpy = vi.spyOn(eventService, 'emit');
 
 		try {
 			await importPackage({
@@ -1133,7 +1134,7 @@ describe('ImportPipeline event emission', () => {
 			});
 
 			const createdEvents = emitSpy.mock.calls.filter(([name]) => name === 'workflow-created');
-			const importedEvents = emitSpy.mock.calls.filter(([name]) => name === 'workflows-imported');
+			const importedEvents = emitSpy.mock.calls.filter(([name]) => name === 'n8n-package-imported');
 
 			expect(createdEvents).toHaveLength(2);
 			expect(
@@ -1141,12 +1142,197 @@ describe('ImportPipeline event emission', () => {
 			).toBe(true);
 			expect(importedEvents).toHaveLength(1);
 
-			const importedPayload = importedEvents[0][1] as {
-				workflowIds: string[];
-				matchedCredentialIds: string[];
-			};
+			const importedPayload = importedEvents[0][1] as RelayEventMap['n8n-package-imported'];
 			expect(importedPayload.workflowIds).toHaveLength(2);
-			expect(importedPayload.matchedCredentialIds).toEqual([]);
+			expect(importedPayload.credentialIds).toEqual({
+				matched: [],
+				created: [],
+				updated: [],
+			});
+			expect(importedPayload.folderId).toBeNull();
+			expect(importedPayload.options.workflowConflictPolicy).toBe(WorkflowConflictPolicy.Fail);
+			expect(importedPayload.options.workflowIdPolicy).toBe(WorkflowIdPolicy.New);
+			expect(importedPayload.options.credentialMatchingMode).toBe('id-only');
+			expect(importedPayload.options.credentialMissingMode).toBe('must-preexist');
+			expect(importedPayload.options.workflowPublishingPolicy).toBe(
+				WorkflowPublishingPolicy.PreservePublishedState,
+			);
+			expect(importedPayload.packageSourceId).toBeDefined();
+			expect(importedPayload.packageVersion).toBe(FORMAT_VERSION);
+			expect(importedPayload.counts).toEqual({
+				workflows: {
+					created: 2,
+					updated: 0,
+					skipped: 0,
+				},
+				credentials: {
+					matched: 0,
+					created: 0,
+					requirements: 0,
+				},
+			});
+		} finally {
+			emitSpy.mockRestore();
+		}
+	});
+
+	it('records matched and created credential ids on n8n-package-imported', async () => {
+		const owner = await createOwner();
+		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			owner.id,
+		);
+		const firstCredential = await saveOwnedCredential(
+			githubCredentialPayload({ name: 'First GitHub' }),
+			{ project: personalProject },
+		);
+		const secondCredential = await saveOwnedCredential(
+			githubCredentialPayload({ name: 'Second GitHub' }),
+			{ project: personalProject },
+		);
+		const eventService = Container.get(EventService);
+		const emitSpy = vi.spyOn(eventService, 'emit');
+
+		try {
+			await importPackage({
+				user: owner,
+				credentialMissingMode: 'create-stub',
+				packageBuffer: await buildImportPackageBuffer(
+					[
+						serializedWorkflowWithCredential({
+							id: 'wf-first-cred',
+							name: 'First credential workflow',
+							credentialId: firstCredential.id,
+							credentialName: firstCredential.name,
+						}),
+						serializedWorkflowWithCredential({
+							id: 'wf-second-cred',
+							name: 'Second credential workflow',
+							credentialId: secondCredential.id,
+							credentialName: secondCredential.name,
+						}),
+						serializedWorkflowWithCredential({
+							id: 'wf-stub-cred',
+							name: 'Stub credential workflow',
+							credentialId: 'missing-cred',
+							credentialName: 'Missing GitHub',
+						}),
+					],
+					{ sourceId: 'credential-audit-test' },
+				),
+			});
+
+			const importedEvents = emitSpy.mock.calls.filter(([name]) => name === 'n8n-package-imported');
+			expect(importedEvents).toHaveLength(1);
+
+			const importedPayload = importedEvents[0][1] as RelayEventMap['n8n-package-imported'];
+			expect(importedPayload.credentialIds.matched).toEqual(
+				expect.arrayContaining([firstCredential.id, secondCredential.id]),
+			);
+			expect(importedPayload.credentialIds.matched).toHaveLength(2);
+			expect(importedPayload.credentialIds.created).toHaveLength(1);
+			expect(importedPayload.credentialIds.created[0]).toEqual(expect.any(String));
+			expect(importedPayload.credentialIds.created[0]).not.toBe('missing-cred');
+			expect(importedPayload.credentialIds.updated).toEqual([]);
+			expect(importedPayload.counts).toEqual({
+				workflows: {
+					created: 3,
+					updated: 0,
+					skipped: 0,
+				},
+				credentials: {
+					matched: 2,
+					created: 1,
+					requirements: 3,
+				},
+			});
+		} finally {
+			emitSpy.mockRestore();
+		}
+	});
+
+	it('excludes skipped workflow ids from n8n-package-imported payload', async () => {
+		const owner = await createOwner();
+		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			owner.id,
+		);
+		await seedExistingWorkflow(personalProject, 'Existing workflow', 'wf-existing-skip');
+		const eventService = Container.get(EventService);
+		const emitSpy = vi.spyOn(eventService, 'emit');
+
+		try {
+			const result = await importPackage({
+				user: owner,
+				packageBuffer: await buildImportPackageBuffer([
+					serializedWorkflow({ id: 'wf-existing-skip', name: 'Skipped duplicate' }),
+					serializedWorkflow({ id: 'wf-new-only', name: 'Fresh workflow' }),
+				]),
+				workflowConflictPolicy: WorkflowConflictPolicy.Skip,
+			});
+
+			const importedEvents = emitSpy.mock.calls.filter(([name]) => name === 'n8n-package-imported');
+			expect(importedEvents).toHaveLength(1);
+
+			const { workflowIds, counts } = importedEvents[0][1] as RelayEventMap['n8n-package-imported'];
+			const createdWorkflow = result.workflows.find(({ status }) => status === 'created');
+			expect(workflowIds).toEqual([createdWorkflow!.localId]);
+			expect(result.workflows.find(({ status }) => status === 'skipped')).toBeDefined();
+			expect(counts).toEqual({
+				workflows: {
+					created: 1,
+					updated: 0,
+					skipped: 1,
+				},
+				credentials: {
+					matched: 0,
+					created: 0,
+					requirements: 0,
+				},
+			});
+		} finally {
+			emitSpy.mockRestore();
+		}
+	});
+
+	it('reports updated workflows in the counts on a new-version re-import', async () => {
+		const owner = await createOwner();
+		// Seed the workflow first (un-spied) so the spy only captures the re-import's event.
+		await importPackage({
+			user: owner,
+			packageBuffer: await buildImportPackageBuffer([
+				serializedWorkflow({ id: 'wf-update', name: 'Update me v1' }),
+			]),
+			workflowIdPolicy: WorkflowIdPolicy.Source,
+		});
+
+		const eventService = Container.get(EventService);
+		const emitSpy = vi.spyOn(eventService, 'emit');
+
+		try {
+			await importPackage({
+				user: owner,
+				packageBuffer: await buildImportPackageBuffer([
+					serializedWorkflow({ id: 'wf-update', name: 'Update me v2' }),
+				]),
+				workflowConflictPolicy: WorkflowConflictPolicy.NewVersion,
+				workflowIdPolicy: WorkflowIdPolicy.Source,
+			});
+
+			const importedEvents = emitSpy.mock.calls.filter(([name]) => name === 'n8n-package-imported');
+			expect(importedEvents).toHaveLength(1);
+
+			const { counts } = importedEvents[0][1] as RelayEventMap['n8n-package-imported'];
+			expect(counts).toEqual({
+				workflows: {
+					created: 0,
+					updated: 1,
+					skipped: 0,
+				},
+				credentials: {
+					matched: 0,
+					created: 0,
+					requirements: 0,
+				},
+			});
 		} finally {
 			emitSpy.mockRestore();
 		}
@@ -1155,7 +1341,7 @@ describe('ImportPipeline event emission', () => {
 	it('emits no events when the prepare-phase validation rejects the package', async () => {
 		const owner = await createOwner();
 		const eventService = Container.get(EventService);
-		const emitSpy = jest.spyOn(eventService, 'emit');
+		const emitSpy = vi.spyOn(eventService, 'emit');
 
 		try {
 			await expect(
@@ -1169,9 +1355,36 @@ describe('ImportPipeline event emission', () => {
 			).rejects.toThrow();
 
 			const created = emitSpy.mock.calls.filter(([name]) => name === 'workflow-created');
-			const imported = emitSpy.mock.calls.filter(([name]) => name === 'workflows-imported');
+			const imported = emitSpy.mock.calls.filter(([name]) => name === 'n8n-package-imported');
 
 			expect(created).toHaveLength(0);
+			expect(imported).toHaveLength(0);
+		} finally {
+			emitSpy.mockRestore();
+		}
+	});
+
+	it('emits no n8n-package-imported event when a blocking conflict aborts the import', async () => {
+		const owner = await createOwner();
+		const personalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			owner.id,
+		);
+		await seedExistingWorkflow(personalProject, 'Existing workflow', 'wf-blocking');
+		const eventService = Container.get(EventService);
+		const emitSpy = vi.spyOn(eventService, 'emit');
+
+		try {
+			await expect(
+				importPackage({
+					user: owner,
+					packageBuffer: await buildImportPackageBuffer([
+						serializedWorkflow({ id: 'wf-blocking', name: 'Conflicting workflow' }),
+					]),
+					workflowConflictPolicy: WorkflowConflictPolicy.Fail,
+				}),
+			).rejects.toThrow('Import blocked');
+
+			const imported = emitSpy.mock.calls.filter(([name]) => name === 'n8n-package-imported');
 			expect(imported).toHaveLength(0);
 		} finally {
 			emitSpy.mockRestore();

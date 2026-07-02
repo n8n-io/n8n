@@ -2,15 +2,24 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 
 // Guards the DI-less bundle: the `@n8n/backend-network/transport` subpath
-// must stay free of DI / config / backend-common at runtime, so DI-less callers
-// can build transport without dragging the full `OutboundHttp` service and its
-// backend dependencies into their bundle.
+// must stay free of DI / config / backend-common / n8n-workflow at runtime, so
+// DI-less callers can build transport without dragging the full `OutboundHttp`
+// service and its backend dependencies into their bundle.
 //
 // This walks the *runtime* import graph from `src/transport.ts` (following only
 // relative, non-type imports/exports — `import type` / `export type` are erased
 // by tsc) and asserts no forbidden package is reachable.
 
-const FORBIDDEN_PACKAGES = ['@n8n/di', '@n8n/backend-common', '@n8n/config', 'cache-manager'];
+const FORBIDDEN_PACKAGES = [
+	'@n8n/di',
+	'@n8n/backend-common',
+	'@n8n/config',
+	'cache-manager',
+	'n8n-workflow',
+	// The transport subpath is the undici-only fetch path; it must never regress
+	// into the legacy axios stack.
+	'axios',
+];
 
 const ENTRY = resolve(__dirname, '../../transport.ts');
 
@@ -92,9 +101,9 @@ describe('@n8n/backend-network/transport subpath purity', () => {
 		}
 	});
 
-	it('only depends on undici and n8n-workflow at runtime', () => {
+	it('only depends on undici at runtime', () => {
 		const externals = collectRuntimeExternals(ENTRY);
 
-		expect([...externals].sort()).toEqual(['n8n-workflow', 'undici']);
+		expect([...externals].sort()).toEqual(['undici']);
 	});
 });

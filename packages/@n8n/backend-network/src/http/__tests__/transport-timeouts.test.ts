@@ -46,6 +46,8 @@ describe('transport timeouts', () => {
 	it('builds a dispatcher without timeouts when none are provided', () => {
 		// Smoke check that the optional argument path stays valid.
 		expect(() => buildDispatcher(false, 'disabled')).not.toThrow();
-		expect(() => buildDispatcher('env', 'disabled', { bodyTimeout: 1000 })).not.toThrow();
+		expect(() =>
+			buildDispatcher('env', 'disabled', { timeouts: { bodyTimeout: 1000 } }),
+		).not.toThrow();
 	});
 });

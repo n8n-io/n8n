@@ -114,6 +114,22 @@ const outputSchema = {
 		.describe(
 			'Actionable hint for recovering from the error. When present, follow the suggested action before retrying.',
 		),
+	warnings: z
+		.array(
+			z.object({
+				code: z.string().describe('The warning code identifying the type of warning'),
+				message: z.string().describe('The warning message'),
+				nodeName: z.string().optional().describe('The node that triggered the warning'),
+				parameterPath: z
+					.string()
+					.optional()
+					.describe('The parameter path that triggered the warning'),
+			}),
+		)
+		.optional()
+		.describe(
+			'Validation warnings emitted while parsing the submitted code. Surface these to the user so they can correct the workflow.',
+		),
 	error: z
 		.string()
 		.optional()
@@ -195,7 +211,10 @@ export const createCreateWorkflowFromCodeTool = (
 				'@n8n/ai-workflow-builder'
 			);
 
-			const handler = new ParseValidateHandler({ generatePinData: false });
+			const handler = new ParseValidateHandler({
+				generatePinData: false,
+				nodeTypesProvider: nodeTypes,
+			});
 			const strippedCode = stripImportStatements(code);
 			const result = await handler.parseAndValidate(strippedCode);
 
@@ -297,7 +316,7 @@ export const createCreateWorkflowFromCodeTool = (
 					: undefined,
 			].filter((note): note is string => note !== undefined);
 
-			const output = {
+			const baseOutput = {
 				workflowId: savedWorkflow.id,
 				name: savedWorkflow.name,
 				nodeCount: savedWorkflow.nodes.length,
@@ -310,6 +329,8 @@ export const createCreateWorkflowFromCodeTool = (
 				},
 				note: notes.length ? notes.join(' ') : undefined,
 			};
+			const output =
+				result.warnings.length > 0 ? { ...baseOutput, warnings: result.warnings } : baseOutput;
 
 			return {
 				content: [{ type: 'text', text: JSON.stringify(output, null, 2) }],

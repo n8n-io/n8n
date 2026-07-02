@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 import {
-	ApplicationError,
+	UnexpectedError,
 	type IWebhookFunctions,
 	type INodeExecutionData,
 	type IDataObject,
@@ -375,6 +375,31 @@ describe('Webhook Utils', () => {
 			).rejects.toThrowError('Authorization is required!');
 		});
 
+		it('should return unauthorized if basicAuth credentials do not match', async () => {
+			const headers = {
+				authorization: `Basic ${Buffer.from('admin:wrong-password').toString('base64')}`,
+			};
+			const ctx: Partial<IWebhookFunctions> = {
+				getNodeParameter: vi.fn().mockReturnValue('basicAuth'),
+				getCredentials: vi.fn().mockResolvedValue({
+					user: 'admin',
+					password: 'password',
+				}),
+				getRequestObject: vi.fn().mockReturnValue({
+					headers,
+				}),
+				getHeaderData: vi.fn().mockReturnValue(headers),
+			};
+			const authPropertyName = 'authentication';
+
+			await expect(
+				validateWebhookAuthentication(ctx as IWebhookFunctions, authPropertyName),
+			).rejects.toMatchObject({
+				responseCode: 401,
+				message: 'Authentication data is wrong!',
+			});
+		});
+
 		it('should successfully pass if basicAuth is enabled and provided basic auth data is correct', async () => {
 			const headers = {
 				authorization: `Basic ${Buffer.from('admin:password').toString('base64')}`,
@@ -392,6 +417,38 @@ describe('Webhook Utils', () => {
 			};
 			const authPropertyName = 'authentication';
 			await validateWebhookAuthentication(ctx as IWebhookFunctions, authPropertyName);
+		});
+
+		it('should still return forbidden if form auth token does not match', async () => {
+			const node = {
+				id: 'node-789',
+				webhookId: 'webhook-456',
+				type: 'n8n-nodes-base.formTrigger',
+			} as INode;
+			const credentials = {
+				user: 'admin',
+				password: 'password',
+			};
+			const headers = {
+				'x-auth-token': 'wrong-token',
+			};
+			const ctx: Partial<IWebhookFunctions> = {
+				getNode: vi.fn().mockReturnValue(node),
+				getCredentials: vi.fn().mockResolvedValue(credentials),
+				getNodeParameter: vi.fn().mockReturnValue('basicAuth'),
+				getRequestObject: vi.fn().mockReturnValue({
+					headers,
+				}),
+				getHeaderData: vi.fn().mockReturnValue(headers),
+			};
+			const authPropertyName = 'authentication';
+
+			await expect(
+				validateWebhookAuthentication(ctx as IWebhookFunctions, authPropertyName),
+			).rejects.toMatchObject({
+				responseCode: 403,
+				message: 'Authorization data is wrong!',
+			});
 		});
 
 		it('should successfully pass if basicAuth is enabled and provided auth token data is correct', async () => {
@@ -511,7 +568,7 @@ describe('Webhook Utils', () => {
 				getHeaderData: vi.fn().mockReturnValue(headers),
 			};
 			(jwt.verify as Mock).mockImplementationOnce(() => {
-				throw new ApplicationError('jwt malformed');
+				throw new UnexpectedError('jwt malformed');
 			});
 			const authPropertyName = 'authentication';
 			await expect(

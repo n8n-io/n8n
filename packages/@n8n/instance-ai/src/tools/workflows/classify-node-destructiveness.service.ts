@@ -16,6 +16,7 @@
  *    recoverable; running a destructive operation against user data is not.
  */
 
+import { isRecord } from '@n8n/utils/is-record';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import type { IConnections } from 'n8n-workflow';
 import { z } from 'zod';
@@ -168,10 +169,6 @@ const CODE_IO_TOKENS = [
 	'dgram',
 	'websocket',
 ];
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function getStringParam(node: WorkflowNode, key: string): string | undefined {
 	const params = node.parameters;

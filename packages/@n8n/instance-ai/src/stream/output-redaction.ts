@@ -6,9 +6,9 @@ import {
 	type RedactionOptions,
 } from '@n8n/agents';
 import type { InstanceAiEvent } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils/is-record';
 
 import type { Logger } from '../logger';
-import { isRecord } from '../utils/stream-helpers';
 
 /**
  * Default output-filtering policy for Instance AI: redact known credential/

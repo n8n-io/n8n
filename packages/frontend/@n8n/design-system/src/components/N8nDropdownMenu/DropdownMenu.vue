@@ -285,6 +285,8 @@ watch(internalOpen, (isOpen, _oldValue, onCleanup) => {
 defineExpose({ open, close });
 </script>
 
+<!-- TODO DS-580: Let consumers bind trigger props/listeners directly in the slot so their
+	element can be the actual trigger. For now this wrapper owns hover events and test ids. -->
 <template>
 	<DropdownMenuRoot :modal="modal" :open="internalOpen" @update:open="handleOpenChange">
 		<DropdownMenuTrigger as-child :disabled="disabled">
@@ -314,8 +316,8 @@ defineExpose({ open, close });
 			</N8nButton>
 		</DropdownMenuTrigger>
 
-		<component
-			:is="teleported || portalTarget ? DropdownMenuPortal : 'template'"
+		<DropdownMenuPortal
+			:disabled="!teleported && !portalTarget"
 			v-bind="portalTarget ? { to: portalTarget } : {}"
 		>
 			<DropdownMenuContent
@@ -402,7 +404,7 @@ defineExpose({ open, close });
 					<slot v-if="slots.footer" name="footer" />
 				</template>
 			</DropdownMenuContent>
-		</component>
+		</DropdownMenuPortal>
 	</DropdownMenuRoot>
 </template>
 

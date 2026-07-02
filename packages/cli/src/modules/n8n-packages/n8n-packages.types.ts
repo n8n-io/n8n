@@ -35,9 +35,11 @@ export type WorkflowConflictPolicy =
 
 export type WorkflowIdPolicy = (typeof WorkflowIdPolicy)[keyof typeof WorkflowIdPolicy];
 
-export interface ExportWorkflowsRequest {
+export interface ExportPackageRequest {
 	user: User;
-	workflowIds: string[];
+	workflowIds?: string[];
+	folderIds?: string[];
+	projectIds?: string[];
 }
 
 export type ImportPackageRequest = {
@@ -58,6 +60,53 @@ export type ImportWorkflowProperties = {
 	workflowConflictPolicy: WorkflowConflictPolicy;
 	workflowPublishingPolicy: WorkflowPublishingPolicy;
 	workflowIdPolicy: WorkflowIdPolicy;
+};
+
+/**
+ * The actor and resolved destination an import writes into. Threaded through
+ * each entity importer so they share one resolved target instead of re-deriving
+ * it or passing the full Project entity when only its id is needed.
+ * `folderId` is carried for uniformity even though not every importer uses it
+ * (credentials are not foldered).
+ */
+export interface ImportContext {
+	user: User;
+	projectId: string;
+	folderId: string | null;
+}
+
+export type ImportPackageEventOptions = Omit<ImportCredentialProperties, 'credentialBindings'> &
+	ImportWorkflowProperties;
+
+/** Credential ids involved in a package import, shaped for forward-compatible audit events. */
+export type ImportAuditCredentialIds = {
+	matched: string[];
+	created: string[];
+	updated: string[];
+};
+
+/**
+ * Per-entity counts for an import, carried on `n8n-package-imported` for telemetry.
+ * Counts only — no ids — so they can be relayed to analytics without leaking data.
+ */
+export type ImportPackageEventCounts = {
+	workflows: {
+		created: number;
+		updated: number;
+		skipped: number;
+	};
+	credentials: {
+		matched: number;
+		created: number;
+		requirements: number;
+	};
+};
+
+/** Per-entity counts for an export, carried on `n8n-package-exported` for telemetry. */
+export type ExportPackageEventCounts = {
+	workflows: number;
+	folders: number;
+	credentials: number;
 };
 
 export interface ImportedWorkflowSummary {

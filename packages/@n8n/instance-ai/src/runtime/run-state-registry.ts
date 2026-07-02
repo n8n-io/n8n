@@ -7,6 +7,7 @@ import type {
 	InstanceAiLivenessSurface,
 	InstanceAiLivenessTimeoutReason,
 } from './liveness-policy';
+import type { OrchestratorRunHandoffState } from './orchestrator-run-control';
 import type { WorkflowBuildOutcome } from '../workflow-loop/workflow-loop-state';
 
 export interface ActiveRunState {
@@ -26,6 +27,8 @@ export interface SuspendedRunState<TUser = unknown> extends ActiveRunState {
 	threadId: string;
 	user: TUser;
 	toolCallId: string;
+	toolName?: string;
+	suspendPayload?: Record<string, unknown>;
 	requestId: string;
 	createdAt: number;
 	/** Set when the suspended run was a planned-task checkpoint follow-up.
@@ -40,6 +43,8 @@ export interface SuspendedRunState<TUser = unknown> extends ActiveRunState {
 		isSupportingWorkflowTask?: boolean;
 		savedOutcome?: WorkflowBuildOutcome;
 	};
+	/** Shared signal used to stop resumed orchestration after durable work is handed off. */
+	runHandoff?: OrchestratorRunHandoffState;
 }
 
 /**
@@ -67,6 +72,9 @@ export interface ConfirmationData {
 	resourceDecision?: string;
 	/** Plan-review hard denial — distinct from a feedback-driven rejection. */
 	denied?: boolean;
+	/** `'session'` means the user chose "always allow": the resuming tool should
+	 *  persist a thread-level grant so the same action isn't re-asked. */
+	scope?: 'once' | 'session';
 }
 
 export interface PendingConfirmation {
@@ -162,9 +170,14 @@ export class RunStateRegistry<TUser = unknown> {
 		threadId: string,
 		backgroundTasks: BackgroundTaskStatusSnapshot[],
 	): InstanceAiThreadStatusResponse {
+		const activeRun = this.activeRuns.get(threadId);
+		const suspendedRun = this.suspendedRuns.get(threadId);
+		const liveRun = activeRun ?? suspendedRun;
+
 		return {
-			hasActiveRun: this.activeRuns.has(threadId),
-			isSuspended: this.suspendedRuns.has(threadId),
+			hasActiveRun: activeRun !== undefined,
+			isSuspended: suspendedRun !== undefined,
+			...(liveRun ? { runId: liveRun.runId } : {}),
 			backgroundTasks: backgroundTasks
 				.filter((task) => task.threadId === threadId)
 				.map((task) => ({

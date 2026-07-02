@@ -166,8 +166,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflowId.value = id || '';
 	}
 
-	function resetWorkflow() {
-		const previousId = workflowId.value;
+	function resetWorkflow(outgoingWorkflowId?: string) {
+		// Reset the workflow being torn down. Callers pass it explicitly (the route may
+		// already point at the next workflow); fall back to the current id otherwise.
+		const previousId = outgoingWorkflowId ?? workflowId.value;
 		workflowId.value = '';
 		if (previousId) {
 			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(previousId));

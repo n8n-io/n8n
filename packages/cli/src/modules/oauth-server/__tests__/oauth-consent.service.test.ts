@@ -1,7 +1,8 @@
+import type { Mocked } from 'vitest';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { Logger } from '@n8n/backend-common';
 import type { OAuthClient } from '../database/entities/oauth-client.entity';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { OAuthAuthorizationCodeService } from '../oauth-authorization-code.service';
 import { OAuthConsentService } from '../oauth-consent.service';
@@ -12,29 +13,30 @@ import {
 	ProtectedResourceRegistry,
 	type ProtectedResource,
 } from '@/services/protected-resource.registry';
+import { UrlService } from '@/services/url.service';
 
-let logger: jest.Mocked<Logger>;
-let oauthSessionService: jest.Mocked<OAuthSessionService>;
-let oauthClientRepository: jest.Mocked<OAuthClientRepository>;
-let userConsentRepository: jest.Mocked<UserConsentRepository>;
-let authorizationCodeService: jest.Mocked<OAuthAuthorizationCodeService>;
-let protectedResourceRegistry: jest.Mocked<ProtectedResourceRegistry>;
+const issuer = 'https://n8n.example.com';
+
+let logger: Mocked<Logger>;
+let oauthSessionService: Mocked<OAuthSessionService>;
+let oauthClientRepository: Mocked<OAuthClientRepository>;
+let userConsentRepository: Mocked<UserConsentRepository>;
+let authorizationCodeService: Mocked<OAuthAuthorizationCodeService>;
+let protectedResourceRegistry: Mocked<ProtectedResourceRegistry>;
+let urlService: Mocked<UrlService>;
 let service: OAuthConsentService;
 
 describe('OAuthConsentService', () => {
 	beforeAll(() => {
 		logger = mockInstance(Logger);
-		oauthSessionService = mockInstance(OAuthSessionService) as jest.Mocked<OAuthSessionService>;
-		oauthClientRepository = mockInstance(
-			OAuthClientRepository,
-		) as jest.Mocked<OAuthClientRepository>;
-		userConsentRepository = mockInstance(
-			UserConsentRepository,
-		) as jest.Mocked<UserConsentRepository>;
+		oauthSessionService = mockInstance(OAuthSessionService) as Mocked<OAuthSessionService>;
+		oauthClientRepository = mockInstance(OAuthClientRepository) as Mocked<OAuthClientRepository>;
+		userConsentRepository = mockInstance(UserConsentRepository) as Mocked<UserConsentRepository>;
 		authorizationCodeService = mockInstance(OAuthAuthorizationCodeService);
 		protectedResourceRegistry = mockInstance(
 			ProtectedResourceRegistry,
-		) as jest.Mocked<ProtectedResourceRegistry>;
+		) as Mocked<ProtectedResourceRegistry>;
+		urlService = mockInstance(UrlService) as Mocked<UrlService>;
 
 		service = new OAuthConsentService(
 			logger,
@@ -43,11 +45,13 @@ describe('OAuthConsentService', () => {
 			userConsentRepository,
 			authorizationCodeService,
 			protectedResourceRegistry,
+			urlService,
 		);
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
+		urlService.getInstanceBaseUrl.mockReturnValue(issuer);
 	});
 
 	describe('getConsentDetails', () => {
@@ -73,6 +77,7 @@ describe('OAuthConsentService', () => {
 				ok: true,
 				clientName: 'Test Client',
 				clientId: 'client-123',
+				redirectUri: 'https://example.com/callback',
 			});
 			expect(oauthSessionService.verifySession).toHaveBeenCalledWith(sessionToken);
 			expect(oauthClientRepository.findOne).toHaveBeenCalledWith({
@@ -135,6 +140,7 @@ describe('OAuthConsentService', () => {
 				ok: true,
 				clientName: 'Test Client',
 				clientId: 'client-123',
+				redirectUri: 'https://example.com/callback',
 			});
 		});
 
@@ -162,6 +168,7 @@ describe('OAuthConsentService', () => {
 				clientName: 'Test Client',
 				clientId: 'client-123',
 				resourceName: 'My Workflow',
+				redirectUri: 'https://example.com/callback',
 			});
 			expect(protectedResourceRegistry.getByResourceUrl).toHaveBeenCalledWith(
 				'https://n8n.example.com/mcp/wf-123',
@@ -192,6 +199,7 @@ describe('OAuthConsentService', () => {
 				clientName: 'Test Client',
 				clientId: 'client-123',
 				resourceName: undefined,
+				redirectUri: 'https://example.com/callback',
 			});
 		});
 
@@ -236,6 +244,7 @@ describe('OAuthConsentService', () => {
 				'error_description=User+denied+the+authorization+request',
 			);
 			expect(result.redirectUrl).toContain('state=state-xyz');
+			expect(new URL(result.redirectUrl).searchParams.get('iss')).toBe(issuer);
 			expect(logger.info).toHaveBeenCalledWith('Consent denied', {
 				clientId: 'client-123',
 				userId: 'user-123',
@@ -263,6 +272,7 @@ describe('OAuthConsentService', () => {
 
 			expect(result.redirectUrl).toContain('code=generated-auth-code');
 			expect(result.redirectUrl).toContain('state=state-xyz');
+			expect(new URL(result.redirectUrl).searchParams.get('iss')).toBe(issuer);
 			expect(userConsentRepository.upsert).toHaveBeenCalledWith(
 				{
 					userId: 'user-123',

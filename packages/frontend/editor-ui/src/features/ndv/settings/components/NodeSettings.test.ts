@@ -30,6 +30,15 @@ vi.mock('vue-router', () => ({
 	RouterLink: { template: '<a><slot /></a>' },
 }));
 
+vi.mock('@/app/composables/useWorkflowId', async () => {
+	const { computed } = await import('vue');
+	const { useWorkflowsStore } = await import('@/app/stores/workflows.store');
+	return {
+		useWorkflowId: () => computed(() => useWorkflowsStore().workflowId),
+		useRouteWorkflowId: () => computed(() => useWorkflowsStore().workflowId),
+	};
+});
+
 const httpNode = createTestNode({
 	name: 'HTTP Request',
 	type: 'n8n-nodes-base.httpRequest',
