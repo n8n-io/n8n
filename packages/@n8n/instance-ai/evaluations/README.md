@@ -401,7 +401,9 @@ How it differs from the manifest flow:
   accepts a comma-separated `--base-url`. Each lane enables MCP, mints its own API
   key, and stages its own `claude` MCP config — the CLI does this setup for you.
 - **Throwaway cleanup.** Built workflows are deleted after the run unless you pass
-  `--keep-workflows`.
+  `--keep-workflows`. Known limitation: cleanup keys off the `WORKFLOW_ID` trailer
+  `claude` prints, so a build that times out or never emits the trailer can leave
+  its workflow behind on the lane even though cleanup is on.
 
 **Prerequisites**: the `claude` CLI installed and authenticated (the build
 subprocess reads `ANTHROPIC_API_KEY`); each lane reachable and seeded with the

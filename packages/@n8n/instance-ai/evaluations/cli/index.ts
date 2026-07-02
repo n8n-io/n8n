@@ -187,6 +187,15 @@ async function buildWorkflowViaMcpOnLane(config: {
 		log: (message) => logger.info(message),
 	});
 
+	// Register for cleanup the moment the id exists. If the fetch-back below
+	// fails, the failure BuildResult carries no workflowId, so success-guarded
+	// bookkeeping at the call sites would never see it and the workflow would
+	// survive the run despite cleanup being on. On this path cleanup is exactly
+	// !keepWorkflows (--delete-prebuilt-workflows is rejected with --build-via-mcp).
+	if (result.workflowId && !args.keepWorkflows) {
+		lane.workflowIdsToDelete.add(result.workflowId);
+	}
+
 	if (!result.workflowId) {
 		return {
 			success: false,
@@ -632,9 +641,8 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 					allocator.release(lane, fileSlug);
 				}
 				const buildDurationMs = Date.now() - start;
-				if (cleanupBuiltWorkflows && build.success && build.workflowId) {
-					lane.runner.workflowIdsToDelete.add(build.workflowId);
-				}
+				// Cleanup registration happens inside buildWorkflowViaMcpOnLane (as soon
+				// as `claude` reports the id), so even a failed fetch-back is covered.
 				buildDurations.set(key, buildDurationMs);
 				stashTranscript(build);
 				// isPrebuilt=true: MCP builds have no build transcript, so only
@@ -1273,8 +1281,10 @@ async function runDirectLoop(config: RunConfig): Promise<{
 								buildOverride,
 								pinAiRoots: args.pinAiRoots,
 							});
+							// Prebuilt only: MCP builds are registered for cleanup inside
+							// buildWorkflowViaMcpOnLane as soon as `claude` reports the id.
 							if (
-								(prebuiltWorkflowId !== undefined || args.buildViaMcp) &&
+								prebuiltWorkflowId !== undefined &&
 								cleanupBuiltWorkflows &&
 								result.workflowBuildSuccess &&
 								result.workflowId
