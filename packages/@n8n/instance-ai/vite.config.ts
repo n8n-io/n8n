@@ -86,7 +86,6 @@ function rewriteLazyRequireForTests(): Plugin {
 
 export default mergeConfig(
 	createVitestConfig({
-		// Parity with the previous root Jest config, which set `restoreMocks: true`.
 		// Most test files rely on mocks being restored automatically between tests.
 		restoreMocks: true,
 	}),

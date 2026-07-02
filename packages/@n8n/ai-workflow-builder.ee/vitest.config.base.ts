@@ -7,8 +7,8 @@ import { createVitestConfigWithDecorators } from '@n8n/vitest-config/node-decora
 // left to the extending configs so they don't merge-concatenate each other's globs.
 export const baseConfig = mergeConfig(
 	createVitestConfigWithDecorators({
-		// The n8n root jest.config sets `restoreMocks: true`, and most test files silently
-		// rely on it — omit this and mocks bleed between tests.
+		// Restore mocks between tests; most test files silently rely on this —
+		// omit it and mocks bleed between tests.
 		restoreMocks: true,
 	}),
 	{

@@ -16,8 +16,8 @@ import { configDefaults } from 'vitest/config';
  * only `tsc` with cross-file type information collapses the union to `String`. Vite's
  * oxc transform — and SWC — emit `Object` instead, which TypeORM rejects at
  * `DataSource.initialize()`. Single-file `transpileModule` also emits `Object` because
- * it can't resolve the imported alias. A full Program is required, which mirrors the
- * old jest config that set `isolatedModules: false` for exactly this reason.
+ * it can't resolve the imported alias. A full Program is required — the same
+ * reason a non-isolated-modules TypeScript compile is needed here.
  *
  * Scoping to `src/entities/**` keeps the cost contained: only the ~50 entity files pay
  * the tsc price (and the Program is rooted there), while DI `@Service` constructor
