@@ -292,6 +292,7 @@ describe('InstanceAiThreadView', () => {
 
 		store = mockedStore(useInstanceAiStore);
 		store.getOrCreateRuntime.mockReturnValue(thread);
+		store.getRuntime.mockReturnValue(thread);
 		store.threads = [
 			{
 				id: 'thread-1',
@@ -349,6 +350,23 @@ describe('InstanceAiThreadView', () => {
 		});
 		await vi.waitFor(() => {
 			expect(callOrder).toEqual(['loadThreadStatus', 'connectSSE']);
+		});
+	});
+
+	it('does not reconnect SSE when the runtime was replaced during status load', async () => {
+		thread.sseState = 'disconnected';
+		vi.mocked(thread.loadHistoricalMessages).mockResolvedValue('skipped');
+		vi.mocked(thread.loadThreadStatus).mockImplementation(async () => {
+			store.getRuntime.mockReturnValue({ id: 'thread-1' } as ThreadRuntime);
+		});
+
+		renderView({ props: { threadId: 'thread-1' } });
+
+		await vi.waitFor(() => {
+			expect(thread.loadThreadStatus).toHaveBeenCalledWith();
+		});
+		await vi.waitFor(() => {
+			expect(thread.connectSSE).not.toHaveBeenCalled();
 		});
 	});
 

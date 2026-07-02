@@ -90,8 +90,12 @@ export function shouldRearmRunAfterConfirm(payload: InstanceAiConfirmRequest): b
 	switch (payload.kind) {
 		case 'approval':
 			return payload.approved === true;
+		case 'credentialSelection':
+		case 'domainAccessApprove':
 		case 'resourceDecision':
 		case 'questions':
+		case 'setupWorkflowApply':
+		case 'setupWorkflowTestTrigger':
 			return true;
 		default:
 			return false;

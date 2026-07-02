@@ -124,5 +124,44 @@ describe('instanceAi.liveRunState', () => {
 		test('does not re-arm on deny', () => {
 			expect(shouldRearmRunAfterConfirm({ kind: 'approval', approved: false })).toBe(false);
 		});
+
+		test('re-arms on resume-capable confirm kinds', () => {
+			expect(
+				shouldRearmRunAfterConfirm({
+					kind: 'credentialSelection',
+					credentials: { slackApi: 'cred-1' },
+				}),
+			).toBe(true);
+			expect(
+				shouldRearmRunAfterConfirm({
+					kind: 'domainAccessApprove',
+					domainAccessAction: 'allow_once',
+				}),
+			).toBe(true);
+			expect(
+				shouldRearmRunAfterConfirm({
+					kind: 'resourceDecision',
+					resourceDecision: 'allowOnce',
+				}),
+			).toBe(true);
+			expect(
+				shouldRearmRunAfterConfirm({
+					kind: 'questions',
+					answers: [{ questionId: 'q-1', selectedOptions: ['a'] }],
+				}),
+			).toBe(true);
+			expect(shouldRearmRunAfterConfirm({ kind: 'setupWorkflowApply' })).toBe(true);
+			expect(
+				shouldRearmRunAfterConfirm({
+					kind: 'setupWorkflowTestTrigger',
+					testTriggerNode: 'Trigger',
+				}),
+			).toBe(true);
+		});
+
+		test('does not re-arm on terminal confirm kinds', () => {
+			expect(shouldRearmRunAfterConfirm({ kind: 'domainAccessDeny' })).toBe(false);
+			expect(shouldRearmRunAfterConfirm({ kind: 'planDeny' })).toBe(false);
+		});
 	});
 });
