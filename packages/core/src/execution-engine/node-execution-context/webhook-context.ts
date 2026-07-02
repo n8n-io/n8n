@@ -1,3 +1,4 @@
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Request, Response } from 'express';
 import type {
 	AINodeConnectionType,
@@ -19,7 +20,7 @@ import type {
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { UnexpectedError, createDeferredPromise, createEmptyRunExecutionData } from 'n8n-workflow';
+import { UnexpectedError, createEmptyRunExecutionData } from 'n8n-workflow';
 
 import { NodeExecutionContext } from './node-execution-context';
 import { copyBinaryFile, getBinaryHelperFunctions } from './utils/binary-helper-functions';
