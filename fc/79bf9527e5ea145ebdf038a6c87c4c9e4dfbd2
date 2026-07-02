@@ -1,0 +1,19 @@
+packages/testing/playwright/tests/e2e/ai/assistant-credential-help.spec.ts
+  s_af1ea18e98f568::t_edbb7ee1e99674 135,137-138
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fc79bf9527e5ea145ebdf038a6c87c4c9e4dfbd2",
+  "prompts": {},
+  "sessions": {
+    "s_af1ea18e98f568": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5da6b50f-1079-4e02-b10d-94acc00ef01d",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}
