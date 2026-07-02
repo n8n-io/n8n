@@ -1,3 +1,11 @@
+## [1.123.63](https://github.com/n8n-io/n8n/compare/n8n@1.123.62...n8n@1.123.63) (2026-07-02)
+
+
+### Bug Fixes
+
+* **core:** Preserve Date values passed to the expression isolate ([#33364](https://github.com/n8n-io/n8n/issues/33364)) ([0e04591](https://github.com/n8n-io/n8n/commit/0e0459163918118006b5b0eec2b8cc18cf05613d))
+
+
 ## [1.123.62](https://github.com/n8n-io/n8n/compare/n8n@1.123.61...n8n@1.123.62) (2026-06-29)
 
 
