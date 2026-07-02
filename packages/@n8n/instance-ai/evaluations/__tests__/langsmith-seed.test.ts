@@ -625,7 +625,7 @@ describe('reconstructSeedFromThread — filesystem-based builds (post-#32545)', 
 				4,
 				'build-workflow',
 				{ filePath: FILE, name: 'Main' },
-				{ success: true, workflowId: 'WF1', workflowName: 'Main' },
+				{ success: true, workflowId: 'WF1', workflowName: 'Main', sourceHash: 'h1' },
 			),
 			turn('r2', 30, 'change'),
 		];
@@ -636,6 +636,152 @@ describe('reconstructSeedFromThread — filesystem-based builds (post-#32545)', 
 		// The builder's compiled node reaches the seed — NOT the mocked re-parse (__code) path.
 		expect(result.seed.workflows[0].nodes[0]).toMatchObject({ type: 'n8n-nodes-base.webhook' });
 		expect(result.seed.workflows[0].nodes[0]).not.toHaveProperty('__code');
+	});
+
+	it('falls back to source replay when the compiled event is stale (sourceHash mismatch)', async () => {
+		const runs: FakeRun[] = [
+			{ ...turn('r1', 1, 'Build it'), outputs: { response: 'Building…' } },
+			tool('w1', 2, 'workspace_write_file', { path: FILE, content: 'CODE_V1' }),
+			// Compiled event from the FIRST build only — the rebuild's event was dropped
+			// (e.g. approval-resumed build). Its hash no longer matches the latest build.
+			tool(
+				'c1',
+				3,
+				'compiled-workflow',
+				{},
+				{
+					workflowId: 'WF1',
+					sourceHash: 'h1',
+					workflow: { name: 'Old', nodes: [{ type: 'stale' }], connections: {} },
+				},
+			),
+			tool(
+				'b1',
+				4,
+				'build-workflow',
+				{ filePath: FILE, name: 'Main' },
+				{ success: true, workflowId: 'WF1', sourceHash: 'h1' },
+			),
+			tool('w2', 5, 'workspace_write_file', { path: FILE, content: 'CODE_V2' }),
+			tool(
+				'b2',
+				6,
+				'build-workflow',
+				{ filePath: FILE, name: 'Main' },
+				{ success: true, workflowId: 'WF1', sourceHash: 'h2' },
+			),
+			turn('r2', 30, 'change'),
+		];
+		const result = await reconstructSeedFromThread({ threadId: 'th1' }, fakeClient(runs));
+
+		expect(result.seed.workflows).toHaveLength(1);
+		// Replay of the LATEST source wins — not the stale compiled payload.
+		expect(result.seed.workflows[0].nodes[0]).toMatchObject({ __code: 'CODE_V2' });
+	});
+
+	it('rejects a compiled payload carrying structural placeholders and replays source', async () => {
+		const runs: FakeRun[] = [
+			{ ...turn('r1', 1, 'Build it'), outputs: { response: 'Building…' } },
+			tool('w1', 2, 'workspace_write_file', { path: FILE, content: 'CODE_V1' }),
+			tool(
+				'c1',
+				3,
+				'compiled-workflow',
+				{},
+				{
+					workflowId: 'WF1',
+					sourceHash: 'h1',
+					// Sanitizer-mangled shape as observed live: connections collapsed to
+					// placeholder strings.
+					workflow: {
+						name: 'Main',
+						nodes: [{ type: 'n8n-nodes-base.webhook', parameters: {} }],
+						connections: { Webhook: { main: ['[array(1)]'] } },
+					},
+				},
+			),
+			tool(
+				'b1',
+				4,
+				'build-workflow',
+				{ filePath: FILE, name: 'Main' },
+				{ success: true, workflowId: 'WF1', sourceHash: 'h1' },
+			),
+			turn('r2', 30, 'change'),
+		];
+		const result = await reconstructSeedFromThread({ threadId: 'th1' }, fakeClient(runs));
+
+		expect(result.seed.workflows).toHaveLength(1);
+		expect(result.seed.workflows[0].nodes[0]).toMatchObject({ __code: 'CODE_V1' });
+	});
+
+	it('ignores a truncated compiled event (producer size gate) and replays source', async () => {
+		const runs: FakeRun[] = [
+			{ ...turn('r1', 1, 'Build it'), outputs: { response: 'Building…' } },
+			tool('w1', 2, 'workspace_write_file', { path: FILE, content: 'CODE_V1' }),
+			tool(
+				'c1',
+				3,
+				'compiled-workflow',
+				{},
+				{ workflowId: 'WF1', sourceHash: 'h1', truncated: true },
+			),
+			tool(
+				'b1',
+				4,
+				'build-workflow',
+				{ filePath: FILE, name: 'Main' },
+				{ success: true, workflowId: 'WF1', sourceHash: 'h1' },
+			),
+			turn('r2', 30, 'change'),
+		];
+		const result = await reconstructSeedFromThread({ threadId: 'th1' }, fakeClient(runs));
+
+		expect(result.seed.workflows).toHaveLength(1);
+		expect(result.seed.workflows[0].nodes[0]).toMatchObject({ __code: 'CODE_V1' });
+	});
+
+	it('drops a node credentials block the scrubber reduced to a string', async () => {
+		const runs: FakeRun[] = [
+			{ ...turn('r1', 1, 'Build it'), outputs: { response: 'Building…' } },
+			tool('w1', 2, 'workspace_write_file', { path: FILE, content: 'CODE_V1' }),
+			tool(
+				'c1',
+				3,
+				'compiled-workflow',
+				{},
+				{
+					workflowId: 'WF1',
+					sourceHash: 'h1',
+					workflow: {
+						name: 'Main',
+						nodes: [
+							{ name: 'Slack', type: 'n8n-nodes-base.slack', credentials: '[redacted]' },
+							{
+								name: 'Sheets',
+								type: 'n8n-nodes-base.googleSheets',
+								credentials: { googleSheetsOAuth2Api: { id: 'c1', name: 'Sheets' } },
+							},
+						],
+						connections: {},
+					},
+				},
+			),
+			tool(
+				'b1',
+				4,
+				'build-workflow',
+				{ filePath: FILE, name: 'Main' },
+				{ success: true, workflowId: 'WF1', sourceHash: 'h1' },
+			),
+			turn('r2', 30, 'change'),
+		];
+		const result = await reconstructSeedFromThread({ threadId: 'th1' }, fakeClient(runs));
+
+		const [slack, sheets] = result.seed.workflows[0].nodes;
+		expect(slack).not.toHaveProperty('credentials');
+		// A real (object) credentials block is preserved.
+		expect(sheets).toMatchObject({ credentials: { googleSheetsOAuth2Api: { id: 'c1' } } });
 	});
 });
 

@@ -151,6 +151,53 @@ describe('redactText', () => {
 		});
 	});
 
+	describe('preserveUrlStructure', () => {
+		const opts = { detect: ['url'] as const, preserveUrlStructure: true };
+
+		it('keeps origin + path + query names, redacts query values and fragment', () => {
+			const { text, matches } = redactText(
+				'see https://internal.example.com/admin?token=abc123&page=2#frag ok',
+				opts,
+			);
+			expect(text).toBe(
+				'see https://internal.example.com/admin?token=[REDACTED]&page=[REDACTED] ok',
+			);
+			expect(matches).toEqual([{ category: 'url' }]);
+		});
+
+		it('leaves a bare origin+path URL intact and records no match', () => {
+			const input = 'fetch https://api.example.com/v1/posts now';
+			const { text, matches } = redactText(input, opts);
+			expect(text).toBe(input);
+			expect(matches).toEqual([]);
+		});
+
+		it('drops userinfo (secrets pass redacts it first, url pass leaves the rest)', () => {
+			const { text } = redactText('see https://user:pass@example.com/x ok', opts);
+			expect(text).toBe('see https://[REDACTED]@example.com/x ok');
+		});
+
+		it('drops userinfo via origin when secrets scanning is off', () => {
+			const { text } = redactText('see https://user:pass@example.com/x ok', {
+				...opts,
+				secrets: false,
+			});
+			expect(text).toBe('see https://example.com/x ok');
+		});
+
+		it('fully redacts an unparseable URL', () => {
+			const { text } = redactText('see https://% ok', opts);
+			expect(text).toBe('see [REDACTED] ok');
+		});
+
+		it('is idempotent', () => {
+			const once = redactText('see https://x.example.com/a?k=v ok', opts).text;
+			expect(once).toBe('see https://x.example.com/a?k=[REDACTED] ok');
+			const twice = redactText(once, opts).text;
+			expect(twice).toBe(once);
+		});
+	});
+
 	describe('redactionOptionsFromGuardrail', () => {
 		it('maps a pii guardrail to detect types without secrets', () => {
 			const guardrail = new Guardrail('pii')

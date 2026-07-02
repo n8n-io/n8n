@@ -43,6 +43,7 @@ import {
 	GEN_AI_COMPLETION,
 	GEN_AI_PROMPT,
 	mergeTraceInputs,
+	rawTracePayload,
 	redactLangSmithTelemetrySpan,
 	sanitizeTracePayload,
 	sanitizeTraceValue,
@@ -337,11 +338,26 @@ async function finishProductSpan(
 	}
 
 	if (options?.outputs !== undefined) {
-		const completion = stringifyTracePayload(options.outputs);
+		let completion: string | undefined;
+		let runOutputs: Record<string, unknown> | undefined;
+		if (options.rawOutputs) {
+			// Lossless machine payload (pre-bounded by the caller) — the export
+			// scrubber still redacts secrets/PII inside it. Falls through to the
+			// sanitized path if the payload can't be serialized (e.g. cycles).
+			const raw = rawTracePayload(options.outputs);
+			try {
+				completion = JSON.stringify(raw);
+				runOutputs = raw;
+			} catch {
+				// Unserializable (cycles) — fall through to the sanitized path.
+			}
+		}
+		completion ??= stringifyTracePayload(options.outputs);
+		runOutputs ??= sanitizeTracePayload(options.outputs);
 		if (completion !== undefined) {
 			attributes[GEN_AI_COMPLETION] = completion;
 		}
-		run.outputs = sanitizeTracePayload(options.outputs);
+		run.outputs = runOutputs;
 	}
 
 	run.endTime = Date.now();
@@ -933,6 +949,7 @@ async function startAndFinishProductChildSpan(
 		metadata?: Record<string, unknown>;
 		inputs?: unknown;
 		outputs?: unknown;
+		rawOutputs?: boolean;
 		error?: string;
 		forceFlush?: boolean;
 	},
@@ -956,12 +973,55 @@ async function startAndFinishProductChildSpan(
 	}
 	await finishProductSpanBestEffort(currentTrace.runtime, childRun, {
 		...(options.outputs !== undefined ? { outputs: options.outputs } : {}),
+		...(options.rawOutputs ? { rawOutputs: true } : {}),
 		...(options.error ? { error: options.error } : {}),
 		metadata: {
 			final_status: options.error ? 'error' : 'completed',
 		},
 		forceFlush: options.forceFlush,
 	});
+}
+
+/**
+ * Emit a trace-only child run, preferring the CURRENT turn's ambient product
+ * trace over the caller's captured handle. A tool suspended in one turn and
+ * resumed in a later one holds a stale handle whose runtime was shut down when
+ * the original turn ended — emitting through it silently exports nothing (the
+ * fallback run has no OTel span, so finishing is a no-op). The ambient store
+ * always points at the live turn. Returns which path emitted, for debug logs.
+ */
+export async function emitTraceOnlyChildRun(
+	fallbackTracing: InstanceAiTraceContext | undefined,
+	init: InstanceAiTraceRunInit,
+	finish: { outputs: unknown; rawOutputs?: boolean },
+): Promise<'ambient' | 'handle' | 'skipped'> {
+	const currentTrace = getCurrentProductTrace();
+	if (currentTrace) {
+		await startAndFinishProductChildSpan(currentTrace, {
+			name: init.name,
+			canonicalName: init.canonicalName,
+			runType: init.runType,
+			tags: init.tags,
+			metadata: init.metadata,
+			inputs: init.inputs,
+			outputs: finish.outputs,
+			rawOutputs: finish.rawOutputs,
+		});
+		return 'ambient';
+	}
+	if (fallbackTracing) {
+		try {
+			const run = await fallbackTracing.startChildRun(fallbackTracing.actorRun, init);
+			await fallbackTracing.finishRun(run, {
+				outputs: finish.outputs,
+				...(finish.rawOutputs ? { rawOutputs: true } : {}),
+			});
+			return 'handle';
+		} catch {
+			// Best-effort: tracing must never break the caller.
+		}
+	}
+	return 'skipped';
 }
 
 async function traceProductSuspendableToolExecute(

@@ -543,11 +543,18 @@ function buildSeedWorkflows(
 	const divergedPaths = new Set<string>();
 	const getAsCodeByWorkflowId = new Map<string, string>();
 	// workflowId -> compiled workflow JSON captured by the build-workflow trace event
-	// (COMPILED_WORKFLOW_TRACE_RUN_NAME). Used directly when present — drift-immune,
-	// no SDK re-parse — superseding the code-replay fallbacks below.
-	const compiledByWorkflowId = new Map<string, ParsedSeedWorkflow>();
-	// workflowId -> reconstructed source + name at its latest successful build.
-	const builtByWorkflowId = new Map<string, { code: string; diverged: boolean; name?: string }>();
+	// (COMPILED_WORKFLOW_TRACE_RUN_NAME). Used when its sourceHash matches the latest
+	// successful build's — drift-immune, no SDK re-parse — superseding the
+	// code-replay fallbacks below.
+	const compiledByWorkflowId = new Map<
+		string,
+		{ workflow: ParsedSeedWorkflow; sourceHash?: string }
+	>();
+	// workflowId -> reconstructed source + name + sourceHash at its latest successful build.
+	const builtByWorkflowId = new Map<
+		string,
+		{ code: string; diverged: boolean; name?: string; sourceHash?: string }
+	>();
 	// Workflow ids with a build-shaped run (source in, success + workflowId out),
 	// name-independent — drives the drift tripwire below.
 	const buildSignalIds = new Set<string>();
@@ -558,9 +565,28 @@ function buildSeedWorkflows(
 		if (tool.name === COMPILED_WORKFLOW_TRACE_RUN_NAME) {
 			const out = isRecord(tool.outputs) ? tool.outputs : {};
 			const compiledWorkflowId = asString(out.workflowId);
-			const compiled = extractCompiledWorkflow(out.workflow);
+			if (!compiledWorkflowId) continue;
+			// Producer size gate tripped — the latest build's compiled state is
+			// unavailable, so an older event must not serve for it either.
+			if (out.truncated === true) {
+				compiledByWorkflowId.delete(compiledWorkflowId);
+				continue;
+			}
+			const extracted = extractCompiledWorkflow(out.workflow);
+			if (extracted && 'rejected' in extracted) {
+				console.warn(
+					`[seed] Thread ${threadId}: compiled-workflow event for ${compiledWorkflowId} rejected (${extracted.rejected}) — source replay will be used.`,
+				);
+				compiledByWorkflowId.delete(compiledWorkflowId);
+				continue;
+			}
 			// Sorted ascending → the latest compiled JSON before the boundary wins.
-			if (compiledWorkflowId && compiled) compiledByWorkflowId.set(compiledWorkflowId, compiled);
+			if (extracted) {
+				compiledByWorkflowId.set(compiledWorkflowId, {
+					workflow: extracted.workflow,
+					sourceHash: asString(out.sourceHash),
+				});
+			}
 			continue;
 		}
 
@@ -591,6 +617,7 @@ function buildSeedWorkflows(
 				builtByWorkflowId.delete(deletedId);
 				buildSignalIds.delete(deletedId);
 				getAsCodeByWorkflowId.delete(deletedId);
+				compiledByWorkflowId.delete(deletedId);
 			}
 			continue;
 		}
@@ -615,7 +642,12 @@ function buildSeedWorkflows(
 		const code = filePath !== undefined ? (files.get(filePath) ?? '') : (inlineCode ?? '');
 		const diverged = filePath !== undefined ? divergedPaths.has(filePath) : false;
 		// Sorted ascending → the latest successful build wins.
-		builtByWorkflowId.set(workflowId, { code, diverged, name: asString(out.workflowName) });
+		builtByWorkflowId.set(workflowId, {
+			code,
+			diverged,
+			name: asString(out.workflowName),
+			sourceHash: asString(out.sourceHash),
+		});
 	}
 
 	const workflows: ConversationSeed['workflows'] = [];
@@ -628,14 +660,27 @@ function buildSeedWorkflows(
 		const compiled = compiledByWorkflowId.get(workflowId);
 		if (compiled) {
 			// Drift-immune: the builder's own compiled JSON, captured in the trace event —
-			// no SDK re-parse, so it can't break on @n8n/workflow-sdk version drift.
-			workflows.push({
-				id: workflowId,
-				name: built.name ?? compiled.name ?? 'workflow',
-				nodes: compiled.nodes,
-				connections: compiled.connections,
-			});
-			continue;
+			// no SDK re-parse, so it can't break on @n8n/workflow-sdk version drift. Only
+			// when it matches the LATEST successful build: emission is best-effort per
+			// build, so a rebuild whose event was dropped would otherwise be seeded from
+			// the stale earlier payload.
+			const matchesLatestBuild =
+				compiled.sourceHash !== undefined &&
+				built.sourceHash !== undefined &&
+				compiled.sourceHash === built.sourceHash;
+			if (matchesLatestBuild) {
+				workflows.push({
+					id: workflowId,
+					name: built.name ?? compiled.workflow.name ?? 'workflow',
+					nodes: compiled.workflow.nodes,
+					connections: compiled.workflow.connections,
+				});
+				warnRedactionMarkers(threadId, workflowId, compiled.workflow.nodes);
+				continue;
+			}
+			console.warn(
+				`[seed] Thread ${threadId}: compiled-workflow event for ${workflowId} does not match the latest successful build (sourceHash mismatch — stale or missing rebuild event) — falling back to source replay.`,
+			);
 		}
 		const getAsCode = getAsCodeByWorkflowId.get(workflowId) ?? '';
 		// Resolve in descending order of trust: clean file replay, then a
@@ -670,6 +715,7 @@ function buildSeedWorkflows(
 			nodes: resolved.nodes,
 			connections: resolved.connections,
 		});
+		warnRedactionMarkers(threadId, workflowId, resolved.nodes);
 	}
 	if (degraded.length > 0) {
 		console.warn(
@@ -715,16 +761,59 @@ type ParsedSeedWorkflow = {
 	connections: Record<string, unknown>;
 };
 
+/** Markers the trace pipeline substitutes for structure it dropped (size
+ *  sanitizer placeholders, depth-capped scrubber). Their presence means the
+ *  compiled JSON is not the full workflow. */
+const STRUCTURAL_PLACEHOLDER =
+	/\[array\(\d+\)\]|\[object \d+ keys\]|\[redacted-depth-limit\]|__truncatedKeys/;
+
 /** Validate + extract a compiled workflow JSON captured by the build-workflow trace
- *  event (COMPILED_WORKFLOW_TRACE_RUN_NAME). Returns undefined when the payload isn't
- *  a workflow-shaped object, so the caller falls back to source reconstruction. */
-function extractCompiledWorkflow(value: unknown): ParsedSeedWorkflow | undefined {
+ *  event (COMPILED_WORKFLOW_TRACE_RUN_NAME). `undefined` = not workflow-shaped;
+ *  `{ rejected }` = workflow-shaped but structurally incomplete (the trace pipeline
+ *  dropped structure) — in both cases the caller falls back to source reconstruction
+ *  instead of seeding a silently corrupt workflow. */
+function extractCompiledWorkflow(
+	value: unknown,
+): { workflow: ParsedSeedWorkflow } | { rejected: string } | undefined {
 	if (!isRecord(value) || !Array.isArray(value.nodes)) return undefined;
+	const marker = STRUCTURAL_PLACEHOLDER.exec(JSON.stringify(value))?.[0];
+	if (marker) {
+		return {
+			rejected: `structural placeholder "${marker}" — the trace pipeline dropped structure`,
+		};
+	}
+	const nodes = (value.nodes as Array<Record<string, unknown>>).map((node) => {
+		// The export scrubber redacts a node's credentials block to a plain string —
+		// drop the key entirely (seeding attaches per-case credentials anyway).
+		if ('credentials' in node && !isRecord(node.credentials)) {
+			const { credentials: _dropped, ...rest } = node;
+			return rest;
+		}
+		return node;
+	});
 	return {
-		name: typeof value.name === 'string' ? value.name : undefined,
-		nodes: value.nodes as Array<Record<string, unknown>>,
-		connections: isRecord(value.connections) ? value.connections : {},
+		workflow: {
+			name: typeof value.name === 'string' ? value.name : undefined,
+			nodes,
+			connections: isRecord(value.connections) ? value.connections : {},
+		},
 	};
+}
+
+/** Trace scrubbing can leave value-level redaction markers inside parameters
+ *  (secrets, PII, URLs captured before structure-preserving scrubbing). The
+ *  workflow still seeds — flag it, since execution may differ from the original. */
+function warnRedactionMarkers(
+	threadId: string,
+	workflowId: string,
+	nodes: Array<Record<string, unknown>>,
+): void {
+	const count = (JSON.stringify(nodes).match(/\[REDACTED\]|\[redacted\]/g) ?? []).length;
+	if (count > 0) {
+		console.warn(
+			`[seed] Thread ${threadId}: workflow ${workflowId} carries ${count} redaction marker(s) from trace scrubbing — seeded as-is; execution may differ from the original.`,
+		);
+	}
 }
 
 /** Parse reconstructed SDK code into workflow JSON. Returns the parse error

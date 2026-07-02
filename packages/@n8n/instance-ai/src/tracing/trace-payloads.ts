@@ -9,6 +9,7 @@ import { isRecord } from '@n8n/utils/is-record';
 import { createHash } from 'node:crypto';
 
 import {
+	COMPILED_WORKFLOW_TRACE_RUN_NAME,
 	DOMAIN_TOOL_IDS,
 	ORCHESTRATION_TOOL_IDS,
 	ORCHESTRATION_TOOL_NAMES,
@@ -20,6 +21,10 @@ import { formatAgentRoleLabel, formatTraceLabel } from './trace-labels';
 const MAX_TRACE_DEPTH = 4;
 const MAX_PROMPT_SCHEMA_TRACE_DEPTH = 12;
 const MAX_TOOL_IO_TRACE_DEPTH = 8;
+/** Recursion bound for raw machine payloads (compiled-workflow event) whose
+ *  consumer needs lossless structure — far beyond any real workflow's nesting;
+ *  strings and sensitive keys are still scrubbed at every level. */
+const MAX_RAW_PAYLOAD_TRACE_DEPTH = 64;
 const MAX_TRACE_STRING_LENGTH = 2_000;
 const MAX_TOOL_ACTION_DISPLAY_LENGTH = 64;
 const MAX_TRACE_ARRAY_ITEMS = 20;
@@ -61,10 +66,15 @@ function isStructuralTelemetryIdKey(key: string): boolean {
 /**
  * Telemetry/tracing redaction policy. Deliberately stricter than the
  * user-facing output policy `DEFAULT_OUTPUT_REDACTION_OPTIONS`.
+ * `preserveUrlStructure` keeps origin + path + query names (values redacted):
+ * whole-URL redaction destroyed traced workflow definitions (seed replay got
+ * `url: '[REDACTED]'`) without adding protection — secret patterns run first
+ * and already redact tokens inside URLs.
  */
 export const DEFAULT_TELEMETRY_REDACTION_OPTIONS: RedactionOptions = {
 	secrets: true,
 	detect: SUPPORTED_PII_CATEGORIES,
+	preserveUrlStructure: true,
 };
 
 /** Redact secrets + all PII from a free-text telemetry value before it egresses. */
@@ -217,7 +227,7 @@ function maxRedactionDepthForAttribute(key: string): number {
 	return MAX_TRACE_DEPTH;
 }
 
-function redactTelemetryAttribute(key: string, value: unknown): unknown {
+function redactTelemetryAttribute(key: string, value: unknown, completionDepth?: number): unknown {
 	// Structural run/trace/span identifiers must pass through untouched — scrubbing
 	// them corrupts the IDs, breaking LangSmith ingestion (422) and run correlation.
 	if (isStructuralTelemetryIdKey(key)) {
@@ -228,7 +238,10 @@ function redactTelemetryAttribute(key: string, value: unknown): unknown {
 		return '[redacted]';
 	}
 
-	const maxDepth = maxRedactionDepthForAttribute(key);
+	const maxDepth =
+		key === GEN_AI_COMPLETION && completionDepth !== undefined
+			? completionDepth
+			: maxRedactionDepthForAttribute(key);
 
 	if (typeof value !== 'string') {
 		return redactTelemetryJsonValue(value, key, 0, maxDepth);
@@ -991,9 +1004,16 @@ export function redactLangSmithTelemetrySpan(span: unknown): unknown {
 		return span;
 	}
 
+	// The compiled-workflow event carries a machine payload whose consumer (eval
+	// seed reconstruction) needs lossless structure — lift the structural depth
+	// cap on its completion attribute. Scrubbing (sensitive keys, secret/PII
+	// patterns on every string) still applies at every level.
+	const completionDepth =
+		span.name === COMPILED_WORKFLOW_TRACE_RUN_NAME ? MAX_RAW_PAYLOAD_TRACE_DEPTH : undefined;
+
 	const attributes: Record<string, unknown> = {};
 	for (const [key, value] of Object.entries(span.attributes)) {
-		attributes[key] = redactTelemetryAttribute(key, value);
+		attributes[key] = redactTelemetryAttribute(key, value, completionDepth);
 	}
 	enrichLangSmithPromptAttribute(attributes);
 	normalizeUsageForLangSmith(attributes);
@@ -1296,6 +1316,24 @@ export function sanitizeTracePayload(value: unknown): Record<string, unknown> {
 	}
 
 	return { value: sanitizeTraceValue(value) };
+}
+
+/**
+ * Shape a payload like {@link sanitizeTracePayload} (record passthrough,
+ * `{ value }` wrapper) WITHOUT structural sanitization — for pre-bounded
+ * machine payloads whose consumer needs lossless structure (compiled-workflow
+ * event). Export-time scrubbing still redacts secrets/PII inside it.
+ */
+export function rawTracePayload(value: unknown): Record<string, unknown> {
+	if (isRecord(value)) {
+		return value;
+	}
+
+	if (value === undefined) {
+		return {};
+	}
+
+	return { value };
 }
 
 export function serializeModelIdForTrace(modelId: unknown): unknown {

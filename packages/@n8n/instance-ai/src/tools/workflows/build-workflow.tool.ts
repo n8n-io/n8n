@@ -43,12 +43,18 @@ import {
 	preserveExistingSetupValues,
 } from './workflow-json-utils';
 import { compileWorkflowSource } from './workflow-source-compiler';
+import { emitTraceOnlyChildRun } from '../../tracing/langsmith-tracing';
 import { COMPILED_WORKFLOW_TRACE_RUN_NAME } from '../tool-ids';
 import { partitionWarnings, type ValidationWarning } from './workflow-validation-warnings';
 import type { InstanceAiContext } from '../../types';
 import { BuildFailureTracker } from '../../workflow-builder/build-failure-tracker';
 import { createRemediation } from '../../workflow-loop/remediation';
 import { remediationMetadataSchema } from '../../workflow-loop/workflow-loop-state';
+
+/** Size gate for the compiled-workflow trace payload (serialized length). Over
+ *  the gate only a `truncated` marker is emitted — the seed consumer then falls
+ *  back to source replay instead of receiving a partial workflow. */
+const MAX_COMPILED_WORKFLOW_TRACE_CHARS = 1_000_000;
 
 const confirmationSuspendSchema = z.object({
 	requestId: z.string(),
@@ -562,24 +568,36 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					// Capture the compiled workflow JSON as a trace-only child run (never part
 					// of the tool result, so it never enters the agent's context). Lets eval seed
 					// reconstruction consume the JSON directly instead of re-parsing SDK source,
-					// which is fragile across @n8n/workflow-sdk versions. Uses explicit
-					// startChildRun/finishRun on the injected trace handle — the ambient span
-					// helper orphans the run from inside a domain-tool handler.
-					if (context.tracing) {
-						try {
-							const compiledRun = await context.tracing.startChildRun(context.tracing.actorRun, {
+					// which is fragile across @n8n/workflow-sdk versions. Emitted raw (no
+					// structural sanitization — the consumer needs lossless structure) with a
+					// size gate, on the current turn's ambient trace: a build suspended for
+					// approval and resumed in a later turn holds a stale per-turn handle that
+					// exports nothing.
+					try {
+						const payload = { workflowId: saved.id, sourceHash, workflow: json };
+						const withinSizeGate =
+							JSON.stringify(payload).length <= MAX_COMPILED_WORKFLOW_TRACE_CHARS;
+						const emittedVia = await emitTraceOnlyChildRun(
+							context.tracing,
+							{
 								name: COMPILED_WORKFLOW_TRACE_RUN_NAME,
 								runType: 'tool',
 								canonicalName: `instance-ai.${COMPILED_WORKFLOW_TRACE_RUN_NAME}`,
 								tags: [COMPILED_WORKFLOW_TRACE_RUN_NAME],
 								metadata: { workflow_id: saved.id, source_hash: sourceHash },
-							});
-							await context.tracing.finishRun(compiledRun, {
-								outputs: { workflowId: saved.id, sourceHash, workflow: json },
-							});
-						} catch {
-							// Best-effort: tracing must never break a build.
-						}
+							},
+							withinSizeGate
+								? { outputs: payload, rawOutputs: true }
+								: { outputs: { workflowId: saved.id, sourceHash, truncated: true } },
+						);
+						context.logger.debug(
+							`[build-workflow] compiled-workflow trace event: ${emittedVia}${withinSizeGate ? '' : ' (payload over size gate, emitted truncated marker)'}`,
+						);
+					} catch (error) {
+						// Best-effort: tracing must never break a build.
+						context.logger.debug(
+							`[build-workflow] compiled-workflow trace event failed: ${error instanceof Error ? error.message : String(error)}`,
+						);
 					}
 					const outcome = withDeterministicRouting({
 						workItemId: resolvedWorkItemId,

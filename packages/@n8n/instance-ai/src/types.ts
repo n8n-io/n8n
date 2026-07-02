@@ -1097,6 +1097,13 @@ export interface InstanceAiTraceRunInit {
 
 export interface InstanceAiTraceRunFinishOptions {
 	outputs?: unknown;
+	/**
+	 * Skip structural sanitization (depth/array/key/string truncation) for
+	 * `outputs` — for machine payloads whose consumer needs lossless structure
+	 * (e.g. the compiled-workflow event). The caller must pre-bound the payload
+	 * size; export-time scrubbing (secrets/PII) still applies.
+	 */
+	rawOutputs?: boolean;
 	metadata?: Record<string, unknown>;
 	error?: string;
 }

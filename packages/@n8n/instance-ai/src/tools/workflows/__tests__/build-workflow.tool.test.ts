@@ -234,6 +234,9 @@ describe('createBuildWorkflowTool', () => {
 		const [finishedRun, finishOpts] = finishRun.mock.calls[0];
 		expect(finishedRun).toMatchObject({ id: 'compiled-run-1' });
 		expect(finishOpts).toMatchObject({
+			// Raw payload: skips structural trace sanitization (the consumer needs
+			// lossless nodes/connections); export-time scrubbing still applies.
+			rawOutputs: true,
 			outputs: {
 				workflowId: 'wf-1',
 				sourceHash: hashWorkflowSource(source),
@@ -242,6 +245,50 @@ describe('createBuildWorkflowTool', () => {
 		});
 		// ...and never leaks into the agent-facing tool output.
 		expect(result).not.toHaveProperty('workflow');
+	});
+
+	it('emits only a truncated marker when the compiled JSON exceeds the size gate', async () => {
+		const source = 'workflow source from workspace';
+		const huge = structuredClone(generatedWorkflow);
+		(huge.nodes[0] as { parameters: Record<string, unknown> }).parameters = {
+			blob: 'x'.repeat(1_100_000),
+		};
+		vi.mocked(compileWorkflowSource).mockResolvedValueOnce({
+			success: true,
+			workflow: huge,
+			warnings: [],
+			compiler: 'sandbox-tsx',
+		});
+		const startChildRun = vi.fn<
+			(parent: unknown, init: Record<string, unknown>) => Promise<{ id: string }>
+		>(async () => await Promise.resolve({ id: 'compiled-run-1' }));
+		const finishRun = vi.fn<(run: { id: string }, opts: Record<string, unknown>) => Promise<void>>(
+			async () => await Promise.resolve(),
+		);
+		const tracing = {
+			actorRun: { id: 'actor-run-1' },
+			startChildRun,
+			finishRun,
+		} as unknown as InstanceAiContext['tracing'];
+		const { context, filePath } = makeContext({ source, overrides: { tracing } });
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+			name: 'Daily Weather to Slack',
+		});
+
+		expect(result.success).toBe(true);
+		expect(finishRun).toHaveBeenCalledTimes(1);
+		const [, finishOpts] = finishRun.mock.calls[0];
+		// Marker only — the consumer falls back to source replay rather than
+		// receiving a partial workflow. Marker payloads are small ⇒ not raw.
+		expect(finishOpts).toMatchObject({
+			outputs: { workflowId: 'wf-1', sourceHash: hashWorkflowSource(source), truncated: true },
+		});
+		expect((finishOpts as { outputs: Record<string, unknown> }).outputs).not.toHaveProperty(
+			'workflow',
+		);
+		expect((finishOpts as { rawOutputs?: boolean }).rawOutputs).toBeUndefined();
 	});
 
 	it('builds successfully without emitting a trace run when tracing is absent', async () => {
