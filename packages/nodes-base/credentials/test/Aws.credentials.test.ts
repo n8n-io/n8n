@@ -1,9 +1,19 @@
-import { sign, type Request } from 'aws4';
 import type { IHttpRequestOptions } from 'n8n-workflow';
 
 import { Aws } from '../Aws.credentials';
 import type { AwsIamCredentialsType } from '../common/aws/types';
-import type { Mock } from 'vitest';
+
+const { mockSmithySignFn, MockSignatureV4 } = vi.hoisted(() => {
+	const mockSmithySignFn = vi.fn();
+	const MockSignatureV4 = vi.fn(function (this: { sign: typeof mockSmithySignFn }) {
+		this.sign = mockSmithySignFn;
+	});
+	return { mockSmithySignFn, MockSignatureV4 };
+});
+
+vi.mock('@smithy/signature-v4', () => ({
+	SignatureV4: MockSignatureV4,
+}));
 
 vi.mock('aws4', () => ({
 	sign: vi.fn(),
@@ -11,10 +21,9 @@ vi.mock('aws4', () => ({
 
 describe('Aws Credential', () => {
 	const aws = new Aws();
-	let mockSign: Mock;
 
 	beforeEach(() => {
-		mockSign = sign as unknown as Mock;
+		mockSmithySignFn.mockResolvedValue({ headers: {} });
 	});
 
 	afterEach(() => {
@@ -54,19 +63,6 @@ describe('Aws Credential', () => {
 			returnFullResponse: true,
 		};
 
-		const signOpts: Request & IHttpRequestOptions = {
-			qs: {},
-			body: undefined,
-			headers: {},
-			baseURL: 'https://sts.eu-central-1.amazonaws.com',
-			url: '?Action=GetCallerIdentity&Version=2011-06-15',
-			method: 'POST',
-			returnFullResponse: true,
-			host: 'sts.eu-central-1.amazonaws.com',
-			path: '/?Action=GetCallerIdentity&Version=2011-06-15',
-			region: 'eu-central-1',
-		};
-
 		const securityHeaders = {
 			accessKeyId: 'hakuna',
 			secretAccessKey: 'matata',
@@ -76,8 +72,17 @@ describe('Aws Credential', () => {
 		it('should call sign with correct parameters', async () => {
 			const result = await aws.authenticate(credentials, requestOptions);
 
-			expect(mockSign).toHaveBeenCalledWith(signOpts, securityHeaders);
-
+			expect(MockSignatureV4).toHaveBeenCalledWith(
+				expect.objectContaining({
+					credentials: securityHeaders,
+					region: 'eu-central-1',
+				}),
+			);
+			expect(mockSmithySignFn).toHaveBeenCalledWith(
+				expect.objectContaining({
+					hostname: 'sts.eu-central-1.amazonaws.com',
+				}),
+			);
 			expect(result.method).toBe('POST');
 			expect(result.url).toBe(
 				'https://sts.eu-central-1.amazonaws.com/?Action=GetCallerIdentity&Version=2011-06-15',
@@ -91,18 +96,11 @@ describe('Aws Credential', () => {
 				{ ...requestOptions, url: '', baseURL: '', qs: { service: 'sns' } },
 			);
 
-			expect(mockSign).toHaveBeenCalledWith(
-				{
-					...signOpts,
-					baseURL: '',
+			expect(mockSmithySignFn).toHaveBeenCalledWith(
+				expect.objectContaining({
+					hostname: 'custom.endpoint.com',
 					path: '/',
-					url: '',
-					qs: {
-						service: 'sns',
-					},
-					host: 'custom.endpoint.com',
-				},
-				securityHeaders,
+				}),
 			);
 			expect(result.method).toBe('POST');
 			expect(result.url).toBe(`${customEndpoint}/`);
@@ -114,10 +112,11 @@ describe('Aws Credential', () => {
 				requestOptions,
 			);
 
-			expect(mockSign).toHaveBeenCalledWith(signOpts, {
-				...securityHeaders,
-				sessionToken: 'test-token',
-			});
+			expect(MockSignatureV4).toHaveBeenCalledWith(
+				expect.objectContaining({
+					credentials: expect.objectContaining({ sessionToken: 'test-token' }),
+				}),
+			);
 			expect(result.method).toBe('POST');
 			expect(result.url).toBe(
 				'https://sts.eu-central-1.amazonaws.com/?Action=GetCallerIdentity&Version=2011-06-15',
@@ -131,15 +130,11 @@ describe('Aws Credential', () => {
 				baseURL: '',
 			});
 
-			expect(mockSign).toHaveBeenCalledWith(
-				{
-					...signOpts,
-					baseURL: '',
+			expect(mockSmithySignFn).toHaveBeenCalledWith(
+				expect.objectContaining({
+					hostname: 'iam.amazonaws.com',
 					path: '/',
-					host: 'iam.amazonaws.com',
-					url: 'https://iam.amazonaws.com',
-				},
-				securityHeaders,
+				}),
 			);
 			expect(result.method).toBe('POST');
 			expect(result.url).toBe('https://iam.amazonaws.com/');
@@ -176,14 +171,14 @@ describe('Aws Credential', () => {
 						url: `https://${host}${path}`,
 					});
 
-					expect(mockSign).toHaveBeenCalledWith(
+					expect(MockSignatureV4).toHaveBeenCalledWith(
 						expect.objectContaining({
-							host,
-							path,
-							region: 'us-east-1',
 							service: 'bedrock',
+							region: 'us-east-1',
 						}),
-						securityHeaders,
+					);
+					expect(mockSmithySignFn).toHaveBeenCalledWith(
+						expect.objectContaining({ hostname: host, path }),
 					);
 					expect(result.url).toBe(`https://${host}${path}`);
 				},
@@ -204,26 +199,11 @@ describe('Aws Credential', () => {
 				path: '/',
 			} as IHttpRequestOptions);
 
-			expect(mockSign).toHaveBeenCalledWith(
-				{
-					...signOpts,
-					form: {
-						Action: 'ListUsers',
-						Version: '2010-05-08',
-					},
+			expect(mockSmithySignFn).toHaveBeenCalledWith(
+				expect.objectContaining({
+					hostname: 'iam.amazonaws.com',
 					body: 'Action=ListUsers&Version=2010-05-08',
-					host: 'iam.amazonaws.com',
-					url: 'https://iam.amazonaws.com',
-					baseURL: '',
-					path: '/',
-					headers: {
-						'content-type': 'application/x-www-form-urlencoded',
-					},
-					// PR #14037 introduces region normalization for global endpoints
-					// This test works with or without the normalization
-					region: expect.stringMatching(/[a-z]{2}-[a-z]+-[0-9]+/),
-				},
-				securityHeaders,
+				}),
 			);
 			expect(result.method).toBe('POST');
 			expect(result.url).toBe('https://iam.amazonaws.com/');
@@ -246,16 +226,11 @@ describe('Aws Credential', () => {
 					qs: { service: 's3' },
 				});
 
-				expect(mockSign).toHaveBeenCalledWith(
-					expect.objectContaining({
-						host: 's3.cn-north-1.amazonaws.com.cn',
-						region: 'cn-north-1',
-					}),
-					{
-						accessKeyId: 'hakuna',
-						secretAccessKey: 'matata',
-						sessionToken: undefined,
-					},
+				expect(mockSmithySignFn).toHaveBeenCalledWith(
+					expect.objectContaining({ hostname: 's3.cn-north-1.amazonaws.com.cn' }),
+				);
+				expect(MockSignatureV4).toHaveBeenCalledWith(
+					expect.objectContaining({ region: 'cn-north-1' }),
 				);
 				expect(result.url).toBe('https://s3.cn-north-1.amazonaws.com.cn/');
 			});
@@ -267,15 +242,8 @@ describe('Aws Credential', () => {
 					{ ...requestOptions, url: '', baseURL: '', qs: { service: 's3' } },
 				);
 
-				expect(mockSign).toHaveBeenCalledWith(
-					expect.objectContaining({
-						host: 'custom.china.endpoint.com.cn',
-					}),
-					{
-						accessKeyId: 'hakuna',
-						secretAccessKey: 'matata',
-						sessionToken: undefined,
-					},
+				expect(mockSmithySignFn).toHaveBeenCalledWith(
+					expect.objectContaining({ hostname: 'custom.china.endpoint.com.cn' }),
 				);
 				expect(result.url).toBe(`${customEndpoint}/`);
 			});
@@ -287,17 +255,14 @@ describe('Aws Credential', () => {
 					baseURL: '',
 				});
 
-				expect(mockSign).toHaveBeenCalledWith(
+				expect(mockSmithySignFn).toHaveBeenCalledWith(
 					expect.objectContaining({
-						host: 's3.cn-north-1.amazonaws.com.cn',
-						region: 'cn-north-1',
+						hostname: 's3.cn-north-1.amazonaws.com.cn',
 						path: '/bucket/key',
 					}),
-					{
-						accessKeyId: 'hakuna',
-						secretAccessKey: 'matata',
-						sessionToken: undefined,
-					},
+				);
+				expect(MockSignatureV4).toHaveBeenCalledWith(
+					expect.objectContaining({ region: 'cn-north-1' }),
 				);
 				expect(result.url).toBe('https://s3.cn-north-1.amazonaws.com.cn/bucket/key');
 			});
@@ -312,18 +277,61 @@ describe('Aws Credential', () => {
 					qs: { service: 's3' },
 				});
 
-				expect(mockSign).toHaveBeenCalledWith(
+				expect(mockSmithySignFn).toHaveBeenCalledWith(
 					expect.objectContaining({
-						host: 's3.eu-central-1.amazonaws.com',
-						region: 'eu-central-1',
+						hostname: 's3.eu-central-1.amazonaws.com',
 					}),
-					{
-						accessKeyId: 'hakuna',
-						secretAccessKey: 'matata',
-						sessionToken: undefined,
-					},
+				);
+				expect(MockSignatureV4).toHaveBeenCalledWith(
+					expect.objectContaining({ region: 'eu-central-1' }),
 				);
 				expect(result.url).toBe('https://s3.eu-central-1.amazonaws.com/');
+			});
+		});
+
+		describe('S3 vs non-S3 signer configuration', () => {
+			it('configures the signer for S3 with checksum on and path escaping off', async () => {
+				await aws.authenticate(credentials, {
+					...requestOptions,
+					url: '',
+					baseURL: '',
+					qs: { service: 's3', path: '/my-bucket/my key+v.txt' },
+				});
+
+				// S3 needs the x-amz-content-sha256 header (applyChecksum) and must not
+				// double-encode object keys (uriEscapePath: false), matching aws4.
+				expect(MockSignatureV4).toHaveBeenCalledWith(
+					expect.objectContaining({ service: 's3', applyChecksum: true, uriEscapePath: false }),
+				);
+			});
+
+			it('signs virtual-hosted S3 (<bucket>.s3) under the s3 signing name', async () => {
+				// The S3 node builds a `<bucket>.s3.<region>.amazonaws.com` endpoint by
+				// passing service `<bucket>.s3`. The signer must still sign as `s3`,
+				// otherwise the signature scope uses the bucket name and S3 rejects it.
+				await aws.authenticate(credentials, {
+					...requestOptions,
+					url: '',
+					baseURL: '',
+					qs: { service: 'my-bucket.s3', path: '/binary.json' },
+				});
+
+				expect(MockSignatureV4).toHaveBeenCalledWith(
+					expect.objectContaining({ service: 's3', applyChecksum: true, uriEscapePath: false }),
+				);
+			});
+
+			it('configures the signer for non-S3 with checksum off and path escaping on', async () => {
+				await aws.authenticate(credentials, {
+					...requestOptions,
+					url: '',
+					baseURL: '',
+					qs: { service: 'sqs' },
+				});
+
+				expect(MockSignatureV4).toHaveBeenCalledWith(
+					expect.objectContaining({ service: 'sqs', applyChecksum: false, uriEscapePath: true }),
+				);
 			});
 		});
 
@@ -335,12 +343,6 @@ describe('Aws Credential', () => {
 					body: objectBody,
 				});
 
-				expect(mockSign).toHaveBeenCalledWith(
-					expect.objectContaining({
-						body: JSON.stringify(objectBody),
-					}),
-					securityHeaders,
-				);
 				expect(result.body).toBe(JSON.stringify(objectBody));
 			});
 
@@ -354,12 +356,6 @@ describe('Aws Credential', () => {
 					},
 				});
 
-				expect(mockSign).toHaveBeenCalledWith(
-					expect.objectContaining({
-						body: objectBody,
-					}),
-					securityHeaders,
-				);
 				expect(result.body).toBe(objectBody);
 			});
 
@@ -373,12 +369,6 @@ describe('Aws Credential', () => {
 					},
 				});
 
-				expect(mockSign).toHaveBeenCalledWith(
-					expect.objectContaining({
-						body: objectBody,
-					}),
-					securityHeaders,
-				);
 				expect(result.body).toBe(objectBody);
 			});
 
@@ -389,12 +379,6 @@ describe('Aws Credential', () => {
 					body: stringBody,
 				});
 
-				expect(mockSign).toHaveBeenCalledWith(
-					expect.objectContaining({
-						body: stringBody,
-					}),
-					securityHeaders,
-				);
 				expect(result.body).toBe(stringBody);
 			});
 
@@ -405,12 +389,6 @@ describe('Aws Credential', () => {
 					body: bufferBody,
 				});
 
-				expect(mockSign).toHaveBeenCalledWith(
-					expect.objectContaining({
-						body: bufferBody,
-					}),
-					securityHeaders,
-				);
 				expect(result.body).toBe(bufferBody);
 			});
 
@@ -420,12 +398,6 @@ describe('Aws Credential', () => {
 					body: null,
 				});
 
-				expect(mockSign).toHaveBeenCalledWith(
-					expect.objectContaining({
-						body: null,
-					}),
-					securityHeaders,
-				);
 				expect(result.body).toBe(null);
 			});
 
@@ -435,12 +407,6 @@ describe('Aws Credential', () => {
 					body: undefined,
 				});
 
-				expect(mockSign).toHaveBeenCalledWith(
-					expect.objectContaining({
-						body: undefined,
-					}),
-					securityHeaders,
-				);
 				expect(result.body).toBe(undefined);
 			});
 		});

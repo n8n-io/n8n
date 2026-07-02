@@ -19,6 +19,13 @@ class MemoryCheckpointStore implements CheckpointStore {
 		return await Promise.resolve(this.store.get(key));
 	}
 
+	async claimForResume(key: string, state: SerializableAgentState): Promise<boolean> {
+		const current = this.store.get(key);
+		if (!current || current !== state || current.status !== 'suspended') return false;
+		await Promise.resolve(this.store.set(key, { ...state, status: 'running' }));
+		return true;
+	}
+
 	async delete(key: string): Promise<void> {
 		await Promise.resolve(this.store.delete(key));
 	}
@@ -41,16 +48,30 @@ export class RunStateManager {
 		await this.store.save(runId, { ...state, status: 'suspended' });
 	}
 
-	// FIXME: This method is not atomic, two agents can resume the same run at the same time and one will overwrite the other.
-	/** Load a suspended run state for resumption and mark it running. Status is not updated in the store. */
+	/**
+	 * Load a suspended run state for resumption. This is read-only so callers can
+	 * validate the resume request before claiming the checkpoint.
+	 */
 	async resume(runId: string): Promise<SerializableAgentState | undefined> {
 		const state = await this.store.load(runId);
 		if (!state) return undefined;
 		if (state.status !== 'suspended') {
 			throw new Error(`Run ${runId} is not suspended. Cannot resume.`);
 		}
-		const newState: SerializableAgentState = { ...state, status: 'running' };
-		return newState;
+		return state;
+	}
+
+	async claimResume(runId: string, state: SerializableAgentState): Promise<boolean> {
+		if (state.status !== 'suspended') {
+			throw new Error(`Run ${runId} is not suspended. Cannot resume.`);
+		}
+
+		if (this.store.claimForResume) {
+			return await this.store.claimForResume(runId, state);
+		}
+
+		await this.store.save(runId, { ...state, status: 'running' });
+		return true;
 	}
 
 	/** Delete a finished run from storage. Called when a resumed run completes without re-suspending. */

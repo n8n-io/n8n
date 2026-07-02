@@ -46,7 +46,7 @@ describe('N8nClient packages', () => {
 		it('posts the workflow IDs as JSON and returns the archive bytes', async () => {
 			fetchMock.mockResolvedValue(binaryResponse(200, new Uint8Array([1, 2, 3])));
 
-			const result = await client.exportPackage(['a', 'b']);
+			const result = await client.exportPackage({ workflowIds: ['a', 'b'] });
 
 			expect(Buffer.isBuffer(result)).toBe(true);
 			expect(result.equals(Buffer.from([1, 2, 3]))).toBe(true);
@@ -54,6 +54,19 @@ describe('N8nClient packages', () => {
 			const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
 			expect(url).toBe('https://n8n.example.com/api/v1/n8n-packages/export');
 			expect(init.body).toBe(JSON.stringify({ workflowIds: ['a', 'b'] }));
+		});
+
+		it('posts the project IDs as JSON and returns the archive bytes', async () => {
+			fetchMock.mockResolvedValue(binaryResponse(200, new Uint8Array([4, 5, 6])));
+
+			const result = await client.exportPackage({ projectIds: ['proj-1', 'proj-2'] });
+
+			expect(Buffer.isBuffer(result)).toBe(true);
+			expect(result.equals(Buffer.from([4, 5, 6]))).toBe(true);
+
+			const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+			expect(url).toBe('https://n8n.example.com/api/v1/n8n-packages/export');
+			expect(init.body).toBe(JSON.stringify({ projectIds: ['proj-1', 'proj-2'] }));
 		});
 	});
 
