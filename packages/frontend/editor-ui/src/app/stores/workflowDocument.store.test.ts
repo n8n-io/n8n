@@ -752,4 +752,18 @@ describe('provideWorkflowDocumentStore', () => {
 		expect(() => mount(Host)).not.toThrow();
 		expect(childNdvStore).toBe(useNDVStore(createWorkflowDocumentId('wf-host')));
 	});
+
+	it('reset() clears publication status back to idle', () => {
+		const store = useWorkflowDocumentStore(createWorkflowDocumentId('reset-pub'));
+		store.setPublicationStatus({
+			status: 'partial',
+			failures: [{ nodeId: 'n1', nodeName: 'A', errorMessage: 'boom' }],
+		});
+		expect(store.publicationStatus).toBe('partial');
+
+		store.reset();
+
+		expect(store.publicationStatus).toBe('idle');
+		expect(store.publicationFailures).toEqual([]);
+	});
 });

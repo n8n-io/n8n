@@ -354,6 +354,7 @@ export function useWorkflowDocumentStore(id: WorkflowDocumentId) {
 			workflowDocumentName.setName('');
 			workflowDocumentDescription.setDescription('');
 			workflowDocumentActive.setActiveState({ activeVersionId: null, activeVersion: null });
+			workflowDocumentPublicationStatus.setPublicationStatus({ status: 'idle' });
 			workflowDocumentIsArchived.setIsArchived(false);
 			workflowDocumentHomeProject.setHomeProject(null);
 			workflowDocumentSharedWithProjects.setSharedWithProjects([]);
