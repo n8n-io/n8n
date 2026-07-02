@@ -79,6 +79,7 @@
     "psl": "1.9.0",
     "source-map-support": "catalog:",
     "turndown": "catalog:",
+    "undici": "catalog:undici-v7",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz",
     "zod": "catalog:",
     "zod-from-json-schema-v3": "npm:zod-from-json-schema@^0.0.5"
@@ -94,6 +95,7 @@
     "@types/turndown": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "tsx": "catalog:",
+    "vite": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"
   },

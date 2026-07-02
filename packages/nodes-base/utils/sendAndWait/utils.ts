@@ -405,7 +405,18 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 
 			return {
 				webhookResponse: ACTION_RECORDED_PAGE,
-				workflowData: [[{ json: { data: { text: data[INPUT_FIELD_IDENTIFIER] } } }]],
+				workflowData: [
+					[
+						{
+							json: {
+								data: {
+									text: data[INPUT_FIELD_IDENTIFIER],
+									respondedAt: new Date().toISOString(),
+								},
+							},
+						},
+					],
+				],
 			};
 		}
 	}
@@ -461,7 +472,9 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 			delete json.submittedAt;
 			delete json.formMode;
 
-			returnItem.json = { data: json };
+			// respondedAt is applied last so a form field of the same name can't override
+			// the server-set response timestamp.
+			returnItem.json = { data: { ...json, respondedAt: new Date().toISOString() } };
 
 			return {
 				webhookResponse: ACTION_RECORDED_PAGE,
@@ -474,7 +487,7 @@ export async function sendAndWaitWebhook(this: IWebhookFunctions) {
 	const approved = query.approved === 'true';
 	return {
 		webhookResponse: ACTION_RECORDED_PAGE,
-		workflowData: [[{ json: { data: { approved } } }]],
+		workflowData: [[{ json: { data: { approved, respondedAt: new Date().toISOString() } } }]],
 	};
 }
 

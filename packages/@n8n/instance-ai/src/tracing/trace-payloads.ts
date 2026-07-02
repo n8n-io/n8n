@@ -5,7 +5,7 @@ import {
 	type RedactionOptions,
 	type RuntimeSkillRegistry,
 } from '@n8n/agents';
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 import { createHash } from 'node:crypto';
 
 import {

@@ -284,6 +284,34 @@ describe('Integration: ExpressionEvaluator + IsolatedVmBridge', () => {
 		});
 	});
 
+	describe('Date marshaling from workflow data', () => {
+		it('should read a top-level Date in $json as a Date, not {}', () => {
+			const data = { $json: { d: new Date('2026-06-30T20:34:04.498Z') } };
+
+			const result = evaluator.evaluate('{{ $json.d }}', data, caller);
+
+			expect(result).not.toEqual({});
+			expect(result).toBeInstanceOf(Date);
+			expect((result as Date).toISOString()).toBe('2026-06-30T20:34:04.498Z');
+		});
+
+		it('should read a nested Date in $json (e.g. Data Table createdAt)', () => {
+			const data = { $json: { row: { createdAt: new Date('2026-06-30T20:34:04.498Z') } } };
+
+			const result = evaluator.evaluate('{{ $json.row.createdAt }}', data, caller);
+
+			expect(result).toBeInstanceOf(Date);
+		});
+
+		it('should read a Date array element in $json', () => {
+			const data = { $json: { dates: [new Date('2026-06-30T20:34:04.498Z')] } };
+
+			const result = evaluator.evaluate('{{ $json.dates[0] }}', data, caller);
+
+			expect(result).toBeInstanceOf(Date);
+		});
+	});
+
 	it('should throw on invalid timezone', async () => {
 		const data = { $json: { x: 1 } };
 

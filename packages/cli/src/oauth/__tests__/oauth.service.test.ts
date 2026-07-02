@@ -1,4 +1,3 @@
-import type { Mock } from 'vitest';
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp, SsrfProtectionService, type HttpRequestClient } from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
@@ -8,11 +7,12 @@ import { Time } from '@n8n/constants';
 import type { AuthenticatedRequest, CredentialsEntity, ICredentialsDb, User } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
 import type { Request, Response } from 'express';
-import { mock } from 'vitest-mock-extended';
 import type { Cipher } from 'n8n-core';
 import { Credentials } from 'n8n-core';
 import type { IHttpRequestOptions, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { AuthService } from '@/auth/auth.service';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
@@ -40,7 +40,10 @@ import { UrlService } from '@/services/url.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
 vi.mock('@/workflow-execute-additional-data');
-vi.mock('@n8n/client-oauth2');
+vi.mock('@n8n/client-oauth2', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('@n8n/client-oauth2')>();
+	return { ...actual, ClientOAuth2: vi.fn() };
+});
 vi.mock('pkce-challenge');
 
 /**
@@ -5037,6 +5040,50 @@ describe('OauthService', () => {
 
 			expect(result).toEqual({ Authorization: 'Bearer new-token' });
 			expect(mockToken.refresh).toHaveBeenCalledTimes(1);
+		});
+
+		it('builds the client with a certificate when certificate authentication is selected', async () => {
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+			let capturedOptions: unknown;
+			const refreshed = {
+				data: { access_token: 'new-token', token_type: 'bearer' },
+				accessToken: 'new-token',
+			};
+			const mockToken = { refresh: vi.fn().mockResolvedValue(refreshed), client: {} };
+			vi.mocked(ClientOAuth2).mockImplementation(function (options) {
+				capturedOptions = options;
+				return { createToken: vi.fn().mockReturnValue(mockToken) } as never;
+			});
+
+			credentialsRepository.findOne.mockResolvedValue(makeCredential({ isGlobal: true }) as never);
+			vi.spyOn(service, 'getOAuthCredentials').mockResolvedValue({
+				clientId: 'id',
+				clientCredentialType: 'certificate',
+				privateKey: 'private-key-pem',
+				certificate: 'certificate-pem',
+				clientSecret: 'stale-secret',
+				accessTokenUrl: 'https://example.com/token',
+				grantType: 'authorizationCode',
+				authentication: 'header',
+				oauthTokenData: {
+					access_token: 'stale',
+					refresh_token: 'refresh-tok',
+					token_type: 'bearer',
+				},
+			} as unknown as OAuth2CredentialData);
+			vi.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
+
+			const result = await service.refreshOAuth2CredentialById(credentialId, projectId);
+
+			expect(result).toEqual({ Authorization: 'Bearer new-token' });
+			expect(capturedOptions).toEqual(
+				expect.objectContaining({
+					clientCredentialType: 'certificate',
+					clientCertificate: { privateKey: 'private-key-pem', certificate: 'certificate-pem' },
+				}),
+			);
+			// The stale secret must not be carried into the client options in certificate mode.
+			expect(capturedOptions).not.toHaveProperty('clientSecret', 'stale-secret');
 		});
 
 		it('persists the refreshed token data after a successful refresh', async () => {

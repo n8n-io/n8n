@@ -7,7 +7,7 @@ import {
 	type InterruptibleToolContext,
 	type ToolContext,
 } from '@n8n/agents';
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 import {
 	ROOT_CONTEXT,
 	SpanStatusCode,
