@@ -156,7 +156,14 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 				// Follow-up run in a merged group: preserve existing agent tree,
 				// just re-activate the root orchestrator for the new run's events.
 				state.status = 'active';
-				if (root) root.status = 'active';
+				if (root) {
+					root.status = 'active';
+					// A merged follow-up/resume run streams under its own per-run agentId
+					// (e.g. `orchestrator-<runId>`). Alias it to the existing root so its
+					// tool calls and confirmations resolve an agent instead of being
+					// dropped as orphans; rootAgentId and toAgentTree stay on the original.
+					if (rootId !== state.rootAgentId) state.agentsById[rootId] = root;
+				}
 			} else {
 				// First run: initialize from scratch.
 				state.rootAgentId = rootId;

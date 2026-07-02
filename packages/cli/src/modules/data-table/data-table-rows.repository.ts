@@ -681,12 +681,18 @@ export class DataTableRowsRepository {
 	}
 
 	private applySorting(query: QueryBuilder, dto: ListDataTableContentQueryDto): void {
-		if (!dto.sortBy) {
-			return;
+		if (dto.sortBy) {
+			const [field, order] = dto.sortBy;
+			this.applySortingByField(query, field, order);
 		}
 
-		const [field, order] = dto.sortBy;
-		this.applySortingByField(query, field, order);
+		// Always append the unique `id` as a final tiebreaker so skip/take pagination
+		// returns a stable order across pages (avoids duplicate/missing rows).
+		if (!dto.sortBy || dto.sortBy[0] !== 'id') {
+			const dbType = this.dataSource.options.type;
+			const quotedId = `${quoteIdentifier('dataTable', dbType)}.${quoteIdentifier('id', dbType)}`;
+			query.addOrderBy(quotedId, 'ASC');
+		}
 	}
 
 	private applySortingByField(query: QueryBuilder, field: string, direction: 'DESC' | 'ASC'): void {

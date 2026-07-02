@@ -11,7 +11,7 @@ import type { ExecutionOptions, TokenUsage } from '../../types/sdk/agent';
 import { loadAi } from '../model/lazy-ai';
 import { fromAiFinishReason, fromAiMessages } from '../model/messages';
 import { createRawUsageReader, type RawUsageReader } from '../model/raw-usage';
-import { convertChunk } from '../streaming/stream';
+import { convertChunk, toTokenUsage } from '../streaming/stream';
 import type { StreamWriterGuard } from '../streaming/stream-writer-guard';
 import type { ToolCallBatchResult } from '../tools/tool-call-executor';
 
@@ -136,12 +136,13 @@ export class StreamSink implements RunOutputSink<void> {
 
 		const aiFinishReason = await result.finishReason;
 		const usage = await result.usage;
+		const providerMetadata = await result.providerMetadata;
 		const response = await result.response;
 
 		return {
 			aiFinishReason,
 			finishReason: fromAiFinishReason(aiFinishReason),
-			usage,
+			usage: toTokenUsage(usage, providerMetadata),
 			newMessages: fromAiMessages(response.messages),
 			toolCalls: await result.toolCalls,
 			structuredOutput:

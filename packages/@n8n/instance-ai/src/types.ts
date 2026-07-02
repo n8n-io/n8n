@@ -381,6 +381,15 @@ export interface CredentialTypeSearchResult {
 	displayName: string;
 }
 
+/** An HTTP-usable credential type with the API host(s) it authenticates against,
+ *  derived from credential metadata. Used to steer the builder toward predefined
+ *  credentials instead of generic auth. */
+export interface CredentialHostInfo {
+	type: string;
+	displayName?: string;
+	hosts: string[];
+}
+
 export interface InstanceAiCredentialService {
 	/**
 	 * List credentials.
@@ -409,6 +418,10 @@ export interface InstanceAiCredentialService {
 	): CredentialFieldInfo[] | Promise<CredentialFieldInfo[]>;
 	/** Search available credential types by keyword. Returns matching types with display names. */
 	searchCredentialTypes?(query: string): Promise<CredentialTypeSearchResult[]>;
+	/** HTTP-usable credential types with the API host(s) they authenticate against,
+	 *  derived from credential metadata. Powers steering generic HTTP-node auth toward
+	 *  a predefined credential when one already exists for the target service. */
+	listHttpCredentialHosts?(): Promise<CredentialHostInfo[]>;
 	getAccountContext?(credentialId: string): Promise<{ accountIdentifier?: string }>;
 	/** Whether the given credential type is supported by AI Gateway. */
 	isAiGatewayCredentialType?(credType: string): Promise<boolean>;
@@ -453,7 +466,7 @@ export interface InstanceAiNodeService {
 	getDescription(nodeType: string, version?: number): Promise<NodeDescription>;
 	/** Return all node types with the richer fields needed by NodeSearchEngine. */
 	listSearchable(): Promise<SearchableNodeDescription[]>;
-	/** Return the TypeScript type definition for a node (from dist/node-definitions/). */
+	/** Return the TypeScript type definition for a node, resolved by the host n8n instance. */
 	getNodeTypeDefinition?(
 		nodeType: string,
 		options?: {

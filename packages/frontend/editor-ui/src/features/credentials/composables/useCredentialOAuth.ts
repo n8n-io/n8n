@@ -2,16 +2,14 @@ import { useToast } from '@/app/composables/useToast';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useI18n } from '@n8n/i18n';
 import { ref } from 'vue';
+import { createResultError, createResultOk, type Result } from '@n8n/utils/result';
 import {
-	createResultError,
-	createResultOk,
 	NodeHelpers,
 	type CredentialInformation,
 	type GenericValue,
 	type ICredentialDataDecryptedObject,
 	type ICredentialType,
 	type INodeProperties,
-	type Result,
 } from 'n8n-workflow';
 
 import { useCredentialsStore } from '../credentials.store';

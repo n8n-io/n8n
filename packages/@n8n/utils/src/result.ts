@@ -1,4 +1,4 @@
-import { ensureError } from './errors';
+import { ensureError } from './errors/ensure-error';
 
 export type ResultOk<T> = { ok: true; result: T };
 export type ResultError<E> = { ok: false; error: E };
