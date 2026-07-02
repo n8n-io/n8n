@@ -178,8 +178,19 @@ describe('parseCliArgs --source langtracer dataset isolation', () => {
 });
 
 describe('parseCliArgs --build-via-mcp', () => {
+	beforeEach(() => {
+		// --build-via-mcp is LangSmith-only; give every test in this suite a key
+		// so the requirement doesn't drown out what each test actually asserts.
+		vi.stubEnv('LANGSMITH_API_KEY', 'test-key');
+	});
+
 	afterEach(() => {
 		vi.unstubAllEnvs();
+	});
+
+	it('requires LANGSMITH_API_KEY (the direct loop does not support MCP builds)', () => {
+		vi.stubEnv('LANGSMITH_API_KEY', '');
+		expect(() => parseCliArgs(['--build-via-mcp'])).toThrow(/--build-via-mcp requires LangSmith/);
 	});
 
 	it('defaults to disabled with sensible build knobs', () => {

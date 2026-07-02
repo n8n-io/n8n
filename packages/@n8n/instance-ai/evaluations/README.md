@@ -147,7 +147,7 @@ dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai --iterations 3
 | `--tier` | — | Filter to test cases whose `datasets` array contains this value (e.g. `--tier pr` for the PR-time set). Combines with `--filter`/`--exclude`. |
 | `--source` | `disk` | Where test cases come from. `disk` (default) reads `data/workflows/`; `langtracer` pulls a suite from LangTracer's REST API — see [Sourcing from LangTracer](#sourcing-test-cases-from-langtracer) |
 | `--suite` | — | LangTracer suite slug (or numeric id) to pull when `--source langtracer` (required in that mode) |
-| `--build-via-mcp` | `false` | Build each workflow by driving the lane's MCP server with `claude -p`, then verify it on that same lane — see [Building via MCP (`--build-via-mcp`)](#building-via-mcp---build-via-mcp). Works across multiple `--base-url` lanes; mutually exclusive with `--prebuilt-workflows` |
+| `--build-via-mcp` | `false` | Build each workflow by driving the lane's MCP server with `claude -p`, then verify it on that same lane — see [Building via MCP (`--build-via-mcp`)](#building-via-mcp---build-via-mcp). Works across multiple `--base-url` lanes; requires `LANGSMITH_API_KEY`; mutually exclusive with `--prebuilt-workflows` |
 | `--mcp-server` | `n8n-local` | MCP server name for the staged `claude` config + tool allowlist (`--build-via-mcp`) |
 | `ANTHROPIC_MODEL` (env) | `claude-opus-4-8` | Anthropic model for the `claude` MCP build (`--build-via-mcp`); distinct from the verifier model. Not a flag: it rides `claude`'s native env var, and the CLI pins the default when unset so builds never float with claude-code's bundled default |
 | `--build-cwd` | — | Working directory for the `claude` build subprocess (`--build-via-mcp`); loads that project's Claude config/skills |
@@ -405,11 +405,14 @@ How it differs from the manifest flow:
   `claude` prints, so a build that times out or never emits the trailer can leave
   its workflow behind on the lane even though cleanup is on.
 
-**Prerequisites**: the `claude` CLI installed and authenticated (the build
-subprocess reads `ANTHROPIC_API_KEY`; set `ANTHROPIC_MODEL` to pick the build
-model, defaulting to `claude-opus-4-8` when unset); each lane reachable and
-seeded with the E2E owner. The MCP module is on by default, so no server-side
-config is needed beyond a running instance.
+**Prerequisites**: `LANGSMITH_API_KEY` set — MCP builds only run on the
+LangSmith path, whose lane allocator caps builds at 4 per lane globally (the
+keyless direct loop parallelizes iterations, which would multiply concurrent
+`claude` sessions by the iteration count). Plus the `claude` CLI installed and
+authenticated (the build subprocess reads `ANTHROPIC_API_KEY`; set
+`ANTHROPIC_MODEL` to pick the build model, defaulting to `claude-opus-4-8` when
+unset); each lane reachable and seeded with the E2E owner. The MCP module is on
+by default, so no server-side config is needed beyond a running instance.
 
 Local run against a pool of container lanes (reuses `scripts/run-eval-lanes.sh`,
 which starts + seeds the lanes and forwards everything after `--`):

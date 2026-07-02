@@ -180,6 +180,16 @@ export function parseCliArgs(argv: string[]): CliArgs {
 			'--delete-prebuilt-workflows applies to --prebuilt-workflows. --build-via-mcp already cleans up the workflows it builds unless --keep-workflows is set.',
 		);
 	}
+	// MCP builds are LangSmith-only: the keyless direct loop parallelizes
+	// iterations without the lane allocator, so its 4-per-lane build cap applies
+	// PER ITERATION — concurrent `claude` sessions would scale with
+	// lanes × iterations × 4 and flood the shared Anthropic budget. Fail fast
+	// instead of teaching the direct loop (tech debt slated for removal) MCP builds.
+	if (validated.buildViaMcp && !process.env.LANGSMITH_API_KEY) {
+		throw new Error(
+			'--build-via-mcp requires LangSmith experiment tracking — set LANGSMITH_API_KEY. The no-LangSmith direct loop does not support MCP builds.',
+		);
+	}
 	// Build knobs without --build-via-mcp would parse fine and then be silently
 	// ignored — the run would look like it honored them. Fail loudly instead.
 	if (!validated.buildViaMcp && raw.buildOnlyFlags.length > 0) {

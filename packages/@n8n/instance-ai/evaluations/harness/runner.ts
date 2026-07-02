@@ -176,12 +176,6 @@ interface WorkflowTestCaseConfig {
 	/** When set, skip the orchestrator build and verify this existing workflow
 	 *  instead. The harness leaves it in place — caller owns its lifecycle. */
 	prebuiltWorkflowId?: string;
-	/** When set, obtain the BuildResult from this callback instead of building via
-	 *  the orchestrator or fetching `prebuiltWorkflowId`. Used by `--build-via-mcp`
-	 *  to build the workflow on this lane via `claude`, then verify it here. Treated
-	 *  like prebuilt (no transcript) for downstream judging. Never combined with
-	 *  `prebuiltWorkflowId`. */
-	buildOverride?: () => Promise<BuildResult>;
 	/** AI root nodes (Agent, Chain) to keep pinned — opt-out from the default-on
 	 *  wire-server interception path. Omit (or pass empty) to intercept every
 	 *  interceptable AI root the workflow contains. Server-side gated by the
@@ -207,31 +201,27 @@ export async function runWorkflowTestCase(
 		n8nBaseUrl: config.baseUrl,
 	};
 
-	// A build override (--build-via-mcp) and prebuilt lookup both yield a
-	// workflow with no build transcript, so they share the prebuilt judging path.
-	const isPrebuilt = config.prebuiltWorkflowId !== undefined || config.buildOverride !== undefined;
-	const build = config.buildOverride
-		? await config.buildOverride()
-		: config.prebuiltWorkflowId
-			? await fetchPrebuiltBuild(client, config.prebuiltWorkflowId, logger)
-			: await buildWorkflow({
-					client,
-					conversation: testCase.conversation,
-					messageBudget: testCase.messageBudget,
-					credentials: testCase.credentials,
-					seedFile: testCase.seedFile,
-					priorConversation: testCase.priorConversation,
-					seedThread: testCase.seedThread,
-					createdCredentialIds: config.createdCredentialIds,
-					timeoutMs,
-					preRunWorkflowIds: config.preRunWorkflowIds,
-					claimedWorkflowIds: config.claimedWorkflowIds,
-					logger,
-					laneTag: config.laneTag,
-				});
+	const isPrebuilt = config.prebuiltWorkflowId !== undefined;
+	const build = config.prebuiltWorkflowId
+		? await fetchPrebuiltBuild(client, config.prebuiltWorkflowId, logger)
+		: await buildWorkflow({
+				client,
+				conversation: testCase.conversation,
+				messageBudget: testCase.messageBudget,
+				credentials: testCase.credentials,
+				seedFile: testCase.seedFile,
+				priorConversation: testCase.priorConversation,
+				seedThread: testCase.seedThread,
+				createdCredentialIds: config.createdCredentialIds,
+				timeoutMs,
+				preRunWorkflowIds: config.preRunWorkflowIds,
+				claimedWorkflowIds: config.claimedWorkflowIds,
+				logger,
+				laneTag: config.laneTag,
+			});
 
 	if (isPrebuilt && build.success && !build.workflowChecks) {
-		// No transcript in prebuilt/MCP mode, but the authored conversation still
+		// No transcript in prebuilt mode, but the authored conversation still
 		// carries the user's request — feed it so prompt-aware checks (e.g.
 		// fulfills_user_request) grade against real intent instead of "".
 		build.workflowChecks = await runWorkflowChecks({

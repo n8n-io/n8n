@@ -11,8 +11,8 @@ troubleshooting, use the [Instance AI workflow evaluation README](../../../../..
 
 - **Fused — recommended.** `eval:instance-ai --build-via-mcp` builds each
   workflow through the MCP server and verifies it in the **same run**, across one
-  or more lanes. One command, one LangSmith experiment — and it's what CI
-  (`ci-mcp-evals.yml`) runs. See
+  or more lanes. One command, one LangSmith experiment (`LANGSMITH_API_KEY`
+  required) — and it's what CI (`ci-mcp-evals.yml`) runs. See
   [Building via MCP](../../../../../@n8n/instance-ai/evaluations/README.md#building-via-mcp---build-via-mcp).
 - **Two-phase — decoupled (documented below).** `eval:build-mcp-manifest` writes
   a manifest of workflow IDs, then `eval:instance-ai --prebuilt-workflows` scores

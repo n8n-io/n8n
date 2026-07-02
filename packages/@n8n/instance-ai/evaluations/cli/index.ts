@@ -1250,16 +1250,8 @@ async function runDirectLoop(config: RunConfig): Promise<{
 	evaluation: MultiRunEvaluation;
 	slugByTestCase: Map<WorkflowTestCase, string>;
 }> {
-	const {
-		args,
-		lanes,
-		logger,
-		testCasesWithFiles,
-		prebuiltManifest,
-		cleanupBuiltWorkflows,
-		mcpBuildLogDir,
-		mcpBuildSpend,
-	} = config;
+	const { args, lanes, logger, testCasesWithFiles, prebuiltManifest, cleanupBuiltWorkflows } =
+		config;
 
 	const slugByTestCase = new Map<WorkflowTestCase, string>(
 		testCasesWithFiles.map(({ testCase, fileSlug }) => [testCase, fileSlug]),
@@ -1283,7 +1275,11 @@ async function runDirectLoop(config: RunConfig): Promise<{
 	const indexed = testCasesWithFiles.map((tc, origIdx) => ({ tc, origIdx }));
 	const buckets = partitionRoundRobin(indexed, lanes.length);
 
-	// Iterations are independent — run them in parallel.
+	// Iterations are independent — run them in parallel. NOTE: this makes the
+	// 4-per-lane build cap apply per iteration (lanes × iterations × 4 builds at
+	// peak), which is why --build-via-mcp never reaches this loop: parseCliArgs
+	// requires LangSmith for that mode, whose allocator caps builds per lane
+	// globally.
 	const allRunResults: WorkflowTestCaseResult[][] = await Promise.all(
 		Array.from({ length: args.iterations }, async (_unused, iter) => {
 			if (args.iterations > 1) {
@@ -1302,23 +1298,6 @@ async function runDirectLoop(config: RunConfig): Promise<{
 								tc.fileSlug,
 								iter,
 							);
-							// --build-via-mcp: build this case on THIS lane via `claude`,
-							// then verify it here. The static lane partitioning already
-							// keeps build + verify on the same lane (required — the
-							// workflow only exists on the lane that built it).
-							const buildOverride = args.buildViaMcp
-								? async () =>
-										await buildWorkflowViaMcpOnLane({
-											lane,
-											conversation: tc.testCase.conversation,
-											slug: tc.fileSlug,
-											iteration: iter,
-											args,
-											logDir: mcpBuildLogDir ?? process.cwd(),
-											logger,
-											buildSpend: mcpBuildSpend,
-										})
-								: undefined;
 							const result = await runWorkflowTestCase({
 								client: lane.client,
 								baseUrl: lane.baseUrl,
@@ -1331,11 +1310,8 @@ async function runDirectLoop(config: RunConfig): Promise<{
 								keepWorkflows: args.keepWorkflows,
 								laneTag,
 								prebuiltWorkflowId,
-								buildOverride,
 								pinAiRoots: args.pinAiRoots,
 							});
-							// Prebuilt only: MCP builds are registered for cleanup inside
-							// buildWorkflowViaMcpOnLane as soon as `claude` reports the id.
 							if (
 								prebuiltWorkflowId !== undefined &&
 								cleanupBuiltWorkflows &&
