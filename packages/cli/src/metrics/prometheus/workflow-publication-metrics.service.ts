@@ -9,6 +9,7 @@ import { EventService } from '@/events/event.service';
 import { CacheService } from '@/services/cache/cache.service';
 
 import type { PrometheusMetricsCollector } from './base';
+import { CachedMetricQuery } from './cached-metric-query';
 import { DURATION_BUCKETS_SECONDS } from './constant';
 
 const ALL_STATUSES = Object.values(WorkflowPublicationOutboxStatus);
@@ -17,12 +18,11 @@ const ACTIVE_STATUSES = [
 	WorkflowPublicationOutboxStatus.InProgress,
 ];
 
-const RECORD_STATS_CACHE_KEY = 'metrics:workflow-publication:outbox-record-stats';
+const RECORD_STATS_CACHE_KEY = 'metrics:workflow-publication:outbox-record-stats:v2';
 
 /** Per-status count and oldest-record epoch ms (`oldestMs`) for a single status. */
 type StatusStats = { count: number; oldestMs: number };
-/** Serializable cache shape for a `Map<status, StatusStats>` (Maps don't round-trip JSON). */
-type StatusStatsEntries = Array<[WorkflowPublicationOutboxStatus, StatusStats]>;
+type StatusStatsByStatus = Partial<Record<WorkflowPublicationOutboxStatus, StatusStats>>;
 
 /**
  * Collects Prometheus metrics for the workflow publication service. Opt-in via
@@ -60,37 +60,34 @@ export class PrometheusWorkflowPublicationMetricsService implements PrometheusMe
 
 	private initOutboxGauges() {
 		const repository = this.outboxRepository;
-		const cacheService = this.cacheService;
 		const prefix = this.config.prefix;
 		// One grouped query (COUNT + MIN createdAt per status) feeds both gauges;
 		// cache it so a tight scrape interval doesn't hammer the outbox table. Within
-		// a scrape, whichever gauge collects first populates the cache for the other.
+		// a scrape, coalescing collapses both gauges' collects to a single query.
 		const cacheTtl = this.config.workflowPublicationMetricInterval * Time.seconds.toMilliseconds;
 
-		const loadStats = async (): Promise<StatusStatsEntries> => {
-			let entries = await cacheService.get<StatusStatsEntries>(RECORD_STATS_CACHE_KEY);
-			if (entries === undefined) {
+		const query = new CachedMetricQuery<StatusStatsByStatus>({
+			cacheService: this.cacheService,
+			cacheKey: RECORD_STATS_CACHE_KEY,
+			ttlMs: cacheTtl,
+			query: async () => {
 				const stats = await repository.getRecordStatsByStatus();
-				entries = Array.from(
-					stats,
-					([status, { count, oldestCreatedAt }]): [
-						WorkflowPublicationOutboxStatus,
-						StatusStats,
-					] => [status, { count, oldestMs: oldestCreatedAt.getTime() }],
-				);
-				await cacheService.set(RECORD_STATS_CACHE_KEY, entries, cacheTtl);
-			}
-			return entries;
-		};
+				const byStatus: StatusStatsByStatus = {};
+				for (const [status, { count, oldestCreatedAt }] of stats) {
+					byStatus[status] = { count, oldestMs: oldestCreatedAt.getTime() };
+				}
+				return byStatus;
+			},
+		});
 
 		new promClient.Gauge({
 			name: `${prefix}workflow_publication_outbox_records`,
 			help: 'Number of workflow publication outbox records by status.',
 			labelNames: ['status'],
 			async collect() {
-				const byStatus = new Map(await loadStats());
+				const byStatus = await query.get();
 				for (const status of ALL_STATUSES) {
-					this.set({ status }, byStatus.get(status)?.count ?? 0);
+					this.set({ status }, byStatus[status]?.count ?? 0);
 				}
 			},
 		});
@@ -100,10 +97,10 @@ export class PrometheusWorkflowPublicationMetricsService implements PrometheusMe
 			help: 'Age in seconds of the oldest active (pending/in_progress) workflow publication outbox record by status.',
 			labelNames: ['status'],
 			async collect() {
-				const byStatus = new Map(await loadStats());
+				const byStatus = await query.get();
 				const now = Date.now();
 				for (const status of ACTIVE_STATUSES) {
-					const oldestMs = byStatus.get(status)?.oldestMs;
+					const oldestMs = byStatus[status]?.oldestMs;
 					this.set(
 						{ status },
 						oldestMs !== undefined ? (now - oldestMs) * Time.milliseconds.toSeconds : 0,

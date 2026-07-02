@@ -226,18 +226,18 @@ describe('PrometheusWorkflowPublicationMetricsService', () => {
 
 			// 60s interval → 60_000ms TTL; Dates are serialized to epoch ms.
 			expect(cacheService.set).toHaveBeenCalledWith(
-				'metrics:workflow-publication:outbox-record-stats',
-				[['pending', { count: 2, oldestMs: createdAt.getTime() }]],
+				'metrics:workflow-publication:outbox-record-stats:v2',
+				{ pending: { count: 2, oldestMs: createdAt.getTime() } },
 				60_000,
 			);
 		});
 
 		it('serves the gauges from cache without querying the database', async () => {
 			const tenSecondsAgo = Date.now() - 10_000;
-			cacheService.get.mockResolvedValue([
-				['pending', { count: 5, oldestMs: tenSecondsAgo }],
-				['completed', { count: 7, oldestMs: tenSecondsAgo }],
-			]);
+			cacheService.get.mockResolvedValue({
+				pending: { count: 5, oldestMs: tenSecondsAgo },
+				completed: { count: 7, oldestMs: tenSecondsAgo },
+			});
 			service.init();
 
 			const set = vi.fn();
