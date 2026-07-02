@@ -7,6 +7,9 @@ import { round2 } from './creditFormatting';
 const props = defineProps<{
 	creditsRemaining?: number;
 	creditsQuota?: number;
+	// 'attached' fuses onto the chat input below (used in the assistant sidebar);
+	// 'standalone' is a self-contained card that sits above a detached input.
+	variant?: 'attached' | 'standalone';
 }>();
 
 const emit = defineEmits<{
@@ -41,7 +44,10 @@ const tooltipContent = computed(() => {
 </script>
 
 <template>
-	<div :class="$style.banner" data-test-id="credit-warning-banner">
+	<div
+		:class="[$style.banner, { [$style.standalone]: props.variant === 'standalone' }]"
+		data-test-id="credit-warning-banner"
+	>
 		<div :class="$style.content">
 			<span :class="$style.text">{{ bannerText }}</span>
 			<N8nTooltip :content="tooltipContent" placement="top" :show-after="300">
@@ -78,6 +84,13 @@ const tooltipContent = computed(() => {
 	border-bottom: none;
 	margin: 0 var(--spacing--2xs);
 	line-height: var(--line-height--xl);
+}
+
+.standalone {
+	// Full card so it reads as its own element above a detached, rounded input.
+	border-radius: var(--radius--lg);
+	border-bottom: var(--border);
+	margin: 0;
 }
 
 .content {
