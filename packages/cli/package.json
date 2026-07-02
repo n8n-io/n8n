@@ -220,6 +220,7 @@
     "ldapts": "catalog:",
     "linkedom": "^0.18.9",
     "lodash": "catalog:",
+    "lru-cache": "catalog:",
     "luxon": "catalog:",
     "moment-timezone": "catalog:",
     "ms": "catalog:",

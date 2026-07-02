@@ -182,6 +182,8 @@ const loadValidateAttachments = lazyModule(
 );
 
 export { MAX_STEPS } from './constants/max-steps';
+export { deriveCredentialHosts } from './tools/workflows/credential-url-resolver';
+export type { CredentialHostMeta } from './tools/workflows/credential-url-resolver';
 export type {
 	AgentDbMessage,
 	AgentMessage,
@@ -649,6 +651,7 @@ export type {
 	CredentialSummary,
 	CredentialDetail,
 	CredentialTypeSearchResult,
+	CredentialHostInfo,
 	NodeSummary,
 	NodeDescription,
 	SearchableNodeDescription,

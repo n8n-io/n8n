@@ -62,6 +62,7 @@
     "@n8n/config": "workspace:*",
     "@n8n/constants": "workspace:*",
     "@n8n/di": "workspace:*",
+    "@n8n/utils": "workspace:*",
     "axios": "catalog:",
     "cache-manager": "catalog:",
     "form-data": "catalog:",
