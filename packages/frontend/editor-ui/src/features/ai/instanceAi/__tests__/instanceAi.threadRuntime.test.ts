@@ -842,6 +842,76 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		expect(msg.agentTree?.timeline).toEqual([{ type: 'text', content: 'synced + live' }]);
 	});
 
+	test('run-sync with a degenerate tree does not clobber a hydrated renderable tree', async () => {
+		mockFetchThreadMessages.mockResolvedValueOnce({
+			threadId: activeThreadId,
+			messages: [
+				{
+					id: 'msg-hydrated',
+					runId: 'run-h',
+					messageGroupId: 'group-h',
+					role: 'assistant',
+					createdAt: new Date().toISOString(),
+					content: 'restored',
+					reasoning: '',
+					isStreaming: false,
+					agentTree: {
+						agentId: 'agent-root',
+						role: 'orchestrator',
+						status: 'active',
+						textContent: 'restored',
+						reasoning: '',
+						toolCalls: [],
+						children: [],
+						timeline: [{ type: 'text', content: 'restored' }],
+					},
+				},
+			],
+			nextEventId: 11,
+		});
+
+		await activeRuntime(registry).loadHistoricalMessages();
+
+		// Suspended-run bootstrap whose tree rebuild came back empty (run's
+		// events evicted from the bus and the persisted snapshot degenerate).
+		capturedInstance!.dispatchNamedEvent('run-sync', {
+			runId: 'run-h',
+			messageGroupId: 'group-h',
+			runIds: ['run-h'],
+			agentTree: {
+				agentId: 'agent-001',
+				role: 'orchestrator',
+				status: 'active',
+				textContent: '',
+				reasoning: '',
+				toolCalls: [],
+				children: [],
+				timeline: [],
+			},
+			status: 'suspended',
+			backgroundTasks: [],
+		});
+
+		// The hydrated tree survives; only run/streaming state is refreshed.
+		expect(activeRuntime(registry).messages).toHaveLength(1);
+		const msg = activeRuntime(registry).messages[0];
+		expect(msg.agentTree?.textContent).toBe('restored');
+		expect(msg.content).toBe('restored');
+		expect(msg.isStreaming).toBe(true);
+		expect(activeRuntime(registry).activeRunId).toBe('run-h');
+
+		// Live events after the guarded sync still mutate the kept tree.
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'text-delta',
+				runId: 'run-h',
+				agentId: 'agent-root',
+				payload: { text: ' + live' },
+			}),
+		);
+		expect(msg.agentTree?.textContent).toBe('restored + live');
+	});
+
 	test('run-sync skips unsafe group identifiers instead of registering them', () => {
 		capturedOnMessage!(
 			makeSSEEvent({

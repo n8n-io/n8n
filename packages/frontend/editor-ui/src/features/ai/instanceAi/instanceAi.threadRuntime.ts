@@ -5,6 +5,7 @@ import {
 	buildRunWorkflowSessionGrantKey,
 	instanceAiEventSchema,
 	isSafeObjectKey,
+	nodeHasContent,
 	type InstanceAiConfirmation,
 	type InstanceAiConfirmRequest,
 	type InstanceAiConfirmResponse,
@@ -616,10 +617,6 @@ export function createThreadRuntime(
 
 			const groupId = data.messageGroupId ?? data.runId;
 			if (!isSafeObjectKey(data.runId) || !isSafeObjectKey(groupId)) return;
-			// Adopts the snapshot tree's nodes — `msg.agentTree` below points at the
-			// same objects, so subsequent live events mutate what's rendered.
-			const rebuiltRunState = createRunStateFromTree(data.agentTree);
-			if (!rebuiltRunState) return;
 
 			// Find the message to update — by messageGroupId first, then runId
 			let msg: InstanceAiMessage | undefined;
@@ -632,6 +629,19 @@ export function createThreadRuntime(
 				msg = messages.value.find((m) => m.runId === data.runId);
 			}
 
+			// A degenerate sync tree (e.g. rebuilt after the event bus evicted the
+			// run's events) must not clobber a message that already renders content
+			// from hydration — keep the richer tree and only refresh routing/state.
+			const adoptedTree =
+				msg?.agentTree && nodeHasContent(msg.agentTree) && !nodeHasContent(data.agentTree)
+					? msg.agentTree
+					: data.agentTree;
+
+			// Adopts the tree's nodes — `msg.agentTree` below points at the same
+			// objects, so subsequent live events mutate what's rendered.
+			const rebuiltRunState = createRunStateFromTree(adoptedTree);
+			if (!rebuiltRunState) return;
+
 			if (!msg) {
 				messages.value.push({
 					id: groupId,
@@ -640,20 +650,20 @@ export function createThreadRuntime(
 					runIds: data.runIds,
 					role: 'assistant',
 					createdAt: new Date().toISOString(),
-					content: data.agentTree.textContent,
-					reasoning: data.agentTree.reasoning,
+					content: adoptedTree.textContent,
+					reasoning: adoptedTree.reasoning,
 					isStreaming: false,
-					agentTree: data.agentTree,
+					agentTree: adoptedTree,
 				});
 				msg = messages.value[messages.value.length - 1];
 			}
 
-			msg.agentTree = data.agentTree;
+			msg.agentTree = adoptedTree;
 			msg.runId = data.runId;
 			msg.messageGroupId = groupId;
 			msg.runIds = data.runIds;
-			msg.content = data.agentTree.textContent;
-			msg.reasoning = data.agentTree.reasoning;
+			msg.content = adoptedTree.textContent;
+			msg.reasoning = adoptedTree.reasoning;
 			latestTasks.value = findLatestTasksFromMessages(messages.value);
 			const isOrchestratorLive = data.status === 'active' || data.status === 'suspended';
 			// For background-only groups, the orchestrator already finished.

@@ -6,6 +6,7 @@ vi.mock('@n8n/instance-ai', () => {
 		workflowLoopStateSchema: z.string(),
 		attemptRecordSchema: z.object({}),
 		workflowBuildOutcomeSchema: z.string(),
+		orchestratorAgentId: (runId: string) => `orchestrator-${runId}`,
 		buildAgentTreeFromEvents: vi.fn(() => ({
 			agentId: 'agent-root',
 			role: 'orchestrator',
@@ -27,6 +28,7 @@ vi.mock('../eval/execution.service', () => ({
 	EvalExecutionService: vi.fn(),
 }));
 
+import { buildAgentTreeFromEvents } from '@n8n/instance-ai';
 import type {
 	InstanceAiAdminSettingsUpdateRequest,
 	InstanceAiEvalCredentialAllowlistRequest,
@@ -361,6 +363,14 @@ describe('InstanceAiController', () => {
 
 			expect(runSyncFrame).toContain('"agent-root"');
 			expect(runSyncFrame).toContain('"planItems"');
+
+			// The rebuild is seeded with the group's orchestrator identities so a
+			// tail whose run-start was evicted from the bus still reduces into a
+			// renderable tree instead of an empty one.
+			expect(buildAgentTreeFromEvents).toHaveBeenCalledWith(expect.any(Array), {
+				rootAgentId: 'orchestrator-run-1',
+				aliasAgentIds: [],
+			});
 		});
 
 		it('should close SSE stream when thread ownership changes after pre-creation subscribe', async () => {

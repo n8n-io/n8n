@@ -451,6 +451,7 @@ export {
 	findAgent,
 	toAgentTree,
 	stateFromAgentTree,
+	nodeHasContent,
 } from './schemas/agent-run-reducer';
 
 export type { AgentRunState } from './schemas/agent-run-reducer';

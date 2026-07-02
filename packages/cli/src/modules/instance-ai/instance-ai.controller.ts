@@ -34,8 +34,8 @@ import {
 	Body,
 	Query,
 } from '@n8n/decorators';
-import type { StoredEvent } from '@n8n/instance-ai';
-import { buildAgentTreeFromEvents } from '@n8n/instance-ai';
+import type { AgentTreeSeed, StoredEvent } from '@n8n/instance-ai';
+import { buildAgentTreeFromEvents, orchestratorAgentId } from '@n8n/instance-ai';
 import { UnsupportedAttachmentError, validateAttachmentMimeTypes } from '@n8n/instance-ai/parsers';
 import type { NextFunction, Request, Response } from 'express';
 import { randomUUID, timingSafeEqual } from 'node:crypto';
@@ -95,6 +95,24 @@ export class InstanceAiController {
 			InstanceAiController.getTreeRichnessScore(eventTree)
 			? persistedTree
 			: eventTree;
+	}
+
+	/**
+	 * Orchestrator identities to seed the bootstrap tree rebuild with: a long
+	 * turn overflows the event bus and loses its `run-start`, and without a
+	 * registered root the reducer drops every surviving event — the frame would
+	 * then carry an empty tree that clobbers the client's hydrated messages.
+	 */
+	private static bootstrapTreeSeed(
+		groupRunIds: string[],
+		snapshotRunIds: string[] | undefined,
+	): AgentTreeSeed | undefined {
+		const runIds = groupRunIds.length > 0 ? groupRunIds : (snapshotRunIds ?? []);
+		if (runIds.length === 0) return undefined;
+		return {
+			rootAgentId: orchestratorAgentId(runIds[0]),
+			aliasAgentIds: runIds.slice(1).map(orchestratorAgentId),
+		};
 	}
 
 	constructor(
@@ -303,7 +321,10 @@ export class InstanceAiController {
 			});
 			if (runEvents.length === 0 && !persistedSnapshot) continue;
 
-			const eventTree = buildAgentTreeFromEvents(runEvents);
+			const eventTree = buildAgentTreeFromEvents(
+				runEvents,
+				InstanceAiController.bootstrapTreeSeed(group.runIds, persistedSnapshot?.runIds),
+			);
 			const agentTree = InstanceAiController.selectBootstrapTree(
 				eventTree,
 				persistedSnapshot?.tree,

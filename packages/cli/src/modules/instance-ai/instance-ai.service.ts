@@ -5113,7 +5113,14 @@ export class InstanceAiService {
 				});
 				return;
 			}
-			const agentTree = buildAgentTreeFromEvents(events);
+			// Seed the known orchestrator identities: long turns overflow the event
+			// bus and lose their `run-start`, and without a registered root the
+			// reducer drops every surviving event — persisting an empty tree.
+			const seedRunIds = groupRunIds?.length ? groupRunIds : [runId];
+			const agentTree = buildAgentTreeFromEvents(events, {
+				rootAgentId: orchestratorAgentId(seedRunIds[0]),
+				aliasAgentIds: seedRunIds.slice(1).map(orchestratorAgentId),
+			});
 
 			const tracing = this.tracing.getTraceContext(runId);
 			const saveOptions = {

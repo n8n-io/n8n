@@ -423,6 +423,7 @@ defineLazyExport(
 	() => loadPlannedTaskPermissions().PLANNED_TASK_PERMISSION_OVERRIDES,
 );
 export type { SuspensionInfo, Resumable } from './utils/stream-helpers';
+export type { AgentTreeSeed } from './utils/agent-tree';
 export const buildAgentTreeFromEvents: typeof AgentTreeMod.buildAgentTreeFromEvents = lazyFunction(
 	() => loadAgentTree().buildAgentTreeFromEvents,
 );

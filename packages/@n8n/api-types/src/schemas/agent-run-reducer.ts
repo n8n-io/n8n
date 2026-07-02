@@ -113,14 +113,18 @@ function appendTimelineText(
 }
 
 /**
- * Whether a node carries any content worth preserving across a follow-up
- * `run-start`. Covers every renderable field a turn can populate — not just
- * text/tools/children — so a reasoning-, status-, result-, or error-only tree
- * is not wiped when the next run in the group starts. Optional-chained because
+ * Whether a node carries any renderable content. Covers every renderable field
+ * a turn can populate — not just text/tools/children — so a reasoning-,
+ * status-, result-, or error-only tree still counts. Optional-chained because
  * adopted run-sync trees are not schema-validated, so a malformed node must not
  * throw here.
+ *
+ * Shared contract: the reducer uses it to avoid wiping a merged group's tree
+ * on a follow-up `run-start`, the backend message parser uses it to fall back
+ * from degenerate snapshots, and the frontend uses it to keep a hydrated tree
+ * over a degenerate run-sync frame.
  */
-function nodeHasContent(node: InstanceAiAgentNode | undefined): boolean {
+export function nodeHasContent(node: InstanceAiAgentNode | undefined): boolean {
 	if (!node) return false;
 	return (
 		(node.textContent?.length ?? 0) > 0 ||
