@@ -791,6 +791,7 @@ async function initialize() {
 		builderTelemetry.resetForAgentSwitch();
 
 		agent.value = null;
+		agentName.value = '';
 		activeChatSessionId.value = null;
 		localConfig.value = null;
 		connectedTriggers.value = [];

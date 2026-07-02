@@ -7,13 +7,21 @@ import AgentSelectorParameterInput, { type Props } from './AgentSelectorParamete
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { NEW_AGENT_VIEW } from '@/features/agents/constants';
 
-const { listAgentsPage, listAgentsPageGlobal } = vi.hoisted(() => ({
+const { listAgentsPage, listAgentsPageGlobal, createAgent, getAgent } = vi.hoisted(() => ({
 	listAgentsPage: vi.fn(),
 	listAgentsPageGlobal: vi.fn(),
+	createAgent: vi.fn(),
+	getAgent: vi.fn(),
 }));
 
+const { upsertProjectAgentsListCache } = vi.hoisted(() => ({
+	upsertProjectAgentsListCache: vi.fn(),
+}));
+
+const { openBuilder } = vi.hoisted(() => ({ openBuilder: vi.fn() }));
+const { showError } = vi.hoisted(() => ({ showError: vi.fn() }));
+const { saveCurrentWorkflow } = vi.hoisted(() => ({ saveCurrentWorkflow: vi.fn() }));
 const { routerPush } = vi.hoisted(() => ({
 	routerPush: vi.fn(),
 }));
@@ -25,6 +33,34 @@ const flushPromises = async () => await new Promise(setImmediate);
 vi.mock('@/features/agents/composables/useAgentApi', () => ({
 	listAgentsPage,
 	listAgentsPageGlobal,
+	createAgent,
+	getAgent,
+}));
+
+vi.mock('@/features/agents/composables/useProjectAgentsList', () => ({
+	upsertProjectAgentsListCache,
+}));
+
+// Navigation is unit-tested separately (useAgentNavigation.test.ts); here we
+// only assert the picker delegates to it.
+vi.mock('@/features/agents/composables/useAgentNavigation', () => ({
+	useAgentNavigation: () => ({ openBuilder, openAgent: vi.fn(), rememberOrigin: vi.fn() }),
+}));
+
+vi.mock('@/app/composables/useDocumentVisibility', () => ({
+	useDocumentVisibility: () => ({ onDocumentVisible: vi.fn() }),
+}));
+
+vi.mock('@/app/composables/useToast', () => ({
+	useToast: () => ({ showError }),
+}));
+
+vi.mock('@/app/composables/useTelemetry', () => ({
+	useTelemetry: () => ({ track: vi.fn() }),
+}));
+
+vi.mock('@/app/composables/useWorkflowSaving', () => ({
+	useWorkflowSaving: () => ({ saveCurrentWorkflow }),
 }));
 
 vi.mock('@n8n/stores/useRootStore', () => ({
@@ -72,10 +108,15 @@ describe('AgentSelectorParameterInput', () => {
 		projectsStore.isTeamProjectFeatureEnabled = false;
 		projectsStore.currentProjectId = 'proj-1';
 
-		canCreateHolder.value = false;
+		// Default to having create permission so the create-action flow tests
+		// see the action; the permission-gating test overrides this to false.
+		canCreateHolder.value = true;
 
 		listAgentsPage.mockResolvedValue({ count: 0, data: [] });
 		listAgentsPageGlobal.mockResolvedValue({ count: 0, data: [] });
+		createAgent.mockResolvedValue({ id: 'agent-9', name: 'New Agent', projectId: 'proj-1' });
+		getAgent.mockResolvedValue({ id: 'agent-1', name: 'Fresh Name', projectId: 'proj-1' });
+		saveCurrentWorkflow.mockResolvedValue(true);
 	});
 
 	afterEach(() => {
@@ -169,6 +210,16 @@ describe('AgentSelectorParameterInput', () => {
 		]);
 	});
 
+	it('shows the create-agent action', async () => {
+		const { getByTestId } = renderComponent({ props: makeProps() });
+		await flushPromises();
+
+		await userEvent.click(getByTestId('rlc-input'));
+		await flushPromises();
+
+		expect(getByTestId('rlc-item-add-resource')).toBeInTheDocument();
+	});
+
 	it('hides the create-agent action without create permission', async () => {
 		canCreateHolder.value = false;
 		const { getByTestId, queryByTestId } = renderComponent({ props: makeProps() });
@@ -180,23 +231,115 @@ describe('AgentSelectorParameterInput', () => {
 		expect(queryByTestId('rlc-item-add-resource')).toBeNull();
 	});
 
-	it('shows the create-agent action and opens the new-agent flow when the user can create', async () => {
-		canCreateHolder.value = true;
+	it('eagerly creates a draft agent, references it on the node, and opens the builder', async () => {
 		const { getByTestId, emitted } = renderComponent({ props: makeProps() });
 		await flushPromises();
 
 		await userEvent.click(getByTestId('rlc-input'));
 		await flushPromises();
+		await userEvent.click(getByTestId('rlc-item-add-resource'));
+		await flushPromises();
 
-		const createItem = getByTestId('rlc-item-add-resource');
-		expect(createItem).toBeInTheDocument();
+		expect(createAgent).toHaveBeenCalledWith(expect.anything(), 'proj-1', 'New Agent');
+		expect(upsertProjectAgentsListCache).toHaveBeenCalledWith(
+			'proj-1',
+			expect.objectContaining({ id: 'agent-9' }),
+		);
+		expect(emitted()['update:modelValue']?.[0]).toEqual([
+			{ __rl: true, value: 'agent-9', mode: 'list', cachedResultName: 'New Agent' },
+		]);
+		// The workflow is persisted (so the reference survives) before navigating.
+		expect(saveCurrentWorkflow).toHaveBeenCalledWith({}, false);
+		expect(openBuilder).toHaveBeenCalledWith('proj-1', 'agent-9', undefined);
+	});
 
-		await userEvent.click(createItem);
-		expect(emitted('agentCreateRequested')).toBeTruthy();
-		expect(routerPush).toHaveBeenCalledWith({
-			name: NEW_AGENT_VIEW,
-			query: { projectId: 'proj-1' },
+	it('heals a stale cached name by re-fetching the agent on mount', async () => {
+		getAgent.mockResolvedValue({ id: 'agent-1', name: 'Renamed Agent', projectId: 'proj-1' });
+
+		const { emitted } = renderComponent({
+			props: makeProps({
+				modelValue: { __rl: true, value: 'agent-1', mode: 'list', cachedResultName: 'Old Name' },
+			}),
 		});
+		await flushPromises();
+
+		expect(getAgent).toHaveBeenCalledWith(expect.anything(), 'proj-1', 'agent-1');
+		expect(emitted()['update:modelValue']?.[0]).toEqual([
+			{ __rl: true, value: 'agent-1', mode: 'list', cachedResultName: 'Renamed Agent' },
+		]);
+	});
+
+	it('does not re-emit when the cached name is already current', async () => {
+		getAgent.mockResolvedValue({ id: 'agent-1', name: 'Same Name', projectId: 'proj-1' });
+
+		const { emitted } = renderComponent({
+			props: makeProps({
+				modelValue: { __rl: true, value: 'agent-1', mode: 'list', cachedResultName: 'Same Name' },
+			}),
+		});
+		await flushPromises();
+
+		expect(emitted()['update:modelValue']).toBeUndefined();
+	});
+
+	it('passes the origin node id through to the builder navigation', async () => {
+		const { getByTestId } = renderComponent({ props: makeProps({ originNodeId: 'node-1' }) });
+		await flushPromises();
+
+		await userEvent.click(getByTestId('rlc-input'));
+		await flushPromises();
+		await userEvent.click(getByTestId('rlc-item-add-resource'));
+		await flushPromises();
+
+		expect(openBuilder).toHaveBeenCalledWith('proj-1', 'agent-9', 'node-1');
+	});
+
+	it('surfaces an error and does not navigate when creation fails', async () => {
+		createAgent.mockRejectedValueOnce(new Error('boom'));
+
+		const { getByTestId } = renderComponent({ props: makeProps() });
+		await flushPromises();
+
+		await userEvent.click(getByTestId('rlc-input'));
+		await flushPromises();
+		await userEvent.click(getByTestId('rlc-item-add-resource'));
+		await flushPromises();
+
+		expect(showError).toHaveBeenCalled();
+		expect(openBuilder).not.toHaveBeenCalled();
+	});
+
+	it('does not navigate to the builder when persisting the workflow fails', async () => {
+		saveCurrentWorkflow.mockResolvedValueOnce(false);
+
+		const { getByTestId } = renderComponent({ props: makeProps() });
+		await flushPromises();
+
+		await userEvent.click(getByTestId('rlc-input'));
+		await flushPromises();
+		await userEvent.click(getByTestId('rlc-item-add-resource'));
+		await flushPromises();
+
+		expect(createAgent).toHaveBeenCalled();
+		expect(saveCurrentWorkflow).toHaveBeenCalled();
+		expect(openBuilder).not.toHaveBeenCalled();
+	});
+
+	it('surfaces an error and creates nothing when no project is in context', async () => {
+		projectsStore.currentProjectId = undefined;
+		projectsStore.personalProject = undefined as any;
+
+		const { getByTestId } = renderComponent({ props: makeProps() });
+		await flushPromises();
+
+		await userEvent.click(getByTestId('rlc-input'));
+		await flushPromises();
+		await userEvent.click(getByTestId('rlc-item-add-resource'));
+		await flushPromises();
+
+		expect(showError).toHaveBeenCalled();
+		expect(createAgent).not.toHaveBeenCalled();
+		expect(openBuilder).not.toHaveBeenCalled();
 	});
 
 	it('shows an error with retry that re-fetches the catalog', async () => {

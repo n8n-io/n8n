@@ -20,9 +20,19 @@ import { useResourceLocatorModes } from '../../composables/useResourceLocatorMod
 import { useAgentResourcesLocator } from '../../composables/useAgentResourcesLocator';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
-import { useRouter } from 'vue-router';
 import { useAgentPermissions } from '@/features/agents/composables/useAgentPermissions';
-import { NEW_AGENT_VIEW } from '@/features/agents/constants';
+import { injectNDVStoreIfProvided } from '@/features/ndv/shared/ndv.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useToast } from '@/app/composables/useToast';
+import { createAgent } from '@/features/agents/composables/useAgentApi';
+import { upsertProjectAgentsListCache } from '@/features/agents/composables/useProjectAgentsList';
+import { useAgentNavigation } from '@/features/agents/composables/useAgentNavigation';
+import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
+import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
+import { useDebounce } from '@/app/composables/useDebounce';
+import { DEBOUNCE_TIME } from '@/app/constants';
+import { useRouter } from 'vue-router';
 
 import { N8nButton, N8nIcon, N8nInput, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
 
@@ -43,6 +53,12 @@ export interface Props {
 	 * on the canvas card, where the agent is always picked from the list.
 	 */
 	hideModeSelector?: boolean;
+	/**
+	 * Origin node id for the "Back to workflow" return context. Set by the canvas
+	 * agent card (AGENT-274), which renders this picker outside the NDV; in the
+	 * NDV the active node is resolved from the NDV store instead.
+	 */
+	originNodeId?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -63,13 +79,21 @@ const emit = defineEmits<{
 	modalOpenerClick: [];
 	focus: [];
 	blur: [];
-	agentCreateRequested: [];
 }>();
 
 const i18n = useI18n();
-const router = useRouter();
 const projectStore = useProjectsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
+const ndvStore = injectNDVStoreIfProvided();
+const rootStore = useRootStore();
+const toast = useToast();
+const telemetry = useTelemetry();
+const nav = useAgentNavigation();
+const { onDocumentVisible } = useDocumentVisibility();
+const router = useRouter();
+const { saveCurrentWorkflow } = useWorkflowSaving({ router });
+const { debounce } = useDebounce();
+const isCreating = ref(false);
 
 const container = ref<HTMLDivElement>();
 const dropdown = ref<ComponentPublicInstance<typeof ResourceLocatorDropdown>>();
@@ -116,6 +140,7 @@ const {
 	getAgentName,
 	loadMore,
 	setAgentsResources,
+	refreshAgentName,
 } = useAgentResourcesLocator(projectId, resolveProjectName);
 
 const { isListMode, getUpdatedModePayload, selectedMode, supportedModes, getModeLabel } =
@@ -190,7 +215,10 @@ function setWidth() {
 	}
 }
 
-function onInputChange(agentId: NodeParameterValue): void {
+// Build and emit the RL value. Discrete actions (selection, create) call this
+// directly so the reference commits to the workflow synchronously; free-text
+// typing goes through the debounced wrapper below.
+function emitValue(agentId: NodeParameterValue): void {
 	if (typeof agentId !== 'string') return;
 
 	const params: INodeParameterResourceLocator = {
@@ -207,8 +235,20 @@ function onInputChange(agentId: NodeParameterValue): void {
 	emit('update:modelValue', params);
 }
 
+// Debounce free-text input (id/expression mode) so we don't write to the
+// workflow on every keystroke — the list/workflow selectors debounce the same
+// path. Flushed on blur/unmount so the final value is never dropped.
+const emitValueDebounced = debounce(emitValue, {
+	debounceTime: DEBOUNCE_TIME.INPUT.SEARCH,
+	trailing: true,
+});
+
+function onInputChange(agentId: NodeParameterValue): void {
+	emitValueDebounced(agentId);
+}
+
 function onListItemSelected(value: NodeParameterValue) {
-	onInputChange(value);
+	emitValue(value);
 	hideDropdown();
 }
 
@@ -218,6 +258,7 @@ function onInputFocus(): void {
 }
 
 function onInputBlur(): void {
+	emitValueDebounced.flush();
 	emit('blur');
 }
 
@@ -235,24 +276,98 @@ function onKeyDown(e: KeyboardEvent) {
 	}
 }
 
-function onAddResourceClicked() {
+// Eagerly create a draft agent primitive, reference it on the node, and open the
+// Agent Builder for it — mirroring the sub-workflow "+ Create" flow in
+// WorkflowSelectorParameterInput. An abandoned create leaves a harmless draft in
+// the catalog (the draft/published model keeps production executions safe).
+async function onAddResourceClicked() {
 	hideDropdown();
-	emit('agentCreateRequested');
-	// Open the standalone new-agent flow scoped to the picker's project
-	void router.push({ name: NEW_AGENT_VIEW, query: { projectId: projectId.value } });
+	if (!projectId.value) {
+		toast.showError(
+			new Error(i18n.baseText('agentSelector.createAgentFailed')),
+			i18n.baseText('agentSelector.createAgentFailed'),
+		);
+		return;
+	}
+
+	if (isCreating.value) return;
+	isCreating.value = true;
+
+	try {
+		const agent = await createAgent(
+			rootStore.restApiContext,
+			projectId.value,
+			i18n.baseText('agents.new.defaultName'),
+		);
+		upsertProjectAgentsListCache(projectId.value, agent);
+
+		emit('update:modelValue', {
+			__rl: true,
+			value: agent.id,
+			mode: selectedMode.value,
+			cachedResultName: agent.name,
+		});
+
+		// Keep the picker's own list consistent if it is reopened.
+		void setAgentsResources();
+
+		telemetry.track('User created agent', { agent_id: agent.id, source: 'node_picker' });
+
+		// Persist the workflow so the new agent reference is saved before navigating
+		// away. Otherwise leaving the (now-dirty) workflow and abandoning the builder
+		// would drop the reference, orphaning the freshly-created draft. Saving also
+		// clears the dirty state, so the route change doesn't prompt to save.
+		const saved = await saveCurrentWorkflow({}, false);
+		if (!saved) return;
+
+		await nav.openBuilder(
+			projectId.value,
+			agent.id,
+			props.originNodeId ?? ndvStore.value?.activeNode?.id,
+		);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('agentSelector.createAgentFailed'));
+	} finally {
+		isCreating.value = false;
+	}
+}
+
+// Heal a stale `cachedResultName` (e.g. the agent was renamed in the builder) by
+// re-fetching its current name and re-emitting the reference. Mirrors the
+// sub-workflow picker's refreshCachedWorkflow.
+async function refreshCachedAgent() {
+	const modelValue = props.modelValue;
+	if (modelValue?.mode !== 'list' || typeof modelValue.value !== 'string' || !modelValue.value) {
+		return;
+	}
+	const freshName = await refreshAgentName(modelValue.value);
+	if (freshName && freshName !== modelValue.cachedResultName) {
+		emit('update:modelValue', {
+			__rl: true,
+			value: modelValue.value,
+			mode: 'list',
+			cachedResultName: freshName,
+		});
+	}
 }
 
 async function onRetry() {
 	await setAgentsResources();
 }
 
+// Refresh when the tab regains focus, so a rename made in the builder (other
+// tab/route) reflects without reopening the NDV.
+onDocumentVisible(refreshCachedAgent);
+
 onMounted(() => {
 	window.addEventListener('resize', setWidth);
 	setWidth();
 	void setAgentsResources();
+	void refreshCachedAgent();
 });
 
 onUnmounted(() => {
+	emitValueDebounced.flush();
 	window.removeEventListener('resize', setWidth);
 });
 
