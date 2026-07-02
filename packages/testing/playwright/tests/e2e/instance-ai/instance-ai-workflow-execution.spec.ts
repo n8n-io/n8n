@@ -59,36 +59,15 @@ function seededExecutionWorkflow(name: string, setNodeName: string): Partial<IWo
 }
 
 type WorkflowApiForExecutionAssertions = {
-	getWorkflows(): Promise<Array<{ id?: string; name?: string; nodes?: Array<{ name: string }> }>>;
-	getWorkflow(workflowId: string): Promise<{ name?: string; nodes?: Array<{ name: string }> }>;
 	getExecutions(workflowId: string, limit?: number): Promise<Array<{ status?: string }>>;
 };
 
-async function getSuccessfulExecutionCountForNode(
+async function getSuccessfulExecutionCountForWorkflow(
 	workflowsApi: WorkflowApiForExecutionAssertions,
-	nodeName: string,
+	workflowId: string,
 ): Promise<number> {
-	const workflows = await workflowsApi.getWorkflows();
-	const lowerNodeName = nodeName.toLowerCase();
-	let executionCount = 0;
-
-	for (const workflowSummary of workflows) {
-		if (!workflowSummary.id) continue;
-
-		const workflow = workflowSummary.nodes
-			? workflowSummary
-			: await workflowsApi.getWorkflow(workflowSummary.id);
-
-		const matchesNode =
-			workflow.name?.toLowerCase().includes(lowerNodeName) === true ||
-			workflow.nodes?.some((node) => node.name.toLowerCase().includes(lowerNodeName)) === true;
-		if (!matchesNode) continue;
-
-		const executions = await workflowsApi.getExecutions(workflowSummary.id, 20);
-		executionCount += executions.filter((execution) => execution.status === 'success').length;
-	}
-
-	return executionCount;
+	const executions = await workflowsApi.getExecutions(workflowId, 20);
+	return executions.filter((execution) => execution.status === 'success').length;
 }
 
 test.describe(
@@ -122,7 +101,7 @@ test.describe(
 		test('should execute workflow from run button and show success indicators', async ({ n8n }) => {
 			test.setTimeout(180_000);
 			const workflowName = 'Full Execution Workflow';
-			await n8n.api.workflows.createWorkflow(
+			const workflow = await n8n.api.workflows.createWorkflow(
 				seededExecutionWorkflow(workflowName, 'full execution test'),
 			);
 
@@ -134,9 +113,9 @@ test.describe(
 
 			await n8n.instanceAi.waitForPreviewCanvasNode('full execution test');
 
-			const executionCountBeforeRun = await getSuccessfulExecutionCountForNode(
+			const executionCountBeforeRun = await getSuccessfulExecutionCountForWorkflow(
 				n8n.api.workflows,
-				'full execution test',
+				workflow.id,
 			);
 
 			// Click the run workflow button
@@ -144,8 +123,7 @@ test.describe(
 
 			await expect
 				.poll(
-					async () =>
-						await getSuccessfulExecutionCountForNode(n8n.api.workflows, 'full execution test'),
+					async () => await getSuccessfulExecutionCountForWorkflow(n8n.api.workflows, workflow.id),
 					{ intervals: [1_000, 2_000, 5_000], timeout: 120_000 },
 				)
 				.toBeGreaterThan(executionCountBeforeRun);
@@ -197,7 +175,7 @@ test.describe(
 		}) => {
 			test.setTimeout(180_000);
 			const workflowName = 'NDV Output Workflow';
-			await n8n.api.workflows.createWorkflow(
+			const workflow = await n8n.api.workflows.createWorkflow(
 				seededExecutionWorkflow(workflowName, 'ndv output test'),
 			);
 
@@ -209,9 +187,9 @@ test.describe(
 
 			await n8n.instanceAi.waitForPreviewCanvasNode('ndv output test');
 
-			const executionCountBeforeRun = await getSuccessfulExecutionCountForNode(
+			const executionCountBeforeRun = await getSuccessfulExecutionCountForWorkflow(
 				n8n.api.workflows,
-				'ndv output test',
+				workflow.id,
 			);
 
 			// Execute the workflow
@@ -220,8 +198,7 @@ test.describe(
 			// Wait for execution to complete
 			await expect
 				.poll(
-					async () =>
-						await getSuccessfulExecutionCountForNode(n8n.api.workflows, 'ndv output test'),
+					async () => await getSuccessfulExecutionCountForWorkflow(n8n.api.workflows, workflow.id),
 					{ intervals: [1_000, 2_000, 5_000], timeout: 120_000 },
 				)
 				.toBeGreaterThan(executionCountBeforeRun);
@@ -240,7 +217,9 @@ test.describe(
 
 		test('should allow re-running workflow after initial execution', async ({ n8n }) => {
 			const workflowName = 'Re-run Execution Workflow';
-			await n8n.api.workflows.createWorkflow(seededExecutionWorkflow(workflowName, 're-run test'));
+			const workflow = await n8n.api.workflows.createWorkflow(
+				seededExecutionWorkflow(workflowName, 're-run test'),
+			);
 
 			await n8n.navigate.toInstanceAi();
 
@@ -250,9 +229,9 @@ test.describe(
 
 			await n8n.instanceAi.waitForPreviewCanvasNode('re-run test');
 
-			const executionCountBeforeFirstRun = await getSuccessfulExecutionCountForNode(
+			const executionCountBeforeFirstRun = await getSuccessfulExecutionCountForWorkflow(
 				n8n.api.workflows,
-				're-run test',
+				workflow.id,
 			);
 
 			// First execution
@@ -265,9 +244,9 @@ test.describe(
 			await expect
 				.poll(
 					async () => {
-						executionCountAfterFirstRun = await getSuccessfulExecutionCountForNode(
+						executionCountAfterFirstRun = await getSuccessfulExecutionCountForWorkflow(
 							n8n.api.workflows,
-							're-run test',
+							workflow.id,
 						);
 						return executionCountAfterFirstRun;
 					},
@@ -283,7 +262,7 @@ test.describe(
 			await n8n.instanceAi.runPreviewWorkflow();
 			await expect
 				.poll(
-					async () => await getSuccessfulExecutionCountForNode(n8n.api.workflows, 're-run test'),
+					async () => await getSuccessfulExecutionCountForWorkflow(n8n.api.workflows, workflow.id),
 					{ intervals: [1_000, 2_000, 5_000], timeout: 120_000 },
 				)
 				.toBeGreaterThan(executionCountAfterFirstRun);

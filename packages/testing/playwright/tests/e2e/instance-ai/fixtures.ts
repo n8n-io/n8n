@@ -29,6 +29,10 @@ const TOOL_NAME_WINDOW = 3_000;
 const TOOL_INPUT_WINDOW = 8_000;
 const TOOL_RESULT_CONTENT_WINDOW = 100_000;
 
+function restoreIdValuePlaceholders(anchor: string): string {
+	return anchor.replaceAll(ID_VALUE_PLACEHOLDER, '[A-Za-z0-9_-]+');
+}
+
 function slugify(text: string): string {
 	return text
 		.toLowerCase()
@@ -164,15 +168,16 @@ function getStableTextAnchor(text: string): string | undefined {
 
 	const plannedTaskFollowUpType = getPlannedTaskFollowUpType(trimmed);
 	if (plannedTaskFollowUpType) {
-		return getPlannedTaskFollowUpAnchor(trimmed, plannedTaskFollowUpType);
+		return restoreIdValuePlaceholders(
+			getPlannedTaskFollowUpAnchor(trimmed, plannedTaskFollowUpType),
+		);
 	}
 
 	const jsonFieldAnchor = getStableJsonFieldAnchor(trimmed);
-	if (jsonFieldAnchor) return jsonFieldAnchor;
+	if (jsonFieldAnchor) return restoreIdValuePlaceholders(jsonFieldAnchor);
 
-	return escapeRegex(JSON.stringify(trimmed.slice(0, 120)).slice(1, -1)).replaceAll(
-		ID_VALUE_PLACEHOLDER,
-		'[A-Za-z0-9_-]+',
+	return restoreIdValuePlaceholders(
+		escapeRegex(JSON.stringify(trimmed.slice(0, 120)).slice(1, -1)),
 	);
 }
 
@@ -403,10 +408,6 @@ function stripRecordedSystemPromptAnchor(regex: string): string {
 	return `${BODY_REGEX_WILDCARD}${regex.slice(latestTurnAnchorIndex + BODY_REGEX_WILDCARD.length)}`;
 }
 
-function getRecordedSystemPromptAnchor(regex: string): string | undefined {
-	return SYSTEM_PROMPT_ANCHORS.find((anchor) => regex.includes(anchor));
-}
-
 function loosenEscapedJsonFieldAnchors(regex: string): string {
 	return regex
 		.replace(/\\\\"([^"\\]+)\\\\":\\\\"([^"\\]*)\\\\"/g, '\\\\"$1\\\\"\\s*:\\s*\\\\"$2\\\\"')
@@ -459,12 +460,6 @@ function loosenRecordedInstanceAiPromptMatcher(expectation: Expectation): Expect
 			body.regex = plannedTaskFollowUpType
 				? `[\\s\\S]*${getPlannedTaskFollowUpAnchor(regex, plannedTaskFollowUpType)}[\\s\\S]*`
 				: '[\\s\\S]*<planned-task-follow-up[\\s\\S]*';
-			return expectation;
-		}
-
-		const systemPromptAnchor = getRecordedSystemPromptAnchor(regex);
-		if (systemPromptAnchor) {
-			body.regex = `[\\s\\S]*${escapeRegex(systemPromptAnchor)}[\\s\\S]*`;
 			return expectation;
 		}
 
@@ -545,20 +540,30 @@ async function safeFetch(input: string, init: RequestInit = {}): Promise<Respons
 	}
 }
 
+async function wait(ms: number): Promise<void> {
+	await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function fetchOrThrow(
 	input: string,
 	init: RequestInit = {},
 	description: string,
 ): Promise<Response> {
-	const response = await safeFetch(input, init);
+	let response: Response | undefined;
+	for (let attempt = 0; attempt < 4; attempt++) {
+		response = await safeFetch(input, init);
+		if (response?.ok) return response;
+		if (response && ![502, 503, 504].includes(response.status)) break;
+		if (attempt === 3) break;
+		await wait(500 * 2 ** attempt);
+	}
+
 	if (!response) {
 		throw new Error(`Instance AI test setup failed: ${description}`);
 	}
-	if (!response.ok) {
-		const body = await response.text();
-		throw new Error(`Instance AI test setup failed: ${description} (${response.status}) ${body}`);
-	}
-	return response;
+
+	const body = await response.text();
+	throw new Error(`Instance AI test setup failed: ${description} (${response.status}) ${body}`);
 }
 
 function getIdleState(body: unknown): boolean | undefined {
