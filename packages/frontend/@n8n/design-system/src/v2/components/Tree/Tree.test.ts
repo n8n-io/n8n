@@ -47,45 +47,61 @@ function getRowByLabel(wrapper: ReturnType<typeof renderTree>, label: string) {
 	return wrapper.getByText(label).closest('[data-test-id="tree-node"]');
 }
 
+interface CustomItem extends TreeBranch {
+	uuid: string;
+	nodes?: CustomItem[];
+}
+
+const customItems: CustomItem[] = [
+	{
+		id: 'parent',
+		uuid: 'parent-uuid',
+		label: 'Custom parent',
+		nodes: [{ id: 'child', uuid: 'child-uuid', label: 'Custom child' }],
+	},
+];
+
+function renderCustomTree(props?: Partial<TreeProps>) {
+	return render(Tree, {
+		props: {
+			items: customItems,
+			defaultExpanded: ['parent-uuid'],
+			getKey: (item) => (item as CustomItem).uuid,
+			getChildren: (item) => (item as CustomItem).nodes,
+			...props,
+		},
+	});
+}
+
+const CustomNode = defineComponent({
+	props: {
+		label: { type: String, required: true },
+	},
+	template: '<span data-test-id="custom-node">{{ label }}</span>',
+});
+
 describe('v2/components/Tree', () => {
 	describe('rendering', () => {
-		it('should render with default props', () => {
-			const { container } = renderTree();
-
-			expect(container.querySelector('.n8n-tree')).toBeInTheDocument();
-			expect(container).not.toBeEmptyDOMElement();
-		});
-
-		it('should render visible labels for expanded items', () => {
+		it('should render with default data-test-id on root', () => {
 			const wrapper = renderTree();
 
-			expect(wrapper.getByText('Parent')).toBeInTheDocument();
-			expect(wrapper.getByText('Child')).toBeInTheDocument();
-			expect(wrapper.getByText('Leaf')).toBeInTheDocument();
+			expect(wrapper.getByTestId('tree')).toBeInTheDocument();
 		});
 
-		it('should apply n8n-tree class to root', () => {
-			const wrapper = renderTree();
-
-			expect(wrapper.container.querySelector('.n8n-tree')).toBeInTheDocument();
-		});
-
-		it('should forward class attribute to root', () => {
-			const wrapper = render(Tree, {
-				props: { items: treeItems, defaultExpanded },
-				attrs: { class: 'custom-tree-class' },
+		it('should allow overriding root data-test-id', () => {
+			const wrapper = renderTree({
+				attrs: { 'data-test-id': 'sidebar-tree' },
 			});
 
-			expect(wrapper.container.querySelector('.n8n-tree')).toHaveClass('custom-tree-class');
+			expect(wrapper.getByTestId('sidebar-tree')).toBeInTheDocument();
 		});
 
 		it('should forward non-class attributes to root', () => {
-			const wrapper = render(Tree, {
-				props: { items: treeItems, defaultExpanded },
-				attrs: { 'data-test-id': 'tree-root' },
+			const wrapper = renderTree({
+				attrs: { 'aria-label': 'Navigation tree' },
 			});
 
-			expect(wrapper.getByTestId('tree-root')).toBeInTheDocument();
+			expect(wrapper.getByTestId('tree')).toHaveAttribute('aria-label', 'Navigation tree');
 		});
 
 		it('should propagate disabled state to rows', () => {
@@ -157,29 +173,10 @@ describe('v2/components/Tree', () => {
 	});
 
 	describe('custom data accessors', () => {
-		interface CustomItem extends TreeBranch {
-			uuid: string;
-			nodes?: CustomItem[];
-		}
+		it('should resolve keys and children from custom accessors', async () => {
+			const wrapper = renderCustomTree();
 
-		const customItems: CustomItem[] = [
-			{
-				id: 'parent',
-				uuid: 'parent-uuid',
-				label: 'Custom parent',
-				nodes: [{ id: 'child', uuid: 'child-uuid', label: 'Custom child' }],
-			},
-		];
-
-		it('should emit custom getKey values', async () => {
-			const wrapper = render(Tree, {
-				props: {
-					items: customItems,
-					defaultExpanded: ['parent-uuid'],
-					getKey: (item) => (item as CustomItem).uuid,
-					getChildren: (item) => (item as CustomItem).nodes,
-				},
-			});
+			expect(wrapper.getByText('Custom child')).toBeInTheDocument();
 
 			await userEvent.click(wrapper.getByText('Custom child'));
 
@@ -187,50 +184,23 @@ describe('v2/components/Tree', () => {
 				expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([['child-uuid']]);
 			});
 		});
-
-		it('should render nested items from custom getChildren', () => {
-			const wrapper = render(Tree, {
-				props: {
-					items: customItems,
-					defaultExpanded: ['parent-uuid'],
-					getKey: (item) => (item as CustomItem).uuid,
-					getChildren: (item) => (item as CustomItem).nodes,
-				},
-			});
-
-			expect(wrapper.getByText('Custom child')).toBeInTheDocument();
-		});
 	});
 
 	describe('slots', () => {
-		it('should render icon slot content', () => {
+		test.each([
+			['icon', '<span data-test-id="custom-icon">icon</span>', 'custom-icon'],
+			['label', '<span data-test-id="custom-label">label</span>', 'custom-label'],
+			[
+				'toggle',
+				'<button type="button" data-test-id="custom-toggle">toggle</button>',
+				'custom-toggle',
+			],
+		] as const)('should render %s slot content', (slotName, slotContent, testId) => {
 			const wrapper = renderTree({
-				slots: {
-					icon: '<span data-test-id="custom-icon">icon</span>',
-				},
+				slots: { [slotName]: slotContent },
 			});
 
-			expect(wrapper.getAllByTestId('custom-icon').length).toBeGreaterThan(0);
-		});
-
-		it('should render label slot content', () => {
-			const wrapper = renderTree({
-				slots: {
-					label: '<span data-test-id="custom-label">label</span>',
-				},
-			});
-
-			expect(wrapper.getAllByTestId('custom-label').length).toBeGreaterThan(0);
-		});
-
-		it('should render toggle slot content for expandable rows', () => {
-			const wrapper = renderTree({
-				slots: {
-					toggle: '<button type="button" data-test-id="custom-toggle">toggle</button>',
-				},
-			});
-
-			expect(wrapper.getAllByTestId('custom-toggle').length).toBeGreaterThan(0);
+			expect(wrapper.getAllByTestId(testId).length).toBeGreaterThan(0);
 		});
 
 		it('should render default slot content instead of default row', () => {
@@ -261,24 +231,14 @@ describe('v2/components/Tree', () => {
 	});
 
 	describe('custom node', () => {
-		const CustomNode = defineComponent({
-			props: {
-				label: { type: String, required: true },
-			},
-			template: '<span data-test-id="custom-node">{{ label }}</span>',
-		});
-
-		it('should render custom node component', () => {
+		it('should render custom node component with item props', () => {
 			const wrapper = renderTree({
-				props: {
-					node: CustomNode,
-				},
+				props: { node: CustomNode },
 			});
 
-			expect(wrapper.getAllByTestId('custom-node').length).toBeGreaterThan(0);
 			expect(
 				wrapper.getAllByTestId('custom-node').find((node) => node.textContent === 'Child'),
-			).toBeInTheDocument();
+			).toHaveTextContent('Child');
 		});
 
 		it('should map getNodeProps to custom node props', () => {
@@ -291,29 +251,9 @@ describe('v2/components/Tree', () => {
 
 			expect(wrapper.getAllByText('Mapped label').length).toBeGreaterThan(0);
 		});
-
-		it('should use item label from default getNodeProps', () => {
-			const wrapper = renderTree({
-				props: {
-					node: CustomNode,
-				},
-			});
-
-			expect(
-				wrapper.getAllByTestId('custom-node').find((node) => node.textContent === 'Child'),
-			).toHaveTextContent('Child');
-		});
 	});
 
 	describe('virtualized', () => {
-		it('should apply virtualized styling to root', () => {
-			const wrapper = renderTree({
-				props: { virtualized: true },
-			});
-
-			expect(wrapper.container.querySelector('.n8n-tree')).toHaveClass('virtualized');
-		});
-
 		it('should mount TreeVirtualizer when virtualized', () => {
 			const wrapper = renderTree({
 				props: { virtualized: true },

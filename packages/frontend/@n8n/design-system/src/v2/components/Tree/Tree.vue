@@ -191,6 +191,7 @@ function mapVirtualFlattenedItem(
 <template>
 	<TreeRoot
 		v-slot="{ flattenItems }"
+		data-test-id="tree"
 		v-bind="{ ...rootProps, ...rootAttrs }"
 		:class="[treeVariables.root, rootClass, { [$style.virtualized]: virtualized }]"
 		:items="items"
