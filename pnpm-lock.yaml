@@ -3163,6 +3163,9 @@ importers:
       eslint:
         specifier: 'catalog:'
         version: 9.29.0(jiti@2.6.1)
+      eslint-plugin-n8n-nodes-base:
+        specifier: 'catalog:'
+        version: 1.16.7(eslint@9.29.0(jiti@2.6.1))(typescript@6.0.2)
       fast-glob:
         specifier: 'catalog:'
         version: 3.2.12
@@ -3172,6 +3175,9 @@ importers:
       tmp:
         specifier: 0.2.7
         version: 0.2.7
+      typescript:
+        specifier: 6.0.2
+        version: 6.0.2
     devDependencies:
       '@n8n/vitest-config':
         specifier: workspace:*
