@@ -1,5 +1,6 @@
 import type { VectorStore } from '@langchain/core/vectorstores';
-import type { INodeProperties, INodePropertyOptions } from 'n8n-workflow';
+import { ExecutionBaseError, NodeApiError } from 'n8n-workflow';
+import type { INode, INodeProperties, INodePropertyOptions, JsonObject } from 'n8n-workflow';
 
 import { DEFAULT_OPERATION_MODES, OPERATION_MODE_DESCRIPTIONS } from './constants';
 import type { NodeOperationMode, VectorStoreNodeConstructorArgs } from './types';
@@ -40,4 +41,10 @@ export function getOperationModeOptions<T extends VectorStore>(
 	return OPERATION_MODE_DESCRIPTIONS.filter(({ value }) =>
 		enabledOperationModes.includes(value as NodeOperationMode),
 	);
+}
+
+/** Surfaces provider SDK errors (Pinecone, Supabase, …) as actionable n8n errors instead of raw exceptions */
+export function normalizeVectorStoreError(node: INode, error: unknown, itemIndex?: number): never {
+	if (error instanceof ExecutionBaseError) throw error;
+	throw new NodeApiError(node, error as JsonObject, { itemIndex });
 }
