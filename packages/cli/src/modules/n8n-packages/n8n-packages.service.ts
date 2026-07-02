@@ -93,6 +93,9 @@ export class N8nPackagesService {
 
 		this.eventService.emit('n8n-package-exported', {
 			user: request.user,
+			...(request.workflowIds?.length ? { workflowIds: request.workflowIds } : {}),
+			...(request.folderIds?.length ? { folderIds: request.folderIds } : {}),
+			...(request.projectIds?.length ? { projectIds: request.projectIds } : {}),
 			counts: {
 				workflows: workflowExportResult?.entries.length ?? 0,
 				folders: folderExportResult?.entries.length ?? 0,

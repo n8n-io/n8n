@@ -249,7 +249,11 @@ describe('workflow package export — with credentials', () => {
 			const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
 
 			try {
-				await service.exportPackage({ user: owner, workflowIds: [wfA.id, wfB.id, wfC.id] });
+				await service.exportPackage({
+					user: owner,
+					workflowIds: [wfA.id, wfB.id, wfC.id],
+					projectIds: [],
+				});
 
 				const exportedEvents = emitSpy.mock.calls.filter(
 					([name]) => name === 'n8n-package-exported',
@@ -260,6 +264,9 @@ describe('workflow package export — with credentials', () => {
 				expect(payload.counts.workflows).toBe(3);
 				expect(payload.counts.credentials).toBe(2);
 				expect(payload.user.id).toBe(owner.id);
+				expect(payload.workflowIds).toEqual([wfA.id, wfB.id, wfC.id]);
+				// Empty filter must be omitted entirely, not recorded as `[]`.
+				expect(payload).not.toHaveProperty('projectIds');
 			} finally {
 				emitSpy.mockRestore();
 			}

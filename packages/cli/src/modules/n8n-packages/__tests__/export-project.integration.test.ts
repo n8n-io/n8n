@@ -8,6 +8,9 @@ import {
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
+import { EventService } from '@/events/event.service';
+import type { RelayEventMap } from '@/events/maps/relay.event-map';
+
 import { createMember, createOwner } from '@test-integration/db/users';
 
 import { N8nPackagesService } from '../n8n-packages.service';
@@ -71,6 +74,29 @@ describe('project package export', () => {
 			id: project.id,
 			name: 'Empty Project',
 		});
+	});
+
+	it('emits n8n-package-exported with the requested projectIds', async () => {
+		const owner = await createOwner();
+		const firstProject = await createTeamProject('Alpha Project', owner);
+		const secondProject = await createTeamProject('Beta Project', owner);
+
+		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+
+		try {
+			await service.exportPackage({
+				user: owner,
+				projectIds: [firstProject.id, secondProject.id],
+			});
+
+			const exportedEvents = emitSpy.mock.calls.filter(([name]) => name === 'n8n-package-exported');
+			expect(exportedEvents).toHaveLength(1);
+
+			const payload = exportedEvents[0][1] as RelayEventMap['n8n-package-exported'];
+			expect(payload.projectIds).toEqual([firstProject.id, secondProject.id]);
+		} finally {
+			emitSpy.mockRestore();
+		}
 	});
 
 	it('exports multiple team projects in a single request', async () => {

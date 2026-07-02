@@ -2,6 +2,9 @@ import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils'
 import { Container } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
 
+import { EventService } from '@/events/event.service';
+import type { RelayEventMap } from '@/events/maps/relay.event-map';
+
 import { createFolder } from '@test-integration/db/folders';
 import { createMember, createOwner } from '@test-integration/db/users';
 
@@ -66,6 +69,26 @@ describe('folder package export', () => {
 			name: 'to_production',
 			parentFolderId: null,
 		});
+	});
+
+	it('emits n8n-package-exported with the requested folderIds', async () => {
+		const owner = await createOwner();
+		const project = await createTeamProject('Project A', owner);
+		const folder = await createFolder(project, { name: 'to_production' });
+
+		const emitSpy = vi.spyOn(Container.get(EventService), 'emit');
+
+		try {
+			await service.exportPackage({ user: owner, workflowIds: [], folderIds: [folder.id] });
+
+			const exportedEvents = emitSpy.mock.calls.filter(([name]) => name === 'n8n-package-exported');
+			expect(exportedEvents).toHaveLength(1);
+
+			const payload = exportedEvents[0][1] as RelayEventMap['n8n-package-exported'];
+			expect(payload.folderIds).toEqual([folder.id]);
+		} finally {
+			emitSpy.mockRestore();
+		}
 	});
 
 	it('aborts the export when the user cannot access the folder', async () => {
