@@ -346,6 +346,8 @@ describe('createInstanceAiTraceContext', () => {
 	const originalLangSmithApiKey = process.env.LANGSMITH_API_KEY;
 	const originalLangSmithTracing = process.env.LANGSMITH_TRACING;
 	const originalLangChainTracingV2 = process.env.LANGCHAIN_TRACING_V2;
+	const originalLangSmithProject = process.env.LANGSMITH_PROJECT;
+	const originalLangChainProject = process.env.LANGCHAIN_PROJECT;
 	const originalTraceInternal = process.env.N8N_INSTANCE_AI_TRACE_INTERNAL;
 	const originalDiagnosticsEnabled = process.env.N8N_DIAGNOSTICS_ENABLED;
 
@@ -355,6 +357,8 @@ describe('createInstanceAiTraceContext', () => {
 		process.env.LANGSMITH_API_KEY = 'test-key';
 		delete process.env.LANGSMITH_TRACING;
 		delete process.env.LANGCHAIN_TRACING_V2;
+		delete process.env.LANGSMITH_PROJECT;
+		delete process.env.LANGCHAIN_PROJECT;
 		delete process.env.N8N_INSTANCE_AI_TRACE_INTERNAL;
 		delete process.env.N8N_DIAGNOSTICS_ENABLED;
 	});
@@ -370,6 +374,16 @@ describe('createInstanceAiTraceContext', () => {
 			delete process.env.LANGCHAIN_TRACING_V2;
 		} else {
 			process.env.LANGCHAIN_TRACING_V2 = originalLangChainTracingV2;
+		}
+		if (originalLangSmithProject === undefined) {
+			delete process.env.LANGSMITH_PROJECT;
+		} else {
+			process.env.LANGSMITH_PROJECT = originalLangSmithProject;
+		}
+		if (originalLangChainProject === undefined) {
+			delete process.env.LANGCHAIN_PROJECT;
+		} else {
+			process.env.LANGCHAIN_PROJECT = originalLangChainProject;
 		}
 		if (originalTraceInternal === undefined) {
 			delete process.env.N8N_INSTANCE_AI_TRACE_INTERNAL;
@@ -474,6 +488,32 @@ describe('createInstanceAiTraceContext', () => {
 
 		expect(process.env.LANGSMITH_TRACING).toBeUndefined();
 		expect(process.env.LANGCHAIN_TRACING_V2).toBeUndefined();
+	});
+
+	it('defaults trace runs to the instance-ai project', async () => {
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-project-default',
+			messageId: 'message-project-default',
+			runId: 'run-project-default',
+			userId: 'user-project-default',
+			input: { message: 'hello' },
+		});
+
+		expect(tracing?.rootRun.projectName).toBe('instance-ai');
+	});
+
+	it('routes trace runs to the project from LANGSMITH_PROJECT when set', async () => {
+		process.env.LANGSMITH_PROJECT = 'instance-ai-evals';
+
+		const tracing = await createInstanceAiTraceContext({
+			threadId: 'thread-project-env',
+			messageId: 'message-project-env',
+			runId: 'run-project-env',
+			userId: 'user-project-env',
+			input: { message: 'hello' },
+		});
+
+		expect(tracing?.rootRun.projectName).toBe('instance-ai-evals');
 	});
 
 	it('uses the current foreground actor run in native telemetry metadata', async () => {

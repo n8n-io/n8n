@@ -237,6 +237,9 @@ function isTelemetryConfigurableAgent(
 const INSTANCE_AI_CHECKPOINT_PRUNE_RETRY_MS = 30 * 1000;
 const WORKFLOW_SETUP_ROUTING_CLAIM_TTL_MS = 15 * 60 * 1000;
 
+const CONFIRMATION_EXPIRED_MESSAGE =
+	'This confirmation has expired. Send a new message to continue.';
+
 /**
  * Upper bound on how long `shutdown()` will wait for in-flight executeRun /
  * processResumedStream promises to drain after their abortControllers fire.
@@ -1437,10 +1440,11 @@ export class InstanceAiService {
 
 	/**
 	 * One tick of the recurring leader prune cycle: expire stale checkpoints,
-	 * drop expired pending confirmations, and delete expired conversation
-	 * threads, then schedule the next run. A checkpoint failure reschedules
-	 * with a shorter retry delay; the confirmation and thread steps swallow
-	 * their own errors so they never disrupt the cycle.
+	 * hard-delete tombstones past the GC horizon, drop expired pending
+	 * confirmations, and delete expired conversation threads, then schedule the
+	 * next run. A checkpoint failure reschedules with a shorter retry delay; the
+	 * confirmation and thread steps swallow their own errors so they never
+	 * disrupt the cycle.
 	 */
 	private async runScheduledPrune(now = Date.now()): Promise<void> {
 		const olderThan = new Date(now - this.instanceAiConfig.snapshotRetention);
@@ -1452,6 +1456,7 @@ export class InstanceAiService {
 			} else {
 				this.logger.debug('No stale Instance AI checkpoints to expire');
 			}
+			await this.hardDeleteExpiredCheckpoints(now);
 			await this.suspendedThreads.pruneStalePendingConfirmations(now);
 			await this.pruneExpiredThreads();
 			this.scheduleCheckpointPrune();
@@ -1460,6 +1465,31 @@ export class InstanceAiService {
 				error: getErrorMessage(error),
 			});
 			this.scheduleCheckpointPrune(INSTANCE_AI_CHECKPOINT_PRUNE_RETRY_MS);
+		}
+	}
+
+	/**
+	 * Hard-delete expired checkpoint tombstones (`markExpiredOlderThan` releases
+	 * the blob but keeps the row so a stale resume gets a clear "expired" error;
+	 * this drops the row entirely once it's past the GC horizon so tombstones
+	 * don't grow unbounded). Has its own try/catch so a GC failure never forces
+	 * the checkpoint prune into its short retry cadence. No-op when
+	 * `checkpointGcRetention` is 0.
+	 */
+	private async hardDeleteExpiredCheckpoints(now: number): Promise<void> {
+		const retention = this.instanceAiConfig.checkpointGcRetention;
+		if (retention <= 0) return;
+
+		try {
+			const olderThan = new Date(now - retention);
+			const count = await this.checkpointStore.hardDeleteExpiredOlderThan(olderThan);
+			if (count > 0) {
+				this.logger.info('Hard-deleted expired Instance AI checkpoint tombstones', { count });
+			}
+		} catch (error: unknown) {
+			this.logger.warn('Failed to hard-delete expired Instance AI checkpoint tombstones', {
+				error: getErrorMessage(error),
+			});
 		}
 	}
 
@@ -3826,6 +3856,19 @@ export class InstanceAiService {
 				requestId,
 			});
 			return null;
+		}
+
+		// Close the same-process window: a click on a pre-rendered card can still
+		// reach the in-memory fast path after the row's `expiresAt` but before the
+		// prune/liveness sweep drops it. The persisted row is the source of truth
+		// for expiry, so consult it first and refuse a stale click; the sweep still
+		// owns releasing the suspended run. Scoped by `freshUser.id` so another
+		// user's request ID falls through to the existing not-found handling
+		// rather than leaking an "expired" signal. One extra SELECT per click —
+		// the click path isn't hot.
+		if (await this.pendingConfirmationRepo.isPastExpiry(requestId, freshUser.id, new Date())) {
+			this.logger.debug('Rejecting expired confirmation', { requestId });
+			throw new UserError(CONFIRMATION_EXPIRED_MESSAGE);
 		}
 
 		const pending = this.runState.getPendingConfirmation(requestId);

@@ -596,6 +596,79 @@ describe('buildFromJson()', () => {
 		expect(snap.thinking).toMatchObject({ budgetTokens: 5000 });
 	});
 
+	it('sets prompt caching config with an Anthropic ttl', async () => {
+		const config = makeConfig({
+			config: { promptCaching: { enabled: true, anthropic: { ttl: '1h' } } },
+		});
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
+		const snap: AgentSnapshot = agent.snapshot;
+
+		expect(snap.promptCaching).toEqual({ enabled: true, anthropic: { ttl: '1h' } });
+	});
+
+	it('sets prompt caching config when enabled with no ttl', async () => {
+		const config = makeConfig({
+			config: { promptCaching: { enabled: true } },
+		});
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
+		const snap: AgentSnapshot = agent.snapshot;
+
+		expect(snap.promptCaching).toEqual({ enabled: true });
+	});
+
+	it('passes through promptCaching verbatim even if enabled=false was somehow saved (mapping is not a policy enforcer)', async () => {
+		const config = makeConfig({
+			config: { promptCaching: { enabled: false } },
+		});
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
+		const snap: AgentSnapshot = agent.snapshot;
+
+		expect(snap.promptCaching).toEqual({ enabled: false });
+	});
+
+	it('does not set prompt caching config when omitted', async () => {
+		const config = makeConfig();
+
+		const agent = await buildFromJson(
+			config,
+			{},
+			{
+				toolExecutor: makeMockToolExecutor(),
+				credentialProvider: makeMockCredentialProvider(),
+				memoryFactory: makeMockMemoryFactory(),
+			},
+		);
+
+		expect(agent.snapshot.promptCaching).toBeNull();
+	});
+
 	it('builds native provider tools for an inline child model, not the parent model', () => {
 		const config = makeConfig({
 			model: 'openai/gpt-4o',
