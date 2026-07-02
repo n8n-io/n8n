@@ -28,14 +28,18 @@ export function useWorkflowPublicationStatusSync(documentId: MaybeRefOrGetter<Wo
 	const workflowsStore = useWorkflowsStore();
 	const { onDocumentVisible } = useDocumentVisibility();
 	let timer: ReturnType<typeof setTimeout> | undefined;
+	// Set on teardown so an in-flight fetch that resolves after unmount can't
+	// re-arm the poll — otherwise it would leak background polling + store writes.
+	let disposed = false;
 
 	function armPoll() {
+		if (disposed) return;
 		clearTimeout(timer);
 		timer = setTimeout(() => void refetch(), PUBLICATION_STATUS_POLL_INTERVAL_MS);
 	}
 
 	async function refetch() {
-		if (!settingsStore.isWorkflowPublicationServiceEnabled) return;
+		if (disposed || !settingsStore.isWorkflowPublicationServiceEnabled) return;
 
 		// Resolve the store from the current documentId on every call so a
 		// workflow switch is immediately reflected without remounting.
@@ -48,6 +52,9 @@ export function useWorkflowPublicationStatusSync(documentId: MaybeRefOrGetter<Wo
 
 		try {
 			const result = await workflowsStore.fetchPublicationStatus(workflowId);
+			// The component may have been torn down while awaiting; don't touch
+			// state or re-arm the poll after disposal.
+			if (disposed) return;
 			workflowDocumentStore.setPublicationStatus({
 				status: API_TO_LIFECYCLE[result.status] ?? 'idle',
 				failures: result.triggers
@@ -65,8 +72,8 @@ export function useWorkflowPublicationStatusSync(documentId: MaybeRefOrGetter<Wo
 			if (result.status === 'in_progress') armPoll();
 		} catch {
 			// A transient failure must not permanently freeze the spinner: keep polling
-			// while we still believe a publication is in progress.
-			if (workflowDocumentStore.publicationStatus === 'publishing') armPoll();
+			// while we still believe a publication is in progress (unless torn down).
+			if (!disposed && workflowDocumentStore.publicationStatus === 'publishing') armPoll();
 		}
 	}
 
@@ -87,7 +94,10 @@ export function useWorkflowPublicationStatusSync(documentId: MaybeRefOrGetter<Wo
 
 	onMounted(() => void refetch());
 	onDocumentVisible(() => void refetch());
-	onBeforeUnmount(() => clearTimeout(timer));
+	onBeforeUnmount(() => {
+		disposed = true;
+		clearTimeout(timer);
+	});
 
 	return { refetch };
 }

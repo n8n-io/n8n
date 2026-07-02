@@ -310,4 +310,36 @@ describe('useWorkflowPublicationStatusSync', () => {
 		expect(workflowsStore.fetchPublicationStatus).toHaveBeenLastCalledWith(WF_B_ID);
 		expect(storeB.publicationStatus).toBe('failed');
 	});
+
+	it('does not resume polling if an in-flight fetch resolves after unmount', async () => {
+		// Keep the fetch in-flight until we resolve it manually, so we can tear down mid-flight.
+		let resolveFetch!: (value: WorkflowPublicationStatus) => void;
+		const pending = new Promise<WorkflowPublicationStatus>((resolve) => {
+			resolveFetch = resolve;
+		});
+		vi.spyOn(workflowsStore, 'fetchPublicationStatus').mockReturnValueOnce(pending);
+
+		const rendered = renderComponent(
+			defineComponent({
+				setup() {
+					useWorkflowPublicationStatusSync(() => TEST_DOCUMENT_ID);
+					return () => h('div');
+				},
+			}),
+		);
+
+		// onMounted fired refetch(); the fetch is now awaiting `pending`.
+		await nextTick();
+		expect(workflowsStore.fetchPublicationStatus).toHaveBeenCalledTimes(1);
+
+		// Tear down while the fetch is in-flight, then resolve it as in_progress.
+		rendered.unmount();
+		resolveFetch(makeStatus('in_progress'));
+		await nextTick();
+		await nextTick();
+
+		// A leaked armPoll() would schedule a timer that fires another fetch after teardown.
+		await vi.advanceTimersByTimeAsync(PUBLICATION_STATUS_POLL_INTERVAL_MS * 2);
+		expect(workflowsStore.fetchPublicationStatus).toHaveBeenCalledTimes(1);
+	});
 });
