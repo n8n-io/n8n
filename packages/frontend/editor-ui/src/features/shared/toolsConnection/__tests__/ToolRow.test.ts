@@ -67,7 +67,7 @@ describe('ToolRow', () => {
 		expect(getByTestId('tools-connection-row-connect')).toBeTruthy();
 	});
 
-	it('shows the connected badge for a connected item', () => {
+	it('shows the credential picker for a connected item', () => {
 		const connected: McpServerConnectionItem = {
 			...baseMcp,
 			isConnected: true,
@@ -75,7 +75,7 @@ describe('ToolRow', () => {
 		};
 		const { getByTestId } = render(connected);
 
-		expect(getByTestId('tools-connection-row-connected')).toBeTruthy();
+		expect(getByTestId('tool-credential-picker')).toBeTruthy();
 	});
 
 	it('emits open-detail when the main row action is clicked', async () => {

@@ -116,12 +116,6 @@ function handleConnect() {
 						emit('select-credential', toolItem, authType, credentialId)
 				"
 			/>
-			<template v-else-if="item.isConnected">
-				<div :class="$style.connectedPill" data-test-id="tools-connection-row-connected">
-					<span :class="$style.statusDot" aria-hidden="true" />
-					<span>{{ i18n.baseText('tools.connection.action.connected') }}</span>
-				</div>
-			</template>
 			<template v-else>
 				<N8nButton
 					:label="i18n.baseText('tools.connection.action.connect')"
@@ -230,23 +224,5 @@ function handleConnect() {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--3xs);
-}
-
-.connectedPill {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-	color: var(--color--text--tint-1);
-	font-size: var(--font-size--2xs);
-	padding: 0 var(--spacing--3xs);
-	white-space: nowrap;
-}
-
-.statusDot {
-	width: 8px;
-	height: 8px;
-	border-radius: 50%;
-	background: var(--color--success);
-	flex-shrink: 0;
 }
 </style>
