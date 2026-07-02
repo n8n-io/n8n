@@ -1,5 +1,5 @@
-import { loadEvalCasesFromDir, type WorkflowTestCaseWithFile } from '../../utils/load-eval-cases';
 import type { WorkflowTestCase } from '../../types';
+import { loadEvalCasesFromDir, type WorkflowTestCaseWithFile } from '../../utils/load-eval-cases';
 
 const INTENT_CLASSIFICATION_PREAMBLE = [
 	'This is not a request to build or execute anything. Do not create workflows, do not create agents, and do not run anything.',
