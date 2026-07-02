@@ -264,7 +264,7 @@ export class AgentRuntimeReconstructionService {
 			memoryFactory: this.getMemoryFactory(memoryOwnerAgentId),
 			buildMcpClient,
 			resolveManagedEmbeddingProviderOptions: async () =>
-				await this.resolveManagedEmbeddingProviderOptions(userId),
+				await this.resolveManagedEmbeddingProviderOptions(projectId),
 			modelFetch: aiProxyFetch,
 		});
 
@@ -316,14 +316,15 @@ export class AgentRuntimeReconstructionService {
 	}
 
 	private async resolveManagedEmbeddingProviderOptions(
-		userId: string,
+		projectId: string,
 	): Promise<ManagedEmbeddingProviderOptions | null> {
 		if (!this.aiService.isProxyEnabled()) return null;
 		// TODO: switch to n8n connect endpoints, don't use ai-proxy endpoints
 		const client = await this.aiService.getClient();
 		const baseURL = client.getApiProxyBaseUrl().replace(/\/$/, '') + '/openai/';
 		const tokenManager = new ProxyTokenManager(async () => {
-			return await client.getBuilderApiProxyToken({ id: userId }, { userMessageId: nanoid() });
+			// The proxy does not enforce per-user identity; the project id is the stable scope for agents.
+			return await client.getBuilderApiProxyToken({ id: projectId }, { userMessageId: nanoid() });
 		});
 
 		return {
@@ -412,7 +413,6 @@ export class AgentRuntimeReconstructionService {
 				createKnowledgeRetrievalTools({
 					projectId,
 					agentId,
-					userId,
 					sandboxService: this.agentKnowledgeSandboxService,
 				}),
 			);

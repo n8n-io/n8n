@@ -63,10 +63,6 @@ const MAX_SANDBOX_ERROR_DETAIL_CHARS = 2_000;
 const LABEL_KNOWLEDGE_BASE = 'n8n-agents-knowledgebase';
 const LABEL_PROJECT_ID = 'n8n-project-id';
 const LABEL_AGENT_ID = 'n8n-agent-id';
-const LABEL_USER_ID = 'n8n-user-id';
-const LABEL_SANDBOX_SCOPE_ID = 'n8n-agents-sandbox-scope-id';
-
-const SANDBOX_SCOPE_LABEL_MAX_LEN = 63;
 
 const SANDBOX_STATE_STARTED: SandboxState = 'started';
 
@@ -116,21 +112,14 @@ function emptySearchKnowledgeResult(
 	return { outputMode, matches: [], limit, hasMore: false, truncated: false };
 }
 
-function buildSandboxScopeKey(
-	projectId: string,
-	agentId: string,
-	ownerUserId: string,
-	sandboxScopeId: string,
-): string {
-	return `${projectId}:${agentId}:${ownerUserId}:${normalizeSandboxScopeLabel(sandboxScopeId)}`;
+function buildSandboxScopeKey(projectId: string, agentId: string): string {
+	return `${projectId}:${agentId}`;
 }
 
 function buildSandboxName(scope: {
 	instanceId: string;
 	projectId: string;
 	agentId: string;
-	ownerUserId: string;
-	sandboxScopeId: string;
 }): string {
 	const hash = createHash('sha256').update(JSON.stringify(scope)).digest('hex').slice(0, 32);
 	return `${AGENT_KNOWLEDGE_SANDBOX_NAME_PREFIX}-${hash}`;
@@ -141,39 +130,12 @@ function isDaytonaNotFoundError(error: unknown): boolean {
 	return error instanceof DaytonaNotFoundError;
 }
 
-function buildScopeLabels(
-	projectId: string,
-	agentId: string,
-	ownerUserId: string,
-	sandboxScopeId: string,
-): Record<string, string> {
+function buildScopeLabels(projectId: string, agentId: string): Record<string, string> {
 	return {
 		[LABEL_KNOWLEDGE_BASE]: 'true',
 		[LABEL_PROJECT_ID]: projectId,
 		[LABEL_AGENT_ID]: agentId,
-		[LABEL_USER_ID]: ownerUserId,
-		[LABEL_SANDBOX_SCOPE_ID]: normalizeSandboxScopeLabel(sandboxScopeId),
 	};
-}
-
-function normalizeSandboxScopeLabel(scopeId: string): string {
-	const normalized = scopeId
-		.replace(/[^A-Za-z0-9_.-]+/g, '-')
-		.replace(/^[-.]+|[-.]+$/g, '')
-		.replace(/[-.]+/g, '-');
-	const digest = createHash('sha256').update(scopeId).digest('hex').slice(0, 8);
-
-	if (!normalized) {
-		return `scope-${digest}`;
-	}
-
-	if (normalized.length <= SANDBOX_SCOPE_LABEL_MAX_LEN && normalized === scopeId) {
-		return normalized;
-	}
-
-	const prefixMaxLen = SANDBOX_SCOPE_LABEL_MAX_LEN - digest.length - 1;
-	const prefix = normalized.slice(0, prefixMaxLen).replace(/[-.]+$/, '');
-	return prefix ? `${prefix}-${digest}` : `scope-${digest}`;
 }
 
 function isVolumeMountFailure(error: unknown): boolean {
@@ -248,26 +210,24 @@ export class AgentKnowledgeSandboxService {
 	async withKnowledgeFilesystem<T>(
 		projectId: string,
 		agentId: string,
-		userId: string,
 		operation: (filesystem: AgentKnowledgeFilesystem) => Promise<T>,
 	): Promise<T> {
 		// Callers (AgentKnowledgeService) verify project↔agent ownership before
 		// invoking filesystem operations, so only configuration is asserted here.
 		this.assertKnowledgeConfiguration(projectId, agentId);
-		const sandbox = await this.acquireSandbox(projectId, agentId, userId);
+		const sandbox = await this.acquireSandbox(projectId, agentId);
 		const filesystem = this.createFilesystemAdapter(sandbox);
 		return await operation(filesystem);
 	}
 
-	async warmSandbox(projectId: string, agentId: string, userId: string): Promise<void> {
+	async warmSandbox(projectId: string, agentId: string): Promise<void> {
 		this.assertKnowledgeConfiguration(projectId, agentId);
-		await this.acquireSandbox(projectId, agentId, userId);
+		await this.acquireSandbox(projectId, agentId);
 	}
 
 	async searchKnowledge(
 		projectId: string,
 		agentId: string,
-		userId: string,
 		request: SearchKnowledgeRequest,
 	): Promise<SearchKnowledgeResult> {
 		const validatedRequest = parseSearchKnowledgeRequest(request);
@@ -292,7 +252,7 @@ export class AgentKnowledgeSandboxService {
 			validatedRequest,
 			scopedFiles.map((file) => file.file),
 		);
-		const result = await this.executeKnowledgeOperation(projectId, agentId, userId, command);
+		const result = await this.executeKnowledgeOperation(projectId, agentId, command);
 
 		assertKnowledgeFilesDirectoryAvailable('search', result);
 		if (result.exitCode === 1) {
@@ -345,7 +305,6 @@ export class AgentKnowledgeSandboxService {
 	async globKnowledgeFiles(
 		projectId: string,
 		agentId: string,
-		_userId: string,
 		request: GlobKnowledgeFilesRequest,
 	): Promise<GlobKnowledgeFilesResult> {
 		const validatedRequest = parseGlobKnowledgeFilesRequest(request);
@@ -368,14 +327,13 @@ export class AgentKnowledgeSandboxService {
 	async readKnowledge(
 		projectId: string,
 		agentId: string,
-		userId: string,
 		request: ReadKnowledgeRequest,
 	): Promise<ReadKnowledgeResult> {
 		const validatedRequest = parseReadKnowledgeRequest(request);
 		const references = await this.loadKnowledgeReferenceLookup(projectId, agentId);
 		const file = this.resolveRequiredFile(validatedRequest, references);
 		const command = buildReadKnowledgeCommand(file.file, validatedRequest);
-		const result = await this.executeKnowledgeOperation(projectId, agentId, userId, command);
+		const result = await this.executeKnowledgeOperation(projectId, agentId, command);
 
 		assertKnowledgeFilesDirectoryAvailable('read', result);
 		if (result.exitCode !== 0) {
@@ -395,12 +353,11 @@ export class AgentKnowledgeSandboxService {
 	private async executeKnowledgeOperation(
 		projectId: string,
 		agentId: string,
-		userId: string,
 		command: string,
 	): Promise<AgentKnowledgeCommandResult> {
 		const timeoutSeconds = Math.ceil(this.agentsConfig.sandboxTimeout / 1000);
 		const scopedCommand = buildScopedKnowledgeShellCommand(command);
-		const sandbox = await this.acquireSandbox(projectId, agentId, userId);
+		const sandbox = await this.acquireSandbox(projectId, agentId);
 		const result = await sandbox.process.executeCommand(
 			scopedCommand,
 			undefined,
@@ -506,48 +463,34 @@ export class AgentKnowledgeSandboxService {
 		};
 	}
 
-	private async acquireSandbox(
-		projectId: string,
-		agentId: string,
-		ownerUserId: string,
-		sandboxScopeId: string = ownerUserId,
-	): Promise<Sandbox> {
-		const cacheKey = buildSandboxScopeKey(projectId, agentId, ownerUserId, sandboxScopeId);
+	private async acquireSandbox(projectId: string, agentId: string): Promise<Sandbox> {
+		const cacheKey = buildSandboxScopeKey(projectId, agentId);
 		let pending = this.pendingSandboxAcquisitions.get(cacheKey);
 
 		if (!pending) {
-			pending = this.acquireSandboxFresh(projectId, agentId, ownerUserId, sandboxScopeId).finally(
-				() => {
-					this.pendingSandboxAcquisitions.delete(cacheKey);
-				},
-			);
+			pending = this.acquireSandboxFresh(projectId, agentId).finally(() => {
+				this.pendingSandboxAcquisitions.delete(cacheKey);
+			});
 			this.pendingSandboxAcquisitions.set(cacheKey, pending);
 		}
 
 		return await pending;
 	}
 
-	private async acquireSandboxFresh(
-		projectId: string,
-		agentId: string,
-		ownerUserId: string,
-		sandboxScopeId: string,
-	): Promise<Sandbox> {
+	private async acquireSandboxFresh(projectId: string, agentId: string): Promise<Sandbox> {
 		const { Daytona } = loadDaytona();
-		const connection = await this.resolveDaytonaConnection(ownerUserId);
+		const connection = await this.resolveDaytonaConnection(projectId);
 		const daytona = new Daytona({
 			apiUrl: connection.apiUrl,
 			apiKey: connection.apiKey,
 		});
-		const labels = buildScopeLabels(projectId, agentId, ownerUserId, sandboxScopeId);
+		const labels = buildScopeLabels(projectId, agentId);
 		const timeoutSeconds = Math.ceil(this.agentsConfig.sandboxTimeout / 1000);
 		const volumeMount = this.buildVolumeMount(projectId, agentId);
 		const name = buildSandboxName({
 			instanceId: this.instanceSettings.instanceId,
 			projectId,
 			agentId,
-			ownerUserId,
-			sandboxScopeId,
 		});
 
 		const sandboxByName = await this.resolveSandboxByName(
@@ -629,7 +572,9 @@ export class AgentKnowledgeSandboxService {
 		return sandbox;
 	}
 
-	private async resolveDaytonaConnection(userId: string): Promise<AgentKnowledgeDaytonaConnection> {
+	private async resolveDaytonaConnection(
+		projectId: string,
+	): Promise<AgentKnowledgeDaytonaConnection> {
 		const directImage = this.agentsConfig.sandboxImage || DEFAULT_SANDBOX_IMAGE;
 		const snapshot = this.agentsConfig.sandboxSnapshot.trim() || undefined;
 
@@ -645,7 +590,11 @@ export class AgentKnowledgeSandboxService {
 
 		const client = await this.aiService.getClient();
 		const proxyConfig = await client.getSandboxProxyConfig();
-		const token = await client.getBuilderApiProxyToken({ id: userId }, { userMessageId: nanoid() });
+		// The proxy does not enforce per-user identity; the project id is the stable scope for agents.
+		const token = await client.getBuilderApiProxyToken(
+			{ id: projectId },
+			{ userMessageId: nanoid() },
+		);
 
 		return {
 			mode: 'proxy',

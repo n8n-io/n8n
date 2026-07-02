@@ -237,12 +237,10 @@ function toReadKnowledgeModelOutput(output: unknown): unknown {
 export function createKnowledgeRetrievalTools({
 	projectId,
 	agentId,
-	userId,
 	sandboxService,
 }: {
 	projectId: string;
 	agentId: string;
-	userId: string;
 	sandboxService: AgentKnowledgeSandboxService;
 }) {
 	const globTool = new Tool('find_file')
@@ -253,7 +251,7 @@ export function createKnowledgeRetrievalTools({
 		.handler(
 			async (input) =>
 				await runKnowledgeTool(
-					async () => await sandboxService.globKnowledgeFiles(projectId, agentId, userId, input),
+					async () => await sandboxService.globKnowledgeFiles(projectId, agentId, input),
 				),
 		)
 		.toModelOutput(toGlobKnowledgeModelOutput);
@@ -266,7 +264,7 @@ export function createKnowledgeRetrievalTools({
 		.handler(
 			async (input) =>
 				await runKnowledgeTool(
-					async () => await sandboxService.searchKnowledge(projectId, agentId, userId, input),
+					async () => await sandboxService.searchKnowledge(projectId, agentId, input),
 				),
 		)
 		.toModelOutput(toSearchKnowledgeModelOutput);
@@ -279,7 +277,7 @@ export function createKnowledgeRetrievalTools({
 		.handler(
 			async (input) =>
 				await runKnowledgeTool(
-					async () => await sandboxService.readKnowledge(projectId, agentId, userId, input),
+					async () => await sandboxService.readKnowledge(projectId, agentId, input),
 				),
 		)
 		.toModelOutput(toReadKnowledgeModelOutput);

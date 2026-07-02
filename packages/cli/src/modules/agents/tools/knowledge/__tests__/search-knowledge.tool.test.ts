@@ -6,7 +6,6 @@ import { createKnowledgeRetrievalTools } from '../search-knowledge.tool';
 
 const projectId = 'project-1';
 const agentId = 'agent-1';
-const userId = 'user-1';
 
 function buildTool(
 	sandboxService: AgentKnowledgeSandboxService,
@@ -15,7 +14,6 @@ function buildTool(
 	const tool = createKnowledgeRetrievalTools({
 		projectId,
 		agentId,
-		userId,
 		sandboxService,
 	})
 		.map((builder) => builder.build())
@@ -51,7 +49,7 @@ describe('createKnowledgeRetrievalTools', () => {
 			persistence: { threadId: 'thread-1', resourceId: 'integration:slack:U123' },
 		});
 
-		expect(sandboxService.searchKnowledge).toHaveBeenCalledWith(projectId, agentId, userId, input);
+		expect(sandboxService.searchKnowledge).toHaveBeenCalledWith(projectId, agentId, input);
 	});
 
 	it('reads knowledge with the user-scoped sandbox even when memory uses an integration resource', async () => {
@@ -70,6 +68,6 @@ describe('createKnowledgeRetrievalTools', () => {
 			persistence: { threadId: 'thread-1', resourceId: 'integration:slack:U123' },
 		});
 
-		expect(sandboxService.readKnowledge).toHaveBeenCalledWith(projectId, agentId, userId, input);
+		expect(sandboxService.readKnowledge).toHaveBeenCalledWith(projectId, agentId, input);
 	});
 });
