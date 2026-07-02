@@ -234,7 +234,8 @@ describe('Slack Utility Functions', () => {
 					subject: 'subject',
 					'approvalOptions.values': {},
 					responseType: 'approval',
-					options: { captureResponder: true },
+					captureResponder: true,
+					options: {},
 				};
 				return params[name];
 			});
@@ -270,7 +271,8 @@ describe('Slack Utility Functions', () => {
 					subject: 'subject',
 					'approvalOptions.values': {},
 					responseType: 'freeText',
-					options: { captureResponder: true },
+					captureResponder: true,
+					options: {},
 				};
 				return params[name];
 			});

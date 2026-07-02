@@ -427,13 +427,13 @@ export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
 
 	const config = getSendAndWaitConfig(context);
 
-	const sendAndWaitOptions = (context.getNodeParameter('options', 0, {}) ?? {}) as {
-		captureResponder?: boolean;
-	};
 	// Interactive buttons are approval-only; free-text/custom-form need the plain link button.
 	const responseType = context.getNodeParameter('responseType', 0, 'approval');
+	// captureResponder is a top-level property, not an `options` collection member: its
+	// displayOptions reference `authentication`/`responseType`, which the editor can only
+	// resolve against a sibling — a collection child looping over them breaks parameter resolution.
 	const captureResponder =
-		sendAndWaitOptions.captureResponder === true && responseType === 'approval';
+		context.getNodeParameter('captureResponder', 0, false) === true && responseType === 'approval';
 	// Interactive buttons echo this back so the callback knows which run/node to resume.
 	const interactionValue = captureResponder
 		? JSON.stringify({ executionId: context.getExecutionId(), nodeId: context.getNode().id })
