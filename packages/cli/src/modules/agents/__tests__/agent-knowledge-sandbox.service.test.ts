@@ -2,14 +2,17 @@ import type { Mock } from 'vitest';
 import type { Logger } from '@n8n/backend-common';
 import type { AgentsConfig } from '@n8n/config';
 import type { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
-import { createHash } from 'node:crypto';
 import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
 import type { AiService } from '../../../services/ai.service';
 
+import type { Agent } from '../entities/agent.entity';
 import type { AgentFile } from '../entities/agent-file.entity';
-import { AGENT_KNOWLEDGE_VOLUME_MOUNT_PATH } from '../agent-knowledge-storage';
+import {
+	AGENT_KNOWLEDGE_VOLUME_MOUNT_PATH,
+	KNOWLEDGE_MIRROR_FILES_DIR,
+} from '../agent-knowledge-storage';
 import {
 	AGENT_KNOWLEDGE_SANDBOX_NAME_PREFIX,
 	AgentKnowledgeSandboxService,
@@ -90,11 +93,7 @@ const expectedVolumeMount = {
 };
 
 function buildExpectedSandboxName(): string {
-	const hash = createHash('sha256')
-		.update(JSON.stringify({ instanceId, projectId, agentId }))
-		.digest('hex')
-		.slice(0, 32);
-	return `${AGENT_KNOWLEDGE_SANDBOX_NAME_PREFIX}-${hash}`;
+	return `${AGENT_KNOWLEDGE_SANDBOX_NAME_PREFIX}${agentId}-${instanceId}`.toLowerCase();
 }
 
 function makeAiService(overrides: Partial<AiService> = {}): AiService {
@@ -103,13 +102,23 @@ function makeAiService(overrides: Partial<AiService> = {}): AiService {
 	return Object.assign(aiService, overrides);
 }
 
+function makePublishedAgentRepository(): AgentRepository {
+	const repository = mock<AgentRepository>();
+	repository.findByIdAndProjectId.mockResolvedValue({
+		id: agentId,
+		projectId,
+		activeVersionId: 'version-1',
+	} as Agent);
+	return repository;
+}
+
 function makeService(
 	configOverrides: Partial<AgentsConfig> = {},
 	logger: Logger = mock<Logger>(),
 	aiService: AiService = makeAiService(),
 	instanceSettings: InstanceSettings = mock<InstanceSettings>({ instanceId }),
 	agentFileRepository: AgentFileRepository = mock<AgentFileRepository>(),
-	agentRepository: AgentRepository = mock<AgentRepository>(),
+	agentRepository: AgentRepository = makePublishedAgentRepository(),
 ): AgentKnowledgeSandboxService {
 	return new AgentKnowledgeSandboxService(
 		{
@@ -213,7 +222,7 @@ describe('AgentKnowledgeSandboxService', () => {
 		expect(createMock).toHaveBeenCalledTimes(1);
 		const [params, options] = createMock.mock.calls[0];
 		expect(params.name).toBe(expectedName);
-		expect(params.name).toMatch(/^agents-knowledgebase-[a-f0-9]{32}$/);
+		expect(params.name).toMatch(/^agent-[a-z0-9-]+$/);
 		expect(params.labels).toEqual({
 			'n8n-agents-knowledgebase': 'true',
 			'n8n-project-id': projectId,
@@ -431,6 +440,169 @@ describe('AgentKnowledgeSandboxService', () => {
 			await expect(
 				service.globKnowledgeFiles(projectId, agentId, { pattern: '../secrets' }),
 			).rejects.toThrow('Invalid knowledge file pattern');
+		});
+	});
+
+	it('throws a published-only error when the agent has no active version', async () => {
+		const agentRepository = mock<AgentRepository>();
+		agentRepository.findByIdAndProjectId.mockResolvedValue({
+			id: agentId,
+			projectId,
+			activeVersionId: null,
+		} as Agent);
+		const service = makeService(
+			{},
+			mock<Logger>(),
+			makeAiService(),
+			mock<InstanceSettings>({ instanceId }),
+			mock<AgentFileRepository>(),
+			agentRepository,
+		);
+
+		await expect(
+			service.withKnowledgeFilesystem(projectId, agentId, async () => {}),
+		).rejects.toThrow(
+			'Knowledge base is only available for published agents. Publish the agent first.',
+		);
+		expect(createMock).not.toHaveBeenCalled();
+	});
+
+	describe('destroySandbox', () => {
+		it('deletes the sandbox by name', async () => {
+			const sandbox = makeSandbox('started');
+			getMock.mockResolvedValue(sandbox);
+			const service = makeService();
+
+			await service.destroySandbox(projectId, agentId);
+
+			expect(getMock).toHaveBeenCalledWith(buildExpectedSandboxName());
+			expect(sandbox.delete).toHaveBeenCalledWith(300);
+		});
+
+		it('swallows a NotFound error without throwing', async () => {
+			getMock.mockRejectedValue(new DaytonaNotFoundError('not found'));
+			const service = makeService();
+
+			await expect(service.destroySandbox(projectId, agentId)).resolves.toBeUndefined();
+		});
+
+		it('swallows any other error and logs a warning without throwing', async () => {
+			getMock.mockRejectedValue(new Error('boom'));
+			const logger = mock<Logger>();
+			const service = makeService({}, logger);
+
+			await expect(service.destroySandbox(projectId, agentId)).resolves.toBeUndefined();
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to destroy agent knowledge sandbox',
+				expect.objectContaining({ projectId, agentId }),
+			);
+		});
+
+		it('is a no-op when the knowledge base is disabled', async () => {
+			const service = makeService({ sandboxEnabled: false });
+
+			await service.destroySandbox(projectId, agentId);
+
+			expect(getMock).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('mirror sync', () => {
+		function isManifestReadCommand(command: string): boolean {
+			return command.startsWith('cat ') && command.includes('/manifest');
+		}
+
+		function isMirrorSyncCommand(command: string): boolean {
+			return command.includes(`mkdir -p ${KNOWLEDGE_MIRROR_FILES_DIR}`);
+		}
+
+		function makeMirrorFile(id: string, fileName: string): AgentFile {
+			return makeAgentFile({ id, fileName, binaryDataId: `daytona-volume:${fileName}` });
+		}
+
+		it('syncs on the first operation, skips an unchanged repeat, and diffs on a changed file list', async () => {
+			const sandbox = makeSandbox('started');
+			let manifestState = '';
+			sandbox.process.executeCommand.mockImplementation(async (command) => ({
+				exitCode: 0,
+				artifacts: { stdout: isManifestReadCommand(command) ? manifestState : '', stderr: '' },
+			}));
+			getMock.mockResolvedValue(sandbox);
+			const agentFileRepository = mock<AgentFileRepository>();
+			agentFileRepository.findByAgentId.mockResolvedValue([
+				makeMirrorFile('file-1', 'doc1.txt'),
+				makeMirrorFile('file-2', 'doc2.txt'),
+			]);
+			const agentRepository = makePublishedAgentRepository();
+			agentRepository.existsBy.mockResolvedValue(true);
+			const service = makeService(
+				{},
+				mock<Logger>(),
+				makeAiService(),
+				mock<InstanceSettings>({ instanceId }),
+				agentFileRepository,
+				agentRepository,
+			);
+
+			await service.searchKnowledge(projectId, agentId, { pattern: 'foo' });
+			let commands = sandbox.process.executeCommand.mock.calls.map(([command]) => command);
+			expect(commands.filter(isManifestReadCommand)).toHaveLength(1);
+			expect(commands.filter(isMirrorSyncCommand)).toHaveLength(1);
+			manifestState = 'doc1.txt\ndoc2.txt\n';
+
+			sandbox.process.executeCommand.mockClear();
+			await service.searchKnowledge(projectId, agentId, { pattern: 'bar' });
+			commands = sandbox.process.executeCommand.mock.calls.map(([command]) => command);
+			expect(commands.filter(isManifestReadCommand)).toHaveLength(0);
+			expect(commands.filter(isMirrorSyncCommand)).toHaveLength(0);
+			expect(commands).toHaveLength(1);
+
+			sandbox.process.executeCommand.mockClear();
+			agentFileRepository.findByAgentId.mockResolvedValue([
+				makeMirrorFile('file-1', 'doc1.txt'),
+				makeMirrorFile('file-2', 'doc2.txt'),
+				makeMirrorFile('file-3', 'doc3.txt'),
+			]);
+			await service.searchKnowledge(projectId, agentId, { pattern: 'baz' });
+			commands = sandbox.process.executeCommand.mock.calls.map(([command]) => command);
+			expect(commands.filter(isManifestReadCommand)).toHaveLength(1);
+			const syncCommands = commands.filter(isMirrorSyncCommand);
+			expect(syncCommands).toHaveLength(1);
+			// Only the newly-added name should be copied — the manifest rewrite
+			// (which always lists every expected name) comes after `xargs`.
+			const copySegment = syncCommands[0].split('| xargs')[0];
+			expect(copySegment).toContain('doc3.txt');
+			expect(copySegment).not.toContain('doc1.txt');
+			expect(copySegment).not.toContain('doc2.txt');
+		});
+
+		it('cds into the sandbox-local mirror directory for search commands', async () => {
+			const sandbox = makeSandbox('started');
+			sandbox.process.executeCommand.mockResolvedValue({
+				exitCode: 0,
+				artifacts: { stdout: '', stderr: '' },
+			});
+			getMock.mockResolvedValue(sandbox);
+			const agentFileRepository = mock<AgentFileRepository>();
+			agentFileRepository.findByAgentId.mockResolvedValue([makeMirrorFile('file-1', 'doc1.txt')]);
+			const agentRepository = makePublishedAgentRepository();
+			agentRepository.existsBy.mockResolvedValue(true);
+			const service = makeService(
+				{},
+				mock<Logger>(),
+				makeAiService(),
+				mock<InstanceSettings>({ instanceId }),
+				agentFileRepository,
+				agentRepository,
+			);
+
+			await service.searchKnowledge(projectId, agentId, { pattern: 'foo' });
+
+			const searchCommand = sandbox.process.executeCommand.mock.calls
+				.map(([command]) => command)
+				.find((command) => command.includes(' rg '));
+			expect(searchCommand).toBeDefined();
+			expect(searchCommand).toContain(`cd '\\''${KNOWLEDGE_MIRROR_FILES_DIR}'\\''`);
 		});
 	});
 });

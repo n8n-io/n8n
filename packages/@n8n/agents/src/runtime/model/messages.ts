@@ -76,10 +76,14 @@ export function normalizeToolInputForModel(value: unknown): ToolInputNormalizati
 				error: `Tool input must be a JSON object, got ${describeValue(parsed)}.`,
 			};
 		} catch {
+			// Show the model what actually arrived plus an imperative repair
+			// instruction. V8's own parse message is deliberately not included —
+			// its nested quoting reads as noise to the model.
+			const snippet = value.length > 200 ? `${value.slice(0, 200)}…` : value;
 			return {
 				ok: false,
 				input: {},
-				error: 'Tool input must be a valid JSON object string.',
+				error: `Tool input is not valid JSON. Received: ${snippet} — resend the call with strict JSON arguments: double-quote every string value and JSON-escape backslashes ("\\\\[" for a literal "[").`,
 			};
 		}
 	}
@@ -123,6 +127,18 @@ function hasReplayableReasoningProviderOptions(
 		return true;
 	}
 
+	// OpenAI Responses API reasoning models pair each function_call item with a
+	// reasoning item. Dropping the reasoning part from history makes the next
+	// request fail with "function_call was provided without its required
+	// 'reasoning' item".
+	const openaiOptions = getRecord(providerOptions.openai);
+	if (
+		typeof openaiOptions?.itemId === 'string' ||
+		typeof openaiOptions?.reasoningEncryptedContent === 'string'
+	) {
+		return true;
+	}
+
 	return Object.entries(providerOptions).some(
 		([provider, options]) =>
 			provider !== 'anthropic' && provider !== 'openai' && hasEntries(options),
@@ -136,26 +152,44 @@ function isContentToolResultOutput(value: JSONValue): value is ContentToolResult
 }
 
 /**
- * Anthropic replays reasoning from `providerOptions`, but the AI SDK exposes the
- * replay `signature`/`redactedData` in `providerMetadata`. Copy them across so
- * the next request can replay the reasoning block. Existing `providerOptions`
+ * Providers replay reasoning from `providerOptions`, but the AI SDK exposes the
+ * replay data in `providerMetadata` — Anthropic's `signature`/`redactedData`
+ * and OpenAI's `itemId`/`reasoningEncryptedContent`. Copy them across so the
+ * next request can replay the reasoning block. Existing `providerOptions`
  * values win.
  */
 function toReasoningProviderOptions(block: ContentReasoning): ProviderOptions | undefined {
-	const metadata = getRecord(block.providerMetadata?.anthropic);
-	const signature = metadata?.signature;
-	const redactedData = metadata?.redactedData;
-	if (typeof signature !== 'string' && typeof redactedData !== 'string') {
+	const anthropicMetadata = getRecord(block.providerMetadata?.anthropic);
+	const signature = anthropicMetadata?.signature;
+	const redactedData = anthropicMetadata?.redactedData;
+	const hasAnthropicReplay = typeof signature === 'string' || typeof redactedData === 'string';
+
+	const openaiMetadata = getRecord(block.providerMetadata?.openai);
+	const itemId = openaiMetadata?.itemId;
+	const reasoningEncryptedContent = openaiMetadata?.reasoningEncryptedContent;
+	const hasOpenAiReplay =
+		typeof itemId === 'string' || typeof reasoningEncryptedContent === 'string';
+
+	if (!hasAnthropicReplay && !hasOpenAiReplay) {
 		return block.providerOptions;
 	}
 
 	return {
 		...block.providerOptions,
-		anthropic: {
-			...(typeof signature === 'string' && { signature }),
-			...(typeof redactedData === 'string' && { redactedData }),
-			...getRecord(block.providerOptions?.anthropic),
-		},
+		...(hasAnthropicReplay && {
+			anthropic: {
+				...(typeof signature === 'string' && { signature }),
+				...(typeof redactedData === 'string' && { redactedData }),
+				...getRecord(block.providerOptions?.anthropic),
+			},
+		}),
+		...(hasOpenAiReplay && {
+			openai: {
+				...(typeof itemId === 'string' && { itemId }),
+				...(typeof reasoningEncryptedContent === 'string' && { reasoningEncryptedContent }),
+				...getRecord(block.providerOptions?.openai),
+			},
+		}),
 	};
 }
 

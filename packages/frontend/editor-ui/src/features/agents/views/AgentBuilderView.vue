@@ -301,7 +301,7 @@ async function fetchAgentFiles(
 }
 
 async function onUploadAgentFiles(files: File[]) {
-	if (files.length === 0) return;
+	if (files.length === 0 || !agent.value?.activeVersionId) return;
 	const oversizedFiles = files.filter((file) => file.size > MAX_AGENT_FILE_SIZE_BYTES);
 	if (oversizedFiles.length > 0) {
 		showError(
@@ -484,6 +484,7 @@ function startChat(msg: string) {
 function onPublished(updated: AgentResource) {
 	agent.value = updated;
 	void versionHistoryPanel.value?.refresh();
+	warmAgentKnowledgeSandboxForPage();
 }
 
 function onUnpublished(updated: AgentResource) {
@@ -535,7 +536,7 @@ function bindPreviewSession() {
 }
 
 function warmAgentKnowledgeSandboxForPage() {
-	if (!initialized.value || !isKnowledgeBaseEnabled.value) return;
+	if (!initialized.value || !isKnowledgeBaseEnabled.value || !agent.value?.activeVersionId) return;
 
 	const targetProjectId = projectId.value;
 	const targetAgentId = agentId.value;

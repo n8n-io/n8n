@@ -521,6 +521,7 @@ describe('AgentBuilderView — preview routing', () => {
 	});
 
 	it('blocks knowledge file uploads that would exceed the total size limit', async () => {
+		getAgentMock.mockResolvedValue(makeAgentResponse({ activeVersionId: 'v1' }));
 		listAgentFilesMock.mockResolvedValue([
 			{
 				id: 'file-1',
@@ -545,7 +546,40 @@ describe('AgentBuilderView — preview routing', () => {
 		);
 	});
 
-	it('warms the knowledge sandbox when the agent page initializes', async () => {
+	it('does not upload knowledge files for an unpublished agent', async () => {
+		const wrapper = await renderView({ knowledgeBaseEnabled: true });
+
+		wrapper
+			.findComponent({ name: 'AgentBuilderEditorColumn' })
+			.vm.$emit('upload-files', [new File(['x'], 'notes.txt', { type: 'text/plain' })]);
+		await flushPromises();
+
+		expect(uploadAgentFilesMock).not.toHaveBeenCalled();
+	});
+
+	it('marks the knowledge files panel unpublished for an unpublished agent', async () => {
+		const wrapper = await renderView({ knowledgeBaseEnabled: true });
+
+		expect(wrapper.findComponent({ name: 'AgentFilesPanel' }).props('isPublished')).toBe(false);
+	});
+
+	it('marks the knowledge files panel published for a published agent', async () => {
+		getAgentMock.mockResolvedValue(makeAgentResponse({ activeVersionId: 'v1' }));
+
+		const wrapper = await renderView({ knowledgeBaseEnabled: true });
+
+		expect(wrapper.findComponent({ name: 'AgentFilesPanel' }).props('isPublished')).toBe(true);
+	});
+
+	it('does not warm the knowledge sandbox for an unpublished agent', async () => {
+		await renderView({ knowledgeBaseEnabled: true });
+
+		expect(warmAgentKnowledgeSandboxMock).not.toHaveBeenCalled();
+	});
+
+	it('warms the knowledge sandbox when a published agent page initializes', async () => {
+		getAgentMock.mockResolvedValue(makeAgentResponse({ activeVersionId: 'v1' }));
+
 		await renderView({ knowledgeBaseEnabled: true });
 
 		expect(warmAgentKnowledgeSandboxMock).toHaveBeenCalledTimes(1);
@@ -620,6 +654,7 @@ describe('AgentBuilderView — preview routing', () => {
 
 	it('does not warm the knowledge sandbox again when switching preview sessions', async () => {
 		routeName = 'AgentPreviewView';
+		getAgentMock.mockResolvedValue(makeAgentResponse({ activeVersionId: 'v1' }));
 
 		const wrapper = await renderView({ knowledgeBaseEnabled: true });
 

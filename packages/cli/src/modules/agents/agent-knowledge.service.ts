@@ -25,6 +25,7 @@ import {
 } from './agent-knowledge-storage';
 import { AgentKnowledgeSandboxService } from './agent-knowledge-sandbox.service';
 import type { AgentFile } from './entities/agent-file.entity';
+import type { Agent } from './entities/agent.entity';
 import { AgentFileRepository } from './repositories/agent-file.repository';
 import { AgentRepository } from './repositories/agent.repository';
 
@@ -61,7 +62,8 @@ export class AgentKnowledgeService {
 		files: Express.Multer.File[],
 	): Promise<AgentFileDto[]> {
 		try {
-			await this.ensureAgentBelongsToProject(agentId, projectId);
+			const agent = await this.ensureAgentBelongsToProject(agentId, projectId);
+			this.assertAgentPublished(agent);
 			this.validateUploadMetadata(files);
 			await this.validateUploadBatch(agentId, files);
 			const uploadedFiles: AgentFile[] = [];
@@ -87,6 +89,8 @@ export class AgentKnowledgeService {
 					}
 				},
 			);
+			this.agentKnowledgeSandboxService.invalidateMirror(projectId, agentId);
+			this.agentKnowledgeSandboxService.prewarmMirrorInBackground(projectId, agentId);
 
 			return uploadedFiles.map((file) => toAgentFileDto(file));
 		} finally {
@@ -101,7 +105,8 @@ export class AgentKnowledgeService {
 	}
 
 	async warmSandbox(agentId: string, projectId: string): Promise<void> {
-		await this.ensureAgentBelongsToProject(agentId, projectId);
+		const agent = await this.ensureAgentBelongsToProject(agentId, projectId);
+		this.assertAgentPublished(agent);
 		await this.agentKnowledgeSandboxService.warmSandbox(projectId, agentId);
 	}
 
@@ -115,11 +120,19 @@ export class AgentKnowledgeService {
 
 		await this.agentFileRepository.delete({ id: fileId, agentId });
 		this.deleteVolumeFileInBackground(projectId, agentId, file);
+		this.agentKnowledgeSandboxService.invalidateMirror(projectId, agentId);
+		this.agentKnowledgeSandboxService.prewarmMirrorInBackground(projectId, agentId);
 	}
 
 	async deleteAllFilesForAgent(projectId: string, agentId: string): Promise<void> {
 		await this.agentFileRepository.delete({ agentId });
 		this.deleteKnowledgeDirectoryInBackground(projectId, agentId);
+		this.agentKnowledgeSandboxService.invalidateMirror(projectId, agentId);
+	}
+
+	/** Best-effort passthrough for agent/project deletion; never throws. */
+	async destroySandbox(projectId: string, agentId: string): Promise<void> {
+		await this.agentKnowledgeSandboxService.destroySandbox(projectId, agentId);
 	}
 
 	private async reserveAgentFile(
@@ -186,6 +199,9 @@ export class AgentKnowledgeService {
 		const extractedText = documents
 			.map((document: { pageContent: string }) => document.pageContent)
 			.join('\n\n')
+			// PDF extraction can leak NUL bytes, which make grep-like tools
+			// treat the stored text as binary.
+			.replaceAll('\u0000', '')
 			.trim();
 		if (!extractedText) {
 			throw new BadRequestError(
@@ -324,6 +340,15 @@ export class AgentKnowledgeService {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agent) {
 			throw new NotFoundError(`Agent "${agentId}" not found`);
+		}
+		return agent;
+	}
+
+	private assertAgentPublished(agent: Agent): void {
+		if (agent.activeVersionId === null) {
+			throw new BadRequestError(
+				'Knowledge base is only available for published agents. Publish the agent first.',
+			);
 		}
 	}
 

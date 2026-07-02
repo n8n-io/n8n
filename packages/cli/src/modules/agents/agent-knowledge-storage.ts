@@ -9,6 +9,12 @@ import type { AgentFile } from './entities/agent-file.entity';
 export const AGENT_KNOWLEDGE_VOLUME_MOUNT_PATH = '/home/daytona/workspace/agent-knowledge';
 export const KNOWLEDGE_FILES_DIR = `${AGENT_KNOWLEDGE_VOLUME_MOUNT_PATH}/files`;
 
+// Local sandbox disk (outside the volume mount) mirroring the volume's
+// knowledge files, so repeated reads/searches avoid FUSE/S3 latency.
+export const KNOWLEDGE_MIRROR_DIR = '/home/daytona/knowledge-mirror';
+export const KNOWLEDGE_MIRROR_FILES_DIR = `${KNOWLEDGE_MIRROR_DIR}/files`;
+export const KNOWLEDGE_MIRROR_MANIFEST = `${KNOWLEDGE_MIRROR_DIR}/manifest`;
+
 const AGENT_KNOWLEDGE_VOLUME_SUBPATH_PREFIX = 'agent-knowledge';
 
 const DAYTONA_VOLUME_STORAGE_PREFIX = 'daytona-volume:';
