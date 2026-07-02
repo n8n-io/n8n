@@ -49,12 +49,8 @@ export class FolderFinderService {
 	): Promise<Folder[]> {
 		if (folderIds.length === 0) return [];
 
-		const descendantIds = (
-			await Promise.all(
-				folderIds.map(async (id) => await this.folderRepository.getAllFolderIdsInHierarchy(id)),
-			)
-		).flat();
-
+		// One recursive query for every requested subtree, rather than one per id.
+		const descendantIds = await this.folderRepository.getAllFolderIdsInSubtrees(folderIds);
 		const allFolderIds = [...new Set([...folderIds, ...descendantIds])];
 
 		return await this.findFoldersByIdsForUser(allFolderIds, user, scopes);

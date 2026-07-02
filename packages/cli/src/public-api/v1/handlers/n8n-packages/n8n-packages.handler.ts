@@ -91,9 +91,7 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 
 			// A package is either a set of loose workflows/folders or a set of whole projects, not both.
 			if (projectIds.length > 0 && (workflowIds.length > 0 || folderIds.length > 0)) {
-				throw new BadRequestError(
-					'Provide either workflowIds/folderIds or projectIds, not both',
-				);
+				throw new BadRequestError('Provide either workflowIds/folderIds or projectIds, not both');
 			}
 
 			if (workflowIds.length === 0 && folderIds.length === 0 && projectIds.length === 0) {

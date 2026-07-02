@@ -61,23 +61,28 @@ describe('FolderFinderService', () => {
 	});
 
 	describe('findFolderSubtreesForUser', () => {
-		it('loads each requested folder together with its descendants', async () => {
-			const parent = makeFolder({ id: 'parent' });
-			const child = makeFolder({ id: 'child', parentFolderId: 'parent' });
-			const { finder, folderRepository } = makeFinder([parent, child]);
-			folderRepository.getAllFolderIdsInHierarchy.mockResolvedValue(['child']);
+		it('resolves all requested folders and their descendants in a single batched query', async () => {
+			const parentA = makeFolder({ id: 'parentA' });
+			const parentB = makeFolder({ id: 'parentB' });
+			const childA = makeFolder({ id: 'childA', parentFolderId: 'parentA' });
+			const { finder, folderRepository } = makeFinder([parentA, parentB, childA]);
+			folderRepository.getAllFolderIdsInSubtrees.mockResolvedValue(['childA']);
 
-			const result = await finder.findFolderSubtreesForUser(['parent'], nonGlobalUser, [
+			const result = await finder.findFolderSubtreesForUser(['parentA', 'parentB'], nonGlobalUser, [
 				'folder:read',
 			]);
 
-			expect(result).toEqual([parent, child]);
-			expect(folderRepository.getAllFolderIdsInHierarchy.mock.calls[0]).toEqual(['parent']);
-			// requested id + descendant id, deduped, are authorized in one query
+			expect(result).toEqual([parentA, parentB, childA]);
+			// One batched call for every requested subtree, not one query per id.
+			expect(folderRepository.getAllFolderIdsInSubtrees.mock.calls).toHaveLength(1);
+			expect(folderRepository.getAllFolderIdsInSubtrees.mock.calls[0]).toEqual([
+				['parentA', 'parentB'],
+			]);
+			// requested ids + descendant id, deduped, are authorized in one query
 			const where = folderRepository.find.mock.calls[0][0]?.where as unknown as {
 				id: { value: string[] };
 			};
-			expect(where.id.value).toEqual(['parent', 'child']);
+			expect(where.id.value).toEqual(['parentA', 'parentB', 'childA']);
 		});
 
 		it('returns an empty list for an empty request without querying', async () => {
@@ -86,7 +91,7 @@ describe('FolderFinderService', () => {
 			const result = await finder.findFolderSubtreesForUser([], nonGlobalUser, ['folder:read']);
 
 			expect(result).toEqual([]);
-			expect(folderRepository.getAllFolderIdsInHierarchy.mock.calls).toHaveLength(0);
+			expect(folderRepository.getAllFolderIdsInSubtrees.mock.calls).toHaveLength(0);
 			expect(folderRepository.find.mock.calls).toHaveLength(0);
 		});
 	});

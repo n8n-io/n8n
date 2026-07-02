@@ -101,11 +101,12 @@ describe('folder package export', () => {
 		}
 	});
 
-	it('preserves nesting when exporting a folder that contains a nested folder', async () => {
+	it('preserves nesting through multiple levels when exporting a folder subtree', async () => {
 		const owner = await createOwner();
 		const project = await createTeamProject('Project A', owner);
 		const parent = await createFolder(project, { name: 'in_progress' });
 		const child = await createFolder(project, { name: 'nested', parentFolder: parent });
+		const grandchild = await createFolder(project, { name: 'deep', parentFolder: child });
 
 		const stream = await service.exportPackage({
 			user: owner,
@@ -114,14 +115,18 @@ describe('folder package export', () => {
 		});
 		const { manifest, entries } = await readExport(stream);
 
-		expect(manifest.folders).toHaveLength(2);
+		expect(manifest.folders).toHaveLength(3);
 		const parentEntry = manifest.folders!.find((f) => f.id === parent.id)!;
 		const childEntry = manifest.folders!.find((f) => f.id === child.id)!;
+		const grandchildEntry = manifest.folders!.find((f) => f.id === grandchild.id)!;
 
-		// Child nests directly under the parent dir, no repeated "folders/" segment.
+		// Each level nests directly under its parent dir — recursion reaches beyond
+		// the first nesting level, with no repeated "folders/" segment.
 		expect(childEntry.target).toMatch(new RegExp(`^${parentEntry.target}/[^/]+$`));
+		expect(grandchildEntry.target).toMatch(new RegExp(`^${childEntry.target}/[^/]+$`));
 		expect(folderShell(entries, parentEntry.target).parentFolderId).toBeNull();
 		expect(folderShell(entries, childEntry.target).parentFolderId).toBe(parent.id);
+		expect(folderShell(entries, grandchildEntry.target).parentFolderId).toBe(child.id);
 	});
 
 	it('disambiguates same-named sibling folders by creation order', async () => {
