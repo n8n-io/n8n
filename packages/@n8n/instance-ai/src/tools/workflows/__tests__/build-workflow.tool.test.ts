@@ -197,7 +197,10 @@ describe('createBuildWorkflowTool', () => {
 		});
 		expect(result.postBuildFlow?.guidance).toContain('Load post-build-flow now');
 		expect(result.postBuildFlow?.guidance).toContain(
-			'then error-workflow opt-in for direct new primary workflows',
+			'then mocked/no-mock live-test when latest verification used mocks or simulations',
+		);
+		expect(result.postBuildFlow?.guidance).toContain(
+			'Do not replace the error-workflow opt-in with a generic add-anything',
 		);
 		expect(compileWorkflowSource).toHaveBeenCalledWith(context, filePath, source);
 		expect(context.workflowService.createFromWorkflowJSON).toHaveBeenCalledWith(

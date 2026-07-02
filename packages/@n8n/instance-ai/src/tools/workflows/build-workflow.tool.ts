@@ -145,7 +145,7 @@ const setupRequirementOutputSchema = z.discriminatedUnion('status', [
 const POST_BUILD_FLOW_SKILL_ID = 'post-build-flow';
 
 const POST_BUILD_FLOW_GUIDANCE =
-	'This direct build is not complete yet. Load post-build-flow now and follow it before verification, setup, error-workflow follow-up, publishing, testing, or any final user-visible summary. Follow-up order is verification/setup first, then error-workflow opt-in for direct new primary workflows, then mocked/no-mock live-test or generic testing prompts.';
+	'This direct build is not complete yet. Load post-build-flow now and follow it before verification, setup, error-workflow follow-up, publishing, testing, or any final user-visible summary. Follow-up order is verification/setup first, then mocked/no-mock live-test when latest verification used mocks or simulations, then explicit error-workflow opt-in for direct new primary workflows, then generic testing prompts. Do not replace the error-workflow opt-in with a generic add-anything, publish, or test question.';
 
 const postBuildFlowOutputSchema = z.object({
 	required: z.literal(true),

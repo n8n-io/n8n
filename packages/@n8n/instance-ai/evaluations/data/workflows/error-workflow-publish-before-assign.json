@@ -18,7 +18,7 @@
 			"text": [
 				"[Only respond after the agent has built the Pokemon lookup workflow and asked whether to build an error workflow for it. If the agent asks, say the following:]",
 				"Yes, build the error workflow. It should send a message to Slack channel #workflow-errors.",
-				"Publish the error workflow and set it as the error workflow for Pokemon lookup only. Do not configure anything globally.",
+				"Publish the error workflow and set it as the error workflow for Pokemon lookup only.",
 				"[Approve HITL confirmations for publishing the error workflow and for setting it as the error workflow when the target is Pokemon lookup. Do not approve any global or instance-wide setting.]"
 			]
 		}
