@@ -120,9 +120,14 @@ defineExpose({
 						<N8nText bold truncate>
 							{{ truncateBeforeLast(selectedLabel, MAX_SELECTED_NAME_CHARS) }}
 						</N8nText>
-						<N8nText v-if="credentialsMissing" bold color="danger">
+						<N8nBadge
+							v-if="credentialsMissing"
+							theme="danger"
+							size="small"
+							:class="$style.credsBadge"
+						>
 							{{ resolvedCredentialsMissingLabel }}
-						</N8nText>
+						</N8nBadge>
 						<N8nText
 							v-else-if="selectedCredentialName"
 							bold
@@ -319,5 +324,10 @@ defineExpose({
 
 .badge {
 	flex-shrink: 0;
+}
+
+.credsBadge {
+	flex-shrink: 0;
+	transform: translateY(-1px);
 }
 </style>
