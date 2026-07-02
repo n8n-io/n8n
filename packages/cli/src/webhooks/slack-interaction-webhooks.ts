@@ -38,10 +38,10 @@ export class SlackInteractionWebhooks extends WaitingWebhooks {
 			return { noWebhookResponse: true };
 		}
 
-		// The parsed payload becomes the request body (the Slack node reads the responder from it);
-		// the ids drive webhook matching in the shared resume.
+		// The ids drive webhook matching in the shared resume. The body is not set here: the
+		// resume path re-parses it from rawBody, so the Slack node reads the responder from
+		// the form-encoded `payload` field itself.
 		req.params = { path: value.executionId, suffix: value.nodeId };
-		req.body = payload;
 
 		const execution = await this.getExecution(value.executionId);
 		if (!execution) {

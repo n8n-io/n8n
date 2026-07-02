@@ -26,9 +26,12 @@ describe('slackSendAndWaitWebhook', () => {
 			method: 'POST',
 			headers: { 'x-slack-signature': 'v0=abc' },
 		} as any);
+		// Slack wire format: form-encoded body with the interaction JSON in `payload`.
 		webhookFns.getBodyData.mockReturnValue({
-			actions: [{ action_id: 'n8n_hitl_approve' }],
-			user: { id: 'U1', name: 'Ada' },
+			payload: JSON.stringify({
+				actions: [{ action_id: 'n8n_hitl_approve' }],
+				user: { id: 'U1', name: 'Ada' },
+			}),
 		} as any);
 
 		const result = await slackSendAndWaitWebhook.call(webhookFns);
@@ -71,13 +74,34 @@ describe('slackSendAndWaitWebhook', () => {
 			headers: { 'x-slack-signature': 'v0=abc' },
 		} as any);
 		webhookFns.getBodyData.mockReturnValue({
-			actions: [{ action_id: 'n8n_hitl_decline' }],
-			user: { id: 'U1' },
+			payload: JSON.stringify({
+				actions: [{ action_id: 'n8n_hitl_decline' }],
+				user: { id: 'U1' },
+			}),
 		} as any);
 
 		const result = await slackSendAndWaitWebhook.call(webhookFns);
 
 		expect((result as any).workflowData[0][0].json.data.approved).toBe(false);
+	});
+
+	it('accepts a body that is already the parsed interaction object (no payload field)', async () => {
+		vi.mocked(verifySignature).mockResolvedValue(true);
+		webhookFns.getRequestObject.mockReturnValue({
+			method: 'POST',
+			headers: { 'x-slack-signature': 'v0=abc' },
+		} as any);
+		webhookFns.getBodyData.mockReturnValue({
+			actions: [{ action_id: 'n8n_hitl_approve' }],
+			user: { id: 'U1' },
+		} as any);
+
+		const result = await slackSendAndWaitWebhook.call(webhookFns);
+
+		expect((result as any).workflowData[0][0].json.data).toEqual({
+			approved: true,
+			responder: { id: 'U1', source: 'slack' },
+		});
 	});
 
 	it('refuses (no resume, verify not attempted) when no signing secret is configured', async () => {

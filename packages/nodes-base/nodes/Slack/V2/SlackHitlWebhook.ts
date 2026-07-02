@@ -1,4 +1,4 @@
-import type { IWebhookFunctions } from 'n8n-workflow';
+import { jsonParse, type IWebhookFunctions } from 'n8n-workflow';
 
 import { slackApiRequest } from './GenericFunctions';
 import type { SendAndWaitResponder } from '../../../utils/sendAndWait/interfaces';
@@ -65,7 +65,12 @@ export async function slackSendAndWaitWebhook(this: IWebhookFunctions) {
 		return { noWebhookResponse: true };
 	}
 
-	const payload = this.getBodyData() as SlackInteractionPayload;
+	// Slack posts interactions form-encoded with the JSON in a `payload` field.
+	const body = this.getBodyData();
+	const payload =
+		typeof body.payload === 'string'
+			? jsonParse<SlackInteractionPayload>(body.payload, { fallbackValue: {} })
+			: (body as SlackInteractionPayload);
 	// Fail closed: only an explicit approve action counts as approved.
 	const approved = payload.actions?.[0]?.action_id === 'n8n_hitl_approve';
 	const responder = await extractSlackResponder(this, payload);

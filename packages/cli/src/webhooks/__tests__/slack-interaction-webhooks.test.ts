@@ -27,11 +27,13 @@ describe('SlackInteractionWebhooks', () => {
 			getWebhookExecutionData;
 	});
 
-	const makeReq = (payloadObj: unknown) =>
-		mock<WaitingWebhookRequest>({
-			rawBody: Buffer.from('payload=' + encodeURIComponent(JSON.stringify(payloadObj))),
-			readRawBody: vi.fn(),
-		});
+	// rawBody is assigned after construction: mock() proxies object overrides, which breaks
+	// Buffer method receivers ("argument must be a buffer").
+	const makeReq = (payloadObj: unknown) => {
+		const req = mock<WaitingWebhookRequest>({ readRawBody: vi.fn() });
+		req.rawBody = Buffer.from('payload=' + encodeURIComponent(JSON.stringify(payloadObj)));
+		return req;
+	};
 
 	it('responds 400 and does not resume when the payload lacks execution/node ids', async () => {
 		const res = mock<express.Response>();
