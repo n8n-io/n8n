@@ -45,4 +45,13 @@ describe('UniqueFilenameAllocator', () => {
 		expect(a.allocate('Same Name')).toBe('workflows/same-name');
 		expect(b.allocate('Same Name')).toBe('workflows/same-name');
 	});
+
+	it('suffixes a name that slugifies to a reserved segment', () => {
+		// A folder reserves its `workflows` container so a sibling folder named
+		// "workflows" can't take the same directory.
+		const allocator = new UniqueFilenameAllocator('folders/in-progress', 'folder');
+		allocator.reserve('workflows');
+
+		expect(allocator.allocate('Workflows')).toBe('folders/in-progress/workflows-2');
+	});
 });

@@ -15,6 +15,12 @@ export interface WorkflowExportRequest {
 	user: User;
 	workflowIds: string[];
 	writer: PackageWriter;
+	/**
+	 * Directory the workflows are written under. Empty for a plain workflow
+	 * export (`workflows/...`); the folder exporter passes the folder's target
+	 * so contained workflows nest under `<folderTarget>/workflows/...`.
+	 */
+	basePrefix?: string;
 }
 
 export interface WorkflowExportRequirements {
@@ -46,7 +52,10 @@ export class WorkflowExporter {
 
 		const entries: ManifestEntry[] = [];
 		const credentials: WorkflowCredentialRequirement[] = [];
-		const fileNames = new UniqueFilenameAllocator('workflows', 'workflow');
+		const fileNames = new UniqueFilenameAllocator(
+			request.basePrefix ? `${request.basePrefix}/workflows` : 'workflows',
+			'workflow',
+		);
 
 		for (const workflow of workflows) {
 			const target = fileNames.allocate(workflow.name);

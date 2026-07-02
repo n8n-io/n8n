@@ -37,20 +37,28 @@ export class N8nPackagesService {
 		const folderIds = request.folderIds ?? [];
 		const projectIds = request.projectIds ?? [];
 
-		const workflowExportResult =
-			workflowIds.length > 0
-				? await this.workflowExporter.export({
-						user: request.user,
-						workflowIds,
-						writer,
-					})
-				: undefined;
-
+		// Folders are exported before workflows so any workflow a folder already
+		// placed can be dropped from the explicit top-level set below — otherwise it
+		// would be written twice and duplicated in the manifest.
 		const folderExportResult =
 			folderIds.length > 0
 				? await this.folderExporter.export({
 						user: request.user,
 						folderIds,
+						writer,
+					})
+				: undefined;
+
+		const folderWorkflowIds = new Set(
+			folderExportResult?.workflowEntries.map((entry) => entry.id) ?? [],
+		);
+		const topLevelWorkflowIds = workflowIds.filter((id) => !folderWorkflowIds.has(id));
+
+		const workflowExportResult =
+			topLevelWorkflowIds.length > 0
+				? await this.workflowExporter.export({
+						user: request.user,
+						workflowIds: topLevelWorkflowIds,
 						writer,
 					})
 				: undefined;
@@ -66,9 +74,19 @@ export class N8nPackagesService {
 
 		const credentialExportResult = await this.credentialExporter.export({
 			user: request.user,
-			requirements: workflowExportResult?.requirements?.credentials ?? [],
+			requirements: [
+				...(workflowExportResult?.requirements.credentials ?? []),
+				...(folderExportResult?.requirements.credentials ?? []),
+			],
 			writer,
 		});
+
+		// Top-level and folder-contained workflows are disjoint (the subtraction
+		// above guarantees it), so concatenation needs no dedupe.
+		const workflowEntries = [
+			...(workflowExportResult?.entries ?? []),
+			...(folderExportResult?.workflowEntries ?? []),
+		];
 
 		const manifest = packageManifestSchema.parse({
 			packageFormatVersion: FORMAT_VERSION,
@@ -81,7 +99,7 @@ export class N8nPackagesService {
 			...(credentialExportResult.requirements.length > 0
 				? { requirements: { credentials: credentialExportResult.requirements } }
 				: {}),
-			...(workflowExportResult?.entries ? { workflows: workflowExportResult.entries } : {}),
+			...(workflowEntries.length > 0 ? { workflows: workflowEntries } : {}),
 			...(folderExportResult?.entries ? { folders: folderExportResult.entries } : {}),
 			...(projectExportResult?.entries ? { projects: projectExportResult.entries } : {}),
 		});
@@ -103,7 +121,7 @@ export class N8nPackagesService {
 				? { projectIds: projectExportResult.entries.map(({ id }) => id) }
 				: {}),
 			counts: {
-				workflows: workflowExportResult?.entries.length ?? 0,
+				workflows: workflowEntries.length,
 				folders: folderExportResult?.entries.length ?? 0,
 				credentials: credentialExportResult.entries.length,
 			},
