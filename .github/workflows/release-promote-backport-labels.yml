@@ -7,6 +7,11 @@ on:
       version:
         required: true
         type: string
+    secrets:
+      N8N_ASSISTANT_APP_ID:
+        required: true
+      N8N_ASSISTANT_PRIVATE_KEY:
+        required: true
   workflow_dispatch:
     inputs:
       version:
@@ -29,11 +34,18 @@ jobs:
         with:
           app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
           private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
+          # Scope the token to only what the script does: read code, write PR
+          # labels and comments (both go through the issues API).
+          permission-contents: read
+          permission-issues: write
+          permission-pull-requests: write
 
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          token: ${{ steps.generate_token.outputs.token }}
+          # The script uses the API (via GITHUB_TOKEN env), not git, so no App
+          # token is needed here and credentials shouldn't be persisted.
+          persist-credentials: false
           fetch-depth: 1
 
       - name: Setup NodeJS

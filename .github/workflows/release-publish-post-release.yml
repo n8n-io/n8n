@@ -55,7 +55,9 @@ jobs:
       inputs.release_type != 'rc' &&
       inputs.bump == 'minor'
     uses: ./.github/workflows/release-promote-backport-labels.yml
-    secrets: inherit
+    secrets:
+      N8N_ASSISTANT_APP_ID: ${{ secrets.N8N_ASSISTANT_APP_ID }}
+      N8N_ASSISTANT_PRIVATE_KEY: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
     with:
       version: ${{ inputs.version }}
 
