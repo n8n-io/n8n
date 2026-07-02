@@ -142,6 +142,15 @@
 		"PUT /workflows/{id}/tags": {
 			"status": "gap"
 		},
+		"GET /workflows/{id}/test-runs": {
+			"status": "gap"
+		},
+		"GET /workflows/{id}/test-runs/{runId}": {
+			"status": "gap"
+		},
+		"GET /workflows/{id}/test-runs/{runId}/test-cases": {
+			"status": "gap"
+		},
 		"GET /users": {
 			"status": "gap"
 		},
