@@ -613,9 +613,10 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				const entry = testCaseByFileSlug.get(fileSlug);
 				if (!entry) throw new Error(`No conversation found for fileSlug=${fileSlug}`);
 				const lane = await allocator.acquire(fileSlug);
+				const start = Date.now();
+				let build: BuildResult;
 				try {
-					const start = Date.now();
-					const build = await buildWorkflowViaMcpOnLane({
+					build = await buildWorkflowViaMcpOnLane({
 						lane: lane.runner,
 						conversation: entry.conversation,
 						slug: fileSlug,
@@ -624,28 +625,31 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 						logDir: mcpBuildLogDir ?? process.cwd(),
 						logger,
 					});
-					if (cleanupBuiltWorkflows && build.success && build.workflowId) {
-						lane.runner.workflowIdsToDelete.add(build.workflowId);
-					}
-					const buildDurationMs = Date.now() - start;
-					buildDurations.set(key, buildDurationMs);
-					stashTranscript(build);
-					// isPrebuilt=true: MCP builds have no build transcript, so only
-					// outcome expectations are judged (against the workflow), like prebuilt.
-					stashBuildExpectations(key, fileSlug, build, true);
-					stashRunDebug(lane.runner.client, build);
-					if (build.success && !build.workflowChecks) {
-						build.workflowChecks = await runWorkflowChecks({
-							workflow: build.workflowJsons[0],
-							prompt: conversationUserTurnsAsText(entry.conversation ?? []),
-							agentText: undefined,
-							logger,
-						});
-					}
-					return { build, lane, buildDurationMs };
 				} finally {
+					// Release as soon as the build (incl. fetch-back) is done — the
+					// LLM-judged bookkeeping below needs only the fetched JSON, and
+					// holding the slot through it would idle the lane's build capacity.
 					allocator.release(lane, fileSlug);
 				}
+				const buildDurationMs = Date.now() - start;
+				if (cleanupBuiltWorkflows && build.success && build.workflowId) {
+					lane.runner.workflowIdsToDelete.add(build.workflowId);
+				}
+				buildDurations.set(key, buildDurationMs);
+				stashTranscript(build);
+				// isPrebuilt=true: MCP builds have no build transcript, so only
+				// outcome expectations are judged (against the workflow), like prebuilt.
+				stashBuildExpectations(key, fileSlug, build, true);
+				stashRunDebug(lane.runner.client, build);
+				if (build.success && !build.workflowChecks) {
+					build.workflowChecks = await runWorkflowChecks({
+						workflow: build.workflowJsons[0],
+						prompt: conversationUserTurnsAsText(entry.conversation ?? []),
+						agentText: undefined,
+						logger,
+					});
+				}
+				return { build, lane, buildDurationMs };
 			}
 			const prebuiltId = pickPrebuiltWorkflowId(prebuiltManifest, fileSlug, iteration);
 			if (prebuiltId !== undefined) {
