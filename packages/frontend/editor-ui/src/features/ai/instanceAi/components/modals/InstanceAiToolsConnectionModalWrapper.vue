@@ -132,6 +132,12 @@ async function connectOrSwapCredential(serverSlug: string, credentialId: string)
 	}
 
 	const updated = await mcpStore.updateConnection(existing.id, { credentialId });
+	if (updated) {
+		toast.showMessage({
+			type: 'success',
+			title: i18n.baseText('instanceAi.mcp.success.changeCredential'),
+		});
+	}
 	return Boolean(updated);
 }
 
