@@ -258,8 +258,8 @@ export class WorkflowPublicationOutboxConsumer {
 	/**
 	 * Maps a publication result to its metric labels. A reporter failure overrides
 	 * the result to `failed` (the terminal status write never landed), and
-	 * `version-missing` is surfaced as a `skipped`/`version_missing` outcome even
-	 * though the record itself is marked failed.
+	 * `version-missing` maps to `failed`/`version_missing` to match the terminal
+	 * `failed` status the outbox record is given (and thus the records gauge).
 	 */
 	private toOutcomeLabels(
 		result: PublicationResult,
@@ -279,7 +279,7 @@ export class WorkflowPublicationOutboxConsumer {
 						result.reason === 'workflow-not-found' ? 'workflow_not_found' : 'workflow_inactive',
 				};
 			case 'version-missing':
-				return { result: 'skipped', reason: 'version_missing' };
+				return { result: 'failed', reason: 'version_missing' };
 			case 'partial':
 				return { result: 'partial_success', reason: 'none' };
 			case 'failed':
