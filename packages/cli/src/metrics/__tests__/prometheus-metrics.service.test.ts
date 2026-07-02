@@ -146,14 +146,6 @@ describe('PrometheusMetricsService', () => {
 			expect(workflowPublication.init).toHaveBeenCalledWith(app);
 		});
 
-		it('should NOT call init on the workflow publication collector when disabled', () => {
-			vi.spyOn(workflowPublication, 'enabled', 'get').mockReturnValue(false);
-
-			service.init(app);
-
-			expect(workflowPublication.init).not.toHaveBeenCalled();
-		});
-
 		it('should NOT call init on disabled collectors', () => {
 			vi.spyOn(cache, 'enabled', 'get').mockReturnValue(false);
 			vi.spyOn(queue, 'enabled', 'get').mockReturnValue(false);
