@@ -735,7 +735,7 @@ describe('Salesforce -> GenericFunctions', () => {
 
 		describe('JWT Authentication Flow', () => {
 			it('routes the request through the credential without signing or exchanging tokens', async () => {
-				mockRequest.mockResolvedValue({ records: [] });
+				mockRequest.mockResolvedValue({ statusCode: 200, body: { records: [] } });
 
 				await salesforceApiRequest.call(mockExecuteFunctions, 'GET', '/test-endpoint', {}, {});
 
@@ -749,6 +749,8 @@ describe('Salesforce -> GenericFunctions', () => {
 					qs: {},
 					url: '/services/data/v59.0/test-endpoint',
 					json: true,
+					returnFullResponse: true,
+					ignoreHttpStatusErrors: { ignore: true, except: [401] },
 				});
 
 				// The token exchange now lives in the credential, not the node.
@@ -757,7 +759,7 @@ describe('Salesforce -> GenericFunctions', () => {
 			});
 
 			it('forwards body and query parameters', async () => {
-				mockRequest.mockResolvedValue({});
+				mockRequest.mockResolvedValue({ statusCode: 200, body: {} });
 
 				const testBody = { name: 'Test Account', type: 'Customer' };
 				const testQs = { fields: 'Id,Name', limit: '10' };
@@ -779,6 +781,8 @@ describe('Salesforce -> GenericFunctions', () => {
 					qs: testQs,
 					url: '/services/data/v59.0/test-endpoint',
 					json: true,
+					returnFullResponse: true,
+					ignoreHttpStatusErrors: { ignore: true, except: [401] },
 				});
 			});
 
@@ -868,7 +872,7 @@ describe('Salesforce -> GenericFunctions', () => {
 			});
 
 			it('sends the formData option as a multipart FormData body', async () => {
-				mockRequest.mockResolvedValue({ id: 'cv1', success: true });
+				mockRequest.mockResolvedValue({ statusCode: 201, body: { id: 'cv1', success: true } });
 
 				const formData = uploadFormData({
 					Title: 'Doc',
@@ -876,7 +880,7 @@ describe('Salesforce -> GenericFunctions', () => {
 					PathOnClient: 'Doc.pdf',
 				});
 
-				await salesforceApiRequest.call(
+				const result = await salesforceApiRequest.call(
 					mockExecuteFunctions,
 					'POST',
 					'/sobjects/ContentVersion',
@@ -896,10 +900,11 @@ describe('Salesforce -> GenericFunctions', () => {
 				expect((sentOptions.body as FormData).getHeaders()['content-type']).toMatch(
 					/^multipart\/form-data/,
 				);
+				expect(result).toEqual({ id: 'cv1', success: true });
 			});
 
 			it('preserves each formData field, its per-part content type and filename', async () => {
-				mockRequest.mockResolvedValue({ id: 'cv1', success: true });
+				mockRequest.mockResolvedValue({ statusCode: 201, body: { id: 'cv1', success: true } });
 
 				await salesforceApiRequest.call(
 					mockExecuteFunctions,
@@ -918,6 +923,45 @@ describe('Salesforce -> GenericFunctions', () => {
 				expect(serialized).toContain('name="VersionData"');
 				expect(serialized).toContain('filename="Doc.pdf"');
 				expect(serialized).toContain('file content');
+			});
+
+			it('returns the response body on a successful status', async () => {
+				mockRequest.mockResolvedValue({ statusCode: 200, body: { records: [{ Id: '1' }] } });
+
+				const result = await salesforceApiRequest.call(
+					mockExecuteFunctions,
+					'GET',
+					'/query',
+					{},
+					{},
+				);
+
+				expect(result).toEqual({ records: [{ Id: '1' }] });
+			});
+
+			it('surfaces the Salesforce error body when the response is an error status', async () => {
+				// The helper returns non-401 error responses instead of throwing, so the node
+				// reshapes them into the same error shape the OAuth2 path produces.
+				mockRequest.mockResolvedValue({
+					statusCode: 400,
+					body: [
+						{
+							message: 'Annual Revenue cannot be negative.',
+							errorCode: 'FIELD_CUSTOM_VALIDATION_EXCEPTION',
+							fields: ['AnnualRevenue'],
+						},
+					],
+				});
+
+				await expect(
+					salesforceApiRequest.call(mockExecuteFunctions, 'POST', '/sobjects/Lead', {}),
+				).rejects.toMatchObject({
+					description: 'Annual Revenue cannot be negative.',
+					context: {
+						errorCode: 'FIELD_CUSTOM_VALIDATION_EXCEPTION',
+						fields: 'AnnualRevenue',
+					},
+				});
 			});
 		});
 
