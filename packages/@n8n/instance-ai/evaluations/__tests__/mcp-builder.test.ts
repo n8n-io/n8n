@@ -8,12 +8,14 @@ import {
 	buildAllowedTools,
 	buildPromptFromConversation,
 	buildWorkflowViaMcp,
+	MCP_BUILD_KEY_SUPPORT,
 	sanitizeServerName,
 	stageLaneMcpConfig,
 	tailWorkflowId,
 	uniqueProjectScopes,
 	unsupportedMcpBuildSetupFields,
 } from '../cli/mcp-builder';
+import { WORKFLOW_TEST_CASE_KEYS } from '../data/workflows/schema';
 import type { ConversationTurn, WorkflowTestCase } from '../types';
 
 vi.mock('child_process', () => ({ spawn: vi.fn() }));
@@ -110,6 +112,15 @@ describe('uniqueProjectScopes', () => {
 });
 
 describe('unsupportedMcpBuildSetupFields', () => {
+	it('classifies every test-case schema key, so adding a field forces a decision', () => {
+		// MCP_BUILD_KEY_SUPPORT must stay in lockstep with the case schema: a new
+		// build-side setup field left unclassified would let --build-via-mcp build
+		// cases without their prerequisites and report misleading failures.
+		expect([...Object.keys(MCP_BUILD_KEY_SUPPORT)].sort()).toEqual(
+			[...WORKFLOW_TEST_CASE_KEYS].sort(),
+		);
+	});
+
 	it('returns no fields for a plain conversation-only case', () => {
 		expect(unsupportedMcpBuildSetupFields(testCase())).toEqual([]);
 	});

@@ -129,25 +129,69 @@ export function buildAllowedTools(serverName: string): readonly string[] {
 	return [`mcp__${sanitizeServerName(serverName)}`];
 }
 
+type McpBuildKeySupport = 'supported' | 'orchestrator-only';
+
+/**
+ * Classification of EVERY test-case schema key for the `claude -p` MCP build
+ * path. `orchestrator-only` keys are build-side setup the orchestrator seeds
+ * before driving the in-product agent (credential creation, conversation/thread
+ * seeding), while `claude` receives only the flattened conversation prompt — a
+ * case relying on them would build without its prerequisites and fail
+ * misleadingly, so callers skip cases that declare them.
+ *
+ * Deliberately exhaustive rather than a blocklist: the type covers the
+ * WorkflowTestCase interface (plus the schema's forbidden legacy key), and a
+ * unit test asserts parity with WORKFLOW_TEST_CASE_KEYS — adding a schema field
+ * forces an explicit decision here instead of silently building unsupported
+ * cases (same whitelist-over-blocklist argument as data/workflows/schema.ts).
+ */
+export const MCP_BUILD_KEY_SUPPORT: Record<
+	keyof WorkflowTestCase | 'buildExpectations',
+	McpBuildKeySupport
+> = {
+	description: 'supported',
+	conversation: 'supported',
+	complexity: 'supported',
+	tags: 'supported',
+	triggerType: 'supported',
+	executionScenarios: 'supported',
+	// Caps user-proxy follow-ups in the orchestrator chat loop — simply doesn't
+	// apply to a single-shot `claude` build, so it is NOT flagged.
+	messageBudget: 'supported',
+	// Judged by the harness after the build (processExpectations are skipped for
+	// transcript-less MCP builds there); declaring them needs no build-side setup.
+	processExpectations: 'supported',
+	outcomeExpectations: 'supported',
+	// Forbidden legacy key — the schema rejects it at load, so it can never
+	// reach this check; classified only to keep the map schema-complete.
+	buildExpectations: 'supported',
+	credentials: 'orchestrator-only',
+	seedFile: 'orchestrator-only',
+	priorConversation: 'orchestrator-only',
+	seedThread: 'orchestrator-only',
+	datasets: 'supported',
+};
+
+/** Keys flagged `orchestrator-only`, in map order (stable for messages/tests). */
+const ORCHESTRATOR_ONLY_KEYS = Object.entries(MCP_BUILD_KEY_SUPPORT)
+	.filter(([, support]) => support === 'orchestrator-only')
+	.map(([key]) => key);
+
 /**
  * Build-side setup fields a test case declares that the `claude -p` MCP build
- * path cannot honor. The orchestrator build seeds these before driving the
- * in-product agent (credential creation, conversation/thread seeding), while
- * `claude` receives only the flattened conversation prompt — a case relying on
- * them would build without its prerequisites and fail misleadingly, so callers
- * should skip cases where this returns a non-empty list. `messageBudget` is
- * deliberately not flagged: it caps user-proxy follow-ups in the orchestrator
- * chat loop and simply doesn't apply to a single-shot `claude` build.
+ * path cannot honor (the `orchestrator-only` keys of MCP_BUILD_KEY_SUPPORT).
+ * Callers should skip cases where this returns a non-empty list.
  */
 export function unsupportedMcpBuildSetupFields(testCase: WorkflowTestCase): string[] {
-	const fields: string[] = [];
-	if (testCase.credentials && testCase.credentials.length > 0) fields.push('credentials');
-	if (testCase.seedFile) fields.push('seedFile');
-	if (testCase.priorConversation && testCase.priorConversation.length > 0) {
-		fields.push('priorConversation');
-	}
-	if (testCase.seedThread) fields.push('seedThread');
-	return fields;
+	// Interfaces carry no implicit index signature; the spread re-types the case
+	// as an anonymous object so classified keys can be looked up generically.
+	const values: Partial<Record<string, unknown>> = { ...testCase };
+	return ORCHESTRATOR_ONLY_KEYS.filter((key) => {
+		const value = values[key];
+		if (value === undefined || value === null || value === '') return false;
+		// An empty array (e.g. credentials: []) declares nothing to seed.
+		return !Array.isArray(value) || value.length > 0;
+	});
 }
 
 // ---------------------------------------------------------------------------
