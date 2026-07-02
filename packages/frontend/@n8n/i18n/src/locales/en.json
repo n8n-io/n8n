@@ -6059,7 +6059,7 @@
 	"instanceAi.credential.autoSetup.description": "Allow AI to control my browser",
 	"instanceAi.credential.autoSetupStarted": "Automatic credential setup started",
 	"instanceAi.credential.manualSetup": "Set up manually",
-	"instanceAi.credential.manualSetup.description": "Enter your credential details",
+	"instanceAi.credential.manualSetup.description": "We can provide instructions",
 	"instanceAi.credential.setupCredentialButton": "Set up credential",
 	"instanceAi.credential.finalize.applyCredentials": "Apply credentials",
 	"instanceAi.credential.finalize.later": "Later",
