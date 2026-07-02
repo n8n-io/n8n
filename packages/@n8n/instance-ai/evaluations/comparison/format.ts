@@ -363,13 +363,13 @@ function renderWorkflowChecksSection(evaluation: MultiRunEvaluation): string[] {
 		rowByName[name] = {
 			dimension: entry.dimension,
 			failed: entry.fails > 0,
-			row: `| \`${entry.dimension}\` | \`${name}\` | ${entry.kind} | ${String(entry.passes)} | ${String(entry.fails)} | ${String(entry.nA)} | ${rate} |`,
+			row: `| \`${entry.dimension}\` | \`${name}\` | ${entry.kind} | ${String(entry.passes)} | ${String(entry.fails)} | ${String(entry.nA)} | ${String(entry.errors)} | ${rate} |`,
 		};
 	}
 
 	const header = [
-		'| Dimension | Check | Kind | Pass | Fail | N/A | Pass rate |',
-		'|---|---|---|---|---|---|---|',
+		'| Dimension | Check | Kind | Pass | Fail | N/A | Error | Pass rate |',
+		'|---|---|---|---|---|---|---|---|',
 	];
 	const rowsWhere = (keep: (name: string) => boolean): string[] => {
 		const byDimension: Record<string, string[]> = {};
@@ -382,7 +382,7 @@ function renderWorkflowChecksSection(evaluation: MultiRunEvaluation): string[] {
 	const lines: string[] = [
 		'#### Workflow checks',
 		'',
-		`_Scored over ${String(aggregate.scoredBuilds)} successful build(s). N/A = check did not apply to that workflow._`,
+		`_Scored over ${String(aggregate.scoredBuilds)} successful build(s). N/A = check did not apply to that workflow. Error = check could not be measured (e.g. judge timeout)._`,
 		'',
 	];
 

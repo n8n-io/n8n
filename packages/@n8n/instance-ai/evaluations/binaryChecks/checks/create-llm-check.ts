@@ -102,7 +102,9 @@ export function createLlmCheck(options: LlmCheckOptions): BinaryCheck {
 				]);
 			} catch (error) {
 				if (isLlmCheckTimeout(error, options.name)) {
-					return { pass: true, applicable: false, comment: `Skipped: ${error.message}` };
+					// Timeouts are measurement failures, not inapplicability — report
+					// as errored so they stay out of both pass-rate and N/A counts.
+					return { pass: false, errored: true, comment: error.message };
 				}
 				throw error;
 			} finally {

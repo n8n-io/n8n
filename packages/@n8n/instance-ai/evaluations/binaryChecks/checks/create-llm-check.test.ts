@@ -13,7 +13,7 @@ vi.mock('../../../src/utils/eval-agents', () => ({
 }));
 
 describe('createLlmCheck', () => {
-	it('marks LLM check timeouts as N/A', async () => {
+	it('marks LLM check timeouts as errored, not N/A or failed', async () => {
 		mocks.generate.mockReturnValue(new Promise(() => {}));
 
 		const check = createLlmCheck({
@@ -31,9 +31,9 @@ describe('createLlmCheck', () => {
 				timeoutMs: 1,
 			}),
 		).resolves.toEqual({
-			pass: true,
-			applicable: false,
-			comment: 'Skipped: LLM check "slow_check" timed out after 1ms',
+			pass: false,
+			errored: true,
+			comment: 'LLM check "slow_check" timed out after 1ms',
 		});
 	});
 });

@@ -319,6 +319,14 @@ describe('formatComparisonMarkdown', () => {
 				dimension: 'ai_nodes',
 				status: 'n_a',
 			},
+			{
+				name: 'fulfills_user_request',
+				description: 'd',
+				kind: 'llm',
+				dimension: 'intent_match',
+				status: 'error',
+				comment: 'LLM check "fulfills_user_request" timed out after 30000ms',
+			},
 		];
 		withChecks.testCases[0].runs[1].workflowChecks = [
 			{
@@ -342,6 +350,13 @@ describe('formatComparisonMarkdown', () => {
 				dimension: 'ai_nodes',
 				status: 'n_a',
 			},
+			{
+				name: 'fulfills_user_request',
+				description: 'd',
+				kind: 'llm',
+				dimension: 'intent_match',
+				status: 'pass',
+			},
 		];
 
 		const md = formatComparisonMarkdown(withChecks, { kind: 'no_baseline' });
@@ -351,17 +366,21 @@ describe('formatComparisonMarkdown', () => {
 		expect(md).toMatch(/`has_trigger`/);
 		expect(md).toMatch(/`valid_field_references`/);
 		expect(md).toMatch(/`agent_has_language_model`/);
-		// has_trigger → 2 pass, 0 fail, 0 N/A
+		// has_trigger → 2 pass, 0 fail, 0 N/A, 0 errors
 		expect(md).toMatch(
-			/\| `structure` \| `has_trigger` \| deterministic \| 2 \| 0 \| 0 \| 100% \|/,
+			/\| `structure` \| `has_trigger` \| deterministic \| 2 \| 0 \| 0 \| 0 \| 100% \|/,
 		);
-		// valid_field_references → 1 pass, 1 fail, 0 N/A → 50%
+		// valid_field_references → 1 pass, 1 fail, 0 N/A, 0 errors → 50%
 		expect(md).toMatch(
-			/\| `parameter_correctness` \| `valid_field_references` \| deterministic \| 1 \| 1 \| 0 \| 50% \|/,
+			/\| `parameter_correctness` \| `valid_field_references` \| deterministic \| 1 \| 1 \| 0 \| 0 \| 50% \|/,
 		);
 		// agent_has_language_model → 0/0 scored, 2 N/A
 		expect(md).toMatch(
-			/\| `ai_nodes` \| `agent_has_language_model` \| deterministic \| 0 \| 0 \| 2 \| — \|/,
+			/\| `ai_nodes` \| `agent_has_language_model` \| deterministic \| 0 \| 0 \| 2 \| 0 \| — \|/,
+		);
+		// fulfills_user_request → the errored run stays out of the denominator: 1/1 scored → 100%
+		expect(md).toMatch(
+			/\| `intent_match` \| `fulfills_user_request` \| llm \| 1 \| 0 \| 0 \| 1 \| 100% \|/,
 		);
 	});
 
