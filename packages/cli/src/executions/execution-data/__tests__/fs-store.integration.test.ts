@@ -2,12 +2,12 @@
 
 import { mockInstance } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 import { ErrorReporter, StorageConfig } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 import fs, { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { mock } from 'vitest-mock-extended';
 
 import { EXECUTION_DATA_BUNDLE_FILENAME } from '../constants';
 import { CorruptedExecutionDataError } from '../corrupted-execution-data.error';
@@ -17,7 +17,7 @@ import { createExecutionRef } from '../types';
 import type { ExecutionDataPayload } from '../types';
 import { executionId, payload, ref, workflowId } from './mocks';
 
-jest.unmock('node:fs/promises');
+vi.unmock('node:fs/promises');
 
 let fsStore: FsStore;
 let storagePath: string;
@@ -31,13 +31,13 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	jest.mocked(errorReporter.error).mockClear();
+	vi.mocked(errorReporter.error).mockClear();
 	const workflowsDir = join(storagePath, 'workflows');
 	await rm(workflowsDir, { recursive: true, force: true }).catch(() => {});
 });
 
 afterEach(() => {
-	jest.restoreAllMocks();
+	vi.restoreAllMocks();
 });
 
 afterAll(async () => {
@@ -113,7 +113,7 @@ describe('write', () => {
 	});
 
 	it('should throw `ExecutionDataWriteError` on write failure and clean up temp file', async () => {
-		jest.spyOn(fs, 'rename').mockRejectedValueOnce(new Error('EACCES: permission denied'));
+		vi.spyOn(fs, 'rename').mockRejectedValueOnce(new Error('EACCES: permission denied'));
 
 		await expect(fsStore.write(ref, payload)).rejects.toThrow(ExecutionDataWriteError);
 
@@ -215,7 +215,7 @@ describe('readMany', () => {
 		await fsStore.write(target, payload);
 
 		const eacces = Object.assign(new Error('EACCES: permission denied'), { code: 'EACCES' });
-		jest.spyOn(fs, 'readFile').mockRejectedValueOnce(eacces);
+		vi.spyOn(fs, 'readFile').mockRejectedValueOnce(eacces);
 
 		await expect(fsStore.readMany([target])).rejects.toBe(eacces);
 		expect(errorReporter.error).not.toHaveBeenCalled();

@@ -330,7 +330,7 @@ export class WorkflowIndexService {
 		if (node.type !== 'n8n-nodes-base.webhook') {
 			return;
 		}
-		const webhookPath = node.parameters.path as string;
+		const webhookPath = node.parameters?.path as string;
 		if (webhookPath) {
 			dependencyUpdates.add({
 				dependencyType: 'webhookPath',

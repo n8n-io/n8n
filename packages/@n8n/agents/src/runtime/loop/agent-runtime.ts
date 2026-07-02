@@ -382,6 +382,11 @@ export class AgentRuntime {
 
 			await this.memory.setListObservationLogMemory(list, state.persistence);
 
+			const claimed = await this.runState.claimResume(this.runId, state);
+			if (!claimed) {
+				throw new Error(`Run ${this.runId} is not suspended. Cannot resume.`);
+			}
+
 			if (method === 'generate') {
 				const sink = new GenerateSink(this.createRunServices());
 				const rawResult = await this.telemetry.withRootSpan(

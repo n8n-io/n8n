@@ -753,6 +753,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		createdAt: true,
 		startedAt: true,
 		stoppedAt: true,
+		usedPrivateCredentials: true,
 	};
 
 	private annotationFields = {
@@ -833,6 +834,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		waitTill?: Date | string | null;
 		jsonSizeBytes?: number | string;
 		binaryDataSizeBytes?: number | string;
+		usedPrivateCredentials?: boolean | number;
 	}): ExecutionSummary {
 		execution.id = execution.id.toString();
 
@@ -844,6 +846,11 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		if (typeof execution.binaryDataSizeBytes === 'string') {
 			// Raw query bypasses the entity transformer, so Postgres hands bigint back as a string.
 			execution.binaryDataSizeBytes = Number(execution.binaryDataSizeBytes);
+		}
+
+		// SQLite returns 0/1 for booleans; coerce to a proper boolean.
+		if (typeof execution.usedPrivateCredentials === 'number') {
+			execution.usedPrivateCredentials = execution.usedPrivateCredentials !== 0;
 		}
 
 		const normalizeDateString = (date: string) => {

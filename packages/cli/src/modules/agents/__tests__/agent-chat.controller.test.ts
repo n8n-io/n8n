@@ -1,4 +1,5 @@
-import { mock } from 'jest-mock-extended';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -35,7 +36,7 @@ function makeController() {
 		agentsService: {
 			findById: agentsService.findById,
 			getConversationHistory: agentExecutionOrchestratorService.getConversationHistory,
-		} as jest.Mocked<
+		} as Mocked<
 			Pick<AgentsService, 'findById'> &
 				Pick<AgentExecutionOrchestratorService, 'getConversationHistory'>
 		>,

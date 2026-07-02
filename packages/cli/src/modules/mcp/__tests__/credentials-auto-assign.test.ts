@@ -7,10 +7,10 @@ import type {
 } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 
-import { autoPopulateNodeCredentials } from '../tools/workflow-builder/credentials-auto-assign';
-
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { NodeTypes } from '@/node-types';
+
+import { autoPopulateNodeCredentials } from '../tools/workflow-builder/credentials-auto-assign';
 
 const user = { id: 'user-1' } as User;
 const projectId = 'project-1';
@@ -63,11 +63,11 @@ function createMocks({
 	nodeTypeDescriptions?: Map<string, INodeTypeDescription>;
 } = {}) {
 	const credentialsService = {
-		getCredentialsAUserCanUseInAWorkflow: jest.fn().mockResolvedValue(usableCredentials),
+		getCredentialsAUserCanUseInAWorkflow: vi.fn().mockResolvedValue(usableCredentials),
 	} as unknown as CredentialsService;
 
 	const nodeTypes = {
-		getByNameAndVersion: jest.fn().mockImplementation((type: string) => {
+		getByNameAndVersion: vi.fn().mockImplementation((type: string) => {
 			const desc = nodeTypeDescriptions.get(type);
 			if (!desc) throw new Error(`Unknown node type: ${type}`);
 			return { description: desc };
@@ -78,7 +78,7 @@ function createMocks({
 }
 
 describe('autoPopulateNodeCredentials', () => {
-	afterEach(() => jest.restoreAllMocks());
+	afterEach(() => vi.restoreAllMocks());
 
 	test('assigns credential when node needs one and a matching credential exists', async () => {
 		const node = makeNode();
@@ -89,7 +89,7 @@ describe('autoPopulateNodeCredentials', () => {
 			nodeTypeDescriptions: new Map([['n8n-nodes-base.slack', desc]]),
 		});
 
-		jest.spyOn(NodeHelpers, 'displayParameter').mockReturnValue(true);
+		vi.spyOn(NodeHelpers, 'displayParameter').mockReturnValue(true);
 
 		const result = await autoPopulateNodeCredentials(
 			workflow,
@@ -115,7 +115,7 @@ describe('autoPopulateNodeCredentials', () => {
 			nodeTypeDescriptions: new Map([['n8n-nodes-base.slack', desc]]),
 		});
 
-		jest.spyOn(NodeHelpers, 'displayParameter').mockReturnValue(true);
+		vi.spyOn(NodeHelpers, 'displayParameter').mockReturnValue(true);
 
 		const result = await autoPopulateNodeCredentials(
 			workflow,
@@ -182,7 +182,7 @@ describe('autoPopulateNodeCredentials', () => {
 			nodeTypeDescriptions: new Map([['n8n-nodes-base.slack', desc]]),
 		});
 
-		jest.spyOn(NodeHelpers, 'displayParameter').mockReturnValue(true);
+		vi.spyOn(NodeHelpers, 'displayParameter').mockReturnValue(true);
 
 		const result = await autoPopulateNodeCredentials(
 			workflow,
@@ -247,7 +247,7 @@ describe('autoPopulateNodeCredentials', () => {
 			nodeTypeDescriptions: new Map([['n8n-nodes-base.slack', desc]]),
 		});
 
-		jest.spyOn(NodeHelpers, 'displayParameter').mockReturnValue(false);
+		vi.spyOn(NodeHelpers, 'displayParameter').mockReturnValue(false);
 
 		const result = await autoPopulateNodeCredentials(
 			workflow,
@@ -272,7 +272,7 @@ describe('autoPopulateNodeCredentials', () => {
 			nodeTypeDescriptions: new Map([['n8n-nodes-base.slack', desc]]),
 		});
 
-		jest.spyOn(NodeHelpers, 'displayParameter').mockReturnValue(true);
+		vi.spyOn(NodeHelpers, 'displayParameter').mockReturnValue(true);
 
 		const result = await autoPopulateNodeCredentials(
 			workflow,
@@ -312,7 +312,7 @@ describe('autoPopulateNodeCredentials', () => {
 			]),
 		});
 
-		jest.spyOn(NodeHelpers, 'displayParameter').mockReturnValue(true);
+		vi.spyOn(NodeHelpers, 'displayParameter').mockReturnValue(true);
 
 		const result = await autoPopulateNodeCredentials(
 			workflow,

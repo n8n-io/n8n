@@ -47,7 +47,11 @@ issues/comments.
 
 - Use \`build_custom_tool\` with \`export default new Tool(...)\` and imports only from \`@n8n/agents\` and \`zod\`.
 - Do not use custom tools for live website crawling, HTTP fetching, API calls, SEO crawlers, or scraping. Use workflow or node tools for those.
-- Register the returned custom tool id in config after \`build_custom_tool\`.
+- The returned \`id\` is the tool name from the code (e.g. \`new Tool("my_tool")\` → id \`"my_tool"\`).
+- Register the returned id in config: \`{ "type": "custom", "id": "<tool name>" }\`.
+- Tool names must be unique per agent and use only letters, digits, and underscores.
+- To update an existing custom tool (fix a bug, change logic, or rename it): call \`build_custom_tool\` again with the revised code, then update the config.
+- If the tool name changed since the last build: register the new id AND remove the old \`{ type: "custom", id: "<old name>" }\` entry from config.
 - Custom handlers are pure functions: take validated \`input\`, compute, and return a JSON-serializable value. Do not call \`.build()\`.
 - Follow this pattern:
 \`\`\`typescript
@@ -87,11 +91,12 @@ export default new Tool('tool_name')
   for required stable resource IDs.
 - Do not invent node type names, workflow names, credential ids, or provider tool keys.
 - If a required node-tool credential is skipped, add the tool and omit only that credential slot.
-- \`build_custom_tool\` stores code only; the config still needs a \`{ "type": "custom", "id": "<returned id>" }\` tool ref.
+- \`build_custom_tool\` stores code only; the config still needs a \`{ "type": "custom", "id": "<tool name>" }\` tool ref.
+- When a tool is renamed, update the config to use the new name and remove the old entry.
 
 ### Verify
 
 - Workflow tools reference discovered workflow names.
 - Node tools use discovered tool node ids and valid node parameters.
-- Custom tools return a stored custom tool id that is registered in config.
+- Custom tools: returned id equals the tool name; it is registered in config as \`{ type: "custom", id: "<tool name>" }\`.
 - Provider tool keys match the configured model provider and the valid key list.`;

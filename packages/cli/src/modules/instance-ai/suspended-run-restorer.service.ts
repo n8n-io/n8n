@@ -1,14 +1,17 @@
 import type { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
-import type { ConfirmationData, RunStateRegistry, SuspendedRunState } from '@n8n/instance-ai';
+import {
+	orchestratorAgentId,
+	type ConfirmationData,
+	type RunStateRegistry,
+	type SuspendedRunState,
+} from '@n8n/instance-ai';
 import { UserError } from 'n8n-workflow';
 
 import type { InstanceAiPendingConfirmation } from './entities/instance-ai-pending-confirmation.entity';
 import type { InProcessEventBus } from './event-bus/in-process-event-bus';
 import type { InstanceAiPendingConfirmationRepository } from './repositories/instance-ai-pending-confirmation.repository';
 import type { DbSnapshotStorage } from './storage/db-snapshot-storage';
-
-const ORCHESTRATOR_AGENT_ID = 'agent-001';
 
 function getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
@@ -196,7 +199,7 @@ export class SuspendedRunRestorer {
 		this.eventBus.publish(threadId, {
 			type: 'run-finish',
 			runId,
-			agentId: ORCHESTRATOR_AGENT_ID,
+			agentId: orchestratorAgentId(runId),
 			payload: { status: 'cancelled', reason },
 		});
 	}

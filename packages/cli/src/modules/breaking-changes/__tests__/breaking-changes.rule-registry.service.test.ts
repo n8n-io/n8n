@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { RuleRegistry } from '../breaking-changes.rule-registry.service';
 import type {
@@ -11,11 +11,11 @@ import { BreakingChangeCategory } from '../types';
 
 describe('RuleRegistry', () => {
 	const logger = mock<Logger>({
-		scoped: jest.fn().mockReturnThis(),
-		debug: jest.fn(),
-		error: jest.fn(),
-		warn: jest.fn(),
-		info: jest.fn(),
+		scoped: vi.fn().mockReturnThis(),
+		debug: vi.fn(),
+		error: vi.fn(),
+		warn: vi.fn(),
+		info: vi.fn(),
 	});
 
 	let registry: RuleRegistry;
@@ -36,8 +36,8 @@ describe('RuleRegistry', () => {
 
 		const mockRule: IBreakingChangeRule = {
 			id,
-			getMetadata: jest.fn(() => metadata),
-			detect: jest.fn(async () => {
+			getMetadata: vi.fn(() => metadata),
+			detect: vi.fn(async () => {
 				return await Promise.resolve({
 					isAffected: false,
 					instanceIssues: [],
@@ -50,13 +50,13 @@ describe('RuleRegistry', () => {
 	};
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		registry = new RuleRegistry(logger);
 	});
 
 	describe('constructor', () => {
 		it('should initialize with a scoped logger', () => {
-			const scopedLogger = jest.fn().mockReturnThis();
+			const scopedLogger = vi.fn().mockReturnThis();
 			const testLogger = mock<Logger>({ scoped: scopedLogger });
 
 			new RuleRegistry(testLogger);

@@ -37,6 +37,8 @@ import { createExecuteWorkflowTool } from './tools/execute-workflow.tool';
 import { createGetExecutionTool } from './tools/get-execution.tool';
 import { createSearchExecutionsTool } from './tools/search-executions.tool';
 import { createWorkflowDetailsTool } from './tools/get-workflow-details.tool';
+import { createGetWorkflowHistoryTool } from './tools/get-workflow-history.tool';
+import { createGetWorkflowVersionTool } from './tools/get-workflow-version.tool';
 import { createListCredentialsTool } from './tools/list-credentials.tool';
 import { createListTagsTool } from './tools/list-tags.tool';
 import { createPublishWorkflowTool } from './tools/publish-workflow.tool';
@@ -48,6 +50,7 @@ import { createCreateWorkflowFromCodeTool } from './tools/workflow-builder/creat
 import { createArchiveWorkflowTool } from './tools/workflow-builder/delete-workflow.tool';
 import { createExploreNodeResourcesTool } from './tools/workflow-builder/explore-node-resources.tool';
 import { createUpdateWorkflowTool } from './tools/workflow-builder/update-workflow.tool';
+import { createRestoreWorkflowVersionTool } from './tools/workflow-builder/restore-workflow-version.tool';
 import { createGetWorkflowBestPracticesTool } from './tools/workflow-builder/get-workflow-best-practices.tool';
 import { createGetWorkflowNodeTypesTool } from './tools/workflow-builder/get-workflow-node-types.tool';
 import { createGetWorkflowSdkReferenceTool } from './tools/workflow-builder/get-workflow-sdk-reference.tool';
@@ -74,8 +77,10 @@ import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
 import { WorkflowService } from '@/workflows/workflow.service';
+import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import { MCP_PREVIEW_RENDER_REQUESTED_EVENT } from './mcp.constants';
 import type { McpAppsTelemetryVariant, McpClientInfo } from './mcp.types';
 import { createPrepareTestPinDataTool } from './tools/prepare-workflow-pin-data.tool';
@@ -137,8 +142,10 @@ export class McpService {
 		private readonly tagService: TagService,
 		private readonly licenseState: LicenseState,
 		private readonly postHogClient: PostHogClient,
+		private readonly workflowHistoryService: WorkflowHistoryService,
 		private readonly workflowsConfig: WorkflowsConfig,
 		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
+		private readonly subworkflowPolicyChecker: SubworkflowPolicyChecker,
 	) {}
 
 	async resolveMcpAppsVariant(user: User): Promise<McpAppsResolution> {
@@ -271,11 +278,36 @@ export class McpService {
 			this.telemetry,
 			this.roleService,
 			this.projectService,
+			this.urlService.getTestWebhookBaseUrl(),
 		);
 		server.registerTool(
 			workflowDetailsTool.name,
 			workflowDetailsTool.config,
 			workflowDetailsTool.handler,
+		);
+
+		const workflowHistoryTool = createGetWorkflowHistoryTool(
+			user,
+			this.workflowFinderService,
+			this.workflowHistoryService,
+			this.telemetry,
+		);
+		server.registerTool(
+			workflowHistoryTool.name,
+			workflowHistoryTool.config,
+			workflowHistoryTool.handler,
+		);
+
+		const workflowVersionTool = createGetWorkflowVersionTool(
+			user,
+			this.workflowFinderService,
+			this.workflowHistoryService,
+			this.telemetry,
+		);
+		server.registerTool(
+			workflowVersionTool.name,
+			workflowVersionTool.config,
+			workflowVersionTool.handler,
 		);
 
 		const publishWorkflowTool = createPublishWorkflowTool(
@@ -548,8 +580,24 @@ export class McpService {
 			dataTableOps,
 			this.tagService,
 			this.globalConfig,
+			this.subworkflowPolicyChecker,
+			this.workflowPublishedDataService,
 		);
 		server.registerTool(updateTool.name, updateTool.config, updateTool.handler);
+
+		const restoreVersionTool = createRestoreWorkflowVersionTool(
+			user,
+			this.workflowFinderService,
+			this.workflowHistoryService,
+			this.workflowService,
+			this.telemetry,
+			this.collaborationService,
+		);
+		server.registerTool(
+			restoreVersionTool.name,
+			restoreVersionTool.config,
+			restoreVersionTool.handler,
+		);
 
 		// SDK reference as MCP resource — for clients that support resources.
 		server.resource(

@@ -1,0 +1,393 @@
+name: 'Test: MCP Workflow Evals'
+
+# Scores workflows built through the instance MCP server (packages/cli/src/modules/mcp)
+# with the Instance AI verifier. Two phases on a single n8n container:
+#   1. Build  — `eval:build-mcp-manifest` drives the `claude` CLI against the
+#               container's MCP server; Claude builds workflows via MCP tools
+#               and the script writes a manifest of workflow IDs.
+#   2. Eval   — `eval:instance-ai --prebuilt-workflows` fetches each built
+#               workflow by ID and runs the normal mock-execution + verifier.
+#
+# Single instance only: prebuilt workflows live in one n8n DB, so the eval CLI
+# rejects multiple --base-url values in prebuilt mode. No sandbox is needed —
+# the builder is Claude, and verification runs on the execution engine.
+on:
+  workflow_call:
+    inputs:
+      branch:
+        description: 'Git ref to test. Defaults to the caller ref when empty.'
+        required: false
+        type: string
+        default: ''
+      tier:
+        description: 'Test-case dataset to build + eval (e.g. "mcp")'
+        required: false
+        type: string
+        default: 'mcp'
+      filter:
+        description: 'Only build + eval test cases whose slug matches (comma-separated; empty = whole tier)'
+        required: false
+        type: string
+        default: ''
+      iterations:
+        description: 'Builds per test case (-n) and verifier iterations'
+        required: false
+        type: string
+        default: '3'
+      build-concurrency:
+        description: 'Parallel claude build processes (-j)'
+        required: false
+        type: string
+        default: '3'
+      eval-concurrency:
+        description: 'Concurrent scenario executions in the verifier'
+        required: false
+        type: string
+        default: '6'
+      model:
+        description: 'Anthropic model id for the claude build step'
+        required: false
+        type: string
+        default: 'claude-sonnet-4-6'
+      experiment-name:
+        description: 'LangSmith experiment name (mcp-baseline refreshes the baseline)'
+        required: false
+        type: string
+        default: ''
+    # Declared explicitly (not `secrets: inherit`) so the caller passes only what
+    # this workflow needs. All optional — a missing secret resolves to "" (e.g.
+    # LangSmith recording is simply skipped without a key).
+    secrets:
+      EVALS_ANTHROPIC_KEY:
+        required: false
+      N8N_LICENSE_ACTIVATION_KEY:
+        required: false
+      N8N_LICENSE_CERT:
+        required: false
+      N8N_ENCRYPTION_KEY:
+        required: false
+      EVALS_LANGSMITH_ENDPOINT:
+        required: false
+      EVALS_LANGSMITH_API_KEY:
+        required: false
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Git ref to test. Defaults to the dispatched ref when empty.'
+        required: false
+        default: ''
+      tier:
+        description: 'Test-case dataset to build + eval (e.g. "mcp")'
+        required: false
+        default: 'mcp'
+      filter:
+        description: 'Only build + eval test cases whose slug matches (comma-separated; empty = whole tier)'
+        required: false
+        default: ''
+      iterations:
+        description: 'Builds per test case (-n) and verifier iterations (use 10 for a baseline)'
+        required: false
+        default: '3'
+      build-concurrency:
+        description: 'Parallel claude build processes (-j)'
+        required: false
+        default: '3'
+      eval-concurrency:
+        description: 'Concurrent scenario executions in the verifier'
+        required: false
+        default: '6'
+      model:
+        description: 'Anthropic model id for the claude build step'
+        required: false
+        default: 'claude-sonnet-4-6'
+      experiment-name:
+        description: 'LangSmith experiment name (set to mcp-baseline to refresh the baseline)'
+        required: false
+        default: ''
+
+jobs:
+  run-evals:
+    name: 'Run MCP Evals'
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    timeout-minutes: 120
+    env:
+      # Single n8n container; the eval verifier runs against this one instance.
+      MCP_PORT: '5678'
+      # MCP server name written into ~/.claude.json and passed to --mcp-server.
+      MCP_SERVER_NAME: 'n8n-local'
+      # Manifest + build logs land here (relative to packages/@n8n/instance-ai).
+      COHORT_DIR: 'eval-mcp-cohort'
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: useblacksmith/checkout@41cdeedae8edb2e684ba22896a5fd2a3cb85db6b # v1
+        with:
+          ref: ${{ inputs.branch || github.ref }}
+          fetch-depth: 1
+          # No post-checkout step needs the token (the build only runs local
+          # `git rev-parse`), and this job uploads artifacts — drop the persisted
+          # credential so it can't leak (zizmor: artipacked).
+          persist-credentials: false
+
+      - name: Setup Environment
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: 'pnpm build'
+
+      # The MCP build phase drives the standalone `claude` CLI as a subprocess
+      # (see build-mcp-manifest.ts). It reaches the container's MCP server over
+      # the published port on the host.
+      - name: Install Claude Code CLI
+        run: |
+          npm install -g @anthropic-ai/claude-code
+          command -v claude || { echo "::error::claude CLI not on PATH after install"; exit 1; }
+
+      # Cache populated by prepare-docker; on a miss the action falls back to a
+      # rebuild via build-n8n-docker (manual/scheduled runs usually rebuild).
+      - name: Load n8n Docker image
+        uses: ./.github/actions/load-n8n-docker
+
+      - name: Start n8n container
+        env:
+          EVALS_ANTHROPIC_KEY: ${{ secrets.EVALS_ANTHROPIC_KEY }}
+          N8N_LICENSE_ACTIVATION_KEY: ${{ secrets.N8N_LICENSE_ACTIVATION_KEY }}
+          N8N_LICENSE_CERT: ${{ secrets.N8N_LICENSE_CERT }}
+          N8N_ENCRYPTION_KEY: ${{ secrets.N8N_ENCRYPTION_KEY }}
+        run: |
+          # instance-ai module serves the eval verifier (Phase 1/2 + checks).
+          # mcp + mcp-registry are default modules. No sandbox. MCP access is NOT
+          # enabled via env here: /rest/e2e/reset truncates the settings table and
+          # clears the cache, which would wipe a startup env-enable. We enable MCP
+          # via the API *after* the reset instead (see the next step).
+          docker run -d --name n8n-eval-mcp \
+            -e E2E_TESTS=true \
+            -e N8N_ENABLED_MODULES=instance-ai \
+            -e N8N_AI_ENABLED=true \
+            -e N8N_INSTANCE_AI_MODEL_API_KEY="$EVALS_ANTHROPIC_KEY" \
+            -e N8N_AI_ASSISTANT_BASE_URL="" \
+            -e N8N_LICENSE_ACTIVATION_KEY="$N8N_LICENSE_ACTIVATION_KEY" \
+            -e N8N_LICENSE_CERT="$N8N_LICENSE_CERT" \
+            -e N8N_ENCRYPTION_KEY="$N8N_ENCRYPTION_KEY" \
+            -p "${MCP_PORT}:5678" \
+            n8nio/n8n:local
+
+          ready=false
+          for i in $(seq 1 120); do
+            if curl -s "http://localhost:${MCP_PORT}/healthz/readiness" -o /dev/null -w "%{http_code}" | grep -q 200; then
+              echo "n8n ready after ${i}s"
+              ready=true
+              break
+            fi
+            sleep 1
+          done
+          if [ "$ready" != "true" ]; then
+            echo "::error::n8n failed to start within 120s"
+            docker logs n8n-eval-mcp --tail 50 || true
+            exit 1
+          fi
+
+      - name: Create test user
+        run: |
+          curl -sf -X POST "http://localhost:${MCP_PORT}/rest/e2e/reset" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "owner":{"email":"nathan@n8n.io","password":"PlaywrightTest123","firstName":"Eval","lastName":"Owner"},
+              "admin":{"email":"admin@n8n.io","password":"PlaywrightTest123","firstName":"Admin","lastName":"User"},
+              "members":[],
+              "chat":{"email":"chat@n8n.io","password":"PlaywrightTest123","firstName":"Chat","lastName":"User"}
+            }'
+
+      # Enable MCP (post-reset), mint an MCP API key for the seeded owner, and
+      # write the Claude config the build phase needs. The FIRST /rest/mcp/api-key
+      # call on a fresh user returns the UNREDACTED JWT (getOrCreateApiKey creates
+      # + returns it raw); subsequent calls redact it, so this runs once.
+      - name: Enable MCP, mint API key, write Claude config
+        run: |
+          curl -sf -X POST "http://localhost:${MCP_PORT}/rest/login" \
+            -H "Content-Type: application/json" \
+            -d '{"emailOrLdapLoginId":"nathan@n8n.io","password":"PlaywrightTest123"}' \
+            -c /tmp/mcp-cookies.txt -o /dev/null
+
+          # /rest/e2e/reset truncated the settings table + cleared the cache, so
+          # MCP access is off. Enable it via the API (owner has mcp:manage; the
+          # PATCH is only refused when N8N_MCP_MANAGED_BY_ENV is set, which it isn't).
+          MCP_SETTINGS=$(curl -sf -X PATCH "http://localhost:${MCP_PORT}/rest/mcp/settings" \
+            -b /tmp/mcp-cookies.txt -H "Content-Type: application/json" \
+            -d '{"mcpAccessEnabled": true}')
+          echo "MCP settings after enable: $MCP_SETTINGS"
+          if [ "$(echo "$MCP_SETTINGS" | jq -r '.data.mcpAccessEnabled')" != "true" ]; then
+            echo "::error::Failed to enable MCP access (got: $MCP_SETTINGS)"
+            exit 1
+          fi
+
+          API_KEY=$(curl -sf -b /tmp/mcp-cookies.txt \
+            "http://localhost:${MCP_PORT}/rest/mcp/api-key" | jq -r '.data.apiKey')
+          if [ -z "$API_KEY" ] || [ "$API_KEY" = "null" ]; then
+            echo "::error::Failed to obtain MCP API key from /rest/mcp/api-key"
+            exit 1
+          fi
+          # Mask the JWT for the remainder of the job (covers all later log steps).
+          echo "::add-mask::$API_KEY"
+
+          # build-mcp-manifest.ts reads the server block from ~/.claude.json and
+          # re-stages it via --mcp-config/--strict-mcp-config. ~/.claude/settings.json
+          # force-trusts MCP so `claude -p` runs headless (mirrors the official
+          # claude-code-action's enableAllProjectMcpServers).
+          mkdir -p "$HOME/.claude"
+          jq -n \
+            --arg url "http://localhost:${MCP_PORT}/mcp-server/http" \
+            --arg key "$API_KEY" \
+            --arg name "$MCP_SERVER_NAME" \
+            '{
+              hasCompletedOnboarding: true,
+              mcpServers: { ($name): { type: "http", url: $url, headers: { Authorization: ("Bearer " + $key) } } }
+            }' > "$HOME/.claude.json"
+          echo '{ "enableAllProjectMcpServers": true }' > "$HOME/.claude/settings.json"
+
+      - name: Build workflows via MCP (claude)
+        working-directory: packages/@n8n/instance-ai
+        env:
+          # The claude CLI authenticates with the Anthropic direct API key.
+          ANTHROPIC_API_KEY: ${{ secrets.EVALS_ANTHROPIC_KEY }}
+          TIER: ${{ inputs.tier }}
+          FILTER: ${{ inputs.filter }}
+          ITERATIONS: ${{ inputs.iterations }}
+          BUILD_CONCURRENCY: ${{ inputs.build-concurrency }}
+          MODEL: ${{ inputs.model }}
+        run: |
+          # build-mcp-manifest narrows by positional slugs (space-separated),
+          # not --filter; translate a comma/space list into positional args.
+          ARGS=(
+            --tier "${TIER:-mcp}"
+            -n "${ITERATIONS:-3}"
+            -j "${BUILD_CONCURRENCY:-3}"
+            --mcp-server "$MCP_SERVER_NAME"
+            --model "$MODEL"
+            --output-dir "$COHORT_DIR"
+          )
+          if [ -n "$FILTER" ]; then
+            read -ra SLUGS <<< "${FILTER//,/ }"
+            ARGS+=("${SLUGS[@]}")
+          fi
+          pnpm eval:build-mcp-manifest "${ARGS[@]}"
+
+      - name: Run MCP Evals
+        continue-on-error: true
+        working-directory: packages/@n8n/instance-ai
+        env:
+          # Server-side verifier (Phase 1/2) uses the container's key; the eval
+          # CLI's own LLM checks use this one. Same key, two budgets.
+          N8N_INSTANCE_AI_MODEL_API_KEY: ${{ secrets.EVALS_ANTHROPIC_KEY }}
+          LANGSMITH_TRACING: 'true'
+          LANGSMITH_ENDPOINT: ${{ secrets.EVALS_LANGSMITH_ENDPOINT }}
+          LANGSMITH_API_KEY: ${{ secrets.EVALS_LANGSMITH_API_KEY }}
+          LANGSMITH_REVISION_ID: ${{ github.sha }}
+          LANGSMITH_BRANCH: ${{ github.event.pull_request.head.ref || github.head_ref || github.ref_name }}
+          TIER: ${{ inputs.tier }}
+          ITERATIONS: ${{ inputs.iterations }}
+          EVAL_CONCURRENCY: ${{ inputs.eval-concurrency }}
+          EXPERIMENT_NAME: ${{ inputs.experiment-name }}
+        run: |
+          # build-mcp-manifest exits 0 even on partial failures (a failed build is
+          # recorded as workflowId: null and omitted), so a partial manifest can
+          # reach this step. Narrow the eval to exactly the slugs that DID build —
+          # deriving --filter from the manifest keys, NOT $FILTER. Otherwise a
+          # tier case missing from the manifest gets no prebuilt id and falls
+          # through to the orchestrator build path (runner.ts → buildWorkflow),
+          # which isn't configured in this job. This keeps the run set == built
+          # cohort even on a full-tier run (empty $FILTER). NB: --filter is a
+          # substring match; the mcp-tier slugs have no substring overlaps, so the
+          # keys map 1:1 to cases.
+          MANIFEST="${COHORT_DIR}/manifest.json"
+          if [ ! -f "$MANIFEST" ]; then
+            echo "::error::Manifest not found at $MANIFEST — the build step produced no cohort"
+            exit 1
+          fi
+          BUILT_SLUGS=$(jq -r 'keys | join(",")' "$MANIFEST")
+          if [ -z "$BUILT_SLUGS" ]; then
+            echo "::error::Manifest contains no successfully-built workflows"
+            exit 1
+          fi
+          echo "Evaluating built slugs: $BUILT_SLUGS"
+
+          # --dataset + --baseline-prefix keep the MCP cohort isolated from the
+          # Instance AI dataset/baseline in LangSmith (both halves required).
+          ARGS=(
+            --base-url "http://localhost:${MCP_PORT}"
+            --tier "${TIER:-mcp}"
+            --filter "$BUILT_SLUGS"
+            --prebuilt-workflows "$MANIFEST"
+            --iterations "${ITERATIONS:-3}"
+            --concurrency "${EVAL_CONCURRENCY:-6}"
+            --dataset mcp-workflow-evals
+            --baseline-prefix mcp-baseline-
+            --verbose
+          )
+          [ -n "$EXPERIMENT_NAME" ] && ARGS+=(--experiment-name "$EXPERIMENT_NAME")
+          pnpm eval:instance-ai "${ARGS[@]}"
+
+      # No PR to comment on (manual/scheduled), so surface the rendered result
+      # comment in the job summary instead. Always runs so failures are visible.
+      - name: Write eval summary
+        if: ${{ always() }}
+        working-directory: packages/@n8n/instance-ai
+        run: |
+          if [ -f eval-pr-comment.md ]; then
+            cat eval-pr-comment.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "### MCP Workflow Eval" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "No eval results produced (build or eval failed before writing results). Check the job logs and the uploaded build logs." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      # Runs even on failure for post-mortem. Two layers of secret-leak defense:
+      # (1) filter to diagnostic patterns, never tail raw output; (2) re-register
+      # each secret via ::add-mask:: (multi-line certs masked line-by-line).
+      - name: Capture n8n container logs (debug)
+        if: ${{ always() }}
+        env:
+          EVALS_ANTHROPIC_KEY: ${{ secrets.EVALS_ANTHROPIC_KEY }}
+          N8N_LICENSE_ACTIVATION_KEY: ${{ secrets.N8N_LICENSE_ACTIVATION_KEY }}
+          N8N_LICENSE_CERT: ${{ secrets.N8N_LICENSE_CERT }}
+          N8N_ENCRYPTION_KEY: ${{ secrets.N8N_ENCRYPTION_KEY }}
+        run: |
+          for v in "$EVALS_ANTHROPIC_KEY" "$N8N_LICENSE_ACTIVATION_KEY" \
+                   "$N8N_LICENSE_CERT" "$N8N_ENCRYPTION_KEY"; do
+            [ -z "$v" ] && continue
+            while IFS= read -r line; do
+              [ -n "$line" ] && echo "::add-mask::$line"
+            done <<< "$v"
+          done
+
+          SIGNALS='mcp|builder|instance.?ai|error|warn|reject|exception|fail'
+          echo "============================================================"
+          echo "=== n8n-eval-mcp (filtered diagnostic signals, last 100 lines) ==="
+          echo "============================================================"
+          docker logs n8n-eval-mcp 2>&1 \
+            | grep -ivE 'migration' \
+            | grep -iE "$SIGNALS" \
+            | tail -100 \
+            || true
+
+      - name: Stop n8n container
+        if: ${{ always() }}
+        run: |
+          docker stop n8n-eval-mcp 2>/dev/null || true
+          docker rm n8n-eval-mcp 2>/dev/null || true
+
+      - name: Upload Results
+        if: ${{ always() }}
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: mcp-workflow-eval-results
+          path: |
+            packages/@n8n/instance-ai/eval-results.json
+            packages/@n8n/instance-ai/eval-pr-comment.md
+            packages/@n8n/instance-ai/.data/workflow-eval-report.html
+            packages/@n8n/instance-ai/eval-mcp-cohort/manifest.json
+            packages/@n8n/instance-ai/eval-mcp-cohort/manifest-stats.json
+            packages/@n8n/instance-ai/eval-mcp-cohort/logs
+          if-no-files-found: ignore
+          retention-days: 14

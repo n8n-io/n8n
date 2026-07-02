@@ -33,7 +33,7 @@ const {
 	experimentMocks: {
 		proactiveAgentEnabled: { value: false },
 		promptSuggestionsV2Enabled: { value: false },
-		workflowPreviewEnabled: { value: false },
+		workflowPreviewEnabled: { value: true }, // Experiment cleanup: remove with InstanceAiWorkflowPreviewSuggestionsExperiment
 		splitBelowInputVariant: { value: false },
 		personalizedPromptVariant: { value: undefined as string | undefined },
 		personalizedPromptFormat: { value: null as 'cards' | 'list' | null },
@@ -347,6 +347,7 @@ type InstanceAiModuleSettings = NonNullable<FrontendModuleSettings['instance-ai'
 const defaultModuleSettings: InstanceAiModuleSettings = {
 	enabled: true,
 	localGatewayDisabled: false,
+	browserUseEnabled: true,
 	proxyEnabled: false,
 	cloudManaged: false,
 	sandboxEnabled: true,
@@ -388,7 +389,7 @@ describe('InstanceAiEmptyView', () => {
 		store.getOrCreateRuntime.mockReturnValue(thread);
 		experimentMocks.proactiveAgentEnabled.value = false;
 		experimentMocks.promptSuggestionsV2Enabled.value = false;
-		experimentMocks.workflowPreviewEnabled.value = false;
+		experimentMocks.workflowPreviewEnabled.value = true; // Experiment cleanup: remove with InstanceAiWorkflowPreviewSuggestionsExperiment
 		experimentMocks.splitBelowInputVariant.value = false;
 		experimentMocks.personalizedPromptVariant.value = undefined;
 		experimentMocks.personalizedPromptFormat.value = null;
@@ -408,13 +409,15 @@ describe('InstanceAiEmptyView', () => {
 
 	it('passes the fixed suggestions to the empty-state composer', () => {
 		const { getByTestId, getByText } = renderView();
-		// 4 suggestions in INSTANCE_AI_EMPTY_STATE_SUGGESTIONS — suggestions array
-		// renders as its `.length`.
-		expect(getByText('AI Assistant')).toBeVisible();
+		expect(getByText('What do you want to automate?')).toBeVisible();
 		expect(getByTestId('instance-ai-input-suggestions')).toHaveTextContent('4');
-		expect(getByTestId('instance-ai-input-suggestions-component')).toHaveTextContent('unset');
-		expect(getByTestId('instance-ai-input-suggestion-catalog-version')).toHaveTextContent('unset');
-		expect(getByTestId('instance-ai-input-placeholder-key')).toHaveTextContent('unset');
+		expect(getByTestId('instance-ai-input-suggestions-component')).toHaveTextContent('set');
+		expect(getByTestId('instance-ai-input-suggestion-catalog-version')).toHaveTextContent(
+			'v3-workflow-preview',
+		);
+		expect(getByTestId('instance-ai-input-placeholder-key')).toHaveTextContent(
+			'experiments.instanceAiWorkflowPreviewSuggestions.input.placeholder',
+		);
 	});
 
 	it('passes v2 copy, suggestions, component, and catalog version when prompt suggestions v2 is enabled', () => {
@@ -453,7 +456,7 @@ describe('InstanceAiEmptyView', () => {
 			'v4-personalized',
 		);
 		expect(getByTestId('instance-ai-input-placeholder-key')).toHaveTextContent(
-			'experiments.instanceAiPromptSuggestionsV2.input.placeholder',
+			'experiments.instanceAiPersonalizedPromptSuggestions.input.placeholder',
 		);
 		expect(getByTestId('instance-ai-input-suggestions-component-props')).toHaveTextContent(
 			'"format":"cards"',
@@ -465,7 +468,7 @@ describe('InstanceAiEmptyView', () => {
 			'"suggestion_catalog_version":"v4-personalized"',
 		);
 		expect(getByTestId('instance-ai-input-suggestion-telemetry-payload')).toHaveTextContent(
-			'"$feature/090_instance_ai_personalized_prompt_suggestions":"variant-cards"',
+			'"$feature/093_instance_ai_personalized_prompt_suggestions":"variant-cards"',
 		);
 	});
 
@@ -510,7 +513,7 @@ describe('InstanceAiEmptyView', () => {
 		expect(getByTestId('instance-ai-input-suggestions')).toHaveTextContent('0');
 		expect(getByTestId('instance-ai-input-suggestions-component')).toHaveTextContent('unset');
 		expect(getByTestId('instance-ai-input-placeholder-key')).toHaveTextContent(
-			'experiments.instanceAiPromptSuggestionsV2.input.placeholder',
+			'experiments.instanceAiPersonalizedPromptSuggestions.input.placeholder',
 		);
 	});
 
@@ -534,6 +537,9 @@ describe('InstanceAiEmptyView', () => {
 		);
 		expect(getByTestId('instance-ai-input-suggestions-component-props')).toHaveTextContent(
 			'"showSeeMore":false',
+		);
+		expect(getByTestId('instance-ai-input-placeholder-key')).toHaveTextContent(
+			'experiments.instanceAiPersonalizedPromptSuggestions.input.placeholder',
 		);
 		expect(getByTestId('instance-ai-input-suggestion-telemetry-payload')).toHaveTextContent(
 			'"metadata_load_state":"timed_out"',

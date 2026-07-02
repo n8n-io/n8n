@@ -1,8 +1,8 @@
 import type { LicenseState } from '@n8n/backend-common';
 import type { ProjectRepository, User } from '@n8n/db';
 import { WorkflowEntity } from '@n8n/db';
-import type { MockProxy } from 'jest-mock-extended';
-import { mock } from 'jest-mock-extended';
+import type { MockProxy } from 'vitest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -17,12 +17,12 @@ import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import type { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import type { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
-jest.mock('@/permissions.ee/check-access');
-jest.mock('@/workflow-helpers');
-jest.mock('@/generic-helpers');
+vi.mock('@/permissions.ee/check-access');
+vi.mock('@/workflow-helpers');
+vi.mock('@/generic-helpers');
 
 describe('WorkflowCreationService', () => {
-	const userHasScopesMock = jest.mocked(userHasScopes);
+	const userHasScopesMock = vi.mocked(userHasScopes);
 
 	let workflowCreationService: WorkflowCreationService;
 	let credentialsServiceMock: MockProxy<CredentialsService>;
@@ -34,7 +34,7 @@ describe('WorkflowCreationService', () => {
 	let instanceRedactionEnforcementServiceMock: MockProxy<InstanceRedactionEnforcementService>;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		credentialsServiceMock = mock<CredentialsService>();
 		enterpriseWorkflowServiceMock = mock<EnterpriseWorkflowService>();
@@ -78,12 +78,12 @@ describe('WorkflowCreationService', () => {
 		} = {},
 	) {
 		const transactionManager = {
-			save: jest.fn().mockRejectedValue(new Error('Stopping for test')),
+			save: vi.fn().mockRejectedValue(new Error('Stopping for test')),
 		};
 
 		Object.defineProperty(projectRepositoryMock, 'manager', {
 			value: {
-				transaction: jest.fn(
+				transaction: vi.fn(
 					async (cb: (em: unknown) => Promise<void>) => await cb(transactionManager),
 				),
 			},
@@ -103,7 +103,7 @@ describe('WorkflowCreationService', () => {
 		it('should throw BadRequestError for invalid workflow structure', async () => {
 			projectServiceMock.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
 			licenseStateMock.isSharingLicensed.mockReturnValue(false);
-			jest.mocked(WorkflowHelpers.validateWorkflowStructure).mockImplementationOnce(() => {
+			vi.mocked(WorkflowHelpers.validateWorkflowStructure).mockImplementationOnce(() => {
 				throw new BadRequestError('Workflow structure is invalid. nodes[0].type: Required');
 			});
 

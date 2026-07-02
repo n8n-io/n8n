@@ -44,6 +44,12 @@ export function createAskUserTool() {
 			'Ask the user only when a human choice is needed. Each question can be ' +
 				'single-select (pick one), multi-select (pick many), or free-text. ' +
 				'The agent is suspended until the user responds. ' +
+				'Before the first build-workflow call for a workflow build, use this only ' +
+				'for choices that change workflow intent or topology, such as which destination ' +
+				'service to use. Do not use this before the first build for setup values ' +
+				'after the service is known, such as recipients, account labels or IDs, ' +
+				'resource IDs, channel IDs, credential choices, credential fields, or timezone; ' +
+				'use placeholders or unresolved newCredential() calls instead. ' +
 				'IMPORTANT: The UI already provides a built-in "Something else" free-text ' +
 				'input for every single/multi question, so NEVER include generic catch-all ' +
 				'options like "Something else", "Other", "None of the above", or similar in ' +
