@@ -13,7 +13,7 @@ defineOptions({ name: 'AgentBuilderTabPanel' });
 	display: flex;
 	flex: 0 0 auto;
 	flex-direction: column;
-	gap: var(--spacing--lg);
+	gap: var(--spacing--sm);
 	box-sizing: border-box;
 	width: 100%;
 	padding: 0 0 var(--spacing--2xl);

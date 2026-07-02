@@ -27,7 +27,11 @@ vi.mock('vue-router', async (importOriginal) => {
 vi.mock('@n8n/design-system', () => ({
 	N8nActionBox: { template: '<div />', props: ['icon', 'description'] },
 	N8nButton: { template: '<button><slot /><slot name="icon" /></button>' },
-	N8nCard: { template: '<div><slot /></div>', props: ['variant'] },
+	N8nCard: {
+		name: 'N8nCard',
+		template: '<div v-bind="$attrs"><slot /></div>',
+		props: ['hoverable'],
+	},
 	N8nHeading: { template: '<h2><slot /></h2>', props: ['size'] },
 	N8nIcon: { template: '<span />', props: ['icon', 'size'] },
 	N8nIconButton: {
@@ -105,6 +109,26 @@ const componentSource = readFileSync(
 );
 const tabPanelSource = readFileSync(
 	resolve(dirname(fileURLToPath(import.meta.url)), '../components/AgentBuilderTabPanel.vue'),
+	'utf8',
+);
+const sharedPanelStyles = readFileSync(
+	resolve(dirname(fileURLToPath(import.meta.url)), '../styles/agent-panel.module.scss'),
+	'utf8',
+);
+const agentInfoSource = readFileSync(
+	resolve(dirname(fileURLToPath(import.meta.url)), '../components/AgentInfoPanel.vue'),
+	'utf8',
+);
+const agentAdvancedSource = readFileSync(
+	resolve(dirname(fileURLToPath(import.meta.url)), '../components/AgentAdvancedPanel.vue'),
+	'utf8',
+);
+const agentMemorySource = readFileSync(
+	resolve(dirname(fileURLToPath(import.meta.url)), '../components/AgentMemoryPanel.vue'),
+	'utf8',
+);
+const agentSubAgentsSource = readFileSync(
+	resolve(dirname(fileURLToPath(import.meta.url)), '../components/AgentSubAgentsPanel.vue'),
 	'utf8',
 );
 
@@ -252,14 +276,51 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(tabPanelSource).toContain('padding: 0 0 var(--spacing--2xl);');
 	});
 
+	it('keeps 16px between top-level items in each tab panel', () => {
+		expect(tabPanelSource).toContain('gap: var(--spacing--sm);');
+	});
+
 	it('lets the shared tab panel use content height so its bottom buffer remains scrollable', () => {
 		expect(tabPanelSource).toContain('flex: 0 0 auto;');
 		expect(tabPanelSource).not.toContain('flex: 1;');
 		expect(tabPanelSource).not.toContain('min-height: 0;');
 	});
 
-	it('does not wrap builder tab panels in outer cards', () => {
-		expect(componentSource).not.toContain('<N8nCard');
+	it('uses settings cards without wrapping the Agent tab sections', async () => {
+		const agentWrapper = await mountColumn({ knowledgeBaseEnabled: false });
+		const settingsWrapper = await mountColumn({ activeMainTab: 'settings' });
+
+		expect(agentWrapper.findAll('[data-testid="agent-settings-card"]')).toHaveLength(0);
+		expect(settingsWrapper.findAll('[data-testid="agent-settings-card"]')).toHaveLength(3);
+	});
+
+	it('uses compact outline-only settings cards', () => {
+		expect(componentSource).toContain('gap: var(--spacing--lg);');
+		expect(componentSource).toContain('--card--padding: var(--spacing--sm);');
+		expect(componentSource).toContain('background-color: transparent;');
+	});
+
+	it('uses the shared data-entry label style from the agent design', () => {
+		expect(sharedPanelStyles).toContain('.dataEntryLabel');
+		expect(sharedPanelStyles).toContain('color: var(--text-color);');
+		expect(sharedPanelStyles).toContain('font-weight: var(--font-weight--medium);');
+		expect(sharedPanelStyles).toContain('font-size: var(--font-size--sm);');
+		expect(sharedPanelStyles).toContain('.dataEntrySubLabel');
+		expect(sharedPanelStyles).toContain('color: var(--text-color--subtler);');
+		expect(sharedPanelStyles).toContain('font-size: var(--font-size--2xs);');
+
+		for (const source of [
+			agentInfoSource,
+			agentAdvancedSource,
+			agentMemorySource,
+			agentSubAgentsSource,
+		]) {
+			expect(source).toContain('shared.dataEntryLabel');
+		}
+
+		for (const source of [agentAdvancedSource, agentMemorySource, agentSubAgentsSource]) {
+			expect(source).toContain('shared.dataEntrySubLabel');
+		}
 	});
 
 	it('keeps the tab baseline inset to the content cards and thicker than the default border', () => {

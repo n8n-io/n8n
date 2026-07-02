@@ -164,7 +164,7 @@ function onInstructionsInput(value: string) {
 
 		<div v-if="props.showModel" :class="[$style.field, props.disabled && shared.disabledOverlay]">
 			<label :class="$style.label"
-				><N8nText size="small" :bold="true">{{
+				><N8nText step="sm" bold :class="shared.dataEntryLabel">{{
 					i18n.baseText('agents.builder.agent.model.label')
 				}}</N8nText></label
 			>
@@ -184,22 +184,21 @@ function onInstructionsInput(value: string) {
 
 		<div v-if="props.showInstructions" :class="[$style.field, $style.instructionsField]">
 			<label :class="$style.label">
-				<N8nText size="small" :bold="true">{{
+				<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
 					i18n.baseText('agents.builder.agent.instructions.label')
 				}}</N8nText>
 			</label>
 			<N8nMarkdownEditor
-				:class="$style.instructionsEditor"
+				:class="$style.instructionsDocument"
 				:model-value="instructions"
 				:readonly="props.disabled"
-				max-height="640px"
+				:placeholder="i18n.baseText('agents.builder.agent.instructions.placeholder')"
+				variant="ghost"
+				show-toolbar="never"
+				max-height="none"
+				data-testid="agent-instructions-document"
 				@update:model-value="onInstructionsInput"
 			/>
-			<N8nText size="xsmall" color="text-light">{{
-				i18n.baseText('agents.builder.agent.instructions.characterCount', {
-					interpolate: { count: String(instructions.length) },
-				})
-			}}</N8nText>
 		</div>
 	</div>
 </template>
@@ -208,28 +207,22 @@ function onInstructionsInput(value: string) {
 .panel {
 	scrollbar-width: thin;
 	scrollbar-color: var(--border-color) transparent;
-	height: 100%;
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	width: 100%;
 }
 
-.instructionsField {
-	flex: 1;
-	min-height: 0;
-}
-
-.instructionsEditor {
-	flex: 1;
-	min-height: 0;
-	display: flex;
+.instructionsDocument {
+	display: block;
 	width: 100%;
 }
 
-.instructionsEditor :global(.n8n-markdown),
-.instructionsEditor :global(textarea) {
-	min-height: 160px;
+.instructionsDocument :global(.n8n-markdown) {
+	max-height: none;
+	min-height: calc(var(--spacing--4xl) + var(--spacing--xl));
+	overflow-y: visible;
+	padding: 0;
 }
 
 .field {

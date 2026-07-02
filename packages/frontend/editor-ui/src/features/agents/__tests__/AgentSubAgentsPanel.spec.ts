@@ -223,11 +223,20 @@ describe('AgentSubAgentsPanel', () => {
 		);
 	});
 
+	it('does not render a standalone settings section heading', async () => {
+		const wrapper = await mountPanel();
+
+		expect(wrapper.text()).not.toContain('Sub-agents');
+		expect(wrapper.text()).not.toContain('Sub-agents description');
+	});
+
 	it('shows inline difficulty model selectors when custom routing is enabled', async () => {
 		const wrapper = await mountPanel();
 		await enableCustomModelRouting(wrapper);
 
 		expect(wrapper.find('[data-testid="agent-sub-agents-inline-models"]').exists()).toBe(true);
+		expect(wrapper.text()).not.toContain('Inline sub-agent models');
+		expect(wrapper.text()).not.toContain('Inline models hint');
 		expect(wrapper.find('[data-testid="agent-sub-agents-difficulty-low-model"]').exists()).toBe(
 			true,
 		);

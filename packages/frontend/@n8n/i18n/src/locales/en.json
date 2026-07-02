@@ -6714,6 +6714,7 @@
 	"agents.builder.agent.name.placeholder": "My agent",
 	"agents.builder.agent.model.label": "Model",
 	"agents.builder.agent.instructions.label": "Instructions",
+	"agents.builder.agent.instructions.placeholder": "Enter instructions here",
 	"agents.builder.agent.instructions.characterCount": "{count} characters",
 	"agents.builder.advanced.title": "Advanced",
 	"agents.builder.advanced.description": "Execution tuning — reasoning depth and tool parallelism.",

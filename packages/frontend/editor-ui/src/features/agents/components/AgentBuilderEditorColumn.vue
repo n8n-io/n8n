@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { N8nTabs } from '@n8n/design-system';
+import { N8nCard, N8nTabs } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { AgentFileDto } from '@n8n/api-types';
 
@@ -154,26 +154,34 @@ const i18n = useI18n();
 					v-else-if="activeMainTab === 'settings'"
 					data-testid="agent-settings-tab-content"
 				>
-					<AgentSubAgentsPanel
-						:config="localConfig"
-						:disabled="childrenDisabled"
-						:project-id="projectId"
-						:agent-id="agentId"
-						@update:config="emit('update:config', $event)"
-					/>
-					<AgentMemoryPanel
-						:config="localConfig"
-						:disabled="childrenDisabled"
-						embedded
-						data-testid="agent-memory-panel"
-						@update:config="emit('update:config', $event)"
-					/>
-					<AgentAdvancedPanel
-						:config="localConfig"
-						:disabled="childrenDisabled"
-						collapsible
-						@update:config="emit('update:config', $event)"
-					/>
+					<div :class="$style.settingsCards">
+						<N8nCard :class="$style.settingsCard" data-testid="agent-settings-card">
+							<AgentSubAgentsPanel
+								:config="localConfig"
+								:disabled="childrenDisabled"
+								:project-id="projectId"
+								:agent-id="agentId"
+								@update:config="emit('update:config', $event)"
+							/>
+						</N8nCard>
+						<N8nCard :class="$style.settingsCard" data-testid="agent-settings-card">
+							<AgentMemoryPanel
+								:config="localConfig"
+								:disabled="childrenDisabled"
+								embedded
+								data-testid="agent-memory-panel"
+								@update:config="emit('update:config', $event)"
+							/>
+						</N8nCard>
+						<N8nCard :class="$style.settingsCard" data-testid="agent-settings-card">
+							<AgentAdvancedPanel
+								:config="localConfig"
+								:disabled="childrenDisabled"
+								collapsible
+								@update:config="emit('update:config', $event)"
+							/>
+						</N8nCard>
+					</div>
 				</AgentBuilderTabPanel>
 			</div>
 		</div>
@@ -219,6 +227,20 @@ const i18n = useI18n();
 	width: 100%;
 	padding: var(--spacing--lg) var(--agent-builder-content-padding-inline);
 	margin: 0 auto;
+}
+
+.settingsCards {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--lg);
+	width: 100%;
+}
+
+.settingsCard.settingsCard {
+	--card--padding: var(--spacing--sm);
+
+	align-items: stretch;
+	background-color: transparent;
 }
 
 .identityHeaderRow {

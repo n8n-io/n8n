@@ -32,6 +32,7 @@ import {
 } from '../model-providers';
 import type { AgentJsonConfig } from '../types';
 import { parseModelString, sanitizeModelId } from '../utils/model-string';
+import shared from '../styles/agent-panel.module.scss';
 
 const DIFFICULTY_LABEL_KEYS: Record<SubAgentTaskDifficulty, BaseTextKey> = {
 	low: 'agents.builder.subAgents.modelsByDifficulty.low.label',
@@ -250,23 +251,12 @@ function clearDifficultyMapping(difficulty: SubAgentTaskDifficulty) {
 
 <template>
 	<div :class="[$style.subAgentsPanel, disabled && $style.disabled]" :aria-disabled="disabled">
-		<div :class="$style.subAgentsHeader">
-			<div :class="$style.subAgentsText">
-				<N8nText tag="h3" :bold="true">
-					{{ i18n.baseText('agents.builder.subAgents.title') }}
-				</N8nText>
-				<N8nText size="small" color="text-light">
-					{{ i18n.baseText('agents.builder.subAgents.description') }}
-				</N8nText>
-			</div>
-		</div>
-
 		<div :class="$style.settingRow">
 			<div :class="$style.settingLabel">
-				<N8nText size="small" :bold="true">
+				<N8nText step="sm" bold :class="shared.dataEntryLabel">
 					{{ i18n.baseText('agents.builder.subAgents.maxChildren.label') }}
 				</N8nText>
-				<N8nText size="xsmall" color="text-light">
+				<N8nText size="small" :class="shared.dataEntrySubLabel">
 					{{
 						i18n.baseText('agents.builder.subAgents.maxChildren.hint', {
 							interpolate: maxChildrenHintInterpolate,
@@ -288,10 +278,10 @@ function clearDifficultyMapping(difficulty: SubAgentTaskDifficulty) {
 
 		<div :class="$style.settingRow">
 			<div :class="$style.settingLabel">
-				<N8nText size="small" :bold="true">
+				<N8nText step="sm" bold :class="shared.dataEntryLabel">
 					{{ i18n.baseText('agents.builder.subAgents.customModelRouting.label' as BaseTextKey) }}
 				</N8nText>
-				<N8nText size="xsmall" color="text-light">
+				<N8nText size="small" :class="shared.dataEntrySubLabel">
 					{{ i18n.baseText('agents.builder.subAgents.customModelRouting.hint' as BaseTextKey) }}
 				</N8nText>
 			</div>
@@ -308,15 +298,6 @@ function clearDifficultyMapping(difficulty: SubAgentTaskDifficulty) {
 			:class="$style.inlineModelsSection"
 			data-testid="agent-sub-agents-inline-models"
 		>
-			<div :class="$style.inlineModelsIntro">
-				<N8nText size="small" :bold="true">
-					{{ i18n.baseText('agents.builder.subAgents.modelsByDifficulty.title') }}
-				</N8nText>
-				<N8nText size="xsmall" color="text-light">
-					{{ i18n.baseText('agents.builder.subAgents.modelsByDifficulty.hint') }}
-				</N8nText>
-			</div>
-
 			<div :class="$style.difficultyRows">
 				<div
 					v-for="difficulty in SUB_AGENT_TASK_DIFFICULTIES"
@@ -325,10 +306,10 @@ function clearDifficultyMapping(difficulty: SubAgentTaskDifficulty) {
 					:data-testid="`agent-sub-agents-difficulty-row-${difficulty}`"
 				>
 					<div :class="$style.difficultyLabel">
-						<N8nText size="small" :bold="true">
+						<N8nText step="sm" bold :class="shared.dataEntryLabel">
 							{{ i18n.baseText(DIFFICULTY_LABEL_KEYS[difficulty]) }}
 						</N8nText>
-						<N8nText size="xsmall" color="text-light">
+						<N8nText size="small" :class="shared.dataEntrySubLabel">
 							{{ i18n.baseText(DIFFICULTY_DESCRIPTION_KEYS[difficulty]) }}
 						</N8nText>
 					</div>
@@ -380,23 +361,9 @@ function clearDifficultyMapping(difficulty: SubAgentTaskDifficulty) {
 	width: 100%;
 }
 
-.subAgentsPanel.disabled > :not(.subAgentsHeader) {
+.subAgentsPanel.disabled {
 	pointer-events: none;
 	opacity: 0.6;
-}
-
-.subAgentsHeader {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: var(--spacing--sm);
-	width: 100%;
-}
-
-.subAgentsText {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--3xs);
 }
 
 .settingRow {
@@ -426,12 +393,6 @@ function clearDifficultyMapping(difficulty: SubAgentTaskDifficulty) {
 	flex-direction: column;
 	gap: var(--spacing--xs);
 	width: 100%;
-}
-
-.inlineModelsIntro {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--5xs);
 }
 
 .difficultyRows {

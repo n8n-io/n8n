@@ -13,6 +13,7 @@ import { ref, computed, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
 import {
 	N8nCollapsiblePanel,
+	N8nIcon,
 	N8nInputNumber2,
 	N8nSelect,
 	N8nSwitch2,
@@ -40,6 +41,7 @@ import {
 	type WebSearchMethod,
 	withWebSearchConfig,
 } from '../utils/nativeWebSearch';
+import shared from '../styles/agent-panel.module.scss';
 
 const i18n = useI18n();
 const credentialsStore = useCredentialsStore();
@@ -398,16 +400,26 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 		data-testid="agent-behavior-panel"
 	>
 		<template #title>
-			<N8nText tag="h3" :bold="true">{{ i18n.baseText('agents.builder.advanced.title') }}</N8nText>
+			<span :class="$style.advancedTitle" data-testid="agent-advanced-title">
+				<N8nText tag="h3" :bold="true">{{
+					i18n.baseText('agents.builder.advanced.title')
+				}}</N8nText>
+				<N8nIcon
+					icon="chevron-down"
+					:size="14"
+					:class="[$style.advancedChevron, isExpanded && $style.advancedChevronOpen]"
+					data-testid="agent-advanced-chevron"
+				/>
+			</span>
 		</template>
 		<div :class="$style.content">
 			<div :class="$style.settingGroup">
 				<div :class="$style.row">
 					<div :class="$style.rowLabel">
-						<N8nText size="small" :bold="true">{{
+						<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
 							i18n.baseText('agents.builder.advanced.webSearch.label')
 						}}</N8nText>
-						<N8nText size="xsmall" color="text-light">
+						<N8nText size="small" :class="shared.dataEntrySubLabel">
 							{{ i18n.baseText('agents.builder.advanced.webSearch.hint') }}
 						</N8nText>
 					</div>
@@ -449,10 +461,10 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 						:class="$style.row"
 					>
 						<div :class="$style.rowLabel">
-							<N8nText size="small" :bold="true">{{
+							<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
 								i18n.baseText('agents.builder.advanced.webSearch.maxUses.label')
 							}}</N8nText>
-							<N8nText size="xsmall" color="text-light">
+							<N8nText size="small" :class="shared.dataEntrySubLabel">
 								{{ i18n.baseText('agents.builder.advanced.webSearch.maxUses.hint') }}
 							</N8nText>
 						</div>
@@ -477,10 +489,10 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 						:class="$style.row"
 					>
 						<div :class="$style.rowLabel">
-							<N8nText size="small" :bold="true">{{
+							<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
 								i18n.baseText('agents.builder.advanced.webSearch.externalAccess.label')
 							}}</N8nText>
-							<N8nText size="xsmall" color="text-light">
+							<N8nText size="small" :class="shared.dataEntrySubLabel">
 								{{ i18n.baseText('agents.builder.advanced.webSearch.externalAccess.hint') }}
 							</N8nText>
 						</div>
@@ -502,7 +514,7 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 						v-if="webSearchMethod === 'native' && capabilities.webSearch === 'openai.web_search'"
 						:class="$style.row"
 					>
-						<N8nText size="small" :bold="true">{{
+						<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
 							i18n.baseText('agents.builder.advanced.webSearch.contextSize.label')
 						}}</N8nText>
 						<N8nSelect
@@ -529,10 +541,10 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 
 					<div v-if="webSearchMethod !== 'native'" :class="$style.row">
 						<div :class="$style.rowLabel">
-							<N8nText size="small" :bold="true">{{
+							<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
 								i18n.baseText('agents.builder.advanced.webSearch.credential.label')
 							}}</N8nText>
-							<N8nText size="xsmall" color="text-light">
+							<N8nText size="small" :class="shared.dataEntrySubLabel">
 								{{ i18n.baseText('agents.builder.advanced.webSearch.credential.hint') }}
 							</N8nText>
 						</div>
@@ -558,10 +570,10 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 			<div :class="$style.settingGroup">
 				<div :class="$style.row">
 					<div :class="$style.rowLabel">
-						<N8nText size="small" :bold="true">{{
+						<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
 							i18n.baseText('agents.builder.advanced.thinking.label')
 						}}</N8nText>
-						<N8nText size="xsmall" color="text-light">
+						<N8nText size="small" :class="shared.dataEntrySubLabel">
 							{{ i18n.baseText('agents.builder.advanced.thinking.hint') }}
 						</N8nText>
 					</div>
@@ -587,10 +599,10 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 				>
 					<div v-if="capabilities.thinking === 'budgetTokens'" :class="$style.row">
 						<div :class="$style.rowLabel">
-							<N8nText size="small" :bold="true">{{
+							<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
 								i18n.baseText('agents.builder.advanced.budgetTokens.label')
 							}}</N8nText>
-							<N8nText size="xsmall" color="text-light">
+							<N8nText size="small" :class="shared.dataEntrySubLabel">
 								{{ i18n.baseText('agents.builder.advanced.budgetTokens.hint') }}
 							</N8nText>
 						</div>
@@ -606,7 +618,7 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 					</div>
 
 					<div v-if="capabilities.thinking === 'reasoningEffort'" :class="$style.row">
-						<N8nText size="small" :bold="true">{{
+						<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
 							i18n.baseText('agents.builder.advanced.reasoningEffort.label')
 						}}</N8nText>
 						<N8nSelect
@@ -631,10 +643,10 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 			<div v-if="capabilities.promptCaching === 'ttl'" :class="$style.settingGroup">
 				<div :class="$style.row">
 					<div :class="$style.rowLabel">
-						<N8nText size="small" :bold="true">{{
+						<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
 							i18n.baseText('agents.builder.advanced.promptCachingTtl.label')
 						}}</N8nText>
-						<N8nText size="xsmall" color="text-light">
+						<N8nText size="small" :class="shared.dataEntrySubLabel">
 							{{ i18n.baseText('agents.builder.advanced.promptCaching.hint') }}
 						</N8nText>
 					</div>
@@ -658,10 +670,10 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 
 			<div :class="$style.row">
 				<div :class="$style.rowLabel">
-					<N8nText size="small" :bold="true">{{
+					<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
 						i18n.baseText('agents.builder.advanced.concurrency.label')
 					}}</N8nText>
-					<N8nText size="xsmall" color="text-light">
+					<N8nText size="small" :class="shared.dataEntrySubLabel">
 						{{ i18n.baseText('agents.builder.advanced.concurrency.hint') }}
 					</N8nText>
 				</div>
@@ -679,10 +691,10 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 
 			<div :class="$style.row">
 				<div :class="$style.rowLabel">
-					<N8nText size="small" :bold="true">{{
+					<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
 						i18n.baseText('agents.builder.advanced.maxIterations.label')
 					}}</N8nText>
-					<N8nText size="xsmall" color="text-light">
+					<N8nText size="small" :class="shared.dataEntrySubLabel">
 						{{ i18n.baseText('agents.builder.advanced.maxIterations.hint') }}
 					</N8nText>
 				</div>
@@ -716,10 +728,41 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 .panel.panel > :first-child {
 	padding: 0;
 	min-height: auto;
+	width: 100%;
+}
+
+.panel.panel > :first-child > :first-child {
+	width: 100%;
+}
+
+.panel.panel > :first-child > :first-child > :first-child {
+	display: none;
+}
+
+.panel.panel > :first-child > :first-child > :last-child {
+	flex: 1;
 }
 
 .panel.panel > :first-child h3 {
 	margin: 0;
+}
+
+.advancedTitle {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--sm);
+	width: 100%;
+}
+
+.advancedChevron {
+	flex-shrink: 0;
+	color: var(--icon-color);
+	transition: transform var(--animation--duration) var(--animation--easing);
+}
+
+.advancedChevronOpen {
+	transform: rotate(180deg);
 }
 
 .panel.panel > [data-state] > :first-child {

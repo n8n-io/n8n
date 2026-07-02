@@ -1,6 +1,9 @@
 import { MANAGED_CREDENTIAL_TOKEN } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
 import { mount } from '@vue/test-utils';
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it, vi } from 'vitest';
 import { computed, ref } from 'vue';
 
@@ -9,6 +12,11 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import AgentMemoryPanel from '../components/AgentMemoryPanel.vue';
 import type { AgentJsonConfig } from '../types';
+
+const componentSource = readFileSync(
+	resolve(dirname(fileURLToPath(import.meta.url)), '../components/AgentMemoryPanel.vue'),
+	'utf8',
+);
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
@@ -92,6 +100,13 @@ function mountPanel({ aiAssistantEnabled }: { aiAssistantEnabled: boolean }) {
 }
 
 describe('AgentMemoryPanel', () => {
+	it('keeps long helper text from overlapping the memory model selector', () => {
+		expect(componentSource).toContain('flex: 1 1 auto;');
+		expect(componentSource).toContain('min-width: 0;');
+		expect(componentSource).toContain('overflow-wrap: anywhere;');
+		expect(componentSource).toContain('flex: 0 1 280px;');
+	});
+
 	it('enables episodic memory with managed credentials when AI Assistant is enabled', async () => {
 		const wrapper = mountPanel({ aiAssistantEnabled: true });
 		const uiStore = useUIStore();

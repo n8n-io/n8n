@@ -35,13 +35,15 @@ const globalStubs = {
 		emits: ['update:modelValue'],
 		template: `
 			<section>
-				<button :disabled="disabled" @click="$emit('update:modelValue', !modelValue)">
-					{{ title }}
+				<button data-testid="agent-advanced-trigger" :disabled="disabled" @click="$emit('update:modelValue', !modelValue)">
+					<slot name="title">{{ title }}</slot>
+					<slot name="actions" />
 				</button>
 				<div v-show="modelValue"><slot /></div>
 			</section>
 		`,
 	},
+	N8nIcon: { template: '<span v-bind="$attrs" />', props: ['icon', 'size'] },
 	N8nText: { template: '<span><slot /></span>' },
 	N8nTooltip: { template: '<div><slot /></div>' },
 	N8nInputNumber2: {
@@ -104,6 +106,22 @@ function getWebSearchConfig(changes: Partial<AgentJsonConfig>): WebSearchConfig 
 }
 
 describe('AgentAdvancedPanel', () => {
+	it('renders the collapsible heading with the chevron after the title', () => {
+		const wrapper = mount(AgentAdvancedPanel, {
+			props: { config: makeConfig(), collapsible: true },
+			global: { stubs: globalStubs },
+		});
+
+		const title = wrapper.find('[data-testid="agent-advanced-title"]');
+		const chevron = wrapper.find('[data-testid="agent-advanced-chevron"]');
+
+		expect(title.text()).toContain('agents.builder.advanced.title');
+		expect(chevron.exists()).toBe(true);
+		expect(
+			title.element.compareDocumentPosition(chevron.element) & Node.DOCUMENT_POSITION_FOLLOWING,
+		).toBeTruthy();
+	});
+
 	it('treats sparse native web search config as disabled', async () => {
 		const wrapper = mount(AgentAdvancedPanel, {
 			props: { config: makeConfig() },
