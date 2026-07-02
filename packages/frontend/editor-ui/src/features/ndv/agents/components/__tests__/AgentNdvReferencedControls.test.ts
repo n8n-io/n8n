@@ -216,15 +216,6 @@ describe('AgentNdvReferencedControls', () => {
 		expect(wrapper.find('[data-testid="agent-ndv-save-status"]').exists()).toBe(false);
 	});
 
-	it('shows the publish handoff hint when a published agent has a newer draft', () => {
-		const stub = createNdvStub({
-			isPublished: true,
-			agent: makeAgent({ versionId: 'v2', activeVersionId: 'v1' }),
-		});
-		const wrapper = mountControls(stub);
-		expect(wrapper.find('[data-testid="agent-ndv-publish-hint"]').exists()).toBe(true);
-	});
-
 	it('forwards capability emits to the injected action handlers', () => {
 		const stub = createNdvStub();
 		const wrapper = mountControls(stub);

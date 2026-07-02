@@ -42,15 +42,6 @@ const isUnavailable = computed(() => ndv?.isUnavailable.value ?? false);
 const isPublished = computed(() => ndv?.isPublished.value ?? false);
 const saveStatus = computed(() => ndv?.saveStatus.value ?? 'idle');
 
-// A draft edit is ahead of the published version — the user must open the
-// Agent Builder to publish it (no publish affordance in the NDV in v1).
-const hasUnpublishedChanges = computed(
-	() =>
-		isPublished.value &&
-		Boolean(agent.value?.versionId) &&
-		agent.value?.versionId !== agent.value?.activeVersionId,
-);
-
 // Mirrors the Agent Builder header: visible only while saving / freshly saved
 // (`useAgentConfigAutosave` resets 'saved' → 'idle' after a short hold).
 const saveStatusText = computed(() => {
@@ -82,15 +73,6 @@ const actions = computed(() => ndv?.actions);
 				</N8nText>
 			</template>
 		</N8nSectionHeader>
-
-		<N8nText
-			v-if="hasUnpublishedChanges"
-			size="xsmall"
-			color="text-light"
-			data-testid="agent-ndv-publish-hint"
-		>
-			{{ i18n.baseText('agentNode.ndv.publishHint') }}
-		</N8nText>
 
 		<!-- Terminal state: the referenced agent was deleted or access was lost. -->
 		<N8nText

@@ -257,6 +257,7 @@ function onAddOptionSelected(id: string) {
 					:config="localConfig"
 					:disabled="!canUpdate"
 					embedded
+					stacked
 					@update:config="ndv?.scheduleConfigUpdate"
 				/>
 				<AgentAdvancedPanel

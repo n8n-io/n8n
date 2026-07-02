@@ -5426,7 +5426,6 @@
 	"agentNode.ndv.banner.suffix": ". Alternatively, fill in the form below.",
 	"agentNode.ndv.section.agent": "Agent",
 	"agentNode.ndv.advanced.removeOption": "Remove",
-	"agentNode.ndv.publishHint": "Draft saved — open Agent Builder to publish.",
 	"agentNode.ndv.unavailable": "This agent was deleted or you lost access.",
 	"agentSelector.createAgentFailed": "Error creating agent",
 	"evaluation.listRuns.status.new": "New",
