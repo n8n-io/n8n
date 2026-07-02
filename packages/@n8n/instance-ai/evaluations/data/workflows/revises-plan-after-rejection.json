@@ -1,0 +1,37 @@
+{
+	"description": "Behaviour regression for HITL plan-rejection handling — from LangTracer run-23 capability-gap themes 'plan rejection misreported as approval' (planner reports approved on approved:false; turn hangs with null response) and 'resubmits identical plan after rejection'. The user asks for a plan before building, then rejects the first plan with two concrete changes. The agent must honor the rejection: revise the plan to include the changes and build only the revised version — not proceed with the original as if approved, not resubmit an identical plan, and not report the work done. The rejection feedback is stated in the user's voice; the rejection-HANDLING behaviour is the assertion, not an instruction. Execution anchors on the Slack posts (HTTP-intercepted: which rows, which channel), not on stored state. Note: if the underlying bug is live the turn may hang / not build rather than cleanly fail an expectation — calibrate.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Before you build anything, show me a plan and let me approve it first. The workflow I want: on a schedule, read the new rows from my 'Leads' Google Sheet and post each one to a Slack channel."
+		},
+		{
+			"role": "user",
+			"text": [
+				"[When the agent shows its first plan, reject it. Tell it two changes you want: only post rows where the Status column is 'Urgent', and post them to #urgent-alerts (not whatever channel it picked). Don't approve until the plan clearly reflects BOTH changes.",
+				"If it instead re-shows essentially the same plan without incorporating the two changes, reject again and restate them. Once the plan reflects both, approve. Don't provide credentials — say you'll set them up later.]"
+			]
+		}
+	],
+	"messageBudget": 10,
+	"complexity": "medium",
+	"tags": ["behaviour", "planning", "plan-rejection", "hitl", "schedule", "google-sheets", "slack"],
+	"triggerType": "schedule",
+	"datasets": ["behaviour", "full"],
+	"processExpectations": [
+		"When the user rejected the first plan, the agent treated it as a rejection — it did not proceed to build the original plan as if it had been approved, and did not report the plan as approved or the work as done off the back of the rejected plan.",
+		"After the rejection, the agent revised the plan to incorporate the user's feedback (filter to Status 'Urgent'; post to #urgent-alerts) rather than resubmitting the same plan unchanged, and only built once the revised plan was approved."
+	],
+	"outcomeExpectations": [
+		"The final workflow is driven by a Schedule Trigger that reads rows from the 'Leads' Google Sheet.",
+		"It posts only the rows whose Status is 'Urgent' (a conditional/filter gates out the rest) and posts them to Slack #urgent-alerts — the two changes the user gave when rejecting the first plan, not the channel proposed in the first plan."
+	],
+	"executionScenarios": [
+		{
+			"name": "urgent-rows-only",
+			"description": "The sheet has a mix of Urgent and non-urgent rows; only the Urgent ones are posted, to #urgent-alerts",
+			"dataSetup": "The 'Leads' sheet read returns four rows: two with Status 'Urgent' (companies 'Acme' and 'Globex') and two with Status 'New' ('Initech', 'Umbrella'). Each Slack postMessage call returns a success response with ok=true.",
+			"successCriteria": "The run completes without errors. Only the two 'Urgent' rows (Acme, Globex) are posted to Slack #urgent-alerts; the 'New' rows are not posted anywhere. The posts go to #urgent-alerts, not to the channel from the first plan."
+		}
+	]
+}
