@@ -399,7 +399,48 @@ const customNodeItems: EmojiTreeBranch[] = [
 				children: [
 					{ id: 'mercury', label: 'Mercury', emoji: '☿️' },
 					{ id: 'venus', label: 'Venus', emoji: '♀️' },
-					{ id: 'earth', label: 'Earth', emoji: '🌍' },
+					{
+						id: 'earth',
+						label: 'Earth',
+						emoji: '🌍',
+						children: [
+							{
+								id: 'continents',
+								label: 'Continents',
+								emoji: '🗺️',
+								children: [
+									{
+										id: 'europe',
+										label: 'Europe',
+										emoji: '🇪🇺',
+										children: [
+											{
+												id: 'france',
+												label: 'France',
+												emoji: '🇫🇷',
+												children: [
+													{ id: 'paris', label: 'Paris', emoji: '🗼' },
+													{ id: 'lyon', label: 'Lyon', emoji: '🏙️' },
+												],
+											},
+											{
+												id: 'germany',
+												label: 'Germany',
+												emoji: '🇩🇪',
+												children: [{ id: 'berlin', label: 'Berlin', emoji: '🐻' }],
+											},
+										],
+									},
+									{
+										id: 'asia',
+										label: 'Asia',
+										emoji: '🌏',
+										children: [{ id: 'japan', label: 'Japan', emoji: '🇯🇵' }],
+									},
+								],
+							},
+						],
+					},
 					{ id: 'mars', label: 'Mars', emoji: '🔴' },
 				],
 			},
@@ -421,7 +462,23 @@ const customNodeItems: EmojiTreeBranch[] = [
 		label: 'Animals',
 		emoji: '🦁',
 		children: [
-			{ id: 'mammals', label: 'Mammals', emoji: '🐻' },
+			{
+				id: 'mammals',
+				label: 'Mammals',
+				emoji: '🐻',
+				children: [
+					{
+						id: 'bears',
+						label: 'Bears',
+						emoji: '🐻‍❄️',
+						children: [
+							{ id: 'grizzly', label: 'Grizzly bear', emoji: '🐻' },
+							{ id: 'polar', label: 'Polar bear', emoji: '🐻‍❄️' },
+						],
+					},
+					{ id: 'cats', label: 'Cats', emoji: '🐱' },
+				],
+			},
 			{ id: 'birds', label: 'Birds', emoji: '🦅' },
 			{ id: 'fish', label: 'Fish', emoji: '🐠' },
 		],
@@ -438,7 +495,18 @@ const customNodeItems: EmojiTreeBranch[] = [
 	},
 ];
 
-const customNodeDefaultExpanded = ['planets', 'inner', 'outer'];
+const customNodeDefaultExpanded = [
+	'planets',
+	'inner',
+	'earth',
+	'continents',
+	'europe',
+	'france',
+	'outer',
+	'animals',
+	'mammals',
+	'bears',
+];
 
 function getCustomNodeProps({ item }: TreeNodeContext<EmojiTreeBranch>): {
 	label: string;
@@ -453,6 +521,7 @@ const customNodeClass = {
 	treeItem: 'sb-tree-custom-item',
 	treeItemSelected: 'sb-tree-custom-item--selected',
 	treeItemDisabled: 'sb-tree-custom-item--disabled',
+	treeItemTrackline: 'sb-tree-custom-item__trackline',
 	treeItemEmoji: 'sb-tree-custom-item__emoji',
 	treeItemLabel: 'sb-tree-custom-item__label',
 	treeItemToggle: 'sb-tree-custom-item__toggle',
@@ -520,6 +589,20 @@ const customNodeStyles = `
 .${customNodeClass.treeItemDisabled} {
 	cursor: not-allowed;
 	opacity: 0.5;
+}
+
+.${customNodeClass.treeItemTrackline} {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: calc(
+		var(--tree-item-padding-inline) + var(--tree-indent-unit) * var(--indent) +
+			var(--tree-icon-size) / 2
+	);
+	z-index: 1;
+	width: 1px;
+	background-color: var(--border-color--subtle);
+	pointer-events: none;
 }
 
 .${customNodeClass.treeItemEmoji} {
@@ -603,6 +686,7 @@ const TreeNodeCustom = defineComponent({
 		isExpanded: { type: Boolean, required: true },
 		isSelected: { type: Boolean, required: true },
 		hasChildren: { type: Boolean, required: true },
+		indentLevel: { type: Number, default: 0 },
 		handleToggle: { type: Function as PropType<() => void>, required: true },
 		handleSelect: { type: Function as PropType<() => void>, required: true },
 	},
@@ -620,10 +704,21 @@ const TreeNodeCustom = defineComponent({
 					[customNodeClass.treeItemDisabled]: disabled,
 				},
 			]"
+			:style="{ '--tree-indent': indentLevel }"
 			:data-disabled="disabled ? '' : undefined"
 			:data-has-toggle="showExpandArrow && hasChildren ? '' : undefined"
 			@click="!disabled && handleSelect()"
 		>
+			<template v-if="indentLevel > 0">
+				<div
+					v-for="n in indentLevel"
+					:key="n"
+					:class="customNodeClass.treeItemTrackline"
+					:style="{ '--indent': n - 1 }"
+					aria-hidden="true"
+				/>
+			</template>
+
 			<span v-if="emoji" :class="customNodeClass.treeItemEmoji" aria-hidden="true">
 				{{ emoji }}
 			</span>
@@ -662,7 +757,7 @@ export const CustomNode: Story = {
 	render: (args) => ({
 		components: { Tree, TreeNodeCustom },
 		setup() {
-			const selected = ref<string[]>(['earth']);
+			const selected = ref<string[]>(['paris']);
 			const expanded = ref<string[]>([...customNodeDefaultExpanded]);
 
 			return {
