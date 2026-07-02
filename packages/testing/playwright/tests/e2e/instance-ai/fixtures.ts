@@ -463,6 +463,11 @@ function loosenRecordedInstanceAiPromptMatcher(expectation: Expectation): Expect
 			return expectation;
 		}
 
+		if (regex.includes(INSTANCE_AGENT_SYSTEM_PROMPT_ANCHOR)) {
+			body.regex = `[\\s\\S]*${escapeRegex(INSTANCE_AGENT_SYSTEM_PROMPT_ANCHOR)}[\\s\\S]*`;
+			return expectation;
+		}
+
 		regex = loosenEscapedJsonFieldAnchors(loosenDynamicPromptContextAnchors(regex))
 			.replace(LEGACY_SYSTEM_ARRAY_PREFIX, '')
 			.replaceAll('[\\s\\S]{0,1500}', `[\\s\\S]{0,${ROLE_BLOCK_WINDOW}}`)
