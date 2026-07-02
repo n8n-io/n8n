@@ -199,6 +199,9 @@ interface BuildAttempt {
 	logFile: string;
 	/** True when the attempt was killed by the build timeout rather than exiting. */
 	timedOut: boolean;
+	/** Set when the subprocess never spawned (e.g. `claude` missing from PATH).
+	 *  Deterministic for this environment — callers should not retry. */
+	spawnError?: string;
 }
 
 async function runClaude(
@@ -230,6 +233,7 @@ async function runClaude(
 		let stdout = '';
 		let stderr = '';
 		let timedOut = false;
+		let spawnError: Error | undefined;
 		let settled = false;
 		let timeoutTimer: ReturnType<typeof setTimeout> | undefined;
 		let killTimer: ReturnType<typeof setTimeout> | undefined;
@@ -245,7 +249,7 @@ async function runClaude(
 			if (settled) return;
 			settled = true;
 			clearTimers();
-			resolve({ session, logFile, timedOut });
+			resolve({ session, logFile, timedOut, spawnError: spawnError?.message });
 		};
 
 		child.stdout.on('data', (chunk: Buffer) => {
@@ -255,10 +259,17 @@ async function runClaude(
 			stderr += chunk.toString();
 		});
 		child.on('close', () => {
-			// Persist stdout (or stderr fallback) for forensics regardless of parse success.
-			writeFileSync(logFile, stdout || stderr || (timedOut ? '{"subtype":"timeout"}' : '{}'));
+			// Persist stdout (or a structured fallback) for forensics regardless of
+			// parse success — including spawn failures, whose error is recorded here
+			// so the log path reported to the caller stays truthful.
+			const fallback = spawnError
+				? JSON.stringify({ subtype: 'spawn-error', error: spawnError.message })
+				: timedOut
+					? '{"subtype":"timeout"}'
+					: '{}';
+			writeFileSync(logFile, stdout || stderr || fallback);
 			let session: ClaudeSession | undefined;
-			if (!timedOut) {
+			if (!timedOut && !spawnError) {
 				try {
 					const parsed = claudeSessionSchema.safeParse(JSON.parse(stdout));
 					if (parsed.success) session = parsed.data;
@@ -268,7 +279,16 @@ async function runClaude(
 			}
 			settle(session);
 		});
-		child.on('error', () => {
+		child.on('error', (error) => {
+			// No pid = the process never spawned (e.g. `claude` not on PATH). Node
+			// guarantees 'close' still fires after a failed spawn, so record the
+			// error and let the close handler write the log and settle — settling
+			// here would report a log path that isn't written yet. Other 'error'
+			// causes (e.g. kill failures) keep the settle-now behavior.
+			if (child.pid === undefined) {
+				spawnError = error;
+				return;
+			}
 			settle(undefined);
 		});
 
@@ -393,7 +413,7 @@ export async function buildWorkflowViaMcp(opts: {
 			`${slug}-iter${String(iteration)}-attempt${String(attempt)}-${ts}.json`,
 		);
 		lastLogFile = logFile;
-		const { session, timedOut } = await runClaude(
+		const { session, timedOut, spawnError } = await runClaude(
 			userMessage,
 			settings,
 			mcpConfigPath,
@@ -405,6 +425,15 @@ export async function buildWorkflowViaMcp(opts: {
 		if (id) {
 			workflowId = id;
 			failureReason = undefined;
+			break;
+		}
+		if (spawnError) {
+			// `claude` could not be spawned at all (e.g. not installed / not on
+			// PATH) — deterministic for this environment, so retrying can't succeed.
+			failureReason = 'spawn-error';
+			log(
+				`  [${slug}#${String(iteration)}] attempt ${String(attempt)}: could not spawn claude (${spawnError}) — not retrying (log: ${logFile})`,
+			);
 			break;
 		}
 		if (timedOut) {

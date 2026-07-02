@@ -1,8 +1,13 @@
-import { readFileSync, rmSync, statSync } from 'fs';
+import { spawn } from 'child_process';
+import { EventEmitter } from 'events';
+import { mkdtempSync, readFileSync, rmSync, statSync } from 'fs';
+import { tmpdir } from 'os';
+import { join } from 'path';
 
 import {
 	buildAllowedTools,
 	buildPromptFromConversation,
+	buildWorkflowViaMcp,
 	sanitizeServerName,
 	stageLaneMcpConfig,
 	tailWorkflowId,
@@ -10,6 +15,8 @@ import {
 	unsupportedMcpBuildSetupFields,
 } from '../cli/mcp-builder';
 import type { ConversationTurn, WorkflowTestCase } from '../types';
+
+vi.mock('child_process', () => ({ spawn: vi.fn() }));
 
 const user = (text: string): ConversationTurn => ({ role: 'user', text });
 const assistant = (text: string): ConversationTurn => ({ role: 'assistant', text });
@@ -133,6 +140,112 @@ describe('unsupportedMcpBuildSetupFields', () => {
 				}),
 			),
 		).toEqual(['credentials', 'priorConversation']);
+	});
+});
+
+/** Minimal stand-in for the `claude` child process: event surface only.
+ *  `pid === undefined` mirrors Node's contract for a process that failed
+ *  to spawn (the 'error' → 'close' sequence still fires). */
+class FakeChild extends EventEmitter {
+	stdout = new EventEmitter();
+	stderr = new EventEmitter();
+	kill = vi.fn();
+
+	constructor(readonly pid: number | undefined) {
+		super();
+	}
+}
+
+describe('buildWorkflowViaMcp', () => {
+	const settings = {
+		serverName: 'n8n-local',
+		model: 'claude-test',
+		maxAttempts: 3,
+		mcpTimeoutMs: 1_000,
+	};
+	let logDir: string;
+
+	const buildOpts = () => ({
+		conversation: [user('Build a contact form')],
+		slug: 'case',
+		iteration: 0,
+		mcpConfigPath: '/tmp/mcp-config.json',
+		settings,
+		logDir,
+		log: () => {},
+	});
+
+	const spawnReturning = (makeChild: () => FakeChild): void => {
+		vi.mocked(spawn).mockImplementation(() => {
+			return makeChild() as unknown as ReturnType<typeof spawn>;
+		});
+	};
+
+	beforeEach(() => {
+		vi.mocked(spawn).mockReset();
+		logDir = mkdtempSync(join(tmpdir(), 'mcp-builder-test-'));
+	});
+
+	afterEach(() => {
+		rmSync(logDir, { recursive: true, force: true });
+	});
+
+	it('short-circuits retries on spawn failure and persists the error to the log file', async () => {
+		spawnReturning(() => {
+			const child = new FakeChild(undefined);
+			setImmediate(() => {
+				child.emit('error', new Error('spawn claude ENOENT'));
+				// Node emits 'close' even when the process failed to spawn.
+				child.emit('close', -2, null);
+			});
+			return child;
+		});
+
+		const result = await buildWorkflowViaMcp(buildOpts());
+
+		expect(result.workflowId).toBeNull();
+		expect(result.failureReason).toBe('spawn-error');
+		expect(vi.mocked(spawn)).toHaveBeenCalledTimes(1);
+		expect(result.logFile).not.toBeNull();
+		const logged = readFileSync(String(result.logFile), 'utf-8');
+		expect(logged).toBe(JSON.stringify({ subtype: 'spawn-error', error: 'spawn claude ENOENT' }));
+	});
+
+	it('retries up to maxAttempts when claude exits without a WORKFLOW_ID', async () => {
+		spawnReturning(() => {
+			const child = new FakeChild(1234);
+			setImmediate(() => {
+				child.stdout.emit('data', Buffer.from('{"result":"built something, forgot the id"}'));
+				child.emit('close', 0, null);
+			});
+			return child;
+		});
+
+		const result = await buildWorkflowViaMcp(buildOpts());
+
+		expect(result.workflowId).toBeNull();
+		expect(result.failureReason).toBe('no-stdout');
+		expect(vi.mocked(spawn)).toHaveBeenCalledTimes(3);
+	});
+
+	it('returns the workflow id from a successful first attempt', async () => {
+		spawnReturning(() => {
+			const child = new FakeChild(1234);
+			setImmediate(() => {
+				child.stdout.emit(
+					'data',
+					Buffer.from(JSON.stringify({ result: 'done\nWORKFLOW_ID=wf123' })),
+				);
+				child.emit('close', 0, null);
+			});
+			return child;
+		});
+
+		const result = await buildWorkflowViaMcp(buildOpts());
+
+		expect(result.workflowId).toBe('wf123');
+		expect(result.failureReason).toBeUndefined();
+		expect(vi.mocked(spawn)).toHaveBeenCalledTimes(1);
 	});
 });
 
