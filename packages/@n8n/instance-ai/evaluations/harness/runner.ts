@@ -529,7 +529,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		const openingMessage = conversation[0]?.text ?? '';
 		const isMultiTurn = isMultiTurnConversation(conversation);
 		logger.info(
-			`  Executing scenario${isMultiTurn ? ' [multi-turn]' : ''}: "${truncate(openingMessage, 60)}"${config.laneTag ?? ''}`,
+			`  Running case${isMultiTurn ? ' [multi-turn]' : ''}: "${truncate(openingMessage, 60)}"${config.laneTag ?? ''}`,
 		);
 
 		const projectId = await client.getPersonalProjectId();
