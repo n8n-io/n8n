@@ -1,19 +1,33 @@
+import type { JsonValue } from 'n8n-workflow';
+
 import type { CacheService } from '@/services/cache/cache.service';
+
+type CachedMetricQueryOpts<T extends JsonValue> = {
+	cacheService: CacheService;
+	cacheKey: string;
+	ttlMs: number;
+	query: () => Promise<T>;
+};
 
 /**
  * Serves a cached query result, refreshing on cache miss and caching the fresh
  * value with the given TTL. Concurrent `get()` calls are coalesced so a single
  * scrape's parallel gauge collects share one cache-read + query.
  */
-export class CachedMetricQuery<T> {
+export class CachedMetricQuery<T extends JsonValue> {
+	private readonly cacheService: CacheService;
+	private readonly cacheKey: string;
+	private readonly ttlMs: number;
+	private readonly query: () => Promise<T>;
+
 	private inFlight: Promise<T> | null = null;
 
-	constructor(
-		private readonly cacheService: CacheService,
-		private readonly key: string,
-		private readonly ttlMs: number,
-		private readonly query: () => Promise<T>,
-	) {}
+	constructor({ cacheService, cacheKey, ttlMs, query }: CachedMetricQueryOpts<T>) {
+		this.cacheService = cacheService;
+		this.cacheKey = cacheKey;
+		this.ttlMs = ttlMs;
+		this.query = query;
+	}
 
 	async get(): Promise<T> {
 		this.inFlight ??= this.load().finally(() => {
@@ -23,11 +37,11 @@ export class CachedMetricQuery<T> {
 	}
 
 	private async load(): Promise<T> {
-		const cached = await this.cacheService.get<T>(this.key);
+		const cached = await this.cacheService.get<T>(this.cacheKey);
 		if (cached !== undefined) return cached;
 
 		const value = await this.query();
-		await this.cacheService.set(this.key, value, this.ttlMs);
+		await this.cacheService.set(this.cacheKey, value, this.ttlMs);
 		return value;
 	}
 }

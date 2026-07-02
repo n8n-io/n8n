@@ -69,7 +69,7 @@ describe('PrometheusActiveWorkflowMetricsService', () => {
 
 			await collectFn.call(mockGauge as unknown as promClient.Gauge<string>);
 
-			expect(cacheService.get.mock.calls[0]).toEqual(['metrics:active-workflow-count']);
+			expect(cacheService.get.mock.calls[0]).toEqual(['metrics:active-workflow-count:v2']);
 			expect(workflowRepository.getActiveCount.mock.calls).toHaveLength(0);
 			expect(mockGauge.set).toHaveBeenCalledWith(42);
 		});
@@ -84,7 +84,7 @@ describe('PrometheusActiveWorkflowMetricsService', () => {
 
 			expect(workflowRepository.getActiveCount.mock.calls).toHaveLength(1);
 			expect(cacheService.set.mock.calls[0]).toEqual([
-				'metrics:active-workflow-count',
+				'metrics:active-workflow-count:v2',
 				15,
 				30 * 1000,
 			]);
@@ -101,7 +101,7 @@ describe('PrometheusActiveWorkflowMetricsService', () => {
 			await collectFn.call(mockGauge as unknown as promClient.Gauge<string>);
 
 			expect(cacheService.set.mock.calls[0]).toEqual([
-				'metrics:active-workflow-count',
+				'metrics:active-workflow-count:v2',
 				5,
 				120 * 1000,
 			]);

@@ -209,7 +209,7 @@ describe('PrometheusWorkflowStatisticsMetricsService', () => {
 			await collectFn.call(mockGauge as unknown as promClient.Gauge<string>);
 
 			expect(cacheService.set.mock.calls[0]).toEqual([
-				'metrics:workflow-statistics:shared',
+				'metrics:workflow-statistics:shared:v2',
 				MOCK_METRICS,
 				30 * 1000,
 			]);

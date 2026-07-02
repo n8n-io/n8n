@@ -31,12 +31,12 @@ export class PrometheusWorkflowStatisticsMetricsService implements PrometheusMet
 
 	init() {
 		const cacheTtl = this.config.workflowStatisticsInterval * Time.seconds.toMilliseconds;
-		const query = new CachedMetricQuery<LicenseMetrics>(
-			this.cacheService,
-			'metrics:workflow-statistics:shared',
-			cacheTtl,
-			async () => await this.licenseMetricsRepository.getLicenseRenewalMetrics(),
-		);
+		const query = new CachedMetricQuery<LicenseMetrics>({
+			cacheService: this.cacheService,
+			cacheKey: 'metrics:workflow-statistics:shared:v2',
+			ttlMs: cacheTtl,
+			query: async () => await this.licenseMetricsRepository.getLicenseRenewalMetrics(),
+		});
 
 		const metricsConfig = [
 			{

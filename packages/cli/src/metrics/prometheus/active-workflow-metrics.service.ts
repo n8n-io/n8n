@@ -28,12 +28,12 @@ export class PrometheusActiveWorkflowMetricsService implements PrometheusMetrics
 
 	init() {
 		const cacheTtl = this.config.activeWorkflowCountInterval * Time.seconds.toMilliseconds;
-		const query = new CachedMetricQuery<number>(
-			this.cacheService,
-			'metrics:active-workflow-count',
-			cacheTtl,
-			async () => await this.workflowRepository.getActiveCount(),
-		);
+		const query = new CachedMetricQuery<number>({
+			cacheService: this.cacheService,
+			cacheKey: 'metrics:active-workflow-count:v2',
+			ttlMs: cacheTtl,
+			query: async () => await this.workflowRepository.getActiveCount(),
+		});
 
 		new promClient.Gauge({
 			name: `${this.config.prefix}active_workflow_count`,

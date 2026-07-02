@@ -87,7 +87,7 @@ describe('PrometheusWorkflowInfoMetricsService', () => {
 
 			await collectFn.call(mockGauge as unknown as promClient.Gauge<string>);
 
-			expect(cacheService.get.mock.calls[0]).toEqual(['metrics:workflow-info']);
+			expect(cacheService.get.mock.calls[0]).toEqual(['metrics:workflow-info:v2']);
 			expect(workflowRepository.find.mock.calls).toHaveLength(0);
 			expect(mockGauge.reset).toHaveBeenCalled();
 			expect(mockLabels).toHaveBeenCalledWith({
@@ -110,7 +110,11 @@ describe('PrometheusWorkflowInfoMetricsService', () => {
 			await collectFn.call(mockGauge as unknown as promClient.Gauge<string>);
 
 			expect(workflowRepository.find).toHaveBeenCalledWith({ select: ['id', 'name'] });
-			expect(cacheService.set).toHaveBeenCalledWith('metrics:workflow-info', workflows, 60 * 1000);
+			expect(cacheService.set).toHaveBeenCalledWith(
+				'metrics:workflow-info:v2',
+				workflows,
+				60 * 1000,
+			);
 			expect(mockLabels).toHaveBeenCalledWith({
 				workflow_id: 'wf_1',
 				workflow_name: 'My First Workflow',
@@ -143,7 +147,7 @@ describe('PrometheusWorkflowInfoMetricsService', () => {
 			await collectFn.call(mockGauge as unknown as promClient.Gauge<string>);
 
 			expect(cacheService.set).toHaveBeenCalledWith(
-				'metrics:workflow-info',
+				'metrics:workflow-info:v2',
 				expect.any(Array),
 				120 * 1000,
 			);

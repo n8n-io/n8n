@@ -14,7 +14,12 @@ describe('CachedMetricQuery', () => {
 	it('returns the cached value without querying on a cache hit', async () => {
 		cacheService.get.mockResolvedValue(42);
 		const query = vi.fn();
-		const cached = new CachedMetricQuery<number>(cacheService, 'key', 1000, query);
+		const cached = new CachedMetricQuery<number>({
+			cacheService,
+			cacheKey: 'key',
+			ttlMs: 1000,
+			query,
+		});
 
 		expect(await cached.get()).toBe(42);
 		expect(query).not.toHaveBeenCalled();
@@ -24,7 +29,12 @@ describe('CachedMetricQuery', () => {
 	it('queries, caches with the given TTL, and returns on a cache miss', async () => {
 		cacheService.get.mockResolvedValue(undefined);
 		const query = vi.fn().mockResolvedValue(7);
-		const cached = new CachedMetricQuery<number>(cacheService, 'key', 5000, query);
+		const cached = new CachedMetricQuery<number>({
+			cacheService,
+			cacheKey: 'key',
+			ttlMs: 5000,
+			query,
+		});
 
 		expect(await cached.get()).toBe(7);
 		expect(query).toHaveBeenCalledTimes(1);
@@ -34,7 +44,12 @@ describe('CachedMetricQuery', () => {
 	it('coalesces concurrent get() calls into a single query and cache read', async () => {
 		cacheService.get.mockResolvedValue(undefined);
 		const query = vi.fn().mockResolvedValue(1);
-		const cached = new CachedMetricQuery<number>(cacheService, 'key', 1000, query);
+		const cached = new CachedMetricQuery<number>({
+			cacheService,
+			cacheKey: 'key',
+			ttlMs: 1000,
+			query,
+		});
 
 		const [a, b] = await Promise.all([cached.get(), cached.get()]);
 
@@ -47,7 +62,12 @@ describe('CachedMetricQuery', () => {
 	it('queries again on a fresh get() after the previous one settled', async () => {
 		cacheService.get.mockResolvedValue(undefined);
 		const query = vi.fn().mockResolvedValue(1);
-		const cached = new CachedMetricQuery<number>(cacheService, 'key', 1000, query);
+		const cached = new CachedMetricQuery<number>({
+			cacheService,
+			cacheKey: 'key',
+			ttlMs: 1000,
+			query,
+		});
 
 		await cached.get();
 		await cached.get();

@@ -29,12 +29,12 @@ export class PrometheusWorkflowInfoMetricsService implements PrometheusMetricsCo
 
 	init() {
 		const cacheTtl = this.config.workflowInfoMetricInterval * Time.seconds.toMilliseconds;
-		const query = new CachedMetricQuery<Array<{ id: string; name: string }>>(
-			this.cacheService,
-			'metrics:workflow-info',
-			cacheTtl,
-			async () => await this.workflowRepository.find({ select: ['id', 'name'] }),
-		);
+		const query = new CachedMetricQuery<Array<{ id: string; name: string }>>({
+			cacheService: this.cacheService,
+			cacheKey: 'metrics:workflow-info:v2',
+			ttlMs: cacheTtl,
+			query: async () => await this.workflowRepository.find({ select: ['id', 'name'] }),
+		});
 
 		new promClient.Gauge({
 			name: `${this.config.prefix}workflow_info`,
