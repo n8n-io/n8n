@@ -481,6 +481,39 @@ describe('NodeCatalogService', () => {
 			expect(mockGetNodeTypeDefinition).toHaveBeenCalledTimes(2);
 		});
 
+		test('evicts least recently used definition result when cache byte budget is full', async () => {
+			// each entry is ~921.6KB, so 18 (~16.6MB) fit within the 16MiB (~16.8MB)
+			// budget and the 19th insert evicts exactly one LRU entry
+			const largeDefinition = 'x'.repeat(900 * 1024);
+			const nodeIdFor = (index: number) => `n8n-nodes-base.node${index}`;
+			mockGetNodeTypeDefinition.mockImplementation((nodeId: string) => ({
+				nodeId,
+				version: 'v1',
+				content: `${nodeId}-${largeDefinition}`,
+			}));
+			await service.initialize();
+
+			for (let index = 0; index < 18; index++) {
+				await service.getNodeTypeDefinition({ nodeId: nodeIdFor(index) });
+			}
+
+			await service.getNodeTypeDefinition({ nodeId: nodeIdFor(0) });
+			await service.getNodeTypeDefinition({ nodeId: nodeIdFor(18) });
+
+			mockGetNodeTypeDefinition.mockClear();
+
+			await service.getNodeTypeDefinition({ nodeId: nodeIdFor(0) });
+			await service.getNodeTypeDefinition({ nodeId: nodeIdFor(1) });
+
+			expect(mockGetNodeTypeDefinition).toHaveBeenCalledTimes(1);
+			expect(mockGetNodeTypeDefinition).toHaveBeenCalledWith(
+				nodeIdFor(1),
+				undefined,
+				expect.any(Array),
+				{ resource: undefined, operation: undefined, mode: undefined },
+			);
+		});
+
 		test('synthesizes type definitions for a community node', async () => {
 			loadNodesAndCredentials.collectTypes.mockResolvedValue({
 				nodes: [

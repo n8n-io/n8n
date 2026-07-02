@@ -7,6 +7,7 @@ import { Logger } from '@n8n/backend-common';
 import { BUILTIN_NODES_PACKAGES } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import * as fs from 'fs/promises';
+import { LRUCache } from 'lru-cache';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import * as path from 'path';
 
@@ -76,6 +77,20 @@ interface SearchState {
 
 const UNFILTERED: unique symbol = Symbol('unfiltered');
 
+const MAX_TYPE_DEFINITION_CACHE_BYTES = 16 * 1024 * 1024;
+
+const stringBytes = (value?: string): number => (value ? Buffer.byteLength(value, 'utf8') : 0);
+
+// lru-cache rejects non-positive sizes, so clamp to 1 even for empty results
+const definitionResultBytes = (item: NodeTypeDefinitionResult): number =>
+	Math.max(
+		1,
+		stringBytes(item.content) +
+			stringBytes(item.version) +
+			stringBytes(item.error) +
+			stringBytes(item.builderHint),
+	);
+
 /**
  * Shared node catalog for features that need to search, describe or suggest n8n nodes
  * (MCP workflow-builder tools, the agents runtime, future callers).
@@ -111,7 +126,16 @@ export class NodeCatalogService {
 
 	private readonly getCache = new Map<string, string>();
 
-	private readonly getDefinitionCache = new Map<string, NodeTypeDefinitionResult>();
+	/**
+	 * Definition results can be large and this cache is only fully invalidated on
+	 * node-type reloads, so bound it by total byte size: least recently used
+	 * entries are evicted once the budget is exceeded, and single entries over
+	 * the budget are silently not stored (maxEntrySize defaults to maxSize).
+	 */
+	private readonly getDefinitionCache = new LRUCache<string, NodeTypeDefinitionResult>({
+		maxSize: MAX_TYPE_DEFINITION_CACHE_BYTES,
+		sizeCalculation: definitionResultBytes,
+	});
 
 	private readonly suggestCache = new Map<string, string>();
 
