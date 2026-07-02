@@ -43,6 +43,9 @@ export const INSTANCE_SCOPE_GROUPS = {
 			'eventBusDestination:delete',
 			'eventBusDestination:list',
 			'eventBusDestination:test',
+			'variable:list',
+			'variable:read',
+			'dataTable:list',
 		],
 	},
 	user: {
