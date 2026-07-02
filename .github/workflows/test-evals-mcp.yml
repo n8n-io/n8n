@@ -46,7 +46,7 @@ on:
         type: string
         default: ''
       build-model:
-        description: 'Anthropic model id for the claude MCP build step'
+        description: 'Anthropic model id for the claude MCP build step (injected as ANTHROPIC_MODEL)'
         required: false
         type: string
         default: 'claude-opus-4-8'
@@ -103,7 +103,7 @@ on:
         required: false
         default: ''
       build-model:
-        description: 'Anthropic model id for the claude MCP build step'
+        description: 'Anthropic model id for the claude MCP build step (injected as ANTHROPIC_MODEL)'
         required: false
         default: 'claude-opus-4-8'
       experiment-name:
@@ -241,6 +241,9 @@ jobs:
           # `claude` authenticates with the Anthropic direct API key; the verifier's
           # own LLM checks use the same key (two budgets).
           ANTHROPIC_API_KEY: ${{ secrets.EVALS_ANTHROPIC_KEY }}
+          # Build model rides claude's native env var (no CLI flag): the eval CLI
+          # reads it, pins a default when unset, and records it as build_model.
+          ANTHROPIC_MODEL: ${{ inputs.build-model }}
           N8N_INSTANCE_AI_MODEL_API_KEY: ${{ secrets.EVALS_ANTHROPIC_KEY }}
           LANGSMITH_TRACING: 'true'
           LANGSMITH_ENDPOINT: ${{ secrets.EVALS_LANGSMITH_ENDPOINT }}
@@ -253,7 +256,6 @@ jobs:
           FILTER: ${{ inputs.filter }}
           ITERATIONS: ${{ inputs.iterations }}
           EVAL_CONCURRENCY: ${{ inputs.eval-concurrency }}
-          BUILD_MODEL: ${{ inputs.build-model }}
           EXPERIMENT_NAME: ${{ inputs.experiment-name }}
         run: |
           # Default concurrency to lanes * 2. Each lane already caps builds at 4,
@@ -271,7 +273,6 @@ jobs:
             --tier "${TIER:-mcp}"
             --iterations "${ITERATIONS:-3}"
             --concurrency "$CONCURRENCY"
-            --build-model "$BUILD_MODEL"
             --dataset mcp-workflow-evals
             --baseline-prefix mcp-baseline-
             --verbose

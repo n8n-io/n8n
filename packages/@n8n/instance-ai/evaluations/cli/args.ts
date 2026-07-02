@@ -13,6 +13,20 @@ import { BASELINE_EXPERIMENT_PREFIX } from '../comparison/fetch-baseline';
 /** Default LangSmith dataset — the shared Instance AI cohort. */
 export const DEFAULT_DATASET = 'instance-ai-workflow-evals';
 
+/** Default Anthropic model for `claude -p` MCP builds when ANTHROPIC_MODEL is unset. */
+export const DEFAULT_MCP_BUILD_MODEL = 'claude-opus-4-8';
+
+/** Resolve the MCP build model from the environment. `claude` natively reads
+ *  ANTHROPIC_MODEL, so operators/CI set that env var (matching how the AI
+ *  Assistant itself is configured) instead of a CLI flag. We still pin a
+ *  default when it's unset so builds never float with claude-code's bundled
+ *  default, and the resolved value is passed explicitly to `claude --model`
+ *  and recorded as `build_model` experiment metadata. */
+function resolveBuildModel(env: NodeJS.ProcessEnv = process.env): string {
+	const fromEnv = env.ANTHROPIC_MODEL?.trim();
+	return fromEnv ? fromEnv : DEFAULT_MCP_BUILD_MODEL;
+}
+
 // ---------------------------------------------------------------------------
 // Public types
 // ---------------------------------------------------------------------------
@@ -85,7 +99,9 @@ export interface CliArgs {
 	 *  (`--build-via-mcp` only). Arbitrary — the eval CLI stages the config itself. */
 	mcpServerName: string;
 	/** Anthropic model id passed to `claude -p` for the MCP build (`--build-via-mcp`).
-	 *  Distinct from the verifier model (N8N_INSTANCE_AI_MODEL). */
+	 *  Sourced from the ANTHROPIC_MODEL env var (the variable `claude` reads
+	 *  natively), pinned to DEFAULT_MCP_BUILD_MODEL when unset. Distinct from the
+	 *  verifier model (N8N_INSTANCE_AI_MODEL). */
 	buildModel: string;
 	/** Working directory for the `claude` build subprocess (`--build-via-mcp`); loads
 	 *  that project's Claude config/skills. Defaults to the subprocess default. */
@@ -160,6 +176,13 @@ export function parseCliArgs(argv: string[]): CliArgs {
 	if (validated.buildViaMcp && validated.deletePrebuiltWorkflows) {
 		throw new Error(
 			'--delete-prebuilt-workflows applies to --prebuilt-workflows. --build-via-mcp already cleans up the workflows it builds unless --keep-workflows is set.',
+		);
+	}
+	// Build knobs without --build-via-mcp would parse fine and then be silently
+	// ignored — the run would look like it honored them. Fail loudly instead.
+	if (!validated.buildViaMcp && raw.buildOnlyFlags.length > 0) {
+		throw new Error(
+			`${[...new Set(raw.buildOnlyFlags)].join(', ')} only take${raw.buildOnlyFlags.length === 1 ? 's' : ''} effect with --build-via-mcp — pass it, or drop the flag(s).`,
 		);
 	}
 	if (validated.deletePrebuiltWorkflows && !validated.prebuiltWorkflows) {
@@ -277,6 +300,9 @@ interface RawArgs {
 	 *  derives suite-scoped defaults otherwise). */
 	datasetProvided: boolean;
 	baselineProvided: boolean;
+	/** Build-only flags the caller passed. Only meaningful with --build-via-mcp;
+	 *  parseCliArgs rejects them otherwise so they can't be silently ignored. */
+	buildOnlyFlags: string[];
 }
 
 function parseRawArgs(argv: string[]): RawArgs {
@@ -296,12 +322,13 @@ function parseRawArgs(argv: string[]): RawArgs {
 		source: 'disk',
 		buildViaMcp: false,
 		mcpServerName: 'n8n-local',
-		buildModel: 'claude-opus-4-8',
+		buildModel: resolveBuildModel(),
 		buildMaxAttempts: 3,
 		buildMcpTimeoutMs: 120_000,
 		buildTimeoutMs: DEFAULT_MCP_BUILD_TIMEOUT_MS,
 		datasetProvided: false,
 		baselineProvided: false,
+		buildOnlyFlags: [],
 	};
 
 	for (let i = 0; i < argv.length; i++) {
@@ -423,31 +450,31 @@ function parseRawArgs(argv: string[]): RawArgs {
 
 			case '--mcp-server':
 				result.mcpServerName = nextArg(argv, i, '--mcp-server');
-				i++;
-				break;
-
-			case '--build-model':
-				result.buildModel = nextArg(argv, i, '--build-model');
+				result.buildOnlyFlags.push(arg);
 				i++;
 				break;
 
 			case '--build-cwd':
 				result.buildCwd = nextArg(argv, i, '--build-cwd');
+				result.buildOnlyFlags.push(arg);
 				i++;
 				break;
 
 			case '--build-max-attempts':
 				result.buildMaxAttempts = parseIntArg(argv, i, '--build-max-attempts');
+				result.buildOnlyFlags.push(arg);
 				i++;
 				break;
 
 			case '--build-mcp-timeout-ms':
 				result.buildMcpTimeoutMs = parseIntArg(argv, i, '--build-mcp-timeout-ms');
+				result.buildOnlyFlags.push(arg);
 				i++;
 				break;
 
 			case '--build-timeout-ms':
 				result.buildTimeoutMs = parseIntArg(argv, i, '--build-timeout-ms');
+				result.buildOnlyFlags.push(arg);
 				i++;
 				break;
 

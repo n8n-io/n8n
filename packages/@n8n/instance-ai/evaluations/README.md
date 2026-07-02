@@ -149,7 +149,7 @@ dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai --iterations 3
 | `--suite` | — | LangTracer suite slug (or numeric id) to pull when `--source langtracer` (required in that mode) |
 | `--build-via-mcp` | `false` | Build each workflow by driving the lane's MCP server with `claude -p`, then verify it on that same lane — see [Building via MCP (`--build-via-mcp`)](#building-via-mcp---build-via-mcp). Works across multiple `--base-url` lanes; mutually exclusive with `--prebuilt-workflows` |
 | `--mcp-server` | `n8n-local` | MCP server name for the staged `claude` config + tool allowlist (`--build-via-mcp`) |
-| `--build-model` | `claude-opus-4-8` | Anthropic model for the `claude` MCP build (`--build-via-mcp`); distinct from the verifier model |
+| `ANTHROPIC_MODEL` (env) | `claude-opus-4-8` | Anthropic model for the `claude` MCP build (`--build-via-mcp`); distinct from the verifier model. Not a flag: it rides `claude`'s native env var, and the CLI pins the default when unset so builds never float with claude-code's bundled default |
 | `--build-cwd` | — | Working directory for the `claude` build subprocess (`--build-via-mcp`); loads that project's Claude config/skills |
 | `--build-max-attempts` | `3` | Retries per workflow when `claude` returns no id (`--build-via-mcp`) |
 | `--build-mcp-timeout-ms` | `120000` | `MCP_TIMEOUT` passed to the `claude` build subprocess — bounds one MCP tool call (`--build-via-mcp`) |
@@ -406,9 +406,10 @@ How it differs from the manifest flow:
   its workflow behind on the lane even though cleanup is on.
 
 **Prerequisites**: the `claude` CLI installed and authenticated (the build
-subprocess reads `ANTHROPIC_API_KEY`); each lane reachable and seeded with the
-E2E owner. The MCP module is on by default, so no server-side config is needed
-beyond a running instance.
+subprocess reads `ANTHROPIC_API_KEY`; set `ANTHROPIC_MODEL` to pick the build
+model, defaulting to `claude-opus-4-8` when unset); each lane reachable and
+seeded with the E2E owner. The MCP module is on by default, so no server-side
+config is needed beyond a running instance.
 
 Local run against a pool of container lanes (reuses `scripts/run-eval-lanes.sh`,
 which starts + seeds the lanes and forwards everything after `--`):
