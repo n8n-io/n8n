@@ -26,7 +26,7 @@
 			"tools": [
 				{
 					"name": "workspace_read_file",
-					"description": "Read the contents of a file from the workspace",
+					"description": "Read the contents of a file from the workspace. For large files prefer targeted inspection (grep/sed via workspace_execute_command) or str-replace edits over re-reading the whole file.",
 					"input_schema": {
 						"type": "object",
 						"properties": {
@@ -356,31 +356,30 @@
 			}
 		},
 		"status": 200,
-		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_013CBrBbw9u2twFMVHRoLWXC\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_01QEeosf86K2DwDw7R1DbRQP\",\"name\":\"workspace_append_file\",\"input\":{\"path\":\"/project/source.txt\",\"content\":\"-beta\"},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":2717,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":79,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_01VMj1UzBLRWZwgvCqCLKdZS\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_01H2tWdU4s6HSHmrDqtfxKvf\",\"name\":\"workspace_append_file\",\"input\":{\"path\":\"/project/source.txt\",\"content\":\"-beta\"},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":2748,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":79,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "10000000",
 			"anthropic-ratelimit-input-tokens-remaining": "9999000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-06-23T12:20:14Z",
+			"anthropic-ratelimit-input-tokens-reset": "2026-07-02T13:57:59Z",
 			"anthropic-ratelimit-output-tokens-limit": "2000000",
 			"anthropic-ratelimit-output-tokens-remaining": "2000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-06-23T12:20:14Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-07-02T13:57:59Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-06-23T12:20:13Z",
+			"anthropic-ratelimit-requests-reset": "2026-07-02T13:57:58Z",
 			"anthropic-ratelimit-tokens-limit": "12000000",
 			"anthropic-ratelimit-tokens-remaining": "11999000",
-			"anthropic-ratelimit-tokens-reset": "2026-06-23T12:20:14Z",
+			"anthropic-ratelimit-tokens-reset": "2026-07-02T13:57:59Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a1037210cffc5a90-VIE",
+			"cf-ray": "a14e29a1ec04f33f-BCN",
 			"connection": "keep-alive",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Tue, 23 Jun 2026 12:20:14 GMT",
-			"request-id": "req_011CcLBSUpDtFoXVkeHQSQsU",
+			"date": "Thu, 02 Jul 2026 13:58:00 GMT",
+			"request-id": "req_011CcdMB4ih5v5L6Cn6q18ig",
 			"server": "cloudflare",
-			"set-cookie": "_cfuvid=JH2N7hKxU.qUo5zmmQUOuhA3iW6gprl0f4mhmahRoQ4-1782217213.5700464-1.0.1.1-YHK6iPxY4Aavq0C4eDUsHQNWnjTRCopHyMrSeJqWN5s; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-be665838e7b56c2d008da9b5341847f0-5df8ab0e77cbdc39-01",
+			"traceresponse": "00-b38d134aa31759d6a2b3132ac7c5390d-79bd91e658e74850-01",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
 		},
@@ -414,7 +413,7 @@
 					"content": [
 						{
 							"type": "tool_use",
-							"id": "toolu_01QEeosf86K2DwDw7R1DbRQP",
+							"id": "toolu_01H2tWdU4s6HSHmrDqtfxKvf",
 							"name": "workspace_append_file",
 							"input": {
 								"path": "/project/source.txt",
@@ -431,7 +430,7 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01QEeosf86K2DwDw7R1DbRQP",
+							"tool_use_id": "toolu_01H2tWdU4s6HSHmrDqtfxKvf",
 							"content": "{\"success\":true}"
 						}
 					]
@@ -440,7 +439,7 @@
 			"tools": [
 				{
 					"name": "workspace_read_file",
-					"description": "Read the contents of a file from the workspace",
+					"description": "Read the contents of a file from the workspace. For large files prefer targeted inspection (grep/sed via workspace_execute_command) or str-replace edits over re-reading the whole file.",
 					"input_schema": {
 						"type": "object",
 						"properties": {
@@ -770,31 +769,30 @@
 			}
 		},
 		"status": 200,
-		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_01Sav2hVoSjBfmnmD512edEK\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Now I'll proceed with step 2:\"},{\"type\":\"tool_use\",\"id\":\"toolu_01KsE6jjR1hwHDyxMCD6sysj\",\"name\":\"workspace_copy_file\",\"input\":{\"src\":\"/project/source.txt\",\"dest\":\"/project/copied.txt\",\"overwrite\":true},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":2812,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":110,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_01Shj786mps8p79CJgrxVJTt\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"2.\"},{\"type\":\"tool_use\",\"id\":\"toolu_01C6WoBDpPF4pmHrm1qVsaqm\",\"name\":\"workspace_copy_file\",\"input\":{\"src\":\"/project/source.txt\",\"dest\":\"/project/copied.txt\",\"overwrite\":true},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":2843,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":103,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "10000000",
 			"anthropic-ratelimit-input-tokens-remaining": "9999000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-06-23T12:20:15Z",
+			"anthropic-ratelimit-input-tokens-reset": "2026-07-02T13:58:00Z",
 			"anthropic-ratelimit-output-tokens-limit": "2000000",
 			"anthropic-ratelimit-output-tokens-remaining": "2000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-06-23T12:20:15Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-07-02T13:58:02Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-06-23T12:20:14Z",
+			"anthropic-ratelimit-requests-reset": "2026-07-02T13:58:00Z",
 			"anthropic-ratelimit-tokens-limit": "12000000",
 			"anthropic-ratelimit-tokens-remaining": "11999000",
-			"anthropic-ratelimit-tokens-reset": "2026-06-23T12:20:15Z",
+			"anthropic-ratelimit-tokens-reset": "2026-07-02T13:58:00Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a1037217ee5a5a90-VIE",
+			"cf-ray": "a14e29aaa927f33f-BCN",
 			"connection": "keep-alive",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Tue, 23 Jun 2026 12:20:15 GMT",
-			"request-id": "req_011CcLBSZgfcSnXxnweoEdRY",
+			"date": "Thu, 02 Jul 2026 13:58:02 GMT",
+			"request-id": "req_011CcdMBAfdUSNV7Vx44aDyr",
 			"server": "cloudflare",
-			"set-cookie": "_cfuvid=_vMw.sipNnqgX.i8WzNH4jDyxzCaKdN07YjAArwHP6A-1782217214.7058249-1.0.1.1-m5DILUrcmr2ayHnwzgaGCpx_HgcFp5scdIDP2ezhYUo; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-e996ad2bbb136d6d8ecac40c62a21b7e-354941476d328918-01",
+			"traceresponse": "00-c160c1dbbdfe2fe323fe44a7e34bd60b-d12dd44d8386d95a-01",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
 		},
@@ -828,7 +826,7 @@
 					"content": [
 						{
 							"type": "tool_use",
-							"id": "toolu_01QEeosf86K2DwDw7R1DbRQP",
+							"id": "toolu_01H2tWdU4s6HSHmrDqtfxKvf",
 							"name": "workspace_append_file",
 							"input": {
 								"path": "/project/source.txt",
@@ -845,7 +843,7 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01QEeosf86K2DwDw7R1DbRQP",
+							"tool_use_id": "toolu_01H2tWdU4s6HSHmrDqtfxKvf",
 							"content": "{\"success\":true}"
 						}
 					]
@@ -855,11 +853,11 @@
 					"content": [
 						{
 							"type": "text",
-							"text": "Now I'll proceed with step 2:"
+							"text": "2."
 						},
 						{
 							"type": "tool_use",
-							"id": "toolu_01KsE6jjR1hwHDyxMCD6sysj",
+							"id": "toolu_01C6WoBDpPF4pmHrm1qVsaqm",
 							"name": "workspace_copy_file",
 							"input": {
 								"src": "/project/source.txt",
@@ -877,7 +875,7 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01KsE6jjR1hwHDyxMCD6sysj",
+							"tool_use_id": "toolu_01C6WoBDpPF4pmHrm1qVsaqm",
 							"content": "{\"success\":true}"
 						}
 					]
@@ -886,7 +884,7 @@
 			"tools": [
 				{
 					"name": "workspace_read_file",
-					"description": "Read the contents of a file from the workspace",
+					"description": "Read the contents of a file from the workspace. For large files prefer targeted inspection (grep/sed via workspace_execute_command) or str-replace edits over re-reading the whole file.",
 					"input_schema": {
 						"type": "object",
 						"properties": {
@@ -1216,31 +1214,30 @@
 			}
 		},
 		"status": 200,
-		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_01PxXjfBj1V1AWNi1ETSJL7t\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Now step 3:\"},{\"type\":\"tool_use\",\"id\":\"toolu_01Q7Gs3Jh6damKMxpuNa9PsT\",\"name\":\"workspace_move_file\",\"input\":{\"src\":\"/project/copied.txt\",\"dest\":\"/project/moved.txt\",\"overwrite\":true},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":2938,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":106,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_01S8zHyMV88y1jKhRyxa32pW\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"3.\"},{\"type\":\"tool_use\",\"id\":\"toolu_01DnqHYGdRu627aEwMebvqus\",\"name\":\"workspace_move_file\",\"input\":{\"src\":\"/project/copied.txt\",\"dest\":\"/project/moved.txt\",\"overwrite\":true},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":2962,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":103,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "10000000",
 			"anthropic-ratelimit-input-tokens-remaining": "9999000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-06-23T12:20:16Z",
+			"anthropic-ratelimit-input-tokens-reset": "2026-07-02T13:58:03Z",
 			"anthropic-ratelimit-output-tokens-limit": "2000000",
 			"anthropic-ratelimit-output-tokens-remaining": "2000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-06-23T12:20:17Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-07-02T13:58:03Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-06-23T12:20:16Z",
+			"anthropic-ratelimit-requests-reset": "2026-07-02T13:58:02Z",
 			"anthropic-ratelimit-tokens-limit": "12000000",
 			"anthropic-ratelimit-tokens-remaining": "11999000",
-			"anthropic-ratelimit-tokens-reset": "2026-06-23T12:20:16Z",
+			"anthropic-ratelimit-tokens-reset": "2026-07-02T13:58:03Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a103721eec6e5a90-VIE",
+			"cf-ray": "a14e29b81a37f33f-BCN",
 			"connection": "keep-alive",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Tue, 23 Jun 2026 12:20:17 GMT",
-			"request-id": "req_011CcLBSeWNwbWmo3uLEhXgR",
+			"date": "Thu, 02 Jul 2026 13:58:03 GMT",
+			"request-id": "req_011CcdMBL8eFMwGPRJrxsFuZ",
 			"server": "cloudflare",
-			"set-cookie": "_cfuvid=Xg0pXiSB6JIXgF9pLDpkbzjNnIiha2TolpO0yAzyTqk-1782217215.8296645-1.0.1.1-iOkrnM_YZH.06uxAPcB5MpQediZtYjZVpkZ0yJxBfeA; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-2d60397ec3f65292bae41411c1d4df18-a94a5dde937d0df5-01",
+			"traceresponse": "00-8de9bdff809488d88293ada1f3b513ea-67b4d5a771067793-01",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
 		},
@@ -1274,7 +1271,7 @@
 					"content": [
 						{
 							"type": "tool_use",
-							"id": "toolu_01QEeosf86K2DwDw7R1DbRQP",
+							"id": "toolu_01H2tWdU4s6HSHmrDqtfxKvf",
 							"name": "workspace_append_file",
 							"input": {
 								"path": "/project/source.txt",
@@ -1291,7 +1288,7 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01QEeosf86K2DwDw7R1DbRQP",
+							"tool_use_id": "toolu_01H2tWdU4s6HSHmrDqtfxKvf",
 							"content": "{\"success\":true}"
 						}
 					]
@@ -1301,11 +1298,11 @@
 					"content": [
 						{
 							"type": "text",
-							"text": "Now I'll proceed with step 2:"
+							"text": "2."
 						},
 						{
 							"type": "tool_use",
-							"id": "toolu_01KsE6jjR1hwHDyxMCD6sysj",
+							"id": "toolu_01C6WoBDpPF4pmHrm1qVsaqm",
 							"name": "workspace_copy_file",
 							"input": {
 								"src": "/project/source.txt",
@@ -1323,7 +1320,7 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01KsE6jjR1hwHDyxMCD6sysj",
+							"tool_use_id": "toolu_01C6WoBDpPF4pmHrm1qVsaqm",
 							"content": "{\"success\":true}"
 						}
 					]
@@ -1333,11 +1330,11 @@
 					"content": [
 						{
 							"type": "text",
-							"text": "Now step 3:"
+							"text": "3."
 						},
 						{
 							"type": "tool_use",
-							"id": "toolu_01Q7Gs3Jh6damKMxpuNa9PsT",
+							"id": "toolu_01DnqHYGdRu627aEwMebvqus",
 							"name": "workspace_move_file",
 							"input": {
 								"src": "/project/copied.txt",
@@ -1355,7 +1352,7 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01Q7Gs3Jh6damKMxpuNa9PsT",
+							"tool_use_id": "toolu_01DnqHYGdRu627aEwMebvqus",
 							"content": "{\"success\":true}"
 						}
 					]
@@ -1364,7 +1361,7 @@
 			"tools": [
 				{
 					"name": "workspace_read_file",
-					"description": "Read the contents of a file from the workspace",
+					"description": "Read the contents of a file from the workspace. For large files prefer targeted inspection (grep/sed via workspace_execute_command) or str-replace edits over re-reading the whole file.",
 					"input_schema": {
 						"type": "object",
 						"properties": {
@@ -1694,31 +1691,30 @@
 			}
 		},
 		"status": 200,
-		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_01XZ5dEBWx4uwsbeNQTURbU1\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Now step 4:\"},{\"type\":\"tool_use\",\"id\":\"toolu_013rm7M5jtVkVYrjA3XsAYRg\",\"name\":\"workspace_delete_file\",\"input\":{\"path\":\"/project/source.txt\"},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":3060,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":66,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_017x7zz9EJLUs4VHQNryLsdi\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"4.\"},{\"type\":\"tool_use\",\"id\":\"toolu_01XZ9B8o3PBhDRJKgVcL7rTo\",\"name\":\"workspace_delete_file\",\"input\":{\"path\":\"/project/source.txt\"},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":3081,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":63,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "10000000",
 			"anthropic-ratelimit-input-tokens-remaining": "9999000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-06-23T12:20:17Z",
+			"anthropic-ratelimit-input-tokens-reset": "2026-07-02T13:58:04Z",
 			"anthropic-ratelimit-output-tokens-limit": "2000000",
 			"anthropic-ratelimit-output-tokens-remaining": "2000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-06-23T12:20:18Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-07-02T13:58:04Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-06-23T12:20:17Z",
+			"anthropic-ratelimit-requests-reset": "2026-07-02T13:58:03Z",
 			"anthropic-ratelimit-tokens-limit": "12000000",
 			"anthropic-ratelimit-tokens-remaining": "11999000",
-			"anthropic-ratelimit-tokens-reset": "2026-06-23T12:20:17Z",
+			"anthropic-ratelimit-tokens-reset": "2026-07-02T13:58:04Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a10372280b715a90-VIE",
+			"cf-ray": "a14e29c00c9df33f-BCN",
 			"connection": "keep-alive",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Tue, 23 Jun 2026 12:20:18 GMT",
-			"request-id": "req_011CcLBSkkBAPuPtgS3Xx93S",
+			"date": "Thu, 02 Jul 2026 13:58:04 GMT",
+			"request-id": "req_011CcdMBRMRLYk4VP1SEnRcC",
 			"server": "cloudflare",
-			"set-cookie": "_cfuvid=rAFjDvfcn8s94X.VY1zLhWvUwAGtyKGdn5MMIrSpBoo-1782217217.2880561-1.0.1.1-u7USfiFxJ1cNc_5CZ.0XlGMBH0jMtPogGMfqamViQCU; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-5bfe3d23cc472ba0519d70d65f5e2bf8-a06fc5dcb7bc5704-01",
+			"traceresponse": "00-847e6c2206e7a5ca8ad84893f43c813b-52073eee46af1d27-01",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
 		},
@@ -1752,7 +1748,7 @@
 					"content": [
 						{
 							"type": "tool_use",
-							"id": "toolu_01QEeosf86K2DwDw7R1DbRQP",
+							"id": "toolu_01H2tWdU4s6HSHmrDqtfxKvf",
 							"name": "workspace_append_file",
 							"input": {
 								"path": "/project/source.txt",
@@ -1769,7 +1765,7 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01QEeosf86K2DwDw7R1DbRQP",
+							"tool_use_id": "toolu_01H2tWdU4s6HSHmrDqtfxKvf",
 							"content": "{\"success\":true}"
 						}
 					]
@@ -1779,11 +1775,11 @@
 					"content": [
 						{
 							"type": "text",
-							"text": "Now I'll proceed with step 2:"
+							"text": "2."
 						},
 						{
 							"type": "tool_use",
-							"id": "toolu_01KsE6jjR1hwHDyxMCD6sysj",
+							"id": "toolu_01C6WoBDpPF4pmHrm1qVsaqm",
 							"name": "workspace_copy_file",
 							"input": {
 								"src": "/project/source.txt",
@@ -1801,7 +1797,7 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01KsE6jjR1hwHDyxMCD6sysj",
+							"tool_use_id": "toolu_01C6WoBDpPF4pmHrm1qVsaqm",
 							"content": "{\"success\":true}"
 						}
 					]
@@ -1811,11 +1807,11 @@
 					"content": [
 						{
 							"type": "text",
-							"text": "Now step 3:"
+							"text": "3."
 						},
 						{
 							"type": "tool_use",
-							"id": "toolu_01Q7Gs3Jh6damKMxpuNa9PsT",
+							"id": "toolu_01DnqHYGdRu627aEwMebvqus",
 							"name": "workspace_move_file",
 							"input": {
 								"src": "/project/copied.txt",
@@ -1833,7 +1829,7 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01Q7Gs3Jh6damKMxpuNa9PsT",
+							"tool_use_id": "toolu_01DnqHYGdRu627aEwMebvqus",
 							"content": "{\"success\":true}"
 						}
 					]
@@ -1843,11 +1839,11 @@
 					"content": [
 						{
 							"type": "text",
-							"text": "Now step 4:"
+							"text": "4."
 						},
 						{
 							"type": "tool_use",
-							"id": "toolu_013rm7M5jtVkVYrjA3XsAYRg",
+							"id": "toolu_01XZ9B8o3PBhDRJKgVcL7rTo",
 							"name": "workspace_delete_file",
 							"input": {
 								"path": "/project/source.txt"
@@ -1863,7 +1859,7 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_013rm7M5jtVkVYrjA3XsAYRg",
+							"tool_use_id": "toolu_01XZ9B8o3PBhDRJKgVcL7rTo",
 							"content": "{\"success\":true}"
 						}
 					]
@@ -1872,7 +1868,7 @@
 			"tools": [
 				{
 					"name": "workspace_read_file",
-					"description": "Read the contents of a file from the workspace",
+					"description": "Read the contents of a file from the workspace. For large files prefer targeted inspection (grep/sed via workspace_execute_command) or str-replace edits over re-reading the whole file.",
 					"input_schema": {
 						"type": "object",
 						"properties": {
@@ -2202,31 +2198,30 @@
 			}
 		},
 		"status": 200,
-		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_013dGrufuipNG46bQqe6uDaa\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Now step 5:\"},{\"type\":\"tool_use\",\"id\":\"toolu_011HwgqJKuCv8eTrXZN14HQo\",\"name\":\"workspace_rmdir\",\"input\":{\"path\":\"/project/remove-me\",\"recursive\":true,\"force\":false},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":3142,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":99,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_01UMuvYLvqJeVs7r9sqvssfx\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"5.\"},{\"type\":\"tool_use\",\"id\":\"toolu_014xGHyjHnLv7chY11eACbWR\",\"name\":\"workspace_rmdir\",\"input\":{\"path\":\"/project/remove-me\",\"recursive\":true,\"force\":false},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":3160,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":96,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "10000000",
 			"anthropic-ratelimit-input-tokens-remaining": "9999000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-06-23T12:20:19Z",
+			"anthropic-ratelimit-input-tokens-reset": "2026-07-02T13:58:05Z",
 			"anthropic-ratelimit-output-tokens-limit": "2000000",
 			"anthropic-ratelimit-output-tokens-remaining": "2000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-06-23T12:20:19Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-07-02T13:58:05Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-06-23T12:20:18Z",
+			"anthropic-ratelimit-requests-reset": "2026-07-02T13:58:04Z",
 			"anthropic-ratelimit-tokens-limit": "12000000",
 			"anthropic-ratelimit-tokens-remaining": "11999000",
-			"anthropic-ratelimit-tokens-reset": "2026-06-23T12:20:19Z",
+			"anthropic-ratelimit-tokens-reset": "2026-07-02T13:58:05Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a103722e38575a90-VIE",
+			"cf-ray": "a14e29c6ac4ff33f-BCN",
 			"connection": "keep-alive",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Tue, 23 Jun 2026 12:20:19 GMT",
-			"request-id": "req_011CcLBSq6cXkFg91kwFBzTE",
+			"date": "Thu, 02 Jul 2026 13:58:05 GMT",
+			"request-id": "req_011CcdMBVzis7yUWP4ArGFph",
 			"server": "cloudflare",
-			"set-cookie": "_cfuvid=URBcdHVOTqnj4zi7tJRFSqkEX_8BdxpW2dzE_dORFl8-1782217218.2711825-1.0.1.1-Wfp9pzp6F5qMUvje7MzakZjMLWNy_ydtU8x7MrzPusY; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-086372b7df9dd3bc1780e4fdd034187b-10665286f6efac82-01",
+			"traceresponse": "00-407d424f60575d36c418ba663a94a0c0-61a1948dff9a1f59-01",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
 		},
@@ -2260,7 +2255,7 @@
 					"content": [
 						{
 							"type": "tool_use",
-							"id": "toolu_01QEeosf86K2DwDw7R1DbRQP",
+							"id": "toolu_01H2tWdU4s6HSHmrDqtfxKvf",
 							"name": "workspace_append_file",
 							"input": {
 								"path": "/project/source.txt",
@@ -2277,7 +2272,7 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01QEeosf86K2DwDw7R1DbRQP",
+							"tool_use_id": "toolu_01H2tWdU4s6HSHmrDqtfxKvf",
 							"content": "{\"success\":true}"
 						}
 					]
@@ -2287,11 +2282,11 @@
 					"content": [
 						{
 							"type": "text",
-							"text": "Now I'll proceed with step 2:"
+							"text": "2."
 						},
 						{
 							"type": "tool_use",
-							"id": "toolu_01KsE6jjR1hwHDyxMCD6sysj",
+							"id": "toolu_01C6WoBDpPF4pmHrm1qVsaqm",
 							"name": "workspace_copy_file",
 							"input": {
 								"src": "/project/source.txt",
@@ -2309,7 +2304,7 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01KsE6jjR1hwHDyxMCD6sysj",
+							"tool_use_id": "toolu_01C6WoBDpPF4pmHrm1qVsaqm",
 							"content": "{\"success\":true}"
 						}
 					]
@@ -2319,11 +2314,11 @@
 					"content": [
 						{
 							"type": "text",
-							"text": "Now step 3:"
+							"text": "3."
 						},
 						{
 							"type": "tool_use",
-							"id": "toolu_01Q7Gs3Jh6damKMxpuNa9PsT",
+							"id": "toolu_01DnqHYGdRu627aEwMebvqus",
 							"name": "workspace_move_file",
 							"input": {
 								"src": "/project/copied.txt",
@@ -2341,7 +2336,7 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01Q7Gs3Jh6damKMxpuNa9PsT",
+							"tool_use_id": "toolu_01DnqHYGdRu627aEwMebvqus",
 							"content": "{\"success\":true}"
 						}
 					]
@@ -2351,11 +2346,11 @@
 					"content": [
 						{
 							"type": "text",
-							"text": "Now step 4:"
+							"text": "4."
 						},
 						{
 							"type": "tool_use",
-							"id": "toolu_013rm7M5jtVkVYrjA3XsAYRg",
+							"id": "toolu_01XZ9B8o3PBhDRJKgVcL7rTo",
 							"name": "workspace_delete_file",
 							"input": {
 								"path": "/project/source.txt"
@@ -2371,7 +2366,7 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_013rm7M5jtVkVYrjA3XsAYRg",
+							"tool_use_id": "toolu_01XZ9B8o3PBhDRJKgVcL7rTo",
 							"content": "{\"success\":true}"
 						}
 					]
@@ -2381,11 +2376,11 @@
 					"content": [
 						{
 							"type": "text",
-							"text": "Now step 5:"
+							"text": "5."
 						},
 						{
 							"type": "tool_use",
-							"id": "toolu_011HwgqJKuCv8eTrXZN14HQo",
+							"id": "toolu_014xGHyjHnLv7chY11eACbWR",
 							"name": "workspace_rmdir",
 							"input": {
 								"path": "/project/remove-me",
@@ -2403,7 +2398,7 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_011HwgqJKuCv8eTrXZN14HQo",
+							"tool_use_id": "toolu_014xGHyjHnLv7chY11eACbWR",
 							"content": "{\"success\":true}"
 						}
 					]
@@ -2412,7 +2407,7 @@
 			"tools": [
 				{
 					"name": "workspace_read_file",
-					"description": "Read the contents of a file from the workspace",
+					"description": "Read the contents of a file from the workspace. For large files prefer targeted inspection (grep/sed via workspace_execute_command) or str-replace edits over re-reading the whole file.",
 					"input_schema": {
 						"type": "object",
 						"properties": {
@@ -2742,31 +2737,30 @@
 			}
 		},
 		"status": 200,
-		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_018fnVmMbVJU23JsymT7ZYTS\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"done.\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":3257,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":5,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_01Sc1VMAj9U5MtpC4cmc6Zmd\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"done.\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":3272,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":5,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "10000000",
 			"anthropic-ratelimit-input-tokens-remaining": "9999000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-06-23T12:20:20Z",
+			"anthropic-ratelimit-input-tokens-reset": "2026-07-02T13:58:06Z",
 			"anthropic-ratelimit-output-tokens-limit": "2000000",
 			"anthropic-ratelimit-output-tokens-remaining": "2000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-06-23T12:20:20Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-07-02T13:58:06Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-06-23T12:20:20Z",
+			"anthropic-ratelimit-requests-reset": "2026-07-02T13:58:06Z",
 			"anthropic-ratelimit-tokens-limit": "12000000",
 			"anthropic-ratelimit-tokens-remaining": "11999000",
-			"anthropic-ratelimit-tokens-reset": "2026-06-23T12:20:20Z",
+			"anthropic-ratelimit-tokens-reset": "2026-07-02T13:58:06Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a1037238f8245a90-VIE",
+			"cf-ray": "a14e29cef977f33f-BCN",
 			"connection": "keep-alive",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Tue, 23 Jun 2026 12:20:20 GMT",
-			"request-id": "req_011CcLBSxJCfhJPpiAmZ9nQ7",
+			"date": "Thu, 02 Jul 2026 13:58:07 GMT",
+			"request-id": "req_011CcdMBbZLfW9krehMzMLuV",
 			"server": "cloudflare",
-			"set-cookie": "_cfuvid=OqdXbJN4rNTiMoBek.ZRcFzqTz36aZVSjYIUXvGw0ZY-1782217219.9977639-1.0.1.1-hvxaIceuRgrur6NZqR5ESbLEZZZhnD1baZLYoF5pPpo; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-aaa0db6fce9d8bd7be9bdf7174e2ed28-9d259c78af753d51-01",
+			"traceresponse": "00-70f95453d3d1e64eecfa23d0a5303123-5d4f8df81f78b908-01",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
 		},
