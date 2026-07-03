@@ -7,7 +7,7 @@ import type { InstanceAiCredentialRequest } from '@n8n/api-types';
 import InstanceAiCredentialSetup from '../components/InstanceAiCredentialSetup.vue';
 import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { useUIStore } from '@/app/stores/ui.store';
+import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -49,7 +49,34 @@ vi.mock('@/features/credentials/components/NodeCredentials.vue', () => ({
 	},
 }));
 
+vi.mock('../components/InstanceAiCredentialForm.vue', () => ({
+	default: {
+		props: [
+			'credentialType',
+			'mode',
+			'credentialId',
+			'suggestedName',
+			'projectId',
+			'providerUrl',
+			'showBack',
+		],
+		template: '<div data-test-id="instance-ai-credential-form" />',
+	},
+}));
+
 const renderComponent = createThreadComponentRenderer(InstanceAiCredentialSetup);
+
+// getUsableCredentialByType is a computed returning a function — vi.spyOn's accessor
+// overloads can't type a getter whose value is a function, so override it directly.
+function stubUsableCredentials(
+	store: ReturnType<typeof useCredentialsStore>,
+	getCredentials: (type: string) => ICredentialsResponse[],
+) {
+	Object.defineProperty(store, 'getUsableCredentialByType', {
+		configurable: true,
+		get: () => getCredentials,
+	});
+}
 
 /** Creates requests with no existing credentials (shows setup button) */
 function makeCredentialRequests(count: number): InstanceAiCredentialRequest[] {
@@ -85,6 +112,11 @@ describe('InstanceAiCredentialSetup', () => {
 		const credentialsStore = useCredentialsStore();
 		vi.spyOn(credentialsStore, 'fetchAllCredentials').mockResolvedValue([]);
 		vi.spyOn(credentialsStore, 'fetchCredentialTypes').mockResolvedValue(undefined);
+		// The card renders the NodeCredentials picker when the store has a usable
+		// credential of the type; default to one so the picker-based tests render it.
+		stubUsableCredentials(credentialsStore, () => [
+			{ id: 'existing-1', name: 'Existing Cred' } as ICredentialsResponse,
+		]);
 	});
 
 	describe('credential list', () => {
@@ -129,7 +161,10 @@ describe('InstanceAiCredentialSetup', () => {
 			expect(getAllByTestId('credential-picker')).toHaveLength(1);
 		});
 
-		it('renders a setup button when no existing credentials', () => {
+		it('renders the inline credential form when no usable credentials exist', () => {
+			const credentialsStore = useCredentialsStore();
+			stubUsableCredentials(credentialsStore, () => []);
+
 			const requests = makeCredentialRequests(1);
 			const { getByTestId, queryByTestId } = renderComponent({
 				props: {
@@ -139,34 +174,8 @@ describe('InstanceAiCredentialSetup', () => {
 				},
 			});
 
-			expect(getByTestId('instance-ai-credential-setup-button')).toBeTruthy();
+			expect(getByTestId('instance-ai-credential-form')).toBeTruthy();
 			expect(queryByTestId('credential-picker')).toBeNull();
-		});
-
-		it('opens credential modal when setup button is clicked', async () => {
-			const requests = makeCredentialRequests(1);
-			const uiStore = useUIStore();
-			const openNewCredSpy = vi.spyOn(uiStore, 'openNewCredential');
-
-			const { getByTestId } = renderComponent({
-				props: {
-					requestId: 'req-1',
-					credentialRequests: requests,
-					message: 'Set up credentials',
-				},
-			});
-
-			await userEvent.click(getByTestId('instance-ai-credential-setup-button'));
-			expect(openNewCredSpy).toHaveBeenCalledWith(
-				'type1',
-				false,
-				false,
-				undefined,
-				undefined,
-				undefined,
-				undefined,
-				{ closeOnSave: true },
-			);
 		});
 
 		it('renders a single credential with picker when existing credentials', () => {

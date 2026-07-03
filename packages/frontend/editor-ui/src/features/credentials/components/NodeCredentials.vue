@@ -77,6 +77,9 @@ type Props = {
 	/** Hide the "Ask n8n AI" assistant button inside the credential editor.
 	 *  Used by surfaces (e.g. agents) where the assistant flow isn't wired up. */
 	hideAskAssistant?: boolean;
+	/** Surface create/edit as events instead of opening the credential modal,
+	 *  so the host can render the credential form inline (used by Instance AI). */
+	inlineCredentialActions?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), {
@@ -86,12 +89,15 @@ const props = withDefaults(defineProps<Props>(), {
 	hideIssues: false,
 	skipAutoSelect: false,
 	standalone: false,
+	inlineCredentialActions: false,
 });
 
 const emit = defineEmits<{
 	credentialSelected: [credential: INodeUpdatePropertiesInformation];
 	valueChanged: [value: { name: string; value: string }];
 	blur: [source: string];
+	createRequested: [credentialType: string];
+	editRequested: [payload: { credentialType: string; credentialId: string }];
 }>();
 
 const telemetry = useTelemetry();
@@ -445,6 +451,11 @@ function createNewCredential(
 	showAuthOptions = false,
 	forceManualMode = false,
 ) {
+	if (props.inlineCredentialActions) {
+		emit('createRequested', credentialType);
+		return;
+	}
+
 	if (listenForAuthChange) {
 		// If new credential dialog is open, start listening for auth type change which should happen in the modal
 		// this will be handled in this component's watcher which will set subscribed credential accordingly
@@ -663,6 +674,11 @@ function getIssues(credentialTypeName: string): string[] {
 function editCredential(credentialType: string): void {
 	const credential = props.node.credentials?.[credentialType];
 	assert(credential?.id);
+
+	if (props.inlineCredentialActions) {
+		emit('editRequested', { credentialType, credentialId: credential.id });
+		return;
+	}
 
 	uiStore.openExistingCredential(credential.id, {
 		hideAskAssistant: hideAskAssistant.value,
