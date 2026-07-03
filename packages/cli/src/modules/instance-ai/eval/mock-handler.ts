@@ -249,9 +249,20 @@ async function generateMockResponse(
 		qs?: Record<string, unknown>;
 		headers?: Record<string, unknown>;
 	},
-	node: { name: string; type: string },
+	node: { name: string; type: string; parameters?: Record<string, unknown> },
 	context: MockResponseContext,
 ): Promise<EvalMockHttpResponse> {
+	// A request without a URL is un-mockable and never comes from a correctly
+	// configured node. Declarative (routing) nodes emit one when the selected
+	// resource/operation doesn't exist on the node type — routing then
+	// contributes neither URL nor method (observed: n8n-nodes-base.openAi
+	// configured with audio/transcribe, which only the LangChain OpenAI node
+	// supports). Answer with a descriptive 400 so the node fails with a real
+	// API-shaped error the verifier can trace to the node's configuration.
+	if (!request.url) {
+		return buildMissingUrlResponse(node);
+	}
+
 	const serviceName = extractServiceName(request.url);
 	const endpoint = extractEndpoint(request.url);
 
@@ -360,6 +371,35 @@ async function generateMockResponse(
 		body: { _evalMockError: true, message: `Mock generation failed: ${lastError}` },
 		headers: { 'content-type': 'application/json' },
 		statusCode: 200,
+	};
+}
+
+/** Descriptive 400 for requests whose URL is missing — see the guard in `generateMockResponse`. */
+function buildMissingUrlResponse(node: {
+	name: string;
+	type: string;
+	parameters?: Record<string, unknown>;
+}): EvalMockHttpResponse {
+	const params = node.parameters ?? {};
+	const resource = typeof params.resource === 'string' ? params.resource : undefined;
+	const operation = typeof params.operation === 'string' ? params.operation : undefined;
+	const configured =
+		resource || operation
+			? ` (configured resource/operation: "${resource ?? '?'}" / "${operation ?? '?'}")`
+			: '';
+
+	Container.get(Logger).warn(
+		`[EvalMock] Request from "${node.name}" (${node.type}) has no URL${configured} — returning 400 instead of mocking`,
+	);
+
+	return {
+		body: {
+			error: {
+				message: `Invalid request: the node sent an HTTP request without a URL${configured}. This means the node's routing produced an empty request — typically the selected resource/operation does not exist on node type "${node.type}". Fix the node configuration or use a node type that supports this operation.`,
+			},
+		},
+		headers: { 'content-type': 'application/json' },
+		statusCode: 400,
 	};
 }
 
