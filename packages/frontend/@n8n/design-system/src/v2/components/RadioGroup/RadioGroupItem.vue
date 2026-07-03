@@ -9,22 +9,21 @@ import {
 	RadioGroupItem as RekaRadioGroupItem,
 } from './reka-ui';
 
-defineProps<RadioGroupItemProps>();
+const props = defineProps<RadioGroupItemProps>();
 const slots = defineSlots<RadioGroupItemSlots>();
-
-const id = useId();
+const uuid = computed(() => props.id ?? useId());
 const groupContext = injectRadioGroupRootContext(null);
 const isVertical = computed(() => (groupContext?.orientation.value ?? 'vertical') === 'vertical');
 </script>
 
 <template>
 	<div :class="[$style.item, isVertical && $style.itemVertical]">
-		<RekaRadioGroupItem :id="id" :value="value" :disabled="disabled" :class="$style.control">
+		<RekaRadioGroupItem :id="uuid" :value="value" :disabled="disabled" :class="$style.control">
 			<RadioGroupIndicator :class="$style.dot" />
 		</RekaRadioGroupItem>
 		<Label
 			v-if="label || description || !!slots.label"
-			:for="id"
+			:for="uuid"
 			:class="$style.content"
 			:data-disabled="disabled ? '' : undefined"
 		>
