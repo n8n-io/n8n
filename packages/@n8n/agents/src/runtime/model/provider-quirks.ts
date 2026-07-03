@@ -1,3 +1,4 @@
+import type { ProviderId } from './provider-credentials';
 import type {
 	AnthropicThinkingConfig,
 	GoogleThinkingConfig,
@@ -6,7 +7,6 @@ import type {
 	ThinkingConfig,
 	XaiThinkingConfig,
 } from '../../types';
-import type { ProviderId } from './provider-credentials';
 
 export interface ProviderQuirks {
 	/** providerMetadata keys on reasoning parts that must be copied to providerOptions and survive replay. */

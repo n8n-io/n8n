@@ -12,6 +12,7 @@ import type {
 	FinishReason as AiFinishReason,
 } from 'ai';
 
+import { getProviderQuirks, PROVIDER_QUIRKS } from './provider-quirks';
 import type { FinishReason } from '../../types';
 import type {
 	AgentMessage,
@@ -23,7 +24,6 @@ import type {
 	MessageContent,
 } from '../../types/sdk/message';
 import type { JSONObject, JSONValue } from '../../types/utils/json';
-import { getProviderQuirks, PROVIDER_QUIRKS } from './provider-quirks';
 
 /** Reasoning content part — mirrors @ai-sdk/provider-utils ReasoningPart (not re-exported by 'ai'). */
 type ReasoningPart = { type: 'reasoning'; text: string };
