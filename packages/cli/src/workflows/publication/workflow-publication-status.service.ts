@@ -1,4 +1,4 @@
-import type { WorkflowPublicationStatus } from '@n8n/api-types';
+import type { WorkflowPublicationStatus, WorkflowListPublicationStatus } from '@n8n/api-types';
 import {
 	WorkflowPublicationOutboxRepository,
 	type WorkflowPublicationTriggerStatus,
@@ -44,6 +44,27 @@ export class WorkflowPublicationStatusService {
 
 		const status = this.deriveStatus(isPublishing, currentTriggerStatuses);
 		return { status, liveVersionId, pendingVersionId, triggers };
+	}
+
+	/**
+	 * Batch-derive the terminal publication status for many workflows, for the list view.
+	 *
+	 * Unlike getStatus, this does NOT consult the outbox: the list surfaces only settled
+	 * states (published/partial/failed) and deliberately never shows in_progress. Workflows
+	 * with no trigger rows are omitted (the card falls back to its legacy indicator).
+	 */
+	async getListStatusesByWorkflowIds(
+		workflowIds: string[],
+	): Promise<Map<string, WorkflowListPublicationStatus>> {
+		const counts = await this.triggerStatusRepository.getStatusCountsByWorkflowIds(workflowIds);
+
+		const statuses = new Map<string, WorkflowListPublicationStatus>();
+		for (const [workflowId, { total, failed }] of counts) {
+			if (total === 0) continue;
+			if (failed === 0) statuses.set(workflowId, 'published');
+			else statuses.set(workflowId, failed < total ? 'partial' : 'failed');
+		}
+		return statuses;
 	}
 
 	private deriveStatus(
