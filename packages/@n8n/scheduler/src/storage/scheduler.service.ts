@@ -27,7 +27,7 @@ export class SchedulerService {
 
 	async runSweep(): Promise<SweepSummary> {
 		return await sweep(this.store.runInTransaction, this.options, (job, error) => {
-			this.logger.error('Scheduler parked a job whose schedule could not be planned', {
+			this.logger.error('Scheduler could not plan a job schedule; deferred for retry', {
 				jobId: job.id,
 				error: error instanceof Error ? error.message : String(error),
 			});

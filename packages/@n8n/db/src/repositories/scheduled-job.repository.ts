@@ -64,33 +64,46 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 	}
 
 	/**
-	 * Advance many jobs' clocks in one statement.
+	 * Advance many jobs' clocks, a statement per chunk.
 	 * Callers pass distinct ids (a batch of claimed jobs).
 	 */
-	async advanceMany(manager: EntityManager, advances: JobAdvance[]): Promise<void> {
-		if (advances.length > 0) {
-			const ids = advances.map((advance) => advance.id);
-			const parameters: Record<string, unknown> = { ids };
-			advances.forEach((advance, i) => {
-				parameters[`id${i}`] = advance.id;
-				parameters[`next${i}`] = advance.nextRunAt;
-				parameters[`last${i}`] = advance.lastFiredAt;
-			});
-
-			const pick = (column: string) => {
-				const cases = advances.map((_, i) => `WHEN id = :id${i} THEN :${column}${i}`).join(' ');
-				const expression = `CASE ${cases} END`;
-				return this.isPostgres ? `CAST(${expression} AS timestamptz)` : expression;
-			};
-
-			await manager
-				.createQueryBuilder()
-				.update(ScheduledJob)
-				.set({ nextRunAt: () => pick('next'), lastFiredAt: () => pick('last') })
-				.where('id IN (:...ids)')
-				.setParameters(parameters)
-				.execute();
+	async advanceMany(
+		manager: EntityManager,
+		advances: JobAdvance[],
+		// Chunked so a large batch stays under the driver's bind-parameter ceiling
+		// (Postgres 65535, SQLite 32766); each advance binds four parameters.
+		chunkSize = 1000,
+	): Promise<void> {
+		for (let start = 0; start < advances.length; start += chunkSize) {
+			await this.advanceChunk(manager, advances.slice(start, start + chunkSize));
 		}
+	}
+
+	private async advanceChunk(manager: EntityManager, advances: JobAdvance[]): Promise<void> {
+		const ids = advances.map((advance) => advance.id);
+		const parameters: Record<string, unknown> = { ids };
+		advances.forEach((advance, i) => {
+			parameters[`id${i}`] = advance.id;
+			parameters[`next${i}`] = advance.nextRunAt;
+			parameters[`last${i}`] = advance.lastFiredAt;
+		});
+
+		const pick = (column: string) => {
+			const cases = advances.map((_, i) => `WHEN id = :id${i} THEN :${column}${i}`).join(' ');
+			const expression = `CASE ${cases} END`;
+			return this.isPostgres ? `CAST(${expression} AS timestamptz)` : expression;
+		};
+
+		await manager
+			.createQueryBuilder()
+			.update(ScheduledJob)
+			.set({
+				nextRunAt: () => pick('next'),
+				lastFiredAt: () => pick('last'),
+			})
+			.where('id IN (:...ids)')
+			.setParameters(parameters)
+			.execute();
 	}
 
 	/**

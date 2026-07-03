@@ -44,14 +44,19 @@ describe('scheduler sweep', () => {
 		);
 
 	const runSweep = async (windowSeconds: number) =>
-		await sweep(store.runInTransaction, { windowSeconds, batchSize: 100, maxPerJob: 100 });
+		await sweep(store.runInTransaction, {
+			windowSeconds,
+			batchSize: 100,
+			maxPerJob: 100,
+			planRetrySeconds: 3600,
+		});
 
 	it('records a due occurrence and advances the job past it', async () => {
 		const job = await createJob({ intervalSeconds: 3600, nextRunAt: secondsFromNow(-1) });
 
 		const summary = await runSweep(0);
 
-		expect(summary).toEqual({ claimedJobs: 1, occurrences: 1, parkedJobs: 0 });
+		expect(summary).toEqual({ claimedJobs: 1, occurrences: 1, deferredJobs: 0 });
 
 		const [task] = await taskRepo.find();
 		expect(task.jobId).toBe(job.id);
@@ -70,7 +75,7 @@ describe('scheduler sweep', () => {
 	it('drains a backlog in maxPerJob-sized batches across successive sweeps', async () => {
 		// A job far behind (interval 10s, ~100s of backlog) so more than maxPerJob fires are due.
 		await createJob({ intervalSeconds: 10, nextRunAt: secondsFromNow(-100) });
-		const drainOptions = { windowSeconds: 0, batchSize: 100, maxPerJob: 5 };
+		const drainOptions = { windowSeconds: 0, batchSize: 100, maxPerJob: 5, planRetrySeconds: 3600 };
 
 		// The first sweep records exactly maxPerJob, capping the batch rather than draining it all.
 		const first = await sweep(store.runInTransaction, drainOptions);
@@ -143,6 +148,56 @@ describe('scheduler sweep', () => {
 		expect(summary.occurrences).toBe(1);
 		const advanced = await jobRepo.findOneByOrFail({ id: job.id });
 		expect(advanced.nextRunAt).toBeNull();
+	});
+
+	it('defers a job whose schedule cannot be planned and keeps sweeping the rest', async () => {
+		const good = await createJob({ intervalSeconds: 3600, nextRunAt: secondsFromNow(-1) });
+		const bad = await createJob({
+			kind: 'cron',
+			cronExpression: 'not a cron expression',
+			intervalSeconds: null,
+			nextRunAt: secondsFromNow(-1),
+		});
+
+		const summary = await runSweep(0);
+
+		expect(summary).toEqual({ claimedJobs: 2, occurrences: 1, deferredJobs: 1 });
+
+		// The good job materialized normally.
+		const [task] = await taskRepo.find();
+		expect(task.jobId).toBe(good.id);
+
+		// The bad job recorded nothing and was pushed a retry backoff into the future,
+		// not dropped: nextRunAt stays set (null is reserved for exhausted schedules).
+		const deferred = await jobRepo.findOneByOrFail({ id: bad.id });
+		expect(deferred.nextRunAt!.getTime()).toBeGreaterThan(Date.now());
+
+		// Deferred means not due: the next sweep does not re-claim it.
+		const next = await runSweep(0);
+		expect(next.claimedJobs).toBe(0);
+	});
+
+	it('resumes a deferred job once its schedule is fixed', async () => {
+		const job = await createJob({
+			kind: 'cron',
+			cronExpression: 'not a cron expression',
+			intervalSeconds: null,
+			nextRunAt: secondsFromNow(-1),
+		});
+		await runSweep(0);
+
+		// Repair the schedule and let the retry come due (rewound rather than waited out).
+		await jobRepo.update(
+			{ id: job.id },
+			{ cronExpression: '0 0 9 * * *', nextRunAt: secondsFromNow(-1) },
+		);
+
+		const summary = await runSweep(0);
+
+		// The repaired job materializes again with no other intervention.
+		expect(summary).toEqual({ claimedJobs: 1, occurrences: 1, deferredJobs: 0 });
+		const resumed = await jobRepo.findOneByOrFail({ id: job.id });
+		expect(resumed.nextRunAt).not.toBeNull();
 	});
 
 	it('runs through SchedulerService with its configured window', async () => {

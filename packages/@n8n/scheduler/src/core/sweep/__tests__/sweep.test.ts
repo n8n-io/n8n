@@ -25,7 +25,12 @@ const runnerWith =
 	async (work) =>
 		await work(tx);
 
-const options: SweepOptions = { windowSeconds: 0, batchSize: 25, maxPerJob: 100 };
+const options: SweepOptions = {
+	windowSeconds: 0,
+	batchSize: 25,
+	maxPerJob: 100,
+	planRetrySeconds: 3600,
+};
 
 describe('sweep', () => {
 	it('does nothing when no jobs are due', async () => {
@@ -34,7 +39,7 @@ describe('sweep', () => {
 
 		const summary = await sweep(runnerWith(tx), options);
 
-		expect(summary).toEqual({ claimedJobs: 0, occurrences: 0, parkedJobs: 0 });
+		expect(summary).toEqual({ claimedJobs: 0, occurrences: 0, deferredJobs: 0 });
 		expect(tx.recordOccurrences).not.toHaveBeenCalled();
 		expect(tx.advanceJobs).not.toHaveBeenCalled();
 	});
@@ -48,7 +53,7 @@ describe('sweep', () => {
 		const summary = await sweep(runnerWith(tx), options);
 
 		// The summary reports the count `recordOccurrences` returned, not the plan's size.
-		expect(summary).toEqual({ claimedJobs: 2, occurrences: 2, parkedJobs: 0 });
+		expect(summary).toEqual({ claimedJobs: 2, occurrences: 2, deferredJobs: 0 });
 
 		// One insert and one update for the whole batch, not a pair per job.
 		expect(tx.recordOccurrences).toHaveBeenCalledTimes(1);
@@ -76,7 +81,7 @@ describe('sweep', () => {
 		expect(tx.claimDueJobs).toHaveBeenCalledWith(25);
 	});
 
-	it('parks an un-plannable job instead of failing the whole batch', async () => {
+	it('defers an un-plannable job instead of failing the whole batch', async () => {
 		const good = makeJob('good');
 		// A cron job with an unresolved (null) timezone: planning throws for this one.
 		const bad: ScheduledJob = {
@@ -90,16 +95,18 @@ describe('sweep', () => {
 
 		const summary = await sweep(runnerWith(tx), options, onPlanError);
 
-		expect(summary).toEqual({ claimedJobs: 2, occurrences: 1, parkedJobs: 1 });
+		expect(summary).toEqual({ claimedJobs: 2, occurrences: 1, deferredJobs: 1 });
 		expect(onPlanError).toHaveBeenCalledTimes(1);
 		expect(onPlanError).toHaveBeenCalledWith(bad, expect.anything());
 
-		// The good job plans normally; the bad one is parked (nextRunAt cleared, nothing recorded).
+		// The good job plans normally; the bad one records nothing and is retried a
+		// planRetrySeconds backoff later (nextRunAt stays set: null means exhausted).
 		const planned = tx.advanceJobs.mock.calls[0][0];
-		const goodPlan = planned.find((p) => p.job.id === 'good')!.plan;
-		const badPlan = planned.find((p) => p.job.id === 'bad')!.plan;
-		expect(goodPlan.occurrences).toEqual([NOW]);
-		expect(badPlan.occurrences).toEqual([]);
-		expect(badPlan.nextRunAt).toBeNull();
+		const goodEntry = planned.find((p) => p.job.id === 'good')!;
+		const badEntry = planned.find((p) => p.job.id === 'bad')!;
+		expect(goodEntry.plan.occurrences).toEqual([NOW]);
+		expect(badEntry.plan.occurrences).toEqual([]);
+		expect(badEntry.plan.nextRunAt).toEqual(new Date('2026-01-01T01:00:00.000Z'));
+		expect(badEntry.plan.lastFiredAt).toBeNull();
 	});
 });

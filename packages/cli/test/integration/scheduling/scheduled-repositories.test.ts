@@ -1,6 +1,6 @@
 import { testDb } from '@n8n/backend-test-utils';
 import type { ScheduledJob as ScheduledJobEntity } from '@n8n/db';
-import { ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
+import { DbConnectionOptions, ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
@@ -16,11 +16,24 @@ describe('scheduled repositories', () => {
 	let jobRepository: ScheduledJobRepository;
 	let taskRepository: ScheduledTaskRepository;
 
+	// Second DataSource with its own pool, used to hold a concurrent transaction open
+	// against the same database. The main DataSource runs with poolSize=1 in CI
+	// (set by setup-testcontainers.ts to surface pooling deadlocks), so it can't hand
+	// out two connections at once; the disjoint-claim test needs both held open together.
+	let secondaryDataSource: DataSource | undefined;
+
 	beforeAll(async () => {
 		await testDb.init();
 		dataSource = Container.get(DataSource);
 		jobRepository = Container.get(ScheduledJobRepository);
 		taskRepository = Container.get(ScheduledTaskRepository);
+
+		if (isPostgres) {
+			// Full options (not just overrides) so the secondary DataSource registers the same
+			// entities and table prefix, letting the repositories build queries on its manager.
+			secondaryDataSource = new DataSource(Container.get(DbConnectionOptions).getOptions());
+			await secondaryDataSource.initialize();
+		}
 	});
 
 	beforeEach(async () => {
@@ -28,6 +41,9 @@ describe('scheduled repositories', () => {
 	});
 
 	afterAll(async () => {
+		if (secondaryDataSource?.isInitialized) {
+			await secondaryDataSource.destroy();
+		}
 		await testDb.terminate();
 	});
 
@@ -184,8 +200,10 @@ describe('scheduled repositories', () => {
 				const older = await createJob({ nextRunAt: secondsFromNow(-120) });
 				const newer = await createJob({ nextRunAt: secondsFromNow(-60) });
 
+				// runnerB draws from the secondary pool so both transactions can be held open at
+				// once; the main pool is capped at a single connection in CI.
 				const runnerA = dataSource.createQueryRunner();
-				const runnerB = dataSource.createQueryRunner();
+				const runnerB = secondaryDataSource!.createQueryRunner();
 				try {
 					await runnerA.connect();
 					await runnerB.connect();
@@ -247,6 +265,28 @@ describe('scheduled repositories', () => {
 				async (trx) => await jobRepository.claimDue(trx, 100),
 			);
 			expect(claimed).toBeUndefined();
+		});
+
+		it('advances a batch larger than the chunk size across multiple statements', async () => {
+			const jobs = await Promise.all(
+				Array.from({ length: 5 }, async () => await createJob({ nextRunAt: secondsFromNow(-60) })),
+			);
+			const nextRunAt = secondsFromNow(3600);
+			const advances = jobs.map((job) => ({
+				id: job.id,
+				nextRunAt,
+				lastFiredAt: null,
+			}));
+
+			// 5 advances at 2/chunk forces three statements, exercising the loop.
+			await dataSource.transaction(
+				async (trx) => await jobRepository.advanceMany(trx, advances, 2),
+			);
+
+			for (const job of jobs) {
+				const reloaded = await jobRepository.findOneByOrFail({ id: job.id });
+				expect(reloaded.nextRunAt!.getTime()).toBe(nextRunAt.getTime());
+			}
 		});
 	});
 
