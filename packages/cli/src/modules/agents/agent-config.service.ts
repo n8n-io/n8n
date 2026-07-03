@@ -119,13 +119,15 @@ export class AgentConfigService {
 			throw new UserError(`Invalid agent config: ${result.error}`);
 		}
 
-		const tasksProvided = result.config.tasks !== undefined;
+		const validatedConfig = preservePersonalisationGradientLayout(result.config, config);
+
+		const tasksProvided = validatedConfig.tasks !== undefined;
 		const existingTaskIds = tasksProvided
 			? (await this.agentTaskRepository.findByAgentId(agentId)).map((task) => task.id)
 			: [];
 
 		const resolvedSubAgents = await this.removeMissingConfigRefs(
-			result.config,
+			validatedConfig,
 			entity,
 			new Set(existingTaskIds),
 		);
@@ -134,19 +136,19 @@ export class AgentConfigService {
 		const previousIntegrations = entity.integrations ?? [];
 		const previousSchema = entity.schema ?? null;
 
-		const integrationsProvided = result.config.integrations !== undefined;
-		const toolsProvided = result.config.tools !== undefined;
-		const skillsProvided = result.config.skills !== undefined;
-		const credentialProvided = result.config.credential !== undefined;
-		const personalisationProvided = result.config.personalisation !== undefined;
-		const memoryProvided = result.config.memory !== undefined;
-		const subAgentsProvided = result.config.subAgents !== undefined;
-		const providerToolsProvided = result.config.providerTools !== undefined;
-		const configBlockProvided = result.config.config !== undefined;
-		const mcpServersProvided = result.config.mcpServers !== undefined;
+		const integrationsProvided = validatedConfig.integrations !== undefined;
+		const toolsProvided = validatedConfig.tools !== undefined;
+		const skillsProvided = validatedConfig.skills !== undefined;
+		const credentialProvided = validatedConfig.credential !== undefined;
+		const personalisationProvided = validatedConfig.personalisation !== undefined;
+		const memoryProvided = validatedConfig.memory !== undefined;
+		const subAgentsProvided = validatedConfig.subAgents !== undefined;
+		const providerToolsProvided = validatedConfig.providerTools !== undefined;
+		const configBlockProvided = validatedConfig.config !== undefined;
+		const mcpServersProvided = validatedConfig.mcpServers !== undefined;
 
 		const { schemaConfig: decomposedSchema, integrations: decomposedIntegrations } =
-			decomposeJsonConfig(result.config);
+			decomposeJsonConfig(validatedConfig);
 
 		const nextIntegrations = integrationsProvided ? decomposedIntegrations : previousIntegrations;
 
@@ -168,13 +170,13 @@ export class AgentConfigService {
 		};
 
 		entity.schema = nextSchema;
-		entity.name = result.config.name;
+		entity.name = validatedConfig.name;
 		entity.integrations = nextIntegrations;
 		markAgentDraftDirty(entity);
 
 		if (toolsProvided) {
 			const referencedIds = new Set(
-				(result.config.tools ?? [])
+				(validatedConfig.tools ?? [])
 					.filter((t): t is Extract<AgentJsonToolConfig, { type: 'custom' }> => t.type === 'custom')
 					.map((t) => t.id),
 			);
@@ -189,7 +191,7 @@ export class AgentConfigService {
 		}
 
 		if (skillsProvided) {
-			this.agentSkillsService.removeUnreferencedSkills(entity, result.config);
+			this.agentSkillsService.removeUnreferencedSkills(entity, validatedConfig);
 		}
 
 		this.runtimeCacheService.clearRuntimes(agentId);
@@ -198,7 +200,7 @@ export class AgentConfigService {
 		this.logger.debug('Updated agent JSON config', { agentId, projectId });
 
 		if (tasksProvided) {
-			const referencedTaskIds = new Set((result.config.tasks ?? []).map((ref) => ref.id));
+			const referencedTaskIds = new Set((validatedConfig.tasks ?? []).map((ref) => ref.id));
 			const orphanTaskIds = existingTaskIds.filter((id) => !referencedTaskIds.has(id));
 			if (orphanTaskIds.length > 0) {
 				await this.agentTaskRepository.delete(orphanTaskIds);
@@ -210,7 +212,7 @@ export class AgentConfigService {
 		}
 
 		return {
-			config: composeJsonConfig(saved) ?? result.config,
+			config: composeJsonConfig(saved) ?? validatedConfig,
 			updatedAt: saved.updatedAt.toISOString(),
 			versionId: saved.versionId,
 		};
@@ -307,6 +309,60 @@ export class AgentConfigService {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isGradientLayoutField(value: unknown, min: number, max: number): value is number {
+	return typeof value === 'number' && Number.isInteger(value) && value >= min && value <= max;
+}
+
+type AgentPersonalisationWithGradientLayout = NonNullable<AgentJsonConfig['personalisation']> & {
+	gradient: NonNullable<AgentJsonConfig['personalisation']>['gradient'] & {
+		angle: number;
+		fromStop: number;
+		toStop: number;
+	};
+};
+
+type AgentJsonConfigWithGradientLayout = Omit<AgentJsonConfig, 'personalisation'> & {
+	personalisation?: AgentPersonalisationWithGradientLayout;
+};
+
+function preservePersonalisationGradientLayout(
+	config: AgentJsonConfig,
+	rawConfig: unknown,
+): AgentJsonConfig {
+	const personalisation = config.personalisation;
+	const gradient = personalisation?.gradient;
+	if (
+		!personalisation ||
+		!gradient ||
+		!isRecord(rawConfig) ||
+		!isRecord(rawConfig.personalisation)
+	) {
+		return config;
+	}
+
+	const rawGradient = rawConfig.personalisation.gradient;
+	if (!isRecord(rawGradient)) return config;
+
+	const { angle, fromStop, toStop } = rawGradient;
+	if (
+		!isGradientLayoutField(angle, 0, 359) ||
+		!isGradientLayoutField(fromStop, 0, 45) ||
+		!isGradientLayoutField(toStop, 55, 100)
+	) {
+		return config;
+	}
+
+	const configWithLayout: AgentJsonConfigWithGradientLayout = {
+		...config,
+		personalisation: {
+			...personalisation,
+			gradient: { ...gradient, angle, fromStop, toStop },
+		},
+	};
+
+	return configWithLayout;
 }
 
 function hasNodeToolInputSchema(raw: unknown): boolean {

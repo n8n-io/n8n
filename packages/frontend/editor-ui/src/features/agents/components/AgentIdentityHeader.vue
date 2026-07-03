@@ -9,6 +9,12 @@ import type { AgentJsonConfig } from '../types';
 
 type AgentPersonalisation = NonNullable<AgentJsonConfig['personalisation']>;
 
+const DEFAULT_GRADIENT_LAYOUT = {
+	angle: 135,
+	fromStop: 0,
+	toStop: 100,
+};
+
 const props = withDefaults(
 	defineProps<{
 		config: AgentJsonConfig | null;
@@ -27,10 +33,10 @@ const name = computed(() => props.config?.name ?? '');
 const personalisation = computed<AgentPersonalisation>(() => {
 	const value = props.config?.personalisation;
 	return value?.gradient
-		? { icon: value.icon, gradient: { ...value.gradient } }
+		? { icon: value.icon, gradient: { ...DEFAULT_GRADIENT_LAYOUT, ...value.gradient } }
 		: {
 				icon: value?.icon ?? DEFAULT_AGENT_PERSONALISATION.icon,
-				gradient: { ...DEFAULT_AGENT_PERSONALISATION.gradient },
+				gradient: { ...DEFAULT_AGENT_PERSONALISATION.gradient, ...DEFAULT_GRADIENT_LAYOUT },
 			};
 });
 const iconPickerModel = computed<IconOrEmoji>({
@@ -53,6 +59,9 @@ function personalisationStyle(value: AgentPersonalisation): Record<string, strin
 	return {
 		'--agent-personalisation-gradient-from': value.gradient.from,
 		'--agent-personalisation-gradient-to': value.gradient.to,
+		'--agent-personalisation-gradient-angle': `${value.gradient.angle}deg`,
+		'--agent-personalisation-gradient-from-stop': `${value.gradient.fromStop}%`,
+		'--agent-personalisation-gradient-to-stop': `${value.gradient.toStop}%`,
 	};
 }
 </script>
@@ -138,9 +147,9 @@ function personalisationStyle(value: AgentPersonalisation): Record<string, strin
 	position: absolute;
 	inset: 0;
 	background: linear-gradient(
-		135deg,
-		var(--agent-personalisation-gradient-from),
-		var(--agent-personalisation-gradient-to)
+		var(--agent-personalisation-gradient-angle),
+		var(--agent-personalisation-gradient-from) var(--agent-personalisation-gradient-from-stop),
+		var(--agent-personalisation-gradient-to) var(--agent-personalisation-gradient-to-stop)
 	);
 	-webkit-mask: var(--agent-personalisation-squircle-mask) center / contain no-repeat;
 	mask: var(--agent-personalisation-squircle-mask) center / contain no-repeat;

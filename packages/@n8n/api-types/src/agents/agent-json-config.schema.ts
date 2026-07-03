@@ -96,6 +96,9 @@ export const DEFAULT_AGENT_PERSONALISATION = {
 	gradient: {
 		from: '#FF1500',
 		to: '#FF6900',
+		angle: 135,
+		fromStop: 0,
+		toStop: 100,
 	},
 } as const;
 
@@ -103,6 +106,19 @@ const AgentPersonalisationGradientSchema = z
 	.object({
 		from: HexColorSchema,
 		to: HexColorSchema,
+		angle: z.number().int().min(0).max(359).default(DEFAULT_AGENT_PERSONALISATION.gradient.angle),
+		fromStop: z
+			.number()
+			.int()
+			.min(0)
+			.max(45)
+			.default(DEFAULT_AGENT_PERSONALISATION.gradient.fromStop),
+		toStop: z
+			.number()
+			.int()
+			.min(55)
+			.max(100)
+			.default(DEFAULT_AGENT_PERSONALISATION.gradient.toStop),
 	})
 	.strict();
 

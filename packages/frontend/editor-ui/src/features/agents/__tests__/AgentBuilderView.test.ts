@@ -182,6 +182,9 @@ function testPersonalisation(): AgentJsonConfig['personalisation'] {
 		gradient: {
 			from: '#111111',
 			to: '#222222',
+			angle: 135,
+			fromStop: 0,
+			toStop: 100,
 		},
 	};
 }

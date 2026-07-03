@@ -103,6 +103,9 @@ describe('AgentIdentityHeader', () => {
 		expect(picker.attributes('data-icons-only')).toBe('true');
 		expect(avatar.attributes('style')).toContain('--agent-personalisation-gradient-from: #111111');
 		expect(avatar.attributes('style')).toContain('--agent-personalisation-gradient-to: #222222');
+		expect(avatar.attributes('style')).toContain('--agent-personalisation-gradient-angle: 135deg');
+		expect(avatar.attributes('style')).toContain('--agent-personalisation-gradient-from-stop: 0%');
+		expect(avatar.attributes('style')).toContain('--agent-personalisation-gradient-to-stop: 100%');
 		expect(componentSource).toContain('width: 64px;');
 		expect(componentSource).toContain('height: 64px;');
 		expect(componentSource).toContain('width: 36px;');
@@ -129,7 +132,13 @@ describe('AgentIdentityHeader', () => {
 			{
 				personalisation: {
 					icon: 'mail',
-					gradient: { from: '#111111', to: '#222222' },
+					gradient: {
+						from: '#111111',
+						to: '#222222',
+						angle: 135,
+						fromStop: 0,
+						toStop: 100,
+					},
 				},
 			},
 		]);

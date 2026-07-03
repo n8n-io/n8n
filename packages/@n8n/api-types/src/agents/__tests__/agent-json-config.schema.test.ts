@@ -111,6 +111,9 @@ describe('AgentJsonConfigSchema — personalisation', () => {
 				gradient: {
 					from: '#FF1500',
 					to: '#FF6900',
+					angle: 42,
+					fromStop: 12,
+					toStop: 88,
 				},
 			},
 		});
@@ -122,6 +125,9 @@ describe('AgentJsonConfigSchema — personalisation', () => {
 				gradient: {
 					from: '#FF1500',
 					to: '#FF6900',
+					angle: 42,
+					fromStop: 12,
+					toStop: 88,
 				},
 			});
 		}
@@ -142,6 +148,9 @@ describe('AgentJsonConfigSchema — personalisation', () => {
 				gradient: {
 					from: '#FF1500',
 					to: '#FF6900',
+					angle: 135,
+					fromStop: 0,
+					toStop: 100,
 				},
 			});
 		}

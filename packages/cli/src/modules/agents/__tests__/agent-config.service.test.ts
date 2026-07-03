@@ -290,6 +290,9 @@ describe('AgentConfigService', () => {
 					gradient: {
 						from: '#333333',
 						to: '#444444',
+						angle: 42,
+						fromStop: 12,
+						toStop: 88,
 					},
 				},
 			});
@@ -300,6 +303,9 @@ describe('AgentConfigService', () => {
 				gradient: {
 					from: '#333333',
 					to: '#444444',
+					angle: 42,
+					fromStop: 12,
+					toStop: 88,
 				},
 			});
 		});
