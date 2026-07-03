@@ -101,7 +101,8 @@ export class TestRunRepository extends Repository<TestRun> {
 	async getMany(workflowId: string, options: ListQuery.Options, status?: TestRunStatus) {
 		const findManyOptions: FindManyOptions<TestRun> = {
 			where: { workflow: { id: workflowId }, ...(status ? { status } : {}) },
-			order: { createdAt: 'DESC' },
+			// `id` tiebreaker keeps offset pagination stable when runs share a `createdAt` (ms precision).
+			order: { createdAt: 'DESC', id: 'DESC' },
 			// Only `status` is needed per case — `finalResult` is derived from case
 			// statuses and `testCaseCount` from the row count — so avoid loading the
 			// heavy JSON columns (inputs/outputs/metrics/errorDetails) of every case.
