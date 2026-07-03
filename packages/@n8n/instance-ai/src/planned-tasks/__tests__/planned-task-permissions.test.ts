@@ -86,4 +86,11 @@ describe('applyPlannedTaskPermissions', () => {
 
 		expect(result.projectId).toBe(context.projectId);
 	});
+
+	it('returns the original context for legacy delegate tasks', () => {
+		const context = makeContext();
+		const result = applyPlannedTaskPermissions(context, 'delegate');
+
+		expect(result).toBe(context);
+	});
 });
