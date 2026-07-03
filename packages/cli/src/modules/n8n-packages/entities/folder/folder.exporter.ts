@@ -3,11 +3,15 @@ import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 
 import { FolderFinderService } from '@/services/folder-finder.service';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { FolderSerializer } from './folder.serializer';
 import type { PackageWriter } from '../../io/package-writer';
 import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator';
 import type { ManifestEntry } from '../../spec/manifest.schema';
+import { mergeRequirements } from '../requirements.types';
+import type { WorkflowExportRequirements } from '../requirements.types';
+import { WorkflowExporter } from '../workflow/workflow.exporter';
 
 export interface FolderExportRequest {
 	user: User;
@@ -22,7 +26,12 @@ export interface FolderExportRequest {
 }
 
 export interface FolderExportResult {
+	/** Folder shells → `manifest.folders[]`. */
 	entries: ManifestEntry[];
+	/** Workflows contained in the exported folders → `manifest.workflows[]`. */
+	workflowEntries: ManifestEntry[];
+	/** What the contained workflows need, gathered at the package top level (credentials today). */
+	requirements: WorkflowExportRequirements;
 }
 
 @Service()
@@ -30,6 +39,8 @@ export class FolderExporter {
 	constructor(
 		private readonly folderFinder: FolderFinderService,
 		private readonly folderSerializer: FolderSerializer,
+		private readonly workflowFinder: WorkflowFinderService,
+		private readonly workflowExporter: WorkflowExporter,
 	) {}
 
 	async export(request: FolderExportRequest): Promise<FolderExportResult> {
@@ -43,10 +54,19 @@ export class FolderExporter {
 
 		const { roots, childrenByParent } = this.buildForest(folders);
 
-		const foldersDir = request.basePrefix ? `${request.basePrefix}/folders` : 'folders';
-		const entries = this.writeLevel(roots, foldersDir, null, childrenByParent, request.writer);
+		const workflowIdsByFolder = await this.workflowFinder.findWorkflowIdsByFolder(
+			folders.map((folder) => folder.id),
+		);
 
-		return { entries };
+		const foldersDir = request.basePrefix ? `${request.basePrefix}/folders` : 'folders';
+		return await this.writeLevel(
+			roots,
+			foldersDir,
+			null,
+			childrenByParent,
+			workflowIdsByFolder,
+			request,
+		);
 	}
 
 	/**
@@ -79,35 +99,71 @@ export class FolderExporter {
 
 	/**
 	 * Writes a set of sibling folders and their descendants under `parentDir`,
-	 * returning a manifest entry for each. A fresh allocator per call scopes slug
-	 * collisions to the parent directory; sub-folders nest directly (no repeated
-	 * `folders/` segment).
+	 * returning the folder shells plus the workflows contained in each folder. A
+	 * fresh allocator per call scopes slug collisions to the parent directory;
+	 * sub-folders nest directly (no repeated `folders/` segment). Contained
+	 * workflows are delegated to `WorkflowExporter` with the folder's own target
+	 * as `basePrefix`, so they land under `<folderTarget>/workflows/...`.
+	 *
+	 * `reservedName` is the `workflows` container dir already written under
+	 * `parentDir` by the parent folder — reserving it makes a sibling folder that
+	 * slugifies to `workflows` get suffixed instead of swallowing those workflows.
 	 */
-	private writeLevel(
+	private async writeLevel(
 		siblings: Folder[],
 		parentDir: string,
 		effectiveParentId: string | null,
 		childrenByParent: Map<string, Folder[]>,
-		writer: PackageWriter,
-	): ManifestEntry[] {
+		workflowIdsByFolder: Map<string, string[]>,
+		request: FolderExportRequest,
+		reservedName?: string,
+	): Promise<FolderExportResult> {
 		const allocator = new UniqueFilenameAllocator(parentDir, 'folder');
+		if (reservedName) allocator.reserve(reservedName);
 		const entries: ManifestEntry[] = [];
+		const workflowEntries: ManifestEntry[] = [];
+		const requirementParts: WorkflowExportRequirements[] = [];
 
 		for (const folder of this.orderedByCreation(siblings)) {
 			const target = allocator.allocate(folder.name);
 			const serialized = this.folderSerializer.serialize(folder, effectiveParentId);
 
-			writer.writeDirectory(target);
-			writer.writeFile(`${target}/folder.json`, JSON.stringify(serialized, null, '\t'));
+			request.writer.writeDirectory(target);
+			request.writer.writeFile(`${target}/folder.json`, JSON.stringify(serialized, null, '\t'));
+
+			entries.push({ id: folder.id, name: folder.name, target });
+
+			const workflowIds = workflowIdsByFolder.get(folder.id);
+			let hasContainedWorkflows = false;
+			if (workflowIds && workflowIds.length > 0) {
+				hasContainedWorkflows = true;
+				const contained = await this.workflowExporter.export({
+					user: request.user,
+					writer: request.writer,
+					workflowIds,
+					basePrefix: target,
+				});
+				workflowEntries.push(...contained.entries);
+				requirementParts.push(contained.requirements);
+			}
 
 			const children = childrenByParent.get(folder.id) ?? [];
-			entries.push(
-				{ id: folder.id, name: folder.name, target },
-				...this.writeLevel(children, target, folder.id, childrenByParent, writer),
+			const descendants = await this.writeLevel(
+				children,
+				target,
+				folder.id,
+				childrenByParent,
+				workflowIdsByFolder,
+				request,
+				// Reserve the workflows container so a child folder can't collide with it.
+				hasContainedWorkflows ? 'workflows' : undefined,
 			);
+			entries.push(...descendants.entries);
+			workflowEntries.push(...descendants.workflowEntries);
+			requirementParts.push(descendants.requirements);
 		}
 
-		return entries;
+		return { entries, workflowEntries, requirements: mergeRequirements(...requirementParts) };
 	}
 
 	/**
