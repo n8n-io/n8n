@@ -1,6 +1,6 @@
 import { DatabaseConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { DataSource, EntityManager, IsNull, LessThan, Repository, Not } from '@n8n/typeorm';
+import { DataSource, EntityManager, In, IsNull, LessThan, Repository, Not } from '@n8n/typeorm';
 
 import { WorkflowDependency } from '../entities';
 
@@ -153,6 +153,25 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 			workflowId,
 		]);
 		return await tx.existsBy(WorkflowDependency, whereConditions);
+	}
+
+	/**
+	 * Of the given workflows, return the ids that contain the given node type
+	 * (looked up via the `nodeType` index entries).
+	 */
+	async findWorkflowIdsWithNodeType(workflowIds: string[], nodeType: string): Promise<string[]> {
+		if (workflowIds.length === 0) return [];
+
+		const rows = await this.find({
+			where: {
+				workflowId: In(workflowIds),
+				dependencyType: 'nodeType',
+				dependencyKey: nodeType,
+			},
+			select: ['workflowId'],
+		});
+
+		return [...new Set(rows.map((row) => row.workflowId))];
 	}
 
 	private getTableName(name: string): string {

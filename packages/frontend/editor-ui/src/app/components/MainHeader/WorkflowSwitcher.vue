@@ -5,12 +5,14 @@ import { useRouter } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { N8nIcon, N8nPopover, N8nText } from '@n8n/design-system';
 
+import { useRootStore } from '@n8n/stores/useRootStore';
+
 import { VIEWS } from '@/app/constants';
-import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { DEBOUNCE_TIME } from '@/app/constants/durations';
 import { useDebounce } from '@/app/composables/useDebounce';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useToast } from '@/app/composables/useToast';
+import * as workflowDependenciesApi from '@/app/api/workflow-dependencies';
 
 interface SwitcherItem {
 	id: string;
@@ -30,6 +32,7 @@ const i18n = useI18n();
 const router = useRouter();
 const toast = useToast();
 const workflowsListStore = useWorkflowsListStore();
+const rootStore = useRootStore();
 const { callDebounced } = useDebounce();
 
 const open = ref(false);
@@ -65,18 +68,18 @@ async function fetchWorkflows(query: string) {
 		loading.value = false;
 	}
 
-	// A workflow is a "sub-workflow" if it has an Execute Sub-workflow trigger,
-	// which the list response doesn't expose. Load it separately so it doesn't
+	// A workflow is a "sub-workflow" if it contains an Execute Sub-workflow
+	// trigger. Resolve that from the workflow index separately so it doesn't
 	// block the initial render, then patch the flags in when it arrives.
+	// ponytail: endpoint caps at 500 ids; a switcher rarely lists that many, so
+	// just slice — the tail simply misses its marker.
+	const ids = workflows.value.slice(0, 500).map((workflow) => workflow.id);
+	if (ids.length === 0) return;
 	try {
-		const subWorkflows = await workflowsListStore.searchWorkflows({
-			projectId: props.projectId,
-			query: trimmedQuery,
-			triggerNodeTypes: [EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE],
-			select: ['id'],
-		});
+		const subWorkflowIds = new Set(
+			await workflowDependenciesApi.getSubWorkflowIds(rootStore.restApiContext, ids),
+		);
 		if (token !== fetchToken) return;
-		const subWorkflowIds = new Set(subWorkflows.map(({ id }) => id));
 		workflows.value = workflows.value.map((workflow) => ({
 			...workflow,
 			isSubWorkflow: subWorkflowIds.has(workflow.id),

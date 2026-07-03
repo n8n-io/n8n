@@ -1,4 +1,8 @@
-import { GetResourceDependenciesDto, GetResourceDependencyCountsDto } from '@n8n/api-types';
+import {
+	GetResourceDependenciesDto,
+	GetResourceDependencyCountsDto,
+	GetSubWorkflowIdsDto,
+} from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Post, RestController } from '@n8n/decorators';
 
@@ -32,5 +36,14 @@ export class WorkflowDependencyController {
 			body.resourceType,
 			req.user,
 		);
+	}
+
+	@Post('/sub-workflows')
+	async getSubWorkflowIds(
+		req: AuthenticatedRequest,
+		_res: unknown,
+		@Body body: GetSubWorkflowIdsDto,
+	) {
+		return await this.workflowDependencyQueryService.getSubWorkflowIds(body.workflowIds, req.user);
 	}
 }

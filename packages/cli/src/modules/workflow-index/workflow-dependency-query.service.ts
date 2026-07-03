@@ -14,6 +14,7 @@ import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import { In } from '@n8n/typeorm';
+import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
@@ -145,6 +146,20 @@ export class WorkflowDependencyQueryService {
 				dtNames,
 			},
 			{ existingWfIds, existingCredIds, existingDtIds },
+		);
+	}
+
+	/**
+	 * Of the given workflows (filtered to those the user can access), return the
+	 * ids that are sub-workflows, i.e. contain an Execute Sub-workflow trigger.
+	 */
+	async getSubWorkflowIds(workflowIds: string[], user: User): Promise<string[]> {
+		const accessibleIds = await this.filterByAccess(workflowIds, 'workflow', user);
+		if (accessibleIds.length === 0) return [];
+
+		return await this.dependencyRepository.findWorkflowIdsWithNodeType(
+			accessibleIds,
+			EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 		);
 	}
 

@@ -116,6 +116,7 @@ export { DeactivateWorkflowDto } from './workflows/deactivate-workflow.dto';
 export { ArchiveWorkflowDto } from './workflows/archive-workflow.dto';
 export { GetResourceDependencyCountsDto } from './workflows/get-resource-dependency-counts.dto';
 export { GetResourceDependenciesDto } from './workflows/get-resource-dependencies.dto';
+export { GetSubWorkflowIdsDto } from './workflows/get-sub-workflow-ids.dto';
 
 export { CreateOrUpdateTagRequestDto } from './tag/create-or-update-tag-request.dto';
 export { RetrieveTagQueryDto } from './tag/retrieve-tag-query.dto';

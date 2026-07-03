@@ -31,3 +31,12 @@ export async function getResourceDependencies(
 		{ resourceIds, resourceType },
 	);
 }
+
+export async function getSubWorkflowIds(context: IRestApiContext, workflowIds: string[]) {
+	return await makeRestApiRequest<string[]>(
+		context,
+		'POST',
+		'/workflow-dependencies/sub-workflows',
+		{ workflowIds },
+	);
+}
