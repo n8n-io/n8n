@@ -306,7 +306,7 @@ async function onLoadMore(): Promise<void> {
 const hasMore = computed(
 	() =>
 		!executionsStore.executionsFilters.status?.includes('running') &&
-		executions.value.length < executionsStore.executionsCount,
+		executionsStore.hasMoreExecutions,
 );
 
 async function loadMore(): Promise<void> {

@@ -58,7 +58,10 @@ export const useExecutionsStore = defineStore('executions', () => {
 
 	const executionsById = ref<Record<string, ExecutionSummaryWithScopes>>({});
 	const executionsCount = ref(0);
-	const executionsCountEstimated = ref(false);
+	// Pagination bound: whether more executions can be loaded. Derived from page
+	// fullness rather than `executionsCount`, which on Postgres can be an inflated
+	// whole-table estimate for large tables and would drive endless empty fetches.
+	const hasMoreExecutions = ref(true);
 	const concurrentExecutionsCount = ref(0);
 	const executions = computed(() => {
 		const data = Object.values(executionsById.value);
@@ -182,8 +185,17 @@ export const useExecutionsStore = defineStore('executions', () => {
 				}
 			});
 
+			if (lastId) {
+				// Paginating: a full page means more may exist; a short page is the end.
+				hasMoreExecutions.value = data.results.length >= itemsPerPage.value;
+			} else if (data.results.length < itemsPerPage.value) {
+				// First page or background refresh returning fewer than a page: nothing
+				// more to load. A full first page leaves the current value untouched so a
+				// refresh never resurrects `hasMoreExecutions` on an already-exhausted list.
+				hasMoreExecutions.value = false;
+			}
+
 			executionsCount.value = data.count;
-			executionsCountEstimated.value = data.estimated;
 			concurrentExecutionsCount.value = data.concurrentExecutionsCount;
 			return data;
 		} finally {
@@ -331,8 +343,8 @@ export const useExecutionsStore = defineStore('executions', () => {
 		executionsById.value = {};
 		currentExecutionsById.value = {};
 		executionsCount.value = 0;
-		executionsCountEstimated.value = false;
 		concurrentExecutionsCount.value = 0;
+		hasMoreExecutions.value = true;
 	}
 
 	function reset() {
@@ -349,7 +361,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 		executionsById,
 		executions,
 		executionsCount,
-		executionsCountEstimated,
+		hasMoreExecutions,
 		concurrentExecutionsCount,
 		executionsByWorkflowId,
 		currentExecutions,
