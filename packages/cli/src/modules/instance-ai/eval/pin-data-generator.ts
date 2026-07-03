@@ -246,6 +246,39 @@ function buildSchemaContexts(
 }
 
 // ---------------------------------------------------------------------------
+// AI root output shapes
+// ---------------------------------------------------------------------------
+
+const AGENT_NODE_TYPE = '@n8n/n8n-nodes-langchain.agent';
+
+/**
+ * Per-root-type pinned item shape. Verified against the node implementations:
+ * Agent wraps in `output`; ChainLlm emits `{ text }` (or the parser's object
+ * FLAT at the top level — `formatResponse` unwraps it); ChainRetrievalQa emits
+ * `{ response }`; ChainSummarization emits `{ output: { output_text } }`.
+ * Getting the key wrong silently breaks every downstream `$json.<key>`
+ * reference (observed: chainLlm pinned with `output` → empty Slack digest).
+ */
+function describeAiRootShape(nodeType: string, hasParser: boolean): string {
+	switch (nodeType) {
+		case AGENT_NODE_TYPE:
+			return hasParser
+				? '`{ "json": { "output": <parsed object> } }` — `output` is a parsed JSON object, NOT a JSON-encoded string, and its fields must NOT appear at the top level of `json`.'
+				: '`{ "json": { "output": "<final response text>" } }` — `output` is a plain text STRING, never an object: downstream nodes interpolate it directly into messages.';
+		case '@n8n/n8n-nodes-langchain.chainLlm':
+			return hasParser
+				? 'the parsed fields FLAT at the top level of `json` — chainLlm unwraps parser output, so there is NO `output` or `text` wrapper key.'
+				: '`{ "json": { "text": "<final response text>" } }` — the key is `text` (chainLlm has NO `output` key), and it is a plain string.';
+		case '@n8n/n8n-nodes-langchain.chainRetrievalQa':
+			return '`{ "json": { "response": "<answer text>" } }` — the key is `response`, a plain string.';
+		case '@n8n/n8n-nodes-langchain.chainSummarization':
+			return '`{ "json": { "output": { "output_text": "<summary text>" } } }`.';
+		default:
+			return '`{ "json": { "output": "<final response text>" } }`.';
+	}
+}
+
+// ---------------------------------------------------------------------------
 // Output parser detection
 // ---------------------------------------------------------------------------
 
@@ -379,7 +412,7 @@ RULES:
 4. When no schema is provided, generate a realistic response based on the node type, resource, and operation.
 5. Use realistic but clearly fake values (e.g., "jane@example.com", "proj_abc123").
 6. Dates and timestamps MUST be derived from the "## Date anchors" block at the end of the prompt — never from training data. Workflows compare pinned data against the real execution clock ($now, Date.now()); values months in the past get silently filtered out. When the data description mentions a relative window ("last 24 hours", "past 2 weeks"), place timestamps safely INSIDE it, never on the boundary.
-7. AI root nodes (Agent/Chain) wrap their result in an envelope: each item's json MUST be { "output": ... }. WITH a structured output parser attached, "output" MUST be a parsed JSON object matching the parser's schema — NEVER a JSON-encoded string, never prose, and never the parsed fields spread at the top level of json. WITHOUT a parser, "output" MUST be a plain text STRING (the assistant's final message) — never an object: downstream nodes interpolate it directly into messages and an object renders as "[object Object]".
+7. AI root nodes (Agent/Chain) have NODE-TYPE-SPECIFIC output shapes — follow each node's "AI ROOT OUTPUT SHAPE" instruction exactly and never invent a different envelope key. Summary: agent wraps in { "output": ... } (a parsed object matching the parser schema when one is attached, otherwise a plain text string — never a JSON-encoded string); chainLlm uses { "text": "<string>" } without a parser, or the parsed fields FLAT at the top level of json when a parser is attached (no wrapper key); chainRetrievalQa uses { "response": "<string>" }; chainSummarization uses { "output": { "output_text": "<summary>" } }.
 8. Return ONLY a valid JSON object, no explanation or markdown fencing.
 9. CRITICAL: You MUST generate data for EVERY node listed in "Nodes Requiring Mock Data". Never skip a node, even if the test scenario describes an empty or error response. An empty response is still valid data.`;
 
@@ -417,15 +450,17 @@ function buildUserPrompt(
 			if (ctx.operation) parts.push(`Operation: ${ctx.operation}`);
 			sections.push(`- ${parts.join(' | ')}`);
 		}
-		const isParserlessAiRoot = !ctx.outputParser && isAiRootNodeType(ctx.nodeType);
-		if (ctx.outputParser) {
+		const isAiRoot = isAiRootNodeType(ctx.nodeType);
+		if (isAiRoot) {
 			sections.push(
-				'- HAS STRUCTURED OUTPUT PARSER: every item MUST be `{ "json": { "output": <parsed object> } }`. `output` is a parsed JSON object — NOT a JSON-encoded string, and its fields must NOT appear at the top level of `json`.',
+				`- AI ROOT OUTPUT SHAPE: every item MUST be ${describeAiRootShape(ctx.nodeType, ctx.outputParser !== undefined)}`,
 			);
-			if (ctx.outputParser.schemaText) {
+			if (ctx.outputParser?.schemaText) {
+				const target =
+					ctx.nodeType === AGENT_NODE_TYPE ? 'The `output` object' : 'The top-level `json` fields';
 				const label = ctx.outputParser.schemaIsExample
-					? '- The `output` object must have the same shape and field names as this example:'
-					: '- The `output` object must conform to this JSON Schema (use its exact field names):';
+					? `- ${target} must have the same shape and field names as this example:`
+					: `- ${target} must conform to this JSON Schema (use its exact field names):`;
 				const schemaStr = ctx.outputParser.schemaText;
 				const truncated = schemaStr.length > 3000 ? schemaStr.slice(0, 3000) + '\n...' : schemaStr;
 				sections.push(label);
@@ -433,10 +468,6 @@ function buildUserPrompt(
 				sections.push(truncated);
 				sections.push('```');
 			}
-		} else if (isParserlessAiRoot) {
-			sections.push(
-				'- AI ROOT WITHOUT OUTPUT PARSER: every item MUST be `{ "json": { "output": "<final response text>" } }`. `output` is a plain text STRING (the assistant\'s final message) — NEVER an object and NEVER JSON-encoded data: downstream nodes interpolate it directly into messages.',
-			);
 		}
 		if (ctx.schema) {
 			const schemaStr = JSON.stringify(ctx.schema, null, 2);
@@ -445,7 +476,7 @@ function buildUserPrompt(
 			sections.push('```json');
 			sections.push(truncated);
 			sections.push('```');
-		} else if (!ctx.outputParser && !isParserlessAiRoot) {
+		} else if (!isAiRoot) {
 			sections.push('(no schema available — generate based on API knowledge)');
 		}
 	}
@@ -539,12 +570,14 @@ function tryParseJsonContainer(text: string): Record<string, unknown> | unknown[
 }
 
 /**
- * Deterministically repair pinned items for AI roots that have a structured
- * output parser attached. Two LLM failure modes observed in eval runs:
- * `output` emitted as a JSON-encoded string (downstream `$json.output.field`
- * resolves undefined), and the parsed fields spread flat at the top level
- * with no `output` envelope. Both are mechanical fixes — the prompt asks for
- * the right shape, this guarantees it.
+ * Deterministically repair pinned items for AGENT roots that have a
+ * structured output parser attached (Agent is the only root type that wraps
+ * parser output in an `{ output: ... }` envelope — chainLlm unwraps it flat).
+ * Two LLM failure modes observed in eval runs: `output` emitted as a
+ * JSON-encoded string (downstream `$json.output.field` resolves undefined),
+ * and the parsed fields spread flat at the top level with no `output`
+ * envelope. Both are mechanical fixes — the prompt asks for the right shape,
+ * this guarantees it.
  */
 export function repairStructuredAgentOutput(
 	pinData: PinData,
@@ -623,8 +656,14 @@ export async function generatePinData(options: GeneratePinDataOptions): Promise<
 
 		const responseText = extractText(result);
 		const pinData = parsePinDataResponse(responseText, expectedNodeNames);
-		const pinnedParserTargets = [...outputParserTargets.keys()].filter((name) => name in pinData);
-		return repairStructuredAgentOutput(pinData, pinnedParserTargets);
+		// The `{ output: ... }` envelope repair only holds for Agent roots —
+		// chainLlm unwraps parser output flat, so wrapping it would break
+		// downstream references.
+		const agentParserTargets = [...outputParserTargets.keys()].filter(
+			(name) =>
+				name in pinData && targetNodes.some((n) => n.name === name && n.type === AGENT_NODE_TYPE),
+		);
+		return repairStructuredAgentOutput(pinData, agentParserTargets);
 	} catch {
 		return {};
 	}
