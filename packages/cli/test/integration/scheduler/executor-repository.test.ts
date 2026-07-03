@@ -93,7 +93,7 @@ describe('ScheduledTaskRepository executor methods', () => {
 			expect(claimed[0].claimedBy).toBe(HOST_A);
 			expect(claimed[0].leaseEpoch).toBe(1);
 			// A live lease must be in the future, not merely set.
-			expect(claimed[0].leaseExpiresAt.getTime()).toBeGreaterThan(Date.now());
+			expect(claimed[0].leaseExpiresAt?.getTime()).toBeGreaterThan(Date.now());
 
 			const row = await reload(task.id);
 			expect(row.status).toBe('running');
