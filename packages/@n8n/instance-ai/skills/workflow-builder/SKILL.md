@@ -27,10 +27,10 @@ TypeScript code using `@n8n/workflow-sdk` for new workflows and for existing
 saved workflow changes.
 
 This skill runs inside the orchestrator. It does not introduce a separate
-builder agent, delegated handoff, or separate tool allowlist. Use the
+builder agent, or separate tool allowlist. Use the
 orchestrator tools and runtime workspace file tools already available in the
 current turn. If a relevant agent tool or MCP tool is available through tool
-search, use it when it helps complete the build. Do not call `delegate` to build, patch, fix, verify, or update workflows.
+search, use it when it helps complete the build. Workflow building runs in the orchestrator with this skill and `build-workflow`.
 
 For clear new single-workflow requests, write or edit a TypeScript SDK source
 file in the workspace, then build directly with `build-workflow({ filePath })`.
@@ -366,7 +366,7 @@ one-line completion summary so the result is not mistaken for the original ask.
 
 For complex workflows, you may decompose work into supporting sub-workflows and
 a main workflow. This is part of an approved build task, not a reason to call
-`delegate` or create a new plan.
+create a new plan.
 
 Use this pattern when a workflow is large, has reusable chunks, or benefits from
 independent testing. Simple workflows should stay in one workflow.

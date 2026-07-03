@@ -4,8 +4,8 @@
  * Spawns a focused, synchronous sub-agent that inventories the nodes and
  * credentials a build needs, gathers relevant knowledge-base techniques (when a
  * sandbox workspace is attached), and returns the relevant node type definitions
- * verbatim (selection only, no summarizing). Unlike free-form `delegate`, the
- * role, system prompt, and tool subset are fixed here so pre-build discovery is
+ * verbatim (selection only, no summarizing). The role, system prompt, and tool
+ * subset are fixed here so pre-build discovery is
  * consistent and testable. Sandbox `workspace_*` tools attach automatically when
  * a sandbox exists, giving the sub-agent knowledge-base read access.
  *
@@ -15,7 +15,7 @@
 import { Tool } from '@n8n/agents';
 import { z } from 'zod';
 
-import { runSyncSubAgent } from './delegate.tool';
+import { runSyncSubAgent } from './sync-sub-agent';
 import { DISCOVER_WORKFLOW_CONTEXT_PROMPT } from './discover-workflow-context.prompt';
 import { createToolRegistry, toolRegistryKeys } from '../../tool-registry';
 import type { OrchestrationContext } from '../../types';

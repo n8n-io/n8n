@@ -135,13 +135,7 @@ export type InstanceAiConfirmationSeverity = z.infer<typeof instanceAiConfirmati
 export const instanceAiAgentStatusSchema = z.enum(['active', 'completed', 'cancelled', 'error']);
 export type InstanceAiAgentStatus = z.infer<typeof instanceAiAgentStatusSchema>;
 
-export const instanceAiAgentKindSchema = z.enum([
-	'builder',
-	'data-table',
-	'delegate',
-	'planner',
-	'eval-setup',
-]);
+export const instanceAiAgentKindSchema = z.enum(['builder', 'data-table', 'planner', 'eval-setup']);
 export type InstanceAiAgentKind = z.infer<typeof instanceAiAgentKindSchema>;
 
 // ---------------------------------------------------------------------------
@@ -887,7 +881,6 @@ export interface InstanceAiToolCallState {
 	isLoading: boolean;
 	renderHint?:
 		| 'tasks'
-		| 'delegate'
 		| 'builder'
 		| 'researcher'
 		| 'data-table'
@@ -912,7 +905,7 @@ export interface InstanceAiAgentNode {
 	tools?: string[];
 	/** Background task ID — present only for background agents. */
 	taskId?: string;
-	/** Agent kind for card dispatch (builder, data-table, delegate, planner, eval-setup). */
+	/** Agent kind for card dispatch (builder, data-table, planner, eval-setup). */
 	kind?: InstanceAiAgentKind;
 	/** Short display title, e.g. "Building workflow". */
 	title?: string;
@@ -1224,7 +1217,6 @@ export function isInstanceAiSandboxProvider(value: unknown): value is InstanceAi
 
 export interface InstanceAiAdminSettingsResponse {
 	enabled: boolean;
-	subAgentMaxSteps: number;
 	permissions: InstanceAiPermissions;
 	mcpServers: string;
 	mcpAccessEnabled: boolean;
@@ -1241,7 +1233,6 @@ export interface InstanceAiAdminSettingsResponse {
 
 export class InstanceAiAdminSettingsUpdateRequest extends Z.class({
 	enabled: z.boolean().optional(),
-	subAgentMaxSteps: z.number().int().positive().optional(),
 	permissions: instanceAiPermissionsSchema.partial().optional(),
 	mcpServers: z.string().optional(),
 	mcpAccessEnabled: z.boolean().optional(),
@@ -1305,7 +1296,6 @@ export interface InstanceAiMcpConnectionResponse {
 
 export function getRenderHint(toolName: string): InstanceAiToolCallState['renderHint'] {
 	if (toolName === 'task-control') return 'tasks';
-	if (toolName === 'delegate') return 'delegate';
 	if (toolName === 'build-workflow' || toolName === 'build-workflow-with-agent') return 'builder';
 	if (toolName === 'research-with-agent') return 'researcher';
 	if (toolName === 'create-tasks') return 'planner';

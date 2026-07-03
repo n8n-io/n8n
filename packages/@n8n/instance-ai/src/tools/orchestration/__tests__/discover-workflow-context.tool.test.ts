@@ -1,13 +1,13 @@
 import { executeTool } from '../../../__tests__/tool-test-utils';
 import { createToolRegistry } from '../../../tool-registry';
 import type { OrchestrationContext } from '../../../types';
-import { runSyncSubAgent } from '../delegate.tool';
+import { runSyncSubAgent } from '../sync-sub-agent';
 import {
 	createDiscoverWorkflowContextTool,
 	discoverWorkflowContextInputSchema,
 } from '../discover-workflow-context.tool';
 
-vi.mock('../delegate.tool', () => ({ runSyncSubAgent: vi.fn() }));
+vi.mock('../sync-sub-agent', () => ({ runSyncSubAgent: vi.fn() }));
 
 const runSyncSubAgentMock = vi.mocked(runSyncSubAgent);
 
@@ -18,7 +18,6 @@ function createMockContext(domainTools: Record<string, unknown> = {}): Orchestra
 		userId: 'test-user',
 		orchestratorAgentId: 'test-agent',
 		modelId: 'test-model',
-		subAgentMaxSteps: 5,
 		eventBus: {
 			publish: vi.fn(),
 			subscribe: vi.fn(),

@@ -77,7 +77,6 @@ const SERVICE_CREDENTIAL_TYPES = [...SANDBOX_CREDENTIAL_TYPES, ...SEARCH_CREDENT
 /** Admin settings stored in DB under ADMIN_SETTINGS_KEY. */
 interface PersistedAdminSettings {
 	enabled?: boolean;
-	subAgentMaxSteps?: number;
 	permissions?: Partial<InstanceAiPermissions>;
 	mcpServers?: string;
 	mcpAccessEnabled?: boolean;
@@ -179,7 +178,6 @@ export class InstanceAiSettingsService {
 		const c = this.config;
 		return {
 			enabled: this.enabled,
-			subAgentMaxSteps: c.subAgentMaxSteps,
 			permissions: { ...this.permissions },
 			mcpServers: c.mcpServers,
 			mcpAccessEnabled: this.mcpAccessEnabled,
@@ -208,7 +206,6 @@ export class InstanceAiSettingsService {
 		const previousMcpServers = c.mcpServers;
 		const previousMcpAccessEnabled = this.mcpAccessEnabled;
 		if (update.enabled !== undefined) this.enabled = update.enabled;
-		if (update.subAgentMaxSteps !== undefined) c.subAgentMaxSteps = update.subAgentMaxSteps;
 		if (update.permissions) {
 			this.permissions = { ...this.permissions, ...update.permissions };
 		}
@@ -545,7 +542,6 @@ export class InstanceAiSettingsService {
 	 * now follows suit for the initial launch.
 	 */
 	private static readonly MANAGED_ADMIN_FIELDS: readonly string[] = [
-		'subAgentMaxSteps',
 		'mcpServers',
 		'sandboxEnabled',
 		'sandboxProvider',
@@ -651,7 +647,6 @@ export class InstanceAiSettingsService {
 	private applyAdminSettings(persisted: PersistedAdminSettings): void {
 		const c = this.config;
 		if (persisted.enabled !== undefined) this.enabled = persisted.enabled;
-		if (persisted.subAgentMaxSteps !== undefined) c.subAgentMaxSteps = persisted.subAgentMaxSteps;
 		if (persisted.permissions) {
 			this.permissions = {
 				...DEFAULT_INSTANCE_AI_PERMISSIONS,
@@ -686,7 +681,6 @@ export class InstanceAiSettingsService {
 		const c = this.config;
 		const value: PersistedAdminSettings = {
 			enabled: this.enabled,
-			subAgentMaxSteps: c.subAgentMaxSteps,
 			permissions: this.permissions,
 			mcpServers: c.mcpServers,
 			mcpAccessEnabled: this.mcpAccessEnabled,

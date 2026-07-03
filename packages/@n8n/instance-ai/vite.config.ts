@@ -8,7 +8,6 @@ const INDEX_LAZY_REQUIRE_TEST_SPECS = new Set([
 	'./domain-access',
 	'./agent/sub-agent-factory',
 	'./tools/web-research/sanitize-web-content',
-	'./tools/orchestration/delegate.tool',
 	'./tools',
 	'./tools/orchestration/agent-persistence',
 	'./tracing/trace-replay',

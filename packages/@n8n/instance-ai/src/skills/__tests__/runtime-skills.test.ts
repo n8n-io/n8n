@@ -162,7 +162,7 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain(
 			'Do not ask for missing setup values before the first successful build',
 		);
-		expect(loaded?.instructions).toContain('Do not call `delegate`');
+		expect(loaded?.instructions).toContain('`planning` or call `create-tasks` first');
 		expect(loaded?.instructions).toContain('.to(isImportant)');
 		expect(loaded?.instructions).toContain('.onTrue(handleImportant)');
 		expect(loaded?.instructions).toContain('Never call `.onFalse()` more than once');

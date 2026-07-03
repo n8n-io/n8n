@@ -453,7 +453,7 @@ bound for keys with rate-limit headroom, not the starting point.
 ## Discovery evals
 
 Discovery evals run the orchestrator in-process and assert first-hop tool or
-sub-agent routing from captured `tool-call`, `tool-result`, `tool-error`, and
+background-agent routing from captured `tool-call`, `tool-result`, `tool-error`, and
 `agent-spawned` events. Use them when a regression is about which path the
 agent chooses, not whether a generated workflow executes.
 
@@ -466,7 +466,7 @@ pnpm eval:discovery --filter data-table-skill-loading --trials 3 --verbose --fai
 Verbose output lists each trial's completed tool calls with argument previews.
 For data-table routing, look for `load_skill(skillId="data-table-manager")`
 and `data-tables(action="list")`, and verify there are no planning,
-workflow-builder, or delegate entries in the spawned-agent section.
+workflow-builder, or spawned-agent entries in the spawned-agent section.
 
 ## Pairwise evals
 

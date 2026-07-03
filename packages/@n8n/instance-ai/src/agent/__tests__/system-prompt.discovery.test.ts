@@ -29,10 +29,10 @@ describe('getSystemPrompt — browser/computer-use discoverability', () => {
 			expect(prompt).toMatch(/use Computer Use `browser_\*` tools directly/);
 		});
 
-		it('does not route browser credential setup through delegate', () => {
+		it('routes browser credential setup through Computer Use tools', () => {
 			const prompt = getSystemPrompt({});
 
-			expect(prompt).toMatch(/Computer Use `browser_\*` tools directly \(not `delegate`\)/);
+			expect(prompt).toMatch(/use Computer Use `browser_\*` tools directly/);
 		});
 	});
 

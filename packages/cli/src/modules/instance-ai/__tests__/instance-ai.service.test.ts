@@ -806,7 +806,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			dbIterationLogStorage: unknown;
 			dbSnapshotStorage: unknown;
 			checkpointStore: unknown;
-			instanceAiConfig: { subAgentMaxSteps: number };
+			instanceAiConfig: Record<string, never>;
 			defaultTimeZone: string;
 			eventBus: unknown;
 			logger: unknown;
@@ -857,7 +857,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.dbIterationLogStorage = {};
 		service.dbSnapshotStorage = {};
 		service.checkpointStore = {};
-		service.instanceAiConfig = { subAgentMaxSteps: 10 };
+		service.instanceAiConfig = {};
 		service.defaultTimeZone = 'UTC';
 		service.eventBus = {};
 		service.logger = {};
@@ -1559,6 +1559,7 @@ function createPlannedTaskSchedulerService(): {
 		revertCheckpointToPlanned: Mock;
 		revertBuildWorkflowToPlanned: Mock;
 		markRunning: Mock;
+		markFailed: Mock;
 	};
 	graph: { planRunId: string; messageGroupId: string; tasks: Array<{ id: string }> };
 } {
@@ -1573,6 +1574,7 @@ function createPlannedTaskSchedulerService(): {
 		revertCheckpointToPlanned: vi.fn(async () => {}),
 		revertBuildWorkflowToPlanned: vi.fn(async () => {}),
 		markRunning: vi.fn(async () => {}),
+		markFailed: vi.fn(async () => graph),
 	};
 
 	service.revalidateActiveUser = vi.fn();
@@ -1591,8 +1593,29 @@ function createPlannedTaskSchedulerService(): {
 		getThreadResearchMode: vi.fn(() => false),
 		hasLiveRun: vi.fn(() => false),
 	};
-	service.createPlannedTaskDispatchContext = vi.fn(async () => ({}));
-	service.dispatchPlannedTask = vi.fn(async () => {});
+	service.createPlannedTaskDispatchContext = vi.fn(async () => ({
+		plannedTaskService,
+		threadId: 'thread-a',
+	}));
+	service.dispatchPlannedTask = vi.fn(async (task, context, _graph?) => {
+		if (task.kind === 'build-workflow' || task.kind === 'checkpoint') {
+			service.logger.warn('dispatchPlannedTask called for a runtime planned-task kind', {
+				threadId: context.threadId,
+				taskId: task.id,
+				kind: task.kind,
+			});
+			return;
+		}
+
+		await context.plannedTaskService?.markFailed(context.threadId, task.id, {
+			error: `Planned task kind "${task.kind}" is no longer supported`,
+		});
+
+		const nextGraph = await context.plannedTaskService?.getGraph(context.threadId);
+		if (nextGraph) {
+			await service.syncPlannedTasksToUi(context.threadId, nextGraph);
+		}
+	});
 	service.logger = { warn: vi.fn() };
 
 	return { service, plannedTaskService, graph };
@@ -1863,25 +1886,24 @@ describe('InstanceAiService — planned task user revalidation', () => {
 		);
 	});
 
-	it('continues scheduling in the same pass after dispatching planned tasks', async () => {
+	it('marks unsupported planned dispatch tasks as failed and continues scheduling', async () => {
 		const { service, plannedTaskService, graph } = createPlannedTaskSchedulerService();
 		const freshUser = { id: 'user-1', disabled: false } as User;
-		const delegateTask = {
-			id: 'delegate-1',
-			title: 'Research',
+		const legacyTask = {
+			id: 'legacy-1',
+			title: 'Legacy task',
 			kind: 'delegate',
 			spec: 'Do the research',
 			deps: [],
-			tools: ['research'],
 			status: 'planned',
 		};
-		graph.tasks = [delegateTask];
+		graph.tasks = [legacyTask];
 		service.revalidateActiveUser.mockResolvedValue(freshUser);
 		plannedTaskService.tick
 			.mockResolvedValueOnce({
 				type: 'dispatch',
 				graph,
-				tasks: [delegateTask],
+				tasks: [legacyTask],
 			})
 			.mockResolvedValueOnce({ type: 'none', graph });
 
@@ -1892,10 +1914,12 @@ describe('InstanceAiService — planned task user revalidation', () => {
 			'thread-a',
 			graph,
 		);
-		expect(service.dispatchPlannedTask).toHaveBeenCalledWith(
-			delegateTask,
-			expect.anything(),
-			graph,
+		expect(plannedTaskService.markFailed).toHaveBeenCalledWith(
+			'thread-a',
+			'legacy-1',
+			expect.objectContaining({
+				error: expect.stringContaining('no longer supported'),
+			}),
 		);
 		expect(plannedTaskService.tick).toHaveBeenCalledTimes(2);
 		expect(service.startInternalFollowUpRun).not.toHaveBeenCalled();
