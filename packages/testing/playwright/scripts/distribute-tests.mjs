@@ -31,7 +31,8 @@ import { tmpdir } from 'node:os';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 const PLAYWRIGHT_DIR = path.resolve(__dirname, '..');
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
 const JANITOR_CLI = path.resolve(__dirname, '..', '..', 'janitor', 'dist', 'cli.js');
@@ -45,6 +46,55 @@ const CONTAINER_STARTUP_TIME = 22_500; // 22.5s average per fixture
 // them here until the flakiness is fixed via the Flaky pipeline.
 //   tests/e2e/ai/hitl-for-tools.spec.ts — 34.2% flakyRate (2x next worst)
 const QUARANTINE = new Set(['tests/e2e/ai/hitl-for-tools.spec.ts']);
+
+// Sentinel: a changed data file the AST walker cannot attribute → fail open to
+// the full suite (never skip). Propagated up as `{ broad: true }`.
+export const BROAD = Symbol('broad');
+
+// `expectations/<folder>` → the consuming .ts entrypoints (playwright-root-relative).
+// The expectations dir holds recorded proxy/tool responses replayed by specs at
+// RUNTIME (fs.readdir/readFile via proxy.loadExpectations, or the instance-ai
+// fixture's EXPECTATIONS_DIR join) — never a static import. So the AST import
+// graph can't reach them; without this map they'd select zero specs and skip
+// E2E (violating impact-map.md §7 "never skip, only narrow").
+//
+// Fixture entrypoints (chat-hub, execution.logs, instance-ai) auto-expand to
+// every spec that imports them via the AST graph — drift-free as specs are
+// added. The remaining folders call loadExpectations('<folder>') inline in the
+// spec (no dedicated fixture), so they map to the exact consuming spec file(s).
+export const EXPECTATIONS_CONSUMERS = {
+	'chat-hub': ['tests/e2e/chat-hub/fixtures.ts'],
+	'execution.logs': ['tests/e2e/workflows/editor/execution/fixtures.ts'],
+	'instance-ai': ['tests/e2e/instance-ai/fixtures.ts'],
+	evaluations: ['tests/e2e/ai/evaluations.spec.ts'],
+	'hitl-for-tools': ['tests/e2e/ai/hitl-for-tools.spec.ts'],
+	langchain: [
+		'tests/e2e/ai/langchain-agents.spec.ts',
+		'tests/e2e/ai/langchain-tools.spec.ts',
+		'tests/e2e/ai/langchain-chains.spec.ts',
+		'tests/e2e/ai/langchain-memory.spec.ts',
+		'tests/e2e/ai/langchain-vectorstores.spec.ts',
+	],
+	'proxy-server': ['tests/e2e/capabilities/proxy-server.spec.ts'],
+	'workflow-builder': ['tests/e2e/ai/workflow-builder.spec.ts'],
+	// 'instance-ai-memory' intentionally absent — orphaned (only a .gitignore, no
+	// consumer). A change to it therefore resolves to BROAD, the safe default.
+};
+
+const EXPECTATIONS_PREFIX = 'expectations/';
+
+/**
+ * Map a playwright-relative non-.ts internal file to its consumer .ts
+ * entrypoints, or {@link BROAD} if it can't be attributed (not under
+ * expectations/, or an expectations folder with no map entry). Never returns an
+ * empty array — an unmapped file must fail open to broad, never "no specs".
+ */
+export function resolveExpectationConsumers(relFile) {
+	if (!relFile.startsWith(EXPECTATIONS_PREFIX)) return BROAD;
+	const folder = relFile.slice(EXPECTATIONS_PREFIX.length).split('/')[0];
+	const consumers = EXPECTATIONS_CONSUMERS[folder];
+	return consumers && consumers.length > 0 ? consumers : BROAD;
+}
 
 const CAPABILITY_IMAGES = {
 	email: ['mailpit'],
@@ -132,9 +182,12 @@ function selectV8Specs(externalFiles, base) {
  *
  * Returns a Set of spec paths (playwright-root-relative) or `{ broad: true }`
  * if the analyzer fails. The AST walk only sees relationships expressed in
- * source — a change to a non-test file the walker doesn't recognise is
- * silently dropped, but that is the AST's own concern; we only fail-open on
- * thrown errors, matching the V8 path.
+ * source (static imports), so it cannot attribute a non-.ts data file loaded at
+ * runtime (e.g. `expectations/**`). Rather than let those silently drop to an
+ * empty selection (→ skip E2E), we route each to its consuming .ts entrypoint(s)
+ * via {@link resolveExpectationConsumers} and feed them into the AST walk; any
+ * file we can't attribute fails open to broad (impact-map.md §7). We still
+ * fail-open on thrown errors too, matching the V8 path.
  */
 function selectAstSpecs(internalFiles, base) {
 	if (internalFiles.length === 0) return { broad: false, specs: new Set() };
@@ -142,7 +195,20 @@ function selectAstSpecs(internalFiles, base) {
 	const normalized = internalFiles.map((f) =>
 		f.startsWith(PLAYWRIGHT_PREFIX) ? f.slice(PLAYWRIGHT_PREFIX.length) : f,
 	);
-	const cliArgs = ['impact', '--test-list', `--files=${normalized.join(',')}`];
+
+	// The AST walker only understands .ts sources/specs. Route each non-.ts data
+	// file to its consuming .ts entrypoint(s); an unattributable one → broad.
+	const extraConsumers = new Set();
+	for (const f of normalized.filter((f) => !f.endsWith('.ts'))) {
+		const consumers = resolveExpectationConsumers(f);
+		if (consumers === BROAD) return { broad: true, reason: `unattributable internal file: ${f}` };
+		for (const c of consumers) extraConsumers.add(c);
+	}
+
+	const astInput = [...normalized.filter((f) => f.endsWith('.ts')), ...extraConsumers];
+	if (astInput.length === 0) return { broad: false, specs: new Set() };
+
+	const cliArgs = ['impact', '--test-list', `--files=${astInput.join(',')}`];
 	if (base) cliArgs.push(`--base=${base}`);
 	try {
 		const out = execFileSync('node', [JANITOR_CLI, ...cliArgs], {
@@ -233,6 +299,7 @@ function resolveImpactAllowlist(filesCsv, base) {
 	return allowPath;
 }
 
+function runMain() {
 const args = process.argv.slice(2);
 const matrixMode = args.includes('--matrix');
 const orchestrateMode = args.includes('--orchestrate');
@@ -323,3 +390,9 @@ if (matrixMode) {
 }
 
 cleanup();
+}
+
+// Only execute when invoked directly — keeps the module importable for tests.
+if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
+	runMain();
+}
