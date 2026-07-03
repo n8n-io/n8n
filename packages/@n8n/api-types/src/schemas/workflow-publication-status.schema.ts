@@ -24,3 +24,9 @@ export const WorkflowPublicationStatusSchema = z.object({
 });
 
 export type WorkflowPublicationStatus = z.infer<typeof WorkflowPublicationStatusSchema>;
+
+// The list page surfaces only settled/terminal states (no in_progress, no not_published):
+// a workflow with no live/failed triggers simply shows no indicator.
+export const WorkflowListPublicationStatusSchema = z.enum(['published', 'partial', 'failed']);
+
+export type WorkflowListPublicationStatus = z.infer<typeof WorkflowListPublicationStatusSchema>;
