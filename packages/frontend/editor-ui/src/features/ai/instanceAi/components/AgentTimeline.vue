@@ -25,7 +25,7 @@ import PlanReviewPanel, { type PlannedTaskArg, type PlanReviewStatus } from './P
 import ReasoningBlock from './ReasoningBlock.vue';
 import TaskChecklist from './TaskChecklist.vue';
 import TimelineTextSegment from './TimelineTextSegment.vue';
-import { N8nToolCallStep as ToolCallStep } from '@n8n/design-system';
+import { N8nAiActivityStep as ToolCallStep } from '@n8n/design-system';
 
 const i18n = useI18n();
 const thread = useThread();

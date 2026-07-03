@@ -1,9 +1,10 @@
 <script lang="ts" setup>
-import { CollapsibleContent, CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
+import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 
-import N8nButton from '../N8nButton';
+import N8nAiActivityStepButton from '../N8nAiActivityStepButton';
+import N8nAiActivityStepChevron from '../N8nAiActivityStepChevron';
+import N8nAnimatedCollapsibleContent from '../N8nAnimatedCollapsibleContent';
 import N8nCallout from '../N8nCallout';
-import N8nIcon from '../N8nIcon';
 
 type ToolCallState = {
 	toolCallId: string;
@@ -62,18 +63,14 @@ function formatData(data: unknown): string {
 <template>
 	<CollapsibleRoot v-slot="{ open: isOpen }">
 		<CollapsibleTrigger as-child>
-			<N8nButton variant="ghost" size="small" :class="$style.trigger">
-				<span :class="{ [$style.label]: true, [$style.shimmer]: props.toolCall.isLoading }">
-					{{ props.label ?? getDisplayLabel(props.toolCall) }}
-				</span>
-				<N8nIcon
-					icon="chevron-right"
-					size="large"
-					:class="[$style.chevron, isOpen && $style.open]"
-				/>
-			</N8nButton>
+			<N8nAiActivityStepButton size="small" :loading="props.toolCall.isLoading">
+				{{ props.label ?? getDisplayLabel(props.toolCall) }}
+				<template #suffix>
+					<N8nAiActivityStepChevron :open="isOpen" />
+				</template>
+			</N8nAiActivityStepButton>
 		</CollapsibleTrigger>
-		<CollapsibleContent :class="$style.content">
+		<N8nAnimatedCollapsibleContent>
 			<div v-if="props.toolCall.args" :class="$style.dataSection">
 				<pre :class="$style.json">{{ formatData(props.toolCall.args) }}</pre>
 			</div>
@@ -83,75 +80,11 @@ function formatData(data: unknown): string {
 			<N8nCallout v-if="props.toolCall.error !== undefined" theme="danger">
 				{{ props.toolCall.error }}
 			</N8nCallout>
-		</CollapsibleContent>
+		</N8nAnimatedCollapsibleContent>
 	</CollapsibleRoot>
 </template>
 
 <style lang="scss" module>
-@use '../../css/mixins/motion';
-
-.trigger {
-	max-width: 90%;
-	justify-content: flex-start;
-	color: var(--text-color--subtler);
-	font-size: var(--font-size--sm);
-	position: relative;
-	padding-inline: 0;
-
-	--button--padding: 0;
-	--button--font-size: var(--font-size--sm);
-	--button--color--background-active: transparent;
-	--button--color--background-hover: transparent;
-
-	&:hover {
-		color: var(--text-color--subtle);
-	}
-}
-
-.label {
-	max-width: 100%;
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	line-height: normal;
-}
-
-.shimmer {
-	--animation--shimmer--duration: 1.5s;
-	--animation--shimmer--background: var(--text-color--subtler);
-	--animation--shimmer--foreground: color-mix(
-		in srgb,
-		var(--text-color--subtler) 50%,
-		var(--background--subtle) 50%
-	);
-
-	@include motion.shimmer;
-}
-
-.chevron {
-	flex-shrink: 0;
-	transition: transform var(--duration--snappy) var(--easing--ease-out);
-	transform-origin: center;
-}
-
-.open {
-	transform: rotate(90deg);
-}
-
-.content {
-	overflow: hidden;
-
-	&[data-state='open'] {
-		--animation--collapsible-slide--duration: 0.2s;
-		@include motion.collapsible-slide-down;
-	}
-
-	&[data-state='closed'] {
-		--animation--collapsible-slide--duration: 0.2s;
-		@include motion.collapsible-slide-up;
-	}
-}
-
 .dataSection {
 	font-size: var(--font-size--sm);
 	color: var(--color--text--tint-2);
@@ -181,11 +114,5 @@ function formatData(data: unknown): string {
 	margin: 0;
 	padding: 0;
 	color: var(--color--text--tint-1);
-}
-
-@media (prefers-reduced-motion: reduce) {
-	.chevron {
-		transition: none;
-	}
 }
 </style>

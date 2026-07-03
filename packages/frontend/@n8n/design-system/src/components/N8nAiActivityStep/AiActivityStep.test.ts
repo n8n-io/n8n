@@ -1,8 +1,8 @@
 import { render } from '@testing-library/vue';
 
-import ToolCallStep from './ToolCallStep.vue';
+import AiActivityStep from './AiActivityStep.vue';
 
-type ToolCallState = InstanceType<typeof ToolCallStep>['$props']['toolCall'];
+type ToolCallState = InstanceType<typeof AiActivityStep>['$props']['toolCall'];
 
 const global = {
 	stubs: {
@@ -24,15 +24,15 @@ function makeToolCall(overrides: Partial<ToolCallState> = {}): ToolCallState {
 	};
 }
 
-describe('N8nToolCallStep', () => {
+describe('N8nAiActivityStep', () => {
 	it('should render without throwing', () => {
 		expect(() =>
-			render(ToolCallStep, { props: { toolCall: makeToolCall() }, global }),
+			render(AiActivityStep, { props: { toolCall: makeToolCall() }, global }),
 		).not.toThrow();
 	});
 
 	it('should display the tool label', () => {
-		const { getByText } = render(ToolCallStep, {
+		const { getByText } = render(AiActivityStep, {
 			props: { toolCall: makeToolCall({ toolName: 'search-nodes' }) },
 			global,
 		});
@@ -41,7 +41,7 @@ describe('N8nToolCallStep', () => {
 	});
 
 	it('should use custom label when provided', () => {
-		const { getByText } = render(ToolCallStep, {
+		const { getByText } = render(AiActivityStep, {
 			props: { toolCall: makeToolCall(), label: 'Custom Label' },
 			global,
 		});
@@ -50,7 +50,7 @@ describe('N8nToolCallStep', () => {
 	});
 
 	it('should show loading affordance when loading', () => {
-		const { getByText } = render(ToolCallStep, {
+		const { getByText } = render(AiActivityStep, {
 			props: { toolCall: makeToolCall({ isLoading: true }) },
 			global,
 		});
@@ -59,7 +59,7 @@ describe('N8nToolCallStep', () => {
 	});
 
 	it('should show error text when tool call has error', () => {
-		const { getByText } = render(ToolCallStep, {
+		const { getByText } = render(AiActivityStep, {
 			props: {
 				toolCall: makeToolCall({
 					error: 'Something went wrong',
@@ -73,7 +73,7 @@ describe('N8nToolCallStep', () => {
 	});
 
 	it('should append role to delegate tool label', () => {
-		const { getByText } = render(ToolCallStep, {
+		const { getByText } = render(AiActivityStep, {
 			props: {
 				toolCall: makeToolCall({
 					toolName: 'delegate',
@@ -87,7 +87,7 @@ describe('N8nToolCallStep', () => {
 	});
 
 	it('should append query to research web-search tool label', () => {
-		const { getByText } = render(ToolCallStep, {
+		const { getByText } = render(AiActivityStep, {
 			props: {
 				toolCall: makeToolCall({
 					toolName: 'research',
@@ -101,7 +101,7 @@ describe('N8nToolCallStep', () => {
 	});
 
 	it('should show result data when expanded', () => {
-		const { getByText } = render(ToolCallStep, {
+		const { getByText } = render(AiActivityStep, {
 			props: {
 				toolCall: makeToolCall({
 					result: { nodes: ['Slack'] },
@@ -114,7 +114,7 @@ describe('N8nToolCallStep', () => {
 	});
 
 	it('should show args data when expanded', () => {
-		const { getByText } = render(ToolCallStep, {
+		const { getByText } = render(AiActivityStep, {
 			props: {
 				toolCall: makeToolCall({
 					args: { query: 'test' },

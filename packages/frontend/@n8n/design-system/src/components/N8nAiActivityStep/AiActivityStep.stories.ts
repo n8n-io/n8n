@@ -1,16 +1,16 @@
 import type { StoryFn } from '@storybook/vue3-vite';
 
-import N8nToolCallStep from './ToolCallStep.vue';
+import N8nAiActivityStep from './AiActivityStep.vue';
 
 export default {
-	title: 'Assistant/ToolCallStep',
-	component: N8nToolCallStep,
+	title: 'Assistant/AiActivityStep',
+	component: N8nAiActivityStep,
 	parameters: {
 		backgrounds: { default: '--color--background--light-2' },
 		docs: {
 			description: {
 				component:
-					'A collapsible timeline row for showing an AI tool call, its input data, result, and errors.',
+					'A collapsible AI activity row for showing a tool call, its input data, result, and errors.',
 			},
 		},
 	},
@@ -18,12 +18,12 @@ export default {
 
 const storyWrapper = `
 	<div style="max-width: 720px; padding: var(--spacing--m); background: var(--color--background--light-2);">
-		<n8n-tool-call-step v-bind="args" />
+		<n8n-ai-activity-step v-bind="args" />
 	</div>
 `;
 
 const Template: StoryFn = (args) => ({
-	components: { N8nToolCallStep },
+	components: { N8nAiActivityStep },
 	setup: () => ({ args }),
 	template: storyWrapper,
 });
@@ -89,7 +89,7 @@ FailedToolCall.args = {
 };
 
 export const ToggleState: StoryFn = () => ({
-	components: { N8nToolCallStep },
+	components: { N8nAiActivityStep },
 	data() {
 		return {
 			state: 'loading',
@@ -135,7 +135,7 @@ export const ToggleState: StoryFn = () => ({
 					{{ item }}
 				</button>
 			</div>
-			<n8n-tool-call-step :tool-call="toolCall" />
+			<n8n-ai-activity-step :tool-call="toolCall" />
 		</div>
 	`,
 });

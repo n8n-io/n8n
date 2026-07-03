@@ -1,19 +1,23 @@
 <script lang="ts" setup>
+import {
+	N8nButton,
+	N8nIcon,
+	type IconName,
+	N8nAnimatedCollapsibleContent as AnimatedCollapsibleContent,
+	N8nAiActivityStep as ToolCallStep,
+} from '@n8n/design-system';
 import type {
 	InstanceAiAgentNode,
 	InstanceAiTimelineEntry,
 	InstanceAiToolCallState,
 } from '@n8n/api-types';
-import { N8nButton, N8nIcon, type IconName } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 import { computed } from 'vue';
 import { getToolIcon, useToolLabel } from '../toolLabels';
-import AnimatedCollapsibleContent from './AnimatedCollapsibleContent.vue';
 import ButtonLike from './ButtonLike.vue';
 import DataSection from './DataSection.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
-import { N8nToolCallStep as ToolCallStep } from '@n8n/design-system';
 
 const props = withDefaults(
 	defineProps<{
