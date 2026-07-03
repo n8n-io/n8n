@@ -1,8 +1,8 @@
 import type { StoryFn } from '@storybook/vue3-vite';
 
+import N8nAiActivityStep from '../N8nAiActivityStep';
 import N8nAiActivityStepButton from '../N8nAiActivityStepButton';
 import N8nAiActivityStepChevron from '../N8nAiActivityStepChevron';
-import N8nAiActivityStep from '../N8nAiActivityStep';
 import N8nAiActivityStepGroup from './AiActivityStepGroup.vue';
 
 export default {

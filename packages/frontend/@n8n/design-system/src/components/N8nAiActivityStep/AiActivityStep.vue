@@ -1,12 +1,15 @@
 <script lang="ts" setup>
+import { truncate } from '@n8n/utils/string/truncate';
 import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
-import { inject } from 'vue';
+import { computed, inject } from 'vue';
 
 import { aiActivityStepGroupContext } from './context';
 import N8nAiActivityStepButton from '../N8nAiActivityStepButton';
 import N8nAiActivityStepChevron from '../N8nAiActivityStepChevron';
 import N8nAnimatedCollapsibleContent from '../N8nAnimatedCollapsibleContent';
 import N8nCallout from '../N8nCallout';
+import N8nIcon from '../N8nIcon';
+import N8nTooltip from '../N8nTooltip';
 
 type ToolCallState = {
 	toolCallId: string;
@@ -34,7 +37,13 @@ defineSlots<{
 	default?: () => unknown;
 }>();
 
+const MAX_ERROR_TOOLTIP_LENGTH = 160;
+
 const isNested = inject(aiActivityStepGroupContext, false);
+
+const errorTooltip = computed(() =>
+	props.toolCall.error ? truncate(props.toolCall.error, MAX_ERROR_TOOLTIP_LENGTH) : '',
+);
 
 function humanizeToolName(toolName: string): string {
 	return toolName
@@ -80,6 +89,19 @@ function formatData(data: unknown): string {
 			<CollapsibleTrigger as-child>
 				<N8nAiActivityStepButton size="small" :loading="props.toolCall.isLoading">
 					{{ props.label ?? getDisplayLabel(props.toolCall) }}
+					<template #icon>
+						<N8nTooltip v-if="props.toolCall.error" placement="top">
+							<template #content>
+								<span :class="$style.errorTooltip">{{ errorTooltip }}</span>
+							</template>
+							<N8nIcon
+								icon="triangle-alert"
+								color="danger"
+								size="small"
+								:class="$style.toolCallErrorIcon"
+							/>
+						</N8nTooltip>
+					</template>
 					<template #suffix>
 						<N8nAiActivityStepChevron :open="isOpen" />
 					</template>
@@ -92,7 +114,11 @@ function formatData(data: unknown): string {
 				<div v-if="props.toolCall.result !== undefined" :class="$style.dataSection">
 					<pre :class="$style.json">{{ formatData(props.toolCall.result) }}</pre>
 				</div>
-				<N8nCallout v-if="props.toolCall.error !== undefined" theme="danger">
+				<N8nCallout
+					v-if="props.toolCall.error !== undefined"
+					theme="danger"
+					:class="$style.toolErrorCallout"
+				>
 					{{ props.toolCall.error }}
 				</N8nCallout>
 			</N8nAnimatedCollapsibleContent>
@@ -104,6 +130,19 @@ function formatData(data: unknown): string {
 			:interactive="false"
 		>
 			{{ props.label ?? getDisplayLabel(props.toolCall) }}
+			<template #icon>
+				<N8nTooltip v-if="props.toolCall.error" placement="top">
+					<template #content>
+						<span :class="$style.errorTooltip">{{ errorTooltip }}</span>
+					</template>
+					<N8nIcon
+						icon="triangle-alert"
+						color="danger"
+						size="small"
+						:class="$style.toolCallErrorIcon"
+					/>
+				</N8nTooltip>
+			</template>
 		</N8nAiActivityStepButton>
 	</div>
 </template>
@@ -162,6 +201,10 @@ function formatData(data: unknown): string {
 	background-color: var(--text-color--subtler);
 }
 
+.errorTooltip {
+	white-space: pre-wrap;
+}
+
 .dataSection {
 	font-size: var(--font-size--sm);
 	color: var(--color--text--tint-2);
@@ -191,5 +234,13 @@ function formatData(data: unknown): string {
 	margin: 0;
 	padding: 0;
 	color: var(--color--text--tint-1);
+}
+
+.toolErrorCallout {
+	margin-top: var(--spacing--xs);
+	max-width: 90%;
+}
+.toolCallErrorIcon {
+	transform: translateY(1px);
 }
 </style>
