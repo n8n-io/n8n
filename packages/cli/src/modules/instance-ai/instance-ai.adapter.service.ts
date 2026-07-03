@@ -27,6 +27,7 @@ import type {
 	NodeSummary,
 	NodeDescription,
 	SearchableNodeDescription,
+	AiGatewayNodeMeta,
 	ExploreResourcesParams,
 	ExploreResourcesResult,
 	InstanceAiWorkspaceService,
@@ -263,13 +264,21 @@ export class InstanceAiAdapterService {
 	): InstanceAiContext {
 		const { searchProxyConfig, pushRef, threadId, projectId, credentialIdAllowlist } =
 			options ?? {};
+
+		// Lazy per-request loader for the AI Gateway config. The first
+		// gateway-aware method call within this context triggers the fetch;
+		// every later call shares the same promise. A second `createContext`
+		// call gets its own closure and refetches — the config can change
+		// when a license changes, so we do not cache process-wide.
+		const getGatewayConfig = this.createGatewayConfigLoader();
+
 		return {
 			userId: user.id,
 			projectId,
 			workflowService: this.createWorkflowAdapter(user, threadId, projectId),
 			executionService: this.createExecutionAdapter(user, pushRef, threadId),
 			credentialService: this.createCredentialAdapter(user, projectId, credentialIdAllowlist),
-			nodeService: this.createNodeAdapter(user),
+			nodeService: this.createNodeAdapter(user, getGatewayConfig),
 			dataTableService: this.createDataTableAdapter(user, projectId),
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
 			workspaceService: this.createWorkspaceAdapter(user),
@@ -279,6 +288,31 @@ export class InstanceAiAdapterService {
 			nodeTypesProvider: this.nodeTypes,
 			allowSendingParameterValues: this.allowSendingParameterValues,
 		};
+	}
+
+	private createGatewayConfigLoader(): () => Promise<AiGatewayConfigDto | null> {
+		let cached: Promise<AiGatewayConfigDto | null> | undefined;
+		return () => {
+			if (!cached) cached = this.fetchGatewayConfigSafely();
+			return cached;
+		};
+	}
+
+	private buildAiGatewayNodeMeta(
+		config: AiGatewayConfigDto | null,
+		nodeName: string,
+	): AiGatewayNodeMeta | undefined {
+		if (!config) return undefined;
+		if (!config.nodes.includes(nodeName)) return undefined;
+
+		const meta: AiGatewayNodeMeta = { supported: true };
+		const operations = config.supportedActions?.[nodeName];
+		if (operations && Object.keys(operations).length > 0) meta.operations = operations;
+		const minVersion = config.minNodeTypeVersion?.[nodeName];
+		if (minVersion !== undefined) meta.minVersion = minVersion;
+		const hiddenProperties = config.hiddenNodeProperties?.[nodeName];
+		if (hiddenProperties && hiddenProperties.length > 0) meta.hiddenProperties = hiddenProperties;
+		return meta;
 	}
 
 	private getTemplatesService(): BuilderTemplatesServiceInstance {
@@ -2011,10 +2045,15 @@ export class InstanceAiAdapterService {
 		return this.nodeCatalogService ?? Container.get(NodeCatalogService);
 	}
 
-	private createNodeAdapter(user: User): InstanceAiNodeService {
+	private createNodeAdapter(
+		user: User,
+		getGatewayConfig: () => Promise<AiGatewayConfigDto | null>,
+	): InstanceAiNodeService {
 		// Use the service-level cache instead of a per-adapter closure.
 		// This avoids each run retaining its own ~31 MB copy of node descriptions.
 		const getNodes = async () => await this.getNodesFromCache();
+		const buildMeta = (config: AiGatewayConfigDto | null, nodeName: string) =>
+			this.buildAiGatewayNodeMeta(config, nodeName);
 
 		/** Find a node description matching type and optionally version. Falls back to any version. */
 		const findNodeByVersion = (
@@ -2060,7 +2099,7 @@ export class InstanceAiAdapterService {
 			},
 
 			async listSearchable() {
-				const nodes = await getNodes();
+				const [nodes, gatewayConfig] = await Promise.all([getNodes(), getGatewayConfig()]);
 
 				const toStringArray = (
 					value: (typeof nodes)[number]['inputs'] | (typeof nodes)[number]['outputs'],
@@ -2078,6 +2117,8 @@ export class InstanceAiAdapterService {
 						inputs: toStringArray(n.inputs),
 						outputs: toStringArray(n.outputs),
 					};
+					const meta = buildMeta(gatewayConfig, n.name);
+					if (meta) result.aiGateway = meta;
 					if (n.codex?.alias) {
 						result.codex = { alias: n.codex.alias };
 					}
@@ -2122,7 +2163,7 @@ export class InstanceAiAdapterService {
 			},
 
 			async getDescription(nodeType: string, version?: number) {
-				const nodes = await getNodes();
+				const [nodes, gatewayConfig] = await Promise.all([getNodes(), getGatewayConfig()]);
 				let desc =
 					version !== undefined
 						? nodes.find((n) => {
@@ -2139,6 +2180,8 @@ export class InstanceAiAdapterService {
 				if (!desc) {
 					throw new Error(`Node type ${nodeType} not found`);
 				}
+
+				const meta = buildMeta(gatewayConfig, desc.name);
 
 				return {
 					name: desc.name,
@@ -2177,6 +2220,7 @@ export class InstanceAiAdapterService {
 					...(desc.webhooks ? { webhooks: desc.webhooks as unknown[] } : {}),
 					...(desc.polling ? { polling: desc.polling } : {}),
 					...(desc.triggerPanel !== undefined ? { triggerPanel: desc.triggerPanel } : {}),
+					...(meta ? { aiGateway: meta } : {}),
 				} satisfies NodeDescription;
 			},
 

@@ -3022,46 +3022,42 @@ describe('createExecutionAdapter run()', () => {
 	});
 });
 
+function createAdapterWithGatewayMock(getGatewayConfig: Mock): InstanceAiAdapterService {
+	const aiGatewayService = { getGatewayConfig };
+	const args = Array.from(
+		{ length: 35 },
+		() => ({}) as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[number],
+	);
+	args[0] = {
+		error: vi.fn(),
+		warn: vi.fn(),
+		scoped: vi.fn().mockReturnThis(),
+	} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[0];
+	args[1] = { ai: { allowSendingParameterValues: false } } as unknown as ConstructorParameters<
+		typeof InstanceAiAdapterService
+	>[1];
+	args[12] = {} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[12];
+	args[14] = { staticCacheDir: '/tmp', n8nFolder: '/tmp' } as unknown as ConstructorParameters<
+		typeof InstanceAiAdapterService
+	>[14];
+	args[21] = {
+		getPreferences: vi.fn().mockReturnValue({ branchReadOnly: false }),
+	} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[21];
+	args[25] = { isLicensed: vi.fn().mockReturnValue(false) } as unknown as ConstructorParameters<
+		typeof InstanceAiAdapterService
+	>[25];
+	args[32] = mock<OutboundHttp>() as unknown as ConstructorParameters<
+		typeof InstanceAiAdapterService
+	>[32];
+	args[33] = aiGatewayService as unknown as ConstructorParameters<
+		typeof InstanceAiAdapterService
+	>[33];
+	return new InstanceAiAdapterService(
+		...(args as ConstructorParameters<typeof InstanceAiAdapterService>),
+	);
+}
+
 describe('fetchGatewayConfigSafely', () => {
-	// The adapter must surface `null` when the AI Gateway service throws for any
-	// reason (unlicensed, 404, network). `getGatewayConfig()` throws `UserError`
-	// on failure — the wrapper turns that into an awaitable
-	// `Promise<AiGatewayConfigDto | null>` so downstream consumers (node
-	// annotations, credential list, verifier) treat the gateway as an opt-in
-	// signal, not a hard dependency.
-
-	function createAdapterWithGatewayMock(getGatewayConfig: Mock) {
-		const aiGatewayService = { getGatewayConfig };
-		const args = Array.from(
-			{ length: 35 },
-			() => ({}) as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[number],
-		);
-		args[0] = {
-			error: vi.fn(),
-			warn: vi.fn(),
-			scoped: vi.fn().mockReturnThis(),
-		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[0];
-		args[1] = { ai: { allowSendingParameterValues: false } } as unknown as ConstructorParameters<
-			typeof InstanceAiAdapterService
-		>[1];
-		args[12] = {} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[12];
-		args[14] = { staticCacheDir: '/tmp', n8nFolder: '/tmp' } as unknown as ConstructorParameters<
-			typeof InstanceAiAdapterService
-		>[14];
-		args[21] = {
-			getPreferences: vi.fn().mockReturnValue({ branchReadOnly: false }),
-		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[21];
-		args[25] = { isLicensed: vi.fn().mockReturnValue(false) } as unknown as ConstructorParameters<
-			typeof InstanceAiAdapterService
-		>[25];
-		args[33] = aiGatewayService as unknown as ConstructorParameters<
-			typeof InstanceAiAdapterService
-		>[33];
-		return new InstanceAiAdapterService(
-			...(args as ConstructorParameters<typeof InstanceAiAdapterService>),
-		);
-	}
-
 	function callFetch(adapter: InstanceAiAdapterService) {
 		return (
 			adapter as unknown as {
@@ -3087,5 +3083,183 @@ describe('fetchGatewayConfigSafely', () => {
 		);
 
 		await expect(callFetch(adapter)).resolves.toBeNull();
+	});
+});
+
+describe('createNodeAdapter — n8n Connect annotations', () => {
+	type GatewayConfigLike = {
+		nodes: string[];
+		credentialTypes: string[];
+		providerConfig: Record<string, unknown>;
+		supportedActions?: Record<string, Record<string, string[]>>;
+		minNodeTypeVersion?: Record<string, number>;
+		hiddenNodeProperties?: Record<string, string[]>;
+	};
+
+	function createNodeServiceWithGateway(
+		nodes: Array<Record<string, unknown>>,
+		gatewayConfig: GatewayConfigLike | null,
+	) {
+		const getGatewayConfig = vi.fn(async () => {
+			if (gatewayConfig === null) throw new Error('AI Gateway is not licensed');
+			return gatewayConfig;
+		});
+
+		const adapter = createAdapterWithGatewayMock(getGatewayConfig);
+
+		(
+			adapter as unknown as {
+				nodesCache: {
+					promise: Promise<Array<Record<string, unknown>>>;
+					expiresAt: number;
+				};
+			}
+		).nodesCache = {
+			promise: Promise.resolve(nodes),
+			expiresAt: Date.now() + 60_000,
+		};
+
+		const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
+		return {
+			adapter,
+			getGatewayConfig,
+			makeContext: () => adapter.createContext(mockUser),
+		};
+	}
+
+	const openAiNode = {
+		name: 'openAi',
+		displayName: 'OpenAI',
+		description: 'Chat with OpenAI models',
+		version: [1, 2],
+		properties: [],
+		inputs: ['main'],
+		outputs: ['main'],
+	} satisfies Record<string, unknown>;
+
+	const cohereNode = {
+		name: 'cohere',
+		displayName: 'Cohere',
+		description: 'Chat with Cohere',
+		version: 1,
+		properties: [],
+		inputs: ['main'],
+		outputs: ['main'],
+	} satisfies Record<string, unknown>;
+
+	it('attaches the gateway meta to a node listed in config.nodes on listSearchable', async () => {
+		const { makeContext } = createNodeServiceWithGateway([openAiNode, cohereNode], {
+			nodes: ['openAi'],
+			credentialTypes: ['openAiApi'],
+			providerConfig: {},
+			supportedActions: { openAi: { chat: ['message'] } },
+			minNodeTypeVersion: { openAi: 2 },
+			hiddenNodeProperties: { openAi: ['baseURL'] },
+		});
+
+		const results = await makeContext().nodeService.listSearchable();
+		const openAiResult = results.find((n) => n.name === 'openAi');
+
+		expect(openAiResult).toBeDefined();
+		expect((openAiResult as { aiGateway?: unknown }).aiGateway).toEqual({
+			supported: true,
+			operations: { chat: ['message'] },
+			minVersion: 2,
+			hiddenProperties: ['baseURL'],
+		});
+	});
+
+	it('omits the gateway meta for nodes not in config.nodes', async () => {
+		const { makeContext } = createNodeServiceWithGateway([openAiNode, cohereNode], {
+			nodes: ['openAi'],
+			credentialTypes: ['openAiApi'],
+			providerConfig: {},
+		});
+
+		const results = await makeContext().nodeService.listSearchable();
+		const cohereResult = results.find((n) => n.name === 'cohere');
+
+		expect(cohereResult).toBeDefined();
+		expect((cohereResult as { aiGateway?: unknown }).aiGateway).toBeUndefined();
+	});
+
+	it('emits no gateway meta on any node when the gateway config is unavailable', async () => {
+		const { makeContext } = createNodeServiceWithGateway([openAiNode, cohereNode], null);
+
+		const results = await makeContext().nodeService.listSearchable();
+
+		for (const r of results) {
+			expect((r as { aiGateway?: unknown }).aiGateway).toBeUndefined();
+		}
+	});
+
+	it('attaches the gateway meta on getDescription for a supported node', async () => {
+		const { makeContext } = createNodeServiceWithGateway([openAiNode], {
+			nodes: ['openAi'],
+			credentialTypes: ['openAiApi'],
+			providerConfig: {},
+			supportedActions: { openAi: { chat: ['message'] } },
+			minNodeTypeVersion: { openAi: 2 },
+		});
+
+		const desc = await makeContext().nodeService.getDescription('openAi');
+
+		expect((desc as { aiGateway?: unknown }).aiGateway).toEqual({
+			supported: true,
+			operations: { chat: ['message'] },
+			minVersion: 2,
+		});
+	});
+
+	it('preserves the __operation_only__ marker for nodes without a resource dimension', async () => {
+		const pdfCoNode = {
+			name: 'pdfCo',
+			displayName: 'PDF.co',
+			description: 'PDF operations',
+			version: 1,
+			properties: [],
+			inputs: ['main'],
+			outputs: ['main'],
+		} satisfies Record<string, unknown>;
+
+		const { makeContext } = createNodeServiceWithGateway([pdfCoNode], {
+			nodes: ['pdfCo'],
+			credentialTypes: ['pdfCoApi'],
+			providerConfig: {},
+			supportedActions: { pdfCo: { __operation_only__: ['pdfToText', 'ocr'] } },
+		});
+
+		const results = await makeContext().nodeService.listSearchable();
+		expect((results[0] as { aiGateway?: unknown }).aiGateway).toEqual({
+			supported: true,
+			operations: { __operation_only__: ['pdfToText', 'ocr'] },
+		});
+	});
+
+	it('shares one upstream gateway fetch across multiple node-service calls in the same context', async () => {
+		const { makeContext, getGatewayConfig } = createNodeServiceWithGateway([openAiNode], {
+			nodes: ['openAi'],
+			credentialTypes: ['openAiApi'],
+			providerConfig: {},
+		});
+
+		const ctx = makeContext();
+		await ctx.nodeService.listSearchable();
+		await ctx.nodeService.getDescription('openAi');
+
+		expect(getGatewayConfig).toHaveBeenCalledTimes(1);
+	});
+
+	it('fetches the gateway config again for each new createContext call', async () => {
+		const { makeContext, getGatewayConfig } = createNodeServiceWithGateway([openAiNode], {
+			nodes: ['openAi'],
+			credentialTypes: ['openAiApi'],
+			providerConfig: {},
+		});
+
+		await makeContext().nodeService.listSearchable();
+		await makeContext().nodeService.listSearchable();
+
+		expect(getGatewayConfig).toHaveBeenCalledTimes(2);
 	});
 });

@@ -214,6 +214,23 @@ export interface NodeSummary {
 	version: number;
 }
 
+/**
+ * Metadata about how a node is reachable via the AI Gateway (n8n Connect).
+ * Attached to node results only when the instance is licensed for the
+ * gateway AND the node is listed in the gateway config. Absence means either
+ * "not licensed" or "not supported" — consumers treat both the same.
+ *
+ * `operations` mirrors the gateway config's `supportedActions[nodeName]`:
+ * a map from resource name to allowed operations. Nodes without a resource
+ * dimension use the marker key `'__operation_only__'`.
+ */
+export interface AiGatewayNodeMeta {
+	supported: true;
+	operations?: Record<string, string[]>;
+	minVersion?: number;
+	hiddenProperties?: string[];
+}
+
 export interface NodeDescription extends NodeSummary {
 	properties: Array<{
 		displayName: string;
@@ -234,6 +251,7 @@ export interface NodeDescription extends NodeSummary {
 	webhooks?: unknown[];
 	polling?: boolean;
 	triggerPanel?: unknown;
+	aiGateway?: AiGatewayNodeMeta;
 }
 
 // ── Service interfaces ───────────────────────────────────────────────────────
@@ -521,6 +539,7 @@ export interface SearchableNodeDescription {
 		inputs?: Record<string, { required: boolean; displayOptions?: Record<string, unknown> }>;
 		outputs?: Record<string, { required?: boolean; displayOptions?: Record<string, unknown> }>;
 	};
+	aiGateway?: AiGatewayNodeMeta;
 }
 
 // ── Data table shapes ────────────────────────────────────────────────────────
