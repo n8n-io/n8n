@@ -59,11 +59,6 @@ jobs:
             Content-Type: text/yaml; charset=utf-8
           EOF
 
-      - name: Setup Wrangler Pre-requisites
-        run: |
-          echo "ignore-workspace-root-check=true" >> .npmrc
-          pnpm add --global wrangler
-
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@da0e0dfe58b7a431659754fdf3f186c529afbe65 # v3.14.1
         with:
