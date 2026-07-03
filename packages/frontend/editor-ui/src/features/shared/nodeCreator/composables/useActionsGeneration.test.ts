@@ -510,6 +510,64 @@ describe('useActionsGenerator', () => {
 				expect.objectContaining({ actionKey: 'search', displayName: 'Search the web' }),
 			]);
 		});
+
+		it('resolves the default version from a single numeric `version` when defaultVersion is unset', () => {
+			const node: INodeTypeDescription = {
+				...baseV2NodeWoProps,
+				version: 2,
+				defaultVersion: undefined,
+				properties: [
+					{
+						displayName: 'Operation',
+						name: 'operation',
+						type: 'options',
+						noDataExpression: true,
+						displayOptions: { show: { '@version': [{ _cnd: { gte: 2 } }] } },
+						options: [
+							{ name: 'Get', value: 'get', action: 'Get a thing' },
+							{ name: 'Create', value: 'create', action: 'Create a thing' },
+						],
+						default: 'get',
+					},
+				],
+			};
+
+			const { actions } = generateMergedNodesAndActions([node], []);
+
+			expect(actions[NODE_NAME]).toEqual([
+				expect.objectContaining({ actionKey: 'get', displayName: 'Get a thing' }),
+				expect.objectContaining({ actionKey: 'create', displayName: 'Create a thing' }),
+			]);
+		});
+
+		it('falls back to the first operation when none matches the default version', () => {
+			const node: INodeTypeDescription = {
+				...baseV2NodeWoProps,
+				version: [1, 2],
+				defaultVersion: 2,
+				properties: [
+					{
+						displayName: 'Operation',
+						name: 'operation',
+						type: 'options',
+						noDataExpression: true,
+						displayOptions: { show: { '@version': [1] } },
+						options: [
+							{ name: 'Get', value: 'get', action: 'Get a thing' },
+							{ name: 'Create', value: 'create', action: 'Create a thing' },
+						],
+						default: 'get',
+					},
+				],
+			};
+
+			const { actions } = generateMergedNodesAndActions([node], []);
+
+			expect(actions[NODE_NAME]).toEqual([
+				expect.objectContaining({ actionKey: 'get', displayName: 'Get a thing' }),
+				expect.objectContaining({ actionKey: 'create', displayName: 'Create a thing' }),
+			]);
+		});
 	});
 
 	describe('Simple Memory node filtering', () => {
