@@ -157,15 +157,20 @@ describe('InstanceAiService — refineTitleIfNeeded input cleaning', () => {
 		expect(patchThread).toHaveBeenCalledTimes(1);
 	});
 
-	it('fetches full history rather than a recency-limited window', async () => {
+	it('fetches a wide history window rather than only the last few messages', async () => {
 		const service = createService([userMessage(withCurrentDateTime('hey', '\n2026-07-03 09:30'))]);
 		generateTitleForRun.mockResolvedValue(null);
 
 		await service.refineTitleIfNeeded('thread-1', 'user-1', modelId);
 
-		// No limit — a recency window would drop the user's request behind a build's
-		// assistant messages.
-		expect(service.agentMemory.getMessages).toHaveBeenCalledWith('thread-1');
+		// A small recency window would drop the user's request behind a build's
+		// assistant messages, so the window must be wide enough to clear them.
+		expect(service.agentMemory.getMessages).toHaveBeenCalledWith(
+			'thread-1',
+			expect.objectContaining({ limit: expect.any(Number) }),
+		);
+		const [, opts] = service.agentMemory.getMessages.mock.calls[0];
+		expect(opts.limit).toBeGreaterThanOrEqual(50);
 	});
 });
 

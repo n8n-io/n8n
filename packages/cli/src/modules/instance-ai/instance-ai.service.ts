@@ -304,6 +304,8 @@ function getAbortReason(signal: AbortSignal): string {
 
 const MAX_CONCURRENT_BACKGROUND_TASKS_PER_THREAD = 5;
 
+const TITLE_REFINE_HISTORY_LIMIT = 50;
+
 function stringifyForContextValue(value: unknown): string {
 	if (typeof value === 'string') return value;
 	try {
@@ -5027,14 +5029,8 @@ export class InstanceAiService {
 			// Skip if thread already has an LLM-refined title
 			if (thread.metadata?.titleRefined) return;
 
-			// Title the conversation from its opening user turns. Fetch the whole
-			// history (ascending) rather than the most recent N messages: a build
-			// emits many assistant/reasoning/tool messages, so a recency-limited
-			// window is dominated by them and the user's actual request scrolls out
-			// entirely, leaving nothing to title. Concatenating the first few user
-			// messages also covers the trivial-first-message retry ("hey" followed
-			// by a real request).
-			const history = await memory.getMessages(threadId);
+			// Title the conversation from its opening user turns.
+			const history = await memory.getMessages(threadId, { limit: TITLE_REFINE_HISTORY_LIMIT });
 			const userTexts: string[] = [];
 			for (const m of history) {
 				if (!('role' in m) || m.role !== 'user') continue;
