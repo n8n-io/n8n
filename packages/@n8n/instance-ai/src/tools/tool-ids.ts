@@ -11,6 +11,7 @@ export const DOMAIN_TOOL_IDS = {
 	ASK_USER: 'ask-user',
 	BUILD_WORKFLOW: 'build-workflow',
 	PARSE_FILE: 'parse-file',
+	N8N_CONNECT: 'n8n-connect',
 } as const;
 
 export const ORCHESTRATION_TOOL_IDS = {
@@ -51,6 +52,7 @@ export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	ORCHESTRATION_TOOL_IDS.VERIFY_BUILT_WORKFLOW,
 	DOMAIN_TOOL_IDS.RESEARCH,
 	DOMAIN_TOOL_IDS.EVALS,
+	DOMAIN_TOOL_IDS.N8N_CONNECT,
 	'web-search',
 	'fetch-url',
 ]);

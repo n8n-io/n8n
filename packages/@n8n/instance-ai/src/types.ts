@@ -443,6 +443,12 @@ export interface InstanceAiCredentialService {
 	getAccountContext?(credentialId: string): Promise<{ accountIdentifier?: string }>;
 	/** Whether the given credential type is supported by AI Gateway. */
 	isAiGatewayCredentialType?(credType: string): Promise<boolean>;
+	/** List node types supported by n8n Connect. */
+	listAiGatewayNodes?(): Promise<string[]>;
+	/** List credential types supported by n8n Connect. */
+	listAiGatewayCredentialTypes?(): Promise<string[]>;
+	/** Get available operations for a node type supported by n8n Connect. */
+	getAiGatewayNodeOperations?(nodeType: string): Promise<Record<string, string[]> | undefined>;
 }
 
 export interface CredentialFieldInfo {

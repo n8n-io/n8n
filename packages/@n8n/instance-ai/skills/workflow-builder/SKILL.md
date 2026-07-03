@@ -319,8 +319,22 @@ decision after testing.
 ## n8n Connect Preference
 
 "n8n Connect" is the user-facing name of n8n's managed credential
-service. On instances licensed for it, several common AI-provider nodes
-can run with zero credential setup on the user's side.
+service. On instances licensed for it, several common AI-provider and
+scraping nodes can run with zero credential setup on the user's side.
+
+**Discovery:** Before building a workflow that uses AI model or web-scraping
+nodes, call `n8n-connect(action="list-nodes")` to see which node types are
+covered. If the task involves a supported node, prefer it over generic
+alternatives. To check which operations a supported node allows, call
+`n8n-connect(action="node-operations", nodeType="...")`.
+
+**Preference rule:** When adding a new node that has no credential assigned
+yet, prefer n8n Connect over stored credentials if the credential type is
+supported — it provides zero-setup access and avoids spending the user's API
+quota. Do not change credentials on nodes that already have one assigned
+(editing an existing workflow, or after the user has made a credential choice).
+To check supported credential types, call
+`n8n-connect(action="list-credential-types")`.
 
 - Node search / describe results include an `aiGateway` field on
   supported nodes. When `aiGateway.supported === true`, prefer that
@@ -341,6 +355,9 @@ can run with zero credential setup on the user's side.
 - When you do need to name a credential in the code, follow the
   Credential Rules above — do not emit `id: null` or the
   `__aiGatewayManaged` marker in builder SDK output.
+- If the user explicitly specified their own credential (by name or by
+  choosing one from a list), use that credential and do not substitute
+  n8n Connect.
 - When speaking to the user in chat, always refer to this feature as
   "n8n Connect" — not "AI Gateway", which is only an internal name.
 

@@ -1,9 +1,9 @@
 {
-	"description": "With a stored OpenAI credential present, the build uses the user's stored key even though the AI Gateway would also cover the type — no silent substitution to the managed option.",
+	"description": "When the user explicitly asks to use their own API key, the build uses the stored credential even when n8n Connect covers the type — explicit user choice wins over the gateway preference.",
 	"conversation": [
 		{
 			"role": "user",
-			"text": "Build me a webhook that takes some text in the body, summarises it in a couple of sentences using an LLM, and returns the summary."
+			"text": "Build me a webhook that takes some text in the body, summarises it in a couple of sentences using an LLM with my own OpenAI key, and returns the summary."
 		}
 	],
 	"messageBudget": 4,
@@ -14,7 +14,7 @@
 	"outcomeExpectations": [
 		"A Webhook trigger accepts an incoming request whose body carries the text to summarise.",
 		"An OpenAI-family chat model (an OpenAI node or a LangChain lmChatOpenAi) generates a short summary of the incoming text.",
-		"The chat-model node's OpenAI credential references the stored credential named 'My OpenAI' by id, and does NOT carry `__aiGatewayManaged: true` — the build honoured the user's existing key rather than silently substituting the managed option.",
+		"The chat-model node's OpenAI credential references the stored credential named 'My OpenAI' by id, and does NOT carry `__aiGatewayManaged: true` — the build honoured the user's explicit instruction to use their own key.",
 		"The workflow returns the summary text back to the webhook caller."
 	]
 }

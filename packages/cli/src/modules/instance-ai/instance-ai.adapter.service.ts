@@ -1586,6 +1586,35 @@ export class InstanceAiAdapterService {
 					return false;
 				}
 			},
+
+			async listAiGatewayNodes(): Promise<string[]> {
+				try {
+					const config = await aiGatewayService.getGatewayConfig();
+					return config.nodes;
+				} catch {
+					return [];
+				}
+			},
+
+			async listAiGatewayCredentialTypes(): Promise<string[]> {
+				try {
+					const config = await aiGatewayService.getGatewayConfig();
+					return config.credentialTypes;
+				} catch {
+					return [];
+				}
+			},
+
+			async getAiGatewayNodeOperations(
+				nodeType: string,
+			): Promise<Record<string, string[]> | undefined> {
+				try {
+					const config = await aiGatewayService.getGatewayConfig();
+					return config.supportedActions?.[nodeType];
+				} catch {
+					return undefined;
+				}
+			},
 		};
 
 		if (!credentialIdAllowlist) return adapter;

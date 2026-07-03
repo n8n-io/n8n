@@ -79,6 +79,9 @@ const loadWorkflowsTool = lazyMod(
 const loadWorkspaceTool = lazyMod(
 	() => require('./workspace.tool') as typeof import('./workspace.tool'),
 );
+const loadN8nConnectTool = lazyMod(
+	() => require('./n8n-connect.tool') as typeof import('./n8n-connect.tool'),
+);
 
 /**
  * Creates all native n8n domain tools with the full action surface.
@@ -97,6 +100,7 @@ export function createAllTools(context: InstanceAiContext): InstanceAiToolRegist
 		[DOMAIN_TOOL_IDS.NODES, loadNodesTool().createNodesTool(context)],
 		[DOMAIN_TOOL_IDS.ASK_USER, loadAskUserTool().createAskUserTool()],
 		[DOMAIN_TOOL_IDS.BUILD_WORKFLOW, loadBuildWorkflowTool().createBuildWorkflowTool(context)],
+		[DOMAIN_TOOL_IDS.N8N_CONNECT, loadN8nConnectTool().createN8nConnectTool(context)],
 	];
 
 	if (context.currentUserAttachments?.some(isParseableAttachment)) {
@@ -124,6 +128,7 @@ export function createOrchestratorDomainTools(context: InstanceAiContext): Insta
 		[DOMAIN_TOOL_IDS.NODES, loadNodesTool().createNodesTool(context)],
 		[DOMAIN_TOOL_IDS.ASK_USER, loadAskUserTool().createAskUserTool()],
 		[DOMAIN_TOOL_IDS.BUILD_WORKFLOW, loadBuildWorkflowTool().createBuildWorkflowTool(context)],
+		[DOMAIN_TOOL_IDS.N8N_CONNECT, loadN8nConnectTool().createN8nConnectTool(context)],
 	];
 
 	if (context.currentUserAttachments?.some(isParseableAttachment)) {

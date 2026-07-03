@@ -332,36 +332,14 @@ async function resolveCredentialState(
 		typeof existingOnNode?.id === 'string' && existingOnNode.id ? existingOnNode.id : undefined;
 	const hasExistingOnNode =
 		existingCredentialId !== undefined || isAiGatewayManagedCredential(existingOnNode);
-	// Only auto-apply when there is exactly one candidate. With multiple
-	// candidates, picking the first is a silent guess — surface the list
-	// so the setup wizard can prompt the user to choose.
-	let isAutoApplied = !hasExistingOnNode && existingCredentials.length === 1;
+	let isAutoApplied = false;
 	let autoAppliedGateway: true | undefined;
 
-	// When the user has already assigned a stored credential of a type the
-	// AI Gateway covers, we honour the choice and log a signal: the user
-	// could have used n8n Connect but picked their own key. Feeds a future
-	// nudge without changing behaviour.
-	if (existingCredentialId !== undefined && context.credentialService.isAiGatewayCredentialType) {
-		const gatewaySupported = await context.credentialService
-			.isAiGatewayCredentialType(credentialType)
-			.catch(() => false);
-		if (gatewaySupported) {
-			context.trackTelemetry?.('instance_ai_gateway_could_have_been_used', {
-				credentialType,
-			});
-		}
-	}
-
-	// When no stored credential of this type exists and the AI Gateway covers
-	// the type, auto-apply the managed option. Explicit user choices (either
-	// a stored credential ID on the node or `AI_GATEWAY_MANAGED_TAG`) win
-	// via `hasExistingOnNode` above.
-	if (
-		!hasExistingOnNode &&
-		existingCredentials.length === 0 &&
-		context.credentialService.isAiGatewayCredentialType
-	) {
+	// When the node has no credential assigned yet, prefer n8n Connect over
+	// stored credentials when the type is covered. Explicit user choices
+	// (stored credential ID on the node or `__aiGatewayManaged`) win via
+	// `hasExistingOnNode` above.
+	if (!hasExistingOnNode && context.credentialService.isAiGatewayCredentialType) {
 		const gatewaySupported = await context.credentialService
 			.isAiGatewayCredentialType(credentialType)
 			.catch(() => false);
@@ -373,6 +351,13 @@ async function resolveCredentialState(
 				source: 'auto',
 			});
 		}
+	}
+
+	// Fall back to auto-applying the sole stored credential when n8n Connect
+	// is not available. With multiple candidates, picking the first is a
+	// silent guess — surface the list so the setup wizard can prompt.
+	if (!isAutoApplied) {
+		isAutoApplied = !hasExistingOnNode && existingCredentials.length === 1;
 	}
 
 	const credToTest =
