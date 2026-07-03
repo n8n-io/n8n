@@ -959,9 +959,6 @@ importers:
       yaml:
         specifier: 'catalog:'
         version: 2.8.3
-      zod:
-        specifier: 3.25.67
-        version: 3.25.67
       zod-to-json-schema:
         specifier: 'catalog:'
         version: 3.23.3(zod@3.25.67)
@@ -996,6 +993,9 @@ importers:
       vitest-mock-extended:
         specifier: 'catalog:'
         version: 3.1.0(typescript@6.0.2)(vitest@4.1.9)
+      zod:
+        specifier: 3.25.67
+        version: 3.25.67
 
   packages/@n8n/ai-node-sdk:
     dependencies:
@@ -1257,9 +1257,6 @@ importers:
       xss:
         specifier: 'catalog:'
         version: 1.0.15
-      zod:
-        specifier: 3.25.67
-        version: 3.25.67
     devDependencies:
       '@n8n/config':
         specifier: workspace:*
@@ -1285,6 +1282,9 @@ importers:
       vitest-mock-extended:
         specifier: 'catalog:'
         version: 3.1.0(typescript@6.0.2)(vitest@4.1.9)
+      zod:
+        specifier: 3.25.67
+        version: 3.25.67
 
   packages/@n8n/backend-common:
     dependencies:
@@ -3191,6 +3191,15 @@ importers:
 
   packages/@n8n/scheduler:
     dependencies:
+      '@n8n/db':
+        specifier: workspace:*
+        version: link:../db
+      '@n8n/di':
+        specifier: workspace:*
+        version: link:../di
+      '@n8n/typeorm':
+        specifier: workspace:*
+        version: link:../typeorm
       cron-parser:
         specifier: 'catalog:'
         version: 5.6.1
@@ -4096,6 +4105,9 @@ importers:
       '@n8n/playwright-janitor':
         specifier: workspace:*
         version: link:../testing/janitor
+      '@n8n/scheduler':
+        specifier: workspace:*
+        version: link:../@n8n/scheduler
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../@n8n/typescript-config
@@ -4381,9 +4393,6 @@ importers:
       xml2js:
         specifier: 'catalog:'
         version: 0.6.2
-      zod:
-        specifier: 3.25.67
-        version: 3.25.67
     devDependencies:
       '@n8n/playwright-janitor':
         specifier: workspace:*
@@ -4445,6 +4454,9 @@ importers:
       vitest-mock-extended:
         specifier: 'catalog:'
         version: 3.1.0(typescript@6.0.2)(vitest@4.1.9)
+      zod:
+        specifier: 3.25.67
+        version: 3.25.67
 
   packages/extensions/insights:
     dependencies:
@@ -6405,9 +6417,6 @@ importers:
       xml2js:
         specifier: 'catalog:'
         version: 0.6.2
-      zod:
-        specifier: 3.25.67
-        version: 3.25.67
     devDependencies:
       '@langchain/core':
         specifier: 'catalog:'
@@ -6466,6 +6475,9 @@ importers:
       vitest-mock-extended:
         specifier: 'catalog:'
         version: 3.1.0(typescript@6.0.2)(vitest@4.1.9)
+      zod:
+        specifier: 3.25.67
+        version: 3.25.67
 
 packages:
 

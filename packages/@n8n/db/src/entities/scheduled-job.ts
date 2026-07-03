@@ -14,6 +14,9 @@ export const ScheduledJobKind = {
 
 export type ScheduledJobKind = (typeof ScheduledJobKind)[keyof typeof ScheduledJobKind];
 
+/** All recurrence kinds as a runtime list. */
+export const ScheduledJobKindList = Object.values(ScheduledJobKind);
+
 /**
  * A scheduled job: the rule for when something should run,
  * plus the bookkeeping the scheduler needs to act on it.
