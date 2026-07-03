@@ -88,6 +88,7 @@ import {
 	type DataTableRows,
 	type WorkflowExecuteMode,
 	type ExecutionError,
+	type IRunData,
 	NodeHelpers,
 	Workflow,
 	CHAT_TRIGGER_NODE_TYPE,
@@ -2694,6 +2695,38 @@ function wrapResultDataEntries(data: Record<string, unknown>): Record<string, un
 	return wrapped;
 }
 
+function extractNodeErrors(
+	runData: IRunData | undefined,
+	includeUpstreamDetails: boolean,
+): NonNullable<ExecutionResult['nodeErrors']> {
+	if (!runData) return [];
+
+	const nodeErrors: NonNullable<ExecutionResult['nodeErrors']> = [];
+	for (const [nodeName, nodeRuns] of Object.entries(runData)) {
+		for (const nodeRun of nodeRuns) {
+			const failed =
+				nodeRun.executionStatus === 'error' ||
+				nodeRun.error !== undefined ||
+				nodeRun.redactedError !== undefined;
+			if (!failed) continue;
+
+			const message = nodeRun.error
+				? formatExecutionError(nodeRun.error, includeUpstreamDetails)
+				: nodeRun.redactedError
+					? `${nodeRun.redactedError.type} error${
+							nodeRun.redactedError.httpCode ? ` (${nodeRun.redactedError.httpCode})` : ''
+						}`
+					: undefined;
+			nodeErrors.push({
+				nodeName,
+				...(message ? { message } : {}),
+			});
+		}
+	}
+
+	return nodeErrors;
+}
+
 export async function extractExecutionResult(
 	executionId: string,
 	includeOutputData = true,
@@ -2723,9 +2756,9 @@ export async function extractExecutionResult(
 	// omits. Verification uses this to tell "ran and returned nothing" apart
 	// from "never reached". Node names only, so it is safe regardless of the
 	// parameter-values privacy setting.
-	const executedNodeNames = Object.keys(execution.data?.resultData?.runData ?? {});
+	const runData = execution.data?.resultData?.runData;
+	const executedNodeNames = Object.keys(runData ?? {});
 	if (includeOutputData) {
-		const runData = execution.data?.resultData?.runData;
 		if (runData) {
 			for (const [nodeName, nodeRuns] of Object.entries(runData)) {
 				const lastRun = nodeRuns[nodeRuns.length - 1];
@@ -2745,6 +2778,7 @@ export async function extractExecutionResult(
 	// Extract error if present
 	const error = execution.data?.resultData?.error;
 	const errorMessage = error ? formatExecutionError(error, includeOutputData) : undefined;
+	const nodeErrors = extractNodeErrors(runData, includeOutputData);
 
 	return {
 		executionId,
@@ -2754,6 +2788,7 @@ export async function extractExecutionResult(
 				? wrapResultDataEntries(truncateResultData(resultData))
 				: undefined,
 		executedNodeNames: executedNodeNames.length > 0 ? executedNodeNames : undefined,
+		nodeErrors: nodeErrors.length > 0 ? nodeErrors : undefined,
 		lastNodeExecuted: execution.data?.resultData?.lastNodeExecuted,
 		error: errorMessage,
 		startedAt: execution.startedAt?.toISOString(),
