@@ -411,6 +411,14 @@ async function submit() {
 			@update="onUpdate"
 			@field-help="handleFieldHelp"
 		/>
+		<N8nLink
+			v-if="showAllFields && guidedSecrets.length > 0"
+			size="small"
+			data-test-id="credential-hint-show-guided"
+			@click="showAllFields = false"
+		>
+			{{ i18n.baseText('instanceAi.credential.hint.simpleView') }}
+		</N8nLink>
 		<N8nText v-if="authError" color="danger" size="small" data-test-id="credential-test-error">
 			{{ authError }}
 		</N8nText>

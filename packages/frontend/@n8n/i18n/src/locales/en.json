@@ -6076,6 +6076,7 @@
 	"instanceAi.credential.helpMeGetThis": "Help me get this",
 	"instanceAi.credential.hint.docsLink": "Get it from {host}",
 	"instanceAi.credential.hint.showAllFields": "Show all fields",
+	"instanceAi.credential.hint.simpleView": "Back to simple view",
 	"instanceAi.credential.modal.title": "Set up credentials",
 	"instanceAi.workflowSetup.usedByNodes": "Used by {count} node | Used by {count} nodes",
 	"instanceAi.workflowSetup.nodesUsing": "Nodes using this credential:",
