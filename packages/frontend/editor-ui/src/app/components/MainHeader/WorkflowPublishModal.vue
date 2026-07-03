@@ -59,6 +59,12 @@ const wfHasAnyChanges = computed(() => {
 	);
 });
 
+const isReattempt = computed(
+	() =>
+		workflowDocumentStore.value.publicationStatus === 'partial' ||
+		workflowDocumentStore.value.publicationStatus === 'failed',
+);
+
 const nodesWithValidationIssues = computed(
 	() => workflowDocumentStore.value.nodesWithValidationIssues,
 );
@@ -67,7 +73,10 @@ const hasNodeIssues = computed(() => workflowDocumentStore.value.hasPublishBlock
 
 const inputsDisabled = computed(() => {
 	return (
-		!wfHasAnyChanges.value || !containsTrigger.value || hasNodeIssues.value || publishing.value
+		!(wfHasAnyChanges.value || isReattempt.value) ||
+		!containsTrigger.value ||
+		hasNodeIssues.value ||
+		publishing.value
 	);
 });
 
@@ -75,7 +84,7 @@ const isPublishDisabled = computed(() => {
 	return inputsDisabled.value || versionName.value.trim().length === 0;
 });
 
-type WorkflowPublishCalloutId = 'noTrigger' | 'nodeIssues' | 'noChanges';
+type WorkflowPublishCalloutId = 'noTrigger' | 'nodeIssues' | 'noChanges' | 'reattempt';
 
 const activeCalloutId = computed<WorkflowPublishCalloutId | null>(() => {
 	if (!containsTrigger.value) {
@@ -84,6 +93,10 @@ const activeCalloutId = computed<WorkflowPublishCalloutId | null>(() => {
 
 	if (hasNodeIssues.value) {
 		return 'nodeIssues';
+	}
+
+	if (isReattempt.value) {
+		return 'reattempt';
 	}
 
 	if (!wfHasAnyChanges.value) {
@@ -284,10 +297,20 @@ async function handlePublish() {
 						})
 					}}
 				</N8nCallout>
-				<N8nCallout v-if="activeCalloutId === 'noTrigger'" theme="danger" icon="status-error">
+				<N8nCallout
+					v-if="activeCalloutId === 'noTrigger'"
+					theme="danger"
+					icon="status-error"
+					data-test-id="workflow-publish-callout-no-trigger"
+				>
 					{{ i18n.baseText('workflows.publishModal.noTriggerMessage') }}
 				</N8nCallout>
-				<N8nCallout v-else-if="activeCalloutId === 'nodeIssues'" theme="danger" icon="status-error">
+				<N8nCallout
+					v-else-if="activeCalloutId === 'nodeIssues'"
+					theme="danger"
+					icon="status-error"
+					data-test-id="workflow-publish-callout-node-issues"
+				>
 					{{
 						i18n.baseText('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title', {
 							interpolate: { count: nodesWithValidationIssues.length },
@@ -305,7 +328,18 @@ async function handlePublish() {
 						</li>
 					</ul>
 				</N8nCallout>
-				<N8nCallout v-else-if="activeCalloutId === 'noChanges'" theme="warning">
+				<N8nCallout
+					v-else-if="activeCalloutId === 'reattempt'"
+					theme="info"
+					data-test-id="workflow-publish-callout-reattempt"
+				>
+					{{ i18n.baseText('workflows.publishModal.reattempt') }}
+				</N8nCallout>
+				<N8nCallout
+					v-else-if="activeCalloutId === 'noChanges'"
+					theme="warning"
+					data-test-id="workflow-publish-callout-no-changes"
+				>
 					{{ i18n.baseText('workflows.publishModal.noChanges') }}
 				</N8nCallout>
 				<WorkflowVersionForm
