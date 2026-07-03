@@ -87,6 +87,15 @@ Example — fal.ai's docs say requests use `Authorization: Key <FAL_KEY>`:
 Never put a real secret in a hint — the user pastes it in the setup card. Add
 `nodeName` when several nodes use the same generic type for different services.
 
+The placeholder sentinel only ever exists in the hint and the card UI: the card
+asks the user to paste the real secret and creates the credential with the
+composed real value (e.g. `Key <their-key>`), never with the sentinel. You
+cannot see the secret, but once setup reports the credential applied, treat it
+as fully configured — do NOT tell the user the credential contains a
+placeholder or instruct them to open and edit it. If verification used mocked
+credentials, offer a live test run instead; a failing live test is the moment
+to revisit the credential value.
+
 ## Publishing and testing
 
 **Publishing is never required for testing.** Both `executions(action="run")` and
