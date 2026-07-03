@@ -4,8 +4,14 @@ import { WorkflowPublicationOutbox, WorkflowPublicationOutboxRepository } from '
 import { OnPubSubEvent, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { ErrorReporter, InstanceSettings, SpanStatus, Tracing } from 'n8n-core';
-import { UnexpectedError, ensureError } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { UnexpectedError } from 'n8n-workflow';
 
+import { EventService } from '@/events/event.service';
+import type {
+	PublicationOutcomeReason,
+	PublicationOutcomeResult,
+} from '@/events/maps/workflow-publication-metrics.event-map';
 import type { PublicationResult } from '@/workflows/publication/publication-result';
 import { PublicationStatusReporter } from '@/workflows/publication/publication-status-reporter';
 import { WorkflowPublicationLifecycleLock } from '@/workflows/publication/workflow-publication-lifecycle-lock';
@@ -40,6 +46,7 @@ export class WorkflowPublicationOutboxConsumer {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly lifecycleLock: WorkflowPublicationLifecycleLock,
 		private readonly tracing: Tracing,
+		private readonly eventService: EventService,
 	) {
 		this.logger = this.logger.scoped('workflow-publication');
 	}
@@ -142,17 +149,39 @@ export class WorkflowPublicationOutboxConsumer {
 	}
 
 	private async runDrain(): Promise<number> {
+		const concurrency = this.workflowsConfig.workflowPublicationConcurrency;
 		return await this.tracing.startSpan(
-			{ name: 'Publication outbox drain', op: 'publication.outbox.drain' },
+			{
+				name: 'Publication outbox drain',
+				op: 'publication.outbox.drain',
+				attributes: { 'n8n.publication.consumer_concurrency': concurrency },
+			},
 			async (span) => {
 				let processed = 0;
-				while (this.shouldKeepPolling()) {
-					const record = await this.outboxRepository.claimNextPendingRecord();
-					if (!record) break;
+				// Run worker loops in parallel. Each claims and processes records
+				// until none remain (claiming is atomic, so workers never grab the same record).
+				let aborted = false;
+				const runWorker = async () => {
+					while (!aborted && this.shouldKeepPolling()) {
+						const record = await this.outboxRepository.claimNextPendingRecord();
+						if (!record) break;
 
-					await this.processRecord(record);
-					processed++;
-				}
+						await this.processRecord(record);
+						processed++;
+					}
+				};
+
+				const workerTasks = Array.from({ length: concurrency }, async () => {
+					await runWorker().catch((error) => {
+						aborted = true;
+						throw error;
+					});
+				});
+
+				const results = await Promise.allSettled(workerTasks);
+
+				const failure = results.find((r) => r.status === 'rejected');
+				if (failure?.status === 'rejected') throw failure.reason;
 
 				span.setAttribute('n8n.publication.records_processed', processed);
 				span.setStatus({ code: SpanStatus.ok });
@@ -209,6 +238,7 @@ export class WorkflowPublicationOutboxConsumer {
 						publishedVersionId: record.publishedVersionId,
 					});
 
+					const startedAt = Date.now();
 					let result: PublicationResult;
 
 					try {
@@ -221,11 +251,18 @@ export class WorkflowPublicationOutboxConsumer {
 						};
 					}
 
+					let reporterFailed = false;
 					try {
 						await this.reporter.report(record, result);
 					} catch (reportError) {
+						reporterFailed = true;
 						this.errorReporter.error(reportError, { shouldBeLogged: true });
 					}
+
+					this.eventService.emit('workflow-publication-outbox-record-processed', {
+						...this.toOutcomeLabels(result, reporterFailed),
+						durationMs: Date.now() - startedAt,
+					});
 
 					this.logger.debug('Finished processing workflow publication outbox record', {
 						outboxId: record.id,
@@ -239,5 +276,37 @@ export class WorkflowPublicationOutboxConsumer {
 				span.setStatus({ code: SpanStatus.ok });
 			},
 		);
+	}
+
+	/**
+	 * Maps a publication result to its metric labels. A reporter failure overrides
+	 * the result to `failed` (the terminal status write never landed), and
+	 * `version-missing` maps to `failed`/`version_missing` to match the terminal
+	 * `failed` status the outbox record is given (and thus the records gauge).
+	 */
+	private toOutcomeLabels(
+		result: PublicationResult,
+		reporterFailed: boolean,
+	): { result: PublicationOutcomeResult; reason: PublicationOutcomeReason } {
+		if (reporterFailed) return { result: 'failed', reason: 'none' };
+
+		switch (result.type) {
+			case 'completed':
+				return { result: 'published', reason: 'none' };
+			case 'unpublished':
+				return { result: 'unpublished', reason: 'none' };
+			case 'skipped':
+				return {
+					result: 'skipped',
+					reason:
+						result.reason === 'workflow-not-found' ? 'workflow_not_found' : 'workflow_inactive',
+				};
+			case 'version-missing':
+				return { result: 'failed', reason: 'version_missing' };
+			case 'partial':
+				return { result: 'partial_success', reason: 'none' };
+			case 'failed':
+				return { result: 'failed', reason: 'none' };
+		}
 	}
 }

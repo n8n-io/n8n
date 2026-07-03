@@ -1511,6 +1511,103 @@ describe('SourceControlImportService', () => {
 			expect(upsertCall.data).toBeDefined();
 		});
 
+		it('should carry resolvable credential fields across environments', async () => {
+			// Arrange
+			const candidates: SourceControlledFile[] = [
+				{
+					file: '/mock/credential_stubs/cred1.json',
+					id: 'cred1',
+					name: 'Private Credential',
+					type: 'credential',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					updatedAt: '',
+				},
+			];
+
+			const mockCredentialData = {
+				id: 'cred1',
+				name: 'Private Credential',
+				type: 'oauth2Api',
+				data: {},
+				ownedBy: null,
+				isGlobal: false,
+				isResolvable: true,
+				resolvableAllowFallback: true,
+			};
+
+			fsReadFile.mockResolvedValue(JSON.stringify(mockCredentialData));
+			credentialsRepository.find.mockResolvedValue([]);
+			sharedCredentialsRepository.find.mockResolvedValue([]);
+			credentialsRepository.upsert.mockResolvedValue({
+				identifiers: [],
+				generatedMaps: [],
+				raw: [],
+			});
+
+			// Act
+			await service.importCredentialsFromWorkFolder(candidates, mockUserId);
+
+			// Assert
+			expect(credentialsRepository.upsert).toHaveBeenCalledWith(
+				expect.objectContaining({
+					id: 'cred1',
+					isResolvable: true,
+					resolvableAllowFallback: true,
+				}),
+				['id'],
+			);
+		});
+
+		it('should default resolver fields to false when absent from the stub', async () => {
+			// Arrange - a stub written before resolver fields were tracked omits them
+			const candidates: SourceControlledFile[] = [
+				{
+					file: '/mock/credential_stubs/cred1.json',
+					id: 'cred1',
+					name: 'Legacy Stub Credential',
+					type: 'credential',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					updatedAt: '',
+				},
+			];
+
+			const mockCredentialData = {
+				id: 'cred1',
+				name: 'Legacy Stub Credential',
+				type: 'oauth2Api',
+				data: {},
+				ownedBy: null,
+				isGlobal: false,
+			};
+
+			fsReadFile.mockResolvedValue(JSON.stringify(mockCredentialData));
+			credentialsRepository.find.mockResolvedValue([]);
+			sharedCredentialsRepository.find.mockResolvedValue([]);
+			credentialsRepository.upsert.mockResolvedValue({
+				identifiers: [],
+				generatedMaps: [],
+				raw: [],
+			});
+
+			// Act
+			await service.importCredentialsFromWorkFolder(candidates, mockUserId);
+
+			// Assert - git is the source of truth, so an absent flag defaults to false
+			// (same as isGlobal).
+			expect(credentialsRepository.upsert).toHaveBeenCalledWith(
+				expect.objectContaining({
+					id: 'cred1',
+					isResolvable: false,
+					resolvableAllowFallback: false,
+				}),
+				['id'],
+			);
+		});
+
 		it('should update an existing credential (verifies upsert is called)', async () => {
 			// Arrange
 			const candidates: SourceControlledFile[] = [

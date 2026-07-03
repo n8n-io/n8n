@@ -7,6 +7,7 @@ import type {
 	InstanceAiEnsureThreadResponse,
 	InstanceAiSendMessageResponse,
 	InstanceAiConfirmRequest,
+	InstanceAiConfirmResponse,
 	InstanceAiHandoffContext,
 } from '@n8n/api-types';
 
@@ -98,8 +99,13 @@ export async function postConfirmation(
 	context: IRestApiContext,
 	requestId: string,
 	payload: InstanceAiConfirmRequest,
-): Promise<void> {
-	await makeRestApiRequest(context, 'POST', `/instance-ai/confirm/${requestId}`, payload);
+): Promise<InstanceAiConfirmResponse> {
+	return await makeRestApiRequest<InstanceAiConfirmResponse>(
+		context,
+		'POST',
+		`/instance-ai/confirm/${requestId}`,
+		payload,
+	);
 }
 
 /**

@@ -938,6 +938,43 @@ describe('AgentBuilderView — three-column shell', () => {
 		);
 	});
 
+	it('applies the tools modal confirm payload as arrays to the local config', async () => {
+		intendedConfig = {
+			name: 'Agent One',
+			instructions: 'You are a helpful assistant.',
+		};
+		mockConfig.value = withDefaultLlm(intendedConfig);
+
+		const wrapper = await renderView();
+		wrapper.findComponent({ name: 'AgentCapabilitiesSection' }).vm.$emit('add-tool');
+		await nextTick();
+
+		expect(openModalWithDataMock).toHaveBeenCalledWith(
+			expect.objectContaining({
+				name: 'agentToolsModal',
+				data: expect.objectContaining({
+					projectId: 'p1',
+					agentId: 'a1',
+				}),
+			}),
+		);
+
+		// The modal confirms with a single object payload — a positional handler
+		// would land the whole object in `config.tools` and fail backend validation.
+		const modalData = openModalWithDataMock.mock.calls[0][0].data as {
+			onConfirm: (payload: { tools?: AgentJsonToolRef[]; mcpServers?: unknown[] }) => void;
+		};
+		const tools: AgentJsonToolRef[] = [{ type: 'custom', id: 'custom_tool' }];
+		modalData.onConfirm({ tools, mcpServers: [] });
+		await nextTick();
+
+		const vm = wrapper.vm as unknown as {
+			localConfig: { tools?: AgentJsonToolRef[]; mcpServers?: unknown[] };
+		};
+		expect(Array.isArray(vm.localConfig.tools)).toBe(true);
+		expect(vm.localConfig.tools).toEqual(tools);
+	});
+
 	it('shows applied skills and opens a skill modal from the capabilities section', async () => {
 		const skill = {
 			name: 'summarize_notes',

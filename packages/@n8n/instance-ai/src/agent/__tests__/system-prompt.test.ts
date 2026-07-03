@@ -190,10 +190,24 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain('Do not create a plan just for verification');
 		});
 
+		it('describes error workflows as per-workflow and publish-before-assign', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('n8n has no global/instance-wide error workflow setting');
+			expect(prompt).toContain('settings.errorWorkflow');
+			expect(prompt).toContain('only after that referenced error workflow is published');
+			expect(prompt).toContain(
+				'mention the missing global/instance-wide setting to the user only when they explicitly ask',
+			);
+			expect(prompt).not.toContain('global error workflow for this instance');
+		});
+
 		it('points post-build and follow-up work at dedicated skills', () => {
 			const prompt = getSystemPrompt({});
 
 			expect(prompt).toContain('`post-build-flow`');
+			expect(prompt).toContain('postBuildFlow.required: true');
+			expect(prompt).toContain('before verification, setup, error-workflow follow-up');
 			expect(prompt).toContain('`planned-task-runtime`');
 			expect(prompt).toContain('`debugging-executions`');
 		});

@@ -14,6 +14,12 @@ import { TimeZoneSchema } from './timezone.schema';
  */
 export const UNLIMITED_CREDITS = -1;
 
+/**
+ * Transient setup-state tag for an AI Gateway managed credential selection.
+ * Handlers convert this tag to the Ai Gateway managed credential shape.
+ */
+export const AI_GATEWAY_MANAGED_TAG = '__AI_GATEWAY_MANAGED__';
+
 // ---------------------------------------------------------------------------
 // Session grant keys ("always allow")
 // ---------------------------------------------------------------------------
@@ -218,7 +224,15 @@ export const workflowSetupNodeSchema = z.object({
 		type: z.string(),
 		typeVersion: z.number(),
 		parameters: z.record(z.unknown()),
-		credentials: z.record(z.object({ id: z.string(), name: z.string() })).optional(),
+		// `id` is null only when `__aiGatewayManaged` is true
+		credentials: z
+			.record(
+				z.union([
+					z.object({ id: z.string(), name: z.string() }),
+					z.object({ id: z.null(), name: z.string(), __aiGatewayManaged: z.literal(true) }),
+				]),
+			)
+			.optional(),
 		position: z.tuple([z.number(), z.number()]),
 		id: z.string(),
 	}),
@@ -882,7 +896,12 @@ export interface InstanceAiAgentNode {
 		provider?: string;
 		technicalDetails?: string;
 	};
+	/** Why a `cancelled` run stopped — lets the UI attribute it (user vs timeout vs shutdown). */
+	cancellationReason?: InstanceAiCancellationReason;
 }
+
+/** Semantic cause of a cancelled run, mapped from the backend's run-finish reason. */
+export type InstanceAiCancellationReason = 'user' | 'timeout' | 'shutdown';
 
 export interface InstanceAiMessage {
 	id: string;
@@ -1029,6 +1048,7 @@ export interface InstanceAiMemoryTaskSnapshot {
 export interface InstanceAiThreadStatusResponse {
 	hasActiveRun: boolean;
 	isSuspended: boolean;
+	runId?: string;
 	backgroundTasks: Array<{
 		taskId: string;
 		role: string;
@@ -1042,6 +1062,11 @@ export interface InstanceAiThreadStatusResponse {
 	}>;
 	/** In-flight observational-memory jobs (observer/reflector). Used by eval harnesses. */
 	memoryTasks?: InstanceAiMemoryTaskSnapshot[];
+}
+
+export interface InstanceAiConfirmResponse {
+	ok: true;
+	runId?: string;
 }
 
 // ---------------------------------------------------------------------------
