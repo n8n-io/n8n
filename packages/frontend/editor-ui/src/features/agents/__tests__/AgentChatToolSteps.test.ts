@@ -11,7 +11,7 @@ vi.mock('@n8n/design-system', () => ({
 		props: ['label', 'hasContent', 'toolCall'],
 		data: () => ({ isOpen: false }),
 		computed: {
-			labelParts(): string[] {
+			labelParts(this: { label: string }): string[] {
 				return this.label.split(' · ');
 			},
 		},
