@@ -74,12 +74,12 @@ export const Default: Story = {
 	},
 };
 
-export const Controlled: Story = {
+export const ControlledAndUncontrolled: Story = {
 	parameters: {
 		docs: {
 			description: {
 				story:
-					'The selected value is owned by the parent via `v-model`. External controls can read and update the selection.',
+					'Use `v-model` when the parent owns the selected value, or `defaultValue` when the component manages its own state.',
 			},
 		},
 	},
@@ -90,68 +90,53 @@ export const Controlled: Story = {
 			return { value, scopeOptions, onUpdate: action('update:modelValue') };
 		},
 		template: `
-		<div style="padding: 40px;">
-			<p style="margin: 0 0 16px; font-size: 14px; color: var(--text-color--subtle);">
-				Parent-controlled selection. Use the buttons below to set the value externally.
-			</p>
-			<RadioGroup
-				v-model="value"
-				aria-label="Scope selection mode"
-				@update:model-value="onUpdate"
-			>
-				<RadioGroupItem
-					v-for="option in scopeOptions"
-					:key="option.value"
-					:value="option.value"
-					:label="option.label"
-					:description="option.description"
-				/>
-			</RadioGroup>
-			<div style="display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap;">
-				<button
-					v-for="option in scopeOptions"
-					:key="option.value"
-					type="button"
-					style="padding: 4px 12px; font-size: 13px; cursor: pointer;"
-					@click="value = option.value"
+		<div style="padding: 40px; display: flex; flex-direction: column; gap: 32px;">
+			<section>
+				<h3 style="margin: 0 0 8px; font-size: 14px; font-weight: 600;">Controlled</h3>
+				<p style="margin: 0 0 16px; font-size: 14px; color: var(--text-color--subtle);">
+					Parent-controlled selection via <code>v-model</code>. Use the buttons below to set the value externally.
+				</p>
+				<RadioGroup
+					v-model="value"
+					aria-label="Scope selection mode (controlled)"
+					@update:model-value="onUpdate"
 				>
-					Set to "{{ option.label }}"
-				</button>
-			</div>
-			<p style="margin-top: 16px; font-size: 14px;">Selected: <strong>{{ value }}</strong></p>
-		</div>
-		`,
-	}),
-};
-
-export const Uncontrolled: Story = {
-	parameters: {
-		docs: {
-			description: {
-				story:
-					'The initial selection is set with `defaultValue` and the component manages its own state. No `v-model` binding is required.',
-			},
-		},
-	},
-	render: () => ({
-		components: { RadioGroup, RadioGroupItem },
-		setup() {
-			return { scopeOptions };
-		},
-		template: `
-		<div style="padding: 40px;">
-			<p style="margin: 0 0 16px; font-size: 14px; color: var(--text-color--subtle);">
-				Uncontrolled mode with <code>defaultValue="readOnly"</code>. The parent does not track changes.
-			</p>
-			<RadioGroup default-value="readOnly" aria-label="Scope selection mode">
-				<RadioGroupItem
-					v-for="option in scopeOptions"
-					:key="option.value"
-					:value="option.value"
-					:label="option.label"
-					:description="option.description"
-				/>
-			</RadioGroup>
+					<RadioGroupItem
+						v-for="option in scopeOptions"
+						:key="option.value"
+						:value="option.value"
+						:label="option.label"
+						:description="option.description"
+					/>
+				</RadioGroup>
+				<div style="display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap;">
+					<button
+						v-for="option in scopeOptions"
+						:key="option.value"
+						type="button"
+						style="padding: 4px 12px; font-size: 13px; cursor: pointer;"
+						@click="value = option.value"
+					>
+						Set to "{{ option.label }}"
+					</button>
+				</div>
+				<p style="margin-top: 16px; font-size: 14px;">Selected: <strong>{{ value }}</strong></p>
+			</section>
+			<section>
+				<h3 style="margin: 0 0 8px; font-size: 14px; font-weight: 600;">Uncontrolled</h3>
+				<p style="margin: 0 0 16px; font-size: 14px; color: var(--text-color--subtle);">
+					Initial selection set with <code>defaultValue="readOnly"</code>. The parent does not track changes.
+				</p>
+				<RadioGroup default-value="readOnly" aria-label="Scope selection mode (uncontrolled)">
+					<RadioGroupItem
+						v-for="option in scopeOptions"
+						:key="option.value"
+						:value="option.value"
+						:label="option.label"
+						:description="option.description"
+					/>
+				</RadioGroup>
+			</section>
 		</div>
 		`,
 	}),
@@ -176,43 +161,40 @@ export const Horizontal: Story = {
 	}),
 };
 
-export const Disabled: Story = {
-	render: () => ({
-		components: { RadioGroup, RadioGroupItem },
-		setup() {
-			const value = ref('all');
-			return { value, scopeOptions };
-		},
-		template: `
-		<div style="padding: 40px;">
-			<RadioGroup v-model="value" disabled aria-label="Scope selection mode">
-				<RadioGroupItem
-					v-for="option in scopeOptions"
-					:key="option.value"
-					:value="option.value"
-					:label="option.label"
-					:description="option.description"
-				/>
-			</RadioGroup>
-		</div>
-		`,
-	}),
-};
-
 export const DisabledOption: Story = {
+	parameters: {
+		docs: {
+			description: {
+				story:
+					'Individual options can be disabled. Disabled options render differently when selected vs unselected.',
+			},
+		},
+	},
 	render: () => ({
 		components: { RadioGroup, RadioGroupItem },
 		setup() {
-			const value = ref('all');
-			return { value };
+			const unselectedValue = ref('all');
+			const selectedValue = ref('custom');
+			return { unselectedValue, selectedValue };
 		},
 		template: `
-		<div style="padding: 40px;">
-			<RadioGroup v-model="value" aria-label="Scope selection mode">
-				<RadioGroupItem value="all" label="All" />
-				<RadioGroupItem value="readOnly" label="Read only" />
-				<RadioGroupItem value="custom" label="Custom" disabled />
-			</RadioGroup>
+		<div style="padding: 40px; display: flex; flex-direction: column; gap: 32px;">
+			<section>
+				<h3 style="margin: 0 0 8px; font-size: 14px; font-weight: 600;">Disabled (unselected)</h3>
+				<RadioGroup v-model="unselectedValue" aria-label="Scope selection mode (disabled unselected)">
+					<RadioGroupItem value="all" label="All" />
+					<RadioGroupItem value="readOnly" label="Read only" />
+					<RadioGroupItem value="custom" label="Custom" disabled />
+				</RadioGroup>
+			</section>
+			<section>
+				<h3 style="margin: 0 0 8px; font-size: 14px; font-weight: 600;">Disabled (selected)</h3>
+				<RadioGroup v-model="selectedValue" aria-label="Scope selection mode (disabled selected)">
+					<RadioGroupItem value="all" label="All" />
+					<RadioGroupItem value="readOnly" label="Read only" />
+					<RadioGroupItem value="custom" label="Custom" disabled />
+				</RadioGroup>
+			</section>
 		</div>
 		`,
 	}),
@@ -236,27 +218,6 @@ export const CustomSlot: Story = {
 				</RadioGroupItem>
 			</RadioGroup>
 		</div>
-		`,
-	}),
-};
-
-export const FormIntegration: Story = {
-	render: () => ({
-		components: { RadioGroup, RadioGroupItem },
-		setup() {
-			const value = ref('monthly');
-			return { value };
-		},
-		template: `
-		<form style="padding: 40px;" @submit.prevent>
-			<fieldset style="border: none; padding: 0; margin: 0;">
-				<legend style="margin-bottom: 8px; font-weight: 600;">Billing cycle</legend>
-				<RadioGroup v-model="value" name="billing-cycle" required>
-					<RadioGroupItem value="monthly" label="Monthly" description="$10 / month" />
-					<RadioGroupItem value="yearly" label="Yearly" description="$100 / year (save 17%)" />
-				</RadioGroup>
-			</fieldset>
-		</form>
 		`,
 	}),
 };

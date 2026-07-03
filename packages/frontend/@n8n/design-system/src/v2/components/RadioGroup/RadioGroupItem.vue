@@ -13,9 +13,7 @@ const id = useId();
 <template>
 	<div :class="$style.item">
 		<RekaRadioGroupItem :id="id" :value="value" :disabled="disabled" :class="$style.control">
-			<span :class="$style.circle">
-				<RadioGroupIndicator :class="$style.dot" />
-			</span>
+			<RadioGroupIndicator :class="$style.dot" />
 		</RekaRadioGroupItem>
 		<Label v-if="label || description || !!$slots.default" :for="id" :class="$style.content">
 			<slot>
@@ -34,6 +32,7 @@ const id = useId();
 	align-items: center;
 	gap: var(--spacing--2xs);
 	width: 100%;
+	cursor: pointer;
 
 	&:has(.description) {
 		align-items: flex-start;
@@ -45,33 +44,7 @@ const id = useId();
 }
 
 .control {
-	display: inline-flex;
-	flex: 0 0 auto;
-	padding: 0;
-	border: none;
-	background: transparent;
-	cursor: pointer;
-	line-height: 0;
-
-	&:focus-visible {
-		outline: none;
-
-		.circle {
-			@include focus.focus-ring-gap;
-		}
-	}
-
-	&[data-disabled] {
-		cursor: not-allowed;
-	}
-}
-
-.circle {
 	position: relative;
-	flex: 0 0 auto;
-	display: flex;
-	align-items: center;
-	justify-content: center;
 	width: var(--spacing--sm);
 	height: var(--spacing--sm);
 	background: var(--background--surface);
@@ -82,22 +55,27 @@ const id = useId();
 		margin-top: 1px;
 	}
 
-	.control:hover:not([data-disabled]):not([data-state='checked']) & {
-		border-color: var(--color--primary);
+	&:hover:not([data-disabled]):not([data-state='checked']) {
+		border-color: var(--background--brand);
 	}
 
-	.control[data-state='checked']:not([data-disabled]) & {
+	&[data-state='checked']:not([data-disabled]) {
 		background-color: var(--background--brand);
-		border-color: var(--color--orange-600);
+		border-color: var(--background--brand--hover);
 	}
 
-	.control[data-disabled]:not([data-state='checked']) & {
+	&[data-disabled]:not([data-state='checked']) {
 		border-color: var(--border-color--subtle);
 	}
 
-	.control[data-disabled][data-state='checked'] & {
+	&[data-disabled][data-state='checked'] {
 		background-color: var(--background--disabled);
 		border-color: var(--background--disabled);
+	}
+
+	&:focus-visible {
+		outline: none;
+		@include focus.focus-ring-gap;
 	}
 }
 
@@ -105,7 +83,6 @@ const id = useId();
 	position: absolute;
 	top: 50%;
 	left: 50%;
-	display: block;
 	width: var(--spacing--3xs);
 	height: var(--spacing--3xs);
 	border-radius: var(--radius--full);
@@ -117,12 +94,9 @@ const id = useId();
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--5xs);
-	cursor: pointer;
-	font: inherit;
 	color: var(--text-color);
 
 	.item:has(.control[data-disabled]) & {
-		cursor: not-allowed;
 		color: var(--text-color--disabled);
 	}
 }
@@ -136,9 +110,5 @@ const id = useId();
 .description {
 	font-size: var(--font-size--2xs);
 	color: var(--text-color--subtle);
-
-	.item:has(.control[data-disabled]) & {
-		color: var(--text-color--disabled);
-	}
 }
 </style>

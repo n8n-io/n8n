@@ -1,8 +1,18 @@
-import type { RadioGroupRootEmits, RadioGroupRootProps } from 'reka-ui';
+export type RadioGroupProps = {
+	modelValue?: string;
+	defaultValue?: string;
+	disabled?: boolean;
+	orientation?: 'vertical' | 'horizontal';
+	name?: string;
+	required?: boolean;
+	loop?: boolean;
+	dir?: 'ltr' | 'rtl';
+	ariaLabel?: string;
+};
 
-export type RadioGroupProps = RadioGroupRootProps;
-
-export type RadioGroupEmits = RadioGroupRootEmits;
+export type RadioGroupEmits = {
+	'update:modelValue': [value: string];
+};
 
 export type RadioGroupSlots = {
 	default(): unknown;
