@@ -3022,7 +3022,12 @@ describe('createExecutionAdapter run()', () => {
 	});
 });
 
-function createAdapterWithGatewayMock(getGatewayConfig: Mock): InstanceAiAdapterService {
+function createAdapterWithGatewayMock(
+	getGatewayConfig: Mock,
+	overrides?: {
+		credentialsService?: unknown;
+	},
+): InstanceAiAdapterService {
 	const aiGatewayService = { getGatewayConfig };
 	const args = Array.from(
 		{ length: 35 },
@@ -3036,6 +3041,11 @@ function createAdapterWithGatewayMock(getGatewayConfig: Mock): InstanceAiAdapter
 	args[1] = { ai: { allowSendingParameterValues: false } } as unknown as ConstructorParameters<
 		typeof InstanceAiAdapterService
 	>[1];
+	if (overrides?.credentialsService) {
+		args[8] = overrides.credentialsService as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[8];
+	}
 	args[12] = {} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[12];
 	args[14] = { staticCacheDir: '/tmp', n8nFolder: '/tmp' } as unknown as ConstructorParameters<
 		typeof InstanceAiAdapterService

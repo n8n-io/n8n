@@ -254,14 +254,51 @@ interface CredentialToolContext {
 
 // ── Handlers ───────────────────────────────────────────────────────────────
 
+interface StoredCredentialListItem {
+	id: string;
+	name: string;
+	type: string;
+}
+
+interface AiGatewayManagedListItem {
+	id: null;
+	name: string;
+	type: string;
+	__aiGatewayManaged: true;
+}
+
 async function handleList(context: InstanceAiContext, input: Extract<Input, { action: 'list' }>) {
-	const allCredentials = await context.credentialService.list({
+	const storedCredentials = await context.credentialService.list({
 		type: input.type,
 	});
 
+	// When the caller filters by type, prepend the synthetic n8n Connect
+	// managed entry if the AI Gateway covers that credential type. This is
+	// the LLM's primary awareness signal that a zero-config credential is
+	// available. Section D's setup service auto-applies the entry through a
+	// separate path (rule 3); this listing is informational.
+	const items: Array<StoredCredentialListItem | AiGatewayManagedListItem> = [];
+	if (input.type && context.credentialService.isAiGatewayCredentialType) {
+		try {
+			const supported = await context.credentialService.isAiGatewayCredentialType(input.type);
+			if (supported) {
+				items.push({
+					id: null,
+					name: 'n8n Connect (managed)',
+					type: input.type,
+					__aiGatewayManaged: true,
+				});
+			}
+		} catch {
+			// Gateway lookup failing is a soft signal — omit the managed entry
+			// and continue with stored credentials only.
+		}
+	}
+	for (const c of storedCredentials) items.push({ id: c.id, name: c.name, type: c.type });
+
 	const filtered = input.name
-		? allCredentials.filter((c) => c.name.toLowerCase().includes(input.name!.toLowerCase()))
-		: allCredentials;
+		? items.filter((c) => c.name.toLowerCase().includes(input.name!.toLowerCase()))
+		: items;
 
 	const total = filtered.length;
 	const offset = input.offset ?? 0;
@@ -272,7 +309,11 @@ async function handleList(context: InstanceAiContext, input: Extract<Input, { ac
 	const truncatedWithoutNarrowing = hasMore && !input.name && !input.type;
 
 	return {
-		credentials: page.map(({ id, name, type }) => ({ id, name, type })),
+		credentials: page.map((c) =>
+			c.id === null
+				? { id: c.id, name: c.name, type: c.type, __aiGatewayManaged: c.__aiGatewayManaged }
+				: { id: c.id, name: c.name, type: c.type },
+		),
 		total,
 		hasMore,
 		...(truncatedWithoutNarrowing
