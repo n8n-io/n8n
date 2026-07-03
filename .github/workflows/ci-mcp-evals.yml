@@ -1,0 +1,71 @@
+name: 'CI: MCP Workflow Evals'
+
+# Runs the MCP workflow evals: builds workflows through the instance MCP server
+# with Claude, then scores them. Manual only (Actions tab → "Run workflow"),
+# because each run spends Anthropic credits.
+#
+# This is the simple entry point. For power options (parallelism/lane tuning,
+# refreshing the comparison baseline, swapping the verifier), dispatch
+# "Test: MCP Workflow Evals" (test-evals-mcp.yml) instead.
+on:
+  workflow_dispatch:
+    inputs:
+      tier:
+        description: 'Which set of tests to run. "mcp" = the standard MCP suite (recommended); "full" = every test case (much slower).'
+        required: false
+        type: choice
+        options:
+          - mcp
+          - full
+        default: mcp
+      iterations:
+        description: 'How many times each test is built and scored. More is more reliable but slower and costlier. 3 = normal check; 5 = high-confidence.'
+        required: false
+        type: choice
+        options:
+          - '1'
+          - '3'
+          - '5'
+        default: '3'
+      build-model:
+        description: 'Which Anthropic model builds the workflows. Change it to compare models; otherwise leave as-is.'
+        required: false
+        default: 'claude-opus-4-8'
+      filter:
+        description: 'Optional: run only specific tests. Enter test names separated by commas (e.g. "contact-form-automation, weather-alert"). Leave empty to run the whole set.'
+        required: false
+        default: ''
+
+# Minimal token. The reusable workflow also declares `contents: read`.
+permissions:
+  contents: read
+
+concurrency:
+  group: mcp-evals-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  run-evals:
+    name: MCP Workflow Evals
+    if: github.repository == 'n8n-io/n8n'
+    uses: ./.github/workflows/test-evals-mcp.yml
+    with:
+      branch: ${{ github.sha }}
+      tier: ${{ inputs.tier || 'mcp' }}
+      filter: ${{ inputs.filter || '' }}
+      iterations: ${{ inputs.iterations || '3' }}
+      build-model: ${{ inputs.build-model || 'claude-opus-4-8' }}
+      # Fixed to a stable single-runner value. Non-engineers don't tune this;
+      # for more parallelism (or a baseline refresh) dispatch test-evals-mcp.yml,
+      # which still exposes lanes / eval-concurrency / experiment-name.
+      lanes: '4'
+      # Omitted → the reusable workflow auto-sets concurrency to lanes * 2, and
+      # leaves experiment-name empty so a routine run can't overwrite the baseline.
+    # Pass only the secrets the reusable workflow needs (not `secrets: inherit`).
+    secrets:
+      EVALS_ANTHROPIC_KEY: ${{ secrets.EVALS_ANTHROPIC_KEY }}
+      N8N_LICENSE_ACTIVATION_KEY: ${{ secrets.N8N_LICENSE_ACTIVATION_KEY }}
+      N8N_LICENSE_CERT: ${{ secrets.N8N_LICENSE_CERT }}
+      N8N_ENCRYPTION_KEY: ${{ secrets.N8N_ENCRYPTION_KEY }}
+      EVALS_LANGSMITH_ENDPOINT: ${{ secrets.EVALS_LANGSMITH_ENDPOINT }}
+      EVALS_LANGSMITH_API_KEY: ${{ secrets.EVALS_LANGSMITH_API_KEY }}

@@ -8,6 +8,9 @@ export const createVitestConfig = (options: InlineConfig = {}) => {
 		test: {
 			silent: true,
 			globals: true,
+			// Restore `vi.spyOn` spies to their original implementation before each test, so
+			// spies set up once don't leak across tests. Packages may override via `options`.
+			restoreMocks: true,
 			environment: 'jsdom',
 			setupFiles: ['./src/__tests__/setup.ts'],
 			reporters: process.env.CI === 'true' ? ['default', 'junit'] : ['default'],

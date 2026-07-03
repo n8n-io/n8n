@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onBeforeUnmount, useTemplateRef } from 'vue';
 import { useRoute, useRouter, type RouteLocationRaw } from 'vue-router';
-import { N8nResizeWrapper, type DropdownMenuItemProps } from '@n8n/design-system';
+import { N8nIcon, N8nResizeWrapper, type DropdownMenuItemProps } from '@n8n/design-system';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import {
@@ -53,6 +53,8 @@ import { useAgentConfigAutosave } from '../composables/useAgentConfigAutosave';
 import { useAgentBuilderMainTabs } from '../composables/useAgentBuilderMainTabs';
 import { mcpServerToNode } from '../composables/useMcpServerAdapter';
 import { removeProjectAgentFromListCache } from '../composables/useProjectAgentsList';
+import { formatToolNameForDisplay } from '../utils/toolDisplayName';
+import { normalizeAgentSkillForSave } from '../utils/agentSkill';
 import {
 	AGENT_BUILDER_VIEW,
 	AGENT_PREVIEW_VIEW,
@@ -70,11 +72,12 @@ import AgentBuilderChatColumn from '../components/AgentBuilderChatColumn.vue';
 import AgentBuilderEditorColumn from '../components/AgentBuilderEditorColumn.vue';
 import AgentPreviewChatPage from '../components/AgentPreviewChatPage.vue';
 import AgentVersionHistoryPanel from '../components/VersionHistory/AgentVersionHistoryPanel.vue';
+import type { AgentSkillAllowedToolOption } from '../components/AgentSkillViewer.vue';
 
 const AGENT_CHAT_PANEL_MIN_WIDTH = 320;
 const AGENT_CHAT_PANEL_DEFAULT_WIDTH = 460;
 const AGENT_CHAT_PANEL_MAX_WIDTH = 720;
-const AGENT_EDITOR_MIN_WIDTH = 360;
+const AGENT_EDITOR_MIN_WIDTH = 560;
 
 const route = useRoute();
 const router = useRouter();
@@ -204,6 +207,8 @@ const chatPanelResizer = useResizablePanel(LOCAL_STORAGE_AGENT_BUILDER_CHAT_PANE
 	minSize: AGENT_CHAT_PANEL_MIN_WIDTH,
 	maxSize: getMaxChatPanelWidth,
 });
+
+const showBuilderLoading = computed(() => !initialized.value);
 
 watch(
 	config,
@@ -772,77 +777,85 @@ async function onHeaderAction(action: string) {
 
 async function initialize() {
 	initialized.value = false;
-	// Flush any pending/in-flight save for the previous agent before we tear
-	// down its state — without this, an autosave scheduled by edits in the
-	// previous agent could land after we've already swapped to the new one.
-	// The save itself snapshots agentId at schedule-time, so the persisted
-	// data is correct; settling here keeps localConfig/agent state consistent.
-	await settleAutosave();
-	// Drop any per-agent telemetry state from the previous agent — an in-flight
-	// save for the previous agent would've already flushed pending edits before
-	// we got here, and a scheduled-but-not-fired save wouldn't flush correctly
-	// against the new agent's id anyway.
-	builderTelemetry.resetForAgentSwitch();
+	try {
+		// Flush any pending/in-flight save for the previous agent before we tear
+		// down its state — without this, an autosave scheduled by edits in the
+		// previous agent could land after we've already swapped to the new one.
+		// The save itself snapshots agentId at schedule-time, so the persisted
+		// data is correct; settling here keeps localConfig/agent state consistent.
+		await settleAutosave();
+		// Drop any per-agent telemetry state from the previous agent — an in-flight
+		// save for the previous agent would've already flushed pending edits before
+		// we got here, and a scheduled-but-not-fired save wouldn't flush correctly
+		// against the new agent's id anyway.
+		builderTelemetry.resetForAgentSwitch();
 
-	agent.value = null;
-	activeChatSessionId.value = null;
-	localConfig.value = null;
-	connectedTriggers.value = [];
-	agentFiles.value = [];
-	agentFilesLoading.value = false;
-	agentFilesUploading.value = false;
-	deletingAgentFileId.value = null;
+		agent.value = null;
+		activeChatSessionId.value = null;
+		localConfig.value = null;
+		connectedTriggers.value = [];
+		agentFiles.value = [];
+		agentFilesLoading.value = false;
+		agentFilesUploading.value = false;
+		deletingAgentFileId.value = null;
 
-	// Refresh builder readiness so the empty-state CTA reflects the latest
-	// admin configuration. Never blocks the rest of the load.
-	void fetchBuilderStatus().catch((error: unknown) => {
-		showError(error, locale.baseText('settings.agentBuilder.loadError'));
-	});
-
-	await Promise.all([fetchAgent(), fetchConfig(projectId.value, agentId.value), fetchAgentFiles()]);
-	builderTelemetry.captureToolsBaseline();
-	builderTelemetry.captureSkillsBaseline();
-	builderTelemetry.captureTasksBaseline();
-	// Keep agent credential pickers aligned with the workflow editor: load only
-	// credentials the current user can use in this project context.
-	credentialsStore.setCredentials([]);
-	await Promise.all([
-		credentialsStore.fetchAllCredentialsForWorkflow({ projectId: projectId.value }),
-		credentialsStore.fetchCredentialTypes(false),
-	]).catch(() => undefined);
-	// Stop any in-flight auto-refresh from the previous agent before kicking
-	// off a new fetch — keeps the store tied to the current project/agent.
-	sessionsStore.stopAutoRefresh();
-	void sessionsStore.fetchThreads(projectId.value, agentId.value).then(() => {
-		sessionsStore.startAutoRefresh();
-	});
-	void (async () => {
-		// Non-fatal — on failure, leave connectedTriggers empty; the sidebar emit
-		// will correct it once the user expands the Triggers section.
-		const integrations = await ensureIntegrationsCatalog(projectId.value).catch(() => []);
-		const triggerTypes = integrations.map((i) => i.type);
-		const connected = await builderTelemetry.fetchInitialTriggersBaseline(triggerTypes);
-		if (connected) connectedTriggers.value = connected;
-	})();
-
-	if (isPreviewMode.value) bindPreviewSession();
-
-	// If the user arrived via NewAgentView with a seed prompt, jump straight
-	// into the build chat.
-	const prompt = route.query.prompt as string | undefined;
-	if (prompt) {
-		if (shouldAutoExpandInitialBuild()) {
-			isChatFullWidth.value = true;
-			shouldCollapseChatAfterInitialBuild.value = true;
-		}
-		void router.replace({
-			query: { ...route.query, prompt: undefined, expandBuildChat: undefined },
+		// Refresh builder readiness so the empty-state CTA reflects the latest
+		// admin configuration. Never blocks the rest of the load.
+		void fetchBuilderStatus().catch((error: unknown) => {
+			showError(error, locale.baseText('settings.agentBuilder.loadError'));
 		});
-		startChat(prompt);
-	}
 
-	initialized.value = true;
-	warmAgentKnowledgeSandboxForPage();
+		await Promise.all([
+			fetchAgent(),
+			fetchConfig(projectId.value, agentId.value),
+			fetchAgentFiles(),
+		]);
+		builderTelemetry.captureToolsBaseline();
+		builderTelemetry.captureSkillsBaseline();
+		builderTelemetry.captureTasksBaseline();
+		// Keep agent credential pickers aligned with the workflow editor: load only
+		// credentials the current user can use in this project context.
+		credentialsStore.setCredentials([]);
+		await Promise.all([
+			credentialsStore.fetchAllCredentialsForWorkflow({ projectId: projectId.value }),
+			credentialsStore.fetchCredentialTypes(false),
+		]).catch(() => undefined);
+		// Stop any in-flight auto-refresh from the previous agent before kicking
+		// off a new fetch — keeps the store tied to the current project/agent.
+		sessionsStore.stopAutoRefresh();
+		void sessionsStore.fetchThreads(projectId.value, agentId.value).then(() => {
+			sessionsStore.startAutoRefresh();
+		});
+		void (async () => {
+			// Non-fatal — on failure, leave connectedTriggers empty; the sidebar emit
+			// will correct it once the user expands the Triggers section.
+			const integrations = await ensureIntegrationsCatalog(projectId.value).catch(() => []);
+			const triggerTypes = integrations.map((i) => i.type);
+			const connected = await builderTelemetry.fetchInitialTriggersBaseline(triggerTypes);
+			if (connected) connectedTriggers.value = connected;
+		})();
+
+		if (isPreviewMode.value) bindPreviewSession();
+
+		// If the user arrived via NewAgentView with a seed prompt, jump straight
+		// into the build chat.
+		const prompt = route.query.prompt as string | undefined;
+		if (prompt) {
+			if (shouldAutoExpandInitialBuild()) {
+				isChatFullWidth.value = true;
+				shouldCollapseChatAfterInitialBuild.value = true;
+			}
+			void router.replace({
+				query: { ...route.query, prompt: undefined, expandBuildChat: undefined },
+			});
+			startChat(prompt);
+		}
+	} catch (error: unknown) {
+		showError(error, locale.baseText('agents.builder.loadError'));
+	} finally {
+		initialized.value = true;
+		warmAgentKnowledgeSandboxForPage();
+	}
 }
 
 watch(agentId, initialize, { immediate: true });
@@ -883,8 +896,18 @@ function onOpenAddToolModal() {
 			mcpServers: localConfig.value?.mcpServers ?? [],
 			projectId: projectId.value,
 			agentId: agentId.value,
-			onConfirm: (tools: AgentJsonToolConfig[], mcpServers: AgentJsonMcpServerConfig[] = []) =>
-				onConfigFieldUpdate({ tools, mcpServers }),
+			// The modal confirms with a single object payload (the modal-data plumbing is
+			// untyped, so a signature drift here isn't caught by TS — a positional handler
+			// would write `{ tools, mcpServers }` into `config.tools` and fail backend
+			// validation).
+			onConfirm: (payload: {
+				tools?: AgentJsonToolConfig[];
+				mcpServers?: AgentJsonMcpServerConfig[];
+			}) =>
+				onConfigFieldUpdate({
+					...(payload.tools && { tools: payload.tools }),
+					...(payload.mcpServers && { mcpServers: payload.mcpServers }),
+				}),
 		},
 	});
 }
@@ -1005,15 +1028,17 @@ function onOpenSkillFromList(id: string) {
 			agentId: agentId.value,
 			skill,
 			skillId: id,
+			availableTools: configuredToolOptions(),
 			onRemove: (skillId: string) => onRemoveSkill(skillId),
 			onConfirm: ({ id: skillId, skill: updatedSkill }: { id?: string; skill: AgentSkill }) => {
 				if (!skillId) return;
 				if (agent.value?.id !== agentId.value) return;
+				const sanitizedSkill = filterSkillAllowedTools(updatedSkill);
 				agent.value = {
 					...agent.value,
 					skills: {
 						...(agent.value.skills ?? {}),
-						[skillId]: updatedSkill,
+						[skillId]: sanitizedSkill,
 					},
 				};
 				const nextSkills = [...(localConfig.value?.skills ?? [])];
@@ -1022,9 +1047,46 @@ function onOpenSkillFromList(id: string) {
 					nextSkills[skillRefIndex] = { type: 'skill', id: skillId };
 					onConfigFieldUpdate({ skills: nextSkills });
 				}
+				skillAutosave.scheduleAutosave({
+					type: 'skill',
+					projectId: projectId.value,
+					agentId: agentId.value,
+					skillId,
+					skill: sanitizedSkill,
+				});
 			},
 		},
 	});
+}
+
+function configuredToolOptions(): AgentSkillAllowedToolOption[] {
+	const tools: AgentSkillAllowedToolOption[] = [];
+	for (const tool of localConfig.value?.tools ?? []) {
+		if (tool.type === 'custom') {
+			const name = agent.value?.tools?.[tool.id]?.descriptor.name ?? tool.id;
+			if (name) {
+				tools.push({ name, label: formatToolNameForDisplay(name) || name, icon: 'code' });
+			}
+		} else if (tool.type === 'workflow') {
+			const name = tool.name ?? tool.workflow;
+			tools.push({ name, label: formatToolNameForDisplay(name) || name, icon: 'workflow' });
+		} else {
+			tools.push({
+				name: tool.name,
+				label: formatToolNameForDisplay(tool.name) || tool.name,
+				icon: 'globe',
+			});
+		}
+	}
+	return tools;
+}
+
+function configuredToolNames(): Set<string> {
+	return new Set(configuredToolOptions().map((tool) => tool.name));
+}
+
+function filterSkillAllowedTools(skill: AgentSkill): AgentSkill {
+	return normalizeAgentSkillForSave(skill, configuredToolNames());
 }
 
 function onRemoveTool(index: number) {
@@ -1054,8 +1116,10 @@ function onOpenAddSkillModal() {
 		data: {
 			projectId: projectId.value,
 			agentId: agentId.value,
+			availableTools: configuredToolOptions(),
 			onConfirm: ({ skill }: { id?: string; skill: AgentSkill }) => {
 				void (async () => {
+					const sanitizedSkill = filterSkillAllowedTools(skill);
 					let created: AgentSkill;
 					let versionId: string | null;
 					let skillId: string;
@@ -1064,7 +1128,7 @@ function onOpenAddSkillModal() {
 							rootStore.restApiContext,
 							projectId.value,
 							agentId.value,
-							skill,
+							sanitizedSkill,
 						);
 						skillId = result.id;
 						created = result.skill;
@@ -1192,121 +1256,130 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 				[$style.previewBuilder]: isPreviewMode,
 			}"
 		>
-			<AgentPreviewChatPage
-				v-if="isPreviewMode"
-				:initialized="initialized"
-				:project-id="projectId"
-				:agent-id="agentId"
-				:agent="agent"
-				:local-config="localConfig"
-				:connected-triggers="connectedTriggers"
-				:effective-session-id="effectiveSessionId"
-				:initial-prompt="initialPrompt"
-				@config-updated="onConfigUpdated"
-				@continue-loaded="onContinueLoaded"
-				@open-build="onOpenBuildFromChat"
-			/>
-			<N8nResizeWrapper
-				v-else
-				:class="{
-					[$style.chatResizer]: true,
-					[$style.chatResizerFullWidth]: isChatFullWidth,
-				}"
-				:width="isChatFullWidth ? 0 : chatPanelResizer.size.value"
-				:style="{ width: isChatFullWidth ? '100%' : `${chatPanelResizer.size.value}px` }"
-				:is-resizing-enabled="!isChatFullWidth"
-				:supported-directions="isChatFullWidth ? [] : ['right']"
-				:min-width="AGENT_CHAT_PANEL_MIN_WIDTH"
-				:max-width="AGENT_CHAT_PANEL_MAX_WIDTH"
-				:grid-size="8"
-				outset
-				data-testid="agent-builder-chat-resizer"
-				@resize="chatPanelResizer.onResize"
-				@resizeend="chatPanelResizer.onResizeEnd"
-			>
-				<AgentBuilderChatColumn
+			<div v-if="showBuilderLoading" :class="$style.loading">
+				<N8nIcon icon="spinner" spin />
+			</div>
+			<template v-else>
+				<AgentPreviewChatPage
+					v-if="isPreviewMode"
 					:initialized="initialized"
 					:project-id="projectId"
 					:agent-id="agentId"
-					:agent-name="agentName"
 					:agent="agent"
 					:local-config="localConfig"
 					:connected-triggers="connectedTriggers"
+					:effective-session-id="effectiveSessionId"
 					:initial-prompt="initialPrompt"
-					:is-builder-configured="isBuilderConfigured"
-					:is-full-width="isChatFullWidth"
-					:can-edit-agent="canEditAgent"
-					:is-build-chat-streaming="isBuildChatStreaming"
-					:before-build-send="flushAutosave"
 					@config-updated="onConfigUpdated"
-					@build-done="onBuildDone"
-					@update:streaming="onBuildChatStreamingChange"
-					@update:tools="onQuickActionAddTool"
-					@update:mcp-servers="onQuickActionAddMcpServers"
+					@continue-loaded="onContinueLoaded"
+					@open-build="onOpenBuildFromChat"
+				/>
+				<N8nResizeWrapper
+					v-else
+					:class="{
+						[$style.chatResizer]: true,
+						[$style.chatResizerFullWidth]: isChatFullWidth,
+					}"
+					:width="isChatFullWidth ? 0 : chatPanelResizer.size.value"
+					:style="{ width: isChatFullWidth ? '100%' : `${chatPanelResizer.size.value}px` }"
+					:is-resizing-enabled="!isChatFullWidth"
+					:supported-directions="isChatFullWidth ? [] : ['right']"
+					:min-width="AGENT_CHAT_PANEL_MIN_WIDTH"
+					:max-width="AGENT_CHAT_PANEL_MAX_WIDTH"
+					:grid-size="8"
+					outset
+					data-testid="agent-builder-chat-resizer"
+					@resize="chatPanelResizer.onResize"
+					@resizeend="chatPanelResizer.onResizeEnd"
+				>
+					<AgentBuilderChatColumn
+						:initialized="initialized"
+						:project-id="projectId"
+						:agent-id="agentId"
+						:agent-name="agentName"
+						:agent="agent"
+						:local-config="localConfig"
+						:connected-triggers="connectedTriggers"
+						:initial-prompt="initialPrompt"
+						:is-builder-configured="isBuilderConfigured"
+						:is-published="Boolean(agent?.activeVersionId)"
+						:is-full-width="isChatFullWidth"
+						:is-build-chat-streaming="isBuildChatStreaming"
+						:can-edit-agent="canEditAgent"
+						:before-build-send="flushAutosave"
+						@config-updated="onConfigUpdated"
+						@build-done="onBuildDone"
+						@update:streaming="onBuildChatStreamingChange"
+						@update:tools="onQuickActionAddTool"
+						@update:mcp-servers="onQuickActionAddMcpServers"
+						@update:connected-triggers="onConnectedTriggersUpdate"
+						@update:full-width="isChatFullWidth = $event"
+						@trigger-added="onTriggerAdded"
+						@agent-published="onPublished"
+						@agent-changed="refreshAgentAfterIntegrationChange"
+					/>
+				</N8nResizeWrapper>
+
+				<AgentBuilderEditorColumn
+					v-if="!isPreviewMode && !isChatFullWidth"
+					:class="$style.editorColumn"
+					v-model:active-main-tab="activeMainTab"
+					:local-config="localConfig"
+					:agent="agent"
+					:project-id="projectId"
+					:agent-id="agentId"
+					:agent-files="agentFiles"
+					:agent-files-loading="agentFilesLoading"
+					:agent-files-uploading="agentFilesUploading"
+					:knowledge-base-enabled="isKnowledgeBaseEnabled"
+					:deleting-agent-file-id="deletingAgentFileId"
+					:applied-skills="appliedSkills"
+					:connected-triggers="connectedTriggers"
+					:is-build-chat-streaming="isBuildChatStreaming"
+					:can-edit-agent="canEditAgent"
+					:tasks-reload-key="tasksReloadKey"
+					:main-tab-options="mainTabOptions"
+					:executions-description="executionsDescription"
+					@update:config="onConfigFieldUpdate"
+					@open-tool="onOpenToolFromList"
+					@open-skill="onOpenSkillFromList"
+					@add-tool="onOpenAddToolModal"
+					@add-skill="onOpenAddSkillModal"
+					@upload-files="onUploadAgentFiles"
+					@delete-file="onDeleteAgentFile"
+					@remove-tool="onRemoveTool"
+					@remove-skill="onRemoveSkill"
 					@update:connected-triggers="onConnectedTriggersUpdate"
-					@update:full-width="isChatFullWidth = $event"
 					@trigger-added="onTriggerAdded"
-					@agent-published="onPublished"
+					@toggle-task="onToggleTask"
+					@tasks-changed="onConfigUpdated"
 					@agent-changed="refreshAgentAfterIntegrationChange"
 				/>
-			</N8nResizeWrapper>
 
-			<AgentBuilderEditorColumn
-				v-if="!isPreviewMode && !isChatFullWidth"
-				:class="$style.editorColumn"
-				v-model:active-main-tab="activeMainTab"
-				:local-config="localConfig"
-				:agent="agent"
-				:project-id="projectId"
-				:agent-id="agentId"
-				:agent-files="agentFiles"
-				:agent-files-loading="agentFilesLoading"
-				:agent-files-uploading="agentFilesUploading"
-				:knowledge-base-enabled="isKnowledgeBaseEnabled"
-				:deleting-agent-file-id="deletingAgentFileId"
-				:applied-skills="appliedSkills"
-				:connected-triggers="connectedTriggers"
-				:is-build-chat-streaming="isBuildChatStreaming"
-				:can-edit-agent="canEditAgent"
-				:tasks-reload-key="tasksReloadKey"
-				:main-tab-options="mainTabOptions"
-				:executions-description="executionsDescription"
-				@update:config="onConfigFieldUpdate"
-				@open-tool="onOpenToolFromList"
-				@open-skill="onOpenSkillFromList"
-				@add-tool="onOpenAddToolModal"
-				@add-skill="onOpenAddSkillModal"
-				@upload-files="onUploadAgentFiles"
-				@delete-file="onDeleteAgentFile"
-				@remove-tool="onRemoveTool"
-				@remove-skill="onRemoveSkill"
-				@update:connected-triggers="onConnectedTriggersUpdate"
-				@trigger-added="onTriggerAdded"
-				@toggle-task="onToggleTask"
-				@tasks-changed="onConfigUpdated"
-				@agent-changed="refreshAgentAfterIntegrationChange"
-			/>
-
-			<AgentVersionHistoryPanel
-				v-if="!isPreviewMode && isVersionHistoryOpen"
-				ref="versionHistoryPanel"
-				:project-id="projectId"
-				:agent-id="agentId"
-				:has-unpublished-changes="
-					Boolean(agent?.activeVersionId) && agent?.versionId !== agent?.activeVersionId
-				"
-				:agent-name="agent?.name ?? agentName"
-				@close="onCloseVersionHistory"
-				@reverted="onReverted"
-				@published="onPublished"
-				@unpublished="onUnpublished"
-			/>
+				<AgentVersionHistoryPanel
+					v-if="!isPreviewMode && isVersionHistoryOpen"
+					ref="versionHistoryPanel"
+					:project-id="projectId"
+					:agent-id="agentId"
+					:has-unpublished-changes="
+						Boolean(agent?.activeVersionId) && agent?.versionId !== agent?.activeVersionId
+					"
+					:agent-name="agent?.name ?? agentName"
+					@close="onCloseVersionHistory"
+					@reverted="onReverted"
+					@published="onPublished"
+					@unpublished="onUnpublished"
+				/>
+			</template>
 		</div>
 	</div>
 </template>
 
 <style lang="scss" module>
 .root {
+	--agent-builder-chat-min-width: 20rem;
+	--agent-builder-editor-min-width: 35rem;
+
 	display: flex;
 	flex-direction: column;
 	height: 100%;
@@ -1317,7 +1390,17 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 	display: flex;
 	height: 100%;
 	min-height: 0;
-	overflow: hidden;
+	overflow-x: auto;
+	overflow-y: hidden;
+	scrollbar-width: thin;
+	scrollbar-color: var(--border-color) transparent;
+}
+
+.loading {
+	flex: 1 1 auto;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 }
 
 .previewBuilder {
@@ -1326,6 +1409,7 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 
 .chatResizer {
 	flex-shrink: 0;
+	min-width: var(--agent-builder-chat-min-width);
 
 	:global([data-test-id='resize-handle']) {
 		width: var(--spacing--xs) !important;
@@ -1365,6 +1449,6 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 
 .editorColumn {
 	flex: 1 1 auto;
-	min-width: 0;
+	min-width: var(--agent-builder-editor-min-width);
 }
 </style>

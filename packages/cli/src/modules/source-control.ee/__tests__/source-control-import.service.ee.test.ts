@@ -22,27 +22,29 @@ import {
 } from '@n8n/db';
 import { In } from '@n8n/typeorm';
 import * as fastGlob from 'fast-glob';
-import { mock } from 'jest-mock-extended';
 import { type InstanceSettings } from 'n8n-core';
 import fsp from 'node:fs/promises';
 
+vi.mock('node:fs/promises');
+import type { Mock } from 'vitest';
+import { mock } from 'vitest-mock-extended';
+
 import type { VariablesService } from '@/environments.ee/variables/variables.service.ee';
-import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import type { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository';
 import type { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
+import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import type { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
+import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+import type { WorkflowService } from '@/workflows/workflow.service';
 
-import { SourceControlImportService } from '../source-control-import.service.ee';
 import type { SourceControlContextFactory } from '../source-control-context.factory';
+import { SourceControlImportService } from '../source-control-import.service.ee';
 import type { SourceControlScopedService } from '../source-control-scoped.service';
 import type { ExportableFolder } from '../types/exportable-folders';
 import type { ExportableProject } from '../types/exportable-project';
 import { SourceControlContext } from '../types/source-control-context';
 
-import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
-import type { WorkflowService } from '@/workflows/workflow.service';
-
-jest.mock('fast-glob');
+vi.mock('fast-glob');
 
 describe('SourceControlImportService', () => {
 	const workflowRepository = mock<WorkflowRepository>();
@@ -106,11 +108,11 @@ describe('SourceControlImportService', () => {
 		redactionEnforcementService,
 	);
 
-	const globMock = fastGlob.default as unknown as jest.Mock<Promise<string[]>, string[]>;
-	const fsReadFile = jest.spyOn(fsp, 'readFile');
+	const globMock = fastGlob.default as unknown as Mock<(...args: string[]) => Promise<string[]>>;
+	const fsReadFile = vi.spyOn(fsp, 'readFile');
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		sourceControlScopedService.getDataTablesInAdminProjectsFromContextFilter.mockReturnValue({});
 	});
 
@@ -1509,6 +1511,103 @@ describe('SourceControlImportService', () => {
 			expect(upsertCall.data).toBeDefined();
 		});
 
+		it('should carry resolvable credential fields across environments', async () => {
+			// Arrange
+			const candidates: SourceControlledFile[] = [
+				{
+					file: '/mock/credential_stubs/cred1.json',
+					id: 'cred1',
+					name: 'Private Credential',
+					type: 'credential',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					updatedAt: '',
+				},
+			];
+
+			const mockCredentialData = {
+				id: 'cred1',
+				name: 'Private Credential',
+				type: 'oauth2Api',
+				data: {},
+				ownedBy: null,
+				isGlobal: false,
+				isResolvable: true,
+				resolvableAllowFallback: true,
+			};
+
+			fsReadFile.mockResolvedValue(JSON.stringify(mockCredentialData));
+			credentialsRepository.find.mockResolvedValue([]);
+			sharedCredentialsRepository.find.mockResolvedValue([]);
+			credentialsRepository.upsert.mockResolvedValue({
+				identifiers: [],
+				generatedMaps: [],
+				raw: [],
+			});
+
+			// Act
+			await service.importCredentialsFromWorkFolder(candidates, mockUserId);
+
+			// Assert
+			expect(credentialsRepository.upsert).toHaveBeenCalledWith(
+				expect.objectContaining({
+					id: 'cred1',
+					isResolvable: true,
+					resolvableAllowFallback: true,
+				}),
+				['id'],
+			);
+		});
+
+		it('should default resolver fields to false when absent from the stub', async () => {
+			// Arrange - a stub written before resolver fields were tracked omits them
+			const candidates: SourceControlledFile[] = [
+				{
+					file: '/mock/credential_stubs/cred1.json',
+					id: 'cred1',
+					name: 'Legacy Stub Credential',
+					type: 'credential',
+					status: 'created',
+					location: 'local',
+					conflict: false,
+					updatedAt: '',
+				},
+			];
+
+			const mockCredentialData = {
+				id: 'cred1',
+				name: 'Legacy Stub Credential',
+				type: 'oauth2Api',
+				data: {},
+				ownedBy: null,
+				isGlobal: false,
+			};
+
+			fsReadFile.mockResolvedValue(JSON.stringify(mockCredentialData));
+			credentialsRepository.find.mockResolvedValue([]);
+			sharedCredentialsRepository.find.mockResolvedValue([]);
+			credentialsRepository.upsert.mockResolvedValue({
+				identifiers: [],
+				generatedMaps: [],
+				raw: [],
+			});
+
+			// Act
+			await service.importCredentialsFromWorkFolder(candidates, mockUserId);
+
+			// Assert - git is the source of truth, so an absent flag defaults to false
+			// (same as isGlobal).
+			expect(credentialsRepository.upsert).toHaveBeenCalledWith(
+				expect.objectContaining({
+					id: 'cred1',
+					isResolvable: false,
+					resolvableAllowFallback: false,
+				}),
+				['id'],
+			);
+		});
+
 		it('should update an existing credential (verifies upsert is called)', async () => {
 			// Arrange
 			const candidates: SourceControlledFile[] = [
@@ -2164,7 +2263,7 @@ describe('SourceControlImportService', () => {
 
 	describe('getLocalVersionIdsFromDb', () => {
 		const now = new Date();
-		jest.useFakeTimers({ now });
+		vi.useFakeTimers({ now });
 
 		it('should replace invalid updatedAt with current timestamp', async () => {
 			const mockWorkflows = [
@@ -3136,8 +3235,8 @@ describe('SourceControlImportService', () => {
 				] as any);
 
 				const mockTransaction = {
-					save: jest.fn(async (_entity: any, data: any) => data),
-					delete: jest.fn(async () => {}),
+					save: vi.fn(async (_entity: any, data: any) => data),
+					delete: vi.fn(async () => {}),
 				};
 
 				Object.defineProperty(dataTableRepository, 'manager', {
@@ -3145,7 +3244,7 @@ describe('SourceControlImportService', () => {
 						connection: {
 							options: { type: 'sqlite' },
 						},
-						transaction: jest.fn(async (callback: any) => {
+						transaction: vi.fn(async (callback: any) => {
 							return await callback(mockTransaction);
 						}),
 					},
@@ -3445,7 +3544,7 @@ describe('SourceControlImportService', () => {
 					expect.arrayContaining([expect.objectContaining({ id: 'col1', name: 'validName' })]),
 					expect.anything(),
 				);
-				const columns = (dataTableDDLService.createTableWithColumns as jest.Mock).mock.calls[0][1];
+				const columns = (dataTableDDLService.createTableWithColumns as Mock).mock.calls[0][1];
 				expect(columns).not.toEqual(
 					expect.arrayContaining([expect.objectContaining({ id: 'col2' })]),
 				);

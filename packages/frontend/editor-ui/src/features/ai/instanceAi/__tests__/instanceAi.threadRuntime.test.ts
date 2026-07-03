@@ -196,14 +196,15 @@ function activateThread(registry: RuntimeRegistry, threadId: string): void {
 
 	if (runtime.hydrationStatus === 'hydrating') return;
 	if (runtime.hydrationStatus === 'ready') {
-		void runtime.loadThreadStatus();
-		runtime.connectSSE();
+		void runtime.loadThreadStatus().then(() => {
+			runtime.connectSSE();
+		});
 		return;
 	}
 
-	void runtime.loadHistoricalMessages().then((hydrationStatus) => {
+	void runtime.loadHistoricalMessages().then(async (hydrationStatus) => {
 		if (activeThreadId !== threadId || hydrationStatus !== 'applied') return;
-		void runtime.loadThreadStatus();
+		await runtime.loadThreadStatus();
 		runtime.connectSSE();
 	});
 }
@@ -1058,6 +1059,165 @@ describe('createThreadRuntime - feedback integration', () => {
 	});
 });
 
+describe('createThreadRuntime - loadThreadStatus and HITL reconnect', () => {
+	let registry: RuntimeRegistry;
+
+	beforeEach(() => {
+		setupRuntimePinia();
+		registry = createRuntimeRegistry();
+		activeThreadId = 'thread-hitl';
+	});
+
+	afterEach(() => {
+		vi.clearAllMocks();
+		mockFetchThreadStatus.mockResolvedValue({
+			hasActiveRun: false,
+			isSuspended: false,
+			backgroundTasks: [],
+		});
+	});
+
+	test('loadThreadStatus sets activeRunId and isStreaming for suspended run using runIds', async () => {
+		const runtime = activeRuntime(registry);
+		runtime.messages = [
+			{
+				id: 'msg-1',
+				role: 'assistant',
+				runId: 'run-a',
+				runIds: ['run-a', 'run-b'],
+				content: '',
+				reasoning: '',
+				isStreaming: false,
+				createdAt: '2026-01-01T00:00:00.000Z',
+			},
+		];
+		mockFetchThreadStatus.mockResolvedValue({
+			hasActiveRun: false,
+			isSuspended: true,
+			backgroundTasks: [],
+		});
+
+		await runtime.loadThreadStatus();
+
+		expect(runtime.activeRunId).toBe('run-b');
+		expect(runtime.messages[0].isStreaming).toBe(true);
+	});
+
+	test('loadThreadStatus prefers runId from status API over message inference', async () => {
+		const runtime = activeRuntime(registry);
+		runtime.messages = [
+			{
+				id: 'msg-1',
+				role: 'assistant',
+				runId: 'run-a',
+				runIds: ['run-a', 'run-b'],
+				content: '',
+				reasoning: '',
+				isStreaming: false,
+				createdAt: '2026-01-01T00:00:00.000Z',
+			},
+		];
+		mockFetchThreadStatus.mockResolvedValue({
+			hasActiveRun: false,
+			isSuspended: true,
+			runId: 'run-authoritative',
+			backgroundTasks: [],
+		});
+
+		await runtime.loadThreadStatus();
+
+		expect(runtime.activeRunId).toBe('run-authoritative');
+	});
+
+	test('confirmAction re-arms activeRunId and reconnects SSE after approval', async () => {
+		const runtime = activeRuntime(registry);
+		runtime.closeSSE();
+		runtime.messages = [
+			{
+				id: 'msg-1',
+				role: 'assistant',
+				runId: 'run-live',
+				runIds: ['run-live'],
+				content: '',
+				reasoning: '',
+				isStreaming: false,
+				createdAt: '2026-01-01T00:00:00.000Z',
+				agentTree: {
+					agentId: 'agent-root',
+					role: 'orchestrator',
+					status: 'active',
+					textContent: '',
+					reasoning: '',
+					toolCalls: [
+						{
+							toolCallId: 'tc-1',
+							toolName: 'workflows',
+							args: { action: 'run' },
+							isLoading: true,
+							confirmation: { requestId: 'req-1', severity: 'info', message: 'Run?' },
+						},
+					],
+					children: [],
+					timeline: [],
+				},
+			},
+		];
+		mockPostConfirmation.mockResolvedValue({ ok: true, runId: 'run-from-api' });
+		mockFetchThreadStatus.mockResolvedValue({
+			hasActiveRun: true,
+			isSuspended: false,
+			runId: 'run-from-api',
+			backgroundTasks: [],
+		});
+
+		const ok = await runtime.confirmAction('req-1', { kind: 'approval', approved: true });
+
+		expect(ok).toBe(true);
+		expect(runtime.activeRunId).toBe('run-from-api');
+		expect(runtime.messages[0].isStreaming).toBe(true);
+		expect(runtime.sseState).not.toBe('disconnected');
+		expect(mockFetchThreadStatus).toHaveBeenCalled();
+	});
+
+	test('confirmAction does not re-arm activeRunId on deny', async () => {
+		const runtime = activeRuntime(registry);
+		runtime.messages = [
+			{
+				id: 'msg-1',
+				role: 'assistant',
+				runId: 'run-live',
+				content: '',
+				reasoning: '',
+				isStreaming: false,
+				createdAt: '2026-01-01T00:00:00.000Z',
+				agentTree: {
+					agentId: 'agent-root',
+					role: 'orchestrator',
+					status: 'active',
+					textContent: '',
+					reasoning: '',
+					toolCalls: [
+						{
+							toolCallId: 'tc-1',
+							toolName: 'workflows',
+							args: { action: 'run' },
+							isLoading: true,
+							confirmation: { requestId: 'req-deny', severity: 'info', message: 'Run?' },
+						},
+					],
+					children: [],
+					timeline: [],
+				},
+			},
+		];
+		mockPostConfirmation.mockResolvedValue({ ok: true });
+
+		await runtime.confirmAction('req-deny', { kind: 'approval', approved: false });
+
+		expect(runtime.activeRunId).toBeNull();
+	});
+});
+
 // ---------------------------------------------------------------------------
 // confirmResourceDecision / confirmAction (resource-decision token)
 // ---------------------------------------------------------------------------
@@ -1074,7 +1234,7 @@ describe('createThreadRuntime - gateway resource-decision confirmation', () => {
 		await vi.waitFor(() => {
 			expect(capturedOnMessage).not.toBeNull();
 		});
-		mockPostConfirmation.mockResolvedValue(undefined);
+		mockPostConfirmation.mockResolvedValue({ ok: true });
 	});
 
 	afterEach(() => {
@@ -1157,7 +1317,7 @@ describe('createThreadRuntime - session always-allow', () => {
 		setupRuntimePinia();
 		registry = createRuntimeRegistry();
 		activeThreadId = 'thread-always-allow';
-		mockPostConfirmation.mockResolvedValue(undefined);
+		mockPostConfirmation.mockResolvedValue({ ok: true });
 	});
 
 	afterEach(() => {

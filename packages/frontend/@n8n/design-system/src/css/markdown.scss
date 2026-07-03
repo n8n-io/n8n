@@ -259,6 +259,27 @@ body[data-theme='dark'] {
 		}
 	}
 
+	ul[data-type='taskList'] {
+		padding-left: 0;
+		list-style: none;
+
+		li {
+			display: flex;
+			align-items: flex-start;
+			gap: var(--spacing--2xs);
+		}
+
+		li > label {
+			flex: 0 0 auto;
+			user-select: none;
+		}
+
+		li > div {
+			flex: 1 1 auto;
+			min-width: 0;
+		}
+	}
+
 	ul ul,
 	ol ol,
 	ul ol,

@@ -11,12 +11,11 @@ import {
 
 import {
 	applyOpenSuspensions,
-	buildDisplayGroups,
 	convertDbMessages,
 	rebuildInteractiveFromHistory,
-	isGroupable,
-	type ChatMessage,
-} from '../composables/agentChatMessages';
+} from '@/features/ai/shared/agentsChat/messageMappers';
+import { buildDisplayGroups, isGroupable } from '@/features/ai/shared/agentsChat/displayGroups';
+import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 
 describe('rebuildInteractiveFromHistory', () => {
 	it('rebuilds an OPEN ask_llm card when output is missing', () => {

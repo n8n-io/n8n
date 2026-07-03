@@ -1,6 +1,6 @@
 {
   "name": "@n8n/task-runner",
-  "version": "2.28.0",
+  "version": "2.29.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "start": "node dist/start.js",
@@ -40,6 +40,8 @@
     "@n8n/config": "workspace:*",
     "@n8n/di": "workspace:*",
     "@n8n/errors": "workspace:*",
+    "@n8n/utils": "workspace:*",
+    "@sentry/core": "catalog:sentry",
     "@sentry/node": "catalog:sentry",
     "acorn": "8.14.0",
     "acorn-walk": "8.3.4",
@@ -54,7 +56,10 @@
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@types/lodash": "catalog:",
+    "@types/luxon": "catalog:",
+    "@types/ws": "catalog:",
     "@vitest/coverage-v8": "catalog:",
+    "vite": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"
   },

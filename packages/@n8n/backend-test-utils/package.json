@@ -1,6 +1,6 @@
 {
   "name": "@n8n/backend-test-utils",
-  "version": "1.28.0",
+  "version": "1.29.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -28,11 +28,12 @@
     "@n8n/db": "workspace:*",
     "@n8n/di": "workspace:*",
     "@n8n/permissions": "workspace:*",
-    "@n8n/typeorm": "catalog:",
-    "jest-mock-extended": "^3.0.4",
+    "@n8n/typeorm": "workspace:*",
     "n8n-workflow": "workspace:*",
     "reflect-metadata": "catalog:",
-    "uuid": "catalog:"
+    "uuid": "catalog:",
+    "vitest": "catalog:",
+    "vitest-mock-extended": "catalog:"
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*"

@@ -1,12 +1,12 @@
 import { Tool } from '@n8n/agents';
 import { instanceAiConfirmationSeveritySchema } from '@n8n/api-types';
-import { hasPlaceholderDeep } from '@n8n/utils';
+import { hasPlaceholderDeep } from '@n8n/utils/placeholder';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import { planVerificationSimulation } from './plan-verification-simulation';
 import { buildCredentialMap, resolveCredentials } from './resolve-credentials';
-import { stripStaleCredentialsFromWorkflow } from './setup-workflow.service';
+import { analyzeWorkflow, stripStaleCredentialsFromWorkflow } from './setup-workflow.service';
 import {
 	combineWarnings,
 	formatWarning,
@@ -40,6 +40,7 @@ import {
 	getReferencedWorkflowIds,
 	isTriggerNodeType,
 	preserveExistingNodeGroupIds,
+	preserveExistingSetupValues,
 } from './workflow-json-utils';
 import { compileWorkflowSource } from './workflow-source-compiler';
 import { partitionWarnings, type ValidationWarning } from './workflow-validation-warnings';
@@ -141,6 +142,32 @@ const setupRequirementOutputSchema = z.discriminatedUnion('status', [
 	}),
 ]);
 
+const POST_BUILD_FLOW_SKILL_ID = 'post-build-flow';
+
+const POST_BUILD_FLOW_GUIDANCE =
+	'This direct build is not complete yet. Load post-build-flow now and follow it before verification, setup, error-workflow follow-up, publishing, testing, or any final user-visible summary. Follow-up order is verification/setup first, then mocked/no-mock live-test when latest verification used mocks or simulations, then explicit error-workflow opt-in for direct new primary workflows, then generic testing prompts. Do not replace the error-workflow opt-in with a generic add-anything, publish, or test question.';
+
+const postBuildFlowOutputSchema = z.object({
+	required: z.literal(true),
+	skillId: z.literal(POST_BUILD_FLOW_SKILL_ID),
+	reason: z.literal('direct-build-succeeded'),
+	guidance: z.string(),
+});
+
+function directPostBuildFlowHandoff(
+	owner: ReturnType<typeof resolveBuildIdentifiers>['owner'],
+	isAuxiliarySupportingWorkflow: boolean,
+): z.infer<typeof postBuildFlowOutputSchema> | undefined {
+	if (owner?.type !== 'direct' || isAuxiliarySupportingWorkflow) return undefined;
+
+	return {
+		required: true,
+		skillId: POST_BUILD_FLOW_SKILL_ID,
+		reason: 'direct-build-succeeded',
+		guidance: POST_BUILD_FLOW_GUIDANCE,
+	};
+}
+
 export function createBuildWorkflowTool(context: InstanceAiContext) {
 	const failureTracker = new BuildFailureTracker();
 
@@ -162,6 +189,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				triggerNodes: z.array(triggerNodeOutputSchema).optional(),
 				verificationReadiness: verificationReadinessOutputSchema.optional(),
 				setupRequirement: setupRequirementOutputSchema.optional(),
+				postBuildFlow: postBuildFlowOutputSchema.optional(),
 				isSupportingWorkflow: z.boolean().optional(),
 				mockedNodeNames: z.array(z.string()).optional(),
 				mockedCredentialTypes: z.array(z.string()).optional(),
@@ -521,6 +549,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 			await stripStaleCredentialsFromWorkflow(context, json);
 
 			try {
+				await preserveExistingSetupValues(json, targetWorkflowId, context);
 				await ensureWebhookIds(json, targetWorkflowId, context);
 				await preserveExistingNodeGroupIds(json, targetWorkflowId, context);
 
@@ -538,6 +567,8 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					saved: { id: string; versionId: string },
 					operation: 'create' | 'update',
 				) => {
+					const setupRequests = await analyzeWorkflow(context, saved.id);
+					const workflowNeedsSetup = setupRequests.some((request) => request.needsAction);
 					const { nodeSimulationPlan, simulationFixtures } = await planVerificationSimulation({
 						workflow: json,
 						mockedNodeNames: mockResult.mockedNodeNames,
@@ -573,6 +604,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						mockedCredentialsByNode: hasMockedCredentialNodes
 							? mockResult.mockedCredentialsByNode
 							: undefined,
+						workflowNeedsSetup,
 						nodeSimulationPlan,
 						simulationFixtures,
 						supportingWorkflowIds:
@@ -580,6 +612,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						hasUnresolvedPlaceholders: hasPlaceholders || undefined,
 						summary,
 					});
+					const postBuildFlow = directPostBuildFlowHandoff(owner, isAuxiliarySupportingWorkflow);
 
 					await promoteMainWorkflow(context, saved.id);
 					await reportWorkflowBuildOutcome(context, outcome, {
@@ -611,6 +644,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						triggerNodes,
 						verificationReadiness: outcome.verificationReadiness,
 						setupRequirement: outcome.setupRequirement,
+						...(postBuildFlow ? { postBuildFlow } : {}),
 						mockedNodeNames: hasMockedCredentialNodes ? mockResult.mockedNodeNames : undefined,
 						mockedCredentialTypes: hasMockedCredentialNodes
 							? mockResult.mockedCredentialTypes

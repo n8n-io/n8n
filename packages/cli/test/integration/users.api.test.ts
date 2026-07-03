@@ -17,6 +17,8 @@ import {
 	GLOBAL_OWNER_ROLE,
 	ProjectRelationRepository,
 	ProjectRepository,
+	RoleMappingRuleRepository,
+	RoleRepository,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
 	UserRepository,
@@ -31,6 +33,7 @@ import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.serv
 import { OwnershipService } from '@/services/ownership.service';
 import { Telemetry } from '@/telemetry';
 import { createFolder } from '@test-integration/db/folders';
+import { createRole } from '@test-integration/db/roles';
 
 import { SUCCESS_RESPONSE_BODY } from './shared/constants';
 import {
@@ -42,7 +45,6 @@ import { createAdmin, createMember, createOwner, createUser, getUserById } from 
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
 import { validateUser } from './shared/utils/users';
-import { createRole } from '@test-integration/db/roles';
 
 mockInstance(Telemetry);
 mockInstance(ExecutionService);
@@ -1742,9 +1744,10 @@ describe('PATCH /users/:id/role', () => {
 			savedConfig = { ...provisioningService.provisioningConfig };
 		});
 
-		afterEach(() => {
+		afterEach(async () => {
 			// @ts-expect-error - provisioningConfig is private
 			provisioningService.provisioningConfig = { ...savedConfig };
+			await Container.get(RoleMappingRuleRepository).delete({});
 		});
 
 		test('should return 403 when SSO provider controls instance roles', async () => {
@@ -1760,6 +1763,20 @@ describe('PATCH /users/:id/role', () => {
 		test('should return 403 when expression-based role mapping is active', async () => {
 			// @ts-expect-error - provisioningConfig is private
 			provisioningService.provisioningConfig.scopesUseExpressionMapping = true;
+
+			// Expression mapping only manages instance roles when instance-type rules exist.
+			const adminRole = await Container.get(RoleRepository).findOneOrFail({
+				where: { slug: 'global:admin' },
+			});
+			const ruleRepository = Container.get(RoleMappingRuleRepository);
+			await ruleRepository.save(
+				ruleRepository.create({
+					expression: '{{ true }}',
+					role: adminRole,
+					type: 'instance',
+					order: 0,
+				}),
+			);
 
 			await ownerAgent
 				.patch(`/users/${member.id}/role`)

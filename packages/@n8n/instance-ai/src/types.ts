@@ -36,6 +36,7 @@ import type { DomainAccessTracker } from './domain-access/domain-access-tracker'
 import type { InstanceAiEventBus } from './event-bus/event-bus.interface';
 import type { Logger } from './logger';
 import type { McpClientManager } from './mcp/mcp-client-manager';
+import type { OrchestratorRunHandoffReason } from './runtime/orchestrator-run-control';
 import type { IterationLog } from './storage/iteration-log';
 import type { PatchableThreadMemory } from './storage/thread-patch';
 import type { IdRemapper, TraceIndex, TraceWriter } from './tracing/trace-replay';
@@ -348,13 +349,7 @@ export interface InstanceAiExecutionService {
 		inputData?: Record<string, unknown>,
 		options?: {
 			timeout?: number;
-			pinData?: Record<string, unknown[]>;
-			/**
-			 * Nodes whose pin data simulates a destructive operation, keyed by node
-			 * name. Persisted onto the saved execution (`resultData.simulation`) so
-			 * the editor can label simulated outputs.
-			 */
-			simulation?: Record<string, { reason: string }>;
+			verificationPinData?: Record<string, unknown[]>;
 			/** When set, execute this specific trigger node instead of auto-detecting. */
 			triggerNodeName?: string;
 		},
@@ -386,6 +381,15 @@ export interface CredentialTypeSearchResult {
 	displayName: string;
 }
 
+/** An HTTP-usable credential type with the API host(s) it authenticates against,
+ *  derived from credential metadata. Used to steer the builder toward predefined
+ *  credentials instead of generic auth. */
+export interface CredentialHostInfo {
+	type: string;
+	displayName?: string;
+	hosts: string[];
+}
+
 export interface InstanceAiCredentialService {
 	/**
 	 * List credentials.
@@ -414,7 +418,13 @@ export interface InstanceAiCredentialService {
 	): CredentialFieldInfo[] | Promise<CredentialFieldInfo[]>;
 	/** Search available credential types by keyword. Returns matching types with display names. */
 	searchCredentialTypes?(query: string): Promise<CredentialTypeSearchResult[]>;
+	/** HTTP-usable credential types with the API host(s) they authenticate against,
+	 *  derived from credential metadata. Powers steering generic HTTP-node auth toward
+	 *  a predefined credential when one already exists for the target service. */
+	listHttpCredentialHosts?(): Promise<CredentialHostInfo[]>;
 	getAccountContext?(credentialId: string): Promise<{ accountIdentifier?: string }>;
+	/** Whether the given credential type is supported by AI Gateway. */
+	isAiGatewayCredentialType?(credType: string): Promise<boolean>;
 }
 
 export interface CredentialFieldInfo {
@@ -456,7 +466,7 @@ export interface InstanceAiNodeService {
 	getDescription(nodeType: string, version?: number): Promise<NodeDescription>;
 	/** Return all node types with the richer fields needed by NodeSearchEngine. */
 	listSearchable(): Promise<SearchableNodeDescription[]>;
-	/** Return the TypeScript type definition for a node (from dist/node-definitions/). */
+	/** Return the TypeScript type definition for a node, resolved by the host n8n instance. */
 	getNodeTypeDefinition?(
 		nodeType: string,
 		options?: {
@@ -1231,6 +1241,7 @@ export interface WorkflowTaskService {
 	reportBuildOutcome(outcome: WorkflowBuildOutcome): Promise<WorkflowLoopAction>;
 	reportVerificationVerdict(verdict: VerificationResult): Promise<WorkflowLoopAction>;
 	getBuildOutcome(workItemId: string): Promise<WorkflowBuildOutcome | undefined>;
+	getLatestBuildOutcomeForWorkflow(workflowId: string): Promise<WorkflowBuildOutcome | undefined>;
 	getWorkflowLoopState(workItemId: string): Promise<WorkflowLoopState | undefined>;
 	updateBuildOutcome(workItemId: string, update: Partial<WorkflowBuildOutcome>): Promise<void>;
 }
@@ -1299,6 +1310,8 @@ export interface OrchestrationContext {
 	plannedTaskService?: PlannedTaskService;
 	/** Run one scheduler pass after plan/task state changes. */
 	schedulePlannedTasks?: () => Promise<void>;
+	/** Hand off durable work to follow-up tasks once the current tool result reaches the UI. */
+	requestRunHandoff?: (reason: OrchestratorRunHandoffReason) => void;
 	/** Shared runtime workspace for the current orchestration context. */
 	workspace?: Workspace;
 	/** Absolute or host-relative sandbox workspace root for `<workspace_root>` paths in prompts. */

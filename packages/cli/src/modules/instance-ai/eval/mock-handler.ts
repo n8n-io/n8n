@@ -41,7 +41,11 @@ Each request is mocked independently. Even when the same node makes multiple sim
 
 Response SHAPE comes from the API docs; DATA VALUES come from the node config. Use names/IDs from the config exactly (case-sensitive).
 
-**Response envelope.** Return the body exactly as the real service sends it over the wire, including any top-level wrapper the API puts around results — e.g. \`{ "data": [...], "nextCursor": null }\`, \`{ "results": [...] }\`, \`{ "items": [...], "has_more": false }\`, \`{ "ok": true, "result": ... }\`. Do NOT return a bare top-level array unless the real API literally responds with one — most list endpoints wrap their items, and consumers that read the wrapper get zero items when it's missing.
+**Honor explicit values from the scenario and hints.** When the scenarioHints, nodeHint, or globalContext state a specific value — a quantity with a unit, a percentage, a monetary amount ("$1,200"), a count ("3 rows"), a threshold, an ID, or a name — reproduce that EXACT value in the response. Do NOT round it, soften it toward a "more typical" reading, or substitute your own estimate: the stated value is the test's intent, and downstream nodes (IF/Switch gates, filters, sums) compare against it. Emit the exact number of enumerated items the context describes. This extends to per-item constraints: when the scenario says EVERY/ALL items share a property (a literal substring every title must contain, a minimum every row must exceed), EVERY item you generate must satisfy it — check each item against the constraint character-by-character before responding (near-miss variants of a required literal fail the test). Only invent a value when the context gives none for that field. If a nodeHint and the scenario disagree, the scenario wins.
+
+**Node response-handling options are not part of the body.** The node config may include options that control how n8n post-processes the response — \`fullResponse\`, \`responseFormat\`, \`outputPropertyName\`, pagination. These are applied AFTER you return and must NOT change the body you produce: always return the raw body the real API sends over the wire. Never reshape the body to mimic them — a body shaped like \`{ statusCode, headers, body }\` (mimicking \`fullResponse\`) or \`{ <outputPropertyName>: ... }\` is wrong.
+
+**Response envelope.** Return the body exactly as the real service sends it over the wire, including any top-level wrapper the API puts around results — e.g. \`{ "data": [...], "nextCursor": null }\`, \`{ "results": [...] }\`, \`{ "items": [...], "has_more": false }\`, \`{ "ok": true, "result": ... }\`. Match the real API's top-level shape exactly: many list endpoints wrap their items, but plenty return a bare top-level array (e.g. an endpoint that returns an array of IDs). Follow what the real API actually returns per the docs — don't default to wrapping a bare-array response, and don't strip a wrapper the API really uses.
 
 Node-config patterns to know:
   - "__rl" object: "value" is the selected resource id
@@ -73,6 +77,8 @@ interface MockHandlerOptions {
 	globalContext?: string;
 	/** Per-node data hints from Phase 1, keyed by node name. */
 	nodeHints?: Record<string, string>;
+	/** Compact summary of Phase-1.5 pinned node outputs — fixed data the mock must stay consistent with. */
+	pinnedOutputs?: string;
 	maxRetries?: number;
 }
 
@@ -102,6 +108,7 @@ export function createLlmMockHandler(options?: MockHandlerOptions): EvalLlmMockH
 			scenarioHints: options?.scenarioHints,
 			globalContext: options?.globalContext,
 			nodeHint: options?.nodeHints?.[node.name],
+			pinnedOutputs: options?.pinnedOutputs,
 			nodeConfig: nodeConfigCache.get(node.name) ?? '',
 			maxRetries: options?.maxRetries ?? DEFAULT_MAX_RETRIES,
 		});
@@ -116,6 +123,7 @@ interface MockResponseContext {
 	scenarioHints?: string;
 	globalContext?: string;
 	nodeHint?: string;
+	pinnedOutputs?: string;
 	nodeConfig: string;
 	maxRetries: number;
 }
@@ -193,6 +201,14 @@ async function generateMockResponse(
 					: '(Use "error" type with appropriate statusCode for error scenarios.)',
 			);
 		}
+	}
+
+	if (context.pinnedOutputs) {
+		sections.push('', '## Pinned node outputs (authoritative)');
+		sections.push(
+			'These nodes already have fixed outputs in this execution. Your response MUST stay consistent with them — reuse the same entities, IDs, statuses, and timestamps wherever the scenario implies they refer to the same data (e.g. "stored record matches current status").',
+		);
+		sections.push(context.pinnedOutputs);
 	}
 
 	// Anchors go last — the API docs above carry training-era dates, so these

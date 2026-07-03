@@ -1,6 +1,6 @@
 {
   "name": "@n8n/api-types",
-  "version": "1.28.0",
+  "version": "1.29.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -27,14 +27,19 @@
     "@n8n/config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@vitest/coverage-v8": "catalog:",
+    "vite": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:",
-    "minifaker": "1.34.1"
+    "minifaker": "1.34.1",
+    "zod": "catalog:"
   },
   "dependencies": {
+    "@n8n_io/ai-assistant-sdk": "catalog:",
     "n8n-workflow": "workspace:*",
     "xss": "catalog:",
-    "@n8n/permissions": "workspace:*",
+    "@n8n/permissions": "workspace:*"
+  },
+  "peerDependencies": {
     "zod": "catalog:"
   },
   "license": "LicenseRef-n8n-sustainable-use"

@@ -47,7 +47,9 @@ export const LOG_SCOPES = [
 	'oauth-jwe',
 	'mcp-registry',
 	'workflow-publication',
+	'poll-trigger',
 	'metrics',
+	'scheduler',
 ] as const;
 
 export type LogScope = (typeof LOG_SCOPES)[number];

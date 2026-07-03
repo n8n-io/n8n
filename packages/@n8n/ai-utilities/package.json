@@ -1,6 +1,6 @@
 {
   "name": "@n8n/ai-utilities",
-  "version": "0.21.0",
+  "version": "0.22.0",
   "description": "Utilities for building AI nodes in n8n",
   "types": "dist/esm/index.d.ts",
   "module": "dist/esm/index.js",
@@ -85,12 +85,16 @@
     "dist"
   ],
   "devDependencies": {
-    "@types/json-schema": "^7.0.15",
+    "@types/json-schema": "catalog:",
     "@n8n/vitest-config": "workspace:*",
     "@vitest/coverage-v8": "catalog:",
+    "vite": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:",
     "@types/mime-types": "catalog:",
+    "@types/lodash": "catalog:",
+    "@types/proxy-from-env": "catalog:",
+    "fast-glob": "catalog:",
     "tsx": "catalog:",
     "axios": "catalog:",
     "nock": "catalog:"

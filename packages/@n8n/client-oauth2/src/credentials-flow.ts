@@ -1,3 +1,4 @@
+import { buildClientAssertion, CLIENT_ASSERTION_TYPE } from './client-assertion';
 import type { ClientOAuth2 } from './client-oauth2';
 import type { ClientOAuth2Token } from './client-oauth2-token';
 import { DEFAULT_HEADERS } from './constants';
@@ -9,6 +10,9 @@ interface CredentialsFlowBody {
 	client_secret?: string;
 	grant_type: 'client_credentials';
 	scope?: string;
+	resource?: string;
+	client_assertion_type?: string;
+	client_assertion?: string;
 }
 
 /**
@@ -24,26 +28,38 @@ export class CredentialsFlow {
 	 */
 	async getToken(): Promise<ClientOAuth2Token> {
 		const options = { ...this.client.options };
-		expects(options, 'clientId', 'clientSecret', 'accessTokenUri');
+		expects(options, 'clientId', 'accessTokenUri');
 
 		const headers: Headers = { ...DEFAULT_HEADERS };
 		const body: CredentialsFlowBody = {
 			grant_type: 'client_credentials',
 			...(options.additionalBodyProperties ?? {}),
+			...(options.resource ? { resource: options.resource } : {}),
 		};
 
 		if (options.scopes !== undefined) {
 			body.scope = options.scopes.join(options.scopesSeparator ?? ' ');
 		}
 
-		const clientId = options.clientId;
-		const clientSecret = options.clientSecret;
+		const { clientId } = options;
 
-		if (options.authentication === 'body') {
+		if (options.clientCredentialType === 'certificate') {
+			expects(options, 'clientCertificate');
 			body.client_id = clientId;
-			body.client_secret = clientSecret;
+			body.client_assertion_type = CLIENT_ASSERTION_TYPE;
+			body.client_assertion = buildClientAssertion({
+				clientId,
+				accessTokenUri: options.accessTokenUri,
+				...options.clientCertificate,
+			});
 		} else {
-			headers.Authorization = auth(clientId, clientSecret);
+			expects(options, 'clientSecret');
+			if (options.authentication === 'body') {
+				body.client_id = clientId;
+				body.client_secret = options.clientSecret;
+			} else {
+				headers.Authorization = auth(clientId, options.clientSecret);
+			}
 		}
 
 		const requestOptions = getRequestOptions(

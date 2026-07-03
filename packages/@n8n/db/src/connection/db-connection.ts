@@ -3,11 +3,14 @@ import { DatabaseConfig } from '@n8n/config';
 import { Memoized } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { ErrorReporter } from 'n8n-core';
-import { DbConnectionTimeoutError, ensureError } from 'n8n-workflow';
+import { DbConnectionTimeoutError } from 'n8n-workflow';
 
+import { DbConnectionMetrics } from './db-connection-metrics';
 import { DbConnectionMonitor } from './db-connection-monitor';
 import { DbConnectionOptions } from './db-connection-options';
+import { readPoolStats, type DbPoolStats } from './db-pool-stats';
 import { wrapMigration } from '../migrations/migration-helpers';
 import type { Migration } from '../migrations/migration-types';
 
@@ -32,6 +35,7 @@ export class DbConnection {
 		private readonly connectionOptions: DbConnectionOptions,
 		private readonly databaseConfig: DatabaseConfig,
 		private readonly logger: Logger,
+		private readonly dbConnectionMetrics: DbConnectionMetrics,
 	) {
 		this.dataSource = new DataSource(this.options);
 		Container.set(DataSource, this.dataSource);
@@ -40,6 +44,10 @@ export class DbConnection {
 	@Memoized
 	get options() {
 		return this.connectionOptions.getOptions();
+	}
+
+	getPoolStats(): DbPoolStats | undefined {
+		return readPoolStats(this.dataSource);
 	}
 
 	async init(): Promise<void> {
@@ -76,6 +84,7 @@ export class DbConnection {
 			this.databaseConfig,
 			this.logger,
 			this.errorReporter,
+			this.dbConnectionMetrics,
 			connectionState.connected,
 		);
 		this.monitor.start();

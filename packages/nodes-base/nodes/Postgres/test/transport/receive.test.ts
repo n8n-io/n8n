@@ -1,4 +1,4 @@
-import { applyLargeNumbersReceive } from '../../transport';
+import { applyLargeNumbersReceive, createReceiveHandler, parseDateToISO } from '../../transport';
 
 const BIGINT_TYPE_ID = 20;
 const NUMERIC_TYPE_ID = 1700;
@@ -74,5 +74,48 @@ describe('applyLargeNumbersReceive', () => {
 				result: { fields: [{ name: 'id', dataTypeID: BIGINT_TYPE_ID }] },
 			}),
 		).not.toThrow();
+	});
+});
+
+describe('createReceiveHandler', () => {
+	const bigintResult = { fields: [{ name: 'id', dataTypeID: BIGINT_TYPE_ID }] };
+
+	it('should convert large numbers when largeNumbersOutput is "numbers"', () => {
+		const handler = createReceiveHandler('numbers');
+		const data = [{ id: '9007199254740993' }];
+		handler({ data, result: bigintResult });
+		expect(data[0].id).toBe(9007199254740992);
+	});
+
+	it('should leave values untouched when largeNumbersOutput is not "numbers"', () => {
+		const handler = createReceiveHandler('text');
+		const data = [{ id: '9007199254740993' }];
+		handler({ data, result: bigintResult });
+		expect(data[0].id).toBe('9007199254740993');
+	});
+
+	it('should leave values untouched when largeNumbersOutput is undefined', () => {
+		const handler = createReceiveHandler(undefined);
+		const data = [{ id: '9007199254740993' }];
+		handler({ data, result: bigintResult });
+		expect(data[0].id).toBe('9007199254740993');
+	});
+});
+
+describe('parseDateToISO', () => {
+	it('should convert a UTC timestamp string to an ISO string', () => {
+		expect(parseDateToISO('2020-01-01 12:00:00+00')).toBe('2020-01-01T12:00:00.000Z');
+	});
+
+	it('should normalize a timezone-qualified string to an ISO string', () => {
+		expect(parseDateToISO('2020-01-01T05:30:00+05:30')).toBe('2020-01-01T00:00:00.000Z');
+	});
+
+	it('should return the original value when the date is invalid', () => {
+		expect(parseDateToISO('not-a-date')).toBe('not-a-date');
+	});
+
+	it('should return the original value for an empty string', () => {
+		expect(parseDateToISO('')).toBe('');
 	});
 });

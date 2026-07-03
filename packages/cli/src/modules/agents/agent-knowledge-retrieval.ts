@@ -32,7 +32,6 @@ const searchPatternSchema = z.string().trim().min(1).max(MAX_SEARCH_PATTERN_LENG
 const globPatternSchema = z.string().trim().min(1).max(MAX_GLOB_PATTERN_LENGTH);
 const searchOutputModeSchema = z.enum(['content', 'files_with_matches', 'count']);
 const searchContextFlagSchema = z.number().int().min(0).max(MAX_SEARCH_CONTEXT_LINES);
-const broadExtensionGlobPattern = /^(?:\*\*\/)?\*\.[A-Za-z0-9][A-Za-z0-9.-]*$/;
 
 export const searchKnowledgeInputSchema = z
 	.object({
@@ -73,7 +72,7 @@ export const searchKnowledgeInputSchema = z
 export const globKnowledgeFilesInputSchema = z
 	.object({
 		pattern: globPatternSchema.describe(
-			'Specific simple filename pattern matched against uploaded knowledge file names, not file contents. Supports * and ? wildcards and is case-insensitive by default. Use when the user gives title or filename clues, e.g. *query*configuration* or *semantic*competition*. Do not use catch-all, extension-only, absolute, or placeholder patterns.',
+			'Filename pattern matched against uploaded knowledge file names, not file contents. Supports * and ? wildcards and is case-insensitive by default. Use `*` to list every uploaded file, `*.pdf` to filter by extension, or name fragments like `*bert*` when the user gives title or filename clues.',
 		),
 		limit: z
 			.number()
@@ -83,6 +82,14 @@ export const globKnowledgeFilesInputSchema = z
 			.optional()
 			.describe(
 				'Optional maximum number of candidate files to return. Use a small value such as 5-20 and make the pattern more specific if hasMore is true.',
+			),
+		offset: z
+			.number()
+			.int()
+			.min(0)
+			.optional()
+			.describe(
+				'Optional number of matching files to skip, for paging. When hasMore is true, call again with offset = previous offset + number of returned files.',
 			),
 		caseSensitive: z
 			.boolean()
@@ -104,14 +111,6 @@ export const globKnowledgeFilesInputSchema = z
 				code: z.ZodIssueCode.custom,
 				path: ['pattern'],
 				message: 'Invalid knowledge file pattern',
-			});
-		}
-
-		if (input.pattern === '*' || broadExtensionGlobPattern.test(input.pattern)) {
-			ctx.addIssue({
-				code: z.ZodIssueCode.custom,
-				path: ['pattern'],
-				message: 'Use a narrower filename pattern than catch-all or extension-only patterns',
 			});
 		}
 	});
@@ -258,6 +257,7 @@ export type SearchKnowledgeResult =
 export interface GlobKnowledgeFilesResult {
 	files: AgentKnowledgeFileReference[];
 	limit: number;
+	offset: number;
 	hasMore: boolean;
 }
 

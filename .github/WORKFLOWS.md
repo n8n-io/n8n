@@ -195,11 +195,36 @@ workflow eval is the most expensive job in PR CI (LLM-bound builds). Running it
 on every push made cost untenable; firing on every review approval cascaded
 through the dismiss-stale-on-push → re-approve loop, which also blew up.
 The current trigger fires once per `opened` / `reopened` / `ready_for_review`
-on a PR touching the eval surface, and runs the `pr` test-case dataset (~6
-high-reliability, capability-diverse cases) instead of the full ~14. To re-run
-after pushing a fix, use the workflow's manual dispatch button — also lets you
-override `tier` to `full` for broader coverage on a specific PR. The lighter
-`test-evals-discovery.yml` still runs on every push as part of `ci-pull-requests.yml`.
+on a non-fork PR touching the eval surface, and runs the `pr` test-case dataset
+(~6 high-reliability, capability-diverse cases) instead of the full ~14. To
+re-run after pushing a fix, dispatch `ci-instance-ai-evals.yml` with the PR
+number (optionally `tier: full` for broader coverage) — results post back to
+the PR. The lighter `test-evals-discovery.yml` still runs on every push as part
+of `ci-pull-requests.yml`.
+
+**`ci-instance-ai-evals.yml` is the PR gate; `test-evals-instance-ai.yml` is
+the lab bench.** The gate deliberately exposes only PR re-runs. Anything that
+isn't PR gating — baselines, model experiments, arbitrary branch runs — goes
+through `test-evals-instance-ai.yml`'s own dispatch form ("Instance AI
+Evals: Experiments"): full knob set (branch, filter, tier, iterations, experiment-name,
+model), no per-PR cancellation (dispatches run in parallel, e.g. concurrent
+model-comparison arms), and SHA-keyed docker cache hits on master. Evals never
+run on fork PRs: the event trigger gates on `head.repo.fork`, and the `pr`
+re-run path refuses fork PRs in `resolve` (dispatched runs carry secrets).
+
+**MCP workflow evals (`ci-mcp-evals.yml`) are manual only (`workflow_dispatch`),
+never per-PR or scheduled.** They reuse the Instance AI verifier but build each
+workflow through the instance MCP server by driving the `claude` CLI, which adds
+Anthropic build cost on top of the verifier — too expensive to run
+automatically. The job boots `lanes` n8n containers on one runner and runs a
+single `eval:instance-ai --build-via-mcp` process: each case is built by driving
+its lane's own MCP server with `claude`, then verified on that same lane
+(work-stealing across lanes, capped per-lane). One process → one experiment in
+the isolated `mcp-workflow-evals` LangSmith dataset, so there is no shard/merge
+step. Dispatch from the Actions tab (set `experiment-name=mcp-baseline` to
+refresh the baseline, `filter=<slug>` to run a single case, or `lanes` to widen
+parallelism). See the `--build-via-mcp` section in
+`packages/@n8n/instance-ai/evaluations/README.md`.
 
 ### On PR Close/Merge
 

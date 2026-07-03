@@ -1,3 +1,4 @@
+import type { Mocked } from 'vitest';
 import type { CredentialProvider } from '@n8n/agents';
 import {
 	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
@@ -12,7 +13,7 @@ import type {
 } from '@n8n/backend-network';
 import type { SsrfProtectionConfig } from '@n8n/config';
 import type { User, WorkflowRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
 import type { CredentialTypes } from '@/credential-types';
@@ -36,10 +37,11 @@ import { BUILDER_TOOLS } from '../builder/builder-tool-names';
 import type { Agent } from '../entities/agent.entity';
 import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
+import type { AiService } from '@/services/ai.service';
 
 const ctx = {
 	resumeData: undefined,
-	suspend: jest.fn().mockResolvedValue(undefined as never),
+	suspend: vi.fn().mockResolvedValue(undefined as never),
 	parentTelemetry: undefined,
 };
 
@@ -63,7 +65,7 @@ function makeService() {
 		buildCustomTool: agentCustomToolsService.buildCustomTool,
 		listChatIntegrations: agentIntegrationPersistenceService.listChatIntegrations,
 		createSkill: agentSkillsService.createSkill,
-	} as jest.Mocked<BuilderPurposeServices>;
+	} as Mocked<BuilderPurposeServices>;
 	const secureRuntime = mock<AgentSecureRuntime>();
 	const workflowRepository = mock<WorkflowRepository>();
 	const agentsToolsService = mock<AgentsToolsService>();
@@ -72,6 +74,8 @@ function makeService() {
 	const mcpRegistryService = mock<McpRegistryService>();
 	const agentTaskService = mock<AgentTaskService>();
 	const agentRepository = mock<AgentRepository>();
+	const aiService = mock<AiService>();
+	aiService.isProxyEnabled.mockReturnValue(false);
 	const dynamicNodeParametersService = mock<DynamicNodeParametersService>();
 	const nodeTypes = mock<NodeTypes>();
 	agentsToolsService.getSharedTools.mockReturnValue([]);
@@ -80,7 +84,7 @@ function makeService() {
 	mcpRegistryService.getAll.mockResolvedValue([]);
 
 	const transport = mock<HttpTransport>();
-	transport.asCustomFetch.mockReturnValue(jest.fn() as unknown as CustomFetch);
+	transport.asCustomFetch.mockReturnValue(vi.fn() as unknown as CustomFetch);
 	const outboundHttp = mock<OutboundHttp>();
 	outboundHttp.transport.mockReturnValue(transport);
 
@@ -99,6 +103,7 @@ function makeService() {
 		credentialTypes,
 		agentTaskService,
 		agentRepository,
+		aiService,
 		outboundHttp,
 		dynamicNodeParametersService,
 		nodeTypes,
@@ -213,7 +218,7 @@ describe('AgentsBuilderToolsService', () => {
 	const user = mock<User>();
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('JSON config tools', () => {
@@ -337,7 +342,7 @@ describe('AgentsBuilderToolsService', () => {
 			const updatedConfig = { ...currentConfig, instructions: 'Updated instructions' };
 			const normalizedConfig = {
 				...updatedConfig,
-				config: { webSearch: { enabled: true } },
+				config: { webSearch: { enabled: true }, promptCaching: { enabled: true } },
 				providerTools: { 'anthropic.web_search': { maxUses: 5 } },
 			};
 			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
@@ -441,7 +446,7 @@ describe('AgentsBuilderToolsService', () => {
 			const updatedConfig = { ...currentConfig, instructions: 'Help with support tickets.' };
 			const normalizedConfig = {
 				...updatedConfig,
-				config: { webSearch: { enabled: true } },
+				config: { webSearch: { enabled: true }, promptCaching: { enabled: true } },
 				providerTools: { 'anthropic.web_search': { maxUses: 5 } },
 			};
 			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
@@ -603,7 +608,7 @@ describe('AgentsBuilderToolsService', () => {
 			};
 			const normalizedConfig = {
 				...updatedConfig,
-				config: { webSearch: { enabled: true } },
+				config: { webSearch: { enabled: true }, promptCaching: { enabled: true } },
 				providerTools: { 'anthropic.web_search': { maxUses: 5 } },
 			};
 			agentsService.findById.mockResolvedValue(makeAgent(currentConfig));
@@ -651,7 +656,7 @@ describe('AgentsBuilderToolsService', () => {
 			};
 			const normalizedConfig = {
 				...updatedConfig,
-				config: { webSearch: { enabled: true } },
+				config: { webSearch: { enabled: true }, promptCaching: { enabled: true } },
 				providerTools: { 'anthropic.web_search': { maxUses: 5 } },
 			};
 			agentsService.findById.mockResolvedValue(makeAgent(currentConfig));
@@ -693,7 +698,7 @@ describe('AgentsBuilderToolsService', () => {
 			};
 			const normalizedConfig = {
 				...updatedConfig,
-				config: { webSearch: { enabled: true } },
+				config: { webSearch: { enabled: true }, promptCaching: { enabled: true } },
 				providerTools: { 'anthropic.web_search': { maxUses: 5 } },
 			};
 			agentsService.findById.mockResolvedValue(makeAgent(currentConfig));
@@ -735,7 +740,7 @@ describe('AgentsBuilderToolsService', () => {
 			};
 			const normalizedConfig = {
 				...updatedConfig,
-				config: { webSearch: { enabled: true } },
+				config: { webSearch: { enabled: true }, promptCaching: { enabled: true } },
 				providerTools: { 'anthropic.web_search': { maxUses: 5 } },
 			};
 			agentsService.findById.mockResolvedValue(makeAgent(currentConfig));
@@ -776,7 +781,7 @@ describe('AgentsBuilderToolsService', () => {
 			};
 			const normalizedConfig = {
 				...updatedConfig,
-				config: { webSearch: { enabled: true } },
+				config: { webSearch: { enabled: true }, promptCaching: { enabled: true } },
 				providerTools: {
 					'openai.web_search': { externalWebAccess: true, searchContextSize: 'medium' },
 				},
@@ -809,6 +814,7 @@ describe('AgentsBuilderToolsService', () => {
 			};
 			const normalizedConfig = {
 				...updatedConfig,
+				config: { webSearch: { enabled: true }, promptCaching: { enabled: true } },
 				providerTools: { 'anthropic.web_search': { maxUses: 5 } },
 			};
 			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
@@ -845,6 +851,7 @@ describe('AgentsBuilderToolsService', () => {
 				...currentConfig,
 				model: 'anthropic/claude-sonnet-4-5',
 				credential: 'Anthropic Key',
+				config: { webSearch: { enabled: true }, promptCaching: { enabled: true } },
 				providerTools: { 'anthropic.web_search': { maxUses: 5 } },
 			};
 			agentsService.findById.mockResolvedValue(makeAgent(currentConfig));
@@ -980,7 +987,10 @@ describe('AgentsBuilderToolsService', () => {
 			};
 			const normalizedConfig: AgentJsonConfig = {
 				...currentConfig,
-				config: { webSearch: { enabled: true, provider: 'brave', credential: 'brave-key' } },
+				config: {
+					webSearch: { enabled: true, provider: 'brave', credential: 'brave-key' },
+					promptCaching: { enabled: true },
+				},
 			};
 			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
 			agentsService.updateConfig.mockResolvedValue({
@@ -1049,6 +1059,166 @@ describe('AgentsBuilderToolsService', () => {
 				versionId: 'v1',
 			});
 		});
+
+		describe('prompt caching defaults', () => {
+			it('write_config defaults prompt caching to enabled for a supported provider when omitted', async () => {
+				const { service, agentsService } = makeService();
+				const currentConfig = { ...baseConfig, integrations: [] };
+				// Explicitly disable web search so its own write-path normalizer
+				// doesn't add unrelated config/providerTools keys to the expectation.
+				const updatedConfig: AgentJsonConfig = {
+					...currentConfig,
+					config: { webSearch: { enabled: false } },
+				};
+				const normalizedConfig = {
+					...currentConfig,
+					config: { promptCaching: { enabled: true } },
+				};
+				agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
+				agentsService.updateConfig.mockResolvedValue({
+					config: normalizedConfig,
+					updatedAt: '2026-01-02T00:00:00.000Z',
+					versionId: 'v2',
+				});
+
+				await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
+					{
+						baseConfigHash: getAgentConfigHash(currentConfig),
+						json: JSON.stringify(updatedConfig),
+					},
+					ctx,
+				);
+
+				expect(agentsService.updateConfig).toHaveBeenCalledWith(
+					agentId,
+					projectId,
+					normalizedConfig,
+				);
+			});
+
+			it('write_config strips prompt caching when switching to an unsupported provider', async () => {
+				const { service, agentsService } = makeService();
+				const baseAgent = {
+					...baseConfig,
+					integrations: [],
+					config: { promptCaching: { enabled: true } },
+				};
+				const currentConfig = { ...baseAgent };
+				const updatedConfig: AgentJsonConfig = {
+					...currentConfig,
+					model: 'google/gemini-2.5-flash',
+					credential: 'Google Key',
+				};
+				const { config: _droppedConfig, ...normalizedConfig } = updatedConfig;
+				agentsService.findById.mockResolvedValue(makeAgent(baseAgent));
+				agentsService.updateConfig.mockResolvedValue({
+					config: normalizedConfig,
+					updatedAt: '2026-01-02T00:00:00.000Z',
+					versionId: 'v2',
+				});
+
+				await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
+					{
+						baseConfigHash: getAgentConfigHash(currentConfig),
+						json: JSON.stringify(updatedConfig),
+					},
+					ctx,
+				);
+
+				expect(agentsService.updateConfig).toHaveBeenCalledWith(
+					agentId,
+					projectId,
+					normalizedConfig,
+				);
+			});
+
+			it('write_config force-enables prompt caching even when the config says enabled: false', async () => {
+				const { service, agentsService } = makeService();
+				const baseAgent = {
+					...baseConfig,
+					model: 'openai/gpt-5',
+					credential: 'OpenAI Key',
+					integrations: [],
+					config: { promptCaching: { enabled: false } },
+				};
+				const currentConfig = { ...baseAgent };
+				const updatedConfig: AgentJsonConfig = {
+					...currentConfig,
+					model: 'anthropic/claude-sonnet-4-5',
+					credential: 'Anthropic Key',
+					config: { webSearch: { enabled: false }, promptCaching: { enabled: false } },
+				};
+				const normalizedConfig = {
+					...currentConfig,
+					model: 'anthropic/claude-sonnet-4-5',
+					credential: 'Anthropic Key',
+					config: { promptCaching: { enabled: true } },
+				};
+				agentsService.findById.mockResolvedValue(makeAgent(baseAgent));
+				agentsService.updateConfig.mockResolvedValue({
+					config: normalizedConfig,
+					updatedAt: '2026-01-02T00:00:00.000Z',
+					versionId: 'v2',
+				});
+
+				await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
+					{
+						baseConfigHash: getAgentConfigHash(currentConfig),
+						json: JSON.stringify(updatedConfig),
+					},
+					ctx,
+				);
+
+				expect(agentsService.updateConfig).toHaveBeenCalledWith(
+					agentId,
+					projectId,
+					normalizedConfig,
+				);
+			});
+
+			it('write_config preserves an explicit Anthropic ttl', async () => {
+				const { service, agentsService } = makeService();
+				const baseAgent = {
+					...baseConfig,
+					integrations: [],
+					config: { promptCaching: { enabled: true, anthropic: { ttl: '5m' as const } } },
+				};
+				const currentConfig = { ...baseAgent };
+				const updatedConfig: AgentJsonConfig = {
+					...currentConfig,
+					instructions: 'Updated instructions.',
+					config: {
+						webSearch: { enabled: false },
+						promptCaching: { enabled: true, anthropic: { ttl: '5m' } },
+					},
+				};
+				const normalizedConfig = {
+					...currentConfig,
+					instructions: 'Updated instructions.',
+					config: { promptCaching: { enabled: true, anthropic: { ttl: '5m' as const } } },
+				};
+				agentsService.findById.mockResolvedValue(makeAgent(baseAgent));
+				agentsService.updateConfig.mockResolvedValue({
+					config: normalizedConfig,
+					updatedAt: '2026-01-02T00:00:00.000Z',
+					versionId: 'v2',
+				});
+
+				await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
+					{
+						baseConfigHash: getAgentConfigHash(currentConfig),
+						json: JSON.stringify(updatedConfig),
+					},
+					ctx,
+				);
+
+				expect(agentsService.updateConfig).toHaveBeenCalledWith(
+					agentId,
+					projectId,
+					normalizedConfig,
+				);
+			});
+		});
 	});
 
 	describe('build_custom_tool tool', () => {
@@ -1058,7 +1228,7 @@ describe('AgentsBuilderToolsService', () => {
 				.shared.find((tool) => tool.name === BUILDER_TOOLS.BUILD_CUSTOM_TOOL)!;
 		}
 
-		it('stores a custom tool and returns the generated tool id', async () => {
+		it('stores a custom tool and returns the tool name as id', async () => {
 			const { service, agentsService, secureRuntime } = makeService();
 			const descriptor = {
 				name: 'seo_analyzer',
@@ -1075,7 +1245,7 @@ describe('AgentsBuilderToolsService', () => {
 			secureRuntime.describeToolSecurely.mockResolvedValue(descriptor);
 			agentsService.buildCustomTool.mockResolvedValue({
 				ok: true,
-				id: 'tool_0Ab9ZkLm3Pq7Xy2N',
+				id: 'seo_analyzer',
 				descriptor,
 			});
 
@@ -1092,7 +1262,7 @@ describe('AgentsBuilderToolsService', () => {
 			);
 			expect(result).toEqual({
 				ok: true,
-				id: 'tool_0Ab9ZkLm3Pq7Xy2N',
+				id: 'seo_analyzer',
 				descriptor,
 			});
 		});
@@ -1116,15 +1286,20 @@ describe('AgentsBuilderToolsService', () => {
 			expect(tool.description).toContain('when to load it');
 			expect(tool.description).toContain('ask the user clarifying');
 			expect(tool.description).toContain('Gotchas');
+			expect(tool.description).toContain('References are not automatically loaded');
+			expect(tool.description).toContain('instructions must say exactly when to load each one');
+			expect(tool.systemInstruction).toContain(
+				'explicit conditions for loading each referenced file',
+			);
 		});
 
-		it('puts the structured body template in the body parameter', () => {
+		it('puts the structured body template in the instructions parameter', () => {
 			const { service } = makeService();
 
 			const tool = getCreateSkillTool(service);
-			const bodySchema = (
-				tool.inputSchema as unknown as { shape: { body: { description?: string } } }
-			).shape.body;
+			const instructionsSchema = (
+				tool.inputSchema as unknown as { shape: { instructions: { description?: string } } }
+			).shape.instructions;
 
 			for (const heading of [
 				'## Overview',
@@ -1134,7 +1309,7 @@ describe('AgentsBuilderToolsService', () => {
 				'## Example',
 				'## Gotchas',
 			]) {
-				expect(bodySchema.description).toContain(heading);
+				expect(instructionsSchema.description).toContain(heading);
 			}
 		});
 
@@ -1154,7 +1329,7 @@ describe('AgentsBuilderToolsService', () => {
 				{
 					name: 'Summarize Meetings',
 					description: 'Use when summarizing meeting notes',
-					body: 'Extract decisions and action items.',
+					instructions: 'Extract decisions and action items.',
 				},
 				ctx,
 			);
@@ -1175,7 +1350,7 @@ describe('AgentsBuilderToolsService', () => {
 			});
 		});
 
-		it('enforces name and body size limits via the input schema', () => {
+		it('enforces name and instruction size limits via the input schema', () => {
 			const { service } = makeService();
 
 			const result = (
@@ -1185,7 +1360,7 @@ describe('AgentsBuilderToolsService', () => {
 			).safeParse({
 				name: 'a'.repeat(129),
 				description: 'Use when summarizing meeting notes',
-				body: 'a'.repeat(AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH + 1),
+				instructions: 'a'.repeat(AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH + 1),
 			});
 
 			expect(result.success).toBe(false);

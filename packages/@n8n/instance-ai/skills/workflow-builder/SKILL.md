@@ -61,10 +61,18 @@ with the same `filePath`. Do not send inline workflow code or string patches to
 
 ## Escalation
 
-If you are stuck or need information only a human can provide, use `ask-user`.
-Do not retry the same failing approach more than twice. Never re-ask a question
-the user has already answered, deferred, or skipped — treat a skip as permission
-to assume a sensible default or leave the detail for setup, and move on. Never
+Before the first successful `build-workflow` call, use `ask-user` only when a
+missing choice changes the workflow's intent or topology, such as which
+destination service to use. Do not ask for setup details after the service is
+known; recipients, accounts, resources, channels, credentials, and timezone
+belong in placeholders or unresolved `newCredential()` calls until post-build
+setup.
+
+After the first build, or when the workflow intent is genuinely ambiguous, use
+`ask-user` if you are stuck or need information only a human can provide. Do not
+retry the same failing approach more than twice. Never re-ask a question the
+user has already answered, deferred, or skipped — treat a skip as permission to
+assume a sensible default or leave the detail for setup, and move on. Never
 solicit API keys, tokens, passwords, or other secrets through `ask-user`; route
 credential collection through workflow setup or credential setup surfaces.
 
@@ -84,6 +92,12 @@ tokens, Slack channel IDs, Telegram chat IDs, or sample recipient lists. After
 the build, `workflows(action="setup")` opens an inline setup card in the AI
 Assistant panel so the user can fill placeholder values.
 
+Do not ask for missing setup values before the first successful build. Once the
+service or workflow shape is known, missing email recipients, notification
+targets, account labels or IDs, channel IDs, resource IDs, credentials,
+timezone, and similar node configuration belong in placeholders during the
+initial build; route them to setup only after the workflow is saved.
+
 Do not replace concrete user-provided or discoverable values with placeholders.
 If the prompt gives a real URL, channel name, table name, label, folder,
 database, or other literal selector, preserve that value and only use a
@@ -101,6 +115,39 @@ When mapping downstream fields from an OpenAI node, read
 `knowledge-base/reference/open-ai-output-shape.md` (v2+ text/response uses
 `$json.output[0].content[0].text`; v1 text/message uses `$json.message.content`
 — not `$json.text`).
+
+## Workflow-Level Error Workflows
+
+n8n has no global or instance-wide error workflow setting. Error workflows are
+assigned per target workflow through workflow settings:
+
+```ts
+export default workflow('target-workflow-id', 'Target Workflow')
+  .settings({ errorWorkflow: 'published-error-workflow-id' })
+  .add(triggerNode);
+```
+
+`settings.errorWorkflow` must be the real workflow ID of a separate published
+workflow whose published version contains an active Error Trigger node. Do not
+use a workflow name, placeholder, `activeVersionId`, local SDK id, or invented
+global identifier.
+
+Use the no-global-setting rule as implementation guidance. Mention it to the
+user only when they explicitly ask about, request, or reference global or
+instance-wide error workflow behavior.
+
+When creating an error workflow to attach to another workflow:
+
+1. Build the target workflow first, then ask whether the user wants an error
+   workflow for it. Do not create one before the user opts in.
+2. Build the error workflow as a separate workflow. It starts with an Error
+   Trigger and sends the notification the user requested.
+3. Publish the error workflow with `workflows(action="publish")` before setting
+   it on the target workflow. Publishing uses HITL approval.
+4. Patch the original target workflow's source and set
+   `.settings({ errorWorkflow: '<published-error-workflow-id>' })`, then call
+   `build-workflow` for the original workflow. This assigns the error workflow
+   only to that target workflow.
 
 ## Mandatory Process
 
@@ -135,6 +182,14 @@ When mapping downstream fields from an OpenAI node, read
 7. Write complete TypeScript SDK code to the workspace `filePath`, or read and
    selectively edit the existing `.workflow.ts` file for workflow changes. Do
    not put secrets in the source file.
+   Before building, decide whether verification needs branch fixtures. When a
+   live or nondeterministic upstream node (such as HTTP Request, search/list
+   lookups, weather feeds, or AI classifiers) feeds IF/Switch logic and
+   alternate branches need verification, declare representative `output`
+   fixtures on that upstream node now so `verify-built-workflow` can simulate it
+   and later `fixtureOverrides` can exercise those scenarios. Do not simulate
+   every external read by default; use this when branch coverage or deterministic
+   proof depends on controlling the upstream data.
 8. Call `build-workflow` with `filePath`.
    For planned build follow-ups where `buildTask.isSupportingWorkflow === true`,
    pass `isSupportingWorkflow: true`; that saved supporting workflow is the
@@ -157,7 +212,12 @@ When mapping downstream fields from an OpenAI node, read
     the real n8n `workflowId` on the first `build-workflow` call so the file is
     bound to the saved workflow. Never pass local SDK workflow IDs as n8n
     workflow IDs.
-12. Finish with a concise completion message only when the build, required
+12. After a successful direct `build-workflow` result, if the tool output
+    contains `postBuildFlow.required: true`, load `post-build-flow` exactly once
+    and follow it before verification, setup, error-workflow follow-up,
+    publishing, testing, or any final user-visible summary. Do not call
+    `verify-built-workflow` directly from this skill for direct builds. Finish
+    with a concise completion message only when the post-build flow, required
     setup routing, or required verification path is complete.
 
 Do not produce visible output until the final step, unless blocked.
@@ -166,9 +226,10 @@ Do not produce visible output until the final step, unless blocked.
 
 Use the current turn's higher-priority instructions to decide who verifies:
 
-- Direct existing-workflow edits: after `build-workflow` succeeds, follow the
-  orchestrator post-build flow. If `verificationReadiness.status === "ready"`,
-  call `verify-built-workflow` with the returned `workItemId` and `workflowId`.
+- Direct builds and existing-workflow edits: after `build-workflow` succeeds,
+  load `post-build-flow` when `postBuildFlow.required: true` is present in the
+  tool output. That skill owns verification, setup routing, error-workflow
+  opt-in, and final user-visible completion for direct builds.
 - Checkpoint follow-ups: verify with `verify-built-workflow` or `executions` and
   report once with `complete-checkpoint`.
 - Planned build follow-ups that explicitly say to stop after save: stop after a
@@ -198,9 +259,18 @@ save. The job is done when one of these is true:
 - A remediation guard says `shouldEdit: false`.
 - You are blocked after one repair attempt per unique failure signature.
 
+Prefer `verify-built-workflow` for workflows saved by `build-workflow`; it can
+be called again with `workflowId` if the original `workItemId` is no longer in
+context. For alternate deterministic scenarios, pass `fixtureOverrides` for
+nodes already classified as simulated. Use raw `executions(action="run")` only
+for ad hoc non-build verification or when the user explicitly wants a live run.
+If live connectivity also matters for a branch-controlled workflow, verify the
+fixture-backed branch coverage first and run a separate live smoke check, or
+state exactly which branch remains unverified.
+
 Trigger input shapes:
 
-- Manual or Schedule: use `executions(action="run")` when appropriate. Schedule
+- Manual or Schedule: use `verify-built-workflow` when appropriate. Schedule
   usually needs no `inputData`.
 - Form Trigger: pass a flat field map, for example
   `{ "name": "Alice", "email": "a@b.c" }`. Do not wrap in `formFields`.
@@ -261,6 +331,14 @@ resource:
 
 For resources that cannot be created via n8n, explain clearly what the user
 needs to create manually and what ID or value belongs in setup.
+
+If part of the requested workflow is infeasible (no node or API for it, a source
+that blocks automated access, an action that cannot be performed
+programmatically, or a third-party API whose region/use-case coverage you have
+not verified), do not quietly substitute a stand-in and present it as the
+requested capability. Flag the substitution as an approximation that may not
+work — and any unverified region/country support — and name that gap in the
+one-line completion summary so the result is not mistaken for the original ask.
 
 ## Compositional Workflows
 
@@ -340,6 +418,14 @@ guidance already loaded by the orchestrator when available. Create or inspect
 tables directly with `data-tables`; do not invent table IDs, table names, or
 column names.
 
+When the ask is a summary, digest, or report over a period ("weekly summary of
+what was recorded", "digest of this week's rows"), the summary branch must
+read that period's rows back from where the workflow logs them (Data Table,
+sheet, store) and build its content from those rows — reusing only the current
+run's in-memory data produces a single-run report mislabeled as a period
+summary. Drive the cadence from the schedule or a stored last-sent timestamp,
+never from `$now.weekday == N`, which silently no-ops on other days.
+
 ## SDK Code Rules
 
 - SDK builder code is a restricted subset of TypeScript that builds a static
@@ -374,19 +460,42 @@ column names.
   explicitly expects an object and the placeholder is the direct value of one
   field.
 - For unresolved resource-locator fields (values shaped like `{ __rl: true,
-  mode, value }`, such as Slack channel selectors), use the resource-locator
-  object shape instead of a raw `placeholder()` string. Pick the mode per the
-  resource-locator rule in Node Configuration Safety Rules: a `name`/`url`
-  mode with the known value when the locator offers one and you know the
-  resource by name; otherwise id mode with an empty value and a cached result
-  name, for example `{ __rl: true, mode: 'id', value: '',
-  cachedResultName: 'Select support channel to monitor' }`.
+  mode, value }`, such as Slack channel or Google Sheets document selectors),
+  use the resource-locator object shape instead of a raw `placeholder()`
+  string. Prefer the locator's picker (`list`) mode when it offers one, since
+  it gives the user a searchable picker at setup, with an empty value and a
+  `cachedResultName` hint, for example `{ __rl: true, mode: 'list', value: '',
+  cachedResultName: 'Select support channel to monitor' }`. A `list`-mode
+  `value` is an opaque ID picked from that list (a Slack channel ID, a numeric
+  sheet gid) — never place a human-readable name or title there; it cannot
+  resolve. When the user names the resource (a channel like `#team-updates`, a
+  sheet title, a board name) or you assumed a name (like `Sheet1`), use the
+  locator's `name` mode with that exact value if it has one — never leave the
+  locator empty when a name is known. Only leave `list` mode empty (as above)
+  when nothing about the resource is known. Not every locator
+  has a `list` mode; when it doesn't, use a `name`/`url` mode with the known
+  value, or `id` mode only when you have a concrete ID. Never use `id` with an
+  empty or placeholder value.
 - For single-execution nodes that receive many items but should run once, set
   `executeOnce: true`.
 - Whenever a node declares mock `output` for verification, include every field
   later referenced by `$json` expressions, including optional trigger fields
   used in filters (for example Slack `subtype`, `bot_id`, `text`, `user`, `ts`,
   `channel`). Missing optional fields make expression-path validation fail.
+- Match real cardinality in mock `output`. When a node's real response is a
+  collection (HTTP list endpoints, search results, a top-level array such as
+  Binance klines or a bare array of IDs), declare at least two items so
+  single-item assumptions like `$input.first()` break during verification
+  instead of on the user's first run. A single-item mock hides array-vs-single
+  bugs.
+- Match the real payload SHAPE in webhook trigger mocks. When a third-party
+  platform calls the webhook (voice agents, payment providers, messaging
+  platforms), that platform's documented envelope fixes the shape — mock it
+  faithfully instead of inventing a flattened body. Tool-call style webhooks
+  from AI/voice platforms nest arguments in an OpenAI-compatible envelope
+  (`body.message.toolCalls[0].function.arguments`), not at the body root and
+  not under `call.arguments`. Coding against an invented flat mock
+  self-verifies green, then every field parses empty on the first real call.
 - SDK node `output` mocks are raw `$json` objects. Do not wrap mock items in
   n8n runtime item envelopes like `{ json: { ... } }` unless downstream
   expressions intentionally read `$json.json.*`. Correct:
@@ -454,12 +563,25 @@ Follow these rules strictly when generating workflows:
      set `alwaysOutputData: true` on every node that can emit zero items before
      the effect — often both the HTTP fetch (empty `[]`) and the filter (all rows
      dropped). Not on the formatter or notifier; consumers that receive zero
-     items never run.
+     items never run. `alwaysOutputData` delivers an empty result as one item
+     with empty json (`{}`), not zero items — a downstream formatter or Code
+     node must treat empty-json items as zero rows (e.g. `const rows =
+     $input.all().filter(i => Object.keys(i.json).length > 0)`) before counting
+     or listing them.
    - A Filter or IF only selects items; it does not perform the requested side
      effect. If the user asks to archive, update, delete, send, or create only
      matching items, wire the corresponding action node on the matching path.
 5. Input and output indices are zero-based. `.input(0)` and `.output(0)` are the
    first input and output. `.input(1)` is the second input, not the first.
+6. When Code nodes score, classify, or gate on free-text human fields
+   (amounts, timeframes, priorities, intent), normalize before comparing —
+   humans write "≈ $12,500", "1.5k", "in three weeks", "ASAP". Strip currency
+   symbols, thousands separators, and whitespace before parsing numbers; take
+   the lower bound of ranges; match time units broadly (day/days, week/weeks,
+   month/months, with or without numerals) rather than exact phrases. A regex
+   that only matches one phrasing silently misclassifies every other phrasing
+   — there is no error to catch, just wrong routing. Give every classifier an
+   explicit fallback bucket for unparseable input.
 
 ## Tool Naming Rules
 
