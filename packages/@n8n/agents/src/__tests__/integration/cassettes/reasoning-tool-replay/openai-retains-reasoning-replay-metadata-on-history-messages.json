@@ -1,0 +1,169 @@
+[
+	{
+		"scope": "https://api.openai.com:443",
+		"method": "POST",
+		"path": "/v1/responses",
+		"body": {
+			"model": "gpt-5-mini",
+			"input": [
+				{
+					"role": "developer",
+					"content": "You are a calculator. When asked to add numbers, use the add_numbers tool. Be concise."
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "input_text",
+							"text": "What is 19 + 23? Use the add_numbers tool to compute it."
+						}
+					]
+				}
+			],
+			"reasoning": {
+				"effort": "low"
+			},
+			"tools": [
+				{
+					"type": "function",
+					"name": "add_numbers",
+					"description": "Add two numbers together and return the result",
+					"parameters": {
+						"type": "object",
+						"properties": {
+							"a": {
+								"type": "number",
+								"description": "First number"
+							},
+							"b": {
+								"type": "number",
+								"description": "Second number"
+							}
+						},
+						"required": ["a", "b"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"tool_choice": "auto"
+		},
+		"status": 200,
+		"response": "{\n  \"id\": \"resp_07e420e0838f0d4e006a479e28abf481a29ca5061645c8c948\",\n  \"object\": \"response\",\n  \"created_at\": 1783078440,\n  \"status\": \"completed\",\n  \"background\": false,\n  \"billing\": {\n    \"payer\": \"developer\"\n  },\n  \"completed_at\": 1783078441,\n  \"error\": null,\n  \"frequency_penalty\": 0.0,\n  \"incomplete_details\": null,\n  \"instructions\": null,\n  \"max_output_tokens\": null,\n  \"max_tool_calls\": null,\n  \"model\": \"gpt-5-mini-2025-08-07\",\n  \"moderation\": null,\n  \"output\": [\n    {\n      \"id\": \"rs_07e420e0838f0d4e006a479e29020c81a2a35fd623bc1b2954\",\n      \"type\": \"reasoning\",\n      \"content\": [],\n      \"summary\": []\n    },\n    {\n      \"id\": \"fc_07e420e0838f0d4e006a479e295d3081a2943957d688078ad5\",\n      \"type\": \"function_call\",\n      \"status\": \"completed\",\n      \"arguments\": \"{\\\"a\\\":19,\\\"b\\\":23}\",\n      \"call_id\": \"call_1VTNHFrv4BlyEjQpf5i3xtF9\",\n      \"name\": \"add_numbers\"\n    }\n  ],\n  \"parallel_tool_calls\": true,\n  \"presence_penalty\": 0.0,\n  \"previous_response_id\": null,\n  \"prompt_cache_key\": null,\n  \"prompt_cache_retention\": \"in_memory\",\n  \"reasoning\": {\n    \"context\": \"current_turn\",\n    \"effort\": \"low\",\n    \"mode\": \"standard\",\n    \"summary\": null\n  },\n  \"safety_identifier\": null,\n  \"service_tier\": \"default\",\n  \"store\": true,\n  \"temperature\": 1.0,\n  \"text\": {\n    \"format\": {\n      \"type\": \"text\"\n    },\n    \"verbosity\": \"medium\"\n  },\n  \"tool_choice\": \"auto\",\n  \"tool_usage\": {\n    \"image_gen\": {\n      \"input_tokens\": 0,\n      \"input_tokens_details\": {\n        \"image_tokens\": 0,\n        \"text_tokens\": 0\n      },\n      \"output_tokens\": 0,\n      \"output_tokens_details\": {\n        \"image_tokens\": 0,\n        \"text_tokens\": 0\n      },\n      \"total_tokens\": 0\n    },\n    \"web_search\": {\n      \"num_requests\": 0\n    }\n  },\n  \"tools\": [\n    {\n      \"type\": \"function\",\n      \"description\": \"Add two numbers together and return the result\",\n      \"name\": \"add_numbers\",\n      \"parameters\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"a\": {\n            \"type\": \"number\",\n            \"description\": \"First number\"\n          },\n          \"b\": {\n            \"type\": \"number\",\n            \"description\": \"Second number\"\n          }\n        },\n        \"required\": [\n          \"a\",\n          \"b\"\n        ],\n        \"additionalProperties\": false,\n        \"$schema\": \"http://json-schema.org/draft-07/schema#\"\n      },\n      \"strict\": true\n    }\n  ],\n  \"top_logprobs\": 0,\n  \"top_p\": 1.0,\n  \"truncation\": \"disabled\",\n  \"usage\": {\n    \"input_tokens\": 97,\n    \"input_tokens_details\": {\n      \"cached_tokens\": 0\n    },\n    \"output_tokens\": 60,\n    \"output_tokens_details\": {\n      \"reasoning_tokens\": 0\n    },\n    \"total_tokens\": 157\n  },\n  \"user\": null,\n  \"metadata\": {}\n}",
+		"rawHeaders": {
+			"access-control-expose-headers": "X-Request-ID, CF-Ray, CF-Ray",
+			"alt-svc": "h3=\":443\"; ma=86400",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a155941d8945b390-MAN",
+			"connection": "keep-alive",
+			"content-type": "application/json",
+			"date": "Fri, 03 Jul 2026 11:34:01 GMT",
+			"openai-organization": "n8n-1",
+			"openai-processing-ms": "995",
+			"openai-project": "proj_ZAEXttE86YHh0Pzmrnh9cBEf",
+			"openai-version": "2020-10-01",
+			"server": "cloudflare",
+			"set-cookie": "__cf_bm=Yeh9AJF_uFIw5zOWxFCwxIiv_TXND_7_KUNQYvHAdSs-1783078440.5648377-1.0.1.1-TNgfo_wl_lNqv3hhm21LvxNsv.DRVM5j31mol0SRjE90ZWde5hL_2hw3FA_OGeXZHywkCf4GzthdI0Ti7zYH956qCSSaMCu53vF58OU0WEZUjK0mAvgZ4ARtctHOZNcX; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.openai.com; Expires=Fri, 03 Jul 2026 12:04:01 GMT",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"x-content-type-options": "nosniff",
+			"x-ratelimit-limit-requests": "30000",
+			"x-ratelimit-limit-tokens": "180000000",
+			"x-ratelimit-remaining-requests": "29999",
+			"x-ratelimit-remaining-tokens": "180000000",
+			"x-ratelimit-reset-requests": "2ms",
+			"x-ratelimit-reset-tokens": "0s",
+			"x-request-id": "e32daded-4d59-4a7b-88b3-1ec29d479150"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.openai.com:443",
+		"method": "POST",
+		"path": "/v1/responses",
+		"body": {
+			"model": "gpt-5-mini",
+			"input": [
+				{
+					"role": "developer",
+					"content": "You are a calculator. When asked to add numbers, use the add_numbers tool. Be concise."
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "input_text",
+							"text": "What is 19 + 23? Use the add_numbers tool to compute it."
+						}
+					]
+				},
+				{
+					"type": "item_reference",
+					"id": "rs_07e420e0838f0d4e006a479e29020c81a2a35fd623bc1b2954"
+				},
+				{
+					"type": "item_reference",
+					"id": "fc_07e420e0838f0d4e006a479e295d3081a2943957d688078ad5"
+				},
+				{
+					"type": "function_call_output",
+					"call_id": "call_1VTNHFrv4BlyEjQpf5i3xtF9",
+					"output": "{\"result\":42}"
+				}
+			],
+			"reasoning": {
+				"effort": "low"
+			},
+			"tools": [
+				{
+					"type": "function",
+					"name": "add_numbers",
+					"description": "Add two numbers together and return the result",
+					"parameters": {
+						"type": "object",
+						"properties": {
+							"a": {
+								"type": "number",
+								"description": "First number"
+							},
+							"b": {
+								"type": "number",
+								"description": "Second number"
+							}
+						},
+						"required": ["a", "b"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"tool_choice": "auto"
+		},
+		"status": 200,
+		"response": "{\n  \"id\": \"resp_07e420e0838f0d4e006a479e29d64c81a29adfa1c59528c42c\",\n  \"object\": \"response\",\n  \"created_at\": 1783078441,\n  \"status\": \"completed\",\n  \"background\": false,\n  \"billing\": {\n    \"payer\": \"developer\"\n  },\n  \"completed_at\": 1783078442,\n  \"error\": null,\n  \"frequency_penalty\": 0.0,\n  \"incomplete_details\": null,\n  \"instructions\": null,\n  \"max_output_tokens\": null,\n  \"max_tool_calls\": null,\n  \"model\": \"gpt-5-mini-2025-08-07\",\n  \"moderation\": null,\n  \"output\": [\n    {\n      \"id\": \"msg_07e420e0838f0d4e006a479e2a291481a2b802be81186dada1\",\n      \"type\": \"message\",\n      \"status\": \"completed\",\n      \"content\": [\n        {\n          \"type\": \"output_text\",\n          \"annotations\": [],\n          \"logprobs\": [],\n          \"text\": \"42\"\n        }\n      ],\n      \"role\": \"assistant\"\n    }\n  ],\n  \"parallel_tool_calls\": true,\n  \"presence_penalty\": 0.0,\n  \"previous_response_id\": null,\n  \"prompt_cache_key\": null,\n  \"prompt_cache_retention\": \"in_memory\",\n  \"reasoning\": {\n    \"context\": \"current_turn\",\n    \"effort\": \"low\",\n    \"mode\": \"standard\",\n    \"summary\": null\n  },\n  \"safety_identifier\": null,\n  \"service_tier\": \"default\",\n  \"store\": true,\n  \"temperature\": 1.0,\n  \"text\": {\n    \"format\": {\n      \"type\": \"text\"\n    },\n    \"verbosity\": \"medium\"\n  },\n  \"tool_choice\": \"auto\",\n  \"tool_usage\": {\n    \"image_gen\": {\n      \"input_tokens\": 0,\n      \"input_tokens_details\": {\n        \"image_tokens\": 0,\n        \"text_tokens\": 0\n      },\n      \"output_tokens\": 0,\n      \"output_tokens_details\": {\n        \"image_tokens\": 0,\n        \"text_tokens\": 0\n      },\n      \"total_tokens\": 0\n    },\n    \"web_search\": {\n      \"num_requests\": 0\n    }\n  },\n  \"tools\": [\n    {\n      \"type\": \"function\",\n      \"description\": \"Add two numbers together and return the result\",\n      \"name\": \"add_numbers\",\n      \"parameters\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"a\": {\n            \"type\": \"number\",\n            \"description\": \"First number\"\n          },\n          \"b\": {\n            \"type\": \"number\",\n            \"description\": \"Second number\"\n          }\n        },\n        \"required\": [\n          \"a\",\n          \"b\"\n        ],\n        \"additionalProperties\": false,\n        \"$schema\": \"http://json-schema.org/draft-07/schema#\"\n      },\n      \"strict\": true\n    }\n  ],\n  \"top_logprobs\": 0,\n  \"top_p\": 1.0,\n  \"truncation\": \"disabled\",\n  \"usage\": {\n    \"input_tokens\": 173,\n    \"input_tokens_details\": {\n      \"cached_tokens\": 0\n    },\n    \"output_tokens\": 5,\n    \"output_tokens_details\": {\n      \"reasoning_tokens\": 0\n    },\n    \"total_tokens\": 178\n  },\n  \"user\": null,\n  \"metadata\": {}\n}",
+		"rawHeaders": {
+			"access-control-expose-headers": "X-Request-ID, CF-Ray, CF-Ray",
+			"alt-svc": "h3=\":443\"; ma=86400",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a1559424ffbdb390-MAN",
+			"connection": "keep-alive",
+			"content-type": "application/json",
+			"date": "Fri, 03 Jul 2026 11:34:02 GMT",
+			"openai-organization": "n8n-1",
+			"openai-processing-ms": "521",
+			"openai-project": "proj_ZAEXttE86YHh0Pzmrnh9cBEf",
+			"openai-version": "2020-10-01",
+			"server": "cloudflare",
+			"set-cookie": "__cf_bm=_bR3cvKuSkCIBJu0TMkldqhzj6zcAyDprEglrPl_G6s-1783078441.7513945-1.0.1.1-B80ZUQLnVPsZyHqEwJlXjb.toy.ULrMCHbTv7._54UUUWCxEcpy5nBouh48DUImMh9GEhV1QTIc0uWxFWTKlyWUa_K2kKHnak_6DpPHJA2jU_AjlTf.DtG2MA9tz_K5D; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.openai.com; Expires=Fri, 03 Jul 2026 12:04:02 GMT",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"x-content-type-options": "nosniff",
+			"x-ratelimit-limit-requests": "30000",
+			"x-ratelimit-limit-tokens": "180000000",
+			"x-ratelimit-remaining-requests": "29999",
+			"x-ratelimit-remaining-tokens": "180000000",
+			"x-ratelimit-reset-requests": "2ms",
+			"x-ratelimit-reset-tokens": "0s",
+			"x-request-id": "74dcf934-df64-4bb8-bf65-9332b43b5ed7"
+		},
+		"responseIsBinary": false
+	}
+]

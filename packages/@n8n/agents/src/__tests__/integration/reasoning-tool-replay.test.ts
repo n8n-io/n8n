@@ -50,6 +50,10 @@ for (const reasoningCase of REASONING_PROVIDER_CASES) {
 			);
 			const chunks = await collectStreamChunks(stream);
 
+			// Provider rejections surface as error chunks, not thrown errors —
+			// assert on them first so a replay failure names its actual cause.
+			expect(chunksOfType(chunks, 'error')).toEqual([]);
+
 			const toolResults = chunksOfType(chunks, 'tool-result').filter(
 				(chunk) => chunk.toolName === 'add_numbers',
 			);

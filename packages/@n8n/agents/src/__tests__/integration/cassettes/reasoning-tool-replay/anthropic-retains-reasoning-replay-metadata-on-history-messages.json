@@ -1,0 +1,202 @@
+[
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-sonnet-4-5",
+			"max_tokens": 64000,
+			"thinking": {
+				"type": "enabled",
+				"budget_tokens": 5000
+			},
+			"system": [
+				{
+					"type": "text",
+					"text": "You are a calculator. When asked to add numbers, use the add_numbers tool. Be concise."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "What is 19 + 23? Use the add_numbers tool to compute it."
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "add_numbers",
+					"description": "Add two numbers together and return the result",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"a": {
+								"type": "number",
+								"description": "First number"
+							},
+							"b": {
+								"type": "number",
+								"description": "Second number"
+							}
+						},
+						"required": ["a", "b"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			}
+		},
+		"status": 200,
+		"response": "{\"model\":\"claude-sonnet-4-5-20250929\",\"id\":\"msg_01PtHEFkbrpspqv3gfzRR4js\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"thinking\",\"thinking\":\"The user wants me to add 19 and 23 using the add_numbers tool. I have both numbers, so I can make the function call.\",\"signature\":\"EsUCCm4IDxgCKkAKonPxhNZ2K1Lq/Ao3o9kKhzzFtU78z7qxkWHrcWtwZ+WQPQCLUM+HWnzDOdD3ZhyZ1gxvyLBNOY34Qx1lb0DwMhpjbGF1ZGUtc29ubmV0LTQtNS0yMDI1MDkyOTgAQgh0aGlua2luZxIM1PF6pahr/IVgdegyGgxgngY0KLAjfAKIxcMiMLkdYYSM7AxniVAJ90dmGWVDJ5lHN5LGjTnj0VamQe4LjPdFloJeUUOmD7HwZ511RSqEAdDplyekCVbTjQet4WgiiO3PW+7oOg1kdX71ggaiL5sHNGE3b/tfQTAPuFpMKxo/PhAYL7GxfZzjcD8DjworjgpBCs/Sv/xQBqkcDb9Ys2QG6cREUiYl7U8m+BDPog4RjML0x8/8gFiGcQa2fKTMtSi5JxmFTvH8k9+8chT0dW5ejFm+ExgB\"},{\"type\":\"tool_use\",\"id\":\"toolu_019U5FCwqZD6s7JNK4H2X8J6\",\"name\":\"add_numbers\",\"input\":{\"a\":19,\"b\":23},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":685,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":111,\"output_tokens_details\":{\"thinking_tokens\":38},\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "22500000",
+			"anthropic-ratelimit-input-tokens-remaining": "22500000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-07-03T11:33:54Z",
+			"anthropic-ratelimit-output-tokens-limit": "4500000",
+			"anthropic-ratelimit-output-tokens-remaining": "4500000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-07-03T11:33:55Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-07-03T11:33:54Z",
+			"anthropic-ratelimit-tokens-limit": "27000000",
+			"anthropic-ratelimit-tokens-remaining": "27000000",
+			"anthropic-ratelimit-tokens-reset": "2026-07-03T11:33:54Z",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a15593f3edc2cc9d-MAN",
+			"connection": "keep-alive",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "application/json",
+			"date": "Fri, 03 Jul 2026 11:33:56 GMT",
+			"request-id": "req_011Ccf3zjZGQeBa4AydChmQ5",
+			"server": "cloudflare",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-d10904a64a726f0297c15467e314c67f-d8bf0a8278f5627f-01",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-sonnet-4-5",
+			"max_tokens": 64000,
+			"thinking": {
+				"type": "enabled",
+				"budget_tokens": 5000
+			},
+			"system": [
+				{
+					"type": "text",
+					"text": "You are a calculator. When asked to add numbers, use the add_numbers tool. Be concise."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "What is 19 + 23? Use the add_numbers tool to compute it."
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "thinking",
+							"thinking": "The user wants me to add 19 and 23 using the add_numbers tool. I have both numbers, so I can make the function call.",
+							"signature": "EsUCCm4IDxgCKkAKonPxhNZ2K1Lq/Ao3o9kKhzzFtU78z7qxkWHrcWtwZ+WQPQCLUM+HWnzDOdD3ZhyZ1gxvyLBNOY34Qx1lb0DwMhpjbGF1ZGUtc29ubmV0LTQtNS0yMDI1MDkyOTgAQgh0aGlua2luZxIM1PF6pahr/IVgdegyGgxgngY0KLAjfAKIxcMiMLkdYYSM7AxniVAJ90dmGWVDJ5lHN5LGjTnj0VamQe4LjPdFloJeUUOmD7HwZ511RSqEAdDplyekCVbTjQet4WgiiO3PW+7oOg1kdX71ggaiL5sHNGE3b/tfQTAPuFpMKxo/PhAYL7GxfZzjcD8DjworjgpBCs/Sv/xQBqkcDb9Ys2QG6cREUiYl7U8m+BDPog4RjML0x8/8gFiGcQa2fKTMtSi5JxmFTvH8k9+8chT0dW5ejFm+ExgB"
+						},
+						{
+							"type": "tool_use",
+							"id": "toolu_019U5FCwqZD6s7JNK4H2X8J6",
+							"name": "add_numbers",
+							"input": {
+								"a": 19,
+								"b": 23
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_019U5FCwqZD6s7JNK4H2X8J6",
+							"content": "{\"result\":42}"
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "add_numbers",
+					"description": "Add two numbers together and return the result",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"a": {
+								"type": "number",
+								"description": "First number"
+							},
+							"b": {
+								"type": "number",
+								"description": "Second number"
+							}
+						},
+						"required": ["a", "b"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			}
+		},
+		"status": 200,
+		"response": "{\"model\":\"claude-sonnet-4-5-20250929\",\"id\":\"msg_01W48q7sy9hFuituJQRCxkfZ\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"19 + 23 = 42\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":812,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":12,\"output_tokens_details\":{\"thinking_tokens\":0},\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "22500000",
+			"anthropic-ratelimit-input-tokens-remaining": "22500000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-07-03T11:33:57Z",
+			"anthropic-ratelimit-output-tokens-limit": "4500000",
+			"anthropic-ratelimit-output-tokens-remaining": "4500000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-07-03T11:33:57Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19998",
+			"anthropic-ratelimit-requests-reset": "2026-07-03T11:33:56Z",
+			"anthropic-ratelimit-tokens-limit": "27000000",
+			"anthropic-ratelimit-tokens-remaining": "27000000",
+			"anthropic-ratelimit-tokens-reset": "2026-07-03T11:33:57Z",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a1559401e96bcc9d-MAN",
+			"connection": "keep-alive",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "application/json",
+			"date": "Fri, 03 Jul 2026 11:33:57 GMT",
+			"request-id": "req_011Ccf3zuHuQdP2kKjMk7R1H",
+			"server": "cloudflare",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-082ca410680ff9248dc4c557cb258195-1207aa36fea6b39e-01",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	}
+]
