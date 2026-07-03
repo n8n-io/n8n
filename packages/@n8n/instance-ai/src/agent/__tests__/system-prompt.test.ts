@@ -210,7 +210,7 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toContain(
 				'never call `data-tables` or `parse-file` without loading `data-table-manager` first',
 			);
-			expect(prompt).toContain('Do not call `create-tasks` or `delegate`');
+			expect(prompt).toContain('Do not call `create-tasks`');
 		});
 
 		it('loads data-table-manager before workflow-builder when tables are involved', () => {
@@ -280,7 +280,7 @@ describe('getSystemPrompt', () => {
 
 			expect(prompt).toContain('needsBrowserSetup=true');
 			expect(prompt).toContain('credential-setup-with-computer-use');
-			expect(prompt).toMatch(/use Computer Use `browser_\*` tools directly \(not `delegate`\)/);
+			expect(prompt).toMatch(/use Computer Use `browser_\*` tools directly/);
 		});
 	});
 

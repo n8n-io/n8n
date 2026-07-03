@@ -271,7 +271,6 @@ function createStubOrchestrationContext(
 		userId: opts.context.userId,
 		orchestratorAgentId: 'n8n-instance-agent',
 		modelId: opts.modelId,
-		subAgentMaxSteps: 10,
 		eventBus: opts.eventBus,
 		logger: silentLogger(),
 		domainTools,

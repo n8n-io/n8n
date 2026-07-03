@@ -1,6 +1,6 @@
 import { DEFAULT_INSTANCE_AI_PERMISSIONS } from '@n8n/api-types';
 
-import type { InstanceAiContext, PlannedTaskKind } from '../../types';
+import type { InstanceAiContext } from '../../types';
 import { applyPlannedTaskPermissions } from '../planned-task-permissions';
 
 function makeContext(
@@ -51,15 +51,6 @@ describe('applyPlannedTaskPermissions', () => {
 
 			expect(result.permissions?.fetchUrl).toBe('always_allow');
 			expect(result.permissions?.createWorkflow).toBe('always_allow');
-		});
-	});
-
-	describe.each<PlannedTaskKind>(['delegate'])('%s', (kind) => {
-		it('should return the original context unchanged', () => {
-			const context = makeContext();
-			const result = applyPlannedTaskPermissions(context, kind);
-
-			expect(result).toBe(context);
 		});
 	});
 

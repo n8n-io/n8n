@@ -28,8 +28,8 @@ saved workflow changes.
 
 This skill runs inside the orchestrator — no separate builder agent, handoff,
 or tool allowlist; use the orchestrator and workspace file tools already
-available this turn (plus any relevant tool-search/MCP tool). Never call
-`delegate` to build, patch, fix, verify, or update workflows.
+available this turn (plus any relevant tool-search/MCP tool). Workflow building
+runs in the orchestrator with this skill and `build-workflow`.
 
 For new single-workflow requests, build directly with
 `build-workflow({ filePath, sourceCode })` — the complete TypeScript SDK
@@ -297,7 +297,7 @@ decompose into supporting sub-workflows (`executeWorkflowTrigger` v1.1 with an
 explicit input schema, built with `isSupportingWorkflow: true`) referenced from
 the main workflow's `executeWorkflow` node (`source: 'database'`, real returned
 `workflowId`), main workflow saved last. This is part of the approved build
-task — not a reason to call `delegate` or create a new plan, and simple
+task — not a reason to create a new plan, and simple
 workflows stay in one workflow. Before writing multi-workflow code, load this
 skill's `references/compositional-workflows.md` linked file for the required
 steps and SDK examples.

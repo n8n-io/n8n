@@ -15,6 +15,4 @@ export const MAX_STEPS = {
 	EVAL_SETUP: 30,
 	/** Research sub-agent — web search and synthesis. */
 	RESEARCH: 25,
-	/** Generic delegate fallback when no specific limit is configured. */
-	DELEGATE_FALLBACK: 10,
 } as const;
