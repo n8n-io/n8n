@@ -13,6 +13,8 @@ import { getParentNodes, mapConnectionsByDestination } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 import {
+	AI_GATEWAY_CREDENTIAL,
+	N8N_CONNECT_DISPLAY_NAME,
 	assignCredentialToNode,
 	isAiGatewayManagedCredential,
 	resolveCredentialForApply,
@@ -290,6 +292,12 @@ async function resolveCredentialTypes(
 interface CredentialState {
 	existingCredentials: Array<{ id: string; name: string }>;
 	isAutoApplied: boolean;
+	/**
+	 * True when the auto-apply picked the AI Gateway managed option instead
+	 * of a stored credential. Downstream writes `AI_GATEWAY_CREDENTIAL` to
+	 * the node rather than an `{ id, name }` stored reference.
+	 */
+	autoAppliedGateway?: true;
 	credentialTestResult?: { success: boolean; message?: string };
 }
 
@@ -327,11 +335,37 @@ async function resolveCredentialState(
 	// Only auto-apply when there is exactly one candidate. With multiple
 	// candidates, picking the first is a silent guess — surface the list
 	// so the setup wizard can prompt the user to choose.
-	const isAutoApplied = !hasExistingOnNode && existingCredentials.length === 1;
+	let isAutoApplied = !hasExistingOnNode && existingCredentials.length === 1;
+	let autoAppliedGateway: true | undefined;
+
+	// When no stored credential of this type exists and the AI Gateway covers
+	// the type, auto-apply the managed option. Explicit user choices (either
+	// a stored credential ID on the node or `AI_GATEWAY_MANAGED_TAG`) win
+	// via `hasExistingOnNode` above.
+	if (
+		!hasExistingOnNode &&
+		existingCredentials.length === 0 &&
+		context.credentialService.isAiGatewayCredentialType
+	) {
+		const gatewaySupported = await context.credentialService
+			.isAiGatewayCredentialType(credentialType)
+			.catch(() => false);
+		if (gatewaySupported) {
+			isAutoApplied = true;
+			autoAppliedGateway = true;
+		}
+	}
 
 	const credToTest =
-		existingCredentialId ?? (isAutoApplied ? existingCredentials[0]?.id : undefined);
-	if (!credToTest) return { existingCredentials, isAutoApplied };
+		existingCredentialId ??
+		(isAutoApplied && !autoAppliedGateway ? existingCredentials[0]?.id : undefined);
+	if (!credToTest) {
+		return {
+			existingCredentials,
+			isAutoApplied,
+			...(autoAppliedGateway ? { autoAppliedGateway } : {}),
+		};
+	}
 
 	let testabilityPromise = cache?.testability.get(credentialType);
 	if (!testabilityPromise) {
@@ -363,11 +397,23 @@ function buildRequestCredentials(
 	isAutoApplied: boolean,
 	credentialType: string | undefined,
 	existingCredentials: Array<{ id: string; name: string }>,
+	autoAppliedGateway: true | undefined,
 ): { credentials?: RequestNodeCredentials } {
-	const autoCredential =
-		isAutoApplied && credentialType && existingCredentials.length > 0
-			? { [credentialType]: { id: existingCredentials[0].id, name: existingCredentials[0].name } }
-			: undefined;
+	let autoCredential: Record<string, SetupNodeCredential> | undefined;
+	if (isAutoApplied && credentialType) {
+		if (autoAppliedGateway) {
+			autoCredential = {
+				[credentialType]: { ...AI_GATEWAY_CREDENTIAL, name: N8N_CONNECT_DISPLAY_NAME },
+			};
+		} else if (existingCredentials.length > 0) {
+			autoCredential = {
+				[credentialType]: {
+					id: existingCredentials[0].id,
+					name: existingCredentials[0].name,
+				},
+			};
+		}
+	}
 
 	if (nodeCredentials && Object.keys(nodeCredentials).length > 0) {
 		return {
@@ -400,10 +446,17 @@ async function resolveAppliedCredentialState(
 	}
 	const state = await resolveCredentialState(context, node, credentialType, cache, workflowId);
 	if (state.isAutoApplied && nodeCredentials) {
-		nodeCredentials[credentialType] = {
-			id: state.existingCredentials[0].id,
-			name: state.existingCredentials[0].name,
-		};
+		if (state.autoAppliedGateway) {
+			nodeCredentials[credentialType] = {
+				...AI_GATEWAY_CREDENTIAL,
+				name: N8N_CONNECT_DISPLAY_NAME,
+			};
+		} else {
+			nodeCredentials[credentialType] = {
+				id: state.existingCredentials[0].id,
+				name: state.existingCredentials[0].name,
+			};
+		}
 	}
 	return state;
 }
@@ -445,7 +498,7 @@ async function buildRequestForCredentialType(
 			)
 		: undefined;
 
-	const { existingCredentials, isAutoApplied, credentialTestResult } =
+	const { existingCredentials, isAutoApplied, credentialTestResult, autoAppliedGateway } =
 		await resolveAppliedCredentialState(
 			context,
 			node,
@@ -488,6 +541,7 @@ async function buildRequestForCredentialType(
 				isAutoApplied,
 				credentialType,
 				existingCredentials,
+				autoAppliedGateway,
 			),
 		},
 		...(credentialType ? { credentialType } : {}),

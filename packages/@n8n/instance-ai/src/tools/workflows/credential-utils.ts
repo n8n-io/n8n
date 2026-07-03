@@ -9,6 +9,13 @@ export interface AiGatewayCredential {
 	__aiGatewayManaged: true;
 }
 
+/**
+ * Human-visible name for the AI Gateway managed credential option. Matches
+ * the frontend i18n key `aiGateway.credentialMode.n8nConnect.title` so the
+ * setup wizard, credential picker, and chat surface the same label.
+ */
+export const N8N_CONNECT_DISPLAY_NAME = 'n8n Connect';
+
 /** Canonical AI Gateway-managed credential written to workflow nodes at apply time. */
 export const AI_GATEWAY_CREDENTIAL: AiGatewayCredential = {
 	id: null,

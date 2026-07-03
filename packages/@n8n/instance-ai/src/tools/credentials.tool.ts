@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
 import { CREDENTIALS_TOOL_ID } from './tool-ids';
+import { N8N_CONNECT_DISPLAY_NAME } from './workflows/credential-utils';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -284,7 +285,7 @@ async function handleList(context: InstanceAiContext, input: Extract<Input, { ac
 			if (supported) {
 				items.push({
 					id: null,
-					name: 'n8n Connect (managed)',
+					name: N8N_CONNECT_DISPLAY_NAME,
 					type: input.type,
 					__aiGatewayManaged: true,
 				});

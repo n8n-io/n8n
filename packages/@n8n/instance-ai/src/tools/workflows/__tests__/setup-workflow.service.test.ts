@@ -395,6 +395,71 @@ describe('buildSetupRequests', () => {
 		expect(result[0].isAutoApplied).toBeFalsy();
 	});
 
+	it('auto-applies the n8n Connect credential when no stored one exists and the type is gateway-supported', async () => {
+		(context.credentialService.list as Mock).mockResolvedValue([]);
+		(
+			context.credentialService as unknown as { isAiGatewayCredentialType: Mock }
+		).isAiGatewayCredentialType = vi.fn().mockResolvedValue(true);
+
+		const node = makeNode();
+		const result = await buildSetupRequests(context, node);
+
+		expect(result[0].isAutoApplied).toBe(true);
+		expect(result[0].node.credentials?.slackApi).toEqual({
+			id: null,
+			name: 'n8n Connect',
+			__aiGatewayManaged: true,
+		});
+	});
+
+	it('does not fire the n8n Connect auto-apply when the type is not gateway-supported', async () => {
+		(context.credentialService.list as Mock).mockResolvedValue([]);
+		(
+			context.credentialService as unknown as { isAiGatewayCredentialType: Mock }
+		).isAiGatewayCredentialType = vi.fn().mockResolvedValue(false);
+
+		const node = makeNode();
+		const result = await buildSetupRequests(context, node);
+
+		expect(result[0].isAutoApplied).toBeFalsy();
+		expect(result[0].node.credentials?.slackApi).toBeUndefined();
+	});
+
+	it('prefers a stored credential over the n8n Connect auto-apply when both are available', async () => {
+		(context.credentialService.list as Mock).mockResolvedValue([
+			{ id: 'cred-1', name: 'My Slack', updatedAt: '2025-01-01T00:00:00.000Z' },
+		]);
+		(
+			context.credentialService as unknown as { isAiGatewayCredentialType: Mock }
+		).isAiGatewayCredentialType = vi.fn().mockResolvedValue(true);
+
+		const node = makeNode();
+		const result = await buildSetupRequests(context, node);
+
+		expect(result[0].isAutoApplied).toBe(true);
+		expect(result[0].existingCredentials?.[0].id).toBe('cred-1');
+	});
+
+	it('respects an explicit stored credential on the node even when gateway supports the type', async () => {
+		(context.credentialService.list as Mock).mockResolvedValue([
+			{ id: 'cred-1', name: 'My Slack', updatedAt: '2025-01-01T00:00:00.000Z' },
+		]);
+		(
+			context.credentialService as unknown as { isAiGatewayCredentialType: Mock }
+		).isAiGatewayCredentialType = vi.fn().mockResolvedValue(true);
+
+		const node = makeNode({
+			credentials: { slackApi: { id: 'cred-1', name: 'My Slack' } },
+		});
+		const result = await buildSetupRequests(context, node);
+
+		expect(result[0].isAutoApplied).toBeFalsy();
+		expect(result[0].node.credentials?.slackApi).toEqual({
+			id: 'cred-1',
+			name: 'My Slack',
+		});
+	});
+
 	it('uses credential cache to avoid duplicate fetches', async () => {
 		(context.credentialService.list as Mock).mockResolvedValue([
 			{ id: 'cred-1', name: 'My Slack', updatedAt: '2025-01-01T00:00:00.000Z' },
