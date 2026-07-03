@@ -198,6 +198,14 @@ describe('redactText', () => {
 			expect(text).toBe('https://api.telegram.org/REDACTED/sendMessage');
 		});
 
+		it('redacts a long letters-only opaque path segment, keeping readable slugs', () => {
+			const { text } = redactText(
+				'https://hooks.example.com/services/abcdefghijklmnopqrstuvwxyz/keep-this-slug',
+				opts,
+			);
+			expect(text).toBe('https://hooks.example.com/services/REDACTED/keep-this-slug');
+		});
+
 		it('redacts every query value even when another pattern also matches inside the URL', () => {
 			// email runs after url; before the reorder it planted `[REDACTED]` whose
 			// `]` clipped the url match and let `sig` leak in cleartext.

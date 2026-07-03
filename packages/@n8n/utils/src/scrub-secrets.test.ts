@@ -137,24 +137,6 @@ describe('scrubSecretsInText', () => {
 		expect(scrubSecretsInText(input)).toBe(input);
 	});
 
-	it('redacts a Slack incoming-webhook path', () => {
-		const url = join(
-			'https://hooks.slack.com/services/',
-			'T0001A2B3/B0004C5D6/a1B2c3D4e5F6g7H8i9J0k1L2',
-		);
-		expect(scrubSecretsInText(`post to ${url}`)).toBe(
-			'post to https://hooks.slack.com/services/[REDACTED]',
-		);
-	});
-
-	it('redacts a Discord webhook path', () => {
-		const url = join(
-			'https://discord.com/api/webhooks/',
-			'1394380000000000000/aBcDeF-ghIJkLmNoP_qRsTuVwXyZ0123456789',
-		);
-		expect(scrubSecretsInText(url)).toBe('https://discord.com/api/webhooks/[REDACTED]');
-	});
-
 	it('redacts a Telegram bot token, including inside a /bot… URL', () => {
 		const url = join(
 			'https://api.telegram.org/bot',

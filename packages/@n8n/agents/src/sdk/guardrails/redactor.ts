@@ -79,11 +79,16 @@ export function redactText(input: string, opts: RedactionOptions = {}): Redactio
 	return { text, matches };
 }
 
-/** True for a path segment that looks like an embedded token — Slack/Discord
- *  webhook secrets and Telegram bot tokens live in the path. Conservative:
- *  plain words and digit-only ids are kept. */
+/** True for a path segment that looks like an embedded token — webhook-style
+ *  services (Slack/Discord/Telegram, …) carry their secret as a path segment.
+ *  Shape-based on purpose: per-service URL grammars don't scale across hundreds
+ *  of integrations. Conservative: words, readable slugs and digit-only ids are
+ *  kept. */
 function isTokenLikeSegment(segment: string): boolean {
-	return segment.length >= 16 && /[A-Za-z]/.test(segment) && /\d/.test(segment);
+	if (segment.length >= 16 && /[A-Za-z]/.test(segment) && /\d/.test(segment)) return true;
+	// Long single-class opaque blob (e.g. a letters-only token) — real words stay
+	// shorter and readable slugs contain separators.
+	return segment.length >= 24 && /^[A-Za-z]+$/.test(segment);
 }
 
 /** Keep origin + path (token-like segments redacted) + query names; redact
