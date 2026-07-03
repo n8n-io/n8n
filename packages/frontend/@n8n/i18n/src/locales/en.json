@@ -5924,7 +5924,6 @@
 	"focusedNodes.mentionTooltip": "Mention a node",
 	"focusedNodes.allNodes": "All nodes",
 	"focusedNodes.unconfirmedTooltip": "Add as context for the assistant",
-	"instanceAi.launch.blankCanvas.message": "I want to build a new automation from scratch. Before building anything, ask me what I want to automate — which apps and services are involved, what should trigger it, and what the end result should be. Once I've answered, help me build the workflow step by step.",
 	"instanceAi.view.title": "AI Assistant",
 	"instanceAi.view.subtitle": "Chat with your n8n instance",
 	"instanceAi.askAiAssistant": "Ask AI Assistant",

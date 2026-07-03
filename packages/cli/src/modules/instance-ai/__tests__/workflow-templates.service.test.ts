@@ -1,12 +1,12 @@
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import axios from 'axios';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import { WorkflowTemplatesService } from '../workflow-templates.service';
 
-jest.mock('axios');
-const mockedAxios = axios as jest.Mocked<typeof axios>;
+vi.mock('axios');
+const mockedAxios = vi.mocked(axios, true);
 
 function makeService(enabled = true, host = 'https://api.n8n.io/api/') {
 	const globalConfig = mock<GlobalConfig>({ templates: { enabled, host } });
@@ -14,7 +14,7 @@ function makeService(enabled = true, host = 'https://api.n8n.io/api/') {
 }
 
 describe('WorkflowTemplatesService', () => {
-	beforeEach(() => jest.resetAllMocks());
+	beforeEach(() => vi.resetAllMocks());
 
 	it('returns the template workflow for an id', async () => {
 		mockedAxios.get.mockResolvedValue({ data: { workflow: { id: 7, name: 'Demo' } } });
