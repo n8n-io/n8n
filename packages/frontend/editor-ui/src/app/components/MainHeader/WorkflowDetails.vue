@@ -21,6 +21,7 @@ import type { FolderShortInfo } from '@/features/core/folders/folders.types';
 import { useFoldersStore } from '@/features/core/folders/folders.store';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import WorkflowHeaderDraftPublishActions from '@/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue';
+import WorkflowSwitcher from '@/app/components/MainHeader/WorkflowSwitcher.vue';
 import { useI18n } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
 import { createEventBus } from '@n8n/utils/event-bus';
@@ -117,6 +118,12 @@ const readOnlyActions = computed(() => {
 });
 
 const workflowTagIds = computed(() => props.tags);
+
+// List sibling workflows from the workflow's own project (falling back to the
+// currently open project) so the switcher scopes to the same context.
+const switcherProjectId = computed(
+	() => workflowDocumentStore?.value?.homeProject?.id ?? projectsStore.currentProject?.id,
+);
 
 const currentFolderForBreadcrumbs = computed(() => {
 	if (!isNewWorkflow.value && props.currentFolder) {
@@ -447,6 +454,11 @@ onBeforeUnmount(() => {
 							:read-only="readOnlyActions"
 							:disabled="readOnlyActions"
 							@update:model-value="onNameSubmit"
+						/>
+						<WorkflowSwitcher
+							v-if="!isNewWorkflow"
+							:current-workflow-id="id"
+							:project-id="switcherProjectId"
 						/>
 					</template>
 				</FolderBreadcrumbs>

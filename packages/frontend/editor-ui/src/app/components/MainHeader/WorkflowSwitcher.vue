@@ -1,0 +1,286 @@
+<script lang="ts" setup>
+import { ref, watch } from 'vue';
+import { useRouter } from 'vue-router';
+
+import { useI18n } from '@n8n/i18n';
+import { N8nIcon, N8nPopover, N8nText } from '@n8n/design-system';
+
+import { VIEWS } from '@/app/constants';
+import { DEBOUNCE_TIME } from '@/app/constants/durations';
+import { useDebounce } from '@/app/composables/useDebounce';
+import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
+import { useToast } from '@/app/composables/useToast';
+
+interface SwitcherItem {
+	id: string;
+	name: string;
+	/** Parent folder name, shown inline before the workflow name. */
+	folder?: string;
+}
+
+const props = defineProps<{
+	currentWorkflowId: string;
+	projectId?: string;
+}>();
+
+const i18n = useI18n();
+const router = useRouter();
+const toast = useToast();
+const workflowsListStore = useWorkflowsListStore();
+const { callDebounced } = useDebounce();
+
+const open = ref(false);
+const filter = ref('');
+const loading = ref(false);
+const workflows = ref<SwitcherItem[]>([]);
+
+async function fetchWorkflows(query: string) {
+	loading.value = true;
+	try {
+		const results = await workflowsListStore.searchWorkflows({
+			projectId: props.projectId,
+			query: query.trim() || undefined,
+			select: ['id', 'name', 'parentFolder'],
+		});
+		workflows.value = results.map(({ id, name, parentFolder }) => ({
+			id,
+			name,
+			folder: parentFolder?.name,
+		}));
+	} catch (error) {
+		toast.showError(error, i18n.baseText('workflowDetails.switcher.title'));
+	} finally {
+		loading.value = false;
+	}
+}
+
+watch(open, (isOpen) => {
+	if (isOpen) {
+		filter.value = '';
+		void fetchWorkflows('');
+	}
+});
+
+watch(filter, (query) => {
+	void callDebounced(fetchWorkflows, { debounceTime: DEBOUNCE_TIME.INPUT.SEARCH }, query);
+});
+
+async function selectWorkflow(id: string) {
+	open.value = false;
+	if (id === props.currentWorkflowId) return;
+	await router.push({ name: VIEWS.WORKFLOW, params: { workflowId: id } });
+}
+</script>
+
+<template>
+	<N8nPopover
+		:open="open"
+		:enable-scrolling="false"
+		width="320px"
+		data-test-id="workflow-switcher"
+		@update:open="open = $event"
+	>
+		<template #trigger>
+			<button
+				type="button"
+				:aria-expanded="open"
+				aria-haspopup="listbox"
+				:class="[$style.trigger, { [$style.triggerOpen]: open }]"
+				:aria-label="i18n.baseText('workflowDetails.switcher.title')"
+				data-test-id="workflow-switcher-trigger"
+			>
+				<N8nIcon icon="chevron-down" :class="$style.chevron" />
+			</button>
+		</template>
+
+		<template #content>
+			<div :class="$style.panel">
+				<N8nText :class="$style.title" bold color="text-dark">{{
+					i18n.baseText('workflowDetails.switcher.title')
+				}}</N8nText>
+				<div :class="$style.search">
+					<N8nIcon icon="search" :class="$style.searchIcon" />
+					<input
+						v-model="filter"
+						type="text"
+						:placeholder="i18n.baseText('workflowDetails.switcher.search')"
+						:aria-label="i18n.baseText('workflowDetails.switcher.search')"
+						:class="$style.searchInput"
+						data-test-id="workflow-switcher-search"
+					/>
+				</div>
+
+				<div role="listbox" :class="$style.optionList">
+					<button
+						v-for="workflow in workflows"
+						:key="workflow.id"
+						type="button"
+						role="option"
+						:aria-selected="workflow.id === currentWorkflowId"
+						:class="[$style.option, { [$style.optionSelected]: workflow.id === currentWorkflowId }]"
+						:data-test-id="`workflow-switcher-option-${workflow.id}`"
+						@click="selectWorkflow(workflow.id)"
+					>
+						<N8nIcon
+							icon="check"
+							:class="[$style.check, { [$style.checkHidden]: workflow.id !== currentWorkflowId }]"
+						/>
+						<span
+							:class="$style.optionText"
+							:title="workflow.folder ? `${workflow.folder} / ${workflow.name}` : workflow.name"
+						>
+							<template v-if="workflow.folder">
+								<span :class="$style.optionPrefix">{{ workflow.folder }}</span>
+								<span :class="$style.optionSeparator">/</span>
+							</template>
+							<span :class="$style.optionName">{{ workflow.name }}</span>
+						</span>
+					</button>
+
+					<div v-if="!loading && !workflows.length" :class="$style.noResults">
+						{{ i18n.baseText('workflowDetails.switcher.noResults') }}
+					</div>
+				</div>
+			</div>
+		</template>
+	</N8nPopover>
+</template>
+
+<style lang="scss" module>
+.trigger {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 22px;
+	height: 22px;
+	padding: 0;
+	border: none;
+	border-radius: var(--radius);
+	background: transparent;
+	cursor: pointer;
+
+	&:hover {
+		background-color: var(--color--background--light-2);
+	}
+}
+
+.chevron {
+	color: var(--color--text--tint-2);
+	font-size: var(--font-size--sm);
+}
+
+.triggerOpen .chevron {
+	transform: rotate(180deg);
+}
+
+.panel {
+	padding: var(--spacing--4xs);
+}
+
+.title {
+	display: block;
+	padding: var(--spacing--2xs) var(--spacing--2xs) var(--spacing--4xs);
+	font-size: var(--font-size--sm);
+}
+
+.search {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--4xs) var(--spacing--2xs) var(--spacing--2xs);
+	border-bottom: var(--border-width) solid var(--border-color);
+	margin-bottom: var(--spacing--4xs);
+}
+
+.searchIcon {
+	color: var(--color--text--tint-2);
+	font-size: var(--font-size--sm);
+}
+
+.searchInput {
+	flex: 1;
+	min-width: 0;
+	height: 24px;
+	padding: 0;
+	border: none;
+	outline: none;
+	background: transparent;
+	font-family: inherit;
+	font-size: var(--font-size--sm);
+	color: var(--color--text--shade-1);
+}
+
+.optionList {
+	max-height: 280px;
+	overflow-y: auto;
+}
+
+.option {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	width: 100%;
+	padding: var(--spacing--4xs) var(--spacing--2xs);
+	border: none;
+	border-radius: var(--radius);
+	background: transparent;
+	cursor: pointer;
+	text-align: left;
+	font-family: inherit;
+
+	&:hover {
+		background-color: var(--color--background--light-2);
+	}
+}
+
+.optionSelected,
+.optionSelected:hover {
+	background-color: var(--color--background--light-2);
+}
+
+.check {
+	color: var(--color--text--shade-1);
+	font-size: var(--font-size--sm);
+	flex-shrink: 0;
+}
+
+.checkHidden {
+	visibility: hidden;
+}
+
+.optionText {
+	display: flex;
+	align-items: baseline;
+	gap: var(--spacing--4xs);
+	min-width: 0;
+	font-size: var(--font-size--sm);
+	white-space: nowrap;
+	overflow: hidden;
+}
+
+.optionPrefix {
+	color: var(--color--text--tint-2);
+	flex-shrink: 0;
+	max-width: 40%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.optionSeparator {
+	color: var(--color--text--tint-2);
+	flex-shrink: 0;
+}
+
+.optionName {
+	color: var(--color--text--shade-1);
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.noResults {
+	padding: var(--spacing--sm) var(--spacing--2xs);
+	text-align: center;
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--tint-2);
+}
+</style>
