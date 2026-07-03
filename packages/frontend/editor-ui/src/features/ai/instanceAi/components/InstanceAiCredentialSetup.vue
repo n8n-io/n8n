@@ -9,7 +9,6 @@ import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue
 import NodeCredentials from '@/features/credentials/components/NodeCredentials.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useQuickConnect } from '@/features/credentials/quickConnect/composables/useQuickConnect';
-import { useUsersStore } from '@/features/settings/users/users.store';
 import type { INodeUi, INodeUpdatePropertiesInformation } from '@/Interface';
 import type { InstanceAiCredentialFlow, InstanceAiCredentialRequest } from '@n8n/api-types';
 import { N8nActionDropdown, N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
@@ -38,7 +37,6 @@ const rootStore = useRootStore();
 const thread = useThread();
 const credentialsStore = useCredentialsStore();
 const uiStore = useUIStore();
-const usersStore = useUsersStore();
 const settingsStore = useInstanceAiSettingsStore();
 
 const { isFeatureEnabled: isBrowserCredentialSetupEnabled } =
@@ -374,7 +372,6 @@ async function handleLater() {
 
 function trackSetupChoiceClicked(choice: CredentialSetupChoice | 'skip') {
 	telemetry.track('Instance AI Browser Use User clicked credential setup option', {
-		user_id: usersStore.currentUser?.id,
 		credential_type: currentRequest.value?.credentialType,
 		choice,
 	});
@@ -387,7 +384,6 @@ watch(
 		if (!credentialType || shownChoiceTypes.has(credentialType)) return;
 		shownChoiceTypes.add(credentialType);
 		telemetry.track('Instance AI Browser Use credential setup choice shown', {
-			user_id: usersStore.currentUser?.id,
 			credential_type: credentialType,
 		});
 	},
