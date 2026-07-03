@@ -1,4 +1,4 @@
-import type { RadioGroupRootEmits, RadioGroupRootProps } from './reka-ui';
+import type { RadioGroupRootEmits, RadioGroupRootProps } from 'reka-ui';
 
 export type RadioGroupProps = RadioGroupRootProps;
 

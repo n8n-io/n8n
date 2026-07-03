@@ -35,7 +35,7 @@ const rootProps = useForwardPropsEmits(
 <style module>
 .root {
 	display: flex;
-	gap: var(--spacing--4xs);
+	gap: var(--spacing--xs);
 }
 
 .vertical {
