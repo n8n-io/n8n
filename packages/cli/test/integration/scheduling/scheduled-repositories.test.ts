@@ -129,6 +129,28 @@ describe('scheduled repositories', () => {
 			expect(reloaded.nextRunAt!.getTime()).toBe(nextRunAt.getTime());
 			expect(reloaded.lastFiredAt).toBeNull();
 		});
+
+		it('rejects insertIgnoringDuplicates when called outside a transaction', async () => {
+			const job = await createJob();
+			const scheduledFor = secondsFromNow(-60);
+
+			// The plain DataSource manager has no queryRunner, which is how the guard
+			// detects a call made outside `dataSource.transaction`.
+			await expect(
+				taskRepository.insertIgnoringDuplicates(dataSource.manager, [
+					{
+						jobId: job.id,
+						taskType: 'scheduleTrigger',
+						payload: {},
+						scheduledFor,
+						runAt: scheduledFor,
+						maxAttempts: 1,
+					},
+				]),
+			).rejects.toThrow('insertIgnoringDuplicates must run within a transaction');
+
+			expect(await taskRepository.findBy({ jobId: job.id })).toHaveLength(0);
+		});
 	});
 
 	describe('ScheduledJobRepository.claimDue', () => {

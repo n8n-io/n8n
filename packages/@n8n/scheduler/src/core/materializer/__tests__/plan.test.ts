@@ -68,7 +68,7 @@ describe('planOccurrences', () => {
 		expect(plan.nextRunAt).toEqual(new Date('2026-01-02T00:00:00.000Z'));
 	});
 
-	it('does nothing when the next run is past the window (a defensive no-op)', () => {
+	it('does nothing when the next run is past the window', () => {
 		const job = { ...makeJob(every, secondsAfter(NOW, 120)), lastFiredAt: NOW };
 
 		const plan = planOccurrences(job, NOW, { windowSeconds: 60, maxPerJob: 100 });

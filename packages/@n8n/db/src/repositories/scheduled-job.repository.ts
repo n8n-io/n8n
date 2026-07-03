@@ -1,9 +1,10 @@
-import { GlobalConfig } from '@n8n/config';
+import { DatabaseConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { DataSource, Repository } from '@n8n/typeorm';
 import type { EntityManager } from '@n8n/typeorm';
 
 import { ScheduledJob } from '../entities/scheduled-job';
+import { dbNowLiteral, parseDbTime } from '../utils/dialect-time';
 
 /** The new clock values for one advanced job. */
 export interface JobAdvance {
@@ -16,9 +17,9 @@ export interface JobAdvance {
 export class ScheduledJobRepository extends Repository<ScheduledJob> {
 	private readonly isPostgres: boolean;
 
-	constructor(dataSource: DataSource, globalConfig: GlobalConfig) {
+	constructor(dataSource: DataSource, config: DatabaseConfig) {
 		super(ScheduledJob, dataSource.manager);
-		this.isPostgres = globalConfig.database.type === 'postgresdb';
+		this.isPostgres = config.type === 'postgresdb';
 	}
 
 	/**
@@ -36,7 +37,7 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 		manager: EntityManager,
 		limit: number,
 	): Promise<{ now: Date; jobs: ScheduledJob[] } | undefined> {
-		const nowExpression = this.nowExpression();
+		const nowExpression = dbNowLiteral(this.isPostgres);
 
 		const query = manager
 			.createQueryBuilder(ScheduledJob, 'job')
@@ -58,7 +59,7 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 		}
 
 		return {
-			now: this.parseDatabaseTime(raw[0].db_now),
+			now: parseDbTime(raw[0].db_now),
 			jobs: entities,
 		};
 	}
@@ -104,20 +105,5 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 			.where('id IN (:...ids)')
 			.setParameters(parameters)
 			.execute();
-	}
-
-	/**
-	 * @returns the database's current-time expression at millisecond precision, per dialect.
-	 */
-	private nowExpression(): string {
-		return this.isPostgres ? 'CURRENT_TIMESTAMP(3)' : "STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')";
-	}
-
-	/**
-	 * Postgres returns a `Date`.
-	 * SQLite returns UTC wall-clock text with no zone.
-	 */
-	private parseDatabaseTime(value: Date | string): Date {
-		return typeof value === 'string' ? new Date(`${value.replace(' ', 'T')}Z`) : value;
 	}
 }

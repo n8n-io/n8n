@@ -43,6 +43,11 @@ export type OnJobPlanError = (job: ScheduledJob, error: unknown) => void;
  * original past instants); whether a stale candidate still runs or is marked missed
  * is the dispatcher's policy, not the materializer's.
  *
+ * Recording up to `windowSeconds` ahead means a frequent schedule doesn't need a
+ * materialization per fire. The flip side: occurrences already materialized are not
+ * retracted, so a disable or edit can lag up to the window unless the job-write path
+ * cancels pending tasks.
+ *
  * Persistence sits behind the {@link RunInTransaction} it is given, so this is only
  * the algorithm and a fake runner is enough to test it.
  */
@@ -80,19 +85,11 @@ function planOrDeferJobs(
 	occurrencesPlanned: PlannedJob[];
 	numberOfJobsDeferred: number;
 } {
-	return dueJobs.jobs.reduce(
-		(current, job) => {
-			const plan = planOrDeferJob(job, dueJobs.now, options, onPlanError);
-			return {
-				occurrencesPlanned: [...current.occurrencesPlanned, plan],
-				numberOfJobsDeferred: current.numberOfJobsDeferred + (plan.deferred ? 1 : 0),
-			};
-		},
-		{
-			occurrencesPlanned: [] as PlannedJob[],
-			numberOfJobsDeferred: 0,
-		},
-	);
+	const plans = dueJobs.jobs.map((job) => planOrDeferJob(job, dueJobs.now, options, onPlanError));
+	return {
+		occurrencesPlanned: plans.map(({ plannedJob }) => plannedJob),
+		numberOfJobsDeferred: plans.filter(({ deferred }) => deferred).length,
+	};
 }
 
 function planOrDeferJob(
@@ -100,13 +97,13 @@ function planOrDeferJob(
 	now: Date,
 	options: MaterializerOptions,
 	onPlanError?: OnJobPlanError,
-): PlannedJob & {
+): {
+	plannedJob: PlannedJob;
 	deferred: boolean;
 } {
 	try {
 		return {
-			job,
-			plan: planOccurrences(job, now, options),
+			plannedJob: { job, plan: planOccurrences(job, now, options) },
 			deferred: false,
 		};
 	} catch (error) {
@@ -121,8 +118,10 @@ function planOrDeferJob(
 			now.getTime() + options.planRetrySeconds * Time.seconds.toMilliseconds,
 		);
 		return {
-			job,
-			plan: { occurrences: [], nextRunAt: retryAt, lastFiredAt: job.lastFiredAt },
+			plannedJob: {
+				job,
+				plan: { occurrences: [], nextRunAt: retryAt, lastFiredAt: job.lastFiredAt },
+			},
 			deferred: true,
 		};
 	}

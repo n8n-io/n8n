@@ -211,10 +211,15 @@ describe('scheduler materialization', () => {
 	});
 
 	it('records each occurrence once and advances each job once under concurrent passes', async () => {
-		// Many jobs due at once, then several passes racing for them. On Postgres the passes
-		// run in parallel and SKIP LOCKED partitions the jobs between them; on sqlite the
-		// single-writer lock serializes them. The invariant holds either way.
+		// Many jobs due at once, then several passes racing for them, each with a batch
+		// smaller than the backlog so no single pass can drain it.
+		// On Postgres the passes run in parallel and SKIP LOCKED partitions the jobs between them.
+		// On sqlite they contend for the single writer lease and serialize, each seeing the previous pass's commit.
+		//
+		// Either way every pass must claim exactly its batch:
+		// a pass that re-claimed another's jobs would break the per-job uniqueness checks below.
 		const jobCount = 6;
+		const batchSize = 2;
 		await Promise.all(
 			Array.from(
 				{ length: jobCount },
@@ -222,20 +227,20 @@ describe('scheduler materialization', () => {
 			),
 		);
 
-		const summaries = await Promise.all([
-			runMaterialization(0),
-			runMaterialization(0),
-			runMaterialization(0),
-		]);
+		const runPass = async () =>
+			await materialize(store.runInTransaction, {
+				windowSeconds: 0,
+				batchSize,
+				maxPerJob: 100,
+				planRetrySeconds: 3600,
+			});
+		const summaries = await Promise.all([runPass(), runPass(), runPass()]);
 
-		// Each job is claimed by exactly one pass: the claim counts sum to the job count,
-		// never more (more would mean two passes grabbed the same job).
-		const claimedTotal = summaries.reduce((sum, s) => sum + s.claimedJobs, 0);
-		expect(claimedTotal).toBe(jobCount);
-
-		// Each due fire is recorded exactly once; no duplicate occurrences survive.
-		const recordedTotal = summaries.reduce((sum, s) => sum + s.occurrences, 0);
-		expect(recordedTotal).toBe(jobCount);
+		// Deterministic on both backends: in any interleaving each claim still sees at
+		// least `batchSize` due unclaimed jobs, so each pass claims and records exactly
+		// its batch (more would mean two passes grabbed the same job).
+		expect(summaries.map((s) => s.claimedJobs)).toEqual([batchSize, batchSize, batchSize]);
+		expect(summaries.map((s) => s.occurrences)).toEqual([batchSize, batchSize, batchSize]);
 
 		const allTasks = await taskRepo.find();
 		const allJobs = await jobRepo.find();

@@ -1,10 +1,11 @@
-import { GlobalConfig } from '@n8n/config';
+import { DatabaseConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { DataSource, type EntityManager, In, Repository } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { UnexpectedError } from 'n8n-workflow';
 
 import { ScheduledTask, ScheduledTaskStatus } from '../entities/scheduled-task';
+import { dbNowLiteral, dbNowPlusMsLiteral } from '../utils/dialect-time';
 
 /** Inputs to a claim (see {@link ScheduledTaskRepository.claimDueTasks}). */
 export interface ClaimDueTasksOptions {
@@ -32,7 +33,6 @@ export interface ClaimRef {
 
 /**
  * The columns set when the materializer records an occurrence.
- * Everything else (status, attempts, lease/fencing fields) takes its column default.
  */
 export interface NewOccurrence {
 	jobId: number;
@@ -45,11 +45,13 @@ export interface NewOccurrence {
 
 @Service()
 export class ScheduledTaskRepository extends Repository<ScheduledTask> {
-	constructor(
-		dataSource: DataSource,
-		private readonly globalConfig: GlobalConfig,
-	) {
+	private readonly isPostgres: boolean;
+	private readonly tableName: string;
+
+	constructor(dataSource: DataSource, config: DatabaseConfig) {
 		super(ScheduledTask, dataSource.manager);
+		this.isPostgres = config.type === 'postgresdb';
+		this.tableName = this.manager.connection.driver.escape(`${config.tablePrefix}scheduled_task`);
 	}
 
 	/**
@@ -110,23 +112,19 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	 */
 	async claimDueTasks(opts: ClaimDueTasksOptions): Promise<ScheduledTask[]> {
 		if (opts.taskTypes.length === 0) return [];
-		return this.isPostgres()
-			? await this.claimWithPostgres(opts)
-			: await this.claimWithSqlite(opts);
+		return this.isPostgres ? await this.claimWithPostgres(opts) : await this.claimWithSqlite(opts);
 	}
 
 	private async claimWithPostgres(opts: ClaimDueTasksOptions): Promise<ScheduledTask[]> {
-		const table = this.tableName();
-
 		// TypeORM's Postgres driver returns `[rows, affectedCount]` from a raw UPDATE
 		// ... RETURNING, so destructure the rows out of the tuple.
 		const [rows]: [ScheduledTask[], number] = await this.query(
-			`UPDATE ${table}
+			`UPDATE ${this.tableName}
 			   SET "status" = '${ScheduledTaskStatus.Running}', "claimedBy" = $1,
 			       "leaseExpiresAt" = now() + ($2 || ' milliseconds')::interval,
 			       "leaseEpoch" = "leaseEpoch" + 1
 			 WHERE "id" IN (
-			   SELECT t."id" FROM ${table} t
+			   SELECT t."id" FROM ${this.tableName} t
 			    WHERE t."status" = '${ScheduledTaskStatus.Pending}'
 			      AND t."taskType" = ANY($3)
 			      AND t."runAt" <= now() + ($4 || ' milliseconds')::interval
@@ -194,7 +192,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	 */
 	async markStarted(claim: ClaimRef): Promise<number> {
 		return await this.runGuardedUpdate(claim, {
-			startedAt: () => this.makeDbNowLiteral(),
+			startedAt: () => dbNowLiteral(this.isPostgres),
 		});
 	}
 
@@ -202,7 +200,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	async completeTask(claim: ClaimRef): Promise<number> {
 		return await this.runGuardedUpdate(claim, {
 			status: ScheduledTaskStatus.Succeeded,
-			finishedAt: () => this.makeDbNowLiteral(),
+			finishedAt: () => dbNowLiteral(this.isPostgres),
 		});
 	}
 
@@ -213,7 +211,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	async failTaskTerminal(claim: ClaimRef, errorMessage: string): Promise<number> {
 		return await this.runGuardedUpdate(claim, {
 			status: ScheduledTaskStatus.Failed,
-			finishedAt: () => this.makeDbNowLiteral(),
+			finishedAt: () => dbNowLiteral(this.isPostgres),
 			attempts: () => 'attempts + 1',
 			errorMessage,
 		});
@@ -228,7 +226,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	async rescheduleTask(claim: ClaimRef, backoffMs: number, errorMessage: string): Promise<number> {
 		return await this.runGuardedUpdate(claim, {
 			status: ScheduledTaskStatus.Pending,
-			runAt: () => this.makeDbNowPlusMsLiteral(backoffMs),
+			runAt: () => dbNowPlusMsLiteral(this.isPostgres, backoffMs),
 			attempts: () => 'attempts + 1',
 			errorMessage,
 			claimedBy: null,
@@ -277,27 +275,5 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 			values,
 		);
 		return result.affected ?? 0;
-	}
-
-	private isPostgres(): boolean {
-		return this.globalConfig.database.type === 'postgresdb';
-	}
-
-	/** DB-clock `now`, per dialect (never an instance clock). */
-	private makeDbNowLiteral(): string {
-		return this.isPostgres() ? 'now()' : "STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')";
-	}
-
-	/** DB-clock `now` plus a millisecond offset, per dialect. `ms` is caller-computed (safe to inline). */
-	private makeDbNowPlusMsLiteral(ms: number): string {
-		const rounded = Math.round(ms);
-		return this.isPostgres()
-			? `now() + (${rounded} || ' milliseconds')::interval`
-			: `STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW', '+${rounded / 1000} seconds')`;
-	}
-
-	private tableName(): string {
-		const { tablePrefix } = this.globalConfig.database;
-		return this.manager.connection.driver.escape(`${tablePrefix}scheduled_task`);
 	}
 }
