@@ -330,7 +330,7 @@ describe('GlobalConfig', () => {
 			braveSearchApiKey: '',
 			searxngUrl: '',
 			gatewayApiKey: '',
-			threadTtlDays: 90,
+			threadTtlDays: 30,
 			pruneInterval: 3_600_000,
 			snapshotRetention: 86_400_000,
 			confirmationTimeout: 86_400_000,
