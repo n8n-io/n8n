@@ -32,9 +32,9 @@ export class AlwaysOutputDataMultiOutputRule implements IBreakingChangeWorkflowR
 	getMetadata(): BreakingChangeRuleMetadata {
 		return {
 			version: 'v3',
-			title: '"Always Output Data" on nodes with multiple outputs',
+			title: '"Always Output Data" behavior fix on nodes with multiple outputs',
 			description:
-				'On nodes with multiple outputs, "Always Output Data" adds an empty item to the first output even when another output produced data, which misroutes items. The setting is being removed from these nodes in a future version.',
+				'On nodes with multiple outputs, "Always Output Data" currently adds an empty item to the first output even when another output produced data, which misroutes items. A future version fixes this so the empty item is only added when every output is empty. Workflows relying on the current behavior will produce different output.',
 			category: BreakingChangeCategory.workflow,
 			severity: 'medium',
 		};
@@ -45,9 +45,9 @@ export class AlwaysOutputDataMultiOutputRule implements IBreakingChangeWorkflowR
 	): Promise<BreakingChangeRecommendation[]> {
 		return [
 			{
-				action: 'Turn off "Always Output Data"',
+				action: 'Review nodes using "Always Output Data" with multiple outputs',
 				description:
-					'Disable "Always Output Data" on the flagged nodes. If a branch needs to run on the empty case, handle it explicitly (e.g. with an IF or a dedicated no-match branch).',
+					'After the fix, these nodes will no longer add an empty item to the first output when another output has data. Update any downstream logic that relies on that empty first-output item (for example a branch off the first output that runs on the empty case).',
 			},
 		];
 	}
@@ -67,9 +67,9 @@ export class AlwaysOutputDataMultiOutputRule implements IBreakingChangeWorkflowR
 		return {
 			isAffected: true,
 			issues: affectedNodes.map((node) => ({
-				title: `Node '${node.name}' uses "Always Output Data" on a node with multiple outputs`,
+				title: `Node '${node.name}' uses "Always Output Data" and has multiple outputs`,
 				description:
-					'"Always Output Data" misroutes items on multi-output nodes and is being removed from them in a future version. Turn it off on this node.',
+					'"Always Output Data" currently adds an empty item to this node\'s first output even when another output has data. A future version fixes this to only add the empty item when every output is empty, so this node\'s output will change. Review any logic downstream of its first output.',
 				level: 'warning',
 				nodeId: node.id,
 				nodeName: node.name,

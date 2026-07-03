@@ -88,7 +88,7 @@ describe('AlwaysOutputDataMultiOutputRule', () => {
 	});
 
 	describe('getRecommendations()', () => {
-		it('should recommend turning off Always Output Data', async () => {
+		it('should recommend reviewing nodes that use Always Output Data', async () => {
 			const recommendations = await rule.getRecommendations([]);
 
 			expect(recommendations).toHaveLength(1);
