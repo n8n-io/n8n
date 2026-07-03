@@ -3044,7 +3044,9 @@ export function useCanvasOperations() {
 		// Tag creation is scope-gated (tag:create). A user may be allowed to import
 		// a workflow without being able to create tags — don't let that abort the
 		// whole import. Link the tags that succeed and warn about the rest.
-		const results = await Promise.allSettled(notFound.map((tag) => tagsStore.create(tag.name)));
+		const results = await Promise.allSettled(
+			notFound.map(async (tag) => tagsStore.create(tag.name)),
+		);
 
 		for (const result of results) {
 			if (result.status === 'fulfilled') {
