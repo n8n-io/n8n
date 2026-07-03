@@ -51,7 +51,6 @@ export const AGENT_BUILDER_TOOL_IDS = {
 	BUILD_CUSTOM_TOOL: 'build_custom_tool',
 	LIST_INTEGRATION_TYPES: 'list_integration_types',
 	LIST_SUB_AGENTS: 'list_sub_agents',
-	LIST_CREDENTIALS: 'list_credentials',
 	LIST_WORKFLOWS: 'list_workflows',
 	SEARCH_MCP_SERVERS: 'search_mcp_servers',
 	VERIFY_MCP_SERVER: 'verify_mcp_server',

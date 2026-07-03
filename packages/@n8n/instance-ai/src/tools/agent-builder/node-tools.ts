@@ -63,7 +63,8 @@ export function createGetResourceLocatorOptionsTool(context: InstanceAiContext) 
 			'Fetch live options for a node parameter configured through a resourceLocator, ' +
 				'loadOptionsMethod, or loadOptions routing (stable IDs such as Linear teamId, Slack ' +
 				'channel, calendar, project, model, database, or table selectors). Resolve credentials ' +
-				'first when the node needs them (list_credentials + the ask-user tool), then pass the ' +
+				'first when the node needs them (the credentials tool with action "list" + the ' +
+				'ask-user tool), then pass the ' +
 				'credentials map. Write the returned parameterValue into nodeParameters instead of using ' +
 				'$fromAI for stable resource IDs.',
 		)
@@ -82,7 +83,8 @@ export function createGetResourceLocatorOptionsTool(context: InstanceAiContext) 
 					.record(nodeCredentialSchema)
 					.optional()
 					.describe(
-						'Node credentials map (from list_credentials): { credentialType: { id, name } }',
+						'Node credentials map (from the credentials tool, action "list"): ' +
+							'{ credentialType: { id, name } }',
 					),
 				filter: z.string().optional().describe('Optional search string to narrow options'),
 				paginationToken: z.string().optional().describe('Pagination token from a previous lookup'),

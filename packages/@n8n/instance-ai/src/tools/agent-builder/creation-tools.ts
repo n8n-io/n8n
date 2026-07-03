@@ -1,7 +1,7 @@
 /**
  * Creation + listing agent-builder tools: create_skill, create_task,
- * build_custom_tool, list_integration_types, list_sub_agents, list_credentials.
- * Thin wrappers over `agentBuilderService` / `credentialService`.
+ * build_custom_tool, list_integration_types, list_sub_agents, list_workflows.
+ * Thin wrappers over `agentBuilderService`.
  */
 import { Tool } from '@n8n/agents';
 import { agentSkillSchema, agentTaskSchema } from '@n8n/api-types';
@@ -157,7 +157,8 @@ export function createListIntegrationTypesTool(context: InstanceAiContext) {
 			"List integration types that can be added to the agent's `integrations` array. Returns each " +
 				'chat platform with its supported `credentialTypes` and builder guidance (`capabilities`, ' +
 				'`useIntegrationWhen`, `useNodeToolWhen`). Call BEFORE resolving a credential, then resolve ' +
-				'a credential of ONE entry from `credentialTypes` (list_credentials + the ask-user tool).',
+				'a credential of ONE entry from `credentialTypes` (the credentials tool with action "list" ' +
+				'+ the ask-user tool).',
 		)
 		.input(z.object({}))
 		.handler(async () => {
@@ -197,21 +198,6 @@ export function createListWorkflowsTool(context: InstanceAiContext) {
 			if (!context.agentBuilderService) return { workflows: [] };
 			const projectId = context.agentBuilderTarget?.projectId ?? context.projectId;
 			return { workflows: await context.agentBuilderService.listAttachableWorkflows(projectId) };
-		})
-		.build();
-}
-
-export function createListCredentialsTool(context: InstanceAiContext) {
-	return new Tool(AGENT_BUILDER_TOOL_IDS.LIST_CREDENTIALS)
-		.description(
-			'Read-only inspection of available credentials (optionally filtered by type). When several ' +
-				'match, let the user pick with the native ask-user tool, then wire the chosen credential ' +
-				'id into the config. Never copy ids blindly.',
-		)
-		.input(z.object({ type: z.string().optional().describe('Filter by credential type') }))
-		.handler(async ({ type }) => {
-			const credentials = await context.credentialService.list(type ? { type } : undefined);
-			return { credentials: credentials.map((c) => ({ id: c.id, name: c.name, type: c.type })) };
 		})
 		.build();
 }

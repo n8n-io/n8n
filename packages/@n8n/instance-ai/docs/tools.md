@@ -734,7 +734,6 @@ this one tool. See `docs/agent-builder.md` for the design.
 | `build_custom_tool` | Compile and store a custom TypeScript tool (`export default new Tool(...)`), sandbox-validated. Register it via `patch_config` (`{ type: "custom", id }`). |
 | `list_integration_types` | List chat-platform integration types with their supported credential types and builder guidance. |
 | `list_sub_agents` | List published same-project agents that can be attached as sub-agents. |
-| `list_credentials` | List credentials (optionally filtered by type) to wire into node tools / integrations. |
 | `list_workflows` | List workflows attachable as `type: "workflow"` tools (supported trigger types only). |
 | `search_mcp_servers` | Search the MCP registry for servers to attach (returns url, transport, auth, credential type, tools). |
 | `verify_mcp_server` | Test connectivity to an MCP server and list its tools before adding it to the config. |
@@ -742,8 +741,9 @@ this one tool. See `docs/agent-builder.md` for the design.
 
 **Getting user input:** there are no builder-specific picker cards. To ask the user
 anything (a choice, which credential, which model), use the native `ask-user` tool.
-Credentials are chosen via `list_credentials` (+ `ask-user` when several match); the
-main LLM via `resolve_llm` (+ `ask-user` fallback), then written with `write_config`.
+Credentials are listed via the native `credentials` tool (`action: "list"`; +
+`ask-user` when several match); the main LLM via `resolve_llm` (+ `ask-user`
+fallback), then written with `write_config`.
 
 **Targeting:** actions that mutate a specific agent require a bound agent; before one
 exists they return a structured error telling the model to `create_agent` first.

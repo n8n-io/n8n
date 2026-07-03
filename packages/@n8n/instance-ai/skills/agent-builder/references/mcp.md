@@ -23,8 +23,8 @@ Follow these steps in order when adding an MCP server:
    The result includes `name`, `url`, `transport`, `authentication`,
    `credentialType`, `tools`, and optional `metadata`.
 2. Credential: for registry results, resolve a credential of the returned
-   `credentialType` (`list_credentials` + `ask-user`; see SKILL.md "Asking the
-   user, credentials, and the LLM"). Never invent credential IDs.
+   `credentialType` (`credentials({ action: "list" })` + `ask-user`; see SKILL.md
+   "Asking the user, credentials, and the LLM"). Never invent credential IDs.
 3. Verify: call `agent_builder` (`action: "verify_mcp_server"`) with `name`,
    `url`, `transport`, `authentication`, and (if applicable) `credential`.
 4. Write config: call `agent_builder` (`action: "read_config"`), then
@@ -42,7 +42,7 @@ Full schema reference:
   url: string [min 1 chars] (required) — MCP server endpoint URL
   transport?: "sse" | "streamableHttp" (default: "streamableHttp") — Transport protocol
   authentication?: "none" | "bearerAuth" | "headerAuth" | "multipleHeadersAuth" | "mcpOAuth2Api" | string [pattern: McpOAuth2Api$] (default: "none") — Auth method. Named variants or any string ending in McpOAuth2Api for registry credential types
-  credential?: string — Credential id (from list_credentials). Required when authentication is not "none"
+  credential?: string — Credential id (from the credentials tool, action "list"). Required when authentication is not "none"
   metadata?: object
     nodeTypeName?: string — Source node type for registry servers (e.g. @n8n/mcp-registry.github). Enables correct UI form
   toolFilter?: one of <discriminated by "mode"> — Restricts which tools are surfaced. Tools matched by original un-prefixed name
@@ -55,8 +55,9 @@ Full schema reference:
 
 ### Credential flow
 
-Resolve credentials with `list_credentials` + `ask-user` (see SKILL.md "Asking
-the user, credentials, and the LLM"), using the credential type for the auth mode:
+Resolve credentials with `credentials({ action: "list" })` + `ask-user` (see
+SKILL.md "Asking the user, credentials, and the LLM"), using the credential type
+for the auth mode:
 
 - `bearerAuth` → `httpBearerAuth`
 - `headerAuth` → `httpHeaderAuth`
@@ -87,7 +88,7 @@ by `search_mcp_servers`.
 For custom MCP servers, if credential type is unknown, ask the user which
 credential type to use (OAuth2, Bearer Token, Header Auth, Multiple Headers
 Auth, or None) via the `ask-user` tool. Then resolve a credential
-(`list_credentials` + `ask-user`) of the matching type:
+(`credentials({ action: "list" })` + `ask-user`) of the matching type:
 
 - `bearerAuth` -> `httpBearerAuth`
 - `headerAuth` -> `httpHeaderAuth`

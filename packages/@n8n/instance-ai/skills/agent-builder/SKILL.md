@@ -23,8 +23,10 @@ as `agent_builder({ action: "<name>", ...args })`. Available actions:
 `create_agent`, `read_config`, `write_config`, `patch_config`, `search_nodes`,
 `get_node_types`, `get_resource_locator_options`, `create_skill`, `create_task`,
 `build_custom_tool`, `list_integration_types`, `list_sub_agents`,
-`list_credentials`, `list_workflows`, `search_mcp_servers`, `verify_mcp_server`,
-`resolve_llm`.
+`list_workflows`, `search_mcp_servers`, `verify_mcp_server`, `resolve_llm`.
+
+Credentials are listed via the native `credentials` tool (not an `agent_builder`
+action) — call `credentials({ action: "list", type?, name? })`.
 
 Where a reference below names an action (e.g. "call `write_config`"), invoke it
 as `agent_builder({ action: "write_config", ... })`.
@@ -34,12 +36,13 @@ as `agent_builder({ action: "write_config", ... })`.
 There are no builder-specific picker cards. When you need input from the user:
 
 - **A question or a choice** — use the native `ask-user` tool.
-- **A credential** for a node tool, MCP server, or integration — call
-  `agent_builder({ action: "list_credentials", type: "<credentialType>" })`. If
-  exactly one matches, use its `id`. If several match, ask the user to choose with
-  `ask-user` (present the names) and use the chosen credential's `id`. Build the
-  credentials map as `{ "<credentialType>": { "id": "<id>", "name": "<name>" } }`.
-  If none exists, tell the user to create it in n8n first — never invent an id.
+- **A credential** for a node tool, MCP server, or integration — call the native
+  `credentials` tool: `credentials({ action: "list", type: "<credentialType>" })`
+  (pass `name` for a targeted lookup by credential name). If exactly one matches,
+  use its `id`. If several match, ask the user to choose with `ask-user` (present
+  the names) and use the chosen credential's `id`. Build the credentials map as
+  `{ "<credentialType>": { "id": "<id>", "name": "<name>" } }`. If none exists,
+  tell the user to create it in n8n first — never invent an id.
 - **The agent's main LLM** — call
   `agent_builder({ action: "resolve_llm", provider?, model? })`. If it returns
   `ok: true`, use the returned `provider`/`model`/`credentialId`. If it returns

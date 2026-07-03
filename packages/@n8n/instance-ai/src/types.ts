@@ -783,7 +783,7 @@ export interface McpServerVerifyParams {
 	url: string;
 	transport: 'sse' | 'streamableHttp';
 	authentication: string;
-	/** Credential id (from list_credentials); required when authentication is not "none". */
+	/** Credential id (from the credentials tool, action "list"); required when authentication is not "none". */
 	credentialId?: string;
 	connectionTimeoutMs?: number;
 }

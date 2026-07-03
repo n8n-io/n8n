@@ -1,9 +1,9 @@
 /**
  * agent_builder — a single router tool wrapping all agent-builder actions behind
  * an `action` discriminator. This keeps the agent's tool surface small (one tool
- * instead of ~17). There are no interactive picker tools — user input goes
- * through the native `ask-user` tool and non-interactive actions (resolve_llm,
- * list_credentials, write_config).
+ * instead of ~16). There are no interactive picker tools — user input goes
+ * through the native `ask-user` tool, and credentials are read via the native
+ * `credentials` tool (action `list`).
  *
  * The router builds the underlying tools via their factories and derives its
  * input schema from each tool's own `inputSchema` (single source of truth — no
@@ -20,7 +20,6 @@ import {
 	createBuildCustomToolTool,
 	createCreateSkillTool,
 	createCreateTaskTool,
-	createListCredentialsTool,
 	createListIntegrationTypesTool,
 	createListSubAgentsTool,
 	createListWorkflowsTool,
@@ -49,7 +48,6 @@ const ROUTER_TOOL_FACTORIES = [
 	createBuildCustomToolTool,
 	createListIntegrationTypesTool,
 	createListSubAgentsTool,
-	createListCredentialsTool,
 	createListWorkflowsTool,
 	createSearchMcpServersTool,
 	createVerifyMcpServerTool,
@@ -98,9 +96,10 @@ export function createAgentBuilderRouterTool(context: InstanceAiContext): BuiltT
 				'create_agent (create the agent first if none exists), read_config / write_config / ' +
 				'patch_config (the agent JSON config), search_nodes / get_node_types / ' +
 				'get_resource_locator_options (node tools), create_skill, create_task, build_custom_tool, ' +
-				'list_integration_types, list_sub_agents, list_credentials, list_workflows, ' +
+				'list_integration_types, list_sub_agents, list_workflows, ' +
 				'search_mcp_servers, verify_mcp_server, resolve_llm. To ask the user anything (a choice, ' +
-				'which credential, which model) use the native `ask-user` tool.',
+				'which credential, which model) use the native `ask-user` tool; to list credentials use ' +
+				'the native `credentials` tool (action `list`).',
 		)
 		.systemInstruction(wrappedInstructions)
 		.input(inputSchema)

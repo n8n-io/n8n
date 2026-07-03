@@ -57,7 +57,7 @@ export function createVerifyMcpServerTool(context: InstanceAiContext) {
 					.string()
 					.optional()
 					.describe(
-						'Credential id (from list_credentials). Required when authentication is not "none"',
+						'Credential id (from the credentials tool, action "list"). Required when authentication is not "none"',
 					),
 				connectionTimeoutMs: z
 					.number()

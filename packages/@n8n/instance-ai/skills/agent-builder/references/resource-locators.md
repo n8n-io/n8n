@@ -29,7 +29,8 @@ locator values that the target agent cannot reliably guess at runtime.
    `operation`, authentication mode, and any parent selectors already known.
    Dynamic lookups often depend on those values.
 4. If the node needs credentials, resolve one first (see "Asking the user,
-   credentials, and the LLM" in SKILL.md — `list_credentials` + `ask-user`).
+   credentials, and the LLM" in SKILL.md — `credentials({ action: "list" })` +
+   `ask-user`).
    Pass the resulting `credentials` map to the `get_resource_locator_options`
    action.
 5. Call `agent_builder` with `action: "get_resource_locator_options"` and:
@@ -55,8 +56,9 @@ locator values that the target agent cannot reliably guess at runtime.
 - Never invent resource IDs, credential IDs, node type names, parameter paths,
   or provider tool keys.
 - If `get_resource_locator_options` returns `missing_credentials`, resolve a
-  credential for one of the returned slots (`list_credentials` + `ask-user`) and
-  retry. Do not fall back to `$fromAI` for a required stable selector.
+  credential for one of the returned slots (`credentials({ action: "list" })` +
+  `ask-user`) and retry. Do not fall back to `$fromAI` for a required stable
+  selector.
 - If the user skips credentials and no exact ID is otherwise available, explain
   that the selector cannot be resolved yet. Ask for the credential or exact ID
   instead of hiding the problem behind `$fromAI`.
@@ -81,7 +83,7 @@ For a Linear "Create Issue" node tool:
 
 1. Use `resource: "issue"`, `operation: "create"`, and the selected
    authentication mode in `nodeParameters`.
-2. Resolve the Linear credential (`list_credentials` + `ask-user`).
+2. Resolve the Linear credential (`credentials({ action: "list" })` + `ask-user`).
 3. Call `agent_builder` (`action: "get_resource_locator_options"`) for
    `parameterPath: "teamId"` with those `nodeParameters` and credentials.
 4. Write the selected team's `parameterValue` to `teamId`.
@@ -94,7 +96,7 @@ For a Linear "Create Issue" node tool:
   `$fromAI`.
 - Runtime content fields still use `$fromAI` where the target agent should
   decide them.
-- Node credentials come from `list_credentials` (chosen with the user via
-  `ask-user`); no credential IDs are invented.
+- Node credentials come from the `credentials` tool (action `list`, chosen with
+  the user via `ask-user`); no credential IDs are invented.
 - A validation error about dynamic selectors has been fixed by replacing the
   rejected field, not by changing unrelated config.

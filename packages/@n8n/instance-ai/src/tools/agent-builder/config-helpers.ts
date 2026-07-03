@@ -168,7 +168,7 @@ export function rejectIfDynamicSelectorUsesFromAi(
 				message:
 					`Node tool "${tool.name}" parameter "${dynamicPath}" is a dynamic selector. ` +
 					'Do not use $fromAI for this value. Load the agent-builder resource-locators reference, ' +
-					'resolve a credential if missing (list_credentials), then call ' +
+					'resolve a credential if missing (credentials tool, action "list"), then call ' +
 					'get_resource_locator_options and write the returned parameterValue into nodeParameters.',
 			});
 		}

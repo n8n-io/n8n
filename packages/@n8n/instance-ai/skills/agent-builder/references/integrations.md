@@ -44,8 +44,8 @@ The `integrations` array controls how the target agent is triggered.
 - Read the returned `capabilities`, `useIntegrationWhen`, and
   `useNodeToolWhen` fields before deciding to add an integration.
 - Pick one returned `credentialTypes` entry and resolve a credential of that
-  type (`list_credentials` + `ask-user`; see SKILL.md "Asking the user,
-  credentials, and the LLM").
+  type (`credentials({ action: "list" })` + `ask-user`; see SKILL.md "Asking the
+  user, credentials, and the LLM").
 - Persist only `type` and `credentialId`; never invent credential IDs or names.
 - Preserve existing chat integrations unless the user asked to remove them.
 
@@ -59,8 +59,8 @@ The `integrations` array controls how the target agent is triggered.
 
 ## Verify
 
-- Connected chat integrations use a credential id resolved via `list_credentials`
-  (chosen with the user via `ask-user`).
+- Connected chat integrations use a credential id resolved via the `credentials`
+  tool (action `list`, chosen with the user via `ask-user`).
 - The chosen integration matches `useIntegrationWhen`; otherwise use node or
   workflow tools.
 - The final `integrations` array keeps unrelated integrations intact.

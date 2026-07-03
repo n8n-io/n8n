@@ -6,8 +6,8 @@
  *
  * All builder actions are exposed through a single `agent_builder` router (action
  * discriminator). There are no interactive picker tools: instance AI has no
- * picker cards, so user choices go through the native `ask-user` tool and
- * non-interactive actions (resolve_llm, list_credentials, write_config).
+ * picker cards, so user choices go through the native `ask-user` tool, and
+ * credentials are read via the native `credentials` tool (action `list`).
  */
 import type { BuiltTool } from '@n8n/agents';
 
