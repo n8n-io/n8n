@@ -197,28 +197,28 @@ function buildItem(
 }
 
 const builtInServiceDefinitions = computed<ServiceConnectionDefinition[]>(() => {
-	const out: ServiceConnectionDefinition[] = [];
-	out.push({
-		id: BROWSER_USE_CONNECTION_TYPE,
-		titleKey: 'instanceAi.connections.add.browserUse',
-		descriptionKey: 'instanceAi.connections.types.browserUse.description',
-		iconSource: { type: 'icon', name: 'globe' },
-		detailComponent: BrowserUseSetupContent,
-		detailProps: { embedded: true },
-		isAvailable: isBrowserUseEnabled.value,
-		isConnected: settingsStore.isBrowserUseConnected,
-	});
-	out.push({
-		id: COMPUTER_USE_CONNECTION_TYPE,
-		titleKey: 'instanceAi.connections.add.computerUse',
-		descriptionKey: 'instanceAi.connections.types.computerUse.description',
-		iconSource: { type: 'icon', name: 'mouse-pointer' },
-		detailComponent: ComputerUseSetupContent,
-		detailProps: { embedded: true },
-		isAvailable: isComputerUseEnabled.value,
-		isConnected: settingsStore.isGatewayConnected,
-	});
-	return out;
+	return [
+		{
+			id: BROWSER_USE_CONNECTION_TYPE,
+			titleKey: 'instanceAi.connections.add.browserUse',
+			descriptionKey: 'instanceAi.connections.types.browserUse.description',
+			iconSource: { type: 'icon', name: 'globe' },
+			detailComponent: BrowserUseSetupContent,
+			detailProps: { embedded: true },
+			isAvailable: isBrowserUseEnabled.value,
+			isConnected: settingsStore.isBrowserUseConnected,
+		},
+		{
+			id: COMPUTER_USE_CONNECTION_TYPE,
+			titleKey: 'instanceAi.connections.add.computerUse',
+			descriptionKey: 'instanceAi.connections.types.computerUse.description',
+			iconSource: { type: 'icon', name: 'mouse-pointer' },
+			detailComponent: ComputerUseSetupContent,
+			detailProps: { embedded: true },
+			isAvailable: isComputerUseEnabled.value,
+			isConnected: settingsStore.isGatewayConnected,
+		},
+	];
 });
 
 const serviceItems = computed<ServiceConnectionItem[]>(() => {
