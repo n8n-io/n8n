@@ -33,7 +33,7 @@ const props = withDefaults(
 	},
 );
 
-defineSlots<{
+const slots = defineSlots<{
 	default?: () => unknown;
 }>();
 
@@ -108,19 +108,22 @@ function formatData(data: unknown): string {
 				</N8nAiActivityStepButton>
 			</CollapsibleTrigger>
 			<N8nAnimatedCollapsibleContent>
-				<div v-if="props.toolCall.args" :class="$style.dataSection">
-					<pre :class="$style.json">{{ formatData(props.toolCall.args) }}</pre>
-				</div>
-				<div v-if="props.toolCall.result !== undefined" :class="$style.dataSection">
-					<pre :class="$style.json">{{ formatData(props.toolCall.result) }}</pre>
-				</div>
-				<N8nCallout
-					v-if="props.toolCall.error !== undefined"
-					theme="danger"
-					:class="$style.toolErrorCallout"
-				>
-					{{ props.toolCall.error }}
-				</N8nCallout>
+				<slot v-if="slots.default" />
+				<template v-else>
+					<div v-if="props.toolCall.args" :class="$style.dataSection">
+						<pre :class="$style.json">{{ formatData(props.toolCall.args) }}</pre>
+					</div>
+					<div v-if="props.toolCall.result !== undefined" :class="$style.dataSection">
+						<pre :class="$style.json">{{ formatData(props.toolCall.result) }}</pre>
+					</div>
+					<N8nCallout
+						v-if="props.toolCall.error !== undefined"
+						theme="danger"
+						:class="$style.toolErrorCallout"
+					>
+						{{ props.toolCall.error }}
+					</N8nCallout>
+				</template>
 			</N8nAnimatedCollapsibleContent>
 		</CollapsibleRoot>
 		<N8nAiActivityStepButton

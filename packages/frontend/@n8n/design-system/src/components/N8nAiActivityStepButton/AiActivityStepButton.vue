@@ -68,6 +68,11 @@ defineSlots<{
 		}
 	}
 
+	> * {
+		width: 100%;
+		overflow: hidden;
+	}
+
 	:global(.n8n-icon) {
 		flex-shrink: 0;
 	}
