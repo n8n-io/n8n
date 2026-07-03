@@ -21,49 +21,7 @@ function isJsonObject(value: unknown): value is { [key: string]: unknown } {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-/** Workflow id when a read file's content is a serialized workflow snapshot. */
-function workflowIdFromFileContent(output: unknown): string | undefined {
-	if (!isJsonObject(output) || typeof output.content !== 'string') return undefined;
-	if (!output.content.trimStart().startsWith('{')) return undefined;
-	try {
-		const parsed: unknown = JSON.parse(output.content);
-		if (isJsonObject(parsed) && typeof parsed.id === 'string' && Array.isArray(parsed.nodes)) {
-			return parsed.id;
-		}
-	} catch {
-		return undefined;
-	}
-	return undefined;
-}
-
 const RULES: SupersessionRule[] = [
-	{
-		// Full workflow snapshots (get-json / get-version / get-as-code / mutation echoes).
-		toolName: 'workflows',
-		artifactKey: (block) => {
-			const output = block.output;
-			if (!isJsonObject(output)) return undefined;
-			if (!Array.isArray(output.nodes) && typeof output.code !== 'string') return undefined;
-			const id =
-				typeof output.workflowId === 'string'
-					? output.workflowId
-					: typeof output.id === 'string'
-						? output.id
-						: undefined;
-			return id === undefined ? undefined : `workflow:${id}`;
-		},
-	},
-	{
-		// A later read of the same path supersedes earlier reads of it. Reads of
-		// workflow JSON files share the workflows-tool key so the same workflow
-		// isn't retained under two representations.
-		toolName: 'workspace_read_file',
-		artifactKey: (block) => {
-			if (!isJsonObject(block.input) || typeof block.input.path !== 'string') return undefined;
-			const workflowId = workflowIdFromFileContent(block.output);
-			return workflowId === undefined ? `file:${block.input.path}` : `workflow:${workflowId}`;
-		},
-	},
 	{
 		// Keep the newest copy of each skill; stub older duplicate loads only.
 		// Eval-measured: dropping skills from history entirely regresses
@@ -95,14 +53,12 @@ function fileDataChars(data: ContentFile['data']): number {
 }
 
 /**
- * Shrink stale artifact payloads in thread history:
- * - tool results covered by a supersession rule are replaced with a small stub
- *   (only the newest occurrence per artifact is kept);
+ * Shrink oversized payloads in thread history that observational memory
+ * shouldn't compress into prose:
+ * - duplicate load_skill results are stubbed, keeping the newest copy verbatim
+ *   (eval-measured: the guidance must survive across turns);
  * - large inline file/image blocks are replaced with a text note (their content
  *   was seen in the turn they arrived in).
- * Large tool results (full workflow JSON, file reads, skill text) dominate the
- * orchestrator prompt and are re-billed on every LLM call; only the newest
- * state is actionable.
  *
  * Pure and non-destructive: operates on the in-memory prompt view loaded at
  * turn start (persisted messages are untouched), so the pruned view is stable
