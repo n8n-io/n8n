@@ -1,0 +1,30 @@
+packages/@n8n/db/src/migrations/common/1784000000038-SetChatHubEnabledFromUsage.ts
+  s_d187a68a363af6::t_f5833f75fa8824 6-8,11-12,14-16
+  s_d187a68a363af6::t_4c2244222eae4a 20
+  s_d187a68a363af6::t_947266c906960b 21-23
+  s_d187a68a363af6::t_cc245fa5ee69f7 27
+  s_d187a68a363af6::t_c56d03262d8a64 10,18-19
+  s_d187a68a363af6::t_f616587de0a0e3 1
+  s_d187a68a363af6::t_bd9df3fff5aa42 59-61
+  s_d187a68a363af6::t_ccf3f9ab41d91c 50,54
+packages/cli/src/modules/chat-hub/chat-hub.settings.service.ts
+  s_d187a68a363af6::t_98bb17fb57871a 39-41
+packages/cli/test/migration/1784000000038-set-chat-hub-enabled-from-usage.test.ts
+  s_d187a68a363af6::t_b4a0b3ac95ca2b 106,110
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "805a0bfffe6cf30aa5966c1bfff6ebb1ac54d185",
+  "prompts": {},
+  "sessions": {
+    "s_d187a68a363af6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a657a77-c0d7-401e-b08b-5f7d646d3582",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

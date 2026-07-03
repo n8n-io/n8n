@@ -1,0 +1,29 @@
+packages/nodes-base/nodes/Microsoft/Excel/v2/actions/common.descriptions.ts
+  s_2c25c6499b7a20::t_8af9c3ecf24c91 60-64,72-92,102
+packages/nodes-base/nodes/Microsoft/Excel/v2/methods/listSearch.ts
+  s_2c25c6499b7a20::t_6c1fa85d2ef4f5 8
+  s_2c25c6499b7a20::t_a1d81e23cd371d 46,78
+packages/nodes-base/nodes/Microsoft/Excel/v2/transport/index.ts
+  s_2c25c6499b7a20::t_24f663272a0bd0 15-19
+packages/nodes-base/nodes/Microsoft/Excel/v2/helpers/utils.ts
+  s_2c25c6499b7a20::t_c9fef331af0d94 1-7,13,37-83
+packages/nodes-base/nodes/Microsoft/Excel/v2/methods/loadOptions.ts
+  s_2c25c6499b7a20::t_c9ed93393b9690 9-10,66-67
+  s_2c25c6499b7a20::t_04cef0ac939369 3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.7",
+  "base_commit_sha": "21568fde8437fec21ab9a09a314db8b3f1d51078",
+  "prompts": {},
+  "sessions": {
+    "s_2c25c6499b7a20": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7036a32f-e601-40cd-b546-a6488a88e043",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

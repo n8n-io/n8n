@@ -1,0 +1,20 @@
+packages/cli/src/workflows/publication/workflow-publication-lifecycle-lock.ts
+  s_7de970a796cb99::t_8093abfd2e0c1d 77,100
+  s_7de970a796cb99::t_b91540ab23be20 67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "caf0c6ee6b01134c368dc6835e841d496211967d",
+  "prompts": {},
+  "sessions": {
+    "s_7de970a796cb99": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f62a054f-5d45-407f-925f-ca757e8963c9",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

@@ -1,0 +1,48 @@
+packages/cli/test/integration/workflows/workflow.service.test.ts
+  s_7ad20be54c9026::t_710ccd47240522 109
+  s_7ad20be54c9026::t_bfb074a6ec442e 16
+  s_7ad20be54c9026::t_0454278c5c88d8 521,531,537-548,552,555,568-574,582-583,598-599,611,617-618
+  s_7ad20be54c9026::t_7a2f7f2148b90b 47
+  s_7ad20be54c9026::t_46fa4fa44be2a4 63
+  s_7ad20be54c9026::t_a6fc176e25b5e0 85
+packages/cli/test/integration/database/repositories/workflow-publication-outbox.repository.test.ts
+  s_7ad20be54c9026::t_acba6bebbca7ad 48-68
+packages/@n8n/db/src/repositories/workflow-publication-outbox.repository.ts
+  s_7ad20be54c9026::t_29dbc33ce7e52d 4
+  s_7ad20be54c9026::t_db02fd98e34634 68,72
+  s_7ad20be54c9026::t_f6d2d29d0e8394 30-32,34-38
+packages/cli/src/workflows/workflow.service.ts
+  s_7ad20be54c9026::t_0a35362ab87e93 1283-1333
+  s_7ad20be54c9026::t_7734c72be215d1 93
+  s_7ad20be54c9026::t_04306ee771b80a 761,769-771,773-787,789,791-796,798-801,803-814
+  ai_agent 4
+  s_7ad20be54c9026::t_f4117ba37497f9 7,15
+  s_7ad20be54c9026::t_41262ef6878f83 762,765-768
+packages/@n8n/db/src/repositories/workflow-publish-history.repository.ts
+  s_7ad20be54c9026::t_7e0a45bd068798 3,13-23
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_7ad20be54c9026::t_2883ba1a63788a 974-975
+  s_7ad20be54c9026::t_25fd3fc2a2c2d7 798-799
+  s_7ad20be54c9026::t_25d8fb70ee9b00 78,230
+  s_7ad20be54c9026::t_4a220de9a5c789 836-839
+  s_7ad20be54c9026::t_b282625003b0ca 2-9,12
+  s_7ad20be54c9026::t_cb160402f0715a 862,867
+  ai_agent 972-973,977-980
+  s_7ad20be54c9026::t_97c321d04ec9df 961-971,976,981-1020
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c19fb7759acc45a1ea684705d5e831dcbce03d22",
+  "prompts": {},
+  "sessions": {
+    "s_7ad20be54c9026": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ef4ca83f-7351-46fd-bf06-9d3b2bcc3867",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

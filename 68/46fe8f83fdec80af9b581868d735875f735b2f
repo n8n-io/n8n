@@ -1,0 +1,31 @@
+packages/cli/src/instance-settings-loader/__tests__/sso/provisioning.instance-settings-loader.test.ts
+  s_c6d39301c5a5a0::t_d63011d6090ae6 21,23,55-57,77-79,99-101,108-109,113-120,122-124
+  s_c6d39301c5a5a0::t_2ca9d21383a9c7 3
+  s_c6d39301c5a5a0::t_e4b16e397eea80 14-20,22,29
+  s_c6d39301c5a5a0::t_d6d7e5b3891d27 121
+  s_c6d39301c5a5a0::t_8c133ad696984c 1
+  s_c6d39301c5a5a0::t_fdfef582215750 6
+  s_c6d39301c5a5a0::t_ab9aae4ea83ca7 110-112
+packages/cli/src/instance-settings-loader/loaders/sso/provisioning.instance-settings-loader.ts
+  s_c6d39301c5a5a0::t_8cae6b0aad7f5b 44
+  s_c6d39301c5a5a0::t_57efd42bf6fb82 46-47
+  s_c6d39301c5a5a0::t_e431a547d54c81 1,18-21,23-24,38,43,45,48-57,61
+  s_c6d39301c5a5a0::t_0097a2374a40c2 3
+  s_c6d39301c5a5a0::t_bc01d9d398da0d 30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.4.11",
+  "base_commit_sha": "6846fe8f83fdec80af9b581868d735875f735b2f",
+  "prompts": {},
+  "sessions": {
+    "s_c6d39301c5a5a0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9719d67e-3d31-49d8-be87-03563c695653",
+        "model": "claude-opus-4-7"
+      },
+      "human_author": "Thanasis Gkliatis <thanasis.gkliatis@n8n.io>"
+    }
+  }
+}

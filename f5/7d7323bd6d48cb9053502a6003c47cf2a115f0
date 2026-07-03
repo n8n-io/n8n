@@ -1,0 +1,37 @@
+packages/@n8n/instance-ai/evaluations/data/workflows/user-requests-post-build-change.json
+  s_43d46b9515ec48::t_a1f2f4d3d3c8fb 11-12
+  s_43d46b9515ec48::t_d58e5f1e7438ce 18
+  s_43d46b9515ec48::t_c90accb355d3f0 2,10,13,20-24,32
+packages/@n8n/instance-ai/evaluations/data/workflows/user-self-corrects.json
+  s_43d46b9515ec48::t_ffaa78450475d7 18
+  s_43d46b9515ec48::t_c90accb355d3f0 2,10,13,20-24,38
+  s_43d46b9515ec48::t_00587b3da29138 11-12
+packages/@n8n/instance-ai/evaluations/data/workflows/user-gives-wrong-answer.json
+  s_43d46b9515ec48::t_c90accb355d3f0 2,10-14,21-25,33
+  s_43d46b9515ec48::t_23521a00615dc5 19
+packages/@n8n/instance-ai/evaluations/data/workflows/user-impatient.json
+  s_43d46b9515ec48::t_28ff30fcb1f5a5 12
+  s_43d46b9515ec48::t_c90accb355d3f0 2,10-11,13-14,17,21-25,33
+  s_43d46b9515ec48::t_41c201182afb59 19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f57d7323bd6d48cb9053502a6003c47cf2a115f0",
+  "prompts": {},
+  "humans": {
+    "h_4dd92f790825be": {
+      "author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_43d46b9515ec48": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "900a6b62-2537-4566-bd1c-cec9f498623a",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}

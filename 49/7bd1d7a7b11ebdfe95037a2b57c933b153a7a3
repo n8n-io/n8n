@@ -1,0 +1,110 @@
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_b9ebde5ebc00ba::t_a3199699d5136c 166-253
+packages/cli/src/events/maps/relay.event-map.ts
+  s_b9ebde5ebc00ba::t_4b6ab4729c3201 20
+  s_b9ebde5ebc00ba::t_a07f481a5a751b 114-128
+packages/cli/src/events/relays/log-streaming.event-relay.ts
+  s_b9ebde5ebc00ba::t_49a71a763871f2 46-47
+  s_b9ebde5ebc00ba::t_1c521657eefa96 165-179
+packages/cli/src/modules/n8n-packages/n8n-packages.types.ts
+  s_b9ebde5ebc00ba::t_9e3ce50792df22 15-16
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_b9ebde5ebc00ba::t_0c4b10f8da0f62 2050-2051,2054-2064,2066-2069,2073-2075,2077-2080
+  s_b9ebde5ebc00ba::t_200566de0122be 2049,2052-2053,2065,2070-2072,2076,2081
+packages/cli/src/modules/n8n-packages/entities/folder/folder.exporter.ts
+  s_b9ebde5ebc00ba::t_4adfad131517c6 10
+  s_b9ebde5ebc00ba::t_5b7b1075abf0bd 42-45,47
+  s_b9ebde5ebc00ba::t_177f2bb334dc5f 46
+packages/cli/src/public-api/v1/handlers/n8n-packages/__tests__/n8n-packages.handler.test.ts
+  s_b9ebde5ebc00ba::t_875da1dfae7b99 214
+  s_b9ebde5ebc00ba::t_f607ae56834282 109-113
+  s_b9ebde5ebc00ba::t_109673ddbaa1f6 12
+  s_b9ebde5ebc00ba::t_022615fc6f00bc 9,11,13,26,28,33,38,51-65,82-96,100,119-124,126-129,131-145,147-160,163-164,166-170,173-174,176-181,184-188,190-192,194-198,200-202,204-208,210-212,215,217-224,226-251,253-259,261-272,274-290,293-306,308-312,314-315,318-322,324-326,328-398
+packages/cli/src/modules/n8n-packages/__tests__/export-folder.integration.test.ts
+  s_b9ebde5ebc00ba::t_a7284205ce1886 108-126
+  s_b9ebde5ebc00ba::t_eff0688b05358d 10-13
+  s_b9ebde5ebc00ba::t_2adbfc2cdf61f6 237-243
+packages/cli/src/modules/n8n-packages/__tests__/export-project.integration.test.ts
+  s_b9ebde5ebc00ba::t_8a32b4cb608c39 15-18
+  s_b9ebde5ebc00ba::t_98aba512d0facb 165-166,169-171,183-188
+packages/cli/src/modules/n8n-packages/package-failure-classifier.ts
+  s_b9ebde5ebc00ba::t_087d62df8a8882 8-10,12-13
+packages/cli/src/modules/n8n-packages/__tests__/import-pipeline.integration.test.ts
+  s_b9ebde5ebc00ba::t_a244aca448a79b 1034-1041,1049-1057
+  s_b9ebde5ebc00ba::t_3a584ce5b817bf 923-931,944-945
+  s_b9ebde5ebc00ba::t_ec1b6cff54bfcc 24-26
+packages/cli/src/eventbus/event-message-classes/index.ts
+  s_b9ebde5ebc00ba::t_573b2c866fcad3 87-88
+packages/cli/src/modules/n8n-packages/__tests__/export-workflow.integration.test.ts
+  s_b9ebde5ebc00ba::t_b5f15c26158c8c 15-18
+  s_b9ebde5ebc00ba::t_c39fb3dcc3881a 146-154,168-177
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_b9ebde5ebc00ba::t_5bd2cb4d6ea93d 985-1007
+  s_b9ebde5ebc00ba::t_1b237f43aeabb1 166-167
+packages/cli/src/modules/n8n-packages/entities/project/__tests__/project.exporter.test.ts
+  s_b9ebde5ebc00ba::t_a42f6ef322e965 5-6
+  s_b9ebde5ebc00ba::t_33a2cd0d0a4f51 92-96,99-111
+  s_b9ebde5ebc00ba::t_9c49e9a745a506 61
+  s_b9ebde5ebc00ba::t_e6ded776d5fb18 8-11
+packages/cli/src/modules/n8n-packages/entities/workflow/workflow.exporter.ts
+  s_b9ebde5ebc00ba::t_c1a4a733e48846 45-48,50
+  s_b9ebde5ebc00ba::t_0cfccd1ab3c17e 4
+  s_b9ebde5ebc00ba::t_6eb9c69d821b1b 49
+  s_b9ebde5ebc00ba::t_79127d8514deed 12
+packages/cli/src/modules/n8n-packages/entities/workflow/__tests__/workflow.exporter.test.ts
+  s_b9ebde5ebc00ba::t_2fe96c65c4334b 10-13
+  s_b9ebde5ebc00ba::t_1deecce922109e 37
+  s_b9ebde5ebc00ba::t_b9003f63813f42 76-109
+packages/cli/src/modules/n8n-packages/entities/package-export.errors.ts
+  s_b9ebde5ebc00ba::t_dcb820fe199865 11-13
+  s_b9ebde5ebc00ba::t_30ac6576e8fdaf 3-6
+  s_b9ebde5ebc00ba::t_dbfaa5186a3058 9-10,14-39
+  s_b9ebde5ebc00ba::t_9306fd62d530ec 1-2,7-8
+packages/cli/src/modules/n8n-packages/__tests__/package-failure-classifier.test.ts
+  s_b9ebde5ebc00ba::t_f2c0baceddbd30 1-30
+packages/cli/src/modules/n8n-packages/entities/project/project.exporter.ts
+  s_b9ebde5ebc00ba::t_a42f6ef322e965 4
+  s_b9ebde5ebc00ba::t_7a5e8710337c1e 10
+  s_b9ebde5ebc00ba::t_d48f7ff10534f2 36-39,41
+  s_b9ebde5ebc00ba::t_dd2a34df6df9d4 40
+packages/cli/src/workflows/workflow-finder.service.ts
+  s_b9ebde5ebc00ba::t_69196a4199aed1 158-165
+  s_b9ebde5ebc00ba::t_8c4df59576eae4 156
+  s_b9ebde5ebc00ba::t_b9fcde414f4964 157
+  s_b9ebde5ebc00ba::t_3ed52346f9249b 2
+  s_b9ebde5ebc00ba::t_e48ceff7463480 19
+packages/cli/src/services/project.service.ee.ts
+  s_b9ebde5ebc00ba::t_d16ccf87e63aef 717
+  s_b9ebde5ebc00ba::t_812e4fdb2ee175 718-725
+  s_b9ebde5ebc00ba::t_a9d596446b4bcc 716
+packages/cli/src/services/folder-finder.service.ts
+  s_b9ebde5ebc00ba::t_b0ed816e41b176 25
+  s_b9ebde5ebc00ba::t_be68174f231e03 26
+  s_b9ebde5ebc00ba::t_747edbb94cec73 27-34
+packages/cli/src/public-api/v1/handlers/n8n-packages/n8n-packages.handler.ts
+  s_b9ebde5ebc00ba::t_e461544a023254 20-21
+  s_b9ebde5ebc00ba::t_60fe76a6607251 13-15
+  s_b9ebde5ebc00ba::t_fb79024e052339 22
+  s_b9ebde5ebc00ba::t_094fbd4a4dd5bf 94-135,140-142,149-185
+  s_b9ebde5ebc00ba::t_1b119ece08a580 136-139
+  s_b9ebde5ebc00ba::t_e278a077662cf8 6,11-12
+  s_b9ebde5ebc00ba::t_05bb0208a6fc9a 68-74
+  s_b9ebde5ebc00ba::t_bbb6a2c13b9db6 147
+  s_b9ebde5ebc00ba::t_39231a9fc45593 17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "497bd1d7a7b11ebdfe95037a2b57c933b153a7a3",
+  "prompts": {},
+  "sessions": {
+    "s_b9ebde5ebc00ba": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1a1339cc-ffc0-4c67-9927-7f58b5b5cdcd",
+        "model": "claude-sonnet-5"
+      },
+      "human_author": "Dmitrii Kulikov <dmitrii.kulikov@n8n.io>"
+    }
+  }
+}

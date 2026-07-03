@@ -1,0 +1,26 @@
+packages/nodes-base/nodes/Microsoft/GraphSecurity/test/workflow/secureScore.get.genericOAuth2.workflow.json
+  s_9412036cb02fc4::t_5f80d575c692ba 1-83
+packages/nodes-base/nodes/Microsoft/GraphSecurity/test/MicrosoftGraphSecurity.node.test.ts
+  s_9412036cb02fc4::t_013a4f7c48be3a 1-24
+packages/nodes-base/nodes/Microsoft/GraphSecurity/test/GenericFunctions.test.ts
+  s_9412036cb02fc4::t_415827e794b293 566-728
+  s_9412036cb02fc4::t_ff054935523a3a 32-37
+packages/nodes-base/nodes/Microsoft/GraphSecurity/test/workflow/secureScore.get.genericOAuth2.test.ts
+  s_9412036cb02fc4::t_e69830b4bd2ba9 1-47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.8",
+  "base_commit_sha": "0605e19c68ef3819bea15fa91394141c05d47222",
+  "prompts": {},
+  "sessions": {
+    "s_9412036cb02fc4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4a47dd9c-8df0-42f0-8f23-9f47fc6c27e8",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

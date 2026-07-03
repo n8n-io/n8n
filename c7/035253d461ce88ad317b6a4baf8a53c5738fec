@@ -1,0 +1,20 @@
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_7866d352073a64::t_84ad804214b518 722-881
+  s_7866d352073a64::t_52047dc5717691 2-3,7,9,12-13,20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c7035253d461ce88ad317b6a4baf8a53c5738fec",
+  "prompts": {},
+  "sessions": {
+    "s_7866d352073a64": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "d13bfb88-4458-46bf-8ac0-0650df47527e",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}

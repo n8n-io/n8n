@@ -1,0 +1,21 @@
+packages/nodes-base/nodes/Google/Sheet/test/GoogleSheetsTrigger.test.ts
+  s_88ca00a986dc30::t_8107439af8cca1 448-451
+packages/nodes-base/nodes/Google/Sheet/GoogleSheetsTrigger.node.ts
+  s_88ca00a986dc30::t_a5c145e2f3d684 457-460,472-474
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.8",
+  "base_commit_sha": "3c065ac1a60e9e98dc652100ed7958b255f7a25a",
+  "prompts": {},
+  "sessions": {
+    "s_88ca00a986dc30": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "86e4073c-e3f7-4347-b37a-6b31f92de827",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

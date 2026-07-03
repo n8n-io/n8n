@@ -1,0 +1,23 @@
+packages/testing/playwright/tests/e2e/redaction-enforcement/redaction-enforcement.spec.ts
+  s_aaabdf4fe381cc::t_05d2be0d9c4ec2 51-52
+  s_aaabdf4fe381cc::t_53fb39bd82cb7f 233
+  s_aaabdf4fe381cc::t_c8fc23b316262a 56
+packages/testing/playwright/tests/e2e/redaction-enforcement/redaction-enforcement-disabled.spec.ts
+  s_aaabdf4fe381cc::t_04e0225163e120 13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d2d8f1af863729f9159a278b44e70988eb72d002",
+  "prompts": {},
+  "sessions": {
+    "s_aaabdf4fe381cc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "add461e2-273a-4b06-8479-f725428c479c",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Ilfat Mindubaev <ilfat.mindubaev@n8n.io>"
+    }
+  }
+}

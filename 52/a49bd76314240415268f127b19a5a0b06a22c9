@@ -1,0 +1,51 @@
+packages/cli/src/controllers/project-environment.controller.ts
+  s_98d3bd5b16e203::t_8bd24c66d02280 101-106
+  s_98d3bd5b16e203::t_7671f13db29cbc 87-90
+  s_98d3bd5b16e203::t_61994b07851c40 20
+  s_98d3bd5b16e203::t_3f51dbf0e93e2d 91-94,111-115
+packages/cli/src/credentials-helper.ts
+  s_98d3bd5b16e203::t_f2478b5b382727 403-404,407
+packages/cli/src/workflows/workflow.service.ts
+  s_98d3bd5b16e203::t_d72d6f86c1dadc 814
+packages/frontend/@n8n/rest-api-client/src/api/projectEnvironments.ts
+  s_98d3bd5b16e203::t_aad1fe583f8e7e 20
+  s_98d3bd5b16e203::t_4083a7ae2da5c4 87,92,100,106
+packages/cli/src/services/project-environment.service.ts
+  s_98d3bd5b16e203::t_f6650cdb010d4f 76-80,86,117-118,123,139
+packages/frontend/editor-ui/src/features/environments/environments.store.ts
+  s_98d3bd5b16e203::t_8f3fd995b301de 63-67
+  s_98d3bd5b16e203::t_a10b667b3b0c53 25-26
+  s_98d3bd5b16e203::t_a7ea0b9d451a4e 94-98,103,105-108,113,121,124-125
+packages/@n8n/db/src/entities/environment-credential-binding.ts
+  s_98d3bd5b16e203::t_d4a1d06441fa4f 13,20-22,32-34
+packages/@n8n/db/src/migrations/common/1784000000039-CreateEnvironmentCredentialBinding.ts
+  s_98d3bd5b16e203::t_3e097b599853d3 8,13-17,33-34
+packages/frontend/editor-ui/src/app/components/MainHeader/WorkflowPublishModal.vue
+  s_98d3bd5b16e203::t_e39505f189e000 132-133
+  s_98d3bd5b16e203::t_ebc543c8d0c590 108,111
+packages/@n8n/db/src/repositories/environment-credential-binding.repository.ts
+  s_98d3bd5b16e203::t_1913764a987b8b 14,18,24-28,33,36,38
+single-instance-promotion-prototype/implementation-phase/SUMMARY_PLAN_BINDING_SCOPED_PER_WORKFLOW.md
+  h_c63dce324dfc7b 1-21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.13",
+  "base_commit_sha": "52a49bd76314240415268f127b19a5a0b06a22c9",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_98d3bd5b16e203": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8041fafd-fb45-4ea2-8ab1-228618100281",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

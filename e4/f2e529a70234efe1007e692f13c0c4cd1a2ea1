@@ -1,0 +1,23 @@
+packages/cli/test/integration/workflows/workflow-publication-outbox-consumer.test.ts
+  s_baf7d2dbecdbbb::t_8ff423dff39f22 20
+packages/cli/src/commands/start.ts
+  s_baf7d2dbecdbbb::t_9f68be01b227c0 237
+packages/cli/src/workflows/publication/__tests__/workflow-publication-outbox-consumer.test.ts
+  s_baf7d2dbecdbbb::t_25e6922a9666aa 20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "e4f2e529a70234efe1007e692f13c0c4cd1a2ea1",
+  "prompts": {},
+  "sessions": {
+    "s_baf7d2dbecdbbb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "617c4ca3-4c59-496a-bdb3-e93f7a9ab1f7",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}

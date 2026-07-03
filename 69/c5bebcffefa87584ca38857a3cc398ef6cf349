@@ -1,0 +1,27 @@
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInput.vue
+  b8823384edb2b091 342-354
+packages/workflow/test/filter-parameter.test.ts
+  b8823384edb2b091 539-542,567-568
+packages/frontend/editor-ui/src/features/ndv/parameters/components/ParameterInput.test.ts
+  b8823384edb2b091 910,926,928,953-974,989,991
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.1.12",
+  "base_commit_sha": "69c5bebcffefa87584ca38857a3cc398ef6cf349",
+  "prompts": {
+    "b8823384edb2b091": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "bad79531-050d-4f8e-b3e1-1bad99ccce65",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "Jonathan Bennetts <jonathan.bennetts@gmail.com>",
+      "messages": [],
+      "total_additions": 55,
+      "total_deletions": 25,
+      "accepted_lines": 50,
+      "overriden_lines": 0
+    }
+  }
+}
