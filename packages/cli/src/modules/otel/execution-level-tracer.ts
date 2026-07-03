@@ -295,6 +295,11 @@ function terminateSpan(span: Span, reason: string): void {
 }
 
 function getErrorType(error: unknown): string {
+	console.log('--------------------------------');
+	console.log('typeof error', typeof error);
+	console.log(error);
+	console.log('--------------------------------');
+
 	if (error instanceof Error) return error.constructor.name;
 
 	if (typeof error !== 'object' || error === null) return UNKNOWN_ERROR_TYPE;
