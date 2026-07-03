@@ -3147,12 +3147,12 @@ describe('providerOptions — tool adapter', () => {
 
 		expect(ai.tool).toHaveBeenCalledWith(
 			expect.objectContaining({
-				providerOptions: { openai: { strict: true } },
+				providerOptions: { openai: { strict: true }, anthropic: { eagerInputStreaming: false } },
 			}),
 		);
 	});
 
-	it('does not pass providerOptions when not set', () => {
+	it('defaults providerOptions to the Anthropic quirk default when the tool sets none', () => {
 		const ai = aiModule as unknown as { tool: Mock };
 		const adapter = { toAiSdkTools };
 
@@ -3166,9 +3166,8 @@ describe('providerOptions — tool adapter', () => {
 		adapter.toAiSdkTools([builtTool]);
 
 		expect(ai.tool).toHaveBeenCalledWith(
-			expect.not.objectContaining({
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				providerOptions: expect.anything(),
+			expect.objectContaining({
+				providerOptions: { anthropic: { eagerInputStreaming: false } },
 			}),
 		);
 	});

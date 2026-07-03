@@ -23,6 +23,7 @@ import type {
 	MessageContent,
 } from '../../types/sdk/message';
 import type { JSONObject, JSONValue } from '../../types/utils/json';
+import { getProviderQuirks, PROVIDER_QUIRKS } from './provider-quirks';
 
 /** Reasoning content part — mirrors @ai-sdk/provider-utils ReasoningPart (not re-exported by 'ai'). */
 type ReasoningPart = { type: 'reasoning'; text: string };
@@ -119,30 +120,11 @@ function hasReplayableReasoningProviderOptions(
 ): boolean {
 	if (!providerOptions) return false;
 
-	const anthropicOptions = getRecord(providerOptions.anthropic);
-	if (
-		typeof anthropicOptions?.signature === 'string' ||
-		typeof anthropicOptions?.redactedData === 'string'
-	) {
-		return true;
-	}
-
-	// OpenAI Responses API reasoning models pair each function_call item with a
-	// reasoning item. Dropping the reasoning part from history makes the next
-	// request fail with "function_call was provided without its required
-	// 'reasoning' item".
-	const openaiOptions = getRecord(providerOptions.openai);
-	if (
-		typeof openaiOptions?.itemId === 'string' ||
-		typeof openaiOptions?.reasoningEncryptedContent === 'string'
-	) {
-		return true;
-	}
-
-	return Object.entries(providerOptions).some(
-		([provider, options]) =>
-			provider !== 'anthropic' && provider !== 'openai' && hasEntries(options),
-	);
+	return Object.entries(providerOptions).some(([provider, options]) => {
+		const replayKeys = getProviderQuirks(provider).reasoningReplayKeys;
+		if (replayKeys) return replayKeys.some((key) => typeof options[key] === 'string');
+		return hasEntries(options);
+	});
 }
 
 type ContentToolResultOutput = Extract<ToolResultPart['output'], { type: 'content' }>;
@@ -153,44 +135,30 @@ function isContentToolResultOutput(value: JSONValue): value is ContentToolResult
 
 /**
  * Providers replay reasoning from `providerOptions`, but the AI SDK exposes the
- * replay data in `providerMetadata` — Anthropic's `signature`/`redactedData`
- * and OpenAI's `itemId`/`reasoningEncryptedContent`. Copy them across so the
- * next request can replay the reasoning block. Existing `providerOptions`
- * values win.
+ * replay data in `providerMetadata` (see `PROVIDER_QUIRKS[provider].reasoningReplayKeys`).
+ * Copy it across so the next request can replay the reasoning block. Existing
+ * `providerOptions` values win.
  */
 function toReasoningProviderOptions(block: ContentReasoning): ProviderOptions | undefined {
-	const anthropicMetadata = getRecord(block.providerMetadata?.anthropic);
-	const signature = anthropicMetadata?.signature;
-	const redactedData = anthropicMetadata?.redactedData;
-	const hasAnthropicReplay = typeof signature === 'string' || typeof redactedData === 'string';
+	const additions: Record<string, JSONObject> = {};
 
-	const openaiMetadata = getRecord(block.providerMetadata?.openai);
-	const itemId = openaiMetadata?.itemId;
-	const reasoningEncryptedContent = openaiMetadata?.reasoningEncryptedContent;
-	const hasOpenAiReplay =
-		typeof itemId === 'string' || typeof reasoningEncryptedContent === 'string';
+	for (const [provider, quirks] of Object.entries(PROVIDER_QUIRKS)) {
+		const replayKeys = quirks.reasoningReplayKeys;
+		if (!replayKeys) continue;
 
-	if (!hasAnthropicReplay && !hasOpenAiReplay) {
-		return block.providerOptions;
+		const metadata = getRecord(block.providerMetadata?.[provider]);
+		const replayed: JSONObject = {};
+		for (const key of replayKeys) {
+			if (typeof metadata?.[key] === 'string') replayed[key] = metadata[key];
+		}
+		if (hasEntries(replayed)) {
+			additions[provider] = { ...replayed, ...block.providerOptions?.[provider] };
+		}
 	}
 
-	return {
-		...block.providerOptions,
-		...(hasAnthropicReplay && {
-			anthropic: {
-				...(typeof signature === 'string' && { signature }),
-				...(typeof redactedData === 'string' && { redactedData }),
-				...getRecord(block.providerOptions?.anthropic),
-			},
-		}),
-		...(hasOpenAiReplay && {
-			openai: {
-				...(typeof itemId === 'string' && { itemId }),
-				...(typeof reasoningEncryptedContent === 'string' && { reasoningEncryptedContent }),
-				...getRecord(block.providerOptions?.openai),
-			},
-		}),
-	};
+	if (!hasEntries(additions)) return block.providerOptions;
+
+	return { ...block.providerOptions, ...additions };
 }
 
 /** Convert a single n8n MessageContent block to an AI SDK content part. */

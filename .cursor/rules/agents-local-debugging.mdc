@@ -1,0 +1,50 @@
+---
+description: Local debugging setup for the agents feature (runtime, knowledge sandbox, chat sessions)
+globs: packages/cli/src/modules/agents/**,packages/@n8n/agents/**
+alwaysApply: false
+---
+
+# Debugging the agents feature locally
+
+## Runtime setup
+
+- Backend: `pnpm run buildAndDev` in `packages/cli`, launched with the agents env
+  (`N8N_ENABLED_MODULES=agents,instance-ai`, `N8N_AGENTS_AI_SANDBOX_*` vars, Daytona
+  credentials, `WEBHOOK_URL` via ngrok). The full command with env lives in the user's
+  running terminal — reuse it, don't invent flags.
+- Frontend: `pnpm --filter n8n-editor-ui dev` (Vite, hot reload).
+- After editing `packages/@n8n/agents/src`, the watcher rebuilds `dist/`, but the running
+  n8n process loads dist at startup — **restart the backend before reproducing**, and
+  verify the change reached `packages/@n8n/agents/dist/**` (grep for your marker).
+
+## Inspecting state
+
+- Local DB: SQLite at `/Users/robin/.n8n/database.sqlite`. Key tables: `agents`
+  (`activeVersionId` null = unpublished), `agent_files` (authoritative knowledge file
+  list; `binaryDataId` = `daytona-volume:<storageName>`), `agents_threads` /
+  `agents_messages` (full chat transcripts incl. tool calls — rejected calls are stored
+  with `input: {}` and the error string; the raw model input is NOT persisted).
+- Chat session forensics: `SELECT role, content FROM agents_messages WHERE threadId='…'
+  ORDER BY createdAt` — the user supplies thread ids from the UI.
+- Daytona sandbox: find by label `{"n8n-agent-id": "<agentId>"}` via the Daytona API
+  (key in `.env`), then run shell inside it via
+  `POST /api/toolbox/{sandboxId}/toolbox/process/execute`. Knowledge lives at
+  `/home/daytona/workspace/agent-knowledge/files` (volume) and
+  `/home/daytona/knowledge-mirror/files` + `/manifest` (local mirror).
+
+## Tool-call debugging hotspots
+
+- Raw provider stream chunks: `packages/@n8n/agents/src/runtime/streaming/stream.ts`
+  (`tool-input-delta`, `tool-call`).
+- Input validation/rejection: `runtime/tools/tool-call-executor.ts` →
+  `normalizeToolInputForModel` in `runtime/model/messages.ts`.
+- Provider quirks: Anthropic enables `eager_input_streaming` per tool by default
+  (raw, unvalidated tool-arg JSON — malformed input is possible); OpenAI Responses API
+  pairs `function_call` items with required `reasoning` items on replay.
+
+## Debug-mode logging gotcha
+
+The debug-log ingest server writes to `<workspace>/.cursor/debug-<session>.log` but does
+NOT create the directory: if `<workspace>/.cursor/` is missing, every write fails
+silently (HTTP 500 `write-failed`) and the log stays empty. `mkdir -p` the directory
+before the first instrumented run, and probe the ingest endpoint with `curl` (expect 204).

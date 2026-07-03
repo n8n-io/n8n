@@ -95,6 +95,24 @@ describe('toAiSdkTools — Zod schemas', () => {
 		]);
 		expect((result['search'] as { inputSchema: unknown }).inputSchema).toBe(zodSchema);
 	});
+
+	it('disables Anthropic eager input streaming by default', () => {
+		const result = toAiSdkTools([makeZodSchemaTool()]);
+		expect((result['zodTool'] as { providerOptions?: unknown }).providerOptions).toEqual({
+			anthropic: { eagerInputStreaming: false },
+		});
+	});
+
+	it('keeps an explicit per-tool eagerInputStreaming override', () => {
+		const tool = {
+			...makeZodSchemaTool(),
+			providerOptions: { anthropic: { eagerInputStreaming: true } },
+		};
+		const result = toAiSdkTools([tool]);
+		expect((result['zodTool'] as { providerOptions?: unknown }).providerOptions).toEqual({
+			anthropic: { eagerInputStreaming: true },
+		});
+	});
 });
 
 // ---------------------------------------------------------------------------
