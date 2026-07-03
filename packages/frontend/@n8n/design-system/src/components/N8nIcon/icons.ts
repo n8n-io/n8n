@@ -254,6 +254,7 @@ import IconLucideType from '~icons/lucide/type';
 import IconLucideUndo2 from '~icons/lucide/undo-2';
 import IconLucideUngroup from '~icons/lucide/ungroup';
 import IconLucideUnlink from '~icons/lucide/unlink';
+import IconLucideUnplug from '~icons/lucide/unplug';
 import IconLucideUpload from '~icons/lucide/upload';
 import IconLucideUser from '~icons/lucide/user';
 import IconLucideUserCheck from '~icons/lucide/user-check';
@@ -747,6 +748,7 @@ export const updatedIconSet = {
 	'undo-2': IconLucideUndo2,
 	ungroup: IconLucideUngroup,
 	unlink: IconLucideUnlink,
+	unplug: IconLucideUnplug,
 	upload: IconLucideUpload,
 	user: IconLucideUser,
 	'user-check': IconLucideUserCheck,
