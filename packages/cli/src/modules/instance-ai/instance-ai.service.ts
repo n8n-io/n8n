@@ -4409,6 +4409,9 @@ export class InstanceAiService {
 			);
 			await this.finalizeRun(opts.threadId, opts.runId, result.status, opts.snapshotStorage, {
 				userId: opts.user.id,
+				// Forward modelId so title refinement fires on the resume path too — a run
+				// that suspends for HITL and completes here would otherwise never be titled.
+				...(opts.modelId !== undefined ? { modelId: opts.modelId } : {}),
 				archivedWorkflowIds,
 				workSummary: result.workSummary,
 				usage: result.usage,
@@ -5024,17 +5027,24 @@ export class InstanceAiService {
 			// Skip if thread already has an LLM-refined title
 			if (thread.metadata?.titleRefined) return;
 
-			// Concat recent user messages so retries after a trivial first message
-			// (e.g. "hey") have enough signal to produce a good title.
-			const history = await memory.getMessages(threadId, { limit: 5 });
-			const userTexts = history.flatMap((m) => {
-				if (!('role' in m) || m.role !== 'user') return [];
+			// Title the conversation from its opening user turns. Fetch the whole
+			// history (ascending) rather than the most recent N messages: a build
+			// emits many assistant/reasoning/tool messages, so a recency-limited
+			// window is dominated by them and the user's actual request scrolls out
+			// entirely, leaving nothing to title. Concatenating the first few user
+			// messages also covers the trivial-first-message retry ("hey" followed
+			// by a real request).
+			const history = await memory.getMessages(threadId);
+			const userTexts: string[] = [];
+			for (const m of history) {
+				if (!('role' in m) || m.role !== 'user') continue;
 				// Stored user messages carry service-injected blocks (<current-date-time>,
 				// task context). Strip them or a trivial "hey" looks substantial enough to
 				// title, and the injected blocks leak into the title prompt.
 				const text = cleanStoredUserMessage(this.extractStoredMessageText(m.content));
-				return text && text.length > 0 ? [text] : [];
-			});
+				if (text && text.length > 0) userTexts.push(text);
+				if (userTexts.length >= 5) break;
+			}
 			if (userTexts.length === 0) return;
 			const userText = userTexts.join('\n');
 

@@ -78,6 +78,10 @@ describe('InstanceAiService — refineTitleIfNeeded input cleaning', () => {
 		return { role: 'user', content: [{ type: 'text', text }] };
 	}
 
+	function assistantMessage(text: string): StoredMessage {
+		return { role: 'assistant', content: [{ type: 'text', text }] };
+	}
+
 	beforeEach(() => {
 		generateTitleForRun.mockReset();
 		patchThread.mockReset();
@@ -122,5 +126,94 @@ describe('InstanceAiService — refineTitleIfNeeded input cleaning', () => {
 
 		expect(generateTitleForRun).not.toHaveBeenCalled();
 		expect(patchThread).not.toHaveBeenCalled();
+	});
+
+	it('titles from the opening user turns even when a build buries them under assistant messages', async () => {
+		// A build emits many assistant/reasoning/tool messages after the request,
+		// so a recency-limited window would miss the user's messages entirely.
+		const stored = [
+			userMessage(withCurrentDateTime('hey', '\n2026-07-03 09:30')),
+			assistantMessage("Hi! I'm your n8n assistant."),
+			userMessage(
+				withCurrentDateTime(
+					'lets build a workflow that greets me on telegram every morning',
+					'\n2026-07-03 09:31',
+				),
+			),
+			assistantMessage('Reasoning about the workflow...'),
+			assistantMessage('Build succeeded.'),
+			assistantMessage('Verification is ready.'),
+			assistantMessage('Verified — both nodes ran.'),
+		];
+		const service = createService(stored);
+		generateTitleForRun.mockResolvedValue('Morning telegram greeting');
+
+		await service.refineTitleIfNeeded('thread-1', 'user-1', modelId);
+
+		expect(generateTitleForRun).toHaveBeenCalledWith(
+			modelId,
+			'hey\nlets build a workflow that greets me on telegram every morning',
+		);
+		expect(patchThread).toHaveBeenCalledTimes(1);
+	});
+
+	it('fetches full history rather than a recency-limited window', async () => {
+		const service = createService([userMessage(withCurrentDateTime('hey', '\n2026-07-03 09:30'))]);
+		generateTitleForRun.mockResolvedValue(null);
+
+		await service.refineTitleIfNeeded('thread-1', 'user-1', modelId);
+
+		// No limit — a recency window would drop the user's request behind a build's
+		// assistant messages.
+		expect(service.agentMemory.getMessages).toHaveBeenCalledWith('thread-1');
+	});
+});
+
+/**
+ * Regression: a run that suspends for HITL and completes on the resume path
+ * must still be titled. The resume-path finalizeRun caller previously dropped
+ * modelId, so the guard skipped refinement and the thread kept its heuristic
+ * first-message title (e.g. a trivial "hey").
+ */
+describe('InstanceAiService — finalizeRun title refinement guard', () => {
+	type FinalizeInternals = {
+		publishRunFinish: ReturnType<typeof vi.fn>;
+		emitRunMetrics: ReturnType<typeof vi.fn>;
+		saveAgentTreeSnapshot: ReturnType<typeof vi.fn>;
+		refineTitleIfNeeded: ReturnType<typeof vi.fn>;
+		finalizeRun: (
+			threadId: string,
+			runId: string,
+			status: 'completed' | 'cancelled' | 'errored',
+			snapshotStorage: unknown,
+			options?: { userId?: string; modelId?: ModelConfig },
+		) => Promise<void>;
+	};
+
+	const modelId = { provider: 'anthropic', model: 'test-model' } as unknown as ModelConfig;
+
+	function createService(): FinalizeInternals {
+		const service = Object.create(InstanceAiService.prototype) as unknown as FinalizeInternals;
+		service.publishRunFinish = vi.fn();
+		service.emitRunMetrics = vi.fn();
+		service.saveAgentTreeSnapshot = vi.fn(async () => {});
+		service.refineTitleIfNeeded = vi.fn(async () => {});
+		return service;
+	}
+
+	it('refines the title when a completed run supplies userId and modelId', async () => {
+		const service = createService();
+
+		await service.finalizeRun('thread-1', 'run-1', 'completed', {}, { userId: 'user-1', modelId });
+
+		expect(service.refineTitleIfNeeded).toHaveBeenCalledWith('thread-1', 'user-1', modelId);
+	});
+
+	it('skips refinement when modelId is missing', async () => {
+		const service = createService();
+
+		await service.finalizeRun('thread-1', 'run-1', 'completed', {}, { userId: 'user-1' });
+
+		expect(service.refineTitleIfNeeded).not.toHaveBeenCalled();
 	});
 });
