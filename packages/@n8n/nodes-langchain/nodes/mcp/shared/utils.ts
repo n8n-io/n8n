@@ -330,7 +330,7 @@ function createAuthFetch(
 }
 
 export async function getAuthHeaders(
-	ctx: IExecuteFunctions | ILoadOptionsFunctions | ISupplyDataFunctions,
+	ctx: Pick<IExecuteFunctions, 'getCredentials'>,
 	authentication: McpAuthenticationOption,
 ): Promise<{
 	headers?: Record<string, string>;
@@ -380,9 +380,9 @@ export async function getAuthHeaders(
 		}
 		case 'multipleHeadersAuth': {
 			const credentials = await ctx
-				.getCredentials<{ headers: { values: Array<{ name: string; value: string }> } }>(
-					'httpMultipleHeadersAuth',
-				)
+				.getCredentials<{
+					headers: { values: Array<{ name: string; value: string }> };
+				}>('httpMultipleHeadersAuth')
 				.catch(() => null);
 
 			if (!credentials) return {};
