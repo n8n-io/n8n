@@ -119,7 +119,34 @@ describe('InstanceRoleView', () => {
 			await userEvent.click(getByRole('button', { name: 'Create' }));
 
 			await waitFor(() => {
-				expect(mockShowError).toHaveBeenCalledWith(error, 'Error creating role');
+				expect(mockShowError).toHaveBeenCalledWith(error, "Couldn't create role");
+			});
+		});
+
+		it('shows a validation error and does not call the API when name is empty', async () => {
+			const { getByRole } = renderComponent();
+
+			await userEvent.click(getByRole('button', { name: 'Create' }));
+
+			expect(rolesStore.createRole).not.toHaveBeenCalled();
+			expect(mockShowMessage).toHaveBeenCalledWith({
+				type: 'error',
+				title: "Couldn't create role",
+				message: 'Enter a name of at least 2 characters',
+			});
+		});
+
+		it('shows a validation error and does not call the API when name is shorter than 2 characters', async () => {
+			const { container, getByRole } = renderComponent();
+
+			await fillName(container, 'A');
+			await userEvent.click(getByRole('button', { name: 'Create' }));
+
+			expect(rolesStore.createRole).not.toHaveBeenCalled();
+			expect(mockShowMessage).toHaveBeenCalledWith({
+				type: 'error',
+				title: "Couldn't create role",
+				message: 'Enter a name of at least 2 characters',
 			});
 		});
 

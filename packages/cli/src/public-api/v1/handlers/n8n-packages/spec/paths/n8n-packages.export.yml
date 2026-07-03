@@ -4,19 +4,20 @@ post:
   x-eov-operation-handler: v1/handlers/n8n-packages/n8n-packages.handler
   tags:
     - N8nPackage
-  summary: 'Beta: Export workflows and projects as an n8n package'
+  summary: 'Beta: Export workflows, folders, or projects as an n8n package'
   description: |
     **Beta** — breaking changes may still occur without major version bump.
 
-    Export either workflows or projects as a gzipped tar archive (.n8np).
-    Provide `workflowIds` or `projectIds`, but not both. Empty projects export
-    project metadata only. The response is streamed as `application/gzip` with a
-    `Content-Disposition` attachment header. Requires the n8n Packages feature to be
-    licensed.
+    Export workflows and/or folders, or projects, as a gzipped tar archive
+    (.n8np). Provide `workflowIds`/`folderIds`, or `projectIds`, but not both
+    groups. Each exported folder includes its nested folders. Empty projects
+    export project metadata only. The response is streamed as `application/gzip`
+    with a `Content-Disposition` attachment header. Requires the n8n Packages
+    feature to be licensed.
 
-    API key scopes: `workflow:export` is required when exporting workflows, and `project:export` is required when exporting projects.
+    API key scopes: `workflow:export` is required when exporting workflows or folders, and `project:export` is required when exporting projects.
   requestBody:
-    description: Workflows or projects to include in the exported package.
+    description: Workflows, folders, or projects to include in the exported package.
     required: true
     content:
       application/json:

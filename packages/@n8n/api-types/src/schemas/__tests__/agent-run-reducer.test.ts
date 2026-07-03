@@ -293,6 +293,32 @@ describe('agent-run-reducer', () => {
 			expect(state.agentsById['root'].status).toBe('active');
 		});
 
+		it("follow-up run under a new agentId routes that run's tool calls and confirmations to the tree", () => {
+			// First run establishes the group's root agent and some content.
+			const state = stateWithRun('run-1', 'orchestrator-run-1');
+			reduceEvent(state, makeToolCall('run-1', 'orchestrator-run-1', 'tc-build', 'build-workflow'));
+			reduceEvent(state, makeRunFinish('run-1', 'orchestrator-run-1', 'completed'));
+
+			// An auto-continue/resume run is merged into the same group but streams
+			// under its own per-run agentId (differs from the original root).
+			reduceEvent(state, makeRunStart('run-2', 'orchestrator-run-2'));
+			reduceEvent(state, makeToolCall('run-2', 'orchestrator-run-2', 'tc-setup', 'workflows'));
+			reduceEvent(state, makeConfirmationRequest('run-2', 'orchestrator-run-2', 'tc-setup'));
+
+			// The resume run's tool call must land in the tree (not dropped as an
+			// orphan) with its confirmation attached, so the FE can surface the card.
+			const setupTc = state.toolCallsById['tc-setup'];
+			expect(setupTc).toBeDefined();
+			expect(setupTc.isLoading).toBe(true);
+			expect(setupTc.confirmation?.requestId).toBe('req-1');
+
+			// It attaches to the group's original root; the tree stays anchored there.
+			const root = toAgentTree(state);
+			expect(root.agentId).toBe('orchestrator-run-1');
+			expect(root.toolCalls.map((tc) => tc.toolCallId)).toContain('tc-setup');
+			expectStateMapsNotPolluted(state);
+		});
+
 		it('run-start with unsafe agentId is ignored', () => {
 			const state = createInitialState();
 

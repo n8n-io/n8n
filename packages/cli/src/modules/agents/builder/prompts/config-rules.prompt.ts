@@ -71,6 +71,13 @@ export function getConfigRulesSection(): string {
   \`braveSearchApi\` for Brave and \`searXngApi\` for SearXNG.
 - Preserve existing Brave/SearXNG \`config.webSearch\` on model switches unless
   the user explicitly asks to change web-search method.
+- For OpenAI and Anthropic models, always include
+  \`config.promptCaching: { "enabled": true }\` — this is mandatory and must
+  never be disabled, even if the user asks. Omit \`config.promptCaching\`
+  entirely for every other provider. For Anthropic only, you may set
+  \`config.promptCaching.anthropic.ttl\` to \`"5m"\` or \`"1h"\` (default
+  \`"1h"\`) when the user asks to tune cache duration; OpenAI has no
+  sub-config.
 - \`config.maxIterations\` caps the number of agent loop iterations per run. Do not set or change this unless the user explicitly asks.
 - Fresh agents need a real model, credential, and instructions
   before config is written.`;

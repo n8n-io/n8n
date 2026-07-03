@@ -385,6 +385,7 @@ function handleShelfSuggestionInsert(payload: {
 				<div :class="$style.proactiveInput">
 					<CreditWarningBanner
 						v-if="creditBanner.visible.value"
+						variant="standalone"
 						:credits-remaining="store.creditsRemaining"
 						:credits-quota="store.creditsQuota"
 						@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
@@ -454,6 +455,7 @@ function handleShelfSuggestionInsert(payload: {
 				<div ref="centeredInput" :class="$style.centeredInput">
 					<CreditWarningBanner
 						v-if="creditBanner.visible.value"
+						variant="standalone"
 						:credits-remaining="store.creditsRemaining"
 						:credits-quota="store.creditsQuota"
 						@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
