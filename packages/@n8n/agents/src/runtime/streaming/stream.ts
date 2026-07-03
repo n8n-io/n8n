@@ -1,7 +1,21 @@
+import { isRecord } from '@n8n/utils/is-record';
 import type { TextStreamPart, ToolSet } from 'ai';
 
 import type { FinishReason, StreamChunk, TokenUsage } from '../../types';
 import type { JSONValue } from '../../types/utils/json';
+
+/**
+ * OpenAI reports cached tokens only via `providerMetadata.openai.cachedPromptTokens`
+ * (no generic `inputTokenDetails.cacheReadTokens`). Used as a fallback so OpenAI
+ * cache hits still surface through the same `TokenUsage.inputTokenDetails` shape.
+ */
+function getOpenAiCachedPromptTokens(providerMetadata: Record<string, unknown> | undefined) {
+	const openai = providerMetadata?.openai;
+	const cachedPromptTokens = isRecord(openai) ? openai.cachedPromptTokens : undefined;
+	return typeof cachedPromptTokens === 'number' && cachedPromptTokens > 0
+		? cachedPromptTokens
+		: undefined;
+}
 
 /** Map AI SDK v6 LanguageModelUsage to our TokenUsage type. */
 export function toTokenUsage(
@@ -18,6 +32,7 @@ export function toTokenUsage(
 				outputTokenDetails?: { reasoningTokens?: number };
 		  }
 		| undefined,
+	providerMetadata?: Record<string, unknown>,
 ): TokenUsage | undefined {
 	if (!usage) return undefined;
 
@@ -36,6 +51,14 @@ export function toTokenUsage(
 			...(cacheRead && { cacheRead }),
 			...(cacheWrite && { cacheWrite }),
 		};
+	} else {
+		const openaiCacheRead = getOpenAiCachedPromptTokens(providerMetadata);
+		if (openaiCacheRead) {
+			result.inputTokenDetails = {
+				noCache: Math.max(result.promptTokens - openaiCacheRead, 0),
+				cacheRead: openaiCacheRead,
+			};
+		}
 	}
 
 	if (usage.outputTokenDetails?.reasoningTokens !== undefined) {

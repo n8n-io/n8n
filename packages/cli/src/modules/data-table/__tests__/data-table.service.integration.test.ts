@@ -1,5 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import type { AddDataTableColumnDto, CreateDataTableColumnDto } from '@n8n/api-types';
+import type {
+	AddDataTableColumnDto,
+	CreateDataTableColumnDto,
+	ListDataTableContentQueryDto,
+} from '@n8n/api-types';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import type { Project } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -1004,6 +1008,45 @@ describe('dataTable', () => {
 				expect(filtered2.count).toBe(1);
 				expect(filtered2.data[0].name).toBe('dataTable2');
 			});
+		});
+	});
+
+	describe('getManyQuery ordering', () => {
+		// The node paginates rows with skip/take, which only stays consistent if every page query
+		// orders identically. The listing query must always end with a unique `id` tiebreaker.
+		async function buildListSql(sortBy?: [string, 'ASC' | 'DESC']) {
+			const { id: dataTableId, columns } = await dataTableService.createDataTable(project1.id, {
+				name: 'orderingTable',
+				columns: [{ name: 'name', type: 'string' }],
+			});
+			const em = dataTableRowsRepository['dataSource'].manager;
+			const [, query] = dataTableRowsRepository['getManyQuery'](
+				dataTableId,
+				{ sortBy } as ListDataTableContentQueryDto,
+				columns,
+				em,
+			);
+			return query.select('*').getQuery();
+		}
+
+		it('orders by id when no sortBy is given', async () => {
+			const sql = await buildListSql();
+			expect(sql).toContain('ORDER BY "dataTable"."id" ASC');
+		});
+
+		it('appends id as a tiebreaker after the sort column', async () => {
+			const sql = await buildListSql(['name', 'ASC']);
+			expect(sql).toContain('"dataTable"."name" ASC');
+			expect(sql).toContain('"dataTable"."id" ASC');
+			expect(sql.indexOf('"dataTable"."name" ASC')).toBeLessThan(
+				sql.indexOf('"dataTable"."id" ASC'),
+			);
+		});
+
+		it('does not append a redundant tiebreaker when already sorting by id', async () => {
+			const sql = await buildListSql(['id', 'DESC']);
+			expect(sql).toContain('"dataTable"."id" DESC');
+			expect(sql).not.toContain('"dataTable"."id" ASC');
 		});
 	});
 
