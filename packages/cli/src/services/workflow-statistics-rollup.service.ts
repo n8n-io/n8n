@@ -28,6 +28,9 @@ const BUSY_INTERVAL_MS = 250;
 export class WorkflowStatisticsRollupService {
 	private timeout: NodeJS.Timeout | undefined;
 
+	/** Tracks the in-flight tick so `shutdown` can await it. */
+	private inflightRollup: Promise<void> | undefined;
+
 	private isShuttingDown = false;
 
 	constructor(
@@ -74,16 +77,17 @@ export class WorkflowStatisticsRollupService {
 	}
 
 	@OnShutdown()
-	shutdown() {
+	async shutdown() {
 		this.isShuttingDown = true;
 		clearTimeout(this.timeout);
 		this.timeout = undefined;
+		await this.inflightRollup;
 	}
 
 	private scheduleNext(delayMs: number) {
 		this.timeout = setTimeout(() => {
 			let nextDelayMs = STEADY_INTERVAL_MS;
-			void this.rollup()
+			this.inflightRollup = this.rollup()
 				.then((increments) => {
 					if (increments >= BATCH_SIZE) nextDelayMs = BUSY_INTERVAL_MS; // backlog remaining
 				})
@@ -91,6 +95,7 @@ export class WorkflowStatisticsRollupService {
 					this.errorReporter.error(error, { shouldBeLogged: true });
 				})
 				.finally(() => {
+					this.inflightRollup = undefined;
 					if (this.timeout !== undefined) this.scheduleNext(nextDelayMs);
 				});
 		}, delayMs);

@@ -87,10 +87,10 @@ describe('WorkflowStatisticsRollupService', () => {
 			expect(startSpy).not.toHaveBeenCalled();
 		});
 
-		it('does not run after shutdown', () => {
+		it('does not run after shutdown', async () => {
 			const { service } = makeService({ isLeader: true });
 			expect(service.shouldRun).toBe(true);
-			service.shutdown();
+			await service.shutdown();
 			expect(service.shouldRun).toBe(false);
 		});
 	});
@@ -103,6 +103,58 @@ describe('WorkflowStatisticsRollupService', () => {
 			const { service } = makeService({ dbType: 'sqlite' });
 			service.start();
 			expect(isRunning(service)).toBe(false);
+		});
+	});
+
+	describe('shutdown', () => {
+		beforeEach(() => {
+			vi.useFakeTimers();
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('resolves immediately when no tick is in flight', async () => {
+			const { service } = makeService({});
+			await expect(service.shutdown()).resolves.toBeUndefined();
+		});
+
+		it('awaits the in-flight tick (fold and milestones) before resolving, then stops', async () => {
+			const { service, dbLockService, statisticsService } = makeService({});
+			let resolveFold!: (result: RollupResult) => void;
+			dbLockService.tryWithLock.mockImplementation(
+				async () => await new Promise<RollupResult>((resolve) => (resolveFold = resolve)),
+			);
+			statisticsService.emitFirstOccurrenceEvent.mockResolvedValue();
+
+			service.start();
+			await vi.advanceTimersByTimeAsync(0); // fire the first tick; fold now in flight
+
+			let shutdownSettled = false;
+			const shutdownPromise = service.shutdown().then(() => (shutdownSettled = true));
+			await vi.advanceTimersByTimeAsync(0); // flush microtasks
+			expect(shutdownSettled).toBe(false); // still awaiting the in-flight fold
+
+			resolveFold({
+				increments: 1,
+				firstOccurrences: [
+					{
+						name: StatisticsNames.productionSuccess,
+						workflowId: 'wf-1',
+						workflowName: 'A',
+						firstEventMs: 1,
+					},
+				],
+			});
+			await shutdownPromise;
+
+			// The milestone was emitted before shutdown resolved.
+			expect(statisticsService.emitFirstOccurrenceEvent).toHaveBeenCalledTimes(1);
+
+			// No further tick is scheduled after shutdown.
+			await vi.advanceTimersByTimeAsync(60_000);
+			expect(dbLockService.tryWithLock).toHaveBeenCalledTimes(1);
 		});
 	});
 
