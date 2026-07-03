@@ -96,6 +96,10 @@ placeholder or instruct them to open and edit it. If verification used mocked
 credentials, offer a live test run instead; a failing live test is the moment
 to revisit the credential value.
 
+If the user defers setup instead, don't hand them manual field-by-field
+credential instructions for the n8n editor — tell them to reopen setup when
+they're ready: the card pre-fills everything except their key.
+
 ## Publishing and testing
 
 **Publishing is never required for testing.** Both `executions(action="run")` and
