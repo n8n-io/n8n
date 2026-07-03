@@ -1048,14 +1048,17 @@ export class InstanceAiService {
 
 	// ── Cross-main task-control routing ───────────────────────────────────────
 	// User actions (correct/cancel/clear) can land on a different main than the
-	// one running the task/run. Each `route*` method does the local action and,
-	// when the target isn't local (or is thread-wide), broadcasts so the owning
-	// main applies it. Broadcast + local-gate — no shared ownership store. The
-	// `@OnPubSubEvent` handler calls the *local* methods only, so there's no loop.
-	// These wrappers are the controller entry points; internal callers keep using
-	// the local methods directly so they don't trigger cross-main broadcasts.
+	// one running the task/run. Each `route*` method applies the action locally
+	// and, when the target isn't local (or is thread-wide), broadcasts so the
+	// owning main applies it. Broadcast + local-gate — no shared ownership store.
+	// `applyTaskControlLocally` is the single action → local-method mapping,
+	// shared by the route entry points and the `@OnPubSubEvent` relay handler
+	// (which never re-broadcasts, so there's no loop). These wrappers are the
+	// controller entry points; internal callers keep using the local methods
+	// directly so they don't trigger cross-main broadcasts.
 
 	private broadcastTaskControl(payload: PubSubCommandMap['relay-instance-ai-task-control']): void {
+		if (!this.instanceSettings.isMultiMain) return;
 		void this.publisher
 			.publishCommand({ command: 'relay-instance-ai-task-control', payload })
 			.catch((error: unknown) =>
@@ -1067,73 +1070,79 @@ export class InstanceAiService {
 			);
 	}
 
-	routeCorrectionToTask(threadId: string, taskId: string, correction: string): void {
-		const result = this.sendCorrectionToTask(threadId, taskId, correction);
-		if (result === 'task-not-found' && this.instanceSettings.isMultiMain) {
-			this.broadcastTaskControl({ threadId, taskId, action: 'correct', correction });
-		}
-	}
-
-	routeCancelBackgroundTask(threadId: string, taskId: string): void {
-		const isLocal = this.backgroundTasks
-			.getTaskSnapshots(threadId)
-			.some((task) => task.taskId === taskId);
-		this.cancelBackgroundTask(threadId, taskId);
-		if (!isLocal && this.instanceSettings.isMultiMain) {
-			this.broadcastTaskControl({ threadId, taskId, action: 'cancel-task' });
-		}
-	}
-
-	routeCancelRun(threadId: string): void {
-		this.cancelRun(threadId);
-		// A thread's run + tasks can be spread across mains, so always fan out.
-		if (this.instanceSettings.isMultiMain) {
-			this.broadcastTaskControl({ threadId, action: 'cancel-thread' });
-		}
-	}
-
-	async routeClearThreadState(threadId: string): Promise<void> {
-		await this.clearThreadState(threadId);
-		if (this.instanceSettings.isMultiMain) {
-			this.broadcastTaskControl({ threadId, action: 'clear-thread' });
-		}
-	}
-
-	/** Apply a task-control action relayed from another main to this main's local
-	 *  slice of the thread. Calls local methods only — never re-broadcasts. Not
-	 *  self-sent, so this never fires on the originating main. */
-	@OnPubSubEvent('relay-instance-ai-task-control', { instanceType: 'main' })
-	async handleRelayTaskControl({
+	/** Apply a task-control action to this main's local slice of the thread.
+	 *  Returns whether the action's target was found locally: task-scoped
+	 *  actions report a local hit to gate re-broadcast, thread-wide actions
+	 *  always report a miss so they fan out to every main. */
+	private async applyTaskControlLocally({
 		threadId,
 		taskId,
 		action,
 		correction,
-	}: PubSubCommandMap['relay-instance-ai-task-control']): Promise<void> {
+	}: PubSubCommandMap['relay-instance-ai-task-control']): Promise<boolean> {
+		switch (action) {
+			case 'correct':
+				// A relay without its correction text is malformed: nothing to apply.
+				if (!taskId || correction === undefined) return true;
+				return this.sendCorrectionToTask(threadId, taskId, correction) !== 'task-not-found';
+			case 'cancel-task': {
+				if (!taskId) return true;
+				const isLocal = this.backgroundTasks
+					.getTaskSnapshots(threadId)
+					.some((task) => task.taskId === taskId);
+				this.cancelBackgroundTask(threadId, taskId);
+				return isLocal;
+			}
+			case 'cancel-thread':
+				// A thread's run + tasks can be spread across mains, so always fan out.
+				this.cancelRun(threadId);
+				return false;
+			case 'clear-thread':
+				await this.clearThreadState(threadId);
+				return false;
+		}
+	}
+
+	private async routeTaskControl(
+		payload: PubSubCommandMap['relay-instance-ai-task-control'],
+	): Promise<void> {
+		const foundLocally = await this.applyTaskControlLocally(payload);
+		if (!foundLocally) this.broadcastTaskControl(payload);
+	}
+
+	async routeCorrectionToTask(threadId: string, taskId: string, correction: string): Promise<void> {
+		await this.routeTaskControl({ threadId, taskId, action: 'correct', correction });
+	}
+
+	async routeCancelBackgroundTask(threadId: string, taskId: string): Promise<void> {
+		await this.routeTaskControl({ threadId, taskId, action: 'cancel-task' });
+	}
+
+	async routeCancelRun(threadId: string): Promise<void> {
+		await this.routeTaskControl({ threadId, action: 'cancel-thread' });
+	}
+
+	async routeClearThreadState(threadId: string): Promise<void> {
+		await this.routeTaskControl({ threadId, action: 'clear-thread' });
+	}
+
+	/** Apply a task-control action relayed from another main to this main's local
+	 *  slice of the thread. Never re-broadcasts. Not self-sent, so this never
+	 *  fires on the originating main. */
+	@OnPubSubEvent('relay-instance-ai-task-control', { instanceType: 'main' })
+	async handleRelayTaskControl(
+		payload: PubSubCommandMap['relay-instance-ai-task-control'],
+	): Promise<void> {
 		// Guard the whole handler: it runs as a fire-and-forget pubsub listener, so
 		// a throw (e.g. from the async clearThreadState) would surface as an
 		// unhandled rejection on this sibling main instead of being contained.
 		try {
-			switch (action) {
-				case 'correct':
-					if (taskId && correction !== undefined) {
-						this.sendCorrectionToTask(threadId, taskId, correction);
-					}
-					break;
-				case 'cancel-task':
-					if (taskId) this.cancelBackgroundTask(threadId, taskId);
-					break;
-				case 'cancel-thread':
-					this.cancelRun(threadId);
-					break;
-				case 'clear-thread':
-					await this.clearThreadState(threadId);
-					break;
-			}
+			await this.applyTaskControlLocally(payload);
 		} catch (error) {
 			this.logger.error('Failed to apply relayed Instance AI task-control', {
-				threadId,
-				taskId,
-				action,
+				threadId: payload.threadId,
+				taskId: payload.taskId,
+				action: payload.action,
 				error,
 			});
 		}

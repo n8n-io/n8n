@@ -433,7 +433,7 @@ export class InstanceAiController {
 	async cancel(req: AuthenticatedRequest, _res: Response, @Param('threadId') threadId: string) {
 		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
-		this.instanceAiService.routeCancelRun(threadId);
+		await this.instanceAiService.routeCancelRun(threadId);
 		return { ok: true };
 	}
 
@@ -467,7 +467,7 @@ export class InstanceAiController {
 	) {
 		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
-		this.instanceAiService.routeCancelBackgroundTask(threadId, taskId);
+		await this.instanceAiService.routeCancelBackgroundTask(threadId, taskId);
 		return { ok: true };
 	}
 
@@ -482,7 +482,7 @@ export class InstanceAiController {
 	) {
 		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
-		this.instanceAiService.routeCorrectionToTask(threadId, taskId, payload.message);
+		await this.instanceAiService.routeCorrectionToTask(threadId, taskId, payload.message);
 		return { ok: true };
 	}
 

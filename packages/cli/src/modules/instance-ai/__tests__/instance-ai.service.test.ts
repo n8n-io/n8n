@@ -3219,11 +3219,11 @@ function buildTaskControlService(isMultiMain: boolean): TaskControlInternals {
 
 describe('InstanceAiService — cross-main task-control routing', () => {
 	describe('routeCorrectionToTask', () => {
-		it('broadcasts when the task is not local and multi-main', () => {
+		it('broadcasts when the task is not local and multi-main', async () => {
 			const service = buildTaskControlService(true);
 			service.sendCorrectionToTask.mockReturnValue('task-not-found');
 
-			service.routeCorrectionToTask('thread-a', 'task-1', 'try again');
+			await service.routeCorrectionToTask('thread-a', 'task-1', 'try again');
 
 			expect(service.sendCorrectionToTask).toHaveBeenCalledWith('thread-a', 'task-1', 'try again');
 			expect(service.publisher.publishCommand).toHaveBeenCalledWith({
@@ -3237,31 +3237,31 @@ describe('InstanceAiService — cross-main task-control routing', () => {
 			});
 		});
 
-		it('does not broadcast when the correction was applied locally', () => {
+		it('does not broadcast when the correction was applied locally', async () => {
 			const service = buildTaskControlService(true);
 			service.sendCorrectionToTask.mockReturnValue('queued');
 
-			service.routeCorrectionToTask('thread-a', 'task-1', 'try again');
+			await service.routeCorrectionToTask('thread-a', 'task-1', 'try again');
 
 			expect(service.publisher.publishCommand).not.toHaveBeenCalled();
 		});
 
-		it('does not broadcast in single-main even on a local miss', () => {
+		it('does not broadcast in single-main even on a local miss', async () => {
 			const service = buildTaskControlService(false);
 			service.sendCorrectionToTask.mockReturnValue('task-not-found');
 
-			service.routeCorrectionToTask('thread-a', 'task-1', 'try again');
+			await service.routeCorrectionToTask('thread-a', 'task-1', 'try again');
 
 			expect(service.publisher.publishCommand).not.toHaveBeenCalled();
 		});
 	});
 
 	describe('routeCancelBackgroundTask', () => {
-		it('broadcasts when the task is not local and multi-main', () => {
+		it('broadcasts when the task is not local and multi-main', async () => {
 			const service = buildTaskControlService(true);
 			service.backgroundTasks.getTaskSnapshots.mockReturnValue([]);
 
-			service.routeCancelBackgroundTask('thread-a', 'task-1');
+			await service.routeCancelBackgroundTask('thread-a', 'task-1');
 
 			expect(service.cancelBackgroundTask).toHaveBeenCalledWith('thread-a', 'task-1');
 			expect(service.publisher.publishCommand).toHaveBeenCalledWith({
@@ -3270,11 +3270,11 @@ describe('InstanceAiService — cross-main task-control routing', () => {
 			});
 		});
 
-		it('does not broadcast when the task is local', () => {
+		it('does not broadcast when the task is local', async () => {
 			const service = buildTaskControlService(true);
 			service.backgroundTasks.getTaskSnapshots.mockReturnValue([{ taskId: 'task-1' }]);
 
-			service.routeCancelBackgroundTask('thread-a', 'task-1');
+			await service.routeCancelBackgroundTask('thread-a', 'task-1');
 
 			expect(service.cancelBackgroundTask).toHaveBeenCalledWith('thread-a', 'task-1');
 			expect(service.publisher.publishCommand).not.toHaveBeenCalled();
@@ -3282,10 +3282,10 @@ describe('InstanceAiService — cross-main task-control routing', () => {
 	});
 
 	describe('routeCancelRun / routeClearThreadState', () => {
-		it('routeCancelRun cancels locally and always fans out in multi-main', () => {
+		it('routeCancelRun cancels locally and always fans out in multi-main', async () => {
 			const service = buildTaskControlService(true);
 
-			service.routeCancelRun('thread-a');
+			await service.routeCancelRun('thread-a');
 
 			expect(service.cancelRun).toHaveBeenCalledWith('thread-a');
 			expect(service.publisher.publishCommand).toHaveBeenCalledWith({
@@ -3294,10 +3294,10 @@ describe('InstanceAiService — cross-main task-control routing', () => {
 			});
 		});
 
-		it('routeCancelRun does not fan out in single-main', () => {
+		it('routeCancelRun does not fan out in single-main', async () => {
 			const service = buildTaskControlService(false);
 
-			service.routeCancelRun('thread-a');
+			await service.routeCancelRun('thread-a');
 
 			expect(service.cancelRun).toHaveBeenCalledWith('thread-a');
 			expect(service.publisher.publishCommand).not.toHaveBeenCalled();

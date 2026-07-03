@@ -29,10 +29,9 @@ async function collectSseUntil(opts: {
 	timeoutMs: number;
 	/**
 	 * Called once the response headers arrive. At that point the server has
-	 * already registered the SSE subscription: the `/events` handler calls
-	 * `subscribe()` synchronously right after `res.flushHeaders()` (for a fresh
-	 * thread with no live group there are no awaits in between), so receiving
-	 * headers is a race-free "subscribed" signal — no fixed delay needed.
+	 * already registered the SSE subscription: the `/events` handler subscribes
+	 * to the event bus before it flushes headers, so receiving headers is a
+	 * race-free "subscribed" signal — no fixed delay needed.
 	 */
 	onSubscribed?: () => void;
 }): Promise<SseEvent[]> {
