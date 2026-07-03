@@ -1,0 +1,129 @@
+[
+	{
+		"scope": "https://api.openai.com:443",
+		"method": "POST",
+		"path": "/v1/responses",
+		"body": {
+			"model": "gpt-5-mini",
+			"input": [
+				{
+					"role": "developer",
+					"content": "You are a calculator. When asked to add numbers, use the add_numbers tool. Be concise."
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "input_text",
+							"text": "What is 17 + 25? Use the add_numbers tool to compute it."
+						}
+					]
+				}
+			],
+			"reasoning": {
+				"effort": "low"
+			},
+			"tools": [
+				{
+					"type": "function",
+					"name": "add_numbers",
+					"description": "Add two numbers together and return the result",
+					"parameters": {
+						"type": "object",
+						"properties": {
+							"a": {
+								"type": "number",
+								"description": "First number"
+							},
+							"b": {
+								"type": "number",
+								"description": "Second number"
+							}
+						},
+						"required": ["a", "b"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"tool_choice": "auto",
+			"stream": true
+		},
+		"status": 200,
+		"response": "data: {\"type\":\"response.created\",\"response\":{\"id\":\"resp_test_001\",\"created_at\":1751500000,\"model\":\"gpt-5-mini\"}}\n\ndata: {\"type\":\"response.output_item.added\",\"output_index\":0,\"item\":{\"type\":\"reasoning\",\"id\":\"rs_test123\",\"encrypted_content\":\"gAAAAA-test-encrypted-content\"}}\n\ndata: {\"type\":\"response.output_item.done\",\"output_index\":0,\"item\":{\"type\":\"reasoning\",\"id\":\"rs_test123\",\"encrypted_content\":\"gAAAAA-test-encrypted-content\"}}\n\ndata: {\"type\":\"response.output_item.added\",\"output_index\":1,\"item\":{\"type\":\"function_call\",\"id\":\"fc_test123\",\"call_id\":\"call_test123\",\"name\":\"add_numbers\",\"arguments\":\"\"}}\n\ndata: {\"type\":\"response.function_call_arguments.delta\",\"item_id\":\"fc_test123\",\"output_index\":1,\"delta\":\"{\\\"a\\\":17,\\\"b\\\":25}\"}\n\ndata: {\"type\":\"response.output_item.done\",\"output_index\":1,\"item\":{\"type\":\"function_call\",\"id\":\"fc_test123\",\"call_id\":\"call_test123\",\"name\":\"add_numbers\",\"arguments\":\"{\\\"a\\\":17,\\\"b\\\":25}\",\"status\":\"completed\"}}\n\ndata: {\"type\":\"response.completed\",\"response\":{\"usage\":{\"input_tokens\":100,\"output_tokens\":50}}}\n\ndata: [DONE]\n\n",
+		"rawHeaders": {
+			"content-type": "text/event-stream; charset=utf-8"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.openai.com:443",
+		"method": "POST",
+		"path": "/v1/responses",
+		"body": {
+			"model": "gpt-5-mini",
+			"input": [
+				{
+					"role": "developer",
+					"content": "You are a calculator. When asked to add numbers, use the add_numbers tool. Be concise."
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "input_text",
+							"text": "What is 17 + 25? Use the add_numbers tool to compute it."
+						}
+					]
+				},
+				{
+					"type": "item_reference",
+					"id": "rs_test123"
+				},
+				{
+					"type": "item_reference",
+					"id": "fc_test123"
+				},
+				{
+					"type": "function_call_output",
+					"call_id": "call_test123",
+					"output": "{\"result\":42}"
+				}
+			],
+			"reasoning": {
+				"effort": "low"
+			},
+			"tools": [
+				{
+					"type": "function",
+					"name": "add_numbers",
+					"description": "Add two numbers together and return the result",
+					"parameters": {
+						"type": "object",
+						"properties": {
+							"a": {
+								"type": "number",
+								"description": "First number"
+							},
+							"b": {
+								"type": "number",
+								"description": "Second number"
+							}
+						},
+						"required": ["a", "b"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"tool_choice": "auto",
+			"stream": true
+		},
+		"status": 200,
+		"response": "data: {\"type\":\"response.created\",\"response\":{\"id\":\"resp_test_002\",\"created_at\":1751500001,\"model\":\"gpt-5-mini\"}}\n\ndata: {\"type\":\"response.output_item.added\",\"output_index\":0,\"item\":{\"type\":\"message\",\"id\":\"msg_test_001\"}}\n\ndata: {\"type\":\"response.output_text.delta\",\"item_id\":\"msg_test_001\",\"delta\":\"The answer is 42.\"}\n\ndata: {\"type\":\"response.output_item.done\",\"output_index\":0,\"item\":{\"type\":\"message\",\"id\":\"msg_test_001\"}}\n\ndata: {\"type\":\"response.completed\",\"response\":{\"usage\":{\"input_tokens\":150,\"output_tokens\":10}}}\n\ndata: [DONE]\n\n",
+		"rawHeaders": {
+			"content-type": "text/event-stream; charset=utf-8"
+		},
+		"responseIsBinary": false
+	}
+]

@@ -3,8 +3,10 @@ import { z } from 'zod';
 
 import {
 	Agent,
+	type AnthropicThinkingConfig,
 	type ContentToolCall,
 	filterLlmMessages,
+	type OpenAIThinkingConfig,
 	Tool,
 	type StreamChunk,
 	type AgentMessage,
@@ -56,6 +58,38 @@ export function chunksOfType<T extends StreamChunk['type']>(
  */
 export function getModel(provider: 'anthropic' | 'openai'): string {
 	return provider === 'anthropic' ? 'anthropic/claude-haiku-4-5' : 'openai/gpt-4o-mini';
+}
+
+/**
+ * One reasoning-capable model per provider, for tests that combine extended
+ * thinking with tool calls. To cover a new provider, add an entry here and
+ * record cassettes for the tests that iterate this matrix.
+ */
+export type ReasoningProviderCase =
+	| { provider: 'anthropic'; model: string; thinking: AnthropicThinkingConfig }
+	| { provider: 'openai'; model: string; thinking: OpenAIThinkingConfig };
+
+export const REASONING_PROVIDER_CASES: ReasoningProviderCase[] = [
+	{
+		provider: 'anthropic',
+		model: 'anthropic/claude-sonnet-4-5',
+		thinking: { budgetTokens: 5000 },
+	},
+	{
+		provider: 'openai',
+		model: 'openai/gpt-5-mini',
+		thinking: { reasoningEffort: 'low' },
+	},
+];
+
+/**
+ * Create the add_numbers agent on a reasoning model with thinking enabled.
+ */
+export function createReasoningAgentWithAddTool(reasoningCase: ReasoningProviderCase): Agent {
+	const agent = createAgentWithAddTool(reasoningCase.provider).model(reasoningCase.model);
+	return reasoningCase.provider === 'anthropic'
+		? agent.thinking('anthropic', reasoningCase.thinking)
+		: agent.thinking('openai', reasoningCase.thinking);
 }
 
 /**
