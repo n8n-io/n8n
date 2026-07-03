@@ -1,4 +1,4 @@
-import type { InstanceAiWorkflowSetupNode } from '@n8n/api-types';
+import type { InstanceAiCredentialSetupHint, InstanceAiWorkflowSetupNode } from '@n8n/api-types';
 import type { INodeParameters } from 'n8n-workflow';
 
 /**
@@ -13,6 +13,7 @@ export interface WorkflowSetupSection {
 	currentCredentialId: string | null;
 	parameterNames: string[];
 	credentialTargetNodes: Array<{ id: string; name: string; type: string }>;
+	setupHint?: InstanceAiCredentialSetupHint;
 }
 
 /**

@@ -8,7 +8,9 @@ import { useCredentialOAuth } from '@/features/credentials/composables/useCreden
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useInstanceAiHandoff } from '../composables/useInstanceAiHandoff';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { N8nButton, N8nText } from '@n8n/design-system';
+import type { InstanceAiCredentialSetupHint } from '@n8n/api-types';
+import { N8nButton, N8nInput, N8nInputLabel, N8nLink, N8nText } from '@n8n/design-system';
+import { extractPlaceholderLabels } from '@n8n/utils/placeholder';
 import { useI18n } from '@n8n/i18n';
 import type {
 	CredentialInformation,
@@ -31,6 +33,9 @@ const props = withDefaults(
 		providerUrl?: string;
 		/** Show a "Back" button (when the user can return to a credential selector). */
 		showBack?: boolean;
+		/** Agent-supplied recipe: pre-filled field values with placeholder sentinels
+		 *  marking the secrets. Renders the guided ("paste your key") mode. */
+		setupHint?: InstanceAiCredentialSetupHint;
 	}>(),
 	{
 		mode: 'new',
@@ -39,6 +44,7 @@ const props = withDefaults(
 		suggestedName: undefined,
 		projectId: undefined,
 		providerUrl: undefined,
+		setupHint: undefined,
 	},
 );
 
@@ -110,13 +116,75 @@ const primaryLabel = computed(() => {
 	return authError.value ? i18n.baseText('generic.retry') : i18n.baseText('generic.save');
 });
 
-const canSubmit = computed(() =>
-	visibleProperties.value.every((property) => {
+// ── Guided mode (agent-supplied setup hint) ─────────────────────────────────
+// The hint pre-fills the credential's fields, with `<__PLACEHOLDER_VALUE__…__>`
+// sentinels marking the secrets. Guided mode renders one input per secret
+// instead of the full field set; the composed values are written to
+// credentialData on submit.
+const PLACEHOLDER_SENTINEL_REGEX = /<__PLACEHOLDER.*?__>/g;
+
+// Hint entries restricted to fields the credential type actually has.
+const hintEntries = computed<Array<[string, string]>>(() => {
+	if (props.mode !== 'new' || !props.setupHint?.prefill) return [];
+	const knownFields = new Set(mergedProperties.value.map((property) => property.name));
+	return Object.entries(props.setupHint.prefill).filter(([field]) => knownFields.has(field));
+});
+
+const guidedSecrets = computed(() => {
+	const labels = new Set<string>();
+	for (const [, template] of hintEntries.value) {
+		for (const label of extractPlaceholderLabels(template)) labels.add(label);
+	}
+	return [...labels];
+});
+
+const staticHintEntries = computed(() =>
+	hintEntries.value.filter(([, value]) => extractPlaceholderLabels(value).length === 0),
+);
+
+const secretValues = ref<Record<string, string>>({});
+const showAllFields = ref(false);
+const isGuided = computed(() => !showAllFields.value && guidedSecrets.value.length > 0);
+
+const docsHost = computed(() => getUrlHost(props.setupHint?.docsUrl));
+
+function fieldDisplayName(fieldName: string): string {
+	return (
+		mergedProperties.value.find((property) => property.name === fieldName)?.displayName ?? fieldName
+	);
+}
+
+/** Write the hint's templated fields into credentialData, substituting secrets. */
+function composeGuidedData() {
+	for (const [field, template] of hintEntries.value) {
+		credentialData.value[field] = template.replace(
+			PLACEHOLDER_SENTINEL_REGEX,
+			(sentinel) => secretValues.value[extractPlaceholderLabels(sentinel)[0]] ?? '',
+		);
+	}
+}
+
+function onSecretInput(label: string, value: string) {
+	secretValues.value[label] = value;
+	authError.value = '';
+}
+
+function switchToAllFields() {
+	// Carry over what's typed so far so the full form starts from the composed state.
+	composeGuidedData();
+	showAllFields.value = true;
+}
+
+const canSubmit = computed(() => {
+	if (isGuided.value) {
+		return guidedSecrets.value.every((label) => (secretValues.value[label] ?? '').trim() !== '');
+	}
+	return visibleProperties.value.every((property) => {
 		if (property.required !== true) return true;
 		const value = credentialData.value[property.name];
 		return value !== undefined && value !== null && value !== '';
-	}),
-);
+	});
+});
 
 // Mirrors CredentialEdit.isCredentialTestable — temporary until the shared
 // credential-form controller is extracted.
@@ -143,10 +211,18 @@ onMounted(async () => {
 	}
 
 	credentialName.value =
-		props.suggestedName || credentialType.value?.displayName || props.credentialType;
+		props.setupHint?.suggestedName ||
+		props.suggestedName ||
+		credentialType.value?.displayName ||
+		props.credentialType;
 	const defaults: ICredentialDataDecryptedObject = {};
 	for (const property of mergedProperties.value) {
 		defaults[property.name] = property.default as CredentialInformation;
+	}
+	// Apply the hint's static values (no secret sentinel) up front, so they hold
+	// even when the user switches to the full field set.
+	for (const [field, value] of staticHintEntries.value) {
+		defaults[field] = value;
 	}
 	credentialData.value = defaults;
 });
@@ -235,6 +311,8 @@ async function submit() {
 	if (isSaving.value) return;
 	isSaving.value = true;
 	try {
+		if (isGuided.value) composeGuidedData();
+
 		// Managed OAuth with nothing to fill in: create + authorize in one step.
 		if (props.mode === 'new' && isOAuth.value && !hasFields.value && !savedCredentialId.value) {
 			const credential = await createAndAuthorize(props.credentialType);
@@ -278,8 +356,53 @@ async function submit() {
 
 <template>
 	<div v-if="!isLoading" :class="$style.form" data-test-id="instance-ai-credential-form">
+		<template v-if="isGuided">
+			<div v-if="staticHintEntries.length > 0" :class="$style.staticFields">
+				<N8nText
+					v-for="[field, value] in staticHintEntries"
+					:key="field"
+					color="text-light"
+					size="small"
+					data-test-id="credential-hint-static-field"
+				>
+					{{ fieldDisplayName(field) }}: {{ value }}
+				</N8nText>
+			</div>
+			<N8nInputLabel
+				v-for="label in guidedSecrets"
+				:key="label"
+				:label="label"
+				:required="true"
+				size="medium"
+			>
+				<N8nInput
+					type="password"
+					:model-value="secretValues[label] ?? ''"
+					data-test-id="credential-hint-secret-input"
+					@update:model-value="onSecretInput(label, String($event))"
+				/>
+			</N8nInputLabel>
+			<div :class="$style.hintLinks">
+				<N8nLink
+					v-if="setupHint?.docsUrl"
+					:to="setupHint.docsUrl"
+					new-window
+					size="small"
+					data-test-id="credential-hint-docs-link"
+				>
+					{{
+						i18n.baseText('instanceAi.credential.hint.docsLink', {
+							interpolate: { host: docsHost ?? setupHint.docsUrl },
+						})
+					}}
+				</N8nLink>
+				<N8nLink size="small" data-test-id="credential-hint-show-all" @click="switchToAllFields">
+					{{ i18n.baseText('instanceAi.credential.hint.showAllFields') }}
+				</N8nLink>
+			</div>
+		</template>
 		<CredentialInputs
-			v-if="hasFields"
+			v-else-if="hasFields"
 			:credential-properties="visibleProperties"
 			:credential-data="credentialData"
 			:documentation-url="documentationUrl"
@@ -322,6 +445,18 @@ async function submit() {
 .actions {
 	display: flex;
 	justify-content: flex-end;
+	gap: var(--spacing--2xs);
+}
+
+.staticFields {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--4xs);
+}
+
+.hintLinks {
+	display: flex;
+	justify-content: space-between;
 	gap: var(--spacing--2xs);
 }
 </style>

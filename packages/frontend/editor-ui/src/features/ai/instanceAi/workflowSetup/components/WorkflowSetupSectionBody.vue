@@ -241,6 +241,7 @@ function onParameterValueChanged(update: IUpdateInformation) {
 			:credential-type="inlineForm.credentialType"
 			:mode="inlineForm.mode"
 			:credential-id="inlineForm.credentialId"
+			:setup-hint="inlineForm.credentialType === credentialType ? section.setupHint : undefined"
 			:project-id="ctx.projectId.value"
 			:provider-url="providerUrl"
 			show-back
@@ -276,6 +277,7 @@ function onParameterValueChanged(update: IUpdateInformation) {
 		<InstanceAiCredentialForm
 			v-else-if="credentialType"
 			:credential-type="credentialType"
+			:setup-hint="section.setupHint"
 			:project-id="ctx.projectId.value"
 			:provider-url="providerUrl"
 			@saved="onInlineFormSaved"

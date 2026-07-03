@@ -369,6 +369,11 @@ async function handleLater() {
 							:mode="inlineForm.mode"
 							:credential-id="inlineForm.credentialId"
 							:suggested-name="currentRequest.suggestedName"
+							:setup-hint="
+								inlineForm.credentialType === currentRequest.credentialType
+									? currentRequest.setupHint
+									: undefined
+							"
 							:project-id="projectId"
 							show-back
 							@saved="onInlineFormSaved"
@@ -392,6 +397,7 @@ async function handleLater() {
 							v-else
 							:credential-type="currentRequest.credentialType"
 							:suggested-name="currentRequest.suggestedName"
+							:setup-hint="currentRequest.setupHint"
 							:project-id="projectId"
 							@saved="onInlineFormSaved"
 						/>
