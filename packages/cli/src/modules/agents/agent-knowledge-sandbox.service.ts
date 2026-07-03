@@ -558,7 +558,7 @@ export class AgentKnowledgeSandboxService {
 	}
 
 	/** Invalidates the cached mirror state so the next operation re-syncs. */
-	invalidateMirror(projectId: string, agentId: string): void {
+	invalidateMirror(_projectId: string, agentId: string): void {
 		const sandboxName = buildSandboxName({
 			instanceId: this.instanceSettings.instanceId,
 			agentId,

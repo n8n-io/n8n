@@ -102,7 +102,7 @@ function makeAiService(overrides: Partial<AiService> = {}): AiService {
 	return Object.assign(aiService, overrides);
 }
 
-function makePublishedAgentRepository(): AgentRepository {
+function makePublishedAgentRepository(): ReturnType<typeof mock<AgentRepository>> {
 	const repository = mock<AgentRepository>();
 	repository.findByIdAndProjectId.mockResolvedValue({
 		id: agentId,
