@@ -28,11 +28,19 @@ const {
 	fetchAllCredentialsMock,
 	fetchCredentialTypesMock,
 	setCredentialsMock,
+	agentPermissionsMock,
 } = vi.hoisted(() => ({
 	fetchAllCredentialsForWorkflowMock: vi.fn().mockResolvedValue(undefined),
 	fetchAllCredentialsMock: vi.fn().mockResolvedValue(undefined),
 	fetchCredentialTypesMock: vi.fn().mockResolvedValue(undefined),
 	setCredentialsMock: vi.fn(),
+	agentPermissionsMock: {
+		canCreate: { value: true },
+		canUpdate: { value: true },
+		canDelete: { value: false },
+		canPublish: { value: true },
+		canUnpublish: { value: true },
+	},
 }));
 vi.mock('vue-router', () => ({
 	useRouter: () => ({
@@ -148,13 +156,7 @@ vi.mock('../composables/useAgentBuilderStatus', () => ({
 }));
 
 vi.mock('../composables/useAgentPermissions', () => ({
-	useAgentPermissions: () => ({
-		canCreate: ref(true),
-		canUpdate: ref(true),
-		canDelete: ref(false),
-		canPublish: ref(true),
-		canUnpublish: ref(true),
-	}),
+	useAgentPermissions: () => agentPermissionsMock,
 }));
 
 // Real ref so the view's `watch(config, ...)` fires and populates `localConfig`.
@@ -495,6 +497,11 @@ describe('AgentBuilderView — preview routing', () => {
 		routerReplace.mockReset();
 		openModalWithDataMock.mockReset();
 		closeModalMock.mockReset();
+		agentPermissionsMock.canCreate.value = true;
+		agentPermissionsMock.canUpdate.value = true;
+		agentPermissionsMock.canDelete.value = false;
+		agentPermissionsMock.canPublish.value = true;
+		agentPermissionsMock.canUnpublish.value = true;
 		routeName = 'AgentBuilderView';
 		for (const key of Object.keys(routeQuery)) delete routeQuery[key];
 		sessionThreads.length = 0;
@@ -564,6 +571,21 @@ describe('AgentBuilderView — preview routing', () => {
 				},
 			}),
 		);
+	});
+
+	it('does not persist generated personalisation gradients for read-only agents', async () => {
+		agentPermissionsMock.canUpdate.value = false;
+		intendedConfig = {
+			name: 'Agent One',
+			instructions: 'You are a helpful assistant.',
+			personalisation: undefined,
+		};
+		mockConfig.value = withDefaultLlm(intendedConfig);
+
+		const wrapper = await renderView();
+		await (wrapper.vm as unknown as { flushAutosave: () => Promise<void> }).flushAutosave();
+
+		expect(updateConfigMock).not.toHaveBeenCalled();
 	});
 
 	it('reloads task bodies after reverting to a published version', async () => {

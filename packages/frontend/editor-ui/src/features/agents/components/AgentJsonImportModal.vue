@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, useTemplateRef } from 'vue';
 import { AgentJsonConfigSchema } from '@n8n/api-types';
 import { N8nButton, N8nCallout, N8nHeading, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
@@ -23,8 +23,19 @@ const selectedFileName = ref('');
 const parsedConfig = ref<AgentJsonConfig | null>(null);
 const errorMessage = ref('');
 const importing = ref(false);
+const fileInput = useTemplateRef<HTMLInputElement>('fileInput');
+
+function resetState() {
+	selectedFileName.value = '';
+	parsedConfig.value = null;
+	errorMessage.value = '';
+	if (fileInput.value) {
+		fileInput.value.value = '';
+	}
+}
 
 function closeModal() {
+	resetState();
 	uiStore.closeModal(props.modalName);
 }
 
@@ -102,6 +113,7 @@ async function onConfirm() {
 						{{ i18n.baseText('agents.builder.importJsonModal.fileLabel' as BaseTextKey) }}
 					</N8nText>
 					<input
+						ref="fileInput"
 						type="file"
 						accept="application/json,.json"
 						data-testid="agent-json-import-file-input"

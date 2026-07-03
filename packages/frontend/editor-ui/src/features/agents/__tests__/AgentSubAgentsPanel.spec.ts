@@ -269,6 +269,39 @@ describe('AgentSubAgentsPanel', () => {
 		);
 	});
 
+	it('resets custom model routing when switching to an agent without difficulty mappings', async () => {
+		const wrapper = await mountPanel({
+			...defaultConfig,
+			subAgents: {
+				modelsByDifficulty: {
+					high: { model: 'anthropic/claude-sonnet-4-5', credential: 'anthropic-cred' },
+				},
+			},
+		});
+
+		expect(
+			wrapper
+				.find('[data-testid="agent-sub-agents-custom-model-routing-toggle"]')
+				.attributes('data-checked'),
+		).toBe('true');
+
+		await wrapper.setProps({ agentId: 'agent-2' });
+		await wrapper.setProps({
+			config: {
+				...defaultConfig,
+				subAgents: {},
+			},
+		});
+		await flushPromises();
+
+		expect(
+			wrapper
+				.find('[data-testid="agent-sub-agents-custom-model-routing-toggle"]')
+				.attributes('data-checked'),
+		).toBe('false');
+		expect(wrapper.find('[data-testid="agent-sub-agents-inline-models"]').exists()).toBe(false);
+	});
+
 	it('initialises max-children input to the default when unset in config', async () => {
 		const wrapper = await mountPanel();
 		const input = wrapper.find('[data-testid="agent-sub-agents-max-children-input"]');

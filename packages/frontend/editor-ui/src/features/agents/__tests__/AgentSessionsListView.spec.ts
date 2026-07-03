@@ -46,4 +46,13 @@ describe('AgentSessionsListView', () => {
 			/\.clickableRow\s*{[^}]*td\s*{[^}]*color: var\(--text-color--subtler\);/s,
 		);
 	});
+
+	it('keeps row actions pinned to the right edge of the session list', () => {
+		expect(componentSource).toMatch(
+			/\.actionCell\s*{[^}]*width: 1%;[^}]*min-width: var\(--spacing--2xl\);[^}]*white-space: nowrap;/s,
+		);
+		expect(componentSource).toMatch(
+			/\.clickableRow\s*{[\s\S]*?\.actionCell\s*{[\s\S]*?text-align: right;/,
+		);
+	});
 });

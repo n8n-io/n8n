@@ -719,6 +719,7 @@ function replaceConfigAndScheduleSave(nextConfig: AgentJsonConfig) {
 }
 
 function persistMissingPersonalisationGradient() {
+	if (!canEditAgent.value) return;
 	if (!localConfig.value) return;
 
 	const nextConfig = addMissingAgentPersonalisation(localConfig.value);

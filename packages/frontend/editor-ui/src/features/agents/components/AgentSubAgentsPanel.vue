@@ -162,20 +162,21 @@ const hasAnyDifficultyMapping = computed(() =>
 const customModelRoutingEnabled = ref(hasAnyDifficultyMapping.value);
 
 watch(
-	hasAnyDifficultyMapping,
-	(hasMapping) => {
-		if (hasMapping) {
-			customModelRoutingEnabled.value = true;
-		}
+	() => props.agentId,
+	() => {
+		customModelRoutingEnabled.value = false;
 	},
-	{ immediate: true },
+	{ flush: 'sync' },
 );
 
 watch(
-	() => props.agentId,
+	() => props.config?.subAgents?.modelsByDifficulty,
 	() => {
-		customModelRoutingEnabled.value = hasAnyDifficultyMapping.value;
+		if (hasAnyDifficultyMapping.value) {
+			customModelRoutingEnabled.value = true;
+		}
 	},
+	{ deep: true, immediate: true },
 );
 
 function emitModelsByDifficulty(

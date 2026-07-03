@@ -106,6 +106,33 @@ describe('AgentJsonImportModal', () => {
 		expect(closeModalMock).toHaveBeenCalledWith('agentJsonImportModal');
 	});
 
+	it('clears selected file state when the modal is cancelled', async () => {
+		const onConfirm = vi.fn();
+		const config: AgentJsonConfig = {
+			name: 'Imported agent',
+			model: 'openai/gpt-4o-mini',
+			credential: 'cred-openai',
+			instructions: 'Use imported settings.',
+		};
+		const wrapper = await mountModal(onConfirm);
+
+		await selectFile(wrapper, makeJsonFile(JSON.stringify(config)));
+		await vi.waitFor(() => {
+			expect(wrapper.find('[data-testid="agent-json-import-confirm"]').attributes('disabled')).toBe(
+				undefined,
+			);
+		});
+
+		await wrapper.findAll('button')[0].trigger('click');
+
+		expect(wrapper.text()).not.toContain('agent.json');
+		expect(wrapper.find('[data-testid="agent-json-import-confirm"]').attributes('disabled')).toBe(
+			'',
+		);
+		await wrapper.find('[data-testid="agent-json-import-confirm"]').trigger('click');
+		expect(onConfirm).not.toHaveBeenCalled();
+	});
+
 	it('shows an error and disables import when the file is not valid JSON', async () => {
 		const onConfirm = vi.fn();
 		const wrapper = await mountModal(onConfirm);

@@ -318,9 +318,10 @@ async function loadMore() {
 }
 
 .actionCell {
-	width: var(--spacing--2xl);
+	width: 1%;
+	min-width: var(--spacing--2xl);
 	color: var(--text-color--subtler);
-	text-align: right;
+	white-space: nowrap;
 }
 
 .clickableRow {
@@ -328,6 +329,10 @@ async function loadMore() {
 
 	td {
 		color: var(--text-color--subtler);
+	}
+
+	.actionCell {
+		text-align: right;
 	}
 
 	&:hover {
