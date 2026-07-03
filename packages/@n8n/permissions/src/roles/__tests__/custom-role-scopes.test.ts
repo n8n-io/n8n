@@ -32,6 +32,14 @@ describe('custom role scope whitelists', () => {
 		expect(PROJECT_CUSTOM_ROLE_SCOPES.has('workflow:unpublish')).toBe(true);
 	});
 
+	it('includes the list scopes the editor auto-adds alongside :read', () => {
+		// ProjectRoleView.toggleScope appends these when a :read scope is selected,
+		// so the whitelist must accept them even though they are not shown as checkboxes.
+		expect(PROJECT_CUSTOM_ROLE_SCOPES.has('workflow:list')).toBe(true);
+		expect(PROJECT_CUSTOM_ROLE_SCOPES.has('credential:list')).toBe(true);
+		expect(PROJECT_CUSTOM_ROLE_SCOPES.has('dataTable:listProject')).toBe(true);
+	});
+
 	it('exposes whitelists keyed by role type', () => {
 		expect(CUSTOM_ROLE_SCOPE_WHITELIST.project).toBe(PROJECT_CUSTOM_ROLE_SCOPES);
 		expect(CUSTOM_ROLE_SCOPE_WHITELIST.global).toBe(GLOBAL_CUSTOM_ROLE_SCOPES);
