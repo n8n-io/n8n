@@ -4,13 +4,9 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import { apiRequest, pollVideoTask, getVideoDownloadUrl } from '../transport';
 
-vi.mock('n8n-workflow', async () => {
-	const actual = await import('n8n-workflow');
-	return {
-		...actual,
-		sleep: vi.fn(),
-	};
-});
+vi.mock('@n8n/utils/sleep', () => ({
+	sleep: vi.fn(),
+}));
 
 describe('MiniMax Transport', () => {
 	let mockExecuteFunctions: ReturnType<typeof mockDeep<IExecuteFunctions>>;

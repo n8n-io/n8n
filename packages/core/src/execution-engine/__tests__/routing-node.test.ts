@@ -2265,8 +2265,8 @@ describe('RoutingNode', () => {
 					}
 				}
 
-				const workflowPackage = await import('n8n-workflow');
-				const spy = vi.spyOn(workflowPackage, 'sleep').mockReturnValue(
+				const sleepModule = await import('@n8n/utils/sleep');
+				const spy = vi.spyOn(sleepModule, 'sleep').mockReturnValue(
 					new Promise((resolve) => {
 						resolve();
 					}),

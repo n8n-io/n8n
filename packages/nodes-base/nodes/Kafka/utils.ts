@@ -21,7 +21,8 @@ import type {
 	RequestHelperFunctions,
 } from 'n8n-workflow';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { jsonParse, NodeOperationError, sleep, UserError } from 'n8n-workflow';
+import { sleep } from '@n8n/utils/sleep';
+import { jsonParse, NodeOperationError, UserError } from 'n8n-workflow';
 import http from 'node:http';
 import https from 'node:https';
 import type { ConnectionOptions } from 'node:tls';

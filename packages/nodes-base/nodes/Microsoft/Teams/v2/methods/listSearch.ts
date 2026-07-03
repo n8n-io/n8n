@@ -4,9 +4,9 @@ import {
 	type ILoadOptionsFunctions,
 	type INodeListSearchItems,
 	type INodeListSearchResult,
-	sleep,
 } from 'n8n-workflow';
 
+import { sleep } from '@n8n/utils/sleep';
 import { filterSortSearchListItems } from '../helpers/utils';
 import {
 	buildTeamsPath,

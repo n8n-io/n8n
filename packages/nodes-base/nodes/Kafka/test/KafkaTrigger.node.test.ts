@@ -17,17 +17,12 @@ import { testTriggerNode } from '@test/nodes/TriggerHelpers';
 
 import { KafkaTrigger } from '../KafkaTrigger.node';
 import type { Mock, Mocked } from 'vitest';
-import type * as _importType0 from 'n8n-workflow';
 
 vi.mock('kafkajs');
 vi.mock('@kafkajs/confluent-schema-registry');
-vi.mock('n8n-workflow', async () => {
-	const actual = await vi.importActual<typeof _importType0>('n8n-workflow');
-	return {
-		...actual,
-		sleep: vi.fn().mockResolvedValue(undefined),
-	};
-});
+vi.mock('@n8n/utils/sleep', () => ({
+	sleep: vi.fn().mockResolvedValue(undefined),
+}));
 
 describe('KafkaTrigger Node', () => {
 	let mockKafka: Mocked<Kafka>;

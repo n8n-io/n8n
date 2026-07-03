@@ -11,10 +11,10 @@ import type {
 	IWorkflowExecutionDataProcess,
 	StructuredChunk,
 } from 'n8n-workflow';
+import { sleep } from '@n8n/utils/sleep';
 import {
 	createEmptyRunExecutionData,
 	ManualExecutionCancelledError,
-	sleep,
 	SystemShutdownExecutionCancelledError,
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
@@ -29,8 +29,7 @@ import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { License } from '@/license';
 import type { Telemetry } from '@/telemetry';
 
-vi.mock('n8n-workflow', async () => ({
-	...(await vi.importActual<typeof import('n8n-workflow')>('n8n-workflow')),
+vi.mock('@n8n/utils/sleep', () => ({
 	sleep: vi.fn(),
 }));
 

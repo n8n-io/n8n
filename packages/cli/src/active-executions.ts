@@ -15,9 +15,9 @@ import type {
 import {
 	createDeferredPromise,
 	ExecutionCancelledError,
-	sleep,
 	SystemShutdownExecutionCancelledError,
 } from 'n8n-workflow';
+import { sleep } from '@n8n/utils/sleep';
 import { strict as assert } from 'node:assert';
 import type PCancelable from 'p-cancelable';
 

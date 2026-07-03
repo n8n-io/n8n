@@ -1,6 +1,7 @@
-import { NodeOperationError, sleep } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import type { IDataObject, IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 
+import { sleep } from '@n8n/utils/sleep';
 import { extractResourceLocatorValue, getActiveCredentialType, getHost } from '../helpers';
 import type { DatabricksStatementResponse } from '../interfaces';
 

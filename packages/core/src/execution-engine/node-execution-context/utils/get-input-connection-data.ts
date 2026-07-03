@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { DynamicStructuredTool, StructuredTool, Tool } from '@langchain/core/tools';
+import { sleep } from '@n8n/utils/sleep';
 import type {
 	AINodeConnectionType,
 	ChatNodeMessageWithButtons,
@@ -28,7 +29,6 @@ import {
 	NodeConnectionTypes,
 	NodeOperationError,
 	UserError,
-	sleepWithAbort,
 	isHitlToolType,
 } from 'n8n-workflow';
 import z, { ZodType } from 'zod';
@@ -262,7 +262,7 @@ export function makeHandleToolInvocation(
 				lastError = undefined;
 				if (waitBetweenTries !== 0) {
 					try {
-						await sleepWithAbort(waitBetweenTries, abortSignal);
+						await sleep(waitBetweenTries, abortSignal);
 					} catch (abortError) {
 						return 'Error during node execution: Execution was cancelled';
 					}

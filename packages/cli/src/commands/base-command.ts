@@ -24,7 +24,8 @@ import {
 import { ObjectStoreConfig } from 'n8n-core/dist/binary-data/object-store/object-store.config';
 import { AzureBlobConfig } from 'n8n-core/dist/binary-data/azure-blob/azure-blob.config';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { Expression, sleep, UnexpectedError } from 'n8n-workflow';
+import { sleep } from '@n8n/utils/sleep';
+import { Expression, UnexpectedError } from 'n8n-workflow';
 
 import type { AbstractServer } from '@/abstract-server';
 import { N8N_VERSION, N8N_RELEASE_DATE } from '@/constants';

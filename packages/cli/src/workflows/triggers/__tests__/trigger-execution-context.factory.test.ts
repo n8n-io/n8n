@@ -2,7 +2,8 @@
 import type { Logger } from '@n8n/backend-common';
 import type { WorkflowEntity } from '@n8n/db';
 import type { ErrorReporter, StorageConfig } from 'n8n-core';
-import { createDeferredPromise, sleep, UnexpectedError } from 'n8n-workflow';
+import { sleep } from '@n8n/utils/sleep';
+import { createDeferredPromise, UnexpectedError } from 'n8n-workflow';
 import type {
 	ExecutionError,
 	IConnections,

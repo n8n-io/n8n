@@ -4,6 +4,7 @@
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
 import { Container } from '@n8n/di';
+import { sleep } from '@n8n/utils/sleep';
 import * as assert from 'assert/strict';
 import { setMaxListeners } from 'events';
 import get from 'lodash/get';
@@ -49,7 +50,6 @@ import {
 	NodeConnectionTypes,
 	ApplicationError,
 	BaseError,
-	sleep,
 	isNodeClassInstance,
 	UnexpectedError,
 	UserError,

@@ -1,15 +1,10 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
-import type * as nWorkflow from 'n8n-workflow';
 import nock from 'nock';
 
-// Mock sleep from n8n-workflow so polling tests run without real delays
-vi.mock('n8n-workflow', async () => {
-	const actual = await vi.importActual<typeof nWorkflow>('n8n-workflow');
-	return {
-		...actual,
-		sleep: vi.fn().mockResolvedValue(undefined),
-	};
-});
+// Mock sleep from @n8n/utils so polling tests run without real delays
+vi.mock('@n8n/utils/sleep', () => ({
+	sleep: vi.fn().mockResolvedValue(undefined),
+}));
 
 const HOST = 'https://adb-1234567890.1.azuredatabricks.net';
 

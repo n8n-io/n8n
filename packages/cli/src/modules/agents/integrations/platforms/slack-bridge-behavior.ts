@@ -1,4 +1,5 @@
 import { isRecord } from '@n8n/utils/is-record';
+import { sleep } from '@n8n/utils/sleep';
 import type { Thread } from 'chat';
 
 import type {
@@ -193,7 +194,11 @@ async function setSlackAssistantStatusWithRetry(
 		}
 	}
 
-	if (!(await sleep(SLACK_STATUS_RETRY_DELAY_MS, options.statusRetry?.signal))) return;
+	try {
+		await sleep(SLACK_STATUS_RETRY_DELAY_MS, options.statusRetry?.signal);
+	} catch {
+		return;
+	}
 	// The status may have been cleared while we were sleeping. Bail out so the
 	// retry doesn't re-set "Thinking..." over an already-cleared status.
 	if (options.statusRetry?.signal.aborted) return;
@@ -273,20 +278,4 @@ function getSlackErrorCode(error: unknown): string | undefined {
 	const data = error.data;
 	if (!isRecord(data)) return undefined;
 	return stringValue(data.error);
-}
-
-async function sleep(ms: number, signal?: AbortSignal): Promise<boolean> {
-	if (signal?.aborted) return false;
-	return await new Promise((resolve) => {
-		const timeout = setTimeout(() => {
-			signal?.removeEventListener('abort', abort);
-			resolve(true);
-		}, ms);
-		const abort = () => {
-			clearTimeout(timeout);
-			signal?.removeEventListener('abort', abort);
-			resolve(false);
-		};
-		signal?.addEventListener('abort', abort, { once: true });
-	});
 }

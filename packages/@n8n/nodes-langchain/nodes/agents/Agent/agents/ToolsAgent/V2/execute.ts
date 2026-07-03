@@ -22,7 +22,8 @@ import {
 import { wrapLangChainParserError } from '@utils/output_parsers/langchainParserError';
 import { buildTracingMetadata, getTracingConfig } from '@utils/tracing';
 import omit from 'lodash/omit';
-import { jsonParse, NodeOperationError, sleep } from 'n8n-workflow';
+import { sleep } from '@n8n/utils/sleep';
+import { jsonParse, NodeOperationError } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData, ISupplyDataFunctions } from 'n8n-workflow';
 import assert from 'node:assert';
 

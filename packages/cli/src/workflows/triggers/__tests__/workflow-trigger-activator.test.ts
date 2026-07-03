@@ -27,8 +27,7 @@ import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data
 
 import { createNodeTypes, logger, node } from './trigger-test-utils';
 
-vi.mock('n8n-workflow', async () => ({
-	...(await vi.importActual<typeof import('n8n-workflow')>('n8n-workflow')),
+vi.mock('@n8n/utils/sleep', () => ({
 	sleep: vi.fn(),
 }));
 

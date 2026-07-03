@@ -1,6 +1,7 @@
 import type { IExecuteFunctions } from 'n8n-workflow';
-import { NodeOperationError, sleep } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
+import { sleep } from '@n8n/utils/sleep';
 import {
 	slackApiRequest,
 	slackApiRequestAllItems,
@@ -14,6 +15,9 @@ import type * as _importType0 from 'n8n-workflow';
 vi.mock('n8n-workflow', async () => ({
 	...(await vi.importActual<typeof _importType0>('n8n-workflow')),
 	NodeApiError: vi.fn(),
+}));
+
+vi.mock('@n8n/utils/sleep', () => ({
 	sleep: vi.fn().mockResolvedValue(undefined),
 }));
 

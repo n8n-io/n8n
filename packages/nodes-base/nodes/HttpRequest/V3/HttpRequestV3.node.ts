@@ -16,6 +16,7 @@ import type {
 	ICredentialDataDecryptedObject,
 } from 'n8n-workflow';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { sleep } from '@n8n/utils/sleep';
 import {
 	BINARY_ENCODING,
 	NodeApiError,
@@ -23,7 +24,6 @@ import {
 	NodeOperationError,
 	jsonParse,
 	removeCircularRefs,
-	sleep,
 	setSafeObjectProperty,
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
