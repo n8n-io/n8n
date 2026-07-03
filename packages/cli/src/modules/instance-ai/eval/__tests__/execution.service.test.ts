@@ -413,6 +413,22 @@ describe('EvalExecutionService', () => {
 			);
 		});
 
+		it('runs with blank workflow staticData even when the entity carries some', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(
+				makeWorkflowEntity({
+					staticData: { global: { lastLeadsRow: 4 } },
+				} as never) as never,
+			);
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			expect(workflowRunner.run).toHaveBeenCalledWith(
+				expect.objectContaining({
+					workflowData: expect.objectContaining({ id: 'wf-1', staticData: undefined }),
+				}),
+			);
+		});
+
 		it('returns a framework failure when bypass pin data generation fails', async () => {
 			const bypassNode = {
 				id: 'node-3',
