@@ -2358,6 +2358,8 @@
 	"nodeView.showMessage.addNodeButton.message": "'{nodeTypeName}' is an unknown node type",
 	"nodeView.showMessage.addNodeButton.title": "Could not insert node",
 	"nodeView.showMessage.keyDown.title": "Workflow created",
+	"nodeView.showMessage.importWorkflowTags.title": "Workflow imported without tags",
+	"nodeView.showMessage.importWorkflowTags.message": "You don't have permission to create tags, so the workflow's tags were not added.",
 	"nodeView.showMessage.showMaxNodeTypeError.message": "Only one '{nodeTypeDataDisplayName}' node is allowed in a workflow | Only {count} '{nodeTypeDataDisplayName}' nodes are allowed in a workflow",
 	"nodeView.showMessage.showMaxNodeTypeError.title": "Could not insert node",
 	"nodeView.showMessage.stopExecutionCatch.unsaved.message": "This execution was canceled",
