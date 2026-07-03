@@ -308,16 +308,20 @@ export class AgentRuntimeReconstructionService {
 		return (_params: AgentJsonMemoryConfig) => this.n8nMemory.getImplementation(agentId);
 	}
 
+	/**
+	 * `ownerId` is the proxy token subject — the proxy treats it as an opaque scope and
+	 * does not verify it against n8n users. Agent runtimes pass their project id; a user
+	 * id works equally if a caller ever has one.
+	 */
 	private async resolveManagedEmbeddingProviderOptions(
-		projectId: string,
+		ownerId: string,
 	): Promise<ManagedEmbeddingProviderOptions | null> {
 		if (!this.aiService.isProxyEnabled()) return null;
 		// TODO: switch to n8n connect endpoints, don't use ai-proxy endpoints
 		const client = await this.aiService.getClient();
 		const baseURL = client.getApiProxyBaseUrl().replace(/\/$/, '') + '/openai/';
 		const tokenManager = new ProxyTokenManager(async () => {
-			// The proxy does not enforce per-user identity; the project id is the stable scope for agents.
-			return await client.getBuilderApiProxyToken({ id: projectId }, { userMessageId: nanoid() });
+			return await client.getBuilderApiProxyToken({ id: ownerId }, { userMessageId: nanoid() });
 		});
 
 		return {

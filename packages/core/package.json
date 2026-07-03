@@ -50,7 +50,8 @@
     "reflect-metadata": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:",
-    "vitest-mock-extended": "catalog:"
+    "vitest-mock-extended": "catalog:",
+    "zod": "catalog:"
   },
   "peerDependencies": {
     "zod": "catalog:"
@@ -96,7 +97,6 @@
     "uuid": "catalog:",
     "winston": "3.14.2",
     "xml2js": "catalog:",
-    "zod": "catalog:",
     "qs": "catalog:"
   },
   "license": "LicenseRef-n8n-sustainable-use"

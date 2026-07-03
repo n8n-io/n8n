@@ -897,8 +897,18 @@ function onOpenAddToolModal() {
 			mcpServers: localConfig.value?.mcpServers ?? [],
 			projectId: projectId.value,
 			agentId: agentId.value,
-			onConfirm: (tools: AgentJsonToolConfig[], mcpServers: AgentJsonMcpServerConfig[] = []) =>
-				onConfigFieldUpdate({ tools, mcpServers }),
+			// The modal confirms with a single object payload (the modal-data plumbing is
+			// untyped, so a signature drift here isn't caught by TS — a positional handler
+			// would write `{ tools, mcpServers }` into `config.tools` and fail backend
+			// validation).
+			onConfirm: (payload: {
+				tools?: AgentJsonToolConfig[];
+				mcpServers?: AgentJsonMcpServerConfig[];
+			}) =>
+				onConfigFieldUpdate({
+					...(payload.tools && { tools: payload.tools }),
+					...(payload.mcpServers && { mcpServers: payload.mcpServers }),
+				}),
 		},
 	});
 }

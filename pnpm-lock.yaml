@@ -959,9 +959,6 @@ importers:
       yaml:
         specifier: 'catalog:'
         version: 2.8.3
-      zod:
-        specifier: 3.25.67
-        version: 3.25.67
       zod-to-json-schema:
         specifier: 'catalog:'
         version: 3.23.3(zod@3.25.67)
@@ -996,6 +993,9 @@ importers:
       vitest-mock-extended:
         specifier: 'catalog:'
         version: 3.1.0(typescript@6.0.2)(vitest@4.1.9)
+      zod:
+        specifier: 3.25.67
+        version: 3.25.67
 
   packages/@n8n/ai-node-sdk:
     dependencies:
@@ -1257,9 +1257,6 @@ importers:
       xss:
         specifier: 'catalog:'
         version: 1.0.15
-      zod:
-        specifier: 3.25.67
-        version: 3.25.67
     devDependencies:
       '@n8n/config':
         specifier: workspace:*
@@ -1285,6 +1282,9 @@ importers:
       vitest-mock-extended:
         specifier: 'catalog:'
         version: 3.1.0(typescript@6.0.2)(vitest@4.1.9)
+      zod:
+        specifier: 3.25.67
+        version: 3.25.67
 
   packages/@n8n/backend-common:
     dependencies:
@@ -3191,6 +3191,15 @@ importers:
 
   packages/@n8n/scheduler:
     dependencies:
+      '@n8n/db':
+        specifier: workspace:*
+        version: link:../db
+      '@n8n/di':
+        specifier: workspace:*
+        version: link:../di
+      '@n8n/typeorm':
+        specifier: workspace:*
+        version: link:../typeorm
       cron-parser:
         specifier: 'catalog:'
         version: 5.6.1
@@ -3385,15 +3394,6 @@ importers:
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9)
-      nodemon:
-        specifier: ^2.0.20
-        version: 2.0.22
-      ts-node:
-        specifier: ^10.9.1
-        version: 10.9.2(@swc/core@1.15.8(@swc/helpers@0.5.17))(@types/node@20.19.41)(typescript@6.0.2)
-      tsc-alias:
-        specifier: ^1.8.7
-        version: 1.8.10
       typescript:
         specifier: 6.0.2
         version: 6.0.2
@@ -4096,6 +4096,9 @@ importers:
       '@n8n/playwright-janitor':
         specifier: workspace:*
         version: link:../testing/janitor
+      '@n8n/scheduler':
+        specifier: workspace:*
+        version: link:../@n8n/scheduler
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../@n8n/typescript-config
@@ -4381,9 +4384,6 @@ importers:
       xml2js:
         specifier: 'catalog:'
         version: 0.6.2
-      zod:
-        specifier: 3.25.67
-        version: 3.25.67
     devDependencies:
       '@n8n/playwright-janitor':
         specifier: workspace:*
@@ -4445,6 +4445,9 @@ importers:
       vitest-mock-extended:
         specifier: 'catalog:'
         version: 3.1.0(typescript@6.0.2)(vitest@4.1.9)
+      zod:
+        specifier: 3.25.67
+        version: 3.25.67
 
   packages/extensions/insights:
     dependencies:
@@ -6405,9 +6408,6 @@ importers:
       xml2js:
         specifier: 'catalog:'
         version: 0.6.2
-      zod:
-        specifier: 3.25.67
-        version: 3.25.67
     devDependencies:
       '@langchain/core':
         specifier: 'catalog:'
@@ -6466,6 +6466,9 @@ importers:
       vitest-mock-extended:
         specifier: 'catalog:'
         version: 3.1.0(typescript@6.0.2)(vitest@4.1.9)
+      zod:
+        specifier: 3.25.67
+        version: 3.25.67
 
 packages:
 
@@ -18068,11 +18071,6 @@ packages:
     resolution: {integrity: sha512-BLFuSth7QtHOkBzyqTehWWyub0NTRDuK2Q2SQfnGLsrJnzyU+Yeh4WpV1eZGuARFj1xQJHIdnTuJZLP+b9R1GQ==}
     engines: {node: '>=6.0.0'}
 
-  nodemon@2.0.22:
-    resolution: {integrity: sha512-B8YqaKMmyuCO7BowF1Z1/mkPqLk6cs/l63Ojtd6otKjMx47Dq1utxfRxcavH1I7VSaL8n5BUaoutadnsX3AAVQ==}
-    engines: {node: '>=8.10.0'}
-    hasBin: true
-
   nodemon@3.0.1:
     resolution: {integrity: sha512-g9AZ7HmkhQkqXkRc20w+ZfQ73cHLbE8hnPbtaFbFtCumZsjyMhKk9LajQ07U5Ux28lvFjZ5X7HvWR1xzU8jHVw==}
     engines: {node: '>=10'}
@@ -19938,10 +19936,6 @@ packages:
 
   simple-swizzle@0.2.2:
     resolution: {integrity: sha512-JA//kQgZtbuY83m+xT+tXJkmJncGMTFT+C+g2h2R9uxkYIrE2yy9sgmcLhCnw57/WSD+Eh3J97FPEDFnbXnDUg==}
-
-  simple-update-notifier@1.1.0:
-    resolution: {integrity: sha512-VpsrsJSUcJEseSbMHkrsrAVSdvVS5I96Qo1QAQ4FxQ9wXFcB+pjj7FB7/us9+GcgfW4ziHtYMc1J0PLczb55mg==}
-    engines: {node: '>=8.10.0'}
 
   simple-update-notifier@2.0.0:
     resolution: {integrity: sha512-a2B9Y0KlNXl9u/vsW6sTIu9vGEpfKu2wRV6l1H3XEas/0gUIzGzBoP/IouTcUQbm9JWZLH3COxyn03TYlFax6w==}
@@ -36371,19 +36365,6 @@ snapshots:
 
   nodemailer@8.0.10: {}
 
-  nodemon@2.0.22:
-    dependencies:
-      chokidar: 4.0.3
-      debug: 3.2.7(supports-color@5.5.0)
-      ignore-by-default: 1.0.1
-      minimatch: 5.1.8
-      pstree.remy: 1.1.8
-      semver: 7.7.3
-      simple-update-notifier: 1.1.0
-      supports-color: 5.5.0
-      touch: 3.1.0
-      undefsafe: 2.0.5
-
   nodemon@3.0.1:
     dependencies:
       chokidar: 4.0.3
@@ -38581,10 +38562,6 @@ snapshots:
   simple-swizzle@0.2.2:
     dependencies:
       is-arrayish: 0.3.2
-
-  simple-update-notifier@1.1.0:
-    dependencies:
-      semver: 7.7.3
 
   simple-update-notifier@2.0.0:
     dependencies:

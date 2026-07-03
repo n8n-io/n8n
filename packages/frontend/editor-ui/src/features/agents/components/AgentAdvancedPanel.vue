@@ -27,7 +27,9 @@ import type { AgentJsonConfig } from '../types';
 import {
 	PROVIDER_CAPABILITIES,
 	REASONING_EFFORT_OPTIONS,
+	ANTHROPIC_CACHE_TTL_OPTIONS,
 	type ReasoningEffort,
+	type AnthropicCacheTtl,
 } from '../provider-capabilities';
 import { parseProvider } from '../utils/model-string';
 import {
@@ -41,7 +43,12 @@ import {
 
 const i18n = useI18n();
 const credentialsStore = useCredentialsStore();
-const DEFAULT_CAPABILITIES = { thinking: false, webSearch: false, providerTools: [] } as const;
+const DEFAULT_CAPABILITIES = {
+	thinking: false,
+	promptCaching: false,
+	webSearch: false,
+	providerTools: [],
+} as const;
 const ANTHROPIC_WEB_SEARCH_DEFAULT_MAX_USES = 5;
 const SEARCH_CONTEXT_SIZE_OPTIONS = ['low', 'medium', 'high'] as const;
 type SearchContextSize = (typeof SEARCH_CONTEXT_SIZE_OPTIONS)[number];
@@ -152,6 +159,7 @@ const MAX_ITERATIONS_MAX = 200;
 const MAX_ITERATIONS_DEFAULT = 30;
 const BUDGET_TOKENS_MIN = 1;
 const BUDGET_TOKENS_DEFAULT = 1024;
+const PROMPT_CACHING_TTL_DEFAULT: AnthropicCacheTtl = '1h';
 
 const {
 	modelValue: concurrencyModelValue,
@@ -190,6 +198,12 @@ const reasoningEffort = ref<ReasoningEffort>(
 	(thinkingCfg.value?.reasoningEffort as ReasoningEffort) ?? 'medium',
 );
 
+function anthropicTtlFrom(cfg: AgentJsonConfig | null): AnthropicCacheTtl {
+	return cfg?.config?.promptCaching?.anthropic?.ttl ?? PROMPT_CACHING_TTL_DEFAULT;
+}
+
+const anthropicTtl = ref<AnthropicCacheTtl>(anthropicTtlFrom(props.config));
+
 function syncWebSearchOptions(args: NativeWebSearchArgs) {
 	webSearchMaxUses.value =
 		typeof args.maxUses === 'number'
@@ -215,6 +229,7 @@ watch(
 		thinkingEnabled.value = t !== null;
 		budgetTokens.value = t?.budgetTokens ?? BUDGET_TOKENS_DEFAULT;
 		reasoningEffort.value = (t?.reasoningEffort as ReasoningEffort) ?? 'medium';
+		anthropicTtl.value = anthropicTtlFrom(cfg);
 		syncConcurrency(cfg);
 		syncMaxIterations(cfg);
 		webSearchEnabled.value = cfg.config?.webSearch?.enabled === true;
@@ -363,6 +378,16 @@ const thinkingDisabledReason = computed(() =>
 				},
 			}),
 );
+
+function onAnthropicTtlChange(value: AnthropicCacheTtl) {
+	anthropicTtl.value = value;
+	emit('update:config', {
+		config: {
+			...props.config?.config,
+			promptCaching: { enabled: true, anthropic: { ttl: value } },
+		},
+	});
+}
 </script>
 
 <template>
@@ -600,6 +625,34 @@ const thinkingDisabledReason = computed(() =>
 							/>
 						</N8nSelect>
 					</div>
+				</div>
+			</div>
+
+			<div v-if="capabilities.promptCaching === 'ttl'" :class="$style.settingGroup">
+				<div :class="$style.row">
+					<div :class="$style.rowLabel">
+						<N8nText size="small" :bold="true">{{
+							i18n.baseText('agents.builder.advanced.promptCachingTtl.label')
+						}}</N8nText>
+						<N8nText size="xsmall" color="text-light">
+							{{ i18n.baseText('agents.builder.advanced.promptCaching.hint') }}
+						</N8nText>
+					</div>
+					<N8nSelect
+						:model-value="anthropicTtl"
+						size="small"
+						:disabled="props.disabled"
+						:class="$style.shortInput"
+						data-testid="agent-prompt-caching-ttl-select"
+						@update:model-value="(v) => onAnthropicTtlChange(v as AnthropicCacheTtl)"
+					>
+						<N8nOption
+							v-for="opt in ANTHROPIC_CACHE_TTL_OPTIONS"
+							:key="opt"
+							:value="opt"
+							:label="opt"
+						/>
+					</N8nSelect>
 				</div>
 			</div>
 
