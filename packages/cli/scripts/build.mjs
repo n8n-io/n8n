@@ -16,6 +16,7 @@ const publicApiEnabled = process.env.N8N_PUBLIC_API_DISABLED !== 'true';
 
 generateUserManagementEmailTemplates();
 generateTimezoneData();
+copyInstanceAiExamplesData();
 
 if (publicApiEnabled) {
 	createPublicApiDirectory();
@@ -72,6 +73,29 @@ function bundleOpenApiSpecs() {
 
 			shell.exec(command, { silent: true });
 		});
+}
+
+// Experiment cleanup: remove with InstanceAiTemplateExamplesExperiment.
+// The data lives in the frontend source tree but is read at runtime by the CLI, so it
+// must be bundled into `dist` to ship with the published package.
+function copyInstanceAiExamplesData() {
+	const source = path.resolve(
+		ROOT_DIR,
+		'..',
+		'frontend',
+		'editor-ui',
+		'src',
+		'experiments',
+		'instanceAiTemplateExamples',
+		'instance-ai-examples.data.json',
+	);
+
+	if (!existsSync(source)) {
+		console.warn('Instance AI examples data file not found, skipping copy:', source);
+		return;
+	}
+
+	shell.cp(source, path.resolve(ROOT_DIR, 'dist', 'instance-ai-examples.data.json'));
 }
 
 function generateTimezoneData() {

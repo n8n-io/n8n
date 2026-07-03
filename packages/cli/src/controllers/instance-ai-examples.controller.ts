@@ -1,9 +1,11 @@
 // Experiment cleanup: remove with InstanceAiTemplateExamplesExperiment
 import { InstanceAiExamplesQueryDto } from '@n8n/api-types';
 import { Get, Query, RestController } from '@n8n/decorators';
-import path from 'node:path';
 import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { jsonParse } from 'n8n-workflow';
+
+import { CLI_DIR } from '@/constants';
 
 interface ExampleNode {
 	name: string;
@@ -100,18 +102,7 @@ export class InstanceAiExamplesController {
 			return this.cachedData;
 		}
 
-		const filePath = path.resolve(
-			__dirname,
-			'..',
-			'..',
-			'..',
-			'frontend',
-			'editor-ui',
-			'src',
-			'experiments',
-			'instanceAiTemplateExamples',
-			'instance-ai-examples.data.json',
-		);
+		const filePath = resolve(CLI_DIR, 'dist', 'instance-ai-examples.data.json');
 		const raw = readFileSync(filePath, 'utf-8');
 		const rawData = jsonParse<RawExamplesData>(raw);
 
