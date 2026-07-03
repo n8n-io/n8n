@@ -39,7 +39,7 @@ import type {
 	WorkflowExecuteModeValues as WorkflowExecuteMode,
 } from './execution-context';
 import type { ExecutionStatus } from './execution-status';
-import type { Result } from './result';
+import type { Result } from '@n8n/utils/result';
 import type { Workflow } from './workflow';
 import type { EnvProviderState } from './workflow-data-proxy-env-provider';
 import type { IRunExecutionData } from './run-execution-data/run-execution-data';
@@ -1759,6 +1759,11 @@ export interface ResourceMapperTypeOptionsBase {
 	};
 	showTypeConversionOptions?: boolean;
 	allowEmptyValues?: boolean;
+	// When true, a cached schema that is detected to be structurally incomplete
+	// (e.g. authored by an AI builder rather than loaded from the source) is
+	// reconciled against the source on node open. A complete-but-drifted schema
+	// still shows the stale-data warning, leaving the refresh up to the user.
+	refreshIncompleteSchemaOnOpen?: boolean;
 }
 
 // Enforce at least one of resourceMapperMethod or localResourceMapperMethod

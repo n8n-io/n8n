@@ -23,9 +23,20 @@ import { getRenderHint, isSafeObjectKey } from './instance-ai.schema';
 import type {
 	InstanceAiEvent,
 	InstanceAiAgentNode,
+	InstanceAiCancellationReason,
 	InstanceAiTimelineEntry,
 	InstanceAiToolCallState,
 } from './instance-ai.schema';
+
+/** Map the backend's run-finish reason string to a semantic cancellation cause. */
+function categorizeCancellation(
+	reason: string | undefined,
+): InstanceAiCancellationReason | undefined {
+	if (reason === 'timeout') return 'timeout';
+	if (reason === 'service_shutdown') return 'shutdown';
+	if (reason === 'user_cancelled') return 'user';
+	return undefined;
+}
 
 // ---------------------------------------------------------------------------
 // State types
@@ -156,7 +167,14 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 				// Follow-up run in a merged group: preserve existing agent tree,
 				// just re-activate the root orchestrator for the new run's events.
 				state.status = 'active';
-				if (root) root.status = 'active';
+				if (root) {
+					root.status = 'active';
+					// A merged follow-up/resume run streams under its own per-run agentId
+					// (e.g. `orchestrator-<runId>`). Alias it to the existing root so its
+					// tool calls and confirmations resolve an agent instead of being
+					// dropped as orphans; rootAgentId and toAgentTree stay on the original.
+					if (rootId !== state.rootAgentId) state.agentsById[rootId] = root;
+				}
 			} else {
 				// First run: initialize from scratch.
 				state.rootAgentId = rootId;
@@ -342,6 +360,9 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			const root = state.agentsById[state.rootAgentId];
 			if (root) {
 				root.status = state.status;
+				if (state.status === 'cancelled') {
+					root.cancellationReason = categorizeCancellation(event.payload.reason);
+				}
 			}
 			// A terminated run can't have tool calls still in-flight.
 			// Clear isLoading so persisted snapshots don't show stale confirmations.

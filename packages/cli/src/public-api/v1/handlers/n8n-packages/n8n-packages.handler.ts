@@ -22,7 +22,7 @@ const PACKAGE_EXPORT_SCOPES = 'project:export,workflow:export';
 type ExportPackageRequest = AuthenticatedRequest<
 	{},
 	{},
-	{ workflowIds?: string[]; projectIds?: string[] }
+	{ workflowIds?: string[]; folderIds?: string[]; projectIds?: string[] }
 >;
 
 type ImportPackageRequest = PackageRequest.Import & {
@@ -37,6 +37,7 @@ type N8nPackagesHandlers = {
 function assertPackageExportApiKeyScopes(
 	req: AuthenticatedRequest,
 	workflowIds: string[],
+	folderIds: string[],
 	projectIds: string[],
 ) {
 	const apiKeyScopes = req.tokenGrant?.apiKeyScopes;
@@ -45,7 +46,8 @@ function assertPackageExportApiKeyScopes(
 	}
 
 	const requiredScopes: ApiKeyScope[] = [];
-	if (workflowIds.length > 0) {
+	// Folders are exported as a workflow-organization concern, so they share the workflow:export scope.
+	if (workflowIds.length > 0 || folderIds.length > 0) {
 		requiredScopes.push('workflow:export');
 	}
 	if (projectIds.length > 0) {
@@ -82,22 +84,26 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 			if (!payload.success) {
 				throw new BadRequestError(payload.error.errors.map(({ message }) => message).join('; '));
 			}
-			if (payload.data.workflowIds && payload.data.projectIds) {
-				throw new BadRequestError('Provide either workflowIds or projectIds, not both');
-			}
 
 			const workflowIds = payload.data.workflowIds ?? [];
+			const folderIds = payload.data.folderIds ?? [];
 			const projectIds = payload.data.projectIds ?? [];
 
-			if (workflowIds.length === 0 && projectIds.length === 0) {
-				throw new BadRequestError('At least one workflowId or projectId is required');
+			// A package is either a set of loose workflows/folders or a set of whole projects, not both.
+			if (projectIds.length > 0 && (workflowIds.length > 0 || folderIds.length > 0)) {
+				throw new BadRequestError('Provide either workflowIds/folderIds or projectIds, not both');
 			}
 
-			assertPackageExportApiKeyScopes(req, workflowIds, projectIds);
+			if (workflowIds.length === 0 && folderIds.length === 0 && projectIds.length === 0) {
+				throw new BadRequestError('At least one workflowId, folderId, or projectId is required');
+			}
+
+			assertPackageExportApiKeyScopes(req, workflowIds, folderIds, projectIds);
 
 			const stream = await Container.get(N8nPackagesService).exportPackage({
 				user: req.user,
 				workflowIds,
+				folderIds,
 				projectIds,
 			});
 

@@ -30,12 +30,8 @@ import type {
 	LoadedNodesAndCredentials,
 	NodeLoader,
 } from 'n8n-workflow';
-import {
-	ensureError,
-	injectDomainRestrictionFields,
-	UnexpectedError,
-	UserError,
-} from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { injectDomainRestrictionFields, UnexpectedError, UserError } from 'n8n-workflow';
 import path from 'path';
 import picocolors from 'picocolors';
 
