@@ -1,22 +1,22 @@
 /**
  * Agent-config normalization + validation — the single source of truth for the
- * business rules that used to live (duplicated) in each builder tool layer.
- * `AgentConfigService.updateConfig` runs these on every write so the persisted
- * config always agrees with the read/compose path.
+ * business rules shared by the CLI agent builder (`AgentConfigService.updateConfig`
+ * runs these on every write) and the instance-ai config tools. Keeping one copy
+ * prevents the two surfaces from drifting apart (e.g. structural vs name-based
+ * node-tool matching).
  *
  * Split of responsibilities:
- * - `reconcileNativeWebSearch` runs in the service on EVERY write. It derives
+ * - `reconcileNativeWebSearch` runs in the CLI service on EVERY write. It derives
  *   the native web-search provider tools from the EXPLICIT `config.webSearch`
  *   state and never resurrects a disabled state (`defaultEnabled: false`).
  * - `applyNativeWebSearchDefaultOn` is the builder ergonomic ("a fresh native
  *   agent gets web search on") — builders call it to make the default explicit
  *   BEFORE persisting; the service never auto-enables on its own.
+ *
+ * The LLM-facing follow-up guidance in the reject messages differs per surface
+ * (each names its own follow-up tools), so those strings are passed in via
+ * `AgentConfigValidationMessages` rather than hardcoded here.
  */
-import {
-	findNodeParameterProperty,
-	getDynamicNodeParameterLookup,
-	normalizeParameterPath,
-} from '@n8n/ai-utilities/node-catalog';
 import type {
 	AgentJsonConfig,
 	AgentJsonNodeToolConfig,
@@ -30,16 +30,27 @@ import {
 	type FromAiParameterReference,
 } from './from-ai-node-parameters';
 import {
+	findNodeParameterProperty,
+	getDynamicNodeParameterLookup,
+	normalizeParameterPath,
+} from '../node-catalog';
+import {
 	getNativeWebSearchProviderTools,
 	hasNativeWebSearchProvider,
 	isNativeWebSearchRequested,
 } from './native-web-search-provider-tools';
 
-export const EMPTY_INSTRUCTIONS_ERROR: ConfigValidationError = {
-	path: '/instructions',
-	message:
-		'Refusing to write an agent with empty instructions. Ask the user what the agent should do before saving the config again.',
-};
+/**
+ * Surface-specific, LLM-facing follow-up guidance appended to the reject
+ * messages. Each builder names different follow-up tools, so the strings are
+ * injected instead of hardcoded.
+ */
+export interface AgentConfigValidationMessages {
+	/** Appended after "…Ask the user what the agent should do before ". */
+	emptyInstructionsFollowUp: string;
+	/** Appended after '…Do not use $fromAI for this value. '. */
+	dynamicSelectorFollowUp: string;
+}
 
 /**
  * Reconcile the native web-search provider tools with the config's EXPLICIT
@@ -93,8 +104,20 @@ export function applyNativeWebSearchDefaultOn(config: AgentJsonConfig): AgentJso
 	};
 }
 
-export function rejectIfEmptyInstructions(config: AgentJsonConfig): ConfigValidationError[] | null {
-	if (!config.instructions.trim()) return [EMPTY_INSTRUCTIONS_ERROR];
+export function rejectIfEmptyInstructions(
+	config: AgentJsonConfig,
+	messages: AgentConfigValidationMessages,
+): ConfigValidationError[] | null {
+	if (!config.instructions.trim()) {
+		return [
+			{
+				path: '/instructions',
+				message:
+					'Refusing to write an agent with empty instructions. Ask the user what the agent should do before ' +
+					messages.emptyInstructionsFollowUp,
+			},
+		];
+	}
 	return null;
 }
 
@@ -175,13 +198,16 @@ function getDynamicSelectorPath(
  * Reject configs that leave a `$fromAI(...)` expression on a stable dynamic
  * selector (resourceLocator / loadOptions). New `$fromAI` references that did
  * not already exist on the previous config are flagged; pre-existing ones are
- * tolerated so unrelated edits don't fail.
+ * tolerated so unrelated edits don't fail. Requires `nodeTypes`; when absent
+ * (pure-package contexts) the check is skipped.
  */
 export function rejectIfDynamicSelectorUsesFromAi(
 	config: AgentJsonConfig,
 	previousConfig: AgentJsonConfig | null,
-	nodeTypes: INodeTypes,
+	nodeTypes: INodeTypes | undefined,
+	messages: AgentConfigValidationMessages,
 ): ConfigValidationError[] | null {
+	if (!nodeTypes) return null;
 	const errors: ConfigValidationError[] = [];
 
 	for (const [toolIndex, tool] of (config.tools ?? []).entries()) {
@@ -214,9 +240,8 @@ export function rejectIfDynamicSelectorUsesFromAi(
 				path: `/tools/${toolIndex}/node/nodeParameters/${fromAiReference.jsonPointer}`,
 				message:
 					`Node tool "${tool.name}" parameter "${dynamicPath}" is a dynamic selector. ` +
-					'Do not use $fromAI for this value. Load skill agent-builder-resource-locators, ' +
-					'resolve a credential if missing, then call get_resource_locator_options ' +
-					'and write the returned parameterValue into nodeParameters.',
+					'Do not use $fromAI for this value. ' +
+					messages.dynamicSelectorFollowUp,
 			});
 		}
 	}

@@ -1,6 +1,13 @@
 import type { BuiltTool, CredentialProvider } from '@n8n/agents';
 import { Tool } from '@n8n/agents/tool';
 import {
+	applyNativeWebSearchDefaultOn,
+	rejectIfDynamicSelectorUsesFromAi,
+	rejectIfEmptyInstructions,
+	rejectIfUnsupportedNativeWebSearch,
+	type AgentConfigValidationMessages,
+} from '@n8n/ai-utilities/agent-config';
+import {
 	agentSkillSchema,
 	agentTaskSchema,
 	formatZodErrors,
@@ -52,12 +59,6 @@ import { SKILL_BODY_GUIDANCE, SKILL_DESCRIPTION_RULE } from './skill-body-templa
 import { TASK_OBJECTIVE_GUIDANCE } from './task-objective-template';
 import { buildVerifyMcpServerTool } from './verify-mcp-server.tool';
 import { composeJsonConfig } from '../json-config/agent-config-composition';
-import {
-	applyNativeWebSearchDefaultOn,
-	rejectIfDynamicSelectorUsesFromAi,
-	rejectIfEmptyInstructions,
-	rejectIfUnsupportedNativeWebSearch,
-} from '../json-config/config-normalization';
 import { AgentRepository } from '../repositories/agent.repository';
 import { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 
@@ -65,6 +66,14 @@ const STALE_CONFIG_ERROR: ConfigValidationError = {
 	path: '(root)',
 	message:
 		'Agent config changed since you last read it. Call read_config and retry with the returned configHash.',
+};
+
+/** LLM-facing follow-up guidance for this builder surface (CLI skill-based tools). */
+const CLI_AGENT_CONFIG_MESSAGES: AgentConfigValidationMessages = {
+	emptyInstructionsFollowUp: 'saving the config again.',
+	dynamicSelectorFollowUp:
+		'Load skill agent-builder-resource-locators, resolve a credential if missing, then call ' +
+		'get_resource_locator_options and write the returned parameterValue into nodeParameters.',
 };
 
 const createSkillInputSchema = z
@@ -237,7 +246,10 @@ export class AgentsBuilderToolsService {
 					if (!zodResult.success) {
 						return { ok: false, errors: formatZodErrors(zodResult.error) };
 					}
-					const emptyInstructions = rejectIfEmptyInstructions(zodResult.data);
+					const emptyInstructions = rejectIfEmptyInstructions(
+						zodResult.data,
+						CLI_AGENT_CONFIG_MESSAGES,
+					);
 					if (emptyInstructions) {
 						return { ok: false, errors: emptyInstructions };
 					}
@@ -249,6 +261,7 @@ export class AgentsBuilderToolsService {
 						zodResult.data,
 						snapshot.config,
 						this.nodeTypes,
+						CLI_AGENT_CONFIG_MESSAGES,
 					);
 					if (dynamicSelectorFromAi) {
 						return { ok: false, errors: dynamicSelectorFromAi };
@@ -356,7 +369,10 @@ export class AgentsBuilderToolsService {
 					if (!zodResult.success) {
 						return { ok: false, stage: 'schema', errors: formatZodErrors(zodResult.error) };
 					}
-					const emptyInstructions = rejectIfEmptyInstructions(zodResult.data);
+					const emptyInstructions = rejectIfEmptyInstructions(
+						zodResult.data,
+						CLI_AGENT_CONFIG_MESSAGES,
+					);
 					if (emptyInstructions) {
 						return { ok: false, stage: 'schema', errors: emptyInstructions };
 					}
@@ -368,6 +384,7 @@ export class AgentsBuilderToolsService {
 						zodResult.data,
 						snapshot.config,
 						this.nodeTypes,
+						CLI_AGENT_CONFIG_MESSAGES,
 					);
 					if (dynamicSelectorFromAi) {
 						return { ok: false, stage: 'schema', errors: dynamicSelectorFromAi };

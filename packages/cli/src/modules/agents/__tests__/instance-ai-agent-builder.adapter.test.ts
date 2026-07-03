@@ -142,6 +142,38 @@ describe('InstanceAiAgentBuilderAdapterService scope enforcement', () => {
 
 			expect(agentCustomToolsService.buildCustomTool).not.toHaveBeenCalled();
 		});
+
+		it('getConfigSnapshot throws ForbiddenError and does not read the agent', async () => {
+			const { adapter, agentsService } = setup();
+
+			await expect(adapter.getConfigSnapshot('agent-1', 'project-1')).rejects.toThrow(
+				ForbiddenError,
+			);
+
+			expect(checkAccess.userHasScopes).toHaveBeenCalledWith(
+				expect.anything(),
+				['agent:read'],
+				false,
+				{ projectId: 'project-1' },
+			);
+			expect(agentsService.findById).not.toHaveBeenCalled();
+		});
+
+		it('listProjectAgents throws ForbiddenError and does not list agents', async () => {
+			const { adapter, agentsService } = setup();
+
+			await expect(adapter.listProjectAgents('project-1', 'agent-1')).rejects.toThrow(
+				ForbiddenError,
+			);
+
+			expect(checkAccess.userHasScopes).toHaveBeenCalledWith(
+				expect.anything(),
+				['agent:read'],
+				false,
+				{ projectId: 'project-1' },
+			);
+			expect(agentsService.findByProjectId).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('when the user holds the required project scope', () => {

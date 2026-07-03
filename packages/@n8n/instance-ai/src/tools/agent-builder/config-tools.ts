@@ -7,6 +7,13 @@
  */
 import { Tool } from '@n8n/agents';
 import {
+	applyNativeWebSearchDefaultOn,
+	rejectIfDynamicSelectorUsesFromAi,
+	rejectIfEmptyInstructions,
+	rejectIfUnsupportedNativeWebSearch,
+	type AgentConfigValidationMessages,
+} from '@n8n/ai-utilities/agent-config';
+import {
 	formatZodErrors,
 	RunnableAgentJsonConfigSchema,
 	sanitizeAgentJsonConfig,
@@ -16,19 +23,18 @@ import {
 import { applyPatch, deepClone, validate, type Operation } from 'fast-json-patch';
 import { z } from 'zod';
 
-import {
-	rejectIfDynamicSelectorUsesFromAi,
-	rejectIfEmptyInstructions,
-	STALE_CONFIG_ERROR,
-	withConfigHash,
-	type HashedSnapshot,
-} from './config-helpers';
-import {
-	applyNativeWebSearchDefaultOn,
-	rejectIfUnsupportedNativeWebSearch,
-} from './native-web-search';
+import { STALE_CONFIG_ERROR, withConfigHash, type HashedSnapshot } from './config-helpers';
 import type { InstanceAiAgentBuilderService, InstanceAiContext } from '../../types';
 import { AGENT_BUILDER_TOOL_IDS } from '../tool-ids';
+
+/** LLM-facing follow-up guidance for the instance-ai agent-builder tools. */
+const INSTANCE_AI_CONFIG_MESSAGES: AgentConfigValidationMessages = {
+	emptyInstructionsFollowUp: 'calling write_config or patch_config again.',
+	dynamicSelectorFollowUp:
+		'Load the agent-builder resource-locators reference, resolve a credential if missing ' +
+		'(credentials tool, action "list"), then call get_resource_locator_options and write the ' +
+		'returned parameterValue into nodeParameters.',
+};
 
 interface AgentBuilderDeps {
 	service: InstanceAiAgentBuilderService;
@@ -116,21 +122,22 @@ async function validateAndPersist(
 	previousConfig: AgentJsonConfig | null,
 	failureStage: string,
 ) {
-	const empty = rejectIfEmptyInstructions(candidate);
-	if (empty) return { ok: false as const, stage: failureStage, errors: empty.errors };
+	const empty = rejectIfEmptyInstructions(candidate, INSTANCE_AI_CONFIG_MESSAGES);
+	if (empty) return { ok: false as const, stage: failureStage, errors: empty };
 
 	const unsupportedWebSearch = rejectIfUnsupportedNativeWebSearch(candidate);
 	if (unsupportedWebSearch) {
-		return { ok: false as const, stage: failureStage, errors: unsupportedWebSearch.errors };
+		return { ok: false as const, stage: failureStage, errors: unsupportedWebSearch };
 	}
 
 	const dynamicSelector = rejectIfDynamicSelectorUsesFromAi(
 		candidate,
 		previousConfig,
 		deps.nodeTypesProvider,
+		INSTANCE_AI_CONFIG_MESSAGES,
 	);
 	if (dynamicSelector) {
-		return { ok: false as const, stage: failureStage, errors: dynamicSelector.errors };
+		return { ok: false as const, stage: failureStage, errors: dynamicSelector };
 	}
 
 	// Seed the "native model gets web search by default" ergonomic as an explicit

@@ -1,17 +1,18 @@
 /**
- * Pure `$fromAI(...)` reference scanning over node parameters. Ported from the
- * CLI agent builder so the instance-ai config tools can enforce the same rule:
+ * Pure `$fromAI(...)` reference scanning over node parameters. Shared by the CLI
+ * agent builder and the instance-ai config tools so both enforce the same rule:
  * stable dynamic selectors must be resolved with `get_resource_locator_options`,
  * not left as `$fromAI`.
  */
-import { extractFromAIParameters } from '@n8n/ai-utilities/fromai-helpers';
 import type { INodeParameters } from 'n8n-workflow';
 
-export interface FromAiParameterReference {
+import { extractFromAIParameters } from '../utils/fromai-helpers';
+
+export type FromAiParameterReference = {
 	parameterPath: string;
 	jsonPointer: string;
 	value: string;
-}
+};
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -23,6 +24,7 @@ function escapeJsonPointerPart(part: string): string {
 
 function containsFromAiCall(value: string): boolean {
 	const parameters: INodeParameters = { value };
+
 	try {
 		return extractFromAIParameters(parameters).length > 0;
 	} catch {
@@ -37,6 +39,7 @@ export function collectFromAiParameterReferences(
 ): FromAiParameterReference[] {
 	if (typeof value === 'string') {
 		if (!containsFromAiCall(value) || pathParts.length === 0) return [];
+
 		return [
 			{
 				parameterPath: pathParts.join('.'),

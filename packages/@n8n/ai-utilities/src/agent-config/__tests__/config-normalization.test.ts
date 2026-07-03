@@ -8,12 +8,18 @@ import {
 	rejectIfDynamicSelectorUsesFromAi,
 	rejectIfEmptyInstructions,
 	rejectIfUnsupportedNativeWebSearch,
+	type AgentConfigValidationMessages,
 } from '../config-normalization';
 
 const base: AgentJsonConfig = {
 	name: 'Agent',
 	model: 'anthropic/claude-sonnet-4-5',
 	instructions: 'Help the user.',
+};
+
+const messages: AgentConfigValidationMessages = {
+	emptyInstructionsFollowUp: 'saving the config again.',
+	dynamicSelectorFollowUp: 'Resolve the value and write it into nodeParameters.',
 };
 
 describe('reconcileNativeWebSearch', () => {
@@ -101,13 +107,18 @@ describe('applyNativeWebSearchDefaultOn', () => {
 
 describe('rejectIfEmptyInstructions', () => {
 	it('rejects blank instructions', () => {
-		expect(rejectIfEmptyInstructions({ ...base, instructions: '   ' })).toEqual([
+		expect(rejectIfEmptyInstructions({ ...base, instructions: '   ' }, messages)).toEqual([
 			expect.objectContaining({ path: '/instructions' }),
 		]);
 	});
 
+	it('appends the surface-specific follow-up guidance', () => {
+		const result = rejectIfEmptyInstructions({ ...base, instructions: '' }, messages);
+		expect(result?.[0].message).toContain('saving the config again.');
+	});
+
 	it('accepts non-empty instructions', () => {
-		expect(rejectIfEmptyInstructions(base)).toBeNull();
+		expect(rejectIfEmptyInstructions(base, messages)).toBeNull();
 	});
 });
 
@@ -162,8 +173,19 @@ describe('rejectIfDynamicSelectorUsesFromAi', () => {
 		tools: [linearNodeTool],
 	};
 
+	it('skips the check when no node-types provider is available', () => {
+		expect(
+			rejectIfDynamicSelectorUsesFromAi(configWithFromAiSelector, null, undefined, messages),
+		).toBeNull();
+	});
+
 	it('rejects $fromAI on a dynamic selector parameter', () => {
-		const result = rejectIfDynamicSelectorUsesFromAi(configWithFromAiSelector, null, nodeTypes);
+		const result = rejectIfDynamicSelectorUsesFromAi(
+			configWithFromAiSelector,
+			null,
+			nodeTypes,
+			messages,
+		);
 		expect(result).toEqual([expect.objectContaining({ path: expect.stringContaining('teamId') })]);
 	});
 
@@ -172,6 +194,7 @@ describe('rejectIfDynamicSelectorUsesFromAi', () => {
 			configWithFromAiSelector,
 			configWithFromAiSelector,
 			nodeTypes,
+			messages,
 		);
 		expect(result).toBeNull();
 	});
@@ -181,7 +204,12 @@ describe('rejectIfDynamicSelectorUsesFromAi', () => {
 			...configWithFromAiSelector,
 			tools: [{ ...linearNodeTool, name: 'Linear Renamed' }],
 		};
-		const result = rejectIfDynamicSelectorUsesFromAi(renamed, configWithFromAiSelector, nodeTypes);
+		const result = rejectIfDynamicSelectorUsesFromAi(
+			renamed,
+			configWithFromAiSelector,
+			nodeTypes,
+			messages,
+		);
 		expect(result).toBeNull();
 	});
 });

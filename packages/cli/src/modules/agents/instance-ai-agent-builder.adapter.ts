@@ -90,7 +90,7 @@ export class InstanceAiAgentBuilderAdapterService {
 		// hold the corresponding project scope before any agent mutation.
 		const assertProjectScope = async (scope: Scope, projectId: string): Promise<void> => {
 			if (!(await userHasScopes(user, [scope], false, { projectId }))) {
-				throw new ForbiddenError('You do not have permission to modify agents in this project.');
+				throw new ForbiddenError('You do not have permission to access agents in this project.');
 			}
 		};
 
@@ -109,6 +109,7 @@ export class InstanceAiAgentBuilderAdapterService {
 			},
 
 			getConfigSnapshot: async (agentId, projectId): Promise<AgentConfigSnapshot> => {
+				await assertProjectScope('agent:read', projectId);
 				const agent = await this.agentsService.findById(agentId, projectId);
 				if (!agent) return { config: null, updatedAt: null, versionId: null };
 				return {
@@ -176,6 +177,7 @@ export class InstanceAiAgentBuilderAdapterService {
 				})),
 
 			listProjectAgents: async (projectId, excludeAgentId): Promise<ProjectAgentSummary[]> => {
+				await assertProjectScope('agent:read', projectId);
 				const agents = await this.agentsService.findByProjectId(projectId);
 				return agents
 					.filter((agent) => agent.id !== excludeAgentId && agent.activeVersionId !== null)
