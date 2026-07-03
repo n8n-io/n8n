@@ -162,6 +162,26 @@ describe('WorkflowExporter', () => {
 		});
 	});
 
+	it('nests output under `<basePrefix>/workflows` when a basePrefix is given', async () => {
+		// This is the seam the folder exporter uses to place contained workflows
+		// under their folder's directory.
+		const workflow = makeWorkflow({ id: 'wf-nested', name: 'Triage' });
+		const { exporter } = makeExporter([workflow]);
+		const writer = new CapturingWriter();
+
+		const { entries } = await exporter.export({
+			user,
+			workflowIds: [workflow.id],
+			writer,
+			basePrefix: 'folders/in_progress',
+		});
+
+		expect(entries[0].target).toBe('folders/in_progress/workflows/triage');
+		expect(writer.files.map((f) => f.path)).toContain(
+			'folders/in_progress/workflows/triage/workflow.json',
+		);
+	});
+
 	it('disambiguates targets when two workflows share a name', async () => {
 		const a = makeWorkflow({ id: 'wf-aaaaa', name: 'Same Name' });
 		const b = makeWorkflow({ id: 'wf-bbbbb', name: 'Same Name' });

@@ -236,7 +236,7 @@ export class ProjectService {
 			const agents = await agentRepository.findByProjectId(project.id);
 			for (const agent of agents) {
 				try {
-					await agentKnowledgeService.deleteAllFilesForAgent(project.id, agent.id, user.id);
+					await agentKnowledgeService.deleteAllFilesForAgent(project.id, agent.id);
 				} catch (error) {
 					this.logger.warn('Failed to delete knowledge files on project delete', {
 						agentId: agent.id,

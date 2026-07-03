@@ -702,6 +702,108 @@ describe('parseStoredMessages', () => {
 			]);
 		});
 
+		it('should reconstruct tool calls when an empty snapshot is consumed as a leading orphan', () => {
+			// Real-world (thread 36a79497 / fal.ai build): a completed run whose snapshot was
+			// rebuilt from an already-evicted event bus, persisting an empty `agent-001` tree
+			// tagged with the turn's messageGroupId. Its createdAt sits at run start — before
+			// every assistant row — so it is consumed as a chronological *orphan* rather than
+			// paired. The empty orphan must not clobber the message-derived flat tree when the
+			// dedup pass collapses the turn.
+			const tc = (toolCallId: string, toolName: string) => ({
+				type: 'tool-call' as const,
+				toolCallId,
+				toolName,
+				input: {},
+				state: 'resolved' as const,
+				output: {},
+			});
+			const messages: StoredAgentMessage[] = [
+				{ id: 'u', role: 'user', content: 'generate content with fal.ai', createdAt: makeDate(0) },
+				{
+					id: 'a1',
+					role: 'assistant',
+					content: [tc('t1', 'workspace_write_file')],
+					createdAt: makeDate(20),
+				},
+				{ id: 'a2', role: 'assistant', content: [tc('t2', 'workflows')], createdAt: makeDate(30) },
+				{
+					id: 'a3',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'The workflow is built and verified.' }],
+					createdAt: makeDate(40),
+				},
+			];
+			const emptyTree: InstanceAiAgentNode = {
+				agentId: 'agent-001',
+				role: 'orchestrator',
+				status: 'completed',
+				textContent: '',
+				reasoning: '',
+				toolCalls: [],
+				children: [],
+				timeline: [],
+			};
+			const snapshots = [
+				{
+					tree: emptyTree,
+					runId: 'run_h4',
+					messageGroupId: 'mg_1',
+					runIds: ['run_h4'],
+					// Before every assistant row → consumed as a leading orphan, not paired.
+					createdAt: makeDate(5),
+					updatedAt: makeDate(5),
+				},
+			];
+
+			const result = parseStoredMessages(messages, snapshots);
+
+			const assistants = result.filter((m) => m.role === 'assistant');
+			expect(assistants).toHaveLength(1);
+			// The empty orphan snapshot must not overwrite the reconstructed activity.
+			expect(assistants[0].agentTree?.toolCalls.map((t) => t.toolName)).toEqual([
+				'workspace_write_file',
+				'workflows',
+			]);
+			expect(assistants[0].agentTree?.textContent).toBe('The workflow is built and verified.');
+		});
+
+		it('should not surface an empty paired snapshot tree on a content-less assistant row', () => {
+			// Same invariant as the orphan guard, on the *pairing* path: a non-renderable
+			// snapshot must never be authoritative. Here the empty snapshot pairs with an
+			// assistant row that also has no text/tools, so there is no flat tree to fall
+			// back to either — the row must end up with no tree, not the empty `agent-001`
+			// snapshot tree leaking through.
+			const messages: StoredAgentMessage[] = [
+				{ id: 'u', role: 'user', content: 'do nothing', createdAt: makeDate(0) },
+				{ id: 'a', role: 'assistant', content: [], createdAt: makeDate(1) },
+			];
+			const emptyTree: InstanceAiAgentNode = {
+				agentId: 'agent-001',
+				role: 'orchestrator',
+				status: 'completed',
+				textContent: '',
+				reasoning: '',
+				toolCalls: [],
+				children: [],
+				timeline: [],
+			};
+
+			const result = parseStoredMessages(messages, [
+				{
+					tree: emptyTree,
+					runId: 'run_x',
+					messageGroupId: 'mg_x',
+					createdAt: makeDate(1),
+					updatedAt: makeDate(1),
+				},
+			]);
+
+			const assistant = result.find((m) => m.role === 'assistant');
+			expect(assistant?.agentTree).toBeUndefined();
+			// Grouping metadata from the snapshot is still attached.
+			expect(assistant?.messageGroupId).toBe('mg_x');
+		});
+
 		it('should hydrate orphan snapshots without a matching assistant message', () => {
 			const snapshotCreatedAt = makeDate(1);
 			const tree = makeSnapshotTree('I finished the run, but I did not generate a final response.');

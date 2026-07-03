@@ -1,2 +1,2 @@
 export { SchedulerStore } from './scheduler-store';
-export { entityToScheduledJob, scheduledTaskToRow } from './mappers';
+export { entityToScheduledJob, entityToClaimedTask, scheduledTaskToRow } from './mappers';

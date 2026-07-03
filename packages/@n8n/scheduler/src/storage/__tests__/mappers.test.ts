@@ -1,6 +1,9 @@
-import type { ScheduledJob as ScheduledJobEntity } from '@n8n/db';
+import type {
+	ScheduledJob as ScheduledJobEntity,
+	ScheduledTask as ScheduledTaskEntity,
+} from '@n8n/db';
 
-import { entityToScheduledJob, scheduledTaskToRow } from '../mappers';
+import { entityToClaimedTask, entityToScheduledJob, scheduledTaskToRow } from '../mappers';
 
 /** Build a `scheduled_job` entity row with sensible defaults, overridable per test. */
 function jobEntity(overrides: Partial<ScheduledJobEntity> = {}): ScheduledJobEntity {
@@ -73,6 +76,55 @@ describe('entityToScheduledJob', () => {
 		expect(() =>
 			entityToScheduledJob(jobEntity({ kind: 'interval', intervalSeconds: null })),
 		).toThrow();
+	});
+});
+
+/** Build a claimed `scheduled_task` entity row with sensible defaults. */
+function claimedTaskEntity(): ScheduledTaskEntity {
+	return {
+		id: '5',
+		jobId: 8,
+		taskType: 'scheduleTrigger',
+		payload: { a: 1 },
+		scheduledFor: new Date('2026-06-01T10:00:00.000Z'),
+		runAt: new Date('2026-06-01T10:00:00.000Z'),
+		status: 'running',
+		attempts: 0,
+		maxAttempts: 1,
+		claimedBy: 'main-a',
+		leaseExpiresAt: new Date('2026-06-01T10:01:00.000Z'),
+		leaseEpoch: 2,
+		startedAt: null,
+		finishedAt: null,
+		errorMessage: null,
+		createdAt: new Date('2026-06-01T09:00:00.000Z'),
+	} as unknown as ScheduledTaskEntity;
+}
+
+describe('entityToClaimedTask', () => {
+	it('maps a claimed row, stringifying ids and passing lease fields through', () => {
+		const task = entityToClaimedTask(claimedTaskEntity());
+
+		expect(task.id).toBe('5');
+		expect(task.jobId).toBe('8'); // numeric column -> string domain id
+		expect(task.claimedBy).toBe('main-a');
+		expect(task.leaseEpoch).toBe(2);
+		expect(task.leaseExpiresAt).toEqual(new Date('2026-06-01T10:01:00.000Z'));
+		expect(task.startedAt).toBeNull();
+	});
+
+	it('carries a non-null startedAt through', () => {
+		const startedAt = new Date('2026-06-01T10:00:05.000Z');
+		const task = entityToClaimedTask({ ...claimedTaskEntity(), startedAt });
+		expect(task.startedAt).toEqual(startedAt);
+	});
+
+	it('throws when a claimed row is missing claimedBy', () => {
+		expect(() => entityToClaimedTask({ ...claimedTaskEntity(), claimedBy: null })).toThrow();
+	});
+
+	it('throws when a claimed row is missing leaseExpiresAt', () => {
+		expect(() => entityToClaimedTask({ ...claimedTaskEntity(), leaseExpiresAt: null })).toThrow();
 	});
 });
 
