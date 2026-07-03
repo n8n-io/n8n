@@ -25,12 +25,17 @@ import PlanReviewPanel, { type PlannedTaskArg, type PlanReviewStatus } from './P
 import ReasoningBlock from './ReasoningBlock.vue';
 import TaskChecklist from './TaskChecklist.vue';
 import TimelineTextSegment from './TimelineTextSegment.vue';
+import ToolResultJson from './ToolResultJson.vue';
+import ToolResultRenderer from './ToolResultRenderer.vue';
+import DataSection from './DataSection.vue';
 import { N8nAiActivityStep as ToolCallStep } from '@n8n/design-system';
+import { useToolLabel } from '../toolLabels';
 
 const i18n = useI18n();
 const thread = useThread();
 const telemetry = useTelemetry();
 const rootStore = useRootStore();
+const { getToolLabel } = useToolLabel();
 
 /** Resolve artifact name from the enriched registry (falls back to extracted name). */
 function resolveArtifactName(artifact: ArtifactInfo): string {
@@ -313,9 +318,27 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 						toolCallsById[entry.toolCallId].isLoading
 					"
 				/>
-				<!-- Keep slot-free: slot children disable the props bailout and would
-					 re-render every step on each timeline render -->
-				<ToolCallStep v-else :tool-call="toolCallsById[entry.toolCallId]" :show-connector="true" />
+				<ToolCallStep
+					v-else
+					:tool-call="toolCallsById[entry.toolCallId]"
+					:label="
+						getToolLabel(
+							toolCallsById[entry.toolCallId].toolName,
+							toolCallsById[entry.toolCallId].args,
+						)
+					"
+				>
+					<DataSection v-if="toolCallsById[entry.toolCallId].args">
+						<ToolResultJson :value="toolCallsById[entry.toolCallId].args" />
+					</DataSection>
+					<DataSection v-if="toolCallsById[entry.toolCallId].result !== undefined">
+						<ToolResultRenderer
+							:result="toolCallsById[entry.toolCallId].result"
+							:tool-name="toolCallsById[entry.toolCallId].toolName"
+							:tool-args="toolCallsById[entry.toolCallId].args"
+						/>
+					</DataSection>
+				</ToolCallStep>
 			</template>
 
 			<!-- Child agent — flat section. Running builder sub-agents are

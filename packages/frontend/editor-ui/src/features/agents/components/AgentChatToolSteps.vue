@@ -18,6 +18,7 @@ import {
 	writeTodosLabel,
 	writeTodosSummaryLabel,
 } from '../utils/write-todos-tool';
+import { TOOL_CALL_STATE } from '../constants';
 
 const props = defineProps<{
 	toolCalls: ToolCall[];
@@ -108,7 +109,10 @@ function toAiActivityToolCall(tc: ToolCall): AiActivityToolCall {
 		args: isRecord(tc.input) ? tc.input : tc.input === undefined ? undefined : { value: tc.input },
 		result: tc.output,
 		error: tc.state === 'error' ? formatToolData(tc.output) : undefined,
-		isLoading: tc.state === 'running' || tc.state === 'suspended',
+		isLoading:
+			tc.state === TOOL_CALL_STATE.PENDING ||
+			tc.state === TOOL_CALL_STATE.RUNNING ||
+			tc.state === TOOL_CALL_STATE.SUSPENDED,
 	};
 }
 
