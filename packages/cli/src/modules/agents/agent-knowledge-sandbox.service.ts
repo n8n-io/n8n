@@ -125,10 +125,14 @@ function buildSandboxScopeKey(projectId: string, agentId: string): string {
 }
 
 // Proxy sandbox-operation routes only match `[a-z0-9][a-z0-9_-]+` — the name
-// must be lowercase. agentId is a globally unique nanoid, instanceId
-// disambiguates multiple n8n instances sharing one Daytona org.
-function buildSandboxName(scope: { instanceId: string; agentId: string }): string {
-	return `${AGENT_KNOWLEDGE_SANDBOX_NAME_PREFIX}${scope.agentId}-${scope.instanceId}`.toLowerCase();
+// must be lowercase. instanceId groups one instance's sandboxes together;
+// projectId and agentId are a globally unique nanoid pair beneath it.
+function buildSandboxName(scope: {
+	instanceId: string;
+	projectId: string;
+	agentId: string;
+}): string {
+	return `${AGENT_KNOWLEDGE_SANDBOX_NAME_PREFIX}${scope.instanceId}-${scope.projectId}-${scope.agentId}`.toLowerCase();
 }
 
 function extractCommandOutput(result: {
@@ -269,6 +273,7 @@ export class AgentKnowledgeSandboxService {
 			});
 			const name = buildSandboxName({
 				instanceId: this.instanceSettings.instanceId,
+				projectId,
 				agentId,
 			});
 			const timeoutSeconds = Math.ceil(this.agentsConfig.sandboxTimeout / 1000);
@@ -431,6 +436,7 @@ export class AgentKnowledgeSandboxService {
 		const sandbox = await this.acquireSandbox(projectId, agentId);
 		const sandboxName = buildSandboxName({
 			instanceId: this.instanceSettings.instanceId,
+			projectId,
 			agentId,
 		});
 		await this.ensureMirrorSynced(sandbox, files, sandboxName);
@@ -545,6 +551,7 @@ export class AgentKnowledgeSandboxService {
 			const sandbox = await this.acquireSandbox(projectId, agentId);
 			const sandboxName = buildSandboxName({
 				instanceId: this.instanceSettings.instanceId,
+				projectId,
 				agentId,
 			});
 			await this.ensureMirrorSynced(sandbox, references.files, sandboxName);
@@ -558,9 +565,10 @@ export class AgentKnowledgeSandboxService {
 	}
 
 	/** Invalidates the cached mirror state so the next operation re-syncs. */
-	invalidateMirror(_projectId: string, agentId: string): void {
+	invalidateMirror(projectId: string, agentId: string): void {
 		const sandboxName = buildSandboxName({
 			instanceId: this.instanceSettings.instanceId,
+			projectId,
 			agentId,
 		});
 		this.mirrorManifestHashes.delete(sandboxName);
@@ -688,6 +696,7 @@ export class AgentKnowledgeSandboxService {
 		const volumeMount = this.buildVolumeMount(projectId, agentId);
 		const name = buildSandboxName({
 			instanceId: this.instanceSettings.instanceId,
+			projectId,
 			agentId,
 		});
 

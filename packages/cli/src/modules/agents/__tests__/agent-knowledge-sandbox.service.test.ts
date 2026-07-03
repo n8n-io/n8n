@@ -93,7 +93,7 @@ const expectedVolumeMount = {
 };
 
 function buildExpectedSandboxName(): string {
-	return `${AGENT_KNOWLEDGE_SANDBOX_NAME_PREFIX}${agentId}-${instanceId}`.toLowerCase();
+	return `${AGENT_KNOWLEDGE_SANDBOX_NAME_PREFIX}${instanceId}-${projectId}-${agentId}`.toLowerCase();
 }
 
 function makeAiService(overrides: Partial<AiService> = {}): AiService {
