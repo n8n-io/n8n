@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
-import { ElNotification, type NotificationHandle } from 'element-plus';
 import {
 	computed,
 	defineComponent,
@@ -34,6 +33,7 @@ import N8nSettingsRow from '../N8nSettingsRow';
 import N8nSettingsRowConfigure from '../N8nSettingsRowConfigure';
 import N8nSettingsRowGroup from '../N8nSettingsRowGroup';
 import N8nSettingsSaveBar from '../N8nSettingsSaveBar';
+import { confirmSaved } from '../N8nSettingsSaveBar/quickSaveNotification';
 import N8nSettingsSection from '../N8nSettingsSection';
 import N8nSwitch from '../N8nSwitch';
 import N8nText from '../N8nText';
@@ -53,21 +53,6 @@ const meta = {
 
 export default meta;
 type Story = StoryObj<typeof meta>;
-
-// Change confirmations reuse n8n's existing app-wide notification — the bottom-right Element Plus
-// notification themed by the design system's `notification.scss` (the same component
-// `useToast().showMessage` shows in the app) — instead of introducing a new toast pattern. The
-// prototypes call it exactly the way the app does on a successful save.
-//
-// Each quick-save confirmation REPLACES the previous one instead of stacking: rapid instant saves
-// (e.g. flipping a toggle back and forth) would otherwise pile up notifications and eat vertical
-// space. Only the last `confirmSaved` toast is closed — other notifications are left alone.
-let lastQuickSaveNotification: NotificationHandle | undefined;
-const confirmSaved = (title: string) => {
-	lastQuickSaveNotification?.close();
-	lastQuickSaveNotification = ElNotification({ title, type: 'success', position: 'bottom-right' });
-	return lastQuickSaveNotification;
-};
 
 // One-shot check used by the animated prototypes to skip decorative motion. Deliberately not
 // reactive: each animation reads it when it starts, matching how the CSS media query gates the
@@ -668,9 +653,13 @@ const components = {
 };
 
 // Wrapper style shared by every full-page story so each reads as a real, full-height scrollable
-// settings page (no windowed box) on the app's subtle background.
+// settings page (no windowed box) on the app's subtle background. The flex column is part of the
+// floating save bar contract: the bar (last child, `margin-top: auto`) gets pushed to the bottom
+// of the scrollport even when the page content is shorter than the viewport, where its sticky
+// offset gives the usual 24px gap; on long pages the auto margin has no free space to absorb, so
+// scrolling behavior is unchanged.
 const fullPageViewportStyle =
-	'height: 100vh; overflow-y: auto; background: var(--background--subtle);';
+	'height: 100vh; overflow-y: auto; display: flex; flex-direction: column; background: var(--background--subtle);';
 
 // Bordered, rounded metrics card mirroring the Settings Row `Custom` story: three equal columns
 // (tiles) separated by vertical dividers, built from DS border/radius/spacing tokens. Each tile

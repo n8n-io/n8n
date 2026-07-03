@@ -18,7 +18,14 @@ export interface SettingsSaveBarProps {
 	saving?: boolean;
 	/** Disables the Save button (e.g. when the form is invalid). */
 	saveDisabled?: boolean;
-	/** Sticks the bar to the bottom of its container so it floats over the settings column. */
+	/**
+	 * Sticks the bar to the bottom of the scrollport so it floats over the settings column.
+	 * Contract: render the bar as the last child of a flex-column wrapper with `min-height: 100%`
+	 * inside the scroll container (the sticky-footer pattern). The bar carries `margin-top: auto`,
+	 * so on short pages it is pushed to the wrapper bottom, where `position: sticky` lifts it to
+	 * its usual 24px viewport gap; on long pages the auto margin collapses to zero and the bar
+	 * floats over the scrolling content exactly as before.
+	 */
 	floating?: boolean;
 	/** Allow Cmd/Ctrl+S to trigger a save while the bar is visible and enabled. */
 	saveShortcut?: boolean;
@@ -146,6 +153,18 @@ $slide-easing: cubic-bezier(0.32, 0.72, 0, 1);
 	position: sticky;
 	bottom: var(--spacing--lg);
 	z-index: 2;
+	/*
+	 * Sticky-footer half of the floating contract (see the `floating` prop docs). Sticky alone
+	 * only LIFTS the bar within its parent's box — on a page shorter than the scrollport the
+	 * parent ends right after the content, so the bar would sit in flow instead of at the
+	 * viewport bottom. Inside the required flex-column wrapper (min-height: 100%), the auto top
+	 * margin absorbs the free space and pushes the bar to the wrapper bottom, where the sticky
+	 * `bottom` offset yields the usual 24px gap. On long pages there is no free space (and in
+	 * plain block layout `auto` computes to 0), so nothing changes. `!important` for the same
+	 * reason as the `margin-inline: auto` above: host margin resets with higher specificity
+	 * (e.g. Storybook's `#storybook-root > * { margin: ... }`) must not defeat the auto margin.
+	 */
+	margin-top: auto !important;
 }
 
 /*

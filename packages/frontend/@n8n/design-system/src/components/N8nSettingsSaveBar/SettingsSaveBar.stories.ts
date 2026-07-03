@@ -1,20 +1,13 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
-import { ElNotification } from 'element-plus';
 import { computed, ref } from 'vue';
 
+import { confirmSaved } from './quickSaveNotification';
 import N8nSettingsSaveBar from './SettingsSaveBar.vue';
 import N8nInput from '../N8nInput';
 import N8nSettingsRow from '../N8nSettingsRow';
 import N8nSettingsRowGroup from '../N8nSettingsRowGroup';
 import N8nSettingsSection from '../N8nSettingsSection';
 import N8nSwitch from '../N8nSwitch';
-
-// Successful saves confirm through n8n's existing app-wide notification — the bottom-right
-// Element Plus notification themed by the design system (the same one `useToast()` shows in the
-// app) — rather than a bespoke toast, so settings confirmations look like every other
-// confirmation in the product.
-const notifySaved = (title: string) =>
-	ElNotification({ title, type: 'success', position: 'bottom-right' });
 
 const meta = {
 	title: 'Instance Settings/Settings Save Bar',
@@ -33,7 +26,7 @@ const meta = {
 		docs: {
 			description: {
 				component:
-					'The explicit-save affordance for high-impact instance settings. It stays hidden until there are unsaved changes, then slides up showing an "Unsaved changes" status on the left plus Discard (outline) and Save (solid) actions on the right — the primary action sits on the far right, consistent with dialogs. It is presentational: the consumer owns `visible` (bind it to a dirty flag), `saving`, and reacts to `save`/`discard`. On a successful save, hide the bar and confirm through the existing app notification (`useToast().showMessage` in the app). The bar is a gently rounded (12px) bordered rectangle with a prominent shadow that spans the 720px settings content column plus 12px on each side (744px), so it sits a touch proud of the column — set `floating` to stick it 24px above the bottom of that column while scrolling. Mirrors Figma 5991:7910.',
+					'The explicit-save affordance for high-impact instance settings. It stays hidden until there are unsaved changes, then slides up showing an "Unsaved changes" status on the left plus Discard (outline) and Save (solid) actions on the right — the primary action sits on the far right, consistent with dialogs. It is presentational: the consumer owns `visible` (bind it to a dirty flag), `saving`, and reacts to `save`/`discard`. On a successful save, hide the bar and confirm through the existing app notification (`useToast().showMessage` in the app). The bar is a gently rounded (12px) bordered rectangle with a prominent shadow that spans the 720px settings content column plus 12px on each side (744px), so it sits a touch proud of the column — set `floating` to stick it 24px above the bottom of that column while scrolling (render it as the last child of a `min-height: 100%` flex column inside the scroll container so it stays pinned at the viewport bottom on short pages too). Mirrors Figma 5991:7910.',
 			},
 		},
 	},
@@ -90,8 +83,8 @@ export const Floating: Story = {
 			return { value };
 		},
 		template: `
-			<div style="height: 22rem; overflow-y: auto; padding: var(--spacing--sm); background: var(--background--subtle); border-radius: var(--radius--md);">
-				<div style="max-width: 45rem; margin-inline: auto; display: flex; flex-direction: column; gap: var(--spacing--lg);">
+			<div style="height: 22rem; overflow-y: auto; padding: var(--spacing--sm); box-sizing: border-box; background: var(--background--subtle); border-radius: var(--radius--md);">
+				<div style="min-height: 100%; box-sizing: border-box; max-width: 45rem; margin-inline: auto; display: flex; flex-direction: column; gap: var(--spacing--lg);">
 					<N8nSettingsSection title="Webhook" description="Scroll the panel — the save bar sticks to the bottom of the column.">
 						<N8nSettingsRowGroup>
 							<N8nSettingsRow v-for="n in 6" :key="n" :title="'Setting ' + n" description="A high-impact instance setting that requires an explicit save." :action-fill="true">
@@ -108,7 +101,7 @@ export const Floating: Story = {
 		docs: {
 			description: {
 				story:
-					'With `floating`, the bar is `position: sticky` at the bottom of its container, so it hovers over the settings column (not the full window width) while the content scrolls beneath it.',
+					'With `floating`, the bar is `position: sticky` at the bottom of its container, so it hovers over the settings column (not the full window width) while the content scrolls beneath it. The floating contract: the bar is the last child of a flex column with `min-height: 100%` inside the scroll container — the bar carries `margin-top: auto`, so on pages shorter than the scrollport it is still pushed down and pinned at the bottom with its usual gap.',
 			},
 		},
 	},
@@ -135,7 +128,7 @@ export const Interactive: Story = {
 				setTimeout(() => {
 					saved.value = draft.value;
 					saving.value = false;
-					notifySaved('Settings saved');
+					confirmSaved('Settings saved');
 				}, 1000);
 			};
 			const onDiscard = () => {
@@ -200,7 +193,7 @@ export const SettingsFlow: Story = {
 				setTimeout(() => {
 					saved.value = { ...draft.value };
 					saving.value = false;
-					notifySaved('Settings saved');
+					confirmSaved('Settings saved');
 				}, 1000);
 			};
 			const onDiscard = () => {
@@ -208,33 +201,38 @@ export const SettingsFlow: Story = {
 			};
 			const onToggleTelemetry = () => {
 				// Low-impact: persists immediately and confirms with the same app notification.
-				notifySaved('Settings saved');
+				confirmSaved('Settings saved');
 			};
 
 			return { draft, saving, dirty, telemetry, onSave, onDiscard, onToggleTelemetry };
 		},
+		// Full-height flex-column page (the floating contract): even though this page is shorter
+		// than the viewport, the bar's `margin-top: auto` pushes it to the bottom of the scrollport,
+		// where its sticky offset pins it 24px above the viewport edge.
 		template: `
-			<div style="max-width: 45rem; display: flex; flex-direction: column; gap: var(--spacing--xl);">
-				<N8nSettingsSection title="Instance" description="High-impact fields require an explicit save.">
-					<N8nSettingsRowGroup>
-						<N8nSettingsRow title="Instance name" description="Shown in the header and in emails." :action-fill="true">
-							<template #action><N8nInput v-model="draft.name" /></template>
-						</N8nSettingsRow>
-						<N8nSettingsRow title="Timezone" description="Used to schedule and display times." :action-fill="true">
-							<template #action><N8nInput v-model="draft.timezone" /></template>
-						</N8nSettingsRow>
-					</N8nSettingsRowGroup>
-				</N8nSettingsSection>
+			<div style="min-height: 100vh; box-sizing: border-box; display: flex; flex-direction: column; padding: var(--spacing--lg); background: var(--background--subtle);">
+				<div style="width: 100%; max-width: 45rem; margin-inline: auto; display: flex; flex-direction: column; gap: var(--spacing--xl);">
+					<N8nSettingsSection title="Instance" description="High-impact fields require an explicit save.">
+						<N8nSettingsRowGroup>
+							<N8nSettingsRow title="Instance name" description="Shown in the header and in emails." :action-fill="true">
+								<template #action><N8nInput v-model="draft.name" /></template>
+							</N8nSettingsRow>
+							<N8nSettingsRow title="Timezone" description="Used to schedule and display times." :action-fill="true">
+								<template #action><N8nInput v-model="draft.timezone" /></template>
+							</N8nSettingsRow>
+						</N8nSettingsRowGroup>
+					</N8nSettingsSection>
 
-				<N8nSettingsSection title="Privacy" description="Low-impact toggles save instantly.">
-					<N8nSettingsRowGroup>
-						<N8nSettingsRow title="Share anonymous telemetry" description="Help us improve n8n. Saved as soon as you toggle it.">
-							<template #action>
-								<N8nSwitch v-model="telemetry" @update:model-value="onToggleTelemetry" />
-							</template>
-						</N8nSettingsRow>
-					</N8nSettingsRowGroup>
-				</N8nSettingsSection>
+					<N8nSettingsSection title="Privacy" description="Low-impact toggles save instantly.">
+						<N8nSettingsRowGroup>
+							<N8nSettingsRow title="Share anonymous telemetry" description="Help us improve n8n. Saved as soon as you toggle it.">
+								<template #action>
+									<N8nSwitch v-model="telemetry" @update:model-value="onToggleTelemetry" />
+								</template>
+							</N8nSettingsRow>
+						</N8nSettingsRowGroup>
+					</N8nSettingsSection>
+				</div>
 
 				<N8nSettingsSaveBar
 					floating
@@ -247,10 +245,11 @@ export const SettingsFlow: Story = {
 		`,
 	}),
 	parameters: {
+		layout: 'fullscreen',
 		docs: {
 			description: {
 				story:
-					'A realistic settings page combining both save modes: the high-impact Instance fields drive the floating explicit-save bar, while the low-impact telemetry toggle saves instantly. Both confirm through the existing app notification.',
+					"A realistic settings page combining both save modes: the high-impact Instance fields drive the floating explicit-save bar, while the low-impact telemetry toggle saves instantly. Both confirm through the existing app notification. The page is deliberately shorter than the viewport to show that the floating bar still pins to the bottom of the screen with its 24px gap (the full-height flex-column wrapper plus the bar's auto top margin).",
 			},
 		},
 	},
