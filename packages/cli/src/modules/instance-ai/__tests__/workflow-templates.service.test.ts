@@ -35,4 +35,13 @@ describe('WorkflowTemplatesService', () => {
 		expect(result).toEqual({ available: false });
 		expect(mockedAxios.get).not.toHaveBeenCalled();
 	});
+
+	it('reports unavailable when a 200 response has no workflow payload', async () => {
+		mockedAxios.get.mockResolvedValue({ data: { error: 'not found' } });
+		const service = makeService();
+
+		const result = await service.getTemplate('7');
+
+		expect(result).toEqual({ available: false });
+	});
 });

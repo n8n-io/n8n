@@ -48,7 +48,11 @@ export const InstanceAiModule: FrontendModuleDescription = {
 							return { name: VIEWS.HOMEPAGE };
 						}
 
-						const prompt = typeof to.query.prompt === 'string' ? to.query.prompt : '';
+						const prompt = typeof to.query.prompt === 'string' ? to.query.prompt.trim() : '';
+						if (!prompt) {
+							return { name: INSTANCE_AI_VIEW };
+						}
+
 						let sourceContext: Record<string, unknown> | undefined;
 						if (typeof to.query.sourceContext === 'string') {
 							try {
@@ -60,9 +64,7 @@ export const InstanceAiModule: FrontendModuleDescription = {
 
 						let threadId: string;
 						try {
-							// External links are always attributed to 'external-link' and can
-							// never auto-send — prepareInstanceAiLaunch enforces that for the
-							// 'external' origin, so this stays the single launch chokepoint.
+							// 'external' origin never auto-sends; prepareInstanceAiLaunch enforces it.
 							threadId = await prepareInstanceAiLaunch({
 								message: prompt,
 								source: 'external-link',

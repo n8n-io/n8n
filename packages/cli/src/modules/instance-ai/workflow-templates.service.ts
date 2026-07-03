@@ -24,11 +24,16 @@ export class WorkflowTemplatesService {
 
 		const url = `${host.replace(/\/?$/, '/')}templates/workflows/${encodeURIComponent(templateId)}`;
 		try {
-			const response = await axios.get<{ workflow: Record<string, unknown> }>(url, {
+			const response = await axios.get<{ workflow?: Record<string, unknown> }>(url, {
 				headers: { 'Content-Type': 'application/json' },
 				timeout: TEMPLATE_REQUEST_TIMEOUT_MS,
 			});
-			return { available: true, template: response.data.workflow };
+			const workflow = response.data?.workflow;
+			if (workflow === undefined || workflow === null || typeof workflow !== 'object') {
+				this.logger.warn('Workflow template response missing workflow payload', { templateId });
+				return { available: false };
+			}
+			return { available: true, template: workflow };
 		} catch (error) {
 			this.logger.error('Error fetching workflow template', { error, templateId });
 			throw error;

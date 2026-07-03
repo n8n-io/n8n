@@ -26,10 +26,8 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const instanceAiSettingsStore = useInstanceAiSettingsStore();
 	const toast = useToast();
 	const persistedThreadIds = new Set<string>();
-	// First message a launcher wants the thread view to handle once it has
-	// mounted: `autoSend` true dispatches it, false prefills the input. Deferring
-	// to the view (rather than the launcher) ensures it acts on the view's own
-	// runtime after hydration, so it isn't clobbered.
+	// First message queued by a launcher, handled by the thread view on mount —
+	// sending earlier would race the view's hydration and lose the message.
 	const pendingLaunches = new Map<string, { text: string; autoSend: boolean }>();
 
 	function setPendingLaunch(threadId: string, text: string, autoSend: boolean): void {

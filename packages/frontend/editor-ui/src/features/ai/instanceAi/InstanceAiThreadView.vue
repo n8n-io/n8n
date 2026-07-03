@@ -525,14 +525,9 @@ async function syncRouteToStore(wasLaunched: boolean) {
 onMounted(() => {
 	enablePanelTransitionsAfterStableRender();
 
-	// A launcher may have queued a first message. For auto-send, mirror the empty
-	// view's working sequence: send first so sendMessage connects SSE (sseState
-	// leaves 'disconnected') and pushes the optimistic message, THEN run
-	// syncRouteToStore — which, seeing SSE no longer 'disconnected', skips the
-	// history-hydration/reconnect path, so the message is preserved and rendered
-	// immediately instead of only after navigating away and back. For prefill we
-	// just seed the input. Either way the thread counts as "launched" so
-	// syncRouteToStore won't bail before it appears in the server thread list.
+	// Ordering is load-bearing: sendMessage synchronously connects SSE, which
+	// makes syncRouteToStore skip the history hydration that would otherwise
+	// clobber the optimistic first message.
 	const pendingLaunch = store.consumePendingLaunch(props.threadId);
 	if (pendingLaunch?.autoSend) {
 		void thread.sendMessage(pendingLaunch.text, undefined, rootStore.pushRef);

@@ -823,7 +823,11 @@ export class InstanceAiCorrectTaskRequest extends Z.class({
 	message: z.string().min(1),
 }) {}
 
-export const INSTANCE_AI_THREAD_SOURCES = ['external-link', 'template-view'] as const;
+export const INSTANCE_AI_THREAD_SOURCES = [
+	'external-link',
+	'template-view',
+	'blank-canvas',
+] as const;
 export type InstanceAiThreadSource = (typeof INSTANCE_AI_THREAD_SOURCES)[number];
 
 export const INSTANCE_AI_THREAD_SOURCE_FALLBACK = 'unknown';
