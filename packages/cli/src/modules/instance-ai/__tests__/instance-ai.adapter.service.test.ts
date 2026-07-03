@@ -3026,6 +3026,7 @@ function createAdapterWithGatewayMock(
 	getGatewayConfig: Mock,
 	overrides?: {
 		credentialsService?: unknown;
+		telemetry?: unknown;
 	},
 ): InstanceAiAdapterService {
 	const aiGatewayService = { getGatewayConfig };
@@ -3056,6 +3057,9 @@ function createAdapterWithGatewayMock(
 	args[25] = { isLicensed: vi.fn().mockReturnValue(false) } as unknown as ConstructorParameters<
 		typeof InstanceAiAdapterService
 	>[25];
+	args[29] = (overrides?.telemetry ?? {
+		track: vi.fn(),
+	}) as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29];
 	args[32] = mock<OutboundHttp>() as unknown as ConstructorParameters<
 		typeof InstanceAiAdapterService
 	>[32];
@@ -3093,6 +3097,37 @@ describe('fetchGatewayConfigSafely', () => {
 		);
 
 		await expect(callFetch(adapter)).resolves.toBeNull();
+	});
+
+	it('emits instance_ai_gateway_available with node and credential-type counts on success', async () => {
+		const track = vi.fn();
+		const adapter = createAdapterWithGatewayMock(
+			vi.fn().mockResolvedValue({
+				nodes: ['openAi', 'anthropic'],
+				credentialTypes: ['openAiApi', 'anthropicApi'],
+				providerConfig: {},
+			}),
+			{ telemetry: { track } },
+		);
+
+		await callFetch(adapter);
+
+		expect(track).toHaveBeenCalledWith('instance_ai_gateway_available', {
+			nodeCount: 2,
+			credentialTypeCount: 2,
+		});
+	});
+
+	it('does not emit gateway_available when the fetch fails', async () => {
+		const track = vi.fn();
+		const adapter = createAdapterWithGatewayMock(
+			vi.fn().mockRejectedValue(new Error('unlicensed')),
+			{ telemetry: { track } },
+		);
+
+		await callFetch(adapter);
+
+		expect(track).not.toHaveBeenCalled();
 	});
 });
 

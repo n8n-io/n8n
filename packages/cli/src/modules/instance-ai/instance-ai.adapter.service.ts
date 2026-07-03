@@ -350,7 +350,12 @@ export class InstanceAiAdapterService {
 	 */
 	private async fetchGatewayConfigSafely(): Promise<AiGatewayConfigDto | null> {
 		try {
-			return await this.aiGatewayService.getGatewayConfig();
+			const config = await this.aiGatewayService.getGatewayConfig();
+			this.telemetry.track('instance_ai_gateway_available', {
+				nodeCount: config.nodes.length,
+				credentialTypeCount: config.credentialTypes.length,
+			});
+			return config;
 		} catch {
 			return null;
 		}

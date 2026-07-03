@@ -396,7 +396,11 @@ async function computeAiGatewayIssues(
 		}
 	}
 
-	return Object.keys(issues).length > 0 ? issues : null;
+	if (Object.keys(issues).length === 0) return null;
+	for (const kind of Object.keys(issues)) {
+		context.trackTelemetry?.('instance_ai_gateway_verifier_failure', { kind });
+	}
+	return issues;
 }
 
 /**

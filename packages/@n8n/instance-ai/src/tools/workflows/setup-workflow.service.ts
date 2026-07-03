@@ -338,6 +338,21 @@ async function resolveCredentialState(
 	let isAutoApplied = !hasExistingOnNode && existingCredentials.length === 1;
 	let autoAppliedGateway: true | undefined;
 
+	// When the user has already assigned a stored credential of a type the
+	// AI Gateway covers, we honour the choice and log a signal: the user
+	// could have used n8n Connect but picked their own key. Feeds a future
+	// nudge without changing behaviour.
+	if (existingCredentialId !== undefined && context.credentialService.isAiGatewayCredentialType) {
+		const gatewaySupported = await context.credentialService
+			.isAiGatewayCredentialType(credentialType)
+			.catch(() => false);
+		if (gatewaySupported) {
+			context.trackTelemetry?.('instance_ai_gateway_could_have_been_used', {
+				credentialType,
+			});
+		}
+	}
+
 	// When no stored credential of this type exists and the AI Gateway covers
 	// the type, auto-apply the managed option. Explicit user choices (either
 	// a stored credential ID on the node or `AI_GATEWAY_MANAGED_TAG`) win
@@ -353,6 +368,10 @@ async function resolveCredentialState(
 		if (gatewaySupported) {
 			isAutoApplied = true;
 			autoAppliedGateway = true;
+			context.trackTelemetry?.('instance_ai_gateway_credential_applied', {
+				credentialType,
+				source: 'auto',
+			});
 		}
 	}
 

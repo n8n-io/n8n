@@ -978,6 +978,42 @@ describe('validateWorkflowConfig', () => {
 			expect(result.issues[node.name!]?.aiGateway).toBeUndefined();
 		});
 
+		it('emits instance_ai_gateway_verifier_failure per issue kind that fires', async () => {
+			const track = vi.fn();
+			const context = makeGatewayContext({
+				isAiGatewayCredentialType: vi.fn().mockResolvedValue(true),
+				nodeDesc: makeDescription({
+					aiGateway: {
+						supported: true,
+						operations: { message: ['sendMessage'] },
+						minVersion: 3,
+						hiddenProperties: ['baseURL'],
+					},
+				}),
+			});
+			(context as unknown as { trackTelemetry: Mock }).trackTelemetry = track;
+
+			const node = makeNode({
+				typeVersion: 2,
+				parameters: { resource: 'message', operation: 'deleteMessage', baseURL: 'https://x' },
+				credentials: {
+					telegramApi: { id: null, name: 'n8n Connect', __aiGatewayManaged: true },
+				},
+			});
+
+			await validateWorkflowConfig(context, { workflow: makeWorkflow([node]) });
+
+			expect(track).toHaveBeenCalledWith('instance_ai_gateway_verifier_failure', {
+				kind: 'belowMinVersion',
+			});
+			expect(track).toHaveBeenCalledWith('instance_ai_gateway_verifier_failure', {
+				kind: 'unsupportedOperation',
+			});
+			expect(track).toHaveBeenCalledWith('instance_ai_gateway_verifier_failure', {
+				kind: 'hiddenPropertySet',
+			});
+		});
+
 		it('does not enforce gateway constraints when the node uses a stored credential', async () => {
 			const context = makeGatewayContext({
 				isAiGatewayCredentialType: vi.fn().mockResolvedValue(true),

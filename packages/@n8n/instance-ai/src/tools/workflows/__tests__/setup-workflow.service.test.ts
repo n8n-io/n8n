@@ -460,6 +460,81 @@ describe('buildSetupRequests', () => {
 		});
 	});
 
+	it('emits instance_ai_gateway_credential_applied with source=auto on rule-3 auto-apply', async () => {
+		const track = vi.fn();
+		(context.credentialService.list as Mock).mockResolvedValue([]);
+		(
+			context.credentialService as unknown as { isAiGatewayCredentialType: Mock }
+		).isAiGatewayCredentialType = vi.fn().mockResolvedValue(true);
+		(context as unknown as { trackTelemetry: Mock }).trackTelemetry = track;
+
+		await buildSetupRequests(context, makeNode());
+
+		expect(track).toHaveBeenCalledWith('instance_ai_gateway_credential_applied', {
+			credentialType: 'slackApi',
+			source: 'auto',
+		});
+	});
+
+	it('does not emit gateway_credential_applied when the node uses a stored credential', async () => {
+		const track = vi.fn();
+		(context.credentialService.list as Mock).mockResolvedValue([
+			{ id: 'cred-1', name: 'My Slack', updatedAt: '2025-01-01T00:00:00.000Z' },
+		]);
+		(
+			context.credentialService as unknown as { isAiGatewayCredentialType: Mock }
+		).isAiGatewayCredentialType = vi.fn().mockResolvedValue(true);
+		(context as unknown as { trackTelemetry: Mock }).trackTelemetry = track;
+
+		await buildSetupRequests(context, makeNode());
+
+		expect(track).not.toHaveBeenCalledWith(
+			'instance_ai_gateway_credential_applied',
+			expect.anything(),
+		);
+	});
+
+	it('emits gateway_could_have_been_used when the user assigned a stored credential of a gateway-supported type', async () => {
+		const track = vi.fn();
+		(context.credentialService.list as Mock).mockResolvedValue([
+			{ id: 'cred-1', name: 'My Slack', updatedAt: '2025-01-01T00:00:00.000Z' },
+		]);
+		(
+			context.credentialService as unknown as { isAiGatewayCredentialType: Mock }
+		).isAiGatewayCredentialType = vi.fn().mockResolvedValue(true);
+		(context as unknown as { trackTelemetry: Mock }).trackTelemetry = track;
+
+		const node = makeNode({
+			credentials: { slackApi: { id: 'cred-1', name: 'My Slack' } },
+		});
+		await buildSetupRequests(context, node);
+
+		expect(track).toHaveBeenCalledWith('instance_ai_gateway_could_have_been_used', {
+			credentialType: 'slackApi',
+		});
+	});
+
+	it('does not emit gateway_could_have_been_used when the type is not gateway-supported', async () => {
+		const track = vi.fn();
+		(context.credentialService.list as Mock).mockResolvedValue([
+			{ id: 'cred-1', name: 'My Slack', updatedAt: '2025-01-01T00:00:00.000Z' },
+		]);
+		(
+			context.credentialService as unknown as { isAiGatewayCredentialType: Mock }
+		).isAiGatewayCredentialType = vi.fn().mockResolvedValue(false);
+		(context as unknown as { trackTelemetry: Mock }).trackTelemetry = track;
+
+		const node = makeNode({
+			credentials: { slackApi: { id: 'cred-1', name: 'My Slack' } },
+		});
+		await buildSetupRequests(context, node);
+
+		expect(track).not.toHaveBeenCalledWith(
+			'instance_ai_gateway_could_have_been_used',
+			expect.anything(),
+		);
+	});
+
 	it('uses credential cache to avoid duplicate fetches', async () => {
 		(context.credentialService.list as Mock).mockResolvedValue([
 			{ id: 'cred-1', name: 'My Slack', updatedAt: '2025-01-01T00:00:00.000Z' },
