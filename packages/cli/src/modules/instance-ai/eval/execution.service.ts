@@ -746,7 +746,10 @@ export class EvalExecutionService {
 			);
 
 			entry.interceptedRequests.push({
-				url: requestOptions.url,
+				// Broken routing (resource/operation missing on the node type) emits a
+				// request with no URL — store a readable marker; the verifier prompt
+				// and the HTML report both key on it, and undefined crashes the report.
+				url: requestOptions.url ?? '(no URL)',
 				method: requestOptions.method ?? 'GET',
 				nodeType: node.type,
 				requestBody: requestOptions.body,
