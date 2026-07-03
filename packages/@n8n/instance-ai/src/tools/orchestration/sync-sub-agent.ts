@@ -11,7 +11,7 @@ import {
 } from './tracing-utils';
 import { buildSubAgentBriefing } from '../../agent/sub-agent-briefing';
 import { buildDebriefing } from '../../agent/sub-agent-debriefing';
-import { createSubAgent, SUB_AGENT_PROTOCOL } from '../../agent/sub-agent-factory';
+import { createSubAgent } from '../../agent/sub-agent-factory';
 import { MAX_STEPS } from '../../constants/max-steps';
 import { consumeStreamWithHitl, requireCompletedHitlText } from '../../stream/consume-with-hitl';
 import type { RunTokenUsage } from '../../stream/usage-accumulator';
@@ -35,6 +35,11 @@ function generateAgentId(): string {
 	return `agent-${nanoid(6)}`;
 }
 
+/**
+ * The sub-agent's system prompt already bakes in `SUB_AGENT_PROTOCOL` (see
+ * `buildSubAgentPrompt`), so the briefing does not repeat it — doing so on
+ * every sync sub-agent run only inflated the input with no behavioral effect.
+ */
 async function buildSyncSubAgentBriefing(
 	context: OrchestrationContext,
 	role: string,
@@ -42,7 +47,7 @@ async function buildSyncSubAgentBriefing(
 	artifacts?: unknown,
 	conversationContext?: string,
 ): Promise<string> {
-	const structured = await buildSubAgentBriefing({
+	return await buildSubAgentBriefing({
 		task: briefing,
 		conversationContext,
 		artifacts: artifacts as Record<string, unknown> | undefined,
@@ -51,8 +56,6 @@ async function buildSyncSubAgentBriefing(
 			: undefined,
 		runningTasks: context.getRunningTaskSummaries?.(),
 	});
-
-	return `${structured}\n\nRemember: ${SUB_AGENT_PROTOCOL}`;
 }
 
 /** Input for {@link runSyncSubAgent} — tools are already resolved by the caller. */

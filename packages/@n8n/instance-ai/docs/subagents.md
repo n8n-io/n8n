@@ -144,6 +144,21 @@ only route to the scout** — `isSelectableSubAgentId('workflow-context-scout')`
 is `false`, so the host runner rejects it if a model somehow guesses the id
 through `agent` directly.
 
+### Host-side type-definition assembly
+
+`discover-workflow-context` wraps the scout's `nodes` tool to capture every
+`type-definition` result verbatim as it's fetched, keyed by node
+type+discriminators. The scout's own final answer only contains its
+**Nodes/Credentials/Knowledge base/Gaps** selection — the host mechanically
+appends the captured definitions for exactly the nodes the scout fetched
+after the scout's answer, instead of asking the model to re-paste ~20-30k
+characters of type-definition content it already has verbatim in its own
+tool-call history. This cuts the scout's completion tokens, removes a fidelity
+risk (models drop fields when asked to copy large blocks verbatim), and relies
+on the scout's existing invariant of "only fetch definitions for nodes you
+recommend" to keep the captured set correct. See
+`wrapNodesToolForTypeDefinitionCapture` in `discover-workflow-context.tool.ts`.
+
 ## Host runner
 
 [`src/subagents/runner.ts`](../src/subagents/runner.ts) exports:

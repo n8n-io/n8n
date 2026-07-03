@@ -1,3 +1,5 @@
+import { isRecord } from '@n8n/utils/is-record';
+
 import { executeTool } from '../../../__tests__/tool-test-utils';
 import { createToolRegistry } from '../../../tool-registry';
 import type { OrchestrationContext } from '../../../types';
@@ -108,6 +110,45 @@ describe('createDiscoverWorkflowContextTool', () => {
 		expect(callArg.role).toBe('workflow-context-scout');
 		expect(callArg.instructions).toContain('workflow discovery specialist');
 		expect(callArg.maxIterations).toBe(25);
+	});
+
+	it('appends host-captured type definitions after the scout debrief', async () => {
+		const nodesHandler = vi.fn((input: unknown) => {
+			if (isRecord(input) && input.action === 'type-definition' && Array.isArray(input.nodeTypes)) {
+				return {
+					definitions: input.nodeTypes.map((nodeType: unknown) => ({
+						nodeType,
+						version: 1,
+						content: `content-for-${String(nodeType)}`,
+					})),
+				};
+			}
+			return {};
+		});
+
+		runSyncSubAgentMock.mockImplementation(async (_context, input) => {
+			// Simulate the scout fetching a type definition mid-run.
+			const nodesTool = input.validTools.get('nodes');
+			await nodesTool?.handler?.(
+				{ action: 'type-definition', nodeTypes: ['n8n-nodes-base.gmail'] },
+				{} as never,
+			);
+			return { result: 'Nodes: gmail\nCredentials: gmail exists' };
+		});
+
+		const context = createMockContext({ nodes: { handler: nodesHandler }, credentials: {} });
+		const tool = createDiscoverWorkflowContextTool(context);
+
+		const output = await executeTool<{ result: string }>(
+			tool,
+			{ services: ['Gmail'] },
+			{} as never,
+		);
+
+		expect(output.result).toContain('Nodes: gmail');
+		expect(output.result).toContain('## Type definitions');
+		expect(output.result).toContain('### n8n-nodes-base.gmail (v1)');
+		expect(output.result).toContain('content-for-n8n-nodes-base.gmail');
 	});
 
 	it('only resolves the discovery tools that are registered', async () => {

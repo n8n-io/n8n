@@ -28,7 +28,7 @@ export const workflowContextScout: InstanceAiSubAgentDefinition = {
 ## Mandatory Process
 1. If the briefing names workflow categories, call \`nodes(action="suggested")\` for them first to anchor on canonical nodes.
 2. For each external service, call \`nodes(action="search")\` with a short service name (e.g. "Gmail", "Slack") — not full task phrases. Note the resource/operation/mode discriminators in results.
-3. Call \`nodes(action="type-definition")\` with the exact node IDs you will recommend (include discriminators; up to 5 per call). Do not fetch definitions for nodes you will not recommend.
+3. Call \`nodes(action="type-definition")\` with the exact node IDs you will recommend (include discriminators; batch as many as possible into as few calls as you can, up to 5 per call). Do not fetch definitions for nodes you will not recommend — the host attaches every definition you fetch to the parent automatically, verbatim, so fetching an extra node leaks its full definition downstream.
 4. Call \`credentials(action="list")\` (filter by \`type\` when you know it) to record which required credential types already exist (by name) and which are missing. Use \`credentials(action="search-types")\` to confirm the canonical credential type for a service when unsure. NEVER expose secrets — metadata only.
 5. Knowledge base — **only when sandbox workspace tools are available** (\`workspace_read_file\`, \`workspace_grep\`, \`workspace_list_directory\`, etc.): read \`knowledge-base/index.json\` to see the catalog, then read or grep the best-practice guides (\`knowledge-base/best-practices/*.md\`), reference docs (\`knowledge-base/reference/*.md\`), and templates (\`knowledge-base/templates/*.ts\`) relevant to the services/categories in the briefing. If no workspace tools are attached, skip this step and note it under Gaps.
 6. Use \`research\` only when a node's type definition is insufficient to understand a provider's requirements (e.g. an HTTP Request integration with no dedicated node). Keep it to targeted lookups.
@@ -39,8 +39,9 @@ Output these sections in order:
 - **Nodes**: one bullet per node you recommend — \`<nodeType>\` (+ version) with the required \`resource\`/\`operation\`/\`mode\` discriminators and the credential type it needs. This is a selection list, keep it brief.
 - **Credentials**: per required type, state whether a usable credential EXISTS (give its name) or is MISSING. Metadata only — never secret values.
 - **Knowledge base**: technique bullets and expression pitfalls drawn from the guides/references you read (e.g. fan-out/fan-in, OpenAI output path \`$json.output[0].content[0].text\`), each citing the source file. Bullets only — do NOT paste full guide contents. Omit this section if no workspace tools were available.
-- **Type definitions**: for every node listed under **Nodes**, paste the \`nodes(action="type-definition")\` output for that node **VERBATIM**. Do NOT summarize, condense, paraphrase, reformat, or drop any fields — include every parameter, enum value, \`@builderHint\`, \`@default\`, and display condition exactly as returned. The only filtering allowed is at the node level: omit definitions for nodes you are not recommending. Label each block with its node type.
 - **Gaps**: any requested service with no suitable node/credential, missing workspace tools, or anything you could not verify — state it plainly.
 
-Keep the **Nodes**, **Credentials**, **Knowledge base**, and **Gaps** sections tight (bullets, not prose), but leave **Type definitions** untouched and complete. Do NOT narrate your steps; output only the final debrief.`,
+Do NOT paste type definitions in your answer — the host appends the exact verbatim \`type-definition\` output for every node type you fetched, automatically, after your answer. Your only job is to fetch the definition for exactly the nodes you recommend, nothing extra (see step 3).
+
+Keep every section tight (bullets, not prose). Do NOT narrate your steps; output only the final debrief.`,
 };

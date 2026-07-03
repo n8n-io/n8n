@@ -14,12 +14,19 @@ import {
 } from './registry';
 import type { InstanceAiSubAgentDefinition } from './types';
 import { runSyncSubAgent, type SyncSubAgentOutput } from '../tools/orchestration/sync-sub-agent';
-import type { OrchestrationContext } from '../types';
+import type { InstanceAiToolRegistry, OrchestrationContext } from '../types';
 
 export interface RunSubAgentDefinitionInput {
 	briefing: string;
 	conversationContext?: string;
 	artifacts?: unknown;
+	/**
+	 * Optional post-resolution tool transform, applied after action-scoping
+	 * and HITL filtering. Lets a caller wrap a specific tool (e.g. to capture
+	 * verbatim tool output for host-side re-assembly) without every sub-agent
+	 * run paying for it. Does not affect `toolNames`.
+	 */
+	transformTools?: (tools: InstanceAiToolRegistry) => InstanceAiToolRegistry;
 }
 
 /**
@@ -34,7 +41,8 @@ export async function runSubAgentDefinition(
 	input: RunSubAgentDefinitionInput,
 	context: OrchestrationContext,
 ): Promise<SyncSubAgentOutput> {
-	const { tools, toolNames } = resolveSubAgentTools(definition, context);
+	const { tools: resolvedTools, toolNames } = resolveSubAgentTools(definition, context);
+	const tools = input.transformTools ? input.transformTools(resolvedTools) : resolvedTools;
 
 	return await runSyncSubAgent(context, {
 		role: definition.id,
