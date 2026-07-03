@@ -118,11 +118,13 @@ $slide-easing: cubic-bezier(0.32, 0.72, 0, 1);
 	justify-content: space-between;
 	gap: var(--spacing--sm);
 	/*
-	 * Span the settings content column (720px) plus a --spacing--xs (12px) overhang on each side,
-	 * per Figma 5991:7910 (744px over the 720px column), so the bar sits a touch proud of the
-	 * column it saves. Falls back to 45rem when the component-scoped
-	 * --settings-content--max-width isn't in scope (e.g. when the floating bar is a sibling of
-	 * N8nSettingsLayout rather than a descendant; mirrors N8nSettingsPageHeader).
+	 * Bar width = 2 * side padding + the settings row width (--settings-content--max-width):
+	 * 2*12px + 720px = 744px (Figma 5991:7910). Both terms reference their tokens — the same
+	 * --n8n-settings-save-bar--padding-inline is used by `padding` and `width`, so the bar
+	 * outgrows the column by exactly its own padding (inner edges sit on the column edges, give
+	 * or take the 1px border under border-box sizing). Falls back to 45rem when the
+	 * component-scoped --settings-content--max-width isn't in scope (e.g. when the floating bar is
+	 * a sibling of N8nSettingsLayout rather than a descendant; mirrors N8nSettingsPageHeader).
 	 * `max-width: 100%` keeps it from overflowing narrower containers.
 	 *
 	 * `margin-inline: auto` is what centers the bar within its container. It is `!important` so a
@@ -130,11 +132,14 @@ $slide-easing: cubic-bezier(0.32, 0.72, 0, 1);
 	 * `#storybook-root > * { margin: ... }` (specificity 1,1,1) would otherwise beat this class
 	 * (0,1,0) and collapse the auto margins to a fixed value, left-aligning the bar.
 	 */
-	width: calc(var(--settings-content--max-width, 45rem) + 2 * var(--spacing--xs));
+	--n8n-settings-save-bar--padding-inline: var(--spacing--xs);
+	width: calc(
+		var(--settings-content--max-width, 45rem) + 2 * var(--n8n-settings-save-bar--padding-inline)
+	);
 	max-width: 100%;
 	margin-inline: auto !important;
 	box-sizing: border-box;
-	padding: var(--spacing--xs) var(--spacing--sm);
+	padding: var(--spacing--xs) var(--n8n-settings-save-bar--padding-inline);
 	background: var(--background--surface);
 	border: var(--border-width, 1px) solid var(--border-color--subtle);
 	/*
