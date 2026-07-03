@@ -1616,6 +1616,7 @@
 	"expressionEdit.expression": "Expression",
 	"expressionEdit.resultOfItem1": "Result of item 1",
 	"expressionEditor.uncalledFunction": "[this is a function, please add ()]",
+	"expressionEditor.deprecated.getPairedItem": "$getPairedItem is deprecated and will be removed",
 	"expressionModalInput.empty": "[empty]",
 	"expressionModalInput.undefined": "[undefined]",
 	"expressionModalInput.null": "null",
