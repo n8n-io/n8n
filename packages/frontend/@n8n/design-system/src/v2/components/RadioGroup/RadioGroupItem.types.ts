@@ -1,4 +1,4 @@
-import type { RadioGroupItemProps as RekaRadioGroupItemProps } from 'reka-ui';
+import type { RadioGroupItemProps as RekaRadioGroupItemProps } from './reka-ui';
 
 export type RadioGroupItemProps = RekaRadioGroupItemProps & {
 	label?: string;
