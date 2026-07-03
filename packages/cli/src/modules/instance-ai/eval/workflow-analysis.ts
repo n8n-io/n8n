@@ -663,8 +663,13 @@ export async function generateMockHints(options: GenerateMockHintsOptions): Prom
 				instructions: SYSTEM_PROMPT,
 			});
 
-			// No maxTokens cap — a low ceiling truncates hints for large workflows.
+			// Explicit 16k output budget — the provider default truncates hints for
+			// the largest workflows ("Unexpected end of JSON input" on every
+			// attempt), and the hint rules intentionally produce long output
+			// (per-node error shapes, concrete dates). Matches the pin-data
+			// generator's budget.
 			const result = await agent.generate(userPrompt, {
+				providerOptions: { anthropic: { maxTokens: 16_384 } },
 				abortSignal: AbortSignal.timeout(HINT_LLM_TIMEOUT_MS),
 			});
 
