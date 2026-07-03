@@ -22,6 +22,7 @@ import { SCOPE_TYPES, SCOPES, normalizeCoupledScopes } from './projectRoleScopes
 import RoleEditorLayout, { type RoleEditorLabels } from '../components/RoleEditorLayout.vue';
 import RoleAssignmentsTab from './RoleAssignmentsTab.vue';
 import { useRoleEditorForm } from '../composables/useRoleEditorForm';
+import { PROJECT_CUSTOM_ROLE_SCOPES } from '@n8n/permissions';
 
 const rolesStore = useRolesStore();
 const route = useRoute();
@@ -58,7 +59,7 @@ const {
 				rolesStore.processedProjectRoles.find((role) => role.slug === 'project:viewer')?.scopes ??
 					[],
 			),
-		),
+		).filter((s) => PROJECT_CUSTOM_ROLE_SCOPES.has(s)),
 	fetchError: 'Error fetching role',
 });
 
@@ -238,7 +239,9 @@ function setPreset(slug: string) {
 		return;
 	}
 
-	form.value.scopes = structuredClone(toRaw(preset.scopes));
+	form.value.scopes = structuredClone(toRaw(preset.scopes)).filter((s) =>
+		PROJECT_CUSTOM_ROLE_SCOPES.has(s),
+	);
 }
 
 async function deleteRole() {
