@@ -2,9 +2,9 @@ import { Logger } from '@n8n/backend-common';
 import { SchedulerConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 
-import { SweepStore } from './sweep-store';
-import { DEFAULT_SWEEP_OPTIONS, sweep } from '../core/sweep';
-import type { SweepOptions, SweepSummary } from '../core/sweep';
+import { MaterializerStore } from './materializer-store';
+import { DEFAULT_MATERIALIZER_OPTIONS, materialize } from '../core/materializer';
+import type { MaterializerOptions, MaterializerSummary } from '../core/materializer';
 
 /**
  * This is the entry the lifecycle wiring drives on a timer; it does not schedule itself.
@@ -12,21 +12,21 @@ import type { SweepOptions, SweepSummary } from '../core/sweep';
  */
 @Service()
 export class SchedulerService {
-	private readonly options: SweepOptions;
+	private readonly options: MaterializerOptions;
 
 	constructor(
-		private readonly store: SweepStore,
+		private readonly store: MaterializerStore,
 		private readonly logger: Logger,
 		config: SchedulerConfig,
 	) {
 		this.options = {
-			...DEFAULT_SWEEP_OPTIONS,
+			...DEFAULT_MATERIALIZER_OPTIONS,
 			windowSeconds: config.materializationWindow,
 		};
 	}
 
-	async runSweep(): Promise<SweepSummary> {
-		return await sweep(this.store.runInTransaction, this.options, (job, error) => {
+	async materialize(): Promise<MaterializerSummary> {
+		return await materialize(this.store.runInTransaction, this.options, (job, error) => {
 			this.logger.error('Scheduler could not plan a job schedule; deferred for retry', {
 				jobId: job.id,
 				error: error instanceof Error ? error.message : String(error),

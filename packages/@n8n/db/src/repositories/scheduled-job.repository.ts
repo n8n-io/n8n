@@ -26,8 +26,8 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 	 * the same round-trip.
 	 *
 	 * Postgres locks the returned rows with `FOR UPDATE SKIP LOCKED`, so a concurrent
-	 * sweep skips them and claims different jobs.
-	 * SQLite can't lock rows, but its transactions are `BEGIN IMMEDIATE`, which serializes sweeps to the same effect.
+	 * materialization skips them and claims different jobs.
+	 * SQLite can't lock rows, but its transactions are `BEGIN IMMEDIATE`, which serializes them to the same effect.
 	 *
 	 * @returns `undefined` when nothing is due.
 	 *

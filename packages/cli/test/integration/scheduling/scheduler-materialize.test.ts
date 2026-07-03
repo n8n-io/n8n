@@ -1,19 +1,19 @@
 import { testDb } from '@n8n/backend-test-utils';
 import { type ScheduledJob, ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { sweep } from '@n8n/scheduler';
-import { SchedulerService, SweepStore } from '@n8n/scheduler/storage';
+import { materialize } from '@n8n/scheduler';
+import { SchedulerService, MaterializerStore } from '@n8n/scheduler/storage';
 
-describe('scheduler sweep', () => {
+describe('scheduler materialization', () => {
 	let jobRepo: ScheduledJobRepository;
 	let taskRepo: ScheduledTaskRepository;
-	let store: SweepStore;
+	let store: MaterializerStore;
 
 	beforeAll(async () => {
 		await testDb.init();
 		jobRepo = Container.get(ScheduledJobRepository);
 		taskRepo = Container.get(ScheduledTaskRepository);
-		store = Container.get(SweepStore);
+		store = Container.get(MaterializerStore);
 	});
 
 	afterEach(async () => {
@@ -43,8 +43,8 @@ describe('scheduler sweep', () => {
 			}),
 		);
 
-	const runSweep = async (windowSeconds: number) =>
-		await sweep(store.runInTransaction, {
+	const runMaterialization = async (windowSeconds: number) =>
+		await materialize(store.runInTransaction, {
 			windowSeconds,
 			batchSize: 100,
 			maxPerJob: 100,
@@ -54,7 +54,7 @@ describe('scheduler sweep', () => {
 	it('records a due occurrence and advances the job past it', async () => {
 		const job = await createJob({ intervalSeconds: 3600, nextRunAt: secondsFromNow(-1) });
 
-		const summary = await runSweep(0);
+		const summary = await runMaterialization(0);
 
 		expect(summary).toEqual({ claimedJobs: 1, occurrences: 1, deferredJobs: 0 });
 
@@ -72,25 +72,25 @@ describe('scheduler sweep', () => {
 		expect(advanced.nextRunAt!.getTime() - advanced.lastFiredAt!.getTime()).toBe(3600 * 1000);
 	});
 
-	it('drains a backlog in maxPerJob-sized batches across successive sweeps', async () => {
+	it('drains a backlog in maxPerJob-sized batches across successive passes', async () => {
 		// A job far behind (interval 10s, ~100s of backlog) so more than maxPerJob fires are due.
 		await createJob({ intervalSeconds: 10, nextRunAt: secondsFromNow(-100) });
 		const drainOptions = { windowSeconds: 0, batchSize: 100, maxPerJob: 5, planRetrySeconds: 3600 };
 
-		// The first sweep records exactly maxPerJob, capping the batch rather than draining it all.
-		const first = await sweep(store.runInTransaction, drainOptions);
+		// The first pass records exactly maxPerJob, capping the batch rather than draining it all.
+		const first = await materialize(store.runInTransaction, drainOptions);
 		expect(first.occurrences).toBe(5);
 		expect(await taskRepo.count()).toBe(5);
 
-		// Successive sweeps continue draining, each recording at most maxPerJob, until nothing is due.
+		// Successive passes continue draining, each recording at most maxPerJob, until nothing is due.
 		for (let i = 0; i < 10; i++) {
-			const summary = await sweep(store.runInTransaction, drainOptions);
+			const summary = await materialize(store.runInTransaction, drainOptions);
 			expect(summary.occurrences).toBeLessThanOrEqual(5);
 			if (summary.claimedJobs === 0) break;
 		}
 
 		// Drained: the backlog is fully recorded, every occurrence distinct (no duplicate from batching).
-		const drained = await sweep(store.runInTransaction, drainOptions);
+		const drained = await materialize(store.runInTransaction, drainOptions);
 		expect(drained.claimedJobs).toBe(0);
 		const tasks = await taskRepo.find();
 		const distinctInstants = new Set(tasks.map((t) => t.scheduledFor.getTime()));
@@ -101,9 +101,9 @@ describe('scheduler sweep', () => {
 	it('records the upcoming occurrences within the window, ahead of time', async () => {
 		await createJob({ intervalSeconds: 10, nextRunAt: secondsFromNow(-1) });
 
-		const summary = await runSweep(60);
+		const summary = await runMaterialization(60);
 
-		// A sub-minute schedule fills the window in one sweep instead of one fire at a time.
+		// A sub-minute schedule fills the window in one pass instead of one fire at a time.
 		expect(summary.occurrences).toBeGreaterThan(1);
 		expect(await taskRepo.count()).toBe(summary.occurrences);
 	});
@@ -111,13 +111,13 @@ describe('scheduler sweep', () => {
 	it('records the same occurrence only once (idempotent)', async () => {
 		const job = await createJob({ intervalSeconds: 3600, nextRunAt: secondsFromNow(-1) });
 
-		const first = await runSweep(0);
+		const first = await runMaterialization(0);
 		expect(first.occurrences).toBe(1);
 		expect(await taskRepo.count()).toBe(1);
 
-		// Rewind the clock to replay the same window, as a racing duplicate sweep would.
+		// Rewind the clock to replay the same window, as a racing duplicate pass would.
 		await jobRepo.update({ id: job.id }, { nextRunAt: job.nextRunAt, lastFiredAt: null });
-		const replay = await runSweep(0);
+		const replay = await runMaterialization(0);
 
 		// The occurrence already exists, so the replay claims the job but records nothing new.
 		expect(replay.claimedJobs).toBe(1);
@@ -129,7 +129,7 @@ describe('scheduler sweep', () => {
 		await createJob({ nextRunAt: secondsFromNow(3600) });
 		await createJob({ enabled: false, nextRunAt: secondsFromNow(-1) });
 
-		const summary = await runSweep(0);
+		const summary = await runMaterialization(0);
 
 		expect(summary.claimedJobs).toBe(0);
 		expect(await taskRepo.count()).toBe(0);
@@ -143,14 +143,14 @@ describe('scheduler sweep', () => {
 			nextRunAt: secondsFromNow(-1),
 		});
 
-		const summary = await runSweep(60);
+		const summary = await runMaterialization(60);
 
 		expect(summary.occurrences).toBe(1);
 		const advanced = await jobRepo.findOneByOrFail({ id: job.id });
 		expect(advanced.nextRunAt).toBeNull();
 	});
 
-	it('defers a job whose schedule cannot be planned and keeps sweeping the rest', async () => {
+	it('defers a job whose schedule cannot be planned and keeps materializing the rest', async () => {
 		const good = await createJob({ intervalSeconds: 3600, nextRunAt: secondsFromNow(-1) });
 		const bad = await createJob({
 			kind: 'cron',
@@ -159,7 +159,7 @@ describe('scheduler sweep', () => {
 			nextRunAt: secondsFromNow(-1),
 		});
 
-		const summary = await runSweep(0);
+		const summary = await runMaterialization(0);
 
 		expect(summary).toEqual({ claimedJobs: 2, occurrences: 1, deferredJobs: 1 });
 
@@ -172,8 +172,8 @@ describe('scheduler sweep', () => {
 		const deferred = await jobRepo.findOneByOrFail({ id: bad.id });
 		expect(deferred.nextRunAt!.getTime()).toBeGreaterThan(Date.now());
 
-		// Deferred means not due: the next sweep does not re-claim it.
-		const next = await runSweep(0);
+		// Deferred means not due: the next pass does not re-claim it.
+		const next = await runMaterialization(0);
 		expect(next.claimedJobs).toBe(0);
 	});
 
@@ -184,7 +184,7 @@ describe('scheduler sweep', () => {
 			intervalSeconds: null,
 			nextRunAt: secondsFromNow(-1),
 		});
-		await runSweep(0);
+		await runMaterialization(0);
 
 		// Repair the schedule and let the retry come due (rewound rather than waited out).
 		await jobRepo.update(
@@ -192,7 +192,7 @@ describe('scheduler sweep', () => {
 			{ cronExpression: '0 0 9 * * *', nextRunAt: secondsFromNow(-1) },
 		);
 
-		const summary = await runSweep(0);
+		const summary = await runMaterialization(0);
 
 		// The repaired job materializes again with no other intervention.
 		expect(summary).toEqual({ claimedJobs: 1, occurrences: 1, deferredJobs: 0 });
@@ -203,15 +203,15 @@ describe('scheduler sweep', () => {
 	it('runs through SchedulerService with its configured window', async () => {
 		const job = await createJob({ intervalSeconds: 3600, nextRunAt: secondsFromNow(-1) });
 
-		const summary = await Container.get(SchedulerService).runSweep();
+		const summary = await Container.get(SchedulerService).materialize();
 
 		expect(summary.claimedJobs).toBe(1);
 		const [task] = await taskRepo.find();
 		expect(task.jobId).toBe(job.id);
 	});
 
-	it('records each occurrence once and advances each job once under concurrent sweeps', async () => {
-		// Many jobs due at once, then several sweeps racing for them. On Postgres the sweeps
+	it('records each occurrence once and advances each job once under concurrent passes', async () => {
+		// Many jobs due at once, then several passes racing for them. On Postgres the passes
 		// run in parallel and SKIP LOCKED partitions the jobs between them; on sqlite the
 		// single-writer lock serializes them. The invariant holds either way.
 		const jobCount = 6;
@@ -222,10 +222,14 @@ describe('scheduler sweep', () => {
 			),
 		);
 
-		const summaries = await Promise.all([runSweep(0), runSweep(0), runSweep(0)]);
+		const summaries = await Promise.all([
+			runMaterialization(0),
+			runMaterialization(0),
+			runMaterialization(0),
+		]);
 
-		// Each job is claimed by exactly one sweep: the claim counts sum to the job count,
-		// never more (more would mean two sweeps grabbed the same job).
+		// Each job is claimed by exactly one pass: the claim counts sum to the job count,
+		// never more (more would mean two passes grabbed the same job).
 		const claimedTotal = summaries.reduce((sum, s) => sum + s.claimedJobs, 0);
 		expect(claimedTotal).toBe(jobCount);
 

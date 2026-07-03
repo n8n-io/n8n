@@ -9,7 +9,7 @@ import { DataSource } from '@n8n/typeorm';
 // gated to Postgres (CI/container runs set DB_TYPE=postgresdb).
 const isPostgres = process.env.DB_TYPE === 'postgresdb';
 
-// The scheduler's repositories drive the sweep's claim / record / advance steps; these
+// The scheduler's repositories drive the materializer's claim / record / advance steps; these
 // exercise them directly against the database, opening transactions via the DataSource.
 describe('scheduled repositories', () => {
 	let dataSource: DataSource;

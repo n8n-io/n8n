@@ -45,7 +45,7 @@ describe('planOccurrences', () => {
 		const plan = planOccurrences(job, NOW, { windowSeconds: 3600, maxPerJob: 3 });
 
 		expect(plan.occurrences).toEqual([NOW, secondsAfter(NOW, 10), secondsAfter(NOW, 20)]);
-		// The 4th occurrence is still within the window, so the next sweep continues from it.
+		// The 4th occurrence is still within the window, so the next pass continues from it.
 		expect(plan.nextRunAt).toEqual(secondsAfter(NOW, 30));
 	});
 

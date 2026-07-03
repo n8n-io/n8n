@@ -7,7 +7,7 @@ import { UnexpectedError } from 'n8n-workflow';
 import { ScheduledTask } from '../entities/scheduled-task';
 
 /**
- * The columns set when a sweep records an occurrence.
+ * The columns set when the materializer records an occurrence.
  * Everything else (status, attempts, lease/fencing fields) takes its column default.
  */
 export interface NewOccurrence {

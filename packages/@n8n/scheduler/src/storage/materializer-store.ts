@@ -5,13 +5,18 @@ import { Service } from '@n8n/di';
 import { DataSource, type EntityManager } from '@n8n/typeorm';
 
 import { entityToScheduledJob } from './mappers';
-import type { DueJobs, PlannedJob, RunInTransaction, SweepTransaction } from '../core/sweep';
+import type {
+	DueJobs,
+	PlannedJob,
+	RunInTransaction,
+	MaterializerTransaction,
+} from '../core/materializer';
 
 /**
- * The database-backed {@link SweepTransaction}:
- * the sweep's claim / record / advance steps bound to one transaction's `EntityManager`.
+ * The database-backed {@link MaterializerTransaction}:
+ * the materializer's claim / record / advance steps bound to one transaction's `EntityManager`.
  */
-class DatabaseSweepTransaction implements SweepTransaction {
+class DatabaseMaterializerTransaction implements MaterializerTransaction {
 	constructor(
 		private readonly manager: EntityManager,
 		private readonly jobs: ScheduledJobRepository,
@@ -45,7 +50,7 @@ class DatabaseSweepTransaction implements SweepTransaction {
 		const recorded = await this.tasks.insertIgnoringDuplicates(this.manager, occurrences);
 
 		if (recorded < occurrences.length) {
-			this.logger.debug('Sweep skipped occurrences that were already recorded', {
+			this.logger.debug('Materializer skipped occurrences that were already recorded', {
 				jobs: planned.length,
 				planned: occurrences.length,
 				recorded,
@@ -68,12 +73,12 @@ class DatabaseSweepTransaction implements SweepTransaction {
 }
 
 /**
- * It runs each sweep in one database transaction
- * and hands the pure algorithm a {@link DatabaseSweepTransaction} bound to it.
- * This is the only seam between the sweep and the database.
+ * It runs each materialization pass in one database transaction
+ * and hands the pure algorithm a {@link DatabaseMaterializerTransaction} bound to it.
+ * This is the only seam between the materializer and the database.
  */
 @Service()
-export class SweepStore {
+export class MaterializerStore {
 	constructor(
 		private readonly dataSource: DataSource,
 		private readonly jobs: ScheduledJobRepository,
@@ -86,7 +91,7 @@ export class SweepStore {
 		await this.dataSource.transaction(
 			async (manager) =>
 				await work(
-					new DatabaseSweepTransaction(
+					new DatabaseMaterializerTransaction(
 						manager,
 						this.jobs,
 						this.tasks,

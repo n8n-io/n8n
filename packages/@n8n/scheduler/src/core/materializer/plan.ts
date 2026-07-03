@@ -4,7 +4,7 @@ import { computeNextRunAt } from '../recurrence/next-run';
 import type { ScheduledJob } from '../types';
 
 /**
- * What a due job expands into for one sweep.
+ * What a due job expands into for one materialization pass.
  */
 export interface OccurrencePlan {
 	/**

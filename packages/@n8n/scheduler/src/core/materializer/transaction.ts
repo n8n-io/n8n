@@ -9,7 +9,7 @@ export interface PlannedJob {
 export interface DueJobs {
 	/**
 	 * The clock's current time at the moment of claiming.
-	 * The sweep plans occurrences relative to this, never an instance's own clock,
+	 * The materializer plans occurrences relative to this, never an instance's own clock,
 	 * so every instance agrees on "now".
 	 */
 	now: Date;
@@ -19,12 +19,12 @@ export interface DueJobs {
 }
 
 /**
- * The operations a sweep performs, all bound to one transaction.
+ * The operations one materialization pass performs, all bound to one transaction.
  */
-export interface SweepTransaction {
+export interface MaterializerTransaction {
 	/**
 	 * @returns up to `limit` enabled jobs whose next run is due, oldest first, locking
-	 * them so a concurrent sweep claims different jobs, with the database time they were
+	 * them so a concurrent pass claims different jobs, with the database time they were
 	 * judged due at; `undefined` when nothing is due.
 	 */
 	claimDueJobs(limit: number): Promise<DueJobs | undefined>;
@@ -44,8 +44,8 @@ export interface SweepTransaction {
 }
 
 /**
- * Runs one unit of sweep work inside a single transaction,
- * handing it a {@link SweepTransaction} bound to that transaction.
+ * Runs one unit of materialization work inside a single transaction,
+ * handing it a {@link MaterializerTransaction} bound to that transaction.
  * The storage layer supplies the real implementation.
  */
-export type RunInTransaction = <T>(work: (tx: SweepTransaction) => Promise<T>) => Promise<T>;
+export type RunInTransaction = <T>(work: (tx: MaterializerTransaction) => Promise<T>) => Promise<T>;

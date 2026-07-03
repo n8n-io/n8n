@@ -47,7 +47,7 @@ export interface ScheduledJob {
 	payload: Record<string, unknown>;
 	schedule: Schedule;
 	enabled: boolean;
-	nextRunAt: Date | null; // the next instant the sweep materialises from.
+	nextRunAt: Date | null; // the next instant the materializer materializes from.
 	lastFiredAt: Date | null;
 	maxAttempts: number;
 }

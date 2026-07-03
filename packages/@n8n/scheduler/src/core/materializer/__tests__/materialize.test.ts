@@ -2,8 +2,8 @@ import type { CronExpression } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { Schedule, ScheduledJob } from '../../types';
-import { sweep, type SweepOptions } from '../sweep';
-import type { RunInTransaction, SweepTransaction } from '../transaction';
+import { materialize, type MaterializerOptions } from '../materialize';
+import type { RunInTransaction, MaterializerTransaction } from '../transaction';
 
 const NOW = new Date('2026-01-01T00:00:00.000Z');
 const every10s: Schedule = { kind: 'interval', intervalSeconds: 10 };
@@ -21,23 +21,23 @@ const makeJob = (id: string): ScheduledJob => ({
 
 /** A transaction runner that hands `work` the given operations, without a real transaction. */
 const runnerWith =
-	(tx: SweepTransaction): RunInTransaction =>
+	(tx: MaterializerTransaction): RunInTransaction =>
 	async (work) =>
 		await work(tx);
 
-const options: SweepOptions = {
+const options: MaterializerOptions = {
 	windowSeconds: 0,
 	batchSize: 25,
 	maxPerJob: 100,
 	planRetrySeconds: 3600,
 };
 
-describe('sweep', () => {
+describe('materialize', () => {
 	it('does nothing when no jobs are due', async () => {
-		const tx = mock<SweepTransaction>();
+		const tx = mock<MaterializerTransaction>();
 		tx.claimDueJobs.mockResolvedValue(undefined);
 
-		const summary = await sweep(runnerWith(tx), options);
+		const summary = await materialize(runnerWith(tx), options);
 
 		expect(summary).toEqual({ claimedJobs: 0, occurrences: 0, deferredJobs: 0 });
 		expect(tx.recordOccurrences).not.toHaveBeenCalled();
@@ -45,12 +45,12 @@ describe('sweep', () => {
 	});
 
 	it('records occurrences and advances each claimed job', async () => {
-		const tx = mock<SweepTransaction>();
+		const tx = mock<MaterializerTransaction>();
 		tx.claimDueJobs.mockResolvedValue({ now: NOW, jobs: [makeJob('a'), makeJob('b')] });
 		// windowSeconds: 0 means one occurrence per job: the due fire, both newly recorded.
 		tx.recordOccurrences.mockResolvedValue(2);
 
-		const summary = await sweep(runnerWith(tx), options);
+		const summary = await materialize(runnerWith(tx), options);
 
 		// The summary reports the count `recordOccurrences` returned, not the plan's size.
 		expect(summary).toEqual({ claimedJobs: 2, occurrences: 2, deferredJobs: 0 });
@@ -73,10 +73,10 @@ describe('sweep', () => {
 	});
 
 	it('claims at most batchSize jobs', async () => {
-		const tx = mock<SweepTransaction>();
+		const tx = mock<MaterializerTransaction>();
 		tx.claimDueJobs.mockResolvedValue(undefined);
 
-		await sweep(runnerWith(tx), { ...options, batchSize: 25 });
+		await materialize(runnerWith(tx), { ...options, batchSize: 25 });
 
 		expect(tx.claimDueJobs).toHaveBeenCalledWith(25);
 	});
@@ -88,12 +88,12 @@ describe('sweep', () => {
 			...makeJob('bad'),
 			schedule: { kind: 'cron', cronExpression: '0 0 9 * * *' as CronExpression, timezone: null },
 		};
-		const tx = mock<SweepTransaction>();
+		const tx = mock<MaterializerTransaction>();
 		tx.claimDueJobs.mockResolvedValue({ now: NOW, jobs: [good, bad] });
 		tx.recordOccurrences.mockResolvedValue(1);
 		const onPlanError = vi.fn();
 
-		const summary = await sweep(runnerWith(tx), options, onPlanError);
+		const summary = await materialize(runnerWith(tx), options, onPlanError);
 
 		expect(summary).toEqual({ claimedJobs: 2, occurrences: 1, deferredJobs: 1 });
 		expect(onPlanError).toHaveBeenCalledTimes(1);

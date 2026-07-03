@@ -1,14 +1,14 @@
 import { Time } from '@n8n/constants';
 
-import { DEFAULT_SWEEP_OPTIONS, type SweepOptions } from './options';
+import { DEFAULT_MATERIALIZER_OPTIONS, type MaterializerOptions } from './options';
 import { planOccurrences } from './plan';
 import type { RunInTransaction } from './transaction';
 import type { ScheduledJob } from '../types';
 
-export type { SweepOptions } from './options';
+export type { MaterializerOptions } from './options';
 
-export interface SweepSummary {
-	/** How many due jobs this sweep claimed. */
+export interface MaterializerSummary {
+	/** How many due jobs this materialization claimed. */
 	claimedJobs: number;
 	/** How many occurrences were newly recorded (duplicates already present don't count). */
 	occurrences: number;
@@ -20,7 +20,7 @@ export interface SweepSummary {
 export type OnJobPlanError = (job: ScheduledJob, error: unknown) => void;
 
 /**
- * One pass of the scheduler:
+ * One materialization pass of the scheduler:
  * 1) claim the jobs whose next run is due
  * 2) turn each into its upcoming occurrences (pure: {@link planOccurrences})
  * 3) record them all in one batch
@@ -32,26 +32,26 @@ export type OnJobPlanError = (job: ScheduledJob, error: unknown) => void;
  *
  * A job whose schedule cannot be planned is isolated, not fatal: it is deferred (its
  * `nextRunAt` pushed `planRetrySeconds` out, so it is retried later instead of being
- * re-claimed and re-failing every sweep) and reported via `onPlanError`, while the
+ * re-claimed and re-failing every pass) and reported via `onPlanError`, while the
  * rest of the batch still records and advances. Otherwise one corrupt or unresolvable
- * schedule would roll back the whole transaction on every sweep and wedge scheduling
+ * schedule would roll back the whole transaction on every pass and wedge scheduling
  * for all jobs. Deferring rather than dropping means a transient cause (a fixed
- * instance timezone, updated tzdata) heals on a later sweep with no operator action.
+ * instance timezone, updated tzdata) heals on a later pass with no operator action.
  *
- * The sweep only materializes candidates. Every due occurrence is recorded, including
- * a backlog accumulated during downtime (drained `maxPerJob` per sweep, at their
+ * Materialization only produces candidates. Every due occurrence is recorded, including
+ * a backlog accumulated during downtime (drained `maxPerJob` per pass, at their
  * original past instants); whether a stale candidate still runs or is marked missed
- * is the dispatcher's policy, not the sweep's.
+ * is the dispatcher's policy, not the materializer's.
  *
  * Persistence sits behind the {@link RunInTransaction} it is given, so this is only
  * the algorithm and a fake runner is enough to test it.
  */
-export async function sweep(
+export async function materialize(
 	runInTransaction: RunInTransaction,
-	options: SweepOptions = DEFAULT_SWEEP_OPTIONS,
+	options: MaterializerOptions = DEFAULT_MATERIALIZER_OPTIONS,
 	onPlanError?: OnJobPlanError,
-): Promise<SweepSummary> {
-	return await runInTransaction<SweepSummary>(async (tx) => {
+): Promise<MaterializerSummary> {
+	return await runInTransaction<MaterializerSummary>(async (tx) => {
 		const claimed = await tx.claimDueJobs(options.batchSize);
 		if (claimed === undefined) {
 			return { claimedJobs: 0, occurrences: 0, deferredJobs: 0 };
