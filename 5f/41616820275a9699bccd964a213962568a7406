@@ -1,0 +1,19 @@
+docs/superpowers/specs/2026-07-03-agents-reasoning-replay-tests-design.md
+  s_b27df4b175479e::t_04876eeb68b32f 1-100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.9",
+  "base_commit_sha": "5f41616820275a9699bccd964a213962568a7406",
+  "prompts": {},
+  "sessions": {
+    "s_b27df4b175479e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "78efe118-ae4c-4c30-b02f-ef1f2ef2e255",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
