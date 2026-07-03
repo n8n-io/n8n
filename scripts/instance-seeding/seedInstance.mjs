@@ -15,12 +15,11 @@ if (!KEY) {
 }
 
 const CLEAR = (process.env.CLEAR ?? 'true').toLowerCase() !== 'false';
-const CLEAR_ONLY = (process.env.CLEAR ?? '').toLowerCase() === 'only';
+const PERSONAL_WORKFLOWS = Number(process.env.WF_MULTIPLIER) || 50;
 const SEED_PREFIX = '[seed] ';
 const SEED_DT_PREFIX = 'seed_';
 
 const CREDS_PER_PROJECT_RANGE = [1, 2];
-const PERSONAL_WORKFLOWS = 50;
 const DATA_TABLES_PER_PROJECT_PROB = 0.55;
 const SUBWORKFLOW_PROB = 0.7;
 
@@ -747,13 +746,12 @@ async function clearSeeded() {
 }
 
 async function main() {
-	log('Seeding n8n at', BASE);
-
-	if (CLEAR) await clearSeeded();
-	if (CLEAR_ONLY) {
-		log('Reset finished');
+	if (CLEAR) {
+		await clearSeeded();
+		log('Clear finished');
 		return;
 	}
+	log('Seeding n8n at', BASE);
 
 	log('Fetching projects...');
 	const initialProjects = await listAll('/projects');

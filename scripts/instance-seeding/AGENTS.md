@@ -29,7 +29,8 @@ alone, as are the n8n-default `My project` team projects.
 | --- | --- | --- |
 | `N8N_API_KEY` | (required) | Public-API JWT. Must have owner or admin scopes. |
 | `N8N_BASE_URL` | `http://localhost:5678` | n8n instance to seed. |
-| `CLEAR` | `true` | Set to `false` to keep wiping prior `[seed]` data. Set to `only` to wipe without reseeding |
+| `CLEAR` | `false` | Set to `true` to wipe data instead. |
+| `PERSONAL_WORKFLOWS` | `50` | Amount of workflows to create in the personal project. |
 
 Runtime is ~30–45 s for a default run (~500 workflows, ~30 projects).
 
