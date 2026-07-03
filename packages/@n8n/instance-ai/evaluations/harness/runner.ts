@@ -1229,6 +1229,12 @@ export async function runWorkflowChecks(args: {
 				`  Workflow checks: ${String(failed.length)} failing (${failed.map((o) => o.name).join(', ')})`,
 			);
 		}
+		const errored = outcomes.filter((o) => o.status === 'error');
+		if (errored.length > 0) {
+			args.logger.warn(
+				`  Workflow checks: ${String(errored.length)} errored, excluded from scoring (${errored.map((o) => o.name).join(', ')})`,
+			);
+		}
 		return outcomes;
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);

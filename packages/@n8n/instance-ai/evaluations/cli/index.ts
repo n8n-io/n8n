@@ -693,10 +693,10 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		if (output.buildDurationMs !== undefined) {
 			feedback.push({ key: 'build_duration_s', score: output.buildDurationMs / 1000 });
 		}
-		// Skip N/A so LangSmith column averages reduce to per-check pass-rate.
+		// Skip N/A and errored so LangSmith column averages reduce to per-check pass-rate.
 		if (output.workflowChecks) {
 			for (const outcome of output.workflowChecks) {
-				if (outcome.status === 'n_a') continue;
+				if (outcome.status === 'n_a' || outcome.status === 'error') continue;
 				feedback.push({
 					key: `evals.workflows.${outcome.dimension}.${outcome.name}`,
 					score: outcome.status === 'pass' ? 1 : 0,

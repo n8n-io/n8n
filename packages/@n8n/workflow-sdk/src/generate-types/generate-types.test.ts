@@ -2266,6 +2266,10 @@ describe('generate-types', () => {
 			// Should have credentials type
 			expect(result).toContain('GmailV21Credentials');
 			expect(result).toContain('gmailOAuth2');
+			expect(result).toContain(
+				'config: NodeConfig<GmailV21Params> & { credentials?: GmailV21Credentials }',
+			);
+			expect(result).not.toContain('credentials?: GmailV21Credentials;\n');
 
 			// Should have node type
 			expect(result).toContain('GmailNode');
@@ -3671,6 +3675,7 @@ describe('generate-types', () => {
 				// Should have credentials
 				expect(content).toContain('FreshserviceV1Credentials');
 				expect(content).toContain('freshserviceApi');
+				expect(content).not.toContain('credentials?: FreshserviceV1Credentials');
 
 				// Should have base type
 				expect(content).toContain('FreshserviceV1NodeBase');
@@ -3823,8 +3828,11 @@ describe('generate-types', () => {
 				// freshserviceApi is marked as required: true in the mock, so no ? mark
 				expect(content).toContain('freshserviceApi: CredentialReference');
 
-				// Node type should reference credentials (credentials field itself is always optional)
-				expect(content).toContain('credentials?: Credentials');
+				// Node type should place credentials inside config, matching the builder API.
+				expect(content).toContain(
+					'config: NodeConfig<FreshserviceV1TicketGetParams> & { credentials?: Credentials };',
+				);
+				expect(content).not.toContain('\n  credentials?: Credentials;\n');
 			});
 
 			it('should inline helper types when properties need them', () => {
@@ -4872,6 +4880,10 @@ describe('generate-types', () => {
 				);
 
 				expect(content).toContain('interface Credentials');
+				expect(content).toContain(
+					'config: NodeConfig<GmailV2MessageSendParams> & { credentials?: Credentials };',
+				);
+				expect(content).not.toContain('\n  credentials?: Credentials;\n');
 				expect(content).toContain('export type');
 			});
 		});
