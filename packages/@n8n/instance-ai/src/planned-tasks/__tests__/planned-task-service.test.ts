@@ -664,6 +664,30 @@ describe('PlannedTaskCoordinator', () => {
 			}
 		});
 
+		it('returns dispatch for a ready legacy delegate task', async () => {
+			storage.update.mockImplementation(async (_threadId, updater) => {
+				const graph = makeGraph({
+					tasks: [
+						makeTaskRecord({
+							id: 'legacy-1',
+							kind: 'delegate',
+							spec: 'Do the research',
+							status: 'planned',
+						}),
+					],
+				});
+				return await Promise.resolve(updater(graph));
+			});
+
+			const action = await coordinator.tick('thread-1');
+
+			expect(action.type).toBe('dispatch');
+			if (action.type === 'dispatch') {
+				expect(action.tasks).toHaveLength(1);
+				expect(action.tasks[0]?.kind).toBe('delegate');
+			}
+		});
+
 		it('returns none when no tasks are ready', async () => {
 			storage.update.mockImplementation(async (_threadId, updater) => {
 				const graph = makeGraph({

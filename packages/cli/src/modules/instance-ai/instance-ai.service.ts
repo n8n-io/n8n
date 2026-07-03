@@ -2120,8 +2120,17 @@ export class InstanceAiService {
 	private async dispatchPlannedTask(
 		task: PlannedTaskRecord,
 		context: OrchestrationContext,
-		graph?: PlannedTaskGraph,
+		_graph?: PlannedTaskGraph,
 	): Promise<void> {
+		if (task.kind === 'build-workflow' || task.kind === 'checkpoint') {
+			this.logger.warn('dispatchPlannedTask called for a runtime planned-task kind', {
+				threadId: context.threadId,
+				taskId: task.id,
+				kind: task.kind,
+			});
+			return;
+		}
+
 		await context.plannedTaskService?.markFailed(context.threadId, task.id, {
 			error: `Planned task kind "${task.kind}" is no longer supported`,
 		});

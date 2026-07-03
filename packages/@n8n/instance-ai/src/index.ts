@@ -174,6 +174,11 @@ const loadValidateAttachments = lazyModule(
 );
 
 export { MAX_STEPS } from './constants/max-steps';
+export {
+	LEGACY_PLANNED_TASK_KINDS,
+	PLANNED_TASK_KINDS,
+	STORED_PLANNED_TASK_KINDS,
+} from './types';
 export { deriveCredentialHosts } from './tools/workflows/credential-url-resolver';
 export type { CredentialHostMeta } from './tools/workflows/credential-url-resolver';
 export type {
@@ -565,6 +570,7 @@ export type {
 	TaskStorage,
 	PlannedTask,
 	PlannedTaskKind,
+	StoredPlannedTaskKind,
 	PlannedTaskStatus,
 	PlannedTaskRecord,
 	PlannedTaskGraph,
