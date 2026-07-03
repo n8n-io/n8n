@@ -374,7 +374,7 @@ async function computeAiGatewayIssues(
 					? parameters.resource
 					: AI_GATEWAY_OPERATION_ONLY_MARKER;
 			const allowed = gatewayMeta.operations[resource];
-			if (allowed === undefined || !allowed.includes(operation)) {
+			if (!allowed?.includes(operation)) {
 				const scope =
 					resource === AI_GATEWAY_OPERATION_ONLY_MARKER ? '' : ` on resource "${resource}"`;
 				(issues.unsupportedOperation ??= []).push(
