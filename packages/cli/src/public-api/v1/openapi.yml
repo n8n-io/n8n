@@ -24,6 +24,8 @@ tags:
     description: Operations about executions
   - name: Workflow
     description: Operations about workflows
+  - name: Evaluation
+    description: Operations about evaluation test runs
   - name: Credential
     description: Operations about credentials
   - name: Tags
@@ -94,6 +96,12 @@ paths:
     $ref: './handlers/workflows/spec/paths/workflows.id.transfer.yml'
   /workflows/{id}/tags:
     $ref: './handlers/workflows/spec/paths/workflows.id.tags.yml'
+  /workflows/{id}/test-runs:
+    $ref: './handlers/evaluations/spec/paths/workflows.id.test-runs.yml'
+  /workflows/{id}/test-runs/{runId}:
+    $ref: './handlers/evaluations/spec/paths/workflows.id.test-runs.runId.yml'
+  /workflows/{id}/test-runs/{runId}/test-cases:
+    $ref: './handlers/evaluations/spec/paths/workflows.id.test-runs.runId.test-cases.yml'
   /users:
     $ref: './handlers/users/spec/paths/users.yml'
   /users/{id}:
