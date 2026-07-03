@@ -38,6 +38,7 @@ import {
 	MAX_EXEC_ATTEMPTS,
 } from './transient-error';
 import { buildWorkflowContextBlock } from './workflow-context';
+import { isMockableTriggerNodeType } from '../../src/tools/workflows/workflow-json-utils';
 import { SONNET_MODEL } from '../../src/utils/eval-agents';
 import { runBinaryChecks } from '../binaryChecks/index';
 import type { BinaryCheckContext, CheckOutcome } from '../binaryChecks/types';
@@ -899,7 +900,7 @@ function scenarioMatchTokens(text: string): Set<string> {
  * route the scenario to the workflow whose trigger-bearing content best
  * matches it. Single-workflow builds and ties keep the original id.
  */
-function selectScenarioWorkflowId(
+export function selectScenarioWorkflowId(
 	scenario: ExecutionScenario,
 	workflowId: string,
 	workflowJsons: WorkflowResponse[],
@@ -907,9 +908,7 @@ function selectScenarioWorkflowId(
 ): string {
 	const candidates = workflowJsons.filter(
 		(wf) =>
-			wf?.id &&
-			Array.isArray(wf.nodes) &&
-			wf.nodes.some((n) => /webhook|trigger/i.test(String(n.type ?? ''))),
+			wf?.id && Array.isArray(wf.nodes) && wf.nodes.some((n) => isMockableTriggerNodeType(n.type)),
 	);
 	if (candidates.length <= 1) return workflowId;
 
@@ -1000,7 +999,7 @@ async function runScenario(
 	);
 
 	const verifyStart = Date.now();
-	const artifact = buildVerificationArtifact(scenario, evalResult, workflowJsons);
+	const artifact = buildVerificationArtifact(scenario, evalResult, workflowJsons, targetWorkflowId);
 
 	const scenarioChecklist: ChecklistItem[] = [
 		{
@@ -1020,7 +1019,7 @@ async function runScenario(
 	await writeScenarioVerificationSnapshot({
 		testCaseName: testCaseName ?? `workflow-${workflowId}`,
 		scenarioName: scenario.name,
-		workflowId,
+		workflowId: targetWorkflowId,
 		passed,
 		result,
 		verificationResults,
@@ -1044,6 +1043,7 @@ async function runScenario(
 		scenario,
 		success: passed,
 		evalResult,
+		workflowId: targetWorkflowId,
 		score: passed ? 1 : 0,
 		reasoning,
 		failureCategory,
@@ -1283,8 +1283,9 @@ export function buildVerificationArtifact(
 	scenario: ExecutionScenario,
 	evalResult: InstanceAiEvalExecutionResult,
 	workflowJsons: WorkflowResponse[],
+	workflowId?: string,
 ): VerificationArtifact {
-	const wf = workflowJsons[0];
+	const wf = workflowJsons.find((w) => w.id === workflowId) ?? workflowJsons[0];
 	return {
 		workflowContext: buildWorkflowContextBlock(wf),
 		scenarioContext: buildScenarioContextBlock(scenario, evalResult, wf),

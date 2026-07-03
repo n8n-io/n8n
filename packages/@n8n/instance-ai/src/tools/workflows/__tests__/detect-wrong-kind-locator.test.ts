@@ -57,7 +57,7 @@ function workflow(parameters: IDataObject, disabled = false): WorkflowJSON {
 	};
 }
 
-const rl = (mode: string, value: string) => ({ __rl: true, mode, value });
+const rl = (mode: string, value: string | number) => ({ __rl: true, mode, value });
 
 describe('detectWrongKindLocatorValues', () => {
 	it('flags a display name in list mode and steers to name mode', () => {
@@ -78,6 +78,65 @@ describe('detectWrongKindLocatorValues', () => {
 		expect(
 			detectWrongKindLocatorValues(workflow({ sheetName: rl('list', 'gid=0') }), nodeTypes),
 		).toEqual([]);
+	});
+
+	it('requires the value to fail all id-mode regexes', () => {
+		const multiRegexLocator: INodeProperties = {
+			...sheetLocator,
+			modes: sheetLocator.modes?.map((mode) =>
+				mode.name === 'id'
+					? {
+							...mode,
+							validation: [
+								{
+									type: 'regex',
+									properties: { regex: '[0-9]+', errorMessage: 'Not a numeric ID' },
+								},
+								{
+									type: 'regex',
+									properties: { regex: 'sheet_[a-z]+', errorMessage: 'Not a sheet ID' },
+								},
+							],
+						}
+					: mode,
+			),
+		};
+
+		expect(
+			detectWrongKindLocatorValues(
+				workflow({ sheetName: rl('list', 'sheet_alpha') }),
+				nodeTypesWith([multiRegexLocator]),
+			),
+		).toEqual([]);
+	});
+
+	it('anchors top-level regex alternatives as one expression', () => {
+		const alternationLocator: INodeProperties = {
+			...sheetLocator,
+			modes: sheetLocator.modes?.map((mode) =>
+				mode.name === 'id'
+					? {
+							...mode,
+							validation: [
+								{
+									type: 'regex',
+									properties: {
+										regex: 'gid=[0-9]+|sheet_[a-z]+',
+										errorMessage: 'Not a valid Sheet ID',
+									},
+								},
+							],
+						}
+					: mode,
+			),
+		};
+
+		expect(
+			detectWrongKindLocatorValues(
+				workflow({ sheetName: rl('list', 'prefix-sheet_alpha') }),
+				nodeTypesWith([alternationLocator]),
+			),
+		).toHaveLength(1);
 	});
 
 	it('does not flag an empty list value (left for the user to pick at setup)', () => {
@@ -146,6 +205,30 @@ describe('coerceWrongKindListModeParams', () => {
 		const params: Record<string, unknown> = { sheetName: rl('list', 'Sheet1') };
 		coerceWrongKindListModeParams(nodeTypes, sheetNode(), params);
 		expect(params.sheetName).toEqual({ __rl: true, mode: 'name', value: 'Sheet1' });
+	});
+
+	it('rewrites a numeric wrong-kind list-mode value to name mode in place', () => {
+		const idStringLocator: INodeProperties = {
+			...sheetLocator,
+			modes: sheetLocator.modes?.map((mode) =>
+				mode.name === 'id'
+					? {
+							...mode,
+							validation: [
+								{
+									type: 'regex',
+									properties: { regex: 'id_[a-z]+', errorMessage: 'Not a string ID' },
+								},
+							],
+						}
+					: mode,
+			),
+		};
+		const params: Record<string, unknown> = { sheetName: rl('list', 2024) };
+
+		coerceWrongKindListModeParams(nodeTypesWith([idStringLocator]), sheetNode(), params);
+
+		expect(params.sheetName).toEqual({ __rl: true, mode: 'name', value: 2024 });
 	});
 
 	it('keeps a valid list-mode id untouched', () => {

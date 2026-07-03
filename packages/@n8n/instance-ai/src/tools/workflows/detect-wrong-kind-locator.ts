@@ -22,6 +22,10 @@ function hasNameMode(prop: INodeProperties): boolean {
 	return prop.modes?.some((m) => m.name === 'name') ?? false;
 }
 
+function rawLocatorValue(value: unknown): string {
+	return typeof value === 'string' || typeof value === 'number' ? String(value) : '';
+}
+
 /**
  * True when `raw` in the property's `list` mode can never resolve: it fails
  * every id-mode regex (list values are the same opaque IDs the picker
@@ -32,9 +36,9 @@ export function listModeValueLooksWrongKind(prop: INodeProperties, raw: string):
 	if (!hasNameMode(prop)) return false;
 	const regexes = idModeRegexes(prop);
 	if (regexes.length === 0) return false;
-	return regexes.some((regex) => {
+	return regexes.every((regex) => {
 		try {
-			return !new RegExp(`^${regex}$`).test(raw);
+			return !new RegExp(`^(?:${regex})$`).test(raw);
 		} catch {
 			return false;
 		}
@@ -71,7 +75,7 @@ export function coerceWrongKindListModeParams(
 		const incoming = params[prop.name];
 
 		if (isRecord(incoming) && '__rl' in incoming && incoming.mode === 'list') {
-			const raw = typeof incoming.value === 'string' ? incoming.value : '';
+			const raw = rawLocatorValue(incoming.value);
 			if (listModeValueLooksWrongKind(prop, raw)) {
 				incoming.mode = 'name';
 			}
@@ -88,10 +92,9 @@ export function coerceWrongKindListModeParams(
 			'__rl' in existing
 		) {
 			const existingMode = typeof existing.mode === 'string' ? existing.mode : 'list';
+			const raw = rawLocatorValue(incoming);
 			const mode =
-				existingMode === 'list' && listModeValueLooksWrongKind(prop, incoming)
-					? 'name'
-					: existingMode;
+				existingMode === 'list' && listModeValueLooksWrongKind(prop, raw) ? 'name' : existingMode;
 			params[prop.name] = { __rl: true, mode, value: incoming };
 		}
 	}
@@ -124,12 +127,7 @@ export function detectWrongKindLocatorValues(
 			const value = isRecord(node.parameters) ? node.parameters[prop.name] : undefined;
 			if (!isRecord(value) || !('__rl' in value) || value.mode !== 'list') continue;
 
-			const raw =
-				typeof value.value === 'string'
-					? value.value
-					: typeof value.value === 'number'
-						? String(value.value)
-						: '';
+			const raw = rawLocatorValue(value.value);
 			if (!raw || raw.startsWith('=')) continue;
 
 			if (!listModeValueLooksWrongKind(prop, raw)) continue;

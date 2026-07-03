@@ -159,12 +159,16 @@ export class EvalExecutionService {
 
 		const unpinSet = unpinNodes.length > 0 ? new Set(unpinNodes) : undefined;
 		const timings = new EvalTimings();
-		const hints = await this.analyzeWorkflow(
-			workflowEntity,
-			timings,
-			options.scenarioHints,
-			unpinSet,
-		);
+		let hints: MockHints;
+		try {
+			hints = await this.analyzeWorkflow(workflowEntity, timings, options.scenarioHints, unpinSet);
+		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
+			return this.errorResult(
+				randomUUID(),
+				message.startsWith('FRAMEWORK ISSUE:') ? message : `FRAMEWORK ISSUE: ${message}`,
+			);
+		}
 		const vendorLlmRouting = interceptionEnabled
 			? buildVendorLlmRouting(workflowEntity, unpinNodes)
 			: undefined;
@@ -291,11 +295,7 @@ export class EvalExecutionService {
 		} catch (error) {
 			const errorMsg = error instanceof Error ? error.message : String(error);
 			this.logger.error(`[EvalMock] Phase 1.5 pin data generation failed: ${errorMsg}`);
-			return normalizePinData(
-				Object.fromEntries(
-					bypassNodeNames.map((nodeName) => [nodeName, [{ json: {} }]]),
-				) as IPinData,
-			);
+			throw new Error(`FRAMEWORK ISSUE: Phase 1.5 pin data generation failed: ${errorMsg}`);
 		}
 	}
 

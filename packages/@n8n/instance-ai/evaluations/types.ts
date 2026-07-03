@@ -235,6 +235,8 @@ export interface ExecutionScenarioResult {
 	scenario: ExecutionScenario;
 	success: boolean;
 	evalResult?: InstanceAiEvalExecutionResult;
+	/** Workflow actually executed for this scenario, after multi-workflow routing. */
+	workflowId?: string;
 	score: number;
 	reasoning: string;
 	/** Root cause category when the scenario fails */
