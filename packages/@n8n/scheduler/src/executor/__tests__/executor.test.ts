@@ -33,7 +33,12 @@ const setup = () => {
 	const registry = mock<TaskHandlerRegistry>();
 	const timer = mock<PrecisionTimer>();
 	const logger = mock<Logger>();
-	const config = mock<SchedulerConfig>({ leaseDuration: 60, executorInterval: 5 });
+	logger.scoped.mockReturnValue(logger); // the executor scopes its logger on construction
+	const config = mock<SchedulerConfig>({
+		leaseDurationSeconds: 60,
+		executorIntervalSeconds: 5,
+		claimBatchSize: 100,
+	});
 	const executor = new Executor(taskRepository, registry, timer, logger, config);
 	return { taskRepository, registry, timer, logger, executor };
 };
@@ -86,7 +91,11 @@ describe('Executor.claimAndSchedule', () => {
 			expect.any(String),
 			expect.objectContaining({ taskId: 'bad' }),
 		);
-		expect(taskRepository.releaseClaim).toHaveBeenCalledWith(HOST, 'bad');
+		expect(taskRepository.releaseClaim).toHaveBeenCalledWith({
+			host: HOST,
+			id: 'bad',
+			claimedEpoch: bad.leaseEpoch,
+		});
 	});
 
 	it('scheduled callback dispatches the task, and a mid-fire rejection is logged not thrown', async () => {
@@ -132,9 +141,34 @@ describe('Executor.fire', () => {
 		await executor.fire(HOST, task);
 
 		expect(handler.execute).toHaveBeenCalledWith(task);
-		expect(taskRepository.completeTask).toHaveBeenCalledWith(HOST, task.id);
+		expect(taskRepository.completeTask).toHaveBeenCalledWith({
+			host: HOST,
+			id: task.id,
+			claimedEpoch: task.leaseEpoch,
+		});
 		expect(taskRepository.failTaskTerminal).not.toHaveBeenCalled();
 		expect(taskRepository.rescheduleTask).not.toHaveBeenCalled();
+	});
+
+	it('threads the claimed lease epoch through the terminal calls for fencing', async () => {
+		const { taskRepository, registry, executor } = setup();
+		const handler: TaskHandler = { execute: vi.fn().mockResolvedValue(undefined) };
+		taskRepository.markStarted.mockResolvedValue(1);
+		registry.resolve.mockReturnValue(handler);
+		const task = claimedTask({ leaseEpoch: 7 });
+
+		await executor.fire(HOST, task);
+
+		expect(taskRepository.markStarted).toHaveBeenCalledWith({
+			host: HOST,
+			id: task.id,
+			claimedEpoch: 7,
+		});
+		expect(taskRepository.completeTask).toHaveBeenCalledWith({
+			host: HOST,
+			id: task.id,
+			claimedEpoch: 7,
+		});
 	});
 
 	it('propagates when recording success fails, without treating it as a handler failure', async () => {
@@ -157,12 +191,16 @@ describe('Executor.fire', () => {
 		const handler: TaskHandler = { execute: vi.fn().mockRejectedValue(new Error('boom')) };
 		taskRepository.markStarted.mockResolvedValue(1);
 		registry.resolve.mockReturnValue(handler);
-		const task = claimedTask({ attempts: 0, maxAttempts: 3 });
+		const task = claimedTask({ attempts: 0, maxAttempts: 3, leaseEpoch: 7 });
 
 		await executor.fire(HOST, task);
 
 		// nextAttempt = 1 -> backoff(1) = 5000ms (asserted as a literal to decouple the oracle).
-		expect(taskRepository.rescheduleTask).toHaveBeenCalledWith(HOST, task.id, 5_000, 'boom');
+		expect(taskRepository.rescheduleTask).toHaveBeenCalledWith(
+			{ host: HOST, id: task.id, claimedEpoch: 7 },
+			5_000,
+			'boom',
+		);
 		expect(taskRepository.failTaskTerminal).not.toHaveBeenCalled();
 		expect(taskRepository.completeTask).not.toHaveBeenCalled();
 	});
@@ -172,12 +210,16 @@ describe('Executor.fire', () => {
 		const handler: TaskHandler = { execute: vi.fn().mockRejectedValue(new Error('boom')) };
 		taskRepository.markStarted.mockResolvedValue(1);
 		registry.resolve.mockReturnValue(handler);
-		const task = claimedTask({ attempts: 1, maxAttempts: 3 });
+		const task = claimedTask({ attempts: 1, maxAttempts: 3, leaseEpoch: 7 });
 
 		await executor.fire(HOST, task);
 
 		// nextAttempt = 2 -> backoff(2) = 10000ms; proves it's backoff(attempts+1), not backoff(attempts).
-		expect(taskRepository.rescheduleTask).toHaveBeenCalledWith(HOST, task.id, backoff(2), 'boom');
+		expect(taskRepository.rescheduleTask).toHaveBeenCalledWith(
+			{ host: HOST, id: task.id, claimedEpoch: 7 },
+			backoff(2),
+			'boom',
+		);
 	});
 
 	it('fails terminally when the handler fails on the single default attempt', async () => {
@@ -185,11 +227,14 @@ describe('Executor.fire', () => {
 		const handler: TaskHandler = { execute: vi.fn().mockRejectedValue(new Error('boom')) };
 		taskRepository.markStarted.mockResolvedValue(1);
 		registry.resolve.mockReturnValue(handler);
-		const task = claimedTask({ attempts: 0, maxAttempts: 1 });
+		const task = claimedTask({ attempts: 0, maxAttempts: 1, leaseEpoch: 7 });
 
 		await executor.fire(HOST, task);
 
-		expect(taskRepository.failTaskTerminal).toHaveBeenCalledWith(HOST, task.id, 'boom');
+		expect(taskRepository.failTaskTerminal).toHaveBeenCalledWith(
+			{ host: HOST, id: task.id, claimedEpoch: 7 },
+			'boom',
+		);
 		expect(taskRepository.rescheduleTask).not.toHaveBeenCalled();
 		expect(taskRepository.completeTask).not.toHaveBeenCalled();
 	});
@@ -200,11 +245,14 @@ describe('Executor.fire', () => {
 		taskRepository.markStarted.mockResolvedValue(1);
 		registry.resolve.mockReturnValue(handler);
 		// nextAttempt = 3 == maxAttempts -> terminal, not another retry.
-		const task = claimedTask({ attempts: 2, maxAttempts: 3 });
+		const task = claimedTask({ attempts: 2, maxAttempts: 3, leaseEpoch: 7 });
 
 		await executor.fire(HOST, task);
 
-		expect(taskRepository.failTaskTerminal).toHaveBeenCalledWith(HOST, task.id, 'boom');
+		expect(taskRepository.failTaskTerminal).toHaveBeenCalledWith(
+			{ host: HOST, id: task.id, claimedEpoch: 7 },
+			'boom',
+		);
 		expect(taskRepository.rescheduleTask).not.toHaveBeenCalled();
 	});
 
@@ -212,11 +260,15 @@ describe('Executor.fire', () => {
 		const { taskRepository, registry, logger, executor } = setup();
 		taskRepository.markStarted.mockResolvedValue(1);
 		registry.resolve.mockReturnValue(undefined);
-		const task = claimedTask({ taskType: 'gone' });
+		const task = claimedTask({ taskType: 'gone', leaseEpoch: 7 });
 
 		await executor.fire(HOST, task);
 
-		expect(taskRepository.releaseClaim).toHaveBeenCalledWith(HOST, task.id);
+		expect(taskRepository.releaseClaim).toHaveBeenCalledWith({
+			host: HOST,
+			id: task.id,
+			claimedEpoch: 7,
+		});
 		expect(taskRepository.failTaskTerminal).not.toHaveBeenCalled();
 		expect(logger.warn).toHaveBeenCalled();
 	});
@@ -239,8 +291,16 @@ describe('Executor.stop', () => {
 		await executor.claimAndSchedule(HOST); // timer is mocked, callbacks do not auto-fire
 		await executor.stop();
 
-		expect(taskRepository.releaseClaim).toHaveBeenCalledWith(HOST, 'a');
-		expect(taskRepository.releaseClaim).toHaveBeenCalledWith(HOST, 'b');
+		expect(taskRepository.releaseClaim).toHaveBeenCalledWith({
+			host: HOST,
+			id: 'a',
+			claimedEpoch: a.leaseEpoch,
+		});
+		expect(taskRepository.releaseClaim).toHaveBeenCalledWith({
+			host: HOST,
+			id: 'b',
+			claimedEpoch: b.leaseEpoch,
+		});
 	});
 
 	it('does not release a task whose timer callback has already begun firing', async () => {

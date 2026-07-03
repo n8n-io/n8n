@@ -19,6 +19,16 @@ export interface ClaimDueTasksOptions {
 	batchSize: number;
 }
 
+/**
+ * Identifies the exact claim a guarded transition may act on: the row `id`, the
+ * owner `host`, and the `leaseEpoch` the caller claimed with (the fencing token).
+ */
+export interface ClaimRef {
+	host: string;
+	id: string;
+	claimedEpoch: number;
+}
+
 @Service()
 export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	constructor(
@@ -144,18 +154,20 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	}
 
 	/**
-	 * Set `startedAt` on a task about to dispatch, guarded so it only affects a row
-	 * still `running` and owned by `host`. Doubles as the pre-dispatch existence
-	 * check: 0 rows means the row was deleted or reclaimed, so don't dispatch.
-	 * Returns rows affected (0 = benign, 1 = proceed).
+	 * Set `startedAt` on a task about to dispatch, guarded so it only affects the row
+	 * this `claim` still owns (`running`, same `host` and `leaseEpoch`). Doubles as the
+	 * pre-dispatch existence check: 0 rows means the row was deleted or reclaimed, so
+	 * don't dispatch. Returns rows affected (0 = benign, 1 = proceed).
 	 */
-	async markStarted(host: string, id: string): Promise<number> {
-		return await this.runGuardedUpdate(host, id, { startedAt: () => this.makeDbNowLiteral() });
+	async markStarted(claim: ClaimRef): Promise<number> {
+		return await this.runGuardedUpdate(claim, {
+			startedAt: () => this.makeDbNowLiteral(),
+		});
 	}
 
-	/** Success: `running` -> `succeeded`. Guarded; 0 rows affected is a benign no-op. */
-	async completeTask(host: string, id: string): Promise<number> {
-		return await this.runGuardedUpdate(host, id, {
+	/** Success: `running` -> `succeeded`. Guarded by the `claim`; 0 rows affected is a benign no-op. */
+	async completeTask(claim: ClaimRef): Promise<number> {
+		return await this.runGuardedUpdate(claim, {
 			status: ScheduledTaskStatus.Succeeded,
 			finishedAt: () => this.makeDbNowLiteral(),
 		});
@@ -163,10 +175,10 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 
 	/**
 	 * Terminal failure: `running` -> `failed`, recording the error and counting the
-	 * attempt. Guarded; 0 rows affected is a benign no-op.
+	 * attempt. Guarded by the `claim`; 0 rows affected is a benign no-op.
 	 */
-	async failTaskTerminal(host: string, id: string, errorMessage: string): Promise<number> {
-		return await this.runGuardedUpdate(host, id, {
+	async failTaskTerminal(claim: ClaimRef, errorMessage: string): Promise<number> {
+		return await this.runGuardedUpdate(claim, {
 			status: ScheduledTaskStatus.Failed,
 			finishedAt: () => this.makeDbNowLiteral(),
 			attempts: () => 'attempts + 1',
@@ -177,16 +189,11 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	/**
 	 * Retryable failure: `running` -> `pending`, count the attempt and push `runAt`
 	 * out by the backoff so the task waits before retrying. Clears the claim and lease
-	 * so the row is re-claimable (and satisfies the running-lease CHECK). Guarded;
-	 * 0 rows affected is a benign no-op.
+	 * so the row is re-claimable (and satisfies the running-lease CHECK). Guarded by
+	 * the `claim`; 0 rows affected is a benign no-op.
 	 */
-	async rescheduleTask(
-		host: string,
-		id: string,
-		backoffMs: number,
-		errorMessage: string,
-	): Promise<number> {
-		return await this.runGuardedUpdate(host, id, {
+	async rescheduleTask(claim: ClaimRef, backoffMs: number, errorMessage: string): Promise<number> {
+		return await this.runGuardedUpdate(claim, {
 			status: ScheduledTaskStatus.Pending,
 			runAt: () => this.makeDbNowPlusMsLiteral(backoffMs),
 			attempts: () => 'attempts + 1',
@@ -200,11 +207,11 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	 * Return a claimed task to `pending` without counting an attempt, clearing the
 	 * claim and lease. Used when the instance can't run the task after claiming it
 	 * (e.g. no handler is registered for its type at fire time), so another instance
-	 * or a later tick picks it up rather than the occurrence being lost. Guarded;
-	 * 0 rows affected is a benign no-op.
+	 * or a later tick picks it up rather than the occurrence being lost. Guarded by
+	 * the `claim`; 0 rows affected is a benign no-op.
 	 */
-	async releaseClaim(host: string, id: string): Promise<number> {
-		return await this.runGuardedUpdate(host, id, {
+	async releaseClaim(claim: ClaimRef): Promise<number> {
+		return await this.runGuardedUpdate(claim, {
 			status: ScheduledTaskStatus.Pending,
 			claimedBy: null,
 			leaseExpiresAt: null,
@@ -212,20 +219,24 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	}
 
 	/**
-	 * Apply a guarded update: only touch a row that is still `running` and claimed
-	 * by `host`, so a task reaped and reclaimed after a lease expiry can't be
-	 * double-transitioned. Returns rows affected; the executor treats 0 as benign
-	 * (the row was deleted or reclaimed).
+	 * Apply a guarded update: only touch the row this `claim` still owns (`running`,
+	 * same `host` and `leaseEpoch`). Returns rows affected; 0 is benign (the row was
+	 * deleted or reclaimed). The `leaseEpoch` match fences a stalled owner whose lease
+	 * was reclaimed, once a reaper exists to bump the epoch on reclaim.
 	 */
 	private async runGuardedUpdate(
-		host: string,
-		id: string,
+		claim: ClaimRef,
 		values: QueryDeepPartialEntity<ScheduledTask>,
 	): Promise<number> {
 		// Object criteria (not a raw where string) so TypeORM quotes the camelCase
 		// `claimedBy` column correctly on Postgres.
 		const result = await this.update(
-			{ id, status: ScheduledTaskStatus.Running, claimedBy: host },
+			{
+				id: claim.id,
+				status: ScheduledTaskStatus.Running,
+				claimedBy: claim.host,
+				leaseEpoch: claim.claimedEpoch,
+			},
 			values,
 		);
 		return result.affected ?? 0;

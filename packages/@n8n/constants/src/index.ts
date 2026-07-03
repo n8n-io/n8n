@@ -134,8 +134,8 @@ export const MIN_PASSWORD_CHAR_LENGTH = 8;
 
 export const MAX_PASSWORD_CHAR_LENGTH = 64;
 
-/** Largest value a signed 32-bit integer can hold (2^31 - 1). */
-export const MAX_INTEGER_32BITS_SIGNED = 2_147_483_647;
+/** Largest value a signed 32-bit integer can hold. */
+export const MAX_INTEGER_32BITS_SIGNED = 2 ** 31 - 1;
 
 /**
  * Character set used for generating nanoid IDs across n8n.
