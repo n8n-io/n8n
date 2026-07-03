@@ -15,8 +15,6 @@ import { N8nActionDropdown, N8nButton, N8nIcon, N8nTableBase } from '@n8n/design
 import type { ActionDropdownItem } from '@n8n/design-system';
 import { ElSkeletonItem } from 'element-plus';
 
-const SESSION_LIST_COLUMNS = 6;
-
 const props = withDefaults(
 	defineProps<{
 		embedded?: boolean;
@@ -67,19 +65,10 @@ function formatDate(fullDate: string) {
 	return `${date} ${time}`;
 }
 
-function formatTokens(count: number): string {
-	return `${count.toLocaleString()}t`;
-}
-
 function formatDuration(ms: number): string {
 	if (ms < 1000) return `${ms}ms`;
 	const seconds = ms / 1000;
-	if (Number.isInteger(seconds)) return `${seconds}s`;
-	return `${seconds.toFixed(1)}s`;
-}
-
-function totalTokens(thread: AgentExecutionThread): number {
-	return thread.totalPromptTokens + thread.totalCompletionTokens;
+	return Number.isInteger(seconds) ? `${seconds}s` : `${seconds.toFixed(1)}s`;
 }
 
 function originLabel(thread: AgentExecutionThread): string {
@@ -191,7 +180,7 @@ async function loadMore() {
 							{{ formatDate(thread.updatedAt) }}
 						</td>
 						<td :class="$style.tokenCell" data-test-id="agent-session-token-usage">
-							{{ formatTokens(totalTokens(thread)) }}
+							{{ (thread.totalPromptTokens + thread.totalCompletionTokens).toLocaleString() }}t
 						</td>
 						<td :class="$style.durationCell" data-test-id="agent-session-duration">
 							{{ formatDuration(thread.totalDuration) }}
@@ -207,7 +196,7 @@ async function loadMore() {
 					</tr>
 					<template v-if="sessionsStore.loading && !sessionsStore.threads.length">
 						<tr v-for="item in 5" :key="item">
-							<td v-for="col in SESSION_LIST_COLUMNS" :key="col">
+							<td v-for="col in 6" :key="col">
 								<ElSkeletonItem />
 							</td>
 						</tr>
@@ -216,10 +205,7 @@ async function loadMore() {
 						v-if="!sessionsStore.loading && !sessionsStore.threads.length"
 						:class="$style.lastRow"
 					>
-						<td
-							:colspan="SESSION_LIST_COLUMNS"
-							style="text-align: center; padding: var(--spacing--lg)"
-						>
+						<td :colspan="6" style="text-align: center; padding: var(--spacing--lg)">
 							<template v-if="!sessionsStore.threads.length && !sessionsStore.loading">
 								<span data-test-id="agent-sessions-empty">
 									{{ i18n.baseText('agentSessions.empty') }}
@@ -228,7 +214,7 @@ async function loadMore() {
 						</td>
 					</tr>
 					<tr :class="$style.lastRow" v-if="sessionsStore.nextCursor">
-						<td :colspan="SESSION_LIST_COLUMNS">
+						<td :colspan="6">
 							<N8nButton
 								icon="refresh-cw"
 								variant="ghost"

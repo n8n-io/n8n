@@ -1,32 +1,26 @@
 <script setup lang="ts">
 import { ref, useTemplateRef } from 'vue';
 import { AgentJsonConfigSchema } from '@n8n/api-types';
-import { N8nButton, N8nCallout, N8nHeading, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nCallout, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
 import Modal from '@/app/components/Modal.vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { AgentJsonConfig } from '../types';
 
-export type AgentJsonImportModalData = {
-	onConfirm: (config: AgentJsonConfig) => void | Promise<void>;
-};
-
 const props = defineProps<{
 	modalName: string;
-	data: AgentJsonImportModalData;
+	data: { onConfirm: (config: AgentJsonConfig) => void | Promise<void> };
 }>();
 
 const i18n = useI18n();
 const uiStore = useUIStore();
-const selectedFileName = ref('');
 const parsedConfig = ref<AgentJsonConfig | null>(null);
 const errorMessage = ref('');
 const importing = ref(false);
 const fileInput = useTemplateRef<HTMLInputElement>('fileInput');
 
-function resetState() {
-	selectedFileName.value = '';
+function resetImportState() {
 	parsedConfig.value = null;
 	errorMessage.value = '';
 	if (fileInput.value) {
@@ -35,23 +29,8 @@ function resetState() {
 }
 
 function closeModal() {
-	resetState();
+	resetImportState();
 	uiStore.closeModal(props.modalName);
-}
-
-async function readFileText(file: File): Promise<string> {
-	if (typeof file.text === 'function') {
-		return await file.text();
-	}
-
-	return await new Promise<string>((resolve, reject) => {
-		const reader = new FileReader();
-		reader.onload = () => {
-			resolve(typeof reader.result === 'string' ? reader.result : '');
-		};
-		reader.onerror = () => reject(reader.error);
-		reader.readAsText(file);
-	});
 }
 
 async function onFileChange(event: Event) {
@@ -59,13 +38,12 @@ async function onFileChange(event: Event) {
 	if (!(input instanceof HTMLInputElement)) return;
 
 	const file = input.files?.[0];
-	selectedFileName.value = file?.name ?? '';
 	parsedConfig.value = null;
 	errorMessage.value = '';
 	if (!file) return;
 
 	try {
-		const parsed = JSON.parse(await readFileText(file)) as unknown;
+		const parsed = JSON.parse(await file.text()) as unknown;
 		const result = AgentJsonConfigSchema.safeParse(parsed);
 		if (!result.success) {
 			throw new Error('Invalid agent JSON');
@@ -92,16 +70,10 @@ async function onConfirm() {
 <template>
 	<Modal
 		:name="props.modalName"
+		:title="i18n.baseText('agents.builder.importJsonModal.title' as BaseTextKey)"
 		width="520px"
-		:custom-class="$style.modal"
 		data-testid="agent-json-import-modal"
 	>
-		<template #header>
-			<N8nHeading tag="h2" size="large">
-				{{ i18n.baseText('agents.builder.importJsonModal.title' as BaseTextKey) }}
-			</N8nHeading>
-		</template>
-
 		<template #content>
 			<div :class="$style.content">
 				<N8nText size="small" color="text-light">
@@ -121,10 +93,6 @@ async function onConfirm() {
 					/>
 				</label>
 
-				<N8nText v-if="selectedFileName && !errorMessage" size="small" color="text-light">
-					{{ selectedFileName }}
-				</N8nText>
-
 				<N8nCallout v-if="errorMessage" theme="danger" data-testid="agent-json-import-error">
 					{{ errorMessage }}
 				</N8nCallout>
@@ -133,30 +101,19 @@ async function onConfirm() {
 
 		<template #footer>
 			<div :class="$style.footer">
-				<N8nButton variant="subtle" @click="closeModal">
-					{{ i18n.baseText('generic.cancel') }}
-				</N8nButton>
+				<N8nButton variant="subtle" :label="i18n.baseText('generic.cancel')" @click="closeModal" />
 				<N8nButton
-					variant="solid"
+					:label="i18n.baseText('agents.builder.importJsonModal.import' as BaseTextKey)"
 					:disabled="!parsedConfig || importing"
 					data-testid="agent-json-import-confirm"
 					@click="onConfirm"
-				>
-					{{ i18n.baseText('agents.builder.importJsonModal.import' as BaseTextKey) }}
-				</N8nButton>
+				/>
 			</div>
 		</template>
 	</Modal>
 </template>
 
 <style module lang="scss">
-.modal {
-	:global(.modal-content) {
-		display: flex;
-		flex-direction: column;
-	}
-}
-
 .content {
 	display: flex;
 	flex-direction: column;

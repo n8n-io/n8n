@@ -377,7 +377,7 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(wrapper.findComponent({ name: 'AgentAdvancedPanel' }).exists()).toBe(false);
 	});
 
-	it('orders the Agent tab as model, capabilities, then instructions', async () => {
+	it('orders the Agent tab as capabilities, model, then instructions', async () => {
 		const wrapper = await mountColumn({ knowledgeBaseEnabled: false });
 		await flushPromises();
 
@@ -389,11 +389,11 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(capabilities.exists()).toBe(true);
 		expect(instructions.exists()).toBe(true);
 		expect(
-			model.element.compareDocumentPosition(capabilities.element) &
+			capabilities.element.compareDocumentPosition(model.element) &
 				Node.DOCUMENT_POSITION_FOLLOWING,
 		).toBeTruthy();
 		expect(
-			capabilities.element.compareDocumentPosition(instructions.element) &
+			model.element.compareDocumentPosition(instructions.element) &
 				Node.DOCUMENT_POSITION_FOLLOWING,
 		).toBeTruthy();
 	});

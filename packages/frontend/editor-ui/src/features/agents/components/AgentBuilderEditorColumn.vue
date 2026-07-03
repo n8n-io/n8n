@@ -88,14 +88,6 @@ const i18n = useI18n();
 			</div>
 			<div :class="$style.panelAreaContainer">
 				<AgentBuilderTabPanel v-if="activeMainTab === 'agent'" data-testid="agent-tab-content">
-					<AgentInfoPanel
-						:config="localConfig"
-						:disabled="childrenDisabled"
-						:project-id="projectId"
-						:show-instructions="false"
-						embedded
-						@update:config="emit('update:config', $event)"
-					/>
 					<AgentCapabilitiesSection
 						:config="localConfig"
 						:tools="localConfig?.tools ?? []"
@@ -132,6 +124,14 @@ const i18n = useI18n();
 						data-testid="agent-files-card"
 						@upload-files="emit('upload-files', $event)"
 						@delete-file="emit('delete-file', $event)"
+					/>
+					<AgentInfoPanel
+						:config="localConfig"
+						:disabled="childrenDisabled"
+						:project-id="projectId"
+						:show-instructions="false"
+						embedded
+						@update:config="emit('update:config', $event)"
 					/>
 					<AgentInfoPanel
 						:config="localConfig"

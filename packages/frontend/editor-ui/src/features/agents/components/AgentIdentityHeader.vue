@@ -1,15 +1,13 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import { DEFAULT_AGENT_PERSONALISATION } from '@n8n/api-types';
 import { N8nIconPicker, N8nInlineTextEdit } from '@n8n/design-system';
 import type { IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import { useI18n } from '@n8n/i18n';
 
 import type { AgentJsonConfig } from '../types';
-import { createDefaultAgentPersonalisation } from '../utils/agentPersonalisation';
 
 type AgentPersonalisation = NonNullable<AgentJsonConfig['personalisation']>;
-
-const DEFAULT_AGENT_PERSONALISATION = createDefaultAgentPersonalisation(() => 0);
 
 const props = withDefaults(
 	defineProps<{
@@ -42,13 +40,14 @@ const iconPickerModel = computed<IconOrEmoji>({
 	}),
 	set: (value) => {
 		if (value.type !== 'icon') return;
-		onPersonalisationIconUpdate(value.value);
+		emit('update:config', {
+			personalisation: {
+				icon: value.value,
+				gradient: { ...personalisation.value.gradient },
+			},
+		});
 	},
 });
-
-function onNameUpdate(value: string) {
-	emit('update:config', { name: value });
-}
 
 function personalisationStyle(value: AgentPersonalisation): Record<string, string> {
 	return {
@@ -56,34 +55,21 @@ function personalisationStyle(value: AgentPersonalisation): Record<string, strin
 		'--agent-personalisation-gradient-to': value.gradient.to,
 	};
 }
-
-function onPersonalisationIconUpdate(icon: string) {
-	emit('update:config', {
-		personalisation: {
-			icon,
-			gradient: { ...personalisation.value.gradient },
-		},
-	});
-}
 </script>
 
 <template>
 	<div :class="$style.text" data-testid="agent-identity-header">
-		<div
-			:class="$style.personalisationIconShell"
+		<N8nIconPicker
+			v-model="iconPickerModel"
 			:style="personalisationStyle(personalisation)"
+			:button-tooltip="i18n.baseText('agents.builder.agent.personalisation.change')"
+			button-size="xlarge"
+			:is-read-only="props.disabled"
+			icons-only
+			:container-class="$style.personalisationPicker"
+			:button-class="$style.personalisationIcon"
 			data-testid="agent-personalisation-icon"
-		>
-			<N8nIconPicker
-				v-model="iconPickerModel"
-				:button-tooltip="i18n.baseText('agents.builder.agent.personalisation.change')"
-				button-size="xlarge"
-				:is-read-only="props.disabled"
-				icons-only
-				:container-class="$style.personalisationPicker"
-				:button-class="$style.personalisationIcon"
-			/>
-		</div>
+		/>
 		<N8nInlineTextEdit
 			:model-value="name"
 			:placeholder="i18n.baseText('agents.builder.agent.name.placeholder')"
@@ -92,7 +78,7 @@ function onPersonalisationIconUpdate(icon: string) {
 			:min-width="96"
 			:class="$style.title"
 			data-testid="agent-name-inline-edit"
-			@update:model-value="onNameUpdate"
+			@update:model-value="emit('update:config', { name: $event })"
 		/>
 	</div>
 </template>
@@ -107,11 +93,6 @@ function onPersonalisationIconUpdate(icon: string) {
 	gap: var(--spacing--sm);
 	flex: 1;
 	min-width: 0;
-}
-
-.personalisationIconShell {
-	width: 64px;
-	height: 64px;
 }
 
 .personalisationPicker {

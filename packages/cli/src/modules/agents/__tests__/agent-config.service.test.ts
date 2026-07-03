@@ -11,7 +11,6 @@ import type { AgentSkillsService } from '../agent-skills.service';
 import type { Agent } from '../entities/agent.entity';
 import type { AgentTaskRepository } from '../repositories/agent-task.repository';
 import type { AgentRepository } from '../repositories/agent.repository';
-import { getRandomAgentPersonalisationGradient } from '../utils/agent-personalisation';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -268,7 +267,7 @@ describe('AgentConfigService', () => {
 			expect(savedConfig.mcpServers?.[0].credential).toBe('');
 		});
 
-		it('persists icon changes while keeping the existing agent gradient fixed', async () => {
+		it('persists personalisation changes from the config payload', async () => {
 			const { service, agentRepository } = makeService();
 			const agent = makeAgent({
 				schema: {
@@ -299,38 +298,9 @@ describe('AgentConfigService', () => {
 			expect(saved.schema?.personalisation).toEqual({
 				icon: 'mail',
 				gradient: {
-					from: '#111111',
-					to: '#222222',
+					from: '#333333',
+					to: '#444444',
 				},
-			});
-		});
-
-		it('adds a random personalisation gradient when a saved agent does not have one yet', async () => {
-			vi.spyOn(Math, 'random').mockReturnValue(0.5);
-			const expectedGradient = getRandomAgentPersonalisationGradient(() => 0.5);
-			const { service, agentRepository } = makeService();
-			agentRepository.findByIdAndProjectId.mockResolvedValue(
-				makeAgent({
-					schema: {
-						...baseConfig,
-						personalisation: {
-							icon: 'bot',
-						},
-					} as unknown as AgentJsonConfig,
-				}),
-			);
-
-			await service.updateConfig(agentId, projectId, {
-				...baseConfig,
-				personalisation: {
-					icon: 'mail',
-				},
-			} as unknown as AgentJsonConfig);
-
-			const saved = agentRepository.save.mock.calls[0][0] as Agent;
-			expect(saved.schema?.personalisation).toEqual({
-				icon: 'mail',
-				gradient: expectedGradient,
 			});
 		});
 

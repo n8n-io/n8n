@@ -7,7 +7,6 @@ import {
 	N8nResizeWrapper,
 	type DropdownMenuItemProps,
 } from '@n8n/design-system';
-import type { ActionDropdownItem } from '@n8n/design-system/types/action-dropdown';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import {
@@ -86,8 +85,6 @@ const AGENT_CHAT_PANEL_MIN_WIDTH = 320;
 const AGENT_CHAT_PANEL_DEFAULT_WIDTH = 460;
 const AGENT_CHAT_PANEL_MAX_WIDTH = 720;
 const AGENT_EDITOR_MIN_WIDTH = 560;
-
-type AgentBuilderHeaderAction = 'export-json' | 'import-json' | 'delete';
 
 const route = useRoute();
 const router = useRouter();
@@ -182,9 +179,6 @@ const shouldStartWithExpandedBuildChat = shouldAutoExpandInitialBuild();
 const isChatFullWidth = ref(shouldStartWithExpandedBuildChat);
 const isBuildChatHidden = ref(!shouldStartWithExpandedBuildChat);
 const shouldCollapseChatAfterInitialBuild = ref(shouldStartWithExpandedBuildChat);
-const showBuildChatLabel = computed(() =>
-	locale.baseText('agents.builder.chat.show.ariaLabel' as BaseTextKey),
-);
 const executionsCount = computed(() => sessionsStore.threads.length);
 const { activeMainTab, mainTabOptions, executionsDescription } = useAgentBuilderMainTabs({
 	executionsCount,
@@ -706,8 +700,8 @@ function onConfigFieldUpdate(updates: Partial<AgentJsonConfig>) {
 	});
 }
 
-function replaceConfigAndScheduleSave(nextConfig: AgentJsonConfig) {
-	builderTelemetry.recordConfigEdit(nextConfig);
+function replaceConfigAndScheduleSave(nextConfig: AgentJsonConfig, recordEdit = true) {
+	if (recordEdit) builderTelemetry.recordConfigEdit(nextConfig);
 	localConfig.value = deepCopy(nextConfig);
 	syncAgentIdentityFromConfig(localConfig.value);
 	configAutosave.scheduleAutosave({
@@ -725,13 +719,7 @@ function persistMissingPersonalisationGradient() {
 	const nextConfig = addMissingAgentPersonalisation(localConfig.value);
 	if (!nextConfig) return;
 
-	localConfig.value = deepCopy(nextConfig);
-	configAutosave.scheduleAutosave({
-		projectId: projectId.value,
-		agentId: agentId.value,
-		type: 'config',
-		config: normalizeAgentMemoryConfig(deepCopy(localConfig.value)),
-	});
+	replaceConfigAndScheduleSave(nextConfig, false);
 }
 
 async function onConfigUpdated() {
@@ -755,48 +743,32 @@ function onBuildDone() {
 	shouldCollapseChatAfterInitialBuild.value = false;
 }
 
-function hideBuildChat() {
-	isChatFullWidth.value = false;
-	isBuildChatHidden.value = true;
-}
-
-function showBuildChat() {
-	isBuildChatHidden.value = false;
-}
-
-const headerActions = computed<Array<ActionDropdownItem<AgentBuilderHeaderAction>>>(() => {
-	const actions: Array<ActionDropdownItem<AgentBuilderHeaderAction>> = [
-		{
-			id: 'export-json',
-			label: locale.baseText('agents.builder.exportJson' as BaseTextKey),
-			icon: 'download',
-		},
-	];
-
-	if (canEditAgent.value) {
-		actions.push({
-			id: 'import-json',
-			label: locale.baseText('agents.builder.importJson' as BaseTextKey),
-			icon: 'upload',
-		});
-	}
-
-	if (canDeleteAgent.value) {
-		actions.push({
-			id: 'delete',
-			label: locale.baseText('agents.builder.deleteAgent'),
-			icon: 'trash-2',
-			divided: actions.length > 0,
-		});
-	}
-
-	return actions;
-});
-
-function agentJsonFileName(name: string | undefined): string {
-	const cleaned = (name ?? '').trim().replace(/[\\/:*?"<>|]+/g, '-');
-	return `${cleaned || 'agent'}.json`;
-}
+const headerActions = computed(() => [
+	{
+		id: 'export-json',
+		label: locale.baseText('agents.builder.exportJson' as BaseTextKey),
+		icon: 'download',
+	},
+	...(canEditAgent.value
+		? [
+				{
+					id: 'import-json',
+					label: locale.baseText('agents.builder.importJson' as BaseTextKey),
+					icon: 'upload',
+				},
+			]
+		: []),
+	...(canDeleteAgent.value
+		? [
+				{
+					id: 'delete',
+					label: locale.baseText('agents.builder.deleteAgent'),
+					icon: 'trash-2',
+					divided: true,
+				},
+			]
+		: []),
+]);
 
 async function exportAgentJson() {
 	if (!localConfig.value) return;
@@ -812,9 +784,11 @@ async function exportAgentJson() {
 		type: 'application/json',
 	});
 	const url = URL.createObjectURL(blob);
-	const link = document.createElement('a');
-	link.href = url;
-	link.download = agentJsonFileName(localConfig.value.name);
+	const name = localConfig.value.name.trim().replace(/[\\/:*?"<>|]+/g, '-') || 'agent';
+	const link = Object.assign(document.createElement('a'), {
+		href: url,
+		download: `${name}.json`,
+	});
 	document.body.appendChild(link);
 	link.click();
 	link.remove();
@@ -1394,9 +1368,9 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 					icon-only
 					size="small"
 					:class="$style.showBuildChatButton"
-					:aria-label="showBuildChatLabel"
+					:aria-label="locale.baseText('agents.builder.chat.show.ariaLabel' as BaseTextKey)"
 					data-testid="agent-build-chat-show-button"
-					@click="showBuildChat"
+					@click="isBuildChatHidden = false"
 				>
 					<N8nIcon icon="panel-left" :size="14" />
 				</N8nButton>
@@ -1439,7 +1413,10 @@ function onPreviewBreadcrumbSelect(item: PathItem) {
 						@update:tools="onQuickActionAddTool"
 						@update:mcp-servers="onQuickActionAddMcpServers"
 						@update:connected-triggers="onConnectedTriggersUpdate"
-						@hide="hideBuildChat"
+						@hide="
+							isChatFullWidth = false;
+							isBuildChatHidden = true;
+						"
 						@trigger-added="onTriggerAdded"
 						@agent-published="onPublished"
 						@agent-changed="refreshAgentAfterIntegrationChange"

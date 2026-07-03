@@ -20,7 +20,7 @@ vi.mock('@n8n/design-system', () => ({
 	N8nIconPicker: {
 		name: 'N8nIconPicker',
 		template:
-			'<button data-testid="agent-personalisation-picker" :data-icon="modelValue.value" :data-icons-only="String(iconsOnly)" :class="buttonClass" @click="$emit(\'update:modelValue\', { type: \'icon\', value: \'mail\' })" />',
+			'<div v-bind="$attrs"><button data-testid="agent-personalisation-picker" :data-icon="modelValue.value" :data-icons-only="String(iconsOnly)" :class="buttonClass" @click="$emit(\'update:modelValue\', { type: \'icon\', value: \'mail\' })" /></div>',
 		props: {
 			modelValue: Object,
 			buttonTooltip: String,

@@ -13,7 +13,6 @@ import { ref, computed, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
 import {
 	N8nCollapsiblePanel,
-	N8nIcon,
 	N8nInputNumber2,
 	N8nSelect,
 	N8nSwitch2,
@@ -400,17 +399,9 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 		data-testid="agent-behavior-panel"
 	>
 		<template #title>
-			<span :class="$style.advancedTitle" data-testid="agent-advanced-title">
-				<N8nText tag="h3" :bold="true">{{
-					i18n.baseText('agents.builder.advanced.title')
-				}}</N8nText>
-				<N8nIcon
-					icon="chevron-down"
-					:size="14"
-					:class="[$style.advancedChevron, isExpanded && $style.advancedChevronOpen]"
-					data-testid="agent-advanced-chevron"
-				/>
-			</span>
+			<N8nText tag="h3" :bold="true" data-testid="agent-advanced-title">{{
+				i18n.baseText('agents.builder.advanced.title')
+			}}</N8nText>
 		</template>
 		<div :class="$style.content">
 			<div :class="$style.settingGroup">
@@ -736,7 +727,12 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 }
 
 .panel.panel > :first-child > :first-child > :first-child {
-	display: none;
+	order: 2;
+	transform: rotate(0deg);
+}
+
+.panel.panel[data-state='open'] > :first-child > :first-child > :first-child {
+	transform: rotate(180deg);
 }
 
 .panel.panel > :first-child > :first-child > :last-child {
@@ -745,24 +741,6 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 
 .panel.panel > :first-child h3 {
 	margin: 0;
-}
-
-.advancedTitle {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: var(--spacing--sm);
-	width: 100%;
-}
-
-.advancedChevron {
-	flex-shrink: 0;
-	color: var(--icon-color);
-	transition: transform var(--animation--duration) var(--animation--easing);
-}
-
-.advancedChevronOpen {
-	transform: rotate(180deg);
 }
 
 .panel.panel > [data-state] > :first-child {

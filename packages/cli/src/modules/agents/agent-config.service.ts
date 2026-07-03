@@ -23,11 +23,6 @@ import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
 import { markAgentDraftDirty } from './utils/agent-draft.utils';
-import {
-	DEFAULT_AGENT_PERSONALISATION_ICON,
-	getRandomAgentPersonalisationGradient,
-	type AgentPersonalisation,
-} from './utils/agent-personalisation';
 import { resolveUniqueSubAgents, type ResolvedSubAgentRef } from './utils/sub-agent-resolver';
 
 @Service()
@@ -115,7 +110,7 @@ export class AgentConfigService {
 		);
 		const sanitizedBaseConfig = sanitizeAgentJsonConfig(config);
 		const sanitizedConfig = sanitizeUnknownAgentCredentials(
-			normalizePersonalisationInput(sanitizedBaseConfig, config, entity.schema ?? null),
+			sanitizedBaseConfig,
 			accessibleCredentialIds,
 		);
 
@@ -138,12 +133,12 @@ export class AgentConfigService {
 
 		const previousIntegrations = entity.integrations ?? [];
 		const previousSchema = entity.schema ?? null;
-		const personalisation = resolvePersonalisationForSave(sanitizedConfig, previousSchema);
 
 		const integrationsProvided = result.config.integrations !== undefined;
 		const toolsProvided = result.config.tools !== undefined;
 		const skillsProvided = result.config.skills !== undefined;
 		const credentialProvided = result.config.credential !== undefined;
+		const personalisationProvided = result.config.personalisation !== undefined;
 		const memoryProvided = result.config.memory !== undefined;
 		const subAgentsProvided = result.config.subAgents !== undefined;
 		const providerToolsProvided = result.config.providerTools !== undefined;
@@ -160,8 +155,8 @@ export class AgentConfigService {
 			name: decomposedSchema.name,
 			model: decomposedSchema.model,
 			instructions: decomposedSchema.instructions,
-			personalisation,
 			...(credentialProvided ? { credential: decomposedSchema.credential } : {}),
+			...(personalisationProvided ? { personalisation: decomposedSchema.personalisation } : {}),
 			...(memoryProvided ? { memory: decomposedSchema.memory } : {}),
 			...(subAgentsProvided ? { subAgents: decomposedSchema.subAgents } : {}),
 			...(toolsProvided ? { tools: decomposedSchema.tools } : {}),
@@ -312,70 +307,6 @@ export class AgentConfigService {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-const HEX_COLOR_REGEX = /^#[0-9A-Fa-f]{6}$/;
-
-function isPersonalisationGradient(value: unknown): value is AgentPersonalisation['gradient'] {
-	return (
-		isRecord(value) &&
-		typeof value.from === 'string' &&
-		HEX_COLOR_REGEX.test(value.from) &&
-		typeof value.to === 'string' &&
-		HEX_COLOR_REGEX.test(value.to)
-	);
-}
-
-function extractPersonalisation(value: unknown): Partial<AgentPersonalisation> | undefined {
-	if (!isRecord(value) || !isRecord(value.personalisation)) return undefined;
-
-	const personalisation = value.personalisation;
-	const icon = typeof personalisation.icon === 'string' ? personalisation.icon.trim() : undefined;
-	const gradient = isPersonalisationGradient(personalisation.gradient)
-		? personalisation.gradient
-		: undefined;
-
-	return {
-		...(icon ? { icon } : {}),
-		...(gradient ? { gradient: { ...gradient } } : {}),
-	};
-}
-
-function resolvePersonalisationForSave(
-	config: unknown,
-	previousSchema: AgentJsonConfig | null,
-): AgentPersonalisation {
-	const incoming = extractPersonalisation(config);
-	const previous = previousSchema?.personalisation;
-	const gradient =
-		previous?.gradient ?? incoming?.gradient ?? getRandomAgentPersonalisationGradient();
-
-	return {
-		icon: incoming?.icon ?? previous?.icon ?? DEFAULT_AGENT_PERSONALISATION_ICON,
-		gradient: { ...gradient },
-	};
-}
-
-function normalizePersonalisationInput(
-	config: unknown,
-	rawConfig: unknown,
-	previousSchema: AgentJsonConfig | null,
-): unknown {
-	if (!isRecord(config)) return config;
-
-	const incoming = extractPersonalisation(rawConfig) ?? extractPersonalisation(config);
-	if (!incoming) return config;
-
-	return {
-		...config,
-		personalisation: {
-			icon:
-				incoming.icon ??
-				previousSchema?.personalisation?.icon ??
-				DEFAULT_AGENT_PERSONALISATION_ICON,
-			gradient: resolvePersonalisationForSave(rawConfig, previousSchema).gradient,
-		},
-	};
 }
 
 function hasNodeToolInputSchema(raw: unknown): boolean {

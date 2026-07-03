@@ -10,7 +10,6 @@ import { AgentTestChatService } from './agent-test-chat.service';
 import { Agent } from './entities/agent.entity';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { AgentRepository } from './repositories/agent.repository';
-import { createDefaultAgentPersonalisation } from './utils/agent-personalisation';
 
 @Service()
 export class AgentsService {
@@ -30,7 +29,6 @@ export class AgentsService {
 			instructions: '',
 			tools: [],
 			skills: [],
-			personalisation: createDefaultAgentPersonalisation(),
 		};
 
 		const agent = this.agentRepository.create({
