@@ -855,6 +855,158 @@ describe('AgentRuntime — eager input persistence', () => {
 		const afterResume = await memory.getMessages('t1', { resourceId: 'u1' });
 		expect(afterResume.filter((m) => hasToolCall(m, 'tc-1'))).toHaveLength(1);
 	});
+
+	it("persists the turn's assistant output when an active turn is aborted (generate)", async () => {
+		const lookupTool: BuiltTool = {
+			name: 'lookup',
+			description: 'looks something up',
+			inputSchema: z.object({}),
+			handler: async () => await Promise.resolve({ ok: true }),
+		};
+		const memory = new InMemoryMemory();
+		const bus = new AgentEventBus();
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			tools: [lookupTool],
+			eventBus: bus,
+			memory,
+		});
+
+		// The model issues a tool call, so the assistant message is added to the list
+		// before the tool runs. Aborting once the tool starts mirrors a user hitting
+		// "stop" mid-run — after work was done, before the turn could complete.
+		generateText.mockResolvedValueOnce(makeGenerateWithToolCall('tc-1', 'lookup', {}));
+		bus.on(AgentEvent.ToolExecutionStart, () => bus.abort());
+
+		const result = await runtime.generate('please build it', PERSIST);
+
+		expect(result.finishReason).toBe('error');
+		expect(runtime.getState().status).toBe('cancelled');
+		// The assistant work done before the stop is now in memory, so the next turn sees it.
+		const persisted = await memory.getMessages('t1', { resourceId: 'u1' });
+		const assistantRows = persisted.filter(
+			(m) => (m as { role?: string }).role === 'assistant' && hasToolCall(m, 'tc-1'),
+		);
+		expect(assistantRows).toHaveLength(1);
+	});
+
+	it("persists the turn's assistant output when an active turn is aborted (stream)", async () => {
+		const lookupTool: BuiltTool = {
+			name: 'lookup',
+			description: 'looks something up',
+			inputSchema: z.object({}),
+			handler: async () => await Promise.resolve({ ok: true }),
+		};
+		const memory = new InMemoryMemory();
+		const bus = new AgentEventBus();
+		const runtime = new AgentRuntime({
+			name: 'test',
+			model: 'openai/gpt-4o-mini',
+			instructions: 'You are a test assistant.',
+			tools: [lookupTool],
+			eventBus: bus,
+			memory,
+		});
+
+		// Same shape as the generate case, on the streaming path (the one Instance AI uses):
+		// the abort is handled by the StreamSession, which must persist the turn-so-far.
+		streamText.mockReturnValueOnce({
+			fullStream: makeChunkStream([{ type: 'text-delta', textDelta: 'on it...' }]),
+			finishReason: Promise.resolve('tool-calls'),
+			usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
+			response: Promise.resolve({
+				messages: [
+					{
+						role: 'assistant',
+						content: [{ type: 'tool-call', toolCallId: 'tc-1', toolName: 'lookup', args: {} }],
+					},
+				],
+			}),
+			toolCalls: Promise.resolve([{ toolCallId: 'tc-1', toolName: 'lookup', input: {} }]),
+		});
+		bus.on(AgentEvent.ToolExecutionStart, () => bus.abort());
+
+		const { stream } = await runtime.stream('please build it', PERSIST);
+		await collectChunks(stream);
+
+		expect(runtime.getState().status).toBe('cancelled');
+		const persisted = await memory.getMessages('t1', { resourceId: 'u1' });
+		const assistantRows = persisted.filter(
+			(m) => (m as { role?: string }).role === 'assistant' && hasToolCall(m, 'tc-1'),
+		);
+		expect(assistantRows).toHaveLength(1);
+	});
+
+	it('persists the text already streamed when a run is stopped mid-response', async () => {
+		const { runtime, memory } = makeMemoryRuntime();
+		const controller = new AbortController();
+		const abortError = Object.assign(new Error('This operation was aborted'), {
+			name: 'AbortError',
+		});
+
+		// The model streams two text deltas, then the stop lands — before the turn
+		// completes, so its `newMessages` are never built (finishReason/response reject).
+		streamText.mockReturnValueOnce({
+			fullStream: (async function* () {
+				yield { type: 'text-delta', id: 't1', text: 'Here is my ' };
+				yield { type: 'text-delta', id: 't1', text: 'partial answer' };
+				await Promise.resolve();
+				controller.abort();
+			})(),
+			finishReason: silentReject(abortError),
+			usage: silentReject(abortError),
+			response: silentReject(abortError),
+			toolCalls: silentReject(abortError),
+		});
+
+		const { stream } = await runtime.stream('hello', {
+			...PERSIST,
+			abortSignal: controller.signal,
+		});
+		await collectChunks(stream);
+
+		expect(runtime.getState().status).toBe('cancelled');
+		// The text the user already saw is in memory, not lost with the aborted turn.
+		const persisted = await memory.getMessages('t1', { resourceId: 'u1' });
+		const assistantTexts = persisted
+			.filter((m) => (m as { role?: string }).role === 'assistant')
+			.map((m) => textOf(m));
+		expect(assistantTexts).toContain('Here is my partial answer');
+	});
+
+	it('persists a completed streamed turn when the stop lands before it is folded in', async () => {
+		const { runtime, memory } = makeMemoryRuntime();
+		const controller = new AbortController();
+
+		// The model finishes streaming (finishReason/response resolve), but the stop
+		// fires as the stream closes — before the loop folds the turn into the list. The
+		// completed text must still be recovered (the clear is deferred until the fold).
+		streamText.mockReturnValueOnce({
+			fullStream: (async function* () {
+				yield { type: 'text-delta', id: 't1', text: 'Complete answer' };
+				await Promise.resolve();
+				controller.abort();
+			})(),
+			finishReason: Promise.resolve('stop'),
+			usage: Promise.resolve({ inputTokens: 5, outputTokens: 3, totalTokens: 8 }),
+			response: Promise.resolve({
+				messages: [{ role: 'assistant', content: [{ type: 'text', text: 'Complete answer' }] }],
+			}),
+			toolCalls: Promise.resolve([]),
+		});
+
+		const { stream } = await runtime.stream('hi', { ...PERSIST, abortSignal: controller.signal });
+		await collectChunks(stream);
+
+		expect(runtime.getState().status).toBe('cancelled');
+		const persisted = await memory.getMessages('t1', { resourceId: 'u1' });
+		const assistantTexts = persisted
+			.filter((m) => (m as { role?: string }).role === 'assistant')
+			.map((m) => textOf(m));
+		expect(assistantTexts).toContain('Complete answer');
+	});
 });
 
 // ---------------------------------------------------------------------------
