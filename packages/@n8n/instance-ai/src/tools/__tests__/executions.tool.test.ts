@@ -701,6 +701,50 @@ describe('executions tool', () => {
 				maxItems: undefined,
 			});
 		});
+
+		it('should cap oversized outputs to whole items within the char budget', async () => {
+			const bigItem = { blob: 'x'.repeat(30_000) };
+			const context = createMockContext();
+			(context.executionService.getNodeOutput as Mock).mockResolvedValue({
+				nodeName: 'Set',
+				items: [bigItem, bigItem, bigItem],
+				totalItems: 3,
+				returned: { from: 0, to: 2 },
+			});
+
+			const tool = createExecutionsTool(context);
+			const result = await executeTool<{ items: unknown[]; truncated?: boolean; note?: string }>(
+				tool,
+				{ action: 'get-node-output' as const, executionId: 'exec-1', nodeName: 'Set' },
+				{} as never,
+			);
+
+			expect(result.items).toEqual([bigItem]);
+			expect(result.truncated).toBe(true);
+			expect(result.note).toContain('1 of 3 fetched items');
+		});
+
+		it('should return a sliced string when a single item exceeds the budget', async () => {
+			const context = createMockContext();
+			(context.executionService.getNodeOutput as Mock).mockResolvedValue({
+				nodeName: 'Set',
+				items: [{ blob: 'y'.repeat(120_000) }],
+				totalItems: 1,
+				returned: { from: 0, to: 0 },
+			});
+
+			const tool = createExecutionsTool(context);
+			const result = await executeTool<{ items: unknown[]; truncated?: boolean }>(
+				tool,
+				{ action: 'get-node-output' as const, executionId: 'exec-1', nodeName: 'Set' },
+				{} as never,
+			);
+
+			expect(result.truncated).toBe(true);
+			expect(result.items).toHaveLength(1);
+			expect(typeof result.items[0]).toBe('string');
+			expect((result.items[0] as string).endsWith('… [item truncated]')).toBe(true);
+		});
 	});
 
 	// ── get-resolved-node-parameters ────────────────────────────────────────
