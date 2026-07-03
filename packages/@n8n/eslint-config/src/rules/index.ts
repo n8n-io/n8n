@@ -23,6 +23,7 @@ import { NoAwsCredentialDiscoveryImportsRule } from './no-aws-credential-discove
 import { NoUncentralizedHttpRule } from './no-uncentralized-http.js';
 import { NoApplicationErrorRule } from './no-application-error.js';
 import { ProjectOwnedEntityTransferRule } from './project-owned-entity-transfer.js';
+import { NoRestrictedSleepImportRule } from './no-restricted-sleep-import.js';
 
 export const rules = {
 	'no-uncaught-json-parse': NoUncaughtJsonParseRule,
@@ -49,4 +50,5 @@ export const rules = {
 	'no-uncentralized-http': NoUncentralizedHttpRule,
 	'no-application-error': NoApplicationErrorRule,
 	'project-owned-entity-transfer': ProjectOwnedEntityTransferRule,
+	'no-restricted-sleep-import': NoRestrictedSleepImportRule,
 } satisfies Record<string, AnyRuleModule>;

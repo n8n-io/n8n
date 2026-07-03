@@ -1,5 +1,6 @@
 import type { Tool } from '@langchain/core/tools';
 import { DynamicStructuredTool } from '@langchain/core/tools';
+import * as n8nUtilsSleep from '@n8n/utils/sleep';
 import type {
 	INode,
 	ITaskDataConnections,
@@ -18,7 +19,6 @@ import type {
 	CloseFunction,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
-import * as n8nWorkflow from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 import { z } from 'zod';
@@ -40,14 +40,13 @@ vi.mock('../create-node-as-tool', async (importActual) => ({
 	getSchema: vi.fn(),
 }));
 
-// n8n-workflow is externalized (see vite.config.ts), so its CJS exports are
-// getter-only and Vite SSR wraps the namespace separately from `require`.
-// Replace the namespace's `sleepWithAbort` so both source code (via Vite SSR
-// `import`) and tests see the mock.
-const sleepWithAbort = vi.fn();
-Object.defineProperty(n8nWorkflow, 'sleepWithAbort', {
+// ESM module namespace exports are read-only, so `vi.spyOn` can't reassign
+// `sleep` directly. Replace it via `Object.defineProperty` so both source
+// code (via its `import`) and tests see the mock.
+const sleep = vi.fn();
+Object.defineProperty(n8nUtilsSleep, 'sleep', {
 	configurable: true,
-	get: () => sleepWithAbort,
+	get: () => sleep,
 });
 
 describe('getInputConnectionData', () => {
@@ -879,7 +878,7 @@ describe('makeHandleToolInvocation', () => {
 		});
 
 		it('should respect waitBetweenTries limits (0-5000ms)', async () => {
-			const sleepWithAbortSpy = (sleepWithAbort as Mock).mockResolvedValue(undefined);
+			const sleepSpy = (sleep as Mock).mockResolvedValue(undefined);
 
 			const connectedNode = mock<INode>({
 				name: 'Test Tool',
@@ -902,8 +901,8 @@ describe('makeHandleToolInvocation', () => {
 
 			await expect(result).rejects.toThrow('Test error');
 
-			expect(sleepWithAbortSpy).toHaveBeenCalledWith(1500, undefined);
-			sleepWithAbortSpy.mockRestore();
+			expect(sleepSpy).toHaveBeenCalledWith(1500, undefined);
+			sleepSpy.mockRestore();
 		});
 	});
 
@@ -954,9 +953,7 @@ describe('makeHandleToolInvocation', () => {
 		});
 
 		it('should handle abort signal during retry wait', async () => {
-			const sleepWithAbortSpy = (sleepWithAbort as Mock).mockRejectedValue(
-				new Error('Execution was cancelled'),
-			);
+			const sleepSpy = (sleep as Mock).mockRejectedValue(new Error('Execution was cancelled'));
 
 			const connectedNode = mock<INode>({
 				name: 'Test Tool',
@@ -981,10 +978,10 @@ describe('makeHandleToolInvocation', () => {
 			const result = await handleToolInvocation(toolArgs);
 
 			expect(result).toBe('Error during node execution: Execution was cancelled');
-			expect(sleepWithAbortSpy).toHaveBeenCalledWith(1000, abortController.signal);
+			expect(sleepSpy).toHaveBeenCalledWith(1000, abortController.signal);
 			expect(connectedNodeType.execute).toHaveBeenCalledTimes(1); // Only first attempt
 
-			sleepWithAbortSpy.mockRestore();
+			sleepSpy.mockRestore();
 		});
 
 		it('should handle abort signal during execution', async () => {
@@ -1029,7 +1026,7 @@ describe('makeHandleToolInvocation', () => {
 					.mockResolvedValueOnce([[{ json: { result: 'success' } }]]),
 			});
 
-			const sleepWithAbortSpy = (sleepWithAbort as Mock).mockResolvedValue(undefined);
+			const sleepSpy = (sleep as Mock).mockResolvedValue(undefined);
 
 			handleToolInvocation = makeHandleToolInvocation(
 				contextFactory,
@@ -1042,9 +1039,9 @@ describe('makeHandleToolInvocation', () => {
 
 			expect(result).toBe(JSON.stringify([{ result: 'success' }]));
 			expect(connectedNodeType.execute).toHaveBeenCalledTimes(2);
-			expect(sleepWithAbortSpy).toHaveBeenCalledWith(10, abortController.signal);
+			expect(sleepSpy).toHaveBeenCalledWith(10, abortController.signal);
 
-			sleepWithAbortSpy.mockRestore();
+			sleepSpy.mockRestore();
 		});
 
 		it('should work when getExecutionCancelSignal is not available', async () => {
@@ -1069,7 +1066,7 @@ describe('makeHandleToolInvocation', () => {
 					.mockResolvedValueOnce([[{ json: { result: 'success' } }]]),
 			});
 
-			const sleepWithAbortSpy = (sleepWithAbort as Mock).mockResolvedValue(undefined);
+			const sleepSpy = (sleep as Mock).mockResolvedValue(undefined);
 
 			handleToolInvocation = makeHandleToolInvocation(
 				contextFactory,
@@ -1081,9 +1078,9 @@ describe('makeHandleToolInvocation', () => {
 			const result = await handleToolInvocation(toolArgs);
 
 			expect(result).toBe(JSON.stringify([{ result: 'success' }]));
-			expect(sleepWithAbortSpy).toHaveBeenCalledWith(10, undefined);
+			expect(sleepSpy).toHaveBeenCalledWith(10, undefined);
 
-			sleepWithAbortSpy.mockRestore();
+			sleepSpy.mockRestore();
 		});
 	});
 
