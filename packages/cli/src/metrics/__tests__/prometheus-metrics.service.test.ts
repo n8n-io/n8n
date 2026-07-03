@@ -24,6 +24,7 @@ import type { PrometheusVersionMetricsService } from '../prometheus/version-metr
 import type { PrometheusWebhookAndFormMetricsService } from '../prometheus/webhook-and-form-metrics.service';
 import type { PrometheusWorkflowExecutionDurationMetricsService } from '../prometheus/workflow-execution-duration-metrics.service';
 import type { PrometheusWorkflowInfoMetricsService } from '../prometheus/workflow-info-metrics.service';
+import type { PrometheusWorkflowPublicationMetricsService } from '../prometheus/workflow-publication-metrics.service';
 import type { PrometheusWorkflowStatisticsMetricsService } from '../prometheus/workflow-statistics-metrics.service';
 
 vi.mock('prom-client');
@@ -51,6 +52,7 @@ describe('PrometheusMetricsService', () => {
 	let workflowInfo: Mocked<PrometheusWorkflowInfoMetricsService>;
 	let instanceAi: Mocked<PrometheusInstanceAiMetricsService>;
 	let dbPool: Mocked<PrometheusDbPoolMetricsService>;
+	let workflowPublication: Mocked<PrometheusWorkflowPublicationMetricsService>;
 
 	let service: PrometheusMetricsService;
 
@@ -76,6 +78,7 @@ describe('PrometheusMetricsService', () => {
 			workflowInfo,
 			instanceAi,
 			dbPool,
+			workflowPublication,
 		);
 
 	beforeEach(() => {
@@ -108,6 +111,7 @@ describe('PrometheusMetricsService', () => {
 		workflowInfo = mock<PrometheusWorkflowInfoMetricsService>({ enabled: true });
 		instanceAi = mock<PrometheusInstanceAiMetricsService>({ enabled: true });
 		dbPool = mock<PrometheusDbPoolMetricsService>({ enabled: true });
+		workflowPublication = mock<PrometheusWorkflowPublicationMetricsService>({ enabled: true });
 
 		service = buildService();
 	});
@@ -139,6 +143,7 @@ describe('PrometheusMetricsService', () => {
 			expect(workflowInfo.init).toHaveBeenCalledWith(app);
 			expect(instanceAi.init).toHaveBeenCalledWith(app);
 			expect(dbPool.init).toHaveBeenCalledWith(app);
+			expect(workflowPublication.init).toHaveBeenCalledWith(app);
 		});
 
 		it('should NOT call init on disabled collectors', () => {

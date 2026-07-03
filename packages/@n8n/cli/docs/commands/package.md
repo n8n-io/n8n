@@ -2,26 +2,32 @@
 
 Export and import workflows as portable n8n packages (`.n8np` archives).
 
-> **Beta — disabled by default.** These commands call beta endpoints that the
-> target instance must opt into with `N8N_PUBLIC_API_PACKAGES_ENABLED=true`, and
-> the n8n Packages feature must be licensed. While disabled, the instance returns
-> `404` and the CLI prints a hint explaining how to enable it.
+> **Beta feature:** n8n packages are still under development and there may be breaking changes on APIs.
 
 ## `package export`
 
-Export one or more workflows into a gzipped `.n8np` archive written to disk.
+Export workflows, folders, or projects into a gzipped `.n8np` archive written
+to disk. Each exported folder includes its nested folders. Provide workflow
+and/or folder IDs, or project IDs, but not both groups in the same command.
 
 ```bash
 n8n-cli package export --workflow-id=abc --output=export.n8np
 n8n-cli package export -w abc -w def -o team.n8np
+n8n-cli package export --folder-id=xyz -o folders.n8np
+n8n-cli package export --project-id=abc -o project.n8np
+n8n-cli package export -p abc -p def -o projects.n8np
 ```
 
 | Flag | Description |
 |------|-------------|
-| `-w, --workflow-id` | Workflow ID to include. Repeat the flag to export several. (required) |
+| `-w, --workflow-id` | Workflow ID to include. Repeat the flag to export several. |
+| `-f, --folder-id` | Folder ID to include with its nested folders. Repeat the flag to export several. |
+| `-p, --project-id` | Project ID to include. Repeat the flag to export several. |
 | `-o, --output` | File to write the package to. Defaults to `export.n8np`. |
 
-Requires the API key to hold the `workflow:export` scope.
+Provide at least one `--workflow-id`, `--folder-id`, or `--project-id`. Requires
+the API key to hold `workflow:export` when exporting workflows or folders, or
+`project:export` when exporting projects.
 
 ## `package import`
 

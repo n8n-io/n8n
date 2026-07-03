@@ -3,7 +3,7 @@ import {
 	type BuiltTool,
 	type McpServerConfig as NativeMcpServerConfig,
 } from '@n8n/agents';
-import type { Result } from 'n8n-workflow';
+import type { Result } from '@n8n/utils/result';
 import { UserError } from 'n8n-workflow';
 
 import {
