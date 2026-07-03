@@ -45,6 +45,36 @@ export class InstanceAiWorkflowSetup {
 		return this.root.getByRole('button', { name: /^(Apply|Continue)$/ });
 	}
 
+	getGuidedCredentialForm(): Locator {
+		return this.root.getByTestId('instance-ai-credential-form');
+	}
+
+	/** Read-only line for a hint-prefilled field, e.g. "Name: Authorization". */
+	getGuidedStaticField(text: string): Locator {
+		return this.root.getByTestId('credential-hint-static-field').filter({ hasText: text });
+	}
+
+	getGuidedSecretInput(): Locator {
+		// N8nInput forwards data-* attrs to the native input element.
+		return this.root.getByTestId('credential-hint-secret-input');
+	}
+
+	getGuidedDocsLink(): Locator {
+		return this.root.getByTestId('credential-hint-docs-link');
+	}
+
+	getShowAllFieldsLink(): Locator {
+		return this.root.getByTestId('credential-hint-show-all');
+	}
+
+	getBackToSimpleViewLink(): Locator {
+		return this.root.getByTestId('credential-hint-show-guided');
+	}
+
+	getGuidedSubmitButton(): Locator {
+		return this.root.getByTestId('instance-ai-credential-form-submit');
+	}
+
 	getLaterButton(): Locator {
 		return this.root.getByRole('button', { name: 'Skip setup for now' });
 	}
