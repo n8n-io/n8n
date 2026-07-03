@@ -25,6 +25,8 @@ import {
 	createLazyWorkspaceRuntimeSkillSource,
 	createScopedWorkspace,
 	getPromptWorkspaceRoot,
+	getPromptSandboxInstructions,
+	getPromptFilesystemInstructions,
 	getWorkspaceRoot,
 	loadInstanceAiRuntimeSkillSource,
 	createInstanceAiTraceContext,
@@ -863,6 +865,12 @@ export class InstanceAiService {
 			// Keep billing stopped/errored resumed runs (see stream-options builder).
 			recoverUsageOnAbort: true,
 			persistence: { resourceId: user.id, threadId },
+			// Must mirror buildOrchestratorAgentStreamOptions: without this request-level
+			// cache directive, resumed (HITL) turns send no cache_control, so Anthropic
+			// reprocesses the whole conversation uncached on every resume (~100K tokens).
+			providerOptions: {
+				anthropic: { cacheControl: { type: 'ephemeral' } },
+			},
 			...(this.isRunDebugEnabled()
 				? createRunDebugStepHooks(this.runDebugBuffer, { runId, threadId })
 				: {}),
@@ -1930,6 +1938,11 @@ export class InstanceAiService {
 				};
 
 				runtimeWorkspace = createLazyRuntimeWorkspace({
+					// Stable across resumes: keeps the sandbox/filesystem description out
+					// of the cache-busting path (the lazy handle isn't rehydrated per
+					// rebuild, so resolution-dependent text would shift the cached prefix).
+					sandboxInstructions: getPromptSandboxInstructions(sandboxConfig.provider),
+					filesystemInstructions: getPromptFilesystemInstructions(sandboxConfig.provider),
 					ensureWorkspace: async () =>
 						await scopeWorkspaceForAgent((await getSetupSandboxEntry())?.workspace),
 				});
