@@ -24,10 +24,9 @@ const DEFAULT_CLAIM_BATCH_SIZE = 100;
  * reaper that reclaims tasks whose lease expired is a separate concern.
  *
  * The terminal transitions are guarded on `claimedBy` (not the lease epoch), so a
- * handler must finish within the lease: fencing against a stalled-then-reclaimed
- * owner is added with the reaper. Handlers are expected to hand off quickly; the
- * lease-renewal heartbeat for longer ones lands with the reaper, which is what
- * makes renewal matter.
+ * handler must finish within the lease; fencing against a stalled-then-reclaimed
+ * owner lands with the reaper. Handlers are expected to hand off quickly; the
+ * lease-renewal heartbeat for longer ones lands with the reaper too.
  */
 @Service()
 export class Executor {
@@ -130,7 +129,7 @@ export class Executor {
 	 * a lease expiry is a benign no-op at every step, never an error.
 	 */
 	async fire(host: string, task: ClaimedTask): Promise<void> {
-		// Guard + started stamp in one write. 0 rows => deleted or reclaimed; don't
+		// Guard + set `startedAt` in one write. 0 rows => deleted or reclaimed; don't
 		// dispatch an execution for work that is gone or no longer ours.
 		const started = await this.taskRepository.markStarted(host, task.id);
 		if (started === 0) return;
@@ -171,16 +170,15 @@ export class Executor {
 	}
 
 	/**
-	 * Cancel any scheduled-but-not-yet-fired timers and release the claims still held
-	 * for them (shutdown). Without the release, claimed-but-unfired tasks stay
-	 * `running`+leased and are orphaned until the reaper reclaims them.
+	 * Cancel scheduled-but-not-yet-fired timers and release the claims held for them
+	 * (shutdown). Without the release, claimed-but-unfired tasks stay `running`+leased
+	 * and are orphaned until the reaper reclaims them.
 	 *
 	 * Driver contract: the caller must stop invoking {@link claimAndSchedule} before
-	 * calling this. There is no in-flight guard: a `claimAndSchedule` running
-	 * concurrently could still schedule timers after `cancelAll`, and the entries it
-	 * adds would be dropped by `claimed.clear()` below, leaving those tasks to fire
-	 * post-stop and never get released (recovered only by the reaper). A tick and
-	 * stop must not overlap.
+	 * calling this. There is no in-flight guard, so a concurrent `claimAndSchedule`
+	 * could schedule timers after `cancelAll` whose entries `claimed.clear()` then
+	 * drops, leaving those tasks to fire post-stop and be recovered only by the
+	 * reaper. A tick and stop must not overlap.
 	 */
 	async stop(): Promise<void> {
 		this.timer.cancelAll();

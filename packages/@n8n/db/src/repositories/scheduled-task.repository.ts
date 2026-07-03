@@ -13,7 +13,7 @@ export interface ClaimDueTasksOptions {
 	taskTypes: string[];
 	/** How far past `now` to reach, so a task due before the next poll is claimed early and fired precisely. */
 	lookaheadMs: number;
-	/** Lease duration stamped on claimed rows (`leaseExpiresAt = now + leaseMs`). */
+	/** Lease duration set on claimed rows (`leaseExpiresAt = now + leaseMs`). */
 	leaseMs: number;
 	/** Cap on how many rows a single claim takes. */
 	batchSize: number;
@@ -52,20 +52,18 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	}
 
 	/**
-	 * Claim up to `batchSize` due `pending` tasks for this instance, transitioning
-	 * them to `running`, stamping `claimedBy`/`leaseExpiresAt` and bumping
-	 * `leaseEpoch` (the fencing token). Due-ness uses the DB clock, never an
-	 * instance clock, and reaches `lookaheadMs` into the future so the executor can
-	 * fire each task precisely at its `runAt`.
+	 * Claim up to `batchSize` due `pending` tasks for this instance: set them
+	 * `running`, set `claimedBy`/`leaseExpiresAt` and bump `leaseEpoch` (the fencing
+	 * token). Due-ness uses the DB clock, and reaches `lookaheadMs` into the future
+	 * so the executor can fire each task precisely at its `runAt`.
 	 *
-	 * Supersede (skipping a stale occurrence when a newer one exists) is not done
-	 * here: done correctly it needs the misfire grace window and per-schedule policy
-	 * (coalesce/skip vs fire-all), which don't exist yet. It lands with the reaper
-	 * and misfire policy, which share one past-grace + policy condition.
+	 * Supersede (skipping a stale occurrence when a newer one exists) is deferred: it
+	 * needs the misfire grace window and per-schedule policy (coalesce/skip vs
+	 * fire-all), which land with the reaper.
 	 *
 	 * Concurrent claimers never take the same row: Postgres skips locked rows
-	 * (`FOR UPDATE SKIP LOCKED`); SQLite serialises claimers via the sqlite-pooled
-	 * driver's `BEGIN IMMEDIATE` transaction, which reserves the write lock upfront.
+	 * (`FOR UPDATE SKIP LOCKED`); SQLite serialises via the sqlite-pooled driver's
+	 * `BEGIN IMMEDIATE`, which reserves the write lock upfront.
 	 */
 	async claimDueTasks(opts: ClaimDueTasksOptions): Promise<ScheduledTask[]> {
 		if (opts.taskTypes.length === 0) return [];
@@ -146,20 +144,20 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	}
 
 	/**
-	 * Stamp `startedAt` on a task we are about to dispatch, guarded so it only
-	 * affects a row still `running` and owned by `host`. Doubles as the pre-dispatch
-	 * existence check: 0 rows means the row was cascade-deleted or reclaimed, so the
-	 * caller must not dispatch. Returns rows affected (0 = benign, 1 = proceed).
+	 * Set `startedAt` on a task about to dispatch, guarded so it only affects a row
+	 * still `running` and owned by `host`. Doubles as the pre-dispatch existence
+	 * check: 0 rows means the row was deleted or reclaimed, so don't dispatch.
+	 * Returns rows affected (0 = benign, 1 = proceed).
 	 */
 	async markStarted(host: string, id: string): Promise<number> {
-		return await this.runGuardedUpdate(host, id, { startedAt: () => this.dbNow() });
+		return await this.runGuardedUpdate(host, id, { startedAt: () => this.makeDbNowLiteral() });
 	}
 
 	/** Success: `running` -> `succeeded`. Guarded; 0 rows affected is a benign no-op. */
 	async completeTask(host: string, id: string): Promise<number> {
 		return await this.runGuardedUpdate(host, id, {
 			status: ScheduledTaskStatus.Succeeded,
-			finishedAt: () => this.dbNow(),
+			finishedAt: () => this.makeDbNowLiteral(),
 		});
 	}
 
@@ -170,7 +168,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	async failTaskTerminal(host: string, id: string, errorMessage: string): Promise<number> {
 		return await this.runGuardedUpdate(host, id, {
 			status: ScheduledTaskStatus.Failed,
-			finishedAt: () => this.dbNow(),
+			finishedAt: () => this.makeDbNowLiteral(),
 			attempts: () => 'attempts + 1',
 			errorMessage,
 		});
@@ -178,9 +176,9 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 
 	/**
 	 * Retryable failure: `running` -> `pending`, count the attempt and push `runAt`
-	 * out by the backoff so the task waits before running again. Clears the claim and
-	 * lease so the row is cleanly re-claimable (and satisfies the running-lease CHECK).
-	 * Guarded; 0 rows affected is a benign no-op.
+	 * out by the backoff so the task waits before retrying. Clears the claim and lease
+	 * so the row is re-claimable (and satisfies the running-lease CHECK). Guarded;
+	 * 0 rows affected is a benign no-op.
 	 */
 	async rescheduleTask(
 		host: string,
@@ -190,7 +188,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	): Promise<number> {
 		return await this.runGuardedUpdate(host, id, {
 			status: ScheduledTaskStatus.Pending,
-			runAt: () => this.dbNowPlusMs(backoffMs),
+			runAt: () => this.makeDbNowPlusMsLiteral(backoffMs),
 			attempts: () => 'attempts + 1',
 			errorMessage,
 			claimedBy: null,
@@ -237,13 +235,13 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 		return this.globalConfig.database.type === 'postgresdb';
 	}
 
-	/** SQL expression for the DB-clock `now`, per dialect (never an instance clock). */
-	private dbNow(): string {
+	/** DB-clock `now`, per dialect (never an instance clock). */
+	private makeDbNowLiteral(): string {
 		return this.isPostgres() ? 'now()' : "STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')";
 	}
 
-	/** SQL expression for the DB-clock `now` plus a millisecond offset, per dialect. `ms` is caller-computed (safe to inline). */
-	private dbNowPlusMs(ms: number): string {
+	/** DB-clock `now` plus a millisecond offset, per dialect. `ms` is caller-computed (safe to inline). */
+	private makeDbNowPlusMsLiteral(ms: number): string {
 		const rounded = Math.round(ms);
 		return this.isPostgres()
 			? `now() + (${rounded} || ' milliseconds')::interval`
