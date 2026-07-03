@@ -11,6 +11,7 @@ import type { ExecutionOptions, TokenUsage } from '../../types/sdk/agent';
 import type { AgentMessage } from '../../types/sdk/message';
 import { loadAi } from '../model/lazy-ai';
 import { fromAiFinishReason, fromAiMessages } from '../model/messages';
+import { getModelProvider } from '../model/prompt-cache';
 import { createRawUsageReader, type RawUsageReader } from '../model/raw-usage';
 import { convertChunk, toTokenUsage } from '../streaming/stream';
 import type { StreamWriterGuard } from '../streaming/stream-writer-guard';
@@ -32,6 +33,9 @@ export class StreamSink implements RunOutputSink<void> {
 	// Text streamed for the in-flight turn, retained so a stop landing mid-response
 	// can still persist what the user already saw. Cleared once the turn is folded.
 	private partialText = '';
+	// Prompt block reason (e.g. Google's `promptFeedback.blockReason`) captured
+	// from raw chunks, so an output-less blocked request can report why.
+	private promptBlockReason: string | undefined;
 
 	constructor(
 		private readonly guard: StreamWriterGuard,
@@ -100,6 +104,11 @@ export class StreamSink implements RunOutputSink<void> {
 		this.rawUsageReader = this.options?.recoverUsageOnAbort
 			? createRawUsageReader(this.services.modelId)
 			: undefined;
+		this.promptBlockReason = undefined;
+		// Google reports prompt safety blocks only via `promptFeedback` on the raw
+		// stream — no error, no content — so raw chunks are required to explain an
+		// otherwise silent empty response.
+		const wantsBlockReason = getModelProvider(this.services.modelId) === 'google';
 		const { streamText } = loadAi();
 		const result = streamText({
 			model: ctx.model,
@@ -108,7 +117,7 @@ export class StreamSink implements RunOutputSink<void> {
 			abortSignal: ctx.abortSignal,
 			// Surface the provider's raw message_start/message_delta events so an
 			// aborted run can recover its usage — the SDK reports none on abort.
-			...(this.rawUsageReader ? { includeRawChunks: true } : {}),
+			...(this.rawUsageReader !== undefined || wantsBlockReason ? { includeRawChunks: true } : {}),
 			...(ctx.hasTools ? { tools: ctx.aiTools } : {}),
 			...(ctx.providerOptions ? { providerOptions: ctx.providerOptions } : {}),
 			...(ctx.outputSpec ? { output: ctx.outputSpec } : {}),
@@ -124,6 +133,10 @@ export class StreamSink implements RunOutputSink<void> {
 			// reaches the post-loop awaits) can still be billed via getAbortFinish.
 			if (chunk.type === 'raw') {
 				this.rawUsageReader?.capture(chunk.rawValue);
+				if (wantsBlockReason) {
+					const blockReason = extractPromptBlockReason(chunk.rawValue);
+					if (blockReason) this.promptBlockReason = blockReason;
+				}
 				continue;
 			}
 			// Filter only the SDK's terminal `finish` chunk — the runtime emits its
@@ -176,6 +189,7 @@ export class StreamSink implements RunOutputSink<void> {
 			toolCalls: await result.toolCalls,
 			structuredOutput:
 				ctx.outputSpec && aiFinishReason !== 'tool-calls' ? await result.output : undefined,
+			...(this.promptBlockReason && { promptBlockReason: this.promptBlockReason }),
 		};
 	}
 
@@ -251,4 +265,17 @@ export class StreamSink implements RunOutputSink<void> {
 		this.services.emitAgentEnd(list.responseDelta());
 		await this.guard.close();
 	}
+}
+
+/**
+ * Pull a prompt block reason out of a raw provider stream event. Shape matches
+ * Google's `promptFeedback.blockReason` (e.g. `PROHIBITED_CONTENT`); other
+ * providers simply never match.
+ */
+function extractPromptBlockReason(rawValue: unknown): string | undefined {
+	if (typeof rawValue !== 'object' || rawValue === null) return undefined;
+	const feedback = (rawValue as { promptFeedback?: unknown }).promptFeedback;
+	if (typeof feedback !== 'object' || feedback === null) return undefined;
+	const blockReason = (feedback as { blockReason?: unknown }).blockReason;
+	return typeof blockReason === 'string' && blockReason ? blockReason : undefined;
 }

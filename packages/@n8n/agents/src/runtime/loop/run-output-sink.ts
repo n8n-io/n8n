@@ -33,6 +33,12 @@ export interface ModelTurnResult {
 	}>;
 	/** Resolved structured output, only when an output spec is set and the turn finished. */
 	structuredOutput: unknown;
+	/**
+	 * Provider-reported prompt block reason (e.g. Google's
+	 * `promptFeedback.blockReason`) when the request was rejected before any
+	 * output was generated. Only observable from raw stream chunks.
+	 */
+	promptBlockReason?: string;
 }
 
 /** Per-iteration inputs for the LLM call, assembled by the shared loop. */

@@ -21,6 +21,37 @@ export function stringifyError(error: unknown): string {
 	return error instanceof Error ? `${error.name}: ${error.message}` : String(error);
 }
 
+/**
+ * Finish reasons that indicate the provider rejected or filtered the request
+ * when they arrive with zero output. `stop`/`length` with empty output are the
+ * model's own (odd but legal) choice; `tool-calls` always carries calls;
+ * `error` surfaces through the SDK's thrown error instead.
+ */
+const EMPTY_RESPONSE_ERROR_FINISH_REASONS = new Set(['other', 'unknown', 'content-filter']);
+
+/**
+ * Describe a turn that produced no output at all, or `undefined` when the turn
+ * doesn't look like a provider rejection. Some providers fail this way rather
+ * than erroring — e.g. Google reports a safety block only via
+ * `promptFeedback.blockReason` and streams zero content — and without a thrown
+ * error the run would end in silence.
+ */
+export function describeEmptyModelResponse(turn: {
+	aiFinishReason: string;
+	newMessages: AgentMessage[];
+	promptBlockReason?: string;
+}): string | undefined {
+	if (turn.newMessages.length > 0) return undefined;
+	if (!EMPTY_RESPONSE_ERROR_FINISH_REASONS.has(turn.aiFinishReason)) return undefined;
+
+	const guidance =
+		'This can be a provider-side false positive — try rephrasing the message, clearing the chat history, or switching models.';
+	if (turn.promptBlockReason) {
+		return `The model provider blocked this request (${turn.promptBlockReason}) and returned no output (finish reason: ${turn.aiFinishReason}). ${guidance}`;
+	}
+	return `The model returned no output (finish reason: ${turn.aiFinishReason}). The provider may have blocked or filtered the request. ${guidance}`;
+}
+
 /** Extract all settled (resolved or rejected) tool-call blocks from a flat list of agent messages. */
 export function extractSettledToolCalls(messages: AgentMessage[]): ContentToolCall[] {
 	return messages
