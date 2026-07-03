@@ -158,14 +158,32 @@ const interactiveAttrs = computed(() =>
 	props.clickable ? { role: 'button', tabindex: 0, 'aria-label': props.title || undefined } : {},
 );
 
+// A clickable row must not hijack activations meant for a nested interactive control (a button,
+// link, or input placed in a slot): those would otherwise bubble to the row's handlers and fire
+// the row click on top of the control's own action. Clicks on the row's non-interactive content
+// (title, description, the presentational N8nSettingsRowConfigure) still activate the row.
+function isFromNestedInteractive(event: Event): boolean {
+	const { target, currentTarget } = event;
+	if (!(target instanceof Element) || !(currentTarget instanceof Element)) {
+		return false;
+	}
+	const interactive = target.closest('button, a[href], input, select, textarea, [tabindex]');
+	return interactive !== null && interactive !== currentTarget;
+}
+
 function onActivate(event: MouseEvent) {
-	if (props.clickable) {
+	if (props.clickable && !isFromNestedInteractive(event)) {
 		emit('click', event);
 	}
 }
 
 function onKeydown(event: KeyboardEvent) {
 	if (!props.clickable) {
+		return;
+	}
+	// Key events only activate the row when the row itself is focused. When focus sits on a
+	// nested control, Enter/Space belongs to that control (and preventDefault would break it).
+	if (event.target !== event.currentTarget) {
 		return;
 	}
 	if (event.key === 'Enter' || event.key === ' ') {

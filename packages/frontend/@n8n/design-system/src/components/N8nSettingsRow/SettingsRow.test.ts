@@ -216,6 +216,39 @@ describe('N8nSettingsRow', () => {
 			expect(emitted().click).toHaveLength(1);
 		});
 
+		it('does not emit click when a keydown originates from a nested control', async () => {
+			const { emitted } = render(N8nSettingsRow, {
+				props: { title: 'Passkey', clickable: true },
+				slots: { action: '<button data-test-id="nested-control">Manage</button>' },
+			});
+
+			await fireEvent.keyDown(screen.getByTestId('nested-control'), { key: 'Enter' });
+			await fireEvent.keyDown(screen.getByTestId('nested-control'), { key: ' ' });
+
+			expect(emitted().click).toBeUndefined();
+		});
+
+		it('does not emit click when a click originates from a nested control', async () => {
+			const { emitted } = render(N8nSettingsRow, {
+				props: { title: 'Passkey', clickable: true },
+				slots: { action: '<button data-test-id="nested-control">Manage</button>' },
+			});
+
+			await fireEvent.click(screen.getByTestId('nested-control'));
+
+			expect(emitted().click).toBeUndefined();
+		});
+
+		it('still emits click for clicks on non-interactive row content', async () => {
+			const { emitted } = render(N8nSettingsRow, {
+				props: { title: 'Passkey', description: 'Sign in with your device.', clickable: true },
+			});
+
+			await fireEvent.click(screen.getByText('Passkey'));
+
+			expect(emitted().click).toHaveLength(1);
+		});
+
 		it('does not emit click for non-activation keys', async () => {
 			const { container, emitted } = render(N8nSettingsRow, {
 				props: { title: 'Passkey', clickable: true },
