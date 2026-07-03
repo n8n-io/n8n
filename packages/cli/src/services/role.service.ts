@@ -181,19 +181,21 @@ export class RoleService {
 			return [];
 		}
 
-		if (scopeSlugs.some((slug) => !CUSTOM_ROLE_SCOPE_WHITELIST[roleType].has(slug))) {
-			const invalidScopes = scopeSlugs.filter(
+		const scopes = await this.scopeRepository.findByList(scopeSlugs);
+		if (scopes.length !== scopeSlugs.length) {
+			const invalidScopes = scopeSlugs.filter((slug) => !scopes.some((s) => s.slug === slug));
+			throw new Error(`The following scopes are invalid: ${invalidScopes.join(', ')}`);
+		}
+
+		const resolvedScopes = scopes.map((s) => s.slug);
+
+		if (resolvedScopes.some((slug) => !CUSTOM_ROLE_SCOPE_WHITELIST[roleType].has(slug))) {
+			const invalidScopes = resolvedScopes.filter(
 				(slug) => !CUSTOM_ROLE_SCOPE_WHITELIST[roleType].has(slug),
 			);
 			throw new BadRequestError(
 				`The following scopes are not allowed for ${roleType} roles: ${invalidScopes.join(', ')}`,
 			);
-		}
-
-		const scopes = await this.scopeRepository.findByList(scopeSlugs);
-		if (scopes.length !== scopeSlugs.length) {
-			const invalidScopes = scopeSlugs.filter((slug) => !scopes.some((s) => s.slug === slug));
-			throw new Error(`The following scopes are invalid: ${invalidScopes.join(', ')}`);
 		}
 
 		return scopes;
