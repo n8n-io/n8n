@@ -13,7 +13,7 @@ import AnimatedCollapsibleContent from './AnimatedCollapsibleContent.vue';
 import ButtonLike from './ButtonLike.vue';
 import DataSection from './DataSection.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
-import ToolCallStep from './ToolCallStep.vue';
+import { N8nToolCallStep as ToolCallStep } from '@n8n/design-system';
 
 const props = withDefaults(
 	defineProps<{
