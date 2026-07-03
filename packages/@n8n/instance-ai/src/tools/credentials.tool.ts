@@ -2,7 +2,7 @@
  * Consolidated credentials tool — list, get, delete, search-types, setup, test.
  */
 import { Tool } from '@n8n/agents';
-import { instanceAiConfirmationSeveritySchema } from '@n8n/api-types';
+import { credentialRequestSchema, instanceAiConfirmationSeveritySchema } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
@@ -31,6 +31,26 @@ const GENERIC_AUTH_TYPES = new Set([
 // ── Shared fields (single source of truth for fields used across actions) ───
 
 const credentialIdField = z.string().describe('Credential ID');
+
+/** Model-facing schema for the inline credential-creation recipe. */
+export const setupHintField = z
+	.object({
+		prefill: z
+			.record(z.string())
+			.describe(
+				'Exact values for the credential\'s fields, keyed by field name (e.g. httpHeaderAuth has "name" and "value"). Put the placeholder sentinel `<__PLACEHOLDER_VALUE__label__>` where the user\'s secret goes — e.g. value: "Key <__PLACEHOLDER_VALUE__fal.ai API key__>". Fields not listed keep their defaults. NEVER include a real secret value.',
+			),
+		docsUrl: z
+			.string()
+			.optional()
+			.describe(
+				"URL of the page where the user obtains the secret (the provider's API-keys / tokens page).",
+			),
+		suggestedName: z.string().optional().describe('Display name for the created credential.'),
+	})
+	.describe(
+		"Recipe for creating this credential so the user only has to paste their secret(s) — the other fields are pre-filled. Provide it for generic auth types (httpHeaderAuth, httpQueryAuth, httpBasicAuth, httpBearerAuth, httpCustomAuth) whenever you know the provider's auth scheme; ground it in the provider's documentation, never guess the format.",
+	);
 
 // ── Action schemas ─────────────────────────────────────────────────────────
 
@@ -102,6 +122,7 @@ const setupAction = z.object({
 					.describe(
 						'Suggested display name for the credential (e.g. "Linear API key"). Pre-fills the name field when creating a new credential.',
 					),
+				setupHint: setupHintField.optional(),
 			}),
 		)
 		.describe('List of credentials to set up'),
@@ -227,16 +248,7 @@ const suspendSchema = z.object({
 	requestId: z.string(),
 	message: z.string(),
 	severity: instanceAiConfirmationSeveritySchema,
-	credentialRequests: z
-		.array(
-			z.object({
-				credentialType: z.string(),
-				reason: z.string(),
-				existingCredentials: z.array(z.object({ id: z.string(), name: z.string() })),
-				suggestedName: z.string().optional(),
-			}),
-		)
-		.optional(),
+	credentialRequests: z.array(credentialRequestSchema).optional(),
 	projectId: z.string().optional(),
 	credentialFlow: z.object({ stage: z.enum(['generic', 'finalize']) }).optional(),
 });
@@ -355,7 +367,12 @@ async function handleSetup(
 	if (resumeData === undefined || resumeData === null) {
 		const credentialRequests = await Promise.all(
 			input.credentials.map(
-				async (req: { credentialType: string; reason?: string; suggestedName?: string }) => {
+				async (req: {
+					credentialType: string;
+					reason?: string;
+					suggestedName?: string;
+					setupHint?: z.infer<typeof setupHintField>;
+				}) => {
 					const existing = await context.credentialService.list({
 						type: req.credentialType,
 						...(context.projectId ? { projectId: context.projectId } : {}),
@@ -365,6 +382,7 @@ async function handleSetup(
 						reason: req.reason ?? `Required for ${req.credentialType}`,
 						existingCredentials: existing.map((c) => ({ id: c.id, name: c.name })),
 						...(req.suggestedName ? { suggestedName: req.suggestedName } : {}),
+						...(req.setupHint ? { setupHint: req.setupHint } : {}),
 					};
 				},
 			),

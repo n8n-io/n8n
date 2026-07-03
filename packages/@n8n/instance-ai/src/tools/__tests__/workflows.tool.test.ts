@@ -5,6 +5,7 @@ import { executeTool } from '../../__tests__/tool-test-utils';
 import type { InstanceAiContext } from '../../types';
 import {
 	analyzeWorkflow,
+	applyCredentialHints,
 	applyNodeChanges,
 	buildCompletedReport,
 } from '../workflows/setup-workflow.service';
@@ -13,6 +14,7 @@ import { createWorkflowsTool, type WorkflowAction } from '../workflows.tool';
 // Mock the setup-workflow.service module to avoid pulling in heavy dependencies
 vi.mock('../workflows/setup-workflow.service', () => ({
 	analyzeWorkflow: vi.fn().mockResolvedValue([]),
+	applyCredentialHints: vi.fn(),
 	applyNodeCredentials: vi.fn().mockResolvedValue({ failed: [] }),
 	applyNodeParameters: vi.fn().mockResolvedValue({ failed: [] }),
 	applyNodeChanges: vi.fn().mockResolvedValue({ applied: [], failed: [] }),
@@ -903,6 +905,37 @@ describe('workflows tool', () => {
 				setupRequests,
 				workflowId: 'wf1',
 			});
+		});
+
+		it('should apply credential hints to the analyzed setup requests', async () => {
+			const setupRequests = [
+				{
+					node: { name: 'Generate Image', type: 'n8n-nodes-base.httpRequest' },
+					credentialType: 'httpHeaderAuth',
+					needsAction: true,
+				},
+			];
+			(analyzeWorkflow as Mock).mockResolvedValue(setupRequests);
+
+			const credentialHints = [
+				{
+					credentialType: 'httpHeaderAuth',
+					prefill: { name: 'Authorization', value: 'Key <__PLACEHOLDER_VALUE__fal.ai API key__>' },
+					docsUrl: 'https://fal.ai/dashboard/keys',
+				},
+			];
+
+			const context = createMockContext();
+			const suspend = vi.fn();
+
+			const tool = createWorkflowsTool(context, 'full');
+			await executeTool(tool, { action: 'setup', workflowId: 'wf1', credentialHints }, {
+				suspend,
+				resumeData: undefined,
+			} as never);
+
+			expect(applyCredentialHints).toHaveBeenCalledWith(setupRequests, credentialHints);
+			expect(suspend).toHaveBeenCalled();
 		});
 
 		it('should return success when no nodes need setup', async () => {

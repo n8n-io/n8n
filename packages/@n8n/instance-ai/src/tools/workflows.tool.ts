@@ -11,10 +11,12 @@ import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
+import { setupHintField } from './credentials.tool';
 import { formatTimestamp } from '../utils/format-timestamp';
 import { setupSuspendSchema, setupResumeSchema } from './workflows/setup-workflow.schema';
 import {
 	analyzeWorkflow,
+	applyCredentialHints,
 	applyNodeChanges,
 	buildCompletedReport,
 } from './workflows/setup-workflow.service';
@@ -90,6 +92,24 @@ const setupAction = z.object({
 		),
 	workflowId: z.string().describe('ID of the workflow'),
 	projectId: z.string().optional().describe('Project ID to scope credential creation to'),
+	credentialHints: z
+		.array(
+			setupHintField.extend({
+				credentialType: z
+					.string()
+					.describe('Credential type this recipe applies to (e.g. "httpHeaderAuth")'),
+				nodeName: z
+					.string()
+					.optional()
+					.describe(
+						'Restrict the recipe to one node — needed when several nodes use the same generic credential type for different services.',
+					),
+			}),
+		)
+		.optional()
+		.describe(
+			"Recipes for credentials the user will need to create during setup: pre-fill the credential's fields so the user only pastes their secret. Provide one per generic-auth credential (httpHeaderAuth, httpQueryAuth, httpBasicAuth, httpBearerAuth, httpCustomAuth) whose provider auth scheme you know — ground it in the provider's documentation, never guess.",
+		),
 });
 
 const validateAction = z.object({
@@ -565,6 +585,7 @@ async function handleSetupTestTrigger(
 	const refreshedRequests = await analyzeWorkflow(context, input.workflowId, {
 		[testTriggerNode]: triggerTestResult,
 	});
+	applyCredentialHints(refreshedRequests, input.credentialHints);
 
 	// Generate a new requestId so the frontend doesn't filter it
 	// as already-resolved from the previous suspend cycle
@@ -685,6 +706,7 @@ async function handleSetup(
 	// State 1: Analyze workflow and suspend for user setup
 	if (resumeData === undefined || resumeData === null) {
 		const setupRequests = await analyzeWorkflow(context, input.workflowId);
+		applyCredentialHints(setupRequests, input.credentialHints);
 
 		if (setupRequests.length === 0) {
 			return { success: true, reason: 'No nodes require setup.' };

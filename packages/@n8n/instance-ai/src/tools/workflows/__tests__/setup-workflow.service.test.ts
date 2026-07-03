@@ -3,14 +3,17 @@ import type { WorkflowJSON, NodeJSON } from '@n8n/workflow-sdk';
 import type { Mock } from 'vitest';
 
 import type { InstanceAiContext } from '../../../types';
+import type { SetupRequest } from '../setup-workflow.schema';
 import {
 	buildSetupRequests,
 	analyzeWorkflow,
+	applyCredentialHints,
 	applyNodeChanges,
 	applyNodeCredentials,
 	buildCompletedReport,
 	createCredentialCache,
 	stripStaleCredentialsFromWorkflow,
+	type CredentialHintInput,
 } from '../setup-workflow.service';
 
 // ---------------------------------------------------------------------------
@@ -1575,5 +1578,77 @@ describe('applyNodeCredentials — credential ownership revalidation', () => {
 				error: 'Node "GhostNode" was not found in the workflow',
 			},
 		]);
+	});
+});
+
+describe('applyCredentialHints', () => {
+	function makeRequest(nodeName: string, credentialType?: string): SetupRequest {
+		return {
+			node: {
+				name: nodeName,
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4.4,
+				parameters: {},
+				position: [0, 0] as [number, number],
+				id: `id-${nodeName}`,
+			},
+			...(credentialType ? { credentialType } : {}),
+			isTrigger: false,
+			needsAction: true,
+		};
+	}
+
+	const falHint: CredentialHintInput = {
+		credentialType: 'httpHeaderAuth',
+		prefill: { name: 'Authorization', value: 'Key <__PLACEHOLDER_VALUE__fal.ai API key__>' },
+		docsUrl: 'https://fal.ai/dashboard/keys',
+		suggestedName: 'fal.ai API Key',
+	};
+
+	it('attaches a type-wide hint to requests of that credential type', () => {
+		const requests = [makeRequest('Generate Image', 'httpHeaderAuth')];
+
+		applyCredentialHints(requests, [falHint]);
+
+		expect(requests[0].setupHint).toEqual({
+			prefill: falHint.prefill,
+			docsUrl: falHint.docsUrl,
+			suggestedName: falHint.suggestedName,
+		});
+	});
+
+	it('prefers a node-scoped hint over a type-wide one', () => {
+		const requests = [
+			makeRequest('Call Service A', 'httpHeaderAuth'),
+			makeRequest('Call Service B', 'httpHeaderAuth'),
+		];
+		const serviceBHint: CredentialHintInput = {
+			credentialType: 'httpHeaderAuth',
+			nodeName: 'Call Service B',
+			prefill: { name: 'X-API-Key', value: '<__PLACEHOLDER_VALUE__Service B key__>' },
+		};
+
+		applyCredentialHints(requests, [falHint, serviceBHint]);
+
+		expect(requests[0].setupHint?.prefill.name).toBe('Authorization');
+		expect(requests[1].setupHint?.prefill.name).toBe('X-API-Key');
+		expect(requests[1].setupHint).toEqual({ prefill: serviceBHint.prefill });
+	});
+
+	it('leaves requests without a matching credential type untouched', () => {
+		const requests = [makeRequest('Send Message', 'slackApi'), makeRequest('Trigger')];
+
+		applyCredentialHints(requests, [falHint]);
+
+		expect(requests[0].setupHint).toBeUndefined();
+		expect(requests[1].setupHint).toBeUndefined();
+	});
+
+	it('is a no-op without hints', () => {
+		const requests = [makeRequest('Generate Image', 'httpHeaderAuth')];
+
+		applyCredentialHints(requests, undefined);
+
+		expect(requests[0].setupHint).toBeUndefined();
 	});
 });
