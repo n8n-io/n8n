@@ -201,6 +201,7 @@ export async function runWorkflowTestCase(
 		n8nBaseUrl: config.baseUrl,
 	};
 
+	const isPrebuilt = config.prebuiltWorkflowId !== undefined;
 	const build = config.prebuiltWorkflowId
 		? await fetchPrebuiltBuild(client, config.prebuiltWorkflowId, logger)
 		: await buildWorkflow({
@@ -219,7 +220,7 @@ export async function runWorkflowTestCase(
 				laneTag: config.laneTag,
 			});
 
-	if (config.prebuiltWorkflowId && build.success && !build.workflowChecks) {
+	if (isPrebuilt && build.success && !build.workflowChecks) {
 		// No transcript in prebuilt mode, but the authored conversation still
 		// carries the user's request — feed it so prompt-aware checks (e.g.
 		// fulfills_user_request) grade against real intent instead of "".
@@ -236,7 +237,7 @@ export async function runWorkflowTestCase(
 	}
 	if (build.threadId) {
 		result.threadId = build.threadId;
-		if (!config.prebuiltWorkflowId) {
+		if (!isPrebuilt) {
 			result.runDebug = await captureThreadRunDebug(client, build.threadId, logger);
 		}
 	}
@@ -253,7 +254,7 @@ export async function runWorkflowTestCase(
 			testCase,
 			transcript: build.transcript,
 			buildSucceeded: build.success,
-			isPrebuilt: config.prebuiltWorkflowId !== undefined,
+			isPrebuilt,
 			logger,
 		});
 	const expectationsPromise: Promise<BuildExpectationResult[]> =
