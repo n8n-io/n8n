@@ -277,6 +277,9 @@ describe('AgentConfigService', () => {
 						gradient: {
 							from: '#111111',
 							to: '#222222',
+							angle: 135,
+							fromStop: 0,
+							toStop: 100,
 						},
 					},
 				},
