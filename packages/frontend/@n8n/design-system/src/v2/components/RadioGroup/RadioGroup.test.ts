@@ -1,8 +1,8 @@
 import userEvent from '@testing-library/user-event';
 import { render, waitFor } from '@testing-library/vue';
 
-import RadioGroupItem from './RadioGroupItem.vue';
 import RadioGroup from './RadioGroup.vue';
+import RadioGroupItem from './RadioGroupItem.vue';
 
 function renderRadioGroup(props: Record<string, unknown> = {}, slots: { default?: string } = {}) {
 	return render(RadioGroup, {

@@ -2,8 +2,8 @@ import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { action } from 'storybook/actions';
 import { ref } from 'vue';
 
-import RadioGroupItem from './RadioGroupItem.vue';
 import RadioGroup from './RadioGroup.vue';
+import RadioGroupItem from './RadioGroupItem.vue';
 
 const meta = {
 	title: 'Experimental/RadioGroup',

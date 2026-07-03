@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { reactivePick } from '@vueuse/core';
-import { RadioGroupRoot, useForwardPropsEmits } from './reka-ui';
 
 import type { RadioGroupEmits, RadioGroupProps, RadioGroupSlots } from './RadioGroup.types';
+import { RadioGroupRoot, useForwardPropsEmits } from './reka-ui';
 
 defineOptions({ inheritAttrs: false });
 

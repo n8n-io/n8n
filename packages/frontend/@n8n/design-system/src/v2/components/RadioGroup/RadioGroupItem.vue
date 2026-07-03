@@ -1,14 +1,13 @@
 <script setup lang="ts">
 import { computed, useId } from 'vue';
 
+import type { RadioGroupItemProps, RadioGroupItemSlots } from './RadioGroupItem.types';
 import {
 	injectRadioGroupRootContext,
 	Label,
 	RadioGroupIndicator,
 	RadioGroupItem as RekaRadioGroupItem,
 } from './reka-ui';
-
-import type { RadioGroupItemProps, RadioGroupItemSlots } from './RadioGroupItem.types';
 
 defineProps<RadioGroupItemProps>();
 const slots = defineSlots<RadioGroupItemSlots>();
