@@ -6,6 +6,7 @@ import { useI18n } from '@n8n/i18n';
 import { N8nIcon, N8nPopover, N8nText } from '@n8n/design-system';
 
 import { VIEWS } from '@/app/constants';
+import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { DEBOUNCE_TIME } from '@/app/constants/durations';
 import { useDebounce } from '@/app/composables/useDebounce';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
@@ -16,6 +17,8 @@ interface SwitcherItem {
 	name: string;
 	/** Parent folder name, shown inline before the workflow name. */
 	folder?: string;
+	active: boolean;
+	isSubWorkflow: boolean;
 }
 
 const props = defineProps<{
@@ -37,15 +40,29 @@ const workflows = ref<SwitcherItem[]>([]);
 async function fetchWorkflows(query: string) {
 	loading.value = true;
 	try {
-		const results = await workflowsListStore.searchWorkflows({
-			projectId: props.projectId,
-			query: query.trim() || undefined,
-			select: ['id', 'name', 'parentFolder'],
-		});
-		workflows.value = results.map(({ id, name, parentFolder }) => ({
+		const trimmedQuery = query.trim() || undefined;
+		// A workflow is a "sub-workflow" if it has an Execute Sub-workflow trigger,
+		// which the list response doesn't expose — so fetch those ids separately.
+		const [results, subWorkflows] = await Promise.all([
+			workflowsListStore.searchWorkflows({
+				projectId: props.projectId,
+				query: trimmedQuery,
+				select: ['id', 'name', 'parentFolder', 'active'],
+			}),
+			workflowsListStore.searchWorkflows({
+				projectId: props.projectId,
+				query: trimmedQuery,
+				triggerNodeTypes: [EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE],
+				select: ['id'],
+			}),
+		]);
+		const subWorkflowIds = new Set(subWorkflows.map(({ id }) => id));
+		workflows.value = results.map(({ id, name, parentFolder, active }) => ({
 			id,
 			name,
 			folder: parentFolder?.name,
+			active,
+			isSubWorkflow: subWorkflowIds.has(id),
 		}));
 	} catch (error) {
 		toast.showError(error, i18n.baseText('workflowDetails.switcher.title'));
@@ -121,10 +138,14 @@ async function selectWorkflow(id: string) {
 						:data-test-id="`workflow-switcher-option-${workflow.id}`"
 						@click="selectWorkflow(workflow.id)"
 					>
-						<N8nIcon
-							icon="check"
-							:class="[$style.check, { [$style.checkHidden]: workflow.id !== currentWorkflowId }]"
-						/>
+						<span :class="$style.indicator">
+							<span v-if="workflow.active" :class="$style.activeDot" />
+							<N8nIcon
+								v-else-if="workflow.isSubWorkflow"
+								icon="node:sub-workflow-trigger"
+								size="small"
+							/>
+						</span>
 						<span
 							:class="$style.optionText"
 							:title="workflow.folder ? `${workflow.folder} / ${workflow.name}` : workflow.name"
@@ -238,14 +259,21 @@ async function selectWorkflow(id: string) {
 	background-color: var(--color--background--light-2);
 }
 
-.check {
-	color: var(--color--text--shade-1);
-	font-size: var(--font-size--sm);
+// Fixed-width slot so workflow names stay aligned whether or not a row has a
+// status indicator.
+.indicator {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 16px;
 	flex-shrink: 0;
 }
 
-.checkHidden {
-	visibility: hidden;
+.activeDot {
+	width: var(--spacing--2xs);
+	height: var(--spacing--2xs);
+	border-radius: 50%;
+	background-color: var(--color--mint-600);
 }
 
 .optionText {
