@@ -122,6 +122,7 @@ import {
 	EDITOR_CONTEXT_CLOSE_TAG,
 	CREDENTIAL_CONTEXT_OPEN_TAG,
 	CREDENTIAL_CONTEXT_CLOSE_TAG,
+	cleanStoredUserMessage,
 	withCurrentDateTime,
 } from './internal-messages';
 import { INSTANCE_AI_RUN_TIMEOUT_REASON, InstanceAiLivenessService } from './liveness';
@@ -5028,8 +5029,11 @@ export class InstanceAiService {
 			const history = await memory.getMessages(threadId, { limit: 5 });
 			const userTexts = history.flatMap((m) => {
 				if (!('role' in m) || m.role !== 'user') return [];
-				const text = this.extractStoredMessageText(m.content);
-				return text.length > 0 ? [text] : [];
+				// Stored user messages carry service-injected blocks (<current-date-time>,
+				// task context). Strip them or a trivial "hey" looks substantial enough to
+				// title, and the injected blocks leak into the title prompt.
+				const text = cleanStoredUserMessage(this.extractStoredMessageText(m.content));
+				return text && text.length > 0 ? [text] : [];
 			});
 			if (userTexts.length === 0) return;
 			const userText = userTexts.join('\n');
