@@ -170,13 +170,23 @@ export class TestRunRepository extends Repository<TestRun> {
 		testRunId: string,
 		workflowId: string,
 	): Promise<TestRunSummary | null> {
-		return await this.findTestRunSummary({ id: testRunId, workflow: { id: workflowId } });
+		return await this.findTestRunSummary(
+			{ id: testRunId, workflow: { id: workflowId } },
+			{ minimalCases: true },
+		);
 	}
 
 	private async findTestRunSummary(
 		where: FindManyOptions<TestRun>['where'],
+		{ minimalCases = false }: { minimalCases?: boolean } = {},
 	): Promise<TestRunSummary | null> {
-		const testRun = await this.findOne({ where, relations: ['testCaseExecutions'] });
+		const testRun = await this.findOne({
+			where,
+			relations: { testCaseExecutions: true },
+			// `minimalCases` loads only what `finalResult`/`testCaseCount` need;
+			// `getTestRunSummaryById` serializes the full relation, so keeps all columns.
+			...(minimalCases ? { select: { testCaseExecutions: { id: true, status: true } } } : {}),
+		});
 
 		if (!testRun) return null;
 
