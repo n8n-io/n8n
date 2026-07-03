@@ -283,6 +283,7 @@ export class InstanceAiMcpRegistryService {
 				transport: resolvedServer.transport,
 				cacheKey: `registry-connection:${connection.id}`,
 				toolFilter: connection.toolFilter ?? undefined,
+				metadata: { serverSlug: resolvedServer.serverSlug, userId: user.id },
 			};
 
 			if (resolvedServer.authType === 'oauth2') {

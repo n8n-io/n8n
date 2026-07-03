@@ -8,7 +8,7 @@ import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 
 import { McpToolResolver } from './mcp-tool-resolver';
 import { wrapToolForApproval } from '../../sdk/tool';
-import type { McpServerConfig } from '../../types/sdk/mcp';
+import type { McpServerConfig, McpToolCallSettledEvent } from '../../types/sdk/mcp';
 import type { BuiltTool } from '../../types/sdk/tool';
 
 /** The raw result returned by an MCP tool call. */
@@ -178,8 +178,25 @@ export class McpConnection {
 	async callTool(name: string, args: Record<string, unknown>): Promise<McpCallToolResult> {
 		if (!this.client) throw new Error('MCP client not initialized; connect() must be called first');
 		const { CallToolResultSchema } = await loadMcpSdk();
-		const result = await this.client.callTool({ name, arguments: args }, CallToolResultSchema);
-		return result as McpCallToolResult;
+		try {
+			const result = (await this.client.callTool(
+				{ name, arguments: args },
+				CallToolResultSchema,
+			)) as McpCallToolResult;
+			this.notifyToolCallSettled({ toolName: name, success: result.isError !== true });
+			return result;
+		} catch (error) {
+			this.notifyToolCallSettled({ toolName: name, success: false });
+			throw error;
+		}
+	}
+
+	private notifyToolCallSettled(event: McpToolCallSettledEvent): void {
+		try {
+			this.config.onToolCallSettled?.(event);
+		} catch (error) {
+			console.error(`MCP tool call observer error for server "${this.config.name}":`, error);
+		}
 	}
 
 	async disconnect(): Promise<void> {
