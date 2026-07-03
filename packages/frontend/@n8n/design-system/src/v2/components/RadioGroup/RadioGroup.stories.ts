@@ -23,10 +23,6 @@ const meta = {
 			control: 'boolean',
 			description: 'Disables the entire radio group',
 		},
-		ariaLabel: {
-			control: 'text',
-			description: 'Accessible name when no visible group label is present',
-		},
 		defaultValue: {
 			control: 'text',
 			description: 'Initial selected value when used without v-model (uncontrolled)',
