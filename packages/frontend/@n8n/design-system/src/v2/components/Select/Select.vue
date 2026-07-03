@@ -306,6 +306,7 @@ const groups = computed<SelectItemProps[]>(() => {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+	min-width: 0;
 }
 
 .selectItem {
