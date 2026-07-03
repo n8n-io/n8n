@@ -394,6 +394,45 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		expect(registry.getRuntime(threadId)?.lastEventId).toBe(43);
 	});
 
+	test('an event replayed with an already-seen id is dropped', () => {
+		const threadId = activeThreadId;
+		const event = {
+			type: 'text-delta',
+			runId: 'run-1',
+			agentId: 'agent-root',
+			payload: { text: 'hello' },
+		};
+
+		capturedOnMessage!(makeSSEEvent(validRunStartEvent('run-1', 'agent-root'), '1'));
+		capturedOnMessage!(makeSSEEvent(event, '2'));
+		// e.g. an auto-reconnect replaying an id that arrived just before the disconnect
+		capturedOnMessage!(makeSSEEvent(event, '2'));
+
+		expect(registry.getRuntime(threadId)?.debugEvents).toHaveLength(2);
+	});
+
+	test('the reconnect cursor keeps the max seen id when producers interleave out of order', () => {
+		const threadId = activeThreadId;
+
+		capturedOnMessage!(makeSSEEvent(validRunStartEvent('run-1', 'agent-root'), '43'));
+		// A concurrent producer on another main can relay a lower id afterwards.
+		capturedOnMessage!(
+			makeSSEEvent(
+				{
+					type: 'text-delta',
+					runId: 'run-1',
+					agentId: 'agent-root',
+					payload: { text: 'hello' },
+				},
+				'42',
+			),
+		);
+
+		// The out-of-order event is still applied, but the cursor never regresses.
+		expect(registry.getRuntime(threadId)?.debugEvents).toHaveLength(2);
+		expect(registry.getRuntime(threadId)?.lastEventId).toBe(43);
+	});
+
 	test('deleting the last active thread clears stale routing state before the replacement thread starts', async () => {
 		const deletedThreadId = activeThreadId;
 		const previousEventSource = capturedInstance;

@@ -75,6 +75,8 @@ export interface PendingConfirmationItem {
 export type HistoricalHydrationStatus = 'applied' | 'stale' | 'skipped';
 
 const MAX_DEBUG_EVENTS = 1000;
+/** Mirrors the backend's per-thread event buffer cap (MAX_EVENTS_PER_THREAD × 2). */
+const MAX_SEEN_EVENT_IDS = 1000;
 
 /**
  * Cross-runtime hooks the store wires up at creation time.
@@ -271,6 +273,10 @@ export function createThreadRuntime(
 	const hydrationStatus = ref<'idle' | 'hydrating' | 'ready'>('idle');
 	const sseState = ref<InstanceAiSSEConnectionState>('disconnected');
 	const lastEventId = ref<number | undefined>(undefined);
+	// Event ids already applied on this thread — guards against replay overlap,
+	// e.g. an auto-reconnect replaying an id that already arrived just before
+	// the disconnect. Not reactive: only consulted inside onSSEMessage.
+	const seenEventIds = new Set<number>();
 	const amendContext = ref<{ agentId: string; role: string } | null>(null);
 	const activePlanEdit = ref<PlanEditContext | null>(null);
 	const updatingPlanRequestIds = reactive(new Set<string>());
@@ -538,9 +544,20 @@ export function createThreadRuntime(
 	// --- SSE lifecycle ---
 
 	function onSSEMessage(sseEvent: MessageEvent): void {
-		// Track last event ID for this thread (for reconnection)
-		if (sseEvent.lastEventId) {
-			lastEventId.value = Number(sseEvent.lastEventId);
+		// Event ids come from a shared per-thread sequence, so they are valid
+		// across mains — but concurrent producers on different mains can arrive
+		// interleaved out of order, so the reconnect cursor keeps the max seen
+		// rather than the latest, and duplicates are dropped by id.
+		const eventId = sseEvent.lastEventId ? Number(sseEvent.lastEventId) : undefined;
+		if (eventId !== undefined && Number.isFinite(eventId)) {
+			if (seenEventIds.has(eventId)) return;
+			seenEventIds.add(eventId);
+			if (seenEventIds.size > MAX_SEEN_EVENT_IDS) {
+				// Sets iterate in insertion order — evict the oldest (≈ lowest) id.
+				const oldest: number | undefined = seenEventIds.values().next().value;
+				if (oldest !== undefined) seenEventIds.delete(oldest);
+			}
+			lastEventId.value = Math.max(lastEventId.value ?? 0, eventId);
 		}
 		try {
 			const parsed = instanceAiEventSchema.safeParse(JSON.parse(String(sseEvent.data)));
@@ -757,6 +774,7 @@ export function createThreadRuntime(
 		runStateByGroupId.clear();
 		groupIdByRunId.clear();
 		lastEventId.value = undefined;
+		seenEventIds.clear();
 	}
 
 	function dispose(): void {
@@ -795,8 +813,10 @@ export function createThreadRuntime(
 				}
 				// Set SSE cursor to skip past events already covered by historical messages.
 				// This prevents duplicate messages when SSE replays in-memory events.
+				// Never move the cursor backwards: SSE may have advanced it while this
+				// request was in flight.
 				if (result.nextEventId !== null && result.nextEventId !== undefined) {
-					lastEventId.value = result.nextEventId - 1;
+					lastEventId.value = Math.max(lastEventId.value ?? 0, result.nextEventId - 1);
 				}
 				if (result.projectId) projectId.value = result.projectId;
 				return 'applied';
