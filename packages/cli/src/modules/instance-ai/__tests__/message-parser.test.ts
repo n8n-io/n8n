@@ -448,6 +448,92 @@ describe('parseStoredMessages', () => {
 			expect(assistant?.agentTree?.tasks?.tasks).toHaveLength(1);
 		});
 
+		it('should normalize a non-terminal (running) snapshot status to completed', () => {
+			const messages: StoredAgentMessage[] = [
+				{ id: 'msg-u', role: 'user', content: 'do it', createdAt: makeDate() },
+				{
+					id: 'msg-a',
+					role: 'assistant',
+					content: [{ type: 'text', text: 'Partial work' }],
+					createdAt: makeDate(1),
+				},
+			];
+			// A mid-run snapshot (e.g. persisted while active) that is otherwise empty. A
+			// reconstructed historical turn has no live stream, so it must not stay "busy".
+			const runningTree: InstanceAiAgentNode = {
+				agentId: 'agent-001',
+				role: 'orchestrator',
+				status: 'active',
+				textContent: '',
+				reasoning: '',
+				toolCalls: [],
+				children: [],
+				timeline: [],
+			};
+			const snapshots = [
+				{
+					tree: runningTree,
+					runId: 'run_x',
+					messageGroupId: 'mg_x',
+					createdAt: makeDate(2),
+					updatedAt: makeDate(2),
+				},
+			];
+
+			const result = parseStoredMessages(messages, snapshots);
+
+			const assistant = result.find((m) => m.role === 'assistant');
+			expect(assistant?.agentTree?.status).toBe('completed');
+		});
+
+		it('should settle a pending tool call when reconstructing a cancelled turn', () => {
+			const messages: StoredAgentMessage[] = [
+				{ id: 'msg-u', role: 'user', content: 'run tools', createdAt: makeDate() },
+				{
+					id: 'msg-a',
+					role: 'assistant',
+					content: [
+						{
+							type: 'tool-call',
+							toolCallId: 'tc-1',
+							toolName: 'gmail',
+							input: {},
+							state: 'pending',
+						},
+					],
+					createdAt: makeDate(1),
+				},
+			];
+			const cancelledTree: InstanceAiAgentNode = {
+				agentId: 'agent-001',
+				role: 'orchestrator',
+				status: 'cancelled',
+				cancellationReason: 'user',
+				textContent: '',
+				reasoning: '',
+				toolCalls: [],
+				children: [],
+				timeline: [],
+			};
+			const snapshots = [
+				{
+					tree: cancelledTree,
+					runId: 'run_x',
+					messageGroupId: 'mg_x',
+					createdAt: makeDate(2),
+					updatedAt: makeDate(2),
+				},
+			];
+
+			const result = parseStoredMessages(messages, snapshots);
+
+			const assistant = result.find((m) => m.role === 'assistant');
+			expect(assistant?.agentTree?.status).toBe('cancelled');
+			const toolCall = assistant?.agentTree?.toolCalls.find((t) => t.toolCallId === 'tc-1');
+			// No spinner that never resolves next to "You stopped this run".
+			expect(toolCall?.isLoading).toBe(false);
+		});
+
 		it('should aggregate a multi-row cancelled turn into one bubble, not just the last row', () => {
 			const messages: StoredAgentMessage[] = [
 				{ id: 'msg-u', role: 'user', content: 'Build something', createdAt: makeDate() },

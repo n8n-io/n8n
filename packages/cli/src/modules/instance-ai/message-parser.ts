@@ -212,6 +212,11 @@ function buildTimeline(
  * Build a flat agent tree (orchestrator only) from tool invocations.
  * Used when no snapshot is available, or when falling back from a degenerate one.
  * `status` is inherited from the snapshot so a `cancelled` run still reads as cancelled.
+ *
+ * A reconstructed tree is always historical — there is no live stream feeding it — so a
+ * non-terminal status is normalized to `completed` (a mid-run snapshot must not render as
+ * busy forever), and any tool call left loading on a stopped run is settled, mirroring the
+ * live `run-finish` reducer so a cancelled bubble doesn't show a spinner that never resolves.
  */
 function buildFlatAgentTree(
 	runId: string,
@@ -221,15 +226,20 @@ function buildFlatAgentTree(
 	parts?: StoredContentPart[],
 	status: InstanceAiAgentNode['status'] = 'completed',
 ): InstanceAiAgentNode {
+	const resolvedStatus = status === 'active' ? 'completed' : status;
+	const settledToolCalls =
+		resolvedStatus === 'cancelled' || resolvedStatus === 'error'
+			? toolCalls.map((tc) => (tc.isLoading ? { ...tc, isLoading: false } : tc))
+			: toolCalls;
 	return {
 		agentId: orchestratorAgentId(runId),
 		role: 'orchestrator',
-		status,
+		status: resolvedStatus,
 		textContent,
 		reasoning,
-		toolCalls,
+		toolCalls: settledToolCalls,
 		children: [],
-		timeline: buildTimeline(textContent, toolCalls, parts),
+		timeline: buildTimeline(textContent, settledToolCalls, parts),
 	};
 }
 
