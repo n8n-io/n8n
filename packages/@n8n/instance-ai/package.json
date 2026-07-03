@@ -86,7 +86,6 @@
   "devDependencies": {
     "@ai-sdk/anthropic": "catalog:",
     "@langchain/core": "catalog:",
-    "@n8n/ai-workflow-builder": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@types/luxon": "catalog:",
