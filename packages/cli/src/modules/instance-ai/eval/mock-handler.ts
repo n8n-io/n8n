@@ -339,6 +339,7 @@ async function generateMockResponse(
 	const requestPath = extractEndpointPath(request.url);
 	const requestMethod = request.method ?? 'GET';
 	const requestHostname = extractHostname(request.url);
+	const dateConstraints = extractDateFilterConstraints(request.body, request.qs);
 
 	for (let attempt = 0; attempt <= context.maxRetries; attempt++) {
 		try {
@@ -351,6 +352,7 @@ async function generateMockResponse(
 					hostname: requestHostname,
 				},
 				attempt === 0 ? LLM_CALL_TIMEOUT_MS : LLM_CALL_RETRY_TIMEOUT_MS,
+				dateConstraints,
 			);
 			applyEndpointNormalizers(request, spec);
 			return materializeSpec(spec);
@@ -401,6 +403,129 @@ function buildMissingUrlResponse(node: {
 		headers: { 'content-type': 'application/json' },
 		statusCode: 400,
 	};
+}
+
+// ---------------------------------------------------------------------------
+// Request date-filter validation
+// ---------------------------------------------------------------------------
+
+/** A date bound extracted from a request's filter parameters. */
+interface DateFilterConstraint {
+	/** The request key the bound came from (e.g. "gte", "since"). */
+	label: string;
+	/** Epoch ms lower bound (records must not be older). */
+	min?: number;
+	/** Epoch ms upper bound (records must not be newer). */
+	max?: number;
+}
+
+const MIN_DATE_KEY =
+	/^(gte|gt|since|after|created_?after|updated_?after|from|start_?(date|time))$/i;
+const MAX_DATE_KEY = /^(lte|lt|before|until|to|end_?(date|time))$/i;
+
+/** Give day-level slack on both sides so timezone/boundary jitter never triggers a rejection. */
+const DATE_FILTER_TOLERANCE_MS = 24 * 3600 * 1000;
+
+/** Parse an ISO-looking date string into epoch ms if it lands in a plausible filter window. */
+function parseFilterDate(value: unknown): number | undefined {
+	if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}/.test(value)) return undefined;
+	const ts = Date.parse(value);
+	if (Number.isNaN(ts)) return undefined;
+	// Filters far outside the present are not test windows — ignore them.
+	const twoYearsMs = 2 * 365 * 24 * 3600 * 1000;
+	if (Math.abs(ts - Date.now()) > twoYearsMs) return undefined;
+	return ts;
+}
+
+/**
+ * Collect date bounds from the request body and query — REST params
+ * (`?since=...`) and GraphQL filter variables (`variables: { since: ... }`,
+ * `filter: { createdAt: { gte: ... } }`) alike.
+ */
+export function extractDateFilterConstraints(
+	body: unknown,
+	qs?: Record<string, unknown>,
+): DateFilterConstraint[] {
+	const constraints: DateFilterConstraint[] = [];
+
+	const visit = (value: unknown, depth: number): void => {
+		if (depth > 6 || value === null || typeof value !== 'object') return;
+		if (Buffer.isBuffer(value)) return;
+		if (Array.isArray(value)) {
+			for (const entry of value) visit(entry, depth + 1);
+			return;
+		}
+		for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
+			if (MIN_DATE_KEY.test(key)) {
+				const ts = parseFilterDate(child);
+				if (ts !== undefined) constraints.push({ label: key, min: ts });
+			} else if (MAX_DATE_KEY.test(key)) {
+				const ts = parseFilterDate(child);
+				if (ts !== undefined) constraints.push({ label: key, max: ts });
+			}
+			visit(child, depth + 1);
+		}
+	};
+
+	visit(body, 0);
+	visit(qs, 0);
+	return constraints;
+}
+
+/**
+ * `"key": "<ISO date>"` pairs in the response body that fall outside every
+ * requested bound (with a ±1 day tolerance). Uses the LOOSEST bounds when the
+ * request carries several, so a value is only flagged when no reading of the
+ * request could admit it. Exported for reuse; the submit_response tool uses
+ * this for a one-shot soft rejection.
+ */
+export function findDateFilterViolations(
+	body: unknown,
+	constraints: DateFilterConstraint[],
+): string[] {
+	if (constraints.length === 0 || body === undefined || body === null) return [];
+
+	let serialized: string;
+	try {
+		serialized = JSON.stringify(body);
+	} catch {
+		return [];
+	}
+
+	const mins = constraints.filter((c) => c.min !== undefined).map((c) => c.min!);
+	const maxes = constraints.filter((c) => c.max !== undefined).map((c) => c.max!);
+	const loosestMin = mins.length > 0 ? Math.min(...mins) - DATE_FILTER_TOLERANCE_MS : undefined;
+	const loosestMax = maxes.length > 0 ? Math.max(...maxes) + DATE_FILTER_TOLERANCE_MS : undefined;
+
+	const violations: string[] = [];
+	const seen = new Set<string>();
+	const pattern = /"([A-Za-z0-9_]+)":"(\d{4}-\d{2}-\d{2}[^"]*)"/g;
+	let match: RegExpExecArray | null;
+	while ((match = pattern.exec(serialized)) !== null && violations.length < 3) {
+		const [, key, rawDate] = match;
+		const ts = Date.parse(rawDate);
+		if (Number.isNaN(ts)) continue;
+		const tooOld = loosestMin !== undefined && ts < loosestMin;
+		const tooNew = loosestMax !== undefined && ts > loosestMax;
+		if (!tooOld && !tooNew) continue;
+		const entry = `${key}=${rawDate}`;
+		if (seen.has(entry)) continue;
+		seen.add(entry);
+		violations.push(entry);
+	}
+
+	return violations;
+}
+
+/** Human-readable summary of the request's date bounds for the rejection message. */
+function describeDateConstraints(constraints: DateFilterConstraint[]): string {
+	return constraints
+		.map((c) => {
+			const bound = c.min ?? c.max!;
+			const side = c.min !== undefined ? '>=' : '<=';
+			return `${c.label} ${side} ${new Date(bound).toISOString().slice(0, 10)}`;
+		})
+		.join(', ');
 }
 
 // Body is constrained to object/array/null so the model can't smuggle malformed
@@ -460,9 +585,14 @@ interface SubmitCapture {
 	lastRejection?: string;
 	/** Set when `spec` came from a rejected submission kept as a fallback. */
 	softOnly?: boolean;
+	/** Set after the one-shot date-filter rejection — a resubmission is then accepted as-is. */
+	dateFilterWarned?: boolean;
 }
 
-function createSubmitResponseTool(capture: SubmitCapture) {
+function createSubmitResponseTool(
+	capture: SubmitCapture,
+	dateConstraints: DateFilterConstraint[] = [],
+) {
 	return new Tool('submit_response')
 		.description(
 			'Submit your final mock HTTP response. Submit one response; if the result starts with "Invalid:", fix the input and call submit_response again.',
@@ -511,6 +641,24 @@ function createSubmitResponseTool(capture: SubmitCapture) {
 					'Invalid: type="error" takes either body (JSON error) or textBody (text/XML error document), not both. Resubmit with exactly one.',
 				);
 			}
+			// One-shot deterministic check: prompt rules alone don't reliably stop
+			// mocks from returning records outside the request's date window (the
+			// single most recurring mock defect in CI). Soft-reject with the exact
+			// violations; a resubmission is accepted either way so a nested,
+			// legitimately-old date (e.g. a creator's registration date) can never
+			// dead-lock the generation.
+			if (input.type === 'json' && !capture.dateFilterWarned && dateConstraints.length > 0) {
+				const violations = findDateFilterViolations(input.body, dateConstraints);
+				if (violations.length > 0) {
+					capture.dateFilterWarned = true;
+					// Keep as soft fallback in case the agent never resubmits.
+					capture.spec = input;
+					capture.softOnly = true;
+					return reject(
+						`Invalid: the request filters by date (${describeDateConstraints(dateConstraints)}), but the response contains date values outside that window: ${violations.join(', ')}. Re-date or remove every record outside the requested window, then resubmit. If a flagged value belongs to a nested unrelated entity (not one of the filtered records), resubmit the same response to confirm it.`,
+					);
+				}
+			}
 			capture.spec = input;
 			capture.softOnly = false;
 			return 'Response submitted.';
@@ -543,6 +691,7 @@ async function callLlm(
 	userPrompt: string,
 	requestInfo: { serviceName: string; method: string; pathname: string; hostname?: string },
 	timeoutMs: number,
+	dateConstraints: DateFilterConstraint[] = [],
 ): Promise<MockResponseSpec> {
 	const capture: SubmitCapture = {};
 
@@ -559,7 +708,7 @@ async function callLlm(
 				requestInfo.hostname,
 			),
 		)
-		.tool(createSubmitResponseTool(capture));
+		.tool(createSubmitResponseTool(capture, dateConstraints));
 
 	const result = await agent.generate(userPrompt, {
 		abortSignal: AbortSignal.timeout(timeoutMs),
