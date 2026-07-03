@@ -263,6 +263,7 @@ function createCredential() {
 		undefined,
 		{
 			hideAskAssistant: true,
+			appendToBody: true,
 		},
 	);
 }
@@ -270,7 +271,7 @@ function createCredential() {
 function editCredential() {
 	const credentialId = currentChannelCredentialId.value;
 	if (credentialId) {
-		uiStore.openExistingCredential(credentialId, { hideAskAssistant: true });
+		uiStore.openExistingCredential(credentialId, { hideAskAssistant: true, appendToBody: true });
 	}
 }
 

@@ -1,12 +1,11 @@
 import { Logger } from '@n8n/backend-common';
 import { Get, RestController } from '@n8n/decorators';
 import { Response } from 'express';
-import { ensureError, jsonStringify } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 import { EventService } from '@/events/event.service';
-import { OAuthRequest } from '@/requests';
-
 import { OauthService, type OAuth1CredentialData } from '@/oauth/oauth.service';
+import { OAuthRequest } from '@/requests';
 
 @RestController('/oauth1-credential')
 export class OAuth1CredentialController {
@@ -96,10 +95,11 @@ export class OAuth1CredentialController {
 			}
 		} catch (e) {
 			const error = ensureError(e);
+			this.logger.error('OAuth1 callback failed', { error, cause: error.cause });
 			return this.oauthService.renderCallbackError(
 				res,
 				error.message,
-				'body' in error ? jsonStringify(error.body) : undefined,
+				this.oauthService.extractCallbackErrorReason(error),
 			);
 		}
 	}

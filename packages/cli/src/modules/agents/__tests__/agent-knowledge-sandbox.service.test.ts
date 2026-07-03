@@ -1,7 +1,8 @@
+import type { Mock } from 'vitest';
 import type { Logger } from '@n8n/backend-common';
 import type { AgentsConfig } from '@n8n/config';
 import { createHash } from 'node:crypto';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
 import type { AiService } from '../../../services/ai.service';
@@ -15,19 +16,18 @@ import type { AgentFileRepository } from '../repositories/agent-file.repository'
 import type { AgentRepository } from '../repositories/agent.repository';
 
 interface MockFilesystem {
-	uploadFiles: jest.Mock;
-	createFolder: jest.Mock;
-	deleteFile: jest.Mock;
+	uploadFiles: Mock;
+	createFolder: Mock;
+	deleteFile: Mock;
 }
 
 interface MockProcess {
-	executeCommand: jest.Mock<
-		Promise<{
+	executeCommand: Mock<
+		(...args: [string, string | undefined, Record<string, string> | undefined, number]) => Promise<{
 			exitCode: number;
 			result?: string;
 			artifacts?: { stdout?: string; stderr?: string };
-		}>,
-		[string, string | undefined, Record<string, string> | undefined, number]
+		}>
 	>;
 }
 
@@ -36,8 +36,8 @@ interface MockSandbox {
 	name: string;
 	state?: string;
 	volumes?: Array<{ volumeId: string; mountPath: string; subpath?: string }>;
-	start: jest.Mock<Promise<void>, [number]>;
-	delete: jest.Mock<Promise<void>, [number]>;
+	start: Mock<(...args: [number]) => Promise<void>>;
+	delete: Mock<(...args: [number]) => Promise<void>>;
 	fs: MockFilesystem;
 	process: MockProcess;
 }
@@ -55,15 +55,15 @@ class DaytonaNotFoundError extends Error {
 	}
 }
 
-const listMock = jest.fn<
-	AsyncIterableIterator<MockSandbox>,
-	[{ labels?: Record<string, string>; limit?: number }?]
->();
-const createMock = jest.fn<
-	Promise<MockSandbox>,
-	[Record<string, unknown>, { timeout?: number }?]
->();
-const getMock = jest.fn<Promise<MockSandbox>, [string]>();
+const listMock =
+	vi.fn<
+		(
+			...args: [{ labels?: Record<string, string>; limit?: number }?]
+		) => AsyncIterableIterator<MockSandbox>
+	>();
+const createMock =
+	vi.fn<(...args: [Record<string, unknown>, { timeout?: number }?]) => Promise<MockSandbox>>();
+const getMock = vi.fn<(...args: [string]) => Promise<MockSandbox>>();
 const daytonaInstances: MockDaytona[] = [];
 
 class MockDaytona {
@@ -76,7 +76,7 @@ class MockDaytona {
 	get = getMock;
 }
 
-jest.mock('@n8n/agents/sandbox', () => ({
+vi.mock('@n8n/agents/sandbox', () => ({
 	loadDaytona: () => ({
 		Daytona: MockDaytona,
 		DaytonaNotFoundError,
@@ -145,11 +145,11 @@ function makeService(
 
 function makeFilesystem(): MockFilesystem {
 	return {
-		uploadFiles: jest.fn<Promise<void>, [Array<{ source: Buffer | string; destination: string }>]>(
-			async () => {},
-		),
-		createFolder: jest.fn<Promise<void>, [string, string]>(async () => {}),
-		deleteFile: jest.fn<Promise<void>, [string, boolean?]>(async () => {}),
+		uploadFiles: vi.fn<
+			(...args: [Array<{ source: Buffer | string; destination: string }>]) => Promise<void>
+		>(async () => {}),
+		createFolder: vi.fn<(...args: [string, string]) => Promise<void>>(async () => {}),
+		deleteFile: vi.fn<(...args: [string, boolean?]) => Promise<void>>(async () => {}),
 	};
 }
 
@@ -163,17 +163,18 @@ function makeSandbox(
 		name: overrides.name ?? buildExpectedSandboxName(),
 		state,
 		volumes,
-		start: jest.fn<Promise<void>, [number]>(async () => {}),
-		delete: jest.fn<Promise<void>, [number]>(async () => {}),
+		start: vi.fn<(...args: [number]) => Promise<void>>(async () => {}),
+		delete: vi.fn<(...args: [number]) => Promise<void>>(async () => {}),
 		fs: makeFilesystem(),
 		process: {
-			executeCommand: jest.fn<
-				Promise<{
+			executeCommand: vi.fn<
+				(
+					...args: [string, string | undefined, Record<string, string> | undefined, number]
+				) => Promise<{
 					exitCode: number;
 					result?: string;
 					artifacts?: { stdout?: string; stderr?: string };
-				}>,
-				[string, string | undefined, Record<string, string> | undefined, number]
+				}>
 			>(async () => ({
 				exitCode: 0,
 				artifacts: { stdout: '', stderr: '' },
@@ -184,7 +185,7 @@ function makeSandbox(
 
 describe('AgentKnowledgeSandboxService', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		daytonaInstances.length = 0;
 		listMock.mockReturnValue(asyncSandboxes());
 		createMock.mockResolvedValue(makeSandbox('started'));

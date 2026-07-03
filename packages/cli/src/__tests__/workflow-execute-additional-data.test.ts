@@ -8,8 +8,7 @@ import {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
-import { ExternalSecretsProxy } from 'n8n-core';
+import { ExternalSecretsProxy, WorkflowExecute } from 'n8n-core';
 import type {
 	IWorkflowBase,
 	IExecuteWorkflowInfo,
@@ -25,6 +24,8 @@ import type {
 } from 'n8n-workflow';
 import { createRunExecutionData } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
+import type { MockInstance } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsHelper } from '@/credentials-helper';
@@ -85,26 +86,26 @@ const getMockRun = ({ lastNodeOutput }: { lastNodeOutput: Array<INodeExecutionDa
 
 const getCancelablePromise = async (run: IRun) =>
 	await mock<PCancelable<IRun>>({
-		then: jest
+		then: vi
 			.fn()
 			.mockImplementation(async (onfulfilled) => await Promise.resolve(run).then(onfulfilled)),
-		catch: jest
+		catch: vi
 			.fn()
 			.mockImplementation(async (onrejected) => await Promise.resolve(run).catch(onrejected)),
-		finally: jest
+		finally: vi
 			.fn()
 			.mockImplementation(async (onfinally) => await Promise.resolve(run).finally(onfinally)),
 		[Symbol.toStringTag]: 'PCancelable',
 	});
 
-const processRunExecutionData = jest.fn();
+const processRunExecutionData = vi.fn();
 
-jest.mock('n8n-core', () => ({
+vi.mock('n8n-core', async () => ({
 	__esModule: true,
-	...jest.requireActual('n8n-core'),
-	WorkflowExecute: jest.fn().mockImplementation(() => ({
-		processRunExecutionData,
-	})),
+	...(await vi.importActual<typeof import('n8n-core')>('n8n-core')),
+	WorkflowExecute: vi.fn(function () {
+		return { processRunExecutionData };
+	}),
 }));
 
 describe('WorkflowExecuteAdditionalData', () => {
@@ -176,6 +177,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 					},
 					nodes: [],
 					connections: {},
+					staticData: {},
 				}),
 			);
 			activeExecutions.add.mockResolvedValue(EXECUTION_ID);
@@ -236,7 +238,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 		});
 
 		it('should pass workflowId to getBase when executing subworkflow', async () => {
-			const getVariablesSpy = jest.spyOn(WorkflowHelpers, 'getVariables');
+			const getVariablesSpy = vi.spyOn(WorkflowHelpers, 'getVariables');
 			const workflowId = 'test-workflow-123';
 
 			const workflowWithId = mock<WorkflowEntity>({
@@ -250,6 +252,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				},
 				nodes: [],
 				connections: {},
+				staticData: {},
 			});
 
 			workflowRepository.get.mockResolvedValueOnce(workflowWithId);
@@ -276,6 +279,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				name: 'Test Workflow',
 				nodes: [],
 				connections: {},
+				staticData: {},
 			});
 
 			it('should execute successfully with manual execution mode (uses draft version, includes test webhooks)', async () => {
@@ -357,11 +361,11 @@ describe('WorkflowExecuteAdditionalData', () => {
 		describe('sub-workflow execution timeouts', () => {
 			const now = Date.now();
 			const getDeadlineFromNow = (offsetSeconds: number) => now + offsetSeconds * 1000;
-			const WorkflowExecuteMock: jest.Mock = jest.requireMock('n8n-core').WorkflowExecute;
+			const WorkflowExecuteMock = vi.mocked(WorkflowExecute);
 
-			let dateSpy: jest.SpyInstance;
+			let dateSpy: MockInstance;
 			beforeEach(() => {
-				dateSpy = jest.spyOn(Date, 'now').mockReturnValue(now);
+				dateSpy = vi.spyOn(Date, 'now').mockReturnValue(now);
 				WorkflowExecuteMock.mockClear();
 			});
 			afterEach(() => {
@@ -369,8 +373,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 			});
 
 			const getSubWorkflowDeadline = () =>
-				(WorkflowExecuteMock.mock.calls[0][0] as IWorkflowExecuteAdditionalData)
-					.executionTimeoutTimestamp;
+				WorkflowExecuteMock.mock.calls[0][0].executionTimeoutTimestamp;
 
 			const executeWorkflowWithTimeout = async (opts: {
 				doNotWaitToFinish: boolean;
@@ -393,7 +396,11 @@ describe('WorkflowExecuteAdditionalData', () => {
 							name: 'Sub Workflow',
 							nodes: [],
 							connections: {},
-							// Pass executionTimeout through even when undefined so jest-mock-extended
+							// Pass real values for fields the Workflow constructor reads so
+							// vitest-mock-extended keeps them as plain data rather than auto-mocking
+							// them into functions (whose read-only `.mock` breaks ObservableObject).
+							staticData: {},
+							// Pass executionTimeout through even when undefined so vitest-mock-extended
 							// keeps it as a real `undefined` rather than auto-mocking it into a function.
 							settings: { executionTimeout: opts.subTimeout },
 						}),
@@ -945,6 +952,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 	describe('getBase', () => {
 		const mockWebhookBaseUrl = 'https://webhook.example.com/';
+		const mockTestWebhookBaseUrl = 'https://test-webhook.example.com/';
 		const mockInstanceBaseUrl = 'https://editor.example.com';
 
 		const globalConfig = mockInstance(GlobalConfig);
@@ -953,8 +961,9 @@ describe('WorkflowExecuteAdditionalData', () => {
 		const mockVariables = { variable: 1 };
 
 		beforeEach(() => {
-			jest.spyOn(urlService, 'getWebhookBaseUrl').mockReturnValue(mockWebhookBaseUrl);
-			jest.spyOn(urlService, 'getInstanceBaseUrl').mockReturnValue(mockInstanceBaseUrl);
+			urlService.getWebhookBaseUrl.mockReturnValue(mockWebhookBaseUrl);
+			urlService.getTestWebhookBaseUrl.mockReturnValue(mockTestWebhookBaseUrl);
+			urlService.getInstanceBaseUrl.mockReturnValue(mockInstanceBaseUrl);
 			globalConfig.endpoints = mock<GlobalConfig['endpoints']>({
 				rest: '/rest/',
 				formWaiting: '/form-waiting/',
@@ -962,7 +971,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				webhookWaiting: '/webhook-waiting/',
 				webhookTest: '/webhook-test/',
 			});
-			jest.spyOn(WorkflowHelpers, 'getVariables').mockResolvedValue(mockVariables);
+			vi.spyOn(WorkflowHelpers, 'getVariables').mockResolvedValue(mockVariables);
 		});
 
 		it('should return base additional data with default values', async () => {
@@ -977,7 +986,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				formWaitingBaseUrl: `${mockWebhookBaseUrl}/form-waiting/`,
 				webhookBaseUrl: `${mockWebhookBaseUrl}/webhook/`,
 				webhookWaitingBaseUrl: `${mockWebhookBaseUrl}/webhook-waiting/`,
-				webhookTestBaseUrl: `${mockWebhookBaseUrl}/webhook-test/`,
+				webhookTestBaseUrl: `${mockTestWebhookBaseUrl}/webhook-test/`,
 				currentNodeParameters: undefined,
 				executionTimeoutTimestamp: undefined,
 				userId: undefined,
@@ -1035,7 +1044,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 		const THREAD_ID = 'thread-id';
 
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			agentExecutionOrchestratorService.executeForWorkflow.mockResolvedValue(
 				mock<Awaited<ReturnType<typeof agentExecutionOrchestratorService.executeForWorkflow>>>(),
 			);

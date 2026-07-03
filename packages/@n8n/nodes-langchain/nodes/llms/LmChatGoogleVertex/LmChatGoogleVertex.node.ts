@@ -6,7 +6,7 @@ import {
 	N8nLlmTracing,
 	getConnectionHintNoticeField,
 } from '@n8n/ai-utilities';
-import { formatPemBlock } from '@n8n/utils';
+import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -21,6 +21,11 @@ import {
 
 import { makeErrorFromStatus } from './error-handling';
 import { getAdditionalOptions } from '../gemini-common/additional-options';
+import {
+	getVertexEndpoint,
+	resolveVertexLocation,
+	vertexLocationField,
+} from '../gemini-common/vertex-location';
 
 export class LmChatGoogleVertex implements INodeType {
 	description: INodeTypeDescription = {
@@ -96,6 +101,7 @@ export class LmChatGoogleVertex implements INodeType {
 						'Default to the latest flagship Gemini on Vertex (gemini-3.1-pro). Use gemini-3.1-flash-lite for cost-efficient builds. Avoid Gemini 2.x, 1.x, and earlier.',
 				},
 			},
+			vertexLocationField,
 			getAdditionalOptions({ supportsThinkingBudget: true }),
 		],
 	};
@@ -136,7 +142,12 @@ export class LmChatGoogleVertex implements INodeType {
 		const credentials = await this.getCredentials('googleApi');
 		const privateKey = formatPemBlock(credentials.privateKey as string);
 		const email = (credentials.email as string).trim();
-		const region = credentials.region as string;
+
+		// A node-level location overrides the credential region; multi-region
+		// locations (eu/us) need a dedicated host the SDK doesn't build itself.
+		const locationOverride = this.getNodeParameter('location', itemIndex, '') as string;
+		const location = resolveVertexLocation(locationOverride, credentials.region as string);
+		const endpoint = getVertexEndpoint(location);
 
 		const modelName = this.getNodeParameter('modelName', itemIndex) as string;
 
@@ -179,7 +190,8 @@ export class LmChatGoogleVertex implements INodeType {
 						private_key: privateKey,
 					},
 				},
-				location: region,
+				location,
+				...(endpoint ? { endpoint } : {}),
 				model: modelName,
 				topK: options.topK,
 				topP: options.topP,

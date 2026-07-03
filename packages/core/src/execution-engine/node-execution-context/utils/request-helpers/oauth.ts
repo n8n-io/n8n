@@ -13,7 +13,7 @@ import type {
 	ClientOAuth2TokenData,
 	OAuth2CredentialData,
 } from '@n8n/client-oauth2';
-import { AuthError, ClientOAuth2 } from '@n8n/client-oauth2';
+import { AuthError, ClientOAuth2, resolveClientAuthOptions } from '@n8n/client-oauth2';
 import { Container } from '@n8n/di';
 import type { AxiosError } from 'axios';
 import { createHmac } from 'crypto';
@@ -50,7 +50,7 @@ function createOAuth2Client(credentials: OAuth2CredentialData): ClientOAuth2 {
 		.filter(Boolean);
 	return new ClientOAuth2({
 		clientId: credentials.clientId,
-		clientSecret: credentials.clientSecret,
+		...resolveClientAuthOptions(credentials),
 		accessTokenUri: credentials.accessTokenUrl,
 		scopes: scopes?.length ? scopes : undefined,
 		ignoreSSLIssues: credentials.ignoreSSLIssues,
@@ -185,9 +185,10 @@ async function refreshOrFetchToken(ctx: RefreshOAuth2TokenContext): Promise<Clie
 		if (oAuth2Options?.includeCredentialsOnRefreshOnBody) {
 			const body: IDataObject = {
 				client_id: credentials.clientId,
-				...(credentials.grantType === 'authorizationCode' && {
-					client_secret: credentials.clientSecret as string,
-				}),
+				...(credentials.grantType === 'authorizationCode' &&
+					credentials.clientCredentialType !== 'certificate' && {
+						client_secret: credentials.clientSecret as string,
+					}),
 			};
 			tokenRefreshOptions.body = body;
 			tokenRefreshOptions.headers = { Authorization: '' };

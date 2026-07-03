@@ -76,6 +76,13 @@ const ThinkingConfigSchema = z.object({
 	reasoningEffort: z.string().optional(),
 });
 
+// Mandatory for supporting providers (the user cannot disable it). Anthropic
+// exposes a cache-breakpoint TTL; OpenAI has no sub-config.
+export const PromptCachingConfigSchema = z.object({
+	enabled: z.boolean(),
+	anthropic: z.object({ ttl: z.enum(['5m', '1h']).optional() }).optional(),
+});
+
 const WebSearchConfigSchema = z.object({
 	enabled: z.boolean(),
 	provider: z.enum(['auto', 'native', 'brave', 'searxng']).optional(),
@@ -304,7 +311,21 @@ export const AgentJsonConfigSchema = z.object({
 			}
 		})
 		.optional(),
-	skills: z.array(AgentJsonSkillConfigSchema).optional(),
+	skills: z
+		.array(AgentJsonSkillConfigSchema)
+		.superRefine((skills, ctx) => {
+			const seen = new Set<string>();
+			for (const skill of skills) {
+				if (seen.has(skill.id)) {
+					ctx.addIssue({
+						code: z.ZodIssueCode.custom,
+						message: `Duplicate skill id: "${skill.id}"`,
+					});
+				}
+				seen.add(skill.id);
+			}
+		})
+		.optional(),
 	tasks: z.array(AgentJsonTaskConfigSchema).optional(),
 	providerTools: z.record(z.record(z.unknown())).optional(),
 	integrations: z.array(AgentIntegrationConfigSchema).optional(),
@@ -318,6 +339,7 @@ export const AgentJsonConfigSchema = z.object({
 	config: z
 		.object({
 			thinking: ThinkingConfigSchema.optional(),
+			promptCaching: PromptCachingConfigSchema.optional(),
 			webSearch: WebSearchConfigSchema.optional(),
 			toolCallConcurrency: z.number().int().min(1).max(100).optional(),
 			maxIterations: z

@@ -11,7 +11,9 @@ import { McpServerApiKeyService } from '../mcp-api-key.service';
 // endpointGroups mirrors a production instance where isApiEnabled() returns
 // false — the MCP endpoint group is still set up so we can exercise the real
 // strategy-registration wiring.
-utils.setupTestServer({ modules: ['mcp'], endpointGroups: ['mcp'] });
+// Loading the MCP module plus DB init can exceed the default 30s hook timeout
+// on the Postgres CI shard under load; give the shared setup extra headroom.
+utils.setupTestServer({ modules: ['mcp'], endpointGroups: ['mcp'], setupTimeout: 60_000 });
 
 describe('McpServerApiKeyService.verifyApiKey with public API disabled', () => {
 	it('still authenticates valid MCP API keys', async () => {

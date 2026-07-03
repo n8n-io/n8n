@@ -1,7 +1,7 @@
-// Global mocks in test/setup-mocks.ts replace `node:fs` with jest auto-mocks,
+// Global mocks in test/setup-mocks.ts replace `node:fs` with vi auto-mocks,
 // which breaks express view lookup in the SAML connection-test round-trip.
 // Restore the real fs so the ACS handler can render its handlebars template.
-jest.unmock('node:fs');
+vi.unmock('node:fs');
 
 import type { SamlPreferences } from '@n8n/api-types';
 import { type LocalServer, startServer } from '@n8n/backend-network/testing';
@@ -825,7 +825,7 @@ describe('SAML email validation', () => {
 	describe('handleSamlLogin', () => {
 		test('should throw BadRequestError for invalid email format', async () => {
 			// Mock getAttributesFromLoginResponse to return invalid email
-			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+			vi.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
 				mapped: {
 					email: 'invalid-email-format',
 					firstName: 'John',
@@ -846,7 +846,7 @@ describe('SAML email validation', () => {
 		test.each([['not-an-email'], ['@missinglocal.com'], ['missing@.com'], ['spaces in@email.com']])(
 			'should throw BadRequestError for invalid email <%s>',
 			async (invalidEmail) => {
-				jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+				vi.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
 					mapped: {
 						email: invalidEmail,
 						firstName: 'John',
@@ -873,7 +873,7 @@ describe('SAML email validation', () => {
 		])('should handle valid email <%s> successfully', async (validEmail) => {
 			const mockRequest = {} as express.Request;
 
-			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+			vi.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
 				mapped: {
 					email: validEmail,
 					firstName: 'John',
@@ -893,7 +893,7 @@ describe('SAML email validation', () => {
 		test('should convert email to lowercase before validation', async () => {
 			const upperCaseEmail = 'USER@EXAMPLE.COM';
 
-			jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+			vi.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
 				mapped: {
 					email: upperCaseEmail,
 					firstName: 'John',
@@ -956,7 +956,7 @@ describe('SAML SSO provisioning', () => {
 			}),
 		);
 
-		jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+		vi.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
 			mapped: {
 				email: 'saml-expr-instance@example.com',
 				firstName: 'SAML',
@@ -990,7 +990,7 @@ describe('SAML SSO provisioning', () => {
 		rule.projects = [project];
 		await roleMappingRuleRepository.save(rule);
 
-		jest.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
+		vi.spyOn(samlService, 'getAttributesFromLoginResponse').mockResolvedValue({
 			mapped: {
 				email: 'saml-expr-project@example.com',
 				firstName: 'SAML',

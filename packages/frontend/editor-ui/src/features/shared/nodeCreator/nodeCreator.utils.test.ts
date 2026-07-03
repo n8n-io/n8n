@@ -814,6 +814,43 @@ describe('NodeCreator - utils', () => {
 			finalizeItems([makeGatewayNode('my-node')]);
 			expect(isNodeTypeVersionSupported).toHaveBeenCalledWith('my-node', 2);
 		});
+
+		it('should fall back to version 1 when the node type has no known versions', () => {
+			const isNodeTypeVersionSupported = vi.fn(() => true);
+			vi.mocked(useNodeTypesStore).mockReturnValue({
+				getNodeVersions: vi.fn(() => []),
+			} as unknown as ReturnType<typeof useNodeTypesStore>);
+			vi.mocked(useAiGatewayStore).mockReturnValue({
+				isNodeSupported: vi.fn(() => true),
+				isNodeTypeVersionSupported,
+			} as unknown as ReturnType<typeof useAiGatewayStore>);
+
+			finalizeItems([makeGatewayNode('my-node')]);
+			expect(isNodeTypeVersionSupported).toHaveBeenCalledWith('my-node', 1);
+		});
+
+		it('should show Free credits badge for a Tool-suffixed node whose base name is in the gateway config', () => {
+			// "llamaParsePlatformTool" is not in config, but "llamaParsePlatform" is.
+			vi.mocked(useAiGatewayStore).mockReturnValue({
+				isNodeSupported: vi.fn((name: string) => name === 'llamaParsePlatform'),
+				isNodeTypeVersionSupported: vi.fn(() => true),
+			} as unknown as ReturnType<typeof useAiGatewayStore>);
+
+			const [result] = finalizeItems([
+				makeGatewayNode('llamaParsePlatformTool'),
+			]) as NodeCreateElement[];
+			expect(result.properties.tag).toEqual({ text: expect.any(String), pill: true });
+		});
+
+		it('should suppress Free credits badge when neither the Tool-suffixed name nor the base name is in the gateway config', () => {
+			vi.mocked(useAiGatewayStore).mockReturnValue({
+				isNodeSupported: vi.fn(() => false),
+				isNodeTypeVersionSupported: vi.fn(() => true),
+			} as unknown as ReturnType<typeof useAiGatewayStore>);
+
+			const [result] = finalizeItems([makeGatewayNode('unknownTool')]) as NodeCreateElement[];
+			expect(result.properties.tag).toBeUndefined();
+		});
 	});
 
 	describe('mapToolSubcategoryIcon', () => {

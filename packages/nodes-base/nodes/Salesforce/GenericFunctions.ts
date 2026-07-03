@@ -51,6 +51,20 @@ function getOptions(
 	return options;
 }
 
+/**
+ * Merges extra request options onto the base options. Unlike a plain
+ * `Object.assign`, headers are merged rather than replaced, so a caller can add
+ * a header (e.g. `Sforce-Query-Options`) without dropping the `Content-Type`
+ * header the request builder already set.
+ */
+function assignOptions(options: IRequestOptions | IHttpRequestOptions, option: IDataObject): void {
+	const { headers: extraHeaders, ...rest } = option;
+	if (extraHeaders) {
+		options.headers = { ...options.headers, ...(extraHeaders as IDataObject) };
+	}
+	Object.assign(options, rest);
+}
+
 export async function salesforceApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: IHttpRequestMethods,
@@ -84,7 +98,7 @@ export async function salesforceApiRequest(
 				delete options.body;
 			}
 
-			Object.assign(options, option);
+			assignOptions(options, option);
 			this.logger.debug(
 				`Authentication for "Salesforce" node is using "jwt". Invoking URI ${options.url}`,
 			);
@@ -106,7 +120,7 @@ export async function salesforceApiRequest(
 			this.logger.debug(
 				`Authentication for "Salesforce" node is using "OAuth2". Invoking URI ${options.uri}`,
 			);
-			Object.assign(options, option);
+			assignOptions(options, option);
 
 			return await this.helpers.requestOAuth2.call(this, credentialsType, options);
 		}
@@ -161,6 +175,23 @@ export async function salesforceApiRequestAllItems(
 	} while (responseData.nextRecordsUrl !== undefined && responseData.nextRecordsUrl !== null);
 
 	return returnData;
+}
+
+/**
+ * Owner fields accept two shapes for backward compatibility: a legacy `options`
+ * field stored its value as a raw string, while the current `resourceLocator`
+ * field stores `{ __rl, mode, value }`. This normalises both to the string id,
+ * or `undefined` when empty/missing.
+ */
+export function getResourceLocatorValue(value: unknown): string | undefined {
+	if (value === undefined || value === null || value === '') return undefined;
+	if (typeof value === 'string') return value;
+	if (typeof value === 'object' && '__rl' in value) {
+		const inner = (value as { value?: unknown }).value;
+		if (inner === undefined || inner === null || inner === '') return undefined;
+		return String(inner);
+	}
+	return undefined;
 }
 
 /**
@@ -306,9 +337,9 @@ const SALESFORCE_DATE_LITERALS = new Set([
 ]);
 
 // Salesforce node typeVersion at which numeric-looking strings stopped being
-// auto-coerced to unquoted SOQL numbers. See NODE-5116: string-typed Salesforce
-// fields (e.g. external IDs) need quoted literals regardless of content. Older
-// typeVersions keep the legacy coercion for backwards compatibility.
+// auto-coerced to unquoted SOQL numbers. String-typed Salesforce fields (e.g.
+// external IDs) need quoted literals regardless of content. Older typeVersions
+// keep the legacy coercion for backwards compatibility.
 const NUMERIC_STRING_QUOTING_VERSION = 1.1;
 
 export function getValue(value: any, nodeVersion = 1): string | number | boolean {
@@ -387,7 +418,7 @@ export function getValue(value: any, nodeVersion = 1): string | number | boolean
 
 		// Legacy behavior (typeVersion < 1.1): auto-coerce numeric strings to unquoted
 		// SOQL numbers. Kept for existing workflows that rely on it for numeric SF fields
-		// (e.g. `AnnualRevenue > '0'`). Fixed in typeVersion 1.1 — see NODE-5116.
+		// (e.g. `AnnualRevenue > '0'`). Fixed in typeVersion 1.1.
 		if (nodeVersion < NUMERIC_STRING_QUOTING_VERSION && /^-?(0|[1-9]\d*)(\.\d+)?$/.test(value)) {
 			const numericValue = Number(value);
 			if (Number.isFinite(numericValue)) {
