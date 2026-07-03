@@ -65,6 +65,20 @@ export const MOCK_QUIRKS: MockQuirk[] = [
 		addedAt: '2026-05-19',
 	},
 	{
+		service: 'Gmail',
+		hostnames: ['gmail.googleapis.com', 'www.googleapis.com'],
+		guidance:
+			'Gmail message reads are TWO-STEP with distinct shapes. Pick by path:\n' +
+			'  * `GET /gmail/v1/users/{userId}/messages` (list) → `{ "messages": [{ "id", "threadId" }, ...], "resultSizeEstimate" }` — ID stubs ONLY, no subjects or bodies; the workflow fetches each message in a follow-up GET.\n' +
+			'  * `GET /gmail/v1/users/{userId}/messages/{id}` (single message) → the FULL Message resource: `{ id, threadId, labelIds, snippet, internalDate, payload }` where `payload` = `{ mimeType, headers: [{ name: "Subject"|"From"|"To"|"Date", value }, ...], body: { size, data } }`. Body text lives ONLY under `payload.body.data` as BASE64URL-encoded content (base64 with `-`/`_`) — never plain text at the top level, never a flattened `{ subject, from, body }` object. KEEP IT TINY: the decoded body must be ONE short sentence (≤ 80 chars) so the base64url string stays short — never encode long documents; n8n decodes it and downstream logic only needs the gist.\n' +
+			'  * Each message GET must return the DISTINCT email for THAT id — match the id against the scenario/context enumeration (subjects, senders) and never repeat the same subject/body across different ids.\n' +
+			'  * `?format=raw` (the n8n Gmail node uses this when simple=false) → `{ id, threadId, labelIds, snippet, internalDate, raw }` where `raw` is the ENTIRE RFC822 message base64url-encoded. Keep it TINY: encode a minimal message — `From:`/`To:`/`Subject:`/`Date:` headers, a blank line, then a one-line body (≤ 80 chars). The node Buffer-decodes `raw`; omitting it crashes the workflow.\n' +
+			'  * `?format=metadata` → headers only, no `body.data` and no `raw`.',
+		rationale:
+			"Digest/inbox workflows list message IDs then GET each message; the LLM otherwise returns flattened subject/body objects (Gmail node's payload/base64url parsing yields empty fields) or identical content for every id (digest misses the scenario's distinct emails). Size cap prevents bulk base64 generation from doubling per-request latency and timing out scenarios.",
+		addedAt: '2026-07-03',
+	},
+	{
 		service: 'Googleapis',
 		guidance:
 			'Google Drive on www.googleapis.com routes both JSON and binary on the same host. Pick by path + query:\n' +

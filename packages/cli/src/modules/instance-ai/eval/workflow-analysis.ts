@@ -99,7 +99,22 @@ const PROTOCOL_BINARY_SUB_NODE_TYPES = new Set([
 	'@n8n/n8n-nodes-langchain.chatHubVectorStorePGVector',
 ]);
 
-/** Returns nodes that need pin data — AI roots (unless in `exclusionSet`) and bypass-protocol nodes. */
+/** Data Table row-read operations. Their output is the scenario's "stored state" — left
+ * unpinned they read the REAL eval-instance table, polluted by the builder's own
+ * verification runs, so scenario outcomes become a coin flip on build-phase leftovers. */
+const DATA_TABLE_READ_OPERATIONS = new Set(['get', 'rowExists', 'rowNotExists']);
+
+function isDataTableRead(node: INode): boolean {
+	if (node.type !== 'n8n-nodes-base.dataTable') return false;
+	const params = node.parameters as { resource?: string; operation?: string } | undefined;
+	// Node defaults: resource 'row', operation 'insert' (a write) — only pin explicit reads.
+	return (
+		(params?.resource ?? 'row') === 'row' &&
+		DATA_TABLE_READ_OPERATIONS.has(params?.operation ?? 'insert')
+	);
+}
+
+/** Returns nodes that need pin data — AI roots (unless in `exclusionSet`), bypass-protocol nodes, and Data Table reads. */
 export function identifyNodesForPinData(
 	workflow: IWorkflowBase,
 	exclusionSet?: Set<string>,
@@ -110,6 +125,7 @@ export function identifyNodesForPinData(
 		if (node.disabled) return false;
 		if (aiRootNodes.has(node.name) && !exclusionSet?.has(node.name)) return true;
 		if (BYPASS_NODE_TYPES.has(node.type)) return true;
+		if (isDataTableRead(node)) return true;
 		return false;
 	});
 }
@@ -537,6 +553,8 @@ export interface MockHints {
 	nodeHints: Record<string, string>;
 	/** Generated trigger output matching what the start node would produce */
 	triggerContent: Record<string, unknown>;
+	/** For multi-trigger workflows: the trigger node the scenario targets (Phase-1 LLM's pick). */
+	startNodeName?: string;
 	/** Errors encountered during hint generation or mock execution */
 	warnings: string[];
 	/** Pin data for nodes that bypass the HTTP mock layer (AI roots, protocol nodes) */
@@ -561,6 +579,7 @@ RULES:
    - For manual triggers: include the fields that downstream nodes reference
    - CRITICAL: triggerContent must NEVER be an empty object ({}). Even for scenarios that test empty payloads ("empty submission", "no data", "missing fields"), emit the trigger envelope with empty *nested* fields — an empty webhook is { headers: {}, query: {}, body: {} }, a schedule with no context is { timestamp: "..." }. The workflow cannot execute without trigger output.
    - CRITICAL: check what downstream nodes reference (e.g., $json.body.email, $json.subject, $json.text) and ensure those paths exist in triggerContent
+   - CRITICAL: when the workflow has MULTIPLE trigger nodes, pick the ONE the Test Scenario targets (the trigger whose firing the scenario describes, e.g. "The weekly Schedule Trigger fires") and return its exact node name in a "startNodeName" field. triggerContent must be THAT trigger's output.
    - CRITICAL: triggerContent must NEVER contain binary file CONTENT — no base64 blobs, no fake file-bytes placeholders. When the trigger carries a file (form upload, email attachment, incoming media), declare it with a METADATA-ONLY binary map instead: "binary": { "<propertyKey>": { "mimeType": "<real MIME>", "fileName": "<name.ext>" } } — the harness synthesizes real file bytes from that metadata and attaches them at the item level. The MIME type and file name MUST match the scenario: an image/png upload scenario needs mimeType "image/png" and a .png fileName, never a generic application/octet-stream. Use "data" as the propertyKey unless downstream nodes reference a different binary property name.
 3. Create a "nodeHints" object with one entry per node. Each hint describes what data that specific node's API response should contain, referencing entities from the global context.
 4. Hints should describe the DATA CONTENT, not the API response format. The mock server already knows the API schema.
@@ -611,6 +630,9 @@ function buildUserPrompt(
 
 	sections.push('', '## Expected Output', '', '```json', '{');
 	sections.push('  "globalContext": "Shared entities: ...",');
+	sections.push(
+		'  "startNodeName": "exact trigger node name the scenario targets (only when the workflow has multiple triggers)",',
+	);
 	sections.push('  "triggerContent": { "...exact output the trigger node would produce..." },');
 	sections.push('  "nodeHints": {');
 	for (let i = 0; i < Math.min(nodeNames.length, 3); i++) {
@@ -713,6 +735,9 @@ export async function generateMockHints(options: GenerateMockHintsOptions): Prom
 						globalContext,
 						nodeHints,
 						triggerContent: triggerContent as Record<string, unknown>,
+						...(typeof parsed.startNodeName === 'string' && parsed.startNodeName.length > 0
+							? { startNodeName: parsed.startNodeName }
+							: {}),
 						warnings,
 						bypassPinData: {},
 					};

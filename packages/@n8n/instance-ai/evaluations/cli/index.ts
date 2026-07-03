@@ -899,6 +899,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		return {
 			buildSuccess: true,
 			workflowId: build.workflowId,
+			scenarioWorkflowId: result.workflowId,
 			passed: result.success,
 			score: result.score,
 			reasoning: result.reasoning,
@@ -1534,7 +1535,7 @@ function writeEvalResults(
 				passAtK: terminalRate(sa.passAtK),
 				passHatK: terminalRate(sa.passHatK),
 				runs: sa.runs.map((sr, runIndex) => ({
-					workflowId: tc.runs[runIndex]?.workflowId ?? null,
+					workflowId: sr.workflowId ?? tc.runs[runIndex]?.workflowId ?? null,
 					passed: sr.success,
 					score: sr.score,
 					reasoning: sr.reasoning,

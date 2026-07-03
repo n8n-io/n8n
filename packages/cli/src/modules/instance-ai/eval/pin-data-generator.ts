@@ -29,6 +29,8 @@ const PIN_DATA_LLM_TIMEOUT_MS = 180_000;
 
 interface PinDataGenerationInstructions {
 	dataDescription: string;
+	/** Authoritative test-scenario state (e.g. eval dataSetup) — rendered as its own labeled section. */
+	testScenario?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -400,21 +402,68 @@ function workflowToMermaid(workflow: WorkflowJSON): string {
 }
 
 // ---------------------------------------------------------------------------
+// Downstream consumer context
+// ---------------------------------------------------------------------------
+
+/**
+ * Collect the direct downstream consumers of a node, with their parameters.
+ * Pinned output must use the exact field names those consumers read — the
+ * generator otherwise invents plausible-but-wrong column names (e.g.
+ * 'signature' where a Code node reads 'last_details') and correctly-built
+ * comparisons see empty values.
+ */
+function collectDownstreamConsumers(
+	workflow: WorkflowJSON,
+	nodeName: string,
+): Array<{ name: string; type: string; parameters: string }> {
+	const childNames = new Set<string>();
+	const nodeConns = workflow.connections[nodeName];
+	if (nodeConns) {
+		for (const outputConnections of Object.values(nodeConns as Record<string, unknown>)) {
+			if (!Array.isArray(outputConnections)) continue;
+			for (const outputGroup of outputConnections) {
+				if (!Array.isArray(outputGroup)) continue;
+				for (const conn of outputGroup) {
+					if (typeof conn === 'object' && conn !== null && 'node' in conn) {
+						childNames.add((conn as { node: string }).node);
+					}
+				}
+			}
+		}
+	}
+
+	const consumers: Array<{ name: string; type: string; parameters: string }> = [];
+	for (const node of workflow.nodes) {
+		if (!node.name || !childNames.has(node.name)) continue;
+		let parameters = '';
+		try {
+			parameters = JSON.stringify(node.parameters ?? {});
+		} catch {
+			parameters = '';
+		}
+		if (parameters.length > 2000) parameters = parameters.slice(0, 2000) + '…';
+		consumers.push({ name: node.name, type: node.type, parameters });
+	}
+	return consumers;
+}
+
+// ---------------------------------------------------------------------------
 // LLM prompt construction
 // ---------------------------------------------------------------------------
 
 const SYSTEM_PROMPT = `You are a test data generator for n8n workflow automation. Generate realistic mock API response data for service nodes in a workflow.
 
 RULES:
-1. Data must be consistent across nodes. If node A creates an entity with id "abc-123", downstream nodes referencing that entity must use "abc-123".
+1. Data must be consistent across nodes. If node A creates an entity with id "abc-123", downstream nodes referencing that entity must use "abc-123". When a node's "Direct downstream consumers" are listed, emit EXACTLY the field names their parameters/expressions/code read (e.g. a Code node reading item.json.last_details requires a field named "last_details") — never rename or synonymize them.
 2. Generate 1-2 items per node.
 3. When a JSON Schema is provided, follow its structure exactly.
 4. When no schema is provided, generate a realistic response based on the node type, resource, and operation.
 5. Use realistic but clearly fake values (e.g., "jane@example.com", "proj_abc123").
-6. Dates and timestamps MUST be derived from the "## Date anchors" block at the end of the prompt — never from training data. Workflows compare pinned data against the real execution clock ($now, Date.now()); values months in the past get silently filtered out. When the data description mentions a relative window ("last 24 hours", "past 2 weeks"), place timestamps safely INSIDE it, never on the boundary.
+6. Dates and timestamps MUST be derived from the "## Date anchors" block at the end of the prompt — never from training data. Workflows compare pinned data against the real execution clock ($now, Date.now()); values months in the past get silently filtered out, and HTTP mocks generated later use the same anchors, so stale years make "stored matches current" comparisons impossible. When the data description mentions a relative window ("last 24 hours", "past 2 weeks"), place timestamps safely INSIDE it, never on the boundary.
 7. AI root nodes (Agent/Chain) have NODE-TYPE-SPECIFIC output shapes — follow each node's "AI ROOT OUTPUT SHAPE" instruction exactly and never invent a different envelope key. Summary: agent wraps in { "output": ... } (a parsed object matching the parser schema when one is attached, otherwise a plain text string — never a JSON-encoded string); chainLlm uses { "text": "<string>" } without a parser, or the parsed fields FLAT at the top level of json when a parser is attached (no wrapper key); chainRetrievalQa uses { "response": "<string>" }; chainSummarization uses { "output": { "output_text": "<summary>" } }.
-8. Return ONLY a valid JSON object, no explanation or markdown fencing.
-9. CRITICAL: You MUST generate data for EVERY node listed in "Nodes Requiring Mock Data". Never skip a node, even if the test scenario describes an empty or error response. An empty response is still valid data.`;
+8. CRITICAL: If a "Test Scenario" section is provided, it is the authoritative test state and OVERRIDES everything else, including the general data context and your own sense of realism. When it describes stored/previous records (e.g. "the store already holds a record with status X"), exact values, counts, literal substrings, or that stored data matches current data, reproduce those constraints EXACTLY — never substitute more "interesting" or more typical data. A boring no-change/empty/matching case is usually the point of the test.
+9. Return ONLY a valid JSON object, no explanation or markdown fencing.
+10. CRITICAL: You MUST generate data for EVERY node listed in "Nodes Requiring Mock Data". Never skip a node, even if the test scenario describes an empty or error response. An empty response is still valid data.`;
 
 function buildUserPrompt(
 	workflow: WorkflowJSON,
@@ -430,6 +479,13 @@ function buildUserPrompt(
 		sections.push('## Data Generation Instructions');
 		sections.push('');
 		sections.push(instructions.dataDescription);
+	}
+
+	if (instructions?.testScenario) {
+		sections.push('');
+		sections.push('## Test Scenario (authoritative — overrides everything above)');
+		sections.push('');
+		sections.push(instructions.testScenario);
 	}
 
 	sections.push('');
@@ -478,6 +534,14 @@ function buildUserPrompt(
 			sections.push('```');
 		} else if (!isAiRoot) {
 			sections.push('(no schema available — generate based on API knowledge)');
+		}
+
+		const consumers = collectDownstreamConsumers(workflow, ctx.nodeName);
+		if (consumers.length > 0) {
+			sections.push('- Direct downstream consumers (emit the exact field names they read):');
+			for (const consumer of consumers) {
+				sections.push(`  - ${consumer.name} (${consumer.type}): \`${consumer.parameters}\``);
+			}
 		}
 	}
 

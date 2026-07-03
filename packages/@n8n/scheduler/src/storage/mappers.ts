@@ -3,9 +3,10 @@ import type {
 	ScheduledTask as ScheduledTaskEntity,
 } from '@n8n/db';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
-import { type CronExpression, UnexpectedError } from 'n8n-workflow';
+import type { CronExpression } from 'n8n-workflow';
 
-import type { Schedule, ScheduledJob, ScheduledTask } from '../core/types';
+import { CorruptStorageRowError } from '../core/errors';
+import type { ClaimedTask, Schedule, ScheduledJob, ScheduledTask } from '../core/types';
 
 /**
  * Maps between the flat `@n8n/db` entity rows and the scheduler's domain types.
@@ -39,7 +40,7 @@ function required<K extends keyof ScheduledJobEntity>(
 ): NonNullable<ScheduledJobEntity[K]> {
 	const value = entity[key];
 	if (value === null || value === undefined) {
-		throw new UnexpectedError(
+		throw new CorruptStorageRowError(
 			`scheduled_job ${entity.id} of kind '${entity.kind}' is missing '${String(key)}'`,
 		);
 	}
@@ -77,5 +78,33 @@ export function scheduledTaskToRow(
 		status: task.status,
 		attempts: task.attempts,
 		maxAttempts: task.maxAttempts,
+	};
+}
+
+/**
+ * Map a freshly claimed `scheduled_task` row to the domain `ClaimedTask`. A claimed
+ * row is `running` and owned, so `claimedBy` and `leaseExpiresAt` are set; a null in
+ * either is a corrupt row (the running-lease CHECK should make it impossible).
+ */
+export function entityToClaimedTask(entity: ScheduledTaskEntity): ClaimedTask {
+	if (entity.claimedBy === null || entity.leaseExpiresAt === null) {
+		throw new CorruptStorageRowError(
+			`scheduled_task ${entity.id} was claimed but is missing 'claimedBy' or 'leaseExpiresAt'`,
+		);
+	}
+	return {
+		id: String(entity.id),
+		jobId: String(entity.jobId),
+		taskType: entity.taskType,
+		payload: entity.payload,
+		scheduledFor: entity.scheduledFor,
+		runAt: entity.runAt,
+		status: entity.status,
+		attempts: entity.attempts,
+		maxAttempts: entity.maxAttempts,
+		claimedBy: entity.claimedBy,
+		leaseExpiresAt: entity.leaseExpiresAt,
+		leaseEpoch: entity.leaseEpoch,
+		startedAt: entity.startedAt,
 	};
 }

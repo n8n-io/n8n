@@ -1,12 +1,14 @@
 import type { Mock } from 'vitest';
 import type { Logger } from '@n8n/backend-common';
 import type { AgentsConfig } from '@n8n/config';
+import type { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
 import { createHash } from 'node:crypto';
 import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
 import type { AiService } from '../../../services/ai.service';
 
+import type { AgentFile } from '../entities/agent-file.entity';
 import { AGENT_KNOWLEDGE_VOLUME_MOUNT_PATH } from '../agent-knowledge-storage';
 import {
 	AGENT_KNOWLEDGE_SANDBOX_NAME_PREFIX,
@@ -40,12 +42,6 @@ interface MockSandbox {
 	delete: Mock<(...args: [number]) => Promise<void>>;
 	fs: MockFilesystem;
 	process: MockProcess;
-}
-
-async function* asyncSandboxes(...items: MockSandbox[]): AsyncIterableIterator<MockSandbox> {
-	for (const item of items) {
-		yield item;
-	}
 }
 
 class DaytonaNotFoundError extends Error {
@@ -84,7 +80,6 @@ vi.mock('@n8n/agents/sandbox', () => ({
 }));
 
 const volumeId = 'vol-1';
-const userId = 'user-1';
 const instanceId = 'instance-1';
 const projectId = 'project-1';
 const agentId = 'agent-1';
@@ -96,15 +91,7 @@ const expectedVolumeMount = {
 
 function buildExpectedSandboxName(): string {
 	const hash = createHash('sha256')
-		.update(
-			JSON.stringify({
-				instanceId,
-				projectId,
-				agentId,
-				ownerUserId: userId,
-				sandboxScopeId: userId,
-			}),
-		)
+		.update(JSON.stringify({ instanceId, projectId, agentId }))
 		.digest('hex')
 		.slice(0, 32);
 	return `${AGENT_KNOWLEDGE_SANDBOX_NAME_PREFIX}-${hash}`;
@@ -121,6 +108,8 @@ function makeService(
 	logger: Logger = mock<Logger>(),
 	aiService: AiService = makeAiService(),
 	instanceSettings: InstanceSettings = mock<InstanceSettings>({ instanceId }),
+	agentFileRepository: AgentFileRepository = mock<AgentFileRepository>(),
+	agentRepository: AgentRepository = mock<AgentRepository>(),
 ): AgentKnowledgeSandboxService {
 	return new AgentKnowledgeSandboxService(
 		{
@@ -138,9 +127,24 @@ function makeService(
 		logger,
 		aiService,
 		instanceSettings,
-		mock<AgentFileRepository>(),
-		mock<AgentRepository>(),
+		agentFileRepository,
+		agentRepository,
 	);
+}
+
+function makeAgentFile(overrides: Partial<AgentFile> = {}): AgentFile {
+	const fileName = overrides.fileName ?? 'file.txt';
+	return {
+		id: 'file-id',
+		agentId,
+		binaryDataId: `daytona-volume:${fileName}`,
+		fileName,
+		mimeType: 'text/plain',
+		fileSizeBytes: 100,
+		createdAt: new Date('2024-01-01T00:00:00.000Z'),
+		updatedAt: new Date('2024-01-01T00:00:00.000Z'),
+		...overrides,
+	} as AgentFile;
 }
 
 function makeFilesystem(): MockFilesystem {
@@ -187,7 +191,6 @@ describe('AgentKnowledgeSandboxService', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		daytonaInstances.length = 0;
-		listMock.mockReturnValue(asyncSandboxes());
 		createMock.mockResolvedValue(makeSandbox('started'));
 		getMock.mockRejectedValue(new DaytonaNotFoundError('not found'));
 	});
@@ -197,7 +200,7 @@ describe('AgentKnowledgeSandboxService', () => {
 		const service = makeService({}, mock<Logger>(), aiService);
 		const expectedName = buildExpectedSandboxName();
 
-		await service.withKnowledgeFilesystem(projectId, agentId, userId, async () => {});
+		await service.withKnowledgeFilesystem(projectId, agentId, async () => {});
 
 		expect(aiService.getClient).not.toHaveBeenCalled();
 		expect(daytonaInstances).toHaveLength(1);
@@ -206,7 +209,7 @@ describe('AgentKnowledgeSandboxService', () => {
 			apiKey: 'test-key',
 		});
 		expect(getMock).toHaveBeenCalledWith(expectedName);
-		expect(getMock.mock.invocationCallOrder[0]).toBeLessThan(listMock.mock.invocationCallOrder[0]);
+		expect(listMock).not.toHaveBeenCalled();
 		expect(createMock).toHaveBeenCalledTimes(1);
 		const [params, options] = createMock.mock.calls[0];
 		expect(params.name).toBe(expectedName);
@@ -215,8 +218,6 @@ describe('AgentKnowledgeSandboxService', () => {
 			'n8n-agents-knowledgebase': 'true',
 			'n8n-project-id': projectId,
 			'n8n-agent-id': agentId,
-			'n8n-user-id': userId,
-			'n8n-agents-sandbox-scope-id': userId,
 		});
 		expect(params.volumes).toEqual([expectedVolumeMount]);
 		expect(params.ephemeral).toBe(false);
@@ -228,7 +229,7 @@ describe('AgentKnowledgeSandboxService', () => {
 	it('forwards sandboxEphemeral config to Daytona create params', async () => {
 		const service = makeService({ sandboxEphemeral: true });
 
-		await service.withKnowledgeFilesystem(projectId, agentId, userId, async () => {});
+		await service.withKnowledgeFilesystem(projectId, agentId, async () => {});
 
 		expect(getMock).toHaveBeenCalledWith(buildExpectedSandboxName());
 		const [params] = createMock.mock.calls[0];
@@ -239,7 +240,7 @@ describe('AgentKnowledgeSandboxService', () => {
 		const changedVolumeMount = { ...expectedVolumeMount, volumeId: 'vol-2' };
 		const service = makeService({ daytonaVolumeId: changedVolumeMount.volumeId });
 
-		await service.withKnowledgeFilesystem(projectId, agentId, userId, async () => {});
+		await service.withKnowledgeFilesystem(projectId, agentId, async () => {});
 
 		expect(getMock).toHaveBeenCalledWith(buildExpectedSandboxName());
 		const [params] = createMock.mock.calls[0];
@@ -252,7 +253,7 @@ describe('AgentKnowledgeSandboxService', () => {
 		getMock.mockResolvedValue(sandbox);
 		const service = makeService();
 
-		await service.withKnowledgeFilesystem(projectId, agentId, userId, async () => {});
+		await service.withKnowledgeFilesystem(projectId, agentId, async () => {});
 
 		expect(getMock).toHaveBeenCalledWith(buildExpectedSandboxName());
 		expect(listMock).not.toHaveBeenCalled();
@@ -264,7 +265,7 @@ describe('AgentKnowledgeSandboxService', () => {
 		getMock.mockResolvedValue(sandbox);
 		const service = makeService();
 
-		await service.withKnowledgeFilesystem(projectId, agentId, userId, async () => {});
+		await service.withKnowledgeFilesystem(projectId, agentId, async () => {});
 
 		expect(sandbox.start).toHaveBeenCalledWith(300);
 		expect(createMock).not.toHaveBeenCalled();
@@ -276,32 +277,18 @@ describe('AgentKnowledgeSandboxService', () => {
 		const service = makeService();
 		const expectedName = buildExpectedSandboxName();
 
-		await service.withKnowledgeFilesystem(projectId, agentId, userId, async () => {});
+		await service.withKnowledgeFilesystem(projectId, agentId, async () => {});
 
 		expect(sandbox.delete).toHaveBeenCalledWith(300);
 		expect(createMock).toHaveBeenCalledTimes(1);
 		expect(createMock.mock.calls[0][0].name).toBe(expectedName);
 	});
 
-	it('falls back to label scan for old random-name sandboxes', async () => {
-		const legacySandbox = makeSandbox('started', [expectedVolumeMount], {
-			name: 'agents-knowledgebase-legacy-random-name',
-		});
-		listMock.mockReturnValue(asyncSandboxes(legacySandbox));
-		const service = makeService();
-
-		await service.withKnowledgeFilesystem(projectId, agentId, userId, async () => {});
-
-		expect(getMock).toHaveBeenCalledWith(buildExpectedSandboxName());
-		expect(listMock).toHaveBeenCalledTimes(1);
-		expect(createMock).not.toHaveBeenCalled();
-	});
-
 	it('creates a sandbox from configured snapshot', async () => {
 		const service = makeService({ sandboxSnapshot: 'n8n/agent-knowledge:1.2.3' });
 		const expectedName = buildExpectedSandboxName();
 
-		await service.withKnowledgeFilesystem(projectId, agentId, userId, async () => {});
+		await service.withKnowledgeFilesystem(projectId, agentId, async () => {});
 
 		expect(createMock).toHaveBeenCalledTimes(1);
 		const [params] = createMock.mock.calls[0];
@@ -320,7 +307,7 @@ describe('AgentKnowledgeSandboxService', () => {
 			.mockResolvedValueOnce(makeSandbox('started'));
 		const service = makeService({ sandboxSnapshot: 'n8n/agent-knowledge:missing' }, logger);
 
-		await service.withKnowledgeFilesystem(projectId, agentId, userId, async () => {});
+		await service.withKnowledgeFilesystem(projectId, agentId, async () => {});
 
 		expect(createMock).toHaveBeenCalledTimes(2);
 		const [snapshotParams] = createMock.mock.calls[0];
@@ -342,10 +329,108 @@ describe('AgentKnowledgeSandboxService', () => {
 	it('ignores whitespace-only sandboxSnapshot', async () => {
 		const service = makeService({ sandboxSnapshot: '   ' });
 
-		await service.withKnowledgeFilesystem(projectId, agentId, userId, async () => {});
+		await service.withKnowledgeFilesystem(projectId, agentId, async () => {});
 
 		const [params] = createMock.mock.calls[0];
 		expect(params.image).toBe('daytonaio/sandbox:0.5.0');
 		expect(params.snapshot).toBeUndefined();
+	});
+
+	it('requests a proxy token scoped to the project id when the proxy is enabled', async () => {
+		const client = mock<AiAssistantClient>();
+		client.getSandboxProxyConfig.mockResolvedValue({ image: 'proxy-image' });
+		client.getBuilderApiProxyToken.mockResolvedValue({
+			accessToken: 'proxy-token',
+			tokenType: 'Bearer',
+		});
+		client.getSandboxProxyBaseUrl.mockReturnValue('https://sandbox-proxy.example');
+		const aiService = makeAiService({
+			isProxyEnabled: vi.fn().mockReturnValue(true),
+			getClient: vi.fn().mockResolvedValue(client),
+		});
+		const service = makeService({}, mock<Logger>(), aiService);
+
+		await service.withKnowledgeFilesystem(projectId, agentId, async () => {});
+
+		expect(client.getBuilderApiProxyToken).toHaveBeenCalledWith(
+			{ id: projectId },
+			expect.anything(),
+		);
+	});
+
+	describe('globKnowledgeFiles', () => {
+		const fixtureFiles = [
+			makeAgentFile({ id: 'file-alpha', fileName: 'alpha.pdf' }),
+			makeAgentFile({ id: 'file-bravo', fileName: 'bravo.pdf' }),
+			makeAgentFile({ id: 'file-charlie', fileName: 'charlie.txt' }),
+			makeAgentFile({ id: 'file-delta', fileName: 'delta.md' }),
+		];
+
+		function makeGlobService(): AgentKnowledgeSandboxService {
+			const agentFileRepository = mock<AgentFileRepository>();
+			agentFileRepository.findByAgentId.mockResolvedValue(fixtureFiles);
+			const agentRepository = mock<AgentRepository>();
+			agentRepository.existsBy.mockResolvedValue(true);
+			return makeService(
+				{},
+				mock<Logger>(),
+				makeAiService(),
+				mock<InstanceSettings>({ instanceId }),
+				agentFileRepository,
+				agentRepository,
+			);
+		}
+
+		it('lists all files with a catch-all pattern, sorted by display name', async () => {
+			const service = makeGlobService();
+
+			const result = await service.globKnowledgeFiles(projectId, agentId, { pattern: '*' });
+
+			expect(result.files.map((file) => file.displayName)).toEqual([
+				'alpha.pdf',
+				'bravo.pdf',
+				'charlie.txt',
+				'delta.md',
+			]);
+			expect(result.hasMore).toBe(false);
+		});
+
+		it('filters by extension pattern', async () => {
+			const service = makeGlobService();
+
+			const result = await service.globKnowledgeFiles(projectId, agentId, { pattern: '*.pdf' });
+
+			expect(result.files.map((file) => file.displayName)).toEqual(['alpha.pdf', 'bravo.pdf']);
+		});
+
+		it('pages with offset', async () => {
+			const service = makeGlobService();
+
+			const firstPage = await service.globKnowledgeFiles(projectId, agentId, {
+				pattern: '*',
+				limit: 2,
+				offset: 0,
+			});
+			expect(firstPage.files.map((file) => file.displayName)).toEqual(['alpha.pdf', 'bravo.pdf']);
+			expect(firstPage.offset).toBe(0);
+			expect(firstPage.hasMore).toBe(true);
+
+			const secondPage = await service.globKnowledgeFiles(projectId, agentId, {
+				pattern: '*',
+				limit: 2,
+				offset: 2,
+			});
+			expect(secondPage.files.map((file) => file.displayName)).toEqual(['charlie.txt', 'delta.md']);
+			expect(secondPage.offset).toBe(2);
+			expect(secondPage.hasMore).toBe(false);
+		});
+
+		it('still rejects unsafe patterns', async () => {
+			const service = makeGlobService();
+
+			await expect(
+				service.globKnowledgeFiles(projectId, agentId, { pattern: '../secrets' }),
+			).rejects.toThrow('Invalid knowledge file pattern');
+		});
 	});
 });

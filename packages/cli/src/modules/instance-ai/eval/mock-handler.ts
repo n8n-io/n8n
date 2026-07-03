@@ -45,7 +45,7 @@ Each request is mocked independently. Even when the same node makes multiple sim
 
 Response SHAPE comes from the API docs; DATA VALUES come from the node config. Use names/IDs from the config exactly (case-sensitive).
 
-**Honor explicit values from the scenario and hints.** When the scenarioHints, nodeHint, or globalContext state a specific value — a quantity with a unit, a percentage, a monetary amount ("$1,200"), a count ("3 rows"), a threshold, an ID, or a name — reproduce that EXACT value in the response. Do NOT round it, soften it toward a "more typical" reading, or substitute your own estimate: the stated value is the test's intent, and downstream nodes (IF/Switch gates, filters, sums) compare against it. Emit the exact number of enumerated items the context describes. Only invent a value when the context gives none for that field. If a nodeHint and the scenario disagree, the scenario wins. When the context assigns an error or missing-data condition to a specific entity (one channel, one user, one record), compare THIS request's parameters (URL, query, body) against that entity: return the error response ONLY when this request targets it, and a normal success response for every other entity — an error scenario is only tested if the matching request actually fails.
+**Honor explicit values from the scenario and hints.** When the scenarioHints, nodeHint, or globalContext state a specific value — a quantity with a unit, a percentage, a monetary amount ("$1,200"), a count ("3 rows"), a threshold, an ID, or a name — reproduce that EXACT value in the response. Do NOT round it, soften it toward a "more typical" reading, or substitute your own estimate: the stated value is the test's intent, and downstream nodes (IF/Switch gates, filters, sums) compare against it. Emit the exact number of enumerated items the context describes. This extends to per-item constraints: when the scenario says EVERY/ALL items share a property (a literal substring every title must contain, a minimum every row must exceed), EVERY item you generate must satisfy it — check each item against the constraint character-by-character before responding (near-miss variants of a required literal fail the test). Only invent a value when the context gives none for that field. If a nodeHint and the scenario disagree, the scenario wins. When the context assigns an error or missing-data condition to a specific entity (one channel, one user, one record), compare THIS request's parameters (URL, query, body) against that entity: return the error response ONLY when this request targets it, and a normal success response for every other entity — an error scenario is only tested if the matching request actually fails.
 
 **Honor request filters.** When the request narrows results — a date-range constraint (\`gte\`/\`lte\`/\`since\`/\`after\`/\`before\` params, or filter variables inside a GraphQL query), a status/type filter, a search query, or a \`limit\` — EVERY record in your response MUST satisfy it. Never include records outside the requested window "for realism": workflows re-filter and count your records against the real clock, and one out-of-window item changes the counts the test asserts. For date filters, resolve the requested window against the Date anchors and double-check every returned timestamp falls inside it. When the scenario says records exist "in the last N days", place them safely inside that window (e.g. 2–5 days ago), never on the boundary and never on training-data dates.
 
@@ -97,6 +97,8 @@ interface MockHandlerOptions {
 	globalContext?: string;
 	/** Per-node data hints from Phase 1, keyed by node name. */
 	nodeHints?: Record<string, string>;
+	/** Compact summary of Phase-1.5 pinned node outputs — fixed data the mock must stay consistent with. */
+	pinnedOutputs?: string;
 	maxRetries?: number;
 }
 
@@ -148,6 +150,7 @@ export function createLlmMockHandler(options?: MockHandlerOptions): EvalLlmMockH
 				scenarioHints: options?.scenarioHints,
 				globalContext: options?.globalContext,
 				nodeHint: options?.nodeHints?.[node.name],
+				pinnedOutputs: options?.pinnedOutputs,
 				nodeConfig: nodeConfigCache.get(node.name) ?? '',
 				maxRetries: options?.maxRetries ?? DEFAULT_MAX_RETRIES,
 			});
@@ -237,6 +240,7 @@ interface MockResponseContext {
 	scenarioHints?: string;
 	globalContext?: string;
 	nodeHint?: string;
+	pinnedOutputs?: string;
 	nodeConfig: string;
 	maxRetries: number;
 }
@@ -325,6 +329,14 @@ async function generateMockResponse(
 					: '(Use "error" type with appropriate statusCode for error scenarios.)',
 			);
 		}
+	}
+
+	if (context.pinnedOutputs) {
+		sections.push('', '## Pinned node outputs (authoritative)');
+		sections.push(
+			'These nodes already have fixed outputs in this execution. Your response MUST stay consistent with them — reuse the same entities, IDs, statuses, and timestamps wherever the scenario implies they refer to the same data (e.g. "stored record matches current status").',
+		);
+		sections.push(context.pinnedOutputs);
 	}
 
 	// Anchors go last — the API docs above carry training-era dates, so these
