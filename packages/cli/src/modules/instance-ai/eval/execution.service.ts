@@ -270,7 +270,9 @@ export class EvalExecutionService {
 		if (bypassNodeNames.length === 0) return {};
 
 		try {
-			const dataDescription = [globalContext, scenarioHints].filter(Boolean).join('\n\n');
+			// Keep the scenario separate from the general context: the pin generator
+			// treats "Test Scenario" as authoritative, and merging them into one blob
+			// lets invented context override scenario-specified stored state.
 			const result = await timings.time(
 				'bypass-pin',
 				undefined,
@@ -278,7 +280,10 @@ export class EvalExecutionService {
 					await generatePinData({
 						workflow: workflowEntity as unknown as WorkflowJSON,
 						nodeNames: bypassNodeNames,
-						instructions: dataDescription ? { dataDescription } : undefined,
+						instructions:
+							globalContext || scenarioHints
+								? { dataDescription: globalContext, testScenario: scenarioHints }
+								: undefined,
 					}),
 			);
 
@@ -307,8 +312,26 @@ export class EvalExecutionService {
 	): Promise<InstanceAiEvalExecutionResult> {
 		const nodeResults: Record<string, InstanceAiEvalNodeResult> = {};
 
+		// Fill setup-pending resource locators BEFORE the first normalization pass:
+		// Workflow construction runs getNodeParameters(returnNoneDisplayed=false),
+		// which STRIPS params whose displayOptions depend on a selected resource
+		// (e.g. Google Sheets `columns` vanishes while documentId/sheetName are
+		// empty) — destroying the builder's full column mapping before the patcher
+		// runs; the engine later re-adds such params from bare defaults and the
+		// node crashes. Production never executes in this state — users complete
+		// setup first — so filling here mirrors a completed setup.
+		for (const node of workflowEntity.nodes) {
+			if (node.disabled || !node.parameters) continue;
+			fillSetupPendingResourceLocators(node.parameters);
+		}
+
 		const workflow = this.buildWorkflow(workflowEntity);
-		const startNode = this.findStartNode(workflow);
+		// Multi-trigger workflows: Phase 1 picks the trigger the scenario targets
+		// (firing the wrong one leaves the scenario's branch dormant and fails it).
+		const hintedStart = hints.startNodeName
+			? this.asTriggerNode(workflow.nodes[hints.startNodeName])
+			: undefined;
+		const startNode = hintedStart ?? this.findStartNode(workflow);
 
 		if (!startNode) {
 			return this.errorResult(randomUUID(), 'No trigger or start node found in the workflow');
@@ -318,6 +341,7 @@ export class EvalExecutionService {
 			scenarioHints,
 			globalContext: hints.globalContext,
 			nodeHints: hints.nodeHints,
+			pinnedOutputs: summarizePinnedOutputs(hints.bypassPinData),
 		});
 
 		const binaryRequirement = detectBinaryDependencies(workflowEntity);
@@ -329,9 +353,14 @@ export class EvalExecutionService {
 		const pinData: IPinData = { ...triggerPinData, ...hints.bypassPinData };
 		const pinDataNodeNames = Object.keys(pinData);
 
-		// Check config completeness before execution — detect missing required parameters
-		this.checkNodeConfig(workflow, nodeResults, pinDataNodeNames);
+		// Patch setup-pending params first, THEN record remaining config issues.
+		// Issues the patcher resolves (empty locators awaiting user setup, eval
+		// placeholders) must not fail the scenario — collectConfigIssueErrors folds
+		// recorded issues into errors and flips success:false, so recording
+		// pre-patch state failed runs the harness had already made executable.
+		// Genuinely unresolved misconfigurations are still recorded and still fail.
 		this.patchParameterIssuesForEval(workflow, pinDataNodeNames);
+		this.checkNodeConfig(workflow, nodeResults, pinDataNodeNames);
 		const executionData = this.buildExecutionData(startNode, pinData);
 
 		// Mark the trigger node as pinned (it gets its output from pin data, not execution).
@@ -463,6 +492,15 @@ export class EvalExecutionService {
 		return workflow.getStartNode() ?? this.findWebhookNode(workflow);
 	}
 
+	/** Accept a Phase-1 start-node hint only when it names a real, enabled trigger-capable node. */
+	private asTriggerNode(node: INode | undefined): INode | undefined {
+		if (!node || node.disabled) return undefined;
+		const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+		if (!nodeType) return undefined;
+		const isTriggerCapable = 'trigger' in nodeType || 'poll' in nodeType || 'webhook' in nodeType;
+		return isTriggerCapable ? node : undefined;
+	}
+
 	private findWebhookNode(workflow: Workflow): INode | undefined {
 		return Object.values(workflow.nodes).find((node) => {
 			if (node.disabled) return false;
@@ -517,6 +555,9 @@ export class EvalExecutionService {
 
 			if (node.parameters) {
 				node.parameters = scrubPlaceholderValues(node.parameters) as INodeParameters;
+				for (const change of patchSetupPendingResourceMappers(node.parameters)) {
+					this.logger.info(`[EvalMock] resourceMapper patch on "${node.name}": ${change}`);
+				}
 			}
 
 			const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
@@ -536,6 +577,7 @@ export class EvalExecutionService {
 			for (const paramName of Object.keys(paramIssues)) {
 				params[paramName] = synthesizeMissingParamValue(
 					params[paramName],
+					paramName,
 				) as INodeParameters[string];
 			}
 			node.parameters = params;
@@ -975,7 +1017,46 @@ function scrubPlaceholderValues(value: unknown): unknown {
 	return value;
 }
 
-function synthesizeMissingParamValue(current: unknown): unknown {
+/**
+ * Empty resource locators are the builder's correct "user picks at setup"
+ * state — filling them with one opaque token crashes nodes that resolve the
+ * value client-side against mock metadata (e.g. Google Sheets resolves the
+ * sheet gid locally; '__evalMockResource' can never match the mock's sheetId
+ * 0). Pick the value the mock environment consistently serves, keyed off the
+ * parameter name; fall back to the generic token.
+ */
+function synthesizeResourceLocatorValue(paramName: string): string {
+	const h = paramName.toLowerCase();
+	if (h.includes('spreadsheet') || h.includes('document')) return 'eval-spreadsheet-id';
+	if (h.includes('sheet')) return '0';
+	if (h.includes('calendar')) return 'eval-calendar-id';
+	if (h.includes('folder')) return 'eval-folder-id';
+	if (h.includes('file')) return 'eval-file-id';
+	if (h.includes('drive')) return 'eval-drive-id';
+	if (h.includes('channel')) return 'C00000000EVAL';
+	return '__evalMockResource';
+}
+
+/**
+ * Fill empty resource-locator values on the raw entity nodes. Must run before
+ * any Workflow construction — see the call site in execute() for why.
+ */
+function fillSetupPendingResourceLocators(parameters: INodeParameters): void {
+	for (const [key, raw] of Object.entries(parameters)) {
+		if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) continue;
+		const rl = raw as Record<string, unknown>;
+		if (!('__rl' in rl)) continue;
+		const value = rl.value;
+		const isEmpty = value === undefined || value === null || value === '';
+		if (!isEmpty) continue;
+		parameters[key] = {
+			...rl,
+			value: synthesizeResourceLocatorValue(key),
+		} as INodeParameters[string];
+	}
+}
+
+function synthesizeMissingParamValue(current: unknown, paramName = ''): unknown {
 	if (
 		current !== null &&
 		typeof current === 'object' &&
@@ -991,7 +1072,7 @@ function synthesizeMissingParamValue(current: unknown): unknown {
 		return {
 			...rl,
 			mode,
-			value: hasValue ? rawValue : '__evalMockResource',
+			value: hasValue ? rawValue : synthesizeResourceLocatorValue(paramName),
 		};
 	}
 
@@ -999,6 +1080,84 @@ function synthesizeMissingParamValue(current: unknown): unknown {
 	if (current === null || current === undefined) return '__evalMockValue';
 
 	return current;
+}
+
+/**
+ * Resource-mapper params (e.g. Google Sheets `columns`) crash at runtime when
+ * `mappingMode: 'defineBelow'` lacks `schema` — an artifact only the
+ * setup-time schema fetch can supply once the real resource exists. The
+ * defined mapping IS the builder's content: synthesize the schema from its
+ * keys, mirroring what the fetch would return. With no mappings at all, fall
+ * back to automatic input mapping. The node raises this at runtime, so
+ * pre-execution paramIssues never flags it — scan every node's params
+ * directly.
+ */
+function patchSetupPendingResourceMappers(parameters: INodeParameters): string[] {
+	const changes: string[] = [];
+	for (const [key, raw] of Object.entries(parameters)) {
+		if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) continue;
+		const mapper = raw as Record<string, unknown>;
+		if (!('mappingMode' in mapper) || mapper.mappingMode !== 'defineBelow') continue;
+
+		const value = mapper.value;
+		const mappingKeys =
+			value !== null && typeof value === 'object' && !Array.isArray(value)
+				? Object.keys(value as Record<string, unknown>)
+				: [];
+
+		if (mappingKeys.length === 0) {
+			// Keep a schema key even when empty: Google Sheets appendOrUpdate
+			// (v4.4+) reads `columns.schema` without a fallback regardless of
+			// mapping mode — an absent key crashes with "Could not get parameter".
+			parameters[key] = {
+				...mapper,
+				mappingMode: 'autoMapInputData',
+				value: null,
+				schema: Array.isArray(mapper.schema) ? mapper.schema : [],
+			} as INodeParameters[string];
+			changes.push(`${key}: defineBelow without mappings → autoMapInputData`);
+			continue;
+		}
+
+		const schema = mapper.schema;
+		if (Array.isArray(schema) && schema.length > 0) continue;
+
+		changes.push(`${key}: synthesized schema from ${String(mappingKeys.length)} mapping keys`);
+		parameters[key] = {
+			...mapper,
+			schema: mappingKeys.map((id) => ({
+				id,
+				displayName: id,
+				required: false,
+				defaultMatch: false,
+				display: true,
+				type: 'string',
+				canBeUsedToMatch: true,
+			})),
+		} as INodeParameters[string];
+	}
+	return changes;
+}
+
+/**
+ * Compact per-node summary of Phase-1.5 pinned outputs for the runtime mock
+ * prompt — HTTP mocks must stay consistent with pinned stored state (same
+ * entities/timestamps), else "stored matches current" scenarios can never pass.
+ */
+function summarizePinnedOutputs(pinData: IPinData | undefined): string | undefined {
+	if (!pinData) return undefined;
+	const lines: string[] = [];
+	for (const [nodeName, items] of Object.entries(pinData)) {
+		let json = '';
+		try {
+			json = JSON.stringify(items);
+		} catch {
+			continue;
+		}
+		if (json.length > 1500) json = json.slice(0, 1500) + '…';
+		lines.push(`- ${nodeName}: ${json}`);
+	}
+	return lines.length > 0 ? lines.join('\n') : undefined;
 }
 
 function collectConfigIssueErrors(nodeResults: Record<string, InstanceAiEvalNodeResult>): string[] {
