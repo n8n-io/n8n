@@ -123,12 +123,18 @@ function isNodeTool(
 	return tool?.type === 'node';
 }
 
-function hasSameNodeToolIdentity(
+/**
+ * Match a current node tool to its previous incarnation by STRUCTURAL node
+ * identity (node type + version), deliberately NOT by `name`. A node tool has no
+ * stable id, so keying on the display name would treat a plain rename as a brand
+ * new tool — making its pre-existing `$fromAI` references look new and trip false
+ * validation errors even though nothing was added.
+ */
+function hasSameStructuralNodeIdentity(
 	left: AgentJsonNodeToolConfig,
 	right: AgentJsonNodeToolConfig,
 ): boolean {
 	return (
-		left.name === right.name &&
 		left.node.nodeType === right.node.nodeType &&
 		left.node.nodeTypeVersion === right.node.nodeTypeVersion
 	);
@@ -141,12 +147,12 @@ function findPreviousNodeTool(
 ): AgentJsonNodeToolConfig | null {
 	const previousTools = previousConfig?.tools ?? [];
 	const sameIndexTool = previousTools[currentToolIndex];
-	if (isNodeTool(sameIndexTool) && hasSameNodeToolIdentity(sameIndexTool, currentTool)) {
+	if (isNodeTool(sameIndexTool) && hasSameStructuralNodeIdentity(sameIndexTool, currentTool)) {
 		return sameIndexTool;
 	}
 	const matchingTools = previousTools.filter(
 		(tool): tool is AgentJsonNodeToolConfig =>
-			isNodeTool(tool) && hasSameNodeToolIdentity(tool, currentTool),
+			isNodeTool(tool) && hasSameStructuralNodeIdentity(tool, currentTool),
 	);
 	return matchingTools.length === 1 ? matchingTools[0] : null;
 }

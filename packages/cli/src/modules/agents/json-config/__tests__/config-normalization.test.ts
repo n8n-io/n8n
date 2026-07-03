@@ -1,4 +1,4 @@
-import type { AgentJsonConfig } from '@n8n/api-types';
+import type { AgentJsonConfig, AgentJsonNodeToolConfig } from '@n8n/api-types';
 import type { INodeTypes } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -147,19 +147,19 @@ describe('rejectIfDynamicSelectorUsesFromAi', () => {
 		},
 	} as unknown as ReturnType<INodeTypes['getByNameAndVersion']>);
 
+	const linearNodeTool: AgentJsonNodeToolConfig = {
+		type: 'node',
+		name: 'Linear',
+		node: {
+			nodeType: 'n8n-nodes-base.linearTool',
+			nodeTypeVersion: 1.1,
+			nodeParameters: { teamId: "={{ $fromAI('teamId', 'The team', 'string') }}" },
+		},
+	};
+
 	const configWithFromAiSelector: AgentJsonConfig = {
 		...base,
-		tools: [
-			{
-				type: 'node',
-				name: 'Linear',
-				node: {
-					nodeType: 'n8n-nodes-base.linearTool',
-					nodeTypeVersion: 1.1,
-					nodeParameters: { teamId: "={{ $fromAI('teamId', 'The team', 'string') }}" },
-				},
-			},
-		],
+		tools: [linearNodeTool],
 	};
 
 	it('rejects $fromAI on a dynamic selector parameter', () => {
@@ -173,6 +173,15 @@ describe('rejectIfDynamicSelectorUsesFromAi', () => {
 			configWithFromAiSelector,
 			nodeTypes,
 		);
+		expect(result).toBeNull();
+	});
+
+	it('tolerates a pre-existing $fromAI selector when the node tool was only renamed', () => {
+		const renamed: AgentJsonConfig = {
+			...configWithFromAiSelector,
+			tools: [{ ...linearNodeTool, name: 'Linear Renamed' }],
+		};
+		const result = rejectIfDynamicSelectorUsesFromAi(renamed, configWithFromAiSelector, nodeTypes);
 		expect(result).toBeNull();
 	});
 });

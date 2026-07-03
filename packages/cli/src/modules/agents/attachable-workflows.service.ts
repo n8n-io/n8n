@@ -19,9 +19,6 @@ const SUPPORTED_TRIGGERS: Record<string, string> = {
 	'n8n-nodes-base.scheduleTrigger': 'schedule',
 	'n8n-nodes-base.formTrigger': 'form',
 };
-/* eslint-enable @typescript-eslint/naming-convention */
-
-const MAX_ATTACHABLE_WORKFLOWS = 100;
 
 /**
  * Lists the workflows a user may attach to an agent as `type: "workflow"` tools.
@@ -50,7 +47,6 @@ export class AttachableWorkflowsService {
 
 		return Array.from(byId.values())
 			.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
-			.slice(0, MAX_ATTACHABLE_WORKFLOWS)
 			.flatMap((workflow) => {
 				const triggerNode = (workflow.nodes ?? []).find((node) => SUPPORTED_TRIGGERS[node.type]);
 				if (!triggerNode) return [];
