@@ -11,9 +11,10 @@ export interface RedactionOptions {
 	detect?: readonly PiiDetectionType[];
 	/** Replacement text for a match. Defaults to `[REDACTED]`. */
 	placeholder?: string;
-	/** For `url` matches, keep origin + pathname + query names and redact only the
-	 *  value-bearing parts (query values, userinfo, fragment). Off by default so
-	 *  guardrail behavior is unchanged; telemetry/trace scrubbing opts in. */
+	/** For `url` matches, keep origin + path + query names and redact the
+	 *  value-bearing parts: query values, token-like path segments (webhook
+	 *  secrets), userinfo, fragment. Off by default so guardrail behavior is
+	 *  unchanged; telemetry/trace scrubbing opts in. */
 	preserveUrlStructure?: boolean;
 }
 
@@ -46,20 +47,26 @@ export function redactText(input: string, opts: RedactionOptions = {}): Redactio
 		secrets: opts.secrets ?? true,
 		detect: opts.detect ?? [],
 	});
+	// In preserve mode the url pass runs FIRST: it rewrites URLs with a URL-safe
+	// placeholder before other patterns can plant one containing `]` mid-URL —
+	// `]` stops the url regex, which would hide the URL's tail (and any secrets
+	// in it) from this pass entirely.
+	const ordered = opts.preserveUrlStructure
+		? [
+				...patterns.filter((pattern) => pattern.category === 'url'),
+				...patterns.filter((pattern) => pattern.category !== 'url'),
+			]
+		: patterns;
 
 	const matches: Array<{ category: RedactionCategory }> = [];
 	let text = input;
 
-	for (const pattern of patterns) {
+	for (const pattern of ordered) {
 		// `replace` with a global regex scans from 0 and resets lastIndex, so the
 		// shared precompiled regex is safe to reuse across calls.
 		text = text.replace(pattern.regex, (match) => {
 			if (pattern.validate && !pattern.validate(match)) return match;
 			if (opts.preserveUrlStructure && pattern.category === 'url') {
-				// Already redacted by an earlier pattern ⇒ leave as-is (also keeps the pass
-				// idempotent). The URL regex's stop-set can clip the placeholder's trailing `]`.
-				const placeholderMark = placeholder.length > 1 ? placeholder.slice(0, -1) : placeholder;
-				if (match.includes(placeholderMark)) return match;
 				const rebuilt = stripUrlSensitiveParts(match, placeholder);
 				if (rebuilt !== match) matches.push({ category: pattern.category });
 				return rebuilt;
@@ -72,15 +79,31 @@ export function redactText(input: string, opts: RedactionOptions = {}): Redactio
 	return { text, matches };
 }
 
-/** Keep origin + pathname + query names; redact query values, drop userinfo and
- *  fragment. Unparseable ⇒ fully redacted. */
+/** True for a path segment that looks like an embedded token — Slack/Discord
+ *  webhook secrets and Telegram bot tokens live in the path. Conservative:
+ *  plain words and digit-only ids are kept. */
+function isTokenLikeSegment(segment: string): boolean {
+	return segment.length >= 16 && /[A-Za-z]/.test(segment) && /\d/.test(segment);
+}
+
+/** Keep origin + path (token-like segments redacted) + query names; redact
+ *  query values, drop userinfo and fragment. The replacement is URL-safe (no
+ *  `]`, which the url regex stops at) so re-scrubbing is stable. Unparseable ⇒
+ *  fully redacted. */
 function stripUrlSensitiveParts(match: string, placeholder: string): string {
+	const urlPlaceholder = placeholder.replace(/[^A-Za-z0-9_.~-]/g, '') || 'REDACTED';
 	try {
 		const url = new URL(match);
+		const pathname = url.pathname
+			.split('/')
+			.map((segment) => (isTokenLikeSegment(segment) ? urlPlaceholder : segment))
+			.join('/');
 		const names = [...url.searchParams.keys()];
 		const query =
-			names.length > 0 ? `?${names.map((name) => `${name}=${placeholder}`).join('&')}` : '';
-		return `${url.origin}${url.pathname}${query}`;
+			names.length > 0
+				? `?${names.map((name) => `${encodeURIComponent(name)}=${urlPlaceholder}`).join('&')}`
+				: '';
+		return `${url.origin}${pathname}${query}`;
 	} catch {
 		return placeholder;
 	}

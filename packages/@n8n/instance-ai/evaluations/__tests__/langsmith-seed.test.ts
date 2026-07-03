@@ -782,6 +782,39 @@ describe('reconstructSeedFromThread — filesystem-based builds (post-#32545)', 
 		// A real (object) credentials block is preserved.
 		expect(sheets).toMatchObject({ credentials: { googleSheetsOAuth2Api: { id: 'c1' } } });
 	});
+
+	it('rejects a compiled payload whose node entry degraded to a primitive and replays source', async () => {
+		const runs: FakeRun[] = [
+			{ ...turn('r1', 1, 'Build it'), outputs: { response: 'Building…' } },
+			tool('w1', 2, 'workspace_write_file', { path: FILE, content: 'CODE_V1' }),
+			tool(
+				'c1',
+				3,
+				'compiled-workflow',
+				{},
+				{
+					workflowId: 'WF1',
+					sourceHash: 'h1',
+					// A bare '[redacted]' node is not a structural placeholder; without the
+					// entry-type check, `'credentials' in node` throws and kills the whole
+					// reconstruction instead of falling back.
+					workflow: { name: 'Main', nodes: ['[redacted]'], connections: {} },
+				},
+			),
+			tool(
+				'b1',
+				4,
+				'build-workflow',
+				{ filePath: FILE, name: 'Main' },
+				{ success: true, workflowId: 'WF1', sourceHash: 'h1' },
+			),
+			turn('r2', 30, 'change'),
+		];
+		const result = await reconstructSeedFromThread({ threadId: 'th1' }, fakeClient(runs));
+
+		expect(result.seed.workflows).toHaveLength(1);
+		expect(result.seed.workflows[0].nodes[0]).toMatchObject({ __code: 'CODE_V1' });
+	});
 });
 
 describe('reconstructSeedFromThread — workflow deletes', () => {

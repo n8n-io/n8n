@@ -544,7 +544,9 @@ describe('createInstanceAiTraceContext', () => {
 						credentials: '[redacted]',
 					},
 				]),
-				'ai.response.text': '[REDACTED]',
+				// The Bearer value is redacted; the header label survives (the generic
+				// assignment pattern skips already-redacted values for idempotency).
+				'ai.response.text': 'Authorization: [REDACTED]',
 				'ai.telemetry.metadata.thread_id': 'thread-1',
 				'ai.usage.inputTokens': 123,
 				'ai.usage.outputTokens': 45,

@@ -76,10 +76,13 @@ function deepWorkflow() {
 	} as const;
 }
 
-function exportSpan(name: string) {
+function exportSpan(rawPayload: boolean) {
 	const span = redactLangSmithTelemetrySpan({
-		name,
+		name: COMPILED_WORKFLOW_TRACE_RUN_NAME,
 		attributes: {
+			// Producer-set flag (emitTraceOnlyChildRun with rawOutputs) — the deep
+			// tier keys on this, not on the (claimable) span name.
+			...(rawPayload ? { 'langsmith.metadata.raw_trace_payload': true } : {}),
 			[GEN_AI_COMPLETION]: JSON.stringify({
 				workflowId: 'wf-1',
 				sourceHash: 'h1',
@@ -92,7 +95,7 @@ function exportSpan(name: string) {
 
 describe('compiled-workflow trace payload fidelity through export scrubbing', () => {
 	it('keeps full structure while still scrubbing secrets, credentials and URL values', () => {
-		const completion = exportSpan(COMPILED_WORKFLOW_TRACE_RUN_NAME);
+		const completion = exportSpan(true);
 		const parsed = jsonParse<{
 			workflowId: string;
 			sourceHash: string;
@@ -119,7 +122,7 @@ describe('compiled-workflow trace payload fidelity through export scrubbing', ()
 
 		// The URL keeps its routable identity; only the query value is redacted.
 		expect(wf.nodes[2].parameters.url).toBe(
-			'https://jsonplaceholder.typicode.com/posts?userId=[REDACTED]',
+			'https://jsonplaceholder.typicode.com/posts?userId=REDACTED',
 		);
 
 		// Sensitive-named keys are still nuked wholesale…
@@ -132,8 +135,8 @@ describe('compiled-workflow trace payload fidelity through export scrubbing', ()
 		expect(completion).not.toMatch(/\[array\(\d+\)\]|\[object \d+ keys\]|\[redacted-depth-limit\]/);
 	});
 
-	it('keeps the default depth cap for other spans (deep tier is scoped to the compiled event)', () => {
-		const completion = exportSpan('some-other-run');
+	it('keeps the default depth cap without the producer flag — even for a same-named span', () => {
+		const completion = exportSpan(false);
 		expect(completion).toContain('[redacted-depth-limit]');
 	});
 });

@@ -1138,6 +1138,9 @@ export interface InstanceAiTraceContext {
 		parentRun: InstanceAiTraceRun,
 		options: InstanceAiTraceRunInit,
 	) => Promise<InstanceAiTraceRun>;
+	/** False once the turn's trace runtime is shut down — runs created through a
+	 *  stale handle (e.g. a tool resumed in a later turn) export nothing. */
+	isLive?: () => boolean;
 	withRunTree: <T>(run: InstanceAiTraceRun, fn: () => Promise<T>) => Promise<T>;
 	withActiveSpan: <T>(run: InstanceAiTraceRun, fn: () => Promise<T>) => Promise<T>;
 	toHeaders: (run: InstanceAiTraceRun) => Record<string, string>;

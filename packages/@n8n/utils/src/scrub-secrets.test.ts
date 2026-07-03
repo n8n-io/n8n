@@ -10,10 +10,12 @@ const join = (prefix: string, suffix: string) => prefix + suffix;
 
 describe('scrubSecretsInText', () => {
 	it('redacts Bearer/Basic/Token authorization values', () => {
-		// The Bearer/Basic/Token-prefix pattern consumes the prefix and value
-		// together, and the generic `authorization: ...` pattern then collapses
-		// the whole header to a single placeholder.
-		expect(scrubSecretsInText('Authorization: Bearer abc.def-ghi_jkl/mno=')).toBe('[REDACTED]');
+		// The Bearer/Basic/Token-prefix pattern consumes the prefix and value;
+		// the generic `authorization: ...` pattern then skips the already-redacted
+		// value (idempotency lookahead), keeping the header label.
+		expect(scrubSecretsInText('Authorization: Bearer abc.def-ghi_jkl/mno=')).toBe(
+			'Authorization: [REDACTED]',
+		);
 		expect(scrubSecretsInText('header is Basic dXNlcjpwYXNzd29yZA==')).toBe('header is [REDACTED]');
 		expect(scrubSecretsInText('header is Token abcdef1234567890')).toBe('header is [REDACTED]');
 	});
@@ -133,5 +135,40 @@ describe('scrubSecretsInText', () => {
 	it('returns the input unchanged when no patterns match', () => {
 		const input = 'this is a normal sentence with no secrets in it';
 		expect(scrubSecretsInText(input)).toBe(input);
+	});
+
+	it('redacts a Slack incoming-webhook path', () => {
+		const url = join(
+			'https://hooks.slack.com/services/',
+			'T0001A2B3/B0004C5D6/a1B2c3D4e5F6g7H8i9J0k1L2',
+		);
+		expect(scrubSecretsInText(`post to ${url}`)).toBe(
+			'post to https://hooks.slack.com/services/[REDACTED]',
+		);
+	});
+
+	it('redacts a Discord webhook path', () => {
+		const url = join(
+			'https://discord.com/api/webhooks/',
+			'1394380000000000000/aBcDeF-ghIJkLmNoP_qRsTuVwXyZ0123456789',
+		);
+		expect(scrubSecretsInText(url)).toBe('https://discord.com/api/webhooks/[REDACTED]');
+	});
+
+	it('redacts a Telegram bot token, including inside a /bot… URL', () => {
+		const url = join(
+			'https://api.telegram.org/bot',
+			'123456789:AAEabcDEFghiJKLmnoPQRstuVWX01234567/sendMessage',
+		);
+		expect(scrubSecretsInText(url)).toBe('https://api.telegram.org/[REDACTED]/sendMessage');
+	});
+
+	it('skips already-redacted generic assignments (idempotent, incl. URL-safe form)', () => {
+		expect(scrubSecretsInText('api_key=[REDACTED] and password=[redacted]')).toBe(
+			'api_key=[REDACTED] and password=[redacted]',
+		);
+		expect(scrubSecretsInText('?X-Amz-Credential=REDACTED&X-Amz-Signature=abc')).toBe(
+			'?X-Amz-Credential=REDACTED&X-Amz-Signature=abc',
+		);
 	});
 });

@@ -990,6 +990,12 @@ export async function emitTraceOnlyChildRun(
 	init: InstanceAiTraceRunInit,
 	finish: { outputs: unknown; rawOutputs?: boolean },
 ): Promise<'ambient' | 'handle' | 'skipped'> {
+	// Raw payloads are flagged in metadata so the export scrubber lifts its
+	// structural depth cap for them — keyed on producer-set metadata, not on a
+	// span name any tool could claim.
+	const metadata = finish.rawOutputs
+		? { ...init.metadata, raw_trace_payload: true }
+		: init.metadata;
 	const currentTrace = getCurrentProductTrace();
 	if (currentTrace) {
 		await startAndFinishProductChildSpan(currentTrace, {
@@ -997,16 +1003,20 @@ export async function emitTraceOnlyChildRun(
 			canonicalName: init.canonicalName,
 			runType: init.runType,
 			tags: init.tags,
-			metadata: init.metadata,
+			metadata,
 			inputs: init.inputs,
 			outputs: finish.outputs,
 			rawOutputs: finish.rawOutputs,
 		});
 		return 'ambient';
 	}
-	if (fallbackTracing) {
+	// A dead handle's runs are spanless and export nothing — don't claim 'handle'.
+	if (fallbackTracing && (fallbackTracing.isLive?.() ?? true)) {
 		try {
-			const run = await fallbackTracing.startChildRun(fallbackTracing.actorRun, init);
+			const run = await fallbackTracing.startChildRun(fallbackTracing.actorRun, {
+				...init,
+				metadata,
+			});
 			await fallbackTracing.finishRun(run, {
 				outputs: finish.outputs,
 				...(finish.rawOutputs ? { rawOutputs: true } : {}),
@@ -1181,6 +1191,7 @@ function createTraceContext(
 		messageRun: rootRun,
 		orchestratorRun: actorRun,
 		startChildRun,
+		isLive: () => !otelRuntime.shutdown,
 		withRunTree,
 		withActiveSpan,
 		toHeaders: () => ({}),

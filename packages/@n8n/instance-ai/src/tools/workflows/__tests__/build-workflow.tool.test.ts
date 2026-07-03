@@ -1,4 +1,5 @@
 import { executeTool } from '../../../__tests__/tool-test-utils';
+import { emitTraceOnlyChildRun } from '../../../tracing/langsmith-tracing';
 import type { InstanceAiContext } from '../../../types';
 import type { WorkflowBuildOutcome } from '../../../workflow-loop/workflow-loop-state';
 import { buildWorkflowInputSchema, createBuildWorkflowTool } from '../build-workflow.tool';
@@ -8,6 +9,17 @@ import { getWorkflowSourceFileBinding, hashWorkflowSource } from '../workflow-fi
 import { ensureWebhookIds } from '../workflow-json-utils';
 import { compileWorkflowSource } from '../workflow-source-compiler';
 import { partitionWarnings, type ValidationWarning } from '../workflow-validation-warnings';
+
+// Passthrough spy: real behavior (handle-fallback path in unit env), observable calls.
+vi.mock('../../../tracing/langsmith-tracing', async () => {
+	const actual = await vi.importActual<Record<string, unknown>>(
+		'../../../tracing/langsmith-tracing',
+	);
+	return {
+		...actual,
+		emitTraceOnlyChildRun: vi.fn(actual.emitTraceOnlyChildRun as typeof emitTraceOnlyChildRun),
+	};
+});
 
 vi.mock('../workflow-validation-warnings', () => ({
 	partitionWarnings: vi.fn((warnings: unknown[]) => ({ errors: [], informational: warnings })),
@@ -289,7 +301,7 @@ describe('createBuildWorkflowTool', () => {
 		expect((finishOpts as { rawOutputs?: boolean }).rawOutputs).toBeUndefined();
 	});
 
-	it('builds successfully without emitting a trace run when tracing is absent', async () => {
+	it('reports the emission as skipped when tracing is absent', async () => {
 		const { context, filePath } = makeContext({ source: 'workflow source from workspace' });
 
 		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
@@ -298,7 +310,36 @@ describe('createBuildWorkflowTool', () => {
 		});
 
 		expect(result.success).toBe(true);
-		expect(context.tracing).toBeUndefined();
+		// No ambient trace in unit env and no handle ⇒ the emission is a no-op
+		// and says so — it must not claim success into a void.
+		expect(emitTraceOnlyChildRun).toHaveBeenCalledTimes(1);
+		expect(vi.mocked(emitTraceOnlyChildRun).mock.calls[0][0]).toBeUndefined();
+		await expect(vi.mocked(emitTraceOnlyChildRun).mock.results[0].value).resolves.toBe('skipped');
+	});
+
+	it('reports the emission as skipped when the handle is stale (runtime shut down)', async () => {
+		const startChildRun = vi.fn();
+		const tracing = {
+			actorRun: { id: 'actor-run-1' },
+			isLive: () => false,
+			startChildRun,
+			finishRun: vi.fn(),
+		} as unknown as InstanceAiContext['tracing'];
+		const { context, filePath } = makeContext({
+			source: 'workflow source from workspace',
+			overrides: { tracing },
+		});
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+			name: 'Daily Weather to Slack',
+		});
+
+		expect(result.success).toBe(true);
+		// A dead runtime's runs are spanless and export nothing — no attempt, no
+		// 'handle' claim.
+		expect(startChildRun).not.toHaveBeenCalled();
+		await expect(vi.mocked(emitTraceOnlyChildRun).mock.results[0].value).resolves.toBe('skipped');
 	});
 
 	it('keeps pending workflow setup ready for verification', async () => {

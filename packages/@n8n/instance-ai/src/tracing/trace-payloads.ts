@@ -9,7 +9,6 @@ import { isRecord } from '@n8n/utils/is-record';
 import { createHash } from 'node:crypto';
 
 import {
-	COMPILED_WORKFLOW_TRACE_RUN_NAME,
 	DOMAIN_TOOL_IDS,
 	ORCHESTRATION_TOOL_IDS,
 	ORCHESTRATION_TOOL_NAMES,
@@ -1001,10 +1000,14 @@ export function redactLangSmithTelemetrySpan(span: unknown): unknown {
 		return span;
 	}
 
-	// The compiled-workflow event needs lossless structure — lift the structural
-	// depth cap on its completion attribute; scrubbing still applies throughout.
+	// Raw machine payloads (compiled-workflow event) need lossless structure —
+	// lift the structural depth cap on the completion attribute. Keyed on the
+	// producer-set metadata flag, not the span name, which any tool could claim.
+	// Scrubbing still applies throughout.
 	const completionDepth =
-		span.name === COMPILED_WORKFLOW_TRACE_RUN_NAME ? MAX_RAW_PAYLOAD_TRACE_DEPTH : undefined;
+		span.attributes['langsmith.metadata.raw_trace_payload'] === true
+			? MAX_RAW_PAYLOAD_TRACE_DEPTH
+			: undefined;
 
 	const attributes: Record<string, unknown> = {};
 	for (const [key, value] of Object.entries(span.attributes)) {

@@ -37,6 +37,14 @@ export const SECRET_VALUE_PATTERNS: readonly RegExp[] = [
 	/\bgithub_pat_[A-Za-z0-9_]{22,}/g,
 	// AWS access key id
 	/\bAKIA[0-9A-Z]{16}\b/g,
+	// Slack incoming-webhook path (the secret is the trailing path segment).
+	// The lookahead skips token segments a URL-structure-preserving pass
+	// already replaced, keeping the two passes composable.
+	/(?<=\bhooks\.slack\.com\/services\/)[A-Za-z0-9]+\/[A-Za-z0-9]+\/(?!REDACTED\b)[A-Za-z0-9]+/g,
+	// Discord webhook path (`<id>/<token>`)
+	/(?<=\bdiscord(?:app)?\.com\/api\/webhooks\/)\d+\/(?!REDACTED\b)[\w-]+/g,
+	// Telegram bot token (`<bot id>:<35-char secret>`, also inside `/bot…/` URLs)
+	/\b(?:bot)?\d{8,10}:[A-Za-z0-9_-]{35}\b/g,
 	// Credentials embedded in a URL: `scheme://user:password@` — redact the userinfo.
 	/(?<=:\/\/)[^\s:/@]+:[^\s:/@]+(?=@)/g,
 	// JSON-shaped `"key": "value"` — matches the quoted field as a whole.
@@ -58,8 +66,10 @@ export const SECRET_VALUE_PATTERNS: readonly RegExp[] = [
 		`'(?:${SECRET_KEYS})'\\s*:\\s*'(?!\\[(?:redacted|REDACTED)\\]')(?:\\\\.|[^'\\r\\n])*'`,
 		'gi',
 	),
-	// Generic `password=...` / `api_key=...` / `secret=...` style assignments
-	new RegExp(`\\b(?:${SECRET_KEYS})\\s*[:=]\\s*\\S+`, 'gi'),
+	// Generic `password=...` / `api_key=...` / `secret=...` style assignments.
+	// Same idempotency lookahead as the quoted forms: skip values that are
+	// already a redaction placeholder (bracketed or URL-safe bare form).
+	new RegExp(`\\b(?:${SECRET_KEYS})\\s*[:=]\\s*(?!\\[?(?:redacted|REDACTED)\\b)\\S+`, 'gi'),
 ];
 
 export function scrubSecretsInText(input: string): string {

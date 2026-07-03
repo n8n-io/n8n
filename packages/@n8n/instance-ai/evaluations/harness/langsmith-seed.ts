@@ -773,7 +773,10 @@ function extractCompiledWorkflow(
 			rejected: `structural placeholder "${marker}" — the trace pipeline dropped structure`,
 		};
 	}
-	const nodes = (value.nodes as Array<Record<string, unknown>>).map((node) => {
+	if (!value.nodes.every(isRecord)) {
+		return { rejected: 'a node entry is not an object — the trace pipeline degraded it' };
+	}
+	const nodes = value.nodes.map((node) => {
 		// Scrubbed to a string by the exporter — drop; seeding re-attaches credentials.
 		if ('credentials' in node && !isRecord(node.credentials)) {
 			const { credentials: _dropped, ...rest } = node;
