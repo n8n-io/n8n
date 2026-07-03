@@ -294,6 +294,7 @@ export class InstanceAiMcpRegistryService {
 				url: resolvedServer.endpointUrl,
 				transport: resolvedServer.transport,
 				fetch: requestFetch,
+				connectionTimeoutMs: 10_000,
 			},
 		]);
 

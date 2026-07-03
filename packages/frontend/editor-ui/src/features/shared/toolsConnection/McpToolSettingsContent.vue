@@ -30,6 +30,7 @@ const hasSavedBefore = ref(false);
 watch(
 	() => props.item.id,
 	() => {
+		hasSavedBefore.value = false;
 		const next = initialSettings();
 		inclusionMode.value = next.inclusionMode;
 		selectedTools.value = [...next.selectedTools];

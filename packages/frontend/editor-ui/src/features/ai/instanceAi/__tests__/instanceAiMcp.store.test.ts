@@ -46,6 +46,7 @@ const makeConnection = (
 	credentialId: overrides.credentialId ?? 'cred-1',
 	credentialName: overrides.credentialName ?? 'Linear OAuth2',
 	credentialType: overrides.credentialType ?? 'mcpOAuth2Api',
+	toolFilter: overrides.toolFilter ?? null,
 	createdAt: '2026-05-01T00:00:00.000Z',
 	updatedAt: '2026-05-01T00:00:00.000Z',
 });
