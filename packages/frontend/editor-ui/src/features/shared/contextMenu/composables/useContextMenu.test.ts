@@ -83,7 +83,8 @@ describe('useContextMenu', () => {
 	const selectedNodes = nodes.slice(0, 2);
 	const testWorkflowId = 'test-workflow-id';
 
-	beforeAll(() => {
+	// `restoreMocks` restores spies before each test, so re-establish them per-test.
+	beforeEach(() => {
 		setActivePinia(createPinia());
 		sourceControlStore = useSourceControlStore();
 		vi.spyOn(sourceControlStore, 'preferences', 'get').mockReturnValue({

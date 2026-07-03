@@ -1,6 +1,7 @@
 import { Container } from '@n8n/di';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import type { MockInstance } from 'vitest';
 
 import type { DatabaseConfig } from '../src/index';
 import { GlobalConfig, SSRF_DEFAULT_BLOCKED_IP_RANGES } from '../src/index';
@@ -13,7 +14,8 @@ vi.mock('node:fs', () => ({
 	readFileSync: readFileSyncMock,
 }));
 
-const consoleWarnMock = vi.spyOn(console, 'warn').mockImplementation(() => {});
+// `restoreMocks` restores spies before each test, so this is re-established in beforeEach.
+let consoleWarnMock: MockInstance;
 
 // Ignore the sanitize function from the GlobalConfig nested types
 type ConfigShape<T> = T extends ReadonlyArray<infer U>
@@ -34,6 +36,7 @@ describe('GlobalConfig', () => {
 	beforeEach(() => {
 		Container.reset();
 		vi.clearAllMocks();
+		consoleWarnMock = vi.spyOn(console, 'warn').mockImplementation(() => {});
 	});
 
 	const originalEnv = process.env;
@@ -337,7 +340,7 @@ describe('GlobalConfig', () => {
 			braveSearchApiKey: '',
 			searxngUrl: '',
 			gatewayApiKey: '',
-			threadTtlDays: 90,
+			threadTtlDays: 30,
 			pruneInterval: 3_600_000,
 			snapshotRetention: 86_400_000,
 			checkpointGcRetention: 604_800_000,

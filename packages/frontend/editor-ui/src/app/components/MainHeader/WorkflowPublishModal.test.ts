@@ -340,4 +340,79 @@ describe('WorkflowPublishModal', () => {
 			});
 		});
 	});
+
+	describe('re-attempt (partial / failed publication)', () => {
+		// Set versionId === activeVersion.versionId so wfHasAnyChanges is false
+		beforeEach(() => {
+			workflowDocumentStore.setVersionData({
+				versionId: 'old-version',
+				name: null,
+				description: null,
+			});
+		});
+
+		it.each(['partial', 'failed'] as const)(
+			'enables the Publish button and shows reattempt callout when status is "%s" with no changes',
+			async (status) => {
+				workflowDocumentStore.setPublicationStatus({ status });
+
+				const { getByTestId, queryByTestId } = renderComponent();
+
+				// Publish button is enabled (onMounted sets versionName, so wait for reactivity)
+				await waitFor(() => {
+					expect(getByTestId('workflow-publish-button')).not.toBeDisabled();
+				});
+
+				// reattempt callout is shown
+				expect(getByTestId('workflow-publish-callout-reattempt')).toBeInTheDocument();
+
+				// noChanges callout is NOT shown
+				expect(queryByTestId('workflow-publish-callout-no-changes')).not.toBeInTheDocument();
+			},
+		);
+
+		it('still blocks re-attempt when containsTrigger is false', async () => {
+			workflowDocumentStore.setPublicationStatus({ status: 'partial' });
+			workflowDocumentStore.setNodes([]);
+
+			const { getByTestId } = renderComponent();
+
+			await waitFor(() => {
+				expect(getByTestId('workflow-publish-button')).toBeDisabled();
+			});
+		});
+
+		it('still blocks re-attempt when hasNodeIssues is true', async () => {
+			workflowDocumentStore.setPublicationStatus({ status: 'failed' });
+			// Inject a node with a blocking issue
+			workflowDocumentStore.setNodes([
+				{
+					id: 'trigger-1',
+					name: 'Webhook Trigger',
+					type: WEBHOOK_NODE_TYPE,
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+					disabled: false,
+					issues: { parameters: { param: ['Required parameter is missing'] } },
+				},
+			]);
+
+			const { getByTestId } = renderComponent();
+
+			await waitFor(() => {
+				expect(getByTestId('workflow-publish-button')).toBeDisabled();
+			});
+		});
+
+		it('shows noChanges callout (not reattempt) in idle status with no changes', () => {
+			// Ensure status is idle (not residual from prior tests)
+			workflowDocumentStore.setPublicationStatus({ status: 'idle' });
+
+			const { getByTestId, queryByTestId } = renderComponent();
+
+			expect(getByTestId('workflow-publish-callout-no-changes')).toBeInTheDocument();
+			expect(queryByTestId('workflow-publish-callout-reattempt')).not.toBeInTheDocument();
+		});
+	});
 });

@@ -36,6 +36,52 @@ export function buildRunWorkflowSessionGrantKey(workflowId: string): string {
 	return `executions:run:${workflowId}`;
 }
 
+// --- Domain-access grants ("always allow" for web access) ---
+// These keys mirror the research tool's action names (`fetch-url`, `web-search`) the same
+// way `executions:run:<id>` mirrors the executions `run` action, so a persisted grant row
+// names the exact tool action the user approved.
+
+/** Grant key for persistently allowing fetches from a specific host. */
+export function buildFetchUrlGrantKey(host: string): string {
+	return `fetch-url:${host}`;
+}
+
+/** Grant key for allowing fetches from any host (blanket allow). */
+export const FETCH_URL_ALLOW_ALL_GRANT_KEY = 'fetch-url:*';
+
+/** Grant key for persistently allowing web search. */
+export const WEB_SEARCH_GRANT_KEY = 'web-search';
+
+/** Domain-access state reconstructed from a set of persisted grant keys. */
+export interface DomainAccessGrants {
+	approvedDomains: Set<string>;
+	allDomainsApproved: boolean;
+	webSearchApproved: boolean;
+}
+
+/**
+ * Parse persisted grant keys back into domain-access state. Single source of truth for the
+ * key format ↔ tracker state mapping; ignores unrelated grant keys (e.g. `executions:run:*`).
+ */
+export function parseDomainAccessGrants(keys: ReadonlySet<string>): DomainAccessGrants {
+	const approvedDomains = new Set<string>();
+	let allDomainsApproved = false;
+	let webSearchApproved = false;
+
+	const fetchUrlPrefix = 'fetch-url:';
+	for (const key of keys) {
+		if (key === FETCH_URL_ALLOW_ALL_GRANT_KEY) {
+			allDomainsApproved = true;
+		} else if (key === WEB_SEARCH_GRANT_KEY) {
+			webSearchApproved = true;
+		} else if (key.startsWith(fetchUrlPrefix)) {
+			approvedDomains.add(key.slice(fetchUrlPrefix.length));
+		}
+	}
+
+	return { approvedDomains, allDomainsApproved, webSearchApproved };
+}
+
 // ---------------------------------------------------------------------------
 // Branded ID types — prevent swapping runId/agentId/threadId/toolCallId
 // ---------------------------------------------------------------------------
