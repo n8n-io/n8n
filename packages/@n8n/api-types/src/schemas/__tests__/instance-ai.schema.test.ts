@@ -204,6 +204,21 @@ describe('isDisplayableConfirmationRequest', () => {
 				}),
 			),
 		).toBe(true);
+		expect(
+			isDisplayableConfirmationRequest(
+				makeConfirmation({
+					inputType: 'channel-config',
+					message: '',
+					channelConfig: { integrationType: 'slack', agentId: 'agent-1' },
+				}),
+			),
+		).toBe(true);
+	});
+
+	it('does not treat channel-config without payload as displayable', () => {
+		expect(
+			isDisplayableConfirmationRequest(makeConfirmation({ inputType: 'channel-config' })),
+		).toBe(false);
 	});
 
 	it('does not treat credential flow metadata as displayable on its own', () => {
@@ -265,8 +280,9 @@ describe('isDisplayableConfirmationRequest', () => {
 			'plan-review': true,
 			'resource-decision': true,
 			continue: true,
+			'channel-config': true,
 		} satisfies Record<InstanceAiConfirmationInputType, true>;
 
-		expect(Object.keys(handled)).toHaveLength(6);
+		expect(Object.keys(handled)).toHaveLength(7);
 	});
 });

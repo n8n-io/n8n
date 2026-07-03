@@ -348,6 +348,12 @@ export type GatewayConfirmationRequiredPayload = z.infer<
 
 // ---------------------------------------------------------------------------
 
+export const channelConfigSchema = z.object({
+	integrationType: z.string(),
+	agentId: z.string(),
+});
+export type InstanceAiChannelConfig = z.infer<typeof channelConfigSchema>;
+
 export const confirmationInputTypeSchema = z.enum([
 	'approval',
 	'text',
@@ -355,6 +361,7 @@ export const confirmationInputTypeSchema = z.enum([
 	'plan-review',
 	'resource-decision',
 	'continue',
+	'channel-config',
 ]);
 export type InstanceAiConfirmationInputType = z.infer<typeof confirmationInputTypeSchema>;
 
@@ -382,7 +389,8 @@ export const confirmationRequestPayloadSchema = z.object({
 			'UI mode: approval (default) shows approve/deny, text shows a text input, ' +
 				'questions shows structured Q&A wizard, plan-review shows plan approval with feedback, ' +
 				'resource-decision shows 5-option gateway permission dialog, ' +
-				'continue shows a single primary button (used by pause-for-user)',
+				'continue shows a single primary button (used by pause-for-user), ' +
+				'channel-config opens the agent chat-channel setup modal (inputType=channel-config)',
 		),
 	questions: z
 		.array(
@@ -422,6 +430,12 @@ export const confirmationRequestPayloadSchema = z.object({
 	resourceDecision: gatewayConfirmationRequiredPayloadSchema
 		.optional()
 		.describe('Gateway resource-access decision data (inputType=resource-decision)'),
+	channelConfig: channelConfigSchema
+		.optional()
+		.describe(
+			'Opens the agent chat-channel setup modal for this integration type and agent ' +
+				'(inputType=channel-config)',
+		),
 });
 export type InstanceAiConfirmationRequestPayload = z.infer<typeof confirmationRequestPayloadSchema>;
 
@@ -467,6 +481,8 @@ export function isDisplayableConfirmationRequest(
 			return hasItems(payload.planItems) || argsContainPlannedTasks(payload.args);
 		case 'resource-decision':
 			return payload.resourceDecision !== undefined;
+		case 'channel-config':
+			return payload.channelConfig !== undefined;
 		default:
 			return assertNever(inputType);
 	}
@@ -799,7 +815,14 @@ export interface InstanceAiConfirmation {
 	message: string;
 	credentialRequests?: InstanceAiCredentialRequest[];
 	projectId?: string;
-	inputType?: 'approval' | 'text' | 'questions' | 'plan-review' | 'resource-decision' | 'continue';
+	inputType?:
+		| 'approval'
+		| 'text'
+		| 'questions'
+		| 'plan-review'
+		| 'resource-decision'
+		| 'continue'
+		| 'channel-config';
 	domainAccess?: DomainAccessMeta;
 	webSearch?: WebSearchMeta;
 	credentialFlow?: InstanceAiCredentialFlow;
@@ -815,6 +838,7 @@ export interface InstanceAiConfirmation {
 	introMessage?: string;
 	tasks?: TaskList;
 	resourceDecision?: GatewayConfirmationRequiredPayload;
+	channelConfig?: { integrationType: string; agentId: string };
 	expired?: boolean;
 }
 
