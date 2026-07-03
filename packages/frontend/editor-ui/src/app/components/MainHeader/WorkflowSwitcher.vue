@@ -68,9 +68,9 @@ async function fetchWorkflows(query: string) {
 		loading.value = false;
 	}
 
-	// A workflow is a "sub-workflow" if it contains an Execute Sub-workflow
-	// trigger. Resolve that from the workflow index separately so it doesn't
-	// block the initial render, then patch the flags in when it arrives.
+	// A workflow is a "sub-workflow" if another workflow calls it. Resolve that
+	// from the workflow index separately so it doesn't block the initial render,
+	// then patch the flags in when it arrives.
 	// ponytail: endpoint caps at 500 ids; a switcher rarely lists that many, so
 	// just slice — the tail simply misses its marker.
 	const ids = workflows.value.slice(0, 500).map((workflow) => workflow.id);

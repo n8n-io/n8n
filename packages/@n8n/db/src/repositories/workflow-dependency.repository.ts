@@ -156,22 +156,21 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 	}
 
 	/**
-	 * Of the given workflows, return the ids that contain the given node type
-	 * (looked up via the `nodeType` index entries).
+	 * Of the given workflows, return the ids that are referenced as a sub-workflow
+	 * (a `workflowCall` dependency target) by any workflow.
 	 */
-	async findWorkflowIdsWithNodeType(workflowIds: string[], nodeType: string): Promise<string[]> {
+	async findReferencedSubWorkflowIds(workflowIds: string[]): Promise<string[]> {
 		if (workflowIds.length === 0) return [];
 
 		const rows = await this.find({
 			where: {
-				workflowId: In(workflowIds),
-				dependencyType: 'nodeType',
-				dependencyKey: nodeType,
+				dependencyType: 'workflowCall',
+				dependencyKey: In(workflowIds),
 			},
-			select: ['workflowId'],
+			select: ['dependencyKey'],
 		});
 
-		return [...new Set(rows.map((row) => row.workflowId))];
+		return [...new Set(rows.map((row) => row.dependencyKey))];
 	}
 
 	private getTableName(name: string): string {
