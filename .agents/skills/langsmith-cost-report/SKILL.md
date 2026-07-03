@@ -16,13 +16,14 @@ twice), but the report is designed for baseline-vs-candidate.
 
 ## Committed baseline
 
-The current baseline is committed at
-`baselines/iai-opus-cache-cost-10-f3e390c4-threads.json` (relative to this
-skill). Unless the user names a different baseline, compare candidates against
-it — only the candidate experiments need to be fetched/enriched/verified.
+The current baseline is committed at `baselines/baseline.json` (relative to
+this skill); its `experiment` field records which experiment it came from
+(currently `iai-opus-cache-cost-10-f3e390c4`). Unless the user names a
+different baseline, compare candidates against it — only the candidate
+experiments need to be fetched/enriched/verified.
 
-To promote a new baseline: run the full workflow on the experiment, move the
-verified JSON into `baselines/`, update the path above, and commit both.
+To promote a new baseline: run the full workflow on the experiment, replace
+`baselines/baseline.json` with the verified JSON, and commit it.
 
 ## Prerequisites
 
@@ -73,7 +74,7 @@ Then compare (first file = baseline):
 ```bash
 # 4. Report: markdown overview + per-eval cost table with % deltas
 node scripts/report-thread-cost-json.mjs \
-  .agents/skills/langsmith-cost-report/baselines/iai-opus-cache-cost-10-f3e390c4-threads.json \
+  .agents/skills/langsmith-cost-report/baselines/baseline.json \
   <candidate>-threads.json [more...]
 ```
 
