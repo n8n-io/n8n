@@ -106,7 +106,7 @@ Observer and Reflector use the same model as the orchestrator agent (see `@n8n/a
 
 Agent output is scanned for secrets/PII and redacted before it reaches the user.
 The scan covers streamed assistant text, reasoning, and tool results/errors, for
-both the orchestrator and background sub-agents. A filtering event (categories
+both the orchestrator and eval-setup background tasks. A filtering event (categories
 and counts only — never the values) is logged whenever a redaction occurs.
 
 | Variable | Type | Default | Description |

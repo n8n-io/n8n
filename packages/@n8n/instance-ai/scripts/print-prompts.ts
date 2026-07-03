@@ -2,8 +2,8 @@
 // ---------------------------------------------------------------------------
 // Print Prompts CLI
 //
-// Renders the final system prompt for the main Instance Agent and sub-agent
-// prompt templates, then writes one markdown file per agent variant into
+// Renders the final system prompt for the main Instance Agent and the eval-setup
+// sub-agent prompt template, then writes one markdown file per agent variant into
 // `.output/prompts/<agent>/<variant>.md` (gitignored). Useful for
 // auditing the full prompt verbatim, diffing prompts across branches, or
 // sharing them outside the codebase.
