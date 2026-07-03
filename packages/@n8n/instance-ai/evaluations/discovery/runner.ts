@@ -76,7 +76,7 @@ export async function runDiscoveryScenario(
 	options: DiscoveryRunOptions,
 ): Promise<DiscoveryRunResult> {
 	const started = Date.now();
-	const maxSteps = options.scenario.maxSteps ?? options.maxSteps ?? 5;
+	const maxSteps = options.scenario?.maxSteps ?? options.maxSteps ?? 5;
 	const timeoutMs = options.timeoutMs ?? 60_000;
 	const nodesJsonPath = options.nodesJsonPath ?? defaultNodesJsonPath();
 
