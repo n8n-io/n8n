@@ -896,7 +896,12 @@ export interface InstanceAiAgentNode {
 		provider?: string;
 		technicalDetails?: string;
 	};
+	/** Why a `cancelled` run stopped — lets the UI attribute it (user vs timeout vs shutdown). */
+	cancellationReason?: InstanceAiCancellationReason;
 }
+
+/** Semantic cause of a cancelled run, mapped from the backend's run-finish reason. */
+export type InstanceAiCancellationReason = 'user' | 'timeout' | 'shutdown';
 
 export interface InstanceAiMessage {
 	id: string;
