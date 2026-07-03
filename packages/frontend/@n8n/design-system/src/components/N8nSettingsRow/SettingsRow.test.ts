@@ -250,13 +250,21 @@ describe('N8nSettingsRow', () => {
 			expect(screen.queryByTestId('expanded-content')).not.toBeInTheDocument();
 		});
 
-		it('renders the expand region and slot content when expandable', () => {
-			render(N8nSettingsRow, {
+		it('renders the expand region when expandable, mounting slot content on first expand', async () => {
+			const { rerender } = render(N8nSettingsRow, {
 				props: { title: 'Title', expandable: true },
 				slots: { expanded: '<div data-test-id="expanded-content">details</div>' },
 			});
 
+			// Collapsed rows keep their (potentially heavy) expanded content unmounted until opened.
 			expect(screen.getByRole('region')).toBeInTheDocument();
+			expect(screen.queryByTestId('expanded-content')).not.toBeInTheDocument();
+
+			await rerender({ modelValue: true });
+			expect(screen.getByTestId('expanded-content')).toBeInTheDocument();
+
+			// Stays mounted after collapse so the closing animation has content to clip.
+			await rerender({ modelValue: false });
 			expect(screen.getByTestId('expanded-content')).toBeInTheDocument();
 		});
 

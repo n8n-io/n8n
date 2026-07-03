@@ -26,8 +26,6 @@ withDefaults(defineProps<SettingsLayoutProps>(), {
 });
 
 const emit = defineEmits<{ back: [] }>();
-
-const onBack = () => emit('back');
 </script>
 
 <template>
@@ -39,7 +37,7 @@ const onBack = () => emit('back');
 					size="small"
 					:class="$style.backButton"
 					data-test-id="settings-back-button"
-					@click="onBack"
+					@click="emit('back')"
 				>
 					<template #icon>
 						<N8nIcon icon="arrow-left" />

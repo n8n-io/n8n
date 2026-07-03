@@ -26,6 +26,8 @@ withDefaults(defineProps<SettingsRowConfigureProps>(), {
 </template>
 
 <style lang="scss" module>
+@use '../../css/mixins/utils';
+
 .configure {
 	display: inline-flex;
 	align-items: center;
@@ -35,9 +37,7 @@ withDefaults(defineProps<SettingsRowConfigureProps>(), {
 
 .value {
 	min-width: 0;
-	overflow: hidden;
-	white-space: nowrap;
-	text-overflow: ellipsis;
+	@include utils.utils-ellipsis;
 }
 
 .chevron {

@@ -1,14 +1,12 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch, useSlots } from 'vue';
+import { useResizeObserver } from '@vueuse/core';
+import { computed, ref, watch, useId, useSlots } from 'vue';
 
 import N8nIcon from '../N8nIcon';
 import N8nText from '../N8nText';
 import N8nTooltip from '../N8nTooltip';
 
 export type SettingsRowLayout = 'horizontal' | 'vertical' | 'custom';
-
-// Stable, per-instance id so the disclosure trigger can `aria-controls` its region.
-let expandRegionUid = 0;
 
 export interface SettingsRowProps {
 	/** Left title (text-dark, 14/medium). Optional when the `info` slot is used. */
@@ -39,8 +37,6 @@ export interface SettingsRowProps {
 	 * `#action` slot, a button, or the built-in chevron trigger.
 	 */
 	expandable?: boolean;
-	/** Expanded state. Two-way bound via `v-model`; also drivable by any `#action` control. */
-	modelValue?: boolean;
 	/**
 	 * Renders the built-in chevron disclosure trigger (the default affordance). Set `false`
 	 * when an `#action` control (e.g. a switch) is the sole trigger.
@@ -79,7 +75,6 @@ const props = withDefaults(defineProps<SettingsRowProps>(), {
 	showDivider: true,
 	showVisual: false,
 	expandable: false,
-	modelValue: false,
 	disclosure: true,
 	expandLabel: 'View more',
 	collapseLabel: 'Show less',
@@ -89,24 +84,25 @@ const props = withDefaults(defineProps<SettingsRowProps>(), {
 });
 
 const emit = defineEmits<{
-	'update:modelValue': [value: boolean];
 	click: [event: MouseEvent | KeyboardEvent];
 }>();
 
 const slots = useSlots();
 
-const expandRegionId = `settings-row-expand-${(expandRegionUid += 1)}`;
+// Stable, per-instance id so the disclosure trigger can `aria-controls` its region.
+const expandRegionId = `settings-row-expand-${useId()}`;
 
-// Mirror `modelValue` internally so the row also works uncontrolled (built-in chevron) while
-// still honouring a bound `v-model` or an `#action` control that drives the state.
-const internalExpanded = ref(props.modelValue);
-watch(
-	() => props.modelValue,
-	(value) => {
-		internalExpanded.value = value;
-	},
-);
-const isExpanded = computed(() => props.expandable && internalExpanded.value);
+// `defineModel` keeps the row working uncontrolled (built-in chevron) while still honouring a
+// bound `v-model` or an `#action` control that drives the state.
+const expanded = defineModel<boolean>({ default: false });
+const isExpanded = computed(() => props.expandable && expanded.value);
+
+// Mount the `#expanded` slot lazily: collapsed rows skip rendering their hidden (often heavy)
+// content until first opened, then keep it mounted so the collapse animation has content to clip.
+const hasExpandedOnce = ref(isExpanded.value);
+watch(isExpanded, (value) => {
+	if (value) hasExpandedOnce.value = true;
+});
 
 const disclosureLabel = computed(() =>
 	isExpanded.value ? props.collapseLabel : props.expandLabel,
@@ -114,9 +110,7 @@ const disclosureLabel = computed(() =>
 
 function toggleExpanded(event: MouseEvent) {
 	event.stopPropagation();
-	const next = !internalExpanded.value;
-	internalExpanded.value = next;
-	emit('update:modelValue', next);
+	expanded.value = !expanded.value;
 }
 
 const descriptionLines = computed(() => Math.min(Math.max(props.maxDescriptionLines, 1), 3));
@@ -126,7 +120,6 @@ const descriptionLines = computed(() => Math.min(Math.max(props.maxDescriptionLi
 // purely visual convenience for sighted pointer/focus users and adds no accessibility regression.
 const descriptionRef = ref<InstanceType<typeof N8nText>>();
 const isDescriptionTruncated = ref(false);
-let descriptionResizeObserver: ResizeObserver | undefined;
 
 function getDescriptionEl(): HTMLElement | null {
 	const el: unknown = descriptionRef.value?.$el;
@@ -140,29 +133,17 @@ function measureDescriptionTruncation() {
 	isDescriptionTruncated.value = el ? el.scrollHeight - el.clientHeight > 1 : false;
 }
 
-// Re-attach the observer whenever the measured element appears/changes (covers mount and a
-// description that becomes visible later). Width changes alter wrapping → re-measure on resize.
+// Width changes alter wrapping → re-measure on resize. `useResizeObserver` follows the ref's
+// element (covers mount and a description that becomes visible later) and cleans up on unmount.
+useResizeObserver(descriptionRef, measureDescriptionTruncation);
+
+// Resize alone doesn't cover everything: measure immediately when the element appears/changes
+// and when new content or a new clamp keeps the same element (no resize event fires for those).
 watch(
-	getDescriptionEl,
-	(el) => {
-		descriptionResizeObserver?.disconnect();
-		if (el && typeof ResizeObserver !== 'undefined') {
-			descriptionResizeObserver = new ResizeObserver(() => measureDescriptionTruncation());
-			descriptionResizeObserver.observe(el);
-		}
-		measureDescriptionTruncation();
-	},
+	() => [getDescriptionEl(), props.description, descriptionLines.value],
+	measureDescriptionTruncation,
 	{ flush: 'post', immediate: true },
 );
-
-// Content/clamp changes keep the same element, so the element watcher above won't fire — recheck.
-watch(() => [props.description, descriptionLines.value], measureDescriptionTruncation, {
-	flush: 'post',
-});
-
-onBeforeUnmount(() => {
-	descriptionResizeObserver?.disconnect();
-});
 
 const showVisualSlot = computed(() => props.showVisual || Boolean(slots.visual));
 
@@ -187,7 +168,7 @@ function onKeydown(event: KeyboardEvent) {
 	if (!props.clickable) {
 		return;
 	}
-	if (event.key === 'Enter' || event.key === ' ' || event.key === 'Spacebar') {
+	if (event.key === 'Enter' || event.key === ' ') {
 		event.preventDefault();
 		emit('click', event);
 	}
@@ -291,7 +272,7 @@ function onKeydown(event: KeyboardEvent) {
 		>
 			<div :class="$style.expandInner">
 				<div :class="$style.expandContent">
-					<slot name="expanded" />
+					<slot v-if="hasExpandedOnce" name="expanded" />
 				</div>
 			</div>
 		</div>
@@ -306,6 +287,8 @@ function onKeydown(event: KeyboardEvent) {
 </template>
 
 <style lang="scss" module>
+@use '../../css/mixins/utils';
+
 // The expand/collapse motion. No DS duration token equals 350ms (snappy=200, base=400) and the
 // curve has no token either, so both live here as local constants per the motion spec.
 $expand-duration: 350ms;
@@ -412,9 +395,7 @@ $expand-easing: cubic-bezier(0.32, 0.72, 0, 1);
 .title {
 	&.truncate {
 		display: block;
-		overflow: hidden;
-		white-space: nowrap;
-		text-overflow: ellipsis;
+		@include utils.utils-ellipsis;
 	}
 }
 
@@ -517,7 +498,10 @@ $expand-easing: cubic-bezier(0.32, 0.72, 0, 1);
 .expandRegion[data-expanded='true'] {
 	grid-template-rows: 1fr;
 	opacity: 1;
-	filter: blur(0);
+	/* `none`, not `blur(0)`: a non-none filter would keep a stacking context (and typically a
+	 * compositing surface) permanently active on every open row. `blur(4px) → none` still
+	 * animates — the missing side interpolates as the identity filter. */
+	filter: none;
 }
 
 .expandInner {
@@ -549,10 +533,6 @@ $expand-easing: cubic-bezier(0.32, 0.72, 0, 1);
 	.expandRegion {
 		filter: none;
 		transition: opacity $expand-duration linear;
-	}
-
-	.expandRegion[data-expanded='true'] {
-		filter: none;
 	}
 }
 

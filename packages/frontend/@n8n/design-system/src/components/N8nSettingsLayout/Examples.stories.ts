@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
-import { ElNotification } from 'element-plus';
+import { ElNotification, type NotificationHandle } from 'element-plus';
 import {
 	computed,
 	defineComponent,
@@ -13,9 +13,6 @@ import {
 } from 'vue';
 
 import N8nSettingsLayout from './SettingsLayout.vue';
-import N8nCheckbox from '../../v2/components/Checkbox/Checkbox.vue';
-import N8nAvatar from '../N8nAvatar';
-import N8nBadge from '../N8nBadge';
 import N8nButton from '../N8nButton';
 import N8nDataTableServer from '../N8nDataTableServer';
 import {
@@ -31,7 +28,6 @@ import N8nIcon from '../N8nIcon';
 import type { IconName } from '../N8nIcon/icons';
 import N8nInput from '../N8nInput';
 import N8nOption from '../N8nOption';
-import N8nRadioButtons from '../N8nRadioButtons';
 import N8nSelect from '../N8nSelect';
 import N8nSettingsPageHeader from '../N8nSettingsPageHeader';
 import N8nSettingsRow from '../N8nSettingsRow';
@@ -39,7 +35,6 @@ import N8nSettingsRowConfigure from '../N8nSettingsRowConfigure';
 import N8nSettingsRowGroup from '../N8nSettingsRowGroup';
 import N8nSettingsSaveBar from '../N8nSettingsSaveBar';
 import N8nSettingsSection from '../N8nSettingsSection';
-import N8nSpinner from '../N8nSpinner';
 import N8nSwitch from '../N8nSwitch';
 import N8nText from '../N8nText';
 
@@ -50,7 +45,7 @@ const meta = {
 		docs: {
 			description: {
 				component:
-					'Composed examples mirroring the Figma examples frame: a Security & login page (leading visual slot + merged sub-section), a This instance page (metrics custom row + back action), and an API keys page (full-width table beneath a header that stays centered in the 720px column). The **Example Settings Page** wires the floating `N8nSettingsSaveBar` to a realistic dirty-state flow — editing a high-impact field slides the bar up, Discard reverts and Save confirms through the existing app notification (the bottom-right `ElNotification` that `useToast()` shows in the app), while a low-impact toggle saves instantly. The **Model Context Protocol** set re-expresses the instance-level MCP page in the native settings system as a small page family: the main **Instance level MCP** page enables/disables the server through a single **MCP status** status-action control (a red-dot "Enable" button when off; a green pulsing-dot "Enabled" dropdown whose danger "Disable" item opens an `N8nDialog` confirmation when on) rather than a toggle — collapsing to a dashed-border empty state while disabled — and folds the **Connection details** inline as a client-led flow (a searchable, three-category "Client" picker that drives a dividerless group of official `N8nSettingsRow`s whose copyable values use `CopyInput` (readonly `N8nInput` + copy button): CLI Install/Configure/Authenticate, a web-client one-click "Add to …" row, or IDE deep-link + Server URL/token/Configure rows), then routes Access to a save-gated **MCP Permissions** sub-page (standard `N8nCheckbox` groups) and a **MCP Workflows available** sub-page (a group-by table grouping workflows by project, with an exposure filter and multi-select bulk expose/hide), and previews **MCP Connected clients** with a full `N8nDataTableServer` sub-page. Access is granted **per connected client** (like PostHog\'s "Connected applications"), mocking the real OAuth handoff: the footerless Connect dialog covers setup only, and **closing it** opens the standalone **McpAuthorize** story in a **new tab** — n8n\'s authorization screen (client mark ┈ n8n mark connection visual, "<client> wants access to your n8n instance", the shared tool catalog as a grouped checkbox list with read-only pre-checked and write/execute opt-in, Allow/Deny ending in OAuth-callback-style granted/denied states); both connected-clients surfaces render each grant as muted **plain truncated text** ("List workflows, Get workflow details +5" — never chips) that opens a **client details dialog** (brand mark + name, Connected by / Connected on / Last active, the full grant grouped by tool type, and a destructive Revoke access).',
+					'Composed examples mirroring the Figma examples frame: a Security & login page (leading visual slot + merged sub-section), a This instance page (metrics custom row + back action), and an API keys page (full-width table beneath a header that stays centered in the 720px column). The **Example Settings Page** wires the floating `N8nSettingsSaveBar` to a realistic dirty-state flow — editing a high-impact field slides the bar up, Discard reverts and Save confirms through the existing app notification (the bottom-right `ElNotification` that `useToast()` shows in the app), while a low-impact toggle saves instantly. The **Model Context Protocol** story re-expresses the instance-level MCP page in the native settings system: it enables/disables the server through a single **MCP status** status-action control (shown only while enabled: a green pulsing-dot "Enabled" dropdown whose danger "Disable" item opens an `N8nDialog` confirmation) rather than a toggle — collapsing to a dashed-border empty state, the sole enable affordance, while disabled — folds the **Connection details** inline as a client-led flow (a searchable, three-category "Client" picker that drives a dividerless group of official `N8nSettingsRow`s whose copyable values use `CopyInput` (readonly `N8nInput` + copy button): CLI Install/Configure/Authenticate, a web-client one-click "Add to …" row, or IDE deep-link + Server URL/token/Configure rows), summarizes **Access** ("4 of 7 allowed" Permissions, "12 across 4 projects" Workflows available — the dedicated sub-pages behind those rows are not part of this story set), and previews **Connected clients** inline. Access is granted **per connected client** (like PostHog\'s "Connected applications"): each preview row renders its grant as muted **plain truncated text** ("List workflows, Get workflow details +5" — never chips) that opens a **client details dialog** (brand mark + name, Connected by / Connected on / Last active, the full grant grouped by tool type, and a destructive Revoke access).',
 			},
 		},
 	},
@@ -63,8 +58,24 @@ type Story = StoryObj<typeof meta>;
 // notification themed by the design system's `notification.scss` (the same component
 // `useToast().showMessage` shows in the app) — instead of introducing a new toast pattern. The
 // prototypes call it exactly the way the app does on a successful save.
-const confirmSaved = (title: string) =>
-	ElNotification({ title, type: 'success', position: 'bottom-right' });
+//
+// Each quick-save confirmation REPLACES the previous one instead of stacking: rapid instant saves
+// (e.g. flipping a toggle back and forth) would otherwise pile up notifications and eat vertical
+// space. Only the last `confirmSaved` toast is closed — other notifications are left alone.
+let lastQuickSaveNotification: NotificationHandle | undefined;
+const confirmSaved = (title: string) => {
+	lastQuickSaveNotification?.close();
+	lastQuickSaveNotification = ElNotification({ title, type: 'success', position: 'bottom-right' });
+	return lastQuickSaveNotification;
+};
+
+// One-shot check used by the animated prototypes to skip decorative motion. Deliberately not
+// reactive: each animation reads it when it starts, matching how the CSS media query gates the
+// equivalent declarative transitions.
+const prefersReducedMotion = () =>
+	typeof window !== 'undefined' &&
+	typeof window.matchMedia === 'function' &&
+	window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 // The design system ships no per-IDE brand icons, so the official brand marks are inlined here as
 // tiny presentational components, mirroring the same `1em`-sized SVG pattern so each tracks the
@@ -229,31 +240,8 @@ const OpenAiLogo: Component = {
 	`,
 };
 
-// n8n — the official node-chain logomark in its brand raspberry (`#EA4B71`), inlined from the
-// design system's `N8nLogo/logo-icon.svg` asset so the authorization screen (McpAuthorize) can
-// render n8n itself as a connection endpoint tile opposite the requesting client's mark. Same 1em
-// sizing convention as the client marks; the 32×26 viewBox keeps the mark's aspect ratio intact.
-const N8nLogoMark: Component = {
-	name: 'N8nLogoMark',
-	template: `
-		<svg
-			viewBox="0 0 32 26"
-			aria-hidden="true"
-			focusable="false"
-			style="width: 1em; height: 1em; flex: 0 0 auto;"
-		>
-			<path
-				fill-rule="evenodd"
-				clip-rule="evenodd"
-				fill="#EA4B71"
-				d="M27.2 11.3955C26.4903 11.3959 25.8006 11.1603 25.2394 10.7259C24.6783 10.2914 24.2774 9.68271 24.1 8.99555H20.433C20.0543 8.9956 19.6879 9.12999 19.3989 9.3748C19.11 9.61962 18.9173 9.95899 18.855 10.3325L18.723 11.1225C18.6018 11.8478 18.2346 12.5092 17.683 12.9955C18.2348 13.4821 18.6021 14.1439 18.723 14.8695L18.855 15.6585C18.9173 16.0321 19.11 16.3715 19.3989 16.6163C19.6879 16.8611 20.0543 16.9955 20.433 16.9955H20.901C21.0968 16.2424 21.5603 15.5864 22.2047 15.1502C22.8491 14.714 23.6303 14.5275 24.4023 14.6255C25.1743 14.7236 25.8841 15.0995 26.399 15.6829C26.9139 16.2663 27.1987 17.0174 27.2 17.7955C27.2015 18.5755 26.9182 19.3292 26.4031 19.9149C25.8881 20.5006 25.1769 20.8781 24.4031 20.9764C23.6294 21.0746 22.8464 20.8869 22.2013 20.4485C21.5562 20.0101 21.0935 19.3511 20.9 18.5955H20.433C19.6756 18.5954 18.9428 18.3267 18.3649 17.837C17.787 17.3474 17.4015 16.6687 17.277 15.9215L17.145 15.1325C17.0828 14.759 16.89 14.4196 16.6011 14.1748C16.3121 13.93 15.9457 13.7956 15.567 13.7955H14.299C14.1214 14.4823 13.7206 15.0907 13.1596 15.525C12.5987 15.9593 11.9094 16.1949 11.2 16.1949C10.4906 16.1949 9.80129 15.9593 9.24036 15.525C8.67943 15.0907 8.27866 14.4823 8.10101 13.7955H6.29901C6.1032 14.5487 5.63975 15.2047 4.99533 15.6409C4.35091 16.0771 3.56967 16.2636 2.7977 16.1656C2.02573 16.0675 1.31592 15.6916 0.800999 15.1082C0.286083 14.5247 0.00133389 13.7737 6.20563e-06 12.9955C-0.00152906 12.2156 0.281849 11.4619 0.796882 10.8762C1.31191 10.2905 2.02314 9.91299 2.79689 9.81474C3.57064 9.71649 4.35363 9.90421 4.99871 10.3426C5.6438 10.781 6.10655 11.44 6.30001 12.1955H8.10001C8.27697 11.5079 8.67758 10.8985 9.23878 10.4635C9.79998 10.0284 10.4899 9.79229 11.2 9.79229C11.9101 9.79229 12.6 10.0284 13.1612 10.4635C13.7224 10.8985 14.123 11.5079 14.3 12.1955H15.567C15.9457 12.1955 16.3121 12.0611 16.6011 11.8163C16.89 11.5715 17.0828 11.2321 17.145 10.8585L17.277 10.0685C17.4017 9.32161 17.7873 8.64311 18.3652 8.15368C18.943 7.66425 19.6757 7.39562 20.433 7.39555H24.101C24.2968 6.64242 24.7603 5.9864 25.4047 5.5502C26.0491 5.114 26.8303 4.92747 27.6023 5.02552C28.3743 5.12356 29.0841 5.49945 29.599 6.0829C30.1139 6.66634 30.3987 7.41738 30.4 8.19555C30.4 9.04424 30.0629 9.85817 29.4627 10.4583C28.8626 11.0584 28.0487 11.3955 27.2 11.3955ZM27.2 9.79555C27.6244 9.79555 28.0313 9.62698 28.3314 9.32692C28.6314 9.02686 28.8 8.61989 28.8 8.19555C28.8 7.7712 28.6314 7.36423 28.3314 7.06418C28.0313 6.76412 27.6244 6.59555 27.2 6.59555C26.7757 6.59555 26.3687 6.76412 26.0686 7.06418C25.7686 7.36423 25.6 7.7712 25.6 8.19555C25.6 8.61989 25.7686 9.02686 26.0686 9.32692C26.3687 9.62698 26.7757 9.79555 27.2 9.79555ZM3.20001 14.5955C3.62435 14.5955 4.03132 14.427 4.33138 14.1269C4.63144 13.8269 4.80001 13.4199 4.80001 12.9955C4.80001 12.5712 4.63144 12.1642 4.33138 11.8642C4.03132 11.5641 3.62435 11.3955 3.20001 11.3955C2.77566 11.3955 2.36869 11.5641 2.06864 11.8642C1.76858 12.1642 1.60001 12.5712 1.60001 12.9955C1.60001 13.4199 1.76858 13.8269 2.06864 14.1269C2.36869 14.427 2.77566 14.5955 3.20001 14.5955ZM12.8 12.9955C12.8 13.2057 12.7586 13.4137 12.6782 13.6078C12.5978 13.802 12.48 13.9783 12.3314 14.1269C12.1828 14.2755 12.0064 14.3933 11.8123 14.4738C11.6182 14.5542 11.4101 14.5955 11.2 14.5955C10.9899 14.5955 10.7818 14.5542 10.5877 14.4738C10.3936 14.3933 10.2172 14.2755 10.0686 14.1269C9.92006 13.9783 9.80221 13.802 9.7218 13.6078C9.64139 13.4137 9.60001 13.2057 9.60001 12.9955C9.60001 12.5712 9.76858 12.1642 10.0686 11.8642C10.3687 11.5641 10.7757 11.3955 11.2 11.3955C11.6244 11.3955 12.0313 11.5641 12.3314 11.8642C12.6314 12.1642 12.8 12.5712 12.8 12.9955ZM25.6 17.7955C25.6 18.0057 25.5586 18.2137 25.4782 18.4078C25.3978 18.602 25.28 18.7783 25.1314 18.9269C24.9828 19.0755 24.8064 19.1933 24.6123 19.2738C24.4182 19.3542 24.2101 19.3955 24 19.3955C23.7899 19.3955 23.5818 19.3542 23.3877 19.2738C23.1936 19.1933 23.0172 19.0755 22.8686 18.9269C22.7201 18.7783 22.6022 18.602 22.5218 18.4078C22.4414 18.2137 22.4 18.0057 22.4 17.7955C22.4 17.3712 22.5686 16.9642 22.8686 16.6642C23.1687 16.3641 23.5757 16.1955 24 16.1955C24.4244 16.1955 24.8313 16.3641 25.1314 16.6642C25.4314 16.9642 25.6 17.3712 25.6 17.7955Z"
-			/>
-		</svg>
-	`,
-};
-
-// Maps a connected-client id to its inlined brand mark, reused by the main-page preview and the full
-// Connected clients table; anything unmapped falls back to the client's DS icon. `markRaw` keeps the
+// Maps a connected-client id to its inlined brand mark, used by the main-page preview and the
+// Connect picker; anything unmapped falls back to the client's DS icon. `markRaw` keeps the
 // component objects from being wrapped in a reactive proxy when handed to `<component :is>`.
 // `claude-ai` shares the Claude mark so a newly-authorized Claude.ai connection renders it too.
 const clientLogoComponents = markRaw<Record<string, Component>>({
@@ -315,9 +303,8 @@ const ClientLogoCards = defineComponent({
 			document.head.appendChild(style);
 		}
 
-		const logos = logoCardsCycle;
 		const leftIndex = ref(0);
-		const rightIndex = ref(Math.floor(logos.length / 2));
+		const rightIndex = ref(Math.floor(logoCardsCycle.length / 2));
 		const leftFading = ref(false);
 		const rightFading = ref(false);
 
@@ -329,23 +316,20 @@ const ClientLogoCards = defineComponent({
 		const swapLeft = () => {
 			leftFading.value = true;
 			leftSwapTimer = window.setTimeout(() => {
-				leftIndex.value = (leftIndex.value + 1) % logos.length;
+				leftIndex.value = (leftIndex.value + 1) % logoCardsCycle.length;
 				leftFading.value = false;
 			}, LOGO_CARDS_FADE_MS);
 		};
 		const swapRight = () => {
 			rightFading.value = true;
 			rightSwapTimer = window.setTimeout(() => {
-				rightIndex.value = (rightIndex.value + 1) % logos.length;
+				rightIndex.value = (rightIndex.value + 1) % logoCardsCycle.length;
 				rightFading.value = false;
 			}, LOGO_CARDS_FADE_MS);
 		};
 
 		onMounted(() => {
-			const reduceMotion =
-				typeof window.matchMedia === 'function' &&
-				window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-			if (reduceMotion) return;
+			if (prefersReducedMotion()) return;
 			cycleTimer = window.setInterval(() => {
 				swapLeft();
 				staggerTimer = window.setTimeout(swapRight, LOGO_CARDS_STAGGER_MS);
@@ -358,7 +342,7 @@ const ClientLogoCards = defineComponent({
 			window.clearTimeout(rightSwapTimer);
 		});
 
-		return { logos, leftIndex, rightIndex, leftFading, rightFading };
+		return { logos: logoCardsCycle, leftIndex, rightIndex, leftFading, rightFading };
 	},
 	template: `
 		<div class="mcp-logo-cards" aria-hidden="true">
@@ -403,10 +387,7 @@ const StatusDot = defineComponent({
 				'}';
 			document.head.appendChild(style);
 		}
-		const reduceMotion =
-			typeof window !== 'undefined' && typeof window.matchMedia === 'function'
-				? window.matchMedia('(prefers-reduced-motion: reduce)').matches
-				: false;
+		const reduceMotion = prefersReducedMotion();
 		const dotStyle = computed(() => ({
 			display: 'inline-block',
 			width: 'var(--spacing--2xs)',
@@ -512,7 +493,7 @@ const CopyInput = defineComponent({
 			:autosize="multiline ? { minRows: 3, maxRows: 14 } : false"
 			size="medium"
 			readonly
-			:class="['mcp-copy-input', { 'mcp-copy-input--inline': !multiline }]"
+			:class="{ 'mcp-copy-input--inline': !multiline }"
 			:style="monoStyle"
 		>
 			<template v-if="multiline" #suffix>
@@ -586,10 +567,6 @@ const AutoHeight = defineComponent({
 		let lastHeight = 0;
 		let endTimer = 0;
 
-		const prefersReducedMotion = () =>
-			typeof window !== 'undefined' &&
-			window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
 		const clearPending = () => {
 			if (endTimer) {
 				window.clearTimeout(endTimer);
@@ -659,14 +636,9 @@ const AutoHeight = defineComponent({
 	template: '<div ref="wrapper"><slot /></div>',
 });
 
+// The brand-mark components are not registered here: they render exclusively through
+// `<component :is>` with component objects, which needs no registration.
 const components = {
-	CursorLogo,
-	ClaudeLogo,
-	CodexLogo,
-	GeminiLogo,
-	VsCodeLogo,
-	OpenAiLogo,
-	N8nLogoMark,
 	ClientLogoCards,
 	StatusDot,
 	CopyInput,
@@ -679,19 +651,14 @@ const components = {
 	N8nSettingsRow,
 	N8nSettingsRowConfigure,
 	N8nSettingsSaveBar,
-	N8nSpinner,
 	N8nSwitch,
-	N8nCheckbox,
 	N8nButton,
-	N8nAvatar,
-	N8nBadge,
 	N8nDialog,
 	N8nDialogClose,
 	N8nDialogFooter,
 	N8nInput,
 	N8nSelect,
 	N8nOption,
-	N8nRadioButtons,
 	N8nIcon,
 	N8nText,
 	// Cast the generic data-table and dropdown menu to plain Components so their generic
@@ -699,6 +666,11 @@ const components = {
 	N8nDataTableServer: N8nDataTableServer as unknown as Component,
 	N8nDropdownMenu: N8nDropdownMenu as unknown as Component,
 };
+
+// Wrapper style shared by every full-page story so each reads as a real, full-height scrollable
+// settings page (no windowed box) on the app's subtle background.
+const fullPageViewportStyle =
+	'height: 100vh; overflow-y: auto; background: var(--background--subtle);';
 
 // Bordered, rounded metrics card mirroring the Settings Row `Custom` story: three equal columns
 // (tiles) separated by vertical dividers, built from DS border/radius/spacing tokens. Each tile
@@ -1045,7 +1017,7 @@ export const ExampleSettingsPage: Story = {
 		// 720px content column) and stick to the bottom of the viewport; the layout gets 64px
 		// (--spacing--3xl) of bottom scroll padding so the last row can clear the floating bar.
 		template: `
-			<div style="height: 100vh; overflow-y: auto; background: var(--background--subtle);">
+			<div style="${fullPageViewportStyle}">
 				<N8nSettingsLayout style="padding-block-end: var(--spacing--3xl);">
 					<N8nSettingsPageHeader
 						title="General"
@@ -1133,21 +1105,16 @@ interface McpTool {
 interface McpToolGroup {
 	id: string;
 	title: string;
-	/** Leading copy for the type row; the live "x of y allowed" count is appended at render. */
-	summary: string;
-	icon: string;
 	tools: McpTool[];
 }
 
-// Shared MCP tool catalog reused by the Instance level MCP page and its Permissions sub-page. Grouped by
-// what each tool can do. Lifted to module scope so the main page summary count and the save-gated
-// Permissions sub-page draft read from a single source of truth.
+// Shared MCP tool catalog, grouped by what each tool can do. The main page's "4 of 7 allowed"
+// summary counts it, and the client details dialog groups each connection's grant back under its
+// Read-only / Write / Execute headings.
 const mcpToolGroups: McpToolGroup[] = [
 	{
 		id: 'read',
 		title: 'Read-only',
-		summary: 'View workflows, executions, projects, and folders.',
-		icon: 'eye',
 		tools: [
 			{
 				id: 'listWorkflows',
@@ -1174,8 +1141,6 @@ const mcpToolGroups: McpToolGroup[] = [
 	{
 		id: 'write',
 		title: 'Write',
-		summary: 'Create and update workflows and data tables.',
-		icon: 'square-pen',
 		tools: [
 			{
 				id: 'upsertWorkflows',
@@ -1192,8 +1157,6 @@ const mcpToolGroups: McpToolGroup[] = [
 	{
 		id: 'execute',
 		title: 'Execute',
-		summary: 'Run workflows.',
-		icon: 'play',
 		tools: [
 			{
 				id: 'executeWorkflows',
@@ -1207,8 +1170,7 @@ const mcpToolGroups: McpToolGroup[] = [
 const mcpToolCount = mcpToolGroups.reduce((total, group) => total + group.tools.length, 0);
 
 // Default per-tool allow-list — 4 of 7 allowed: read-only is mixed (3/4), write is mixed (1/2), and
-// execute stays off by default. Shared so the main page summary ("4 of 7 allowed") and the
-// Permissions sub-page draft start from the same state.
+// execute stays off by default. Drives the main page's "4 of 7 allowed" Permissions summary.
 const defaultMcpAllowed: Record<string, boolean> = {
 	listWorkflows: true,
 	getWorkflow: true,
@@ -1219,7 +1181,7 @@ const defaultMcpAllowed: Record<string, boolean> = {
 	executeWorkflows: false,
 };
 
-// Sample connected clients reused by the main page preview and the full Connected clients table.
+// Sample connected clients shown in the main page preview.
 // Each row's brand mark is resolved by `id` through `clientLogoComponents` (Cursor → `CursorLogo`,
 // Claude → `ClaudeLogo`, Codex → `CodexLogo`, VS Code → `VsCodeLogo`, ChatGPT → `OpenAiLogo`); the
 // `icon` below is only the DS fallback used for any client id that isn't in that map.
@@ -1232,7 +1194,7 @@ interface McpClient {
 	id: string;
 	name: string;
 	type: string;
-	icon: string;
+	icon: IconName;
 	connectedBy: string;
 	permissions: string[];
 	lastActive: string;
@@ -1318,7 +1280,7 @@ const mcpClients: McpClient[] = [
 	},
 ];
 
-// One-line Access summary for the connected-clients lists: the first two granted permissions as
+// One-line Access summary for the connected-clients preview: the first two granted permissions as
 // plain comma-separated text with a "+N" overflow count (e.g. "List workflows, Run workflows +5").
 // Deliberately muted text, NOT badges/chips: the full grant lives in the client details dialog,
 // which opens from this text. CSS ellipsis on the rendering side is only the safety net.
@@ -1336,14 +1298,13 @@ const clientPermissionGroups = (client: McpClient) =>
 		.map((group) => ({
 			id: group.id,
 			title: group.title,
-			icon: group.icon,
 			permissions: group.tools
 				.filter((tool) => client.permissions.includes(tool.title))
 				.map((tool) => tool.title),
 		}))
 		.filter((group) => group.permissions.length > 0);
 
-// The Access text in both connected-clients lists is a real button (it opens the client details
+// The Access text in the connected-clients preview is a real button (it opens the client details
 // dialog), styled as muted single-line text — deliberately NOT a badge/chip. The "+N" overflow is
 // computed from the permissions array (`clientAccessSummary`); the CSS ellipsis here is only the
 // safety net for narrow columns. Hover nudges the colour + underlines to signal clickability.
@@ -1361,14 +1322,13 @@ if (typeof document !== 'undefined' && !document.getElementById(MCP_ACCESS_LINK_
 	document.head.appendChild(accessStyle);
 }
 
-// Full connection details for ONE connected client, opened by clicking the Access text in either
-// connected-clients list (the overview preview rows and the sub-page table share this component).
-// Composed from the dialog primitives (instead of the `header` string prop) so the header carries
-// the client's brand mark next to its name. The body is a label/value grid — Connected by /
+// Full connection details for ONE connected client, opened by clicking a preview row's Access
+// text. Composed from the dialog primitives (instead of the `header` string prop) so the header
+// carries the client's brand mark next to its name. The body is a label/value grid — Connected by /
 // Connected on / Last active — followed by Access: the FULL grant as a clean vertical list of plain
 // permission rows grouped under the catalog's Read-only / Write / Execute headings (no chips). The
 // footer's destructive "Revoke access" emits `revoke` so the host page removes the client (same as
-// the lists' hover-revealed revoke) and closes. Styles are injected once (fixed id), as above.
+// the rows' hover-revealed revoke) and closes. Styles are injected once (fixed id), as above.
 const MCP_CLIENT_DETAILS_STYLE_ID = 'mcp-client-details-styles';
 const ClientDetailsDialog = defineComponent({
 	name: 'ClientDetailsDialog',
@@ -1455,151 +1415,17 @@ const ClientDetailsDialog = defineComponent({
 	`,
 });
 
-// Sample workflow catalogue the MCP server can reach, grouped by project. Reused by the main page
-// ("12 across 4 projects" summary) and the Workflows available sub-page, where each workflow can be
-// individually exposed to or hidden from connected clients. Names mirror realistic instance content.
-interface McpWorkflow {
-	id: string;
-	name: string;
-	/** Trigger + one-line purpose, shown as the row description. */
-	description: string;
-	/** Whether the workflow itself is active in n8n (independent of MCP exposure). */
-	active: boolean;
-	/**
-	 * Whether the workflow is currently exposed to connected MCP clients. A partial mix keeps the
-	 * Workflows available sub-page's per-project counts interesting (e.g. "2 of 3 exposed"); the
-	 * sub-page seeds its editable state from these values.
-	 */
-	exposed: boolean;
-}
-interface McpWorkflowProject {
-	id: string;
-	name: string;
-	workflows: McpWorkflow[];
-}
-const mcpWorkflowProjects: McpWorkflowProject[] = [
-	{
-		id: 'personal',
-		name: 'Personal',
-		workflows: [
-			{
-				id: 'daily-weather',
-				name: 'Daily Weather Email',
-				description: 'Scheduled · emails a morning forecast',
-				active: true,
-				exposed: true,
-			},
-			{
-				id: 'release-digest',
-				name: 'Release KB Weekly Digest',
-				description: "Scheduled · summarizes the week's releases",
-				active: true,
-				exposed: true,
-			},
-			{
-				id: 'finance-tracker',
-				name: 'Personal Finance Tracker',
-				description: 'Webhook · logs expenses to a sheet',
-				active: false,
-				exposed: false,
-			},
-		],
-	},
-	{
-		id: 'developer-platform',
-		name: 'Developer Platform',
-		workflows: [
-			{
-				id: 'triage-ci',
-				name: 'Tool: Triage CI Failure',
-				description: 'Triggered by CI · classifies pipeline failures',
-				active: true,
-				exposed: true,
-			},
-			{
-				id: 'docs-sync',
-				name: 'Docs Changelog Sync',
-				description: 'Scheduled · publishes changelog entries',
-				active: true,
-				exposed: false,
-			},
-			{
-				id: 'pr-reminder',
-				name: 'PR Review Reminder',
-				description: 'Scheduled · nudges reviewers on stale PRs',
-				active: false,
-				exposed: false,
-			},
-		],
-	},
-	{
-		id: 'solutions-engineering',
-		name: 'Solutions Engineering',
-		workflows: [
-			{
-				id: 'legal-review',
-				name: 'BG Germany — Legal AI Contract Review',
-				description: 'On demand · reviews contracts with AI',
-				active: true,
-				exposed: true,
-			},
-			{
-				id: 'lead-enrichment',
-				name: 'Lead Enrichment Pipeline',
-				description: 'Webhook · enriches inbound leads',
-				active: true,
-				exposed: true,
-			},
-			{
-				id: 'demo-provisioner',
-				name: 'Demo Env Provisioner',
-				description: 'On demand · spins up demo environments',
-				active: false,
-				exposed: false,
-			},
-		],
-	},
-	{
-		id: 'security-hub',
-		name: 'Security Hub',
-		workflows: [
-			{
-				id: 'audit-export',
-				name: 'Audit Log Export',
-				description: 'Scheduled · ships audit logs to the SIEM',
-				active: true,
-				exposed: true,
-			},
-			{
-				id: 'access-review',
-				name: 'Access Review Bot',
-				description: 'Scheduled · flags stale access grants',
-				active: true,
-				exposed: false,
-			},
-			{
-				id: 'secret-rotation',
-				name: 'Secret Rotation',
-				description: 'Scheduled · rotates API credentials',
-				active: true,
-				exposed: false,
-			},
-		],
-	},
-];
-
-const mcpWorkflowCount = mcpWorkflowProjects.reduce(
-	(total, project) => total + project.workflows.length,
-	0,
-);
+// Sample instance content behind the main page's Workflows available summary ("12 across 4
+// projects"). Only the counts show on the page; the per-workflow exposure UI lives on a dedicated
+// sub-page that is not part of this story set.
+const mcpWorkflowCount = 12;
+const mcpWorkflowProjectCount = 4;
 
 // ---------------------------------------------------------------------------
-// Connection details — the client-led setup catalogue, lifted to module scope so the Connect
-// dialog (ModelContextProtocol) and the standalone authorization screen (McpAuthorize) read one
-// shared model: the same server URL for every client, a masked token, and a per-client descriptor
-// whose `category` drives the setup UI. CLI clients carry install/auth commands + an alternative
-// config file; IDEs carry a deep link + a manual config file; web clients carry a one-click
-// connector URL.
+// Connection details — the client-led setup catalogue behind the Connect dialog: the same server
+// URL for every client, a masked token, and a per-client descriptor whose `category` drives the
+// setup UI. CLI clients carry install/auth commands + an alternative config file; IDEs carry a
+// deep link + a manual config file; web clients carry a one-click connector URL.
 // ---------------------------------------------------------------------------
 const mcpServerUrl = 'https://acme.app.n8n.cloud/mcp/9f3a2b';
 const mcpAuthToken = 'n8n_mcp_••••••••••••3f9a';
@@ -1745,27 +1571,14 @@ export const ModelContextProtocol: Story = {
 			const enabled = ref(true);
 			const showDisableDialog = ref(false);
 			// The client-led connect flow lives in a dialog opened from the "Your client" row's Connect
-			// button: the grouped picker + tailored setup steps, nothing else — no footer, no in-dialog
-			// consent. CLOSING the dialog mocks what happens in reality: the configured client initiates
-			// the OAuth flow against the instance, so the n8n authorization (consent) screen opens in a
-			// NEW TAB — the sibling McpAuthorize story, rendered standalone via the preview iframe URL
-			// (`/iframe.html?id=…&viewMode=story`), with the picked client riding along as a plain
-			// `client` query param. The story id is derived from this file's meta title so a rename
-			// can't silently break the handoff. Each preview iframe owns its module state, so the grant
-			// can't sync back across the tab boundary here (unlike the prototype, whose store bridges
-			// tabs with a BroadcastChannel) — the consent tab shows its own success state instead.
+			// button: the grouped picker + tailored setup steps, nothing else — no footer and no
+			// in-dialog consent, because granting access is the CLIENT's move: in reality the
+			// configured client initiates the OAuth flow against the instance and n8n's authorization
+			// (consent) screen opens in a new tab. That consent screen is not part of this story set,
+			// so here closing the dialog is simply closing the dialog.
 			const showConnectDialog = ref(false);
 			const onOpenConnect = () => {
 				showConnectDialog.value = true;
-			};
-			const authorizeStoryId = `${meta.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}--mcp-authorize`;
-			const onConnectDialogOpenChange = (open: boolean) => {
-				showConnectDialog.value = open;
-				if (open || !activeClientDef.value) return;
-				window.open(
-					`${window.location.pathname}?id=${authorizeStoryId}&viewMode=story&client=${encodeURIComponent(activeClient.value)}`,
-					'_blank',
-				);
 			};
 			// Per-story reactive copy of the shared fixture so revoking mutates only this story (the
 			// module `mcpClients` stays an untouched seed). The count summaries, the preview, the
@@ -1780,14 +1593,13 @@ export const ModelContextProtocol: Story = {
 
 			// Confirmations (instant enable, confirmed disable, and the copy affordances in the inlined
 			// Connection details section) all go through the shared app notification.
-			const confirm = confirmSaved;
 			// Enabling is instant (low-stakes), then a follow-up dialog offers to expose every workflow
 			// on the instance right away. Enabling flips on immediately + confirms; the dialog is the
 			// optional next step (not a gate).
 			const showExposeAllDialog = ref(false);
 			const onEnable = () => {
 				enabled.value = true;
-				confirm('MCP access enabled');
+				confirmSaved('MCP access enabled');
 				showExposeAllDialog.value = true;
 			};
 			// "Expose all workflows" from the follow-up dialog. In the app/prototype this flips every
@@ -1796,12 +1608,12 @@ export const ModelContextProtocol: Story = {
 			// so this just closes + confirms to keep the UX demonstrable.
 			const onExposeAll = () => {
 				showExposeAllDialog.value = false;
-				confirm('All workflows exposed to MCP');
+				confirmSaved('All workflows exposed to MCP');
 			};
 			const onConfirmDisable = () => {
 				enabled.value = false;
 				showDisableDialog.value = false;
-				confirm('MCP access disabled');
+				confirmSaved('MCP access disabled');
 			};
 			// While enabled, the status control is a dropdown whose single danger item re-opens the
 			// destructive disable confirmation (disabling is gated; it never toggles off instantly).
@@ -1815,8 +1627,8 @@ export const ModelContextProtocol: Story = {
 			};
 
 			// Connection details — folded onto the main page and rebuilt as a Supabase-style,
-			// client-led flow, reading the shared module-scope catalogue (mcpServerUrl /
-			// mcpClientCatalog / mcpClientCategories) that the McpAuthorize story also uses.
+			// client-led flow, reading the module-scope catalogue (mcpServerUrl / mcpClientCatalog /
+			// mcpClientCategories).
 			//
 			// Selected client drives the entire connect-dialog body. The dialog defaults to Claude Code
 			// (the most common pick), so it opens with the CLI Install/Configure/Authenticate steps
@@ -1876,7 +1688,7 @@ export const ModelContextProtocol: Story = {
 			// generic "Copied to clipboard".
 			const onCopy = (text: string, message = 'Copied') => {
 				void navigator.clipboard?.writeText(text);
-				confirm(message);
+				confirmSaved(message);
 			};
 			// Selecting a client switches the setup body (header items are disabled, so guard anyway).
 			const onSelectClient = (id: string) => {
@@ -1911,42 +1723,29 @@ export const ModelContextProtocol: Story = {
 			const addButtonLabel = computed(() => `Add to ${activeClientDef.value?.name ?? ''}`);
 
 			// Tool access summary ("4 of 7 allowed"), read from the shared default allow-list. Tool
-			// access itself lives on a dedicated, save-gated Permissions sub-page (McpPermissions).
+			// access itself is edited on a dedicated, save-gated Permissions sub-page (not part of
+			// this story set).
 			const allowedCount = Object.values(defaultMcpAllowed).filter(Boolean).length;
 			const allowedSummary = `${allowedCount} of ${mcpToolCount} allowed`;
 
-			// Workflows available summary ("12 across 4 projects"), read from the shared catalogue. The
-			// per-project exposure lives on its own McpWorkflowsAvailable sub-page.
-			const workflowsSummary = `${mcpWorkflowCount} across ${mcpWorkflowProjects.length} projects`;
+			// Workflows available summary ("12 across 4 projects"), read from the shared counts.
+			const workflowsSummary = `${mcpWorkflowCount} across ${mcpWorkflowProjectCount} projects`;
 
-			// Connected clients preview + "View all". The Access rows and the "View all" row genuinely
-			// navigate to their sibling stories. Storybook's addon-links isn't installed here, so this
-			// is done by URL: embedded in the manager the preview runs in an iframe (`window.top` is
-			// the manager → use `?path=/story/...`); in the standalone preview iframe (`?id=...`) the
-			// document is top-level → use `?id=...&viewMode=story`.
+			// Connected clients preview + "View all".
 			const previewClients = computed(() => clients.value.slice(0, 3));
 			// Only surface the "All connected clients / View all" row when there are MORE clients than
 			// the inline preview already shows — otherwise it's redundant.
 			const showViewAll = computed(() => clients.value.length > previewClients.value.length);
-			const openStory = (storyId: string) => {
-				try {
-					const top = window.top;
-					if (top && top !== window.self) {
-						top.location.href = `${top.location.pathname}?path=/story/${storyId}`;
-						return;
-					}
-				} catch {
-					// Reading window.top across origins can throw; fall back to iframe-local navigation.
-				}
-				window.location.search = `?id=${storyId}&viewMode=story`;
-			};
-			const onOpenPermissions = () => openStory('instance-settings-examples--mcp-permissions');
-			const onOpenWorkflows = () =>
-				openStory('instance-settings-examples--mcp-workflows-available');
-			const onViewAllClients = () => openStory('instance-settings-examples--mcp-connected-clients');
+			// The Access rows and the "View all" row lead to dedicated sub-pages (the save-gated
+			// Permissions page, Workflows available, and the full Connected clients table) that are
+			// not part of this story set, so the clicks stub the navigation the same way the other
+			// stories stub their back links.
+			const onOpenPermissions = () => alert('Open the Permissions sub-page');
+			const onOpenWorkflows = () => alert('Open the Workflows available sub-page');
+			const onViewAllClients = () => alert('Open the Connected clients sub-page');
 			const onRevokeClient = (client: McpClient) => {
 				clients.value = clients.value.filter((c) => c.id !== client.id);
-				confirm(`${client.name} disconnected`);
+				confirmSaved(`${client.name} disconnected`);
 			};
 
 			// Client details dialog: opened by clicking a preview row's Access text; shows the full
@@ -1962,18 +1761,16 @@ export const ModelContextProtocol: Story = {
 				showDetailsDialog.value = false;
 				onRevokeClient(client);
 			};
-			const accessSummary = clientAccessSummary;
 
 			return {
 				enabled,
 				showDisableDialog,
 				showConnectDialog,
-				onConnectDialogOpenChange,
 				detailsClient,
 				showDetailsDialog,
 				onOpenClientDetails,
 				onRevokeFromDetails,
-				accessSummary,
+				accessSummary: clientAccessSummary,
 				onOpenConnect,
 				showExposeAllDialog,
 				onExposeAll,
@@ -1987,7 +1784,6 @@ export const ModelContextProtocol: Story = {
 				serverUrl: mcpServerUrl,
 				authToken: mcpAuthToken,
 				docsUrl: mcpDocsUrl,
-				activeClient,
 				activeClientDef,
 				activeClientLogo,
 				clientMenuItems,
@@ -2019,7 +1815,7 @@ export const ModelContextProtocol: Story = {
 		// call to action to enable); enabling instantly reveals the full Connection details / Access /
 		// Connected clients page, with a gentle entrance animation on the swap.
 		template: `
-			<div style="height: 100vh; overflow-y: auto; background: var(--background--subtle);">
+			<div style="${fullPageViewportStyle}">
 				<N8nSettingsLayout>
 					<N8nSettingsPageHeader
 						title="Instance level MCP"
@@ -2032,15 +1828,12 @@ export const ModelContextProtocol: Story = {
 					     sole enable affordance, so no empty section/group wrapper is left behind. -->
 					<N8nSettingsSection v-if="enabled">
 						<N8nSettingsRowGroup>
-							<N8nSettingsRow>
-								<template #info>
-									<div style="display: flex; flex-direction: column; gap: var(--spacing--5xs); min-width: 0;">
-										<N8nText bold size="medium" color="text-dark">MCP status</N8nText>
-										<N8nText size="small" color="text-light">Connect AI assistants and IDEs like Claude, Cursor, and ChatGPT to this instance over MCP.</N8nText>
-									</div>
-								</template>
+							<N8nSettingsRow
+								title="MCP status"
+								description="Connect AI assistants and IDEs like Claude, Cursor, and ChatGPT to this instance over MCP."
+							>
 								<template #action>
-									<N8nDropdownMenu v-if="enabled" :items="disableMenuItems" placement="bottom-end" @select="onDisableMenuSelect">
+									<N8nDropdownMenu :items="disableMenuItems" placement="bottom-end" @select="onDisableMenuSelect">
 										<template #trigger>
 											<N8nButton variant="outline" size="medium" aria-label="Manage MCP access">
 												<span style="display: inline-flex; align-items: center; gap: var(--spacing--3xs);">
@@ -2057,20 +1850,13 @@ export const ModelContextProtocol: Story = {
 											<span :style="{ color: 'var(--color--danger)' }">{{ item.label }}</span>
 										</template>
 									</N8nDropdownMenu>
-									<N8nButton v-else variant="outline" size="medium" aria-label="Enable MCP access" @click="onEnable">
-										<span style="display: inline-flex; align-items: center; gap: var(--spacing--3xs);">
-											<StatusDot color="var(--color--danger)" />
-											Enable
-										</span>
-									</N8nButton>
 								</template>
 							</N8nSettingsRow>
 
-							<!-- ENABLED → the client picker moves into a dialog. This row sits directly beneath
+							<!-- The client picker moves into a dialog. This row sits directly beneath
 							     MCP status in the SAME group and just carries a prominent "Connect" button; the
 							     grouped client picker + tailored setup steps live in the Connect dialog below. -->
 							<N8nSettingsRow
-								v-if="enabled"
 								class="mcp-reveal"
 								title="Your client"
 								description="Connect an AI assistant or IDE, then follow the tailored setup steps."
@@ -2208,16 +1994,14 @@ export const ModelContextProtocol: Story = {
 				<!-- CONNECT DIALOG → the client-led flow: the grouped client picker on top, the tailored
 				     per-category instructions below, wrapped in AutoHeight so switching between a short
 				     web client and a tall CLI/IDE animates the resize. Deliberately NO footer and NO
-				     in-dialog consent: like the real flow, granting access is the CLIENT's move — closing
-				     this dialog mocks the client initiating OAuth, opening n8n's authorization screen
-				     (the McpAuthorize story) in a new tab (see onConnectDialogOpenChange). The large
-				     preset keeps it comfortably wide for snippets. -->
+				     in-dialog consent: like the real flow, granting access is the CLIENT's move — after
+				     setup the client initiates OAuth and n8n asks for consent in a new tab (outside this
+				     story set). The large preset keeps it comfortably wide for snippets. -->
 				<N8nDialog
-					:open="showConnectDialog"
+					v-model:open="showConnectDialog"
 					size="large"
 					header="Connect a client"
 					description="Pick the client you want to connect, then follow the tailored setup steps. When your client connects, n8n asks you to grant it access in a new tab."
-					@update:open="onConnectDialogOpenChange"
 				>
 					<!-- Same structure the connect flow had on the page — ONE bordered N8nSettingsRowGroup
 					     with the "Your client" picker row on top (divider shown once a client is selected)
@@ -2362,835 +2146,7 @@ export const ModelContextProtocol: Story = {
 		docs: {
 			description: {
 				story:
-					'The main **Instance level MCP** page, re-expressed from the current instance-level MCP screen into the native settings system. **Connection** drops the old "Preview" badge and replaces the master toggle with a single **MCP status** status-action control: when disabled it is an outline button showing a solid **red dot + "Enable"** that turns MCP on **instantly** (low-risk); when enabled it becomes an outline **"Enabled"** trigger — a **green, gently pulsing dot** + a `chevron-down` — that opens an `N8nDropdownMenu` whose single, danger-styled **"Disable"** item opens an **`N8nDialog` confirmation** ("…will disconnect N connected clients and revoke their access"). Enabling stays instant while disabling stays gated, because a toggle would imply an instant, low-stakes change for something that exposes the instance. **When disabled**, everything below the status row collapses to a single **dashed-border empty state** (an **animated fanned trio of logo cards** — the static `mcp` mark in the raised centre card, flanked by two tilted cards cycling through the client brand marks with a staggered 300ms fade+blur swap every 3s, mimicking the External Secrets empty state from n8n PR #24685 and static under `prefers-reduced-motion` — above "Connect AI assistants to build and run workflows", the subtext "Let MCP clients like Claude Code and Cursor build, run, and iterate on workflows in your instance", and a centered button row — a ghost **"Learn more"** docs button with a trailing `arrow-up-right` icon (opens the docs in a new tab) to the left of the primary **"Enable MCP access"** button wired to the same instant-enable handler); enabling reveals the full page with a gentle entrance animation (honouring `prefers-reduced-motion`). The **"No clients connected yet"** empty state reuses the same animated cluster with the `plug-zap` mark in the centre. **Connection details** is **client-led**: the first row is a **"Your client"** picker — a searchable `N8nDropdownMenu` grouped into three uppercase categories (**AI Agent CLI**, **Web Clients**, **IDE**) via disabled header items + `divided` separators, each client showing its real brand mark in the `#item-leading` slot (Cursor near-black `#26251e`, Claude Code coral `#D97757`, Codex purple→blue, VS Code blue-ribbon, ChatGPT/Claude.ai marks; DS-icon fallbacks for Gemini CLI / Windsurf). The selected client drives a **dividerless group of official `N8nSettingsRow`s** (matching the Figma installation section — each row carries its own title/description, and a `CopyInput` — a readonly monospace `N8nInput` paired with an icon-only copy `N8nButton` in its `#append` slot — renders the command/snippet/value inside the row\'s `#action`): **CLIs** (Claude Code, Codex, Gemini CLI) get **Install** → **Configure** → **Authenticate** rows, where Authenticate is a copyable command (Codex `codex mcp login`; Claude Code / Gemini the in-app `/mcp` command); **Web clients** (Claude.ai, ChatGPT) get a single **One-click setup** row whose action is a branded **"Add to …"** button; **IDEs** (Cursor, VS Code) get a **One-click setup** deep-link button row followed by **Server URL**, **Authentication token**, and **Configure** rows. Copies confirm via the existing app notification with contextual messages ("Server URL copied", "Token copied", "Config copied", "Command copied"). The dialog is deliberately **footerless** — client selection + setup steps only, no Cancel/Continue and no in-dialog consent — because granting access is the **client\'s** move, not the dialog\'s: **closing it** (X / overlay) mocks the configured client initiating the OAuth flow, opening the standalone **McpAuthorize** story (n8n\'s authorization screen — connection visual, grouped consent checkboxes, Allow/Deny) in a **new tab** via the preview iframe URL (`/iframe.html?id=…&viewMode=story&client=<id>`, the story id derived from this file\'s meta title, the picked client riding along as a query param). Each preview iframe owns its module state, so the grant intentionally ends at the consent tab\'s success state — unlike the prototype, whose store syncs it back over a `BroadcastChannel`. **Access** routes to the save-gated **Permissions** sub-page (`N8nSettingsRowConfigure` "4 of 7 allowed") and the **Workflows available** sub-page ("12 across 4 projects"); these rows and the **Connected clients** "View all" row genuinely navigate to their sibling stories (by URL, since Storybook\'s addon-links is not installed). **Connected clients** previews a few rows inline — each carrying a third, muted **Access** line: the client\'s granted permissions as **plain truncated text** ("List workflows, Get workflow details +5", the first two plus a "+N" overflow computed from the array — never chips) that opens the **client details dialog** (brand mark + name header, Connected by / Connected on / Last active fields, the full grant as a vertical list grouped by Read-only / Write / Execute, and a destructive **Revoke access** footer that removes the client like the row\'s hover-revealed button) — with that "View all" row into the full table sub-page.',
-			},
-		},
-	},
-};
-
-// Styles for the standalone authorization screen (McpAuthorize): a full-viewport neutral backdrop
-// with one centered card — deliberately NOT the settings layout, so the page reads as n8n's OAuth
-// authorization screen rather than a settings sub-page. The connection visual is the requesting
-// client's mark and the n8n mark as two bordered logo tiles (the same card treatment as the
-// settings lists) joined by a dashed SVG connector — the not-yet-established connection the page
-// decides. Story render templates can't carry scoped CSS, so the rules are injected once into the
-// head (guarded by a fixed id), mirroring the other MCP style injections.
-const MCP_AUTHORIZE_STYLE_ID = 'mcp-authorize-styles';
-if (typeof document !== 'undefined' && !document.getElementById(MCP_AUTHORIZE_STYLE_ID)) {
-	const authorizeStyle = document.createElement('style');
-	authorizeStyle.id = MCP_AUTHORIZE_STYLE_ID;
-	authorizeStyle.textContent =
-		// Pinned to exactly the viewport height (NOT min-height: an unconstrained box just grows
-		// instead of engaging its own overflow-y) so the page is the scroll container and tall
-		// consent content scrolls to the actions regardless of what wraps the story iframe.
-		'.mcp-authorize { height: 100vh; display: flex; justify-content: center; align-items: flex-start; padding: var(--spacing--xl) var(--spacing--sm); overflow-y: auto; background: var(--background--subtle); }' +
-		'.mcp-authorize__card { display: flex; flex-direction: column; gap: var(--spacing--md); width: 100%; max-width: 36rem; margin-block-start: clamp(var(--spacing--sm), 10vh, var(--spacing--4xl)); padding: var(--spacing--xl); border: var(--border-width, 1px) solid var(--border-color--subtle); border-radius: var(--radius--lg); background: var(--background--surface); box-shadow: var(--shadow--sm); }' +
-		'.mcp-authorize__connection { display: flex; align-items: center; justify-content: center; gap: var(--spacing--2xs); }' +
-		'.mcp-authorize__tile { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; width: calc(var(--spacing--md) * 2); height: calc(var(--spacing--md) * 2); border: var(--border-width, 1px) solid var(--border-color--subtle); border-radius: var(--radius--xs); background: var(--background--surface); box-shadow: var(--shadow--xs); font-size: var(--font-size--xl); color: var(--text-color--subtle); }' +
-		'.mcp-authorize__connector { position: relative; display: inline-flex; align-items: center; justify-content: center; width: var(--spacing--3xl); height: var(--spacing--2xs); color: var(--border-color--strong); }' +
-		'.mcp-authorize__connector svg { display: block; width: 100%; height: 100%; overflow: visible; }' +
-		// While connecting, the dashed line marches toward the n8n tile to read as active; connected holds still.
-		'.mcp-authorize__connection.is-connecting .mcp-authorize__connector-line { color: var(--color--primary); animation: mcp-authorize-dash 0.8s linear infinite; }' +
-		'@keyframes mcp-authorize-dash { to { stroke-dashoffset: -14; } }' +
-		// Status badge centered over the connector: spinner while connecting, green check popping in when connected.
-		'.mcp-authorize__badge { position: absolute; top: 50%; left: 50%; display: inline-flex; align-items: center; justify-content: center; transform: translate(-50%, -50%); width: var(--spacing--lg); height: var(--spacing--lg); border-radius: var(--radius--circle, 50%); background: var(--background--surface); color: var(--text-color--subtle); line-height: 0; }' +
-		'.mcp-authorize__connection.is-connected .mcp-authorize__badge { color: var(--color--success); animation: mcp-authorize-pop 0.24s ease-out both; }' +
-		'@keyframes mcp-authorize-pop { from { opacity: 0; transform: translate(-50%, -50%) scale(0.6); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }' +
-		'.mcp-authorize__copy { display: flex; flex-direction: column; gap: var(--spacing--5xs); text-align: center; animation: mcp-authorize-fade 0.3s ease-out both; }' +
-		'@keyframes mcp-authorize-fade { from { opacity: 0; transform: translateY(var(--spacing--3xs)); } to { opacity: 1; transform: translateY(0); } }' +
-		'@media (prefers-reduced-motion: reduce) { .mcp-authorize__connection.is-connecting .mcp-authorize__connector-line, .mcp-authorize__connection.is-connected .mcp-authorize__badge, .mcp-authorize__copy { animation: none; } }' +
-		'.mcp-authorize__footnote { text-align: center; }' +
-		'.mcp-authorize__actions { display: flex; align-items: center; justify-content: flex-end; gap: var(--spacing--2xs); }' +
-		'.mcp-authorize__outcome { display: flex; flex-direction: column; align-items: center; gap: var(--spacing--3xs); padding: var(--spacing--md) 0 var(--spacing--xl); text-align: center; }';
-	document.head.appendChild(authorizeStyle);
-}
-
-export const McpAuthorize: Story = {
-	render: () => ({
-		components,
-		setup() {
-			// The standalone n8n authorization screen a client's OAuth flow lands on, opened in a NEW
-			// TAB when the ModelContextProtocol story's Connect dialog closes. The requesting client
-			// arrives as a plain `client` query param on the preview iframe URL (the simplest reliable
-			// channel into a standalone story — no args wiring, no storage); unknown or absent ids
-			// fall back to Claude Code so the story stays demonstrable when opened directly.
-			const params = new URLSearchParams(window.location.search);
-			const clientDef = mcpClientCatalog[params.get('client') ?? ''] ?? mcpClientCatalog.claude;
-			const clientLogo = clientDef.logo ? clientLogoComponents[clientDef.logo] : undefined;
-
-			// The consent draft mirrors the shared tool catalog with the safe default: read-only
-			// pre-checked, write/execute opt-in. Group checkboxes stage a whole group at once
-			// (indeterminate when mixed) — the same semantics as the Permissions page.
-			const consentGroups = mcpToolGroups;
-			const consentDraft = ref<Record<string, boolean>>(
-				Object.fromEntries(
-					mcpToolGroups.flatMap((group) =>
-						group.tools.map((tool) => [tool.id, group.id === 'read']),
-					),
-				),
-			);
-			const consentGroupCount = (group: McpToolGroup) =>
-				group.tools.filter((tool) => consentDraft.value[tool.id]).length;
-			const isConsentGroupAllOn = (group: McpToolGroup) =>
-				consentGroupCount(group) === group.tools.length;
-			const isConsentGroupMixed = (group: McpToolGroup) => {
-				const count = consentGroupCount(group);
-				return count > 0 && count < group.tools.length;
-			};
-			const onConsentGroupToggle = (group: McpToolGroup) => {
-				const turnOn = !isConsentGroupAllOn(group);
-				group.tools.forEach((tool) => {
-					consentDraft.value[tool.id] = turnOn;
-				});
-			};
-			const grantedCount = computed(() => Object.values(consentDraft.value).filter(Boolean).length);
-
-			// End states, like a real OAuth callback page: the page's job is done — tell the user the
-			// outcome and send them back to the tab they came from. Each Storybook preview iframe owns
-			// its own module state, so (unlike the prototype, whose store syncs grants across tabs via
-			// a BroadcastChannel) allowing here can't add the client to the launching story's list —
-			// the success state IS the outcome.
-			const outcome = ref<'pending' | 'granted' | 'denied'>('pending');
-			const onAllowAccess = () => {
-				if (grantedCount.value === 0) return;
-				outcome.value = 'granted';
-			};
-			const onDeny = () => {
-				outcome.value = 'denied';
-			};
-
-			// Artificial "connecting" phase: the page opens establishing the link (animated dashed
-			// connector + spinner between the two logo tiles), then settles into "connected" (a green
-			// check appears and the consent content is revealed). Purely presentational — a beat that
-			// makes the OAuth handoff read as a real connection. Reduced-motion skips straight to connected.
-			const phase = ref<'connecting' | 'connected'>('connecting');
-			let connectTimer: ReturnType<typeof setTimeout> | undefined;
-			onMounted(() => {
-				const prefersReducedMotion = window.matchMedia?.(
-					'(prefers-reduced-motion: reduce)',
-				).matches;
-				if (prefersReducedMotion) {
-					phase.value = 'connected';
-					return;
-				}
-				connectTimer = setTimeout(() => {
-					phase.value = 'connected';
-				}, 1800);
-			});
-			onBeforeUnmount(() => clearTimeout(connectTimer));
-
-			return {
-				clientDef,
-				clientLogo,
-				consentGroups,
-				consentDraft,
-				isConsentGroupAllOn,
-				isConsentGroupMixed,
-				onConsentGroupToggle,
-				grantedCount,
-				outcome,
-				onAllowAccess,
-				onDeny,
-				phase,
-			};
-		},
-		template: `
-			<div class="mcp-authorize">
-				<main class="mcp-authorize__card">
-					<!-- Connection visual: [client mark] ┈┈┈ [n8n mark]. -->
-					<div class="mcp-authorize__connection" :class="'is-' + phase" aria-hidden="true">
-						<span class="mcp-authorize__tile">
-							<component :is="clientLogo" v-if="clientLogo" />
-							<N8nIcon v-else :icon="clientDef.icon" />
-						</span>
-						<span class="mcp-authorize__connector">
-							<svg viewBox="0 0 64 8" preserveAspectRatio="none">
-								<line class="mcp-authorize__connector-line" x1="0" y1="4" x2="64" y2="4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="2 5" />
-							</svg>
-							<span class="mcp-authorize__badge">
-								<N8nSpinner v-if="phase === 'connecting'" size="small" />
-								<N8nIcon v-else icon="circle-check" color="success" size="large" />
-							</span>
-						</span>
-						<span class="mcp-authorize__tile">
-							<N8nLogoMark />
-						</span>
-					</div>
-
-					<template v-if="outcome === 'pending' && phase === 'connected'">
-						<div class="mcp-authorize__copy">
-							<N8nText bold size="large" color="text-dark">{{ clientDef.name }} wants access to your n8n instance</N8nText>
-							<N8nText size="small" color="text-light">Choose what it's allowed to do. You can change this anytime.</N8nText>
-						</div>
-
-						<N8nSettingsRowGroup>
-							<template v-for="(group, groupIndex) in consentGroups" :key="group.id">
-								<N8nSettingsRow show-visual :title="group.title" :description="group.summary" :show-divider="false">
-									<template #visual><N8nIcon :icon="group.icon" /></template>
-									<template #action>
-										<N8nCheckbox
-											:model-value="isConsentGroupAllOn(group)"
-											:indeterminate="isConsentGroupMixed(group)"
-											:aria-label="'Allow all ' + group.title + ' tools'"
-											@change="onConsentGroupToggle(group)"
-										/>
-									</template>
-								</N8nSettingsRow>
-								<N8nSettingsRow
-									v-for="(tool, toolIndex) in group.tools"
-									:key="tool.id"
-									:title="tool.title"
-									:description="tool.description"
-									:show-divider="toolIndex === group.tools.length - 1 && groupIndex < consentGroups.length - 1"
-								>
-									<template #action>
-										<N8nCheckbox v-model="consentDraft[tool.id]" :aria-label="'Allow ' + tool.title" />
-									</template>
-								</N8nSettingsRow>
-							</template>
-						</N8nSettingsRowGroup>
-
-						<N8nText size="xsmall" color="text-light" class="mcp-authorize__footnote">Applies only to this connection — other clients keep their own permissions.</N8nText>
-
-						<div class="mcp-authorize__actions">
-							<N8nButton variant="outline" size="large" label="Deny" @click="onDeny" />
-							<N8nButton variant="solid" size="large" label="Allow access" :disabled="grantedCount === 0" @click="onAllowAccess" />
-						</div>
-					</template>
-
-					<!-- Terminal states, like a real OAuth callback page. -->
-					<div v-else-if="outcome === 'granted'" class="mcp-authorize__outcome">
-						<N8nText bold size="large" color="text-dark">Access granted</N8nText>
-						<N8nText size="small" color="text-light">{{ clientDef.name }} is now connected to your instance. You can close this tab and return to n8n.</N8nText>
-					</div>
-					<div v-else-if="outcome === 'denied'" class="mcp-authorize__outcome">
-						<N8nIcon icon="circle-x" color="text-light" size="xlarge" />
-						<N8nText bold size="large" color="text-dark">Access denied</N8nText>
-						<N8nText size="small" color="text-light">{{ clientDef.name }} wasn't connected. You can close this tab.</N8nText>
-					</div>
-				</main>
-			</div>
-		`,
-	}),
-	parameters: {
-		layout: 'fullscreen',
-		docs: {
-			description: {
-				story:
-					'The standalone **n8n authorization screen** a client\'s OAuth flow lands on — opened in a **new tab** when the Instance level MCP story\'s Connect dialog closes (mocking the client initiating the flow), and evaluable on its own here. It deliberately drops all settings chrome (no sidebar, no settings layout): a full-viewport neutral backdrop with one centered card, like a real OAuth consent page. The header is a **connection visual** — the requesting client\'s brand mark and the **n8n logomark** (inlined from the design system\'s `N8nLogo` asset, brand raspberry `#EA4B71`) as two small bordered logo tiles joined by a **dashed SVG connector**: the not-yet-established connection this page decides. On load it runs a brief **loading → connected** sequence (~1.8s): while *connecting*, the dashed line marches (animated `stroke-dashoffset`) and an `N8nSpinner` sits centered over it while the consent content stays hidden; once *connected*, a green **`circle-check`** (`--color--success`) pops in over the connector and the consent content fades in. It\'s purely presentational (a `phase` ref driven by `setTimeout`), and honors `prefers-reduced-motion` by skipping straight to the connected state with no animation. The requesting client arrives as a plain **`client` query param** on the preview iframe URL (`/iframe.html?id=…&client=cursor`) — the simplest reliable channel into a standalone story — falling back to Claude Code when absent. Below, the consent content: "**<client> wants access to your n8n instance**", the shared tool catalog as a grouped checkbox list (group checkboxes indeterminate when mixed; **read-only pre-checked, write/execute opt-in**), the per-connection reassurance, and centered **Deny** / **Allow access** actions (Allow disabled until at least one tool is checked). Both end in a terminal, OAuth-callback-style state: **"Access granted — you can close this tab and return to n8n"** (`circle-check`) or **"Access denied — <client> wasn\'t connected"** (`circle-x`). Storybook preview iframes each own their module state, so unlike the prototype (whose store syncs the grant to the launching tab over a `BroadcastChannel`) the grant intentionally ends at the success state here.',
-			},
-		},
-	},
-};
-
-export const McpPermissions: Story = {
-	render: () => ({
-		components,
-		setup() {
-			const onBack = () => alert('Back to Instance level MCP');
-
-			const groups = mcpToolGroups;
-
-			// High-impact + save-gated: per-tool permissions stay in `draft` until the user saves, at
-			// which point they commit to `saved`. `dirty` (draft ≠ saved) drives the floating save bar,
-			// exactly like the Example Settings Page.
-			const saved = ref<Record<string, boolean>>({ ...defaultMcpAllowed });
-			const draft = ref<Record<string, boolean>>({ ...defaultMcpAllowed });
-			const saving = ref(false);
-			const dirty = computed(() => JSON.stringify(draft.value) !== JSON.stringify(saved.value));
-
-			// All groups start expanded so every checkbox is visible at a glance.
-			const expanded = ref<Record<string, boolean>>({ read: true, write: true, execute: true });
-
-			const groupAllowedCount = (group: McpToolGroup) =>
-				group.tools.filter((tool) => draft.value[tool.id]).length;
-			const isGroupAllOn = (group: McpToolGroup) => groupAllowedCount(group) === group.tools.length;
-			// The group checkbox shows an indeterminate dash when only some tools in it are allowed.
-			const isGroupMixed = (group: McpToolGroup) => {
-				const count = groupAllowedCount(group);
-				return count > 0 && count < group.tools.length;
-			};
-			// Every group's description reads as a plain live "x of y allowed" count.
-			const groupSummary = (group: McpToolGroup) =>
-				`${groupAllowedCount(group)} of ${group.tools.length} allowed`;
-
-			// Permissions use the standard design-system N8nCheckbox (reka-ui), which renders its own
-			// checked / unchecked / indeterminate states, keyboard handling, and focus ring. Per-tool
-			// checkboxes are `v-model`-bound straight to the draft; the group checkbox is controlled
-			// from the derived group state, so its `change` simply stages every tool at once:
-			// if the group isn't already fully on, turn all on, otherwise turn all off.
-			const onGroupToggle = (group: McpToolGroup) => {
-				const turnOn = !isGroupAllOn(group);
-				group.tools.forEach((tool) => {
-					draft.value[tool.id] = turnOn;
-				});
-			};
-
-			// Save / discard mirroring the Example Settings Page dirty-state flow; the successful save
-			// confirms through the shared app notification.
-			const onSave = () => {
-				saving.value = true;
-				setTimeout(() => {
-					saved.value = { ...draft.value };
-					saving.value = false;
-					confirmSaved('Permissions saved');
-				}, 1000);
-			};
-			const onDiscard = () => {
-				draft.value = { ...saved.value };
-			};
-
-			return {
-				onBack,
-				groups,
-				draft,
-				saving,
-				dirty,
-				expanded,
-				isGroupAllOn,
-				isGroupMixed,
-				groupSummary,
-				onGroupToggle,
-				onSave,
-				onDiscard,
-			};
-		},
-		// Same full-height scrollable viewport + floating save bar wrapper as the Example Settings
-		// Page: permission changes are high-impact, so every checkbox edit lands behind an explicit Save.
-		template: `
-			<div style="height: 100vh; overflow-y: auto; background: var(--background--subtle);">
-				<N8nSettingsLayout show-back back-label="Back to Instance level MCP" @back="onBack" style="padding-block-end: var(--spacing--3xl);">
-					<N8nSettingsPageHeader
-						title="Permissions"
-						description="Choose which tools connected clients can use, grouped by what each tool does. Changes apply to every connected client and take effect when you save."
-						docs-url="https://docs.n8n.io/manage-cloud/mcp-access/"
-					/>
-
-					<N8nSettingsSection title="Tool access">
-						<N8nSettingsRowGroup>
-							<N8nSettingsRow
-								v-for="group in groups"
-								:key="group.id"
-								v-model="expanded[group.id]"
-								expandable
-								:disclosure="false"
-								show-visual
-								:title="group.title"
-								:description="groupSummary(group)"
-							>
-								<template #visual><N8nIcon :icon="group.icon" /></template>
-								<template #action>
-									<div style="display: flex; align-items: center; gap: var(--spacing--2xs);">
-										<N8nButton
-											variant="ghost"
-											size="small"
-											:aria-expanded="expanded[group.id]"
-											:aria-label="(expanded[group.id] ? 'Collapse ' : 'Expand ') + group.title"
-											@click="expanded[group.id] = !expanded[group.id]"
-										>
-											{{ expanded[group.id] ? 'Show less' : 'Show more' }}
-											<N8nIcon
-												icon="chevron-down"
-												size="small"
-												:style="{ transition: 'transform 0.2s ease-in-out', transform: expanded[group.id] ? 'rotate(180deg)' : 'none' }"
-											/>
-										</N8nButton>
-										<N8nCheckbox
-											:model-value="isGroupAllOn(group)"
-											:indeterminate="isGroupMixed(group)"
-											:aria-label="'Allow all ' + group.title + ' tools'"
-											@change="onGroupToggle(group)"
-										/>
-									</div>
-								</template>
-								<template #expanded>
-									<N8nSettingsRow
-										v-for="(tool, index) in group.tools"
-										:key="tool.id"
-										:title="tool.title"
-										:description="tool.description"
-										:show-divider="index < group.tools.length - 1"
-									>
-										<template #action>
-											<N8nCheckbox
-												v-model="draft[tool.id]"
-												:aria-label="'Allow ' + tool.title"
-											/>
-										</template>
-									</N8nSettingsRow>
-								</template>
-							</N8nSettingsRow>
-						</N8nSettingsRowGroup>
-					</N8nSettingsSection>
-				</N8nSettingsLayout>
-
-				<N8nSettingsSaveBar
-					floating
-					:visible="dirty"
-					:saving="saving"
-					save-label="Save permissions"
-					@save="onSave"
-					@discard="onDiscard"
-				/>
-			</div>
-		`,
-	}),
-	parameters: {
-		layout: 'fullscreen',
-		docs: {
-			description: {
-				story:
-					'The save-gated **Permissions** sub-page reached from the Instance level MCP page\'s Access section. Tools are grouped by type — Read-only (`eye`), Write (`square-pen`), Execute (`play`) — in `expandable` `N8nSettingsRow`s. Because this page commits behind an explicit Save, the controls are **checkboxes, not switches** — the standard design-system **`N8nCheckbox`** (reka-ui). Each group header builds its own `#action` (with `:disclosure="false"`) so the order reads **disclosure first, checkbox last**: a custom **"View more ⌄ / Show less ⌄"** toggle drives the row\'s expand `v-model`, and the group checkbox sits to its right (checked / unchecked / **indeterminate** when its tools are mixed; its `change` stages every tool in the group at once). Per-tool checkboxes are `v-model`-bound to the draft, and every group (Read-only / Write / Execute) is a normal editable permission group. Edits stage in a draft; changing any checkbox flips dirty and slides up the floating `N8nSettingsSaveBar`, which Saves (confirming through the existing app notification) or Discards.',
-			},
-		},
-	},
-};
-
-export const McpConnectedClients: Story = {
-	render: () => ({
-		components: { ...components, ClientDetailsDialog },
-		setup() {
-			const onBack = () => alert('Back to Instance level MCP');
-
-			// Mirrors the API keys table: the trailing `actions` column has no underlying data so it
-			// uses a value accessor. The `client` and `access` columns are rendered through item slots;
-			// Access gets a fixed width so its plain-text permission summary truncates (ellipsis)
-			// instead of stretching the fixed-layout table.
-			const headers = [
-				{ title: 'Client', key: 'client', disableSort: true },
-				{ title: 'Connected by', key: 'connectedBy' },
-				{ title: 'Access', key: 'access', value: () => '', disableSort: true, width: 260 },
-				{ title: 'Last active', key: 'lastActive' },
-				{ title: 'Connected on', key: 'connectedOn' },
-				{ title: '', key: 'actions', value: () => '', disableSort: true, align: 'end', width: 140 },
-			];
-
-			// Per-story reactive copy so revoking actually removes the row (and can empty the table),
-			// leaving the shared `mcpClients` fixture untouched.
-			const items = ref<McpClient[]>(mcpClients.map((client) => ({ ...client })));
-
-			// Dynamic slot names contain a dot, so they are bound via `#[expr]`.
-			const slotClient = 'item.client';
-			const slotAccess = 'item.access';
-			const slotActions = 'item.actions';
-
-			// The trailing "Revoke access" button is hidden at rest and revealed on the table ROW's
-			// hover OR keyboard focus-within (so Tab-focusing it shows it). It stays in the DOM (opacity
-			// only, never display:none/v-if) so it keeps its place in the tab order; pointer-events are
-			// disabled while hidden so it isn't clickable when invisible. Injected once into the head
-			// (guarded by a fixed id), namespaced under the unique `.mcp-connected-clients__revoke`
-			// wrapper class so the row-scoped reveal can't leak to other tables.
-			const REVOKE_STYLE_ID = 'mcp-connected-clients-revoke-styles';
-			if (typeof document !== 'undefined' && !document.getElementById(REVOKE_STYLE_ID)) {
-				const revokeStyle = document.createElement('style');
-				revokeStyle.id = REVOKE_STYLE_ID;
-				revokeStyle.textContent =
-					'.mcp-connected-clients__revoke { display: flex; justify-content: flex-end; opacity: 0; pointer-events: none; transition: opacity 0.12s ease-in-out; }' +
-					'tr:hover .mcp-connected-clients__revoke, tr:focus-within .mcp-connected-clients__revoke { opacity: 1; pointer-events: auto; }' +
-					'@media (prefers-reduced-motion: reduce) { .mcp-connected-clients__revoke { transition: none; } }';
-				document.head.appendChild(revokeStyle);
-			}
-
-			// Confirmation on revoke goes through the shared app notification, matching the main
-			// page's "<client> disconnected".
-			const onRevoke = (client: McpClient) => {
-				items.value = items.value.filter((c) => c.id !== client.id);
-				confirmSaved(`${client.name} disconnected`);
-			};
-
-			// Client details dialog, opened by clicking a row's Access text: the full per-client grant
-			// (grouped) plus the destructive revoke — same removal as the row's hover-revealed button.
-			const detailsClient = ref<McpClient | null>(null);
-			const showDetailsDialog = ref(false);
-			const onOpenClientDetails = (client: McpClient) => {
-				detailsClient.value = client;
-				showDetailsDialog.value = true;
-			};
-			const onRevokeFromDetails = (client: McpClient) => {
-				showDetailsDialog.value = false;
-				onRevoke(client);
-			};
-			const accessSummary = clientAccessSummary;
-
-			return {
-				onBack,
-				headers,
-				items,
-				slotClient,
-				slotAccess,
-				slotActions,
-				onRevoke,
-				detailsClient,
-				showDetailsDialog,
-				onOpenClientDetails,
-				onRevokeFromDetails,
-				accessSummary,
-				clientLogos: clientLogoComponents,
-			};
-		},
-		template: `
-			<N8nSettingsLayout full-width show-back back-label="Back to Instance level MCP" @back="onBack">
-				<N8nSettingsPageHeader
-					title="Connected clients"
-					description="Assistants and IDEs connected to this instance over MCP, what they can access, and when they were last active."
-					docs-url="https://docs.n8n.io/manage-cloud/mcp-access/"
-				/>
-
-				<N8nSettingsSection>
-					<N8nDataTableServer v-if="items.length" :headers="headers" :items="items" :items-length="items.length">
-						<template #[slotClient]="{ item }">
-							<div style="display: flex; align-items: center; gap: var(--spacing--2xs); min-width: 0;">
-								<span style="display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; width: var(--spacing--lg); height: var(--spacing--lg); border: var(--border-width, 1px) solid var(--border-color--subtle); border-radius: var(--radius--2xs); color: var(--text-color--subtle);">
-									<component :is="clientLogos[item.id]" v-if="clientLogos[item.id]" style="font-size: var(--font-size--2xs);" />
-									<N8nIcon v-else :icon="item.icon" size="small" />
-								</span>
-								<span style="display: flex; flex-direction: column; min-width: 0;">
-									<N8nText size="small" color="text-dark" bold>{{ item.name }}</N8nText>
-									<N8nText size="xsmall" color="text-light">{{ item.type }}</N8nText>
-								</span>
-							</div>
-						</template>
-						<!-- Access: the granted permissions as muted plain text ("a, b +N", no chips),
-						     truncating with ellipsis in the fixed-width column; clicking opens the client
-						     details dialog with the full grant. -->
-						<template #[slotAccess]="{ item }">
-							<button
-								type="button"
-								class="mcp-access-link"
-								:aria-label="'View connection details for ' + item.name"
-								@click="onOpenClientDetails(item)"
-							>{{ accessSummary(item) }}</button>
-						</template>
-						<template #[slotActions]="{ item }">
-							<div class="mcp-connected-clients__revoke">
-								<N8nButton variant="outline" size="small" label="Revoke access" :aria-label="'Revoke access for ' + item.name" @click="onRevoke(item)" />
-							</div>
-						</template>
-					</N8nDataTableServer>
-
-					<!-- Empty state when every client has been revoked (matches the main page's message and
-					     its animated logo-cards treatment). -->
-					<div
-						v-else
-						style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: var(--spacing--2xs); padding: var(--spacing--2xl) var(--spacing--xl); border: var(--border-width, 1px) dashed var(--border-color); border-radius: var(--radius--lg); background: var(--background--surface);"
-					>
-						<ClientLogoCards icon="plug-zap" style="margin-block-end: var(--spacing--4xs);" />
-						<N8nText bold size="medium" color="text-dark">No clients connected yet</N8nText>
-						<N8nText size="small" color="text-light">Connect a client from the Instance level MCP page to see it here.</N8nText>
-					</div>
-				</N8nSettingsSection>
-
-				<!-- CLIENT DETAILS → opened from a row's Access text: the full per-client grant grouped
-				     by tool type, plus the destructive revoke (same behaviour as the row button). -->
-				<ClientDetailsDialog
-					v-model:open="showDetailsDialog"
-					:client="detailsClient"
-					@revoke="onRevokeFromDetails"
-				/>
-			</N8nSettingsLayout>
-		`,
-	}),
-	parameters: {
-		layout: 'fullscreen',
-		docs: {
-			description: {
-				story:
-					'The full **Connected clients** table sub-page, modelled on the API keys story: a `full-width` `N8nSettingsLayout` with an `N8nDataTableServer` beneath a header that stays centered in the 720px column. Columns cover the Client (name + IDE/type with a leading brand mark resolved through an id→component map — Cursor in near-black, Claude Code in coral, Codex its purple→blue blossom, VS Code its blue-ribbon mark, and ChatGPT the black OpenAI blossom, with a neutral DS icon as the fallback for anything unmapped), who Connected it (the user\'s email), the per-client **Access** — the connection\'s granted permissions as muted **plain truncated text** ("List workflows, Get workflow details +5": the first two plus a "+N" overflow computed from the array, ellipsis in its fixed-width column as the safety net, never an `N8nBadge`/chip — clicking it opens the **client details dialog** with the brand mark + name header, Connected by / Connected on / Last active fields, the full grant as a vertical list grouped by Read-only / Write / Execute, and a destructive **Revoke access** footer — Last active, Connected on, and a trailing actions column whose hover-revealed **"Revoke access"** button also stays. It is the destination of the main page\'s "View all" row, and exists so the table can be evaluated on its own. Revoking every client (from rows or the dialog) swaps the table for the shared **"No clients connected yet"** empty state with the animated client-logo card cluster (static under `prefers-reduced-motion`).',
-			},
-		},
-	},
-};
-
-export const McpWorkflowsAvailable: Story = {
-	render: () => ({
-		components,
-		setup() {
-			const onBack = () => alert('Back to Instance level MCP');
-
-			const projects = mcpWorkflowProjects;
-			const allWorkflows = projects.flatMap((project) => project.workflows);
-
-			// Exposing a workflow to MCP is low-stakes and reversible, so — unlike the save-gated
-			// Permissions sub-page — changes here are INSTANT: each toggle (and each bulk action)
-			// persists immediately and is confirmed through the shared app notification. Editable
-			// exposure is seeded (by id) from each workflow's default `exposed` flag; `workflow.active`
-			// (the workflow's own on/off state in n8n) is independent and shown as a status badge.
-			const exposed = ref<Record<string, boolean>>(
-				Object.fromEntries(allWorkflows.map((workflow) => [workflow.id, workflow.exposed])),
-			);
-
-			const confirm = confirmSaved;
-
-			// Instance-wide setting: auto-expose every newly-created workflow to MCP. Instant like the
-			// per-workflow toggles, confirmed through the same notification. In the app/prototype this
-			// lives in the shared store (so the enable follow-up dialog can flip it too); here a local
-			// reactive ref is enough. Defaults OFF.
-			const autoExposeNewWorkflows = ref(false);
-			const onToggleAutoExpose = (value: boolean) => {
-				autoExposeNewWorkflows.value = value;
-				confirm(
-					value ? 'New workflows will be exposed automatically' : 'New workflows will stay hidden',
-				);
-			};
-
-			// Group-by table state (mirrors the Figma "group-by" pattern: one header row, then a
-			// collapsible header per project, then its workflow rows). Collapse state is keyed by
-			// project id and defaults to expanded.
-			const collapsed = ref<Record<string, boolean>>({});
-			const toggleCollapse = (project: McpWorkflowProject) => {
-				collapsed.value[project.id] = !collapsed.value[project.id];
-			};
-
-			// Exposure filter (segmented control): 'all' shows everything, 'enabled'/'disabled' narrow
-			// to exposed/hidden workflows. Empty groups are hidden so the table stays tight.
-			const filter = ref('all');
-			const filterOptions = [
-				{ label: 'All', value: 'all' },
-				{ label: 'Exposed', value: 'exposed' },
-				{ label: 'Hidden', value: 'hidden' },
-			];
-			const matchesFilter = (workflow: McpWorkflow) => {
-				if (filter.value === 'exposed') return exposed.value[workflow.id];
-				if (filter.value === 'hidden') return !exposed.value[workflow.id];
-				return true;
-			};
-			const visibleWorkflows = (project: McpWorkflowProject) =>
-				project.workflows.filter(matchesFilter);
-			const visibleProjects = computed(() =>
-				projects.filter((project) => visibleWorkflows(project).length > 0),
-			);
-
-			const exposedInProject = (project: McpWorkflowProject) =>
-				project.workflows.filter((workflow) => exposed.value[workflow.id]).length;
-			const projectSummary = (project: McpWorkflowProject) =>
-				`${exposedInProject(project)} of ${project.workflows.length} exposed`;
-			const totalExposed = computed(
-				() => allWorkflows.filter((workflow) => exposed.value[workflow.id]).length,
-			);
-
-			// Selection model for the bulk expose/hide action, keyed by workflow id. Selection works
-			// across groups; the header checkbox selects every VISIBLE row, each group header checkbox
-			// selects that group's visible rows.
-			const selected = ref<Record<string, boolean>>({});
-			const selectedIds = computed(() =>
-				allWorkflows.map((workflow) => workflow.id).filter((id) => selected.value[id]),
-			);
-			const selectedCount = computed(() => selectedIds.value.length);
-			const visibleIds = computed(() =>
-				visibleProjects.value.flatMap((project) =>
-					visibleWorkflows(project).map((workflow) => workflow.id),
-				),
-			);
-			const allVisibleSelected = computed(
-				() => visibleIds.value.length > 0 && visibleIds.value.every((id) => selected.value[id]),
-			);
-			const someVisibleSelected = computed(
-				() => visibleIds.value.some((id) => selected.value[id]) && !allVisibleSelected.value,
-			);
-			const groupSelectionState = (project: McpWorkflowProject) => {
-				const ids = visibleWorkflows(project).map((workflow) => workflow.id);
-				const checked = ids.length > 0 && ids.every((id) => selected.value[id]);
-				return { checked, indeterminate: !checked && ids.some((id) => selected.value[id]) };
-			};
-
-			const setSelected = (ids: string[], value: boolean) => {
-				ids.forEach((id) => {
-					selected.value[id] = value;
-				});
-			};
-			const toggleSelectWorkflow = (workflow: McpWorkflow, value: boolean) => {
-				selected.value[workflow.id] = value;
-			};
-			const toggleSelectGroup = (project: McpWorkflowProject, value: boolean) => {
-				setSelected(
-					visibleWorkflows(project).map((workflow) => workflow.id),
-					value,
-				);
-			};
-			const toggleSelectAll = (value: boolean) => setSelected(visibleIds.value, value);
-			const clearSelection = () => {
-				selected.value = {};
-			};
-
-			const onToggleWorkflow = (workflow: McpWorkflow, value: boolean) => {
-				exposed.value[workflow.id] = value;
-				confirm(value ? `${workflow.name} exposed to MCP` : `${workflow.name} hidden from MCP`);
-			};
-
-			// Bulk action from the selection toolbar: expose/hide every selected workflow at once, then
-			// clear the selection and confirm with the app notification.
-			const applyBulkExposure = (value: boolean) => {
-				const count = selectedIds.value.length;
-				selectedIds.value.forEach((id) => {
-					exposed.value[id] = value;
-				});
-				clearSelection();
-				const noun = count === 1 ? 'workflow' : 'workflows';
-				confirm(value ? `${count} ${noun} exposed to MCP` : `${count} ${noun} hidden from MCP`);
-			};
-			const onBulkExpose = () => applyBulkExposure(true);
-			const onBulkHide = () => applyBulkExposure(false);
-
-			// Shared grid track for the header + workflow rows so the checkbox gutter, workflow column,
-			// status, and exposure toggle line up. The two fixed columns are structural widths (no
-			// spacing token maps to them); gaps and padding stay tokenised.
-			const rowColumns = 'grid-template-columns: var(--spacing--lg) minmax(0, 1fr) 96px 64px;';
-
-			return {
-				onBack,
-				autoExposeNewWorkflows,
-				onToggleAutoExpose,
-				visibleProjects,
-				visibleWorkflows,
-				exposed,
-				collapsed,
-				toggleCollapse,
-				filter,
-				filterOptions,
-				projectSummary,
-				totalExposed,
-				totalWorkflows: allWorkflows.length,
-				selected,
-				selectedCount,
-				allVisibleSelected,
-				someVisibleSelected,
-				groupSelectionState,
-				toggleSelectWorkflow,
-				toggleSelectGroup,
-				toggleSelectAll,
-				clearSelection,
-				onToggleWorkflow,
-				onBulkExpose,
-				onBulkHide,
-				rowColumns,
-			};
-		},
-		// Full-height scrollable viewport like the other MCP pages. No floating save bar: exposure is
-		// instant, so each change is confirmed through the shared app notification.
-		template: `
-			<div style="height: 100vh; overflow-y: auto; background: var(--background--subtle);">
-				<N8nSettingsLayout show-back back-label="Back to Instance level MCP" @back="onBack">
-					<N8nSettingsPageHeader
-						title="Workflows available"
-						description="Choose which workflows connected clients can reach over MCP, grouped by project. Changes apply immediately."
-						docs-url="https://docs.n8n.io/manage-cloud/mcp-access/"
-					/>
-
-					<!-- Instance-wide auto-expose setting: newly-created workflows are exposed to MCP the
-					     moment they're made. Instant toggle, confirmed via the app notification. -->
-					<N8nSettingsSection>
-						<N8nSettingsRowGroup>
-							<N8nSettingsRow
-								title="Auto-expose new workflows"
-								description="Automatically expose newly created workflows to connected clients"
-							>
-								<template #action>
-									<N8nSwitch :model-value="autoExposeNewWorkflows" @update:model-value="onToggleAutoExpose" />
-								</template>
-							</N8nSettingsRow>
-						</N8nSettingsRowGroup>
-					</N8nSettingsSection>
-
-					<!-- Toolbar: bulk-selection actions appear on the left when rows are selected; the exposure filter stays on the right. -->
-					<div style="display: flex; align-items: center; justify-content: space-between; gap: var(--spacing--sm); flex-wrap: wrap; min-height: var(--spacing--xl);">
-						<div style="display: flex; align-items: center; gap: var(--spacing--2xs); min-width: 0;">
-							<template v-if="selectedCount > 0">
-								<N8nText size="small" bold color="text-dark">{{ selectedCount }} selected</N8nText>
-								<N8nButton size="small" variant="solid" label="Expose" @click="onBulkExpose" />
-								<N8nButton size="small" variant="outline" label="Hide" @click="onBulkHide" />
-								<N8nButton size="small" variant="ghost" label="Clear" @click="clearSelection" />
-							</template>
-							<N8nText v-else size="small" color="text-light">{{ totalExposed }} of {{ totalWorkflows }} workflows exposed to MCP</N8nText>
-						</div>
-						<N8nRadioButtons :model-value="filter" :options="filterOptions" size="small" @update:model-value="filter = $event" />
-					</div>
-
-					<!-- Group-by table: a column header, then a collapsible header per project, then its workflow rows. -->
-					<div style="border: var(--border-width, 1px) solid var(--border-color--subtle); border-radius: var(--radius); overflow: clip; background: var(--background--surface);">
-						<div :style="'display: grid; ' + rowColumns + ' align-items: center; column-gap: var(--spacing--sm); padding: var(--spacing--2xs) var(--spacing--sm); background: var(--background--subtle); border-bottom: var(--border-width, 1px) solid var(--border-color--subtle);'">
-							<N8nCheckbox
-								:model-value="allVisibleSelected"
-								:indeterminate="someVisibleSelected"
-								aria-label="Select all workflows"
-								@update:model-value="toggleSelectAll"
-							/>
-							<N8nText size="xsmall" bold color="text-light">Workflow</N8nText>
-							<N8nText size="xsmall" bold color="text-light">Status</N8nText>
-							<N8nText size="xsmall" bold color="text-light">Exposed</N8nText>
-						</div>
-
-						<template v-for="project in visibleProjects" :key="project.id">
-							<div style="display: flex; align-items: center; gap: var(--spacing--2xs); padding: var(--spacing--xs) var(--spacing--sm); background: var(--background--subtle); border-bottom: var(--border-width, 1px) solid var(--border-color--subtle);">
-								<N8nCheckbox
-									:model-value="groupSelectionState(project).checked"
-									:indeterminate="groupSelectionState(project).indeterminate"
-									:aria-label="'Select all ' + project.name + ' workflows'"
-									@update:model-value="(value) => toggleSelectGroup(project, value)"
-								/>
-								<button
-									type="button"
-									:aria-expanded="!collapsed[project.id]"
-									:aria-label="(collapsed[project.id] ? 'Expand ' : 'Collapse ') + project.name"
-									style="display: inline-flex; align-items: center; justify-content: center; padding: var(--spacing--5xs); border: none; background: transparent; color: var(--color--text--tint-1); cursor: pointer; border-radius: var(--radius);"
-									@click="toggleCollapse(project)"
-								>
-									<N8nIcon
-										icon="chevron-down"
-										size="small"
-										:style="{ transition: 'transform 0.2s ease-in-out', transform: collapsed[project.id] ? 'rotate(-90deg)' : 'none' }"
-									/>
-								</button>
-								<N8nAvatar :first-name="project.name" size="small" />
-								<N8nText bold size="medium" color="text-dark">{{ project.name }}</N8nText>
-								<N8nBadge theme="default">{{ projectSummary(project) }}</N8nBadge>
-							</div>
-
-							<template v-if="!collapsed[project.id]">
-								<div
-									v-for="workflow in visibleWorkflows(project)"
-									:key="workflow.id"
-									:style="'display: grid; ' + rowColumns + ' align-items: center; column-gap: var(--spacing--sm); padding: var(--spacing--xs) var(--spacing--sm); border-bottom: var(--border-width, 1px) solid var(--border-color--subtle);'"
-								>
-									<N8nCheckbox
-										:model-value="!!selected[workflow.id]"
-										:aria-label="'Select ' + workflow.name"
-										@update:model-value="(value) => toggleSelectWorkflow(workflow, value)"
-									/>
-									<div style="display: flex; align-items: center; gap: var(--spacing--2xs); min-width: 0;">
-										<N8nIcon icon="workflow" color="text-light" />
-										<div style="display: flex; flex-direction: column; min-width: 0;">
-											<N8nText size="small" color="text-dark" :style="{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }">{{ workflow.name }}</N8nText>
-											<N8nText size="xsmall" color="text-light" :style="{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }">{{ workflow.description }}</N8nText>
-										</div>
-									</div>
-									<div>
-										<N8nBadge :theme="workflow.active ? 'success' : 'default'">{{ workflow.active ? 'Active' : 'Inactive' }}</N8nBadge>
-									</div>
-									<div style="display: flex; justify-content: flex-start;">
-										<N8nSwitch
-											:model-value="exposed[workflow.id]"
-											:aria-label="'Expose ' + workflow.name + ' to MCP'"
-											@update:model-value="(value) => onToggleWorkflow(workflow, value)"
-										/>
-									</div>
-								</div>
-							</template>
-						</template>
-
-						<div v-if="visibleProjects.length === 0" style="padding: var(--spacing--md) var(--spacing--sm);">
-							<N8nText size="small" color="text-light">No workflows match this filter.</N8nText>
-						</div>
-					</div>
-				</N8nSettingsLayout>
-			</div>
-		`,
-	}),
-	parameters: {
-		layout: 'fullscreen',
-		docs: {
-			description: {
-				story:
-					'The **Workflows available** sub-page reached from the Instance level MCP page\'s Access section, rebuilt as a **group-by table** (mirroring the Figma group-by pattern) over the workflows connected clients can read and run. A single bordered table carries one column header (`Workflow` / `Status` / `Exposed`) and a **collapsible header row per project** — a disclosure chevron, an `N8nAvatar` (project initials), the name, and a live "N of M exposed" count — followed by that project\'s workflow rows. Each workflow row shows a `workflow` icon, its name + trigger/purpose, an Active/Inactive `N8nBadge` (the workflow\'s own state, independent of exposure), and an `N8nSwitch` that **instantly** exposes or hides it from MCP (confirmed through the existing app notification, unlike the save-gated Permissions page). A segmented **`N8nRadioButtons`** filter (All / Enabled / Disabled) narrows the rows and hides empty groups. A **selection** column (`N8nCheckbox`) supports multi-select across groups — header and per-group checkboxes select the visible rows — and a **selection toolbar** ("N selected — Enable / Disable / Clear") appears to bulk-expose or bulk-hide every selected workflow at once. Sample data spans Personal, Developer Platform, Solutions Engineering, and Security Hub.',
+					'The main **Instance level MCP** page, re-expressed from the current instance-level MCP screen into the native settings system. **Connection** drops the old "Preview" badge and replaces the master toggle with a single **MCP status** status-action control, shown only while MCP is enabled: an outline **"Enabled"** trigger — a **green, gently pulsing dot** + a `chevron-down` — that opens an `N8nDropdownMenu` whose single, danger-styled **"Disable"** item opens an **`N8nDialog` confirmation** ("…will disconnect N connected clients and revoke their access"). Enabling stays instant while disabling stays gated, because a toggle would imply an instant, low-stakes change for something that exposes the instance. **When disabled**, the whole page below the header collapses to a single **dashed-border empty state**, the sole enable affordance (an **animated fanned trio of logo cards** — the static `mcp` mark in the raised centre card, flanked by two tilted cards cycling through the client brand marks with a staggered 300ms fade+blur swap every 3s, mimicking the External Secrets empty state from n8n PR #24685 and static under `prefers-reduced-motion` — above "Connect AI assistants to build and run workflows", the subtext "Let MCP clients like Claude Code and Cursor build, run, and iterate on workflows in your instance", and a centered button row — a ghost **"Learn more"** docs button with a trailing `arrow-up-right` icon (opens the docs in a new tab) to the left of the primary **"Enable MCP access"** button wired to the instant-enable handler); enabling reveals the full page with a gentle entrance animation (honouring `prefers-reduced-motion`). The **"No clients connected yet"** empty state reuses the same animated cluster with the `plug-zap` mark in the centre. **Connection details** is **client-led**: the first row is a **"Your client"** picker — a searchable `N8nDropdownMenu` grouped into three uppercase categories (**AI Agent CLI**, **Web Clients**, **IDE**) via disabled header items + `divided` separators, each client showing its real brand mark in the `#item-leading` slot (Cursor near-black `#26251e`, Claude Code coral `#D97757`, Codex purple→blue, VS Code blue-ribbon, ChatGPT/Claude.ai marks; DS-icon fallbacks for Gemini CLI / Windsurf). The selected client drives a **dividerless group of official `N8nSettingsRow`s** (matching the Figma installation section — each row carries its own title/description, and a `CopyInput` — a readonly monospace `N8nInput` paired with an icon-only copy `N8nButton` in its `#append` slot — renders the command/snippet/value inside the row\'s `#action`): **CLIs** (Claude Code, Codex, Gemini CLI) get **Install** → **Configure** → **Authenticate** rows, where Authenticate is a copyable command (Codex `codex mcp login`; Claude Code / Gemini the in-app `/mcp` command); **Web clients** (Claude.ai, ChatGPT) get a single **One-click setup** row whose action is a branded **"Add to …"** button; **IDEs** (Cursor, VS Code) get a **One-click setup** deep-link button row followed by **Server URL**, **Authentication token**, and **Configure** rows. Copies confirm via the existing app notification with contextual messages ("Server URL copied", "Token copied", "Config copied", "Command copied"). The dialog is deliberately **footerless** — client selection + setup steps only, no Cancel/Continue and no in-dialog consent — because granting access is the **client\'s** move, not the dialog\'s: in the real flow the configured client initiates OAuth and n8n asks for consent in a new tab (that authorization screen is not part of this story set). **Access** summarizes the save-gated **Permissions** sub-page (`N8nSettingsRowConfigure` "4 of 7 allowed") and the **Workflows available** sub-page ("12 across 4 projects"); these rows and the **Connected clients** "View all" row lead to dedicated sub-pages that are likewise out of scope here, so their clicks stub the navigation. **Connected clients** previews a few rows inline — each carrying a third, muted **Access** line: the client\'s granted permissions as **plain truncated text** ("List workflows, Get workflow details +5", the first two plus a "+N" overflow computed from the array — never chips) that opens the **client details dialog** (brand mark + name header, Connected by / Connected on / Last active fields, the full grant as a vertical list grouped by Read-only / Write / Execute, and a destructive **Revoke access** footer that removes the client like the row\'s hover-revealed button).',
 			},
 		},
 	},

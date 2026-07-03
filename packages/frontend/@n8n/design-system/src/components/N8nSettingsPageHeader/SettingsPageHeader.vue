@@ -39,11 +39,6 @@ const slots = useSlots();
 
 const hasDescription = computed(() => Boolean(props.description || slots.description));
 
-// A separating space between the description sentence and the (nowrap) docs phrase. It sits
-// OUTSIDE the nowrap phrase so the whole "leading copy + link + arrow" can wrap to the next
-// line as a single unit; only added when a description precedes it.
-const docsSeparator = computed(() => (hasDescription.value ? ' ' : ''));
-
 // Default-on means a developer who forgets to wire a docs URL is nudged (not silently broken):
 // the link word still renders as a placeholder and a dev-only warning prompts them to act.
 if (import.meta.env.DEV) {
@@ -67,8 +62,12 @@ if (import.meta.env.DEV) {
 			<slot name="description">
 				<N8nText v-if="description" size="medium" color="text-base">{{ description }}</N8nText>
 			</slot>
+			<!--
+				The separating space sits OUTSIDE the nowrap docs phrase so the whole "leading copy +
+				link + arrow" can wrap to the next line as a single unit; only added after a description.
+			-->
 			<template v-if="showDocsLink"
-				>{{ docsSeparator
+				>{{ hasDescription ? ' ' : ''
 				}}<span :class="$style.docsPhrase"
 					><N8nText size="medium" color="text-base">{{ docsLeadingText }}</N8nText
 					><a
@@ -78,7 +77,7 @@ if (import.meta.env.DEV) {
 						rel="noopener noreferrer"
 						data-test-id="settings-page-header-docs"
 						><span :class="$style.docsLabel">{{ docsLabel }}</span
-						><span :class="$style.docsArrow" aria-hidden="true">↗</span></a
+						><span aria-hidden="true">↗</span></a
 					></span
 				></template
 			>
@@ -131,12 +130,8 @@ if (import.meta.env.DEV) {
 	cursor: pointer;
 }
 
+/* Only the link word is underlined; the ↗ indicator (plain span) stays bare. */
 .docsLabel {
 	text-decoration: underline;
-}
-
-.docsArrow {
-	/* The external-link indicator stays un-underlined and sits tight against the word. */
-	text-decoration: none;
 }
 </style>

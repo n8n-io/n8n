@@ -3,7 +3,6 @@ import { ElNotification } from 'element-plus';
 import { computed, ref } from 'vue';
 
 import N8nSettingsSaveBar from './SettingsSaveBar.vue';
-import N8nButton from '../N8nButton';
 import N8nInput from '../N8nInput';
 import N8nSettingsRow from '../N8nSettingsRow';
 import N8nSettingsRowGroup from '../N8nSettingsRowGroup';
@@ -143,7 +142,7 @@ export const Interactive: Story = {
 				draft.value = saved.value;
 			};
 
-			return { saved, draft, saving, dirty, onSave, onDiscard };
+			return { draft, saving, dirty, onSave, onDiscard };
 		},
 		template: `
 			<div style="max-width: 45rem; display: flex; flex-direction: column; gap: var(--spacing--lg);">
@@ -182,7 +181,6 @@ export const SettingsFlow: Story = {
 			N8nSettingsRow,
 			N8nInput,
 			N8nSwitch,
-			N8nButton,
 		},
 		setup() {
 			// Explicit-save (high-impact) fields.

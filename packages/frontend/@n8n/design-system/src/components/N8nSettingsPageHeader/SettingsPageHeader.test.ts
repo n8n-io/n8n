@@ -87,7 +87,7 @@ describe('N8nSettingsPageHeader', () => {
 		const label = link.querySelector('[class*="docsLabel"]') as HTMLElement;
 		expect(label).toHaveTextContent('documentation');
 
-		const arrow = link.querySelector('[class*="docsArrow"]') as HTMLElement;
+		const arrow = link.querySelector('[aria-hidden="true"]') as HTMLElement;
 		expect(arrow).toHaveTextContent('↗');
 		// The arrow is decorative, so it is hidden from assistive tech and excluded from the link name.
 		expect(arrow).toHaveAttribute('aria-hidden', 'true');

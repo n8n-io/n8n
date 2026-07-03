@@ -39,16 +39,6 @@ const props = withDefaults(defineProps<SettingsSaveBarProps>(), {
 
 const emit = defineEmits<{ save: []; discard: [] }>();
 
-function onSave() {
-	if (props.saving || props.saveDisabled) return;
-	emit('save');
-}
-
-function onDiscard() {
-	if (props.saving) return;
-	emit('discard');
-}
-
 // Cmd/Ctrl+S submits the same way the Save button does. Guarded so it never fires while
 // hidden, saving, or disabled. `useEventListener` auto-detaches on unmount.
 function onKeydown(event: KeyboardEvent) {
@@ -87,7 +77,7 @@ useEventListener(window, 'keydown', onKeydown);
 						:label="discardLabel"
 						:disabled="saving"
 						data-test-id="settings-save-bar-discard"
-						@click="onDiscard"
+						@click="emit('discard')"
 					/>
 					<N8nButton
 						variant="solid"
@@ -95,7 +85,7 @@ useEventListener(window, 'keydown', onKeydown);
 						:loading="saving"
 						:disabled="saveDisabled"
 						data-test-id="settings-save-bar-save"
-						@click="onSave"
+						@click="emit('save')"
 					/>
 				</slot>
 			</div>
@@ -150,8 +140,6 @@ $slide-easing: cubic-bezier(0.32, 0.72, 0, 1);
 	 */
 	border-radius: 0.75rem; /* 12px */
 	box-shadow: var(--shadow--xl);
-	/* Free up `transform` for the slide animation regardless of the floating offset. */
-	--n8n-settings-save-bar--translate: var(--spacing--xl);
 }
 
 .floating {
@@ -205,7 +193,7 @@ $slide-easing: cubic-bezier(0.32, 0.72, 0, 1);
 :global(.n8n-settings-save-bar-enter-from),
 :global(.n8n-settings-save-bar-leave-to) {
 	opacity: 0;
-	transform: translateY(var(--n8n-settings-save-bar--translate, 2rem));
+	transform: translateY(var(--spacing--xl, 2rem));
 
 	@media (prefers-reduced-motion: reduce) {
 		transform: none;

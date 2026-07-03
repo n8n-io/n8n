@@ -50,45 +50,32 @@ const page = `
 	</N8nSettingsSection>
 `;
 
+const renderPage: Story['render'] = (args) => ({
+	components: {
+		N8nSettingsLayout,
+		N8nSettingsPageHeader,
+		N8nSettingsSection,
+		N8nSettingsRowGroup,
+		N8nSettingsRow,
+		N8nSwitch,
+	},
+	setup() {
+		const enabled = ref(true);
+		const onBack = () => alert('back');
+		return { args, enabled, onBack };
+	},
+	template: `<N8nSettingsLayout v-bind="args" @back="onBack">${page}</N8nSettingsLayout>`,
+});
+
 export const Default: Story = {
-	render: (args) => ({
-		components: {
-			N8nSettingsLayout,
-			N8nSettingsPageHeader,
-			N8nSettingsSection,
-			N8nSettingsRowGroup,
-			N8nSettingsRow,
-			N8nSwitch,
-		},
-		setup() {
-			const enabled = ref(true);
-			const onBack = () => alert('back');
-			return { args, enabled, onBack };
-		},
-		template: `<N8nSettingsLayout v-bind="args" @back="onBack">${page}</N8nSettingsLayout>`,
-	}),
+	render: renderPage,
 	args: {
 		showBack: false,
 	},
 };
 
 export const WithBackButton: Story = {
-	render: (args) => ({
-		components: {
-			N8nSettingsLayout,
-			N8nSettingsPageHeader,
-			N8nSettingsSection,
-			N8nSettingsRowGroup,
-			N8nSettingsRow,
-			N8nSwitch,
-		},
-		setup() {
-			const enabled = ref(true);
-			const onBack = () => alert('back');
-			return { args, enabled, onBack };
-		},
-		template: `<N8nSettingsLayout v-bind="args" @back="onBack">${page}</N8nSettingsLayout>`,
-	}),
+	render: renderPage,
 	args: {
 		showBack: true,
 		backLabel: 'Back to app',
@@ -96,22 +83,7 @@ export const WithBackButton: Story = {
 };
 
 export const NestedBackLabel: Story = {
-	render: (args) => ({
-		components: {
-			N8nSettingsLayout,
-			N8nSettingsPageHeader,
-			N8nSettingsSection,
-			N8nSettingsRowGroup,
-			N8nSettingsRow,
-			N8nSwitch,
-		},
-		setup() {
-			const enabled = ref(true);
-			const onBack = () => alert('back');
-			return { args, enabled, onBack };
-		},
-		template: `<N8nSettingsLayout v-bind="args" @back="onBack">${page}</N8nSettingsLayout>`,
-	}),
+	render: renderPage,
 	args: {
 		showBack: true,
 		backLabel: 'Back to Security settings',
