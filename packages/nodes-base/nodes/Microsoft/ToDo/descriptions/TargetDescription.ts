@@ -16,12 +16,8 @@ export const userTargetRLC: INodeProperties = {
 	displayName: 'User',
 	name: 'userTarget',
 	type: 'resourceLocator',
-	// Node-level target, not per-item: resolved once (item 0) for the whole run.
-	// `noDataExpression` stops the editor offering a per-item expression toggle (which would
-	// silently apply item 0's user to every item). It's a UI guard only, though: unlike a plain
-	// string param it does NOT neutralize an expression injected into the RLC's value via
-	// import/API — the resolved value is validated regardless.
-	noDataExpression: true,
+	// Resolved once per run (from the first item) and reused for every item, so it accepts a fixed
+	// value or an expression; for per-item targeting, feed a single item or use Loop Over Items.
 	default: { mode: 'id', value: '' },
 	required: true,
 	modes: [
