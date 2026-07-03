@@ -188,20 +188,19 @@ describe('RoleHoverPopover', () => {
 			});
 		});
 
-		it('should navigate to view route when user lacks role:manage', async () => {
+		it('should not navigate when user lacks role:manage because the button is disabled', async () => {
 			vi.mocked(hasPermission).mockReturnValue(false);
 
-			const { getByText } = renderComponent({
+			const { getByRole } = renderComponent({
 				props: { role: mockCustomRole },
 			});
 
-			await userEvent.click(getByText('View role'));
+			const button = getByRole('button', { name: /view role/i });
+			expect(button).toBeDisabled();
 
-			expect(mockPush).toHaveBeenCalledWith({
-				name: 'ProjectRoleViewView',
-				params: { roleSlug: 'project:custom-role' },
-				query: { from: VIEWS.PROJECT_SETTINGS },
-			});
+			await userEvent.click(button);
+
+			expect(mockPush).not.toHaveBeenCalled();
 		});
 
 		it('should navigate to view route for system role even when user has role:manage', async () => {
