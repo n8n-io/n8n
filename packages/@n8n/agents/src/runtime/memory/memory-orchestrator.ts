@@ -125,7 +125,6 @@ export class MemoryOrchestrator {
 
 			if (memMessages.length > 0) {
 				const stripped = stripOrphanedToolMessages(memMessages);
-				// In-memory prompt view only — persisted messages stay untouched.
 				list.addHistory(this.config.historyTransform?.(stripped) ?? stripped);
 			}
 		}

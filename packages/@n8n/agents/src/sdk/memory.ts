@@ -224,11 +224,7 @@ export class Memory {
 		return this;
 	}
 
-	/**
-	 * Transform loaded thread history before it enters the prompt (e.g. prune
-	 * superseded tool results). In-memory view only — persisted messages are
-	 * never modified. Must preserve message ids and ordering.
-	 */
+	/** See {@link MemoryConfig.historyTransform}. */
 	historyTransform(fn: NonNullable<MemoryConfig['historyTransform']>): this {
 		this.historyTransformFn = fn;
 		return this;

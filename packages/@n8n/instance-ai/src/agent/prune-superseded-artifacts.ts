@@ -23,9 +23,7 @@ function isJsonObject(value: unknown): value is { [key: string]: unknown } {
 
 const RULES: SupersessionRule[] = [
 	{
-		// Keep the newest copy of each skill; stub older duplicate loads only.
-		// Eval-measured: dropping skills from history entirely regresses
-		// multi-turn build quality — the guidance must survive across turns.
+		// Dedupe only — eval-measured: skill guidance must survive across turns.
 		toolName: 'load_skill',
 		artifactKey: (block) => {
 			const output = block.output;
@@ -53,17 +51,9 @@ function fileDataChars(data: ContentFile['data']): number {
 }
 
 /**
- * Shrink oversized payloads in thread history that observational memory
- * shouldn't compress into prose:
- * - duplicate load_skill results are stubbed, keeping the newest copy verbatim
- *   (eval-measured: the guidance must survive across turns);
- * - large inline file/image blocks are replaced with a text note (their content
- *   was seen in the turn they arrived in).
- *
- * Pure and non-destructive: operates on the in-memory prompt view loaded at
- * turn start (persisted messages are untouched), so the pruned view is stable
- * for the whole turn and across HITL resumes — the cache prefix never mutates
- * mid-loop. Current-turn messages never pass through this transform.
+ * Stub older duplicate load_skill results and replace oversized inline file
+ * blocks with a note. Runs once on the history view at turn start, so the
+ * prompt (and cache prefix) never mutates mid-loop.
  */
 export function pruneSupersededArtifacts(messages: AgentDbMessage[]): AgentDbMessage[] {
 	const latestBlockPerArtifact = new Map<string, string>();
