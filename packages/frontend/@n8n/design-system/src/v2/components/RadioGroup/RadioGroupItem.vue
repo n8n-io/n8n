@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Label, RadioGroupIndicator, RadioGroupItem as RekaRadioGroupItem } from './reka-ui';
+import { Label, RadioGroupIndicator, RadioGroupItem as RekaRadioGroupItem } from 'reka-ui';
 import { useId } from 'vue';
 
 import type { RadioGroupItemProps, RadioGroupItemSlots } from './RadioGroupItem.types';
