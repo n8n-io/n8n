@@ -225,7 +225,7 @@ describe('LlmWireServer', () => {
 				onIntercept: () => {
 					throw new Error('ledger disk full');
 				},
-				logger: { warn } as unknown as Logger,
+				logger: { warn, info: vi.fn() } as unknown as Logger,
 			});
 			const url = await server.start();
 
@@ -326,7 +326,7 @@ describe('LlmWireServer', () => {
 			server = new LlmWireServer({
 				mockHandler,
 				rootToSubNode: new Map(),
-				logger: { warn } as unknown as Logger,
+				logger: { warn, info: vi.fn() } as unknown as Logger,
 			});
 			const url = await server.start();
 
