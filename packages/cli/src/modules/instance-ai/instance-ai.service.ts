@@ -124,6 +124,7 @@ import {
 	EDITOR_CONTEXT_CLOSE_TAG,
 	CREDENTIAL_CONTEXT_OPEN_TAG,
 	CREDENTIAL_CONTEXT_CLOSE_TAG,
+	cleanStoredUserMessage,
 	withCurrentDateTime,
 } from './internal-messages';
 import { INSTANCE_AI_RUN_TIMEOUT_REASON, InstanceAiLivenessService } from './liveness';
@@ -304,6 +305,8 @@ function getAbortReason(signal: AbortSignal): string {
 }
 
 const MAX_CONCURRENT_BACKGROUND_TASKS_PER_THREAD = 5;
+
+const TITLE_REFINE_HISTORY_LIMIT = 50;
 
 function stringifyForContextValue(value: unknown): string {
 	if (typeof value === 'string') return value;
@@ -1821,12 +1824,6 @@ export class InstanceAiService {
 			context.branchReadOnly = true;
 		}
 
-		let domainTracker = this.domainAccessTrackersByThread.get(threadId);
-		if (!domainTracker) {
-			domainTracker = createDomainAccessTracker();
-			this.domainAccessTrackersByThread.set(threadId, domainTracker);
-		}
-		context.domainAccessTracker = domainTracker;
 		context.runId = runId;
 
 		// Per-user, thread-level "always allow" grants are persisted in the DB so they survive
@@ -1836,10 +1833,22 @@ export class InstanceAiService {
 		// run — the next run reloads it from the DB anyway.
 		const sessionGrants = await this.loadThreadSessionGrants(threadId, user.id);
 		context.sessionApprovedToolKeys = sessionGrants;
-		context.grantSessionToolApproval = async (key: string) => {
+		const grantSessionToolApproval = async (key: string) => {
 			await this.persistThreadSessionGrant(threadId, user.id, key);
 			sessionGrants.add(key);
 		};
+		context.grantSessionToolApproval = grantSessionToolApproval;
+
+		// Domain-access approvals are stored as grant keys in `instance_ai_thread_grants` (via
+		// the same load/persist path as above), so they survive restart and are visible
+		// cross-main. Recreate the tracker per run seeded from the freshly loaded grants;
+		// transient (allow_once) approvals are run-scoped and don't carry across runs.
+		const domainTracker = createDomainAccessTracker({
+			grantedKeys: sessionGrants,
+			persistGrant: grantSessionToolApproval,
+		});
+		this.domainAccessTrackersByThread.set(threadId, domainTracker);
+		context.domainAccessTracker = domainTracker;
 		if (this.isRunDebugEnabled()) {
 			context.recordWorkflowCodeSnapshot = (snapshot) => {
 				this.runDebugBuffer.ensure(runId, threadId);
@@ -4421,6 +4430,9 @@ export class InstanceAiService {
 			);
 			await this.finalizeRun(opts.threadId, opts.runId, result.status, opts.snapshotStorage, {
 				userId: opts.user.id,
+				// Forward modelId so title refinement fires on the resume path too — a run
+				// that suspends for HITL and completes here would otherwise never be titled.
+				...(opts.modelId !== undefined ? { modelId: opts.modelId } : {}),
 				archivedWorkflowIds,
 				workSummary: result.workSummary,
 				usage: result.usage,
@@ -5036,14 +5048,18 @@ export class InstanceAiService {
 			// Skip if thread already has an LLM-refined title
 			if (thread.metadata?.titleRefined) return;
 
-			// Concat recent user messages so retries after a trivial first message
-			// (e.g. "hey") have enough signal to produce a good title.
-			const history = await memory.getMessages(threadId, { limit: 5 });
-			const userTexts = history.flatMap((m) => {
-				if (!('role' in m) || m.role !== 'user') return [];
-				const text = this.extractStoredMessageText(m.content);
-				return text.length > 0 ? [text] : [];
-			});
+			// Title the conversation from its opening user turns.
+			const history = await memory.getMessages(threadId, { limit: TITLE_REFINE_HISTORY_LIMIT });
+			const userTexts: string[] = [];
+			for (const m of history) {
+				if (!('role' in m) || m.role !== 'user') continue;
+				// Stored user messages carry service-injected blocks (<current-date-time>,
+				// task context). Strip them or a trivial "hey" looks substantial enough to
+				// title, and the injected blocks leak into the title prompt.
+				const text = cleanStoredUserMessage(this.extractStoredMessageText(m.content));
+				if (text && text.length > 0) userTexts.push(text);
+				if (userTexts.length >= 5) break;
+			}
 			if (userTexts.length === 0) return;
 			const userText = userTexts.join('\n');
 

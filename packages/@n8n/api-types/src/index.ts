@@ -276,6 +276,10 @@ export {
 
 export {
 	buildRunWorkflowSessionGrantKey,
+	buildFetchUrlGrantKey,
+	FETCH_URL_ALLOW_ALL_GRANT_KEY,
+	WEB_SEARCH_GRANT_KEY,
+	parseDomainAccessGrants,
 	instanceAiEventTypeSchema,
 	instanceAiRunStatusSchema,
 	instanceAiConfirmationSeveritySchema,
@@ -416,6 +420,7 @@ export type {
 	InstanceAiFileAttachment,
 	InstanceAiWorkflowAttachment,
 	DomainAccessAction,
+	DomainAccessGrants,
 	DomainAccessMeta,
 	WebSearchMeta,
 	InstanceAiCredentialFlow,

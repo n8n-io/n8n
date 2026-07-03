@@ -8,6 +8,7 @@ import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator';
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import { CredentialRequirementsExtractor } from '../credential/credential-requirements.extractor';
 import type { WorkflowCredentialRequirement } from '../credential/credential.types';
+import type { WorkflowExportRequirements } from '../requirements.types';
 
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -15,10 +16,9 @@ export interface WorkflowExportRequest {
 	user: User;
 	workflowIds: string[];
 	writer: PackageWriter;
-}
 
-export interface WorkflowExportRequirements {
-	credentials: WorkflowCredentialRequirement[];
+	// Directory the workflow is written under. e.g. folders/{folderId}/
+	basePrefix?: string;
 }
 
 export interface WorkflowExportResult {
@@ -46,7 +46,10 @@ export class WorkflowExporter {
 
 		const entries: ManifestEntry[] = [];
 		const credentials: WorkflowCredentialRequirement[] = [];
-		const fileNames = new UniqueFilenameAllocator('workflows', 'workflow');
+		const fileNames = new UniqueFilenameAllocator(
+			request.basePrefix ? `${request.basePrefix}/workflows` : 'workflows',
+			'workflow',
+		);
 
 		for (const workflow of workflows) {
 			const target = fileNames.allocate(workflow.name);
