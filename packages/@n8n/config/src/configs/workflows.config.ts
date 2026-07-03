@@ -58,6 +58,11 @@ export class WorkflowsConfig {
 	@Env('N8N_WORKFLOW_PUBLICATION_OUTBOX_CLEANUP_BATCH_SIZE', positiveIntSchema)
 	publicationOutboxCleanupBatchSize: number = 1000;
 
+	/** Interval in seconds between trigger reconciliation runs on the leader, which
+	 *  re-publish workflows whose in-memory triggers went missing (e.g. after a leader transition). */
+	@Env('N8N_WORKFLOW_PUBLICATION_RECONCILE_INTERVAL_SECONDS', positiveIntSchema)
+	publicationReconcileIntervalSeconds: number = 5;
+
 	/** Whether to disable automatic workflow saving in the editor */
 	@Env('N8N_WORKFLOWS_AUTOSAVE_DISABLED')
 	autosaveDisabled: boolean = false;

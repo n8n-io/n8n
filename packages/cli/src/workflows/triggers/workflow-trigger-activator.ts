@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 
 import { Logger } from '@n8n/backend-common';
 import { WorkflowsConfig } from '@n8n/config';
-import type { IWorkflowDb, WorkflowEntity } from '@n8n/db';
+import type { IWorkflowDb, WorkflowEntity, WorkflowPublicationTriggerKind } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter, SpanStatus, Tracing } from 'n8n-core';
@@ -107,6 +107,37 @@ export class WorkflowTriggerActivator {
 		return workflow.queryNodes(
 			(nodeType) => !!nodeType.trigger || !!nodeType.poll || !!nodeType.webhook,
 		);
+	}
+
+	/**
+	 * Classifies each given trigger node by execution mechanism: `poll`/`trigger`
+	 * nodes are held in memory on the owning instance, `webhook` nodes live in the
+	 * `webhook_entity` table. Poll and trigger take precedence over webhook so a
+	 * node that both polls and exposes a webhook is treated as in-memory (matching
+	 * where it actually registers). Used to stamp per-trigger publication status so
+	 * reconciliation can diff the in-memory triggers against the registry.
+	 */
+	getTriggerKinds(nodes: INode[]): Map<INode['id'], WorkflowPublicationTriggerKind> {
+		const workflow = new Workflow({
+			id: 'trigger-diff',
+			name: 'trigger-diff',
+			nodes,
+			connections: {},
+			active: false,
+			nodeTypes: this.nodeTypes,
+		});
+
+		const pollNodeIds = new Set(workflow.getPollNodes().map((node) => node.id));
+		const triggerNodeIds = new Set(workflow.getTriggerNodes().map((node) => node.id));
+
+		const kinds = new Map<INode['id'], WorkflowPublicationTriggerKind>();
+		for (const node of nodes) {
+			if (pollNodeIds.has(node.id)) kinds.set(node.id, 'poll');
+			else if (triggerNodeIds.has(node.id)) kinds.set(node.id, 'trigger');
+			else kinds.set(node.id, 'webhook');
+		}
+
+		return kinds;
 	}
 
 	/**

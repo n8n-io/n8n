@@ -7,6 +7,14 @@ import type { WorkflowHistory } from './workflow-history';
 export type WorkflowPublicationTriggerStatusType = 'activated' | 'failed';
 
 /**
+ * Trigger execution mechanism. Webhook triggers live in the `webhook_entity`
+ * table; poll and trigger nodes are held in memory on the owning instance. The
+ * distinction lets reconciliation diff the in-memory triggers (`!= 'webhook'`)
+ * against what is actually registered.
+ */
+export type WorkflowPublicationTriggerKind = 'webhook' | 'poll' | 'trigger';
+
+/**
  * Per-trigger outcome of the most recent version-advancing publication for a
  * workflow. Full-replaced on each completed/partial/failed publication; the
  * row composition is the source of truth for the published/partial/failed
@@ -26,6 +34,9 @@ export class WorkflowPublicationTriggerStatus extends WithTimestamps {
 
 	@Column({ type: 'varchar', length: 20 })
 	status: WorkflowPublicationTriggerStatusType;
+
+	@Column({ type: 'varchar', length: 20 })
+	triggerKind: WorkflowPublicationTriggerKind;
 
 	@Column({ type: 'text', nullable: true })
 	errorMessage: string | null;

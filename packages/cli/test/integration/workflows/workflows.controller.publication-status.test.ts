@@ -59,12 +59,14 @@ describe('GET /workflows/:workflowId/publication-status', () => {
 				nodeId: 'node-1',
 				versionId,
 				status: 'activated',
+				triggerKind: 'trigger',
 				errorMessage: null,
 			},
 			{
 				nodeId: 'node-2',
 				versionId,
 				status: 'failed',
+				triggerKind: 'webhook',
 				errorMessage: 'Could not register trigger',
 			},
 		]);

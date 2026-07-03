@@ -42,13 +42,31 @@ describe('WorkflowPublicationTriggerStatusRepository', () => {
 
 	it('replaceForWorkflow inserts rows then overwrites them', async () => {
 		await repo.replaceForWorkflow(workflow.id, [
-			{ nodeId: 'n1', versionId: 'v1', status: 'activated', errorMessage: null },
-			{ nodeId: 'n2', versionId: 'v1', status: 'failed', errorMessage: 'boom' },
+			{
+				nodeId: 'n1',
+				versionId: 'v1',
+				status: 'activated',
+				errorMessage: null,
+				triggerKind: 'poll',
+			},
+			{
+				nodeId: 'n2',
+				versionId: 'v1',
+				status: 'failed',
+				errorMessage: 'boom',
+				triggerKind: 'poll',
+			},
 		]);
 		expect(await repo.findByWorkflowId(workflow.id)).toHaveLength(2);
 
 		await repo.replaceForWorkflow(workflow.id, [
-			{ nodeId: 'n1', versionId: 'v2', status: 'activated', errorMessage: null },
+			{
+				nodeId: 'n1',
+				versionId: 'v2',
+				status: 'activated',
+				errorMessage: null,
+				triggerKind: 'poll',
+			},
 		]);
 		const rows = await repo.findByWorkflowId(workflow.id);
 		expect(rows).toHaveLength(1);
@@ -57,7 +75,13 @@ describe('WorkflowPublicationTriggerStatusRepository', () => {
 
 	it('replaceForWorkflow with an empty list clears all rows', async () => {
 		await repo.replaceForWorkflow(workflow.id, [
-			{ nodeId: 'n1', versionId: 'v1', status: 'activated', errorMessage: null },
+			{
+				nodeId: 'n1',
+				versionId: 'v1',
+				status: 'activated',
+				errorMessage: null,
+				triggerKind: 'poll',
+			},
 		]);
 		await repo.replaceForWorkflow(workflow.id, []);
 		expect(await repo.findByWorkflowId(workflow.id)).toHaveLength(0);
@@ -67,8 +91,20 @@ describe('WorkflowPublicationTriggerStatusRepository', () => {
 		const ownWorkflow = await createWorkflow();
 		await seedVersions(ownWorkflow, ['v-wf-cascade']);
 		await repo.replaceForWorkflow(ownWorkflow.id, [
-			{ nodeId: 'n1', versionId: 'v-wf-cascade', status: 'activated', errorMessage: null },
-			{ nodeId: 'n2', versionId: 'v-wf-cascade', status: 'failed', errorMessage: 'boom' },
+			{
+				nodeId: 'n1',
+				versionId: 'v-wf-cascade',
+				status: 'activated',
+				errorMessage: null,
+				triggerKind: 'poll',
+			},
+			{
+				nodeId: 'n2',
+				versionId: 'v-wf-cascade',
+				status: 'failed',
+				errorMessage: 'boom',
+				triggerKind: 'poll',
+			},
 		]);
 		expect(await repo.findByWorkflowId(ownWorkflow.id)).toHaveLength(2);
 
@@ -81,7 +117,13 @@ describe('WorkflowPublicationTriggerStatusRepository', () => {
 		const ownWorkflow = await createWorkflow();
 		await seedVersions(ownWorkflow, ['v-version-cascade']);
 		await repo.replaceForWorkflow(ownWorkflow.id, [
-			{ nodeId: 'n1', versionId: 'v-version-cascade', status: 'activated', errorMessage: null },
+			{
+				nodeId: 'n1',
+				versionId: 'v-version-cascade',
+				status: 'activated',
+				errorMessage: null,
+				triggerKind: 'poll',
+			},
 		]);
 		expect(await repo.findByWorkflowId(ownWorkflow.id)).toHaveLength(1);
 
@@ -134,5 +176,84 @@ describe('WorkflowPublicationTriggerStatusRepository', () => {
 	it('findInFlightByWorkflowId returns null when no outbox records exist', async () => {
 		const wf = await createWorkflow();
 		expect(await outboxRepo.findInFlightByWorkflowId(wf.id)).toBeNull();
+	});
+
+	describe('findActivatedInMemoryTriggers', () => {
+		it('returns activated non-webhook triggers, excluding webhook and failed rows', async () => {
+			await repo.replaceForWorkflow(workflow.id, [
+				{
+					nodeId: 'poll1',
+					versionId: 'v1',
+					status: 'activated',
+					errorMessage: null,
+					triggerKind: 'poll',
+				},
+				{
+					nodeId: 'trig1',
+					versionId: 'v1',
+					status: 'activated',
+					errorMessage: null,
+					triggerKind: 'trigger',
+				},
+				{
+					nodeId: 'hook1',
+					versionId: 'v1',
+					status: 'activated',
+					errorMessage: null,
+					triggerKind: 'webhook',
+				},
+				{
+					nodeId: 'poll2',
+					versionId: 'v1',
+					status: 'failed',
+					errorMessage: 'boom',
+					triggerKind: 'poll',
+				},
+			]);
+
+			const rows = await repo.findActivatedInMemoryTriggers();
+
+			expect(rows).toEqual(
+				expect.arrayContaining([
+					{ workflowId: workflow.id, nodeId: 'poll1' },
+					{ workflowId: workflow.id, nodeId: 'trig1' },
+				]),
+			);
+			expect(rows).toHaveLength(2);
+		});
+
+		it('spans multiple workflows', async () => {
+			const otherWorkflow = await createWorkflow();
+			await seedVersions(otherWorkflow, ['v-other']);
+
+			await repo.replaceForWorkflow(workflow.id, [
+				{
+					nodeId: 'poll1',
+					versionId: 'v1',
+					status: 'activated',
+					errorMessage: null,
+					triggerKind: 'poll',
+				},
+			]);
+			await repo.replaceForWorkflow(otherWorkflow.id, [
+				{
+					nodeId: 'trig1',
+					versionId: 'v-other',
+					status: 'activated',
+					errorMessage: null,
+					triggerKind: 'trigger',
+				},
+			]);
+
+			const rows = await repo.findActivatedInMemoryTriggers();
+
+			expect(rows).toEqual(
+				expect.arrayContaining([
+					{ workflowId: workflow.id, nodeId: 'poll1' },
+					{ workflowId: otherWorkflow.id, nodeId: 'trig1' },
+				]),
+			);
+			expect(rows).toHaveLength(2);
+		});
 	});
 });

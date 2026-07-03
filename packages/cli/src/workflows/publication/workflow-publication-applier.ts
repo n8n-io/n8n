@@ -6,6 +6,7 @@ import {
 	WorkflowPublicationOutbox,
 	WorkflowPublishedVersionRepository,
 	WorkflowRepository,
+	type WorkflowPublicationTriggerKind,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
@@ -99,6 +100,7 @@ export class WorkflowPublicationApplier {
 	): Promise<PublicationResult> {
 		const oldTriggerNodes = this.workflowTriggerActivator.getEnabledTriggerNodes(oldVersion);
 		const desiredTriggerNodes = this.workflowTriggerActivator.getEnabledTriggerNodes(newVersion);
+		const triggerKinds = this.workflowTriggerActivator.getTriggerKinds(desiredTriggerNodes);
 
 		const { toAdd, toRemove } = computeTriggerDiff(oldTriggerNodes, desiredTriggerNodes);
 
@@ -132,7 +134,7 @@ export class WorkflowPublicationApplier {
 			await this.advancePublishedVersion(record);
 			return {
 				type: 'completed',
-				triggerStatuses: this.buildTriggerStatuses(desiredTriggerNodes, {
+				triggerStatuses: this.buildTriggerStatuses(desiredTriggerNodes, triggerKinds, {
 					activated: [],
 					failures: [],
 				}),
@@ -151,7 +153,7 @@ export class WorkflowPublicationApplier {
 		try {
 			if (toAdd.size > 0) {
 				const outcome = await this.workflowTriggerActivator.activate(workflow, newVersion, toAdd);
-				return this.classifyActivationOutcome(outcome, desiredTriggerNodes);
+				return this.classifyActivationOutcome(outcome, desiredTriggerNodes, triggerKinds);
 			}
 
 			if (toRemove.size > 0) {
@@ -163,7 +165,7 @@ export class WorkflowPublicationApplier {
 
 		return {
 			type: 'completed',
-			triggerStatuses: this.buildTriggerStatuses(desiredTriggerNodes, {
+			triggerStatuses: this.buildTriggerStatuses(desiredTriggerNodes, triggerKinds, {
 				activated: [],
 				failures: [],
 			}),
@@ -212,8 +214,9 @@ export class WorkflowPublicationApplier {
 	private classifyActivationOutcome(
 		outcome: TriggerActivationOutcome,
 		desiredTriggerNodes: INode[],
+		triggerKinds: Map<INode['id'], WorkflowPublicationTriggerKind>,
 	): PublicationResult {
-		const triggerStatuses = this.buildTriggerStatuses(desiredTriggerNodes, outcome);
+		const triggerStatuses = this.buildTriggerStatuses(desiredTriggerNodes, triggerKinds, outcome);
 		if (outcome.failures.length === 0) return { type: 'completed', triggerStatuses };
 
 		// Check whether this is a partial or full failure: If at least one trigger
@@ -233,19 +236,25 @@ export class WorkflowPublicationApplier {
 	 */
 	private buildTriggerStatuses(
 		desiredTriggerNodes: INode[],
+		triggerKinds: Map<INode['id'], WorkflowPublicationTriggerKind>,
 		outcome: TriggerActivationOutcome,
 	): TriggerPublicationStatus[] {
 		const failureByNodeId = new Map(outcome.failures.map((f) => [f.nodeId, f]));
 		return desiredTriggerNodes.map((node): TriggerPublicationStatus => {
+			// Every desired node is classified by `getTriggerKinds`; the fallback only
+			// guards an unexpected miss, and 'webhook' is the safe one (the reconciler
+			// ignores it) since a stray in-memory guess would re-enqueue forever.
+			const triggerKind = triggerKinds.get(node.id) ?? 'webhook';
 			const failure = failureByNodeId.get(node.id);
 			return failure
 				? {
 						nodeId: node.id,
 						nodeName: node.name,
 						status: 'failed',
+						triggerKind,
 						errorMessage: failure.error.message,
 					}
-				: { nodeId: node.id, nodeName: node.name, status: 'activated' };
+				: { nodeId: node.id, nodeName: node.name, status: 'activated', triggerKind };
 		});
 	}
 

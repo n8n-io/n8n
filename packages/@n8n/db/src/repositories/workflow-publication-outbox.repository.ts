@@ -134,6 +134,56 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	}
 
 	/**
+	 * Enqueue a pending publication record for each given workflow that is active
+	 * and non-archived, at its current active version, in a single statement.
+	 * Workflows that are inactive, archived, or absent are skipped. Idempotent via
+	 * the same partial-unique-index upsert as {@link enqueue}, so the enqueued
+	 * version is always the canonical `activeVersionId`. Used by reconciliation to
+	 * re-publish workflows whose triggers went missing in memory.
+	 */
+	async enqueueByWorkflowIds(workflowIds: string[]): Promise<void> {
+		if (workflowIds.length === 0) return;
+
+		if (this.globalConfig.database.type === 'postgresdb') {
+			await this.enqueueByWorkflowIdsWithPostgresUpsert(workflowIds);
+			return;
+		}
+
+		await this.enqueueByWorkflowIdsWithSqliteUpsert(workflowIds);
+	}
+
+	private async enqueueByWorkflowIdsWithPostgresUpsert(workflowIds: string[]): Promise<void> {
+		const tableName = this.getTableName('workflow_publication_outbox');
+		const workflowTableName = this.getTableName('workflow_entity');
+
+		await this.query(
+			`INSERT INTO ${tableName} ("workflowId", "publishedVersionId", "status")
+			 SELECT w."id", w."activeVersionId", '${Status.Pending}'
+			 FROM ${workflowTableName} w
+			 WHERE w."id" = ANY($1) AND w."activeVersionId" IS NOT NULL AND w."isArchived" = false
+			 ON CONFLICT ("workflowId", "status") WHERE "status" IN ('${Status.Pending}', '${Status.InProgress}')
+			 DO UPDATE SET "publishedVersionId" = EXCLUDED."publishedVersionId", "updatedAt" = CURRENT_TIMESTAMP(3)`,
+			[workflowIds],
+		);
+	}
+
+	private async enqueueByWorkflowIdsWithSqliteUpsert(workflowIds: string[]): Promise<void> {
+		const tableName = this.getTableName('workflow_publication_outbox');
+		const workflowTableName = this.getTableName('workflow_entity');
+		const placeholders = workflowIds.map(() => '?').join(', ');
+
+		await this.query(
+			`INSERT INTO ${tableName} ("workflowId", "publishedVersionId", "status")
+			 SELECT w."id", w."activeVersionId", '${Status.Pending}'
+			 FROM ${workflowTableName} w
+			 WHERE w."id" IN (${placeholders}) AND w."activeVersionId" IS NOT NULL AND w."isArchived" = 0
+			 ON CONFLICT ("workflowId", "status") WHERE "status" IN ('${Status.Pending}', '${Status.InProgress}')
+			 DO UPDATE SET "publishedVersionId" = excluded."publishedVersionId", "updatedAt" = STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')`,
+			workflowIds,
+		);
+	}
+
+	/**
 	 * Atomically claim the oldest pending record by transitioning its status to
 	 * `in_progress`. Postgres uses `FOR UPDATE SKIP LOCKED` so concurrent
 	 * consumers never receive the same row; SQLite serializes the find-then-update

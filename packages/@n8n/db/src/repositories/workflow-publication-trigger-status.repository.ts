@@ -7,7 +7,14 @@ export type TriggerStatusRow = {
 	nodeId: string;
 	versionId: string;
 	status: WorkflowPublicationTriggerStatus['status'];
+	triggerKind: WorkflowPublicationTriggerStatus['triggerKind'];
 	errorMessage: string | null;
+};
+
+/** A trigger that should be registered in memory on the owning instance. */
+export type InMemoryTriggerRef = {
+	workflowId: string;
+	nodeId: string;
 };
 
 @Service()
@@ -35,5 +42,21 @@ export class WorkflowPublicationTriggerStatusRepository extends Repository<Workf
 
 	async findByWorkflowId(workflowId: string): Promise<WorkflowPublicationTriggerStatus[]> {
 		return await this.findBy({ workflowId });
+	}
+
+	/**
+	 * Returns every trigger that should currently be registered in memory across
+	 * all workflows: activated, non-webhook (poll/trigger) triggers. Because the
+	 * table is fully replaced on each publish, `activated` rows always reflect the
+	 * currently published version, so no version filter is needed. This is the
+	 * "should be active in memory" set a reconciler diffs against the in-memory
+	 * registry.
+	 */
+	async findActivatedInMemoryTriggers(): Promise<InMemoryTriggerRef[]> {
+		return await this.createQueryBuilder('ts')
+			.select(['ts.workflowId AS "workflowId"', 'ts.nodeId AS "nodeId"'])
+			.where('ts.status = :status', { status: 'activated' })
+			.andWhere('ts.triggerKind != :webhook', { webhook: 'webhook' })
+			.getRawMany<InMemoryTriggerRef>();
 	}
 }

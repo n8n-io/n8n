@@ -68,8 +68,8 @@ describe('PublicationStatusReporter', () => {
 		await reporter.report(makeRecord(), {
 			type: 'completed',
 			triggerStatuses: [
-				{ nodeId: 'a', nodeName: 'Webhook', status: 'activated' },
-				{ nodeId: 'b', nodeName: 'Schedule', status: 'activated' },
+				{ nodeId: 'a', nodeName: 'Webhook', status: 'activated', triggerKind: 'webhook' },
+				{ nodeId: 'b', nodeName: 'Schedule', status: 'activated', triggerKind: 'trigger' },
 			],
 		});
 
@@ -80,12 +80,14 @@ describe('PublicationStatusReporter', () => {
 					nodeId: 'a',
 					versionId: 'v-2',
 					status: 'activated',
+					triggerKind: 'webhook',
 					errorMessage: null,
 				},
 				{
 					nodeId: 'b',
 					versionId: 'v-2',
 					status: 'activated',
+					triggerKind: 'trigger',
 					errorMessage: null,
 				},
 			],
@@ -167,8 +169,14 @@ describe('PublicationStatusReporter', () => {
 			type: 'failed',
 			error,
 			triggerStatuses: [
-				{ nodeId: 'a', nodeName: 'Webhook', status: 'activated' },
-				{ nodeId: 'b', nodeName: 'Schedule', status: 'failed', errorMessage: 'cron unavailable' },
+				{ nodeId: 'a', nodeName: 'Webhook', status: 'activated', triggerKind: 'webhook' },
+				{
+					nodeId: 'b',
+					nodeName: 'Schedule',
+					status: 'failed',
+					triggerKind: 'trigger',
+					errorMessage: 'cron unavailable',
+				},
 			],
 		});
 
@@ -179,12 +187,14 @@ describe('PublicationStatusReporter', () => {
 					nodeId: 'a',
 					versionId: 'v-2',
 					status: 'activated',
+					triggerKind: 'webhook',
 					errorMessage: null,
 				},
 				{
 					nodeId: 'b',
 					versionId: 'v-2',
 					status: 'failed',
+					triggerKind: 'trigger',
 					errorMessage: 'cron unavailable',
 				},
 			],
@@ -201,9 +211,21 @@ describe('PublicationStatusReporter', () => {
 		await reporter.report(makeRecord(), {
 			type: 'partial',
 			triggerStatuses: [
-				{ nodeId: 'a', nodeName: 'Webhook', status: 'activated' },
-				{ nodeId: 'b', nodeName: 'Schedule', status: 'failed', errorMessage: 'cron unavailable' },
-				{ nodeId: 'c', nodeName: 'Kafka', status: 'failed', errorMessage: 'broker down' },
+				{ nodeId: 'a', nodeName: 'Webhook', status: 'activated', triggerKind: 'webhook' },
+				{
+					nodeId: 'b',
+					nodeName: 'Schedule',
+					status: 'failed',
+					triggerKind: 'trigger',
+					errorMessage: 'cron unavailable',
+				},
+				{
+					nodeId: 'c',
+					nodeName: 'Kafka',
+					status: 'failed',
+					triggerKind: 'trigger',
+					errorMessage: 'broker down',
+				},
 			],
 		});
 
@@ -222,18 +244,21 @@ describe('PublicationStatusReporter', () => {
 					nodeId: 'a',
 					versionId: 'v-2',
 					status: 'activated',
+					triggerKind: 'webhook',
 					errorMessage: null,
 				},
 				{
 					nodeId: 'b',
 					versionId: 'v-2',
 					status: 'failed',
+					triggerKind: 'trigger',
 					errorMessage: 'cron unavailable',
 				},
 				{
 					nodeId: 'c',
 					versionId: 'v-2',
 					status: 'failed',
+					triggerKind: 'trigger',
 					errorMessage: 'broker down',
 				},
 			],
