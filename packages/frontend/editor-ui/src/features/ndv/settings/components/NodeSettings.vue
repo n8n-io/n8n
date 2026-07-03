@@ -804,7 +804,6 @@ function handleSelectAction(params: INodeParameters) {
 			<div v-show="openPanel === 'params'">
 				<AgentNdvBuilderBanner
 					v-if="showAgentNdvControls"
-					:origin-node-id="node.id"
 					:is-read-only="isReadOnly"
 					@set-agent-reference="(value) => valueChanged({ name: 'parameters.agentId', value })"
 				/>

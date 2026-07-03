@@ -78,26 +78,6 @@ export const commonProperties: INodeProperties[] = [
 		displayOptions: { show: { promptType: ['define'] } },
 	},
 	{
-		displayName: 'Invoke Agent',
-		name: 'invokeMode',
-		type: 'options',
-		noDataExpression: true,
-		default: 'allItems',
-		description: 'Whether to call the agent once per input item or a single time for all items',
-		options: [
-			{
-				name: 'Once for All Items',
-				value: 'allItems',
-				description: 'Call the agent a single time; it can read all input items',
-			},
-			{
-				name: 'Once Per Item',
-				value: 'perItem',
-				description: 'Call the agent separately for each input item',
-			},
-		],
-	},
-	{
 		displayName: 'Require Specific Output Format',
 		name: 'useStructuredOutput',
 		type: 'boolean',
@@ -149,6 +129,26 @@ export const commonProperties: INodeProperties[] = [
 		placeholder: 'Add Option',
 		default: {},
 		options: [
+			{
+				displayName: 'Invoke Agent',
+				name: 'invokeMode',
+				type: 'options',
+				noDataExpression: true,
+				default: 'allItems',
+				description: 'Whether to call the agent once per input item or a single time for all items',
+				options: [
+					{
+						name: 'Once for All Items',
+						value: 'allItems',
+						description: 'Call the agent a single time; it can read all input items',
+					},
+					{
+						name: 'Once Per Item',
+						value: 'perItem',
+						description: 'Call the agent separately for each input item',
+					},
+				],
+			},
 			{
 				displayName: 'Session ID',
 				name: 'sessionId',
@@ -254,7 +254,8 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 	const items = this.getInputData();
 	const returnData: INodeExecutionData[] = [];
 	const executionId = this.getExecutionId() ?? crypto.randomUUID();
-	const invokeMode = this.getNodeParameter('invokeMode', 0, 'allItems') as string;
+	// `invokeMode` lives in the `advanced` collection; unset means the default.
+	const invokeMode = this.getNodeParameter('advanced.invokeMode', 0, 'allItems') as string;
 	const runOnceForAll = invokeMode === 'allItems';
 	const loopCount = runOnceForAll ? Math.min(1, items.length) : items.length;
 

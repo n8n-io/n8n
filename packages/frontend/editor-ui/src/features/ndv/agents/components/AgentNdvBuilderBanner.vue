@@ -17,8 +17,6 @@ import { useAgentInlineCreate } from '@/features/agents/composables/useAgentInli
 import { NdvAgentConfigKey } from '../composables/useNdvAgentConfig';
 
 const props = defineProps<{
-	/** Origin node for the "Back to workflow" return context on inline create. */
-	originNodeId?: string;
 	isReadOnly?: boolean;
 }>();
 
@@ -34,10 +32,11 @@ const projectId = computed(() => ndv?.projectId.value ?? '');
 
 const { canCreate } = useAgentPermissions(projectId);
 
+// Inline create keeps the user in the NDV: the reference lands on the node and
+// the agent section below loads the fresh draft for editing in place.
 const inlineCreate = useAgentInlineCreate({
 	projectId,
 	telemetrySource: 'ndv_banner',
-	getOriginNodeId: () => props.originNodeId,
 	setReference: (agent) =>
 		emit('setAgentReference', {
 			__rl: true,
@@ -60,7 +59,7 @@ async function onLinkClick() {
 		await ndv?.openBuilder();
 		return;
 	}
-	await inlineCreate.createAndOpen();
+	await inlineCreate.createAndSelect();
 }
 </script>
 

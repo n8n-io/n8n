@@ -44,7 +44,7 @@ agentsEventBus.on('agentUpdated', (event) => {
 	cacheVersion.value++;
 });
 
-function requestSummary(
+async function requestSummary(
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
@@ -64,7 +64,7 @@ function requestSummary(
 			});
 		inFlightRequests.set(key, request);
 	}
-	return request;
+	return await request;
 }
 
 /**

@@ -22,7 +22,7 @@ import { useAgentNavigation } from '@/features/agents/composables/useAgentNaviga
 
 const emit = defineEmits<{
 	update: [parameters: Record<string, unknown>];
-	activate: [id: string, event: MouseEvent];
+	activate: [id: string, event?: MouseEvent];
 	'open:contextmenu': [event: MouseEvent];
 }>();
 
@@ -128,6 +128,12 @@ function onPickAgent(value: INodeParameterResourceLocator) {
 	emit('update', { agentId: value });
 }
 
+// A fresh draft was inline-created and referenced — open the NDV so the user
+// keeps configuring it in place instead of being taken to the Agent Builder.
+function onAgentCreated() {
+	emit('activate', id.value);
+}
+
 function onActivate(event: MouseEvent) {
 	if (isConfigured.value) {
 		emit('activate', id.value, event);
@@ -219,10 +225,10 @@ watch(
 							:model-value="agentResourceLocator"
 							path="parameters.agentId"
 							:is-read-only="isReadOnly"
-							:origin-node-id="id"
 							input-size="medium"
 							hide-mode-selector
 							@update:model-value="onPickAgent"
+							@agent-created="onAgentCreated"
 						/>
 					</div>
 				</div>
@@ -238,6 +244,7 @@ watch(
 
 .card {
 	--agent-card--border-color: var(--border-color);
+	--agent-card--body-border-color: var(--border-color);
 	--agent-card--header-dot-color: var(--border-color);
 	--agent-card--radius: 12px;
 
@@ -342,8 +349,7 @@ watch(
 
 // Stacking context that sits above the header (which stays in normal flow, so
 // its arrow button keeps its clicks + hover), and tucks the body up into the
-// header by one radius. The body's run glow resolves into this layer, so it
-// paints over the header's bottom edge.
+// header by one radius.
 .bodyWrap {
 	position: relative;
 	z-index: 1;
@@ -351,14 +357,12 @@ watch(
 }
 
 .body {
-	// Anchor the running/waiting glow `::after` (positioned relative to the body,
-	// but stacked into .bodyWrap's negative layer — behind the body, above header).
-	position: relative;
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	padding: var(--spacing--sm);
 	border: 2px solid var(--agent-card--border-color);
+	border-top-color: var(--agent-card--body-border-color);
 	border-radius: var(--agent-card--radius);
 	background: var(--background--surface);
 }
@@ -395,34 +399,46 @@ watch(
 }
 
 /**
- * Execution state — mirrors CanvasNodeDefault, but scoped to the body so the
- * run/state highlight wraps the body only (the selected ring still rings the
- * whole node). Success/error tint the body border; running/waiting add the
- * animated glow around the body.
+ * Execution state — mirrors CanvasNodeDefault: the status sits on the node
+ * outline rather than wrapping it. The card outline is drawn by two elements
+ * (header + body) whose overlap seam would show if their borders were tinted,
+ * so success/error paint one 2px ring exactly over the outer border instead;
+ * running/waiting keep the default-node animated glow around the card.
  */
 .selected {
 	box-shadow: 0 0 0 4px var(--canvas--color--selected);
 }
 
-.success .body {
-	border-color: var(--color--success);
+.success::after,
+.error::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	z-index: 2;
+	border: 2px solid;
+	border-radius: var(--agent-card--radius);
+	pointer-events: none;
 }
 
-.error .body {
-	border-color: var(--color--danger);
+.success::after {
+	border-color: var(--color-canvas-node-success-border-color, var(--color--success));
+}
+
+.error::after {
+	border-color: var(--canvas-node--border-color--error, var(--color--danger));
 }
 
 /* stylelint-disable */
-.running .body::after,
-.waiting .body::after {
+.running::after,
+.waiting::after {
 	@include styles.status-animated-after;
-	border-radius: var(--agent-card--radius);
+	border-radius: calc(var(--agent-card--radius) + 3px);
 }
 
-.running .body::after {
+.running::after {
 	@include styles.status-running-animation;
 }
-.waiting .body::after {
+.waiting::after {
 	@include styles.status-waiting-animation;
 }
 

@@ -42,7 +42,7 @@ describe('MessageAnAgent Node', () => {
 				if (param === 'agentId') return { mode: 'id', value: 'agent-1' };
 				if (param === 'promptType') return 'define';
 				if (param === 'text') return 'Hello agent';
-				if (param === 'invokeMode') return 'perItem';
+				if (param === 'advanced.invokeMode') return 'perItem';
 				if (param === 'advanced') return fallback ?? {};
 				return undefined;
 			},
@@ -222,7 +222,7 @@ describe('MessageAnAgent Node', () => {
 				if (param === 'promptType') return 'define';
 				if (param === 'text') return `Message ${(itemIndex ?? 0) + 1}`;
 				if (param === 'advanced') return fallback ?? {};
-				if (param === 'invokeMode') return 'perItem';
+				if (param === 'advanced.invokeMode') return 'perItem';
 				return fallback as NodeParameterValueType;
 			},
 		);
@@ -422,7 +422,7 @@ describe('MessageAnAgent Node', () => {
 				if (param === 'agentId') return { mode: 'id', value: 'agent-1' };
 				if (param === 'message') return 'Summarize all items';
 				if (param === 'advanced') return fallback ?? {};
-				if (param === 'invokeMode') return 'allItems';
+				if (param === 'advanced.invokeMode') return 'allItems';
 				if (param === 'allowOtherNodesData') return false;
 				return fallback as NodeParameterValueType;
 			},
@@ -453,7 +453,7 @@ describe('MessageAnAgent Node', () => {
 				if (param === 'agentId') return { mode: 'id', value: 'agent-1' };
 				if (param === 'message') return 'Hello';
 				if (param === 'advanced') return { allowOtherNodesData: true };
-				if (param === 'invokeMode') return 'perItem';
+				if (param === 'advanced.invokeMode') return 'perItem';
 				return fallback as NodeParameterValueType;
 			},
 		);
@@ -481,7 +481,7 @@ describe('MessageAnAgent Node', () => {
 				if (param === 'agentId') return { mode: 'id', value: 'agent-1' };
 				if (param === 'message') return 'Summarize all items';
 				if (param === 'advanced') return fallback ?? {};
-				if (param === 'invokeMode') return 'allItems';
+				if (param === 'advanced.invokeMode') return 'allItems';
 				return fallback as NodeParameterValueType;
 			},
 		);

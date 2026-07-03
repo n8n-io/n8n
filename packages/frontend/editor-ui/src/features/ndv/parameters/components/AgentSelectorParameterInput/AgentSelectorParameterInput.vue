@@ -21,7 +21,6 @@ import { useAgentResourcesLocator } from '../../composables/useAgentResourcesLoc
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useAgentScopeProjectId } from '@/features/agents/composables/useAgentScopeProjectId';
 import { useAgentPermissions } from '@/features/agents/composables/useAgentPermissions';
-import { injectNDVStoreIfProvided } from '@/features/ndv/shared/ndv.store';
 import { useAgentInlineCreate } from '@/features/agents/composables/useAgentInlineCreate';
 import { useDocumentVisibility } from '@/app/composables/useDocumentVisibility';
 import { useDebounce } from '@/app/composables/useDebounce';
@@ -46,12 +45,6 @@ export interface Props {
 	 * on the canvas card, where the agent is always picked from the list.
 	 */
 	hideModeSelector?: boolean;
-	/**
-	 * Origin node id for the "Back to workflow" return context. Set by the canvas
-	 * agent card (AGENT-274), which renders this picker outside the NDV; in the
-	 * NDV the active node is resolved from the NDV store instead.
-	 */
-	originNodeId?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -72,11 +65,12 @@ const emit = defineEmits<{
 	modalOpenerClick: [];
 	focus: [];
 	blur: [];
+	/** A draft agent was inline-created and referenced via `update:modelValue`. */
+	agentCreated: [];
 }>();
 
 const i18n = useI18n();
 const projectStore = useProjectsStore();
-const ndvStore = injectNDVStoreIfProvided();
 const { onDocumentVisible } = useDocumentVisibility();
 const { debounce } = useDebounce();
 
@@ -257,7 +251,6 @@ function onKeyDown(e: KeyboardEvent) {
 const inlineCreate = useAgentInlineCreate({
 	projectId,
 	telemetrySource: 'node_picker',
-	getOriginNodeId: () => props.originNodeId ?? ndvStore.value?.activeNode?.id,
 	setReference: (agent) => {
 		emit('update:modelValue', {
 			__rl: true,
@@ -266,13 +259,19 @@ const inlineCreate = useAgentInlineCreate({
 			cachedResultName: agent.name,
 		});
 	},
-	// Keep the picker's own list consistent if it is reopened.
-	onCreated: () => void setAgentsResources(),
+	onCreated: () => {
+		// Keep the picker's own list consistent if it is reopened.
+		void setAgentsResources();
+		// Hosts outside the NDV (the canvas card) open the NDV on this, so the
+		// user keeps configuring the fresh draft inline instead of being taken
+		// to the Agent Builder.
+		emit('agentCreated');
+	},
 });
 
 async function onAddResourceClicked() {
 	hideDropdown();
-	await inlineCreate.createAndOpen();
+	await inlineCreate.createAndSelect();
 }
 
 // Heal a stale `cachedResultName` (e.g. the agent was renamed in the builder) by

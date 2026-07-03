@@ -52,10 +52,16 @@ const renderComponent = createComponentRenderer(CanvasNodeAgent, {
 			CredentialIcon: true,
 			CanvasNodeStatusIcons: true,
 			AgentSelectorParameterInput: {
-				template: '<button data-test-id="agent-picker-stub" @click="onPick" />',
+				template:
+					'<div><button data-test-id="agent-picker-stub" @click="onPick" /><button data-test-id="agent-picker-create-stub" @click="onCreate" /></div>',
 				methods: {
 					onPick() {
 						this.$emit('update:modelValue', { __rl: true, mode: 'list', value: 'agent-9' });
+					},
+					onCreate() {
+						// Mirrors the inline-create flow: reference first, then the signal.
+						this.$emit('update:modelValue', { __rl: true, mode: 'list', value: 'agent-new' });
+						this.$emit('agentCreated');
 					},
 				},
 			},
@@ -101,6 +107,18 @@ describe('CanvasNodeAgent', () => {
 		expect(emitted('update')[0]).toEqual([
 			{ agentId: { __rl: true, mode: 'list', value: 'agent-9' } },
 		]);
+	});
+
+	it('opens the NDV (activate) after an agent is inline-created from the card', async () => {
+		const { getByTestId, emitted } = renderWithAgent('');
+
+		await fireEvent.click(getByTestId('agent-picker-create-stub'));
+
+		expect(emitted('update')[0]).toEqual([
+			{ agentId: { __rl: true, mode: 'list', value: 'agent-new' } },
+		]);
+		// The user keeps configuring the fresh draft in the NDV — no builder trip.
+		expect(emitted('activate')).toEqual([['node']]);
 	});
 
 	it('renders the agent name, friendly model name and tool/skill chips, omitting channels + tasks', () => {
