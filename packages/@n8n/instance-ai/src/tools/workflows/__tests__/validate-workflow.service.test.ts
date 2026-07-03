@@ -834,4 +834,176 @@ describe('validateWorkflowConfig', () => {
 			);
 		});
 	});
+
+	describe('n8n Connect (AI Gateway) issues', () => {
+		function makeGatewayContext(overrides?: {
+			isAiGatewayCredentialType?: Mock;
+			nodeDesc?: NodeDescription;
+		}) {
+			const context = createMockContext();
+			if (overrides?.isAiGatewayCredentialType) {
+				(
+					context.credentialService as unknown as { isAiGatewayCredentialType: Mock }
+				).isAiGatewayCredentialType = overrides.isAiGatewayCredentialType;
+			}
+			if (overrides?.nodeDesc) {
+				(context.nodeService.getDescription as Mock).mockResolvedValue(overrides.nodeDesc);
+			} else {
+				(context.nodeService.getDescription as Mock).mockResolvedValue(
+					makeDescription({ credentials: [] }),
+				);
+			}
+			return context;
+		}
+
+		it('flags a managed credential on a credential type the gateway does not cover', async () => {
+			const context = makeGatewayContext({
+				isAiGatewayCredentialType: vi.fn().mockResolvedValue(false),
+			});
+			const node = makeNode({
+				credentials: { telegramApi: { id: null, name: 'n8n Connect', __aiGatewayManaged: true } },
+			});
+
+			const result = await validateWorkflowConfig(context, {
+				workflow: makeWorkflow([node]),
+			});
+
+			expect(result.valid).toBe(false);
+			expect(result.issues[node.name!].aiGateway).toEqual({
+				unsupportedCredentialType: [expect.stringContaining('telegramApi')],
+			});
+			expect(
+				result.summary.some(
+					(line) => line.includes('unsupportedCredentialType') && line.includes('n8n Connect'),
+				),
+			).toBe(true);
+		});
+
+		it('flags a node whose typeVersion is below the gateway minimum', async () => {
+			const context = makeGatewayContext({
+				isAiGatewayCredentialType: vi.fn().mockResolvedValue(true),
+				nodeDesc: makeDescription({
+					aiGateway: { supported: true, minVersion: 3 },
+				}),
+			});
+			const node = makeNode({
+				typeVersion: 2,
+				credentials: {
+					telegramApi: { id: null, name: 'n8n Connect', __aiGatewayManaged: true },
+				},
+			});
+
+			const result = await validateWorkflowConfig(context, {
+				workflow: makeWorkflow([node]),
+			});
+
+			expect(result.issues[node.name!].aiGateway).toEqual({
+				belowMinVersion: [expect.stringContaining('3')],
+			});
+		});
+
+		it('flags an operation the gateway does not cover', async () => {
+			const context = makeGatewayContext({
+				isAiGatewayCredentialType: vi.fn().mockResolvedValue(true),
+				nodeDesc: makeDescription({
+					aiGateway: {
+						supported: true,
+						operations: { message: ['sendMessage'] },
+					},
+				}),
+			});
+			const node = makeNode({
+				parameters: { resource: 'message', operation: 'deleteMessage' },
+				credentials: {
+					telegramApi: { id: null, name: 'n8n Connect', __aiGatewayManaged: true },
+				},
+			});
+
+			const result = await validateWorkflowConfig(context, {
+				workflow: makeWorkflow([node]),
+			});
+
+			expect(result.issues[node.name!].aiGateway).toEqual({
+				unsupportedOperation: [expect.stringContaining('deleteMessage')],
+			});
+		});
+
+		it('flags a property set that the gateway hides on this node', async () => {
+			const context = makeGatewayContext({
+				isAiGatewayCredentialType: vi.fn().mockResolvedValue(true),
+				nodeDesc: makeDescription({
+					aiGateway: { supported: true, hiddenProperties: ['baseURL'] },
+				}),
+			});
+			const node = makeNode({
+				parameters: { baseURL: 'https://proxy.example.com/v1' },
+				credentials: {
+					telegramApi: { id: null, name: 'n8n Connect', __aiGatewayManaged: true },
+				},
+			});
+
+			const result = await validateWorkflowConfig(context, {
+				workflow: makeWorkflow([node]),
+			});
+
+			expect(result.issues[node.name!].aiGateway).toEqual({
+				hiddenPropertySet: [expect.stringContaining('baseURL')],
+			});
+		});
+
+		it('produces no gateway issues when all four constraints hold', async () => {
+			const context = makeGatewayContext({
+				isAiGatewayCredentialType: vi.fn().mockResolvedValue(true),
+				nodeDesc: makeDescription({
+					aiGateway: {
+						supported: true,
+						operations: { message: ['sendMessage'] },
+						minVersion: 1,
+						hiddenProperties: ['baseURL'],
+					},
+				}),
+			});
+			const node = makeNode({
+				typeVersion: 1,
+				parameters: { resource: 'message', operation: 'sendMessage' },
+				credentials: {
+					telegramApi: { id: null, name: 'n8n Connect', __aiGatewayManaged: true },
+				},
+			});
+
+			const result = await validateWorkflowConfig(context, {
+				workflow: makeWorkflow([node]),
+			});
+
+			expect(result.issues[node.name!]?.aiGateway).toBeUndefined();
+		});
+
+		it('does not enforce gateway constraints when the node uses a stored credential', async () => {
+			const context = makeGatewayContext({
+				isAiGatewayCredentialType: vi.fn().mockResolvedValue(true),
+				nodeDesc: makeDescription({
+					aiGateway: {
+						supported: true,
+						operations: { message: ['sendMessage'] },
+						minVersion: 3,
+						hiddenProperties: ['baseURL'],
+					},
+				}),
+			});
+			// typeVersion below min AND unsupported operation AND hidden property set
+			// — but the node uses a stored credential, so gateway constraints do
+			// not apply.
+			const node = makeNode({
+				typeVersion: 2,
+				parameters: { resource: 'message', operation: 'deleteMessage', baseURL: 'https://x' },
+				credentials: { telegramApi: { id: 'cred-1', name: 'My Telegram' } },
+			});
+
+			const result = await validateWorkflowConfig(context, {
+				workflow: makeWorkflow([node]),
+			});
+
+			expect(result.issues[node.name!]?.aiGateway).toBeUndefined();
+		});
+	});
 });

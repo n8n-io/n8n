@@ -4,6 +4,7 @@
  * issues, missing required input connections, etc.). Mirrors `getNodeIssues` in
  * `packages/frontend/editor-ui/src/app/composables/useNodeHelpers.ts`.
  */
+import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import type { DisplayOptions, NodeJSON, WorkflowJSON } from '@n8n/workflow-sdk';
 import { matchesDisplayOptions } from '@n8n/workflow-sdk';
 import type {
@@ -16,7 +17,10 @@ import type {
 } from 'n8n-workflow';
 import { NodeHelpers, getParentNodes, mapConnectionsByDestination } from 'n8n-workflow';
 
+import { isAiGatewayManagedCredential } from './credential-utils';
 import type { InstanceAiContext, NodeDescription } from '../../types';
+
+const AI_GATEWAY_OPERATION_ONLY_MARKER = '__operation_only__';
 
 export interface ValidateWorkflowResult {
 	workflowId?: string;
@@ -292,6 +296,110 @@ async function computeCredentialIssues(
 }
 
 /**
+ * True when `entry` represents an AI Gateway managed credential — either the
+ * builder-emitted raw tag (`id === '__AI_GATEWAY_MANAGED__'`) or the resolved
+ * `AI_GATEWAY_CREDENTIAL` shape (`id === null, __aiGatewayManaged: true`).
+ */
+function isManagedCredentialEntry(entry: unknown): boolean {
+	if (isAiGatewayManagedCredential(entry)) return true;
+	return (
+		typeof entry === 'object' &&
+		entry !== null &&
+		Reflect.get(entry, 'id') === AI_GATEWAY_MANAGED_TAG
+	);
+}
+
+/**
+ * Static AI Gateway (n8n Connect) checks over a single node. Fires only for
+ * nodes that opt into the gateway via a managed credential — nodes that use a
+ * stored credential aren't bound by gateway constraints. Returns one entry
+ * per failure kind so the summary lines stay well-scoped.
+ */
+async function computeAiGatewayIssues(
+	context: InstanceAiContext,
+	node: NodeJSON,
+	nodeDesc: NodeDescription,
+): Promise<INodeIssueObjectProperty | null> {
+	const issues: INodeIssueObjectProperty = {};
+	const nodeCredentials = node.credentials as Record<string, unknown> | undefined;
+	if (!nodeCredentials) return null;
+
+	// E1 — managed credential on a type the gateway does not cover. Runs
+	// once per credential slot; a credential type without gateway support is
+	// a clear rebuild signal.
+	if (context.credentialService.isAiGatewayCredentialType) {
+		for (const [credType, entry] of Object.entries(nodeCredentials)) {
+			if (!isManagedCredentialEntry(entry)) continue;
+			const supported = await context.credentialService
+				.isAiGatewayCredentialType(credType)
+				.catch(() => true);
+			if (!supported) {
+				(issues.unsupportedCredentialType ??= []).push(
+					`Credential type "${credType}" is not supported by n8n Connect. Use a stored credential of that type or pick a different node.`,
+				);
+			}
+		}
+	}
+
+	const usesManagedCredential = Object.values(nodeCredentials).some(isManagedCredentialEntry);
+	if (!usesManagedCredential) {
+		return Object.keys(issues).length > 0 ? issues : null;
+	}
+
+	const gatewayMeta = nodeDesc.aiGateway;
+	if (!gatewayMeta) {
+		return Object.keys(issues).length > 0 ? issues : null;
+	}
+
+	const parameters = (node.parameters ?? {}) as Record<string, unknown>;
+
+	// E2 — typeVersion below the minimum the gateway supports for this node.
+	if (gatewayMeta.minVersion !== undefined) {
+		const typeVersion = node.typeVersion ?? 1;
+		if (typeVersion < gatewayMeta.minVersion) {
+			(issues.belowMinVersion ??= []).push(
+				`n8n Connect requires typeVersion >= ${gatewayMeta.minVersion} for this node; current version is ${typeVersion}.`,
+			);
+		}
+	}
+
+	// E3 — operation not in supportedActions. The gateway config groups
+	// operations by resource; nodes without a resource dimension use the
+	// OPERATION_ONLY marker key (matching the frontend store's convention).
+	if (gatewayMeta.operations) {
+		const operation = typeof parameters.operation === 'string' ? parameters.operation : undefined;
+		if (operation !== undefined) {
+			const resource =
+				typeof parameters.resource === 'string'
+					? parameters.resource
+					: AI_GATEWAY_OPERATION_ONLY_MARKER;
+			const allowed = gatewayMeta.operations[resource];
+			if (allowed === undefined || !allowed.includes(operation)) {
+				const scope =
+					resource === AI_GATEWAY_OPERATION_ONLY_MARKER ? '' : ` on resource "${resource}"`;
+				(issues.unsupportedOperation ??= []).push(
+					`Operation "${operation}"${scope} is not supported via n8n Connect. Switch to a supported operation or use a stored credential.`,
+				);
+			}
+		}
+	}
+
+	// E4 — property set that the gateway hides for this node. Only user-set
+	// values count; unset/empty properties don't clash with the gateway.
+	if (gatewayMeta.hiddenProperties) {
+		for (const propName of gatewayMeta.hiddenProperties) {
+			const value = parameters[propName];
+			if (value === undefined || value === null || value === '') continue;
+			(issues.hiddenPropertySet ??= []).push(
+				`Property "${propName}" is not supported via n8n Connect for this node. Remove it or use a stored credential.`,
+			);
+		}
+	}
+
+	return Object.keys(issues).length > 0 ? issues : null;
+}
+
+/**
  * Compute input-connection issues for a node. Mirrors `getNodeInputIssues` in
  * useNodeHelpers.ts (lines 378-414).
  *
@@ -443,6 +551,14 @@ async function computeNodeIssues(
 		}
 	}
 
+	if (!ignoreIssues.has('aiGateway')) {
+		const gatewayIssues = await computeAiGatewayIssues(context, node, nodeDesc);
+		if (gatewayIssues) {
+			issues = issues ?? {};
+			issues.aiGateway = gatewayIssues;
+		}
+	}
+
 	if (!ignoreIssues.has('input')) {
 		const inputIssues = await computeInputIssues(
 			context,
@@ -481,7 +597,7 @@ function formatSummaryLines(
 	if (issues.typeUnknown) {
 		pushTo.push(`${nodeName}: typeUnknown: Unknown node type`);
 	}
-	for (const category of ['parameters', 'credentials', 'input'] as const) {
+	for (const category of ['parameters', 'credentials', 'input', 'aiGateway'] as const) {
 		const slice = issues[category];
 		if (!slice || typeof slice !== 'object') continue;
 		for (const [key, messages] of Object.entries(slice)) {
