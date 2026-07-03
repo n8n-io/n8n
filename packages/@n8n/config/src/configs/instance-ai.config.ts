@@ -22,11 +22,11 @@ export class InstanceAiConfig {
 
 	/** Token threshold for Observer to trigger compression of message history. */
 	@Env('N8N_INSTANCE_AI_OBSERVER_MESSAGE_TOKENS')
-	observerMessageTokens: number = 30_000;
+	observerMessageTokens: number = 120_000;
 
 	/** Token threshold for Reflector to condense observations. */
 	@Env('N8N_INSTANCE_AI_REFLECTOR_OBSERVATION_TOKENS')
-	reflectorObservationTokens: number = 40_000;
+	reflectorObservationTokens: number = 10_000;
 
 	/** Maximum LLM reasoning steps for sub-agents spawned via delegate tool. */
 	@Env('N8N_INSTANCE_AI_SUB_AGENT_MAX_STEPS')
