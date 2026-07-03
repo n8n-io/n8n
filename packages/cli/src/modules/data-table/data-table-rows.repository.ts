@@ -474,6 +474,14 @@ export class DataTableRowsRepository {
 		});
 	}
 
+	async clearRows(dataTableId: string, trx?: EntityManager): Promise<{ deletedCount: number }> {
+		return await withTransaction(this.dataSource.manager, trx, async (em) => {
+			const table = toTableName(dataTableId);
+			const result = await em.createQueryBuilder().delete().from(table).execute();
+			return { deletedCount: result.affected ?? 0 };
+		});
+	}
+
 	private async getAffectedRowsForUpdate<T extends boolean>(
 		dataTableId: string,
 		filter: DataTableFilter,
