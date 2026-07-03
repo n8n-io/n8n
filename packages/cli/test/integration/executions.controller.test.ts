@@ -48,18 +48,36 @@ beforeEach(async () => {
 });
 
 describe('GET /executions', () => {
-	test('only returns executions of shared workflows if sharing is enabled', async () => {
+	test('returns executions of workflows shared with the user regardless of sharing license', async () => {
 		const workflow = await createWorkflow({}, owner);
 		await shareWorkflowWithUsers(workflow, [member]);
 		await createSuccessfulExecution(workflow);
 
-		const response1 = await testServer.authAgentFor(member).get('/executions').expect(200);
-		expect(response1.body.data.count).toBe(0);
+		const responseWithoutLicense = await testServer
+			.authAgentFor(member)
+			.get('/executions')
+			.expect(200);
+		expect(responseWithoutLicense.body.data.count).toBe(1);
 
 		testServer.license.enable('feat:sharing');
 
-		const response2 = await testServer.authAgentFor(member).get('/executions').expect(200);
-		expect(response2.body.data.count).toBe(1);
+		const responseWithLicense = await testServer
+			.authAgentFor(member)
+			.get('/executions')
+			.expect(200);
+		expect(responseWithLicense.body.data.count).toBe(1);
+	});
+
+	test('project admins can list executions of project workflows without the sharing license', async () => {
+		const teamProject = await createTeamProject();
+		await linkUserToProject(member, teamProject, 'project:admin');
+
+		const workflow = await createWorkflow({}, teamProject);
+		await createSuccessfulExecution(workflow);
+
+		const response = await testServer.authAgentFor(member).get('/executions').expect(200);
+
+		expect(response.body.data.count).toBe(1);
 	});
 
 	test('should return a scopes array for each execution', async () => {
