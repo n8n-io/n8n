@@ -5,14 +5,11 @@ import {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import type { User } from '@n8n/db';
-import { ProjectRelationRepository, UserRepository } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import type { Channel, Chat as ChatSdk, StateAdapter, Thread, UserInfo } from 'chat';
 import { InstanceSettings } from 'n8n-core';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
@@ -112,7 +109,6 @@ export class ChatIntegrationService {
 		private readonly logger: Logger,
 		private readonly agentRepository: AgentRepository,
 		private readonly credentialsService: CredentialsService,
-		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly urlService: UrlService,
 		private readonly integrationRegistry: ChatIntegrationRegistry,
 		private readonly instanceSettings: InstanceSettings,
@@ -173,7 +169,6 @@ export class ChatIntegrationService {
 	async connect(
 		agentId: string,
 		integration: AgentIntegrationConfig,
-		userId: string,
 		projectId: string,
 		options: ConnectOptions = {},
 	): Promise<void> {
@@ -186,10 +181,11 @@ export class ChatIntegrationService {
 
 		const integrationImpl = this.integrationRegistry.require(integration.type);
 
-		const user = await this.resolveUser(userId);
-
 		// Decrypt the integration credential to get platform tokens
-		const decryptedData = await this.decryptCredential(integration.credentialId, user);
+		const decryptedData = await this.decryptCredentialForProject(
+			integration.credentialId,
+			projectId,
+		);
 
 		const ctx: AgentChatIntegrationContext = {
 			agentId,
@@ -427,42 +423,20 @@ export class ChatIntegrationService {
 			return;
 		}
 
-		// TODO: AgentIntegration has no record of *who* connected the
-		// integration, so we have no anchor user identity to decrypt credentials
-		// with on reconnect / sync. We fall back to probing project members until
-		// one has `credential:read` on the integration credential.
-		// Replace with a proper solution (fetching credentials should not depend on any specific user)
-		const userIds = additions.length
-			? await Container.get(ProjectRelationRepository).findUserIdsByProjectId(agent.projectId)
-			: [];
-
 		for (const integration of additions) {
 			const key = this.connectionKey(agent.id, integration.type, integration.credentialId);
 			if (this.connections.has(key)) continue;
 
-			let connected = false;
-			for (const userId of userIds) {
-				try {
-					await this.connect(agent.id, integration, userId, agent.projectId);
-
-					connected = true;
-					break;
-				} catch (error) {
-					this.logger.debug('[ChatIntegrationService] Connect attempt failed during sync', {
-						agentId: agent.id,
-						userId,
-						type: integration.type,
-						error,
-					});
-				}
-			}
-			if (connected) {
+			try {
+				await this.connect(agent.id, integration, agent.projectId);
 				await this.broadcastIntegrationChange(agent.id, integration, 'connect');
-			} else {
-				this.logger.warn(
-					'[ChatIntegrationService] Could not connect integration during sync — no project member had credential access',
-					{ agentId: agent.id, type: integration.type, credentialId: integration.credentialId },
-				);
+			} catch (error) {
+				this.logger.warn('[ChatIntegrationService] Could not connect integration during sync', {
+					agentId: agent.id,
+					type: integration.type,
+					credentialId: integration.credentialId,
+					error,
+				});
 			}
 		}
 	}
@@ -564,38 +538,16 @@ export class ChatIntegrationService {
 				const key = this.connectionKey(agent.id, integration.type, integration.credentialId);
 				if (this.connections.has(key)) continue;
 
-				const userIds = await Container.get(ProjectRelationRepository).findUserIdsByProjectId(
-					agent.projectId,
-				);
-				if (userIds.length === 0) {
-					this.logger.warn(
-						`[ChatIntegrationService] No users found for project ${agent.projectId} — skipping reconnect for agent ${agent.id}`,
-					);
-					continue;
-				}
-
 				// External setup runs once per cluster — the leader claims that role
 				// on startup; followers only build local runtime state.
 				const skipExternalHooks = !this.instanceSettings.isLeader;
 				const options = this.connectOptionsFor(integration, skipExternalHooks);
 
-				// Try each project member until one succeeds — the first user may not
-				// have access to the integration credential.
-				let connected = false;
-				for (const userId of userIds) {
-					try {
-						await this.connect(agent.id, integration, userId, agent.projectId, options);
-						connected = true;
-						break;
-					} catch (error) {
-						this.logger.debug(
-							`[ChatIntegrationService] User ${userId} could not reconnect ${integration.type} for agent ${agent.id}: ${error instanceof Error ? error.message : String(error)}`,
-						);
-					}
-				}
-				if (!connected) {
+				try {
+					await this.connect(agent.id, integration, agent.projectId, options);
+				} catch (error) {
 					this.logger.error(
-						`[ChatIntegrationService] Failed to reconnect ${integration.type} for agent ${agent.id} — no project member could access the credential`,
+						`[ChatIntegrationService] Failed to reconnect ${integration.type} for agent ${agent.id} — credential not accessible to the project: ${error instanceof Error ? error.message : String(error)}`,
 					);
 				}
 			}
@@ -646,26 +598,17 @@ export class ChatIntegrationService {
 			return;
 		}
 
-		const userIds = await Container.get(ProjectRelationRepository).findUserIdsByProjectId(
-			agent.projectId,
-		);
-		for (const userId of userIds) {
-			try {
-				// The originating main already ran integration-defined external setup.
-				// Peers only build local runtime state to avoid duplicate external
-				// side effects.
-				const options: ConnectOptions = { skipExternalHooks: true };
-				await this.connect(agentId, integration, userId, agent.projectId, options);
-				return;
-			} catch (error) {
-				this.logger.debug(
-					`[ChatIntegrationService] User ${userId} could not connect ${type} for agent ${agentId}: ${error instanceof Error ? error.message : String(error)}`,
-				);
-			}
+		try {
+			// The originating main already ran integration-defined external setup.
+			// Peers only build local runtime state to avoid duplicate external
+			// side effects.
+			const options: ConnectOptions = { skipExternalHooks: true };
+			await this.connect(agentId, integration, agent.projectId, options);
+		} catch (error) {
+			this.logger.error(
+				`[ChatIntegrationService] Failed to connect ${type} for agent ${agentId} — credential not accessible to the project: ${error instanceof Error ? error.message : String(error)}`,
+			);
 		}
-		this.logger.error(
-			`[ChatIntegrationService] Failed to connect ${type} for agent ${agentId} — no project member could access the credential`,
-		);
 	}
 
 	// ---------------------------------------------------------------------------
@@ -708,28 +651,20 @@ export class ChatIntegrationService {
 		this.logger.info(`[ChatIntegrationService] Disconnected: ${key}`);
 	}
 
-	private async resolveUser(userId: string): Promise<User> {
-		const user = await Container.get(UserRepository).findOne({
-			where: { id: userId },
-			relations: ['role'],
-		});
-		if (!user) {
-			throw new Error(`User ${userId} not found`);
-		}
-		return user;
-	}
-
-	private async decryptCredential(
+	private async decryptCredentialForProject(
 		credentialId: string,
-		user: User,
+		projectId: string,
 	): Promise<Record<string, unknown>> {
-		const credential = await this.credentialsFinderService.findCredentialForUser(
-			credentialId,
-			user,
-			['credential:read'],
-		);
+		const projectCredentials =
+			await this.credentialsService.findAllCredentialIdsForProject(projectId);
+		const globalCredentials = await this.credentialsService.findAllGlobalCredentialIds(true);
+		const credential =
+			projectCredentials.find((c) => c.id === credentialId) ??
+			globalCredentials.find((c) => c.id === credentialId);
 		if (!credential) {
-			throw new Error(`Credential ${credentialId} not found or not accessible`);
+			throw new Error(
+				`Credential ${credentialId} not found or not accessible to project ${projectId}`,
+			);
 		}
 		const decrypted = await this.credentialsService.decrypt(credential, true);
 		return decrypted as Record<string, unknown>;

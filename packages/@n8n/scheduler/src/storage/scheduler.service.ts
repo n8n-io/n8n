@@ -21,7 +21,7 @@ export class SchedulerService {
 	) {
 		this.options = {
 			...DEFAULT_MATERIALIZER_OPTIONS,
-			windowSeconds: config.materializationWindow,
+			windowSeconds: config.materializationWindowSeconds,
 		};
 	}
 

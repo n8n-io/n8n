@@ -94,6 +94,7 @@ vi.mock('n8n-workflow', async () => {
 
 import { EvalExecutionService } from '../execution.service';
 import { createLlmMockHandler } from '../mock-handler';
+import { generatePinData } from '../pin-data-generator';
 import {
 	detectBinaryDependencies,
 	generateMockHints,
@@ -113,6 +114,7 @@ const identifyNodesForHintsMock = vi.mocked(identifyNodesForHints);
 const identifyNodesForPinDataMock = vi.mocked(identifyNodesForPinData);
 const partitionAiRootsMock = vi.mocked(partitionAiRoots);
 const createLlmMockHandlerMock = vi.mocked(createLlmMockHandler);
+const generatePinDataMock = vi.mocked(generatePinData);
 
 function makeWorkflowEntity(overrides: Partial<IWorkflowBase> = {}) {
 	return {
@@ -245,6 +247,7 @@ describe('EvalExecutionService', () => {
 		identifyNodesForPinDataMock.mockReturnValue([]);
 		partitionAiRootsMock.mockReturnValue({ unpinNodes: [], pinNodes: [], autoPinned: [] });
 		generateMockHintsMock.mockResolvedValue(makeEmptyHints());
+		generatePinDataMock.mockResolvedValue({});
 		createLlmMockHandlerMock.mockReturnValue(vi.fn());
 		mockGetStartNode.mockReturnValue(makeStartNode());
 		mockWireServerStart.mockResolvedValue('http://127.0.0.1:54321');
@@ -380,6 +383,30 @@ describe('EvalExecutionService', () => {
 					configureAdditionalData: expect.any(Function),
 				}),
 			);
+		});
+
+		it('returns a framework failure when bypass pin data generation fails', async () => {
+			const bypassNode = {
+				id: 'node-3',
+				name: 'Read Data Table',
+				type: 'n8n-nodes-base.dataTable',
+				typeVersion: 1,
+				position: [400, 0],
+				parameters: {},
+			} as INode;
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(
+				makeWorkflowEntity({ nodes: [makeStartNode(), bypassNode] }) as never,
+			);
+			identifyNodesForPinDataMock.mockReturnValue([bypassNode]);
+			generatePinDataMock.mockRejectedValue(new Error('pin generator down'));
+
+			const result = await service.executeWithLlmMock('wf-1', makeUser());
+
+			expect(result.success).toBe(false);
+			expect(result.errors).toEqual([
+				'FRAMEWORK ISSUE: Phase 1.5 pin data generation failed: pin generator down',
+			]);
+			expect(workflowRunner.run).not.toHaveBeenCalled();
 		});
 
 		it('awaits the run via ActiveExecutions.getPostExecutePromise', async () => {

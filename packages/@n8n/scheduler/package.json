@@ -46,6 +46,7 @@
     "@n8n/db": "workspace:*",
     "@n8n/di": "workspace:*",
     "@n8n/typeorm": "workspace:*",
+    "@n8n/utils": "workspace:*",
     "cron-parser": "catalog:",
     "luxon": "catalog:",
     "n8n-workflow": "workspace:*"

@@ -2,6 +2,7 @@ import type {
 	AddDataTableColumnDto,
 	AddDataTableRowsDto,
 	PublicApiCreateDataTableDto,
+	PublicTestRunStatus,
 	UpdateDataTableDto,
 	UpdateDataTableColumnDto,
 	UpdateDataTableRowDto,
@@ -64,6 +65,35 @@ export declare namespace ExecutionRequest {
 	>;
 	type GetTags = AuthenticatedRequest<{ id: string }>;
 	type UpdateTags = AuthenticatedRequest<{ id: string }, {}, Array<{ id: string }>>;
+}
+
+export declare namespace TestRunRequest {
+	// `id` is the workflow id (named `id` so `projectScope(..., 'workflow')`
+	// resolves it from `req.params.id`); `runId` is the test run id.
+	type GetMany = AuthenticatedRequest<
+		{ id: string },
+		{},
+		{},
+		{
+			status?: PublicTestRunStatus;
+			limit?: number;
+			cursor?: string;
+			offset?: number;
+			lastId?: string;
+		}
+	>;
+	type GetOne = AuthenticatedRequest<{ id: string; runId: string }>;
+	type GetCases = AuthenticatedRequest<
+		{ id: string; runId: string },
+		{},
+		{},
+		{
+			limit?: number;
+			cursor?: string;
+			offset?: number;
+			lastId?: string;
+		}
+	>;
 }
 
 export declare namespace TagRequest {
@@ -298,6 +328,8 @@ export declare namespace DataTableRequest {
 	type UpdateRows = AuthenticatedRequest<{ dataTableId: string }, {}, UpdateDataTableRowDto, {}>;
 
 	type UpsertRow = AuthenticatedRequest<{ dataTableId: string }, {}, UpsertDataTableRowDto, {}>;
+
+	type Clear = AuthenticatedRequest<{ dataTableId: string }, {}, {}, {}>;
 
 	type DeleteRows = AuthenticatedRequest<
 		{ dataTableId: string },
