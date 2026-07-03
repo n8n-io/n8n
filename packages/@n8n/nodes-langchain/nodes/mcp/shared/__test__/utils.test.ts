@@ -103,6 +103,55 @@ describe('utils', () => {
 				headers: { Authorization: 'Bearer access-token' },
 				credentials,
 			});
+			expect(ctx.helpers.refreshOAuth2Token).not.toHaveBeenCalled();
+		});
+
+		it('should fetch an initial token for mcpOAuth2Api client credentials with stub token data', async () => {
+			const ctx = mockDeep<IExecuteFunctions>();
+			const credentials = {
+				clientId: 'client-id',
+				clientSecret: 'client-secret',
+				accessTokenUrl: 'https://auth.example.com/token',
+				grantType: 'clientCredentials',
+				authentication: 'header',
+				useDynamicClientRegistration: false,
+				resourceUrl: 'https://mcp.example.com/',
+				oauthTokenData: { resource: 'https://mcp.example.com/' },
+			};
+			ctx.getCredentials.mockResolvedValue(credentials);
+			ctx.helpers.refreshOAuth2Token.mockResolvedValue({
+				access_token: 'fresh-access-token',
+			});
+
+			const result = await getAuthHeaders(ctx, 'mcpOAuth2Api');
+
+			expect(ctx.helpers.refreshOAuth2Token.mock.calls).toContainEqual(['mcpOAuth2Api']);
+			expect(result).toEqual({
+				headers: { Authorization: 'Bearer fresh-access-token' },
+				credentials,
+			});
+		});
+
+		it('should not send an undefined bearer token when the initial mcpOAuth2Api refresh fails', async () => {
+			const ctx = mockDeep<IExecuteFunctions>();
+			const credentials = {
+				clientId: 'client-id',
+				clientSecret: 'client-secret',
+				accessTokenUrl: 'https://auth.example.com/token',
+				grantType: 'clientCredentials',
+				authentication: 'header',
+				useDynamicClientRegistration: false,
+				resourceUrl: 'https://mcp.example.com/',
+				oauthTokenData: {},
+			};
+			ctx.getCredentials.mockResolvedValue(credentials);
+			ctx.helpers.refreshOAuth2Token.mockRejectedValue(new Error('Failed to fetch token'));
+
+			const result = await getAuthHeaders(ctx, 'mcpOAuth2Api');
+
+			expect(ctx.helpers.refreshOAuth2Token.mock.calls).toContainEqual(['mcpOAuth2Api']);
+			expect(result).toEqual({ credentials });
+			expect(result.headers?.Authorization).not.toBe('Bearer undefined');
 		});
 
 		it('should return the headers and credentials for headerAuth', async () => {

@@ -1,6 +1,7 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import { fetchFollowingRedirects, proxyFetch } from '@n8n/ai-utilities';
 import type { ClientOAuth2TokenData } from '@n8n/client-oauth2';
 import type {
 	ICredentialDataDecryptedObject,
@@ -17,8 +18,6 @@ import {
 	createResultOk,
 	NodeOperationError,
 } from 'n8n-workflow';
-
-import { fetchFollowingRedirects, proxyFetch } from '@n8n/ai-utilities';
 
 import {
 	isMcpOAuth2Authentication,
@@ -206,13 +205,13 @@ export async function connectMcpClient({
 			await client.connect(transport);
 			return createResultOk(client);
 		} catch (error) {
-			const err = error instanceof Error ? error : new Error(String(error));
-			if ((signal && err.name === 'AbortError') || signal?.aborted) {
+			const connectionError = error instanceof Error ? error : new Error(String(error));
+			if ((signal && connectionError.name === 'AbortError') || signal?.aborted) {
 				if (onAbort && signal) {
 					signal.removeEventListener('abort', onAbort);
 					onAbort = undefined;
 				}
-				return createResultError({ type: 'cancelled', error: err });
+				return createResultError({ type: 'cancelled', error: connectionError });
 			}
 
 			// Clean up the abort listener so a failed client doesn't stay pinned to the execution signal
@@ -247,13 +246,13 @@ export async function connectMcpClient({
 		await client.connect(sseTransport);
 		return createResultOk(client);
 	} catch (error) {
-		const err = error instanceof Error ? error : new Error(String(error));
-		if ((signal && err.name === 'AbortError') || signal?.aborted) {
+		const connectionError = error instanceof Error ? error : new Error(String(error));
+		if ((signal && connectionError.name === 'AbortError') || signal?.aborted) {
 			if (onAbort && signal) {
 				signal.removeEventListener('abort', onAbort);
 				onAbort = undefined;
 			}
-			return createResultError({ type: 'cancelled', error: err });
+			return createResultError({ type: 'cancelled', error: connectionError });
 		}
 
 		// Clean up the abort listener so a failed client doesn't stay pinned to the execution signal
@@ -331,7 +330,7 @@ function createAuthFetch(
 }
 
 export async function getAuthHeaders(
-	ctx: Pick<IExecuteFunctions, 'getCredentials'>,
+	ctx: IExecuteFunctions | ILoadOptionsFunctions | ISupplyDataFunctions,
 	authentication: McpAuthenticationOption,
 ): Promise<{
 	headers?: Record<string, string>;
@@ -339,10 +338,19 @@ export async function getAuthHeaders(
 }> {
 	if (isMcpOAuth2Authentication(authentication)) {
 		const credentials = await ctx
-			.getCredentials<{ oauthTokenData: { access_token: string } }>(authentication)
+			.getCredentials<{ oauthTokenData?: { access_token?: string } }>(authentication)
 			.catch(() => null);
 
 		if (!credentials) return {};
+
+		if (!credentials.oauthTokenData?.access_token) {
+			const refreshedHeaders = await tryRefreshOAuth2Token(ctx, authentication);
+
+			return {
+				...(refreshedHeaders ? { headers: refreshedHeaders } : {}),
+				credentials,
+			};
+		}
 
 		return {
 			headers: { Authorization: `Bearer ${credentials.oauthTokenData.access_token}` },
