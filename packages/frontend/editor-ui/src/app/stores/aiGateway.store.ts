@@ -17,6 +17,11 @@ function toError(e: unknown): Error {
 	return e instanceof Error ? e : new Error(String(e));
 }
 
+// Tool-variant node types carry a "Tool"/"HitlTool" suffix (e.g. "openAiTool"),
+// but the gateway config is keyed by the base node name ("openAi").
+const stripToolSuffix = (nodeName: string) =>
+	nodeName.replace(/HitlTool$/, '').replace(/Tool$/, '');
+
 export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 	const rootStore = useRootStore();
 
@@ -98,7 +103,9 @@ export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 		operation: string,
 	): boolean {
 		if (!config.value) return true;
-		const nodeActions = config.value.supportedActions?.[nodeName];
+		const nodeActions =
+			config.value.supportedActions?.[nodeName] ??
+			config.value.supportedActions?.[stripToolSuffix(nodeName)];
 		if (!nodeActions) return true;
 		const ops = nodeActions[resource ?? OPERATION_ONLY];
 		if (!ops) return false;
@@ -106,7 +113,9 @@ export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 	}
 
 	function isNodeTypeVersionSupported(nodeName: string, typeVersion: number): boolean {
-		const minVersion = config.value?.minNodeTypeVersion?.[nodeName];
+		const minVersion =
+			config.value?.minNodeTypeVersion?.[nodeName] ??
+			config.value?.minNodeTypeVersion?.[stripToolSuffix(nodeName)];
 		if (minVersion === undefined) return true;
 		return typeVersion >= minVersion;
 	}
@@ -119,7 +128,9 @@ export const useAiGatewayStore = defineStore(STORES.AI_GATEWAY, () => {
 		);
 		if (!hasGatewayCredential) return false;
 
-		const properties = config.value?.hiddenNodeProperties?.[node.type];
+		const properties =
+			config.value?.hiddenNodeProperties?.[node.type] ??
+			config.value?.hiddenNodeProperties?.[stripToolSuffix(node.type)];
 		if (!properties) return false;
 		return properties.includes(propertyName);
 	}

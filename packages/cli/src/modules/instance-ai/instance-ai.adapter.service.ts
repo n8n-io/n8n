@@ -56,7 +56,6 @@ import {
 	sdkPinDataToRuntime,
 } from './instance-ai-run-pin-data';
 import {
-	resolveNodeTypeDefinition,
 	resolveBuiltinNodeDefinitionDirs,
 	listNodeDiscriminators,
 } from './node-definition-resolver';
@@ -98,6 +97,7 @@ import {
 	TimeoutExecutionCancelledError,
 	UnexpectedError,
 	jsonParse,
+	createRunExecutionData,
 } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -108,10 +108,10 @@ import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { NodeTypes } from '@/node-types';
+import { NodeCatalogService } from '@/node-catalog';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { MCP_REGISTRY_PACKAGE_NAME } from '@/modules/mcp-registry/node-description-transform';
-import { synthesizeNodeTypeDef } from '@/modules/mcp-registry/synthesize-type-def';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { AiGatewayService } from '@/services/ai-gateway.service';
@@ -207,7 +207,7 @@ export class InstanceAiAdapterService {
 
 	constructor(
 		logger: Logger,
-		globalConfig: GlobalConfig,
+		private readonly globalConfig: GlobalConfig,
 		private readonly workflowService: WorkflowService,
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly workflowRepository: WorkflowRepository,
@@ -240,9 +240,13 @@ export class InstanceAiAdapterService {
 		private readonly ssrfProtectionService: SsrfProtectionService,
 		private readonly outboundHttp: OutboundHttp,
 		private readonly aiGatewayService: AiGatewayService,
+		private readonly nodeCatalogService?: NodeCatalogService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.allowSendingParameterValues = globalConfig.ai.allowSendingParameterValues;
+		this.loadNodesAndCredentials.addPostProcessor?.(async () => {
+			this.nodesCache = null;
+		});
 	}
 
 	createContext(
@@ -832,6 +836,7 @@ export class InstanceAiAdapterService {
 			roleService,
 			telemetry,
 			logger,
+			globalConfig,
 		} = this;
 		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('executions');
 
@@ -985,6 +990,31 @@ export class InstanceAiAdapterService {
 				runData.telemetryMetadata = {
 					mockDataSources: pinDataPlan.mockDataSources,
 				};
+
+				// When manual executions are offloaded to workers (queue mode), the worker
+				// rebuilds the run from the persisted `execution.data`. The adapter's manual
+				// run details otherwise live in transient top-level fields that don't survive
+				// serialization, so wrap them into `executionData` — mirroring
+				// `workflow-execution.service`. A trigger run already carries its stack in
+				// `executionData`, so only wrap when it's absent.
+				const offloadingManualExecutionsInQueueMode =
+					globalConfig.executions?.mode === 'queue' &&
+					process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true';
+				if (
+					runData.executionMode === 'manual' &&
+					offloadingManualExecutionsInQueueMode &&
+					!runData.executionData
+				) {
+					runData.executionData = createRunExecutionData({
+						startData: { startNodes: runData.startNodes },
+						resultData: { pinData: runData.pinData, runData: null },
+						manualData: {
+							userId: runData.userId,
+							triggerToStartFrom: runData.triggerToStartFrom,
+						},
+						executionData: null,
+					});
+				}
 
 				const trackBuilderExecutedWorkflow = (
 					status: ExecutionResult['status'],
@@ -1952,10 +1982,17 @@ export class InstanceAiAdapterService {
 	private _nodeDefinitionDirs?: string[];
 
 	getNodeDefinitionDirs(): string[] {
+		const catalogDirs = this.nodeCatalogService?.getNodeDefinitionDirs();
+		if (catalogDirs?.length) return catalogDirs;
+
 		if (!this._nodeDefinitionDirs) {
 			this._nodeDefinitionDirs = resolveBuiltinNodeDefinitionDirs();
 		}
 		return this._nodeDefinitionDirs;
+	}
+
+	private getNodeCatalogService(): NodeCatalogService {
+		return this.nodeCatalogService ?? Container.get(NodeCatalogService);
 	}
 
 	private createNodeAdapter(user: User): InstanceAiNodeService {
@@ -1978,17 +2015,6 @@ export class InstanceAiAdapterService {
 				if (exact) return exact;
 			}
 			return nodes.find((n) => n.name === nodeType);
-		};
-
-		const normalizeNodeVersion = (version?: string): number | undefined => {
-			if (!version) return undefined;
-			const normalized = version.replace(/^v/i, '');
-			if (!/^\d+$/.test(normalized)) return Number(normalized);
-			// Supports v3 and compact decimals like v34 -> 3.4; assumes minor version < 10.
-			if (normalized.length === 2) {
-				return Number(`${normalized[0]}.${normalized[1]}`);
-			}
-			return Number(normalized);
 		};
 
 		return {
@@ -2139,47 +2165,29 @@ export class InstanceAiAdapterService {
 			},
 
 			getNodeTypeDefinition: async (nodeType, options) => {
-				const nodes = await getNodes();
+				const nodeCatalogService = this.getNodeCatalogService();
+				await nodeCatalogService.initialize();
 
-				// Synthetic MCP registry nodes have no on-disk type-def, so the
-				// standard resolver would 404 on them. Match either the bare slug
-				// (e.g. `notion`) or the package-prefixed form, then synthesise
-				// the TypeScript content from the in-memory description.
-				const registryNode =
-					nodes.find((n) => n.name === `${MCP_REGISTRY_PACKAGE_NAME}.${nodeType}`) ??
-					(nodeType.startsWith(`${MCP_REGISTRY_PACKAGE_NAME}.`)
-						? nodes.find((n) => n.name === nodeType)
-						: undefined);
-				if (registryNode) {
-					const builderHint = registryNode.builderHint?.searchHint;
-					return {
-						content: synthesizeNodeTypeDef(registryNode),
-						...(builderHint ? { builderHint } : {}),
-					};
-				}
+				const { version, resource, operation, mode } = options ?? {};
+				const getDefinition = async (nodeId: string) =>
+					await nodeCatalogService.getNodeTypeDefinition({
+						nodeId,
+						...(version ? { version } : {}),
+						...(resource ? { resource } : {}),
+						...(operation ? { operation } : {}),
+						...(mode ? { mode } : {}),
+					});
 
-				const result = resolveNodeTypeDefinition(nodeType, this.getNodeDefinitionDirs(), options);
+				const result = await getDefinition(nodeType);
+				if (!result.error || nodeType.includes('.')) return result;
 
-				if (result.error) {
-					return { content: '', error: result.error };
-				}
-
-				const nodeDesc = findNodeByVersion(
-					nodes,
-					nodeType,
-					normalizeNodeVersion(result.version ?? options?.version),
-				);
-				const builderHint = nodeDesc?.builderHint?.searchHint;
-
-				return {
-					content: result.content,
-					version: result.version,
-					...(builderHint ? { builderHint } : {}),
-				};
+				return await getDefinition(`${MCP_REGISTRY_PACKAGE_NAME}.${nodeType}`);
 			},
 
 			listDiscriminators: async (nodeType) => {
-				return listNodeDiscriminators(nodeType, this.getNodeDefinitionDirs());
+				const nodeCatalogService = this.getNodeCatalogService();
+				await nodeCatalogService.initialize();
+				return listNodeDiscriminators(nodeType, nodeCatalogService.getNodeDefinitionDirs());
 			},
 
 			getParameterIssues: async (nodeType, typeVersion, parameters) => {

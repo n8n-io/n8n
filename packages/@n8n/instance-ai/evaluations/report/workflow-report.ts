@@ -988,17 +988,34 @@ function dimensionLabel(d: CheckDimension): string {
 	return d.replace(/_/g, ' ');
 }
 
-function renderDimensionGroup(dimension: CheckDimension, outcomes: CheckOutcome[]): string {
+function checkCountsSummary(outcomes: CheckOutcome[], fractionSuffix = ''): string {
 	const passed = outcomes.filter((o) => o.status === 'pass').length;
 	const failed = outcomes.filter((o) => o.status === 'fail').length;
 	const naCount = outcomes.filter((o) => o.status === 'n_a').length;
+	const errorCount = outcomes.filter((o) => o.status === 'error').length;
 	const scored = passed + failed;
-	const headerCounts = `${String(passed)}/${String(scored)}${naCount > 0 ? ` · ${String(naCount)} N/A` : ''}`;
+	const extras = [
+		...(naCount > 0 ? [`${String(naCount)} N/A`] : []),
+		...(errorCount > 0 ? [`${String(errorCount)} error`] : []),
+	];
+	return `${String(passed)}/${String(scored)}${fractionSuffix}${extras.length > 0 ? ` · ${extras.join(' · ')}` : ''}`;
+}
+
+function checkIcon(status: CheckOutcome['status']): string {
+	if (status === 'pass') return '&#10003;';
+	if (status === 'fail') return '&#10007;';
+	if (status === 'error') return '!';
+	return '⌀';
+}
+
+function renderDimensionGroup(dimension: CheckDimension, outcomes: CheckOutcome[]): string {
+	const failed = outcomes.filter((o) => o.status === 'fail').length;
+	const headerCounts = checkCountsSummary(outcomes);
 	const headerClass = failed > 0 ? 'fail' : 'pass';
 
 	const items = outcomes
 		.map((o) => {
-			const icon = o.status === 'pass' ? '&#10003;' : o.status === 'fail' ? '&#10007;' : '⌀';
+			const icon = checkIcon(o.status);
 			const kindTag = `<span class="check-kind check-kind-${o.kind}">${o.kind}</span>`;
 			const comment = o.comment ? ` — ${escapeHtml(o.comment)}` : '';
 			return `<li class="check ${o.status}"><span class="check-icon ${o.status}">${icon}</span> <code>${escapeHtml(o.name)}</code> ${kindTag}${comment}</li>`;
@@ -1011,11 +1028,8 @@ function renderDimensionGroup(dimension: CheckDimension, outcomes: CheckOutcome[
 function renderWorkflowChecks(outcomes: CheckOutcome[] | undefined): string {
 	if (!outcomes || outcomes.length === 0) return '';
 
-	const totalPassed = outcomes.filter((o) => o.status === 'pass').length;
 	const totalFailed = outcomes.filter((o) => o.status === 'fail').length;
-	const totalNa = outcomes.filter((o) => o.status === 'n_a').length;
-	const totalScored = totalPassed + totalFailed;
-	const summary = `${String(totalPassed)}/${String(totalScored)} passed${totalNa > 0 ? ` · ${String(totalNa)} N/A` : ''}`;
+	const summary = checkCountsSummary(outcomes, ' passed');
 	const summaryClass = totalFailed > 0 ? 'fail' : 'pass';
 	const openAttr = totalFailed > 0 ? 'open' : '';
 
@@ -1367,6 +1381,8 @@ export function generateWorkflowReport(results: WorkflowTestCaseResult[]): strin
 	.check-icon.fail { color: var(--color-fail); }
 	.check-icon.n_a { color: var(--text-muted); }
 	.check.n_a code { color: var(--text-muted); }
+	.check-icon.error { color: var(--color-warn); }
+	.check.error code { color: var(--color-warn); }
 	.check-kind { color: var(--text-muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
 	.check-kind-llm { color: var(--color-purple); }
 	.expectation { padding: 5px 0; display: flex; align-items: baseline; gap: 8px; list-style: none; line-height: 1.5; }

@@ -975,6 +975,7 @@ export class TelemetryEventRelay extends EventRelay {
 		this.telemetry.track('User exported n8n package', {
 			user_id: user.id,
 			workflow_count: counts.workflows,
+			folder_count: counts.folders,
 			credential_count: counts.credentials,
 		});
 	}
