@@ -36,38 +36,53 @@ const open = ref(false);
 const filter = ref('');
 const loading = ref(false);
 const workflows = ref<SwitcherItem[]>([]);
+// Bumped on every fetch so a slower sub-workflow response from a stale query is
+// ignored when it resolves.
+let fetchToken = 0;
 
 async function fetchWorkflows(query: string) {
 	loading.value = true;
+	const token = ++fetchToken;
+	const trimmedQuery = query.trim() || undefined;
 	try {
-		const trimmedQuery = query.trim() || undefined;
-		// A workflow is a "sub-workflow" if it has an Execute Sub-workflow trigger,
-		// which the list response doesn't expose — so fetch those ids separately.
-		const [results, subWorkflows] = await Promise.all([
-			workflowsListStore.searchWorkflows({
-				projectId: props.projectId,
-				query: trimmedQuery,
-				select: ['id', 'name', 'parentFolder', 'active'],
-			}),
-			workflowsListStore.searchWorkflows({
-				projectId: props.projectId,
-				query: trimmedQuery,
-				triggerNodeTypes: [EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE],
-				select: ['id'],
-			}),
-		]);
-		const subWorkflowIds = new Set(subWorkflows.map(({ id }) => id));
+		const results = await workflowsListStore.searchWorkflows({
+			projectId: props.projectId,
+			query: trimmedQuery,
+			select: ['id', 'name', 'parentFolder', 'active'],
+		});
+		if (token !== fetchToken) return;
 		workflows.value = results.map(({ id, name, parentFolder, active }) => ({
 			id,
 			name,
 			folder: parentFolder?.name,
 			active,
-			isSubWorkflow: subWorkflowIds.has(id),
+			isSubWorkflow: false,
 		}));
 	} catch (error) {
 		toast.showError(error, i18n.baseText('workflowDetails.switcher.title'));
+		return;
 	} finally {
 		loading.value = false;
+	}
+
+	// A workflow is a "sub-workflow" if it has an Execute Sub-workflow trigger,
+	// which the list response doesn't expose. Load it separately so it doesn't
+	// block the initial render, then patch the flags in when it arrives.
+	try {
+		const subWorkflows = await workflowsListStore.searchWorkflows({
+			projectId: props.projectId,
+			query: trimmedQuery,
+			triggerNodeTypes: [EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE],
+			select: ['id'],
+		});
+		if (token !== fetchToken) return;
+		const subWorkflowIds = new Set(subWorkflows.map(({ id }) => id));
+		workflows.value = workflows.value.map((workflow) => ({
+			...workflow,
+			isSubWorkflow: subWorkflowIds.has(workflow.id),
+		}));
+	} catch {
+		// Non-critical enrichment; leave sub-workflow markers off on failure.
 	}
 }
 
