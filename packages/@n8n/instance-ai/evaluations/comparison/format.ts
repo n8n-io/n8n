@@ -334,7 +334,7 @@ function renderRerunCallout(rerun?: RerunHint): string {
 	if (!rerun) {
 		return [
 			'> [!IMPORTANT]',
-			"> **This eval does not re-run on new commits.** Re-run it against the PR's latest commit by dispatching the **CI: Instance AI Evals** workflow with your PR number.",
+			"> **This eval does not re-run on new commits.** Re-run it against the PR's latest commit by dispatching the **Instance AI Evals: PR Gate** workflow with your PR number.",
 		].join('\n');
 	}
 	return [

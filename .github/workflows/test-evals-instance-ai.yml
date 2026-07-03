@@ -1,4 +1,4 @@
-name: 'Test: Instance AI Exec Evals'
+name: 'Instance AI Evals: Experiments'
 
 on:
   workflow_call:
