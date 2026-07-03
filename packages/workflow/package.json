@@ -1,6 +1,6 @@
 {
   "name": "n8n-workflow",
-  "version": "2.28.3",
+  "version": "2.28.4",
   "description": "Workflow base code of n8n",
   "types": "dist/esm/index.d.ts",
   "module": "dist/esm/index.js",
@@ -82,7 +82,9 @@
     "transliteration": "2.3.5",
     "uuid": "catalog:",
     "xml2js": "catalog:",
-    "jsonrepair": "catalog:",
+    "jsonrepair": "catalog:"
+  },
+  "peerDependencies": {
     "zod": "catalog:"
   },
   "license": "LicenseRef-n8n-sustainable-use"

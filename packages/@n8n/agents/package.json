@@ -1,6 +1,6 @@
 {
   "name": "@n8n/agents",
-  "version": "0.13.3",
+  "version": "0.13.4",
   "description": "AI agent SDK for n8n's code-first execution engine",
   "main": "dist/index.js",
   "module": "dist/index.js",
@@ -84,8 +84,10 @@
     "langsmith": "catalog:",
     "undici": "catalog:undici-v7",
     "yaml": "catalog:",
-    "zod": "catalog:",
     "zod-to-json-schema": "catalog:"
+  },
+  "peerDependencies": {
+    "zod": "catalog:"
   },
   "peerDependenciesMeta": {
     "langsmith": {
@@ -107,7 +109,8 @@
     "@types/json-schema": "^7.0.15",
     "@vitest/coverage-v8": "catalog:",
     "vitest": "catalog:",
-    "vitest-mock-extended": "catalog:"
+    "vitest-mock-extended": "catalog:",
+    "zod": "catalog:"
   },
   "license": "LicenseRef-n8n-sustainable-use"
 }
