@@ -30,8 +30,9 @@ function makeRunFinish(
 	runId: string,
 	agentId: string,
 	status: 'completed' | 'cancelled' | 'error',
+	reason?: string,
 ): Extract<InstanceAiEvent, { type: 'run-finish' }> {
-	return { type: 'run-finish', runId, agentId, payload: { status } };
+	return { type: 'run-finish', runId, agentId, payload: { status, ...(reason ? { reason } : {}) } };
 }
 
 function makeTextDelta(
@@ -222,6 +223,27 @@ describe('agent-run-reducer', () => {
 
 			expect(state.status).toBe('cancelled');
 			expect(state.agentsById['root'].status).toBe('cancelled');
+		});
+
+		it('run-finish(cancelled) categorizes the cancellation reason', () => {
+			const cases: Array<[string | undefined, string | undefined]> = [
+				['user_cancelled', 'user'],
+				['timeout', 'timeout'],
+				['service_shutdown', 'shutdown'],
+				['some-unknown-reason', undefined],
+				[undefined, undefined],
+			];
+			for (const [reason, expected] of cases) {
+				const state = stateWithRun('run-1', 'root');
+				reduceEvent(state, makeRunFinish('run-1', 'root', 'cancelled', reason));
+				expect(state.agentsById['root'].cancellationReason).toBe(expected);
+			}
+		});
+
+		it('run-finish(completed) does not set a cancellation reason', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeRunFinish('run-1', 'root', 'completed', 'user_cancelled'));
+			expect(state.agentsById['root'].cancellationReason).toBeUndefined();
 		});
 
 		it('run-finish(error) sets status to error', () => {

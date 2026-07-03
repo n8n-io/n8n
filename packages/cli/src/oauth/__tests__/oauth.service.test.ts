@@ -203,6 +203,33 @@ describe('OauthService', () => {
 		});
 	});
 
+	describe('extractCallbackErrorReason', () => {
+		it('should return the stringified body when the error has one', () => {
+			const error = Object.assign(new Error('request failed'), {
+				body: { error: 'invalid_grant' },
+			});
+
+			expect(service.extractCallbackErrorReason(error)).toBe('{"error":"invalid_grant"}');
+		});
+
+		it('should surface the wrapped cause chain when there is no body', () => {
+			const inner = new Error('Unauthorized');
+			const root = new Error('resolver rejected the identity', { cause: inner });
+			const wrapper = new Error('Failed to store dynamic credentials data for "Google Drive"', {
+				cause: root,
+			});
+
+			// The wrapper message is rendered as the heading; the reason surfaces the cause chain.
+			expect(service.extractCallbackErrorReason(wrapper)).toBe(
+				'resolver rejected the identity: Unauthorized',
+			);
+		});
+
+		it('should return undefined when there is neither a body nor a cause', () => {
+			expect(service.extractCallbackErrorReason(new Error('boom'))).toBeUndefined();
+		});
+	});
+
 	describe('getCredentialForAuthFlow', () => {
 		it('should throw BadRequestError when credential ID is missing', async () => {
 			const req = {

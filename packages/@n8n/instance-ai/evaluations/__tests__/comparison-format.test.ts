@@ -283,7 +283,7 @@ describe('formatComparisonMarkdown', () => {
 	it('falls back to a generic re-run instruction when no rerun hint is given', () => {
 		const md = formatComparisonMarkdown(evalFixture, { kind: 'no_baseline' });
 		expect(md).toContain('does not re-run on new commits');
-		expect(md).toContain('dispatching the **CI: Instance AI Evals** workflow');
+		expect(md).toContain('dispatching the **Instance AI Evals: PR Gate** workflow');
 		expect(md).not.toContain('gh workflow run');
 	});
 

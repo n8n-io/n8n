@@ -478,6 +478,7 @@ describe('CredentialEdit', () => {
 				updatedAt: '',
 				relations: [],
 				scopes: [],
+				rolesManaged: false,
 			};
 
 			renderComponent({
@@ -506,6 +507,7 @@ describe('CredentialEdit', () => {
 				updatedAt: '',
 				relations: [],
 				scopes: [],
+				rolesManaged: false,
 			};
 
 			const { getByTestId } = renderComponent({
@@ -760,6 +762,29 @@ describe('CredentialEdit', () => {
 
 			await retry(() => expect(queryByText('Custom Scopes')).toBeInTheDocument());
 			expect(queryByText('Enabled Scopes')).toBeInTheDocument();
+		});
+
+		test('hides scope fields for a managed-capable credential edited from the list (no active node context)', async () => {
+			const credentialsStore = setupStores(false);
+			credentialsStore.state.credentialTypes = {
+				[oAuth2Api.name]: oAuth2Api,
+				[discordOAuth2ApiManagedCapable.name]: discordOAuth2ApiManagedCapable,
+			};
+
+			const { queryByText } = renderComponent({
+				props: {
+					activeId: 'cred-1',
+					modalName: CREDENTIAL_EDIT_MODAL_KEY,
+					mode: 'edit',
+				},
+			});
+
+			await retry(() => expect(credentialsStore.getCredentialData).toHaveBeenCalled());
+
+			expect(queryByText('Scope')).not.toBeInTheDocument();
+			expect(queryByText('Custom Scopes')).not.toBeInTheDocument();
+			expect(queryByText('Enabled Scopes')).not.toBeInTheDocument();
+			expect(queryByText('Custom Scopes Notice')).not.toBeInTheDocument();
 		});
 
 		it('should not block modal when external hooks throw', async () => {
