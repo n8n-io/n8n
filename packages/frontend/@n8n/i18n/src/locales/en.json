@@ -5993,6 +5993,8 @@
 	"instanceAi.agentTree.tools": "Tools",
 	"instanceAi.agentTree.completed": "Completed",
 	"instanceAi.agentTree.cancelled": "Cancelled",
+	"instanceAi.agentTree.stoppedByUser": "You stopped this run",
+	"instanceAi.agentTree.timedOut": "Run timed out",
 	"instanceAi.agentTree.error": "Error",
 	"instanceAi.error.title": "Something went wrong",
 	"instanceAi.error.technicalDetails": "Technical details",
