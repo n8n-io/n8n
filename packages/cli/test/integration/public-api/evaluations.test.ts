@@ -1,5 +1,10 @@
 import { LicenseState } from '@n8n/backend-common';
-import { createWorkflow, mockInstance, testDb } from '@n8n/backend-test-utils';
+import {
+	createWorkflow,
+	mockInstance,
+	shareWorkflowWithUsers,
+	testDb,
+} from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 
@@ -8,7 +13,7 @@ import { type MockInstance, vi } from 'vitest';
 import { Telemetry } from '@/telemetry';
 
 import { createTestCaseExecution, createTestRun } from '../shared/db/evaluation';
-import { createOwnerWithApiKey } from '../shared/db/users';
+import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
@@ -186,5 +191,54 @@ describe('GET /workflows/:id/test-runs/:runId/test-cases', () => {
 		expect(secondPage.statusCode).toBe(200);
 		expect(secondPage.body.data).toHaveLength(1);
 		expect(secondPage.body.nextCursor).toBeNull();
+	});
+
+	test('should return 404 for a run belonging to a different workflow', async () => {
+		const workflowA = await createWorkflow(undefined, owner);
+		const workflowB = await createWorkflow(undefined, owner);
+		const runB = await createTestRun(workflowB.id, { status: 'completed' });
+		await createTestCaseExecution(runB.id, { status: 'success' });
+
+		await authOwnerAgent
+			.get(`/workflows/${workflowA.id}/test-runs/${runB.id}/test-cases`)
+			.expect(404);
+	});
+});
+
+describe('scope and license enforcement on read endpoints', () => {
+	test('should return 403 on single-run and cases when the key lacks testRun:read', async () => {
+		const restricted = await createOwnerWithApiKey({ scopes: ['workflow:read'] });
+		const restrictedAgent = testServer.publicApiAgentFor(restricted);
+		const workflow = await createWorkflow(undefined, restricted);
+		const run = await createTestRun(workflow.id, { status: 'completed' });
+
+		await restrictedAgent.get(`/workflows/${workflow.id}/test-runs/${run.id}`).expect(403);
+		await restrictedAgent
+			.get(`/workflows/${workflow.id}/test-runs/${run.id}/test-cases`)
+			.expect(403);
+	});
+
+	test('should return 402 on single-run and cases when evaluations are not licensed', async () => {
+		const workflow = await createWorkflow(undefined, owner);
+		const run = await createTestRun(workflow.id, { status: 'completed' });
+		licenseSpy.mockReturnValue(0);
+
+		await authOwnerAgent.get(`/workflows/${workflow.id}/test-runs/${run.id}`).expect(402);
+		await authOwnerAgent
+			.get(`/workflows/${workflow.id}/test-runs/${run.id}/test-cases`)
+			.expect(402);
+	});
+
+	test('should let a member read runs of a workflow shared with them', async () => {
+		const member = await createMemberWithApiKey();
+		const memberAgent = testServer.publicApiAgentFor(member);
+		const workflow = await createWorkflow(undefined, owner);
+		await shareWorkflowWithUsers(workflow, [member]);
+		const run = await createTestRun(workflow.id, { status: 'completed' });
+
+		const response = await memberAgent.get(`/workflows/${workflow.id}/test-runs`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.map((r: { id: string }) => r.id)).toContain(run.id);
 	});
 });
