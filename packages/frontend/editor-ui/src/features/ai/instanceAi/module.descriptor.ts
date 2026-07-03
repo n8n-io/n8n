@@ -1,18 +1,23 @@
+import { v4 as uuidv4 } from 'uuid';
 import { i18n } from '@n8n/i18n';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import type { FrontendModuleDescription } from '@/app/moduleInitializer/module.types';
 import {
 	INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY,
 	INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY,
 } from '@/app/constants/modals';
 import { VIEWS } from '@/app/constants';
+import { telemetry } from '@/app/plugins/telemetry';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import {
 	INSTANCE_AI_VIEW,
 	INSTANCE_AI_THREAD_VIEW,
 	INSTANCE_AI_SETTINGS_VIEW,
 	INSTANCE_AI_NEW_VIEW,
 } from './constants';
+import { stashPendingFirstMessage } from './composables/useInstanceAiHandoff';
+import { useInstanceAiStore } from './instanceAi.store';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
-import { prepareInstanceAiLaunch } from './useInstanceAiLauncher';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
 const InstanceAiView = async () => await import('./InstanceAiView.vue');
@@ -43,37 +48,62 @@ export const InstanceAiModule: FrontendModuleDescription = {
 					path: 'new',
 					component: InstanceAiEmptyView,
 					beforeEnter: async (to) => {
+						// Template deep-link entry (e.g. the n8n website). Only a numeric
+						// template id is accepted — anything else lands on the empty view.
+						const raw = to.query.templateId;
+						if (typeof raw !== 'string' || !/^\d+$/.test(raw)) {
+							return { name: INSTANCE_AI_VIEW };
+						}
+						const templateId = raw;
+
+						// AI disabled → fall back to the classic template setup flow.
 						const settings = useInstanceAiSettingsStore();
 						if (settings.isInstanceAiDisabled) {
-							return { name: VIEWS.HOMEPAGE };
+							return { name: VIEWS.TEMPLATE_SETUP, params: { id: templateId } };
 						}
 
-						const prompt = typeof to.query.prompt === 'string' ? to.query.prompt.trim() : '';
-						if (!prompt) {
+						// Threads are project-bound; deep links launch into the personal project.
+						const projectsStore = useProjectsStore();
+						if (!projectsStore.personalProject) {
+							try {
+								await projectsStore.getPersonalProject();
+							} catch {
+								return { name: INSTANCE_AI_VIEW };
+							}
+						}
+						const projectId = projectsStore.personalProject?.id;
+						if (!projectId) {
 							return { name: INSTANCE_AI_VIEW };
 						}
 
-						let sourceContext: Record<string, unknown> | undefined;
-						if (typeof to.query.sourceContext === 'string') {
-							try {
-								sourceContext = JSON.parse(to.query.sourceContext) as Record<string, unknown>;
-							} catch {
-								sourceContext = undefined;
-							}
-						}
-
-						let threadId: string;
+						const threadId = uuidv4();
 						try {
-							// 'external' origin never auto-sends; prepareInstanceAiLaunch enforces it.
-							threadId = await prepareInstanceAiLaunch({
-								message: prompt,
-								source: 'external-link',
+							await useInstanceAiStore().syncThread(threadId, projectId, {
+								source: 'website-template',
 								origin: 'external',
-								sourceContext,
+								sourceContext: { templateId },
 							});
 						} catch {
 							return { name: INSTANCE_AI_VIEW };
 						}
+
+						// Stash the kickoff as the thread's pending first message — the thread
+						// view consumes and sends it after hydration + SSE connect, so the
+						// guard never races the runtime.
+						stashPendingFirstMessage(threadId, {
+							message: i18n.baseText('instanceAi.launch.templateById.message', {
+								interpolate: { id: templateId },
+							}),
+						});
+
+						telemetry.track('User launched Instance AI thread', {
+							thread_id: threadId,
+							instance_id: useRootStore().instanceId,
+							source: 'website-template',
+							origin: 'external',
+							auto_send: true,
+							template_id: templateId,
+						});
 
 						// Redirect with no query → URL cleared, back-button won't re-fire this.
 						return { name: INSTANCE_AI_THREAD_VIEW, params: { threadId } };

@@ -8,8 +8,9 @@ import { useRoute, useRouter } from 'vue-router';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useI18n } from '@n8n/i18n';
-import { useInstanceAiLauncher } from '@/features/ai/instanceAi/useInstanceAiLauncher';
+import { useInstanceAiHandoff } from '@/features/ai/instanceAi/composables/useInstanceAiHandoff';
 import { useInstanceAiSettingsStore } from '@/features/ai/instanceAi/instanceAiSettings.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import WorkflowPreviewHost from '@/app/components/WorkflowPreviewHost.vue';
 import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import TemplatesView from './TemplatesView.vue';
@@ -27,8 +28,9 @@ const router = useRouter();
 const telemetry = useTelemetry();
 const i18n = useI18n();
 const documentTitle = useDocumentTitle();
-const launcher = useInstanceAiLauncher();
+const instanceAiHandoff = useInstanceAiHandoff();
 const instanceAiSettings = useInstanceAiSettingsStore();
+const projectsStore = useProjectsStore();
 
 const loading = ref(true);
 const showPreview = ref(true);
@@ -58,17 +60,29 @@ const openTemplateSetup = async (id: string, e: PointerEvent) => {
 
 const startWithAi = async () => {
 	if (!template.value) return;
-	await launcher.launch({
-		message: i18n.baseText('template.startWithAi.message', {
+	// Threads are project-bound; the template page launches into the personal project.
+	if (!projectsStore.personalProject) {
+		await projectsStore.getPersonalProject();
+	}
+	const projectId = projectsStore.personalProject?.id;
+	if (!projectId) return;
+
+	await instanceAiHandoff.startThread(
+		projectId,
+		i18n.baseText('instanceAi.launch.template.message', {
 			interpolate: { name: template.value.name, id: templateId.value },
 		}),
-		source: 'template-view',
-		origin: 'internal',
-		autoSend: true,
-		sourceContext: { templateId: templateId.value, templateName: template.value.name },
-	});
+		undefined,
+		undefined,
+		{
+			launch: {
+				source: 'template-view',
+				origin: 'internal',
+				sourceContext: { templateId: templateId.value, templateName: template.value.name },
+			},
+		},
+	);
 };
-
 
 const scrollToTop = () => {
 	const contentArea = document.getElementById('content');

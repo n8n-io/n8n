@@ -70,7 +70,13 @@ vi.mock('vue-router', async (importOriginal) => ({
 		hash: '',
 		meta: {},
 	}),
-	useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+	useRouter: () => ({
+		push: vi.fn(),
+		replace: vi.fn(),
+		// The unmount guard reads the live route to decide whether to dispose
+		// the thread runtime (see onUnmounted in InstanceAiThreadView).
+		currentRoute: { value: { name: 'InstanceAiThread', params: { threadId: 'thread-1' } } },
+	}),
 }));
 
 vi.mock('@vueuse/core', async (importOriginal) => ({

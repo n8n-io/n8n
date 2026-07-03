@@ -503,17 +503,14 @@ function reconnectThreadAfterHydration(): void {
 // Validate the route's :threadId against the loaded thread list, then connect
 // this route-scoped runtime. Route changes remount this component, so no
 // store-level "active thread" state is needed here.
-async function syncRouteToStore(wasLaunched: boolean) {
+async function syncRouteToStore() {
 	const requestedThreadId = props.threadId;
 	if (!store.threads.length) {
 		await store.loadThreads();
 	}
 	// User may have navigated elsewhere while we awaited
 	if (requestedThreadId !== props.threadId) return;
-	// A freshly launched thread (queued prefill/auto-send) is valid even if it
-	// hasn't surfaced in the server thread list yet, so don't treat it as an
-	// unknown/invalid route.
-	if (!wasLaunched && !store.threads.some((t) => t.id === requestedThreadId)) {
+	if (!store.threads.some((t) => t.id === requestedThreadId)) {
 		void router.replace({ name: INSTANCE_AI_VIEW });
 		return;
 	}
@@ -525,22 +522,9 @@ async function syncRouteToStore(wasLaunched: boolean) {
 onMounted(() => {
 	enablePanelTransitionsAfterStableRender();
 
-	// Ordering is load-bearing: sendMessage synchronously connects SSE, which
-	// makes syncRouteToStore skip the history hydration that would otherwise
-	// clobber the optimistic first message.
-	const pendingLaunch = store.consumePendingLaunch(props.threadId);
-	if (pendingLaunch?.autoSend) {
-		void thread.sendMessage(pendingLaunch.text, undefined, rootStore.pushRef);
-	}
-	void syncRouteToStore(pendingLaunch !== undefined);
+	void syncRouteToStore();
 
 	void nextTick(focusChatInputIfFocusIsIdle);
-
-	if (pendingLaunch && !pendingLaunch.autoSend) {
-		void nextTick(() => {
-			chatInputRef.value?.setText(pendingLaunch.text);
-		});
-	}
 });
 
 onUnmounted(() => {

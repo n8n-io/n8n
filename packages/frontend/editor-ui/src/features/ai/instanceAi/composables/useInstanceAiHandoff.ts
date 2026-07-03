@@ -1,9 +1,15 @@
 import { useRouter } from 'vue-router';
 import { v4 as uuidv4 } from 'uuid';
-import type { InstanceAiHandoffContext, InstanceAiWorkflowAttachment } from '@n8n/api-types';
+import type {
+	InstanceAiHandoffContext,
+	InstanceAiThreadOrigin,
+	InstanceAiThreadSource,
+	InstanceAiWorkflowAttachment,
+} from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
 import type { InstanceAiCredentialContext } from '@/app/composables/useInstanceAiEditorCapability';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 
 import { INSTANCE_AI_THREAD_VIEW } from '../constants';
@@ -61,6 +67,25 @@ export function buildInstanceAiCredentialHandoffContext(
 }
 
 /**
+ * Where a launched thread came from — persisted on the thread and attached to
+ * the launch telemetry event.
+ */
+export interface InstanceAiThreadLaunch {
+	source: InstanceAiThreadSource;
+	origin: InstanceAiThreadOrigin;
+	sourceContext?: Record<string, unknown>;
+}
+
+/**
+ * Stash the opening message for a thread the current context can't send itself
+ * (a new tab, a router guard). The destination thread view consumes it after
+ * hydration + SSE connect (see consumePendingFirstMessage) and sends it there.
+ */
+export function stashPendingFirstMessage(threadId: string, payload: PendingFirstMessage): void {
+	localStorage.setItem(pendingFirstMessageKey(threadId), JSON.stringify(payload));
+}
+
+/**
  * Consume the opening message a new-tab hand-off stashed here. A separate window
  * can't send it (the destination loads before the BE persists it), so it does.
  */
@@ -87,13 +112,18 @@ export function useInstanceAiHandoff() {
 	const rootStore = useRootStore();
 	const router = useRouter();
 	const toast = useToast();
+	const telemetry = useTelemetry();
 
 	async function startThread(
 		projectId: string,
 		message: string,
 		attachments?: InstanceAiWorkflowAttachment[],
 		prepare?: (threadId: string) => void,
-		options?: { newTab?: boolean; context?: InstanceAiHandoffContext },
+		options?: {
+			newTab?: boolean;
+			context?: InstanceAiHandoffContext;
+			launch?: InstanceAiThreadLaunch;
+		},
 	): Promise<void> {
 		// Drop re-entrant clicks — each call mints a fresh thread, so spam would duplicate.
 		if (handoffInFlight) return;
@@ -105,11 +135,25 @@ export function useInstanceAiHandoff() {
 			// Persist the thread on the BE before navigating — `/assistant/:threadId`
 			// expects an existing thread.
 			try {
-				await instanceAiStore.syncThread(threadId, projectId);
+				await instanceAiStore.syncThread(threadId, projectId, options?.launch);
 			} catch {
 				tab?.close();
 				toast.showError(new Error('Failed to start a new thread. Try again.'), 'Open failed');
 				return;
+			}
+			if (options?.launch) {
+				const { source, origin, sourceContext } = options.launch;
+				const launchTemplateId = sourceContext?.templateId;
+				telemetry.track('User launched Instance AI thread', {
+					thread_id: threadId,
+					instance_id: rootStore.instanceId,
+					source,
+					origin,
+					auto_send: true,
+					...(typeof launchTemplateId === 'string' || typeof launchTemplateId === 'number'
+						? { template_id: launchTemplateId }
+						: {}),
+				});
 			}
 			const route = { name: INSTANCE_AI_THREAD_VIEW, params: { threadId } };
 			if (options?.newTab) {

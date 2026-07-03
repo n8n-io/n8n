@@ -157,17 +157,6 @@ describe('useInstanceAiStore - runtime registry', () => {
 	});
 });
 
-describe('instanceAi store pending launch', () => {
-	beforeEach(() => setActivePinia(createPinia()));
-
-	it('stores and consumes a pending launch exactly once', () => {
-		const store = useInstanceAiStore();
-		store.setPendingLaunch('thread-1', 'hello world', true);
-		expect(store.consumePendingLaunch('thread-1')).toEqual({ text: 'hello world', autoSend: true });
-		expect(store.consumePendingLaunch('thread-1')).toBeUndefined();
-	});
-});
-
 describe('useInstanceAiStore - credits', () => {
 	beforeEach(() => {
 		setActivePinia(createPinia());

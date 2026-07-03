@@ -26,19 +26,6 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 	const instanceAiSettingsStore = useInstanceAiSettingsStore();
 	const toast = useToast();
 	const persistedThreadIds = new Set<string>();
-	// First message queued by a launcher, handled by the thread view on mount —
-	// sending earlier would race the view's hydration and lose the message.
-	const pendingLaunches = new Map<string, { text: string; autoSend: boolean }>();
-
-	function setPendingLaunch(threadId: string, text: string, autoSend: boolean): void {
-		pendingLaunches.set(threadId, { text, autoSend });
-	}
-
-	function consumePendingLaunch(threadId: string): { text: string; autoSend: boolean } | undefined {
-		const pending = pendingLaunches.get(threadId);
-		pendingLaunches.delete(threadId);
-		return pending;
-	}
 
 	// --- Instance-level state ---
 	const threads = ref<InstanceAiThreadSummary[]>([]);
@@ -294,8 +281,6 @@ export const useInstanceAiStore = defineStore('instanceAi', () => {
 		getRuntime,
 		disposeRuntime,
 		syncThread,
-		setPendingLaunch,
-		consumePendingLaunch,
 	};
 });
 

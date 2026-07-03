@@ -147,15 +147,9 @@ function appendText(text: string) {
 	inputText.value += text;
 }
 
-function setText(text: string) {
-	inputText.value = text;
-	focus();
-}
-
 defineExpose({
 	focus,
 	appendText,
-	setText,
 	// Experiment cleanup: remove with instanceAiSplitEmptyState.
 	insertSuggestion: handleSuggestionInsert,
 	submitSuggestion,

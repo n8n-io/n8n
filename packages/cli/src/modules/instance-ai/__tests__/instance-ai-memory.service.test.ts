@@ -498,14 +498,14 @@ describe('InstanceAiMemoryService.ensureThread launch metadata', () => {
 			id: 'thread-2',
 			title: '',
 			resourceId: 'user-1',
-			metadata: { source: 'external-link', origin: 'external' },
+			metadata: { source: 'website-template', origin: 'external' },
 			createdAt: new Date('2026-01-01T00:00:00.000Z'),
 			updatedAt: new Date('2026-01-01T00:00:00.000Z'),
 		});
 
 		const service = createService();
 		await service.ensureThread('user-1', 'thread-2', 'project-1', {
-			source: 'external-link',
+			source: 'website-template',
 			origin: 'external',
 		});
 
@@ -515,7 +515,7 @@ describe('InstanceAiMemoryService.ensureThread launch metadata', () => {
 				resourceId: 'user-1',
 				title: '',
 				metadata: {
-					source: 'external-link',
+					source: 'website-template',
 					origin: 'external',
 				},
 			},

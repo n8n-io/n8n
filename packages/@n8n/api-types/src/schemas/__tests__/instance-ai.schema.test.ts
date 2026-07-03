@@ -353,7 +353,7 @@ describe('instance-ai launch schema', () => {
 		const parsed = new InstanceAiEnsureThreadRequest({
 			projectId: 'project-1',
 			origin: 'external',
-			source: 'external-link',
+			source: 'website-template',
 			sourceContext: { templateId: '42' },
 		});
 		expect(parsed.origin).toBe('external');
@@ -362,8 +362,8 @@ describe('instance-ai launch schema', () => {
 
 	it('rejects an oversized sourceContext', () => {
 		const big = { blob: 'x'.repeat(3000) };
-		expect(() =>
-			new InstanceAiEnsureThreadRequest({ projectId: 'project-1', sourceContext: big }),
+		expect(
+			() => new InstanceAiEnsureThreadRequest({ projectId: 'project-1', sourceContext: big }),
 		).toThrow();
 	});
 });
