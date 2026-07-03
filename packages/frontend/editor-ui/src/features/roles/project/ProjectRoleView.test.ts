@@ -716,21 +716,21 @@ describe('ProjectRoleView', () => {
 		});
 	});
 
-	describe('Non-visible scope stripping (seed/template)', () => {
-		// Built-in roles carry scopes the checkbox UI never exposes and that are not
-		// auto-added :list companions. The editor must not forward them into a custom
-		// role, because the backend whitelist rejects them.
-		const NON_VISIBLE_SCOPES = ['project:export', 'workflow:execute-chat', 'dataTable:readColumn'];
+	describe('Non-assignable scope stripping (seed/template)', () => {
+		// Scopes that are valid but never assignable to a project role (e.g. cross-type
+		// global scopes). The editor must not forward them into a custom role, because the
+		// backend whitelist rejects them.
+		const NON_ASSIGNABLE_SCOPES = ['user:create', 'role:manage'];
 
 		beforeEach(() => {
 			rolesStore.processedProjectRoles = mockSystemRoles.map((role) =>
 				role.slug === 'project:viewer' || role.slug === 'project:editor'
-					? { ...role, scopes: [...role.scopes, ...NON_VISIBLE_SCOPES] }
+					? { ...role, scopes: [...role.scopes, ...NON_ASSIGNABLE_SCOPES] }
 					: role,
 			);
 		});
 
-		it('does not forward non-visible scopes seeded from the default template on create', async () => {
+		it('does not forward non-assignable scopes seeded from the default template on create', async () => {
 			rolesStore.createRole.mockResolvedValueOnce({ ...mockExistingRole, slug: 'new-role-slug' });
 
 			const { container, getByRole } = renderComponent();
@@ -739,14 +739,14 @@ describe('ProjectRoleView', () => {
 
 			await waitFor(() => expect(rolesStore.createRole).toHaveBeenCalled());
 			const sentScopes = rolesStore.createRole.mock.calls[0][0].scopes;
-			for (const scope of NON_VISIBLE_SCOPES) {
+			for (const scope of NON_ASSIGNABLE_SCOPES) {
 				expect(sentScopes).not.toContain(scope);
 			}
 			// keeps the visible scope and its auto-added list companion
 			expect(sentScopes).toEqual(expect.arrayContaining(['workflow:read', 'workflow:list']));
 		});
 
-		it('does not forward non-visible scopes when applying an existing role as a preset', async () => {
+		it('does not forward non-assignable scopes when applying an existing role as a preset', async () => {
 			rolesStore.createRole.mockResolvedValueOnce({ ...mockExistingRole, slug: 'new-role-slug' });
 
 			const { container, getByRole } = renderComponent();
@@ -756,7 +756,7 @@ describe('ProjectRoleView', () => {
 
 			await waitFor(() => expect(rolesStore.createRole).toHaveBeenCalled());
 			const sentScopes = rolesStore.createRole.mock.calls[0][0].scopes;
-			for (const scope of NON_VISIBLE_SCOPES) {
+			for (const scope of NON_ASSIGNABLE_SCOPES) {
 				expect(sentScopes).not.toContain(scope);
 			}
 		});

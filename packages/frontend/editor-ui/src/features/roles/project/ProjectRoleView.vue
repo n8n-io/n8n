@@ -59,7 +59,8 @@ const {
 				rolesStore.processedProjectRoles.find((role) => role.slug === 'project:viewer')?.scopes ??
 					[],
 			),
-		).filter((s) => PROJECT_CUSTOM_ROLE_SCOPES.has(s)),
+		),
+	filterScopes: (scopes) => scopes.filter((s) => PROJECT_CUSTOM_ROLE_SCOPES.has(s)),
 	fetchError: 'Error fetching role',
 });
 

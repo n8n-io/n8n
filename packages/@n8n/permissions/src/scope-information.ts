@@ -110,4 +110,8 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 		displayName: 'List Test Runs',
 		description: 'Allows listing evaluation test runs for a workflow.',
 	},
+	'workflow:execute-chat': {
+		displayName: 'Execute Workflow in Chat',
+		description: 'Allows executing workflows in chat.',
+	},
 };

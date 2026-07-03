@@ -7,11 +7,12 @@ import type { Scope } from '@/types.ee';
  * every operation exists in that resource's definition in @n8n/permissions.
  */
 export const PROJECT_CUSTOM_ROLE_OPERATIONS = {
-	project: ['read', 'update', 'delete'],
+	project: ['read', 'update', 'delete', 'export'],
 	folder: ['read', 'update', 'create', 'move', 'delete'],
 	workflow: [
 		'read',
 		'execute',
+		'execute-chat',
 		'export',
 		'import',
 		'update',
@@ -28,7 +29,16 @@ export const PROJECT_CUSTOM_ROLE_OPERATIONS = {
 	externalSecretsProvider: ['read', 'create', 'update', 'delete', 'sync'],
 	externalSecret: ['list'],
 	sourceControl: ['push'],
-	dataTable: ['read', 'readRow', 'update', 'writeRow', 'create', 'delete'],
+	dataTable: [
+		'read',
+		'readRow',
+		'update',
+		'readColumn',
+		'writeColumn',
+		'writeRow',
+		'create',
+		'delete',
+	],
 	projectVariable: ['read', 'update', 'create', 'delete'],
 } as const satisfies {
 	[R in keyof typeof RESOURCES]?: ReadonlyArray<(typeof RESOURCES)[R][number]>;
