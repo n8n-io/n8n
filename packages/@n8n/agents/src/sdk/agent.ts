@@ -12,6 +12,7 @@ import { AgentRuntime, type AgentRuntimeConfig } from '../runtime/loop/agent-run
 import { RECALL_MEMORY_TOOL_NAME } from '../runtime/memory/episodic-memory';
 import type { ScopedMemoryTaskEvent } from '../runtime/memory/scoped-memory-task-runner';
 import type { FetchFn } from '../runtime/model/model-factory';
+import { mergeProviderOptions } from '../runtime/model/prompt-cache';
 import { AgentEventBus } from '../runtime/state/event-bus';
 import { RunStateManager } from '../runtime/state/run-state';
 import {
@@ -56,6 +57,7 @@ import type {
 	MemoryConfig,
 	ModelConfig,
 	Provider,
+	PromptCachingConfig,
 	RunOptions,
 	StreamResult,
 	ThinkingConfig,
@@ -113,6 +115,8 @@ export interface AgentSnapshot {
 	hasEpisodicMemory: boolean;
 	/** The thinking config if set, otherwise null. */
 	thinking: ThinkingConfig | null;
+	/** The prompt caching config if set via `.promptCaching()`, otherwise null. */
+	promptCaching: PromptCachingConfig | null;
 	/** Tool-call concurrency limit if set, otherwise null. */
 	toolCallConcurrency: number | null;
 }
@@ -171,6 +175,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	private checkpointStore?: 'memory' | CheckpointStore;
 
 	private thinkingConfig?: ThinkingConfig;
+
+	private promptCachingConfig?: PromptCachingConfig;
 
 	private concurrencyValue?: number;
 
@@ -429,6 +435,26 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		return this;
 	}
 
+	/**
+	 * Enable prompt caching with defaults tuned for agent workloads. Anthropic
+	 * models get a `1h` instruction-level cache breakpoint; OpenAI models get
+	 * `24h` retention plus an auto-generated, per-agent-version `promptCacheKey`.
+	 * Pass `{ anthropic: false }` / `{ openai: false }` to disable per provider,
+	 * or override individual fields (e.g. `{ anthropic: { ttl: '5m' } }`).
+	 *
+	 * @example
+	 * ```typescript
+	 * new Agent('assistant')
+	 *   .model('anthropic/claude-sonnet-4-5')
+	 *   .promptCaching()
+	 *   .instructions(LONG_SYSTEM_PROMPT);
+	 * ```
+	 */
+	promptCaching(config?: PromptCachingConfig): this {
+		this.promptCachingConfig = config ?? { enabled: true };
+		return this;
+	}
+
 	/** Set telemetry configuration for this agent. Accepts a Telemetry builder or pre-built config. */
 	telemetry(t: Telemetry | BuiltTelemetry): this {
 		if (t instanceof Telemetry) {
@@ -591,6 +617,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			hasObservationalMemory: this.memoryConfig?.observationalMemory !== undefined,
 			hasEpisodicMemory: this.memoryConfig?.episodicMemory !== undefined,
 			thinking: this.thinkingConfig ?? null,
+			promptCaching: this.promptCachingConfig ?? null,
 			toolCallConcurrency: this.concurrencyValue ?? null,
 		};
 	}
@@ -721,7 +748,12 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		options?: RunOptions & ExecutionOptions,
 	): (RunOptions & ExecutionOptions) | undefined {
 		if (!this.defaultExecutionOptions) return options;
-		return { ...this.defaultExecutionOptions, ...options };
+		const merged = { ...this.defaultExecutionOptions, ...options };
+		const providerOptions = mergeProviderOptions(
+			this.defaultExecutionOptions.providerOptions,
+			options?.providerOptions,
+		);
+		return providerOptions ? { ...merged, providerOptions } : merged;
 	}
 
 	/**
@@ -965,6 +997,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			structuredOutput: this.outputSchema,
 			checkpointStorage: this.checkpointStore,
 			thinking: this.thinkingConfig,
+			promptCaching: this.promptCachingConfig,
 			toolCallConcurrency: this.concurrencyValue,
 			titleGeneration: memoryConfig?.titleGeneration,
 			telemetry: this.telemetryConfig ?? (await this.telemetryBuilder?.build()),
@@ -1060,6 +1093,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 				toolSearch: deferredTools.length > 0 ? options.toolSearch : undefined,
 				providerTools: providerTools.length > 0 ? providerTools : undefined,
 				instructionProviderOptions: this.instructionProviderOpts,
+				promptCaching: this.promptCachingConfig,
 				checkpointStorage: this.checkpointStore,
 				...(childThinkingConfig !== undefined ? { thinking: childThinkingConfig } : {}),
 				...(options.telemetry !== undefined ? { telemetry: options.telemetry } : {}),

@@ -117,29 +117,88 @@ const downloadAndExtractPackage = async (packageName, version) => {
 	}
 };
 
-export const analyzePackage = async (packageDir) => {
+/**
+ * Builds the flat ESLint config the scanner lints packages with. Exported so
+ * tests can assert the external `eslint-plugin-n8n-nodes-base` plugin and its
+ * rulesets are wired in, independent of ESLint execution.
+ */
+export const buildScanConfig = async () => {
 	const { n8nCommunityNodesPlugin } = await import('@n8n/eslint-plugin-community-nodes');
 	const tsParser = await import('@typescript-eslint/parser');
+	const n8nNodesPlugin = (await import('eslint-plugin-n8n-nodes-base')).default;
 
+	const parser = tsParser.default ?? tsParser;
+
+	return defineConfig(
+		n8nCommunityNodesPlugin.configs.recommended,
+		{
+			rules: { 'no-console': 'error' },
+		},
+		// Register the full `eslint-plugin-n8n-nodes-base` plugin and apply its
+		// three rulesets so the scan gate enforces the same rules as
+		// `n8n-node lint` (see node-cli/src/configs/eslint.ts). The off-overrides
+		// below are kept identical. Scoping differs on purpose: `n8n-node lint`
+		// runs at dev-time on `nodes/**` / `credentials/**` `.ts` sources, but
+		// published tarballs ship compiled output under `dist/` (e.g.
+		// `dist/nodes/Foo/Foo.node.js` + `.d.ts`). We match `nodes`/`credentials`
+		// dirs at any depth and target `.ts`/`.d.ts` only — the AST-walking rules
+		// resolve against the type-preserving `.d.ts`. Compiled `.js` is
+		// deliberately excluded: the description AST is buried in a constructor
+		// there so the rules no-op, and file-shape rules like
+		// node-filename-against-convention would false-positive on the `.js`
+		// extension (that check is meaningful only against `.ts` sources at
+		// dev-time). Without the `dist/`-aware glob these rules never run at the
+		// gate at all.
+		{ plugins: { 'n8n-nodes-base': n8nNodesPlugin } },
+		{
+			files: ['package.json'],
+			rules: { ...n8nNodesPlugin.configs.community.rules },
+		},
+		{
+			files: ['**/credentials/**/*.ts'],
+			rules: {
+				...n8nNodesPlugin.configs.credentials.rules,
+				// Not valid for community nodes
+				'n8n-nodes-base/cred-class-field-documentation-url-miscased': 'off',
+				// @n8n/eslint-plugin-community-nodes credential-password-field rule is more accurate
+				'n8n-nodes-base/cred-class-field-type-options-password-missing': 'off',
+			},
+		},
+		{
+			files: ['**/nodes/**/*.ts'],
+			rules: {
+				...n8nNodesPlugin.configs.nodes.rules,
+				// Inputs and outputs can be enum instead of string "main"
+				'n8n-nodes-base/node-class-description-inputs-wrong-regular-node': 'off',
+				'n8n-nodes-base/node-class-description-outputs-wrong': 'off',
+				// Sometimes the 3rd party API does have a maximum limit, so maxValue is valid
+				'n8n-nodes-base/node-param-type-options-max-value-present': 'off',
+			},
+		},
+		// JSON files (notably `package.json`) are not parseable by ESLint's
+		// default JS parser, so register the TypeScript parser for them. The
+		// community-nodes rules that gate on `package.json` walk a TSESTree
+		// `ObjectExpression` AST, which `@typescript-eslint/parser` produces
+		// when given a top-level JSON object literal.
+		{
+			files: ['**/*.json'],
+			languageOptions: { parser },
+		},
+		// The external `nodes`/`credentials` rulesets walk a TSESTree AST, so
+		// TS sources (when present in the tarball) need the TS parser too.
+		{
+			files: ['**/*.ts'],
+			languageOptions: { parser },
+		},
+	);
+};
+
+export const analyzePackage = async (packageDir) => {
 	const eslint = new ESLint({
 		cwd: packageDir,
 		allowInlineConfig: false,
 		overrideConfigFile: true,
-		overrideConfig: defineConfig(
-			n8nCommunityNodesPlugin.configs.recommended,
-			{
-				rules: { 'no-console': 'error' },
-			},
-			// JSON files (notably `package.json`) are not parseable by ESLint's
-			// default JS parser, so register the TypeScript parser for them. The
-			// community-nodes rules that gate on `package.json` walk a TSESTree
-			// `ObjectExpression` AST, which `@typescript-eslint/parser` produces
-			// when given a top-level JSON object literal.
-			{
-				files: ['**/*.json'],
-				languageOptions: { parser: tsParser.default ?? tsParser },
-			},
-		),
+		overrideConfig: await buildScanConfig(),
 	});
 
 	try {
@@ -147,7 +206,7 @@ export const analyzePackage = async (packageDir) => {
 		// such as `no-overrides-field`, `valid-peer-dependencies`, and
 		// `package-name-convention` only run against `package.json`. Without
 		// it the scanner silently skips every package.json-based rule.
-		const filesToLint = glob.sync(['**/*.js', '**/*.json'], {
+		const filesToLint = glob.sync(['**/*.js', '**/*.ts', '**/*.json'], {
 			cwd: packageDir,
 			absolute: true,
 			ignore: ['node_modules/**', '**/package-lock.json'],

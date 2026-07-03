@@ -4,6 +4,7 @@ import type { WorkflowPublicationOutbox, WorkflowPublicationOutboxRepository } f
 import { mock } from 'vitest-mock-extended';
 import type { ErrorReporter, InstanceSettings, Span, Tracing } from 'n8n-core';
 
+import type { EventService } from '@/events/event.service';
 import type { PublicationResult } from '@/workflows/publication/publication-result';
 import type { PublicationStatusReporter } from '@/workflows/publication/publication-status-reporter';
 import { WorkflowPublicationLifecycleLock } from '@/workflows/publication/workflow-publication-lifecycle-lock';
@@ -19,6 +20,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 	const applier = mock<WorkflowPublicationApplier>();
 	const reporter = mock<PublicationStatusReporter>();
 	const tracing = mock<Tracing>();
+	const eventService = mock<EventService>();
 
 	let consumer: WorkflowPublicationOutboxConsumer;
 
@@ -40,6 +42,7 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			mock<InstanceSettings>({ isLeader }),
 			new WorkflowPublicationLifecycleLock(),
 			tracing,
+			eventService,
 		);
 	}
 
@@ -326,6 +329,58 @@ describe('WorkflowPublicationOutboxConsumer', () => {
 			expect(outboxRepository.returnToPending).toHaveBeenCalledWith(7);
 			expect(applier.apply).not.toHaveBeenCalled();
 			expect(reporter.report).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('metrics events', () => {
+		function lastOutcome() {
+			const calls = eventService.emit.mock.calls.filter(
+				(call) => call[0] === 'workflow-publication-outbox-record-processed',
+			);
+			return calls.at(-1)?.[1] as
+				| { result: string; reason: string; durationMs: number }
+				| undefined;
+		}
+
+		test.each([
+			[{ type: 'completed', triggerStatuses: [] }, 'published', 'none'],
+			[{ type: 'unpublished' }, 'unpublished', 'none'],
+			[{ type: 'skipped', reason: 'workflow-not-found' }, 'skipped', 'workflow_not_found'],
+			[{ type: 'skipped', reason: 'workflow-inactive' }, 'skipped', 'workflow_inactive'],
+			[{ type: 'version-missing' }, 'failed', 'version_missing'],
+			[{ type: 'partial', triggerStatuses: [] }, 'partial_success', 'none'],
+			[{ type: 'failed', error: new Error('boom') }, 'failed', 'none'],
+		] as Array<[PublicationResult, string, string]>)(
+			'emits result=%o as result=%s reason=%s',
+			async (result, expectedResult, expectedReason) => {
+				applier.apply.mockResolvedValue(result);
+
+				await consumer.processRecord(makeRecord());
+
+				expect(lastOutcome()).toEqual(
+					expect.objectContaining({ result: expectedResult, reason: expectedReason }),
+				);
+			},
+		);
+
+		test('emits a failed outcome when the reporter throws', async () => {
+			applier.apply.mockResolvedValue({ type: 'completed', triggerStatuses: [] });
+			reporter.report.mockRejectedValue(new Error('db write failed'));
+
+			await consumer.processRecord(makeRecord());
+
+			expect(lastOutcome()).toEqual(expect.objectContaining({ result: 'failed', reason: 'none' }));
+		});
+
+		test('does not emit when the record is returned to the queue (no longer leader)', async () => {
+			consumer = createConsumer(true, false);
+
+			await consumer.processRecord(makeRecord());
+
+			expect(eventService.emit).not.toHaveBeenCalledWith(
+				'workflow-publication-outbox-record-processed',
+				expect.anything(),
+			);
 		});
 	});
 

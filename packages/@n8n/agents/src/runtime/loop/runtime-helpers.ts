@@ -4,7 +4,6 @@
  */
 import type { StreamChunk, TokenUsage } from '../../types';
 import type { AgentMessage, ContentToolCall } from '../../types/sdk/message';
-import { toTokenUsage } from '../streaming/stream';
 
 /**
  * Normalize caller input to `AgentMessage[]` for the runtime. String input becomes a
@@ -77,28 +76,4 @@ export function mergeUsage(
 	}
 
 	return merged;
-}
-
-/**
- * Accumulate token usage across loop iterations.
- * Wraps mergeUsage + toTokenUsage to keep call sites concise.
- */
-export function accumulateUsage(
-	current: TokenUsage | undefined,
-	raw:
-		| {
-				inputTokens?: number | undefined;
-				outputTokens?: number | undefined;
-				totalTokens?: number | undefined;
-				inputTokenDetails?: {
-					noCacheTokens?: number;
-					cacheReadTokens?: number;
-					cacheWriteTokens?: number;
-				};
-				outputTokenDetails?: { reasoningTokens?: number };
-		  }
-		| undefined,
-): TokenUsage | undefined {
-	if (!raw) return current;
-	return mergeUsage(current, toTokenUsage(raw));
 }

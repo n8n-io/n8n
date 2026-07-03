@@ -2030,6 +2030,7 @@ describe('TelemetryEventRelay', () => {
 				user: { id: 'user123' },
 				counts: {
 					workflows: 3,
+					folders: 1,
 					credentials: 2,
 				},
 			};
@@ -2039,6 +2040,7 @@ describe('TelemetryEventRelay', () => {
 			expect(telemetry.track).toHaveBeenCalledWith('User exported n8n package', {
 				user_id: 'user123',
 				workflow_count: 3,
+				folder_count: 1,
 				credential_count: 2,
 			});
 		});

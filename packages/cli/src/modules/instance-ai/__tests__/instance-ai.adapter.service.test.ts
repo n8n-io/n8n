@@ -19,6 +19,12 @@ vi.mock('@n8n/instance-ai', () => ({
 }));
 
 import type { Mock, Mocked } from 'vitest';
+
+vi.mock('@n8n/ai-utilities', () => ({
+	braveSearch: vi.fn(),
+	searxngSearch: vi.fn(),
+}));
+
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 import type {
@@ -33,6 +39,7 @@ import type {
 import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
+import type { NodeCatalogService } from '@/node-catalog';
 import type { NodeTypes } from '@/node-types';
 
 import {
@@ -1127,8 +1134,22 @@ import { userHasScopes } from '@/permissions.ee/check-access';
 
 const mockedUserHasScopes = vi.mocked(userHasScopes);
 
-function createNodeAdapterForTests(nodes: Array<Record<string, unknown>>) {
+function createNodeAdapterServiceForTests(
+	nodes: Array<Record<string, unknown>>,
+	options?: {
+		nodeCatalogService?: Mocked<NodeCatalogService>;
+		loadNodesAndCredentials?: { addPostProcessor?: Mock };
+	},
+) {
 	const mockUser = { id: 'user-1', role: { slug: 'global:member' } } as unknown as User;
+	const nodeCatalogService =
+		options?.nodeCatalogService ??
+		mock<NodeCatalogService>({
+			initialize: vi.fn().mockResolvedValue(undefined),
+			getNodeTypeDefinition: vi.fn().mockResolvedValue({ content: 'node-def' }),
+			getNodeDefinitionDirs: vi.fn().mockReturnValue([]),
+		});
+	const loadNodesAndCredentials = options?.loadNodesAndCredentials ?? {};
 
 	const service = new InstanceAiAdapterService(
 		{ error: vi.fn(), scoped: vi.fn().mockReturnThis() } as unknown as ConstructorParameters<
@@ -1147,7 +1168,9 @@ function createNodeAdapterForTests(nodes: Array<Record<string, unknown>>) {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[9],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[10],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[11],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[12],
+		loadNodesAndCredentials as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[12],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[13],
 		{ staticCacheDir: '/tmp', n8nFolder: '/tmp' } as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
@@ -1176,6 +1199,7 @@ function createNodeAdapterForTests(nodes: Array<Record<string, unknown>>) {
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[31],
 		mock<OutboundHttp>() as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[32],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[33],
+		nodeCatalogService,
 	);
 
 	(
@@ -1187,7 +1211,14 @@ function createNodeAdapterForTests(nodes: Array<Record<string, unknown>>) {
 		expiresAt: Date.now() + 60_000,
 	};
 
-	return service.createContext(mockUser).nodeService;
+	return { service, nodeService: service.createContext(mockUser).nodeService, nodeCatalogService };
+}
+
+function createNodeAdapterForTests(
+	nodes: Array<Record<string, unknown>>,
+	nodeCatalogService?: Mocked<NodeCatalogService>,
+) {
+	return createNodeAdapterServiceForTests(nodes, { nodeCatalogService }).nodeService;
 }
 
 describe('createNodeAdapter', () => {
@@ -1230,6 +1261,89 @@ describe('createNodeAdapter', () => {
 				},
 			},
 		]);
+	});
+
+	it('delegates type definitions to NodeCatalogService', async () => {
+		const nodeCatalogService = mock<NodeCatalogService>({
+			initialize: vi.fn().mockResolvedValue(undefined),
+			getNodeTypeDefinition: vi.fn().mockResolvedValue({
+				content: 'community-node-def',
+				version: '1',
+				builderHint: 'Use this for email.',
+			}),
+			getNodeDefinitionDirs: vi.fn().mockReturnValue([]),
+		});
+		const adapter = createNodeAdapterForTests([], nodeCatalogService);
+
+		const result = await adapter.getNodeTypeDefinition?.('n8n-nodes-resend.resend', {
+			version: '1',
+		});
+
+		expect(nodeCatalogService.initialize).toHaveBeenCalled();
+		expect(nodeCatalogService.getNodeTypeDefinition).toHaveBeenCalledWith({
+			nodeId: 'n8n-nodes-resend.resend',
+			version: '1',
+		});
+		expect(result).toEqual({
+			content: 'community-node-def',
+			version: '1',
+			builderHint: 'Use this for email.',
+		});
+	});
+
+	it('preserves bare MCP registry slug compatibility for type definitions', async () => {
+		const nodeCatalogService = mock<NodeCatalogService>({
+			initialize: vi.fn().mockResolvedValue(undefined),
+			getNodeTypeDefinition: vi
+				.fn()
+				.mockResolvedValueOnce({
+					content: '',
+					error: "Node type 'notion' not found. Use search_nodes to find the correct node ID.",
+				})
+				.mockResolvedValueOnce({ content: 'registry-node-def' }),
+			getNodeDefinitionDirs: vi.fn().mockReturnValue([]),
+		});
+		const adapter = createNodeAdapterForTests([], nodeCatalogService);
+
+		const result = await adapter.getNodeTypeDefinition?.('notion');
+
+		expect(nodeCatalogService.getNodeTypeDefinition).toHaveBeenNthCalledWith(1, {
+			nodeId: 'notion',
+		});
+		expect(nodeCatalogService.getNodeTypeDefinition).toHaveBeenNthCalledWith(2, {
+			nodeId: '@n8n/mcp-registry.notion',
+		});
+		expect(result).toEqual({ content: 'registry-node-def' });
+	});
+
+	it('clears the node description cache when node types reload', async () => {
+		let postProcessor: (() => Promise<void>) | undefined;
+		const { service } = createNodeAdapterServiceForTests([], {
+			loadNodesAndCredentials: {
+				addPostProcessor: vi.fn().mockImplementation((callback: () => Promise<void>) => {
+					postProcessor = callback;
+				}),
+			},
+		});
+
+		expect(postProcessor).toBeDefined();
+		expect(
+			(
+				service as unknown as {
+					nodesCache: unknown;
+				}
+			).nodesCache,
+		).not.toBeNull();
+
+		await postProcessor!();
+
+		expect(
+			(
+				service as unknown as {
+					nodesCache: unknown;
+				}
+			).nodesCache,
+		).toBeNull();
 	});
 });
 
@@ -2521,6 +2635,7 @@ function createRunAdapterForTests(
 		execution?: ReturnType<typeof makeExecution>;
 		postExecutePromise?: Promise<unknown>;
 		threadId?: string;
+		queueMode?: boolean;
 	},
 ) {
 	const mockWorkflowFinderService = {
@@ -2553,9 +2668,10 @@ function createRunAdapterForTests(
 		{ error: vi.fn(), scoped: vi.fn().mockReturnThis() } as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
 		>[0],
-		{ ai: { allowSendingParameterValues: false } } as unknown as ConstructorParameters<
-			typeof InstanceAiAdapterService
-		>[1],
+		{
+			ai: { allowSendingParameterValues: false },
+			executions: { mode: options?.queueMode ? 'queue' : 'regular' },
+		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[1],
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[2],
 		mockWorkflowFinderService as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
@@ -2866,5 +2982,42 @@ describe('createExecutionAdapter run()', () => {
 		const firstStackItem = runData.executionData?.executionData?.nodeExecutionStack[0];
 		expect(firstStackItem?.node.name).toBe('Schedule Trigger');
 		expect(firstStackItem?.data.main[0]?.[0]?.json).toEqual({});
+	});
+
+	it('wraps manual metadata into executionData when offloading to workers so the worker can run it', async () => {
+		const original = process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS;
+		process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = 'true';
+		try {
+			const { adapter, mockWorkflowRunner } = createRunAdapterForTests(
+				{
+					id: 'wf-1',
+					// No trigger node: the adapter sets neither startNodes nor executionData,
+					// so an offloaded worker would receive an execution with no run data.
+					nodes: [
+						{
+							id: 'n1',
+							name: 'Set',
+							type: 'n8n-nodes-base.set',
+							typeVersion: 3,
+							position: [0, 0],
+							parameters: {},
+						},
+					],
+					settings: { executionOrder: 'v1' },
+				},
+				{ queueMode: true, execution: makeExecution({ status: 'success' }) },
+			);
+
+			await adapter.run('wf-1');
+
+			const runData = mockWorkflowRunner.run.mock.calls[0][0];
+			// Offloaded workers reconstruct the run from execution.data (= runData.executionData).
+			// Without this wrapping it is undefined and job-processor throws "without run data".
+			expect(runData.executionData).toBeDefined();
+			expect(runData.executionData?.manualData?.userId).toBe('user-1');
+		} finally {
+			if (original === undefined) delete process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS;
+			else process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = original;
+		}
 	});
 });

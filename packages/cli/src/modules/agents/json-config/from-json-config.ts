@@ -182,6 +182,9 @@ export async function buildFromJson(
 			const { provider, ...rest } = config.config.thinking;
 			agent.thinking(provider, rest);
 		}
+		if (config.config.promptCaching) {
+			agent.promptCaching(config.config.promptCaching);
+		}
 		if (config.config.toolCallConcurrency) {
 			agent.toolCallConcurrency(config.config.toolCallConcurrency);
 		}

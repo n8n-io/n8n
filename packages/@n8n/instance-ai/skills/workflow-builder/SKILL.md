@@ -116,6 +116,39 @@ When mapping downstream fields from an OpenAI node, read
 `$json.output[0].content[0].text`; v1 text/message uses `$json.message.content`
 — not `$json.text`).
 
+## Workflow-Level Error Workflows
+
+n8n has no global or instance-wide error workflow setting. Error workflows are
+assigned per target workflow through workflow settings:
+
+```ts
+export default workflow('target-workflow-id', 'Target Workflow')
+  .settings({ errorWorkflow: 'published-error-workflow-id' })
+  .add(triggerNode);
+```
+
+`settings.errorWorkflow` must be the real workflow ID of a separate published
+workflow whose published version contains an active Error Trigger node. Do not
+use a workflow name, placeholder, `activeVersionId`, local SDK id, or invented
+global identifier.
+
+Use the no-global-setting rule as implementation guidance. Mention it to the
+user only when they explicitly ask about, request, or reference global or
+instance-wide error workflow behavior.
+
+When creating an error workflow to attach to another workflow:
+
+1. Build the target workflow first, then ask whether the user wants an error
+   workflow for it. Do not create one before the user opts in.
+2. Build the error workflow as a separate workflow. It starts with an Error
+   Trigger and sends the notification the user requested.
+3. Publish the error workflow with `workflows(action="publish")` before setting
+   it on the target workflow. Publishing uses HITL approval.
+4. Patch the original target workflow's source and set
+   `.settings({ errorWorkflow: '<published-error-workflow-id>' })`, then call
+   `build-workflow` for the original workflow. This assigns the error workflow
+   only to that target workflow.
+
 ## Mandatory Process
 
 1. Research. If the workflow fits a known category, call
@@ -179,7 +212,12 @@ When mapping downstream fields from an OpenAI node, read
     the real n8n `workflowId` on the first `build-workflow` call so the file is
     bound to the saved workflow. Never pass local SDK workflow IDs as n8n
     workflow IDs.
-12. Finish with a concise completion message only when the build, required
+12. After a successful direct `build-workflow` result, if the tool output
+    contains `postBuildFlow.required: true`, load `post-build-flow` exactly once
+    and follow it before verification, setup, error-workflow follow-up,
+    publishing, testing, or any final user-visible summary. Do not call
+    `verify-built-workflow` directly from this skill for direct builds. Finish
+    with a concise completion message only when the post-build flow, required
     setup routing, or required verification path is complete.
 
 Do not produce visible output until the final step, unless blocked.
@@ -188,9 +226,10 @@ Do not produce visible output until the final step, unless blocked.
 
 Use the current turn's higher-priority instructions to decide who verifies:
 
-- Direct existing-workflow edits: after `build-workflow` succeeds, follow the
-  orchestrator post-build flow. If `verificationReadiness.status === "ready"`,
-  call `verify-built-workflow` with the returned `workItemId` and `workflowId`.
+- Direct builds and existing-workflow edits: after `build-workflow` succeeds,
+  load `post-build-flow` when `postBuildFlow.required: true` is present in the
+  tool output. That skill owns verification, setup routing, error-workflow
+  opt-in, and final user-visible completion for direct builds.
 - Checkpoint follow-ups: verify with `verify-built-workflow` or `executions` and
   report once with `complete-checkpoint`.
 - Planned build follow-ups that explicitly say to stop after save: stop after a

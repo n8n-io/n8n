@@ -402,6 +402,7 @@ export type {
 	InstanceAiMemoryTaskStatus,
 	InstanceAiMemoryTaskSnapshot,
 	InstanceAiThreadStatusResponse,
+	InstanceAiConfirmResponse,
 	InstanceAiAdminSettingsResponse,
 	InstanceAiUserPreferencesResponse,
 	InstanceAiModelCredential,

@@ -1,12 +1,14 @@
 import { useToast } from '@/app/composables/useToast';
 import { useRolesStore } from '@/app/stores/roles.store';
-import { useI18n } from '@n8n/i18n';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import type { Role } from '@n8n/permissions';
 import { useAsyncState } from '@vueuse/core';
 import isEqual from 'lodash/isEqual';
 import sortBy from 'lodash/sortBy';
 import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+
+const DISPLAY_NAME_MIN_LENGTH = 2;
 
 export type RoleEditorForm = {
 	displayName: string;
@@ -34,7 +36,7 @@ export function useRoleEditorForm({
 	const rolesStore = useRolesStore();
 	const route = useRoute();
 	const router = useRouter();
-	const { showError } = useToast();
+	const { showError, showMessage } = useToast();
 	const i18n = useI18n();
 
 	const activeTab = ref<string>((route.query?.tab as string) ?? 'permissions');
@@ -103,10 +105,34 @@ export function useRoleEditorForm({
 
 	const displayNameValidationRules = [
 		{ name: 'REQUIRED' },
-		{ name: 'MIN_LENGTH', config: { minimum: 2 } },
+		{ name: 'MIN_LENGTH', config: { minimum: DISPLAY_NAME_MIN_LENGTH } },
 	];
 
+	const submitted = ref(false);
+
+	const isDisplayNameValid = computed(
+		() => form.value.displayName.trim().length >= DISPLAY_NAME_MIN_LENGTH,
+	);
+
+	function validateOnSubmit(errorTitle: BaseTextKey): boolean {
+		submitted.value = true;
+
+		if (!isDisplayNameValid.value) {
+			showMessage({
+				type: 'error',
+				title: i18n.baseText(errorTitle),
+				message: i18n.baseText('roles.create.validation.nameMinLength', {
+					interpolate: { min: DISPLAY_NAME_MIN_LENGTH },
+				}),
+			});
+			return false;
+		}
+
+		return true;
+	}
+
 	function resetForm(payload: Role | undefined): void {
+		submitted.value = false;
 		form.value = payload
 			? {
 					displayName: payload.displayName,
@@ -128,6 +154,9 @@ export function useRoleEditorForm({
 		showCreateButton,
 		hasUnsavedChanges,
 		displayNameValidationRules,
+		submitted,
+		isDisplayNameValid,
+		validateOnSubmit,
 		resetForm,
 	};
 }

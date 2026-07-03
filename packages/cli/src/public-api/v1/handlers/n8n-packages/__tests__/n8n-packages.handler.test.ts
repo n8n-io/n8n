@@ -31,7 +31,7 @@ describe('n8n-packages handler', () => {
 	let mockService: Mocked<N8nPackagesService>;
 
 	function makeRequest(
-		body: { workflowIds?: string[]; projectIds?: string[] },
+		body: { workflowIds?: string[]; folderIds?: string[]; projectIds?: string[] },
 		apiKeyScopes?: string[],
 	) {
 		return {
@@ -93,17 +93,33 @@ describe('n8n-packages handler', () => {
 
 		expect(caught).toBeInstanceOf(BadRequestError);
 		expect(caught).toMatchObject({
-			message: 'Provide either workflowIds or projectIds, not both',
+			message: 'Provide either workflowIds/folderIds or projectIds, not both',
 		});
 		expect(mockService.exportPackage).not.toHaveBeenCalled();
 	});
 
-	it('throws BadRequestError when neither workflowIds nor projectIds are provided', async () => {
+	it('throws BadRequestError when folderIds and projectIds are both provided', async () => {
+		const caught = await run(
+			makeRequest({ folderIds: ['fld-1'], projectIds: ['project-1'] }, [
+				'workflow:export',
+				'project:export',
+			]),
+			makeResponse(),
+		);
+
+		expect(caught).toBeInstanceOf(BadRequestError);
+		expect(caught).toMatchObject({
+			message: 'Provide either workflowIds/folderIds or projectIds, not both',
+		});
+		expect(mockService.exportPackage).not.toHaveBeenCalled();
+	});
+
+	it('throws BadRequestError when neither workflowIds, folderIds nor projectIds are provided', async () => {
 		const caught = await run(makeRequest({}, ['workflow:export']), makeResponse());
 
 		expect(caught).toBeInstanceOf(BadRequestError);
 		expect(caught).toMatchObject({
-			message: 'At least one workflowId or projectId is required',
+			message: 'At least one workflowId, folderId, or projectId is required',
 		});
 		expect(mockService.exportPackage).not.toHaveBeenCalled();
 	});
@@ -135,6 +151,16 @@ describe('n8n-packages handler', () => {
 		expect(mockService.exportPackage).not.toHaveBeenCalled();
 	});
 
+	it('throws ForbiddenError when exporting folders without workflow:export scope', async () => {
+		const caught = await run(
+			makeRequest({ folderIds: ['fld-1'] }, ['project:export']),
+			makeResponse(),
+		);
+
+		expect(caught).toBeInstanceOf(ForbiddenError);
+		expect(mockService.exportPackage).not.toHaveBeenCalled();
+	});
+
 	it('streams the export for a valid workflow request', async () => {
 		const stream = new PassThrough();
 		mockService.exportPackage.mockResolvedValue(stream);
@@ -151,6 +177,7 @@ describe('n8n-packages handler', () => {
 		expect(mockService.exportPackage).toHaveBeenCalledWith({
 			user: { id: 'user-1' },
 			workflowIds: ['wf-1', 'wf-2'],
+			folderIds: [],
 			projectIds: [],
 		});
 		expect(res.setHeader).toHaveBeenCalledWith('Content-Type', 'application/gzip');
@@ -173,7 +200,26 @@ describe('n8n-packages handler', () => {
 		expect(mockService.exportPackage).toHaveBeenCalledWith({
 			user: { id: 'user-1' },
 			workflowIds: [],
+			folderIds: [],
 			projectIds: ['project-1'],
+		});
+	});
+
+	it('streams the export for a valid folder request', async () => {
+		const stream = new PassThrough();
+		mockService.exportPackage.mockResolvedValue(stream);
+		const res = makeResponse();
+
+		const resultPromise = run(makeRequest({ folderIds: ['fld-1'] }, ['workflow:export']), res);
+		stream.end(Buffer.from('package-bytes'));
+		const caught = await resultPromise;
+
+		expect(caught).toBeUndefined();
+		expect(mockService.exportPackage).toHaveBeenCalledWith({
+			user: { id: 'user-1' },
+			workflowIds: [],
+			folderIds: ['fld-1'],
+			projectIds: [],
 		});
 	});
 });

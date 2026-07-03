@@ -378,6 +378,38 @@ export class WorkflowPublicationOutboxRepository extends Repository<WorkflowPubl
 	}
 
 	/**
+	 * Per-status record count and oldest `createdAt`, for the metrics gauges, in a
+	 * single grouped query. Statuses with no rows are absent from the map. The
+	 * oldest-record-age gauge only reads the active (`pending`/`in_progress`)
+	 * entries; the count gauge reads them all.
+	 */
+	async getRecordStatsByStatus(): Promise<Map<Status, { count: number; oldestCreatedAt: Date }>> {
+		const rows = await this.createQueryBuilder('o')
+			.select('o.status', 'status')
+			.addSelect('COUNT(*)', 'count')
+			.addSelect('MIN(o.createdAt)', 'oldestCreatedAt')
+			.groupBy('o.status')
+			.getRawMany<{ status: Status; count: string | number; oldestCreatedAt: string | Date }>();
+
+		return new Map(
+			rows.map((row) => [
+				row.status,
+				{ count: Number(row.count), oldestCreatedAt: this.parseTimestamp(row.oldestCreatedAt) },
+			]),
+		);
+	}
+
+	/**
+	 * Postgres hydrates timestamps into `Date`s directly. SQLite returns a raw UTC
+	 * string with no zone designator, which `new Date()` would read as local time;
+	 * tag it as UTC so the instant matches what the driver stored.
+	 */
+	private parseTimestamp(value: string | Date): Date {
+		if (value instanceof Date) return value;
+		return new Date(`${value.replace(' ', 'T')}Z`);
+	}
+
+	/**
 	 * Guards against transitioning a record that is no longer the in-progress row
 	 * we expect (e.g. it was already resolved or never claimed): such a transition
 	 * affects zero rows and would otherwise be lost silently.

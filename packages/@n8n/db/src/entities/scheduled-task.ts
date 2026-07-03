@@ -17,6 +17,9 @@ export const ScheduledTaskStatus = {
 
 export type ScheduledTaskStatus = (typeof ScheduledTaskStatus)[keyof typeof ScheduledTaskStatus];
 
+/** All statuses as a runtime list. */
+export const ScheduledTaskStatusList = Object.values(ScheduledTaskStatus);
+
 /**
  * One concrete run of a {@link ScheduledJob} at a specific time.
  *
