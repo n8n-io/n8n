@@ -1,16 +1,41 @@
 import { isRecord } from '@n8n/utils/is-record';
+import type { IConnection, IConnections } from 'n8n-workflow';
+import { NodeConnectionTypes } from 'n8n-workflow';
 
 import type { WorkflowNode } from '../../types';
 
 export const STRUCTURE_ONLY_NOTE =
-	'Node parameters omitted to keep context small. Use get-json or get-as-code when you need parameter-level detail.';
+	'Node parameters omitted to keep context small. Use get-json or get-as-code (optionally with versionId) when you need parameter-level detail.';
 
-export function summarizeNodes(nodes: WorkflowNode[]): Array<{ name: string; type: string }> {
-	return nodes.map(({ name, type }) => ({ name, type }));
+const CONNECTION_TYPES = new Set<string>(Object.values(NodeConnectionTypes));
+
+function isConnection(value: unknown): value is IConnection {
+	return (
+		isRecord(value) &&
+		typeof value.node === 'string' &&
+		typeof value.type === 'string' &&
+		CONNECTION_TYPES.has(value.type) &&
+		typeof value.index === 'number'
+	);
+}
+
+/** Rebuild a typed connections map from the loosely-typed service payload. */
+function toConnections(connections: Record<string, unknown>): IConnections {
+	const result: IConnections = {};
+	for (const [from, byType] of Object.entries(connections)) {
+		if (!isRecord(byType)) continue;
+		for (const [connectionType, outputs] of Object.entries(byType)) {
+			if (!Array.isArray(outputs)) continue;
+			(result[from] ??= {})[connectionType] = outputs.map((targets) =>
+				Array.isArray(targets) ? targets.filter(isConnection) : null,
+			);
+		}
+	}
+	return result;
 }
 
 /** Flatten n8n's connections map into edges like "A → B" or "A -(ai_tool)→ B". */
-export function summarizeConnections(connections: Record<string, unknown>): string[] {
+function summarizeConnections(connections: Record<string, unknown>): string[] {
 	const edges: string[] = [];
 	for (const [from, byType] of Object.entries(connections)) {
 		if (!isRecord(byType)) continue;
@@ -28,4 +53,37 @@ export function summarizeConnections(connections: Record<string, unknown>): stri
 		}
 	}
 	return edges;
+}
+
+/**
+ * Render a workflow's structure as SDK code with node parameters stripped —
+ * the same format the agent reads from get-as-code, minus the config payloads.
+ * Falls back to a plain node/edge listing when codegen rejects the graph.
+ */
+export async function summarizeWorkflowStructure(
+	name: string,
+	nodes: WorkflowNode[],
+	connections: Record<string, unknown>,
+): Promise<string> {
+	try {
+		const { generateWorkflowCode } = await import('@n8n/workflow-sdk');
+		return generateWorkflowCode({
+			name,
+			nodes: nodes.map((node) => ({
+				id: node.name,
+				name: node.name,
+				type: node.type,
+				typeVersion: node.typeVersion ?? 1,
+				position: [node.position[0] ?? 0, node.position[1] ?? 0],
+			})),
+			connections: toConnections(connections),
+		});
+	} catch {
+		return [
+			'Nodes:',
+			...nodes.map((node) => `- ${node.name} (${node.type})`),
+			'Connections:',
+			...summarizeConnections(connections).map((edge) => `- ${edge}`),
+		].join('\n');
+	}
 }

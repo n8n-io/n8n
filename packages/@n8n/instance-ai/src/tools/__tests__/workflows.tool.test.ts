@@ -1,4 +1,5 @@
 import type { InstanceAiPermissions } from '@n8n/api-types';
+import { generateWorkflowCode } from '@n8n/workflow-sdk';
 import type { Mock } from 'vitest';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
@@ -174,7 +175,6 @@ describe('workflows tool', () => {
 				},
 			],
 			[{ action: 'list-versions', workflowId: 'w1' }],
-			[{ action: 'get-version', workflowId: 'w1', versionId: 'v1' }],
 			[{ action: 'restore-version', workflowId: 'w1', versionId: 'v1' }],
 			[{ action: 'update-version', workflowId: 'w1', versionId: 'v1', name: 'v1' }],
 		])('should reject action %p when it is not explicitly allowed', (input) => {
@@ -411,40 +411,43 @@ describe('workflows tool', () => {
 	});
 
 	describe('get action', () => {
-		it('should return a structural summary without node parameters', async () => {
-			const detail = {
-				id: 'wf1',
-				name: 'Test WF',
-				nodes: [
-					{
-						name: 'Webhook',
-						type: 'n8n-nodes-base.webhook',
-						parameters: { path: 'x' },
-						position: [0, 0],
-					},
-					{
-						name: 'IF',
-						type: 'n8n-nodes-base.if',
-						parameters: { conditions: {} },
-						position: [1, 0],
-					},
-					{ name: 'Set', type: 'n8n-nodes-base.set', parameters: {}, position: [2, 0] },
-				],
-				connections: {
-					Webhook: { main: [[{ node: 'IF', type: 'main', index: 0 }]] },
-					IF: {
-						main: [
-							[{ node: 'Set', type: 'main', index: 0 }],
-							[{ node: 'Webhook', type: 'main', index: 0 }],
-						],
-					},
+		const detail = {
+			id: 'wf1',
+			name: 'Test WF',
+			nodes: [
+				{
+					name: 'Webhook',
+					type: 'n8n-nodes-base.webhook',
+					typeVersion: 2,
+					parameters: { path: 'x' },
+					position: [0, 0],
 				},
-				versionId: 'v1',
-				activeVersionId: null,
-				isArchived: false,
-				createdAt: '2024-01-01',
-				updatedAt: '2024-01-01',
-			};
+				{
+					name: 'IF',
+					type: 'n8n-nodes-base.if',
+					typeVersion: 2.2,
+					parameters: { conditions: {} },
+					position: [1, 0],
+				},
+				{ name: 'Set', type: 'n8n-nodes-base.set', parameters: {}, position: [2, 0] },
+			],
+			connections: {
+				Webhook: { main: [[{ node: 'IF', type: 'main', index: 0 }]] },
+				IF: {
+					main: [
+						[{ node: 'Set', type: 'main', index: 0 }],
+						[{ node: 'Webhook', type: 'main', index: 0 }],
+					],
+				},
+			},
+			versionId: 'v1',
+			activeVersionId: null,
+			isArchived: false,
+			createdAt: '2024-01-01',
+			updatedAt: '2024-01-01',
+		};
+
+		it('should return the structure as SDK code without node parameters', async () => {
 			const context = createMockContext();
 			(context.workflowService.get as Mock).mockResolvedValue(detail);
 
@@ -457,63 +460,84 @@ describe('workflows tool', () => {
 				name: 'Test WF',
 				versionId: 'v1',
 				nodeCount: 3,
-				connections: ['Webhook → IF', 'IF → Set', 'IF [1]→ Webhook'],
+				structure: '// generated code',
 			});
-			expect((result as { nodes: unknown }).nodes).toEqual([
-				{ name: 'Webhook', type: 'n8n-nodes-base.webhook' },
-				{ name: 'IF', type: 'n8n-nodes-base.if' },
-				{ name: 'Set', type: 'n8n-nodes-base.set' },
-			]);
+			const codegenInput = vi.mocked(generateWorkflowCode).mock.calls[0][0];
+			expect(codegenInput).toMatchObject({ name: 'Test WF' });
+			expect(JSON.stringify(codegenInput)).not.toContain('conditions');
+			expect(JSON.stringify(result)).not.toContain('conditions');
 		});
-	});
 
-	describe('get-version action', () => {
-		const versionDetail = {
-			versionId: 'v1',
-			name: 'Checkpoint',
-			description: null,
-			authors: 'me',
-			createdAt: '2024-01-01',
-			autosaved: false,
-			isActive: false,
-			isCurrentDraft: false,
-			nodes: [
-				{ name: 'Set', type: 'n8n-nodes-base.set', parameters: { big: 'blob' }, position: [0, 0] },
-			],
-			connections: {},
-		};
-
-		it('should return a structural summary by default', async () => {
+		it('should fall back to a plain structure listing when codegen fails', async () => {
 			const context = createMockContext();
-			context.workflowService.getVersion = vi.fn().mockResolvedValue(versionDetail);
+			(context.workflowService.get as Mock).mockResolvedValue(detail);
+			vi.mocked(generateWorkflowCode).mockImplementationOnce(() => {
+				throw new Error('unsupported graph');
+			});
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(tool, { action: 'get', workflowId: 'wf1' }, {} as never);
+
+			const structure = (result as { structure: string }).structure;
+			expect(structure).toContain('- Webhook (n8n-nodes-base.webhook)');
+			expect(structure).toContain('- IF [1]→ Webhook');
+			expect(structure).not.toContain('conditions');
+		});
+
+		it('should return a version structure summary when versionId is provided', async () => {
+			const context = createMockContext();
+			context.workflowService.getVersion = vi.fn().mockResolvedValue({
+				versionId: 'v1',
+				name: 'Checkpoint',
+				description: null,
+				authors: 'me',
+				createdAt: '2024-01-01',
+				autosaved: false,
+				isActive: false,
+				isCurrentDraft: false,
+				nodes: [
+					{
+						name: 'Set',
+						type: 'n8n-nodes-base.set',
+						parameters: { big: 'blob' },
+						position: [0, 0],
+					},
+				],
+				connections: {},
+			});
 
 			const tool = createWorkflowsTool(context, 'full');
 			const result = await executeTool(
 				tool,
-				{ action: 'get-version', workflowId: 'wf1', versionId: 'v1' },
+				{ action: 'get', workflowId: 'wf1', versionId: 'v1' },
 				{} as never,
 			);
 
+			expect(context.workflowService.getVersion).toHaveBeenCalledWith('wf1', 'v1');
 			expect(result).toMatchObject({
+				workflowId: 'wf1',
 				versionId: 'v1',
 				nodeCount: 1,
-				nodes: [{ name: 'Set', type: 'n8n-nodes-base.set' }],
+				structure: '// generated code',
 			});
 			expect(JSON.stringify(result)).not.toContain('blob');
 		});
 
-		it('should return the complete version payload when full is true', async () => {
+		it('should explain when versionId is passed but version history is unavailable', async () => {
 			const context = createMockContext();
-			context.workflowService.getVersion = vi.fn().mockResolvedValue(versionDetail);
 
 			const tool = createWorkflowsTool(context, 'full');
 			const result = await executeTool(
 				tool,
-				{ action: 'get-version', workflowId: 'wf1', versionId: 'v1', full: true },
+				{ action: 'get', workflowId: 'wf1', versionId: 'v1' },
 				{} as never,
 			);
 
-			expect(result).toEqual(versionDetail);
+			expect(result).toEqual({
+				workflowId: 'wf1',
+				versionId: 'v1',
+				error: 'Workflow version history is not available on this instance',
+			});
 		});
 	});
 
@@ -546,8 +570,29 @@ describe('workflows tool', () => {
 				{} as never,
 			);
 
-			expect(context.workflowService.getAsWorkflowJSON).toHaveBeenCalledWith('wf1');
+			expect(context.workflowService.getAsWorkflowJSON).toHaveBeenCalledWith('wf1', undefined);
 			expect(result).toEqual(workflow);
+		});
+
+		it('should forward versionId to the full fetches', async () => {
+			const context = createMockContext();
+			const tool = createWorkflowsTool(context, 'full');
+
+			await executeTool(
+				tool,
+				{ action: 'get-json', workflowId: 'wf1', versionId: 'v7' },
+				{} as never,
+			);
+			await executeTool(
+				tool,
+				{ action: 'get-as-code', workflowId: 'wf1', versionId: 'v7' },
+				{} as never,
+			);
+
+			expect((context.workflowService.getAsWorkflowJSON as Mock).mock.calls).toEqual([
+				['wf1', 'v7'],
+				['wf1', 'v7'],
+			]);
 		});
 	});
 

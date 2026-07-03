@@ -1,7 +1,7 @@
 /**
  * Consolidated workflows tool — list, get, get-json, get-as-code, delete/archive,
- * unarchive, setup, publish, unpublish, list-versions, get-version,
- * restore-version, update-version.
+ * unarchive, setup, publish, unpublish, list-versions, restore-version,
+ * update-version.
  */
 import { Tool } from '@n8n/agents';
 import { isRecord } from '@n8n/utils/is-record';
@@ -18,11 +18,7 @@ import {
 	applyNodeChanges,
 	buildCompletedReport,
 } from './workflows/setup-workflow.service';
-import {
-	STRUCTURE_ONLY_NOTE,
-	summarizeConnections,
-	summarizeNodes,
-} from './workflows/summarize-workflow';
+import { STRUCTURE_ONLY_NOTE, summarizeWorkflowStructure } from './workflows/summarize-workflow';
 import { validateWorkflowConfig } from './workflows/validate-workflow.service';
 import { getReferencedWorkflowIds } from './workflows/workflow-json-utils';
 
@@ -52,27 +48,30 @@ const getAction = z.object({
 	action: z
 		.literal('get')
 		.describe(
-			'Inspect a workflow: metadata, node names/types, and connection structure. Node parameters are omitted — use get-json or get-as-code when you need them.',
+			'Inspect a workflow: metadata plus its structure as SDK code with node parameters omitted — use get-json or get-as-code when you need them. Pass versionId to inspect a past version instead of the current draft.',
 		),
 	workflowId: z.string().describe('ID of the workflow'),
+	versionId: z.string().optional().describe('Version ID'),
 });
 
 const getJsonAction = z.object({
 	action: z
 		.literal('get-json')
 		.describe(
-			'Get full WorkflowJSON for workspace-file workflow edits. Write it to a .workflow.json file, edit the file, then save with build-workflow.',
+			'Get full WorkflowJSON for workspace-file workflow edits. Write it to a .workflow.json file, edit the file, then save with build-workflow. Pass versionId for a past version instead of the current draft.',
 		),
 	workflowId: z.string().describe('ID of the workflow'),
+	versionId: z.string().optional().describe('Version ID'),
 });
 
 const getAsCodeAction = z.object({
 	action: z
 		.literal('get-as-code')
 		.describe(
-			'Convert an existing workflow to TypeScript SDK code. Call before precise patches when you need the current code.',
+			'Convert an existing workflow to TypeScript SDK code. Call before precise patches when you need the current code. Pass versionId for a past version instead of the current draft.',
 		),
 	workflowId: z.string().describe('ID of the workflow'),
+	versionId: z.string().optional().describe('Version ID'),
 });
 
 const deleteAction = z.object({
@@ -151,20 +150,6 @@ const listVersionsAction = z.object({
 	skip: z.number().int().min(0).optional().describe('Number of results to skip (default 0)'),
 });
 
-const getVersionAction = z.object({
-	action: z
-		.literal('get-version')
-		.describe(
-			'Get details of a specific workflow version. Returns structure only by default; pass full: true for node parameters.',
-		),
-	workflowId: z.string().describe('ID of the workflow'),
-	versionId: z.string().describe('Version ID'),
-	full: z
-		.boolean()
-		.optional()
-		.describe('Return complete node data including parameters (large). Default false.'),
-});
-
 const restoreVersionAction = z.object({
 	action: z.literal('restore-version').describe('Restore a workflow to a previous version'),
 	workflowId: z.string().describe('ID of the workflow'),
@@ -216,7 +201,6 @@ type Input =
 	| z.infer<typeof publishExtendedAction>
 	| z.infer<typeof unpublishAction>
 	| z.infer<typeof listVersionsAction>
-	| z.infer<typeof getVersionAction>
 	| z.infer<typeof restoreVersionAction>
 	| z.infer<typeof updateVersionAction>;
 
@@ -238,7 +222,6 @@ export type WorkflowAction =
 	| 'publish'
 	| 'unpublish'
 	| 'list-versions'
-	| 'get-version'
 	| 'restore-version'
 	| 'update-version';
 
@@ -266,7 +249,6 @@ const WORKFLOW_ACTION_ORDER = [
 	'publish',
 	'unpublish',
 	'list-versions',
-	'get-version',
 	'restore-version',
 	'update-version',
 ] as const satisfies readonly WorkflowAction[];
@@ -284,7 +266,6 @@ const WORKFLOW_ACTION_LABELS = {
 	publish: 'publish',
 	unpublish: 'unpublish',
 	'list-versions': 'list versions',
-	'get-version': 'inspect versions',
 	'restore-version': 'restore versions',
 	'update-version': 'update version metadata',
 } satisfies Record<WorkflowAction, string>;
@@ -315,7 +296,6 @@ function getSupportedWorkflowActionSchemas(
 		...(hasVersions
 			? {
 					'list-versions': listVersionsAction,
-					'get-version': getVersionAction,
 					'restore-version': restoreVersionAction,
 				}
 			: {}),
@@ -386,12 +366,31 @@ async function handleList(context: InstanceAiContext, input: Extract<Input, { ac
 async function handleGet(context: InstanceAiContext, input: Extract<Input, { action: 'get' }>) {
 	// Convert hallucinated-id errors into structured not-found responses so the agent stops guessing.
 	try {
+		if (input.versionId) {
+			if (!context.workflowService.getVersion) {
+				return {
+					workflowId: input.workflowId,
+					versionId: input.versionId,
+					error: 'Workflow version history is not available on this instance',
+				};
+			}
+			const { nodes, connections, ...meta } = await context.workflowService.getVersion(
+				input.workflowId,
+				input.versionId,
+			);
+			return {
+				workflowId: input.workflowId,
+				...meta,
+				nodeCount: nodes.length,
+				structure: await summarizeWorkflowStructure(meta.name ?? '', nodes, connections),
+				note: STRUCTURE_ONLY_NOTE,
+			};
+		}
 		const { nodes, connections, ...meta } = await context.workflowService.get(input.workflowId);
 		return {
 			...meta,
 			nodeCount: nodes.length,
-			nodes: summarizeNodes(nodes),
-			connections: summarizeConnections(connections),
+			structure: await summarizeWorkflowStructure(meta.name, nodes, connections),
 			note: STRUCTURE_ONLY_NOTE,
 		};
 	} catch (error) {
@@ -417,7 +416,7 @@ async function handleGetJson(
 	input: Extract<Input, { action: 'get-json' }>,
 ) {
 	try {
-		return await context.workflowService.getAsWorkflowJSON(input.workflowId);
+		return await context.workflowService.getAsWorkflowJSON(input.workflowId, input.versionId);
 	} catch (error) {
 		return {
 			workflowId: input.workflowId,
@@ -433,7 +432,7 @@ async function handleGetAsCode(
 ) {
 	const { generateWorkflowCode } = await import('@n8n/workflow-sdk');
 	try {
-		const json = await context.workflowService.getAsWorkflowJSON(input.workflowId);
+		const json = await context.workflowService.getAsWorkflowJSON(input.workflowId, input.versionId);
 		const code = generateWorkflowCode(json);
 		return { workflowId: input.workflowId, name: json.name, code };
 	} catch (error) {
@@ -1028,22 +1027,6 @@ async function handleListVersions(
 	return { versions };
 }
 
-async function handleGetVersion(
-	context: InstanceAiContext,
-	input: Extract<Input, { action: 'get-version' }>,
-) {
-	const version = await context.workflowService.getVersion!(input.workflowId, input.versionId);
-	if (input.full) return version;
-	const { nodes, connections, ...meta } = version;
-	return {
-		...meta,
-		nodeCount: nodes.length,
-		nodes: summarizeNodes(nodes),
-		connections: summarizeConnections(connections),
-		note: 'Node parameters omitted to keep context small. Pass full: true when you need the complete version payload.',
-	};
-}
-
 async function handleRestoreVersion(
 	context: InstanceAiContext,
 	input: Extract<Input, { action: 'restore-version' }>,
@@ -1210,8 +1193,6 @@ export function createWorkflowsTool(
 					return await handleUnpublish(context, workflowInput, ctx);
 				case 'list-versions':
 					return await handleListVersions(context, workflowInput);
-				case 'get-version':
-					return await handleGetVersion(context, workflowInput);
 				case 'restore-version':
 					return await handleRestoreVersion(context, workflowInput, ctx);
 				case 'update-version':
