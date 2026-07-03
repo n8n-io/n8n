@@ -57,6 +57,7 @@
     "@langchain/anthropic": "catalog:",
     "@mozilla/readability": "catalog:",
     "@n8n/agents": "workspace:*",
+    "@n8n/ai-utilities": "workspace:*",
     "@n8n/api-types": "workspace:*",
     "@n8n/mcp-browser": "workspace:*",
     "@n8n/utils": "workspace:*",
