@@ -340,6 +340,7 @@ describe('GlobalConfig', () => {
 			threadTtlDays: 90,
 			pruneInterval: 3_600_000,
 			snapshotRetention: 86_400_000,
+			checkpointGcRetention: 604_800_000,
 			confirmationTimeout: 86_400_000,
 			outputRedactionEnabled: true,
 			outputRedactionSecrets: true,

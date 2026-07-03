@@ -27,6 +27,39 @@ describe('ExportPackageRequestDto', () => {
 		});
 	});
 
+	describe('folderIds', () => {
+		it('accepts a non-empty array of folder ids', () => {
+			const result = ExportPackageRequestDto.safeParse({ folderIds: ['fld-1'] });
+			expect(result.success).toBe(true);
+		});
+
+		it('accepts up to 300 folder ids', () => {
+			const folderIds = Array.from({ length: 300 }, (_, i) => `fld-${i}`);
+			expect(ExportPackageRequestDto.safeParse({ folderIds }).success).toBe(true);
+		});
+
+		it('accepts workflow and folder ids together', () => {
+			const result = ExportPackageRequestDto.safeParse({
+				workflowIds: ['wf-1'],
+				folderIds: ['fld-1'],
+			});
+			expect(result.success).toBe(true);
+		});
+
+		it.each([
+			{ name: 'empty folderIds array', request: { folderIds: [] } },
+			{ name: 'empty-string folder id', request: { folderIds: [''] } },
+			{ name: 'whitespace-only folder id', request: { folderIds: ['   '] } },
+			{ name: 'non-string folder id', request: { folderIds: [123] } },
+			{
+				name: 'more than 300 folder ids',
+				request: { folderIds: Array.from({ length: 301 }, (_, i) => `fld-${i}`) },
+			},
+		])('rejects $name', ({ request }) => {
+			expect(ExportPackageRequestDto.safeParse(request).success).toBe(false);
+		});
+	});
+
 	describe('projectIds', () => {
 		it('accepts a non-empty array of project ids', () => {
 			const result = ExportPackageRequestDto.safeParse({ projectIds: ['project-1'] });
