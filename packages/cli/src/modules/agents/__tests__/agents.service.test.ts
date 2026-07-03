@@ -95,6 +95,13 @@ describe('AgentsService', () => {
 				instructions: '',
 				tools: [],
 				skills: [],
+				personalisation: {
+					icon: 'bot',
+					gradient: {
+						from: '#FF1500',
+						to: '#FF6900',
+					},
+				},
 			},
 			versionId: expect.any(String),
 		});

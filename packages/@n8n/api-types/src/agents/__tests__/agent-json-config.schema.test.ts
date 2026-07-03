@@ -102,6 +102,67 @@ describe('AgentJsonConfigSchema — tools', () => {
 	});
 });
 
+describe('AgentJsonConfigSchema — personalisation', () => {
+	it('accepts an icon with a persisted gradient', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			personalisation: {
+				icon: 'bot',
+				gradient: {
+					from: '#FF1500',
+					to: '#FF6900',
+				},
+			},
+		});
+
+		expect(result.success).toBe(true);
+		if (result.success) {
+			expect(result.data.personalisation).toEqual({
+				icon: 'bot',
+				gradient: {
+					from: '#FF1500',
+					to: '#FF6900',
+				},
+			});
+		}
+	});
+
+	it('adds the default gradient when only the icon is provided', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			personalisation: {
+				icon: 'mail',
+			},
+		});
+
+		expect(result.success).toBe(true);
+		if (result.success) {
+			expect(result.data.personalisation).toEqual({
+				icon: 'mail',
+				gradient: {
+					from: '#FF1500',
+					to: '#FF6900',
+				},
+			});
+		}
+	});
+
+	it('rejects invalid gradient colors', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			personalisation: {
+				icon: 'bot',
+				gradient: {
+					from: 'red',
+					to: '#FF6900',
+				},
+			},
+		});
+
+		expect(result.success).toBe(false);
+	});
+});
+
 describe('AgentJsonConfigSchema — config.promptCaching', () => {
 	it.each([true, false])('accepts promptCaching with enabled=%s', (enabled) => {
 		const result = AgentJsonConfigSchema.safeParse({

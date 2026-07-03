@@ -25,6 +25,16 @@ import { createAgentCredentialProvider } from './utils/agent-credential-provider
 import { markAgentDraftDirty } from './utils/agent-draft.utils';
 import { resolveUniqueSubAgents, type ResolvedSubAgentRef } from './utils/sub-agent-resolver';
 
+type AgentPersonalisation = NonNullable<AgentJsonConfig['personalisation']>;
+
+const DEFAULT_AGENT_PERSONALISATION = {
+	icon: 'bot',
+	gradient: {
+		from: '#FF1500',
+		to: '#FF6900',
+	},
+} as const satisfies AgentPersonalisation;
+
 @Service()
 export class AgentConfigService {
 	constructor(
@@ -108,8 +118,9 @@ export class AgentConfigService {
 		const accessibleCredentialIds = new Set(
 			(await credentialProvider.list()).map((credential) => credential.id),
 		);
+		const sanitizedBaseConfig = sanitizeAgentJsonConfig(config);
 		const sanitizedConfig = sanitizeUnknownAgentCredentials(
-			sanitizeAgentJsonConfig(config),
+			normalizePersonalisationInput(sanitizedBaseConfig, config, entity.schema ?? null),
 			accessibleCredentialIds,
 		);
 
@@ -132,6 +143,7 @@ export class AgentConfigService {
 
 		const previousIntegrations = entity.integrations ?? [];
 		const previousSchema = entity.schema ?? null;
+		const personalisation = resolvePersonalisationForSave(sanitizedConfig, previousSchema);
 
 		const integrationsProvided = result.config.integrations !== undefined;
 		const toolsProvided = result.config.tools !== undefined;
@@ -153,6 +165,7 @@ export class AgentConfigService {
 			name: decomposedSchema.name,
 			model: decomposedSchema.model,
 			instructions: decomposedSchema.instructions,
+			personalisation,
 			...(credentialProvided ? { credential: decomposedSchema.credential } : {}),
 			...(memoryProvided ? { memory: decomposedSchema.memory } : {}),
 			...(subAgentsProvided ? { subAgents: decomposedSchema.subAgents } : {}),
@@ -304,6 +317,70 @@ export class AgentConfigService {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+const HEX_COLOR_REGEX = /^#[0-9A-Fa-f]{6}$/;
+
+function isPersonalisationGradient(value: unknown): value is AgentPersonalisation['gradient'] {
+	return (
+		isRecord(value) &&
+		typeof value.from === 'string' &&
+		HEX_COLOR_REGEX.test(value.from) &&
+		typeof value.to === 'string' &&
+		HEX_COLOR_REGEX.test(value.to)
+	);
+}
+
+function extractPersonalisation(value: unknown): Partial<AgentPersonalisation> | undefined {
+	if (!isRecord(value) || !isRecord(value.personalisation)) return undefined;
+
+	const personalisation = value.personalisation;
+	const icon = typeof personalisation.icon === 'string' ? personalisation.icon.trim() : undefined;
+	const gradient = isPersonalisationGradient(personalisation.gradient)
+		? personalisation.gradient
+		: undefined;
+
+	return {
+		...(icon ? { icon } : {}),
+		...(gradient ? { gradient: { ...gradient } } : {}),
+	};
+}
+
+function resolvePersonalisationForSave(
+	config: unknown,
+	previousSchema: AgentJsonConfig | null,
+): AgentPersonalisation {
+	const incoming = extractPersonalisation(config);
+	const previous = previousSchema?.personalisation;
+	const fallback = DEFAULT_AGENT_PERSONALISATION;
+	const gradient = previous?.gradient ?? incoming?.gradient ?? fallback.gradient;
+
+	return {
+		icon: incoming?.icon ?? previous?.icon ?? fallback.icon,
+		gradient: { ...gradient },
+	};
+}
+
+function normalizePersonalisationInput(
+	config: unknown,
+	rawConfig: unknown,
+	previousSchema: AgentJsonConfig | null,
+): unknown {
+	if (!isRecord(config)) return config;
+
+	const incoming = extractPersonalisation(rawConfig) ?? extractPersonalisation(config);
+	if (!incoming) return config;
+
+	return {
+		...config,
+		personalisation: {
+			icon:
+				incoming.icon ??
+				previousSchema?.personalisation?.icon ??
+				DEFAULT_AGENT_PERSONALISATION.icon,
+			gradient: resolvePersonalisationForSave(rawConfig, previousSchema).gradient,
+		},
+	};
 }
 
 function hasNodeToolInputSchema(raw: unknown): boolean {

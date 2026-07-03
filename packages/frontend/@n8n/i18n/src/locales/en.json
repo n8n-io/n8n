@@ -6712,6 +6712,7 @@
 	"agents.builder.agent.description": "Core setup that defines how this agent behaves",
 	"agents.builder.agent.name.label": "Name",
 	"agents.builder.agent.name.placeholder": "My agent",
+	"agents.builder.agent.personalisation.change": "Change agent icon",
 	"agents.builder.agent.model.label": "Model",
 	"agents.builder.agent.instructions.label": "Instructions",
 	"agents.builder.agent.instructions.placeholder": "Enter instructions here",

@@ -263,6 +263,73 @@ describe('AgentConfigService', () => {
 			expect(savedConfig.mcpServers?.[0].credential).toBe('');
 		});
 
+		it('persists icon changes while keeping the existing agent gradient fixed', async () => {
+			const { service, agentRepository } = makeService();
+			const agent = makeAgent({
+				schema: {
+					...baseConfig,
+					personalisation: {
+						icon: 'bot',
+						gradient: {
+							from: '#111111',
+							to: '#222222',
+						},
+					},
+				},
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
+
+			await service.updateConfig(agentId, projectId, {
+				...baseConfig,
+				personalisation: {
+					icon: 'mail',
+					gradient: {
+						from: '#333333',
+						to: '#444444',
+					},
+				},
+			});
+
+			const saved = agentRepository.save.mock.calls[0][0] as Agent;
+			expect(saved.schema?.personalisation).toEqual({
+				icon: 'mail',
+				gradient: {
+					from: '#111111',
+					to: '#222222',
+				},
+			});
+		});
+
+		it('adds the default personalisation gradient when a saved agent does not have one yet', async () => {
+			const { service, agentRepository } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(
+				makeAgent({
+					schema: {
+						...baseConfig,
+						personalisation: {
+							icon: 'bot',
+						},
+					} as unknown as AgentJsonConfig,
+				}),
+			);
+
+			await service.updateConfig(agentId, projectId, {
+				...baseConfig,
+				personalisation: {
+					icon: 'mail',
+				},
+			} as unknown as AgentJsonConfig);
+
+			const saved = agentRepository.save.mock.calls[0][0] as Agent;
+			expect(saved.schema?.personalisation).toEqual({
+				icon: 'mail',
+				gradient: {
+					from: '#FF1500',
+					to: '#FF6900',
+				},
+			});
+		});
+
 		it('stores only existing published subagents and rejects invalid subagent refs', async () => {
 			const { service, agentRepository } = makeService();
 			const agent = makeAgent();

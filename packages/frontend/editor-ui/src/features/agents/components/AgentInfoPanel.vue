@@ -39,12 +39,14 @@ const props = withDefaults(
 		projectId?: string;
 		showModel?: boolean;
 		showInstructions?: boolean;
+		showInstructionsToolbar?: boolean;
 	}>(),
 	{
 		disabled: false,
 		embedded: false,
 		showModel: true,
 		showInstructions: true,
+		showInstructionsToolbar: false,
 	},
 );
 const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] }>();
@@ -102,6 +104,13 @@ const panelTestId = computed(() => {
 	if (!props.showModel && props.showInstructions) return 'agent-instructions-panel';
 	return 'agent-info-panel';
 });
+
+const instructionsToolbarMode = computed(() =>
+	props.showInstructionsToolbar ? 'always' : 'never',
+);
+const instructionsEditorVariant = computed(() =>
+	props.showInstructionsToolbar ? 'contained' : 'ghost',
+);
 
 function onModelChange(selection: AgentModelSelection) {
 	const credentialId = credentialsByProvider.value?.[selection.provider];
@@ -193,8 +202,8 @@ function onInstructionsInput(value: string) {
 				:model-value="instructions"
 				:readonly="props.disabled"
 				:placeholder="i18n.baseText('agents.builder.agent.instructions.placeholder')"
-				variant="ghost"
-				show-toolbar="never"
+				:variant="instructionsEditorVariant"
+				:show-toolbar="instructionsToolbarMode"
 				max-height="none"
 				data-testid="agent-instructions-document"
 				@update:model-value="onInstructionsInput"

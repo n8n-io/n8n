@@ -77,7 +77,10 @@ vi.mock('../components/AgentModelSelector.vue', () => ({
 	},
 }));
 
-function mountPanel(instructions: string | null = '# Role\nHelp users.') {
+function mountPanel(
+	instructions: string | null = '# Role\nHelp users.',
+	overrides: Partial<{ showInstructionsToolbar: boolean }> = {},
+) {
 	return mount(AgentInfoPanel, {
 		props: {
 			config: {
@@ -89,6 +92,7 @@ function mountPanel(instructions: string | null = '# Role\nHelp users.') {
 			projectId: 'project-1',
 			showModel: false,
 			embedded: true,
+			...overrides,
 		},
 	});
 }
@@ -111,6 +115,16 @@ describe('AgentInfoPanel', () => {
 		});
 		expect(wrapper.find('[data-testid="agent-instructions-document"]').exists()).toBe(true);
 		expect(wrapper.text()).not.toContain('characters');
+	});
+
+	it('can show the markdown toolbar above instructions', () => {
+		const wrapper = mountPanel('# Role\nHelp users.', { showInstructionsToolbar: true });
+
+		const editor = wrapper.findComponent({ name: 'N8nMarkdownEditor' });
+		expect(editor.props()).toMatchObject({
+			showToolbar: 'always',
+			variant: 'contained',
+		});
 	});
 
 	it('keeps the instructions placeholder available when instructions are empty', () => {

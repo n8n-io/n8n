@@ -78,7 +78,7 @@ vi.mock('../components/AgentInfoPanel.vue', () => ({
 		name: 'AgentInfoPanel',
 		template:
 			'<div><div v-if="showModel !== false" data-testid="agent-model-panel" /><div v-if="showInstructions !== false" data-testid="agent-instructions-panel" /></div>',
-		props: ['showModel', 'showInstructions'],
+		props: ['showModel', 'showInstructions', 'showInstructionsToolbar'],
 	},
 }));
 
@@ -180,7 +180,7 @@ async function mountColumn(
 					name: 'AgentInfoPanel',
 					template:
 						'<div><div v-if="showModel !== false" data-testid="agent-model-panel" /><div v-if="showInstructions !== false" data-testid="agent-instructions-panel" /></div>',
-					props: ['showModel', 'showInstructions'],
+					props: ['showModel', 'showInstructions', 'showInstructionsToolbar'],
 				},
 				AgentPanelHeader: true,
 				AgentAdvancedPanel: true,
@@ -396,5 +396,16 @@ describe('AgentBuilderEditorColumn', () => {
 			capabilities.element.compareDocumentPosition(instructions.element) &
 				Node.DOCUMENT_POSITION_FOLLOWING,
 		).toBeTruthy();
+	});
+
+	it('shows the instructions toolbar in the main Agent tab', async () => {
+		const wrapper = await mountColumn({ knowledgeBaseEnabled: false });
+		await flushPromises();
+
+		const instructionsPanel = wrapper
+			.findAllComponents({ name: 'AgentInfoPanel' })
+			.find((panel) => panel.props('showModel') === false);
+
+		expect(instructionsPanel?.props('showInstructionsToolbar')).toBe(true);
 	});
 });

@@ -138,6 +138,7 @@ const i18n = useI18n();
 						:disabled="childrenDisabled"
 						:project-id="projectId"
 						:show-model="false"
+						:show-instructions-toolbar="true"
 						embedded
 						@update:config="emit('update:config', $event)"
 					/>
