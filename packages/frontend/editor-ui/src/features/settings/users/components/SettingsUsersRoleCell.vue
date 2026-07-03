@@ -53,6 +53,8 @@ const canChangeRole = computed(() =>
 	hasPermission(['rbac'], { rbac: { scope: 'user:changeRole' } }),
 );
 
+const canManageRoles = computed(() => hasPermission(['rbac'], { rbac: { scope: 'role:manage' } }));
+
 // Assignable instance roles (sorted, owner excluded).
 const assignableRoles = computed(() => rolesStore.processedInstanceRoles);
 const systemRoles = computed(() => assignableRoles.value.filter((role) => role.systemRole));
@@ -110,12 +112,12 @@ const onLegacyActionSelect = (role: string) => {
 	<!-- New design (custom instance roles feature) -->
 	<div v-if="customInstanceRolesEnabled" :class="$style.flagBranch">
 		<RoleSelectDropdown
-			v-if="isEditable"
+			v-if="isEditable && canChangeRole"
 			:system-roles="systemRoles"
 			:custom-roles="customRoles"
 			:current-role="currentRole"
 			:has-custom-roles-license="hasCustomRolesLicense"
-			:is-admin-or-owner="canChangeRole"
+			:can-manage-roles="canManageRoles"
 			:add-custom-role-route-name="VIEWS.INSTANCE_NEW_ROLE"
 			:loading="loading"
 			:permission-count-fn="permissionCountFor"
@@ -134,7 +136,7 @@ const onLegacyActionSelect = (role: string) => {
 	<!-- Legacy design -->
 	<div v-else>
 		<N8nActionDropdown
-			v-if="isEditable"
+			v-if="isEditable && canChangeRole"
 			placement="bottom-start"
 			:items="legacyRoleActions"
 			:disabled="loading"

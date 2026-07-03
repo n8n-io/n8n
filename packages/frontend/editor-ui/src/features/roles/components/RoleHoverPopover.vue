@@ -42,9 +42,8 @@ const settingsStore = useSettingsStore();
 
 const upgradeModalVisible = ref(false);
 
-const canEditRole = computed(
-	() => hasPermission(['rbac'], { rbac: { scope: 'role:manage' } }) && !props.role.systemRole,
-);
+const canManageRoles = computed(() => hasPermission(['rbac'], { rbac: { scope: 'role:manage' } }));
+const canEditRole = computed(() => canManageRoles.value && !props.role.systemRole);
 
 // Count only UI-visible scopes (exclude implicit :list, :execute, :listProject)
 const resolvedPermissionCount = computed(
@@ -109,6 +108,7 @@ const onButtonClick = () => {
 					variant="outline"
 					size="small"
 					:class="$style.actionButton"
+					:disabled="!canManageRoles"
 					@click="onButtonClick"
 				>
 					{{ buttonText }}

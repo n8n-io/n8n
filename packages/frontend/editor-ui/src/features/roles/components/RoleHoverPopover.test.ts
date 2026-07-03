@@ -81,7 +81,7 @@ describe('RoleHoverPopover', () => {
 		createTestingPinia();
 		settingsStore = mockedStore(useSettingsStore);
 		settingsStore.isCustomRolesFeatureEnabled = true;
-		vi.mocked(hasPermission).mockReturnValue(true);
+		vi.mocked(hasPermission).mockReturnValue(false);
 	});
 
 	describe('Rendering', () => {
@@ -120,7 +120,7 @@ describe('RoleHoverPopover', () => {
 	});
 
 	describe('Button text based on permissions', () => {
-		it('should show "View and edit role" when user has role:manage scope and role is custom', () => {
+		it('should show "View and edit role" when user has role:manage and role is custom', () => {
 			vi.mocked(hasPermission).mockReturnValue(true);
 
 			const { getByText } = renderComponent({
@@ -130,7 +130,7 @@ describe('RoleHoverPopover', () => {
 			expect(getByText('View and edit role')).toBeInTheDocument();
 		});
 
-		it('should show "View role" when user lacks role:manage scope', () => {
+		it('should show "View role" when user lacks role:manage', () => {
 			vi.mocked(hasPermission).mockReturnValue(false);
 
 			const { getByText } = renderComponent({
@@ -140,7 +140,27 @@ describe('RoleHoverPopover', () => {
 			expect(getByText('View role')).toBeInTheDocument();
 		});
 
-		it('should show "View role" for system role even when user has role:manage scope', () => {
+		it('should disable the button when user lacks role:manage', () => {
+			vi.mocked(hasPermission).mockReturnValue(false);
+
+			const { getByRole } = renderComponent({
+				props: { role: mockCustomRole },
+			});
+
+			expect(getByRole('button', { name: /view role/i })).toBeDisabled();
+		});
+
+		it('should not disable the button when user has role:manage', () => {
+			vi.mocked(hasPermission).mockReturnValue(true);
+
+			const { getByRole } = renderComponent({
+				props: { role: mockCustomRole },
+			});
+
+			expect(getByRole('button', { name: /view and edit role/i })).not.toBeDisabled();
+		});
+
+		it('should show "View role" for system role even when user has role:manage', () => {
 			vi.mocked(hasPermission).mockReturnValue(true);
 
 			const { getByText } = renderComponent({
@@ -152,7 +172,7 @@ describe('RoleHoverPopover', () => {
 	});
 
 	describe('Button click behavior', () => {
-		it('should navigate to role settings when user has role:manage scope and role is custom', async () => {
+		it('should navigate to role settings when user has role:manage and role is custom', async () => {
 			vi.mocked(hasPermission).mockReturnValue(true);
 
 			const { getByText } = renderComponent({
@@ -168,7 +188,7 @@ describe('RoleHoverPopover', () => {
 			});
 		});
 
-		it('should navigate to view route when user lacks role:manage scope', async () => {
+		it('should navigate to view route when user lacks role:manage', async () => {
 			vi.mocked(hasPermission).mockReturnValue(false);
 
 			const { getByText } = renderComponent({
@@ -184,7 +204,7 @@ describe('RoleHoverPopover', () => {
 			});
 		});
 
-		it('should navigate to view route for system role even when user has role:manage scope', async () => {
+		it('should navigate to view route for system role even when user has role:manage', async () => {
 			vi.mocked(hasPermission).mockReturnValue(true);
 
 			const { getByText } = renderComponent({
