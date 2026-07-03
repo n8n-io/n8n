@@ -102,8 +102,9 @@ describe('Executor.claimAndSchedule', () => {
 		const { taskRepository, registry, timer, logger, executor } = setup();
 		const task = claimedTask();
 		registry.registeredTypes.mockReturnValue(['workflow:schedule-trigger']);
+		registry.resolve.mockReturnValue({ execute: vi.fn() });
 		taskRepository.claimDueTasks.mockResolvedValue([task] as unknown as ScheduledTaskEntity[]);
-		// Make fire reject at its first taskRepository call to exercise the detached-error path.
+		// Make fire reject at its markStarted call to exercise the detached-error path.
 		taskRepository.markStarted.mockRejectedValue(new Error('db down'));
 
 		await executor.claimAndSchedule(HOST);
@@ -122,11 +123,13 @@ describe('Executor.claimAndSchedule', () => {
 describe('Executor.fire', () => {
 	it('does not dispatch when the row is gone or reclaimed', async () => {
 		const { taskRepository, registry, executor } = setup();
+		const handler: TaskHandler = { execute: vi.fn() };
+		registry.resolve.mockReturnValue(handler);
 		taskRepository.markStarted.mockResolvedValue(0);
 
 		await executor.fire(HOST, claimedTask());
 
-		expect(registry.resolve).not.toHaveBeenCalled();
+		expect(handler.execute).not.toHaveBeenCalled();
 		expect(taskRepository.completeTask).not.toHaveBeenCalled();
 		expect(taskRepository.failTaskTerminal).not.toHaveBeenCalled();
 	});
@@ -258,12 +261,13 @@ describe('Executor.fire', () => {
 
 	it('releases the claim without counting an attempt when no handler resolves at fire time', async () => {
 		const { taskRepository, registry, logger, executor } = setup();
-		taskRepository.markStarted.mockResolvedValue(1);
 		registry.resolve.mockReturnValue(undefined);
 		const task = claimedTask({ taskType: 'gone', leaseEpoch: 7 });
 
 		await executor.fire(HOST, task);
 
+		// Resolved before markStarted, so a task with no handler is never marked started.
+		expect(taskRepository.markStarted).not.toHaveBeenCalled();
 		expect(taskRepository.releaseClaim).toHaveBeenCalledWith({
 			host: HOST,
 			id: task.id,
@@ -307,8 +311,9 @@ describe('Executor.stop', () => {
 		const { taskRepository, registry, timer, executor } = setup();
 		const task = claimedTask({ id: 'a' });
 		registry.registeredTypes.mockReturnValue(['workflow:schedule-trigger']);
+		registry.resolve.mockReturnValue({ execute: vi.fn().mockResolvedValue(undefined) });
 		taskRepository.claimDueTasks.mockResolvedValue([task] as unknown as ScheduledTaskEntity[]);
-		taskRepository.markStarted.mockResolvedValue(0); // fire is a benign no-op
+		taskRepository.markStarted.mockResolvedValue(1); // fire proceeds and completes
 
 		await executor.claimAndSchedule(HOST);
 		// Simulate the timer firing the task before shutdown.
@@ -318,6 +323,8 @@ describe('Executor.stop', () => {
 
 		await executor.stop();
 
+		// The task left the tracking map when it began firing, so stop() must not release
+		// it, and a successful fire completes without releasing either.
 		expect(taskRepository.releaseClaim).not.toHaveBeenCalled();
 	});
 });

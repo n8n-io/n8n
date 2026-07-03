@@ -7,6 +7,7 @@ import type {
 	ScheduledTask,
 	ScheduledTaskRepository,
 } from '@n8n/db';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 import { backoff } from './backoff';
 import type { PrecisionTimer } from './precision-timer';
@@ -41,7 +42,7 @@ export class Executor {
 	 * can release them on shutdown; dropped the instant a task's timer fires (then
 	 * in-flight, not ours to release).
 	 */
-	private readonly claimed = new Map<string, ClaimedEntry>();
+	private readonly claimedTaskById = new Map<string, ClaimedEntry>();
 
 	constructor(
 		private readonly taskRepository: ScheduledTaskRepository,
@@ -56,12 +57,26 @@ export class Executor {
 		// the timer, at the cost of holding its claim until then.
 		this.lookaheadMs = config.executorIntervalSeconds * Time.seconds.toMilliseconds;
 		this.batchSize = config.claimBatchSize;
+
+		// With the lookahead >= the lease, a claimed task's lease can expire before it
+		// fires, so once the reaper exists it would be reclaimed and retried. Safe (the
+		// guards catch it) but wasteful, so warn rather than silently degrade.
+		if (this.lookaheadMs >= this.leaseMs) {
+			this.logger.warn(
+				'Scheduler executorInterval >= leaseDuration: a claimed task may lose its lease before firing; set executorInterval below leaseDuration',
+				{
+					executorIntervalSeconds: config.executorIntervalSeconds,
+					leaseDurationSeconds: config.leaseDurationSeconds,
+				},
+			);
+		}
 	}
 
 	/**
 	 * One tick: claim the due tasks this instance can run and schedule each to fire at
 	 * its `runAt`. Returns the claimed tasks (for tests/observability). Only the claim
-	 * is atomic; the per-row scheduling and any release are independent writes.
+	 * is atomic; the per-row scheduling and any release are deliberately separate
+	 * writes (a failed one is recovered by the reaper), not one enclosing transaction.
 	 */
 	async claimAndSchedule(host: string): Promise<ClaimedTask[]> {
 		const taskTypes = this.registry.registeredTypes();
@@ -84,26 +99,30 @@ export class Executor {
 				await this.releaseUnmappableRow(host, row, error);
 				continue;
 			}
-
 			tasks.push(task);
-			// Track before scheduling so a shutdown before it fires still releases it.
-			this.claimed.set(task.id, { host, task });
-			this.timer.schedule(task.runAt, () => {
-				// Drop before firing: once firing it's in-flight, not stop()'s to release.
-				this.claimed.delete(task.id);
-				// Detached from the timer: swallow a mid-fire rejection so it isn't an
-				// unhandled rejection. The row stays `running` for the reaper.
-				this.fire(host, task).catch((error) => {
-					this.logger.error('Scheduler executor failed to fire task', {
-						taskId: task.id,
-						taskType: task.taskType,
-						error,
-					});
-				});
-			});
+			this.scheduleClaimed(host, task);
 		}
 
 		return tasks;
+	}
+
+	/** Track a claimed task and schedule its timer to fire at `runAt`. */
+	private scheduleClaimed(host: string, task: ClaimedTask): void {
+		// Track before scheduling so a shutdown before it fires still releases it.
+		this.claimedTaskById.set(task.id, { host, task });
+		this.timer.schedule(task.runAt, () => {
+			// Drop before firing: once firing it's in-flight, not stop()'s to release.
+			this.claimedTaskById.delete(task.id);
+			// Detached from the timer: swallow a mid-fire rejection so it isn't an
+			// unhandled rejection. The row stays `running` for the reaper.
+			this.fire(host, task).catch((error) => {
+				this.logger.error('Scheduler executor failed to fire task', {
+					taskId: task.id,
+					taskType: task.taskType,
+					error,
+				});
+			});
+		});
 	}
 
 	/**
@@ -113,23 +132,25 @@ export class Executor {
 	 */
 	async fire(host: string, task: ClaimedTask): Promise<void> {
 		const claim: ClaimRef = { host, id: task.id, claimedEpoch: task.leaseEpoch };
-		// Guard + set `startedAt` in one write. 0 rows => deleted or reclaimed; don't
-		// dispatch an execution for work that is gone or no longer ours.
-		const started = await this.taskRepository.markStarted(claim);
-		if (started === 0) return;
 
+		// Resolve the handler before marking the task started: don't mark a task started
+		// we can't run, and skip the write on the missing-handler path. The claim is
+		// scoped to registered types, so this normally resolves; if the handler went away
+		// (e.g. a rolling restart), release without counting an attempt so it isn't lost.
 		const handler = this.registry.resolve(task.taskType);
-		// The claim is scoped to registered types, so this normally resolves. If the
-		// handler went away (e.g. a rolling restart), release without counting an attempt
-		// so the occurrence isn't lost.
 		if (handler === undefined) {
 			this.logger.warn('Scheduler executor found no handler for claimed task; releasing it', {
 				taskId: task.id,
 				taskType: task.taskType,
 			});
-			await this.taskRepository.releaseClaim(claim);
+			await this.releaseClaimBestEffort(claim);
 			return;
 		}
+
+		// Guard + set `startedAt` in one write. 0 rows => deleted or reclaimed; don't
+		// dispatch an execution for work that is gone or no longer ours.
+		const started = await this.taskRepository.markStarted(claim);
+		if (started === 0) return;
 
 		// Record success only after the try, so a failure to record it isn't taken for a
 		// handler failure. Such a failure propagates out (caught by the detached `.catch`
@@ -137,7 +158,7 @@ export class Executor {
 		try {
 			await handler.execute(task);
 		} catch (error) {
-			const message = error instanceof Error ? error.message : String(error);
+			const message = ensureError(error).message;
 			const nextAttempts = task.attempts + 1;
 			if (nextAttempts >= task.maxAttempts) {
 				await this.taskRepository.failTaskTerminal(claim, message);
@@ -152,8 +173,7 @@ export class Executor {
 
 	/**
 	 * A corrupt claimed row must not abort scheduling for the rest of the batch.
-	 * Release it (best effort) so it returns to pending rather than staying stranded
-	 * `running` until the reaper.
+	 * Release it so it returns to pending rather than staying stranded `running`.
 	 */
 	private async releaseUnmappableRow(
 		host: string,
@@ -164,10 +184,18 @@ export class Executor {
 			taskId: row.id,
 			error,
 		});
+		await this.releaseClaimBestEffort({ host, id: row.id, claimedEpoch: row.leaseEpoch });
+	}
+
+	/** Release a claim, logging but swallowing failures: the reaper still recovers the row. */
+	private async releaseClaimBestEffort(claim: ClaimRef): Promise<void> {
 		try {
-			await this.taskRepository.releaseClaim({ host, id: row.id, claimedEpoch: row.leaseEpoch });
-		} catch {
-			// Best effort: the reaper still recovers the row if the release fails.
+			await this.taskRepository.releaseClaim(claim);
+		} catch (error) {
+			this.logger.error('Scheduler executor failed to release claim', {
+				taskId: claim.id,
+				error,
+			});
 		}
 	}
 
@@ -183,7 +211,7 @@ export class Executor {
 	async stop(): Promise<void> {
 		this.timer.cancelAll();
 
-		const entries = [...this.claimed.values()];
+		const entries = [...this.claimedTaskById.values()];
 		const results = await Promise.allSettled(
 			entries.map(
 				async ({ host, task }) =>
@@ -203,6 +231,6 @@ export class Executor {
 				});
 			}
 		});
-		this.claimed.clear();
+		this.claimedTaskById.clear();
 	}
 }

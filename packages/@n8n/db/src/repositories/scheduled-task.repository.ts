@@ -200,6 +200,9 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 			errorMessage,
 			claimedBy: null,
 			leaseExpiresAt: null,
+			// The next attempt sets its own start; clear this one's so a pending row
+			// doesn't carry a stale `startedAt`.
+			startedAt: null,
 		});
 	}
 
@@ -215,6 +218,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 			status: ScheduledTaskStatus.Pending,
 			claimedBy: null,
 			leaseExpiresAt: null,
+			startedAt: null,
 		});
 	}
 
