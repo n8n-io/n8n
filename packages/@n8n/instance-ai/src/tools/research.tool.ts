@@ -97,7 +97,7 @@ async function handleWebSearch(
 
 	// ── Resume path: apply user's decision ─────────────────────────
 	if (resumeData !== undefined && resumeData !== null) {
-		const { proceed } = applyWebSearchAccessResume({
+		const { proceed } = await applyWebSearchAccessResume({
 			resumeData,
 			tracker: context.domainAccessTracker,
 			runId: context.runId,
@@ -164,7 +164,7 @@ async function handleFetchUrl(
 		} catch {
 			host = input.url;
 		}
-		const { proceed } = applyDomainAccessResume({
+		const { proceed } = await applyDomainAccessResume({
 			resumeData,
 			host,
 			tracker: context.domainAccessTracker,

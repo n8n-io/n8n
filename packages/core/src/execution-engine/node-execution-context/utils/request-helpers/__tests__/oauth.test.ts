@@ -144,6 +144,55 @@ describe('refreshOAuth2Token', () => {
 		);
 	});
 
+	test('should include resource when fetching a client credentials token', async () => {
+		mockThis.getCredentials.mockResolvedValue({
+			...mockCredentialData,
+			grantType: 'clientCredentials',
+			oauthTokenData: {
+				...mockCredentialData.oauthTokenData,
+				resource: 'https://mcp.example.com/',
+			},
+		});
+		nock(baseUrl)
+			.post('/token', {
+				client_id: 'test-client-id',
+				client_secret: 'test-client-secret',
+				grant_type: 'client_credentials',
+				scope: 'openid',
+				resource: 'https://mcp.example.com/',
+			})
+			.reply(200, {
+				access_token: 'new-token',
+				refresh_token: 'new-refresh-token',
+			});
+
+		const result = await refreshOAuth2Token.call(
+			mockThis,
+			'test-credentials-type',
+			mockNode,
+			mockAdditionalData,
+		);
+
+		expect(result).toEqual({
+			access_token: 'new-token',
+			refresh_token: 'new-refresh-token',
+		});
+		expect(
+			mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+		).toHaveBeenCalledWith(
+			mockNode.credentials!['test-credentials-type'],
+			'test-credentials-type',
+			expect.objectContaining({
+				oauthTokenData: expect.objectContaining({
+					access_token: 'new-token',
+					refresh_token: 'new-refresh-token',
+					resource: 'https://mcp.example.com/',
+				}),
+			}),
+			mockAdditionalData,
+		);
+	});
+
 	test('should refresh the OAuth2 token with authorization code grant type', async () => {
 		mockThis.getCredentials.mockResolvedValue(mockCredentialData);
 		nock(baseUrl)

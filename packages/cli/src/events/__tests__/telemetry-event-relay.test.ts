@@ -2025,9 +2025,11 @@ describe('TelemetryEventRelay', () => {
 			});
 		});
 
-		it('should track on `n8n-package-exported` event with entity counts', () => {
+		it('should track on `n8n-package-exported` event with entity counts only, not ids', () => {
 			const event: RelayEventMap['n8n-package-exported'] = {
 				user: { id: 'user123' },
+				workflowIds: ['wf1', 'wf2', 'wf3'],
+				projectIds: ['proj1'],
 				counts: {
 					workflows: 3,
 					folders: 1,

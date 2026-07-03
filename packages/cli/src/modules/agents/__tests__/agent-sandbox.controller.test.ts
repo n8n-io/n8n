@@ -26,10 +26,6 @@ describe('AgentSandboxController', () => {
 		});
 
 		expect(res.status).toHaveBeenCalledWith(202);
-		expect(agentKnowledgeService.warmSandbox).toHaveBeenCalledWith(
-			'agent-1',
-			'project-1',
-			'user-1',
-		);
+		expect(agentKnowledgeService.warmSandbox).toHaveBeenCalledWith('agent-1', 'project-1');
 	});
 });
