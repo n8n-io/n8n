@@ -530,14 +530,12 @@ export class AgentKnowledgeSandboxService {
 			undefined,
 			MIRROR_SYNC_TIMEOUT_SECONDS,
 		);
-		if (syncResult.exitCode === 0) {
-			this.mirrorManifestHashes.set(sandboxName, expectedHash);
-		} else {
-			this.logger.warn('Agent knowledge mirror sync failed', {
-				sandboxName,
-				exitCode: syncResult.exitCode,
-			});
+		if (syncResult.exitCode !== 0) {
+			throw new OperationalError(
+				`Agent knowledge mirror sync failed: exitCode=${syncResult.exitCode}; output=${sanitizeSandboxErrorDetail(extractCommandOutput(syncResult))}`,
+			);
 		}
+		this.mirrorManifestHashes.set(sandboxName, expectedHash);
 	}
 
 	/**

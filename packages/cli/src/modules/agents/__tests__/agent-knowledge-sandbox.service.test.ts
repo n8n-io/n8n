@@ -604,5 +604,31 @@ describe('AgentKnowledgeSandboxService', () => {
 			expect(searchCommand).toBeDefined();
 			expect(searchCommand).toContain(`cd '\\''${KNOWLEDGE_MIRROR_FILES_DIR}'\\''`);
 		});
+
+		it('fails the operation instead of returning stale results when the sync command errors', async () => {
+			const sandbox = makeSandbox('started');
+			sandbox.process.executeCommand.mockImplementation(async (command) =>
+				isMirrorSyncCommand(command)
+					? { exitCode: 1, artifacts: { stdout: '', stderr: 'disk full' } }
+					: { exitCode: 0, artifacts: { stdout: '', stderr: '' } },
+			);
+			getMock.mockResolvedValue(sandbox);
+			const agentFileRepository = mock<AgentFileRepository>();
+			agentFileRepository.findByAgentId.mockResolvedValue([makeMirrorFile('file-1', 'doc1.txt')]);
+			const agentRepository = makePublishedAgentRepository();
+			agentRepository.existsBy.mockResolvedValue(true);
+			const service = makeService(
+				{},
+				mock<Logger>(),
+				makeAiService(),
+				mock<InstanceSettings>({ instanceId }),
+				agentFileRepository,
+				agentRepository,
+			);
+
+			await expect(service.searchKnowledge(projectId, agentId, { pattern: 'foo' })).rejects.toThrow(
+				/Agent knowledge mirror sync failed/,
+			);
+		});
 	});
 });

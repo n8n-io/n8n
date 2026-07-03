@@ -3367,8 +3367,9 @@ describe('AgentRuntime — runtime JSON Schema input validation', () => {
 		) as Message;
 		const call = assistantMsg.content.find((c) => c.type === 'tool-call') as ContentToolCall;
 		expect(call.state).toBe('rejected');
-		expect(call.state === 'rejected' && call.error).toContain('Tool input is not valid JSON.');
-		expect(call.state === 'rejected' && call.error).toContain('Received: {bad json');
+		expect(call.state === 'rejected' && call.error).toContain(
+			'Tool input must be a valid JSON object string.',
+		);
 	});
 
 	it('surfaces stringified non-object tool input as a retryable tool error', async () => {

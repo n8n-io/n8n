@@ -77,14 +77,10 @@ export function normalizeToolInputForModel(value: unknown): ToolInputNormalizati
 				error: `Tool input must be a JSON object, got ${describeValue(parsed)}.`,
 			};
 		} catch {
-			// Show the model what actually arrived plus an imperative repair
-			// instruction. V8's own parse message is deliberately not included —
-			// its nested quoting reads as noise to the model.
-			const snippet = value.length > 200 ? `${value.slice(0, 200)}…` : value;
 			return {
 				ok: false,
 				input: {},
-				error: `Tool input is not valid JSON. Received: ${snippet} — resend the call with strict JSON arguments: double-quote every string value and JSON-escape backslashes ("\\\\[" for a literal "[").`,
+				error: 'Tool input must be a valid JSON object string.',
 			};
 		}
 	}
