@@ -6,5 +6,5 @@ export type RadioGroupItemProps = RekaRadioGroupItemProps & {
 };
 
 export type RadioGroupItemSlots = {
-	label(props: { label?: string; description?: string }): unknown;
+	label(props: Pick<RadioGroupItemProps, 'label' | 'description'>): unknown;
 };
