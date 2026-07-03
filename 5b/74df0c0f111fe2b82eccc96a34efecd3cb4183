@@ -18,7 +18,7 @@ packages/@n8n/permissions/src/roles/custom-role-scopes.ee.ts
   s_3a5561e9e0a545::t_264fd8e9d9c97f 33-34
   s_3a5561e9e0a545::t_b0ec21ef397e6b 125
   s_3a5561e9e0a545::t_4e9e0d1a4728be 141,143
-  h_435b1d7d3e52c0 1-32,35-109,114-122,127-140,142,145-151
+  h_435b1d7d3e52c0 1-32,35-122,127-140,142,145-151
 packages/@n8n/permissions/src/types.ee.ts
   h_435b1d7d3e52c0 41
 packages/@n8n/api-types/src/dto/roles/__tests__/create-role.dto.test.ts
