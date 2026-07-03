@@ -34,6 +34,14 @@ export interface MockQuirk {
 
 export const MOCK_QUIRKS: MockQuirk[] = [
 	{
+		service: 'Anthropic',
+		guidance:
+			'Anthropic Messages API (`POST /v1/messages`) → JSON `{ "id": "msg_01AbCd...", "type": "message", "role": "assistant", "model": "<from request>", "content": [{ "type": "text", "text": "<answer>" }], "stop_reason": "end_turn", "stop_sequence": null, "usage": { "input_tokens": 100, "output_tokens": 50 } }`. `content` MUST be an ARRAY of content-block objects — NEVER a plain string (the n8n node calls `response.content.filter(...)` and crashes on a string). When the request has `tools` and the scenario implies a tool call, use a `{ "type": "tool_use", "id": "toolu_01...", "name": "<tool>", "input": { ... } }` block and `stop_reason: "tool_use"`.',
+		rationale:
+			"The n8n Anthropic node filters response.content by block type; a string content field throws 'content.filter is not a function'. Observed as the residual mock_issue in eval run 28667058059 (daily-slack-summary/empty-channel).",
+		addedAt: '2026-07-03',
+	},
+	{
 		service: 'Notion',
 		guidance:
 			'Notion documents partial response variants (objects with only `{object, id}`) alongside full ones for many resources (pages, databases, blocks, users). ALWAYS return the FULL response object with all documented fields (`properties`, `parent`, `created_time`, schema, etc.) — never a partial form. Use a partial variant ONLY if the request body explicitly opts in (e.g. a `template` field for create-page). The `object` field must match the endpoint\'s resource type — GET `/v1/databases/{id}` returns `object: "database"`, not `"page"`.',
