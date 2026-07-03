@@ -11,7 +11,7 @@ on:
       - 'packages/frontend/@n8n/storybook/**'
       - 'packages/frontend/@n8n/chat/**'
       - 'packages/frontend/@n8n/design-system/**'
-      - '.github/workflows/test-visual-storybook.yml'
+      - '.github/workflows/release-storybook.yml'
 concurrency:
   group: storybook-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
