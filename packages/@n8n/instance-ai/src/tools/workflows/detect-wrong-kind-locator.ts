@@ -80,9 +80,7 @@ export function coerceWrongKindListModeParams(
 
 		// A bare string replacing an existing resource-locator param: wrap it,
 		// picking `name` mode when the value can't be a list/id value.
-		const existing = isRecord(node.parameters)
-			? (node.parameters as Record<string, unknown>)[prop.name]
-			: undefined;
+		const existing = isRecord(node.parameters) ? node.parameters[prop.name] : undefined;
 		if (
 			typeof incoming === 'string' &&
 			incoming.length > 0 &&

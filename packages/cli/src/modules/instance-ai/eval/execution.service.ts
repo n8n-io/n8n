@@ -531,7 +531,15 @@ export class EvalExecutionService {
 				pinDataNodeNames,
 			);
 
-			if (issues?.parameters && Object.keys(issues.parameters).length > 0) {
+			const parameterIssues = { ...(issues?.parameters ?? {}) };
+			// '__evalMockValue' marks a required param the patcher could only blind-fill — still a genuine config issue.
+			for (const [paramName, value] of Object.entries(node.parameters ?? {})) {
+				if (value === '__evalMockValue') {
+					parameterIssues[paramName] ??= [`Parameter "${paramName}" is required.`];
+				}
+			}
+
+			if (Object.keys(parameterIssues).length > 0) {
 				const entry = (nodeResults[node.name] ??= {
 					outputs: {},
 					outputCount: 0,
@@ -539,7 +547,7 @@ export class EvalExecutionService {
 					interceptedRequests: [],
 					executionMode: 'real',
 				});
-				entry.configIssues = issues.parameters;
+				entry.configIssues = parameterIssues;
 			}
 		}
 	}
