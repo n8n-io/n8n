@@ -116,14 +116,14 @@ function formatData(data: unknown): string {
 					<div v-if="props.toolCall.result !== undefined" :class="$style.dataSection">
 						<pre :class="$style.json">{{ formatData(props.toolCall.result) }}</pre>
 					</div>
-					<N8nCallout
-						v-if="props.toolCall.error !== undefined"
-						theme="danger"
-						:class="$style.toolErrorCallout"
-					>
-						{{ props.toolCall.error }}
-					</N8nCallout>
 				</template>
+				<N8nCallout
+					v-if="props.toolCall.error !== undefined"
+					theme="danger"
+					:class="$style.toolErrorCallout"
+				>
+					{{ props.toolCall.error }}
+				</N8nCallout>
 			</N8nAnimatedCollapsibleContent>
 		</CollapsibleRoot>
 		<N8nAiActivityStepButton

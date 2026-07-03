@@ -20,14 +20,21 @@ defineSlots<{
 	icon?: () => unknown;
 	default?: () => unknown;
 }>();
+
+function handleClick(event: MouseEvent) {
+	if (!props.interactive) {
+		event.preventDefault();
+		event.stopPropagation();
+	}
+}
 </script>
 
 <template>
 	<N8nButton
 		variant="ghost"
 		:size="props.size"
-		:disabled="!props.interactive"
 		:class="[$style.button, !props.interactive && $style.nonInteractive]"
+		@click="handleClick"
 	>
 		<slot name="prefix" />
 		<span :class="{ [$style.label]: true, [$style.shimmer]: props.loading }">
@@ -61,7 +68,6 @@ defineSlots<{
 	&.nonInteractive {
 		cursor: default;
 		opacity: 1;
-		pointer-events: none;
 
 		&:hover {
 			color: var(--text-color--subtler);
