@@ -1,6 +1,5 @@
 import type { Folder, User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { UserError } from 'n8n-workflow';
 
 import { FolderFinderService } from '@/services/folder-finder.service';
 
@@ -8,6 +7,7 @@ import { FolderSerializer } from './folder.serializer';
 import type { PackageWriter } from '../../io/package-writer';
 import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator';
 import type { ManifestEntry } from '../../spec/manifest.schema';
+import { assertAllRequestedEntitiesFound } from '../package-export.errors';
 
 export interface FolderExportRequest {
 	user: User;
@@ -39,7 +39,12 @@ export class FolderExporter {
 			['folder:read'],
 		);
 
-		this.assertAllRequestedFoldersFound(request.folderIds, folders);
+		await assertAllRequestedEntitiesFound(
+			'folder',
+			request.folderIds,
+			folders,
+			async (ids) => await this.folderFinder.findExistingFolderIds(ids),
+		);
 
 		const { roots, childrenByParent } = this.buildForest(folders);
 
@@ -121,27 +126,5 @@ export class FolderExporter {
 			if (byCreatedAt !== 0) return byCreatedAt;
 			return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
 		});
-	}
-
-	private assertAllRequestedFoldersFound(
-		requestedFolderIds: string[],
-		foundFolders: Array<{ id: string }>,
-	) {
-		const foundFolderIds = new Set(foundFolders.map(({ id }) => id));
-		const missingFolderIds = requestedFolderIds.filter((id) => !foundFolderIds.has(id));
-
-		if (missingFolderIds.length > 0) {
-			const displayedFolderIds = missingFolderIds.slice(0, 20);
-			const omittedCount = missingFolderIds.length - displayedFolderIds.length;
-
-			throw new UserError(
-				`${missingFolderIds.length} folder(s) not found or not accessible. Export aborted.`,
-				{
-					description: `Missing folder IDs: ${displayedFolderIds.join(', ')}${
-						omittedCount > 0 ? `, and ${omittedCount} more` : ''
-					}`,
-				},
-			);
-		}
 	}
 }

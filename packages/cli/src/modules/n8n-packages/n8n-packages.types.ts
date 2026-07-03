@@ -12,6 +12,8 @@ export type { WorkflowPublishingOutcome } from './entities/workflow/workflow-pub
 export type CredentialMatchingMode = 'id-only';
 export type CredentialMissingMode = 'must-preexist' | 'create-stub';
 
+export type PackageFailureReason = 'access-denied' | 'entity-not-found' | 'blocked' | 'validation';
+
 /* eslint-disable @typescript-eslint/naming-convention -- enum-like members for IDE documentation */
 export const WorkflowConflictPolicy = {
 	/** Updates existing workflows with matching sourceWorkflowId; otherwise creates a new workflow. */

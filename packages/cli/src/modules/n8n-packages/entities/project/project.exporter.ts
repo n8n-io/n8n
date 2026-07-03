@@ -1,13 +1,13 @@
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { UserError } from 'n8n-workflow';
+
+import { ProjectService } from '@/services/project.service.ee';
 
 import { ProjectSerializer } from './project.serializer';
 import type { PackageWriter } from '../../io/package-writer';
 import { UniqueFilenameAllocator } from '../../io/unique-filename-allocator';
 import type { ManifestEntry } from '../../spec/manifest.schema';
-
-import { ProjectService } from '@/services/project.service.ee';
+import { assertAllRequestedEntitiesFound } from '../package-export.errors';
 
 export interface ProjectExportRequest {
 	user: User;
@@ -33,7 +33,12 @@ export class ProjectExporter {
 			['project:export'],
 		);
 
-		this.assertAllRequestedProjectsFound(request.projectIds, projects);
+		await assertAllRequestedEntitiesFound(
+			'project',
+			request.projectIds,
+			projects,
+			async (ids) => await this.projectService.findExistingProjectIds(ids),
+		);
 
 		const entries: ManifestEntry[] = [];
 		const targets = new UniqueFilenameAllocator('projects', 'project');
@@ -53,27 +58,5 @@ export class ProjectExporter {
 		}
 
 		return { entries };
-	}
-
-	private assertAllRequestedProjectsFound(
-		requestedProjectIds: string[],
-		foundProjects: Array<{ id: string }>,
-	) {
-		const foundProjectIds = new Set(foundProjects.map(({ id }) => id));
-		const missingProjectIds = requestedProjectIds.filter((id) => !foundProjectIds.has(id));
-
-		if (missingProjectIds.length > 0) {
-			const displayedProjectIds = missingProjectIds.slice(0, 20);
-			const omittedCount = missingProjectIds.length - displayedProjectIds.length;
-
-			throw new UserError(
-				`${missingProjectIds.length} project(s) not found or not accessible. Export aborted.`,
-				{
-					description: `Missing project IDs: ${displayedProjectIds.join(', ')}${
-						omittedCount > 0 ? `, and ${omittedCount} more` : ''
-					}`,
-				},
-			);
-		}
 	}
 }

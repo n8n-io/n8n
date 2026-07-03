@@ -2,11 +2,15 @@ import type { Project, User } from '@n8n/db';
 import type { Readable } from 'node:stream';
 import { mock } from 'vitest-mock-extended';
 
+import type { ProjectService } from '@/services/project.service.ee';
+
 import type { PackageWriter } from '../../../io/package-writer';
+import {
+	PackageEntityAccessDeniedError,
+	PackageEntityNotFoundError,
+} from '../../package-export.errors';
 import { ProjectExporter } from '../project.exporter';
 import { ProjectSerializer } from '../project.serializer';
-
-import type { ProjectService } from '@/services/project.service.ee';
 
 const user = mock<User>({ id: 'user-1' });
 
@@ -54,6 +58,7 @@ function makeExporter({
 			return createdAtDiff !== 0 ? createdAtDiff : left.id.localeCompare(right.id);
 		});
 	});
+	projectService.findExistingProjectIds.mockResolvedValue(new Set());
 
 	const exporter = new ProjectExporter(projectService, new ProjectSerializer());
 	return { exporter, projectService };
@@ -82,6 +87,26 @@ describe('ProjectExporter', () => {
 		await expect(exporter.export({ user, projectIds: [project.id], writer })).rejects.toThrow(
 			'1 project(s) not found or not accessible. Export aborted.',
 		);
+	});
+
+	it('throws PackageEntityNotFoundError when the missing project does not exist at all', async () => {
+		const { exporter, projectService } = makeExporter({ projects: [] });
+		projectService.findExistingProjectIds.mockResolvedValue(new Set());
+		const writer = new CapturingWriter();
+
+		await expect(exporter.export({ user, projectIds: ['missing'], writer })).rejects.toBeInstanceOf(
+			PackageEntityNotFoundError,
+		);
+	});
+
+	it('throws PackageEntityAccessDeniedError when the missing project exists but is inaccessible', async () => {
+		const { exporter, projectService } = makeExporter({ projects: [] });
+		projectService.findExistingProjectIds.mockResolvedValue(new Set(['denied-1']));
+		const writer = new CapturingWriter();
+
+		await expect(
+			exporter.export({ user, projectIds: ['denied-1'], writer }),
+		).rejects.toBeInstanceOf(PackageEntityAccessDeniedError);
 	});
 
 	it('exports an empty team project with project.json only', async () => {

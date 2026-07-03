@@ -12,6 +12,10 @@ import { Container } from '@n8n/di';
 
 import { createMember, createOwner } from '@test-integration/db/users';
 
+import {
+	PackageEntityAccessDeniedError,
+	PackageEntityNotFoundError,
+} from '../entities/package-export.errors';
 import { N8nPackagesService } from '../n8n-packages.service';
 import { FORMAT_VERSION } from '../spec/constants';
 import { readExport } from './utils/tar-support';
@@ -139,12 +143,15 @@ describe('workflow package export', () => {
 			const project = await createTeamProject('Project A', owner);
 			const wf = await createWorkflow({ name: 'Alpha', nodes: [], connections: {} }, project);
 
-			await expect(
-				service.exportPackage({
-					user: owner,
-					workflowIds: [wf.id, 'missing-1', 'missing-2'],
-				}),
-			).rejects.toThrow('2 workflow(s) not found or not accessible. Export aborted.');
+			const exportPromise = service.exportPackage({
+				user: owner,
+				workflowIds: [wf.id, 'missing-1', 'missing-2'],
+			});
+			await expect(exportPromise).rejects.toThrow(
+				'2 workflow(s) not found or not accessible. Export aborted.',
+			);
+			// Genuinely nonexistent ids classify as entity-not-found for the audit event.
+			await expect(exportPromise).rejects.toBeInstanceOf(PackageEntityNotFoundError);
 		});
 
 		it('denies a caller with no access', async () => {
@@ -158,9 +165,16 @@ describe('workflow package export', () => {
 			);
 			const outsider = await createMember();
 
-			await expect(
-				service.exportPackage({ user: outsider, workflowIds: [ownerWorkflow.id] }),
-			).rejects.toThrow('1 workflow(s) not found or not accessible. Export aborted.');
+			const exportPromise = service.exportPackage({
+				user: outsider,
+				workflowIds: [ownerWorkflow.id],
+			});
+			await expect(exportPromise).rejects.toThrow(
+				'1 workflow(s) not found or not accessible. Export aborted.',
+			);
+			// The workflow exists, just inaccessible — classifies as access-denied
+			// for the audit event, even though the response message is identical.
+			await expect(exportPromise).rejects.toBeInstanceOf(PackageEntityAccessDeniedError);
 		});
 
 		it('fails the whole batch and only names the inaccessible ids when mixed with accessible ones', async () => {

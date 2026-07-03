@@ -22,6 +22,16 @@ export class FolderFinderService {
 		private readonly roleService: RoleService,
 	) {}
 
+	// Unscoped — ignores access entirely. Never use this to decide what to show or do on behalf of a caller.
+	async findExistingFolderIds(folderIds: string[]): Promise<Set<string>> {
+		if (folderIds.length === 0) return new Set();
+		const folders = await this.folderRepository.find({
+			select: { id: true },
+			where: { id: In(folderIds) },
+		});
+		return new Set(folders.map(({ id }) => id));
+	}
+
 	async findFoldersByIdsForUser(
 		folderIds: string[],
 		user: User,

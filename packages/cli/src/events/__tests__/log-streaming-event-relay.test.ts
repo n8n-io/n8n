@@ -163,6 +163,94 @@ describe('LogStreamingEventRelay', () => {
 			});
 		});
 
+		it('should log on `n8n-package-export-failed` event', () => {
+			const event: RelayEventMap['n8n-package-export-failed'] = {
+				user: {
+					id: 'user-export',
+					email: 'exporter@example.com',
+					firstName: 'Export',
+					lastName: 'User',
+					role: { slug: 'global:admin' },
+				},
+				reason: 'access-denied',
+				workflowIds: ['wf-stilton'],
+			};
+
+			eventService.emit('n8n-package-export-failed', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.n8n-package.export.failed',
+				payload: {
+					userId: 'user-export',
+					_email: 'exporter@example.com',
+					_firstName: 'Export',
+					_lastName: 'User',
+					globalRole: 'global:admin',
+					operation: 'export',
+					reason: 'access-denied',
+					workflowIds: ['wf-stilton'],
+				},
+			});
+		});
+
+		it('omits empty id arrays from the `n8n-package-export-failed` audit payload', () => {
+			const event: RelayEventMap['n8n-package-export-failed'] = {
+				user: {
+					id: 'user-export',
+					email: 'exporter@example.com',
+					firstName: 'Export',
+					lastName: 'User',
+					role: { slug: 'global:admin' },
+				},
+				reason: 'validation',
+			};
+
+			eventService.emit('n8n-package-export-failed', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.n8n-package.export.failed',
+				payload: {
+					userId: 'user-export',
+					_email: 'exporter@example.com',
+					_firstName: 'Export',
+					_lastName: 'User',
+					globalRole: 'global:admin',
+					operation: 'export',
+					reason: 'validation',
+				},
+			});
+		});
+
+		it('should log on `n8n-package-import-failed` event', () => {
+			const event: RelayEventMap['n8n-package-import-failed'] = {
+				user: {
+					id: 'user-import',
+					email: 'importer@example.com',
+					firstName: 'Import',
+					lastName: 'User',
+					role: { slug: 'global:admin' },
+				},
+				reason: 'access-denied',
+				projectId: 'proj-brie',
+			};
+
+			eventService.emit('n8n-package-import-failed', event);
+
+			expect(eventBus.sendAuditEvent).toHaveBeenCalledWith({
+				eventName: 'n8n.audit.n8n-package.import.failed',
+				payload: {
+					userId: 'user-import',
+					_email: 'importer@example.com',
+					_firstName: 'Import',
+					_lastName: 'User',
+					globalRole: 'global:admin',
+					operation: 'import',
+					reason: 'access-denied',
+					projectId: 'proj-brie',
+				},
+			});
+		});
+
 		it('should log on `workflow-archived` event', () => {
 			const event: RelayEventMap['workflow-archived'] = {
 				user: {

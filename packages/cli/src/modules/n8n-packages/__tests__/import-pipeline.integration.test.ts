@@ -21,6 +21,9 @@ import { Container } from '@n8n/di';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialTypes } from '@/credential-types';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { affixRoleToSaveCredential, saveCredential } from '@test-integration/db/credentials';
@@ -917,16 +920,15 @@ describe('ImportPipeline workflow conflict policy', () => {
 		const workflowRepo = Container.get(WorkflowRepository);
 		const workflowsBefore = await workflowRepo.count();
 
-		await expect(
-			importPackage({
-				user: owner,
-				packageBuffer: await buildImportPackageBuffer([
-					serializedWorkflow({ id: 'wf-existing', name: 'Conflicting workflow' }),
-					serializedWorkflow({ id: 'wf-fresh', name: 'Fresh workflow' }),
-				]),
-				workflowConflictPolicy: WorkflowConflictPolicy.Fail,
-			}),
-		).rejects.toMatchObject({
+		const importPromise = importPackage({
+			user: owner,
+			packageBuffer: await buildImportPackageBuffer([
+				serializedWorkflow({ id: 'wf-existing', name: 'Conflicting workflow' }),
+				serializedWorkflow({ id: 'wf-fresh', name: 'Fresh workflow' }),
+			]),
+			workflowConflictPolicy: WorkflowConflictPolicy.Fail,
+		});
+		await expect(importPromise).rejects.toMatchObject({
 			message: expect.stringContaining('Import blocked'),
 			meta: {
 				issues: [
@@ -939,6 +941,8 @@ describe('ImportPipeline workflow conflict policy', () => {
 				],
 			},
 		});
+		// A workflow-conflict issue classifies as blocked for the audit event.
+		await expect(importPromise).rejects.toBeInstanceOf(ConflictError);
 
 		expect(await workflowRepo.count()).toBe(workflowsBefore);
 	});
@@ -1027,13 +1031,14 @@ describe('ImportPipeline rejection cases', () => {
 	it('rejects when the requested projectId does not exist', async () => {
 		const owner = await createOwner();
 
-		await expect(
-			importPackage({
-				user: owner,
-				projectId: 'does-not-exist',
-				packageBuffer: await singleWorkflowPackage(),
-			}),
-		).rejects.toThrow(/Project not found/i);
+		const importPromise = importPackage({
+			user: owner,
+			projectId: 'does-not-exist',
+			packageBuffer: await singleWorkflowPackage(),
+		});
+		await expect(importPromise).rejects.toThrow(/Project not found/i);
+		// Genuinely nonexistent target project classifies as entity-not-found for the audit event.
+		await expect(importPromise).rejects.toBeInstanceOf(NotFoundError);
 	});
 
 	it('rejects when the user lacks workflow:import on the target project', async () => {
@@ -1041,13 +1046,15 @@ describe('ImportPipeline rejection cases', () => {
 		const teamProject = await createTeamProject('Owner-Only Project', owner);
 		const outsider = await createMember();
 
-		await expect(
-			importPackage({
-				user: outsider,
-				projectId: teamProject.id,
-				packageBuffer: await singleWorkflowPackage(),
-			}),
-		).rejects.toThrow();
+		const importPromise = importPackage({
+			user: outsider,
+			projectId: teamProject.id,
+			packageBuffer: await singleWorkflowPackage(),
+		});
+		await expect(importPromise).rejects.toThrow();
+		// The target project exists, just inaccessible — classifies as
+		// access-denied for the audit event.
+		await expect(importPromise).rejects.toBeInstanceOf(ForbiddenError);
 	});
 
 	it('rejects when the requested folder is not in the target project', async () => {
