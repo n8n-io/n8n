@@ -363,6 +363,109 @@ describe('InstanceAiController', () => {
 			expect(runSyncFrame).toContain('"planItems"');
 		});
 
+		it('should replay events that arrive while bootstrap snapshot fetches are in flight', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			instanceAiService.getThreadStatus.mockReturnValue({
+				hasActiveRun: true,
+				isSuspended: false,
+				backgroundTasks: [],
+			} as never);
+			instanceAiService.getMessageGroupId.mockReturnValue('mg-1');
+			instanceAiService.getRunIdsForMessageGroup.mockReturnValue(['run-1']);
+			eventBus.getEventsForRuns.mockReturnValue([]);
+			eventBus.getEventsAfter.mockReturnValue([]);
+
+			let subscribeHandler: ((stored: { id: number; event: unknown }) => void) | undefined;
+			eventBus.subscribe.mockImplementation((_threadId, handler) => {
+				subscribeHandler = handler as typeof subscribeHandler;
+				return vi.fn();
+			});
+
+			// While the persisted snapshot is being fetched, a relayed event arrives:
+			// the early subscription keeps it flowing into the store, and the replay
+			// after the await must pick it up exactly once.
+			const midAwaitEvent = {
+				id: 7,
+				event: { type: 'run-finish', runId: 'run-1', agentId: 'a1', payload: {} },
+			};
+			memoryService.getLatestRunSnapshot.mockImplementation(async () => {
+				subscribeHandler!(midAwaitEvent);
+				eventBus.getEventsAfter.mockReturnValue([midAwaitEvent] as never);
+				return undefined;
+			});
+
+			const sseRes = mock<Response & { flush?: () => void }>({
+				setHeader: vi.fn(),
+				flushHeaders: vi.fn(),
+				write: vi.fn(),
+				end: vi.fn(),
+				flush: vi.fn(),
+			});
+			const sseReq = mock<AuthenticatedRequest>({
+				user: { id: USER_ID },
+				headers: {},
+				once: vi.fn(),
+			});
+
+			await controller.events(sseReq, sseRes, THREAD_ID, { lastEventId: undefined } as never);
+
+			// Subscription must be registered before the async bootstrap starts, so
+			// sibling mains keep relaying events for this thread during the awaits.
+			expect(eventBus.subscribe.mock.invocationCallOrder[0]).toBeLessThan(
+				memoryService.getLatestRunSnapshot.mock.invocationCallOrder[0],
+			);
+
+			const eventFrames = (sseRes.write as Mock).mock.calls
+				.map(([frame]) => String(frame))
+				.filter((frame) => frame.includes('run-finish'));
+			expect(eventFrames).toEqual([`id: 7\ndata: ${JSON.stringify(midAwaitEvent.event)}\n\n`]);
+		});
+
+		it('should clean up the subscription when the client disconnects during bootstrap', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			instanceAiService.getThreadStatus.mockReturnValue({
+				hasActiveRun: true,
+				isSuspended: false,
+				backgroundTasks: [],
+			} as never);
+			instanceAiService.getMessageGroupId.mockReturnValue('mg-1');
+			instanceAiService.getRunIdsForMessageGroup.mockReturnValue(['run-1']);
+			eventBus.getEventsForRuns.mockReturnValue([]);
+			eventBus.getEventsAfter.mockReturnValue([
+				{ id: 1, event: { type: 'text-delta', runId: 'run-1', agentId: 'a1', payload: {} } },
+			] as never);
+
+			const unsubscribe = vi.fn();
+			eventBus.subscribe.mockReturnValue(unsubscribe);
+
+			let closeHandler: (() => void) | undefined;
+			const sseReq = mock<AuthenticatedRequest>({
+				user: { id: USER_ID },
+				headers: {},
+				once: vi.fn((event: string, handler: () => void) => {
+					if (event === 'close') closeHandler = handler;
+				}) as never,
+			});
+			const sseRes = mock<Response & { flush?: () => void }>({
+				setHeader: vi.fn(),
+				flushHeaders: vi.fn(),
+				write: vi.fn(),
+				end: vi.fn(),
+				flush: vi.fn(),
+			});
+
+			// The client disconnects while the persisted snapshot is being fetched.
+			memoryService.getLatestRunSnapshot.mockImplementation(async () => {
+				closeHandler!();
+				return undefined;
+			});
+
+			await controller.events(sseReq, sseRes, THREAD_ID, { lastEventId: undefined } as never);
+
+			expect(unsubscribe).toHaveBeenCalledTimes(1);
+			expect(sseRes.write).not.toHaveBeenCalled();
+		});
+
 		it('should close SSE stream when thread ownership changes after pre-creation subscribe', async () => {
 			// Simulate: thread does not exist at connect time
 			memoryService.checkThreadOwnership.mockResolvedValueOnce('not_found');
