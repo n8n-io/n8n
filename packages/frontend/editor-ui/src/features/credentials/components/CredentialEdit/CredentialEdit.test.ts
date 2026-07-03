@@ -478,6 +478,7 @@ describe('CredentialEdit', () => {
 				updatedAt: '',
 				relations: [],
 				scopes: [],
+				rolesManaged: false,
 			};
 
 			renderComponent({
@@ -506,6 +507,7 @@ describe('CredentialEdit', () => {
 				updatedAt: '',
 				relations: [],
 				scopes: [],
+				rolesManaged: false,
 			};
 
 			const { getByTestId } = renderComponent({
