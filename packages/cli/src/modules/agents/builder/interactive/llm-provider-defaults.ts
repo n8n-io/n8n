@@ -67,8 +67,26 @@ export const LLM_PROVIDER_DEFAULTS: Record<string, LlmProviderDefault> = {
 			propertyName: 'modelName',
 		},
 	},
-	xAiApi: { provider: 'xai', defaultModel: 'grok-4' },
-	groqApi: { provider: 'groq', defaultModel: 'llama-3.1-70b-versatile' },
+	xAiApi: {
+		provider: 'xai',
+		defaultModel: 'grok-4',
+		modelLookup: {
+			kind: 'loadOptionsRouting',
+			nodeType: '@n8n/n8n-nodes-langchain.lmChatXAiGrok',
+			version: 1,
+			propertyName: 'model',
+		},
+	},
+	groqApi: {
+		provider: 'groq',
+		defaultModel: 'llama-3.1-70b-versatile',
+		modelLookup: {
+			kind: 'loadOptionsRouting',
+			nodeType: '@n8n/n8n-nodes-langchain.lmChatGroq',
+			version: 1,
+			propertyName: 'model',
+		},
+	},
 	mistralCloudApi: {
 		provider: 'mistral',
 		defaultModel: 'mistral-large-latest',
@@ -79,8 +97,36 @@ export const LLM_PROVIDER_DEFAULTS: Record<string, LlmProviderDefault> = {
 			propertyName: 'model',
 		},
 	},
-	deepSeekApi: { provider: 'deepseek', defaultModel: 'deepseek-chat' },
-	cohereApi: { provider: 'cohere', defaultModel: 'command-r-plus' },
+	deepSeekApi: {
+		provider: 'deepseek',
+		defaultModel: 'deepseek-chat',
+		modelLookup: {
+			kind: 'loadOptionsRouting',
+			nodeType: '@n8n/n8n-nodes-langchain.lmChatDeepSeek',
+			version: 1,
+			propertyName: 'model',
+		},
+	},
+	cohereApi: {
+		provider: 'cohere',
+		defaultModel: 'command-r-plus',
+		modelLookup: {
+			kind: 'loadOptionsRouting',
+			nodeType: '@n8n/n8n-nodes-langchain.lmChatCohere',
+			version: 1,
+			propertyName: 'model',
+		},
+	},
+	vercelAiGatewayApi: {
+		provider: 'vercel',
+		defaultModel: 'anthropic/claude-sonnet-4.6',
+		modelLookup: {
+			kind: 'loadOptionsRouting',
+			nodeType: '@n8n/n8n-nodes-langchain.lmChatVercelAiGateway',
+			version: 1,
+			propertyName: 'model',
+		},
+	},
 	openRouterApi: {
 		provider: 'openrouter',
 		defaultModel: 'anthropic/claude-sonnet-4.6',

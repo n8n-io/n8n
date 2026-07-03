@@ -57,7 +57,10 @@ describe('resolve_llm tool', () => {
 
 	it('uses the requested model for the requested provider', async () => {
 		const credentialProvider = makeProvider([{ id: 'c1', name: 'My xAI', type: 'xAiApi' }]);
-		const modelLookup = makeModelLookup();
+		const modelLookup = makeModelLookup(async () => [
+			{ name: 'Grok 4 Fast', value: 'grok-4-fast' },
+			{ name: 'Grok 4', value: 'grok-4' },
+		]);
 		const tool = buildResolveLlmTool({ credentialProvider, modelLookup });
 		const result = await tool.handler!({ provider: 'xai', model: 'grok-4-fast' }, {});
 
@@ -146,20 +149,27 @@ describe('resolve_llm tool', () => {
 			expect(modelLookup.list).not.toHaveBeenCalled();
 		});
 
-		it('skips lookup for providers without modelLookup configured (e.g. Cohere)', async () => {
+		it('validates the requested model against the lookup for Cohere', async () => {
 			const credentialProvider = makeProvider([{ id: 'c1', name: 'My Cohere', type: 'cohereApi' }]);
-			const modelLookup = makeModelLookup();
+			const modelLookup = makeModelLookup(async () => [
+				{ name: 'Command R+', value: 'command-r-plus' },
+				{ name: 'Command R', value: 'command-r' },
+			]);
 			const tool = buildResolveLlmTool({ credentialProvider, modelLookup });
-			const result = await tool.handler!({ provider: 'cohere', model: 'command-x-plus' }, {});
+			const result = await tool.handler!({ provider: 'cohere', model: 'command-r-plus' }, {});
 
 			expect(result).toEqual({
 				ok: true,
 				provider: 'cohere',
-				model: 'command-x-plus',
+				model: 'command-r-plus',
 				credentialId: 'c1',
 				credentialName: 'My Cohere',
 			});
-			expect(modelLookup.list).not.toHaveBeenCalled();
+			expect(modelLookup.list).toHaveBeenCalledWith(
+				'c1',
+				'cohereApi',
+				expect.objectContaining({ kind: 'loadOptionsRouting', propertyName: 'model' }),
+			);
 		});
 
 		it('returns the canonical model id when the requested model matches the lookup', async () => {
