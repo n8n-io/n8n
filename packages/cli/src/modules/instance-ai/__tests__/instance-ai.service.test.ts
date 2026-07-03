@@ -1593,9 +1593,7 @@ function createPlannedTaskSchedulerService(): {
 		plannedTaskService,
 		threadId: 'thread-a',
 	}));
-	service.dispatchPlannedTask = (
-		InstanceAiService.prototype as InstanceAiService
-	).dispatchPlannedTask.bind(service);
+	service.dispatchPlannedTask = InstanceAiService.prototype.dispatchPlannedTask.bind(service);
 	service.logger = { warn: vi.fn() };
 
 	return { service, plannedTaskService, graph };
