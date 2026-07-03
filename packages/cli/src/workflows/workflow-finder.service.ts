@@ -203,6 +203,29 @@ export class WorkflowFinderService {
 	}
 
 	/**
+	 * Root workflows (no parent folder) OWNED by a project. Restricted to the
+	 * `workflow:owner` share row, mirroring how folders are scoped by `homeProject`:
+	 * a workflow merely shared into the project is not exported here, and a root
+	 * workflow shared across two exported projects is discovered only under its
+	 * owner — otherwise it would be written twice and collide on manifest id.
+	 * Export access is still enforced per workflow by WorkflowExporter
+	 * (workflow:export), which aborts on any gap.
+	 */
+	async findRootWorkflowIdsInProject(projectId: string): Promise<string[]> {
+		const rows = await this.sharedWorkflowRepository.find({
+			where: {
+				project: { id: projectId },
+				role: 'workflow:owner',
+				workflow: { parentFolder: IsNull() },
+			},
+			relations: { workflow: { parentFolder: true } },
+			select: { workflowId: true, workflow: { id: true, parentFolder: { id: true } } },
+		});
+
+		return rows.map((row) => row.workflowId);
+	}
+
+	/**
 	 * Finds owned workflows in a project that may match package workflows either
 	 * by `sourceWorkflowId` or, when unset, by local id (re-import of workflows
 	 * authored on this instance).

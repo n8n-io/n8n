@@ -56,6 +56,19 @@ export class FolderFinderService {
 		return await this.findFoldersByIdsForUser(allFolderIds, user, scopes);
 	}
 
+	/**
+	 * All folder ids in a project (membership only — no access filter). Access is
+	 * enforced downstream by FolderExporter (folder:read), which aborts on any gap,
+	 * so discovery must surface every folder for that abort to fire.
+	 */
+	async findFolderIdsInProject(projectId: string): Promise<string[]> {
+		const folders = await this.folderRepository.find({
+			where: { homeProject: { id: projectId } },
+			select: { id: true },
+		});
+		return folders.map((folder) => folder.id);
+	}
+
 	private async buildFolderReadWhere(
 		user: User,
 		scopes: Scope[],
