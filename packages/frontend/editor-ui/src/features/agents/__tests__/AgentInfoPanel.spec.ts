@@ -78,7 +78,7 @@ vi.mock('../components/AgentModelSelector.vue', () => ({
 }));
 
 function mountPanel(
-	instructions: string | null = '# Role\nHelp users.',
+	instructions = '# Role\nHelp users.',
 	overrides: Partial<{ showInstructionsToolbar: boolean }> = {},
 ) {
 	return mount(AgentInfoPanel, {

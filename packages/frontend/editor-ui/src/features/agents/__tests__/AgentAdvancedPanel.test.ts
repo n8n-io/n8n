@@ -3,6 +3,9 @@ import { describe, it, expect, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { nextTick } from 'vue';
 import type * as VueUse from '@vueuse/core';
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import AgentAdvancedPanel from '../components/AgentAdvancedPanel.vue';
 import type { AgentJsonConfig } from '../types';
@@ -67,6 +70,11 @@ const globalStubs = {
 	},
 };
 
+const componentSource = readFileSync(
+	resolve(dirname(fileURLToPath(import.meta.url)), '../components/AgentAdvancedPanel.vue'),
+	'utf8',
+);
+
 function makeConfig(overrides: Partial<AgentJsonConfig> = {}): AgentJsonConfig {
 	return {
 		name: 'A',
@@ -106,20 +114,17 @@ function getWebSearchConfig(changes: Partial<AgentJsonConfig>): WebSearchConfig 
 }
 
 describe('AgentAdvancedPanel', () => {
-	it('renders the collapsible heading with the chevron after the title', () => {
+	it('renders the collapsible heading and moves the built-in chevron to the end', () => {
 		const wrapper = mount(AgentAdvancedPanel, {
 			props: { config: makeConfig(), collapsible: true },
 			global: { stubs: globalStubs },
 		});
 
 		const title = wrapper.find('[data-testid="agent-advanced-title"]');
-		const chevron = wrapper.find('[data-testid="agent-advanced-chevron"]');
 
 		expect(title.text()).toContain('agents.builder.advanced.title');
-		expect(chevron.exists()).toBe(true);
-		expect(
-			title.element.compareDocumentPosition(chevron.element) & Node.DOCUMENT_POSITION_FOLLOWING,
-		).toBeTruthy();
+		expect(componentSource).toContain('order: 2;');
+		expect(componentSource).toContain('flex: 1;');
 	});
 
 	it('treats sparse native web search config as disabled', async () => {

@@ -40,11 +40,11 @@ const personalisation = computed<AgentPersonalisation>(() => {
 			};
 });
 const iconPickerModel = computed<IconOrEmoji>({
-	get: () => ({
+	get: (): IconOrEmoji => ({
 		type: 'icon',
 		value: personalisation.value.icon,
 	}),
-	set: (value) => {
+	set: (value: IconOrEmoji) => {
 		if (value.type !== 'icon') return;
 		emit('update:config', {
 			personalisation: {

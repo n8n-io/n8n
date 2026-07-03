@@ -7,6 +7,7 @@ import {
 	N8nResizeWrapper,
 	type DropdownMenuItemProps,
 } from '@n8n/design-system';
+import type { ActionDropdownItem } from '@n8n/design-system/types/action-dropdown';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import {
@@ -743,32 +744,34 @@ function onBuildDone() {
 	shouldCollapseChatAfterInitialBuild.value = false;
 }
 
-const headerActions = computed(() => [
-	{
-		id: 'export-json',
-		label: locale.baseText('agents.builder.exportJson' as BaseTextKey),
-		icon: 'download',
-	},
-	...(canEditAgent.value
-		? [
-				{
-					id: 'import-json',
-					label: locale.baseText('agents.builder.importJson' as BaseTextKey),
-					icon: 'upload',
-				},
-			]
-		: []),
-	...(canDeleteAgent.value
-		? [
-				{
-					id: 'delete',
-					label: locale.baseText('agents.builder.deleteAgent'),
-					icon: 'trash-2',
-					divided: true,
-				},
-			]
-		: []),
-]);
+const headerActions = computed(() => {
+	const actions: Array<ActionDropdownItem<string>> = [
+		{
+			id: 'export-json',
+			label: locale.baseText('agents.builder.exportJson' as BaseTextKey),
+			icon: 'download',
+		},
+	];
+
+	if (canEditAgent.value) {
+		actions.push({
+			id: 'import-json',
+			label: locale.baseText('agents.builder.importJson' as BaseTextKey),
+			icon: 'upload',
+		});
+	}
+
+	if (canDeleteAgent.value) {
+		actions.push({
+			id: 'delete',
+			label: locale.baseText('agents.builder.deleteAgent'),
+			icon: 'trash-2',
+			divided: true,
+		});
+	}
+
+	return actions;
+});
 
 async function exportAgentJson() {
 	if (!localConfig.value) return;

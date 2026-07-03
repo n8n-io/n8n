@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import type { AgentJsonConfig } from '../types';
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
@@ -46,8 +47,24 @@ const componentSource = readFileSync(
 	'utf8',
 );
 
+type TestAgentConfig = {
+	name: string;
+	model: string;
+	instructions: string;
+	personalisation?: {
+		icon: string;
+		gradient: Pick<NonNullable<AgentJsonConfig['personalisation']>['gradient'], 'from' | 'to'> &
+			Partial<
+				Pick<
+					NonNullable<AgentJsonConfig['personalisation']>['gradient'],
+					'angle' | 'fromStop' | 'toStop'
+				>
+			>;
+	};
+};
+
 async function mountHeader(
-	config = {
+	config: TestAgentConfig = {
 		name: 'Support agent',
 		model: 'anthropic/claude-sonnet-4-5',
 		instructions: 'Help the user.',
@@ -57,7 +74,7 @@ async function mountHeader(
 
 	return mount(AgentIdentityHeader, {
 		props: {
-			config,
+			config: config as AgentJsonConfig,
 		},
 	});
 }
