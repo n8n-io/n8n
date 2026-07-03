@@ -95,6 +95,11 @@ export class LoadNodesAndCredentials {
 			this.excludeNodes.push('n8n-nodes-base.dynamicCredentialCheck');
 		}
 
+		if (!this.globalConfig.nodes.kafkaBeta) {
+			this.excludeNodes = this.excludeNodes ?? [];
+			this.excludeNodes.push('n8n-nodes-base.kafkaConfluentTrigger');
+		}
+
 		// Load nodes from `n8n-nodes-base`
 		const basePathsToScan = [
 			// In case "n8n" package is in same node_modules folder.

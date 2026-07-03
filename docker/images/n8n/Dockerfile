@@ -10,6 +10,15 @@ COPY ./compiled /usr/local/lib/node_modules/n8n
 RUN apk add --no-cache python3 make g++ && \
     cd /usr/local/lib/node_modules/n8n && \
     npm rebuild sqlite3 && \
+    # Rebuild the confluent Kafka native addon for the target platform.
+    # ./compiled is produced by the host build (e.g. macOS), so it ships a foreign .node
+    # ("Exec format error" on Linux). node-pre-gyp skips re-download when a binary already
+    # exists, so remove the stale build/prebuild artifacts first; npm rebuild then fetches
+    # the linux/musl prebuilt (or builds from source via the toolchain above).
+    rm -rf node_modules/.pnpm/@confluentinc+kafka-javascript@*/node_modules/@confluentinc/kafka-javascript/build \
+           node_modules/.pnpm/@confluentinc+kafka-javascript@*/node_modules/@confluentinc/kafka-javascript/prebuilds \
+           node_modules/.pnpm/@confluentinc+kafka-javascript@*/node_modules/@confluentinc/kafka-javascript/lib/binding && \
+    npm rebuild @confluentinc/kafka-javascript && \
     # Rebuild isolated-vm from source. node-gyp-build's musl detection relies
     # on /etc/alpine-release which DHI Alpine omits, so the bundled prebuilt
     # loader picks the glibc binary and segfaults in musl pthread paths.

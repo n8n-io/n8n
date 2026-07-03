@@ -1,6 +1,11 @@
 # [2.29.0](https://github.com/n8n-io/n8n/compare/n8n@2.28.0...n8n@2.29.0) (2026-06-30)
 
 
+### Features
+
+* **Kafka Trigger Node:** Add Confluent-based Kafka Trigger beta node backed by librdkafka, opt-in via `N8N_KAFKA_BETA=true` ([ENT-121](https://linear.app/n8n/issue/ENT-121))
+
+
 ### Bug Fixes
 
 * Cap changed-files list to avoid oversized CI process environment ([#32949](https://github.com/n8n-io/n8n/issues/32949)) ([1632ad1](https://github.com/n8n-io/n8n/commit/1632ad1d8f3d849f1a62d5bc9a03c6c4b0e92d23))

@@ -42,4 +42,8 @@ export class NodesConfig {
 	/** Whether to enable Python execution on the Code node. */
 	@Env('N8N_PYTHON_ENABLED')
 	pythonEnabled: boolean = true;
+
+	/** Whether to expose the Confluent-based Kafka Trigger beta node. Requires N8N_KAFKA_BETA=true to enable. */
+	@Env('N8N_KAFKA_BETA')
+	kafkaBeta: boolean = false;
 }
