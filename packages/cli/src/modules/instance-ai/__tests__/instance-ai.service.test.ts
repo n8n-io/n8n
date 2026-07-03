@@ -1593,7 +1593,25 @@ function createPlannedTaskSchedulerService(): {
 		plannedTaskService,
 		threadId: 'thread-a',
 	}));
-	service.dispatchPlannedTask = InstanceAiService.prototype.dispatchPlannedTask.bind(service);
+	service.dispatchPlannedTask = vi.fn(async (task, context, _graph?) => {
+		if (task.kind === 'build-workflow' || task.kind === 'checkpoint') {
+			service.logger.warn('dispatchPlannedTask called for a runtime planned-task kind', {
+				threadId: context.threadId,
+				taskId: task.id,
+				kind: task.kind,
+			});
+			return;
+		}
+
+		await context.plannedTaskService?.markFailed(context.threadId, task.id, {
+			error: `Planned task kind "${task.kind}" is no longer supported`,
+		});
+
+		const nextGraph = await context.plannedTaskService?.getGraph(context.threadId);
+		if (nextGraph) {
+			await service.syncPlannedTasksToUi(context.threadId, nextGraph);
+		}
+	});
 	service.logger = { warn: vi.fn() };
 
 	return { service, plannedTaskService, graph };
