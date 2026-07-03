@@ -861,7 +861,9 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 			// Tooltip message should be present
 			expect(
-				getByText(/Some triggers failed to activate\. Publish again to retry\./),
+				getByText(
+					/The workflow is partially published, but some triggers failed to activate\. Publish again to retry\./,
+				),
 			).toBeInTheDocument();
 			// Node name should be present
 			expect(getByText('Webhook')).toBeInTheDocument();
