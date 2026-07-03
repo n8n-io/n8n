@@ -1,7 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig } from '@n8n/config';
 import { ExecutionRepository } from '@n8n/db';
@@ -378,6 +376,7 @@ export class WorkflowRunner {
 		additionalData.encryptedRunnerIdentity = data.encryptedRunnerIdentity;
 
 		additionalData.executionId = executionId;
+		additionalData.evaluationRunId = data.evaluationRunId;
 
 		this.logger.debug(
 			`Execution for workflow ${data.workflowData.name} was assigned id ${executionId}`,
@@ -509,6 +508,8 @@ export class WorkflowRunner {
 			restartExecutionId,
 			projectId: data.projectId,
 			projectName: data.projectName,
+			// Carry the manual-execution identity for private credential resolution on the worker.
+			encryptedRunnerIdentity: data.encryptedRunnerIdentity,
 			// MCP-specific fields for queue mode support
 			isMcpExecution: data.isMcpExecution,
 			mcpType: data.mcpType,
@@ -685,7 +686,6 @@ export class WorkflowRunner {
 		forceFullExecutionData?: boolean,
 	): boolean {
 		if (forceFullExecutionData) return true;
-		if (!process.env.N8N_MINIMIZE_EXECUTION_DATA_FETCHING) return true;
 
 		return (
 			executionMode === 'integrated' ||

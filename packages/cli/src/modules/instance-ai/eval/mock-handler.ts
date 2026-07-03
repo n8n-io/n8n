@@ -32,7 +32,7 @@ You get everything you need in the user message: the request (service, method, U
 **Procedure — follow in order:**
 1. Call \`get_endpoint_quirks\` first, always. It returns any known guidance specific to this endpoint, or confirms there are none. Treat its output as authoritative.
 2. Generate the response that satisfies the API docs, node config, scenario context, and any quirk guidance from step 1.
-3. Call \`submit_response\` exactly once to deliver the response. Do not write the response as text.
+3. Call \`submit_response\` to deliver the response. If it returns a message starting with "Invalid:", fix the input and call it again — your response only counts once it is accepted. Do not write the response as text.
 
 **Write operations (POST / PUT / PATCH that create or modify a resource):**
 Return the FULL resource object the API produces on success — not a minimal acknowledgement-only response. When the docs show multiple response variants for one endpoint, default to the FULL/complete one. Use a partial/minimal variant only if the request body contains the explicit field that triggers it (e.g. \`template\`, \`async: true\`).
@@ -41,6 +41,12 @@ Each request is mocked independently. Even when the same node makes multiple sim
 
 Response SHAPE comes from the API docs; DATA VALUES come from the node config. Use names/IDs from the config exactly (case-sensitive).
 
+**Honor explicit values from the scenario and hints.** When the scenarioHints, nodeHint, or globalContext state a specific value — a quantity with a unit, a percentage, a monetary amount ("$1,200"), a count ("3 rows"), a threshold, an ID, or a name — reproduce that EXACT value in the response. Do NOT round it, soften it toward a "more typical" reading, or substitute your own estimate: the stated value is the test's intent, and downstream nodes (IF/Switch gates, filters, sums) compare against it. Emit the exact number of enumerated items the context describes. This extends to per-item constraints: when the scenario says EVERY/ALL items share a property (a literal substring every title must contain, a minimum every row must exceed), EVERY item you generate must satisfy it — check each item against the constraint character-by-character before responding (near-miss variants of a required literal fail the test). Only invent a value when the context gives none for that field. If a nodeHint and the scenario disagree, the scenario wins.
+
+**Node response-handling options are not part of the body.** The node config may include options that control how n8n post-processes the response — \`fullResponse\`, \`responseFormat\`, \`outputPropertyName\`, pagination. These are applied AFTER you return and must NOT change the body you produce: always return the raw body the real API sends over the wire. Never reshape the body to mimic them — a body shaped like \`{ statusCode, headers, body }\` (mimicking \`fullResponse\`) or \`{ <outputPropertyName>: ... }\` is wrong.
+
+**Response envelope.** Return the body exactly as the real service sends it over the wire, including any top-level wrapper the API puts around results — e.g. \`{ "data": [...], "nextCursor": null }\`, \`{ "results": [...] }\`, \`{ "items": [...], "has_more": false }\`, \`{ "ok": true, "result": ... }\`. Match the real API's top-level shape exactly: many list endpoints wrap their items, but plenty return a bare top-level array (e.g. an endpoint that returns an array of IDs). Follow what the real API actually returns per the docs — don't default to wrapping a bare-array response, and don't strip a wrapper the API really uses.
+
 Node-config patterns to know:
   - "__rl" object: "value" is the selected resource id
   - "schema" array: each entry's "id" is the response field name (NOT "displayName"). e.g. {id:"timestamp",displayName:"Timestamp"} → response uses "timestamp"
@@ -48,11 +54,13 @@ Node-config patterns to know:
 
 **Time-relative fields.** The user prompt ends with a "## Date anchors" block listing today's date plus a handful of relative anchors (yesterday, 7 days ago, etc.). EVERY timestamp, date, hourly/daily entry, and time-relative field in your response MUST be derived from those anchors — never from training data or from the example dates in the API documentation. Workflows commonly filter mock responses by today's date; values outside the current window are silently discarded and the scenario fails.
 
-Match THIS request only (URL + method): a node may make multiple sequential calls; reply to the specific one shown. Echo identifiers, placeholders, and reference values from the request back into the response. No pagination — always indicate end of results.
+Match THIS request only (URL + method): a node may make multiple sequential calls; reply to the specific one shown. Echo identifiers, placeholders, and reference values from the request back into the response. Return a single page (don't expect multi-page cursor follow-up), but keep the API's real envelope and mark it as the final page (e.g. \`nextCursor: null\`, \`has_more: false\`).
 
 For APIs that return empty responses on success (204/202), call submit_response with type="json" and body={}.
 
-**Binary / file responses.** Pick \`type: "binary"\` when the request URL or node parameters indicate a file download — Telegram \`getFile\` / \`/file/bot...\`, Google Drive \`alt=media\`, Dropbox \`/files/download\`, OneDrive \`/items/{id}/content\`, S3 \`GetObject\`, OpenAI \`audio/transcriptions\` source file, or any path containing \`/download\`, \`/file\`, \`/attachment\`, \`/media\`, \`/image\`, \`/voice\`, \`/audio\`, \`/export\`. Always set \`contentType\` (real MIME like \`application/pdf\`, \`audio/ogg\`, \`image/png\`) and \`filename\` (with the correct extension). Use \`sizeHint\` only when the scenario hints mention file size constraints (e.g. "rejects files > 100KB"). Do NOT pick \`binary\` for JSON metadata endpoints like Slack \`files.upload\`, \`files.info\`, or Telegram \`getFile\` (which returns a JSON envelope describing the file — the binary comes from the follow-up \`/file/bot.../path\` request).`;
+**Binary / file responses.** Pick \`type: "binary"\` when the request URL or node parameters indicate a file download — Telegram \`getFile\` / \`/file/bot...\`, Google Drive \`alt=media\`, Dropbox \`/files/download\`, OneDrive \`/items/{id}/content\`, S3 \`GetObject\`, OpenAI \`audio/transcriptions\` source file, or any path containing \`/download\`, \`/file\`, \`/attachment\`, \`/media\`, \`/image\`, \`/voice\`, \`/audio\`, \`/export\`. Always set \`contentType\` (real MIME like \`application/pdf\`, \`audio/ogg\`, \`image/png\`) and \`filename\` (with the correct extension). Use \`sizeHint\` only when the scenario hints mention file size constraints (e.g. "rejects files > 100KB"). Do NOT pick \`binary\` for JSON metadata endpoints like Slack \`files.upload\`, \`files.info\`, or Telegram \`getFile\` (which returns a JSON envelope describing the file — the binary comes from the follow-up \`/file/bot.../path\` request). Exception: when the document at a download/export path is itself textual (CSV, XML, HTML, plain text) and the scenario or node hints specify its contents, use \`type: "text"\` with the exact document — reserve \`binary\` for opaque formats (PDF, images, audio, video, archives).
+
+**Raw text / non-JSON responses.** When the real endpoint returns a non-JSON text document — XML/SOAP, CSV, HTML, RSS/Atom, plain text — use \`type: "text"\` and put the EXACT raw document in \`textBody\`, with \`contentType\` set to the real MIME (\`text/xml\`, \`application/xml\`, \`text/csv\`, \`text/html\`, \`text/plain\`). NEVER wrap such a document inside a JSON object like \`{"data": "<?xml..."}\` — the node consumes the raw text, and a JSON wrapper corrupts it. SOAP endpoints return the full SOAP envelope as \`textBody\`; SOAP faults use \`type: "error"\` with the fault XML in \`textBody\`.`;
 
 // ---------------------------------------------------------------------------
 // Types
@@ -69,12 +77,15 @@ interface MockHandlerOptions {
 	globalContext?: string;
 	/** Per-node data hints from Phase 1, keyed by node name. */
 	nodeHints?: Record<string, string>;
+	/** Compact summary of Phase-1.5 pinned node outputs — fixed data the mock must stay consistent with. */
+	pinnedOutputs?: string;
 	maxRetries?: number;
 }
 
 interface MockResponseSpec {
-	type: 'json' | 'binary' | 'error';
+	type: 'json' | 'text' | 'binary' | 'error';
 	body?: unknown;
+	textBody?: string;
 	statusCode?: number;
 	contentType?: string;
 	filename?: string;
@@ -97,6 +108,7 @@ export function createLlmMockHandler(options?: MockHandlerOptions): EvalLlmMockH
 			scenarioHints: options?.scenarioHints,
 			globalContext: options?.globalContext,
 			nodeHint: options?.nodeHints?.[node.name],
+			pinnedOutputs: options?.pinnedOutputs,
 			nodeConfig: nodeConfigCache.get(node.name) ?? '',
 			maxRetries: options?.maxRetries ?? DEFAULT_MAX_RETRIES,
 		});
@@ -111,6 +123,7 @@ interface MockResponseContext {
 	scenarioHints?: string;
 	globalContext?: string;
 	nodeHint?: string;
+	pinnedOutputs?: string;
 	nodeConfig: string;
 	maxRetries: number;
 }
@@ -190,6 +203,14 @@ async function generateMockResponse(
 		}
 	}
 
+	if (context.pinnedOutputs) {
+		sections.push('', '## Pinned node outputs (authoritative)');
+		sections.push(
+			'These nodes already have fixed outputs in this execution. Your response MUST stay consistent with them — reuse the same entities, IDs, statuses, and timestamps wherever the scenario implies they refer to the same data (e.g. "stored record matches current status").',
+		);
+		sections.push(context.pinnedOutputs);
+	}
+
 	// Anchors go last — the API docs above carry training-era dates, so these
 	// need to be the freshest context before generation.
 	sections.push('', '## Date anchors', dateAnchors);
@@ -232,30 +253,37 @@ async function generateMockResponse(
 	};
 }
 
-// Body is constrained to object/array/null so the model can't smuggle
-// malformed JSON inside a wrapped string. Content shape comes from the
-// API docs in the user prompt.
+// Body is constrained to object/array/null so the model can't smuggle malformed
+// JSON inside a wrapped string; raw text documents go through textBody instead.
 const submitResponseSchema = z.object({
 	type: z
-		.enum(['json', 'binary', 'error'])
+		.enum(['json', 'text', 'binary', 'error'])
 		.describe(
-			'"json" for normal JSON responses; "binary" for file downloads; "error" for non-2xx responses.',
+			'"json" for JSON responses; "text" for non-JSON text documents (XML/SOAP, CSV, HTML, plain text); "binary" for file downloads; "error" for non-2xx responses.',
 		),
 	body: z
 		.union([z.record(z.unknown()), z.array(z.unknown()), z.null()])
 		.optional()
 		.describe(
-			'The decoded response body. Must be an object, an array (for list endpoints), or null (for empty 204-style responses). Required for type="json" and type="error". Omit for type="binary".',
+			'The decoded JSON response body. Must be an object — the API\'s real response envelope (most list endpoints wrap items in e.g. `data` / `results` / `items`); use a bare array only if the real API returns a top-level array; or null for empty 204-style responses. Required for type="json" and for JSON-style type="error". Omit for type="text" and type="binary".',
+		),
+	textBody: z
+		.string()
+		.optional()
+		.describe(
+			'The raw text document exactly as the service would send it (e.g. "<?xml version=\\"1.0\\"?>..."). Required for type="text"; allowed with type="error" when the service returns a text/XML error document. Omit otherwise.',
 		),
 	statusCode: z
 		.number()
 		.int()
 		.optional()
-		.describe('HTTP status code. Required for type="error". Omit for json/binary.'),
+		.describe('HTTP status code. Required for type="error". Omit for json/text/binary.'),
 	contentType: z
 		.string()
 		.optional()
-		.describe('MIME type. Required for type="binary". Omit otherwise.'),
+		.describe(
+			'MIME type. Required for type="binary". For type="text", the document MIME (e.g. "text/xml", "text/csv"; defaults to "text/plain"). Omit for json.',
+		),
 	filename: z.string().optional().describe('Filename for type="binary". Omit otherwise.'),
 	sizeHint: z
 		.enum(['small', 'medium', 'large'])
@@ -265,12 +293,76 @@ const submitResponseSchema = z.object({
 		),
 });
 
-function createSubmitResponseTool(capture: { spec?: MockResponseSpec }) {
+/** True when a string parses as a JSON object or array (a JSON document mislabelled as text). */
+function looksLikeJsonDocument(text: string): boolean {
+	const trimmed = text.trim();
+	if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) return false;
+	try {
+		const parsed: unknown = JSON.parse(trimmed);
+		return typeof parsed === 'object' && parsed !== null;
+	} catch {
+		return false;
+	}
+}
+
+interface SubmitCapture {
+	spec?: MockResponseSpec;
+	lastRejection?: string;
+	/** Set when `spec` came from a rejected submission kept as a fallback. */
+	softOnly?: boolean;
+}
+
+function createSubmitResponseTool(capture: SubmitCapture) {
 	return new Tool('submit_response')
-		.description('Submit your final mock HTTP response. Call this exactly once.')
+		.description(
+			'Submit your final mock HTTP response. Submit one response; if the result starts with "Invalid:", fix the input and call submit_response again.',
+		)
 		.input(submitResponseSchema)
 		.handler(async (input: MockResponseSpec) => {
+			// Cross-field checks live here, not zod refinements (those break SDK schema generation).
+			const reject = (message: string) => {
+				capture.lastRejection = message;
+				return message;
+			};
+			if (input.type === 'text') {
+				if (typeof input.textBody !== 'string') {
+					return reject(
+						'Invalid: type="text" requires textBody (the raw text document as a string). Call submit_response again with textBody set.',
+					);
+				}
+				if (input.statusCode !== undefined) {
+					return reject(
+						'Invalid: type="text" is always a 200 response. For a non-2xx text/XML response, resubmit with type="error", the document in textBody, and the statusCode.',
+					);
+				}
+				if (
+					input.contentType?.toLowerCase().includes('json') ||
+					looksLikeJsonDocument(input.textBody)
+				) {
+					return reject(
+						'Invalid: this looks like a JSON response. Resubmit with type="json" and the decoded JSON in body — type="text" is only for non-JSON documents.',
+					);
+				}
+			}
+			if (input.type === 'json' && typeof input.textBody === 'string') {
+				// Soft-capture: the json body may be valid on its own — a resubmission overwrites it.
+				capture.spec = input;
+				capture.softOnly = true;
+				return reject(
+					'Invalid: textBody is not allowed with type="json". If the endpoint returns a non-JSON text document, resubmit with type="text"; otherwise resubmit with the JSON in body.',
+				);
+			}
+			if (
+				input.type === 'error' &&
+				typeof input.textBody === 'string' &&
+				input.body !== undefined
+			) {
+				return reject(
+					'Invalid: type="error" takes either body (JSON error) or textBody (text/XML error document), not both. Resubmit with exactly one.',
+				);
+			}
 			capture.spec = input;
+			capture.softOnly = false;
 			return 'Response submitted.';
 		})
 		.build();
@@ -301,10 +393,12 @@ async function callLlm(
 	userPrompt: string,
 	requestInfo: { serviceName: string; method: string; pathname: string; hostname?: string },
 ): Promise<MockResponseSpec> {
-	const capture: { spec?: MockResponseSpec } = {};
+	const capture: SubmitCapture = {};
 
+	// Cached prefix = tools + instructions; keep MOCK_SYSTEM_PROMPT static, per-request data in the user prompt.
 	const agent = createEvalAgent('eval-mock-responder', {
 		instructions: MOCK_SYSTEM_PROMPT,
+		cache: true,
 	})
 		.tool(
 			createQuirksLookupTool(
@@ -329,8 +423,17 @@ async function callLlm(
 				: JSON.stringify(result.error).slice(0, ERROR_DETAIL_MAX)
 			: '';
 		const errPart = errDetail ? ` error=${errDetail}` : '';
+		const what = capture.lastRejection
+			? `Agent's submit_response was rejected and not resubmitted (${capture.lastRejection})`
+			: 'Agent did not call submit_response';
 		throw new Error(
-			`Agent did not call submit_response. finishReason=${result.finishReason ?? 'unknown'}${errPart} text="${preview.replace(/\s+/g, ' ').trim()}"`,
+			`${what}. finishReason=${result.finishReason ?? 'unknown'}${errPart} text="${preview.replace(/\s+/g, ' ').trim()}"`,
+		);
+	}
+
+	if (capture.softOnly) {
+		Container.get(Logger).warn(
+			`[EvalMock] Serving soft-captured json body — submit_response was rejected (${capture.lastRejection ?? 'unknown reason'}) and never resubmitted`,
 		);
 	}
 
@@ -352,6 +455,14 @@ function materializeSpec(spec: MockResponseSpec): EvalMockHttpResponse {
 				statusCode: 200,
 			};
 
+		case 'text':
+			// Raw string body — nodes run their real text/XML/CSV parsing on it.
+			return {
+				body: spec.textBody ?? '',
+				headers: { 'content-type': spec.contentType || 'text/plain' },
+				statusCode: 200,
+			};
+
 		case 'binary': {
 			const filename = spec.filename ?? 'mock-file.dat';
 			const contentType = spec.contentType ?? 'application/octet-stream';
@@ -367,12 +478,16 @@ function materializeSpec(spec: MockResponseSpec): EvalMockHttpResponse {
 			};
 		}
 
-		case 'error':
+		case 'error': {
+			const isTextError = typeof spec.textBody === 'string';
 			return {
-				body: spec.body ?? { error: 'Mock error' },
-				headers: { 'content-type': 'application/json' },
+				body: isTextError ? spec.textBody : (spec.body ?? { error: 'Mock error' }),
+				headers: {
+					'content-type': isTextError ? spec.contentType || 'text/plain' : 'application/json',
+				},
 				statusCode: spec.statusCode ?? 500,
 			};
+		}
 
 		default:
 			return {

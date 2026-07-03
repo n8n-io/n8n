@@ -2,6 +2,12 @@ import { TIER_CONFIG, buildCanvasBenchmarkWorkflow, type Tier } from './fixtures
 import { waitForCanvasReady } from './helpers/canvas-ready';
 import { captureFrameStats } from './helpers/frame-stats';
 import { medianBy, withWarmup } from './helpers/iterate';
+import {
+	enableRenderTracking,
+	isRenderTrackingActive,
+	readRenderStats,
+	startRenderTracking,
+} from './helpers/render-stats';
 import { fmt, formatReport } from './helpers/report';
 import { test, expect } from '../../../fixtures/base';
 import { attachMetric, measurePerformance } from '../../../utils/performance-helper';
@@ -19,7 +25,7 @@ test.use({
 
 test.describe(
 	'Canvas Interactions Benchmark',
-	{ annotation: [{ type: 'owner', description: 'Canvas' }] },
+	{ annotation: [{ type: 'owner', description: 'Catalysts' }] },
 	() => {
 		for (const tier of TIERS) {
 			test(`interactions ${tier}-tier @tier:${tier}`, async ({ n8n, api }, testInfo) => {
@@ -39,9 +45,14 @@ test.describe(
 
 				await n8n.page.setViewportSize({ width: 1536, height: 960 });
 				await n8n.page.emulateMedia({ reducedMotion: 'reduce' });
+				// Arm the re-render counter before navigating so editor-ui installs the
+				// tracking mixin on boot.
+				await enableRenderTracking(n8n.page);
 
+				// janitor-disable-next-line no-raw-editor-navigation -- benchmark navigates raw and measures load via waitForCanvasReady below
 				await n8n.page.goto(`/workflow/${workflowId}`);
 				await waitForCanvasReady(n8n.page, flowNodes, stickyNotes);
+				expect(await isRenderTrackingActive(n8n.page)).toBe(true);
 				await n8n.canvas.clickZoomToFitButton();
 
 				const dimensions = { tier };
@@ -88,38 +99,58 @@ test.describe(
 
 				await n8n.canvas.clickZoomToFitButton();
 
-				// Drag a single node — measure mousedown→up wall-clock. Undo between iterations.
+				// Drag a single node — measure mousedown→up wall-clock plus the component
+				// re-renders the move triggers. Undo between iterations.
 				const dragSamples = await withWarmup(ITERATIONS, async (iteration) => {
 					const dragName = sampleNodeNames[iteration % sampleNodeNames.length];
+					await startRenderTracking(n8n.page);
 					const ms = await measurePerformance(n8n.page, `drag-${tier}-${iteration}`, async () => {
 						await n8n.canvas.dragNodeToRelativePosition(dragName, 60, 40);
 					});
+					const renders = (await readRenderStats(n8n.page)).total;
 					await n8n.canvas.hitUndo();
-					return ms;
+					return { ms, renders };
 				});
 				await attachMetric(
 					testInfo,
 					`canvas-drag-response-${tier}-ms`,
-					medianBy(dragSamples, (sample) => sample),
+					medianBy(dragSamples, (sample) => sample.ms),
 					'ms',
+					dimensions,
+				);
+				await attachMetric(
+					testInfo,
+					`canvas-rerender-drag-${tier}`,
+					medianBy(dragSamples, (sample) => sample.renders),
+					'count',
 					dimensions,
 				);
 
 				// Multi-node move via keyboard nudge. Select-all → arrow key bursts → undo.
+				// Counts re-renders across every selected node as they shift together.
 				const moveSamples = await withWarmup(ITERATIONS, async () => {
 					await n8n.canvas.selectAll();
+					await startRenderTracking(n8n.page);
 					const ms = await measurePerformance(n8n.page, `move-${tier}`, async () => {
 						await n8n.canvas.nudgeSelectedNodes('right', 5);
 					});
+					const renders = (await readRenderStats(n8n.page)).total;
 					await n8n.canvas.hitUndo();
 					await n8n.canvas.deselectAll();
-					return ms;
+					return { ms, renders };
 				});
 				await attachMetric(
 					testInfo,
 					`canvas-move-multi-${tier}-ms`,
-					medianBy(moveSamples, (sample) => sample),
+					medianBy(moveSamples, (sample) => sample.ms),
 					'ms',
+					dimensions,
+				);
+				await attachMetric(
+					testInfo,
+					`canvas-rerender-move-${tier}`,
+					medianBy(moveSamples, (sample) => sample.renders),
+					'count',
 					dimensions,
 				);
 
@@ -193,11 +224,11 @@ test.describe(
 							rows: [
 								{
 									label: 'Drag response',
-									value: fmt.ms(medianBy(dragSamples, (sample) => sample)),
+									value: fmt.ms(medianBy(dragSamples, (sample) => sample.ms)),
 								},
 								{
 									label: 'Multi-node move',
-									value: fmt.ms(medianBy(moveSamples, (sample) => sample)),
+									value: fmt.ms(medianBy(moveSamples, (sample) => sample.ms)),
 								},
 								{
 									label: 'Duplicate',
@@ -207,11 +238,26 @@ test.describe(
 								{ label: 'Tidy up', value: fmt.ms(tidyMs) },
 							],
 						},
+						{
+							heading: 'Re-renders (canvas changes)',
+							rows: [
+								{
+									label: 'Drag node',
+									value: fmt.count(medianBy(dragSamples, (sample) => sample.renders)),
+								},
+								{
+									label: 'Multi-node move',
+									value: fmt.count(medianBy(moveSamples, (sample) => sample.renders)),
+								},
+							],
+						},
 					]),
 				);
 
 				expect(medianBy(panSamples, (sample) => sample.p95FrameMs)).toBeGreaterThan(0);
-				expect(medianBy(dragSamples, (sample) => sample)).toBeGreaterThan(0);
+				expect(medianBy(dragSamples, (sample) => sample.ms)).toBeGreaterThan(0);
+				// Moving a node must re-render it — a zero means tracking silently broke.
+				expect(medianBy(dragSamples, (sample) => sample.renders)).toBeGreaterThan(0);
 			});
 		}
 	},

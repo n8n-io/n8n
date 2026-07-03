@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { truncate } from '@n8n/utils';
+import { truncate } from '@n8n/utils/string/truncate';
 import { useToast } from '@/app/composables/useToast';
 import { VIEWS } from '@/app/constants';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
@@ -100,9 +100,8 @@ function labelForKey(key: string): string {
 			return i18n.baseText('agentSessions.timeline.suspension');
 		case 'suspension-waiting':
 			return i18n.baseText('agentSessions.timeline.waitingForUser');
-		case 'agentSessions.timeline.tool.richInteraction':
-		case 'agentSessions.timeline.tool.richInteractionDisplay':
-			return i18n.baseText(key);
+		case 'user-feedback':
+			return i18n.baseText('agentSessions.timeline.userFeedback');
 		default:
 			return key;
 	}
@@ -310,8 +309,8 @@ async function loadThreadDetail() {
 	try {
 		const result = await sessionsStore.getThreadDetail(
 			currentProjectId,
-			currentThreadId,
 			currentAgentId,
+			currentThreadId,
 		);
 		if (requestId !== loadThreadDetailRequestId) return;
 		thread.value = result.thread;

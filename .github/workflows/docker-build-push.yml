@@ -7,7 +7,7 @@ name: 'Docker: Build and Push'
 
 env:
   NODE_OPTIONS: '--max-old-space-size=7168'
-  NODE_VERSION: '24.15.0'
+  NODE_VERSION: '24.16.0'
 
 on:
   schedule:
@@ -62,11 +62,12 @@ jobs:
           N8N_VERSION: ${{ inputs.n8n_version }}
           RELEASE_TYPE: ${{ inputs.release_type }}
           PUSH_ENABLED: ${{ inputs.push_enabled }}
+          GITHUB_REF: ${{ github.ref_name }}
         run: |
           node .github/scripts/docker/docker-config.mjs \
             --event "${{ github.event_name }}" \
             --pr "${{ github.event.pull_request.number }}" \
-            --branch "${{ github.ref_name }}" \
+            --branch "$GITHUB_REF" \
             --version "$N8N_VERSION" \
             --release-type "$RELEASE_TYPE" \
             --push-enabled "$PUSH_ENABLED"
@@ -137,7 +138,7 @@ jobs:
             N8N_RELEASE_TYPE=${{ needs.determine-build-context.outputs.release_type }}
           platforms: ${{ matrix.docker_platform }}
           provenance: false # Disabled - using SLSA L3 generator for isolated provenance
-          sbom: false # Disabled - BuildKit's syft SBOM under-resolves npm licenses; the sbom-attestation job attests an enriched, license-gated CycloneDX SBOM instead
+          sbom: true
           push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
           tags: ${{ steps.determine-tags.outputs.n8n_tags }}
 
@@ -153,7 +154,7 @@ jobs:
             N8N_RELEASE_TYPE=${{ needs.determine-build-context.outputs.release_type }}
           platforms: ${{ matrix.docker_platform }}
           provenance: false # Disabled - using SLSA L3 generator for isolated provenance
-          sbom: false # Disabled - BuildKit's syft SBOM under-resolves npm licenses; the sbom-attestation job attests an enriched, license-gated CycloneDX SBOM instead
+          sbom: true
           push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
           tags: ${{ steps.determine-tags.outputs.runners_tags }}
 
@@ -169,7 +170,7 @@ jobs:
             N8N_RELEASE_TYPE=${{ needs.determine-build-context.outputs.release_type }}
           platforms: ${{ matrix.docker_platform }}
           provenance: false # Disabled - using SLSA L3 generator for isolated provenance
-          sbom: false # Disabled - BuildKit's syft SBOM under-resolves npm licenses; the sbom-attestation job attests an enriched, license-gated CycloneDX SBOM instead
+          sbom: true
           push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
           tags: ${{ steps.determine-tags.outputs.runners_distroless_tags }}
 
@@ -243,9 +244,11 @@ jobs:
 
       - name: Create Docker Hub manifests
         if: needs.determine-build-context.outputs.push_to_docker == 'true'
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
         run: |
           VERSION="${{ needs.determine-build-context.outputs.n8n_version }}"
-          DOCKER_BASE="${{ secrets.DOCKER_USERNAME }}"
+          DOCKER_BASE="$DOCKER_USERNAME"
 
           # Create manifests for each image type
           declare -A images=(

@@ -1,19 +1,19 @@
 import type * as AiImport from 'ai';
 
 import type { ObservationLogEntry } from '../../types/sdk/observation-log';
-import { InMemoryMemory } from '../memory-store';
+import { InMemoryMemory } from '../memory/memory-store';
 import {
 	buildObservationLogReflectorPrompt,
 	createObservationLogReflectFn,
 	DEFAULT_OBSERVATION_LOG_REFLECTOR_PROMPT,
 	DEFAULT_OBSERVATION_LOG_REFLECTOR_THRESHOLD_TOKENS,
-} from '../observation-log-defaults';
+} from '../memory/observation-log-defaults';
 import {
 	normalizeObservationLogReflection,
 	parseObservationLogReflectionJson,
 	renderObservationLogForReflection,
 	runObservationLogReflector,
-} from '../observation-log-reflector';
+} from '../memory/observation-log-reflector';
 
 type GenerateTextCall = Record<string, unknown>;
 type GenerateTextResult = { text: string; usage?: { totalTokens?: number } };

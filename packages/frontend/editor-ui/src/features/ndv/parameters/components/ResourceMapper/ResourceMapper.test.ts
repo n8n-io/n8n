@@ -2,6 +2,7 @@ import {
 	DEFAULT_SETUP,
 	MAPPING_COLUMNS_RESPONSE,
 	UPDATED_SCHEMA,
+	getLatestValueChangeEvent,
 } from './ResourceMapper.test.utils';
 import type { MockedStore } from '@/__tests__/utils';
 import { mockedStore, waitAllPromises } from '@/__tests__/utils';
@@ -351,6 +352,160 @@ describe('ResourceMapper.vue', () => {
 		});
 		await waitAllPromises();
 		expect(fetchFieldsSpy).not.toHaveBeenCalled();
+	});
+
+	it('reconciles an incomplete cached schema with the live source when refreshIncompleteSchemaOnOpen is set', async () => {
+		// A cached schema that is structurally incomplete (missing the
+		// loader-populated `readOnly`), as produced by an AI builder rather than
+		// a real load. After reconciling, the rendered fields should match the
+		// live response (MAPPING_COLUMNS_RESPONSE), not the cached schema below.
+		const incompleteCachedSchema = [
+			{
+				id: 'cached_only_field',
+				displayName: 'cached_only_field',
+				required: false,
+				defaultMatch: false,
+				display: true,
+				type: 'string',
+				canBeUsedToMatch: true,
+				removed: false,
+			},
+		];
+
+		const { getByTestId } = renderComponent(
+			{
+				props: {
+					node: createTestNode({
+						parameters: {
+							columns: {
+								schema: incompleteCachedSchema,
+							},
+						},
+					}),
+					parameter: createTestNodeProperties({
+						name: 'columns',
+						typeOptions: {
+							resourceMapper: {
+								mode: 'add',
+								resourceMapperMethod: 'getMappingColumns',
+								refreshIncompleteSchemaOnOpen: true,
+							} as ResourceMapperTypeOptions,
+						},
+					}),
+				},
+			},
+			{ merge: true },
+		);
+		await waitAllPromises();
+		expect(fetchFieldsSpy).toHaveBeenCalledTimes(1);
+		// Schema was reconciled with the live source — the cached-only field
+		// is gone and a field from MAPPING_COLUMNS_RESPONSE is rendered.
+		const mappingContainer = getByTestId('mapping-fields-container');
+		expect(mappingContainer.textContent).not.toContain('cached_only_field');
+		expect(mappingContainer.textContent).toContain('First name');
+	});
+
+	it('does not reintroduce an incomplete field when reconciling a matching-id schema', async () => {
+		// A cached field that shares its id with the live schema but is missing the
+		// loader-populated readOnly/removed, as an AI-authored schema would be.
+		// The reconcile must not copy the cached field's missing `removed` onto the
+		// freshly loaded field, which would leave it incomplete and re-trigger the
+		// refresh on every open.
+		const incompleteMatchingSchema = [
+			{
+				id: 'First name',
+				displayName: 'First name',
+				required: false,
+				defaultMatch: false,
+				display: true,
+				type: 'string',
+				canBeUsedToMatch: true,
+			},
+		];
+
+		// Rendered without `{ merge: true }` to keep the cached schema deterministic
+		// (see the test below for why).
+		const { emitted } = renderComponent({
+			props: {
+				node: createTestNode({
+					parameters: {
+						columns: {
+							schema: incompleteMatchingSchema,
+						},
+					},
+				}),
+				parameter: createTestNodeProperties({
+					name: 'columns',
+					type: 'resourceMapper',
+					typeOptions: {
+						resourceMapper: {
+							mode: 'add',
+							resourceMapperMethod: 'getMappingColumns',
+							refreshIncompleteSchemaOnOpen: true,
+						} as ResourceMapperTypeOptions,
+					},
+				}),
+			},
+		});
+		await waitAllPromises();
+
+		const reconciledSchema = getLatestValueChangeEvent(emitted())[0].value.schema;
+		const firstName = reconciledSchema.find((field) => field.id === 'First name');
+		expect(firstName?.removed).toBe(false);
+	});
+
+	it('keeps the stale warning for a complete-but-drifted schema when refreshIncompleteSchemaOnOpen is set', async () => {
+		// A cached schema that is structurally complete (the loader-populated
+		// `readOnly`/`removed` are present) but has drifted from the live source,
+		// as happens when the user edits the table after configuring the node.
+		// The user's drift must NOT be auto-clobbered — it keeps the cached
+		// fields and surfaces the stale warning instead of reconciling.
+		const completeDriftedSchema = [
+			{
+				id: 'user_added_field',
+				displayName: 'user_added_field',
+				required: false,
+				defaultMatch: false,
+				display: true,
+				type: 'string',
+				canBeUsedToMatch: true,
+				readOnly: false,
+				removed: false,
+			},
+		];
+
+		// Rendered without `{ merge: true }` on purpose: the shared DEFAULT_SETUP
+		// is mutated by lodash merge across tests, and arrays merge by index, so a
+		// prior test's longer schema would leak residual fields into this single
+		// field one. A full-props render keeps the cached schema deterministic.
+		const { getByTestId } = renderComponent({
+			props: {
+				node: createTestNode({
+					parameters: {
+						columns: {
+							schema: completeDriftedSchema,
+						},
+					},
+				}),
+				parameter: createTestNodeProperties({
+					name: 'columns',
+					type: 'resourceMapper',
+					typeOptions: {
+						resourceMapper: {
+							mode: 'add',
+							resourceMapperMethod: 'getMappingColumns',
+							refreshIncompleteSchemaOnOpen: true,
+						} as ResourceMapperTypeOptions,
+					},
+				}),
+			},
+		});
+		await waitAllPromises();
+		// The schema was checked against the live source but NOT replaced — the
+		// cached field is still rendered and the live-only field is absent.
+		const mappingContainer = getByTestId('mapping-fields-container');
+		expect(mappingContainer.textContent).toContain('user_added_field');
+		expect(mappingContainer.textContent).not.toContain('First name');
 	});
 
 	it('renders initially selected matching column properly', async () => {

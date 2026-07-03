@@ -13,15 +13,9 @@ on:
         type: string
         description: 'Full image reference to scan e.g. ghcr.io/n8n-io/n8n:latest'
         required: true
-    secrets:
-      QBOT_SLACK_TOKEN:
-        required: true
 
 permissions:
   contents: read
-
-env:
-  SLACK_CHANNEL_ID: C0AHNJU9XFA #updates-security
 
 jobs:
   security_scan:
@@ -36,7 +30,6 @@ jobs:
             security/trivy.yaml
             security/trivy-ignore-policy.rego
             .github/scripts/retry.mjs
-            .github/scripts/slack
           sparse-checkout-cone-mode: false
 
       - name: Pull Docker image with retry
@@ -165,17 +158,3 @@ jobs:
               echo "🔍 **View detailed logs above for full analysis**"
             } >> "$GITHUB_STEP_SUMMARY"
           fi
-
-      - name: Send Slack notification
-        if: steps.process_results.outputs.vulnerabilities_found == 'true'
-        env:
-          SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
-          IMAGE_REF: ${{ inputs.image_ref }}
-        run: |
-          node .github/scripts/slack/notify.mjs \
-            --channel "$SLACK_CHANNEL_ID" \
-            --text "🚨 Trivy Scan: ${{ steps.process_results.outputs.critical_count }} Critical, ${{ steps.process_results.outputs.high_count }} High, ${{ steps.process_results.outputs.medium_count }} Medium, ${{ steps.process_results.outputs.low_count }} Low vulnerabilities found in $IMAGE_REF" \
-            --blocks trivy \
-            --results trivy-results.json \
-            --image-ref "$IMAGE_REF"
-

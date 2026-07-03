@@ -10,13 +10,14 @@ import type {
 
 import * as GenericFunctions from '../shared/GenericFunctions';
 import { NotionV2 } from '../v2/NotionV2.node';
+import type { Mock } from 'vitest';
 
-jest.mock('../shared/GenericFunctions', () => ({
-	...jest.requireActual<typeof GenericFunctions>('../shared/GenericFunctions'),
-	notionApiRequestAllItems: jest.fn(),
+vi.mock('../shared/GenericFunctions', async () => ({
+	...(await vi.importActual<typeof GenericFunctions>('../shared/GenericFunctions')),
+	notionApiRequestAllItems: vi.fn(),
 }));
 
-const mockNotionApiRequestAllItems = GenericFunctions.notionApiRequestAllItems as jest.Mock;
+const mockNotionApiRequestAllItems = GenericFunctions.notionApiRequestAllItems as Mock;
 
 function createMockExecuteFunction(nodeParameters: IDataObject): IExecuteFunctions {
 	return {
@@ -60,7 +61,7 @@ const node = new NotionV2({
 
 describe('NotionV2 getAll pagination (coverage)', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('block getAll: should paginate with limit and slice results', async () => {

@@ -5,8 +5,9 @@ import {
 	type AgentJsonToolConfig,
 	type SUPPORTED_WORKFLOW_TOOL_TRIGGERS,
 } from '@n8n/api-types';
-import type { UserRepository, WorkflowRepository, WorkflowEntity } from '@n8n/db';
+import type { WorkflowRepository, WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import type {
 	IDataObject,
 	IExecuteResponsePromiseData,
@@ -31,7 +32,6 @@ import { z } from 'zod';
 import type { ActiveExecutions } from '@/active-executions';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { WorkflowRunner } from '@/workflow-runner';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { sanitizeToolName } from '../json-config/agent-config-composition';
 
@@ -69,10 +69,6 @@ const DEFAULT_TIMEOUT_MS = 120_000;
 const MAX_RESULT_CHARS = 20_000;
 const MAX_NODE_OUTPUT_BYTES = 5_000;
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
 function isWorkflowToolResponse(value: unknown): value is IExecuteResponsePromiseData {
 	return isRecord(value) && ('body' in value || 'headers' in value || 'statusCode' in value);
 }
@@ -85,10 +81,7 @@ export interface WorkflowToolContext {
 	workflowRepository: WorkflowRepository;
 	workflowRunner: WorkflowRunner;
 	activeExecutions: ActiveExecutions;
-	workflowFinderService: WorkflowFinderService;
-	userRepository: UserRepository;
-	userId: string;
-	projectId?: string;
+	projectId: string;
 	/** Base URL for webhooks/forms (e.g. http://localhost:5678/) */
 	webhookBaseUrl?: string;
 }
@@ -329,7 +322,6 @@ export async function executeWorkflow(
 	const runData: IWorkflowExecutionDataProcess = {
 		executionMode,
 		workflowData: workflow,
-		userId: context.userId,
 		startNodes: [{ name: triggerNode.name, sourceData: null }],
 		pinData: mergedPinData,
 		executionData: createRunExecutionData({
@@ -564,16 +556,13 @@ async function buildWorkflowTool(
 	descriptor: Extract<AgentJsonToolConfig, { type: 'workflow' }>,
 	context: WorkflowToolContext,
 ): Promise<BuiltTool> {
-	const { workflowRepository, workflowFinderService, userRepository } = context;
+	const { workflowRepository } = context;
 	const workflowName = descriptor.workflow;
 
-	// Step 1: Find the workflow by name, scoped to the project if available.
-	const whereClause: Record<string, unknown> = { name: workflowName };
-	if (context.projectId) {
-		whereClause.shared = { projectId: context.projectId };
-	}
+	// Find the workflow by name. Access control is project sharing: the
+	// workflow must be shared with the agent's project.
 	const candidateWorkflow = await workflowRepository.findOne({
-		where: whereClause,
+		where: { name: workflowName, shared: { projectId: context.projectId } },
 		relations: ['shared'],
 	});
 
@@ -581,19 +570,7 @@ async function buildWorkflowTool(
 		throw new Error(`Workflow "${workflowName}" not found`);
 	}
 
-	// Step 2: Verify the user has execute access via RBAC.
-	const user = await userRepository.findOne({ where: { id: context.userId }, relations: ['role'] });
-	if (!user) {
-		throw new Error(`User "${context.userId}" not found`);
-	}
-
-	const workflow = await workflowFinderService.findWorkflowForUser(candidateWorkflow.id, user, [
-		'workflow:execute',
-	]);
-
-	if (!workflow) {
-		throw new Error(`Workflow "${workflowName}" not found or user does not have execute access`);
-	}
+	const workflow = candidateWorkflow;
 
 	validateCompatibility(workflow);
 	const { node: triggerNode, triggerType } = detectTriggerNode(workflow);

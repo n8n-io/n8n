@@ -1,7 +1,7 @@
 import type { RedactionFloor } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import type { EntityManager, Project, User } from '@n8n/db';
+import type { EntityManager, User, Project, Folder } from '@n8n/db';
 import {
 	ProjectRepository,
 	SharedWorkflow,
@@ -10,6 +10,7 @@ import {
 	WorkflowEntity,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { PROJECT_ROOT } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -88,6 +89,7 @@ export class WorkflowCreationService {
 		// Ensure workflow is created as inactive
 		newWorkflow.active = false;
 		newWorkflow.versionId = uuid();
+		newWorkflow.parentFolder = null;
 
 		newWorkflow.sourceWorkflowId = sourceWorkflowId ?? null;
 
@@ -122,7 +124,14 @@ export class WorkflowCreationService {
 		WorkflowHelpers.addNodeIds(newWorkflow);
 		WorkflowHelpers.resolveNodeWebhookIds(newWorkflow, this.nodeTypes);
 		WorkflowHelpers.validateWorkflowStructure(newWorkflow);
-		WorkflowHelpers.validateWorkflowNodeGroups(newWorkflow);
+		WorkflowHelpers.validateWorkflowNodeGroups(
+			newWorkflow,
+			WorkflowHelpers.makeGetNodeTypeForGrouping(this.nodeTypes),
+		);
+
+		if (parentFolderId && parentFolderId !== PROJECT_ROOT) {
+			await this.findParentFolderInProjectOrFail(parentFolderId, effectiveProjectId);
+		}
 
 		if ('pinData' in newWorkflow) {
 			WorkflowHelpers.validatePinDataSize(newWorkflow);
@@ -189,18 +198,15 @@ export class WorkflowCreationService {
 				floor,
 			);
 
-			const workflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
-
-			if (parentFolderId) {
-				try {
-					const parentFolder = await this.folderService.findFolderInProjectOrFail(
-						parentFolderId,
-						project.id,
-						transactionManager,
-					);
-					await transactionManager.update(WorkflowEntity, { id: workflow.id }, { parentFolder });
-				} catch {}
+			if (parentFolderId && parentFolderId !== PROJECT_ROOT) {
+				newWorkflow.parentFolder = await this.findParentFolderInProjectOrFail(
+					parentFolderId,
+					project.id,
+					transactionManager,
+				);
 			}
+
+			const workflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
 
 			const newSharedWorkflow = this.sharedWorkflowRepository.create({
 				role: 'workflow:owner',
@@ -215,6 +221,7 @@ export class WorkflowCreationService {
 				workflow,
 				workflow.id,
 				autosaved,
+				undefined,
 				transactionManager,
 			);
 
@@ -254,6 +261,18 @@ export class WorkflowCreationService {
 		});
 
 		return savedWorkflow;
+	}
+
+	private async findParentFolderInProjectOrFail(
+		parentFolderId: string,
+		projectId: string,
+		em?: EntityManager,
+	): Promise<Folder> {
+		try {
+			return await this.folderService.findFolderInProjectOrFail(parentFolderId, projectId, em);
+		} catch {
+			throw new NotFoundError(`Could not find the folder: ${parentFolderId}`);
+		}
 	}
 
 	private async readActiveRedactionFloor(): Promise<RedactionFloor> {

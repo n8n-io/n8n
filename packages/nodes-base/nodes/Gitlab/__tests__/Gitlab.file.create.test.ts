@@ -2,24 +2,26 @@ import type { IExecuteFunctions } from 'n8n-workflow';
 
 import { Gitlab } from '../Gitlab.node';
 import * as GenericFunctions from '../GenericFunctions';
+import type { Mock, Mocked } from 'vitest';
+import type * as _importType0 from '../GenericFunctions';
 
-jest.mock('../GenericFunctions', () => ({
-	...jest.requireActual('../GenericFunctions'),
-	gitlabApiRequest: jest.fn(),
+vi.mock('../GenericFunctions', async () => ({
+	...(await vi.importActual<typeof _importType0>('../GenericFunctions')),
+	gitlabApiRequest: vi.fn(),
 }));
 
 describe('Gitlab Node - File Create/Edit Operations', () => {
 	let gitlab: Gitlab;
-	let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
+	let mockExecuteFunctions: Mocked<IExecuteFunctions>;
 
 	beforeEach(() => {
 		gitlab = new Gitlab();
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		mockExecuteFunctions = {
-			getNodeParameter: jest.fn(),
-			getInputData: jest.fn().mockReturnValue([{ json: {} }]),
-			getNode: jest.fn().mockReturnValue({
+			getNodeParameter: vi.fn(),
+			getInputData: vi.fn().mockReturnValue([{ json: {} }]),
+			getNode: vi.fn().mockReturnValue({
 				id: 'test-node-id',
 				name: 'Gitlab',
 				type: 'n8n-nodes-base.gitlab',
@@ -28,23 +30,23 @@ describe('Gitlab Node - File Create/Edit Operations', () => {
 				parameters: {},
 			}),
 			helpers: {
-				assertBinaryData: jest.fn(),
-				getBinaryDataBuffer: jest.fn(),
-				requestWithAuthentication: jest.fn(),
-				returnJsonArray: jest.fn((data) => (Array.isArray(data) ? data : [data])),
-				constructExecutionMetaData: jest.fn((data) => data),
+				assertBinaryData: vi.fn(),
+				getBinaryDataBuffer: vi.fn(),
+				requestWithAuthentication: vi.fn(),
+				returnJsonArray: vi.fn((data) => (Array.isArray(data) ? data : [data])),
+				constructExecutionMetaData: vi.fn((data) => data),
 			},
-			getCredentials: jest.fn().mockResolvedValue({
+			getCredentials: vi.fn().mockResolvedValue({
 				accessToken: 'test-token',
 				server: 'https://gitlab.example.com',
 			}),
-			continueOnFail: jest.fn().mockReturnValue(false),
-		} as unknown as jest.Mocked<IExecuteFunctions>;
+			continueOnFail: vi.fn().mockReturnValue(false),
+		} as unknown as Mocked<IExecuteFunctions>;
 	});
 
 	describe('File Create - Binary Data', () => {
 		it('should use getBinaryDataBuffer to correctly resolve binary content', async () => {
-			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation(
 				(paramName: string, _itemIndex: number, fallback?: unknown) => {
 					const params: Record<string, unknown> = {
 						authentication: 'accessToken',
@@ -64,11 +66,9 @@ describe('Gitlab Node - File Create/Edit Operations', () => {
 			);
 
 			const expectedBuffer = Buffer.from('test binary content');
-			(mockExecuteFunctions.helpers.getBinaryDataBuffer as jest.Mock).mockResolvedValue(
-				expectedBuffer,
-			);
+			(mockExecuteFunctions.helpers.getBinaryDataBuffer as Mock).mockResolvedValue(expectedBuffer);
 
-			(GenericFunctions.gitlabApiRequest as jest.Mock).mockResolvedValue({
+			(GenericFunctions.gitlabApiRequest as Mock).mockResolvedValue({
 				file_path: 'test/file.txt',
 				branch: 'main',
 			});
@@ -96,7 +96,7 @@ describe('Gitlab Node - File Create/Edit Operations', () => {
 
 	describe('File Edit - Binary Data', () => {
 		it('should use getBinaryDataBuffer for edit operations with binary data', async () => {
-			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation(
 				(paramName: string, _itemIndex: number, fallback?: unknown) => {
 					const params: Record<string, unknown> = {
 						authentication: 'accessToken',
@@ -116,11 +116,9 @@ describe('Gitlab Node - File Create/Edit Operations', () => {
 			);
 
 			const expectedBuffer = Buffer.from('updated binary content');
-			(mockExecuteFunctions.helpers.getBinaryDataBuffer as jest.Mock).mockResolvedValue(
-				expectedBuffer,
-			);
+			(mockExecuteFunctions.helpers.getBinaryDataBuffer as Mock).mockResolvedValue(expectedBuffer);
 
-			(GenericFunctions.gitlabApiRequest as jest.Mock).mockResolvedValue({
+			(GenericFunctions.gitlabApiRequest as Mock).mockResolvedValue({
 				file_path: 'test/file.txt',
 				branch: 'main',
 			});
@@ -149,7 +147,7 @@ describe('Gitlab Node - File Create/Edit Operations', () => {
 	describe('File Create - Text Content', () => {
 		it('should encode text content as base64 when encoding is set to base64', async () => {
 			const fileContent = 'Hello, World!';
-			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation(
 				(paramName: string, _itemIndex: number, fallback?: unknown) => {
 					const params: Record<string, unknown> = {
 						authentication: 'accessToken',
@@ -168,7 +166,7 @@ describe('Gitlab Node - File Create/Edit Operations', () => {
 				},
 			);
 
-			(GenericFunctions.gitlabApiRequest as jest.Mock).mockResolvedValue({
+			(GenericFunctions.gitlabApiRequest as Mock).mockResolvedValue({
 				file_path: 'test/file.txt',
 				branch: 'main',
 			});
@@ -192,7 +190,7 @@ describe('Gitlab Node - File Create/Edit Operations', () => {
 
 		it('should send text content as-is when encoding is not base64', async () => {
 			const fileContent = 'Hello, World!';
-			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.getNodeParameter as Mock).mockImplementation(
 				(paramName: string, _itemIndex: number, fallback?: unknown) => {
 					const params: Record<string, unknown> = {
 						authentication: 'accessToken',
@@ -211,7 +209,7 @@ describe('Gitlab Node - File Create/Edit Operations', () => {
 				},
 			);
 
-			(GenericFunctions.gitlabApiRequest as jest.Mock).mockResolvedValue({
+			(GenericFunctions.gitlabApiRequest as Mock).mockResolvedValue({
 				file_path: 'test/file.txt',
 				branch: 'main',
 			});

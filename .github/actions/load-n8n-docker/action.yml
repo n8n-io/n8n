@@ -18,6 +18,10 @@ inputs:
     description: 'Variant of the image to load. Must match what build-n8n-docker used (standard or coverage).'
     required: false
     default: 'standard'
+  cache-sha:
+    description: 'SHA for the image cache key. Empty = github.sha. Override when testing a ref other than the triggering commit (e.g. a PR head resolved at dispatch time) so the restore matches the code under test instead of a stale image (cache miss => rebuild from the checkout).'
+    required: false
+    default: ''
 
 runs:
   using: 'composite'
@@ -26,7 +30,7 @@ runs:
       id: restore
       uses: actions/cache/restore@640a1c2554105b57832a23eea0b4672fc7a790d5 # v4.2.3
       with:
-        key: n8n-docker-image-${{ inputs.build-variant }}-${{ github.sha }}
+        key: n8n-docker-image-${{ inputs.build-variant }}-${{ inputs.cache-sha || github.sha }}
         path: /tmp/n8n-image.tar.zst
 
     - name: Load n8n and runners images into docker
@@ -39,7 +43,7 @@ runs:
       shell: bash
       env:
         BUILD_VARIANT: ${{ inputs.build-variant }}
-        GITHUB_SHA: ${{ github.sha }}
+        GITHUB_SHA: ${{ inputs.cache-sha || github.sha }}
       run: |
         echo "::warning::Cache miss for n8n-docker-image-$BUILD_VARIANT-$GITHUB_SHA (SHA $GITHUB_SHA); falling back to rebuild via build-n8n-docker."
 

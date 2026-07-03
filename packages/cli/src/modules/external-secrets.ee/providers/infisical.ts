@@ -1,16 +1,26 @@
 import { Logger } from '@n8n/backend-common';
+import {
+	type HttpRequestClient,
+	httpStatusFromError,
+	isConnectionRefusedError,
+	OutboundHttp,
+} from '@n8n/backend-network';
 import { Container } from '@n8n/di';
-import type { AxiosInstance } from 'axios';
-import axios from 'axios';
 import { type INodeProperties, UnexpectedError } from 'n8n-workflow';
 
 import { DOCS_HELP_NOTICE } from '../constants';
+import {
+	buildHttpProviderErrorContext,
+	logSecretsProviderOperationFailure,
+	type LogContext,
+	type SecretsProviderOperationFailureParams,
+} from '../errors/secrets-provider-errors';
 import type { SecretsProviderSettings } from '../types';
 import { SecretsProvider } from '../types';
 
-type InfisicalAuthMethod = 'universalAuth';
+export type InfisicalAuthMethod = 'universalAuth';
 
-interface InfisicalSettings {
+export interface InfisicalSettings {
 	siteURL: string;
 	projectId: string;
 	environment: string;
@@ -22,25 +32,25 @@ interface InfisicalSettings {
 	clientSecret: string;
 }
 
-interface InfisicalUniversalAuthLoginResponse {
+export interface InfisicalUniversalAuthLoginResponse {
 	accessToken: string;
 	expiresIn: number;
 	accessTokenMaxTTL: number;
 	tokenType: string;
 }
 
-interface InfisicalSecret {
+export interface InfisicalSecret {
 	secretKey: string;
 	secretValue: string;
 }
 
-interface InfisicalImport {
+export interface InfisicalImport {
 	secrets: InfisicalSecret[];
 	secretPath: string;
 	environment: string;
 }
 
-interface InfisicalListSecretsResponse {
+export interface InfisicalListSecretsResponse {
 	secrets: InfisicalSecret[];
 	imports: InfisicalImport[];
 }
@@ -141,7 +151,7 @@ export class InfisicalProvider extends SecretsProvider {
 
 	private settings: InfisicalSettings;
 
-	private http: AxiosInstance;
+	private http: HttpRequestClient;
 
 	private currentToken: string | null = null;
 
@@ -151,7 +161,10 @@ export class InfisicalProvider extends SecretsProvider {
 
 	private refreshAbort = new AbortController();
 
-	constructor(readonly logger = Container.get(Logger)) {
+	constructor(
+		readonly logger = Container.get(Logger),
+		private readonly outboundHttp = Container.get(OutboundHttp),
+	) {
 		super();
 		this.logger = this.logger.scoped('external-secrets');
 	}
@@ -159,14 +172,10 @@ export class InfisicalProvider extends SecretsProvider {
 	async init(settings: SecretsProviderSettings): Promise<void> {
 		this.settings = settings.settings as unknown as InfisicalSettings;
 
-		const baseURL = new URL(this.settings.siteURL);
-
-		this.http = axios.create({ baseURL: baseURL.toString() });
-		this.http.interceptors.request.use((config) => {
-			if (this.currentToken) {
-				config.headers.Authorization = `Bearer ${this.currentToken}`;
-			}
-			return config;
+		this.http = this.outboundHttp.requests({
+			baseURL: this.settings.siteURL,
+			headers: () => this.buildAuthHeaders(),
+			ssrf: 'disabled', // admin-configured infrastructure
 		});
 
 		this.logger.debug('Infisical provider initialized');
@@ -175,19 +184,27 @@ export class InfisicalProvider extends SecretsProvider {
 	protected async doConnect(): Promise<void> {
 		this.refreshAbort = new AbortController();
 
-		if (this.settings.authMethod === 'universalAuth') {
-			if (!this.settings.clientId || !this.settings.clientSecret) {
-				throw new UnexpectedError('Client ID and Client Secret are required for Universal Auth');
+		try {
+			if (this.settings.authMethod === 'universalAuth') {
+				if (!this.settings.clientId || !this.settings.clientSecret) {
+					throw new UnexpectedError('Client ID and Client Secret are required for Universal Auth');
+				}
+				await this.loginUniversalAuth();
 			}
-			await this.loginUniversalAuth();
-		}
 
-		const [testSuccess, testMessage] = await this.test();
-		if (!testSuccess) {
-			throw new Error(testMessage ?? 'Connection test failed');
-		}
+			await this.verifyWorkspaceAccess();
 
-		this.setupTokenRefresh();
+			this.setupTokenRefresh();
+		} catch (error) {
+			const context =
+				error instanceof UnexpectedError ? undefined : buildHttpProviderErrorContext(error);
+			this.logOperationFailure('Failed to connect Infisical provider', {
+				operation: 'connect',
+				error,
+				context,
+			});
+			throw error;
+		}
 	}
 
 	async disconnect(): Promise<void> {
@@ -203,31 +220,19 @@ export class InfisicalProvider extends SecretsProvider {
 
 	async test(): Promise<[boolean] | [boolean, string]> {
 		try {
-			const resp = await this.http.get(
-				`/api/v1/workspace/${encodeURIComponent(this.settings.projectId)}`,
-				{ validateStatus: () => true },
-			);
-
-			if (resp.status >= 200 && resp.status < 300) {
-				return [true];
-			}
-
-			if (resp.status === 401) {
-				return [false, 'Invalid credentials'];
-			}
-			if (resp.status === 403) {
-				return [
-					false,
-					'Permission denied. Verify the machine identity has access to this project.',
-				];
-			}
-			if (resp.status === 404) {
-				return [false, 'Project not found. Check the Project ID and Site URL.'];
-			}
-
-			return [false, `Unexpected response from Infisical (status ${resp.status}).`];
+			await this.verifyWorkspaceAccess();
+			return [true];
 		} catch (error) {
-			if (axios.isAxiosError(error) && error.code === 'ECONNREFUSED') {
+			this.logOperationFailure('Infisical provider test failed', {
+				operation: 'test',
+				error,
+				context: {
+					...buildHttpProviderErrorContext(error),
+					endpoint: 'workspace',
+				},
+			});
+
+			if (isConnectionRefusedError(error)) {
 				return [false, 'Connection refused. Check the Site URL.'];
 			}
 			return [false, error instanceof Error ? error.message : 'Connection test failed'];
@@ -239,30 +244,46 @@ export class InfisicalProvider extends SecretsProvider {
 			throw new UnexpectedError('Update attempted on Infisical before authentication');
 		}
 
-		await this.ensureTokenFresh();
-
 		try {
-			this.cacheSecrets(await this.fetchSecrets());
-		} catch (error) {
-			if (axios.isAxiosError(error) && error.response?.status === 401) {
-				this.logger.debug('Infisical token rejected during update; re-authenticating and retrying');
-				await this.loginUniversalAuth();
+			await this.ensureTokenFresh();
+
+			try {
 				this.cacheSecrets(await this.fetchSecrets());
-				return;
+			} catch (error) {
+				if (httpStatusFromError(error) === 401) {
+					this.logger.debug(
+						'Infisical token rejected during update; re-authenticating and retrying',
+					);
+					await this.loginUniversalAuth();
+					this.cacheSecrets(await this.fetchSecrets());
+					return;
+				}
+				throw error;
 			}
+		} catch (error) {
+			this.logOperationFailure('Failed to update Infisical provider secrets', {
+				operation: 'update',
+				error,
+				context: {
+					...buildHttpProviderErrorContext(error),
+					endpoint: 'secrets',
+				},
+			});
 			throw error;
 		}
 	}
 
 	private async fetchSecrets(): Promise<InfisicalListSecretsResponse> {
-		const resp = await this.http.get<InfisicalListSecretsResponse>('/api/v4/secrets', {
-			params: {
+		return await this.http.request({
+			url: '/api/v4/secrets',
+			method: 'GET',
+			qs: {
 				projectId: this.settings.projectId,
 				environment: this.settings.environment,
 				secretPath: this.settings.secretPath,
 			},
+			json: true,
 		});
-		return resp.data;
 	}
 
 	private dedupeSecrets(secrets: InfisicalSecret[], imports: InfisicalImport[]): InfisicalSecret[] {
@@ -297,17 +318,19 @@ export class InfisicalProvider extends SecretsProvider {
 	}
 
 	private async loginUniversalAuth(): Promise<void> {
-		const resp = await this.http.post<InfisicalUniversalAuthLoginResponse>(
-			'/api/v1/auth/universal-auth/login',
-			{
+		const body = await this.http.request<InfisicalUniversalAuthLoginResponse>({
+			url: '/api/v1/auth/universal-auth/login',
+			method: 'POST',
+			body: {
 				clientId: this.settings.clientId,
 				clientSecret: this.settings.clientSecret,
 			},
-		);
+			json: true,
+		});
 
-		this.currentToken = resp.data.accessToken;
+		this.currentToken = body.accessToken;
 		this.tokenExpiresAt =
-			Date.now() + Math.max(resp.data.expiresIn - TOKEN_REFRESH_LEEWAY_SECONDS, 60) * 1000;
+			Date.now() + Math.max(body.expiresIn - TOKEN_REFRESH_LEEWAY_SECONDS, 60) * 1000;
 	}
 
 	private setupTokenRefresh(): void {
@@ -328,8 +351,12 @@ export class InfisicalProvider extends SecretsProvider {
 			await this.loginUniversalAuth();
 			if (this.refreshAbort.signal.aborted) return;
 			this.setupTokenRefresh();
-		} catch {
-			this.logger.error('Failed to refresh Infisical token. Attempting reconnect.');
+		} catch (error) {
+			this.logOperationFailure('Failed to refresh Infisical token. Attempting reconnect.', {
+				operation: 'tokenRefresh',
+				error,
+				context: buildHttpProviderErrorContext(error),
+			});
 			void this.connect();
 		}
 	};
@@ -344,5 +371,66 @@ export class InfisicalProvider extends SecretsProvider {
 
 	hasSecret(name: string): boolean {
 		return name in this.cachedSecrets;
+	}
+
+	private buildAuthHeaders(): Record<string, string> {
+		if (this.currentToken) {
+			return {
+				// eslint-disable-next-line @typescript-eslint/naming-convention
+				Authorization: `Bearer ${this.currentToken}`,
+			};
+		}
+		return {};
+	}
+
+	private async verifyWorkspaceAccess(): Promise<void> {
+		const resp = await this.http.request({
+			url: `/api/v1/workspace/${encodeURIComponent(this.settings.projectId)}`,
+			method: 'GET',
+			returnFullResponse: true,
+			ignoreHttpStatusErrors: true, // Resolve non-2xx responses instead of throwing so the status checks below can return tailored messages.
+		});
+
+		if (resp.statusCode >= 200 && resp.statusCode < 300) {
+			return;
+		}
+
+		if (resp.statusCode === 401) {
+			throw new Error('Invalid credentials');
+		}
+		if (resp.statusCode === 403) {
+			throw new Error('Permission denied. Verify the machine identity has access to this project.');
+		}
+		if (resp.statusCode === 404) {
+			throw new Error('Project not found. Check the Project ID and Site URL.');
+		}
+
+		throw new Error(`Unexpected response from Infisical (status ${resp.statusCode}).`);
+	}
+
+	private logOperationFailure(
+		message: string,
+		params: SecretsProviderOperationFailureParams,
+	): void {
+		const context: LogContext = { ...params.context };
+		if (this.settings) {
+			const { siteURL, projectId, authMethod, environment, secretPath } = this.settings;
+			Object.assign(context, { siteURL, projectId });
+			if (params.operation === 'connect' || params.operation === 'tokenRefresh') {
+				context.authMethod = authMethod;
+			} else if (params.operation === 'update') {
+				Object.assign(context, { environment, secretPath });
+			}
+		}
+
+		logSecretsProviderOperationFailure({
+			logger: this.logger,
+			message,
+			providerName: this.name,
+			providerDisplayName: this.displayName,
+			operation: params.operation,
+			error: params.error,
+			context,
+		});
 	}
 }

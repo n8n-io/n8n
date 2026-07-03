@@ -1,3 +1,4 @@
+import { TypedEmitter } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { Container, Service } from '@n8n/di';
@@ -12,7 +13,6 @@ import type {
 	MaybeHash,
 	Hash,
 } from '@/services/cache/cache.types';
-import { TypedEmitter } from '@/typed-emitter';
 import { isObject } from '@/utils';
 
 type CacheEvents = {

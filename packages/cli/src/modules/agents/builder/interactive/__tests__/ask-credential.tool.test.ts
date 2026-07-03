@@ -1,19 +1,21 @@
 import type { CredentialListItem, CredentialProvider } from '@n8n/agents';
-import { buildAskCredentialTool } from '../ask-credential.tool';
+import type { Mock } from 'vitest';
+
+import { buildAskCredentialTool, buildAskEmbeddingCredentialTool } from '../ask-credential.tool';
 
 interface TestCtx {
 	resumeData?: unknown;
-	suspend: jest.Mock;
+	suspend: Mock;
 }
 
 function makeCtx(overrides?: { resumeData?: unknown }): TestCtx {
-	return { resumeData: overrides?.resumeData, suspend: jest.fn(async (x: unknown) => x) };
+	return { resumeData: overrides?.resumeData, suspend: vi.fn(async (x: unknown) => x) };
 }
 
 function makeProvider(creds: CredentialListItem[]): CredentialProvider {
 	return {
-		list: jest.fn(async () => creds),
-		resolve: jest.fn(async () => ({})),
+		list: vi.fn(async () => creds),
+		resolve: vi.fn(async () => ({})),
 	};
 }
 
@@ -165,5 +167,77 @@ describe('ask_credential tool', () => {
 		expect(ctx.suspend).not.toHaveBeenCalled();
 		expect(credentialProvider.list).not.toHaveBeenCalled();
 		expect(result).toEqual({ skipped: true });
+	});
+});
+
+describe('ask_embedding_credential tool', () => {
+	it('returns managed credential when assistant proxy is enabled', async () => {
+		const credentialProvider = makeProvider([]);
+		const tool = buildAskEmbeddingCredentialTool({
+			credentialProvider,
+			isAssistantProxyEnabled: () => true,
+		});
+		const ctx = makeCtx();
+
+		const result = await tool.handler!(
+			{ purpose: 'Episodic Memory embeddings', credentialType: 'openAiApi' },
+			ctx as never,
+		);
+
+		expect(ctx.suspend).not.toHaveBeenCalled();
+		expect(credentialProvider.list).not.toHaveBeenCalled();
+		expect(result).toEqual({
+			credentialId: 'managed',
+			credentialName: 'Managed by n8n',
+			credentials: {
+				openAiApi: { id: 'managed', name: 'Managed by n8n' },
+			},
+		});
+	});
+
+	it('suspends with the usual credential selector when assistant proxy is unavailable', async () => {
+		const credentialProvider = makeProvider([
+			{ id: 'c1', name: 'Personal OpenAI', type: 'openAiApi' },
+			{ id: 'c2', name: 'Team OpenAI', type: 'openAiApi' },
+		]);
+		const tool = buildAskEmbeddingCredentialTool({
+			credentialProvider,
+			isAssistantProxyEnabled: () => false,
+		});
+		const ctx = makeCtx();
+
+		await tool.handler!(
+			{ purpose: 'Episodic Memory embeddings', credentialType: 'openAiApi' },
+			ctx as never,
+		);
+
+		expect(ctx.suspend).toHaveBeenCalledWith({
+			purpose: 'Episodic Memory embeddings',
+			credentialType: 'openAiApi',
+		});
+	});
+
+	it('returns selected credential after resume when assistant proxy is unavailable', async () => {
+		const credentialProvider = makeProvider([]);
+		const tool = buildAskEmbeddingCredentialTool({
+			credentialProvider,
+			isAssistantProxyEnabled: () => false,
+		});
+		const ctx = makeCtx({ resumeData: { credentialId: 'c9', credentialName: 'Picked OpenAI' } });
+
+		const result = await tool.handler!(
+			{ purpose: 'Episodic Memory embeddings', credentialType: 'openAiApi' },
+			ctx as never,
+		);
+
+		expect(ctx.suspend).not.toHaveBeenCalled();
+		expect(credentialProvider.list).not.toHaveBeenCalled();
+		expect(result).toEqual({
+			credentialId: 'c9',
+			credentialName: 'Picked OpenAI',
+			credentials: {
+				openAiApi: { id: 'c9', name: 'Picked OpenAI' },
+			},
+		});
 	});
 });

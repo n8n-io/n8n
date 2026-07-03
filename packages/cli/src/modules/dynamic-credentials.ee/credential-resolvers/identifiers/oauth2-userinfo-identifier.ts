@@ -1,13 +1,13 @@
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
-import axios from 'axios';
 import type { ICredentialContext } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { CacheService } from '@/services/cache/cache.service';
 
 import { IdentifierValidationError, ITokenIdentifier } from './identifier-interface';
+import { OAuth2MetadataHttpClient } from './oauth2-metadata-http-client';
 import { OAuth2OptionsSchema, sha256 } from './oauth2-utils';
 
 // Use minimum of 30 seconds to avoid cache thrashing
@@ -15,7 +15,6 @@ import { OAuth2OptionsSchema, sha256 } from './oauth2-utils';
 const MIN_TOKEN_CACHE_TIMEOUT = 30 * Time.seconds.toMilliseconds;
 const MAX_TOKEN_CACHE_TIMEOUT = 5 * Time.minutes.toMilliseconds;
 const DEFAULT_CACHE_TIMEOUT = 60 * Time.seconds.toMilliseconds; // 60 seconds
-const METADATA_CACHE_TIMEOUT = 1 * Time.hours.toMilliseconds; // 1 hour
 
 export const OAuth2UserInfoOptionsSchema = z.object({
 	...OAuth2OptionsSchema.shape,
@@ -47,6 +46,7 @@ export class OAuth2UserInfoIdentifier implements ITokenIdentifier {
 	constructor(
 		private readonly logger: Logger,
 		private readonly cache: CacheService,
+		private readonly http: OAuth2MetadataHttpClient,
 	) {}
 
 	async validateOptions(identifierOptions: Record<string, unknown>): Promise<void> {
@@ -118,38 +118,11 @@ export class OAuth2UserInfoIdentifier implements ITokenIdentifier {
 		options: OAuth2UserInfoOptions,
 		skipCache: boolean = false,
 	): Promise<OAuth2Metadata> {
-		const cacheKey = `${CACHE_PREFIX}:metadata:${options.metadataUri}`;
-		if (!skipCache) {
-			const cached = await this.cache.get<OAuth2Metadata>(cacheKey);
-			if (cached) {
-				return cached;
-			}
-		}
-
-		const response = await axios.get(options.metadataUri, {
-			validateStatus: () => true,
-			timeout: 10 * Time.seconds.toMilliseconds,
+		return await this.http.fetchMetadata(OAuth2MetadataSchema, {
+			metadataUri: options.metadataUri,
+			cachePrefix: CACHE_PREFIX,
+			skipCache,
 		});
-
-		if (response.status !== 200) {
-			this.logger.error(
-				`Failed to fetch OAuth2 metadata from ${options.metadataUri}, status code: ${response.status}`,
-			);
-			throw new IdentifierValidationError(
-				`Failed to fetch OAuth2 metadata, status code: ${response.status}`,
-			);
-		}
-
-		try {
-			const metadata = OAuth2MetadataSchema.parse(response.data);
-			if (!skipCache) {
-				await this.cache.set(cacheKey, metadata, METADATA_CACHE_TIMEOUT);
-			}
-			return metadata;
-		} catch (error) {
-			this.logger.error('Invalid OAuth2 metadata format', { error });
-			throw new IdentifierValidationError('Invalid OAuth2 metadata format', { cause: error });
-		}
 	}
 
 	private parseUserInfoResponse(data: unknown): UserInfoResponse {
@@ -166,22 +139,23 @@ export class OAuth2UserInfoIdentifier implements ITokenIdentifier {
 		options: OAuth2UserInfoOptions,
 		context: ICredentialContext,
 	): Promise<{ subject: string; ttl?: number }> {
-		const response = await axios.get(metadata.userinfo_endpoint, {
+		const response = await this.http.requestFull({
+			url: metadata.userinfo_endpoint,
+			method: 'GET',
 			headers: { authorization: `Bearer ${context.identity}` },
-			validateStatus: () => true,
-			timeout: 10 * Time.seconds.toMilliseconds,
+			json: true,
 		});
 
-		if (response.status !== 200) {
+		if (response.statusCode !== 200) {
 			this.logger.error('UserInfo failed', {
-				status: response.status,
-				data: response.data,
+				status: response.statusCode,
+				data: response.body,
 			});
 			throw new IdentifierValidationError('UserInfo query failed');
 		}
 
 		// TODO: Add support for JWT responses in addition to JSON
-		const userData = this.parseUserInfoResponse(response.data);
+		const userData = this.parseUserInfoResponse(response.body);
 		const subject = userData[options.subjectClaim];
 		if (!subject) {
 			this.logger.error(`UserInfo response missing subject claim (${options.subjectClaim})`);

@@ -1,6 +1,6 @@
 {
   "name": "@n8n/vitest-config",
-  "version": "1.13.0",
+  "version": "1.16.0",
   "type": "module",
   "peerDependencies": {
     "vite": "catalog:",
@@ -48,5 +48,5 @@
     "format:check": "biome ci .",
     "watch": "tsc -p tsconfig.build.json --watch"
   },
-  "license": "See LICENSE.md file in the root of the repository"
+  "license": "LicenseRef-n8n-sustainable-use"
 }

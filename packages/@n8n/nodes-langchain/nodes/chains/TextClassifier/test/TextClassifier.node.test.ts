@@ -1,4 +1,5 @@
 import { FakeChatModel } from '@langchain/core/utils/testing';
+import * as n8nWorkflow from 'n8n-workflow';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -9,6 +10,14 @@ import { TextClassifier } from '../TextClassifier.node';
 vi.mock('../processItem', () => ({
 	processItem: vi.fn(),
 }));
+
+vi.mock('n8n-workflow', async (importOriginal) => {
+	const actual = await importOriginal<typeof n8nWorkflow>();
+	return {
+		...actual,
+		sleep: vi.fn().mockResolvedValue(undefined),
+	};
+});
 
 describe('TextClassifier Node', () => {
 	let node: TextClassifier;
@@ -146,11 +155,11 @@ describe('TextClassifier Node', () => {
 
 			(processItem as Mock).mockResolvedValue({ test: true });
 
-			const startTime = Date.now();
 			await node.execute.call(mockExecuteFunction);
-			const endTime = Date.now();
 
-			expect(endTime - startTime).toBeGreaterThanOrEqual(200);
+			// 6 items with batchSize 2 => 3 batches => a delay after every batch but the last
+			expect(n8nWorkflow.sleep).toHaveBeenCalledTimes(2);
+			expect(n8nWorkflow.sleep).toHaveBeenCalledWith(100);
 		});
 
 		it('should handle errors in batch processing', async () => {

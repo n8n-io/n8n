@@ -1,3 +1,4 @@
+import type { SsrfBridge } from '@n8n/backend-network';
 import type {
 	DataTableProxyProvider,
 	DynamicCredentialCheckProxyProvider,
@@ -6,9 +7,7 @@ import type {
 	INode,
 	IWorkflowSettings,
 	OauthJweProxyProvider,
-	Result,
 } from 'n8n-workflow';
-import type { LookupFunction } from 'node:net';
 
 import type { ExecutionLifecycleHooks } from './execution-lifecycle-hooks';
 import type { ExternalSecretsProxy } from './external-secrets-proxy';
@@ -29,19 +28,6 @@ export type EvalLlmMockHandler = (
 	requestOptions: IHttpRequestOptions,
 	node: INode,
 ) => Promise<EvalMockHttpResponse | undefined>;
-
-export type SsrfCheckResult = Result<void, Error>;
-
-/**
- * Narrow interface for SSRF protection, satisfied structurally by SsrfProtectionService.
- * Defined here so packages/core can use it without importing from packages/cli.
- */
-export interface SsrfBridge {
-	validateIp(ip: string): SsrfCheckResult;
-	validateUrl(url: string | URL): Promise<SsrfCheckResult>;
-	validateRedirectSync(url: string): void;
-	createSecureLookup(): LookupFunction;
-}
 
 declare module 'n8n-workflow' {
 	interface IWorkflowExecuteAdditionalData {
@@ -97,24 +83,26 @@ declare module 'n8n-workflow' {
 	}
 }
 
-export * from './active-workflows';
-export type * from './interfaces';
-export * from './routing-node';
-export * from './node-execution-context';
-export * from './partial-execution-utils';
-export * from './node-execution-context/utils/execution-metadata';
-export * from './workflow-execute';
-export * from './execution-context-hook-registry.service';
-export { ExecutionLifecycleHooks } from './execution-lifecycle-hooks';
-export { ExternalSecretsProxy, type IExternalSecretsManager } from './external-secrets-proxy';
-export { ExecutionContextService } from './execution-context.service';
-export { establishExecutionContext } from './execution-context';
-export { isEngineRequest } from './requests-response';
+export * from './active-workflow-triggers';
 export {
 	synthesizeBinaryFixture,
 	type FixtureSizeHint,
 	type SynthesizeBinaryFixtureOptions,
 } from './eval-mock-fixtures';
+export { establishExecutionContext } from './execution-context';
+export * from './execution-context-hook-registry.service';
+export { ExecutionContextService } from './execution-context.service';
+export { ExecutionLifecycleHooks } from './execution-lifecycle-hooks';
+export { ExternalSecretsProxy, type IExternalSecretsManager } from './external-secrets-proxy';
+export type * from './interfaces';
+export * from './node-execution-context';
+export * from './node-execution-context/utils/execution-metadata';
+export * from './partial-execution-utils';
+export { PollTriggerExecutor } from './poll-trigger-executor';
+export { isEngineRequest } from './requests-response';
+export * from './routing-node';
+export * from './scheduled-task-manager';
+export * from './workflow-execute';
 // Exposed so eval-mode credential helpers (e.g. `EvalMockedCredentialsHelper`)
 // can reuse the same schema-driven cred synthesizer the wire-server URL
 // rewrite expects. See its `getDecrypted` catch path for the consumer.

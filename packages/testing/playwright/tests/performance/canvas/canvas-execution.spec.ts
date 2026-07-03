@@ -8,6 +8,13 @@ import {
 	readHeapLimitOnce,
 	type PostExecHeap,
 } from './helpers/post-exec-heap';
+import {
+	enableRenderTracking,
+	isRenderTrackingActive,
+	readRenderStats,
+	startRenderTracking,
+	type RenderStats,
+} from './helpers/render-stats';
 import { buildExecutionReportSections, fmt, firstDefined, formatReport } from './helpers/report';
 import { test, expect } from '../../../fixtures/base';
 import { attachMetric, measurePerformance } from '../../../utils/performance-helper';
@@ -50,7 +57,7 @@ test.use({
 
 test.describe(
 	'Canvas Execution Benchmark',
-	{ annotation: [{ type: 'owner', description: 'Canvas' }] },
+	{ annotation: [{ type: 'owner', description: 'Catalysts' }] },
 	() => {
 		for (const tier of TIERS) {
 			test(`executes ${tier}-tier with pinned data @tier:${tier}`, async ({
@@ -67,10 +74,15 @@ test.describe(
 				test.setTimeout(TIER_TIMEOUT_MS[tier]);
 				await n8n.page.setViewportSize({ width: 1536, height: 960 });
 				await n8n.page.emulateMedia({ reducedMotion: 'reduce' });
+				// Arm the re-render counter before the first navigation so editor-ui
+				// installs the tracking mixin on boot.
+				await enableRenderTracking(n8n.page);
 
 				const execRows: string[][] = [];
 				let v8HeapLimitGb: number | null = null;
 				let postExecHeap: PostExecHeap | null = null;
+				const renderStatsByScenario: Partial<Record<'small' | 'medium' | 'heavy', RenderStats>> =
+					{};
 
 				for (const scenario of SCENARIOS) {
 					const slug = METRIC_SLUG[scenario];
@@ -97,8 +109,13 @@ test.describe(
 					// the mount cost is already captured by canvas-load.spec.ts.
 					await n8n.page.goto('/workflows');
 					await expect(n8n.page).toHaveURL(/\/workflows$/);
+					// janitor-disable-next-line no-raw-editor-navigation -- benchmark navigates raw and measures load via waitForCanvasReady below
 					await n8n.page.goto(`/workflow/${workflowId}`);
 					await waitForCanvasReady(n8n.page, flowNodes, stickyNotes);
+
+					// Fail loudly if the flag didn't take, rather than silently reporting 0
+					// re-renders for the rest of the test.
+					expect(await isRenderTrackingActive(n8n.page)).toBe(true);
 
 					// Read the actual V8 heap limit once per page. We run at Chromium's
 					// default launch (no heap flag); the reported limit is ~4 GB — V8's
@@ -129,7 +146,10 @@ test.describe(
 					// the canvas once the run completes. Pinned and success badges are mutually
 					// exclusive (pinned wins), so we count the union via
 					// `getAllNodeExecutedIndicators()` — every traversed node lands in one bucket
-					// or the other.
+					// or the other. The same pass is wrapped in the re-render counter so the
+					// component-update cost of applying run data is captured alongside the
+					// wall-clock render time, without paying for an extra execution.
+					await startRenderTracking(n8n.page);
 					const renderMs = await measurePerformance(
 						n8n.page,
 						`render-${tier}-${slug}`,
@@ -141,11 +161,20 @@ test.describe(
 							);
 						},
 					);
+					const renderStats = await readRenderStats(n8n.page);
+					renderStatsByScenario[slug] = renderStats;
 					await attachMetric(
 						testInfo,
 						`canvas-exec-render-${slug}-${tier}-ms`,
 						renderMs,
 						'ms',
+						dimensions,
+					);
+					await attachMetric(
+						testInfo,
+						`canvas-rerender-exec-${slug}-${tier}`,
+						renderStats.total,
+						'count',
 						dimensions,
 					);
 
@@ -169,9 +198,13 @@ test.describe(
 						fmt.bytes(pinnedDataBytes),
 						fmt.ms(medianBy(execSamples, (sample) => sample)),
 						fmt.ms(renderMs),
+						fmt.count(renderStats.total),
 					]);
 
 					expect(medianBy(execSamples, (sample) => sample)).toBeGreaterThan(0);
+					// An execution paints status across every node, so it must re-render
+					// components — a zero here means tracking silently broke.
+					expect(renderStats.total).toBeGreaterThan(0);
 
 					// Reclaim what Chromium will let us free before mounting the next scenario.
 					// Each L-tier mount allocates ~230 MB; without this, the tab crashes after
@@ -182,7 +215,12 @@ test.describe(
 				console.log(
 					formatReport(
 						`Canvas Execution Benchmark — ${tier} tier`,
-						buildExecutionReportSections({ v8HeapLimitGb, execRows, postExecHeap }),
+						buildExecutionReportSections({
+							v8HeapLimitGb,
+							execRows,
+							postExecHeap,
+							heavyRenderStats: renderStatsByScenario.heavy,
+						}),
 					),
 				);
 			});

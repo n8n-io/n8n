@@ -1,6 +1,6 @@
 {
   "name": "@n8n/node-cli",
-  "version": "0.34.0",
+  "version": "0.38.0",
   "description": "Official CLI for developing community nodes for n8n",
   "bin": {
     "n8n-node": "bin/n8n-node.mjs"
@@ -47,33 +47,35 @@
   },
   "dependencies": {
     "@clack/prompts": "^0.11.0",
+    "@eslint/js": "^9.29.0",
     "@n8n/eslint-plugin-community-nodes": "workspace:*",
     "@n8n/ai-node-sdk": "workspace:*",
     "@oclif/core": "^4.5.2",
-    "change-case": "^5.4.4",
+    "change-case": "catalog:",
+    "eslint": "catalog:",
     "eslint-import-resolver-typescript": "^4.4.3",
     "eslint-plugin-import-x": "^4.15.2",
-    "eslint-plugin-n8n-nodes-base": "1.16.5",
+    "eslint-plugin-n8n-nodes-base": "catalog:",
     "fast-glob": "catalog:",
     "handlebars": "4.7.9",
     "picocolors": "catalog:",
-    "prettier": "3.6.2",
+    "prettier": "catalog:",
     "prompts": "^2.4.2",
     "rimraf": "catalog:",
     "ts-morph": "catalog:",
     "typescript-eslint": "^8.35.0"
   },
   "devDependencies": {
-    "@eslint/js": "^9.29.0",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@oclif/test": "^4.1.13",
-    "eslint": "catalog:",
     "typescript": "catalog:",
+    "vite": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"
   },
   "peerDependencies": {
-    "eslint": "catalog:"
-  }
+    "eslint": ">= 9"
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }

@@ -171,7 +171,7 @@ export function useWorkflowInitialization() {
 
 		// Create document store for template workflow (empty tags initially)
 		// The workflow ID was set during the template import
-		const currentWorkflowId = workflowsStore.workflowId;
+		const currentWorkflowId = workflowId.value;
 		if (currentWorkflowId) {
 			const workflowDocumentId = createWorkflowDocumentId(currentWorkflowId);
 			currentWorkflowDocumentStore.value = useWorkflowDocumentStore(workflowDocumentId);
@@ -191,7 +191,7 @@ export function useWorkflowInitialization() {
 		documentTitle.setDocumentTitle(currentWorkflowDocumentStore.value?.name ?? '', 'DEBUG');
 
 		const executionStateStore = useWorkflowExecutionStateStore(
-			createWorkflowDocumentId(workflowsStore.workflowId),
+			createWorkflowDocumentId(workflowId.value),
 		);
 		if (!executionStateStore.isInDebugMode) {
 			const executionId = route.params.executionId;
@@ -254,8 +254,11 @@ export function useWorkflowInitialization() {
 			);
 		}
 
+		// Capture the outgoing workflow id before disposal nulls the current document
+		// store, so teardown targets the workflow being left (not the route's next one).
+		const outgoingWorkflowId = currentWorkflowDocumentStore.value?.workflowId;
 		disposeCurrentWorkflowDocumentStore();
-		resetWorkspace();
+		resetWorkspace(outgoingWorkflowId);
 
 		if (builderStore.streaming) {
 			documentTitle.setDocumentTitle(data.name, 'AI_BUILDING');
@@ -293,8 +296,11 @@ export function useWorkflowInitialization() {
 	}
 
 	async function initializeWorkspaceForNewWorkflow() {
+		// Capture the outgoing workflow id before disposal nulls the current document
+		// store, so teardown targets the workflow being left (not the route's next one).
+		const outgoingWorkflowId = currentWorkflowDocumentStore.value?.workflowId;
 		disposeCurrentWorkflowDocumentStore();
-		resetWorkspace();
+		resetWorkspace(outgoingWorkflowId);
 
 		const parentFolderId = route.query.parentFolderId as string | undefined;
 
@@ -461,8 +467,11 @@ export function useWorkflowInitialization() {
 	}
 
 	function cleanup() {
+		// Capture the outgoing workflow id before disposal nulls the current document
+		// store, so teardown targets the workflow being left (not the route's next one).
+		const outgoingWorkflowId = currentWorkflowDocumentStore.value?.workflowId;
 		disposeCurrentWorkflowDocumentStore();
-		resetWorkspace();
+		resetWorkspace(outgoingWorkflowId);
 		uiStore.nodeViewInitialized = false;
 	}
 

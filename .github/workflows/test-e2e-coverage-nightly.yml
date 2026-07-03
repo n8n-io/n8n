@@ -10,6 +10,19 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Shared build so the Turbo remote cache is warm before any test job starts.
+  # Downstream jobs call setup-nodejs with the default build-command and get
+  # ~30s cache hits rather than racing to build in parallel from cold.
+  build:
+    name: Install & Build
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup and Build
+        uses: ./.github/actions/setup-nodejs
+
   prepare-docker:
     name: Prepare Docker (coverage)
     uses: ./.github/workflows/prepare-docker-reusable.yml
@@ -24,6 +37,7 @@ jobs:
   # then blew past the timeout; duration-weighting keeps every shard even.
   generate-matrix:
     name: Generate shard matrix
+    needs: build
     runs-on: blacksmith-2vcpu-ubuntu-2204
     outputs:
       matrix: ${{ steps.gen.outputs.matrix }}
@@ -31,15 +45,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Setup and Build janitor
+      - name: Setup
         uses: ./.github/actions/setup-nodejs
         with:
           build-command: pnpm turbo run build --filter=@n8n/playwright-janitor
 
-      - name: Generate matrix (10 shards, duration-weighted)
+      - name: Generate matrix (16 shards, duration-weighted)
         id: gen
         run: |
-          MATRIX=$(node packages/testing/playwright/scripts/distribute-tests.mjs --matrix 10 --orchestrate)
+          MATRIX=$(node packages/testing/playwright/scripts/distribute-tests.mjs --matrix 16 --orchestrate)
           echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
 
   e2e:
@@ -60,9 +74,116 @@ jobs:
       currents-project-id: 'LRxcNt'
     secrets: inherit
 
+  # Unit + integration coverage, one leg per suite — no change-scoping, run in
+  # parallel with the E2E shards (the shared `build` job keeps Turbo cache warm).
+  # The integration leg adds a Postgres pre-pull and runs from packages/cli to
+  # reach branches a mocked DB can't (real query paths, multi-main, migrations).
+  unit-coverage:
+    name: ${{ matrix.name }}
+    needs: build
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Unit Coverage (backend + nodes)
+            artifact: unit-coverage
+            test-command: pnpm test:ci:backend:unit
+            artifact-path: packages/**/coverage/lcov.info
+          - name: Unit Coverage (frontend)
+            artifact: frontend-coverage
+            test-command: pnpm test:ci:frontend
+            artifact-path: packages/**/coverage/lcov.info
+          - name: Unit Coverage (CLI integration + Postgres)
+            artifact: integration-coverage
+            test-command: pnpm test:postgres:integration:tc
+            # Glob (not the single file) so the artifact keeps its packages/<pkg>/
+            # path, which aggregate-coverage.mjs uses to qualify SF: keys.
+            artifact-path: packages/**/coverage/lcov.info
+            working-directory: packages/cli
+            pre-pull-containers: true
+    env:
+      COVERAGE_ENABLED: 'true'
+      NODE_OPTIONS: --max-old-space-size=7168
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup
+        uses: ./.github/actions/setup-nodejs
+
+      - name: Pre-pull Test Container Images
+        if: matrix.pre-pull-containers
+        run: pnpm tsx packages/testing/containers/pull-test-images.ts || true
+
+      - name: Run tests
+        working-directory: ${{ matrix.working-directory || github.workspace }}
+        run: ${{ matrix.test-command }}
+
+      - name: Upload coverage artifact
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.artifact-path }}
+          retention-days: 3
+
+  # Both Python packages in one job — they're fast and share the uv install
+  # (each still pins its own Python version: 3.13 task-runner, 3.11 evals).
+  python-coverage:
+    name: Python Coverage (task-runner + ai-workflow-builder)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@6ee6290f1cbc4156c0bdd66691b2c144ef8df19a # v7.4.0
+        with:
+          enable-cache: true
+
+      - name: Install just
+        uses: extractions/setup-just@e33e0265a09d6d736e2ee1e0eb685ef1de4669ff # v3.0.0
+
+      - name: Install Python 3.13 (task-runner)
+        working-directory: packages/@n8n/task-runner-python
+        run: uv python install 3.13
+
+      - name: Install task-runner dependencies
+        working-directory: packages/@n8n/task-runner-python
+        run: just sync-all
+
+      - name: Test task-runner-python
+        working-directory: packages/@n8n/task-runner-python
+        run: uv run pytest --cov=src --cov-report=xml --cov-report=term-missing
+
+      - name: Install Python 3.11 (ai-workflow-builder evals)
+        working-directory: packages/@n8n/ai-workflow-builder.ee/evaluations/programmatic/python
+        run: uv python install 3.11
+
+      - name: Install ai-workflow-builder eval dependencies
+        working-directory: packages/@n8n/ai-workflow-builder.ee/evaluations/programmatic/python
+        run: just sync-all
+
+      - name: Test ai-workflow-builder evals
+        working-directory: packages/@n8n/ai-workflow-builder.ee/evaluations/programmatic/python
+        run: uv run pytest --cov=src --cov-report=xml --cov-report=term-missing
+
+      - name: Upload Python Coverage to Codecov
+        if: always()
+        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: |
+            packages/@n8n/task-runner-python/coverage.xml
+            packages/@n8n/ai-workflow-builder.ee/evaluations/programmatic/python/coverage.xml
+          flags: nightly-python
+          name: nightly-python-coverage
+          fail_ci_if_error: false
+
   aggregate:
     name: Aggregate Coverage
-    needs: e2e
+    needs: [e2e, unit-coverage, python-coverage]
     if: always() && needs.e2e.result != 'skipped' && needs.e2e.result != 'cancelled'
     runs-on: blacksmith-4vcpu-ubuntu-2204
     steps:
@@ -72,21 +193,34 @@ jobs:
       - name: Setup Environment
         uses: ./.github/actions/setup-nodejs
 
-      - name: Download shard artifacts
+      - name: Download E2E shard artifacts
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           pattern: coverage-shard-*
           path: /tmp/shards/
 
-      - name: Build janitor (tested merge-coverage)
+      # No merge-multiple: packages/cli/coverage/lcov.info exists in both
+      # unit-coverage and integration-coverage — separate artifact subdirs
+      # prevent clobbering, and findFiles recurses into all of them so MCR
+      # unions unit + integration coverage for CLI correctly.
+      - name: Download unit + integration + frontend coverage artifacts
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          pattern: '*-coverage'
+          path: /tmp/unit-lcovs/
+
+      - name: Build janitor (merge-coverage)
         run: pnpm turbo run build --filter=@n8n/playwright-janitor
 
-      # Report (shard lcovs → unified lcov) + impact map (per-spec lcovs →
-      # spec-keyed map), both via the property-tested janitor merge-coverage.
-      # Logic lives in the tested aggregate-coverage.mjs, not inline bash.
+      # Merges all lcovs into one lcov.info (SF: paths normalised to repo-root-
+      # relative) and builds the per-spec E2E impact map for PR selection.
       - name: Aggregate coverage + build impact map
         working-directory: packages/testing/playwright
-        run: node scripts/aggregate-coverage.mjs --shards=/tmp/shards --out=coverage
+        run: |
+          node scripts/aggregate-coverage.mjs \
+            --shards=/tmp/shards \
+            --unit-shards=/tmp/unit-lcovs \
+            --out=coverage
 
       - name: Upload Coverage Report Artifact
         if: always()
@@ -96,14 +230,14 @@ jobs:
           path: packages/testing/playwright/coverage/
           retention-days: 14
 
-      - name: Upload E2E Coverage to Codecov
+      - name: Upload Combined Coverage to Codecov
         if: always()
         uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5.5.2
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: packages/testing/playwright/coverage/lcov.info
-          flags: frontend-e2e
-          name: playwright-e2e
+          flags: nightly-full
+          name: nightly-full-coverage
           fail_ci_if_error: false
 
       # Codecov needs ~60-90s to finish indexing the fresh upload before its

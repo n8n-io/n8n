@@ -1,4 +1,4 @@
-import { ApplicationError } from '@n8n/errors';
+import { UnexpectedError } from 'n8n-workflow';
 import type {
 	Workflow,
 	INode,
@@ -49,7 +49,7 @@ describe('TriggersAndPollers', () => {
 			);
 
 		it('should throw error if node type does not have trigger function', async () => {
-			await expect(runTriggerHelper()).rejects.toThrow(ApplicationError);
+			await expect(runTriggerHelper()).rejects.toThrow(UnexpectedError);
 		});
 
 		it('should call trigger function in regular mode', async () => {
@@ -120,7 +120,7 @@ describe('TriggersAndPollers', () => {
 			await triggersAndPollers.runPollFunction(workflow, node, pollFunctions);
 
 		it('should throw error if node type does not have poll function', async () => {
-			await expect(runPollHelper()).rejects.toThrow(ApplicationError);
+			await expect(runPollHelper()).rejects.toThrow(UnexpectedError);
 		});
 
 		it('should call poll function and return result', async () => {

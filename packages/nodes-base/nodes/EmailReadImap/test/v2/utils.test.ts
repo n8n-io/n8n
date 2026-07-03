@@ -1,12 +1,12 @@
 import { type ImapSimple } from '@n8n/imap';
-import { mock, mockDeep } from 'jest-mock-extended';
+import { mock, mockDeep } from 'vitest-mock-extended';
 import { returnJsonArray } from 'n8n-core';
 import type { INode, ITriggerFunctions, IDataObject } from 'n8n-workflow';
 
 import { getNewEmails } from '../../v2/utils';
 
 describe('Test IMap V2 utils', () => {
-	afterEach(() => jest.resetAllMocks());
+	afterEach(() => vi.resetAllMocks());
 
 	describe('getNewEmails', () => {
 		const triggerFunctions = mockDeep<ITriggerFunctions>({
@@ -27,10 +27,10 @@ describe('Test IMap V2 utils', () => {
 		};
 
 		const imapConnection = mock<ImapSimple>({
-			search: jest.fn().mockReturnValue(Promise.resolve([message])),
+			search: vi.fn().mockReturnValue(Promise.resolve([message])),
 		});
-		const getText = jest.fn().mockReturnValue('text');
-		const getAttachment = jest.fn().mockReturnValue(['attachment']);
+		const getText = vi.fn().mockReturnValue('text');
+		const getAttachment = vi.fn().mockReturnValue(['attachment']);
 
 		it('should return new emails', async () => {
 			const expectedResults = [
@@ -82,7 +82,7 @@ describe('Test IMap V2 utils', () => {
 					.mockReturnValue('resolved');
 				triggerFunctions.getWorkflowStaticData.mockReturnValue({});
 
-				const onEmailBatch = jest.fn();
+				const onEmailBatch = vi.fn();
 				await getNewEmails.call(triggerFunctions, {
 					imapConnection,
 					searchCriteria: [],
@@ -104,7 +104,7 @@ describe('Test IMap V2 utils', () => {
 			};
 
 			const localConnection = mock<ImapSimple>({
-				search: jest.fn().mockResolvedValue([messageWithoutHeader]),
+				search: vi.fn().mockResolvedValue([messageWithoutHeader]),
 			});
 
 			triggerFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 2.1 }));
@@ -112,7 +112,7 @@ describe('Test IMap V2 utils', () => {
 			triggerFunctions.getNodeParameter.calledWith('downloadAttachments').mockReturnValue(false);
 			triggerFunctions.getWorkflowStaticData.mockReturnValue({});
 
-			const onEmailBatch = jest.fn();
+			const onEmailBatch = vi.fn();
 			await getNewEmails.call(triggerFunctions, {
 				imapConnection: localConnection,
 				searchCriteria: [],
@@ -155,7 +155,7 @@ describe('Test IMap V2 utils', () => {
 			];
 
 			const localConnection = mock<ImapSimple>({
-				search: jest.fn().mockResolvedValue(messages),
+				search: vi.fn().mockResolvedValue(messages),
 			});
 
 			triggerFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 2.1 }));
@@ -163,7 +163,7 @@ describe('Test IMap V2 utils', () => {
 			triggerFunctions.getNodeParameter.calledWith('downloadAttachments').mockReturnValue(false);
 			triggerFunctions.getWorkflowStaticData.mockReturnValue(staticData);
 
-			const onEmailBatch = jest.fn();
+			const onEmailBatch = vi.fn();
 			await getNewEmails.call(triggerFunctions, {
 				imapConnection: localConnection,
 				searchCriteria: [],
@@ -197,7 +197,7 @@ describe('Test IMap V2 utils', () => {
 			];
 
 			const localConnection = mock<ImapSimple>({
-				search: jest.fn().mockResolvedValue(messages),
+				search: vi.fn().mockResolvedValue(messages),
 			});
 
 			triggerFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 2.1 }));
@@ -205,7 +205,7 @@ describe('Test IMap V2 utils', () => {
 			triggerFunctions.getNodeParameter.calledWith('downloadAttachments').mockReturnValue(false);
 			triggerFunctions.getWorkflowStaticData.mockReturnValue(staticData);
 
-			const onEmailBatch = jest.fn();
+			const onEmailBatch = vi.fn();
 			await getNewEmails.call(triggerFunctions, {
 				imapConnection: localConnection,
 				searchCriteria: [],
@@ -246,7 +246,7 @@ describe('Test IMap V2 utils', () => {
 			];
 
 			const localConnection = mock<ImapSimple>({
-				search: jest.fn().mockResolvedValueOnce(batch1).mockResolvedValueOnce(batch2),
+				search: vi.fn().mockResolvedValueOnce(batch1).mockResolvedValueOnce(batch2),
 			});
 
 			triggerFunctions.getNode.mockReturnValue(mock<INode>({ typeVersion: 2.1 }));
@@ -255,7 +255,7 @@ describe('Test IMap V2 utils', () => {
 			triggerFunctions.getWorkflowStaticData.mockReturnValue(staticData);
 
 			const allBatchedUids: number[][] = [];
-			const onEmailBatch = jest.fn().mockImplementation((data) => {
+			const onEmailBatch = vi.fn().mockImplementation((data) => {
 				allBatchedUids.push(
 					data.map((item: { json: { attributes: { uid: number } } }) => item.json.attributes.uid),
 				);

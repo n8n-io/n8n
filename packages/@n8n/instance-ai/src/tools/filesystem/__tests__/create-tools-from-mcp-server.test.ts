@@ -6,6 +6,8 @@ import { executeTool } from '../../../__tests__/tool-test-utils';
 import type { LocalMcpServer } from '../../../types';
 import { createToolsFromLocalMcpServer } from '../create-tools-from-mcp-server';
 
+const mockLogger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } as never;
+
 // ---------------------------------------------------------------------------
 // Fixtures
 // ---------------------------------------------------------------------------
@@ -73,6 +75,19 @@ const SCREENSHOT_RESULT: McpToolCallResult = {
 	],
 };
 
+const PDF_RESULT: McpToolCallResult = {
+	content: [
+		{
+			type: 'resource',
+			resource: {
+				uri: 'file:///doc.pdf',
+				mimeType: 'application/pdf',
+				blob: 'base64-pdf',
+			},
+		},
+	],
+};
+
 const GENERIC_ERROR_RESULT: McpToolCallResult = {
 	content: [{ type: 'text', text: 'Permission denied' }],
 	isError: true,
@@ -92,7 +107,7 @@ function makeMockServer(tools: McpTool[] = [SAMPLE_TOOL]): Mocked<LocalMcpServer
 
 /** Build the tool and return its execute function. */
 function getExecute(server: LocalMcpServer, toolName = 'write_file') {
-	const tools = createToolsFromLocalMcpServer(server);
+	const tools = createToolsFromLocalMcpServer(server, mockLogger);
 	const tool = tools.get(toolName);
 	if (!tool) throw new Error(`Tool '${toolName}' was not created`);
 	return async (args: Record<string, unknown>, ctx: unknown) =>
@@ -115,7 +130,7 @@ describe('createToolsFromLocalMcpServer', () => {
 	describe('tool creation', () => {
 		it('creates a tool for each advertised tool', () => {
 			const server = makeMockServer([SAMPLE_TOOL, { ...SAMPLE_TOOL, name: 'read_file' }]);
-			const tools = createToolsFromLocalMcpServer(server);
+			const tools = createToolsFromLocalMcpServer(server, mockLogger);
 			expect(tools.has('write_file')).toBe(true);
 			expect(tools.has('read_file')).toBe(true);
 		});
@@ -129,8 +144,8 @@ describe('createToolsFromLocalMcpServer', () => {
 				},
 			]);
 			// Should not throw — the tool must be created even with a bad schema
-			expect(() => createToolsFromLocalMcpServer(server)).not.toThrow();
-			expect(createToolsFromLocalMcpServer(server).get('bad_tool')).toBeDefined();
+			expect(() => createToolsFromLocalMcpServer(server, mockLogger)).not.toThrow();
+			expect(createToolsFromLocalMcpServer(server, mockLogger).get('bad_tool')).toBeDefined();
 		});
 
 		it('skips tools with invalid names', () => {
@@ -245,7 +260,7 @@ describe('createToolsFromLocalMcpServer', () => {
 	describe('media output', () => {
 		it('returns native file parts from toMessage for gateway image results', () => {
 			const server = makeMockServer();
-			const tool = createToolsFromLocalMcpServer(server).get('write_file');
+			const tool = createToolsFromLocalMcpServer(server, mockLogger).get('write_file');
 
 			const message = tool?.toMessage?.(SCREENSHOT_RESULT);
 
@@ -260,14 +275,14 @@ describe('createToolsFromLocalMcpServer', () => {
 
 		it('does not create an extra message for text-only results', () => {
 			const server = makeMockServer();
-			const tool = createToolsFromLocalMcpServer(server).get('write_file');
+			const tool = createToolsFromLocalMcpServer(server, mockLogger).get('write_file');
 
 			expect(tool?.toMessage?.(SUCCESS_RESULT)).toBeUndefined();
 		});
 
 		it('returns AI SDK content output for gateway image results', () => {
 			const server = makeMockServer();
-			const tool = createToolsFromLocalMcpServer(server).get('write_file');
+			const tool = createToolsFromLocalMcpServer(server, mockLogger).get('write_file');
 
 			expect(tool?.toModelOutput?.(SCREENSHOT_RESULT)).toEqual({
 				type: 'content',
@@ -275,6 +290,40 @@ describe('createToolsFromLocalMcpServer', () => {
 					{ type: 'text', text: 'current browser screenshot' },
 					{ type: 'image-data', data: 'base64-screenshot', mediaType: 'image/png' },
 				],
+			});
+		});
+
+		it('returns a native file part from toMessage for gateway resource results', () => {
+			const server = makeMockServer();
+			const tool = createToolsFromLocalMcpServer(server, mockLogger).get('write_file');
+
+			expect(tool?.toMessage?.(PDF_RESULT)).toEqual({
+				role: 'assistant',
+				content: [{ type: 'file', data: 'base64-pdf', mediaType: 'application/pdf' }],
+			});
+		});
+
+		it('falls back to application/octet-stream when resource has no mimeType', () => {
+			const server = makeMockServer();
+			const tool = createToolsFromLocalMcpServer(server, mockLogger).get('write_file');
+
+			const result: McpToolCallResult = {
+				content: [{ type: 'resource', resource: { uri: 'file:///x', blob: 'base64-bytes' } }],
+			};
+
+			expect(tool?.toMessage?.(result)).toEqual({
+				role: 'assistant',
+				content: [{ type: 'file', data: 'base64-bytes', mediaType: 'application/octet-stream' }],
+			});
+		});
+
+		it('returns AI SDK content output for gateway resource results', () => {
+			const server = makeMockServer();
+			const tool = createToolsFromLocalMcpServer(server, mockLogger).get('write_file');
+
+			expect(tool?.toModelOutput?.(PDF_RESULT)).toEqual({
+				type: 'content',
+				value: [{ type: 'file-data', data: 'base64-pdf', mediaType: 'application/pdf' }],
 			});
 		});
 	});

@@ -47,7 +47,7 @@ describe('Google Cloud Storage ObjectDescription', () => {
 
 		it('does not call onChunk for an empty stream', async () => {
 			const stream = Readable.from([]);
-			const onChunk = jest.fn();
+			const onChunk = vi.fn();
 
 			await processStreamInChunks(stream, 1024, onChunk);
 

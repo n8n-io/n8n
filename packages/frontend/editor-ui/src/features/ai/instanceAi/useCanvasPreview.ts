@@ -1,15 +1,16 @@
-import { computed, ref, watch, type Ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import type { IconName } from '@n8n/design-system';
 import {
 	getLatestBuildResult,
 	getLatestBuilderTarget,
-	getLatestExecutionId,
 	getLatestWorkflowSetupResult,
+	getLatestWorkflowUpdateResult,
 	getLatestDataTableResult,
 	getLatestDeletedDataTableId,
+	getExecutionResultsByWorkflow,
+	type ExecutionResult,
 } from './canvasPreview.utils';
 import type { ThreadRuntime } from './instanceAi.store';
-import type { ExecutionStatus, WorkflowExecutionState } from './useExecutionPushEvents';
 
 export interface ArtifactTab {
 	id: string;
@@ -17,7 +18,6 @@ export interface ArtifactTab {
 	name: string;
 	icon: IconName;
 	projectId?: string;
-	executionStatus?: ExecutionStatus;
 }
 
 const ARTIFACT_ICON_MAP: Record<string, IconName> = {
@@ -28,14 +28,9 @@ const ARTIFACT_ICON_MAP: Record<string, IconName> = {
 interface UseCanvasPreviewOptions {
 	thread: ThreadRuntime;
 	threadId: () => string;
-	workflowExecutions?: Ref<Map<string, WorkflowExecutionState>>;
 }
 
-export function useCanvasPreview({
-	thread,
-	threadId,
-	workflowExecutions,
-}: UseCanvasPreviewOptions) {
+export function useCanvasPreview({ thread }: UseCanvasPreviewOptions) {
 	// --- Tab state ---
 	const activeTabId = ref<string>();
 
@@ -50,15 +45,12 @@ export function useCanvasPreview({
 					name: entry.name,
 					icon: ARTIFACT_ICON_MAP[entry.type] ?? 'file',
 					projectId: entry.projectId,
-					executionStatus: workflowExecutions?.value.get(entry.id)?.status,
 				});
 			}
 		}
 
 		return result;
 	});
-
-	const activeExecutionId = ref<string | null>(null);
 
 	// Derived preview state from active tab
 	const activeWorkflowId = computed(() => {
@@ -76,9 +68,49 @@ export function useCanvasPreview({
 		return tab?.type === 'data-table' ? (tab.projectId ?? null) : null;
 	});
 
+	const executionResultsByWorkflow = computed(() => {
+		const results = new Map<string, ExecutionResult>();
+		for (const message of thread.messages) {
+			if (!message.agentTree) continue;
+			for (const [workflowId, result] of getExecutionResultsByWorkflow(message.agentTree)) {
+				results.set(workflowId, result);
+			}
+		}
+		return results;
+	});
+
+	const activeWorkflowExecutionResult = computed(() => {
+		const workflowId = activeWorkflowId.value;
+		return workflowId ? executionResultsByWorkflow.value.get(workflowId) : undefined;
+	});
+
 	const dataTableRefreshKey = ref(0);
 
 	const isPreviewVisible = computed(() => activeTabId.value !== undefined);
+
+	// --- Workflow attachments (e.g. an editor hand-off) ---
+	// A workflow attached to a message surfaces as an artifact tab via the
+	// resource registry. The first one is opened on arrival. (Its execution, if
+	// any, is shown once by the preview itself — see consumePendingInitialExecution.)
+	const firstAttachedWorkflowId = computed(() => {
+		for (const message of thread.messages) {
+			for (const attachment of message.attachments ?? []) {
+				if (attachment.type === 'workflow') return attachment.id;
+			}
+		}
+		return undefined;
+	});
+
+	// Open the attached workflow on arrival. Only when nothing is open, so it
+	// never steals focus from an agent-driven open or a user selection.
+	watch(
+		firstAttachedWorkflowId,
+		(id) => {
+			if (!id || activeTabId.value !== undefined) return;
+			activeTabId.value = id;
+		},
+		{ immediate: true },
+	);
 
 	// --- Actions ---
 
@@ -122,20 +154,6 @@ export function useCanvasPreview({
 		if (!stillExists) {
 			activeTabId.value = tabs[0].id;
 		}
-	});
-
-	// --- Reset preview on thread switch ---
-	// Each thread is stateless for the preview panel: switching threads
-	// closes the panel. Past artifacts are reachable via their inline
-	// references in the message timeline.
-	watch(threadId, (nextThreadId, oldThreadId) => {
-		// Skip if this is the initial route setup (e.g. URL updated from
-		// /instance-ai to /instance-ai/:threadId after the first message)
-		if (!oldThreadId) return;
-		// Skip if the thread ID hasn't actually changed
-		if (nextThreadId === oldThreadId) return;
-
-		activeTabId.value = undefined;
 	});
 
 	// --- Auto-open canvas when AI creates/modifies a workflow ---
@@ -232,6 +250,37 @@ export function useCanvasPreview({
 		},
 	);
 
+	// --- Refresh preview when a `workflows` update / restore-version / setup completes ---
+	// The `workflows` tool's update / restore-version / setup actions mutate the
+	// workflow definition but surface under tool name 'workflows', so
+	// getLatestBuildResult doesn't detect them. Refresh the preview so the canvas
+	// shows the latest state.
+
+	const latestUpdateResult = computed(() => {
+		for (let i = thread.messages.length - 1; i >= 0; i--) {
+			const msg = thread.messages[i];
+			if (msg.agentTree) {
+				const result = getLatestWorkflowUpdateResult(msg.agentTree);
+				if (result) return result;
+			}
+		}
+		return null;
+	});
+
+	watch(
+		() => latestUpdateResult.value?.toolCallId,
+		(toolCallId) => {
+			if (!toolCallId || !latestUpdateResult.value) return;
+			if (thread.isHydratingThread) return;
+
+			const targetId = latestUpdateResult.value.workflowId;
+
+			activeTabId.value = targetId;
+			workflowRefreshKey.value++;
+		},
+		{ flush: 'sync' },
+	);
+
 	// --- Auto-open data table preview when AI creates/modifies a data table ---
 
 	const latestDataTableResult = computed(() => {
@@ -277,68 +326,13 @@ export function useCanvasPreview({
 		}
 	});
 
-	// --- Execution ID tracking ---
-
-	const latestExecutionResult = computed(() => {
-		for (let i = thread.messages.length - 1; i >= 0; i--) {
-			const msg = thread.messages[i];
-			if (msg.agentTree) {
-				const result = getLatestExecutionId(msg.agentTree);
-				if (result) return result;
-			}
-		}
-		return null;
-	});
-
-	// Restore activeExecutionId from messages when switching tabs
-	watch(
-		[activeWorkflowId, latestExecutionResult],
-		([wfId, execResult]) => {
-			if (!wfId) {
-				activeExecutionId.value = null;
-				return;
-			}
-			const liveState = workflowExecutions?.value.get(wfId);
-			if (liveState?.status === 'running') {
-				activeExecutionId.value = null;
-				return;
-			}
-			activeExecutionId.value = execResult?.workflowId === wfId ? execResult.executionId : null;
-		},
-		{ immediate: true },
-	);
-
-	// Clear activeExecutionId when a live execution starts
-	if (workflowExecutions) {
-		watch(workflowExecutions, (execs) => {
-			const wfId = activeWorkflowId.value;
-			if (!wfId) return;
-			const state = execs.get(wfId);
-			if (state?.status === 'running') {
-				activeExecutionId.value = null;
-			}
-		});
-	}
-
-	// Clear activeExecutionId when the workflow is rebuilt.
-	// Only fires on transitions between defined build IDs — the initial build
-	// (undefined → toolCallId) is loading historical state, not a rebuild.
-	watch(
-		() => latestBuildResult.value?.toolCallId,
-		(newToolCallId, oldToolCallId) => {
-			if (oldToolCallId && newToolCallId && newToolCallId !== oldToolCallId) {
-				activeExecutionId.value = null;
-			}
-		},
-	);
-
 	return {
 		activeTabId,
 		allArtifactTabs,
-		activeExecutionId,
 		activeWorkflowId,
 		activeDataTableId,
 		activeDataTableProjectId,
+		activeWorkflowExecutionResult,
 		dataTableRefreshKey,
 		isPreviewVisible,
 		workflowRefreshKey,

@@ -8,6 +8,7 @@ import {
 	type User,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { createHash } from 'node:crypto';
 
 import { EventService } from '@/events/event.service';
 import { UserService } from '@/services/user.service';
@@ -15,6 +16,7 @@ import { UserService } from '@/services/user.service';
 import { TokenExchangeAuthError } from '../token-exchange.errors';
 import type { ExternalTokenClaims } from '../token-exchange.schemas';
 import { TokenExchangeFailureReason } from '../token-exchange.types';
+import { TrustedKeyService } from './trusted-key.service';
 
 /**
  * Password placeholder for JIT-provisioned users. This is not a valid bcrypt
@@ -36,6 +38,10 @@ function trimName(value: string | undefined, fallback = ''): string {
 	return (value ?? fallback).slice(0, MAX_NAME_LENGTH);
 }
 
+export function qualifiedProviderId(issuer: string, sub: string): string {
+	return `${createHash('sha256').update(issuer).digest('hex')}::${sub}`;
+}
+
 @Service()
 export class IdentityResolutionService {
 	private readonly logger: Logger;
@@ -46,6 +52,7 @@ export class IdentityResolutionService {
 		private readonly authIdentityRepository: AuthIdentityRepository,
 		private readonly eventService: EventService,
 		private readonly userService: UserService,
+		private readonly trustedKeyService: TrustedKeyService,
 	) {
 		this.logger = logger.scoped('token-exchange');
 	}
@@ -69,13 +76,34 @@ export class IdentityResolutionService {
 	): Promise<User> {
 		const email = claims.email?.toLowerCase();
 
+		const qualifiedSub = qualifiedProviderId(claims.iss, claims.sub);
+
 		// Path 1: known sub
-		const identity = await this.authIdentityRepository.findOne({
-			where: { providerId: claims.sub, providerType: 'token-exchange' },
+		let identity = await this.authIdentityRepository.findOne({
+			where: { providerId: qualifiedSub, providerType: 'token-exchange' },
 			relations: { user: { role: true } },
 		});
 
 		if (identity) {
+			return await this.resolveByIdentity(claims, identity, allowedRoles, tokenContext);
+		}
+
+		identity = await this.authIdentityRepository.findOne({
+			where: { providerId: claims.sub, providerType: 'token-exchange' },
+			relations: { user: { role: true } },
+		});
+
+		if (identity && (await this.trustedKeyService.hasSingleTrustedIssuer())) {
+			await this.authIdentityRepository.update(
+				{ providerId: claims.sub, providerType: 'token-exchange' },
+				{ providerId: qualifiedSub },
+			);
+			this.eventService.emit('token-exchange-identity-rebound', {
+				userId: identity.user.id,
+				sub: claims.sub,
+				kid: tokenContext?.kid ?? '',
+				issuer: tokenContext?.issuer ?? claims.iss,
+			});
 			return await this.resolveByIdentity(claims, identity, allowedRoles, tokenContext);
 		}
 
@@ -135,8 +163,9 @@ export class IdentityResolutionService {
 			allowedRoles,
 			existingUser.role?.slug,
 		);
+		const qualifiedSub = qualifiedProviderId(claims.iss, claims.sub);
 		await this.authIdentityRepository.save(
-			AuthIdentity.create(existingUser, claims.sub, 'token-exchange'),
+			AuthIdentity.create(existingUser, qualifiedSub, 'token-exchange'),
 		);
 		this.eventService.emit('token-exchange-identity-linked', {
 			userId: existingUser.id,
@@ -160,6 +189,8 @@ export class IdentityResolutionService {
 		const jitRole = this.resolveRoleForNewUser(claims.role, allowedRoles);
 		const targetRole = jitRole ? { slug: jitRole } : GLOBAL_MEMBER_ROLE;
 
+		const qualifiedSub = qualifiedProviderId(claims.iss, claims.sub);
+
 		const user = await this.userRepository.manager.transaction(async (trx) => {
 			const { user: newUser } = await this.userRepository.createUserWithProject(
 				{
@@ -174,7 +205,7 @@ export class IdentityResolutionService {
 
 			await trx.save(
 				trx.create(AuthIdentity, {
-					providerId: claims.sub,
+					providerId: qualifiedSub,
 					providerType: 'token-exchange',
 					userId: newUser.id,
 				}),

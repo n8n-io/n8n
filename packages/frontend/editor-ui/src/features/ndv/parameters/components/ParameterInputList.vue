@@ -438,8 +438,14 @@ function deleteOption(optionName: string): void {
 }
 
 function isHiddenByAiGateway(parameter: INodeProperties): boolean {
-	if (!MODEL_PARAMETER_NAMES.has(parameter.name)) return false;
 	if (!node.value) return false;
+
+	// isNodePropertyHidden internally gates on a gateway-managed credential
+	if (aiGateway.isNodePropertyHidden(node.value, parameter.name)) {
+		return true;
+	}
+
+	if (!MODEL_PARAMETER_NAMES.has(parameter.name)) return false;
 
 	const credentials = node.value.credentials;
 	if (!credentials) return false;
@@ -454,7 +460,7 @@ function isHiddenByAiGateway(parameter: INodeProperties): boolean {
 		: props.nodeValues;
 	const resource = params?.resource as string | undefined;
 	const operation = params?.operation as string | undefined;
-	if (!resource || !operation) return false;
+	if (!operation) return false;
 
 	return !aiGateway.isActionSupported(node.value.type, resource, operation);
 }
@@ -568,9 +574,21 @@ const isAiGatewayUnsupportedAction = computed(() => {
 		: props.nodeValues;
 	const resource = params?.resource as string | undefined;
 	const operation = params?.operation as string | undefined;
-	if (!resource || !operation) return false;
+	if (!operation) return false;
 
 	return !aiGateway.isActionSupported(node.value.type, resource, operation);
+});
+
+// The unsupported-action notice must render exactly once.
+const aiGatewayUnsupportedNoticeIndex = computed(() => {
+	if (!isAiGatewayUnsupportedAction.value) return -1;
+	const items = parameterItems.value;
+	const selectorIndex = items.findIndex(
+		(item) => item.parameter.name === 'operation' && item.parameter.type === 'options',
+	);
+	return selectorIndex !== -1
+		? selectorIndex
+		: items.findIndex((item) => item.parameter.name === 'operation');
 });
 
 const aiGatewayOperationDisplayName = computed(() => {
@@ -923,6 +941,7 @@ watch(
 				></N8nIconButton>
 
 				<ParameterInputFull
+					:key="node?.name"
 					:parameter="item.parameter"
 					:hide-issues="hiddenIssuesInputs.includes(item.parameter.name)"
 					:value="getParameterValue(item.parameter.name)"
@@ -945,7 +964,7 @@ watch(
 			</div>
 
 			<N8nNotice
-				v-if="item.parameter.name === 'operation' && isAiGatewayUnsupportedAction"
+				v-if="index === aiGatewayUnsupportedNoticeIndex"
 				theme="warning"
 				:class="$style.unsupportedActionNotice"
 				data-test-id="ai-gateway-unsupported-action-notice"

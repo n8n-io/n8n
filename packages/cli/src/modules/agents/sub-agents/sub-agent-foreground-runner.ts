@@ -15,6 +15,7 @@ import { UserError } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { AgentExecutionService } from '../agent-execution.service';
+import { buildAgentConfigurationTelemetryFromConfig } from '../agent-telemetry';
 import type { MessageRecord } from '../execution-recorder';
 import { ExecutionRecorder } from '../execution-recorder';
 import { streamAgentChunks } from '../utils/agent-stream';
@@ -22,8 +23,6 @@ import { SubAgentSourceResolver } from './sub-agent-source-resolver';
 
 export interface SubAgentForegroundRunContext {
 	projectId: string;
-	/** n8n user ID — required for workflow/node tool resolution during reconstruction. */
-	userId: string;
 	/** Saved n8n agent id of the delegating parent agent, used to link the child session back. */
 	parentAgentId?: string;
 	credentialProvider: CredentialProvider;
@@ -90,17 +89,12 @@ export class SubAgentForegroundRunner {
 			toolDescriptors: runtimeSource.toolDescriptors,
 			toolCodeByName: runtimeSource.toolCodeByName,
 			skills: runtimeSource.skills,
-			userId: context.userId,
 			runtimeProfile: 'sub-agent',
 			parentAgentIdForDelegation: context.parentAgentId,
 		});
 
-		const timeoutController = request.policy?.timeoutMs ? new AbortController() : undefined;
-		const timeout = timeoutController
-			? setTimeout(() => timeoutController.abort(), request.policy?.timeoutMs)
-			: undefined;
-		// Abort the child when the parent run is cancelled or the timeout fires.
-		const abortSignal = combineAbortSignals(context.abortSignal, timeoutController?.signal);
+		// Abort the child when the parent run is cancelled.
+		const abortSignal = context.abortSignal;
 
 		const prompt = renderDelegateSubAgentPrompt(request);
 		try {
@@ -168,7 +162,6 @@ export class SubAgentForegroundRunner {
 				result,
 			};
 		} finally {
-			if (timeout) clearTimeout(timeout);
 			// Each delegation builds its own child agent, so release it here:
 			// dispose the runtime's background tasks and disconnect any MCP
 			// transports instead of leaking them per delegated run.
@@ -215,6 +208,10 @@ export class SubAgentForegroundRunner {
 				threadMetadata: {
 					...(parentThreadId !== undefined ? { parentThreadId } : {}),
 					...(parentAgentId !== undefined ? { parentAgentId } : {}),
+				},
+				telemetry: {
+					runType: 'production',
+					configuration: buildAgentConfigurationTelemetryFromConfig(runtimeSource.config),
 				},
 			});
 		} catch (error) {
@@ -295,14 +292,4 @@ function toKnownFinishReason(
 		return value;
 	}
 	return undefined;
-}
-
-/** Merge up to two abort signals: cancellation of either cancels the child run. */
-function combineAbortSignals(
-	a: AbortSignal | undefined,
-	b: AbortSignal | undefined,
-): AbortSignal | undefined {
-	const signals = [a, b].filter((signal): signal is AbortSignal => signal !== undefined);
-	if (signals.length <= 1) return signals[0];
-	return AbortSignal.any(signals);
 }

@@ -9,27 +9,29 @@ import {
 	getSheets,
 } from '../../../v2/methods/loadOptions';
 
-jest.mock('../../../v2/helpers/GoogleSheets.utils');
+vi.mock('../../../v2/helpers/GoogleSheets.utils');
 
 const mockGoogleSheetInstance = {
-	spreadsheetGetSheets: jest.fn(),
-	spreadsheetGetSheet: jest.fn(),
-	getData: jest.fn(),
-	testFilter: jest.fn(),
+	spreadsheetGetSheets: vi.fn(),
+	spreadsheetGetSheet: vi.fn(),
+	getData: vi.fn(),
+	testFilter: vi.fn(),
 };
 
-jest.mock('../../../v2/helpers/GoogleSheet', () => ({
-	GoogleSheet: jest.fn().mockImplementation(() => mockGoogleSheetInstance),
+vi.mock('../../../v2/helpers/GoogleSheet', () => ({
+	GoogleSheet: vi.fn(function () {
+		return mockGoogleSheetInstance;
+	}),
 }));
 
 describe('Google Sheets Functions', () => {
 	let mockLoadOptionsFunctions: Partial<ILoadOptionsFunctions>;
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		mockLoadOptionsFunctions = {
-			getNodeParameter: jest.fn((paramName: string) => {
+			getNodeParameter: vi.fn((paramName: string) => {
 				if (paramName === 'documentId') {
 					return { mode: 'mode', value: 'value' };
 				}
@@ -37,13 +39,13 @@ describe('Google Sheets Functions', () => {
 					return { mode: 'Sheet1', value: 'Sheet1' };
 				}
 			}),
-			getNode: jest.fn(),
+			getNode: vi.fn(),
 		};
 	});
 
 	describe('getSheets', () => {
 		it('should return an empty array if documentId is null', async () => {
-			mockLoadOptionsFunctions.getNodeParameter = jest.fn().mockReturnValue(null);
+			mockLoadOptionsFunctions.getNodeParameter = vi.fn().mockReturnValue(null);
 
 			const result = await getSheets.call(mockLoadOptionsFunctions as ILoadOptionsFunctions);
 			expect(result).toEqual([]);
@@ -72,7 +74,7 @@ describe('Google Sheets Functions', () => {
 
 	describe('getSheetHeaderRow', () => {
 		it('should return an empty array if documentId is null', async () => {
-			mockLoadOptionsFunctions.getNodeParameter = jest.fn().mockReturnValue(null);
+			mockLoadOptionsFunctions.getNodeParameter = vi.fn().mockReturnValue(null);
 
 			const result = await getSheetHeaderRow.call(
 				mockLoadOptionsFunctions as ILoadOptionsFunctions,

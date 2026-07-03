@@ -9,6 +9,7 @@ import {
 import { computed, provide, ref, watch, useCssModule, nextTick, toRef, onBeforeUnmount } from 'vue';
 
 import N8nButton from '@n8n/design-system/components/N8nButton/Button.vue';
+import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import N8nLoading from '@n8n/design-system/components/N8nLoading';
 
 import { useMenuKeyboardNavigation } from './composables/useMenuKeyboardNavigation';
@@ -284,6 +285,8 @@ watch(internalOpen, (isOpen, _oldValue, onCleanup) => {
 defineExpose({ open, close });
 </script>
 
+<!-- TODO DS-580: Let consumers bind trigger props/listeners directly in the slot so their
+	element can be the actual trigger. For now this wrapper owns hover events and test ids. -->
 <template>
 	<DropdownMenuRoot :modal="modal" :open="internalOpen" @update:open="handleOpenChange">
 		<DropdownMenuTrigger as-child :disabled="disabled">
@@ -298,7 +301,7 @@ defineExpose({ open, close });
 			</span>
 			<N8nButton
 				v-else
-				:icon="activatorIcon?.type === 'icon' ? activatorIcon.value : undefined"
+				:icon="activatorIcon?.type === 'icon' ? (activatorIcon.value as IconName) : undefined"
 				:data-test-id="dataTestId"
 				:disabled="disabled"
 				:icon-only="true"
@@ -313,8 +316,8 @@ defineExpose({ open, close });
 			</N8nButton>
 		</DropdownMenuTrigger>
 
-		<component
-			:is="teleported || portalTarget ? DropdownMenuPortal : 'template'"
+		<DropdownMenuPortal
+			:disabled="!teleported && !portalTarget"
 			v-bind="portalTarget ? { to: portalTarget } : {}"
 		>
 			<DropdownMenuContent
@@ -401,7 +404,7 @@ defineExpose({ open, close });
 					<slot v-if="slots.footer" name="footer" />
 				</template>
 			</DropdownMenuContent>
-		</component>
+		</DropdownMenuPortal>
 	</DropdownMenuRoot>
 </template>
 

@@ -212,7 +212,7 @@ test.describe('Workflow tags - Tag operations', () => {
 		await n8n.canvas.clickWorkflowTagsArea();
 		await n8n.canvas.typeInTagInput(nonExisting);
 
-		const dropdownItems = n8n.canvas.getVisibleDropdown().locator('li');
+		const dropdownItems = n8n.canvas.getTagDropdownItems();
 
 		await expect(dropdownItems).toHaveCount(2);
 		await expect(n8n.canvas.getTagItemsInDropdown()).toHaveCount(0);
