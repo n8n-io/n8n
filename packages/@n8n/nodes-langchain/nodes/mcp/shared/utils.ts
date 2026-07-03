@@ -344,12 +344,7 @@ export async function getAuthHeaders(
 		if (!credentials) return {};
 
 		if (!credentials.oauthTokenData?.access_token) {
-			const refreshedHeaders = await tryRefreshOAuth2Token(ctx, authentication);
-
-			return {
-				...(refreshedHeaders ? { headers: refreshedHeaders } : {}),
-				credentials,
-			};
+			return { credentials };
 		}
 
 		return {
