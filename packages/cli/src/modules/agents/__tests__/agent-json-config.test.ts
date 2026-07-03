@@ -1,52 +1,10 @@
-import {
-	AgentJsonConfigSchema,
-	isNodeToolsEnabled,
-	isSubAgentsEnabled,
-	type AgentJsonConfig,
-} from '@n8n/api-types';
+import { AgentJsonConfigSchema, type AgentJsonConfig } from '@n8n/api-types';
 
 const baseConfig: AgentJsonConfig = {
 	name: 'Test Agent',
 	model: 'anthropic/claude-sonnet-4-5',
 	instructions: 'Be helpful',
 };
-
-describe('AgentJsonConfigSchema — config.nodeTools', () => {
-	it('accepts a config without nodeTools', () => {
-		expect(AgentJsonConfigSchema.safeParse({ ...baseConfig, config: {} }).success).toBe(true);
-	});
-
-	it('accepts nodeTools: { enabled: true }', () => {
-		const parsed = AgentJsonConfigSchema.safeParse({
-			...baseConfig,
-			config: { nodeTools: { enabled: true } },
-		});
-		expect(parsed.success).toBe(true);
-	});
-
-	it('accepts nodeTools: { enabled: false }', () => {
-		const parsed = AgentJsonConfigSchema.safeParse({
-			...baseConfig,
-			config: { nodeTools: { enabled: false } },
-		});
-		expect(parsed.success).toBe(true);
-	});
-
-	it('rejects nodeTools without enabled', () => {
-		expect(
-			AgentJsonConfigSchema.safeParse({ ...baseConfig, config: { nodeTools: {} } }).success,
-		).toBe(false);
-	});
-
-	it('rejects nodeTools.enabled of the wrong type', () => {
-		expect(
-			AgentJsonConfigSchema.safeParse({
-				...baseConfig,
-				config: { nodeTools: { enabled: 'yes' } },
-			}).success,
-		).toBe(false);
-	});
-});
 
 describe('AgentJsonConfigSchema — skill refs', () => {
 	it('accepts a skill ref with a valid id', () => {
@@ -77,26 +35,8 @@ describe('AgentJsonConfigSchema — skill refs', () => {
 	});
 });
 
-describe('isNodeToolsEnabled', () => {
-	it('returns false when config is undefined', () => {
-		expect(isNodeToolsEnabled(undefined)).toBe(false);
-	});
-
-	it('returns false when config has no nodeTools field', () => {
-		expect(isNodeToolsEnabled({})).toBe(false);
-	});
-
-	it('returns false when nodeTools.enabled is false', () => {
-		expect(isNodeToolsEnabled({ nodeTools: { enabled: false } })).toBe(false);
-	});
-
-	it('returns true only when nodeTools.enabled is explicitly true', () => {
-		expect(isNodeToolsEnabled({ nodeTools: { enabled: true } })).toBe(true);
-	});
-});
-
 describe('AgentJsonConfigSchema — subAgents', () => {
-	it('accepts saved agent references', () => {
+	it('accepts legacy saved agent references without useWhen routing guidance', () => {
 		const parsed = AgentJsonConfigSchema.safeParse({
 			...baseConfig,
 			subAgents: { agents: [{ agentId: 'agent-1' }] },
@@ -104,21 +44,44 @@ describe('AgentJsonConfigSchema — subAgents', () => {
 		expect(parsed.success).toBe(true);
 	});
 
-	it('rejects the removed subAgents.enabled flag', () => {
+	it('accepts saved agent references with useWhen routing guidance', () => {
+		const parsed = AgentJsonConfigSchema.safeParse({
+			...baseConfig,
+			subAgents: {
+				agents: [
+					{
+						agentId: 'agent-1',
+						useWhen: 'Use for billing-policy questions and invoice investigations.',
+					},
+				],
+			},
+		});
+
+		expect(parsed.success).toBe(true);
+	});
+
+	it.each(['', '   ', 'Too short'])('accepts optional useWhen value %p', (useWhen) => {
+		const parsed = AgentJsonConfigSchema.safeParse({
+			...baseConfig,
+			subAgents: { agents: [{ agentId: 'agent-1', useWhen }] },
+		});
+
+		expect(parsed.success).toBe(true);
+	});
+
+	it('rejects useWhen values over 512 characters', () => {
+		const parsed = AgentJsonConfigSchema.safeParse({
+			...baseConfig,
+			subAgents: { agents: [{ agentId: 'agent-1', useWhen: 'a'.repeat(513) }] },
+		});
+
+		expect(parsed.success).toBe(false);
+	});
+
+	it('accepts an empty saved-agent reference list', () => {
 		expect(
-			AgentJsonConfigSchema.safeParse({ ...baseConfig, subAgents: { enabled: true } }).success,
-		).toBe(false);
-	});
-});
-
-describe('isSubAgentsEnabled', () => {
-	it('returns false when subAgents is undefined', () => {
-		expect(isSubAgentsEnabled(undefined)).toBe(false);
-	});
-
-	it('returns true only when at least one subagent ref exists', () => {
-		expect(isSubAgentsEnabled({ agents: [] })).toBe(false);
-		expect(isSubAgentsEnabled({ agents: [{ agentId: 'agent-1' }] })).toBe(true);
+			AgentJsonConfigSchema.safeParse({ ...baseConfig, subAgents: { agents: [] } }).success,
+		).toBe(true);
 	});
 });
 
@@ -334,6 +297,24 @@ describe('AgentJsonConfigSchema — memory.episodicMemory', () => {
 		});
 
 		expect(parsed.success).toBe(true);
+	});
+
+	it('accepts managed episodic memory credentials', () => {
+		const parsed = AgentJsonConfigSchema.safeParse({
+			...baseConfig,
+			memory: {
+				...memoryBase,
+				episodicMemory: { enabled: true, credential: 'managed' },
+			},
+		});
+
+		expect(parsed.success).toBe(true);
+		if (!parsed.success) return;
+
+		expect(parsed.data.memory?.episodicMemory).toMatchObject({
+			enabled: true,
+			credential: 'managed',
+		});
 	});
 
 	it('accepts whitespace-only episodic memory credentials after trim', () => {

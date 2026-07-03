@@ -108,12 +108,14 @@ function createRuntimeSkillSourceWithLinkedFile(path: string): RuntimeSkillSourc
 	};
 }
 
+const mockLogger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } as never;
+
 describe('materializeRuntimeSkillsIntoWorkspace', () => {
 	it('builds a runtime skill workspace bundle without writing files', async () => {
 		const source = loadInstanceAiRuntimeSkillSource();
 		const root = '/home/daytona/workspace';
 
-		const bundle = await buildRuntimeSkillWorkspaceBundle({ source, root });
+		const bundle = await buildRuntimeSkillWorkspaceBundle({ source, root, logger: mockLogger });
 
 		if (!bundle) throw new Error('Expected runtime skill bundle');
 		const skillDir = `${root}/${SANDBOX_RUNTIME_SKILLS_DIR}/data-table-manager`;
@@ -158,6 +160,7 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 		const root = '/home/daytona/workspace';
 
 		const materialized = await materializeRuntimeSkillsIntoWorkspace({
+			logger: mockLogger,
 			source,
 			workspace,
 			root,
@@ -208,6 +211,7 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 		const root = '/home/daytona/workspace';
 
 		const materialized = await materializeRuntimeSkillsIntoWorkspace({
+			logger: mockLogger,
 			source,
 			workspace,
 			root,
@@ -238,6 +242,7 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 		const source = loadInstanceAiRuntimeSkillSource();
 		const { workspace, writes, executeCommand } = createMockWorkspace();
 		const runtimeSource = createLazyWorkspaceRuntimeSkillSource({
+			logger: mockLogger,
 			source,
 			workspace,
 		});
@@ -266,13 +271,14 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 		const source = loadInstanceAiRuntimeSkillSource();
 		const { workspace, writes, executeCommand, writeFile } = createMockWorkspace();
 		const root = '/home/daytona/workspace';
-		const bundle = await buildRuntimeSkillWorkspaceBundle({ source, root });
+		const bundle = await buildRuntimeSkillWorkspaceBundle({ source, root, logger: mockLogger });
 		if (!bundle) throw new Error('Expected runtime skill bundle');
 		for (const [path, content] of bundle.files) {
 			writes.set(path, content);
 		}
 
 		const runtimeSource = createLazyWorkspaceRuntimeSkillSource({
+			logger: mockLogger,
 			source,
 			workspace,
 		});
@@ -306,6 +312,7 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 		);
 
 		const runtimeSource = createLazyWorkspaceRuntimeSkillSource({
+			logger: mockLogger,
 			source,
 			workspace,
 		});
@@ -326,6 +333,7 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 		writes.set(manifestPath, 'not json');
 
 		const runtimeSource = createLazyWorkspaceRuntimeSkillSource({
+			logger: mockLogger,
 			source,
 			workspace,
 		});
@@ -344,6 +352,7 @@ describe('materializeRuntimeSkillsIntoWorkspace', () => {
 
 		await expect(
 			materializeRuntimeSkillsIntoWorkspace({
+				logger: mockLogger,
 				source,
 				workspace,
 				root: '/home/daytona/workspace',

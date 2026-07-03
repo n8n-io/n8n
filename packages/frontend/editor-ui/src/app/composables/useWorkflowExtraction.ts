@@ -15,6 +15,7 @@ import { useToast } from './useToast';
 import { useRouter } from 'vue-router';
 import { VIEWS, WORKFLOW_EXTRACTION_NAME_MODAL_KEY } from '@/app/constants';
 import { useHistoryStore } from '@/app/stores/history.store';
+import { UpdateNodeGroupCommand } from '@/app/models/history';
 import { useCanvasOperations } from './useCanvasOperations';
 import { useSelectionValidation } from './useSelectionValidation';
 
@@ -27,6 +28,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useTelemetry } from './useTelemetry';
 import { checkExhaustive } from '@/app/utils/typeGuards';
 import isEqual from 'lodash/isEqual';
+import uniq from 'lodash/uniq';
 import { v4 as uuidv4 } from 'uuid';
 import { sanitizeConnections } from '../utils/workflowUtils';
 
@@ -322,16 +324,23 @@ export function useWorkflowExtraction() {
 			})
 		)[0];
 
+		addReplacementNodeToSelectionGroup(
+			selection.map((node) => node.id),
+			executeWorkflowNode.id,
+		);
+
 		if (endId)
 			canvasOperations.replaceNodeConnections(endId, executeWorkflowNode.id, {
 				...CANVAS_HISTORY_OPTIONS,
 				replaceInputs: false,
+				validateNodeGroups: false,
 			});
 
 		if (startId)
 			canvasOperations.replaceNodeConnections(startId, executeWorkflowNode.id, {
 				...CANVAS_HISTORY_OPTIONS,
 				replaceOutputs: false,
+				validateNodeGroups: false,
 			});
 
 		canvasOperations.deleteNodes(
@@ -354,6 +363,30 @@ export function useWorkflowExtraction() {
 
 		uiStore.markStateDirty();
 		historyStore.stopRecordingUndo();
+	}
+
+	function addReplacementNodeToSelectionGroup(selectionIds: string[], replacementNodeId: string) {
+		const affectedGroupIds = uniq(
+			selectionIds
+				.map((nodeId) => workflowDocumentStore.value.getGroupForNode(nodeId)?.id)
+				.filter((id): id is string => id !== undefined),
+		);
+
+		if (affectedGroupIds.length !== 1) return;
+
+		const groupId = affectedGroupIds[0];
+		const groupBefore = workflowDocumentStore.value.getGroupById(groupId);
+		workflowDocumentStore.value.addNodesToGroup(groupId, [replacementNodeId]);
+		const groupAfter = workflowDocumentStore.value.getGroupById(groupId);
+		if (groupBefore && groupAfter) {
+			historyStore.pushCommandToUndo(
+				new UpdateNodeGroupCommand(
+					{ ...groupBefore, nodeIds: [...groupBefore.nodeIds] },
+					{ ...groupAfter, nodeIds: [...groupAfter.nodeIds] },
+					Date.now(),
+				),
+			);
+		}
 	}
 
 	function tryExtractNodesIntoSubworkflow(nodeIds: string[]): boolean {

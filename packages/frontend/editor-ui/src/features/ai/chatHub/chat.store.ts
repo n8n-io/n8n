@@ -29,6 +29,7 @@ import {
 	fetchChatSettingsApi,
 	fetchChatProviderSettingsApi,
 	updateChatSettingsApi,
+	updateChatEnabledApi,
 	fetchToolsApi,
 	createToolApi,
 	updateToolApi,
@@ -568,7 +569,9 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		const workflowsStore = useWorkflowsStore();
 		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
 
-		workflowsStore.setWorkflowExecutionData({
+		useWorkflowExecutionStateStore(
+			createWorkflowDocumentId(workflowsStore.workflowId),
+		).setWorkflowExecutionData({
 			id: IN_PROGRESS_EXECUTION_ID,
 			finished: false,
 			mode: 'manual',
@@ -1121,6 +1124,12 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		return providerSettings;
 	}
 
+	async function setChatEnabled(enabled: boolean) {
+		await updateChatEnabledApi(rootStore.restApiContext, enabled);
+		// Refresh module settings so isChatFeatureEnabled recomputes app-wide.
+		await settingsStore.getModuleSettings();
+	}
+
 	async function updateProviderSettings(updated: ChatProviderSettingsDto) {
 		if (!updated.enabled) {
 			updated.allowedModels = [];
@@ -1583,6 +1592,7 @@ export const useChatStore = defineStore(STORES.CHAT_HUB, () => {
 		fetchAllChatSettings,
 		fetchProviderSettings,
 		updateProviderSettings,
+		setChatEnabled,
 		semanticSearchReadiness,
 
 		/**

@@ -9,7 +9,7 @@ import type {
 	INodeType,
 } from 'n8n-workflow';
 import {
-	ApplicationError,
+	BaseError,
 	NodeConnectionTypes,
 	UnexpectedError,
 	createRunExecutionData,
@@ -254,9 +254,9 @@ describe('processRunExecutionData', () => {
 			// eslint-disable-next-line @typescript-eslint/promise-function-async
 			const execution = () => workflowExecute.processRunExecutionData(workflow);
 
-			expect(execution).toThrow(ApplicationError);
+			expect(execution).toThrow(BaseError);
 			expect(execution).toThrow(
-				'The workflow has issues and cannot be executed for that reason. Please fix them first.',
+				/^The 'node' node has issues:\n- Parameter "Required Text" is required\.$/,
 			);
 		});
 

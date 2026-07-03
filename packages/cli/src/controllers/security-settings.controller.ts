@@ -6,14 +6,21 @@ import {
 	PERSONAL_SPACE_PUBLISHING_SETTING,
 	PERSONAL_SPACE_SHARING_SETTING,
 } from '@n8n/permissions';
+import type { DistributiveOmit } from '@n8n/utils/types';
 import type { Response } from 'express';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
+import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
-import { floorToSettings, settingsToFloor } from '@/modules/redaction/redaction-enforcement-mapper';
-import { isRedactionEnforcementEnabled } from '@/modules/redaction/redaction-enforcement.feature-flag';
 import { SecuritySettingsService } from '@/services/security-settings.service';
+
+/**
+ * The `instance-policies-updated` payload without the `user` envelope. Kept as a
+ * distributed union so each `settingName` stays bound to its own `value` type
+ * (boolean settings cannot be emitted with a redaction floor, and vice versa).
+ */
+type InstancePolicyUpdate = DistributiveOmit<RelayEventMap['instance-policies-updated'], 'user'>;
 
 @RestController('/settings/security')
 export class SecuritySettingsController {
@@ -28,8 +35,6 @@ export class SecuritySettingsController {
 	@GlobalScope('securitySettings:manage')
 	@Get('/')
 	async getSecuritySettings(_req: AuthenticatedRequest, _res: Response) {
-		const redactionEnforcementEnabled = isRedactionEnforcementEnabled();
-
 		const [
 			settings,
 			publishedPersonalWorkflowsCount,
@@ -41,16 +46,8 @@ export class SecuritySettingsController {
 			this.securitySettingsService.getPublishedPersonalWorkflowsCount(),
 			this.securitySettingsService.getSharedPersonalWorkflowsCount(),
 			this.securitySettingsService.getSharedPersonalCredentialsCount(),
-			redactionEnforcementEnabled
-				? this.instanceRedactionEnforcementService.get()
-				: Promise.resolve(undefined),
+			this.instanceRedactionEnforcementService.get(),
 		]);
-
-		// API surface uses a single `floor` enum, while the service stores the
-		// three booleans the cache layer was built around. Translate at the boundary.
-		const redactionEnforcement = redactionSettings
-			? { floor: settingsToFloor(redactionSettings) }
-			: undefined;
 
 		return {
 			...settings,
@@ -58,7 +55,7 @@ export class SecuritySettingsController {
 			sharedPersonalWorkflowsCount,
 			sharedPersonalCredentialsCount,
 			managedByEnv: this.instanceSettingsLoaderConfig.securityPolicyManagedByEnv,
-			...(redactionEnforcement ? { redactionEnforcement } : {}),
+			redactionEnforcement: { floor: redactionSettings },
 		};
 	}
 
@@ -83,7 +80,10 @@ export class SecuritySettingsController {
 				dto.personalSpacePublishing,
 			);
 			updatedSettings.personalSpacePublishing = dto.personalSpacePublishing;
-			this.emitInstancePolicyUpdated(req, 'workflow_publishing', dto.personalSpacePublishing);
+			this.emitInstancePolicyUpdated(req, {
+				settingName: 'workflow_publishing',
+				value: dto.personalSpacePublishing,
+			});
 		}
 		if (dto.personalSpaceSharing !== undefined) {
 			await this.securitySettingsService.setPersonalSpaceSetting(
@@ -91,18 +91,17 @@ export class SecuritySettingsController {
 				dto.personalSpaceSharing,
 			);
 			updatedSettings.personalSpaceSharing = dto.personalSpaceSharing;
-			this.emitInstancePolicyUpdated(req, 'workflow_sharing', dto.personalSpaceSharing);
+			this.emitInstancePolicyUpdated(req, {
+				settingName: 'workflow_sharing',
+				value: dto.personalSpaceSharing,
+			});
 		}
 
-		if (dto.redactionEnforcement !== undefined && isRedactionEnforcementEnabled()) {
+		if (dto.redactionEnforcement !== undefined) {
 			const before = await this.instanceRedactionEnforcementService.get();
-			const after = floorToSettings(dto.redactionEnforcement.floor);
-			updatedSettings.redactionEnforcement = { floor: dto.redactionEnforcement.floor };
-			if (
-				before.enforced !== after.enforced ||
-				before.manual !== after.manual ||
-				before.production !== after.production
-			) {
+			const after = dto.redactionEnforcement.floor;
+			updatedSettings.redactionEnforcement = { floor: after };
+			if (before !== after) {
 				await this.instanceRedactionEnforcementService.set(after);
 				this.eventService.emit('redaction-enforcement-updated', {
 					user: {
@@ -115,17 +114,20 @@ export class SecuritySettingsController {
 					before,
 					after,
 				});
+				// Report the redaction enforcement floor alongside the other instance
+				// policies. `'off' | 'production' | 'all'` captures both adoption
+				// (off vs not) and scope (production vs production+manual).
+				this.emitInstancePolicyUpdated(req, {
+					settingName: 'data_redaction_enforcement_floor',
+					value: after,
+				});
 			}
 		}
 
 		return updatedSettings;
 	}
 
-	private emitInstancePolicyUpdated(
-		req: AuthenticatedRequest,
-		settingName: '2fa_enforcement' | 'workflow_publishing' | 'workflow_sharing',
-		value: boolean,
-	) {
+	private emitInstancePolicyUpdated(req: AuthenticatedRequest, update: InstancePolicyUpdate) {
 		this.eventService.emit('instance-policies-updated', {
 			user: {
 				id: req.user.id,
@@ -134,8 +136,7 @@ export class SecuritySettingsController {
 				lastName: req.user.lastName,
 				role: req.user.role,
 			},
-			settingName,
-			value,
+			...update,
 		});
 	}
 }

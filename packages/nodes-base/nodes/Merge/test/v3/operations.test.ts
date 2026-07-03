@@ -3,6 +3,7 @@ import type { IDataObject, INode } from 'n8n-workflow';
 import { createMockExecuteFunction } from '@test/nodes/Helpers';
 
 import * as mode from '../../v3/actions/mode';
+import { resetSandboxCache } from '../../v3/helpers/sandbox-utils';
 
 const node: INode = {
 	id: '123456',
@@ -90,6 +91,18 @@ const inputsData = [
 	],
 ];
 describe('Test MergeV3, combineBySql operation', () => {
+	// Each test runs against a fresh isolate. The sandbox caches a single isolate
+	// across calls, and V8 does not always reclaim a released Context's memory
+	// between rapid back-to-back tests; resetting per test keeps the heap small so
+	// a test never inherits near-limit memory from a prior one.
+	beforeEach(() => {
+		resetSandboxCache();
+	});
+
+	afterAll(() => {
+		resetSandboxCache();
+	});
+
 	it('LEFT JOIN', async () => {
 		const nodeParameters: IDataObject = {
 			operation: 'combineBySql',

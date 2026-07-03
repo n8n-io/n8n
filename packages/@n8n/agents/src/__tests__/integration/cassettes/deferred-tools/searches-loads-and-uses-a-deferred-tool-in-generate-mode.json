@@ -1,0 +1,603 @@
+[
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are testing deferred tool discovery. For arithmetic requests, first call search_tools, then call load_tool with the exact returned tool name, then call the loaded tool. Do not answer from mental math."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Use deferred tools to multiply 6 and 7. Search for the tool, load it, call it, then answer with the product."
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "search_tools",
+					"description": "Search for additional tools that can be loaded when the current toolset is missing a capability.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"query": {
+								"type": "string",
+								"minLength": 1,
+								"description": "Keywords describing the capability or integration you need"
+							}
+						},
+						"required": ["query"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "load_tool",
+					"description": "Load a deferred tool by exact name. The tool becomes available on the next model turn and remains available for this conversation.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"toolName": {
+								"type": "string",
+								"minLength": 1,
+								"description": "Exact tool name returned by search_tools"
+							}
+						},
+						"required": ["toolName"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			}
+		},
+		"status": 200,
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_01XduVXER137uwXL8B6Hd3nG\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"I'll help you multiply 6 and 7 using deferred tools. Let me start by searching for a multiplication tool.\"},{\"type\":\"tool_use\",\"id\":\"toolu_01My6TPoXi6kypfcvraMdzC2\",\"name\":\"search_tools\",\"input\":{\"query\":\"multiplication arithmetic multiply\"},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":811,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":83,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "10000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-23T12:19:40Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-23T12:19:40Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-23T12:19:39Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "12000000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-23T12:19:40Z",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a103713df8105b18-VIE",
+			"connection": "keep-alive",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "application/json",
+			"date": "Tue, 23 Jun 2026 12:19:40 GMT",
+			"request-id": "req_011CcLBPzcH1X9u3szNo324X",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=WhaZFKgkdZ_xVznFdEsRCgzhKLkbPmFXQUeCMumkYzY-1782217179.8401415-1.0.1.1-izHAlcaLJTBtUyMQiVHK.xMIEGyd3uvIkerKMTj.yaw; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-e37ffb36e56d2f7c89eda08aca86c315-e869ce0a279b0b5c-01",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are testing deferred tool discovery. For arithmetic requests, first call search_tools, then call load_tool with the exact returned tool name, then call the loaded tool. Do not answer from mental math."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Use deferred tools to multiply 6 and 7. Search for the tool, load it, call it, then answer with the product."
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "text",
+							"text": "I'll help you multiply 6 and 7 using deferred tools. Let me start by searching for a multiplication tool."
+						},
+						{
+							"type": "tool_use",
+							"id": "toolu_01My6TPoXi6kypfcvraMdzC2",
+							"name": "search_tools",
+							"input": {
+								"query": "multiplication arithmetic multiply"
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_01My6TPoXi6kypfcvraMdzC2",
+							"content": "{\"results\":[{\"name\":\"multiply_numbers\",\"description\":\"Multiply two numbers and return their product\",\"loaded\":false}]}"
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "search_tools",
+					"description": "Search for additional tools that can be loaded when the current toolset is missing a capability.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"query": {
+								"type": "string",
+								"minLength": 1,
+								"description": "Keywords describing the capability or integration you need"
+							}
+						},
+						"required": ["query"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "load_tool",
+					"description": "Load a deferred tool by exact name. The tool becomes available on the next model turn and remains available for this conversation.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"toolName": {
+								"type": "string",
+								"minLength": 1,
+								"description": "Exact tool name returned by search_tools"
+							}
+						},
+						"required": ["toolName"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			}
+		},
+		"status": 200,
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_01GkhqCvWUVzjvFRyTutVNQB\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Great! I found the `multiply_numbers` tool. Now let me load it.\"},{\"type\":\"tool_use\",\"id\":\"toolu_01SagCrkBvRbEEThoMjyMQn5\",\"name\":\"load_tool\",\"input\":{\"toolName\":\"multiply_numbers\"},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":933,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":75,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "10000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-23T12:19:41Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-23T12:19:41Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-23T12:19:41Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "12000000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-23T12:19:41Z",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a10371443dd85b18-VIE",
+			"connection": "keep-alive",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "application/json",
+			"date": "Tue, 23 Jun 2026 12:19:41 GMT",
+			"request-id": "req_011CcLBQ4wiXkZvLYgefgLKP",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=N2oXTuTBzQ_5Hj9iZnl_14rQrUfEe8.A.31fj4dJVMM-1782217180.8414357-1.0.1.1-gMGRGoL32GwElltwhslR8wS23OHaQOQard0D55tubnQ; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-e818567afe2a69fad9a3bb8fe10cb42a-e708ff7aa5533cfa-01",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are testing deferred tool discovery. For arithmetic requests, first call search_tools, then call load_tool with the exact returned tool name, then call the loaded tool. Do not answer from mental math."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Use deferred tools to multiply 6 and 7. Search for the tool, load it, call it, then answer with the product."
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "text",
+							"text": "I'll help you multiply 6 and 7 using deferred tools. Let me start by searching for a multiplication tool."
+						},
+						{
+							"type": "tool_use",
+							"id": "toolu_01My6TPoXi6kypfcvraMdzC2",
+							"name": "search_tools",
+							"input": {
+								"query": "multiplication arithmetic multiply"
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_01My6TPoXi6kypfcvraMdzC2",
+							"content": "{\"results\":[{\"name\":\"multiply_numbers\",\"description\":\"Multiply two numbers and return their product\",\"loaded\":false}]}"
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "text",
+							"text": "Great! I found the `multiply_numbers` tool. Now let me load it."
+						},
+						{
+							"type": "tool_use",
+							"id": "toolu_01SagCrkBvRbEEThoMjyMQn5",
+							"name": "load_tool",
+							"input": {
+								"toolName": "multiply_numbers"
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_01SagCrkBvRbEEThoMjyMQn5",
+							"content": "{\"status\":\"loaded\",\"toolName\":\"multiply_numbers\",\"tool\":{\"name\":\"multiply_numbers\",\"description\":\"Multiply two numbers and return their product\",\"loaded\":true},\"message\":\"Tool \\\"multiply_numbers\\\" is loaded and will be available on the next model turn.\"}"
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "search_tools",
+					"description": "Search for additional tools that can be loaded when the current toolset is missing a capability.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"query": {
+								"type": "string",
+								"minLength": 1,
+								"description": "Keywords describing the capability or integration you need"
+							}
+						},
+						"required": ["query"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "load_tool",
+					"description": "Load a deferred tool by exact name. The tool becomes available on the next model turn and remains available for this conversation.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"toolName": {
+								"type": "string",
+								"minLength": 1,
+								"description": "Exact tool name returned by search_tools"
+							}
+						},
+						"required": ["toolName"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "multiply_numbers",
+					"description": "Multiply two numbers and return their product",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"a": {
+								"type": "number",
+								"description": "First number"
+							},
+							"b": {
+								"type": "number",
+								"description": "Second number"
+							}
+						},
+						"required": ["a", "b"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			}
+		},
+		"status": 200,
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_0121fTkqsx5wfoWhxFGZNpNb\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Perfect! The tool is now loaded. Now let me call it to multiply 6 and 7.\"},{\"type\":\"tool_use\",\"id\":\"toolu_01Eh2tUzmZnT5ZV7tMid5fnL\",\"name\":\"multiply_numbers\",\"input\":{\"a\":6,\"b\":7},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1187,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":93,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "9999000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-23T12:19:42Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-23T12:19:42Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-23T12:19:42Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "11999000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-23T12:19:42Z",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a103714abb145b18-VIE",
+			"connection": "keep-alive",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "application/json",
+			"date": "Tue, 23 Jun 2026 12:19:43 GMT",
+			"request-id": "req_011CcLBQ9L9Jegvv1ijQFuES",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=EX_egYng72akb_GycGSaGPWQmSyXCmspAnhOBG3OEiU-1782217181.880816-1.0.1.1-r_OM7JBr9NknvOnvKvKycTdqYB4fHdffFG89fc.fXEw; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-6fa28d3613f9a8a0921c6e338f4ad7c6-95df5e2ecdb24a5a-01",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are testing deferred tool discovery. For arithmetic requests, first call search_tools, then call load_tool with the exact returned tool name, then call the loaded tool. Do not answer from mental math."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Use deferred tools to multiply 6 and 7. Search for the tool, load it, call it, then answer with the product."
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "text",
+							"text": "I'll help you multiply 6 and 7 using deferred tools. Let me start by searching for a multiplication tool."
+						},
+						{
+							"type": "tool_use",
+							"id": "toolu_01My6TPoXi6kypfcvraMdzC2",
+							"name": "search_tools",
+							"input": {
+								"query": "multiplication arithmetic multiply"
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_01My6TPoXi6kypfcvraMdzC2",
+							"content": "{\"results\":[{\"name\":\"multiply_numbers\",\"description\":\"Multiply two numbers and return their product\",\"loaded\":false}]}"
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "text",
+							"text": "Great! I found the `multiply_numbers` tool. Now let me load it."
+						},
+						{
+							"type": "tool_use",
+							"id": "toolu_01SagCrkBvRbEEThoMjyMQn5",
+							"name": "load_tool",
+							"input": {
+								"toolName": "multiply_numbers"
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_01SagCrkBvRbEEThoMjyMQn5",
+							"content": "{\"status\":\"loaded\",\"toolName\":\"multiply_numbers\",\"tool\":{\"name\":\"multiply_numbers\",\"description\":\"Multiply two numbers and return their product\",\"loaded\":true},\"message\":\"Tool \\\"multiply_numbers\\\" is loaded and will be available on the next model turn.\"}"
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "text",
+							"text": "Perfect! The tool is now loaded. Now let me call it to multiply 6 and 7."
+						},
+						{
+							"type": "tool_use",
+							"id": "toolu_01Eh2tUzmZnT5ZV7tMid5fnL",
+							"name": "multiply_numbers",
+							"input": {
+								"a": 6,
+								"b": 7
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_01Eh2tUzmZnT5ZV7tMid5fnL",
+							"content": "{\"product\":42}"
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "search_tools",
+					"description": "Search for additional tools that can be loaded when the current toolset is missing a capability.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"query": {
+								"type": "string",
+								"minLength": 1,
+								"description": "Keywords describing the capability or integration you need"
+							}
+						},
+						"required": ["query"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "load_tool",
+					"description": "Load a deferred tool by exact name. The tool becomes available on the next model turn and remains available for this conversation.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"toolName": {
+								"type": "string",
+								"minLength": 1,
+								"description": "Exact tool name returned by search_tools"
+							}
+						},
+						"required": ["toolName"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "multiply_numbers",
+					"description": "Multiply two numbers and return their product",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"a": {
+								"type": "number",
+								"description": "First number"
+							},
+							"b": {
+								"type": "number",
+								"description": "Second number"
+							}
+						},
+						"required": ["a", "b"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			}
+		},
+		"status": 200,
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_01EfpvPFKxs67qLgQzr6BUmB\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"**The product of 6 and 7 is 42.**\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1296,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":18,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "9999000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-23T12:19:43Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-23T12:19:43Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-23T12:19:43Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "11999000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-23T12:19:43Z",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a103715208e55b18-VIE",
+			"connection": "keep-alive",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "application/json",
+			"date": "Tue, 23 Jun 2026 12:19:43 GMT",
+			"request-id": "req_011CcLBQELXBm4Q68gJ7r1wf",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=4ZQofvys8mqOxrULSa6cKEv0_aR4cJW8qsFgchPeGOw-1782217183.0489352-1.0.1.1-gUIM_yJpjq8N5CqEOUpG2ny8Pgej9vQpxir7MT8PtPk; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-1d4eca0b42f49d2e257283f0576f10f7-c61248c57be83b00-01",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	}
+]

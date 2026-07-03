@@ -4,7 +4,7 @@ import type {
 	INodeExecutionData,
 	GenericValue,
 } from 'n8n-workflow';
-import { ApplicationError, NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, UserError } from 'n8n-workflow';
 
 import { JsTaskRunnerSandbox } from '../../../Code/JsTaskRunnerSandbox';
 
@@ -18,7 +18,7 @@ export const prepareFieldsArray = (fields: string | string[], fieldName = 'Field
 	if (Array.isArray(fields)) {
 		return fields;
 	}
-	throw new ApplicationError(
+	throw new UserError(
 		`The \'${fieldName}\' parameter must be a string of fields separated by commas or an array of strings.`,
 		{ level: 'warning' },
 	);

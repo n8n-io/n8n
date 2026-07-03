@@ -42,7 +42,6 @@ type RemediationTraceSummary = {
 	workflowSetupAfterSetupSignal: boolean;
 	completedCheckpointBeforeWorkflowSetup: boolean;
 	fallbackNarrationSeen: boolean;
-	loadedWorkflowBuilderSkill: boolean;
 };
 
 async function getTraceEvents(api: ApiHelpers, testInfo: TestInfo): Promise<TraceEvent[]> {
@@ -188,10 +187,6 @@ function summarizeRemediationTrace(events: TraceEvent[]): RemediationTraceSummar
 					.filter((event) => event.kind === 'tool-call' && event.toolName === 'build-workflow')
 					.length
 			: 0;
-	const loadedWorkflowBuilderSkill = getToolCalls(events, 'load_skill').some(
-		(event) => event.input?.skillId === 'workflow-builder',
-	);
-
 	return {
 		built: firstSuccessfulBuildIndex >= 0,
 		workflowId:
@@ -225,14 +220,13 @@ function summarizeRemediationTrace(events: TraceEvent[]): RemediationTraceSummar
 			firstCompleteCheckpointIndex >= 0 &&
 			(terminalWorkflowSetupIndex < 0 || firstCompleteCheckpointIndex < terminalWorkflowSetupIndex),
 		fallbackNarrationSeen: JSON.stringify(events).includes(TERMINAL_FALLBACK_TEXT),
-		loadedWorkflowBuilderSkill,
 	};
 }
 
 test.describe(
 	'Instance AI remediation guard @capability:proxy',
 	{
-		annotation: [{ type: 'owner', description: 'Instance AI' }],
+		annotation: [{ type: 'owner', description: 'instanceAI' }],
 	},
 	() => {
 		test(
@@ -249,20 +243,15 @@ test.describe(
 			async ({ api, n8nContainer, n8n }, testInfo) => {
 				test.setTimeout(600_000);
 				test.skip(!n8nContainer, 'Replay trace assertions require the container proxy harness');
-				test.skip(
-					testInfo.project.name.includes('multi-main'),
-					'Trace replay state is process-local and not stable in multi-main mode',
-				);
 
 				await n8n.navigate.toInstanceAi();
 				await n8n.instanceAi.sendMessage(
 					'Build a workflow named "INS-164 mocked credential guard" with a Manual Trigger ' +
 						'connected to a Slack node that posts a message using a mocked slackApi credential placeholder. ' +
 						'Use the workflow SDK credential placeholder directly; do not call credentials setup or ask for a real Slack credential. ' +
-						'Use the workflow-builder skill, create a build plan for approval, and save it with build-workflow. ' +
+						'Use the workflow-builder skill and save it with build-workflow. ' +
 						'When the build result reports that setup is required before verification, open the workflow setup card with workflows(action="setup") and stop editing.',
 				);
-				await n8n.instanceAi.approveBuildPlan(180_000);
 
 				await expect(n8n.instanceAi.workflowSetup.getCard()).toBeVisible({ timeout: 540_000 });
 				await expect(
@@ -291,7 +280,6 @@ test.describe(
 					workflowSetupAfterSetupSignal: true,
 					completedCheckpointBeforeWorkflowSetup: false,
 					fallbackNarrationSeen: false,
-					loadedWorkflowBuilderSkill: true,
 				});
 				expect(summary.postBuildRemediationSubmitsUsed).toBeLessThanOrEqual(2);
 				expect(buildCalls.find((event) => event.agentRole === 'orchestrator')).toMatchObject({

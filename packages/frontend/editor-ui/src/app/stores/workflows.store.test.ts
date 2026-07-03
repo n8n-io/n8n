@@ -7,15 +7,16 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import type { IWorkflowDb, IWorkflowSettings } from '@/Interface';
-import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 
-import type { ExecutionSummary, INodeTypeDescription } from 'n8n-workflow';
+import type { INodeTypeDescription } from 'n8n-workflow';
 import { useUIStore } from '@/app/stores/ui.store';
 import * as apiUtils from '@n8n/rest-api-client';
 import { createTestWorkflow, createTestWorkflowExecutionResponse } from '@/__tests__/mocks';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import type { WorkflowHistory } from '@n8n/rest-api-client';
+import type { WorkflowPublicationStatus } from '@n8n/api-types';
 
 vi.mock('@/app/api/workflows', () => ({
 	getWorkflows: vi.fn(),
@@ -129,63 +130,6 @@ describe('useWorkflowsStore', () => {
 				}),
 			);
 			expect(workflowsStore.isWorkflowSaved['123']).toBe(true);
-		});
-	});
-
-	describe('getWorkflowRunData', () => {
-		it('should return null when no execution data is present', () => {
-			workflowsStore.setWorkflowExecutionData(null);
-
-			const runData = workflowsStore.getWorkflowRunData;
-			expect(runData).toBeNull();
-		});
-
-		it('should return null when execution data does not contain resultData', () => {
-			workflowsStore.setWorkflowExecutionData({ id: 'exec-1', data: {} } as IExecutionResponse);
-
-			const runData = workflowsStore.getWorkflowRunData;
-			expect(runData).toBeNull();
-		});
-
-		it('should return runData when execution data contains resultData', () => {
-			const expectedRunData = { node1: [{}, {}], node2: [{}] };
-			workflowsStore.setWorkflowExecutionData({
-				id: 'exec-1',
-				data: { resultData: { runData: expectedRunData } },
-			} as unknown as IExecutionResponse);
-
-			const runData = workflowsStore.getWorkflowRunData;
-			expect(runData).toEqual(expectedRunData);
-		});
-	});
-
-	describe('getWorkflowResultDataByNodeName()', () => {
-		it('should return null when no workflow run data is present', () => {
-			workflowsStore.setWorkflowExecutionData(null);
-
-			const resultData = workflowsStore.getWorkflowResultDataByNodeName('Node1');
-			expect(resultData).toBeNull();
-		});
-
-		it('should return null when node name is not present in workflow run data', () => {
-			workflowsStore.setWorkflowExecutionData({
-				id: 'exec-1',
-				data: { resultData: { runData: {} } },
-			} as unknown as IExecutionResponse);
-
-			const resultData = workflowsStore.getWorkflowResultDataByNodeName('Node1');
-			expect(resultData).toBeNull();
-		});
-
-		it('should return result data when node name is present in workflow run data', () => {
-			const expectedData = [{}, {}];
-			workflowsStore.setWorkflowExecutionData({
-				id: 'exec-1',
-				data: { resultData: { runData: { Node1: expectedData } } },
-			} as unknown as IExecutionResponse);
-
-			const resultData = workflowsStore.getWorkflowResultDataByNodeName('Node1');
-			expect(resultData).toEqual(expectedData);
 		});
 	});
 
@@ -797,181 +741,28 @@ describe('useWorkflowsStore', () => {
 		});
 	});
 
-	describe('renameNodeSelectedAndExecution', () => {
-		it('should rename node and update execution data', () => {
-			const nodeName = 'Rename me';
-			const newName = 'Renamed';
+	describe('fetchPublicationStatus', () => {
+		it('should call GET /workflows/:id/publication-status and return the payload', async () => {
+			const workflowId = 'workflow-abc';
+			const mockStatus: WorkflowPublicationStatus = {
+				status: 'published',
+				liveVersionId: 'pub-1',
+				pendingVersionId: null,
+				triggers: [],
+			};
 
-			workflowsStore.setWorkflowId('test-workflow-id');
+			const makeRestApiRequestSpy = vi
+				.spyOn(apiUtils, 'makeRestApiRequest')
+				.mockResolvedValue(mockStatus);
 
-			workflowsStore.setWorkflowExecutionData({
-				id: 'exec-rename',
-				data: {
-					resultData: {
-						runData: {
-							"When clicking 'Test workflow'": [
-								{
-									startTime: 1747389900668,
-									executionIndex: 0,
-									source: [],
-									hints: [],
-									executionTime: 1,
-									executionStatus: 'success',
-									data: {},
-								},
-							],
-							[nodeName]: [
-								{
-									startTime: 1747389900670,
-									executionIndex: 2,
-									source: [
-										{
-											previousNode: "When clicking 'Test workflow'",
-										},
-									],
-									hints: [],
-									executionTime: 1,
-									executionStatus: 'success',
-									data: {},
-								},
-							],
-							'Edit Fields': [
-								{
-									startTime: 1747389900671,
-									executionIndex: 3,
-									source: [
-										{
-											previousNode: nodeName,
-										},
-									],
-									hints: [],
-									executionTime: 3,
-									executionStatus: 'success',
-									data: {},
-								},
-							],
-						},
-						pinData: {
-							[nodeName]: [
-								{
-									json: {
-										foo: 'bar',
-									},
-									pairedItem: [
-										{
-											item: 0,
-											sourceOverwrite: {
-												previousNode: "When clicking 'Test workflow'",
-											},
-										},
-									],
-								},
-							],
-							'Edit Fields': [
-								{
-									json: {
-										bar: 'foo',
-									},
-									pairedItem: {
-										item: 1,
-										sourceOverwrite: {
-											previousNode: nodeName,
-										},
-									},
-								},
-							],
-						},
-						lastNodeExecuted: 'Edit Fields',
-					},
-				},
-			} as unknown as IExecutionResponse);
+			const result = await workflowsStore.fetchPublicationStatus(workflowId);
 
-			workflowsStore.setWorkflowId('test-workflow-id');
-
-			const workflowDocumentStore = useWorkflowDocumentStore(
-				createWorkflowDocumentId(workflowsStore.workflowId),
+			expect(makeRestApiRequestSpy).toHaveBeenCalledWith(
+				expect.objectContaining({ baseUrl: '/rest', pushRef: expect.any(String) }),
+				'GET',
+				`/workflows/${workflowId}/publication-status`,
 			);
-			workflowDocumentStore.addNode({
-				parameters: {},
-				id: '554c7ff4-7ee2-407c-8931-e34234c5056a',
-				name: nodeName,
-				type: 'n8n-nodes-base.set',
-				position: [680, 180],
-				typeVersion: 3.4,
-			});
-
-			workflowDocumentStore.setPinData({
-				[nodeName]: [
-					{
-						json: {
-							foo: 'bar',
-						},
-						pairedItem: {
-							item: 2,
-							sourceOverwrite: {
-								previousNode: "When clicking 'Test workflow'",
-							},
-						},
-					},
-				],
-				'Edit Fields': [
-					{
-						json: {
-							bar: 'foo',
-						},
-						pairedItem: [
-							{
-								item: 3,
-								sourceOverwrite: {
-									previousNode: nodeName,
-								},
-							},
-						],
-					},
-				],
-			});
-
-			workflowsStore.renameNodeSelectedAndExecution({ old: nodeName, new: newName });
-
-			expect(workflowDocumentStore.nodeMetadata[nodeName]).not.toBeDefined();
-			expect(workflowDocumentStore.nodeMetadata[newName]).toEqual({});
-			expect(
-				workflowsStore.workflowExecutionData?.data?.resultData.runData[nodeName],
-			).not.toBeDefined();
-			expect(workflowsStore.workflowExecutionData?.data?.resultData.runData[newName]).toBeDefined();
-			expect(
-				workflowsStore.workflowExecutionData?.data?.resultData.runData['Edit Fields'][0].source,
-			).toEqual([
-				{
-					previousNode: newName,
-				},
-			]);
-			expect(
-				workflowsStore.workflowExecutionData?.data?.resultData.pinData?.[nodeName],
-			).not.toBeDefined();
-			expect(
-				workflowsStore.workflowExecutionData?.data?.resultData.pinData?.[newName],
-			).toBeDefined();
-			expect(
-				workflowsStore.workflowExecutionData?.data?.resultData.pinData?.['Edit Fields'][0]
-					.pairedItem,
-			).toEqual({
-				item: 1,
-				sourceOverwrite: {
-					previousNode: newName,
-				},
-			});
-
-			expect(workflowDocumentStore.pinnedDataByNodeName?.[nodeName]).not.toBeDefined();
-			expect(workflowDocumentStore.pinnedDataByNodeName?.[newName]).toBeDefined();
-			expect(workflowDocumentStore.pinnedDataByNodeName?.['Edit Fields'][0].pairedItem).toEqual([
-				{
-					item: 3,
-					sourceOverwrite: {
-						previousNode: newName,
-					},
-				},
-			]);
+			expect(result).toEqual(mockStatus);
 		});
 	});
 
@@ -1026,7 +817,10 @@ describe('useWorkflowsStore', () => {
 				}),
 				'workflow-123',
 			);
-			expect(workflowsStore.lastSuccessfulExecution).toEqual(mockExecution);
+			expect(
+				useWorkflowExecutionStateStore(createWorkflowDocumentId(workflowsStore.workflowId))
+					.lastSuccessfulExecution,
+			).toEqual(mockExecution);
 		});
 
 		it('should handle null response from API', async () => {
@@ -1055,7 +849,10 @@ describe('useWorkflowsStore', () => {
 				}),
 				'workflow-123',
 			);
-			expect(workflowsStore.lastSuccessfulExecution).toBeNull();
+			expect(
+				useWorkflowExecutionStateStore(createWorkflowDocumentId(workflowsStore.workflowId))
+					.lastSuccessfulExecution,
+			).toBeNull();
 		});
 
 		it('should not throw error when API call fails', async () => {
@@ -1179,178 +976,6 @@ describe('useWorkflowsStore', () => {
 			await workflowsStore.fetchLastSuccessfulExecution();
 
 			expect(workflowsApi.getLastSuccessfulExecution).not.toHaveBeenCalled();
-		});
-	});
-
-	describe('setWorkflowExecutionData', () => {
-		it('should clear data when called with null', () => {
-			workflowsStore.setWorkflowExecutionData({
-				id: 'exec-1',
-				data: { resultData: { runData: { node1: [] } } },
-			} as unknown as IExecutionResponse);
-
-			workflowsStore.setWorkflowExecutionData(null);
-
-			expect(workflowsStore.workflowExecutionData).toBeNull();
-		});
-
-		it('should clear workflowExecutionStartedData when setting new data', () => {
-			workflowsStore.setWorkflowExecutionData({
-				id: 'exec-1',
-				data: { resultData: { runData: {} } },
-			} as unknown as IExecutionResponse);
-
-			workflowsStore.addNodeExecutionStartedData({
-				executionId: 'exec-1',
-				nodeName: 'node1',
-				data: { startTime: 1, executionIndex: 0, source: [], hints: [] },
-			} as never);
-			expect(workflowsStore.workflowExecutionStartedData).toBeDefined();
-
-			workflowsStore.setWorkflowExecutionData({
-				id: 'exec-2',
-				data: { resultData: { runData: {} } },
-			} as unknown as IExecutionResponse);
-
-			expect(workflowsStore.workflowExecutionStartedData).toBeUndefined();
-		});
-
-		it('should update workflowExecutionResultDataLastUpdate timestamp', () => {
-			const before = Date.now();
-			workflowsStore.setWorkflowExecutionData({
-				id: 'exec-1',
-				data: { resultData: { runData: {} } },
-			} as unknown as IExecutionResponse);
-
-			expect(workflowsStore.workflowExecutionResultDataLastUpdate).toBeGreaterThanOrEqual(before);
-		});
-
-		it('should recompute workflowExecutionPairedItemMappings', () => {
-			workflowsStore.setWorkflowExecutionData({
-				id: 'exec-1',
-				data: { resultData: { runData: { node1: [] } } },
-			} as unknown as IExecutionResponse);
-
-			expect(workflowsStore.workflowExecutionPairedItemMappings).toEqual({});
-		});
-
-		it('should strip waiting task data when waitTill is set', () => {
-			const execution = {
-				id: 'exec-1',
-				data: {
-					waitTill: new Date(),
-					resultData: {
-						lastNodeExecuted: 'WaitNode',
-						runData: {
-							WaitNode: [{ executionStatus: 'waiting' }],
-							OtherNode: [{ executionStatus: 'success' }],
-						},
-					},
-				},
-			} as unknown as IExecutionResponse;
-
-			workflowsStore.setWorkflowExecutionData(execution);
-
-			expect(
-				workflowsStore.workflowExecutionData?.data?.resultData.runData.WaitNode,
-			).toBeUndefined();
-			expect(
-				workflowsStore.workflowExecutionData?.data?.resultData.runData.OtherNode,
-			).toBeDefined();
-		});
-	});
-
-	describe('execution session setters', () => {
-		it('setLastSuccessfulExecution updates the value independently of active execution', () => {
-			const execution = { id: 'last-success' } as IExecutionResponse;
-			workflowsStore.setWorkflowExecutionData({
-				id: 'active-exec',
-				data: { resultData: { runData: {} } },
-			} as unknown as IExecutionResponse);
-
-			workflowsStore.setLastSuccessfulExecution(execution);
-
-			expect(workflowsStore.lastSuccessfulExecution).toEqual(execution);
-			expect(workflowsStore.workflowExecutionData?.id).not.toBe('last-success');
-		});
-
-		it('clearExecutionStartedData empties the started data', () => {
-			workflowsStore.setWorkflowExecutionData({
-				id: 'exec-1',
-				data: { resultData: { runData: {} } },
-			} as unknown as IExecutionResponse);
-
-			workflowsStore.addNodeExecutionStartedData({
-				executionId: 'exec-1',
-				nodeName: 'node1',
-				data: { startTime: 1, executionIndex: 0, source: [], hints: [] },
-			} as never);
-			expect(workflowsStore.workflowExecutionStartedData).toBeDefined();
-
-			workflowsStore.clearExecutionStartedData();
-
-			expect(workflowsStore.workflowExecutionStartedData).toBeUndefined();
-		});
-	});
-
-	describe('currentWorkflowExecutions', () => {
-		beforeEach(() => {
-			workflowsStore.setWorkflowId('wf-1');
-		});
-
-		it('addToCurrentExecutions filters by workflowId', () => {
-			workflowsStore.addToCurrentExecutions([
-				{ id: '1', workflowId: 'wf-1' } as ExecutionSummary,
-				{ id: '2', workflowId: 'other-wf' } as ExecutionSummary,
-			]);
-
-			expect(workflowsStore.currentWorkflowExecutions).toHaveLength(1);
-			expect(workflowsStore.currentWorkflowExecutions[0].id).toBe('1');
-		});
-
-		it('addToCurrentExecutions deduplicates by id', () => {
-			workflowsStore.addToCurrentExecutions([{ id: '1', workflowId: 'wf-1' } as ExecutionSummary]);
-			workflowsStore.addToCurrentExecutions([
-				{ id: '1', workflowId: 'wf-1' } as ExecutionSummary,
-				{ id: '2', workflowId: 'wf-1' } as ExecutionSummary,
-			]);
-
-			expect(workflowsStore.currentWorkflowExecutions).toHaveLength(2);
-			expect(workflowsStore.currentWorkflowExecutions.map((e) => e.id)).toEqual(['1', '2']);
-		});
-
-		it('clearCurrentWorkflowExecutions empties the list', () => {
-			workflowsStore.setCurrentWorkflowExecutions([
-				{ id: '1', workflowId: 'wf-1' } as ExecutionSummary,
-				{ id: '2', workflowId: 'wf-1' } as ExecutionSummary,
-			]);
-			expect(workflowsStore.currentWorkflowExecutions).toHaveLength(2);
-
-			workflowsStore.clearCurrentWorkflowExecutions();
-
-			expect(workflowsStore.currentWorkflowExecutions).toEqual([]);
-		});
-
-		it('setCurrentWorkflowExecutions replaces the list', () => {
-			workflowsStore.setCurrentWorkflowExecutions([
-				{ id: '1', workflowId: 'wf-1' } as ExecutionSummary,
-			]);
-			workflowsStore.setCurrentWorkflowExecutions([
-				{ id: '2', workflowId: 'wf-1' } as ExecutionSummary,
-				{ id: '3', workflowId: 'wf-1' } as ExecutionSummary,
-			]);
-
-			expect(workflowsStore.currentWorkflowExecutions.map((e) => e.id)).toEqual(['2', '3']);
-		});
-
-		it('deleteExecution removes from the list', () => {
-			const exec1 = { id: '1', workflowId: 'wf-1' } as ExecutionSummary;
-			const exec2 = { id: '2', workflowId: 'wf-1' } as ExecutionSummary;
-			workflowsStore.setCurrentWorkflowExecutions([exec1, exec2]);
-
-			workflowsStore.deleteExecution(exec1);
-
-			expect(workflowsStore.currentWorkflowExecutions).toEqual([exec2]);
 		});
 	});
 });

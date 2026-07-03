@@ -1,4 +1,4 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import moment from 'moment-timezone';
 import type { IPollFunctions, INode, ILoadOptionsFunctions, IDataObject } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
@@ -6,26 +6,27 @@ import { NodeApiError } from 'n8n-workflow';
 import { GoogleDriveTrigger } from '../GoogleDriveTrigger.node';
 import * as GenericFunctions from '../v1/GenericFunctions';
 import * as listSearch from '../v2/methods/listSearch';
+import type { Mock, Mocked } from 'vitest';
 
-jest.mock('../v1/GenericFunctions', () => ({
-	extractId: jest.fn(),
-	googleApiRequest: jest.fn(),
-	googleApiRequestAllItems: jest.fn(),
+vi.mock('../v1/GenericFunctions', () => ({
+	extractId: vi.fn(),
+	googleApiRequest: vi.fn(),
+	googleApiRequestAllItems: vi.fn(),
 }));
 
-jest.mock('../v2/methods/listSearch', () => ({
-	fileSearch: jest.fn(),
-	folderSearch: jest.fn(),
+vi.mock('../v2/methods/listSearch', () => ({
+	fileSearch: vi.fn(),
+	folderSearch: vi.fn(),
 }));
 
 describe('GoogleDriveTrigger', () => {
 	let trigger: GoogleDriveTrigger;
-	let mockPollFunctions: jest.Mocked<IPollFunctions>;
+	let mockPollFunctions: Mocked<IPollFunctions>;
 	let mockNode: INode;
 
-	const extractIdSpy = jest.spyOn(GenericFunctions, 'extractId');
-	const googleApiRequestSpy = jest.spyOn(GenericFunctions, 'googleApiRequest');
-	const googleApiRequestAllItemsSpy = jest.spyOn(GenericFunctions, 'googleApiRequestAllItems');
+	const extractIdSpy = vi.spyOn(GenericFunctions, 'extractId');
+	const googleApiRequestSpy = vi.spyOn(GenericFunctions, 'googleApiRequest');
+	const googleApiRequestAllItemsSpy = vi.spyOn(GenericFunctions, 'googleApiRequestAllItems');
 
 	beforeEach(() => {
 		trigger = new GoogleDriveTrigger();
@@ -39,19 +40,19 @@ describe('GoogleDriveTrigger', () => {
 			parameters: {},
 		};
 
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		mockPollFunctions.getNode.mockReturnValue(mockNode);
 		mockPollFunctions.getWorkflowStaticData.mockReturnValue({});
 		mockPollFunctions.getMode.mockReturnValue('trigger');
-		(mockPollFunctions.helpers.returnJsonArray as jest.Mock).mockImplementation((data: unknown[]) =>
+		(mockPollFunctions.helpers.returnJsonArray as Mock).mockImplementation((data: unknown[]) =>
 			data.map((item: unknown, index: number) => ({ json: item, pairedItem: { item: index } })),
 		);
 		extractIdSpy.mockImplementation((id) => id);
 	});
 
 	afterEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('Methods', () => {

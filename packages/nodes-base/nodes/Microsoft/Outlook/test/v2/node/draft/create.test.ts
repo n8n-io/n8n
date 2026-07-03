@@ -1,11 +1,12 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import nock from 'nock';
 import { Readable } from 'stream';
 
 import { execute } from '../../../../v2/actions/draft/create.operation';
 import * as transport from '../../../../v2/transport';
+import type { Mock, Mocked, MockInstance } from 'vitest';
 
 describe('Test MicrosoftOutlookV2, draft => create', () => {
 	nock('https://graph.microsoft.com/v1.0/me')
@@ -105,8 +106,8 @@ describe('Test MicrosoftOutlookV2, draft => create', () => {
 	});
 
 	describe('with attachments', () => {
-		let mockExecuteFunctions: jest.Mocked<IExecuteFunctions>;
-		let microsoftApiRequestSpy: jest.SpyInstance;
+		let mockExecuteFunctions: Mocked<IExecuteFunctions>;
+		let microsoftApiRequestSpy: MockInstance;
 
 		const mockNode: INode = {
 			id: 'test-node-id',
@@ -119,15 +120,15 @@ describe('Test MicrosoftOutlookV2, draft => create', () => {
 
 		beforeEach(() => {
 			mockExecuteFunctions = mockDeep<IExecuteFunctions>();
-			microsoftApiRequestSpy = jest.spyOn(transport, 'microsoftApiRequest');
+			microsoftApiRequestSpy = vi.spyOn(transport, 'microsoftApiRequest');
 
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 
 			mockExecuteFunctions.getInputData.mockReturnValue([{ json: {} }]);
 			mockExecuteFunctions.getNode.mockReturnValue(mockNode);
 			mockExecuteFunctions.continueOnFail.mockReturnValue(false);
 
-			(mockExecuteFunctions.helpers.constructExecutionMetaData as jest.Mock).mockImplementation(
+			(mockExecuteFunctions.helpers.constructExecutionMetaData as Mock).mockImplementation(
 				(data: any, options: any) => {
 					return data.map((item: any) => ({
 						...item,
@@ -135,15 +136,13 @@ describe('Test MicrosoftOutlookV2, draft => create', () => {
 					}));
 				},
 			);
-			(mockExecuteFunctions.helpers.returnJsonArray as jest.Mock).mockImplementation(
-				(data: any) => {
-					return [{ json: data }];
-				},
-			);
+			(mockExecuteFunctions.helpers.returnJsonArray as Mock).mockImplementation((data: any) => {
+				return [{ json: data }];
+			});
 		});
 
 		afterEach(() => {
-			jest.resetAllMocks();
+			vi.resetAllMocks();
 		});
 
 		it('should properly await attachments with binary data stream', async () => {
@@ -171,11 +170,11 @@ describe('Test MicrosoftOutlookV2, draft => create', () => {
 				fileExtension: 'txt',
 			};
 
-			(mockExecuteFunctions.helpers.assertBinaryData as jest.Mock).mockReturnValue(mockBinaryData);
+			(mockExecuteFunctions.helpers.assertBinaryData as Mock).mockReturnValue(mockBinaryData);
 
 			const mockStream = Readable.from([Buffer.from('Hello World')]);
-			(mockExecuteFunctions.helpers.getBinaryStream as jest.Mock).mockResolvedValue(mockStream);
-			(mockExecuteFunctions.helpers.binaryToBuffer as jest.Mock).mockResolvedValue(
+			(mockExecuteFunctions.helpers.getBinaryStream as Mock).mockResolvedValue(mockStream);
+			(mockExecuteFunctions.helpers.binaryToBuffer as Mock).mockResolvedValue(
 				Buffer.from('Hello World'),
 			);
 
@@ -240,7 +239,7 @@ describe('Test MicrosoftOutlookV2, draft => create', () => {
 				fileExtension: 'txt',
 			};
 
-			(mockExecuteFunctions.helpers.assertBinaryData as jest.Mock).mockReturnValue(mockBinaryData);
+			(mockExecuteFunctions.helpers.assertBinaryData as Mock).mockReturnValue(mockBinaryData);
 
 			microsoftApiRequestSpy.mockResolvedValue({});
 
@@ -276,7 +275,7 @@ describe('Test MicrosoftOutlookV2, draft => create', () => {
 				return params[paramName];
 			});
 
-			(mockExecuteFunctions.helpers.assertBinaryData as jest.Mock)
+			(mockExecuteFunctions.helpers.assertBinaryData as Mock)
 				.mockReturnValueOnce({
 					id: 'id1',
 					fileName: 'file1.txt',
@@ -287,10 +286,8 @@ describe('Test MicrosoftOutlookV2, draft => create', () => {
 				});
 
 			const mockStream1 = Readable.from([Buffer.from('file1')]);
-			(mockExecuteFunctions.helpers.getBinaryStream as jest.Mock).mockResolvedValue(mockStream1);
-			(mockExecuteFunctions.helpers.binaryToBuffer as jest.Mock).mockResolvedValue(
-				Buffer.from('file1'),
-			);
+			(mockExecuteFunctions.helpers.getBinaryStream as Mock).mockResolvedValue(mockStream1);
+			(mockExecuteFunctions.helpers.binaryToBuffer as Mock).mockResolvedValue(Buffer.from('file1'));
 
 			microsoftApiRequestSpy.mockResolvedValue({});
 

@@ -234,6 +234,7 @@ describe('useWorkflowSaving', () => {
 			const MOCK_ID = 'existing-workflow-id';
 			const existingWorkflow = createTestWorkflow({ id: MOCK_ID });
 			workflowStore.setWorkflowId(MOCK_ID);
+			mockRoute.params = { workflowId: MOCK_ID };
 			// Populate workflowsById to mark workflow as existing (not new)
 			workflowListStore.workflowsById = { [MOCK_ID]: existingWorkflow };
 

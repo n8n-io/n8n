@@ -1,6 +1,5 @@
-import type { NodeTypes } from '@/node-types';
-import { mockInstance } from '@n8n/backend-test-utils';
 import type { LicenseState } from '@n8n/backend-common';
+import { mockInstance } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import {
 	type CredentialsEntity,
@@ -13,7 +12,6 @@ import {
 	GLOBAL_OWNER_ROLE,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
 import { type BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import {
 	createErrorExecutionData,
@@ -24,6 +22,7 @@ import {
 	NodeApiError,
 	TelemetryHelpers,
 } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { N8N_VERSION } from '@/constants';
 import type { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
@@ -32,13 +31,23 @@ import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { TelemetryEventRelay, getSemanticVersioning } from '@/events/relays/telemetry.event-relay';
 import type { License } from '@/license';
 import { OtelConfig } from '@/modules/otel/otel.config';
+import type { NodeTypes } from '@/node-types';
 import type { Telemetry } from '@/telemetry';
 
 const flushPromises = async () => await new Promise((resolve) => setImmediate(resolve));
 
+const getDefaultInstanceSettingsLoaderConfig = () => ({
+	ownerManagedByEnv: false,
+	ssoManagedByEnv: false,
+	securityPolicyManagedByEnv: false,
+	logStreamingManagedByEnv: false,
+	mcpManagedByEnv: false,
+	communityPackagesManagedByEnv: false,
+});
+
 describe('TelemetryEventRelay', () => {
 	const telemetry = mock<Telemetry>({
-		sanitizeTelemetryProperties: jest.fn((data) => data),
+		sanitizeTelemetryProperties: vi.fn((data) => data),
 	});
 	const license = mock<License>();
 	const licenseState = mock<LicenseState>();
@@ -62,6 +71,10 @@ describe('TelemetryEventRelay', () => {
 				includeCacheMetrics: false,
 				includeMessageEventBusMetrics: false,
 				includeQueueMetrics: false,
+				includeExecutionDataMetrics: false,
+				includeWebhookMetrics: false,
+				includeFormMetrics: false,
+				includeWorkflowInfoMetrics: false,
 			},
 		},
 		logging: {
@@ -103,6 +116,7 @@ describe('TelemetryEventRelay', () => {
 		database: {
 			type: 'sqlite',
 		},
+		instanceSettingsLoader: getDefaultInstanceSettingsLoaderConfig(),
 	});
 	const binaryDataConfig = mock<BinaryDataConfig>({
 		mode: 'default',
@@ -140,8 +154,9 @@ describe('TelemetryEventRelay', () => {
 	});
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		globalConfig.diagnostics.enabled = true;
+		Object.assign(globalConfig.instanceSettingsLoader, getDefaultInstanceSettingsLoaderConfig());
 		const otelConfig = Container.get(OtelConfig);
 		otelConfig.enabled = false;
 		otelConfig.includeNodeSpans = true;
@@ -166,7 +181,7 @@ describe('TelemetryEventRelay', () => {
 				dynamicCredentialsProxy,
 			);
 			// @ts-expect-error Private method
-			const setupListenersSpy = jest.spyOn(telemetryEventRelay, 'setupListeners');
+			const setupListenersSpy = vi.spyOn(telemetryEventRelay, 'setupListeners');
 
 			await telemetryEventRelay.init();
 
@@ -192,7 +207,7 @@ describe('TelemetryEventRelay', () => {
 				dynamicCredentialsProxy,
 			);
 			// @ts-expect-error Private method
-			const setupListenersSpy = jest.spyOn(telemetryEventRelay, 'setupListeners');
+			const setupListenersSpy = vi.spyOn(telemetryEventRelay, 'setupListeners');
 
 			await telemetryEventRelay.init();
 
@@ -817,6 +832,7 @@ describe('TelemetryEventRelay', () => {
 					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
 				publicApi: true,
+				isOwn: true,
 			};
 
 			eventService.emit('public-api-key-deleted', event);
@@ -824,6 +840,7 @@ describe('TelemetryEventRelay', () => {
 			expect(telemetry.track).toHaveBeenCalledWith('API key deleted', {
 				user_id: 'user123',
 				public_api: true,
+				is_own: true,
 			});
 		});
 	});
@@ -1261,7 +1278,13 @@ describe('TelemetryEventRelay', () => {
 					lastName: 'Doe',
 					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
-				workflow: mock<IWorkflowBase>({ id: 'workflow123', name: 'Test Workflow', nodes: [] }),
+				workflow: mock<IWorkflowBase>({
+					id: 'workflow123',
+					name: 'Test Workflow',
+					nodes: [],
+					connections: {},
+					staticData: {},
+				}),
 				publicApi: false,
 				projectId: 'project123',
 				projectType: 'personal',
@@ -1297,6 +1320,7 @@ describe('TelemetryEventRelay', () => {
 				workflow: mock<IWorkflowBase>({
 					id: 'workflow123',
 					name: 'Test Workflow',
+					connections: {},
 					settings: {
 						customTelemetryTags: [{ key: 'env', value: 'production' }],
 					},
@@ -1374,7 +1398,7 @@ describe('TelemetryEventRelay', () => {
 				evaluationTriggerNodeNames: [],
 			};
 
-			jest.spyOn(TelemetryHelpers, 'generateNodesGraph').mockReturnValueOnce(largeNodeGraph);
+			vi.spyOn(TelemetryHelpers, 'generateNodesGraph').mockReturnValueOnce(largeNodeGraph);
 
 			const event: RelayEventMap['workflow-created'] = {
 				user: {
@@ -1384,7 +1408,13 @@ describe('TelemetryEventRelay', () => {
 					lastName: 'Doe',
 					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
-				workflow: mock<IWorkflowBase>({ id: 'workflow123', name: 'Test Workflow', nodes: [] }),
+				workflow: mock<IWorkflowBase>({
+					id: 'workflow123',
+					name: 'Test Workflow',
+					nodes: [],
+					connections: {},
+					staticData: {},
+				}),
 				publicApi: false,
 				projectId: 'project123',
 				projectType: 'personal',
@@ -1418,7 +1448,12 @@ describe('TelemetryEventRelay', () => {
 					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
 				workflowId: 'workflow123',
-				workflow: mock<IWorkflowDb>({ id: 'workflow123', name: 'Test Workflow' }),
+				workflow: mock<IWorkflowDb>({
+					id: 'workflow123',
+					name: 'Test Workflow',
+					nodes: [],
+					connections: {},
+				}),
 				publicApi: true,
 				source: 'api',
 			};
@@ -1443,7 +1478,12 @@ describe('TelemetryEventRelay', () => {
 					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
 				workflowId: 'workflow123',
-				workflow: mock<IWorkflowDb>({ id: 'workflow123', name: 'Test Workflow' }),
+				workflow: mock<IWorkflowDb>({
+					id: 'workflow123',
+					name: 'Test Workflow',
+					nodes: [],
+					connections: {},
+				}),
 				publicApi: false,
 			};
 
@@ -1467,7 +1507,12 @@ describe('TelemetryEventRelay', () => {
 					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
 				workflowId: 'workflow123',
-				workflow: mock<IWorkflowDb>({ id: 'workflow123', name: 'Test Workflow' }),
+				workflow: mock<IWorkflowDb>({
+					id: 'workflow123',
+					name: 'Test Workflow',
+					nodes: [],
+					connections: {},
+				}),
 				publicApi: true,
 				deactivatedVersionId: 'version-abc-123',
 				source: 'n8n-mcp',
@@ -1494,7 +1539,12 @@ describe('TelemetryEventRelay', () => {
 					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
 				workflowId: 'workflow123',
-				workflow: mock<IWorkflowDb>({ id: 'workflow123', name: 'Test Workflow' }),
+				workflow: mock<IWorkflowDb>({
+					id: 'workflow123',
+					name: 'Test Workflow',
+					nodes: [],
+					connections: {},
+				}),
 				publicApi: false,
 				deactivatedVersionId: null,
 			};
@@ -1602,6 +1652,37 @@ describe('TelemetryEventRelay', () => {
 			});
 		});
 
+		it('should set `used_private_credentials` when a private credential resolution was attempted but failed', async () => {
+			const event: RelayEventMap['workflow-post-execute'] = {
+				workflow: mock<IWorkflowDb>({
+					id: 'workflow123',
+					name: 'Test Workflow',
+					nodes: [],
+				}),
+				userId: 'user123',
+				executionId: 'execution123',
+				runData: {
+					data: {
+						resultData: {
+							runData: {
+								// Node failed to resolve a private credential (e.g. user not connected):
+								// `attemptedDynamicCredentials` is set even though `usedDynamicCredentials` is not.
+								Slack: [{ attemptedDynamicCredentials: true, executionStatus: 'error' }],
+							},
+						},
+					},
+				} as unknown as IRun,
+			};
+
+			eventService.emit('workflow-post-execute', event);
+
+			await flushPromises();
+
+			expect(telemetry.trackWorkflowExecution).toHaveBeenCalledWith(
+				expect.objectContaining({ used_private_credentials: true }),
+			);
+		});
+
 		it('should track on `workflow-saved` event', async () => {
 			const event: RelayEventMap['workflow-saved'] = {
 				user: {
@@ -1611,7 +1692,12 @@ describe('TelemetryEventRelay', () => {
 					lastName: 'Doe',
 					role: { slug: GLOBAL_OWNER_ROLE.slug },
 				},
-				workflow: mock<IWorkflowDb>({ id: 'workflow123', name: 'Test Workflow', nodes: [] }),
+				workflow: mock<IWorkflowDb>({
+					id: 'workflow123',
+					name: 'Test Workflow',
+					nodes: [],
+					connections: {},
+				}),
 				publicApi: false,
 			};
 
@@ -1654,6 +1740,7 @@ describe('TelemetryEventRelay', () => {
 				workflow: mock<IWorkflowDb>({
 					id: 'workflow123',
 					name: 'Test Workflow',
+					connections: {},
 					settings: {
 						customTelemetryTags: [
 							{ key: 'env', value: 'production' },
@@ -1726,6 +1813,7 @@ describe('TelemetryEventRelay', () => {
 					id: 'workflow123',
 					name: 'Test Workflow',
 					nodes: [],
+					connections: {},
 					settings: { credentialResolverId: 'resolver-123', redactionPolicy: undefined },
 				}),
 				publicApi: false,
@@ -1780,6 +1868,7 @@ describe('TelemetryEventRelay', () => {
 					id: 'workflow123',
 					name: 'Test Workflow',
 					nodes: [],
+					connections: {},
 					settings: { credentialResolverId: undefined, redactionPolicy: undefined },
 				}),
 				publicApi: false,
@@ -1816,6 +1905,7 @@ describe('TelemetryEventRelay', () => {
 					id: 'workflow123',
 					name: 'Test Workflow',
 					nodes: [],
+					connections: {},
 					settings: { redactionPolicy: 'all' },
 				}),
 				publicApi: false,
@@ -1878,6 +1968,82 @@ describe('TelemetryEventRelay', () => {
 				workflow_id: 'workflow123',
 				user_id_sharer: 'user123',
 				user_id_list: ['user456', 'user789'],
+			});
+		});
+	});
+
+	describe('package import/export events', () => {
+		it('should track on `n8n-package-imported` event with params and counts', () => {
+			const event: RelayEventMap['n8n-package-imported'] = {
+				user: { id: 'user123' },
+				projectId: 'project123',
+				folderId: 'folder123',
+				workflowIds: ['wf1', 'wf2', 'wf3'],
+				options: {
+					workflowConflictPolicy: 'new-version',
+					workflowIdPolicy: 'new',
+					credentialMatchingMode: 'id-only',
+					credentialMissingMode: 'must-preexist',
+					workflowPublishingPolicy: 'preserve-published-state',
+				},
+				packageSourceId: 'source-instance-1',
+				packageVersion: '1',
+				credentialIds: {
+					matched: ['cred1', 'cred2'],
+					created: [],
+					updated: [],
+				},
+				counts: {
+					workflows: {
+						created: 2,
+						updated: 1,
+						skipped: 1,
+					},
+					credentials: {
+						matched: 2,
+						created: 1,
+						requirements: 3,
+					},
+				},
+			};
+
+			eventService.emit('n8n-package-imported', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User imported n8n package', {
+				user_id: 'user123',
+				workflow_conflict_policy: 'new-version',
+				workflow_id_policy: 'new',
+				credential_matching_mode: 'id-only',
+				credential_missing_mode: 'must-preexist',
+				workflow_publishing_policy: 'preserve-published-state',
+				workflows_created: 2,
+				workflows_updated: 1,
+				workflows_skipped: 1,
+				credentials_matched: 2,
+				credentials_created: 1,
+				credentials_required: 3,
+			});
+		});
+
+		it('should track on `n8n-package-exported` event with entity counts only, not ids', () => {
+			const event: RelayEventMap['n8n-package-exported'] = {
+				user: { id: 'user123' },
+				workflowIds: ['wf1', 'wf2', 'wf3'],
+				projectIds: ['proj1'],
+				counts: {
+					workflows: 3,
+					folders: 1,
+					credentials: 2,
+				},
+			};
+
+			eventService.emit('n8n-package-exported', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User exported n8n package', {
+				user_id: 'user123',
+				workflow_count: 3,
+				folder_count: 1,
+				credential_count: 2,
 			});
 		});
 	});
@@ -2082,6 +2248,14 @@ describe('TelemetryEventRelay', () => {
 		it('should track on `server-started` event', async () => {
 			const firstWorkflow = mock<WorkflowEntity>({ createdAt: new Date() });
 			workflowRepository.findOne.mockResolvedValue(firstWorkflow);
+			Object.assign(globalConfig.instanceSettingsLoader, {
+				ownerManagedByEnv: true,
+				ssoManagedByEnv: true,
+				securityPolicyManagedByEnv: true,
+				logStreamingManagedByEnv: true,
+				mcpManagedByEnv: true,
+				communityPackagesManagedByEnv: true,
+			});
 
 			eventService.emit('server-started');
 
@@ -2105,6 +2279,10 @@ describe('TelemetryEventRelay', () => {
 						metrics_category_logs: false,
 						metrics_category_queue: false,
 						metrics_category_routes: false,
+						metrics_category_execution_data: false,
+						metrics_category_webhooks: false,
+						metrics_category_forms: false,
+						metrics_category_workflow_info: false,
 						metrics_enabled: true,
 					},
 					n8n_binary_data_mode: 'default',
@@ -2131,17 +2309,34 @@ describe('TelemetryEventRelay', () => {
 					otel: expect.anything(),
 				}),
 			);
+			expect(telemetry.identify).toHaveBeenCalledWith(
+				expect.not.objectContaining({
+					settings_managed_by_env_vars: expect.anything(),
+				}),
+			);
 			expect(telemetry.track).toHaveBeenCalledWith(
 				'Instance started',
 				expect.objectContaining({
 					earliest_workflow_created: firstWorkflow.createdAt,
+					settings_managed_by_env_vars: {
+						owner_managed_by_env: true,
+						sso_managed_by_env: true,
+						security_policy_managed_by_env: true,
+						log_streaming_managed_by_env: true,
+						mcp_managed_by_env: true,
+						community_packages_managed_by_env: true,
+					},
 					metrics: {
 						metrics_enabled: true,
+						metrics_category_webhooks: false,
+						metrics_category_forms: false,
+						metrics_category_workflow_info: false,
 						metrics_category_default: true,
 						metrics_category_routes: false,
 						metrics_category_cache: false,
 						metrics_category_logs: false,
 						metrics_category_queue: false,
+						metrics_category_execution_data: false,
 					},
 					otel: {
 						enabled: false,
@@ -2149,6 +2344,90 @@ describe('TelemetryEventRelay', () => {
 					},
 				}),
 			);
+		});
+
+		it('should track instance settings env management on `server-started` event', async () => {
+			workflowRepository.findOne.mockResolvedValue(null);
+			Object.assign(globalConfig.instanceSettingsLoader, {
+				ownerManagedByEnv: true,
+				ssoManagedByEnv: true,
+				securityPolicyManagedByEnv: true,
+				logStreamingManagedByEnv: true,
+				mcpManagedByEnv: true,
+				communityPackagesManagedByEnv: true,
+			});
+
+			eventService.emit('server-started');
+
+			await flushPromises();
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				'Instance started',
+				expect.objectContaining({
+					settings_managed_by_env_vars: {
+						owner_managed_by_env: true,
+						sso_managed_by_env: true,
+						security_policy_managed_by_env: true,
+						log_streaming_managed_by_env: true,
+						mcp_managed_by_env: true,
+						community_packages_managed_by_env: true,
+					},
+				}),
+			);
+			expect(telemetry.identify).toHaveBeenCalledWith(
+				expect.not.objectContaining({
+					settings_managed_by_env_vars: expect.anything(),
+				}),
+			);
+			expect(telemetry.groupIdentify).toHaveBeenCalledWith(
+				expect.objectContaining({
+					traits: expect.not.objectContaining({
+						settings_managed_by_env_vars: expect.anything(),
+					}),
+				}),
+			);
+		});
+
+		it('should not include sensitive instance settings loader values in startup telemetry', async () => {
+			workflowRepository.findOne.mockResolvedValue(null);
+			Object.assign(globalConfig.instanceSettingsLoader, {
+				ownerManagedByEnv: true,
+				ownerEmail: 'owner@example.com',
+				ownerPasswordHash: '$2b$12$012345678901234567890u012345678901234567890123456789012',
+				ssoManagedByEnv: true,
+				oidcClientId: 'oidc-client-id',
+				oidcClientSecret: 'oidc-client-secret',
+				oidcDiscoveryEndpoint: 'https://idp.example.com/.well-known/openid-configuration',
+				samlMetadata: '<EntityDescriptor entityID="sensitive-idp" />',
+				samlMetadataUrl: 'https://idp.example.com/metadata',
+				logStreamingManagedByEnv: true,
+				logStreamingDestinations: '[{"type":"webhook","url":"https://hooks.example.com/audit"}]',
+				mcpManagedByEnv: true,
+				mcpAccessEnabled: true,
+				communityPackagesManagedByEnv: true,
+				communityPackages: '[{"name":"n8n-nodes-sensitive","version":"1.2.3"}]',
+			});
+
+			eventService.emit('server-started');
+
+			await flushPromises();
+
+			const startupEvent = telemetry.track.mock.calls.find(
+				([eventName]) => eventName === 'Instance started',
+			);
+			expect(startupEvent).toBeDefined();
+			if (!startupEvent) throw new Error('Expected Instance started telemetry event');
+
+			const telemetryPayload = JSON.stringify(startupEvent[1]);
+
+			expect(telemetryPayload).not.toContain('owner@example.com');
+			expect(telemetryPayload).not.toContain('$2b$12$012345678901234567890u');
+			expect(telemetryPayload).not.toContain('oidc-client-id');
+			expect(telemetryPayload).not.toContain('oidc-client-secret');
+			expect(telemetryPayload).not.toContain('idp.example.com');
+			expect(telemetryPayload).not.toContain('sensitive-idp');
+			expect(telemetryPayload).not.toContain('hooks.example.com');
+			expect(telemetryPayload).not.toContain('n8n-nodes-sensitive');
 		});
 
 		it('should track OTEL startup configuration on `server-started` event', async () => {
@@ -2316,7 +2595,7 @@ describe('TelemetryEventRelay', () => {
 
 	describe('workflow post execute events', () => {
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 		});
 
 		const mockWorkflowBase = mock<IWorkflowBase>({
@@ -2396,8 +2675,8 @@ describe('TelemetryEventRelay', () => {
 				executionId: 'execution123',
 				userId: 'user123',
 				runData,
+				source: 'instance_ai',
 				telemetryMetadata: {
-					source: 'instance_ai',
 					mockDataSources: ['trigger_input', 'verification_pin_data'],
 				},
 			};
@@ -2463,13 +2742,11 @@ describe('TelemetryEventRelay', () => {
 				},
 			} as unknown as INodesGraphResult;
 
-			jest.spyOn(TelemetryHelpers, 'generateNodesGraph').mockImplementation(() => nodeGraph);
+			vi.spyOn(TelemetryHelpers, 'generateNodesGraph').mockImplementation(() => nodeGraph);
 
-			jest
-				.spyOn(TelemetryHelpers, 'getNodeTypeForName')
-				.mockImplementation(
-					() => ({ type: 'n8n-nodes-base.jira', version: 1, name: 'Jira' }) as unknown as INode,
-				);
+			vi.spyOn(TelemetryHelpers, 'getNodeTypeForName').mockImplementation(
+				() => ({ type: 'n8n-nodes-base.jira', version: 1, name: 'Jira' }) as unknown as INode,
+			);
 
 			const event: RelayEventMap['workflow-post-execute'] = {
 				workflow: mockWorkflowBase,
@@ -2559,13 +2836,11 @@ describe('TelemetryEventRelay', () => {
 				},
 			} as unknown as INodesGraphResult;
 
-			jest.spyOn(TelemetryHelpers, 'generateNodesGraph').mockImplementation(() => nodeGraph);
+			vi.spyOn(TelemetryHelpers, 'generateNodesGraph').mockImplementation(() => nodeGraph);
 
-			jest
-				.spyOn(TelemetryHelpers, 'getNodeTypeForName')
-				.mockImplementation(
-					() => ({ type: 'n8n-nodes-base.jira', version: 1, name: 'Jira' }) as unknown as INode,
-				);
+			vi.spyOn(TelemetryHelpers, 'getNodeTypeForName').mockImplementation(
+				() => ({ type: 'n8n-nodes-base.jira', version: 1, name: 'Jira' }) as unknown as INode,
+			);
 
 			const event: RelayEventMap['workflow-post-execute'] = {
 				workflow: mockWorkflowBase,
@@ -2665,13 +2940,11 @@ describe('TelemetryEventRelay', () => {
 				},
 			} as unknown as INodesGraphResult;
 
-			jest.spyOn(TelemetryHelpers, 'generateNodesGraph').mockImplementation(() => nodeGraph);
+			vi.spyOn(TelemetryHelpers, 'generateNodesGraph').mockImplementation(() => nodeGraph);
 
-			jest
-				.spyOn(TelemetryHelpers, 'getNodeTypeForName')
-				.mockImplementation(
-					() => ({ type: 'n8n-nodes-base.jira', version: 1, name: 'Jira' }) as unknown as INode,
-				);
+			vi.spyOn(TelemetryHelpers, 'getNodeTypeForName').mockImplementation(
+				() => ({ type: 'n8n-nodes-base.jira', version: 1, name: 'Jira' }) as unknown as INode,
+			);
 
 			const event: RelayEventMap['workflow-post-execute'] = {
 				workflow: mockWorkflowBase,
@@ -2679,6 +2952,11 @@ describe('TelemetryEventRelay', () => {
 				userId: 'user123',
 				runData,
 			};
+
+			// The handler `await import('psl')`s before tracking. Pre-warm the
+			// module cache so that import resolves on a microtask and the single
+			// `flushPromises()` below is enough to observe the tracked event.
+			await import('psl');
 
 			eventService.emit('workflow-post-execute', event);
 
@@ -2766,13 +3044,11 @@ describe('TelemetryEventRelay', () => {
 				},
 			} as unknown as INodesGraphResult;
 
-			jest.spyOn(TelemetryHelpers, 'generateNodesGraph').mockImplementation(() => nodeGraph);
+			vi.spyOn(TelemetryHelpers, 'generateNodesGraph').mockImplementation(() => nodeGraph);
 
-			jest
-				.spyOn(TelemetryHelpers, 'getNodeTypeForName')
-				.mockImplementation(
-					() => ({ type: 'n8n-nodes-base.jira', version: 1, name: 'Jira' }) as unknown as INode,
-				);
+			vi.spyOn(TelemetryHelpers, 'getNodeTypeForName').mockImplementation(
+				() => ({ type: 'n8n-nodes-base.jira', version: 1, name: 'Jira' }) as unknown as INode,
+			);
 
 			const event: RelayEventMap['workflow-post-execute'] = {
 				workflow: mockWorkflowBase,
@@ -2876,9 +3152,9 @@ describe('TelemetryEventRelay', () => {
 				},
 			} as unknown as IRun;
 
-			jest
-				.spyOn(TelemetryHelpers, 'userInInstanceRanOutOfFreeAiCredits')
-				.mockImplementation(() => true);
+			vi.spyOn(TelemetryHelpers, 'userInInstanceRanOutOfFreeAiCredits').mockImplementation(
+				() => true,
+			);
 
 			const event: RelayEventMap['workflow-post-execute'] = {
 				workflow: mockWorkflowBase,
@@ -2971,6 +3247,47 @@ describe('TelemetryEventRelay', () => {
 			expect(telemetry.track).toHaveBeenCalledWith('User updated instance policies', {
 				user_id: 'user456',
 				'2fa_enforcement': false,
+			});
+		});
+
+		it('should track data_redaction_enforcement_floor update', () => {
+			const event: RelayEventMap['instance-policies-updated'] = {
+				user: { id: 'user-redaction' },
+				settingName: 'data_redaction_enforcement_floor',
+				value: 'all',
+			};
+
+			eventService.emit('instance-policies-updated', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User updated instance policies', {
+				user_id: 'user-redaction',
+				data_redaction_enforcement_floor: 'all',
+			});
+		});
+	});
+
+	describe('instance AI MCP events', () => {
+		it('tracks on `instance-ai-mcp-registry-connection-created`', () => {
+			eventService.emit('instance-ai-mcp-registry-connection-created', {
+				userId: 'user-1',
+				serverSlug: 'linear',
+			});
+
+			expect(telemetry.track).toHaveBeenCalledWith('Instance AI mcp connected', {
+				user_id: 'user-1',
+				server_slug: 'linear',
+			});
+		});
+
+		it('tracks on `instance-ai-mcp-registry-connection-deleted`', () => {
+			eventService.emit('instance-ai-mcp-registry-connection-deleted', {
+				userId: 'user-1',
+				serverSlug: 'linear',
+			});
+
+			expect(telemetry.track).toHaveBeenCalledWith('Instance AI mcp disconnected', {
+				user_id: 'user-1',
+				server_slug: 'linear',
 			});
 		});
 	});

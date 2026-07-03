@@ -2,24 +2,26 @@
 import type { Logger } from '@n8n/backend-common';
 import type { DatabaseConfig } from '@n8n/config';
 import { DataSource, type DataSourceOptions } from '@n8n/typeorm';
-import { mock, mockDeep } from 'jest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
 import { DbConnectionTimeoutError } from 'n8n-workflow';
+import type { Mock } from 'vitest';
+import { mock, mockDeep } from 'vitest-mock-extended';
 
 import * as migrationHelper from '../../migrations/migration-helpers';
 import type { Migration } from '../../migrations/migration-types';
 import { DbConnection } from '../db-connection';
+import type { DbConnectionMetrics } from '../db-connection-metrics';
 import { DbConnectionMonitor } from '../db-connection-monitor';
 import type { DbConnectionOptions } from '../db-connection-options';
 
-// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-jest.mock('@n8n/typeorm', () => ({
+vi.mock('@n8n/typeorm', async () => ({
+	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
+	...(await vi.importActual<typeof import('@n8n/typeorm')>('@n8n/typeorm')),
 	// eslint-disable-next-line @typescript-eslint/naming-convention
-	DataSource: jest.fn(),
-	...jest.requireActual('@n8n/typeorm'),
+	DataSource: vi.fn(),
 }));
 
-jest.mock('../db-connection-monitor');
+vi.mock('../db-connection-monitor');
 
 describe('DbConnection', () => {
 	let dbConnection: DbConnection;
@@ -27,6 +29,7 @@ describe('DbConnection', () => {
 	const errorReporter = mock<ErrorReporter>();
 	const databaseConfig = mock<DatabaseConfig>();
 	const logger = mock<Logger>();
+	const dbConnectionMetrics = mock<DbConnectionMetrics>();
 	const dataSource = mockDeep<DataSource>({ options: { migrations } });
 	const connectionOptions = mockDeep<DbConnectionOptions>();
 	const postgresOptions: DataSourceOptions = {
@@ -42,13 +45,23 @@ describe('DbConnection', () => {
 	const monitor = mock<DbConnectionMonitor>();
 
 	beforeEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 
 		connectionOptions.getOptions.mockReturnValue(postgresOptions);
-		(DataSource as jest.Mock) = jest.fn().mockImplementation(() => dataSource);
-		jest.mocked(DbConnectionMonitor).mockImplementation(() => monitor);
+		vi.mocked(DbConnectionMonitor).mockImplementation(function () {
+			return monitor;
+		});
+		(DataSource as unknown as Mock) = vi.fn(function () {
+			return dataSource;
+		});
 
-		dbConnection = new DbConnection(errorReporter, connectionOptions, databaseConfig, logger);
+		dbConnection = new DbConnection(
+			errorReporter,
+			connectionOptions,
+			databaseConfig,
+			logger,
+			dbConnectionMetrics,
+		);
 	});
 
 	describe('init', () => {
@@ -101,7 +114,9 @@ describe('DbConnection', () => {
 		it('should wrap migrations and run them', async () => {
 			dataSource.runMigrations.mockResolvedValue([]);
 
-			const wrapMigrationSpy = jest.spyOn(migrationHelper, 'wrapMigration').mockImplementation();
+			const wrapMigrationSpy = vi
+				.spyOn(migrationHelper, 'wrapMigration')
+				.mockImplementation(() => {});
 
 			expect(dataSource.runMigrations).not.toHaveBeenCalled();
 			expect(dbConnection.connectionState.migrated).toBe(false);

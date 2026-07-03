@@ -157,7 +157,16 @@ describe('InstanceAiCredentialSetup', () => {
 			});
 
 			await userEvent.click(getByTestId('instance-ai-credential-setup-button'));
-			expect(openNewCredSpy).toHaveBeenCalledWith('type1', false, false, undefined, undefined);
+			expect(openNewCredSpy).toHaveBeenCalledWith(
+				'type1',
+				false,
+				false,
+				undefined,
+				undefined,
+				undefined,
+				undefined,
+				{ closeOnSave: true },
+			);
 		});
 
 		it('renders a single credential with picker when existing credentials', () => {

@@ -5,7 +5,7 @@ const LAZY_RUNTIME_IMPORT_MESSAGE =
 	'Use an existing lazy loader, or add one near first use. Static runtime imports of this dependency undo the idle-memory guardrail.';
 
 const restrictedLazyRuntimeImports = [
-	'@daytonaio/sdk',
+	'@daytona/sdk',
 	'@joplin/turndown-plugin-gfm',
 	'@mozilla/readability',
 	'csv-parse/sync',

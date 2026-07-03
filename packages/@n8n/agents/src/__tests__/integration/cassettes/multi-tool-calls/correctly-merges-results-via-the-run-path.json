@@ -1,0 +1,210 @@
+[
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are a string utility. When asked about string lengths, use the get_length tool for EACH string separately. Be concise."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "What are the lengths of \"hello\" and \"world\"? Look up each one separately."
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "get_length",
+					"description": "Get the length of a string",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"text": {
+								"type": "string"
+							}
+						},
+						"required": ["text"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"eager_input_streaming": true
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			},
+			"stream": true
+		},
+		"status": 200,
+		"response": [
+			"1f8b0800000000000013c556514fdb30107ee75754f79c4a494be9e6473a36b431894e80b4ad93e53ad734ab6307fbd20155fefbe4b6a149290c0453f396fbcebeefbbfba20bce51136b65e89c48903b12960e624182b51640b7390283060841f50e6c019989510103a94411637b2ad259d13e6cf7da9db0d38bc2308200d2d8dfe1121e4627ef723493eed5b037be44797769bf4532c920d8aa040158a37c4038973a12da979546136a02f6f357008e4cce2d0a6734305d28b50e39bc2e504b6c046324912a57c58a8a7daaf3823899196a07eca8db09400a39452e2d0a4a8de6cd8cb0c22d8af831ac3aeb0b603ec50cad50bc973dccdfa0d1741b2d033005d543fdc3001cda792a91538a1618f8cec4c2c6bec97a82d60be7091a60a00d713117a91263855096adf2e00057b35ef7918f9591b3dd13df91b2ac11e3cd4a691df742d7e7c818c50b87d5d4fd7bc1c36870dcfd7831fef45d1f5d9ccb2f1f0677c3ac7b7c06016891f973091257a8139a2ecbe405015b94bea34a79a5f705e2d4a224afa7f66ca4e5a94eb6b4b4c007e131f9312a124fcb5fa634e4af221b56abd9fd7646df27e7c2522ad432080ca0dc45772f54162320bca111b0d608a6a894d990db33b51194cf6994ffa6ffe55893d7b83c79d74bed1fbddcfee7d9e7ee6d3ee977aeb393e16972da1f9cc91f5f5f6fffb71b57f45a53ef9d4cc3d67f8c55f192de9e59ad1cfd56468e3617553b79a78e060835de8dad59b7eb337767f9ff96e7d6b67b1fd6dbb6f90379d8b03a060d3bfe059578e70fdc080000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "10000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-23T12:20:11Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-23T12:20:11Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-23T12:20:11Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "12000000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-23T12:20:11Z",
+			"cache-control": "no-cache",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a1037202b9f4cb7b-VIE",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "text/event-stream; charset=utf-8",
+			"date": "Tue, 23 Jun 2026 12:20:12 GMT",
+			"request-id": "req_011CcLBSKBnF4ZE8Z51N9sed",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=cxM7rzWgnIu3iwjNoKVAk8XtEeWA_N7sRHTkT0nNSHY-1782217211.317034-1.0.1.1-gsN_.OrsoXZbQfMpHxBipoXLbhne7xhDZ7seS2pd3dI; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-7130bf4f0b4096132ce4b19bcc5dabd2-d31b0172b1450ed9-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "You are a string utility. When asked about string lengths, use the get_length tool for EACH string separately. Be concise."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "What are the lengths of \"hello\" and \"world\"? Look up each one separately."
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "tool_use",
+							"id": "toolu_01CB3FTbGYn6TPcKDCzQm3BL",
+							"name": "get_length",
+							"input": {
+								"text": "hello"
+							},
+							"caller": {
+								"type": "direct"
+							}
+						},
+						{
+							"type": "tool_use",
+							"id": "toolu_01PmJ3ypf72qmEQHgH7CLcZM",
+							"name": "get_length",
+							"input": {
+								"text": "world"
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_01CB3FTbGYn6TPcKDCzQm3BL",
+							"content": "{\"text\":\"hello\",\"length\":5}"
+						},
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_01PmJ3ypf72qmEQHgH7CLcZM",
+							"content": "{\"text\":\"world\",\"length\":5}"
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "get_length",
+					"description": "Get the length of a string",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"text": {
+								"type": "string"
+							}
+						},
+						"required": ["text"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					},
+					"eager_input_streaming": true
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			},
+			"stream": true
+		},
+		"status": 200,
+		"response": [
+			"1f8b0800000000000013b554c18adb3010bde72bc41c830376368145c796c21e4261e91e0a4d11b3d6d4d246915c699cddb2f8df8b93b8b553a7ed657d317eef596fe68dc77420cf52ec2925ac4825c6c8338d8c52bc02ffa809248c48c8fa6790afb00f9a1c48281d369a1606edae59ac16ebc5325fae8b3c2f2003abbb3352a5f2627373f7f470bb7988f7f7774f9f37cfabe5a7f71f3e4276e10419c4e03a0053b289d177b665f04c9e417ef99a41e250ab48988207e91be7ce50a2ef0df99246a02646eb528f357df5d6d70d2b0e3bf209e46d5e64506269489591906df06aacc87b3e12ea6b5cff6e6740b5a13d45746abdff53ff9b2dcc25db66101a1e42cb0c12c5832d49b1a50812ba603446dd65ecbf51ecfa56150590e0032b3ca075f8e808da569cae7636a3d3c0cf61aa4717caddf4d8272447274d2fa776877cd7edf93da6974e78bc4980de7b645f5b5f5df809e840b856a226c7f8f7128f92518927645cda2fd9b9c077818d481cadaf12b457237a337f61f040820d89847b128e7cc5466efd42cce75b30e45cd8c27c2e0c26b116a5c18825534cbde23944a727155df4d7271eea7f0d3cd483668647f53f84c94c46240c3218ad2c90d78a9be8e1bf17b77dbbcdbd58b59b552ba6fa9d0a6dc8c1f04bff091eb3ab415a050000"
+		],
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "10000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-06-23T12:20:12Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-06-23T12:20:12Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-06-23T12:20:12Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "12000000",
+			"anthropic-ratelimit-tokens-reset": "2026-06-23T12:20:12Z",
+			"cache-control": "no-cache",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a10372087df0cb7b-VIE",
+			"connection": "keep-alive",
+			"content-encoding": "gzip",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "text/event-stream; charset=utf-8",
+			"date": "Tue, 23 Jun 2026 12:20:14 GMT",
+			"request-id": "req_011CcLBSP8uWfoEpDURcTtaf",
+			"server": "cloudflare",
+			"set-cookie": "_cfuvid=QahNHM29kN1FoMKiVmQtGi_w9dJUv.qtCX4csQB3ynw-1782217212.2399235-1.0.1.1-FrZczHHIbFnzd7ASBYPVdfRNFvb3e4j7eVlLfwSklaQ; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-56166a7df6a369aad8c9f364da3eb265-7e9d3d4c842d212a-01",
+			"transfer-encoding": "chunked",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	}
+]

@@ -7,12 +7,12 @@
 		"emitDecoratorMetadata": true,
 		"experimentalDecorators": true,
 		"lib": ["es2023", "dom"],
+		"types": ["node", "vitest/globals", "vite/client"],
 		"paths": {
 			"@/*": ["./src/*"],
 			"@test/*": ["./test/shared/*"],
 			"@test-integration/*": ["./test/integration/shared/*"]
 		},
-		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
 		"strict": true,
 		"strictFunctionTypes": false,
 		"strictPropertyInitialization": false,

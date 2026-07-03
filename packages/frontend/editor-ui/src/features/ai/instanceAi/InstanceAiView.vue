@@ -1,10 +1,12 @@
 <script lang="ts" setup>
 import { onMounted, onUnmounted, provide, ref, watch } from 'vue';
-import { onBeforeRouteLeave, RouterView, useRoute } from 'vue-router';
+import { onBeforeRouteLeave, RouterView, useRoute, useRouter } from 'vue-router';
 import { N8nResizeWrapper } from '@n8n/design-system';
-import { useSessionStorage } from '@vueuse/core';
+import { useEventListener, useSessionStorage } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
+import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useInstanceAiStore } from './instanceAi.store';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import InstanceAiThreadList from './components/InstanceAiThreadList.vue';
@@ -16,6 +18,9 @@ const settingsStore = useInstanceAiSettingsStore();
 const i18n = useI18n();
 const documentTitle = useDocumentTitle();
 const route = useRoute();
+const router = useRouter();
+const uiStore = useUIStore();
+const { isCtrlKeyPressed } = useDeviceSupport();
 
 documentTitle.set(i18n.baseText('instanceAi.view.title'));
 
@@ -56,12 +61,19 @@ onBeforeRouteLeave((to) => {
 	const name = typeof to.name === 'string' ? to.name : undefined;
 	if (!name || !CHAT_ROUTE_NAMES.has(name)) {
 		sidebarCollapsed.value = true;
-		// Dispose runtimes only when actually leaving the AI chat module. This
-		// must NOT live in onUnmounted: entering the module from another part of
-		// the app can transiently remount this layout, and disposing there would
-		// kill a runtime mid-run (e.g. a just-launched thread's first message)
-		// while the route never left the module.
-		store.disposeRuntimes();
+	}
+});
+
+useEventListener(document, 'keydown', (event: KeyboardEvent) => {
+	if (
+		event.key.toLowerCase() === 'o' &&
+		isCtrlKeyPressed(event) &&
+		event.shiftKey &&
+		!uiStore.isAnyModalOpen
+	) {
+		event.preventDefault();
+		event.stopPropagation();
+		void router.push({ name: INSTANCE_AI_VIEW, force: true });
 	}
 });
 
@@ -82,9 +94,14 @@ onMounted(() => {
 		.then(async () => await settingsStore.ensurePreferencesLoaded())
 		.catch(() => {})
 		.then(() => {
-			if (settingsStore.isLocalGatewayDisabled) return;
+			const browserUseEnabled = settingsStore.isBrowserUseEnabledByAdmin;
+			const computerUseEnabled = !settingsStore.isLocalGatewayDisabledByAdmin;
+			if (!browserUseEnabled && !computerUseEnabled) return;
 			settingsStore.startGatewayPushListener();
-			void settingsStore.fetchGatewayStatus();
+			if (browserUseEnabled) void settingsStore.fetchBrowserStatus();
+			if (computerUseEnabled && !settingsStore.isLocalGatewayDisabled) {
+				void settingsStore.fetchGatewayStatus();
+			}
 		});
 });
 
@@ -93,17 +110,21 @@ watch(
 	() => settingsStore.isLocalGatewayDisabled,
 	(disabled) => {
 		if (disabled) {
-			settingsStore.stopGatewayPushListener();
+			if (
+				settingsStore.isLocalGatewayDisabledByAdmin &&
+				!settingsStore.isBrowserUseEnabledByAdmin
+			) {
+				settingsStore.stopGatewayPushListener();
+			}
 		} else {
 			settingsStore.startGatewayPushListener();
 			void settingsStore.fetchGatewayStatus();
+			void settingsStore.fetchBrowserStatus();
 		}
 	},
 );
 
 onUnmounted(() => {
-	// NOTE: runtime disposal happens in onBeforeRouteLeave (only when leaving the
-	// module), not here — this hook also fires on transient remounts.
 	store.stopCreditsPushListener();
 	settingsStore.stopGatewayPushListener();
 });
@@ -128,7 +149,7 @@ onUnmounted(() => {
 			</N8nResizeWrapper>
 		</Transition>
 
-		<!-- Inner route — Empty for `/instance-ai`, Thread for `/instance-ai/:threadId` -->
+		<!-- Inner route — Empty for `/assistant`, Thread for `/assistant/:threadId` -->
 		<RouterView v-slot="{ Component }">
 			<component :is="Component" :key="String(route.params.threadId ?? 'empty')" />
 		</RouterView>

@@ -11,6 +11,7 @@ const mockAgentInstances: Array<{
 	memory: Mock;
 	telemetry: Mock;
 	workspace: Mock;
+	thinking: Mock;
 }> = [];
 
 const mockMemoryBuilder = {
@@ -18,6 +19,8 @@ const mockMemoryBuilder = {
 	observationalMemory: vi.fn(),
 	build: vi.fn(),
 };
+
+const mockLogger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
 
 vi.mock('@n8n/agents', () => ({
 	Agent: vi.fn().mockImplementation(function Agent(this: (typeof mockAgentInstances)[number]) {
@@ -30,6 +33,7 @@ vi.mock('@n8n/agents', () => ({
 		this.memory = vi.fn().mockReturnThis();
 		this.telemetry = vi.fn().mockReturnThis();
 		this.workspace = vi.fn().mockReturnThis();
+		this.thinking = vi.fn().mockReturnThis();
 		mockAgentInstances.push(this);
 	}),
 	Memory: vi.fn().mockImplementation(function Memory() {
@@ -68,7 +72,6 @@ vi.mock('../../tools', () => ({
 	createOrchestrationTools: vi.fn(
 		(context: { runId: string }) =>
 			new Map([
-				['plan', mockBuiltTool(`plan-${context.runId}`)],
 				['create-tasks', mockBuiltTool(`create-tasks-${context.runId}`)],
 				['complete-checkpoint', mockBuiltTool(`complete-checkpoint-${context.runId}`)],
 				['verify-built-workflow', mockBuiltTool(`verify-built-workflow-${context.runId}`)],
@@ -173,7 +176,8 @@ describe('createInstanceAgent', () => {
 		expect(Agent).toHaveBeenCalledTimes(2);
 		const attachedTools = getAttachedTools();
 		const secondRunAttachedTools = getAttachedTools(1);
-		expect(attachedTools['plan-run-1']).toMatchObject({ name: 'plan-run-1' });
+		expect(attachedTools['create-tasks-run-1']).toMatchObject({ name: 'create-tasks-run-1' });
+		expect(attachedTools['plan-run-1']).toBeUndefined();
 		expect(attachedTools['research-run-1']).toMatchObject({ name: 'research-run-1' });
 		expect(attachedTools['build-workflow-run-1']).toMatchObject({
 			name: 'build-workflow-run-1',
@@ -184,6 +188,43 @@ describe('createInstanceAgent', () => {
 		});
 		expect(attachedTools['nodes-run-1']).toMatchObject({ name: 'nodes-run-1' });
 		expect(secondRunAttachedTools['nodes-run-2']).toMatchObject({ name: 'nodes-run-2' });
+	});
+
+	it('requires MCP tool approval unless the executeMcpTool permission is always_allow', async () => {
+		const baseOptions = (executeMcpTool?: string) =>
+			({
+				modelId: 'test-model',
+				context: {
+					runLabel: 'mcp-approval-run',
+					localGatewayStatus: undefined,
+					licenseHints: undefined,
+					localMcpServer: undefined,
+					permissions: executeMcpTool ? { executeMcpTool } : undefined,
+				},
+				orchestrationContext: { runId: 'mcp-approval-run' },
+				memoryConfig: {},
+			}) as never;
+
+		const requireApprovalManager = createMcpManagerStub();
+		await createInstanceAgent({
+			...(baseOptions('require_approval') as object),
+			mcpManager: requireApprovalManager,
+		} as never);
+		expect(requireApprovalManager.getRegularTools).toHaveBeenCalledWith([], undefined, true);
+
+		const alwaysAllowManager = createMcpManagerStub();
+		await createInstanceAgent({
+			...(baseOptions('always_allow') as object),
+			mcpManager: alwaysAllowManager,
+		} as never);
+		expect(alwaysAllowManager.getRegularTools).toHaveBeenCalledWith([], undefined, false);
+
+		const noPermissionsManager = createMcpManagerStub();
+		await createInstanceAgent({
+			...(baseOptions() as object),
+			mcpManager: noPermissionsManager,
+		} as never);
+		expect(noPermissionsManager.getRegularTools).toHaveBeenCalledWith([], undefined, true);
 	});
 
 	it('eager-loads checkpoint settlement tools only for checkpoint follow-up runs', async () => {
@@ -412,6 +453,7 @@ describe('createInstanceAgent', () => {
 				localGatewayStatus: undefined,
 				licenseHints: undefined,
 				localMcpServer,
+				logger: mockLogger,
 			},
 			orchestrationContext,
 			memoryConfig,
@@ -489,5 +531,46 @@ describe('createInstanceAgent', () => {
 			reflectorThresholdTokens: 40_000,
 		});
 		expect(mockAgentInstances[0]?.memory).toHaveBeenCalledWith(mockMemoryBuilder);
+	});
+
+	it('enables adaptive thinking by default for Anthropic models', async () => {
+		await createInstanceAgent({
+			modelId: 'anthropic/claude-opus-4-8',
+			context: {
+				runLabel: 'thinking-test',
+				localGatewayStatus: undefined,
+				licenseHints: undefined,
+				localMcpServer: undefined,
+			},
+			orchestrationContext: {
+				runId: 'thinking-test',
+			},
+			memoryConfig: {},
+			mcpManager: createMcpManagerStub(),
+		} as never);
+
+		expect(mockAgentInstances[0]?.thinking).toHaveBeenCalledWith('anthropic', {
+			mode: 'adaptive',
+		});
+	});
+
+	it('skips thinking when explicitly disabled', async () => {
+		await createInstanceAgent({
+			modelId: 'anthropic/claude-opus-4-8',
+			context: {
+				runLabel: 'thinking-off',
+				localGatewayStatus: undefined,
+				licenseHints: undefined,
+				localMcpServer: undefined,
+			},
+			orchestrationContext: {
+				runId: 'thinking-off',
+			},
+			memoryConfig: {},
+			mcpManager: createMcpManagerStub(),
+			thinkingEnabled: false,
+		} as never);
+
+		expect(mockAgentInstances[0]?.thinking).not.toHaveBeenCalled();
 	});
 });

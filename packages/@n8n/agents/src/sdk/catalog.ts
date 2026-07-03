@@ -82,6 +82,33 @@ function toAgentProviderId(modelsDevProviderId: string): string {
 	return MODELS_DEV_PROVIDER_ALIASES[modelsDevProviderId] ?? modelsDevProviderId;
 }
 
+const LATEST_NAME_SUFFIX = /\s*\(latest\)$/i;
+
+/**
+ * models.dev names versionless alias models with a " (latest)" suffix
+ * (e.g. `claude-opus-4-5` → "Claude Opus 4.5 (latest)"), which quickly goes
+ * stale as newer models ship. Strip the suffix from every model name, and when
+ * a pinned snapshot shares the resulting name with an alias (e.g.
+ * `claude-opus-4-5-20251101` "Claude Opus 4.5"), drop the snapshot so the
+ * alias is the single entry for that model.
+ */
+function normalizeLatestModelNames(models: Record<string, ModelInfo>): void {
+	const aliasNames = new Set<string>();
+	for (const model of Object.values(models)) {
+		if (LATEST_NAME_SUFFIX.test(model.name)) {
+			aliasNames.add(model.name.replace(LATEST_NAME_SUFFIX, ''));
+		}
+	}
+
+	for (const [modelId, model] of Object.entries(models)) {
+		if (LATEST_NAME_SUFFIX.test(model.name)) {
+			model.name = model.name.replace(LATEST_NAME_SUFFIX, '');
+		} else if (aliasNames.has(model.name)) {
+			delete models[modelId];
+		}
+	}
+}
+
 /**
  * Fetch the provider/model catalog from models.dev.
  *
@@ -146,6 +173,10 @@ export async function fetchProviderCatalog(): Promise<ProviderCatalog> {
 		};
 	}
 
+	for (const provider of Object.values(catalog)) {
+		normalizeLatestModelNames(provider.models);
+	}
+
 	return catalog;
 }
 
@@ -197,13 +228,57 @@ export async function getModelCost(modelId: string): Promise<ModelCost | undefin
 }
 
 /**
+ * models.dev's `cacheWrite` rate encodes Anthropic's 5-minute-TTL write premium
+ * (1.25x base input). A 1h breakpoint costs ~1.6x more to write (2x vs 1.25x base
+ * input), so scale the catalog rate when the caller reports a 1h TTL. Only
+ * Anthropic populates `inputTokenDetails.cacheWrite`, so this is safe to apply
+ * unconditionally — it's a no-op whenever there are no cache-write tokens.
+ */
+function resolveCacheWriteRate(
+	cost: ModelCost,
+	anthropicCacheTtl: '5m' | '1h' | undefined,
+): number {
+	const isOneHour = anthropicCacheTtl === '1h';
+	return cost.cacheWrite !== undefined
+		? cost.cacheWrite * (isOneHour ? 1.6 : 1)
+		: cost.input * (isOneHour ? 2 : 1.25);
+}
+
+/**
  * Compute the cost in USD from token usage and per-million-token pricing.
+ * When `usage.inputTokenDetails` is present, prompt tokens are billed per
+ * cache tier (no-cache / cache read / cache write) using the catalog's cache
+ * rates. When a tier's catalog rate is unavailable, cache reads fall back to
+ * the flat input rate; cache writes fall back to the input rate scaled by
+ * Anthropic's write premium (see {@link resolveCacheWriteRate}).
+ * `anthropicCacheTtl` scales the cache-write rate for Anthropic's 1h tier;
+ * ignored when there are no cache-write tokens.
  */
 export function computeCost(
-	usage: { promptTokens: number; completionTokens: number },
+	usage: {
+		promptTokens: number;
+		completionTokens: number;
+		inputTokenDetails?: { noCache?: number; cacheRead?: number; cacheWrite?: number };
+	},
 	cost: ModelCost,
+	options?: { anthropicCacheTtl?: '5m' | '1h' },
 ): number {
-	const inputCost = (usage.promptTokens / 1_000_000) * cost.input;
+	const details = usage.inputTokenDetails;
+	let inputCost: number;
+	if (details) {
+		const noCache = details.noCache ?? 0;
+		const cacheRead = details.cacheRead ?? 0;
+		const cacheWrite = details.cacheWrite ?? 0;
+		// Any prompt tokens not covered by the breakdown are billed at the full input rate.
+		const remaining = Math.max(usage.promptTokens - (noCache + cacheRead + cacheWrite), 0);
+		inputCost =
+			((noCache + remaining) / 1_000_000) * cost.input +
+			(cacheRead / 1_000_000) * (cost.cacheRead ?? cost.input) +
+			(cacheWrite / 1_000_000) * resolveCacheWriteRate(cost, options?.anthropicCacheTtl);
+	} else {
+		inputCost = (usage.promptTokens / 1_000_000) * cost.input;
+	}
+
 	const outputCost = (usage.completionTokens / 1_000_000) * cost.output;
 	return inputCost + outputCost;
 }

@@ -7,6 +7,7 @@ import {
 	type InterruptibleToolContext,
 	type ToolContext,
 } from '@n8n/agents';
+import { isRecord } from '@n8n/utils/is-record';
 import {
 	ROOT_CONTEXT,
 	SpanStatusCode,
@@ -51,7 +52,6 @@ import {
 } from './trace-payloads';
 import type { IdRemapper, TraceIndex, TraceWriter } from './trace-replay';
 import { PURE_REPLAY_TOOLS } from './trace-replay';
-import { isRecord } from '../utils/stream-helpers';
 
 export {
 	buildAgentTraceInputs,
@@ -650,6 +650,11 @@ function readBooleanEnvFlag(value: string | undefined): boolean | undefined {
 	if (normalized === 'true') return true;
 	if (normalized === 'false') return false;
 	return undefined;
+}
+
+// LANGSMITH_PROJECT lets deployments (e.g. eval CI) route product traces off the default project.
+function resolveDefaultProjectName(): string {
+	return process.env.LANGSMITH_PROJECT ?? process.env.LANGCHAIN_PROJECT ?? DEFAULT_PROJECT_NAME;
 }
 
 function isLangSmithTracingEnabled(proxyAvailable = false): boolean {
@@ -1278,11 +1283,20 @@ function recordWrapTool(
 			const resumeData = isInterruptibleToolContext(context) ? context.resumeData : undefined;
 			const inputRecord = (input ?? {}) as Record<string, unknown>;
 			let capturedSuspendPayload: Record<string, unknown> | undefined;
+			let recordedSuspend = false;
 			const wrappedContext: NativeToolContext = isInterruptibleToolContext(context)
 				? {
 						...context,
 						suspend: async (suspendPayload: unknown) => {
 							capturedSuspendPayload = isRecord(suspendPayload) ? suspendPayload : {};
+							traceWriter.recordToolSuspend(
+								agentRole,
+								tool.name,
+								inputRecord,
+								{},
+								capturedSuspendPayload,
+							);
+							recordedSuspend = true;
 							return await context.suspend(suspendPayload);
 						},
 					}
@@ -1300,13 +1314,15 @@ function recordWrapTool(
 					resumeData as Record<string, unknown>,
 				);
 			} else if (capturedSuspendPayload) {
-				traceWriter.recordToolSuspend(
-					agentRole,
-					tool.name,
-					inputRecord,
-					{},
-					capturedSuspendPayload,
-				);
+				if (!recordedSuspend) {
+					traceWriter.recordToolSuspend(
+						agentRole,
+						tool.name,
+						inputRecord,
+						{},
+						capturedSuspendPayload,
+					);
+				}
 			} else {
 				traceWriter.recordToolCall(agentRole, tool.name, inputRecord, outputRecord);
 			}
@@ -1626,7 +1642,7 @@ export async function createInstanceAiTraceContext(
 		return undefined;
 	}
 
-	const projectName = options.projectName ?? DEFAULT_PROJECT_NAME;
+	const projectName = options.projectName ?? resolveDefaultProjectName();
 	const baseMetadata = await buildBaseMetadata(options);
 
 	const createTraceRuns = async () => {
@@ -1688,7 +1704,8 @@ export async function continueInstanceAiTraceContext(
 	}
 
 	const baseMetadata = await buildBaseMetadata(options);
-	const projectName = existingContext?.projectName ?? options.projectName ?? DEFAULT_PROJECT_NAME;
+	const projectName =
+		existingContext?.projectName ?? options.projectName ?? resolveDefaultProjectName();
 	const continuedMetadata =
 		existingContext && existingContext.rootRun.traceId !== 'stub'
 			? {
@@ -1762,7 +1779,7 @@ export async function createDetachedSubAgentTraceContext(
 		return undefined;
 	}
 
-	const projectName = options.projectName ?? DEFAULT_PROJECT_NAME;
+	const projectName = options.projectName ?? resolveDefaultProjectName();
 	const baseMetadata = await buildBaseMetadata(options);
 
 	const createDetachedRuns = async () => {
@@ -1821,7 +1838,7 @@ export async function createInternalOperationTraceContext(
 		return undefined;
 	}
 
-	const projectName = options.projectName ?? DEFAULT_PROJECT_NAME;
+	const projectName = options.projectName ?? resolveDefaultProjectName();
 	const baseMetadata = await buildBaseMetadata({
 		...options,
 		messageId: options.messageId ?? `internal:${options.operationName}:${options.runId}`,

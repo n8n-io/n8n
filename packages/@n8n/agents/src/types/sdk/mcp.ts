@@ -34,8 +34,7 @@ export interface McpServerConfig {
 	 * - `true` — every tool from this server requires approval before execution.
 	 * - `string[]` — only the listed tools (by their original, un-prefixed names)
 	 *   require approval; all other tools from the server run without interruption.
-	 * - `false` / omitted — no per-server approval requirement (the global
-	 *   `.requireToolApproval()` flag on the Agent still applies).
+	 * - `false` / omitted — no approval requirement.
 	 */
 	requireApproval?: string[] | boolean;
 

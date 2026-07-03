@@ -1,18 +1,25 @@
 import { MAX_PINNED_DATA_SIZE, MAX_WORKFLOW_SIZE, MAX_EXPECTED_REQUEST_SIZE } from '@n8n/api-types';
 import { CredentialsRepository } from '@n8n/db';
-import type { WorkflowEntity, WorkflowHistory, ExecutionRepository } from '@n8n/db';
+import type { WorkflowEntity, WorkflowHistory } from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
 	formatWorkflowStructureIssuePath,
+	isSafeObjectProperty,
 	resolveNodeWebhookId,
+	resolveVariables,
 	safeParseWorkflowStructure,
+	validateNodeSelectionForGrouping,
 	type IDataObject,
+	type INode,
 	type INodeCredentialsDetails,
+	type INodeTypeDescription,
 	type INodeTypes,
 	type IRun,
 	type ITaskData,
 	type IWorkflowBase,
+	type IWorkflowGroup,
 	type IWorkflowSettings,
+	type NodeGroupValidationResult,
 	type RelatedExecution,
 	type WorkflowStructureIssue,
 } from 'n8n-workflow';
@@ -20,6 +27,7 @@ import { v4 as uuid } from 'uuid';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 
 import { OwnershipService } from './services/ownership.service';
 
@@ -137,20 +145,97 @@ export function resolveNodeWebhookIds(workflow: IWorkflowBase, nodeTypes: INodeT
 }
 
 /**
- * Validates nodeGroups: unique group names, all referenced node IDs exist,
- * and each node belongs to at most one group.
+ * Resolves a node to its type description, or `null` for unknown node types.
+ * Used by the grouping validator to detect trigger nodes.
+ */
+type GetNodeTypeForGrouping = (node: INode) => INodeTypeDescription | null;
+
+/**
+ * Builds the `getNodeType` callback that the grouping validator needs to resolve
+ * a node to its type description (used to detect trigger nodes). Returns `null`
+ * for unknown node types so validation degrades gracefully rather than throwing.
+ */
+export function makeGetNodeTypeForGrouping(nodeTypes: INodeTypes): GetNodeTypeForGrouping {
+	return (node: INode) => {
+		try {
+			return nodeTypes.getByNameAndVersion(node.type, node.typeVersion).description;
+		} catch {
+			return null;
+		}
+	};
+}
+
+/**
+ * Maps a failed `validateNodeSelectionForGrouping` result to an actionable
+ * `BadRequestError` that names the offending group and the rule it broke.
+ */
+function nodeGroupValidationError(
+	group: IWorkflowGroup,
+	result: Extract<NodeGroupValidationResult, { valid: false }>,
+): BadRequestError {
+	const label = `Node group "${group.name}" (${group.id})`;
+	switch (result.reason) {
+		case 'trigger-selected':
+			return new BadRequestError(
+				`${label} cannot contain trigger nodes: ${result.triggers.join(', ')}.`,
+			);
+		case 'invalid-subgraph':
+			return new BadRequestError(
+				`${label} must form a single connected subgraph with a single entry and exit.`,
+			);
+		case 'multiple-input-branches':
+			return new BadRequestError(`${label} has multiple input branches at node "${result.node}".`);
+		case 'multiple-output-branches':
+			return new BadRequestError(`${label} has multiple output branches at node "${result.node}".`);
+		case 'node-already-grouped':
+			return new BadRequestError(
+				`${label} contains nodes that already belong to another group: ${result.nodeIds.join(', ')}.`,
+			);
+		case 'non-main-boundary':
+			return new BadRequestError(
+				`${label} cannot cross the "${result.connection.type}" connection between "${result.connection.source}" and "${result.connection.target}".`,
+			);
+	}
+}
+
+/**
+ * Validates nodeGroups.
+ *
+ * Basic checks (always run): unique group IDs, unique group names, all referenced
+ * node IDs exist, and each node belongs to at most one group.
+ *
+ * Full checks (run only when `getNodeType` is non-null): each group must satisfy
+ * the same grouping rules the canvas enforces — no triggers, a single connected
+ * subgraph, and no non-main connection crossing the group boundary — validated
+ * against the other groups as existing groups. Pass the `getNodeType` callback to
+ * run the full checks (on create, and on an update that changed the graph or the
+ * groups); pass `null` to run basic checks only (e.g. a git import, so
+ * legacy-invalid groups don't block the import).
+ *
  * Note for frontend: Must be called after `addNodeIds` since nodes created via the API
  * may not have IDs until that step assigns them.
  */
-export function validateWorkflowNodeGroups(workflow: Pick<IWorkflowBase, 'nodes' | 'nodeGroups'>) {
+export function validateWorkflowNodeGroups(
+	workflow: Pick<IWorkflowBase, 'nodes' | 'nodeGroups'> & {
+		connections?: IWorkflowBase['connections'];
+	},
+	getNodeType: GetNodeTypeForGrouping | null,
+) {
 	const { nodeGroups, nodes } = workflow;
 	if (!nodeGroups || nodeGroups.length === 0) return;
 
 	const nodeIds = new Set(nodes.map((n) => n.id).filter(Boolean));
+	const seenGroupIds = new Set<string>();
 	const seenGroupNames = new Set<string>();
 	const nodeToGroup = new Map<string, string>();
 
 	for (const group of nodeGroups) {
+		// Unique group IDs
+		if (seenGroupIds.has(group.id)) {
+			throw new BadRequestError(`Duplicate node group ID "${group.id}".`);
+		}
+		seenGroupIds.add(group.id);
+
 		// Unique group names
 		if (seenGroupNames.has(group.name)) {
 			throw new BadRequestError(`Duplicate node group name "${group.name}".`);
@@ -174,12 +259,30 @@ export function validateWorkflowNodeGroups(workflow: Pick<IWorkflowBase, 'nodes'
 			nodeToGroup.set(nodeId, group.name);
 		}
 	}
+
+	if (!getNodeType) return;
+
+	const nodeById = new Map(nodes.map((node) => [node.id, node]));
+	const connectionsBySourceNode = workflow.connections ?? {};
+
+	for (const group of nodeGroups) {
+		const groupNodes = group.nodeIds.flatMap((id) => nodeById.get(id) ?? []);
+		const result = validateNodeSelectionForGrouping({
+			nodes: groupNodes,
+			connectionsBySourceNode,
+			getNodeType,
+			existingNodeGroups: nodeGroups.filter((other) => other.id !== group.id),
+		});
+		if (!result.valid) {
+			throw nodeGroupValidationError(group, result);
+		}
+	}
 }
 
 /**
  * BadRequestError thrown by validateWorkflowStructure when a workflow fails
  * structural Zod / graph validation. Carries the original WorkflowStructureIssue[]
- * so downstream consumers (e.g. the Instance AI submit-workflow tool) can build
+ * so downstream consumers (e.g. Instance AI workflow build tooling) can build
  * rich diagnostics — node JSON at the offending path, value at the path, and a
  * full nodes[] name map — without reparsing the flattened message string.
  *
@@ -281,6 +384,11 @@ export async function replaceInvalidCredentials<T extends IWorkflowBase>(
 		// extract credentials types
 		const allNodeCredentials = Object.entries(node.credentials);
 		for (const [nodeCredentialType, nodeCredentials] of allNodeCredentials) {
+			// Reject credential types that resolve to object internals,
+			// so the dynamic lookups and writes below cannot reach the prototype chain.
+			if (!isSafeObjectProperty(nodeCredentialType)) {
+				continue;
+			}
 			// Skip undefined/null credentials (e.g. from SDK's newCredential() which serializes to undefined)
 			if (nodeCredentials === null || nodeCredentials === undefined) {
 				continue;
@@ -390,18 +498,7 @@ export async function getVariables(workflowId?: string, projectId?: string): Pro
 	// Either projectId passed or use project from workflow
 	const projectIdToUse = projectId ?? project?.id;
 
-	return Object.freeze(
-		variables.reduce((acc, curr) => {
-			if (!curr.project) {
-				// always set globals
-				acc[curr.key] = curr.value;
-			} else if (projectIdToUse && curr.project.id === projectIdToUse) {
-				// project variables override globals
-				acc[curr.key] = curr.value;
-			}
-			return acc;
-		}, {} as IDataObject),
-	);
+	return Object.freeze(resolveVariables(variables, projectIdToUse));
 }
 
 /**
@@ -434,19 +531,20 @@ export function shouldRestartParentExecution(
  * the parent resumes), not which specific child. Only one child will successfully resume the parent
  * due to the atomic status check in ActiveExecutions.add().
  *
- * @param executionRepository - The execution repository for database operations
  * @param parentExecutionId - The execution ID of the waiting parent workflow
  * @param subworkflowResults - The final execution results from the child workflow
  * @returns Promise that resolves when the parent execution has been updated
  */
 export async function updateParentExecutionWithChildResults(
-	executionRepository: ExecutionRepository,
 	parentExecutionId: string,
 	subworkflowResults: IRun,
+	childExecution?: RelatedExecution,
 ): Promise<void> {
+	const subworkflowError = subworkflowResults.data.resultData.error;
 	const lastExecutedNodeData = getLastExecutedNodeData(subworkflowResults);
-	if (!lastExecutedNodeData?.data) return;
-	const parent = await executionRepository.findSingleExecution(parentExecutionId, {
+	if (!subworkflowError && !lastExecutedNodeData?.data) return;
+	const executionPersistence = Container.get(ExecutionPersistence);
+	const parent = await executionPersistence.findSingleExecution(parentExecutionId, {
 		includeData: true,
 		unflattenData: true,
 	});
@@ -462,12 +560,23 @@ export async function updateParentExecutionWithChildResults(
 		return;
 	}
 
-	// Copy the sub workflow result to the parent execution's Execute Workflow node inputs
-	// so that the Execute Workflow node returns the correct data when parent execution is resumed
-	// and the Execute Workflow node is executed again in disabled mode.
-	nodeExecutionStack[0].data = lastExecutedNodeData.data;
+	if (subworkflowError) {
+		// Record the error on the waiting parent's Execute Workflow node so the node
+		// fails with error on resume instead of appearing as successful. `subExecution`
+		// links the parent's node run to the failed child execution in the UI.
+		nodeExecutionStack[0].metadata = {
+			...nodeExecutionStack[0].metadata,
+			resumeError: subworkflowError,
+			...(childExecution && { subExecution: childExecution }),
+		};
+	} else if (lastExecutedNodeData?.data) {
+		// Copy the sub workflow result to the parent execution's Execute Workflow node inputs
+		// so that the Execute Workflow node returns the correct data when parent execution is resumed
+		// and the Execute Workflow node is executed again in disabled mode.
+		nodeExecutionStack[0].data = lastExecutedNodeData.data;
+	}
 
-	await executionRepository.updateExistingExecution(
+	await executionPersistence.updateExistingExecution(
 		parentExecutionId,
 		parentWithSubWorkflowResults,
 	);

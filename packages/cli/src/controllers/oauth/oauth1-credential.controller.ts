@@ -1,12 +1,11 @@
 import { Logger } from '@n8n/backend-common';
 import { Get, RestController } from '@n8n/decorators';
 import { Response } from 'express';
-import { ensureError, jsonStringify } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 import { EventService } from '@/events/event.service';
-import { OAuthRequest } from '@/requests';
-
 import { OauthService, type OAuth1CredentialData } from '@/oauth/oauth.service';
+import { OAuthRequest } from '@/requests';
 
 @RestController('/oauth1-credential')
 export class OAuth1CredentialController {
@@ -19,7 +18,7 @@ export class OAuth1CredentialController {
 	/** Get Authorization url */
 	@Get('/auth')
 	async getAuthUri(req: OAuthRequest.OAuth1Credential.Auth, res: Response): Promise<string> {
-		const credential = await this.oauthService.getCredentialForUpdate(req);
+		const credential = await this.oauthService.getCredentialForAuthFlow(req);
 		const csrfData = await this.oauthService.buildCsrfStateData(credential, req);
 		const uri = await this.oauthService.generateAOauth1AuthUri(credential, csrfData, req, res);
 
@@ -45,25 +44,17 @@ export class OAuth1CredentialController {
 				);
 			}
 
-			const [credential, decryptedData, oauthCredentials, state] =
+			const [credential, , oauthCredentials, state, flowState] =
 				await this.oauthService.resolveCredential<OAuth1CredentialData>(req);
-
-			const oauthTokenSecret =
-				typeof decryptedData.oauth_token_secret === 'string'
-					? decryptedData.oauth_token_secret
-					: '';
 
 			const oauthTokenData = await this.oauthService.getOAuth1AccessToken(oauthCredentials, {
 				oauthToken: oauth_token,
 				oauthVerifier: oauth_verifier,
-				oauthTokenSecret,
+				oauthTokenSecret: flowState.oauthTokenSecret ?? '',
 			});
 
 			if (!state.origin || state.origin === 'static-credential') {
-				await this.oauthService.encryptAndSaveData(credential, { oauthTokenData }, [
-					'csrfSecret',
-					'oauth_token_secret',
-				]);
+				await this.oauthService.encryptAndSaveData(credential, { oauthTokenData });
 
 				this.logger.debug('OAuth1 callback successful for new credential', {
 					credentialId: credential.id,
@@ -104,10 +95,11 @@ export class OAuth1CredentialController {
 			}
 		} catch (e) {
 			const error = ensureError(e);
+			this.logger.error('OAuth1 callback failed', { error, cause: error.cause });
 			return this.oauthService.renderCallbackError(
 				res,
 				error.message,
-				'body' in error ? jsonStringify(error.body) : undefined,
+				this.oauthService.extractCallbackErrorReason(error),
 			);
 		}
 	}

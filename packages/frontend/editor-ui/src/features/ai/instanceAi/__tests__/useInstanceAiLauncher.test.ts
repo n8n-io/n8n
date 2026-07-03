@@ -8,6 +8,12 @@ const push = vi.fn().mockResolvedValue(undefined);
 vi.mock('../instanceAi.store', () => ({
 	useInstanceAiStore: () => ({ syncThread, setPendingLaunch }),
 }));
+vi.mock('@/features/collaboration/projects/projects.store', () => ({
+	useProjectsStore: () => ({
+		personalProject: { id: 'personal-project-1' },
+		getPersonalProject: vi.fn(),
+	}),
+}));
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ pushRef: 'push-ref', instanceId: 'instance-1' }),
 }));
@@ -28,6 +34,7 @@ describe('useInstanceAiLauncher', () => {
 
 		expect(syncThread).toHaveBeenCalledWith(
 			expect.any(String),
+			'personal-project-1',
 			expect.objectContaining({ source: 'template-view', origin: 'internal' }),
 		);
 		expect(setPendingLaunch).toHaveBeenCalledWith(expect.any(String), 'hi', true);

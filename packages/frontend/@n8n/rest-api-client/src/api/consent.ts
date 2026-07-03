@@ -4,6 +4,8 @@ import { makeRestApiRequest } from '../utils';
 export interface ConsentDetails {
 	clientName: string;
 	clientId: string;
+	redirectUri?: string;
+	resourceName?: string;
 }
 
 export interface ConsentApprovalResponse {

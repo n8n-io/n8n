@@ -15,10 +15,23 @@ const SYSTEM_PROMPT_ANCHORS = [
 	'You are an expert n8n workflow builder',
 	'You generate a short descriptive title for a conversation',
 ] as const;
+const SUB_AGENT_INITIAL_PROMPT_ANCHORS = [
+	'You are the n8n Workflow Planner',
+	'You are an expert n8n workflow builder',
+] as const;
 const LEGACY_SYSTEM_ARRAY_PREFIX =
 	/\\\[\\\{"type":"text","text":"(?=You are the n8n Instance Agent)/g;
 const LEGACY_SYSTEM_STRING_PREFIX = '[{"type":"text","text":"';
 const BODY_REGEX_WILDCARD = '[\\s\\S]*';
+const ID_VALUE_PLACEHOLDER = '__INSTANCE_AI_ID_VALUE__';
+const ROLE_BLOCK_WINDOW = 15_000;
+const TOOL_NAME_WINDOW = 3_000;
+const TOOL_INPUT_WINDOW = 8_000;
+const TOOL_RESULT_CONTENT_WINDOW = 100_000;
+
+function restoreIdValuePlaceholders(anchor: string): string {
+	return anchor.replaceAll(ID_VALUE_PLACEHOLDER, '[A-Za-z0-9_-]+');
+}
 
 function slugify(text: string): string {
 	return text
@@ -69,12 +82,71 @@ type AnthropicMessage = {
 type AnthropicContentBlock = {
 	type?: unknown;
 	text?: unknown;
+	content?: unknown;
 	name?: unknown;
 	input?: unknown;
 };
 
 function escapeRegex(value: string): string {
 	return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function escapeJsonStringForRegex(value: string): string {
+	return escapeRegex(JSON.stringify(value).slice(1, -1));
+}
+
+function getStableJsonFieldAnchor(value: string): string | undefined {
+	const stringField = value.match(/^"([^"]+)":"([^"]*)"$/);
+	if (stringField) {
+		const [, key, fieldValue] = stringField;
+		return `${escapeJsonStringForRegex(`"${key}"`)}\\s*:\\s*${escapeJsonStringForRegex(`"${fieldValue}"`)}`;
+	}
+
+	const scalarField = value.match(/^"([^"]+)":(true|false|-?\d+(?:\.\d+)?)$/);
+	if (scalarField) {
+		const [, key, fieldValue] = scalarField;
+		return `${escapeJsonStringForRegex(`"${key}"`)}\\s*:\\s*${fieldValue}`;
+	}
+
+	return undefined;
+}
+
+function getPlannedTaskFollowUpType(value: string): string | undefined {
+	for (const type of ['checkpoint', 'synthesize']) {
+		if (value.includes(`planned-task-follow-up type=${type}`)) return type;
+		if (value.includes(`planned-task-follow-up type="${type}"`)) return type;
+		if (value.includes(`planned-task-follow-up type=\\"${type}\\"`)) return type;
+		if (value.includes(`planned-task-follow-up type=\\\\"${type}\\\\"`)) return type;
+	}
+
+	return undefined;
+}
+
+function getLooselyUnescapedValue(value: string): string {
+	let result = value;
+	for (let i = 0; i < 4; i++) {
+		const next = result.replace(/\\\\/g, '\\').replace(/\\"/g, '"');
+		if (next === result) break;
+		result = next;
+	}
+
+	return result;
+}
+
+function getPlannedTaskFollowUpId(value: string): string | undefined {
+	const normalized = getLooselyUnescapedValue(value);
+	const match = normalized.match(/"id"\s*:\s*"([^"]+)"/);
+	return match?.[1];
+}
+
+function getPlannedTaskFollowUpAnchor(value: string, type: string): string {
+	const tagAnchor = escapeRegex(
+		JSON.stringify(`<planned-task-follow-up type="${type}">`).slice(1, -1),
+	);
+	const taskId = getPlannedTaskFollowUpId(value);
+	if (!taskId) return tagAnchor;
+
+	return `${tagAnchor}[\\s\\S]{0,2000}${escapeRegex(taskId)}`;
 }
 
 function asContentBlocks(content: unknown): AnthropicContentBlock[] {
@@ -87,28 +159,124 @@ function asContentBlocks(content: unknown): AnthropicContentBlock[] {
 }
 
 function getStableTextAnchor(text: string): string | undefined {
-	const trimmed = text.trimStart();
+	const trimmed = stripDynamicPromptContext(text)
+		.replace(/\b(ID|id):\s*[A-Za-z0-9_-]{8,}\b/g, `$1: ${ID_VALUE_PLACEHOLDER}`)
+		.replace(/"([A-Za-z]*[Ii]d)"\s*:\s*"[^"]+"/g, `"$1":"${ID_VALUE_PLACEHOLDER}"`)
+		.replace(/"([A-Za-z]*[Ii]d)"\s*:\s*\d+/g, `"$1":${ID_VALUE_PLACEHOLDER}`)
+		.trimStart();
 	if (!trimmed) return undefined;
 
-	const tagMatch = /^<[a-z-]+/.exec(trimmed);
-	if (tagMatch) return escapeRegex(tagMatch[0]);
+	const plannedTaskFollowUpType = getPlannedTaskFollowUpType(trimmed);
+	if (plannedTaskFollowUpType) {
+		return restoreIdValuePlaceholders(
+			getPlannedTaskFollowUpAnchor(trimmed, plannedTaskFollowUpType),
+		);
+	}
 
-	return escapeRegex(JSON.stringify(trimmed.slice(0, 120)).slice(1, -1));
+	const jsonFieldAnchor = getStableJsonFieldAnchor(trimmed);
+	if (jsonFieldAnchor) return restoreIdValuePlaceholders(jsonFieldAnchor);
+
+	return restoreIdValuePlaceholders(
+		escapeRegex(JSON.stringify(trimmed.slice(0, 120)).slice(1, -1)),
+	);
 }
 
-function getToolUseAnchor(block: AnthropicContentBlock): string | undefined {
+function getStableToolInputAnchor(input: Record<string, unknown>): string | undefined {
+	for (const key of ['action', 'toolName', 'format', 'query']) {
+		const value = input[key];
+		if (typeof value === 'string') {
+			return `"${key}"\\s*:\\s*"${escapeRegex(value)}"`;
+		}
+	}
+
+	const attachmentIndex = input.attachmentIndex;
+	if (typeof attachmentIndex === 'number') {
+		return `"attachmentIndex"\\s*:\\s*${attachmentIndex}`;
+	}
+
+	return undefined;
+}
+
+function getToolUseAnchor(block: AnthropicContentBlock, role?: unknown): string | undefined {
 	if (block.type !== 'tool_use' || typeof block.name !== 'string') return undefined;
 
-	const toolNameMatcher = `"role"\\s*:\\s*"assistant"[\\s\\S]{0,1000}"type"\\s*:\\s*"tool_use"[\\s\\S]{0,300}"name"\\s*:\\s*"${escapeRegex(block.name)}"`;
+	const roleMatcher =
+		role === 'assistant' ? `"role"\\s*:\\s*"assistant"[\\s\\S]{0,${ROLE_BLOCK_WINDOW}}` : '';
+	const toolNameMatcher = `${roleMatcher}"type"\\s*:\\s*"tool_use"[\\s\\S]{0,${TOOL_NAME_WINDOW}}"name"\\s*:\\s*"${escapeRegex(block.name)}"`;
 	const input = block.input;
 	if (typeof input !== 'object' || input === null || Array.isArray(input)) {
 		return toolNameMatcher;
 	}
 
-	const action = Reflect.get(input, 'action');
-	if (typeof action !== 'string') return toolNameMatcher;
+	const stableInputAnchor = getStableToolInputAnchor(input as Record<string, unknown>);
+	if (!stableInputAnchor) return toolNameMatcher;
 
-	return `${toolNameMatcher}[\\s\\S]{0,500}"action"\\s*:\\s*"${escapeRegex(action)}"`;
+	return `${toolNameMatcher}[\\s\\S]{0,${TOOL_INPUT_WINDOW}}${stableInputAnchor}`;
+}
+
+function parseJsonString(value: string): unknown {
+	try {
+		return JSON.parse(value);
+	} catch {
+		return undefined;
+	}
+}
+
+function getStableToolResultText(content: unknown): string | undefined {
+	if (typeof content !== 'string') {
+		return content === undefined ? undefined : getStableToolResultText(JSON.stringify(content));
+	}
+
+	const parsed = parseJsonString(content);
+	if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+		const record = parsed as Record<string, unknown>;
+		const workflows = record.workflows;
+		if (Array.isArray(workflows)) {
+			const workflowNames = workflows
+				.map((workflow) =>
+					typeof workflow === 'object' && workflow !== null && !Array.isArray(workflow)
+						? Reflect.get(workflow, 'name')
+						: undefined,
+				)
+				.filter((name): name is string => typeof name === 'string' && name.length > 0);
+			if (workflowNames.length > 0) {
+				return `"name":"${workflowNames[0]}"`;
+			}
+		}
+
+		for (const key of ['approved', 'denied', 'success']) {
+			if (typeof record[key] === 'boolean') {
+				return `"${key}":${record[key]}`;
+			}
+		}
+		for (const key of ['workflowName', 'fileName', 'title', 'status', 'name']) {
+			const value = record[key];
+			if (typeof value === 'string' && value.length > 0) {
+				return `"${key}":"${value}"`;
+			}
+		}
+		const result = record.result;
+		if (typeof result === 'string' && result.length > 0) {
+			return result;
+		}
+	}
+
+	return content;
+}
+
+function getToolResultAnchor(block: AnthropicContentBlock, role?: unknown): string | undefined {
+	if (block.type !== 'tool_result') return undefined;
+
+	const roleMatcher =
+		role === 'user' ? `"role"\\s*:\\s*"user"[\\s\\S]{0,${ROLE_BLOCK_WINDOW}}` : '';
+	const toolResultMatcher = `${roleMatcher}"type"\\s*:\\s*"tool_result"`;
+	const content = getStableToolResultText(block.content);
+	if (!content) return toolResultMatcher;
+
+	const textAnchor = getStableTextAnchor(content);
+	return textAnchor
+		? `${toolResultMatcher}[\\s\\S]{0,${TOOL_RESULT_CONTENT_WINDOW}}${textAnchor}`
+		: toolResultMatcher;
 }
 
 function getLatestMessageAnchor(messages: AnthropicMessage[] | undefined): string | undefined {
@@ -118,17 +286,28 @@ function getLatestMessageAnchor(messages: AnthropicMessage[] | undefined): strin
 		const blocks = asContentBlocks(messages[messageIndex]?.content);
 		for (let blockIndex = blocks.length - 1; blockIndex >= 0; blockIndex--) {
 			const block = blocks[blockIndex];
+			const toolResultAnchor = getToolResultAnchor(block, messages[messageIndex]?.role);
+			if (toolResultAnchor) return toolResultAnchor;
+
 			if (block.type === 'text' && typeof block.text === 'string') {
 				const textAnchor = getStableTextAnchor(block.text);
 				if (textAnchor) return textAnchor;
 			}
 
-			const toolUseAnchor = getToolUseAnchor(block);
+			const toolUseAnchor = getToolUseAnchor(block, messages[messageIndex]?.role);
 			if (toolUseAnchor) return toolUseAnchor;
 		}
 	}
 
 	return undefined;
+}
+
+function findSystemPromptAnchorIndex(system: string): number {
+	return SYSTEM_PROMPT_ANCHORS.reduce<number>((nearest, anchor) => {
+		const index = system.indexOf(anchor);
+		if (index < 0) return nearest;
+		return nearest < 0 ? index : Math.min(nearest, index);
+	}, -1);
 }
 
 function createAnthropicBodyMatcher(raw: string): { type: 'REGEX'; regex: string } | undefined {
@@ -145,10 +324,16 @@ function createAnthropicBodyMatcher(raw: string): { type: 'REGEX'; regex: string
 				: undefined;
 	if (!system) return undefined;
 
-	const anchorIndex = system.indexOf(INSTANCE_AGENT_SYSTEM_PROMPT_ANCHOR);
+	const anchorIndex = findSystemPromptAnchorIndex(system);
 	const systemSnippetStart = anchorIndex >= 0 ? anchorIndex : 0;
 	const systemSnippet = escapeRegex(system.slice(systemSnippetStart, systemSnippetStart + 80));
-	const latestMessageAnchor = getLatestMessageAnchor(parsed.messages);
+	const latestAnchor = getLatestMessageAnchor(parsed.messages);
+	const isSubAgentRequest = SUB_AGENT_INITIAL_PROMPT_ANCHORS.some((anchor) =>
+		system.includes(anchor),
+	);
+	const shouldUseSystemOnlyMatcher =
+		isSubAgentRequest && latestAnchor !== undefined && !latestAnchor.includes('"type"\\s*');
+	const latestMessageAnchor = shouldUseSystemOnlyMatcher ? undefined : latestAnchor;
 	const matcher = latestMessageAnchor
 		? `${systemSnippet}[\\s\\S]*${latestMessageAnchor}`
 		: systemSnippet;
@@ -170,6 +355,43 @@ function isBodyMatcher(body: unknown): body is BodyMatcher {
 	return typeof body === 'object' && body !== null && !Array.isArray(body);
 }
 
+function isToolTraceEvent(event: unknown): boolean {
+	if (typeof event !== 'object' || event === null || Array.isArray(event)) return false;
+
+	const kind = Reflect.get(event, 'kind');
+	return kind === 'tool-call' || kind === 'tool-suspend' || kind === 'tool-resume';
+}
+
+function getTraceEventKey(event: unknown): string | undefined {
+	if (typeof event !== 'object' || event === null || Array.isArray(event)) return undefined;
+
+	const agentRole = Reflect.get(event, 'agentRole');
+	const toolName = Reflect.get(event, 'toolName');
+	if (typeof agentRole !== 'string' || typeof toolName !== 'string') return undefined;
+
+	return `${agentRole}:${toolName}`;
+}
+
+function hasUnpairedToolResume(events: unknown[]): boolean {
+	const suspendedTools = new Set<string>();
+
+	for (const event of events) {
+		if (typeof event !== 'object' || event === null || Array.isArray(event)) continue;
+
+		const kind = Reflect.get(event, 'kind');
+		const key = getTraceEventKey(event);
+		if (!key) continue;
+
+		if (kind === 'tool-suspend') {
+			suspendedTools.add(key);
+		} else if (kind === 'tool-resume' && !suspendedTools.has(key)) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
 function stripRecordedSystemPromptAnchor(regex: string): string {
 	const anchorIndex = SYSTEM_PROMPT_ANCHORS.reduce<number>((nearest, anchor) => {
 		const index = regex.indexOf(anchor);
@@ -186,14 +408,73 @@ function stripRecordedSystemPromptAnchor(regex: string): string {
 	return `${BODY_REGEX_WILDCARD}${regex.slice(latestTurnAnchorIndex + BODY_REGEX_WILDCARD.length)}`;
 }
 
+function loosenEscapedJsonFieldAnchors(regex: string): string {
+	return regex
+		.replace(/\\\\"([^"\\]+)\\\\":\\\\"([^"\\]*)\\\\"/g, '\\\\"$1\\\\"\\s*:\\s*\\\\"$2\\\\"')
+		.replace(/\\\\"([^"\\]+)\\\\":(true|false|-?\d+(?:\.\d+)?)/g, '\\\\"$1\\\\"\\s*:\\s*$2');
+}
+
+function stripDynamicPromptContext(text: string): string {
+	return text
+		.replace(/<current-date-?time>[\s\S]*?<\/current-date-?time>/g, '')
+		.replace(/<current-datetime>[\s\S]*?<\/current-datetime>/g, '')
+		.replace(/<user-timezone>[\s\S]*?<\/user-timezone>/g, '');
+}
+
+function loosenDynamicPromptContextAnchors(regex: string): string {
+	return regex
+		.replace(
+			/(?:\\\\n){2}<current-date-?time>[\s\S]*?(?:<\/current-date-?time>|(?=\[\\s\\S\]\*))/g,
+			BODY_REGEX_WILDCARD,
+		)
+		.replace(
+			/(?:\\\\n){2}<current-datetime>[\s\S]*?(?:<\/current-datetime>|(?=\[\\s\\S\]\*))/g,
+			BODY_REGEX_WILDCARD,
+		)
+		.replace(
+			/(?:\\\\n){2}<user-timezone>[\s\S]*?(?:<\/user-timezone>|(?=\[\\s\\S\]\*))/g,
+			BODY_REGEX_WILDCARD,
+		)
+		.replace(/<current-date-?time>[\s\S]*?<\/current-date-?time>/g, BODY_REGEX_WILDCARD)
+		.replace(/<current-datetime>[\s\S]*?<\/current-datetime>/g, BODY_REGEX_WILDCARD)
+		.replace(/<user-timezone>[\s\S]*?<\/user-timezone>/g, BODY_REGEX_WILDCARD);
+}
+
 function loosenRecordedInstanceAiPromptMatcher(expectation: Expectation): Expectation {
 	const body = (expectation.httpRequest as { body?: unknown } | undefined)?.body;
 	if (!isBodyMatcher(body)) return expectation;
 
 	if (body.type === 'REGEX' && typeof body.regex === 'string') {
-		body.regex = stripRecordedSystemPromptAnchor(
-			body.regex.replace(LEGACY_SYSTEM_ARRAY_PREFIX, ''),
+		let regex = body.regex.replaceAll('<id>', '[A-Za-z0-9_-]+');
+
+		const subAgentSystemAnchor = SUB_AGENT_INITIAL_PROMPT_ANCHORS.find((anchor) =>
+			regex.includes(anchor),
 		);
+		if (subAgentSystemAnchor && !regex.includes('"type"\\s*:\\s*"tool_use"')) {
+			body.regex = `[\\s\\S]*${escapeRegex(subAgentSystemAnchor)}[\\s\\S]*`;
+			return expectation;
+		}
+
+		if (regex.includes('<planned-task-follow-up')) {
+			const plannedTaskFollowUpType = getPlannedTaskFollowUpType(regex);
+			body.regex = plannedTaskFollowUpType
+				? `[\\s\\S]*${getPlannedTaskFollowUpAnchor(regex, plannedTaskFollowUpType)}[\\s\\S]*`
+				: '[\\s\\S]*<planned-task-follow-up[\\s\\S]*';
+			return expectation;
+		}
+
+		if (regex.includes(INSTANCE_AGENT_SYSTEM_PROMPT_ANCHOR)) {
+			body.regex = `[\\s\\S]*${escapeRegex(INSTANCE_AGENT_SYSTEM_PROMPT_ANCHOR)}[\\s\\S]*`;
+			return expectation;
+		}
+
+		regex = loosenEscapedJsonFieldAnchors(loosenDynamicPromptContextAnchors(regex))
+			.replace(LEGACY_SYSTEM_ARRAY_PREFIX, '')
+			.replaceAll('[\\s\\S]{0,1500}', `[\\s\\S]{0,${ROLE_BLOCK_WINDOW}}`)
+			.replaceAll('[\\s\\S]{0,800}', `[\\s\\S]{0,${TOOL_INPUT_WINDOW}}`)
+			.replaceAll('[\\s\\S]{0,300}', `[\\s\\S]{0,${TOOL_NAME_WINDOW}}`)
+			.replaceAll('[\\s\\S]{0,2000}', `[\\s\\S]{0,${TOOL_RESULT_CONTENT_WINDOW}}`);
+		body.regex = stripRecordedSystemPromptAnchor(regex);
 	}
 
 	const stringMatcher = body['string'];
@@ -207,6 +488,40 @@ function loosenRecordedInstanceAiPromptMatcher(expectation: Expectation): Expect
 	}
 
 	return expectation;
+}
+
+function isAnthropicMessagesExpectation(expectation: Expectation): boolean {
+	const request = expectation.httpRequest as { path?: unknown } | undefined;
+	return request?.path === '/v1/messages';
+}
+
+function getExpectationBodyText(expectation: Expectation): string | undefined {
+	const body = (expectation.httpRequest as { body?: unknown } | undefined)?.body;
+	if (typeof body === 'string') return body;
+	if (typeof body !== 'object' || body === null || Array.isArray(body)) return undefined;
+
+	const bodyRecord = body as Record<string, unknown>;
+	for (const key of ['string', 'regex']) {
+		const value = bodyRecord[key];
+		if (typeof value === 'string') return value;
+	}
+
+	const json = bodyRecord.json;
+	return json === undefined ? undefined : JSON.stringify(json);
+}
+
+function isConversationTitleExpectation(expectation: Expectation): boolean {
+	return (
+		getExpectationBodyText(expectation)?.includes(
+			'You generate a short descriptive title for a conversation',
+		) === true
+	);
+}
+
+function isReplayableAnthropicMessagesExpectation(expectation: Expectation): boolean {
+	return (
+		isAnthropicMessagesExpectation(expectation) && !isConversationTitleExpectation(expectation)
+	);
 }
 
 function prioritizeSequentialExpectation(expectation: Expectation, fileName: string): Expectation {
@@ -224,21 +539,91 @@ type InstanceAiFixtures = {
 
 async function safeFetch(input: string, init: RequestInit = {}): Promise<Response | undefined> {
 	try {
-		return await fetch(input, { ...init, signal: AbortSignal.timeout(10_000) });
+		return await fetch(input, { ...init, signal: AbortSignal.timeout(30_000) });
 	} catch {
 		return undefined;
 	}
 }
 
+async function wait(ms: number): Promise<void> {
+	await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function fetchOrThrow(
+	input: string,
+	init: RequestInit = {},
+	description: string,
+): Promise<Response> {
+	let response: Response | undefined;
+	for (let attempt = 0; attempt < 4; attempt++) {
+		response = await safeFetch(input, init);
+		if (response?.ok) return response;
+		if (response && ![502, 503, 504].includes(response.status)) break;
+		if (attempt === 3) break;
+		await wait(500 * 2 ** attempt);
+	}
+
+	if (!response) {
+		throw new Error(`Instance AI test setup failed: ${description}`);
+	}
+
+	const body = await response.text();
+	throw new Error(`Instance AI test setup failed: ${description} (${response.status}) ${body}`);
+}
+
+function getIdleState(body: unknown): boolean | undefined {
+	if (typeof body !== 'object' || body === null || Array.isArray(body)) return undefined;
+
+	const data = Reflect.get(body, 'data');
+	if (typeof data === 'object' && data !== null && !Array.isArray(data)) {
+		const idle = Reflect.get(data, 'idle');
+		if (typeof idle === 'boolean') return idle;
+	}
+
+	const idle = Reflect.get(body, 'idle');
+	return typeof idle === 'boolean' ? idle : undefined;
+}
+
+async function waitForInstanceAiIdle(backendUrl: string, testSlug: string): Promise<void> {
+	const deadline = Date.now() + 120_000;
+
+	while (Date.now() < deadline) {
+		const response = await fetchOrThrow(
+			`${backendUrl}/rest/instance-ai/test/idle`,
+			{},
+			`waiting for ${testSlug} to become idle`,
+		);
+		const body = (await response.json()) as unknown;
+		if (getIdleState(body) === true) return;
+
+		await new Promise((resolve) => setTimeout(resolve, 500));
+	}
+
+	throw new Error(
+		`Instance AI test setup failed: timed out waiting for ${testSlug} to become idle`,
+	);
+}
+
 export const instanceAiTestConfig = {
 	timezoneId: 'America/New_York',
 	capability: {
-		services: ['proxy'],
+		// Instance AI does not support queue/multi-main execution yet (implementation
+		// deferred): agent-triggered manual executions fail or flake on the worker
+		// offload path (the worker job processor reads execution.data.manualData while
+		// execution.data is undefined). Pin to a single main AND no workers so the suite
+		// runs in direct execution mode (a supported topology) under every CI project —
+		// `mains: 1` alone left the worker in place, so full-workflow runs still offloaded
+		// and flaked. Drop these overrides when queue/multi-main support lands.
+		mains: 1,
+		workers: 0,
+		services: ['proxy', 'sandbox'],
 		env: {
 			N8N_ENABLED_MODULES: 'instance-ai',
 			N8N_INSTANCE_AI_MODEL: 'anthropic/claude-sonnet-4-6',
 			N8N_INSTANCE_AI_MODEL_API_KEY: ANTHROPIC_API_KEY,
 			N8N_INSTANCE_AI_LOCAL_GATEWAY_DISABLED: 'true',
+			N8N_INSTANCE_AI_SANDBOX_ENABLED: 'true',
+			N8N_INSTANCE_AI_SANDBOX_TIMEOUT: '600000',
 			// Prevent community-node-types requests to api-staging.n8n.io
 			// from polluting proxy recordings
 			N8N_VERIFIED_PACKAGES_ENABLED: 'false',
@@ -274,9 +659,14 @@ export const test = base.extend<InstanceAiFixtures>({
 			// Wipe instance-ai threads, per-thread in-memory state, background tasks,
 			// and user workflows before clearing the proxy so cleanup traffic from a
 			// previous test cannot be captured into this test's recording.
-			await safeFetch(`${backendUrl}/rest/instance-ai/test/reset`, { method: 'POST' });
+			await fetchOrThrow(
+				`${backendUrl}/rest/instance-ai/test/reset`,
+				{ method: 'POST' },
+				'resetting test state',
+			);
+			await waitForInstanceAiIdle(backendUrl, testSlug);
 
-			await services.proxy.clearAllExpectations();
+			await services.proxy.reset();
 
 			// Install a success response for Slack's `users.profile.get` — the
 			// backend's `POST /credentials/test` endpoint calls this when testing
@@ -314,6 +704,7 @@ export const test = base.extend<InstanceAiFixtures>({
 				await services.proxy.loadExpectations(folder, {
 					sequential: true,
 					repeatLastResponse: false,
+					filter: isReplayableAnthropicMessagesExpectation,
 					transform: (expectation, fileName) =>
 						prioritizeSequentialExpectation(
 							loosenRecordedInstanceAiPromptMatcher(expectation),
@@ -321,27 +712,60 @@ export const test = base.extend<InstanceAiFixtures>({
 						),
 				});
 
-				await safeFetch(`${backendUrl}/rest/instance-ai/test/tool-trace`, {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({
-						slug: testSlug,
-						...(traceEvents.length > 0 ? { events: traceEvents } : {}),
-					}),
-				});
+				await fetchOrThrow(
+					`${backendUrl}/rest/instance-ai/test/tool-trace`,
+					{
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({
+							slug: testSlug,
+							...(traceEvents.length > 0 ? { events: traceEvents } : {}),
+						}),
+					},
+					`loading trace for ${testSlug}`,
+				);
 			} else {
-				await safeFetch(`${backendUrl}/rest/instance-ai/test/tool-trace`, {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ slug: testSlug }),
-				});
+				await fetchOrThrow(
+					`${backendUrl}/rest/instance-ai/test/tool-trace`,
+					{
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json' },
+						body: JSON.stringify({ slug: testSlug }),
+					},
+					`activating trace for ${testSlug}`,
+				);
 			}
 
 			await use(undefined);
 
-			if (!process.env.CI && HAS_REAL_API_KEY) {
+			// Persist strictly on 'passed': a skipped test also satisfies
+			// status === expectedStatus, and persisting for it clears the
+			// expectations dir (clearDir) with no traffic to rewrite — silently
+			// deleting the recordings of every quarantined/fixme'd test in the run.
+			const shouldPersistRecording =
+				!process.env.CI && HAS_REAL_API_KEY && testInfo.status === 'passed';
+
+			if (shouldPersistRecording) {
+				await waitForInstanceAiIdle(backendUrl, testSlug);
+
+				const traceResponse = await fetchOrThrow(
+					`${backendUrl}/rest/instance-ai/test/tool-trace/${testSlug}`,
+					{},
+					`fetching trace for ${testSlug}`,
+				);
+				const body = (await traceResponse.json()) as { data?: { events?: unknown[] } };
+				const events = body?.data?.events ?? [];
+
+				if (events.some(isToolTraceEvent) && hasUnpairedToolResume(events)) {
+					throw new Error(
+						`Refusing to persist invalid Instance AI recording "${testSlug}": trace contains a tool-resume without a preceding tool-suspend.`,
+					);
+				}
+
 				await services.proxy.recordExpectations(folder, {
 					clearDir: true,
+					pathOrRequestDefinition: { path: '/v1/messages' },
+					filter: isReplayableAnthropicMessagesExpectation,
 					transform: (expectation) => {
 						const response = expectation.httpResponse as {
 							headers?: Record<string, string[]>;
@@ -382,15 +806,8 @@ export const test = base.extend<InstanceAiFixtures>({
 					},
 				});
 
-				const traceResponse = await safeFetch(
-					`${backendUrl}/rest/instance-ai/test/tool-trace/${testSlug}`,
-				);
-				if (traceResponse?.ok) {
-					const body = (await traceResponse.json()) as { data?: { events?: unknown[] } };
-					const events = body?.data?.events ?? [];
-					if (events.length > 0) {
-						await writeTraceFile(folder, events);
-					}
+				if (events.length > 0) {
+					await writeTraceFile(folder, events);
 				}
 			}
 

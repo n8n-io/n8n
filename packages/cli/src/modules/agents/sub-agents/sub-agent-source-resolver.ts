@@ -1,3 +1,4 @@
+import type { ToolDescriptor } from '@n8n/agents';
 import {
 	type AgentSkill,
 	RunnableAgentJsonConfigSchema,
@@ -5,7 +6,6 @@ import {
 	type ResolvedSubAgentSource,
 	type SubAgentSource,
 } from '@n8n/api-types';
-import type { ToolDescriptor } from '@n8n/agents';
 import { Service } from '@n8n/di';
 import { UserError } from 'n8n-workflow';
 

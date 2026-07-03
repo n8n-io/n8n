@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { truncate } from '@n8n/utils';
+import { truncate } from '@n8n/utils/string/truncate';
 import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
 import { MODAL_CONFIRM } from '@/app/constants';
@@ -131,7 +131,7 @@ async function onAction(actionId: string, thread: AgentExecutionThread) {
 	if (confirmed !== MODAL_CONFIRM) return;
 
 	try {
-		await sessionsStore.deleteThread(projectId.value, thread.id);
+		await sessionsStore.deleteThread(projectId.value, agentId.value, thread.id);
 		toast.showMessage({
 			title: i18n.baseText('agentSessions.showMessage.deleted'),
 			type: 'success',

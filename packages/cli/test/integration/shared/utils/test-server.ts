@@ -1,4 +1,4 @@
-import { LicenseState, ModuleRegistry } from '@n8n/backend-common';
+import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import { mockInstance, mockLogger, testModules, testDb } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { APIRequest, User } from '@n8n/db';
@@ -21,7 +21,6 @@ import { ApiKeyAuthStrategy } from '@/services/api-key-auth.strategy';
 import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
 import { Telemetry } from '@/telemetry';
 import { resolveBackendHealthEndpointPath } from '@/utils/health-endpoint.util';
-
 import { LicenseMocker } from '@test-integration/license';
 
 import { PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } from '../constants';
@@ -99,6 +98,7 @@ export const setupTestServer = ({
 	enabledFeatures,
 	quotas,
 	modules,
+	setupTimeout,
 }: SetupProps): TestServer => {
 	const app = express();
 	app.use(rawBodyReader);
@@ -110,7 +110,7 @@ export const setupTestServer = ({
 	});
 
 	// Mock all telemetry and logging
-	mockLogger();
+	Container.set(Logger, mockLogger());
 	mockInstance(PostHogClient);
 	mockInstance(Push);
 	mockInstance(Telemetry);
@@ -208,10 +208,13 @@ export const setupTestServer = ({
 						break;
 
 					case 'metrics': {
-						const { PrometheusMetricsService } = await import(
-							'@/metrics/prometheus-metrics.service'
-						);
-						await Container.get(PrometheusMetricsService).init(app);
+						// CacheService must be initialized before PrometheusMetricsService
+						// because cache-metrics.service calls isRedis() during init, which
+						// reads this.cache.kind — only set after CacheService.init() resolves.
+						const { CacheService } = await import('@/services/cache/cache.service');
+						await Container.get(CacheService).init();
+						const { PrometheusMetricsService } = await import('@/metrics/prometheus');
+						Container.get(PrometheusMetricsService).init(app);
 						break;
 					}
 
@@ -358,6 +361,10 @@ export const setupTestServer = ({
 					case 'encryption-keys':
 						await import('@/modules/encryption-key-manager/encryption-key.controller');
 						break;
+
+					case 'test-webhooks':
+						await import('@/webhooks/test-webhooks.controller');
+						break;
 				}
 			}
 
@@ -366,11 +373,24 @@ export const setupTestServer = ({
 
 			await Container.get(AuthHandlerRegistry).init();
 		}
-	});
+	}, setupTimeout);
 
 	afterAll(async () => {
+		// Close the HTTP server first so any in-flight requests can't reach the
+		// DI container after testDb.terminate() resets it. Await the close so
+		// pending handlers drain before the next file's beforeAll runs in
+		// persistent Jest workers — otherwise stale handlers call
+		// Container.get(Logger), construct a fresh Logger, and trip Vitest's
+		// "environment torn down" guard when winston is imported.
+		// Skip when the server never started listening (some suites bail in
+		// beforeAll); calling close() on a non-listening server throws
+		// "Server is not running" and would mask the real beforeAll failure.
+		if (testServer.httpServer.listening) {
+			await new Promise<void>((resolve, reject) => {
+				testServer.httpServer.close((err) => (err ? reject(err) : resolve()));
+			});
+		}
 		await testDb.terminate();
-		testServer.httpServer.close();
 	});
 
 	beforeEach(() => {

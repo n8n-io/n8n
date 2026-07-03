@@ -3,7 +3,7 @@ import type { IExecuteFunctions } from 'n8n-workflow';
 import { processLines } from '../GenericFunctions';
 describe('processLines', () => {
 	const mockExecuteFunctions: Partial<IExecuteFunctions> = {
-		getNodeParameter: jest.fn(),
+		getNodeParameter: vi.fn(),
 	};
 
 	test('should process AccountBasedExpenseLineDetail for bill resource', () => {
