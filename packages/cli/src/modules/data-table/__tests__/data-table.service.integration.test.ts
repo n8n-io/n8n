@@ -2510,6 +2510,97 @@ describe('dataTable', () => {
 		});
 	});
 
+	describe('clearRows', () => {
+		it('should delete all rows while retaining the table structure', async () => {
+			// ARRANGE
+			const { id: dataTableId } = await dataTableService.createDataTable(project1.id, {
+				name: 'dataTable',
+				columns: [
+					{ name: 'name', type: 'string' },
+					{ name: 'age', type: 'number' },
+				],
+			});
+
+			await dataTableService.insertRows(
+				dataTableId,
+				project1.id,
+				[
+					{ name: 'Alice', age: 30 },
+					{ name: 'Bob', age: 25 },
+					{ name: 'Charlie', age: 35 },
+				],
+				'id',
+			);
+
+			// ACT
+			const result = await dataTableService.clearRows(dataTableId, project1.id);
+
+			// ASSERT
+			expect(result).toEqual({ deletedCount: 3 });
+
+			const { count, data } = await dataTableService.getManyRowsAndCount(
+				dataTableId,
+				project1.id,
+				{},
+			);
+			expect(count).toEqual(0);
+			expect(data).toEqual([]);
+
+			// Table structure (columns) is retained
+			await expect(dataTableService.getColumns(dataTableId, project1.id)).resolves.toEqual([
+				expect.objectContaining({ name: 'name', type: 'string' }),
+				expect.objectContaining({ name: 'age', type: 'number' }),
+			]);
+		});
+
+		it('should return a deletedCount of 0 when the table is already empty', async () => {
+			// ARRANGE
+			const { id: dataTableId } = await dataTableService.createDataTable(project1.id, {
+				name: 'dataTable',
+				columns: [{ name: 'name', type: 'string' }],
+			});
+
+			// ACT
+			const result = await dataTableService.clearRows(dataTableId, project1.id);
+
+			// ASSERT
+			expect(result).toEqual({ deletedCount: 0 });
+		});
+
+		it('should update the data table updatedAt timestamp', async () => {
+			// ARRANGE
+			const { id: dataTableId, updatedAt } = await dataTableService.createDataTable(project1.id, {
+				name: 'dataTable',
+				columns: [{ name: 'name', type: 'string' }],
+			});
+
+			await dataTableService.insertRows(dataTableId, project1.id, [{ name: 'Alice' }], 'id');
+
+			// ACT
+			await dataTableService.clearRows(dataTableId, project1.id);
+
+			// ASSERT
+			const { data } = await dataTableService.getManyAndCount({
+				filter: { projectId: project1.id, id: dataTableId },
+			});
+			expect(data[0].updatedAt.getTime()).toBeGreaterThanOrEqual(updatedAt.getTime());
+		});
+
+		it('should not clear rows of a data table in another project', async () => {
+			// ARRANGE
+			const { id: dataTableId } = await dataTableService.createDataTable(project1.id, {
+				name: 'dataTable',
+				columns: [{ name: 'name', type: 'string' }],
+			});
+
+			// ACT
+			const result = dataTableService.clearRows(dataTableId, project2.id);
+
+			// ASSERT
+			await expect(result).rejects.toThrow(DataTableNotFoundError);
+		});
+	});
+
 	describe('updateRows', () => {
 		it('should update an existing row with matching filter', async () => {
 			// ARRANGE

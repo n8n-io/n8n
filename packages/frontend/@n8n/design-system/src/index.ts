@@ -24,6 +24,8 @@ export { default as N8nRadioGroupItem2 } from './v2/components/RadioGroup/RadioG
 export { default as N8nRadioGroup2 } from './v2/components/RadioGroup/RadioGroup.vue';
 export type * from './v2/components/RadioGroup/RadioGroupItem.types';
 export type * from './v2/components/RadioGroup/RadioGroup.types';
+export { default as N8nTree2 } from './v2/components/Tree/Tree.vue';
+export type * from './v2/components/Tree/Tree.types';
 export { default as N8nSwitch2 } from './components/N8nSwitch/Switch.vue';
 export type * from './components/N8nSwitch/Switch.types';
 export { createPasswordRules } from './components/N8nFormInput/validators';
