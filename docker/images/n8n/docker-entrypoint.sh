@@ -1,4 +1,13 @@
 #!/bin/sh
+if [ "$N8N_ENABLE_JEMALLOC" = "true" ]; then
+  if [ -f /usr/lib/libjemalloc.so.2 ]; then
+    export LD_PRELOAD="/usr/lib/libjemalloc.so.2${LD_PRELOAD:+:$LD_PRELOAD}"
+    echo "jemalloc enabled via LD_PRELOAD=$LD_PRELOAD"
+  else
+    echo "N8N_ENABLE_JEMALLOC=true but /usr/lib/libjemalloc.so.2 not found; continuing with default allocator" >&2
+  fi
+fi
+
 if [ -d /opt/custom-certificates ]; then
   echo "Trusting custom certificates from /opt/custom-certificates."
   export NODE_OPTIONS="--use-openssl-ca $NODE_OPTIONS"

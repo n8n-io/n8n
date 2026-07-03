@@ -7,7 +7,10 @@ ARG N8N_VERSION=snapshot
 # Digest pins to node:24.16.0-alpine3.22 (Node 24.16.0, Alpine 3.22).
 FROM node:24.16.0-alpine3.22@sha256:191c9f0080fcbbc6547a85dc0ff7988072214a355aabdc1d2ec55a7dae5eea8a AS builder
 COPY ./compiled /usr/local/lib/node_modules/n8n
-RUN apk add --no-cache python3 make g++ && \
+# jemalloc is added here (not in the runtime base) so it ships in this image
+# only; the .so is copied into the final stage and opted into at runtime via
+# N8N_ENABLE_JEMALLOC. Builder shares the base's Alpine 3.22, so the lib is ABI-compatible.
+RUN apk add --no-cache python3 make g++ jemalloc && \
     cd /usr/local/lib/node_modules/n8n && \
     npm rebuild sqlite3 && \
     # Rebuild isolated-vm from source. node-gyp-build's musl detection relies
@@ -40,6 +43,7 @@ ENV SHELL=/bin/sh
 WORKDIR /home/node
 
 COPY --from=builder /usr/local/lib/node_modules/n8n /usr/local/lib/node_modules/n8n
+COPY --from=builder /usr/lib/libjemalloc.so.2 /usr/lib/libjemalloc.so.2
 COPY docker/images/n8n/docker-entrypoint.sh /
 
 RUN ln -s /usr/local/lib/node_modules/n8n/bin/n8n /usr/local/bin/n8n && \
