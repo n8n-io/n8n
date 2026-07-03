@@ -6,7 +6,7 @@ ARG NODE_VERSION
 
 RUN apk add --no-cache \
     openssh sudo shadow bash libc-utils \
-    git openssl graphicsmagick tini tzdata ca-certificates libc6-compat
+    git openssl graphicsmagick tzdata ca-certificates libc6-compat
 RUN echo node ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/node && chmod 0440 /etc/sudoers.d/node
 RUN mkdir /workspaces && chown node:node /workspaces
 RUN corepack enable

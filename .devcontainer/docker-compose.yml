@@ -1,5 +1,7 @@
 volumes:
   postgres-data:
+  # Only used when N8N_DATA_MOUNT is set to "n8n-data" (see .env.example)
+  n8n-data:
 
 services:
   postgres:
@@ -15,8 +17,15 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    init: true
+    depends_on:
+      - postgres
     volumes:
-      - ..:/workspaces:cached
+      - ..:/workspaces
+      # .n8n storage. Defaults to a bind mount of the host's ~/.n8n (shares the
+      # encryption key/credentials with a local n8n install). Set N8N_DATA_MOUNT
+      # to "n8n-data" to use an isolated named volume instead — see .env.example.
+      - ${N8N_DATA_MOUNT:-${HOME}/.n8n}:/home/node/.n8n
     command: sleep infinity
     environment:
       DB_POSTGRESDB_HOST: postgres
