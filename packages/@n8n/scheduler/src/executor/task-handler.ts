@@ -1,4 +1,3 @@
-import { Service } from '@n8n/di';
 import { UnexpectedError } from 'n8n-workflow';
 
 import type { ClaimedTask } from '../core/types';
@@ -7,9 +6,6 @@ import type { ClaimedTask } from '../core/types';
  * Runs one claimed task. Registered against a `taskType`; the executor resolves
  * the handler for a task's type and calls `execute`. A throw means the attempt
  * failed (the executor retries with backoff or marks the task failed).
- *
- * The concrete schedule-trigger handler (which creates a workflow execution and
- * hands it off) lives in a later ticket; the executor only knows this contract.
  */
 export interface TaskHandler {
 	execute(task: ClaimedTask): Promise<void>;
@@ -20,7 +16,6 @@ export interface TaskHandler {
  * types present here (`registeredTypes`), so an instance never picks up work it
  * has no handler for.
  */
-@Service()
 export class TaskHandlerRegistry {
 	private readonly handlers = new Map<string, TaskHandler>();
 

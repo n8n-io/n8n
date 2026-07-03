@@ -78,8 +78,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 		const table = this.tableName();
 
 		// TypeORM's Postgres driver returns `[rows, affectedCount]` from a raw UPDATE
-		// ... RETURNING; the raw rows carry driver-native types (Date, parsed json,
-		// bigint id as string), which the domain mapper expects.
+		// ... RETURNING, so destructure the rows out of the tuple.
 		const [rows]: [ScheduledTask[], number] = await this.query(
 			`UPDATE ${table}
 			   SET "status" = '${ScheduledTaskStatus.Running}', "claimedBy" = $1,
@@ -136,9 +135,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 				.where({ id: In(ids), status: ScheduledTaskStatus.Pending })
 				.execute();
 
-			// Re-read so the returned rows carry the new status/lease, hydrated with
-			// proper JS types (Date, parsed json) via TypeORM's column transformers.
-			// `claimedBy`/`status` scope the re-read to rows this claim owns, defence
+			// `claimedBy`/`status` scope the re-read to rows this claim owns: defence
 			// in depth beyond the `BEGIN IMMEDIATE` serialisation above.
 			return await tx.findBy(ScheduledTask, {
 				id: In(ids),
@@ -240,12 +237,12 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 		return this.globalConfig.database.type === 'postgresdb';
 	}
 
-	/** DB-clock `now`, per dialect (never an instance clock, for due-ness/timestamps). */
+	/** SQL expression for the DB-clock `now`, per dialect (never an instance clock). */
 	private dbNow(): string {
 		return this.isPostgres() ? 'now()' : "STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')";
 	}
 
-	/** DB-clock `now` plus a millisecond offset, per dialect. `ms` is caller-computed (safe to inline). */
+	/** SQL expression for the DB-clock `now` plus a millisecond offset, per dialect. `ms` is caller-computed (safe to inline). */
 	private dbNowPlusMs(ms: number): string {
 		const rounded = Math.round(ms);
 		return this.isPostgres()

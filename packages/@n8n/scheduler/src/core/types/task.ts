@@ -31,8 +31,8 @@ export interface ScheduledTask {
 
 /**
  * A `ScheduledTask` the executor has claimed: `running` and owned for the lease's
- * duration, carrying the coordination fields the claim sets (see the claim in
- * `ScheduledTaskRepository`). `startedAt` stays null until the task actually fires.
+ * duration, carrying the coordination fields the claim sets. `startedAt` stays
+ * null until the task actually fires.
  */
 export interface ClaimedTask extends ScheduledTask {
 	claimedBy: string;

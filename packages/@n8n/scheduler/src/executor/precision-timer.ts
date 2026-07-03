@@ -1,4 +1,4 @@
-import { Service } from '@n8n/di';
+import { MAX_INTEGER_32BITS_SIGNED } from '@n8n/constants';
 
 /**
  * The timing primitives the {@link PrecisionTimer} depends on, injected so tests
@@ -17,17 +17,18 @@ const defaultBackend: TimerBackend = {
 };
 
 /** `setTimeout` treats delays above the 32-bit signed max as 1ms; clamp to it. */
-const MAX_DELAY_MS = 2_147_483_647;
+const MAX_DELAY_MS = MAX_INTEGER_32BITS_SIGNED;
 
 /**
  * Fires a callback at a precise future instant. The executor claims a task
  * slightly before its `runAt` and schedules it here, so it fires at the exact
  * instant rather than on the next poll: steady-state precision is milliseconds.
+ * That precision also assumes the event loop is free at `runAt`; `setTimeout`
+ * only guarantees "not before", so a blocked loop fires late.
  *
  * A task already due (or past) fires on the next tick (delay 0). Pending timers
  * are tracked so {@link cancelAll} can clear them on shutdown.
  */
-@Service()
 export class PrecisionTimer {
 	private readonly pending = new Set<NodeJS.Timeout>();
 
@@ -50,8 +51,11 @@ export class PrecisionTimer {
 
 	/** Cancel every pending timer (e.g. on shutdown). */
 	cancelAll(): void {
-		for (const handle of this.pending) this.backend.clearTimer(handle);
+		// Snapshot then clear before clearing timers, so a timer callback removing
+		// itself from the set can't mutate what we iterate.
+		const handles = [...this.pending];
 		this.pending.clear();
+		for (const handle of handles) this.backend.clearTimer(handle);
 	}
 
 	get pendingCount(): number {
