@@ -3045,7 +3045,7 @@ export function useCanvasOperations() {
 		// a workflow without being able to create tags — don't let that abort the
 		// whole import. Link the tags that succeed and warn about the rest.
 		const results = await Promise.allSettled(
-			notFound.map(async (tag) => tagsStore.create(tag.name)),
+			notFound.map(async (tag) => await tagsStore.create(tag.name)),
 		);
 
 		for (const result of results) {
