@@ -1,9 +1,9 @@
 import { Time } from '@n8n/constants';
 
+import type { ScheduledJob } from '../types';
 import { DEFAULT_MATERIALIZER_OPTIONS, type MaterializerOptions } from './options';
 import { planOccurrences } from './plan';
-import type { RunInTransaction } from './transaction';
-import type { ScheduledJob } from '../types';
+import type { DueJobs, PlannedJob, RunInTransaction } from './transaction';
 
 export type { MaterializerOptions } from './options';
 
@@ -56,33 +56,74 @@ export async function materialize(
 		if (claimed === undefined) {
 			return { claimedJobs: 0, occurrences: 0, deferredJobs: 0 };
 		}
-		const { now, jobs } = claimed;
-
-		let deferredJobs = 0;
-		const occurrencesPlanned = jobs.map((job) => {
-			try {
-				return { job, plan: planOccurrences(job, now, options) };
-			} catch (error) {
-				deferredJobs++;
-				onPlanError?.(job, error);
-				// Defer: record nothing and retry after a backoff. Keeping nextRunAt set (never
-				// null) reserves null for its one meaning: the schedule is exhausted.
-				// The row passed validation at write time but can't be planned at claim time, e.g.:
-				// - the job's timezone isn't in this runtime's tzdata (written on a newer/other version);
-				// - the instance-default timezone a null cron timezone resolves to is misconfigured;
-				// - a rolled-back instance claims a schedule written in a shape this version can't evaluate.
-				const retryAt = new Date(
-					now.getTime() + options.planRetrySeconds * Time.seconds.toMilliseconds,
-				);
-				return {
-					job,
-					plan: { occurrences: [], nextRunAt: retryAt, lastFiredAt: job.lastFiredAt },
-				};
-			}
-		});
+		const { occurrencesPlanned, numberOfJobsDeferred } = planOrDeferJobs(
+			claimed,
+			options,
+			onPlanError,
+		);
 		const occurrences = await tx.recordOccurrences(occurrencesPlanned);
 		await tx.advanceJobs(occurrencesPlanned);
 
-		return { claimedJobs: jobs.length, occurrences, deferredJobs };
+		return {
+			claimedJobs: claimed.jobs.length,
+			occurrences,
+			deferredJobs: numberOfJobsDeferred,
+		};
 	});
+}
+
+function planOrDeferJobs(
+	dueJobs: DueJobs,
+	options: MaterializerOptions,
+	onPlanError?: OnJobPlanError,
+): {
+	occurrencesPlanned: PlannedJob[];
+	numberOfJobsDeferred: number;
+} {
+	return dueJobs.jobs.reduce(
+		(current, job) => {
+			const plan = planOrDeferJob(job, dueJobs.now, options, onPlanError);
+			return {
+				occurrencesPlanned: [...current.occurrencesPlanned, plan],
+				numberOfJobsDeferred: current.numberOfJobsDeferred + (plan.deferred ? 1 : 0),
+			};
+		},
+		{
+			occurrencesPlanned: [] as PlannedJob[],
+			numberOfJobsDeferred: 0,
+		},
+	);
+}
+
+function planOrDeferJob(
+	job: ScheduledJob,
+	now: Date,
+	options: MaterializerOptions,
+	onPlanError?: OnJobPlanError,
+): PlannedJob & {
+	deferred: boolean;
+} {
+	try {
+		return {
+			job,
+			plan: planOccurrences(job, now, options),
+			deferred: false,
+		};
+	} catch (error) {
+		onPlanError?.(job, error);
+		// Defer: record nothing and retry after a backoff. Keeping nextRunAt set (never
+		// null) reserves null for its one meaning: the schedule is exhausted.
+		// The row passed validation at write time but can't be planned at claim time, e.g.:
+		// - the job's timezone isn't in this runtime's tzdata (written on a newer/other version);
+		// - the instance-default timezone a null cron timezone resolves to is misconfigured;
+		// - a rolled-back instance claims a schedule written in a shape this version can't evaluate.
+		const retryAt = new Date(
+			now.getTime() + options.planRetrySeconds * Time.seconds.toMilliseconds,
+		);
+		return {
+			job,
+			plan: { occurrences: [], nextRunAt: retryAt, lastFiredAt: job.lastFiredAt },
+			deferred: true,
+		};
+	}
 }
