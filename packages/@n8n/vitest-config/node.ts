@@ -29,6 +29,9 @@ export const forkPoolOptions = (): InlineConfig => {
 export const createBaseInlineConfig = (options: InlineConfig = {}): InlineConfig => ({
 	silent: true,
 	globals: true,
+	// Restore `vi.spyOn` spies to their original implementation before each test, so
+	// spies set up once don't leak across tests. Packages may override via `options`.
+	restoreMocks: true,
 	environment: 'node',
 	...forkPoolOptions(),
 	reporters: process.env.CI === 'true' ? ['default', 'junit'] : ['default'],

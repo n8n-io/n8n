@@ -1,5 +1,6 @@
 import type { IExecuteFunctions, IBinaryData, INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
+import type { MockInstance } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 
 import * as helpers from '@utils/helpers';
@@ -14,14 +15,19 @@ import * as transport from './transport';
 
 describe('GoogleGemini Node', () => {
 	const executeFunctionsMock = mockDeep<IExecuteFunctions>();
-	const apiRequestMock = vi.spyOn(transport, 'apiRequest');
-	const getConnectedToolsMock = vi.spyOn(helpers, 'getConnectedTools');
-	const downloadFileMock = vi.spyOn(utils, 'downloadFile');
-	const uploadFileMock = vi.spyOn(utils, 'uploadFile');
-	const transferFileMock = vi.spyOn(utils, 'transferFile');
+	let apiRequestMock: MockInstance;
+	let getConnectedToolsMock: MockInstance;
+	let downloadFileMock: MockInstance;
+	let uploadFileMock: MockInstance;
+	let transferFileMock: MockInstance;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		apiRequestMock = vi.spyOn(transport, 'apiRequest');
+		getConnectedToolsMock = vi.spyOn(helpers, 'getConnectedTools');
+		downloadFileMock = vi.spyOn(utils, 'downloadFile');
+		uploadFileMock = vi.spyOn(utils, 'uploadFile');
+		transferFileMock = vi.spyOn(utils, 'transferFile');
 		executeFunctionsMock.getNode.mockReturnValue({ typeVersion: 1 } as INode);
 	});
 
