@@ -156,9 +156,10 @@ export function createListIntegrationTypesTool(context: InstanceAiContext) {
 		.description(
 			"List integration types that can be added to the agent's `integrations` array. Returns each " +
 				'chat platform with its supported `credentialTypes` and builder guidance (`capabilities`, ' +
-				'`useIntegrationWhen`, `useNodeToolWhen`). Call BEFORE resolving a credential, then resolve ' +
-				'a credential of ONE entry from `credentialTypes` (the credentials tool with action "list" ' +
-				'+ the ask-user tool).',
+				'`useIntegrationWhen`, `useNodeToolWhen`). To connect a chat channel, call the standalone ' +
+				'`configure_channel` tool with the chosen `integrationType` — it walks the user through ' +
+				'creating a new credential for the agent. Never resolve a chat-channel credential with ' +
+				'the `credentials` tool, and never write channel entries into `integrations` directly.',
 		)
 		.input(z.object({}))
 		.handler(async () => {

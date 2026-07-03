@@ -28,13 +28,20 @@ const view = computed<ChannelView>(() => SETUP_VIEWS[props.integrationType] ?? '
 
 // Resume the suspended configure_channel tool: approved = connected, else skipped.
 // Guarded so the connect-triggered close doesn't also fire a skip.
+// On failure we reopen the modal so the user can retry — confirmAction already
+// surfaces a toast, and without this the HITL step is stuck (channel may already
+// be persisted, but the tool never resumes).
 function finish(approved: boolean, resolution: 'approved' | 'deferred') {
 	if (submitted.value || thread.resolvedConfirmationIds.has(props.requestId)) return;
 	submitted.value = true;
 	open.value = false;
 	void thread.confirmAction(props.requestId, { kind: 'approval', approved }).then((ok) => {
-		if (ok) thread.resolveConfirmation(props.requestId, resolution);
-		else submitted.value = false;
+		if (ok) {
+			thread.resolveConfirmation(props.requestId, resolution);
+		} else {
+			submitted.value = false;
+			open.value = true;
+		}
 	});
 }
 
