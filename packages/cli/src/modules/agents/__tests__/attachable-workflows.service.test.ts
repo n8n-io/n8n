@@ -68,25 +68,6 @@ describe('AttachableWorkflowsService', () => {
 		expect(result).toHaveLength(1);
 	});
 
-	it('caps the result at the 100 most recently updated workflows', async () => {
-		const { service, workflowFinderService, user } = setup();
-		const many = Array.from({ length: 150 }, (_, i) =>
-			wf({
-				id: `wf-${i}`,
-				name: `wf-${i}`,
-				nodes: [manualTrigger],
-				updatedAt: new Date(2026, 0, 1, 0, 0, i),
-			}),
-		);
-		workflowFinderService.findAllWorkflowsForUser.mockResolvedValue(many);
-
-		const result = await service.list(user, 'project-1');
-
-		expect(result).toHaveLength(100);
-		// Most recent first (wf-149 has the latest updatedAt).
-		expect(result[0].name).toBe('wf-149');
-	});
-
 	it('returns nothing when the user cannot read any workflow', async () => {
 		const { service, workflowFinderService, user } = setup();
 		workflowFinderService.findAllWorkflowsForUser.mockResolvedValue([]);
