@@ -32,201 +32,6 @@ describe('ExecutionRepository', () => {
 		vi.resetAllMocks();
 	});
 
-	describe('getExecutionsForPublicApi', () => {
-		const defaultLimit = 10;
-		const defaultQuery = {
-			select: [
-				'id',
-				'mode',
-				'retryOf',
-				'retrySuccessId',
-				'startedAt',
-				'stoppedAt',
-				'workflowId',
-				'waitTill',
-				'finished',
-				'status',
-			],
-			where: {},
-			order: { id: 'DESC' },
-			take: defaultLimit,
-		};
-
-		test('should get executions matching all filter parameters', async () => {
-			const params = {
-				limit: defaultLimit,
-				lastId: '3',
-				workflowIds: ['3', '4'],
-			};
-			const mockEntities = [{ id: '1' }, { id: '2' }];
-
-			entityManager.find.mockResolvedValueOnce(mockEntities);
-			const result = await executionRepository.getExecutionsForPublicApi(params);
-
-			expect(entityManager.find).toHaveBeenCalledWith(ExecutionEntity, {
-				...defaultQuery,
-				where: {
-					id: LessThan(params.lastId),
-					workflowId: In(params.workflowIds),
-				},
-			});
-			expect(result.length).toBe(mockEntities.length);
-			expect(result[0].id).toEqual(mockEntities[0].id);
-		});
-
-		test('should get executions matching the workflowIds filter', async () => {
-			const params = {
-				limit: 10,
-				workflowIds: ['3', '4'],
-			};
-			const mockEntities = [{ id: '1' }, { id: '2' }];
-
-			entityManager.find.mockResolvedValueOnce(mockEntities);
-			const result = await executionRepository.getExecutionsForPublicApi(params);
-
-			expect(entityManager.find).toHaveBeenCalledWith(ExecutionEntity, {
-				...defaultQuery,
-				where: {
-					workflowId: In(params.workflowIds),
-				},
-			});
-			expect(result.length).toBe(mockEntities.length);
-			expect(result[0].id).toEqual(mockEntities[0].id);
-		});
-
-		describe('with id filters', () => {
-			test.each`
-				lastId       | excludedExecutionsIds | expectedIdCondition
-				${'5'}       | ${['2', '3']}         | ${And(LessThan('5'), Not(In(['2', '3'])))}
-				${'5'}       | ${[]}                 | ${LessThan('5')}
-				${'5'}       | ${undefined}          | ${LessThan('5')}
-				${undefined} | ${['2', '3']}         | ${Not(In(['2', '3']))}
-				${undefined} | ${[]}                 | ${undefined}
-				${undefined} | ${undefined}          | ${undefined}
-			`(
-				'should find with id less than "$lastId" and not in "$excludedExecutionsIds"',
-				async ({ lastId, excludedExecutionsIds, expectedIdCondition }) => {
-					const params = {
-						limit: defaultLimit,
-						...(lastId ? { lastId } : {}),
-						...(excludedExecutionsIds ? { excludedExecutionsIds } : {}),
-					};
-					const mockEntities = [{ id: '1' }, { id: '2' }];
-					entityManager.find.mockResolvedValueOnce(mockEntities);
-					const result = await executionRepository.getExecutionsForPublicApi(params);
-
-					expect(entityManager.find).toHaveBeenCalledWith(ExecutionEntity, {
-						...defaultQuery,
-						where: {
-							...(expectedIdCondition ? { id: expectedIdCondition } : {}),
-						},
-					});
-					expect(result.length).toBe(mockEntities.length);
-					expect(result[0].id).toEqual(mockEntities[0].id);
-				},
-			);
-		});
-
-		describe('with status filter', () => {
-			test.each`
-				filterStatus  | entityStatus
-				${'canceled'} | ${'canceled'}
-				${'error'}    | ${In(['error', 'crashed'])}
-				${'running'}  | ${'running'}
-				${'success'}  | ${'success'}
-				${'waiting'}  | ${'waiting'}
-			`('should find all "$filterStatus" executions', async ({ filterStatus, entityStatus }) => {
-				const mockEntities = [{ id: '1' }, { id: '2' }];
-
-				entityManager.find.mockResolvedValueOnce(mockEntities);
-				const result = await executionRepository.getExecutionsForPublicApi({
-					limit: defaultLimit,
-					status: filterStatus,
-				});
-
-				expect(entityManager.find).toHaveBeenCalledWith(ExecutionEntity, {
-					...defaultQuery,
-					where: { status: entityStatus },
-				});
-				expect(result.length).toBe(mockEntities.length);
-				expect(result[0].id).toEqual(mockEntities[0].id);
-			});
-
-			test.each`
-				filterStatus
-				${'crashed'}
-				${'new'}
-				${'unknown'}
-			`(
-				'should find all executions and ignore status filter "$filterStatus"',
-				async ({ filterStatus }) => {
-					const mockEntities = [{ id: '1' }, { id: '2' }];
-
-					entityManager.find.mockResolvedValueOnce(mockEntities);
-					const result = await executionRepository.getExecutionsForPublicApi({
-						limit: defaultLimit,
-						status: filterStatus,
-					});
-
-					expect(entityManager.find).toHaveBeenCalledWith(ExecutionEntity, {
-						...defaultQuery,
-						where: {},
-					});
-					expect(result.length).toBe(mockEntities.length);
-					expect(result[0].id).toEqual(mockEntities[0].id);
-				},
-			);
-		});
-
-		describe('with includeData parameter', () => {
-			test('should not fetch executionData and metadata relations when includeData is false', async () => {
-				const params = {
-					limit: defaultLimit,
-					includeData: false,
-				};
-				const mockEntities = [{ id: '1' }, { id: '2' }];
-
-				entityManager.find.mockResolvedValueOnce(mockEntities);
-				const result = await executionRepository.getExecutionsForPublicApi(params);
-
-				expect(entityManager.find).toHaveBeenCalledWith(ExecutionEntity, {
-					...defaultQuery,
-					where: {},
-				});
-				expect(result.length).toBe(mockEntities.length);
-			});
-
-			test('should fetch executionData and metadata relations when includeData is true', async () => {
-				const params = {
-					limit: defaultLimit,
-					includeData: true,
-				};
-				const mockEntities = [
-					{
-						id: '1',
-						executionData: { data: '[]' },
-						metadata: [],
-					},
-					{
-						id: '2',
-						executionData: { data: '[]' },
-						metadata: [],
-					},
-				];
-
-				entityManager.find.mockResolvedValueOnce(mockEntities);
-				const result = await executionRepository.getExecutionsForPublicApi(params);
-
-				expect(entityManager.find).toHaveBeenCalledWith(ExecutionEntity, {
-					...defaultQuery,
-					where: {},
-					relations: ['executionData', 'metadata'],
-				});
-				expect(result.length).toBe(mockEntities.length);
-			});
-		});
-	});
-
 	describe('getExecutionsCountForPublicApi', () => {
 		test('should get executions matching all filter parameters', async () => {
 			const mockCount = 20;
@@ -304,9 +109,12 @@ describe('ExecutionRepository', () => {
 			test.each`
 				filterStatus  | entityStatus
 				${'canceled'} | ${'canceled'}
-				${'error'}    | ${In(['error', 'crashed'])}
+				${'crashed'}  | ${'crashed'}
+				${'error'}    | ${'error'}
+				${'new'}      | ${'new'}
 				${'running'}  | ${'running'}
 				${'success'}  | ${'success'}
+				${'unknown'}  | ${'unknown'}
 				${'waiting'}  | ${'waiting'}
 			`('should retrieve all $filterStatus executions', async ({ filterStatus, entityStatus }) => {
 				const limit = 10;
@@ -326,31 +134,20 @@ describe('ExecutionRepository', () => {
 				expect(result).toBe(mockCount);
 			});
 
-			test.each`
-				filterStatus
-				${'crashed'}
-				${'new'}
-				${'unknown'}
-			`(
-				'should find all executions and ignore status filter "$filterStatus"',
-				async ({ filterStatus }) => {
-					const limit = 10;
-					const mockCount = 20;
+			test('should find all executions without status filter', async () => {
+				const limit = 10;
+				const mockCount = 20;
 
-					entityManager.count.mockResolvedValueOnce(mockCount);
-					const result = await executionRepository.getExecutionsCountForPublicApi({
-						limit,
-						status: filterStatus,
-					});
+				entityManager.count.mockResolvedValueOnce(mockCount);
+				const result = await executionRepository.getExecutionsCountForPublicApi({ limit });
 
-					expect(entityManager.count).toHaveBeenCalledWith(ExecutionEntity, {
-						where: {},
-						take: limit,
-					});
+				expect(entityManager.count).toHaveBeenCalledWith(ExecutionEntity, {
+					where: {},
+					take: limit,
+				});
 
-					expect(result).toBe(mockCount);
-				},
-			);
+				expect(result).toBe(mockCount);
+			});
 		});
 	});
 
@@ -386,7 +183,7 @@ describe('ExecutionRepository', () => {
 
 			expect(entityManager.update).toHaveBeenCalledWith(
 				ExecutionEntity,
-				{ id: In(executionIds) },
+				{ id: In(executionIds), status: In(['new', 'running', 'unknown']) },
 				expect.objectContaining({ status: 'crashed', waitTill: null }),
 			);
 		});

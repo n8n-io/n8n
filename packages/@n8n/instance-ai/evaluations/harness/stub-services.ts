@@ -18,6 +18,7 @@
 // even though they synchronously return canned data — there's nothing to
 // await here.
 
+import { isRecord } from '@n8n/utils/is-record';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { jsonParse } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
@@ -502,10 +503,6 @@ function coerceHintPortMap(
 		result[key] = entry;
 	}
 	return Object.keys(result).length > 0 ? result : undefined;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
 function coerceVersion(value: unknown): number | number[] {

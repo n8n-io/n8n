@@ -1,7 +1,8 @@
 name: 'CI: Owners Review Recommendations'
 
-# Posts (or updates) a PR comment recommending which @n8n-io teams should
-# review the PR, based on file ownership defined in .github/OWNERS.
+# Posts (or updates) a PR comment with recommended reviewer teams (based on
+# file ownership in .github/OWNERS) and a breakdown of changed lines by
+# category (source code, test files, misc).
 #
 # Advisory only — does not gate merging.
 

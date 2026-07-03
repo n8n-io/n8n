@@ -87,7 +87,16 @@ function planReviewEvent(requestId: string): CapturedEvent {
 	};
 }
 
-function setupWizardEvent(requestId: string): CapturedEvent {
+function setupWizardEvent(
+	requestId: string,
+	setupRequests: Array<Record<string, unknown>> = [
+		{
+			nodeId: 'n1',
+			nodeName: 'Send Slack Message',
+			editableParameters: [{ name: 'channelId' }],
+		},
+	],
+): CapturedEvent {
 	return {
 		timestamp: 100,
 		type: 'confirmation-request',
@@ -100,7 +109,7 @@ function setupWizardEvent(requestId: string): CapturedEvent {
 				args: {},
 				severity: 'info',
 				message: 'Set up the workflow',
-				setupRequests: [{ nodeId: 'n1', nodeName: 'Send Slack Message', parameterRequests: [] }],
+				setupRequests,
 			},
 		},
 	};
@@ -210,6 +219,49 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		expect(agent.callCount).toBe(1);
 	});
 
+	it('routes ask-user questions to the agent even when scripted user turns remain (no deterministic shortcut)', async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({
+			action: 'answer_questions',
+			answers: [
+				{ questionId: 'cities', selectedOptions: [], customText: 'London, New York, Tokyo' },
+				{ questionId: 'destination', selectedOptions: ['Slack'] },
+			],
+		});
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'I need weather alerts.' },
+				{ role: 'assistant', text: 'Which cities and where should alerts go?' },
+				{
+					role: 'user',
+					text: 'London, New York, Tokyo. Alert above 30C via Telegram chat -1001234567890.',
+				},
+			],
+			agent,
+		});
+
+		const response = await proxy.respondToConfirmation(
+			questionEvent('req-scripted-q', [
+				{ id: 'cities', question: 'Which cities?', type: 'text' },
+				{
+					id: 'destination',
+					question: 'Where should alerts go?',
+					type: 'single',
+					options: ['Email', 'Slack', 'SMS'],
+				},
+			]),
+		);
+
+		expect(agent.callCount).toBe(1);
+		expect(response.kind).toBe('questions');
+		if (response.kind === 'questions') {
+			expect(response.answers).toEqual([
+				{ questionId: 'cities', selectedOptions: [], customText: 'London, New York, Tokyo' },
+				{ questionId: 'destination', selectedOptions: ['Slack'] },
+			]);
+		}
+	});
+
 	it('returns approval with userInput when the agent picks approve_or_reject', async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
@@ -228,6 +280,32 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 			expect(response.approved).toBe(true);
 			expect(response.userInput).toBe('looks good');
 		}
+	});
+
+	it('rejects plan review with remaining scripted details before consulting the agent', async () => {
+		const agent = new FakeAgent();
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Build an Airtable to Slack workflow.' },
+				{ role: 'assistant', text: 'Which table and channel?' },
+				{
+					role: 'user',
+					text: 'Use GET https://api.airtable.com/v0/app123abc/Tasks and Slack #daily-tasks.',
+				},
+			],
+			agent,
+		});
+
+		const response = await proxy.respondToConfirmation(planReviewEvent('req-scripted-plan'));
+
+		expect(response.kind).toBe('approval');
+		if (response.kind === 'approval') {
+			expect(response.approved).toBe(false);
+			expect(response.userInput).toContain('Before I approve');
+			expect(response.userInput).toContain('https://api.airtable.com/v0/app123abc/Tasks');
+			expect(response.userInput).toContain('#daily-tasks');
+		}
+		expect(agent.callCount).toBe(0);
 	});
 
 	it('returns approval with no userInput when the agent omits it', async () => {
@@ -286,6 +364,127 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 				'Send Slack Message': { channelId: 'general', text: 'hi' },
 			});
 			expect(response.nodeCredentials).toBeUndefined();
+		}
+	});
+
+	it('normalizes a single setup node parameter map into nodeParameters', async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({
+			action: 'apply_setup_wizard',
+			nodeParametersJson: JSON.stringify({
+				channelId: { __rl: true, mode: 'name', value: '#berlin-weather-rain' },
+			}),
+		});
+		const proxy = new UserProxyLlm({
+			conversation: [{ role: 'user', text: 'post rain alerts to #berlin-weather-rain' }],
+			agent,
+		});
+
+		const response = await proxy.respondToConfirmation(
+			setupWizardEvent('req-sw', [
+				{
+					nodeId: 'slack-rain',
+					nodeName: 'Send Rain Alert',
+					editableParameters: [{ name: 'channelId' }],
+				},
+			]),
+		);
+
+		expect(response.kind).toBe('setupWorkflowApply');
+		if (response.kind === 'setupWorkflowApply') {
+			expect(response.nodeParameters).toEqual({
+				'Send Rain Alert': {
+					channelId: { __rl: true, mode: 'name', value: '#berlin-weather-rain' },
+				},
+			});
+		}
+	});
+
+	it('maps setup node id keys to setup node names', async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({
+			action: 'apply_setup_wizard',
+			nodeParametersJson: JSON.stringify({
+				'slack-rain': { channelId: '#berlin-weather-rain' },
+			}),
+		});
+		const proxy = new UserProxyLlm({
+			conversation: [{ role: 'user', text: 'post rain alerts to #berlin-weather-rain' }],
+			agent,
+		});
+
+		const response = await proxy.respondToConfirmation(
+			setupWizardEvent('req-sw', [
+				{
+					nodeId: 'slack-rain',
+					nodeName: 'Send Rain Alert',
+					editableParameters: [{ name: 'channelId' }],
+				},
+			]),
+		);
+
+		expect(response.kind).toBe('setupWorkflowApply');
+		if (response.kind === 'setupWorkflowApply') {
+			expect(response.nodeParameters).toEqual({
+				'Send Rain Alert': { channelId: '#berlin-weather-rain' },
+			});
+		}
+	});
+
+	it('rejects mixed valid and unknown setup node keys', async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({
+			action: 'apply_setup_wizard',
+			nodeParametersJson: JSON.stringify({
+				'Send Rain Alert': { channelId: '#berlin-weather-rain' },
+				UnknownNode: { channelId: '#other-channel' },
+			}),
+		});
+		const proxy = new UserProxyLlm({
+			conversation: [{ role: 'user', text: 'post rain alerts to #berlin-weather-rain' }],
+			agent,
+		});
+
+		const response = await proxy.respondToConfirmation(
+			setupWizardEvent('req-sw', [
+				{
+					nodeId: 'slack-rain',
+					nodeName: 'Send Rain Alert',
+					editableParameters: [{ name: 'channelId' }],
+				},
+			]),
+		);
+
+		expect(response.kind).toBe('setupWorkflowApply');
+		if (response.kind === 'setupWorkflowApply') {
+			expect(response.nodeParameters).toEqual({});
+		}
+	});
+
+	it('rejects setup parameters that do not match the setup card', async () => {
+		const agent = new FakeAgent();
+		agent.enqueue({
+			action: 'apply_setup_wizard',
+			nodeParametersJson: JSON.stringify({ __rl: true, mode: 'name' }),
+		});
+		const proxy = new UserProxyLlm({
+			conversation: [{ role: 'user', text: 'post rain alerts to #berlin-weather-rain' }],
+			agent,
+		});
+
+		const response = await proxy.respondToConfirmation(
+			setupWizardEvent('req-sw', [
+				{
+					nodeId: 'slack-rain',
+					nodeName: 'Send Rain Alert',
+					editableParameters: [{ name: 'channelId' }],
+				},
+			]),
+		);
+
+		expect(response.kind).toBe('setupWorkflowApply');
+		if (response.kind === 'setupWorkflowApply') {
+			expect(response.nodeParameters).toEqual({});
 		}
 	});
 
@@ -391,7 +590,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		expect(response.kind).toBe('approval');
 	});
 
-	it('returns the permissive payload on a repeat requestId without consulting the agent', async () => {
+	it('reuses the first payload on a repeat requestId without consulting the agent', async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
 			action: 'answer_questions',
@@ -408,11 +607,35 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		await proxy.respondToConfirmation(event);
 		const second = await proxy.respondToConfirmation(event);
 
-		// Repeat falls back to buildAutoApprovePayload; for questions inputType
-		// that means kind: 'questions' with empty answers.
 		expect(second.kind).toBe('questions');
-		if (second.kind === 'questions') expect(second.answers).toEqual([]);
+		if (second.kind === 'questions') {
+			expect(second.answers).toEqual([{ questionId: 'q1', selectedOptions: ['#general'] }]);
+		}
 		expect(agent.callCount).toBe(1); // only first call invoked the agent
+	});
+
+	it('does not treat a requestId as handled when decision generation throws', async () => {
+		const agent = new FakeAgent();
+		agent.enqueue(new Error('temporary model failure'), {
+			action: 'answer_questions',
+			answers: [{ questionId: 'q1', selectedOptions: ['#general'] }],
+		});
+		const proxy = new UserProxyLlm({
+			conversation: [{ role: 'user', text: 'go' }],
+			agent,
+		});
+		const event = questionEvent('req-retry', [
+			{ id: 'q1', question: 'Q?', type: 'single', options: ['#general'] },
+		]);
+
+		await expect(proxy.respondToConfirmation(event)).rejects.toThrow('temporary model failure');
+		const response = await proxy.respondToConfirmation(event);
+
+		expect(response.kind).toBe('questions');
+		if (response.kind === 'questions') {
+			expect(response.answers).toEqual([{ questionId: 'q1', selectedOptions: ['#general'] }]);
+		}
+		expect(agent.callCount).toBe(2);
 	});
 
 	it('handles text input by routing to the agent and encoding as approval', async () => {
@@ -521,6 +744,24 @@ describe('UserProxyLlm.decideFollowUp', () => {
 
 		const decision = await proxy.decideFollowUp();
 		expect(decision.kind).toBe('done');
+	});
+
+	it('falls back to the next scripted user turn when follow-up generation fails', async () => {
+		const agent = new FakeAgent();
+		agent.enqueue(undefined);
+		const proxy = new UserProxyLlm({
+			conversation: [
+				{ role: 'user', text: 'Build a workflow.' },
+				{ role: 'assistant', text: 'Which channel?' },
+				{ role: 'user', text: 'Use #ops-alerts.' },
+			],
+			messageBudget: 3,
+			agent,
+		});
+
+		const decision = await proxy.decideFollowUp();
+
+		expect(decision).toEqual({ kind: 'followUp', message: 'Use #ops-alerts.' });
 	});
 
 	it('returns done when the agent picks a confirmation-only action', async () => {

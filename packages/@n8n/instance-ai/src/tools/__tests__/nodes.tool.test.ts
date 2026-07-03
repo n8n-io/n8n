@@ -212,6 +212,74 @@ describe('nodes tool', () => {
 			});
 		});
 
+		it("suggests the chat model for the user's configured provider on ai_languageModel requirements", async () => {
+			const searchableNodes = [
+				{
+					name: '@n8n/n8n-nodes-langchain.agent',
+					displayName: 'AI Agent',
+					description: 'Reasoning agent',
+					inputs: ['main'],
+					outputs: ['main'],
+					version: 1,
+					builderHint: { inputs: { ai_languageModel: { required: true } } },
+				},
+			];
+			const context = createMockContext();
+			(context.nodeService.listSearchable as Mock).mockResolvedValue(searchableNodes);
+			(context.credentialService.list as Mock).mockResolvedValue([
+				{ id: 'cred-1', name: 'My Anthropic key', type: 'anthropicApi' },
+			]);
+
+			const tool = createNodesTool(context, 'full');
+			const result = await executeTool(
+				tool,
+				{ action: 'search', query: 'agent', limit: 5 } as never,
+				{} as never,
+			);
+
+			expect(result).toMatchObject({
+				results: [
+					expect.objectContaining({
+						subnodeRequirements: [
+							expect.objectContaining({
+								connectionType: 'ai_languageModel',
+								suggestedNode: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
+							}),
+						],
+					}),
+				],
+			});
+		});
+
+		it('does not suggest a chat model when no LLM credential is configured', async () => {
+			const searchableNodes = [
+				{
+					name: '@n8n/n8n-nodes-langchain.agent',
+					displayName: 'AI Agent',
+					description: 'Reasoning agent',
+					inputs: ['main'],
+					outputs: ['main'],
+					version: 1,
+					builderHint: { inputs: { ai_languageModel: { required: true } } },
+				},
+			];
+			const context = createMockContext();
+			(context.nodeService.listSearchable as Mock).mockResolvedValue(searchableNodes);
+			(context.credentialService.list as Mock).mockResolvedValue([]);
+
+			const tool = createNodesTool(context, 'full');
+			const result = await executeTool(
+				tool,
+				{ action: 'search', query: 'agent', limit: 5 } as never,
+				{} as never,
+			);
+
+			const [node] = (result as { results: Array<{ subnodeRequirements?: unknown[] }> }).results;
+			expect(node.subnodeRequirements).toEqual([
+				expect.not.objectContaining({ suggestedNode: expect.anything() }),
+			]);
+		});
+
 		it('should return no search results when neither query nor connection type is provided', async () => {
 			const context = createMockContext();
 			(context.nodeService.listSearchable as Mock).mockResolvedValue([]);

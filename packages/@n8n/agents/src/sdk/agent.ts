@@ -8,8 +8,17 @@ import type { McpClient } from './mcp-client';
 import { Memory, normalizeMemoryConfig, resolveMemoryConfigDefaults } from './memory';
 import { Telemetry } from './telemetry';
 import { wrapToolForApproval } from './tool';
-import { AgentRuntime, type AgentRuntimeConfig } from '../runtime/agent-runtime';
-import { LOAD_TOOL_TOOL_NAME, SEARCH_TOOLS_TOOL_NAME } from '../runtime/deferred-tool-manager';
+import { AgentRuntime, type AgentRuntimeConfig } from '../runtime/loop/agent-runtime';
+import { RECALL_MEMORY_TOOL_NAME } from '../runtime/memory/episodic-memory';
+import type { ScopedMemoryTaskEvent } from '../runtime/memory/scoped-memory-task-runner';
+import type { FetchFn } from '../runtime/model/model-factory';
+import { mergeProviderOptions } from '../runtime/model/prompt-cache';
+import { AgentEventBus } from '../runtime/state/event-bus';
+import { RunStateManager } from '../runtime/state/run-state';
+import {
+	LOAD_TOOL_TOOL_NAME,
+	SEARCH_TOOLS_TOOL_NAME,
+} from '../runtime/tools/deferred-tool-manager';
 import {
 	DELEGATE_SUB_AGENT_TOOL_NAME,
 	INLINE_SUB_AGENT_ID,
@@ -20,12 +29,11 @@ import {
 	renderDelegateSubAgentPrompt,
 	type DelegateSubAgentRequest,
 	type DelegateSubAgentToolOutput,
-} from '../runtime/delegate-sub-agent-tool';
-import { RECALL_MEMORY_TOOL_NAME } from '../runtime/episodic-memory';
-import { AgentEventBus } from '../runtime/event-bus';
-import { RunStateManager } from '../runtime/run-state';
-import { isSdkOwnedBuiltInTool } from '../runtime/sdk-owned-tool';
-import { WRITE_TODOS_TOOL_NAME } from '../runtime/write-todos-tool';
+	type InlineSubAgentProviderToolsResolver,
+	type SubAgentTaskDifficulty,
+} from '../runtime/tools/delegate-sub-agent-tool';
+import { isSdkOwnedBuiltInTool } from '../runtime/tools/sdk-owned-tool';
+import { WRITE_TODOS_TOOL_NAME } from '../runtime/tools/write-todos-tool';
 import {
 	appendSkillCatalogToInstructions,
 	createRuntimeSkillSource,
@@ -49,6 +57,7 @@ import type {
 	MemoryConfig,
 	ModelConfig,
 	Provider,
+	PromptCachingConfig,
 	RunOptions,
 	StreamResult,
 	ThinkingConfig,
@@ -106,6 +115,8 @@ export interface AgentSnapshot {
 	hasEpisodicMemory: boolean;
 	/** The thinking config if set, otherwise null. */
 	thinking: ThinkingConfig | null;
+	/** The prompt caching config if set via `.promptCaching()`, otherwise null. */
+	promptCaching: PromptCachingConfig | null;
 	/** Tool-call concurrency limit if set, otherwise null. */
 	toolCallConcurrency: number | null;
 }
@@ -129,6 +140,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 	private modelConfig?: ModelConfig;
 
+	private modelFetchValue?: FetchFn;
+
 	private instructionProviderOpts?: ProviderOptions;
 
 	private instructionsText?: string;
@@ -147,6 +160,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 	private memoryConfig?: MemoryConfig;
 
+	private onMemoryTaskEvent?: (event: ScopedMemoryTaskEvent) => void;
+
 	// TODO: Guardrails are accepted by the builder API for forward
 	// compatibility but not yet wired to the runtime.
 	private inputGuardrails: BuiltGuardrail[] = [];
@@ -160,6 +175,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	private checkpointStore?: 'memory' | CheckpointStore;
 
 	private thinkingConfig?: ThinkingConfig;
+
+	private promptCachingConfig?: PromptCachingConfig;
 
 	private concurrencyValue?: number;
 
@@ -211,6 +228,15 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		} else {
 			this.modelConfig = providerOrIdOrConfig;
 		}
+		return this;
+	}
+
+	/**
+	 * Provide a proxy-aware `fetch` for the agent's model calls. When unset, model
+	 * construction falls back to the ambient HTTP_PROXY resolver.
+	 */
+	modelFetch(fetch: FetchFn): this {
+		this.modelFetchValue = fetch;
 		return this;
 	}
 
@@ -307,6 +333,12 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		return this;
 	}
 
+	/** Observe observational-memory background task lifecycle (observer/reflector). */
+	memoryTaskObserver(observer: (event: ScopedMemoryTaskEvent) => void): this {
+		this.onMemoryTaskEvent = observer;
+		return this;
+	}
+
 	/** Add a middleware. */
 	middleware(m: AgentMiddleware): this {
 		this.middlewares.push(m);
@@ -400,6 +432,26 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 */
 	thinking<P extends Provider>(_provider: P, config?: ThinkingConfigFor<P>): this {
 		this.thinkingConfig = config ?? {};
+		return this;
+	}
+
+	/**
+	 * Enable prompt caching with defaults tuned for agent workloads. Anthropic
+	 * models get a `1h` instruction-level cache breakpoint; OpenAI models get
+	 * `24h` retention plus an auto-generated, per-agent-version `promptCacheKey`.
+	 * Pass `{ anthropic: false }` / `{ openai: false }` to disable per provider,
+	 * or override individual fields (e.g. `{ anthropic: { ttl: '5m' } }`).
+	 *
+	 * @example
+	 * ```typescript
+	 * new Agent('assistant')
+	 *   .model('anthropic/claude-sonnet-4-5')
+	 *   .promptCaching()
+	 *   .instructions(LONG_SYSTEM_PROMPT);
+	 * ```
+	 */
+	promptCaching(config?: PromptCachingConfig): this {
+		this.promptCachingConfig = config ?? { enabled: true };
 		return this;
 	}
 
@@ -565,6 +617,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			hasObservationalMemory: this.memoryConfig?.observationalMemory !== undefined,
 			hasEpisodicMemory: this.memoryConfig?.episodicMemory !== undefined,
 			thinking: this.thinkingConfig ?? null,
+			promptCaching: this.promptCachingConfig ?? null,
 			toolCallConcurrency: this.concurrencyValue ?? null,
 		};
 	}
@@ -695,7 +748,12 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		options?: RunOptions & ExecutionOptions,
 	): (RunOptions & ExecutionOptions) | undefined {
 		if (!this.defaultExecutionOptions) return options;
-		return { ...this.defaultExecutionOptions, ...options };
+		const merged = { ...this.defaultExecutionOptions, ...options };
+		const providerOptions = mergeProviderOptions(
+			this.defaultExecutionOptions.providerOptions,
+			options?.providerOptions,
+		);
+		return providerOptions ? { ...merged, providerOptions } : merged;
 	}
 
 	/**
@@ -900,7 +958,6 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		allTools = this.completeInlineDelegateTools(allTools, {
 			deferredTools: finalDeferredTools,
 			modelConfig,
-			providerTools: this.providerTools,
 			...(telemetry !== undefined ? { telemetry } : {}),
 			...(this.concurrencyValue !== undefined
 				? { toolCallConcurrency: this.concurrencyValue }
@@ -926,6 +983,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		return {
 			name: this.name,
 			model: modelConfig,
+			...(this.modelFetchValue !== undefined ? { modelFetch: this.modelFetchValue } : {}),
 			instructions,
 			tools: allTools.length > 0 ? allTools : undefined,
 			deferredTools: finalDeferredTools.length > 0 ? finalDeferredTools : undefined,
@@ -939,11 +997,13 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			structuredOutput: this.outputSchema,
 			checkpointStorage: this.checkpointStore,
 			thinking: this.thinkingConfig,
+			promptCaching: this.promptCachingConfig,
 			toolCallConcurrency: this.concurrencyValue,
 			titleGeneration: memoryConfig?.titleGeneration,
 			telemetry: this.telemetryConfig ?? (await this.telemetryBuilder?.build()),
 			modelCost,
 			runState,
+			...(this.onMemoryTaskEvent ? { onMemoryTaskEvent: this.onMemoryTaskEvent } : {}),
 		};
 	}
 
@@ -952,7 +1012,6 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		options: {
 			deferredTools: BuiltTool[];
 			modelConfig: ModelConfig;
-			providerTools: BuiltProviderTool[];
 			telemetry?: BuiltTelemetry;
 			toolCallConcurrency?: number;
 			toolSearch?: { topK?: number };
@@ -966,6 +1025,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 				...options,
 				tools,
 				inlineSubAgentBlockedTools: delegateOptions.inlineSubAgentBlockedTools,
+				inlineSubAgentModelsByDifficulty: delegateOptions.inlineSubAgentModelsByDifficulty,
+				resolveInlineSubAgentProviderTools: delegateOptions.resolveInlineSubAgentProviderTools,
 			});
 			const hostRunner = delegateOptions.runSubAgent;
 			const completedTool = createDelegateSubAgentTool({
@@ -997,12 +1058,13 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	private createInlineSubAgentRunner(options: {
 		deferredTools: BuiltTool[];
 		modelConfig: ModelConfig;
-		providerTools: BuiltProviderTool[];
 		telemetry?: BuiltTelemetry;
 		toolCallConcurrency?: number;
 		toolSearch?: { topK?: number };
 		tools: BuiltTool[];
 		inlineSubAgentBlockedTools?: string[];
+		inlineSubAgentModelsByDifficulty?: Partial<Record<SubAgentTaskDifficulty, ModelConfig>>;
+		resolveInlineSubAgentProviderTools?: InlineSubAgentProviderToolsResolver;
 	}): (request: DelegateSubAgentRequest) => Promise<DelegateSubAgentToolOutput> {
 		return async (request) => {
 			const tools = filterInlineSubAgentTools(options.tools, options.inlineSubAgentBlockedTools);
@@ -1010,13 +1072,20 @@ export class Agent implements BuiltAgent, AgentBuilder {
 				options.deferredTools,
 				options.inlineSubAgentBlockedTools,
 			);
-			const providerTools = filterInlineSubAgentTools(
-				options.providerTools,
-				options.inlineSubAgentBlockedTools,
-			);
+			const childModelConfig = resolveInlineSubAgentModelConfig(request, options);
+			const providerTools = options.resolveInlineSubAgentProviderTools
+				? filterInlineSubAgentTools(
+						await options.resolveInlineSubAgentProviderTools(childModelConfig),
+						options.inlineSubAgentBlockedTools,
+					)
+				: [];
+			const childModelId = modelConfigToId(childModelConfig);
+			const childThinkingConfig = shouldInheritThinking(options.modelConfig, childModelConfig)
+				? this.thinkingConfig
+				: undefined;
 			const childRuntime = new AgentRuntime({
 				name: `${this.name}:${request.taskName}`,
-				model: options.modelConfig,
+				model: childModelConfig,
 				instructions:
 					'You are a focused subagent working on a specific delegated task. Complete the delegated task independently and return a concise, self-contained summary to your parent agent.',
 				tools: tools.length > 0 ? tools : undefined,
@@ -1024,8 +1093,9 @@ export class Agent implements BuiltAgent, AgentBuilder {
 				toolSearch: deferredTools.length > 0 ? options.toolSearch : undefined,
 				providerTools: providerTools.length > 0 ? providerTools : undefined,
 				instructionProviderOptions: this.instructionProviderOpts,
+				promptCaching: this.promptCachingConfig,
 				checkpointStorage: this.checkpointStore,
-				thinking: this.thinkingConfig,
+				...(childThinkingConfig !== undefined ? { thinking: childThinkingConfig } : {}),
 				...(options.telemetry !== undefined ? { telemetry: options.telemetry } : {}),
 				...(options.toolCallConcurrency !== undefined
 					? { toolCallConcurrency: options.toolCallConcurrency }
@@ -1038,11 +1108,18 @@ export class Agent implements BuiltAgent, AgentBuilder {
 						? { abortSignal: request.parentAbortSignal }
 						: {}),
 					...(options.telemetry !== undefined ? { telemetry: options.telemetry } : {}),
+					...(request.parentExecutionCounter !== undefined
+						? { executionCounter: request.parentExecutionCounter }
+						: {}),
 				});
 				if (result.pendingSuspend !== undefined && result.pendingSuspend.length > 0) {
-					return failedDelegatedChildSuspendOutput(request.taskPath);
+					return failedDelegatedChildSuspendOutput(request.taskPath, result.model ?? childModelId);
 				}
-				return generateResultToDelegateSubAgentOutput(request.taskPath, result);
+				const resultWithModel =
+					result.model === undefined && childModelId !== undefined
+						? { ...result, model: childModelId }
+						: result;
+				return generateResultToDelegateSubAgentOutput(request.taskPath, resultWithModel);
 			} finally {
 				await childRuntime.dispose();
 			}
@@ -1073,6 +1150,55 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		this.tools = this.tools.filter((tool) => !RUNTIME_SKILL_TOOL_NAMES.has(tool.name));
 		this.hasRuntimeSkillTool = false;
 	}
+}
+
+function resolveInlineSubAgentModelConfig(
+	request: DelegateSubAgentRequest,
+	options: {
+		modelConfig: ModelConfig;
+		inlineSubAgentModelsByDifficulty?: Partial<Record<SubAgentTaskDifficulty, ModelConfig>>;
+	},
+): ModelConfig {
+	if (request.difficulty === undefined) {
+		return options.modelConfig;
+	}
+
+	const mappedModel = options.inlineSubAgentModelsByDifficulty?.[request.difficulty];
+	return mappedModel ?? options.modelConfig;
+}
+
+function modelConfigToId(modelConfig: ModelConfig): string | undefined {
+	if (typeof modelConfig === 'string') return modelConfig;
+	if (typeof modelConfig === 'object' && modelConfig !== null && 'id' in modelConfig) {
+		return typeof modelConfig.id === 'string' ? modelConfig.id : undefined;
+	}
+	if (
+		typeof modelConfig === 'object' &&
+		modelConfig !== null &&
+		'provider' in modelConfig &&
+		'modelId' in modelConfig
+	) {
+		const provider = typeof modelConfig.provider === 'string' ? modelConfig.provider : undefined;
+		const modelId = typeof modelConfig.modelId === 'string' ? modelConfig.modelId : undefined;
+		return provider && modelId ? `${provider}/${modelId}` : undefined;
+	}
+	return undefined;
+}
+
+function modelConfigProvider(modelConfig: ModelConfig): string | undefined {
+	const modelId = modelConfigToId(modelConfig);
+	if (!modelId) return undefined;
+	const slashIndex = modelId.indexOf('/');
+	return slashIndex > 0 ? modelId.slice(0, slashIndex) : undefined;
+}
+
+function shouldInheritThinking(
+	parentModelConfig: ModelConfig,
+	childModelConfig: ModelConfig,
+): boolean {
+	const parentProvider = modelConfigProvider(parentModelConfig);
+	const childProvider = modelConfigProvider(childModelConfig);
+	return parentProvider !== undefined && parentProvider === childProvider;
 }
 
 export function buildInlineSubAgentBlockedToolNames(hostBlockedTools?: string[]): Set<string> {

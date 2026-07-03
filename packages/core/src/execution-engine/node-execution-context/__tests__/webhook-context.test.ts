@@ -5,6 +5,7 @@ import type {
 	INode,
 	INodeType,
 	INodeTypes,
+	IRunExecutionData,
 	IWebhookData,
 	IWorkflowExecuteAdditionalData,
 	Workflow,
@@ -77,6 +78,51 @@ describe('WebhookContext', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+	});
+
+	describe('connectionInputData', () => {
+		it('should expose the HTTP request as input data when there is no execution stack', () => {
+			const context = new WebhookContext(
+				workflow,
+				node,
+				additionalData,
+				mode,
+				webhookData,
+				[],
+				null,
+			);
+
+			expect(context.connectionInputData).toEqual([
+				{
+					json: {
+						body: { test: 'body' },
+						headers: { test: 'header' },
+						params: { test: 'param' },
+						query: { test: 'query' },
+					},
+				},
+			]);
+		});
+
+		it('should not throw and should leave input empty when the seeded execution stack has no main data', () => {
+			const runExecutionDataWithEmptyStack = {
+				executionData: {
+					nodeExecutionStack: [{ node, data: { main: [] }, source: null }],
+				},
+			} as unknown as IRunExecutionData;
+
+			const context = new WebhookContext(
+				workflow,
+				node,
+				additionalData,
+				mode,
+				webhookData,
+				[],
+				runExecutionDataWithEmptyStack,
+			);
+
+			expect(context.connectionInputData).toEqual([]);
+		});
 	});
 
 	describe('getCredentials', () => {

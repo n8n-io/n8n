@@ -100,6 +100,7 @@ vi.mock('@n8n/i18n', () => {
 				if (key === 'agents.tools.availableAiTools') return `AI tools (${count})`;
 				if (key === 'agents.tools.availableN8nTools') return `n8n tools (${count})`;
 				if (key === 'agents.tools.availableExternalTools') return `External tools (${count})`;
+				if (key === 'agents.tools.availableMcpServers') return `MCP servers (${count})`;
 				if (key === 'agents.tools.availableWorkflows') return `Workflows (${count})`;
 				if (key === 'agents.tools.noResults.withQuery') return `No tools match “${query}”`;
 			}
@@ -574,7 +575,7 @@ describe('AgentToolsModal', () => {
 
 		expect(uiStore.openModalWithData).not.toHaveBeenCalled();
 		expect(onConfirm).toHaveBeenCalledTimes(1);
-		const [tools] = onConfirm.mock.calls[0];
+		const [{ tools }] = onConfirm.mock.calls[0];
 		expect(tools[0].id).toBeUndefined();
 		expect(tools).toEqual([
 			expect.objectContaining({
@@ -610,7 +611,7 @@ describe('AgentToolsModal', () => {
 		const available = getByTestId('agent-tools-available-external-list');
 		await fireEvent.click(available.querySelector('button')!);
 
-		const [tools] = onConfirm.mock.calls[0];
+		const [{ tools }] = onConfirm.mock.calls[0];
 		expect(tools[1]).toMatchObject({ name: 'Wikipedia (1)' });
 	});
 
@@ -636,7 +637,7 @@ describe('AgentToolsModal', () => {
 		payload.data.onConfirm(configuredRef);
 
 		expect(onConfirm).toHaveBeenCalledTimes(1);
-		const [tools] = onConfirm.mock.calls[0];
+		const [{ tools }] = onConfirm.mock.calls[0];
 		expect(tools).toHaveLength(1);
 		expect(tools[0]).toStrictEqual(configuredRef);
 		expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
@@ -671,17 +672,19 @@ describe('AgentToolsModal', () => {
 		const aiTools = getByTestId('agent-tools-available-ai-list');
 		const n8nTools = getByTestId('agent-tools-available-n8n-list');
 		const externalTools = getByTestId('agent-tools-available-external-list');
+		const mcpTools = getByTestId('agent-tools-available-mcp-list');
 		const wrapper = getByTestId('agent-tools-list');
 
 		expect(wrapper.textContent).toContain('Workflows (1)');
+		expect(wrapper.textContent).toContain('MCP servers (1)');
 		expect(wrapper.textContent).toContain('AI tools (1)');
 		expect(wrapper.textContent).toContain('n8n tools (1)');
-		expect(wrapper.textContent).toContain('External tools (2)');
+		expect(wrapper.textContent).toContain('External tools (1)');
 		expect(workflows.textContent).toContain('Daily sales digest');
 		expect(aiTools.textContent).toContain('OpenAI');
 		expect(n8nTools.textContent).toContain('Code Tool');
 		expect(externalTools.textContent).toContain('Slack');
-		expect(externalTools.textContent).toContain('GitHub MCP');
+		expect(mcpTools.textContent).toContain('GitHub MCP');
 		expect(queryByText('Subagent')).toBeNull();
 	});
 
@@ -752,7 +755,7 @@ describe('AgentToolsModal', () => {
 		payload.data.onConfirm(editedRef);
 
 		expect(onConfirm).toHaveBeenCalled();
-		const [committed] = onConfirm.mock.calls[onConfirm.mock.calls.length - 1];
+		const [{ tools: committed }] = onConfirm.mock.calls[onConfirm.mock.calls.length - 1];
 		expect(committed).toHaveLength(1);
 		expect(committed[0].name).toBe('Slack renamed');
 	});
@@ -1026,7 +1029,7 @@ describe('AgentToolsModal', () => {
 			payload.data.onConfirm(savedRef);
 
 			expect(onConfirm).toHaveBeenCalledTimes(1);
-			const [tools] = onConfirm.mock.calls[0];
+			const [{ tools }] = onConfirm.mock.calls[0];
 			expect(tools).toHaveLength(1);
 			expect(tools[0]).toStrictEqual(savedRef);
 			expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);

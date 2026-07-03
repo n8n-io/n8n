@@ -90,6 +90,8 @@ export class LiveWebhooks implements IWebhookManager {
 
 		const webhook = await this.findWebhook(path, httpMethod);
 
+		response.locals.workflowId = webhook.workflowId;
+
 		if (webhook.isDynamic) {
 			const pathElements = path.split('/').slice(1);
 

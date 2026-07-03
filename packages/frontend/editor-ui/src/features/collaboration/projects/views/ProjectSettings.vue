@@ -25,7 +25,6 @@ import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N
 import type { TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
 import type { UserAction } from '@n8n/design-system';
 import { isProjectRole } from '@/app/utils/typeGuards';
-import { useUserRoleProvisioningStore } from '@/features/settings/sso/provisioning/composables/userRoleProvisioning.store';
 import ProjectExternalSecrets from '../components/ProjectExternalSecrets.vue';
 import ProjectSettingsCustomTelemetryTags from '../components/ProjectSettingsCustomTelemetryTags.vue';
 import { getResourcePermissions } from '@n8n/permissions';
@@ -54,7 +53,6 @@ const projectsStore = useProjectsStore();
 const rolesStore = useRolesStore();
 const cloudPlanStore = useCloudPlanStore();
 const settingsStore = useSettingsStore();
-const userRoleProvisioningStore = useUserRoleProvisioningStore();
 const toast = useToast();
 const router = useRouter();
 const telemetry = useTelemetry();
@@ -130,7 +128,7 @@ const firstLicensedRole = computed(
 );
 
 const projectMembersActions = computed<Array<UserAction<ProjectMemberData>>>(() => {
-	if (isProjectRoleProvisioningEnabled.value || isExpressionMappingEnabled.value) {
+	if (rolesManaged.value) {
 		return [];
 	}
 	return [
@@ -561,13 +559,7 @@ onBeforeMount(async () => {
 	await searchUsers('');
 });
 
-const isProjectRoleProvisioningEnabled = computed(
-	() => userRoleProvisioningStore.provisioningConfig?.scopesProvisionProjectRoles || false,
-);
-
-const isExpressionMappingEnabled = computed(
-	() => userRoleProvisioningStore.provisioningConfig?.scopesUseExpressionMapping || false,
-);
+const rolesManaged = computed(() => projectsStore.currentProject?.rolesManaged ?? false);
 
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('projects.settings'));
@@ -575,7 +567,7 @@ onMounted(async () => {
 	if (!canUpdateProject.value) return;
 
 	selectProjectNameIfMatchesDefault();
-	await Promise.all([userRoleProvisioningStore.getProvisioningConfig(), rolesStore.fetchRoles()]);
+	await rolesStore.fetchRoles();
 });
 </script>
 
@@ -615,6 +607,7 @@ onMounted(async () => {
 						<N8nIconPicker
 							v-model="projectIcon"
 							:button-tooltip="i18n.baseText('projects.settings.iconPicker.button.tooltip')"
+							show-color-picker
 							@update:model-value="onIconUpdated"
 						/>
 						<N8nFormInput
@@ -675,7 +668,7 @@ onMounted(async () => {
 							remote
 							:remote-method="debouncedUserSearch"
 							:loading="isLoadingUsers"
-							:disabled="isProjectRoleProvisioningEnabled || isExpressionMappingEnabled"
+							:disabled="rolesManaged"
 							@update:model-value="onAddMember"
 						>
 							<template #prefix>
@@ -696,22 +689,10 @@ onMounted(async () => {
 							</template>
 						</N8nInput>
 					</div>
-					<div v-if="isExpressionMappingEnabled" class="mb-m">
+					<div v-if="rolesManaged" class="mb-m" data-test-id="project-roles-managed-notice">
 						<N8nAlert
 							type="info"
-							:title="
-								i18n.baseText(
-									'settings.provisioningProjectRolesHandledByExpressionMapping.description',
-								)
-							"
-						/>
-					</div>
-					<div v-else-if="isProjectRoleProvisioningEnabled" class="mb-m">
-						<N8nAlert
-							type="info"
-							:title="
-								i18n.baseText('settings.provisioningProjectRolesHandledBySsoProvider.description')
-							"
+							:title="i18n.baseText('settings.projectRolesManaged.description')"
 						/>
 					</div>
 					<div v-if="relationUsers.length > 0" :class="$style.membersTableContainer">
@@ -722,7 +703,7 @@ onMounted(async () => {
 							:current-user-id="usersStore.currentUser?.id"
 							:project-roles="rolesStore.processedProjectRoles"
 							:actions="projectMembersActions"
-							:can-edit-role="!isProjectRoleProvisioningEnabled && !isExpressionMappingEnabled"
+							:can-edit-role="!rolesManaged"
 							@update:options="onUpdateMembersTableOptions"
 							@update:role="onUpdateMemberRole"
 							@show-role-upgrade-dialog="upgradeDialogVisible = true"

@@ -64,7 +64,8 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 }));
 
 describe('viewsData', () => {
-	beforeAll(() => {
+	// `restoreMocks` restores spies before each test, so re-establish them per-test.
+	beforeEach(() => {
 		setActivePinia(createTestingPinia());
 
 		const templatesStore = useTemplatesStore();

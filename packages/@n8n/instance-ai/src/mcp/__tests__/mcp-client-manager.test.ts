@@ -15,7 +15,8 @@ vi.mock('../../agent/sanitize-mcp-schemas', () => ({
 }));
 
 import { McpClient } from '@n8n/agents';
-import { createResultError, createResultOk, UserError } from 'n8n-workflow';
+import { createResultError, createResultOk } from '@n8n/utils/result';
+import { UserError } from 'n8n-workflow';
 
 import { sanitizeMcpToolSchemas } from '../../agent/sanitize-mcp-schemas';
 import type { SsrfUrlValidator } from '../mcp-client-manager';
@@ -27,6 +28,8 @@ const mockedSanitizeMcpToolSchemas = sanitizeMcpToolSchemas as unknown as Mock;
 interface LoggerMock {
 	warn: Mock;
 }
+
+const mockLogger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } as never;
 
 interface SanitizeOptions {
 	onError?: (error: {
@@ -57,7 +60,10 @@ describe('McpClientManager', () => {
 		it('accepts https URLs', async () => {
 			const manager = new McpClientManager();
 			await expect(
-				manager.getRegularTools([{ name: 'github', url: 'https://api.github.com/mcp' }]),
+				manager.getRegularTools(
+					[{ name: 'github', url: 'https://api.github.com/mcp' }],
+					mockLogger,
+				),
 			).resolves.toBeDefined();
 			expect(mockedMcpClient).toHaveBeenCalledTimes(1);
 		});
@@ -65,17 +71,17 @@ describe('McpClientManager', () => {
 		it('accepts http URLs', async () => {
 			const manager = new McpClientManager();
 			await expect(
-				manager.getRegularTools([{ name: 'local', url: 'http://localhost:3000/sse' }]),
+				manager.getRegularTools([{ name: 'local', url: 'http://localhost:3000/sse' }], mockLogger),
 			).resolves.toBeDefined();
 		});
 
 		it('rejects file:// URLs with a UserError naming the server', async () => {
 			const manager = new McpClientManager();
 			await expect(
-				manager.getRegularTools([{ name: 'sneaky', url: 'file:///etc/passwd' }]),
+				manager.getRegularTools([{ name: 'sneaky', url: 'file:///etc/passwd' }], mockLogger),
 			).rejects.toThrow(UserError);
 			await expect(
-				manager.getRegularTools([{ name: 'sneaky', url: 'file:///etc/passwd' }]),
+				manager.getRegularTools([{ name: 'sneaky', url: 'file:///etc/passwd' }], mockLogger),
 			).rejects.toThrow(/MCP server "sneaky".*file:/);
 			expect(mockedMcpClient).not.toHaveBeenCalled();
 		});
@@ -83,25 +89,26 @@ describe('McpClientManager', () => {
 		it('rejects ws:// URLs', async () => {
 			const manager = new McpClientManager();
 			await expect(
-				manager.getRegularTools([{ name: 'sock', url: 'ws://example.com/' }]),
+				manager.getRegularTools([{ name: 'sock', url: 'ws://example.com/' }], mockLogger),
 			).rejects.toThrow(/only http\(s\) URLs are allowed/);
 			expect(mockedMcpClient).not.toHaveBeenCalled();
 		});
 
 		it('rejects malformed URLs', async () => {
 			const manager = new McpClientManager();
-			await expect(manager.getRegularTools([{ name: 'broken', url: 'not a url' }])).rejects.toThrow(
-				/invalid URL/,
-			);
+			await expect(
+				manager.getRegularTools([{ name: 'broken', url: 'not a url' }], mockLogger),
+			).rejects.toThrow(/invalid URL/);
 			expect(mockedMcpClient).not.toHaveBeenCalled();
 		});
 
 		it('skips URL validation for stdio configs', async () => {
 			const manager = new McpClientManager();
 			await expect(
-				manager.getRegularTools([
-					{ name: 'local-stdio', command: '/usr/bin/mcp-server', args: ['--port', '3000'] },
-				]),
+				manager.getRegularTools(
+					[{ name: 'local-stdio', command: '/usr/bin/mcp-server', args: ['--port', '3000'] }],
+					mockLogger,
+				),
 			).resolves.toBeDefined();
 			expect(mockedMcpClient).toHaveBeenCalledTimes(1);
 		});
@@ -178,17 +185,23 @@ describe('McpClientManager', () => {
 	describe('SSRF policy (opt-in)', () => {
 		it('does not call validateUrl when no validator is supplied', async () => {
 			const manager = new McpClientManager();
-			await manager.getRegularTools([{ name: 'public', url: 'https://api.example.com/mcp' }]);
+			await manager.getRegularTools(
+				[{ name: 'public', url: 'https://api.example.com/mcp' }],
+				mockLogger,
+			);
 			// no validator → never invoked; confirm by absence of any later expectations
 		});
 
 		it('calls validateUrl for every configured URL when a validator is supplied', async () => {
 			const validator = createValidatorMock();
 			const manager = new McpClientManager(validator);
-			await manager.getRegularTools([
-				{ name: 'a', url: 'https://a.example.com/mcp' },
-				{ name: 'b', url: 'https://b.example.com/mcp' },
-			]);
+			await manager.getRegularTools(
+				[
+					{ name: 'a', url: 'https://a.example.com/mcp' },
+					{ name: 'b', url: 'https://b.example.com/mcp' },
+				],
+				mockLogger,
+			);
 			expect(validator.validateUrl).toHaveBeenCalledTimes(2);
 			expect(validator.validateUrl).toHaveBeenCalledWith('https://a.example.com/mcp');
 			expect(validator.validateUrl).toHaveBeenCalledWith('https://b.example.com/mcp');
@@ -199,7 +212,7 @@ describe('McpClientManager', () => {
 			validator.validateUrl.mockResolvedValue(createResultError(new Error('blocked: 10.0.0.1')));
 			const manager = new McpClientManager(validator);
 			await expect(
-				manager.getRegularTools([{ name: 'internal', url: 'http://10.0.0.1/mcp' }]),
+				manager.getRegularTools([{ name: 'internal', url: 'http://10.0.0.1/mcp' }], mockLogger),
 			).rejects.toThrow(UserError);
 			expect(mockedMcpClient).not.toHaveBeenCalled();
 		});
@@ -209,14 +222,14 @@ describe('McpClientManager', () => {
 			validator.validateUrl.mockResolvedValue(createResultError(new Error('blocked: 10.0.0.1')));
 			const manager = new McpClientManager(validator);
 			await expect(
-				manager.getRegularTools([{ name: 'internal', url: 'http://10.0.0.1/mcp' }]),
+				manager.getRegularTools([{ name: 'internal', url: 'http://10.0.0.1/mcp' }], mockLogger),
 			).rejects.toThrow(/MCP server "internal".*blocked: 10\.0\.0\.1/);
 		});
 
 		it('skips SSRF check for stdio configs even when validator is supplied', async () => {
 			const validator = createValidatorMock();
 			const manager = new McpClientManager(validator);
-			await manager.getRegularTools([{ name: 'stdio', command: '/usr/bin/mcp' }]);
+			await manager.getRegularTools([{ name: 'stdio', command: '/usr/bin/mcp' }], mockLogger);
 			expect(validator.validateUrl).not.toHaveBeenCalled();
 		});
 	});
@@ -224,7 +237,7 @@ describe('McpClientManager', () => {
 	describe('disconnect', () => {
 		it('disconnects every tracked client and clears caches', async () => {
 			const manager = new McpClientManager();
-			await manager.getRegularTools([{ name: 'a', url: 'https://a.example.com/' }]);
+			await manager.getRegularTools([{ name: 'a', url: 'https://a.example.com/' }], mockLogger);
 			expect(mockedMcpClient).toHaveBeenCalledTimes(1);
 
 			const disconnectMocks = mockedMcpClient.mock.results.map(
@@ -243,47 +256,59 @@ describe('McpClientManager', () => {
 		it('does not re-list tools for an unchanged config', async () => {
 			const manager = new McpClientManager();
 			const configs = [{ name: 'a', url: 'https://a.example.com/' }];
-			await manager.getRegularTools(configs);
-			await manager.getRegularTools(configs);
+			await manager.getRegularTools(configs, mockLogger);
+			await manager.getRegularTools(configs, mockLogger);
 			expect(mockedMcpClient).toHaveBeenCalledTimes(1);
 		});
 
 		it('does not share cached clients across different scoped fetch cache keys', async () => {
 			const manager = new McpClientManager();
-			await manager.getRegularTools([
-				{
-					name: 'shared',
-					url: 'https://shared.example.com/',
-					cacheKey: 'registry-connection:1',
-				},
-			]);
-			await manager.getRegularTools([
-				{
-					name: 'shared',
-					url: 'https://shared.example.com/',
-					cacheKey: 'registry-connection:2',
-				},
-			]);
+			await manager.getRegularTools(
+				[
+					{
+						name: 'shared',
+						url: 'https://shared.example.com/',
+						cacheKey: 'registry-connection:1',
+					},
+				],
+				mockLogger,
+			);
+			await manager.getRegularTools(
+				[
+					{
+						name: 'shared',
+						url: 'https://shared.example.com/',
+						cacheKey: 'registry-connection:2',
+					},
+				],
+				mockLogger,
+			);
 
 			expect(mockedMcpClient).toHaveBeenCalledTimes(2);
 		});
 
 		it('reuses cached clients when scoped fetch cache key matches', async () => {
 			const manager = new McpClientManager();
-			await manager.getRegularTools([
-				{
-					name: 'shared',
-					url: 'https://shared.example.com/',
-					cacheKey: 'registry-connection:1',
-				},
-			]);
-			await manager.getRegularTools([
-				{
-					name: 'shared',
-					url: 'https://shared.example.com/',
-					cacheKey: 'registry-connection:1',
-				},
-			]);
+			await manager.getRegularTools(
+				[
+					{
+						name: 'shared',
+						url: 'https://shared.example.com/',
+						cacheKey: 'registry-connection:1',
+					},
+				],
+				mockLogger,
+			);
+			await manager.getRegularTools(
+				[
+					{
+						name: 'shared',
+						url: 'https://shared.example.com/',
+						cacheKey: 'registry-connection:1',
+					},
+				],
+				mockLogger,
+			);
 
 			expect(mockedMcpClient).toHaveBeenCalledTimes(1);
 		});
@@ -295,8 +320,8 @@ describe('McpClientManager', () => {
 			const configs = [{ name: 'a', url: 'https://a.example.com/' }];
 
 			const [tools1, tools2] = await Promise.all([
-				manager.getRegularTools(configs),
-				manager.getRegularTools(configs),
+				manager.getRegularTools(configs, mockLogger),
+				manager.getRegularTools(configs, mockLogger),
 			]);
 
 			expect(mockedMcpClient).toHaveBeenCalledTimes(1);
@@ -314,9 +339,9 @@ describe('McpClientManager', () => {
 				};
 			});
 
-			await expect(manager.getRegularTools(configs)).rejects.toThrow('boom');
+			await expect(manager.getRegularTools(configs, mockLogger)).rejects.toThrow('boom');
 			// In-flight entry must be cleared so a retry actually re-attempts.
-			await expect(manager.getRegularTools(configs)).resolves.toBeDefined();
+			await expect(manager.getRegularTools(configs, mockLogger)).resolves.toBeDefined();
 			expect(mockedMcpClient).toHaveBeenCalledTimes(2);
 		});
 	});
@@ -344,18 +369,45 @@ describe('McpClientManager', () => {
 				};
 			});
 
-			const stranded = manager.getRegularTools(configs);
+			const stranded = manager.getRegularTools(configs, mockLogger);
 			// Yield so connectAndListTools registers the client before we tear down.
 			await Promise.resolve();
 			await manager.disconnect();
 
 			// New call must start a fresh client, not join the stranded promise.
-			await manager.getRegularTools(configs);
+			await manager.getRegularTools(configs, mockLogger);
 			expect(mockedMcpClient).toHaveBeenCalledTimes(2);
 
 			// Cleanup: let the stranded promise settle so the test doesn't hang.
 			deferred.resolve([]);
 			await stranded.catch(() => {});
+		});
+	});
+
+	describe('tool approval', () => {
+		const configs = [{ name: 'a', url: 'https://a.example.com/' }];
+
+		it('marks every server config as requiring approval by default', async () => {
+			const manager = new McpClientManager();
+			await manager.getRegularTools(configs, mockLogger);
+			expect(mockedMcpClient).toHaveBeenCalledWith(
+				expect.arrayContaining([expect.objectContaining({ requireApproval: true })]),
+			);
+		});
+
+		it('propagates requireApproval=false onto every server config', async () => {
+			const manager = new McpClientManager();
+			await manager.getRegularTools(configs, mockLogger, false);
+			expect(mockedMcpClient).toHaveBeenCalledWith(
+				expect.arrayContaining([expect.objectContaining({ requireApproval: false })]),
+			);
+		});
+
+		it('caches separately per approval mode', async () => {
+			const manager = new McpClientManager();
+			await manager.getRegularTools(configs, mockLogger, true);
+			await manager.getRegularTools(configs, mockLogger, false);
+			expect(mockedMcpClient).toHaveBeenCalledTimes(2);
 		});
 	});
 });

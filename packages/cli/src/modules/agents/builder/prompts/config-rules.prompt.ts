@@ -1,9 +1,8 @@
+import { AgentModelSchema, RunnableAgentJsonConfigSchema } from '@n8n/api-types';
 import type { JSONSchema7 } from 'json-schema';
 import type { ZodObject, ZodRawShape } from 'zod';
 import { z } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
-
-import { AgentModelSchema, RunnableAgentJsonConfigSchema } from '@n8n/api-types';
 
 import { jsonSchemaToCompactText } from '../../json-config/schema-text-serializer';
 
@@ -52,23 +51,17 @@ export function getConfigRulesSection(): string {
 
 - \`model\` must be "provider/model-name".
 - \`credential\` must be the id returned by \`resolve_llm\` or \`ask_llm\`.
-- Fresh agents must include a brief \`description\` explaining what the agent
-  does. Keep it specific and user-facing; never write placeholder copy.
 - Fresh agents must include
   \`memory: { "enabled": true, "storage": "n8n" }\`
   unless the user explicitly asks to disable memory.
 - \`memory.storage\` must be "n8n".
-- \`memory.episodicMemory\` requires \`ask_credential\` with
-  \`credentialType: "openAiApi"\`.
+- \`memory.episodicMemory\` requires \`ask_embedding_credential\` with
+  \`credentialType: "openAiApi"\`; use its returned \`credentialId\` value.
 - Memory worker model fields use \`{ "model": "provider/model-name", "credential": "<credentialId>" }\`;
   use only credential IDs returned by \`resolve_llm\`, \`ask_llm\`, or \`ask_credential\`.
-- Subagent delegation lives at top level under \`subAgents\`.
-  Delegation is always available; do not write an enabled/disabled flag.
-  \`subAgents.agents\` is only for optional saved/published n8n Agent specialists;
-  inline delegation uses \`subAgentId: "inline"\` at tool-call time and does not
-  require saved-agent refs. The runtime also exposes \`write_todos\` for planning
-  complex multi-step work before separate \`delegate_subagent\` calls. Only use
-  \`agentId\` values returned by \`list_sub_agents\`.
+- Sub-agent configuration lives at top level under \`subAgents\`. Load
+  \`agent-builder-sub-agents\` before adding refs or changing
+  \`subAgents.maxChildren\`.
 - Web search lives under \`config.webSearch\`. Only OpenAI and Anthropic models
   support native web search; for those providers, use
   \`{ "enabled": true, "provider": "native" }\` or omit \`provider\`. Every
@@ -78,8 +71,15 @@ export function getConfigRulesSection(): string {
   \`braveSearchApi\` for Brave and \`searXngApi\` for SearXNG.
 - Preserve existing Brave/SearXNG \`config.webSearch\` on model switches unless
   the user explicitly asks to change web-search method.
+- For OpenAI and Anthropic models, always include
+  \`config.promptCaching: { "enabled": true }\` — this is mandatory and must
+  never be disabled, even if the user asks. Omit \`config.promptCaching\`
+  entirely for every other provider. For Anthropic only, you may set
+  \`config.promptCaching.anthropic.ttl\` to \`"5m"\` or \`"1h"\` (default
+  \`"1h"\`) when the user asks to tune cache duration; OpenAI has no
+  sub-config.
 - \`config.maxIterations\` caps the number of agent loop iterations per run. Do not set or change this unless the user explicitly asks.
-- Fresh agents need a real model, credential, description, and instructions
+- Fresh agents need a real model, credential, and instructions
   before config is written.`;
 }
 

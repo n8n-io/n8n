@@ -255,7 +255,7 @@ describe('node grouping validation', () => {
 		expect(result.valid).toBe(true);
 	});
 
-	it('returns multiple-input-branches for a start node with multiple main inputs', () => {
+	it('allows grouping a start node with multiple main inputs', () => {
 		const graph = makeLinearGraph();
 		graph.nodes[1].type = 'n8n-nodes-base.merge';
 
@@ -271,17 +271,36 @@ describe('node grouping validation', () => {
 			},
 		});
 
+		expect(result.valid).toBe(true);
+	});
+
+	it('returns multiple-input-branches for extraction when the start node has multiple main inputs', () => {
+		const graph = makeLinearGraph();
+		graph.nodes[1].type = 'n8n-nodes-base.merge';
+
+		const result = validateNodeSelectionForExtraction({
+			nodes: [graph.nodes[1], graph.nodes[2]],
+			connectionsBySourceNode: graph.connections,
+			getNodeType: (node) =>
+				node.type === 'n8n-nodes-base.merge'
+					? makeNodeType({
+							name: 'n8n-nodes-base.merge',
+							inputs: [NodeConnectionTypes.Main, NodeConnectionTypes.Main],
+						})
+					: makeNodeType(),
+		});
+
 		expect(result.valid).toBe(false);
 		if (!result.valid) {
 			expect(result.reason).toBe('multiple-input-branches');
 		}
 	});
 
-	it('uses resolved inputs when checking start node branch count', () => {
+	it('uses resolved inputs when checking start node branch count for extraction', () => {
 		const graph = makeLinearGraph();
 		graph.nodes[1].type = 'n8n-nodes-base.merge';
 
-		const result = validateNodeSelectionForGrouping({
+		const result = validateNodeSelectionForExtraction({
 			nodes: [graph.nodes[1], graph.nodes[2]],
 			connectionsBySourceNode: graph.connections,
 			getNodeType: (node) =>
@@ -300,7 +319,7 @@ describe('node grouping validation', () => {
 		}
 	});
 
-	it('returns multiple-output-branches for an end node with multiple main outputs', () => {
+	it('allows grouping an end node with multiple main outputs', () => {
 		const graph = makeLinearGraph();
 		graph.nodes[1].type = 'n8n-nodes-base.if';
 
@@ -316,17 +335,36 @@ describe('node grouping validation', () => {
 			},
 		});
 
+		expect(result.valid).toBe(true);
+	});
+
+	it('returns multiple-output-branches for extraction when the end node has multiple main outputs', () => {
+		const graph = makeLinearGraph();
+		graph.nodes[1].type = 'n8n-nodes-base.if';
+
+		const result = validateNodeSelectionForExtraction({
+			nodes: [graph.nodes[0], graph.nodes[1]],
+			connectionsBySourceNode: graph.connections,
+			getNodeType: (node) =>
+				node.type === 'n8n-nodes-base.if'
+					? makeNodeType({
+							name: 'n8n-nodes-base.if',
+							outputs: [NodeConnectionTypes.Main, NodeConnectionTypes.Main],
+						})
+					: makeNodeType(),
+		});
+
 		expect(result.valid).toBe(false);
 		if (!result.valid) {
 			expect(result.reason).toBe('multiple-output-branches');
 		}
 	});
 
-	it('uses resolved outputs when checking end node branch count', () => {
+	it('uses resolved outputs when checking end node branch count for extraction', () => {
 		const graph = makeLinearGraph();
 		graph.nodes[1].type = 'n8n-nodes-base.switch';
 
-		const result = validateNodeSelectionForGrouping({
+		const result = validateNodeSelectionForExtraction({
 			nodes: [graph.nodes[0], graph.nodes[1]],
 			connectionsBySourceNode: graph.connections,
 			getNodeType: (node) =>

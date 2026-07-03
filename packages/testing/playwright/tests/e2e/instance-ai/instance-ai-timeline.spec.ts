@@ -4,7 +4,7 @@ test.use(instanceAiTestConfig);
 test.describe(
 	'Instance AI agent timeline @capability:proxy',
 	{
-		annotation: [{ type: 'owner', description: 'Instance AI' }],
+		annotation: [{ type: 'owner', description: 'instanceAI' }],
 	},
 	() => {
 		test.describe.configure({ timeout: 180_000 });
@@ -15,8 +15,6 @@ test.describe(
 			await n8n.instanceAi.sendMessage(
 				'Build a simple workflow with a manual trigger and a set node called "artifact card test"',
 			);
-
-			await n8n.instanceAi.approveBuildPlan();
 
 			await expect(n8n.instanceAi.getPreviewTabByName(/artifact card test/i)).toBeVisible({
 				timeout: 120_000,

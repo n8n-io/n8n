@@ -3,7 +3,6 @@ import { ref, computed, onMounted, watch } from 'vue';
 import { NodeConnectionTypes, type IRunData } from 'n8n-workflow';
 import RunData from '@/features/ndv/runData/components/RunData.vue';
 import RunInfo from '@/features/ndv/runData/components/RunInfo.vue';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import RunDataAi from '@/features/ndv/runData/components/ai/RunDataAi.vue';
@@ -27,7 +26,7 @@ import { N8nIcon, N8nRadioButtons, N8nSpinner, N8nText } from '@n8n/design-syste
 import { useUIStore } from '@/app/stores/ui.store';
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
-import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
+import { injectWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 // Types
 
 type RunDataRef = InstanceType<typeof RunData>;
@@ -79,15 +78,12 @@ const emit = defineEmits<{
 const workflowId = useInjectWorkflowId();
 const ndvStore = injectNDVStore();
 const nodeTypesStore = useNodeTypesStore();
-const workflowsStore = useWorkflowsStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
-const workflowExecutionStateStore = computed(() =>
-	useWorkflowExecutionStateStore(workflowDocumentStore.value.documentId),
-);
+const workflowExecutionStateStore = injectWorkflowExecutionStateStore();
 const telemetry = useTelemetry();
 const i18n = useI18n();
 const activeNode = computed(() => ndvStore.value.activeNode);
-const { dirtinessByName } = useNodeDirtiness();
+const { dirtinessByName } = useNodeDirtiness(() => workflowDocumentStore.value.documentId);
 const uiStore = useUIStore();
 
 // Composables
@@ -136,7 +132,9 @@ const hasAiMetadata = computed(() => {
 			node.value.name,
 			'ALL_NON_MAIN',
 		);
-		const resultData = connectedSubNodes.map(workflowsStore.getWorkflowResultDataByNodeName);
+		const resultData = connectedSubNodes.map(
+			workflowExecutionStateStore.value.getActiveExecutionRunDataByNodeName,
+		);
 
 		return resultData && Array.isArray(resultData) && resultData.length > 0;
 	}

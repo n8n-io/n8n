@@ -1,4 +1,9 @@
+import fc from 'fast-check';
+
+import { connectionsFromEdges, reachableMain } from './graph/graph-fixtures';
 import { getChildNodes } from '../src/common/get-child-nodes';
+import { getParentNodes } from '../src/common/get-parent-nodes';
+import { mapConnectionsByDestination } from '../src/common/map-connections-by-destination';
 import type { IConnections } from '../src/interfaces';
 import { NodeConnectionTypes } from '../src/interfaces';
 
@@ -250,5 +255,102 @@ describe('getChildNodes', () => {
 
 		expect(getChildNodes(aiToolChain, 'Z', NodeConnectionTypes.AiTool)).toEqual(['W', 'X', 'Y']);
 		expect(getChildNodes(aiToolChain, 'Z', NodeConnectionTypes.AiTool, 1)).toEqual(['Y']);
+	});
+});
+
+// ─── Exemplar: property-based tests with fast-check (DEVP-373) ───────────────
+// These complement the example tests above — properties generalise the contract
+// across thousands of random graphs instead of a handful of hand-built ones.
+// Pattern to copy for the other graph utilities (get-parent-nodes,
+// get-connected-nodes, …):
+//   1. a small, overlapping generator so edges collide → diamonds + cycles arise;
+//   2. a hand-built MODEL ORACLE the output is checked against (here: plain
+//      graph reachability);
+//   3. one named invariant per `fc.assert(fc.property(...))`, plus a metamorphic
+//      relation (here: child/parent duality under `mapConnectionsByDestination`).
+describe('getChildNodes — properties (fast-check)', () => {
+	const Main = NodeConnectionTypes.Main;
+
+	// `connectionsFromEdges` (index-pair graph builder) and `reachableMain` (model
+	// oracle) are shared with get-connected-nodes.test.ts via ./graph/graph-fixtures.
+
+	// Deliberately tiny, overlapping domains so paths collide (diamonds & cycles).
+	const graph = fc.integer({ min: 1, max: 5 }).chain((nodeCount) =>
+		fc.record({
+			nodeCount: fc.constant(nodeCount),
+			// Distinct (source → dest) edges: real workflow connections never
+			// duplicate an identical edge, and the traversal only de-dupes across
+			// branches, not identical direct successors — so model the domain with
+			// uniqueArray rather than asserting a guarantee the input never gives.
+			edges: fc.uniqueArray(
+				fc.tuple(
+					fc.integer({ min: 0, max: nodeCount - 1 }),
+					fc.integer({ min: 0, max: nodeCount - 1 }),
+				),
+				{ maxLength: 10, selector: ([from, to]) => `${from}->${to}` },
+			),
+			start: fc.integer({ min: 0, max: nodeCount - 1 }),
+		}),
+	);
+
+	it('COMPLETE_AND_SOUND — result set equals the main-reachable set', () => {
+		fc.assert(
+			fc.property(graph, ({ edges, start }) => {
+				const conns = connectionsFromEdges(edges);
+				expect(new Set(getChildNodes(conns, `n${start}`))).toEqual(
+					reachableMain(conns, `n${start}`),
+				);
+			}),
+		);
+	});
+
+	it('NO_SELF_NO_DUPES — start is excluded and every node appears at most once', () => {
+		fc.assert(
+			fc.property(graph, ({ edges, start }) => {
+				const result = getChildNodes(connectionsFromEdges(edges), `n${start}`);
+				expect(result).not.toContain(`n${start}`);
+				expect(new Set(result).size).toBe(result.length);
+			}),
+		);
+	});
+
+	it('DEPTH_1_IS_DIRECT — depth 1 returns exactly the direct successors', () => {
+		fc.assert(
+			fc.property(graph, ({ edges, start }) => {
+				const conns = connectionsFromEdges(edges);
+				const direct = new Set(
+					(conns[`n${start}`]?.[Main] ?? []).flatMap((o) => (o ?? []).map((c) => c.node)),
+				);
+				direct.delete(`n${start}`);
+				expect(new Set(getChildNodes(conns, `n${start}`, Main, 1))).toEqual(direct);
+			}),
+		);
+	});
+
+	it('DEPTH_MONOTONIC — a deeper traversal never drops a node', () => {
+		fc.assert(
+			fc.property(graph, fc.integer({ min: 1, max: 5 }), ({ edges, start }, k) => {
+				const conns = connectionsFromEdges(edges);
+				const deeper = new Set(getChildNodes(conns, `n${start}`, Main, k + 1));
+				for (const node of getChildNodes(conns, `n${start}`, Main, k)) {
+					expect(deeper.has(node)).toBe(true);
+				}
+			}),
+		);
+	});
+
+	it('CHILD_PARENT_DUALITY — c is a child of s ⇔ s is a parent of c in the inverted graph', () => {
+		fc.assert(
+			fc.property(graph, ({ nodeCount, edges, start }) => {
+				const conns = connectionsFromEdges(edges);
+				const inverted = mapConnectionsByDestination(conns);
+				const children = new Set(getChildNodes(conns, `n${start}`));
+				for (let i = 0; i < nodeCount; i++) {
+					expect(getParentNodes(inverted, `n${i}`).includes(`n${start}`)).toBe(
+						children.has(`n${i}`),
+					);
+				}
+			}),
+		);
 	});
 });

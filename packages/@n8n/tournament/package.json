@@ -1,6 +1,6 @@
 {
   "name": "@n8n/tournament",
-  "version": "1.2.0",
+  "version": "1.5.0",
   "description": "Output compatible rewrite of riot tmpl",
   "main": "dist/index.js",
   "module": "src/index.ts",
@@ -15,7 +15,6 @@
   },
   "scripts": {
     "clean": "rimraf dist .turbo",
-    "start": "ts-node src/index.ts",
     "typecheck": "tsc -p tsconfig.build.json --noEmit",
     "build": "tsc -p ./tsconfig.build.json",
     "build:unchecked": "tsc -p ./tsconfig.build.json --noCheck",
@@ -28,10 +27,6 @@
     "format": "biome format --write .",
     "format:check": "biome ci ."
   },
-  "engines": {
-    "node": ">=20.15",
-    "pnpm": ">=9.5"
-  },
   "files": [
     "src/",
     "dist/",
@@ -39,7 +34,6 @@
     "package.json",
     "tsconfig.json"
   ],
-  "packageManager": "pnpm@9.6.0",
   "keywords": [],
   "author": "",
   "license": "Apache-2.0",
@@ -47,11 +41,9 @@
     "@types/node": "^18.13.0",
     "@n8n/vitest-config": "workspace:*",
     "@vitest/coverage-v8": "catalog:",
+    "vite": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:",
-    "nodemon": "^2.0.20",
-    "ts-node": "^10.9.1",
-    "tsc-alias": "^1.8.7",
     "typescript": "^5.0.0"
   },
   "dependencies": {

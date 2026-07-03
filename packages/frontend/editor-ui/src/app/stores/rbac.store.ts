@@ -43,6 +43,7 @@ export const useRBACStore = defineStore(STORES.RBAC, () => {
 		insights: {},
 		dataTable: {},
 		execution: {},
+		testRun: {},
 		workflowTags: {},
 		role: {},
 		mcp: {},
@@ -56,6 +57,7 @@ export const useRBACStore = defineStore(STORES.RBAC, () => {
 		instanceAi: {},
 		securitySettings: {},
 		roleMappingRule: {},
+		otel: {},
 	});
 
 	function addGlobalRole(role: Role) {

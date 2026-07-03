@@ -6,6 +6,7 @@ import { Service } from '@n8n/di';
 import { In } from '@n8n/typeorm';
 import {
 	calculateWorkflowChecksum,
+	jsonParse,
 	WORKFLOW_CHECKSUM_FIELDS,
 	type IWorkflowSettings,
 } from 'n8n-workflow';
@@ -19,6 +20,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { UpdateWorkflowsAvailabilityDto } from './dto/update-workflows-availability.dto';
 
 const KEY = 'mcp.access.enabled';
+const REDIRECT_URIS_KEY = 'mcp.oauth.allowedRedirectUris';
 
 const BULK_CHUNK_SIZE = 500;
 
@@ -75,6 +77,31 @@ export class McpSettingsService {
 		);
 
 		await this.cacheService.set(KEY, enabled.toString());
+	}
+
+	async getAllowedRedirectUris(): Promise<string[]> {
+		const cachedUris = await this.cacheService.get<string>(REDIRECT_URIS_KEY);
+
+		if (cachedUris !== undefined) {
+			return jsonParse<string[]>(cachedUris, { fallbackValue: [] });
+		}
+
+		const row = await this.settingsRepository.findByKey(REDIRECT_URIS_KEY);
+
+		const uris: string[] = row?.value ? jsonParse<string[]>(row.value, { fallbackValue: [] }) : [];
+
+		await this.cacheService.set(REDIRECT_URIS_KEY, JSON.stringify(uris));
+
+		return uris;
+	}
+
+	async setAllowedRedirectUris(uris: string[]): Promise<void> {
+		await this.settingsRepository.upsert(
+			{ key: REDIRECT_URIS_KEY, value: JSON.stringify(uris), loadOnStartup: true },
+			['key'],
+		);
+
+		await this.cacheService.set(REDIRECT_URIS_KEY, JSON.stringify(uris));
 	}
 
 	async bulkSetAvailableInMCP(

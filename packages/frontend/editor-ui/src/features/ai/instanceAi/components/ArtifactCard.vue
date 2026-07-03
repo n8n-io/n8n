@@ -64,7 +64,9 @@ function handleClick(e: MouseEvent) {
 				{{ i18n.baseText('instanceAi.artifactsPanel.archived') }}
 			</span>
 		</template>
-		<N8nText v-if="props.metadata" :class="$style.metadata">{{ props.metadata }}</N8nText>
+		<N8nText v-if="props.metadata" color="text-light" :class="$style.metadata">
+			{{ props.metadata }}
+		</N8nText>
 	</N8nCard>
 </template>
 
@@ -107,7 +109,6 @@ function handleClick(e: MouseEvent) {
 }
 
 .metadata {
-	color: var(--color--text--tint-2);
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;

@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useEvaluationsWizardSidepanelExperiment } from '@/experiments/evaluationsWizardSidepanel/useEvaluationsWizardSidepanelExperiment';
 import { useEvaluationsWizardSidepanelStore } from '../../wizardSidepanel.store';
 import { useAiRootNodes } from '../../composables/useAiRootNodes';
@@ -13,13 +14,14 @@ import { useStorage } from '@/app/composables/useStorage';
 import { LOCAL_STORAGE_EVALUATIONS_CANVAS_INFO_CARD_DISMISSED } from '@/app/constants';
 import { CANNED_METRICS, LLM_JUDGE_METRIC_KEYS } from '../../evaluation.constants';
 import CheckCard from '../WizardSidepanel/CheckCard.vue';
+import { useEvaluationsLicense } from '../../composables/useEvaluationsLicense';
 
 // Preview cards that scroll in the marquee at the top of the info card. We
 // duplicate the list once so the CSS `translateY(-50%)` loop reads as a
 // continuous scroll — single-list looping would visibly snap back. The
-// `LLM-as-Judge` pill is only shown for metrics in `LLM_JUDGE_METRIC_KEYS`
-// (correctness, helpfulness) — labelling Tools Used / String Similarity /
-// Categorization as judge-based would be wrong, those are deterministic.
+// `AI` pill is only shown for metrics in `LLM_JUDGE_METRIC_KEYS`
+// (correctness, helpfulness) — labelling the exact-match / string-similarity /
+// tools-used checks as AI-judged would be wrong, those are deterministic.
 const marqueeMetrics = computed(() =>
 	[...CANNED_METRICS, ...CANNED_METRICS].map((m) => ({
 		...m,
@@ -41,12 +43,14 @@ const marqueeMetrics = computed(() =>
 // nature of evaluation configs.
 
 const locale = useI18n();
+const telemetry = useTelemetry();
 const wizardStore = useEvaluationsWizardSidepanelStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const rootStore = useRootStore();
 const aiRootNodes = useAiRootNodes();
 const { isFeatureEnabled: isEvaluationsWizardSidepanelEnabled } =
 	useEvaluationsWizardSidepanelExperiment();
+const { isLicensed, ensureLicenseLoaded } = useEvaluationsLicense();
 
 const hasConfigs = ref<boolean | null>(null);
 
@@ -81,6 +85,7 @@ const isDismissed = computed(() => {
 const shouldRenderModuleQualifies = computed(
 	() =>
 		isEvaluationsWizardSidepanelEnabled.value &&
+		isLicensed.value &&
 		isWorkflowActive.value &&
 		hasAiNodes.value &&
 		!isDismissed.value,
@@ -94,6 +99,10 @@ const shouldRenderModuleQualifies = computed(
 const isVisible = computed(
 	() => shouldRenderModuleQualifies.value && hasConfigs.value === false && !wizardStore.isOpen,
 );
+
+onMounted(() => {
+	void ensureLicenseLoaded();
+});
 
 async function checkConfigs() {
 	const wfId = workflowId.value;
@@ -165,6 +174,10 @@ function dismiss() {
 }
 
 function openWizard() {
+	telemetry.track('User opened evaluations wizard', {
+		workflow_id: workflowId.value,
+		source: 'canvas_info_card',
+	});
 	wizardStore.open(0);
 }
 </script>

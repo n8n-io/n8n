@@ -403,6 +403,12 @@ describe('serverToCredentialDescription', () => {
 					default: 'https://mcp.notion.com/mcp',
 				},
 				{
+					displayName: 'Resource URL',
+					name: 'resourceUrl',
+					type: 'hidden',
+					default: '',
+				},
+				{
 					displayName: 'Allowed HTTP Request Domains',
 					name: 'allowedHttpRequestDomains',
 					type: 'hidden',

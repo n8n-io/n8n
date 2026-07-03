@@ -1,4 +1,6 @@
 import type {
+	AddDatasetRowDto,
+	DatasetCandidateResponse,
 	EvaluationConfigDto,
 	StartTestRunPayload,
 	UpsertEvaluationConfigDto,
@@ -19,6 +21,7 @@ export interface TestRunRecord {
 	errorCode?: string;
 	errorDetails?: Record<string, unknown>;
 	finalResult?: 'success' | 'error' | 'warning';
+	evaluationConfigId?: string;
 }
 
 interface GetTestRunParams {
@@ -194,6 +197,36 @@ export const deleteEvaluationConfig = async (
 		context,
 		'DELETE',
 		`/workflows/${workflowId}/evaluation-configs/${configId}`,
+	);
+};
+
+// Inspect a successful execution against an evaluation config for the "Add to dataset" modal.
+export const getDatasetCandidate = async (
+	context: IRestApiContext,
+	workflowId: string,
+	configId: string,
+	executionId: string,
+) => {
+	return await makeRestApiRequest<DatasetCandidateResponse>(
+		context,
+		'GET',
+		`/workflows/${workflowId}/evaluation-configs/${configId}/dataset-candidate`,
+		{ executionId },
+	);
+};
+
+// Insert one row into the config's data table, built from the execution per the user-reviewed mapping.
+export const addDatasetRow = async (
+	context: IRestApiContext,
+	workflowId: string,
+	configId: string,
+	payload: AddDatasetRowDto,
+) => {
+	return await makeRestApiRequest<Array<{ id: number }>>(
+		context,
+		'POST',
+		`/workflows/${workflowId}/evaluation-configs/${configId}/dataset-rows`,
+		payload as unknown as JsonObject,
 	);
 };
 

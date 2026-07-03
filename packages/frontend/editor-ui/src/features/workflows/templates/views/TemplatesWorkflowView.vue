@@ -8,7 +8,8 @@ import { useRoute, useRouter } from 'vue-router';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useI18n } from '@n8n/i18n';
-import WorkflowPreview from '@/app/components/WorkflowPreview.vue';
+import WorkflowPreviewHost from '@/app/components/WorkflowPreviewHost.vue';
+import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import TemplatesView from './TemplatesView.vue';
 import RecommendedTemplateCard from '../recommendations/components/RecommendedTemplateCard.vue';
 
@@ -49,10 +50,6 @@ const openTemplateSetup = async (id: string, e: PointerEvent) => {
 		templatesStore,
 		source: 'template_preview',
 	});
-};
-
-const onHidePreview = () => {
-	showPreview.value = false;
 };
 
 const scrollToTop = () => {
@@ -102,6 +99,13 @@ watch(
 onMounted(async () => {
 	scrollToTop();
 
+	// The native preview canvas renders node icons/shapes from the node types
+	// store; community nodes used by templates resolve through previews.
+	if (nodeTypesStore.allNodeTypes.length === 0) {
+		void nodeTypesStore.getNodeTypes();
+	}
+	void nodeTypesStore.fetchCommunityNodePreviews();
+
 	if (template.value?.full) {
 		loading.value = false;
 		return;
@@ -133,6 +137,12 @@ const strippedWorkflow = computed<IWorkflowTemplate['workflow'] | undefined>(() 
 		pinData: {},
 	};
 });
+
+// Synthetic preview document id — template workflows have no instance
+// workflow id, so key by the template id.
+const previewDocumentId = computed(() =>
+	createWorkflowDocumentId(`template-${templateId.value}`, 'preview'),
+);
 </script>
 
 <template>
@@ -145,11 +155,10 @@ const strippedWorkflow = computed<IWorkflowTemplate['workflow'] | undefined>(() 
 		<template v-if="!notFoundError" #content>
 			<div :class="$style.previewWrapper">
 				<div :class="$style.image">
-					<WorkflowPreview
-						v-if="showPreview"
-						:loading="loading"
+					<WorkflowPreviewHost
+						v-if="showPreview && !loading && strippedWorkflow"
+						:document-id="previewDocumentId"
 						:workflow="strippedWorkflow"
-						@close="onHidePreview"
 					/>
 				</div>
 			</div>

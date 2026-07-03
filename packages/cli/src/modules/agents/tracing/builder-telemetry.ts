@@ -3,14 +3,32 @@ import type { ModelConfig, LangSmithTelemetry as RuntimeLangSmithTelemetry } fro
 const DEFAULT_PROJECT_NAME = 'agent-builder';
 const UNKNOWN_MODEL_ID = 'unknown';
 
+export interface BuilderTelemetryProxyConfig {
+	apiUrl: string;
+	getAuthHeaders: () => Promise<Record<string, string>>;
+}
+
+function readBooleanEnvFlag(value: string | undefined): boolean | undefined {
+	const normalized = value?.toLowerCase();
+	if (normalized === 'true') return true;
+	if (normalized === 'false') return false;
+	return undefined;
+}
+
 /**
  * Tracing is on when an API key is present and the tracing flag is not
- * explicitly disabled. The OTLP exporter needs the key to authenticate, so
- * setting only the flag would silently drop spans.
+ * explicitly disabled. In Cloud, the AI assistant service proxy manages
+ * LangSmith auth, so proxy availability is the only no-local-key path.
  */
-export function isLangSmithEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
-	const tracingFlag = env.LANGCHAIN_TRACING_V2 ?? env.LANGSMITH_TRACING;
-	if (tracingFlag?.toLowerCase() === 'false') return false;
+export function isLangSmithEnabled(
+	env: NodeJS.ProcessEnv = process.env,
+	proxyAvailable = false,
+): boolean {
+	if (readBooleanEnvFlag(env.N8N_DIAGNOSTICS_ENABLED) === false) return false;
+
+	const tracingFlag = readBooleanEnvFlag(env.LANGCHAIN_TRACING_V2 ?? env.LANGSMITH_TRACING);
+	if (tracingFlag === false) return false;
+	if (proxyAvailable) return true;
 
 	return Boolean(env.LANGSMITH_API_KEY ?? env.LANGCHAIN_API_KEY);
 }
@@ -42,6 +60,7 @@ export interface BuilderTelemetryOptions {
 	userId: string;
 	threadId: string;
 	model: ModelConfig;
+	tracingProxyConfig?: BuilderTelemetryProxyConfig;
 }
 
 /**
@@ -56,14 +75,23 @@ export async function buildBuilderTelemetry(
 	options: BuilderTelemetryOptions,
 	env: NodeJS.ProcessEnv = process.env,
 ): Promise<RuntimeLangSmithTelemetry | undefined> {
-	if (!isLangSmithEnabled(env)) return undefined;
+	const { tracingProxyConfig } = options;
+	if (!isLangSmithEnabled(env, !!tracingProxyConfig)) return undefined;
 
 	const project = env.LANGSMITH_PROJECT ?? env.LANGCHAIN_PROJECT ?? DEFAULT_PROJECT_NAME;
 	const endpoint = env.LANGSMITH_ENDPOINT ?? env.LANGCHAIN_ENDPOINT;
 	const { LangSmithTelemetry } = await import('@n8n/agents');
 	return new LangSmithTelemetry({
 		project,
-		...(endpoint ? { endpoint } : {}),
+		...(tracingProxyConfig
+			? {
+					apiKey: '-',
+					endpoint: tracingProxyConfig.apiUrl,
+					headers: tracingProxyConfig.getAuthHeaders,
+				}
+			: endpoint
+				? { endpoint }
+				: {}),
 	})
 		.functionId('agent-builder')
 		.metadata({

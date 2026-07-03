@@ -6,14 +6,13 @@ import {
 	PERSONAL_SPACE_PUBLISHING_SETTING,
 	PERSONAL_SPACE_SHARING_SETTING,
 } from '@n8n/permissions';
-import type { DistributiveOmit } from '@n8n/utils';
+import type { DistributiveOmit } from '@n8n/utils/types';
 import type { Response } from 'express';
 
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
 import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
-import { isRedactionEnforcementEnabled } from '@/modules/redaction/redaction-enforcement.feature-flag';
 import { SecuritySettingsService } from '@/services/security-settings.service';
 
 /**
@@ -36,8 +35,6 @@ export class SecuritySettingsController {
 	@GlobalScope('securitySettings:manage')
 	@Get('/')
 	async getSecuritySettings(_req: AuthenticatedRequest, _res: Response) {
-		const redactionEnforcementEnabled = isRedactionEnforcementEnabled();
-
 		const [
 			settings,
 			publishedPersonalWorkflowsCount,
@@ -49,12 +46,8 @@ export class SecuritySettingsController {
 			this.securitySettingsService.getPublishedPersonalWorkflowsCount(),
 			this.securitySettingsService.getSharedPersonalWorkflowsCount(),
 			this.securitySettingsService.getSharedPersonalCredentialsCount(),
-			redactionEnforcementEnabled
-				? this.instanceRedactionEnforcementService.get()
-				: Promise.resolve(undefined),
+			this.instanceRedactionEnforcementService.get(),
 		]);
-
-		const redactionEnforcement = redactionSettings ? { floor: redactionSettings } : undefined;
 
 		return {
 			...settings,
@@ -62,7 +55,7 @@ export class SecuritySettingsController {
 			sharedPersonalWorkflowsCount,
 			sharedPersonalCredentialsCount,
 			managedByEnv: this.instanceSettingsLoaderConfig.securityPolicyManagedByEnv,
-			...(redactionEnforcement ? { redactionEnforcement } : {}),
+			redactionEnforcement: { floor: redactionSettings },
 		};
 	}
 
@@ -104,7 +97,7 @@ export class SecuritySettingsController {
 			});
 		}
 
-		if (dto.redactionEnforcement !== undefined && isRedactionEnforcementEnabled()) {
+		if (dto.redactionEnforcement !== undefined) {
 			const before = await this.instanceRedactionEnforcementService.get();
 			const after = dto.redactionEnforcement.floor;
 			updatedSettings.redactionEnforcement = { floor: after };

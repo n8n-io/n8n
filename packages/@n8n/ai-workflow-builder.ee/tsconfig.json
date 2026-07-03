@@ -11,8 +11,7 @@
 		"paths": {
 			"@/*": ["./src/*"]
 		},
-		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
-		"types": ["node", "vitest/globals"]
+		"types": ["node", "vitest/globals", "vite/client"]
 	},
 	"include": ["src/**/*.ts", "test/**/*.ts", "evaluations/**/*.ts", "scripts/**/*.ts"]
 }

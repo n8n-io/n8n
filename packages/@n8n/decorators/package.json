@@ -1,6 +1,6 @@
 {
   "name": "@n8n/decorators",
-  "version": "1.25.0",
+  "version": "1.29.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -37,5 +37,6 @@
     "@n8n/permissions": "workspace:*",
     "lodash": "catalog:",
     "n8n-workflow": "workspace:*"
-  }
+  },
+  "license": "LicenseRef-n8n-sustainable-use"
 }

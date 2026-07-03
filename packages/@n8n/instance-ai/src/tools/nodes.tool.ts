@@ -2,13 +2,15 @@
  * Consolidated nodes tool — list, search, describe, type-definition, suggested, explore-resources.
  */
 import { Tool } from '@n8n/agents';
+import { categoryList, suggestedNodesData } from '@n8n/ai-utilities/node-catalog';
 import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
 import { NodeSearchEngine } from './nodes/node-search-engine';
 import { AI_CONNECTION_TYPES, type SearchableNodeType } from './nodes/node-search-engine.types';
-import { categoryList, suggestedNodesData } from './nodes/suggested-nodes-data';
+import { pickPreferredChatModelNode } from './nodes/preferred-chat-model';
+import { buildCredentialMap } from './workflows/resolve-credentials';
 
 // ── Action schemas ──────────────────────────────────────────────────────────
 
@@ -25,7 +27,11 @@ const listAction = z.object({
 });
 
 const searchAction = z.object({
-	action: z.literal('search').describe('Search node types by name or AI connection type'),
+	action: z
+		.literal('search')
+		.describe(
+			'Search node types by name or AI connection type. Use for service-specific discovery — short service names like "Gmail" or "Slack", not full task phrases.',
+		),
 	query: z
 		.string()
 		.optional()
@@ -60,12 +66,20 @@ const nodeRequestSchema = z.union([
 ]);
 
 const typeDefinitionAction = z.object({
-	action: z.literal('type-definition').describe('Get TypeScript type definitions for nodes'),
+	action: z
+		.literal('type-definition')
+		.describe(
+			'Get TypeScript type definitions for nodes — exact parameter names, enum values, credential types, display conditions, and `@builderHint` annotations.',
+		),
 	nodeTypes: z.array(nodeRequestSchema).min(1).max(5).describe(NODE_TYPES_ARRAY_DESCRIPTION),
 });
 
 const suggestedAction = z.object({
-	action: z.literal('suggested').describe('Get curated node recommendations by category'),
+	action: z
+		.literal('suggested')
+		.describe(
+			'Get curated node recommendations by category. Call first when the workflow fits a known category.',
+		),
 	categories: z
 		.array(z.string())
 		.min(1)
@@ -76,7 +90,7 @@ const suggestedAction = z.object({
 const exploreResourcesAction = z.object({
 	action: z
 		.literal('explore-resources')
-		.describe("Query real resources for a node's RLC parameters"),
+		.describe("Query live credential-backed resource lists for a node's RLC parameters"),
 	nodeType: z.string().describe(NODE_TYPE_ID_DESCRIPTION),
 	version: z.number().describe('Node version, e.g. 4.7'),
 	methodName: z
@@ -174,9 +188,38 @@ async function handleSearch(
 		}),
 	);
 
+	// Steer the language model subnode toward a provider the user already has a
+	// credential for, so the builder stops defaulting to OpenAI when only another
+	// provider is configured. Only hits the credential list when relevant.
+	const hasLanguageModelRequirement = enriched.some((r) =>
+		r.subnodeRequirements?.some((req) => req.connectionType === 'ai_languageModel'),
+	);
+	if (!hasLanguageModelRequirement) {
+		return { results: enriched, totalResults: enriched.length };
+	}
+
+	const credentialMap = await buildCredentialMap(context.credentialService);
+	const suggestedModelNode = pickPreferredChatModelNode(credentialMap.keys());
+	if (!suggestedModelNode) {
+		return { results: enriched, totalResults: enriched.length };
+	}
+
+	const withSuggestions = enriched.map((r) =>
+		r.subnodeRequirements
+			? {
+					...r,
+					subnodeRequirements: r.subnodeRequirements.map((req) =>
+						req.connectionType === 'ai_languageModel'
+							? { ...req, suggestedNode: suggestedModelNode }
+							: req,
+					),
+				}
+			: r,
+	);
+
 	return {
-		results: enriched,
-		totalResults: enriched.length,
+		results: withSuggestions,
+		totalResults: withSuggestions.length,
 	};
 }
 
@@ -392,7 +435,7 @@ export function createNodesTool(
 
 	return new Tool('nodes')
 		.description(
-			'Work with n8n node types — discover, search, describe, get type definitions, and explore real resources.',
+			'Work with n8n node types. Use `suggested` for known workflow categories, `search` for service-specific discovery, `type-definition` before configuring nodes, and `explore-resources` for live credential-backed lists.',
 		)
 		.input(fullInputSchema)
 		.handler(async (input: FullInput) => {

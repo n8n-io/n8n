@@ -3,6 +3,7 @@
 // ---------------------------------------------------------------------------
 
 import type { InstanceAiAgentNode, InstanceAiMessage } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils/is-record';
 
 import type { N8nClient, WorkflowResponse } from '../clients/n8n-client';
 import type { AgentOutcome, EventOutcome, ExecutionSummary, WorkflowSummary } from '../types';
@@ -30,11 +31,21 @@ export async function snapshotWorkflowIds(client: N8nClient): Promise<Set<string
 // buildAgentOutcome
 // ---------------------------------------------------------------------------
 
+export interface BuildAgentOutcomeOptions {
+	/**
+	 * Last-resort workflow discovery by diffing all workflows visible to the
+	 * lane. This is unsafe under concurrent eval builds because an unrelated
+	 * run can create a workflow while the current thread produces no IDs.
+	 */
+	allowListDiffFallback?: boolean;
+}
+
 export async function buildAgentOutcome(
 	client: N8nClient,
 	eventOutcome: EventOutcome,
 	preRunWorkflowIds?: Set<string>,
 	claimedWorkflowIds?: Set<string>,
+	options: BuildAgentOutcomeOptions = {},
 ): Promise<AgentOutcome> {
 	const workflowsCreated: WorkflowSummary[] = [];
 	const workflowJsons: WorkflowResponse[] = [];
@@ -51,9 +62,10 @@ export async function buildAgentOutcome(
 	}
 
 	// Diff against pre-run snapshot to find workflows created by background tasks
-	// that didn't surface in the SSE events we parsed.
-	// When running concurrently, skip workflows already claimed by another run.
-	if (preRunWorkflowIds) {
+	// that didn't surface in the SSE events/messages we parsed. This is a
+	// single-thread fallback only: in concurrent evals a blocked/no-build thread
+	// can otherwise claim a workflow created by another test case.
+	if (preRunWorkflowIds && knownWfIds.size === 0 && options.allowListDiffFallback === true) {
 		try {
 			const currentWorkflows = await client.listWorkflows();
 			for (const wf of currentWorkflows) {
@@ -169,10 +181,6 @@ function collectWorkflowIds(node: InstanceAiAgentNode, ids: Set<string>): void {
 	for (const child of node.children) {
 		collectWorkflowIds(child, ids);
 	}
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function extractIdFromResult(result: unknown): string | undefined {

@@ -32,6 +32,10 @@ vi.mock('../nodes.tool', () => ({
 	})),
 }));
 
+vi.mock('../n8n-docs.tool', () => ({
+	createN8nDocsTool: vi.fn(() => ({ id: 'n8n-docs' })),
+}));
+
 vi.mock('../orchestration/complete-checkpoint.tool', () => ({
 	createCompleteCheckpointTool: vi.fn(() => ({ id: 'complete-checkpoint' })),
 }));
@@ -87,7 +91,7 @@ vi.mock('../workflows/build-workflow.tool', () => ({
 
 vi.mock('../workflows.tool', () => ({
 	createWorkflowsTool: vi.fn((_context: unknown, options?: unknown) => ({
-		id: options ? 'workflows-filtered' : 'workflows',
+		id: options ? 'workflows-orchestrator' : 'workflows',
 	})),
 }));
 
@@ -129,6 +133,7 @@ describe('domain tool construction', () => {
 			'data-tables': { id: 'data-tables' },
 			workspace: { id: 'workspace' },
 			research: { id: 'research' },
+			'n8n-docs': { id: 'n8n-docs' },
 			nodes: { id: 'nodes' },
 			'ask-user': { id: 'ask-user' },
 			'build-workflow': { id: 'build-workflow' },
@@ -141,13 +146,14 @@ describe('domain tool construction', () => {
 		const orchestratorTools = createOrchestratorDomainTools(context);
 
 		expect(Object.fromEntries(orchestratorTools)).toMatchObject({
-			workflows: { id: 'workflows' },
+			workflows: { id: 'workflows-orchestrator' },
 			evals: { id: 'evals' },
 			executions: { id: 'executions' },
 			credentials: { id: 'credentials' },
 			'data-tables': { id: 'data-tables' },
 			workspace: { id: 'workspace' },
 			research: { id: 'research' },
+			'n8n-docs': { id: 'n8n-docs' },
 			nodes: { id: 'nodes' },
 			'ask-user': { id: 'ask-user' },
 			'build-workflow': { id: 'build-workflow' },
@@ -156,7 +162,7 @@ describe('domain tool construction', () => {
 		const { createWorkflowsTool } = await import('../workflows.tool');
 		const { createNodesTool } = await import('../nodes.tool');
 		const { createDataTablesTool } = await import('../data-tables.tool');
-		expect(createWorkflowsTool).toHaveBeenCalledWith(context);
+		expect(createWorkflowsTool).toHaveBeenCalledWith(context, 'orchestrator');
 		expect(createNodesTool).toHaveBeenCalledWith(context);
 		expect(createDataTablesTool).toHaveBeenCalledWith(context);
 	});
@@ -175,7 +181,9 @@ describe('domain tool construction', () => {
 	it('includes parse-file tools when attachments are parseable', () => {
 		vi.mocked(isParseableAttachment).mockReturnValue(true);
 		const context = makeContext({
-			currentUserAttachments: [{ data: '', mimeType: 'text/html', fileName: 'page.html' }],
+			currentUserAttachments: [
+				{ type: 'file', data: '', mimeType: 'text/html', fileName: 'page.html' },
+			],
 		});
 
 		expect(createAllTools(context).get('parse-file')).toMatchObject({ id: 'parse-file' });
