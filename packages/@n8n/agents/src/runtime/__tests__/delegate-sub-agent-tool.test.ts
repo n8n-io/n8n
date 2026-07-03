@@ -43,6 +43,41 @@ describe('createDelegateSubAgentTool', () => {
 		expect(tool.outputSchema).toBeDefined();
 	});
 
+	it('defaults to the delegate_subagent name when none is provided', () => {
+		const tool = createDelegateSubAgentTool();
+
+		expect(tool.name).toBe(DELEGATE_SUB_AGENT_TOOL_NAME);
+		expect(tool.systemInstruction).toContain('delegate_subagent runs a focused child agent');
+		expect(tool.systemInstruction).toContain('WHEN TO USE delegate_subagent:');
+		expect(tool.systemInstruction).toContain('WHEN NOT TO USE delegate_subagent:');
+	});
+
+	it('renames the tool and interpolates the name into the system instruction', () => {
+		const tool = createDelegateSubAgentTool({ name: 'agent' });
+
+		expect(tool.name).toBe('agent');
+		expect(tool.systemInstruction).toContain('agent runs a focused child agent');
+		expect(tool.systemInstruction).toContain('WHEN TO USE agent:');
+		expect(tool.systemInstruction).toContain('WHEN NOT TO USE agent:');
+		expect(tool.systemInstruction).not.toContain('delegate_subagent');
+	});
+
+	it('preserves a custom name across the SDK inline-completion rebuild', () => {
+		const tool = createDelegateSubAgentTool({
+			name: 'agent',
+			runSubAgent: async () =>
+				await Promise.resolve({ status: 'completed', taskPath: '/root/x_0', answer: 'done' }),
+		});
+
+		const rebuilt = createDelegateSubAgentTool({
+			...getInlineDelegateSubAgentToolOptions(tool),
+			runSubAgent: async () =>
+				await Promise.resolve({ status: 'completed', taskPath: '/root/x_0', answer: 'done' }),
+		});
+
+		expect(rebuilt.name).toBe('agent');
+	});
+
 	it('accepts optional difficulty on the delegate input schema', () => {
 		const tool = createDelegateSubAgentTool({
 			runSubAgent: async () =>

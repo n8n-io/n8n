@@ -191,6 +191,13 @@ export type DelegateSubAgentRunner = (
 
 export interface CreateDelegateSubAgentToolOptions {
 	/**
+	 * Model-facing tool name. Defaults to {@link DELEGATE_SUB_AGENT_TOOL_NAME}
+	 * (`"delegate_subagent"`). Override when a host wants a different name in
+	 * the model's tool list (e.g. `"agent"`) — the description and system
+	 * instruction text adapt automatically.
+	 */
+	name?: string;
+	/**
 	 * Sub-agents the model may choose between. Listed in the system prompt; the
 	 * model selects one by passing its id as `subAgentId`.
 	 */
@@ -267,11 +274,12 @@ export function createDelegateSubAgentTool(options: CreateDelegateSubAgentToolOp
 		...options,
 		policy: resolveDelegateSubAgentPolicy(options.policy),
 	};
+	const toolName = resolvedOptions.name ?? DELEGATE_SUB_AGENT_TOOL_NAME;
 	const inlineProviderToolInstruction = resolvedOptions.resolveInlineSubAgentProviderTools
 		? "Provider-defined tools are loaded for the inline child's selected model provider."
 		: 'Inline children do not inherit provider-defined tools.';
 
-	const tool = new Tool(DELEGATE_SUB_AGENT_TOOL_NAME)
+	const tool = new Tool(toolName)
 		.description(
 			'Delegate a bounded, self-contained subtask to a focused child agent that runs in an isolated context and returns only a concise final result. ' +
 				'Use it for reasoning-heavy subtasks, context-flooding investigations, or independent workstreams inside a larger deliverable. ' +
@@ -279,12 +287,12 @@ export function createDelegateSubAgentTool(options: CreateDelegateSubAgentToolOp
 		)
 		.systemInstruction(
 			[
-				`delegate_subagent runs a focused child agent in a fresh, isolated context and returns only its final answer. Always set subAgentId. Use subAgentId: "inline" to run a one-off inline child that inherits your local and deferred tools after safety filtering. ${inlineProviderToolInstruction} The child cannot see this conversation or your memory, so everything it needs must be in the call.`,
+				`${toolName} runs a focused child agent in a fresh, isolated context and returns only its final answer. Always set subAgentId. Use subAgentId: "inline" to run a one-off inline child that inherits your local and deferred tools after safety filtering. ${inlineProviderToolInstruction} The child cannot see this conversation or your memory, so everything it needs must be in the call.`,
 				'Use a configured subagent ID only when one is listed and its name and useWhen guidance fit the subtask better than a generic inline child.',
 				...formatAvailableSubAgents(resolvedOptions.availableSubAgents),
-				...formatDelegationPolicyInstructions(resolvedOptions.policy),
-				'WHEN TO USE delegate_subagent:\n- The request decomposes into 2+ independent workstreams that can be handled separately.\n- A workstream needs substantial research, review, comparison, or analysis.\n- Doing the work inline would flood your context with intermediate findings.\n- A fresh isolated perspective would materially improve a bounded subtask.',
-				'WHEN NOT TO USE delegate_subagent:\n- Single-step mechanical work: do it directly.\n- Trivial tasks or one/two tool calls: do them yourself.\n- Tasks that need user interaction or hidden conversation context.\n- Your core synthesis, final judgment, or recommendation.\n- The entire user request as one delegated task; that is pass-through with no value added.',
+				...formatDelegationPolicyInstructions(resolvedOptions.policy, toolName),
+				`WHEN TO USE ${toolName}:\n- The request decomposes into 2+ independent workstreams that can be handled separately.\n- A workstream needs substantial research, review, comparison, or analysis.\n- Doing the work inline would flood your context with intermediate findings.\n- A fresh isolated perspective would materially improve a bounded subtask.`,
+				`WHEN NOT TO USE ${toolName}:\n- Single-step mechanical work: do it directly.\n- Trivial tasks or one/two tool calls: do them yourself.\n- Tasks that need user interaction or hidden conversation context.\n- Your core synthesis, final judgment, or recommendation.\n- The entire user request as one delegated task; that is pass-through with no value added.`,
 				`HOW TO DELEGATE:\n- Delegate bounded workstreams, not the final answer.\n- Pass all required context, constraints, language/tone, and expected output.\n- Set difficulty (low, medium, or high) when you can estimate task complexity; omit it to keep the default inline model.\n- If multiple independent workstreams exist, delegate them separately.\n- Inline children inherit your local and deferred tools after safety filtering. ${inlineProviderToolInstruction}\n- Inspect results and synthesize the final response yourself.\n- Verify side-effect claims before presenting them as done.`,
 			].join('\n'),
 		)
@@ -303,6 +311,7 @@ export function createDelegateSubAgentTool(options: CreateDelegateSubAgentToolOp
 		metadata: {
 			...tool.metadata,
 			[INLINE_DELEGATE_SUB_AGENT_TOOL_METADATA_KEY]: {
+				...(resolvedOptions.name !== undefined ? { name: resolvedOptions.name } : {}),
 				...(resolvedOptions.availableSubAgents !== undefined
 					? { availableSubAgents: resolvedOptions.availableSubAgents }
 					: {}),
@@ -354,7 +363,10 @@ function formatAvailableSubAgents(
 	];
 }
 
-function formatDelegationPolicyInstructions(policy: DelegateSubAgentPolicy | undefined): string[] {
+function formatDelegationPolicyInstructions(
+	policy: DelegateSubAgentPolicy | undefined,
+	toolName: string,
+): string[] {
 	if (policy?.maxChildren === undefined) return [];
 
 	const runLabel = policy.maxChildren === 1 ? 'run' : 'runs';
@@ -363,7 +375,7 @@ function formatDelegationPolicyInstructions(policy: DelegateSubAgentPolicy | und
 			'DELEGATION PARALLELISM:',
 			`- Up to ${policy.maxChildren} child sub-agent ${runLabel} can execute at the same time.`,
 			'- This limits parallelism, not the total number of delegated tasks.',
-			'- If more independent workstreams are useful, you may issue more delegate_subagent calls; the runtime will run them in batches.',
+			`- If more independent workstreams are useful, you may issue more ${toolName} calls; the runtime will run them in batches.`,
 		].join('\n'),
 	];
 }

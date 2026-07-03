@@ -32,6 +32,19 @@ describe('getSystemPrompt', () => {
 		expect(prompt).not.toContain('## Current Date and Time');
 	});
 
+	describe('delegation routing', () => {
+		it('routes discovery and eval setup away from the generic agent delegate tool', () => {
+			const prompt = getSystemPrompt({});
+
+			expect(prompt).toContain('## Delegation');
+			expect(prompt).toContain(
+				'Pre-build discovery stays on `discover-workflow-context`, not `agent`',
+			);
+			expect(prompt).toContain('Eval setup stays on `eval-setup-with-agent`');
+			expect(prompt).toContain('Workflow building, patching, and running always stays with you');
+		});
+	});
+
 	describe('first visible turn guidance', () => {
 		it('instructs the agent to send a concise sentence before the first tool call', () => {
 			const prompt = getSystemPrompt({});

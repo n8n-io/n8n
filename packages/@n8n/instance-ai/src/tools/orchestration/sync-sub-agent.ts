@@ -14,6 +14,7 @@ import { buildDebriefing } from '../../agent/sub-agent-debriefing';
 import { createSubAgent, SUB_AGENT_PROTOCOL } from '../../agent/sub-agent-factory';
 import { MAX_STEPS } from '../../constants/max-steps';
 import { consumeStreamWithHitl, requireCompletedHitlText } from '../../stream/consume-with-hitl';
+import type { RunTokenUsage } from '../../stream/usage-accumulator';
 import type { InstanceAiToolRegistry, OrchestrationContext } from '../../types';
 
 function buildSubAgentWorkspaceOptions(context: OrchestrationContext): {
@@ -63,6 +64,16 @@ export interface RunSyncSubAgentInput {
 	toolNames: string[];
 	artifacts?: unknown;
 	conversationContext?: string;
+	/** Max LLM steps for this sub-agent run. Defaults to {@link MAX_STEPS.RESEARCH}. */
+	maxIterations?: number;
+}
+
+/** Token usage/cost for a sync sub-agent run, in the shape callers (e.g. the delegate tool) expect. */
+export interface SyncSubAgentUsage {
+	promptTokens: number;
+	completionTokens: number;
+	totalTokens: number;
+	cost?: number;
 }
 
 export interface SyncSubAgentOutput {
@@ -71,6 +82,17 @@ export interface SyncSubAgentOutput {
 	toolErrorCount?: number;
 	durationMs?: number;
 	blockers?: string[];
+	usage?: SyncSubAgentUsage;
+}
+
+function toSyncSubAgentUsage(usage: RunTokenUsage | undefined): SyncSubAgentUsage | undefined {
+	if (!usage) return undefined;
+	return {
+		promptTokens: usage.promptTokens,
+		completionTokens: usage.completionTokens,
+		totalTokens: usage.totalTokens,
+		...(usage.costUsd > 0 ? { cost: usage.costUsd } : {}),
+	};
 }
 
 /**
@@ -92,7 +114,6 @@ export async function runSyncSubAgent(
 			parentId: context.orchestratorAgentId,
 			role: input.role,
 			tools: input.toolNames,
-			kind: 'delegate',
 			subtitle: truncateLabel(input.briefing),
 			goal: input.briefing,
 		},
@@ -134,7 +155,7 @@ export async function runSyncSubAgent(
 		);
 
 		const consumeResult = await withTraceRun(context, traceRun, async () => {
-			const maxIterations = MAX_STEPS.RESEARCH;
+			const maxIterations = input.maxIterations ?? MAX_STEPS.RESEARCH;
 			const persistence = await createSubAgentPersistence(context, {
 				agentKind: input.role,
 			});
@@ -171,6 +192,7 @@ export async function runSyncSubAgent(
 			workSummary: consumeResult.workSummary,
 			startTime,
 		});
+		const usage = toSyncSubAgentUsage(consumeResult.usage);
 
 		await finishTraceRun(context, traceRun, {
 			outputs: {
@@ -180,6 +202,7 @@ export async function runSyncSubAgent(
 				toolCallCount: debriefing.toolCallCount,
 				toolErrorCount: debriefing.toolErrorCount,
 				durationMs: debriefing.durationMs,
+				...(usage ? { usage } : {}),
 			},
 		});
 
@@ -199,6 +222,7 @@ export async function runSyncSubAgent(
 			toolErrorCount: debriefing.toolErrorCount,
 			durationMs: debriefing.durationMs,
 			blockers: debriefing.blockers,
+			...(usage ? { usage } : {}),
 		};
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : String(error);

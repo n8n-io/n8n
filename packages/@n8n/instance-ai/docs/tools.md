@@ -86,7 +86,38 @@ verbatim, and Gaps.
 **Behavior**: Resolves the fixed tool subset from the orchestrator's domain
 tools, runs the sub-agent via the shared synchronous runner (same tracing and
 `agent-spawned`/`agent-completed` events), and returns the synthesized debrief.
-Returns an error string if the `nodes` tool is unavailable.
+Returns an error string if the `nodes` tool is unavailable. It is a thin
+wrapper over the `workflow-context-scout` sub-agent definition — the single,
+schema-validated route to it (see `docs/subagents.md`; it is intentionally
+not reachable through `agent`, below).
+
+### `agent`
+
+SDK delegate tool (`@n8n/agents` `delegate_subagent`, registered under this
+model-facing name) — hands a bounded, self-contained investigation to a
+focused sub-agent that runs in an isolated context and returns only a concise
+result. Every delegation, including `subAgentId: "inline"`, routes through the
+Instance AI host runner, which runs the child through the same synchronous
+sub-agent machinery `discover-workflow-context` uses (tracing,
+`agent-spawned`/`agent-completed` events). The SDK's own inline child runner is
+never invoked. Full definition reference: `docs/subagents.md`.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `subAgentId` | string | yes | `"inline"` for the default sub-agent, or one of the listed specialist IDs |
+| `taskName` | string | yes | Short human-readable name for the delegated task |
+| `goal` | string | yes | The concrete goal the sub-agent should accomplish |
+| `context` | string | no | Everything the child needs — it sees nothing else |
+| `expectedOutput` | string | no | Expected shape or contents of the answer |
+| `difficulty` | `"low" \| "medium" \| "high"` | no | Accepted but ignored in v1 — every definition runs on the subagent model |
+
+**Returns**: `{ status, answer, usage?, error? }` — `status` is always
+`"completed"` or `"failed"`; a delegation never suspends back to the parent.
+
+**Specialists**: `instance-explorer` and `execution-debugger` are listed in
+`availableSubAgents`. `general-purpose` (the `"inline"` target) and
+`workflow-context-scout` are registered but not listed — the scout stays
+reachable only via `discover-workflow-context`.
 
 ### `update-tasks`
 
@@ -717,6 +748,7 @@ only the domain tools wired into that agent.
 | Tool Category | Orchestrator | Specialized background agents |
 |---------------|:---:|:---:|
 | Orchestration tools (`create-tasks`, etc.) | ✅ | ❌ |
+| Sub-agent delegation (`agent`) | ✅ | ❌ (sub-agents cannot delegate further) |
 | Workflow tools | ✅ | ✅ (eval-setup) |
 | Execution tools | ✅ | ❌ |
 | Credential tools | ✅ | ✅ (eval-setup — setup only) |

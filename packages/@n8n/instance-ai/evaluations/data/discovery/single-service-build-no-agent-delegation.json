@@ -1,0 +1,9 @@
+{
+	"id": "single-service-build-no-agent-delegation",
+	"userMessage": "Build a workflow that posts a message to the #general Slack channel every weekday morning at 9am.",
+	"expectedToolInvocations": {
+		"noneOf": ["agent"]
+	},
+	"rationale": "A simple, well-known single-service build should go straight to workflow-builder inline. Delegating it via the generic agent tool would add latency and cost with no benefit — regression guard against over-eager delegation.",
+	"maxSteps": 12
+}

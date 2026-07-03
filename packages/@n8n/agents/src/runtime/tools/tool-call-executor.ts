@@ -1,9 +1,6 @@
 import { zodToJsonSchema, type JsonSchema7Type } from 'zod-to-json-schema';
 
-import {
-	DELEGATE_SUB_AGENT_TOOL_NAME,
-	getInlineDelegateSubAgentToolOptions,
-} from './delegate-sub-agent-tool';
+import { getInlineDelegateSubAgentToolOptions } from './delegate-sub-agent-tool';
 import { toJsonValue } from '../json-value';
 import { DEFAULT_SUB_AGENT_MAX_CHILDREN } from './sub-agent-task-path';
 import { executeTool, isSuspendedToolResult, type SuspendedToolResult } from './tool-adapter';
@@ -186,12 +183,18 @@ export class ToolCallExecutor {
 		return this.deps.concurrency;
 	}
 
-	private isDelegateSubAgentCall(toolName: string): boolean {
-		return toolName === DELEGATE_SUB_AGENT_TOOL_NAME;
+	/**
+	 * Detects a delegate-subagent tool call by SDK-owned metadata rather than a
+	 * fixed tool name, so a host-renamed delegate tool (e.g. `"agent"`) still
+	 * gets `maxChildren` batching instead of falling back to generic concurrency.
+	 */
+	private isDelegateSubAgentCall(toolName: string, toolMap: Map<string, BuiltTool>): boolean {
+		const tool = toolMap.get(toolName);
+		return tool !== undefined && getInlineDelegateSubAgentToolOptions(tool) !== undefined;
 	}
 
 	private getToolCallBatchSize(toolName: string, toolMap: Map<string, BuiltTool>): number {
-		if (!this.isDelegateSubAgentCall(toolName)) return this.concurrency;
+		if (!this.isDelegateSubAgentCall(toolName, toolMap)) return this.concurrency;
 
 		const tool = toolMap.get(toolName);
 		const delegateOptions = tool ? getInlineDelegateSubAgentToolOptions(tool) : undefined;
@@ -208,7 +211,7 @@ export class ToolCallExecutor {
 			throw new Error('Unable to build tool-call batch');
 		}
 
-		const isDelegateBatch = this.isDelegateSubAgentCall(first.toolName);
+		const isDelegateBatch = this.isDelegateSubAgentCall(first.toolName, toolMap);
 		const batchSize = this.getToolCallBatchSize(first.toolName, toolMap);
 		if (
 			batchSize < 1 ||
@@ -221,7 +224,7 @@ export class ToolCallExecutor {
 
 		for (let i = start; i < calls.length && batch.length < batchSize; i++) {
 			const candidate = calls[i];
-			if (this.isDelegateSubAgentCall(candidate.toolName) !== isDelegateBatch) break;
+			if (this.isDelegateSubAgentCall(candidate.toolName, toolMap) !== isDelegateBatch) break;
 			batch.push(candidate);
 		}
 
@@ -231,8 +234,9 @@ export class ToolCallExecutor {
 	/**
 	 * Execute tool calls concurrently in batches.
 	 *
-	 * Regular tools use `toolCallConcurrency`. Consecutive `delegate_subagent`
-	 * calls use the effective `maxChildren` policy from the built delegate tool.
+	 * Regular tools use `toolCallConcurrency`. Consecutive delegate-subagent
+	 * calls (detected via SDK-owned metadata, regardless of tool name) use the
+	 * effective `maxChildren` policy from the built delegate tool.
 	 * Provider-executed calls are skipped.
 	 *
 	 * Returns successes, suspension info, and a pending map (for persistence).

@@ -273,10 +273,11 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 					v-if="toolCallsById[entry.toolCallId].renderHint === 'tasks'"
 					:tasks="props.agentNode.tasks"
 				/>
-				<!-- Hidden tool calls (builder/data-table/eval-setup handled by child agent via AgentSection) -->
+				<!-- Hidden tool calls (builder/data-table/eval-setup/delegate handled by child agent via AgentSection) -->
 				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'builder'" />
 				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'data-table'" />
 				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'eval-setup'" />
+				<template v-else-if="toolCallsById[entry.toolCallId].renderHint === 'delegate'" />
 				<PlanReviewPanel
 					v-else-if="toolCallsById[entry.toolCallId].confirmation?.inputType === 'plan-review'"
 					:key="toolCallsById[entry.toolCallId].confirmation?.requestId"

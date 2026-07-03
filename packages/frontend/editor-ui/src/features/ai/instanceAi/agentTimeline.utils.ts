@@ -10,13 +10,13 @@ export const HIDDEN_TOOLS = new Set(['updateWorkingMemory']);
 
 /** Render hints whose tool calls produce no output in the timeline — they are
  *  represented elsewhere (child agent sections, artifact cards). */
-const INVISIBLE_RENDER_HINTS = new Set(['builder', 'data-table', 'eval-setup']);
+const INVISIBLE_RENDER_HINTS = new Set(['builder', 'data-table', 'eval-setup', 'delegate']);
 
 /**
  * True when a timeline entry produces visible output in `AgentTimeline`.
  *
  * Mirrors the template's branch chain (same order): hidden tools and
- * builder/data-table/eval-setup hints render nothing; plan-review
+ * builder/data-table/eval-setup/delegate hints render nothing; plan-review
  * confirmations render a panel; bare planner calls render nothing; pending
  * question forms are suppressed until answered; hoisted active builder
  * children are rendered elsewhere. Used to skip the timeline wrapper

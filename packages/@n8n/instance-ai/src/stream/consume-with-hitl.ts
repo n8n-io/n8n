@@ -8,6 +8,7 @@ import {
 	normalizeStreamSource,
 	type TraceStatus,
 } from '../runtime/resumable-stream-executor';
+import type { RunTokenUsage } from '../stream/usage-accumulator';
 import type { WorkSummary } from '../stream/work-summary-accumulator';
 import type { SuspensionInfo } from '../utils/stream-helpers';
 
@@ -47,6 +48,8 @@ export interface ConsumeWithHitlResult {
 	text: Promise<string>;
 	/** Accumulated tool call outcomes observed during stream consumption. */
 	workSummary: WorkSummary;
+	/** Accumulated token usage and cost, when the stream emitted usage. */
+	usage?: RunTokenUsage;
 }
 
 export async function requireCompletedHitlText(
@@ -114,6 +117,7 @@ export async function consumeStreamWithHitl(
 		agentRunId: result.agentRunId,
 		text: result.text ?? stream.text ?? Promise.resolve(''),
 		workSummary: result.workSummary,
+		...(result.usage !== undefined ? { usage: result.usage } : {}),
 	};
 }
 

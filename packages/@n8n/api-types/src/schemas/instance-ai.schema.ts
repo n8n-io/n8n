@@ -886,6 +886,7 @@ export interface InstanceAiToolCallState {
 		| 'data-table'
 		| 'planner'
 		| 'eval-setup'
+		| 'delegate'
 		| 'skill'
 		| 'default';
 	confirmation?: InstanceAiConfirmation;
@@ -1300,6 +1301,9 @@ export function getRenderHint(toolName: string): InstanceAiToolCallState['render
 	if (toolName === 'research-with-agent') return 'researcher';
 	if (toolName === 'create-tasks') return 'planner';
 	if (toolName === 'eval-setup-with-agent') return 'eval-setup';
+	// SDK delegate_subagent tool, registered under the name `agent` — its child
+	// sub-agent renders via AgentSection, so the triggering tool call is hidden.
+	if (toolName === 'agent') return 'delegate';
 	if (toolName === 'list_skills' || toolName === 'load_skill') return 'skill';
 	return 'default';
 }

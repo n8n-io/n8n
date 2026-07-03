@@ -1,0 +1,9 @@
+{
+	"id": "execution-history-debugging-routes-to-execution-debugger",
+	"userMessage": "My 'Order Sync' workflow has failed its last 20 runs. Can you dig through the execution history and find what is common between the failures?",
+	"expectedToolInvocations": {
+		"anyOf": ["spawn_sub_agent:execution-debugger"]
+	},
+	"rationale": "Debugging a pattern across many historical executions would flood the orchestrator's context with execution payloads — this should delegate to the execution-debugger sub-agent via the agent tool rather than the orchestrator paging through executions inline.",
+	"maxSteps": 8
+}

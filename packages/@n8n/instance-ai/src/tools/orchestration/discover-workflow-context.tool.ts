@@ -4,10 +4,10 @@
  * Spawns a focused, synchronous sub-agent that inventories the nodes and
  * credentials a build needs, gathers relevant knowledge-base techniques (when a
  * sandbox workspace is attached), and returns the relevant node type definitions
- * verbatim (selection only, no summarizing). The role, system prompt, and tool
- * subset are fixed here so pre-build discovery is
- * consistent and testable. Sandbox `workspace_*` tools attach automatically when
- * a sandbox exists, giving the sub-agent knowledge-base read access.
+ * verbatim (selection only, no summarizing). This is a thin wrapper over the
+ * `workflow-context-scout` sub-agent definition — the single, schema-validated
+ * route to it (see `docs/subagents.md`; it is intentionally not reachable
+ * through the generic `agent` delegate tool).
  *
  * Runs synchronously: the result is returned to the orchestrator in the same
  * turn, which then loads `workflow-builder` and builds with that context.
@@ -15,20 +15,10 @@
 import { Tool } from '@n8n/agents';
 import { z } from 'zod';
 
-import { runSyncSubAgent } from './sync-sub-agent';
-import { DISCOVER_WORKFLOW_CONTEXT_PROMPT } from './discover-workflow-context.prompt';
-import { createToolRegistry, toolRegistryKeys } from '../../tool-registry';
+import { getSubAgentDefinition } from '../../subagents/registry';
+import { runSubAgentDefinition } from '../../subagents/runner';
 import type { OrchestrationContext } from '../../types';
 import { DOMAIN_TOOL_IDS, ORCHESTRATION_TOOL_IDS } from '../tool-ids';
-
-const DISCOVERY_ROLE = 'workflow-context-scout';
-
-/** Native domain tools the discovery sub-agent may use, in priority order. */
-const DISCOVERY_TOOL_NAMES = [
-	DOMAIN_TOOL_IDS.NODES,
-	DOMAIN_TOOL_IDS.CREDENTIALS,
-	DOMAIN_TOOL_IDS.RESEARCH,
-] as const;
 
 export const discoverWorkflowContextInputSchema = z.object({
 	services: z
@@ -69,6 +59,16 @@ function buildDiscoveryBriefing(input: DiscoverWorkflowContextInput): string {
 	return lines.join('\n');
 }
 
+function getWorkflowContextScoutDefinition() {
+	const definition = getSubAgentDefinition('workflow-context-scout');
+	if (!definition) {
+		throw new Error(
+			'"workflow-context-scout" sub-agent definition is not registered — this is a bug',
+		);
+	}
+	return definition;
+}
+
 export function createDiscoverWorkflowContextTool(context: OrchestrationContext) {
 	return new Tool(ORCHESTRATION_TOOL_IDS.DISCOVER_WORKFLOW_CONTEXT)
 		.description(
@@ -86,29 +86,21 @@ export function createDiscoverWorkflowContextTool(context: OrchestrationContext)
 		.input(discoverWorkflowContextInputSchema)
 		.output(z.object({ result: z.string() }))
 		.handler(async (input: DiscoverWorkflowContextInput) => {
-			const validTools = createToolRegistry();
-			for (const name of DISCOVERY_TOOL_NAMES) {
-				const tool = context.domainTools.get(name);
-				if (tool) {
-					validTools.set(name, tool);
-				}
-			}
-
-			if (!validTools.has(DOMAIN_TOOL_IDS.NODES)) {
+			if (!context.domainTools.has(DOMAIN_TOOL_IDS.NODES)) {
 				return {
 					result:
 						'Discovery failed: the `nodes` tool is not available, so node/type discovery cannot run.',
 				};
 			}
 
-			const { result } = await runSyncSubAgent(context, {
-				role: DISCOVERY_ROLE,
-				instructions: DISCOVER_WORKFLOW_CONTEXT_PROMPT,
-				briefing: buildDiscoveryBriefing(input),
-				validTools,
-				toolNames: toolRegistryKeys(validTools),
-				conversationContext: input.conversationContext,
-			});
+			const { result } = await runSubAgentDefinition(
+				getWorkflowContextScoutDefinition(),
+				{
+					briefing: buildDiscoveryBriefing(input),
+					conversationContext: input.conversationContext,
+				},
+				context,
+			);
 
 			return { result };
 		})

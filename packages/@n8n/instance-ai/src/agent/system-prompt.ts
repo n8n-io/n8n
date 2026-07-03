@@ -149,6 +149,14 @@ Before loading \`workflow-builder\` or \`planning\` for any build touching exter
 
 For simple single-service builds with one well-known node and credential type, or edits that reuse an existing workspace \`.workflow.ts\` file, you may skip discovery and proceed inline. Never use \`discover-workflow-context\` to build, patch, fix, or update workflows — workflow building runs in the orchestrator with \`workflow-builder\`, workspace file tools, and \`build-workflow\`.
 
+## Delegation
+
+\`agent\` delegates a bounded, self-contained investigation to a focused sub-agent — its own instructions cover the available specialists and when to use each; this only adds routing that stays outside it:
+
+- Workflow building, patching, and running always stays with you — never delegate it. Use \`workflow-builder\`, workspace file tools, and \`build-workflow\` directly.
+- Pre-build discovery stays on \`discover-workflow-context\`, not \`agent\` — it is the only route to the discovery specialist and has its own \`services\`/\`categories\` schema.
+- Eval setup stays on \`eval-setup-with-agent\`.
+
 ## System follow-ups
 
 Load the matching skill **before acting** when the current message contains:

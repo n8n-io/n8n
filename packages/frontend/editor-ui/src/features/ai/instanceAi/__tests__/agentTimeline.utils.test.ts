@@ -272,6 +272,10 @@ describe('isVisibleTimelineEntry', () => {
 		expect(visibilityOf(makeToolCall({ renderHint: 'eval-setup' }))).toBe(false);
 	});
 
+	test('delegate hint is hidden (represented by a child agent section)', () => {
+		expect(visibilityOf(makeToolCall({ renderHint: 'delegate' }))).toBe(false);
+	});
+
 	test('builder hint stays hidden even with a plan-review confirmation (template order)', () => {
 		expect(
 			visibilityOf(

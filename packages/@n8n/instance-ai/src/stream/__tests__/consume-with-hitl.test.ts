@@ -67,4 +67,55 @@ describe('consumeStreamWithHitl', () => {
 
 		await expect(requireCompletedHitlText(result, 'Test sub-agent')).resolves.toBe('done');
 	});
+
+	it('surfaces accumulated token usage from finish chunks', async () => {
+		const result = await consumeStreamWithHitl({
+			agent: {},
+			stream: {
+				runId: 'agent-run-1',
+				fullStream: fromChunks([
+					{
+						type: 'finish',
+						model: 'anthropic/claude-haiku-4-5',
+						usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15, cost: 0.02 },
+					},
+				]),
+				text: Promise.resolve('done'),
+			},
+			runId: 'run-1',
+			agentId: 'agent-1',
+			eventBus: createEventBus(),
+			logger: createLogger(),
+			threadId: 'thread-1',
+			abortSignal: new AbortController().signal,
+			waitForConfirmation: vi.fn(),
+		});
+
+		expect(result.usage).toMatchObject({
+			promptTokens: 10,
+			completionTokens: 5,
+			totalTokens: 15,
+			costUsd: 0.02,
+		});
+	});
+
+	it('omits usage when the stream emitted no finish chunk', async () => {
+		const result = await consumeStreamWithHitl({
+			agent: {},
+			stream: {
+				runId: 'agent-run-1',
+				fullStream: fromChunks([{ type: 'text-delta', delta: 'done' }]),
+				text: Promise.resolve('done'),
+			},
+			runId: 'run-1',
+			agentId: 'agent-1',
+			eventBus: createEventBus(),
+			logger: createLogger(),
+			threadId: 'thread-1',
+			abortSignal: new AbortController().signal,
+			waitForConfirmation: vi.fn(),
+		});
+
+		expect(result.usage).toBeUndefined();
+	});
 });

@@ -1,0 +1,9 @@
+{
+	"id": "broad-instance-survey-routes-to-instance-explorer",
+	"userMessage": "Can you look across all of my workflows and tell me which ones might be using deprecated or risky node configurations?",
+	"expectedToolInvocations": {
+		"anyOf": ["spawn_sub_agent:instance-explorer"]
+	},
+	"rationale": "A broad 'survey everything on the instance' request should delegate to the instance-explorer sub-agent via the agent tool rather than the orchestrator manually paging through every workflow inline, which would flood its own context.",
+	"maxSteps": 8
+}

@@ -22,6 +22,7 @@ Read these docs before starting any implementation:
 - `docs/architecture.md` — system diagram, deep agent pillars, package responsibilities
 - `docs/streaming-protocol.md` — canonical event schema, SSE transport, replay rules
 - `docs/tools.md` — tool reference, orchestration tools, domain tools, tool distribution
+- `docs/subagents.md` — the `agent` delegate tool, sub-agent definition shape, registry, security boundaries
 - `docs/memory.md` — memory tiers, scoping model, sub-agent memory
 - `docs/filesystem-access.md` — filesystem architecture, gateway protocol, security model
 - `docs/sandboxing.md` — Daytona/local sandbox providers, workspace lifecycle, builder loop

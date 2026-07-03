@@ -1,11 +1,11 @@
 import { executeTool } from '../../../__tests__/tool-test-utils';
 import { createToolRegistry } from '../../../tool-registry';
 import type { OrchestrationContext } from '../../../types';
-import { runSyncSubAgent } from '../sync-sub-agent';
 import {
 	createDiscoverWorkflowContextTool,
 	discoverWorkflowContextInputSchema,
 } from '../discover-workflow-context.tool';
+import { runSyncSubAgent } from '../sync-sub-agent';
 
 vi.mock('../sync-sub-agent', () => ({ runSyncSubAgent: vi.fn() }));
 
@@ -95,6 +95,19 @@ describe('createDiscoverWorkflowContextTool', () => {
 		expect(callArg.toolNames).toEqual(['nodes', 'credentials', 'research']);
 		expect(callArg.conversationContext).toBe('ctx');
 		expect(callArg.briefing).toContain('Gmail, OpenAI');
+	});
+
+	it('runs as the workflow-context-scout sub-agent definition', async () => {
+		runSyncSubAgentMock.mockResolvedValue({ result: 'debrief text' });
+		const context = createMockContext({ nodes: {}, credentials: {}, research: {} });
+		const tool = createDiscoverWorkflowContextTool(context);
+
+		await executeTool(tool, { services: ['Gmail'] }, {} as never);
+
+		const callArg = runSyncSubAgentMock.mock.calls[0][1];
+		expect(callArg.role).toBe('workflow-context-scout');
+		expect(callArg.instructions).toContain('workflow discovery specialist');
+		expect(callArg.maxIterations).toBe(25);
 	});
 
 	it('only resolves the discovery tools that are registered', async () => {

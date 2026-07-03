@@ -1067,6 +1067,14 @@ describe('parseStoredMessages', () => {
 							state: 'resolved',
 							output: 'ok',
 						},
+						{
+							type: 'tool-call',
+							toolCallId: 'tc-4',
+							toolName: 'agent',
+							input: {},
+							state: 'resolved',
+							output: 'ok',
+						},
 					],
 					createdAt: makeDate(1),
 				},
@@ -1078,6 +1086,7 @@ describe('parseStoredMessages', () => {
 			expect(toolCalls[0].renderHint).toBe('default');
 			expect(toolCalls[1].renderHint).toBe('builder');
 			expect(toolCalls[2].renderHint).toBe('planner');
+			expect(toolCalls[3].renderHint).toBe('delegate');
 		});
 	});
 

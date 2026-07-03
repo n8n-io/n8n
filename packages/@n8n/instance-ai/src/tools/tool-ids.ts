@@ -23,6 +23,8 @@ export const ORCHESTRATION_TOOL_IDS = {
 	VERIFY_BUILT_WORKFLOW: 'verify-built-workflow',
 	REPORT_VERIFICATION_VERDICT: 'report-verification-verdict',
 	APPLY_WORKFLOW_CREDENTIALS: 'apply-workflow-credentials',
+	/** SDK delegate_subagent tool, registered under this model-facing name. */
+	AGENT: 'agent',
 } as const;
 
 export const WORKSPACE_TOOL_IDS = {
@@ -39,6 +41,7 @@ export const ORCHESTRATION_TOOL_NAMES = new Set<string>(Object.values(ORCHESTRAT
 export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	ORCHESTRATION_TOOL_IDS.CREATE_TASKS,
 	ORCHESTRATION_TOOL_IDS.DISCOVER_WORKFLOW_CONTEXT,
+	ORCHESTRATION_TOOL_IDS.AGENT,
 	DOMAIN_TOOL_IDS.ASK_USER,
 	DOMAIN_TOOL_IDS.CREDENTIALS,
 	DOMAIN_TOOL_IDS.WORKFLOWS,
