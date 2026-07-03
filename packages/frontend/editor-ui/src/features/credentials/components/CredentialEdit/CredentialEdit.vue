@@ -159,6 +159,9 @@ const form = useCredentialForm({
 		const modalState = uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY];
 		return isCredentialModalState(modalState) ? modalState.suggestedName : undefined;
 	},
+	// Scroll the auth-error/success banner into view after a test (parity with the
+	// modal's former testCredential, which ended with scrollToTop).
+	onTestComplete: scrollToTop,
 });
 
 const {

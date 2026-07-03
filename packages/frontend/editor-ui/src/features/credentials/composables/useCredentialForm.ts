@@ -12,14 +12,11 @@ import type {
 } from 'n8n-workflow';
 import { CREDENTIAL_EMPTY_VALUE, deepCopy, NodeHelpers } from 'n8n-workflow';
 import { getResourcePermissions } from '@n8n/permissions';
-import { assert } from '@n8n/utils/assert';
 import { useI18n } from '@n8n/i18n';
 
 import type { IUpdateInformation } from '@/Interface';
-import { useToast } from '@/app/composables/useToast';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { EnterpriseEditionFeature } from '@/app/constants';
 import { setParameterValue } from '@/app/utils/parameterUtils';
 import { isExpression, isTestableExpression } from '@/app/utils/expressions';
 import {
@@ -28,7 +25,6 @@ import {
 } from '@/app/utils/nodeTypesUtils';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 
 import { useCredentialsStore } from '../credentials.store';
 import type { ICredentialsDecryptedResponse, ICredentialsResponse } from '../credentials.types';
@@ -52,6 +48,8 @@ export interface UseCredentialFormOptions {
 	showAuthSelector?: MaybeRefOrGetter<boolean>;
 	/** Preferred name for a new credential; falls back to a generated default. */
 	suggestedName?: MaybeRefOrGetter<string | undefined>;
+	/** Ran after a connection test completes — host hook (e.g. scroll the result banner into view). */
+	onTestComplete?: () => void;
 }
 
 /**
@@ -68,7 +66,6 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 	const nodeTypesStore = useNodeTypesStore();
 	const settingsStore = useSettingsStore();
 	const nodeHelpers = useNodeHelpers();
-	const toast = useToast();
 	const i18n = useI18n();
 
 	// --- state -------------------------------------------------------------
@@ -486,6 +483,7 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 			authError.value = '';
 			testedSuccessfully.value = true;
 		}
+		options.onTestComplete?.();
 	}
 
 	async function retestCredential() {
@@ -505,95 +503,6 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 			data,
 		});
 		isRetesting.value = false;
-	}
-
-	/**
-	 * Persist the credential (create or update) and, when the type supports it,
-	 * test the connection. Returns the saved credential plus whether it was newly
-	 * created; hosts layer their own side effects (telemetry, hooks, close) on top.
-	 * Surfaces validation via `showValidationWarning` and returns null when blocked.
-	 */
-	async function save(): Promise<{ credential: ICredentialsResponse; wasNew: boolean } | null> {
-		if (!requiredPropertiesFilled.value) {
-			showValidationWarning.value = true;
-			return null;
-		}
-		showValidationWarning.value = false;
-
-		assert(credentialType.value);
-		assert(credentialTypeName.value);
-
-		// Persist only non-default data.
-		const data = NodeHelpers.getNodeParameters(
-			credentialType.value.properties,
-			credentialData.value as INodeParameters,
-			false,
-			false,
-			null,
-			null,
-		);
-
-		const details: ICredentialsDecrypted = {
-			id: credentialId.value,
-			name: credentialName.value,
-			type: credentialTypeName.value,
-			data: data as unknown as ICredentialDataDecryptedObject,
-			isResolvable: isResolvable.value,
-		};
-		if (
-			settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing] &&
-			credentialData.value.sharedWithProjects
-		) {
-			details.sharedWithProjects = credentialData.value.sharedWithProjects as ProjectSharingData[];
-		}
-		if (credentialData.value.homeProject) {
-			details.homeProject = credentialData.value.homeProject as ProjectSharingData;
-		}
-
-		const wasNew = isNewCredential.value;
-		isSaving.value = true;
-		let credential: ICredentialsResponse | null = null;
-		try {
-			credential = wasNew
-				? await credentialsStore.createNewCredential(
-						details,
-						toValue(options.projectId) ?? projectsStore.currentProject?.id,
-					)
-				: await credentialsStore.updateCredential({ id: credentialId.value, data: details });
-		} catch (error) {
-			toast.showError(
-				error,
-				i18n.baseText(
-					wasNew
-						? 'credentialEdit.credentialEdit.showError.createCredential.title'
-						: 'credentialEdit.credentialEdit.showError.updateCredential.title',
-				),
-			);
-			return null;
-		} finally {
-			isSaving.value = false;
-		}
-
-		if (!credential) return null;
-		credentialId.value = credential.id;
-		currentCredential.value = credential;
-
-		// Re-fetch to display the server-redacted shape for leaf-redacted JSON fields.
-		if (credentialProperties.value.some((p) => p.typeOptions?.redactJsonLeaves)) {
-			await loadCurrentCredential(credential.id);
-			setCredentialPropertyDefaults();
-		}
-
-		if (isCredentialTestable.value) {
-			isTesting.value = true;
-			await testCredential({ ...details, id: credentialId.value, data: credentialData.value });
-			isTesting.value = false;
-		} else {
-			authError.value = '';
-			testedSuccessfully.value = false;
-		}
-
-		return { credential, wasNew };
 	}
 
 	return {
@@ -645,6 +554,5 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 		onDataChange,
 		testCredential,
 		retestCredential,
-		save,
 	};
 }
