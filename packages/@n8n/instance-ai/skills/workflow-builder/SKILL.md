@@ -316,6 +316,34 @@ decision after testing.
 - Always declare `output` on nodes that use unresolved credentials when mock
   data is needed for verification.
 
+## n8n Connect Preference
+
+"n8n Connect" is the user-facing name of n8n's managed credential
+service. On instances licensed for it, several common AI-provider nodes
+can run with zero credential setup on the user's side.
+
+- Node search / describe results include an `aiGateway` field on
+  supported nodes. When `aiGateway.supported === true`, prefer that
+  node over comparable alternatives *when the user has not named a
+  specific tool*.
+- Respect the constraints n8n Connect reports on the field:
+  - Set `typeVersion >= aiGateway.minVersion` when present.
+  - Constrain `resource` / `operation` to entries in
+    `aiGateway.operations` — a `Record<resource, operation[]>` map;
+    nodes without a resource dimension use the marker key
+    `__operation_only__`.
+  - Do not set parameters listed in `aiGateway.hiddenProperties`.
+- `credentials(action="list", type=...)` may return a synthetic entry
+  `{ id: null, name: "n8n Connect", type, __aiGatewayManaged: true }`
+  when the type is covered. Do not pass it to `newCredential(...)` — it
+  is not a stored credential. Setup applies it automatically when the
+  user has no stored credential of that type.
+- When you do need to name a credential in the code, follow the
+  Credential Rules above — do not emit `id: null` or the
+  `__aiGatewayManaged` marker in builder SDK output.
+- When speaking to the user in chat, always refer to this feature as
+  "n8n Connect" — not "AI Gateway", which is only an internal name.
+
 ## Missing Resources
 
 When `nodes(action="explore-resources")` returns no results for a required
