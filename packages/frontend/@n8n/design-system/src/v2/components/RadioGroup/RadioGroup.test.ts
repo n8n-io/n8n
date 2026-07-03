@@ -4,7 +4,7 @@ import type {
 	RadioGroupItemProps as RekaRadioGroupItemProps,
 	RadioGroupRootEmits,
 	RadioGroupRootProps,
-} from 'reka-ui';
+} from './reka-ui';
 
 import type { RadioGroupEmits, RadioGroupProps } from './RadioGroup.types';
 import type { RadioGroupItemProps } from './RadioGroupItem.types';
