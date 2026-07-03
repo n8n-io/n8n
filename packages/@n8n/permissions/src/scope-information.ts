@@ -4,10 +4,8 @@ import type { ApiKeyScope, Scope, ScopeInformation } from './types.ee';
 function buildResourceScopes() {
 	const resourceScopes = Object.entries(RESOURCES).flatMap(([resource, operations]) => [
 		...operations.map((op) => `${resource}:${op}` as const),
-		`${resource}:*` as const,
 	]) as Scope[];
 
-	resourceScopes.push('*' as const); // Global wildcard
 	return resourceScopes;
 }
 
