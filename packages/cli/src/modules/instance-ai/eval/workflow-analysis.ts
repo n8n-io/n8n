@@ -629,11 +629,16 @@ function buildUserPrompt(
 const MAX_HINT_ATTEMPTS = 2;
 
 /**
- * Hang guard for one hint-generation LLM call. A stalled provider call
- * otherwise eats the whole scenario execution budget; aborting lets the
- * attempt loop retry (or degrade to empty hints) instead.
+ * Stall guard for one hint-generation LLM call. Phase 1 is a single call with
+ * the largest output of any eval phase (globalContext + trigger content +
+ * hints for every node), and aborting it mid-generation truncates the JSON —
+ * the run then proceeds with EMPTY hints, losing cross-node consistency and
+ * scenario error allocation. A 120s budget caused exactly that in CI (0
+ * empty-hint runs without a timeout → 50/240 with it), so keep this generous:
+ * it exists only to stop a truly hung provider call from eating the scenario
+ * budget.
  */
-const HINT_LLM_TIMEOUT_MS = 120_000;
+const HINT_LLM_TIMEOUT_MS = 300_000;
 
 /** One LLM call → globalContext + triggerContent + per-node hints. Retried once on structural issues. */
 export async function generateMockHints(options: GenerateMockHintsOptions): Promise<MockHints> {
