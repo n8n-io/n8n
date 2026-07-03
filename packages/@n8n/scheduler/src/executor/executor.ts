@@ -20,9 +20,7 @@ type ClaimedEntry = { host: string; task: ClaimedTask };
 /**
  * Claims due tasks, fires each at its `runAt`, dispatches to the handler registered
  * for its `taskType`, and records the outcome. Runs on every main; the claim's
- * locking guarantees each task is owned by one instance. A driver calls
- * {@link claimAndSchedule} on a cadence with the host id; reclaiming expired leases
- * is a separate concern (the reaper).
+ * locking guarantees each task is owned by one instance.
  *
  * This is the executor logic only: a driver (the multi-main loop) calls
  * {@link claimAndSchedule} on a cadence and supplies the instance host id. The

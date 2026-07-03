@@ -29,6 +29,15 @@ export interface ClaimRef {
 	claimedEpoch: number;
 }
 
+/**
+ * Identifies the row and epoch a reaper update may act on, without a `host`: the
+ * reaper isn't the claiming owner, unlike {@link ClaimRef}.
+ */
+export interface ReapRef {
+	id: string;
+	claimedEpoch: number;
+}
+
 @Service()
 export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	constructor(
@@ -229,6 +238,9 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	 * `leaseExpiresAt WHERE status = 'running'`.
 	 */
 	async findExpiredLeases(limit: number): Promise<ScheduledTask[]> {
+		// No row locking here (unlike claimDueTasks): the guarded update that follows
+		// makes a race safe, at the cost of reapers occasionally re-selecting a row
+		// another reaper already claimed.
 		return await this.createQueryBuilder('t')
 			.where('t.status = :running', { running: ScheduledTaskStatus.Running })
 			.andWhere(`t.leaseExpiresAt < ${this.makeDbNowLiteral()}`)
@@ -244,15 +256,10 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	 * re-asserted expiry, so a row the owner finished, another reaper reclaimed, or a
 	 * renewed lease moved out is a benign 0-row no-op. Returns rows affected. (The
 	 * epoch bump is defence in depth, not what fences the stalled owner; the status
-	 * change and the next claim's own bump do that. See the `Reaper` class.)
+	 * change and the next claim's own bump do that. See `Reaper` in `@n8n/scheduler`.)
 	 */
-	async reclaimExpired(
-		id: string,
-		claimedEpoch: number,
-		backoffMs: number,
-		errorMessage: string,
-	): Promise<number> {
-		return await this.runReaperUpdate(id, claimedEpoch, {
+	async reclaimExpired(ref: ReapRef, backoffMs: number, errorMessage: string): Promise<number> {
+		return await this.runReaperUpdate(ref, {
 			status: ScheduledTaskStatus.Pending,
 			runAt: () => this.makeDbNowPlusMsLiteral(backoffMs),
 			attempts: () => 'attempts + 1',
@@ -260,6 +267,9 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 			claimedBy: null,
 			leaseExpiresAt: null,
 			errorMessage,
+			// The next attempt sets its own start; clear this one's so a pending row
+			// doesn't carry a stale `startedAt`.
+			startedAt: null,
 		});
 	}
 
@@ -268,8 +278,8 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	 * terminal `failed`. Same guard as {@link reclaimExpired}; terminal, so no epoch
 	 * bump (the `status` change alone fences a stale owner). Returns rows affected.
 	 */
-	async deadLetterExpired(id: string, claimedEpoch: number, errorMessage: string): Promise<number> {
-		return await this.runReaperUpdate(id, claimedEpoch, {
+	async deadLetterExpired(ref: ReapRef, errorMessage: string): Promise<number> {
+		return await this.runReaperUpdate(ref, {
 			status: ScheduledTaskStatus.Failed,
 			finishedAt: () => this.makeDbNowLiteral(),
 			attempts: () => 'attempts + 1',
@@ -309,10 +319,10 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	 * Returns rows affected; 0 is benign (another reaper won it, or the owner finished).
 	 */
 	private async runReaperUpdate(
-		id: string,
-		claimedEpoch: number,
+		ref: ReapRef,
 		values: QueryDeepPartialEntity<ScheduledTask>,
 	): Promise<number> {
+		const { id, claimedEpoch } = ref;
 		// No alias on an UPDATE builder, so quote the camelCase column ourselves for
 		// Postgres (SQLite accepts the same double-quoted identifier).
 		const leaseExpiresAt = this.manager.connection.driver.escape('leaseExpiresAt');
@@ -320,7 +330,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 			.update(ScheduledTask)
 			.set(values)
 			.where({ id, status: ScheduledTaskStatus.Running, leaseEpoch: claimedEpoch })
-			.andWhere(`${leaseExpiresAt} < ${this.dbNow()}`)
+			.andWhere(`${leaseExpiresAt} < ${this.makeDbNowLiteral()}`)
 			.execute();
 		return result.affected ?? 0;
 	}

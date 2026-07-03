@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import type { SchedulerConfig } from '@n8n/config';
 import type { ScheduledTask as ScheduledTaskEntity, ScheduledTaskRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
@@ -28,7 +29,8 @@ const expiredTask = (overrides: Partial<ScheduledTaskEntity> = {}): ScheduledTas
 const setup = () => {
 	const taskRepository = mock<ScheduledTaskRepository>();
 	const logger = mock<Logger>();
-	const reaper = new Reaper(taskRepository, logger);
+	const config = mock<SchedulerConfig>({ reaperBatchSize: 100 });
+	const reaper = new Reaper(taskRepository, logger, config);
 	// Guarded updates report one row changed unless a test overrides them.
 	taskRepository.reclaimExpired.mockResolvedValue(1);
 	taskRepository.deadLetterExpired.mockResolvedValue(1);
@@ -56,8 +58,7 @@ describe('Reaper.reap', () => {
 
 		// nextAttempt = 1 -> backoff(1); guarded on the epoch read during the sweep.
 		expect(taskRepository.reclaimExpired).toHaveBeenCalledWith(
-			task.id,
-			4,
+			{ id: task.id, claimedEpoch: 4 },
 			backoff(1),
 			expect.any(String),
 		);
@@ -74,8 +75,7 @@ describe('Reaper.reap', () => {
 
 		// nextAttempt = 2 -> backoff(2), proving it uses backoff(attempts+1) rather than backoff(attempts).
 		expect(taskRepository.reclaimExpired).toHaveBeenCalledWith(
-			task.id,
-			task.leaseEpoch,
+			{ id: task.id, claimedEpoch: task.leaseEpoch },
 			backoff(2),
 			expect.any(String),
 		);
@@ -89,8 +89,7 @@ describe('Reaper.reap', () => {
 		const result = await reaper.reap();
 
 		expect(taskRepository.deadLetterExpired).toHaveBeenCalledWith(
-			task.id,
-			task.leaseEpoch,
+			{ id: task.id, claimedEpoch: task.leaseEpoch },
 			expect.any(String),
 		);
 		expect(taskRepository.reclaimExpired).not.toHaveBeenCalled();
@@ -106,8 +105,7 @@ describe('Reaper.reap', () => {
 		await reaper.reap();
 
 		expect(taskRepository.deadLetterExpired).toHaveBeenCalledWith(
-			task.id,
-			task.leaseEpoch,
+			{ id: task.id, claimedEpoch: task.leaseEpoch },
 			expect.any(String),
 		);
 		expect(taskRepository.reclaimExpired).not.toHaveBeenCalled();
@@ -140,8 +138,7 @@ describe('Reaper.reap', () => {
 
 		expect(result).toEqual({ reclaimed: 1, deadLettered: 0 });
 		expect(taskRepository.reclaimExpired).toHaveBeenCalledWith(
-			'ok',
-			1,
+			{ id: 'ok', claimedEpoch: 1 },
 			backoff(1),
 			expect.any(String),
 		);

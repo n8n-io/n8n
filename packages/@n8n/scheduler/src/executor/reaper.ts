@@ -1,11 +1,9 @@
 import { Logger } from '@n8n/backend-common';
+import { SchedulerConfig } from '@n8n/config';
 import { ScheduledTaskRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import { backoff } from './backoff';
-
-/** Default cap on how many expired leases a single sweep reclaims. */
-const DEFAULT_REAP_BATCH_SIZE = 100;
 
 /** Recorded on a task the reaper recovers, so the failure has a cause. */
 const LEASE_EXPIRED_MESSAGE = 'Lease expired before completion';
@@ -38,12 +36,15 @@ export interface ReapResult {
  */
 @Service()
 export class Reaper {
-	private readonly batchSize = DEFAULT_REAP_BATCH_SIZE;
+	private readonly batchSize: number;
 
 	constructor(
 		private readonly taskRepository: ScheduledTaskRepository,
 		private readonly logger: Logger,
-	) {}
+		config: SchedulerConfig,
+	) {
+		this.batchSize = config.reaperBatchSize;
+	}
 
 	/**
 	 * One reaper pass: reclaim (or dead-letter) up to `batchSize` expired-lease
@@ -66,14 +67,12 @@ export class Reaper {
 				const nextAttempts = task.attempts + 1;
 				if (nextAttempts >= task.maxAttempts) {
 					deadLettered += await this.taskRepository.deadLetterExpired(
-						task.id,
-						task.leaseEpoch,
+						{ id: task.id, claimedEpoch: task.leaseEpoch },
 						LEASE_EXPIRED_MESSAGE,
 					);
 				} else {
 					reclaimed += await this.taskRepository.reclaimExpired(
-						task.id,
-						task.leaseEpoch,
+						{ id: task.id, claimedEpoch: task.leaseEpoch },
 						backoff(nextAttempts),
 						LEASE_EXPIRED_MESSAGE,
 					);

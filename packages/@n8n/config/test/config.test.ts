@@ -444,6 +444,7 @@ describe('GlobalConfig', () => {
 			executorIntervalSeconds: 5,
 			claimBatchSize: 100,
 			reaperIntervalSeconds: 30,
+			reaperBatchSize: 100,
 			leaseDurationSeconds: 60,
 			retentionSeconds: 604800,
 			minIntervalSeconds: 0,
