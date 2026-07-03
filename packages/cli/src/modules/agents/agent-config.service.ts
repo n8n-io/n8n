@@ -23,17 +23,12 @@ import { AgentTaskRepository } from './repositories/agent-task.repository';
 import { AgentRepository } from './repositories/agent.repository';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
 import { markAgentDraftDirty } from './utils/agent-draft.utils';
+import {
+	DEFAULT_AGENT_PERSONALISATION_ICON,
+	getRandomAgentPersonalisationGradient,
+	type AgentPersonalisation,
+} from './utils/agent-personalisation';
 import { resolveUniqueSubAgents, type ResolvedSubAgentRef } from './utils/sub-agent-resolver';
-
-type AgentPersonalisation = NonNullable<AgentJsonConfig['personalisation']>;
-
-const DEFAULT_AGENT_PERSONALISATION = {
-	icon: 'bot',
-	gradient: {
-		from: '#FF1500',
-		to: '#FF6900',
-	},
-} as const satisfies AgentPersonalisation;
 
 @Service()
 export class AgentConfigService {
@@ -352,11 +347,11 @@ function resolvePersonalisationForSave(
 ): AgentPersonalisation {
 	const incoming = extractPersonalisation(config);
 	const previous = previousSchema?.personalisation;
-	const fallback = DEFAULT_AGENT_PERSONALISATION;
-	const gradient = previous?.gradient ?? incoming?.gradient ?? fallback.gradient;
+	const gradient =
+		previous?.gradient ?? incoming?.gradient ?? getRandomAgentPersonalisationGradient();
 
 	return {
-		icon: incoming?.icon ?? previous?.icon ?? fallback.icon,
+		icon: incoming?.icon ?? previous?.icon ?? DEFAULT_AGENT_PERSONALISATION_ICON,
 		gradient: { ...gradient },
 	};
 }
@@ -377,7 +372,7 @@ function normalizePersonalisationInput(
 			icon:
 				incoming.icon ??
 				previousSchema?.personalisation?.icon ??
-				DEFAULT_AGENT_PERSONALISATION.icon,
+				DEFAULT_AGENT_PERSONALISATION_ICON,
 			gradient: resolvePersonalisationForSave(rawConfig, previousSchema).gradient,
 		},
 	};

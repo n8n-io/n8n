@@ -10,14 +10,7 @@ import { AgentTestChatService } from './agent-test-chat.service';
 import { Agent } from './entities/agent.entity';
 import { ChatIntegrationService } from './integrations/chat-integration.service';
 import { AgentRepository } from './repositories/agent.repository';
-
-const DEFAULT_AGENT_PERSONALISATION = {
-	icon: 'bot',
-	gradient: {
-		from: '#FF1500',
-		to: '#FF6900',
-	},
-} as const;
+import { createDefaultAgentPersonalisation } from './utils/agent-personalisation';
 
 @Service()
 export class AgentsService {
@@ -37,10 +30,7 @@ export class AgentsService {
 			instructions: '',
 			tools: [],
 			skills: [],
-			personalisation: {
-				icon: DEFAULT_AGENT_PERSONALISATION.icon,
-				gradient: { ...DEFAULT_AGENT_PERSONALISATION.gradient },
-			},
+			personalisation: createDefaultAgentPersonalisation(),
 		};
 
 		const agent = this.agentRepository.create({

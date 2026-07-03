@@ -61,6 +61,7 @@ import { mcpServerToNode } from '../composables/useMcpServerAdapter';
 import { removeProjectAgentFromListCache } from '../composables/useProjectAgentsList';
 import { formatToolNameForDisplay } from '../utils/toolDisplayName';
 import { normalizeAgentSkillForSave } from '../utils/agentSkill';
+import { addMissingAgentPersonalisation } from '../utils/agentPersonalisation';
 import {
 	AGENT_BUILDER_VIEW,
 	AGENT_PREVIEW_VIEW,
@@ -717,6 +718,21 @@ function replaceConfigAndScheduleSave(nextConfig: AgentJsonConfig) {
 	});
 }
 
+function persistMissingPersonalisationGradient() {
+	if (!localConfig.value) return;
+
+	const nextConfig = addMissingAgentPersonalisation(localConfig.value);
+	if (!nextConfig) return;
+
+	localConfig.value = deepCopy(nextConfig);
+	configAutosave.scheduleAutosave({
+		projectId: projectId.value,
+		agentId: agentId.value,
+		type: 'config',
+		config: normalizeAgentMemoryConfig(deepCopy(localConfig.value)),
+	});
+}
+
 async function onConfigUpdated() {
 	await Promise.all([fetchAgent(), fetchConfig(projectId.value, agentId.value)]);
 	// Refresh the connected-trigger list so chips reflect builder writes
@@ -916,6 +932,7 @@ async function initialize() {
 			fetchConfig(projectId.value, agentId.value),
 			fetchAgentFiles(),
 		]);
+		persistMissingPersonalisationGradient();
 		builderTelemetry.captureToolsBaseline();
 		builderTelemetry.captureSkillsBaseline();
 		builderTelemetry.captureTasksBaseline();

@@ -4,7 +4,13 @@ import { mount, flushPromises } from '@vue/test-utils';
 import { nextTick, ref } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
 import { MAX_AGENT_KNOWLEDGE_BASE_SIZE_BYTES } from '@n8n/api-types';
-import type { AgentJsonSkillRef, AgentJsonToolRef, CustomToolEntry } from '../types';
+import type {
+	AgentJsonConfig,
+	AgentJsonSkillRef,
+	AgentJsonToolRef,
+	CustomToolEntry,
+} from '../types';
+import { getRandomAgentPersonalisationGradient } from '../utils/agentPersonalisation';
 
 const routerPush = vi.fn();
 const routerReplace = vi.fn();
@@ -160,6 +166,7 @@ interface TestAgentConfig {
 	credential?: string;
 	tools?: AgentJsonToolRef[];
 	skills?: AgentJsonSkillRef[];
+	personalisation?: AgentJsonConfig['personalisation'];
 }
 
 const defaultLlmConfig = {
@@ -167,8 +174,18 @@ const defaultLlmConfig = {
 	credential: 'cred-anthropic',
 } as const;
 
+function testPersonalisation(): AgentJsonConfig['personalisation'] {
+	return {
+		icon: 'bot',
+		gradient: {
+			from: '#111111',
+			to: '#222222',
+		},
+	};
+}
+
 function withDefaultLlm(config: TestAgentConfig | null): TestAgentConfig | null {
-	return config ? { ...defaultLlmConfig, ...config } : null;
+	return config ? { ...defaultLlmConfig, personalisation: testPersonalisation(), ...config } : null;
 }
 
 const mockConfig = ref<TestAgentConfig | null>(
@@ -467,6 +484,7 @@ describe('AgentBuilderView — preview routing', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		vi.restoreAllMocks();
 		createObjectURLSpy?.mockRestore();
 		revokeObjectURLSpy?.mockRestore();
 		anchorClickSpy?.mockRestore();
@@ -521,6 +539,31 @@ describe('AgentBuilderView — preview routing', () => {
 		expect(setCredentialsMock).toHaveBeenCalledWith([]);
 		expect(fetchAllCredentialsForWorkflowMock).toHaveBeenCalledWith({ projectId: 'p1' });
 		expect(fetchAllCredentialsMock).not.toHaveBeenCalled();
+	});
+
+	it('persists a generated personalisation gradient when an existing agent is missing one', async () => {
+		vi.spyOn(Math, 'random').mockReturnValue(0.5);
+		const expectedGradient = getRandomAgentPersonalisationGradient(() => 0.5);
+		intendedConfig = {
+			name: 'Agent One',
+			instructions: 'You are a helpful assistant.',
+			personalisation: undefined,
+		};
+		mockConfig.value = withDefaultLlm(intendedConfig);
+
+		const wrapper = await renderView();
+		await (wrapper.vm as unknown as { flushAutosave: () => Promise<void> }).flushAutosave();
+
+		expect(updateConfigMock).toHaveBeenCalledWith(
+			'p1',
+			'a1',
+			expect.objectContaining({
+				personalisation: {
+					icon: 'bot',
+					gradient: expectedGradient,
+				},
+			}),
+		);
 	});
 
 	it('reloads task bodies after reverting to a published version', async () => {

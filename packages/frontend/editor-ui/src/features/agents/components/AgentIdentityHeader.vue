@@ -5,16 +5,11 @@ import type { IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/ty
 import { useI18n } from '@n8n/i18n';
 
 import type { AgentJsonConfig } from '../types';
+import { createDefaultAgentPersonalisation } from '../utils/agentPersonalisation';
 
 type AgentPersonalisation = NonNullable<AgentJsonConfig['personalisation']>;
 
-const DEFAULT_AGENT_PERSONALISATION = {
-	icon: 'bot',
-	gradient: {
-		from: '#FF1500',
-		to: '#FF6900',
-	},
-} as const;
+const DEFAULT_AGENT_PERSONALISATION = createDefaultAgentPersonalisation(() => 0);
 
 const props = withDefaults(
 	defineProps<{
@@ -33,10 +28,10 @@ const i18n = useI18n();
 const name = computed(() => props.config?.name ?? '');
 const personalisation = computed<AgentPersonalisation>(() => {
 	const value = props.config?.personalisation;
-	return value
+	return value?.gradient
 		? { icon: value.icon, gradient: { ...value.gradient } }
 		: {
-				icon: DEFAULT_AGENT_PERSONALISATION.icon,
+				icon: value?.icon ?? DEFAULT_AGENT_PERSONALISATION.icon,
 				gradient: { ...DEFAULT_AGENT_PERSONALISATION.gradient },
 			};
 });

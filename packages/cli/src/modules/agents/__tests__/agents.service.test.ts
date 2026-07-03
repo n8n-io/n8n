@@ -13,6 +13,7 @@ import { AgentsService } from '../agents.service';
 import type { Agent } from '../entities/agent.entity';
 import { ChatIntegrationService } from '../integrations/chat-integration.service';
 import type { AgentRepository } from '../repositories/agent.repository';
+import { getRandomAgentPersonalisationGradient } from '../utils/agent-personalisation';
 
 const agentId = 'agent-1';
 const projectId = 'project-1';
@@ -75,10 +76,13 @@ describe('AgentsService', () => {
 	});
 
 	afterEach(() => {
+		vi.restoreAllMocks();
 		Container.reset();
 	});
 
 	it('creates a draft agent without a default model or credential', async () => {
+		vi.spyOn(Math, 'random').mockReturnValue(0.5);
+		const expectedGradient = getRandomAgentPersonalisationGradient(() => 0.5);
 		const { service, agentRepository } = makeService();
 		const saved = makeAgent();
 
@@ -97,10 +101,7 @@ describe('AgentsService', () => {
 				skills: [],
 				personalisation: {
 					icon: 'bot',
-					gradient: {
-						from: '#FF1500',
-						to: '#FF6900',
-					},
+					gradient: expectedGradient,
 				},
 			},
 			versionId: expect.any(String),
