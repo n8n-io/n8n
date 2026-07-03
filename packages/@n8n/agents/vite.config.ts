@@ -52,7 +52,6 @@ function rewriteSourceRequire(): Plugin {
 
 export default mergeConfig(
 	createVitestConfig({
-		restoreMocks: true,
 		// Integration tests run via vitest.integration.config.mjs (real providers, long timeouts).
 		exclude: [...configDefaults.exclude, '**/__tests__/integration/**'],
 	}),
