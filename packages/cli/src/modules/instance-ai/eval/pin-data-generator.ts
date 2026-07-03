@@ -16,6 +16,7 @@ import { existsSync, readFileSync, readdirSync } from 'fs';
 import { join } from 'path';
 
 import { buildDateAnchors } from './date-anchors';
+import { isAiRootNodeType } from './workflow-analysis';
 
 type PinData = Record<string, Array<Record<string, unknown>>>;
 
@@ -378,7 +379,7 @@ RULES:
 4. When no schema is provided, generate a realistic response based on the node type, resource, and operation.
 5. Use realistic but clearly fake values (e.g., "jane@example.com", "proj_abc123").
 6. Dates and timestamps MUST be derived from the "## Date anchors" block at the end of the prompt — never from training data. Workflows compare pinned data against the real execution clock ($now, Date.now()); values months in the past get silently filtered out. When the data description mentions a relative window ("last 24 hours", "past 2 weeks"), place timestamps safely INSIDE it, never on the boundary.
-7. AI root nodes (Agent/Chain) marked as having a structured output parser wrap their result in an envelope: each item's json MUST be { "output": <parsed object> }. "output" MUST be a parsed JSON object matching the parser's schema — NEVER a JSON-encoded string, never prose, and never the parsed fields spread at the top level of json.
+7. AI root nodes (Agent/Chain) wrap their result in an envelope: each item's json MUST be { "output": ... }. WITH a structured output parser attached, "output" MUST be a parsed JSON object matching the parser's schema — NEVER a JSON-encoded string, never prose, and never the parsed fields spread at the top level of json. WITHOUT a parser, "output" MUST be a plain text STRING (the assistant's final message) — never an object: downstream nodes interpolate it directly into messages and an object renders as "[object Object]".
 8. Return ONLY a valid JSON object, no explanation or markdown fencing.
 9. CRITICAL: You MUST generate data for EVERY node listed in "Nodes Requiring Mock Data". Never skip a node, even if the test scenario describes an empty or error response. An empty response is still valid data.`;
 
@@ -416,6 +417,7 @@ function buildUserPrompt(
 			if (ctx.operation) parts.push(`Operation: ${ctx.operation}`);
 			sections.push(`- ${parts.join(' | ')}`);
 		}
+		const isParserlessAiRoot = !ctx.outputParser && isAiRootNodeType(ctx.nodeType);
 		if (ctx.outputParser) {
 			sections.push(
 				'- HAS STRUCTURED OUTPUT PARSER: every item MUST be `{ "json": { "output": <parsed object> } }`. `output` is a parsed JSON object — NOT a JSON-encoded string, and its fields must NOT appear at the top level of `json`.',
@@ -431,6 +433,10 @@ function buildUserPrompt(
 				sections.push(truncated);
 				sections.push('```');
 			}
+		} else if (isParserlessAiRoot) {
+			sections.push(
+				'- AI ROOT WITHOUT OUTPUT PARSER: every item MUST be `{ "json": { "output": "<final response text>" } }`. `output` is a plain text STRING (the assistant\'s final message) — NEVER an object and NEVER JSON-encoded data: downstream nodes interpolate it directly into messages.',
+			);
 		}
 		if (ctx.schema) {
 			const schemaStr = JSON.stringify(ctx.schema, null, 2);
@@ -439,7 +445,7 @@ function buildUserPrompt(
 			sections.push('```json');
 			sections.push(truncated);
 			sections.push('```');
-		} else if (!ctx.outputParser) {
+		} else if (!ctx.outputParser && !isParserlessAiRoot) {
 			sections.push('(no schema available — generate based on API knowledge)');
 		}
 	}

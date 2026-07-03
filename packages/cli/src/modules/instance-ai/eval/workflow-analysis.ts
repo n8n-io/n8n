@@ -25,7 +25,7 @@ const AI_ROOT_NODE_TYPES = new Set<string>([
 	'@n8n/n8n-nodes-langchain.chainSummarization',
 ]);
 
-function isAiRootNodeType(nodeType: string): boolean {
+export function isAiRootNodeType(nodeType: string): boolean {
 	return AI_ROOT_NODE_TYPES.has(nodeType);
 }
 
