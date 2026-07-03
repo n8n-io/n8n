@@ -14,7 +14,7 @@ poking at the workflow-index module with non-trivial input.
 
 ```sh
 N8N_API_KEY="<a public-api JWT for an owner/admin>" \
-  node bin/seedInstance/seedInstance.mjs
+  node scripts/instance-seeding/seedInstance.mjs
 ```
 
 Targets `http://localhost:5678` by default. The script is **destructive by

@@ -14,7 +14,7 @@ if (!KEY) {
 	process.exit(1);
 }
 
-const CLEAR = (process.env.CLEAR ?? 'true').toLowerCase() !== 'false';
+const CLEAR = (process.env.CLEAR ?? 'false').toLowerCase() === 'true';
 const PERSONAL_WORKFLOWS = Number(process.env.WF_MULTIPLIER) || 50;
 const SEED_PREFIX = '[seed] ';
 const SEED_DT_PREFIX = 'seed_';
