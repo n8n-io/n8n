@@ -1,3 +1,20 @@
+## [2.29.4](https://github.com/n8n-io/n8n/compare/n8n@2.29.3...n8n@2.29.4) (2026-07-03)
+
+
+### Bug Fixes
+
+* **Basic LLM Chain Node:** Prevent "Failed to parse agent steps" error ([#33434](https://github.com/n8n-io/n8n/issues/33434)) ([686fce8](https://github.com/n8n-io/n8n/commit/686fce800a6f86f0ec9239221821d70dddd9e749))
+* **core:** Prevent duplicate zod instances that break npm installs ([#33470](https://github.com/n8n-io/n8n/issues/33470)) ([4d8304a](https://github.com/n8n-io/n8n/commit/4d8304a7c622ec63a0579f5e668eb9403eecbfa5))
+* **core:** Restore node-cli eslint peer to a range ([#33422](https://github.com/n8n-io/n8n/issues/33422)) ([56b92ac](https://github.com/n8n-io/n8n/commit/56b92ac85138a63efa38833a41bb210f794350a7))
+* **editor:** Prevent duplicate AI Gateway unsupported-action notice ([#33436](https://github.com/n8n-io/n8n/issues/33436)) ([2d27bbc](https://github.com/n8n-io/n8n/commit/2d27bbcbde31bad11975e9ef9a1dcf175f40580d))
+* **editor:** Show AI Gateway hints for supported nodes used as tools ([#33472](https://github.com/n8n-io/n8n/issues/33472)) ([2b89525](https://github.com/n8n-io/n8n/commit/2b895252db9faa59814d6cabf94367baa85ca442))
+
+
+### Features
+
+* **core:** Support community node type definitions in AI Assistant ([#33447](https://github.com/n8n-io/n8n/issues/33447)) ([0723826](https://github.com/n8n-io/n8n/commit/072382693a4f2ab39ed3bd7aa8ee69104bf2a2a2))
+
+
 ## [2.29.3](https://github.com/n8n-io/n8n/compare/n8n@2.29.2...n8n@2.29.3) (2026-07-02)
 
 
