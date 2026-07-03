@@ -1,4 +1,4 @@
-import { mockLogger } from '@n8n/backend-test-utils';
+import type { Logger } from '@n8n/backend-common';
 import type { DatabaseConfig } from '@n8n/config';
 import type { DbConnection, DbLockService, WorkflowStatisticsRepository } from '@n8n/db';
 import { StatisticsNames } from '@n8n/db';
@@ -29,8 +29,9 @@ describe('WorkflowStatisticsRollupService', () => {
 		const dbLockService = mock<DbLockService>();
 		const repository = mock<WorkflowStatisticsRepository>();
 		const statisticsService = mock<WorkflowStatisticsService>();
+		const logger = mock<Logger>(); // the scoped logger the service actually logs to
 		const service = new WorkflowStatisticsRollupService(
-			mockLogger(),
+			mock<Logger>({ scoped: vi.fn().mockReturnValue(logger) }),
 			errorReporter,
 			instanceSettings,
 			dbConnection,
@@ -39,7 +40,7 @@ describe('WorkflowStatisticsRollupService', () => {
 			repository,
 			statisticsService,
 		);
-		return { service, errorReporter, dbLockService, repository, statisticsService };
+		return { service, logger, errorReporter, dbLockService, repository, statisticsService };
 	};
 
 	/** Invoke the private rollup tick directly. */
@@ -103,6 +104,42 @@ describe('WorkflowStatisticsRollupService', () => {
 			const { service } = makeService({ dbType: 'sqlite' });
 			service.start();
 			expect(isRunning(service)).toBe(false);
+		});
+	});
+
+	describe('lock contention', () => {
+		const lockHeld = () => new OperationalError('lock held');
+
+		it('warns with counts once skips reach the threshold', async () => {
+			const { service, dbLockService, logger } = makeService({});
+			dbLockService.tryWithLock.mockRejectedValue(lockHeld());
+
+			for (let i = 0; i < 5; i++) await rollup(service);
+
+			expect(logger.warn).toHaveBeenCalledTimes(1);
+			expect(logger.warn).toHaveBeenCalledWith(expect.any(String), {
+				consecutiveLockSkips: 5,
+				totalLockSkips: 5,
+			});
+		});
+
+		it('resets the consecutive count on a successful fold but keeps the total', async () => {
+			const { service, dbLockService, logger } = makeService({});
+			const empty: RollupResult = { increments: 0, firstOccurrences: [] };
+
+			for (let i = 0; i < 4; i++) dbLockService.tryWithLock.mockRejectedValueOnce(lockHeld());
+			dbLockService.tryWithLock.mockResolvedValueOnce(empty);
+			for (let i = 0; i < 5; i++) await rollup(service);
+			expect(logger.warn).not.toHaveBeenCalled(); // streak broken at 4
+
+			for (let i = 0; i < 5; i++) dbLockService.tryWithLock.mockRejectedValueOnce(lockHeld());
+			for (let i = 0; i < 5; i++) await rollup(service);
+
+			expect(logger.warn).toHaveBeenCalledTimes(1);
+			expect(logger.warn).toHaveBeenCalledWith(expect.any(String), {
+				consecutiveLockSkips: 5,
+				totalLockSkips: 9,
+			});
 		});
 	});
 

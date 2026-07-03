@@ -20,6 +20,9 @@ const STEADY_INTERVAL_MS = 5 * Time.seconds.toMilliseconds;
 /** Fast cadence while a batch comes back full, i.e. backlog remaining. */
 const BUSY_INTERVAL_MS = 250;
 
+/** Consecutive lock skips after which to warn that the lock is persistently held elsewhere. */
+const SKIP_WARN_THRESHOLD = 5;
+
 /**
  * Folds statistics increments in the `workflow_statistics_delta` table
  * into the `workflow_statistics` table.
@@ -32,6 +35,10 @@ export class WorkflowStatisticsRollupService {
 	private inflightRollup: Promise<void> | undefined;
 
 	private isShuttingDown = false;
+
+	private consecutiveLockSkips = 0;
+
+	private totalLockSkips = 0;
 
 	constructor(
 		private readonly logger: Logger,
@@ -114,14 +121,39 @@ export class WorkflowStatisticsRollupService {
 	/** Fold a batch under an advisory lock. Returns null if another instance holds the lock. */
 	private async foldBatch(): Promise<RollupResult | null> {
 		try {
-			return await this.dbLockService.tryWithLock(
+			const result = await this.dbLockService.tryWithLock(
 				DbLock.WORKFLOW_STATISTICS_ROLLUP,
 				async (tx) => await this.repository.rollupIncrements(tx, BATCH_SIZE),
 			);
+			this.consecutiveLockSkips = 0;
+			return result;
 		} catch (error) {
-			if (error instanceof OperationalError) return null; // another instance holds the lock
+			if (error instanceof OperationalError) {
+				this.registerLockSkip(); // another instance holds the lock
+				return null;
+			}
 			throw error;
 		}
+	}
+
+	/**
+	 * Occasional skips are expected around leader transitions; persistent skips suggest a process
+	 * outside this deployment holds the lock, e.g. a second n8n instance sharing this database
+	 * (advisory locks are not schema- or table-prefix-scoped).
+	 */
+	private registerLockSkip() {
+		this.consecutiveLockSkips++;
+		this.totalLockSkips++;
+
+		if (this.consecutiveLockSkips % SKIP_WARN_THRESHOLD !== 0) return;
+
+		this.logger.warn(
+			'Workflow statistics rollup repeatedly skipped: lock held by another process',
+			{
+				consecutiveLockSkips: this.consecutiveLockSkips,
+				totalLockSkips: this.totalLockSkips,
+			},
+		);
 	}
 
 	/** Fire the one-time milestone event for each workflow whose counter row was just created. */
