@@ -175,6 +175,7 @@ describe('InstanceAiMcpRegistryService', () => {
 				cacheKey: 'registry-connection:1',
 				toolFilter: { mode: 'allow', tools: ['issues'] },
 				fetch: expect.any(Function),
+				metadata: { serverSlug: 'linear', userId: user.id },
 			}),
 		);
 		expect(result[1]).toEqual(
@@ -185,6 +186,7 @@ describe('InstanceAiMcpRegistryService', () => {
 				cacheKey: 'registry-connection:2',
 				toolFilter: undefined,
 				fetch: expect.any(Function),
+				metadata: { serverSlug: 'linear', userId: user.id },
 			}),
 		);
 		expect(result[2]).toEqual(
@@ -195,6 +197,7 @@ describe('InstanceAiMcpRegistryService', () => {
 				cacheKey: 'registry-connection:3',
 				toolFilter: undefined,
 				fetch: expect.any(Function),
+				metadata: { serverSlug: 'notion', userId: user.id },
 			}),
 		);
 		expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith('cred-1', user, [
