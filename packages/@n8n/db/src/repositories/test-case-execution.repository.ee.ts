@@ -39,9 +39,9 @@ export class TestCaseExecutionRepository extends Repository<TestCaseExecution> {
 	}
 
 	/**
-	 * Paginated fetch of a run's test cases. Replaces the unbounded `find()`
-	 * used by the internal controller, which would load every row into memory
-	 * and OOM on large CI datasets. Ordered by `runIndex` (the seeded
+	 * Paginated fetch of a run's test cases. Unlike the unbounded `find()` the
+	 * internal controller uses (which loads every row and would OOM on large CI
+	 * datasets), this bounds the result. Ordered by `runIndex` (the seeded
 	 * per-case sequence) with `id` as a stable tiebreaker.
 	 */
 	async getManyByTestRunId(
