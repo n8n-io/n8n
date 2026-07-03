@@ -249,11 +249,6 @@ defineExpose({
 	}
 }
 
-.credentialsMissingIcon {
-	display: inline-block;
-	margin-bottom: calc(-1 * var(--border-width));
-}
-
 .selected {
 	display: flex;
 	flex-direction: row;

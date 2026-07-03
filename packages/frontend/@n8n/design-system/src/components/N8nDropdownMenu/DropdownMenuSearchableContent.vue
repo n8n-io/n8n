@@ -1,6 +1,6 @@
 <script setup lang="ts" generic="T = string, D = never">
 import { useDebounceFn } from '@vueuse/core';
-import { computed, nextTick, ref, watch } from 'vue';
+import { computed, nextTick, ref, useId, watch } from 'vue';
 
 import type { DropdownMenuItemProps, DropdownMenuSlots } from './DropdownMenu.types';
 import {
@@ -52,7 +52,7 @@ const itemsContainerRef = ref<HTMLElement | null>(null);
 const searchRef = ref<{ focus: (options?: FocusOptions) => void } | null>(null);
 const searchTerm = ref('');
 const openSubMenuIndex = ref(-1);
-const instanceId = Math.random().toString(36).slice(2);
+const instanceId = useId();
 let searchSequence = 0;
 
 const highlightedIndex = ref(-1);
@@ -297,7 +297,6 @@ defineExpose({ resetNavigation });
 
 .items {
 	min-height: 0;
-	/* padding-bottom: var(--spacing--sm); */
 	overflow-y: auto;
 	scroll-padding-bottom: var(--spacing--sm);
 	scrollbar-width: none;

@@ -364,7 +364,6 @@ defineExpose({ open, close });
 	--n8n--dropdown--offset--origin-y: center;
 	--animation--popover-in--translate-x: var(--n8n--dropdown--offset--slide-x);
 	--animation--popover-in--translate-y: var(--n8n--dropdown--offset--slide-y);
-	/* --n8n--dropdown-menu-width: 24rem; */
 	--n8n--dropdown-menu-width: var(--reka-dropdown-menu-trigger-width);
 	display: flex;
 	flex-direction: column;
