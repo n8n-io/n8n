@@ -159,7 +159,7 @@ describe('useExpressionEditor', () => {
 					from: 0,
 					kind: 'resolvable',
 					resolvable: '{{ $getPairedItem }}',
-					resolved: '[$getPairedItem is deprecated and will be removed.]',
+					resolved: '[$getPairedItem is deprecated and will be removed]',
 					state: 'invalid',
 					to: 20,
 				},
