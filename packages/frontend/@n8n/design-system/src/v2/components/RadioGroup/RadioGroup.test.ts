@@ -1,8 +1,13 @@
 import userEvent from '@testing-library/user-event';
 import { render, waitFor } from '@testing-library/vue';
-import type { RadioGroupRootEmits, RadioGroupRootProps } from 'reka-ui';
+import type {
+	RadioGroupItemProps as RekaRadioGroupItemProps,
+	RadioGroupRootEmits,
+	RadioGroupRootProps,
+} from 'reka-ui';
 
 import type { RadioGroupEmits, RadioGroupProps } from './RadioGroup.types';
+import type { RadioGroupItemProps } from './RadioGroupItem.types';
 import RadioGroupItem from './RadioGroupItem.vue';
 import RadioGroup from './RadioGroup.vue';
 
@@ -25,12 +30,24 @@ type AssertRadioGroupEmitsMatch = RadioGroupEmits extends RadioGroupRootEmits
 		: never
 	: never;
 
+type ExpectedRadioGroupItemProps = Pick<RekaRadioGroupItemProps, 'value' | 'disabled'> & {
+	label?: string;
+	description?: string;
+};
+type AssertRadioGroupItemPropsMatch = RadioGroupItemProps extends ExpectedRadioGroupItemProps
+	? ExpectedRadioGroupItemProps extends RadioGroupItemProps
+		? true
+		: never
+	: never;
+
 // Compile-time checks — fails if our props drift from Reka UI.
 const _radioGroupPropsMatch: AssertRadioGroupPropsMatch = true;
 const _radioGroupEmitsMatch: AssertRadioGroupEmitsMatch = true;
+const _radioGroupItemPropsMatch: AssertRadioGroupItemPropsMatch = true;
 
 void _radioGroupPropsMatch;
 void _radioGroupEmitsMatch;
+void _radioGroupItemPropsMatch;
 
 const options = [
 	{ value: 'all', label: 'All' },
