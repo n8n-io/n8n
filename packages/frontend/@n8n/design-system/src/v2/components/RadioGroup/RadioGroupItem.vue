@@ -1,22 +1,35 @@
 <script setup lang="ts">
-import { Label, RadioGroupIndicator, RadioGroupItem as RekaRadioGroupItem } from './reka-ui';
-import { useId } from 'vue';
+import { computed, useId } from 'vue';
+
+import {
+	injectRadioGroupRootContext,
+	Label,
+	RadioGroupIndicator,
+	RadioGroupItem as RekaRadioGroupItem,
+} from './reka-ui';
 
 import type { RadioGroupItemProps, RadioGroupItemSlots } from './RadioGroupItem.types';
 
 defineProps<RadioGroupItemProps>();
-defineSlots<RadioGroupItemSlots>();
+const slots = defineSlots<RadioGroupItemSlots>();
 
 const id = useId();
+const groupContext = injectRadioGroupRootContext(null);
+const isVertical = computed(() => (groupContext?.orientation.value ?? 'vertical') === 'vertical');
 </script>
 
 <template>
-	<div :class="$style.item">
+	<div :class="[$style.item, isVertical && $style.itemVertical]">
 		<RekaRadioGroupItem :id="id" :value="value" :disabled="disabled" :class="$style.control">
 			<RadioGroupIndicator :class="$style.dot" />
 		</RekaRadioGroupItem>
-		<Label v-if="label || description || !!$slots.default" :for="id" :class="$style.content">
-			<slot>
+		<Label
+			v-if="label || description || !!slots.label"
+			:for="id"
+			:class="$style.content"
+			:data-disabled="disabled ? '' : undefined"
+		>
+			<slot name="label" :label="label" :description="description">
 				<span :class="$style.label">{{ label }}</span>
 				<span v-if="description" :class="$style.description">{{ description }}</span>
 			</slot>
@@ -31,7 +44,6 @@ const id = useId();
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	width: 100%;
 	cursor: pointer;
 
 	&:has(.description) {
@@ -43,6 +55,10 @@ const id = useId();
 	}
 }
 
+.itemVertical {
+	width: 100%;
+}
+
 .control {
 	position: relative;
 	width: var(--spacing--sm);
@@ -50,9 +66,15 @@ const id = useId();
 	background: var(--background--surface);
 	border: var(--border);
 	border-radius: var(--radius--full);
+	cursor: inherit;
+	flex-shrink: 0;
 
 	.item:has(.description) & {
 		margin-top: 1px;
+	}
+
+	&[data-disabled] {
+		cursor: not-allowed;
 	}
 
 	&:hover:not([data-disabled]):not([data-state='checked']) {
@@ -94,9 +116,11 @@ const id = useId();
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--5xs);
+	cursor: inherit;
 	color: var(--text-color);
 
 	.item:has(.control[data-disabled]) & {
+		cursor: not-allowed;
 		color: var(--text-color--disabled);
 	}
 }
@@ -104,11 +128,11 @@ const id = useId();
 .label {
 	font-size: var(--font-size--sm);
 	line-height: var(--line-height--lg);
-	font-weight: var(--font-weight--regular);
 }
 
 .description {
 	font-size: var(--font-size--2xs);
+	line-height: var(--line-height--lg);
 	color: var(--text-color--subtle);
 }
 </style>

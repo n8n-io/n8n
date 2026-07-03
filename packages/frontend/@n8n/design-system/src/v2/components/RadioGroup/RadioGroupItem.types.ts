@@ -1,10 +1,10 @@
-export type RadioGroupItemProps = {
-	value: string;
+import type { RadioGroupItemProps as RekaRadioGroupItemProps } from './reka-ui';
+
+export type RadioGroupItemProps = RekaRadioGroupItemProps & {
 	label?: string;
 	description?: string;
-	disabled?: boolean;
 };
 
 export type RadioGroupItemSlots = {
-	default(): unknown;
+	label(props: { label?: string; description?: string }): unknown;
 };

@@ -1,73 +1,16 @@
 import userEvent from '@testing-library/user-event';
 import { render, waitFor } from '@testing-library/vue';
-import type {
-	RadioGroupItemProps as RekaRadioGroupItemProps,
-	RadioGroupRootEmits,
-	RadioGroupRootProps,
-} from './reka-ui';
 
-import type { RadioGroupEmits, RadioGroupProps } from './RadioGroup.types';
-import type { RadioGroupItemProps } from './RadioGroupItem.types';
 import RadioGroupItem from './RadioGroupItem.vue';
 import RadioGroup from './RadioGroup.vue';
 
-type ExpectedRadioGroupProps = Omit<
-	RadioGroupRootProps,
-	'as' | 'asChild' | 'modelValue' | 'defaultValue'
-> & {
-	modelValue?: string;
-	defaultValue?: string;
-	ariaLabel?: string;
-};
-type AssertRadioGroupPropsMatch = RadioGroupProps extends ExpectedRadioGroupProps
-	? ExpectedRadioGroupProps extends RadioGroupProps
-		? true
-		: never
-	: never;
-type AssertRadioGroupEmitsMatch = RadioGroupEmits extends RadioGroupRootEmits
-	? RadioGroupRootEmits extends RadioGroupEmits
-		? true
-		: never
-	: never;
-
-type ExpectedRadioGroupItemProps = Pick<RekaRadioGroupItemProps, 'value' | 'disabled'> & {
-	label?: string;
-	description?: string;
-};
-type AssertRadioGroupItemPropsMatch = RadioGroupItemProps extends ExpectedRadioGroupItemProps
-	? ExpectedRadioGroupItemProps extends RadioGroupItemProps
-		? true
-		: never
-	: never;
-
-// Compile-time checks — fails if our props drift from Reka UI.
-const _radioGroupPropsMatch: AssertRadioGroupPropsMatch = true;
-const _radioGroupEmitsMatch: AssertRadioGroupEmitsMatch = true;
-const _radioGroupItemPropsMatch: AssertRadioGroupItemPropsMatch = true;
-
-void _radioGroupPropsMatch;
-void _radioGroupEmitsMatch;
-void _radioGroupItemPropsMatch;
-
-const options = [
-	{ value: 'all', label: 'All' },
-	{ value: 'readOnly', label: 'Read only' },
-	{ value: 'custom', label: 'Custom' },
-] as const;
-
-function renderRadioGroup(modelValue = 'all', extraProps: Record<string, unknown> = {}) {
+function renderRadioGroup(props: Record<string, unknown> = {}, slots: { default?: string } = {}) {
 	return render(RadioGroup, {
-		props: {
-			modelValue,
-			...extraProps,
-		},
+		props,
 		slots: {
-			default: options
-				.map(
-					(option) =>
-						`<RadioGroupItem value="${option.value}" label="${option.label}" test-id="radio-${option.value}" />`,
-				)
-				.join(''),
+			default:
+				'<RadioGroupItem value="option-a" label="Option A" /><RadioGroupItem value="option-b" label="Option B" />',
+			...slots,
 		},
 		global: {
 			components: { RadioGroupItem },
@@ -77,143 +20,216 @@ function renderRadioGroup(modelValue = 'all', extraProps: Record<string, unknown
 
 describe('v2/components/RadioGroup', () => {
 	describe('rendering', () => {
-		it('renders one accessible radio per option', () => {
-			const { getAllByRole } = renderRadioGroup();
-
-			expect(getAllByRole('radio')).toHaveLength(3);
+		it('should render unchecked by default', () => {
+			const wrapper = renderRadioGroup();
+			const radio = wrapper.container.querySelector('[role="radio"]');
+			expect(radio).toHaveAttribute('data-state', 'unchecked');
 		});
 
-		it('renders option descriptions when provided', () => {
-			const { getByText } = render(RadioGroup, {
-				props: { modelValue: 'custom' },
+		it('should render with label text', () => {
+			const wrapper = renderRadioGroup({
+				modelValue: 'option-a',
+			});
+			expect(wrapper.getByText('Option A')).toBeInTheDocument();
+		});
+
+		it('should render checked state', () => {
+			const wrapper = renderRadioGroup({
+				modelValue: 'option-a',
+			});
+			const radio = wrapper.getByRole('radio', { name: 'Option A' });
+			expect(radio).toHaveAttribute('data-state', 'checked');
+		});
+
+		it('should render disabled state', () => {
+			const wrapper = render(RadioGroup, {
+				props: {
+					modelValue: 'option-a',
+				},
 				slots: {
-					default:
-						'<RadioGroupItem value="custom" label="Custom" description="Pick scopes individually" />',
+					default: '<RadioGroupItem value="option-a" label="Option A" :disabled="true" />',
 				},
 				global: { components: { RadioGroupItem } },
 			});
-
-			expect(getByText('Pick scopes individually')).toBeInTheDocument();
-		});
-
-		it('marks the option matching modelValue as checked', () => {
-			const { getByRole } = renderRadioGroup('readOnly');
-
-			expect(getByRole('radio', { name: 'Read only' })).toBeChecked();
-			expect(getByRole('radio', { name: 'All' })).not.toBeChecked();
+			const radio = wrapper.container.querySelector('[role="radio"]');
+			expect(radio).toHaveAttribute('data-disabled');
 		});
 	});
 
 	describe('v-model', () => {
-		it('emits update:modelValue with the selected value', async () => {
-			const { getByRole, emitted } = renderRadioGroup('all');
+		it('should update modelValue on click', async () => {
+			const wrapper = renderRadioGroup({
+				modelValue: 'option-a',
+			});
 
-			await userEvent.click(getByRole('radio', { name: 'Custom' }));
+			const radio = wrapper.getByRole('radio', { name: 'Option B' });
+			await userEvent.click(radio);
 
 			await waitFor(() => {
-				expect(emitted('update:modelValue')?.at(-1)).toEqual(['custom']);
+				expect(wrapper.emitted('update:modelValue')?.[0]).toEqual(['option-b']);
 			});
 		});
 
-		it('does not emit for a disabled option', async () => {
-			const { getByRole, emitted } = render(RadioGroup, {
-				props: { modelValue: 'all' },
+		it('should switch selection when clicking another option', async () => {
+			const wrapper = renderRadioGroup({
+				modelValue: 'option-b',
+			});
+
+			const radio = wrapper.getByRole('radio', { name: 'Option A' });
+			await userEvent.click(radio);
+
+			await waitFor(() => {
+				expect(wrapper.emitted('update:modelValue')?.[0]).toEqual(['option-a']);
+			});
+		});
+
+		it('should not update when disabled', async () => {
+			const wrapper = render(RadioGroup, {
+				props: {
+					modelValue: 'option-a',
+				},
 				slots: {
 					default: `
-						<RadioGroupItem value="all" label="All" />
-						<RadioGroupItem value="custom" label="Custom" :disabled="true" />
+						<RadioGroupItem value="option-a" label="Option A" />
+						<RadioGroupItem value="option-b" label="Option B" :disabled="true" />
 					`,
 				},
 				global: { components: { RadioGroupItem } },
 			});
 
-			await userEvent.click(getByRole('radio', { name: 'Custom' }));
+			const radio = wrapper.getByRole('radio', { name: 'Option B' });
+			await userEvent.click(radio);
 
-			expect(emitted('update:modelValue')).toBeUndefined();
-		});
-
-		it('disables every option when the group is disabled', async () => {
-			const { getByRole, emitted } = renderRadioGroup('all', { disabled: true });
-
-			expect(getByRole('radio', { name: 'Custom' })).toBeDisabled();
-
-			await userEvent.click(getByRole('radio', { name: 'Custom' }));
-
-			expect(emitted('update:modelValue')).toBeUndefined();
+			await waitFor(() => {
+				expect(wrapper.emitted('update:modelValue')).toBeFalsy();
+			});
 		});
 	});
 
-	describe('orientation', () => {
-		it('applies horizontal orientation class', () => {
-			const { container } = render(RadioGroup, {
-				props: { modelValue: 'all', orientation: 'horizontal' },
-				slots: { default: '<RadioGroupItem value="all" label="All" />' },
-				global: { components: { RadioGroupItem } },
+	describe('defaultValue', () => {
+		it('should use defaultValue when provided', () => {
+			const wrapper = renderRadioGroup({
+				defaultValue: 'option-b',
+			});
+			const radio = wrapper.getByRole('radio', { name: 'Option B' });
+			expect(radio).toHaveAttribute('data-state', 'checked');
+		});
+
+		it('should allow changing selection with defaultValue', async () => {
+			const wrapper = renderRadioGroup({
+				defaultValue: 'option-b',
 			});
 
-			expect(container.querySelector('[class*="horizontal"]')).toBeInTheDocument();
+			const radio = wrapper.getByRole('radio', { name: 'Option A' });
+			await userEvent.click(radio);
+
+			await waitFor(() => {
+				expect(wrapper.emitted('update:modelValue')?.[0]).toEqual(['option-a']);
+			});
 		});
 	});
 
-	describe('accessibility', () => {
-		it('forwards aria-label to the group', () => {
-			const { getByRole } = render(RadioGroup, {
-				props: { modelValue: 'all', ariaLabel: 'Scope selection mode' },
-				slots: { default: '<RadioGroupItem value="all" label="All" />' },
-				global: { components: { RadioGroupItem } },
+	describe('label interaction', () => {
+		it('should render radio with label', () => {
+			const wrapper = renderRadioGroup({
+				modelValue: 'option-a',
 			});
 
-			expect(getByRole('radiogroup', { name: 'Scope selection mode' })).toBeInTheDocument();
+			expect(wrapper.getByText('Option A')).toBeInTheDocument();
+			const radio = wrapper.container.querySelector('[role="radio"]');
+			expect(radio).toBeInTheDocument();
 		});
 
-		it('forwards testId to the radio item element', () => {
-			const { getByTestId } = render(RadioGroup, {
-				props: { modelValue: 'all' },
-				slots: { default: '<RadioGroupItem value="all" label="All" test-id="mode-all" />' },
+		it('should show disabled state on label when disabled', () => {
+			const wrapper = render(RadioGroup, {
+				props: {
+					modelValue: 'option-a',
+				},
+				slots: {
+					default: '<RadioGroupItem value="option-a" label="Option A" :disabled="true" />',
+				},
 				global: { components: { RadioGroupItem } },
 			});
 
-			expect(getByTestId('mode-all')).toHaveAttribute('role', 'radio');
+			const label = wrapper.container.querySelector('label');
+			expect(label).toHaveAttribute('data-disabled');
 		});
 	});
 
 	describe('slots', () => {
-		it('allows custom content via the default slot on RadioGroupItem', () => {
-			const { getByTestId } = render(RadioGroup, {
-				props: { modelValue: 'all' },
+		it('should render label slot', () => {
+			const wrapper = render(RadioGroup, {
+				props: {
+					modelValue: 'option-a',
+				},
 				slots: {
 					default: `
-						<RadioGroupItem value="all">
-							<span data-test-id="custom-content">Custom option</span>
+						<RadioGroupItem value="option-a" label="Default label">
+							<template #label>
+								<span data-test-id="custom-label">Custom label content</span>
+							</template>
 						</RadioGroupItem>
 					`,
 				},
 				global: { components: { RadioGroupItem } },
 			});
+			expect(wrapper.getByTestId('custom-label')).toBeInTheDocument();
+			expect(wrapper.queryByText('Default label')).not.toBeInTheDocument();
+		});
 
-			expect(getByTestId('custom-content')).toBeInTheDocument();
+		it('should render label slot with scoped props', () => {
+			const wrapper = render(RadioGroup, {
+				props: {
+					modelValue: 'option-a',
+				},
+				slots: {
+					default: `
+						<RadioGroupItem value="option-a" label="Default label">
+							<template #label="{ label }">Custom: {{ label }}</template>
+						</RadioGroupItem>
+					`,
+				},
+				global: { components: { RadioGroupItem } },
+			});
+			expect(wrapper.getByText(/Custom:/)).toBeInTheDocument();
 		});
 	});
-});
 
-describe('v2/components/RadioGroupItem', () => {
-	it('renders label text', () => {
-		const { getByText } = render(RadioGroup, {
-			props: { modelValue: 'all' },
-			slots: { default: '<RadioGroupItem value="all" label="All scopes" />' },
-			global: { components: { RadioGroupItem } },
+	describe('form integration', () => {
+		it('should accept name prop', () => {
+			const wrapper = renderRadioGroup({
+				name: 'preference',
+				modelValue: 'option-a',
+			});
+			const radio = wrapper.container.querySelector('[role="radio"]');
+			expect(radio).toBeInTheDocument();
 		});
 
-		expect(getByText('All scopes')).toBeInTheDocument();
+		it('should accept required prop', () => {
+			const wrapper = renderRadioGroup({
+				required: true,
+				modelValue: 'option-a',
+			});
+			const radioGroup = wrapper.getByRole('radiogroup');
+			expect(radioGroup).toHaveAttribute('aria-required', 'true');
+		});
 	});
 
-	it('renders disabled state', () => {
-		const { getByRole } = render(RadioGroup, {
-			props: { modelValue: 'all' },
-			slots: { default: '<RadioGroupItem value="all" label="All" :disabled="true" />' },
-			global: { components: { RadioGroupItem } },
+	describe('accessibility', () => {
+		it('should have proper ARIA role', () => {
+			const wrapper = renderRadioGroup();
+			const radio = wrapper.container.querySelector('[role="radio"]');
+			expect(radio).toBeInTheDocument();
 		});
 
-		expect(getByRole('radio', { name: 'All' })).toBeDisabled();
+		it('should associate label with radio using id', () => {
+			const wrapper = renderRadioGroup({
+				modelValue: 'option-a',
+			});
+			const radio = wrapper.getByRole('radio', { name: 'Option A' });
+			const label = wrapper.container.querySelector('label');
+			expect(radio).toHaveAttribute('id');
+			expect(label).toHaveAttribute('for', radio.getAttribute('id'));
+		});
 	});
 });

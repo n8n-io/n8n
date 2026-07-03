@@ -41,7 +41,7 @@ Presents a list of mutually exclusive options where the user can select exactly 
 
 **RadioGroupItem slots**
 
-- `default` - Custom content for the label area (overrides `label` and `description`)
+- `label` - Custom label content. Receives `label` and `description` props. Overrides the default label/description rendering.
 
 
 ### Template usage example
@@ -91,7 +91,9 @@ const agreement = ref('')
 <template>
   <N8nRadioGroup2 v-model="agreement" aria-label="Agreement">
     <N8nRadioGroupItem2 value="terms">
-      I accept the <a href="/terms">terms and conditions</a>
+      <template #label>
+        I accept the <a href="/terms">terms and conditions</a>
+      </template>
     </N8nRadioGroupItem2>
   </N8nRadioGroup2>
 </template>

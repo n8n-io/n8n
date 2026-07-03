@@ -1,6 +1,7 @@
 // Temporary shim for Storybook vue-docgen: importing 'reka-ui' from this folder
 // resolves to a broken relative path. Re-export via a local module instead.
 export {
+	injectRadioGroupRootContext,
 	Label,
 	RadioGroupIndicator,
 	RadioGroupItem,

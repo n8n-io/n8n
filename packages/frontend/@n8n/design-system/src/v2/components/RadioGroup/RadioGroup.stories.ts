@@ -74,15 +74,8 @@ export const Default: Story = {
 	},
 };
 
-export const ControlledAndUncontrolled: Story = {
-	parameters: {
-		docs: {
-			description: {
-				story:
-					'Use `v-model` when the parent owns the selected value, or `defaultValue` when the component manages its own state.',
-			},
-		},
-	},
+export const ControlledUncontrolled: Story = {
+	name: 'Controlled/Uncontrolled',
 	render: () => ({
 		components: { RadioGroup, RadioGroupItem },
 		setup() {
@@ -142,65 +135,62 @@ export const ControlledAndUncontrolled: Story = {
 	}),
 };
 
-export const Horizontal: Story = {
-	render: (args) => ({
+export const Orientation: Story = {
+	render: () => ({
 		components: { RadioGroup, RadioGroupItem },
 		setup() {
-			const value = ref('light');
-			return { args, value };
+			const verticalValue = ref('all');
+			const horizontalValue = ref('light');
+			return { verticalValue, horizontalValue, scopeOptions };
 		},
 		template: `
-		<div style="padding: 40px;">
-			<RadioGroup v-model="value" orientation="horizontal" aria-label="Theme">
-				<RadioGroupItem value="system" label="System" />
-				<RadioGroupItem value="light" label="Light" />
-				<RadioGroupItem value="dark" label="Dark" />
-			</RadioGroup>
+		<div style="padding: 40px; display: flex; flex-direction: column; gap: 32px;">
+			<section>
+				<h3 style="margin: 0 0 8px; font-size: 14px; font-weight: 600;">Vertical</h3>
+				<RadioGroup v-model="verticalValue" orientation="vertical" aria-label="Scope selection mode (vertical)">
+					<RadioGroupItem
+						v-for="option in scopeOptions"
+						:key="option.value"
+						:value="option.value"
+						:label="option.label"
+						:description="option.description"
+					/>
+				</RadioGroup>
+			</section>
+			<section>
+				<h3 style="margin: 0 0 8px; font-size: 14px; font-weight: 600;">Horizontal</h3>
+				<RadioGroup v-model="horizontalValue" orientation="horizontal" aria-label="Theme (horizontal)">
+					<RadioGroupItem value="system" label="System" />
+					<RadioGroupItem value="light" label="Light" />
+					<RadioGroupItem value="dark" label="Dark" />
+				</RadioGroup>
+			</section>
 		</div>
 		`,
 	}),
 };
 
 export const DisabledOption: Story = {
-	parameters: {
-		docs: {
-			description: {
-				story:
-					'Individual options can be disabled. Disabled options render differently when selected vs unselected.',
-			},
-		},
-	},
 	render: () => ({
 		components: { RadioGroup, RadioGroupItem },
 		setup() {
-			const unselectedValue = ref('all');
-			const selectedValue = ref('custom');
-			return { unselectedValue, selectedValue };
+			const value = ref('spain');
+			return { value };
 		},
 		template: `
-		<div style="padding: 40px; display: flex; flex-direction: column; gap: 32px;">
-			<section>
-				<h3 style="margin: 0 0 8px; font-size: 14px; font-weight: 600;">Disabled (unselected)</h3>
-				<RadioGroup v-model="unselectedValue" aria-label="Scope selection mode (disabled unselected)">
-					<RadioGroupItem value="all" label="All" />
-					<RadioGroupItem value="readOnly" label="Read only" />
-					<RadioGroupItem value="custom" label="Custom" disabled />
-				</RadioGroup>
-			</section>
-			<section>
-				<h3 style="margin: 0 0 8px; font-size: 14px; font-weight: 600;">Disabled (selected)</h3>
-				<RadioGroup v-model="selectedValue" aria-label="Scope selection mode (disabled selected)">
-					<RadioGroupItem value="all" label="All" />
-					<RadioGroupItem value="readOnly" label="Read only" />
-					<RadioGroupItem value="custom" label="Custom" disabled />
-				</RadioGroup>
-			</section>
+		<div style="padding: 40px;">
+			<RadioGroup v-model="value" aria-label="Country">
+				<RadioGroupItem value="france" label="France" />
+				<RadioGroupItem value="germany" label="Germany" />
+				<RadioGroupItem value="italy" label="Italy" disabled />
+				<RadioGroupItem value="spain" label="Spain" disabled />
+			</RadioGroup>
 		</div>
 		`,
 	}),
 };
 
-export const CustomSlot: Story = {
+export const CustomLabel: Story = {
 	render: () => ({
 		components: { RadioGroup, RadioGroupItem },
 		setup() {
@@ -211,10 +201,14 @@ export const CustomSlot: Story = {
 		<div style="padding: 40px;">
 			<RadioGroup v-model="value" aria-label="Agreement">
 				<RadioGroupItem value="terms">
-					I accept the <a href="#">terms and conditions</a>
+					<template #label>
+						I accept the <a href="#">terms and conditions</a>
+					</template>
 				</RadioGroupItem>
 				<RadioGroupItem value="privacy">
-					I accept the <a href="#">privacy policy</a>
+					<template #label>
+						I accept the <a href="#">privacy policy</a>
+					</template>
 				</RadioGroupItem>
 			</RadioGroup>
 		</div>
@@ -244,14 +238,6 @@ const longLabelOptions = [
 ];
 
 export const LongLabels: Story = {
-	parameters: {
-		docs: {
-			description: {
-				story:
-					'Long labels and descriptions wrap to multiple lines. The radio control stays aligned to the top when descriptions are present.',
-			},
-		},
-	},
 	render: () => ({
 		components: { RadioGroup, RadioGroupItem },
 		setup() {
