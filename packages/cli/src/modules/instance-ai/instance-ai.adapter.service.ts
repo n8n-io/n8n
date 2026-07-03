@@ -114,6 +114,7 @@ import { DataTableService } from '@/modules/data-table/data-table.service';
 import { MCP_REGISTRY_PACKAGE_NAME } from '@/modules/mcp-registry/node-description-transform';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import type { AiGatewayConfigDto } from '@n8n/api-types';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { FolderService } from '@/services/folder.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
@@ -304,6 +305,21 @@ export class InstanceAiAdapterService {
 			);
 		}
 		return hints;
+	}
+
+	/**
+	 * Safe wrapper around `AiGatewayService.getGatewayConfig()` — the service
+	 * throws `UserError` when the instance is not licensed for the gateway (or
+	 * on any network / non-2xx). Every downstream consumer of the config
+	 * (node annotations, credential list, verifier) treats the gateway as
+	 * opt-in signal, so a null return is a valid degraded state.
+	 */
+	private async fetchGatewayConfigSafely(): Promise<AiGatewayConfigDto | null> {
+		try {
+			return await this.aiGatewayService.getGatewayConfig();
+		} catch {
+			return null;
+		}
 	}
 
 	private assertInstanceNotReadOnly(resourceType: string) {

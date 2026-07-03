@@ -3021,3 +3021,71 @@ describe('createExecutionAdapter run()', () => {
 		}
 	});
 });
+
+describe('fetchGatewayConfigSafely', () => {
+	// The adapter must surface `null` when the AI Gateway service throws for any
+	// reason (unlicensed, 404, network). `getGatewayConfig()` throws `UserError`
+	// on failure — the wrapper turns that into an awaitable
+	// `Promise<AiGatewayConfigDto | null>` so downstream consumers (node
+	// annotations, credential list, verifier) treat the gateway as an opt-in
+	// signal, not a hard dependency.
+
+	function createAdapterWithGatewayMock(getGatewayConfig: Mock) {
+		const aiGatewayService = { getGatewayConfig };
+		const args = Array.from(
+			{ length: 35 },
+			() => ({}) as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[number],
+		);
+		args[0] = {
+			error: vi.fn(),
+			warn: vi.fn(),
+			scoped: vi.fn().mockReturnThis(),
+		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[0];
+		args[1] = { ai: { allowSendingParameterValues: false } } as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[1];
+		args[12] = {} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[12];
+		args[14] = { staticCacheDir: '/tmp', n8nFolder: '/tmp' } as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[14];
+		args[21] = {
+			getPreferences: vi.fn().mockReturnValue({ branchReadOnly: false }),
+		} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[21];
+		args[25] = { isLicensed: vi.fn().mockReturnValue(false) } as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[25];
+		args[33] = aiGatewayService as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[33];
+		return new InstanceAiAdapterService(
+			...(args as ConstructorParameters<typeof InstanceAiAdapterService>),
+		);
+	}
+
+	function callFetch(adapter: InstanceAiAdapterService) {
+		return (
+			adapter as unknown as {
+				fetchGatewayConfigSafely: () => Promise<unknown>;
+			}
+		).fetchGatewayConfigSafely();
+	}
+
+	it('returns the config when the gateway service resolves', async () => {
+		const config = {
+			nodes: ['openAi', 'anthropic'],
+			credentialTypes: ['openAiApi', 'anthropicApi'],
+			providerConfig: {},
+		};
+		const adapter = createAdapterWithGatewayMock(vi.fn().mockResolvedValue(config));
+
+		await expect(callFetch(adapter)).resolves.toEqual(config);
+	});
+
+	it('returns null when the gateway service throws (unlicensed / 404 / network)', async () => {
+		const adapter = createAdapterWithGatewayMock(
+			vi.fn().mockRejectedValue(new Error('AI Gateway is not licensed')),
+		);
+
+		await expect(callFetch(adapter)).resolves.toBeNull();
+	});
+});
