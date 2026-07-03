@@ -11,7 +11,11 @@ import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
-import { setupHintField } from './credentials.tool';
+import {
+	findHintsWithoutSecretSentinel,
+	HINT_WITHOUT_SENTINEL_MESSAGE,
+	setupHintField,
+} from './credentials.tool';
 import { formatTimestamp } from '../utils/format-timestamp';
 import { setupSuspendSchema, setupResumeSchema } from './workflows/setup-workflow.schema';
 import {
@@ -705,6 +709,15 @@ async function handleSetup(
 
 	// State 1: Analyze workflow and suspend for user setup
 	if (resumeData === undefined || resumeData === null) {
+		const invalidHints = findHintsWithoutSecretSentinel(input.credentialHints);
+		if (invalidHints.length > 0) {
+			return {
+				error: 'invalid_credential_hints',
+				message: HINT_WITHOUT_SENTINEL_MESSAGE,
+				offendingCredentialTypes: invalidHints.map((hint) => hint.credentialType),
+			};
+		}
+
 		const setupRequests = await analyzeWorkflow(context, input.workflowId);
 		applyCredentialHints(setupRequests, input.credentialHints);
 

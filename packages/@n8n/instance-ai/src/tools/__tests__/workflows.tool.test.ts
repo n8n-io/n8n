@@ -938,6 +938,31 @@ describe('workflows tool', () => {
 			expect(suspend).toHaveBeenCalled();
 		});
 
+		it('should reject credential hints whose prefill marks no secret sentinel', async () => {
+			const context = createMockContext();
+			const suspend = vi.fn();
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(
+				tool,
+				{
+					action: 'setup',
+					workflowId: 'wf1',
+					credentialHints: [
+						{ credentialType: 'httpHeaderAuth', prefill: { name: 'Authorization' } },
+					],
+				},
+				{ suspend, resumeData: undefined } as never,
+			);
+
+			expect(suspend).not.toHaveBeenCalled();
+			expect(analyzeWorkflow).not.toHaveBeenCalled();
+			expect(result).toMatchObject({
+				error: 'invalid_credential_hints',
+				offendingCredentialTypes: ['httpHeaderAuth'],
+			});
+		});
+
 		it('should return success when no nodes need setup', async () => {
 			(analyzeWorkflow as Mock).mockResolvedValue([]);
 

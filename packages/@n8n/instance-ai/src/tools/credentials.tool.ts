@@ -38,7 +38,7 @@ export const setupHintField = z
 		prefill: z
 			.record(z.string())
 			.describe(
-				'Exact values for the credential\'s fields, keyed by field name (e.g. httpHeaderAuth has "name" and "value"). Put the placeholder sentinel `<__PLACEHOLDER_VALUE__label__>` where the user\'s secret goes — e.g. value: "Key <__PLACEHOLDER_VALUE__fal.ai API key__>". Fields not listed keep their defaults. NEVER include a real secret value.',
+				'Exact values for ALL of the credential\'s fields, keyed by field name (e.g. httpHeaderAuth has "name" and "value"). Put the placeholder sentinel `<__PLACEHOLDER_VALUE__label__>` exactly where the user\'s secret goes — e.g. value: "Key <__PLACEHOLDER_VALUE__fal.ai API key__>". At least one field must contain a sentinel (hints without one are rejected). Fields not listed keep their defaults. NEVER include a real secret value.',
 			),
 		docsUrl: z
 			.string()
@@ -51,6 +51,23 @@ export const setupHintField = z
 	.describe(
 		"Recipe for creating this credential so the user only has to paste their secret(s) — the other fields are pre-filled. Provide it for generic auth types (httpHeaderAuth, httpQueryAuth, httpBasicAuth, httpBearerAuth, httpCustomAuth) whenever you know the provider's auth scheme; ground it in the provider's documentation, never guess the format.",
 	);
+
+/**
+ * A hint whose prefill marks no secret can't render the guided "paste your
+ * key" view — reject it so the model corrects the recipe instead of the card
+ * silently degrading to the full field set.
+ */
+export function findHintsWithoutSecretSentinel<T extends { prefill: Record<string, string> }>(
+	hints: T[] | undefined,
+): T[] {
+	return (hints ?? []).filter(
+		(hint) =>
+			!Object.values(hint.prefill).some((value) => value.includes('<__PLACEHOLDER_VALUE__')),
+	);
+}
+
+export const HINT_WITHOUT_SENTINEL_MESSAGE =
+	'Each setup hint\'s prefill must mark the secret the user will paste with a `<__PLACEHOLDER_VALUE__label__>` sentinel (e.g. value: "Key <__PLACEHOLDER_VALUE__fal.ai API key__>"). Fix the hint (or omit it entirely) and retry.';
 
 // ── Action schemas ─────────────────────────────────────────────────────────
 
@@ -365,6 +382,15 @@ async function handleSetup(
 
 	// State 1: First call — look up existing credentials per type and suspend
 	if (resumeData === undefined || resumeData === null) {
+		const invalidHints = findHintsWithoutSecretSentinel(
+			input.credentials.flatMap((c: { setupHint?: { prefill: Record<string, string> } }) =>
+				c.setupHint ? [c.setupHint] : [],
+			),
+		);
+		if (invalidHints.length > 0) {
+			return { error: 'invalid_setup_hint', message: HINT_WITHOUT_SENTINEL_MESSAGE };
+		}
+
 		const credentialRequests = await Promise.all(
 			input.credentials.map(
 				async (req: {

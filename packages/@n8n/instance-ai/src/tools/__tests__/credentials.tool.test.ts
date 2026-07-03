@@ -664,6 +664,31 @@ describe('credentials tool', () => {
 			);
 		});
 
+		it('should reject a setupHint whose prefill marks no secret sentinel', async () => {
+			const context = createMockContext();
+			(context.credentialService.list as Mock).mockResolvedValue([]);
+
+			const suspendFn = vi.fn();
+			const tool = createCredentialsTool(context);
+			const result = await executeTool(
+				tool,
+				{
+					action: 'setup' as const,
+					credentials: [
+						{
+							credentialType: 'httpHeaderAuth',
+							reason: 'For calling the fal.ai API',
+							setupHint: { prefill: { name: 'Authorization' } },
+						},
+					],
+				},
+				suspendCtx(suspendFn),
+			);
+
+			expect(suspendFn).not.toHaveBeenCalled();
+			expect(result).toMatchObject({ error: 'invalid_setup_hint' });
+		});
+
 		it('should use plural message for multiple credentials', async () => {
 			const context = createMockContext();
 			(context.credentialService.list as Mock).mockResolvedValue([]);
