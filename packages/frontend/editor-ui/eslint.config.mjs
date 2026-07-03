@@ -2,6 +2,12 @@ import { defineConfig } from 'eslint/config';
 import { frontendConfig } from '@n8n/eslint-config/frontend';
 import oxlint from 'eslint-plugin-oxlint';
 
+// Shared between the bare and subpath entries of the Design System boundary guard below.
+const ELEMENT_PLUS_RESTRICTION_MESSAGE =
+	'Import from @n8n/design-system instead (see packages/frontend/AGENTS.md)';
+const REKA_UI_RESTRICTION_MESSAGE =
+	'Import from @n8n/design-system instead. Collapsible → N8nCollapsiblePanel, DropdownMenu → N8nDropdownMenu, Primitive → native HTML';
+
 export default defineConfig(
 	frontendConfig,
 	{
@@ -184,6 +190,38 @@ export default defineConfig(
 						"MemberExpression[property.name='getWorkflowResultDataByNodeName'][object.name='workflowsStore']",
 					message:
 						'Use injectWorkflowExecutionStateStore().value.getActiveExecutionRunDataByNodeName() instead of workflowsStore.getWorkflowResultDataByNodeName()',
+				},
+			],
+			// Guard: Design System boundary — import UI components from @n8n/design-system,
+			// not element-plus/reka-ui directly. Type-only imports allowed during migration.
+			// Level: 'warn' during migration. Flip to 'error' when existing violations are migrated.
+			'@typescript-eslint/no-restricted-imports': [
+				'warn',
+				{
+					paths: [
+						{
+							name: 'element-plus',
+							message: ELEMENT_PLUS_RESTRICTION_MESSAGE,
+							allowTypeImports: true,
+						},
+						{
+							name: 'reka-ui',
+							message: REKA_UI_RESTRICTION_MESSAGE,
+							allowTypeImports: true,
+						},
+					],
+					patterns: [
+						{
+							group: ['element-plus/*'],
+							message: ELEMENT_PLUS_RESTRICTION_MESSAGE,
+							allowTypeImports: true,
+						},
+						{
+							group: ['reka-ui/*'],
+							message: REKA_UI_RESTRICTION_MESSAGE,
+							allowTypeImports: true,
+						},
+					],
 				},
 			],
 			// TODO: Remove these
