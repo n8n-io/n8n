@@ -704,22 +704,32 @@ describe('executions tool', () => {
 
 		it('should cap oversized outputs to whole items within the char budget', async () => {
 			const bigItem = { blob: 'x'.repeat(30_000) };
+			const schema = { type: 'object', properties: { blob: { type: 'string' } } };
 			const context = createMockContext();
 			(context.executionService.getNodeOutput as Mock).mockResolvedValue({
 				nodeName: 'Set',
 				items: [bigItem, bigItem, bigItem],
 				totalItems: 3,
-				returned: { from: 0, to: 2 },
+				returned: { from: 0, to: 3 },
+				schema,
 			});
 
 			const tool = createExecutionsTool(context);
-			const result = await executeTool<{ items: unknown[]; truncated?: boolean; note?: string }>(
+			const result = await executeTool<{
+				items: unknown[];
+				returned: { from: number; to: number };
+				schema?: unknown;
+				truncated?: boolean;
+				note?: string;
+			}>(
 				tool,
 				{ action: 'get-node-output' as const, executionId: 'exec-1', nodeName: 'Set' },
 				{} as never,
 			);
 
 			expect(result.items).toEqual([bigItem]);
+			expect(result.returned).toEqual({ from: 0, to: 1 });
+			expect(result.schema).toEqual(schema);
 			expect(result.truncated).toBe(true);
 			expect(result.note).toContain('1 of 3 fetched items');
 		});
@@ -730,7 +740,7 @@ describe('executions tool', () => {
 				nodeName: 'Set',
 				items: [{ blob: 'y'.repeat(120_000) }],
 				totalItems: 1,
-				returned: { from: 0, to: 0 },
+				returned: { from: 0, to: 1 },
 			});
 
 			const tool = createExecutionsTool(context);

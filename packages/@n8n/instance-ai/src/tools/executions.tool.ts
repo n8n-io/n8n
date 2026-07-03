@@ -76,7 +76,12 @@ const debugAction = z.object({
 const getNodeOutputAction = z.object({
 	action: z
 		.literal('get-node-output')
-		.describe('Retrieve raw output of a specific node from an execution'),
+		.describe(
+			'Retrieve raw output of a specific node from an execution. Also returns a `schema` of ' +
+				'the item shape — prefer it over paging when you only need structure. If the ' +
+				"node's run failed, `error` carries the failure; use `debug` for the failed " +
+				"node's input data and resolved parameters.",
+		),
 	executionId: z.string().describe('Execution ID'),
 	nodeName: z.string().describe("Name of the node (must exist in the execution's workflow)"),
 	startIndex: z.number().int().min(0).optional().describe('Item index to start from (default 0)'),
@@ -317,8 +322,9 @@ function capNodeOutputItems(result: NodeOutputResult) {
 	return {
 		...result,
 		items,
+		returned: { from: result.returned.from, to: result.returned.from + items.length },
 		truncated: true,
-		note: `Output capped at ~${MAX_NODE_OUTPUT_CHARS / 1000}k chars: returning ${items.length} of ${result.items.length} fetched items (${result.totalItems} total). Use startIndex/maxItems to page through the rest.`,
+		note: `Output capped at ~${MAX_NODE_OUTPUT_CHARS / 1000}k chars: returning ${items.length} of ${result.items.length} fetched items (${result.totalItems} total). See \`schema\` for the full item shape; use startIndex/maxItems only if you need specific values from other items.`,
 	};
 }
 

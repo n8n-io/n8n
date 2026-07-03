@@ -43,7 +43,7 @@ import {
 	wrapUntrustedData,
 	deriveCredentialHosts,
 } from '@n8n/instance-ai';
-import type { WorkflowJSON } from '@n8n/workflow-sdk';
+import { generateJsonSchemaFromData, type WorkflowJSON } from '@n8n/workflow-sdk';
 import { GlobalConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { User, ExecutionSummaries } from '@n8n/db';
@@ -2907,6 +2907,9 @@ export async function extractNodeOutput(
 		),
 		totalItems,
 		returned: { from: startIndex, to: startIndex + capped.length },
+		...(collected.length > 0 && { schema: generateJsonSchemaFromData(collected[0]) }),
+		// Upstream details allowed: getNodeOutput early-returns when the AI privacy setting is off.
+		...(lastRun?.error && { error: formatExecutionError(lastRun.error, true) }),
 	};
 }
 

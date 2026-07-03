@@ -100,6 +100,10 @@ export interface NodeOutputResult {
 	items: unknown[];
 	totalItems: number;
 	returned: { from: number; to: number };
+	/** JSON schema inferred from the first returned item, so the output shape survives item truncation. */
+	schema?: unknown;
+	/** Formatted error when the node's last run failed. */
+	error?: string;
 }
 
 export interface ResolvedExpressionFailure {

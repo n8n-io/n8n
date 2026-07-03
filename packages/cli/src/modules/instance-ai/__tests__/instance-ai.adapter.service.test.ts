@@ -1082,6 +1082,43 @@ describe('extractNodeOutput', () => {
 		expect(result.totalItems).toBe(1);
 		expect(result.items).toHaveLength(0);
 		expect(result.returned).toEqual({ from: 100, to: 100 });
+		expect(result.schema).toBeUndefined();
+	});
+
+	it('includes a schema inferred from the first returned item', async () => {
+		createMockExecutionRepository(
+			makeExecution({
+				status: 'success',
+				runData: { 'Set Node': [makeTaskData([{ id: 1, name: 'a' }])] },
+			}),
+		);
+
+		const result = await extractNodeOutput('exec-1', 'Set Node');
+
+		expect(result.schema).toEqual({
+			type: 'object',
+			properties: { id: { type: 'number' }, name: { type: 'string' } },
+			required: ['id', 'name'],
+		});
+	});
+
+	it('surfaces the formatted error when the node run failed', async () => {
+		createMockExecutionRepository(
+			makeExecution({
+				status: 'error',
+				runData: {
+					'Http Node': [
+						makeTaskData([], { error: { message: 'Request failed', description: '404 from API' } }),
+					],
+				},
+			}),
+		);
+
+		const result = await extractNodeOutput('exec-1', 'Http Node');
+
+		expect(result.items).toHaveLength(0);
+		expect(result.error).toContain('Request failed');
+		expect(result.error).toContain('404 from API');
 	});
 });
 
