@@ -7,7 +7,6 @@ import { toTestCaseExecutionDto, toTestRunSummaryDto } from './evaluations.mappe
 import type { TestRunRequest } from '../../../types';
 import type { PublicAPIEndpoint } from '../../shared/handler.types';
 import {
-	evaluationsLicensed,
 	projectScope,
 	publicApiScope,
 	validCursor,
@@ -23,7 +22,6 @@ type EvaluationsHandlers = {
 const evaluationsHandlers: EvaluationsHandlers = {
 	getTestRuns: [
 		publicApiScope('testRun:list'),
-		evaluationsLicensed,
 		projectScope('workflow:read', 'workflow'),
 		validCursor,
 		async (req, res) => {
@@ -44,7 +42,6 @@ const evaluationsHandlers: EvaluationsHandlers = {
 	],
 	getTestRun: [
 		publicApiScope('testRun:read'),
-		evaluationsLicensed,
 		projectScope('workflow:read', 'workflow'),
 		async (req, res) => {
 			const { id: workflowId, runId } = req.params;
@@ -68,7 +65,6 @@ const evaluationsHandlers: EvaluationsHandlers = {
 	],
 	getTestCases: [
 		publicApiScope('testRun:read'),
-		evaluationsLicensed,
 		projectScope('workflow:read', 'workflow'),
 		validCursor,
 		async (req, res) => {

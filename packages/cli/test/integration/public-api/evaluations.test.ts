@@ -1,4 +1,3 @@
-import { LicenseState } from '@n8n/backend-common';
 import {
 	createWorkflow,
 	mockInstance,
@@ -6,9 +5,6 @@ import {
 	testDb,
 } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
-import { Container } from '@n8n/di';
-
-import { type MockInstance, vi } from 'vitest';
 
 import { Telemetry } from '@/telemetry';
 
@@ -19,7 +15,6 @@ import * as utils from '../shared/utils/';
 
 let owner: User;
 let authOwnerAgent: SuperAgentTest;
-let licenseSpy: MockInstance;
 
 mockInstance(Telemetry);
 
@@ -32,13 +27,6 @@ beforeAll(async () => {
 
 beforeEach(async () => {
 	await testDb.truncate(['WorkflowEntity', 'SharedWorkflow', 'TestRun', 'TestCaseExecution']);
-
-	// `restoreMocks: true` un-spies between tests, so re-create the spy each
-	// time. The evaluations read endpoints are gated behind a positive eval
-	// quota; grant one for the licensed paths and override per-test where needed.
-	licenseSpy = vi
-		.spyOn(Container.get(LicenseState), 'getMaxWorkflowsWithEvaluations')
-		.mockReturnValue(50);
 });
 
 describe('GET /workflows/:id/test-runs', () => {
@@ -85,20 +73,6 @@ describe('GET /workflows/:id/test-runs', () => {
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data).toHaveLength(1);
 		expect(response.body.data[0].id).toBe(completed.id);
-	});
-
-	test('should return 402 when evaluations are not licensed', async () => {
-		const workflow = await createWorkflow(undefined, owner);
-		licenseSpy.mockReturnValue(0);
-
-		await authOwnerAgent.get(`/workflows/${workflow.id}/test-runs`).expect(402);
-	});
-
-	test('should allow access on an unlimited evaluations quota (-1)', async () => {
-		const workflow = await createWorkflow(undefined, owner);
-		licenseSpy.mockReturnValue(-1);
-
-		await authOwnerAgent.get(`/workflows/${workflow.id}/test-runs`).expect(200);
 	});
 
 	test('should return 403 when the API key lacks the testRun:list scope', async () => {
@@ -205,7 +179,7 @@ describe('GET /workflows/:id/test-runs/:runId/test-cases', () => {
 	});
 });
 
-describe('scope and license enforcement on read endpoints', () => {
+describe('scope enforcement on read endpoints', () => {
 	test('should return 403 on single-run and cases when the key lacks testRun:read', async () => {
 		const restricted = await createOwnerWithApiKey({ scopes: ['workflow:read'] });
 		const restrictedAgent = testServer.publicApiAgentFor(restricted);
@@ -216,17 +190,6 @@ describe('scope and license enforcement on read endpoints', () => {
 		await restrictedAgent
 			.get(`/workflows/${workflow.id}/test-runs/${run.id}/test-cases`)
 			.expect(403);
-	});
-
-	test('should return 402 on single-run and cases when evaluations are not licensed', async () => {
-		const workflow = await createWorkflow(undefined, owner);
-		const run = await createTestRun(workflow.id, { status: 'completed' });
-		licenseSpy.mockReturnValue(0);
-
-		await authOwnerAgent.get(`/workflows/${workflow.id}/test-runs/${run.id}`).expect(402);
-		await authOwnerAgent
-			.get(`/workflows/${workflow.id}/test-runs/${run.id}/test-cases`)
-			.expect(402);
 	});
 
 	test('should let a member read runs of a workflow shared with them', async () => {

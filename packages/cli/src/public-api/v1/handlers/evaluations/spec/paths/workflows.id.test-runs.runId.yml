@@ -18,8 +18,6 @@ get:
             $ref: '../schemas/testRunSummary.yml'
     '401':
       $ref: '../../../../shared/spec/responses/unauthorized.yml'
-    '402':
-      $ref: '../../../../shared/spec/responses/paymentRequired.yml'
     '403':
       $ref: '../../../../shared/spec/responses/forbidden.yml'
     '404':
