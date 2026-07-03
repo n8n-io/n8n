@@ -8,6 +8,7 @@ import {
 	type InstanceAiFileAttachment,
 	type InstanceAiWorkflowAttachment,
 	type InstanceAiConfirmRequest,
+	type InstanceAiConfirmResponse,
 	type InstanceAiEvent,
 	type InstanceAiThreadStatusResponse,
 } from '@n8n/api-types';
@@ -235,6 +236,9 @@ function isTelemetryConfigurableAgent(
 
 const INSTANCE_AI_CHECKPOINT_PRUNE_RETRY_MS = 30 * 1000;
 const WORKFLOW_SETUP_ROUTING_CLAIM_TTL_MS = 15 * 60 * 1000;
+
+const CONFIRMATION_EXPIRED_MESSAGE =
+	'This confirmation has expired. Send a new message to continue.';
 
 /**
  * Upper bound on how long `shutdown()` will wait for in-flight executeRun /
@@ -1436,10 +1440,11 @@ export class InstanceAiService {
 
 	/**
 	 * One tick of the recurring leader prune cycle: expire stale checkpoints,
-	 * drop expired pending confirmations, and delete expired conversation
-	 * threads, then schedule the next run. A checkpoint failure reschedules
-	 * with a shorter retry delay; the confirmation and thread steps swallow
-	 * their own errors so they never disrupt the cycle.
+	 * hard-delete tombstones past the GC horizon, drop expired pending
+	 * confirmations, and delete expired conversation threads, then schedule the
+	 * next run. A checkpoint failure reschedules with a shorter retry delay; the
+	 * confirmation and thread steps swallow their own errors so they never
+	 * disrupt the cycle.
 	 */
 	private async runScheduledPrune(now = Date.now()): Promise<void> {
 		const olderThan = new Date(now - this.instanceAiConfig.snapshotRetention);
@@ -1451,6 +1456,7 @@ export class InstanceAiService {
 			} else {
 				this.logger.debug('No stale Instance AI checkpoints to expire');
 			}
+			await this.hardDeleteExpiredCheckpoints(now);
 			await this.suspendedThreads.pruneStalePendingConfirmations(now);
 			await this.pruneExpiredThreads();
 			this.scheduleCheckpointPrune();
@@ -1459,6 +1465,31 @@ export class InstanceAiService {
 				error: getErrorMessage(error),
 			});
 			this.scheduleCheckpointPrune(INSTANCE_AI_CHECKPOINT_PRUNE_RETRY_MS);
+		}
+	}
+
+	/**
+	 * Hard-delete expired checkpoint tombstones (`markExpiredOlderThan` releases
+	 * the blob but keeps the row so a stale resume gets a clear "expired" error;
+	 * this drops the row entirely once it's past the GC horizon so tombstones
+	 * don't grow unbounded). Has its own try/catch so a GC failure never forces
+	 * the checkpoint prune into its short retry cadence. No-op when
+	 * `checkpointGcRetention` is 0.
+	 */
+	private async hardDeleteExpiredCheckpoints(now: number): Promise<void> {
+		const retention = this.instanceAiConfig.checkpointGcRetention;
+		if (retention <= 0) return;
+
+		try {
+			const olderThan = new Date(now - retention);
+			const count = await this.checkpointStore.hardDeleteExpiredOlderThan(olderThan);
+			if (count > 0) {
+				this.logger.info('Hard-deleted expired Instance AI checkpoint tombstones', { count });
+			}
+		} catch (error: unknown) {
+			this.logger.warn('Failed to hard-delete expired Instance AI checkpoint tombstones', {
+				error: getErrorMessage(error),
+			});
 		}
 	}
 
@@ -3811,7 +3842,7 @@ export class InstanceAiService {
 		requestingUserId: string,
 		requestId: string,
 		request: InstanceAiConfirmRequest,
-	): Promise<boolean> {
+	): Promise<InstanceAiConfirmResponse | null> {
 		const data = toConfirmationData(request);
 		const freshUser = await this.revalidateActiveUser(requestingUserId);
 		if (!freshUser) {
@@ -3824,16 +3855,38 @@ export class InstanceAiService {
 				userId: requestingUserId,
 				requestId,
 			});
-			return false;
+			return null;
 		}
 
-		if (this.runState.resolvePendingConfirmation(freshUser.id, requestId, data)) {
+		// Close the same-process window: a click on a pre-rendered card can still
+		// reach the in-memory fast path after the row's `expiresAt` but before the
+		// prune/liveness sweep drops it. The persisted row is the source of truth
+		// for expiry, so consult it first and refuse a stale click; the sweep still
+		// owns releasing the suspended run. Scoped by `freshUser.id` so another
+		// user's request ID falls through to the existing not-found handling
+		// rather than leaking an "expired" signal. One extra SELECT per click —
+		// the click path isn't hot.
+		if (await this.pendingConfirmationRepo.isPastExpiry(requestId, freshUser.id, new Date())) {
+			this.logger.debug('Rejecting expired confirmation', { requestId });
+			throw new UserError(CONFIRMATION_EXPIRED_MESSAGE);
+		}
+
+		const pending = this.runState.getPendingConfirmation(requestId);
+		if (
+			pending &&
+			pending.userId === freshUser.id &&
+			this.runState.resolvePendingConfirmation(freshUser.id, requestId, data)
+		) {
 			void this.suspendedThreads.dropPendingConfirmation(requestId);
 			this.logger.debug('Resolved pending confirmation (sub-agent HITL)', {
 				requestId,
 				approved: data.approved,
 			});
-			return true;
+			const runId = this.runState.getActiveRunId(pending.threadId);
+			return {
+				ok: true,
+				...(runId ? { runId } : {}),
+			};
 		}
 
 		this.logger.debug('Pending confirmation not found, trying suspended run resume', {
@@ -3841,8 +3894,9 @@ export class InstanceAiService {
 			approved: data.approved,
 		});
 
-		if (await this.resumeSuspendedRun(requestingUserId, requestId, data)) {
-			return true;
+		const resumed = await this.resumeSuspendedRun(requestingUserId, requestId, data);
+		if (resumed) {
+			return resumed;
 		}
 
 		// Last resort: the in-memory state is gone, but a persisted index row
@@ -3970,14 +4024,14 @@ export class InstanceAiService {
 		requestingUserId: string,
 		requestId: string,
 		data: ConfirmationData,
-	): Promise<boolean> {
+	): Promise<InstanceAiConfirmResponse | null> {
 		const suspended = this.runState.findSuspendedByRequestId(requestId);
 		if (!suspended) {
 			this.logger.warn('Confirmation target not found: no pending confirmation or suspended run', {
 				requestId,
 				approved: data.approved,
 			});
-			return false;
+			return null;
 		}
 
 		const {
@@ -3997,7 +4051,7 @@ export class InstanceAiService {
 			plannedBuild,
 			runHandoff,
 		} = suspended;
-		if (user.id !== requestingUserId) return false;
+		if (user.id !== requestingUserId) return null;
 
 		const activeUser = await this.revalidateActiveUser(user.id);
 		if (!activeUser) {
@@ -4007,7 +4061,7 @@ export class InstanceAiService {
 				requestId,
 			});
 			this.cancelRun(threadId);
-			return false;
+			return null;
 		}
 
 		this.runState.activateSuspendedRun(threadId);
@@ -4080,7 +4134,7 @@ export class InstanceAiService {
 			plannedBuild,
 			runHandoff,
 		});
-		return true;
+		return { ok: true, runId };
 	}
 
 	/**

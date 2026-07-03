@@ -8,7 +8,7 @@ import Csrf from 'csrf';
 import type { Request, Response } from 'express';
 import { Credentials, Cipher } from 'n8n-core';
 import type { ICredentialDataDecryptedObject, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
-import { jsonParse, OperationalError, UnexpectedError } from 'n8n-workflow';
+import { jsonParse, jsonStringify, OperationalError, UnexpectedError } from 'n8n-workflow';
 
 import {
 	GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE,
@@ -627,6 +627,27 @@ export class OauthService {
 
 	renderCallbackError(res: Response, message: string, reason?: string) {
 		res.render('oauth-error-callback', { error: { message, reason } });
+	}
+
+	/**
+	 * Derive a human-readable reason for the OAuth callback error page.
+	 * Prefers a structured HTTP `body`, then falls back to the wrapped `cause`
+	 * chain so errors like {@link CredentialStorageError} surface their root
+	 * cause instead of rendering an empty "More details" section.
+	 */
+	extractCallbackErrorReason(error: Error): string | undefined {
+		if ('body' in error && error.body) {
+			return jsonStringify(error.body, { replaceCircularRefs: true });
+		}
+
+		const causes: string[] = [];
+		let cause: unknown = error.cause;
+		while (cause instanceof Error) {
+			causes.push(cause.message);
+			cause = cause.cause;
+		}
+
+		return causes.length ? causes.join(': ') : undefined;
 	}
 
 	async getOAuthCredentials<T>(credential: CredentialsEntity): Promise<T> {

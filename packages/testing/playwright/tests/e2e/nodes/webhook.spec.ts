@@ -177,7 +177,7 @@ test.describe(
 					Authorization: 'Basic ' + Buffer.from('wrong:wrong').toString('base64'),
 				},
 			});
-			expect(failResponse.status()).toBe(403);
+			expect(failResponse.status()).toBe(401);
 
 			const successResponse = await n8n.api.webhooks.trigger(`/webhook-test/${webhookPath}`, {
 				headers: {

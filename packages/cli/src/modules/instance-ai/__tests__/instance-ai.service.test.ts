@@ -456,12 +456,14 @@ type CheckpointPruneServiceInternals = {
 	scheduleCheckpointPrune: MockedFunction<(delayMs?: number) => void>;
 	checkpointStore: {
 		markExpiredOlderThan: MockedFunction<(olderThan: Date) => Promise<number>>;
+		hardDeleteExpiredOlderThan: MockedFunction<(olderThan: Date) => Promise<number>>;
 	};
 	checkpointPruneTimer?: NodeJS.Timeout;
 	checkpointPruningStopped: boolean;
 	instanceAiConfig: {
 		pruneInterval: number;
 		snapshotRetention: number;
+		checkpointGcRetention: number;
 	};
 	logger: { info: Mock; debug: Mock; warn: Mock };
 };
@@ -477,11 +479,13 @@ function createCheckpointPruneService(): CheckpointPruneServiceInternals {
 	service.pruneExpiredThreads = vi.fn(async () => undefined);
 	service.checkpointStore = {
 		markExpiredOlderThan: vi.fn(async (_olderThan: Date) => 0),
+		hardDeleteExpiredOlderThan: vi.fn(async (_olderThan: Date) => 0),
 	};
 	service.checkpointPruningStopped = true;
 	service.instanceAiConfig = {
 		pruneInterval: 60 * 60 * 1000,
-		snapshotRetention: 7 * 24 * 60 * 60 * 1000,
+		snapshotRetention: 24 * 60 * 60 * 1000,
+		checkpointGcRetention: 7 * 24 * 60 * 60 * 1000,
 	};
 	service.logger = {
 		info: vi.fn(),
@@ -1269,12 +1273,42 @@ describe('InstanceAiService — scheduled pruning', () => {
 
 		await service.runScheduledPrune(now);
 
+		// snapshotRetention = 24h → tombstone anything untouched since 05-12
 		expect(service.checkpointStore.markExpiredOlderThan).toHaveBeenCalledWith(
+			new Date('2026-05-12T12:00:00.000Z'),
+		);
+		// checkpointGcRetention = 7d → hard-delete tombstones expired before 05-06
+		expect(service.checkpointStore.hardDeleteExpiredOlderThan).toHaveBeenCalledWith(
 			new Date('2026-05-06T12:00:00.000Z'),
 		);
 		expect(service.suspendedThreads.pruneStalePendingConfirmations).toHaveBeenCalledWith(now);
 		expect(service.pruneExpiredThreads).toHaveBeenCalled();
 		expect(service.scheduleCheckpointPrune).toHaveBeenCalledWith();
+	});
+
+	it('skips hard-deleting tombstones when the GC retention is disabled', async () => {
+		const service = createCheckpointPruneService();
+		service.instanceAiConfig.checkpointGcRetention = 0;
+
+		await service.runScheduledPrune(new Date('2026-05-13T12:00:00.000Z').getTime());
+
+		expect(service.checkpointStore.hardDeleteExpiredOlderThan).not.toHaveBeenCalled();
+		// The rest of the cycle still runs.
+		expect(service.checkpointStore.markExpiredOlderThan).toHaveBeenCalled();
+		expect(service.scheduleCheckpointPrune).toHaveBeenCalledWith();
+	});
+
+	it('continues the prune cycle when hard-deleting tombstones fails', async () => {
+		const service = createCheckpointPruneService();
+		service.checkpointStore.hardDeleteExpiredOlderThan.mockRejectedValueOnce(new Error('db down'));
+
+		await service.runScheduledPrune(new Date('2026-05-13T12:00:00.000Z').getTime());
+
+		// A GC failure is swallowed and never forces the short retry cadence.
+		expect(service.suspendedThreads.pruneStalePendingConfirmations).toHaveBeenCalled();
+		expect(service.pruneExpiredThreads).toHaveBeenCalled();
+		expect(service.scheduleCheckpointPrune).toHaveBeenCalledWith();
+		expect(service.logger.warn).toHaveBeenCalled();
 	});
 
 	it('starts checkpoint pruning when configured', () => {
@@ -1429,11 +1463,13 @@ type ResolveConfirmationServiceInternals = {
 		requestingUserId: string,
 		requestId: string,
 		request: { kind: 'approval'; approved: boolean; userInput?: string },
-	) => Promise<boolean>;
+	) => Promise<{ ok: true; runId?: string } | null>;
 	revalidateActiveUser: Mock<(...args: [string]) => Promise<User | null>>;
 	cancelRun: Mock<(...args: [string]) => void>;
 	runState: {
 		resolvePendingConfirmation: Mock;
+		getPendingConfirmation: Mock;
+		getActiveRunId: Mock;
 		findSuspendedByRequestId: Mock;
 		rejectPendingConfirmation: Mock;
 	};
@@ -1443,6 +1479,9 @@ type ResolveConfirmationServiceInternals = {
 	};
 	suspendedThreads: {
 		dropPendingConfirmation: Mock;
+	};
+	pendingConfirmationRepo: {
+		isPastExpiry: Mock<(...args: [string, string, Date]) => Promise<boolean>>;
 	};
 	logger: { debug: Mock; warn: Mock; error: Mock; info: Mock };
 };
@@ -1455,12 +1494,17 @@ function createResolveConfirmationService(): ResolveConfirmationServiceInternals
 	service.cancelRun = vi.fn();
 	service.runState = {
 		resolvePendingConfirmation: vi.fn(),
+		getPendingConfirmation: vi.fn(),
+		getActiveRunId: vi.fn(),
 		findSuspendedByRequestId: vi.fn(),
 		rejectPendingConfirmation: vi.fn(),
 	};
-	service.resumeSuspendedRun = vi.fn(async () => false);
+	service.pendingConfirmationRepo = {
+		isPastExpiry: vi.fn(async () => false),
+	};
+	service.resumeSuspendedRun = vi.fn(async () => null);
 	service.suspendedRunRestorer = {
-		resolveOrphanedConfirmation: vi.fn(async () => false),
+		resolveOrphanedConfirmation: vi.fn(async () => null),
 	};
 	service.suspendedThreads = {
 		dropPendingConfirmation: vi.fn(async () => {}),
@@ -1550,7 +1594,7 @@ type SuspendedRunResumeServiceInternals = {
 		requestingUserId: string,
 		requestId: string,
 		data: { approved: boolean },
-	) => Promise<boolean>;
+	) => Promise<{ ok: true; runId: string } | null>;
 	revalidateActiveUser: Mock<(...args: [string]) => Promise<User | null>>;
 	cancelRun: Mock;
 	runState: {
@@ -1608,7 +1652,7 @@ describe('InstanceAiService — resolveConfirmation', () => {
 
 		const result = await service.resolveConfirmation('user-1', 'req-1', approval);
 
-		expect(result).toBe(false);
+		expect(result).toBeNull();
 		expect(service.runState.rejectPendingConfirmation).toHaveBeenCalledWith('req-1');
 		expect(service.runState.resolvePendingConfirmation).not.toHaveBeenCalled();
 		expect(service.cancelRun).not.toHaveBeenCalled();
@@ -1628,7 +1672,7 @@ describe('InstanceAiService — resolveConfirmation', () => {
 
 		const result = await service.resolveConfirmation('user-1', 'req-1', approval);
 
-		expect(result).toBe(false);
+		expect(result).toBeNull();
 		expect(service.runState.rejectPendingConfirmation).toHaveBeenCalledWith('req-1');
 		expect(service.cancelRun).toHaveBeenCalledWith('thread-1');
 	});
@@ -1643,18 +1687,23 @@ describe('InstanceAiService — resolveConfirmation', () => {
 
 		const result = await service.resolveConfirmation('user-1', 'req-1', approval);
 
-		expect(result).toBe(false);
+		expect(result).toBeNull();
 		expect(service.cancelRun).not.toHaveBeenCalled();
 	});
 
 	it('resolves the pending sub-agent confirmation when the user is still authorized', async () => {
 		const service = createResolveConfirmationService();
 		service.revalidateActiveUser.mockResolvedValue({ id: 'user-1' } as unknown as User);
+		service.runState.getPendingConfirmation.mockReturnValue({
+			userId: 'user-1',
+			threadId: 'thread-1',
+		});
 		service.runState.resolvePendingConfirmation.mockReturnValue(true);
+		service.runState.getActiveRunId.mockReturnValue('run-1');
 
 		const result = await service.resolveConfirmation('user-1', 'req-1', approval);
 
-		expect(result).toBe(true);
+		expect(result).toEqual({ ok: true, runId: 'run-1' });
 		expect(service.runState.resolvePendingConfirmation).toHaveBeenCalledWith(
 			'user-1',
 			'req-1',
@@ -1665,19 +1714,65 @@ describe('InstanceAiService — resolveConfirmation', () => {
 		expect(service.suspendedThreads.dropPendingConfirmation).toHaveBeenCalledWith('req-1');
 	});
 
+	it('refuses a click on a confirmation whose row is already past its expiry', async () => {
+		const service = createResolveConfirmationService();
+		service.revalidateActiveUser.mockResolvedValue({ id: 'user-1' } as unknown as User);
+		service.pendingConfirmationRepo.isPastExpiry.mockResolvedValue(true);
+		// A still-present in-memory entry must not be resolved once the row expired.
+		service.runState.getPendingConfirmation.mockReturnValue({
+			userId: 'user-1',
+			threadId: 'thread-1',
+		});
+
+		await expect(service.resolveConfirmation('user-1', 'req-1', approval)).rejects.toThrow(
+			/expired/i,
+		);
+
+		expect(service.pendingConfirmationRepo.isPastExpiry).toHaveBeenCalledWith(
+			'req-1',
+			'user-1',
+			expect.any(Date),
+		);
+		expect(service.runState.resolvePendingConfirmation).not.toHaveBeenCalled();
+		expect(service.suspendedRunRestorer.resolveOrphanedConfirmation).not.toHaveBeenCalled();
+	});
+
+	it('resolves normally when the row is not past its expiry', async () => {
+		const service = createResolveConfirmationService();
+		service.revalidateActiveUser.mockResolvedValue({ id: 'user-1' } as unknown as User);
+		service.pendingConfirmationRepo.isPastExpiry.mockResolvedValue(false);
+		service.runState.getPendingConfirmation.mockReturnValue({
+			userId: 'user-1',
+			threadId: 'thread-1',
+		});
+		service.runState.resolvePendingConfirmation.mockReturnValue(true);
+		service.runState.getActiveRunId.mockReturnValue('run-1');
+
+		const result = await service.resolveConfirmation('user-1', 'req-1', approval);
+
+		expect(result).toEqual({ ok: true, runId: 'run-1' });
+	});
+
 	it('delegates to the orphan-restoration path when no live run resumes', async () => {
 		// The detailed orphan claim/rebuild/finalize scenarios live in
 		// suspended-run-restorer.service.test.ts; here we only assert the
 		// fallthrough wiring once in-memory resolution + resume both miss.
 		const service = createResolveConfirmationService();
 		service.revalidateActiveUser.mockResolvedValue({ id: 'user-1' } as unknown as User);
+		service.runState.getPendingConfirmation.mockReturnValue(undefined);
 		service.runState.resolvePendingConfirmation.mockReturnValue(false);
-		service.resumeSuspendedRun.mockResolvedValue(false);
-		service.suspendedRunRestorer.resolveOrphanedConfirmation.mockResolvedValue(true);
+		service.resumeSuspendedRun.mockResolvedValue(null);
+		service.suspendedRunRestorer.resolveOrphanedConfirmation.mockResolvedValue({
+			ok: true,
+			runId: 'run-1',
+		});
 
 		const result = await service.resolveConfirmation('user-1', 'req-1', approval);
 
-		expect(result).toBe(true);
+		expect(result).toEqual({
+			ok: true,
+			runId: 'run-1',
+		});
 		expect(service.suspendedRunRestorer.resolveOrphanedConfirmation).toHaveBeenCalledWith(
 			'user-1',
 			'req-1',
@@ -1688,8 +1783,9 @@ describe('InstanceAiService — resolveConfirmation', () => {
 	it('propagates the terminal UserError thrown by the orphan-restoration path', async () => {
 		const service = createResolveConfirmationService();
 		service.revalidateActiveUser.mockResolvedValue({ id: 'user-1' } as unknown as User);
+		service.runState.getPendingConfirmation.mockReturnValue(undefined);
 		service.runState.resolvePendingConfirmation.mockReturnValue(false);
-		service.resumeSuspendedRun.mockResolvedValue(false);
+		service.resumeSuspendedRun.mockResolvedValue(null);
 		service.suspendedRunRestorer.resolveOrphanedConfirmation.mockRejectedValue(
 			new UserError('This confirmation was lost when the assistant restarted.'),
 		);
@@ -1702,12 +1798,19 @@ describe('InstanceAiService — resolveConfirmation', () => {
 	it('does not reach the orphan-restoration path when a live run resumes', async () => {
 		const service = createResolveConfirmationService();
 		service.revalidateActiveUser.mockResolvedValue({ id: 'user-1' } as unknown as User);
+		service.runState.getPendingConfirmation.mockReturnValue(undefined);
 		service.runState.resolvePendingConfirmation.mockReturnValue(false);
-		service.resumeSuspendedRun.mockResolvedValue(true);
+		service.resumeSuspendedRun.mockResolvedValue({
+			ok: true,
+			runId: 'run-1',
+		});
 
 		const result = await service.resolveConfirmation('user-1', 'req-1', approval);
 
-		expect(result).toBe(true);
+		expect(result).toEqual({
+			ok: true,
+			runId: 'run-1',
+		});
 		expect(service.suspendedRunRestorer.resolveOrphanedConfirmation).not.toHaveBeenCalled();
 	});
 });
@@ -2005,7 +2108,7 @@ describe('InstanceAiService — suspended run user revalidation', () => {
 
 		const result = await service.resumeSuspendedRun('user-1', 'req-1', { approved: true });
 
-		expect(result).toBe(false);
+		expect(result).toBeNull();
 		expect(service.cancelRun).toHaveBeenCalledWith('thread-a');
 		expect(service.runState.activateSuspendedRun).not.toHaveBeenCalled();
 		expect(service.processResumedStream).not.toHaveBeenCalled();
@@ -2022,7 +2125,10 @@ describe('InstanceAiService — suspended run user revalidation', () => {
 
 		const result = await service.resumeSuspendedRun('user-1', 'req-1', { approved: true });
 
-		expect(result).toBe(true);
+		expect(result).toEqual({
+			ok: true,
+			runId: 'run-1',
+		});
 		expect(service.runState.activateSuspendedRun).toHaveBeenCalledWith('thread-a');
 		expect(service.processResumedStream).toHaveBeenCalledWith(
 			expect.any(Object),

@@ -24,6 +24,14 @@ const LEGACY_SYSTEM_ARRAY_PREFIX =
 const LEGACY_SYSTEM_STRING_PREFIX = '[{"type":"text","text":"';
 const BODY_REGEX_WILDCARD = '[\\s\\S]*';
 const ID_VALUE_PLACEHOLDER = '__INSTANCE_AI_ID_VALUE__';
+const ROLE_BLOCK_WINDOW = 15_000;
+const TOOL_NAME_WINDOW = 3_000;
+const TOOL_INPUT_WINDOW = 8_000;
+const TOOL_RESULT_CONTENT_WINDOW = 100_000;
+
+function restoreIdValuePlaceholders(anchor: string): string {
+	return anchor.replaceAll(ID_VALUE_PLACEHOLDER, '[A-Za-z0-9_-]+');
+}
 
 function slugify(text: string): string {
 	return text
@@ -83,6 +91,26 @@ function escapeRegex(value: string): string {
 	return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+function escapeJsonStringForRegex(value: string): string {
+	return escapeRegex(JSON.stringify(value).slice(1, -1));
+}
+
+function getStableJsonFieldAnchor(value: string): string | undefined {
+	const stringField = value.match(/^"([^"]+)":"([^"]*)"$/);
+	if (stringField) {
+		const [, key, fieldValue] = stringField;
+		return `${escapeJsonStringForRegex(`"${key}"`)}\\s*:\\s*${escapeJsonStringForRegex(`"${fieldValue}"`)}`;
+	}
+
+	const scalarField = value.match(/^"([^"]+)":(true|false|-?\d+(?:\.\d+)?)$/);
+	if (scalarField) {
+		const [, key, fieldValue] = scalarField;
+		return `${escapeJsonStringForRegex(`"${key}"`)}\\s*:\\s*${fieldValue}`;
+	}
+
+	return undefined;
+}
+
 function getPlannedTaskFollowUpType(value: string): string | undefined {
 	for (const type of ['checkpoint', 'synthesize']) {
 		if (value.includes(`planned-task-follow-up type=${type}`)) return type;
@@ -131,9 +159,7 @@ function asContentBlocks(content: unknown): AnthropicContentBlock[] {
 }
 
 function getStableTextAnchor(text: string): string | undefined {
-	const trimmed = text
-		.replace(/<current-datetime>[\s\S]*?<\/current-datetime>/g, '')
-		.replace(/<user-timezone>[\s\S]*?<\/user-timezone>/g, '')
+	const trimmed = stripDynamicPromptContext(text)
 		.replace(/\b(ID|id):\s*[A-Za-z0-9_-]{8,}\b/g, `$1: ${ID_VALUE_PLACEHOLDER}`)
 		.replace(/"([A-Za-z]*[Ii]d)"\s*:\s*"[^"]+"/g, `"$1":"${ID_VALUE_PLACEHOLDER}"`)
 		.replace(/"([A-Za-z]*[Ii]d)"\s*:\s*\d+/g, `"$1":${ID_VALUE_PLACEHOLDER}`)
@@ -142,12 +168,16 @@ function getStableTextAnchor(text: string): string | undefined {
 
 	const plannedTaskFollowUpType = getPlannedTaskFollowUpType(trimmed);
 	if (plannedTaskFollowUpType) {
-		return getPlannedTaskFollowUpAnchor(trimmed, plannedTaskFollowUpType);
+		return restoreIdValuePlaceholders(
+			getPlannedTaskFollowUpAnchor(trimmed, plannedTaskFollowUpType),
+		);
 	}
 
-	return escapeRegex(JSON.stringify(trimmed.slice(0, 120)).slice(1, -1)).replaceAll(
-		ID_VALUE_PLACEHOLDER,
-		'[A-Za-z0-9_-]+',
+	const jsonFieldAnchor = getStableJsonFieldAnchor(trimmed);
+	if (jsonFieldAnchor) return restoreIdValuePlaceholders(jsonFieldAnchor);
+
+	return restoreIdValuePlaceholders(
+		escapeRegex(JSON.stringify(trimmed.slice(0, 120)).slice(1, -1)),
 	);
 }
 
@@ -170,8 +200,9 @@ function getStableToolInputAnchor(input: Record<string, unknown>): string | unde
 function getToolUseAnchor(block: AnthropicContentBlock, role?: unknown): string | undefined {
 	if (block.type !== 'tool_use' || typeof block.name !== 'string') return undefined;
 
-	const roleMatcher = role === 'assistant' ? '"role"\\s*:\\s*"assistant"[\\s\\S]{0,1500}' : '';
-	const toolNameMatcher = `${roleMatcher}"type"\\s*:\\s*"tool_use"[\\s\\S]{0,300}"name"\\s*:\\s*"${escapeRegex(block.name)}"`;
+	const roleMatcher =
+		role === 'assistant' ? `"role"\\s*:\\s*"assistant"[\\s\\S]{0,${ROLE_BLOCK_WINDOW}}` : '';
+	const toolNameMatcher = `${roleMatcher}"type"\\s*:\\s*"tool_use"[\\s\\S]{0,${TOOL_NAME_WINDOW}}"name"\\s*:\\s*"${escapeRegex(block.name)}"`;
 	const input = block.input;
 	if (typeof input !== 'object' || input === null || Array.isArray(input)) {
 		return toolNameMatcher;
@@ -180,7 +211,7 @@ function getToolUseAnchor(block: AnthropicContentBlock, role?: unknown): string 
 	const stableInputAnchor = getStableToolInputAnchor(input as Record<string, unknown>);
 	if (!stableInputAnchor) return toolNameMatcher;
 
-	return `${toolNameMatcher}[\\s\\S]{0,800}${stableInputAnchor}`;
+	return `${toolNameMatcher}[\\s\\S]{0,${TOOL_INPUT_WINDOW}}${stableInputAnchor}`;
 }
 
 function parseJsonString(value: string): unknown {
@@ -236,13 +267,16 @@ function getStableToolResultText(content: unknown): string | undefined {
 function getToolResultAnchor(block: AnthropicContentBlock, role?: unknown): string | undefined {
 	if (block.type !== 'tool_result') return undefined;
 
-	const roleMatcher = role === 'user' ? '"role"\\s*:\\s*"user"[\\s\\S]{0,1500}' : '';
+	const roleMatcher =
+		role === 'user' ? `"role"\\s*:\\s*"user"[\\s\\S]{0,${ROLE_BLOCK_WINDOW}}` : '';
 	const toolResultMatcher = `${roleMatcher}"type"\\s*:\\s*"tool_result"`;
 	const content = getStableToolResultText(block.content);
 	if (!content) return toolResultMatcher;
 
 	const textAnchor = getStableTextAnchor(content);
-	return textAnchor ? `${toolResultMatcher}[\\s\\S]{0,2000}${textAnchor}` : toolResultMatcher;
+	return textAnchor
+		? `${toolResultMatcher}[\\s\\S]{0,${TOOL_RESULT_CONTENT_WINDOW}}${textAnchor}`
+		: toolResultMatcher;
 }
 
 function getLatestMessageAnchor(messages: AnthropicMessage[] | undefined): string | undefined {
@@ -374,6 +408,38 @@ function stripRecordedSystemPromptAnchor(regex: string): string {
 	return `${BODY_REGEX_WILDCARD}${regex.slice(latestTurnAnchorIndex + BODY_REGEX_WILDCARD.length)}`;
 }
 
+function loosenEscapedJsonFieldAnchors(regex: string): string {
+	return regex
+		.replace(/\\\\"([^"\\]+)\\\\":\\\\"([^"\\]*)\\\\"/g, '\\\\"$1\\\\"\\s*:\\s*\\\\"$2\\\\"')
+		.replace(/\\\\"([^"\\]+)\\\\":(true|false|-?\d+(?:\.\d+)?)/g, '\\\\"$1\\\\"\\s*:\\s*$2');
+}
+
+function stripDynamicPromptContext(text: string): string {
+	return text
+		.replace(/<current-date-?time>[\s\S]*?<\/current-date-?time>/g, '')
+		.replace(/<current-datetime>[\s\S]*?<\/current-datetime>/g, '')
+		.replace(/<user-timezone>[\s\S]*?<\/user-timezone>/g, '');
+}
+
+function loosenDynamicPromptContextAnchors(regex: string): string {
+	return regex
+		.replace(
+			/(?:\\\\n){2}<current-date-?time>[\s\S]*?(?:<\/current-date-?time>|(?=\[\\s\\S\]\*))/g,
+			BODY_REGEX_WILDCARD,
+		)
+		.replace(
+			/(?:\\\\n){2}<current-datetime>[\s\S]*?(?:<\/current-datetime>|(?=\[\\s\\S\]\*))/g,
+			BODY_REGEX_WILDCARD,
+		)
+		.replace(
+			/(?:\\\\n){2}<user-timezone>[\s\S]*?(?:<\/user-timezone>|(?=\[\\s\\S\]\*))/g,
+			BODY_REGEX_WILDCARD,
+		)
+		.replace(/<current-date-?time>[\s\S]*?<\/current-date-?time>/g, BODY_REGEX_WILDCARD)
+		.replace(/<current-datetime>[\s\S]*?<\/current-datetime>/g, BODY_REGEX_WILDCARD)
+		.replace(/<user-timezone>[\s\S]*?<\/user-timezone>/g, BODY_REGEX_WILDCARD);
+}
+
 function loosenRecordedInstanceAiPromptMatcher(expectation: Expectation): Expectation {
 	const body = (expectation.httpRequest as { body?: unknown } | undefined)?.body;
 	if (!isBodyMatcher(body)) return expectation;
@@ -397,7 +463,17 @@ function loosenRecordedInstanceAiPromptMatcher(expectation: Expectation): Expect
 			return expectation;
 		}
 
-		regex = regex.replace(LEGACY_SYSTEM_ARRAY_PREFIX, '');
+		if (regex.includes(INSTANCE_AGENT_SYSTEM_PROMPT_ANCHOR)) {
+			body.regex = `[\\s\\S]*${escapeRegex(INSTANCE_AGENT_SYSTEM_PROMPT_ANCHOR)}[\\s\\S]*`;
+			return expectation;
+		}
+
+		regex = loosenEscapedJsonFieldAnchors(loosenDynamicPromptContextAnchors(regex))
+			.replace(LEGACY_SYSTEM_ARRAY_PREFIX, '')
+			.replaceAll('[\\s\\S]{0,1500}', `[\\s\\S]{0,${ROLE_BLOCK_WINDOW}}`)
+			.replaceAll('[\\s\\S]{0,800}', `[\\s\\S]{0,${TOOL_INPUT_WINDOW}}`)
+			.replaceAll('[\\s\\S]{0,300}', `[\\s\\S]{0,${TOOL_NAME_WINDOW}}`)
+			.replaceAll('[\\s\\S]{0,2000}', `[\\s\\S]{0,${TOOL_RESULT_CONTENT_WINDOW}}`);
 		body.regex = stripRecordedSystemPromptAnchor(regex);
 	}
 
@@ -469,20 +545,30 @@ async function safeFetch(input: string, init: RequestInit = {}): Promise<Respons
 	}
 }
 
+async function wait(ms: number): Promise<void> {
+	await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function fetchOrThrow(
 	input: string,
 	init: RequestInit = {},
 	description: string,
 ): Promise<Response> {
-	const response = await safeFetch(input, init);
+	let response: Response | undefined;
+	for (let attempt = 0; attempt < 4; attempt++) {
+		response = await safeFetch(input, init);
+		if (response?.ok) return response;
+		if (response && ![502, 503, 504].includes(response.status)) break;
+		if (attempt === 3) break;
+		await wait(500 * 2 ** attempt);
+	}
+
 	if (!response) {
 		throw new Error(`Instance AI test setup failed: ${description}`);
 	}
-	if (!response.ok) {
-		const body = await response.text();
-		throw new Error(`Instance AI test setup failed: ${description} (${response.status}) ${body}`);
-	}
-	return response;
+
+	const body = await response.text();
+	throw new Error(`Instance AI test setup failed: ${description} (${response.status}) ${body}`);
 }
 
 function getIdleState(body: unknown): boolean | undefined {

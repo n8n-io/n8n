@@ -188,7 +188,7 @@ describe('AgentMessageList — forLlm observation memory', () => {
 		expect(prompt).toContain('* CRITICAL (14:30) User wants the SDK to stay unopinionated.');
 	});
 
-	it('places observation memory in a separate system message with its own cache breakpoint', () => {
+	it('places observation memory in a separate, uncached system message so only instructions carry the cache breakpoint', () => {
 		const observationLog = [
 			'<observations>',
 			'* CRITICAL (14:30) User wants the SDK to stay unopinionated.',
@@ -208,11 +208,12 @@ describe('AgentMessageList — forLlm observation memory', () => {
 			content: 'Base instructions',
 			providerOptions: cacheOptions,
 		});
-		expect(system[1]).toMatchObject({
+		// The observation message changes on nearly every call, so it must never
+		// be marked — doing so would just pay the cache-write premium for no read.
+		expect(system[1]).toEqual({
 			role: 'system',
-			providerOptions: cacheOptions,
+			content: expect.stringContaining('<observations>') as unknown as string,
 		});
-		expect(system[1]?.content).toContain('<observations>');
 		expect(system[1]?.content).not.toContain('Base instructions');
 	});
 
@@ -235,6 +236,49 @@ describe('AgentMessageList — forLlm observation memory', () => {
 				}),
 			]),
 		);
+	});
+});
+
+describe('buildSystemMessages — volatile tool-instruction fragments', () => {
+	it('places volatile instructions in an uncached second message when observation memory is absent', () => {
+		const system = buildSystemMessages(
+			'Base instructions',
+			undefined,
+			undefined,
+			'<built_in_rules>\n- Newly loaded tool rule.\n</built_in_rules>',
+		);
+
+		expect(Array.isArray(system)).toBe(true);
+		if (!Array.isArray(system)) throw new Error('Expected split system messages');
+		expect(system).toHaveLength(2);
+		expect(system[0]).toEqual({ role: 'system', content: 'Base instructions' });
+		expect(system[1]?.content).toContain('Newly loaded tool rule.');
+		expect(system[1]?.providerOptions).toBeUndefined();
+		// The cached instructions message must stay byte-identical regardless of
+		// what volatile content exists — this is the whole point of the split.
+		expect(system[0]?.content).toBe('Base instructions');
+	});
+
+	it('combines volatile instructions and observation memory in the same uncached message', () => {
+		const system = buildSystemMessages(
+			'Base instructions',
+			'<observations>\n* Some memory.\n</observations>',
+			undefined,
+			'<built_in_rules>\n- Newly loaded tool rule.\n</built_in_rules>',
+		);
+
+		expect(Array.isArray(system)).toBe(true);
+		if (!Array.isArray(system)) throw new Error('Expected split system messages');
+		expect(system).toHaveLength(2);
+		expect(system[1]?.content).toContain('Newly loaded tool rule.');
+		expect(system[1]?.content).toContain('Some memory.');
+	});
+
+	it('keeps the single-message shape when neither observation memory nor volatile instructions are present', () => {
+		const system = buildSystemMessages('Base instructions', undefined, undefined, undefined);
+
+		expect(Array.isArray(system)).toBe(false);
+		expect(system).toEqual({ role: 'system', content: 'Base instructions' });
 	});
 });
 

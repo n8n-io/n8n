@@ -7,6 +7,7 @@ import { EventService } from '@/events/event.service';
 
 import { ImportPipeline } from './engine/import-pipeline';
 import { CredentialExporter } from './entities/credential/credential.exporter';
+import { FolderExporter } from './entities/folder/folder.exporter';
 import { ProjectExporter } from './entities/project/project.exporter';
 import { WorkflowExporter } from './entities/workflow/workflow.exporter';
 import { TarPackageWriter } from './io/tar/tar-package-writer';
@@ -23,6 +24,7 @@ export class N8nPackagesService {
 	constructor(
 		private readonly projectExporter: ProjectExporter,
 		private readonly workflowExporter: WorkflowExporter,
+		private readonly folderExporter: FolderExporter,
 		private readonly credentialExporter: CredentialExporter,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly importPipeline: ImportPipeline,
@@ -32,6 +34,7 @@ export class N8nPackagesService {
 	async exportPackage(request: ExportPackageRequest): Promise<Readable> {
 		const writer = new TarPackageWriter();
 		const workflowIds = request.workflowIds ?? [];
+		const folderIds = request.folderIds ?? [];
 		const projectIds = request.projectIds ?? [];
 
 		const workflowExportResult =
@@ -39,6 +42,15 @@ export class N8nPackagesService {
 				? await this.workflowExporter.export({
 						user: request.user,
 						workflowIds,
+						writer,
+					})
+				: undefined;
+
+		const folderExportResult =
+			folderIds.length > 0
+				? await this.folderExporter.export({
+						user: request.user,
+						folderIds,
 						writer,
 					})
 				: undefined;
@@ -70,6 +82,7 @@ export class N8nPackagesService {
 				? { requirements: { credentials: credentialExportResult.requirements } }
 				: {}),
 			...(workflowExportResult?.entries ? { workflows: workflowExportResult.entries } : {}),
+			...(folderExportResult?.entries ? { folders: folderExportResult.entries } : {}),
 			...(projectExportResult?.entries ? { projects: projectExportResult.entries } : {}),
 		});
 
@@ -80,8 +93,18 @@ export class N8nPackagesService {
 
 		this.eventService.emit('n8n-package-exported', {
 			user: request.user,
+			...(workflowExportResult?.entries.length
+				? { workflowIds: workflowExportResult.entries.map(({ id }) => id) }
+				: {}),
+			...(folderExportResult?.entries.length
+				? { folderIds: folderExportResult.entries.map(({ id }) => id) }
+				: {}),
+			...(projectExportResult?.entries.length
+				? { projectIds: projectExportResult.entries.map(({ id }) => id) }
+				: {}),
 			counts: {
 				workflows: workflowExportResult?.entries.length ?? 0,
+				folders: folderExportResult?.entries.length ?? 0,
 				credentials: credentialExportResult.entries.length,
 			},
 		});

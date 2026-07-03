@@ -70,6 +70,11 @@ import {
 	type BuildResult,
 } from '../harness/runner';
 import {
+	extractErrorMessage,
+	isTransientNetworkError,
+	MAX_EXEC_ATTEMPTS,
+} from '../harness/transient-error';
+import {
 	BUILD_ONLY_SCENARIO_NAME,
 	syncDataset,
 	type DatasetExampleInputs,
@@ -591,7 +596,6 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 
 		const execStart = Date.now();
 		const nodeCount = build.workflowJsons[0]?.nodes.length ?? 0;
-		const maxExecAttempts = 5;
 		let result;
 		for (let attempt = 1; ; attempt++) {
 			try {
@@ -603,21 +607,10 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				});
 				break;
 			} catch (error: unknown) {
-				const baseError = error instanceof Error ? error : new Error(String(error));
-				const cause = baseError.cause;
-				const causeText =
-					cause instanceof Error ? cause.message : typeof cause === 'string' ? cause : undefined;
-				const errorMessage =
-					causeText && causeText !== baseError.message
-						? `${baseError.message}: ${causeText}`
-						: baseError.message;
-				const isTransient =
-					/fetch failed|ECONNRESET|ECONNREFUSED|ETIMEDOUT|EAI_AGAIN|socket hang up/i.test(
-						errorMessage,
-					);
-				if (isTransient && attempt < maxExecAttempts) {
+				const errorMessage = extractErrorMessage(error);
+				if (isTransientNetworkError(errorMessage) && attempt < MAX_EXEC_ATTEMPTS) {
 					logger.warn(
-						`    [${scenario.name}] execution attempt ${attempt}/${maxExecAttempts} failed (${errorMessage}); retrying`,
+						`    [${scenario.name}] execution attempt ${attempt}/${MAX_EXEC_ATTEMPTS} failed (${errorMessage}); retrying`,
 					);
 					await new Promise((resolve) => setTimeout(resolve, 500 * attempt));
 					continue;
@@ -700,10 +693,10 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		if (output.buildDurationMs !== undefined) {
 			feedback.push({ key: 'build_duration_s', score: output.buildDurationMs / 1000 });
 		}
-		// Skip N/A so LangSmith column averages reduce to per-check pass-rate.
+		// Skip N/A and errored so LangSmith column averages reduce to per-check pass-rate.
 		if (output.workflowChecks) {
 			for (const outcome of output.workflowChecks) {
-				if (outcome.status === 'n_a') continue;
+				if (outcome.status === 'n_a' || outcome.status === 'error') continue;
 				feedback.push({
 					key: `evals.workflows.${outcome.dimension}.${outcome.name}`,
 					score: outcome.status === 'pass' ? 1 : 0,

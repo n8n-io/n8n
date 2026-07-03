@@ -158,6 +158,9 @@ const onButtonClick = () => {
 	border: var(--border) !important;
 	border-radius: var(--radius--sm) !important;
 	box-shadow: var(--shadow) !important;
+	/* Must exceed N8nSelect2's SelectContent z-index (999999) so the popover
+	   stays visible if collision-avoidance flips it to the left side. */
+	z-index: 1000000 !important;
 
 	svg {
 		fill: var(--color--background--light-2) !important;
