@@ -57,7 +57,10 @@ export class InstanceAiModelService {
 			const client = await this.aiService.getClient();
 			const proxyBaseUrl = client.getApiProxyBaseUrl();
 			const tokenManager = new ProxyTokenManager(async () => {
-				return await client.getBuilderApiProxyToken({ id: user.id }, { userMessageId: nanoid() });
+				return await client.getInstanceAiApiProxyToken(
+					{ id: user.id },
+					{ userMessageId: nanoid() },
+				);
 			});
 			return await this.resolveProxyModel(user, proxyBaseUrl, tokenManager);
 		}
@@ -139,12 +142,12 @@ export class InstanceAiModelService {
 		})(modelName);
 	}
 
-	/** Get current credit usage from the AI service proxy. */
+	/** Get current Instance AI credit usage from the AI service proxy. */
 	async getCredits(user: User): Promise<{ creditsQuota: number; creditsClaimed: number }> {
 		if (!this.aiService.isProxyEnabled()) {
 			return { creditsQuota: UNLIMITED_CREDITS, creditsClaimed: 0 };
 		}
 		const client = await this.aiService.getClient();
-		return await client.getBuilderInstanceCredits({ id: user.id });
+		return await client.getInstanceAiCredits({ id: user.id });
 	}
 }

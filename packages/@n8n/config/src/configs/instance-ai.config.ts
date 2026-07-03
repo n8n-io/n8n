@@ -148,6 +148,10 @@ export class InstanceAiConfig {
 	@Env('N8N_INSTANCE_AI_SNAPSHOT_RETENTION')
 	snapshotRetention: number = 24 * Time.hours.toMilliseconds;
 
+	/** Retention period in milliseconds for expired checkpoint tombstones before they are hard-deleted. Must exceed snapshotRetention. 0 = never hard-delete. */
+	@Env('N8N_INSTANCE_AI_CHECKPOINT_GC_RETENTION')
+	checkpointGcRetention: number = 7 * Time.days.toMilliseconds;
+
 	/** Timeout in milliseconds for HITL confirmation requests. 0 = no timeout. */
 	@Env('N8N_INSTANCE_AI_CONFIRMATION_TIMEOUT')
 	confirmationTimeout: number = 24 * Time.hours.toMilliseconds;

@@ -45,7 +45,7 @@ tags:
   - name: Folders
     description: Operations about folders
   - name: N8nPackage
-    description: Beta — operations about n8n packages. Disabled by default; enable with `N8N_PUBLIC_API_PACKAGES_ENABLED=true`.
+    description: Beta — breaking changes may still occur without major version bump.
 
 paths:
   /audit:
@@ -116,6 +116,8 @@ paths:
     $ref: './handlers/data-tables/spec/paths/data-tables.dataTableId.rows.update.yml'
   /data-tables/{dataTableId}/rows/upsert:
     $ref: './handlers/data-tables/spec/paths/data-tables.dataTableId.rows.upsert.yml'
+  /data-tables/{dataTableId}/rows/clear:
+    $ref: './handlers/data-tables/spec/paths/data-tables.dataTableId.rows.clear.yml'
   /data-tables/{dataTableId}/rows/delete:
     $ref: './handlers/data-tables/spec/paths/data-tables.dataTableId.rows.delete.yml'
   /data-tables/{dataTableId}/columns:

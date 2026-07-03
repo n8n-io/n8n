@@ -182,6 +182,8 @@ const loadValidateAttachments = lazyModule(
 );
 
 export { MAX_STEPS } from './constants/max-steps';
+export { deriveCredentialHosts } from './tools/workflows/credential-url-resolver';
+export type { CredentialHostMeta } from './tools/workflows/credential-url-resolver';
 export type {
 	AgentDbMessage,
 	AgentMessage,
@@ -437,6 +439,10 @@ export const getWorkspaceRoot: typeof SharedSandboxMod.getWorkspaceRoot = lazyFu
 export const getPromptWorkspaceRoot: typeof SharedSandboxMod.getPromptWorkspaceRoot = lazyFunction(
 	() => loadSharedSandbox().getPromptWorkspaceRoot,
 );
+export const getPromptSandboxInstructions: typeof SharedSandboxMod.getPromptSandboxInstructions =
+	lazyFunction(() => loadSharedSandbox().getPromptSandboxInstructions);
+export const getPromptFilesystemInstructions: typeof SharedSandboxMod.getPromptFilesystemInstructions =
+	lazyFunction(() => loadSharedSandbox().getPromptFilesystemInstructions);
 export const setupSandboxWorkspace: typeof SandboxSetupMod.setupSandboxWorkspace = lazyFunction(
 	() => loadSandboxSetup().setupSandboxWorkspace,
 );
@@ -649,6 +655,7 @@ export type {
 	CredentialSummary,
 	CredentialDetail,
 	CredentialTypeSearchResult,
+	CredentialHostInfo,
 	NodeSummary,
 	NodeDescription,
 	SearchableNodeDescription,

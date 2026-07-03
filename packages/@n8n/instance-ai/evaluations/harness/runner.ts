@@ -31,6 +31,7 @@ import {
 import { reconstructSeedFromThread, type SeedThreadRef } from './langsmith-seed';
 import { type EvalLogger } from './logger';
 import { fetchPrebuiltBuild } from './prebuilt-workflows';
+import { extractErrorMessage, isTransientNetworkError, MAX_EXEC_ATTEMPTS } from './transient-error';
 import { buildWorkflowContextBlock } from './workflow-context';
 import { SONNET_MODEL } from '../../src/utils/eval-agents';
 import { runBinaryChecks } from '../binaryChecks/index';
@@ -200,6 +201,7 @@ export async function runWorkflowTestCase(
 		n8nBaseUrl: config.baseUrl,
 	};
 
+	const isPrebuilt = config.prebuiltWorkflowId !== undefined;
 	const build = config.prebuiltWorkflowId
 		? await fetchPrebuiltBuild(client, config.prebuiltWorkflowId, logger)
 		: await buildWorkflow({
@@ -218,7 +220,7 @@ export async function runWorkflowTestCase(
 				laneTag: config.laneTag,
 			});
 
-	if (config.prebuiltWorkflowId && build.success && !build.workflowChecks) {
+	if (isPrebuilt && build.success && !build.workflowChecks) {
 		// No transcript in prebuilt mode, but the authored conversation still
 		// carries the user's request — feed it so prompt-aware checks (e.g.
 		// fulfills_user_request) grade against real intent instead of "".
@@ -235,7 +237,7 @@ export async function runWorkflowTestCase(
 	}
 	if (build.threadId) {
 		result.threadId = build.threadId;
-		if (!config.prebuiltWorkflowId) {
+		if (!isPrebuilt) {
 			result.runDebug = await captureThreadRunDebug(client, build.threadId, logger);
 		}
 	}
@@ -252,7 +254,7 @@ export async function runWorkflowTestCase(
 			testCase,
 			transcript: build.transcript,
 			buildSucceeded: build.success,
-			isPrebuilt: config.prebuiltWorkflowId !== undefined,
+			isPrebuilt,
 			logger,
 		});
 	const expectationsPromise: Promise<BuildExpectationResult[]> =
@@ -286,27 +288,42 @@ export async function runWorkflowTestCase(
 	const scenariosPromise = runWithConcurrency(
 		testCase.executionScenarios ?? [],
 		async (scenario) => {
-			try {
-				return await executeScenario(
-					client,
-					build.workflowId!,
-					scenario,
-					build.workflowJsons,
-					logger,
-					timeoutMs,
-					testCaseArtifactName,
-					build.buildTrace,
-					config.pinAiRoots,
-				);
-			} catch (error: unknown) {
-				const errorMessage = error instanceof Error ? error.message : String(error);
-				logger.error(`    ERROR [${scenario.name}]: ${errorMessage}`);
-				return {
-					scenario,
-					success: false,
-					score: 0,
-					reasoning: `Error: ${errorMessage}`,
-				} satisfies ExecutionScenarioResult;
+			for (let attempt = 1; ; attempt++) {
+				try {
+					return await executeScenario(
+						client,
+						build.workflowId!,
+						scenario,
+						build.workflowJsons,
+						logger,
+						timeoutMs,
+						testCaseArtifactName,
+						build.buildTrace,
+						config.pinAiRoots,
+					);
+				} catch (error: unknown) {
+					const errorMessage = extractErrorMessage(error);
+					if (isTransientNetworkError(errorMessage) && attempt < MAX_EXEC_ATTEMPTS) {
+						logger.warn(
+							`    [${scenario.name}] execution attempt ${attempt}/${MAX_EXEC_ATTEMPTS} failed (${errorMessage}); retrying`,
+						);
+						await delay(500 * attempt);
+						continue;
+					}
+					// executeScenario categorizes builder/mock/verification failures
+					// internally; an error escaping it is an infra/framework problem
+					// (network drop, n8n API error, verifier timeout). Tag it
+					// framework_issue so the report and baseline keep it out of builder
+					// regressions instead of scoring it as an uncategorized failure.
+					logger.error(`    ERROR [${scenario.name}]: ${errorMessage}`);
+					return {
+						scenario,
+						success: false,
+						score: 0,
+						reasoning: `Scenario execution error: ${errorMessage}`,
+						failureCategory: 'framework_issue',
+					} satisfies ExecutionScenarioResult;
+				}
 			}
 		},
 		MAX_CONCURRENT_SCENARIOS,
@@ -1211,6 +1228,12 @@ export async function runWorkflowChecks(args: {
 		if (failed.length > 0) {
 			args.logger.info(
 				`  Workflow checks: ${String(failed.length)} failing (${failed.map((o) => o.name).join(', ')})`,
+			);
+		}
+		const errored = outcomes.filter((o) => o.status === 'error');
+		if (errored.length > 0) {
+			args.logger.warn(
+				`  Workflow checks: ${String(errored.length)} errored, excluded from scoring (${errored.map((o) => o.name).join(', ')})`,
 			);
 		}
 		return outcomes;
