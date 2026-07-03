@@ -64,6 +64,11 @@ const CREDENTIAL_TEMPLATES: Record<string, CredentialTemplate> = {
 		defaultName: '[eval] HTTP Basic',
 		buildData: () => ({ user: 'eval-user', password: 'eval-pass' }),
 	},
+	openAiApi: {
+		defaultName: '[eval] OpenAI',
+		envVar: 'EVAL_OPENAI_API_KEY',
+		buildData: (key) => ({ apiKey: key }),
+	},
 };
 
 // ---------------------------------------------------------------------------
