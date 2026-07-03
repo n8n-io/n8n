@@ -1039,8 +1039,16 @@ export class PlaywrightAdapter {
 		}
 	}
 
-	getElementValue(_pageId: string, _target: ElementTarget): never {
-		throw new Error('Not implemented');
+	async getElementValue(pageId: string, target: ElementTarget): Promise<string> {
+		const locator = await this.resolveLocator(pageId, target);
+		let value = '';
+		try {
+			value = await locator.inputValue();
+		} catch {
+			// Not an <input>/<textarea>/<select>.
+		}
+		if (value !== '') return value;
+		return await locator.innerText();
 	}
 
 	private async resolveLocator(pageId: string, target: ElementTarget): Promise<Locator> {

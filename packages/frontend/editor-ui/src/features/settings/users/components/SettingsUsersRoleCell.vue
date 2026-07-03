@@ -126,7 +126,7 @@ const onLegacyActionSelect = (role: string) => {
 			@update:role="onRoleUpdate"
 			@system-role-upgrade-needed="upgradeModalVisible = true"
 		/>
-		<span v-else>{{ selectedRole?.displayName }}</span>
+		<span v-else :class="$style.roleName">{{ selectedRole?.displayName }}</span>
 		<CustomRolesUpgradeModal v-model="upgradeModalVisible" />
 	</div>
 
@@ -158,7 +158,7 @@ const onLegacyActionSelect = (role: string) => {
 				</ElRadio>
 			</template>
 		</N8nActionDropdown>
-		<span v-else>{{ legacyRoleLabel }}</span>
+		<span v-else :class="$style.roleName">{{ legacyRoleLabel }}</span>
 	</div>
 </template>
 
@@ -166,6 +166,15 @@ const onLegacyActionSelect = (role: string) => {
 /* Wrapper for the feature-flag branch; renders as if it weren't there. */
 .flagBranch {
 	display: contents;
+}
+
+/* Non-editable role name — truncates so it doesn't overflow the adjacent column */
+.roleName {
+	display: block;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	max-width: 200px;
 }
 
 /* Legacy design */

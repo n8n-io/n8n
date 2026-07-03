@@ -293,23 +293,30 @@ describe('RunStateRegistry', () => {
 
 	describe('getThreadStatus', () => {
 		it('reflects active run state', () => {
-			registry.startRun({ threadId: 'thread-1', user: { id: 'u1', name: 'A' } });
+			const started = registry.startRun({ threadId: 'thread-1', user: { id: 'u1', name: 'A' } });
 
 			const status = registry.getThreadStatus('thread-1', []);
 
 			expect(status.hasActiveRun).toBe(true);
 			expect(status.isSuspended).toBe(false);
+			expect(status.runId).toBe(started.runId);
 			expect(status.backgroundTasks).toEqual([]);
 		});
 
 		it('reflects suspended run state', () => {
 			registry.startRun({ threadId: 'thread-1', user: { id: 'u1', name: 'A' } });
-			registry.suspendRun('thread-1', createSuspendedRunState({ threadId: 'thread-1' }));
+			const suspendedState = createSuspendedRunState({
+				threadId: 'thread-1',
+				runId: 'run-suspended',
+				messageGroupId: 'mg-1',
+			});
+			registry.suspendRun('thread-1', suspendedState);
 
 			const status = registry.getThreadStatus('thread-1', []);
 
 			expect(status.hasActiveRun).toBe(false);
 			expect(status.isSuspended).toBe(true);
+			expect(status.runId).toBe('run-suspended');
 		});
 
 		it('reflects idle state with no runs', () => {
