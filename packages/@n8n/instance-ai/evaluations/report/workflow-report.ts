@@ -451,7 +451,9 @@ function verifierReview(sr: ExecutionScenarioResult): StageReview {
 		status: sr.success ? 'pass' : 'fail',
 		reason: sr.success
 			? 'The verifier accepted this scenario.'
-			: `The verifier rejected this scenario${sr.failureCategory ? ` as ${sr.failureCategory}` : ''}.`,
+			: sr.incomplete
+				? 'The verifier returned no verdict after all attempts — this run is excluded from scoring.'
+				: `The verifier rejected this scenario${sr.failureCategory ? ` as ${sr.failureCategory}` : ''}.`,
 		body: bodyParts.join(''),
 	};
 }
@@ -536,6 +538,22 @@ function renderScenario(
 	const icon = sr.success ? '&#10003;' : '&#10007;';
 	const statusClass = sr.success ? 'pass' : 'fail';
 	const execLink = renderExecutionLink(sr, result.n8nBaseUrl, result.workflowId);
+
+	// Verifier-incomplete: neutral one-liner, excluded from scoring.
+	if (sr.incomplete) {
+		return `<div class="scenario na">
+			<div class="scenario-header" onclick="this.parentElement.classList.toggle('expanded')">
+				<span class="scenario-icon na">⌀</span>
+				<span class="scenario-name">${escapeHtml(sr.scenario.name)}</span>
+				<span class="scenario-summary-inline">verifier returned no verdict — excluded from scoring</span>
+				${execLink}
+			</div>
+			<div class="scenario-detail" id="scenario-${String(index)}">
+				${renderScenarioReview(result, sr)}
+				${renderScenarioDetail(sr)}
+			</div>
+		</div>`;
+	}
 
 	// Passing scenarios: compact one-liner with collapsible detail
 	if (sr.success) {
@@ -1175,12 +1193,13 @@ function renderWorkflowSummary(result: WorkflowTestCaseResult): string {
 // ---------------------------------------------------------------------------
 
 function renderTestCase(result: WorkflowTestCaseResult, tcIndex: number): string {
-	// Pass rate counts scenarios AND build expectations as units (incomplete expectations excluded).
+	// Pass rate counts scenarios AND build expectations as units (incomplete units excluded).
 	const scoredExpectations = (result.buildExpectationResults ?? []).filter((e) => !e.incomplete);
+	const scoredScenarios = result.executionScenarioResults.filter((sr) => !sr.incomplete);
 	const passCount =
-		result.executionScenarioResults.filter((sr) => sr.success).length +
+		scoredScenarios.filter((sr) => sr.success).length +
 		scoredExpectations.filter((e) => e.pass).length;
-	const totalCount = result.executionScenarioResults.length + scoredExpectations.length;
+	const totalCount = scoredScenarios.length + scoredExpectations.length;
 	const allPass = passCount === totalCount && totalCount > 0;
 	const statusClass = result.workflowBuildSuccess ? (allPass ? 'pass' : 'mixed') : 'fail';
 
@@ -1206,10 +1225,11 @@ function renderTestCase(result: WorkflowTestCaseResult, tcIndex: number): string
 
 	// Inline indicators for quick triage without expanding — scenarios and expectations as units.
 	const scenarioIndicators = [
-		...result.executionScenarioResults.map(
-			(sr) =>
-				`<span class="scenario-indicator ${sr.success ? 'pass' : 'fail'}" title="${escapeHtml(sr.scenario.name)}">${sr.success ? '✓' : '✗'} scenario: ${escapeHtml(sr.scenario.name)}</span>`,
-		),
+		...result.executionScenarioResults.map((sr) => {
+			const cls = sr.incomplete ? 'na' : sr.success ? 'pass' : 'fail';
+			const icon = sr.incomplete ? '⌀' : sr.success ? '✓' : '✗';
+			return `<span class="scenario-indicator ${cls}" title="${escapeHtml(sr.scenario.name)}">${icon} scenario: ${escapeHtml(sr.scenario.name)}</span>`;
+		}),
 		...(result.buildExpectationResults ?? []).map((e) => {
 			const cls = e.incomplete ? 'na' : e.pass ? 'pass' : 'fail';
 			const icon = e.incomplete ? '⌀' : e.pass ? '✓' : '✗';
@@ -1274,9 +1294,12 @@ export function generateWorkflowReport(results: WorkflowTestCaseResult[]): strin
 	const totalTestCases = results.length;
 	const builtCount = results.filter((r) => r.workflowBuildSuccess).length;
 	const allScenarios = results.flatMap((r) => r.executionScenarioResults);
-	const passCount = allScenarios.filter((sr) => sr.success).length;
-	const failCount = allScenarios.length - passCount;
-	const totalScenarios = allScenarios.length;
+	// Verifier-incomplete runs (no verdict) are visible but not scored.
+	const scoredScenarios = allScenarios.filter((sr) => !sr.incomplete);
+	const noVerdictCount = allScenarios.length - scoredScenarios.length;
+	const passCount = scoredScenarios.filter((sr) => sr.success).length;
+	const failCount = scoredScenarios.length - passCount;
+	const totalScenarios = scoredScenarios.length;
 	const passRate = totalScenarios > 0 ? Math.round((passCount / totalScenarios) * 100) : 0;
 
 	return `<!DOCTYPE html>
@@ -1364,6 +1387,7 @@ export function generateWorkflowReport(results: WorkflowTestCaseResult[]): strin
 	.scenario-icon { font-weight: bold; font-size: 14px; min-width: 16px; }
 	.scenario-icon.pass { color: var(--color-pass); }
 	.scenario-icon.fail { color: var(--color-fail); }
+	.scenario-icon.na { color: #8b949e; }
 	.scenario-name { color: var(--text-primary); font-weight: 600; }
 	.scenario-desc { color: var(--text-muted); font-size: 12px; }
 	.scenario-summary-inline { color: var(--text-muted); font-size: 12px; flex: 1; }
@@ -1562,7 +1586,15 @@ export function generateWorkflowReport(results: WorkflowTestCaseResult[]): strin
 	<div class="stat-card">
 		<div class="label">Failed</div>
 		<div class="value${failCount > 0 ? ' fail' : ''}">${String(failCount)}</div>
-	</div>
+	</div>${
+		noVerdictCount > 0
+			? `
+	<div class="stat-card">
+		<div class="label">No verdict</div>
+		<div class="value">${String(noVerdictCount)}</div>
+	</div>`
+			: ''
+	}
 	<div class="stat-card">
 		<div class="label">Built</div>
 		<div class="value${builtCount === totalTestCases ? ' pass' : ' mixed'}">${String(builtCount)}/${String(totalTestCases)}</div>
