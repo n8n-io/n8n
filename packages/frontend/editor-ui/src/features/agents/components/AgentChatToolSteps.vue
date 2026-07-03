@@ -139,7 +139,7 @@ function hasLoadingToolCall(): boolean {
 			<template v-for="tc in toolCalls" :key="tc.toolCallId">
 				<N8nAiActivityStep
 					v-for="view in [toolStepView(tc)]"
-					:key="tc.toolCallId"
+					:key="`${tc.toolCallId}-${view.label}`"
 					:tool-call="toAiActivityToolCall(tc)"
 					:label="view.label"
 					:has-content="view.expandable"
