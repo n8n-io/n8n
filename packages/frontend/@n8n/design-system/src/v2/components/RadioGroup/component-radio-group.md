@@ -5,7 +5,7 @@ Presents a list of mutually exclusive options where the user can select exactly 
 - **Component Name:** N8nRadioGroup
 - **Figma Component:** TBD (DS-559)
 - **Reka UI Component:** [Radio Group](https://reka-ui.com/docs/components/radio-group)
-- **Linear Ticket:** DS-559
+- **Linear Ticket:** DS-359
 
 
 ## Public API Definition
