@@ -131,10 +131,11 @@ describe('ExecutionService', () => {
 
 			const req = mock<ExecutionRequest.GetOne>({ params: { id: '123' }, query: {} });
 
-			await expect(executionService.findOne(req, ['workflow-1'])).rejects.toThrowError(
-				new NotFoundError(
-					'Data for this execution is unavailable. It may have already been deleted based on your data retention settings.',
-				),
+			const promise = executionService.findOne(req, ['workflow-1']);
+
+			await expect(promise).rejects.toThrow(NotFoundError);
+			await expect(promise).rejects.toThrow(
+				'Data for this execution is unavailable. It may have already been deleted based on your data retention settings.',
 			);
 		});
 
@@ -144,7 +145,7 @@ describe('ExecutionService', () => {
 
 			const req = mock<ExecutionRequest.GetOne>({ params: { id: '123' }, query: {} });
 
-			await expect(executionService.findOne(req, ['workflow-1'])).rejects.toThrow(error);
+			await expect(executionService.findOne(req, ['workflow-1'])).rejects.toBe(error);
 		});
 	});
 
