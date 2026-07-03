@@ -419,7 +419,7 @@ describe('workflows tool', () => {
 					name: 'Webhook',
 					type: 'n8n-nodes-base.webhook',
 					typeVersion: 2,
-					parameters: { path: 'x' },
+					parameters: { path: 'x', big: 'x'.repeat(5000) },
 					position: [0, 0],
 				},
 				{
@@ -447,7 +447,7 @@ describe('workflows tool', () => {
 			updatedAt: '2024-01-01',
 		};
 
-		it('should return the structure as SDK code without node parameters', async () => {
+		it('should return the structure as SDK code for large workflows', async () => {
 			const context = createMockContext();
 			(context.workflowService.get as Mock).mockResolvedValue(detail);
 
@@ -466,6 +466,41 @@ describe('workflows tool', () => {
 			expect(codegenInput).toMatchObject({ name: 'Test WF' });
 			expect(JSON.stringify(codegenInput)).not.toContain('conditions');
 			expect(JSON.stringify(result)).not.toContain('conditions');
+		});
+
+		it('should return the complete payload when full is true', async () => {
+			const context = createMockContext();
+			(context.workflowService.get as Mock).mockResolvedValue(detail);
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(
+				tool,
+				{ action: 'get', workflowId: 'wf1', full: true },
+				{} as never,
+			);
+
+			expect(result).toEqual(detail);
+		});
+
+		it('should include parameters inline for small workflows', async () => {
+			const small = {
+				...detail,
+				nodes: [
+					{
+						name: 'Webhook',
+						type: 'n8n-nodes-base.webhook',
+						parameters: { path: 'x' },
+						position: [0, 0],
+					},
+				],
+			};
+			const context = createMockContext();
+			(context.workflowService.get as Mock).mockResolvedValue(small);
+
+			const tool = createWorkflowsTool(context, 'full');
+			const result = await executeTool(tool, { action: 'get', workflowId: 'wf1' }, {} as never);
+
+			expect(result).toEqual(small);
 		});
 
 		it('should fall back to a plain structure listing when codegen fails', async () => {
@@ -499,7 +534,7 @@ describe('workflows tool', () => {
 					{
 						name: 'Set',
 						type: 'n8n-nodes-base.set',
-						parameters: { big: 'blob' },
+						parameters: { big: 'blob'.repeat(2000) },
 						position: [0, 0],
 					},
 				],

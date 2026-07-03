@@ -18,7 +18,11 @@ import {
 	applyNodeChanges,
 	buildCompletedReport,
 } from './workflows/setup-workflow.service';
-import { STRUCTURE_ONLY_NOTE, summarizeWorkflowStructure } from './workflows/summarize-workflow';
+import {
+	isSmallPayload,
+	STRUCTURE_ONLY_NOTE,
+	summarizeWorkflowStructure,
+} from './workflows/summarize-workflow';
 import { validateWorkflowConfig } from './workflows/validate-workflow.service';
 import { getReferencedWorkflowIds } from './workflows/workflow-json-utils';
 
@@ -48,10 +52,14 @@ const getAction = z.object({
 	action: z
 		.literal('get')
 		.describe(
-			'Inspect a workflow: metadata plus its structure as SDK code with node parameters omitted — use get-json or get-as-code when you need them. Pass versionId to inspect a past version instead of the current draft.',
+			'Inspect a workflow: metadata plus its structure as SDK code. Large workflows omit node parameters unless full is set; small ones include them. Pass versionId to inspect a past version instead of the current draft.',
 		),
 	workflowId: z.string().describe('ID of the workflow'),
 	versionId: z.string().optional().describe('Version ID'),
+	full: z
+		.boolean()
+		.optional()
+		.describe('Return complete node data including parameters (large). Default false.'),
 });
 
 const getJsonAction = z.object({
@@ -374,10 +382,11 @@ async function handleGet(context: InstanceAiContext, input: Extract<Input, { act
 					error: 'Workflow version history is not available on this instance',
 				};
 			}
-			const { nodes, connections, ...meta } = await context.workflowService.getVersion(
-				input.workflowId,
-				input.versionId,
-			);
+			const version = await context.workflowService.getVersion(input.workflowId, input.versionId);
+			if (input.full || isSmallPayload(version)) {
+				return { workflowId: input.workflowId, ...version };
+			}
+			const { nodes, connections, ...meta } = version;
 			return {
 				workflowId: input.workflowId,
 				...meta,
@@ -386,7 +395,9 @@ async function handleGet(context: InstanceAiContext, input: Extract<Input, { act
 				note: STRUCTURE_ONLY_NOTE,
 			};
 		}
-		const { nodes, connections, ...meta } = await context.workflowService.get(input.workflowId);
+		const detail = await context.workflowService.get(input.workflowId);
+		if (input.full || isSmallPayload(detail)) return detail;
+		const { nodes, connections, ...meta } = detail;
 		return {
 			...meta,
 			nodeCount: nodes.length,
