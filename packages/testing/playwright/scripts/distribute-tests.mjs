@@ -300,96 +300,97 @@ function resolveImpactAllowlist(filesCsv, base) {
 }
 
 function runMain() {
-const args = process.argv.slice(2);
-const matrixMode = args.includes('--matrix');
-const orchestrateMode = args.includes('--orchestrate');
-const impactMode = args.includes('--impact');
-const filesArg = args.find((a) => a.startsWith('--files='))?.slice('--files='.length) || undefined;
-const baseArg = args.find((a) => a.startsWith('--base='))?.slice('--base='.length) || undefined;
-const shards = parseInt(args.find((a) => !a.startsWith('-')) ?? '');
+	const args = process.argv.slice(2);
+	const matrixMode = args.includes('--matrix');
+	const orchestrateMode = args.includes('--orchestrate');
+	const impactMode = args.includes('--impact');
+	const filesArg =
+		args.find((a) => a.startsWith('--files='))?.slice('--files='.length) || undefined;
+	const baseArg = args.find((a) => a.startsWith('--base='))?.slice('--base='.length) || undefined;
+	const shards = parseInt(args.find((a) => !a.startsWith('-')) ?? '');
 
-if (!shards || shards < 1) {
-	console.error('Usage: node distribute-tests.mjs --matrix <shards> [--orchestrate] [--impact]');
-	console.error('       node distribute-tests.mjs <shards> <index>');
-	process.exit(1);
-}
-
-let includeSpecsFile;
-let cleanupPaths = [];
-if (impactMode && filesArg) {
-	includeSpecsFile = resolveImpactAllowlist(filesArg, baseArg);
-	if (includeSpecsFile) cleanupPaths.push(path.dirname(includeSpecsFile));
-} else if (impactMode) {
-	console.error('Impact: no --files provided — running full suite');
-}
-
-function cleanup() {
-	for (const p of cleanupPaths) {
-		try {
-			rmSync(p, { recursive: true, force: true });
-		} catch {
-			// best-effort
-		}
-	}
-}
-
-if (matrixMode) {
-	if (!orchestrateMode) {
-		const matrix = Array.from({ length: shards }, (_, i) => ({
-			shard: i + 1,
-			specs: '',
-			images: '',
-		}));
-		console.log(JSON.stringify(matrix));
-	} else {
-		const result = getOrchestration(shards, { includeSpecsFile });
-
-		if (result.shards.length === 0) {
-			console.error('\n⏭️  No specs to run — all filtered out by discovery/impact. Skipping.\n');
-			console.log(JSON.stringify([{ shard: 1, specs: '', images: '', skip: true }]));
-		} else {
-			console.error('\n📊 Shard Distribution:');
-			let maxShardTime = 0;
-			for (const shard of result.shards) {
-				const overhead = shard.fixtureCount * CONTAINER_STARTUP_TIME;
-				const totalTime = shard.testTime + overhead;
-				maxShardTime = Math.max(maxShardTime, totalTime);
-				const testMins = (shard.testTime / 60_000).toFixed(1);
-				const totalMins = (totalTime / 60_000).toFixed(1);
-				const caps = shard.capabilities.length > 0 ? ` [${shard.capabilities.join(', ')}]` : '';
-				console.error(
-					`  Shard ${shard.shard}: ${shard.specs.length} specs, ${testMins} min test + ${(overhead / 1000).toFixed(0)}s startup = ${totalMins} min${caps}`,
-				);
-			}
-			const totalTestMins = (result.totalTestTime / 60_000).toFixed(1);
-			console.error(`\n  Total test time: ${totalTestMins} min`);
-			console.error(
-				`  Expected wall-clock: ~${(maxShardTime / 60_000).toFixed(1)} min (longest shard)\n`,
-			);
-
-			const matrix = result.shards.map((shard) => ({
-				shard: shard.shard,
-				specs: shard.specs.filter((s) => !QUARANTINE.has(s)).join(' '),
-				images: getRequiredImages(shard.capabilities).join(' '),
-			}));
-			console.log(JSON.stringify(matrix));
-		}
-	}
-} else {
-	const index = parseInt(args[1]);
-	if (isNaN(index) || index < 0 || index >= shards) {
-		console.error(`Index must be between 0 and ${shards - 1}`);
-		cleanup();
+	if (!shards || shards < 1) {
+		console.error('Usage: node distribute-tests.mjs --matrix <shards> [--orchestrate] [--impact]');
+		console.error('       node distribute-tests.mjs <shards> <index>');
 		process.exit(1);
 	}
-	const result = getOrchestration(shards, { includeSpecsFile });
-	const shard = result.shards[index];
-	if (shard) {
-		console.log(shard.specs.filter((s) => !QUARANTINE.has(s)).join('\n'));
-	}
-}
 
-cleanup();
+	let includeSpecsFile;
+	let cleanupPaths = [];
+	if (impactMode && filesArg) {
+		includeSpecsFile = resolveImpactAllowlist(filesArg, baseArg);
+		if (includeSpecsFile) cleanupPaths.push(path.dirname(includeSpecsFile));
+	} else if (impactMode) {
+		console.error('Impact: no --files provided — running full suite');
+	}
+
+	function cleanup() {
+		for (const p of cleanupPaths) {
+			try {
+				rmSync(p, { recursive: true, force: true });
+			} catch {
+				// best-effort
+			}
+		}
+	}
+
+	if (matrixMode) {
+		if (!orchestrateMode) {
+			const matrix = Array.from({ length: shards }, (_, i) => ({
+				shard: i + 1,
+				specs: '',
+				images: '',
+			}));
+			console.log(JSON.stringify(matrix));
+		} else {
+			const result = getOrchestration(shards, { includeSpecsFile });
+
+			if (result.shards.length === 0) {
+				console.error('\n⏭️  No specs to run — all filtered out by discovery/impact. Skipping.\n');
+				console.log(JSON.stringify([{ shard: 1, specs: '', images: '', skip: true }]));
+			} else {
+				console.error('\n📊 Shard Distribution:');
+				let maxShardTime = 0;
+				for (const shard of result.shards) {
+					const overhead = shard.fixtureCount * CONTAINER_STARTUP_TIME;
+					const totalTime = shard.testTime + overhead;
+					maxShardTime = Math.max(maxShardTime, totalTime);
+					const testMins = (shard.testTime / 60_000).toFixed(1);
+					const totalMins = (totalTime / 60_000).toFixed(1);
+					const caps = shard.capabilities.length > 0 ? ` [${shard.capabilities.join(', ')}]` : '';
+					console.error(
+						`  Shard ${shard.shard}: ${shard.specs.length} specs, ${testMins} min test + ${(overhead / 1000).toFixed(0)}s startup = ${totalMins} min${caps}`,
+					);
+				}
+				const totalTestMins = (result.totalTestTime / 60_000).toFixed(1);
+				console.error(`\n  Total test time: ${totalTestMins} min`);
+				console.error(
+					`  Expected wall-clock: ~${(maxShardTime / 60_000).toFixed(1)} min (longest shard)\n`,
+				);
+
+				const matrix = result.shards.map((shard) => ({
+					shard: shard.shard,
+					specs: shard.specs.filter((s) => !QUARANTINE.has(s)).join(' '),
+					images: getRequiredImages(shard.capabilities).join(' '),
+				}));
+				console.log(JSON.stringify(matrix));
+			}
+		}
+	} else {
+		const index = parseInt(args[1]);
+		if (isNaN(index) || index < 0 || index >= shards) {
+			console.error(`Index must be between 0 and ${shards - 1}`);
+			cleanup();
+			process.exit(1);
+		}
+		const result = getOrchestration(shards, { includeSpecsFile });
+		const shard = result.shards[index];
+		if (shard) {
+			console.log(shard.specs.filter((s) => !QUARANTINE.has(s)).join('\n'));
+		}
+	}
+
+	cleanup();
 }
 
 // Only execute when invoked directly — keeps the module importable for tests.
