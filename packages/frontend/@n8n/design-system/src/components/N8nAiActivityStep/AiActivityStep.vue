@@ -1,6 +1,8 @@
 <script lang="ts" setup>
 import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
+import { inject } from 'vue';
 
+import { aiActivityStepGroupContext } from './context';
 import N8nAiActivityStepButton from '../N8nAiActivityStepButton';
 import N8nAiActivityStepChevron from '../N8nAiActivityStepChevron';
 import N8nAnimatedCollapsibleContent from '../N8nAnimatedCollapsibleContent';
@@ -15,15 +17,24 @@ type ToolCallState = {
 	isLoading: boolean;
 };
 
-const props = defineProps<{
-	toolCall: ToolCallState;
-	/** Override the default label derived from toolName. */
-	label?: string;
-}>();
+const props = withDefaults(
+	defineProps<{
+		toolCall: ToolCallState;
+		/** Override the default label derived from toolName. */
+		label?: string;
+		/** Whether the step has collapsible content. */
+		hasContent?: boolean;
+	}>(),
+	{
+		hasContent: true,
+	},
+);
 
 defineSlots<{
 	default?: () => unknown;
 }>();
+
+const isNested = inject(aiActivityStepGroupContext, false);
 
 function humanizeToolName(toolName: string): string {
 	return toolName
@@ -61,30 +72,96 @@ function formatData(data: unknown): string {
 </script>
 
 <template>
-	<CollapsibleRoot v-slot="{ open: isOpen }">
-		<CollapsibleTrigger as-child>
-			<N8nAiActivityStepButton size="small" :loading="props.toolCall.isLoading">
-				{{ props.label ?? getDisplayLabel(props.toolCall) }}
-				<template #suffix>
-					<N8nAiActivityStepChevron :open="isOpen" />
-				</template>
-			</N8nAiActivityStepButton>
-		</CollapsibleTrigger>
-		<N8nAnimatedCollapsibleContent>
-			<div v-if="props.toolCall.args" :class="$style.dataSection">
-				<pre :class="$style.json">{{ formatData(props.toolCall.args) }}</pre>
-			</div>
-			<div v-if="props.toolCall.result !== undefined" :class="$style.dataSection">
-				<pre :class="$style.json">{{ formatData(props.toolCall.result) }}</pre>
-			</div>
-			<N8nCallout v-if="props.toolCall.error !== undefined" theme="danger">
-				{{ props.toolCall.error }}
-			</N8nCallout>
-		</N8nAnimatedCollapsibleContent>
-	</CollapsibleRoot>
+	<div :class="{ [$style.nestedRow]: isNested }">
+		<span v-if="isNested" :class="$style.rail">
+			<span :class="$style.railDot" />
+		</span>
+		<CollapsibleRoot v-if="props.hasContent" v-slot="{ open: isOpen }">
+			<CollapsibleTrigger as-child>
+				<N8nAiActivityStepButton size="small" :loading="props.toolCall.isLoading">
+					{{ props.label ?? getDisplayLabel(props.toolCall) }}
+					<template #suffix>
+						<N8nAiActivityStepChevron :open="isOpen" />
+					</template>
+				</N8nAiActivityStepButton>
+			</CollapsibleTrigger>
+			<N8nAnimatedCollapsibleContent>
+				<div v-if="props.toolCall.args" :class="$style.dataSection">
+					<pre :class="$style.json">{{ formatData(props.toolCall.args) }}</pre>
+				</div>
+				<div v-if="props.toolCall.result !== undefined" :class="$style.dataSection">
+					<pre :class="$style.json">{{ formatData(props.toolCall.result) }}</pre>
+				</div>
+				<N8nCallout v-if="props.toolCall.error !== undefined" theme="danger">
+					{{ props.toolCall.error }}
+				</N8nCallout>
+			</N8nAnimatedCollapsibleContent>
+		</CollapsibleRoot>
+		<N8nAiActivityStepButton
+			v-else
+			size="small"
+			:loading="props.toolCall.isLoading"
+			:interactive="false"
+		>
+			{{ props.label ?? getDisplayLabel(props.toolCall) }}
+		</N8nAiActivityStepButton>
+	</div>
 </template>
 
 <style lang="scss" module>
+.nestedRow {
+	display: grid;
+	grid-template-columns: var(--spacing--md) minmax(0, 1fr);
+	column-gap: var(--spacing--3xs);
+	margin-left: calc(var(--spacing--4xs) * -1);
+}
+
+.rail {
+	position: relative;
+	display: flex;
+	align-items: flex-start;
+	justify-content: center;
+	align-self: self-start;
+	width: var(--spacing--md);
+	min-height: var(--spacing--lg);
+	height: 100%;
+
+	&::before,
+	&::after {
+		content: '';
+		position: absolute;
+		left: 50%;
+		width: 1px;
+		background-color: var(--border-color);
+		transform: translateX(-50%);
+	}
+
+	&::before {
+		top: 0;
+		height: calc(var(--spacing--xs) - var(--spacing--4xs));
+	}
+
+	&::after {
+		top: calc(var(--spacing--xs) + calc(var(--spacing--3xs) + var(--spacing--4xs)));
+		bottom: 0;
+	}
+}
+
+.nestedRow:first-child .rail::before,
+.nestedRow:last-child .rail::after {
+	display: none;
+}
+
+.railDot {
+	position: relative;
+	z-index: 1;
+	top: var(--spacing--xs);
+	width: var(--spacing--3xs);
+	height: var(--spacing--3xs);
+	border-radius: 50%;
+	background-color: var(--text-color--subtler);
+}
+
 .dataSection {
 	font-size: var(--font-size--sm);
 	color: var(--color--text--tint-2);

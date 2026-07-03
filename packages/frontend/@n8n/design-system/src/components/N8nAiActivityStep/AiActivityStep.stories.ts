@@ -6,7 +6,6 @@ export default {
 	title: 'Assistant/AiActivityStep',
 	component: N8nAiActivityStep,
 	parameters: {
-		backgrounds: { default: '--color--background--light-2' },
 		docs: {
 			description: {
 				component:
@@ -17,7 +16,7 @@ export default {
 };
 
 const storyWrapper = `
-	<div style="max-width: 720px; padding: var(--spacing--m); background: var(--color--background--light-2);">
+	<div style="max-width: 720px; padding: var(--spacing--m);">
 		<n8n-ai-activity-step v-bind="args" />
 	</div>
 `;
@@ -129,7 +128,7 @@ export const ToggleState: StoryFn = () => ({
 		},
 	},
 	template: `
-		<div style="max-width: 720px; padding: var(--spacing--m); background: var(--color--background--light-2);">
+		<div style="max-width: 720px; padding: var(--spacing--m);">
 			<div style="display: flex; gap: var(--spacing--2xs); margin-bottom: var(--spacing--s);">
 				<button v-for="item in states" :key="item" type="button" @click="state = item">
 					{{ item }}

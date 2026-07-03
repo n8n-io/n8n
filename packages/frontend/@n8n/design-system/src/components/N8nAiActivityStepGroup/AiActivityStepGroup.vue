@@ -1,5 +1,8 @@
 <script lang="ts" setup>
 import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
+import { provide } from 'vue';
+
+import { aiActivityStepGroupContext } from '../N8nAiActivityStep/context';
 import N8nAiActivityStepButton from '../N8nAiActivityStepButton';
 import N8nAiActivityStepChevron from '../N8nAiActivityStepChevron';
 import N8nAnimatedCollapsibleContent from '../N8nAnimatedCollapsibleContent';
@@ -19,6 +22,8 @@ withDefaults(
 defineSlots<{
 	default?: () => unknown;
 }>();
+
+provide(aiActivityStepGroupContext, true);
 </script>
 
 <template>

@@ -1,14 +1,16 @@
 <script lang="ts" setup>
 import N8nButton from '../N8nButton';
 
-withDefaults(
+const props = withDefaults(
 	defineProps<{
 		size?: 'small' | 'medium';
 		loading?: boolean;
+		interactive?: boolean;
 	}>(),
 	{
 		size: 'small',
 		loading: false,
+		interactive: true,
 	},
 );
 
@@ -21,9 +23,14 @@ defineSlots<{
 </script>
 
 <template>
-	<N8nButton variant="ghost" :size="size" :class="$style.button">
+	<N8nButton
+		variant="ghost"
+		:size="props.size"
+		:disabled="!props.interactive"
+		:class="[$style.button, !props.interactive && $style.nonInteractive]"
+	>
 		<slot name="prefix" />
-		<span :class="{ [$style.label]: true, [$style.shimmer]: loading }">
+		<span :class="{ [$style.label]: true, [$style.shimmer]: props.loading }">
 			<slot />
 		</span>
 		<slot name="icon" />
@@ -49,6 +56,16 @@ defineSlots<{
 
 	&:hover {
 		color: var(--text-color--subtle);
+	}
+
+	&.nonInteractive {
+		cursor: default;
+		opacity: 1;
+		pointer-events: none;
+
+		&:hover {
+			color: var(--text-color--subtler);
+		}
 	}
 
 	:global(.n8n-icon) {

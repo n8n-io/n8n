@@ -126,4 +126,22 @@ describe('N8nAiActivityStep', () => {
 
 		expect(getByText(/test/)).toBeInTheDocument();
 	});
+
+	it('should hide collapsible affordances and content when hasContent is false', () => {
+		const { container, getByText, queryByText } = render(AiActivityStep, {
+			props: {
+				toolCall: makeToolCall({
+					args: { query: 'test' },
+					result: { nodes: ['Slack'] },
+				}),
+				hasContent: false,
+			},
+			global,
+		});
+
+		expect(getByText('Search nodes')).toBeInTheDocument();
+		expect(container.querySelector('.n8n-icon')).not.toBeInTheDocument();
+		expect(queryByText(/test/)).not.toBeInTheDocument();
+		expect(queryByText(/Slack/)).not.toBeInTheDocument();
+	});
 });
