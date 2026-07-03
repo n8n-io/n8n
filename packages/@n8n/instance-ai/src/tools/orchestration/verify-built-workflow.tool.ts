@@ -17,6 +17,7 @@ import {
 } from './verification/finalize-result';
 import { prepareVerificationRun } from './verification/prepare-run';
 import { resolveVerificationTarget } from './verification/resolve-target';
+import { executionNodeErrorSchema } from '../../workflow-loop/workflow-loop-state';
 
 const DEFAULT_NODE_PREVIEW_CHARS = 600;
 
@@ -98,9 +99,7 @@ const verifyBuiltWorkflowOutputSchema = z.object({
 	simulatedNodes: z.array(z.object({ nodeName: z.string(), reason: z.string() })).optional(),
 	simulationNote: z.string().optional(),
 	lastNodeExecuted: z.string().optional(),
-	nodeErrors: z
-		.array(z.object({ nodeName: z.string(), message: z.string().optional() }))
-		.optional(),
+	nodeErrors: z.array(executionNodeErrorSchema).optional(),
 	nodesNotReached: z.array(z.string()).optional(),
 	coverageNote: z.string().optional(),
 	data: z.record(z.unknown()).optional(),

@@ -1221,6 +1221,25 @@ describe('verify-built-workflow tool — node simulation plan', () => {
 		expect(verification?.evidence?.errorMessage).toContain('geocode_city');
 	});
 
+	it('keeps needs_setup routing when a waiting execution also has node errors', async () => {
+		const { ctx } = makeContext(makeBuildOutcome({ nodeSimulationPlan: [] }), {
+			executionId: 'exec-waiting-node-error',
+			status: 'waiting',
+			data: {},
+			executedNodeNames: ['Lookup', 'Community Pause'],
+			nodeErrors: [{ nodeName: 'Lookup', message: 'lookup failed' }],
+		});
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result.success).toBe(false);
+		expect(result.remediation).toMatchObject({
+			category: 'needs_setup',
+			shouldEdit: false,
+			reason: 'execution_waiting',
+		});
+	});
+
 	it('reports planned simulations the execution never reached as unverified (empty-read dead-end)', async () => {
 		// Reproduces the order-fulfillment scenario: a data-table lookup on an
 		// empty table returns zero items mid-chain, so everything downstream —

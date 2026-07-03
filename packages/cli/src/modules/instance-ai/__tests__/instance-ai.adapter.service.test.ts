@@ -77,7 +77,7 @@ function makeExecution(
 		runData?: Record<string, ITaskData[]>;
 		pinData?: IPinData;
 		error?: Partial<ExecutionError>;
-		workflowNodes?: Array<{ name: string; type: string }>;
+		workflowNodes?: Array<{ name: string; type: string; onError?: string }>;
 	} = {},
 ) {
 	const runData = overrides.runData ?? {};
@@ -321,6 +321,57 @@ describe('extractExecutionResult', () => {
 				message: 'The node has a supplyData method but no execute method.',
 			},
 		]);
+	});
+
+	it('omits errors on nodes configured to continue on error', async () => {
+		createMockExecutionRepository(
+			makeExecution({
+				status: 'success',
+				workflowNodes: [
+					{
+						name: 'Fallback Lookup',
+						type: 'n8n-nodes-base.httpRequest',
+						onError: 'continueErrorOutput',
+					},
+				],
+				runData: {
+					'Fallback Lookup': [
+						makeTaskData([], {
+							executionStatus: 'error',
+							error: { name: 'NodeApiError', message: 'Not found' },
+						}),
+					],
+				},
+			}),
+		);
+
+		const result = await extractExecutionResult('exec-1', false);
+
+		expect(result.nodeErrors).toBeUndefined();
+	});
+
+	it('reports a single entry for a node that errored on multiple runs', async () => {
+		createMockExecutionRepository(
+			makeExecution({
+				status: 'success',
+				runData: {
+					geocode_city: [
+						makeTaskData([], {
+							executionStatus: 'error',
+							error: { name: 'UnexpectedError', message: 'boom 1' },
+						}),
+						makeTaskData([], {
+							executionStatus: 'error',
+							error: { name: 'UnexpectedError', message: 'boom 2' },
+						}),
+					],
+				},
+			}),
+		);
+
+		const result = await extractExecutionResult('exec-1', false);
+
+		expect(result.nodeErrors).toEqual([{ nodeName: 'geocode_city', message: 'boom 1' }]);
 	});
 });
 

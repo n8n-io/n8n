@@ -89,6 +89,7 @@ import {
 	type WorkflowExecuteMode,
 	type ExecutionError,
 	type IRunData,
+	type ITaskData,
 	NodeHelpers,
 	Workflow,
 	CHAT_TRIGGER_NODE_TYPE,
@@ -2695,33 +2696,51 @@ function wrapResultDataEntries(data: Record<string, unknown>): Record<string, un
 	return wrapped;
 }
 
+const MAX_NODE_ERRORS = 10;
+
+function isFailedNodeRun(nodeRun: ITaskData): boolean {
+	return (
+		nodeRun.executionStatus === 'error' ||
+		nodeRun.error !== undefined ||
+		nodeRun.redactedError !== undefined
+	);
+}
+
+function nodeContinuesOnError(node: INode | undefined): boolean {
+	return (
+		node?.continueOnFail === true ||
+		node?.onError === 'continueRegularOutput' ||
+		node?.onError === 'continueErrorOutput'
+	);
+}
+
 function extractNodeErrors(
 	runData: IRunData | undefined,
 	includeUpstreamDetails: boolean,
+	workflowNodes: INode[] = [],
 ): NonNullable<ExecutionResult['nodeErrors']> {
 	if (!runData) return [];
 
+	const nodesByName = new Map(workflowNodes.map((node) => [node.name, node]));
 	const nodeErrors: NonNullable<ExecutionResult['nodeErrors']> = [];
 	for (const [nodeName, nodeRuns] of Object.entries(runData)) {
-		for (const nodeRun of nodeRuns) {
-			const failed =
-				nodeRun.executionStatus === 'error' ||
-				nodeRun.error !== undefined ||
-				nodeRun.redactedError !== undefined;
-			if (!failed) continue;
+		if (nodeErrors.length >= MAX_NODE_ERRORS) break;
+		if (nodeContinuesOnError(nodesByName.get(nodeName))) continue;
 
-			const message = nodeRun.error
-				? formatExecutionError(nodeRun.error, includeUpstreamDetails)
-				: nodeRun.redactedError
-					? `${nodeRun.redactedError.type} error${
-							nodeRun.redactedError.httpCode ? ` (${nodeRun.redactedError.httpCode})` : ''
-						}`
-					: undefined;
-			nodeErrors.push({
-				nodeName,
-				...(message ? { message } : {}),
-			});
-		}
+		const failedRun = nodeRuns.find(isFailedNodeRun);
+		if (!failedRun) continue;
+
+		const message = failedRun.error
+			? formatExecutionError(failedRun.error, includeUpstreamDetails)
+			: failedRun.redactedError
+				? `${failedRun.redactedError.type} error${
+						failedRun.redactedError.httpCode ? ` (${failedRun.redactedError.httpCode})` : ''
+					}`
+				: undefined;
+		nodeErrors.push({
+			nodeName,
+			...(message ? { message } : {}),
+		});
 	}
 
 	return nodeErrors;
@@ -2778,7 +2797,7 @@ export async function extractExecutionResult(
 	// Extract error if present
 	const error = execution.data?.resultData?.error;
 	const errorMessage = error ? formatExecutionError(error, includeOutputData) : undefined;
-	const nodeErrors = extractNodeErrors(runData, includeOutputData);
+	const nodeErrors = extractNodeErrors(runData, includeOutputData, execution.workflowData?.nodes);
 
 	return {
 		executionId,
@@ -3020,7 +3039,7 @@ export async function extractExecutionDebugInfo(
 			nodeTrace.push({
 				name: nodeName,
 				type: nodeType,
-				status: lastRun.error !== undefined ? 'error' : 'success',
+				status: isFailedNodeRun(lastRun) ? 'error' : 'success',
 				startedAt:
 					lastRun.startTime !== undefined ? new Date(lastRun.startTime).toISOString() : undefined,
 				finishedAt:

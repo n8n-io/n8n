@@ -288,9 +288,6 @@ export function analyzeVerificationResult(args: {
 	const reachedNames = new Set(
 		result.executedNodeNames ?? (result.data ? Object.keys(result.data) : []),
 	);
-	for (const nodeError of nodeErrors) {
-		reachedNames.add(nodeError.nodeName);
-	}
 	const reachedSimulatedNodes = simulatedNodes.filter((n) => reachedNames.has(n.nodeName));
 	const nodesNotReached = (buildOutcome.nodeSimulationPlan ?? [])
 		.map((verdict) => verdict.nodeName)
@@ -306,7 +303,8 @@ export function analyzeVerificationResult(args: {
 		? undefined
 		: classifyVerificationFailure(
 				errorMessage,
-				nodeErrors.length > 0 ? 'error' : result.status,
+				// Only escalate a clean status; 'waiting' must keep its needs_setup routing.
+				nodeErrors.length > 0 && result.status === 'success' ? 'error' : result.status,
 				buildOutcome,
 			);
 	const budgetRemediation =

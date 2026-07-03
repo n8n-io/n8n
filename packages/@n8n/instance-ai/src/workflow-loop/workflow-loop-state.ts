@@ -140,7 +140,7 @@ export type AttemptRecord = z.infer<typeof attemptRecordSchema>;
 
 export const triggerTypeSchema = z.enum(['manual_or_testable', 'trigger_only']);
 
-const executionNodeErrorSchema = z.object({
+export const executionNodeErrorSchema = z.object({
 	nodeName: z.string(),
 	message: z.string().optional(),
 });
