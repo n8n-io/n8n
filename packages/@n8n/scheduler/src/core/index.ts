@@ -8,8 +8,9 @@
  * tickets.
  *
  * *Recurrence* is one source of work, not the core: a `ScheduledJob` with a cron
- * / interval / one-off `Schedule` is materialised into tasks. All time and DST
- * math is confined to this boundary (see `recurrence/`).
+ * / interval / one-off `Schedule` is materialized into tasks by the materializer
+ * (see `materializer/`). All time and DST math is confined to this boundary
+ * (see `recurrence/`).
  */
 
 // These enums live in `@n8n/db` (the schema is their source of truth), re-exported
@@ -34,3 +35,17 @@ export { InvalidScheduleError, CorruptStorageRowError } from './errors';
 
 export { computeNextRunAt } from './recurrence/next-run';
 export { validateSchedule } from './recurrence/validate';
+
+export { materialize, DEFAULT_MATERIALIZER_OPTIONS } from './materializer';
+export type {
+	MaterializerSummary,
+	MaterializerOptions,
+	OnJobPlanError,
+} from './materializer';
+
+export type {
+	DueJobs,
+	PlannedJob,
+	RunInTransaction,
+	MaterializerTransaction,
+} from './materializer';
