@@ -327,9 +327,9 @@ describe('isVisibleTimelineEntry', () => {
 		expect(visibilityOf(questions(false))).toBe(true);
 	});
 
-	test('tasks, delegate, and generic tool calls are visible', () => {
+	test('tasks, default, and generic tool calls are visible', () => {
 		expect(visibilityOf(makeToolCall({ renderHint: 'tasks' }))).toBe(true);
-		expect(visibilityOf(makeToolCall({ renderHint: 'delegate' }))).toBe(true);
+		expect(visibilityOf(makeToolCall({ renderHint: 'default' }))).toBe(true);
 		expect(visibilityOf(makeToolCall({ renderHint: 'skill' }))).toBe(true);
 		expect(visibilityOf(makeToolCall({}))).toBe(true);
 	});
