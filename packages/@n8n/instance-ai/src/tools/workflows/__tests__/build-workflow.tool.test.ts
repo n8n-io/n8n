@@ -195,7 +195,11 @@ describe('createBuildWorkflowTool', () => {
 				reason: 'direct-build-succeeded',
 			},
 		});
-		expect(result.postBuildFlow?.guidance).toContain('Load post-build-flow now');
+		expect(result.postBuildFlow?.guidance).toContain(
+			'Follow the post-build instructions in `instructions` now',
+		);
+		expect(result.postBuildFlow?.instructions).toContain('# Post-Build Flow');
+		expect(result.postBuildFlow?.instructions).not.toContain('recommended_tools');
 		expect(result.postBuildFlow?.guidance).toContain(
 			'then mocked/no-mock live-test when latest verification used mocks or simulations',
 		);
