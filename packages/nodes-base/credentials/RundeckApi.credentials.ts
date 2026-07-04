@@ -27,6 +27,13 @@ export class RundeckApi implements ICredentialType {
 			typeOptions: { password: true },
 			default: '',
 		},
+		{
+			displayName: 'Allow Unauthorized Certificates',
+			name: 'allowUnauthorizedCerts',
+			type: 'boolean',
+			description: 'Whether to connect even if SSL certificate validation is not possible',
+			default: false,
+		},
 	];
 
 	authenticate: IAuthenticateGeneric = {
@@ -43,6 +50,7 @@ export class RundeckApi implements ICredentialType {
 			baseURL: '={{$credentials.url}}',
 			url: '/api/14/system/info',
 			method: 'GET',
+			skipSslCertificateValidation: '={{$credentials.allowUnauthorizedCerts}}',
 		},
 	};
 }

@@ -10,6 +10,7 @@ import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 export interface RundeckCredentials {
 	url: string;
 	token: string;
+	allowUnauthorizedCerts?: boolean;
 }
 
 export class RundeckApi {
@@ -30,7 +31,7 @@ export class RundeckApi {
 		const credentialType = 'rundeckApi';
 
 		const options: IRequestOptions = {
-			rejectUnauthorized: false,
+			rejectUnauthorized: !this.credentials?.allowUnauthorizedCerts,
 			method,
 			qs: query,
 			uri: (this.credentials?.url as string) + endpoint,
