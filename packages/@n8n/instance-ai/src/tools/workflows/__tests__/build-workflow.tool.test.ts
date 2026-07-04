@@ -1059,3 +1059,62 @@ describe('autoImportMissingSdkSymbols', () => {
 		).toBeUndefined();
 	});
 });
+
+describe('auto-import recovery on compile failure', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		vi.mocked(partitionWarnings).mockImplementation((warnings: ValidationWarning[]) => ({
+			errors: [],
+			informational: warnings,
+		}));
+		vi.mocked(analyzeWorkflow).mockResolvedValue([]);
+	});
+
+	it('injects missing SDK imports, persists the corrected source, and retries once', async () => {
+		const source = "export default workflow('id', 'n').add(t).to(s);";
+		const { context, files, filePath } = makeContext({ source });
+
+		vi.mocked(compileWorkflowSource)
+			.mockResolvedValueOnce(workflowSourceBuildFailure('ReferenceError: expr is not defined'))
+			.mockResolvedValueOnce({
+				success: true,
+				workflow: structuredClone(generatedWorkflow),
+				warnings: [],
+				compiler: 'sandbox-tsx',
+			});
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+			name: 'Recovered Workflow',
+		});
+
+		expect(result.success).toBe(true);
+		// Corrected source persisted so later edits/repairs see it.
+		const persisted = files.get(filePath);
+		expect(persisted).toContain("import { expr } from '@n8n/workflow-sdk';");
+		expect(result.sourceHash).toBe(hashWorkflowSource(persisted!));
+		// The model is told what was fixed.
+		expect(result.warnings?.join('\n')).toContain(
+			'Auto-added missing @n8n/workflow-sdk import(s): expr',
+		);
+		expect(compileWorkflowSource).toHaveBeenCalledTimes(2);
+	});
+
+	it('falls through to the original error when recovery does not apply', async () => {
+		const source = "export default workflow('id', 'n');";
+		const { context, filePath } = makeContext({ source });
+
+		vi.mocked(compileWorkflowSource).mockResolvedValue(
+			workflowSourceBuildFailure('Unexpected token'),
+		);
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+			name: 'Broken Workflow',
+		});
+
+		expect(result.success).toBe(false);
+		expect(result.errors?.join('\n')).toContain('Unexpected token');
+		expect(compileWorkflowSource).toHaveBeenCalledTimes(1);
+	});
+});
