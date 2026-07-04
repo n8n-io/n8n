@@ -65,46 +65,30 @@ be the complete source when used; never send string patches or fragments.
 ## Escalation
 
 Before the first successful `build-workflow` call, use `ask-user` only when a
-missing choice changes the workflow's intent or topology, such as which
-destination service to use. Do not ask for setup details after the service is
-known; recipients, accounts, resources, channels, credentials, and timezone
-belong in placeholders or unresolved `newCredential()` calls until post-build
-setup.
-
-After the first build, or when the workflow intent is genuinely ambiguous, use
-`ask-user` if you are stuck or need information only a human can provide. Do not
-retry the same failing approach more than twice. Never re-ask a question the
-user has already answered, deferred, or skipped — treat a skip as permission to
-assume a sensible default or leave the detail for setup, and move on. Never
-solicit API keys, tokens, passwords, or other secrets through `ask-user`; route
-credential collection through workflow setup or credential setup surfaces.
+missing choice changes the workflow's intent or topology (e.g. which
+destination service). Setup details — recipients, accounts, resources,
+channels, credentials, timezone — belong in placeholders or unresolved
+`newCredential()` calls until post-build setup. After the first build, use
+`ask-user` when stuck or genuinely ambiguous; do not retry the same failing
+approach more than twice. Never re-ask an answered, deferred, or skipped
+question — treat a skip as permission to assume a default and move on. Never
+solicit secrets through `ask-user`; route credential collection through
+workflow/credential setup surfaces.
 
 ## Placeholders
 
 Use `placeholder('descriptive hint')` for values that cannot be safely picked
-without the user:
-
-- User-provided values that cannot be discovered, such as email recipients,
-  phone numbers, custom URLs, notification targets, or chat IDs.
-- Resource IDs with more than one candidate when
-  `nodes(action="explore-resources")` returns multiple matches and the user did
-  not name a specific one.
-
-Never hardcode fake values like `user@example.com`, `YOUR_API_KEY`, bearer
-tokens, Slack channel IDs, Telegram chat IDs, or sample recipient lists. After
-the build, `workflows(action="setup")` opens an inline setup card in the AI
-Assistant panel so the user can fill placeholder values.
-
-Do not ask for missing setup values before the first successful build. Once the
-service or workflow shape is known, missing email recipients, notification
-targets, account labels or IDs, channel IDs, resource IDs, credentials,
-timezone, and similar node configuration belong in placeholders during the
-initial build; route them to setup only after the workflow is saved.
-
-Do not replace concrete user-provided or discoverable values with placeholders.
-If the prompt gives a real URL, channel name, table name, label, folder,
-database, or other literal selector, preserve that value and only use a
-placeholder for the unknown part.
+without the user: undiscoverable user-provided values (email recipients, phone
+numbers, custom URLs, notification targets, chat IDs) and resource IDs where
+`nodes(action="explore-resources")` returns multiple candidates and the user
+named none. Never hardcode fake values (`user@example.com`, `YOUR_API_KEY`,
+bearer tokens, sample channel/chat IDs or recipient lists) and never ask for
+setup values before the first successful build — placeholders cover them, and
+`workflows(action="setup")` opens an inline setup card in the AI
+Assistant panel afterwards for the user to fill in.
+Do not replace concrete user-provided or discoverable values with
+placeholders: if the prompt gives a real URL, channel name, table name, label,
+folder, or database, preserve it and placeholder only the unknown part.
 
 ## Knowledge Base Guardrails
 
@@ -121,36 +105,13 @@ When mapping downstream fields from an OpenAI node, read
 
 ## Workflow-Level Error Workflows
 
-n8n has no global or instance-wide error workflow setting. Error workflows are
-assigned per target workflow through workflow settings:
-
-```ts
-export default workflow('target-workflow-id', 'Target Workflow')
-  .settings({ errorWorkflow: 'published-error-workflow-id' })
-  .add(triggerNode);
-```
-
-`settings.errorWorkflow` must be the real workflow ID of a separate published
-workflow whose published version contains an active Error Trigger node. Do not
-use a workflow name, placeholder, `activeVersionId`, local SDK id, or invented
-global identifier.
-
-Use the no-global-setting rule as implementation guidance. Mention it to the
-user only when they explicitly ask about, request, or reference global or
-instance-wide error workflow behavior.
-
-When creating an error workflow to attach to another workflow:
-
-1. Build the target workflow first, then ask whether the user wants an error
-   workflow for it. Do not create one before the user opts in.
-2. Build the error workflow as a separate workflow. It starts with an Error
-   Trigger and sends the notification the user requested.
-3. Publish the error workflow with `workflows(action="publish")` before setting
-   it on the target workflow. Publishing uses HITL approval.
-4. Patch the original target workflow's source and set
-   `.settings({ errorWorkflow: '<published-error-workflow-id>' })`, then call
-   `build-workflow` for the original workflow. This assigns the error workflow
-   only to that target workflow.
+Error workflows are per-target-workflow (`settings.errorWorkflow` must be the
+real workflow ID of a separate **published** workflow with an active Error
+Trigger — never a name, placeholder, `activeVersionId`, or local SDK id).
+n8n has no global error workflow setting; mention that only if the user asks
+about global behavior. Before building or attaching an error workflow, load
+this skill's `references/error-workflows.md` linked file and follow its
+build → publish → assign steps. Do not create one before the user opts in.
 
 ## Mandatory Process
 
@@ -347,70 +308,15 @@ one-line completion summary so the result is not mistaken for the original ask.
 
 ## Compositional Workflows
 
-For complex workflows, you may decompose work into supporting sub-workflows and
-a main workflow. This is part of an approved build task, not a reason to call
-`delegate` or create a new plan.
-
-Use this pattern when a workflow is large, has reusable chunks, or benefits from
-independent testing. Simple workflows should stay in one workflow.
-
-1. Write a source file for each supporting workflow, then build it with
-   `build-workflow` and `isSupportingWorkflow: true`.
-2. Give each supporting workflow an `executeWorkflowTrigger` (version 1.1) with
-   an explicit input schema.
-3. Use the returned supporting `workflowId` in the main workflow's
-   `executeWorkflow` node with `source: 'database'`.
-4. Create or edit the main workflow source file last, then save it with
-   `build-workflow` and without `isSupportingWorkflow`; this is the build task's
-   final deliverable outcome.
-5. Do not publish the main workflow automatically. Supporting workflows may be
-   published when the parent workflow needs them active for verification or
-   runtime references, but only after their setup requirements are resolved.
-
-Example supporting workflow trigger:
-
-```ts
-const inputTrigger = trigger({
-  type: 'n8n-nodes-base.executeWorkflowTrigger',
-  version: 1.1,
-  config: {
-    parameters: {
-      inputSource: 'workflowInputs',
-      workflowInputs: {
-        values: [
-          { name: 'city', type: 'string' },
-          { name: 'units', type: 'string' },
-        ],
-      },
-    },
-  },
-});
-```
-
-Example main-workflow reference:
-
-```ts
-const getWeather = node({
-  type: 'n8n-nodes-base.executeWorkflow',
-  version: 1.2,
-  config: {
-    name: 'Get Weather Data',
-    parameters: {
-      source: 'database',
-      workflowId: { __rl: true, mode: 'id', value: 'SUPPORTING_WORKFLOW_ID' },
-      mode: 'once',
-      workflowInputs: {
-        mappingMode: 'defineBelow',
-        value: { city: expr('{{ $json.city }}'), units: 'metric' },
-      },
-    },
-  },
-});
-```
-
-Replace `SUPPORTING_WORKFLOW_ID` with the real ID returned by the supporting
-`build-workflow` call. If a supporting workflow uses mocked credentials or
-placeholders, route setup before publishing or relying on it.
+Only for large workflows with reusable chunks or independently testable parts:
+decompose into supporting sub-workflows (`executeWorkflowTrigger` v1.1 with an
+explicit input schema, built with `isSupportingWorkflow: true`) referenced from
+the main workflow's `executeWorkflow` node (`source: 'database'`, real returned
+`workflowId`), main workflow saved last. This is part of the approved build
+task — not a reason to call `delegate` or create a new plan, and simple
+workflows stay in one workflow. Before writing multi-workflow code, load this
+skill's `references/compositional-workflows.md` linked file for the required
+steps and SDK examples.
 
 ## Data Tables
 
@@ -464,23 +370,17 @@ never from `$now.weekday == N`, which silently no-ops on other days.
   placeholders in `expr()`, objects, or arrays unless the node definition
   explicitly expects an object and the placeholder is the direct value of one
   field.
-- For unresolved resource-locator fields (values shaped like `{ __rl: true,
-  mode, value }`, such as Slack channel or Google Sheets document selectors),
-  use the resource-locator object shape instead of a raw `placeholder()`
-  string. Prefer the locator's picker (`list`) mode when it offers one, since
-  it gives the user a searchable picker at setup, with an empty value and a
-  `cachedResultName` hint, for example `{ __rl: true, mode: 'list', value: '',
-  cachedResultName: 'Select support channel to monitor' }`. A `list`-mode
-  `value` is an opaque ID picked from that list (a Slack channel ID, a numeric
-  sheet gid) — never place a human-readable name or title there; it cannot
-  resolve. When the user names the resource (a channel like `#team-updates`, a
-  sheet title, a board name) or you assumed a name (like `Sheet1`), use the
-  locator's `name` mode with that exact value if it has one — never leave the
-  locator empty when a name is known. Only leave `list` mode empty (as above)
-  when nothing about the resource is known. Not every locator
-  has a `list` mode; when it doesn't, use a `name`/`url` mode with the known
-  value, or `id` mode only when you have a concrete ID. Never use `id` with an
-  empty or placeholder value.
+- For unresolved resource-locator fields (`{ __rl: true, mode, value }` —
+  Slack channel / Sheets document selectors), use the locator object, never a
+  raw `placeholder()` string. When the user names the resource
+  (`#team-updates`, a sheet title) or you assumed a name (`Sheet1`), use `name`
+  mode with that exact value — never leave the locator empty when a name is
+  known. Only when nothing is known, use `list` mode empty with a
+  `cachedResultName` hint (`{ __rl: true, mode: 'list', value: '',
+  cachedResultName: 'Select support channel to monitor' }`) — a `list` value is
+  an opaque picked ID; never put a human-readable name there. Without a `list`
+  mode, use `name`/`url` with the known value, or `id` only with a concrete ID
+  (never empty or placeholder).
 - For single-execution nodes that receive many items but should run once, set
   `executeOnce: true`.
 - Whenever a node declares mock `output` for verification, include every field
@@ -581,12 +481,10 @@ Follow these rules strictly when generating workflows:
 6. When Code nodes score, classify, or gate on free-text human fields
    (amounts, timeframes, priorities, intent), normalize before comparing —
    humans write "≈ $12,500", "1.5k", "in three weeks", "ASAP". Strip currency
-   symbols, thousands separators, and whitespace before parsing numbers; take
-   the lower bound of ranges; match time units broadly (day/days, week/weeks,
-   month/months, with or without numerals) rather than exact phrases. A regex
-   that only matches one phrasing silently misclassifies every other phrasing
-   — there is no error to catch, just wrong routing. Give every classifier an
-   explicit fallback bucket for unparseable input.
+   symbols/separators before parsing numbers, take the lower bound of ranges,
+   match time units broadly (day/days, week/weeks…), and give every classifier
+   an explicit fallback bucket — a one-phrasing regex silently misroutes every
+   other phrasing.
 
 ## Tool Naming Rules
 

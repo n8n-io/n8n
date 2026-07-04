@@ -147,20 +147,16 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain('load `post-build-flow` exactly once');
 		expect(loaded?.instructions).toContain('Do not call\n    `verify-built-workflow` directly');
 		expect(loaded?.instructions).toContain('workflows(action="get-as-code", workflowId)');
-		expect(loaded?.instructions).toContain(
-			'n8n has no global or instance-wide error workflow setting',
-		);
-		expect(loaded?.instructions).toContain(
-			'Mention it to the\nuser only when they explicitly ask about',
-		);
-		expect(loaded?.instructions).toContain("errorWorkflow: 'published-error-workflow-id'");
+		expect(loaded?.instructions).toContain('n8n has no global error workflow setting');
+		expect(loaded?.instructions).toContain('references/error-workflows.md');
+		expect(loaded?.instructions).toContain('settings.errorWorkflow');
 		expect(loaded?.instructions).toContain(
 			'knowledge-base/reference/workflow-builder-guardrails.md',
 		);
 		expect(loaded?.instructions).toContain('SDK node `output` mocks are raw `$json` objects');
 		expect(loaded?.instructions).toMatch(/inline setup card in the AI\s+Assistant panel/);
 		expect(loaded?.instructions).toContain(
-			'Do not ask for missing setup values before the first successful build',
+			'never ask for\nsetup values before the first successful build',
 		);
 		expect(loaded?.instructions).toContain('Do not call `delegate`');
 		expect(loaded?.instructions).toContain('.to(isImportant)');
