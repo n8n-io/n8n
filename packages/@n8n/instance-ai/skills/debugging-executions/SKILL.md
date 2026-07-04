@@ -15,6 +15,14 @@ recommended_tools:
 Use this skill when debugging workflow execution failures or successful runs
 with wrong or empty values.
 
+## Delegate bulk investigations
+
+When the investigation spans many executions or large payloads — finding a
+pattern across recent failures, tracing a large payload through several nodes —
+delegate to the `execution-debugger` sub-agent via the `agent` tool instead of
+reading execution data into your own context. Use direct `executions` calls only
+for single-execution reads and one/two-call lookups.
+
 ## When the user reports it still fails
 
 Re-run the failing path with `executions(action="run")` (or
