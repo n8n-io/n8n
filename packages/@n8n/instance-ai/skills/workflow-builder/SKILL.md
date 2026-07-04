@@ -27,10 +27,10 @@ TypeScript code using `@n8n/workflow-sdk` for new workflows and for existing
 saved workflow changes.
 
 This skill runs inside the orchestrator. It does not introduce a separate
-builder agent, or separate tool allowlist. Use the
-orchestrator tools and runtime workspace file tools already available in the
-current turn. If a relevant agent tool or MCP tool is available through tool
-search, use it when it helps complete the build. Workflow building runs in the orchestrator with this skill and `build-workflow`.
+builder agent, or separate tool allowlist. Use the orchestrator tools and
+runtime workspace file tools already available in the current turn. If a
+relevant agent tool or MCP tool is available through tool search, use it when it
+helps complete the build.
 
 For clear new single-workflow requests, write or edit a TypeScript SDK source
 file in the workspace, then build directly with `build-workflow({ filePath })`.
@@ -103,19 +103,6 @@ If the prompt gives a real URL, channel name, table name, label, folder,
 database, or other literal selector, preserve that value and only use a
 placeholder for the unknown part.
 
-## Knowledge Base Guardrails
-
-For workflows with multiple external systems, multiple requested effects,
-digests or reports, non-trivial branching, or Code nodes, read
-`knowledge-base/reference/workflow-builder-guardrails.md` before writing code.
-Use it as the build checklist for source preservation, fan-out/fan-in,
-effect-specific gating, list itemization, and Code-node safety.
-
-When mapping downstream fields from an OpenAI node, read
-`knowledge-base/reference/open-ai-output-shape.md` (v2+ text/response uses
-`$json.output[0].content[0].text`; v1 text/message uses `$json.message.content`
-— not `$json.text`).
-
 ## Pre-build discovery
 
 Before writing code, the orchestrator may have already run pre-build discovery —
@@ -138,39 +125,6 @@ orchestrator skipped required discovery: stop and let it delegate to
 \`agent\` from this skill — pre-build discovery is the
 orchestrator's job before loading `workflow-builder`.
 
-## Workflow-Level Error Workflows
-
-n8n has no global or instance-wide error workflow setting. Error workflows are
-assigned per target workflow through workflow settings:
-
-```ts
-export default workflow('target-workflow-id', 'Target Workflow')
-  .settings({ errorWorkflow: 'published-error-workflow-id' })
-  .add(triggerNode);
-```
-
-`settings.errorWorkflow` must be the real workflow ID of a separate published
-workflow whose published version contains an active Error Trigger node. Do not
-use a workflow name, placeholder, `activeVersionId`, local SDK id, or invented
-global identifier.
-
-Use the no-global-setting rule as implementation guidance. Mention it to the
-user only when they explicitly ask about, request, or reference global or
-instance-wide error workflow behavior.
-
-When creating an error workflow to attach to another workflow:
-
-1. Build the target workflow first, then ask whether the user wants an error
-   workflow for it. Do not create one before the user opts in.
-2. Build the error workflow as a separate workflow. It starts with an Error
-   Trigger and sends the notification the user requested.
-3. Publish the error workflow with `workflows(action="publish")` before setting
-   it on the target workflow. Publishing uses HITL approval.
-4. Patch the original target workflow's source and set
-   `.settings({ errorWorkflow: '<published-error-workflow-id>' })`, then call
-   `build-workflow` for the original workflow. This assigns the error workflow
-   only to that target workflow.
-
 ## Mandatory Process
 
 1. Research. If the workflow fits a known category, call
@@ -178,7 +132,8 @@ When creating an error workflow to attach to another workflow:
    `notification`, `data_persistence`, `chatbot`, `scheduling`,
    `data_transformation`, `data_extraction`, `document_processing`,
    `form_input`, `content_generation`, `triage`, and
-   `scraping_and_research`.
+   `scraping_and_research`. Read matching guides under
+   `knowledge-base/best-practices/` when suggested.
 2. Use `nodes(action="search")` for service-specific nodes. Use short service
    names like "Gmail" or "Slack", not full task phrases like "send email SMTP".
    Search results include discriminators for nodes that need `resource`,
@@ -203,15 +158,12 @@ When creating an error workflow to attach to another workflow:
    `build-workflow` call.
 7. Write complete TypeScript SDK code to the workspace `filePath`, or read and
    selectively edit the existing `.workflow.ts` file for workflow changes. Do
-   not put secrets in the source file.
+   not put secrets in the source file. Read
+   `knowledge-base/reference/workflow-sdk-builder-rules.md` before writing code.
    Before building, decide whether verification needs branch fixtures. When a
-   live or nondeterministic upstream node (such as HTTP Request, search/list
-   lookups, weather feeds, or AI classifiers) feeds IF/Switch logic and
-   alternate branches need verification, declare representative `output`
-   fixtures on that upstream node now so `verify-built-workflow` can simulate it
-   and later `fixtureOverrides` can exercise those scenarios. Do not simulate
-   every external read by default; use this when branch coverage or deterministic
-   proof depends on controlling the upstream data.
+   live or nondeterministic upstream node feeds IF/Switch logic and alternate
+   branches need verification, declare representative `output` fixtures on that
+   upstream node now — see `knowledge-base/reference/workflow-sdk-mocks.md`.
 8. Call `build-workflow` with `filePath`.
    For planned build follow-ups where `buildTask.isSupportingWorkflow === true`,
    pass `isSupportingWorkflow: true`; that saved supporting workflow is the
@@ -223,9 +175,8 @@ When creating an error workflow to attach to another workflow:
    node variable after `export default`. Confirm branch action nodes appear in the
    saved graph — not just trigger → middle nodes → IF. Confirm the IF node has
    connections on both outputs (true and false). For escalation flows, confirm
-   every requested side effect is on a wired branch. Switch outputs use zero-based
-   `.onCase(index, target)`, Merge modes match the data shape, and sub-nodes are
-   attached to the correct parent.
+   every requested side effect is on a wired branch. See
+   `knowledge-base/reference/sdk-patterns.md` for examples.
 10. Fix errors by editing the same workspace source file and calling
     `build-workflow` again with the same `filePath`. Save again before any
     verification step.
@@ -244,542 +195,75 @@ When creating an error workflow to attach to another workflow:
 
 Do not produce visible output until the final step, unless blocked.
 
-## Verification Contract
+## Always-on wiring rules
 
-Use the current turn's higher-priority instructions to decide who verifies:
+These rules prevent silent graph loss — read even for simple builds:
 
-- Direct builds and existing-workflow edits: after `build-workflow` succeeds,
-  load `post-build-flow` when `postBuildFlow.required: true` is present in the
-  tool output. That skill owns verification, setup routing, error-workflow
-  opt-in, and final user-visible completion for direct builds.
-- Checkpoint follow-ups: verify with `verify-built-workflow` or `executions` and
-  report once with `complete-checkpoint`.
-- Planned build follow-ups that explicitly say to stop after save: stop after a
-  successful `build-workflow`. The checkpoint task owns verification.
+- `export default workflow(...)...` must be the last statement; all IF/Switch
+  branches must be wired inside that chain, never as standalone calls afterward.
+- Never call `.onFalse()` or `.onTrue()` more than once on the same IF node;
+  each repeat overwrites the previous target.
+- Branch action nodes must appear in the saved graph, not only in orphaned
+  variable calls after `export default`.
+
+```ts
+// WRONG — branch nodes never reach the builder
+export default workflow('id', 'name').add(startTrigger).to(isImportant);
+isImportant.onTrue(handleImportant);
+isImportant.onFalse(alertSlack);
+```
+
+## Post-build and verification
+
+Direct builds and existing-workflow edits: after `build-workflow` succeeds, load
+`post-build-flow` when `postBuildFlow.required: true` is present in the tool
+output. That skill owns verification, setup routing, error-workflow opt-in, and
+final user-visible completion. Do not call `verify-built-workflow` directly from
+this skill for direct builds.
+
+Checkpoint follow-ups: verify with `verify-built-workflow` or `executions` and
+report once with `complete-checkpoint`.
 
 Build/save success is not workflow-quality evidence. When this turn is
-responsible for verification or repair, inspect the persisted workflow with
-`workflows(action="get-as-code", workflowId)` or read the bound workspace
-source file after saving or before reporting a verdict. Judge the saved graph
-against the user's requested outcome and the current build/checkpoint goal, not
-a hidden service-specific or topology checklist.
-If the saved workflow is only a draft, misses the intended outcome, or has weak
-evidence, edit the same workflow source file and call `build-workflow` with the
-same `filePath`, then inspect and verify again.
-
-Do not tell the user a workflow is fixed, verified, tested, or working from a
-successful build, save, or static `validate` alone — only from a
-`verify-built-workflow` or `executions` run that exercised the failing path, or
-state explicitly that you could not verify and why. Never dismiss a live
-execution error as a harness or stale-state artifact without re-running.
-
-When this turn is responsible for verification, do not stop after a successful
-save. The job is done when one of these is true:
-
-- The workflow is verified by structured tool evidence.
-- Setup is required and `workflows(action="setup")` has been routed or deferred.
-- A remediation guard says `shouldEdit: false`.
-- You are blocked after one repair attempt per unique failure signature.
-
-Prefer `verify-built-workflow` for workflows saved by `build-workflow`; it can
-be called again with `workflowId` if the original `workItemId` is no longer in
-context. For alternate deterministic scenarios, pass `fixtureOverrides` for
-nodes already classified as simulated. Use raw `executions(action="run")` only
-for ad hoc non-build verification or when the user explicitly wants a live run.
-If live connectivity also matters for a branch-controlled workflow, verify the
-fixture-backed branch coverage first and run a separate live smoke check, or
-state exactly which branch remains unverified.
-
-Trigger input shapes:
-
-- Manual or Schedule: use `verify-built-workflow` when appropriate. Schedule
-  usually needs no `inputData`.
-- Form Trigger: pass a flat field map, for example
-  `{ "name": "Alice", "email": "a@b.c" }`. Do not wrap in `formFields`.
-- Webhook: pass the body payload. The adapter wraps it under `body`; downstream
-  expressions should use `$json.body.<field>`.
-- Chat Trigger: pass `{ "chatInput": "user message" }`.
-- Other event triggers such as Linear, GitHub, Slack, or MCP: pass `inputData`
-  matching the trigger's expected payload shape.
-
-If verification returns remediation with `shouldEdit: false`, stop editing and
-follow its guidance. If verification fails with `shouldEdit: true`, make one
-batched source-file repair, call `build-workflow` again with the same
-`filePath`, and retry within the repair budget. If a failure repeats, stop and
-explain the blocker.
+responsible for verification or repair, inspect the persisted workflow before
+reporting a verdict. Do not tell the user a workflow is fixed, verified, tested,
+or working from a successful build or save alone.
 
 Do not publish the main workflow automatically. Publishing is the user's
 decision after testing.
 
-## Credential Rules
-
-- Call `credentials(action="list")` early when the task touches external
-  services. Note each credential's `id`, `name`, and `type`.
-- Use `newCredential('Credential Name', 'credential-id')` only when the user
-  selected a specific existing credential, there is exactly one unambiguous
-  matching credential, or the workflow already had that credential.
-- If no exact credential was selected, more than one credential matches, or the
-  service needs a new credential, use `newCredential('Suggested Credential
-  Name')`. Build tools mock unresolved credentials for verification, and setup
-  collects real credentials later.
-- Never use raw credential objects like `{ id: '...', name: '...' }` in builder
-  SDK code. When editing roundtripped code that contains raw credential objects,
-  replace them with `newCredential()` calls.
-- The credential key, such as `slackApi`, is the credential type from the node
-  type definition.
-- If a required credential type is not listed, call
-  `credentials(action="search-types")` with the service name. Prefer dedicated
-  credential types over generic auth. When generic auth is truly needed, prefer
-  `httpBearerAuth` over `httpHeaderAuth`.
-- Credential-selection guidance applies to outbound service calls. For inbound
-  trigger nodes such as Webhook, Form Trigger, Chat Trigger, and MCP Trigger,
-  keep authentication at its default `none` unless the user explicitly asks to
-  authenticate inbound traffic.
-- Always declare `output` on nodes that use unresolved credentials when mock
-  data is needed for verification.
-
-## Missing Resources
-
-When `nodes(action="explore-resources")` returns no results for a required
-resource:
-
-1. If the resource can be represented as a user choice, use
-   `placeholder('Select <resource>')` and let setup collect it after the build.
-2. If the user explicitly asked you to create the resource and the node type
-   definition has a safe create operation, build and verify that
-   resource-creation workflow as part of the requested work.
-3. Otherwise, leave the main workflow as a saved draft and mention the missing
-   resource in the one-line completion summary.
-
-For resources that cannot be created via n8n, explain clearly what the user
-needs to create manually and what ID or value belongs in setup.
-
-If part of the requested workflow is infeasible (no node or API for it, a source
-that blocks automated access, an action that cannot be performed
-programmatically, or a third-party API whose region/use-case coverage you have
-not verified), do not quietly substitute a stand-in and present it as the
-requested capability. Flag the substitution as an approximation that may not
-work — and any unverified region/country support — and name that gap in the
-one-line completion summary so the result is not mistaken for the original ask.
-
-## Compositional Workflows
-
-For complex workflows, you may decompose work into supporting sub-workflows and
-a main workflow. This is part of an approved build task, not a reason to call
-create a new plan.
-
-Use this pattern when a workflow is large, has reusable chunks, or benefits from
-independent testing. Simple workflows should stay in one workflow.
-
-1. Write a source file for each supporting workflow, then build it with
-   `build-workflow` and `isSupportingWorkflow: true`.
-2. Give each supporting workflow an `executeWorkflowTrigger` (version 1.1) with
-   an explicit input schema.
-3. Use the returned supporting `workflowId` in the main workflow's
-   `executeWorkflow` node with `source: 'database'`.
-4. Create or edit the main workflow source file last, then save it with
-   `build-workflow` and without `isSupportingWorkflow`; this is the build task's
-   final deliverable outcome.
-5. Do not publish the main workflow automatically. Supporting workflows may be
-   published when the parent workflow needs them active for verification or
-   runtime references, but only after their setup requirements are resolved.
-
-Example supporting workflow trigger:
-
-```ts
-const inputTrigger = trigger({
-  type: 'n8n-nodes-base.executeWorkflowTrigger',
-  version: 1.1,
-  config: {
-    parameters: {
-      inputSource: 'workflowInputs',
-      workflowInputs: {
-        values: [
-          { name: 'city', type: 'string' },
-          { name: 'units', type: 'string' },
-        ],
-      },
-    },
-  },
-});
-```
-
-Example main-workflow reference:
-
-```ts
-const getWeather = node({
-  type: 'n8n-nodes-base.executeWorkflow',
-  version: 1.2,
-  config: {
-    name: 'Get Weather Data',
-    parameters: {
-      source: 'database',
-      workflowId: { __rl: true, mode: 'id', value: 'SUPPORTING_WORKFLOW_ID' },
-      mode: 'once',
-      workflowInputs: {
-        mappingMode: 'defineBelow',
-        value: { city: expr('{{ $json.city }}'), units: 'metric' },
-      },
-    },
-  },
-});
-```
-
-Replace `SUPPORTING_WORKFLOW_ID` with the real ID returned by the supporting
-`build-workflow` call. If a supporting workflow uses mocked credentials or
-placeholders, route setup before publishing or relying on it.
-
 ## Data Tables
 
-n8n normalizes Data Table column names to snake_case, for example `dayName`
-becomes `day_name`. Always call `data-tables(action="schema")` before using a
-Data Table in workflow code so you use real column names.
+n8n normalizes Data Table column names to snake_case. Always call
+`data-tables(action="schema")` before using a Data Table in workflow code. When
+the orchestrator loaded `data-table-manager`, follow its guidance for table
+design and imports. For period summaries and digests, see
+`knowledge-base/reference/workflow-builder-guardrails.md`.
 
-When building workflows that create or use tables, use the data table skill
-guidance already loaded by the orchestrator when available. Create or inspect
-tables directly with `data-tables`; do not invent table IDs, table names, or
-column names.
+## Knowledge base (read before writing code when applicable)
 
-When the ask is a summary, digest, or report over a period ("weekly summary of
-what was recorded", "digest of this week's rows"), the summary branch must
-read that period's rows back from where the workflow logs them (Data Table,
-sheet, store) and build its content from those rows — reusing only the current
-run's in-memory data produces a single-run report mislabeled as a period
-summary. Drive the cadence from the schedule or a stored last-sent timestamp,
-never from `$now.weekday == N`, which silently no-ops on other days.
+Use `read_file` or `workspace_read_file` on paths under `knowledge-base/`. Read
+only what the current build needs.
 
-## SDK Code Rules
+| Reference | Read when |
+| --- | --- |
+| `knowledge-base/reference/workflow-builder-guardrails.md` | Multiple services, multiple effects, digests/reports, branching, Code nodes |
+| `knowledge-base/reference/workflow-sdk-language.md` | Any SDK builder code (allowed/forbidden constructs) |
+| `knowledge-base/reference/workflow-sdk-builder-rules.md` | Writing or editing `.workflow.ts` source |
+| `knowledge-base/reference/workflow-sdk-mocks.md` | Declaring `output` fixtures or branch verification |
+| `knowledge-base/reference/sdk-patterns.md` | IF, Switch, Merge, SplitInBatches, AI Agent, sub-workflows |
+| `knowledge-base/reference/workflow-expressions.md` | `$json` vs `$('Node')` vs `nodeJson()` |
+| `knowledge-base/reference/credential-rules.md` | External services / `newCredential()` |
+| `knowledge-base/reference/control-flow-rules.md` | Filters, empty upstream, mandatory outcomes |
+| `knowledge-base/reference/open-ai-output-shape.md` | Mapping fields from OpenAI node |
+| `knowledge-base/reference/error-workflows.md` | Error Trigger / `settings.errorWorkflow` |
+| `knowledge-base/reference/node-configuration-safety.md` | Unclear node params or service quirks |
+| `knowledge-base/reference/missing-resources.md` | Empty explore-resources or infeasible asks |
+| `knowledge-base/best-practices/<technique>.md` | After `nodes(action="suggested")` names a category |
 
-- SDK builder code is a restricted subset of TypeScript that builds a static
-  graph; it is not a Code node and does not run. Only SDK builder methods chain
-  on SDK objects. Native array/string methods (`.join()`, `.map()`), loops, arrow
-  functions, `new`, and globals like `Math`, `Date`, and `Object` are
-  unavailable. Build strings with template literals or explicit lines; do runtime
-  joining, aggregation, or transforms in a Code node or an n8n expression
-  (`expr()`). Full allowed/forbidden list:
-  `knowledge-base/reference/workflow-sdk-language.md`.
-
-- Code nodes have NO network access at runtime: `fetch()`, `axios`,
-  `XMLHttpRequest`, and `require` of http modules all fail in the sandbox. Make
-  every HTTP/API call with the HTTP Request node and transform its output in a
-  Code node, even when the user asks to fetch inside a Code node.
-
-- Use `@n8n/workflow-sdk`.
-- `export default workflow(...)...` must be the last statement in the file, with
-  all wiring composed inside that chain. Statements after it (e.g.
-  `ifNode.onTrue(...)`) do not reach the builder and their nodes are dropped.
-- Do not specify node positions. They are auto-calculated by the layout engine.
-- Use `expr('{{ $json.field }}')` for n8n expressions. Variables must be inside
-  `{{ }}`. `$json` is only the current item from the immediate predecessor.
-- Do not use TypeScript-only syntax that the workflow parser cannot interpret,
-  such as `as const`.
-- Use string values directly for discriminator fields like `resource` and
-  `operation`, for example `resource: 'message'`.
-- When editing a pre-loaded workflow, remove `position` arrays from node
-  configs; they are auto-calculated.
-- Use `placeholder('hint')` directly as the parameter value. Do not wrap
-  placeholders in `expr()`, objects, or arrays unless the node definition
-  explicitly expects an object and the placeholder is the direct value of one
-  field.
-- For unresolved resource-locator fields (values shaped like `{ __rl: true,
-  mode, value }`, such as Slack channel or Google Sheets document selectors),
-  use the resource-locator object shape instead of a raw `placeholder()`
-  string. Prefer the locator's picker (`list`) mode when it offers one, since
-  it gives the user a searchable picker at setup, with an empty value and a
-  `cachedResultName` hint, for example `{ __rl: true, mode: 'list', value: '',
-  cachedResultName: 'Select support channel to monitor' }`. A `list`-mode
-  `value` is an opaque ID picked from that list (a Slack channel ID, a numeric
-  sheet gid) — never place a human-readable name or title there; it cannot
-  resolve. When the user names the resource (a channel like `#team-updates`, a
-  sheet title, a board name) or you assumed a name (like `Sheet1`), use the
-  locator's `name` mode with that exact value if it has one — never leave the
-  locator empty when a name is known. Only leave `list` mode empty (as above)
-  when nothing about the resource is known. Not every locator
-  has a `list` mode; when it doesn't, use a `name`/`url` mode with the known
-  value, or `id` mode only when you have a concrete ID. Never use `id` with an
-  empty or placeholder value.
-- For single-execution nodes that receive many items but should run once, set
-  `executeOnce: true`.
-- Whenever a node declares mock `output` for verification, include every field
-  later referenced by `$json` expressions, including optional trigger fields
-  used in filters (for example Slack `subtype`, `bot_id`, `text`, `user`, `ts`,
-  `channel`). Missing optional fields make expression-path validation fail.
-- Match real cardinality in mock `output`. When a node's real response is a
-  collection (HTTP list endpoints, search results, a top-level array such as
-  Binance klines or a bare array of IDs), declare at least two items so
-  single-item assumptions like `$input.first()` break during verification
-  instead of on the user's first run. A single-item mock hides array-vs-single
-  bugs.
-- Match the real payload SHAPE in webhook trigger mocks. When a third-party
-  platform calls the webhook (voice agents, payment providers, messaging
-  platforms), that platform's documented envelope fixes the shape — mock it
-  faithfully instead of inventing a flattened body. Tool-call style webhooks
-  from AI/voice platforms nest arguments in an OpenAI-compatible envelope
-  (`body.message.toolCalls[0].function.arguments`), not at the body root and
-  not under `call.arguments`. Coding against an invented flat mock
-  self-verifies green, then every field parses empty on the first real call.
-- SDK node `output` mocks are raw `$json` objects. Do not wrap mock items in
-  n8n runtime item envelopes like `{ json: { ... } }` unless downstream
-  expressions intentionally read `$json.json.*`. Correct:
-  `output: [{ orderId: 'ord_123', total: 42 }]`; wrong:
-  `output: [{ json: { orderId: 'ord_123', total: 42 } }]`.
-  Code node `jsCode` may still return runtime items like `[{ json: { ... } }]`;
-  this rule applies to SDK `node({ output: [...] })` mocks.
-
-Use this import shape unless the task needs fewer symbols:
-
-```ts
-import {
-  workflow,
-  node,
-  trigger,
-  sticky,
-  placeholder,
-  newCredential,
-  ifElse,
-  switchCase,
-  merge,
-  splitInBatches,
-  nextBatch,
-  languageModel,
-  memory,
-  tool,
-  outputParser,
-  embedding,
-  embeddings,
-  vectorStore,
-  retriever,
-  documentLoader,
-  textSplitter,
-  fromAi,
-  nodeJson,
-  expr,
-} from '@n8n/workflow-sdk';
-```
-
-## Workflow Rules
-
-Follow these rules strictly when generating workflows:
-
-1. Always use `newCredential()` for authentication. Never use placeholder
-   strings, fake API keys, hardcoded auth values, invented credential IDs, or
-   raw `mock-*` IDs.
-2. Zero items end the branch — downstream nodes do not run. Trust this default;
-   do not add `alwaysOutputData: true` or empty-check IF gates unless rule 4's
-   mandatory-outcome case applies.
-3. Use `executeOnce: true` for a node that receives many items but should run
-   once, such as a summary notification, report generation, shared-context
-   fetch, or API call that does not vary per input item. Duplicate
-   notifications or repeated shared-context fetches usually mean this is
-   missing.
-4. Pick the right control-flow primitive:
-   - Per-item loop with side effects: `splitInBatches` with `batchSize: 1`,
-     feeding the per-item work and looping back via `nextBatch`.
-   - Drop items that do not match a predicate: `filter`.
-   - Two mutually exclusive paths that both do real work: IF with `.onTrue()`
-     and `.onFalse()` wired on the workflow builder — never as standalone
-     statements on the IF node variable.
-   - Many mutually exclusive paths keyed off a value: Switch with
-     `.onCase(index, target)`.
-   - Mandatory outcome when upstream can be empty (digest/alert must still send):
-     set `alwaysOutputData: true` on every node that can emit zero items before
-     the effect — often both the HTTP fetch (empty `[]`) and the filter (all rows
-     dropped). Not on the formatter or notifier; consumers that receive zero
-     items never run. `alwaysOutputData` delivers an empty result as one item
-     with empty json (`{}`), not zero items — a downstream formatter or Code
-     node must treat empty-json items as zero rows (e.g. `const rows =
-     $input.all().filter(i => Object.keys(i.json).length > 0)`) before counting
-     or listing them.
-   - A Filter or IF only selects items; it does not perform the requested side
-     effect. If the user asks to archive, update, delete, send, or create only
-     matching items, wire the corresponding action node on the matching path.
-5. Input and output indices are zero-based. `.input(0)` and `.output(0)` are the
-   first input and output. `.input(1)` is the second input, not the first.
-6. When Code nodes score, classify, or gate on free-text human fields
-   (amounts, timeframes, priorities, intent), normalize before comparing —
-   humans write "≈ $12,500", "1.5k", "in three weeks", "ASAP". Strip currency
-   symbols, thousands separators, and whitespace before parsing numbers; take
-   the lower bound of ranges; match time units broadly (day/days, week/weeks,
-   month/months, with or without numerals) rather than exact phrases. A regex
-   that only matches one phrasing silently misclassifies every other phrasing
-   — there is no error to catch, just wrong routing. Give every classifier an
-   explicit fallback bucket for unparseable input.
-
-## Tool Naming Rules
-
-- Name tools by the action they perform, not by repeating the integration or
-  tool family name.
-- Always set an explicit `config.name` on every `tool(...)` node. Do not rely on
-  auto-generated names for tools.
-- Do not prefix a tool name with the service name when the tool already belongs
-  to that service.
-- Prefer concise snake_case action names like `get_email`, `add_labels`, or
-  `mark_as_read`.
-- Avoid redundant names like `gmail_get_email`, `slack_send_message`, or
-  `notion_create_page` unless the user explicitly asked for that exact name.
-
-## Node Configuration Safety Rules
-
-- Fetch `nodes(action="type-definition")` before configuring nodes. Generated
-  definitions and `@builderHint` annotations are the source of truth.
-- Use live `nodes(action="explore-resources")` for resource locator, list, and
-  model fields when credentials are available.
-- If a configuration is unclear after reading the definition, ask for
-  clarification or use placeholders. Do not guess.
-- Pay attention to `@builderHint` annotations in search results and type
-  definitions. They contain node-specific configuration rules and examples.
-- Gmail archive: the message resource has no `archive` operation. To archive a
-  Gmail message, remove the `INBOX` label with `operation: 'removeLabels'` and
-  `labelIds: ['INBOX']`; do not add an invented `ARCHIVE` label.
-
-## Expression Reference
-
-Available variables inside `expr('{{ ... }}')`:
-
-- `$json`: current item's JSON data from the immediate predecessor node only.
-- `$('NodeName').item.json`: access another node's output item paired with the
-  current item.
-- `$input.first()`, `$input.all()`, and `$input.item`.
-- `$binary`: binary data from the current item.
-- `$now` and `$today`: Luxon date/time helpers.
-- `$itemIndex`, `$runIndex`, `$execution.id`, `$execution.mode`,
-  `$workflow.id`, and `$workflow.name`.
-
-Variables must always be inside `{{ }}`:
-
-```ts
-expr('Hello {{ $json.name }}')
-expr('Report for {{ $now.toFormat("MMMM d, yyyy") }} - {{ $json.title }}')
-expr('{{ $("Source").all().map(i => ({ option: i.json.name })) }}')
-```
-
-When `$json` is unsafe, reference the source node explicitly. This matters for
-AI Agent subnodes, fan-in nodes after IF/Switch/Merge, and values that come from
-further upstream or from before a node that replaces item JSON:
-
-```ts
-sessionKey: nodeJson(telegramTrigger, 'message.chat.id')
-eventId: nodeJson(extractEventId, 'eventId')
-```
-
-Use `$('NodeName').item.json.field` or `nodeJson(sourceNode, 'field')` for
-per-item upstream values. Do not use `.first()` or `$input.first()` for
-per-item data in a multi-item workflow; it always reads item 0 and makes every
-downstream item reuse the first value. Use `.first()` only for a true global
-first item, such as a single configuration row.
-
-## SDK Patterns Reference
-
-Define nodes first, then compose the workflow:
-
-```ts
-const startTrigger = trigger({
-  type: 'n8n-nodes-base.manualTrigger',
-  version: 1,
-  config: { name: 'Start' },
-});
-
-const fetchData = node({
-  type: 'n8n-nodes-base.httpRequest',
-  version: 4.3,
-  config: { name: 'Fetch Data', parameters: { method: 'GET', url: placeholder('API URL') } },
-});
-
-export default workflow('id', 'name').add(startTrigger).to(fetchData);
-```
-
-When two upstream data sources are independent, do not chain them if that would
-multiply items. Use `executeOnce: true` or parallel branches plus Merge.
-
-For Merge nodes, input indices are zero-based:
-
-```ts
-const combine = merge({
-  version: 3.2,
-  config: { name: 'Combine Results', parameters: { mode: 'combine', combineBy: 'combineByPosition' } },
-});
-
-export default workflow('id', 'name')
-  .add(startTrigger)
-  .to(sourceA.to(combine.input(0)))
-  .add(startTrigger)
-  .to(sourceB.to(combine.input(1)))
-  .add(combine)
-  .to(processResults);
-```
-
-For IF, each branch is a complete processing path. Wire branches on the workflow
-builder, not as standalone calls on the IF node variable. Chain steps inside a
-branch with `.to()`, or pass an array for parallel fan-out.
-Never call `.onFalse()` more than once (same for `.onTrue()`); each repeat
-overwrites the previous target.
-
-```ts
-const isImportant = ifElse({
-  version: 2.2,
-  config: {
-    name: 'Is Important',
-    parameters: {
-      conditions: {
-        options: { caseSensitive: true, leftValue: '', typeValidation: 'strict', version: 2 },
-        conditions: [
-          { id: 'priority', leftValue: expr('{{ $json.priority }}'), rightValue: 'high', operator: { type: 'string', operation: 'equals' } },
-        ],
-        combinator: 'and',
-      },
-    },
-  },
-});
-
-export default workflow('id', 'name')
-  .add(startTrigger)
-  .to(isImportant)
-  .onTrue(handleImportant)                               // single step
-  .onFalse(sendHolding.to(createTicket.to(alertSlack))); // chained multi-step
-// Equivalent inline form: .to(isImportant.onTrue(a).onFalse(b))
-// Parallel fan-out on a branch: .onFalse([a, b, c])
-```
-
-Do NOT wire branches as standalone statements.
-Then branch nodes are omitted from the saved graph, and repeated `.onFalse()`
-calls keep only the last target.
-
-```ts
-// WRONG
-export default workflow('id', 'name').add(startTrigger).to(isImportant);
-isImportant.onTrue(handleImportant); // never reaches the builder
-isImportant.onFalse(sendHolding);    // overwritten
-isImportant.onFalse(alertSlack);     // only this one would wire
-```
-
-For Switch, wire cases the same way — `.to(switchNode).onCase(0, a).onCase(1, b)`
-or inline — using zero-based `.onCase(index, target)` for each rule output.
-
-For Split in Batches, use it for per-item side effects and loop back with
-`nextBatch`. Do not add a separate IF gate just to check whether items exist.
-
-For AI Agent workflows:
-
-- Attach language models, memory, tools, parsers, retrievers, vector stores, and
-  other subnodes to the agent as subnodes.
-- Tool nodes must have explicit concise `config.name` values.
-- Prefer `fromAi(...)` for values the agent should supply to tools.
-- Use explicit node references instead of `$json` in subnodes when the value
-  comes from a trigger or a main-flow node.
-
-## Additional SDK Functions
-
-- `placeholder('hint')`: marks a parameter value for user input.
-- `sticky('content', nodes?, config?)`: creates a sticky note. It must still be
-  added to the workflow.
-- `.output(n)`: selects a zero-based output index.
-- `.onError(handler)`: connects a node's error output to a handler. Requires
-  `onError: 'continueErrorOutput'` in the node config.
-- `nodeJson(node, 'field.path')`: creates an explicit expression reference to a
-  specific node's JSON output.
-- Subnode factories follow the same pattern as `languageModel()` and `tool()`:
-  `memory()`, `outputParser()`, `embeddings()`, `vectorStore()`, `retriever()`,
-  `documentLoader()`, and `textSplitter()`.
+For workflows with multiple external systems, multiple requested effects,
+digests or reports, non-trivial branching, or Code nodes, **must** read
+`workflow-builder-guardrails.md` before writing code.
 
 ## Completion
 

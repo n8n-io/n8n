@@ -21,9 +21,7 @@ the current message contains `<workflow-verification-follow-up>` or
 `<workflow-setup-required>`.
 
 For trigger `inputData` shapes, read
-`knowledge-base/reference/trigger-input-data-shapes.md` in the sandbox workspace
-when available, or load this skill's `references/trigger-input-data-shapes.md`
-linked file.
+`knowledge-base/reference/trigger-input-data-shapes.md` in the sandbox workspace.
 
 ## Verification follow-up
 

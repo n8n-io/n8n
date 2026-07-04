@@ -159,6 +159,58 @@ const KNOWLEDGE_BASE_REFERENCE_ENTRIES: Array<
 		fileName: 'workflow-sdk-language.md',
 		content: SDK_LANGUAGE_REFERENCE,
 	},
+	{
+		id: 'workflow-sdk-builder-rules',
+		description:
+			'Workflow SDK builder file rules: export default, placeholders, resource locators, imports',
+		fileName: 'workflow-sdk-builder-rules.md',
+	},
+	{
+		id: 'workflow-sdk-mocks',
+		description:
+			'SDK node output fixture rules for verification: cardinality, webhook envelopes, field coverage',
+		fileName: 'workflow-sdk-mocks.md',
+	},
+	{
+		id: 'sdk-patterns',
+		description:
+			'Workflow SDK wiring patterns for IF, Switch, Merge, SplitInBatches, AI Agent, and sub-workflows',
+		fileName: 'sdk-patterns.md',
+	},
+	{
+		id: 'workflow-expressions',
+		description: 'n8n expression variables and nodeJson patterns for expr() in SDK builder code',
+		fileName: 'workflow-expressions.md',
+	},
+	{
+		id: 'credential-rules',
+		description: 'newCredential() usage, credential discovery, and inbound trigger auth defaults',
+		fileName: 'credential-rules.md',
+	},
+	{
+		id: 'control-flow-rules',
+		description:
+			'Control-flow primitives: filter, IF, Switch, executeOnce, alwaysOutputData, classifiers',
+		fileName: 'control-flow-rules.md',
+	},
+	{
+		id: 'error-workflows',
+		description:
+			'Per-workflow errorWorkflow settings, Error Trigger workflows, publish-before-assign flow',
+		fileName: 'error-workflows.md',
+	},
+	{
+		id: 'node-configuration-safety',
+		description:
+			'Node type-definition and explore-resources rules plus service-specific configuration tips',
+		fileName: 'node-configuration-safety.md',
+	},
+	{
+		id: 'missing-resources',
+		description:
+			'Handling empty explore-resources results and flagging infeasible workflow substitutions',
+		fileName: 'missing-resources.md',
+	},
 ];
 
 async function addReferenceFilesToKnowledgeBase(

@@ -5,12 +5,15 @@ import { join } from 'node:path';
 import { INSTANCE_AI_SKILLS_DIR, loadInstanceAiRuntimeSkillSource } from '../runtime-skills';
 
 describe('Instance AI runtime skills', () => {
-	it('points the workflow-builder skill at the SDK language reference', () => {
+	it('points the workflow-builder skill at knowledge-base references', () => {
 		const skill = readFileSync(
 			join(INSTANCE_AI_SKILLS_DIR, 'workflow-builder', 'SKILL.md'),
 			'utf-8',
 		);
 		expect(skill).toContain('knowledge-base/reference/workflow-sdk-language.md');
+		expect(skill).toContain('knowledge-base/reference/workflow-sdk-builder-rules.md');
+		expect(skill).toContain('knowledge-base/reference/sdk-patterns.md');
+		expect(skill).toContain('knowledge-base/reference/workflow-sdk-mocks.md');
 	});
 
 	it('loads the bundled data-table-manager skill and its linked files', async () => {
@@ -135,39 +138,26 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain('build-workflow');
 		expect(loaded?.instructions).toContain('filePath');
 		expect(loaded?.instructions).toContain('runtime workspace file tools');
-		expect(loaded?.instructions).toContain(
-			'If a relevant agent tool or MCP tool is available through tool',
-		);
+		expect(loaded?.instructions).toContain('available through tool search');
 		expect(loaded?.instructions).toContain('workspace source file');
 		expect(loaded?.instructions).toContain('nodes(action="suggested")');
 		expect(loaded?.instructions).toContain('nodes(action="search")');
-		expect(loaded?.instructions).toContain("newCredential('Credential Name', 'credential-id')");
-		expect(loaded?.instructions).toContain('Verification');
-		expect(loaded?.instructions).toContain('Build/save success is not workflow-quality evidence');
 		expect(loaded?.instructions).toContain('postBuildFlow.required: true');
 		expect(loaded?.instructions).toContain('load `post-build-flow` exactly once');
 		expect(loaded?.instructions).toContain('Do not call\n    `verify-built-workflow` directly');
 		expect(loaded?.instructions).toContain('workflows(action="get-as-code", workflowId)');
 		expect(loaded?.instructions).toContain(
-			'n8n has no global or instance-wide error workflow setting',
-		);
-		expect(loaded?.instructions).toContain(
-			'Mention it to the\nuser only when they explicitly ask about',
-		);
-		expect(loaded?.instructions).toContain("errorWorkflow: 'published-error-workflow-id'");
-		expect(loaded?.instructions).toContain(
 			'knowledge-base/reference/workflow-builder-guardrails.md',
 		);
-		expect(loaded?.instructions).toContain('SDK node `output` mocks are raw `$json` objects');
+		expect(loaded?.instructions).toContain('knowledge-base/reference/error-workflows.md');
+		expect(loaded?.instructions).toContain('knowledge-base/reference/credential-rules.md');
 		expect(loaded?.instructions).toMatch(/inline setup card in the AI\s+Assistant panel/);
 		expect(loaded?.instructions).toContain(
 			'Do not ask for missing setup values before the first successful build',
 		);
 		expect(loaded?.instructions).toContain('`planning` or call `create-tasks` first');
-		expect(loaded?.instructions).toContain('.to(isImportant)');
-		expect(loaded?.instructions).toContain('.onTrue(handleImportant)');
-		expect(loaded?.instructions).toContain('Never call `.onFalse()` more than once');
-		expect(loaded?.instructions).toContain('branch nodes are omitted from the saved graph');
+		expect(loaded?.instructions).toContain('Never call `.onFalse()` or `.onTrue()` more than once');
+		expect(loaded?.instructions).toContain('branch nodes never reach the builder');
 	});
 
 	it('loads the bundled planning skill', async () => {
@@ -204,17 +194,16 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).not.toContain('add-plan-item');
 	});
 
-	it('loads the bundled post-build-flow skill and trigger input reference', async () => {
+	it('loads the bundled post-build-flow skill', async () => {
 		const source = loadInstanceAiRuntimeSkillSource();
 		const skill = source.registry.skills.find((entry) => entry.name === 'post-build-flow');
 
 		expect(skill?.description).toContain('workflow-verification-follow-up');
-		expect(skill?.linkedFiles.references).toEqual([
-			expect.objectContaining({ path: 'references/trigger-input-data-shapes.md' }),
-		]);
+		expect(skill?.linkedFiles.references).toEqual([]);
 
 		const loaded = await source.loadSkill('post-build-flow');
 		expect(loaded?.instructions).toContain('postBuildFlow.required: true');
+		expect(loaded?.instructions).toContain('knowledge-base/reference/trigger-input-data-shapes.md');
 		expect(loaded?.instructions).toContain('verificationReadiness.status === "ready"');
 		expect(loaded?.instructions).toContain('verificationReadiness.status === "needs_setup"');
 		expect(loaded?.instructions).toContain('verificationReadiness.status === "not_verifiable"');
@@ -259,21 +248,6 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain(
 			'Only call `workflows(action="publish")` when the user explicitly asks',
 		);
-
-		const loadTool = createSkillLoadTool(source);
-		const reference = await loadTool.handler?.(
-			{ skillId: 'post-build-flow', filePath: 'references/trigger-input-data-shapes.md' },
-			{},
-		);
-		if (
-			!reference ||
-			typeof reference !== 'object' ||
-			!('content' in reference) ||
-			typeof reference.content !== 'string'
-		) {
-			throw new Error('Expected trigger input reference content');
-		}
-		expect(reference.content).toContain('Do NOT wrap in `formFields`');
 	});
 
 	it('loads the bundled planned-task-runtime skill', async () => {

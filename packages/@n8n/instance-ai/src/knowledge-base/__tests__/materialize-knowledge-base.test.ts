@@ -135,6 +135,42 @@ describe('buildKnowledgeBaseWorkspaceBundle', () => {
 				id: 'workflow-sdk-language',
 				file: 'reference/workflow-sdk-language.md',
 			}),
+			expect.objectContaining({
+				id: 'workflow-sdk-builder-rules',
+				file: 'reference/workflow-sdk-builder-rules.md',
+			}),
+			expect.objectContaining({
+				id: 'workflow-sdk-mocks',
+				file: 'reference/workflow-sdk-mocks.md',
+			}),
+			expect.objectContaining({
+				id: 'sdk-patterns',
+				file: 'reference/sdk-patterns.md',
+			}),
+			expect.objectContaining({
+				id: 'workflow-expressions',
+				file: 'reference/workflow-expressions.md',
+			}),
+			expect.objectContaining({
+				id: 'credential-rules',
+				file: 'reference/credential-rules.md',
+			}),
+			expect.objectContaining({
+				id: 'control-flow-rules',
+				file: 'reference/control-flow-rules.md',
+			}),
+			expect.objectContaining({
+				id: 'error-workflows',
+				file: 'reference/error-workflows.md',
+			}),
+			expect.objectContaining({
+				id: 'node-configuration-safety',
+				file: 'reference/node-configuration-safety.md',
+			}),
+			expect.objectContaining({
+				id: 'missing-resources',
+				file: 'reference/missing-resources.md',
+			}),
 		]);
 		expect(rootIndex.bestPractices.entries.some((entry) => entry.id === 'scheduling')).toBe(true);
 		expect(bundle.indexPath).toBe(
