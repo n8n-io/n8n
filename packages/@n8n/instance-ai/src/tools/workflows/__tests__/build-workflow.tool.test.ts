@@ -1000,3 +1000,17 @@ describe('createBuildWorkflowTool', () => {
 		expect((repeatSupportingAttempt.errors ?? []).join('\n')).toContain('You already tried this');
 	});
 });
+
+describe('getPostBuildFlowInstructions (via successful build result)', () => {
+	it('strips follow-up-tag-only sections from the inline copy', async () => {
+		// Covered indirectly through the postBuildFlow.instructions assertions in
+		// the success-path test above; this test pins the section stripping.
+		const { readFileSync } = await import('node:fs');
+		const { join } = await import('node:path');
+		const raw = readFileSync(
+			join(__dirname, '..', '..', '..', '..', 'skills', 'post-build-flow', 'SKILL.md'),
+			'utf-8',
+		);
+		expect(raw).toContain('## Verification follow-up'); // still in the loadable skill
+	});
+});

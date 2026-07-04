@@ -4,7 +4,6 @@ import { hasPlaceholderDeep } from '@n8n/utils/placeholder';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
-
 import { planVerificationSimulation } from './plan-verification-simulation';
 import { buildCredentialMap, resolveCredentials } from './resolve-credentials';
 import { analyzeWorkflow, stripStaleCredentialsFromWorkflow } from './setup-workflow.service';
