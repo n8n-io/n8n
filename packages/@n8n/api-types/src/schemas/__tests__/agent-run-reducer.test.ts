@@ -39,16 +39,30 @@ function makeTextDelta(
 	runId: string,
 	agentId: string,
 	text: string,
+	responseId?: string,
 ): Extract<InstanceAiEvent, { type: 'text-delta' }> {
-	return { type: 'text-delta', runId, agentId, payload: { text } };
+	return {
+		type: 'text-delta',
+		runId,
+		agentId,
+		payload: { text },
+		...(responseId ? { responseId } : {}),
+	};
 }
 
 function makeReasoningDelta(
 	runId: string,
 	agentId: string,
 	text: string,
+	responseId?: string,
 ): Extract<InstanceAiEvent, { type: 'reasoning-delta' }> {
-	return { type: 'reasoning-delta', runId, agentId, payload: { text } };
+	return {
+		type: 'reasoning-delta',
+		runId,
+		agentId,
+		payload: { text },
+		...(responseId ? { responseId } : {}),
+	};
 }
 
 function makeToolCall(
@@ -388,6 +402,67 @@ describe('agent-run-reducer', () => {
 			reduceEvent(state, makeReasoningDelta('run-1', 'root', 'thinking'));
 
 			expect(state.agentsById['root'].reasoning).toBe('thinking');
+			expect(state.agentsById['root'].timeline).toEqual([
+				{ type: 'reasoning', content: 'thinking' },
+			]);
+		});
+
+		it('consecutive reasoning-delta events merge into one timeline entry', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeReasoningDelta('run-1', 'root', 'think', 'r-1'));
+			reduceEvent(state, makeReasoningDelta('run-1', 'root', ' more', 'r-1'));
+
+			expect(state.agentsById['root'].reasoning).toBe('think more');
+			expect(state.agentsById['root'].timeline).toEqual([
+				{ type: 'reasoning', content: 'think more', responseId: 'r-1' },
+			]);
+		});
+
+		it('tool call splits reasoning into separate timeline blocks', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeReasoningDelta('run-1', 'root', 'before', 'r-1'));
+			reduceEvent(state, makeToolCall('run-1', 'root', 'tc-1', 'search-nodes'));
+			reduceEvent(state, makeReasoningDelta('run-1', 'root', 'after', 'r-2'));
+
+			expect(state.agentsById['root'].timeline).toEqual([
+				{ type: 'reasoning', content: 'before', responseId: 'r-1' },
+				{ type: 'tool-call', toolCallId: 'tc-1' },
+				{ type: 'reasoning', content: 'after', responseId: 'r-2' },
+			]);
+		});
+
+		it('different responseId merges into one block when no tool call separates them', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeReasoningDelta('run-1', 'root', 'step1', 'r-1'));
+			reduceEvent(state, makeReasoningDelta('run-1', 'root', ' step2', 'r-2'));
+
+			expect(state.agentsById['root'].timeline).toEqual([
+				{ type: 'reasoning', content: 'step1 step2', responseId: 'r-1' },
+			]);
+		});
+
+		it('reasoning separated only by text merges into one block', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeReasoningDelta('run-1', 'root', 'think', 'r-1'));
+			reduceEvent(state, makeTextDelta('run-1', 'root', 'narration', 'r-1'));
+			reduceEvent(state, makeReasoningDelta('run-1', 'root', ' more', 'r-1'));
+
+			expect(state.agentsById['root'].timeline).toEqual([
+				{ type: 'reasoning', content: 'think more', responseId: 'r-1' },
+				{ type: 'text', content: 'narration', responseId: 'r-1' },
+			]);
+		});
+
+		it('reasoning timeline entries survive persistence round-trip', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeReasoningDelta('run-1', 'root', 'before', 'r-1'));
+			reduceEvent(state, makeToolCall('run-1', 'root', 'tc-1', 'search-nodes'));
+			reduceEvent(state, makeReasoningDelta('run-1', 'root', 'after', 'r-2'));
+
+			const tree = toAgentTree(state);
+			const adopted = stateFromAgentTree(tree);
+			expect(adopted).toBeDefined();
+			expect(adopted!.agentsById['root'].timeline).toEqual(tree.timeline);
 		});
 
 		it('reasoning-delta for sub-agent appends only to sub-agent', () => {

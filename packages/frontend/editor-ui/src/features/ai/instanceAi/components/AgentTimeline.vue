@@ -11,6 +11,7 @@ import {
 	extractArtifacts,
 	isStreamingTimelineEntry,
 	isVisibleTimelineEntry,
+	coalesceConsecutiveReasoning,
 	HIDDEN_TOOLS,
 	type ArtifactInfo,
 } from '../agentTimeline.utils';
@@ -23,6 +24,7 @@ import AnsweredQuestions from './AnsweredQuestions.vue';
 import ArtifactCard from './ArtifactCard.vue';
 import PlanReviewPanel, { type PlannedTaskArg, type PlanReviewStatus } from './PlanReviewPanel.vue';
 import TaskChecklist from './TaskChecklist.vue';
+import TimelineReasoningSegment from './TimelineReasoningSegment.vue';
 import TimelineTextSegment from './TimelineTextSegment.vue';
 import ToolCallStep from './ToolCallStep.vue';
 
@@ -94,7 +96,9 @@ const props = withDefaults(
 	},
 );
 
-const timelineEntries = computed(() => props.visibleEntries ?? props.agentNode.timeline);
+const timelineEntries = computed(() =>
+	coalesceConsecutiveReasoning(props.visibleEntries ?? props.agentNode.timeline),
+);
 
 /** Index tool calls by ID for O(1) lookup and proper reactivity tracking. */
 const toolCallsById = computed(() => {
@@ -164,7 +168,7 @@ const childrenById = computed(() => {
  */
 const hasVisibleEntries = computed(() =>
 	timelineEntries.value.some((entry) =>
-		isVisibleTimelineEntry(entry, toolCallsById.value, childrenById.value),
+		isVisibleTimelineEntry(props.agentNode, entry, toolCallsById.value, childrenById.value),
 	),
 );
 
@@ -252,9 +256,20 @@ function mapTaskItemsToPlannedTasks(tasks?: TaskList): PlannedTaskArg[] | undefi
 <template>
 	<div v-if="hasVisibleEntries" :class="$style.timeline">
 		<template v-for="(entry, idx) in timelineEntries" :key="idx">
+			<!-- Reasoning segment (leaf keeps per-token content read out of this render) -->
+			<TimelineReasoningSegment
+				v-if="entry.type === 'reasoning'"
+				:entry="entry"
+				:streaming="isStreamingTimelineEntry(props.agentNode, entry, timelineEntries)"
+				:class="$style.timelineItem"
+			/>
+
 			<!-- Text segment (leaf keeps the per-token content read out of this render) -->
 			<TimelineTextSegment
-				v-if="entry.type === 'text'"
+				v-else-if="
+					entry.type === 'text' &&
+					isVisibleTimelineEntry(props.agentNode, entry, toolCallsById, childrenById)
+				"
 				:entry="entry"
 				:compact="props.compact"
 				:streaming="isStreamingTimelineEntry(props.agentNode, entry)"

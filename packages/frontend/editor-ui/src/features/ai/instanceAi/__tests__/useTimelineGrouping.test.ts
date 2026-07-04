@@ -89,4 +89,90 @@ describe('useTimelineGrouping', () => {
 		expect(segments[0].artifacts).toHaveLength(1);
 		expect(segments[0].artifacts[0].resourceId).toBe('wf-1');
 	});
+
+	test('reasoning joins a response group with matching responseId', () => {
+		const segments = useTimelineGrouping(
+			ref(
+				makeAgentNode({
+					timeline: [
+						{ type: 'reasoning', content: 'Let me check', responseId: 'r-1' },
+						{ type: 'tool-call', toolCallId: 'tc-1', responseId: 'r-1' },
+					],
+					toolCalls: [makeToolCall({ toolCallId: 'tc-1' })],
+				}),
+			),
+		).value;
+
+		if (!segments || segments[0].kind !== 'response-group') {
+			throw new Error('Expected a response group');
+		}
+		expect(segments[0].reasoningCount).toBe(1);
+		expect(segments[0].entries).toHaveLength(2);
+		expect(segments[0].entries[0]).toEqual({
+			type: 'reasoning',
+			content: 'Let me check',
+			responseId: 'r-1',
+		});
+	});
+
+	test('reasoning never becomes trailing-text', () => {
+		const segments = useTimelineGrouping(
+			ref(
+				makeAgentNode({
+					timeline: [
+						{ type: 'tool-call', toolCallId: 'tc-1', responseId: 'r-1' },
+						{ type: 'reasoning', content: 'After tool', responseId: 'r-2' },
+						{ type: 'text', content: 'Final answer', responseId: 'r-3' },
+					],
+					toolCalls: [makeToolCall({ toolCallId: 'tc-1' })],
+					textContent: 'Final answer',
+				}),
+			),
+		).value;
+
+		expect(segments).not.toBeNull();
+		expect(
+			segments!.some((seg) => seg.kind === 'trailing-text' && seg.content === 'After tool'),
+		).toBe(false);
+		expect(
+			segments!.some((seg) => seg.kind === 'trailing-text' && seg.content === 'Final answer'),
+		).toBe(true);
+	});
+
+	test('reasoning is not popped by trailing-text extraction', () => {
+		const segments = useTimelineGrouping(
+			ref(
+				makeAgentNode({
+					timeline: [
+						{ type: 'tool-call', toolCallId: 'tc-1', responseId: 'r-1' },
+						{ type: 'reasoning', content: 'Still inside group', responseId: 'r-1' },
+					],
+					toolCalls: [makeToolCall({ toolCallId: 'tc-1' })],
+				}),
+			),
+		).value;
+
+		if (!segments || segments[0].kind !== 'response-group') {
+			throw new Error('Expected a response group');
+		}
+		expect(segments[0].entries.some((entry) => entry.type === 'reasoning')).toBe(true);
+		expect(segments[0].reasoningCount).toBe(1);
+	});
+
+	test('reasoning-only groups are kept', () => {
+		const segments = useTimelineGrouping(
+			ref(
+				makeAgentNode({
+					timeline: [{ type: 'reasoning', content: 'Only thinking', responseId: 'r-1' }],
+				}),
+			),
+		).value;
+
+		expect(segments).not.toBeNull();
+		expect(segments).toHaveLength(1);
+		if (!segments || segments[0].kind !== 'response-group') {
+			throw new Error('Expected a response group');
+		}
+		expect(segments[0].reasoningCount).toBe(1);
+	});
 });

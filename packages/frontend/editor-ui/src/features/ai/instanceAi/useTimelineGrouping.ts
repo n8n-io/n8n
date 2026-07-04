@@ -28,6 +28,8 @@ export interface ResponseGroupSegment {
 	toolCallCount: number;
 	/** Number of text entries inside this group (intermediate thinking text). */
 	textCount: number;
+	/** Number of reasoning entries inside this group. */
+	reasoningCount: number;
 	/** Number of answered question forms in this group. */
 	questionCount: number;
 	/** Number of child agent entries in this group. */
@@ -80,6 +82,7 @@ export function useTimelineGrouping(
 				entries: [],
 				toolCallCount: 0,
 				textCount: 0,
+				reasoningCount: 0,
 				questionCount: 0,
 				childCount: 0,
 				artifacts: [],
@@ -105,6 +108,13 @@ export function useTimelineGrouping(
 					currentGroup = null;
 					segments.push({ kind: 'trailing-text', content: entry.content });
 				}
+			} else if (entry.type === 'reasoning') {
+				if (!currentGroup || currentGroup.responseId !== entry.responseId) {
+					currentGroup = newGroup(entry.responseId);
+					segments.push(currentGroup);
+				}
+				currentGroup.entries.push(entry);
+				currentGroup.reasoningCount++;
 			} else if (entry.type === 'tool-call') {
 				if (!currentGroup || currentGroup.responseId !== entry.responseId) {
 					currentGroup = newGroup(entry.responseId);
@@ -159,7 +169,12 @@ export function useTimelineGrouping(
 		// Drop empty response groups (only hidden tool calls, no visible content).
 		const flattened = segments.filter((seg) => {
 			if (seg.kind !== 'response-group') return true;
-			return seg.toolCallCount > 0 || seg.childCount > 0 || seg.artifacts.length > 0;
+			return (
+				seg.toolCallCount > 0 ||
+				seg.childCount > 0 ||
+				seg.reasoningCount > 0 ||
+				seg.artifacts.length > 0
+			);
 		});
 
 		// If there are no collapsible response groups, skip grouping entirely.

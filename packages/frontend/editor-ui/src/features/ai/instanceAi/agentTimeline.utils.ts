@@ -12,6 +12,87 @@ export const HIDDEN_TOOLS = new Set(['updateWorkingMemory']);
  *  represented elsewhere (child agent sections, artifact cards). */
 const INVISIBLE_RENDER_HINTS = new Set(['builder', 'data-table', 'eval-setup', 'delegate']);
 
+function findReasoningMergeTarget(
+	entries: InstanceAiTimelineEntry[],
+): Extract<InstanceAiTimelineEntry, { type: 'reasoning' }> | undefined {
+	for (let i = entries.length - 1; i >= 0; i--) {
+		const entry = entries[i];
+		if (entry.type === 'reasoning') return entry;
+		if (entry.type === 'text') continue;
+		return undefined;
+	}
+	return undefined;
+}
+
+/**
+ * Collapse back-to-back reasoning blocks (and reasoning separated only by text)
+ * for display. Returns new objects — never mutates the source timeline.
+ */
+export function coalesceConsecutiveReasoning(
+	entries: InstanceAiTimelineEntry[],
+): InstanceAiTimelineEntry[] {
+	const result: InstanceAiTimelineEntry[] = [];
+
+	for (const entry of entries) {
+		if (entry.type !== 'reasoning') {
+			result.push(entry);
+			continue;
+		}
+
+		const mergeTarget = findReasoningMergeTarget(result);
+		if (mergeTarget) {
+			const index = result.indexOf(mergeTarget);
+			result[index] = {
+				...mergeTarget,
+				content: mergeTarget.content + entry.content,
+			};
+			continue;
+		}
+
+		result.push({ ...entry, content: entry.content });
+	}
+
+	return result;
+}
+
+function adjacentNonTextTypes(
+	timeline: InstanceAiTimelineEntry[],
+	index: number,
+): { prev?: InstanceAiTimelineEntry['type']; next?: InstanceAiTimelineEntry['type'] } {
+	let prev = index - 1;
+	while (prev >= 0 && timeline[prev]?.type === 'text') prev--;
+
+	let next = index + 1;
+	while (next < timeline.length && timeline[next]?.type === 'text') next++;
+
+	return {
+		prev: timeline[prev]?.type,
+		next: timeline[next]?.type,
+	};
+}
+
+/** Whether a text entry should render while the agent is still active. */
+function isActiveTextVisible(
+	agentNode: InstanceAiAgentNode,
+	entry: InstanceAiTimelineEntry,
+): boolean {
+	const timeline = agentNode.timeline;
+	const index = timeline.indexOf(entry);
+	if (index === -1 || entry.type !== 'text') return false;
+
+	if (entry === timeline.at(-1)) return true;
+
+	const { prev, next } = adjacentNonTextTypes(timeline, index);
+
+	// Hide narration trapped between reasoning blocks (fragments the live stream).
+	if (prev === 'reasoning' && next === 'reasoning') return false;
+
+	// Keep user-facing narration that follows reasoning and precedes tool work.
+	if (prev === 'reasoning' && (next === 'tool-call' || next === 'child')) return true;
+
+	return false;
+}
+
 /**
  * True when a timeline entry produces visible output in `AgentTimeline`.
  *
@@ -24,11 +105,19 @@ const INVISIBLE_RENDER_HINTS = new Set(['builder', 'data-table', 'eval-setup', '
  * their phantom flex-gap spacing).
  */
 export function isVisibleTimelineEntry(
+	agentNode: InstanceAiAgentNode,
 	entry: InstanceAiTimelineEntry,
 	toolCallsById: Record<string, InstanceAiToolCallState>,
 	childrenById: Record<string, InstanceAiAgentNode>,
 ): boolean {
-	if (entry.type === 'text') return true;
+	if (entry.type === 'text') {
+		if (agentNode.status === 'active') {
+			return isActiveTextVisible(agentNode, entry);
+		}
+		return true;
+	}
+
+	if (entry.type === 'reasoning') return true;
 
 	if (entry.type === 'tool-call') {
 		const tc = toolCallsById[entry.toolCallId];
@@ -54,8 +143,18 @@ export function isVisibleTimelineEntry(
 export function isStreamingTimelineEntry(
 	agentNode: InstanceAiAgentNode,
 	entry: InstanceAiTimelineEntry,
+	displayTimeline: InstanceAiTimelineEntry[] = agentNode.timeline,
 ): boolean {
-	return agentNode.status === 'active' && entry === agentNode.timeline.at(-1);
+	if (agentNode.status !== 'active') return false;
+
+	const tail = agentNode.timeline.at(-1);
+
+	if (tail?.type === 'reasoning') {
+		const lastReasoning = [...displayTimeline].reverse().find((e) => e.type === 'reasoning');
+		return entry.type === 'reasoning' && entry === lastReasoning;
+	}
+
+	return entry === tail;
 }
 
 export interface ArtifactInfo {

@@ -28,7 +28,11 @@ const props = withDefaults(
 const i18n = useI18n();
 const thread = useThread();
 
-const hasReasoning = computed(() => props.agentNode.reasoning.length > 0);
+const hasLegacyReasoning = computed(
+	() =>
+		props.agentNode.reasoning.length > 0 &&
+		!props.agentNode.timeline.some((entry) => entry.type === 'reasoning'),
+);
 
 const segments = useTimelineGrouping(toRef(props, 'agentNode'));
 
@@ -53,8 +57,8 @@ function resolveArtifactName(artifact: ArtifactInfo): string {
 <template>
 	<!-- eslint-disable vue/no-multiple-template-root -->
 
-	<!-- Reasoning (collapsible, root agent only) -->
-	<CollapsibleRoot v-if="isRoot && hasReasoning" v-slot="{ open: isOpen }">
+	<!-- Legacy reasoning (old persisted trees without timeline reasoning entries) -->
+	<CollapsibleRoot v-if="isRoot && hasLegacyReasoning" v-slot="{ open: isOpen }">
 		<CollapsibleTrigger as-child>
 			<TimelineStepButton>
 				<template #icon>

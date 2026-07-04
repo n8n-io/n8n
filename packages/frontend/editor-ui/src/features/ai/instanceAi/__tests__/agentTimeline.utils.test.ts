@@ -4,6 +4,7 @@ import {
 	extractArtifacts,
 	isStreamingTimelineEntry,
 	isVisibleTimelineEntry,
+	coalesceConsecutiveReasoning,
 } from '../agentTimeline.utils';
 
 function makeToolCall(overrides: Partial<InstanceAiToolCallState>): InstanceAiToolCallState {
@@ -247,19 +248,104 @@ describe('extractArtifacts', () => {
 	});
 });
 
+describe('coalesceConsecutiveReasoning', () => {
+	test('merges consecutive reasoning entries', () => {
+		const source = [
+			{ type: 'reasoning' as const, content: 'a', responseId: 'r-1' },
+			{ type: 'reasoning' as const, content: 'b', responseId: 'r-2' },
+		];
+		expect(coalesceConsecutiveReasoning(source)).toEqual([
+			{ type: 'reasoning', content: 'ab', responseId: 'r-1' },
+		]);
+		expect(source[0].content).toBe('a');
+	});
+
+	test('merges reasoning separated only by text', () => {
+		expect(
+			coalesceConsecutiveReasoning([
+				{ type: 'reasoning', content: 'a', responseId: 'r-1' },
+				{ type: 'text', content: 'hidden narration', responseId: 'r-1' },
+				{ type: 'reasoning', content: 'b', responseId: 'r-2' },
+			]),
+		).toEqual([
+			{ type: 'reasoning', content: 'ab', responseId: 'r-1' },
+			{ type: 'text', content: 'hidden narration', responseId: 'r-1' },
+		]);
+	});
+
+	test('does not merge reasoning blocks separated by a tool call', () => {
+		expect(
+			coalesceConsecutiveReasoning([
+				{ type: 'reasoning', content: 'before', responseId: 'r-1' },
+				{ type: 'tool-call', toolCallId: 'tc-1' },
+				{ type: 'reasoning', content: 'after', responseId: 'r-2' },
+			]),
+		).toEqual([
+			{ type: 'reasoning', content: 'before', responseId: 'r-1' },
+			{ type: 'tool-call', toolCallId: 'tc-1' },
+			{ type: 'reasoning', content: 'after', responseId: 'r-2' },
+		]);
+	});
+});
+
 describe('isVisibleTimelineEntry', () => {
 	const toolCallEntry = { type: 'tool-call' as const, toolCallId: 'tc-1' };
 
 	function visibilityOf(tc: InstanceAiToolCallState): boolean {
-		return isVisibleTimelineEntry(toolCallEntry, { [tc.toolCallId]: tc }, {});
+		return isVisibleTimelineEntry(makeAgentNode(), toolCallEntry, { [tc.toolCallId]: tc }, {});
 	}
 
-	test('text entries are always visible', () => {
-		expect(isVisibleTimelineEntry({ type: 'text', content: 'hi' }, {}, {})).toBe(true);
+	test('text entries are visible on completed agents', () => {
+		expect(
+			isVisibleTimelineEntry(
+				makeAgentNode({ status: 'completed' }),
+				{ type: 'text', content: 'hi' },
+				{},
+				{},
+			),
+		).toBe(true);
+	});
+
+	test('text sandwiched between reasoning blocks is hidden while active', () => {
+		const timeline = [
+			{ type: 'reasoning' as const, content: 'thinking' },
+			{ type: 'text' as const, content: 'fragment' },
+			{ type: 'reasoning' as const, content: 'more thinking' },
+		];
+		const node = makeAgentNode({ status: 'active', timeline });
+
+		expect(isVisibleTimelineEntry(node, timeline[1]!, {}, {})).toBe(false);
+	});
+
+	test('narration after reasoning and before tools stays visible while active', () => {
+		const narration = { type: 'text' as const, content: 'Discover the exact n8n nodes needed' };
+		const timeline = [
+			{ type: 'reasoning' as const, content: 'thinking' },
+			narration,
+			{ type: 'tool-call' as const, toolCallId: 'tc-1' },
+			{ type: 'tool-call' as const, toolCallId: 'tc-2' },
+		];
+		const node = makeAgentNode({ status: 'active', timeline });
+
+		expect(isVisibleTimelineEntry(node, narration, {}, {})).toBe(true);
+	});
+
+	test('tail text is visible while the agent is active', () => {
+		const reasoning = { type: 'reasoning' as const, content: 'thinking' };
+		const tail = { type: 'text' as const, content: 'final answer' };
+		const node = makeAgentNode({ status: 'active', timeline: [reasoning, tail] });
+
+		expect(isVisibleTimelineEntry(node, tail, {}, {})).toBe(true);
+	});
+
+	test('reasoning entries are always visible', () => {
+		expect(
+			isVisibleTimelineEntry(makeAgentNode(), { type: 'reasoning', content: 'thinking' }, {}, {}),
+		).toBe(true);
 	});
 
 	test('tool-call entries without a matching tool call are hidden', () => {
-		expect(isVisibleTimelineEntry(toolCallEntry, {}, {})).toBe(false);
+		expect(isVisibleTimelineEntry(makeAgentNode(), toolCallEntry, {}, {})).toBe(false);
 	});
 
 	test('internal bookkeeping tools are hidden', () => {
@@ -347,9 +433,13 @@ describe('isVisibleTimelineEntry', () => {
 			status: 'active',
 		});
 
-		expect(isVisibleTimelineEntry(entry, {}, { 'sub-1': completedBuilder })).toBe(true);
-		expect(isVisibleTimelineEntry(entry, {}, { 'sub-1': activeBuilder })).toBe(false);
-		expect(isVisibleTimelineEntry(entry, {}, {})).toBe(false);
+		expect(isVisibleTimelineEntry(makeAgentNode(), entry, {}, { 'sub-1': completedBuilder })).toBe(
+			true,
+		);
+		expect(isVisibleTimelineEntry(makeAgentNode(), entry, {}, { 'sub-1': activeBuilder })).toBe(
+			false,
+		);
+		expect(isVisibleTimelineEntry(makeAgentNode(), entry, {}, {})).toBe(false);
 	});
 });
 
@@ -385,5 +475,25 @@ describe('isStreamingTimelineEntry', () => {
 		const node = makeAgentNode({ status: 'active', timeline: [tail] });
 
 		expect(isStreamingTimelineEntry(node, { ...tail })).toBe(false);
+	});
+
+	test('reasoning tail entry streams on an active agent', () => {
+		const reasoning = { type: 'reasoning' as const, content: 'still thinking' };
+		const node = makeAgentNode({ status: 'active', timeline: [reasoning] });
+		const display = coalesceConsecutiveReasoning(node.timeline);
+
+		expect(isStreamingTimelineEntry(node, display[0]!, display)).toBe(true);
+	});
+
+	test('coalesced reasoning streams when tail reasoning merges backward over text', () => {
+		const first = { type: 'reasoning' as const, content: 'think' };
+		const text = { type: 'text' as const, content: 'narration' };
+		const tail = { type: 'reasoning' as const, content: ' more' };
+		const node = makeAgentNode({ status: 'active', timeline: [first, text, tail] });
+		const display = coalesceConsecutiveReasoning(node.timeline);
+
+		expect(display).toHaveLength(2);
+		expect(isStreamingTimelineEntry(node, display[0]!, display)).toBe(true);
+		expect(isStreamingTimelineEntry(node, tail, display)).toBe(false);
 	});
 });

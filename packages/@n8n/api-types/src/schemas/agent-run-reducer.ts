@@ -123,6 +123,34 @@ function appendTimelineText(
 	}
 }
 
+/** Returns the reasoning block new deltas should append to, if any structural entry does not block merge. */
+function findReasoningMergeTarget(
+	timeline: InstanceAiTimelineEntry[],
+): Extract<InstanceAiTimelineEntry, { type: 'reasoning' }> | undefined {
+	for (let i = timeline.length - 1; i >= 0; i--) {
+		const entry = timeline[i];
+		if (entry.type === 'reasoning') return entry;
+		if (entry.type === 'text') continue;
+		return undefined;
+	}
+	return undefined;
+}
+
+/** Append reasoning to timeline — merges into the previous reasoning block when only text separates them. */
+function appendTimelineReasoning(
+	timeline: InstanceAiTimelineEntry[],
+	text: string,
+	responseId?: string,
+): void {
+	const mergeTarget = findReasoningMergeTarget(timeline);
+	if (mergeTarget) {
+		mergeTarget.content += text;
+		return;
+	}
+
+	timeline.push({ type: 'reasoning', content: text, ...(responseId ? { responseId } : {}) });
+}
+
 /**
  * Whether a node carries any content worth preserving across a follow-up
  * `run-start`. Covers every renderable field a turn can populate — not just
@@ -199,6 +227,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			const agent = ensureAgent(state, event.agentId);
 			if (agent) {
 				agent.reasoning += event.payload.text;
+				appendTimelineReasoning(agent.timeline, event.payload.text, event.responseId);
 			}
 			break;
 		}

@@ -897,6 +897,7 @@ export interface InstanceAiToolCallState {
 
 export type InstanceAiTimelineEntry =
 	| { type: 'text'; content: string; responseId?: string }
+	| { type: 'reasoning'; content: string; responseId?: string }
 	| { type: 'tool-call'; toolCallId: string; responseId?: string }
 	| { type: 'child'; agentId: string; responseId?: string };
 
