@@ -45,3 +45,36 @@ describe('resolveNodeTypeDefinition', () => {
 		expect(result.error).toContain("Invalid mode 'nope'");
 	});
 });
+
+describe('resolveNodeTypeDefinition — resource/operation split', () => {
+	let defsDir: string;
+
+	beforeAll(() => {
+		defsDir = mkdtempSync(join(tmpdir(), 'node-defs-ro-'));
+		const msgDir = join(defsDir, 'nodes', 'n8n-nodes-base', 'slack', 'v22', 'resource_message');
+		mkdirSync(msgDir, { recursive: true });
+		writeFileSync(join(msgDir, 'operation_post.ts'), '// slack post def');
+		writeFileSync(join(msgDir, 'operation_update.ts'), '// slack update def');
+	});
+
+	afterAll(() => {
+		rmSync(defsDir, { recursive: true, force: true });
+	});
+
+	it('errors with the full resource→operations index when discriminators are omitted', () => {
+		const result = resolveNodeTypeDefinition('n8n-nodes-base.slack', [defsDir]);
+
+		expect(result.error).toContain('requires resource and operation discriminators');
+		expect(result.error).toContain('message (post, update)');
+	});
+
+	it('returns the definition when both discriminators are given', () => {
+		const result = resolveNodeTypeDefinition('n8n-nodes-base.slack', [defsDir], {
+			resource: 'message',
+			operation: 'post',
+		});
+
+		expect(result.error).toBeUndefined();
+		expect(result.content).toBe('// slack post def');
+	});
+});

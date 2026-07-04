@@ -124,8 +124,23 @@ function resolveResourceOperationFile(
 	discriminators?: { resource?: string; operation?: string },
 ): PathResolutionResult {
 	if (!discriminators?.resource || !discriminators?.operation) {
+		// Include the full resource→operations map so the retry can always be
+		// issued correctly in one shot — listing only resources risks a second
+		// failed guess at the operation (each retry is a full LLM round-trip).
+		const index = resources
+			.map((resource) => {
+				try {
+					const ops = readdirSync(safeJoinPath(nodeDir, targetVersion, `resource_${resource}`))
+						.filter((f) => f.startsWith('operation_') && f.endsWith('.ts'))
+						.map((f) => f.replace('operation_', '').replace('.ts', ''));
+					return `${resource} (${ops.join(', ')})`;
+				} catch {
+					return resource;
+				}
+			})
+			.join('; ');
 		return {
-			error: `Node '${nodeId}' requires resource and operation discriminators. Available resources: ${resources.join(', ')}.`,
+			error: `Node '${nodeId}' requires resource and operation discriminators. Available resource (operations): ${index}.`,
 		};
 	}
 	if (
