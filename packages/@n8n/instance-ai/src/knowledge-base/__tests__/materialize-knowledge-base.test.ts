@@ -171,6 +171,18 @@ describe('buildKnowledgeBaseWorkspaceBundle', () => {
 				id: 'missing-resources',
 				file: 'reference/missing-resources.md',
 			}),
+			expect.objectContaining({
+				id: 'post-build-verification',
+				file: 'reference/post-build-verification.md',
+			}),
+			expect.objectContaining({
+				id: 'post-build-error-workflow-follow-up',
+				file: 'reference/post-build-error-workflow-follow-up.md',
+			}),
+			expect.objectContaining({
+				id: 'post-build-live-test-follow-up',
+				file: 'reference/post-build-live-test-follow-up.md',
+			}),
 		]);
 		expect(rootIndex.bestPractices.entries.some((entry) => entry.id === 'scheduling')).toBe(true);
 		expect(bundle.indexPath).toBe(

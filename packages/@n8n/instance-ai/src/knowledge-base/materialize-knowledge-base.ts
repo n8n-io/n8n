@@ -211,6 +211,22 @@ const KNOWLEDGE_BASE_REFERENCE_ENTRIES: Array<
 			'Handling empty explore-resources results and flagging infeasible workflow substitutions',
 		fileName: 'missing-resources.md',
 	},
+	{
+		id: 'post-build-verification',
+		description:
+			'Post-build verify-built-workflow routing, coverage, fixture overrides, and success claims',
+		fileName: 'post-build-verification.md',
+	},
+	{
+		id: 'post-build-error-workflow-follow-up',
+		description: 'Post-build user opt-in flow for building and assigning error workflows',
+		fileName: 'post-build-error-workflow-follow-up.md',
+	},
+	{
+		id: 'post-build-live-test-follow-up',
+		description: 'Post-build opt-in for live execution after mocked verification',
+		fileName: 'post-build-live-test-follow-up.md',
+	},
 ];
 
 async function addReferenceFilesToKnowledgeBase(

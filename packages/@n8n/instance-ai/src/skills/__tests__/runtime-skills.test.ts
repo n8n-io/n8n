@@ -16,6 +16,15 @@ describe('Instance AI runtime skills', () => {
 		expect(skill).toContain('knowledge-base/reference/workflow-sdk-mocks.md');
 	});
 
+	it('points the post-build-flow skill at inline agent KB delegation', () => {
+		const skill = readFileSync(
+			join(INSTANCE_AI_SKILLS_DIR, 'post-build-flow', 'SKILL.md'),
+			'utf-8',
+		);
+		expect(skill).toContain('subAgentId: "inline"');
+		expect(skill).toContain('knowledge-base/reference/post-build-verification.md');
+	});
+
 	it('loads the bundled data-table-manager skill and its linked files', async () => {
 		expect(existsSync(INSTANCE_AI_SKILLS_DIR)).toBe(true);
 
@@ -203,51 +212,14 @@ describe('Instance AI runtime skills', () => {
 
 		const loaded = await source.loadSkill('post-build-flow');
 		expect(loaded?.instructions).toContain('postBuildFlow.required: true');
-		expect(loaded?.instructions).toContain('knowledge-base/reference/trigger-input-data-shapes.md');
-		expect(loaded?.instructions).toContain('verificationReadiness.status === "ready"');
-		expect(loaded?.instructions).toContain('verificationReadiness.status === "needs_setup"');
-		expect(loaded?.instructions).toContain('verificationReadiness.status === "not_verifiable"');
-		expect(loaded?.instructions).toContain('setupRequirement.status === "required"');
-		expect(loaded?.instructions).toContain('inline setup card in the AI Assistant panel');
-		expect(loaded?.instructions).toContain(
-			'ask once whether the user wants to build an error workflow for that workflow',
-		);
-		expect(loaded?.instructions).toContain(
-			'Do not replace this explicit opt-in with a generic "add\n   anything else?", publish, or test question.',
-		);
-		expect(loaded?.instructions).toMatch(
-			/ask only that question now; do not also ask about the error\s+workflow/,
-		);
-		expect(loaded?.instructions).toContain(
-			'This follow-up comes after the mocked verification live-test follow-up',
-		);
-		expect(loaded?.instructions).toContain(
-			'The error workflow must be published before it can be assigned',
-		);
-		expect(loaded?.instructions).toContain('Continue the publish-before-assign flow');
-		expect(loaded?.instructions).toContain('settings.errorWorkflow');
-		expect(loaded?.instructions).toContain(
-			'The opt-in must explicitly mention an error workflow and the target workflow\nname.',
-		);
-		expect(loaded?.instructions).toContain(
-			'Mention that n8n has\n   no global or instance-wide error workflow setting only when the user\n   explicitly asked about',
-		);
-		expect(loaded?.instructions).toContain('Mocked verification live-test follow-up');
-		expect(loaded?.instructions).toContain(
-			'This follow-up has priority over the error-workflow opt-in',
-		);
-		expect(loaded?.instructions).toMatch(
-			/Do not ask whether to build now and set up\s+credentials later/,
-		);
-		expect(loaded?.instructions).toContain(
-			'Ask once when a service has multiple credentials of the same type',
-		);
-		expect(loaded?.instructions).toContain(
-			'Ask which auth type to use when a service supports more than one',
-		);
-		expect(loaded?.instructions).toContain(
-			'Only call `workflows(action="publish")` when the user explicitly asks',
-		);
+		expect(loaded?.instructions).toContain('subAgentId: "inline"');
+		expect(loaded?.instructions).toContain('verificationReadiness');
+		expect(loaded?.instructions).toContain('setupRequirement');
+		expect(loaded?.instructions).toContain('inline setup card');
+		expect(loaded?.instructions).toContain('verify-built-workflow`, not');
+		expect(loaded?.instructions).toContain('explicitly asks');
+		expect(loaded?.instructions).toContain('<workflow-verification-follow-up>');
+		expect(loaded?.instructions).toContain('<workflow-setup-required>');
 	});
 
 	it('loads the bundled planned-task-runtime skill', async () => {

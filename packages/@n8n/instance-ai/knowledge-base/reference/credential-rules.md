@@ -27,3 +27,30 @@ when the workflow touches external services.
   authenticate inbound traffic.
 - Always declare `output` on nodes that use unresolved credentials when mock data
   is needed for verification.
+
+## Credential selection before building
+
+Call `credentials(action="list")` first to know what's available. Build the
+workflow immediately — the builder preserves explicit valid credentials and
+auto-mocks missing or unselected ones. Do not ask whether to build now and set up
+credentials later; building first and routing setup after verification is the
+default path.
+
+**Ask once when a service has multiple credentials of the same type.** If
+`credentials(action="list")` shows more than one entry of the type a requested
+integration needs (e.g. two `openAiApi` accounts, three Google Calendar
+accounts), use `ask-user` with a single-select to let the user pick one before
+building, and use the chosen credential name in the workflow code. Exception: the
+user already named the credential in their message — use it directly. With a
+single candidate, auto-apply and do not ask.
+
+**Ask which auth type to use when a service supports more than one.**
+`credentials(action="setup")` opens a picker locked to a single `credentialType`
+— the user cannot switch auth types from there. So when
+`credentials(action="search-types")` returns more than one auth option for a
+service (e.g. `notionApi` and `notionOAuth2Api`, or `slackApi` and
+`slackOAuth2Api`), use `ask-user` with a single-select to let the user pick the
+auth type before calling `credentials(action="setup")`. List OAuth2 first and
+present it as the recommended option. Exception: the user has clearly indicated
+an auth type (e.g. "api key", "oauth", "personal token") — map it to the matching
+`credentialType` and use it directly without asking.

@@ -33,15 +33,14 @@ describe('getSystemPrompt', () => {
 	});
 
 	describe('delegation routing', () => {
-		it('routes pre-build discovery through the workflow-context-scout delegate', () => {
+		it('routes specialists through the agent delegate tool', () => {
 			const prompt = getSystemPrompt({});
 
 			expect(prompt).toContain('## Delegation');
-			expect(prompt).toContain(
-				'Pre-build discovery delegates to `workflow-context-scout` via `agent`',
-			);
-			expect(prompt).toContain('Eval setup stays on `eval-setup-with-agent`');
-			expect(prompt).toContain('Workflow building, patching, and running always stays with you');
+			expect(prompt).toContain('`workflow-context-scout`');
+			expect(prompt).toContain('**Post-build knowledge-base reads**');
+			expect(prompt).toContain('subAgentId: "inline"');
+			expect(prompt).toContain('they never build, patch,\nverify, or run workflows');
 		});
 	});
 
@@ -149,18 +148,21 @@ describe('getSystemPrompt', () => {
 			const prompt = getSystemPrompt({});
 
 			expect(prompt).not.toMatch(/load_skill.*once/i);
-			expect(prompt).toContain('more than one skill');
+			expect(prompt).toContain('Load every skill the turn needs');
 		});
 
 		it('routes workflow builds through the workflow-builder skill', () => {
 			const prompt = getSystemPrompt({});
 
-			expect(prompt).toContain("Match the user's request against skill descriptions");
-			expect(prompt).toContain('**Single workflow build or edit**');
+			expect(prompt).toContain('## Skill routing');
+			expect(prompt).toContain('Match the request against skill descriptions');
+			expect(prompt).toContain('**Build or edit one workflow**');
+			expect(prompt).toContain('**Build pipeline**');
 			expect(prompt).toContain('`workflow-builder`');
 			expect(prompt).toContain('workspace file tools');
 			expect(prompt).toContain('`build-workflow`');
 			expect(prompt).toContain('**Multi-workflow or coordinated architecture**');
+			expect(prompt).toContain('**Pre-build discovery** (see Delegation)');
 			expect(prompt).toContain('`planning`');
 			expect(prompt).toContain('planningContext.source: "planning-skill"');
 			expect(prompt).toContain('multiple durable artifacts');
@@ -174,8 +176,9 @@ describe('getSystemPrompt', () => {
 			expect(prompt).toMatch(/Standalone data-table work/);
 			expect(prompt).toContain('`data-table-manager`');
 			expect(prompt).toContain('what data tables do I have?');
+			expect(prompt).toContain('Hard gates — never call:');
 			expect(prompt).toContain(
-				'never call `data-tables` or `parse-file` without loading `data-table-manager` first',
+				'`data-tables` or `parse-file` without loading `data-table-manager` first',
 			);
 			expect(prompt).toContain('Do not call `create-tasks`');
 		});
@@ -185,7 +188,7 @@ describe('getSystemPrompt', () => {
 
 			expect(prompt).toContain('workflows that create or write to Data Tables');
 			expect(prompt).toContain(
-				'`data-table-manager` when tables are involved, then `workflow-builder`',
+				'**Build pipeline** = `data-table-manager` (only when Data Tables are involved) → `workflow-builder`',
 			);
 		});
 
@@ -218,9 +221,11 @@ describe('getSystemPrompt', () => {
 		it('points post-build and follow-up work at dedicated skills', () => {
 			const prompt = getSystemPrompt({});
 
+			expect(prompt).toContain('Build rules:');
 			expect(prompt).toContain('`post-build-flow`');
 			expect(prompt).toContain('postBuildFlow.required: true');
 			expect(prompt).toContain('before verification, setup, error-workflow follow-up');
+			expect(prompt).toContain('**Execution debugging** route first');
 			expect(prompt).toContain('`planned-task-runtime`');
 			expect(prompt).toContain('`debugging-executions`');
 		});
@@ -248,7 +253,7 @@ describe('getSystemPrompt', () => {
 
 			expect(prompt).toContain('needsBrowserSetup=true');
 			expect(prompt).toContain('credential-setup-with-computer-use');
-			expect(prompt).toMatch(/use Computer Use `browser_\*` tools directly/);
+			expect(prompt).toMatch(/Computer Use `browser_\*` tools directly/);
 		});
 	});
 
