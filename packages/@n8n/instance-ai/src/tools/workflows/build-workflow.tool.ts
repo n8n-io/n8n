@@ -31,6 +31,7 @@ import { withDeterministicRouting } from './workflow-build-routing';
 import { trackWorkflowSourceBuild } from './workflow-build-telemetry';
 import {
 	getWorkflowSourceFileBinding,
+	hashWorkflowSource,
 	normalizeWorkflowSourceFilePath,
 	readWorkflowSourceFile,
 	saveWorkflowSourceFileBinding,
@@ -148,6 +149,84 @@ const setupRequirementOutputSchema = z.discriminatedUnion('status', [
 		guidance: z.string(),
 	}),
 ]);
+
+/**
+ * User-facing @n8n/workflow-sdk factories importable in builder source. Used
+ * to auto-recover "X is not defined" compile failures caused by a missing
+ * import — a deterministic fix that otherwise costs a full LLM repair
+ * round-trip with the entire context resent.
+ */
+const SDK_IMPORTABLE_SYMBOLS = new Set([
+	'workflow',
+	'node',
+	'trigger',
+	'sticky',
+	'placeholder',
+	'newCredential',
+	'ifElse',
+	'switchCase',
+	'merge',
+	'languageModel',
+	'memory',
+	'tool',
+	'outputParser',
+	'embedding',
+	'embeddings',
+	'vectorStore',
+	'retriever',
+	'documentLoader',
+	'textSplitter',
+	'fromAi',
+	'splitInBatches',
+	'nextBatch',
+	'expr',
+	'nodeJson',
+	'runOnceForAllItems',
+	'runOnceForEachItem',
+]);
+
+const SDK_IMPORT_REGEX = /import\s*\{([^}]*)\}\s*from\s*['"]@n8n\/workflow-sdk['"]/;
+
+/**
+ * When compile errors are missing-import ReferenceErrors for known SDK
+ * symbols, return the source with those symbols added to the SDK import.
+ * Returns undefined when no such recovery applies.
+ */
+export function autoImportMissingSdkSymbols(
+	source: string,
+	errors: string[],
+): { source: string; symbols: string[] } | undefined {
+	const missing = new Set<string>();
+	for (const error of errors) {
+		for (const match of error.matchAll(/\b([A-Za-z_$][\w$]*) is not defined\b/g)) {
+			if (SDK_IMPORTABLE_SYMBOLS.has(match[1])) missing.add(match[1]);
+		}
+	}
+	if (missing.size === 0) return undefined;
+
+	const symbols = Array.from(missing);
+	const existing = SDK_IMPORT_REGEX.exec(source);
+	if (existing) {
+		const names = new Set(
+			existing[1]
+				.split(',')
+				.map((name) => name.trim())
+				.filter(Boolean),
+		);
+		for (const symbol of symbols) names.add(symbol);
+		return {
+			source: source.replace(
+				SDK_IMPORT_REGEX,
+				`import {\n  ${Array.from(names).join(',\n  ')},\n} from '@n8n/workflow-sdk'`,
+			),
+			symbols,
+		};
+	}
+	return {
+		source: `import { ${symbols.join(', ')} } from '@n8n/workflow-sdk';\n\n${source}`,
+		symbols,
+	};
+}
 
 const POST_BUILD_FLOW_SKILL_ID = 'post-build-flow';
 
@@ -450,7 +529,44 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 
 			let informational: ValidationWarning[] = [];
 
-			const compiled = await compileWorkflowSource(context, filePath, sourceCode);
+			let compiled = await compileWorkflowSource(context, filePath, sourceCode);
+			if (
+				!compiled.success &&
+				compiled.reason === 'workflow_source_build_failed' &&
+				context.workspace
+			) {
+				// Missing-import ReferenceErrors have a deterministic fix — recover
+				// server-side instead of bouncing the error back for a full LLM repair
+				// round-trip. Persist the corrected source so later edits see it.
+				const recovery = autoImportMissingSdkSymbols(sourceCode, compiled.errors);
+				if (recovery) {
+					try {
+						await writeWorkspaceFile(context.workspace, filePath, recovery.source, {
+							logger: context.logger,
+							resourceLabel: 'Workflow source file',
+						});
+						const retried = await compileWorkflowSource(context, filePath, recovery.source);
+						if (retried.success) {
+							sourceCode = recovery.source;
+							sourceHash = hashWorkflowSource(recovery.source);
+							compiled = {
+								...retried,
+								warnings: [
+									...retried.warnings,
+									{
+										code: 'auto_imported_sdk_symbols',
+										message: `Auto-added missing @n8n/workflow-sdk import(s): ${recovery.symbols.join(', ')}. Include them in future source.`,
+									},
+								],
+							};
+						}
+					} catch (error) {
+						context.logger.debug('Auto-import recovery failed; returning original errors', {
+							error: error instanceof Error ? error.message : String(error),
+						});
+					}
+				}
+			}
 			if (!compiled.success) {
 				const errors = compiled.editable ? withEscalation(compiled.errors) : compiled.errors;
 				const remediation = createSourceCompileRemediation({
