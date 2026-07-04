@@ -143,10 +143,12 @@ build → publish → assign steps. Do not create one before the user opts in.
    `workflows(action="get-as-code", workflowId)`, apply your edit to the
    returned code, and pass the n8n `workflowId` only on the first
    `build-workflow` call.
-7. Produce complete TypeScript SDK code and pass it as `sourceCode` on the
-   `build-workflow` call (the tool writes `filePath` for you), or read and
-   selectively edit the existing `.workflow.ts` file with file tools for
-   follow-up changes. Do not put secrets in the source file.
+7. Produce complete TypeScript SDK code. For a new or fully rewritten source
+   file, do NOT write it with `workspace_write_file` — pass it directly as
+   `sourceCode` on the `build-workflow` call (the tool writes `filePath` and
+   builds in one step; a separate write call wastes a full round-trip). Use
+   file tools only to selectively edit an existing `.workflow.ts` for
+   follow-up changes and repairs. Do not put secrets in the source file.
    Before building, decide whether verification needs branch fixtures. When a
    live or nondeterministic upstream node (such as HTTP Request, search/list
    lookups, weather feeds, or AI classifiers) feeds IF/Switch logic and
