@@ -17,6 +17,7 @@ import {
 import { URLSearchParams } from 'url';
 import { parseString } from 'xml2js';
 
+import { deckFields } from './descriptions/Deck.descriptions';
 import { nextCloudApiRequest } from './GenericFunctions';
 import { wrapData } from '../../utils/utilities';
 
@@ -85,6 +86,10 @@ export class NextCloud implements INodeType {
 					{
 						name: 'Folder',
 						value: 'folder',
+					},
+					{
+						name: 'Deck',
+						value: 'deck',
 					},
 					{
 						name: 'User',
@@ -198,6 +203,11 @@ export class NextCloud implements INodeType {
 				],
 				default: 'create',
 			},
+
+			// Deck operations are extracted to descriptions/Deck.descriptions.ts
+			// to keep the main node file maintainable.
+
+			...deckFields,
 
 			{
 				displayName: 'Operation',
