@@ -305,6 +305,7 @@ export class FrontendService {
 			},
 			workflowTagsDisabled: this.globalConfig.tags.disabled,
 			workflowsAutosaveDisabled: this.globalConfig.workflows.autosaveDisabled,
+			useWorkflowPublicationService: this.globalConfig.workflows.useWorkflowPublicationService,
 			logLevel: this.globalConfig.logging.level,
 			hiringBannerEnabled: this.globalConfig.hiringBanner.enabled,
 			aiAssistant: {

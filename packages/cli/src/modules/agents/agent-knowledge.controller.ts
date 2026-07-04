@@ -70,12 +70,7 @@ export class AgentKnowledgeController {
 				throw new BadRequestError('No files uploaded');
 			}
 
-			const uploadedFiles = await this.agentKnowledgeService.uploadFiles(
-				agentId,
-				projectId,
-				files,
-				req.user.id,
-			);
+			const uploadedFiles = await this.agentKnowledgeService.uploadFiles(agentId, projectId, files);
 			this.runtimeCacheService.clearRuntimes(agentId);
 			return uploadedFiles;
 		} catch (error) {
@@ -90,14 +85,14 @@ export class AgentKnowledgeController {
 	@Delete('/:agentId/files/:fileId')
 	@ProjectScope('agent:update')
 	async deleteFile(
-		req: AuthenticatedRequest<{ projectId: string }>,
+		_req: AuthenticatedRequest<{ projectId: string }>,
 		_res: Response,
 		@Param('projectId') projectId: string,
 		@Param('agentId') agentId: string,
 		@Param('fileId') fileId: string,
 	) {
 		this.assertKnowledgeBaseEnabled();
-		await this.agentKnowledgeService.deleteFile(agentId, projectId, fileId, req.user.id);
+		await this.agentKnowledgeService.deleteFile(agentId, projectId, fileId);
 		this.runtimeCacheService.clearRuntimes(agentId);
 		return { success: true };
 	}

@@ -23,9 +23,20 @@ import { getRenderHint, isSafeObjectKey } from './instance-ai.schema';
 import type {
 	InstanceAiEvent,
 	InstanceAiAgentNode,
+	InstanceAiCancellationReason,
 	InstanceAiTimelineEntry,
 	InstanceAiToolCallState,
 } from './instance-ai.schema';
+
+/** Map the backend's run-finish reason string to a semantic cancellation cause. */
+function categorizeCancellation(
+	reason: string | undefined,
+): InstanceAiCancellationReason | undefined {
+	if (reason === 'timeout') return 'timeout';
+	if (reason === 'service_shutdown') return 'shutdown';
+	if (reason === 'user_cancelled') return 'user';
+	return undefined;
+}
 
 // ---------------------------------------------------------------------------
 // State types
@@ -349,6 +360,9 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			const root = state.agentsById[state.rootAgentId];
 			if (root) {
 				root.status = state.status;
+				if (state.status === 'cancelled') {
+					root.cancellationReason = categorizeCancellation(event.payload.reason);
+				}
 			}
 			// A terminated run can't have tool calls still in-flight.
 			// Clear isLoading so persisted snapshots don't show stale confirmations.

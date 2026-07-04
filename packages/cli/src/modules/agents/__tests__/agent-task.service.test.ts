@@ -1,7 +1,6 @@
 import type { Mock } from 'vitest';
 import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
-import type { ProjectRelationRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings, ScheduledTaskManager } from 'n8n-core';
 
@@ -135,7 +134,6 @@ describe('AgentTaskService', () => {
 	let taskSnapshotRepository: ReturnType<typeof mock<AgentTaskSnapshotRepository>>;
 	let taskRunLockRepository: ReturnType<typeof mock<AgentTaskRunLockRepository>>;
 	let agentRepository: ReturnType<typeof mock<AgentRepository>>;
-	let projectRelationRepository: ReturnType<typeof mock<ProjectRelationRepository>>;
 	let agentExecutionOrchestratorService: ReturnType<typeof mock<AgentExecutionOrchestratorService>>;
 	let agentTaskScheduler: ReturnType<typeof mock<ScheduledTaskManager>>;
 	let publisher: ReturnType<typeof mock<Publisher>>;
@@ -155,7 +153,6 @@ describe('AgentTaskService', () => {
 			taskSnapshotRepository,
 			taskRunLockRepository,
 			agentRepository,
-			projectRelationRepository,
 			agentExecutionOrchestratorService,
 			mock<InstanceSettings>({ isLeader }),
 			agentTaskScheduler,
@@ -188,7 +185,6 @@ describe('AgentTaskService', () => {
 				async (cb: (m: typeof txManager) => Promise<unknown>) => await cb(txManager),
 			),
 		};
-		projectRelationRepository = mock<ProjectRelationRepository>();
 		agentExecutionOrchestratorService = mock<AgentExecutionOrchestratorService>();
 		agentTaskScheduler = mock<ScheduledTaskManager>();
 		agentTaskScheduler.register.mockReturnValue(true);
@@ -441,7 +437,6 @@ describe('AgentTaskService', () => {
 			);
 			(taskSnapshotRepository.findEnabledByVersionId as Mock).mockResolvedValue([makeSnapshot()]);
 			(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(makeSnapshot());
-			(projectRelationRepository.findUserIdsByProjectId as Mock).mockResolvedValue(['user-1']);
 			taskRunLockRepository.acquire
 				.mockResolvedValueOnce(makeRunLock())
 				.mockResolvedValueOnce(null)
@@ -488,7 +483,6 @@ describe('AgentTaskService', () => {
 			);
 			(taskSnapshotRepository.findEnabledByVersionId as Mock).mockResolvedValue([makeSnapshot()]);
 			(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(makeSnapshot());
-			(projectRelationRepository.findUserIdsByProjectId as Mock).mockResolvedValue(['user-1']);
 			taskRunLockRepository.acquire
 				.mockResolvedValueOnce(makeRunLock({ holderId: 'old-leader' }))
 				.mockResolvedValueOnce(null);
@@ -597,7 +591,6 @@ describe('AgentTaskService', () => {
 		it('runs the published agent with the objective', async () => {
 			(agentRepository.findOne as Mock).mockResolvedValue(publishedAgentWithTask(true));
 			(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(makeSnapshot());
-			(projectRelationRepository.findUserIdsByProjectId as Mock).mockResolvedValue(['user-1']);
 			(agentExecutionOrchestratorService.executeForTaskPublished as Mock).mockReturnValue(
 				emptyStream(),
 			);
@@ -624,7 +617,6 @@ describe('AgentTaskService', () => {
 			(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(
 				makeSnapshot({ objective: 'Published objective' }),
 			);
-			(projectRelationRepository.findUserIdsByProjectId as Mock).mockResolvedValue(['user-1']);
 			(agentExecutionOrchestratorService.executeForTaskPublished as Mock).mockReturnValue(
 				emptyStream(),
 			);
@@ -646,17 +638,6 @@ describe('AgentTaskService', () => {
 			expect(agentExecutionOrchestratorService.executeForTaskPublished).not.toHaveBeenCalled();
 		});
 
-		it('skips when no project member is available', async () => {
-			(agentRepository.findOne as Mock).mockResolvedValue(publishedAgentWithTask(true));
-			(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(makeSnapshot());
-			(projectRelationRepository.findUserIdsByProjectId as Mock).mockResolvedValue([]);
-
-			await runTaskOf(service, AGENT_ID, 'task-1');
-
-			expect(agentExecutionOrchestratorService.executeForTaskPublished).not.toHaveBeenCalled();
-			expect(taskRepository.update).not.toHaveBeenCalled();
-		});
-
 		it('skips when the published task snapshot is not enabled', async () => {
 			(agentRepository.findOne as Mock).mockResolvedValue(publishedAgentWithTask(true));
 			(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(
@@ -671,7 +652,6 @@ describe('AgentTaskService', () => {
 		it('logs when execution throws', async () => {
 			(agentRepository.findOne as Mock).mockResolvedValue(publishedAgentWithTask(true));
 			(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(makeSnapshot());
-			(projectRelationRepository.findUserIdsByProjectId as Mock).mockResolvedValue(['user-1']);
 			(agentExecutionOrchestratorService.executeForTaskPublished as Mock).mockReturnValue(
 				throwingStream(),
 			);
@@ -688,7 +668,6 @@ describe('AgentTaskService', () => {
 		it('allows a later scheduled run after a failed execution completes', async () => {
 			(agentRepository.findOne as Mock).mockResolvedValue(publishedAgentWithTask(true));
 			(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(makeSnapshot());
-			(projectRelationRepository.findUserIdsByProjectId as Mock).mockResolvedValue(['user-1']);
 			(agentExecutionOrchestratorService.executeForTaskPublished as Mock)
 				.mockReturnValueOnce(throwingStream())
 				.mockReturnValueOnce(emptyStream());
@@ -712,7 +691,6 @@ describe('AgentTaskService', () => {
 				}
 				(agentRepository.findOne as Mock).mockResolvedValue(publishedAgentWithTask(true));
 				(taskSnapshotRepository.findByVersionAndTaskId as Mock).mockResolvedValue(makeSnapshot());
-				(projectRelationRepository.findUserIdsByProjectId as Mock).mockResolvedValue(['user-1']);
 				(agentExecutionOrchestratorService.executeForTaskPublished as Mock).mockReturnValue(
 					blockingStream(),
 				);

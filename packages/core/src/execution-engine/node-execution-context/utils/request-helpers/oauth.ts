@@ -48,11 +48,15 @@ function createOAuth2Client(credentials: OAuth2CredentialData): ClientOAuth2 {
 		?.split(' ')
 		.map((s) => s.trim())
 		.filter(Boolean);
+	const resource =
+		credentials.oauthTokenData?.resource ?? credentials.resource ?? credentials.resourceUrl;
+
 	return new ClientOAuth2({
 		clientId: credentials.clientId,
 		...resolveClientAuthOptions(credentials),
 		accessTokenUri: credentials.accessTokenUrl,
 		scopes: scopes?.length ? scopes : undefined,
+		...(resource ? { resource } : {}),
 		ignoreSSLIssues: credentials.ignoreSSLIssues,
 		authentication: credentials.authentication ?? 'header',
 		...(credentials.additionalBodyProperties && {

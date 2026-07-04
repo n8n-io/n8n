@@ -120,9 +120,9 @@ export class ScheduledJob extends WithTimestamps {
 
 	/**
 	 * Next time an occurrence is due to be materialized.
-	 * The scheduler's sweep reads this to find work.
+	 * The scheduler's materializer reads this to find work.
 	 * It's set to `null` once the job is disabled or a one-off has fired,
-	 * which drops the row out of the sweep index.
+	 * which drops the row out of the materializer's index.
 	 */
 	@DateTimeColumn({ nullable: true })
 	nextRunAt: Date | null;

@@ -8,6 +8,7 @@ import type {
 } from './run-output-sink';
 import { mergeUsage } from './runtime-helpers';
 import type { ExecutionOptions, TokenUsage } from '../../types/sdk/agent';
+import type { AgentMessage } from '../../types/sdk/message';
 import { loadAi } from '../model/lazy-ai';
 import { fromAiFinishReason, fromAiMessages } from '../model/messages';
 import { createRawUsageReader, type RawUsageReader } from '../model/raw-usage';
@@ -28,6 +29,9 @@ export class StreamSink implements RunOutputSink<void> {
 	// provider-specific translation lives behind `RawUsageReader`; undefined when
 	// the run's provider has no reader.
 	private rawUsageReader: RawUsageReader | undefined;
+	// Text streamed for the in-flight turn, retained so a stop landing mid-response
+	// can still persist what the user already saw. Cleared once the turn is folded.
+	private partialText = '';
 
 	constructor(
 		private readonly guard: StreamWriterGuard,
@@ -40,6 +44,15 @@ export class StreamSink implements RunOutputSink<void> {
 		// The just-completed turn is now folded into `usage`; its raw capture is
 		// stale and must not be re-added to a later between-turns abort total.
 		this.rawUsageReader = undefined;
+	}
+
+	/**
+	 * The just-returned turn's messages are now in the list, so the retained streamed
+	 * text is redundant — drop it. Deferred until here (not `reportUsage`) so a stop
+	 * landing after the model completes but before the fold still recovers the turn.
+	 */
+	onTurnFolded(): void {
+		this.partialText = '';
 	}
 
 	/**
@@ -58,6 +71,18 @@ export class StreamSink implements RunOutputSink<void> {
 			mergeUsage(this.lastUsage, this.rawUsageReader?.getUsage()),
 		);
 		return { ...(usage && { usage }), model: this.services.modelId };
+	}
+
+	/**
+	 * Partial assistant output streamed before a stop landed mid-response, so the text
+	 * the user already saw is persisted (and rendered on reload) rather than lost — the
+	 * turn's `newMessages` are only built once the stream completes, which an abort skips.
+	 * Text only: an unfinished tool call has no result and would render as stuck-loading
+	 * or be stripped on load. Undefined between turns / when nothing streamed yet.
+	 */
+	getAbortSnapshot(): AgentMessage | undefined {
+		if (!this.partialText) return undefined;
+		return { role: 'assistant', content: [{ type: 'text', text: this.partialText }] };
 	}
 
 	private buildSmoothStreamTransformOptions(): {
@@ -105,6 +130,10 @@ export class StreamSink implements RunOutputSink<void> {
 			// own consolidated `finish` after the loop completes. `start-step` /
 			// `finish-step` are passed through as LLM-iteration boundaries.
 			if (chunk.type === 'finish') continue;
+
+			// Accumulate streamed text so an abort mid-response can persist it (the
+			// turn's `newMessages` are only built below, which the abort never reaches).
+			if (chunk.type === 'text-delta') this.partialText += chunk.text ?? '';
 
 			// Provider-executed tools (e.g. native web search) skip the local
 			// execution loop that emits tool-execution lifecycle events via the
