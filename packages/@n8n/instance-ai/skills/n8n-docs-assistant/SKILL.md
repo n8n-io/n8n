@@ -18,17 +18,18 @@ understand n8n behavior and the answer should come from current n8n docs.
 
 ## Default Procedure
 
-1. Call `n8n-docs(action="lookup")` first for credential setup and direct n8n
-   docs questions. Use `search` then `read` only when you need tighter control
-   over candidate pages.
-2. For credential setup, pass `intent: "credential-setup"` and all available
+1. If `n8n-docs` is not in your current tools, call `load_tool` for it (or
+   `search_tools` with "n8n docs" first). `credentials` and `nodes` are always
+   available when listed in this skill's recommended tools.
+2. Call `n8n-docs(action="lookup")` for credential setup and direct n8n docs
+   questions. Use `search` then `read` only when you need tighter control over
+   candidate pages.
+3. For credential setup, pass `intent: "credential-setup"` and all available
    context fields: `credentialType`, `credentialDisplayName`,
    `documentationUrl`, `oauthRedirectUrl`, and `nodeType`.
-3. Read the returned document snippets before answering. If multiple pages were
+4. Read the returned document snippets before answering. If multiple pages were
    returned, prefer credential-specific pages over general credential UI pages.
-4. End the final answer with `Source: [Page title](page URL)` when one docs
-   page was used, or `Sources:` when multiple docs pages were used. Use only
-   pages returned by `n8n-docs`.
+5. End the final answer with `Source: [Page title](page URL)` when one docs page was used, or `Sources:` when multiple docs pages were used. Use only pages returned by `n8n-docs`.
 
 ## Credential Setup
 

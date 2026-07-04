@@ -121,6 +121,23 @@ describe('resolveSubAgentTools', () => {
 		expect(toolNames).toContain('nodes');
 	});
 
+	it('blocks type-definition on the workflow-context-scout nodes tool', async () => {
+		const context = createMockContext({ nodes: createStubTool('nodes') });
+		const definition = getSubAgentDefinition('workflow-context-scout');
+		if (!definition) throw new Error('missing definition');
+
+		const { tools } = resolveSubAgentTools(definition, context);
+		const wrapped = tools.get(DOMAIN_TOOL_IDS.NODES);
+		if (!wrapped) throw new Error('nodes tool missing');
+
+		const output = await executeTool<{ error: string }>(wrapped, {
+			action: 'type-definition',
+			nodeTypes: ['n8n-nodes-base.gmail'],
+		});
+		expect(output.error).toContain('Action "type-definition" is not permitted');
+		expect(output.error).toContain('search, suggested');
+	});
+
 	it('skips tools that are not present in the orchestration context', () => {
 		const context = createMockContext({});
 		const definition = getSubAgentDefinition('workflow-context-scout');

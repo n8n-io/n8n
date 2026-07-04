@@ -106,53 +106,6 @@ describe('runInstanceAiSubAgent', () => {
 		});
 	});
 
-	it('appends host-captured type definitions after a workflow-context-scout debrief', async () => {
-		const nodesHandler = vi.fn((input: unknown) => {
-			if (
-				typeof input === 'object' &&
-				input !== null &&
-				'action' in input &&
-				input.action === 'type-definition' &&
-				'nodeTypes' in input &&
-				Array.isArray(input.nodeTypes)
-			) {
-				return {
-					definitions: input.nodeTypes.map((nodeType: unknown) => ({
-						nodeType,
-						version: 1,
-						content: `content-for-${String(nodeType)}`,
-					})),
-				};
-			}
-			return {};
-		});
-
-		runSyncSubAgentMock.mockImplementation(async (_context, input) => {
-			const nodesTool = input.validTools.get('nodes');
-			await nodesTool?.handler?.(
-				{ action: 'type-definition', nodeTypes: ['n8n-nodes-base.gmail'] },
-				{} as never,
-			);
-			return { result: 'Nodes: gmail\nCredentials: gmail exists' };
-		});
-
-		const context = createMockContext({
-			nodes: { handler: nodesHandler },
-			credentials: {},
-			research: {},
-		});
-
-		const output = await runInstanceAiSubAgent(
-			baseRequest({ subAgentId: 'workflow-context-scout' }),
-			context,
-		);
-
-		expect(output.answer).toContain('Nodes: gmail');
-		expect(output.answer).toContain('## Type definitions');
-		expect(output.answer).toContain('### n8n-nodes-base.gmail (v1)');
-		expect(output.answer).toContain('content-for-n8n-nodes-base.gmail');
-	});
-
 	it('rejects general-purpose as a direct subAgentId (only reachable via "inline")', async () => {
 		const context = createMockContext({});
 

@@ -119,15 +119,15 @@ When mapping downstream fields from an OpenAI node, read
 ## Pre-build discovery
 
 Before writing code, the orchestrator may have already run pre-build discovery —
-an \`agent\` delegation to \`workflow-context-scout\` (nodes, credentials, knowledge base, and type
-definitions). The discovery debrief gives node IDs with discriminators, credential
-availability, and knowledge-base technique bullets as brief bullets, plus the
-relevant node **type definitions verbatim** (selected, not summarized).
+an \`agent\` delegation to \`workflow-context-scout\` (nodes, credentials, and knowledge base).
+The discovery debrief gives node IDs with discriminators, credential availability, and
+knowledge-base technique bullets as brief bullets.
 
-When a debrief is in context, use it as authoritative discovery output — the
-verbatim type definitions are the real schema, so build from them directly and do
-not repeat the same `nodes` or `credentials` reads unless the debrief is missing a
-fact you still need.
+When a debrief is in context, use it as authoritative discovery output for node and
+credential choices. Fetch \`nodes(action="type-definition")\` for every recommended node
+(from the debrief) before configuring nodes — the scout does not load type definitions.
+Do not repeat the same \`nodes(action="search")\` or \`credentials\` reads unless the debrief
+is missing a fact you still need.
 
 When no discovery debrief exists, run steps 1–5 of Mandatory Process inline in
 this turn — but only for simple single-service builds or edits that reuse an

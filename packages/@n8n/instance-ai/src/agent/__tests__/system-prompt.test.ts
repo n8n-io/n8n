@@ -230,8 +230,9 @@ describe('getSystemPrompt', () => {
 
 			expect(prompt).toContain('**n8n docs/product guidance**');
 			expect(prompt).toContain('credential setup');
-			expect(prompt).toContain('`n8n-docs-assistant`');
-			expect(prompt).toContain('`n8n-docs`');
+			expect(prompt).toContain(
+				'`n8n-docs-assistant`, then `load_tool` for `n8n-docs` if needed, then `n8n-docs`',
+			);
 		});
 
 		it('keeps replan stall prevention in the core follow-up triggers', () => {

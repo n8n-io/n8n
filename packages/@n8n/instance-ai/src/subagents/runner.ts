@@ -4,7 +4,6 @@ import {
 	type DelegateSubAgentToolOutput,
 } from '@n8n/agents';
 
-import { WORKFLOW_CONTEXT_SCOUT_ID } from './definitions/workflow-context-scout';
 import {
 	buildSubAgentInstructions,
 	getGeneralPurposeSubAgentDefinition,
@@ -14,11 +13,6 @@ import {
 	resolveSubAgentTools,
 } from './registry';
 import type { InstanceAiSubAgentDefinition } from './types';
-import {
-	appendCapturedTypeDefinitions,
-	createTypeDefinitionCapture,
-	wrapNodesToolForTypeDefinitionCapture,
-} from './workflow-context-scout-capture';
 import { runSyncSubAgent, type SyncSubAgentOutput } from '../tools/orchestration/sync-sub-agent';
 import type { InstanceAiToolRegistry, OrchestrationContext } from '../types';
 
@@ -28,9 +22,7 @@ export interface RunSubAgentDefinitionInput {
 	artifacts?: unknown;
 	/**
 	 * Optional post-resolution tool transform, applied after action-scoping
-	 * and HITL filtering. Lets a caller wrap a specific tool (e.g. to capture
-	 * verbatim tool output for host-side re-assembly) without every sub-agent
-	 * run paying for it. Does not affect `toolNames`.
+	 * and HITL filtering. Does not affect `toolNames`.
 	 */
 	transformTools?: (tools: InstanceAiToolRegistry) => InstanceAiToolRegistry;
 }
@@ -109,32 +101,19 @@ export async function runInstanceAiSubAgent(
 		};
 	}
 
-	const capturedTypeDefinitions =
-		definition.id === WORKFLOW_CONTEXT_SCOUT_ID ? createTypeDefinitionCapture() : undefined;
-
 	const output = await runSubAgentDefinition(
 		definition,
 		{
 			briefing: buildDelegateBriefing(request),
 			conversationContext: request.context,
-			...(capturedTypeDefinitions
-				? {
-						transformTools: (tools) =>
-							wrapNodesToolForTypeDefinitionCapture(tools, capturedTypeDefinitions),
-					}
-				: {}),
 		},
 		context,
 	);
 
-	const answer = capturedTypeDefinitions
-		? appendCapturedTypeDefinitions(output.result, capturedTypeDefinitions)
-		: output.result;
-
 	return {
 		status: 'completed',
 		taskPath: request.taskPath,
-		answer,
+		answer: output.result,
 		...(output.usage ? { usage: output.usage } : {}),
 	};
 }
