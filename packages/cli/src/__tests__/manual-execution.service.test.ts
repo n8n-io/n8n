@@ -284,6 +284,42 @@ describe('ManualExecutionService', () => {
 			});
 		});
 
+		it('should call workflowExecute.run for full execution when runData is null', async () => {
+			const data = mock<IWorkflowExecutionDataProcess>({
+				executionMode: 'manual',
+				destinationNode: undefined,
+				pinData: undefined,
+				runData: null as unknown as any,
+			}) as unknown as IWorkflowExecutionDataProcess;
+
+			const workflow = mock<Workflow>({
+				getNode: vi.fn().mockReturnValue(null),
+				getTriggerNodes: vi.fn().mockReturnValue([]),
+			});
+
+			const additionalData = mock<IWorkflowExecuteAdditionalData>();
+			const executionId = 'test-execution-id-null-run-data';
+
+			const mockRun = vi.fn().mockReturnValue('mockRunReturn');
+			vi.mocked(WorkflowExecute).mockImplementationOnce(function () {
+				return {
+					run: mockRun,
+					processRunExecutionData: vi.fn(),
+				};
+			});
+
+			await manualExecutionService.runManually(data, workflow, additionalData, executionId);
+
+			expect(mockRun).toHaveBeenCalledWith({
+				workflow,
+				startNode: undefined,
+				destinationNode: undefined,
+				pinData: undefined,
+				triggerToStartFrom: data.triggerToStartFrom,
+				additionalRunFilterNodes: [],
+			});
+		});
+
 		it('should use execution start node when available for full execution', async () => {
 			const data = mock<IWorkflowExecutionDataProcess>({
 				executionMode: 'manual',
