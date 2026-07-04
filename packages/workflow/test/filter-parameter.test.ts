@@ -104,6 +104,42 @@ describe('FilterParameter', () => {
 				);
 				expect(result).toBe(false);
 			});
+
+			it('should evaluate regex case insensitive (=default)', () => {
+				const result = executeFilter(
+					filterFactory({
+						combinator: 'and',
+						conditions: [
+							{
+								id: '1',
+								leftValue: 'lowercase',
+								rightValue: '[A-Z]',
+								operator: { operation: 'regex', type: 'string' },
+							},
+						],
+						options: { caseSensitive: false },
+					}),
+				);
+				expect(result).toBe(true);
+			});
+
+			it('should evaluate regex case sensitive', () => {
+				const result = executeFilter(
+					filterFactory({
+						combinator: 'and',
+						conditions: [
+							{
+								id: '1',
+								leftValue: 'lowercase',
+								rightValue: '[A-Z]',
+								operator: { operation: 'regex', type: 'string' },
+							},
+						],
+						options: { caseSensitive: true },
+					}),
+				);
+				expect(result).toBe(false);
+			});
 		});
 
 		describe('options.typeValidation', () => {
@@ -534,7 +570,7 @@ describe('FilterParameter', () => {
 					{ left: 'first string', right: '.*', expected: true },
 					{ left: 'any string', right: '[0-9]', expected: false },
 					{ left: 'any string', right: '[a-z]', expected: true },
-					{ left: 'lowercase', right: '[A-Z]', expected: false },
+					{ left: 'lowercase', right: '[A-Z]', expected: true },
 					{ left: 'foo', right: '/^fo{2}$/g', expected: true },
 					{ left: 'foo', right: 'foo|bar', expected: true },
 					{ left: 'bar', right: 'foo|bar', expected: true },
@@ -562,7 +598,7 @@ describe('FilterParameter', () => {
 					{ left: 'first string', right: '.*', expected: false },
 					{ left: 'any string', right: '[0-9]', expected: true },
 					{ left: 'any string', right: '[a-z]', expected: false },
-					{ left: 'lowercase', right: '[A-Z]', expected: true },
+					{ left: 'lowercase', right: '[A-Z]', expected: false },
 					{ left: 'foo', right: '/^fo{2}$/g', expected: false },
 					{ left: 'foo', right: 'foo|bar', expected: false },
 					{ left: 'baz', right: 'foo|bar', expected: true },

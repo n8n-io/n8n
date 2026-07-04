@@ -193,14 +193,19 @@ function parseFilterConditionValues(
 	};
 }
 
-function parseRegexPattern(pattern: string): RegExp {
+function parseRegexPattern(pattern: string, ignoreCase?: boolean): RegExp {
 	const regexMatch = (pattern || '').match(new RegExp('^/(.*?)/([gimusy]*)$'));
 	let regex: RegExp;
 
 	if (!regexMatch) {
-		regex = new RegExp((pattern || '').toString());
+		const flags = ignoreCase ? 'i' : '';
+		regex = new RegExp((pattern || '').toString(), flags);
 	} else {
-		regex = new RegExp(regexMatch[1], regexMatch[2]);
+		let flags = regexMatch[2];
+		if (ignoreCase && !flags.includes('i')) {
+			flags += 'i';
+		}
+		regex = new RegExp(regexMatch[1], flags);
 	}
 
 	return regex;
@@ -244,7 +249,10 @@ export function executeFilterCondition(
 	switch (operator.type) {
 		case 'string': {
 			if (ignoreCase) {
-				if (typeof leftValue === 'string') {
+				if (
+					typeof leftValue === 'string' &&
+					!(condition.operator.operation === 'regex' || condition.operator.operation === 'notRegex')
+				) {
 					leftValue = leftValue.toLocaleLowerCase();
 				}
 
@@ -281,9 +289,9 @@ export function executeFilterCondition(
 				case 'notEndsWith':
 					return !left.endsWith(right);
 				case 'regex':
-					return parseRegexPattern(right).test(left);
+					return parseRegexPattern(right, ignoreCase).test(left);
 				case 'notRegex':
-					return !parseRegexPattern(right).test(left);
+					return !parseRegexPattern(right, ignoreCase).test(left);
 			}
 
 			break;
