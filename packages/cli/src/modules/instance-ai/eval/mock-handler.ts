@@ -88,7 +88,11 @@ const ERROR_DETAIL_MAX = 300;
  * mock_issue.
  */
 const LLM_CALL_TIMEOUT_MS = 120_000;
-const LLM_CALL_RETRY_TIMEOUT_MS = 180_000;
+// 5 min: the response body streams as a submit_response tool-call argument,
+// so a scenario-mandated large dataset (e.g. a 32-row Binance klines array)
+// legitimately needs several minutes under CI provider contention — observed
+// timing out at 180s (3/10 attempts) in run 28699672651.
+const LLM_CALL_RETRY_TIMEOUT_MS = 300_000;
 
 interface MockHandlerOptions {
 	/** Steers the LLM toward specific behavior (errors, edge cases). */
