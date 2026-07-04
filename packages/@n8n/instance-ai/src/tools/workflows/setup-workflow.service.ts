@@ -5,13 +5,21 @@
  * Separated from the tool definition so the tool stays a thin suspend/resume
  * state machine, and this logic is testable independently.
  */
-import { findPlaceholderDetails } from '@n8n/utils';
+import { findPlaceholderDetails } from '@n8n/utils/placeholder';
 import type { IDataObject, NodeJSON, DisplayOptions, WorkflowJSON } from '@n8n/workflow-sdk';
 import { matchesDisplayOptions } from '@n8n/workflow-sdk';
 import type { IConnections, INode } from 'n8n-workflow';
 import { getParentNodes, mapConnectionsByDestination } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
+import {
+	assignCredentialToNode,
+	isAiGatewayManagedCredential,
+	resolveCredentialForApply,
+	toSetupNodeCredential,
+	type SetupNodeCredential,
+} from './credential-utils';
+import { coerceWrongKindListModeParams } from './detect-wrong-kind-locator';
 import type { SetupRequest } from './setup-workflow.schema';
 import type { InstanceAiContext } from '../../types';
 
@@ -313,12 +321,17 @@ async function resolveCredentialState(
 	const existingCredentials = sortedCreds.map((c) => ({ id: c.id, name: c.name }));
 
 	const existingOnNode = node.credentials?.[credentialType];
+	const existingCredentialId =
+		typeof existingOnNode?.id === 'string' && existingOnNode.id ? existingOnNode.id : undefined;
+	const hasExistingOnNode =
+		existingCredentialId !== undefined || isAiGatewayManagedCredential(existingOnNode);
 	// Only auto-apply when there is exactly one candidate. With multiple
 	// candidates, picking the first is a silent guess — surface the list
 	// so the setup wizard can prompt the user to choose.
-	const isAutoApplied = !existingOnNode?.id && existingCredentials.length === 1;
+	const isAutoApplied = !hasExistingOnNode && existingCredentials.length === 1;
 
-	const credToTest = existingOnNode?.id ?? (isAutoApplied ? existingCredentials[0]?.id : undefined);
+	const credToTest =
+		existingCredentialId ?? (isAutoApplied ? existingCredentials[0]?.id : undefined);
 	if (!credToTest) return { existingCredentials, isAutoApplied };
 
 	let testabilityPromise = cache?.testability.get(credentialType);
@@ -347,7 +360,7 @@ type RequestNodeCredentials = NonNullable<SetupRequest['node']['credentials']>;
 
 /** Build the optional `credentials` slice of a setup request's node, merging an auto-applied credential. */
 function buildRequestCredentials(
-	nodeCredentials: Record<string, { id: string; name?: string }> | undefined,
+	nodeCredentials: Record<string, SetupNodeCredential> | undefined,
 	isAutoApplied: boolean,
 	credentialType: string | undefined,
 	existingCredentials: Array<{ id: string; name: string }>,
@@ -381,7 +394,7 @@ async function resolveAppliedCredentialState(
 	credentialType: string | undefined,
 	cache: CredentialCache | undefined,
 	workflowId: string | undefined,
-	nodeCredentials: Record<string, { id: string; name?: string }> | undefined,
+	nodeCredentials: Record<string, SetupNodeCredential> | undefined,
 ): Promise<CredentialState> {
 	if (!credentialType) {
 		return { existingCredentials: [], isAutoApplied: false };
@@ -426,8 +439,10 @@ async function buildRequestForCredentialType(
 	const nodeCredentials = node.credentials
 		? Object.fromEntries(
 				Object.entries(node.credentials)
-					.filter(([, v]) => v.id !== undefined)
-					.map(([k, v]) => [k, { id: v.id!, name: v.name }]),
+					.map(([key, value]) => [key, toSetupNodeCredential(value)] as const)
+					.filter(
+						(entry): entry is readonly [string, SetupNodeCredential] => entry[1] !== undefined,
+					),
 			)
 		: undefined;
 
@@ -453,7 +468,7 @@ async function buildRequestForCredentialType(
 	if (credentialType) {
 		const existingOnNode = node.credentials?.[credentialType];
 		const hasValidCredential =
-			existingOnNode?.id !== undefined &&
+			(typeof existingOnNode?.id === 'string' || isAiGatewayManagedCredential(existingOnNode)) &&
 			(credentialTestResult === undefined || credentialTestResult.success);
 		needsAction = !hasValidCredential;
 	}
@@ -733,25 +748,14 @@ export async function applyNodeCredentials(
 
 		let nodeSucceeded = true;
 		for (const [credType, credId] of Object.entries(credsMap)) {
-			try {
-				const cred = await context.credentialService.get(credId);
-				if (cred) {
-					node.credentials = {
-						...node.credentials,
-						[credType]: { id: cred.id, name: cred.name },
-					};
-				} else {
-					nodeSucceeded = false;
-					result.failed.push({
-						nodeName: node.name,
-						error: `Credential ${credId} (type: ${credType}) not found — it may have been deleted`,
-					});
-				}
-			} catch (error) {
+			const resolved = await resolveCredentialForApply(credType, credId, context);
+			if (resolved.resolved) {
+				assignCredentialToNode(node, credType, resolved.credential);
+			} else {
 				nodeSucceeded = false;
 				result.failed.push({
 					nodeName: node.name,
-					error: `Failed to resolve credential ${credId} (type: ${credType}): ${error instanceof Error ? error.message : 'Unknown error'}`,
+					error: resolved.error,
 				});
 			}
 		}
@@ -826,25 +830,14 @@ async function applyCredentialsToNode(
 ): Promise<boolean> {
 	let nodeSucceeded = true;
 	for (const [credType, credId] of Object.entries(credsMap)) {
-		try {
-			const cred = await context.credentialService.get(credId);
-			if (cred) {
-				node.credentials = {
-					...node.credentials,
-					[credType]: { id: cred.id, name: cred.name },
-				};
-			} else {
-				nodeSucceeded = false;
-				result.failed.push({
-					nodeName,
-					error: `Credential ${credId} (type: ${credType}) not found — it may have been deleted`,
-				});
-			}
-		} catch (error) {
+		const resolved = await resolveCredentialForApply(credType, credId, context);
+		if (resolved.resolved) {
+			assignCredentialToNode(node, credType, resolved.credential);
+		} else {
 			nodeSucceeded = false;
 			result.failed.push({
 				nodeName,
-				error: `Failed to resolve credential ${credId} (type: ${credType}): ${error instanceof Error ? error.message : 'Unknown error'}`,
+				error: resolved.error,
 			});
 		}
 	}
@@ -898,8 +891,13 @@ export async function applyNodeChanges(
 		}
 
 		const params = nodeParameters?.[nodeName];
-		if (params && applyParametersToNode(node, nodeName, params, result)) {
-			appliedNodes.add(nodeName);
+		if (params) {
+			// A display name typed into a list-mode resource locator can never
+			// resolve (list values are opaque picker IDs) — store it as name mode.
+			coerceWrongKindListModeParams(context.nodeTypesProvider, node, params);
+			if (applyParametersToNode(node, nodeName, params, result)) {
+				appliedNodes.add(nodeName);
+			}
 		}
 
 		// Drop credential entries that are no longer valid for the node's current

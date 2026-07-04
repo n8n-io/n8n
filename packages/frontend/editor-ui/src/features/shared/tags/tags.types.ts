@@ -8,4 +8,5 @@ export interface ITagRow {
 	update?: boolean;
 	delete?: boolean;
 	canDelete?: boolean;
+	canUpdate?: boolean;
 }

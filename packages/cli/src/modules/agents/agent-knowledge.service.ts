@@ -7,7 +7,7 @@ import { N8nPdfLoader } from '@n8n/ai-utilities';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { QueryFailedError } from '@n8n/typeorm';
-import { generateNanoId } from '@n8n/utils';
+import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { unlink } from 'node:fs/promises';
 import path from 'node:path';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -59,7 +59,6 @@ export class AgentKnowledgeService {
 		agentId: string,
 		projectId: string,
 		files: Express.Multer.File[],
-		userId: string,
 	): Promise<AgentFileDto[]> {
 		try {
 			await this.ensureAgentBelongsToProject(agentId, projectId);
@@ -70,7 +69,6 @@ export class AgentKnowledgeService {
 			await this.agentKnowledgeSandboxService.withKnowledgeFilesystem(
 				projectId,
 				agentId,
-				userId,
 				async (filesystem) => {
 					const volumeUploads: AgentKnowledgeFileUpload[] = [];
 					try {
@@ -102,17 +100,12 @@ export class AgentKnowledgeService {
 		return files.map((file) => toAgentFileDto(file));
 	}
 
-	async warmSandbox(agentId: string, projectId: string, userId: string): Promise<void> {
+	async warmSandbox(agentId: string, projectId: string): Promise<void> {
 		await this.ensureAgentBelongsToProject(agentId, projectId);
-		await this.agentKnowledgeSandboxService.warmSandbox(projectId, agentId, userId);
+		await this.agentKnowledgeSandboxService.warmSandbox(projectId, agentId);
 	}
 
-	async deleteFile(
-		agentId: string,
-		projectId: string,
-		fileId: string,
-		userId: string,
-	): Promise<void> {
+	async deleteFile(agentId: string, projectId: string, fileId: string): Promise<void> {
 		await this.ensureAgentBelongsToProject(agentId, projectId);
 
 		const file = await this.agentFileRepository.findByIdAndAgentId(fileId, agentId);
@@ -121,12 +114,12 @@ export class AgentKnowledgeService {
 		}
 
 		await this.agentFileRepository.delete({ id: fileId, agentId });
-		this.deleteVolumeFileInBackground(projectId, agentId, userId, file);
+		this.deleteVolumeFileInBackground(projectId, agentId, file);
 	}
 
-	async deleteAllFilesForAgent(projectId: string, agentId: string, userId: string): Promise<void> {
+	async deleteAllFilesForAgent(projectId: string, agentId: string): Promise<void> {
 		await this.agentFileRepository.delete({ agentId });
-		this.deleteKnowledgeDirectoryInBackground(projectId, agentId, userId);
+		this.deleteKnowledgeDirectoryInBackground(projectId, agentId);
 	}
 
 	private async reserveAgentFile(
@@ -216,14 +209,9 @@ export class AgentKnowledgeService {
 		}
 	}
 
-	private deleteVolumeFileInBackground(
-		projectId: string,
-		agentId: string,
-		userId: string,
-		file: AgentFile,
-	): void {
+	private deleteVolumeFileInBackground(projectId: string, agentId: string, file: AgentFile): void {
 		void this.agentKnowledgeSandboxService
-			.withKnowledgeFilesystem(projectId, agentId, userId, async (filesystem) => {
+			.withKnowledgeFilesystem(projectId, agentId, async (filesystem) => {
 				await this.deleteVolumeFile(filesystem, file);
 			})
 			.catch((error) => {
@@ -235,13 +223,9 @@ export class AgentKnowledgeService {
 			});
 	}
 
-	private deleteKnowledgeDirectoryInBackground(
-		projectId: string,
-		agentId: string,
-		userId: string,
-	): void {
+	private deleteKnowledgeDirectoryInBackground(projectId: string, agentId: string): void {
 		void this.agentKnowledgeSandboxService
-			.withKnowledgeFilesystem(projectId, agentId, userId, async (filesystem) => {
+			.withKnowledgeFilesystem(projectId, agentId, async (filesystem) => {
 				await this.deleteKnowledgeDirectory(filesystem);
 			})
 			.catch((error) => {

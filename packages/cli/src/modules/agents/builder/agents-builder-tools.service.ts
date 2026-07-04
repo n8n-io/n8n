@@ -9,9 +9,12 @@ import {
 	agentSkillSchema,
 	agentTaskSchema,
 	formatZodErrors,
+	PROVIDER_CAPABILITIES,
+	resolvePromptCaching,
 	RunnableAgentJsonConfigSchema,
 	sanitizeAgentJsonConfig,
 	tryParseConfigJson,
+	type AgentSkill,
 	type AgentJsonConfig,
 	type ConfigValidationError,
 } from '@n8n/api-types';
@@ -20,7 +23,7 @@ import { SsrfProtectionConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 import type { Operation } from 'fast-json-patch';
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
@@ -61,6 +64,7 @@ import { SKILL_BODY_GUIDANCE, SKILL_DESCRIPTION_RULE } from './skill-body-templa
 import { TASK_OBJECTIVE_GUIDANCE } from './task-objective-template';
 import { buildVerifyMcpServerTool } from './verify-mcp-server.tool';
 import { composeJsonConfig } from '../json-config/agent-config-composition';
+import { getProviderPrefix } from '../json-config/model-id';
 import {
 	getNativeWebSearchProviderTools,
 	hasNativeWebSearchProvider,
@@ -79,6 +83,24 @@ const STALE_CONFIG_ERROR: ConfigValidationError = {
 	message:
 		'Agent config changed since you last read it. Call read_config and retry with the returned configHash.',
 };
+
+const createSkillInputSchema = z
+	.object({
+		name: agentSkillSchema.shape.name.describe('Human-readable skill name'),
+		description: agentSkillSchema.shape.description.describe(SKILL_DESCRIPTION_RULE),
+		instructions: agentSkillSchema.shape.instructions.describe(SKILL_BODY_GUIDANCE),
+		allowedTools: agentSkillSchema.shape.allowedTools
+			.optional()
+			.describe('Exact target-agent tool names this skill is allowed to use.'),
+		references: agentSkillSchema.shape.references
+			.optional()
+			.describe(
+				'Markdown-only supporting files under references/... paths. References are not automatically loaded; instructions must say exactly when to load each reference by path.',
+			),
+	})
+	.strict();
+
+type CreateSkillInput = z.infer<typeof createSkillInputSchema>;
 
 export interface AgentConfigSnapshot {
 	config: AgentJsonConfig | null;
@@ -238,6 +260,38 @@ function applyNativeWebSearchBuilderDefaults(config: AgentJsonConfig): AgentJson
 			webSearch: { enabled: true },
 		},
 		providerTools,
+	};
+}
+
+/**
+ * Prompt caching is mandatory for OpenAI/Anthropic: this write-path
+ * normalizer guarantees `config.promptCaching` is force-enabled for those
+ * providers (the user cannot disable it, even if the LLM wrote
+ * `{ enabled: false }`), preserves an explicit Anthropic TTL, and strips the
+ * field entirely for every other provider — regardless of what the builder
+ * LLM wrote.
+ */
+function applyPromptCachingBuilderDefaults(config: AgentJsonConfig): AgentJsonConfig {
+	const providerPrefix = getProviderPrefix(config.model);
+	const capability = PROVIDER_CAPABILITIES[providerPrefix]?.promptCaching ?? false;
+	const resolved = resolvePromptCaching(config.config?.promptCaching, capability);
+
+	if (!resolved) {
+		if (!config.config || !('promptCaching' in config.config)) return config;
+		const { promptCaching: _promptCaching, ...restConfig } = config.config;
+		const { config: _config, ...restAgentConfig } = config;
+		return {
+			...restAgentConfig,
+			...(Object.keys(restConfig).length > 0 ? { config: restConfig } : {}),
+		};
+	}
+
+	return {
+		...config,
+		config: {
+			...(config.config ?? {}),
+			promptCaching: resolved,
+		},
 	};
 }
 
@@ -438,7 +492,9 @@ export class AgentsBuilderToolsService {
 					if (dynamicSelectorFromAi) {
 						return { ok: false, errors: dynamicSelectorFromAi.errors };
 					}
-					const normalizedConfig = applyNativeWebSearchBuilderDefaults(zodResult.data);
+					const normalizedConfig = applyPromptCachingBuilderDefaults(
+						applyNativeWebSearchBuilderDefaults(zodResult.data),
+					);
 					try {
 						const result = await this.agentConfigService.updateConfig(
 							agentId,
@@ -553,7 +609,9 @@ export class AgentsBuilderToolsService {
 					if (dynamicSelectorFromAi) {
 						return { ok: false, stage: 'schema', errors: dynamicSelectorFromAi.errors };
 					}
-					const normalizedConfig = applyNativeWebSearchBuilderDefaults(zodResult.data);
+					const normalizedConfig = applyPromptCachingBuilderDefaults(
+						applyNativeWebSearchBuilderDefaults(zodResult.data),
+					);
 
 					try {
 						const result = await this.agentConfigService.updateConfig(
@@ -697,54 +755,42 @@ export class AgentsBuilderToolsService {
 		const createSkillTool = new Tool(BUILDER_TOOLS.CREATE_SKILL)
 			.description(
 				'Create and store an agent skill (a reusable, load-on-demand capability). Pass the skill name, a ' +
-					'routing description, and the full skill body. The description is what the runtime sees when ' +
-					'deciding when to load it, and the body MUST follow the required structured format (Overview, ' +
-					'Inputs, Steps, Rules, Example, Gotchas) filled with concrete content — see the body parameter ' +
-					'for the template. You MUST NOT call this with a vague description or a thin/placeholder body: ' +
+					'routing description, and the full skill instructions. The description is what the runtime sees when ' +
+					'deciding when to load it, and the instructions MUST follow the required structured format (Overview, ' +
+					'Inputs, Steps, Rules, Example, Gotchas) filled with concrete content — see the instructions parameter ' +
+					'for the template. You MUST NOT call this with a vague description or thin/placeholder instructions: ' +
 					'if you lack the domain detail to write a genuinely useful skill, ask the user clarifying ' +
-					'questions first. This does NOT attach the skill to the agent config; follow up with read_config ' +
+					'questions first. Use allowedTools only with exact target-agent tool names, ' +
+					'and references only for markdown supporting files under the references/ directory. References are not automatically loaded; when you provide references, instructions must say exactly when to load each one by path. Scripts and non-markdown linked files are not supported. ' +
+					'This does NOT attach the skill to the agent config; follow up with read_config ' +
 					'and patch_config (or write_config) to add a `{ type: "skill", id }` entry to `skills`. ' +
 					'Returns { ok: true, id, skill } or { ok: false, errors }.',
 			)
 			.systemInstruction(
 				'Never create a vague or placeholder skill. The description is the routing contract (what the ' +
-					'skill does + when to load it); the body must follow the required structured Markdown template ' +
+					'skill does + when to load it); the instructions must follow the required structured Markdown template ' +
 					'(Overview, Inputs, Steps, Rules, Example, Gotchas) with each applicable section filled in with ' +
 					'concrete, specific content. If you do not have enough domain detail to write a genuinely ' +
-					'useful skill, ask the user clarifying questions until you do before calling create_skill.',
+					'useful skill, ask the user clarifying questions until you do before calling create_skill. ' +
+					'Do not create references unless the instructions include explicit conditions for loading each referenced file. ' +
+					'Do not invent tool names or reference paths.',
 			)
-			.input(
-				z.object({
-					name: agentSkillSchema.shape.name.describe('Human-readable skill name'),
-					description: agentSkillSchema.shape.description.describe(SKILL_DESCRIPTION_RULE),
-					body: agentSkillSchema.shape.instructions.describe(SKILL_BODY_GUIDANCE),
-				}),
-			)
-			.handler(
-				async ({
-					name,
-					description,
-					body,
-				}: {
-					name: string;
-					description: string;
-					body: string;
-				}) => {
-					// Input is already validated against `.input()` (agentSkillSchema
-					// shapes) by the tool runtime before the handler runs.
-					const skill = { name, description, instructions: body };
+			.input(createSkillInputSchema)
+			.handler(async (input: CreateSkillInput) => {
+				// Input is already validated against `.input()` (agentSkillSchema
+				// shapes) by the tool runtime before the handler runs.
+				const skill: AgentSkill = input;
 
-					try {
-						const created = await this.agentSkillsService.createSkill(agentId, projectId, skill);
-						return { ok: true, id: created.id, skill: created.skill };
-					} catch (e) {
-						return {
-							ok: false,
-							errors: [{ message: e instanceof Error ? e.message : String(e) }],
-						};
-					}
-				},
-			)
+				try {
+					const created = await this.agentSkillsService.createSkill(agentId, projectId, skill);
+					return { ok: true, id: created.id, skill: created.skill };
+				} catch (e) {
+					return {
+						ok: false,
+						errors: [{ message: e instanceof Error ? e.message : String(e) }],
+					};
+				}
+			})
 			.build();
 
 		const createTaskTool = new Tool(BUILDER_TOOLS.CREATE_TASK)

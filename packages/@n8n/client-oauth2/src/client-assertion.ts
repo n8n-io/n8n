@@ -1,6 +1,11 @@
-import { createPrivateKey, createSign, randomUUID, X509Certificate } from 'node:crypto';
-
-import { formatPrivateKey } from './format-private-key';
+import { formatPemBlock } from '@n8n/utils/format-pem-block';
+import {
+	createPrivateKey,
+	createSign,
+	randomUUID,
+	X509Certificate,
+	type KeyObject,
+} from 'node:crypto';
 
 // private_key_jwt (RFC 7521/7523): the client proves its identity with a JWT
 // signed by its private key instead of a shared secret. The `x5t` header (SHA-1
@@ -14,10 +19,16 @@ function base64url(input: Buffer | string): string {
 }
 
 function certificateThumbprint(certificate: string): string {
-	// `formatPrivateKey` also normalizes CERTIFICATE PEMs; the name-vs-usage
-	// mismatch is resolved by the shared-helper rename tracked in ENT-114.
-	const fingerprint = new X509Certificate(formatPrivateKey(certificate)).fingerprint;
-	return Buffer.from(fingerprint.replace(/:/g, ''), 'hex').toString('base64url');
+	let parsed: X509Certificate;
+	try {
+		parsed = new X509Certificate(formatPemBlock(certificate));
+	} catch (error) {
+		throw new Error(
+			'The Certificate field must contain a PEM certificate (-----BEGIN CERTIFICATE-----).',
+			{ cause: error },
+		);
+	}
+	return Buffer.from(parsed.fingerprint.replace(/:/g, ''), 'hex').toString('base64url');
 }
 
 export interface BuildClientAssertionOptions {
@@ -42,9 +53,18 @@ export function buildClientAssertion(options: BuildClientAssertionOptions): stri
 		exp: now + ASSERTION_TTL_SECONDS,
 	};
 
+	let privateKey: KeyObject;
+	try {
+		privateKey = createPrivateKey(formatPemBlock(options.privateKey));
+	} catch (error) {
+		throw new Error(
+			'The Private Key field must contain a PEM private key (-----BEGIN PRIVATE KEY-----).',
+			{ cause: error },
+		);
+	}
+
 	// `createSign('RSA-SHA256')` also signs EC/Ed25519 keys, producing a signature
 	// that contradicts the pinned `alg: RS256` header. Reject non-RSA keys up front.
-	const privateKey = createPrivateKey(formatPrivateKey(options.privateKey));
 	if (privateKey.asymmetricKeyType !== 'rsa') {
 		throw new Error('Certificate authentication requires an RSA private key');
 	}

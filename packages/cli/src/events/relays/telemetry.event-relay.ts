@@ -161,6 +161,8 @@ export class TelemetryEventRelay extends EventRelay {
 			'workflow-unarchived': (event) => this.workflowUnarchived(event),
 			'workflow-deleted': (event) => this.workflowDeleted(event),
 			'workflow-sharing-updated': (event) => this.workflowSharingUpdated(event),
+			'n8n-package-imported': (event) => this.packageImported(event),
+			'n8n-package-exported': (event) => this.packageExported(event),
 			'workflow-saved': async (event) => await this.workflowSaved(event),
 			'workflow-activated': (event) => this.workflowActivated(event),
 			'workflow-deactivated': (event) => this.workflowDeactivated(event),
@@ -949,6 +951,32 @@ export class TelemetryEventRelay extends EventRelay {
 			workflow_id: workflowId,
 			user_id_sharer: userIdSharer,
 			user_id_list: userIdList,
+		});
+	}
+
+	private packageImported({ user, options, counts }: RelayEventMap['n8n-package-imported']) {
+		this.telemetry.track('User imported n8n package', {
+			user_id: user.id,
+			workflow_conflict_policy: options.workflowConflictPolicy,
+			workflow_id_policy: options.workflowIdPolicy,
+			credential_matching_mode: options.credentialMatchingMode,
+			credential_missing_mode: options.credentialMissingMode,
+			workflow_publishing_policy: options.workflowPublishingPolicy,
+			workflows_created: counts.workflows.created,
+			workflows_updated: counts.workflows.updated,
+			workflows_skipped: counts.workflows.skipped,
+			credentials_matched: counts.credentials.matched,
+			credentials_created: counts.credentials.created,
+			credentials_required: counts.credentials.requirements,
+		});
+	}
+
+	private packageExported({ user, counts }: RelayEventMap['n8n-package-exported']) {
+		this.telemetry.track('User exported n8n package', {
+			user_id: user.id,
+			workflow_count: counts.workflows,
+			folder_count: counts.folders,
+			credential_count: counts.credentials,
 		});
 	}
 

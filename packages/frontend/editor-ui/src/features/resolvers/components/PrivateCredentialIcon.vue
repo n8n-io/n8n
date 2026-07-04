@@ -4,6 +4,8 @@ import { computed } from 'vue';
 import { N8nIcon, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
+defineOptions({ inheritAttrs: false });
+
 interface Props {
 	tooltip?: boolean;
 	tooltipText?: string;
@@ -20,8 +22,8 @@ const content = computed(() => props.tooltipText ?? i18n.baseText('credentials.p
 </script>
 
 <template>
-	<N8nTooltip :disabled="!tooltip" placement="top">
+	<N8nTooltip as-child :disabled="!tooltip" placement="top">
 		<template #content>{{ content }}</template>
-		<N8nIcon data-test-id="private-credential-icon" icon="user-round-key" size="small" />
+		<N8nIcon v-bind="$attrs" data-test-id="private-credential-icon" icon="user-round-key" />
 	</N8nTooltip>
 </template>

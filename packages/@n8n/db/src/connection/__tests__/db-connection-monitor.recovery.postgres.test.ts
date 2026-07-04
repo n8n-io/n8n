@@ -4,19 +4,20 @@ import { DataSource } from '@n8n/typeorm';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import type { ErrorReporter } from 'n8n-core';
 import { getContainerRuntimeClient } from 'testcontainers';
+import { setTimeout as setTimeoutP } from 'timers/promises';
 import { mock } from 'vitest-mock-extended';
 
 import type { DbConnectionMetrics } from '../db-connection-metrics';
 import { DbConnectionMonitor } from '../db-connection-monitor';
 
 /**
- * Integration coverage for the connection-acquisition suspension (CAT-3455).
+ * Integration coverage for Postgres pool behavior in the connection monitor.
  *
  * Unlike the unit suite (which mocks the DataSource), this exercises a REAL
- * Postgres pool through a REAL recovery (`destroy()` + `initialize()`) and proves
- * that a real TypeORM query issued mid-recovery is held and then completes against
- * the rebuilt pool, instead of throwing `Cannot use a pool after calling end on
- * the pool` / `Driver not Connected`.
+ * Postgres pool through REAL recovery (`destroy()` + `initialize()`) and ping
+ * timeout paths. The tests prove a real TypeORM query issued mid-recovery is held
+ * and then completes against the rebuilt pool, and that a timed-out ping destroys
+ * its pg-pool client so the constrained pool slot is immediately reusable.
  *
  * The acquisition wrapper only exists for Postgres: it hooks `driver.obtainMasterConnection`,
  * which is the genuine connection chokepoint for the Postgres driver.
@@ -48,8 +49,17 @@ const TEST_TIMEOUT_MS = 60_000;
 const externalHost = process.env.DB_POSTGRESDB_HOST ?? '';
 const useExternalPostgres = externalHost.length > 0;
 
-// The recovery trigger is private; expose it for the test without loosening prod typing.
-type MonitorInternals = { recoverDataSource: () => Promise<void> };
+// Private monitor methods exposed for integration tests without loosening prod typing.
+type MonitorInternals = { ping: () => Promise<void>; recoverDataSource: () => Promise<void> };
+
+type PgPoolClient = {
+	query: (query: string | { text: string }) => Promise<unknown>;
+	release: (error?: Error) => void;
+};
+
+type PgPool = {
+	connect: () => Promise<PgPoolClient>;
+};
 
 type PgConnection = {
 	host: string;
@@ -59,16 +69,21 @@ type PgConnection = {
 	database: string;
 };
 
-const buildDatabaseConfig = () =>
+const buildDatabaseConfig = (overrides: Partial<DatabaseConfig> = {}) =>
 	mock<DatabaseConfig>({
+		pingIntervalSeconds: 60,
 		pingTimeoutMs: 5_000,
 		pingMaxFailuresBeforeRecovery: 3,
 		minRecoveryBackoffMs: 1_000,
 		maxRecoveryBackoffMs: 30_000,
 		connectionAcquisitionTimeoutMs: 30_000,
+		...overrides,
 	});
 
-const newDataSource = (conn: PgConnection) =>
+const newDataSource = (
+	conn: PgConnection,
+	options: { poolSize?: number; connectionTimeoutMillis?: number } = {},
+) =>
 	new DataSource({
 		type: 'postgres',
 		host: conn.host,
@@ -78,6 +93,10 @@ const newDataSource = (conn: PgConnection) =>
 		database: conn.database,
 		// No entities/migrations — the test only runs trivial SELECTs through the driver.
 		synchronize: false,
+		...(options.poolSize === undefined ? {} : { poolSize: options.poolSize }),
+		...(options.connectionTimeoutMillis === undefined
+			? {}
+			: { extra: { connectionTimeoutMillis: options.connectionTimeoutMillis } }),
 	});
 
 describe('DbConnectionMonitor recovery against real Postgres', () => {
@@ -210,6 +229,76 @@ describe('DbConnectionMonitor recovery against real Postgres', () => {
 				// The pool is healthy afterwards.
 				expect(await dataSource.query('SELECT 1 AS ok')).toEqual([{ ok: 1 }]);
 			} finally {
+				await monitor.stop();
+				if (dataSource.isInitialized) {
+					await dataSource.destroy();
+				}
+			}
+		},
+		TEST_TIMEOUT_MS,
+	);
+
+	it(
+		'destroys a timed-out ping client so the pg pool slot is reusable',
+		async (ctx) => {
+			if (!connection) {
+				ctx.skip();
+				return;
+			}
+			const dataSource = newDataSource(connection, {
+				poolSize: 1,
+				connectionTimeoutMillis: 2_000,
+			});
+			await dataSource.initialize();
+
+			const monitor = new DbConnectionMonitor(
+				dataSource,
+				() => {},
+				buildDatabaseConfig({ pingTimeoutMs: 50 }),
+				mock<Logger>(),
+				mock<ErrorReporter>(),
+				mock<DbConnectionMetrics>(),
+			);
+			const pool = (dataSource.driver as unknown as { master: PgPool }).master;
+			const originalConnect = pool.connect.bind(pool);
+			let injectedSlowPing = false;
+			let slowPingStarted = false;
+
+			pool.connect = async () => {
+				const client = await originalConnect();
+				if (injectedSlowPing) {
+					return client;
+				}
+
+				injectedSlowPing = true;
+				const originalQuery = client.query.bind(client);
+				client.query = async (query: string | { text: string }) => {
+					const text = typeof query === 'string' ? query : query.text;
+					if (text === 'SELECT 1') {
+						slowPingStarted = true;
+						return await originalQuery('SELECT pg_sleep(5)');
+					}
+
+					return await originalQuery(query);
+				};
+
+				return client;
+			};
+
+			try {
+				await (monitor as unknown as MonitorInternals).ping();
+
+				expect(slowPingStarted).toBe(true);
+				await expect(
+					Promise.race([
+						dataSource.query('SELECT 1 AS ok'),
+						setTimeoutP(2_000).then(() => {
+							throw new Error('Timed out waiting for pg pool slot to be reclaimed');
+						}),
+					]),
+				).resolves.toEqual([{ ok: 1 }]);
+			} finally {
+				pool.connect = originalConnect;
 				await monitor.stop();
 				if (dataSource.isInitialized) {
 					await dataSource.destroy();

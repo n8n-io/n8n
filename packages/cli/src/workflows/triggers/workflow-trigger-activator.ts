@@ -6,27 +6,27 @@ import type { IWorkflowDb, WorkflowEntity } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter, SpanStatus, Tracing } from 'n8n-core';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { createResultError, createResultOk, type Result } from '@n8n/utils/result';
 import type {
 	IConnections,
 	INode,
 	IWebhookData,
 	IWorkflowBase,
 	IWorkflowExecuteAdditionalData,
-	Result,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 	WorkflowId,
 } from 'n8n-workflow';
-import {
-	Workflow,
-	WorkflowActivationError,
-	createResultError,
-	createResultOk,
-	ensureError,
-} from 'n8n-workflow';
+import { Workflow, WorkflowActivationError } from 'n8n-workflow';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
 import { TRIGGER_ACTIVATION_MAX_ATTEMPTS } from '@/constants';
+import { EventService } from '@/events/event.service';
+import type {
+	PublicationOperationResult,
+	PublicationTriggerOperation,
+} from '@/events/maps/workflow-publication-metrics.event-map';
 import { NodeTypes } from '@/node-types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import type { PreparedNonWebhookTriggerRegistration } from '@/workflows/triggers/non-webhook-trigger-registrar';
@@ -77,6 +77,7 @@ export class WorkflowTriggerActivator {
 		private readonly triggerCountService: TriggerCountService,
 		private readonly activationErrorsService: ActivationErrorsService,
 		private readonly tracing: Tracing,
+		private readonly eventService: EventService,
 	) {
 		assert(
 			this.workflowsConfig.useWorkflowPublicationService,
@@ -155,11 +156,18 @@ export class WorkflowTriggerActivator {
 			workflowSettings: dbWorkflow.settings,
 		});
 
-		return await this.webhookTriggerRegistrar.getNodesWithUnregisteredWebhooks(
-			workflow,
-			additionalData,
-			desiredNodes,
-		);
+		// Resolving webhook triggers evaluates each node's `path`/`httpMethod`
+		// expressions (e.g. the Form Trigger's dynamic path), which needs an isolate.
+		await workflow.expression.acquireIsolate();
+		try {
+			return await this.webhookTriggerRegistrar.getNodesWithUnregisteredWebhooks(
+				workflow,
+				additionalData,
+				desiredNodes,
+			);
+		} finally {
+			await workflow.expression.releaseIsolate();
+		}
 	}
 
 	/**
@@ -192,6 +200,27 @@ export class WorkflowTriggerActivator {
 	 * running. The caller decides whether the result is a full or partial success.
 	 */
 	async activate(
+		dbWorkflow: WorkflowEntity,
+		version: WorkflowTriggerVersion,
+		nodeIds: Set<INode['id']>,
+	): Promise<TriggerActivationOutcome> {
+		const startedAt = Date.now();
+		try {
+			const outcome = await this.activateInternal(dbWorkflow, version, nodeIds);
+			this.emitTriggerOperation(
+				'activate',
+				outcome.failures.length === 0 ? 'success' : 'failure',
+				startedAt,
+			);
+			this.emitTriggerNodeOperations('activate', outcome.activated.length, outcome.failures.length);
+			return outcome;
+		} catch (error) {
+			this.emitTriggerOperation('activate', 'failure', startedAt);
+			throw error;
+		}
+	}
+
+	private async activateInternal(
 		dbWorkflow: WorkflowEntity,
 		version: WorkflowTriggerVersion,
 		nodeIds: Set<INode['id']>,
@@ -270,6 +299,23 @@ export class WorkflowTriggerActivator {
 	) {
 		if (nodeIds.size === 0) return;
 
+		const startedAt = Date.now();
+		try {
+			await this.deactivateInternal(dbWorkflow, version, nodeIds);
+			this.emitTriggerOperation('deactivate', 'success', startedAt);
+			this.emitTriggerNodeOperations('deactivate', nodeIds.size, 0);
+		} catch (error) {
+			this.emitTriggerOperation('deactivate', 'failure', startedAt);
+			this.emitTriggerNodeOperations('deactivate', 0, nodeIds.size);
+			throw error;
+		}
+	}
+
+	private async deactivateInternal(
+		dbWorkflow: WorkflowEntity,
+		version: WorkflowTriggerVersion,
+		nodeIds: Set<INode['id']>,
+	) {
 		await this.tracing.startSpan(
 			{
 				name: 'Trigger deactivation',
@@ -341,6 +387,39 @@ export class WorkflowTriggerActivator {
 				span.setStatus({ code: SpanStatus.ok });
 			},
 		);
+	}
+
+	private emitTriggerOperation(
+		operation: PublicationTriggerOperation,
+		result: PublicationOperationResult,
+		startedAt: number,
+	) {
+		this.eventService.emit('workflow-publication-trigger-operation', {
+			operation,
+			result,
+			durationMs: Date.now() - startedAt,
+		});
+	}
+
+	private emitTriggerNodeOperations(
+		operation: 'activate' | 'deactivate',
+		successCount: number,
+		failureCount: number,
+	) {
+		if (successCount > 0) {
+			this.eventService.emit('workflow-publication-trigger-node-operations', {
+				operation,
+				result: 'success',
+				count: successCount,
+			});
+		}
+		if (failureCount > 0) {
+			this.eventService.emit('workflow-publication-trigger-node-operations', {
+				operation,
+				result: 'failure',
+				count: failureCount,
+			});
+		}
 	}
 
 	private applyVersionToDbWorkflow(dbWorkflow: WorkflowEntity, version: WorkflowTriggerVersion) {
@@ -583,7 +662,7 @@ export class WorkflowTriggerActivator {
 
 	private createWorkflowDataResolver(dbWorkflow: WorkflowEntity): () => Promise<IWorkflowBase> {
 		return async () =>
-			await this.triggerExecutionContextFactory.loadPublishedWorkflowData(dbWorkflow);
+			await this.triggerExecutionContextFactory.loadPublishedWorkflowData(dbWorkflow.id);
 	}
 
 	private throwRejectedPhaseError(results: Array<PromiseSettledResult<unknown>>): void {

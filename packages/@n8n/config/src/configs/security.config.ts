@@ -4,6 +4,31 @@ import { Config, Env } from '../decorators';
 
 const crossOriginOpenerPolicySchema = z.enum(['same-origin', 'same-origin-allow-popups']);
 
+// Mirrors the `Resolvers` union in nodes-base (`system-credentials-utils.ts`);
+// kept in sync manually since @n8n/config cannot import from nodes-base.
+const awsSystemCredentialSources = [
+	'environment',
+	'roleForServiceAccount',
+	'podIdentity',
+	'containerMetadata',
+	'instanceMetadata',
+] as const;
+
+const awsSystemCredentialsSdkSourcesSchema = z.string().refine(
+	(value) => {
+		const raw = value.trim();
+		if (raw === '' || raw === 'all' || raw === 'none') return true;
+		return raw
+			.split(',')
+			.map((source) => source.trim())
+			.filter((source) => source !== '')
+			.every((source) => (awsSystemCredentialSources as readonly string[]).includes(source));
+	},
+	{
+		message: `Must be 'all', 'none', or a comma-separated list of: ${awsSystemCredentialSources.join(', ')}`,
+	},
+);
+
 @Config
 export class SecurityConfig {
 	/**
@@ -85,6 +110,17 @@ export class SecurityConfig {
 	/** Whether to allow access to AWS system credentials, e.g. in awsAssumeRole credentials */
 	@Env('N8N_AWS_SYSTEM_CREDENTIALS_ACCESS_ENABLED')
 	awsSystemCredentialsAccess: boolean = false;
+
+	/**
+	 * Which AWS system-credential sources resolve via the AWS SDK instead of the legacy
+	 * hand-rolled HTTP resolver. Accepts `all`, `none`, or a comma-separated subset of:
+	 * `environment`, `roleForServiceAccount`, `podIdentity`, `containerMetadata`, `instanceMetadata`.
+	 * Transitional switch-back flag; removed one release after the SDK migration is complete.
+	 *
+	 * @example N8N_AWS_SYSTEM_CREDENTIALS_SDK_SOURCES=environment,instanceMetadata
+	 */
+	@Env('N8N_AWS_SYSTEM_CREDENTIALS_SDK_SOURCES', awsSystemCredentialsSdkSourcesSchema)
+	awsSystemCredentialsSdkSources: string = 'all';
 
 	/**
 	 * Whether to enable hooks (like pre-commit hooks) for the Git node.

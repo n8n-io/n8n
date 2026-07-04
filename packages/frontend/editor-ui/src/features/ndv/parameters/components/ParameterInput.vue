@@ -146,7 +146,7 @@ type Props = {
 const props = withDefaults(defineProps<Props>(), {
 	rows: 5,
 	hint: undefined,
-	inputSize: undefined,
+	inputSize: 'small',
 	eventSource: undefined,
 	documentationUrl: undefined,
 	isReadOnly: false,
@@ -374,6 +374,14 @@ const editorType = computed<EditorType | 'json' | 'code' | 'cssEditor' | undefin
 });
 const editorIsReadOnly = computed<boolean>(() => {
 	return getTypeOption('editorIsReadOnly') ?? false;
+});
+
+/**
+ * Custom mapping needed until DS-579 is complete.
+ * This aligns the height sizes of N8nInput with those of N8nSelect.
+ */
+const parameterInputSize = computed<InputSize>(() => {
+	return props.inputSize === 'small' ? 'medium' : props.inputSize;
 });
 
 const editorLanguage = computed<CodeNodeLanguageOption>(() => {
@@ -1774,7 +1782,7 @@ onUpdated(async () => {
 					ref="inputField"
 					v-model="tempValue"
 					:class="{ 'input-with-opener': true, 'ph-no-capture': shouldRedactValue }"
-					:size="inputSize"
+					:size="parameterInputSize"
 					:type="getStringInputType"
 					:rows="editorRows"
 					:disabled="
@@ -1831,7 +1839,7 @@ onUpdated(async () => {
 				/>
 				<N8nInput
 					v-model="tempValue"
-					:size="inputSize"
+					:size="parameterInputSize"
 					type="text"
 					:disabled="isReadOnly"
 					:title="displayTitle"
@@ -1986,7 +1994,7 @@ onUpdated(async () => {
 
 			<N8nInput
 				v-else-if="parameter.type === 'boolean' && isCollectionOverhaulEnabled && droppable"
-				:size="inputSize"
+				:size="parameterInputSize"
 				:disabled="isReadOnly"
 				:title="displayTitle"
 				class="switch-droppable-input"
@@ -2003,7 +2011,7 @@ onUpdated(async () => {
 
 			<N8nInput
 				v-else-if="parameter.type === 'boolean' && droppable"
-				:size="inputSize"
+				:size="parameterInputSize"
 				:model-value="JSON.stringify(displayValue)"
 				:disabled="isReadOnly"
 				:title="displayTitle"

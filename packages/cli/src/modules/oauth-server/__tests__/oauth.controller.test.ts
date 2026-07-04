@@ -1,7 +1,7 @@
 import type { OAuthRegisteredClientsStore } from '@modelcontextprotocol/sdk/server/auth/clients';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { Request, Response } from 'express';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type {
 	ProtectedResource,
@@ -48,7 +48,7 @@ const resource = (scopes: string[]): ProtectedResource => ({
 });
 
 beforeEach(() => {
-	jest.resetAllMocks();
+	vi.resetAllMocks();
 	urlService.getInstanceBaseUrl.mockReturnValue('https://n8n.test');
 	controller = new OAuthController(urlService, registry);
 });

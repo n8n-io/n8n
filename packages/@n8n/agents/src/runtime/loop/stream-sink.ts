@@ -8,10 +8,11 @@ import type {
 } from './run-output-sink';
 import { mergeUsage } from './runtime-helpers';
 import type { ExecutionOptions, TokenUsage } from '../../types/sdk/agent';
+import type { AgentMessage } from '../../types/sdk/message';
 import { loadAi } from '../model/lazy-ai';
 import { fromAiFinishReason, fromAiMessages } from '../model/messages';
 import { createRawUsageReader, type RawUsageReader } from '../model/raw-usage';
-import { convertChunk } from '../streaming/stream';
+import { convertChunk, toTokenUsage } from '../streaming/stream';
 import type { StreamWriterGuard } from '../streaming/stream-writer-guard';
 import type { ToolCallBatchResult } from '../tools/tool-call-executor';
 
@@ -28,6 +29,9 @@ export class StreamSink implements RunOutputSink<void> {
 	// provider-specific translation lives behind `RawUsageReader`; undefined when
 	// the run's provider has no reader.
 	private rawUsageReader: RawUsageReader | undefined;
+	// Text streamed for the in-flight turn, retained so a stop landing mid-response
+	// can still persist what the user already saw. Cleared once the turn is folded.
+	private partialText = '';
 
 	constructor(
 		private readonly guard: StreamWriterGuard,
@@ -40,6 +44,15 @@ export class StreamSink implements RunOutputSink<void> {
 		// The just-completed turn is now folded into `usage`; its raw capture is
 		// stale and must not be re-added to a later between-turns abort total.
 		this.rawUsageReader = undefined;
+	}
+
+	/**
+	 * The just-returned turn's messages are now in the list, so the retained streamed
+	 * text is redundant — drop it. Deferred until here (not `reportUsage`) so a stop
+	 * landing after the model completes but before the fold still recovers the turn.
+	 */
+	onTurnFolded(): void {
+		this.partialText = '';
 	}
 
 	/**
@@ -58,6 +71,18 @@ export class StreamSink implements RunOutputSink<void> {
 			mergeUsage(this.lastUsage, this.rawUsageReader?.getUsage()),
 		);
 		return { ...(usage && { usage }), model: this.services.modelId };
+	}
+
+	/**
+	 * Partial assistant output streamed before a stop landed mid-response, so the text
+	 * the user already saw is persisted (and rendered on reload) rather than lost — the
+	 * turn's `newMessages` are only built once the stream completes, which an abort skips.
+	 * Text only: an unfinished tool call has no result and would render as stuck-loading
+	 * or be stripped on load. Undefined between turns / when nothing streamed yet.
+	 */
+	getAbortSnapshot(): AgentMessage | undefined {
+		if (!this.partialText) return undefined;
+		return { role: 'assistant', content: [{ type: 'text', text: this.partialText }] };
 	}
 
 	private buildSmoothStreamTransformOptions(): {
@@ -106,6 +131,10 @@ export class StreamSink implements RunOutputSink<void> {
 			// `finish-step` are passed through as LLM-iteration boundaries.
 			if (chunk.type === 'finish') continue;
 
+			// Accumulate streamed text so an abort mid-response can persist it (the
+			// turn's `newMessages` are only built below, which the abort never reaches).
+			if (chunk.type === 'text-delta') this.partialText += chunk.text ?? '';
+
 			// Provider-executed tools (e.g. native web search) skip the local
 			// execution loop that emits tool-execution lifecycle events via the
 			// event bus. Stamp them here at chunk-arrival time so live chat and the
@@ -136,12 +165,13 @@ export class StreamSink implements RunOutputSink<void> {
 
 		const aiFinishReason = await result.finishReason;
 		const usage = await result.usage;
+		const providerMetadata = await result.providerMetadata;
 		const response = await result.response;
 
 		return {
 			aiFinishReason,
 			finishReason: fromAiFinishReason(aiFinishReason),
-			usage,
+			usage: toTokenUsage(usage, providerMetadata),
 			newMessages: fromAiMessages(response.messages),
 			toolCalls: await result.toolCalls,
 			structuredOutput:
@@ -186,7 +216,18 @@ export class StreamSink implements RunOutputSink<void> {
 				resumeSchema: s.resumeSchema,
 			});
 		}
-		await this.guard.write({ type: 'finish', finishReason: 'tool-calls' });
+		// Stamp the tokens consumed to reach this suspension on the finish chunk,
+		// as the completion path does. A HITL run reuses one runId across segments,
+		// so each segment must bill its own usage here — otherwise the pre-suspension
+		// tokens are never emitted and go unbilled (worse, a stop while suspended
+		// never reaches a completion finish at all).
+		const costUsage = this.services.applyCost(emission.usage);
+		await this.guard.write({
+			type: 'finish',
+			finishReason: 'tool-calls',
+			...(costUsage && { usage: costUsage }),
+			model: this.services.modelId,
+		});
 		await this.guard.close();
 	}
 
