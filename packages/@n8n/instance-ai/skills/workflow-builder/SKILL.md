@@ -32,12 +32,13 @@ orchestrator tools and runtime workspace file tools already available in the
 current turn. If a relevant agent tool or MCP tool is available through tool
 search, use it when it helps complete the build. Do not call `delegate` to build, patch, fix, verify, or update workflows.
 
-For clear new single-workflow requests, write or edit a TypeScript SDK source
-file in the workspace, then build directly with `build-workflow({ filePath })`.
-For existing saved workflow edits, call
-`workflows(action="get-as-code", workflowId)`, write the returned code to a
-`.workflow.ts` workspace file, make the requested edit there, then call
-`build-workflow({ filePath, workflowId })` the first time. Do not load
+For clear new single-workflow requests, build directly with
+`build-workflow({ filePath, sourceCode })` — pass the complete TypeScript SDK
+source in `sourceCode` and the tool writes the workspace file and builds it in
+one call. For existing saved workflow edits, call
+`workflows(action="get-as-code", workflowId)`, apply the requested edit to the
+returned code, then call
+`build-workflow({ filePath, workflowId, sourceCode })` the first time. Do not load
 `planning` or call `create-tasks` first. Only load `planning` when the
 orchestrator routing rules require coordinated multi-artifact work. Use this
 skill during an approved `<planned-task-follow-up type="build-workflow">` turn,
@@ -50,14 +51,16 @@ Existing edits must go through a workspace source file and `build-workflow`.
 When called with failure details for an existing workflow, start from the
 workspace source file if one is available in the conversation or tool output. If
 you only have a saved n8n workflow ID, use `workflows(action="get-as-code")`,
-write the returned code to a stable `src/workflows/<name>.workflow.ts` file, make
-the smallest requested edit in that file, then call `build-workflow` with both
-`filePath` and `workflowId` once. Later repairs should reuse the same
-`filePath`; `build-workflow` remembers the bound workflow ID.
+make the smallest requested edit to the returned code, then call
+`build-workflow` once with `filePath` (a stable
+`src/workflows/<name>.workflow.ts` path), `workflowId`, and the full edited
+code as `sourceCode`. Later repairs should reuse the same `filePath`;
+`build-workflow` remembers the bound workflow ID.
 
-For repairs, edit the workspace file directly and call `build-workflow` again
-with the same `filePath`. Do not send inline workflow code or string patches to
-`build-workflow`.
+For repairs, prefer editing the workspace file directly with file tools
+(`workspace_str_replace_file`) and calling `build-workflow` again with the same
+`filePath` alone — cheaper than resending full source. `sourceCode` must always
+be the complete source when used; never send string patches or fragments.
 
 ## Escalation
 
@@ -176,12 +179,13 @@ When creating an error workflow to attach to another workflow:
    `src/workflows/main.workflow.ts` for a one-off new workflow, or a clearly
    named `.workflow.ts` file when multiple source files are useful. For an
    existing workflow with no source file in context, call
-   `workflows(action="get-as-code", workflowId)`, write the returned code to the
-   chosen `.workflow.ts` file, and pass the n8n `workflowId` only on the first
+   `workflows(action="get-as-code", workflowId)`, apply your edit to the
+   returned code, and pass the n8n `workflowId` only on the first
    `build-workflow` call.
-7. Write complete TypeScript SDK code to the workspace `filePath`, or read and
-   selectively edit the existing `.workflow.ts` file for workflow changes. Do
-   not put secrets in the source file.
+7. Produce complete TypeScript SDK code and pass it as `sourceCode` on the
+   `build-workflow` call (the tool writes `filePath` for you), or read and
+   selectively edit the existing `.workflow.ts` file with file tools for
+   follow-up changes. Do not put secrets in the source file.
    Before building, decide whether verification needs branch fixtures. When a
    live or nondeterministic upstream node (such as HTTP Request, search/list
    lookups, weather feeds, or AI classifiers) feeds IF/Switch logic and
@@ -190,7 +194,8 @@ When creating an error workflow to attach to another workflow:
    and later `fixtureOverrides` can exercise those scenarios. Do not simulate
    every external read by default; use this when branch coverage or deterministic
    proof depends on controlling the upstream data.
-8. Call `build-workflow` with `filePath`.
+8. Call `build-workflow` with `filePath` (plus `sourceCode` for new or fully
+   rewritten source).
    For planned build follow-ups where `buildTask.isSupportingWorkflow === true`,
    pass `isSupportingWorkflow: true`; that saved supporting workflow is the
    task's final deliverable.
