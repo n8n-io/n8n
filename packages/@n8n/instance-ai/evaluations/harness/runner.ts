@@ -81,7 +81,11 @@ import { UserProxyLlm, type ProxyDecisionStats } from '../utils/user-proxy';
 // Constants
 // ---------------------------------------------------------------------------
 
-const DEFAULT_TIMEOUT_MS = 900_000;
+// 25 min. Heavy multi-agent scenarios with large mocked payloads legitimately
+// run past 15 min (observed: trading-bot at 863s with a 15-row dataset, hard
+// timeouts across all builds at 32+ rows) — and a timed-out attempt is retried
+// once, so an under-sized budget wastes 2x the lane time it tries to cap.
+const DEFAULT_TIMEOUT_MS = 1_500_000;
 const EVAL_DATA_DIR = path.join(__dirname, '..', '..', '.data');
 
 function getMaxConcurrentScenarios(): number {

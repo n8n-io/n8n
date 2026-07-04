@@ -140,7 +140,7 @@ dotenvx run -f ../../../.env.local -- pnpm eval:instance-ai --iterations 3
 | `--base-url` | `http://localhost:5678` | n8n instance URL |
 | `--email` | E2E test owner | Override login email (or `N8N_EVAL_EMAIL`) |
 | `--password` | E2E test owner | Override login password (or `N8N_EVAL_PASSWORD`) |
-| `--timeout-ms` | `900000` | Per-test-case timeout |
+| `--timeout-ms` | `1500000` | Per-test-case timeout |
 | `--output-dir` | cwd | Where to write `eval-results.json` |
 | `--dataset` | `instance-ai-workflow-evals` | LangSmith dataset name. Synced from the JSON test cases (honoring `--filter`/`--exclude`/`--tier`) before each run — point an isolated cohort (e.g. MCP) at its own dataset to avoid writing to the shared one |
 | `--baseline-prefix` | `instance-ai-baseline-` | Experiment-name prefix the regression comparison uses to find the baseline. Override (e.g. `mcp-baseline-`) so a cohort compares against its own baselines instead of the Instance AI one |
