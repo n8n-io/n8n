@@ -6,7 +6,6 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { z } from 'zod';
 
-import { INSTANCE_AI_SKILLS_DIR } from '../../skills/runtime-skills';
 
 import { planVerificationSimulation } from './plan-verification-simulation';
 import { buildCredentialMap, resolveCredentials } from './resolve-credentials';
@@ -48,10 +47,12 @@ import {
 } from './workflow-json-utils';
 import { compileWorkflowSource } from './workflow-source-compiler';
 import { partitionWarnings, type ValidationWarning } from './workflow-validation-warnings';
+import { INSTANCE_AI_SKILLS_DIR } from '../../skills/runtime-skills';
 import type { InstanceAiContext } from '../../types';
 import { BuildFailureTracker } from '../../workflow-builder/build-failure-tracker';
 import { createRemediation } from '../../workflow-loop/remediation';
 import { remediationMetadataSchema } from '../../workflow-loop/workflow-loop-state';
+import { writeWorkspaceFile } from '../../workspace/workspace-files';
 
 const confirmationSuspendSchema = z.object({
 	requestId: z.string(),
@@ -87,6 +88,12 @@ export const buildWorkflowInputSchema = z
 			)
 			.describe(
 				'Workspace path to the workflow source file to build. Supports TypeScript SDK files and WorkflowJSON .json files.',
+			),
+		sourceCode: z
+			.string()
+			.optional()
+			.describe(
+				'Full source to write to filePath before building — use this instead of a separate workspace_write_file call when creating or fully rewriting the source. Omit to build the existing file content (preferred for targeted edits made with file tools).',
 			),
 		workflowId: z
 			.string()
@@ -201,7 +208,8 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 		.description(
 			'Build and save a workflow from a workspace source file. ' +
 				'Use TypeScript SDK source for new workflows, or WorkflowJSON .json source for existing workflow edits. ' +
-				'Write or edit the file with workspace file tools, then pass its filePath here.',
+				'Pass the full source in `sourceCode` to write filePath and build in one call, ' +
+				'or edit the file with workspace file tools first and pass filePath alone.',
 		)
 		.input(buildWorkflowInputSchema)
 		.output(
@@ -365,6 +373,40 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						message: `Edit ${workflowName} (ID: ${targetWorkflowId})?`,
 						severity: 'warning',
 					});
+				}
+			}
+
+			// Inline source: persist it to the workspace file first so the file stays
+			// canonical for later repairs — this saves the model a write_file round-trip
+			// (a full extra LLM step) on first builds.
+			if (input.sourceCode !== undefined && context.workspace) {
+				try {
+					await writeWorkspaceFile(context.workspace, filePath, input.sourceCode, {
+						logger: context.logger,
+						resourceLabel: 'Workflow source file',
+					});
+				} catch (error) {
+					const remediation = createCodeFixableRemediation({
+						reason: 'workflow_source_write_failed',
+						guidance:
+							'The inline sourceCode could not be written to filePath. Write the file with workspace file tools, then call build-workflow again with the same filePath.',
+					});
+					trackWorkflowSourceBuild(context, {
+						result: 'failure',
+						stage: 'source_read',
+						binding,
+						targetWorkflowId,
+						isSupportingWorkflow: input.isSupportingWorkflow,
+						remediation,
+						errorCount: 1,
+					});
+					return {
+						success: false,
+						...sourceResponseBase(binding),
+						workflowId: targetWorkflowId,
+						errors: [error instanceof Error ? error.message : String(error)],
+						remediation,
+					};
 				}
 			}
 
