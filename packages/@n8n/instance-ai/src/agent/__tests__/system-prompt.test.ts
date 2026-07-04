@@ -33,12 +33,12 @@ describe('getSystemPrompt', () => {
 	});
 
 	describe('delegation routing', () => {
-		it('routes discovery and eval setup away from the generic agent delegate tool', () => {
+		it('routes pre-build discovery through the workflow-context-scout delegate', () => {
 			const prompt = getSystemPrompt({});
 
 			expect(prompt).toContain('## Delegation');
 			expect(prompt).toContain(
-				'Pre-build discovery stays on `discover-workflow-context`, not `agent`',
+				'Pre-build discovery delegates to `workflow-context-scout` via `agent`',
 			);
 			expect(prompt).toContain('Eval setup stays on `eval-setup-with-agent`');
 			expect(prompt).toContain('Workflow building, patching, and running always stays with you');

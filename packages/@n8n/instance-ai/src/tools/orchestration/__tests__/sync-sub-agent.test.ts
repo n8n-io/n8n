@@ -10,10 +10,14 @@ vi.mock('../../../agent/sub-agent-factory', () => ({
 	SUB_AGENT_PROTOCOL: 'Sub-agent protocol.',
 }));
 
-vi.mock('../../../stream/consume-with-hitl', () => ({
-	consumeStreamWithHitl: vi.fn(),
-	requireCompletedHitlText: vi.fn(),
-}));
+vi.mock('../../../stream/consume-with-hitl', async (importOriginal) => {
+	const actual = await importOriginal<typeof import('../../../stream/consume-with-hitl')>();
+	return {
+		...actual,
+		consumeStreamWithHitl: vi.fn(),
+		requireCompletedHitlText: vi.fn(),
+	};
+});
 
 const createSubAgentMock = vi.mocked(createSubAgent);
 const consumeStreamWithHitlMock = vi.mocked(consumeStreamWithHitl);
@@ -135,5 +139,23 @@ describe('runSyncSubAgent', () => {
 
 		expect(result.result).toContain('Sub-agent error: boom');
 		expect(result.usage).toBeUndefined();
+	});
+
+	it('returns only the last summary segment to the parent agent', async () => {
+		const streamMock = vi.fn().mockResolvedValue({});
+		createSubAgentMock.mockReturnValue({ stream: streamMock } as never);
+		mockCompletedConsumeResult({
+			workSummary: {
+				toolCalls: [],
+				totalToolCalls: 0,
+				totalToolErrors: 0,
+				lastTextSummary: 'Final summary.',
+			},
+		});
+		requireCompletedHitlTextMock.mockResolvedValue('First summary.Final summary.');
+
+		const result = await runSyncSubAgent(createMockContext(), baseInput());
+
+		expect(result.result).toBe('Final summary.');
 	});
 });

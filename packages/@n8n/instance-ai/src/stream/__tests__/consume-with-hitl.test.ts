@@ -1,5 +1,10 @@
 import type { InstanceAiEventBus } from '../../event-bus/event-bus.interface';
-import { consumeStreamWithHitl, requireCompletedHitlText } from '../consume-with-hitl';
+import {
+	consumeStreamWithHitl,
+	requireCompletedHitlText,
+	requireCompletedSubAgentParentText,
+	resolveSubAgentParentResult,
+} from '../consume-with-hitl';
 
 async function* fromChunks(chunks: unknown[]) {
 	for (const chunk of chunks) {
@@ -117,5 +122,49 @@ describe('consumeStreamWithHitl', () => {
 		});
 
 		expect(result.usage).toBeUndefined();
+	});
+});
+
+describe('resolveSubAgentParentResult', () => {
+	it('prefers the last tracked summary over the full stream text', () => {
+		expect(
+			resolveSubAgentParentResult('First summary.Final summary.', {
+				toolCalls: [],
+				totalToolCalls: 0,
+				totalToolErrors: 0,
+				lastTextSummary: 'Final summary.',
+			}),
+		).toBe('Final summary.');
+	});
+
+	it('falls back to trimmed full text when no summary segments were tracked', () => {
+		expect(
+			resolveSubAgentParentResult('  only text  ', {
+				toolCalls: [],
+				totalToolCalls: 0,
+				totalToolErrors: 0,
+			}),
+		).toBe('only text');
+	});
+});
+
+describe('requireCompletedSubAgentParentText', () => {
+	it('returns the last summary for completed sub-agent runs', async () => {
+		await expect(
+			requireCompletedSubAgentParentText(
+				{
+					status: 'completed',
+					agentRunId: 'agent-run-1',
+					text: Promise.resolve('First summary.Final summary.'),
+					workSummary: {
+						toolCalls: [],
+						totalToolCalls: 0,
+						totalToolErrors: 0,
+						lastTextSummary: 'Final summary.',
+					},
+				},
+				'Test sub-agent',
+			),
+		).resolves.toBe('Final summary.');
 	});
 });

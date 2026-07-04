@@ -15,7 +15,7 @@ Instance AI owns **all execution**. The host `runSubAgent` callback
 (`src/subagents/runner.ts`) receives every `subAgentId` the model passes —
 **including `"inline"`**, the SDK's default — and runs it through the existing
 [`runSyncSubAgent`](../src/tools/orchestration/sync-sub-agent.ts) machinery:
-the same synchronous runner `discover-workflow-context` has always used.
+the same synchronous runner every delegation uses.
 
 ```mermaid
 graph TD
@@ -47,9 +47,8 @@ callback. Instance AI does not use it:
 
 Routing every `subAgentId` through the host runner means one code path and no
 stream/event bridge: `agent-spawned` / `agent-completed` events and child
-chunk streaming already work exactly as they do for
-`discover-workflow-context` today, and `mapAgentChunkToEvent` drops the SDK's
-own `subagent-started` / `subagent-completed` lifecycle chunks by allowlist
+chunk streaming already work exactly as they do for every delegated sub-agent,
+and `mapAgentChunkToEvent` drops the SDK's own `subagent-started` / `subagent-completed` lifecycle chunks by allowlist
 design — nothing double-renders.
 
 ## Definition shape
@@ -116,9 +115,9 @@ validated against the Zod schema at module load.
 
 | Export | Purpose |
 |---|---|
-| `getSubAgentDefinition(id)` | Unrestricted lookup by id — used by `discover-workflow-context` to resolve `workflow-context-scout` directly |
+| `getSubAgentDefinition(id)` | Unrestricted lookup by id |
 | `getGeneralPurposeSubAgentDefinition()` | The definition `subAgentId: "inline"` maps to |
-| `listAvailableSubAgents()` | `{ id, name, useWhen }[]` for the SDK's `availableSubAgents` option — excludes `general-purpose` and `workflow-context-scout` |
+| `listAvailableSubAgents()` | `{ id, name, useWhen }[]` for the SDK's `availableSubAgents` option — excludes `general-purpose` only |
 | `isSelectableSubAgentId(id)` | Whether `id` may be chosen directly as a delegate-tool `subAgentId` — false for hidden definitions |
 | `resolveSubAgentTools(definition, context)` | Filters + action-wraps the orchestration context's domain tools per the definition's `tools` list |
 | `buildSubAgentInstructions(definition)` | `instructions`, plus the no-HITL note when `hitl: 'blocked'` |
@@ -128,44 +127,32 @@ validated against the Zod schema at module load.
 | ID | Tools | Listed in `availableSubAgents` | Notes |
 |---|---|---|---|
 | `general-purpose` | nodes, credentials, research, workflows (list/get), executions (list/get) | No — reached via `subAgentId: "inline"` | Cursor `generalPurpose` equivalent |
-| `workflow-context-scout` | nodes, credentials, research | No — reached via `discover-workflow-context` | Pre-build discovery specialist |
+| `workflow-context-scout` | nodes, credentials, research | Yes | Pre-build discovery specialist |
 | `instance-explorer` | nodes, research, workflows (list/get) | Yes | Broad read-only survey across instance resources |
 | `execution-debugger` | executions, workflows (list/get) | Yes | Isolated debugging investigation across many executions |
 
-### Why `workflow-context-scout` has two names for one job
-
-The system prompt hard-mandates `discover-workflow-context` in the build flow,
-and its typed Zod input (`services`, `categories`, `conversationContext`) is
-more structured than the generic delegate schema (`goal`, `context`,
-`expectedOutput`). Listing the scout in `availableSubAgents` too would give
-the model two routes to the same specialist with different input shapes and
-regress the discovery evals. **v1 rule: `discover-workflow-context` is the
-only route to the scout** — `isSelectableSubAgentId('workflow-context-scout')`
-is `false`, so the host runner rejects it if a model somehow guesses the id
-through `agent` directly.
-
 ### Host-side type-definition assembly
 
-`discover-workflow-context` wraps the scout's `nodes` tool to capture every
-`type-definition` result verbatim as it's fetched, keyed by node
-type+discriminators. The scout's own final answer only contains its
-**Nodes/Credentials/Knowledge base/Gaps** selection — the host mechanically
-appends the captured definitions for exactly the nodes the scout fetched
-after the scout's answer, instead of asking the model to re-paste ~20-30k
+When `runInstanceAiSubAgent` routes to `workflow-context-scout`, it wraps the
+scout's `nodes` tool to capture every `type-definition` result verbatim as it's
+fetched, keyed by node type+discriminators. The scout's own final answer only
+contains its **Nodes/Credentials/Knowledge base/Gaps** selection — the host
+mechanically appends the captured definitions for exactly the nodes the scout
+fetched after the scout's answer, instead of asking the model to re-paste ~20-30k
 characters of type-definition content it already has verbatim in its own
 tool-call history. This cuts the scout's completion tokens, removes a fidelity
 risk (models drop fields when asked to copy large blocks verbatim), and relies
 on the scout's existing invariant of "only fetch definitions for nodes you
 recommend" to keep the captured set correct. See
-`wrapNodesToolForTypeDefinitionCapture` in `discover-workflow-context.tool.ts`.
+`wrapNodesToolForTypeDefinitionCapture` in `workflow-context-scout-capture.ts`.
 
 ## Host runner
 
 [`src/subagents/runner.ts`](../src/subagents/runner.ts) exports:
 
 - `runSubAgentDefinition(definition, input, context)` — the shared executor:
-  resolves tools and instructions, calls `runSyncSubAgent`. Used by both
-  `runInstanceAiSubAgent` below and `discover-workflow-context` directly.
+  resolves tools and instructions, calls `runSyncSubAgent`. Used by
+  `runInstanceAiSubAgent` below.
 - `runInstanceAiSubAgent(request, context)` — the `runSubAgent` callback
   registered on the `agent` tool. Resolves `"inline"` to `general-purpose`,
   rejects hidden/unknown ids, maps the SDK's `goal`/`context`/`expectedOutput`

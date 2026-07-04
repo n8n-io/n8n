@@ -120,7 +120,7 @@ execution), the orchestrator has the `agent` delegate tool — the `@n8n/agents`
 SDK `delegate_subagent` tool, registered under this model-facing name. Every
 delegation, including the default `subAgentId: "inline"`, runs through the
 Instance AI sub-agent registry (`subagents/`) and the same synchronous runner
-`discover-workflow-context` uses. See `docs/subagents.md`.
+every delegation uses. See `docs/subagents.md`.
 
 ### 3. Observational Memory
 
@@ -147,7 +147,6 @@ graph TD
     O -->|direct| T4[create-tasks]
     O -->|direct| T5[data-tables]
     O -->|eval-setup-with-agent| S5[Eval Setup Agent]
-    O -->|discover-workflow-context| S7["Workflow Context Scout"]
     O -->|"agent (subAgentId)"| S8["Sub-agent registry"]
 
     S3 -->|kind: build-workflow| S4[Orchestrator Follow-Up]
@@ -157,6 +156,7 @@ graph TD
     S4 -->|tools| T9[workspace files]
     S4 -->|tools| T10
     S5 -->|tools| T11[workflows + nodes]
+    S8 -->|"workflow-context-scout"| S7["Workflow Context Scout"]
     S8 -->|"inline"| S9[general-purpose]
     S8 -->|"instance-explorer"| S10[Instance Explorer]
     S8 -->|"execution-debugger"| S11[Execution Debugger]
@@ -196,9 +196,8 @@ graph TD
 - Synchronous, bounded delegation — the child runs and returns its result in
   the same turn, unlike planned tasks or eval setup
 - `subAgentId: "inline"` (the default) resolves to `general-purpose`;
-  `instance-explorer` and `execution-debugger` are listed specialists
-- `workflow-context-scout` is registered but not listed — reachable only
-  through `discover-workflow-context`, which stays the single route to it
+  `workflow-context-scout`, `instance-explorer`, and `execution-debugger` are
+  listed specialists
 - See `docs/subagents.md` for the definition shape and full registry
 
 ## Package Responsibilities
@@ -209,7 +208,7 @@ The agent package — framework-agnostic business logic.
 
 - **Agent factory** (`agent/`) — creates orchestrator instances with tools, memory, MCP, and tool search
 - **Sub-agent factory** (`agent/`) — creates the eval-setup background agent and shared sub-agent protocol
-- **Orchestration tools** (`tools/orchestration/`) — `create-tasks`, `update-tasks`, `cancel-background-task`, `correct-background-task`, `eval-setup-with-agent`, `verify-built-workflow`, `report-verification-verdict`, `apply-workflow-credentials`, `agent` (delegate), `discover-workflow-context`
+- **Orchestration tools** (`tools/orchestration/`) — `create-tasks`, `update-tasks`, `cancel-background-task`, `correct-background-task`, `eval-setup-with-agent`, `verify-built-workflow`, `report-verification-verdict`, `apply-workflow-credentials`, `agent` (delegate)
 - **Sub-agents** (`subagents/`) — TypeScript sub-agent definitions and registry (`docs/subagents.md`); the `agent` delegate tool's host runner
 - **Domain tools** (`tools/`) — native tools across workflows, executions, credentials, nodes, data tables, workspace, and web research
 - **Knowledge base** (`knowledge-base/`, `workspace/`) — best-practices guides and curated templates materialized in the builder sandbox for workspace tools to read

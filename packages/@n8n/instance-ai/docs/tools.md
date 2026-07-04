@@ -60,37 +60,6 @@ workflow-local table requirements belong in the builder task spec; plan only
 when the table schema is shared, independently durable, or creates real
 dependency coordination.
 
-### `discover-workflow-context`
-
-Preconfigured pre-build discovery — the single discovery route for nodes,
-credentials, knowledge base, and types. Spawns a focused, **synchronous**
-sub-agent (fixed role, prompt, and tool subset: `nodes`, `credentials`,
-`research`, plus sandbox `workspace_*` tools auto-attached when a sandbox exists)
-that inventories the nodes and credential types a build needs, gathers relevant
-knowledge-base techniques, and returns the relevant node **type definitions
-verbatim** — it selects which types are relevant rather than summarizing them.
-The scout is fixed so discovery is consistent and testable. Call before loading
-`workflow-builder` for any build touching external services or unfamiliar nodes;
-act on the result in the same turn. Does not build, patch, or run workflows.
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `services` | string[] | yes | External services as short node-search terms (e.g. `["Gmail", "OpenAI"]`) |
-| `categories` | string[] | no | Workflow technique categories to anchor node suggestions |
-| `conversationContext` | string | no | Build goal and user constraints to scope discovery |
-
-**Returns**: `{ result: string }` — the scout's debrief: brief Nodes,
-Credentials, and Knowledge base bullets, the relevant node type definitions
-verbatim, and Gaps.
-
-**Behavior**: Resolves the fixed tool subset from the orchestrator's domain
-tools, runs the sub-agent via the shared synchronous runner (same tracing and
-`agent-spawned`/`agent-completed` events), and returns the synthesized debrief.
-Returns an error string if the `nodes` tool is unavailable. It is a thin
-wrapper over the `workflow-context-scout` sub-agent definition — the single,
-schema-validated route to it (see `docs/subagents.md`; it is intentionally
-not reachable through `agent`, below).
-
 ### `agent`
 
 SDK delegate tool (`@n8n/agents` `delegate_subagent`, registered under this
@@ -98,9 +67,15 @@ model-facing name) — hands a bounded, self-contained investigation to a
 focused sub-agent that runs in an isolated context and returns only a concise
 result. Every delegation, including `subAgentId: "inline"`, routes through the
 Instance AI host runner, which runs the child through the same synchronous
-sub-agent machinery `discover-workflow-context` uses (tracing,
-`agent-spawned`/`agent-completed` events). The SDK's own inline child runner is
-never invoked. Full definition reference: `docs/subagents.md`.
+sub-agent machinery (tracing, `agent-spawned`/`agent-completed` events). The
+SDK's own inline child runner is never invoked. Full definition reference:
+`docs/subagents.md`.
+
+Pre-build discovery also uses this tool: delegate to `workflow-context-scout`
+before loading `workflow-builder` for builds touching external services or
+unfamiliar nodes. Put the services and categories in `goal`, the build goal and
+constraints in `context`, and the expected debrief shape in `expectedOutput`.
+The host appends verbatim type definitions after the scout's answer.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -114,10 +89,9 @@ never invoked. Full definition reference: `docs/subagents.md`.
 **Returns**: `{ status, answer, usage?, error? }` — `status` is always
 `"completed"` or `"failed"`; a delegation never suspends back to the parent.
 
-**Specialists**: `instance-explorer` and `execution-debugger` are listed in
-`availableSubAgents`. `general-purpose` (the `"inline"` target) and
-`workflow-context-scout` are registered but not listed — the scout stays
-reachable only via `discover-workflow-context`.
+**Specialists**: `workflow-context-scout`, `instance-explorer`, and
+`execution-debugger` are listed in `availableSubAgents`. `general-purpose`
+(the `"inline"` target) is registered but not listed.
 
 ### `update-tasks`
 

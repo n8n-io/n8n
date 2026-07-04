@@ -16,7 +16,6 @@ export const DOMAIN_TOOL_IDS = {
 export const ORCHESTRATION_TOOL_IDS = {
 	CREATE_TASKS: 'create-tasks',
 	TASK_CONTROL: 'task-control',
-	DISCOVER_WORKFLOW_CONTEXT: 'discover-workflow-context',
 	EVAL_SETUP_WITH_AGENT: 'eval-setup-with-agent',
 	EVAL_DATA: 'eval-data',
 	COMPLETE_CHECKPOINT: 'complete-checkpoint',
@@ -40,7 +39,6 @@ export const ORCHESTRATION_TOOL_NAMES = new Set<string>(Object.values(ORCHESTRAT
 
 export const ALWAYS_LOADED_TOOL_NAMES = new Set<string>([
 	ORCHESTRATION_TOOL_IDS.CREATE_TASKS,
-	ORCHESTRATION_TOOL_IDS.DISCOVER_WORKFLOW_CONTEXT,
 	ORCHESTRATION_TOOL_IDS.AGENT,
 	DOMAIN_TOOL_IDS.ASK_USER,
 	DOMAIN_TOOL_IDS.CREDENTIALS,

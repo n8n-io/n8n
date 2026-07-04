@@ -64,10 +64,10 @@ describe('listSubAgentIds', () => {
 });
 
 describe('listAvailableSubAgents', () => {
-	it('excludes general-purpose and workflow-context-scout from the delegate listing', () => {
+	it('excludes general-purpose from the delegate listing but includes workflow-context-scout', () => {
 		const ids = listAvailableSubAgents().map((entry) => entry.id);
 		expect(ids).not.toContain('general-purpose');
-		expect(ids).not.toContain('workflow-context-scout');
+		expect(ids).toContain('workflow-context-scout');
 		expect(ids).toEqual(expect.arrayContaining(['instance-explorer', 'execution-debugger']));
 	});
 

@@ -69,6 +69,21 @@ export async function requireCompletedHitlText(
 	throw new Error(`${agentLabel} ${reason}`);
 }
 
+/** Parent-facing sub-agent text: the last summary segment, not the full stream. */
+export function resolveSubAgentParentResult(fullText: string, workSummary: WorkSummary): string {
+	const lastSummary = workSummary.lastTextSummary?.trim();
+	if (lastSummary) return lastSummary;
+	return fullText.trim();
+}
+
+export async function requireCompletedSubAgentParentText(
+	result: ConsumeWithHitlResult,
+	agentLabel: string,
+): Promise<string> {
+	const fullText = await requireCompletedHitlText(result, agentLabel);
+	return resolveSubAgentParentResult(fullText, result.workSummary);
+}
+
 /**
  * Consume a sub-agent stream with HITL suspend/resume support.
  * Detects `tool-call-suspended` chunks, waits for user confirmation,

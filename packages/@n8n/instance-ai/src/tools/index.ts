@@ -38,10 +38,6 @@ const loadCompleteCheckpointTool = lazyMod(
 	() =>
 		require('./orchestration/complete-checkpoint.tool') as typeof import('./orchestration/complete-checkpoint.tool'),
 );
-const loadDiscoverWorkflowContextTool = lazyMod(
-	() =>
-		require('./orchestration/discover-workflow-context.tool') as typeof import('./orchestration/discover-workflow-context.tool'),
-);
 const loadEvalDataAgentTool = lazyMod(
 	() =>
 		require('./orchestration/eval-data-agent.tool') as typeof import('./orchestration/eval-data-agent.tool'),
@@ -146,10 +142,6 @@ export function createOrchestrationTools(context: OrchestrationContext): Instanc
 	const tools: Array<[string, BuiltTool]> = [
 		[ORCHESTRATION_TOOL_IDS.CREATE_TASKS, loadPlanTool().createPlanTool(context)],
 		[ORCHESTRATION_TOOL_IDS.TASK_CONTROL, loadTaskControlTool().createTaskControlTool(context)],
-		[
-			ORCHESTRATION_TOOL_IDS.DISCOVER_WORKFLOW_CONTEXT,
-			loadDiscoverWorkflowContextTool().createDiscoverWorkflowContextTool(context),
-		],
 		[ORCHESTRATION_TOOL_IDS.AGENT, loadAgentDelegateTool().createAgentDelegateTool(context)],
 		[
 			ORCHESTRATION_TOOL_IDS.COMPLETE_CHECKPOINT,

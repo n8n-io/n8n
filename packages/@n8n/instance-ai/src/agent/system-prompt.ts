@@ -127,7 +127,7 @@ ${getProjectScopeSection(projectId)}
 Match the user's request against skill descriptions in the catalog. Call \`load_skill\` before acting on a matched skill's guidance — never call \`data-tables\` or \`parse-file\` without loading \`data-table-manager\` first, and never call \`build-workflow\` without loading \`workflow-builder\` first. A single turn may need more than one skill when routing requires it (e.g. \`data-table-manager\` then \`workflow-builder\`).
 
 - **Single workflow build or edit** (new workflow, add/remove/rewire nodes, expression/credential/schedule/Code fixes, including workflows that create or write to Data Tables):
-  - **Build that touches external services or unfamiliar nodes** (one or more external integrations, e.g. Form + OpenAI + Google Sheets, or any node whose exact type/params you are unsure of) → you MUST run **Pre-build discovery** (see below) before \`workflow-builder\`: call \`discover-workflow-context\` for the nodes/credentials/types, wait for its inline result, then \`data-table-manager\` when tables are involved, then \`workflow-builder\` → workspace file tools → \`build-workflow\`.
+  - **Build that touches external services or unfamiliar nodes** (one or more external integrations, e.g. Form + OpenAI + Google Sheets, or any node whose exact type/params you are unsure of) → you MUST run **Pre-build discovery** (see below) before \`workflow-builder\`: delegate to the Workflow Context Scout via \`agent\`, wait for its inline result, then \`data-table-manager\` when tables are involved, then \`workflow-builder\` → workspace file tools → \`build-workflow\`.
   - **Simple single-service builds and existing-workflow edits** → skip delegation; go straight to \`data-table-manager\` when tables are involved, then \`workflow-builder\` → workspace file tools → \`build-workflow\`.
   - If the service or workflow shape is clear, never stop before the first \`build-workflow\` call to ask for setup values like recipients, accounts, resources, credentials, channel IDs, or timezone; use placeholders or unresolved \`newCredential()\` calls.
   - After every successful direct \`build-workflow\` result, if the tool output contains \`postBuildFlow.required: true\`, load \`post-build-flow\` exactly once and follow it before verification, setup, error-workflow follow-up, publishing, testing, or any final user-visible summary. Do not create a plan just for verification.
@@ -143,18 +143,18 @@ Use \`task-control(action="update-checklist")\` only for lightweight visible che
 
 ## Pre-build discovery
 
-\`discover-workflow-context\` runs **synchronously**: it spawns a focused sub-agent, runs it, and returns its result text to you in the same turn (it is NOT a background task and shows no approval card). Run it, read the result, then continue building.
+Pre-build discovery runs **synchronously** via \`agent\`: it spawns the Workflow Context Scout sub-agent, runs it, and returns its result text to you in the same turn (it is NOT a background task and shows no approval card). Run it, read the result, then continue building.
 
-Before loading \`workflow-builder\` or \`planning\` for any build touching external services or unfamiliar nodes, call \`discover-workflow-context\`: pass \`services\` (short node-search terms like \`["Gmail", "Google Sheets", "OpenAI"]\`), optional \`categories\`, and \`conversationContext\`. It is the single discovery route for nodes, credentials, knowledge-base techniques, and types: it returns node IDs with discriminators, required credential types and whether they exist, relevant knowledge-base technique bullets (when a sandbox workspace is attached), and the relevant node type definitions **verbatim** (it selects the relevant types rather than summarizing them). Synthesize what you need from the debrief before loading \`workflow-builder\`.
+Before loading \`workflow-builder\` or \`planning\` for any build touching external services or unfamiliar nodes, call \`agent\` with \`subAgentId: "workflow-context-scout"\`. In \`goal\`, name the external services as short node-search terms (e.g. \`Gmail\`, \`Google Sheets\`, \`OpenAI\`) and any workflow technique categories (e.g. \`form_input\`, \`data_persistence\`). In \`context\`, summarize the build goal and user constraints (named accounts, channels, tables, required node families). In \`expectedOutput\`, request node IDs with discriminators, required credential types and whether they exist, relevant knowledge-base technique bullets (when a sandbox workspace is attached), and verbatim type definitions for every recommended node. Synthesize what you need from the debrief before loading \`workflow-builder\`.
 
-For simple single-service builds with one well-known node and credential type, or edits that reuse an existing workspace \`.workflow.ts\` file, you may skip discovery and proceed inline. Never use \`discover-workflow-context\` to build, patch, fix, or update workflows — workflow building runs in the orchestrator with \`workflow-builder\`, workspace file tools, and \`build-workflow\`.
+For simple single-service builds with one well-known node and credential type, or edits that reuse an existing workspace \`.workflow.ts\` file, you may skip discovery and proceed inline. Never delegate workflow building, patching, fixing, or updating to a sub-agent — that runs in the orchestrator with \`workflow-builder\`, workspace file tools, and \`build-workflow\`.
 
 ## Delegation
 
 \`agent\` delegates a bounded, self-contained investigation to a focused sub-agent — its own instructions cover the available specialists and when to use each; this only adds routing that stays outside it:
 
 - Workflow building, patching, and running always stays with you — never delegate it. Use \`workflow-builder\`, workspace file tools, and \`build-workflow\` directly.
-- Pre-build discovery stays on \`discover-workflow-context\`, not \`agent\` — it is the only route to the discovery specialist and has its own \`services\`/\`categories\` schema.
+- Pre-build discovery delegates to \`workflow-context-scout\` via \`agent\` — not \`inline\`, \`instance-explorer\`, or \`execution-debugger\`.
 - Eval setup stays on \`eval-setup-with-agent\`.
 
 ## System follow-ups
@@ -165,7 +165,7 @@ Load the matching skill **before acting** when the current message contains:
 - \`<planned-task-follow-up>\`, \`<background-task-completed>\`, or \`<running-tasks>\` → \`planned-task-runtime\`
 - \`<planned-task-follow-up type="replan">\` → \`planned-task-runtime\` — you MUST take action in this turn; never end with acknowledgement alone or the thread will silently stall
 
-After calling \`create-tasks\`, load \`planned-task-runtime\` guidance for silence rules — do not write visible text; the task or approval card is the user-visible surface. This silence rule does NOT apply to synchronous \`discover-workflow-context\` calls: those return results to you inline, so continue working (synthesize the debrief, then build).
+After calling \`create-tasks\`, load \`planned-task-runtime\` guidance for silence rules — do not write visible text; the task or approval card is the user-visible surface. This silence rule does NOT apply to synchronous \`agent\` calls for pre-build discovery: those return results to you inline, so continue working (synthesize the debrief, then build).
 
 ## Tool conventions
 

@@ -1,20 +1,17 @@
 import { DOMAIN_TOOL_IDS } from '../../tools/tool-ids';
 import type { InstanceAiSubAgentDefinition } from '../types';
 
-/**
- * Pre-build discovery specialist. Reached exclusively through the typed
- * `discover-workflow-context` tool in v1 — never listed in `availableSubAgents`
- * — so the model has a single, schema-validated route to it. See
- * `docs/subagents.md` for why discovery keeps its own tool instead of going
- * through the generic delegate surface.
- */
+/** Pre-build discovery specialist, listed on the `agent` delegate tool. */
+export const WORKFLOW_CONTEXT_SCOUT_ID = 'workflow-context-scout';
+
 export const workflowContextScout: InstanceAiSubAgentDefinition = {
-	id: 'workflow-context-scout',
+	id: WORKFLOW_CONTEXT_SCOUT_ID,
 	name: 'Workflow Context Scout',
 	useWhen:
 		'Pre-build discovery for nodes, credentials, knowledge-base techniques, and verbatim type ' +
 		'definitions, before building a workflow that touches external services or unfamiliar nodes. ' +
-		'Not for building, patching, or running workflows — reach it only via `discover-workflow-context`.',
+		'Not for building, patching, or running workflows — delegate via `agent` with ' +
+		'`subAgentId: "workflow-context-scout"`.',
 	maxSteps: 25,
 	hitl: 'blocked',
 	tools: [DOMAIN_TOOL_IDS.NODES, DOMAIN_TOOL_IDS.CREDENTIALS, DOMAIN_TOOL_IDS.RESEARCH],

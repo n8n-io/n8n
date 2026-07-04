@@ -29,6 +29,15 @@ function toolErrorEvent(toolCallId: string, error: string): InstanceAiEvent {
 	};
 }
 
+function textDeltaEvent(text: string): InstanceAiEvent {
+	return {
+		type: 'text-delta',
+		runId: 'run-1',
+		agentId: 'agent-1',
+		payload: { text },
+	};
+}
+
 describe('WorkSummaryAccumulator', () => {
 	it('returns empty summary when no events observed', () => {
 		const accumulator = new WorkSummaryAccumulator();
@@ -81,17 +90,38 @@ describe('WorkSummaryAccumulator', () => {
 		expect(summary.totalToolErrors).toBe(1);
 	});
 
-	it('ignores non-tool events', () => {
+	it('tracks text segments split on tool-call boundaries', () => {
 		const accumulator = new WorkSummaryAccumulator();
+		accumulator.observe(textDeltaEvent('First summary. '));
+		accumulator.observe(toolCallEvent('tc-1', 'list-workflows'));
+		accumulator.observe(toolResultEvent('tc-1'));
+		accumulator.observe(textDeltaEvent('Final summary.'));
+
+		const summary = accumulator.toSummary();
+		expect(summary.lastTextSummary).toBe('Final summary.');
+	});
+
+	it('returns the only text segment when no tools were called', () => {
+		const accumulator = new WorkSummaryAccumulator();
+		accumulator.observe(textDeltaEvent('Only summary.'));
+
+		const summary = accumulator.toSummary();
+		expect(summary.lastTextSummary).toBe('Only summary.');
+	});
+
+	it('ignores non-tool events except text-delta', () => {
+		const accumulator = new WorkSummaryAccumulator();
+		accumulator.observe(textDeltaEvent('hello'));
 		accumulator.observe({
-			type: 'text-delta',
+			type: 'reasoning-delta',
 			runId: 'run-1',
 			agentId: 'agent-1',
-			payload: { text: 'hello' },
+			payload: { text: 'thinking' },
 		});
 
 		const summary = accumulator.toSummary();
 		expect(summary.totalToolCalls).toBe(0);
+		expect(summary.lastTextSummary).toBe('hello');
 	});
 
 	it('is idempotent — multiple toSummary calls return same data', () => {

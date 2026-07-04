@@ -13,7 +13,11 @@ import { buildSubAgentBriefing } from '../../agent/sub-agent-briefing';
 import { buildDebriefing } from '../../agent/sub-agent-debriefing';
 import { createSubAgent } from '../../agent/sub-agent-factory';
 import { MAX_STEPS } from '../../constants/max-steps';
-import { consumeStreamWithHitl, requireCompletedHitlText } from '../../stream/consume-with-hitl';
+import {
+	consumeStreamWithHitl,
+	requireCompletedHitlText,
+	resolveSubAgentParentResult,
+} from '../../stream/consume-with-hitl';
 import type { RunTokenUsage } from '../../stream/usage-accumulator';
 import type { InstanceAiToolRegistry, OrchestrationContext } from '../../types';
 
@@ -187,11 +191,12 @@ export async function runSyncSubAgent(
 			});
 		});
 
-		const resultText = await requireCompletedHitlText(consumeResult, 'Sync sub-agent');
+		const fullText = await requireCompletedHitlText(consumeResult, 'Sync sub-agent');
+		const parentResult = resolveSubAgentParentResult(fullText, consumeResult.workSummary);
 		const debriefing = buildDebriefing({
 			agentId: subAgentId,
 			role: input.role,
-			result: resultText,
+			result: parentResult,
 			workSummary: consumeResult.workSummary,
 			startTime,
 		});
@@ -199,7 +204,8 @@ export async function runSyncSubAgent(
 
 		await finishTraceRun(context, traceRun, {
 			outputs: {
-				result: resultText,
+				result: parentResult,
+				fullText,
 				agentId: subAgentId,
 				role: input.role,
 				toolCallCount: debriefing.toolCallCount,
@@ -215,12 +221,12 @@ export async function runSyncSubAgent(
 			agentId: subAgentId,
 			payload: {
 				role: input.role,
-				result: resultText,
+				result: parentResult,
 			},
 		});
 
 		return {
-			result: resultText,
+			result: parentResult,
 			toolCallCount: debriefing.toolCallCount,
 			toolErrorCount: debriefing.toolErrorCount,
 			durationMs: debriefing.durationMs,

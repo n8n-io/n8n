@@ -19,12 +19,12 @@ describe('createAgentDelegateTool', () => {
 		expect(tool.name).toBe('agent');
 	});
 
-	it('lists configured specialists but excludes hidden built-ins', () => {
+	it('lists configured specialists but excludes the hidden general-purpose built-in', () => {
 		const tool = createAgentDelegateTool({} as OrchestrationContext);
 		expect(tool.systemInstruction).toContain('instance-explorer');
 		expect(tool.systemInstruction).toContain('execution-debugger');
+		expect(tool.systemInstruction).toContain('workflow-context-scout');
 		expect(tool.systemInstruction).not.toContain('general-purpose');
-		expect(tool.systemInstruction).not.toContain('workflow-context-scout');
 	});
 
 	it('routes every subAgentId through runInstanceAiSubAgent with the orchestration context', async () => {

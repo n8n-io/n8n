@@ -4,6 +4,7 @@ import {
 	type DelegateSubAgentToolOutput,
 } from '@n8n/agents';
 
+import { WORKFLOW_CONTEXT_SCOUT_ID } from './definitions/workflow-context-scout';
 import {
 	buildSubAgentInstructions,
 	getGeneralPurposeSubAgentDefinition,
@@ -13,6 +14,11 @@ import {
 	resolveSubAgentTools,
 } from './registry';
 import type { InstanceAiSubAgentDefinition } from './types';
+import {
+	appendCapturedTypeDefinitions,
+	createTypeDefinitionCapture,
+	wrapNodesToolForTypeDefinitionCapture,
+} from './workflow-context-scout-capture';
 import { runSyncSubAgent, type SyncSubAgentOutput } from '../tools/orchestration/sync-sub-agent';
 import type { InstanceAiToolRegistry, OrchestrationContext } from '../types';
 
@@ -31,10 +37,8 @@ export interface RunSubAgentDefinitionInput {
 
 /**
  * Shared executor: resolve a definition's tools and instructions, then run it
- * via {@link runSyncSubAgent}. Used by {@link runInstanceAiSubAgent} below for
- * delegate-tool routing, and directly by `discover-workflow-context` (which
- * resolves `workflow-context-scout` itself, bypassing delegate-id selection —
- * see `isSelectableSubAgentId`).
+ * via {@link runSyncSubAgent}. Used by {@link runInstanceAiSubAgent} for
+ * delegate-tool routing.
  */
 export async function runSubAgentDefinition(
 	definition: InstanceAiSubAgentDefinition,
@@ -105,19 +109,32 @@ export async function runInstanceAiSubAgent(
 		};
 	}
 
+	const capturedTypeDefinitions =
+		definition.id === WORKFLOW_CONTEXT_SCOUT_ID ? createTypeDefinitionCapture() : undefined;
+
 	const output = await runSubAgentDefinition(
 		definition,
 		{
 			briefing: buildDelegateBriefing(request),
 			conversationContext: request.context,
+			...(capturedTypeDefinitions
+				? {
+						transformTools: (tools) =>
+							wrapNodesToolForTypeDefinitionCapture(tools, capturedTypeDefinitions),
+					}
+				: {}),
 		},
 		context,
 	);
 
+	const answer = capturedTypeDefinitions
+		? appendCapturedTypeDefinitions(output.result, capturedTypeDefinitions)
+		: output.result;
+
 	return {
 		status: 'completed',
 		taskPath: request.taskPath,
-		answer: output.result,
+		answer,
 		...(output.usage ? { usage: output.usage } : {}),
 	};
 }

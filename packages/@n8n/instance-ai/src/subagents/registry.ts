@@ -14,12 +14,10 @@ import type { InstanceAiToolRegistry, OrchestrationContext } from '../types';
 export const GENERAL_PURPOSE_SUB_AGENT_ID = generalPurpose.id;
 
 /**
- * IDs reachable only through another route (inline mapping, the typed
- * `discover-workflow-context` tool) — never surfaced in the SDK's
- * `availableSubAgents` listing to avoid giving the model two routes to the
- * same specialist.
+ * IDs reachable only through another route (inline mapping) — never surfaced in
+ * the SDK's `availableSubAgents` listing.
  */
-const HIDDEN_FROM_LISTING = new Set<string>([generalPurpose.id, workflowContextScout.id]);
+const HIDDEN_FROM_LISTING = new Set<string>([generalPurpose.id]);
 
 const BUILT_IN_DEFINITIONS: InstanceAiSubAgentDefinition[] = [
 	generalPurpose,
@@ -61,10 +59,8 @@ export function listSubAgentIds(): string[] {
 
 /**
  * Whether `id` may be selected directly as a delegate tool `subAgentId`.
- * Hidden definitions (e.g. `workflow-context-scout`, reachable only through
- * `discover-workflow-context`) are registered but not directly selectable —
- * this keeps a single, schema-validated route to them instead of a second,
- * looser one through the generic delegate surface.
+ * Hidden definitions (e.g. `general-purpose`, reachable only via `"inline"`)
+ * are registered but not directly selectable.
  */
 export function isSelectableSubAgentId(id: string): boolean {
 	return REGISTRY.has(id) && !HIDDEN_FROM_LISTING.has(id);

@@ -119,7 +119,7 @@ When mapping downstream fields from an OpenAI node, read
 ## Pre-build discovery
 
 Before writing code, the orchestrator may have already run pre-build discovery —
-a `discover-workflow-context` call (nodes, credentials, knowledge base, and type
+an \`agent\` delegation to \`workflow-context-scout\` (nodes, credentials, knowledge base, and type
 definitions). The discovery debrief gives node IDs with discriminators, credential
 availability, and knowledge-base technique bullets as brief bullets, plus the
 relevant node **type definitions verbatim** (selected, not summarized).
@@ -133,9 +133,9 @@ When no discovery debrief exists, run steps 1–5 of Mandatory Process inline in
 this turn — but only for simple single-service builds or edits that reuse an
 existing `.workflow.ts` file. For a build touching external services or unfamiliar
 nodes (especially two or more external services) with no debrief in context, the
-orchestrator skipped required discovery: stop and let it run
-`discover-workflow-context` first, then resume here with the debrief. Do not call
-`discover-workflow-context` from this skill — pre-build discovery is the
+orchestrator skipped required discovery: stop and let it delegate to
+\`workflow-context-scout\` via \`agent\` first, then resume here with the debrief. Do not call
+\`agent\` from this skill — pre-build discovery is the
 orchestrator's job before loading `workflow-builder`.
 
 ## Workflow-Level Error Workflows
