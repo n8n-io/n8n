@@ -1,5 +1,6 @@
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 
+import { getModelProvider } from './prompt-cache';
 import { type ProviderId } from './provider-credentials';
 import type { TokenUsage } from '../../types';
 
@@ -81,6 +82,6 @@ const RAW_USAGE_READERS: Partial<Record<ProviderId, () => RawUsageReader>> = {
  * (same convention as `createModel`).
  */
 export function createRawUsageReader(modelId: string): RawUsageReader | undefined {
-	const provider = modelId.split('/')[0] as ProviderId;
+	const provider = getModelProvider(modelId) as ProviderId;
 	return RAW_USAGE_READERS[provider]?.();
 }

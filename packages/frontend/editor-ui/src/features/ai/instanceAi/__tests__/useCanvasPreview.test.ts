@@ -299,7 +299,7 @@ describe('useCanvasPreview', () => {
 	});
 
 	describe('thread switch (route.params.threadId change)', () => {
-		test('resets all preview state on thread switch', async () => {
+		test('keeps the active preview on thread switch', async () => {
 			const ctx = setup();
 			registerWorkflow(ctx.thread, 'wf-1');
 			ctx.openWorkflowPreview('wf-1');
@@ -307,44 +307,10 @@ describe('useCanvasPreview', () => {
 			ctx.route.params.threadId = 'thread-2';
 			await nextTick();
 
-			expect(ctx.activeTabId.value).toBeUndefined();
-			expect(ctx.activeWorkflowId.value).toBeNull();
+			expect(ctx.activeTabId.value).toBe('wf-1');
+			expect(ctx.activeWorkflowId.value).toBe('wf-1');
 			expect(ctx.activeDataTableId.value).toBeNull();
 			expect(ctx.activeDataTableProjectId.value).toBeNull();
-		});
-
-		test('clears the preview on thread switch, then stays closed while the new thread hydrates', async () => {
-			const ctx = setup();
-			registerWorkflow(ctx.thread, 'wf-1');
-			ctx.openWorkflowPreview('wf-1');
-			expect(ctx.isPreviewVisible.value).toBe(true);
-
-			ctx.route.params.threadId = 'thread-2';
-			await nextTick();
-
-			// Preview was cleared by thread switch.
-			expect(ctx.isPreviewVisible.value).toBe(false);
-
-			// Past artifacts surfacing during the new thread's hydration shouldn't
-			// pop the panel — historical data, not a live build.
-			ctx.thread.isHydratingThread = true;
-			registerWorkflow(ctx.thread, 'wf-historical');
-			ctx.thread.messages = [
-				makeMessage({
-					agentTree: makeAgentNode({
-						toolCalls: [
-							makeToolCall({
-								toolCallId: 'tc-build',
-								toolName: 'build-workflow',
-								result: { success: true, workflowId: 'wf-historical' },
-							}),
-						],
-					}),
-				}),
-			];
-			await nextTick();
-
-			expect(ctx.isPreviewVisible.value).toBe(false);
 		});
 	});
 
@@ -451,7 +417,7 @@ describe('useCanvasPreview', () => {
 	});
 
 	describe('auto-refresh on workflow update (workflows action=update / restore-version)', () => {
-		test('does not refresh when the updated workflow is not the active tab', async () => {
+		test('opens and refreshes the updated workflow when another tab is active', async () => {
 			const ctx = setup();
 			registerWorkflow(ctx.thread, 'wf-1');
 			registerWorkflow(ctx.thread, 'wf-2');
@@ -474,6 +440,62 @@ describe('useCanvasPreview', () => {
 			];
 			await nextTick();
 
+			expect(ctx.activeTabId.value).toBe('wf-1');
+			expect(ctx.activeWorkflowId.value).toBe('wf-1');
+			expect(ctx.workflowRefreshKey.value).toBe(initialKey + 1);
+		});
+
+		test('opens and refreshes after a successful update when no preview is active', async () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1');
+			const initialKey = ctx.workflowRefreshKey.value;
+
+			ctx.thread.messages = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolCallId: 'tc-update',
+								toolName: 'workflows',
+								args: { action: 'update', workflowId: 'wf-1' },
+								result: { success: true },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBe('wf-1');
+			expect(ctx.activeWorkflowId.value).toBe('wf-1');
+			expect(ctx.isPreviewVisible.value).toBe(true);
+			expect(ctx.workflowRefreshKey.value).toBe(initialKey + 1);
+		});
+
+		test('does not open or refresh updates while hydrating historical messages', async () => {
+			const ctx = setup();
+			ctx.thread.isHydratingThread = true;
+			registerWorkflow(ctx.thread, 'wf-1');
+			const initialKey = ctx.workflowRefreshKey.value;
+
+			ctx.thread.messages = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolCallId: 'tc-update',
+								toolName: 'workflows',
+								args: { action: 'update', workflowId: 'wf-1' },
+								result: { success: true },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(ctx.activeTabId.value).toBeUndefined();
+			expect(ctx.isPreviewVisible.value).toBe(false);
 			expect(ctx.workflowRefreshKey.value).toBe(initialKey);
 		});
 

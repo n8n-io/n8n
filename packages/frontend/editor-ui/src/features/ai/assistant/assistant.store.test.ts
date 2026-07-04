@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, type MockInstance } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import {
 	useChatPanelStore,
@@ -49,16 +49,11 @@ vi.mock('@/app/stores/workflowDocument.store', () => ({
 let settingsStore: ReturnType<typeof useSettingsStore>;
 let posthogStore: ReturnType<typeof usePostHog>;
 
-const apiSpy = vi.spyOn(chatAPI, 'chatWithAssistant');
+// `restoreMocks` restores spies before each test, so these are (re)established
+// in beforeEach rather than once at module scope.
+let apiSpy: MockInstance;
 
 const track = vi.fn();
-const spy = vi.spyOn(telemetryModule, 'useTelemetry');
-spy.mockImplementation(
-	() =>
-		({
-			track,
-		}) as unknown as Telemetry,
-);
 
 const setAssistantEnabled = (enabled: boolean) => {
 	settingsStore.setSettings(
@@ -85,6 +80,10 @@ vi.mock('vue-router', () => ({
 describe('AI Assistant store', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		apiSpy = vi.spyOn(chatAPI, 'chatWithAssistant');
+		vi.spyOn(telemetryModule, 'useTelemetry').mockImplementation(
+			() => ({ track }) as unknown as Telemetry,
+		);
 		currentRouteParams = {};
 		mockWorkflowDocumentStore.allNodes = [];
 		setActivePinia(createPinia());

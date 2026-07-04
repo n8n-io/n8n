@@ -1,7 +1,8 @@
 import type { AiInsightsResponse } from '@n8n/api-types';
 import type { LicenseState, Logger } from '@n8n/backend-common';
 import type { EvaluationCollection, EvaluationCollectionRepository, TestRun, User } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -44,10 +45,10 @@ function makeRun(over: Partial<TestRun> = {}): TestRun {
 
 describe('EvalInsightsService', () => {
 	let service: EvalInsightsService;
-	let collectionRepo: jest.Mocked<EvaluationCollectionRepository>;
-	let licenseState: jest.Mocked<LicenseState>;
-	let telemetry: jest.Mocked<Telemetry>;
-	let logger: jest.Mocked<Logger>;
+	let collectionRepo: Mocked<EvaluationCollectionRepository>;
+	let licenseState: Mocked<LicenseState>;
+	let telemetry: Mocked<Telemetry>;
+	let logger: Mocked<Logger>;
 
 	beforeEach(() => {
 		collectionRepo = mock<EvaluationCollectionRepository>();

@@ -1,7 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import type { SuspendedRunState } from '@n8n/instance-ai';
-import { mock, type MockProxy } from 'jest-mock-extended';
+import { mock, type MockProxy } from 'vitest-mock-extended';
 import { UserError } from 'n8n-workflow';
 
 import type { InstanceAiPendingConfirmation } from '../entities/instance-ai-pending-confirmation.entity';
@@ -34,7 +34,7 @@ function createRestorer(): { restorer: SuspendedRunRestorer; mocks: Mocks } {
 		rebuilder: mock<SuspendedRunRebuilder>(),
 	};
 	mocks.dbSnapshotStorage.markRunCancelled.mockResolvedValue();
-	mocks.rebuilder.resumeSuspendedRun.mockResolvedValue(false);
+	mocks.rebuilder.resumeSuspendedRun.mockResolvedValue(null);
 
 	const restorer = new SuspendedRunRestorer(mocks);
 	return { restorer, mocks };
@@ -52,24 +52,24 @@ const ready = {
 } satisfies RebuildSuspendedRunOutcome;
 
 describe('SuspendedRunRestorer — orphan restoration', () => {
-	it('returns false silently when no DB row is claimable', async () => {
+	it('returns null silently when no DB row is claimable', async () => {
 		const { restorer, mocks } = createRestorer();
 		mocks.pendingConfirmationRepo.claim.mockResolvedValue(undefined);
 
 		const result = await restorer.resolveOrphanedConfirmation('user-1', 'req-missing', approval);
 
-		expect(result).toBe(false);
+		expect(result).toBeNull();
 		expect(mocks.rebuilder.rebuildSuspendedRun).not.toHaveBeenCalled();
 		expect(mocks.eventBus.publish).not.toHaveBeenCalled();
 	});
 
-	it('returns false when the claim query itself fails', async () => {
+	it('returns null when the claim query itself fails', async () => {
 		const { restorer, mocks } = createRestorer();
 		mocks.pendingConfirmationRepo.claim.mockRejectedValue(new Error('db down'));
 
 		const result = await restorer.resolveOrphanedConfirmation('user-1', 'req-1', approval);
 
-		expect(result).toBe(false);
+		expect(result).toBeNull();
 	});
 
 	it('throws a terminal UserError for an inline orphan (nothing to resume)', async () => {
@@ -134,11 +134,17 @@ describe('SuspendedRunRestorer — orphan restoration', () => {
 		});
 		mocks.pendingConfirmationRepo.claim.mockResolvedValue(orphan);
 		mocks.rebuilder.rebuildSuspendedRun.mockResolvedValue(ready);
-		mocks.rebuilder.resumeSuspendedRun.mockResolvedValue(true);
+		mocks.rebuilder.resumeSuspendedRun.mockResolvedValue({
+			ok: true,
+			runId: 'run-1',
+		});
 
 		const result = await restorer.resolveOrphanedConfirmation('user-1', 'req-1', approval);
 
-		expect(result).toBe(true);
+		expect(result).toEqual({
+			ok: true,
+			runId: 'run-1',
+		});
 		expect(mocks.rebuilder.rebuildSuspendedRun).toHaveBeenCalledWith(orphan);
 		expect(mocks.runState.suspendRun).toHaveBeenCalledWith('thread-1', ready.state);
 		expect(mocks.rebuilder.resumeSuspendedRun).toHaveBeenCalledWith('user-1', 'req-1', approval);

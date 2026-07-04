@@ -1,5 +1,6 @@
 import { Container } from '@n8n/di';
 import type { ICredentialType, INodeProperties } from 'n8n-workflow';
+import type { Mocked } from 'vitest';
 
 import type { CredentialTypes } from '@/credential-types';
 
@@ -220,18 +221,18 @@ describe('extractSharedFields', () => {
 	});
 
 	describe('credential hierarchy with extends', () => {
-		let mockCredentialTypes: jest.Mocked<CredentialTypes>;
+		let mockCredentialTypes: Mocked<CredentialTypes>;
 
 		beforeEach(() => {
 			mockCredentialTypes = {
-				getByName: jest.fn(),
-			} as unknown as jest.Mocked<CredentialTypes>;
+				getByName: vi.fn(),
+			} as unknown as Mocked<CredentialTypes>;
 
-			jest.spyOn(Container, 'get').mockReturnValue(mockCredentialTypes);
+			vi.spyOn(Container, 'get').mockReturnValue(mockCredentialTypes);
 		});
 
 		afterEach(() => {
-			jest.restoreAllMocks();
+			vi.restoreAllMocks();
 		});
 
 		it('should merge properties from single parent credential', () => {

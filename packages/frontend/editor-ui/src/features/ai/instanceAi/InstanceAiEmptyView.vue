@@ -9,6 +9,7 @@ import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useChatInputAutoFocus } from '@n8n/design-system';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@/app/composables/useToast';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { getExperimentTelemetryPayload } from '@/experiments/utils';
 import { INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPERIMENT } from '@/app/constants/experiments';
@@ -72,11 +73,15 @@ const INSTANCE_AI_WORKFLOW_PREVIEW_SUGGESTIONS_PLACEHOLDER_KEY =
 	'experiments.instanceAiWorkflowPreviewSuggestions.input.placeholder' as BaseTextKey;
 const INSTANCE_AI_SPLIT_EMPTY_STATE_PLACEHOLDER_KEY: BaseTextKey =
 	'experiments.instanceAiSplitEmptyState.input.placeholder';
+const INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_PLACEHOLDER_KEY: BaseTextKey =
+	'experiments.instanceAiPersonalizedPromptSuggestions.input.placeholder';
 // Experiment cleanup: remove with instanceAiSplitEmptyState. The split layout
 // locks the composer to a constant height so hovering an example only swaps
 // the placeholder text — the examples list below it never shifts.
 const INSTANCE_AI_SPLIT_FIXED_ROWS = 5;
 const PERSONALIZED_PROMPT_METADATA_TIMEOUT_MS = 2000;
+const INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPOSURE_EVENT =
+	'Instance AI personalized prompt suggestions exposed';
 
 const store = useInstanceAiStore();
 const appSettingsStore = useSettingsStore();
@@ -88,6 +93,7 @@ const { isLowCredits } = storeToRefs(store);
 const rootStore = useRootStore();
 const router = useRouter();
 const toast = useToast();
+const telemetry = useTelemetry();
 const i18n = useI18n();
 const { goToUpgrade } = usePageRedirectionHelper();
 const creditBanner = useCreditWarningBanner(isLowCredits);
@@ -100,12 +106,6 @@ const { isFeatureEnabled: isWorkflowPreviewSuggestionsExperimentEnabled } =
 const { isVariantEnabled: isSplitVariantEnabled } = useInstanceAiSplitEmptyStateExperiment();
 // Experiment cleanup: remove with instanceAiSplitEmptyState.
 const splitPreviewPromptKey = ref<BaseTextKey | null>(null);
-// Experiment cleanup: remove with instanceAiSplitEmptyState. The split layout
-// hosts the view header inside its chat column; the proactive starter (082)
-// keeps precedence.
-const isSplitLayoutActive = computed(
-	() => isSplitVariantEnabled.value && !showProactiveStarter.value,
-);
 const splitWriting = ref(false);
 const {
 	currentVariant: personalizedPromptSuggestionsVariant,
@@ -113,6 +113,19 @@ const {
 	suggestionFormat: personalizedPromptSuggestionsFormat,
 } = useInstanceAiPersonalizedPromptSuggestionsExperiment();
 const showProactiveStarter = computed(() => isProactiveAgentExperimentEnabled.value);
+// Experiment cleanup: remove with instanceAiSplitEmptyState. The split layout
+// hosts the view header inside its chat column; the proactive starter (082)
+// keeps precedence.
+const isSplitLayoutActive = computed(
+	() => isSplitVariantEnabled.value && !showProactiveStarter.value,
+);
+const shouldTrackPersonalizedPromptSuggestionsExposure = computed(
+	() =>
+		typeof personalizedPromptSuggestionsVariant.value === 'string' &&
+		!showProactiveStarter.value &&
+		!isSplitLayoutActive.value &&
+		settingsStore.isWorkflowBuilderAvailable,
+);
 const activeWorkflowPreviewFile = ref<string | null>(null);
 const activeWorkflowPreview = computed(() => {
 	if (!activeWorkflowPreviewFile.value) return null;
@@ -123,6 +136,7 @@ const personalizedPromptSuggestionResolution = ref<PersonalizedPromptSuggestionR
 );
 const personalizedPromptProfileOverride = usePersonalizedPromptProfileOverride();
 let personalizedPromptMetadataTimeout: ReturnType<typeof setTimeout> | null = null;
+let hasTrackedPersonalizedPromptSuggestionsExposure = false;
 
 const personalizedPromptFallbackSuggestions = computed(() =>
 	getTopUsedV2FallbackSuggestions((key) => i18n.baseText(key)),
@@ -196,6 +210,30 @@ watch(
 );
 
 watch(
+	shouldTrackPersonalizedPromptSuggestionsExposure,
+	(shouldTrackExposure) => {
+		const variant = personalizedPromptSuggestionsVariant.value;
+		if (
+			!shouldTrackExposure ||
+			hasTrackedPersonalizedPromptSuggestionsExposure ||
+			typeof variant !== 'string'
+		) {
+			return;
+		}
+
+		telemetry.track(
+			INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPOSURE_EVENT,
+			getExperimentTelemetryPayload(
+				INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_EXPERIMENT,
+				variant,
+			),
+		);
+		hasTrackedPersonalizedPromptSuggestionsExposure = true;
+	},
+	{ immediate: true },
+);
+
+watch(
 	[() => cloudPlanStore.state.initialized, () => cloudPlanStore.currentUserCloudInfo],
 	([initialized]) => {
 		if (
@@ -223,7 +261,7 @@ const emptyStatePromptSuggestionProps = computed(() => {
 		if (!resolution) {
 			return {
 				suggestions: [],
-				placeholderKey: INSTANCE_AI_PROMPT_SUGGESTIONS_V2_PLACEHOLDER_KEY,
+				placeholderKey: INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_PLACEHOLDER_KEY,
 			};
 		}
 
@@ -241,7 +279,7 @@ const emptyStatePromptSuggestionProps = computed(() => {
 				personalizedPromptSuggestionsVariant.value,
 				resolution.telemetryPayload,
 			),
-			placeholderKey: INSTANCE_AI_PROMPT_SUGGESTIONS_V2_PLACEHOLDER_KEY,
+			placeholderKey: INSTANCE_AI_PERSONALIZED_PROMPT_SUGGESTIONS_PLACEHOLDER_KEY,
 		};
 	}
 
@@ -297,7 +335,7 @@ useResizeObserver(emptyLayoutRef, () => {
 	const bottomPadding = parseFloat(layoutStyles.paddingBottom);
 	const gap = parseFloat(layoutStyles.gap) || 0;
 	const remainingSpace = containerRect.bottom - inputRect.bottom - bottomPadding - gap;
-	previewScale.value = Math.min(1, Math.max(0, remainingSpace / CANVAS_NATURAL_HEIGHT_PX));
+	previewScale.value = Math.max(0, Math.min(1, remainingSpace / CANVAS_NATURAL_HEIGHT_PX));
 });
 
 const hasSpaceForPreview = computed(() => previewScale.value >= PREVIEW_MIN_SCALE);
@@ -333,7 +371,7 @@ async function handleSubmit(message: string, attachments?: InstanceAiAttachment[
 	isStartingThread.value = true;
 
 	// Persist the thread on the BE first. Otherwise we'd navigate to
-	// `/instance-ai/:threadId` for a thread the BE doesn't know about, and the
+	// `/assistant/:threadId` for a thread the BE doesn't know about, and the
 	// follow-up `postMessage` would 404.
 	try {
 		await store.syncThread(threadId, selectedProject.value);
@@ -383,6 +421,7 @@ function handleShelfSuggestionInsert(payload: {
 				<div :class="$style.proactiveInput">
 					<CreditWarningBanner
 						v-if="creditBanner.visible.value"
+						variant="standalone"
 						:credits-remaining="store.creditsRemaining"
 						:credits-quota="store.creditsQuota"
 						@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"
@@ -448,10 +487,11 @@ function handleShelfSuggestionInsert(payload: {
 				</template>
 			</InstanceAiSplitEmptyState>
 			<div v-else ref="emptyLayout" :class="$style.emptyLayout">
-				<InstanceAiEmptyState :title-key="emptyStateTitleKey" />
+				<InstanceAiEmptyState :title-key="emptyStateTitleKey" :show-title-icon="true" />
 				<div ref="centeredInput" :class="$style.centeredInput">
 					<CreditWarningBanner
 						v-if="creditBanner.visible.value"
+						variant="standalone"
 						:credits-remaining="store.creditsRemaining"
 						:credits-quota="store.creditsQuota"
 						@upgrade-click="goToUpgrade('instance-ai', 'upgrade-instance-ai')"

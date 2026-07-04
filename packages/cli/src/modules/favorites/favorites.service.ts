@@ -1,4 +1,4 @@
-import { Service } from '@n8n/di';
+import type { FavoriteResourceType } from '@n8n/api-types';
 import {
 	FolderRepository,
 	ProjectRepository,
@@ -7,16 +7,15 @@ import {
 	type Project,
 	type User,
 } from '@n8n/db';
+import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import { In } from '@n8n/typeorm';
-
-import { UserFavoriteRepository } from './database/repositories/user-favorite.repository';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 
-import type { FavoriteResourceType } from '@n8n/api-types';
+import { UserFavoriteRepository } from './database/repositories/user-favorite.repository';
 
 type ResourceMeta = { name: string; projectId: string };
 

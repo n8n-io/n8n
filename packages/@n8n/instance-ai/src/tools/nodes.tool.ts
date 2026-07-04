@@ -2,6 +2,7 @@
  * Consolidated nodes tool — list, search, describe, type-definition, suggested, explore-resources.
  */
 import { Tool } from '@n8n/agents';
+import { categoryList, suggestedNodesData } from '@n8n/ai-utilities/node-catalog';
 import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
@@ -9,7 +10,6 @@ import type { InstanceAiContext } from '../types';
 import { NodeSearchEngine } from './nodes/node-search-engine';
 import { AI_CONNECTION_TYPES, type SearchableNodeType } from './nodes/node-search-engine.types';
 import { pickPreferredChatModelNode } from './nodes/preferred-chat-model';
-import { categoryList, suggestedNodesData } from './nodes/suggested-nodes-data';
 import { buildCredentialMap } from './workflows/resolve-credentials';
 
 // ── Action schemas ──────────────────────────────────────────────────────────

@@ -1,7 +1,7 @@
 {
 	"version": 1,
-	"generated": "2026-06-27T08:19:29.728Z",
-	"totalViolations": 101,
+	"generated": "2026-06-28T00:16:46.937Z",
+	"totalViolations": 100,
 	"violations": {
 		"pages/AIAssistantPage.ts": [
 			{
@@ -621,14 +621,6 @@
 				"line": 13,
 				"message": "Duplicate locator: this.page.getByTestId(\"menu-item\") in pages scope",
 				"hash": "5a1818f5f511"
-			}
-		],
-		"pages/components/VariableModal.ts": [
-			{
-				"rule": "duplicate-logic",
-				"line": 38,
-				"message": "Duplicate method logic: VariableModal.close() has identical structure to pages/components/CredentialModal.ts:CredentialModal.close()",
-				"hash": "0da4699677e2"
 			}
 		],
 		"tests/e2e/instance-ai/instance-ai-timeline.spec.ts": [
