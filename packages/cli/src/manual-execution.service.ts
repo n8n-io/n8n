@@ -103,7 +103,11 @@ export class ManualExecutionService {
 				executionData,
 			);
 			return workflowExecute.processRunExecutionData(workflow);
-		} else if (data.runData === undefined || data.executionMode === 'evaluation') {
+		} else if (
+			data.runData === undefined ||
+			data.runData === null ||
+			data.executionMode === 'evaluation'
+		) {
 			// Full Execution
 			// TODO: When the old partial execution logic is removed this block can
 			// be removed and the previous one can be merged into

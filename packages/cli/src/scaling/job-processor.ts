@@ -259,7 +259,7 @@ export class JobProcessor {
 				workflowData: execution.workflowData,
 				destinationNode: startData?.destinationNode,
 				startNodes: startData?.startNodes,
-				runData: resultData.runData,
+				runData: resultData.runData ?? undefined,
 				pinData: resultData.pinData,
 				dirtyNodeNames: manualData?.dirtyNodeNames,
 				triggerToStartFrom: manualData?.triggerToStartFrom,
