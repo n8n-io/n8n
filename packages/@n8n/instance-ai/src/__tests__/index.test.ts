@@ -25,7 +25,7 @@ vi.mock('../tracing/trace-replay', () => {
 		IdRemapper,
 		TraceIndex,
 		TraceWriter,
-		PURE_REPLAY_TOOLS: new Set(['web-search']),
+		PURE_REPLAY_TOOLS: new Set(['research']),
 	};
 });
 
@@ -224,7 +224,7 @@ describe('@n8n/instance-ai public entrypoint', () => {
 		);
 		expect(call(entrypoint.createAllTools)).toEqual(['all-tools']);
 
-		expect(entrypoint.PURE_REPLAY_TOOLS.has('web-search')).toBe(true);
+		expect(entrypoint.PURE_REPLAY_TOOLS.has('research')).toBe(true);
 		expect(entrypoint.createSubAgentResourceIdPrefix('thread-1')).toBe(
 			'instance-ai-subagent:thread-1:',
 		);
