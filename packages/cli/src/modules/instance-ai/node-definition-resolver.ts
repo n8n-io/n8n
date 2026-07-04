@@ -83,6 +83,8 @@ function getNodeVersions(nodeId: string, nodeDefinitionDirs: string[]): string[]
 
 interface PathResolutionResult {
 	filePath?: string;
+	/** All mode variants, returned when a mode-split node is requested without a mode. */
+	modeVariants?: Array<{ mode: string; filePath: string }>;
 	error?: string;
 }
 
@@ -169,6 +171,16 @@ function resolveModeFile(
 	discriminators?: { mode?: string },
 ): PathResolutionResult {
 	if (!discriminators?.mode) {
+		// Mode-split nodes (set, switch, merge, code, …) have few, small variants.
+		// Returning all of them beats an error — an error forces the model into a
+		// retry, which costs a full extra LLM round-trip with the whole context.
+		const variants = modes
+			.map((mode) => ({
+				mode,
+				filePath: safeJoinPath(nodeDir, targetVersion, `mode_${toSnakeCase(mode)}.ts`),
+			}))
+			.filter((variant) => existsSync(variant.filePath));
+		if (variants.length > 0) return { modeVariants: variants };
 		return {
 			error: `Node '${nodeId}' requires mode discriminator. Available modes: ${modes.join(', ')}.`,
 		};
@@ -337,13 +349,24 @@ export function resolveNodeTypeDefinition(
 		);
 	}
 
-	if (result.error || !result.filePath) {
+	if (result.error || (!result.filePath && !result.modeVariants)) {
 		return { content: '', error: result.error ?? `Node type '${nodeId}' not found.` };
 	}
 
 	try {
-		const content = readFileSync(result.filePath, 'utf-8');
-		const actualVersion = result.filePath.match(/\/(v\d+)(?:\/|\.ts)/)?.[1];
+		if (result.modeVariants) {
+			const sections = result.modeVariants.map(
+				(variant) =>
+					`// ── mode: ${variant.mode} ──
+${readFileSync(variant.filePath, 'utf-8')}`,
+			);
+			const header = `// No mode discriminator was given — definitions for all ${String(result.modeVariants.length)} modes of '${nodeId}' follow (pass \`mode\` to fetch a single one).`;
+			const actualVersion = result.modeVariants[0].filePath.match(/\/(v\d+)(?:\/|\.ts)/)?.[1];
+			return { content: [header, ...sections].join('\n\n'), version: actualVersion };
+		}
+		const filePath = result.filePath!;
+		const content = readFileSync(filePath, 'utf-8');
+		const actualVersion = filePath.match(/\/(v\d+)(?:\/|\.ts)/)?.[1];
 		return { content, version: actualVersion };
 	} catch (error) {
 		return {
