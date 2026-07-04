@@ -1,4 +1,5 @@
 import type { BufferWindowMemoryInput } from '@langchain/classic/memory';
+import { withOrphanCleanup } from '@utils/memory/withOrphanCleanup';
 import { BufferWindowMemory } from '@langchain/classic/memory';
 import {
 	NodeConnectionTypes,
@@ -48,7 +49,7 @@ class MemoryChatBufferSingleton {
 		if (memoryInstance) {
 			memoryInstance.last_accessed = new Date();
 		} else {
-			const newMemory = new BufferWindowMemory(memoryParams);
+			const newMemory = withOrphanCleanup(new BufferWindowMemory(memoryParams));
 
 			memoryInstance = {
 				buffer: newMemory,

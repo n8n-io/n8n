@@ -1,6 +1,7 @@
 import { MongoDBChatMessageHistory } from '@langchain/mongodb';
 import { BufferWindowMemory } from '@langchain/classic/memory';
 import { MongoClient } from 'mongodb';
+import { withOrphanCleanup } from '@utils/memory/withOrphanCleanup';
 import type {
 	ISupplyDataFunctions,
 	INodeType,
@@ -146,14 +147,16 @@ export class MemoryMongoDbChat implements INodeType {
 				sessionId,
 			});
 
-			const memory = new BufferWindowMemory({
-				memoryKey: 'chat_history',
-				chatHistory: mongoDBChatHistory,
-				returnMessages: true,
-				inputKey: 'input',
-				outputKey: 'output',
-				k: this.getNodeParameter('contextWindowLength', itemIndex, 5) as number,
-			});
+			const memory = withOrphanCleanup(
+				new BufferWindowMemory({
+					memoryKey: 'chat_history',
+					chatHistory: mongoDBChatHistory,
+					returnMessages: true,
+					inputKey: 'input',
+					outputKey: 'output',
+					k: this.getNodeParameter('contextWindowLength', itemIndex, 5) as number,
+				}),
+			);
 
 			async function closeFunction() {
 				await client.close();

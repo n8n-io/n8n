@@ -1,5 +1,7 @@
 import type { RedisChatMessageHistoryInput } from '@langchain/redis';
+import { withOrphanCleanup } from '@utils/memory/withOrphanCleanup';
 import { RedisChatMessageHistory } from '@langchain/redis';
+
 import { BufferMemory, BufferWindowMemory } from '@langchain/classic/memory';
 import {
 	NodeOperationError,
@@ -166,14 +168,16 @@ export class MemoryRedisChat implements INodeType {
 				? {}
 				: { k: this.getNodeParameter('contextWindowLength', itemIndex) };
 
-		const memory = new memClass({
-			memoryKey: 'chat_history',
-			chatHistory: redisChatHistory,
-			returnMessages: true,
-			inputKey: 'input',
-			outputKey: 'output',
-			...kOptions,
-		});
+		const memory = withOrphanCleanup(
+			new memClass({
+				memoryKey: 'chat_history',
+				chatHistory: redisChatHistory,
+				returnMessages: true,
+				inputKey: 'input',
+				outputKey: 'output',
+				...kOptions,
+			}),
+		);
 
 		async function closeFunction() {
 			void client.disconnect();
