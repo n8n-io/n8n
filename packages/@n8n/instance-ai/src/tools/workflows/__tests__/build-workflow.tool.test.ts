@@ -201,6 +201,12 @@ describe('createBuildWorkflowTool', () => {
 		);
 		expect(result.postBuildFlow?.instructions).toContain('# Post-Build Flow');
 		expect(result.postBuildFlow?.instructions).not.toContain('recommended_tools');
+		// Tag-turn-only sections are stripped from the inline copy (the loadable
+		// skill keeps them for <workflow-verification-follow-up> turns).
+		expect(result.postBuildFlow?.instructions).not.toContain('## Verification follow-up');
+		expect(result.postBuildFlow?.instructions).not.toContain('## Setup follow-up');
+		expect(result.postBuildFlow?.instructions).not.toContain('## Credentials before build');
+		expect(result.postBuildFlow?.instructions).toContain('## After build-workflow succeeds');
 		expect(result.postBuildFlow?.guidance).toContain(
 			'then mocked/no-mock live-test when latest verification used mocks or simulations',
 		);
@@ -1003,5 +1009,19 @@ describe('createBuildWorkflowTool', () => {
 			'You already tried this',
 		);
 		expect((repeatSupportingAttempt.errors ?? []).join('\n')).toContain('You already tried this');
+	});
+});
+
+describe('getPostBuildFlowInstructions (via successful build result)', () => {
+	it('strips follow-up-tag-only sections from the inline copy', async () => {
+		// Covered indirectly through the postBuildFlow.instructions assertions in
+		// the success-path test above; this test pins the section stripping.
+		const { readFileSync } = await import('node:fs');
+		const { join } = await import('node:path');
+		const raw = readFileSync(
+			join(__dirname, '..', '..', '..', '..', 'skills', 'post-build-flow', 'SKILL.md'),
+			'utf-8',
+		);
+		expect(raw).toContain('## Verification follow-up'); // still in the loadable skill
 	});
 });

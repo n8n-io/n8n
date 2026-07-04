@@ -6,7 +6,6 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { z } from 'zod';
 
-
 import { planVerificationSimulation } from './plan-verification-simulation';
 import { buildCredentialMap, resolveCredentials } from './resolve-credentials';
 import { analyzeWorkflow, stripStaleCredentialsFromWorkflow } from './setup-workflow.service';
@@ -165,6 +164,19 @@ const POST_BUILD_FLOW_GUIDANCE =
  * registered for verification/setup follow-up turns that reference it by tag.
  */
 let postBuildFlowInstructionsCache: string | undefined;
+
+/**
+ * Sections that only apply to tag-driven follow-up turns
+ * (`<workflow-verification-follow-up>` / `<workflow-setup-required>`) or to
+ * pre-build credential routing — moot in the inline copy delivered right after
+ * a direct build. Follow-up turns load the full skill via `load_skill`.
+ */
+const INLINE_SKIPPED_SECTIONS = [
+	'## Verification follow-up',
+	'## Setup follow-up',
+	'## Credentials before build',
+];
+
 function getPostBuildFlowInstructions(): string {
 	if (postBuildFlowInstructionsCache === undefined) {
 		const raw = readFileSync(
@@ -172,7 +184,12 @@ function getPostBuildFlowInstructions(): string {
 			'utf-8',
 		);
 		// Strip YAML front-matter — the catalog metadata is noise in a tool result.
-		postBuildFlowInstructionsCache = raw.replace(/^---\n[\s\S]*?\n---\n/, '').trim();
+		const body = raw.replace(/^---\n[\s\S]*?\n---\n/, '').trim();
+		postBuildFlowInstructionsCache = body
+			.split(/\n(?=## )/)
+			.filter((section) => !INLINE_SKIPPED_SECTIONS.some((title) => section.startsWith(title)))
+			.join('\n')
+			.trim();
 	}
 	return postBuildFlowInstructionsCache;
 }
