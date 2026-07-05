@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  wrapper:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      NODE_ENV: development
+      LOG_LEVEL: info
+      BOLEK_API_TOKEN: test_token_for_dev
+      N8N_URL: http://n8n:5678
+      WRAPPER_PORT: 3001
+    depends_on:
+      - n8n
+    networks:
+      - bolek
+    command: npm run dev
+
+  n8n:
+    build:
+      context: ..
+    ports:
+      - "5678:5678"
+    environment:
+      N8N_HOST: 0.0.0.0
+      N8N_PORT: 5678
+      N8N_PROTOCOL: http
+      WEBHOOK_TUNNEL_URL: http://localhost:5678
+      DB_TYPE: sqlite
+    networks:
+      - bolek
+    volumes:
+      - n8n_data:/home/node/.n8n
+
+networks:
+  bolek:
+    driver: bridge
+
+volumes:
+  n8n_data:
