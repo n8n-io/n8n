@@ -21,7 +21,7 @@
 			"name": "no-recent-emails",
 			"description": "No Gmail messages arrived in the last 24 hours",
 			"dataSetup": "The Gmail search node returns no emails. The workflow should handle the empty inbox and either send a concise no-action-needed digest email or complete cleanly through an explicit empty/fallback path.",
-			"successCriteria": "The workflow executes without errors and handles the empty inbox gracefully: it either sends a concise no-action-needed digest email or completes cleanly end-to-end on the empty case. Branching on the empty case is optional — a single-path design that degrades gracefully is equally acceptable — but if the workflow does branch, the empty branch must be wired to a downstream node, not left terminal."
+			"successCriteria": "The workflow executes without errors and handles the empty inbox OBSERVABLY: either a concise no-action-needed digest email is sent, or an explicitly-designed fallback/no-op step executes as the final node on the empty path. A run where every node after the Gmail fetch is silently skipped on empty input does NOT count as handling the case. Branching is optional — a single-path design is fine if its final node still executes on empty input — but if the workflow does branch, the empty branch must be wired to a downstream node, not left terminal."
 		}
 	]
 }

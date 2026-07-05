@@ -754,10 +754,18 @@ export class EvalExecutionService {
 			// protocol adapters — coerce the generated body to the canonical
 			// envelope so the node's real parser accepts it.
 			if (response && response.statusCode < 400 && isOpenAiResponsesUrl(requestOptions.url)) {
-				response = normalizeOpenAiResponsesMockResponse(
+				const normalized = normalizeOpenAiResponsesMockResponse(
 					response,
 					extractResponsesRequestModel(requestOptions.body),
 				);
+				if (normalized !== response) {
+					// Triage breadcrumb: the recorded mockResponse below is the coerced
+					// body, not the generator's raw output.
+					this.logger.debug(
+						`[EvalMock] Applied Responses-envelope normalization for "${node.name}"`,
+					);
+				}
+				response = normalized;
 			}
 
 			entry.interceptedRequests.push({

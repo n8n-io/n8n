@@ -444,3 +444,88 @@ describe('normalizeOpenAiResponsesMockResponse', () => {
 		expect(normalizeOpenAiResponsesMockResponse(apiError, 'gpt-4o-mini')).toBe(apiError);
 	});
 });
+
+describe('normalizeOpenAiResponsesMockResponse — structure preservation', () => {
+	const asResponse = (body: unknown): EvalMockHttpResponse => ({
+		body,
+		headers: { 'content-type': 'application/json' },
+		statusCode: 200,
+	});
+
+	it('normalizes a malformed body even when it carries the realistic error:null field', () => {
+		const failingBody = {
+			error: null,
+			output: [{ index: 0, content: [{ type: 'text', text: 'digest ready' }] }],
+		};
+
+		const normalized = normalizeOpenAiResponsesMockResponse(asResponse(failingBody), 'gpt-4o-mini');
+
+		const body = normalized.body as {
+			output: Array<{ type: string; content: Array<{ type: string; text: string }> }>;
+		};
+		expect(body.output[0].type).toBe('message');
+		expect(body.output[0].content[0].type).toBe('output_text');
+		expect(body.output[0].content[0].text).toBe('digest ready');
+	});
+
+	it('preserves Responses-native function_call items instead of flattening them to text', () => {
+		const toolCallBody = {
+			output: [
+				{
+					type: 'function_call',
+					name: 'lookup_flight',
+					arguments: '{"flight":"FR485"}',
+					call_id: 'call_abc',
+					id: 'fc_abc',
+				},
+			],
+		};
+
+		const normalized = normalizeOpenAiResponsesMockResponse(
+			asResponse(toolCallBody),
+			'gpt-4o-mini',
+		);
+
+		const body = normalized.body as {
+			object: string;
+			output: Array<{ type: string; name: string; arguments: string; call_id: string }>;
+		};
+		expect(body.object).toBe('response');
+		expect(body.output).toHaveLength(1);
+		expect(body.output[0].type).toBe('function_call');
+		expect(body.output[0].name).toBe('lookup_flight');
+		expect(body.output[0].arguments).toBe('{"flight":"FR485"}');
+		expect(body.output[0].call_id).toBe('call_abc');
+	});
+
+	it('preserves a mixed message + function_call output and fills missing tool-call ids', () => {
+		const mixedBody = {
+			output: [
+				{ content: [{ type: 'text', text: 'calling the tool' }] },
+				{ type: 'function_call', name: 'save_lead', arguments: '{}' },
+			],
+		};
+
+		const normalized = normalizeOpenAiResponsesMockResponse(asResponse(mixedBody), 'gpt-4o-mini');
+
+		const body = normalized.body as { output: Array<Record<string, unknown>> };
+		expect(body.output).toHaveLength(2);
+		expect(body.output[0].type).toBe('message');
+		expect(body.output[1].type).toBe('function_call');
+		expect(typeof body.output[1].call_id).toBe('string');
+		expect((body.output[1].call_id as string).length).toBeGreaterThan(0);
+	});
+
+	it('rebuilds shapeless bodies (bare string) into a message envelope', () => {
+		const normalized = normalizeOpenAiResponsesMockResponse(
+			asResponse('just some text'),
+			'gpt-4o-mini',
+		);
+
+		const body = normalized.body as {
+			output: Array<{ type: string; content: Array<{ type: string; text: string }> }>;
+		};
+		expect(body.output[0].type).toBe('message');
+		expect(body.output[0].content[0].text).toBe('just some text');
+	});
+});

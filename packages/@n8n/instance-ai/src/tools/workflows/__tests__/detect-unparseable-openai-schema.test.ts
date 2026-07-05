@@ -67,11 +67,22 @@ describe('detectUnparseableOpenAiSchema', () => {
 		expect(codes(workflow(jsonSchemaParams(VALID_SCHEMA)))).toEqual([]);
 	});
 
-	it('handles textOptions stored as an array of one (fixedCollection default shape)', () => {
+	it('flags array-stored textOptions as silently-ignored structured output (regardless of schema)', () => {
+		// The node reads textFormat.textOptions as an object; an array-stored
+		// config never reaches the json_schema branch at runtime.
 		expect(codes(workflow(jsonSchemaParams('{ broken', 'array')))).toEqual([
-			'OPENAI_STRUCTURED_OUTPUT_SCHEMA_INVALID',
+			'OPENAI_STRUCTURED_OUTPUT_IGNORED',
 		]);
-		expect(codes(workflow(jsonSchemaParams(VALID_SCHEMA, 'array')))).toEqual([]);
+		expect(codes(workflow(jsonSchemaParams(VALID_SCHEMA, 'array')))).toEqual([
+			'OPENAI_STRUCTURED_OUTPUT_IGNORED',
+		]);
+	});
+
+	it('flags an object-valued schema (JSON.parse of a non-string throws at runtime)', () => {
+		const warnings = detectUnparseableOpenAiSchema(workflow(jsonSchemaParams({ type: 'object' })));
+		expect(warnings).toHaveLength(1);
+		expect(warnings[0].code).toBe('OPENAI_STRUCTURED_OUTPUT_SCHEMA_INVALID');
+		expect(warnings[0].message).toContain('not a string');
 	});
 
 	it('ignores non-json_schema output formats, expressions, and other node types', () => {
@@ -82,8 +93,16 @@ describe('detectUnparseableOpenAiSchema', () => {
 		expect(codes(workflow({}))).toEqual([]);
 	});
 
-	it('ignores a non-string or empty schema value', () => {
-		expect(codes(workflow(jsonSchemaParams({ type: 'object' })))).toEqual([]);
+	it('treats a leading-space "=" as a literal string, not an expression (n8n semantics)', () => {
+		// n8n only treats charAt(0)==='=' as an expression; ' ={{...}}' is a
+		// literal that will crash JSON.parse at runtime.
+		expect(codes(workflow(jsonSchemaParams(' ={{ $json.schema }}')))).toEqual([
+			'OPENAI_STRUCTURED_OUTPUT_SCHEMA_INVALID',
+		]);
+	});
+
+	it('ignores an empty or absent schema value', () => {
 		expect(codes(workflow(jsonSchemaParams('   ')))).toEqual([]);
+		expect(codes(workflow(jsonSchemaParams(undefined)))).toEqual([]);
 	});
 });
