@@ -48,7 +48,7 @@ export async function nextCloudApiRequest(
 	// For non-WebDAV requests, strip the WebDAV suffix while preserving any subpath prefix.
 	options.uri = useWebDavEndpoint
 		? `${credentials.webDavUrl}/${encodeURI(endpoint)}`
-		: `${credentials.webDavUrl.replace(/\/remote\.php\/webdav\/?$/, '')}/${encodeURI(endpoint)}`;
+		: `${credentials.webDavUrl.replace(/\/remote\.php\/(webdav|dav)\/?$/, '').replace(/\/+$/, '')}/${encodeURI(endpoint)}`;
 
 	const credentialType =
 		authenticationMethod === 'accessToken' ? 'nextCloudApi' : 'nextCloudOAuth2Api';
@@ -66,4 +66,17 @@ export async function nextCloudApiRequest(
 	}
 
 	return response;
+}
+
+export function parseResponseData(
+	responseData: string | object | undefined,
+): object | string | undefined {
+	if (typeof responseData === 'string') {
+		try {
+			return JSON.parse(responseData);
+		} catch (error) {
+			return responseData;
+		}
+	}
+	return responseData;
 }

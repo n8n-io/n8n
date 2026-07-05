@@ -19,6 +19,13 @@ import { parseString } from 'xml2js';
 
 import { deckFields } from './descriptions/Deck.descriptions';
 import { nextCloudApiRequest } from './GenericFunctions';
+import {
+	getBoards,
+	getCards,
+	getLabels,
+	getStacks,
+} from './SearchFunctions/Deck/deckSearchFunctions';
+import { getUsers } from './SearchFunctions/shared/sharedSearchFunctions';
 import { wrapData } from '../../utils/utilities';
 
 export class NextCloud implements INodeType {
@@ -879,6 +886,16 @@ export class NextCloud implements INodeType {
 		],
 	};
 
+	methods = {
+		listSearch: {
+			getUsers,
+			getBoards,
+			getCards,
+			getLabels,
+			getStacks,
+		},
+	};
+
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData().slice();
 		const returnData: INodeExecutionData[] = [];
@@ -1032,6 +1049,488 @@ export class NextCloud implements INodeType {
 							body = new URLSearchParams(bodyParameters as Record<string, string>).toString();
 						}
 					}
+				} else if (resource === 'deck') {
+					useWebDavEndpoint = false;
+
+					// Build base URL by stripping WebDAV suffix
+					const baseUrl = (credentials.webDavUrl as string)
+						.replace(/\/remote\.php\/(webdav|dav)\/?$/, '')
+						.replace(/\/+$/, '');
+
+					const deckBase = 'index.php/apps/deck/api/v1.1';
+
+					// Build Basic Auth header once
+					const user = credentials.user as string;
+					const pass = credentials.password as string;
+					const basicAuth = Buffer.from(`${user}:${pass}`).toString('base64');
+
+					// Reusable Deck request helper
+					const deckRequest = async (
+						method: IHttpRequestMethods,
+						path: string,
+						body?: IDataObject,
+					): Promise<any> => {
+						return await this.helpers.httpRequest({
+							method,
+							url: `${baseUrl}/${deckBase}${path}`,
+							headers: {
+								'OCS-APIRequest': 'true',
+								'Content-Type': 'application/json',
+								Accept: 'application/json',
+								Authorization: `Basic ${basicAuth}`,
+							},
+							body,
+							json: true,
+						});
+					};
+
+					switch (operation) {
+						// ------------------------------------------
+						// BOARD
+						// ------------------------------------------
+						case 'listBoards': {
+							responseData = await deckRequest('GET', '/boards');
+							break;
+						}
+						case 'getBoard': {
+							const boardId = this.getNodeParameter('boardId', i, '', {
+								extractValue: true,
+							}) as string;
+							responseData = await deckRequest('GET', `/boards/${encodeURIComponent(boardId)}`);
+							break;
+						}
+						case 'createBoard': {
+							responseData = await deckRequest('POST', '/boards', {
+								title: this.getNodeParameter('title', i),
+								color: this.getNodeParameter('color', i),
+							} as IDataObject);
+							break;
+						}
+						case 'updateBoard': {
+							const boardId = this.getNodeParameter('boardId', i, '', {
+								extractValue: true,
+							}) as string;
+							const updateBody: IDataObject = {};
+							const title = this.getNodeParameter('title', i, '') as string;
+							const color = this.getNodeParameter('color', i, '') as string;
+							const archived = this.getNodeParameter('archived', i, false) as boolean;
+							if (title) updateBody.title = title;
+							if (color) updateBody.color = color;
+							updateBody.archived = archived;
+							responseData = await deckRequest(
+								'PUT',
+								`/boards/${encodeURIComponent(boardId)}`,
+								updateBody,
+							);
+							break;
+						}
+						case 'deleteBoard': {
+							const boardId = this.getNodeParameter('boardId', i, '', {
+								extractValue: true,
+							}) as string;
+							responseData = await deckRequest('DELETE', `/boards/${encodeURIComponent(boardId)}`);
+							break;
+						}
+
+						// ------------------------------------------
+						// STACK
+						// ------------------------------------------
+						case 'listStacks': {
+							const boardId = this.getNodeParameter('boardId', i, '', {
+								extractValue: true,
+							}) as string;
+							responseData = await deckRequest(
+								'GET',
+								`/boards/${encodeURIComponent(boardId)}/stacks`,
+							);
+							break;
+						}
+						case 'getStack': {
+							const boardId = this.getNodeParameter('boardId', i, '', {
+								extractValue: true,
+							}) as string;
+							const stackId = this.getNodeParameter('stackId', i, '', {
+								extractValue: true,
+							}) as string;
+							responseData = await deckRequest(
+								'GET',
+								`/boards/${encodeURIComponent(boardId)}/stacks/${encodeURIComponent(stackId)}`,
+							);
+							break;
+						}
+						case 'createStack': {
+							const boardId = this.getNodeParameter('boardId', i, '', {
+								extractValue: true,
+							}) as string;
+							responseData = await deckRequest(
+								'POST',
+								`/boards/${encodeURIComponent(boardId)}/stacks`,
+								{
+									title: this.getNodeParameter('title', i),
+									order: this.getNodeParameter('order', i),
+								} as IDataObject,
+							);
+							break;
+						}
+						case 'updateStack': {
+							const boardId = this.getNodeParameter('boardId', i, '', {
+								extractValue: true,
+							}) as string;
+							const stackId = this.getNodeParameter('stackId', i, '', {
+								extractValue: true,
+							}) as string;
+							const updateBody: IDataObject = {};
+							const title = this.getNodeParameter('title', i, '') as string;
+							const order = this.getNodeParameter('order', i, undefined) as number;
+							if (title) updateBody.title = title;
+							if (order !== undefined) updateBody.order = order;
+							responseData = await deckRequest(
+								'PUT',
+								`/boards/${encodeURIComponent(boardId)}/stacks/${encodeURIComponent(stackId)}`,
+								updateBody,
+							);
+							break;
+						}
+						case 'deleteStack': {
+							const boardId = this.getNodeParameter('boardId', i, '', {
+								extractValue: true,
+							}) as string;
+							const stackId = this.getNodeParameter('stackId', i, '', {
+								extractValue: true,
+							}) as string;
+							responseData = await deckRequest(
+								'DELETE',
+								`/boards/${encodeURIComponent(boardId)}/stacks/${encodeURIComponent(stackId)}`,
+							);
+							break;
+						}
+
+						// ------------------------------------------
+						// CARD (simple — no pre-flight)
+						// ------------------------------------------
+						case 'listCards': {
+							const boardId = this.getNodeParameter('boardId', i, '', {
+								extractValue: true,
+							}) as string;
+							const stackId = this.getNodeParameter('stackId', i, '', {
+								extractValue: true,
+							}) as string;
+							responseData = await deckRequest(
+								'GET',
+								`/boards/${encodeURIComponent(boardId)}/stacks/${encodeURIComponent(stackId)}/cards`,
+							);
+							break;
+						}
+						case 'getCard': {
+							const boardId = this.getNodeParameter('boardId', i, '', {
+								extractValue: true,
+							}) as string;
+							const stackId = this.getNodeParameter('stackId', i, '', {
+								extractValue: true,
+							}) as string;
+							const cardId = this.getNodeParameter('cardId', i, '', {
+								extractValue: true,
+							}) as string;
+							responseData = await deckRequest(
+								'GET',
+								`/boards/${encodeURIComponent(boardId)}/stacks/${encodeURIComponent(stackId)}/cards/${encodeURIComponent(cardId)}`,
+							);
+							break;
+						}
+						case 'createCard': {
+							const boardId = this.getNodeParameter('boardId', i, '', {
+								extractValue: true,
+							}) as string;
+							const stackId = this.getNodeParameter('stackId', i, '', {
+								extractValue: true,
+							}) as string;
+							const cardBody: IDataObject = {
+								title: this.getNodeParameter('title', i),
+								type: this.getNodeParameter('type', i, 'plain'),
+								order: this.getNodeParameter('order', i, 0),
+							};
+							const description = this.getNodeParameter('description', i, '') as string;
+							const dueDate = this.getNodeParameter('dueDate', i, '') as string;
+							if (description) cardBody.description = description;
+							if (dueDate) cardBody.duedate = dueDate;
+							responseData = await deckRequest(
+								'POST',
+								`/boards/${encodeURIComponent(boardId)}/stacks/${encodeURIComponent(stackId)}/cards`,
+								cardBody,
+							);
+							break;
+						}
+						case 'deleteCard': {
+							const boardId = this.getNodeParameter('boardId', i, '', {
+								extractValue: true,
+							}) as string;
+							const stackId = this.getNodeParameter('stackId', i, '', {
+								extractValue: true,
+							}) as string;
+							const cardId = this.getNodeParameter('cardId', i, '', {
+								extractValue: true,
+							}) as string;
+							responseData = await deckRequest(
+								'DELETE',
+								`/boards/${encodeURIComponent(boardId)}/stacks/${encodeURIComponent(stackId)}/cards/${encodeURIComponent(cardId)}`,
+							);
+							break;
+						}
+						case 'assignLabel': {
+							const boardId = this.getNodeParameter('boardId', i, '', {
+								extractValue: true,
+							}) as string;
+							const stackId = this.getNodeParameter('stackId', i, '', {
+								extractValue: true,
+							}) as string;
+							const cardId = this.getNodeParameter('cardId', i, '', {
+								extractValue: true,
+							}) as string;
+							const labelId = this.getNodeParameter('labelId', i, '', {
+								extractValue: true,
+							}) as string;
+							responseData = await deckRequest(
+								'PUT',
+								`/boards/${encodeURIComponent(boardId)}/stacks/${encodeURIComponent(stackId)}/cards/${encodeURIComponent(cardId)}/assignLabel`,
+								{
+									labelId: parseInt(labelId, 10),
+								} as IDataObject,
+							);
+							break;
+						}
+						case 'removeLabel': {
+							const boardId = this.getNodeParameter('boardId', i, '', {
+								extractValue: true,
+							}) as string;
+							const stackId = this.getNodeParameter('stackId', i, '', {
+								extractValue: true,
+							}) as string;
+							const cardId = this.getNodeParameter('cardId', i, '', {
+								extractValue: true,
+							}) as string;
+							const labelId = this.getNodeParameter('labelId', i, '', {
+								extractValue: true,
+							}) as string;
+							responseData = await deckRequest(
+								'PUT',
+								`/boards/${encodeURIComponent(boardId)}/stacks/${encodeURIComponent(stackId)}/cards/${encodeURIComponent(cardId)}/removeLabel`,
+								{
+									labelId: parseInt(labelId, 10),
+								} as IDataObject,
+							);
+							break;
+						}
+						case 'assignUser': {
+							const boardId = this.getNodeParameter('boardId', i, '', {
+								extractValue: true,
+							}) as string;
+							const stackId = this.getNodeParameter('stackId', i, '', {
+								extractValue: true,
+							}) as string;
+							const cardId = this.getNodeParameter('cardId', i, '', {
+								extractValue: true,
+							}) as string;
+							const userId = this.getNodeParameter('userId', i, '', {
+								extractValue: true,
+							}) as string;
+							responseData = await deckRequest(
+								'PUT',
+								`/boards/${encodeURIComponent(boardId)}/stacks/${encodeURIComponent(stackId)}/cards/${encodeURIComponent(cardId)}/assignUser`,
+								{
+									userId,
+								} as IDataObject,
+							);
+							break;
+						}
+						case 'unassignUser': {
+							const boardId = this.getNodeParameter('boardId', i, '', {
+								extractValue: true,
+							}) as string;
+							const stackId = this.getNodeParameter('stackId', i, '', {
+								extractValue: true,
+							}) as string;
+							const cardId = this.getNodeParameter('cardId', i, '', {
+								extractValue: true,
+							}) as string;
+							const userId = this.getNodeParameter('userId', i, '', {
+								extractValue: true,
+							}) as string;
+							responseData = await deckRequest(
+								'PUT',
+								`/boards/${encodeURIComponent(boardId)}/stacks/${encodeURIComponent(stackId)}/cards/${encodeURIComponent(cardId)}/unassignUser`,
+								{
+									userId,
+								} as IDataObject,
+							);
+							break;
+						}
+
+						// ------------------------------------------
+						// CARD (complex — pre-flight GET required)
+						// ------------------------------------------
+						case 'updateCard': {
+							const boardId = this.getNodeParameter('boardId', i, '', {
+								extractValue: true,
+							}) as string;
+							const stackId = this.getNodeParameter('stackId', i, '', {
+								extractValue: true,
+							}) as string;
+							const cardId = this.getNodeParameter('cardId', i, '', {
+								extractValue: true,
+							}) as string;
+							const cardPath = `/boards/${encodeURIComponent(boardId)}/stacks/${encodeURIComponent(stackId)}/cards/${encodeURIComponent(cardId)}`;
+
+							// Pre-flight: fetch current card to get owner (required by API for full PUT)
+							const currentCard = (await deckRequest('GET', cardPath)) as IDataObject;
+
+							const updateBody: IDataObject = {};
+							const title = this.getNodeParameter('title', i, '') as string;
+							const description = this.getNodeParameter('description', i, '') as string;
+							const type = this.getNodeParameter('type', i, '') as string;
+							const order = this.getNodeParameter('order', i, undefined) as number;
+							const dueDate = this.getNodeParameter('dueDate', i, '') as string;
+
+							if (title) updateBody.title = title;
+							if (description) updateBody.description = description;
+							if (type) updateBody.type = type;
+							if (order !== undefined) updateBody.order = order;
+							if (dueDate) updateBody.duedate = dueDate;
+
+							// Owner is REQUIRED by Deck API on update
+							updateBody.owner = (currentCard.owner as IDataObject)?.uid ?? '';
+
+							responseData = await deckRequest('PUT', cardPath, updateBody);
+							break;
+						}
+
+						// ------------------------------------------
+						// CARD MOVE (documented endpoint only)
+						// ------------------------------------------
+						case 'moveCard': {
+							const boardId = this.getNodeParameter('boardId', i, '', {
+								extractValue: true,
+							}) as string;
+							const stackId = this.getNodeParameter('stackId', i, '', {
+								extractValue: true,
+							}) as string;
+							const cardId = this.getNodeParameter('cardId', i, '', {
+								extractValue: true,
+							}) as string;
+							const targetStackId = this.getNodeParameter('targetStackId', i, '', {
+								extractValue: true,
+							}) as string;
+							const order = this.getNodeParameter('order', i, 0) as number;
+
+							const movePath = `/boards/${encodeURIComponent(boardId)}/stacks/${encodeURIComponent(stackId)}/cards/${encodeURIComponent(cardId)}/reorder`;
+							responseData = await deckRequest('PUT', movePath, {
+								stackId: parseInt(targetStackId, 10),
+								order,
+							} as IDataObject);
+							break;
+						}
+
+						// ------------------------------------------
+						// CARD ARCHIVE (dedicated endpoints)
+						// ------------------------------------------
+						case 'archiveCard': {
+							const boardId = this.getNodeParameter('boardId', i, '', {
+								extractValue: true,
+							}) as string;
+							const stackId = this.getNodeParameter('stackId', i, '', {
+								extractValue: true,
+							}) as string;
+							const cardId = this.getNodeParameter('cardId', i, '', {
+								extractValue: true,
+							}) as string;
+							const archivePath = `/boards/${encodeURIComponent(boardId)}/stacks/${encodeURIComponent(stackId)}/cards/${encodeURIComponent(cardId)}/archive`;
+							responseData = await deckRequest('PUT', archivePath);
+							break;
+						}
+						case 'unarchiveCard': {
+							const boardId = this.getNodeParameter('boardId', i, '', {
+								extractValue: true,
+							}) as string;
+							const stackId = this.getNodeParameter('stackId', i, '', {
+								extractValue: true,
+							}) as string;
+							const cardId = this.getNodeParameter('cardId', i, '', {
+								extractValue: true,
+							}) as string;
+							const unarchivePath = `/boards/${encodeURIComponent(boardId)}/stacks/${encodeURIComponent(stackId)}/cards/${encodeURIComponent(cardId)}/unarchive`;
+							responseData = await deckRequest('PUT', unarchivePath);
+							break;
+						}
+
+						// ------------------------------------------
+						// LABEL
+						// ------------------------------------------
+						case 'createLabel': {
+							const boardId = this.getNodeParameter('boardId', i, '', {
+								extractValue: true,
+							}) as string;
+							responseData = await deckRequest(
+								'POST',
+								`/boards/${encodeURIComponent(boardId)}/labels`,
+								{
+									title: this.getNodeParameter('title', i),
+									color: this.getNodeParameter('color', i),
+								} as IDataObject,
+							);
+							break;
+						}
+						case 'updateLabel': {
+							const boardId = this.getNodeParameter('boardId', i, '', {
+								extractValue: true,
+							}) as string;
+							const labelId = this.getNodeParameter('labelId', i, '', {
+								extractValue: true,
+							}) as string;
+							const updateBody: IDataObject = {};
+							const title = this.getNodeParameter('title', i, '') as string;
+							const color = this.getNodeParameter('color', i, '') as string;
+							if (title) updateBody.title = title;
+							if (color) updateBody.color = color;
+							responseData = await deckRequest(
+								'PUT',
+								`/boards/${encodeURIComponent(boardId)}/labels/${encodeURIComponent(labelId)}`,
+								updateBody,
+							);
+							break;
+						}
+						case 'deleteLabel': {
+							const boardId = this.getNodeParameter('boardId', i, '', {
+								extractValue: true,
+							}) as string;
+							const labelId = this.getNodeParameter('labelId', i, '', {
+								extractValue: true,
+							}) as string;
+							responseData = await deckRequest(
+								'DELETE',
+								`/boards/${encodeURIComponent(boardId)}/labels/${encodeURIComponent(labelId)}`,
+							);
+							break;
+						}
+
+						default: {
+							throw new NodeOperationError(
+								this.getNode(),
+								`The operation "${operation}" is not supported for resource "deck".`,
+							);
+						}
+					}
+
+					// Normalize single objects to arrays for consistent n8n output
+					if (!Array.isArray(responseData)) {
+						responseData = [responseData];
+					}
+
+					const executionData = this.helpers.constructExecutionMetaData(wrapData(responseData), {
+						itemData: { item: i },
+					});
+					returnData.push(...executionData);
+
+					// CRITICAL: Skip the centralized nextCloudApiRequest block below
+					continue;
 				} else if (resource === 'user') {
 					useWebDavEndpoint = false;
 					if (operation === 'create') {
