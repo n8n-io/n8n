@@ -1,3 +1,13 @@
+# BolekFlow
+
+> **BolekFlow** is a fork of n8n prepared as the future workflow automation layer for Agent Bolek.
+>
+> It is not integrated with production yet. It should preserve upstream structure and remain easy to update from n8n.
+>
+> Architecture note: [`docs/BOLEKFLOW-ARCHITECTURE.md`](docs/BOLEKFLOW-ARCHITECTURE.md)
+
+---
+
 ![Banner image](https://user-images.githubusercontent.com/10284570/173569848-c624317f-42b1-45a6-ab09-f0ea3c247648.png)
 
 # n8n – The Platform for AI Agents and Workflow Automation
