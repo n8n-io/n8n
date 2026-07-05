@@ -1,4 +1,5 @@
 import { UpdateWorkflowHistoryVersionDto } from '@n8n/api-types';
+import type { WorkflowListPublicationStatus } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { User, ListQueryDb, WorkflowFolderUnionFull, WorkflowHistory } from '@n8n/db';
@@ -58,6 +59,7 @@ import { WorkflowValidationService } from './workflow-validation.service';
 import { WebhookService } from '@/webhooks/webhook.service';
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowPublicationNotifier } from './publication/workflow-publication-notifier';
+import { WorkflowPublicationStatusService } from './publication/workflow-publication-status.service';
 import { getErrorDescription, getErrorNodeId, getRequiredRedactionScopes } from './utils';
 import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
@@ -91,6 +93,7 @@ export class WorkflowService {
 		private readonly projectRepository: ProjectRepository,
 		private readonly redactionEnforcementService: RedactionEnforcementService,
 		private readonly workflowPublicationNotifier: WorkflowPublicationNotifier,
+		private readonly workflowPublicationStatusService: WorkflowPublicationStatusService,
 	) {}
 
 	async getMany(
@@ -191,6 +194,11 @@ export class WorkflowService {
 			workflows = this.mergeProcessedWorkflows(workflowsAndFolders, workflows);
 		}
 
+		// Attach terminal publication status for the list cards (flag-gated no-op otherwise).
+		if (this.globalConfig.workflows.useWorkflowPublicationService) {
+			workflows = await this.addPublicationStatus(workflows);
+		}
+
 		// Add hasResolvableCredentials if dynamic credentials feature is licensed
 		if (this.licenseState.isDynamicCredentialsLicensed()) {
 			return {
@@ -224,6 +232,19 @@ export class WorkflowService {
 		);
 
 		return parentWorkflow ? parentWorkflowId : undefined;
+	}
+
+	private async addPublicationStatus<T extends { id: string }>(
+		workflows: T[],
+	): Promise<Array<T & { publicationStatus?: WorkflowListPublicationStatus }>> {
+		const ids = workflows.map((w) => w.id);
+		const statuses = await this.workflowPublicationStatusService.getListStatusesByWorkflowIds(ids);
+
+		return workflows.map((workflow) => {
+			const publicationStatus = statuses.get(workflow.id);
+			// Only attach when set, so workflows with no trigger rows keep the legacy card indicator.
+			return publicationStatus ? { ...workflow, publicationStatus } : workflow;
+		});
 	}
 
 	private async addResolvableCredentialsFlag<

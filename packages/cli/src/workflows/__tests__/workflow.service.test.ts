@@ -30,6 +30,7 @@ import type { RoleService } from '@/services/role.service';
 import type { WebhookService } from '@/webhooks/webhook.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
+import type { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 import type { WorkflowValidationService } from '@/workflows/workflow-validation.service';
 import * as WorkflowHelpers from '@/workflow-helpers';
@@ -47,6 +48,8 @@ describe('WorkflowService', () => {
 		let roleServiceMock: MockProxy<RoleService>;
 		let webhookServiceMock: MockProxy<WebhookService>;
 		let workflowFinderServiceMock: MockProxy<WorkflowFinderService>;
+		let globalConfigMock: MockProxy<GlobalConfig>;
+		let workflowPublicationStatusServiceMock: MockProxy<WorkflowPublicationStatusService>;
 
 		beforeEach(() => {
 			workflowRepositoryMock = mock();
@@ -64,6 +67,11 @@ describe('WorkflowService', () => {
 			// By default the requester can read the supplied parent workflow.
 			workflowFinderServiceMock.findWorkflowForUser.mockResolvedValue(mock<WorkflowEntity>());
 
+			globalConfigMock = mock<GlobalConfig>({
+				workflows: mock<WorkflowsConfig>({ useWorkflowPublicationService: false }),
+			});
+			workflowPublicationStatusServiceMock = mock<WorkflowPublicationStatusService>();
+
 			workflowService = new WorkflowService(
 				mock(), // logger
 				mock(), // sharedWorkflowRepository
@@ -79,7 +87,7 @@ describe('WorkflowService', () => {
 				mock(), // projectService
 				mock(), // executionRepository
 				mock(), // eventService
-				mock(), // globalConfig
+				globalConfigMock, // globalConfig
 				mock(), // folderRepository
 				workflowFinderServiceMock, // workflowFinderService
 				mock(), // workflowPublishHistoryRepository
@@ -93,6 +101,7 @@ describe('WorkflowService', () => {
 				mock(), // projectRepository
 				mock(), // redactionEnforcementService
 				mock(), // workflowPublicationNotifier
+				workflowPublicationStatusServiceMock, // workflowPublicationStatusService
 			);
 		});
 
@@ -298,6 +307,42 @@ describe('WorkflowService', () => {
 				);
 			});
 		});
+
+		describe('getMany publicationStatus enrichment', () => {
+			const user = mock<User>();
+
+			beforeEach(() => {
+				workflowRepositoryMock.getManyAndCountWithSharingSubquery.mockResolvedValue({
+					workflows: [{ id: 'wf-1' }, { id: 'wf-2' }],
+					count: 2,
+				});
+			});
+
+			it('attaches publicationStatus when the publication service flag is on', async () => {
+				globalConfigMock.workflows.useWorkflowPublicationService = true;
+				workflowPublicationStatusServiceMock.getListStatusesByWorkflowIds.mockResolvedValue(
+					new Map([['wf-1', 'partial']]),
+				);
+
+				const { workflows } = await workflowService.getMany(user, {}, false, false, false);
+
+				expect(workflows.find((w) => w.id === 'wf-1')).toMatchObject({
+					publicationStatus: 'partial',
+				});
+				expect(workflows.find((w) => w.id === 'wf-2')).not.toHaveProperty('publicationStatus');
+			});
+
+			it('is a no-op when the flag is off', async () => {
+				globalConfigMock.workflows.useWorkflowPublicationService = false;
+
+				const { workflows } = await workflowService.getMany(user, {}, false, false, false);
+
+				expect(
+					workflowPublicationStatusServiceMock.getListStatusesByWorkflowIds,
+				).not.toHaveBeenCalled();
+				expect(workflows.every((w) => !('publicationStatus' in w))).toBe(true);
+			});
+		});
 	});
 
 	describe('update() redactionPolicy scope enforcement', () => {
@@ -354,6 +399,7 @@ describe('WorkflowService', () => {
 				mock(), // projectRepository
 				redactionEnforcementServiceMock, // redactionEnforcementService
 				mock(), // workflowPublicationNotifier
+				mock(), // workflowPublicationStatusService
 			);
 
 			vi.clearAllMocks();
@@ -1050,6 +1096,7 @@ describe('WorkflowService', () => {
 				mock(), // projectRepository
 				mock(), // redactionEnforcementService
 				mock(), // workflowPublicationNotifier
+				mock(), // workflowPublicationStatusService
 			);
 
 			// Bypass validation internals
@@ -1279,6 +1326,7 @@ describe('WorkflowService', () => {
 				mock(), // projectRepository
 				mock(), // redactionEnforcementService
 				mock(), // workflowPublicationNotifier
+				mock(), // workflowPublicationStatusService
 			);
 		});
 
