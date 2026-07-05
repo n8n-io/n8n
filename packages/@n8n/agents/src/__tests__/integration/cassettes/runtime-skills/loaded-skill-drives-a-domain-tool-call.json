@@ -1,436 +1,430 @@
 [
-    {
-        "scope": "https://api.anthropic.com:443",
-        "method": "POST",
-        "path": "/v1/messages",
-        "body": {
-            "model": "claude-haiku-4-5",
-            "max_tokens": 64000,
-            "system": [
-                {
-                    "type": "text",
-                    "text": "Skill loading protocol:\nSkills are optional instruction packs, not execution tools. Use them to get extra guidance only when they are relevant to the user's current request.\n\nAvailable skills:\n- name: \"Engineering status formatter\"\n  description: \"Use for formatting engineering workflow status identifiers.\"\n  id: \"engineering-status\"\n  category: \"engineering\"\n\nWhen deciding whether to load a skill:\n- Match the user's request against the skill name and description.\n- Call list_skills when you need to inspect available categories or installed skill metadata.\n- If one skill clearly matches, call load_skill once with `{ \"skillId\": \"<id>\" }`, then follow the returned instructions.\n- If a loaded skill references a supporting file, call load_skill with `{ \"skillId\": \"<id>\", \"filePath\": \"<relative path>\" }`.\n- If the relevant skill was already loaded for this request, do not call load_skill again.\n- If no skill clearly matches, do not call load_skill.\n- Do not load a skill just because it is listed here.\n\nYou are testing runtime skill loading. When the user says a skill applies, first call list_skills if they ask to discover skills or filter by category. Then call load_skill with the exact matching skillId before answering. After loading a skill, strictly follow its returned instructions. Do not answer from memory when a relevant skill applies."
-                }
-            ],
-            "messages": [
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": "The engineering-status skill applies. Load it first, then format status token waiting_on_vendor_info using the required tool."
-                        }
-                    ]
-                }
-            ],
-            "tools": [
-                {
-                    "name": "list_skills",
-                    "description": "List installed skills from the registry. Use before loading a skill when you need to discover available domains.",
-                    "input_schema": {
-                        "type": "object",
-                        "properties": {
-                            "category": {
-                                "type": "string",
-                                "description": "Optional exact category filter."
-                            }
-                        },
-                        "additionalProperties": false,
-                        "$schema": "http://json-schema.org/draft-07/schema#"
-                    }
-                },
-                {
-                    "name": "load_skill",
-                    "description": "Load a skill by skillId or name. This source does not support linked files, so do not pass filePath.",
-                    "input_schema": {
-                        "type": "object",
-                        "properties": {
-                            "skillId": {
-                                "type": "string",
-                                "minLength": 1,
-                                "description": "Skill id from list_skills."
-                            },
-                            "name": {
-                                "type": "string",
-                                "minLength": 1,
-                                "description": "Skill name from list_skills."
-                            }
-                        },
-                        "additionalProperties": false,
-                        "$schema": "http://json-schema.org/draft-07/schema#"
-                    }
-                },
-                {
-                    "name": "format_status",
-                    "description": "Format a workflow status token for display.",
-                    "input_schema": {
-                        "type": "object",
-                        "properties": {
-                            "status": {
-                                "type": "string",
-                                "description": "Workflow status token to format"
-                            }
-                        },
-                        "required": [
-                            "status"
-                        ],
-                        "additionalProperties": false,
-                        "$schema": "http://json-schema.org/draft-07/schema#"
-                    }
-                }
-            ],
-            "tool_choice": {
-                "type": "auto"
-            }
-        },
-        "status": 200,
-        "response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_011eghgT1xp5RM3heFNWkfBe\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_01UuKJxTtD1jysVdaBwpsw1v\",\"name\":\"load_skill\",\"input\":{\"skillId\":\"engineering-status\"},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1167,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":57,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
-        "rawHeaders": {
-            "anthropic-ratelimit-input-tokens-limit": "10000000",
-            "anthropic-ratelimit-input-tokens-remaining": "10000000",
-            "anthropic-ratelimit-input-tokens-reset": "2026-07-05T20:48:39Z",
-            "anthropic-ratelimit-output-tokens-limit": "2000000",
-            "anthropic-ratelimit-output-tokens-remaining": "2000000",
-            "anthropic-ratelimit-output-tokens-reset": "2026-07-05T20:48:39Z",
-            "anthropic-ratelimit-requests-limit": "20000",
-            "anthropic-ratelimit-requests-remaining": "19999",
-            "anthropic-ratelimit-requests-reset": "2026-07-05T20:48:39Z",
-            "anthropic-ratelimit-tokens-limit": "12000000",
-            "anthropic-ratelimit-tokens-remaining": "12000000",
-            "anthropic-ratelimit-tokens-reset": "2026-07-05T20:48:39Z",
-            "cf-cache-status": "DYNAMIC",
-            "cf-ray": "a1693b53b9e0f488-BCN",
-            "connection": "keep-alive",
-            "content-security-policy": "default-src 'none'; frame-ancestors 'none'",
-            "content-type": "application/json",
-            "date": "Sun, 05 Jul 2026 20:48:39 GMT",
-            "request-id": "req_011CcjZv9ptfs3PHmSQojKai",
-            "server": "cloudflare",
-            "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-            "traceresponse": "00-16bf82d69a47ba64b201482d61e8c7c9-a86e7276c5fc445a-01",
-            "vary": "Accept-Encoding",
-            "x-robots-tag": "none"
-        },
-        "responseIsBinary": false
-    },
-    {
-        "scope": "https://api.anthropic.com:443",
-        "method": "POST",
-        "path": "/v1/messages",
-        "body": {
-            "model": "claude-haiku-4-5",
-            "max_tokens": 64000,
-            "system": [
-                {
-                    "type": "text",
-                    "text": "Skill loading protocol:\nSkills are optional instruction packs, not execution tools. Use them to get extra guidance only when they are relevant to the user's current request.\n\nAvailable skills:\n- name: \"Engineering status formatter\"\n  description: \"Use for formatting engineering workflow status identifiers.\"\n  id: \"engineering-status\"\n  category: \"engineering\"\n\nWhen deciding whether to load a skill:\n- Match the user's request against the skill name and description.\n- Call list_skills when you need to inspect available categories or installed skill metadata.\n- If one skill clearly matches, call load_skill once with `{ \"skillId\": \"<id>\" }`, then follow the returned instructions.\n- If a loaded skill references a supporting file, call load_skill with `{ \"skillId\": \"<id>\", \"filePath\": \"<relative path>\" }`.\n- If the relevant skill was already loaded for this request, do not call load_skill again.\n- If no skill clearly matches, do not call load_skill.\n- Do not load a skill just because it is listed here.\n\nYou are testing runtime skill loading. When the user says a skill applies, first call list_skills if they ask to discover skills or filter by category. Then call load_skill with the exact matching skillId before answering. After loading a skill, strictly follow its returned instructions. Do not answer from memory when a relevant skill applies."
-                }
-            ],
-            "messages": [
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": "The engineering-status skill applies. Load it first, then format status token waiting_on_vendor_info using the required tool."
-                        }
-                    ]
-                },
-                {
-                    "role": "assistant",
-                    "content": [
-                        {
-                            "type": "tool_use",
-                            "id": "toolu_01UuKJxTtD1jysVdaBwpsw1v",
-                            "name": "load_skill",
-                            "input": {
-                                "skillId": "engineering-status"
-                            },
-                            "caller": {
-                                "type": "direct"
-                            }
-                        }
-                    ]
-                },
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "tool_result",
-                            "tool_use_id": "toolu_01UuKJxTtD1jysVdaBwpsw1v",
-                            "content": [
-                                {
-                                    "type": "text",
-                                    "text": "[Skill: \"Engineering status formatter\"]\n[Skill category: \"engineering\"]\n[Skill hash: \"f62e1e0bd274\"]\n\nFor status-formatting requests, call the format_status tool with the exact status token from the user. Use the returned formatted value verbatim in the final answer and include STATUS_FORMATTED_BRAVO. Do not format the status manually."
-                                }
-                            ]
-                        }
-                    ]
-                }
-            ],
-            "tools": [
-                {
-                    "name": "list_skills",
-                    "description": "List installed skills from the registry. Use before loading a skill when you need to discover available domains.",
-                    "input_schema": {
-                        "type": "object",
-                        "properties": {
-                            "category": {
-                                "type": "string",
-                                "description": "Optional exact category filter."
-                            }
-                        },
-                        "additionalProperties": false,
-                        "$schema": "http://json-schema.org/draft-07/schema#"
-                    }
-                },
-                {
-                    "name": "load_skill",
-                    "description": "Load a skill by skillId or name. This source does not support linked files, so do not pass filePath.",
-                    "input_schema": {
-                        "type": "object",
-                        "properties": {
-                            "skillId": {
-                                "type": "string",
-                                "minLength": 1,
-                                "description": "Skill id from list_skills."
-                            },
-                            "name": {
-                                "type": "string",
-                                "minLength": 1,
-                                "description": "Skill name from list_skills."
-                            }
-                        },
-                        "additionalProperties": false,
-                        "$schema": "http://json-schema.org/draft-07/schema#"
-                    }
-                },
-                {
-                    "name": "format_status",
-                    "description": "Format a workflow status token for display.",
-                    "input_schema": {
-                        "type": "object",
-                        "properties": {
-                            "status": {
-                                "type": "string",
-                                "description": "Workflow status token to format"
-                            }
-                        },
-                        "required": [
-                            "status"
-                        ],
-                        "additionalProperties": false,
-                        "$schema": "http://json-schema.org/draft-07/schema#"
-                    }
-                }
-            ],
-            "tool_choice": {
-                "type": "auto"
-            }
-        },
-        "status": 200,
-        "response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_01BGWL9risCuR4vaYfe23hws\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Now I'll use the format_status tool to format the status token as instructed:\"},{\"type\":\"tool_use\",\"id\":\"toolu_01BcX7jP2RmMz9gUsFwjuJsr\",\"name\":\"format_status\",\"input\":{\"status\":\"waiting_on_vendor_info\"},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1320,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":78,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
-        "rawHeaders": {
-            "anthropic-ratelimit-input-tokens-limit": "10000000",
-            "anthropic-ratelimit-input-tokens-remaining": "9999000",
-            "anthropic-ratelimit-input-tokens-reset": "2026-07-05T20:48:40Z",
-            "anthropic-ratelimit-output-tokens-limit": "2000000",
-            "anthropic-ratelimit-output-tokens-remaining": "2000000",
-            "anthropic-ratelimit-output-tokens-reset": "2026-07-05T20:48:40Z",
-            "anthropic-ratelimit-requests-limit": "20000",
-            "anthropic-ratelimit-requests-remaining": "19999",
-            "anthropic-ratelimit-requests-reset": "2026-07-05T20:48:39Z",
-            "anthropic-ratelimit-tokens-limit": "12000000",
-            "anthropic-ratelimit-tokens-remaining": "11999000",
-            "anthropic-ratelimit-tokens-reset": "2026-07-05T20:48:40Z",
-            "cf-cache-status": "DYNAMIC",
-            "cf-ray": "a1693b590e93f488-BCN",
-            "connection": "keep-alive",
-            "content-security-policy": "default-src 'none'; frame-ancestors 'none'",
-            "content-type": "application/json",
-            "date": "Sun, 05 Jul 2026 20:48:40 GMT",
-            "request-id": "req_011CcjZvDVQQzBQc3jHmt2AW",
-            "server": "cloudflare",
-            "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-            "traceresponse": "00-cd7b090e860467f13dbd8173c5a431c7-87686b1222ce41eb-01",
-            "vary": "Accept-Encoding",
-            "x-robots-tag": "none"
-        },
-        "responseIsBinary": false
-    },
-    {
-        "scope": "https://api.anthropic.com:443",
-        "method": "POST",
-        "path": "/v1/messages",
-        "body": {
-            "model": "claude-haiku-4-5",
-            "max_tokens": 64000,
-            "system": [
-                {
-                    "type": "text",
-                    "text": "Skill loading protocol:\nSkills are optional instruction packs, not execution tools. Use them to get extra guidance only when they are relevant to the user's current request.\n\nAvailable skills:\n- name: \"Engineering status formatter\"\n  description: \"Use for formatting engineering workflow status identifiers.\"\n  id: \"engineering-status\"\n  category: \"engineering\"\n\nWhen deciding whether to load a skill:\n- Match the user's request against the skill name and description.\n- Call list_skills when you need to inspect available categories or installed skill metadata.\n- If one skill clearly matches, call load_skill once with `{ \"skillId\": \"<id>\" }`, then follow the returned instructions.\n- If a loaded skill references a supporting file, call load_skill with `{ \"skillId\": \"<id>\", \"filePath\": \"<relative path>\" }`.\n- If the relevant skill was already loaded for this request, do not call load_skill again.\n- If no skill clearly matches, do not call load_skill.\n- Do not load a skill just because it is listed here.\n\nYou are testing runtime skill loading. When the user says a skill applies, first call list_skills if they ask to discover skills or filter by category. Then call load_skill with the exact matching skillId before answering. After loading a skill, strictly follow its returned instructions. Do not answer from memory when a relevant skill applies."
-                }
-            ],
-            "messages": [
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": "The engineering-status skill applies. Load it first, then format status token waiting_on_vendor_info using the required tool."
-                        }
-                    ]
-                },
-                {
-                    "role": "assistant",
-                    "content": [
-                        {
-                            "type": "tool_use",
-                            "id": "toolu_01UuKJxTtD1jysVdaBwpsw1v",
-                            "name": "load_skill",
-                            "input": {
-                                "skillId": "engineering-status"
-                            },
-                            "caller": {
-                                "type": "direct"
-                            }
-                        }
-                    ]
-                },
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "tool_result",
-                            "tool_use_id": "toolu_01UuKJxTtD1jysVdaBwpsw1v",
-                            "content": [
-                                {
-                                    "type": "text",
-                                    "text": "[Skill: \"Engineering status formatter\"]\n[Skill category: \"engineering\"]\n[Skill hash: \"f62e1e0bd274\"]\n\nFor status-formatting requests, call the format_status tool with the exact status token from the user. Use the returned formatted value verbatim in the final answer and include STATUS_FORMATTED_BRAVO. Do not format the status manually."
-                                }
-                            ]
-                        }
-                    ]
-                },
-                {
-                    "role": "assistant",
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": "Now I'll use the format_status tool to format the status token as instructed:"
-                        },
-                        {
-                            "type": "tool_use",
-                            "id": "toolu_01BcX7jP2RmMz9gUsFwjuJsr",
-                            "name": "format_status",
-                            "input": {
-                                "status": "waiting_on_vendor_info"
-                            },
-                            "caller": {
-                                "type": "direct"
-                            }
-                        }
-                    ]
-                },
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "tool_result",
-                            "tool_use_id": "toolu_01BcX7jP2RmMz9gUsFwjuJsr",
-                            "content": "{\"formatted\":\"STATUS_FORMATTED_BRAVO: WAITING_ON_VENDOR_INFO\"}"
-                        }
-                    ]
-                }
-            ],
-            "tools": [
-                {
-                    "name": "list_skills",
-                    "description": "List installed skills from the registry. Use before loading a skill when you need to discover available domains.",
-                    "input_schema": {
-                        "type": "object",
-                        "properties": {
-                            "category": {
-                                "type": "string",
-                                "description": "Optional exact category filter."
-                            }
-                        },
-                        "additionalProperties": false,
-                        "$schema": "http://json-schema.org/draft-07/schema#"
-                    }
-                },
-                {
-                    "name": "load_skill",
-                    "description": "Load a skill by skillId or name. This source does not support linked files, so do not pass filePath.",
-                    "input_schema": {
-                        "type": "object",
-                        "properties": {
-                            "skillId": {
-                                "type": "string",
-                                "minLength": 1,
-                                "description": "Skill id from list_skills."
-                            },
-                            "name": {
-                                "type": "string",
-                                "minLength": 1,
-                                "description": "Skill name from list_skills."
-                            }
-                        },
-                        "additionalProperties": false,
-                        "$schema": "http://json-schema.org/draft-07/schema#"
-                    }
-                },
-                {
-                    "name": "format_status",
-                    "description": "Format a workflow status token for display.",
-                    "input_schema": {
-                        "type": "object",
-                        "properties": {
-                            "status": {
-                                "type": "string",
-                                "description": "Workflow status token to format"
-                            }
-                        },
-                        "required": [
-                            "status"
-                        ],
-                        "additionalProperties": false,
-                        "$schema": "http://json-schema.org/draft-07/schema#"
-                    }
-                }
-            ],
-            "tool_choice": {
-                "type": "auto"
-            }
-        },
-        "status": 200,
-        "response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_01X5YzSkzTBar8r1LYuCF4Y6\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"The formatted status token is: **STATUS_FORMATTED_BRAVO: WAITING_ON_VENDOR_INFO**\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1432,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":29,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
-        "rawHeaders": {
-            "anthropic-ratelimit-input-tokens-limit": "10000000",
-            "anthropic-ratelimit-input-tokens-remaining": "9999000",
-            "anthropic-ratelimit-input-tokens-reset": "2026-07-05T20:48:41Z",
-            "anthropic-ratelimit-output-tokens-limit": "2000000",
-            "anthropic-ratelimit-output-tokens-remaining": "2000000",
-            "anthropic-ratelimit-output-tokens-reset": "2026-07-05T20:48:41Z",
-            "anthropic-ratelimit-requests-limit": "20000",
-            "anthropic-ratelimit-requests-remaining": "19999",
-            "anthropic-ratelimit-requests-reset": "2026-07-05T20:48:40Z",
-            "anthropic-ratelimit-tokens-limit": "12000000",
-            "anthropic-ratelimit-tokens-remaining": "11999000",
-            "anthropic-ratelimit-tokens-reset": "2026-07-05T20:48:41Z",
-            "cf-cache-status": "DYNAMIC",
-            "cf-ray": "a1693b5e9ba0f488-BCN",
-            "connection": "keep-alive",
-            "content-security-policy": "default-src 'none'; frame-ancestors 'none'",
-            "content-type": "application/json",
-            "date": "Sun, 05 Jul 2026 20:48:41 GMT",
-            "request-id": "req_011CcjZvHHMtMzAUmaa5nzZo",
-            "server": "cloudflare",
-            "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-            "traceresponse": "00-60b499df31bf7284ac4fd1efc7c8f531-df56f88992b74846-01",
-            "vary": "Accept-Encoding",
-            "x-robots-tag": "none"
-        },
-        "responseIsBinary": false
-    }
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "Skill loading protocol:\nSkills are optional instruction packs, not execution tools. Use them to get extra guidance only when they are relevant to the user's current request.\n\nAvailable skills:\n- name: \"Engineering status formatter\"\n  description: \"Use for formatting engineering workflow status identifiers.\"\n  id: \"engineering-status\"\n  category: \"engineering\"\n\nWhen deciding whether to load a skill:\n- Match the user's request against the skill name and description.\n- Call list_skills when you need to inspect available categories or installed skill metadata.\n- If one skill clearly matches, call load_skill once with `{ \"skillId\": \"<id>\" }`, then follow the returned instructions.\n- If a loaded skill references a supporting file, call load_skill with `{ \"skillId\": \"<id>\", \"filePath\": \"<relative path>\" }`.\n- If the relevant skill was already loaded for this request, do not call load_skill again.\n- If no skill clearly matches, do not call load_skill.\n- Do not load a skill just because it is listed here.\n\nYou are testing runtime skill loading. When the user says a skill applies, first call list_skills if they ask to discover skills or filter by category. Then call load_skill with the exact matching skillId before answering. After loading a skill, strictly follow its returned instructions. Do not answer from memory when a relevant skill applies."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "The engineering-status skill applies. Load it first, then format status token waiting_on_vendor_info using the required tool."
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "list_skills",
+					"description": "List installed skills from the registry. Use before loading a skill when you need to discover available domains.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"category": {
+								"type": "string",
+								"description": "Optional exact category filter."
+							}
+						},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "load_skill",
+					"description": "Load a skill by skillId or name. This source does not support linked files, so do not pass filePath.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"skillId": {
+								"type": "string",
+								"minLength": 1,
+								"description": "Skill id from list_skills."
+							},
+							"name": {
+								"type": "string",
+								"minLength": 1,
+								"description": "Skill name from list_skills."
+							}
+						},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "format_status",
+					"description": "Format a workflow status token for display.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"status": {
+								"type": "string",
+								"description": "Workflow status token to format"
+							}
+						},
+						"required": ["status"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			}
+		},
+		"status": 200,
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_011eghgT1xp5RM3heFNWkfBe\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_01UuKJxTtD1jysVdaBwpsw1v\",\"name\":\"load_skill\",\"input\":{\"skillId\":\"engineering-status\"},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1167,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":57,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "10000000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-07-05T20:48:39Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-07-05T20:48:39Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-07-05T20:48:39Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "12000000",
+			"anthropic-ratelimit-tokens-reset": "2026-07-05T20:48:39Z",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a1693b53b9e0f488-BCN",
+			"connection": "keep-alive",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "application/json",
+			"date": "Sun, 05 Jul 2026 20:48:39 GMT",
+			"request-id": "req_011CcjZv9ptfs3PHmSQojKai",
+			"server": "cloudflare",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-16bf82d69a47ba64b201482d61e8c7c9-a86e7276c5fc445a-01",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "Skill loading protocol:\nSkills are optional instruction packs, not execution tools. Use them to get extra guidance only when they are relevant to the user's current request.\n\nAvailable skills:\n- name: \"Engineering status formatter\"\n  description: \"Use for formatting engineering workflow status identifiers.\"\n  id: \"engineering-status\"\n  category: \"engineering\"\n\nWhen deciding whether to load a skill:\n- Match the user's request against the skill name and description.\n- Call list_skills when you need to inspect available categories or installed skill metadata.\n- If one skill clearly matches, call load_skill once with `{ \"skillId\": \"<id>\" }`, then follow the returned instructions.\n- If a loaded skill references a supporting file, call load_skill with `{ \"skillId\": \"<id>\", \"filePath\": \"<relative path>\" }`.\n- If the relevant skill was already loaded for this request, do not call load_skill again.\n- If no skill clearly matches, do not call load_skill.\n- Do not load a skill just because it is listed here.\n\nYou are testing runtime skill loading. When the user says a skill applies, first call list_skills if they ask to discover skills or filter by category. Then call load_skill with the exact matching skillId before answering. After loading a skill, strictly follow its returned instructions. Do not answer from memory when a relevant skill applies."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "The engineering-status skill applies. Load it first, then format status token waiting_on_vendor_info using the required tool."
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "tool_use",
+							"id": "toolu_01UuKJxTtD1jysVdaBwpsw1v",
+							"name": "load_skill",
+							"input": {
+								"skillId": "engineering-status"
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_01UuKJxTtD1jysVdaBwpsw1v",
+							"content": [
+								{
+									"type": "text",
+									"text": "[Skill: \"Engineering status formatter\"]\n[Skill category: \"engineering\"]\n[Skill hash: \"f62e1e0bd274\"]\n\nFor status-formatting requests, call the format_status tool with the exact status token from the user. Use the returned formatted value verbatim in the final answer and include STATUS_FORMATTED_BRAVO. Do not format the status manually."
+								}
+							]
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "list_skills",
+					"description": "List installed skills from the registry. Use before loading a skill when you need to discover available domains.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"category": {
+								"type": "string",
+								"description": "Optional exact category filter."
+							}
+						},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "load_skill",
+					"description": "Load a skill by skillId or name. This source does not support linked files, so do not pass filePath.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"skillId": {
+								"type": "string",
+								"minLength": 1,
+								"description": "Skill id from list_skills."
+							},
+							"name": {
+								"type": "string",
+								"minLength": 1,
+								"description": "Skill name from list_skills."
+							}
+						},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "format_status",
+					"description": "Format a workflow status token for display.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"status": {
+								"type": "string",
+								"description": "Workflow status token to format"
+							}
+						},
+						"required": ["status"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			}
+		},
+		"status": 200,
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_01BGWL9risCuR4vaYfe23hws\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Now I'll use the format_status tool to format the status token as instructed:\"},{\"type\":\"tool_use\",\"id\":\"toolu_01BcX7jP2RmMz9gUsFwjuJsr\",\"name\":\"format_status\",\"input\":{\"status\":\"waiting_on_vendor_info\"},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1320,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":78,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "9999000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-07-05T20:48:40Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-07-05T20:48:40Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-07-05T20:48:39Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "11999000",
+			"anthropic-ratelimit-tokens-reset": "2026-07-05T20:48:40Z",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a1693b590e93f488-BCN",
+			"connection": "keep-alive",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "application/json",
+			"date": "Sun, 05 Jul 2026 20:48:40 GMT",
+			"request-id": "req_011CcjZvDVQQzBQc3jHmt2AW",
+			"server": "cloudflare",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-cd7b090e860467f13dbd8173c5a431c7-87686b1222ce41eb-01",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "Skill loading protocol:\nSkills are optional instruction packs, not execution tools. Use them to get extra guidance only when they are relevant to the user's current request.\n\nAvailable skills:\n- name: \"Engineering status formatter\"\n  description: \"Use for formatting engineering workflow status identifiers.\"\n  id: \"engineering-status\"\n  category: \"engineering\"\n\nWhen deciding whether to load a skill:\n- Match the user's request against the skill name and description.\n- Call list_skills when you need to inspect available categories or installed skill metadata.\n- If one skill clearly matches, call load_skill once with `{ \"skillId\": \"<id>\" }`, then follow the returned instructions.\n- If a loaded skill references a supporting file, call load_skill with `{ \"skillId\": \"<id>\", \"filePath\": \"<relative path>\" }`.\n- If the relevant skill was already loaded for this request, do not call load_skill again.\n- If no skill clearly matches, do not call load_skill.\n- Do not load a skill just because it is listed here.\n\nYou are testing runtime skill loading. When the user says a skill applies, first call list_skills if they ask to discover skills or filter by category. Then call load_skill with the exact matching skillId before answering. After loading a skill, strictly follow its returned instructions. Do not answer from memory when a relevant skill applies."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "The engineering-status skill applies. Load it first, then format status token waiting_on_vendor_info using the required tool."
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "tool_use",
+							"id": "toolu_01UuKJxTtD1jysVdaBwpsw1v",
+							"name": "load_skill",
+							"input": {
+								"skillId": "engineering-status"
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_01UuKJxTtD1jysVdaBwpsw1v",
+							"content": [
+								{
+									"type": "text",
+									"text": "[Skill: \"Engineering status formatter\"]\n[Skill category: \"engineering\"]\n[Skill hash: \"f62e1e0bd274\"]\n\nFor status-formatting requests, call the format_status tool with the exact status token from the user. Use the returned formatted value verbatim in the final answer and include STATUS_FORMATTED_BRAVO. Do not format the status manually."
+								}
+							]
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "text",
+							"text": "Now I'll use the format_status tool to format the status token as instructed:"
+						},
+						{
+							"type": "tool_use",
+							"id": "toolu_01BcX7jP2RmMz9gUsFwjuJsr",
+							"name": "format_status",
+							"input": {
+								"status": "waiting_on_vendor_info"
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_01BcX7jP2RmMz9gUsFwjuJsr",
+							"content": "{\"formatted\":\"STATUS_FORMATTED_BRAVO: WAITING_ON_VENDOR_INFO\"}"
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "list_skills",
+					"description": "List installed skills from the registry. Use before loading a skill when you need to discover available domains.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"category": {
+								"type": "string",
+								"description": "Optional exact category filter."
+							}
+						},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "load_skill",
+					"description": "Load a skill by skillId or name. This source does not support linked files, so do not pass filePath.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"skillId": {
+								"type": "string",
+								"minLength": 1,
+								"description": "Skill id from list_skills."
+							},
+							"name": {
+								"type": "string",
+								"minLength": 1,
+								"description": "Skill name from list_skills."
+							}
+						},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "format_status",
+					"description": "Format a workflow status token for display.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"status": {
+								"type": "string",
+								"description": "Workflow status token to format"
+							}
+						},
+						"required": ["status"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			}
+		},
+		"status": 200,
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_01X5YzSkzTBar8r1LYuCF4Y6\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"The formatted status token is: **STATUS_FORMATTED_BRAVO: WAITING_ON_VENDOR_INFO**\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1432,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":29,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "9999000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-07-05T20:48:41Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-07-05T20:48:41Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-07-05T20:48:40Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "11999000",
+			"anthropic-ratelimit-tokens-reset": "2026-07-05T20:48:41Z",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a1693b5e9ba0f488-BCN",
+			"connection": "keep-alive",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "application/json",
+			"date": "Sun, 05 Jul 2026 20:48:41 GMT",
+			"request-id": "req_011CcjZvHHMtMzAUmaa5nzZo",
+			"server": "cloudflare",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-60b499df31bf7284ac4fd1efc7c8f531-df56f88992b74846-01",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	}
 ]
