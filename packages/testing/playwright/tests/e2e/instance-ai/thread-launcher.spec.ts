@@ -16,8 +16,7 @@ test.describe(
 			async ({ n8n }) => {
 				// Boot the app in an authenticated state before following the
 				// deep-link route, mimicking a user coming from the n8n website.
-				await n8n.start.fromHome();
-				await n8n.instanceAi.enableInstanceAiIfPrompted();
+				await n8n.navigate.toInstanceAi();
 
 				await n8n.page.goto('/assistant/new?templateId=1234&source=website-template');
 
@@ -38,8 +37,7 @@ test.describe(
 			'invalid template id lands on the assistant empty view',
 			{ annotation: [{ type: SKIP_PROXY_SETUP_ANNOTATION }] },
 			async ({ n8n }) => {
-				await n8n.start.fromHome();
-				await n8n.instanceAi.enableInstanceAiIfPrompted();
+				await n8n.navigate.toInstanceAi();
 
 				// Non-numeric template ids are rejected by the guard: no thread is
 				// created and the user lands on the assistant empty view.
