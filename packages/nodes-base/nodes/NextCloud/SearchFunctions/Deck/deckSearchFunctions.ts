@@ -83,30 +83,47 @@ export async function getCards(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
-	const boardId = this.getCurrentNodeParameter('boardId', { extractValue: true }) as string;
-	const stackId = this.getCurrentNodeParameter('stackId', { extractValue: true }) as string;
+	let boardId = '';
+	let stackId = '';
+
+	try {
+		boardId = this.getCurrentNodeParameter('boardId', { extractValue: true }) as string;
+	} catch {
+		return { results: [] };
+	}
+
+	try {
+		stackId = this.getCurrentNodeParameter('stackId', { extractValue: true }) as string;
+	} catch {
+		return { results: [] };
+	}
+
 	if (!boardId || !stackId) return { results: [] };
 
 	const ctx = await getNextCloudContext(this);
 	if (!ctx) return { results: [] };
 
 	try {
-		const cards = (await this.helpers.httpRequest({
+		// Fetch the STACK (not standalone /cards endpoint — that returns 405)
+		const stack = (await this.helpers.request({
 			method: 'GET',
-			url: `${ctx.baseUrl}/index.php/apps/deck/api/v1.1/boards/${encodeURIComponent(boardId)}/stacks/${encodeURIComponent(stackId)}/cards`,
+			url: `${ctx.baseUrl}/index.php/apps/deck/api/v1.1/boards/${encodeURIComponent(boardId)}/stacks/${encodeURIComponent(stackId)}`,
 			headers: {
 				'OCS-APIRequest': 'true',
 				Accept: 'application/json',
 				Authorization: `Basic ${ctx.basicAuth}`,
 			},
 			json: true,
-		})) as IDataObject[];
+		})) as IDataObject;
 
-		let results = (cards ?? []).map(toDeckSearchItem);
+		// Extract cards from the stack response
+		let results = ((stack?.cards as IDataObject[]) ?? []).map(toDeckSearchItem);
+
 		if (filter) {
 			const needle = filter.toLowerCase();
 			results = results.filter((r) => r.name.toLowerCase().includes(needle));
 		}
+
 		return { results };
 	} catch (error) {
 		console.error('NextCloud Deck getCards failed:', (error as Error).message);

@@ -1064,13 +1064,16 @@ export class NextCloud implements INodeType {
 					const pass = credentials.password as string;
 					const basicAuth = Buffer.from(`${user}:${pass}`).toString('base64');
 
+					// Strip leading # from color hex (Deck API expects 31CC7C, not #31CC7C)
+					const stripHash = (hex: string): string => hex.replace(/^#/, '');
+
 					// Reusable Deck request helper
 					const deckRequest = async (
 						method: IHttpRequestMethods,
 						path: string,
 						body?: IDataObject,
 					): Promise<any> => {
-						return await this.helpers.httpRequest({
+						return await this.helpers.request({
 							method,
 							url: `${baseUrl}/${deckBase}${path}`,
 							headers: {
@@ -1102,10 +1105,11 @@ export class NextCloud implements INodeType {
 						case 'createBoard': {
 							responseData = await deckRequest('POST', '/boards', {
 								title: this.getNodeParameter('title', i),
-								color: this.getNodeParameter('color', i),
+								color: stripHash(this.getNodeParameter('color', i) as string),
 							} as IDataObject);
 							break;
 						}
+
 						case 'updateBoard': {
 							const boardId = this.getNodeParameter('boardId', i, '', {
 								extractValue: true,
@@ -1115,7 +1119,7 @@ export class NextCloud implements INodeType {
 							const color = this.getNodeParameter('color', i, '') as string;
 							const archived = this.getNodeParameter('archived', i, false) as boolean;
 							if (title) updateBody.title = title;
-							if (color) updateBody.color = color;
+							if (color) updateBody.color = stripHash(color);
 							updateBody.archived = archived;
 							responseData = await deckRequest(
 								'PUT',
@@ -1215,10 +1219,15 @@ export class NextCloud implements INodeType {
 							const stackId = this.getNodeParameter('stackId', i, '', {
 								extractValue: true,
 							}) as string;
-							responseData = await deckRequest(
+							// The Deck API has no standalone GET /boards/{id}/stacks/{id}/cards
+							// endpoint (it returns 405). Per the official docs, list cards by
+							// fetching the parent stack — it returns the stack with an
+							// embedded `cards` array.
+							const stack = (await deckRequest(
 								'GET',
-								`/boards/${encodeURIComponent(boardId)}/stacks/${encodeURIComponent(stackId)}/cards`,
-							);
+								`/boards/${encodeURIComponent(boardId)}/stacks/${encodeURIComponent(stackId)}`,
+							)) as IDataObject;
+							responseData = (stack?.cards as IDataObject[]) ?? [];
 							break;
 						}
 						case 'getCard': {
@@ -1473,7 +1482,7 @@ export class NextCloud implements INodeType {
 								`/boards/${encodeURIComponent(boardId)}/labels`,
 								{
 									title: this.getNodeParameter('title', i),
-									color: this.getNodeParameter('color', i),
+									color: stripHash(this.getNodeParameter('color', i) as string),
 								} as IDataObject,
 							);
 							break;
@@ -1489,7 +1498,7 @@ export class NextCloud implements INodeType {
 							const title = this.getNodeParameter('title', i, '') as string;
 							const color = this.getNodeParameter('color', i, '') as string;
 							if (title) updateBody.title = title;
-							if (color) updateBody.color = color;
+							if (color) updateBody.color = stripHash(color);
 							responseData = await deckRequest(
 								'PUT',
 								`/boards/${encodeURIComponent(boardId)}/labels/${encodeURIComponent(labelId)}`,
