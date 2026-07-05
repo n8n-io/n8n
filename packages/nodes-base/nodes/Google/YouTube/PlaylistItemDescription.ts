@@ -46,14 +46,10 @@ export const playlistItemFields: INodeProperties[] = [
 	/*                                 playlistItem:add                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Playlist Name or ID',
+		displayName: 'Playlist ID',
 		name: 'playlistId',
-		type: 'options',
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
-		typeOptions: {
-			loadOptionsMethod: 'getPlaylists',
-		},
+		type: 'string',
+		description: 'Enter the playlist ID, or use an expression to specify one.',
 		required: true,
 		displayOptions: {
 			show: {
@@ -253,14 +249,10 @@ export const playlistItemFields: INodeProperties[] = [
 	/*                                 playlistItem:getAll                        */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Playlist Name or ID',
+		displayName: 'Playlist ID',
 		name: 'playlistId',
-		type: 'options',
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>',
-		typeOptions: {
-			loadOptionsMethod: 'getPlaylists',
-		},
+		type: 'string',
+		description: 'Enter the playlist ID, or use an expression to specify one.',
 		required: true,
 		displayOptions: {
 			show: {
