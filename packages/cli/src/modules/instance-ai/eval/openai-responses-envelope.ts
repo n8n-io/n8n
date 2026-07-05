@@ -221,6 +221,37 @@ export function forwardTranslateToResponsesSseEvents(
 	return events;
 }
 
+/** True for the OpenAI Responses endpoint the openAi node calls directly over the wire. */
+export function isOpenAiResponsesUrl(url: string): boolean {
+	try {
+		const parsed = new URL(url);
+		return parsed.hostname === 'api.openai.com' && /^\/v\d+\/responses\/?$/.test(parsed.pathname);
+	} catch {
+		return false;
+	}
+}
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/**
+ * Coerce a freeform LLM-generated mock body into the canonical Responses
+ * envelope. The openAi node's `response` operation is wire-intercepted (no
+ * protocol adapter runs), and generated bodies routinely miss the strict item
+ * shape (`type: 'message'`, `content[].type: 'output_text'`) the node's parser
+ * filters on — collapsing `output` to `[]`. Error bodies pass through
+ * untouched so mock-generation failures and injected API errors stay visible.
+ */
+export function normalizeOpenAiResponsesMockResponse(
+	mockResponse: EvalMockHttpResponse,
+	model: string,
+): EvalMockHttpResponse {
+	const body = mockResponse.body;
+	if (isPlainRecord(body) && ('_evalMockError' in body || 'error' in body)) return mockResponse;
+	return { ...mockResponse, body: forwardTranslateToResponsesEnvelope(mockResponse, model) };
+}
+
 /** Responses API uses the same error envelope as chat-completions, with `error.type` describing the failure. */
 export function buildResponsesErrorEnvelope(message: string): Record<string, unknown> {
 	return {

@@ -5,7 +5,9 @@ import {
 	extractResponsesRequestModel,
 	forwardTranslateToResponsesEnvelope,
 	forwardTranslateToResponsesSseEvents,
+	isOpenAiResponsesUrl,
 	isResponsesStreamRequested,
+	normalizeOpenAiResponsesMockResponse,
 	reverseTranslateOpenAiResponsesRequest,
 } from '../openai-responses-envelope';
 
@@ -363,5 +365,82 @@ describe('buildResponsesErrorEnvelope', () => {
 				param: null,
 			},
 		});
+	});
+});
+
+describe('isOpenAiResponsesUrl', () => {
+	it('matches the Responses endpoint and rejects everything else', () => {
+		expect(isOpenAiResponsesUrl('https://api.openai.com/v1/responses')).toBe(true);
+		expect(isOpenAiResponsesUrl('https://api.openai.com/v1/responses/')).toBe(true);
+		expect(isOpenAiResponsesUrl('https://api.openai.com/v1/chat/completions')).toBe(false);
+		expect(isOpenAiResponsesUrl('https://api.openai.com/v1/responses/resp_123')).toBe(false);
+		expect(isOpenAiResponsesUrl('https://evil.example.com/v1/responses')).toBe(false);
+		expect(isOpenAiResponsesUrl('not a url')).toBe(false);
+	});
+});
+
+describe('normalizeOpenAiResponsesMockResponse', () => {
+	const asResponse = (body: unknown): EvalMockHttpResponse => ({
+		body,
+		headers: { 'content-type': 'application/json' },
+		statusCode: 200,
+	});
+
+	it('coerces the observed malformed body (no item type, content type "text") to the canonical envelope', () => {
+		// Verbatim shape served in the failing daily-gmail-action-digest run:
+		// the node's parser found no `message` item / `output_text` part and
+		// collapsed `output` to [].
+		const failingBody = {
+			output: [
+				{
+					index: 0,
+					content: [{ type: 'text', text: '<p>4 of your 5 emails today require action.</p>' }],
+				},
+			],
+		};
+
+		const normalized = normalizeOpenAiResponsesMockResponse(asResponse(failingBody), 'gpt-4o-mini');
+
+		const body = normalized.body as {
+			object: string;
+			status: string;
+			output: Array<{
+				type: string;
+				role: string;
+				content: Array<{ type: string; text: string; annotations: unknown[] }>;
+			}>;
+		};
+		expect(body.object).toBe('response');
+		expect(body.status).toBe('completed');
+		expect(body.output).toHaveLength(1);
+		expect(body.output[0].type).toBe('message');
+		expect(body.output[0].role).toBe('assistant');
+		expect(body.output[0].content[0].type).toBe('output_text');
+		expect(body.output[0].content[0].text).toBe('<p>4 of your 5 emails today require action.</p>');
+		expect(body.output[0].content[0].annotations).toEqual([]);
+	});
+
+	it('keeps the text of an already-canonical body intact', () => {
+		const canonical = forwardTranslateToResponsesEnvelope(
+			asResponse({ output_text: '{"items":[]}' }),
+			'gpt-4o-mini',
+		);
+
+		const normalized = normalizeOpenAiResponsesMockResponse(asResponse(canonical), 'gpt-4o-mini');
+
+		const body = normalized.body as {
+			output: Array<{ type: string; content: Array<{ type: string; text: string }> }>;
+		};
+		expect(body.output[0].type).toBe('message');
+		expect(body.output[0].content[0].type).toBe('output_text');
+		expect(body.output[0].content[0].text).toBe('{"items":[]}');
+	});
+
+	it('passes error bodies through untouched so mock failures stay visible', () => {
+		const evalError = asResponse({ _evalMockError: true, message: 'generation failed' });
+		expect(normalizeOpenAiResponsesMockResponse(evalError, 'gpt-4o-mini')).toBe(evalError);
+
+		const apiError = asResponse({ error: { message: 'rate limited', type: 'rate_limit' } });
+		expect(normalizeOpenAiResponsesMockResponse(apiError, 'gpt-4o-mini')).toBe(apiError);
 	});
 });

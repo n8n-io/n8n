@@ -50,6 +50,11 @@ import { EvalMockedCredentialsHelper } from './eval-mocked-credentials-helper';
 import { EvalTimings } from './eval-timings';
 import { type InterceptedTurn, LlmWireServer } from './llm-wire-server';
 import { createLlmMockHandler } from './mock-handler';
+import {
+	extractResponsesRequestModel,
+	isOpenAiResponsesUrl,
+	normalizeOpenAiResponsesMockResponse,
+} from './openai-responses-envelope';
 import { generatePinData } from './pin-data-generator';
 import {
 	buildVendorLlmRouting,
@@ -739,11 +744,21 @@ export class EvalExecutionService {
 				executionMode: 'mocked',
 			});
 			entry.executionMode = 'mocked';
-			const response = await timings.time(
+			let response = await timings.time(
 				'http-mock',
 				node.name,
 				async () => await mockHandler(requestOptions, node),
 			);
+
+			// Responses-API calls from the openAi node bypass the wire-server
+			// protocol adapters — coerce the generated body to the canonical
+			// envelope so the node's real parser accepts it.
+			if (response && response.statusCode < 400 && isOpenAiResponsesUrl(requestOptions.url)) {
+				response = normalizeOpenAiResponsesMockResponse(
+					response,
+					extractResponsesRequestModel(requestOptions.body),
+				);
+			}
 
 			entry.interceptedRequests.push({
 				// Broken routing (resource/operation missing on the node type) emits a
