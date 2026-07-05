@@ -191,6 +191,16 @@ export default defineConfig(
 					message:
 						'Use injectWorkflowExecutionStateStore().value.getActiveExecutionRunDataByNodeName() instead of workflowsStore.getWorkflowResultDataByNodeName()',
 				},
+				// Guard: Design System boundary — dynamic import() bypasses the
+				// no-restricted-imports rule below, so literal specifiers are caught here.
+				{
+					selector: 'ImportExpression > Literal[value=/^element-plus(\\/|$)/]',
+					message: ELEMENT_PLUS_RESTRICTION_MESSAGE,
+				},
+				{
+					selector: 'ImportExpression > Literal[value=/^reka-ui(\\/|$)/]',
+					message: REKA_UI_RESTRICTION_MESSAGE,
+				},
 			],
 			// Guard: Design System boundary — import UI components from @n8n/design-system,
 			// not element-plus/reka-ui directly. Type-only imports allowed during migration.
