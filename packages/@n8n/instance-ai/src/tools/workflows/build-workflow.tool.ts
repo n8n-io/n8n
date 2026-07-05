@@ -6,8 +6,6 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { z } from 'zod';
 
-import { INSTANCE_AI_SKILLS_DIR } from '../../skills/runtime-skills';
-
 import { planVerificationSimulation } from './plan-verification-simulation';
 import { buildCredentialMap, resolveCredentials } from './resolve-credentials';
 import { analyzeWorkflow, stripStaleCredentialsFromWorkflow } from './setup-workflow.service';
@@ -48,6 +46,7 @@ import {
 } from './workflow-json-utils';
 import { compileWorkflowSource } from './workflow-source-compiler';
 import { partitionWarnings, type ValidationWarning } from './workflow-validation-warnings';
+import { INSTANCE_AI_SKILLS_DIR } from '../../skills/runtime-skills';
 import type { InstanceAiContext } from '../../types';
 import { BuildFailureTracker } from '../../workflow-builder/build-failure-tracker';
 import { createRemediation } from '../../workflow-loop/remediation';

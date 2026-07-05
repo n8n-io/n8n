@@ -87,6 +87,7 @@ type BuildToolOutput = {
 		skillId: string;
 		reason: string;
 		guidance: string;
+		instructions: string;
 	};
 	warnings?: string[];
 	errors?: string[];
