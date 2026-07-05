@@ -800,7 +800,10 @@ function warnRedactionMarkers(
 	workflowId: string,
 	nodes: Array<Record<string, unknown>>,
 ): void {
-	const count = (JSON.stringify(nodes).match(/\[REDACTED\]|\[redacted\]/g) ?? []).length;
+	// Bracketed markers from text/key scrubbing + the URL-safe bare form the
+	// structure-preserving pass writes into query values and path segments.
+	const count = (JSON.stringify(nodes).match(/\[REDACTED\]|\[redacted\]|[=/]REDACTED\b/g) ?? [])
+		.length;
 	if (count > 0) {
 		console.warn(
 			`[seed] Thread ${threadId}: workflow ${workflowId} carries ${count} redaction marker(s) from trace scrubbing — seeded as-is; execution may differ from the original.`,
