@@ -1,232 +1,241 @@
 [
-	{
-		"scope": "https://api.anthropic.com:443",
-		"method": "POST",
-		"path": "/v1/messages",
-		"body": {
-			"model": "claude-haiku-4-5",
-			"max_tokens": 64000,
-			"system": [
-				{
-					"type": "text",
-					"text": "Skill loading protocol:\nSkills are optional instruction packs, not execution tools. Use them to get extra guidance only when they are relevant to the user's current request.\n\nAvailable skills:\n- name: \"Summary marker\"\n  description: \"Use for summarizing notes, updates, or short text while preserving a marker.\"\n  id: \"summary-marker\"\n  category: \"productivity\"\n\nWhen deciding whether to load a skill:\n- Match the user's request against the skill name and description.\n- Call list_skills when you need to inspect available categories or installed skill metadata.\n- If one skill clearly matches, call load_skill once with `{ \"skillId\": \"<id>\" }`, then follow the returned instructions.\n- If a loaded skill references a supporting file, call load_skill with `{ \"skillId\": \"<id>\", \"filePath\": \"<relative path>\" }`.\n- If the relevant skill was already loaded for this request, do not call load_skill again.\n- If no skill clearly matches, do not call load_skill.\n- Do not load a skill just because it is listed here.\n\nYou are testing runtime skill loading. When the user says a skill applies, first call list_skills if they ask to discover skills or filter by category. Then call load_skill with the exact matching skillId before answering. After loading a skill, strictly follow its returned instructions. Do not answer from memory when a relevant skill applies."
-				}
-			],
-			"messages": [
-				{
-					"role": "user",
-					"content": [
-						{
-							"type": "text",
-							"text": "The Summary marker skill applies. Load the relevant skill first, then summarize: streaming agents emit tool events."
-						}
-					]
-				}
-			],
-			"tools": [
-				{
-					"name": "list_skills",
-					"description": "List installed skills from the registry. Use before loading a skill when you need to discover available domains.",
-					"input_schema": {
-						"type": "object",
-						"properties": {
-							"category": {
-								"type": "string",
-								"description": "Optional exact category filter."
-							}
-						},
-						"additionalProperties": false,
-						"$schema": "http://json-schema.org/draft-07/schema#"
-					}
-				},
-				{
-					"name": "load_skill",
-					"description": "Load a skill by skillId or name. This source does not support linked files, so do not pass filePath.",
-					"input_schema": {
-						"type": "object",
-						"properties": {
-							"skillId": {
-								"type": "string",
-								"minLength": 1,
-								"description": "Skill id from list_skills."
-							},
-							"name": {
-								"type": "string",
-								"minLength": 1,
-								"description": "Skill name from list_skills."
-							}
-						},
-						"additionalProperties": false,
-						"$schema": "http://json-schema.org/draft-07/schema#"
-					}
-				}
-			],
-			"tool_choice": {
-				"type": "auto"
-			},
-			"stream": true
-		},
-		"status": 200,
-		"response": [
-			"1f8b0800000000000013c5554d6fd34010bdf75758737624bbc5a9d85b112051090408811041aba9779a6cbdde75f7233444feefd52671e2a449e885d4b77d6fc6f3de8c3d4b53d29e2535398763e2cea3f567023db2640e7ed61030d82221edcec0e6501b410a18940a83a0c104651506af06c5e03c3b2ff22ccb210529e23bdc9867f9d5c78be9976b5fbef97cf7f6e2cff035de5fdfd69f20dda9042958a32280ce49e751c7b2a5d19eb407f6eb770ace9b865b426734301d945a418eee03e992b640411ea5721d163af55237c1736f2ad20e589e5d0e5328b19c102f2da19746f3ed90ace32da138c475b9b1023513aac9a2e245fd347ec3e6935db64dc104df878acb141cd9a92c897b491618c4d608b4227659df928dcef9980c30d0c6739ca25478a308da36593fedd9192da7beea28bf51a6acf6cf7e4fc8a298a087a5e53e1f1daff2bc318a0747ddfce339f02c1f7eff7bf5eec7fbfc6b538cc383f81966e3427e831434d6314f1914dc5552a94599267860f336b656a968795d40484ba55f18db186aa41eef3848208270c8b420e5f1b8e945c896e925b2d1b21cdd9d337a1ddca0f512d5020406d01e6cfb8914cc47e02a09ed910fe0444a94fa20a07d71192360c9085c8067fc1a279254d76867831a2db42faca4223b82f6d894e262fdd7b2304d4f4692eceb7377b7ecf5b54542cfc7d6f6efef9a67de01ed7fbc049e6ced36396e7d5f27fb1cf4521f0112508d1faf070000"
-		],
-		"rawHeaders": {
-			"anthropic-ratelimit-input-tokens-limit": "10000000",
-			"anthropic-ratelimit-input-tokens-remaining": "9999000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-07-03T09:47:48Z",
-			"anthropic-ratelimit-output-tokens-limit": "2000000",
-			"anthropic-ratelimit-output-tokens-remaining": "2000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-07-03T09:47:48Z",
-			"anthropic-ratelimit-requests-limit": "20000",
-			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-07-03T09:47:48Z",
-			"anthropic-ratelimit-tokens-limit": "12000000",
-			"anthropic-ratelimit-tokens-remaining": "11999000",
-			"anthropic-ratelimit-tokens-reset": "2026-07-03T09:47:48Z",
-			"cache-control": "no-cache",
-			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a154f88af85af52b-VIE",
-			"connection": "keep-alive",
-			"content-encoding": "gzip",
-			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
-			"content-type": "text/event-stream; charset=utf-8",
-			"date": "Fri, 03 Jul 2026 09:47:49 GMT",
-			"request-id": "req_011CceuuVy8vjqXrWXrKeFxJ",
-			"server": "cloudflare",
-			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-9295bc0a0a1cb02c1b05964e689681f2-bbbff2c540047316-01",
-			"transfer-encoding": "chunked",
-			"vary": "Accept-Encoding",
-			"x-robots-tag": "none"
-		},
-		"responseIsBinary": false
-	},
-	{
-		"scope": "https://api.anthropic.com:443",
-		"method": "POST",
-		"path": "/v1/messages",
-		"body": {
-			"model": "claude-haiku-4-5",
-			"max_tokens": 64000,
-			"system": [
-				{
-					"type": "text",
-					"text": "Skill loading protocol:\nSkills are optional instruction packs, not execution tools. Use them to get extra guidance only when they are relevant to the user's current request.\n\nAvailable skills:\n- name: \"Summary marker\"\n  description: \"Use for summarizing notes, updates, or short text while preserving a marker.\"\n  id: \"summary-marker\"\n  category: \"productivity\"\n\nWhen deciding whether to load a skill:\n- Match the user's request against the skill name and description.\n- Call list_skills when you need to inspect available categories or installed skill metadata.\n- If one skill clearly matches, call load_skill once with `{ \"skillId\": \"<id>\" }`, then follow the returned instructions.\n- If a loaded skill references a supporting file, call load_skill with `{ \"skillId\": \"<id>\", \"filePath\": \"<relative path>\" }`.\n- If the relevant skill was already loaded for this request, do not call load_skill again.\n- If no skill clearly matches, do not call load_skill.\n- Do not load a skill just because it is listed here.\n\nYou are testing runtime skill loading. When the user says a skill applies, first call list_skills if they ask to discover skills or filter by category. Then call load_skill with the exact matching skillId before answering. After loading a skill, strictly follow its returned instructions. Do not answer from memory when a relevant skill applies."
-				}
-			],
-			"messages": [
-				{
-					"role": "user",
-					"content": [
-						{
-							"type": "text",
-							"text": "The Summary marker skill applies. Load the relevant skill first, then summarize: streaming agents emit tool events."
-						}
-					]
-				},
-				{
-					"role": "assistant",
-					"content": [
-						{
-							"type": "tool_use",
-							"id": "toolu_016VzAEWF1Rp5guxdYuyg5iT",
-							"name": "load_skill",
-							"input": {
-								"skillId": "summary-marker"
-							},
-							"caller": {
-								"type": "direct"
-							}
-						}
-					]
-				},
-				{
-					"role": "user",
-					"content": [
-						{
-							"type": "tool_result",
-							"tool_use_id": "toolu_016VzAEWF1Rp5guxdYuyg5iT",
-							"content": "{\"ok\":true,\"success\":true,\"skillId\":\"summary-marker\",\"name\":\"Summary marker\",\"description\":\"Use for summarizing notes, updates, or short text while preserving a marker.\",\"path\":null,\"skillDir\":null,\"hash\":\"e3433b77c9e3\",\"category\":\"productivity\",\"content\":\"Every final answer after loading this skill must include the exact marker SKILL_MARKER_ALPHA. For summaries, be concise and keep the marker unchanged.\",\"instructions\":\"Every final answer after loading this skill must include the exact marker SKILL_MARKER_ALPHA. For summaries, be concise and keep the marker unchanged.\",\"activation\":\"[Skill: \\\"Summary marker\\\"]\\n[Skill category: \\\"productivity\\\"]\\n[Skill hash: \\\"e3433b77c9e3\\\"]\",\"linkedFiles\":{\"references\":[],\"templates\":[],\"scripts\":[],\"assets\":[],\"examples\":[],\"other\":[]}}"
-						}
-					]
-				}
-			],
-			"tools": [
-				{
-					"name": "list_skills",
-					"description": "List installed skills from the registry. Use before loading a skill when you need to discover available domains.",
-					"input_schema": {
-						"type": "object",
-						"properties": {
-							"category": {
-								"type": "string",
-								"description": "Optional exact category filter."
-							}
-						},
-						"additionalProperties": false,
-						"$schema": "http://json-schema.org/draft-07/schema#"
-					}
-				},
-				{
-					"name": "load_skill",
-					"description": "Load a skill by skillId or name. This source does not support linked files, so do not pass filePath.",
-					"input_schema": {
-						"type": "object",
-						"properties": {
-							"skillId": {
-								"type": "string",
-								"minLength": 1,
-								"description": "Skill id from list_skills."
-							},
-							"name": {
-								"type": "string",
-								"minLength": 1,
-								"description": "Skill name from list_skills."
-							}
-						},
-						"additionalProperties": false,
-						"$schema": "http://json-schema.org/draft-07/schema#"
-					}
-				}
-			],
-			"tool_choice": {
-				"type": "auto"
-			},
-			"stream": true
-		},
-		"status": 200,
-		"response": [
-			"1f8b0800000000000013bd54c16e133110bdf72bacb920451b94b404a4bd5502046a90682a21218aaca93ddd35f1da8b3d5b525591f808be902f41de4dca6e9a0017ba176be73d7bde9bb1876ec8712e2a8a110b929131f09146c65cdc01dfd604390c40c8b6ff90df41e53559c841596c348d4b34cb66fc6c3c1b1f4f8e67d3c9640a19189dce88859c4c5f9e2f16fac3c9077375cbf3e5978f0b75fee2f81ab29d4c9041f03605304613195d4aabbc63720cf9a7cf1944f6b50c84d13bc85d63ed2614e96b434ed120a889d1d8b88d355bf5c6d50d4bf64b7211f2e9c9ec240385aa24a902211befe49032d9e281501fc2b67b5306aa4baa28a095b3ea21ff373a2d77d17506bee181be0c22851ba348b2a10039a4ca680c3a15d95d5348c665411e72709e25dea0b1786509d66bd1ffd64747d4f57d53537965bd5aeeeffe1e4a9b4fd3aa33ddc793e7cd3ea65522b64b0e3054d093501b57ece41490827048a626cbf867992d6520b38b0ce5ddd336225f7b6bfdb736f521b58fa4447049e2a2a92a0cb7a2c2b0a420e2d2582b8c8b1c1a952e58cc4449819ec496adbc53269288ddaefcd25dbad16873463e1a890b0e84957185c0821c47419561c1de5bd19a8b3fbfffa808dd43ff8f6f7fa3904b64e16b0ac8248c1328e2bd8936cf8a4541aec33b1342f91028d6dee9c462df3aec1b7a7c370aad8dc28756ca389045262db06ba2d04d6895966482a015a926c59fa6fe5d9cbd9dcfe5bbd3c5d9ab853c9dbf7f73da1a39fc7e7dfdb7e7ebeb9e7e71e89a6f47fede9a0c40e8d5603094819c96dc0407ff3c9ad7ff7136ef0cd3e793f541d3fbcad8c760a766bf0066dca8b944070000"
-		],
-		"rawHeaders": {
-			"anthropic-ratelimit-input-tokens-limit": "10000000",
-			"anthropic-ratelimit-input-tokens-remaining": "9997000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-07-03T09:47:50Z",
-			"anthropic-ratelimit-output-tokens-limit": "2000000",
-			"anthropic-ratelimit-output-tokens-remaining": "2000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-07-03T09:47:50Z",
-			"anthropic-ratelimit-requests-limit": "20000",
-			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-07-03T09:47:50Z",
-			"anthropic-ratelimit-tokens-limit": "12000000",
-			"anthropic-ratelimit-tokens-remaining": "11997000",
-			"anthropic-ratelimit-tokens-reset": "2026-07-03T09:47:50Z",
-			"cache-control": "no-cache",
-			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a154f893c893f52b-VIE",
-			"connection": "keep-alive",
-			"content-encoding": "gzip",
-			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
-			"content-type": "text/event-stream; charset=utf-8",
-			"date": "Fri, 03 Jul 2026 09:47:51 GMT",
-			"request-id": "req_011CceuucpPgpbLg5h9CKGh6",
-			"server": "cloudflare",
-			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-9ccac41dbad3268abe1a377f924fed4b-5c7063e4f1f97533-01",
-			"transfer-encoding": "chunked",
-			"vary": "Accept-Encoding",
-			"x-robots-tag": "none"
-		},
-		"responseIsBinary": false
-	}
+    {
+        "scope": "https://api.anthropic.com:443",
+        "method": "POST",
+        "path": "/v1/messages",
+        "body": {
+            "model": "claude-haiku-4-5",
+            "max_tokens": 64000,
+            "system": [
+                {
+                    "type": "text",
+                    "text": "Skill loading protocol:\nSkills are optional instruction packs, not execution tools. Use them to get extra guidance only when they are relevant to the user's current request.\n\nAvailable skills:\n- name: \"Summary marker\"\n  description: \"Use for summarizing notes, updates, or short text while preserving a marker.\"\n  id: \"summary-marker\"\n  category: \"productivity\"\n\nWhen deciding whether to load a skill:\n- Match the user's request against the skill name and description.\n- Call list_skills when you need to inspect available categories or installed skill metadata.\n- If one skill clearly matches, call load_skill once with `{ \"skillId\": \"<id>\" }`, then follow the returned instructions.\n- If a loaded skill references a supporting file, call load_skill with `{ \"skillId\": \"<id>\", \"filePath\": \"<relative path>\" }`.\n- If the relevant skill was already loaded for this request, do not call load_skill again.\n- If no skill clearly matches, do not call load_skill.\n- Do not load a skill just because it is listed here.\n\nYou are testing runtime skill loading. When the user says a skill applies, first call list_skills if they ask to discover skills or filter by category. Then call load_skill with the exact matching skillId before answering. After loading a skill, strictly follow its returned instructions. Do not answer from memory when a relevant skill applies."
+                }
+            ],
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": "The Summary marker skill applies. Load the relevant skill first, then summarize: streaming agents emit tool events."
+                        }
+                    ]
+                }
+            ],
+            "tools": [
+                {
+                    "name": "list_skills",
+                    "description": "List installed skills from the registry. Use before loading a skill when you need to discover available domains.",
+                    "input_schema": {
+                        "type": "object",
+                        "properties": {
+                            "category": {
+                                "type": "string",
+                                "description": "Optional exact category filter."
+                            }
+                        },
+                        "additionalProperties": false,
+                        "$schema": "http://json-schema.org/draft-07/schema#"
+                    },
+                    "eager_input_streaming": true
+                },
+                {
+                    "name": "load_skill",
+                    "description": "Load a skill by skillId or name. This source does not support linked files, so do not pass filePath.",
+                    "input_schema": {
+                        "type": "object",
+                        "properties": {
+                            "skillId": {
+                                "type": "string",
+                                "minLength": 1,
+                                "description": "Skill id from list_skills."
+                            },
+                            "name": {
+                                "type": "string",
+                                "minLength": 1,
+                                "description": "Skill name from list_skills."
+                            }
+                        },
+                        "additionalProperties": false,
+                        "$schema": "http://json-schema.org/draft-07/schema#"
+                    },
+                    "eager_input_streaming": true
+                }
+            ],
+            "tool_choice": {
+                "type": "auto"
+            },
+            "stream": true
+        },
+        "status": 200,
+        "response": [
+            "1f8b0800000000000013cd544d6f133110bde7574473de48bb1121956f7c5411175404a82d0459537b9a9878edad3f42aa68ff3bf226dbec26297041e09bdf9bf1bc37630dadc904362cc97b5c10f7015d18480cc8865b088f1501831e09597b07b685d24ad2c040688c92464b54ab387a319a8cc6f97852e47901192899def00b9e17afae1e969bf2f2e2e2d3ebcd473b0ef73737d3cf53c88e2a4106ceea04a0f7ca0734a9acb0269009c0be7ecbc0075b7147e8ad0166a2d67bc8d3432423a8074a0aa8b46fb1d8aa57a68a8107bb22e38115f9f4650602c592b870844159c3fb2179cb3b42f91cd7e6a60a542da924879a4fcad3f8035b2c8fd93a031b43179a4c33f0e4d64a100f8a1c3048ad91e864eab2b927979cf3055960606ce0b846a5f14e13d4f5b01e0c6837ec7d23f99db662757ee467429a1a92363ba75d3e19dde7056b358f9edab1a77be47971793bf9b27873f5f68714d7b3dbe96c765d8af71f20038365cad31625f72ba57553a68a01d8b64e1dd53a397d2a20952311929ff61c7c55ca2c8e8c0c2181f09c77493ae0afbd37213def3be4206937b8efde9aa7e00a5d50a81b1018c041ed91e47f22673b87a6d5efe41cd8700e3e9625bac751896e45ee3f133b871ace0dfbf887daea777fd8561d29fdc7da0d77d6538f848e87de0eea7efd3fdc44f55f5c4527bbe35c0f0f8bfdb47b5d0e9aa49f3b11c0512b060000"
+        ],
+        "rawHeaders": {
+            "anthropic-ratelimit-input-tokens-limit": "10000000",
+            "anthropic-ratelimit-input-tokens-remaining": "9999000",
+            "anthropic-ratelimit-input-tokens-reset": "2026-07-05T20:48:41Z",
+            "anthropic-ratelimit-output-tokens-limit": "2000000",
+            "anthropic-ratelimit-output-tokens-remaining": "2000000",
+            "anthropic-ratelimit-output-tokens-reset": "2026-07-05T20:48:41Z",
+            "anthropic-ratelimit-requests-limit": "20000",
+            "anthropic-ratelimit-requests-remaining": "19999",
+            "anthropic-ratelimit-requests-reset": "2026-07-05T20:48:41Z",
+            "anthropic-ratelimit-tokens-limit": "12000000",
+            "anthropic-ratelimit-tokens-remaining": "11999000",
+            "anthropic-ratelimit-tokens-reset": "2026-07-05T20:48:41Z",
+            "cache-control": "no-cache",
+            "cf-cache-status": "DYNAMIC",
+            "cf-ray": "a1693b640955f488-BCN",
+            "connection": "keep-alive",
+            "content-encoding": "gzip",
+            "content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+            "content-type": "text/event-stream; charset=utf-8",
+            "date": "Sun, 05 Jul 2026 20:48:42 GMT",
+            "request-id": "req_011CcjZvM5K68fTwayTeorfZ",
+            "server": "cloudflare",
+            "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+            "traceresponse": "00-68e5e5124ff27cbed0c4203c3b41104f-1b6f768b222feddf-01",
+            "transfer-encoding": "chunked",
+            "vary": "Accept-Encoding",
+            "x-robots-tag": "none"
+        },
+        "responseIsBinary": false
+    },
+    {
+        "scope": "https://api.anthropic.com:443",
+        "method": "POST",
+        "path": "/v1/messages",
+        "body": {
+            "model": "claude-haiku-4-5",
+            "max_tokens": 64000,
+            "system": [
+                {
+                    "type": "text",
+                    "text": "Skill loading protocol:\nSkills are optional instruction packs, not execution tools. Use them to get extra guidance only when they are relevant to the user's current request.\n\nAvailable skills:\n- name: \"Summary marker\"\n  description: \"Use for summarizing notes, updates, or short text while preserving a marker.\"\n  id: \"summary-marker\"\n  category: \"productivity\"\n\nWhen deciding whether to load a skill:\n- Match the user's request against the skill name and description.\n- Call list_skills when you need to inspect available categories or installed skill metadata.\n- If one skill clearly matches, call load_skill once with `{ \"skillId\": \"<id>\" }`, then follow the returned instructions.\n- If a loaded skill references a supporting file, call load_skill with `{ \"skillId\": \"<id>\", \"filePath\": \"<relative path>\" }`.\n- If the relevant skill was already loaded for this request, do not call load_skill again.\n- If no skill clearly matches, do not call load_skill.\n- Do not load a skill just because it is listed here.\n\nYou are testing runtime skill loading. When the user says a skill applies, first call list_skills if they ask to discover skills or filter by category. Then call load_skill with the exact matching skillId before answering. After loading a skill, strictly follow its returned instructions. Do not answer from memory when a relevant skill applies."
+                }
+            ],
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": "The Summary marker skill applies. Load the relevant skill first, then summarize: streaming agents emit tool events."
+                        }
+                    ]
+                },
+                {
+                    "role": "assistant",
+                    "content": [
+                        {
+                            "type": "tool_use",
+                            "id": "toolu_01EY5ZgCPDwdcWGY7GGWmcNQ",
+                            "name": "load_skill",
+                            "input": {
+                                "skillId": "summary-marker"
+                            },
+                            "caller": {
+                                "type": "direct"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "tool_result",
+                            "tool_use_id": "toolu_01EY5ZgCPDwdcWGY7GGWmcNQ",
+                            "content": [
+                                {
+                                    "type": "text",
+                                    "text": "[Skill: \"Summary marker\"]\n[Skill category: \"productivity\"]\n[Skill hash: \"e3433b77c9e3\"]\n\nEvery final answer after loading this skill must include the exact marker SKILL_MARKER_ALPHA. For summaries, be concise and keep the marker unchanged."
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ],
+            "tools": [
+                {
+                    "name": "list_skills",
+                    "description": "List installed skills from the registry. Use before loading a skill when you need to discover available domains.",
+                    "input_schema": {
+                        "type": "object",
+                        "properties": {
+                            "category": {
+                                "type": "string",
+                                "description": "Optional exact category filter."
+                            }
+                        },
+                        "additionalProperties": false,
+                        "$schema": "http://json-schema.org/draft-07/schema#"
+                    },
+                    "eager_input_streaming": true
+                },
+                {
+                    "name": "load_skill",
+                    "description": "Load a skill by skillId or name. This source does not support linked files, so do not pass filePath.",
+                    "input_schema": {
+                        "type": "object",
+                        "properties": {
+                            "skillId": {
+                                "type": "string",
+                                "minLength": 1,
+                                "description": "Skill id from list_skills."
+                            },
+                            "name": {
+                                "type": "string",
+                                "minLength": 1,
+                                "description": "Skill name from list_skills."
+                            }
+                        },
+                        "additionalProperties": false,
+                        "$schema": "http://json-schema.org/draft-07/schema#"
+                    },
+                    "eager_input_streaming": true
+                }
+            ],
+            "tool_choice": {
+                "type": "auto"
+            },
+            "stream": true
+        },
+        "status": 200,
+        "response": [
+            "1f8b0800000000000013c555c16edb300cbdf72b081e03674882a507df5a6cd88666c3da0e1b86753058998d85c85226d16d8ac2403f625fb82f19e4d86d9ca65b2feb74314c527aef9112c9976c25859243a0396741c8cb5e4e4229dca05c2f1953ec3931e9fe31bdc1d2e56c304565a8ca7958905e54c397c3e970329a4cc7a3d11813d4793c23ccb3d1f8c317ba389c7aa75ec9d1a7991c7f3efefa46ed63b28584097a67a28142d041c84658e5acb0154cbf7d4f30885b669e29388ba9ad8c694d817f546c15f78c390b69133a5bd5b1d7765949266ec136603a9e8c27092a520567ca33897636eb878c3abf67ca1ff3757b23022f0b2ed993c9a6e5c3f87befb8d8f6d609ba4a7afc120cec2fb5e24c347b4c316626279fc724db0bf65178366787295a27195d9236746e18eb1aba55efedf1bae66d3eb373e3d46277e57784345839afd68237fd516fbb4f7815039b4f8a583f045f6a3bdf42038c467c8c60ce46e8cf049b901ec1b5a54fec2eaca5774881f386e3b34383b32005c3695596e4afa124bf600f61a18d016d83f84ac5ab141228d833e8d0842b67950e0c61bd2d3db3677630680f4907033815cf546a3b079ab395005c6a0171ce402330fcbafdd956e5d9354bc181813cb75460ce963d09e77055b0ed1857811bc201f2ca4725bc6255c5642440c6b8abe6aec0e67afef2792633145d32b8f3f8369b770fee629d6a6d853dad0b08da0241b8ab4b03bf922d05ff41c38b78794e8fdecd66d9fb8393a3d727d9c1ece3db8327138b0df66f6dc32d37686d9dd60d979d027b4edc10d46bffc836cfa4f2169f3c04ea7f3805b6daf6fea4de99c6fba9fa30819b3edcd8fa1b3c5a0e98ae070000"
+        ],
+        "rawHeaders": {
+            "anthropic-ratelimit-input-tokens-limit": "10000000",
+            "anthropic-ratelimit-input-tokens-remaining": "9999000",
+            "anthropic-ratelimit-input-tokens-reset": "2026-07-05T20:48:42Z",
+            "anthropic-ratelimit-output-tokens-limit": "2000000",
+            "anthropic-ratelimit-output-tokens-remaining": "2000000",
+            "anthropic-ratelimit-output-tokens-reset": "2026-07-05T20:48:42Z",
+            "anthropic-ratelimit-requests-limit": "20000",
+            "anthropic-ratelimit-requests-remaining": "19999",
+            "anthropic-ratelimit-requests-reset": "2026-07-05T20:48:42Z",
+            "anthropic-ratelimit-tokens-limit": "12000000",
+            "anthropic-ratelimit-tokens-remaining": "11999000",
+            "anthropic-ratelimit-tokens-reset": "2026-07-05T20:48:42Z",
+            "cache-control": "no-cache",
+            "cf-cache-status": "DYNAMIC",
+            "cf-ray": "a1693b698f65f488-BCN",
+            "connection": "keep-alive",
+            "content-encoding": "gzip",
+            "content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+            "content-type": "text/event-stream; charset=utf-8",
+            "date": "Sun, 05 Jul 2026 20:48:43 GMT",
+            "request-id": "req_011CcjZvQm51tPcEnMSonFcm",
+            "server": "cloudflare",
+            "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+            "traceresponse": "00-8af4a4a785c2c6c9bb62bd7a96f0f88a-e76023d95f3fb8d6-01",
+            "transfer-encoding": "chunked",
+            "vary": "Accept-Encoding",
+            "x-robots-tag": "none"
+        },
+        "responseIsBinary": false
+    }
 ]
