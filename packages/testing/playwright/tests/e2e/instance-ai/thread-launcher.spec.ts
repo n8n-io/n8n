@@ -8,40 +8,46 @@ test.describe(
 	},
 	() => {
 		test(
-			'external link prefills Instance AI without sending',
+			'template deep-link creates a thread and auto-sends the kickoff message',
+			// No recorded LLM expectations for this flow: the auto-sent kickoff is
+			// allowed to error at the model — the test asserts the user message
+			// bubble, never the assistant reply, so proxy setup is skipped.
 			{ annotation: [{ type: SKIP_PROXY_SETUP_ANNOTATION }] },
 			async ({ n8n }) => {
-				// Boot the app in an authenticated state before navigating to the
-				// external launch route. fromHome() logs in and lands on the home
-				// page; we then drive the browser to the /instance-ai/new path
-				// directly, mimicking a user following an external deep-link.
+				// Boot the app in an authenticated state before following the
+				// deep-link route, mimicking a user coming from the n8n website.
 				await n8n.start.fromHome();
 				await n8n.instanceAi.enableInstanceAiIfPrompted();
 
-				const prompt = 'Hello from external link';
-				const encodedPrompt = encodeURIComponent(prompt);
+				await n8n.page.goto('/assistant/new?templateId=1234&source=website-template');
 
-				// Navigate to the external launch route. The router's beforeEnter
-				// guard provisions a thread, sets a pending prefill, and redirects
-				// to /instance-ai/<uuid> — all without triggering an LLM call.
-				await n8n.page.goto(`/instance-ai/new?prompt=${encodedPrompt}&source=external-link`);
+				// The router guard provisions a thread and redirects with no query —
+				// the URL settles on /assistant/<uuid>, back-button safe.
+				await expect(n8n.page).toHaveURL(/\/assistant\/[0-9a-f-]+$/, { timeout: 15_000 });
 
-				// URL must settle on /instance-ai/<uuid> with no query string.
-				await expect(n8n.page).toHaveURL(/\/instance-ai\/[0-9a-f-]+$/, { timeout: 15_000 });
-
-				// The chat input must be pre-filled with the prompt text.
-				await expect(n8n.instanceAi.getChatInput()).toHaveValue(prompt, { timeout: 10_000 });
-
-				// The prefill must NOT have been auto-sent — there should be no user
-				// message bubble in the timeline.
-				await expect(n8n.instanceAi.getUserMessages()).toHaveCount(0);
+				// The kickoff auto-sends once the thread view has hydrated and
+				// connected. It names the template by id.
+				await expect(n8n.instanceAi.getUserMessages().first()).toContainText('template', {
+					timeout: 30_000,
+				});
+				await expect(n8n.instanceAi.getUserMessages().first()).toContainText('1234');
 			},
 		);
 
-		// This scenario (template "Start with AI" → real agent run) requires
-		// recorded LLM expectations per packages/@n8n/instance-ai/CLAUDE.md.
-		// It is out of scope for this task and will be covered when the
-		// expectation recordings are available.
-		test.skip('start with AI from a template launches and builds', async () => {});
+		test(
+			'invalid template id lands on the assistant empty view',
+			{ annotation: [{ type: SKIP_PROXY_SETUP_ANNOTATION }] },
+			async ({ n8n }) => {
+				await n8n.start.fromHome();
+				await n8n.instanceAi.enableInstanceAiIfPrompted();
+
+				// Non-numeric template ids are rejected by the guard: no thread is
+				// created and the user lands on the assistant empty view.
+				await n8n.page.goto('/assistant/new?templateId=abc');
+
+				await expect(n8n.page).toHaveURL(/\/assistant$/, { timeout: 15_000 });
+				await expect(n8n.instanceAi.getChatInput()).toBeVisible();
+			},
+		);
 	},
 );
