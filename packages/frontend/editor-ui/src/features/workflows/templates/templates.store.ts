@@ -175,6 +175,17 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, () => {
 				: undefined),
 	);
 
+	// Capabilities beaconed to the website alongside utm_instance, so n8n.io can
+	// offer instance-aware entry points (e.g. "Customize with AI" on templates)
+	// only for instances that support them.
+	const instanceFeatures = computed(() => {
+		const features: string[] = [];
+		if (settingsStore.moduleSettings?.['instance-ai']?.enabled === true) {
+			features.push('assistant');
+		}
+		return features;
+	});
+
 	const websiteTemplateRepositoryParameters = computed(() => {
 		const defaultParameters: Record<string, string> = {
 			...TEMPLATES_URLS.UTM_QUERY,
@@ -184,6 +195,9 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, () => {
 		};
 		if (userRole.value) {
 			defaultParameters.utm_user_role = userRole.value;
+		}
+		if (instanceFeatures.value.length > 0) {
+			defaultParameters.utm_instance_features = instanceFeatures.value.join(',');
 		}
 		return new URLSearchParams({
 			...defaultParameters,
