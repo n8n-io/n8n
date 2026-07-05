@@ -32,7 +32,8 @@ const checklistResultSchema = z.object({
 
 /** Escalating per-attempt caps: stalls fail fast and retry, genuinely slow verifies get room. */
 export const VERIFY_ATTEMPT_TIMEOUTS_MS = [60_000, 120_000, 240_000];
-/** Abort an attempt when the stream emits no chunk for this long (agents path only). */
+/** Abort when the stream goes silent for this long AFTER its first chunk (agents path only).
+ *  Pre-first-chunk time is bounded by the attempt cap, not this window. */
 export const VERIFY_INACTIVITY_TIMEOUT_MS = 45_000;
 const VERIFIER_DEBUG = process.env.N8N_EVAL_VERIFIER_DEBUG === '1';
 
@@ -449,7 +450,9 @@ export async function verifyChecklist(
 					cache: true,
 				}).structuredOutput(checklistResultSchema);
 
-				resetInactivity();
+				// The inactivity watchdog arms on the FIRST chunk (inside the consume
+				// loop): time-to-first-token on a cache-cold large artifact can exceed
+				// the window, and the attempt cap already bounds the pre-stream phase.
 				const streamResult = await agent.stream(messages, {
 					abortSignal: abortController.signal,
 					smoothStream: false,

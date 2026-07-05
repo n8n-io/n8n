@@ -225,6 +225,21 @@ describe('evaluateGate', () => {
 		expect(gate.aggregate).toEqual({ passed: 1, total: 2, rate: 0.5 });
 	});
 
+	it('is NOT green when every unit is excluded (nothing was measured)', () => {
+		const { evaluation, slugByTestCase } = makeEval(2, [
+			{
+				slug: 'a',
+				scenarios: [{ name: 'happy', passes: ['incomplete', 'incomplete'] }],
+			},
+		]);
+		const gate = evaluateGate(evaluation, { slugByTestCase });
+
+		expect(gate.green).toBe(false);
+		expect(gate.units).toHaveLength(0);
+		expect(gate.failing).toHaveLength(0);
+		expect(gate.excluded).toHaveLength(1);
+	});
+
 	it('excludes a scenario whose every run is verifier-incomplete instead of failing on it', () => {
 		const { evaluation, slugByTestCase } = makeEval(2, [
 			{

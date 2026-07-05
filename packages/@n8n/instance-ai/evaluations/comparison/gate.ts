@@ -145,10 +145,12 @@ export function evaluateGate(
 	const aggregate = { passed, total, rate: total > 0 ? passed / total : 0 };
 
 	const failing = gated.filter((u) => !u.green);
+	// A gate with zero measured units (e.g. verifier outage excluded everything)
+	// must not read as green — there is nothing the verdict could stand on.
 	const green =
 		criterion.kind === 'minAggregatePassRate'
 			? gated.length > 0 && aggregate.rate >= criterion.minRate
-			: failing.length === 0;
+			: gated.length > 0 && failing.length === 0;
 
 	return {
 		criterion,

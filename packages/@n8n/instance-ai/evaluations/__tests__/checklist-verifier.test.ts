@@ -176,10 +176,34 @@ describe('verifyChecklist (agents stream path)', () => {
 		expect(results[0].pass).toBe(true);
 	});
 
-	it('aborts a stuck stream on inactivity and exhausts all ladder attempts', async () => {
+	it('bounds a never-emitting stream by the attempt cap (inactivity not yet armed)', async () => {
 		const stream: StreamFn = vi
 			.fn()
 			.mockImplementation(async () => await Promise.resolve({ stream: stuckStream() }));
+		mockVerifierAgent(stream);
+
+		const { results, attempts } = (await runWithTimers(
+			verifyChecklist(CHECKLIST, ARTIFACT),
+		)) as Awaited<ReturnType<typeof verifyChecklist>>;
+
+		expect(results).toEqual([]);
+		expect(attempts.map((a) => a.error)).toEqual([
+			expect.stringContaining('verifier timed out after 60000ms'),
+			expect.stringContaining('verifier timed out after 120000ms'),
+			expect.stringContaining('verifier timed out after 240000ms'),
+		]);
+		expect(stream).toHaveBeenCalledTimes(VERIFY_ATTEMPT_TIMEOUTS_MS.length);
+	});
+
+	it('aborts a mid-stream stall on inactivity and exhausts all ladder attempts', async () => {
+		// One chunk arrives, then silence: the watchdog (armed by the first chunk)
+		// fires at chunk+45s, well before each attempt cap.
+		const stream: StreamFn = vi.fn().mockImplementation(
+			async () =>
+				await Promise.resolve({
+					stream: timedStream([{ at: 1_000, chunk: { type: 'text-delta', id: 't', delta: '…' } }]),
+				}),
+		);
 		mockVerifierAgent(stream);
 
 		const { results, attempts } = (await runWithTimers(
@@ -194,7 +218,29 @@ describe('verifyChecklist (agents stream path)', () => {
 				`verifier stalled: no stream activity for ${VERIFY_INACTIVITY_TIMEOUT_MS}ms`,
 			);
 		}
-		expect(stream).toHaveBeenCalledTimes(VERIFY_ATTEMPT_TIMEOUTS_MS.length);
+	});
+
+	it('tolerates slow time-to-first-chunk beyond the inactivity window', async () => {
+		// First chunk at 50s (> 45s window, < 60s cap): must NOT be treated as a stall.
+		const stream: StreamFn = vi.fn().mockResolvedValue({
+			stream: timedStream([
+				{ at: 50_000, chunk: { type: 'text-delta', id: 't', delta: '…' } },
+				{
+					at: 52_000,
+					chunk: { type: 'finish', finishReason: 'stop', structuredOutput: GOOD_OUTPUT },
+					close: true,
+				},
+			]),
+		});
+		mockVerifierAgent(stream);
+
+		const { results, attempts } = (await runWithTimers(
+			verifyChecklist(CHECKLIST, ARTIFACT),
+		)) as Awaited<ReturnType<typeof verifyChecklist>>;
+
+		expect(results).toHaveLength(1);
+		expect(attempts[0].status).toBe('success');
+		expect(stream).toHaveBeenCalledTimes(1);
 	});
 
 	it('keeps an alive-but-slow stream open past the inactivity window and succeeds', async () => {

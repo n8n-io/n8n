@@ -280,6 +280,13 @@ function formatGateAlertMarkdown(gate: GateResult): string {
 			`> 🔴 ${gate.failing.length} of ${pluralUnits(n)} not green ${over}.`,
 		].join('\n');
 	}
+	// Zero measured units (e.g. verifier outage excluded everything): red, not clean.
+	if (!gate.green) {
+		return [
+			'> [!CAUTION]',
+			`> 🔴 Gate has no measured units — ${gate.excluded.length} excluded with no verdict. Nothing was actually gated.`,
+		].join('\n');
+	}
 	// All units pass@k. Only warn when a unit *barely* passed (failed most of its runs);
 	// a single flaky miss stays green but is still listed in Failures below.
 	const barely = barelyPassedUnits(gate).length;
@@ -320,6 +327,9 @@ function formatTerminalGateLine(gate: GateResult): string {
 	const over = `over ${gate.totalRuns} run${gate.totalRuns === 1 ? '' : 's'}`;
 	if (gate.failing.length > 0) {
 		return `▶ GATE: ${gate.failing.length} of ${pluralUnits(n)} NOT green ${over}`;
+	}
+	if (!gate.green) {
+		return `▶ GATE: NO measured units (${gate.excluded.length} excluded, no verdicts) — not green`;
 	}
 	const barely = barelyPassedUnits(gate).length;
 	if (barely > 0) {

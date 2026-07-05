@@ -38,7 +38,7 @@ function escapeHtml(str: string): string {
 		.replace(/'/g, '&#39;');
 }
 
-type StageStatus = 'pass' | 'fail';
+type StageStatus = 'pass' | 'fail' | 'na';
 
 interface StageReview {
 	label: string;
@@ -280,7 +280,7 @@ function renderStageReview(stage: StageReview): string {
 				<span class="review-status-dot ${stage.status}"></span>
 				<span class="review-stage-label">${escapeHtml(stage.label)}</span>
 			</div>
-			<span class="review-status-pill ${stage.status}">${stage.status === 'pass' ? 'green' : 'red'}</span>
+			<span class="review-status-pill ${stage.status}">${stage.status === 'pass' ? 'green' : stage.status === 'na' ? 'no verdict' : 'red'}</span>
 		</div>
 		<div class="review-stage-reason">${escapeHtml(stage.reason)}</div>
 		<div class="review-stage-body">${stage.body}</div>
@@ -448,7 +448,7 @@ function verifierReview(sr: ExecutionScenarioResult): StageReview {
 
 	return {
 		label: '4. Verifier judgment',
-		status: sr.success ? 'pass' : 'fail',
+		status: sr.success ? 'pass' : sr.incomplete ? 'na' : 'fail',
 		reason: sr.success
 			? 'The verifier accepted this scenario.'
 			: sr.incomplete
@@ -537,7 +537,7 @@ function renderScenario(
 ): string {
 	const icon = sr.success ? '&#10003;' : '&#10007;';
 	const statusClass = sr.success ? 'pass' : 'fail';
-	const execLink = renderExecutionLink(sr, result.n8nBaseUrl, result.workflowId);
+	const execLink = renderExecutionLink(sr, result.n8nBaseUrl, sr.workflowId ?? result.workflowId);
 
 	// Verifier-incomplete: neutral one-liner, excluded from scoring.
 	if (sr.incomplete) {
@@ -1435,20 +1435,24 @@ export function generateWorkflowReport(results: WorkflowTestCaseResult[]): strin
 	.review-overview-chip { display: inline-flex; align-items: center; min-height: 24px; padding: 0 10px; border: 1px solid var(--border); border-radius: 999px; color: var(--text-secondary); font-size: 11px; font-weight: 600; }
 	.review-overview-chip.pass { border-color: #238636; color: var(--color-pass); background: var(--color-pass-bg); }
 	.review-overview-chip.fail { border-color: #da3633; color: var(--color-fail); background: var(--color-fail-bg); }
+	.review-overview-chip.na { border-color: #8b949e; color: #8b949e; }
 	.review-grid { display: grid; grid-template-columns: 1fr; }
 	.review-stage { padding: 12px; border-top: 1px solid var(--border-light); border-left: 4px solid var(--border); background: var(--bg-secondary); }
 	.review-stage:first-child { border-top: 0; }
 	.review-stage.pass { border-left-color: var(--color-pass); }
 	.review-stage.fail { border-left-color: var(--color-fail); }
+	.review-stage.na { border-left-color: #8b949e; }
 	.review-stage-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
 	.review-stage-heading { display: flex; align-items: center; gap: 8px; min-width: 0; }
 	.review-stage-label { color: var(--text-primary); font-size: 12px; font-weight: 700; }
 	.review-status-dot { width: 10px; height: 10px; border-radius: 50%; flex: 0 0 auto; }
 	.review-status-dot.pass { background: var(--color-pass); box-shadow: 0 0 0 3px var(--color-pass-bg); }
 	.review-status-dot.fail { background: var(--color-fail); box-shadow: 0 0 0 3px var(--color-fail-bg); }
+	.review-status-dot.na { background: #8b949e; box-shadow: 0 0 0 3px rgba(139,148,158,0.2); }
 	.review-status-pill { display: inline-flex; align-items: center; min-height: 22px; padding: 0 8px; border-radius: 999px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0; }
 	.review-status-pill.pass { background: var(--color-pass-bg); color: var(--color-pass); }
 	.review-status-pill.fail { background: var(--color-fail-bg); color: var(--color-fail); }
+	.review-status-pill.na { background: rgba(139,148,158,0.15); color: #8b949e; }
 	.review-stage-reason { color: var(--text-secondary); font-size: 12px; line-height: 1.6; margin-bottom: 4px; }
 	.review-stage-body { margin-top: 6px; }
 	.review-subsection { padding-top: 4px; }

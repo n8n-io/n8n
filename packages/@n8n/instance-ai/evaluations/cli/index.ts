@@ -1462,7 +1462,7 @@ function computePassRatePerIter(evaluation: MultiRunEvaluation): string {
 				if (verdict.pass) passed++;
 			}
 		}
-		rates.push(`${String(total > 0 ? Math.round((passed / total) * 100) : 0)}%`);
+		rates.push(total > 0 ? `${String(Math.round((passed / total) * 100))}%` : 'n/a');
 	}
 	return rates.join(' / ');
 }
