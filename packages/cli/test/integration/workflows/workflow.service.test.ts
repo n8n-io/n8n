@@ -39,6 +39,7 @@ import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
 import type { WorkflowPublicationNotifier } from '@/workflows/publication/workflow-publication-notifier';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import type { WorkflowPublishGuardProxy } from '@/workflows/workflow-publish-guard-proxy.service';
 import { WorkflowValidationService } from '@/workflows/workflow-validation.service';
@@ -117,6 +118,7 @@ beforeAll(async () => {
 		// Real service on purpose: with no backend registered it clears every save and
 		// publish, so these tests also prove behavior is unchanged with the module off.
 		Container.get(PolicyEnforcementService), // policyEnforcementService
+		Container.get(WorkflowPublicationStatusService), // workflowPublicationStatusService
 	);
 });
 
