@@ -321,7 +321,7 @@ describe('buildFromJson()', () => {
 		const loadedText = (loaded.value ?? []).map((part) => part.text).join('\n');
 		expect(loadedText).toContain('[Skill: "Summarize notes"]');
 		expect(loadedText).toContain('Extract decisions and action items.');
-		expect(loadedText).toContain('filePath: references/guide.md');
+		expect(loadedText).toContain('filePath: "references/guide.md"');
 
 		await expect(
 			loadSkill!.handler?.({ skillId: 'summarize_notes', filePath: 'references/guide.md' }, {}),

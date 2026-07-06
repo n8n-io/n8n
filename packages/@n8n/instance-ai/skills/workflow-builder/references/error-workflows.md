@@ -25,7 +25,10 @@ When creating an error workflow to attach to another workflow:
 2. Build the error workflow as a separate workflow. It starts with an Error
    Trigger and sends the notification the user requested.
 3. Publish the error workflow with `workflows(action="publish")` before setting
-   it on the target workflow. Publishing uses HITL approval.
+   it on the target workflow: `settings.errorWorkflow` only accepts a published
+   workflow, and publishing goes through HITL approval, so the user confirms it.
+   This applies to the error workflow only; never publish the target workflow
+   unless the user explicitly asks.
 4. Patch the original target workflow's source and set
    `.settings({ errorWorkflow: '<published-error-workflow-id>' })`, then call
    `build-workflow` for the original workflow. This assigns the error workflow

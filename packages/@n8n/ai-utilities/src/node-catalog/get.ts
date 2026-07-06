@@ -337,6 +337,7 @@ function resolveModePath(
 		// All variants instead of an error: mode-split nodes have few, small variants.
 		const variants = (available.modes ?? [])
 			.filter((m) => isValidPathComponent(m))
+			.sort()
 			.map((m) => ({
 				mode: m,
 				filePath: join(nodeDir, targetVersion, `mode_${toSnakeCase(m)}.ts`),

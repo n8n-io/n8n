@@ -185,7 +185,8 @@ function resolveModeFile(
 ): PathResolutionResult {
 	if (!discriminators?.mode) {
 		// All variants instead of an error: mode-split nodes have few, small variants.
-		const variants = modes
+		const variants = [...modes]
+			.sort()
 			.map((mode) => ({
 				mode,
 				filePath: safeJoinPath(nodeDir, targetVersion, `mode_${toSnakeCase(mode)}.ts`),

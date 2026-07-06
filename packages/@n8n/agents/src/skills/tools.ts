@@ -312,7 +312,9 @@ async function loadSkill(
 	const header = [
 		activationEnvelope(skillEntry),
 		...(linkedFilePaths.length > 0
-			? [`[Linked files — load via load_skill with filePath: ${linkedFilePaths.join(', ')}]`]
+			? [
+					`[Linked files — load via load_skill with filePath: ${linkedFilePaths.map(envelopeValue).join(', ')}]`,
+				]
 			: []),
 	];
 	return {
