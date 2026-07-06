@@ -133,11 +133,16 @@ export async function refreshWorkflowSourceFileBindingFromSave(
 	}
 
 	for (const binding of entries) {
-		await saveWorkflowSourceFileBinding(context, {
+		const nextBinding: WorkflowSourceFileBinding = {
 			...binding,
 			workflowVersionId: saved.versionId,
-			...(saved.checksum ? { workflowChecksum: saved.checksum } : {}),
-		});
+		};
+		if (saved.checksum !== undefined) {
+			nextBinding.workflowChecksum = saved.checksum;
+		} else {
+			delete nextBinding.workflowChecksum;
+		}
+		await saveWorkflowSourceFileBinding(context, nextBinding);
 	}
 }
 

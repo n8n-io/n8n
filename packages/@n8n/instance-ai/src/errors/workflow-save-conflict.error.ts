@@ -6,9 +6,8 @@ import { OperationalError } from 'n8n-workflow';
  */
 export class WorkflowSaveConflictError extends OperationalError {
 	constructor(workflowId: string) {
-		super(
-			`Workflow ${workflowId} was modified outside this conversation since the last save. Re-fetch with workflows(action="get-as-code"), re-apply your edit, then rebuild.`,
-			{ level: 'warning' },
-		);
+		super(`Workflow ${workflowId} was modified outside this conversation since the last save.`, {
+			level: 'warning',
+		});
 	}
 }

@@ -1,11 +1,9 @@
 // Mock the barrel import so these adapter tests only exercise local formatting helpers.
-vi.mock('@n8n/instance-ai', async (importOriginal) => {
-	const actual = await importOriginal<typeof import('@n8n/instance-ai')>();
-	const { WorkflowSaveConflictError } = await vi.importActual<
-		typeof import('../../../../../@n8n/instance-ai/src/errors/workflow-save-conflict.error')
-	>('../../../../../@n8n/instance-ai/src/errors/workflow-save-conflict.error');
+vi.mock('@n8n/instance-ai', async () => {
+	const { WorkflowSaveConflictError } = await import(
+		'../../../../../@n8n/instance-ai/src/errors/workflow-save-conflict.error'
+	);
 	return {
-		...actual,
 		WorkflowSaveConflictError,
 		wrapUntrustedData(content: string, source: string, label?: string): string {
 			const esc = (s: string) =>
@@ -19,6 +17,7 @@ vi.mock('@n8n/instance-ai', async (importOriginal) => {
 			return `<untrusted_data source="${esc(source)}"${safeLabel}>\n${safeContent}\n</untrusted_data>`;
 		},
 		builderTemplatesOptionsFromEnv: () => ({}),
+		deriveCredentialHosts: vi.fn().mockReturnValue([]),
 		BuilderTemplatesService: class {
 			async getBundle() {
 				return { files: [], indexTxt: '', version: null };

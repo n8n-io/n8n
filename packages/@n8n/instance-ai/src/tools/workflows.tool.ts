@@ -24,8 +24,8 @@ import {
 	summarizeWorkflowStructure,
 } from './workflows/summarize-workflow';
 import { validateWorkflowConfig } from './workflows/validate-workflow.service';
-import { getReferencedWorkflowIds } from './workflows/workflow-json-utils';
 import { refreshWorkflowSourceFileBindingFromSave } from './workflows/workflow-file-bindings';
+import { getReferencedWorkflowIds } from './workflows/workflow-json-utils';
 
 // ── Action schemas ──────────────────────────────────────────────────────────
 
@@ -446,6 +446,10 @@ async function handleGetAsCode(
 	try {
 		const json = await context.workflowService.getAsWorkflowJSON(input.workflowId, input.versionId);
 		const code = generateWorkflowCode(json);
+		// Historical reads must not advance the optimistic-concurrency lock.
+		if (!input.versionId) {
+			await refreshBindingFromCurrentWorkflow(context, input.workflowId);
+		}
 		return { workflowId: input.workflowId, name: json.name, code };
 	} catch (error) {
 		return {
@@ -486,6 +490,7 @@ async function handleDelete(
 	}
 
 	await context.workflowService.archive(input.workflowId);
+	await refreshBindingFromCurrentWorkflow(context, input.workflowId);
 	return { success: true };
 }
 
@@ -516,6 +521,7 @@ async function handleUnarchive(
 	}
 
 	await context.workflowService.unarchive(input.workflowId);
+	await refreshBindingFromCurrentWorkflow(context, input.workflowId);
 	return { success: true };
 }
 
@@ -739,6 +745,7 @@ async function handleSetup(
 	if (!resumeData.approved) {
 		if (state.preTestSnapshot) {
 			await context.workflowService.updateFromWorkflowJSON(input.workflowId, state.preTestSnapshot);
+			await refreshBindingFromCurrentWorkflow(context, input.workflowId);
 			state.preTestSnapshot = null;
 		}
 		return {
@@ -828,6 +835,7 @@ async function handleUpdate(
 
 	try {
 		await context.workflowService.updateFromWorkflowJSON(input.workflowId, input.workflow);
+		await refreshBindingFromCurrentWorkflow(context, input.workflowId);
 		return { success: true, workflowId: input.workflowId };
 	} catch (error) {
 		return {
@@ -837,7 +845,7 @@ async function handleUpdate(
 	}
 }
 
-async function refreshBindingAfterExternalSave(
+async function refreshBindingFromCurrentWorkflow(
 	context: InstanceAiContext,
 	workflowId: string,
 ): Promise<void> {
@@ -894,7 +902,7 @@ async function handlePublish(
 		try {
 			for (const supportingWorkflowId of supportingWorkflowIds) {
 				await context.workflowService.publish(supportingWorkflowId);
-				await refreshBindingAfterExternalSave(context, supportingWorkflowId);
+				await refreshBindingFromCurrentWorkflow(context, supportingWorkflowId);
 				publishedSupportingWorkflowIds.push(supportingWorkflowId);
 				publishedWorkflowIds.push(supportingWorkflowId);
 			}
@@ -909,7 +917,7 @@ async function handlePublish(
 					: {}),
 			});
 			publishedWorkflowIds.push(input.workflowId);
-			await refreshBindingAfterExternalSave(context, input.workflowId);
+			await refreshBindingFromCurrentWorkflow(context, input.workflowId);
 
 			return {
 				success: true,
@@ -1032,7 +1040,7 @@ async function handleUnpublish(
 
 	try {
 		await context.workflowService.unpublish(input.workflowId);
-		await refreshBindingAfterExternalSave(context, input.workflowId);
+		await refreshBindingFromCurrentWorkflow(context, input.workflowId);
 		return { success: true };
 	} catch (error) {
 		return {
@@ -1089,6 +1097,7 @@ async function handleRestoreVersion(
 
 	try {
 		await context.workflowService.restoreVersion!(input.workflowId, input.versionId);
+		await refreshBindingFromCurrentWorkflow(context, input.workflowId);
 		return { success: true };
 	} catch (error) {
 		return {

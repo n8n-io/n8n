@@ -61,4 +61,31 @@ describe('workflow source file bindings', () => {
 			workflowChecksum: 'checksum-new',
 		});
 	});
+
+	it('clears workflowChecksum when refresh receives no checksum', async () => {
+		const context = {
+			logger: { debug: vi.fn(), warn: vi.fn() },
+		} as unknown as InstanceAiContext;
+
+		await saveWorkflowSourceFileBinding(context, {
+			filePath: 'src/workflows/main.workflow.ts',
+			workflowId: 'wf-1',
+			workflowVersionId: 'v-old',
+			workflowChecksum: 'checksum-old',
+		});
+
+		await refreshWorkflowSourceFileBindingFromSave(context, 'wf-1', {
+			versionId: 'v-new',
+		});
+
+		await expect(
+			getWorkflowSourceFileBinding(context, 'src/workflows/main.workflow.ts'),
+		).resolves.toMatchObject({
+			workflowId: 'wf-1',
+			workflowVersionId: 'v-new',
+		});
+		await expect(
+			getWorkflowSourceFileBinding(context, 'src/workflows/main.workflow.ts'),
+		).resolves.not.toHaveProperty('workflowChecksum');
+	});
 });
