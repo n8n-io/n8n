@@ -426,15 +426,18 @@ export function useNodeHelpers() {
 		);
 		if (triggers.length === 0) return null;
 
-		if (
-			triggers.some(
-				(trigger) => classifyTriggerIdentity(trigger.type, trigger.parameters).providesN8nIdentity,
-			)
-		) {
-			return null;
-		}
+		const hasCompatibleTrigger = triggers.some(
+			(trigger) => classifyTriggerIdentity(trigger.type, trigger.parameters).providesN8nIdentity,
+		);
+		if (hasCompatibleTrigger) return null;
 
-		return triggers[0];
+		// No trigger establishes the identity — return an incompatible one to name
+		// in the issue.
+		return (
+			triggers.find(
+				(trigger) => !classifyTriggerIdentity(trigger.type, trigger.parameters).providesN8nIdentity,
+			) ?? null
+		);
 	}
 
 	function getTriggerDisplayName(trigger: INodeUi): string {
