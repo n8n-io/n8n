@@ -26,8 +26,10 @@ const { showError } = useToast();
 const rbacStore = useRBACStore();
 
 function normalizeTab(value: unknown): RolesTab {
-	return value === 'project' ? 'project' : DEFAULT_TAB;
+	return value === 'project' || !rbacStore.hasScope('role:manage') ? 'project' : DEFAULT_TAB;
 }
+
+const canManageInstanceRoles = computed(() => rbacStore.hasScope('role:manage'));
 
 const activeTab = ref<RolesTab>(normalizeTab(route.query.tab));
 
@@ -36,8 +38,6 @@ function addRole() {
 		name: activeTab.value === 'project' ? VIEWS.PROJECT_NEW_ROLE : VIEWS.INSTANCE_NEW_ROLE,
 	});
 }
-
-const canManageInstanceRoles = computed(() => rbacStore.hasScope('role:manage'));
 
 const tabOptions = computed<Array<TabOptions<RolesTab>>>(() =>
 	canManageInstanceRoles.value
