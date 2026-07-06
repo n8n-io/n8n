@@ -824,13 +824,6 @@ export const routes: RouteRecordRaw[] = [
 				path: 'roles',
 				name: VIEWS.ROLES_SETTINGS,
 				component: async () => await import('@/features/roles/RolesView.vue'),
-				beforeEnter: () => {
-					const { check } = useEnvFeatureFlag();
-					if (!check.value('CUSTOM_INSTANCE_ROLES')) {
-						return { name: VIEWS.PROJECT_ROLES_SETTINGS };
-					}
-					return true;
-				},
 				meta: {
 					middleware: ['authenticated', 'rbac'],
 					middlewareOptions: {
@@ -851,15 +844,6 @@ export const routes: RouteRecordRaw[] = [
 			{
 				path: 'instance-roles',
 				component: RouterView,
-				// Instance role create/edit/view are gated behind the env flag; when off,
-				// fall back to the canonical project-roles page.
-				beforeEnter: () => {
-					const { check } = useEnvFeatureFlag();
-					if (!check.value('CUSTOM_INSTANCE_ROLES')) {
-						return { name: VIEWS.PROJECT_ROLES_SETTINGS };
-					}
-					return true;
-				},
 				children: [
 					{
 						path: 'new',
@@ -906,16 +890,9 @@ export const routes: RouteRecordRaw[] = [
 					{
 						path: '',
 						name: VIEWS.PROJECT_ROLES_SETTINGS,
-						component: async () => await import('@/features/roles/project/ProjectRolesView.vue'),
-						// When custom instance roles are enabled, the standalone project-roles page
-						// is superseded by the tabbed Roles shell; redirect old deep links there.
-						beforeEnter: () => {
-							const { check } = useEnvFeatureFlag();
-							if (check.value('CUSTOM_INSTANCE_ROLES')) {
-								return { name: VIEWS.ROLES_SETTINGS, query: { tab: 'project' } };
-							}
-							return true;
-						},
+						// The standalone project-roles page is superseded by the tabbed Roles shell;
+						// redirect old deep links to the project tab there.
+						redirect: () => ({ name: VIEWS.ROLES_SETTINGS, query: { tab: 'project' } }),
 					},
 					{
 						path: 'new',

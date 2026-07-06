@@ -3380,7 +3380,6 @@
 	"settings.users.table.row.role.description.chatUser": "Can use Chat but cannot create or view workflows or access other features",
 	"settings.users.table.row.2fa.enabled": "@:_reusableBaseText.enabled",
 	"settings.users.table.row.2fa.disabled": "@:_reusableBaseText.disabled",
-	"settings.projectRoles": "Project roles",
 	"settings.roles": "Roles",
 	"settings.api": "API",
 	"settings.n8napi": "n8n API",

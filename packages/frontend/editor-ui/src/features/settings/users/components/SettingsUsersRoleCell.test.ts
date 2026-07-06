@@ -8,17 +8,6 @@ import SettingsUsersRoleCell from './SettingsUsersRoleCell.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
-// Feature flag is toggled per test via this hoisted state.
-const { envFlagState } = vi.hoisted(() => ({ envFlagState: { customInstanceRoles: true } }));
-vi.mock('@/features/shared/envFeatureFlag/useEnvFeatureFlag', () => ({
-	useEnvFeatureFlag: () => ({
-		check: {
-			value: (flag: string) =>
-				flag === 'CUSTOM_INSTANCE_ROLES' ? envFlagState.customInstanceRoles : false,
-		},
-	}),
-}));
-
 // Mock the dropdown primitives to expose items as buttons and the trigger slot for assertions.
 vi.mock('@n8n/design-system', async (importOriginal) => {
 	const original = await importOriginal<object>();
@@ -55,27 +44,6 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 		N8nSelect2Item: {
 			name: 'N8nSelect2Item',
 			template: '<span><slot name="item-label" /><slot name="item-trailing" /></span>',
-		},
-		N8nActionDropdown: {
-			name: 'N8nActionDropdown',
-			props: { items: { type: Array, default: () => [] } },
-			emits: ['select'],
-			template: `
-				<div>
-					<div data-test-id="legacy-activator"><slot name="activator" /></div>
-					<ul>
-						<li v-for="item in items" :key="item.id">
-							<button
-								:data-test-id="'legacy-action-' + item.id"
-								:disabled="item.disabled"
-								@click="$emit('select', item.id)"
-							>
-								<slot name="menuItem" v-bind="item" />
-							</button>
-						</li>
-					</ul>
-				</div>
-			`,
 		},
 	};
 });
@@ -161,7 +129,6 @@ let renderComponent: ReturnType<typeof createComponentRenderer>;
 
 describe('SettingsUsersRoleCell', () => {
 	beforeEach(() => {
-		envFlagState.customInstanceRoles = true;
 		vi.mocked(hasPermission).mockReturnValue(true);
 		renderComponent = createComponentRenderer(SettingsUsersRoleCell, {
 			pinia: pinia(),
@@ -235,32 +202,6 @@ describe('SettingsUsersRoleCell', () => {
 			await user.click(screen.getByTestId(`role-${UNLICENSED_ROLE_SLUG}`));
 
 			expect(emitted()['update:role']).toBeUndefined();
-		});
-	});
-
-	describe('when the CUSTOM_INSTANCE_ROLES feature flag is off', () => {
-		beforeEach(() => {
-			envFlagState.customInstanceRoles = false;
-		});
-
-		it('should render the legacy dropdown without custom roles', () => {
-			renderComponent();
-
-			expect(
-				within(screen.getByTestId('legacy-activator')).getByText('Member'),
-			).toBeInTheDocument();
-			expect(screen.queryByTestId('select-trigger')).not.toBeInTheDocument();
-			// Custom roles are not offered in the legacy dropdown.
-			expect(screen.queryByTestId(`legacy-action-${CUSTOM_ROLE_SLUG}`)).not.toBeInTheDocument();
-		});
-
-		it('should emit "update:role" from the legacy dropdown', async () => {
-			const { emitted } = renderComponent();
-			const user = userEvent.setup();
-
-			await user.click(screen.getByTestId(`legacy-action-${ROLE.Admin}`));
-
-			expect(emitted()['update:role'][0]).toEqual([{ role: ROLE.Admin, userId: '1' }]);
 		});
 	});
 });
