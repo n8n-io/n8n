@@ -81,6 +81,29 @@ describe('agent_builder router', () => {
 		expect(result.workflows).toHaveLength(1);
 	});
 
+	it('routes build_agent to the build-agent handler', async () => {
+		// No workspace on the context → the handler reports it unavailable.
+		const result = await executeTool<{ ok: boolean; errors?: Array<{ message: string }> }>(
+			createAgentBuilderRouterTool(createContext(createService())),
+			{ action: 'build_agent', filePath: 'src/agents/a.agent.json', baseConfigHash: null },
+			{},
+		);
+		expect(result.ok).toBe(false);
+		expect(result.errors?.[0].message).toContain('workspace');
+	});
+
+	it('no longer exposes write_config or patch_config as actions', async () => {
+		for (const action of ['write_config', 'patch_config']) {
+			const result = await executeTool<{ ok: boolean; errors?: Array<{ message: string }> }>(
+				createAgentBuilderRouterTool(createContext(createService())),
+				{ action },
+				{},
+			);
+			expect(result.ok).toBe(false);
+			expect(result.errors?.[0].message).toContain('Unknown agent_builder action');
+		}
+	});
+
 	it('rejects an unknown action', async () => {
 		const result = await executeTool<{ ok: boolean; errors?: Array<{ message: string }> }>(
 			createAgentBuilderRouterTool(createContext(createService())),

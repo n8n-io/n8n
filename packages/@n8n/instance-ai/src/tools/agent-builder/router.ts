@@ -14,7 +14,8 @@ import { Tool, type BuiltTool } from '@n8n/agents';
 import { formatZodErrors } from '@n8n/api-types';
 import { z } from 'zod';
 
-import { createReadConfigTool, createWriteConfigTool, createPatchConfigTool } from './config-tools';
+import { createBuildAgentTool } from './build-agent.tool';
+import { createReadConfigTool } from './config-tools';
 import { createCreateAgentTool } from './create-agent.tool';
 import {
 	createBuildCustomToolTool,
@@ -38,8 +39,7 @@ import { AGENT_BUILDER_TOOL_IDS } from '../tool-ids';
 const ROUTER_TOOL_FACTORIES = [
 	createCreateAgentTool,
 	createReadConfigTool,
-	createWriteConfigTool,
-	createPatchConfigTool,
+	createBuildAgentTool,
 	createSearchNodesTool,
 	createGetNodeTypesTool,
 	createGetResourceLocatorOptionsTool,
@@ -96,8 +96,9 @@ export function createAgentBuilderRouterTool(context: InstanceAiContext): BuiltT
 				'Only use this tool when the user is explicitly creating or editing an n8n Agent — never ' +
 				'while building or editing a workflow (use the workflow-builder skill and build-workflow ' +
 				'for that), and never to fabricate file/utility tools during a workflow build. Actions: ' +
-				'create_agent (create the agent first if none exists), read_config / write_config / ' +
-				'patch_config (the agent JSON config), search_nodes / get_node_types / ' +
+				'create_agent (create the agent first if none exists), read_config (read the persisted ' +
+				'agent JSON config + configHash), build_agent (validate and persist the config from a ' +
+				'workspace JSON file), search_nodes / get_node_types / ' +
 				'get_resource_locator_options (node tools), create_skill, create_task, build_custom_tool, ' +
 				'list_integration_types, list_sub_agents, list_workflows, ' +
 				'search_mcp_servers, verify_mcp_server, resolve_llm. To ask the user anything (a choice, ' +

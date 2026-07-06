@@ -63,8 +63,9 @@ placeholder or vague skill.
   description, never in the body (the body is invisible until the skill loads).
 - Call `agent_builder` (`action: "create_skill"`) with `name`, `description`, and `body`.
 - The `create_skill` action stores the body only; it does not attach the skill.
-- After it returns an id, call `agent_builder` (`action: "read_config"`).
-- Use `agent_builder` (`action: "patch_config"` or `"write_config"`) to add `{ "type": "skill", "id": "<returned id>" }` to `skills`.
+- After it returns an id, follow the config editing flow in SKILL.md: `read_config`,
+  add `{ "type": "skill", "id": "<returned id>" }` to `skills` in the config file,
+  then `agent_builder` (`action: "build_agent"`).
 
 ## Rules
 

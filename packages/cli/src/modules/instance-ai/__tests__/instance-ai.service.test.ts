@@ -765,7 +765,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		(loadInstanceAiRuntimeSkillSource as Mock).mockImplementation(() => ({
 			registry: {
 				skillsHash: 'runtime-skills-hash',
-				skills: [{ id: 'data-table-manager' }],
+				skills: [{ id: 'data-table-manager' }, { id: 'agent-builder' }],
 			},
 			loadSkill: vi.fn(),
 		}));
@@ -918,6 +918,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		expect(loadInstanceAiRuntimeSkillSource).toHaveBeenCalledTimes(1);
 		expect(environment.orchestrationContext.runtimeSkills?.registry.skills).toEqual([
 			{ id: 'data-table-manager' },
+			{ id: 'agent-builder' },
 		]);
 		expect(createSandbox).not.toHaveBeenCalled();
 		const skillWorkspace = (createLazyWorkspaceRuntimeSkillSource as Mock).mock.calls[0]?.[0]
@@ -972,6 +973,8 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		);
 
 		expect(unavailableEnvironment.orchestrationContext.workspace).toBeUndefined();
+		// The agent-builder skill needs the sandbox workspace (build_agent reads
+		// config files from it), so it is hidden when the sandbox is unavailable.
 		expect(unavailableEnvironment.orchestrationContext.runtimeSkills?.registry.skills).toEqual([
 			{ id: 'data-table-manager' },
 		]);
