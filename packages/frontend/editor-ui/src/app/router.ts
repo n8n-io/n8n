@@ -835,7 +835,7 @@ export const routes: RouteRecordRaw[] = [
 					middleware: ['authenticated', 'rbac'],
 					middlewareOptions: {
 						rbac: {
-							scope: ['role:manage'],
+							scope: ['role:manage', 'role:manageProject'],
 						},
 					},
 					telemetry: {
@@ -933,7 +933,7 @@ export const routes: RouteRecordRaw[] = [
 					middleware: ['authenticated', 'rbac'],
 					middlewareOptions: {
 						rbac: {
-							scope: ['role:manage'],
+							scope: ['role:manage', 'role:manageProject'],
 						},
 					},
 					telemetry: {
