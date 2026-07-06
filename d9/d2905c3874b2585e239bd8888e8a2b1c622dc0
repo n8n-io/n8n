@@ -22,6 +22,8 @@ packages/frontend/editor-ui/src/features/roles/instance/instanceRoleScopes.ts
   h_435b1d7d3e52c0 48,55,112
 packages/frontend/@n8n/i18n/src/locales/en.json
   h_435b1d7d3e52c0 2838
+packages/@n8n/permissions/src/roles/custom-role-scopes.ee.ts
+  h_435b1d7d3e52c0 107
 ---
 {
   "schema_version": "authorship/3.0.0",
