@@ -397,8 +397,6 @@ function stopWatchingBrowserConnect() {
 	stopBrowserConnectWatch = undefined;
 }
 
-watch(currentStepIndex, () => stopWatchingBrowserConnect());
-
 watch(
 	() => uiStore.modalsById[INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY]?.open,
 	(isOpen, wasOpen) => {
