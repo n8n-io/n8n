@@ -213,9 +213,8 @@ const expressionModeEnabled = computed(
 
 const expression = computed(() => {
 	if (!expressionModeEnabled.value) return '';
-	return isResourceLocatorValue(resolvedParameter.value)
-		? resolvedParameter.value.value
-		: resolvedParameter.value;
+	const value = resolvedParameter.value?.value;
+	return isResourceLocatorValue(value) ? value.value : value;
 });
 
 const shouldCaptureForPosthog = computed(
