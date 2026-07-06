@@ -1,25 +1,32 @@
-<script setup lang="ts">
-import { reactivePick } from '@vueuse/core';
-import { RadioGroupRoot, useForwardPropsEmits } from 'reka-ui';
-import { provide, ref } from 'vue';
+<script setup lang="ts" generic="T extends AcceptableValue = AcceptableValue">
+import { computed, provide, ref } from 'vue';
 
 import { RADIO_GROUP_ARROW_KEYS, radioGroupArrowKeyPressedKey } from './radio-group-context';
 import type { RadioGroupEmits, RadioGroupProps, RadioGroupSlots } from './RadioGroup.types';
+import { RadioGroupRoot, useForwardPropsEmits, type AcceptableValue } from './reka-ui';
 
 defineOptions({ inheritAttrs: false });
 
-const props = withDefaults(defineProps<RadioGroupProps>(), {
+const props = withDefaults(defineProps<RadioGroupProps<T>>(), {
 	orientation: 'vertical',
 	disabled: false,
 });
 
-const emit = defineEmits<RadioGroupEmits>();
+const emit = defineEmits<RadioGroupEmits<T>>();
 defineSlots<RadioGroupSlots>();
 
-const modelValue = defineModel<RadioGroupProps['modelValue']>();
+const modelValue = defineModel<T>();
 
 const rootProps = useForwardPropsEmits(
-	reactivePick(props, 'disabled', 'orientation', 'name', 'required', 'loop', 'dir', 'defaultValue'),
+	computed(() => ({
+		disabled: props.disabled,
+		orientation: props.orientation,
+		name: props.name,
+		required: props.required,
+		loop: props.loop,
+		dir: props.dir,
+		defaultValue: props.defaultValue,
+	})),
 	emit,
 );
 

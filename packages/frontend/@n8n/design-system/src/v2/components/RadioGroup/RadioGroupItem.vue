@@ -1,18 +1,19 @@
-<script setup lang="ts">
+<script setup lang="ts" generic="T extends AcceptableValue = AcceptableValue">
+import { computed, inject, useAttrs, useId } from 'vue';
+
+import { radioGroupArrowKeyPressedKey } from './radio-group-context';
+import type { RadioGroupItemProps, RadioGroupItemSlots } from './RadioGroupItem.types';
 import {
 	injectRadioGroupRootContext,
 	Label,
 	RadioGroupIndicator,
 	RadioGroupItem as RekaRadioGroupItem,
-} from 'reka-ui';
-import { computed, inject, useAttrs, useId } from 'vue';
-
-import { radioGroupArrowKeyPressedKey } from './radio-group-context';
-import type { RadioGroupItemProps, RadioGroupItemSlots } from './RadioGroupItem.types';
+	type AcceptableValue,
+} from './reka-ui';
 
 defineOptions({ inheritAttrs: false });
 
-const props = defineProps<RadioGroupItemProps>();
+const props = defineProps<RadioGroupItemProps<T>>();
 const slots = defineSlots<RadioGroupItemSlots>();
 const attrs = useAttrs();
 const uuid = computed(() => props.id ?? useId());

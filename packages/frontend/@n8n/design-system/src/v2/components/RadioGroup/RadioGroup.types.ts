@@ -1,9 +1,19 @@
-import type { RadioGroupRootEmits, RadioGroupRootProps } from 'reka-ui';
+import type { AcceptableValue, RadioGroupRootProps } from './reka-ui';
 
-export type RadioGroupProps = RadioGroupRootProps;
+export type RadioGroupProps<T extends AcceptableValue = AcceptableValue> = Omit<
+	RadioGroupRootProps,
+	'modelValue' | 'defaultValue'
+> & {
+	modelValue?: T;
+	defaultValue?: T;
+};
 
-export type RadioGroupEmits = RadioGroupRootEmits;
+export type RadioGroupEmits<T extends AcceptableValue = AcceptableValue> = {
+	'update:modelValue': [value: T];
+};
 
 export type RadioGroupSlots = {
 	default(): unknown;
 };
+
+export type { AcceptableValue };

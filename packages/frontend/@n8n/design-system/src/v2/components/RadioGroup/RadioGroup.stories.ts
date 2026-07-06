@@ -1,12 +1,19 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { action } from 'storybook/actions';
-import { defineComponent, ref } from 'vue';
+import { defineComponent, ref, type Component } from 'vue';
 
 import RadioGroup from './RadioGroup.vue';
 import RadioGroupItem from './RadioGroupItem.vue';
 
-const meta = {
+const radioGroupComponents = {
+	RadioGroup: RadioGroup as unknown as Component,
+	RadioGroupItem: RadioGroupItem as unknown as Component,
+};
+
+const meta: Meta = {
 	title: 'Experimental/RadioGroup',
+	// Generic SFCs are not assignable to Storybook's Meta component type.
+	// @ts-expect-error Generic SFC is not assignable to Storybook's Meta component type
 	component: RadioGroup,
 	parameters: {
 		docs: {
@@ -28,7 +35,7 @@ const meta = {
 			description: 'Initial selected value when used without v-model (uncontrolled)',
 		},
 	},
-} satisfies Meta<typeof RadioGroup>;
+};
 
 export default meta;
 
@@ -63,7 +70,7 @@ const longLabelOptions = [
 
 const RadioGroupDefaultDemo = defineComponent({
 	name: 'RadioGroupDefaultDemo',
-	components: { RadioGroup, RadioGroupItem },
+	components: radioGroupComponents,
 	props: {
 		orientation: { type: String, default: 'vertical' },
 		disabled: { type: Boolean, default: false },
@@ -100,7 +107,7 @@ const RadioGroupDefaultDemo = defineComponent({
 
 const RadioGroupControlledUncontrolledDemo = defineComponent({
 	name: 'RadioGroupControlledUncontrolledDemo',
-	components: { RadioGroup, RadioGroupItem },
+	components: radioGroupComponents,
 	setup() {
 		const value = ref('all');
 		return { value, scopeOptions, onUpdate: action('update:modelValue') };
@@ -166,7 +173,7 @@ const RadioGroupControlledUncontrolledDemo = defineComponent({
 
 const RadioGroupOrientationDemo = defineComponent({
 	name: 'RadioGroupOrientationDemo',
-	components: { RadioGroup, RadioGroupItem },
+	components: radioGroupComponents,
 	setup() {
 		const verticalValue = ref('all');
 		const horizontalValue = ref('light');
@@ -214,7 +221,7 @@ const RadioGroupOrientationDemo = defineComponent({
 
 const RadioGroupDisabledOptionDemo = defineComponent({
 	name: 'RadioGroupDisabledOptionDemo',
-	components: { RadioGroup, RadioGroupItem },
+	components: radioGroupComponents,
 	setup() {
 		const value = ref('spain');
 		return { value };
@@ -233,7 +240,7 @@ const RadioGroupDisabledOptionDemo = defineComponent({
 
 const RadioGroupCustomLabelDemo = defineComponent({
 	name: 'RadioGroupCustomLabelDemo',
-	components: { RadioGroup, RadioGroupItem },
+	components: radioGroupComponents,
 	setup() {
 		const value = ref('terms');
 		return { value };
@@ -258,7 +265,7 @@ const RadioGroupCustomLabelDemo = defineComponent({
 
 const RadioGroupLongLabelsDemo = defineComponent({
 	name: 'RadioGroupLongLabelsDemo',
-	components: { RadioGroup, RadioGroupItem },
+	components: radioGroupComponents,
 	setup() {
 		const value = ref('passthrough');
 		return { value, longLabelOptions };

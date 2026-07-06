@@ -109,7 +109,13 @@ function emitScopes(scopes: ApiKeyScope[]) {
 	emit('update:modelValue', scopes);
 }
 
-const modeOptions = computed(() => [
+type ScopeModeOption = {
+	value: ApiKeyScopeSelectionMode;
+	label: string;
+	'data-test-id': string;
+};
+
+const modeOptions = computed<ScopeModeOption[]>(() => [
 	{
 		value: 'all',
 		label: i18n.baseText('settings.api.scopes.all'),
@@ -127,7 +133,11 @@ const modeOptions = computed(() => [
 	},
 ]);
 
-function onModeChange(newMode: ApiKeyScopeSelectionMode) {
+function onModeChange(newMode: ApiKeyScopeSelectionMode | undefined) {
+	if (newMode === undefined) {
+		return;
+	}
+
 	userPickedCustom.value = newMode === 'custom';
 
 	if (newMode === 'all') {
