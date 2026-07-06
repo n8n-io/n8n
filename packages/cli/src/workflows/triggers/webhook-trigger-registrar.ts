@@ -170,7 +170,10 @@ export class WebhookTriggerRegistrar {
 	): Promise<Set<INode['id']>> {
 		// Resolving webhook triggers evaluates each node's `path`/`httpMethod`
 		// expressions (e.g. the Form Trigger's dynamic path), which needs an isolate.
-		await workflow.expression.acquireIsolate();
+		// Only release if this call newly acquired it: acquire is idempotent per
+		// caller but release is not reference-counted, so releasing an isolate a
+		// caller up-stack still holds would return their bridge to the pool mid-use.
+		const ownsIsolate = await workflow.expression.acquireIsolate();
 		try {
 			const desiredWebhooks = this.getWebhookTriggers(workflow, additionalData).filter(
 				(webhookData) => desiredNodes.has(workflow.getNode(webhookData.node)?.id ?? ''),
@@ -201,7 +204,7 @@ export class WebhookTriggerRegistrar {
 
 			return unregistered;
 		} finally {
-			await workflow.expression.releaseIsolate();
+			if (ownsIsolate) await workflow.expression.releaseIsolate();
 		}
 	}
 

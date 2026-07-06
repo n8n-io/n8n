@@ -357,6 +357,7 @@ describe('WebhookTriggerRegistrar', () => {
 			const callOrder: string[] = [];
 			vi.spyOn(WorkflowExpression.prototype, 'acquireIsolate').mockImplementation(async () => {
 				callOrder.push('acquire');
+				return true;
 			});
 			vi.spyOn(WorkflowExpression.prototype, 'releaseIsolate').mockImplementation(async () => {
 				callOrder.push('release');
@@ -376,8 +377,28 @@ describe('WebhookTriggerRegistrar', () => {
 			expect(callOrder).toEqual(['acquire', 'resolve', 'release']);
 		});
 
+		test('does not release an isolate it did not acquire', async () => {
+			// Simulates a caller that already holds the isolate for this workflow:
+			// acquire is idempotent per caller and reports it did not newly acquire.
+			vi.spyOn(WorkflowExpression.prototype, 'acquireIsolate').mockResolvedValue(false);
+			const releaseIsolate = vi
+				.spyOn(WorkflowExpression.prototype, 'releaseIsolate')
+				.mockResolvedValue(undefined);
+			vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockReturnValue([]);
+			const workflow = createWorkflow([node('webhook-node', 'webhook', { name: 'Webhook' })]);
+
+			await registrar.getNodesWithUnregisteredWebhooks(
+				workflow,
+				additionalData,
+				new Set(['webhook-node']),
+			);
+
+			// Releasing here would return the caller's bridge to the pool mid-bracket.
+			expect(releaseIsolate).not.toHaveBeenCalled();
+		});
+
 		test('releases the isolate when resolution throws', async () => {
-			vi.spyOn(WorkflowExpression.prototype, 'acquireIsolate').mockResolvedValue(undefined);
+			vi.spyOn(WorkflowExpression.prototype, 'acquireIsolate').mockResolvedValue(true);
 			const releaseIsolate = vi
 				.spyOn(WorkflowExpression.prototype, 'releaseIsolate')
 				.mockResolvedValue(undefined);
