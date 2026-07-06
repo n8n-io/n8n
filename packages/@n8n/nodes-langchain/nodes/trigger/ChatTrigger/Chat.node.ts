@@ -18,6 +18,7 @@ import {
 	SEND_AND_WAIT_OPERATION,
 	getHighlightedInputKey,
 	getHighlightedResponseKey,
+	isToolType,
 } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
@@ -35,6 +36,21 @@ import {
 	getChatMessage,
 	getSendAndWaitPropertiesForChatNode,
 } from './util';
+
+function getToolFlowResponse(context: IExecuteFunctions, data: INodeExecutionData) {
+	const isToolExecution = isToolType(context.getNode().type);
+	if (!isToolExecution) return data;
+
+	const json: IDataObject = { ...data.json, sent: true };
+	if (json.chatInput === '') {
+		delete json.chatInput;
+	}
+
+	return {
+		...data,
+		json,
+	};
+}
 
 export class Chat implements INodeType {
 	description: INodeTypeDescription = {
@@ -226,7 +242,7 @@ export class Chat implements INodeType {
 
 		if (!waitForReply) {
 			// return original message instead of input data
-			if (nodeVersion >= 1.3) return [[data]];
+			if (nodeVersion >= 1.3) return [[getToolFlowResponse(context, data)]];
 
 			const inputData = context.getInputData();
 			return [inputData];
