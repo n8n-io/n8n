@@ -35,6 +35,10 @@ export interface DrainedEvent {
 interface CoalesceBuffer {
 	text: string[];
 	reasoning: string[];
+	/** responseId of the segment being coalesced — carried on the flushed block
+	 *  so the reducer can REPLACE the segment's streamed deltas on replay. */
+	textResponseId?: string;
+	reasoningResponseId?: string;
 }
 
 type EmitFn = (drained: DrainedEvent) => void;
@@ -150,18 +154,21 @@ export class DurableEventLog {
 			buffer = { text: [], reasoning: [] };
 			this.buffers.set(key, buffer);
 		}
-		const text = (event.payload as { text?: string })?.text ?? '';
-		if (event.type === 'text-delta') buffer.text.push(text);
-		else buffer.reasoning.push(text);
+		if (event.type === 'text-delta') {
+			buffer.text.push(event.payload.text);
+			buffer.textResponseId = event.responseId ?? buffer.textResponseId;
+		} else {
+			buffer.reasoning.push(event.payload.text);
+			buffer.reasoningResponseId = event.responseId ?? buffer.reasoningResponseId;
+		}
 	}
 
 	/**
 	 * Close open blocks made stale by a structural fact: the fact's own agent
-	 * always; every agent of the run on `run-finish`. A coalesced block is
-	 * persisted under its ORIGINAL delta type with the full text as one payload —
-	 * replay-compatible with the frontend reducer (it appends text), so no
-	 * schema or FE change is needed. SKETCH: a purist `text-block` event type in
-	 * @n8n/api-types is the additive alternative.
+	 * always; every agent of the run on `run-finish`. Blocks are persisted as
+	 * `text-block`/`reasoning-block` facts carrying the segment's responseId —
+	 * on replay the reducer REPLACES the segment's streamed deltas, so a client
+	 * that reconnects mid-block never sees partial text twice.
 	 */
 	private flushBlocks(fact: InstanceAiEvent): InstanceAiEvent[] {
 		const keys =
@@ -177,19 +184,21 @@ export class DurableEventLog {
 			const agentId = key.slice(fact.runId.length + 1);
 			if (buffer.reasoning.length > 0) {
 				flushed.push({
-					type: 'reasoning-delta',
+					type: 'reasoning-block',
 					runId: fact.runId,
 					agentId,
+					...(buffer.reasoningResponseId ? { responseId: buffer.reasoningResponseId } : {}),
 					payload: { text: buffer.reasoning.join('') },
-				} as InstanceAiEvent);
+				});
 			}
 			if (buffer.text.length > 0) {
 				flushed.push({
-					type: 'text-delta',
+					type: 'text-block',
 					runId: fact.runId,
 					agentId,
+					...(buffer.textResponseId ? { responseId: buffer.textResponseId } : {}),
 					payload: { text: buffer.text.join('') },
-				} as InstanceAiEvent);
+				});
 			}
 		}
 		return flushed;

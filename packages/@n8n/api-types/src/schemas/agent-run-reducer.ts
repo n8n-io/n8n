@@ -203,6 +203,41 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			break;
 		}
 
+		case 'text-block': {
+			// Coalesced segment from the durable log (replay path). When the last
+			// timeline entry is this segment's streamed deltas (mid-block reconnect:
+			// the client saw part of the text live), REPLACE it instead of appending
+			// so no text renders twice. The log flushes a block immediately before
+			// the segment's next structural fact, so on replay the partial deltas
+			// are always the last text entry when this event arrives.
+			const agent = ensureAgent(state, event.agentId);
+			if (agent) {
+				const last = agent.timeline.at(-1);
+				const isOpenSegment = last?.type === 'text' && last.responseId === event.responseId;
+				if (isOpenSegment && agent.textContent.endsWith(last.content)) {
+					agent.textContent =
+						agent.textContent.slice(0, agent.textContent.length - last.content.length) +
+						event.payload.text;
+					last.content = event.payload.text;
+				} else {
+					agent.textContent += event.payload.text;
+					appendTimelineText(agent.timeline, event.payload.text, event.responseId);
+				}
+			}
+			break;
+		}
+
+		case 'reasoning-block': {
+			const agent = ensureAgent(state, event.agentId);
+			if (agent) {
+				// SKETCH: reasoning has no per-segment timeline, so a mid-block
+				// reconnect can duplicate partial reasoning. Add segment tracking if
+				// that proves visible (reasoning renders collapsed).
+				agent.reasoning += event.payload.text;
+			}
+			break;
+		}
+
 		case 'tool-call': {
 			if (!isSafeObjectKey(event.payload.toolCallId)) break;
 			const agent = ensureAgent(state, event.agentId);

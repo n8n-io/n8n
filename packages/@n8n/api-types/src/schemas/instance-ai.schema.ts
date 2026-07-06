@@ -102,6 +102,8 @@ export const instanceAiEventTypeSchema = z.enum([
 	'agent-completed',
 	'text-delta',
 	'reasoning-delta',
+	'text-block',
+	'reasoning-block',
 	'tool-call',
 	'tool-result',
 	'tool-error',
@@ -696,6 +698,16 @@ export const instanceAiEventSchema = z.discriminatedUnion('type', [
 	z.object({ type: z.literal('text-delta'), ...eventBase, payload: textDeltaPayloadSchema }),
 	z.object({
 		type: z.literal('reasoning-delta'),
+		...eventBase,
+		payload: reasoningDeltaPayloadSchema,
+	}),
+	// Coalesced full text/reasoning of one streamed segment, produced by the
+	// durable event log (deltas are live-only and never persisted). On replay the
+	// reducer REPLACES the segment's streamed deltas, so a client that reconnects
+	// mid-block cannot see partial text twice.
+	z.object({ type: z.literal('text-block'), ...eventBase, payload: textDeltaPayloadSchema }),
+	z.object({
+		type: z.literal('reasoning-block'),
 		...eventBase,
 		payload: reasoningDeltaPayloadSchema,
 	}),
