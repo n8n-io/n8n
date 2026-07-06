@@ -101,7 +101,6 @@ export const InstanceAiModule: FrontendModuleDescription = {
 							instance_id: useRootStore().instanceId,
 							source: 'website-template',
 							origin: 'external',
-							auto_send: true,
 							template_id: templateId,
 						});
 

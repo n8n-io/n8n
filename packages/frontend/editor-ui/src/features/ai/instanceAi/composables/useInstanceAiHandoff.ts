@@ -149,7 +149,6 @@ export function useInstanceAiHandoff() {
 					instance_id: rootStore.instanceId,
 					source,
 					origin,
-					auto_send: true,
 					...(typeof launchTemplateId === 'string' || typeof launchTemplateId === 'number'
 						? { template_id: launchTemplateId }
 						: {}),
