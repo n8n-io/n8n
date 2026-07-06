@@ -14,6 +14,8 @@ on:
     types: [opened, reopened, ready_for_review]
     paths:
       - 'packages/@n8n/instance-ai/src/**'
+      - 'packages/@n8n/instance-ai/skills/**'
+      - 'packages/@n8n/instance-ai/knowledge-base/**'
       - 'packages/@n8n/instance-ai/evaluations/**'
       - 'packages/cli/src/modules/instance-ai/**'
       - 'packages/core/src/execution-engine/eval-mock-helpers.ts'
