@@ -1,22 +1,20 @@
-import { v4 as uuidv4 } from 'uuid';
 import { i18n } from '@n8n/i18n';
-import { useRootStore } from '@n8n/stores/useRootStore';
 import type { FrontendModuleDescription } from '@/app/moduleInitializer/module.types';
 import {
 	INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY,
 	INSTANCE_AI_COMPUTER_USE_SETUP_MODAL_KEY,
 } from '@/app/constants/modals';
 import { VIEWS } from '@/app/constants';
-import { telemetry } from '@/app/plugins/telemetry';
-import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import {
 	INSTANCE_AI_VIEW,
 	INSTANCE_AI_THREAD_VIEW,
 	INSTANCE_AI_SETTINGS_VIEW,
 	INSTANCE_AI_NEW_VIEW,
 } from './constants';
-import { stashPendingFirstMessage } from './composables/useInstanceAiHandoff';
-import { useInstanceAiStore } from './instanceAi.store';
+import {
+	ensurePersonalProjectId,
+	provisionLaunchedThread,
+} from './composables/useInstanceAiHandoff';
 import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 
@@ -63,46 +61,25 @@ export const InstanceAiModule: FrontendModuleDescription = {
 						}
 
 						// Threads are project-bound; deep links launch into the personal project.
-						const projectsStore = useProjectsStore();
-						if (!projectsStore.personalProject) {
-							try {
-								await projectsStore.getPersonalProject();
-							} catch {
-								return { name: INSTANCE_AI_VIEW };
-							}
-						}
-						const projectId = projectsStore.personalProject?.id;
+						const projectId = await ensurePersonalProjectId();
 						if (!projectId) {
 							return { name: INSTANCE_AI_VIEW };
 						}
 
-						const threadId = uuidv4();
-						try {
-							await useInstanceAiStore().syncThread(threadId, projectId, {
-								source: 'website-template',
-								origin: 'external',
-								sourceContext: { templateId },
-							});
-						} catch {
+						// The thread view sends the stashed kickoff after it hydrates, so the
+						// guard never races the runtime.
+						const threadId = await provisionLaunchedThread(
+							projectId,
+							{
+								message: i18n.baseText('instanceAi.launch.templateById.message', {
+									interpolate: { id: templateId },
+								}),
+							},
+							{ source: 'website-template', origin: 'external', sourceContext: { templateId } },
+						);
+						if (!threadId) {
 							return { name: INSTANCE_AI_VIEW };
 						}
-
-						// Stash the kickoff as the thread's pending first message — the thread
-						// view consumes and sends it after hydration + SSE connect, so the
-						// guard never races the runtime.
-						stashPendingFirstMessage(threadId, {
-							message: i18n.baseText('instanceAi.launch.templateById.message', {
-								interpolate: { id: templateId },
-							}),
-						});
-
-						telemetry.track('User launched Instance AI thread', {
-							thread_id: threadId,
-							instance_id: useRootStore().instanceId,
-							source: 'website-template',
-							origin: 'external',
-							template_id: templateId,
-						});
 
 						// Redirect with no query → URL cleared, back-button won't re-fire this.
 						return { name: INSTANCE_AI_THREAD_VIEW, params: { threadId } };

@@ -8,9 +8,11 @@ import { useRoute, useRouter } from 'vue-router';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useI18n } from '@n8n/i18n';
-import { useInstanceAiHandoff } from '@/features/ai/instanceAi/composables/useInstanceAiHandoff';
+import {
+	ensurePersonalProjectId,
+	useInstanceAiHandoff,
+} from '@/features/ai/instanceAi/composables/useInstanceAiHandoff';
 import { useInstanceAiSettingsStore } from '@/features/ai/instanceAi/instanceAiSettings.store';
-import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import WorkflowPreviewHost from '@/app/components/WorkflowPreviewHost.vue';
 import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import TemplatesView from './TemplatesView.vue';
@@ -30,7 +32,6 @@ const i18n = useI18n();
 const documentTitle = useDocumentTitle();
 const instanceAiHandoff = useInstanceAiHandoff();
 const instanceAiSettings = useInstanceAiSettingsStore();
-const projectsStore = useProjectsStore();
 
 const loading = ref(true);
 const showPreview = ref(true);
@@ -60,11 +61,7 @@ const openTemplateSetup = async (id: string, e: PointerEvent) => {
 
 const startWithAi = async () => {
 	if (!template.value) return;
-	// Threads are project-bound; the template page launches into the personal project.
-	if (!projectsStore.personalProject) {
-		await projectsStore.getPersonalProject();
-	}
-	const projectId = projectsStore.personalProject?.id;
+	const projectId = await ensurePersonalProjectId();
 	if (!projectId) return;
 
 	await instanceAiHandoff.startThread(

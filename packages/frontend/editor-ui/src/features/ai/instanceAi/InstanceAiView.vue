@@ -119,10 +119,10 @@ watch(
 );
 
 onUnmounted(() => {
-	// On a transient remount the new instance mounts before this one unmounts
-	// (see INSTANCE_AI_CHAT_ROUTE_NAMES) — stopping the store-level push
-	// listeners here would kill the ones the new instance relies on (its start
-	// calls no-op while the old listener is still registered).
+	// On a transient remount the new instance mounts before this one unmounts, so
+	// only tear down when the route actually left the module (isInstanceAiChatRoute).
+	// Stopping the store-level push listeners on a remount would kill the ones the
+	// new instance relies on (its start calls no-op while the old one is registered).
 	if (!isInstanceAiChatRoute(route.name)) {
 		store.stopCreditsPushListener();
 		settingsStore.stopGatewayPushListener();

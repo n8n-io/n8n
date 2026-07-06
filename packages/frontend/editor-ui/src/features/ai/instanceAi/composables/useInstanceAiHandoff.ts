@@ -9,8 +9,8 @@ import type {
 import { useRootStore } from '@n8n/stores/useRootStore';
 
 import type { InstanceAiCredentialContext } from '@/app/composables/useInstanceAiEditorCapability';
-import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
 import { INSTANCE_AI_THREAD_VIEW } from '../constants';
 import { useInstanceAiStore } from '../instanceAi.store';
@@ -66,10 +66,7 @@ export function buildInstanceAiCredentialHandoffContext(
 	};
 }
 
-/**
- * Where a launched thread came from — persisted on the thread and attached to
- * the launch telemetry event.
- */
+/** Where a launched thread came from — persisted on the thread and tracked by `syncThread`. */
 export interface InstanceAiThreadLaunch {
 	source: InstanceAiThreadSource;
 	origin: InstanceAiThreadOrigin;
@@ -100,6 +97,40 @@ export function consumePendingFirstMessage(threadId: string): PendingFirstMessag
 	}
 }
 
+/** Resolve the personal project a launched thread binds to, loading it on first use. */
+export async function ensurePersonalProjectId(): Promise<string | null> {
+	const projectsStore = useProjectsStore();
+	if (!projectsStore.personalProject) {
+		try {
+			await projectsStore.getPersonalProject();
+		} catch {
+			return null;
+		}
+	}
+	return projectsStore.personalProject?.id ?? null;
+}
+
+/**
+ * Provision a launched thread the destination view will send for: mint the id,
+ * persist it, and stash the opening message. Shared by the deep-link router
+ * guard and the new-tab hand-off, which both hand off delivery to the view.
+ * Returns the thread id, or null if persistence failed.
+ */
+export async function provisionLaunchedThread(
+	projectId: string,
+	payload: PendingFirstMessage,
+	launch?: InstanceAiThreadLaunch,
+): Promise<string | null> {
+	const threadId = uuidv4();
+	try {
+		await useInstanceAiStore().syncThread(threadId, projectId, launch);
+	} catch {
+		return null;
+	}
+	stashPendingFirstMessage(threadId, payload);
+	return threadId;
+}
+
 // One hand-off at a time across all entry points (module-level to share the guard).
 let handoffInFlight = false;
 
@@ -112,7 +143,6 @@ export function useInstanceAiHandoff() {
 	const rootStore = useRootStore();
 	const router = useRouter();
 	const toast = useToast();
-	const telemetry = useTelemetry();
 
 	async function startThread(
 		projectId: string,
@@ -129,48 +159,38 @@ export function useInstanceAiHandoff() {
 		if (handoffInFlight) return;
 		handoffInFlight = true;
 		try {
-			const threadId = uuidv4();
-			// Open the tab now, inside the click gesture, so it isn't popup-blocked.
-			const tab = options?.newTab ? window.open('', '_blank') : null;
-			// Persist the thread on the BE before navigating — `/assistant/:threadId`
-			// expects an existing thread.
-			try {
-				await instanceAiStore.syncThread(threadId, projectId, options?.launch);
-			} catch {
-				tab?.close();
-				toast.showError(new Error('Failed to start a new thread. Try again.'), 'Open failed');
-				return;
-			}
-			if (options?.launch) {
-				const { source, origin, sourceContext } = options.launch;
-				const launchTemplateId = sourceContext?.templateId;
-				telemetry.track('User launched Instance AI thread', {
-					thread_id: threadId,
-					instance_id: rootStore.instanceId,
-					source,
-					origin,
-					...(typeof launchTemplateId === 'string' || typeof launchTemplateId === 'number'
-						? { template_id: launchTemplateId }
-						: {}),
-				});
-			}
-			const route = { name: INSTANCE_AI_THREAD_VIEW, params: { threadId } };
 			if (options?.newTab) {
-				// Separate window: the destination's runtime sends the message (see
-				// consumePendingFirstMessage); sending here races backend persistence.
-				localStorage.setItem(
-					pendingFirstMessageKey(threadId),
-					JSON.stringify({ message, attachments, context: options?.context }),
+				// Open the tab now, inside the click gesture, so it isn't popup-blocked.
+				// The destination view sends the stashed message (sending here would
+				// race backend persistence in the separate window).
+				const tab = window.open('', '_blank');
+				const threadId = await provisionLaunchedThread(
+					projectId,
+					{ message, attachments, context: options?.context },
+					options?.launch,
 				);
+				if (!threadId) {
+					tab?.close();
+					toast.showError(new Error('Failed to start a new thread. Try again.'), 'Open failed');
+					return;
+				}
+				const route = { name: INSTANCE_AI_THREAD_VIEW, params: { threadId } };
 				if (tab) tab.location.href = router.resolve(route).href;
 				else await router.push(route); // popup blocked → same tab; it consumes the message
 				return;
 			}
-			// Same tab: seed the runtime, send, and redirect — it survives the in-store nav.
+			// Same tab: persist, seed the runtime, send, and redirect — it survives the nav.
+			const threadId = uuidv4();
+			try {
+				await instanceAiStore.syncThread(threadId, projectId, options?.launch);
+			} catch {
+				toast.showError(new Error('Failed to start a new thread. Try again.'), 'Open failed');
+				return;
+			}
 			const thread = instanceAiStore.getOrCreateRuntime(threadId, projectId);
 			prepare?.(threadId);
 			void thread.sendMessage(message, attachments, rootStore.pushRef, options?.context);
-			await router.push(route);
+			await router.push({ name: INSTANCE_AI_THREAD_VIEW, params: { threadId } });
 		} finally {
 			handoffInFlight = false;
 		}
