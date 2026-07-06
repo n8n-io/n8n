@@ -394,7 +394,8 @@ function computeGroupBoundaries(
 	const outputs: GroupBoundaryRunData[] = [];
 	// One entry per distinct boundary crossing (edge), deduped so loops don't multiply them
 	const seenInputEdges = new Set<string>();
-	const seenOutputEdges = new Set<string>();
+	// Output edges map to their slot in `outputs` so a later run can replace it (see upsertOutput)
+	const outputEdgeIndex = new Map<string, number>();
 	// Disambiguate the selector label when one member node has several crossings on the same side
 	const inputLabelCount = new Map<string, number>();
 	const outputLabelCount = new Map<string, number>();
@@ -403,6 +404,23 @@ function computeGroupBoundaries(
 		const seen = counts.get(nodeId) ?? 0;
 		counts.set(nodeId, seen + 1);
 		return seen === 0 ? name : `${name} (${seen + 1})`;
+	}
+
+	function upsertOutput(edge: string, entry: NodeLogEntry, id: string, overrideOutputs?: number[]) {
+		const existing = outputEdgeIndex.get(edge);
+		if (existing !== undefined) {
+			// Children iterate in run order, so a repeated edge means a later run supersedes an
+			// earlier one (a loop's group-leaving output only carries data on its final run).
+			outputs[existing] = { ...outputs[existing], id, entry };
+			return;
+		}
+		outputEdgeIndex.set(edge, outputs.length);
+		outputs.push({
+			id,
+			label: makeLabel(outputLabelCount, entry.node.id, entry.node.name),
+			entry,
+			overrideOutputs,
+		});
 	}
 
 	for (const child of executedChildren) {
@@ -446,15 +464,7 @@ function computeGroupBoundaries(
 		const isTerminal = mainConnections.every((targets) => (targets ?? []).length === 0);
 
 		if (isTerminal) {
-			const edge = `${child.node.id}|out`;
-			if (!seenOutputEdges.has(edge)) {
-				seenOutputEdges.add(edge);
-				outputs.push({
-					id: `${child.id}:out`,
-					label: makeLabel(outputLabelCount, child.node.id, child.node.name),
-					entry: child,
-				});
-			}
+			upsertOutput(`${child.node.id}|out`, child, `${child.id}:out`);
 		}
 
 		mainConnections.forEach((targets, outputIndex) => {
@@ -465,19 +475,13 @@ function computeGroupBoundaries(
 				return;
 			}
 
-			const edge = `${child.node.id}|out|${outputIndex}`;
-			if (seenOutputEdges.has(edge)) {
-				return;
-			}
-
-			seenOutputEdges.add(edge);
-			outputs.push({
-				id: `${child.id}:out:${outputIndex}`,
-				label: makeLabel(outputLabelCount, child.node.id, child.node.name),
-				entry: child,
-				// Only scope to a branch when the node has more than one output
-				overrideOutputs: mainConnections.length > 1 ? [outputIndex] : undefined,
-			});
+			// Only scope to a branch when the node has more than one output
+			upsertOutput(
+				`${child.node.id}|out|${outputIndex}`,
+				child,
+				`${child.id}:out:${outputIndex}`,
+				mainConnections.length > 1 ? [outputIndex] : undefined,
+			);
 		});
 	}
 

@@ -2189,6 +2189,47 @@ describe('createLogTree with canvas groups', () => {
 		expect(groupEntry.boundaries.outputs.map((b) => b.label)).toEqual(['B', 'C']);
 	});
 
+	it('uses the last run of a looped member for its output boundary', () => {
+		// Member B runs twice and feeds outside node D. The group-leaving output must reflect
+		// B's final run (a loop's "done" data lands on the last run), while its input stays on the first.
+		const workflow = createTestWorkflowObject({
+			id: 'w1',
+			nodes: [
+				createTestNode({ id: 'A', name: 'A' }),
+				createTestNode({ id: 'B', name: 'B' }),
+				createTestNode({ id: 'D', name: 'D' }),
+			],
+			connections: {
+				A: { main: [[{ node: 'B', type: NodeConnectionTypes.Main, index: 0 }]] },
+				B: { main: [[{ node: 'D', type: NodeConnectionTypes.Main, index: 0 }]] },
+			},
+		});
+		const response = createTestWorkflowExecutionResponse({
+			id: 'e1',
+			data: createRunExecutionData({
+				resultData: {
+					runData: {
+						A: [taskAt(0)],
+						B: [
+							taskAt(1, { source: [{ previousNode: 'A', previousNodeRun: 0 }] }),
+							taskAt(2, { source: [{ previousNode: 'A', previousNodeRun: 0 }] }),
+						],
+						D: [taskAt(3, { source: [{ previousNode: 'B', previousNodeRun: 1 }] })],
+					},
+				},
+			}),
+		});
+
+		const logs = createLogTree(workflow, response, {}, {}, undefined, [
+			{ id: 'g', name: 'G', nodeIds: ['B'] },
+		]);
+		const groupEntry = expectGroup(logs[1]);
+
+		expect(groupEntry.boundaries.outputs).toHaveLength(1);
+		expect(groupEntry.boundaries.outputs[0].entry.runIndex).toBe(1); // last run
+		expect(groupEntry.boundaries.inputs[0].entry.runIndex).toBe(0); // first run
+	});
+
 	it('exposes one input per crossing when multiple connections enter the same member', () => {
 		// External "If"-like node feeds both of its outputs into the single member B
 		const workflow = createTestWorkflowObject({
