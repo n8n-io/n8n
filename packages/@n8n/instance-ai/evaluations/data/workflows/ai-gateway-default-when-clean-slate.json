@@ -10,6 +10,7 @@
 	"complexity": "simple",
 	"tags": ["build", "webhook", "llm", "ai-gateway", "n8n-connect"],
 	"triggerType": "webhook",
+	"datasets": ["ai-gateway"],
 	"processExpectations": [
 		"The agent did not ask the user to provide an OpenAI API key or set up a credential — no credential-setup suspension appeared in the transcript, because the n8n Connect managed credential covers the OpenAI type on this instance.",
 		"The agent referred to the managed credential feature as 'n8n Connect' rather than 'AI Gateway' if it mentioned it in chat at all."

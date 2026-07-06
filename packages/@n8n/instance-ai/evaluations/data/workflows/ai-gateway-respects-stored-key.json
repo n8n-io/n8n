@@ -10,6 +10,7 @@
 	"complexity": "simple",
 	"tags": ["build", "webhook", "llm", "ai-gateway", "n8n-connect", "credentials"],
 	"triggerType": "webhook",
+	"datasets": ["ai-gateway"],
 	"credentials": [{ "type": "openAiApi", "name": "My OpenAI" }],
 	"outcomeExpectations": [
 		"A Webhook trigger accepts an incoming request whose body carries the text to summarise.",
