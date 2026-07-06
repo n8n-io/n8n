@@ -8,6 +8,7 @@ import {
 import type { WorkflowRepository, WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type {
 	IDataObject,
 	IExecuteResponsePromiseData,
@@ -17,7 +18,6 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import {
-	createDeferredPromise,
 	createRunExecutionData,
 	CHAT_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
