@@ -21,7 +21,7 @@ export {
 	RadioGroupIndicator,
 	RadioGroupItem,
 	RadioGroupRoot,
-	useForwardPropsEmits,
+	useForwardProps,
 } from 'reka-ui';
 
 export type { RadioGroupItemProps, RadioGroupRootProps } from 'reka-ui';

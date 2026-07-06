@@ -2,8 +2,8 @@
 import { computed, provide, ref } from 'vue';
 
 import { RADIO_GROUP_ARROW_KEYS, radioGroupArrowKeyPressedKey } from './radio-group-context';
-import type { RadioGroupEmits, RadioGroupProps, RadioGroupSlots } from './RadioGroup.types';
-import { RadioGroupRoot, useForwardPropsEmits, type AcceptableValue } from './reka-ui';
+import type { RadioGroupProps, RadioGroupSlots } from './RadioGroup.types';
+import { RadioGroupRoot, useForwardProps, type AcceptableValue } from './reka-ui';
 
 defineOptions({ inheritAttrs: false });
 
@@ -12,12 +12,11 @@ const props = withDefaults(defineProps<Omit<RadioGroupProps<T>, 'modelValue'>>()
 	disabled: false,
 });
 
-const emit = defineEmits<RadioGroupEmits<T>>();
 defineSlots<RadioGroupSlots>();
 
 const modelValue = defineModel<T>();
 
-const rootProps = useForwardPropsEmits(
+const rootProps = useForwardProps(
 	computed(() => ({
 		disabled: props.disabled,
 		orientation: props.orientation,
@@ -27,7 +26,6 @@ const rootProps = useForwardPropsEmits(
 		dir: props.dir,
 		defaultValue: props.defaultValue,
 	})),
-	emit,
 );
 
 // reka-ui selects on arrow keys by listening on window (bubble phase): when roving focus
