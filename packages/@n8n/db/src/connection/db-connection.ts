@@ -53,7 +53,7 @@ export class DbConnection {
 	}
 
 	async init(): Promise<void> {
-		const { connectionState, options } = this;
+		const { connectionState } = this;
 		if (connectionState.connected) return;
 
 		// TODO(CAT-3314): Remove N8N_DB_PING_TIMEOUT fallback in v3.
@@ -63,33 +63,7 @@ export class DbConnection {
 			);
 		}
 
-		const { minRecoveryBackoffMs, maxRecoveryBackoffMs, startupConnectMaxRetries } =
-			this.databaseConfig;
-		const maxAttempts = startupConnectMaxRetries + 1;
-		for (let attempt = 1; ; attempt++) {
-			try {
-				await this.dataSource.initialize();
-				break;
-			} catch (e) {
-				let error = ensureError(e);
-				if (
-					options.type === 'postgres' &&
-					error.message === 'Connection terminated due to connection timeout'
-				) {
-					error = new DbConnectionTimeoutError({
-						cause: error,
-						configuredTimeoutInMs: options.connectTimeoutMS!,
-					});
-				}
-				if (attempt >= maxAttempts) throw error;
-
-				const backoff = computeBackoff(attempt, minRecoveryBackoffMs, maxRecoveryBackoffMs);
-				this.logger.warn(
-					`Initial database connection attempt ${attempt} failed: ${error.message}. Retrying in ${backoff}ms`,
-				);
-				await setTimeoutP(backoff);
-			}
-		}
+		await this.connectWithRetry();
 
 		connectionState.connected = true;
 		this.monitor = new DbConnectionMonitor(
@@ -118,6 +92,41 @@ export class DbConnection {
 		if (this.dataSource.isInitialized) {
 			await this.dataSource.destroy();
 			this.connectionState.connected = false;
+		}
+	}
+
+	/**
+	 * Opens the initial connection, retrying transient failures with exponential
+	 * backoff before giving up. Throws once `startupConnectMaxRetries` is exhausted.
+	 */
+	private async connectWithRetry(): Promise<void> {
+		const { options } = this;
+		const { minRecoveryBackoffMs, maxRecoveryBackoffMs, startupConnectMaxRetries } =
+			this.databaseConfig;
+		const maxAttempts = startupConnectMaxRetries + 1;
+		for (let attempt = 1; ; attempt++) {
+			try {
+				await this.dataSource.initialize();
+				return;
+			} catch (e) {
+				let error = ensureError(e);
+				if (
+					options.type === 'postgres' &&
+					error.message === 'Connection terminated due to connection timeout'
+				) {
+					error = new DbConnectionTimeoutError({
+						cause: error,
+						configuredTimeoutInMs: options.connectTimeoutMS!,
+					});
+				}
+				if (attempt >= maxAttempts) throw error;
+
+				const backoff = computeBackoff(attempt, minRecoveryBackoffMs, maxRecoveryBackoffMs);
+				this.logger.warn(
+					`Initial database connection attempt ${attempt} failed: ${error.message}. Retrying in ${backoff}ms`,
+				);
+				await setTimeoutP(backoff);
+			}
 		}
 	}
 }
