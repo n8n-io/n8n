@@ -41,6 +41,8 @@ export type {
 	ClaimDueTasksOptions,
 	ClaimedRef,
 	HostedClaimedRef,
+	ClaimRef,
+	DeleteFinishedTasksOptions,
 } from './scheduled-task.repository';
 export { ProcessedDataRepository } from './processed-data.repository';
 export { SettingsRepository } from './settings.repository';

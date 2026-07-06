@@ -4,7 +4,12 @@ import { DataSource, type EntityManager, In, Repository } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { ScheduledTask, ScheduledTaskStatus } from '../entities/scheduled-task';
+import {
+	ScheduledTask,
+	ScheduledTaskStatus,
+	type TerminalTaskStatus,
+	TerminalTaskStatusList,
+} from '../entities/scheduled-task';
 import { dbNowLiteral, dbNowPlusMsLiteral } from '../utils/dialect-time';
 
 /** Inputs to a claim (see {@link ScheduledTaskRepository.claimDueTasks}). */
@@ -37,6 +42,19 @@ export interface ClaimedRef {
  */
 export interface HostedClaimedRef extends ClaimedRef {
 	host: string;
+}
+
+/**
+ * Inputs to one retention delete batch
+ * (see {@link ScheduledTaskRepository.deleteFinishedOlderThan}).
+ */
+export interface DeleteFinishedTasksOptions {
+	/** Terminal statuses this batch may delete. Live statuses are rejected. */
+	statuses: TerminalTaskStatus[];
+	/** Minimum age: only rows whose `finishedAt` is at least this far before DB-now go. */
+	olderThanMs: number;
+	/** Cap on how many rows this one statement deletes. Must be an integer; non-positive is a no-op. */
+	limit: number;
 }
 
 /**
@@ -370,6 +388,73 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 			.set(values)
 			.where({ id, status: ScheduledTaskStatus.Running, leaseEpoch: claimedEpoch })
 			.andWhere(`${this.leaseExpiresAtColumn} < ${dbNowLiteral(this.isPostgres)}`)
+			.execute();
+		return result.affected ?? 0;
+	}
+
+	/**
+	 * Delete up to `limit` finished tasks in `statuses` whose
+	 * `finishedAt` is at least `olderThanMs` before DB-now, oldest first.
+	 * Age is judged against the database clock.
+	 *
+	 * A terminal row missing `finishedAt` (which transitions always set) is skipped.
+	 *
+	 * Concurrent pruners don't fight over rows:
+	 * - Postgres skips locked rows (`FOR UPDATE SKIP LOCKED`), handing simultaneous batches disjoint rows
+	 * - SQLite runs writers one at a time.
+	 *
+	 * @returns how many rows were deleted
+	 * @throws UnexpectedError when `statuses` contains a non-terminal value or `limit` is not an integer
+	 */
+	async deleteFinishedOlderThan(options: DeleteFinishedTasksOptions): Promise<number> {
+		const invalid = options.statuses.filter((status) => !TerminalTaskStatusList.includes(status));
+		if (invalid.length > 0) {
+			throw new UnexpectedError(
+				`deleteFinishedOlderThan only deletes terminal tasks, got: ${invalid.join(', ')}`,
+			);
+		}
+		// A non-integer bound to LIMIT errors on SQLite (datatype mismatch), and NaN
+		// binds as NULL, which on Postgres means LIMIT ALL; reject it before the SQL.
+		if (!Number.isSafeInteger(options.limit)) {
+			throw new UnexpectedError(
+				`deleteFinishedOlderThan needs an integer limit, got: ${options.limit}`,
+			);
+		}
+		if (options.statuses.length === 0 || options.limit <= 0) {
+			return 0;
+		}
+		return this.isPostgres
+			? await this.deleteFinishedWithPostgres(options)
+			: await this.deleteFinishedWithSqlite(options);
+	}
+
+	private async deleteFinishedWithPostgres(options: DeleteFinishedTasksOptions): Promise<number> {
+		const [, affected] = await this.manager.query<[unknown[], number]>(
+			`DELETE FROM ${this.tableName}
+			 WHERE "id" IN (
+			   SELECT t."id" FROM ${this.tableName} t
+			    WHERE t."status" = ANY($1)
+			      AND t."finishedAt" <= ${dbNowPlusMsLiteral(true, -options.olderThanMs)}
+			    ORDER BY t."finishedAt"
+			    LIMIT $2
+			    FOR UPDATE SKIP LOCKED)`,
+			[options.statuses, options.limit],
+		);
+		return affected;
+	}
+
+	private async deleteFinishedWithSqlite(options: DeleteFinishedTasksOptions): Promise<number> {
+		const result = await this.createQueryBuilder()
+			.delete()
+			.where(
+				`id IN (
+					SELECT "id" FROM ${this.tableName}
+					 WHERE "status" IN (:...statuses)
+					   AND "finishedAt" <= ${dbNowPlusMsLiteral(false, -options.olderThanMs)}
+					 ORDER BY "finishedAt"
+					 LIMIT :limit)`,
+				{ statuses: options.statuses, limit: options.limit },
+			)
 			.execute();
 		return result.affected ?? 0;
 	}

@@ -6,6 +6,7 @@ import { ROLE, type UsersList } from '@n8n/api-types';
 import type { AllRolesMap } from '@n8n/permissions';
 import SettingsUsersRoleCell from './SettingsUsersRoleCell.vue';
 import { createComponentRenderer } from '@/__tests__/render';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 
 // Feature flag is toggled per test via this hoisted state.
 const { envFlagState } = vi.hoisted(() => ({ envFlagState: { customInstanceRoles: true } }));
@@ -90,6 +91,11 @@ vi.mock('@/features/roles/components/CustomRolesUpgradeModal.vue', () => ({
 	default: { name: 'CustomRolesUpgradeModal', template: '<div />' },
 }));
 
+// Permission checks are scope-based; grant all scopes by default so the editable UI renders.
+vi.mock('@/app/utils/rbac/permissions', () => ({
+	hasPermission: vi.fn(),
+}));
+
 const CUSTOM_ROLE_SLUG = 'custom:developer';
 const UNLICENSED_ROLE_SLUG = 'custom:unlicensed';
 
@@ -156,6 +162,7 @@ let renderComponent: ReturnType<typeof createComponentRenderer>;
 describe('SettingsUsersRoleCell', () => {
 	beforeEach(() => {
 		envFlagState.customInstanceRoles = true;
+		vi.mocked(hasPermission).mockReturnValue(true);
 		renderComponent = createComponentRenderer(SettingsUsersRoleCell, {
 			pinia: pinia(),
 			props: { data: mockUser },

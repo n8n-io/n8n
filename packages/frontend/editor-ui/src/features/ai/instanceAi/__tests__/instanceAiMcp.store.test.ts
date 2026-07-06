@@ -25,10 +25,12 @@ const mockFetchMcpConnections = vi.fn();
 const mockCreateMcpConnection = vi.fn();
 const mockUpdateMcpConnection = vi.fn();
 const mockDeleteMcpConnection = vi.fn();
+const mockFetchMcpConnectionTools = vi.fn();
 
 vi.mock('../instanceAi.mcp.api', () => ({
 	fetchMcpRegistryServers: (...args: unknown[]) => mockFetchMcpRegistryServers(...args),
 	fetchMcpConnections: (...args: unknown[]) => mockFetchMcpConnections(...args),
+	fetchMcpConnectionTools: (...args: unknown[]) => mockFetchMcpConnectionTools(...args),
 	createMcpConnection: (...args: unknown[]) => mockCreateMcpConnection(...args),
 	updateMcpConnection: (...args: unknown[]) => mockUpdateMcpConnection(...args),
 	deleteMcpConnection: (...args: unknown[]) => mockDeleteMcpConnection(...args),
@@ -46,6 +48,7 @@ const makeConnection = (
 	credentialId: overrides.credentialId ?? 'cred-1',
 	credentialName: overrides.credentialName ?? 'Linear OAuth2',
 	credentialType: overrides.credentialType ?? 'mcpOAuth2Api',
+	toolFilter: overrides.toolFilter ?? null,
 	createdAt: '2026-05-01T00:00:00.000Z',
 	updatedAt: '2026-05-01T00:00:00.000Z',
 });
@@ -64,6 +67,14 @@ const makeServer = (slug: string): McpRegistryServerResponse => ({
 	isOfficial: true,
 	status: 'active',
 });
+
+function createDeferred<T>() {
+	let resolve!: (value: T | PromiseLike<T>) => void;
+	const promise = new Promise<T>((promiseResolve) => {
+		resolve = promiseResolve;
+	});
+	return { promise, resolve };
+}
 
 describe('useInstanceAiMcpStore', () => {
 	let store: ReturnType<typeof useInstanceAiMcpStore>;
@@ -104,6 +115,36 @@ describe('useInstanceAiMcpStore', () => {
 
 			expect(mockFetchMcpRegistryServers).toHaveBeenCalledTimes(1);
 			expect(store.catalog).toHaveLength(1);
+		});
+	});
+
+	describe('fetchConnectionToolsLazy', () => {
+		it('refreshes tools after credential changes and ignores the stale response', async () => {
+			const staleTools = [{ name: 'old_tool' }];
+			const freshTools = [{ name: 'fresh_tool' }];
+			const staleToolsRequest = createDeferred<typeof staleTools>();
+			const freshToolsRequest = createDeferred<typeof freshTools>();
+			mockFetchMcpConnectionTools
+				.mockReturnValueOnce(staleToolsRequest.promise)
+				.mockReturnValueOnce(freshToolsRequest.promise);
+			mockUpdateMcpConnection.mockResolvedValue(
+				makeConnection({ id: 'conn-1', credentialId: 'cred-2' }),
+			);
+
+			const staleFetch = store.fetchConnectionToolsLazy('conn-1');
+			expect(mockFetchMcpConnectionTools).toHaveBeenCalledTimes(1);
+
+			await store.updateConnection('conn-1', { credentialId: 'cred-2' });
+			expect(mockFetchMcpConnectionTools).toHaveBeenCalledTimes(2);
+
+			staleToolsRequest.resolve(staleTools);
+			await staleFetch;
+			expect(store.connectionToolsById.get('conn-1')).toBeUndefined();
+
+			freshToolsRequest.resolve(freshTools);
+			await vi.waitFor(() => {
+				expect(store.connectionToolsById.get('conn-1')).toEqual(freshTools);
+			});
 		});
 	});
 

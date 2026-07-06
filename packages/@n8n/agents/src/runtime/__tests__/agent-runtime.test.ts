@@ -3299,12 +3299,12 @@ describe('providerOptions — tool adapter', () => {
 
 		expect(ai.tool).toHaveBeenCalledWith(
 			expect.objectContaining({
-				providerOptions: { openai: { strict: true } },
+				providerOptions: { openai: { strict: true }, anthropic: { eagerInputStreaming: false } },
 			}),
 		);
 	});
 
-	it('does not pass providerOptions when not set', () => {
+	it('defaults providerOptions to the Anthropic quirk default when the tool sets none', () => {
 		const ai = aiModule as unknown as { tool: Mock };
 		const adapter = { toAiSdkTools };
 
@@ -3318,9 +3318,8 @@ describe('providerOptions — tool adapter', () => {
 		adapter.toAiSdkTools([builtTool]);
 
 		expect(ai.tool).toHaveBeenCalledWith(
-			expect.not.objectContaining({
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				providerOptions: expect.anything(),
+			expect.objectContaining({
+				providerOptions: { anthropic: { eagerInputStreaming: false } },
 			}),
 		);
 	});
@@ -4884,9 +4883,12 @@ describe('promptCaching', () => {
 
 		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
 		const tools = callArgs.tools as Record<string, { providerOptions?: unknown }>;
-		expect(tools.tool_a.providerOptions).toBeUndefined();
+		// Every tool also carries the Anthropic `eagerInputStreaming: false` quirk default.
+		expect(tools.tool_a.providerOptions).toEqual({
+			anthropic: { eagerInputStreaming: false },
+		});
 		expect(tools.tool_b.providerOptions).toEqual({
-			anthropic: { cacheControl: { type: 'ephemeral', ttl: '1h' } },
+			anthropic: { eagerInputStreaming: false, cacheControl: { type: 'ephemeral', ttl: '1h' } },
 		});
 	});
 
@@ -4911,8 +4913,10 @@ describe('promptCaching', () => {
 
 		const callArgs = generateText.mock.calls[0][0] as Record<string, unknown>;
 		const tools = callArgs.tools as Record<string, { providerOptions?: unknown }>;
+		// No cache breakpoint is added, but every tool still carries the
+		// Anthropic `eagerInputStreaming: false` quirk default.
 		for (const tool of Object.values(tools)) {
-			expect(tool.providerOptions).toBeUndefined();
+			expect(tool.providerOptions).toEqual({ anthropic: { eagerInputStreaming: false } });
 		}
 	});
 
@@ -4940,7 +4944,7 @@ describe('promptCaching', () => {
 		const tools = callArgs.tools as Record<string, { providerOptions?: unknown }>;
 		expect(tools).toHaveProperty('recall_memory');
 		expect(tools.recall_memory.providerOptions).toEqual({
-			anthropic: { cacheControl: { type: 'ephemeral', ttl: '1h' } },
+			anthropic: { eagerInputStreaming: false, cacheControl: { type: 'ephemeral', ttl: '1h' } },
 		});
 	});
 
@@ -4962,7 +4966,9 @@ describe('promptCaching', () => {
 		const messages = callArgs.messages as Array<Record<string, unknown>>;
 		expect(messages[messages.length - 1].providerOptions).toBeUndefined();
 		const tools = callArgs.tools as Record<string, { providerOptions?: unknown }>;
-		expect(tools.tool_a.providerOptions).toBeUndefined();
+		// The Anthropic `eagerInputStreaming: false` quirk default is applied to every
+		// tool regardless of model; non-Anthropic providers simply ignore the namespace.
+		expect(tools.tool_a.providerOptions).toEqual({ anthropic: { eagerInputStreaming: false } });
 	});
 });
 

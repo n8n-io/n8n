@@ -116,6 +116,8 @@ export class AgentsService {
 			});
 		}
 
+		await this.agentKnowledgeService.destroySandbox(projectId, agentId);
+
 		const chatIntegrationService = Container.get(ChatIntegrationService);
 		for (const integration of agent.integrations ?? []) {
 			await chatIntegrationService.disconnectChannel(agentId, integration);
