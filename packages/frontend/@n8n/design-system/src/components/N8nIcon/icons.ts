@@ -191,6 +191,7 @@ import IconLucideNotebookPen from '~icons/lucide/notebook-pen';
 import IconLucidePackageOpen from '~icons/lucide/package-open';
 import IconLucidePalette from '~icons/lucide/palette';
 import IconLucidePanelLeft from '~icons/lucide/panel-left';
+import IconLucidePanelLeftClose from '~icons/lucide/panel-left-close';
 import IconLucidePanelRight from '~icons/lucide/panel-right';
 import IconLucidePaperclip from '~icons/lucide/paperclip';
 import IconLucidePause from '~icons/lucide/pause';
@@ -685,6 +686,7 @@ export const updatedIconSet = {
 	'package-open': IconLucidePackageOpen,
 	palette: IconLucidePalette,
 	'panel-left': IconLucidePanelLeft,
+	'panel-left-close': IconLucidePanelLeftClose,
 	'panel-right': IconLucidePanelRight,
 	paperclip: IconLucidePaperclip,
 	pause: IconLucidePause,

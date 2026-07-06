@@ -89,6 +89,48 @@ const WebSearchConfigSchema = z.object({
 	credential: z.string().optional(),
 });
 
+const HexColorSchema = z.string().regex(/^#[0-9A-Fa-f]{6}$/);
+
+export const DEFAULT_AGENT_PERSONALISATION = {
+	icon: 'bot',
+	gradient: {
+		from: '#FF1500',
+		to: '#FF6900',
+		angle: 135,
+		fromStop: 0,
+		toStop: 100,
+	},
+} as const;
+
+const AgentPersonalisationGradientSchema = z
+	.object({
+		from: HexColorSchema,
+		to: HexColorSchema,
+		angle: z.number().int().min(0).max(359).default(DEFAULT_AGENT_PERSONALISATION.gradient.angle),
+		fromStop: z
+			.number()
+			.int()
+			.min(0)
+			.max(45)
+			.default(DEFAULT_AGENT_PERSONALISATION.gradient.fromStop),
+		toStop: z
+			.number()
+			.int()
+			.min(55)
+			.max(100)
+			.default(DEFAULT_AGENT_PERSONALISATION.gradient.toStop),
+	})
+	.strict();
+
+const AgentPersonalisationConfigSchema = z
+	.object({
+		icon: z.string().trim().min(1).max(64),
+		gradient: AgentPersonalisationGradientSchema.default(() => ({
+			...DEFAULT_AGENT_PERSONALISATION.gradient,
+		})),
+	})
+	.strict();
+
 export const SUB_AGENT_USE_WHEN_MAX_LENGTH = 512;
 
 const SubAgentConfigSchema = z
@@ -293,6 +335,7 @@ export const AgentJsonConfigSchema = z.object({
 	model: DraftAgentModelSchema,
 	credential: z.string().optional(),
 	instructions: z.string(),
+	personalisation: AgentPersonalisationConfigSchema.optional(),
 	memory: MemoryConfigSchema.optional(),
 	subAgents: SubAgentsConfigSchema.optional(),
 	tools: z
@@ -373,6 +416,7 @@ export type AgentJsonCustomToolConfig = Extract<AgentJsonToolConfig, { type: 'cu
 export type AgentJsonSkillConfig = z.infer<typeof AgentJsonSkillConfigSchema>;
 export type AgentJsonTaskConfig = z.infer<typeof AgentJsonTaskConfigSchema>;
 export type AgentJsonMemoryConfig = z.infer<typeof MemoryConfigSchema>;
+export type AgentPersonalisationConfig = z.infer<typeof AgentPersonalisationConfigSchema>;
 export type NodeToolConfig = z.infer<typeof NodeConfigSchema>;
 export type AgentJsonMcpServerConfig = z.infer<typeof McpServerConfigSchema>;
 export type McpAuthenticationSchemaType = z.infer<typeof McpAuthenticationSchemaTypes>;
