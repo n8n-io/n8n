@@ -115,7 +115,6 @@ const templateExamplesStore = useInstanceAiTemplateExamplesStore();
 const showTemplateExamples = computed(
 	() => isTemplateExamplesExperimentEnabled.value && !templateExamplesStore.hasLoadFailed,
 );
-const telemetry = useTelemetry();
 watch(
 	showTemplateExamples,
 	(visible) => {
