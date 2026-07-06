@@ -23,6 +23,7 @@ import {
 	type ToolConnectionSettings,
 } from '@/features/shared/toolsConnection/types';
 import { useInstanceAiMcpStore } from '../../instanceAiMcp.store';
+import { useInstanceAiMcpTelemetry } from '../../instanceAiMcp.telemetry';
 import { useInstanceAiSettingsStore } from '../../instanceAiSettings.store';
 import type {
 	InstanceAiMcpConnectionResponse,
@@ -56,6 +57,7 @@ const props = defineProps<{
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 const mcpStore = useInstanceAiMcpStore();
+const mcpTelemetry = useInstanceAiMcpTelemetry();
 const settingsStore = useInstanceAiSettingsStore();
 const toast = useToast();
 const { canOAuthCredentialQuickConnect, createAndAuthorize } = useCredentialOAuth();
@@ -427,6 +429,7 @@ async function handleSave(item: ToolConnectionItem, settings?: ToolConnectionSet
 		excludedTools: settings.excludedTools,
 	});
 	if (!updated) return;
+	mcpTelemetry.trackToolFilterSettingsUpdated(updated.serverSlug, settings.inclusionMode);
 	toast.showMessage({
 		type: 'success',
 		title: i18n.baseText('instanceAi.mcp.settings.saved'),
