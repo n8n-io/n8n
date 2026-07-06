@@ -157,7 +157,12 @@
 						{
 							"type": "tool_result",
 							"tool_use_id": "toolu_01E6jd1VuFQYwFCGBTkKzp1D",
-							"content": "{\"ok\":true,\"success\":true,\"skillId\":\"engineering-status\",\"name\":\"Engineering status formatter\",\"description\":\"Use for formatting engineering workflow status identifiers.\",\"path\":null,\"skillDir\":null,\"hash\":\"f62e1e0bd274\",\"category\":\"engineering\",\"content\":\"For status-formatting requests, call the format_status tool with the exact status token from the user. Use the returned formatted value verbatim in the final answer and include STATUS_FORMATTED_BRAVO. Do not format the status manually.\",\"activation\":\"[Skill: \\\"Engineering status formatter\\\"]\\n[Skill category: \\\"engineering\\\"]\\n[Skill hash: \\\"f62e1e0bd274\\\"]\",\"linkedFiles\":{\"references\":[],\"templates\":[],\"scripts\":[],\"assets\":[],\"examples\":[],\"other\":[]}}"
+							"content": [
+								{
+									"type": "text",
+									"text": "[Skill: \"Engineering status formatter\"]\n[Skill category: \"engineering\"]\n[Skill hash: \"f62e1e0bd274\"]\n\nFor status-formatting requests, call the format_status tool with the exact status token from the user. Use the returned formatted value verbatim in the final answer and include STATUS_FORMATTED_BRAVO. Do not format the status manually."
+								}
+							]
 						}
 					]
 				}
@@ -296,7 +301,12 @@
 						{
 							"type": "tool_result",
 							"tool_use_id": "toolu_01E6jd1VuFQYwFCGBTkKzp1D",
-							"content": "{\"ok\":true,\"success\":true,\"skillId\":\"engineering-status\",\"name\":\"Engineering status formatter\",\"description\":\"Use for formatting engineering workflow status identifiers.\",\"path\":null,\"skillDir\":null,\"hash\":\"f62e1e0bd274\",\"category\":\"engineering\",\"content\":\"For status-formatting requests, call the format_status tool with the exact status token from the user. Use the returned formatted value verbatim in the final answer and include STATUS_FORMATTED_BRAVO. Do not format the status manually.\",\"activation\":\"[Skill: \\\"Engineering status formatter\\\"]\\n[Skill category: \\\"engineering\\\"]\\n[Skill hash: \\\"f62e1e0bd274\\\"]\",\"linkedFiles\":{\"references\":[],\"templates\":[],\"scripts\":[],\"assets\":[],\"examples\":[],\"other\":[]}}"
+							"content": [
+								{
+									"type": "text",
+									"text": "[Skill: \"Engineering status formatter\"]\n[Skill category: \"engineering\"]\n[Skill hash: \"f62e1e0bd274\"]\n\nFor status-formatting requests, call the format_status tool with the exact status token from the user. Use the returned formatted value verbatim in the final answer and include STATUS_FORMATTED_BRAVO. Do not format the status manually."
+								}
+							]
 						}
 					]
 				},

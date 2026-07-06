@@ -141,7 +141,12 @@
 						{
 							"type": "tool_result",
 							"tool_use_id": "toolu_013ofnQ1PtshoW76MM6pTcrm",
-							"content": "{\"ok\":true,\"success\":true,\"skillId\":\"summary-marker\",\"name\":\"Summary marker\",\"description\":\"Use for summarizing notes, updates, or short text while preserving a marker.\",\"path\":null,\"skillDir\":null,\"hash\":\"e3433b77c9e3\",\"category\":\"productivity\",\"content\":\"Every final answer after loading this skill must include the exact marker SKILL_MARKER_ALPHA. For summaries, be concise and keep the marker unchanged.\",\"activation\":\"[Skill: \\\"Summary marker\\\"]\\n[Skill category: \\\"productivity\\\"]\\n[Skill hash: \\\"e3433b77c9e3\\\"]\",\"linkedFiles\":{\"references\":[],\"templates\":[],\"scripts\":[],\"assets\":[],\"examples\":[],\"other\":[]}}"
+							"content": [
+								{
+									"type": "text",
+									"text": "[Skill: \"Summary marker\"]\n[Skill category: \"productivity\"]\n[Skill hash: \"e3433b77c9e3\"]\n\nEvery final answer after loading this skill must include the exact marker SKILL_MARKER_ALPHA. For summaries, be concise and keep the marker unchanged."
+								}
+							]
 						}
 					]
 				}
