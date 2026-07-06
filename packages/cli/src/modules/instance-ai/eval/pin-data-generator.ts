@@ -15,9 +15,17 @@ import type { WorkflowJSON, NodeJSON } from '@n8n/workflow-sdk';
 import { existsSync, readFileSync, readdirSync } from 'fs';
 import { join } from 'path';
 
-import { buildDateAnchors } from './mock-handler';
+import { buildDateAnchors } from './date-anchors';
+import { isAiRootNodeType } from './workflow-analysis';
 
 type PinData = Record<string, Array<Record<string, unknown>>>;
+
+/**
+ * Hang guard for the pin-data LLM call. A stalled provider call otherwise
+ * eats the scenario execution budget; aborting lets the caller fall back to
+ * empty pin data instead.
+ */
+const PIN_DATA_LLM_TIMEOUT_MS = 180_000;
 
 interface PinDataGenerationInstructions {
 	dataDescription: string;
@@ -49,6 +57,15 @@ interface NodeSchemaContext {
 	resource?: string;
 	operation?: string;
 	schema?: Record<string, unknown>;
+	outputParser?: OutputParserContext;
+}
+
+/** Structured-output-parser info for an AI root node (Agent/Chain). */
+interface OutputParserContext {
+	/** JSON Schema (`manual` mode) or example JSON (`fromJson` mode) from the parser node, when set. */
+	schemaText?: string;
+	/** True when `schemaText` is an example object rather than a JSON Schema. */
+	schemaIsExample: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -197,7 +214,11 @@ function resolveSchemaForNode(
 // Schema context building
 // ---------------------------------------------------------------------------
 
-function buildSchemaContexts(nodes: NodeJSON[], nodesBasePath?: string): NodeSchemaContext[] {
+function buildSchemaContexts(
+	nodes: NodeJSON[],
+	nodesBasePath?: string,
+	outputParserTargets?: Map<string, OutputParserContext>,
+): NodeSchemaContext[] {
 	return nodes.map((node) => {
 		const params = node.parameters as Record<string, unknown> | undefined;
 		const resource = typeof params?.resource === 'string' ? params.resource : undefined;
@@ -221,8 +242,104 @@ function buildSchemaContexts(nodes: NodeJSON[], nodesBasePath?: string): NodeSch
 			resource,
 			operation,
 			schema,
+			outputParser: node.name ? outputParserTargets?.get(node.name) : undefined,
 		};
 	});
+}
+
+// ---------------------------------------------------------------------------
+// AI root output shapes
+// ---------------------------------------------------------------------------
+
+const AGENT_NODE_TYPE = '@n8n/n8n-nodes-langchain.agent';
+
+/**
+ * Per-root-type pinned item shape. Verified against the node implementations:
+ * Agent wraps in `output`; ChainLlm emits `{ text }` (or the parser's object
+ * FLAT at the top level — `formatResponse` unwraps it); ChainRetrievalQa emits
+ * `{ response }`; ChainSummarization emits `{ output: { output_text } }`.
+ * Getting the key wrong silently breaks every downstream `$json.<key>`
+ * reference (observed: chainLlm pinned with `output` → empty Slack digest).
+ */
+function describeAiRootShape(nodeType: string, hasParser: boolean): string {
+	switch (nodeType) {
+		case AGENT_NODE_TYPE:
+			return hasParser
+				? '`{ "json": { "output": <parsed object> } }` — `output` is a parsed JSON object, NOT a JSON-encoded string, and its fields must NOT appear at the top level of `json`.'
+				: '`{ "json": { "output": "<final response text>" } }` — `output` is a plain text STRING, never an object: downstream nodes interpolate it directly into messages.';
+		case '@n8n/n8n-nodes-langchain.chainLlm':
+			return hasParser
+				? 'the parsed fields FLAT at the top level of `json` — chainLlm unwraps parser output, so there is NO `output` or `text` wrapper key.'
+				: '`{ "json": { "text": "<final response text>" } }` — the key is `text` (chainLlm has NO `output` key), and it is a plain string.';
+		case '@n8n/n8n-nodes-langchain.chainRetrievalQa':
+			return '`{ "json": { "response": "<answer text>" } }` — the key is `response`, a plain string.';
+		case '@n8n/n8n-nodes-langchain.chainSummarization':
+			return '`{ "json": { "output": { "output_text": "<summary text>" } } }`.';
+		default:
+			return '`{ "json": { "output": "<final response text>" } }`.';
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Output parser detection
+// ---------------------------------------------------------------------------
+
+/**
+ * Map AI root node name → structured output parser context, discovered from
+ * `ai_outputParser` connections (parser node is the connection SOURCE, the
+ * root is the target). Roots with a parser wrap their result in an
+ * `{ output: <parsed object> }` envelope at runtime — pinned data must match
+ * that envelope or downstream `$json.output.*` references resolve undefined.
+ */
+export function findOutputParserTargets(workflow: WorkflowJSON): Map<string, OutputParserContext> {
+	const result = new Map<string, OutputParserContext>();
+	const nodesByName = new Map<string, NodeJSON>();
+	for (const node of workflow.nodes) {
+		if (node.name) nodesByName.set(node.name, node);
+	}
+
+	for (const [sourceName, nodeConns] of Object.entries(workflow.connections ?? {})) {
+		const parserConns = (nodeConns as Record<string, unknown>).ai_outputParser;
+		if (!Array.isArray(parserConns)) continue;
+		const parserNode = nodesByName.get(sourceName);
+		const context = extractParserContext(parserNode);
+
+		for (const group of parserConns) {
+			if (!Array.isArray(group)) continue;
+			for (const conn of group) {
+				if (typeof conn !== 'object' || conn === null || !('node' in conn)) continue;
+				result.set((conn as { node: string }).node, context);
+			}
+		}
+	}
+
+	return result;
+}
+
+/** Read the schema/example text off a structured output parser node's parameters. */
+function extractParserContext(parserNode: NodeJSON | undefined): OutputParserContext {
+	const params = parserNode?.parameters as Record<string, unknown> | undefined;
+	if (!params) return { schemaIsExample: false };
+
+	const schemaType = typeof params.schemaType === 'string' ? params.schemaType : 'fromJson';
+	// `manual` mode holds a JSON Schema in `inputSchema`; `fromJson` holds an
+	// example object in `jsonSchemaExample`; parser versions <1.2 only have
+	// the JSON Schema field `jsonSchema`.
+	const manualSchema = schemaType === 'manual' ? params.inputSchema : undefined;
+	const legacySchema = params.jsonSchema;
+	const example = schemaType !== 'manual' ? params.jsonSchemaExample : undefined;
+
+	for (const [candidate, isExample] of [
+		[manualSchema, false],
+		[example, true],
+		[legacySchema, false],
+	] as Array<[unknown, boolean]>) {
+		if (typeof candidate === 'string' && candidate.trim().length > 0) {
+			return { schemaText: candidate.trim(), schemaIsExample: isExample };
+		}
+	}
+
+	return { schemaIsExample: false };
 }
 
 // ---------------------------------------------------------------------------
@@ -341,10 +458,12 @@ RULES:
 2. Generate 1-2 items per node.
 3. When a JSON Schema is provided, follow its structure exactly.
 4. When no schema is provided, generate a realistic response based on the node type, resource, and operation.
-5. Use realistic but clearly fake values (e.g., "jane@example.com", "proj_abc123"). Derive EVERY timestamp and date-relative field from the "Date anchors" block — never from training data. HTTP mocks generated later use the same anchors; stale years make "stored matches current" comparisons impossible.
-6. Return ONLY a valid JSON object, no explanation or markdown fencing.
-7. CRITICAL: You MUST generate data for EVERY node listed in "Nodes Requiring Mock Data". Never skip a node, even if the test scenario describes an empty or error response. An empty response is still valid data.
-8. CRITICAL: If a "Test Scenario" section is provided, it is the authoritative test state and OVERRIDES everything else, including the general data context and your own sense of realism. When it describes stored/previous records (e.g. "the store already holds a record with status X"), exact values, counts, literal substrings, or that stored data matches current data, reproduce those constraints EXACTLY — never substitute more "interesting" or more typical data. A boring no-change/empty/matching case is usually the point of the test.`;
+5. Use realistic but clearly fake values (e.g., "jane@example.com", "proj_abc123").
+6. Dates and timestamps MUST be derived from the "## Date anchors" block at the end of the prompt — never from training data. Workflows compare pinned data against the real execution clock ($now, Date.now()); values months in the past get silently filtered out, and HTTP mocks generated later use the same anchors, so stale years make "stored matches current" comparisons impossible. When the data description mentions a relative window ("last 24 hours", "past 2 weeks"), place timestamps safely INSIDE it, never on the boundary.
+7. AI root nodes (Agent/Chain) have NODE-TYPE-SPECIFIC output shapes — follow each node's "AI ROOT OUTPUT SHAPE" instruction exactly and never invent a different envelope key. Summary: agent wraps in { "output": ... } (a parsed object matching the parser schema when one is attached, otherwise a plain text string — never a JSON-encoded string); chainLlm uses { "text": "<string>" } without a parser, or the parsed fields FLAT at the top level of json when a parser is attached (no wrapper key); chainRetrievalQa uses { "response": "<string>" }; chainSummarization uses { "output": { "output_text": "<summary>" } }.
+8. CRITICAL: If a "Test Scenario" section is provided, it is the authoritative test state and OVERRIDES everything else, including the general data context and your own sense of realism. When it describes stored/previous records (e.g. "the store already holds a record with status X"), exact values, counts, literal substrings, or that stored data matches current data, reproduce those constraints EXACTLY — never substitute more "interesting" or more typical data. A boring no-change/empty/matching case is usually the point of the test.
+9. Return ONLY a valid JSON object, no explanation or markdown fencing.
+10. CRITICAL: You MUST generate data for EVERY node listed in "Nodes Requiring Mock Data". Never skip a node, even if the test scenario describes an empty or error response. An empty response is still valid data.`;
 
 function buildUserPrompt(
 	workflow: WorkflowJSON,
@@ -387,6 +506,25 @@ function buildUserPrompt(
 			if (ctx.operation) parts.push(`Operation: ${ctx.operation}`);
 			sections.push(`- ${parts.join(' | ')}`);
 		}
+		const isAiRoot = isAiRootNodeType(ctx.nodeType);
+		if (isAiRoot) {
+			sections.push(
+				`- AI ROOT OUTPUT SHAPE: every item MUST be ${describeAiRootShape(ctx.nodeType, ctx.outputParser !== undefined)}`,
+			);
+			if (ctx.outputParser?.schemaText) {
+				const target =
+					ctx.nodeType === AGENT_NODE_TYPE ? 'The `output` object' : 'The top-level `json` fields';
+				const label = ctx.outputParser.schemaIsExample
+					? `- ${target} must have the same shape and field names as this example:`
+					: `- ${target} must conform to this JSON Schema (use its exact field names):`;
+				const schemaStr = ctx.outputParser.schemaText;
+				const truncated = schemaStr.length > 3000 ? schemaStr.slice(0, 3000) + '\n...' : schemaStr;
+				sections.push(label);
+				sections.push('```json');
+				sections.push(truncated);
+				sections.push('```');
+			}
+		}
 		if (ctx.schema) {
 			const schemaStr = JSON.stringify(ctx.schema, null, 2);
 			const truncated = schemaStr.length > 3000 ? schemaStr.slice(0, 3000) + '\n...' : schemaStr;
@@ -394,7 +532,7 @@ function buildUserPrompt(
 			sections.push('```json');
 			sections.push(truncated);
 			sections.push('```');
-		} else {
+		} else if (!isAiRoot) {
 			sections.push('(no schema available — generate based on API knowledge)');
 		}
 
@@ -406,11 +544,6 @@ function buildUserPrompt(
 			}
 		}
 	}
-
-	sections.push('');
-	sections.push('## Date anchors');
-	sections.push('');
-	sections.push(buildDateAnchors(new Date()));
 
 	sections.push('');
 	sections.push('## Expected Output Format');
@@ -431,6 +564,11 @@ function buildUserPrompt(
 	}
 	sections.push('}');
 	sections.push('```');
+
+	// Anchors go last so they are the freshest context before generation.
+	sections.push('');
+	sections.push('## Date anchors');
+	sections.push(buildDateAnchors(new Date()));
 
 	return sections.join('\n');
 }
@@ -477,6 +615,67 @@ function parsePinDataResponse(responseText: string, expectedNodes: string[]): Pi
 }
 
 // ---------------------------------------------------------------------------
+// Structured-output envelope repair
+// ---------------------------------------------------------------------------
+
+/** Parse a string as a JSON object/array; undefined when it isn't one. */
+function tryParseJsonContainer(text: string): Record<string, unknown> | unknown[] | undefined {
+	const trimmed = text.trim();
+	if (!trimmed.startsWith('{') && !trimmed.startsWith('[')) return undefined;
+	try {
+		const parsed: unknown = JSON.parse(trimmed);
+		if (typeof parsed === 'object' && parsed !== null) {
+			return parsed as Record<string, unknown> | unknown[];
+		}
+	} catch {
+		// Not JSON — leave the original value alone.
+	}
+	return undefined;
+}
+
+/**
+ * Deterministically repair pinned items for AGENT roots that have a
+ * structured output parser attached (Agent is the only root type that wraps
+ * parser output in an `{ output: ... }` envelope — chainLlm unwraps it flat).
+ * Two LLM failure modes observed in eval runs: `output` emitted as a
+ * JSON-encoded string (downstream `$json.output.field` resolves undefined),
+ * and the parsed fields spread flat at the top level with no `output`
+ * envelope. Both are mechanical fixes — the prompt asks for the right shape,
+ * this guarantees it.
+ */
+export function repairStructuredAgentOutput(
+	pinData: PinData,
+	parserTargetNames: Iterable<string>,
+): PinData {
+	for (const nodeName of parserTargetNames) {
+		const items = pinData[nodeName];
+		if (!items) continue;
+
+		pinData[nodeName] = items.map((item) => {
+			const json = item.json;
+			if (typeof json !== 'object' || json === null || Array.isArray(json)) return item;
+			const record = json as Record<string, unknown>;
+
+			if (typeof record.output === 'string') {
+				const parsed = tryParseJsonContainer(record.output);
+				if (parsed !== undefined) {
+					return { ...item, json: { ...record, output: parsed } };
+				}
+				return item;
+			}
+
+			if (!('output' in record)) {
+				return { ...item, json: { output: record } };
+			}
+
+			return item;
+		});
+	}
+
+	return pinData;
+}
+
+// ---------------------------------------------------------------------------
 // Main entry point
 // ---------------------------------------------------------------------------
 
@@ -498,9 +697,11 @@ export async function generatePinData(options: GeneratePinDataOptions): Promise<
 	const targetNodes = workflow.nodes.filter((n) => n.name && nodeNames.includes(n.name));
 	if (targetNodes.length === 0) return {};
 
-	// Build schema contexts with optional __schema__ enrichment
+	// Build schema contexts with optional __schema__ enrichment and
+	// structured-output-parser envelopes for AI roots
 	const nodesBasePath = resolveNodesBasePath();
-	const contexts = buildSchemaContexts(targetNodes, nodesBasePath);
+	const outputParserTargets = findOutputParserTargets(workflow);
+	const contexts = buildSchemaContexts(targetNodes, nodesBasePath, outputParserTargets);
 
 	// Build prompt and call LLM
 	const userPrompt = buildUserPrompt(workflow, contexts, instructions);
@@ -514,10 +715,19 @@ export async function generatePinData(options: GeneratePinDataOptions): Promise<
 
 		const result = await agent.generate(userPrompt, {
 			providerOptions: { anthropic: { maxTokens: 16_384 } },
+			abortSignal: AbortSignal.timeout(PIN_DATA_LLM_TIMEOUT_MS),
 		});
 
 		const responseText = extractText(result);
-		return parsePinDataResponse(responseText, expectedNodeNames);
+		const pinData = parsePinDataResponse(responseText, expectedNodeNames);
+		// The `{ output: ... }` envelope repair only holds for Agent roots —
+		// chainLlm unwraps parser output flat, so wrapping it would break
+		// downstream references.
+		const agentParserTargets = [...outputParserTargets.keys()].filter(
+			(name) =>
+				name in pinData && targetNodes.some((n) => n.name === name && n.type === AGENT_NODE_TYPE),
+		);
+		return repairStructuredAgentOutput(pinData, agentParserTargets);
 	} catch {
 		return {};
 	}

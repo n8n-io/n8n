@@ -6,12 +6,12 @@ import type {
 	IWorkflowDb,
 } from '@n8n/db';
 import type { AssignableGlobalRole } from '@n8n/permissions';
+import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Application, Response } from 'express';
 import type {
 	ExecutionError,
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
-	IDeferredPromise,
 	IExecuteResponsePromiseData,
 	IRun,
 	ITelemetryTrackProperties,

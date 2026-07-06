@@ -11,6 +11,10 @@
  * / interval / one-off `Schedule` is materialized into tasks by the materializer
  * (see `materializer/`). All time and DST math is confined to this boundary
  * (see `recurrence/`).
+ *
+ * *Retention* (see `retention/`) bounds the task table: terminal tasks past
+ * their window are deleted in bounded batches, so the queue's history cannot
+ * grow without bound.
  */
 
 // These enums live in `@n8n/db` (the schema is their source of truth), re-exported
@@ -20,6 +24,8 @@ export {
 	ScheduledJobKindList,
 	ScheduledTaskStatus,
 	ScheduledTaskStatusList,
+	type TerminalTaskStatus,
+	TerminalTaskStatusList,
 } from './enums';
 
 export type {
@@ -31,7 +37,11 @@ export type {
 	ScheduledTask,
 } from './types';
 
-export { InvalidScheduleError, CorruptStorageRowError } from './errors';
+export {
+	InvalidScheduleError,
+	InvalidRetentionOptionsError,
+	CorruptStorageRowError,
+} from './errors';
 
 export { computeNextRunAt } from './recurrence/next-run';
 export { validateSchedule } from './recurrence/validate';
@@ -49,3 +59,11 @@ export type {
 	RunInTransaction,
 	MaterializerTransaction,
 } from './materializer';
+
+export { prune, DEFAULT_RETENTION_OPTIONS } from './retention';
+export type {
+	RetentionSummary,
+	RetentionOptions,
+	RetentionBatch,
+	RetentionStore,
+} from './retention';

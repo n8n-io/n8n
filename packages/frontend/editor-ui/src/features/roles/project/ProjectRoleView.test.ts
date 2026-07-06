@@ -715,4 +715,50 @@ describe('ProjectRoleView', () => {
 			});
 		});
 	});
+
+	describe('Non-assignable scope stripping (seed/template)', () => {
+		// Scopes that are valid but never assignable to a project role (e.g. cross-type
+		// global scopes). The editor must not forward them into a custom role, because the
+		// backend whitelist rejects them.
+		const NON_ASSIGNABLE_SCOPES = ['user:create', 'role:manage'];
+
+		beforeEach(() => {
+			rolesStore.processedProjectRoles = mockSystemRoles.map((role) =>
+				role.slug === 'project:viewer' || role.slug === 'project:editor'
+					? { ...role, scopes: [...role.scopes, ...NON_ASSIGNABLE_SCOPES] }
+					: role,
+			);
+		});
+
+		it('does not forward non-assignable scopes seeded from the default template on create', async () => {
+			rolesStore.createRole.mockResolvedValueOnce({ ...mockExistingRole, slug: 'new-role-slug' });
+
+			const { container, getByRole } = renderComponent();
+			await fillForm(container, 'Seeded Role');
+			await userEvent.click(getByRole('button', { name: 'Create' }));
+
+			await waitFor(() => expect(rolesStore.createRole).toHaveBeenCalled());
+			const sentScopes = rolesStore.createRole.mock.calls[0][0].scopes;
+			for (const scope of NON_ASSIGNABLE_SCOPES) {
+				expect(sentScopes).not.toContain(scope);
+			}
+			// keeps the visible scope and its auto-added list companion
+			expect(sentScopes).toEqual(expect.arrayContaining(['workflow:read', 'workflow:list']));
+		});
+
+		it('does not forward non-assignable scopes when applying an existing role as a preset', async () => {
+			rolesStore.createRole.mockResolvedValueOnce({ ...mockExistingRole, slug: 'new-role-slug' });
+
+			const { container, getByRole } = renderComponent();
+			await userEvent.click(getByRole('button', { name: 'Editor' }));
+			await fillForm(container, 'Templated Role');
+			await userEvent.click(getByRole('button', { name: 'Create' }));
+
+			await waitFor(() => expect(rolesStore.createRole).toHaveBeenCalled());
+			const sentScopes = rolesStore.createRole.mock.calls[0][0].scopes;
+			for (const scope of NON_ASSIGNABLE_SCOPES) {
+				expect(sentScopes).not.toContain(scope);
+			}
+		});
+	});
 });

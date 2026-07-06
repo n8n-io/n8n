@@ -16,13 +16,16 @@ export function dbNowLiteral(isPostgres: boolean): string {
 
 /**
  * DB-clock `now` plus a millisecond offset, per dialect.
+ * A negative `ms` gives an instant in the past (e.g. a retention cutoff).
  * `ms` is caller-computed (safe to inline).
  */
 export function dbNowPlusMsLiteral(isPostgres: boolean, ms: number): string {
 	const rounded = Math.round(ms);
-	return isPostgres
-		? `CURRENT_TIMESTAMP(3) + (${rounded} || ' milliseconds')::interval`
-		: `STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW', '+${rounded / 1000} seconds')`;
+	if (isPostgres) {
+		return `CURRENT_TIMESTAMP(3) + (${rounded} || ' milliseconds')::interval`;
+	}
+	const seconds = rounded / 1000;
+	return `STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW', '${seconds < 0 ? '' : '+'}${seconds} seconds')`;
 }
 
 /**

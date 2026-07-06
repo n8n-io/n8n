@@ -1,4 +1,3 @@
-import { formatPemBlock } from '@n8n/utils/format-pem-block';
 import {
 	createPrivateKey,
 	createSign,
@@ -6,6 +5,8 @@ import {
 	X509Certificate,
 	type KeyObject,
 } from 'node:crypto';
+
+import { formatPemBlock } from './format-pem-block';
 
 // private_key_jwt (RFC 7521/7523): the client proves its identity with a JWT
 // signed by its private key instead of a shared secret. The `x5t` header (SHA-1

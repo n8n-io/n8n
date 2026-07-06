@@ -37,10 +37,16 @@ const props = withDefaults(
 		disabled?: boolean;
 		embedded?: boolean;
 		projectId?: string;
+		showModel?: boolean;
+		showInstructions?: boolean;
+		showInstructionsToolbar?: boolean;
 	}>(),
 	{
 		disabled: false,
 		embedded: false,
+		showModel: true,
+		showInstructions: true,
+		showInstructionsToolbar: false,
 	},
 );
 const emit = defineEmits<{ 'update:config': [changes: Partial<AgentJsonConfig>] }>();
@@ -92,6 +98,19 @@ const selectedAgent = computed<AgentModelOption | null>(() => {
 		},
 	};
 });
+
+const panelTestId = computed(() => {
+	if (props.showModel && !props.showInstructions) return 'agent-model-panel';
+	if (!props.showModel && props.showInstructions) return 'agent-instructions-panel';
+	return 'agent-info-panel';
+});
+
+const instructionsToolbarMode = computed(() =>
+	props.showInstructionsToolbar ? 'always' : 'never',
+);
+const instructionsEditorVariant = computed(() =>
+	props.showInstructionsToolbar ? 'contained' : 'ghost',
+);
 
 function onModelChange(selection: AgentModelSelection) {
 	const credentialId = credentialsByProvider.value?.[selection.provider];
@@ -145,16 +164,16 @@ function onInstructionsInput(value: string) {
 </script>
 
 <template>
-	<div :class="$style.panel" data-testid="agent-info-panel">
+	<div :class="$style.panel" :data-testid="panelTestId">
 		<AgentPanelHeader
 			v-if="!props.embedded"
 			:title="i18n.baseText('agents.builder.agent.title')"
 			:description="i18n.baseText('agents.builder.agent.description')"
 		/>
 
-		<div :class="[$style.field, props.disabled && shared.disabledOverlay]">
+		<div v-if="props.showModel" :class="[$style.field, props.disabled && shared.disabledOverlay]">
 			<label :class="$style.label"
-				><N8nText size="small" :bold="true">{{
+				><N8nText step="sm" bold :class="shared.dataEntryLabel">{{
 					i18n.baseText('agents.builder.agent.model.label')
 				}}</N8nText></label
 			>
@@ -172,24 +191,23 @@ function onInstructionsInput(value: string) {
 			/>
 		</div>
 
-		<div :class="[$style.field, $style.instructionsField]">
+		<div v-if="props.showInstructions" :class="[$style.field, $style.instructionsField]">
 			<label :class="$style.label">
-				<N8nText size="small" :bold="true">{{
+				<N8nText step="sm" bold :class="shared.dataEntryLabel">{{
 					i18n.baseText('agents.builder.agent.instructions.label')
 				}}</N8nText>
 			</label>
 			<N8nMarkdownEditor
-				:class="$style.instructionsEditor"
+				:class="$style.instructionsDocument"
 				:model-value="instructions"
 				:readonly="props.disabled"
-				max-height="640px"
+				:placeholder="i18n.baseText('agents.builder.agent.instructions.placeholder')"
+				:variant="instructionsEditorVariant"
+				:show-toolbar="instructionsToolbarMode"
+				max-height="none"
+				data-testid="agent-instructions-document"
 				@update:model-value="onInstructionsInput"
 			/>
-			<N8nText size="xsmall" color="text-light">{{
-				i18n.baseText('agents.builder.agent.instructions.characterCount', {
-					interpolate: { count: String(instructions.length) },
-				})
-			}}</N8nText>
 		</div>
 	</div>
 </template>
@@ -198,28 +216,22 @@ function onInstructionsInput(value: string) {
 .panel {
 	scrollbar-width: thin;
 	scrollbar-color: var(--border-color) transparent;
-	height: 100%;
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	width: 100%;
 }
 
-.instructionsField {
-	flex: 1;
-	min-height: 0;
-}
-
-.instructionsEditor {
-	flex: 1;
-	min-height: 0;
-	display: flex;
+.instructionsDocument {
+	display: block;
 	width: 100%;
 }
 
-.instructionsEditor :global(.n8n-markdown),
-.instructionsEditor :global(textarea) {
-	min-height: 160px;
+.instructionsDocument :global(.n8n-markdown) {
+	max-height: none;
+	min-height: calc(var(--spacing--4xl) + var(--spacing--xl));
+	overflow-y: visible;
+	padding: 0;
 }
 
 .field {

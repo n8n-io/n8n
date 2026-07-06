@@ -97,11 +97,13 @@ import { Agent as AgentImport, Memory as MemoryImport } from '@n8n/agents';
 import { createOrchestratorDomainTools as createOrchestratorDomainToolsImport } from '../../tools';
 import { createToolsFromLocalMcpServer as createToolsFromLocalMcpServerImport } from '../../tools/filesystem/create-tools-from-mcp-server';
 import { createInstanceAgent } from '../instance-agent';
+import { getSystemPrompt as getSystemPromptImport } from '../system-prompt';
 
 const Agent = AgentImport as unknown as Mock;
 const Memory = MemoryImport as unknown as Mock;
 const createToolsFromLocalMcpServer = createToolsFromLocalMcpServerImport as unknown as Mock;
 const createOrchestratorDomainTools = createOrchestratorDomainToolsImport as unknown as Mock;
+const getSystemPrompt = getSystemPromptImport as unknown as Mock;
 
 function createMcpManagerStub(
 	regularTools: Map<string, ReturnType<typeof mockBuiltTool>> = new Map(),
@@ -146,6 +148,8 @@ describe('createInstanceAgent', () => {
 			memory: {},
 		});
 		mockAgentInstances.length = 0;
+		getSystemPrompt.mockClear();
+		getSystemPrompt.mockReturnValue('system prompt');
 		createToolsFromLocalMcpServer.mockReset();
 		createToolsFromLocalMcpServer.mockReturnValue(new Map());
 	});
@@ -428,6 +432,84 @@ describe('createInstanceAgent', () => {
 			browser_connect: { id: 'browser_connect' },
 			browser_navigate: { id: 'browser_navigate' },
 		});
+	});
+
+	it('enables MCP-specific tool search guidance when external MCP tools are available', async () => {
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {
+				runLabel: 'external-mcp-prompt',
+				localGatewayStatus: undefined,
+				licenseHints: undefined,
+				localMcpServer: undefined,
+			},
+			orchestrationContext: { runId: 'external-mcp-prompt' },
+			memoryConfig: {},
+			mcpManager: createMcpManagerStub(
+				new Map([['notion_search', mockBuiltTool('notion_search')]]),
+			),
+		} as never);
+
+		expect(getSystemPrompt).toHaveBeenCalledWith(
+			expect.objectContaining({
+				toolSearchEnabled: true,
+				mcpToolSearchEnabled: true,
+			}),
+		);
+	});
+
+	it('does not enable MCP-specific tool search guidance when deferred search is disabled', async () => {
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {
+				runLabel: 'external-mcp-eager-prompt',
+				localGatewayStatus: undefined,
+				licenseHints: undefined,
+				localMcpServer: undefined,
+			},
+			orchestrationContext: { runId: 'external-mcp-eager-prompt' },
+			memoryConfig: {},
+			mcpManager: createMcpManagerStub(
+				new Map([['notion_search', mockBuiltTool('notion_search')]]),
+			),
+			disableDeferredTools: true,
+		} as never);
+
+		expect(getSystemPrompt).toHaveBeenCalledWith(
+			expect.objectContaining({
+				toolSearchEnabled: false,
+				mcpToolSearchEnabled: false,
+			}),
+		);
+	});
+
+	it('does not enable MCP-specific tool search guidance for local gateway tools alone', async () => {
+		const localMcpServer = {
+			getToolsByCategory: vi.fn().mockReturnValue([{ name: 'browser_navigate' }]),
+		};
+		createToolsFromLocalMcpServer.mockReturnValue(
+			new Map([['browser_navigate', mockBuiltTool('browser_navigate')]]),
+		);
+
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {
+				runLabel: 'local-mcp-prompt',
+				localGatewayStatus: undefined,
+				licenseHints: undefined,
+				localMcpServer,
+			},
+			orchestrationContext: { runId: 'local-mcp-prompt' },
+			memoryConfig: {},
+			mcpManager: createMcpManagerStub(),
+		} as never);
+
+		expect(getSystemPrompt).toHaveBeenCalledWith(
+			expect.objectContaining({
+				toolSearchEnabled: true,
+				mcpToolSearchEnabled: false,
+			}),
+		);
 	});
 
 	it('prefers local gateway tools over external MCP tools when names collide', async () => {
