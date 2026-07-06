@@ -1441,7 +1441,10 @@ export class NextCloud implements INodeType {
 							if (dueDate) updateBody.duedate = dueDate;
 
 							// Owner is REQUIRED by Deck API on update – extract the uid string
-							updateBody.owner = getOwnerUid(currentCard.owner as IDataObject | string | undefined);
+							const ownerUid = getOwnerUid(currentCard.owner as IDataObject | string | undefined);
+							if (ownerUid) {
+								updateBody.owner = ownerUid;
+							}
 
 							responseData = await deckRequest('PUT', cardPath, updateBody);
 							break;

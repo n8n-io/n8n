@@ -959,8 +959,8 @@ describe('NextCloud Node', () => {
 					color: 'FFFFFF',
 					owner: 'alice',
 				});
-				// Critically, archived must NOT be sent — that would reset it to false.
-				expect(body).not.toHaveProperty('archived');
+				// archived must still be true (the existing server value), not the old default false.
+				expect(body.archived).toBe(true);
 			});
 
 			it('deleteBoard DELETEs /boards/{id}', async () => {
@@ -1299,7 +1299,7 @@ describe('NextCloud Node', () => {
 					url: `${deckBaseUrl}/boards/5/stacks/10/cards/100`,
 					body: {
 						id: 100,
-						owner: { uid: 'alice' },
+						owner: 'alice',
 						title: 'Updated',
 						description: 'New description',
 						type: 'plain',
