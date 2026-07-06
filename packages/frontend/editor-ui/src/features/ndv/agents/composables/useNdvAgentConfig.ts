@@ -69,8 +69,7 @@ export function useNdvAgentConfig(
 	const toast = useToast();
 	const i18n = useI18n();
 
-	// The rich NDV agent experience targets the v2 node only, matching the
-	// canvas gate (v1 keeps the legacy default rendering + raw NDV layout).
+	// The rich NDV agent experience targets the v2 node only.
 	const isAgentNode = computed(() => isAgentNodeV2(toValue(activeNode)));
 
 	const eventSource = `ndv-agent-config-${++instanceSeq}`;
@@ -80,9 +79,6 @@ export function useNdvAgentConfig(
 		agentsEventBus.emit('agentUpdated', { agentId: forAgentId, source: eventSource });
 	}
 
-	// Shared scope resolution (picker / canvas card / NDV must all read/write
-	// the same agent record). `currentProjectId` can drift on cross-route
-	// navigation; the 404 → terminal handling in `load`/`saveConfig` covers it.
 	const projectId = useAgentScopeProjectId();
 
 	const agentId = computed(() => {
@@ -143,11 +139,14 @@ export function useNdvAgentConfig(
 			const result = await updateConfig(snapshot.projectId, snapshot.agentId, snapshot.config);
 			// The write landed regardless of staleness below — tell other surfaces.
 			emitAgentUpdated(snapshot.agentId);
+
 			// Drop the response if the active node switched agents mid-flight.
 			if (result.stale) return;
+
 			if (agent.value && agent.value.id === snapshot.agentId && result.versionId !== undefined) {
 				agent.value = { ...agent.value, versionId: result.versionId };
 			}
+
 			await fetchAgent(snapshot.projectId, snapshot.agentId);
 		} catch (error) {
 			if (isPermanentError(error)) isUnavailable.value = true;
@@ -171,8 +170,11 @@ export function useNdvAgentConfig(
 			snapshot.skillId,
 			snapshot.skill,
 		);
+
 		emitAgentUpdated(snapshot.agentId);
+
 		if (agent.value?.id !== snapshot.agentId) return;
+
 		agent.value = {
 			...agent.value,
 			versionId: result.versionId,
@@ -196,6 +198,7 @@ export function useNdvAgentConfig(
 	function scheduleConfigUpdate(updates: Partial<AgentJsonConfig>) {
 		if (!localConfig.value || !canUpdate.value || isUnavailable.value) return;
 		Object.assign(localConfig.value, updates);
+
 		autosave.scheduleAutosave({
 			projectId: projectId.value,
 			agentId: agentId.value,
@@ -206,6 +209,7 @@ export function useNdvAgentConfig(
 	/** Skill-save seam handed to the capability actions (edit-existing-skill path). */
 	function scheduleSkillSave(payload: { skillId: string; skill: AgentSkill }) {
 		if (!canUpdate.value || isUnavailable.value) return;
+
 		skillAutosave.scheduleAutosave({
 			projectId: projectId.value,
 			agentId: agentId.value,
@@ -228,9 +232,11 @@ export function useNdvAgentConfig(
 		if (autosave.saveStatus.value === 'saving' || skillAutosave.saveStatus.value === 'saving') {
 			return 'saving';
 		}
+
 		if (autosave.saveStatus.value === 'saved' || skillAutosave.saveStatus.value === 'saved') {
 			return 'saved';
 		}
+
 		return 'idle';
 	});
 
@@ -276,10 +282,8 @@ export function useNdvAgentConfig(
 	);
 
 	// Cross-surface: another surface (the Agent Builder) wrote the same agent —
-	// refetch so our view doesn't silently diverge. Last-write-wins otherwise
-	// (a true fix needs a backend version precondition; out of scope for v1).
-	// Our own emissions are skipped: reloading on them would overwrite
-	// `localConfig` with the just-saved snapshot, dropping in-flight edits.
+	// refetch so our view doesn't silently diverge. Last-write-wins otherwise.
+	// Our own emissions are skipped.
 	function onAgentUpdated(event?: AgentUpdatedEvent) {
 		if (event?.source === eventSource) return;
 		if (event?.agentId && event.agentId !== agentId.value) return;
@@ -293,6 +297,7 @@ export function useNdvAgentConfig(
 			await load(projectId.value, agentId.value);
 		})();
 	}
+
 	agentsEventBus.on('agentUpdated', onAgentUpdated);
 	onBeforeUnmount(() => agentsEventBus.off('agentUpdated', onAgentUpdated));
 
@@ -304,6 +309,7 @@ export function useNdvAgentConfig(
 	 */
 	async function onConfigUpdated() {
 		if (!agentId.value) return;
+
 		emitAgentUpdated(agentId.value);
 		await load(projectId.value, agentId.value);
 	}

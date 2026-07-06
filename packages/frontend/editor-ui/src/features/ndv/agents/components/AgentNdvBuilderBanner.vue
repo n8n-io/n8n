@@ -4,8 +4,7 @@
  * tab. The "Agent Builder" link is the NDV's builder entry point: with an
  * agent referenced it deep-links to it; with none it creates a draft,
  * references it, and opens the builder for it. Both paths set the "Back to
- * workflow" return context (unlike the picker's "+ Create agent", which stays
- * in the current flow).
+ * workflow" return context.
  */
 import { computed, inject } from 'vue';
 import type { INodeParameterResourceLocator } from 'n8n-workflow';
@@ -35,9 +34,6 @@ const projectId = computed(() => ndv?.projectId.value ?? '');
 
 const { canCreate } = useAgentPermissions(projectId);
 
-// The banner's affordance is "go to the builder", so creation here also
-// navigates: the reference lands on the node, the workflow is saved, and the
-// builder opens on the fresh draft.
 const agentCreate = useAgentCreate({
 	projectId,
 	telemetrySource: 'ndv_banner',
@@ -73,8 +69,6 @@ async function onLinkClick() {
 		<N8nIcon icon="sparkles" size="medium" :class="$style.icon" />
 		<p :class="$style.text">
 			{{ i18n.baseText('agentNode.ndv.banner.prefix') }}
-			<!-- Button (not an href-less anchor) so the builder entry point stays
-			     keyboard-focusable and Enter/Space-activatable. -->
 			<button
 				v-if="isLinkEnabled"
 				type="button"

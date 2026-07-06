@@ -1,17 +1,12 @@
 <script setup lang="ts">
 /**
  * Referenced-agent controls for the AI Agent node's NDV Parameters tab,
- * rendered as a plain "Agent" section (title + divider, like the node's
- * "Advanced" collection section) between the call-site parameters and the
- * Advanced section.
+ * rendered as a plain "Agent" section (title + divider) between the call-site
+ * parameters and the Advanced section.
  *
  * Edits the *shared agent primitive* (model, instructions, tools, skills) —
  * global, applies everywhere the agent is used. Channels, tasks and sub-agents
- * are intentionally excluded via the `sections` allowlist: channels and tasks
- * only make sense for a standalone agent (a channel isn't aware of — and won't
- * trigger — the workflow this node is embedded in; a task is the agent running a
- * capability on its own schedule, which the invoking workflow already controls),
- * and sub-agents stay builder-only.
+ * are intentionally excluded via the `sections` allowlist.
  *
  * Consumes the shared {@link NdvAgentConfigKey} orchestrator (owned by the
  * stable NDV container) so it shares one config/autosave/actions instance with
@@ -99,7 +94,6 @@ const actions = computed(() => ndv?.actions);
 
 		<template v-else>
 			<div :class="$style.infoPanelWrapper">
-				<!-- Compact editor cap so the instructions can't bury the call-site prompt. -->
 				<AgentInfoPanel
 					:config="localConfig"
 					:project-id="projectId"

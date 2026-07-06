@@ -14,16 +14,6 @@ import type { AgentResource } from '../types';
 
 /**
  * Eagerly create a draft agent primitive and reference it on the node.
- *
- * Two flavors, matching the caller's promise to the user:
- * - `createAndSelect` stays in the current flow (the agent picker's
- *   "+ Create agent" action — the reference lands and editing continues in
- *   place).
- * - `createAndOpenBuilder` additionally persists the workflow and opens the
- *   Agent Builder (the NDV banner, whose affordance is "go to the builder").
- *
- * Callers differ only in how they write the reference onto the node
- * (`setReference`) and their telemetry source.
  */
 export function useAgentCreate(options: {
 	projectId: MaybeRefOrGetter<string>;

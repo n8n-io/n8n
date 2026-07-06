@@ -10,8 +10,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
  * read/write the same agent record. Falls back to the workflow's home project
  * (shared personal workflows have no `currentProject`) and finally the
  * personal project, mirroring how execution resolves the agent's owning
- * project. `currentProjectId` can drift on cross-route navigation; consumers
- * cover that edge with their 404 handling.
+ * project.
  */
 export function useAgentScopeProjectId() {
 	const projectsStore = useProjectsStore();

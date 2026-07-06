@@ -27,15 +27,7 @@ onMounted(async () => {
 	documentTitle.set(locale.baseText('agents.heading'));
 });
 
-// Clear the round-trip context when actually leaving the agent feature. Uses a
-// route-leave guard rather than onBeforeUnmount: this parent component can be
-// transiently unmounted+remounted by <Suspense> while an async child-route
-// chunk resolves on the first (uncached) navigation in, and an onBeforeUnmount
-// clear there would wipe the just-set context — making the "Back to workflow"
-// banner blink and vanish. onBeforeRouteLeave fires only on a real route-level
-// exit (never on the Suspense swap, never on builder/preview/sessions
-// sub-page switches), so the banner survives. Still covers the abandoned
-// round-trip (browser back), which would otherwise resurface the banner.
+// Clear the round-trip context when leaving the agent feature.
 onBeforeRouteLeave(() => {
 	returnContext.clear();
 });

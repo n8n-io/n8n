@@ -20,7 +20,7 @@ import type { INodeParameters, INodeProperties } from 'n8n-workflow';
 import get from 'lodash/get';
 
 import { N8nIconButton, N8nOption, N8nSectionHeader, N8nSelect } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
+import { BaseTextKey, useI18n } from '@n8n/i18n';
 
 import type { IUpdateInformation } from '@/Interface';
 import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
@@ -122,7 +122,7 @@ const AGENT_OPTIONS = [
 	{ id: 'thinking', labelKey: 'agents.builder.advanced.thinking.label' },
 	{ id: 'toolCallConcurrency', labelKey: 'agents.builder.advanced.concurrency.label' },
 	{ id: 'maxIterations', labelKey: 'agents.builder.advanced.maxIterations.label' },
-] as const satisfies ReadonlyArray<{ id: AgentOption; labelKey: string }>;
+] as const satisfies ReadonlyArray<{ id: AgentOption; labelKey: BaseTextKey }>;
 
 function isAgentOption(value: unknown): value is AgentOption {
 	return typeof value === 'string' && AGENT_OPTIONS.some((option) => option.id === value);
