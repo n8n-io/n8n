@@ -31,6 +31,7 @@ function makeContext(): OrchestrationContext {
 		executionService: {} as never,
 		nodeService: {} as never,
 		dataTableService: {} as never,
+		workflowTemplateService: {} as never,
 		logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() } as never,
 	};
 
