@@ -1,10 +1,5 @@
-import {
-	deepCopy,
-	type IDeferredPromise,
-	type IRun,
-	type ITriggerFunctions,
-	jsonParse,
-} from 'n8n-workflow';
+import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { deepCopy, type IRun, type ITriggerFunctions, jsonParse } from 'n8n-workflow';
 import type { EventContext } from 'rhea';
 
 type MessageId = string | number | Buffer | undefined;
