@@ -8,7 +8,6 @@ import { useTimelineGrouping } from '../useTimelineGrouping';
 import AgentTimeline from './AgentTimeline.vue';
 import ArtifactCard from './ArtifactCard.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
-import ReasoningBlock from './ReasoningBlock.vue';
 import ResponseGroup from './ResponseGroup.vue';
 
 const props = withDefaults(
@@ -22,17 +21,6 @@ const props = withDefaults(
 );
 
 const thread = useThread();
-
-/**
- * Legacy fallback: trees persisted before reasoning became a timeline entry
- * carry only the aggregated `reasoning` string. Render it as a single block
- * at the top; newer trees interleave reasoning blocks in the timeline.
- */
-const legacyReasoningEntry = computed(() => {
-	if (props.agentNode.reasoning.length === 0) return null;
-	if (props.agentNode.timeline.some((entry) => entry.type === 'reasoning')) return null;
-	return { content: props.agentNode.reasoning };
-});
 
 const segments = useTimelineGrouping(toRef(props, 'agentNode'));
 
@@ -56,9 +44,6 @@ function resolveArtifactName(artifact: ArtifactInfo): string {
 
 <template>
 	<!-- eslint-disable vue/no-multiple-template-root -->
-
-	<!-- Reasoning fallback for pre-timeline data (collapsible, root agent only) -->
-	<ReasoningBlock v-if="isRoot && legacyReasoningEntry" :entry="legacyReasoningEntry" />
 
 	<!-- Completed with responseId grouping: collapsed response groups + artifacts + trailing text -->
 	<template v-if="showGrouped">

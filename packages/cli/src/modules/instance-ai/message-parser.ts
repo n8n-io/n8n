@@ -1,4 +1,4 @@
-import { getRenderHint } from '@n8n/api-types';
+import { getRenderHint, normalizeAgentTree } from '@n8n/api-types';
 import type {
 	InstanceAiMessage,
 	InstanceAiAgentNode,
@@ -446,7 +446,7 @@ export function parseStoredMessages(
 			// falling back to the user-message ID if no snapshot exists.
 			const runId = snapshot?.runId ?? lastUserMessageId ?? msg.id;
 			const messageFlatTree =
-				toolCalls.length > 0 || text
+				toolCalls.length > 0 || text || reasoning
 					? buildFlatAgentTree(runId, text, reasoning, toolCalls, parts, snapshot?.tree.status)
 					: undefined;
 			// Carry the cancellation cause onto the fallback tree so a stopped run is
@@ -547,6 +547,10 @@ export function parseStoredMessages(
 	}
 	for (let i = messages.length - 1; i >= 0; i--) {
 		if (toRemove.has(i)) messages.splice(i, 1);
+	}
+
+	for (const msg of messages) {
+		if (msg.agentTree) normalizeAgentTree(msg.agentTree);
 	}
 
 	return messages;

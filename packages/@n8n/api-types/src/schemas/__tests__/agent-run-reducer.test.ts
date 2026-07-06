@@ -6,6 +6,8 @@ import {
 	findAgent,
 	toAgentTree,
 	stateFromAgentTree,
+	normalizeLegacyReasoningTimeline,
+	normalizeAgentTree,
 } from '../agent-run-reducer';
 import type { AgentRunState } from '../agent-run-reducer';
 import type {
@@ -1087,6 +1089,112 @@ describe('agent-run-reducer', () => {
 				false,
 			);
 			expectStateMapsNotPolluted(state!);
+		});
+
+		it('normalizes aggregate reasoning into the timeline when adopting legacy trees', () => {
+			const tree: InstanceAiAgentNode = {
+				agentId: 'root',
+				role: 'orchestrator',
+				status: 'completed',
+				textContent: 'Answer',
+				reasoning: 'Old aggregate reasoning',
+				toolCalls: [],
+				children: [],
+				timeline: [{ type: 'text', content: 'Answer' }],
+			};
+
+			stateFromAgentTree(tree);
+
+			expect(tree.timeline).toEqual([
+				{ type: 'reasoning', content: 'Old aggregate reasoning' },
+				{ type: 'text', content: 'Answer' },
+			]);
+		});
+	});
+
+	describe('normalizeLegacyReasoningTimeline', () => {
+		it('copies aggregate reasoning into an empty timeline once', () => {
+			const node: InstanceAiAgentNode = {
+				agentId: 'root',
+				role: 'orchestrator',
+				status: 'completed',
+				textContent: '',
+				reasoning: 'Legacy reasoning',
+				toolCalls: [],
+				children: [],
+				timeline: [],
+			};
+
+			normalizeLegacyReasoningTimeline(node);
+
+			expect(node.timeline).toEqual([{ type: 'reasoning', content: 'Legacy reasoning' }]);
+		});
+
+		it('is a no-op when the timeline already has reasoning entries', () => {
+			const timeline: InstanceAiTimelineEntry[] = [{ type: 'reasoning', content: 'Already here' }];
+			const node: InstanceAiAgentNode = {
+				agentId: 'root',
+				role: 'orchestrator',
+				status: 'completed',
+				textContent: '',
+				reasoning: 'Legacy reasoning',
+				toolCalls: [],
+				children: [],
+				timeline,
+			};
+
+			normalizeLegacyReasoningTimeline(node);
+
+			expect(node.timeline).toEqual([{ type: 'reasoning', content: 'Already here' }]);
+		});
+
+		it('preserves legacy reasoning when a resumed run appends new timeline reasoning', () => {
+			const tree: InstanceAiAgentNode = {
+				agentId: 'root',
+				role: 'orchestrator',
+				status: 'completed',
+				textContent: '',
+				reasoning: 'Old aggregate reasoning',
+				toolCalls: [],
+				children: [],
+				timeline: [],
+			};
+			const state = stateFromAgentTree(tree)!;
+
+			reduceEvent(state, makeRunStart('run-2', 'root'));
+			reduceEvent(state, makeReasoningDelta('run-2', 'root', 'New reasoning', 'resp-2'));
+
+			expect(tree.timeline).toEqual([
+				{ type: 'reasoning', content: 'Old aggregate reasoning' },
+				{ type: 'reasoning', content: 'New reasoning', responseId: 'resp-2' },
+			]);
+		});
+
+		it('normalizes nested child nodes via normalizeAgentTree', () => {
+			const child: InstanceAiAgentNode = {
+				agentId: 'sub-1',
+				role: 'builder',
+				status: 'completed',
+				textContent: '',
+				reasoning: 'Child reasoning',
+				toolCalls: [],
+				children: [],
+				timeline: [],
+			};
+			const tree: InstanceAiAgentNode = {
+				agentId: 'root',
+				role: 'orchestrator',
+				status: 'completed',
+				textContent: '',
+				reasoning: '',
+				toolCalls: [],
+				children: [child],
+				timeline: [],
+			};
+
+			normalizeAgentTree(tree);
+
+			expect(child.timeline).toEqual([{ type: 'reasoning', content: 'Child reasoning' }]);
 		});
 	});
 });
