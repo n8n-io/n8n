@@ -35,15 +35,17 @@ describe('VectorStore — configuration validation', () => {
 });
 
 describe('VectorStore — search()', () => {
-	it('embeds the query and calls backend.query with default topK', async () => {
+	it('embeds the query and calls backend.query with resolved topK', async () => {
 		const backend = makeBackend();
 		const vectorStore = new VectorStore('kb')
 			.store(backend)
 			.embeddingModel(makeEmbeddingModel([1, 2, 3]));
 
 		await vectorStore.search('hello');
-
 		expect(backend.query).toHaveBeenCalledWith([1, 2, 3], { topK: 4 });
+
+		await vectorStore.search('hello', { topK: 10 });
+		expect(backend.query).toHaveBeenLastCalledWith([1, 2, 3], { topK: 10 });
 	});
 
 	it('returns the results from the backend', async () => {
@@ -52,15 +54,6 @@ describe('VectorStore — search()', () => {
 		const vectorStore = new VectorStore('kb').store(backend).embeddingModel(makeEmbeddingModel());
 
 		await expect(vectorStore.search('hello')).resolves.toEqual(results);
-	});
-
-	it('passes an overridden topK through to backend.query', async () => {
-		const backend = makeBackend();
-		const vectorStore = new VectorStore('kb').store(backend).embeddingModel(makeEmbeddingModel());
-
-		await vectorStore.search('hello', { topK: 10 });
-
-		expect(backend.query).toHaveBeenCalledWith([1, 0, 0], { topK: 10 });
 	});
 
 	it('calls ensureReady only once across multiple searches', async () => {
@@ -106,29 +99,20 @@ describe('VectorStore — addDocuments()', () => {
 		expect(ids[0]).not.toBe('explicit-id');
 	});
 
-	it('upserts records with embeddings and provided metadata', async () => {
+	it('upserts records with embeddings, provided metadata, and a default of {}', async () => {
 		const backend = makeBackend();
 		const vectorStore = new VectorStore('kb')
 			.store(backend)
 			.embeddingModel(makeEmbeddingModel([1, 0, 0]));
 
-		const ids = await vectorStore.addDocuments([{ content: 'hello', metadata: { topic: 'a' } }]);
+		const ids = await vectorStore.addDocuments([
+			{ content: 'hello', metadata: { topic: 'a' } },
+			{ content: 'world' },
+		]);
 
 		expect(backend.upsert).toHaveBeenCalledWith([
 			{ id: ids[0], vector: [1, 0, 0], content: 'hello', metadata: { topic: 'a' } },
-		]);
-	});
-
-	it('defaults metadata to {} when not provided', async () => {
-		const backend = makeBackend();
-		const vectorStore = new VectorStore('kb')
-			.store(backend)
-			.embeddingModel(makeEmbeddingModel([1, 0, 0]));
-
-		await vectorStore.addDocuments([{ content: 'hello' }]);
-
-		expect(backend.upsert).toHaveBeenCalledWith([
-			expect.objectContaining({ content: 'hello', metadata: {} }),
+			{ id: ids[1], vector: [1, 0, 0], content: 'world', metadata: {} },
 		]);
 	});
 });
