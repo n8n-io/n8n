@@ -74,6 +74,17 @@ function makeNode(overrides: Partial<NodeJSON> = {}): NodeJSON {
 	} as NodeJSON;
 }
 
+/**
+ * The n8n Connect managed credential as written onto a node — `id` is `null`,
+ * which NodeJSON's credential slot (`id?: string`) doesn't model. Cast at this
+ * one boundary so the fixtures below stay readable.
+ */
+const MANAGED_NODE_CREDENTIAL = {
+	id: null,
+	name: 'n8n Connect',
+	__aiGatewayManaged: true,
+} as unknown as NonNullable<NodeJSON['credentials']>[string];
+
 function makeWorkflow(nodes: NodeJSON[], connections: Record<string, unknown> = {}): WorkflowJSON {
 	return { nodes, connections } as unknown as WorkflowJSON;
 }
@@ -861,7 +872,7 @@ describe('validateWorkflowConfig', () => {
 				isAiGatewayCredentialType: vi.fn().mockResolvedValue(false),
 			});
 			const node = makeNode({
-				credentials: { telegramApi: { id: null, name: 'n8n Connect', __aiGatewayManaged: true } },
+				credentials: { telegramApi: MANAGED_NODE_CREDENTIAL },
 			});
 
 			const result = await validateWorkflowConfig(context, {
@@ -889,7 +900,7 @@ describe('validateWorkflowConfig', () => {
 			const node = makeNode({
 				typeVersion: 2,
 				credentials: {
-					telegramApi: { id: null, name: 'n8n Connect', __aiGatewayManaged: true },
+					telegramApi: MANAGED_NODE_CREDENTIAL,
 				},
 			});
 
@@ -915,7 +926,7 @@ describe('validateWorkflowConfig', () => {
 			const node = makeNode({
 				parameters: { resource: 'message', operation: 'deleteMessage' },
 				credentials: {
-					telegramApi: { id: null, name: 'n8n Connect', __aiGatewayManaged: true },
+					telegramApi: MANAGED_NODE_CREDENTIAL,
 				},
 			});
 
@@ -938,7 +949,7 @@ describe('validateWorkflowConfig', () => {
 			const node = makeNode({
 				parameters: { baseURL: 'https://proxy.example.com/v1' },
 				credentials: {
-					telegramApi: { id: null, name: 'n8n Connect', __aiGatewayManaged: true },
+					telegramApi: MANAGED_NODE_CREDENTIAL,
 				},
 			});
 
@@ -967,7 +978,7 @@ describe('validateWorkflowConfig', () => {
 				typeVersion: 1,
 				parameters: { resource: 'message', operation: 'sendMessage' },
 				credentials: {
-					telegramApi: { id: null, name: 'n8n Connect', __aiGatewayManaged: true },
+					telegramApi: MANAGED_NODE_CREDENTIAL,
 				},
 			});
 
@@ -997,7 +1008,7 @@ describe('validateWorkflowConfig', () => {
 				typeVersion: 2,
 				parameters: { resource: 'message', operation: 'deleteMessage', baseURL: 'https://x' },
 				credentials: {
-					telegramApi: { id: null, name: 'n8n Connect', __aiGatewayManaged: true },
+					telegramApi: MANAGED_NODE_CREDENTIAL,
 				},
 			});
 
