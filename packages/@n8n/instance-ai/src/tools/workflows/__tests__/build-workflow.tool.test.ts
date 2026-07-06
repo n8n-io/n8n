@@ -82,6 +82,13 @@ type BuildToolOutput = {
 		reason?: string;
 		guidance?: string;
 	};
+	postBuildFlow?: {
+		required: boolean;
+		skillId: string;
+		reason: string;
+		guidance: string;
+		instructions: string;
+	};
 	warnings?: string[];
 	errors?: string[];
 	remediation?: {
@@ -183,7 +190,28 @@ describe('createBuildWorkflowTool', () => {
 			workflowId: 'wf-1',
 			workflowName: 'Daily Weather to Slack',
 			workItemId: filePath,
+			postBuildFlow: {
+				required: true,
+				skillId: 'post-build-flow',
+				reason: 'direct-build-succeeded',
+			},
 		});
+		expect(result.postBuildFlow?.guidance).toContain(
+			'Follow the post-build instructions in `instructions` now',
+		);
+		expect(result.postBuildFlow?.instructions).toContain('# Post-Build Flow');
+		expect(result.postBuildFlow?.instructions).not.toContain('recommended_tools');
+		// Tag-turn-only sections are stripped from the inline copy.
+		expect(result.postBuildFlow?.instructions).not.toContain('## Verification follow-up');
+		expect(result.postBuildFlow?.instructions).not.toContain('## Setup follow-up');
+		expect(result.postBuildFlow?.instructions).not.toContain('## Credentials before build');
+		expect(result.postBuildFlow?.instructions).toContain('## After build-workflow succeeds');
+		expect(result.postBuildFlow?.guidance).toContain(
+			'then mocked/no-mock live-test when latest verification used mocks or simulations',
+		);
+		expect(result.postBuildFlow?.guidance).toContain(
+			'Do not replace the error-workflow opt-in with a generic add-anything',
+		);
 		expect(compileWorkflowSource).toHaveBeenCalledWith(context, filePath, source);
 		expect(context.workflowService.createFromWorkflowJSON).toHaveBeenCalledWith(
 			expect.objectContaining({ name: 'Daily Weather to Slack' }),
@@ -731,6 +759,7 @@ describe('createBuildWorkflowTool', () => {
 			workflowId: 'wf-1',
 			workItemId: 'wi-planned',
 		});
+		expect(result.postBuildFlow).toBeUndefined();
 		const storedOutcome = onBuildOutcome.mock.calls[0]?.[0] as WorkflowBuildOutcome | undefined;
 		expect(storedOutcome).toMatchObject({
 			workItemId: 'wi-planned',

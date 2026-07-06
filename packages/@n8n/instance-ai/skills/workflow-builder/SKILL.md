@@ -179,7 +179,13 @@ When mapping downstream fields from an OpenAI node, read
     the real n8n `workflowId` on the first `build-workflow` call so the file is
     bound to the saved workflow. Never pass local SDK workflow IDs as n8n
     workflow IDs.
-12. Finish with a concise completion message only when the build, required
+12. After a successful direct `build-workflow` result, if the tool output
+    contains `postBuildFlow.required: true`, follow the inlined
+    `postBuildFlow.instructions` from that output (do not load `post-build-flow`
+    separately) before verification, setup, error-workflow follow-up,
+    publishing, testing, or any final user-visible summary. Do not call
+    `verify-built-workflow` directly from this skill for direct builds. Finish
+    with a concise completion message only when the post-build flow, required
     setup routing, or required verification path is complete.
 
 Do not produce visible output until the final step, unless blocked.
@@ -188,9 +194,11 @@ Do not produce visible output until the final step, unless blocked.
 
 Use the current turn's higher-priority instructions to decide who verifies:
 
-- Direct existing-workflow edits: after `build-workflow` succeeds, follow the
-  orchestrator post-build flow. If `verificationReadiness.status === "ready"`,
-  call `verify-built-workflow` with the returned `workItemId` and `workflowId`.
+- Direct builds and existing-workflow edits: after `build-workflow` succeeds,
+  follow the inlined `postBuildFlow.instructions` when
+  `postBuildFlow.required: true` is present in the tool output. Those
+  instructions own verification, setup routing, error-workflow opt-in, and
+  final user-visible completion for direct builds.
 - Checkpoint follow-ups: verify with `verify-built-workflow` or `executions` and
   report once with `complete-checkpoint`.
 - Planned build follow-ups that explicitly say to stop after save: stop after a

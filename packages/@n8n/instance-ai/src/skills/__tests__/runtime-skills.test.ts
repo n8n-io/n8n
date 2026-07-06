@@ -143,6 +143,9 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain("newCredential('Credential Name', 'credential-id')");
 		expect(loaded?.instructions).toContain('Verification');
 		expect(loaded?.instructions).toContain('Build/save success is not workflow-quality evidence');
+		expect(loaded?.instructions).toContain('postBuildFlow.required: true');
+		expect(loaded?.instructions).toContain('follow the inlined\n    `postBuildFlow.instructions`');
+		expect(loaded?.instructions).toContain('Do not call\n    `verify-built-workflow` directly');
 		expect(loaded?.instructions).toContain('workflows(action="get-as-code", workflowId)');
 		expect(loaded?.instructions).toContain(
 			'knowledge-base/reference/workflow-builder-guardrails.md',
