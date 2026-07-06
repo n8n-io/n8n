@@ -839,6 +839,29 @@ export class AgentRuntime {
 		return this.runId;
 	}
 
+	/**
+	 * SKETCH (durable-log RFC, resilience phase): per-step checkpoint — the
+	 * completion of the "step boundary = durability boundary" rule. Call at the
+	 * end of each loop iteration (after tool results are appended to `list`,
+	 * before the next model call), gated on an opt-in runtime option so the
+	 * write cost is only paid where crash-resume matters. Reuses the
+	 * suspension state shape; pendingToolCalls is empty at a step boundary.
+	 */
+	private async persistStepCheckpoint(
+		list: AgentMessageList,
+		totalUsage: TokenUsage | undefined,
+		options: RuntimeExecutionOptions | undefined,
+	): Promise<void> {
+		const state: SerializableAgentState = {
+			persistence: options?.persistence,
+			status: 'running',
+			messageList: list.serialize(),
+			pendingToolCalls: {},
+			usage: totalUsage,
+		};
+		await this.runState.checkpointStep(this.runId, state);
+	}
+
 	/** Clean up stored state for a run when it finishes without re-suspending. */
 	private async cleanupRun(): Promise<void> {
 		await this.runState.complete(this.runId);
