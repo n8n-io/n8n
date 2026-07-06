@@ -137,20 +137,13 @@ function tscDecoratorTransform(): Plugin {
 	};
 }
 
-export default mergeConfig(
-	createVitestConfigWithDecorators({
-		// The n8n root jest.config sets `restoreMocks: true`, and most test files silently
-		// rely on it — omit this and mocks bleed between tests.
-		restoreMocks: true,
-	}),
-	{
-		plugins: [tscDecoratorTransform()],
-		test: {
-			// Vitest 4's default exclude is only node_modules/.git — it does NOT cover dist.
-			// Without this, compiled test files left in dist (tsc never deletes orphaned
-			// output) get collected and fail (CJS `require('vitest')`). The build also
-			// excludes test files now, but this guards against pre-existing stale artifacts.
-			exclude: [...configDefaults.exclude, '**/dist/**'],
-		},
+export default mergeConfig(createVitestConfigWithDecorators({}), {
+	plugins: [tscDecoratorTransform()],
+	test: {
+		// Vitest 4's default exclude is only node_modules/.git — it does NOT cover dist.
+		// Without this, compiled test files left in dist (tsc never deletes orphaned
+		// output) get collected and fail (CJS `require('vitest')`). The build also
+		// excludes test files now, but this guards against pre-existing stale artifacts.
+		exclude: [...configDefaults.exclude, '**/dist/**'],
 	},
-);
+});

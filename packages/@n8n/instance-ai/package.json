@@ -57,6 +57,7 @@
     "@langchain/anthropic": "catalog:",
     "@mozilla/readability": "catalog:",
     "@n8n/agents": "workspace:*",
+    "@n8n/ai-utilities": "workspace:*",
     "@n8n/api-types": "workspace:*",
     "@n8n/mcp-browser": "workspace:*",
     "@n8n/utils": "workspace:*",
@@ -86,7 +87,6 @@
   "devDependencies": {
     "@ai-sdk/anthropic": "catalog:",
     "@langchain/core": "catalog:",
-    "@n8n/ai-workflow-builder": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@types/luxon": "catalog:",
@@ -94,6 +94,7 @@
     "@types/turndown": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "tsx": "catalog:",
+    "vite": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:"
   },

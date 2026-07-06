@@ -128,6 +128,7 @@ export class InstanceAiTerminalResponseGuard {
 		}
 
 		if (status === 'cancelled') {
+			// A cancelled run needs no assistant placeholder: the stopped state is self-evident in the UI.
 			if (visibility.hasRootText || visibility.hasRootError) {
 				return {
 					status,
@@ -136,11 +137,12 @@ export class InstanceAiTerminalResponseGuard {
 					reason: 'already-visible',
 				};
 			}
-			return this.emitText(
+			return {
 				status,
-				'cancelled-silent',
-				'The run was cancelled before I could send a response.',
-			);
+				visibilitySource: 'none',
+				action: 'none',
+				reason: 'cancelled-silent',
+			};
 		}
 
 		if (visibility.hasRootError) {

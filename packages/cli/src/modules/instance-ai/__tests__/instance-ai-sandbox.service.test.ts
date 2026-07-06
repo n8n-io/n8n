@@ -113,11 +113,11 @@ describe('InstanceAiSandboxService', () => {
 		});
 
 		it('routes Daytona traffic through the assistant proxy when enabled', async () => {
-			const getBuilderApiProxyToken = vi.fn(async () => ({ accessToken: 'token-1' }));
+			const getInstanceAiApiProxyToken = vi.fn(async () => ({ accessToken: 'token-1' }));
 			const client = {
 				getSandboxProxyConfig: vi.fn(async () => ({ image: 'proxy-image' })),
 				getSandboxProxyBaseUrl: vi.fn(() => 'https://proxy.base'),
-				getBuilderApiProxyToken,
+				getInstanceAiApiProxyToken,
 			};
 			const { service } = createSandboxService({
 				config: { sandboxEnabled: true, sandboxProvider: 'daytona' },
@@ -138,7 +138,7 @@ describe('InstanceAiSandboxService', () => {
 			if (config.enabled && config.provider === 'daytona') {
 				const token = await config.getAuthToken?.();
 				expect(token).toBe('token-1');
-				expect(getBuilderApiProxyToken).toHaveBeenCalledWith(
+				expect(getInstanceAiApiProxyToken).toHaveBeenCalledWith(
 					{ id: fakeUser.id },
 					expect.objectContaining({ userMessageId: expect.any(String) }),
 				);

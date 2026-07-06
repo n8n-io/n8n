@@ -76,6 +76,13 @@ const ThinkingConfigSchema = z.object({
 	reasoningEffort: z.string().optional(),
 });
 
+// Mandatory for supporting providers (the user cannot disable it). Anthropic
+// exposes a cache-breakpoint TTL; OpenAI has no sub-config.
+export const PromptCachingConfigSchema = z.object({
+	enabled: z.boolean(),
+	anthropic: z.object({ ttl: z.enum(['5m', '1h']).optional() }).optional(),
+});
+
 const WebSearchConfigSchema = z.object({
 	enabled: z.boolean(),
 	provider: z.enum(['auto', 'native', 'brave', 'searxng']).optional(),
@@ -332,6 +339,7 @@ export const AgentJsonConfigSchema = z.object({
 	config: z
 		.object({
 			thinking: ThinkingConfigSchema.optional(),
+			promptCaching: PromptCachingConfigSchema.optional(),
 			webSearch: WebSearchConfigSchema.optional(),
 			toolCallConcurrency: z.number().int().min(1).max(100).optional(),
 			maxIterations: z

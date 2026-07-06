@@ -16,6 +16,12 @@ export interface BinaryCheckResult {
 	comment?: string;
 	/** Omitted = true. `false` = no subject in this workflow (excluded from pass-rate denominator). */
 	applicable?: boolean;
+	/**
+	 * `true` = the check could not be measured (e.g. judge timeout). Excluded
+	 * from the pass-rate denominator like N/A, but reported separately so
+	 * infra flakiness stays distinguishable from genuine inapplicability.
+	 */
+	errored?: boolean;
 }
 
 /**
@@ -87,7 +93,7 @@ export interface BinaryCheck {
 // Outcomes — projected per check after a run
 // ---------------------------------------------------------------------------
 
-export type CheckStatus = 'pass' | 'fail' | 'n_a';
+export type CheckStatus = 'pass' | 'fail' | 'n_a' | 'error';
 
 /** Per-run projection of a BinaryCheck result; surfaced in reports + LangSmith Feedback. */
 export interface CheckOutcome {

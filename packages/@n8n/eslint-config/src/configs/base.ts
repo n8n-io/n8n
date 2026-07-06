@@ -17,7 +17,6 @@ export const baseConfig = tseslint.config(
 		'dist/**',
 		'eslint.config.mjs',
 		'tsup.config.ts',
-		'jest.config.js',
 		'vite.config.ts',
 		'vitest.config.ts',
 	]),
@@ -352,7 +351,6 @@ export const baseConfig = tseslint.config(
 						'**/*.stories.ts',
 					],
 					optionalDependencies: false,
-					peerDependencies: false,
 				},
 			],
 

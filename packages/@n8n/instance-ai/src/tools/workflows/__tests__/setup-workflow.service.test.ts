@@ -1,3 +1,4 @@
+import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import type { WorkflowJSON, NodeJSON } from '@n8n/workflow-sdk';
 import type { Mock } from 'vitest';
 
@@ -285,6 +286,34 @@ describe('buildSetupRequests', () => {
 		const result = await buildSetupRequests(context, node);
 
 		expect(result[0].needsAction).toBe(false);
+	});
+
+	it('keeps AI Gateway-managed credentials complete without testing them', async () => {
+		(context.nodeService.getDescription as Mock).mockResolvedValue({
+			group: [],
+			credentials: [{ name: 'googlePalmApi' }],
+		});
+		(context.credentialService.list as Mock).mockResolvedValue([
+			{ id: 'cred-1', name: 'My Gemini', updatedAt: '2025-01-01T00:00:00.000Z' },
+		]);
+
+		const node = makeNode({
+			name: 'Gemini',
+			type: 'n8n-nodes-base.lmChatGoogleGemini',
+			credentials: {
+				googlePalmApi: { id: null, name: '', __aiGatewayManaged: true },
+			} as unknown as NodeJSON['credentials'],
+		});
+		const result = await buildSetupRequests(context, node);
+
+		expect(result[0].isAutoApplied).toBeFalsy();
+		expect(result[0].needsAction).toBe(false);
+		expect(result[0].node.credentials?.googlePalmApi).toEqual({
+			id: null,
+			name: '',
+			__aiGatewayManaged: true,
+		});
+		expect(context.credentialService.test).not.toHaveBeenCalled();
 	});
 
 	it('sets needsAction=true when credential test fails', async () => {
@@ -1122,6 +1151,24 @@ describe('applyNodeChanges', () => {
 		});
 	});
 
+	it('applies AI Gateway-managed credentials from the setup tag', async () => {
+		const node = makeNode({ name: 'Gemini', type: 'n8n-nodes-base.lmChatGoogleGemini' });
+		const wfJson = makeWorkflowJSON([node]);
+		(context.workflowService.getAsWorkflowJSON as Mock).mockResolvedValue(wfJson);
+		(context.workflowService.updateFromWorkflowJSON as Mock).mockResolvedValue(undefined);
+
+		const result = await applyNodeChanges(context, 'wf-1', {
+			Gemini: { googlePalmApi: AI_GATEWAY_MANAGED_TAG },
+		});
+
+		expect(result.applied).toEqual(['Gemini']);
+		expect(result.failed).toEqual([]);
+		expect(context.credentialService.get).not.toHaveBeenCalled();
+		expect(node.credentials).toEqual({
+			googlePalmApi: { id: null, name: '', __aiGatewayManaged: true },
+		});
+	});
+
 	it('persists merged parameter values into the saved workflow JSON', async () => {
 		// Regression: the FE was sending `nodeParameters` correctly on apply but
 		// the saved workflow still had the original (empty) parameter value.
@@ -1426,6 +1473,23 @@ describe('applyNodeCredentials — credential ownership revalidation', () => {
 		expect(result.applied).toEqual(['Slack']);
 		expect(result.failed).toEqual([]);
 		expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledWith('wf-1', wfJson);
+	});
+
+	it('applies AI Gateway-managed credentials from the setup tag', async () => {
+		const node = makeNode({ name: 'Gemini', type: 'n8n-nodes-base.lmChatGoogleGemini' });
+		const wfJson = makeWorkflowJSON([node]);
+		(context.workflowService.getAsWorkflowJSON as Mock).mockResolvedValue(wfJson);
+
+		const result = await applyNodeCredentials(context, 'wf-1', {
+			Gemini: { googlePalmApi: AI_GATEWAY_MANAGED_TAG },
+		});
+
+		expect(context.credentialService.get).not.toHaveBeenCalled();
+		expect(node.credentials).toEqual({
+			googlePalmApi: { id: null, name: '', __aiGatewayManaged: true },
+		});
+		expect(result.applied).toEqual(['Gemini']);
+		expect(result.failed).toEqual([]);
 	});
 
 	it('does not write a credential the user cannot access', async () => {

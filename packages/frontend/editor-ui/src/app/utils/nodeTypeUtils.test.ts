@@ -7,6 +7,7 @@ import {
 	getMainAuthField,
 	getThemedValue,
 	isResourceMapperFieldListStale,
+	isResourceMapperSchemaIncomplete,
 	parseResourceMapperFieldName,
 } from './nodeTypesUtils';
 import { mockNodeTypeDescription } from '@/__tests__/mocks';
@@ -123,6 +124,45 @@ describe('getThemedValue', () => {
 	});
 	it('should return the value if it is an object', () => {
 		expect(getThemedValue({ light: 'test', dark: 'test2' }, 'light')).toBe('test');
+	});
+});
+
+describe('isResourceMapperSchemaIncomplete', () => {
+	// A field as produced by a real loader, which always populates readOnly/removed.
+	const loadedField: ResourceMapperField = {
+		id: 'test',
+		displayName: 'test',
+		required: false,
+		defaultMatch: false,
+		display: true,
+		type: 'string',
+		readOnly: false,
+		removed: false,
+	};
+
+	it('returns false for a fully loaded schema', () => {
+		expect(isResourceMapperSchemaIncomplete([loadedField])).toBe(false);
+	});
+
+	it('returns false for an empty schema', () => {
+		expect(isResourceMapperSchemaIncomplete([])).toBe(false);
+	});
+
+	it('returns true when a field is missing readOnly', () => {
+		const { readOnly: _omit, ...authoredField } = loadedField;
+		expect(isResourceMapperSchemaIncomplete([authoredField])).toBe(true);
+	});
+
+	it('returns true when a field is missing removed', () => {
+		const { removed: _omit, ...authoredField } = loadedField;
+		expect(isResourceMapperSchemaIncomplete([authoredField])).toBe(true);
+	});
+
+	it('returns true when any field in the schema is incomplete', () => {
+		const { readOnly: _omit, ...authoredField } = loadedField;
+		expect(isResourceMapperSchemaIncomplete([loadedField, { ...authoredField, id: 'test2' }])).toBe(
+			true,
+		);
 	});
 });
 
