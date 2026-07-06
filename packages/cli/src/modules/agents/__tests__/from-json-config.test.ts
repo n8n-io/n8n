@@ -319,7 +319,6 @@ describe('buildFromJson()', () => {
 			skillId: 'summarize_notes',
 			name: 'Summarize notes',
 			content: 'Extract decisions and action items.',
-			instructions: 'Extract decisions and action items.',
 			linkedFiles: {
 				references: [
 					{
