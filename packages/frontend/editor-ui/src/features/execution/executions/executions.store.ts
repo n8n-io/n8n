@@ -58,9 +58,6 @@ export const useExecutionsStore = defineStore('executions', () => {
 
 	const executionsById = ref<Record<string, ExecutionSummaryWithScopes>>({});
 	const executionsCount = ref(0);
-	// Pagination bound: whether more executions can be loaded. Derived from page
-	// fullness rather than `executionsCount`, which on Postgres can be an inflated
-	// whole-table estimate for large tables and would drive endless empty fetches.
 	const hasMoreExecutions = ref(true);
 	const concurrentExecutionsCount = ref(0);
 	const executions = computed(() => {
