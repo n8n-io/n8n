@@ -11,6 +11,7 @@
 // PD denotes that the node has pinned data
 
 import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import pick from 'lodash/pick';
 import type {
 	ExecutionBaseError,
@@ -34,8 +35,7 @@ import type {
 	IDestinationNode,
 } from 'n8n-workflow';
 import {
-	ApplicationError,
-	createDeferredPromise,
+	UnexpectedError,
 	createRunExecutionData,
 	NodeApiError,
 	NodeConnectionTypes,
@@ -145,7 +145,7 @@ describe('WorkflowExecute', () => {
 				// Check if the output data of the nodes is correct
 				for (const nodeName of Object.keys(testData.output.nodeData)) {
 					if (result.data.resultData.runData[nodeName] === undefined) {
-						throw new ApplicationError('Data for node is missing', { extra: { nodeName } });
+						throw new UnexpectedError('Data for node is missing', { extra: { nodeName } });
 					}
 
 					const resultData = result.data.resultData.runData[nodeName].map((nodeData) => {
@@ -218,7 +218,7 @@ describe('WorkflowExecute', () => {
 				// Check if the output data of the nodes is correct
 				for (const nodeName of Object.keys(testData.output.nodeData)) {
 					if (result.data.resultData.runData[nodeName] === undefined) {
-						throw new ApplicationError('Data for node is missing', { extra: { nodeName } });
+						throw new UnexpectedError('Data for node is missing', { extra: { nodeName } });
 					}
 
 					const resultData = result.data.resultData.runData[nodeName].map((nodeData) => {

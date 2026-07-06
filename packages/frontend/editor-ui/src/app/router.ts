@@ -6,7 +6,7 @@ import type {
 	RouteLocationNormalized,
 } from 'vue-router';
 import { createRouter, createWebHistory, isNavigationFailure, RouterView } from 'vue-router';
-import { generateNanoId } from '@n8n/utils';
+import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
@@ -835,7 +835,7 @@ export const routes: RouteRecordRaw[] = [
 					middleware: ['authenticated', 'rbac'],
 					middlewareOptions: {
 						rbac: {
-							scope: ['role:manage'],
+							scope: ['role:manage', 'role:manageProject'],
 						},
 					},
 					telemetry: {
@@ -933,7 +933,7 @@ export const routes: RouteRecordRaw[] = [
 					middleware: ['authenticated', 'rbac'],
 					middlewareOptions: {
 						rbac: {
-							scope: ['role:manage'],
+							scope: ['role:manage', 'role:manageProject'],
 						},
 					},
 					telemetry: {

@@ -10,7 +10,7 @@ import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 import { Cipher } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 
@@ -268,12 +268,7 @@ export class SlackAppSetupService {
 				syncIntegrations: false,
 			},
 		);
-		await this.chatIntegrationService.connect(
-			session.agentId,
-			integration,
-			session.userId,
-			session.projectId,
-		);
+		await this.chatIntegrationService.connect(session.agentId, integration, session.projectId);
 		await this.chatIntegrationService.broadcastIntegrationChange(
 			session.agentId,
 			integration,

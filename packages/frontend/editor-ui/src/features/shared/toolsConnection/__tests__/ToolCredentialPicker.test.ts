@@ -19,6 +19,7 @@ function makeAdapter(credentials: PickableCredential[]): ToolConnectionCredentia
 	return {
 		getCredentialsByType: (authType) => credentials.filter((c) => c.type === authType),
 		openNewCredential: () => {},
+		openExistingCredential: () => {},
 	};
 }
 

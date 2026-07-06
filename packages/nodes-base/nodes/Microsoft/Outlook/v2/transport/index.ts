@@ -8,23 +8,59 @@ import type {
 	INodeExecutionData,
 	IPollFunctions,
 } from 'n8n-workflow';
+import { isResourceLocatorValue } from 'n8n-workflow';
 
-import { prepareApiError } from '../helpers/utils';
+import { prepareApiError, validateMailbox } from '../helpers/utils';
 
-export type OutlookCredentialType = 'microsoftOutlookOAuth2Api' | 'microsoftOAuth2Api';
+export type OutlookCredentialType =
+	| 'microsoftOutlookOAuth2Api'
+	| 'microsoftOAuth2Api'
+	| 'microsoftEntraServicePrincipalApi';
 
 /**
  * Resolves which credential type the node is configured to use. Defaults to the
  * node-specific `microsoftOutlookOAuth2Api` so existing workflows (and nodes
  * without the `authentication` selector) keep working unchanged, while allowing
- * the generic `microsoftOAuth2Api` (Graph) credential to be selected.
+ * the generic `microsoftOAuth2Api` (Graph) credential or the app-only
+ * `microsoftEntraServicePrincipalApi` credential to be selected.
  */
 export function getOutlookCredentialType(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
 ): OutlookCredentialType {
-	return this.getNodeParameter('authentication', 0) === 'microsoftOAuth2Api'
-		? 'microsoftOAuth2Api'
-		: 'microsoftOutlookOAuth2Api';
+	const authentication = this.getNodeParameter('authentication', 0);
+	if (authentication === 'microsoftOAuth2Api') return 'microsoftOAuth2Api';
+	if (authentication === 'microsoftEntraServicePrincipalApi')
+		return 'microsoftEntraServicePrincipalApi';
+	return 'microsoftOutlookOAuth2Api';
+}
+
+/**
+ * Resolves the mailbox the request should target. Returns `undefined` for OAuth2
+ * (which uses `/me` or the credential's shared mailbox). For the Service Principal
+ * credential, app-only Graph has no `/me`, so the node's `mailbox` parameter is
+ * read, validated, and returned as the bare (un-encoded) UPN/ID.
+ *
+ * The mailbox is read at the fixed item index 0 and treated as a per-node constant
+ * for the whole run — the same contract as the `authentication` selector. Encoding
+ * happens once at the URL-build site in `microsoftApiRequest`.
+ */
+export function resolveMailbox(
+	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
+	credentialType: OutlookCredentialType,
+): string | undefined {
+	if (credentialType !== 'microsoftEntraServicePrincipalApi') return undefined;
+	// Read at item index 0 (per-node constant, same as the `authentication` selector).
+	// loadOptions' getNodeParameter has no itemIndex arg (execute/poll do), so the
+	// { extractValue: true } overload can't be shared across all three contexts.
+	// Read the raw param and take the id-mode RLC value directly (this RLC has no
+	// extractValue regex, so .value is already the bare mailbox id).
+	const raw = this.getNodeParameter('mailbox', 0);
+	const value = isResourceLocatorValue(raw) ? raw.value : raw;
+	// A non-string or whitespace-only value collapses to '', which validateMailbox
+	// reports as the "mailbox required" error (not "not valid").
+	const mailbox = (typeof value === 'string' ? value : '').trim();
+	validateMailbox(mailbox, this.getNode());
+	return mailbox;
 }
 
 export async function microsoftApiRequest(
@@ -46,10 +82,19 @@ export async function microsoftApiRequest(
 			: 'https://graph.microsoft.com'
 	).replace(/\/+$/, '');
 
-	let apiUrl = `${baseUrl}/v1.0/me${resource}`;
-	// If accessing shared mailbox
-	if (credentials.useShared && credentials.userPrincipalName) {
+	const mailbox = resolveMailbox.call(this, credentialType);
+
+	let apiUrl: string;
+	if (mailbox !== undefined) {
+		// Service Principal (app-only): target the chosen mailbox. The single
+		// encodeURIComponent call lives here; the value was already validated.
+		apiUrl = `${baseUrl}/v1.0/users/${encodeURIComponent(mailbox)}${resource}`;
+	} else if (credentials.useShared && credentials.userPrincipalName) {
+		// OAuth2 accessing a shared mailbox (existing behavior).
 		apiUrl = `${baseUrl}/v1.0/users/${credentials.userPrincipalName}${resource}`;
+	} else {
+		// OAuth2 default (existing behavior).
+		apiUrl = `${baseUrl}/v1.0/me${resource}`;
 	}
 
 	const options: IRequestOptions = {

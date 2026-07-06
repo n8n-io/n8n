@@ -1,5 +1,6 @@
 import { Container } from '@n8n/di';
-import { ensureError, setGlobalState } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { setGlobalState } from 'n8n-workflow';
 
 import { MainConfig } from './config/main-config';
 import type { HealthCheckServer } from './health-check-server';

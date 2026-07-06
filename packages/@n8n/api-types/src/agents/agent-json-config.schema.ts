@@ -1,11 +1,18 @@
 import { z, type ZodError } from 'zod';
 
 import { AgentIntegrationConfigSchema } from './agent-integration.schema';
+/**
+ * Regex for valid custom tool ids. Shared with the backend service layer
+ * so validation stays in sync with the JSON config schema.
+ */
+export const CUSTOM_TOOL_ID_REGEX = /^[A-Za-z0-9_]+$/;
 import {
 	SUB_AGENT_MAX_CHILDREN_DEFAULT,
 	SUB_AGENT_MAX_CHILDREN_MAX,
 	SUB_AGENT_MAX_CHILDREN_MIN,
 } from './sub-agent.schema';
+
+export const MANAGED_CREDENTIAL_TOKEN = 'managed' as const;
 
 export const AgentModelSchema = z
 	.string()
@@ -20,9 +27,15 @@ export const AgentModelSchema = z
 		'Model must be "provider/model-name" format (e.g. "anthropic/claude-sonnet-4-5" or "openrouter/amazon/nova-micro-v1")',
 	);
 
+const CredentialIdSchema = z.string().trim();
+const EpisodicMemoryCredentialSchema = z.union([
+	z.literal(MANAGED_CREDENTIAL_TOKEN),
+	CredentialIdSchema,
+]);
+
 const MemoryWorkerModelSchema = z.object({
 	model: AgentModelSchema,
-	credential: z.string().trim(),
+	credential: CredentialIdSchema,
 });
 
 const ObservationalMemoryConfigSchema = z.object({
@@ -42,7 +55,7 @@ const EpisodicMemoryConfigSchema = z.discriminatedUnion('enabled', [
 	}),
 	z.object({
 		enabled: z.literal(true),
-		credential: z.string().trim(),
+		credential: EpisodicMemoryCredentialSchema,
 		extractorModel: MemoryWorkerModelSchema.optional(),
 		reflectorModel: MemoryWorkerModelSchema.optional(),
 		topK: z.number().int().min(1).max(100).optional(),
@@ -63,11 +76,60 @@ const ThinkingConfigSchema = z.object({
 	reasoningEffort: z.string().optional(),
 });
 
+// Mandatory for supporting providers (the user cannot disable it). Anthropic
+// exposes a cache-breakpoint TTL; OpenAI has no sub-config.
+export const PromptCachingConfigSchema = z.object({
+	enabled: z.boolean(),
+	anthropic: z.object({ ttl: z.enum(['5m', '1h']).optional() }).optional(),
+});
+
 const WebSearchConfigSchema = z.object({
 	enabled: z.boolean(),
 	provider: z.enum(['auto', 'native', 'brave', 'searxng']).optional(),
 	credential: z.string().optional(),
 });
+
+const HexColorSchema = z.string().regex(/^#[0-9A-Fa-f]{6}$/);
+
+export const DEFAULT_AGENT_PERSONALISATION = {
+	icon: 'bot',
+	gradient: {
+		from: '#FF1500',
+		to: '#FF6900',
+		angle: 135,
+		fromStop: 0,
+		toStop: 100,
+	},
+} as const;
+
+const AgentPersonalisationGradientSchema = z
+	.object({
+		from: HexColorSchema,
+		to: HexColorSchema,
+		angle: z.number().int().min(0).max(359).default(DEFAULT_AGENT_PERSONALISATION.gradient.angle),
+		fromStop: z
+			.number()
+			.int()
+			.min(0)
+			.max(45)
+			.default(DEFAULT_AGENT_PERSONALISATION.gradient.fromStop),
+		toStop: z
+			.number()
+			.int()
+			.min(55)
+			.max(100)
+			.default(DEFAULT_AGENT_PERSONALISATION.gradient.toStop),
+	})
+	.strict();
+
+const AgentPersonalisationConfigSchema = z
+	.object({
+		icon: z.string().trim().min(1).max(64),
+		gradient: AgentPersonalisationGradientSchema.default(() => ({
+			...DEFAULT_AGENT_PERSONALISATION.gradient,
+		})),
+	})
+	.strict();
 
 export const SUB_AGENT_USE_WHEN_MAX_LENGTH = 512;
 
@@ -240,10 +302,7 @@ export const McpServerConfigSchema = z
 const AgentJsonToolConfigSchema = z.discriminatedUnion('type', [
 	z.object({
 		type: z.literal('custom'),
-		id: z
-			.string()
-			.min(1)
-			.regex(/^[A-Za-z0-9_-]+$/),
+		id: z.string().min(1).regex(CUSTOM_TOOL_ID_REGEX),
 		requireApproval: z.boolean().optional(),
 	}),
 	z
@@ -276,10 +335,40 @@ export const AgentJsonConfigSchema = z.object({
 	model: DraftAgentModelSchema,
 	credential: z.string().optional(),
 	instructions: z.string(),
+	personalisation: AgentPersonalisationConfigSchema.optional(),
 	memory: MemoryConfigSchema.optional(),
 	subAgents: SubAgentsConfigSchema.optional(),
-	tools: z.array(AgentJsonToolConfigSchema).optional(),
-	skills: z.array(AgentJsonSkillConfigSchema).optional(),
+	tools: z
+		.array(AgentJsonToolConfigSchema)
+		.superRefine((tools, ctx) => {
+			const customIds = tools.filter((t) => t.type === 'custom').map((t) => t.id);
+			const seen = new Set<string>();
+			for (const id of customIds) {
+				if (seen.has(id)) {
+					ctx.addIssue({
+						code: z.ZodIssueCode.custom,
+						message: `Duplicate custom tool id: "${id}"`,
+					});
+				}
+				seen.add(id);
+			}
+		})
+		.optional(),
+	skills: z
+		.array(AgentJsonSkillConfigSchema)
+		.superRefine((skills, ctx) => {
+			const seen = new Set<string>();
+			for (const skill of skills) {
+				if (seen.has(skill.id)) {
+					ctx.addIssue({
+						code: z.ZodIssueCode.custom,
+						message: `Duplicate skill id: "${skill.id}"`,
+					});
+				}
+				seen.add(skill.id);
+			}
+		})
+		.optional(),
 	tasks: z.array(AgentJsonTaskConfigSchema).optional(),
 	providerTools: z.record(z.record(z.unknown())).optional(),
 	integrations: z.array(AgentIntegrationConfigSchema).optional(),
@@ -293,6 +382,7 @@ export const AgentJsonConfigSchema = z.object({
 	config: z
 		.object({
 			thinking: ThinkingConfigSchema.optional(),
+			promptCaching: PromptCachingConfigSchema.optional(),
 			webSearch: WebSearchConfigSchema.optional(),
 			toolCallConcurrency: z.number().int().min(1).max(100).optional(),
 			maxIterations: z
@@ -326,6 +416,7 @@ export type AgentJsonCustomToolConfig = Extract<AgentJsonToolConfig, { type: 'cu
 export type AgentJsonSkillConfig = z.infer<typeof AgentJsonSkillConfigSchema>;
 export type AgentJsonTaskConfig = z.infer<typeof AgentJsonTaskConfigSchema>;
 export type AgentJsonMemoryConfig = z.infer<typeof MemoryConfigSchema>;
+export type AgentPersonalisationConfig = z.infer<typeof AgentPersonalisationConfigSchema>;
 export type NodeToolConfig = z.infer<typeof NodeConfigSchema>;
 export type AgentJsonMcpServerConfig = z.infer<typeof McpServerConfigSchema>;
 export type McpAuthenticationSchemaType = z.infer<typeof McpAuthenticationSchemaTypes>;

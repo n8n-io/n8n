@@ -98,6 +98,7 @@ export interface FrontendSettings {
 	timezone: string;
 	urlBaseWebhook: string;
 	urlBaseEditor: string;
+	urlBaseWebhookTest: string;
 	versionCli: string;
 	nodeJsVersion: string;
 	nodeEnv: string | undefined;
@@ -166,6 +167,7 @@ export interface FrontendSettings {
 	};
 	workflowTagsDisabled: boolean;
 	workflowsAutosaveDisabled: boolean;
+	useWorkflowPublicationService: boolean;
 	logLevel: LogLevel;
 	hiringBannerEnabled: boolean;
 	previewMode: boolean;
@@ -272,6 +274,7 @@ export type FrontendModuleSettings = {
 		summary: boolean;
 		dashboard: boolean;
 		dateRanges: InsightsDateRange[];
+		earliestDataDate: string | null;
 	};
 
 	/**
@@ -300,6 +303,7 @@ export type FrontendModuleSettings = {
 	'instance-ai'?: {
 		enabled: boolean;
 		localGatewayDisabled: boolean;
+		browserUseEnabled: boolean;
 		proxyEnabled: boolean;
 		cloudManaged: boolean;
 		sandboxEnabled: boolean;

@@ -28,12 +28,12 @@ import type { FindOptionsWhere, EntityManager } from '@n8n/typeorm';
 import { In } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
 
-import { OwnershipService } from './ownership.service';
-import { RoleService } from './role.service';
-
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+
+import { OwnershipService } from './ownership.service';
+import { RoleService } from './role.service';
 
 export class TeamProjectOverQuotaError extends UserError {
 	constructor(limit: number) {
@@ -236,7 +236,7 @@ export class ProjectService {
 			const agents = await agentRepository.findByProjectId(project.id);
 			for (const agent of agents) {
 				try {
-					await agentKnowledgeService.deleteAllFilesForAgent(project.id, agent.id, user.id);
+					await agentKnowledgeService.deleteAllFilesForAgent(project.id, agent.id);
 				} catch (error) {
 					this.logger.warn('Failed to delete knowledge files on project delete', {
 						agentId: agent.id,
@@ -244,6 +244,8 @@ export class ProjectService {
 						error: error instanceof Error ? error.message : error,
 					});
 				}
+
+				await agentKnowledgeService.destroySandbox(project.id, agent.id);
 			}
 		}
 
@@ -711,6 +713,33 @@ export class ProjectService {
 			select: ['id'],
 		});
 		return projects.map((p) => p.id);
+	}
+
+	async findProjectsByIdsForUser(
+		user: User,
+		projectIds: string[],
+		scopes: Scope[],
+	): Promise<Project[]> {
+		if (projectIds.length === 0) {
+			return [];
+		}
+
+		const where: FindOptionsWhere<Project> = {
+			id: In(projectIds),
+		};
+
+		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
+			const projectRoles = await this.roleService.rolesWithScope('project', scopes);
+			where.projectRelations = {
+				role: In(projectRoles),
+				userId: user.id,
+			};
+		}
+
+		return await this.projectRepository.find({
+			where,
+			order: { createdAt: 'ASC', id: 'ASC' },
+		});
 	}
 
 	/**

@@ -116,6 +116,26 @@ describe('OutputRedactor', () => {
 		expect(JSON.stringify(out)).not.toContain('abcdef1234567890');
 	});
 
+	it('leaves upstream browser redaction markers intact in a tool-result', () => {
+		const redactor = createRedactor();
+		const event: InstanceAiEvent = {
+			type: 'tool-result',
+			runId: 'run-1',
+			agentId: 'agent-1',
+			payload: {
+				toolCallId: 'tc-1',
+				result: {
+					snapshot: 'Client Secret [REDACTED:secret:1] Signing Secret [REDACTED:secret:2]',
+				},
+			},
+		};
+		const [out] = redactor.processEvent(event);
+		const serialized = JSON.stringify(out);
+		expect(serialized).not.toContain('[REDACTED:[REDACTED');
+		expect(serialized).toContain('[REDACTED:secret:1]');
+		expect(serialized).toContain('[REDACTED:secret:2]');
+	});
+
 	it('redacts confirmation card display text', () => {
 		const redactor = createRedactor(createLogger(), { detect: ['email'] });
 		const event: InstanceAiEvent = {

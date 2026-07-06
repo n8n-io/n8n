@@ -61,8 +61,13 @@ jobs:
       # for every backend package that hasn't yet added the script.
       # nodes-base is excluded too: it has its own (change-scoped) unit-test-nodes
       # job, so its `test:unit` script must only run in the full nightly, not here.
+      #
+      # --concurrency=2 bounds how many suites turbo runs at once. Combined with
+      # the in-CI per-suite cap (each vitest suite uses half the cores, see
+      # @n8n/vitest-config/node), peak forks ≈ 2 × 50% ≈ the core count, instead
+      # of ~10 concurrent suites each spawning a core-sized pool and pegging CPU.
       - name: Test Unit (backend, except cli and nodes-base)
-        run: pnpm turbo test:unit --continue --filter='!./packages/frontend/**' --filter='!n8n' --filter='!n8n-nodes-base' --summarize
+        run: pnpm turbo test:unit --continue --concurrency=2 --filter='!./packages/frontend/**' --filter='!n8n' --filter='!n8n-nodes-base' --summarize
 
       - name: Test Unit (cli, scoped)
         if: ${{ !cancelled() }}

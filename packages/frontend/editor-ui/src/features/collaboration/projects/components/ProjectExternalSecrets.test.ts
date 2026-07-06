@@ -380,6 +380,7 @@ describe('ProjectExternalSecrets', () => {
 				createdAt: '',
 				updatedAt: '',
 				relations: [],
+				rolesManaged: false,
 			});
 			const { queryByTestId } = renderComponent();
 			await vi.waitFor(() => {

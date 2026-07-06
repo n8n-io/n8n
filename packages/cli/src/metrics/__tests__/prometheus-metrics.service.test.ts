@@ -1,11 +1,13 @@
-/* eslint-disable @typescript-eslint/unbound-method -- jest mocks */
+/* eslint-disable @typescript-eslint/unbound-method -- vi mocks */
+import type { Mock, Mocked } from 'vitest';
 import type { Logger } from '@n8n/backend-common';
 import type express from 'express';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import promClient from 'prom-client';
 
 import type { PrometheusActiveWorkflowMetricsService } from '../prometheus/active-workflow-metrics.service';
 import type { PrometheusCacheMetricsService } from '../prometheus/cache-metrics.service';
+import type { PrometheusDbPoolMetricsService } from '../prometheus/db-pool-metrics.service';
 import type { PrometheusDefaultMetricsService } from '../prometheus/default-metrics.service';
 import type { PrometheusDnsCacheMetricsService } from '../prometheus/dns-cache-metrics.service';
 import type { PrometheusEventBusMetricsService } from '../prometheus/event-bus-metrics.service';
@@ -22,32 +24,35 @@ import type { PrometheusVersionMetricsService } from '../prometheus/version-metr
 import type { PrometheusWebhookAndFormMetricsService } from '../prometheus/webhook-and-form-metrics.service';
 import type { PrometheusWorkflowExecutionDurationMetricsService } from '../prometheus/workflow-execution-duration-metrics.service';
 import type { PrometheusWorkflowInfoMetricsService } from '../prometheus/workflow-info-metrics.service';
+import type { PrometheusWorkflowPublicationMetricsService } from '../prometheus/workflow-publication-metrics.service';
 import type { PrometheusWorkflowStatisticsMetricsService } from '../prometheus/workflow-statistics-metrics.service';
 
-jest.mock('prom-client');
+vi.mock('prom-client');
 
 describe('PrometheusMetricsService', () => {
-	let logger: jest.Mocked<Logger>;
-	let app: jest.Mocked<express.Application>;
+	let logger: Mocked<Logger>;
+	let app: Mocked<express.Application>;
 
-	let cache: jest.Mocked<PrometheusCacheMetricsService>;
-	let eventBus: jest.Mocked<PrometheusEventBusMetricsService>;
-	let queue: jest.Mocked<PrometheusQueueMetricsService>;
-	let route: jest.Mocked<PrometheusRouteMetricsService>;
-	let roleInstance: jest.Mocked<PrometheusInstanceRoleMetricsService>;
-	let activeWorkflow: jest.Mocked<PrometheusActiveWorkflowMetricsService>;
-	let workflowExecutionDuration: jest.Mocked<PrometheusWorkflowExecutionDurationMetricsService>;
-	let workflowStatistics: jest.Mocked<PrometheusWorkflowStatisticsMetricsService>;
-	let executionData: jest.Mocked<PrometheusExecutionDataMetricsService>;
-	let pss: jest.Mocked<PrometheusPssMetricsService>;
-	let version: jest.Mocked<PrometheusVersionMetricsService>;
-	let defaultMetrics: jest.Mocked<PrometheusDefaultMetricsService>;
-	let tokenExchange: jest.Mocked<PrometheusTokenExchangeMetricsService>;
-	let ssrf: jest.Mocked<PrometheusSsrfMetricsService>;
-	let dnsCache: jest.Mocked<PrometheusDnsCacheMetricsService>;
-	let webhook: jest.Mocked<PrometheusWebhookAndFormMetricsService>;
-	let workflowInfo: jest.Mocked<PrometheusWorkflowInfoMetricsService>;
-	let instanceAi: jest.Mocked<PrometheusInstanceAiMetricsService>;
+	let cache: Mocked<PrometheusCacheMetricsService>;
+	let eventBus: Mocked<PrometheusEventBusMetricsService>;
+	let queue: Mocked<PrometheusQueueMetricsService>;
+	let route: Mocked<PrometheusRouteMetricsService>;
+	let roleInstance: Mocked<PrometheusInstanceRoleMetricsService>;
+	let activeWorkflow: Mocked<PrometheusActiveWorkflowMetricsService>;
+	let workflowExecutionDuration: Mocked<PrometheusWorkflowExecutionDurationMetricsService>;
+	let workflowStatistics: Mocked<PrometheusWorkflowStatisticsMetricsService>;
+	let executionData: Mocked<PrometheusExecutionDataMetricsService>;
+	let pss: Mocked<PrometheusPssMetricsService>;
+	let version: Mocked<PrometheusVersionMetricsService>;
+	let defaultMetrics: Mocked<PrometheusDefaultMetricsService>;
+	let tokenExchange: Mocked<PrometheusTokenExchangeMetricsService>;
+	let ssrf: Mocked<PrometheusSsrfMetricsService>;
+	let dnsCache: Mocked<PrometheusDnsCacheMetricsService>;
+	let webhook: Mocked<PrometheusWebhookAndFormMetricsService>;
+	let workflowInfo: Mocked<PrometheusWorkflowInfoMetricsService>;
+	let instanceAi: Mocked<PrometheusInstanceAiMetricsService>;
+	let dbPool: Mocked<PrometheusDbPoolMetricsService>;
+	let workflowPublication: Mocked<PrometheusWorkflowPublicationMetricsService>;
 
 	let service: PrometheusMetricsService;
 
@@ -72,6 +77,8 @@ describe('PrometheusMetricsService', () => {
 			webhook,
 			workflowInfo,
 			instanceAi,
+			dbPool,
+			workflowPublication,
 		);
 
 	beforeEach(() => {
@@ -103,12 +110,14 @@ describe('PrometheusMetricsService', () => {
 		webhook = mock<PrometheusWebhookAndFormMetricsService>({ enabled: true });
 		workflowInfo = mock<PrometheusWorkflowInfoMetricsService>({ enabled: true });
 		instanceAi = mock<PrometheusInstanceAiMetricsService>({ enabled: true });
+		dbPool = mock<PrometheusDbPoolMetricsService>({ enabled: true });
+		workflowPublication = mock<PrometheusWorkflowPublicationMetricsService>({ enabled: true });
 
 		service = buildService();
 	});
 
 	afterEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	describe('init', () => {
@@ -133,12 +142,14 @@ describe('PrometheusMetricsService', () => {
 			expect(webhook.init).toHaveBeenCalledWith(app);
 			expect(workflowInfo.init).toHaveBeenCalledWith(app);
 			expect(instanceAi.init).toHaveBeenCalledWith(app);
+			expect(dbPool.init).toHaveBeenCalledWith(app);
+			expect(workflowPublication.init).toHaveBeenCalledWith(app);
 		});
 
 		it('should NOT call init on disabled collectors', () => {
-			jest.replaceProperty(cache, 'enabled', false);
-			jest.replaceProperty(queue, 'enabled', false);
-			jest.replaceProperty(pss, 'enabled', false);
+			vi.spyOn(cache, 'enabled', 'get').mockReturnValue(false);
+			vi.spyOn(queue, 'enabled', 'get').mockReturnValue(false);
+			vi.spyOn(pss, 'enabled', 'get').mockReturnValue(false);
 
 			service.init(app);
 
@@ -159,13 +170,14 @@ describe('PrometheusMetricsService', () => {
 
 		it('should return metrics string with correct content-type when /metrics handler is called', async () => {
 			const metricsString = '# HELP n8n_version_info\nn8n_version_info 1';
-			(promClient.register.metrics as jest.Mock).mockResolvedValue(metricsString);
-			(promClient.register as unknown as { contentType: string }).contentType =
-				'text/plain; version=0.0.4; charset=utf-8';
+			(promClient.register.metrics as Mock).mockResolvedValue(metricsString);
+			vi.spyOn(promClient.register, 'contentType', 'get').mockReturnValue(
+				'text/plain; version=0.0.4; charset=utf-8',
+			);
 
 			service.init(app);
 
-			const handler = (app.get as jest.Mock).mock.calls.find((c) => c[0] === '/metrics')?.[1];
+			const handler = (app.get as Mock).mock.calls.find((c) => c[0] === '/metrics')?.[1];
 			expect(handler).toBeDefined();
 
 			const req = mock<express.Request>();
@@ -185,7 +197,7 @@ describe('PrometheusMetricsService', () => {
 			service.init(app);
 
 			// Reset init call counts
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			app.get.mockClear();
 
 			service.init(app);
@@ -195,17 +207,17 @@ describe('PrometheusMetricsService', () => {
 			expect(version.init).not.toHaveBeenCalled();
 
 			// Logger warn should be called
-			expect((scopedLogger as jest.Mocked<Logger>).warn).toHaveBeenCalledWith(
+			expect((scopedLogger as Mocked<Logger>).warn).toHaveBeenCalledWith(
 				'The prometheus initialization should not be called twice.',
 			);
 		});
 
 		it('should handle a mix of enabled and disabled collectors correctly', () => {
-			jest.replaceProperty(cache, 'enabled', false);
-			jest.replaceProperty(queue, 'enabled', false);
-			jest.replaceProperty(defaultMetrics, 'enabled', false);
-			jest.replaceProperty(pss, 'enabled', false);
-			jest.replaceProperty(eventBus, 'enabled', false);
+			vi.spyOn(cache, 'enabled', 'get').mockReturnValue(false);
+			vi.spyOn(queue, 'enabled', 'get').mockReturnValue(false);
+			vi.spyOn(defaultMetrics, 'enabled', 'get').mockReturnValue(false);
+			vi.spyOn(pss, 'enabled', 'get').mockReturnValue(false);
+			vi.spyOn(eventBus, 'enabled', 'get').mockReturnValue(false);
 
 			service.init(app);
 

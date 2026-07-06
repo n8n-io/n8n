@@ -107,6 +107,18 @@ export class PrometheusMetricsConfig {
 	/** How often (in seconds) to refresh the workflow info metric cache. */
 	@Env('N8N_METRICS_WORKFLOW_INFO_METRIC_INTERVAL')
 	workflowInfoMetricInterval: number = 60;
+
+	/** Whether to include metrics for the database connection pool (size, usage, wait queue, acquire latency). */
+	@Env('N8N_METRICS_INCLUDE_DB_POOL_METRICS')
+	includeDbPoolMetrics: boolean = false;
+
+	/** Whether to include metrics for the workflow publication service (main instances only). */
+	@Env('N8N_METRICS_INCLUDE_WORKFLOW_PUBLICATION_METRICS')
+	includeWorkflowPublicationMetrics: boolean = false;
+
+	/** How often (in seconds) to refresh the cached workflow publication outbox gauges. */
+	@Env('N8N_METRICS_WORKFLOW_PUBLICATION_METRIC_INTERVAL')
+	workflowPublicationMetricInterval: number = 60;
 }
 
 @Config

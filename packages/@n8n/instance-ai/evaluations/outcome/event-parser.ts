@@ -2,8 +2,9 @@
 // Event parsing: extract outcome and metrics from captured SSE events
 // ---------------------------------------------------------------------------
 
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 
+import { DATA_TABLES_TOOL_ID, DOMAIN_TOOL_IDS } from '../../src/tools/tool-ids';
 import type {
 	AgentActivity,
 	CapturedEvent,
@@ -11,6 +12,7 @@ import type {
 	ConversationMetrics,
 	EventOutcome,
 	InstanceAiMetrics,
+	TranscriptTurn,
 	TurnCounter,
 } from '../types';
 import { getNestedRecord as getRecord, getString } from '../utils/safe-extract';
@@ -21,8 +23,9 @@ import { getNestedRecord as getRecord, getString } from '../utils/safe-extract';
 
 const WORKFLOW_TOOLS = new Set(['build-workflow', 'submit-workflow', 'patch-workflow']);
 
-const EXECUTION_TOOL = 'run-workflow';
-const DATA_TABLE_TOOL = 'create-data-table';
+// Retired standalone tool names, kept so captures from older backends still parse.
+const EXECUTION_TOOL_LEGACY = 'run-workflow';
+const DATA_TABLE_TOOL_LEGACY = 'create-data-table';
 
 // ---------------------------------------------------------------------------
 // extractOutcomeFromEvents
@@ -94,7 +97,7 @@ export function extractOutcomeFromEvents(events: CapturedEvent[]): EventOutcome 
 				toolCalls.push(toolCall);
 
 				// Extract resource IDs from tool results
-				extractResourceIds(toolName, result, workflowIds, executionIds, dataTableIds);
+				extractResourceIds(toolName, args, result, workflowIds, executionIds, dataTableIds);
 				break;
 			}
 
@@ -401,6 +404,82 @@ export function buildConversationMetrics(events: CapturedEvent[]): ConversationM
 	};
 }
 
+/** Per-turn counters for the SEEDED prefix. Seeded turns emit no SSE events, so we
+ *  count tool calls + confirmations from step kinds (mirrors buildConversationMetrics).
+ *  Best-effort: replanAfterError / repeatQuestion / runFinishStatus aren't recoverable. */
+export function seededTurnCounters(seededTurns: TranscriptTurn[]): TurnCounter[] {
+	return seededTurns.map((turn, i) => {
+		const counter: TurnCounter = {
+			turn: i + 1,
+			toolCallCount: 0,
+			toolErrorCount: 0,
+			confirmationAskedTotal: 0,
+			confirmationAskedByKind: {},
+			replanAfterErrorCount: 0,
+			repeatQuestionCount: 0,
+		};
+		for (const step of turn.steps) {
+			// Every non-narration step is a tool call (+1); in a live run the HITL
+			// ones also emit a confirmation-request, counted below.
+			if (step.kind === 'agent-text') continue;
+			counter.toolCallCount++;
+			switch (step.kind) {
+				case 'tool-call':
+					if (step.error !== undefined) counter.toolErrorCount++;
+					break;
+				case 'ask-user':
+					counter.confirmationAskedTotal++;
+					counter.confirmationAskedByKind.questions =
+						(counter.confirmationAskedByKind.questions ?? 0) + 1;
+					break;
+				case 'setup-card':
+					counter.confirmationAskedTotal++;
+					counter.confirmationAskedByKind.setup = (counter.confirmationAskedByKind.setup ?? 0) + 1;
+					break;
+				case 'confirmation': {
+					counter.confirmationAskedTotal++;
+					const kind = step.resumeReason;
+					counter.confirmationAskedByKind[kind] = (counter.confirmationAskedByKind[kind] ?? 0) + 1;
+					break;
+				}
+				default:
+					break; // plan, setup-wizard — tool call only
+			}
+		}
+		return counter;
+	});
+}
+
+/** Prepend the seeded prefix's counters to live metrics so a seedThread case's
+ *  metrics span the whole conversation (matching the unified transcript). Live
+ *  `reachedRunFinishCleanly` is preserved (it describes the evaluated run); an
+ *  empty prefix returns metrics deep-equal to the live ones. */
+export function mergeSeededConversationMetrics(
+	seededTurns: TranscriptTurn[],
+	liveMetrics: ConversationMetrics,
+): ConversationMetrics {
+	const seededPerTurn = seededTurnCounters(seededTurns);
+	const perTurn = [...seededPerTurn, ...liveMetrics.perTurn].map((counter, i) => ({
+		...counter,
+		turn: i + 1,
+	}));
+	const confirmationAskedByKind = { ...liveMetrics.confirmationAskedByKind };
+	let confirmationAskedTotal = liveMetrics.confirmationAskedTotal;
+	for (const counter of seededPerTurn) {
+		confirmationAskedTotal += counter.confirmationAskedTotal;
+		for (const [kind, count] of Object.entries(counter.confirmationAskedByKind)) {
+			confirmationAskedByKind[kind] = (confirmationAskedByKind[kind] ?? 0) + count;
+		}
+	}
+	return {
+		turnCount: seededPerTurn.length + liveMetrics.turnCount,
+		perTurn,
+		confirmationAskedTotal,
+		confirmationAskedByKind,
+		reachedRunFinishCleanly: liveMetrics.reachedRunFinishCleanly,
+	};
+}
+
 /** Split events into turns. Each turn begins at a `run-start` event; events
  *  before the first `run-start` form a leading pseudo-turn (unusual but handled). */
 export function splitEventsIntoTurns(events: CapturedEvent[]): CapturedEvent[][] {
@@ -432,6 +511,7 @@ function countEvents(events: CapturedEvent[], type: string): number {
 
 function extractResourceIds(
 	toolName: string,
+	args: Record<string, unknown>,
 	result: unknown,
 	workflowIds: string[],
 	executionIds: string[],
@@ -442,33 +522,48 @@ function extractResourceIds(
 		if (id) workflowIds.push(id);
 	}
 
-	if (toolName === EXECUTION_TOOL) {
+	const action = getString(args, 'action');
+
+	if (
+		toolName === EXECUTION_TOOL_LEGACY ||
+		(toolName === DOMAIN_TOOL_IDS.EXECUTIONS && action === 'run')
+	) {
 		const id = extractIdFromResult(result, 'executionId', 'id');
 		if (id) executionIds.push(id);
 	}
 
-	if (toolName === DATA_TABLE_TOOL) {
+	if (toolName === DATA_TABLE_TOOL_LEGACY) {
 		const id = extractIdFromResult(result, 'dataTableId', 'id');
+		if (id) dataTableIds.push(id);
+	}
+
+	// create-only: other actions (e.g. schema) return ids of EXISTING tables,
+	// and tracking those would let cleanup delete tables the agent only inspected.
+	if (toolName === DATA_TABLES_TOOL_ID && action === 'create') {
+		const record = toResultRecord(result);
+		const table = record ? getRecord(record, 'table') : undefined;
+		const id = table ? extractIdFromRecord(table, ['id']) : undefined;
 		if (id) dataTableIds.push(id);
 	}
 }
 
-function extractIdFromResult(result: unknown, ...keys: string[]): string | undefined {
-	if (!isRecord(result)) {
-		// Result might be a stringified JSON
-		if (typeof result === 'string') {
-			try {
-				const parsed: unknown = JSON.parse(result);
-				if (isRecord(parsed)) {
-					return extractIdFromRecord(parsed, keys);
-				}
-			} catch {
-				return undefined;
-			}
+/** Normalize a tool result (object or stringified JSON) to a record. */
+function toResultRecord(result: unknown): Record<string, unknown> | undefined {
+	if (isRecord(result)) return result;
+	if (typeof result === 'string') {
+		try {
+			const parsed: unknown = JSON.parse(result);
+			if (isRecord(parsed)) return parsed;
+		} catch {
+			return undefined;
 		}
-		return undefined;
 	}
-	return extractIdFromRecord(result, keys);
+	return undefined;
+}
+
+function extractIdFromResult(result: unknown, ...keys: string[]): string | undefined {
+	const record = toResultRecord(result);
+	return record ? extractIdFromRecord(record, keys) : undefined;
 }
 
 function extractIdFromRecord(record: Record<string, unknown>, keys: string[]): string | undefined {
