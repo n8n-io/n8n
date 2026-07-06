@@ -277,7 +277,7 @@ describe('Instance (global) custom role authorization', () => {
 				.expect(200);
 			const global = await agent
 				.post('/roles')
-				.send({ displayName: 'Manage Global Role', roleType: 'global', scopes: ['workflow:read'] })
+				.send({ displayName: 'Manage Global Role', roleType: 'global', scopes: ['role:read'] })
 				.expect(200);
 
 			await agent.delete(`/roles/${project.body.data.slug}`).expect(200);
