@@ -9,7 +9,7 @@
  * (absolute UTC).
  */
 
-import type { ScheduledTaskStatus } from '../enums';
+import type { ScheduledTaskStatus } from '@n8n/constants';
 
 /**
  * A materialised occurrence of a job (`scheduled_task`): one queued run.

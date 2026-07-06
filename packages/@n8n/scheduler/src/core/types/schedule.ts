@@ -1,6 +1,5 @@
+import type { ScheduledJobKind } from '@n8n/constants';
 import type { CronExpression } from 'n8n-workflow';
-
-import type { ScheduledJobKind } from '../enums';
 
 /**
  * The recurrence source: a `ScheduledJob` defines recurring work through a cron /
