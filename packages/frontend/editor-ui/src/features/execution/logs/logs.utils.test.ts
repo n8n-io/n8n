@@ -1959,7 +1959,9 @@ describe('createLogTree with canvas groups', () => {
 
 		// Folded into error like the canvas rollup: crashed carries no error object but must not read as success
 		it('folds a crashed member into error', () => {
-			expect(getGroupExecutionStatus(groupWithMemberStatuses('success', 'crashed'))).toBe('error');
+			const group = groupWithMemberStatuses('success', 'crashed');
+			expect(getGroupExecutionStatus(group)).toBe('error');
+			expect(group.hasError).toBe(true);
 		});
 
 		// A wholly canceled group has no dominant status and must not read as success

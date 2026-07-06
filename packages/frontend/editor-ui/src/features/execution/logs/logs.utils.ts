@@ -500,8 +500,7 @@ function computeGroupBoundaries(
 }
 
 function finalizeGroupEntry(group: GroupLogEntry, context: LogTreeCreationContext): void {
-	group.hasError = group.children.some(entryContainsError);
-	// A group has no own tokens
+	group.hasError = getGroupExecutionStatus(group) === 'error';
 	group.boundaries = computeGroupBoundaries(group, context);
 }
 
@@ -774,10 +773,6 @@ export function findSubExecutionLocator(entry: LogEntry): RelatedExecution | und
 	}
 
 	return parseErrorMetadata(runData?.error)?.subExecution;
-}
-
-function entryContainsError(entry: LogEntry): boolean {
-	return findLogEntryRec((e) => isNodeLog(e) && !!e.runData?.error, [entry]) !== undefined;
 }
 
 export function getDefaultCollapsedEntries(entries: LogEntry[]): Record<string, boolean> {
