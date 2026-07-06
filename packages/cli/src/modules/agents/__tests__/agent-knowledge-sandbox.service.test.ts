@@ -536,7 +536,7 @@ describe('AgentKnowledgeSandboxService', () => {
 
 			sandbox.process.executeCommand.mockClear();
 			binaryDataService.getAsBuffer.mockClear();
-			(sandbox.fs.uploadFiles as Mock).mockClear();
+			sandbox.fs.uploadFiles.mockClear();
 			await service.searchKnowledge(projectId, agentId, { pattern: 'bar' });
 			commands = sandbox.process.executeCommand.mock.calls.map(([command]) => command);
 			expect(commands.filter(isManifestReadCommand)).toHaveLength(0);
@@ -547,7 +547,7 @@ describe('AgentKnowledgeSandboxService', () => {
 
 			sandbox.process.executeCommand.mockClear();
 			binaryDataService.getAsBuffer.mockClear();
-			(sandbox.fs.uploadFiles as Mock).mockClear();
+			sandbox.fs.uploadFiles.mockClear();
 			agentFileRepository.findByAgentId.mockResolvedValue([
 				makeMirrorFile('file-1', 'doc1.txt'),
 				makeMirrorFile('file-2', 'doc2.txt'),
@@ -597,7 +597,7 @@ describe('AgentKnowledgeSandboxService', () => {
 			await service.searchKnowledge(projectId, agentId, { pattern: 'foo' });
 
 			expect(sandbox.fs.uploadFiles).toHaveBeenCalledTimes(2);
-			const uploadCalls = (sandbox.fs.uploadFiles as Mock).mock.calls as Array<
+			const uploadCalls = sandbox.fs.uploadFiles.mock.calls as Array<
 				[Array<{ destination: string }>]
 			>;
 			expect(uploadCalls[0][0]).toHaveLength(1);
