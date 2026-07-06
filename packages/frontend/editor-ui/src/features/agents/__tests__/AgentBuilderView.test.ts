@@ -661,13 +661,27 @@ describe('AgentBuilderView — preview routing', () => {
 		expect(uploadAgentFilesMock).not.toHaveBeenCalled();
 	});
 
+	it('adds the Knowledge tab only when the knowledge base is enabled', async () => {
+		const withoutKnowledge = await renderView();
+		expect(
+			withoutKnowledge.findComponent({ name: 'AgentBuilderEditorColumn' }).props('mainTabOptions'),
+		).not.toContainEqual(expect.objectContaining({ value: 'knowledge' }));
+
+		const withKnowledge = await renderView({ knowledgeBaseEnabled: true });
+		expect(
+			withKnowledge.findComponent({ name: 'AgentBuilderEditorColumn' }).props('mainTabOptions'),
+		).toContainEqual(expect.objectContaining({ value: 'knowledge' }));
+	});
+
 	it('marks the knowledge files panel unpublished for an unpublished agent', async () => {
+		routeQuery.section = 'knowledge';
 		const wrapper = await renderView({ knowledgeBaseEnabled: true });
 
 		expect(wrapper.findComponent({ name: 'AgentFilesPanel' }).props('isPublished')).toBe(false);
 	});
 
 	it('marks the knowledge files panel published for a published agent', async () => {
+		routeQuery.section = 'knowledge';
 		getAgentMock.mockResolvedValue(makeAgentResponse({ activeVersionId: 'v1' }));
 
 		const wrapper = await renderView({ knowledgeBaseEnabled: true });

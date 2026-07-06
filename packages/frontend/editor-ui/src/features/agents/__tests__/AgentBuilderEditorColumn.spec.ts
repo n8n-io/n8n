@@ -82,6 +82,15 @@ vi.mock('../components/AgentInfoPanel.vue', () => ({
 	},
 }));
 
+vi.mock('../components/AgentFilesPanel.vue', () => ({
+	default: {
+		name: 'AgentFilesPanel',
+		template: '<div data-testid="agent-files-panel" />',
+		props: ['files', 'disabled', 'loading', 'uploading', 'deletingFileId', 'isPublished'],
+		emits: ['upload-files', 'delete-file'],
+	},
+}));
+
 vi.mock('../components/AgentJsonEditor.vue', () => ({
 	default: { name: 'AgentJsonEditor', template: '<div />' },
 }));
@@ -137,8 +146,11 @@ vi.setConfig({ testTimeout: 30_000 });
 
 async function mountColumn(
 	overrides: Partial<{
-		activeMainTab: 'agent' | 'sessions' | 'settings';
-		mainTabOptions: Array<{ label: string; value: 'agent' | 'sessions' | 'settings' }>;
+		activeMainTab: 'agent' | 'knowledge' | 'sessions' | 'settings';
+		mainTabOptions: Array<{
+			label: string;
+			value: 'agent' | 'knowledge' | 'sessions' | 'settings';
+		}>;
 		knowledgeBaseEnabled: boolean;
 	}> = {},
 ) {
@@ -150,6 +162,7 @@ async function mountColumn(
 			activeMainTab: overrides.activeMainTab ?? 'agent',
 			mainTabOptions: overrides.mainTabOptions ?? [
 				{ label: 'Agent', value: 'agent' },
+				{ label: 'Knowledge', value: 'knowledge' },
 				{ label: 'Sessions', value: 'sessions' },
 				{ label: 'Settings', value: 'settings' },
 			],
@@ -195,11 +208,12 @@ describe('AgentBuilderEditorColumn', () => {
 		vi.clearAllMocks();
 	});
 
-	it('renders Agent, Sessions, and Settings tabs without Raw', async () => {
+	it('renders Agent, Knowledge, Sessions, and Settings tabs without Raw', async () => {
 		const wrapper = await mountColumn();
 
 		const tabs = wrapper.find('[data-testid="agent-header-tabs"]');
 		expect(tabs.text()).toContain('Agent');
+		expect(tabs.text()).toContain('Knowledge');
 		expect(tabs.text()).toContain('Sessions');
 		expect(tabs.text()).toContain('Settings');
 		expect(tabs.text()).not.toContain('Raw');
@@ -213,7 +227,7 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(settingsWrapper.findComponent({ name: 'AgentPanelHeader' }).exists()).toBe(false);
 	});
 
-	it.each(['agent', 'sessions', 'settings'] as const)(
+	it.each(['agent', 'knowledge', 'sessions', 'settings'] as const)(
 		'renders the agent identity header above the tabs on the %s tab',
 		async (activeMainTab) => {
 			const wrapper = await mountColumn({ activeMainTab });
@@ -241,6 +255,7 @@ describe('AgentBuilderEditorColumn', () => {
 
 	it.each([
 		['agent', 'agent-tab-content'],
+		['knowledge', 'agent-knowledge-tab-content'],
 		['sessions', 'agent-sessions-tab-content'],
 		['settings', 'agent-settings-tab-content'],
 	] as const)('renders the %s tab through the shared tab panel', async (activeMainTab, testId) => {
@@ -255,6 +270,14 @@ describe('AgentBuilderEditorColumn', () => {
 		const wrapper = await mountColumn({ activeMainTab: 'sessions' });
 
 		expect(wrapper.findComponent({ name: 'AgentSessionsListView' }).props('embedded')).toBe(true);
+	});
+
+	it('renders the knowledge files panel only on the Knowledge tab', async () => {
+		const agentWrapper = await mountColumn({ activeMainTab: 'agent' });
+		const knowledgeWrapper = await mountColumn({ activeMainTab: 'knowledge' });
+
+		expect(agentWrapper.findComponent({ name: 'AgentFilesPanel' }).exists()).toBe(false);
+		expect(knowledgeWrapper.findComponent({ name: 'AgentFilesPanel' }).exists()).toBe(true);
 	});
 
 	it('renders tabs inside the constrained rule container that aligns with content cards', async () => {

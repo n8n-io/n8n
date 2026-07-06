@@ -183,6 +183,7 @@ const shouldCollapseChatAfterInitialBuild = ref(shouldStartWithExpandedBuildChat
 const executionsCount = computed(() => sessionsStore.threads.length);
 const { activeMainTab, mainTabOptions, executionsDescription } = useAgentBuilderMainTabs({
 	executionsCount,
+	knowledgeBaseEnabled: isKnowledgeBaseEnabled,
 });
 
 const { ensureLoaded: ensureIntegrationsCatalog } = useAgentIntegrationsCatalog();

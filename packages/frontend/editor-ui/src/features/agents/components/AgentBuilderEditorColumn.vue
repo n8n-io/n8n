@@ -114,18 +114,6 @@ const i18n = useI18n();
 						@agent-changed="emit('agent-changed')"
 					/>
 
-					<AgentFilesPanel
-						v-if="knowledgeBaseEnabled"
-						:files="agentFiles"
-						:disabled="childrenDisabled"
-						:loading="agentFilesLoading"
-						:uploading="agentFilesUploading"
-						:deleting-file-id="deletingAgentFileId"
-						:is-published="Boolean(agent?.activeVersionId)"
-						data-testid="agent-files-card"
-						@upload-files="emit('upload-files', $event)"
-						@delete-file="emit('delete-file', $event)"
-					/>
 					<AgentInfoPanel
 						:config="localConfig"
 						:disabled="childrenDisabled"
@@ -142,6 +130,23 @@ const i18n = useI18n();
 						:show-instructions-toolbar="true"
 						embedded
 						@update:config="emit('update:config', $event)"
+					/>
+				</AgentBuilderTabPanel>
+
+				<AgentBuilderTabPanel
+					v-else-if="activeMainTab === 'knowledge' && knowledgeBaseEnabled"
+					data-testid="agent-knowledge-tab-content"
+				>
+					<AgentFilesPanel
+						:files="agentFiles"
+						:disabled="childrenDisabled"
+						:loading="agentFilesLoading"
+						:uploading="agentFilesUploading"
+						:deleting-file-id="deletingAgentFileId"
+						:is-published="Boolean(agent?.activeVersionId)"
+						data-testid="agent-files-card"
+						@upload-files="emit('upload-files', $event)"
+						@delete-file="emit('delete-file', $event)"
 					/>
 				</AgentBuilderTabPanel>
 
