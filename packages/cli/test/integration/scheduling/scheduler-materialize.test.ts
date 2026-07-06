@@ -1,7 +1,8 @@
 import { testDb } from '@n8n/backend-test-utils';
 import { type ScheduledJob, ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { materialize } from '@n8n/scheduler';
+import { createScheduler } from '@n8n/scheduler';
+import type { SchedulerDeps } from '@n8n/scheduler';
 
 import { DurableScheduler } from '@/scheduling/durable-scheduler';
 
@@ -44,14 +45,23 @@ describe('scheduler materialization', () => {
 			}),
 		);
 
+	/** Compose a scheduler over the same storage bindings, with per-test tuning. */
+	const composeScheduler = (materializer: SchedulerDeps['materializer']) =>
+		createScheduler({
+			hostId: 'materialize-test',
+			materializerTransaction: scheduler.materializerTransaction,
+			taskStore: taskRepo,
+			materializer,
+		});
+
 	const runMaterialization = async (windowSeconds: number) =>
-		await materialize(scheduler.runInTransaction, {
+		await composeScheduler({
 			windowSeconds,
 			batchSize: 100,
 			maxPerJob: 100,
 			planRetrySeconds: 3600,
 			defaultTimezone: 'UTC',
-		});
+		}).materialize();
 
 	it('records a due occurrence and advances the job past it', async () => {
 		const job = await createJob({ intervalSeconds: 3600, nextRunAt: secondsFromNow(-1) });
@@ -77,28 +87,28 @@ describe('scheduler materialization', () => {
 	it('drains a backlog in maxPerJob-sized batches across successive passes', async () => {
 		// A job far behind (interval 10s, ~100s of backlog) so more than maxPerJob fires are due.
 		await createJob({ intervalSeconds: 10, nextRunAt: secondsFromNow(-100) });
-		const drainOptions = {
+		const drainScheduler = composeScheduler({
 			windowSeconds: 0,
 			batchSize: 100,
 			maxPerJob: 5,
 			planRetrySeconds: 3600,
 			defaultTimezone: 'UTC',
-		};
+		});
 
 		// The first pass records exactly maxPerJob, capping the batch rather than draining it all.
-		const first = await materialize(scheduler.runInTransaction, drainOptions);
+		const first = await drainScheduler.materialize();
 		expect(first.occurrences).toBe(5);
 		expect(await taskRepo.count()).toBe(5);
 
 		// Successive passes continue draining, each recording at most maxPerJob, until nothing is due.
 		for (let i = 0; i < 10; i++) {
-			const summary = await materialize(scheduler.runInTransaction, drainOptions);
+			const summary = await drainScheduler.materialize();
 			expect(summary.occurrences).toBeLessThanOrEqual(5);
 			if (summary.claimedJobs === 0) break;
 		}
 
 		// Drained: the backlog is fully recorded, every occurrence distinct (no duplicate from batching).
-		const drained = await materialize(scheduler.runInTransaction, drainOptions);
+		const drained = await drainScheduler.materialize();
 		expect(drained.claimedJobs).toBe(0);
 		const tasks = await taskRepo.find();
 		const distinctInstants = new Set(tasks.map((t) => t.scheduledFor.getTime()));
@@ -235,15 +245,18 @@ describe('scheduler materialization', () => {
 			),
 		);
 
-		const runPass = async () =>
-			await materialize(scheduler.runInTransaction, {
-				windowSeconds: 0,
-				batchSize,
-				maxPerJob: 100,
-				planRetrySeconds: 3600,
-				defaultTimezone: 'UTC',
-			});
-		const summaries = await Promise.all([runPass(), runPass(), runPass()]);
+		const pass = composeScheduler({
+			windowSeconds: 0,
+			batchSize,
+			maxPerJob: 100,
+			planRetrySeconds: 3600,
+			defaultTimezone: 'UTC',
+		});
+		const summaries = await Promise.all([
+			pass.materialize(),
+			pass.materialize(),
+			pass.materialize(),
+		]);
 
 		// Deterministic on both backends: in any interleaving each claim still sees at
 		// least `batchSize` due unclaimed jobs, so each pass claims and records exactly

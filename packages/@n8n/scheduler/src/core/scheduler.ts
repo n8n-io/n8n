@@ -75,7 +75,7 @@ export interface SchedulerDeps {
 	hostId: string;
 
 	/** Runs one materializer pass inside one storage transaction. */
-	runInTransaction: RunInTransaction;
+	materializerTransaction: RunInTransaction;
 
 	taskStore: SchedulerTaskStore;
 
@@ -95,7 +95,7 @@ export interface SchedulerDeps {
  * `onEvent` as a described {@link SchedulerEvent}.
  */
 export function createScheduler(deps: SchedulerDeps): Scheduler {
-	const { hostId, runInTransaction, taskStore, onEvent } = deps;
+	const { hostId, materializerTransaction: materializerTransaction, taskStore, onEvent } = deps;
 	const materializerOptions = { ...DEFAULT_MATERIALIZER_OPTIONS, ...deps.materializer };
 	const executorOptions = { ...DEFAULT_EXECUTOR_OPTIONS, ...deps.executor };
 	const reaperOptions = { ...DEFAULT_REAPER_OPTIONS, ...deps.reaper };
@@ -152,7 +152,7 @@ export function createScheduler(deps: SchedulerDeps): Scheduler {
 		},
 
 		async materialize() {
-			return await materialize(runInTransaction, materializerOptions, (job, error) => {
+			return await materialize(materializerTransaction, materializerOptions, (job, error) => {
 				emit('error', 'Scheduler could not plan a job schedule; deferred for retry', {
 					jobId: job.id,
 					error: described(error),

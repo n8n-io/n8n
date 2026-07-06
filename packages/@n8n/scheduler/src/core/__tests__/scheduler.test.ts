@@ -10,10 +10,10 @@ import type { SchedulerDeps, SchedulerTaskStore } from '../scheduler';
 function makeScheduler(deps: Partial<SchedulerDeps> = {}) {
 	const taskStore = mock<SchedulerTaskStore>();
 	const onEvent = vi.fn();
-	const runInTransaction: RunInTransaction = vi.fn();
+	const materializerTransaction: RunInTransaction = vi.fn();
 	const scheduler = createScheduler({
 		hostId: 'main-test',
-		runInTransaction,
+		materializerTransaction,
 		taskStore,
 		retention: { retentionSeconds: 43_200, failedRetentionSeconds: 86_400 },
 		onEvent,

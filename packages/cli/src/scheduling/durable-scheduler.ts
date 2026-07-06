@@ -23,11 +23,7 @@ import { InstanceSettings } from 'n8n-core';
  */
 @Service()
 export class DurableScheduler implements Scheduler {
-	/**
-	 * Runs one materializer pass in one database transaction — the only seam
-	 * between the materializer and the database.
-	 */
-	readonly runInTransaction: RunInTransaction = async (work) =>
+	readonly materializerTransaction: RunInTransaction = async (work) =>
 		await this.dataSource.transaction(
 			async (manager) =>
 				await work({
@@ -78,7 +74,7 @@ export class DurableScheduler implements Scheduler {
 	) {
 		this.scheduler = createScheduler({
 			hostId: instanceSettings.hostId,
-			runInTransaction: this.runInTransaction,
+			materializerTransaction: this.materializerTransaction,
 			taskStore: tasks,
 			materializer: {
 				windowSeconds: config.materializationWindowSeconds,

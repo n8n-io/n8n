@@ -2,7 +2,8 @@ import { testDb } from '@n8n/backend-test-utils';
 import type { ScheduledJob, ScheduledTask } from '@n8n/db';
 import { ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { prune } from '@n8n/scheduler';
+import { createScheduler } from '@n8n/scheduler';
+import type { SchedulerDeps } from '@n8n/scheduler';
 
 import { DurableScheduler } from '@/scheduling/durable-scheduler';
 
@@ -26,6 +27,15 @@ describe('scheduler retention', () => {
 
 	let sequence = 0;
 	const daysAgo = (days: number) => new Date(Date.now() - days * 24 * 3600 * 1000);
+
+	/** Compose a scheduler over the same storage bindings, with per-test retention windows. */
+	const composeScheduler = (retention: SchedulerDeps['retention']) =>
+		createScheduler({
+			hostId: 'retention-test',
+			materializerTransaction: Container.get(DurableScheduler).materializerTransaction,
+			taskStore: taskRepo,
+			retention,
+		});
 
 	const createJob = async (overrides: Partial<ScheduledJob> = {}) =>
 		await jobRepo.save(
@@ -93,22 +103,22 @@ describe('scheduler retention', () => {
 		for (let i = 0; i < 5; i++) {
 			await createTask(job.id, { status: 'succeeded', finishedAt: daysAgo(2) });
 		}
-		const options = {
+		const retentionScheduler = composeScheduler({
 			retentionSeconds: 24 * 3600,
 			failedRetentionSeconds: 7 * 24 * 3600,
 			batchSize: 2,
 			maxBatchesPerPass: 1,
-		};
+		});
 
 		// One batch per pass: the first pass deletes batchSize rows and reports
 		// the backlog it left behind.
-		const first = await prune(taskRepo, options);
+		const first = await retentionScheduler.prune();
 		expect(first).toEqual({ deleted: 2, drained: false });
 
 		// Successive passes keep draining until a pass proves nothing is left.
 		let deleted = first.deleted;
 		for (let pass = 0; pass < 10 && deleted < 5; pass++) {
-			const summary = await prune(taskRepo, options);
+			const summary = await retentionScheduler.prune();
 			deleted += summary.deleted;
 		}
 
@@ -124,22 +134,22 @@ describe('scheduler retention', () => {
 		for (let i = 0; i < 2; i++) {
 			await createTask(job.id, { status: 'failed', finishedAt: daysAgo(8) });
 		}
-		const options = {
+		const retentionScheduler = composeScheduler({
 			retentionSeconds: 24 * 3600,
 			failedRetentionSeconds: 7 * 24 * 3600,
 			batchSize: 2,
 			maxBatchesPerPass: 3,
-		};
+		});
 
 		// The clean window drains in two batches (2 rows, then a short 1); the
 		// failed window's reserved statement deletes a full batch, which spends
 		// the budget without proving that window empty.
-		const first = await prune(taskRepo, options);
+		const first = await retentionScheduler.prune();
 		expect(first).toEqual({ deleted: 5, drained: false });
 		expect(await taskRepo.count()).toBe(0);
 
 		// The next pass probes both windows and proves the drain.
-		const second = await prune(taskRepo, options);
+		const second = await retentionScheduler.prune();
 		expect(second).toEqual({ deleted: 0, drained: true });
 	});
 

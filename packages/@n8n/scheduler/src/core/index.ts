@@ -15,6 +15,10 @@
  * *Retention* (see `retention/`) bounds the task table: terminal tasks past
  * their window are deleted in bounded batches, so the queue's history cannot
  * grow without bound.
+ *
+ * The public surface is deliberately just the `Scheduler` interface, the
+ * `createScheduler` factory that composes the algorithms into it, and the types
+ * reachable from their signatures. Everything else is internal.
  */
 
 export { createScheduler } from './scheduler';
@@ -26,82 +30,8 @@ export type {
 	SchedulerTaskStore,
 } from './scheduler';
 
-export {
-	ScheduledJobKind,
-	ScheduledJobKindList,
-	ScheduledTaskStatus,
-	ScheduledTaskStatusList,
-	type TerminalTaskStatus,
-	TerminalTaskStatusList,
-} from './enums';
-
-export type {
-	ClaimedTask,
-	CronSchedule,
-	IntervalSchedule,
-	OneOffSchedule,
-	Schedule,
-	ScheduledJob,
-	ScheduledTask,
-} from './types';
-
-export {
-	InvalidScheduleError,
-	InvalidRetentionOptionsError,
-	DuplicateTaskHandlerError,
-	CorruptStorageRowError,
-} from './errors';
-
-export { computeNextRunAt } from './recurrence/next-run';
-export { resolveSchedule } from './recurrence/resolve';
-export { validateSchedule } from './recurrence/validate';
-
-export { materialize, DEFAULT_MATERIALIZER_OPTIONS } from './materializer';
-export type {
-	MaterializerSummary,
-	MaterializerOptions,
-	OnJobPlanError,
-} from './materializer';
-
-export type {
-	DueJobs,
-	PlannedJob,
-	RunInTransaction,
-	MaterializerTransaction,
-} from './materializer';
-
-export { prune, DEFAULT_RETENTION_OPTIONS } from './retention';
-export type {
-	RetentionSummary,
-	RetentionOptions,
-	RetentionBatch,
-	RetentionStore,
-} from './retention';
-
-export {
-	Executor,
-	DEFAULT_EXECUTOR_OPTIONS,
-	TaskHandlerRegistry,
-	PrecisionTimer,
-	backoff,
-} from './executor';
-export type {
-	ExecutorHooks,
-	ExecutorOptions,
-	ExecutorTaskStore,
-	ClaimedTaskRef,
-	ClaimDueTasksBatch,
-	TaskHandler,
-	TimerBackend,
-	BackoffOptions,
-} from './executor';
-
-export { reap, DEFAULT_REAPER_OPTIONS } from './reaper';
-export type {
-	ReapResult,
-	ReaperOptions,
-	ReaperTaskStore,
-	ExpiredLeaseRef,
-	ExpiredLeaseRow,
-	OnReapRowError,
-} from './reaper';
+export type { ClaimedTask } from './types';
+export type { ExecutorOptions, TaskHandler } from './executor';
+export type { MaterializerOptions, MaterializerSummary, RunInTransaction } from './materializer';
+export type { ReaperOptions, ReapResult } from './reaper';
+export type { RetentionOptions, RetentionSummary } from './retention';
