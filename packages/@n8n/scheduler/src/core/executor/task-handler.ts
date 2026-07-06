@@ -1,6 +1,5 @@
-import { UnexpectedError } from 'n8n-workflow';
-
-import type { ClaimedTask } from '../core/types';
+import { DuplicateTaskHandlerError } from '../errors';
+import type { ClaimedTask } from '../types';
 
 /**
  * Runs one claimed task. Registered against a `taskType`; the executor resolves
@@ -22,7 +21,7 @@ export class TaskHandlerRegistry {
 	/** Register `handler` for `taskType`. Throws if one is already registered. */
 	register(taskType: string, handler: TaskHandler): void {
 		if (this.handlers.has(taskType)) {
-			throw new UnexpectedError(`A handler for task type '${taskType}' is already registered`);
+			throw new DuplicateTaskHandlerError(taskType);
 		}
 		this.handlers.set(taskType, handler);
 	}

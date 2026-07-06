@@ -4,8 +4,8 @@
  * The core concern is *coordination*: each unit of scheduled work (a
  * `ScheduledTask`) is claimed and run exactly once on one main, with leases and
  * fencing for crash recovery. That layer is time-agnostic; it only asks whether a
- * task is due now. The claim / lease / fencing / reaper code lands in later
- * tickets.
+ * task is due now. The executor (see `executor/`) claims and fires due tasks;
+ * the reaper (see `reaper/`) recovers tasks stranded by an expired lease.
  *
  * *Recurrence* is one source of work, not the core: a `ScheduledJob` with a cron
  * / interval / one-off `Schedule` is materialized into tasks by the materializer
@@ -29,6 +29,7 @@ export {
 } from './enums';
 
 export type {
+	ClaimedTask,
 	CronSchedule,
 	IntervalSchedule,
 	OneOffSchedule,
@@ -40,6 +41,7 @@ export type {
 export {
 	InvalidScheduleError,
 	InvalidRetentionOptionsError,
+	DuplicateTaskHandlerError,
 	CorruptStorageRowError,
 } from './errors';
 
@@ -67,3 +69,31 @@ export type {
 	RetentionBatch,
 	RetentionStore,
 } from './retention';
+
+export {
+	Executor,
+	DEFAULT_EXECUTOR_OPTIONS,
+	TaskHandlerRegistry,
+	PrecisionTimer,
+	backoff,
+} from './executor';
+export type {
+	ExecutorHooks,
+	ExecutorOptions,
+	ExecutorTaskStore,
+	ClaimedTaskRef,
+	ClaimDueTasksBatch,
+	TaskHandler,
+	TimerBackend,
+	BackoffOptions,
+} from './executor';
+
+export { reap, DEFAULT_REAPER_OPTIONS } from './reaper';
+export type {
+	ReapResult,
+	ReaperOptions,
+	ReaperTaskStore,
+	ExpiredLeaseRef,
+	ExpiredLeaseRow,
+	OnReapRowError,
+} from './reaper';

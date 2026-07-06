@@ -1,5 +1,3 @@
-import type { Logger } from '@n8n/backend-common';
-
 import { backoff } from '../executor/backoff';
 
 /** Recorded on a task the reaper recovers, so the failure has a cause. */
@@ -14,16 +12,16 @@ export interface ReapResult {
 }
 
 /** Identifies the row and the epoch read during the sweep, for a guarded reaper update. */
-interface ExpiredLeaseRef {
+export interface ExpiredLeaseRef {
 	id: string;
 	claimedEpoch: number;
 }
 
 /**
  * One expired-lease row the sweep decides on: only the fields the loop reads. The
- * concrete `ScheduledTask` entity has these and more, so it fits without adapting.
+ * storage layer's full task row has these and more, so it fits without adapting.
  */
-interface ExpiredLeaseRow {
+export interface ExpiredLeaseRow {
 	id: string;
 	attempts: number;
 	maxAttempts: number;
@@ -41,12 +39,18 @@ export interface ReaperTaskStore {
 	deadLetterExpired(ref: ExpiredLeaseRef, errorMessage: string): Promise<number>;
 }
 
-/** What one reaper pass needs to run. */
-export interface ReapDeps {
-	store: ReaperTaskStore;
-	logger: Logger;
+/** Knobs of one reaper sweep. */
+export interface ReaperOptions {
+	/** The most expired-lease tasks one sweep recovers. */
 	batchSize: number;
 }
+
+export const DEFAULT_REAPER_OPTIONS: ReaperOptions = {
+	batchSize: 100,
+};
+
+/** Notified when recovering one expired-lease row fails, after the row is skipped. */
+export type OnReapRowError = (taskId: string, error: unknown) => void;
 
 /**
  * Recovers tasks stranded `running` by an instance that crashed or stalled past
@@ -63,15 +67,19 @@ export interface ReapDeps {
  * stalled-owner window (see `Executor`).
  *
  * Each per-row update is guarded and 0 rows affected is benign, so concurrent
- * reapers on every main are safe. A row that throws is skipped, not allowed to
- * abort the rest of the pass.
+ * reapers on every main are safe. A row that throws is skipped (reported via
+ * `onRowError`), not allowed to abort the rest of the pass.
  *
  * One pass reclaims (or dead-letters) up to `batchSize` expired-lease tasks: a task
  * with attempts left goes back to `pending` with a backoff and a bumped epoch; one
  * at its last attempt fails terminally. Returns the counts.
  */
-export async function reap({ store, logger, batchSize }: ReapDeps): Promise<ReapResult> {
-	const expired = await store.findExpiredLeases(batchSize);
+export async function reap(
+	store: ReaperTaskStore,
+	options: ReaperOptions = DEFAULT_REAPER_OPTIONS,
+	onRowError?: OnReapRowError,
+): Promise<ReapResult> {
+	const expired = await store.findExpiredLeases(options.batchSize);
 	if (expired.length === 0) return { reclaimed: 0, deadLettered: 0 };
 
 	let reclaimed = 0;
@@ -96,18 +104,9 @@ export async function reap({ store, logger, batchSize }: ReapDeps): Promise<Reap
 				);
 			}
 		} catch (error) {
-			logger.error('Scheduler reaper failed to recover an expired-lease task', {
-				taskId: task.id,
-				error,
-			});
+			onRowError?.(task.id, error);
 		}
 	}
 
-	if (reclaimed > 0 || deadLettered > 0) {
-		logger.info('Scheduler reaper recovered expired-lease tasks', {
-			reclaimed,
-			deadLettered,
-		});
-	}
 	return { reclaimed, deadLettered };
 }

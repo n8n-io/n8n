@@ -21,8 +21,18 @@ rollback.
 - **Recurrence**: turn a cron, interval or one-off schedule definition into its next
   occurrence, with correct timezone and DST handling.
 
+## Layout
+
+- **`core/`** — the algorithms (materializer, retention, executor, reaper) and the
+  domain types. DI-free and database-free: each algorithm declares the store
+  contract its callsite must satisfy (`MaterializerTransaction`, `RetentionStore`,
+  `ExecutorTaskStore`, `ReaperTaskStore`) and reports incidents through callbacks
+  and summaries, so a fake store is enough to test it.
+- **`storage/`** — the database bridging: adapters that satisfy the core contracts
+  on top of `@n8n/db` repositories, plus the entity-to-domain mappers.
+
 ## Status
 
-Early foundation. Today the package ships the domain types, the schedule math and an
-initial storage adapter; the coordination engine (sweep, executor, reaper) lands in
-later milestones.
+Early foundation. Today the package ships the domain types, the schedule math, the
+coordination engine (executor, reaper) and the storage adapters; the driver that
+runs them on a cadence in the main process lands in later milestones.

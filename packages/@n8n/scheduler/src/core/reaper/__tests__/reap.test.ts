@@ -1,38 +1,24 @@
-import type { Logger } from '@n8n/backend-common';
-import type { ScheduledTask as ScheduledTaskEntity } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import { backoff } from '../../executor/backoff';
-import { reap, type ReaperTaskStore } from '../reaper';
+import { reap, type ExpiredLeaseRow, type ReaperTaskStore } from '../reap';
 
-const expiredTask = (overrides: Partial<ScheduledTaskEntity> = {}): ScheduledTaskEntity =>
-	({
-		id: '1',
-		jobId: 10,
-		taskType: 'workflow:schedule-trigger',
-		payload: {},
-		scheduledFor: new Date('2026-07-01T00:00:00.000Z'),
-		runAt: new Date('2026-07-01T00:00:00.000Z'),
-		status: 'running',
-		attempts: 0,
-		maxAttempts: 3,
-		claimedBy: 'dead-main',
-		leaseExpiresAt: new Date('2026-07-01T00:01:00.000Z'),
-		leaseEpoch: 1,
-		startedAt: new Date('2026-07-01T00:00:00.000Z'),
-		finishedAt: null,
-		errorMessage: null,
-		...overrides,
-	}) as ScheduledTaskEntity;
+const expiredTask = (overrides: Partial<ExpiredLeaseRow> = {}): ExpiredLeaseRow => ({
+	id: '1',
+	attempts: 0,
+	maxAttempts: 3,
+	leaseEpoch: 1,
+	...overrides,
+});
 
 const setup = () => {
 	const store = mock<ReaperTaskStore>();
-	const logger = mock<Logger>();
+	const onRowError = vi.fn();
 	// Guarded updates report one row changed unless a test overrides them.
 	store.reclaimExpired.mockResolvedValue(1);
 	store.deadLetterExpired.mockResolvedValue(1);
-	const run = async () => await reap({ store, logger, batchSize: 100 });
-	return { store, logger, run };
+	const run = async () => await reap(store, { batchSize: 100 }, onRowError);
+	return { store, onRowError, run };
 };
 
 describe('reap', () => {
@@ -123,10 +109,11 @@ describe('reap', () => {
 	});
 
 	it('skips a row that throws and still processes the rest of the batch', async () => {
-		const { store, logger, run } = setup();
+		const { store, onRowError, run } = setup();
 		// The oldest row throws; without per-row isolation it would abort the pass and
 		// head-of-line block every younger expired row on every future sweep.
-		store.reclaimExpired.mockRejectedValueOnce(new Error('db down'));
+		const failure = new Error('db down');
+		store.reclaimExpired.mockRejectedValueOnce(failure);
 		store.findExpiredLeases.mockResolvedValue([
 			expiredTask({ id: 'poison', attempts: 0, maxAttempts: 3 }),
 			expiredTask({ id: 'ok', attempts: 0, maxAttempts: 3 }),
@@ -140,10 +127,7 @@ describe('reap', () => {
 			backoff(1),
 			expect.any(String),
 		);
-		expect(logger.error).toHaveBeenCalledWith(
-			expect.any(String),
-			expect.objectContaining({ taskId: 'poison' }),
-		);
+		expect(onRowError).toHaveBeenCalledWith('poison', failure);
 	});
 
 	it('counts only rows actually changed (a lost race is a benign no-op)', async () => {
