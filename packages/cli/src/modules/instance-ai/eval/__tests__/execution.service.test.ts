@@ -359,6 +359,34 @@ describe('EvalExecutionService', () => {
 			);
 		});
 
+		it('excludes guaranteed-pin placeholders from the pinnedOutputs summary', async () => {
+			const hints = makeEmptyHints();
+			hints.bypassPinData = {
+				Agent: [{ json: { output: 'real pinned data' } }],
+				// Guarantee-loop placeholder — an execution guard, not scenario data.
+				'Sub Agent': [{ json: {} }],
+			};
+			generateMockHintsMock.mockResolvedValue(hints);
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			const options = createLlmMockHandlerMock.mock.calls[0][0] as { pinnedOutputs?: string };
+			expect(options.pinnedOutputs).toContain('Agent');
+			expect(options.pinnedOutputs).toContain('real pinned data');
+			expect(options.pinnedOutputs).not.toContain('Sub Agent');
+		});
+
+		it('omits pinnedOutputs entirely when every pin is a placeholder', async () => {
+			const hints = makeEmptyHints();
+			hints.bypassPinData = { 'Sub Agent': [{ json: {} }] };
+			generateMockHintsMock.mockResolvedValue(hints);
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			const options = createLlmMockHandlerMock.mock.calls[0][0] as { pinnedOutputs?: string };
+			expect(options.pinnedOutputs).toBeUndefined();
+		});
+
 		it('returns the DB-assigned executionId from workflowRunner.run', async () => {
 			const result = await service.executeWithLlmMock('wf-1', makeUser());
 

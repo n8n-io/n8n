@@ -1177,9 +1177,17 @@ function summarizePinnedOutputs(pinData: IPinData | undefined): string | undefin
 	if (!pinData) return undefined;
 	const lines: string[] = [];
 	for (const [nodeName, items] of Object.entries(pinData)) {
+		// Guaranteed-pin placeholders ({json:{}}) are execution guards, not
+		// scenario data — presenting them to the mock LLM as authoritative
+		// facts would bias HTTP mocks toward empty data exactly in the runs
+		// where pin generation under-delivered.
+		const meaningful = items.filter(
+			(item) => Object.keys(item.json ?? {}).length > 0 || item.binary !== undefined,
+		);
+		if (meaningful.length === 0) continue;
 		let json = '';
 		try {
-			json = JSON.stringify(items);
+			json = JSON.stringify(meaningful);
 		} catch {
 			continue;
 		}
