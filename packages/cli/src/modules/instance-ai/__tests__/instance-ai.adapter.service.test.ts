@@ -1677,6 +1677,9 @@ function createWorkflowAdapterForTests(overrides?: {
 		activateWorkflow: vi.fn().mockResolvedValue({ activeVersionId: 'version-1' }),
 		update: vi.fn().mockResolvedValue(savedWorkflow),
 	};
+	const mockWorkflowHistoryService = {
+		getVersion: vi.fn(),
+	};
 	const mockEnterpriseWorkflowService = {
 		preventTampering: vi.fn(async (data: unknown) => data),
 	};
@@ -1725,7 +1728,9 @@ function createWorkflowAdapterForTests(overrides?: {
 				.mockReturnValue({ branchReadOnly: overrides?.branchReadOnly ?? false }),
 		} as unknown as SourceControlPreferencesService,
 		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[22],
-		{} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[23],
+		mockWorkflowHistoryService as unknown as ConstructorParameters<
+			typeof InstanceAiAdapterService
+		>[23],
 		mockEnterpriseWorkflowService as unknown as ConstructorParameters<
 			typeof InstanceAiAdapterService
 		>[24],
@@ -1764,6 +1769,7 @@ function createWorkflowAdapterForTests(overrides?: {
 		mockSharedWorkflowRepository,
 		mockAiBuilderTemporaryWorkflowRepository,
 		mockWorkflowService,
+		mockWorkflowHistoryService,
 		mockEnterpriseWorkflowService,
 		mockTelemetry,
 		mockLogger,
@@ -1826,6 +1832,32 @@ describe('createWorkflowAdapter', () => {
 				onError: 'continueErrorOutput',
 			}),
 		);
+	});
+
+	it('returns the version graph with current workflow metadata when a versionId is passed', async () => {
+		const { adapter, mockWorkflowHistoryService, mockUser } = createWorkflowAdapterForTests();
+		mockWorkflowHistoryService.getVersion.mockResolvedValue({
+			versionId: 'v-old',
+			nodes: [
+				{
+					id: 'old-id',
+					name: 'Old Node',
+					type: 'n8n-nodes-base.set',
+					typeVersion: 3,
+					position: [0, 0],
+					parameters: { keep: true },
+				},
+			],
+			connections: { 'Old Node': {} },
+			nodeGroups: null,
+		});
+
+		const result = await adapter.getAsWorkflowJSON('wf-new', 'v-old');
+
+		expect(mockWorkflowHistoryService.getVersion).toHaveBeenCalledWith(mockUser, 'wf-new', 'v-old');
+		expect(result.name).toBe('Test Workflow');
+		expect(result.nodes[0]).toEqual(expect.objectContaining({ name: 'Old Node', typeVersion: 3 }));
+		expect(result.connections).toEqual({ 'Old Node': {} });
 	});
 
 	it('lists active workflows by default', async () => {

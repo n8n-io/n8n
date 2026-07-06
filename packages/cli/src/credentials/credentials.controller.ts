@@ -263,13 +263,25 @@ export class CredentialsController {
 		}
 
 		newCredentialData.isResolvable = body.isResolvable ?? credential.isResolvable;
+
+		// A private credential's per-user connections are minted against its shared
+		// (static) config, so changing that config makes them stale — invalidate them.
+		let sharedFieldsChanged = false;
+		if (body.data && !isTogglingToStatic && newCredentialData.isResolvable) {
+			const changedFields = await this.credentialsService.getChangedSharedFields(
+				credential,
+				preparedCredentialData.data as unknown as ICredentialDataDecryptedObject,
+			);
+			sharedFieldsChanged = changedFields.length > 0;
+		}
+
 		const responseData = await this.credentialsService.update(
 			credentialId,
 			newCredentialData,
 			body.data
 				? (preparedCredentialData.data as unknown as ICredentialDataDecryptedObject)
 				: undefined,
-			{ deleteUserEntries: isTogglingToStatic },
+			{ deleteUserEntries: isTogglingToStatic || sharedFieldsChanged },
 		);
 
 		if (responseData === null) {
@@ -302,6 +314,12 @@ export class CredentialsController {
 			});
 		} else if (wasResolvable && !willBeResolvable) {
 			this.eventService.emit('private-credential-toggled-to-static', {
+				user: req.user,
+				credentialType: credential.type,
+				credentialId: credential.id,
+			});
+		} else if (sharedFieldsChanged) {
+			this.eventService.emit('private-credential-connections-cleared', {
 				user: req.user,
 				credentialType: credential.type,
 				credentialId: credential.id,
