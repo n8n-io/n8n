@@ -17,6 +17,15 @@
  * grow without bound.
  */
 
+export { createScheduler } from './scheduler';
+export type {
+	Scheduler,
+	SchedulerDeps,
+	SchedulerEvent,
+	SchedulerEventLevel,
+	SchedulerTaskStore,
+} from './scheduler';
+
 export {
 	ScheduledJobKind,
 	ScheduledJobKindList,

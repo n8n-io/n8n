@@ -2,18 +2,19 @@ import { testDb } from '@n8n/backend-test-utils';
 import { type ScheduledJob, ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { materialize } from '@n8n/scheduler';
-import { SchedulerService, MaterializerStore } from '@n8n/scheduler/storage';
+
+import { DurableScheduler } from '@/scheduling/durable-scheduler';
 
 describe('scheduler materialization', () => {
 	let jobRepo: ScheduledJobRepository;
 	let taskRepo: ScheduledTaskRepository;
-	let store: MaterializerStore;
+	let scheduler: DurableScheduler;
 
 	beforeAll(async () => {
 		await testDb.init();
 		jobRepo = Container.get(ScheduledJobRepository);
 		taskRepo = Container.get(ScheduledTaskRepository);
-		store = Container.get(MaterializerStore);
+		scheduler = Container.get(DurableScheduler);
 	});
 
 	afterEach(async () => {
@@ -44,7 +45,7 @@ describe('scheduler materialization', () => {
 		);
 
 	const runMaterialization = async (windowSeconds: number) =>
-		await materialize(store.runInTransaction, {
+		await materialize(scheduler.runInTransaction, {
 			windowSeconds,
 			batchSize: 100,
 			maxPerJob: 100,
@@ -85,19 +86,19 @@ describe('scheduler materialization', () => {
 		};
 
 		// The first pass records exactly maxPerJob, capping the batch rather than draining it all.
-		const first = await materialize(store.runInTransaction, drainOptions);
+		const first = await materialize(scheduler.runInTransaction, drainOptions);
 		expect(first.occurrences).toBe(5);
 		expect(await taskRepo.count()).toBe(5);
 
 		// Successive passes continue draining, each recording at most maxPerJob, until nothing is due.
 		for (let i = 0; i < 10; i++) {
-			const summary = await materialize(store.runInTransaction, drainOptions);
+			const summary = await materialize(scheduler.runInTransaction, drainOptions);
 			expect(summary.occurrences).toBeLessThanOrEqual(5);
 			if (summary.claimedJobs === 0) break;
 		}
 
 		// Drained: the backlog is fully recorded, every occurrence distinct (no duplicate from batching).
-		const drained = await materialize(store.runInTransaction, drainOptions);
+		const drained = await materialize(scheduler.runInTransaction, drainOptions);
 		expect(drained.claimedJobs).toBe(0);
 		const tasks = await taskRepo.find();
 		const distinctInstants = new Set(tasks.map((t) => t.scheduledFor.getTime()));
@@ -207,10 +208,10 @@ describe('scheduler materialization', () => {
 		expect(resumed.nextRunAt).not.toBeNull();
 	});
 
-	it('runs through SchedulerService with its configured window', async () => {
+	it('runs through DurableScheduler with its configured window', async () => {
 		const job = await createJob({ intervalSeconds: 3600, nextRunAt: secondsFromNow(-1) });
 
-		const summary = await Container.get(SchedulerService).materialize();
+		const summary = await scheduler.materialize();
 
 		expect(summary.claimedJobs).toBe(1);
 		const [task] = await taskRepo.find();
@@ -235,7 +236,7 @@ describe('scheduler materialization', () => {
 		);
 
 		const runPass = async () =>
-			await materialize(store.runInTransaction, {
+			await materialize(scheduler.runInTransaction, {
 				windowSeconds: 0,
 				batchSize,
 				maxPerJob: 100,

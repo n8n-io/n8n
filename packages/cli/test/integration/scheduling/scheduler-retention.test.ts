@@ -3,7 +3,8 @@ import type { ScheduledJob, ScheduledTask } from '@n8n/db';
 import { ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { prune } from '@n8n/scheduler';
-import { SchedulerService } from '@n8n/scheduler/storage';
+
+import { DurableScheduler } from '@/scheduling/durable-scheduler';
 
 describe('scheduler retention', () => {
 	let jobRepo: ScheduledJobRepository;
@@ -57,7 +58,7 @@ describe('scheduler retention', () => {
 		);
 	};
 
-	it('prunes each terminal class on its own window through SchedulerService', async () => {
+	it('prunes each terminal class on its own window through DurableScheduler', async () => {
 		const job = await createJob();
 		// Config defaults: cleanly finished kept 1 day, failed/missed kept 7 days.
 		await createTask(job.id, { status: 'succeeded', finishedAt: daysAgo(2) });
@@ -78,7 +79,7 @@ describe('scheduler retention', () => {
 			leaseExpiresAt: daysAgo(2),
 		});
 
-		const summary = await Container.get(SchedulerService).prune();
+		const summary = await Container.get(DurableScheduler).prune();
 
 		expect(summary).toEqual({ deleted: 4, drained: true });
 		const survivors = new Set((await taskRepo.find()).map((t) => t.id));
@@ -146,7 +147,7 @@ describe('scheduler retention', () => {
 		const job = await createJob();
 		const fresh = await createTask(job.id, { status: 'succeeded', finishedAt: daysAgo(0.5) });
 
-		const summary = await Container.get(SchedulerService).prune();
+		const summary = await Container.get(DurableScheduler).prune();
 
 		expect(summary).toEqual({ deleted: 0, drained: true });
 		expect((await taskRepo.find()).map((t) => t.id)).toEqual([fresh.id]);

@@ -23,18 +23,26 @@ rollback.
 
 ## Layout
 
-- **`core/`** — the algorithms (materializer, retention, executor, reaper) and the
-  domain types. DI-free and database-free: each algorithm declares the store
-  contract its callsite must satisfy (`MaterializerTransaction`, `RetentionStore`,
-  `ExecutorTaskStore`, `ReaperTaskStore`) and reports incidents through callbacks
-  and summaries, so a fake store is enough to test it. The domain types mirror the
-  row shapes, so the `@n8n/db` entities satisfy the contracts structurally — no
-  mapping layer sits between the database and the core.
-- **`storage/`** — the database bridging: the transaction runner and the service
-  wiring the algorithms to `@n8n/db` repositories and config.
+The package is DI-free and database-free: it ships the algorithms (materializer,
+retention, executor, reaper) and the domain types. Each algorithm declares the
+store contract its callsite must satisfy (`MaterializerTransaction`,
+`RetentionStore`, `ExecutorTaskStore`, `ReaperTaskStore`) and reports incidents
+through callbacks and summaries, so a fake store is enough to test it. The domain
+types mirror the row shapes, so the `@n8n/db` entities satisfy the contracts
+structurally — no mapping layer sits between the database and the core.
+
+The composition surface is the `Scheduler` interface — handler registration plus
+one accessor per pass (`materialize`, `execute`, `reap`, `prune`, `stop`) — and
+`createScheduler(deps)`, its canonical implementation. The host only supplies
+the bindings: a task store, a transaction runner, per-pass tuning and an
+`onEvent` sink for described incidents. In n8n that host is the cli's
+`DurableScheduler` service (`packages/cli/src/scheduling/`), which binds the
+`@n8n/db` repositories, config and the instance's host identity, and routes
+events to the logger.
 
 ## Status
 
-Early foundation. Today the package ships the domain types, the schedule math, the
-coordination engine (executor, reaper) and the storage adapters; the driver that
-runs them on a cadence in the main process lands in later milestones.
+Early foundation. Today the package ships the domain types, the schedule math,
+the coordination engine (executor, reaper) and the `Scheduler` surface the cli
+implements; the driver that runs the passes on a cadence in the main process
+lands in later milestones.

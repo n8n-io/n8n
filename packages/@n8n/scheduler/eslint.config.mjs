@@ -9,9 +9,9 @@ export default defineConfig(
 		},
 	},
 	{
-		// Core must stay free of DB/DI coupling: it declares the contracts, the
-		// storage layer (and eventually the cli) satisfies them.
-		files: ['src/core/**/*.ts'],
+		// This package must stay free of DB/DI coupling: it declares the contracts,
+		// the host (cli's DurableScheduler) satisfies them.
+		files: ['src/**/*.ts'],
 		rules: {
 			'no-restricted-imports': [
 				'error',
