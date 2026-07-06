@@ -117,10 +117,10 @@ node scripts/dev-metrics/setup.mjs --reset     # restore binaries + wipe state -
 export N8N_DEV_TELEMETRY=0                      # runtime kill switch (no sending)
 ```
 
-Data plane and write key are set via env: `N8N_DEV_METRICS_RUDDERSTACK_URL`
-(defaults to n8n's data plane `https://telemetry.n8n.io`) and
-`N8N_DEV_METRICS_RUDDERSTACK_KEY` (the `n8n-dev` workspace source's write key —
-currently a `TODO_...` placeholder; drop the real key in `track.mjs` or via env).
+Defaults point at the `n8n-dev` RudderStack workspace (its data plane + HTTP
+source write key, baked into `track.mjs` — client-side keys, safe to ship).
+Override with `N8N_DEV_METRICS_RUDDERSTACK_URL` / `N8N_DEV_METRICS_RUDDERSTACK_KEY`
+(e.g. point the URL at the local stub when testing).
 
 ## Testing locally
 
