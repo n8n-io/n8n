@@ -7,6 +7,7 @@ import { useDebounceFn } from '@vueuse/core';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useI18n } from '@n8n/i18n';
 import { type ResourceCounts, useProjectsStore } from '../projects.store';
+import { DEFAULT_PROJECT_ICON } from '../projects.constants';
 import type { Project, ProjectRelation, ProjectMemberData } from '../projects.types';
 import { useToast } from '@/app/composables/useToast';
 import { DEBOUNCE_TIME, getDebounceTime, VIEWS } from '@/app/constants';
@@ -16,6 +17,7 @@ import ProjectMembersTable from '../components/ProjectMembersTable.vue';
 import { useRolesStore } from '@/app/stores/roles.store';
 import { ROLE } from '@n8n/api-types';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import ProjectHeader from '../components/ProjectHeader.vue';
@@ -23,12 +25,13 @@ import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N
 import type { TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
 import type { UserAction } from '@n8n/design-system';
 import { isProjectRole } from '@/app/utils/typeGuards';
-import { useUserRoleProvisioningStore } from '@/features/settings/sso/provisioning/composables/userRoleProvisioning.store';
-import { N8nAlert } from '@n8n/design-system';
 import ProjectExternalSecrets from '../components/ProjectExternalSecrets.vue';
+import ProjectSettingsCustomTelemetryTags from '../components/ProjectSettingsCustomTelemetryTags.vue';
 import { getResourcePermissions } from '@n8n/permissions';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 
 import {
+	N8nAlert,
 	N8nButton,
 	N8nFormInput,
 	N8nIcon,
@@ -50,7 +53,7 @@ const i18n = useI18n();
 const projectsStore = useProjectsStore();
 const rolesStore = useRolesStore();
 const cloudPlanStore = useCloudPlanStore();
-const userRoleProvisioningStore = useUserRoleProvisioningStore();
+const settingsStore = useSettingsStore();
 const toast = useToast();
 const router = useRouter();
 const telemetry = useTelemetry();
@@ -68,26 +71,33 @@ const dialogVisible = ref(false);
 const upgradeDialogVisible = ref(false);
 
 const isDirty = ref(false);
-const isValid = ref(false);
+const isNameValid = ref(false);
+const isDescriptionValid = ref(true);
+const isTelemetryTagsValid = ref(true);
+const isValid = computed(
+	() => isNameValid.value && isDescriptionValid.value && isTelemetryTagsValid.value,
+);
 const resourceCounts = ref<ResourceCounts>({
 	credentials: -1,
 	dataTables: -1,
 	workflows: -1,
 });
-const formData = ref<Pick<Project, 'name' | 'description' | 'relations'>>({
+const formData = ref<
+	Pick<Project, 'name' | 'description' | 'relations'> & {
+		customTelemetryTags: NonNullable<Project['customTelemetryTags']>;
+	}
+>({
 	name: '',
 	description: '',
 	relations: [],
+	customTelemetryTags: [],
 });
 // Used to skip one watcher sync after targeted server updates (e.g., immediate removal)
 const suppressNextSync = ref(false);
 
 const nameInput = ref<InstanceType<typeof N8nFormInput> | null>(null);
 
-const projectIcon = ref<IconOrEmoji>({
-	type: 'icon',
-	value: 'layers',
-});
+const projectIcon = ref<IconOrEmoji>({ ...DEFAULT_PROJECT_ICON });
 
 const search = ref('');
 const membersTableState = ref<TableOptions>({
@@ -104,7 +114,9 @@ const userSearchQuery = ref('');
 const userSearchResults = ref<typeof usersStore.allUsers>([]);
 const isLoadingUsers = ref(false);
 
-const shouldFetchAllUsers = computed(() => usersStore.isAdminOrOwner || canUpdateProject.value);
+const shouldFetchAllUsers = computed(
+	() => hasPermission(['rbac'], { rbac: { scope: 'user:list' } }) || canUpdateProject.value,
+);
 
 const usersList = computed(() =>
 	userSearchResults.value.filter((user) => {
@@ -119,7 +131,7 @@ const firstLicensedRole = computed(
 );
 
 const projectMembersActions = computed<Array<UserAction<ProjectMemberData>>>(() => {
-	if (isProjectRoleProvisioningEnabled.value || isExpressionMappingEnabled.value) {
+	if (rolesManaged.value) {
 		return [];
 	}
 	return [
@@ -215,6 +227,8 @@ const onTextInput = () => {
 	isDirty.value = true;
 };
 
+const telemetryTagsRef = ref<InstanceType<typeof ProjectSettingsCustomTelemetryTags> | null>(null);
+
 async function onRemoveMember(userId: string) {
 	const current = projectsStore.currentProject;
 	if (!current) return;
@@ -264,6 +278,10 @@ const resetFormData = () => {
 		: [];
 	formData.value.name = projectsStore.currentProject?.name ?? '';
 	formData.value.description = projectsStore.currentProject?.description ?? '';
+	formData.value.customTelemetryTags = projectsStore.currentProject?.customTelemetryTags
+		? deepCopy(projectsStore.currentProject.customTelemetryTags)
+		: [];
+	telemetryTagsRef.value?.resetTouched();
 };
 
 const onCancel = () => {
@@ -341,6 +359,9 @@ const updateProject = async () => {
 		await projectsStore.updateProject(projectsStore.currentProject.id, {
 			name: formData.value.name ?? '',
 			description: formData.value.description ?? '',
+			...(settingsStore.isOtelCustomSpanAttributesEnabled
+				? { customTelemetryTags: formData.value.customTelemetryTags }
+				: {}),
 		});
 		isDirty.value = false;
 	} catch (error) {
@@ -541,13 +562,7 @@ onBeforeMount(async () => {
 	await searchUsers('');
 });
 
-const isProjectRoleProvisioningEnabled = computed(
-	() => userRoleProvisioningStore.provisioningConfig?.scopesProvisionProjectRoles || false,
-);
-
-const isExpressionMappingEnabled = computed(
-	() => userRoleProvisioningStore.provisioningConfig?.scopesUseExpressionMapping || false,
-);
+const rolesManaged = computed(() => projectsStore.currentProject?.rolesManaged ?? false);
 
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('projects.settings'));
@@ -555,7 +570,7 @@ onMounted(async () => {
 	if (!canUpdateProject.value) return;
 
 	selectProjectNameIfMatchesDefault();
-	await Promise.all([userRoleProvisioningStore.getProvisioningConfig(), rolesStore.fetchRoles()]);
+	await rolesStore.fetchRoles();
 });
 </script>
 
@@ -595,6 +610,7 @@ onMounted(async () => {
 						<N8nIconPicker
 							v-model="projectIcon"
 							:button-tooltip="i18n.baseText('projects.settings.iconPicker.button.tooltip')"
+							show-color-picker
 							@update:model-value="onIconUpdated"
 						/>
 						<N8nFormInput
@@ -609,7 +625,7 @@ onMounted(async () => {
 							:class="$style.projectNameInput"
 							@enter="onSubmit"
 							@input="onTextInput"
-							@validate="isValid = $event"
+							@validate="isNameValid = $event"
 						/>
 					</div>
 				</fieldset>
@@ -629,7 +645,7 @@ onMounted(async () => {
 						:class="$style.projectDescriptionInput"
 						@enter="onSubmit"
 						@input="onTextInput"
-						@validate="isValid = $event"
+						@validate="isDescriptionValid = $event"
 					/>
 				</fieldset>
 			</template>
@@ -655,8 +671,8 @@ onMounted(async () => {
 							remote
 							:remote-method="debouncedUserSearch"
 							:loading="isLoadingUsers"
+							:disabled="rolesManaged"
 							@update:model-value="onAddMember"
-							:disabled="isProjectRoleProvisioningEnabled || isExpressionMappingEnabled"
 						>
 							<template #prefix>
 								<N8nIcon icon="search" />
@@ -676,22 +692,10 @@ onMounted(async () => {
 							</template>
 						</N8nInput>
 					</div>
-					<div v-if="isExpressionMappingEnabled" class="mb-m">
+					<div v-if="rolesManaged" class="mb-m" data-test-id="project-roles-managed-notice">
 						<N8nAlert
 							type="info"
-							:title="
-								i18n.baseText(
-									'settings.provisioningProjectRolesHandledByExpressionMapping.description',
-								)
-							"
-						/>
-					</div>
-					<div v-else-if="isProjectRoleProvisioningEnabled" class="mb-m">
-						<N8nAlert
-							type="info"
-							:title="
-								i18n.baseText('settings.provisioningProjectRolesHandledBySsoProvider.description')
-							"
+							:title="i18n.baseText('settings.projectRolesManaged.description')"
 						/>
 					</div>
 					<div v-if="relationUsers.length > 0" :class="$style.membersTableContainer">
@@ -702,12 +706,24 @@ onMounted(async () => {
 							:current-user-id="usersStore.currentUser?.id"
 							:project-roles="rolesStore.processedProjectRoles"
 							:actions="projectMembersActions"
-							:can-edit-role="!isProjectRoleProvisioningEnabled && !isExpressionMappingEnabled"
+							:can-edit-role="!rolesManaged"
 							@update:options="onUpdateMembersTableOptions"
 							@update:role="onUpdateMemberRole"
+							@show-role-upgrade-dialog="upgradeDialogVisible = true"
 							@action="onMembersListAction"
 						/>
 					</div>
+				</fieldset>
+				<fieldset v-if="settingsStore.isOtelCustomSpanAttributesEnabled">
+					<h3>
+						<label>{{ i18n.baseText('projects.settings.customSpanAttributes.label') }}</label>
+					</h3>
+					<ProjectSettingsCustomTelemetryTags
+						ref="telemetryTagsRef"
+						v-model="formData.customTelemetryTags"
+						@update:model-value="onTextInput"
+						@validate="isTelemetryTagsValid = $event"
+					/>
 				</fieldset>
 				<fieldset>
 					<h3 class="mb-m">{{ i18n.baseText('projects.settings.danger.title') }}</h3>

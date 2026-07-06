@@ -3,26 +3,37 @@ import type {
 	SerializableAgentState,
 	StreamChunk,
 	StreamResult,
+	Agent as RuntimeAgent,
 } from '@n8n/agents';
-import { Agent, Memory } from '@n8n/agents';
 import { Logger } from '@n8n/backend-common';
+import { AgentsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { IsNull } from '@n8n/typeorm';
 import { jsonParse, UserError } from 'n8n-workflow';
+
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NodeCatalogService } from '@/node-catalog';
 
 import { AgentsService } from '../agents.service';
 import { composeJsonConfig } from '../json-config/agent-config-composition';
 import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import { N8nMemory } from '../integrations/n8n-memory';
-import type { AgentJsonConfig } from '../json-config/agent-json-config';
+import type { AgentJsonConfig } from '@n8n/api-types';
 import { AgentCheckpointRepository } from '../repositories/agent-checkpoint.repository';
+import { streamAgentChunks } from '../utils/agent-stream';
+import { buildAgentPreviewPath } from './agent-builder-preview-path';
 import { buildBuilderPrompt } from './agents-builder-prompts';
 import { AgentsBuilderToolsService, getAgentConfigHash } from './agents-builder-tools.service';
 import { AGENT_THREAD_PREFIX } from './builder-tool-names';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { AgentsBuilderSettingsService } from './agents-builder-settings.service';
+import { buildBuilderTelemetry } from '../tracing/builder-telemetry';
+import { getModelRecommendationsSection } from './agents-builder-model-recommendations';
+import { getBuilderRuntimeSkills } from './skills';
 
-const BUILDER_MODEL = 'anthropic/claude-sonnet-4-5';
+interface FindSuspendedCheckpointOptions {
+	includeUnscoped?: boolean;
+}
 
 /** Derive a stable thread ID for the builder chat of a given agent. */
 function builderThreadId(agentId: string): string {
@@ -34,11 +45,13 @@ export class AgentsBuilderService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly agentsService: AgentsService,
+		private readonly nodeCatalogService: NodeCatalogService,
 		private readonly agentsBuilderToolsService: AgentsBuilderToolsService,
 		private readonly n8nMemory: N8nMemory,
 		private readonly builderSettings: AgentsBuilderSettingsService,
 		private readonly n8nCheckpointStorage: N8NCheckpointStorage,
 		private readonly agentCheckpointRepository: AgentCheckpointRepository,
+		private readonly agentsConfig: AgentsConfig,
 	) {}
 
 	// ---------------------------------------------------------------------------
@@ -50,7 +63,7 @@ export class AgentsBuilderService {
 	 */
 	async getBuilderMessages(agentId: string) {
 		const threadId = builderThreadId(agentId);
-		return await this.n8nMemory.getMessages(threadId);
+		return await this.n8nMemory.getImplementation(agentId).getMessages(threadId);
 	}
 
 	/**
@@ -58,8 +71,9 @@ export class AgentsBuilderService {
 	 */
 	async clearBuilderMessages(agentId: string) {
 		const threadId = builderThreadId(agentId);
-		await this.n8nMemory.deleteMessagesByThread(threadId);
-		await this.n8nMemory.deleteThread(threadId);
+		const memory = this.n8nMemory.getImplementation(agentId);
+		await memory.deleteMessagesByThread(threadId);
+		await memory.deleteThread(threadId);
 	}
 	// ---------------------------------------------------------------------------
 	// Public — streaming
@@ -141,16 +155,26 @@ export class AgentsBuilderService {
 		projectId: string,
 		credentialProvider: CredentialProvider,
 		user: User,
-	): Promise<Agent> {
+	): Promise<RuntimeAgent> {
 		const agent = await this.agentsService.findById(agentId, projectId);
 		if (!agent) {
 			throw new NotFoundError(`Agent "${agentId}" not found`);
 		}
 
+		// Warm the node catalog in the background so the first node-related tool call
+		// can reuse an initialized parser.
+		void this.nodeCatalogService.initialize().catch((error) => {
+			this.logger.warn('Failed to initialize node catalog in builder warmup', {
+				error: error instanceof Error ? error.message : String(error),
+				agentId,
+			});
+		});
+
 		// Resolve the model the builder should run on. Throws
 		// `BuilderNotConfiguredError` when none of custom-credential / proxy /
 		// env-var fallback is available.
-		const { config: modelConfig } = await this.builderSettings.resolveModelConfig(user);
+		const { config: modelConfig, tracingProxyConfig } =
+			await this.builderSettings.resolveModelConfig(user);
 
 		const currentConfig = composeJsonConfig(agent) as unknown as AgentJsonConfig | null;
 		const currentToolsMap = agent.tools ?? {};
@@ -160,13 +184,18 @@ export class AgentsBuilderService {
 				.join('\n') || '(none)';
 
 		const configJson = currentConfig ? JSON.stringify(currentConfig, null, 2) : '(no config yet)';
+		const modelRecommendationsSection = await getModelRecommendationsSection();
+		const enabledModules = this.agentsConfig.modules;
 		const instructions = buildBuilderPrompt({
 			configJson,
 			configHash: getAgentConfigHash(currentConfig),
 			configUpdatedAt: agent.updatedAt.toISOString(),
 			toolList,
-			builderModel: BUILDER_MODEL,
+			agentPreviewPath: buildAgentPreviewPath(projectId, agentId),
+			modelRecommendationsSection,
+			enabledModules,
 		});
+		const runtimeSkills = getBuilderRuntimeSkills();
 
 		const tools = this.agentsBuilderToolsService.getTools(
 			agentId,
@@ -175,14 +204,29 @@ export class AgentsBuilderService {
 			user,
 		);
 
-		const builderMemory = new Memory().storage(this.n8nMemory).lastMessages(40);
+		const { Agent, Memory } = await import('@n8n/agents');
 
-		// Be careful with provider specific options, since user can change model to openai, grok, etc.
+		const builderMemory = new Memory()
+			.storage(this.n8nMemory.getImplementation(agentId))
+			.observationalMemory();
+
 		const builder = new Agent('agent-builder')
 			.model(modelConfig)
 			.instructions(instructions)
+			.skills(runtimeSkills)
 			.memory(builderMemory)
-			.checkpoint(this.n8nCheckpointStorage.getStorage(agentId));
+			.checkpoint(this.n8nCheckpointStorage.getStorage(agentId))
+			.configuration({ maxIterations: 30 });
+
+		const telemetry = await buildBuilderTelemetry({
+			agentId,
+			projectId,
+			userId: user.id,
+			threadId: builderThreadId(agentId),
+			model: modelConfig,
+			tracingProxyConfig,
+		});
+		if (telemetry) builder.telemetry(telemetry);
 
 		for (const tool of [...tools.json, ...tools.shared]) {
 			builder.tool(tool);
@@ -197,15 +241,8 @@ export class AgentsBuilderService {
 	 * plain reader→generator adapter.
 	 */
 	private async *streamFromAgent(resultStream: StreamResult): AsyncGenerator<StreamChunk> {
-		const reader = resultStream.stream.getReader();
-		try {
-			while (true) {
-				const { done, value } = await reader.read();
-				if (done) break;
-				yield value;
-			}
-		} finally {
-			reader.releaseLock();
+		for await (const value of streamAgentChunks(resultStream.stream)) {
+			yield value;
 		}
 	}
 
@@ -220,10 +257,45 @@ export class AgentsBuilderService {
 	 * don't need a separate runId from this helper.
 	 */
 	async findOpenCheckpoint(agentId: string): Promise<SerializableAgentState | null> {
+		return await this.findSuspendedCheckpoint(agentId);
+	}
+
+	/**
+	 * Like {@link findOpenCheckpoint}, but scoped to one chat thread. Used by
+	 * the chat history endpoints to rebuild open interactive cards (with
+	 * runIds) after a page refresh.
+	 */
+	async findOpenCheckpointForThread(
+		agentId: string,
+		threadId: string,
+		options: FindSuspendedCheckpointOptions = {},
+	): Promise<SerializableAgentState | null> {
+		return await this.findSuspendedCheckpoint(agentId, threadId, options);
+	}
+
+	/**
+	 * Like {@link findOpenCheckpointForThread}, scoped to the builder thread for
+	 * this agent. Prevents preview-chat suspensions from bleeding into builder
+	 * history.
+	 */
+	async findOpenBuilderCheckpoint(agentId: string): Promise<SerializableAgentState | null> {
+		return await this.findSuspendedCheckpoint(agentId, builderThreadId(agentId));
+	}
+
+	private async findSuspendedCheckpoint(
+		agentId: string,
+		threadId?: string,
+		options: FindSuspendedCheckpointOptions = {},
+	): Promise<SerializableAgentState | null> {
 		const rows = await this.agentCheckpointRepository.find({
-			where: { agentId, expired: false },
+			where: options.includeUnscoped
+				? [
+						{ agentId, expired: false },
+						{ agentId: IsNull(), expired: false },
+					]
+				: { agentId, expired: false },
 			order: { updatedAt: 'DESC' },
-			take: 5,
+			...(threadId === undefined && { take: 5 }),
 		});
 		for (const row of rows) {
 			if (!row.state) continue;
@@ -233,9 +305,9 @@ export class AgentsBuilderService {
 			} catch {
 				continue;
 			}
-			if (parsed.status === 'suspended') {
-				return parsed;
-			}
+			if (parsed.status !== 'suspended') continue;
+			if (threadId !== undefined && parsed.persistence?.threadId !== threadId) continue;
+			return parsed;
 		}
 		return null;
 	}

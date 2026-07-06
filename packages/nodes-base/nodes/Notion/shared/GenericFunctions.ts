@@ -91,6 +91,9 @@ export async function notionApiRequestAllItems(
 ): Promise<any> {
 	const resource = this.getNodeParameter('resource', 0);
 
+	const limit = query.limit as number | undefined;
+	delete query.limit;
+
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -104,13 +107,12 @@ export async function notionApiRequestAllItems(
 			body.start_cursor = next_cursor;
 		}
 		returnData.push.apply(returnData, responseData[propertyName] as IDataObject[]);
-		const limit = query.limit as number | undefined;
 		if (limit && limit <= returnData.length) {
-			return returnData;
+			return returnData.slice(0, limit);
 		}
 	} while (responseData.has_more !== false);
 
-	return returnData;
+	return limit ? returnData.slice(0, limit) : returnData;
 }
 
 export async function notionApiRequestGetBlockChildrens(

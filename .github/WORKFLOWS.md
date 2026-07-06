@@ -71,7 +71,6 @@ Complete reference for n8n's `.github/` folder.
 │  │ Schedule │───▶│  Nightly/Weekly Jobs             │    ┌────────────┐   │
 │  │  (cron)  │    │  ├─ docker-build-push (nightly)  │───▶│   Images   │   │
 │  └──────────┘    │  ├─ test-benchmark-nightly       │───▶│  Metrics   │   │
-│                  │  ├─ test-workflows-nightly       │    └────────────┘   │
 │                  │  ├─ test-e2e-vm-expressions      │                     │
 │                  │  └─ test-e2e-coverage-weekly     │                     │
 │                  └──────────────────────────────────┘                     │
@@ -175,20 +174,57 @@ These only run if specific files changed:
 |------------------------------------------------------------------------|-----------------------------|------------|
 | `packages/@n8n/task-runner-python/**`                                  | `ci-python.yml`             | any        |
 | `packages/cli/src/databases/**`, `*.entity.ts`, `*.repository.ts`      | `test-db.yml`               | any        |
-| `packages/frontend/@n8n/storybook/**`, design-system, chat             | `test-visual-storybook.yml` | master     |
+| `packages/frontend/@n8n/storybook/**`, design-system, chat             | `release-storybook.yml` | master     |
 | `docker/images/n8n-base/Dockerfile`                                    | `build-base-image.yml`      | any        |
 | `**/package.json`, `**/turbo.json`                                     | `build-windows.yml`         | master     |
 | `packages/@n8n/ai-workflow-builder.ee/evaluations/programmatic/python/**` | `test-evals-python.yml`  | any        |
 | `packages/@n8n/benchmark/**`                                           | `build-benchmark-image.yml` | master     |
 | `packages/cli/src/public-api/**/*.{css,yaml,yml}`                      | `util-sync-api-docs.yml`    | master     |
+| `packages/@n8n/instance-ai/src/**`, `packages/@n8n/instance-ai/skills/**`, `packages/@n8n/instance-ai/knowledge-base/**`, `packages/@n8n/instance-ai/evaluations/**`, `packages/cli/src/modules/instance-ai/**`, `packages/core/src/execution-engine/eval-mock-helpers.ts` | `ci-instance-ai-evals.yml` | on PR `opened` / `reopened` / `ready_for_review` |
 
 ### On PR Review
 
-| Event                      | Workflow                    | Condition                    |
-|----------------------------|-----------------------------|------------------------------|
-| Review approved            | `test-visual-chromatic.yml` | + design files changed       |
-| Comment with `@claude`     | `util-claude.yml`           | mention in any comment       |
-| Any review                 | `util-notify-pr-status.yml` | not community-labeled        |
+| Event                      | Workflow                    | Condition                                            |
+|----------------------------|-----------------------------|------------------------------------------------------|
+| Review approved            | `release-chromatic.yml` | + design files changed                               |
+| Comment with `@claude`     | `util-claude.yml`           | mention in any comment                               |
+| Any review                 | `util-notify-pr-status.yml` | not community-labeled                                |
+
+**Why Instance AI evals fire once per PR state-change, not per push:** the
+workflow eval is the most expensive job in PR CI (LLM-bound builds). Running it
+on every push made cost untenable; firing on every review approval cascaded
+through the dismiss-stale-on-push → re-approve loop, which also blew up.
+The current trigger fires once per `opened` / `reopened` / `ready_for_review`
+on a non-fork PR touching the eval surface, and runs the `pr` test-case dataset
+(~6 high-reliability, capability-diverse cases) instead of the full ~14. To
+re-run after pushing a fix, dispatch `ci-instance-ai-evals.yml` with the PR
+number (optionally `tier: full` for broader coverage) — results post back to
+the PR. The lighter `test-evals-discovery.yml` still runs on every push as part
+of `ci-pull-requests.yml`.
+
+**`ci-instance-ai-evals.yml` is the PR gate; `test-evals-instance-ai.yml` is
+the lab bench.** The gate deliberately exposes only PR re-runs. Anything that
+isn't PR gating — baselines, model experiments, arbitrary branch runs — goes
+through `test-evals-instance-ai.yml`'s own dispatch form ("Instance AI
+Evals: Experiments"): full knob set (branch, filter, tier, iterations, experiment-name,
+model), no per-PR cancellation (dispatches run in parallel, e.g. concurrent
+model-comparison arms), and SHA-keyed docker cache hits on master. Evals never
+run on fork PRs: the event trigger gates on `head.repo.fork`, and the `pr`
+re-run path refuses fork PRs in `resolve` (dispatched runs carry secrets).
+
+**MCP workflow evals (`ci-mcp-evals.yml`) are manual only (`workflow_dispatch`),
+never per-PR or scheduled.** They reuse the Instance AI verifier but build each
+workflow through the instance MCP server by driving the `claude` CLI, which adds
+Anthropic build cost on top of the verifier — too expensive to run
+automatically. The job boots `lanes` n8n containers on one runner and runs a
+single `eval:instance-ai --build-via-mcp` process: each case is built by driving
+its lane's own MCP server with `claude`, then verified on that same lane
+(work-stealing across lanes, capped per-lane). One process → one experiment in
+the isolated `mcp-workflow-evals` LangSmith dataset, so there is no shard/merge
+step. Dispatch from the Actions tab (set `experiment-name=mcp-baseline` to
+refresh the baseline, `filter=<slug>` to run a single case, or `lanes` to widen
+parallelism). See the `--build-via-mcp` section in
+`packages/@n8n/instance-ai/evaluations/README.md`.
 
 ### On PR Close/Merge
 
@@ -255,7 +291,7 @@ release-publish.yml
     │                                 └──────────▶  security-trivy-scan-callable.yml
     └──────────────────────────▶  sbom-generation-callable.yml
 
-test-workflows-nightly.yml
+test-workflows-nightly.yml  (manual dispatch only — nightly schedule disabled, DEVP-544)
     └──────────────────────────▶  test-workflows-callable.yml
 
 test-e2e-vm-expressions-nightly.yml
@@ -293,7 +329,7 @@ test-workflows-pr-comment.yml
 │  ───────────────────────                                                   │
 │  ci-pull-requests.yml runs full suite                                      │
 │  ├─ NO ci-check-pr-title.yml (skipped for release branches)                │
-│  └─ NO test-visual-chromatic.yml (skipped)                                 │
+│  └─ NO release-chromatic.yml (skipped)                                 │
 │                          │                                                 │
 │                          ▼ [Merge PR]                                      │
 │  STAGE 3: Publish                                                          │
@@ -353,8 +389,8 @@ Runs on push to `master` or `1.x`:
 ```
 Push to master/1.x
 ├─ build-github (populate cache)
-├─ unit-test (matrix: Node 22.x, 24.14.1, 25.x)
-│   └─ Coverage only on 24.14.1
+├─ unit-test (matrix: Node 22.x, 24.16.0, 26.x)
+│   └─ Coverage only on 24.16.0
 ├─ lint
 └─ notify-on-failure (Slack #alerts-build)
 ```
@@ -368,11 +404,10 @@ Push to master/1.x
 | Daily 00:00               | `docker-build-push.yml`           | Nightly Docker images    |
 | Daily 00:00               | `test-db.yml`                     | Database compatibility   |
 | Daily 00:00               | `test-e2e-performance-reusable.yml`| Performance E2E         |
-| Daily 00:00               | `test-visual-storybook.yml`       | Storybook deploy         |
-| Daily 00:00               | `test-visual-chromatic.yml`       | Visual regression        |
+| Daily 00:00               | `release-storybook.yml`       | Storybook deploy         |
+| Daily 00:00               | `release-chromatic.yml`       | Visual regression        |
 | Daily 00:00               | `util-check-docs-urls.yml`        | Doc link validation      |
 | Daily 01:30, 02:30, 03:30 | `test-benchmark-nightly.yml`      | Performance benchmarks   |
-| Daily 02:00               | `test-workflows-nightly.yml`      | Workflow tests           |
 | Daily 04:00               | `test-e2e-vm-expressions-nightly.yml`| VM expression E2E     |
 | Daily 05:00               | `test-benchmark-destroy-nightly.yml`| Cleanup benchmark env  |
 | Monday 00:00              | `util-update-node-popularity.yml` | Node usage stats         |
@@ -394,7 +429,7 @@ Composite actions in `.github/actions/`:
 
 ```yaml
 inputs:
-  node-version:        # default: '24.14.1'
+  node-version:        # default: '24.16.0'
   enable-docker-cache: # default: 'false' (Blacksmith Buildx)
   build-command:       # default: 'pnpm build'
 ```
@@ -455,6 +490,15 @@ Scripts in `.github/scripts/`:
 | `validate-docs-links.js`| Check doc URLs    | `util-check-docs-urls.yml`|
 | `send-build-stats.mjs`  | Build telemetry   | `setup-nodejs` action     |
 
+### Slack Scripts
+
+See [Slack Notifications](#slack-notifications) for the calling pattern.
+
+| Script                          | Purpose                                                                       |
+|---------------------------------|-------------------------------------------------------------------------------|
+| `slack/notify.mjs`              | CLI + `sendSlackMessage` export. POSTs `chat.postMessage`, fails on `ok:false`. |
+| `slack/build-trivy-blocks.mjs`  | `--blocks trivy` — vulnerability digest                                       |
+
 ---
 
 ## Telemetry
@@ -487,8 +531,8 @@ Team ownership mappings in `CODEOWNERS`:
 | `ubuntu-latest`                     | 2    | Simple jobs, fork PR E2E    |
 | `blacksmith-2vcpu-ubuntu-2204`      | 2    | Standard builds, E2E shards |
 | `blacksmith-4vcpu-ubuntu-2204`      | 4    | Unit tests, typecheck, lint |
-| `blacksmith-8vcpu-ubuntu-2204`      | 8    | E2E coverage (weekly)       |
-| `blacksmith-4vcpu-ubuntu-2204-arm`  | 4    | ARM64 Docker builds         |
+| `blacksmith-8vcpu-ubuntu-2204`      | 8    | Heavy parallel workloads    |
+| `blacksmith-8vcpu-ubuntu-2204-arm`  | 8    | ARM64 Docker builds         |
 
 ### Selection Guidelines
 
@@ -500,7 +544,7 @@ Team ownership mappings in `CODEOWNERS`:
 
 **`blacksmith-4vcpu-ubuntu-2204`** - Unit tests (parallelized), linting (parallel file processing), typechecking (CPU-intensive), E2E test shards
 
-**`blacksmith-8vcpu-ubuntu-2204`** - Heavy parallel workloads, full E2E coverage runs
+**`blacksmith-8vcpu-ubuntu-2204`** - Heavy parallel workloads
 
 ### Runner Provider Toggle
 
@@ -556,7 +600,7 @@ Supply chain security ensures artifacts haven't been tampered with. We provide t
 
 - **Runs on:** stable/nightly/rc Docker builds
 - **Scans:** n8n image, runners image
-- **Output:** Slack `#notify-security-scan-outputs` (all), `#mission-security` (critical)
+- **Output:** GitHub Actions step summary (`$GITHUB_STEP_SUMMARY`) and run logs
 
 ### SBOM
 
@@ -634,6 +678,44 @@ cosign verify-attestation --type openvex \
 
 ---
 
+## Slack Notifications
+
+All workflows post via `.github/scripts/slack/notify.mjs` — a direct `fetch` to `chat.postMessage` that exits non-zero on any Slack error. No third-party action; no silent swallowing.
+
+```yaml
+notify-on-failure:
+  runs-on: ubuntu-latest
+  needs: [build]
+  if: ${{ always() && contains(needs.*.result, 'failure') }}
+  steps:
+    - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      with:
+        sparse-checkout: .github/scripts/slack
+        sparse-checkout-cone-mode: false
+    - name: Notify Slack
+      env:
+        SLACK_TOKEN: ${{ secrets.QBOT_SLACK_TOKEN }}
+      run: |
+        node .github/scripts/slack/notify.mjs \
+          --channel '#alerts-build' \
+          --text 'Build failed - ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+```
+
+If notify is a step inside an existing checked-out job, skip the `checkout` and gate with step-level `if: failure()` instead.
+
+> `if: failure()` at the **step** level of a dedicated notify job is a no-op when a `needs:` dependency fails (the job is skipped before steps evaluate). Always gate the **job** with `if: ${{ always() && contains(needs.*.result, 'failure') }}`.
+
+**Rich payloads (Block Kit):** add `build-<name>-blocks.mjs` whose default export returns a blocks array, then pass `--blocks <name>` plus any workflow-specific args. Builders read repo / run context from `GITHUB_*` runner env vars. Kebab-case flags become camelCase keys for the builder (`--image-ref` → `imageRef`).
+
+| Token                        | Bot            | Channels                                                    |
+|------------------------------|----------------|-------------------------------------------------------------|
+| `QBOT_SLACK_TOKEN`           | QBot           | Default — engineering / build / security                    |
+| `RELEASE_HELPER_SLACK_TOKEN` | Release Helper | `#releases` (C036AELNMV0)                                   |
+
+Adding a new channel requires inviting the bot first; the first run otherwise fails loudly with `not_in_channel`. Private-repo workflows (`sec-publish-fix*.yml`) need `QBOT_SLACK_TOKEN` set in `n8n-io/n8n-private`; the scripts themselves are mirrored by `sec-sync-public-to-private.yml`.
+
+---
+
 ## Secrets
 
 ### By Category
@@ -641,7 +723,7 @@ cosign verify-attestation --type openvex \
 | Category            | Secrets                                                     |
 |---------------------|-------------------------------------------------------------|
 | Package Publishing  | `NPM_TOKEN`, `DOCKER_USERNAME`, `DOCKER_PASSWORD`           |
-| Notifications       | `SLACK_WEBHOOK_URL`, `QBOT_SLACK_TOKEN`                     |
+| Notifications       | `QBOT_SLACK_TOKEN`, `RELEASE_HELPER_SLACK_TOKEN`            |
 | Code Quality        | `CODECOV_TOKEN`, `CHROMATIC_PROJECT_TOKEN`, `CURRENTS_RECORD_KEY` |
 | Error Tracking      | `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_*_PROJECT`       |
 | Cloud/CDN           | `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`             |

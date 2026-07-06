@@ -26,6 +26,14 @@ describe('InstanceAiConfirmRequestDto', () => {
 				'approval deny with userInput (plan feedback)',
 				{ kind: 'approval', approved: false, userInput: 'please revise step 3' },
 			],
+			// InstanceAiConfirmationPanel: handleAlwaysAllow ("allow for rest of session")
+			[
+				'approval approve with session scope',
+				{ kind: 'approval', approved: true, scope: 'session' },
+			],
+			['approval approve with once scope', { kind: 'approval', approved: true, scope: 'once' }],
+			// InstanceAiConfirmationPanel: handlePlanDeny (hard-reject the plan)
+			['planDeny', { kind: 'planDeny' }],
 			// InstanceAiConfirmationPanel: handleQuestionsSubmit
 			[
 				'questions with mixed answers',
@@ -45,6 +53,11 @@ describe('InstanceAiConfirmRequestDto', () => {
 					kind: 'credentialSelection',
 					credentials: { slackApi: 'cred-1', githubApi: 'cred-2' },
 				},
+			],
+			// InstanceAiCredentialSetup: handleSetupAutomatically
+			[
+				'credentialAutoSetup with credential type',
+				{ kind: 'credentialAutoSetup', credentialType: 'firecrawlApi' },
 			],
 			// DomainAccessApproval: handleAction (primary path — with action)
 			[
@@ -115,6 +128,15 @@ describe('InstanceAiConfirmRequestDto', () => {
 			expect(result.success).toBe(false);
 		});
 
+		test('approval with an unknown scope', () => {
+			const result = InstanceAiConfirmRequestDto.safeParse({
+				kind: 'approval',
+				approved: true,
+				scope: 'forever',
+			});
+			expect(result.success).toBe(false);
+		});
+
 		test('questions without answers array', () => {
 			const result = InstanceAiConfirmRequestDto.safeParse({ kind: 'questions' });
 			expect(result.success).toBe(false);
@@ -122,6 +144,11 @@ describe('InstanceAiConfirmRequestDto', () => {
 
 		test('credentialSelection without credentials map', () => {
 			const result = InstanceAiConfirmRequestDto.safeParse({ kind: 'credentialSelection' });
+			expect(result.success).toBe(false);
+		});
+
+		test('credentialAutoSetup without credentialType', () => {
+			const result = InstanceAiConfirmRequestDto.safeParse({ kind: 'credentialAutoSetup' });
 			expect(result.success).toBe(false);
 		});
 

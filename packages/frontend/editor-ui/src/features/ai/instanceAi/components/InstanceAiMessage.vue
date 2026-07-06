@@ -1,10 +1,10 @@
 <script lang="ts" setup>
 import type { InstanceAiMessage } from '@n8n/api-types';
 import type { RatingFeedback } from '@n8n/design-system';
-import { N8nCallout, N8nIconButton, N8nMessageRating, N8nText } from '@n8n/design-system';
+import { N8nCallout, N8nIcon, N8nIconButton, N8nMessageRating, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref } from 'vue';
-import { useInstanceAiStore } from '../instanceAi.store';
+import { useInstanceAiStore, useThread } from '../instanceAi.store';
 import AgentActivityTree from './AgentActivityTree.vue';
 import AttachmentPreview from './AttachmentPreview.vue';
 import InstanceAiMarkdown from './InstanceAiMarkdown.vue';
@@ -15,6 +15,7 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const store = useInstanceAiStore();
+const thread = useThread();
 const showDebugInfo = ref(false);
 
 const isUser = computed(() => props.message.role === 'user');
@@ -34,6 +35,21 @@ const errorDetails = computed(() => {
 });
 
 const hasProviderError = computed(() => !!errorDetails.value?.provider);
+
+/** A run the user (or a timeout/shutdown) stopped before it completed. */
+const runCancelled = computed(() => props.message.agentTree?.status === 'cancelled');
+
+/** Attribute the stop to its cause; falls back to the generic label when unknown. */
+const cancelledLabel = computed(() => {
+	switch (props.message.agentTree?.cancellationReason) {
+		case 'user':
+			return i18n.baseText('instanceAi.agentTree.stoppedByUser');
+		case 'timeout':
+			return i18n.baseText('instanceAi.agentTree.timedOut');
+		default:
+			return i18n.baseText('instanceAi.agentTree.cancelled');
+	}
+});
 
 const errorTitle = computed(() => {
 	if (hasProviderError.value) {
@@ -66,16 +82,16 @@ const responseId = computed(() => props.message.messageGroupId ?? props.message.
 const isRateable = computed(
 	() =>
 		!isUser.value &&
-		store.rateableResponseId === responseId.value &&
-		!(responseId.value in store.feedbackByResponseId),
+		thread.rateableResponseId === responseId.value &&
+		!(responseId.value in thread.feedbackByResponseId),
 );
 
 const hasSubmittedFeedback = computed(
-	() => !isUser.value && responseId.value in store.feedbackByResponseId,
+	() => !isUser.value && responseId.value in thread.feedbackByResponseId,
 );
 
 function onFeedback(payload: RatingFeedback) {
-	store.submitFeedback(responseId.value, payload);
+	thread.submitFeedback(responseId.value, payload);
 }
 
 function formatJson(value: unknown): string {
@@ -146,6 +162,16 @@ function formatJson(value: unknown): string {
 				:class="$style.blinkingCursor"
 			/>
 
+			<!-- Run stopped indicator (survives reload via the persisted cancelled status) -->
+			<div
+				v-if="runCancelled"
+				:class="$style.cancelledIndicator"
+				data-test-id="instance-ai-run-cancelled"
+			>
+				<N8nIcon icon="circle-x" size="small" />
+				<span>{{ cancelledLabel }}</span>
+			</div>
+
 			<!-- Response feedback -->
 			<N8nMessageRating
 				v-if="isRateable"
@@ -182,6 +208,7 @@ function formatJson(value: unknown): string {
 	display: flex;
 	justify-content: flex-end;
 	width: 100%;
+	margin-block: var(--spacing--md);
 }
 
 .userAttachments {
@@ -192,7 +219,7 @@ function formatJson(value: unknown): string {
 }
 
 .userBubble {
-	background: var(--color--background);
+	background: var(--assistant--color--background--user-bubble);
 	padding: var(--spacing--xs) var(--spacing--sm);
 	border-radius: var(--radius--xl);
 	white-space: pre-wrap;
@@ -231,6 +258,14 @@ function formatJson(value: unknown): string {
 	color: var(--color--text--tint-1);
 	padding: var(--spacing--4xs) 0;
 	animation: status-fade-in 0.2s ease;
+}
+
+.cancelledIndicator {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--tint-1);
 }
 
 .statusDot {

@@ -33,7 +33,7 @@ vi.mock('vue-router', () => ({
 	useRouter: () => ({
 		resolve: vi.fn((route) => ({ href: `/workflow/${route.params.workflowId}` })),
 	}),
-	useRoute: () => ({}),
+	useRoute: () => ({ params: {} }),
 	RouterLink: vi.fn(),
 }));
 vi.mock('@n8n/i18n', async (importOriginal) => ({
@@ -99,7 +99,7 @@ describe('useWorkflowCommands', () => {
 
 		saveCurrentWorkflowMock.mockResolvedValue(true);
 
-		mockWorkflowsStore.workflow = mockWorkflow.value;
+		mockWorkflowsStore.workflowId = mockWorkflow.value.id;
 		// Mark workflow as existing by adding it to workflowsById
 		mockWorkflowsListStore.workflowsById = { [mockWorkflow.value.id]: mockWorkflow.value };
 

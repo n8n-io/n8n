@@ -1,5 +1,3 @@
-import { ExecutionsConfig } from '@n8n/config';
-import { Container } from '@n8n/di';
 import { sendAt } from 'cron';
 import moment from 'moment-timezone';
 import type {
@@ -14,6 +12,7 @@ import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import {
 	intervalToRecurrence,
 	recurrenceCheck,
+	resetStaleRecurrence,
 	toCronExpression,
 	validateInterval,
 } from './GenericFunctions';
@@ -65,7 +64,7 @@ export class ScheduleTrigger implements INodeType {
 						name: 'interval',
 						displayName: 'Trigger Interval',
 						builderHint: {
-							message:
+							propertyHint:
 								'You can add multiple intervals to trigger at different times. Use "Custom (Cron)" for more specific scheduling patterns.',
 						},
 						values: [
@@ -174,6 +173,9 @@ export class ScheduleTrigger implements INodeType {
 								displayName: 'Months Between Triggers',
 								name: 'monthsInterval',
 								type: 'number',
+								typeOptions: {
+									minValue: 1,
+								},
 								displayOptions: {
 									show: {
 										field: ['months'],
@@ -431,10 +433,14 @@ export class ScheduleTrigger implements INodeType {
 		const { interval: intervals } = this.getNodeParameter('rule', []) as Rule;
 		const timezone = this.getTimezone();
 		const staticData = this.getWorkflowStaticData('node') as {
-			recurrenceRules: number[];
+			recurrenceRules: Array<number | undefined>;
+			recurrenceRuleSignatures: Array<string | undefined>;
 		};
 		if (!staticData.recurrenceRules) {
 			staticData.recurrenceRules = [];
+		}
+		if (!staticData.recurrenceRuleSignatures) {
+			staticData.recurrenceRuleSignatures = [];
 		}
 
 		if (version >= 1.3) {
@@ -445,12 +451,6 @@ export class ScheduleTrigger implements INodeType {
 
 		const workflowId = this.getWorkflow().id;
 		const nodeId = this.getNode().id;
-
-		const configDedupEnabled =
-			Container.get(ExecutionsConfig).scheduledExecutionDeduplicationEnabled;
-		// The workflowId should always be defined, but if it isn't we skip
-		// the deduplication key.
-		const dedupEnabled = configDedupEnabled && Boolean(workflowId);
 
 		const executeTrigger = (
 			recurrence: IRecurrenceRule,
@@ -477,8 +477,10 @@ export class ScheduleTrigger implements INodeType {
 				Timezone: `${timezone} (UTC${momentTz.format('Z')})`,
 			};
 
+			// The workflowId should always be defined, but if it isn't we skip
+			// the deduplication key.
 			const deduplicationKey =
-				dedupEnabled && scheduledTime
+				workflowId && scheduledTime
 					? `${workflowId}:${nodeId}:${scheduledTime.toISOString()}`
 					: undefined;
 
@@ -498,6 +500,9 @@ export class ScheduleTrigger implements INodeType {
 		}));
 
 		if (this.getMode() !== 'manual') {
+			// Re-arm rules left stale by a previous schedule config (scheduled mode only).
+			resetStaleRecurrence(staticData, rules);
+
 			for (const { interval, cronExpression, recurrence } of rules) {
 				try {
 					const cron: Cron = {

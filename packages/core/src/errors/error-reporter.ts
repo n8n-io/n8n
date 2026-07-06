@@ -1,14 +1,27 @@
 import { inTest, Logger } from '@n8n/backend-common';
+import { isAxiosError } from '@n8n/backend-network';
 import { type InstanceType } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import type { ReportingOptions } from '@n8n/errors';
 import type { ErrorEvent, EventHint } from '@sentry/core';
 import type { NodeOptions } from '@sentry/node';
-import { AxiosError } from 'axios';
-import { ApplicationError, ExecutionCancelledError, BaseError } from 'n8n-workflow';
+import {
+	ApplicationError,
+	ExecutionCancelledError,
+	BaseError,
+	UnexpectedError,
+} from 'n8n-workflow';
 import { createHash } from 'node:crypto';
 
-import { Tracing, SentryTracing } from '@/observability';
+import {
+	Tracing,
+	SentryTracing,
+	buildBeforeSendTransaction,
+	buildTracesSampler,
+	shouldIgnoreIncomingRequest,
+	shouldIgnoreOutgoingRequest,
+	DEFAULT_SLOW_SPAN_THRESHOLD_MS,
+} from '@/observability';
 
 type SentryIntegration = 'Redis' | 'Postgres' | 'Http' | 'Express';
 
@@ -26,8 +39,20 @@ type ErrorReporterInitOptions = {
 	/** Threshold in ms for event loop block detection. Only used if `withEventLoopBlockDetection` is true. */
 	eventLoopBlockThreshold?: number;
 
+	/** Max event loop block events per hour per instance. Only used if `withEventLoopBlockDetection` is true. */
+	eventLoopBlockMaxEventsPerHour?: number;
+
 	/** Sample rate for Sentry traces (0.0 to 1.0). 0 means disabled */
 	tracesSampleRate: number;
+
+	/** Threshold in ms below which non-errored `db`/`http.client` spans are dropped. */
+	slowSpanThresholdMs?: number;
+
+	/** Production webhook endpoint path segment (e.g. `webhook`), used to sample webhook traces. */
+	webhookEndpoint?: string;
+
+	/** Sample rate (0.0 to 1.0) for successful production webhook transaction traces. */
+	webhookTracesSampleRate?: number;
 
 	/** Sample rate for Sentry profiling (0.0 to 1.0). 0 means disabled */
 	profilesSampleRate: number;
@@ -52,6 +77,23 @@ const ONE_DAY_IN_MS = 24 * 60 * 60 * 1000;
 const SIX_WEEKS_IN_MS = 6 * 7 * ONE_DAY_IN_MS;
 const RELEASE_EXPIRATION_WARNING =
 	'Error tracking disabled because this release is older than 6 weeks.';
+
+const SENTRY_MAX_VALUE_LENGTH = 500;
+
+const PNPM_NESTED_FRAME_RE = /.*\/node_modules\/\.pnpm\/[^/]+\/node_modules\//;
+const N8N_CLI_INSTALL_PREFIX = '/usr/local/lib/node_modules/n8n/';
+
+/**
+ * Normalises a Sentry stack-frame filename so that pnpm-nested dependency
+ * paths and the n8n CLI install prefix become stable `app:///` roots. This
+ * lets Sentry code mappings match `n8n-core`, `n8n-nodes-base`, and cli
+ * frames without depending on the per-release pnpm peer-deps hash segment.
+ */
+export function normalizeFrameFilename(filename: string): string {
+	return filename
+		.replace(PNPM_NESTED_FRAME_RE, 'app:///')
+		.replace(N8N_CLI_INSTALL_PREFIX, 'app:///');
+}
 
 @Service()
 export class ErrorReporter {
@@ -116,8 +158,12 @@ export class ErrorReporter {
 		releaseDate,
 		withEventLoopBlockDetection,
 		eventLoopBlockThreshold,
+		eventLoopBlockMaxEventsPerHour,
 		profilesSampleRate,
 		tracesSampleRate,
+		slowSpanThresholdMs = DEFAULT_SLOW_SPAN_THRESHOLD_MS,
+		webhookEndpoint,
+		webhookTracesSampleRate,
 		eligibleIntegrations = {},
 		healthEndpoint = '/healthz',
 	}: ErrorReporterInitOptions) {
@@ -160,6 +206,7 @@ export class ErrorReporter {
 			setUser,
 			requestDataIntegration,
 			rewriteFramesIntegration,
+			httpIntegration,
 		} = sentry;
 
 		// Most of the integrations are listed here:
@@ -196,6 +243,7 @@ export class ErrorReporter {
 						server_type: serverType,
 					},
 					eventLoopBlockThreshold,
+					eventLoopBlockMaxEventsPerHour,
 				)
 			: [];
 
@@ -206,14 +254,43 @@ export class ErrorReporter {
 			release,
 			environment,
 			serverName,
-			...(isTracingEnabled ? { tracesSampleRate } : {}),
+			maxValueLength: SENTRY_MAX_VALUE_LENGTH,
+			...(isTracingEnabled
+				? {
+						tracesSampler: buildTracesSampler(tracesSampleRate),
+						beforeSendTransaction: buildBeforeSendTransaction(
+							slowSpanThresholdMs,
+							webhookEndpoint && webhookTracesSampleRate !== undefined
+								? { endpoint: webhookEndpoint, sampleRate: webhookTracesSampleRate }
+								: undefined,
+						),
+					}
+				: {}),
 			...(isProfilingEnabled ? { profilesSampleRate, profileLifecycle: 'trace' } : {}),
 			beforeSend: this.beforeSend.bind(this) as NodeOptions['beforeSend'],
 			ignoreTransactions: [`GET ${healthEndpoint}`, 'GET /metrics', 'SET search_path TO'],
 			ignoreSpans: [`GET ${healthEndpoint}`, 'GET /metrics', 'SET search_path TO'],
 			integrations: (integrations) => [
-				...integrations.filter(({ name }) => enabledIntegrations.has(name)),
-				rewriteFramesIntegration({ root: '/' }),
+				...integrations.filter(({ name }) => enabledIntegrations.has(name) && name !== 'Http'),
+				// Replace the default Http integration with one that skips noise paths
+				// (static source maps, telemetry/posthog proxies, outbound telemetry).
+				...(enabledIntegrations.has('Http')
+					? [
+							httpIntegration({
+								ignoreIncomingRequests: shouldIgnoreIncomingRequest,
+								ignoreOutgoingRequests: shouldIgnoreOutgoingRequest,
+							}),
+						]
+					: []),
+				rewriteFramesIntegration({
+					root: '/',
+					iteratee: (frame) => {
+						if (frame.filename) {
+							frame.filename = normalizeFrameFilename(frame.filename);
+						}
+						return frame;
+					},
+				}),
 				requestDataIntegration({
 					include: {
 						cookies: false,
@@ -256,7 +333,7 @@ export class ErrorReporter {
 			return null;
 		}
 
-		if (originalException instanceof AxiosError) return null;
+		if (isAxiosError(originalException)) return null;
 
 		if (originalException instanceof BaseError) {
 			if (!originalException.shouldReport) return null;
@@ -307,7 +384,7 @@ export class ErrorReporter {
 
 	private wrap(e: unknown) {
 		if (e instanceof Error) return e;
-		if (typeof e === 'string') return new ApplicationError(e);
+		if (typeof e === 'string') return new UnexpectedError(e);
 		return;
 	}
 
@@ -335,12 +412,17 @@ export class ErrorReporter {
 		if (tags) event.tags = { ...event.tags, ...tags };
 	}
 
-	private async getEventLoopBlockIntegration(tags: Record<string, string>, threshold?: number) {
+	private async getEventLoopBlockIntegration(
+		tags: Record<string, string>,
+		threshold?: number,
+		maxEventsPerHour?: number,
+	) {
 		try {
 			const { eventLoopBlockIntegration } = await import('@sentry/node-native');
 			return [
 				eventLoopBlockIntegration({
 					...(threshold ? { threshold } : {}),
+					...(maxEventsPerHour ? { maxEventsPerHour } : {}),
 					staticTags: tags,
 				}),
 			];

@@ -1,4 +1,4 @@
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 import { DateTime } from 'luxon';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 
@@ -135,7 +135,7 @@ describe('parseRawEmail', () => {
 
 describe('prepareQuery', () => {
 	const executionFunctions = mock<IExecuteFunctions>({
-		getNode: jest.fn(() => node),
+		getNode: vi.fn(() => node),
 	});
 
 	it('should convert sender filter to q parameter', () => {
@@ -206,7 +206,7 @@ describe('prepareQuery', () => {
 
 describe('addThreadHeadersToEmail', () => {
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	it('should set inReplyTo and reference on the email object', async () => {
@@ -219,7 +219,7 @@ describe('addThreadHeadersToEmail', () => {
 			],
 		};
 
-		jest.spyOn(GenericFunctions, 'googleApiRequest').mockImplementation(async function () {
+		vi.spyOn(GenericFunctions, 'googleApiRequest').mockImplementation(async function () {
 			return mockThread;
 		});
 
@@ -240,7 +240,7 @@ describe('addThreadHeadersToEmail', () => {
 			messages: [{ payload: { headers: [{ name: 'Message-ID', value: mockMessageId }] } }],
 		};
 
-		jest.spyOn(GenericFunctions, 'googleApiRequest').mockImplementation(async function () {
+		vi.spyOn(GenericFunctions, 'googleApiRequest').mockImplementation(async function () {
 			return mockThread;
 		});
 
@@ -258,7 +258,7 @@ describe('addThreadHeadersToEmail', () => {
 		const mockThreadId = 'thread123';
 		const mockThread = {};
 
-		jest.spyOn(GenericFunctions, 'googleApiRequest').mockImplementation(async function () {
+		vi.spyOn(GenericFunctions, 'googleApiRequest').mockImplementation(async function () {
 			return mockThread;
 		});
 

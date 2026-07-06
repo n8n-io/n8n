@@ -6,7 +6,7 @@ import { computed } from 'vue';
 
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useInstanceAiStore } from '../instanceAi.store';
+import { useThread } from '../instanceAi.store';
 import ConfirmationFooter from './ConfirmationFooter.vue';
 import ConfirmationPreview from './ConfirmationPreview.vue';
 import SplitButton from './SplitButton.vue';
@@ -35,7 +35,7 @@ const props = defineProps<{
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const rootStore = useRootStore();
-const store = useInstanceAiStore();
+const thread = useThread();
 
 interface OptionEntry {
 	decision: InstanceGatewayResourceDecision;
@@ -72,10 +72,10 @@ const approveDropdownItems = computed(() => {
 });
 
 async function confirm(decision: InstanceGatewayResourceDecision) {
-	const tc = store.findToolCallByRequestId(props.requestId);
+	const tc = thread.findToolCallByRequestId(props.requestId);
 	const inputThreadId = tc?.confirmation?.inputThreadId ?? '';
 	const eventProps = {
-		thread_id: store.currentThreadId,
+		thread_id: thread.id,
 		input_thread_id: inputThreadId,
 		instance_id: rootStore.instanceId,
 		type: 'resource-decision',
@@ -83,7 +83,7 @@ async function confirm(decision: InstanceGatewayResourceDecision) {
 		skipped_inputs: [],
 	};
 	telemetry.track('User finished providing input', eventProps);
-	await store.confirmResourceDecision(props.requestId, decision);
+	await thread.confirmResourceDecision(props.requestId, decision);
 }
 </script>
 

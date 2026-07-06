@@ -1,21 +1,31 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import type { Logger } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
+import type { WorkflowsConfig } from '@n8n/config';
 import type { WorkflowEntity, WorkflowHistory, WorkflowRepository } from '@n8n/db';
-import { mock } from 'jest-mock-extended';
-import type { ActiveWorkflows, InstanceSettings } from 'n8n-core';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import type { InstanceSettings } from 'n8n-core';
+import {
+	ActiveWorkflowTriggers,
+	PollTriggerExecutor,
+	ScheduledTaskManager,
+	Tracing,
+} from 'n8n-core';
 import type {
+	CronExpression,
 	ExecutionError,
 	INodeExecutionData,
 	INode,
+	INodeType,
+	INodeTypes,
+	IPollFunctions,
 	IRun,
 	IWorkflowExecuteAdditionalData,
-	Workflow,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-
-import { createDeferredPromise, WorkflowActivationError } from 'n8n-workflow';
+import { sleep, Workflow, WorkflowActivationError } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import type { ActivationErrorsService } from '@/activation-errors.service';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -25,20 +35,23 @@ import type { ExecutionService } from '@/executions/execution.service';
 import type { NodeTypes } from '@/node-types';
 import type { Push } from '@/push';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
+import { TriggerExecutionContextFactory } from '@/workflows/triggers/trigger-execution-context.factory';
 import type { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import type { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
 describe('ActiveWorkflowManager', () => {
+	const WORKFLOW_SCHEDULE_GROUP_TYPE = 'workflow';
+	const workflowGroup = (id: string) => ({ type: WORKFLOW_SCHEDULE_GROUP_TYPE, id });
 	let activeWorkflowManager: ActiveWorkflowManager;
 	const instanceSettings = mock<InstanceSettings>({ isMultiMain: false });
 	const nodeTypes = mock<NodeTypes>();
 	const workflowRepository = mock<WorkflowRepository>();
+	const workflowsConfig = mock<WorkflowsConfig>({ useWorkflowPublicationService: false });
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		activeWorkflowManager = new ActiveWorkflowManager(
 			mockLogger(),
-			mock(),
 			mock(),
 			mock(),
 			mock(),
@@ -48,14 +61,11 @@ describe('ActiveWorkflowManager', () => {
 			mock(),
 			mock(),
 			mock(),
-			mock(),
-			mock(),
 			instanceSettings,
 			mock(),
+			workflowsConfig,
 			mock(),
-			mock(),
-			mock(),
-			mock(),
+			mock<TriggerExecutionContextFactory>(),
 			mock(),
 		);
 	});
@@ -104,11 +114,8 @@ describe('ActiveWorkflowManager', () => {
 			test.each<[WorkflowActivateMode]>([['init'], ['leadershipChange']])(
 				'should skip inactive workflow in `%s` activation mode',
 				async (mode) => {
-					const addWebhooksSpy = jest.spyOn(activeWorkflowManager, 'addWebhooks');
-					const addTriggersAndPollersSpy = jest.spyOn(
-						activeWorkflowManager,
-						'addTriggersAndPollers',
-					);
+					const addWebhooksSpy = vi.spyOn(activeWorkflowManager, 'addWebhooks');
+					const addNonWebhookTriggersSpy = vi.spyOn(activeWorkflowManager, 'addNonWebhookTriggers');
 					workflowRepository.findById.mockResolvedValue(
 						mock<WorkflowEntity>({ active: false, activeVersionId: null, activeVersion: null }),
 					);
@@ -116,7 +123,29 @@ describe('ActiveWorkflowManager', () => {
 					const added = await activeWorkflowManager.add('some-id', mode);
 
 					expect(addWebhooksSpy).not.toHaveBeenCalled();
-					expect(addTriggersAndPollersSpy).not.toHaveBeenCalled();
+					expect(addNonWebhookTriggersSpy).not.toHaveBeenCalled();
+					expect(added).toEqual({ triggersAndPollers: false, webhooks: false });
+				},
+			);
+
+			test.each<[WorkflowActivateMode]>([['init'], ['leadershipChange'], ['activate']])(
+				'should skip archived workflow in `%s` activation mode',
+				async (mode) => {
+					const addWebhooksSpy = vi.spyOn(activeWorkflowManager, 'addWebhooks');
+					const addNonWebhookTriggersSpy = vi.spyOn(activeWorkflowManager, 'addNonWebhookTriggers');
+					workflowRepository.findById.mockResolvedValue(
+						mock<WorkflowEntity>({
+							id: 'archived-id',
+							active: true,
+							activeVersionId: 'v1',
+							isArchived: true,
+						}),
+					);
+
+					const added = await activeWorkflowManager.add('archived-id', mode);
+
+					expect(addWebhooksSpy).not.toHaveBeenCalled();
+					expect(addNonWebhookTriggersSpy).not.toHaveBeenCalled();
 					expect(added).toEqual({ triggersAndPollers: false, webhooks: false });
 				},
 			);
@@ -125,7 +154,7 @@ describe('ActiveWorkflowManager', () => {
 
 	describe('addActiveWorkflows', () => {
 		test('should prevent concurrent activations', async () => {
-			const getAllActiveIds = jest.spyOn(workflowRepository, 'getAllActiveIds');
+			const getAllActiveIds = workflowRepository.getAllActiveIds;
 
 			workflowRepository.getAllActiveIds.mockImplementation(
 				async () => await new Promise((resolve) => setTimeout(() => resolve(['workflow-1']), 50)),
@@ -140,7 +169,7 @@ describe('ActiveWorkflowManager', () => {
 		});
 	});
 
-	describe('handleAddWebhooksTriggersAndPollers', () => {
+	describe('handleAddWebhooksAndNonWebhookTriggers', () => {
 		const push = mock<Push>();
 		const publisher = mock<Publisher>();
 
@@ -150,12 +179,9 @@ describe('ActiveWorkflowManager', () => {
 				mock(),
 				mock(),
 				mock(),
-				mock(),
 				nodeTypes,
 				mock(),
 				workflowRepository,
-				mock(),
-				mock(),
 				mock(),
 				mock(),
 				mock(),
@@ -163,8 +189,7 @@ describe('ActiveWorkflowManager', () => {
 				publisher,
 				mock(),
 				push,
-				mock(),
-				mock(),
+				mock<TriggerExecutionContextFactory>(),
 				mock(),
 			);
 		});
@@ -175,9 +200,9 @@ describe('ActiveWorkflowManager', () => {
 				node: triggerNode,
 			});
 
-			jest.spyOn(activeWorkflowManager, 'add').mockRejectedValue(activationError);
+			vi.spyOn(activeWorkflowManager, 'add').mockRejectedValue(activationError);
 
-			await activeWorkflowManager.handleAddWebhooksTriggersAndPollers({
+			await activeWorkflowManager.handleAddWebhooksAndNonWebhookTriggers({
 				workflowId: 'wf-1',
 				activeVersionId: 'v1',
 				activationMode: 'activate',
@@ -203,9 +228,9 @@ describe('ActiveWorkflowManager', () => {
 		});
 
 		test('should not include nodeId in broadcast when error has no node', async () => {
-			jest.spyOn(activeWorkflowManager, 'add').mockRejectedValue(new Error('Some error'));
+			vi.spyOn(activeWorkflowManager, 'add').mockRejectedValue(new Error('Some error'));
 
-			await activeWorkflowManager.handleAddWebhooksTriggersAndPollers({
+			await activeWorkflowManager.handleAddWebhooksAndNonWebhookTriggers({
 				workflowId: 'wf-1',
 				activeVersionId: 'v1',
 				activationMode: 'activate',
@@ -271,9 +296,9 @@ describe('ActiveWorkflowManager', () => {
 			workflowRepository.findById.mockResolvedValue(workflowEntity);
 
 			// Mock the add method to throw an error (simulating activation failure)
-			jest.spyOn(activeWorkflowManager, 'add').mockRejectedValue(new Error('Authorization failed'));
+			vi.spyOn(activeWorkflowManager, 'add').mockRejectedValue(new Error('Authorization failed'));
 
-			const executeErrorWorkflowSpy = jest
+			const executeErrorWorkflowSpy = vi
 				.spyOn(activeWorkflowManager, 'executeErrorWorkflow')
 				.mockImplementation(() => {});
 
@@ -290,47 +315,57 @@ describe('ActiveWorkflowManager', () => {
 		});
 	});
 
-	describe('getExecuteTriggerFunctions', () => {
+	describe('getExecuteTriggerFunctions / getExecutePollFunctions', () => {
 		const workflowStaticDataService = mock<WorkflowStaticDataService>();
 		const workflowExecutionService = mock<WorkflowExecutionService>();
 		const eventService = mock<EventService>();
-		const activeWorkflows = mock<ActiveWorkflows>();
+		const activeWorkflowTriggers = mock<ActiveWorkflowTriggers>();
 		const activationErrorsService = mock<ActivationErrorsService>();
 		const executionService = mock<ExecutionService>();
 		let scopedLogger: Logger;
 
+		let factory: TriggerExecutionContextFactory;
+
 		beforeEach(() => {
-			jest.clearAllMocks();
+			vi.clearAllMocks();
 			workflowStaticDataService.saveStaticData.mockResolvedValue(undefined);
 			workflowExecutionService.runWorkflow.mockResolvedValue('exec-123');
-			activeWorkflows.remove.mockResolvedValue(true);
+			activeWorkflowTriggers.remove.mockResolvedValue(true);
 			activationErrorsService.register.mockResolvedValue(undefined);
 			executionService.createErrorExecution.mockResolvedValue(undefined);
 
 			scopedLogger = mock<Logger>();
-			const rootLogger = mock<Logger>({ scoped: jest.fn().mockReturnValue(scopedLogger) });
+			const rootLogger = mock<Logger>({ scoped: vi.fn().mockReturnValue(scopedLogger) });
+
+			factory = new TriggerExecutionContextFactory(
+				rootLogger,
+				mock(), // errorReporter
+				mock(), // activeExecutions
+				eventService,
+				executionService,
+				workflowStaticDataService,
+				workflowExecutionService,
+				mock(), // storageConfig
+				mock(), // workflowPublishedDataService
+			);
 
 			activeWorkflowManager = new ActiveWorkflowManager(
 				rootLogger,
-				mock(),
-				activeWorkflows,
-				mock(),
-				mock(),
+				mock(), // errorReporter
+				activeWorkflowTriggers,
+				mock(), // externalHooks
 				nodeTypes,
-				mock(),
+				mock(), // webhookService
 				workflowRepository,
 				activationErrorsService,
-				executionService,
 				workflowStaticDataService,
-				mock(),
-				workflowExecutionService,
+				mock(), // activeWorkflowsService
 				instanceSettings,
-				mock(),
-				mock(),
-				mock(),
-				eventService,
-				mock(),
-				mock(),
+				mock(), // publisher
+				workflowsConfig,
+				mock(), // push
+				factory,
+				mock(), // eventBus
 			);
 		});
 
@@ -352,10 +387,13 @@ describe('ActiveWorkflowManager', () => {
 					additionalData,
 					mode,
 					activation,
+					async () => workflowData,
 				);
 				const context = getTriggerFunctions(workflow, node, additionalData, mode, activation);
 
 				context.emit(triggerData);
+
+				await sleep(0);
 
 				expect(workflowStaticDataService.saveStaticData).toHaveBeenCalledWith(workflow);
 				expect(workflowExecutionService.runWorkflow).toHaveBeenCalledWith(
@@ -367,8 +405,6 @@ describe('ActiveWorkflowManager', () => {
 					undefined,
 					undefined,
 				);
-
-				await new Promise((resolve) => setTimeout(resolve, 0));
 
 				expect(eventService.emit).toHaveBeenCalledWith('workflow-executed', {
 					workflowId: workflowData.id,
@@ -392,10 +428,13 @@ describe('ActiveWorkflowManager', () => {
 					additionalData,
 					mode,
 					activation,
+					async () => workflowData,
 				);
 				const context = getTriggerFunctions(workflow, node, additionalData, mode, activation);
 
 				context.emit(triggerData, undefined, undefined, 'wf-1:node-1:1700000000000');
+
+				await sleep(0);
 
 				expect(workflowExecutionService.runWorkflow).toHaveBeenCalledWith(
 					workflowData,
@@ -426,12 +465,13 @@ describe('ActiveWorkflowManager', () => {
 					additionalData,
 					mode,
 					activation,
+					async () => workflowData,
 				);
 				const context = getTriggerFunctions(workflow, node, additionalData, mode, activation);
 
 				context.emit(triggerData, undefined, undefined, 'wf-1:node-1:1700000000000');
 
-				await new Promise((resolve) => setTimeout(resolve, 0));
+				await sleep(0);
 
 				expect(eventService.emit).not.toHaveBeenCalled();
 			});
@@ -454,6 +494,7 @@ describe('ActiveWorkflowManager', () => {
 					additionalData,
 					mode,
 					activation,
+					async () => workflowData,
 				);
 				const context = getTriggerFunctions(workflow, node, additionalData, mode, activation);
 
@@ -465,7 +506,7 @@ describe('ActiveWorkflowManager', () => {
 		});
 
 		describe('emitError', () => {
-			test('removes workflow from activeWorkflows, registers error, calls executeErrorWorkflow and addQueuedWorkflowActivation', () => {
+			test('removes workflow from activeWorkflowTriggers, registers error, calls executeErrorWorkflow and addQueuedWorkflowActivation', () => {
 				const workflowData = mock<WorkflowEntity>({
 					id: 'wf-1',
 					name: 'Test Workflow',
@@ -477,10 +518,10 @@ describe('ActiveWorkflowManager', () => {
 				const node = mock<INode>({ name: 'Trigger Node' });
 				const triggerError = new Error('Trigger connection failed');
 
-				const executeErrorWorkflowSpy = jest
+				const executeErrorWorkflowSpy = vi
 					.spyOn(activeWorkflowManager, 'executeErrorWorkflow')
 					.mockImplementation(() => {});
-				const addQueuedWorkflowActivationSpy = jest.spyOn(
+				const addQueuedWorkflowActivationSpy = vi.spyOn(
 					activeWorkflowManager as unknown as Record<
 						'addQueuedWorkflowActivation',
 						(a: WorkflowActivateMode, w: WorkflowEntity) => void
@@ -493,18 +534,49 @@ describe('ActiveWorkflowManager', () => {
 					additionalData,
 					mode,
 					activation,
+					async () => workflowData,
 				);
 				const context = getTriggerFunctions(workflow, node, additionalData, mode, activation);
 
 				context.emitError(triggerError);
 
-				expect(activeWorkflows.remove).toHaveBeenCalledWith(workflowData.id);
+				expect(activeWorkflowTriggers.remove).toHaveBeenCalledWith(workflowData.id);
 				expect(activationErrorsService.register).toHaveBeenCalledWith(
 					workflowData.id,
 					triggerError.message,
 				);
 				expect(executeErrorWorkflowSpy).toHaveBeenCalled();
 				expect(addQueuedWorkflowActivationSpy).toHaveBeenCalledWith(activation, workflowData);
+			});
+
+			test('wraps the cause in a WorkflowActivationError that surfaces the cause message in `description`', () => {
+				const workflowData = mock<WorkflowEntity>({ id: 'wf-1', name: 'Test Workflow' });
+				const additionalData = mock<IWorkflowExecuteAdditionalData>();
+				const mode: WorkflowExecuteMode = 'trigger';
+				const activation: WorkflowActivateMode = 'activate';
+				const workflow = mock<Workflow>({ name: 'Test Workflow' });
+				const node = mock<INode>({ name: 'Trigger Node' });
+				const triggerError = new Error('IMAP connection closed unexpectedly');
+
+				const executeErrorWorkflowSpy = vi
+					.spyOn(activeWorkflowManager, 'executeErrorWorkflow')
+					.mockImplementation(() => {});
+
+				const getTriggerFunctions = activeWorkflowManager.getExecuteTriggerFunctions(
+					workflowData,
+					additionalData,
+					mode,
+					activation,
+					async () => workflowData,
+				);
+				const context = getTriggerFunctions(workflow, node, additionalData, mode, activation);
+
+				context.emitError(triggerError);
+
+				const wrappedError = executeErrorWorkflowSpy.mock.calls[0][0] as WorkflowActivationError;
+				expect(wrappedError).toBeInstanceOf(WorkflowActivationError);
+				expect(wrappedError.message).not.toBe(triggerError.message);
+				expect(wrappedError.description).toBe('IMAP connection closed unexpectedly');
 			});
 		});
 
@@ -521,8 +593,8 @@ describe('ActiveWorkflowManager', () => {
 				const node = mock<INode>({ name: 'Trigger Node' });
 				const executionError = mock<ExecutionError>();
 
-				const executeErrorWorkflowSpy = jest
-					.spyOn(activeWorkflowManager, 'executeErrorWorkflow')
+				const executeErrorWorkflowSpy = vi
+					.spyOn(factory, 'executeErrorWorkflow')
 					.mockImplementation(() => {});
 
 				const getTriggerFunctions = activeWorkflowManager.getExecuteTriggerFunctions(
@@ -530,12 +602,13 @@ describe('ActiveWorkflowManager', () => {
 					additionalData,
 					mode,
 					activation,
+					async () => workflowData,
 				);
 				const context = getTriggerFunctions(workflow, node, additionalData, mode, activation);
 
 				context.saveFailedExecution(executionError);
 
-				await new Promise((resolve) => setTimeout(resolve, 0));
+				await sleep(0);
 
 				expect(executionService.createErrorExecution).toHaveBeenCalledWith(
 					executionError,
@@ -546,6 +619,274 @@ describe('ActiveWorkflowManager', () => {
 				);
 				expect(executeErrorWorkflowSpy).toHaveBeenCalledWith(executionError, workflowData, mode);
 			});
+		});
+
+		describe('getExecutePollFunctions', () => {
+			const scheduledTaskManager = mock<ScheduledTaskManager>();
+
+			const createPollContext = () => {
+				const workflowData = mock<WorkflowEntity>({ id: 'wf-1', name: 'Test Workflow' });
+				const additionalData = mock<IWorkflowExecuteAdditionalData>();
+				const mode: WorkflowExecuteMode = 'trigger';
+				const activation: WorkflowActivateMode = 'activate';
+				const workflow = mock<Workflow>({ id: 'wf-1', name: 'Test Workflow' });
+				const node = mock<INode>({ name: 'Poll Node' });
+
+				const getPollFunctions = activeWorkflowManager.getExecutePollFunctions(
+					workflowData,
+					additionalData,
+					mode,
+					activation,
+					async () => workflowData,
+				);
+				return {
+					workflow,
+					node,
+					context: getPollFunctions(workflow, node, additionalData, mode, activation),
+				};
+			};
+
+			test('__emit persists static data and starts a workflow execution', async () => {
+				const { workflow, context } = createPollContext();
+
+				context.__emit([[{ json: {} }]]);
+
+				await sleep(0);
+
+				expect(workflowStaticDataService.saveStaticData).toHaveBeenCalledWith(workflow);
+				expect(workflowExecutionService.runWorkflow).toHaveBeenCalled();
+			});
+
+			test('does not persist the state of an in-flight poll dropped by workflow removal', async () => {
+				// ActiveWorkflowTriggers drops in-flight polls of superseded registrations before
+				// `__emit`; see active-workflow-triggers.ts. That is only safe because persistence
+				// happens exclusively in `__emit`, and by skipping it, a poller advancing
+				// its state via getWorkflowStaticData() inside poll() only mutates in-memory,
+				// so the next registration's poller re-fetches the same events from the stored state.
+				let pollCount = 0;
+				let resolveInFlightPoll!: (value: INodeExecutionData[][] | null) => void;
+				const pollNodeType = {
+					description: { properties: [] },
+					async poll(this: IPollFunctions) {
+						const cursor = this.getWorkflowStaticData('node');
+						pollCount++;
+						cursor.lastId = pollCount;
+						if (pollCount === 1) return null; // activation test poll: no new events
+						if (pollCount === 2) return [[{ json: { id: 2 } }]]; // first cron tick: emits
+						// second cron tick: hangs in flight
+						return await new Promise<INodeExecutionData[][] | null>((resolve) => {
+							resolveInFlightPoll = resolve;
+						});
+					},
+				} as unknown as INodeType;
+				const pollNodeTypes = {
+					getByNameAndVersion: () => pollNodeType,
+				} as unknown as INodeTypes;
+
+				const workflow = new Workflow({
+					id: 'wf-1',
+					name: 'Test Workflow',
+					nodes: [
+						{
+							id: 'node-1',
+							name: 'Poll Node',
+							type: 'test.poll',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+					],
+					connections: {},
+					active: true,
+					nodeTypes: pollNodeTypes,
+					staticData: {},
+				});
+				workflow.nodes['Poll Node'].parameters = {
+					pollTimes: { item: [{ mode: 'everyMinute' }] },
+				};
+
+				const workflowData = mock<WorkflowEntity>({ id: 'wf-1', name: 'Test Workflow' });
+				const additionalData = mock<IWorkflowExecuteAdditionalData>();
+				const logger = mock<Logger>({ scoped: vi.fn().mockReturnValue(mock<Logger>()) });
+				const triggersAndPollers = {
+					runPollFunction: async (wf: Workflow, node: INode, pollFunctions: IPollFunctions) =>
+						await wf.nodeTypes
+							.getByNameAndVersion(node.type, node.typeVersion)
+							.poll!.call(pollFunctions),
+				} as ConstructorParameters<typeof ActiveWorkflowTriggers>[2];
+				const realActiveWorkflowTriggers = new ActiveWorkflowTriggers(
+					logger,
+					scheduledTaskManager,
+					triggersAndPollers,
+					mock(),
+					new PollTriggerExecutor(logger, triggersAndPollers, new Tracing()),
+				);
+
+				await realActiveWorkflowTriggers.addAllTriggers(
+					'wf-1',
+					workflow,
+					additionalData,
+					'trigger',
+					'activate',
+					mock(),
+					activeWorkflowManager.getExecutePollFunctions(
+						workflowData,
+						additionalData,
+						'trigger',
+						'activate',
+						async () => workflowData,
+					),
+				);
+
+				const executeScheduledPoll = scheduledTaskManager.register.mock.calls[0][1] as () => void;
+
+				// First cron tick completes and emits: advanced pool state is persisted.
+				executeScheduledPoll();
+				await sleep(0);
+				expect(workflowStaticDataService.saveStaticData).toHaveBeenCalledTimes(1);
+				expect(workflowExecutionService.runWorkflow).toHaveBeenCalledTimes(1);
+
+				// Second cron tick hangs in flight; the workflow is removed during that time
+				executeScheduledPoll();
+				await sleep(0);
+				await realActiveWorkflowTriggers.remove('wf-1');
+				resolveInFlightPoll([[{ json: { id: 3 } }]]);
+				await sleep(0);
+
+				// poll() did advance the state in memory, but the dropped poll neither
+				// persisted it nor started an execution; the next registration
+				// fetches the same events from upstream
+				expect(workflow.getStaticData('node', workflow.nodes['Poll Node']).lastId).toBe(3);
+				expect(workflowStaticDataService.saveStaticData).toHaveBeenCalledTimes(1);
+				expect(workflowExecutionService.runWorkflow).toHaveBeenCalledTimes(1);
+			});
+		});
+	});
+
+	describe('removeNonWebhookTriggers', () => {
+		// Wire the real ActiveWorkflowTriggers + real ScheduledTaskManager through the manager
+		// so the test asserts the cron is actually stopped, not just that a method was
+		// called.
+		const hourly = '0 * * * *' as CronExpression;
+		let realScheduledTaskManager: ScheduledTaskManager;
+		let realActiveWorkflowTriggers: ActiveWorkflowTriggers;
+
+		beforeEach(() => {
+			vi.clearAllMocks();
+			vi.useFakeTimers();
+			realScheduledTaskManager = new ScheduledTaskManager(
+				mock<InstanceSettings>({ isLeader: true }),
+				mock<Logger>({ scoped: vi.fn().mockReturnValue(mock<Logger>()) }),
+				mock(),
+			);
+			realActiveWorkflowTriggers = new ActiveWorkflowTriggers(
+				mock<Logger>({ scoped: vi.fn().mockReturnValue(mock<Logger>()) }),
+				realScheduledTaskManager,
+				mock(),
+				mock(),
+				mock<PollTriggerExecutor>(),
+			);
+			activeWorkflowManager = new ActiveWorkflowManager(
+				mockLogger(),
+				mock(),
+				realActiveWorkflowTriggers,
+				mock(),
+				nodeTypes,
+				mock(),
+				workflowRepository,
+				mock(),
+				mock(),
+				mock(),
+				instanceSettings,
+				mock(),
+				workflowsConfig,
+				mock(),
+				mock<TriggerExecutionContextFactory>(),
+				mock(),
+			);
+		});
+
+		afterEach(() => {
+			realScheduledTaskManager.deregisterGroups(WORKFLOW_SCHEDULE_GROUP_TYPE);
+			vi.useRealTimers();
+		});
+
+		it('should stop a cron left registered for an inactive workflow', async () => {
+			realScheduledTaskManager.register(
+				{
+					group: workflowGroup('wf-desynced'),
+					targetId: 'schedule-node',
+					timezone: 'GMT',
+					expression: hourly,
+				},
+				vi.fn(),
+			);
+			expect(realScheduledTaskManager.hasGroup(workflowGroup('wf-desynced'))).toBe(true);
+			expect(realActiveWorkflowTriggers.isActive('wf-desynced')).toBe(false);
+
+			await activeWorkflowManager.removeNonWebhookTriggers('wf-desynced');
+
+			expect(realScheduledTaskManager.hasGroup(workflowGroup('wf-desynced'))).toBe(false);
+		});
+
+		it('should stop a stranded cron on leader stepdown / shutdown', async () => {
+			// removeAllNonWebhookTriggerWorkflows is the @OnLeaderStepdown / @OnShutdown
+			// handler. On stepdown the process keeps running as a follower, so a stranded
+			// cron left behind would survive the demotion and resurface on the next takeover.
+			realScheduledTaskManager.register(
+				{
+					group: workflowGroup('wf-orphan'),
+					targetId: 'schedule-node',
+					timezone: 'GMT',
+					expression: hourly,
+				},
+				vi.fn(),
+			);
+			expect(realScheduledTaskManager.hasGroup(workflowGroup('wf-orphan'))).toBe(true);
+			expect(realActiveWorkflowTriggers.isActive('wf-orphan')).toBe(false);
+
+			await activeWorkflowManager.removeAllNonWebhookTriggerWorkflows();
+
+			expect(realScheduledTaskManager.hasGroup(workflowGroup('wf-orphan'))).toBe(false);
+		});
+
+		it('does not tear down triggers under the publication service flag', async () => {
+			// Under the publication service, teardown runs in PublishedWorkflowTriggerDeactivator
+			// under the lifecycle lock, so this handler must be a no-op.
+			workflowsConfig.useWorkflowPublicationService = true;
+			try {
+				realScheduledTaskManager.register(
+					{
+						group: workflowGroup('wf-pub'),
+						targetId: 'schedule-node',
+						timezone: 'GMT',
+						expression: hourly,
+					},
+					vi.fn(),
+				);
+
+				await activeWorkflowManager.removeAllNonWebhookTriggerWorkflows();
+
+				expect(realScheduledTaskManager.hasGroup(workflowGroup('wf-pub'))).toBe(true);
+			} finally {
+				workflowsConfig.useWorkflowPublicationService = false;
+			}
+		});
+
+		it('does not re-activate workflows on takeover under the publication service flag', async () => {
+			// Re-activation goes through the outbox consumer instead.
+			workflowsConfig.useWorkflowPublicationService = true;
+			const addActiveWorkflows = vi
+				.spyOn(activeWorkflowManager, 'addActiveWorkflows')
+				.mockResolvedValue(undefined);
+			try {
+				await activeWorkflowManager.addAllNonWebhookTriggerWorkflows();
+
+				expect(addActiveWorkflows).not.toHaveBeenCalled();
+			} finally {
+				workflowsConfig.useWorkflowPublicationService = false;
+				addActiveWorkflows.mockRestore();
+			}
 		});
 	});
 });

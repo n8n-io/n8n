@@ -1,17 +1,12 @@
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
 import nock from 'nock';
 
-jest.mock('jsonwebtoken', () => ({
-	sign: jest.fn().mockReturnValue('signature'),
-}));
+import { googleApiCredentials } from './credentials.fixture';
 
 describe('Test Google BigQuery V2, executeQuery', () => {
 	nock('https://oauth2.googleapis.com')
 		.persist()
-		.post(
-			'/token',
-			'grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=signature',
-		)
+		.post('/token')
 		.reply(200, { access_token: 'token' });
 
 	nock('https://bigquery.googleapis.com/bigquery')
@@ -36,5 +31,6 @@ describe('Test Google BigQuery V2, executeQuery', () => {
 
 	new NodeTestHarness().setupTests({
 		workflowFiles: ['executeQueryContinueOnJobFail.workflow.json'],
+		credentials: { googleApi: googleApiCredentials },
 	});
 });

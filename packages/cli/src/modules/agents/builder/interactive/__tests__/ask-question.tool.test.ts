@@ -1,14 +1,16 @@
+import type { Mock } from 'vitest';
+
 import { buildAskQuestionTool } from '../ask-question.tool';
 
 interface TestCtx {
 	resumeData?: unknown;
-	suspend: jest.Mock;
+	suspend: Mock;
 }
 
 function makeCtx(overrides?: { resumeData?: unknown }): TestCtx {
 	return {
 		resumeData: overrides?.resumeData,
-		suspend: jest.fn(async (x: unknown) => x),
+		suspend: vi.fn(async (x: unknown) => x),
 	};
 }
 
@@ -25,6 +27,20 @@ describe('ask_question tool', () => {
 		expect(result).toEqual({ values: ['slack'] });
 	});
 
+	it('suspends for a multi-select question with one option', async () => {
+		const ctx = makeCtx();
+		await tool.handler!(
+			{
+				question: 'Pick subagents',
+				options: [{ label: 'Research Agent', value: 'agent-research' }],
+				allowMultiple: true,
+			},
+			ctx as never,
+		);
+
+		expect(ctx.suspend).toHaveBeenCalledTimes(1);
+	});
+
 	it('suspends when there are multiple options', async () => {
 		const ctx = makeCtx();
 		await tool.handler!(
@@ -37,6 +53,12 @@ describe('ask_question tool', () => {
 			},
 			ctx as never,
 		);
+		expect(ctx.suspend).toHaveBeenCalledTimes(1);
+	});
+
+	it('suspends (open-ended freeform card) when options is empty', async () => {
+		const ctx = makeCtx();
+		await tool.handler!({ question: 'What should it do?', options: [] }, ctx as never);
 		expect(ctx.suspend).toHaveBeenCalledTimes(1);
 	});
 

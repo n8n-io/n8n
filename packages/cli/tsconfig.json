@@ -6,12 +6,13 @@
 	"compilerOptions": {
 		"emitDecoratorMetadata": true,
 		"experimentalDecorators": true,
+		"lib": ["es2023", "dom"],
+		"types": ["node", "vitest/globals", "vite/client"],
 		"paths": {
 			"@/*": ["./src/*"],
 			"@test/*": ["./test/shared/*"],
 			"@test-integration/*": ["./test/integration/shared/*"]
 		},
-		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
 		"strict": true,
 		"strictFunctionTypes": false,
 		"strictPropertyInitialization": false,
@@ -35,6 +36,7 @@
 		{ "path": "../@n8n/backend-test-utils/tsconfig.build.json" },
 		{ "path": "../@n8n/di/tsconfig.build.json" },
 		{ "path": "../@n8n/nodes-langchain/tsconfig.build.json" },
-		{ "path": "../@n8n/permissions/tsconfig.build.json" }
+		{ "path": "../@n8n/permissions/tsconfig.build.json" },
+		{ "path": "../@n8n/scheduler/tsconfig.build.json" }
 	]
 }

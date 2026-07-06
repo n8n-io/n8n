@@ -1,0 +1,35 @@
+type: object
+additionalProperties: false
+description: >-
+  Selects what to export. Provide `workflowIds` and/or `folderIds` to export
+  loose workflows and folders, or `projectIds` to export whole projects, but not
+  both groups in the same request. At least one id must be supplied.
+properties:
+  workflowIds:
+    type: array
+    maxItems: 300
+    description: IDs of the workflows to include in the exported package.
+    items:
+      type: string
+      minLength: 1
+    example:
+      - 2tUt1wbLX592XDdX
+  folderIds:
+    type: array
+    maxItems: 300
+    description: >-
+      IDs of the folders to include in the exported package. Each folder is
+      exported with its nested folders.
+    items:
+      type: string
+      minLength: 1
+    example:
+      - 9xKp2mNqRzAbCdEf
+  projectIds:
+    type: array
+    description: IDs of the projects to include in the exported package.
+    items:
+      type: string
+      minLength: 1
+    example:
+      - Ox8O54VQrmBrb4qL

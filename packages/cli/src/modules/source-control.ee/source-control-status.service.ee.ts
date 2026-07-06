@@ -7,7 +7,12 @@ import { In } from '@n8n/typeorm';
 import pick from 'lodash/pick';
 import { UserError } from 'n8n-workflow';
 
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { EventService } from '@/events/event.service';
+import { ExportableTagEntity } from '@/modules/source-control.ee/types/exportable-tags';
+
 import { SOURCE_CONTROL_DATATABLES_EXPORT_FOLDER } from './constants';
+import { SourceControlContextFactory } from './source-control-context.factory';
 import { SourceControlGitService } from './source-control-git.service.ee';
 import {
 	hasOwnerChanged,
@@ -23,7 +28,6 @@ import {
 } from './source-control-helper.ee';
 import { SourceControlImportService } from './source-control-import.service.ee';
 import { SourceControlPreferencesService } from './source-control-preferences.service.ee';
-import { SourceControlContextFactory } from './source-control-context.factory';
 import type { StatusExportableCredential } from './types/exportable-credential';
 import type {
 	DataTableResourceOwner,
@@ -40,10 +44,6 @@ import type {
 	SourceControlGetStatusVerboseResult,
 } from './types/source-control-get-status';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
-
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { EventService } from '@/events/event.service';
-import { ExportableTagEntity } from '@/modules/source-control.ee/types/exportable-tags';
 
 @Service()
 export class SourceControlStatusService {
@@ -185,6 +185,14 @@ export class SourceControlStatusService {
 			throw new ForbiddenError('You do not have permission to pull from source control');
 		}
 
+		if (
+			options.direction === 'push' &&
+			!hasGlobalScope(user, 'sourceControl:push') &&
+			context.authorizedProjects.length === 0
+		) {
+			throw new ForbiddenError('You do not have permission to push to source control');
+		}
+
 		await this.resetWorkfolder();
 
 		const remoteFolders =
@@ -202,7 +210,7 @@ export class SourceControlStatusService {
 			this.getStatusWorkflows(options, context, collectVerbose, remoteFolders),
 			this.getStatusCredentials(options, context, collectVerbose),
 			this.getStatusVariables(options, collectVerbose),
-			this.getStatusDataTables(options, collectVerbose),
+			this.getStatusDataTables(options, context, collectVerbose),
 			this.getStatusTagsMappings(options, context, collectVerbose),
 			this.getStatusFoldersMapping(options, context, collectVerbose, remoteFolders),
 			this.getStatusProjects(options, context, collectVerbose),
@@ -675,12 +683,16 @@ export class SourceControlStatusService {
 		};
 	}
 
-	private async getStatusDataTables(options: SourceControlGetStatus, collectVerbose: boolean) {
+	private async getStatusDataTables(
+		options: SourceControlGetStatus,
+		context: SourceControlContext,
+		collectVerbose: boolean,
+	) {
 		const sourceControlledFiles: SourceControlledFile[] = [];
 		const dataTablesRemote =
-			(await this.sourceControlImportService.getRemoteDataTablesFromFiles()) ?? [];
+			(await this.sourceControlImportService.getRemoteDataTablesFromFiles(context)) ?? [];
 		const dataTablesLocal =
-			(await this.sourceControlImportService.getLocalDataTablesFromDb()) ?? [];
+			(await this.sourceControlImportService.getLocalDataTablesFromDb(context)) ?? [];
 
 		const localById = new Map(dataTablesLocal.map((dt) => [dt.id, dt]));
 		const remoteById = new Map(dataTablesRemote.map((dt) => [dt.id, dt]));

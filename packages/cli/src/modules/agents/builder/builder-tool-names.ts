@@ -8,8 +8,13 @@ export const BUILDER_TOOLS = {
 	PATCH_CONFIG: 'patch_config',
 	BUILD_CUSTOM_TOOL: 'build_custom_tool',
 	CREATE_SKILL: 'create_skill',
+	CREATE_TASK: 'create_task',
+	GET_RESOURCE_LOCATOR_OPTIONS: 'get_resource_locator_options',
 	LIST_INTEGRATION_TYPES: 'list_integration_types',
+	LIST_SUB_AGENTS: 'list_sub_agents',
 	RESOLVE_LLM: 'resolve_llm',
+	SEARCH_MCP_SERVERS: 'search_mcp_servers',
+	VERIFY_MCP_SERVER: 'verify_mcp_server',
 } as const;
 
 export type BuilderToolName = (typeof BUILDER_TOOLS)[keyof typeof BUILDER_TOOLS];

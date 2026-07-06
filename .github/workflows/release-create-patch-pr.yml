@@ -8,6 +8,11 @@ on:
         description: 'Release Track'
         required: true
         type: string
+      force:
+        description: 'Create the PR even when there are no actionable commits'
+        required: false
+        type: boolean
+        default: false
 
   workflow_dispatch:
     inputs:
@@ -16,6 +21,11 @@ on:
         required: true
         type: choice
         options: [stable, beta, v1]
+      force:
+        description: 'Create the PR even when there are no actionable commits'
+        required: false
+        type: boolean
+        default: true
 
 jobs:
   determine-version-info:
@@ -23,7 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       release_candidate_branch: ${{ steps.determine-branch.outputs.release_candidate_branch }}
-      should_update: ${{ steps.determine-branch.outputs.should_update }}
+      should_create_pr: ${{ steps.determine-branch.outputs.should_create_pr }}
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -35,17 +45,19 @@ jobs:
         with:
           build-command: ''
           install-command: pnpm install --frozen-lockfile --dir ./.github/scripts --ignore-workspace
+          cache-dependency-path: .github/scripts/pnpm-lock.yaml
 
       - name: Determine release candidate branch from track
         id: determine-branch
         env:
           TRACK: ${{ inputs.track }}
+          FORCE: ${{ inputs.force }}
         run: node .github/scripts/determine-release-candidate-branch-for-track.mjs
 
   skip-release-pr:
     name: Skip release PR (no new commits)
     needs: [determine-version-info]
-    if: needs.determine-version-info.outputs.should_update != 'true'
+    if: needs.determine-version-info.outputs.should_create_pr != 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Log skip reason
@@ -54,7 +66,7 @@ jobs:
   create-release-pr:
     name: Create release PR
     needs: [determine-version-info]
-    if: needs.determine-version-info.outputs.should_update == 'true'
+    if: needs.determine-version-info.outputs.should_create_pr == 'true'
     uses: ./.github/workflows/release-create-pr.yml
     secrets: inherit
     with:
@@ -67,11 +79,16 @@ jobs:
     if: needs.create-release-pr.result == 'success' && needs.create-release-pr.outputs.pull-request-number != ''
     runs-on: ubuntu-latest
     steps:
-      - name: Post to Slack
-        uses: slackapi/slack-github-action@91efab103c0de0a537f72a35f6b8cda0ee76bf0a # v2.1.1
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          method: chat.postMessage
-          token: ${{ secrets.RELEASE_HELPER_SLACK_TOKEN }}
-          payload: |
-            channel: C036AELNMV0
-            text: ":rocket: Patch release PR created for *${{ inputs.track }}* track. <${{ github.server_url }}/${{ github.repository }}/pull/${{ needs.create-release-pr.outputs.pull-request-number }}|View PR> — close it to cancel the release."
+          sparse-checkout: .github/scripts/slack
+          sparse-checkout-cone-mode: false
+      - name: Notify Slack
+        env:
+          SLACK_TOKEN: ${{ secrets.RELEASE_HELPER_SLACK_TOKEN }}
+          TRACK: ${{ inputs.track }}
+          PR_URL: ${{ github.server_url }}/${{ github.repository }}/pull/${{ needs.create-release-pr.outputs.pull-request-number }}
+        run: |
+          node .github/scripts/slack/notify.mjs \
+            --channel C036AELNMV0 \
+            --text ":rocket: Patch release PR created for *${TRACK}* track. <${PR_URL}|View PR> — close it to cancel the release."

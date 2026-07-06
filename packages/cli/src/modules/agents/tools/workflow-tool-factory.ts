@@ -1,15 +1,17 @@
 import type { BuiltTool } from '@n8n/agents';
-import { Tool } from '@n8n/agents';
-import { INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES } from '@n8n/api-types';
-import type { SUPPORTED_WORKFLOW_TOOL_TRIGGERS } from '@n8n/api-types';
-import type {
-	ExecutionRepository,
-	UserRepository,
-	WorkflowRepository,
-	WorkflowEntity,
-} from '@n8n/db';
+import { Tool } from '@n8n/agents/tool';
+import {
+	INCOMPATIBLE_WORKFLOW_TOOL_BODY_NODE_TYPES,
+	type AgentJsonToolConfig,
+	type SUPPORTED_WORKFLOW_TOOL_TRIGGERS,
+} from '@n8n/api-types';
+import type { WorkflowRepository, WorkflowEntity } from '@n8n/db';
+import { Container } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type {
 	IDataObject,
+	IExecuteResponsePromiseData,
 	INode,
 	IPinData,
 	IWorkflowExecutionDataProcess,
@@ -23,15 +25,15 @@ import {
 	MANUAL_TRIGGER_NODE_TYPE,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	TimeoutExecutionCancelledError,
+	WEBHOOK_NODE_TYPE,
 } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { ActiveExecutions } from '@/active-executions';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { WorkflowRunner } from '@/workflow-runner';
-import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { sanitizeToolName } from '../json-config/agent-config-composition';
-import type { AgentJsonToolConfig } from '../json-config/agent-json-config';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -49,6 +51,7 @@ const SUPPORTED_TRIGGERS: Record<string, string> = {
 	[CHAT_TRIGGER_NODE_TYPE]: 'chat',
 	[SCHEDULE_TRIGGER_NODE_TYPE]: 'schedule',
 	[FORM_TRIGGER_NODE_TYPE]: 'form',
+	[WEBHOOK_NODE_TYPE]: 'webhook',
 };
 
 // Compile-time check: `SUPPORTED_TRIGGERS` must cover every trigger the shared
@@ -66,6 +69,10 @@ const DEFAULT_TIMEOUT_MS = 120_000;
 const MAX_RESULT_CHARS = 20_000;
 const MAX_NODE_OUTPUT_BYTES = 5_000;
 
+function isWorkflowToolResponse(value: unknown): value is IExecuteResponsePromiseData {
+	return isRecord(value) && ('body' in value || 'headers' in value || 'statusCode' in value);
+}
+
 // ---------------------------------------------------------------------------
 // Context passed from the compile step
 // ---------------------------------------------------------------------------
@@ -74,11 +81,7 @@ export interface WorkflowToolContext {
 	workflowRepository: WorkflowRepository;
 	workflowRunner: WorkflowRunner;
 	activeExecutions: ActiveExecutions;
-	executionRepository: ExecutionRepository;
-	workflowFinderService: WorkflowFinderService;
-	userRepository: UserRepository;
-	userId: string;
-	projectId?: string;
+	projectId: string;
 	/** Base URL for webhooks/forms (e.g. http://localhost:5678/) */
 	webhookBaseUrl?: string;
 }
@@ -173,6 +176,24 @@ export function normalizeTriggerInput(
 				],
 			};
 			/* eslint-enable @typescript-eslint/naming-convention */
+		}
+
+		case 'webhook': {
+			const { body, headers, params, query } = inputData;
+			return {
+				[triggerNode.name]: [
+					{
+						json: {
+							headers: isRecord(headers) ? headers : {},
+							params: isRecord(params) ? params : {},
+							query: isRecord(query) ? query : {},
+							body: isRecord(body) ? body : inputData,
+							webhookUrl: '',
+							executionMode: 'agent',
+						},
+					},
+				],
+			};
 		}
 
 		default:
@@ -284,7 +305,7 @@ export async function executeWorkflow(
 	data?: Record<string, unknown>;
 	error?: string;
 }> {
-	const { workflowRunner, activeExecutions, executionRepository } = context;
+	const { workflowRunner, activeExecutions } = context;
 
 	// Build pin data for the trigger
 	const triggerPinData = normalizeTriggerInput(triggerNode, triggerType, inputData);
@@ -301,7 +322,6 @@ export async function executeWorkflow(
 	const runData: IWorkflowExecutionDataProcess = {
 		executionMode,
 		workflowData: workflow,
-		userId: context.userId,
 		startNodes: [{ name: triggerNode.name, sourceData: null }],
 		pinData: mergedPinData,
 		executionData: createRunExecutionData({
@@ -323,7 +343,21 @@ export async function executeWorkflow(
 		}),
 	};
 
-	const executionId = await workflowRunner.run(runData);
+	const responsePromise = createDeferredPromise<IExecuteResponsePromiseData>();
+	let webhookResponse: IExecuteResponsePromiseData | undefined;
+	void responsePromise.promise
+		.then((response) => {
+			webhookResponse = response;
+		})
+		.catch(() => {});
+
+	const executionId = await workflowRunner.run(
+		runData,
+		undefined,
+		undefined,
+		undefined,
+		responsePromise,
+	);
 
 	// Wait for completion with timeout protection
 	const timeoutMs = DEFAULT_TIMEOUT_MS;
@@ -360,7 +394,14 @@ export async function executeWorkflow(
 		}
 	}
 
-	return await extractResult(executionRepository, executionId, allOutputs);
+	const result = await extractResult(executionId, allOutputs);
+	if (isWorkflowToolResponse(webhookResponse)) {
+		result.data = {
+			...(result.data ?? {}),
+			response: truncateResultData({ response: webhookResponse }).response,
+		};
+	}
+	return result;
 }
 
 // ---------------------------------------------------------------------------
@@ -416,7 +457,6 @@ function collectResultData(
 }
 
 export async function extractResult(
-	executionRepository: ExecutionRepository,
 	executionId: string,
 	allOutputs: boolean,
 ): Promise<{
@@ -425,7 +465,7 @@ export async function extractResult(
 	data?: Record<string, unknown>;
 	error?: string;
 }> {
-	const execution = await executionRepository.findSingleExecution(executionId, {
+	const execution = await Container.get(ExecutionPersistence).findSingleExecution(executionId, {
 		includeData: true,
 		unflattenData: true,
 	});
@@ -516,16 +556,13 @@ async function buildWorkflowTool(
 	descriptor: Extract<AgentJsonToolConfig, { type: 'workflow' }>,
 	context: WorkflowToolContext,
 ): Promise<BuiltTool> {
-	const { workflowRepository, workflowFinderService, userRepository } = context;
+	const { workflowRepository } = context;
 	const workflowName = descriptor.workflow;
 
-	// Step 1: Find the workflow by name, scoped to the project if available.
-	const whereClause: Record<string, unknown> = { name: workflowName };
-	if (context.projectId) {
-		whereClause.shared = { projectId: context.projectId };
-	}
+	// Find the workflow by name. Access control is project sharing: the
+	// workflow must be shared with the agent's project.
 	const candidateWorkflow = await workflowRepository.findOne({
-		where: whereClause,
+		where: { name: workflowName, shared: { projectId: context.projectId } },
 		relations: ['shared'],
 	});
 
@@ -533,19 +570,7 @@ async function buildWorkflowTool(
 		throw new Error(`Workflow "${workflowName}" not found`);
 	}
 
-	// Step 2: Verify the user has execute access via RBAC.
-	const user = await userRepository.findOne({ where: { id: context.userId }, relations: ['role'] });
-	if (!user) {
-		throw new Error(`User "${context.userId}" not found`);
-	}
-
-	const workflow = await workflowFinderService.findWorkflowForUser(candidateWorkflow.id, user, [
-		'workflow:execute',
-	]);
-
-	if (!workflow) {
-		throw new Error(`Workflow "${workflowName}" not found or user does not have execute access`);
-	}
+	const workflow = candidateWorkflow;
 
 	validateCompatibility(workflow);
 	const { node: triggerNode, triggerType } = detectTriggerNode(workflow);

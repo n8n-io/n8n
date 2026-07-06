@@ -6,9 +6,11 @@ import type { IWorkflowDb } from '@/Interface';
 import type { PermissionsRecord } from '@n8n/permissions';
 import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue';
 import {
+	VIEWS,
 	WORKFLOW_PUBLISH_MODAL_KEY,
 	WORKFLOW_HISTORY_NAME_VERSION_MODAL_KEY,
 	WORKFLOW_HISTORY_VERSION_UNPUBLISH,
+	WORKFLOW_HISTORY_PUBLISH_TIMELINE_TAB,
 	AutoSaveState,
 	EnterpriseEditionFeature,
 } from '@/app/constants';
@@ -17,6 +19,7 @@ import {
 	N8nActionDropdown,
 	N8nButton,
 	N8nIconButton,
+	N8nSpinner,
 	N8nTooltip,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -46,6 +49,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { useWorkflowPublicationStatusSync } from '@/app/composables/useWorkflowPublicationStatusSync';
 
 const props = defineProps<{
 	id: IWorkflowDb['id'];
@@ -63,6 +67,10 @@ const uiStore = useUIStore();
 const workflowDocumentStore = computed(() =>
 	useWorkflowDocumentStore(createWorkflowDocumentId(props.id)),
 );
+
+// Pass a getter so the composable re-syncs internally when the user navigates
+// to a different workflow without this component being remounted.
+useWorkflowPublicationStatusSync(() => workflowDocumentStore.value.documentId);
 const collaborationStore = useCollaborationStore();
 const projectStore = useProjectsStore();
 const workflowHistoryStore = useWorkflowHistoryStore();
@@ -115,9 +123,23 @@ type WorkflowPublishState =
 	| 'published-no-changes' // Published and up to date
 	| 'published-with-changes' // Published but has unpublished changes
 	| 'published-node-issues' // Published but has node issues
-	| 'published-invalid-trigger'; // Published but no trigger nodes
+	| 'published-invalid-trigger' // Published but no trigger nodes
+	| 'publishing' // Publication service: triggers being registered
+	| 'publication-partial' // Publication service: some triggers failed to activate
+	| 'publication-failed'; // Publication service: workflow not running
+
+const publicationStatus = computed(() => workflowDocumentStore.value.publicationStatus);
+const publicationFailures = computed(() => workflowDocumentStore.value.publicationFailures);
+const publicationServiceEnabled = computed(() => settingsStore.isWorkflowPublicationServiceEnabled);
 
 const workflowPublishState = computed((): WorkflowPublishState => {
+	// When publication service is enabled, its status takes precedence
+	if (publicationServiceEnabled.value) {
+		if (publicationStatus.value === 'publishing') return 'publishing';
+		if (publicationStatus.value === 'partial') return 'publication-partial';
+		if (publicationStatus.value === 'failed') return 'publication-failed';
+	}
+
 	const hasBeenPublished = !!activeVersion.value;
 	const hasChanges =
 		workflowDocumentStore.value.versionId !== activeVersion.value?.versionId ||
@@ -199,6 +221,7 @@ const publishButtonConfig = computed(() => {
 		const defaultConfigForNoPermission = {
 			text: i18n.baseText('workflows.publish'),
 			enabled: false,
+			loading: false,
 			showIndicator: false,
 			indicatorClass: '',
 			tooltip: isPersonalSpace.value
@@ -224,6 +247,7 @@ const publishButtonConfig = computed(() => {
 		return {
 			text: i18n.baseText('workflows.publish'),
 			enabled: containsTrigger.value && !hasNodeIssues.value,
+			loading: false,
 			showIndicator: false,
 			indicatorClass: '',
 			tooltip: !containsTrigger.value
@@ -243,6 +267,7 @@ const publishButtonConfig = computed(() => {
 		'not-published-not-eligible': {
 			text: i18n.baseText('workflows.publish'),
 			enabled: false,
+			loading: false,
 			showIndicator: false,
 			indicatorClass: '',
 			tooltip: !containsTrigger.value
@@ -256,6 +281,7 @@ const publishButtonConfig = computed(() => {
 		'not-published-eligible': {
 			text: i18n.baseText('workflows.publish'),
 			enabled: true,
+			loading: false,
 			showIndicator: false,
 			indicatorClass: '',
 			tooltip: '',
@@ -264,6 +290,7 @@ const publishButtonConfig = computed(() => {
 		'published-no-changes': {
 			text: i18n.baseText('generic.published'),
 			enabled: false,
+			loading: false,
 			showIndicator: true,
 			indicatorClass: 'published',
 			tooltip: '',
@@ -272,6 +299,7 @@ const publishButtonConfig = computed(() => {
 		'published-with-changes': {
 			text: i18n.baseText('workflows.publish'),
 			enabled: true,
+			loading: false,
 			showIndicator: true,
 			indicatorClass: 'changes',
 			tooltip: i18n.baseText('workflows.publishModal.changes'),
@@ -280,6 +308,7 @@ const publishButtonConfig = computed(() => {
 		'published-node-issues': {
 			text: i18n.baseText('workflows.publish'),
 			enabled: false,
+			loading: false,
 			showIndicator: true,
 			indicatorClass: 'error',
 			tooltip: i18n.baseText(
@@ -294,10 +323,38 @@ const publishButtonConfig = computed(() => {
 		'published-invalid-trigger': {
 			text: i18n.baseText('workflows.publish'),
 			enabled: false,
+			loading: false,
 			showIndicator: true,
 			indicatorClass: 'changes',
 			tooltip: i18n.baseText('workflows.publishModal.noTriggerMessage'),
 			showVersionInfo: true,
+		},
+		publishing: {
+			text: i18n.baseText('workflows.publish.publishing'),
+			enabled: false,
+			loading: true,
+			showIndicator: false,
+			indicatorClass: '',
+			tooltip: i18n.baseText('workflows.publish.publishing.tooltip'),
+			showVersionInfo: false,
+		},
+		'publication-partial': {
+			text: i18n.baseText('workflows.publish'),
+			enabled: true,
+			loading: false,
+			showIndicator: true,
+			indicatorClass: 'partial',
+			tooltip: i18n.baseText('workflows.publish.partial.tooltip'),
+			showVersionInfo: false,
+		},
+		'publication-failed': {
+			text: i18n.baseText('workflows.publish'),
+			enabled: true,
+			loading: false,
+			showIndicator: true,
+			indicatorClass: 'error',
+			tooltip: i18n.baseText('workflows.publish.failed.tooltip'),
+			showVersionInfo: false,
 		},
 	};
 
@@ -335,6 +392,7 @@ const latestPublishDate = computed(() => {
 const enum VERSION_ACTIONS {
 	PUBLISH = 'publish',
 	NAME_VERSION = 'name-version',
+	PUBLISH_TIMELINE = 'publish-timeline',
 	UNPUBLISH = 'unpublish',
 }
 
@@ -356,6 +414,11 @@ const versionMenuActions = computed<Array<ActionDropdownItem<VERSION_ACTIONS>>>(
 			disabled: !hasUpdatePermission.value || !workflowDocumentStore.value.versionId,
 		});
 	}
+
+	actions.push({
+		id: VERSION_ACTIONS.PUBLISH_TIMELINE,
+		label: i18n.baseText('workflowHistory.action.viewTimeline'),
+	});
 
 	actions.push({
 		id: VERSION_ACTIONS.UNPUBLISH,
@@ -474,6 +537,13 @@ const onDropdownMenuSelect = async (action: VERSION_ACTIONS) => {
 		case VERSION_ACTIONS.NAME_VERSION:
 			await onNameVersion();
 			break;
+		case VERSION_ACTIONS.PUBLISH_TIMELINE:
+			await router.push({
+				name: VIEWS.WORKFLOW_HISTORY,
+				params: { workflowId: props.id },
+				query: { tab: WORKFLOW_HISTORY_PUBLISH_TIMELINE_TAB },
+			});
+			break;
 		case VERSION_ACTIONS.UNPUBLISH:
 			onUnpublish();
 			break;
@@ -539,7 +609,10 @@ defineExpose({
 			<div :class="$style.buttonGroup">
 				<N8nTooltip
 					:disabled="
-						workflowPublishState === 'not-published-eligible' && props.workflowPermissions.publish
+						(workflowPublishState === 'not-published-eligible' &&
+							props.workflowPermissions.publish) ||
+						(!publishButtonConfig.tooltip &&
+							!(publishButtonConfig.showVersionInfo && activeVersion))
 					"
 					:show-after="300"
 					:offset="15"
@@ -553,6 +626,13 @@ defineExpose({
 								<span data-test-id="workflow-active-version-info">{{ activeVersionName }}</span
 								><br />{{ i18n.baseText('workflowHistory.item.active') }}
 								<TimeAgo v-if="latestPublishDate" :date="latestPublishDate" />
+							</template>
+							<template v-if="publicationFailures.length > 0">
+								<br />
+								{{ i18n.baseText('workflows.publish.failures.label') }}<br />
+								<span v-for="failure in publicationFailures" :key="failure.nodeId">
+									{{ failure.nodeName }}<br />
+								</span>
 							</template>
 						</div>
 					</template>
@@ -573,7 +653,14 @@ defineExpose({
 									[$style.indicatorPublished]: publishButtonConfig.indicatorClass === 'published',
 									[$style.indicatorChanges]: publishButtonConfig.indicatorClass === 'changes',
 									[$style.indicatorIssues]: publishButtonConfig.indicatorClass === 'error',
+									[$style.indicatorPartial]: publishButtonConfig.indicatorClass === 'partial',
 								}"
+							/>
+							<N8nSpinner
+								v-if="publishButtonConfig.loading"
+								:class="$style.publishingSpinner"
+								size="xsmall"
+								data-test-id="publishing-spinner"
 							/>
 							<span
 								:class="[
@@ -674,6 +761,10 @@ defineExpose({
 	margin-right: var(--spacing--2xs);
 }
 
+.publishingSpinner {
+	margin-right: var(--spacing--2xs);
+}
+
 .indicatorPublished {
 	background-color: var(--color--mint-600);
 }
@@ -688,6 +779,10 @@ defineExpose({
 
 .indicatorIssues {
 	background-color: var(--color--red-600);
+}
+
+.indicatorPartial {
+	background-color: var(--color--warning);
 }
 
 .flex {

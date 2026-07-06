@@ -13,13 +13,12 @@ import { Container } from '@n8n/di';
 import { DateTime } from 'luxon';
 import type { DataTableRow } from 'n8n-workflow';
 
+import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import type { SourceControlPreferences } from '@/modules/source-control.ee/types/source-control-preferences';
 import { createDataTable } from '@test-integration/db/data-tables';
 import { createOwner, createMember, createAdmin } from '@test-integration/db/users';
 import type { SuperAgentTest } from '@test-integration/types';
 import * as utils from '@test-integration/utils';
-
-import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
-import type { SourceControlPreferences } from '@/modules/source-control.ee/types/source-control-preferences';
 
 import { DataTableColumnRepository } from '../data-table-column.repository';
 import { DataTableRowsRepository } from '../data-table-rows.repository';
@@ -99,6 +98,24 @@ describe('POST /projects/:projectId/data-tables', () => {
 		};
 
 		await authOwnerAgent.post(`/projects/${project.id}/data-tables`).send(payload).expect(400);
+	});
+
+	test('should return 409 when column name conflicts with system columns', async () => {
+		const project = await createTeamProject(undefined, owner);
+
+		for (const systemColumnName of ['id', 'ID', 'createdAt', 'updatedAt']) {
+			const payload = {
+				name: `Table with ${systemColumnName}`,
+				columns: [{ name: systemColumnName, type: 'string' }],
+			};
+
+			const response = await authOwnerAgent
+				.post(`/projects/${project.id}/data-tables`)
+				.send(payload)
+				.expect(409);
+
+			expect(response.body.message).toContain('reserved');
+		}
 	});
 
 	test('should not create data table if user has project:viewer role in team project', async () => {

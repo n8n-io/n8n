@@ -1,6 +1,5 @@
 import { defineStore } from 'pinia';
 import { MCP_STORE } from './mcp.constants';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import {
 	useWorkflowDocumentStore,
@@ -17,6 +16,8 @@ import {
 	fetchInstanceMcpClientStats,
 	deleteOAuthClient,
 	fetchMcpEligibleWorkflows,
+	getAllowedRedirectUris,
+	updateAllowedRedirectUris,
 	type ToggleWorkflowsMcpAccessResponse,
 	type ToggleWorkflowsMcpAccessTarget,
 } from '@/features/ai/mcpAccess/mcp.api';
@@ -32,13 +33,13 @@ import type {
 import { i18n } from '@n8n/i18n';
 
 export const useMCPStore = defineStore(MCP_STORE, () => {
-	const workflowsStore = useWorkflowsStore();
 	const workflowsListStore = useWorkflowsListStore();
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
 
 	const currentUserMCPKey = ref<ApiKey | null>(null);
 	const oauthClients = ref<OAuthClientResponseDto[]>([]);
+	const allowedRedirectUris = ref<string[]>([]);
 	const instanceClientStats = ref<InstanceMcpClientStatsResponseDto | null>(null);
 	const connectPopoverOpen = ref(false);
 
@@ -48,17 +49,17 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 	async function fetchWorkflowsAvailableForMCP(
 		page = 1,
 		pageSize = 50,
-	): Promise<WorkflowListItem[]> {
-		const workflows = await workflowsListStore.fetchWorkflowsPage(
+	): Promise<{ data: WorkflowListItem[]; count: number }> {
+		const { data, count } = await workflowsListStore.fetchWorkflowsPageWithCount(
 			undefined, // projectId
 			page,
 			pageSize,
 			'updatedAt:desc',
 			{ isArchived: false, availableInMCP: true },
 			false, // includeFolders
-			false, // includeAllVersions
+			false, // onlySharedWithMe
 		);
-		return workflows.filter(isWorkflowListItem);
+		return { data: data.filter(isWorkflowListItem), count };
 	}
 
 	async function setMcpAccessEnabled(enabled: boolean): Promise<boolean> {
@@ -84,10 +85,8 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 			}
 		}
 
-		if (workflowId === workflowsStore.workflowId) {
-			const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
-			workflowDocumentStore.mergeSettings({ availableInMCP });
-		}
+		const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflowId));
+		workflowDocumentStore.mergeSettings({ availableInMCP });
 	}
 
 	// Toggle MCP access for a single workflow
@@ -101,7 +100,12 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 			availableInMCP,
 		);
 
-		if (!(response.updatedIds ?? []).includes(workflowId)) {
+		const confirmedIds = new Set([
+			...(response.updatedIds ?? []),
+			...(response.unchangedIds ?? []),
+		]);
+
+		if (!confirmedIds.has(workflowId)) {
 			throw new Error(
 				i18n.baseText('workflowSettings.toggleMCP.updateSkippedError', {
 					interpolate: { workflowId },
@@ -128,7 +132,12 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 			availableInMCP,
 		);
 
-		for (const id of response.updatedIds ?? []) {
+		const confirmedIds = new Set([
+			...(response.updatedIds ?? []),
+			...(response.unchangedIds ?? []),
+		]);
+
+		for (const id of confirmedIds) {
 			applyAvailableInMCPToLocalStores(id, availableInMCP);
 		}
 
@@ -193,6 +202,17 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		connectPopoverOpen.value = false;
 	}
 
+	async function fetchAllowedRedirectUris(): Promise<string[]> {
+		const response = await getAllowedRedirectUris(rootStore.restApiContext);
+		allowedRedirectUris.value = response.uris;
+		return response.uris;
+	}
+
+	async function setAllowedRedirectUris(uris: string[]): Promise<void> {
+		await updateAllowedRedirectUris(rootStore.restApiContext, uris);
+		allowedRedirectUris.value = uris;
+	}
+
 	return {
 		mcpAccessEnabled,
 		mcpManagedByEnv,
@@ -210,6 +230,9 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		getInstanceClientStats,
 		removeOAuthClient,
 		getMcpEligibleWorkflows,
+		allowedRedirectUris,
+		fetchAllowedRedirectUris,
+		setAllowedRedirectUris,
 		connectPopoverOpen,
 		openConnectPopover,
 		closeConnectPopover,

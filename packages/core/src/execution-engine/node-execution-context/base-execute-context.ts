@@ -1,3 +1,4 @@
+import type { Result } from '@n8n/utils/result';
 import get from 'lodash/get';
 import type {
 	Workflow,
@@ -22,11 +23,11 @@ import type {
 	ISourceData,
 	AiEvent,
 	NodeConnectionType,
-	Result,
 	IExecuteFunctions,
+	ExecuteAgentWorkflowContext,
 } from 'n8n-workflow';
 import {
-	ApplicationError,
+	UnexpectedError,
 	OperationalError,
 	NodeHelpers,
 	NodeConnectionTypes,
@@ -34,6 +35,8 @@ import {
 	WorkflowDataProxy,
 	createEnvProviderState,
 } from 'n8n-workflow';
+
+import { PLACEHOLDER_EMPTY_EXECUTION_ID } from '@/constants';
 
 import { NodeExecutionContext } from './node-execution-context';
 
@@ -122,17 +125,19 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			doNotWaitToFinish?: boolean;
 			parentExecution?: RelatedExecution;
 			executionMode?: WorkflowExecuteMode;
+			returnLastRunOnly?: boolean;
 		},
 	): Promise<ExecuteWorkflowData> {
 		if (options?.parentExecution) {
-			// We inject the execution context of the current execution
-			// to the sub-workflow so that it can be accessed there
-			// this should only happen for the direct parent execution
-			// if a workflow starts a sub-workflow for a workflow that is not itself
-			// then the context should not be passed down
+			// Inject the current execution context into the direct parent's
+			// sub-workflow only. Normalize against the placeholder id: during a
+			// trigger's webhook phase (e.g. an MCP Trigger tool call) no execution id
+			// exists yet, so `getExecutionId()` is `undefined` while the proxied
+			// `parentExecution.executionId` is `PLACEHOLDER_EMPTY_EXECUTION_ID`.
 			if (
 				!options.parentExecution.executionContext &&
-				options.parentExecution.executionId === this.getExecutionId()
+				options.parentExecution.executionId ===
+					(this.getExecutionId() ?? PLACEHOLDER_EMPTY_EXECUTION_ID)
 			) {
 				options.parentExecution.executionContext = this.getExecutionContext();
 			}
@@ -168,12 +173,39 @@ export class BaseExecuteContext extends NodeExecutionContext {
 
 		const threadId = agentInfo.sessionId?.trim() || `${executionId}-${itemIndex}`;
 
+		const inputDataScope = agentInfo.inputDataScope ?? 'item';
+		const mainBranches = this.inputData?.main ?? [];
+		const primaryBranch = mainBranches[0] ?? [];
+		// 'all' exposes every input item across all main branches; otherwise scope
+		// to the current item from the primary branch (empty when itemIndex is out
+		// of range — defensive).
+		const scopedInput =
+			inputDataScope === 'all'
+				? mainBranches.flatMap((branch) => branch ?? [])
+				: itemIndex < primaryBranch.length
+					? [primaryBranch[itemIndex]]
+					: [];
+
+		const workflowContext: ExecuteAgentWorkflowContext = {
+			workflowId: this.workflow.id,
+			workflowName: this.workflow.name,
+			callingNodeName: this.node.name,
+			inputData: scopedInput,
+			inputDataScope,
+			exposeWorkflowData: agentInfo.exposeWorkflowData ?? false,
+			nodes: Object.values(this.workflow.nodes).map(({ name, type }) => ({ name, type })),
+			runExecutionData: this.runExecutionData,
+		};
+
 		return await this.additionalData.executeAgent(
 			agentInfo.agentId,
 			message,
 			executionId,
 			threadId,
 			this.additionalData,
+			this.additionalData.rootExecutionMode ?? this.getMode(),
+			agentInfo.outputSchema,
+			workflowContext,
 		);
 	}
 
@@ -184,14 +216,14 @@ export class BaseExecuteContext extends NodeExecutionContext {
 	protected getInputItems(inputIndex: number, connectionType: NodeConnectionType) {
 		const inputData = this.inputData[connectionType];
 		if (inputData.length < inputIndex) {
-			throw new ApplicationError('Could not get input with given index', {
+			throw new UnexpectedError('Could not get input with given index', {
 				extra: { inputIndex, connectionType },
 			});
 		}
 
 		const allItems = inputData[inputIndex] as INodeExecutionData[] | null | undefined;
 		if (allItems === null) {
-			throw new ApplicationError('Input index was not set', {
+			throw new UnexpectedError('Input index was not set', {
 				extra: { inputIndex, connectionType },
 			});
 		}
@@ -202,7 +234,7 @@ export class BaseExecuteContext extends NodeExecutionContext {
 	getInputSourceData(inputIndex = 0, connectionType = NodeConnectionTypes.Main): ISourceData {
 		if (this.executeData?.source === null) {
 			// Should never happen as n8n sets it automatically
-			throw new ApplicationError('Source data is missing');
+			throw new UnexpectedError('Source data is missing');
 		}
 		return this.executeData.source[connectionType][inputIndex]!;
 	}

@@ -61,6 +61,10 @@ vi.mock('@/app/composables/useToast', () => ({
 	}),
 }));
 
+vi.mock('@/app/composables/useWorkflowPublicationStatusSync', () => ({
+	useWorkflowPublicationStatusSync: vi.fn().mockReturnValue({ refetch: vi.fn() }),
+}));
+
 const initialState = {
 	[STORES.SETTINGS]: {
 		settings: {
@@ -131,11 +135,8 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 	let projectsStore: MockedStore<typeof useProjectsStore>;
 	let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>;
 
-	const setupEnabledPublishButton = (overrides: Record<string, unknown> = {}) => {
-		Object.assign(workflowsStore, overrides);
-		if (!workflowsStore.workflow.nodes.length) {
-			workflowsStore.workflow.nodes = [triggerNode];
-		}
+	const setupEnabledPublishButton = () => {
+		workflowDocumentStore.setNodes([triggerNode]);
 	};
 
 	beforeEach(() => {
@@ -144,19 +145,6 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		collaborationStore = mockedStore(useCollaborationStore);
 		projectsStore = mockedStore(useProjectsStore);
 
-		workflowsStore.workflow = {
-			id: '1',
-			name: 'Test Workflow',
-			active: false,
-			activeVersionId: null,
-			activeVersion: null,
-			versionId: 'version-1',
-			isArchived: false,
-			createdAt: Date.now(),
-			updatedAt: Date.now(),
-			nodes: [],
-			connections: {},
-		};
 		const nodeTypesStore = useNodeTypesStore();
 		nodeTypesStore.setNodeTypes([
 			mockNodeTypeDescription({
@@ -164,6 +152,8 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 				group: ['trigger'],
 			}),
 		]);
+
+		workflowsStore.setWorkflowId('1');
 		workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId('1'));
 		workflowDocumentStore.setVersionData({ versionId: 'version-1', name: null, description: null });
 		workflowDocumentStore.setActiveState({ activeVersionId: null, activeVersion: null });
@@ -347,12 +337,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		it('should open publish modal when clicked and workflow is saved', async () => {
 			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
 			uiStore.markStateClean();
-			setupEnabledPublishButton({
-				workflow: {
-					...workflowsStore.workflow,
-					versionId: 'version-1',
-				},
-			});
+			setupEnabledPublishButton();
 			workflowDocumentStore.setActiveState({
 				activeVersionId: 'version-2',
 				activeVersion: createMockActiveVersion('version-2'),
@@ -433,8 +418,8 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 	describe('Publish button state', () => {
 		it('should show publish button disabled when there are no trigger nodes', () => {
-			workflowsStore.workflow.nodes = [];
-			workflowsStore.workflow.versionId = 'version-1';
+			workflowDocumentStore.setNodes([]);
+
 			workflowDocumentStore.setActiveState({
 				activeVersionId: 'version-2',
 				activeVersion: createMockActiveVersion('version-2'),
@@ -447,8 +432,8 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		});
 
 		it('should show publish button disabled when trigger node is disabled', () => {
-			workflowsStore.workflow.nodes = [{ ...triggerNode, disabled: true }];
-			workflowsStore.workflow.versionId = 'version-1';
+			workflowDocumentStore.setNodes([{ ...triggerNode, disabled: true }]);
+
 			workflowDocumentStore.setActiveState({
 				activeVersionId: 'version-2',
 				activeVersion: createMockActiveVersion('version-2'),
@@ -461,8 +446,8 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		});
 
 		it('should show publish button enabled when there are unpublished changes (versionId mismatch)', () => {
-			workflowsStore.workflow.nodes = [triggerNode];
-			workflowsStore.workflow.versionId = 'version-1';
+			workflowDocumentStore.setNodes([triggerNode]);
+
 			workflowDocumentStore.setActiveState({
 				activeVersionId: 'version-2',
 				activeVersion: createMockActiveVersion('version-2'),
@@ -475,8 +460,8 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		});
 
 		it('should show publish button enabled when state is dirty', () => {
-			workflowsStore.workflow.nodes = [triggerNode];
-			workflowsStore.workflow.versionId = 'version-1';
+			workflowDocumentStore.setNodes([triggerNode]);
+
 			workflowDocumentStore.setActiveState({
 				activeVersionId: 'version-1',
 				activeVersion: createMockActiveVersion('version-1'),
@@ -489,8 +474,8 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		});
 
 		it('should show publish button disabled when versions match and state is not dirty', () => {
-			workflowsStore.workflow.nodes = [triggerNode];
-			workflowsStore.workflow.versionId = 'version-1';
+			workflowDocumentStore.setNodes([triggerNode]);
+
 			workflowDocumentStore.setActiveState({
 				activeVersionId: 'version-1',
 				activeVersion: createMockActiveVersion('version-1'),
@@ -503,8 +488,8 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		});
 
 		it('should keep the version menu enabled when workflow is published with no changes', () => {
-			workflowsStore.workflow.nodes = [triggerNode];
-			workflowsStore.workflow.versionId = 'version-1';
+			workflowDocumentStore.setNodes([triggerNode]);
+
 			workflowDocumentStore.setActiveState({
 				activeVersionId: 'version-1',
 				activeVersion: createMockActiveVersion('version-1'),
@@ -518,8 +503,8 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		});
 
 		it('should keep the version menu enabled when workflow is published with no changes and unpublish is unavailable', () => {
-			workflowsStore.workflow.nodes = [triggerNode];
-			workflowsStore.workflow.versionId = 'version-1';
+			workflowDocumentStore.setNodes([triggerNode]);
+
 			workflowDocumentStore.setActiveState({
 				activeVersionId: 'version-1',
 				activeVersion: createMockActiveVersion('version-1'),
@@ -541,8 +526,8 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 		});
 
 		it('should show publish button enabled when workflow has never been published (no active version)', () => {
-			workflowsStore.workflow.nodes = [triggerNode];
-			workflowsStore.workflow.versionId = 'version-1';
+			workflowDocumentStore.setNodes([triggerNode]);
+
 			workflowDocumentStore.setActiveState({ activeVersionId: null, activeVersion: null });
 			uiStore.markStateClean();
 
@@ -634,11 +619,6 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			settingsStore.isEnterpriseFeatureEnabled = createMockEnterpriseSettings({
 				[EnterpriseEditionFeature.NamedVersions]: true,
 			});
-			workflowsStore.workflow = {
-				...workflowsStore.workflow,
-				versionId: 'version-1',
-				updatedAt: Date.now(),
-			};
 			workflowDocumentStore.setVersionData({
 				versionId: 'version-1',
 				name: 'Test Version',
@@ -724,7 +704,6 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			settingsStore.isEnterpriseFeatureEnabled = createMockEnterpriseSettings({
 				[EnterpriseEditionFeature.NamedVersions]: true,
 			});
-			workflowsStore.workflow.versionId = 'version-1';
 
 			const { container } = renderComponent();
 			expect(container).toBeInTheDocument();
@@ -738,6 +717,176 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 			const { container } = renderComponent();
 			expect(container).toBeInTheDocument();
+		});
+	});
+
+	describe('Publication service states (flag on)', () => {
+		let settingsStore: ReturnType<typeof useSettingsStore>;
+
+		beforeEach(() => {
+			settingsStore = useSettingsStore();
+			// Enable the publication service flag
+			settingsStore.$patch((state) => {
+				state.settings = {
+					...state.settings,
+					useWorkflowPublicationService: true,
+				};
+			});
+			// Set up an active version so the workflow is considered published
+			workflowDocumentStore.setActiveState({
+				activeVersionId: 'version-1',
+				activeVersion: createMockActiveVersion('version-1'),
+			});
+			workflowDocumentStore.setNodes([triggerNode]);
+			uiStore.markStateClean();
+		});
+
+		it('should show "Publishing…" text alongside an inline spinner, and be disabled when status is publishing', () => {
+			workflowDocumentStore.setPublicationStatus({ status: 'publishing' });
+
+			const { getByTestId, getByText } = renderComponent();
+
+			const publishButton = getByTestId('workflow-open-publish-modal-button');
+			expect(publishButton).toBeDisabled();
+			// Text and spinner coexist — text visible alongside the spinner
+			expect(getByText('Publishing…')).toBeInTheDocument();
+			expect(getByTestId('publishing-spinner')).toBeInTheDocument();
+		});
+
+		it('should show publish button enabled with error indicator when status is partial', () => {
+			workflowDocumentStore.setPublicationStatus({
+				status: 'partial',
+				failures: [{ nodeId: 'n1', nodeName: 'Webhook', errorMessage: 'Failed' }],
+			});
+
+			const { getByTestId } = renderComponent();
+
+			const publishButton = getByTestId('workflow-open-publish-modal-button');
+			expect(publishButton).not.toBeDisabled();
+			expect(publishButton).toHaveTextContent('Publish');
+
+			const indicator = getByTestId('workflow-active-version-indicator');
+			expect(indicator).toBeInTheDocument();
+		});
+
+		it('should show publish button enabled with error indicator when status is failed', () => {
+			workflowDocumentStore.setPublicationStatus({ status: 'failed' });
+
+			const { getByTestId } = renderComponent();
+
+			const publishButton = getByTestId('workflow-open-publish-modal-button');
+			expect(publishButton).not.toBeDisabled();
+			expect(publishButton).toHaveTextContent('Publish');
+
+			const indicator = getByTestId('workflow-active-version-indicator');
+			expect(indicator).toBeInTheDocument();
+		});
+
+		it('should enable publish button for partial status even with no diff (re-attempt)', () => {
+			// versions match and state is clean — no diff, but partial overrides
+			workflowDocumentStore.setPublicationStatus({ status: 'partial' });
+			uiStore.markStateClean();
+
+			const { getByTestId } = renderComponent();
+
+			expect(getByTestId('workflow-open-publish-modal-button')).not.toBeDisabled();
+		});
+
+		it('should enable publish button for failed status even with no diff (re-attempt)', () => {
+			workflowDocumentStore.setPublicationStatus({ status: 'failed' });
+			uiStore.markStateClean();
+
+			const { getByTestId } = renderComponent();
+
+			expect(getByTestId('workflow-open-publish-modal-button')).not.toBeDisabled();
+		});
+
+		it('should fall through to existing logic when flag is off and status is partial', () => {
+			// Disable the flag
+			settingsStore.$patch((state) => {
+				state.settings = {
+					...state.settings,
+					useWorkflowPublicationService: false,
+				};
+			});
+			workflowDocumentStore.setPublicationStatus({ status: 'partial' });
+			// versions match, no diff → published-no-changes → button disabled
+			uiStore.markStateClean();
+
+			const { getByTestId } = renderComponent();
+
+			// Should be disabled because flag is off and no changes
+			expect(getByTestId('workflow-open-publish-modal-button')).toBeDisabled();
+		});
+
+		it('should use partial indicator class (not error) when status is partial', () => {
+			workflowDocumentStore.setPublicationStatus({
+				status: 'partial',
+				failures: [{ nodeId: 'n1', nodeName: 'Webhook', errorMessage: 'Connection refused' }],
+			});
+
+			const { getByTestId } = renderComponent();
+
+			const indicator = getByTestId('workflow-active-version-indicator');
+			expect(indicator.className).toMatch(/indicatorPartial/);
+			expect(indicator.className).not.toMatch(/indicatorIssues/);
+		});
+
+		it('should use error indicator class when status is failed', () => {
+			workflowDocumentStore.setPublicationStatus({ status: 'failed' });
+
+			const { getByTestId } = renderComponent();
+
+			const indicator = getByTestId('workflow-active-version-indicator');
+			expect(indicator.className).toMatch(/indicatorIssues/);
+			expect(indicator.className).not.toMatch(/indicatorPartial/);
+		});
+
+		it('should show non-empty tooltip text when publishing', () => {
+			workflowDocumentStore.setPublicationStatus({ status: 'publishing' });
+
+			const { getByText } = renderComponent();
+			// The N8nTooltip stub renders the content slot unconditionally — assert the
+			// informative text is actually present in the DOM.
+			expect(getByText('Activating triggers — this can take a moment.')).toBeInTheDocument();
+		});
+
+		it('should show partial tooltip message in button tooltip when status is partial', () => {
+			workflowDocumentStore.setPublicationStatus({
+				status: 'partial',
+				failures: [{ nodeId: 'n1', nodeName: 'Webhook', errorMessage: 'Connection refused' }],
+			});
+
+			const { getByText, queryByText } = renderComponent();
+
+			// Tooltip message should be present
+			expect(
+				getByText(
+					/The workflow is partially published, but some triggers failed to activate\. Publish again to retry\./,
+				),
+			).toBeInTheDocument();
+			// Node name should be present
+			expect(getByText('Webhook')).toBeInTheDocument();
+			// Error message should NOT be present in the tooltip
+			expect(queryByText('Connection refused')).not.toBeInTheDocument();
+		});
+
+		it('should show failed tooltip message in button tooltip when status is failed', () => {
+			workflowDocumentStore.setPublicationStatus({
+				status: 'failed',
+				failures: [{ nodeId: 'n1', nodeName: 'Webhook', errorMessage: 'Auth failed' }],
+			});
+
+			const { getByText, queryByText } = renderComponent();
+
+			// Tooltip message should be present
+			expect(
+				getByText(/This workflow isn't running\. Publish again to retry\./),
+			).toBeInTheDocument();
+			// Node name should be present
+			expect(getByText('Webhook')).toBeInTheDocument();
+			// Error message should NOT be present in the tooltip
+			expect(queryByText('Auth failed')).not.toBeInTheDocument();
 		});
 	});
 });

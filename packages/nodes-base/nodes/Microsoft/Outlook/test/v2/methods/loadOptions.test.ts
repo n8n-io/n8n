@@ -1,23 +1,24 @@
-import { mockDeep } from 'jest-mock-extended';
+import { mockDeep } from 'vitest-mock-extended';
 import type { ILoadOptionsFunctions } from 'n8n-workflow';
 
 import { getCategoriesNames, getFolders, getCalendarGroups } from '../../../v2/methods/loadOptions';
 import * as transport from '../../../v2/transport';
+import type { Mocked } from 'vitest';
 
-jest.mock('../../../v2/transport');
+vi.mock('../../../v2/transport');
 
-const mockTransport = transport as jest.Mocked<typeof transport>;
+const mockTransport = transport as Mocked<typeof transport>;
 
 describe('MicrosoftOutlookV2 - loadOptions methods', () => {
-	let mockLoadOptionsFunctions: jest.Mocked<ILoadOptionsFunctions>;
+	let mockLoadOptionsFunctions: Mocked<ILoadOptionsFunctions>;
 
 	beforeEach(() => {
 		mockLoadOptionsFunctions = mockDeep<ILoadOptionsFunctions>();
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 	});
 
 	afterEach(() => {
-		jest.resetAllMocks();
+		vi.resetAllMocks();
 	});
 
 	describe('getCategoriesNames', () => {

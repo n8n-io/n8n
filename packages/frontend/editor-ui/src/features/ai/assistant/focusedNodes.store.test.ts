@@ -18,12 +18,6 @@ import type { INodeUi } from '@/Interface';
 
 // Mock telemetry
 const track = vi.fn();
-vi.spyOn(telemetryModule, 'useTelemetry').mockImplementation(
-	() =>
-		({
-			track,
-		}) as unknown as Telemetry,
-);
 
 // Mock posthog
 let featureEnabled = true;
@@ -65,6 +59,10 @@ describe('useFocusedNodesStore', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		// `restoreMocks` restores this spy before each test, so re-establish it here.
+		vi.spyOn(telemetryModule, 'useTelemetry').mockImplementation(
+			() => ({ track }) as unknown as Telemetry,
+		);
 		featureEnabled = true;
 
 		setActivePinia(
@@ -75,8 +73,7 @@ describe('useFocusedNodesStore', () => {
 		);
 
 		workflowsStore = mockedStore(useWorkflowsStore);
-		workflowsStore.workflowId = 'wf-1';
-		workflowsStore.workflow.connections = {};
+		workflowsStore.setWorkflowId('wf-1');
 
 		const workflowDocumentStore = useWorkflowDocumentStore(
 			createWorkflowDocumentId(workflowsStore.workflowId),
@@ -768,14 +765,17 @@ describe('useFocusedNodesStore', () => {
 		});
 
 		it('should include connections (deduplicated)', () => {
-			workflowsStore.workflow.connections = {
+			const workflowDocumentStore = useWorkflowDocumentStore(
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
+			workflowDocumentStore.setConnections({
 				Trigger: {
 					main: [[{ node: 'HTTP Request', type: 'main', index: 0 }]],
 				},
 				'HTTP Request': {
 					main: [[{ node: 'Code', type: 'main', index: 0 }]],
 				},
-			};
+			});
 
 			focusedNodesStore.confirmNodes(['node-1'], 'context_menu');
 			track.mockReset();
@@ -840,7 +840,7 @@ describe('useFocusedNodesStore', () => {
 			focusedNodesStore.confirmNodes(['node-1'], 'context_menu');
 			track.mockReset();
 
-			workflowsStore.workflowId = 'wf-2';
+			workflowsStore.setWorkflowId('wf-2');
 			await nextTick();
 
 			expect(focusedNodesStore.focusedNodesMap).toEqual({});
@@ -853,7 +853,7 @@ describe('useFocusedNodesStore', () => {
 
 		it('should not track telemetry on workflowId change if no confirmed and oldId undefined', async () => {
 			// The initial wf-1 is set in beforeEach but no confirmed nodes
-			workflowsStore.workflowId = 'wf-2';
+			workflowsStore.setWorkflowId('wf-2');
 			await nextTick();
 
 			expect(track).not.toHaveBeenCalled();
@@ -925,7 +925,10 @@ describe('useFocusedNodesStore', () => {
 			const chatPanelStateStore = useChatPanelStateStore();
 			chatPanelStateStore.isOpen = true;
 
-			const ndvStore = mockedStore(useNDVStore);
+			const ndvStore = mockedStore(
+				useNDVStore,
+				createWorkflowDocumentId(workflowsStore.workflowId),
+			);
 			ndvStore.activeNode = createMockNode(
 				'node-2',
 				'Code',

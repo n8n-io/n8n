@@ -437,15 +437,26 @@ export class ProvisioningService {
 		return provisioningConfig.scopesUseExpressionMapping;
 	}
 
+	/**
+	 * Expression mapping is a single global toggle covering both scopes, so it only marks a scope
+	 * as managed when rules for that specific scope actually exist.
+	 */
+	private async hasRoleMappingRulesOfType(type: 'instance' | 'project'): Promise<boolean> {
+		return (await this.roleMappingRuleRepository.count({ where: { type } })) > 0;
+	}
+
 	async isInstanceRoleManaged(): Promise<boolean> {
+		if (await this.isInstanceRoleProvisioningEnabled()) return true;
 		return (
-			(await this.isInstanceRoleProvisioningEnabled()) || (await this.isExpressionMappingEnabled())
+			(await this.isExpressionMappingEnabled()) &&
+			(await this.hasRoleMappingRulesOfType('instance'))
 		);
 	}
 
 	async isProjectRoleManaged(): Promise<boolean> {
+		if (await this.isProjectRolesProvisioningEnabled()) return true;
 		return (
-			(await this.isProjectRolesProvisioningEnabled()) || (await this.isExpressionMappingEnabled())
+			(await this.isExpressionMappingEnabled()) && (await this.hasRoleMappingRulesOfType('project'))
 		);
 	}
 
@@ -482,14 +493,25 @@ export class ProvisioningService {
 		return { instanceRoleRules, projectRoleRules, fallbackInstanceRole: 'global:member' };
 	}
 
-	private async applyExpressionMappedRoles(user: User, resolved: ResolvedRoles): Promise<void> {
-		const projectRolesMap = new Map<string, string>();
-		for (const [projectId, pr] of resolved.projectRoles) {
-			projectRolesMap.set(projectId, pr.role);
+	private async applyExpressionMappedRoles(
+		user: User,
+		resolved: ResolvedRoles,
+		managed: { instanceRole: boolean; projectRoles: boolean },
+	): Promise<void> {
+		// Reconcile a scope only when its mapping rules exist — the same predicate as
+		// isInstanceRoleManaged()/isProjectRoleManaged(). Otherwise using expression mapping for one
+		// scope would revoke manually-assigned roles in the other scope on every SSO login.
+		if (managed.instanceRole) {
+			await this.applyExpressionMappedInstanceRole(user, resolved.instanceRole.role);
 		}
 
-		await this.applyExpressionMappedInstanceRole(user, resolved.instanceRole.role);
-		await this.applyExpressionMappedProjectRoles(user.id, projectRolesMap);
+		if (managed.projectRoles) {
+			const projectRolesMap = new Map<string, string>();
+			for (const [projectId, pr] of resolved.projectRoles) {
+				projectRolesMap.set(projectId, pr.role);
+			}
+			await this.applyExpressionMappedProjectRoles(user.id, projectRolesMap);
+		}
 	}
 
 	private async getPreviousProjectRoles(userId: string): Promise<Record<string, string>> {
@@ -637,16 +659,37 @@ export class ProvisioningService {
 		const config = await this.buildRoleMappingConfig();
 		const resolved = await this.roleResolverService.resolveRoles(config, context);
 
-		await this.applyExpressionMappedRoles(user, resolved);
+		// Only reconcile a scope whose mapping rules exist, matching the manual-management guards.
+		const [instanceRolesManaged, projectRolesManaged] = await Promise.all([
+			this.hasRoleMappingRulesOfType('instance'),
+			this.hasRoleMappingRulesOfType('project'),
+		]);
+
+		this.logger.debug('SSO role resolution complete', {
+			userId: user.id,
+			provider: context.$provider,
+			claimKeys: Object.keys(context.$claims ?? {}).sort(),
+			matchedInstanceRuleId: resolved.instanceRole.matchedRuleId,
+			isFallback: resolved.instanceRole.isFallback,
+			matchedProjectRuleIds: [...resolved.projectRoles.values()].map((r) => r.matchedRuleId),
+		});
+
+		await this.applyExpressionMappedRoles(user, resolved, {
+			instanceRole: instanceRolesManaged,
+			projectRoles: projectRolesManaged,
+		});
 
 		const newInstanceRole = resolved.instanceRole;
-		const projectRoles = [...resolved.projectRoles.values()].map((pr) => {
-			const prev = previousProjectRoles[pr.projectId] ?? null;
-			return { ...pr, previousRole: prev, changed: prev !== pr.role };
-		});
-		const removedProjectIds = Object.keys(previousProjectRoles).filter(
-			(id) => !resolved.projectRoles.has(id),
-		);
+		// Report only what was actually applied, so an unmanaged scope doesn't emit phantom changes.
+		const projectRoles = projectRolesManaged
+			? [...resolved.projectRoles.values()].map((pr) => {
+					const prev = previousProjectRoles[pr.projectId] ?? null;
+					return { ...pr, previousRole: prev, changed: prev !== pr.role };
+				})
+			: [];
+		const removedProjectIds = projectRolesManaged
+			? Object.keys(previousProjectRoles).filter((id) => !resolved.projectRoles.has(id))
+			: [];
 
 		this.eventService.emit('expression-mapping-roles-resolved', {
 			userId: user.id,
@@ -655,7 +698,7 @@ export class ProvisioningService {
 			instanceRole: {
 				...newInstanceRole,
 				previousRole: previousInstanceRole,
-				changed: newInstanceRole.role !== previousInstanceRole,
+				changed: instanceRolesManaged && newInstanceRole.role !== previousInstanceRole,
 			},
 			projectRoles,
 			removedProjectIds,

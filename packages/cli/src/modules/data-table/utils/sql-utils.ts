@@ -1,5 +1,6 @@
 import {
 	dataTableColumnNameSchema,
+	dataTableIdSchema,
 	DATA_TABLE_COLUMN_ERROR_MESSAGE,
 	type DataTableCreateColumnSchema,
 } from '@n8n/api-types';
@@ -16,10 +17,10 @@ import type {
 } from 'n8n-workflow';
 import { DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP, UnexpectedError } from 'n8n-workflow';
 
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+
 import type { DataTableColumn } from '../data-table-column.entity';
 import type { DataTableUserTableName } from '../data-table.types';
-
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 export function toDslColumns(columns: DataTableCreateColumnSchema[]): DslColumn[] {
 	return columns.map((col) => {
@@ -60,7 +61,7 @@ function dataTableColumnTypeToSql(
 			return 'BOOLEAN';
 		case 'date':
 			if (dbType === 'postgres') {
-				return 'TIMESTAMP';
+				return 'TIMESTAMPTZ';
 			}
 			return 'DATETIME';
 		default:
@@ -77,6 +78,10 @@ function columnToWildcardAndType(
 
 export function isValidColumnName(name: string) {
 	return dataTableColumnNameSchema.safeParse(name).success;
+}
+
+export function isValidDataTableId(id: string) {
+	return dataTableIdSchema.safeParse(id).success;
 }
 
 export function addColumnQuery(
@@ -187,13 +192,41 @@ export function extractInsertedIds(raw: unknown, dbType: DataSourceOptions['type
 	}
 }
 
+// Convert 0/1 or '0'/'1' to booleans, leaving other values unchanged
+function normalizeBoolean<T>(value: T): T | boolean {
+	if (typeof value === 'boolean') return value;
+	if (value === 1 || value === '1') return true;
+	if (value === 0 || value === '0') return false;
+	return value;
+}
+
+function dateStringHasExplicitTimezone(dateString: string) {
+	const separatorIndex = dateString.includes('T')
+		? dateString.indexOf('T')
+		: dateString.search(/\s/);
+	if (separatorIndex === -1) return false;
+
+	const timePart = dateString.slice(separatorIndex + 1);
+	if (!timePart.includes(':')) return false;
+
+	return (
+		timePart.endsWith('Z') ||
+		timePart.endsWith('z') ||
+		timePart.includes('+') ||
+		timePart.includes('-')
+	);
+}
+
 // Convert date objects or strings to dates in UTC
-function normalizeDate(value: DataTableColumnJsType): Date | null {
+export function normalizeDate(value: unknown): Date | null {
 	if (value instanceof Date) return value;
 
 	if (typeof value === 'string') {
+		const dateString = value.trim();
 		// sqlite returns date strings without timezone information, but we store them as UTC
-		const parsed = new Date(value.endsWith('Z') ? value : value + 'Z');
+		const parsed = new Date(
+			dateStringHasExplicitTimezone(dateString) ? dateString : `${dateString}Z`,
+		);
 		if (!isNaN(parsed.getTime())) return parsed;
 	}
 
@@ -229,14 +262,7 @@ export function normalizeRows(
 			const type = typeMap[key];
 
 			if (type === 'boolean') {
-				// Convert boolean values to true/false
-				if (typeof value === 'boolean') {
-					normalized[key] = value;
-				} else if (value === 1 || value === '1') {
-					normalized[key] = true;
-				} else if (value === 0 || value === '0') {
-					normalized[key] = false;
-				}
+				normalized[key] = normalizeBoolean(value);
 			}
 
 			if (type === 'date' && value !== null && value !== undefined) {
@@ -291,6 +317,32 @@ export function normalizeValueForDatabase(
 ): DataTableColumnJsType {
 	if (columnType === 'date' && value !== null) {
 		return formatDateForDatabase(value, dbType);
+	}
+
+	return value;
+}
+
+/**
+ * Normalize a raw value coming from a cross-database data-table export so it can
+ * be inserted into the destination database. Differs from `normalizeValueForDatabase`
+ * by also handling booleans (SQLite stores them as 0/1 INTEGER, Postgres as BOOLEAN)
+ * and SQLite-style date strings without timezone info (treated as UTC).
+ */
+export function normalizeUserRowValueForDatabase(
+	value: unknown,
+	columnType: string | undefined,
+	dbType?: DataSourceOptions['type'],
+): unknown {
+	if (value === null || value === undefined) return null;
+
+	if (columnType === 'boolean') {
+		return normalizeBoolean(value);
+	}
+
+	if (columnType === 'date') {
+		const date = normalizeDate(value);
+		if (date === null) return value;
+		return normalizeValueForDatabase(date, columnType, dbType);
 	}
 
 	return value;

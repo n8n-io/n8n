@@ -41,8 +41,10 @@ import {
 	CREDENTIAL_RESOLVER_EDIT_MODAL_KEY,
 	AI_BUILDER_DIFF_MODAL_KEY,
 	INSTANCE_AI_CREDENTIAL_SETUP_MODAL_KEY,
+	INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY,
 	AI_GATEWAY_TOP_UP_MODAL_KEY,
 	AGENT_CONFIRMATION_MODAL_KEY,
+	ADD_EXECUTION_TO_DATASET_MODAL_KEY,
 } from '@/app/constants';
 import {
 	ANNOTATION_TAGS_MANAGER_MODAL_KEY,
@@ -88,13 +90,10 @@ import type {
 	ModalKey,
 	AppliedThemeOption,
 	TabOptions,
+	INodeUi,
+	NodeCreatorOpenSource,
 } from '@/Interface';
 import { defineStore } from 'pinia';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import {
-	useWorkflowDocumentStore,
-	createWorkflowDocumentId,
-} from '@/app/stores/workflowDocument.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { applyThemeToBody, getThemeOverride, isValidTheme } from './ui.utils';
 import { computed, ref } from 'vue';
@@ -176,6 +175,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				CREDENTIAL_RESOLVER_EDIT_MODAL_KEY,
 				AI_BUILDER_DIFF_MODAL_KEY,
 				INSTANCE_AI_CREDENTIAL_SETUP_MODAL_KEY,
+				INSTANCE_AI_TOOLS_CONNECTION_MODAL_KEY,
 				AI_GATEWAY_TOP_UP_MODAL_KEY,
 				AGENT_CONFIRMATION_MODAL_KEY,
 			].map((modalKey) => [modalKey, { open: false }]),
@@ -211,6 +211,7 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			mode: '',
 			activeId: null,
 			showAuthSelector: false,
+			closeOnSave: false,
 		} as ModalState,
 		[DELETE_FOLDER_MODAL_KEY]: {
 			open: false,
@@ -253,6 +254,10 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			},
 		},
 		[STOP_MANY_EXECUTIONS_MODAL_KEY]: {
+			open: false,
+			data: {},
+		},
+		[ADD_EXECUTION_TO_DATASET_MODAL_KEY]: {
 			open: false,
 			data: {},
 		},
@@ -299,6 +304,9 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const nodeViewOffsetPosition = ref<[number, number]>([0, 0]);
 	const nodeViewInitialized = ref<boolean>(false);
 	const addFirstStepOnLoad = ref<boolean>(false);
+	// Optional source for the auto-opened node creator (e.g. opened from Instance
+	// AI), so the 'User opened nodes panel' event is attributed to its origin.
+	const addFirstStepOnLoadSource = ref<NodeCreatorOpenSource>();
 	const pendingNotificationsForViews = ref<{ [key in VIEWS]?: NotificationOptions[] }>({});
 	const areNotificationsSuppressed = ref(false);
 	const allowErrorNotificationsWhenSuppressed = ref(false);
@@ -345,10 +353,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 	const lastCancelledConnectionPosition = ref<XYPosition | undefined>();
 
 	const settingsStore = useSettingsStore();
-	const workflowsStore = useWorkflowsStore();
-	const workflowDocumentStore = computed(() =>
-		useWorkflowDocumentStore(createWorkflowDocumentId(workflowsStore.workflowId)),
-	);
 
 	const isDarkThemePreferred = useMediaQuery('(prefers-color-scheme: dark)');
 	const preferredSystemTheme = computed<AppliedThemeOption>(() =>
@@ -415,14 +419,6 @@ export const useUIStore = defineStore(STORES.UI, () => {
 				},
 			},
 		} as const;
-	});
-
-	const lastInteractedWithNode = computed(() => {
-		if (lastInteractedWithNodeId.value) {
-			return workflowDocumentStore.value.getNodeById(lastInteractedWithNodeId.value) ?? null;
-		}
-
-		return null;
 	});
 
 	const isModalActiveById = computed(() =>
@@ -535,13 +531,24 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		openModal(DELETE_USER_MODAL_KEY);
 	};
 
-	const openExistingCredential = (id: string, options: { hideAskAssistant?: boolean } = {}) => {
+	const openExistingCredential = (
+		id: string,
+		options: {
+			hideAskAssistant?: boolean;
+			appendToBody?: boolean;
+			instanceAiCredentialHelp?: NewCredentialsModal['instanceAiCredentialHelp'];
+		} = {},
+	) => {
 		setActiveId(CREDENTIAL_EDIT_MODAL_KEY, id);
 		setMode(CREDENTIAL_EDIT_MODAL_KEY, 'edit');
 		modalsById.value[CREDENTIAL_EDIT_MODAL_KEY] = {
 			...modalsById.value[CREDENTIAL_EDIT_MODAL_KEY],
 			projectId: undefined,
+			contextNode: undefined,
+			closeOnSave: false,
 			hideAskAssistant: options.hideAskAssistant,
+			appendToBody: options.appendToBody,
+			instanceAiCredentialHelp: options.instanceAiCredentialHelp,
 		} as NewCredentialsModal;
 		openModal(CREDENTIAL_EDIT_MODAL_KEY);
 	};
@@ -553,17 +560,27 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		projectId?: string,
 		suggestedName?: string,
 		nodeName?: string,
-		options: { hideAskAssistant?: boolean } = {},
+		contextNode?: INodeUi,
+		options: {
+			hideAskAssistant?: boolean;
+			appendToBody?: boolean;
+			closeOnSave?: boolean;
+			instanceAiCredentialHelp?: NewCredentialsModal['instanceAiCredentialHelp'];
+		} = {},
 	) => {
 		setActiveId(CREDENTIAL_EDIT_MODAL_KEY, type);
 		setShowAuthSelector(CREDENTIAL_EDIT_MODAL_KEY, showAuthOptions);
 		modalsById.value[CREDENTIAL_EDIT_MODAL_KEY] = {
 			...modalsById.value[CREDENTIAL_EDIT_MODAL_KEY],
 			forceManualMode,
+			closeOnSave: options.closeOnSave ?? false,
 			projectId,
 			suggestedName,
 			nodeName,
+			contextNode,
 			hideAskAssistant: options.hideAskAssistant,
+			appendToBody: options.appendToBody,
+			instanceAiCredentialHelp: options.instanceAiCredentialHelp,
 		} as NewCredentialsModal;
 		setMode(CREDENTIAL_EDIT_MODAL_KEY, 'new');
 		openModal(CREDENTIAL_EDIT_MODAL_KEY);
@@ -750,11 +767,11 @@ export const useUIStore = defineStore(STORES.UI, () => {
 		lastInteractedWithNodeConnection,
 		lastInteractedWithNodeHandle,
 		lastInteractedWithNodeId,
-		lastInteractedWithNode,
 		lastCancelledConnectionPosition,
 		nodeViewOffsetPosition,
 		nodeViewInitialized,
 		addFirstStepOnLoad,
+		addFirstStepOnLoadSource,
 		sidebarMenuCollapsed,
 		sidebarWidth,
 		theme: computed(() => theme.value),

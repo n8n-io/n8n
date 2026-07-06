@@ -52,8 +52,10 @@ function isRestrictedTarget(targetInfo: { type?: string; url?: string }): boolea
 // ---------------------------------------------------------------------------
 
 export interface CDPRelayServerOptions {
-	/** Timeout in ms waiting for extension to connect. Default 15_000 */
+	/** Timeout in ms waiting for extension to connect. Default 30_000 */
 	connectionTimeoutMs?: number;
+	/** Run without an internal HTTP server; feed connections via `attachExtension()`/`attachController()`. */
+	noServer?: boolean;
 }
 
 export interface WaitForExtensionOptions {
@@ -62,10 +64,11 @@ export interface WaitForExtensionOptions {
 }
 
 export class CDPRelayServer {
-	private readonly httpServer: http.Server;
-	private readonly wss: WebSocketServer;
+	private readonly httpServer?: http.Server;
+	private readonly wss?: WebSocketServer;
 	private readonly cdpPath: string;
 	private readonly extensionPath: string;
+	private boundPort?: number;
 
 	private playwrightWs: WebSocket | null = null;
 	private extensionConn: ExtensionConnection | null = null;
@@ -89,6 +92,9 @@ export class CDPRelayServer {
 	/** Called when the extension disconnects with a typed reason. */
 	onExtensionDisconnect?: (reason: ConnectionLostReason) => void;
 
+	/** Called when the extension (re)connects. */
+	onExtensionConnect?: () => void;
+
 	private readonly connectionTimeoutMs: number;
 
 	/** Grace period allowing the extension to reconnect before tearing down Playwright. */
@@ -99,7 +105,7 @@ export class CDPRelayServer {
 	private readonly cdpEvents = new EventEmitter();
 
 	constructor(options?: CDPRelayServerOptions) {
-		this.connectionTimeoutMs = options?.connectionTimeoutMs ?? 15_000;
+		this.connectionTimeoutMs = options?.connectionTimeoutMs ?? 30_000;
 
 		const uuid = randomUUID();
 		this.cdpPath = `/cdp/${uuid}`;
@@ -111,38 +117,66 @@ export class CDPRelayServer {
 		});
 		this.extensionConnectedPromise.catch(() => {});
 
-		this.httpServer = http.createServer((_req, res) => {
-			res.writeHead(404);
-			res.end();
-		});
-
-		this.wss = new WebSocketServer({ server: this.httpServer });
-		this.wss.on('connection', (ws, req) => this.onConnection(ws, req));
+		if (!options?.noServer) {
+			this.httpServer = http.createServer((_req, res) => {
+				res.writeHead(404);
+				res.end();
+			});
+			this.wss = new WebSocketServer({ server: this.httpServer });
+			this.wss.on('connection', (ws, req) => this.onConnection(ws, req));
+		}
 	}
 
 	/** Start listening on a random available port. Returns the bound port. */
 	async listen(): Promise<number> {
+		const server = this.httpServer;
+		if (!server) {
+			throw new Error('CDPRelayServer was created with noServer — cannot listen');
+		}
+
 		return await new Promise((resolve, reject) => {
-			this.httpServer.listen(0, '127.0.0.1', () => {
-				const addr = this.httpServer.address() as net.AddressInfo;
+			server.listen(0, '127.0.0.1', () => {
+				const addr = server.address() as net.AddressInfo;
 				log.debug('listening on port', addr.port);
+				this.boundPort = addr.port;
 				resolve(addr.port);
 			});
-			this.httpServer.on('error', reject);
+			server.on('error', reject);
 		});
 	}
 
+	/** Attach an already-upgraded extension WebSocket (embedder owns the handshake and auth). */
+	attachExtension(ws: WebSocket): void {
+		this.handleExtensionConnection(ws);
+	}
+
+	/** Attach an already-upgraded CDP-client (Playwright or agent-browser) WebSocket. */
+	attachController(ws: WebSocket): void {
+		this.handlePlaywrightConnection(ws);
+	}
+
+	private resolvePort(port?: number): number {
+		const resolved = port ?? this.boundPort;
+		if (resolved === undefined) {
+			throw new Error('Relay port is unknown - call listen() or pass a port');
+		}
+
+		return resolved;
+	}
+
 	/** The WebSocket URL Playwright should connectOverCDP to. */
-	cdpEndpoint(port: number): string {
-		return `ws://127.0.0.1:${port}${this.cdpPath}`;
+	cdpEndpoint(port?: number): string {
+		return `ws://127.0.0.1:${this.resolvePort(port)}${this.cdpPath}`;
 	}
 
 	/** The WebSocket URL the extension should connect to. */
-	extensionEndpoint(port: number): string {
-		return `ws://127.0.0.1:${port}${this.extensionPath}`;
+	extensionEndpoint(port?: number): string {
+		return `ws://127.0.0.1:${this.resolvePort(port)}${this.extensionPath}`;
 	}
 
-	/** Wait for the extension to connect. Rejects after timeout with phase-specific guidance. */
+	/** Wait for the extension to connect. Rejects after timeout with phase-specific guidance.
+	 *  The underlying relay connection remains open so the extension can still connect later.
+	 */
 	async waitForExtension(options?: WaitForExtensionOptions): Promise<void> {
 		if (this.extensionConn) return;
 
@@ -151,23 +185,31 @@ export class CDPRelayServer {
 		const phase: ExtensionNotConnectedPhase =
 			options?.browserWasLaunched === false ? 'browser_not_launched' : 'extension_missing';
 
-		const timer = setTimeout(() => {
-			log.error('extension connection timed out, phase:', phase);
-			this.extensionConnectedReject?.(
-				new ExtensionNotConnectedError(
-					this.connectionTimeoutMs,
-					phase,
-					getExtensionInstallInstructions(),
-				),
-			);
-		}, this.connectionTimeoutMs);
+		let timeoutId: ReturnType<typeof setTimeout>;
+		const timeoutPromise = new Promise<never>((_, reject) => {
+			timeoutId = setTimeout(() => {
+				log.error('extension connection timed out, phase:', phase);
+				reject(
+					new ExtensionNotConnectedError(
+						this.connectionTimeoutMs,
+						phase,
+						getExtensionInstallInstructions(),
+					),
+				);
+			}, this.connectionTimeoutMs);
+		});
 
 		try {
-			await this.extensionConnectedPromise;
+			await Promise.race([this.extensionConnectedPromise, timeoutPromise]);
 			log.debug('extension connected');
 		} finally {
-			clearTimeout(timer);
+			clearTimeout(timeoutId!);
 		}
+	}
+
+	/** Whether the extension is currently connected. */
+	isExtensionConnected(): boolean {
+		return this.extensionConn !== null;
 	}
 
 	/** Shut down the relay, closing all connections. */
@@ -179,8 +221,8 @@ export class CDPRelayServer {
 		}
 		this.closePlaywrightConnection('Server stopped');
 		this.closeExtensionConnection('Server stopped');
-		this.wss.close();
-		this.httpServer.close();
+		this.wss?.close();
+		this.httpServer?.close();
 	}
 
 	// =========================================================================
@@ -688,6 +730,7 @@ export class CDPRelayServer {
 		}
 
 		this.extensionConnectedResolve?.();
+		this.onExtensionConnect?.();
 	}
 
 	/** Wire up event handlers for the current extension connection. */
@@ -868,6 +911,7 @@ class ExtensionConnection {
 	>();
 	private lastId = 0;
 	private lastPongAt = Date.now();
+	private lastPingSentAt = 0;
 	private heartbeatInterval: ReturnType<typeof setInterval> | undefined;
 
 	/** The reason string from the WebSocket close frame, if any. */
@@ -962,7 +1006,10 @@ class ExtensionConnection {
 			}
 
 			const elapsed = Date.now() - this.lastPongAt;
-			if (elapsed > HEARTBEAT_TIMEOUT_MS) {
+			// Only terminate if we already sent a ping since the last pong with no response.
+			// This prevents false timeouts after system sleep, where the timer fires with a
+			// large elapsed value before any new ping has been sent (and thus answered).
+			if (elapsed > HEARTBEAT_TIMEOUT_MS && this.lastPingSentAt > this.lastPongAt) {
 				log.debug('heartbeat timeout: no pong for', elapsed, 'ms');
 				this.closeReason = 'heartbeat_timeout';
 				this.stopHeartbeat();
@@ -970,6 +1017,7 @@ class ExtensionConnection {
 				return;
 			}
 
+			this.lastPingSentAt = Date.now();
 			this.ws.ping();
 		}, HEARTBEAT_INTERVAL_MS);
 	}

@@ -2,8 +2,10 @@
 import { computed, ref, toRef, watch, onMounted, onBeforeUnmount } from 'vue';
 import { N8nButton, N8nCallout, N8nIconButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { APPROVAL_TOOL_NAME } from '@n8n/api-types';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
 import { useAgentChatStream } from '../composables/useAgentChatStream';
+import { findOpenInteractive } from '@/features/ai/shared/agentsChat/messageMappers';
 import AgentChatEmptyState from './AgentChatEmptyState.vue';
 import AgentChatMessageList from './AgentChatMessageList.vue';
 import type { AgentJsonConfig } from '../types';
@@ -22,7 +24,9 @@ const props = withDefaults(
 		agentConfig: AgentJsonConfig | null;
 		agentStatus: 'draft' | 'production';
 		connectedTriggers: string[];
+		canEditAgent?: boolean;
 		beforeSend?: () => Promise<void> | void;
+		inputDraft?: string;
 	}>(),
 	{
 		visible: true,
@@ -30,7 +34,9 @@ const props = withDefaults(
 		endpoint: 'chat',
 		initialMessage: undefined,
 		continueSessionId: undefined,
+		canEditAgent: true,
 		beforeSend: undefined,
+		inputDraft: undefined,
 	},
 );
 
@@ -38,7 +44,9 @@ const emit = defineEmits<{
 	codeUpdated: [];
 	codeDelta: [delta: string];
 	configUpdated: [];
+	buildDone: [];
 	'update:streaming': [streaming: boolean];
+	'update:inputDraft': [value: string];
 	'continue-loaded': [count: number];
 	'initial-consumed': [];
 	back: [];
@@ -48,7 +56,17 @@ const emit = defineEmits<{
 const locale = useI18n();
 const agentTelemetry = useAgentTelemetry();
 
-const inputText = ref('');
+const internalInputText = ref(props.inputDraft ?? '');
+const inputText = computed<string>({
+	get: () => (props.inputDraft !== undefined ? props.inputDraft : internalInputText.value),
+	set: (value) => {
+		if (props.inputDraft !== undefined) {
+			emit('update:inputDraft', value);
+		} else {
+			internalInputText.value = value;
+		}
+	},
+});
 const isPreparingToSend = ref(false);
 
 const {
@@ -60,6 +78,7 @@ const {
 	sendMessage,
 	stopGenerating,
 	resume,
+	cancelAndSteer,
 	dismissFatalError,
 } = useAgentChatStream({
 	projectId: toRef(props, 'projectId'),
@@ -69,6 +88,7 @@ const {
 	onCodeUpdated: () => emit('codeUpdated'),
 	onCodeDelta: (d) => emit('codeDelta', d),
 	onConfigUpdated: () => emit('configUpdated'),
+	onBuildDone: () => emit('buildDone'),
 	onHistoryLoaded: (count) => {
 		if (props.continueSessionId) emit('continue-loaded', count);
 	},
@@ -94,6 +114,28 @@ const missingFields = computed(() => {
 	return fatalError.value.missing.map(humaniseMissingField).join(', ');
 });
 
+const openInteractive = computed(() => findOpenInteractive(messages.value));
+const hasOpenInteraction = computed(() => openInteractive.value !== undefined);
+const hasOpenApproval = computed(() => openInteractive.value?.toolName === APPROVAL_TOOL_NAME);
+const hasOpenInteractiveQuestion = computed(
+	() => hasOpenInteraction.value && !hasOpenApproval.value,
+);
+const areConfigurationActionsDisabled = computed(
+	() => isStreaming.value || isPreparingToSend.value || hasOpenInteraction.value,
+);
+
+const isBuilderReadOnly = computed(() => props.endpoint === 'build' && !props.canEditAgent);
+
+const chatPlaceholder = computed(() =>
+	isBuilderReadOnly.value
+		? locale.baseText('agents.builder.readonly.placeholder')
+		: hasOpenApproval.value
+			? locale.baseText('agents.chat.approval.inputPlaceholder')
+			: hasOpenInteractiveQuestion.value
+				? locale.baseText('agents.chat.answerQuestionPlaceholder')
+				: locale.baseText('agents.chat.input.placeholder'),
+);
+
 function onOpenBuild() {
 	dismissFatalError();
 	emit('open-build');
@@ -103,7 +145,22 @@ watch(isStreaming, (v) => emit('update:streaming', v));
 
 async function onSubmit() {
 	const text = inputText.value.trim();
-	if (!text || isStreaming.value || isPreparingToSend.value) return;
+	if (
+		!text ||
+		isStreaming.value ||
+		isPreparingToSend.value ||
+		isBuilderReadOnly.value ||
+		hasOpenApproval.value
+	)
+		return;
+
+	// When there is an open interactive question, the user's message cancels
+	// the suspended tool and steers the agent in a new direction.
+	if (hasOpenInteractiveQuestion.value) {
+		inputText.value = '';
+		await cancelAndSteer(text);
+		return;
+	}
 
 	isPreparingToSend.value = true;
 	try {
@@ -135,6 +192,7 @@ async function onSubmit() {
 }
 
 function sendMessageFromOutside(message: string) {
+	if (hasOpenApproval.value) return;
 	inputText.value = message;
 	void onSubmit();
 }
@@ -166,17 +224,19 @@ async function sendSeedMessage(message: string): Promise<void> {
 	}
 }
 
-if (seedMessage) {
-	void sendSeedMessage(seedMessage);
+// Skip the seed when the build chat is read-only
+const consumesSeed = !!seedMessage && !isBuilderReadOnly.value;
+if (consumesSeed) {
+	void sendSeedMessage(seedMessage as string);
 }
 
 onMounted(() => {
-	// A supplied `initialMessage` means the parent just minted a fresh session
-	// and wants us to seed it with the first message — there's no thread to
-	// load yet, and hitting the history endpoint would 404. The seed was
-	// already sent synchronously during setup (see the `seedMessage` block
-	// above).
-	if (seedMessage) {
+	// When we actually seeded a message, there's no prior thread to load —
+	// the agent was just created in this panel and the history endpoint
+	// would 404. Otherwise (including the read-only suppression path) load
+	// whatever history exists so the panel shows real content instead of a
+	// misleading "describe your agent" empty state.
+	if (consumesSeed) {
 		return;
 	}
 	void loadHistory();
@@ -241,13 +301,24 @@ onBeforeUnmount(() => {
 		/>
 
 		<div :class="$style.inputArea">
-			<slot name="above-input" />
+			<slot name="above-input" :disabled="areConfigurationActionsDisabled" />
 			<ChatInputBase
 				v-model="inputText"
-				placeholder="Type a message..."
+				:placeholder="chatPlaceholder"
 				:is-streaming="messagingState === 'receiving'"
-				:can-submit="!isStreaming && !isPreparingToSend && inputText.trim().length > 0"
-				:disabled="isPreparingToSend || (isStreaming && messagingState !== 'receiving')"
+				:can-submit="
+					!hasOpenApproval &&
+					!isStreaming &&
+					!isPreparingToSend &&
+					!isBuilderReadOnly &&
+					inputText.trim().length > 0
+				"
+				:disabled="
+					isBuilderReadOnly ||
+					hasOpenApproval ||
+					isPreparingToSend ||
+					(isStreaming && messagingState !== 'receiving')
+				"
 				data-testid="chat-input"
 				@submit="onSubmit"
 				@stop="stopGenerating"

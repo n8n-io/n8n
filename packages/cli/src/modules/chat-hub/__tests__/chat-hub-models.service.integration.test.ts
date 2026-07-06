@@ -24,7 +24,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['WorkflowEntity']);
+	await testDb.truncate(['WorkflowEntity', 'WorkflowDependency']);
 });
 
 afterAll(async () => {
@@ -46,6 +46,7 @@ const emptyCredentialIds = {
 	deepSeek: null,
 	cohere: null,
 	mistralCloud: null,
+	nvidia: null,
 };
 
 describe('ChatHubModelsService', () => {

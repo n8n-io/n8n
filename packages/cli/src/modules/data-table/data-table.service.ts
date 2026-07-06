@@ -547,6 +547,19 @@ export class DataTableService {
 		return result;
 	}
 
+	async clearRows(dataTableId: string, projectId: string): Promise<{ deletedCount: number }> {
+		await this.validateDataTableExists(dataTableId, projectId);
+
+		const result = await this.dataTableColumnRepository.manager.transaction(async (trx) => {
+			const clearResult = await this.dataTableRowsRepository.clearRows(dataTableId, trx);
+			await this.dataTableRepository.touchUpdatedAt(dataTableId, trx);
+			return clearResult;
+		});
+
+		this.dataTableSizeValidator.reset();
+		return result;
+	}
+
 	private validateAndTransformRows(
 		rows: DataTableRows,
 		columns: Array<{ name: string; type: DataTableColumnType }>,
@@ -830,6 +843,12 @@ export class DataTableService {
 		}
 
 		if (columnType === 'boolean') {
+			if (value === 1 || value === '1') {
+				return 'true';
+			}
+			if (value === 0 || value === '0') {
+				return 'false';
+			}
 			return String(value);
 		}
 

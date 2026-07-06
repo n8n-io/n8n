@@ -69,6 +69,8 @@ watch(
 	flex: 1;
 	min-height: 0;
 	overflow: auto;
+	scrollbar-width: thin;
+	scrollbar-color: var(--border-color) transparent;
 }
 
 .editor :global(.cm-editor) {

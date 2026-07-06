@@ -1,16 +1,20 @@
 import { AuthenticatedRequest } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { NextFunction, Response, Request } from 'express';
-import { ensureError } from 'n8n-workflow';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { JwtService } from '@/services/jwt.service';
+import {
+	OAuthTokenVerifierProxy,
+	type TelemetryAuthContext,
+	type UserWithContext,
+} from '@/services/oauth-token-verifier-proxy.service';
 import { Telemetry } from '@/telemetry';
 
 import { McpServerApiKeyService } from './mcp-api-key.service';
-import { McpOAuthTokenService } from './mcp-oauth-token.service';
+import { McpProtectedResource } from './mcp-protected-resource';
 import { USER_CONNECTED_TO_MCP_EVENT, UNAUTHORIZED_ERROR_MESSAGE } from './mcp.constants';
-import type { TelemetryAuthContext, UserWithContext } from './mcp.types';
 import { getClientInfo } from './mcp.utils';
 
 /**
@@ -22,7 +26,8 @@ import { getClientInfo } from './mcp.utils';
 export class McpServerMiddlewareService {
 	constructor(
 		private readonly mcpServerApiKeyService: McpServerApiKeyService,
-		private readonly mcpAuthTokenService: McpOAuthTokenService,
+		private readonly oauthTokenVerifier: OAuthTokenVerifierProxy,
+		private readonly mcpProtectedResource: McpProtectedResource,
 		private readonly jwtService: JwtService,
 		private readonly telemetry: Telemetry,
 	) {}
@@ -47,7 +52,8 @@ export class McpServerMiddlewareService {
 		}
 
 		if (decoded?.meta?.isOAuth === true) {
-			return await this.mcpAuthTokenService.verifyOAuthAccessToken(token);
+			const expectedAudience = this.mcpProtectedResource.getResourceUrl();
+			return await this.oauthTokenVerifier.verifyOAuthAccessToken(token, expectedAudience);
 		}
 
 		return await this.mcpServerApiKeyService.verifyApiKey(token);
@@ -92,6 +98,8 @@ export class McpServerMiddlewareService {
 			}
 
 			(req as AuthenticatedRequest).user = user;
+			(req as AuthenticatedRequest & { mcpAuthType?: UserWithContext['authType'] }).mcpAuthType =
+				result.authType;
 
 			next();
 		};

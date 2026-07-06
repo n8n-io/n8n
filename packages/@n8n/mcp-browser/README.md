@@ -33,12 +33,20 @@ process.on('SIGTERM', () => connection.shutdown());
 ### Standalone mode
 
 ```bash
-# HTTP transport (default)
+# HTTP transport (default) — binds to 127.0.0.1 and requires bearer-token auth
 npx @n8n/mcp-browser --browser chrome --transport http --port 3100
 
-# stdio transport
+# stdio transport — recommended for IDE/desktop MCP clients that can't pass
+# custom HTTP headers
 npx @n8n/mcp-browser --browser chrome --transport stdio
 ```
+
+When the HTTP transport starts without an auth token configured it generates a
+random one and prints it to stderr. Pass it on every request as
+`Authorization: Bearer <token>`. For a stable token across restarts, set
+`N8N_MCP_BROWSER_AUTH_TOKEN`. Prefer the env var over `--auth-token`: command
+line arguments are visible in process listings (`ps`, `/proc/<pid>/cmdline`)
+to other local users.
 
 ### CLI flags
 
@@ -49,6 +57,8 @@ npx @n8n/mcp-browser --browser chrome --transport stdio
 | `--viewport` | | `N8N_MCP_BROWSER_VIEWPORT` | `1280x720` | Viewport (WxH) |
 | `--transport` | `-t` | `N8N_MCP_BROWSER_TRANSPORT` | `http` | `http` or `stdio` |
 | `--port` | `-p` | `N8N_MCP_BROWSER_PORT` | `3100` | HTTP port |
+| `--host` | | `N8N_MCP_BROWSER_HOST` | `127.0.0.1` | HTTP bind address. Use `0.0.0.0` only when the listener must accept connections from outside the host. |
+| `--auth-token` | | `N8N_MCP_BROWSER_AUTH_TOKEN` | _generated_ | Bearer token required on every HTTP request. Prefer the env var (see above). |
 
 CLI flags take precedence over environment variables.
 
@@ -65,14 +75,20 @@ CLI flags take precedence over environment variables.
 Start the server:
 
 ```bash
-npx @n8n/mcp-browser --transport http --port 3100
+N8N_MCP_BROWSER_AUTH_TOKEN=my-secret npx @n8n/mcp-browser --transport http --port 3100
 ```
 
 Or from the monorepo:
 
 ```bash
-npx tsx packages/@n8n/mcp-browser/src/server.ts --transport http --port 3100
+N8N_MCP_BROWSER_AUTH_TOKEN=my-secret npx tsx packages/@n8n/mcp-browser/src/server.ts --transport http --port 3100
 ```
+
+Every request to `http://localhost:3100/mcp` must include
+`Authorization: Bearer <token>`. Most current MCP clients (Claude Desktop,
+Cursor, Windsurf, VS Code Copilot) configure servers via a bare `url` and
+cannot attach custom headers; use `--transport stdio` with those clients
+until they support a `headers` option.
 
 Then point your client at `http://localhost:3100/mcp`:
 

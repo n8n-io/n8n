@@ -55,6 +55,7 @@ export const defaultSettings: FrontendSettings = {
 		customRoles: false,
 		personalSpacePolicy: false,
 		dataRedaction: false,
+		otelCustomSpanAttributes: false,
 	},
 	executionMode: 'regular',
 	isMultiMain: false,
@@ -105,6 +106,7 @@ export const defaultSettings: FrontendSettings = {
 	timezone: '',
 	urlBaseEditor: '',
 	urlBaseWebhook: '',
+	urlBaseWebhookTest: '',
 	authCookie: {
 		secure: false,
 	},
@@ -175,6 +177,9 @@ export const defaultSettings: FrontendSettings = {
 	folders: {
 		enabled: false,
 	},
+	collaboration: {
+		crdt: 'off',
+	},
 	evaluation: {
 		quota: 0,
 	},
@@ -184,5 +189,9 @@ export const defaultSettings: FrontendSettings = {
 	dynamicBanners: {
 		endpoint: 'https://api.n8n.io/api/banners',
 		enabled: true,
+		filters: {
+			publishedWorkflowCount: 0,
+		},
 	},
+	useWorkflowPublicationService: false,
 };

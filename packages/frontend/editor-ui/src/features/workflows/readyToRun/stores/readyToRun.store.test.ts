@@ -1,7 +1,7 @@
 import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 import type { INodeUi } from '@/Interface';
 import { createPinia, setActivePinia } from 'pinia';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RouteLocationNormalized } from 'vue-router';
 import { useReadyToRunStore } from './readyToRun.store';
 
@@ -35,6 +35,36 @@ vi.mock('@/app/composables/useToast', () => ({
 	}),
 }));
 
+vi.mock('@/app/constants', () => ({
+	VIEWS: {
+		WORKFLOW: 'NodeViewExisting',
+	},
+}));
+
+vi.mock('n8n-workflow', () => ({
+	OPEN_AI_API_CREDENTIAL_TYPE: 'openAiApi',
+	deepCopy: <T>(value: T) => structuredClone(value),
+}));
+
+vi.mock('../workflows/aiWorkflow', () => ({
+	READY_TO_RUN_AI_WORKFLOW: {
+		name: 'AI Agent workflow',
+		meta: { templateId: 'ready-to-run-ai-workflow' },
+		nodes: [
+			{
+				name: 'OpenAI Model',
+				credentials: {},
+			},
+		],
+	},
+}));
+
+vi.mock('@/experiments/readyToRunWorkflowsV2/stores/readyToRunWorkflowsV2.store', () => ({
+	useReadyToRunWorkflowsV2Store: () => ({
+		getWorkflowForVariant: vi.fn(() => undefined),
+	}),
+}));
+
 const mockGetVariant = vi.fn();
 
 vi.mock('@/app/stores/posthog.store', () => ({
@@ -63,6 +93,7 @@ vi.mock('@/app/stores/workflows.store', () => ({
 const mockCurrentUser = {
 	value: {
 		settings: {} as Record<string, unknown>,
+		createdAt: new Date().toISOString(),
 	},
 };
 
@@ -108,11 +139,15 @@ vi.mock('../composables/useEmptyStateDetection', () => ({
 describe('useReadyToRunStore', () => {
 	let store: ReturnType<typeof useReadyToRunStore>;
 
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
 	beforeEach(() => {
 		vi.clearAllMocks();
 		// Reset dynamic mocks to default values
 		mockAllCredentials.value = [];
-		mockCurrentUser.value = { settings: {} };
+		mockCurrentUser.value = { settings: {}, createdAt: new Date().toISOString() };
 		mockIsAiCreditsEnabled.value = true;
 		mockLocalStorageValue.value = '';
 		mockIsTrulyEmpty.mockReturnValue(false);
@@ -282,6 +317,45 @@ describe('useReadyToRunStore', () => {
 
 		it('should return false when read-only', () => {
 			expect(store.getButtonVisibility(true, true, true)).toBe(false);
+		});
+
+		it('should return false when user account is older than 14 days', () => {
+			const fifteenDaysAgo = new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString();
+			mockCurrentUser.value = { settings: {}, createdAt: fifteenDaysAgo };
+			setActivePinia(createPinia());
+			const testStore = useReadyToRunStore();
+
+			expect(testStore.getButtonVisibility(true, true, false)).toBe(false);
+		});
+
+		it('should return true when user account is less than 14 days old', () => {
+			const fiveDaysAgo = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString();
+			mockCurrentUser.value = { settings: {}, createdAt: fiveDaysAgo };
+			setActivePinia(createPinia());
+			const testStore = useReadyToRunStore();
+
+			expect(testStore.getButtonVisibility(true, true, false)).toBe(true);
+		});
+
+		it('should stop showing the button once the user crosses the 14 day threshold', () => {
+			const fourteenDaysMs = 14 * 24 * 60 * 60 * 1000;
+			const initialTime = new Date('2026-03-23T12:00:00.000Z');
+
+			vi.useFakeTimers();
+			vi.setSystemTime(initialTime);
+
+			mockCurrentUser.value = {
+				settings: {},
+				createdAt: new Date(initialTime.getTime() - fourteenDaysMs + 1000).toISOString(),
+			};
+			setActivePinia(createPinia());
+			const testStore = useReadyToRunStore();
+
+			expect(testStore.getButtonVisibility(true, true, false)).toBe(true);
+
+			vi.advanceTimersByTime(1001);
+
+			expect(testStore.getButtonVisibility(true, true, false)).toBe(false);
 		});
 	});
 
@@ -475,6 +549,7 @@ describe('useReadyToRunStore', () => {
 		it('should return false when user already claimed AI credits', () => {
 			mockCurrentUser.value = {
 				settings: { userClaimedAiCredits: true },
+				createdAt: new Date().toISOString(),
 			};
 			setActivePinia(createPinia());
 			const testStore = useReadyToRunStore();
@@ -496,6 +571,7 @@ describe('useReadyToRunStore', () => {
 			];
 			mockCurrentUser.value = {
 				settings: { userClaimedAiCredits: true },
+				createdAt: new Date().toISOString(),
 			};
 			setActivePinia(createPinia());
 			const testStore = useReadyToRunStore();
@@ -506,7 +582,7 @@ describe('useReadyToRunStore', () => {
 		it('should return true when all conditions are met', () => {
 			mockIsAiCreditsEnabled.value = true;
 			mockAllCredentials.value = [];
-			mockCurrentUser.value = { settings: {} };
+			mockCurrentUser.value = { settings: {}, createdAt: new Date().toISOString() };
 			setActivePinia(createPinia());
 			const testStore = useReadyToRunStore();
 
