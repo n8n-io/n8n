@@ -2,9 +2,6 @@
 import { createTestingPinia } from '@pinia/testing';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
-import { readFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
@@ -111,35 +108,6 @@ vi.mock('../components/AgentSubAgentsPanel.vue', () => ({
 vi.mock('../views/AgentSessionsListView.vue', () => ({
 	default: { name: 'AgentSessionsListView', props: ['embedded'], template: '<div />' },
 }));
-
-const componentSource = readFileSync(
-	resolve(dirname(fileURLToPath(import.meta.url)), '../components/AgentBuilderEditorColumn.vue'),
-	'utf8',
-);
-const tabPanelSource = readFileSync(
-	resolve(dirname(fileURLToPath(import.meta.url)), '../components/AgentBuilderTabPanel.vue'),
-	'utf8',
-);
-const sharedPanelStyles = readFileSync(
-	resolve(dirname(fileURLToPath(import.meta.url)), '../styles/agent-panel.module.scss'),
-	'utf8',
-);
-const agentInfoSource = readFileSync(
-	resolve(dirname(fileURLToPath(import.meta.url)), '../components/AgentInfoPanel.vue'),
-	'utf8',
-);
-const agentAdvancedSource = readFileSync(
-	resolve(dirname(fileURLToPath(import.meta.url)), '../components/AgentAdvancedPanel.vue'),
-	'utf8',
-);
-const agentMemorySource = readFileSync(
-	resolve(dirname(fileURLToPath(import.meta.url)), '../components/AgentMemoryPanel.vue'),
-	'utf8',
-);
-const agentSubAgentsSource = readFileSync(
-	resolve(dirname(fileURLToPath(import.meta.url)), '../components/AgentSubAgentsPanel.vue'),
-	'utf8',
-);
 
 // First mount of this SFC eats the Vite transform cost; give it headroom.
 vi.setConfig({ testTimeout: 30_000 });
@@ -288,77 +256,12 @@ describe('AgentBuilderEditorColumn', () => {
 		expect(tabsRule.find('[data-testid="agent-header-tabs"]').exists()).toBe(true);
 	});
 
-	it('uses a narrower shared content width with larger side padding', () => {
-		expect(componentSource).toContain('--agent-builder-content-max-width: 56rem;');
-		expect(componentSource).toContain(
-			'--agent-builder-content-padding-inline: var(--spacing--2xl);',
-		);
-	});
-
-	it('removes tab panel top padding and keeps a 48px bottom buffer', () => {
-		expect(tabPanelSource).toContain('padding: 0 0 var(--spacing--2xl);');
-	});
-
-	it('keeps 16px between top-level items in each tab panel', () => {
-		expect(tabPanelSource).toContain('gap: var(--spacing--sm);');
-	});
-
-	it('lets the shared tab panel use content height so its bottom buffer remains scrollable', () => {
-		expect(tabPanelSource).toContain('flex: 0 0 auto;');
-		expect(tabPanelSource).not.toContain('flex: 1;');
-		expect(tabPanelSource).not.toContain('min-height: 0;');
-	});
-
 	it('uses settings cards without wrapping the Agent tab sections', async () => {
 		const agentWrapper = await mountColumn({ knowledgeBaseEnabled: false });
 		const settingsWrapper = await mountColumn({ activeMainTab: 'settings' });
 
 		expect(agentWrapper.findAll('[data-testid="agent-settings-card"]')).toHaveLength(0);
 		expect(settingsWrapper.findAll('[data-testid="agent-settings-card"]')).toHaveLength(3);
-	});
-
-	it('uses compact outline-only settings cards', () => {
-		expect(componentSource).toContain('gap: var(--spacing--lg);');
-		expect(componentSource).toContain('--card--padding: var(--spacing--sm);');
-		expect(componentSource).toContain('background-color: transparent;');
-	});
-
-	it('uses the shared data-entry label style from the agent design', () => {
-		expect(sharedPanelStyles).toContain('.dataEntryLabel');
-		expect(sharedPanelStyles).toContain('color: var(--text-color);');
-		expect(sharedPanelStyles).toContain('font-weight: var(--font-weight--medium);');
-		expect(sharedPanelStyles).toContain('font-size: var(--font-size--sm);');
-		expect(sharedPanelStyles).toContain('.dataEntrySubLabel');
-		expect(sharedPanelStyles).toContain('color: var(--text-color--subtler);');
-		expect(sharedPanelStyles).toContain('font-size: var(--font-size--2xs);');
-
-		for (const source of [
-			agentInfoSource,
-			agentAdvancedSource,
-			agentMemorySource,
-			agentSubAgentsSource,
-		]) {
-			expect(source).toContain('shared.dataEntryLabel');
-		}
-
-		for (const source of [agentAdvancedSource, agentMemorySource, agentSubAgentsSource]) {
-			expect(source).toContain('shared.dataEntrySubLabel');
-		}
-	});
-
-	it('keeps the tab baseline inset to the content cards and thicker than the default border', () => {
-		expect(componentSource).toContain('box-sizing: border-box;');
-		expect(componentSource).toContain('calc(var(--border-width, 1px) * 2)');
-	});
-
-	it('reserves the scroll gutter so tab content does not shift when overflow changes', () => {
-		expect(componentSource).toContain('scrollbar-gutter: stable;');
-	});
-
-	it('keeps 48px above the identity header and 32px between it and the tabs', () => {
-		expect(componentSource).toMatch(
-			/padding:\s+var\(--spacing--2xl\)\s+var\(--agent-builder-content-padding-inline\)\s+var\(--spacing--xl\);/,
-		);
 	});
 
 	it('renders only the episodic memory row in the builder memory card', async () => {

@@ -119,7 +119,7 @@ export class AgentConfigService {
 			throw new UserError(`Invalid agent config: ${result.error}`);
 		}
 
-		const validatedConfig = preservePersonalisationGradientLayout(result.config, config);
+		const validatedConfig = result.config;
 
 		const tasksProvided = validatedConfig.tasks !== undefined;
 		const existingTaskIds = tasksProvided
@@ -316,60 +316,6 @@ export class AgentConfigService {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function isGradientLayoutField(value: unknown, min: number, max: number): value is number {
-	return typeof value === 'number' && Number.isInteger(value) && value >= min && value <= max;
-}
-
-type AgentPersonalisationWithGradientLayout = NonNullable<AgentJsonConfig['personalisation']> & {
-	gradient: NonNullable<AgentJsonConfig['personalisation']>['gradient'] & {
-		angle: number;
-		fromStop: number;
-		toStop: number;
-	};
-};
-
-type AgentJsonConfigWithGradientLayout = Omit<AgentJsonConfig, 'personalisation'> & {
-	personalisation?: AgentPersonalisationWithGradientLayout;
-};
-
-function preservePersonalisationGradientLayout(
-	config: AgentJsonConfig,
-	rawConfig: unknown,
-): AgentJsonConfig {
-	const personalisation = config.personalisation;
-	const gradient = personalisation?.gradient;
-	if (
-		!personalisation ||
-		!gradient ||
-		!isRecord(rawConfig) ||
-		!isRecord(rawConfig.personalisation)
-	) {
-		return config;
-	}
-
-	const rawGradient = rawConfig.personalisation.gradient;
-	if (!isRecord(rawGradient)) return config;
-
-	const { angle, fromStop, toStop } = rawGradient;
-	if (
-		!isGradientLayoutField(angle, 0, 359) ||
-		!isGradientLayoutField(fromStop, 0, 45) ||
-		!isGradientLayoutField(toStop, 55, 100)
-	) {
-		return config;
-	}
-
-	const configWithLayout: AgentJsonConfigWithGradientLayout = {
-		...config,
-		personalisation: {
-			...personalisation,
-			gradient: { ...gradient, angle, fromStop, toStop },
-		},
-	};
-
-	return configWithLayout;
 }
 
 function mergePersonalisationWithPreviousGradient(

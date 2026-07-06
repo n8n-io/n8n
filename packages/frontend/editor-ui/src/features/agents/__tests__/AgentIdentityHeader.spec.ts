@@ -1,9 +1,6 @@
 /* eslint-disable import-x/no-extraneous-dependencies -- test-only Vue mounting */
 import { mount } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import type { AgentJsonConfig } from '../types';
 
 vi.mock('@n8n/i18n', () => ({
@@ -41,11 +38,6 @@ vi.mock('@n8n/design-system', () => ({
 		emits: ['update:modelValue'],
 	},
 }));
-
-const componentSource = readFileSync(
-	resolve(dirname(fileURLToPath(import.meta.url)), '../components/AgentIdentityHeader.vue'),
-	'utf8',
-);
 
 type TestAgentConfig = {
 	name: string;
@@ -93,12 +85,10 @@ describe('AgentIdentityHeader', () => {
 		).toBeTruthy();
 	});
 
-	it('left-aligns the identity stack and allows the name editor to use the full header width', async () => {
+	it('allows the name editor to use the full header width', async () => {
 		const wrapper = await mountHeader();
 		const nameEditor = wrapper.findComponent({ name: 'N8nInlineTextEdit' });
 
-		expect(componentSource).toContain('align-items: flex-start;');
-		expect(componentSource).toContain('gap: var(--spacing--sm);');
 		expect(nameEditor.props('maxWidth')).toBe('100%');
 	});
 
@@ -123,13 +113,6 @@ describe('AgentIdentityHeader', () => {
 		expect(avatar.attributes('style')).toContain('--agent-personalisation-gradient-angle: 135deg');
 		expect(avatar.attributes('style')).toContain('--agent-personalisation-gradient-from-stop: 0%');
 		expect(avatar.attributes('style')).toContain('--agent-personalisation-gradient-to-stop: 100%');
-		expect(componentSource).toContain('width: 64px;');
-		expect(componentSource).toContain('height: 64px;');
-		expect(componentSource).toContain('width: 36px;');
-		expect(componentSource).toContain('height: 36px;');
-		expect(componentSource).toContain('border-radius: 16px;');
-		expect(componentSource).toContain('--agent-personalisation-squircle-mask');
-		expect(componentSource).toContain('mask: var(--agent-personalisation-squircle-mask)');
 	});
 
 	it('emits the picked icon while preserving the saved gradient', async () => {

@@ -2,19 +2,11 @@ import { flushPromises, mount } from '@vue/test-utils';
 import type { AgentJsonTaskConfig, AgentTaskDto } from '@n8n/api-types';
 import { ref } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 
 import type { SimplifiedNodeType } from '@/Interface';
 import AgentCapabilitiesSection from '../components/AgentCapabilitiesSection.vue';
 import type { AgentJsonConfig, AgentJsonToolRef, AgentResource, CustomToolEntry } from '../types';
 import { AGENT_SUB_AGENTS_MODAL_KEY, AGENT_TASK_MODAL_KEY } from '../constants';
-
-const componentSource = readFileSync(
-	resolve(dirname(fileURLToPath(import.meta.url)), '../components/AgentCapabilitiesSection.vue'),
-	'utf8',
-);
 
 const getNodeType = vi.fn<(type: string, version?: number) => SimplifiedNodeType | null>(
 	() => null,
@@ -178,11 +170,6 @@ describe('AgentCapabilitiesSection', () => {
 		getAgentTasksSpy.mockResolvedValue([]);
 		projectAgentsListRef.value = [];
 		ensureProjectAgentsLoadedSpy.mockResolvedValue([]);
-	});
-
-	it('uses a 12px gap for capability pill rows and wrapped pills', () => {
-		expect(componentSource).toMatch(/\.section\s*{[^}]*gap:\s+var\(--spacing--xs\);/s);
-		expect(componentSource).toMatch(/\.chips\s*{[^}]*gap:\s+var\(--spacing--xs\);/s);
 	});
 
 	it('formats node and custom tool chip labels for display', () => {

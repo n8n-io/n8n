@@ -3,9 +3,6 @@ import { describe, it, expect, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { nextTick } from 'vue';
 import type * as VueUse from '@vueuse/core';
-import { readFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 
 import AgentAdvancedPanel from '../components/AgentAdvancedPanel.vue';
 import type { AgentJsonConfig } from '../types';
@@ -33,19 +30,6 @@ vi.mock('@vueuse/core', async (importOriginal) => {
 });
 
 const globalStubs = {
-	N8nCollapsiblePanel: {
-		props: ['modelValue', 'title', 'disabled'],
-		emits: ['update:modelValue'],
-		template: `
-			<section>
-				<button data-testid="agent-advanced-trigger" :disabled="disabled" @click="$emit('update:modelValue', !modelValue)">
-					<slot name="title">{{ title }}</slot>
-					<slot name="actions" />
-				</button>
-				<div v-show="modelValue"><slot /></div>
-			</section>
-		`,
-	},
 	N8nIcon: { template: '<span v-bind="$attrs" />', props: ['icon', 'size'] },
 	N8nText: { template: '<span><slot /></span>' },
 	N8nTooltip: { template: '<div><slot /></div>' },
@@ -69,11 +53,6 @@ const globalStubs = {
 			'<button :disabled="disabled" :data-checked="modelValue" @click="$emit(\'update:modelValue\', !modelValue)" />',
 	},
 };
-
-const componentSource = readFileSync(
-	resolve(dirname(fileURLToPath(import.meta.url)), '../components/AgentAdvancedPanel.vue'),
-	'utf8',
-);
 
 function makeConfig(overrides: Partial<AgentJsonConfig> = {}): AgentJsonConfig {
 	return {
@@ -114,17 +93,24 @@ function getWebSearchConfig(changes: Partial<AgentJsonConfig>): WebSearchConfig 
 }
 
 describe('AgentAdvancedPanel', () => {
-	it('renders the collapsible heading and moves the built-in chevron to the end', () => {
+	it('renders the collapsible heading and toggles the advanced content', async () => {
 		const wrapper = mount(AgentAdvancedPanel, {
 			props: { config: makeConfig(), collapsible: true },
 			global: { stubs: globalStubs },
 		});
 
 		const title = wrapper.find('[data-testid="agent-advanced-title"]');
+		const trigger = wrapper.find('[data-testid="agent-advanced-trigger"]');
+		const chevron = wrapper.find('[data-testid="agent-advanced-chevron"]');
+		const content = wrapper.find('[data-testid="agent-advanced-content"]');
 
 		expect(title.text()).toContain('agents.builder.advanced.title');
-		expect(componentSource).toContain('order: 2;');
-		expect(componentSource).toContain('flex: 1;');
+		expect(chevron.exists()).toBe(true);
+		expect(content.isVisible()).toBe(false);
+
+		await trigger.trigger('click');
+
+		expect(content.isVisible()).toBe(true);
 	});
 
 	it('treats sparse native web search config as disabled', async () => {

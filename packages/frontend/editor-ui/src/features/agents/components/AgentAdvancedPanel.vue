@@ -12,7 +12,7 @@
 import { ref, computed, watch } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
 import {
-	N8nCollapsiblePanel,
+	N8nIcon,
 	N8nInputNumber2,
 	N8nSelect,
 	N8nSwitch2,
@@ -392,18 +392,31 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 </script>
 
 <template>
-	<N8nCollapsiblePanel
-		v-model="isExpanded"
+	<div
 		:class="$style.panel"
-		:disabled="!props.collapsible"
+		:data-state="isExpanded ? 'open' : 'closed'"
 		data-testid="agent-behavior-panel"
 	>
-		<template #title>
+		<button
+			type="button"
+			:class="[$style.header, { [$style.collapsibleHeader]: props.collapsible }]"
+			:aria-expanded="isExpanded"
+			:aria-disabled="!props.collapsible"
+			data-testid="agent-advanced-trigger"
+			@click="props.collapsible && (isExpanded = !isExpanded)"
+		>
 			<N8nText tag="h3" :bold="true" data-testid="agent-advanced-title">{{
 				i18n.baseText('agents.builder.advanced.title')
 			}}</N8nText>
-		</template>
-		<div :class="$style.content">
+			<N8nIcon
+				v-if="props.collapsible"
+				icon="chevron-down"
+				size="small"
+				:class="$style.chevron"
+				data-testid="agent-advanced-chevron"
+			/>
+		</button>
+		<div v-show="isExpanded" :class="$style.content" data-testid="agent-advanced-content">
 			<div :class="$style.settingGroup">
 				<div :class="$style.row">
 					<div :class="$style.rowLabel">
@@ -701,7 +714,7 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 				/>
 			</div>
 		</div>
-	</N8nCollapsiblePanel>
+	</div>
 </template>
 
 <style module>
@@ -710,41 +723,44 @@ function onAnthropicTtlChange(value: AnthropicCacheTtl) {
 }
 
 .panel.panel {
-	border: 0;
-	border-radius: 0;
-	background-color: transparent;
-	scroll-margin-bottom: 0;
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
 }
 
-.panel.panel > :first-child {
-	padding: 0;
-	min-height: auto;
+.header {
+	all: unset;
+	box-sizing: border-box;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--sm);
 	width: 100%;
 }
 
-.panel.panel > :first-child > :first-child {
-	width: 100%;
-}
-
-.panel.panel > :first-child > :first-child > :first-child {
-	order: 2;
-	transform: rotate(0deg);
-}
-
-.panel.panel[data-state='open'] > :first-child > :first-child > :first-child {
-	transform: rotate(180deg);
-}
-
-.panel.panel > :first-child > :first-child > :last-child {
-	flex: 1;
-}
-
-.panel.panel > :first-child h3 {
+.header h3 {
 	margin: 0;
 }
 
-.panel.panel > [data-state] > :first-child {
-	padding: var(--spacing--sm) 0 0;
+.collapsibleHeader {
+	cursor: pointer;
+
+	&:focus-visible {
+		outline: 2px solid var(--color--primary);
+		outline-offset: 2px;
+		border-radius: var(--radius--sm);
+	}
+}
+
+.chevron {
+	flex-shrink: 0;
+	color: var(--text-color--subtler);
+	transform: rotate(0deg);
+	transition: transform var(--animation--duration) var(--animation--easing);
+}
+
+.panel[data-state='open'] .chevron {
+	transform: rotate(180deg);
 }
 
 .content {
