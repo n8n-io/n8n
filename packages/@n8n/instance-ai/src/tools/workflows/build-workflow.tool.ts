@@ -2,6 +2,8 @@ import { Tool } from '@n8n/agents';
 import { instanceAiConfirmationSeveritySchema } from '@n8n/api-types';
 import { hasPlaceholderDeep } from '@n8n/utils/placeholder';
 import { nanoid } from 'nanoid';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { z } from 'zod';
 
 import { planVerificationSimulation } from './plan-verification-simulation';
@@ -44,6 +46,7 @@ import {
 } from './workflow-json-utils';
 import { compileWorkflowSource } from './workflow-source-compiler';
 import { partitionWarnings, type ValidationWarning } from './workflow-validation-warnings';
+import { INSTANCE_AI_SKILLS_DIR } from '../../skills/runtime-skills';
 import type { InstanceAiContext } from '../../types';
 import { BuildFailureTracker } from '../../workflow-builder/build-failure-tracker';
 import { createRemediation } from '../../workflow-loop/remediation';
@@ -145,13 +148,42 @@ const setupRequirementOutputSchema = z.discriminatedUnion('status', [
 const POST_BUILD_FLOW_SKILL_ID = 'post-build-flow';
 
 const POST_BUILD_FLOW_GUIDANCE =
-	'This direct build is not complete yet. Load post-build-flow now and follow it before verification, setup, error-workflow follow-up, publishing, testing, or any final user-visible summary. Follow-up order is verification/setup first, then mocked/no-mock live-test when latest verification used mocks or simulations, then explicit error-workflow opt-in for direct new primary workflows, then generic testing prompts. Do not replace the error-workflow opt-in with a generic add-anything, publish, or test question.';
+	'This direct build is not complete yet. Follow the post-build instructions in `instructions` now (do NOT load the post-build-flow skill — they are the same instructions) before verification, setup, error-workflow follow-up, publishing, testing, or any final user-visible summary. Follow-up order is verification/setup first, then mocked/no-mock live-test when latest verification used mocks or simulations, then explicit error-workflow opt-in for direct new primary workflows, then generic testing prompts. Do not replace the error-workflow opt-in with a generic add-anything, publish, or test question.';
+
+// Inlined into successful build results; the skill stays registered for tag-driven follow-up turns.
+let postBuildFlowInstructionsCache: string | undefined;
+
+/** Tag-turn-only sections, stripped from the inline copy; follow-up turns load the full skill. */
+const INLINE_SKIPPED_SECTIONS = [
+	'## Verification follow-up',
+	'## Setup follow-up',
+	'## Credentials before build',
+];
+
+function getPostBuildFlowInstructions(): string {
+	if (postBuildFlowInstructionsCache === undefined) {
+		const raw = readFileSync(
+			join(INSTANCE_AI_SKILLS_DIR, POST_BUILD_FLOW_SKILL_ID, 'SKILL.md'),
+			'utf-8',
+		);
+		// Strip the YAML front-matter; catalog metadata is noise in a tool result.
+		const body = raw.replace(/^---\n[\s\S]*?\n---\n/, '').trim();
+		postBuildFlowInstructionsCache = body
+			.split(/\n(?=## )/)
+			.filter((section) => !INLINE_SKIPPED_SECTIONS.some((title) => section.startsWith(title)))
+			.join('\n')
+			.trim();
+	}
+	return postBuildFlowInstructionsCache;
+}
 
 const postBuildFlowOutputSchema = z.object({
 	required: z.literal(true),
 	skillId: z.literal(POST_BUILD_FLOW_SKILL_ID),
 	reason: z.literal('direct-build-succeeded'),
 	guidance: z.string(),
+	/** Full post-build instructions (the post-build-flow skill body), inlined. */
+	instructions: z.string(),
 });
 
 function directPostBuildFlowHandoff(
@@ -165,6 +197,7 @@ function directPostBuildFlowHandoff(
 		skillId: POST_BUILD_FLOW_SKILL_ID,
 		reason: 'direct-build-succeeded',
 		guidance: POST_BUILD_FLOW_GUIDANCE,
+		instructions: getPostBuildFlowInstructions(),
 	};
 }
 

@@ -1315,8 +1315,19 @@ export interface InstanceAiMcpConnectionResponse {
 	credentialId: string;
 	credentialName: string;
 	credentialType: string;
+	toolFilter: InstanceAiMcpConnectionToolFilterResponse | null;
 	createdAt: string;
 	updatedAt: string;
+}
+
+export interface InstanceAiMcpConnectionToolFilterResponse {
+	mode: 'allow' | 'exclude';
+	tools: string[];
+}
+
+export interface InstanceAiMcpConnectionToolResponse {
+	name: string;
+	description?: string;
 }
 
 export function getRenderHint(toolName: string): InstanceAiToolCallState['renderHint'] {

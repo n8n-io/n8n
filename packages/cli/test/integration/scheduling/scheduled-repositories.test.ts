@@ -1,6 +1,15 @@
 import { testDb } from '@n8n/backend-test-utils';
-import type { ScheduledJob as ScheduledJobEntity } from '@n8n/db';
-import { DbConnectionOptions, ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
+import type {
+	ScheduledJob as ScheduledJobEntity,
+	ScheduledTask as ScheduledTaskEntity,
+	TerminalTaskStatus,
+} from '@n8n/db';
+import {
+	DbConnectionOptions,
+	ScheduledJobRepository,
+	ScheduledTask,
+	ScheduledTaskRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
@@ -66,6 +75,26 @@ describe('scheduled repositories', () => {
 				intervalSeconds: 60,
 				enabled: true,
 				nextRunAt: secondsFromNow(-60),
+				maxAttempts: 1,
+				...overrides,
+			}),
+		);
+	}
+
+	/** Insert a task in a given lifecycle state; `scheduledFor` is made unique per row. */
+	let taskSequence = 0;
+	async function createTask(
+		jobId: number,
+		overrides: Partial<ScheduledTaskEntity> = {},
+	): Promise<ScheduledTaskEntity> {
+		const scheduledFor = secondsFromNow(-++taskSequence);
+		return await taskRepository.save(
+			taskRepository.create({
+				jobId,
+				taskType: 'scheduleTrigger',
+				payload: {},
+				scheduledFor,
+				runAt: scheduledFor,
 				maxAttempts: 1,
 				...overrides,
 			}),
@@ -412,6 +441,197 @@ describe('scheduled repositories', () => {
 
 				expect(first + second).toBe(1);
 				expect(await taskRepository.findBy({ jobId: job.id })).toHaveLength(1);
+			},
+		);
+	});
+
+	describe('ScheduledTaskRepository.deleteFinishedOlderThan', () => {
+		const HOUR_MS = 60 * 60 * 1000;
+
+		it('deletes only rows in the given statuses finished before the cutoff', async () => {
+			const job = await createJob();
+			await createTask(job.id, { status: 'succeeded', finishedAt: secondsFromNow(-7200) });
+			await createTask(job.id, { status: 'cancelled', finishedAt: secondsFromNow(-7200) });
+			const freshSucceeded = await createTask(job.id, {
+				status: 'succeeded',
+				finishedAt: secondsFromNow(-60),
+			});
+			const oldFailed = await createTask(job.id, {
+				status: 'failed',
+				finishedAt: secondsFromNow(-7200),
+			});
+			const pending = await createTask(job.id, { status: 'pending' });
+			const running = await createTask(job.id, {
+				status: 'running',
+				claimedBy: 'main-1',
+				leaseExpiresAt: secondsFromNow(-7200),
+			});
+
+			const deleted = await taskRepository.deleteFinishedOlderThan({
+				statuses: ['succeeded', 'cancelled'],
+				olderThanMs: HOUR_MS,
+				limit: 100,
+			});
+
+			// Both expired clean rows went; the fresh one, other statuses, and
+			// live rows (no finishedAt) survived.
+			expect(deleted).toBe(2);
+			const survivors = new Set((await taskRepository.find()).map((t) => t.id));
+			expect(survivors).toEqual(new Set([freshSucceeded.id, oldFailed.id, pending.id, running.id]));
+		});
+
+		it('deletes the oldest rows first when the limit caps a batch', async () => {
+			const job = await createJob();
+			await createTask(job.id, { status: 'succeeded', finishedAt: secondsFromNow(-4 * 3600) });
+			await createTask(job.id, { status: 'succeeded', finishedAt: secondsFromNow(-3 * 3600) });
+			const youngest = await createTask(job.id, {
+				status: 'succeeded',
+				finishedAt: secondsFromNow(-2 * 3600),
+			});
+
+			const deleted = await taskRepository.deleteFinishedOlderThan({
+				statuses: ['succeeded'],
+				olderThanMs: HOUR_MS,
+				limit: 2,
+			});
+
+			expect(deleted).toBe(2);
+			const remaining = await taskRepository.find();
+			expect(remaining.map((t) => t.id)).toEqual([youngest.id]);
+		});
+
+		it('never deletes a terminal row missing finishedAt', async () => {
+			const job = await createJob();
+			// Transitions always set finishedAt; a row without it has no provable
+			// age, so retention must leave it alone rather than guess.
+			const untimed = await createTask(job.id, { status: 'succeeded', finishedAt: null });
+
+			const deleted = await taskRepository.deleteFinishedOlderThan({
+				statuses: ['succeeded'],
+				olderThanMs: 0,
+				limit: 100,
+			});
+
+			expect(deleted).toBe(0);
+			expect((await taskRepository.find()).map((t) => t.id)).toEqual([untimed.id]);
+		});
+
+		it('deletes nothing when no statuses are given', async () => {
+			const job = await createJob();
+			await createTask(job.id, { status: 'succeeded', finishedAt: secondsFromNow(-7200) });
+
+			const deleted = await taskRepository.deleteFinishedOlderThan({
+				statuses: [],
+				olderThanMs: HOUR_MS,
+				limit: 100,
+			});
+
+			expect(deleted).toBe(0);
+			expect(await taskRepository.count()).toBe(1);
+		});
+
+		it('rejects live statuses before touching any row', async () => {
+			const job = await createJob();
+			const oldPending = await createTask(job.id, { status: 'pending' });
+
+			// The type already forbids this; the cast simulates a value smuggled
+			// past it (an untyped caller), which the runtime guard must stop.
+			await expect(
+				taskRepository.deleteFinishedOlderThan({
+					statuses: ['pending' as TerminalTaskStatus, 'succeeded'],
+					olderThanMs: 0,
+					limit: 100,
+				}),
+			).rejects.toThrow('only deletes terminal tasks, got: pending');
+			expect((await taskRepository.find()).map((t) => t.id)).toEqual([oldPending.id]);
+		});
+
+		it('rejects a non-integer limit before touching any row', async () => {
+			const job = await createJob();
+			await createTask(job.id, { status: 'succeeded', finishedAt: secondsFromNow(-7200) });
+
+			await expect(
+				taskRepository.deleteFinishedOlderThan({
+					statuses: ['succeeded'],
+					olderThanMs: HOUR_MS,
+					limit: 1.5,
+				}),
+			).rejects.toThrow('needs an integer limit, got: 1.5');
+			expect(await taskRepository.count()).toBe(1);
+		});
+
+		it('treats a non-positive limit as a no-op batch', async () => {
+			const job = await createJob();
+			await createTask(job.id, { status: 'succeeded', finishedAt: secondsFromNow(-7200) });
+
+			const deleted = await taskRepository.deleteFinishedOlderThan({
+				statuses: ['succeeded'],
+				olderThanMs: HOUR_MS,
+				limit: 0,
+			});
+
+			expect(deleted).toBe(0);
+			expect(await taskRepository.count()).toBe(1);
+		});
+
+		// Postgres only: while another transaction holds eligible rows locked,
+		// FOR UPDATE SKIP LOCKED must hand the concurrent batch the remaining rows
+		// instead of blocking on (or double-deleting) the locked ones. On sqlite
+		// the single-writer lock serializes the two, so there is nothing to skip.
+		it.skipIf(!isPostgres)(
+			'skips rows another transaction holds locked and deletes the rest',
+			async () => {
+				const job = await createJob();
+				const lockedOlder = await createTask(job.id, {
+					status: 'succeeded',
+					finishedAt: secondsFromNow(-4 * 3600),
+				});
+				const lockedNewer = await createTask(job.id, {
+					status: 'succeeded',
+					finishedAt: secondsFromNow(-3 * 3600),
+				});
+				await createTask(job.id, {
+					status: 'succeeded',
+					finishedAt: secondsFromNow(-2 * 3600),
+				});
+
+				// The holder draws from the secondary pool so its transaction stays
+				// open while the delete runs on the main pool.
+				const runner = secondaryDataSource!.createQueryRunner();
+				try {
+					await runner.connect();
+					await runner.startTransaction();
+					await runner.manager
+						.getRepository(ScheduledTask)
+						.createQueryBuilder('task')
+						.setLock('pessimistic_write')
+						.whereInIds([lockedOlder.id, lockedNewer.id])
+						.getMany();
+
+					const deleted = await taskRepository.deleteFinishedOlderThan({
+						statuses: ['succeeded'],
+						olderThanMs: HOUR_MS,
+						limit: 10,
+					});
+
+					// Only the unlocked row went, even though the locked ones are older.
+					expect(deleted).toBe(1);
+					const survivors = new Set((await taskRepository.find()).map((t) => t.id));
+					expect(survivors).toEqual(new Set([lockedOlder.id, lockedNewer.id]));
+
+					await runner.rollbackTransaction();
+				} finally {
+					await runner.release();
+				}
+
+				// With the lock released, the next batch reaps what was skipped.
+				const rest = await taskRepository.deleteFinishedOlderThan({
+					statuses: ['succeeded'],
+					olderThanMs: HOUR_MS,
+					limit: 10,
+				});
+				expect(rest).toBe(2);
+				expect(await taskRepository.count()).toBe(0);
 			},
 		);
 	});

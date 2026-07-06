@@ -28,6 +28,7 @@ import { isProjectRole } from '@/app/utils/typeGuards';
 import ProjectExternalSecrets from '../components/ProjectExternalSecrets.vue';
 import ProjectSettingsCustomTelemetryTags from '../components/ProjectSettingsCustomTelemetryTags.vue';
 import { getResourcePermissions } from '@n8n/permissions';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 
 import {
 	N8nAlert,
@@ -113,7 +114,9 @@ const userSearchQuery = ref('');
 const userSearchResults = ref<typeof usersStore.allUsers>([]);
 const isLoadingUsers = ref(false);
 
-const shouldFetchAllUsers = computed(() => usersStore.isAdminOrOwner || canUpdateProject.value);
+const shouldFetchAllUsers = computed(
+	() => hasPermission(['rbac'], { rbac: { scope: 'user:list' } }) || canUpdateProject.value,
+);
 
 const usersList = computed(() =>
 	userSearchResults.value.filter((user) => {
