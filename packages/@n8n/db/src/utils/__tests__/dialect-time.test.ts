@@ -25,6 +25,26 @@ describe('dbNowPlusMsLiteral', () => {
 			"CURRENT_TIMESTAMP(3) + (1000 || ' milliseconds')::interval",
 		);
 	});
+
+	it('offsets the DB clock into the past on postgres', () => {
+		expect(dbNowPlusMsLiteral(true, -1500)).toBe(
+			"CURRENT_TIMESTAMP(3) + (-1500 || ' milliseconds')::interval",
+		);
+	});
+
+	// A '+-1.5 seconds' modifier would be invalid: STRFTIME returns NULL and the
+	// comparison silently matches nothing, so the sign must replace the '+'.
+	it('offsets the DB clock into the past on sqlite without a doubled sign', () => {
+		expect(dbNowPlusMsLiteral(false, -1500)).toBe(
+			"STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW', '-1.5 seconds')",
+		);
+	});
+
+	it('treats a negative offset that rounds to zero as now on sqlite', () => {
+		expect(dbNowPlusMsLiteral(false, -0.4)).toBe(
+			"STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW', '+0 seconds')",
+		);
+	});
 });
 
 describe('parseDbTime', () => {
