@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { action } from 'storybook/actions';
-import { ref } from 'vue';
+import { defineComponent, ref } from 'vue';
 
 import RadioGroup from './RadioGroup.vue';
 import RadioGroupItem from './RadioGroupItem.vue';
@@ -40,18 +40,47 @@ const scopeOptions = [
 	{ value: 'custom', label: 'Custom', description: 'Pick scopes individually' },
 ];
 
-export const Default: Story = {
-	render: (args) => ({
-		components: { RadioGroup, RadioGroupItem },
-		setup() {
-			const value = ref('all');
-			return { args, value, scopeOptions, onUpdate: action('update:modelValue') };
-		},
-		template: `
+const longLabelOptions = [
+	{
+		value: 'passthrough',
+		label: 'Automatically passthrough binary images without re-encoding',
+		description:
+			'When enabled, binary image data is forwarded unchanged to downstream nodes. This preserves the original file format and avoids unnecessary processing overhead.',
+	},
+	{
+		value: 'security',
+		label: 'Enable advanced security features for this workflow execution environment',
+		description:
+			'Applies additional sandboxing, credential isolation, and audit logging. Recommended for workflows that handle sensitive data or connect to production systems.',
+	},
+	{
+		value: 'custom',
+		label: 'Use a custom configuration with individually selected scopes and permissions',
+		description:
+			'Pick each scope manually. Useful when you need fine-grained control over what this credential can access, such as limiting to specific resources or read-only operations.',
+	},
+];
+
+const RadioGroupDefaultDemo = defineComponent({
+	name: 'RadioGroupDefaultDemo',
+	components: { RadioGroup, RadioGroupItem },
+	props: {
+		orientation: { type: String, default: 'vertical' },
+		disabled: { type: Boolean, default: false },
+		defaultValue: { type: String, required: false },
+	},
+	setup() {
+		const value = ref('all');
+		return { value, scopeOptions, onUpdate: action('update:modelValue') };
+	},
+	template: `
 		<div style="padding: 40px;">
 			<RadioGroup
 				v-model="value"
-				v-bind="args"
+				:orientation="orientation"
+				:disabled="disabled"
+				:default-value="defaultValue"
+				name="radio-group-default"
 				aria-label="Scope selection mode"
 				@update:model-value="onUpdate"
 			>
@@ -66,23 +95,17 @@ export const Default: Story = {
 			</RadioGroup>
 			<p style="margin-top: 16px; font-size: 14px;">Selected: {{ value }}</p>
 		</div>
-		`,
-	}),
-	args: {
-		orientation: 'vertical',
-		disabled: false,
-	},
-};
+	`,
+});
 
-export const ControlledUncontrolled: Story = {
-	name: 'Controlled/Uncontrolled',
-	render: () => ({
-		components: { RadioGroup, RadioGroupItem },
-		setup() {
-			const value = ref('all');
-			return { value, scopeOptions, onUpdate: action('update:modelValue') };
-		},
-		template: `
+const RadioGroupControlledUncontrolledDemo = defineComponent({
+	name: 'RadioGroupControlledUncontrolledDemo',
+	components: { RadioGroup, RadioGroupItem },
+	setup() {
+		const value = ref('all');
+		return { value, scopeOptions, onUpdate: action('update:modelValue') };
+	},
+	template: `
 		<div style="padding: 40px; display: flex; flex-direction: column; gap: 32px;">
 			<section>
 				<h3 style="margin: 0 0 8px; font-size: 14px; font-weight: 600;">Controlled</h3>
@@ -90,13 +113,15 @@ export const ControlledUncontrolled: Story = {
 					Parent-controlled selection via <code>v-model</code>. Use the buttons below to set the value externally.
 				</p>
 				<RadioGroup
+					key="controlled"
 					v-model="value"
+					name="radio-group-controlled"
 					aria-label="Scope selection mode (controlled)"
 					@update:model-value="onUpdate"
 				>
 					<RadioGroupItem
 						v-for="option in scopeOptions"
-						:key="option.value"
+						:key="'controlled-' + option.value"
 						:value="option.value"
 						:label="option.label"
 						:description="option.description"
@@ -120,10 +145,15 @@ export const ControlledUncontrolled: Story = {
 				<p style="margin: 0 0 16px; font-size: 14px; color: var(--text-color--subtle);">
 					Initial selection set with <code>defaultValue="readOnly"</code>. The parent does not track changes.
 				</p>
-				<RadioGroup default-value="readOnly" aria-label="Scope selection mode (uncontrolled)">
+				<RadioGroup
+					key="uncontrolled"
+					default-value="readOnly"
+					name="radio-group-uncontrolled"
+					aria-label="Scope selection mode (uncontrolled)"
+				>
 					<RadioGroupItem
 						v-for="option in scopeOptions"
-						:key="option.value"
+						:key="'uncontrolled-' + option.value"
 						:value="option.value"
 						:label="option.label"
 						:description="option.description"
@@ -131,75 +161,86 @@ export const ControlledUncontrolled: Story = {
 				</RadioGroup>
 			</section>
 		</div>
-		`,
-	}),
-};
+	`,
+});
 
-export const Orientation: Story = {
-	render: () => ({
-		components: { RadioGroup, RadioGroupItem },
-		setup() {
-			const verticalValue = ref('all');
-			const horizontalValue = ref('light');
-			return { verticalValue, horizontalValue, scopeOptions };
-		},
-		template: `
+const RadioGroupOrientationDemo = defineComponent({
+	name: 'RadioGroupOrientationDemo',
+	components: { RadioGroup, RadioGroupItem },
+	setup() {
+		const verticalValue = ref('all');
+		const horizontalValue = ref('light');
+		return { verticalValue, horizontalValue, scopeOptions };
+	},
+	template: `
 		<div style="padding: 40px; display: flex; flex-direction: column; gap: 32px;">
 			<section>
 				<h3 style="margin: 0 0 8px; font-size: 14px; font-weight: 600;">Vertical</h3>
-				<RadioGroup v-model="verticalValue" orientation="vertical" aria-label="Scope selection mode (vertical)">
+				<RadioGroup
+					key="vertical"
+					v-model="verticalValue"
+					name="radio-group-orientation-vertical"
+					orientation="vertical"
+					aria-label="Scope selection mode (vertical)"
+				>
 					<RadioGroupItem
 						v-for="option in scopeOptions"
-						:key="option.value"
+						:key="'vertical-' + option.value"
 						:value="option.value"
 						:label="option.label"
 						:description="option.description"
 					/>
 				</RadioGroup>
+				<p style="margin-top: 16px; font-size: 14px;">Selected: {{ verticalValue }}</p>
 			</section>
 			<section>
 				<h3 style="margin: 0 0 8px; font-size: 14px; font-weight: 600;">Horizontal</h3>
-				<RadioGroup v-model="horizontalValue" orientation="horizontal" aria-label="Theme (horizontal)">
+				<RadioGroup
+					key="horizontal"
+					v-model="horizontalValue"
+					name="radio-group-orientation-horizontal"
+					orientation="horizontal"
+					aria-label="Theme (horizontal)"
+				>
 					<RadioGroupItem value="system" label="System" />
 					<RadioGroupItem value="light" label="Light" />
 					<RadioGroupItem value="dark" label="Dark" />
 				</RadioGroup>
+				<p style="margin-top: 16px; font-size: 14px;">Selected: {{ horizontalValue }}</p>
 			</section>
 		</div>
-		`,
-	}),
-};
+	`,
+});
 
-export const DisabledOption: Story = {
-	render: () => ({
-		components: { RadioGroup, RadioGroupItem },
-		setup() {
-			const value = ref('spain');
-			return { value };
-		},
-		template: `
+const RadioGroupDisabledOptionDemo = defineComponent({
+	name: 'RadioGroupDisabledOptionDemo',
+	components: { RadioGroup, RadioGroupItem },
+	setup() {
+		const value = ref('spain');
+		return { value };
+	},
+	template: `
 		<div style="padding: 40px;">
-			<RadioGroup v-model="value" aria-label="Country">
+			<RadioGroup v-model="value" name="radio-group-disabled-option" aria-label="Country">
 				<RadioGroupItem value="france" label="France" />
 				<RadioGroupItem value="germany" label="Germany" />
 				<RadioGroupItem value="italy" label="Italy" disabled />
 				<RadioGroupItem value="spain" label="Spain" disabled />
 			</RadioGroup>
 		</div>
-		`,
-	}),
-};
+	`,
+});
 
-export const CustomLabel: Story = {
-	render: () => ({
-		components: { RadioGroup, RadioGroupItem },
-		setup() {
-			const value = ref('terms');
-			return { value };
-		},
-		template: `
+const RadioGroupCustomLabelDemo = defineComponent({
+	name: 'RadioGroupCustomLabelDemo',
+	components: { RadioGroup, RadioGroupItem },
+	setup() {
+		const value = ref('terms');
+		return { value };
+	},
+	template: `
 		<div style="padding: 40px;">
-			<RadioGroup v-model="value" aria-label="Agreement">
+			<RadioGroup v-model="value" name="radio-group-custom-label" aria-label="Agreement">
 				<RadioGroupItem value="terms">
 					<template #label>
 						I accept the <a href="#">terms and conditions</a>
@@ -212,41 +253,19 @@ export const CustomLabel: Story = {
 				</RadioGroupItem>
 			</RadioGroup>
 		</div>
-		`,
-	}),
-};
+	`,
+});
 
-const longLabelOptions = [
-	{
-		value: 'passthrough',
-		label: 'Automatically passthrough binary images without re-encoding',
-		description:
-			'When enabled, binary image data is forwarded unchanged to downstream nodes. This preserves the original file format and avoids unnecessary processing overhead.',
+const RadioGroupLongLabelsDemo = defineComponent({
+	name: 'RadioGroupLongLabelsDemo',
+	components: { RadioGroup, RadioGroupItem },
+	setup() {
+		const value = ref('passthrough');
+		return { value, longLabelOptions };
 	},
-	{
-		value: 'security',
-		label: 'Enable advanced security features for this workflow execution environment',
-		description:
-			'Applies additional sandboxing, credential isolation, and audit logging. Recommended for workflows that handle sensitive data or connect to production systems.',
-	},
-	{
-		value: 'custom',
-		label: 'Use a custom configuration with individually selected scopes and permissions',
-		description:
-			'Pick each scope manually. Useful when you need fine-grained control over what this credential can access, such as limiting to specific resources or read-only operations.',
-	},
-];
-
-export const LongLabels: Story = {
-	render: () => ({
-		components: { RadioGroup, RadioGroupItem },
-		setup() {
-			const value = ref('passthrough');
-			return { value, longLabelOptions };
-		},
-		template: `
+	template: `
 		<div style="padding: 40px; max-width: 360px;">
-			<RadioGroup v-model="value" aria-label="Workflow configuration options">
+			<RadioGroup v-model="value" name="radio-group-long-labels" aria-label="Workflow configuration options">
 				<RadioGroupItem
 					v-for="option in longLabelOptions"
 					:key="option.value"
@@ -256,6 +275,55 @@ export const LongLabels: Story = {
 				/>
 			</RadioGroup>
 		</div>
-		`,
+	`,
+});
+
+export const Default: Story = {
+	render: (args) => ({
+		components: { RadioGroupDefaultDemo },
+		setup() {
+			return { args };
+		},
+		template: '<RadioGroupDefaultDemo v-bind="args" />',
+	}),
+	args: {
+		orientation: 'vertical',
+		disabled: false,
+	},
+};
+
+export const ControlledUncontrolled: Story = {
+	name: 'Controlled/Uncontrolled',
+	render: () => ({
+		components: { RadioGroupControlledUncontrolledDemo },
+		template: '<RadioGroupControlledUncontrolledDemo />',
+	}),
+};
+
+export const Orientation: Story = {
+	render: () => ({
+		components: { RadioGroupOrientationDemo },
+		template: '<RadioGroupOrientationDemo />',
+	}),
+};
+
+export const DisabledOption: Story = {
+	render: () => ({
+		components: { RadioGroupDisabledOptionDemo },
+		template: '<RadioGroupDisabledOptionDemo />',
+	}),
+};
+
+export const CustomLabel: Story = {
+	render: () => ({
+		components: { RadioGroupCustomLabelDemo },
+		template: '<RadioGroupCustomLabelDemo />',
+	}),
+};
+
+export const LongLabels: Story = {
+	render: () => ({
+		components: { RadioGroupLongLabelsDemo },
+		template: '<RadioGroupLongLabelsDemo />',
 	}),
 };
