@@ -125,6 +125,7 @@ describe('GlobalConfig', () => {
 			minRecoveryBackoffMs: 1_000,
 			maxRecoveryBackoffMs: 30_000,
 			connectionAcquisitionTimeoutMs: 30_000,
+			startupConnectMaxRetries: 5,
 		} as DatabaseConfig,
 		credentials: {
 			defaultName: 'My credentials',
@@ -717,6 +718,7 @@ describe('GlobalConfig', () => {
 				minRecoveryBackoffMs: 1_000,
 				maxRecoveryBackoffMs: 30_000,
 				connectionAcquisitionTimeoutMs: 30_000,
+				startupConnectMaxRetries: 5,
 			},
 			endpoints: {
 				...defaultConfig.endpoints,
