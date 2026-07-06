@@ -1,3 +1,4 @@
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import get from 'lodash/get';
 import type {
 	AINodeConnectionType,
@@ -19,7 +20,7 @@ import type {
 	ISourceData,
 	NodeExecutionHint,
 } from 'n8n-workflow';
-import { createDeferredPromise, jsonParse, NodeConnectionTypes } from 'n8n-workflow';
+import { jsonParse, NodeConnectionTypes } from 'n8n-workflow';
 
 import { BaseExecuteContext } from './base-execute-context';
 import {
