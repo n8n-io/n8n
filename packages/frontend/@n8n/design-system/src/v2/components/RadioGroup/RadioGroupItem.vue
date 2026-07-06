@@ -1,14 +1,14 @@
 <script setup lang="ts">
-import { computed, inject, useAttrs, useId } from 'vue';
-
-import type { RadioGroupItemProps, RadioGroupItemSlots } from './RadioGroupItem.types';
-import { radioGroupArrowKeyPressedKey } from './radio-group-context';
 import {
 	injectRadioGroupRootContext,
 	Label,
 	RadioGroupIndicator,
 	RadioGroupItem as RekaRadioGroupItem,
 } from 'reka-ui';
+import { computed, inject, useAttrs, useId } from 'vue';
+
+import { radioGroupArrowKeyPressedKey } from './radio-group-context';
+import type { RadioGroupItemProps, RadioGroupItemSlots } from './RadioGroupItem.types';
 
 defineOptions({ inheritAttrs: false });
 

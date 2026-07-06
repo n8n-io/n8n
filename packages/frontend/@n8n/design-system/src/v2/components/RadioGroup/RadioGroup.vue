@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { reactivePick } from '@vueuse/core';
+import { RadioGroupRoot, useForwardPropsEmits } from 'reka-ui';
 import { provide, ref } from 'vue';
 
-import type { RadioGroupEmits, RadioGroupProps, RadioGroupSlots } from './RadioGroup.types';
 import { RADIO_GROUP_ARROW_KEYS, radioGroupArrowKeyPressedKey } from './radio-group-context';
-import { RadioGroupRoot, useForwardPropsEmits } from 'reka-ui';
+import type { RadioGroupEmits, RadioGroupProps, RadioGroupSlots } from './RadioGroup.types';
 
 defineOptions({ inheritAttrs: false });
 
