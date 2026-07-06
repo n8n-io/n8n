@@ -3,7 +3,7 @@ import { mockLogger } from '@n8n/backend-test-utils';
 import { mock } from 'vitest-mock-extended';
 
 import { AgentModelCatalogService } from '../agent-model-catalog.service';
-import type { BuilderModelLookupService } from '../builder/builder-model-lookup.service';
+import type { BuilderModelLiveLookupService } from '../builder/builder-model-live-lookup.service';
 
 const fetchProviderCatalog = vi.fn();
 vi.mock('@n8n/agents', () => ({
@@ -48,7 +48,7 @@ const catalogFixture = {
 };
 
 function makeService() {
-	const lookupService = mock<BuilderModelLookupService>();
+	const lookupService = mock<BuilderModelLiveLookupService>();
 	const service = new AgentModelCatalogService(mockLogger(), lookupService);
 	return { service, lookupService };
 }
@@ -59,8 +59,9 @@ describe('AgentModelCatalogService', () => {
 		fetchProviderCatalog.mockResolvedValue(catalogFixture);
 	});
 
-	it('returns only the models the provider reports live, enriched with catalog metadata', async () => {
+	it('keeps catalog models the provider still reports live, with catalog metadata, and prunes the rest', async () => {
 		const { service, lookupService } = makeService();
+		// Provider reports Sonnet but not Opus — Opus (retired) must be pruned.
 		lookupService.list.mockResolvedValue([
 			{ name: 'Claude Sonnet 4.6', value: 'claude-sonnet-4-6' },
 		]);
@@ -82,16 +83,19 @@ describe('AgentModelCatalogService', () => {
 		);
 	});
 
-	it('keeps live models missing from the catalog, defaulting tool support to true', async () => {
+	it('does not add live models that are missing from the catalog', async () => {
 		const { service, lookupService } = makeService();
-		lookupService.list.mockResolvedValue([{ name: 'Claude Brand New', value: 'claude-brand-new' }]);
+		// Live list includes a model models.dev has no entry for, alongside a known one.
+		lookupService.list.mockResolvedValue([
+			{ name: 'Claude Sonnet 4.6', value: 'claude-sonnet-4-6' },
+			{ name: 'Claude Brand New', value: 'claude-brand-new' },
+		]);
 
 		const result = await service.getProviderModels(user, 'anthropic', credentialId);
 
 		expect(result.verified).toBe(true);
-		expect(result.models).toEqual([
-			expect.objectContaining({ id: 'claude-brand-new', name: 'Claude Brand New', toolCall: true }),
-		]);
+		// Only the catalog-known model survives; the live-only one is never added.
+		expect(result.models.map((m) => m.id)).toEqual(['claude-sonnet-4-6']);
 	});
 
 	it('strips the "models/" prefix from google model ids before matching', async () => {

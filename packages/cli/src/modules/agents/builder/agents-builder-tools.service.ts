@@ -43,7 +43,7 @@ import { AgentSkillsService } from '../agent-skills.service';
 import { AgentTaskService } from '../agent-task.service';
 import { AgentsToolsService } from '../agents-tools.service';
 import { AgentsService } from '../agents.service';
-import { BuilderModelLookupService } from './builder-model-lookup.service';
+import { BuilderModelLiveLookupService } from './builder-model-live-lookup.service';
 import { BUILDER_TOOLS } from './builder-tool-names';
 import {
 	collectFromAiParameterReferences,
@@ -311,7 +311,9 @@ export class AgentsBuilderToolsService {
 		private readonly secureRuntime: AgentSecureRuntime,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly agentsToolsService: AgentsToolsService,
-		private readonly builderModelLookupService: BuilderModelLookupService,
+		// TEMPORARY: reaches model lists through the LangChain chat sub-nodes.
+		// See BuilderModelLiveLookupService — to be replaced by the models component.
+		private readonly builderModelLiveLookupService: BuilderModelLiveLookupService,
 		private readonly mcpRegistryService: McpRegistryService,
 		private readonly oauthService: OauthService,
 		private readonly credentialTypes: CredentialTypes,
@@ -672,7 +674,7 @@ export class AgentsBuilderToolsService {
 
 		const modelLookup: ModelLookup = {
 			list: async (credentialId, credentialType, lookup) =>
-				await this.builderModelLookupService.list(user, credentialId, credentialType, lookup),
+				await this.builderModelLiveLookupService.list(user, credentialId, credentialType, lookup),
 		};
 
 		const tools: BuiltTool[] = [
