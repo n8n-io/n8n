@@ -42,6 +42,8 @@ import {
 	Workflow,
 	createRunExecutionData,
 	mergeRunsPerBranch,
+	runDataAttemptedDynamicCredentials,
+	runDataUsedDynamicCredentials,
 } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -445,6 +447,39 @@ export function buildSubWorkflowOutput(
 	return WorkflowHelpers.getLastExecutedNodeData(data)?.data?.main ?? [null];
 }
 
+/**
+ * Summarizes a sub-workflow's dynamic-credential usage so the calling node can report it back.
+ * Credentials resolve under the sub-workflow's own context, so the parent would otherwise never
+ * flag that its embedded output used a private credential. The engine applies this to the parent
+ * (see `BaseExecuteContext.executeWorkflow`); recurses via the child's task flags.
+ */
+function summarizeSubworkflowDynamicCredentials(
+	childRun: IRun,
+): Pick<
+	ExecuteWorkflowData,
+	'usedDynamicCredentials' | 'attemptedDynamicCredentials' | 'dynamicCredentialsResolvedUserId'
+> {
+	const runData = childRun.data.resultData?.runData;
+	const summary: Pick<
+		ExecuteWorkflowData,
+		'usedDynamicCredentials' | 'attemptedDynamicCredentials' | 'dynamicCredentialsResolvedUserId'
+	> = {};
+
+	if (runDataUsedDynamicCredentials(runData)) {
+		summary.usedDynamicCredentials = true;
+		const resolvedUserId = childRun.data.executionData?.runtimeData?.executedByUserId;
+		if (resolvedUserId) {
+			summary.dynamicCredentialsResolvedUserId = resolvedUserId;
+		}
+	}
+
+	if (runDataAttemptedDynamicCredentials(runData)) {
+		summary.attemptedDynamicCredentials = true;
+	}
+
+	return summary;
+}
+
 async function startExecution(
 	additionalData: IWorkflowExecuteAdditionalData,
 	options: ExecuteWorkflowOptions,
@@ -598,6 +633,8 @@ async function startExecution(
 			executionId,
 			data: buildSubWorkflowOutput(data, workflowData.nodes, options.returnLastRunOnly ?? false),
 			waitTill: data.waitTill,
+			// Report private-credential usage to the caller (detached runs return earlier, skipping this).
+			...summarizeSubworkflowDynamicCredentials(data),
 		};
 	}
 	activeExecutions.finalizeExecution(executionId, data);

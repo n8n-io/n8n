@@ -398,5 +398,31 @@ export const describeCommonTests = (
 				expect(childParentExecution.executionContext).toBeUndefined();
 			});
 		});
+
+		describe('sub-workflow dynamic credential reporting', () => {
+			it('forwards the sub-workflow dynamic-credential usage onto the parent execution', async () => {
+				additionalData.executeWorkflow.mockResolvedValue({
+					...executeWorkflowData,
+					usedDynamicCredentials: true,
+					dynamicCredentialsResolvedUserId: 'sub-user',
+				});
+
+				await context.executeWorkflow(workflowInfo);
+
+				expect(additionalData.currentNodeUsedDynamicCredentials).toBe(true);
+				expect(additionalData.dynamicCredentialsResolvedUserId).toBe('sub-user');
+			});
+
+			it('forwards the attempted flag onto the parent execution', async () => {
+				additionalData.executeWorkflow.mockResolvedValue({
+					...executeWorkflowData,
+					attemptedDynamicCredentials: true,
+				});
+
+				await context.executeWorkflow(workflowInfo);
+
+				expect(additionalData.currentNodeAttemptedDynamicCredentials).toBe(true);
+			});
+		});
 	});
 };
