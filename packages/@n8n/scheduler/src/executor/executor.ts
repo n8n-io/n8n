@@ -3,7 +3,7 @@ import type { SchedulerConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type {
 	ClaimDueTasksOptions,
-	ClaimRef,
+	HostedClaimedRef,
 	ScheduledTask,
 	ScheduledTaskRepository,
 } from '@n8n/db';
@@ -20,13 +20,20 @@ type ClaimedEntry = { host: string; task: ClaimedTask };
 /**
  * Claims due tasks, fires each at its `runAt`, dispatches to the handler registered
  * for its `taskType`, and records the outcome. Runs on every main; the claim's
- * locking guarantees each task is owned by one instance. A driver calls
- * {@link claimAndSchedule} on a cadence with the host id; reclaiming expired leases
- * is a separate concern (the reaper).
+ * locking guarantees each task is owned by one instance.
  *
- * Guarded transitions match the task's lease epoch, so an owner that stalled and was
- * reclaimed can't write over the reclaimed run. No reclaim happens until the reaper
- * exists, so the epoch guard is inert until then.
+ * This is the executor logic only: a driver (the multi-main loop) calls
+ * {@link claimAndSchedule} on a cadence and supplies the instance host id. The
+ * reaper that reclaims tasks whose lease expired is a separate concern (see
+ * `reap` in `reaper/`).
+ *
+ * The terminal transitions are fenced on the lease epoch (the claim's `leaseEpoch`,
+ * threaded into every terminal call as a {@link HostedClaimedRef}), so a handler that stalls
+ * past its lease and is reaped can't write its stale result over the recovered run:
+ * while the row sits `pending` the `status = 'running'` guard rejects it, and once
+ * another claim takes it the epoch has advanced, so the stale owner's guarded update
+ * matches no row. Handlers are still expected to hand off quickly; the lease-renewal
+ * heartbeat for longer ones is future work.
  */
 export class Executor {
 	private readonly leaseMs: number;
@@ -131,7 +138,7 @@ export class Executor {
 	 * a lease expiry is a benign no-op at every step, never an error.
 	 */
 	async fire(host: string, task: ClaimedTask): Promise<void> {
-		const claim: ClaimRef = { host, id: task.id, claimedEpoch: task.leaseEpoch };
+		const claim: HostedClaimedRef = { host, id: task.id, claimedEpoch: task.leaseEpoch };
 
 		// Resolve the handler before marking the task started: don't mark a task started
 		// we can't run, and skip the write on the missing-handler path. The claim is
@@ -188,7 +195,7 @@ export class Executor {
 	}
 
 	/** Release a claim, logging but swallowing failures: the reaper still recovers the row. */
-	private async releaseClaimBestEffort(claim: ClaimRef): Promise<void> {
+	private async releaseClaimBestEffort(claim: HostedClaimedRef): Promise<void> {
 		try {
 			await this.taskRepository.releaseClaim(claim);
 		} catch (error) {
