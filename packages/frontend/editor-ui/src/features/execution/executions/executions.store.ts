@@ -185,13 +185,11 @@ export const useExecutionsStore = defineStore('executions', () => {
 				}
 			});
 
-			if (lastId) {
-				// Paginating: a full page means more may exist; a short page is the end.
-				hasMoreExecutions.value = data.results.length >= itemsPerPage.value;
-			} else if (data.results.length < itemsPerPage.value) {
-				// First page or background refresh returning fewer than a page: nothing
-				// more to load. A full first page leaves the current value untouched so a
-				// refresh never resurrects `hasMoreExecutions` on an already-exhausted list.
+			const isLoadMore = !!lastId;
+			const isFullPage = data.results.length >= itemsPerPage.value;
+			if (isLoadMore) {
+				hasMoreExecutions.value = isFullPage;
+			} else if (!isFullPage) {
 				hasMoreExecutions.value = false;
 			}
 
