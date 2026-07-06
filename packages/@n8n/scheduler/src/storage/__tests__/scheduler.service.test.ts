@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import type { SchedulerConfig } from '@n8n/config';
+import type { GlobalConfig, SchedulerConfig } from '@n8n/config';
 import type { ScheduledTaskRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
@@ -18,7 +18,14 @@ function makeService(configOverrides: Partial<SchedulerConfig> = {}) {
 		failedRetentionSeconds: 86_400,
 		...configOverrides,
 	});
-	const service = new SchedulerService(mock<MaterializerStore>(), tasks, logger, config);
+	const globalConfig = mock<GlobalConfig>({ generic: { timezone: 'America/New_York' } });
+	const service = new SchedulerService(
+		mock<MaterializerStore>(),
+		tasks,
+		logger,
+		config,
+		globalConfig,
+	);
 	return { service, tasks, logger };
 }
 

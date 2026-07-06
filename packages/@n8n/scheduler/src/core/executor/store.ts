@@ -29,9 +29,9 @@ export interface ClaimDueTasksBatch {
 
 /**
  * The store operations the executor needs, defined here as the executor's own
- * surface so it depends on nothing concrete. The storage layer supplies the
- * implementation (entity mapping included: `claimDueTasks` returns well-formed
- * domain tasks, never raw rows).
+ * surface so it depends on nothing concrete. `ScheduledTaskRepository`
+ * structurally satisfies this (a claimed row satisfies {@link ClaimedTask}), so
+ * no adapter is needed at the call site.
  *
  * Every write below is guarded on the ref's host and epoch and on the expected
  * `status`; 0 rows affected means the row is gone or no longer ours and is

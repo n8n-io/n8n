@@ -46,6 +46,7 @@ export {
 } from './errors';
 
 export { computeNextRunAt } from './recurrence/next-run';
+export { resolveSchedule } from './recurrence/resolve';
 export { validateSchedule } from './recurrence/validate';
 
 export { materialize, DEFAULT_MATERIALIZER_OPTIONS } from './materializer';

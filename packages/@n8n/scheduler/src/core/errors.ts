@@ -37,9 +37,9 @@ export class DuplicateTaskHandlerError extends Error {
 }
 
 /**
- * Raised when a stored row is missing a column its `kind`/type guarantees
- * should be set (a corrupt or hand-edited row), while mapping DB entities to
- * the scheduler's domain types.
+ * Raised when a stored row is missing a column its `kind` guarantees should be
+ * set (a corrupt or hand-edited row), while assembling its `Schedule` from the
+ * flat columns (see `resolveSchedule`).
  */
 export class CorruptStorageRowError extends Error {
 	constructor(message: string) {

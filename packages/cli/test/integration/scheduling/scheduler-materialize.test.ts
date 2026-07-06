@@ -49,6 +49,7 @@ describe('scheduler materialization', () => {
 			batchSize: 100,
 			maxPerJob: 100,
 			planRetrySeconds: 3600,
+			defaultTimezone: 'UTC',
 		});
 
 	it('records a due occurrence and advances the job past it', async () => {
@@ -75,7 +76,13 @@ describe('scheduler materialization', () => {
 	it('drains a backlog in maxPerJob-sized batches across successive passes', async () => {
 		// A job far behind (interval 10s, ~100s of backlog) so more than maxPerJob fires are due.
 		await createJob({ intervalSeconds: 10, nextRunAt: secondsFromNow(-100) });
-		const drainOptions = { windowSeconds: 0, batchSize: 100, maxPerJob: 5, planRetrySeconds: 3600 };
+		const drainOptions = {
+			windowSeconds: 0,
+			batchSize: 100,
+			maxPerJob: 5,
+			planRetrySeconds: 3600,
+			defaultTimezone: 'UTC',
+		};
 
 		// The first pass records exactly maxPerJob, capping the batch rather than draining it all.
 		const first = await materialize(store.runInTransaction, drainOptions);
@@ -233,6 +240,7 @@ describe('scheduler materialization', () => {
 				batchSize,
 				maxPerJob: 100,
 				planRetrySeconds: 3600,
+				defaultTimezone: 'UTC',
 			});
 		const summaries = await Promise.all([runPass(), runPass(), runPass()]);
 

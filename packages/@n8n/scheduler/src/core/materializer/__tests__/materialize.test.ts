@@ -1,19 +1,21 @@
-import type { CronExpression } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import type { Schedule, ScheduledJob } from '../../types';
+import type { ScheduledJob } from '../../types';
 import { materialize, type MaterializerOptions } from '../materialize';
 import type { RunInTransaction, MaterializerTransaction } from '../transaction';
 
 const NOW = new Date('2026-01-01T00:00:00.000Z');
-const every10s: Schedule = { kind: 'interval', intervalSeconds: 10 };
 
-const makeJob = (id: string): ScheduledJob => ({
+/** An every-10s interval job due at NOW. */
+const makeJob = (id: number): ScheduledJob => ({
 	id,
 	taskType: 'test',
 	payload: {},
-	schedule: every10s,
-	enabled: true,
+	kind: 'interval',
+	cronExpression: null,
+	timezone: null,
+	intervalSeconds: 10,
+	fireAt: null,
 	nextRunAt: NOW,
 	lastFiredAt: null,
 	maxAttempts: 1,
@@ -30,6 +32,7 @@ const options: MaterializerOptions = {
 	batchSize: 25,
 	maxPerJob: 100,
 	planRetrySeconds: 3600,
+	defaultTimezone: 'UTC',
 };
 
 describe('materialize', () => {
@@ -46,7 +49,7 @@ describe('materialize', () => {
 
 	it('records occurrences and advances each claimed job', async () => {
 		const tx = mock<MaterializerTransaction>();
-		tx.claimDueJobs.mockResolvedValue({ now: NOW, jobs: [makeJob('a'), makeJob('b')] });
+		tx.claimDueJobs.mockResolvedValue({ now: NOW, jobs: [makeJob(1), makeJob(2)] });
 		// windowSeconds: 0 means one occurrence per job: the due fire, both newly recorded.
 		tx.recordOccurrences.mockResolvedValue(2);
 
@@ -65,8 +68,8 @@ describe('materialize', () => {
 			lastFiredAt: NOW,
 		};
 		const planned = [
-			{ job: makeJob('a'), plan },
-			{ job: makeJob('b'), plan },
+			{ job: makeJob(1), plan },
+			{ job: makeJob(2), plan },
 		];
 		expect(tx.recordOccurrences).toHaveBeenCalledWith(planned);
 		expect(tx.advanceJobs).toHaveBeenCalledWith(planned);
@@ -82,11 +85,13 @@ describe('materialize', () => {
 	});
 
 	it('defers an un-plannable job instead of failing the whole batch', async () => {
-		const good = makeJob('good');
-		// A cron job with an unresolved (null) timezone: planning throws for this one.
+		const good = makeJob(1);
+		// A cron job missing its expression (a corrupt row): planning throws for this one.
 		const bad: ScheduledJob = {
-			...makeJob('bad'),
-			schedule: { kind: 'cron', cronExpression: '0 0 9 * * *' as CronExpression, timezone: null },
+			...makeJob(2),
+			kind: 'cron',
+			cronExpression: null,
+			intervalSeconds: null,
 		};
 		const tx = mock<MaterializerTransaction>();
 		tx.claimDueJobs.mockResolvedValue({ now: NOW, jobs: [good, bad] });
@@ -102,8 +107,8 @@ describe('materialize', () => {
 		// The good job plans normally; the bad one records nothing and is retried a
 		// planRetrySeconds backoff later (nextRunAt stays set: null means exhausted).
 		const planned = tx.advanceJobs.mock.calls[0][0];
-		const goodEntry = planned.find((p) => p.job.id === 'good')!;
-		const badEntry = planned.find((p) => p.job.id === 'bad')!;
+		const goodEntry = planned.find((p) => p.job.id === good.id)!;
+		const badEntry = planned.find((p) => p.job.id === bad.id)!;
 		expect(goodEntry.plan.occurrences).toEqual([NOW]);
 		expect(badEntry.plan.occurrences).toEqual([]);
 		expect(badEntry.plan.nextRunAt).toEqual(new Date('2026-01-01T01:00:00.000Z'));

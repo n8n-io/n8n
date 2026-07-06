@@ -1,10 +1,8 @@
 import { Logger } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
 import { ScheduledJobRepository, ScheduledTaskRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, type EntityManager } from '@n8n/typeorm';
 
-import { entityToScheduledJob } from './mappers';
 import type {
 	DueJobs,
 	PlannedJob,
@@ -22,24 +20,16 @@ class DatabaseMaterializerTransaction implements MaterializerTransaction {
 		private readonly jobs: ScheduledJobRepository,
 		private readonly tasks: ScheduledTaskRepository,
 		private readonly logger: Logger,
-		private readonly instanceTimezone: string,
 	) {}
 
 	async claimDueJobs(limit: number): Promise<DueJobs | undefined> {
-		const claimed = await this.jobs.claimDue(this.manager, limit);
-		if (claimed === undefined) {
-			return undefined;
-		}
-		return {
-			now: claimed.now,
-			jobs: claimed.jobs.map((entity) => entityToScheduledJob(entity, this.instanceTimezone)),
-		};
+		return await this.jobs.claimDue(this.manager, limit);
 	}
 
 	async recordOccurrences(planned: PlannedJob[]): Promise<number> {
 		const occurrences = planned.flatMap(({ job, plan }) =>
 			plan.occurrences.map((when) => ({
-				jobId: Number(job.id),
+				jobId: job.id,
 				taskType: job.taskType,
 				payload: job.payload,
 				scheduledFor: when,
@@ -64,7 +54,7 @@ class DatabaseMaterializerTransaction implements MaterializerTransaction {
 		await this.jobs.advanceMany(
 			this.manager,
 			planned.map(({ job, plan }) => ({
-				id: Number(job.id),
+				id: job.id,
 				nextRunAt: plan.nextRunAt,
 				lastFiredAt: plan.lastFiredAt,
 			})),
@@ -84,20 +74,13 @@ export class MaterializerStore {
 		private readonly jobs: ScheduledJobRepository,
 		private readonly tasks: ScheduledTaskRepository,
 		private readonly logger: Logger,
-		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	readonly runInTransaction: RunInTransaction = async (work) =>
 		await this.dataSource.transaction(
 			async (manager) =>
 				await work(
-					new DatabaseMaterializerTransaction(
-						manager,
-						this.jobs,
-						this.tasks,
-						this.logger,
-						this.globalConfig.generic.timezone,
-					),
+					new DatabaseMaterializerTransaction(manager, this.jobs, this.tasks, this.logger),
 				),
 		);
 }

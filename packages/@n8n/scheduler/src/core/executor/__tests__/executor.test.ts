@@ -12,7 +12,7 @@ const HOST = 'main-abc';
 
 const claimedTask = (overrides: Partial<ClaimedTask> = {}): ClaimedTask => ({
 	id: '1',
-	jobId: '10',
+	jobId: 10,
 	taskType: 'workflow:schedule-trigger',
 	payload: {},
 	scheduledFor: new Date('2026-07-01T00:00:00.000Z'),
@@ -20,10 +20,7 @@ const claimedTask = (overrides: Partial<ClaimedTask> = {}): ClaimedTask => ({
 	status: 'running',
 	attempts: 0,
 	maxAttempts: 1,
-	claimedBy: HOST,
-	leaseExpiresAt: new Date('2026-07-01T00:01:00.000Z'),
 	leaseEpoch: 1,
-	startedAt: null,
 	...overrides,
 });
 

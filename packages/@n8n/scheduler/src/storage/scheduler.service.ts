@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { SchedulerConfig } from '@n8n/config';
+import { GlobalConfig, SchedulerConfig } from '@n8n/config';
 import { ScheduledTaskRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
@@ -24,10 +24,12 @@ export class SchedulerService {
 		private readonly tasks: ScheduledTaskRepository,
 		private readonly logger: Logger,
 		config: SchedulerConfig,
+		globalConfig: GlobalConfig,
 	) {
 		this.materializerOptions = {
 			...DEFAULT_MATERIALIZER_OPTIONS,
 			windowSeconds: config.materializationWindowSeconds,
+			defaultTimezone: globalConfig.generic.timezone,
 		};
 		this.retentionOptions = {
 			...DEFAULT_RETENTION_OPTIONS,

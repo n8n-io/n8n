@@ -27,9 +27,11 @@ rollback.
   domain types. DI-free and database-free: each algorithm declares the store
   contract its callsite must satisfy (`MaterializerTransaction`, `RetentionStore`,
   `ExecutorTaskStore`, `ReaperTaskStore`) and reports incidents through callbacks
-  and summaries, so a fake store is enough to test it.
-- **`storage/`** — the database bridging: adapters that satisfy the core contracts
-  on top of `@n8n/db` repositories, plus the entity-to-domain mappers.
+  and summaries, so a fake store is enough to test it. The domain types mirror the
+  row shapes, so the `@n8n/db` entities satisfy the contracts structurally — no
+  mapping layer sits between the database and the core.
+- **`storage/`** — the database bridging: the transaction runner and the service
+  wiring the algorithms to `@n8n/db` repositories and config.
 
 ## Status
 

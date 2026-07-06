@@ -111,6 +111,7 @@ function planOrDeferJob(
 		// Defer: record nothing and retry after a backoff. Keeping nextRunAt set (never
 		// null) reserves null for its one meaning: the schedule is exhausted.
 		// The row passed validation at write time but can't be planned at claim time, e.g.:
+		// - the row is missing a column its kind guarantees (corrupt or hand-edited);
 		// - the job's timezone isn't in this runtime's tzdata (written on a newer/other version);
 		// - the instance-default timezone a null cron timezone resolves to is misconfigured;
 		// - a rolled-back instance claims a schedule written in a shape this version can't evaluate.
