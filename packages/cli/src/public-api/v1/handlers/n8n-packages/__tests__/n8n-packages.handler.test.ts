@@ -2,6 +2,7 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Response } from 'express';
+import { UserError } from 'n8n-workflow';
 import { PassThrough } from 'node:stream';
 import type { Mocked } from 'vitest';
 
@@ -11,6 +12,10 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
+import {
+	PackageEntityAccessDeniedError,
+	PackageEntityNotFoundError,
+} from '@/modules/n8n-packages/entities/package-export.errors';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import * as middlewares from '@/public-api/v1/shared/middlewares/global.middleware';
 
@@ -222,6 +227,33 @@ describe('n8n-packages handler', () => {
 				workflowIds: ['wf-1'],
 			});
 		});
+
+		it.each([
+			[
+				'access-denied',
+				new PackageEntityAccessDeniedError('workflows denied', { description: 'x' }),
+			],
+			[
+				'entity-not-found',
+				new PackageEntityNotFoundError('workflows missing', { description: 'y' }),
+			],
+		])(
+			'rethrows %s as a generic UserError with the same message, hiding which case occurred',
+			async (reason, thrownError) => {
+				mockService.exportPackage.mockRejectedValue(thrownError);
+
+				const caught = await run(
+					makeRequest({ workflowIds: ['wf-1'] }, ['workflow:export']),
+					makeResponse(),
+				);
+
+				expect(caught).toBeInstanceOf(UserError);
+				expect(caught).not.toBeInstanceOf(PackageEntityAccessDeniedError);
+				expect(caught).not.toBeInstanceOf(PackageEntityNotFoundError);
+				expect(caught).toMatchObject({ message: thrownError.message });
+				expect(emittedEvent('n8n-package-export-failed')).toMatchObject({ reason });
+			},
+		);
 
 		it('streams the export for a valid workflow request', async () => {
 			const stream = new PassThrough();
