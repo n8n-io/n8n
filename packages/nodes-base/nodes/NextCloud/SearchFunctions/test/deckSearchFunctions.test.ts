@@ -88,8 +88,7 @@ describe('NextCloud Deck deckSearchFunctions', () => {
 			expect(result).toEqual({ results: [] });
 		});
 
-		it('returns { results: [] } when API throws', async () => {
-			const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+		it('propagates API failures', async () => {
 			const httpRequest = vi.fn(() => {
 				throw new Error('boom');
 			});
@@ -97,11 +96,7 @@ describe('NextCloud Deck deckSearchFunctions', () => {
 				helpers: { request: vi.fn(), httpRequest },
 			});
 
-			const result = await getBoards.call(ctx);
-
-			expect(result).toEqual({ results: [] });
-			expect(errorSpy).toHaveBeenCalled();
-			errorSpy.mockRestore();
+			await expect(getBoards.call(ctx)).rejects.toThrow('boom');
 		});
 	});
 
@@ -173,6 +168,21 @@ describe('NextCloud Deck deckSearchFunctions', () => {
 			const result = await getStacks.call(ctx);
 
 			expect(result).toEqual({ results: [] });
+		});
+
+		it('propagates API failures', async () => {
+			const httpRequest = vi.fn(() => {
+				throw new Error('boom');
+			});
+			const ctx = credsContext({
+				getCurrentNodeParameter: vi.fn((name: string) => {
+					if (name === 'boardId') return '5';
+					return undefined;
+				}),
+				helpers: { request: vi.fn(), httpRequest },
+			});
+
+			await expect(getStacks.call(ctx)).rejects.toThrow('boom');
 		});
 	});
 
@@ -272,6 +282,22 @@ describe('NextCloud Deck deckSearchFunctions', () => {
 
 			expect(result).toEqual({ results: [] });
 		});
+
+		it('propagates API failures', async () => {
+			const request = vi.fn(() => {
+				throw new Error('boom');
+			});
+			const ctx = credsContext({
+				getCurrentNodeParameter: vi.fn((name: string) => {
+					if (name === 'boardId') return '5';
+					if (name === 'stackId') return '7';
+					return undefined;
+				}),
+				helpers: { request, httpRequest: vi.fn() },
+			});
+
+			await expect(getCards.call(ctx)).rejects.toThrow('boom');
+		});
 	});
 
 	describe('getLabels', () => {
@@ -348,6 +374,21 @@ describe('NextCloud Deck deckSearchFunctions', () => {
 			const result = await getLabels.call(ctx);
 
 			expect(result).toEqual({ results: [] });
+		});
+
+		it('propagates API failures', async () => {
+			const httpRequest = vi.fn(() => {
+				throw new Error('boom');
+			});
+			const ctx = credsContext({
+				getCurrentNodeParameter: vi.fn((name: string) => {
+					if (name === 'boardId') return '5';
+					return undefined;
+				}),
+				helpers: { request: vi.fn(), httpRequest },
+			});
+
+			await expect(getLabels.call(ctx)).rejects.toThrow('boom');
 		});
 	});
 });

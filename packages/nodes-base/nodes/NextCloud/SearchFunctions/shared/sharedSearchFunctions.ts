@@ -21,7 +21,7 @@ export async function getNextCloudContext(
 	try {
 		authenticationMethod = ctx.getCurrentNodeParameter('authentication') as string;
 	} catch {
-		// 'authentication' parameter not yet set â€” fall back to default.
+		// 'authentication' parameter not yet set — fall back to default.
 		authenticationMethod = 'accessToken';
 	}
 	const credentialName = authenticationMethod === 'oAuth2' ? 'nextCloudOAuth2Api' : 'nextCloudApi';
@@ -29,9 +29,19 @@ export async function getNextCloudContext(
 	try {
 		credentials = await ctx.getCredentials(credentialName);
 	} catch {
+		if (authenticationMethod === 'oAuth2') {
+			throw new Error(
+				'Deck resource locators require username/password authentication. OAuth2 is not supported.',
+			);
+		}
 		return null;
 	}
 	if (!credentials?.webDavUrl || !credentials.user || !credentials.password) {
+		if (authenticationMethod === 'oAuth2') {
+			throw new Error(
+				'Deck resource locators require username/password authentication. OAuth2 is not supported.',
+			);
+		}
 		return null;
 	}
 	const baseUrl = (credentials.webDavUrl as string)
@@ -42,7 +52,7 @@ export async function getNextCloudContext(
 }
 
 /**
- * Shared user search â€” reusable by Deck (assign/unassign) and User resource.
+ * Shared user search — reusable by Deck (assign/unassign) and User resource.
  * Calls global OCS /cloud/users endpoint.
  */
 export async function getUsers(
@@ -52,10 +62,14 @@ export async function getUsers(
 	const ctx = await getNextCloudContext(this);
 	if (!ctx) return { results: [] };
 
-	try {
+	const limit = 200;
+	let offset = 0;
+	const users: string[] = [];
+
+	while (true) {
 		const response = (await this.helpers.request({
 			method: 'GET',
-			url: `${ctx.baseUrl}/ocs/v1.php/cloud/users?limit=200&offset=0`,
+			url: `${ctx.baseUrl}/ocs/v1.php/cloud/users?limit=${limit}&offset=${offset}`,
 			headers: {
 				'OCS-APIRequest': 'true',
 				Accept: 'application/json',
@@ -64,15 +78,17 @@ export async function getUsers(
 			json: true,
 		})) as { ocs?: { data?: { users?: string[] } } };
 
-		const users = response?.ocs?.data?.users ?? [];
-		let results: INodeListSearchItems[] = users.map((id) => ({ name: id, value: id }));
-		if (filter) {
-			const needle = filter.toLowerCase();
-			results = results.filter((r) => r.name.toLowerCase().includes(needle));
-		}
-		return { results };
-	} catch (error) {
-		console.error('NextCloud getUsers failed:', (error as Error).message);
-		return { results: [] };
+		const pageUsers = response?.ocs?.data?.users ?? [];
+		users.push(...pageUsers);
+
+		if (pageUsers.length < limit) break;
+		offset += limit;
 	}
+
+	let results: INodeListSearchItems[] = users.map((id) => ({ name: id, value: id }));
+	if (filter) {
+		const needle = filter.toLowerCase();
+		results = results.filter((r) => r.name.toLowerCase().includes(needle));
+	}
+	return { results };
 }

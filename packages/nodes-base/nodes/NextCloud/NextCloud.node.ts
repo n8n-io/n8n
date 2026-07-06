@@ -1072,7 +1072,12 @@ export class NextCloud implements INodeType {
 					const basicAuth = Buffer.from(`${user}:${pass}`).toString('base64');
 
 					// Strip leading # from color hex (Deck API expects 31CC7C, not #31CC7C)
-					const stripHash = (hex: string): string => hex.replace(/^#/, '');
+					const stripHash = (hex?: string): string => (hex ? hex.replace(/^#/, '') : '');
+					const getOwnerUid = (owner: IDataObject | string | undefined): string => {
+						if (!owner) return '';
+						if (typeof owner === 'string') return owner;
+						return String(owner.uid ?? owner.id ?? '');
+					};
 
 					// Reusable Deck request helper
 					const deckRequest = async (
@@ -1112,7 +1117,7 @@ export class NextCloud implements INodeType {
 						case 'createBoard': {
 							responseData = await deckRequest('POST', '/boards', {
 								title: this.getNodeParameter('title', i),
-								color: stripHash(this.getNodeParameter('color', i) as string),
+								color: stripHash(this.getNodeParameter('color', i, '') as string),
 							} as IDataObject);
 							break;
 						}
@@ -1121,18 +1126,19 @@ export class NextCloud implements INodeType {
 							const boardId = this.getNodeParameter('boardId', i, '', {
 								extractValue: true,
 							}) as string;
-							const updateBody: IDataObject = {};
+							const boardPath = `/boards/${encodeURIComponent(boardId)}`;
+							const currentBoard = (await deckRequest('GET', boardPath)) as IDataObject;
+							const updateBody: IDataObject = { ...currentBoard };
 							const title = this.getNodeParameter('title', i, '') as string;
 							const color = this.getNodeParameter('color', i, '') as string;
 							const archived = this.getNodeParameter('archived', i, false) as boolean;
 							if (title) updateBody.title = title;
 							if (color) updateBody.color = stripHash(color);
-							updateBody.archived = archived;
-							responseData = await deckRequest(
-								'PUT',
-								`/boards/${encodeURIComponent(boardId)}`,
-								updateBody,
+							updateBody.owner = getOwnerUid(
+								currentBoard.owner as IDataObject | string | undefined,
 							);
+							updateBody.archived = archived;
+							responseData = await deckRequest('PUT', boardPath, updateBody);
 							break;
 						}
 						case 'deleteBoard': {
@@ -1190,16 +1196,17 @@ export class NextCloud implements INodeType {
 							const stackId = this.getNodeParameter('stackId', i, '', {
 								extractValue: true,
 							}) as string;
-							const updateBody: IDataObject = {};
+							const stackPath = `/boards/${encodeURIComponent(boardId)}/stacks/${encodeURIComponent(stackId)}`;
+							const currentStack = (await deckRequest('GET', stackPath)) as IDataObject;
+							const updateBody: IDataObject = { ...currentStack };
 							const title = this.getNodeParameter('title', i, '') as string;
 							const order = this.getNodeParameter('order', i, undefined) as number;
 							if (title) updateBody.title = title;
 							if (order !== undefined) updateBody.order = order;
-							responseData = await deckRequest(
-								'PUT',
-								`/boards/${encodeURIComponent(boardId)}/stacks/${encodeURIComponent(stackId)}`,
-								updateBody,
+							updateBody.owner = getOwnerUid(
+								currentStack.owner as IDataObject | string | undefined,
 							);
+							responseData = await deckRequest('PUT', stackPath, updateBody);
 							break;
 						}
 						case 'deleteStack': {
@@ -1305,11 +1312,18 @@ export class NextCloud implements INodeType {
 							const labelId = this.getNodeParameter('labelId', i, '', {
 								extractValue: true,
 							}) as string;
+							const parsedLabelId = parseInt(labelId, 10);
+							if (Number.isNaN(parsedLabelId)) {
+								throw new NodeOperationError(
+									this.getNode(),
+									'The label ID must be a valid number.',
+								);
+							}
 							responseData = await deckRequest(
 								'PUT',
 								`/boards/${encodeURIComponent(boardId)}/stacks/${encodeURIComponent(stackId)}/cards/${encodeURIComponent(cardId)}/assignLabel`,
 								{
-									labelId: parseInt(labelId, 10),
+									labelId: parsedLabelId,
 								} as IDataObject,
 							);
 							break;
@@ -1327,11 +1341,18 @@ export class NextCloud implements INodeType {
 							const labelId = this.getNodeParameter('labelId', i, '', {
 								extractValue: true,
 							}) as string;
+							const parsedLabelId = parseInt(labelId, 10);
+							if (Number.isNaN(parsedLabelId)) {
+								throw new NodeOperationError(
+									this.getNode(),
+									'The label ID must be a valid number.',
+								);
+							}
 							responseData = await deckRequest(
 								'PUT',
 								`/boards/${encodeURIComponent(boardId)}/stacks/${encodeURIComponent(stackId)}/cards/${encodeURIComponent(cardId)}/removeLabel`,
 								{
-									labelId: parseInt(labelId, 10),
+									labelId: parsedLabelId,
 								} as IDataObject,
 							);
 							break;
@@ -1396,10 +1417,10 @@ export class NextCloud implements INodeType {
 							}) as string;
 							const cardPath = `/boards/${encodeURIComponent(boardId)}/stacks/${encodeURIComponent(stackId)}/cards/${encodeURIComponent(cardId)}`;
 
-							// Pre-flight: fetch current card to get owner (required by API for full PUT)
+							// Pre-flight: fetch current card so the PUT keeps the existing card data
 							const currentCard = (await deckRequest('GET', cardPath)) as IDataObject;
 
-							const updateBody: IDataObject = {};
+							const updateBody: IDataObject = { ...currentCard };
 							const title = this.getNodeParameter('title', i, '') as string;
 							const description = this.getNodeParameter('description', i, '') as string;
 							const type = this.getNodeParameter('type', i, '') as string;
@@ -1411,9 +1432,6 @@ export class NextCloud implements INodeType {
 							if (type) updateBody.type = type;
 							if (order !== undefined) updateBody.order = order;
 							if (dueDate) updateBody.duedate = dueDate;
-
-							// Owner is REQUIRED by Deck API on update
-							updateBody.owner = (currentCard.owner as IDataObject)?.uid ?? '';
 
 							responseData = await deckRequest('PUT', cardPath, updateBody);
 							break;
@@ -1436,10 +1454,17 @@ export class NextCloud implements INodeType {
 								extractValue: true,
 							}) as string;
 							const order = this.getNodeParameter('order', i, 0) as number;
+							const parsedTargetStackId = parseInt(targetStackId, 10);
+							if (Number.isNaN(parsedTargetStackId)) {
+								throw new NodeOperationError(
+									this.getNode(),
+									'The stack ID must be a valid number.',
+								);
+							}
 
 							const movePath = `/boards/${encodeURIComponent(boardId)}/stacks/${encodeURIComponent(stackId)}/cards/${encodeURIComponent(cardId)}/reorder`;
 							responseData = await deckRequest('PUT', movePath, {
-								stackId: parseInt(targetStackId, 10),
+								stackId: parsedTargetStackId,
 								order,
 							} as IDataObject);
 							break;
@@ -1489,7 +1514,7 @@ export class NextCloud implements INodeType {
 								`/boards/${encodeURIComponent(boardId)}/labels`,
 								{
 									title: this.getNodeParameter('title', i),
-									color: stripHash(this.getNodeParameter('color', i) as string),
+									color: stripHash(this.getNodeParameter('color', i, '') as string),
 								} as IDataObject,
 							);
 							break;
@@ -1501,16 +1526,14 @@ export class NextCloud implements INodeType {
 							const labelId = this.getNodeParameter('labelId', i, '', {
 								extractValue: true,
 							}) as string;
-							const updateBody: IDataObject = {};
+							const labelPath = `/boards/${encodeURIComponent(boardId)}/labels/${encodeURIComponent(labelId)}`;
+							const currentLabel = (await deckRequest('GET', labelPath)) as IDataObject;
+							const updateBody: IDataObject = { ...currentLabel };
 							const title = this.getNodeParameter('title', i, '') as string;
 							const color = this.getNodeParameter('color', i, '') as string;
 							if (title) updateBody.title = title;
 							if (color) updateBody.color = stripHash(color);
-							responseData = await deckRequest(
-								'PUT',
-								`/boards/${encodeURIComponent(boardId)}/labels/${encodeURIComponent(labelId)}`,
-								updateBody,
-							);
+							responseData = await deckRequest('PUT', labelPath, updateBody);
 							break;
 						}
 						case 'deleteLabel': {

@@ -40,7 +40,7 @@ describe('NextCloud sharedSearchFunctions', () => {
 			expect(result?.basicAuth).toBe(expectedAuth);
 		});
 
-		it('returns null when getCredentials throws', async () => {
+		it('returns null when getCredentials throws for accessToken auth', async () => {
 			const ctx = createMockLoadOptionsFunctions({
 				getCurrentNodeParameter: vi.fn(() => 'accessToken'),
 				getCredentials: vi.fn(() => {
@@ -51,6 +51,19 @@ describe('NextCloud sharedSearchFunctions', () => {
 			const result = await getNextCloudContext(ctx);
 
 			expect(result).toBeNull();
+		});
+
+		it('throws for OAuth2 locators without username/password credentials', async () => {
+			const ctx = createMockLoadOptionsFunctions({
+				getCurrentNodeParameter: vi.fn(() => 'oAuth2'),
+				getCredentials: vi.fn(() => ({
+					webDavUrl,
+				})),
+			});
+
+			await expect(getNextCloudContext(ctx)).rejects.toThrow(
+				'Deck resource locators require username/password authentication. OAuth2 is not supported.',
+			);
 		});
 
 		it('strips /remote.php/webdav from URL', async () => {
@@ -148,6 +161,37 @@ describe('NextCloud sharedSearchFunctions', () => {
 			expect(result.results.map((r) => r.name)).toEqual(['alice', 'Alex']);
 		});
 
+		it('fetches all pages of users before filtering', async () => {
+			const firstPageUsers = Array.from({ length: 200 }, (_, index) => `user${index + 1}`);
+			const request = vi
+				.fn()
+				.mockResolvedValueOnce({ ocs: { data: { users: firstPageUsers } } })
+				.mockResolvedValueOnce({ ocs: { data: { users: ['charlie'] } } });
+			const ctx = createMockLoadOptionsFunctions({
+				getCurrentNodeParameter: vi.fn(() => 'accessToken'),
+				getCredentials: vi.fn(() => ({
+					webDavUrl,
+					user: 'admin',
+					password: 'admin',
+				})),
+				helpers: { request, httpRequest: vi.fn() },
+			});
+
+			const result = await getUsers.call(ctx);
+
+			expect(result.results).toHaveLength(201);
+			expect(result.results[0]).toEqual({ name: 'user1', value: 'user1' });
+			expect(result.results[200]).toEqual({ name: 'charlie', value: 'charlie' });
+			expect(request).toHaveBeenNthCalledWith(
+				1,
+				expect.objectContaining({ url: expect.stringContaining('limit=200&offset=0') }),
+			);
+			expect(request).toHaveBeenNthCalledWith(
+				2,
+				expect.objectContaining({ url: expect.stringContaining('limit=200&offset=200') }),
+			);
+		});
+
 		it('returns { results: [] } when credentials are null', async () => {
 			const ctx = createMockLoadOptionsFunctions({
 				getCurrentNodeParameter: vi.fn(() => 'accessToken'),
@@ -161,8 +205,7 @@ describe('NextCloud sharedSearchFunctions', () => {
 			expect(result).toEqual({ results: [] });
 		});
 
-		it('returns { results: [] } when API throws', async () => {
-			const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+		it('propagates API failures', async () => {
 			const request = vi.fn(() => {
 				throw new Error('network down');
 			});
@@ -176,11 +219,7 @@ describe('NextCloud sharedSearchFunctions', () => {
 				helpers: { request, httpRequest: vi.fn() },
 			});
 
-			const result = await getUsers.call(ctx);
-
-			expect(result).toEqual({ results: [] });
-			expect(errorSpy).toHaveBeenCalled();
-			errorSpy.mockRestore();
+			await expect(getUsers.call(ctx)).rejects.toThrow('network down');
 		});
 	});
 });

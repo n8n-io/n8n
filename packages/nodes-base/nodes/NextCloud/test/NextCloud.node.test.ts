@@ -832,7 +832,26 @@ describe('NextCloud Node', () => {
 				expectDeckUrl(deckRequestOptions(request).url);
 			});
 
-			it('updateBoard PUTs to /boards/{id} with stripped color and archived flag', async () => {
+			it('createBoard tolerates a missing color parameter', async () => {
+				const { executeFunctions, request } = buildExecuteFunctions({
+					parameters: {
+						resource: 'deck',
+						operation: 'createBoard',
+						title: 'Personal',
+					},
+				});
+				request.mockResolvedValue({ id: 7, title: 'Personal' });
+
+				await executeNode(executeFunctions);
+
+				expect(deckRequestOptions(request)).toMatchObject({
+					method: 'POST',
+					url: `${deckBaseUrl}/boards`,
+					body: { title: 'Personal', color: '' },
+				});
+			});
+
+			it('updateBoard PUTs to /boards/{id} with preserved fields and owner', async () => {
 				const { executeFunctions, request } = buildExecuteFunctions({
 					parameters: {
 						resource: 'deck',
@@ -843,19 +862,39 @@ describe('NextCloud Node', () => {
 						archived: true,
 					},
 				});
-				request.mockResolvedValue({ id: 5 });
+				request
+					.mockResolvedValueOnce({
+						id: 5,
+						title: 'Existing title',
+						color: 'FFFFFF',
+						archived: false,
+						owner: { uid: 'alice' },
+						description: 'keep me',
+					})
+					.mockResolvedValueOnce({ id: 5, title: 'Personal' });
 
 				await executeNode(executeFunctions);
 
 				expect(deckRequestOptions(request)).toMatchObject({
+					method: 'GET',
+					url: `${deckBaseUrl}/boards/5`,
+				});
+				expect(deckRequestOptions(request, 1)).toMatchObject({
 					method: 'PUT',
 					url: `${deckBaseUrl}/boards/5`,
-					body: { title: 'Personal', color: '31CC7C', archived: true },
+					body: {
+						id: 5,
+						title: 'Personal',
+						color: '31CC7C',
+						archived: true,
+						owner: 'alice',
+						description: 'keep me',
+					},
 				});
-				expectDeckUrl(deckRequestOptions(request).url);
+				expect(request).toHaveBeenCalledTimes(2);
 			});
 
-			it('updateBoard omits color and title when empty but always sends archived', async () => {
+			it('updateBoard preserves unchanged fields when title and color are empty', async () => {
 				const { executeFunctions, request } = buildExecuteFunctions({
 					parameters: {
 						resource: 'deck',
@@ -866,11 +905,26 @@ describe('NextCloud Node', () => {
 						archived: false,
 					},
 				});
-				request.mockResolvedValue({ id: 5 });
+				request
+					.mockResolvedValueOnce({
+						id: 5,
+						title: 'Existing title',
+						color: 'FFFFFF',
+						archived: true,
+						owner: { uid: 'alice' },
+						description: 'keep me',
+					})
+					.mockResolvedValueOnce({ id: 5 });
 
 				await executeNode(executeFunctions);
 
-				expect(deckRequestOptions(request).body).toEqual({ archived: false });
+				expect(deckRequestOptions(request, 1).body).toMatchObject({
+					title: 'Existing title',
+					color: 'FFFFFF',
+					archived: false,
+					owner: 'alice',
+					description: 'keep me',
+				});
 			});
 
 			it('deleteBoard DELETEs /boards/{id}', async () => {
@@ -955,7 +1009,7 @@ describe('NextCloud Node', () => {
 				expectDeckUrl(deckRequestOptions(request).url);
 			});
 
-			it('updateStack PUTs only provided fields', async () => {
+			it('updateStack PUTs preserved fields and owner', async () => {
 				const { executeFunctions, request } = buildExecuteFunctions({
 					parameters: {
 						resource: 'deck',
@@ -966,19 +1020,37 @@ describe('NextCloud Node', () => {
 						order: 2,
 					},
 				});
-				request.mockResolvedValue({ id: 10 });
+				request
+					.mockResolvedValueOnce({
+						id: 10,
+						title: 'Todo',
+						order: 1,
+						owner: { uid: 'alice' },
+						color: 'FFFFFF',
+					})
+					.mockResolvedValueOnce({ id: 10 });
 
 				await executeNode(executeFunctions);
 
 				expect(deckRequestOptions(request)).toMatchObject({
+					method: 'GET',
+					url: `${deckBaseUrl}/boards/5/stacks/10`,
+				});
+				expect(deckRequestOptions(request, 1)).toMatchObject({
 					method: 'PUT',
 					url: `${deckBaseUrl}/boards/5/stacks/10`,
-					body: { title: 'Renamed', order: 2 },
+					body: {
+						id: 10,
+						title: 'Renamed',
+						order: 2,
+						owner: 'alice',
+						color: 'FFFFFF',
+					},
 				});
-				expectDeckUrl(deckRequestOptions(request).url);
+				expect(request).toHaveBeenCalledTimes(2);
 			});
 
-			it('updateStack omits order when undefined', async () => {
+			it('updateStack preserves unchanged fields when order is undefined', async () => {
 				const { executeFunctions, request } = buildExecuteFunctions({
 					parameters: {
 						resource: 'deck',
@@ -989,11 +1061,24 @@ describe('NextCloud Node', () => {
 						// order intentionally not provided
 					},
 				});
-				request.mockResolvedValue({ id: 10 });
+				request
+					.mockResolvedValueOnce({
+						id: 10,
+						title: 'Todo',
+						order: 1,
+						owner: { uid: 'alice' },
+						color: 'FFFFFF',
+					})
+					.mockResolvedValueOnce({ id: 10 });
 
 				await executeNode(executeFunctions);
 
-				expect(deckRequestOptions(request).body).toEqual({ title: 'Renamed' });
+				expect(deckRequestOptions(request, 1).body).toMatchObject({
+					title: 'Renamed',
+					order: 1,
+					owner: 'alice',
+					color: 'FFFFFF',
+				});
 			});
 
 			it('deleteStack DELETEs /boards/{id}/stacks/{id}', async () => {
@@ -1177,18 +1262,19 @@ describe('NextCloud Node', () => {
 					method: 'PUT',
 					url: `${deckBaseUrl}/boards/5/stacks/10/cards/100`,
 					body: {
+						id: 100,
+						owner: { uid: 'alice' },
 						title: 'Updated',
 						description: 'New description',
 						type: 'plain',
 						order: 1,
 						duedate: '2024-12-31',
-						owner: 'alice',
 					},
 				});
 				expect(request).toHaveBeenCalledTimes(2);
 			});
 
-			it('updateCard falls back to an empty owner when the pre-flight has none', async () => {
+			it('updateCard preserves the pre-flight payload when no owner is present', async () => {
 				const { executeFunctions, request } = buildExecuteFunctions({
 					parameters: {
 						resource: 'deck',
@@ -1205,7 +1291,8 @@ describe('NextCloud Node', () => {
 
 				await executeNode(executeFunctions);
 
-				expect(deckRequestOptions(request, 1).body).toMatchObject({ owner: '' });
+				expect(deckRequestOptions(request, 1).body).toMatchObject({ id: 100, title: 'Updated' });
+				expect(deckRequestOptions(request, 1).body).not.toHaveProperty('owner');
 			});
 
 			it('deleteCard DELETEs /boards/{id}/stacks/{id}/cards/{id}', async () => {
@@ -1411,7 +1498,7 @@ describe('NextCloud Node', () => {
 				expectDeckUrl(deckRequestOptions(request).url);
 			});
 
-			it('updateLabel PUTs to /labels/{id} with stripped color', async () => {
+			it('updateLabel PUTs to /labels/{id} with preserved fields', async () => {
 				const { executeFunctions, request } = buildExecuteFunctions({
 					parameters: {
 						resource: 'deck',
@@ -1422,16 +1509,33 @@ describe('NextCloud Node', () => {
 						color: '#00FF00',
 					},
 				});
-				request.mockResolvedValue({ id: 42 });
+				request
+					.mockResolvedValueOnce({
+						id: 42,
+						title: 'Existing bug',
+						color: 'FFAA00',
+						description: 'keep me',
+					})
+					.mockResolvedValueOnce({ id: 42 });
 
 				await executeNode(executeFunctions);
 
 				expect(deckRequestOptions(request)).toMatchObject({
+					method: 'GET',
+					url: `${deckBaseUrl}/boards/5/labels/42`,
+				});
+				expect(deckRequestOptions(request, 1)).toMatchObject({
 					method: 'PUT',
 					url: `${deckBaseUrl}/boards/5/labels/42`,
-					body: { title: 'Bug', color: '00FF00' },
+					body: {
+						id: 42,
+						title: 'Bug',
+						color: '00FF00',
+						description: 'keep me',
+					},
 				});
-				expectDeckUrl(deckRequestOptions(request).url);
+				expect(request).toHaveBeenCalledTimes(2);
+				expectDeckUrl(deckRequestOptions(request, 1).url);
 			});
 
 			it('deleteLabel DELETEs /labels/{id}', async () => {
@@ -1517,6 +1621,58 @@ describe('NextCloud Node', () => {
 		});
 
 		describe('error handling', () => {
+			it('throws NodeOperationError when labelId is not numeric in assignLabel', async () => {
+				const { executeFunctions } = buildExecuteFunctions({
+					parameters: {
+						resource: 'deck',
+						operation: 'assignLabel',
+						boardId: '5',
+						stackId: '10',
+						cardId: '100',
+						labelId: 'not-a-number',
+					},
+				});
+
+				const promise = executeNode(executeFunctions);
+				await expect(promise).rejects.toThrow(NodeOperationError);
+				await expect(promise).rejects.toThrow('The label ID must be a valid number.');
+			});
+
+			it('throws NodeOperationError when labelId is not numeric in removeLabel', async () => {
+				const { executeFunctions } = buildExecuteFunctions({
+					parameters: {
+						resource: 'deck',
+						operation: 'removeLabel',
+						boardId: '5',
+						stackId: '10',
+						cardId: '100',
+						labelId: 'not-a-number',
+					},
+				});
+
+				const promise = executeNode(executeFunctions);
+				await expect(promise).rejects.toThrow(NodeOperationError);
+				await expect(promise).rejects.toThrow('The label ID must be a valid number.');
+			});
+
+			it('throws NodeOperationError when targetStackId is not numeric in moveCard', async () => {
+				const { executeFunctions } = buildExecuteFunctions({
+					parameters: {
+						resource: 'deck',
+						operation: 'moveCard',
+						boardId: '5',
+						stackId: '10',
+						cardId: '100',
+						targetStackId: 'not-a-number',
+						order: 2,
+					},
+				});
+
+				const promise = executeNode(executeFunctions);
+				await expect(promise).rejects.toThrow(NodeOperationError);
+				await expect(promise).rejects.toThrow('The stack ID must be a valid number.');
+			});
+
 			it('throws NodeOperationError for an unknown deck operation', async () => {
 				const { executeFunctions } = buildExecuteFunctions({
 					parameters: { resource: 'deck', operation: 'unknownOp' },

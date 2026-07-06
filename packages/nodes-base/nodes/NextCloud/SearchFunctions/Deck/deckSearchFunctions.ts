@@ -21,28 +21,23 @@ export async function getBoards(
 	const ctx = await getNextCloudContext(this);
 	if (!ctx) return { results: [] };
 
-	try {
-		const boards = (await this.helpers.httpRequest({
-			method: 'GET',
-			url: `${ctx.baseUrl}/index.php/apps/deck/api/v1.1/boards`,
-			headers: {
-				'OCS-APIRequest': 'true',
-				Accept: 'application/json',
-				Authorization: `Basic ${ctx.basicAuth}`,
-			},
-			json: true,
-		})) as IDataObject[];
+	const boards = (await this.helpers.httpRequest({
+		method: 'GET',
+		url: `${ctx.baseUrl}/index.php/apps/deck/api/v1.1/boards`,
+		headers: {
+			'OCS-APIRequest': 'true',
+			Accept: 'application/json',
+			Authorization: `Basic ${ctx.basicAuth}`,
+		},
+		json: true,
+	})) as IDataObject[];
 
-		let results = (boards ?? []).map(toDeckSearchItem);
-		if (filter) {
-			const needle = filter.toLowerCase();
-			results = results.filter((r) => r.name.toLowerCase().includes(needle));
-		}
-		return { results };
-	} catch (error) {
-		console.error('NextCloud Deck getBoards failed:', (error as Error).message);
-		return { results: [] };
+	let results = (boards ?? []).map(toDeckSearchItem);
+	if (filter) {
+		const needle = filter.toLowerCase();
+		results = results.filter((r) => r.name.toLowerCase().includes(needle));
 	}
+	return { results };
 }
 
 export async function getStacks(
@@ -55,28 +50,23 @@ export async function getStacks(
 	const ctx = await getNextCloudContext(this);
 	if (!ctx) return { results: [] };
 
-	try {
-		const stacks = (await this.helpers.httpRequest({
-			method: 'GET',
-			url: `${ctx.baseUrl}/index.php/apps/deck/api/v1.1/boards/${encodeURIComponent(boardId)}/stacks`,
-			headers: {
-				'OCS-APIRequest': 'true',
-				Accept: 'application/json',
-				Authorization: `Basic ${ctx.basicAuth}`,
-			},
-			json: true,
-		})) as IDataObject[];
+	const stacks = (await this.helpers.httpRequest({
+		method: 'GET',
+		url: `${ctx.baseUrl}/index.php/apps/deck/api/v1.1/boards/${encodeURIComponent(boardId)}/stacks`,
+		headers: {
+			'OCS-APIRequest': 'true',
+			Accept: 'application/json',
+			Authorization: `Basic ${ctx.basicAuth}`,
+		},
+		json: true,
+	})) as IDataObject[];
 
-		let results = (stacks ?? []).map(toDeckSearchItem);
-		if (filter) {
-			const needle = filter.toLowerCase();
-			results = results.filter((r) => r.name.toLowerCase().includes(needle));
-		}
-		return { results };
-	} catch (error) {
-		console.error('NextCloud Deck getStacks failed:', (error as Error).message);
-		return { results: [] };
+	let results = (stacks ?? []).map(toDeckSearchItem);
+	if (filter) {
+		const needle = filter.toLowerCase();
+		results = results.filter((r) => r.name.toLowerCase().includes(needle));
 	}
+	return { results };
 }
 
 export async function getCards(
@@ -103,32 +93,27 @@ export async function getCards(
 	const ctx = await getNextCloudContext(this);
 	if (!ctx) return { results: [] };
 
-	try {
-		// Fetch the STACK (not standalone /cards endpoint â€” that returns 405)
-		const stack = (await this.helpers.request({
-			method: 'GET',
-			url: `${ctx.baseUrl}/index.php/apps/deck/api/v1.1/boards/${encodeURIComponent(boardId)}/stacks/${encodeURIComponent(stackId)}`,
-			headers: {
-				'OCS-APIRequest': 'true',
-				Accept: 'application/json',
-				Authorization: `Basic ${ctx.basicAuth}`,
-			},
-			json: true,
-		})) as IDataObject;
+	// Fetch the STACK (not standalone /cards endpoint — that returns 405)
+	const stack = (await this.helpers.request({
+		method: 'GET',
+		url: `${ctx.baseUrl}/index.php/apps/deck/api/v1.1/boards/${encodeURIComponent(boardId)}/stacks/${encodeURIComponent(stackId)}`,
+		headers: {
+			'OCS-APIRequest': 'true',
+			Accept: 'application/json',
+			Authorization: `Basic ${ctx.basicAuth}`,
+		},
+		json: true,
+	})) as IDataObject;
 
-		// Extract cards from the stack response
-		let results = ((stack?.cards as IDataObject[]) ?? []).map(toDeckSearchItem);
+	// Extract cards from the stack response
+	let results = ((stack?.cards as IDataObject[]) ?? []).map(toDeckSearchItem);
 
-		if (filter) {
-			const needle = filter.toLowerCase();
-			results = results.filter((r) => r.name.toLowerCase().includes(needle));
-		}
-
-		return { results };
-	} catch (error) {
-		console.error('NextCloud Deck getCards failed:', (error as Error).message);
-		return { results: [] };
+	if (filter) {
+		const needle = filter.toLowerCase();
+		results = results.filter((r) => r.name.toLowerCase().includes(needle));
 	}
+
+	return { results };
 }
 
 export async function getLabels(
@@ -141,26 +126,21 @@ export async function getLabels(
 	const ctx = await getNextCloudContext(this);
 	if (!ctx) return { results: [] };
 
-	try {
-		const board = (await this.helpers.httpRequest({
-			method: 'GET',
-			url: `${ctx.baseUrl}/index.php/apps/deck/api/v1.1/boards/${encodeURIComponent(boardId)}`,
-			headers: {
-				'OCS-APIRequest': 'true',
-				Accept: 'application/json',
-				Authorization: `Basic ${ctx.basicAuth}`,
-			},
-			json: true,
-		})) as IDataObject;
+	const board = (await this.helpers.httpRequest({
+		method: 'GET',
+		url: `${ctx.baseUrl}/index.php/apps/deck/api/v1.1/boards/${encodeURIComponent(boardId)}`,
+		headers: {
+			'OCS-APIRequest': 'true',
+			Accept: 'application/json',
+			Authorization: `Basic ${ctx.basicAuth}`,
+		},
+		json: true,
+	})) as IDataObject;
 
-		let results = ((board?.labels as IDataObject[]) ?? []).map(toDeckSearchItem);
-		if (filter) {
-			const needle = filter.toLowerCase();
-			results = results.filter((r) => r.name.toLowerCase().includes(needle));
-		}
-		return { results };
-	} catch (error) {
-		console.error('NextCloud Deck getLabels failed:', (error as Error).message);
-		return { results: [] };
+	let results = ((board?.labels as IDataObject[]) ?? []).map(toDeckSearchItem);
+	if (filter) {
+		const needle = filter.toLowerCase();
+		results = results.filter((r) => r.name.toLowerCase().includes(needle));
 	}
+	return { results };
 }
