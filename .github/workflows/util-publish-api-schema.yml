@@ -1,0 +1,68 @@
+name: 'Util: Publish API Schema'
+
+on:
+  # Publish when the Public API source specs (or the bundler version) change
+  push:
+    branches:
+      - master
+    paths:
+      - 'packages/cli/src/public-api/**/*.{css,yaml,yml}'
+      # package.json / lockfile catch a Redocly CLI bump, the only other thing
+      # that can change the bundled output
+      - 'packages/cli/package.json'
+      - 'pnpm-lock.yaml'
+
+  # Allow manual re-publish
+  workflow_dispatch:
+
+jobs:
+  publish-api-schema:
+    name: Cloudflare Pages
+    if: github.repository == 'n8n-io/n8n'
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    permissions:
+      contents: read
+      deployments: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js and install dependencies
+        uses: ./.github/actions/setup-nodejs
+        with:
+          build-command: ''
+
+      - name: Build Public API Schema
+        run: pnpm run build:data
+        working-directory: ./packages/cli
+
+      - name: Stage schema for publishing
+        env:
+          SCHEMA_PATH: packages/cli/dist/public-api/v1/openapi.yml
+        run: |
+          if [[ ! -f "$SCHEMA_PATH" ]]; then
+            echo "::error::OpenAPI schema not found at $SCHEMA_PATH after build."
+            exit 1
+          fi
+
+          # Publish a clean directory holding only the schema, at a versioned
+          # path that mirrors the API's own /v1/ route
+          mkdir -p api-schema-publish/v1
+          cp "$SCHEMA_PATH" api-schema-publish/v1/openapi.yml
+
+          # text/yaml so browsers render it inline instead of downloading it
+          cat > api-schema-publish/_headers <<'EOF'
+          /v1/openapi.yml
+            Content-Type: text/yaml; charset=utf-8
+          EOF
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@da0e0dfe58b7a431659754fdf3f186c529afbe65 # v3.14.1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy api-schema-publish --project-name=n8n-openapi --branch=${{ github.ref_name }} --commit-hash=${{ github.sha }}
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
