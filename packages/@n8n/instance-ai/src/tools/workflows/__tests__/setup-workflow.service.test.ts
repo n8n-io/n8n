@@ -425,7 +425,7 @@ describe('buildSetupRequests', () => {
 		expect(result[0].node.credentials?.slackApi).toBeUndefined();
 	});
 
-	it('prefers n8n Connect over a stored credential when the type is gateway-supported', async () => {
+	it('prefers a stored credential over n8n Connect when the user already has one', async () => {
 		(context.credentialService.list as Mock).mockResolvedValue([
 			{ id: 'cred-1', name: 'My Slack', updatedAt: '2025-01-01T00:00:00.000Z' },
 		]);
@@ -436,11 +436,12 @@ describe('buildSetupRequests', () => {
 		const node = makeNode();
 		const result = await buildSetupRequests(context, node);
 
+		// User has a stored credential of this type — it wins; the managed
+		// gateway is never applied over a saved key.
 		expect(result[0].isAutoApplied).toBe(true);
 		expect(result[0].node.credentials?.slackApi).toEqual({
-			id: null,
-			name: 'n8n Connect',
-			__aiGatewayManaged: true,
+			id: 'cred-1',
+			name: 'My Slack',
 		});
 	});
 
@@ -480,22 +481,26 @@ describe('buildSetupRequests', () => {
 		});
 	});
 
-	it('emits gateway_credential_applied when a stored credential exists for the type but the node has none assigned', async () => {
+	it('does not auto-apply n8n Connect when a stored credential exists for the type', async () => {
 		const track = vi.fn();
 		(context.credentialService.list as Mock).mockResolvedValue([
 			{ id: 'cred-1', name: 'My Slack', updatedAt: '2025-01-01T00:00:00.000Z' },
 		]);
+		const isAiGatewayCredentialType = vi.fn().mockResolvedValue(true);
 		(
 			context.credentialService as unknown as { isAiGatewayCredentialType: Mock }
-		).isAiGatewayCredentialType = vi.fn().mockResolvedValue(true);
+		).isAiGatewayCredentialType = isAiGatewayCredentialType;
 		(context as unknown as { trackTelemetry: Mock }).trackTelemetry = track;
 
 		await buildSetupRequests(context, makeNode());
 
-		expect(track).toHaveBeenCalledWith('instance_ai_gateway_credential_applied', {
-			credentialType: 'slackApi',
-			source: 'auto',
-		});
+		// Stored key wins — the gateway lookup is skipped and no gateway
+		// auto-apply telemetry fires.
+		expect(isAiGatewayCredentialType).not.toHaveBeenCalled();
+		expect(track).not.toHaveBeenCalledWith(
+			'instance_ai_gateway_credential_applied',
+			expect.anything(),
+		);
 	});
 
 	it('uses credential cache to avoid duplicate fetches', async () => {

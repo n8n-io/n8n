@@ -336,11 +336,15 @@ async function resolveCredentialState(
 	let isAutoApplied = false;
 	let autoAppliedGateway: true | undefined;
 
-	// When the node has no credential assigned yet, prefer n8n Connect over
-	// stored credentials when the type is covered. Explicit user choices
-	// (stored credential ID on the node or `__aiGatewayManaged`) win via
-	// `hasExistingOnNode` above.
-	if (!hasExistingOnNode && context.credentialService.isAiGatewayCredentialType) {
+	// Auto-apply n8n Connect only when the user has no credentials of their own
+	// for this type: none assigned on the node (`hasExistingOnNode`) and none
+	// stored (`existingCredentials`). Any user-defined credential wins — we never
+	// override a saved key with the managed gateway.
+	if (
+		!hasExistingOnNode &&
+		existingCredentials.length === 0 &&
+		context.credentialService.isAiGatewayCredentialType
+	) {
 		const gatewaySupported = await context.credentialService
 			.isAiGatewayCredentialType(credentialType)
 			.catch(() => false);
