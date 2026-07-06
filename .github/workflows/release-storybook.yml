@@ -1,4 +1,4 @@
-name: 'Test: Visual Storybook'
+name: 'Release: Storybook'
 
 on:
   schedule:
