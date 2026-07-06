@@ -2325,6 +2325,8 @@
 	"nodeView.focusPanel.missingParameter": "This parameter is no longer visible on the node. A related parameter was likely changed, removing this one.",
 	"nodeView.focusPanel.markdownPreview.show": "Edit as markdown",
 	"nodeView.focusPanel.markdownPreview.hide": "Edit as plain text",
+	"nodeView.focusPanel.markdownPreview.previewExpression": "Preview as markdown",
+	"nodeView.focusPanel.markdownPreview.showExpression": "Back to expression",
 	"nodeView.itLooksLikeYouHaveBeenEditingSomething": "It looks like you made some edits. If you leave before saving, your changes might be lost.",
 	"nodeView.loadingTemplate": "Loading template",
 	"nodeView.moreInfo": "More info",

@@ -38,6 +38,7 @@ import type { INodeUi, TargetNodeParameterContext } from '@/Interface';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { computedAsync } from '@vueuse/core';
 import { useExecutionData } from '@/features/execution/executions/composables/useExecutionData';
+import RunDataMarkdown from '@/features/ndv/runData/components/RunDataMarkdown.vue';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import ExperimentalNodeDetailsDrawer from '@/features/workflows/canvas/experimental/components/ExperimentalNodeDetailsDrawer.vue';
@@ -223,16 +224,28 @@ const shouldCaptureForPosthog = computed(
 
 const isReadOnly = computed(() => props.isCanvasReadOnly || isDisabled.value);
 
-// Markdown preview only makes sense for plain string params (no dedicated editor, not an expression)
+// Markdown only makes sense for plain string params (no dedicated code/html/sql editor).
+// Plain strings render an editable markdown editor; expressions render a read-only preview
+// of the resolved output (editing them as markdown would break the expression syntax).
 const canRenderMarkdown = computed(
 	() =>
 		!!resolvedParameter.value &&
 		typeof resolvedParameter.value.value === 'string' &&
 		resolvedParameter.value.parameter.type === 'string' &&
 		!editorType.value &&
-		!expressionModeEnabled.value &&
 		isDisplayed.value,
 );
+
+const markdownToggleTitle = computed(() => {
+	if (expressionModeEnabled.value) {
+		return markdownMode.value
+			? locale.baseText('nodeView.focusPanel.markdownPreview.showExpression')
+			: locale.baseText('nodeView.focusPanel.markdownPreview.previewExpression');
+	}
+	return markdownMode.value
+		? locale.baseText('nodeView.focusPanel.markdownPreview.hide')
+		: locale.baseText('nodeView.focusPanel.markdownPreview.show');
+});
 
 const resolvedAdditionalExpressionData = computed(() => {
 	return {
@@ -266,7 +279,7 @@ const emptySubtitle = computed(() =>
 		: locale.baseText('nodeView.focusPanel.noParameters.subtitle'),
 );
 
-const { resolvedExpression } = useResolvedExpression({
+const { resolvedExpression, resolvedExpressionString } = useResolvedExpression({
 	expression,
 	additionalData: resolvedAdditionalExpressionData,
 	stringifyObject:
@@ -495,11 +508,7 @@ function onRenameNode(value: string) {
 							type="tertiary"
 							size="small"
 							text
-							:title="
-								markdownMode
-									? locale.baseText('nodeView.focusPanel.markdownPreview.hide')
-									: locale.baseText('nodeView.focusPanel.markdownPreview.show')
-							"
+							:title="markdownToggleTitle"
 							data-test-id="focus-panel-markdown-toggle"
 							@click="markdownMode = !markdownMode"
 						/>
@@ -520,17 +529,25 @@ function onRenameNode(value: string) {
 							</N8nText>
 						</div>
 					</div>
-					<ExpressionEditorModalInput
-						v-else-if="expressionModeEnabled"
-						ref="inputField"
-						v-model="inputValue"
-						:class="$style.editor"
-						:is-read-only="isReadOnly"
-						:path="resolvedParameter.parameterPath"
-						data-test-id="expression-modal-input"
-						:target-node-parameter-context="targetNodeParameterContext"
-						@change="onInputChange($event.value)"
-					/>
+					<template v-else-if="expressionModeEnabled">
+						<RunDataMarkdown
+							v-if="markdownMode"
+							:input-markdown="resolvedExpressionString"
+							:class="$style.heightFull"
+							data-test-id="focus-panel-markdown-preview"
+						/>
+						<ExpressionEditorModalInput
+							v-else
+							ref="inputField"
+							v-model="inputValue"
+							:class="$style.editor"
+							:is-read-only="isReadOnly"
+							:path="resolvedParameter.parameterPath"
+							data-test-id="expression-modal-input"
+							:target-node-parameter-context="targetNodeParameterContext"
+							@change="onInputChange($event.value)"
+						/>
+					</template>
 					<template v-else-if="['json', 'string'].includes(resolvedParameter.parameter.type)">
 						<CodeNodeEditor
 							v-if="editorType === 'codeNodeEditor'"
