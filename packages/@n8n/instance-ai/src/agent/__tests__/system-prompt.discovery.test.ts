@@ -54,15 +54,15 @@ describe('getSystemPrompt — browser/computer-use discoverability', () => {
 		it('still includes proactive suggestions when computer use is set up but disconnected', () => {
 			const prompt = getSystemPrompt({ localGateway: { status: 'disconnected' } });
 
-			expect(prompt).toContain('When to suggest or use Computer Use');
-			expect(prompt).toContain('Credential / OAuth setup');
+			expect(prompt).toContain('Proactively suggest connecting');
+			expect(prompt).toContain('credential/OAuth/API-key setup');
 		});
 
 		it('still includes proactive suggestions when computer use has not been set up', () => {
 			const prompt = getSystemPrompt({ localGateway: { status: 'disabled' } });
 
-			expect(prompt).toContain('When to suggest or use Computer Use');
-			expect(prompt).toContain('Credential / OAuth setup');
+			expect(prompt).toContain('Proactively suggest connecting');
+			expect(prompt).toContain('credential/OAuth/API-key setup');
 		});
 	});
 
