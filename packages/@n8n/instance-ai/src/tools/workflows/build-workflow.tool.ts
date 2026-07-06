@@ -47,6 +47,8 @@ import {
 	preserveExistingSetupValues,
 } from './workflow-json-utils';
 import { compileWorkflowSource } from './workflow-source-compiler';
+import { emitTraceOnlyChildRun } from '../../tracing/langsmith-tracing';
+import { COMPILED_WORKFLOW_TRACE_RUN_NAME } from '../tool-ids';
 import { partitionWarnings, type ValidationWarning } from './workflow-validation-warnings';
 import { INSTANCE_AI_SKILLS_DIR } from '../../skills/runtime-skills';
 import type { InstanceAiContext } from '../../types';
@@ -54,6 +56,10 @@ import { BuildFailureTracker } from '../../workflow-builder/build-failure-tracke
 import { createRemediation } from '../../workflow-loop/remediation';
 import { remediationMetadataSchema } from '../../workflow-loop/workflow-loop-state';
 import { writeWorkspaceFile } from '../../workspace/workspace-files';
+
+/** Over this serialized length only a `truncated` marker is emitted; the seed
+ *  consumer falls back to source replay. */
+const MAX_COMPILED_WORKFLOW_TRACE_CHARS = 1_000_000;
 
 const confirmationSuspendSchema = z.object({
 	requestId: z.string(),
@@ -738,6 +744,36 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 						workflowVersionId: saved.versionId,
 						sourceHash,
 					});
+					// Trace-only compiled-JSON event for eval seed reconstruction — never part
+					// of the tool result, so it never enters the agent's context.
+					try {
+						const payload = { workflowId: saved.id, sourceHash, workflow: json };
+						const withinSizeGate =
+							JSON.stringify(payload).length <= MAX_COMPILED_WORKFLOW_TRACE_CHARS;
+						const emittedVia = await emitTraceOnlyChildRun(
+							context.tracing,
+							{
+								name: COMPILED_WORKFLOW_TRACE_RUN_NAME,
+								// 'chain' like other bookkeeping spans (HITL) — a tool-typed run
+								// reads as a real agent tool call in trace UIs.
+								runType: 'chain',
+								canonicalName: `instance-ai.${COMPILED_WORKFLOW_TRACE_RUN_NAME}`,
+								tags: [COMPILED_WORKFLOW_TRACE_RUN_NAME],
+								metadata: { workflow_id: saved.id, source_hash: sourceHash },
+							},
+							withinSizeGate
+								? { outputs: payload, rawOutputs: true }
+								: { outputs: { workflowId: saved.id, sourceHash, truncated: true } },
+						);
+						context.logger.debug(
+							`[build-workflow] compiled-workflow trace event: ${emittedVia}${withinSizeGate ? '' : ' (payload over size gate, emitted truncated marker)'}`,
+						);
+					} catch (error) {
+						// Best-effort: tracing must never break a build.
+						context.logger.debug(
+							`[build-workflow] compiled-workflow trace event failed: ${error instanceof Error ? error.message : String(error)}`,
+						);
+					}
 					const outcome = withDeterministicRouting({
 						workItemId: resolvedWorkItemId,
 						...(runId ? { runId } : {}),
