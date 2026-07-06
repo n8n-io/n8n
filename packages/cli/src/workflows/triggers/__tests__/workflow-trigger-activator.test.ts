@@ -185,6 +185,7 @@ describe('WorkflowTriggerActivator', () => {
 		const callOrder: string[] = [];
 		vi.spyOn(WorkflowExpression.prototype, 'acquireIsolate').mockImplementation(async () => {
 			callOrder.push('acquire');
+			return true;
 		});
 		vi.spyOn(WorkflowExpression.prototype, 'releaseIsolate').mockImplementation(async () => {
 			callOrder.push('release');
@@ -265,6 +266,7 @@ describe('WorkflowTriggerActivator', () => {
 		const callOrder: string[] = [];
 		vi.spyOn(WorkflowExpression.prototype, 'acquireIsolate').mockImplementation(async () => {
 			callOrder.push('acquire');
+			return true;
 		});
 		vi.spyOn(WorkflowExpression.prototype, 'releaseIsolate').mockImplementation(async () => {
 			callOrder.push('release');
@@ -723,7 +725,7 @@ describe('WorkflowTriggerActivator', () => {
 			errorReporter?: ErrorReporter;
 			workflowStaticDataService?: WorkflowStaticDataService;
 		}) {
-			vi.spyOn(WorkflowExpression.prototype, 'acquireIsolate').mockResolvedValue(undefined);
+			vi.spyOn(WorkflowExpression.prototype, 'acquireIsolate').mockResolvedValue(true);
 			vi.spyOn(WorkflowExpression.prototype, 'releaseIsolate').mockResolvedValue(undefined);
 			vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
 				mock<IWorkflowExecuteAdditionalData>(),
