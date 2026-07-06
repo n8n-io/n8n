@@ -1,7 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type express from 'express';
-import { mock, type MockProxy } from 'vitest-mock-extended';
 import {
 	BinaryDataService,
 	ErrorReporter,
@@ -14,19 +13,18 @@ vi.mock('n8n-core', async () => ({
 	isWebhookHtmlSandboxingDisabled: vi.fn(),
 	getHtmlSandboxCSP: vi.fn(),
 }));
+import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type {
 	Workflow,
 	INode,
 	IDataObject,
 	IWebhookResponseData,
-	IDeferredPromise,
 	IN8nHttpFullResponse,
 	IWorkflowBase,
 	IRunExecutionData,
 	IExecuteData,
 } from 'n8n-workflow';
 import {
-	createDeferredPromise,
 	FORM_NODE_TYPE,
 	WAIT_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
@@ -36,6 +34,7 @@ import {
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
 import { finished } from 'stream/promises';
+import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import {
 	autoDetectResponseMode,
@@ -391,7 +390,7 @@ describe('handleHostedChatResponse', () => {
 			end: vi.fn(),
 		} as unknown as express.Response;
 		const responseMode = 'hostedChat';
-		let didSendResponse = false;
+		const didSendResponse = false;
 		const executionId = '123';
 		const resumeToken = 'a'.repeat(64);
 
@@ -415,7 +414,7 @@ describe('handleHostedChatResponse', () => {
 			end: vi.fn(),
 		} as unknown as express.Response;
 		const executionId = 'testExecutionId';
-		let didSendResponse = false;
+		const didSendResponse = false;
 		const responseMode = 'responseNode';
 
 		const result = handleHostedChatResponse(res, responseMode, didSendResponse, executionId);
@@ -431,7 +430,7 @@ describe('handleHostedChatResponse', () => {
 			end: vi.fn(),
 		} as unknown as express.Response;
 		const executionId = 'testExecutionId';
-		let didSendResponse = true;
+		const didSendResponse = true;
 		const responseMode = 'hostedChat';
 
 		const result = handleHostedChatResponse(res, responseMode, didSendResponse, executionId);

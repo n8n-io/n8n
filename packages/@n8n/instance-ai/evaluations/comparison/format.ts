@@ -55,6 +55,27 @@ interface FormatOptions {
 	/** Absolute green-gate verdict for curated tiers. When set, the comment renders
 	 *  the gate verdict in place of the baseline comparison. */
 	gate?: GateResult;
+	/** Run-level pass@k / pass^k (terminal k = totalRuns) averaged over measured
+	 *  units (scenarios + build expectations) — same numbers as
+	 *  `summary.passAtK`/`summary.passHatK` in eval-results.json. */
+	passMetrics?: { passAtK: number; passHatK: number };
+	/** LangSmith experiment URL, when the run recorded one. */
+	experimentUrl?: string;
+}
+
+/** `_pass@k … · pass^k … · [LangSmith experiment](…)_` — everything optional. */
+function formatRunMetaLine(totalRuns: number, options: FormatOptions): string | undefined {
+	const parts: string[] = [];
+	if (options.passMetrics) {
+		const { passAtK, passHatK } = options.passMetrics;
+		parts.push(
+			`pass@${String(totalRuns)} ${(passAtK * 100).toFixed(1)}% · pass^${String(totalRuns)} ${(passHatK * 100).toFixed(1)}%`,
+		);
+	}
+	if (options.experimentUrl) {
+		parts.push(`[LangSmith experiment](${options.experimentUrl})`);
+	}
+	return parts.length > 0 ? `_${parts.join(' · ')}_` : undefined;
 }
 
 function evaluatedBuildExpectations(tc: TestCaseAggregation) {
@@ -111,10 +132,15 @@ export function formatComparisonMarkdown(
 	lines.push('');
 	lines.push(renderRerunCallout(options.rerun));
 	lines.push('');
+	const runMetaLine = formatRunMetaLine(evaluation.totalRuns, options);
 	if (gate) {
 		lines.push(formatGateAlertMarkdown(gate));
 		lines.push('');
 		lines.push(...renderGateSummaryMarkdown(gate));
+		if (runMetaLine) {
+			lines.push(runMetaLine);
+			lines.push('');
+		}
 		// Failures (full judge text) go right under the verdict in gate mode — the point
 		// is to see what failed at a glance, not hunt for it at the bottom of the comment.
 		lines.push(...renderFailureDetails(evaluation, options.slugByTestCase));
@@ -122,6 +148,7 @@ export function formatComparisonMarkdown(
 		lines.push(formatTopAlert(outcome));
 		lines.push('');
 		lines.push(formatAggregateBlock(evaluation, comparison));
+		if (runMetaLine) lines.push(runMetaLine);
 		lines.push('');
 	}
 

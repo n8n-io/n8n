@@ -78,8 +78,8 @@ import {
 } from '../harness/runner';
 import {
 	extractErrorMessage,
-	isTransientNetworkError,
 	MAX_EXEC_ATTEMPTS,
+	shouldRetryScenarioExecution,
 } from '../harness/transient-error';
 import {
 	BUILD_ONLY_SCENARIO_NAME,
@@ -391,6 +391,7 @@ async function main(): Promise<void> {
 
 		let evaluation: MultiRunEvaluation;
 		let experimentName: string | undefined;
+		let experimentUrl: string | undefined;
 		let outcome: ComparisonOutcome | undefined;
 		let slugByTestCase: Map<WorkflowTestCase, string> | undefined;
 		const mcpBuildSpend: McpBuildSpend[] = [];
@@ -409,6 +410,7 @@ async function main(): Promise<void> {
 			});
 			evaluation = langsmithRun.evaluation;
 			experimentName = langsmithRun.experimentName;
+			experimentUrl = langsmithRun.experimentUrl;
 			outcome = langsmithRun.outcome;
 			slugByTestCase = langsmithRun.slugByTestCase;
 		} else {
@@ -442,6 +444,7 @@ async function main(): Promise<void> {
 			ciRerunHint(),
 			gate,
 			mcpBuildSpend,
+			experimentUrl,
 		);
 		console.log(`Results:    ${jsonPath}`);
 		console.log(`PR comment: ${prCommentPath}`);
@@ -476,6 +479,7 @@ async function main(): Promise<void> {
 async function runWithLangSmith(config: RunConfig): Promise<{
 	evaluation: MultiRunEvaluation;
 	experimentName: string;
+	experimentUrl: string | undefined;
 	outcome: ComparisonOutcome | undefined;
 	slugByTestCase: Map<WorkflowTestCase, string>;
 }> {
@@ -859,7 +863,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 				break;
 			} catch (error: unknown) {
 				const errorMessage = extractErrorMessage(error);
-				if (isTransientNetworkError(errorMessage) && attempt < MAX_EXEC_ATTEMPTS) {
+				if (shouldRetryScenarioExecution(errorMessage, attempt)) {
 					logger.warn(
 						`    [${scenario.name}] execution attempt ${attempt}/${MAX_EXEC_ATTEMPTS} failed (${errorMessage}); retrying`,
 					);
@@ -899,6 +903,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		return {
 			buildSuccess: true,
 			workflowId: build.workflowId,
+			scenarioWorkflowId: result.workflowId,
 			passed: result.success,
 			score: result.score,
 			reasoning: result.reasoning,
@@ -1059,9 +1064,15 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			testCasesWithFiles.map(({ testCase, fileSlug }) => [testCase, fileSlug]),
 		);
 
+		// Best-effort: the report link is nice-to-have, never run-fatal.
+		const experimentUrl = await lsClient
+			.getProjectUrl({ projectName: experimentResults.experimentName })
+			.catch(() => undefined);
+
 		return {
 			evaluation,
 			experimentName: experimentResults.experimentName,
+			experimentUrl,
 			outcome,
 			slugByTestCase,
 		};
@@ -1469,6 +1480,7 @@ function writeEvalResults(
 	rerun: RerunHint | undefined,
 	gate: GateResult | undefined,
 	mcpBuildSpend?: McpBuildSpend[],
+	experimentUrl?: string,
 ): { jsonPath: string; prCommentPath: string } {
 	const { totalRuns, testCases } = evaluation;
 	const metrics = computeAggregateMetrics(evaluation);
@@ -1485,6 +1497,7 @@ function writeEvalResults(
 		duration,
 		totalRuns,
 		experimentName,
+		experimentUrl,
 		summary: {
 			testCases: testCases.length,
 			built: metrics.built,
@@ -1534,7 +1547,7 @@ function writeEvalResults(
 				passAtK: terminalRate(sa.passAtK),
 				passHatK: terminalRate(sa.passHatK),
 				runs: sa.runs.map((sr, runIndex) => ({
-					workflowId: tc.runs[runIndex]?.workflowId ?? null,
+					workflowId: sr.workflowId ?? tc.runs[runIndex]?.workflowId ?? null,
 					passed: sr.success,
 					score: sr.score,
 					reasoning: sr.reasoning,
@@ -1558,7 +1571,14 @@ function writeEvalResults(
 	const prCommentPath = join(targetDir, 'eval-pr-comment.md');
 	writeFileSync(
 		prCommentPath,
-		formatComparisonMarkdown(evaluation, outcome, { commitSha, slugByTestCase, rerun, gate }),
+		formatComparisonMarkdown(evaluation, outcome, {
+			commitSha,
+			slugByTestCase,
+			rerun,
+			gate,
+			passMetrics: { passAtK: metrics.passAtK, passHatK: metrics.passHatK },
+			experimentUrl,
+		}),
 	);
 
 	return { jsonPath, prCommentPath };

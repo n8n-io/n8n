@@ -34,3 +34,41 @@ export function extractErrorMessage(error: unknown): string {
 export function isTransientNetworkError(message: string): boolean {
 	return /fetch failed|ECONNRESET|ECONNREFUSED|ETIMEDOUT|EAI_AGAIN|socket hang up/i.test(message);
 }
+
+/**
+ * Max attempts for a scenario execution that hit the client-side timeout.
+ * Timeouts are retried at most once — unlike cheap network blips, each retry
+ * can cost the full scenario budget, but a single retry recovers the common
+ * case (provider contention slowing LLM mock calls on a busy lane) without
+ * recording a framework_issue for an already-built workflow.
+ */
+export const MAX_TIMEOUT_ATTEMPTS = 2;
+
+/**
+ * True when a scenario execution died on the client-side abort timeout
+ * (`AbortSignal.timeout` in the n8n REST client surfaces as TimeoutError:
+ * "The operation was aborted due to timeout").
+ */
+export function isExecutionTimeout(message: string): boolean {
+	return /operation was aborted|TimeoutError/i.test(message);
+}
+
+/** Retry decision for one failed scenario-execution attempt. */
+export function shouldRetryScenarioExecution(message: string, attempt: number): boolean {
+	if (isTransientNetworkError(message)) return attempt < MAX_EXEC_ATTEMPTS;
+	if (isExecutionTimeout(message)) return attempt < MAX_TIMEOUT_ATTEMPTS;
+	return false;
+}
+
+/**
+ * Eval-DB races abort an execution before any node runs. Two known shapes:
+ * `SQLITE_CONSTRAINT: FOREIGN KEY constraint failed` and `Workflow <id> not
+ * found or not accessible` (lookup misses that outlast the server's own 1.7s
+ * retry under concurrent eval load). Both come back as a successful HTTP
+ * response with `success: false`, so the throw-based retry above never sees
+ * them — yet they are infrastructure flakes, not builder or mock defects, and
+ * they double-count across every unit of the affected iteration.
+ */
+export function isTransientExecutionAbort(errors: string[] | undefined): boolean {
+	return (errors ?? []).some((e) => /SQLITE_CONSTRAINT|not found or not accessible/i.test(e));
+}
