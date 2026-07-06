@@ -2464,10 +2464,6 @@ importers:
         version: 3.1.0(typescript@6.0.2)(vitest@4.1.9)
 
   packages/@n8n/json-schema-to-zod:
-    dependencies:
-      zod:
-        specifier: 3.25.67
-        version: 3.25.67
     devDependencies:
       '@n8n/typescript-config':
         specifier: workspace:*
@@ -2487,6 +2483,9 @@ importers:
       vitest-mock-extended:
         specifier: 'catalog:'
         version: 3.1.0(typescript@6.0.2)(vitest@4.1.9)
+      zod:
+        specifier: 3.25.67
+        version: 3.25.67
 
   packages/@n8n/local-gateway:
     dependencies:

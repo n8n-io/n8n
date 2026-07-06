@@ -122,6 +122,16 @@ export function buildMcpToolName(serverName: string, toolName: string): string {
 	return maxPrefixLen > 0 ? `${sanitizedServerName.slice(0, maxPrefixLen)}_${toolName}` : toolName;
 }
 
+export function isZodObjectSchema(schema: z.ZodTypeAny): schema is z.ZodObject<z.ZodRawShape> {
+	const def: unknown = schema?._def;
+	return (
+		typeof def === 'object' &&
+		def !== null &&
+		'typeName' in def &&
+		def.typeName === z.ZodFirstPartyTypeKind.ZodObject
+	);
+}
+
 export function mcpToolToDynamicTool(
 	tool: McpTool,
 	onCallTool: DynamicStructuredToolInput['func'],
@@ -129,8 +139,7 @@ export function mcpToolToDynamicTool(
 	const rawSchema = convertJsonSchemaToZod(tool.inputSchema);
 
 	// Ensure we always have an object schema for structured tools
-	const objectSchema =
-		rawSchema instanceof z.ZodObject ? rawSchema : z.object({ value: rawSchema });
+	const objectSchema = isZodObjectSchema(rawSchema) ? rawSchema : z.object({ value: rawSchema });
 
 	return new DynamicStructuredTool({
 		name: tool.name,
