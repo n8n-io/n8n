@@ -1,0 +1,27 @@
+packages/@n8n/db/src/repositories/workflow-publication-outbox.repository.ts
+  s_7f46b323ae9603::t_e03b8917acad86 369-372,374,380,382-387
+packages/cli/test/integration/database/repositories/workflow-publication-outbox.repository.test.ts
+  s_7f46b323ae9603::t_47f166d5918ea0 433-434,440-442,452,454-460,463-468
+packages/cli/src/metrics/prometheus/workflow-publication-metrics.service.ts
+  s_7f46b323ae9603::t_f4f4273cbc2f4f 20,22-25
+  ai_agent 75-78
+  s_7f46b323ae9603::t_5618d45eee15ec 65-67,70-74,79-84,90,92,102,105
+packages/cli/src/metrics/prometheus/__tests__/workflow-publication-metrics.service.test.ts
+  s_7f46b323ae9603::t_071270e03cbf18 183,185-186,203-204,218-222,227,229-230,235-236,238-239,246
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "faf1987e83ce7044cc65a578bc93caf69dc40cb6",
+  "prompts": {},
+  "sessions": {
+    "s_7f46b323ae9603": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e0aefafd-9c05-46c0-a779-19feac254952",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Tomi Turtiainen <10324676+tomi@users.noreply.github.com>"
+    }
+  }
+}
