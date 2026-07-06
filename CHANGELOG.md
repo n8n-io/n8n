@@ -1,3 +1,11 @@
+## [2.28.7](https://github.com/n8n-io/n8n/compare/n8n@2.28.6...n8n@2.28.7) (2026-07-06)
+
+
+### Bug Fixes
+
+* **core:** Pin langgraph and langgraph-checkpoint to prevent broken npm installs ([#33610](https://github.com/n8n-io/n8n/issues/33610)) ([7fe5d56](https://github.com/n8n-io/n8n/commit/7fe5d5692ae802f854c95ad99cb080df670b71f2))
+
+
 ## [2.28.6](https://github.com/n8n-io/n8n/compare/n8n@2.28.5...n8n@2.28.6) (2026-07-03)
 
 
