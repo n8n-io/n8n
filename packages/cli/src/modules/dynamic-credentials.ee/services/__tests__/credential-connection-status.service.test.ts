@@ -73,7 +73,7 @@ describe('CredentialConnectionStatusService', () => {
 		it('marks pair as orphaned when the user has been deleted from the DB', async () => {
 			// ARRANGE
 			em.find.mockResolvedValueOnce([makeEntry(CRED_ID, 'deleted-user')]);
-			userRepository.find.mockResolvedValueOnce([]); // user no longer exists
+			em.find.mockResolvedValueOnce([]); // user no longer exists
 
 			// ACT
 			await service.cleanupOrphanedEntriesForUsers(['deleted-user'], em);
@@ -89,7 +89,7 @@ describe('CredentialConnectionStatusService', () => {
 			// ARRANGE
 			const admin = makeUser('admin-1', ['credential:connect']);
 			em.find.mockResolvedValueOnce([makeEntry(CRED_ID, 'admin-1')]);
-			userRepository.find.mockResolvedValueOnce([admin]);
+			em.find.mockResolvedValueOnce([admin]);
 			// Even if the project check returned nothing, admin is retained in-memory
 			sharedCredentialsRepository.findPairsWithCredentialAccess.mockResolvedValueOnce([]);
 
@@ -105,7 +105,7 @@ describe('CredentialConnectionStatusService', () => {
 			// so their per-user entry must survive even without edit rights.
 			const sharee = makeUser('sharee-1'); // no global scope
 			em.find.mockResolvedValueOnce([makeEntry(CRED_ID, 'sharee-1')]);
-			userRepository.find.mockResolvedValueOnce([sharee]);
+			em.find.mockResolvedValueOnce([sharee]);
 			// Project path retained via credential:connect
 			sharedCredentialsRepository.findPairsWithCredentialAccess.mockResolvedValueOnce([
 				{ credentialId: CRED_ID, userId: 'sharee-1' },
@@ -115,7 +115,11 @@ describe('CredentialConnectionStatusService', () => {
 			await service.cleanupOrphanedEntriesForUsers(['sharee-1'], em);
 
 			// ASSERT — retention is evaluated against credential:connect, not credential:update
-			expect(roleService.rolesWithScope).toHaveBeenCalledWith('credential', 'credential:connect');
+			expect(roleService.rolesWithScope).toHaveBeenCalledWith(
+				'credential',
+				'credential:connect',
+				em,
+			);
 			expect(sharedCredentialsRepository.findPairsWithCredentialAccess).toHaveBeenCalledWith(
 				[{ credentialId: CRED_ID, userId: 'sharee-1' }],
 				'credential:connect',
@@ -129,7 +133,7 @@ describe('CredentialConnectionStatusService', () => {
 			// ARRANGE
 			const member = makeUser('member-1'); // no global scope
 			em.find.mockResolvedValueOnce([makeEntry(CRED_ID, 'member-1')]);
-			userRepository.find.mockResolvedValueOnce([member]);
+			em.find.mockResolvedValueOnce([member]);
 			// DB check confirms the project path is still alive
 			sharedCredentialsRepository.findPairsWithCredentialAccess.mockResolvedValueOnce([
 				{ credentialId: CRED_ID, userId: 'member-1' },
@@ -146,7 +150,7 @@ describe('CredentialConnectionStatusService', () => {
 			// ARRANGE
 			const member = makeUser('member-1'); // no global scope
 			em.find.mockResolvedValueOnce([makeEntry(CRED_ID, 'member-1')]);
-			userRepository.find.mockResolvedValueOnce([member]);
+			em.find.mockResolvedValueOnce([member]);
 			// No retained pairs — member was unshared / removed / role downgraded
 			sharedCredentialsRepository.findPairsWithCredentialAccess.mockResolvedValueOnce([]);
 
@@ -168,7 +172,7 @@ describe('CredentialConnectionStatusService', () => {
 				makeEntry(CRED_ID, 'member-1'), // resolver A
 				makeEntry(CRED_ID, 'member-1'), // resolver B (duplicate pair)
 			]);
-			userRepository.find.mockResolvedValueOnce([member]);
+			em.find.mockResolvedValueOnce([member]);
 			// One project path was removed, but the second survives
 			sharedCredentialsRepository.findPairsWithCredentialAccess.mockResolvedValueOnce([
 				{ credentialId: CRED_ID, userId: 'member-1' },
@@ -192,7 +196,7 @@ describe('CredentialConnectionStatusService', () => {
 				makeEntry(CRED_A, 'user-lost'),
 				makeEntry(CRED_B, 'user-active'),
 			]);
-			userRepository.find.mockResolvedValueOnce([lostMember, activeMember]);
+			em.find.mockResolvedValueOnce([lostMember, activeMember]);
 			// Only user-active retains access
 			sharedCredentialsRepository.findPairsWithCredentialAccess.mockResolvedValueOnce([
 				{ credentialId: CRED_B, userId: 'user-active' },
@@ -264,7 +268,7 @@ describe('CredentialConnectionStatusService', () => {
 		it('skips the project DB check when every user has been deleted', async () => {
 			// ARRANGE — no user record in DB → pairsToCheck is empty → DB query skipped
 			em.find.mockResolvedValueOnce([makeEntry(CRED_ID, 'ghost-user')]);
-			userRepository.find.mockResolvedValueOnce([]);
+			em.find.mockResolvedValueOnce([]);
 
 			// ACT
 			await service.cleanupOrphanedEntriesForUsers(['ghost-user'], em);

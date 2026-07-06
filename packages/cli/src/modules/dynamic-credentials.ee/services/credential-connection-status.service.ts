@@ -138,7 +138,9 @@ export class CredentialConnectionStatusService implements ICredentialConnectionS
 
 		const uniquePairs = [...new Map(pairs.map((p) => [keyOf(p), p])).values()];
 
-		const users = await this.userRepository.find({
+		// All reads use `em` so a caller's transaction never has to acquire a
+		// second pooled connection (which deadlocks at pool size 1).
+		const users = await em.find(this.userRepository.target, {
 			where: { id: In(uniquePairs.map((p) => p.userId)) },
 			relations: { role: { scopes: true } },
 		});
@@ -152,6 +154,7 @@ export class CredentialConnectionStatusService implements ICredentialConnectionS
 			const validCredRoles = await this.roleService.rolesWithScope(
 				'credential',
 				CREDENTIAL_RETAIN_SCOPE,
+				em,
 			);
 			const projectRetained = await this.sharedCredentialsRepository.findPairsWithCredentialAccess(
 				pairsToCheck,
