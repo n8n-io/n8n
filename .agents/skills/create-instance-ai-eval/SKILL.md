@@ -333,16 +333,6 @@ parallel lanes, tiers, and baselines, and the
 [README](../../../packages/@n8n/instance-ai/evaluations/README.md) for the full
 flag list.
 
-## After authoring: where a case lives
-
-The JSON file in `data/workflows/` is the durable artifact — commit it. Once
-merged, the **managed `n8n-workflows` LangTracer suite mirrors the repo
-automatically** (it's the synced baseline; you don't hand-add cases to it). The
-**LangTracer MCP is read-only** — `list_*` / `get_*` / `export_suite` only, no
-create/add tool — so a case can't be written into a suite through it;
-manually-curated (non-managed) suites are edited in the LangTracer UI. In short:
-repo file → merged PR → managed mirror; manual suites are UI-only.
-
 ## Other eval harnesses (not this skill)
 
 This skill is for `data/workflows/` cases. Three siblings exist with their own
