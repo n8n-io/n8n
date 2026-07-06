@@ -80,7 +80,7 @@ describe('AgentModelCatalogService', () => {
 			'project-1',
 			credentialId,
 			'anthropicApi',
-			expect.objectContaining({ kind: 'listSearch' }),
+			'anthropic',
 		);
 	});
 

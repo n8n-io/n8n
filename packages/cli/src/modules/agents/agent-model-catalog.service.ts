@@ -3,25 +3,18 @@ import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
+import { isModelDiscoveryProvider } from '@n8n/ai-utilities/model-discovery';
+
 import { BuilderModelLiveLookupService } from './builder/builder-model-live-lookup.service';
-import {
-	LLM_PROVIDER_DEFAULTS,
-	type ModelLookupConfig,
-} from './builder/interactive/llm-provider-defaults';
+import { LLM_PROVIDER_DEFAULTS } from './builder/interactive/llm-provider-defaults';
 
 /** Google's models API returns ids as `models/<id>`; the AI SDK expects the bare id. */
 const GOOGLE_MODEL_ID_PREFIX = 'models/';
 
-interface ProviderLookup {
-	credentialType: string;
-	lookup: ModelLookupConfig;
-}
-
-function getProviderLookup(provider: string): ProviderLookup | undefined {
+function getProviderCredentialType(provider: string): string | undefined {
+	if (!isModelDiscoveryProvider(provider)) return undefined;
 	for (const [credentialType, entry] of Object.entries(LLM_PROVIDER_DEFAULTS)) {
-		if (entry.provider === provider && entry.modelLookup) {
-			return { credentialType, lookup: entry.modelLookup };
-		}
+		if (entry.provider === provider) return credentialType;
 	}
 	return undefined;
 }
@@ -39,9 +32,9 @@ function normalizeLiveModelValue(provider: string, value: string): string {
  * The curated models.dev catalog is the display list — it is the up-to-date set
  * of chat models with names, cost, and limits. But it lags provider
  * retirements, so a listed model can 404 at call time. When a credential is
- * available we verify the catalog against the provider's own model API (reached
- * through the same node list methods that power the chat sub-node dropdowns) and
- * prune any catalog entry the provider no longer reports. We never add live-only
+ * available we verify the catalog against the provider's own model API (via the
+ * shared `@n8n/ai-utilities/model-discovery` functions) and prune any catalog
+ * entry the provider no longer reports. We never add live-only
  * models: provider `/models` endpoints return every variant/snapshot and would
  * overload the picker. Without a credential, or when the provider has no list
  * API wired up, the catalog list is returned unpruned with `verified: false`.
@@ -50,9 +43,6 @@ function normalizeLiveModelValue(provider: string, value: string): string {
 export class AgentModelCatalogService {
 	constructor(
 		private readonly logger: Logger,
-		// TEMPORARY: live model verification currently goes through the LangChain
-		// chat sub-nodes. See BuilderModelLiveLookupService — to be replaced by the
-		// provider-agnostic models component.
 		private readonly builderModelLiveLookupService: BuilderModelLiveLookupService,
 	) {}
 
@@ -63,9 +53,9 @@ export class AgentModelCatalogService {
 		credentialId?: string,
 	): Promise<AgentProviderModelsResponse> {
 		const catalogModels = await this.getCatalogModels(provider);
-		const providerLookup = getProviderLookup(provider);
+		const credentialType = getProviderCredentialType(provider);
 
-		if (!credentialId || !providerLookup) {
+		if (!credentialId || !credentialType) {
 			return { provider, verified: false, models: Object.values(catalogModels) };
 		}
 
@@ -75,8 +65,8 @@ export class AgentModelCatalogService {
 				user,
 				projectId,
 				credentialId,
-				providerLookup.credentialType,
-				providerLookup.lookup,
+				credentialType,
+				provider,
 			);
 		} catch (error) {
 			this.logger.warn('Live model list failed — falling back to the static catalog', {

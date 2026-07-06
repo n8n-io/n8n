@@ -311,8 +311,6 @@ export class AgentsBuilderToolsService {
 		private readonly secureRuntime: AgentSecureRuntime,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly agentsToolsService: AgentsToolsService,
-		// TEMPORARY: reaches model lists through the LangChain chat sub-nodes.
-		// See BuilderModelLiveLookupService — to be replaced by the models component.
 		private readonly builderModelLiveLookupService: BuilderModelLiveLookupService,
 		private readonly mcpRegistryService: McpRegistryService,
 		private readonly oauthService: OauthService,
@@ -673,13 +671,13 @@ export class AgentsBuilderToolsService {
 			.build();
 
 		const modelLookup: ModelLookup = {
-			list: async (credentialId, credentialType, lookup) =>
+			list: async (credentialId, credentialType, provider) =>
 				await this.builderModelLiveLookupService.list(
 					user,
 					projectId,
 					credentialId,
 					credentialType,
-					lookup,
+					provider,
 				),
 		};
 

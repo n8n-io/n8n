@@ -24,6 +24,9 @@
       ],
       "web-search": [
         "dist/esm/web-search/index.d.ts"
+      ],
+      "model-discovery": [
+        "dist/esm/model-discovery/index.d.ts"
       ]
     }
   },
@@ -62,6 +65,11 @@
       "types": "./dist/esm/web-search/index.d.ts",
       "import": "./dist/esm/web-search/index.js",
       "require": "./dist/cjs/web-search/index.js"
+    },
+    "./model-discovery": {
+      "types": "./dist/esm/model-discovery/index.d.ts",
+      "import": "./dist/esm/model-discovery/index.js",
+      "require": "./dist/cjs/model-discovery/index.js"
     },
     "./*": "./*"
   },

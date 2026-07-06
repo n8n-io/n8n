@@ -1,104 +1,70 @@
+import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { INodeCredentials, INodeParameters } from 'n8n-workflow';
 
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { NodeTypes } from '@/node-types';
-import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
-import { getBase } from '@/workflow-execute-additional-data';
+import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 
-import type { ModelLookupConfig } from './interactive/llm-provider-defaults';
+import { mapCredentialForProvider } from '../json-config/credential-field-mapping';
 
 /**
- * ⚠️ TEMPORARY BRIDGE to the LangChain chat sub-nodes (`@n8n/n8n-nodes-langchain`).
+ * Fetches a provider's live chat-model list for a credential, via the shared
+ * `@n8n/ai-utilities/model-discovery` functions (the same provider knowledge
+ * that backs the chat sub-nodes' model dropdowns). Nothing from
+ * `@n8n/n8n-nodes-langchain` is loaded on this path.
  *
- * `list` drives a chat sub-node's model list (`searchModels` / `loadOptions`)
- * through `DynamicNodeParametersService` — the same path that fills a node's NDV
- * model dropdown — so the agents feature can verify models against the
- * provider's live API without re-implementing per-provider auth, pagination, and
- * response parsing.
- *
- * This is intentionally the single, narrow seam for that dependency. Don't add
- * other LangChain-node calls elsewhere in the agents feature — route them here.
- *
- * REMOVAL: when the provider-agnostic models component lands, swap the two
- * callers (AgentModelCatalogService, AgentsBuilderToolsService) over to it and
- * delete this file.
+ * The credential must be usable by the user within the given project — the
+ * same set as the workflow editor's credential picker.
  */
 @Service()
 export class BuilderModelLiveLookupService {
 	constructor(
 		private readonly credentialsService: CredentialsService,
-		private readonly dynamicNodeParametersService: DynamicNodeParametersService,
-		private readonly nodeTypes: NodeTypes,
+		private readonly credentialsFinderService: CredentialsFinderService,
+		private readonly outboundHttp: OutboundHttp,
 	) {}
 
 	/**
-	 * Fetch a provider's live model list by executing the corresponding LangChain
-	 * chat sub-node's list method with the given credential. Returns `{ name,
-	 * value }` pairs (value = the provider's model id). The credential must be
-	 * usable by the user within the given project (same set as the workflow
-	 * editor's credential picker); otherwise this throws, as it does when the
-	 * node has no list config.
+	 * Returns `{ name, value }` pairs (value = the provider's model id, exactly
+	 * as the provider API expects it). Throws if the credential is not usable by
+	 * the user in the project, its type doesn't match, or the provider has no
+	 * model discovery support.
 	 */
 	async list(
 		user: User,
 		projectId: string,
 		credentialId: string,
 		credentialType: string,
-		lookup: ModelLookupConfig,
+		provider: string,
 	): Promise<Array<{ name: string; value: string }>> {
 		const usableCredentials = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(
 			user,
 			{ projectId },
 		);
-		const credential = usableCredentials.find((c) => c.id === credentialId);
-		if (!credential || credential.type !== credentialType) {
+		const usable = usableCredentials.find((c) => c.id === credentialId);
+		if (!usable || usable.type !== credentialType) {
 			throw new Error(`Credential ${credentialId} not found or not accessible`);
 		}
 
-		const currentNodeParameters: INodeParameters = {};
-		const credentials: INodeCredentials = {
-			[credential.type]: { id: credential.id, name: credential.name },
-		};
-		const additionalData = await getBase({
-			userId: user.id,
-			projectId,
-			currentNodeParameters,
+		const credential = await this.credentialsFinderService.findCredentialById(credentialId);
+		if (!credential) {
+			throw new Error(`Credential ${credentialId} not found or not accessible`);
+		}
+		const rawData = await this.credentialsService.decrypt(credential, true);
+
+		const { listModelsForProvider } = await import('@n8n/ai-utilities/model-discovery');
+		const mapped = mapCredentialForProvider(provider, { apiKey: '', ...rawData });
+		const apiKey = typeof mapped.apiKey === 'string' ? mapped.apiKey : '';
+		const baseURL =
+			typeof mapped.baseURL === 'string' && mapped.baseURL ? mapped.baseURL : undefined;
+
+		const models = await listModelsForProvider(provider, {
+			apiKey,
+			baseURL,
+			fetch: createAiProxyFetch(this.outboundHttp) as typeof globalThis.fetch,
 		});
-		const nodeTypeAndVersion = { name: lookup.nodeType, version: lookup.version };
 
-		if (lookup.kind === 'listSearch') {
-			const result = await this.dynamicNodeParametersService.getResourceLocatorResults(
-				lookup.methodName,
-				'',
-				additionalData,
-				nodeTypeAndVersion,
-				currentNodeParameters,
-				credentials,
-			);
-			return (result.results ?? []).map((r) => ({
-				name: String(r.name),
-				value: String(r.value),
-			}));
-		}
-
-		const nodeType = this.nodeTypes.getByNameAndVersion(lookup.nodeType, lookup.version);
-		const property = nodeType.description.properties.find((p) => p.name === lookup.propertyName);
-		const loadOptions = property?.typeOptions?.loadOptions;
-		if (!loadOptions) {
-			throw new Error(
-				`Property "${lookup.propertyName}" on ${lookup.nodeType} has no loadOptions config`,
-			);
-		}
-
-		const options = await this.dynamicNodeParametersService.getOptionsViaLoadOptions(
-			loadOptions,
-			additionalData,
-			nodeTypeAndVersion,
-			currentNodeParameters,
-			credentials,
-		);
-		return options.map((o) => ({ name: String(o.name), value: String(o.value) }));
+		return models.map((model) => ({ name: model.name, value: model.id }));
 	}
 }

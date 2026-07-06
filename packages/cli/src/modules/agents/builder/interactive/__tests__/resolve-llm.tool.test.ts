@@ -165,11 +165,7 @@ describe('resolve_llm tool', () => {
 				credentialId: 'c1',
 				credentialName: 'My Cohere',
 			});
-			expect(modelLookup.list).toHaveBeenCalledWith(
-				'c1',
-				'cohereApi',
-				expect.objectContaining({ kind: 'loadOptionsRouting', propertyName: 'model' }),
-			);
+			expect(modelLookup.list).toHaveBeenCalledWith('c1', 'cohereApi', 'cohere');
 		});
 
 		it('returns the canonical model id when the requested model matches the lookup', async () => {
@@ -193,11 +189,7 @@ describe('resolve_llm tool', () => {
 				credentialId: 'c1',
 				credentialName: 'My Anthropic',
 			});
-			expect(modelLookup.list).toHaveBeenCalledWith(
-				'c1',
-				'anthropicApi',
-				expect.objectContaining({ kind: 'listSearch', methodName: 'searchModels' }),
-			);
+			expect(modelLookup.list).toHaveBeenCalledWith('c1', 'anthropicApi', 'anthropic');
 		});
 
 		it('uniquely-substring-matches a partial requested model id', async () => {
