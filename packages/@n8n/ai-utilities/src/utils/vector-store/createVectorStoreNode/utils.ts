@@ -1,5 +1,5 @@
 import type { VectorStore } from '@langchain/core/vectorstores';
-import { ExecutionBaseError, NodeApiError } from 'n8n-workflow';
+import { BaseError, NodeApiError } from 'n8n-workflow';
 import type { INode, INodeProperties, INodePropertyOptions, JsonObject } from 'n8n-workflow';
 
 import { DEFAULT_OPERATION_MODES, OPERATION_MODE_DESCRIPTIONS } from './constants';
@@ -45,7 +45,8 @@ export function getOperationModeOptions<T extends VectorStore>(
 
 /** Surfaces provider SDK errors (Pinecone, Supabase, …) as actionable n8n errors instead of raw exceptions */
 export function normalizeVectorStoreError(node: INode, error: unknown, itemIndex?: number): never {
-	if (error instanceof ExecutionBaseError) throw error;
+	// BaseError covers all n8n error classes (NodeError, UserError, UnexpectedError, …)
+	if (error instanceof BaseError) throw error;
 	// warning-level errors are treated as user-facing and skipped by error reporting,
 	// so keep programming errors at error level to preserve their visibility
 	const isProgrammerError =
@@ -56,5 +57,7 @@ export function normalizeVectorStoreError(node: INode, error: unknown, itemIndex
 	throw new NodeApiError(node, error as JsonObject, {
 		itemIndex,
 		level: isProgrammerError ? 'error' : 'warning',
+		// a detected status code replaces the message with generic text; keep the provider's own message visible
+		description: error instanceof Error ? error.message : undefined,
 	});
 }

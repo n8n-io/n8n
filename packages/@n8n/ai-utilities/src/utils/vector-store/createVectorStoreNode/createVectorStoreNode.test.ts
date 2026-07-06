@@ -4,7 +4,7 @@ import type { DynamicTool } from '@langchain/classic/tools';
 import type { DocumentInterface } from '@langchain/core/documents';
 import type { Embeddings } from '@langchain/core/embeddings';
 import type { VectorStore } from '@langchain/core/vectorstores';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, UserError } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	INode,
@@ -481,6 +481,58 @@ describe('createVectorStoreNode', () => {
 				level: 'error',
 				message: "Cannot read properties of undefined (reading 'matches')",
 			});
+		});
+
+		it('keeps the provider message as description when a status code swaps the message', async () => {
+			// ARRANGE
+			executeContext.getNodeParameter.mockImplementation(
+				(parameterName: string): NodeParameterValueType | object => loadParameters[parameterName],
+			);
+			executeContext.getInputData.mockReturnValue([{ json: {} }]);
+
+			const sdkError = Object.assign(
+				new Error('Index dimension 1024 does not match query dimension 1536'),
+				{ status: 400 },
+			);
+			vectorStore.similaritySearchVectorWithScore.mockRejectedValueOnce(sdkError);
+
+			// ACT
+			const VectorStoreNodeType = createVectorStoreNode(vectorStoreNodeArgs);
+			const nodeType = new VectorStoreNodeType();
+			const thrown: unknown = await nodeType.execute
+				.call(executeContext)
+				.catch((error: unknown) => error);
+
+			// ASSERT
+			expect(thrown).toBeInstanceOf(NodeApiError);
+			expect(thrown).toMatchObject({
+				httpCode: '400',
+				message: 'Bad request - please check your parameters',
+				description: 'Index dimension 1024 does not match query dimension 1536',
+			});
+		});
+
+		it('rethrows UserError and other BaseError subclasses unchanged', async () => {
+			// ARRANGE
+			executeContext.getNodeParameter.mockImplementation(
+				(parameterName: string): NodeParameterValueType | object => loadParameters[parameterName],
+			);
+			executeContext.getInputData.mockReturnValue([{ json: {} }]);
+
+			const userError = new UserError('Index does not exist');
+			vectorStoreNodeArgs.getVectorStoreClient.mockImplementationOnce(() => {
+				throw userError;
+			});
+
+			// ACT
+			const VectorStoreNodeType = createVectorStoreNode(vectorStoreNodeArgs);
+			const nodeType = new VectorStoreNodeType();
+			const thrown: unknown = await nodeType.execute
+				.call(executeContext)
+				.catch((error: unknown) => error);
+
+			// ASSERT
+			expect(thrown).toBe(userError);
 		});
 
 		it('rethrows n8n errors from execute unchanged', async () => {
