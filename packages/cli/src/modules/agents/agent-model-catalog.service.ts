@@ -26,6 +26,21 @@ function normalizeLiveModelValue(provider: string, value: string): string {
 	return value;
 }
 
+/** Dated snapshot suffixes: Anthropic `-20251001`, OpenAI `-2024-08-06`. */
+const SNAPSHOT_SUFFIX = /-(?:\d{8}|\d{4}-\d{2}-\d{2})$/;
+
+/**
+ * The ids a live model verifies. Providers list older models only as dated
+ * snapshots (e.g. `claude-haiku-4-5-20251001`) while the catalog prefers the
+ * versionless alias (`claude-haiku-4-5`, which providers resolve to the latest
+ * snapshot) — so a listed snapshot also verifies its alias. A retired alias
+ * still prunes: retired models have no live snapshot either.
+ */
+function liveModelIdVariants(id: string): string[] {
+	const alias = id.replace(SNAPSHOT_SUFFIX, '');
+	return alias === id ? [id] : [id, alias];
+}
+
 /**
  * Builds the model list offered in the agent model picker for one provider.
  *
@@ -77,7 +92,9 @@ export class AgentModelCatalogService {
 		}
 
 		const liveModelIds = new Set(
-			liveModels.map((live) => normalizeLiveModelValue(provider, live.value)),
+			liveModels.flatMap((live) =>
+				liveModelIdVariants(normalizeLiveModelValue(provider, live.value)),
+			),
 		);
 		const catalogList = Object.values(catalogModels);
 
