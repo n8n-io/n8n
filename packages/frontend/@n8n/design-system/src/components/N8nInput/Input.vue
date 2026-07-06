@@ -269,6 +269,7 @@ defineExpose({ focus, blur, select });
 
 <style module lang="scss">
 @use '../../css/mixins/focus';
+@use '../../css/mixins/input' as input-mixin;
 
 .inputContainer {
 	display: inline-flex;
@@ -276,10 +277,7 @@ defineExpose({ focus, blur, select });
 	width: 100%;
 	gap: var(--spacing--3xs);
 
-	--input--height: var(--height--lg);
-	--input--radius: var(--radius--2xs);
-	--input--font-size: var(--font-size--sm);
-	--input--padding: var(--spacing--xs);
+	@include input-mixin.size-variables;
 
 	--input--color--background: light-dark(var(--color--neutral-white), var(--color--neutral-950));
 	--input--shadow: 0 0 0 0 transparent;
@@ -293,35 +291,23 @@ defineExpose({ focus, blur, select });
 	--input--border--shadow--focus: 0 0 0 1px var(--input--border-color--focus);
 
 	&.xlarge {
-		--input--height: var(--height--xl);
-		--input--radius: var(--radius--2xs);
-		--input--font-size: var(--font-size--md);
+		@include input-mixin.size-variables('xlarge');
 	}
 
 	&.large {
-		--input--height: var(--height--lg);
-		--input--radius: var(--radius--2xs);
-		--input--font-size: var(--font-size--sm);
+		@include input-mixin.size-variables('large');
 	}
 
 	&.medium {
-		--input--height: var(--height--md);
-		--input--radius: var(--radius--3xs);
-		--input--font-size: var(--font-size--sm);
+		@include input-mixin.size-variables('medium');
 	}
 
 	&.small {
-		--input--height: var(--height--sm);
-		--input--radius: var(--radius--3xs);
-		--input--font-size: var(--font-size--xs);
-		--input--padding: var(--spacing--2xs);
+		@include input-mixin.size-variables('small');
 	}
 
 	&.mini {
-		--input--height: var(--height--xs);
-		--input--radius: var(--radius--3xs);
-		--input--font-size: var(--font-size--2xs);
-		--input--padding: var(--spacing--2xs);
+		@include input-mixin.size-variables('mini');
 	}
 }
 
