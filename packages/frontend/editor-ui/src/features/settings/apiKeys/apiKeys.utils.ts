@@ -6,7 +6,11 @@ import {
 	groupScopes as groupScopesGeneric,
 	inferSelectionMode as inferSelectionModeGeneric,
 } from '@/app/components/scopes/scopes.utils';
-import type { ScopeAccess, ScopeGroup, ScopeSelectionMode } from '@/app/components/scopes/scopes.utils';
+import type {
+	ScopeAccess,
+	ScopeGroup,
+	ScopeSelectionMode,
+} from '@/app/components/scopes/scopes.utils';
 
 import { API_KEY_SCOPE_GROUPS, READ_SCOPE_ACTIONS } from './apiKeys.constants';
 

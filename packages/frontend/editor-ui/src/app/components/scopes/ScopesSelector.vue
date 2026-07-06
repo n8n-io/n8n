@@ -274,7 +274,9 @@ function toggleScope(scope: S, checked: boolean) {
 									:data-test-id="`scope-checkbox-${scope}`"
 									@update:model-value="(checked: boolean) => toggleScope(scope, checked)"
 								/>
-								<N8nBadge :theme="classifyScope(scope, readActions) === 'read' ? 'default' : 'success'">
+								<N8nBadge
+									:theme="classifyScope(scope, readActions) === 'read' ? 'default' : 'success'"
+								>
 									{{ getBadgeLabel(scope) }}
 								</N8nBadge>
 							</div>
