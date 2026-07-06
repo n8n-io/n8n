@@ -8,6 +8,7 @@ import {
 	type InstanceAiFileAttachment,
 	type InstanceAiWorkflowAttachment,
 	type InstanceAiConfirmRequest,
+	type InstanceAiConfirmResponse,
 	type InstanceAiEvent,
 	type InstanceAiThreadStatusResponse,
 } from '@n8n/api-types';
@@ -25,6 +26,8 @@ import {
 	createLazyWorkspaceRuntimeSkillSource,
 	createScopedWorkspace,
 	getPromptWorkspaceRoot,
+	getPromptSandboxInstructions,
+	getPromptFilesystemInstructions,
 	getWorkspaceRoot,
 	loadInstanceAiRuntimeSkillSource,
 	createInstanceAiTraceContext,
@@ -121,6 +124,7 @@ import {
 	EDITOR_CONTEXT_CLOSE_TAG,
 	CREDENTIAL_CONTEXT_OPEN_TAG,
 	CREDENTIAL_CONTEXT_CLOSE_TAG,
+	cleanStoredUserMessage,
 	withCurrentDateTime,
 } from './internal-messages';
 import { INSTANCE_AI_RUN_TIMEOUT_REASON, InstanceAiLivenessService } from './liveness';
@@ -236,6 +240,9 @@ function isTelemetryConfigurableAgent(
 const INSTANCE_AI_CHECKPOINT_PRUNE_RETRY_MS = 30 * 1000;
 const WORKFLOW_SETUP_ROUTING_CLAIM_TTL_MS = 15 * 60 * 1000;
 
+const CONFIRMATION_EXPIRED_MESSAGE =
+	'This confirmation has expired. Send a new message to continue.';
+
 /**
  * Upper bound on how long `shutdown()` will wait for in-flight executeRun /
  * processResumedStream promises to drain after their abortControllers fire.
@@ -255,9 +262,17 @@ function isTextMessagePart(part: unknown): part is { type: 'text'; text: string 
 	);
 }
 
-function getUserFacingErrorMessage(error: unknown): string {
+function isSandboxEndpointNotAllowedError(error: unknown): boolean {
+	return getErrorMessage(error).toLowerCase().includes('endpoint not allowed');
+}
+
+export function getUserFacingErrorMessage(error: unknown): string {
 	if (error instanceof UserError) {
 		return error.message;
+	}
+
+	if (isSandboxEndpointNotAllowedError(error)) {
+		return "I couldn't finish preparing the workspace sandbox. Please try again in a moment.";
 	}
 
 	if (error instanceof OperationalError) {
@@ -290,6 +305,8 @@ function getAbortReason(signal: AbortSignal): string {
 }
 
 const MAX_CONCURRENT_BACKGROUND_TASKS_PER_THREAD = 5;
+
+const TITLE_REFINE_HISTORY_LIMIT = 50;
 
 function stringifyForContextValue(value: unknown): string {
 	if (typeof value === 'string') return value;
@@ -633,7 +650,7 @@ export class InstanceAiService {
 		const client = await this.aiService.getClient();
 		const proxyBaseUrl = client.getApiProxyBaseUrl();
 		const tokenManager = new ProxyTokenManager(async () => {
-			return await client.getBuilderApiProxyToken({ id: user.id }, { userMessageId: nanoid() });
+			return await client.getInstanceAiApiProxyToken({ id: user.id }, { userMessageId: nanoid() });
 		});
 		const featureHeaders = buildProxyHeaders({
 			feature: 'instance-ai',
@@ -829,6 +846,12 @@ export class InstanceAiService {
 			// Keep billing stopped/errored resumed runs (see stream-options builder).
 			recoverUsageOnAbort: true,
 			persistence: { resourceId: user.id, threadId },
+			// Must mirror buildOrchestratorAgentStreamOptions: without this request-level
+			// cache directive, resumed (HITL) turns send no cache_control, so Anthropic
+			// reprocesses the whole conversation uncached on every resume (~100K tokens).
+			providerOptions: {
+				anthropic: { cacheControl: { type: 'ephemeral' } },
+			},
 			...(this.isRunDebugEnabled()
 				? createRunDebugStepHooks(this.runDebugBuffer, { runId, threadId })
 				: {}),
@@ -1428,10 +1451,11 @@ export class InstanceAiService {
 
 	/**
 	 * One tick of the recurring leader prune cycle: expire stale checkpoints,
-	 * drop expired pending confirmations, and delete expired conversation
-	 * threads, then schedule the next run. A checkpoint failure reschedules
-	 * with a shorter retry delay; the confirmation and thread steps swallow
-	 * their own errors so they never disrupt the cycle.
+	 * hard-delete tombstones past the GC horizon, drop expired pending
+	 * confirmations, and delete expired conversation threads, then schedule the
+	 * next run. A checkpoint failure reschedules with a shorter retry delay; the
+	 * confirmation and thread steps swallow their own errors so they never
+	 * disrupt the cycle.
 	 */
 	private async runScheduledPrune(now = Date.now()): Promise<void> {
 		const olderThan = new Date(now - this.instanceAiConfig.snapshotRetention);
@@ -1443,6 +1467,7 @@ export class InstanceAiService {
 			} else {
 				this.logger.debug('No stale Instance AI checkpoints to expire');
 			}
+			await this.hardDeleteExpiredCheckpoints(now);
 			await this.suspendedThreads.pruneStalePendingConfirmations(now);
 			await this.pruneExpiredThreads();
 			this.scheduleCheckpointPrune();
@@ -1451,6 +1476,31 @@ export class InstanceAiService {
 				error: getErrorMessage(error),
 			});
 			this.scheduleCheckpointPrune(INSTANCE_AI_CHECKPOINT_PRUNE_RETRY_MS);
+		}
+	}
+
+	/**
+	 * Hard-delete expired checkpoint tombstones (`markExpiredOlderThan` releases
+	 * the blob but keeps the row so a stale resume gets a clear "expired" error;
+	 * this drops the row entirely once it's past the GC horizon so tombstones
+	 * don't grow unbounded). Has its own try/catch so a GC failure never forces
+	 * the checkpoint prune into its short retry cadence. No-op when
+	 * `checkpointGcRetention` is 0.
+	 */
+	private async hardDeleteExpiredCheckpoints(now: number): Promise<void> {
+		const retention = this.instanceAiConfig.checkpointGcRetention;
+		if (retention <= 0) return;
+
+		try {
+			const olderThan = new Date(now - retention);
+			const count = await this.checkpointStore.hardDeleteExpiredOlderThan(olderThan);
+			if (count > 0) {
+				this.logger.info('Hard-deleted expired Instance AI checkpoint tombstones', { count });
+			}
+		} catch (error: unknown) {
+			this.logger.warn('Failed to hard-delete expired Instance AI checkpoint tombstones', {
+				error: getErrorMessage(error),
+			});
 		}
 	}
 
@@ -1774,12 +1824,6 @@ export class InstanceAiService {
 			context.branchReadOnly = true;
 		}
 
-		let domainTracker = this.domainAccessTrackersByThread.get(threadId);
-		if (!domainTracker) {
-			domainTracker = createDomainAccessTracker();
-			this.domainAccessTrackersByThread.set(threadId, domainTracker);
-		}
-		context.domainAccessTracker = domainTracker;
 		context.runId = runId;
 
 		// Per-user, thread-level "always allow" grants are persisted in the DB so they survive
@@ -1789,10 +1833,22 @@ export class InstanceAiService {
 		// run — the next run reloads it from the DB anyway.
 		const sessionGrants = await this.loadThreadSessionGrants(threadId, user.id);
 		context.sessionApprovedToolKeys = sessionGrants;
-		context.grantSessionToolApproval = async (key: string) => {
+		const grantSessionToolApproval = async (key: string) => {
 			await this.persistThreadSessionGrant(threadId, user.id, key);
 			sessionGrants.add(key);
 		};
+		context.grantSessionToolApproval = grantSessionToolApproval;
+
+		// Domain-access approvals are stored as grant keys in `instance_ai_thread_grants` (via
+		// the same load/persist path as above), so they survive restart and are visible
+		// cross-main. Recreate the tracker per run seeded from the freshly loaded grants;
+		// transient (allow_once) approvals are run-scoped and don't carry across runs.
+		const domainTracker = createDomainAccessTracker({
+			grantedKeys: sessionGrants,
+			persistGrant: grantSessionToolApproval,
+		});
+		this.domainAccessTrackersByThread.set(threadId, domainTracker);
+		context.domainAccessTracker = domainTracker;
 		if (this.isRunDebugEnabled()) {
 			context.recordWorkflowCodeSnapshot = (snapshot) => {
 				this.runDebugBuffer.ensure(runId, threadId);
@@ -1897,6 +1953,11 @@ export class InstanceAiService {
 				};
 
 				runtimeWorkspace = createLazyRuntimeWorkspace({
+					// Stable across resumes: keeps the sandbox/filesystem description out
+					// of the cache-busting path (the lazy handle isn't rehydrated per
+					// rebuild, so resolution-dependent text would shift the cached prefix).
+					sandboxInstructions: getPromptSandboxInstructions(sandboxConfig.provider),
+					filesystemInstructions: getPromptFilesystemInstructions(sandboxConfig.provider),
 					ensureWorkspace: async () =>
 						await scopeWorkspaceForAgent((await getSetupSandboxEntry())?.workspace),
 				});
@@ -2749,6 +2810,36 @@ export class InstanceAiService {
 		}
 	}
 
+	/** Save the user's prompt when Stop is hit before the stream starts; the SDK only persists it once the stream is invoked. */
+	private async persistInterruptedUserMessage(
+		threadId: string,
+		userId: string,
+		message: string,
+		createdAt: Date,
+	): Promise<void> {
+		if (!message) return;
+		try {
+			await this.agentMemory.saveMessages({
+				threadId,
+				resourceId: userId,
+				messages: [
+					{
+						id: nanoid(),
+						createdAt,
+						type: 'llm',
+						role: 'user',
+						content: [{ type: 'text', text: message }],
+					},
+				],
+			});
+		} catch (error) {
+			this.logger.warn('Failed to persist user message on cancel', {
+				threadId,
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
 	/**
 	 * Run body for a fresh orchestrator turn. Never call directly — go through
 	 * `startExecuteRun` so the promise is registered with `inFlightExecutions`
@@ -2786,6 +2877,8 @@ export class InstanceAiService {
 		let aiCreatedWorkflowIds: Set<string> | undefined;
 		let activeSnapshotStorage: DbSnapshotStorage | undefined;
 		let messageId = '';
+		let streamReached = false;
+		const turnStartedAt = new Date();
 
 		try {
 			this.instanceAiErrorReporter.beginRun(runId);
@@ -2856,6 +2949,7 @@ export class InstanceAiService {
 
 			// Check if already cancelled before starting agent work
 			if (signal.aborted) {
+				await this.persistInterruptedUserMessage(threadId, user.id, message, turnStartedAt);
 				this.terminalOutcome.evaluateTerminalResponse(threadId, runId, 'cancelled', {
 					messageGroupId,
 					correlationId: messageId,
@@ -3149,6 +3243,7 @@ export class InstanceAiService {
 
 			const streamOptions = this.buildOrchestratorAgentStreamOptions(user, threadId, runId, signal);
 
+			streamReached = true;
 			const result = tracing
 				? await tracing.withActiveSpan(tracing.actorRun, async () => {
 						return await streamAgentRun(agent as StreamableAgent, streamInput, streamOptions, {
@@ -3208,6 +3303,20 @@ export class InstanceAiService {
 						checkpointKey: result.agentRunId,
 						checkpointTaskId: checkpoint?.checkpointTaskId,
 					});
+
+					// Bill the tokens this segment consumed to reach the suspension. Every
+					// segment of a HITL run shares one agentRunId (resume reuses it), so the
+					// terminal claim would otherwise be the only claim and swallow this usage
+					// — worse, a stop while suspended never reaches a terminal claim at all.
+					// Key on the per-suspension requestId so this never collides with the
+					// terminal claim (bare agentRunId) or another suspension.
+					void this.creditService.claimRunUsage(
+						user,
+						threadId,
+						`${result.agentRunId || runId}:${result.suspension.requestId}`,
+						result.usage?.usage ?? [],
+						'suspended',
+					);
 				}
 
 				// Track intermediate message (text streamed before suspension)
@@ -3316,11 +3425,14 @@ export class InstanceAiService {
 					},
 				);
 			}
+			const userFacingErrorMessage =
+				result.status === 'errored' ? getUserFacingErrorMessage(result.error) : undefined;
 			if (runControl.shouldEmitTerminalOutcome(result.stopReason)) {
 				this.terminalOutcome.evaluateTerminalResponse(threadId, runId, result.status, {
 					messageGroupId,
 					correlationId: messageId,
 					workSummary: result.workSummary,
+					errorMessage: userFacingErrorMessage,
 					suppressCompletedFallback:
 						checkpoint?.isCheckpointFollowUp === true ||
 						plannedBuild?.isPlannedBuildFollowUp === true,
@@ -3350,6 +3462,7 @@ export class InstanceAiService {
 				archivedWorkflowIds,
 				workSummary: result.workSummary,
 				usage: result.usage,
+				errorReason: userFacingErrorMessage,
 			});
 
 			// Bill token usage for every terminal outcome (completed / cancelled / errored),
@@ -3381,6 +3494,9 @@ export class InstanceAiService {
 				// to see on reload, so just bail out.
 				if (this.shouldPreserveHitlOnShutdown(runId)) {
 					return;
+				}
+				if (!streamReached) {
+					await this.persistInterruptedUserMessage(threadId, user.id, message, turnStartedAt);
 				}
 				const runTimeout = this.liveness.consumeRunTimeout(runId);
 				const cancellationReason = runTimeout.timedOut
@@ -3748,7 +3864,7 @@ export class InstanceAiService {
 		requestingUserId: string,
 		requestId: string,
 		request: InstanceAiConfirmRequest,
-	): Promise<boolean> {
+	): Promise<InstanceAiConfirmResponse | null> {
 		const data = toConfirmationData(request);
 		const freshUser = await this.revalidateActiveUser(requestingUserId);
 		if (!freshUser) {
@@ -3761,16 +3877,38 @@ export class InstanceAiService {
 				userId: requestingUserId,
 				requestId,
 			});
-			return false;
+			return null;
 		}
 
-		if (this.runState.resolvePendingConfirmation(freshUser.id, requestId, data)) {
+		// Close the same-process window: a click on a pre-rendered card can still
+		// reach the in-memory fast path after the row's `expiresAt` but before the
+		// prune/liveness sweep drops it. The persisted row is the source of truth
+		// for expiry, so consult it first and refuse a stale click; the sweep still
+		// owns releasing the suspended run. Scoped by `freshUser.id` so another
+		// user's request ID falls through to the existing not-found handling
+		// rather than leaking an "expired" signal. One extra SELECT per click —
+		// the click path isn't hot.
+		if (await this.pendingConfirmationRepo.isPastExpiry(requestId, freshUser.id, new Date())) {
+			this.logger.debug('Rejecting expired confirmation', { requestId });
+			throw new UserError(CONFIRMATION_EXPIRED_MESSAGE);
+		}
+
+		const pending = this.runState.getPendingConfirmation(requestId);
+		if (
+			pending &&
+			pending.userId === freshUser.id &&
+			this.runState.resolvePendingConfirmation(freshUser.id, requestId, data)
+		) {
 			void this.suspendedThreads.dropPendingConfirmation(requestId);
 			this.logger.debug('Resolved pending confirmation (sub-agent HITL)', {
 				requestId,
 				approved: data.approved,
 			});
-			return true;
+			const runId = this.runState.getActiveRunId(pending.threadId);
+			return {
+				ok: true,
+				...(runId ? { runId } : {}),
+			};
 		}
 
 		this.logger.debug('Pending confirmation not found, trying suspended run resume', {
@@ -3778,8 +3916,9 @@ export class InstanceAiService {
 			approved: data.approved,
 		});
 
-		if (await this.resumeSuspendedRun(requestingUserId, requestId, data)) {
-			return true;
+		const resumed = await this.resumeSuspendedRun(requestingUserId, requestId, data);
+		if (resumed) {
+			return resumed;
 		}
 
 		// Last resort: the in-memory state is gone, but a persisted index row
@@ -3907,14 +4046,14 @@ export class InstanceAiService {
 		requestingUserId: string,
 		requestId: string,
 		data: ConfirmationData,
-	): Promise<boolean> {
+	): Promise<InstanceAiConfirmResponse | null> {
 		const suspended = this.runState.findSuspendedByRequestId(requestId);
 		if (!suspended) {
 			this.logger.warn('Confirmation target not found: no pending confirmation or suspended run', {
 				requestId,
 				approved: data.approved,
 			});
-			return false;
+			return null;
 		}
 
 		const {
@@ -3934,7 +4073,7 @@ export class InstanceAiService {
 			plannedBuild,
 			runHandoff,
 		} = suspended;
-		if (user.id !== requestingUserId) return false;
+		if (user.id !== requestingUserId) return null;
 
 		const activeUser = await this.revalidateActiveUser(user.id);
 		if (!activeUser) {
@@ -3944,7 +4083,7 @@ export class InstanceAiService {
 				requestId,
 			});
 			this.cancelRun(threadId);
-			return false;
+			return null;
 		}
 
 		this.runState.activateSuspendedRun(threadId);
@@ -4017,7 +4156,7 @@ export class InstanceAiService {
 			plannedBuild,
 			runHandoff,
 		});
-		return true;
+		return { ok: true, runId };
 	}
 
 	/**
@@ -4145,6 +4284,20 @@ export class InstanceAiService {
 						checkpointKey: result.agentRunId,
 						checkpointTaskId: opts.checkpoint?.checkpointTaskId,
 					});
+
+					// Bill the tokens this segment consumed to reach the suspension. Every
+					// segment of a HITL run shares one agentRunId (resume reuses it), so the
+					// terminal claim would otherwise be the only claim and swallow this usage
+					// — worse, a stop while suspended never reaches a terminal claim at all.
+					// Key on the per-suspension requestId so this never collides with the
+					// terminal claim (bare agentRunId) or another suspension.
+					void this.creditService.claimRunUsage(
+						opts.user,
+						opts.threadId,
+						`${result.agentRunId || opts.runId}:${result.suspension.requestId}`,
+						result.usage?.usage ?? [],
+						'suspended',
+					);
 				}
 
 				// Track intermediate message (text streamed before suspension)
@@ -4245,10 +4398,13 @@ export class InstanceAiService {
 					},
 				);
 			}
+			const userFacingErrorMessage =
+				result.status === 'errored' ? getUserFacingErrorMessage(result.error) : undefined;
 			if (runControl.shouldEmitTerminalOutcome(result.stopReason)) {
 				this.terminalOutcome.evaluateTerminalResponse(opts.threadId, opts.runId, result.status, {
 					messageGroupId,
 					workSummary: result.workSummary,
+					errorMessage: userFacingErrorMessage,
 					suppressCompletedFallback:
 						opts.checkpoint?.isCheckpointFollowUp === true ||
 						opts.plannedBuild?.isPlannedBuildFollowUp === true,
@@ -4274,9 +4430,13 @@ export class InstanceAiService {
 			);
 			await this.finalizeRun(opts.threadId, opts.runId, result.status, opts.snapshotStorage, {
 				userId: opts.user.id,
+				// Forward modelId so title refinement fires on the resume path too — a run
+				// that suspends for HITL and completes here would otherwise never be titled.
+				...(opts.modelId !== undefined ? { modelId: opts.modelId } : {}),
 				archivedWorkflowIds,
 				workSummary: result.workSummary,
 				usage: result.usage,
+				errorReason: userFacingErrorMessage,
 			});
 
 			// Bill token usage for every terminal outcome, deduped per run segment.
@@ -4808,7 +4968,11 @@ export class InstanceAiService {
 			agentId: orchestratorAgentId(runId),
 			payload: {
 				status: effectiveStatus,
-				...(status === 'cancelled' ? { reason: reason ?? 'user_cancelled' } : {}),
+				...(status === 'cancelled'
+					? { reason: reason ?? 'user_cancelled' }
+					: status === 'errored' && reason
+						? { reason }
+						: {}),
 				...(hasArchived ? { archivedWorkflowIds } : {}),
 			},
 		});
@@ -4832,13 +4996,14 @@ export class InstanceAiService {
 			archivedWorkflowIds?: string[];
 			workSummary?: WorkSummary;
 			usage?: RunTokenUsage;
+			errorReason?: string;
 		},
 	): Promise<void> {
 		this.publishRunFinish(
 			threadId,
 			runId,
 			status,
-			undefined,
+			options?.errorReason,
 			options?.archivedWorkflowIds,
 			options?.userId,
 		);
@@ -4883,14 +5048,18 @@ export class InstanceAiService {
 			// Skip if thread already has an LLM-refined title
 			if (thread.metadata?.titleRefined) return;
 
-			// Concat recent user messages so retries after a trivial first message
-			// (e.g. "hey") have enough signal to produce a good title.
-			const history = await memory.getMessages(threadId, { limit: 5 });
-			const userTexts = history.flatMap((m) => {
-				if (!('role' in m) || m.role !== 'user') return [];
-				const text = this.extractStoredMessageText(m.content);
-				return text.length > 0 ? [text] : [];
-			});
+			// Title the conversation from its opening user turns.
+			const history = await memory.getMessages(threadId, { limit: TITLE_REFINE_HISTORY_LIMIT });
+			const userTexts: string[] = [];
+			for (const m of history) {
+				if (!('role' in m) || m.role !== 'user') continue;
+				// Stored user messages carry service-injected blocks (<current-date-time>,
+				// task context). Strip them or a trivial "hey" looks substantial enough to
+				// title, and the injected blocks leak into the title prompt.
+				const text = cleanStoredUserMessage(this.extractStoredMessageText(m.content));
+				if (text && text.length > 0) userTexts.push(text);
+				if (userTexts.length >= 5) break;
+			}
 			if (userTexts.length === 0) return;
 			const userText = userTexts.join('\n');
 

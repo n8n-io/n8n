@@ -354,7 +354,6 @@ describe('SlackAppSetupService', () => {
 		expect(chatIntegrationService.connect).toHaveBeenCalledWith(
 			'agent-1',
 			integration,
-			'user-1',
 			'project-1',
 		);
 		expect(agentIntegrationPersistenceService.saveCredentialIntegration).toHaveBeenCalledWith(

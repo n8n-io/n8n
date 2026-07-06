@@ -9,7 +9,8 @@ import type {
 	ICredentialDataDecryptedObject,
 	NodeEgressFilter,
 } from 'n8n-workflow';
-import { createResultError, createResultOk, NodeOperationError, sleep } from 'n8n-workflow';
+import { createResultError, createResultOk } from '@n8n/utils/result';
+import { NodeOperationError, sleep } from 'n8n-workflow';
 import http from 'node:http';
 import https from 'node:https';
 import type { LookupFunction } from 'node:net';

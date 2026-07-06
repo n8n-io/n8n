@@ -71,6 +71,9 @@ export type {
 	SmoothStreamOptions,
 	AgentExecutionCounter,
 	PersistedExecutionOptions,
+	AnthropicPromptCachingConfig,
+	OpenAIPromptCachingConfig,
+	PromptCachingConfig,
 	BuiltTelemetry,
 	AttributeValue,
 	ObservationCursor,
@@ -203,8 +206,6 @@ export {
 	isLlmMessage,
 } from './sdk/message';
 export { fetchProviderCatalog } from './sdk/catalog';
-export { providerCapabilities } from './sdk/provider-capabilities';
-export type { ProviderCapability } from './sdk/provider-capabilities';
 export type {
 	ProviderCatalog,
 	ProviderInfo,

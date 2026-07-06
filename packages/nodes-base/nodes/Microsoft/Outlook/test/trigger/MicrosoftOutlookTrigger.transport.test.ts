@@ -83,6 +83,27 @@ describe('MicrosoftOutlookTrigger transport - Service Principal mailbox rewrite'
 		);
 	});
 
+	it('carries a B2B guest (#EXT#) mailbox through the poll path into an encoded /users/{mailbox}/messages uri', async () => {
+		mockPollFunctions.getMode.mockReturnValue('manual');
+		mockPollFunctions.getNodeParameter.mockImplementation(((name: string, fallback?: unknown) => {
+			if (name === 'authentication') return 'microsoftEntraServicePrincipalApi';
+			if (name === 'mailbox') return 'user_contoso.com#EXT#@tenant.onmicrosoft.com';
+			if (name === 'filters') return {};
+			if (name === 'options') return {};
+			if (name === 'output') return 'simple';
+			return fallback;
+		}) as unknown as IPollFunctions['getNodeParameter']);
+
+		await getPollResponse.call(mockPollFunctions, pollStartDate, pollEndDate);
+
+		expect(mockRequestWithAuthentication).toHaveBeenCalledWith(
+			'microsoftEntraServicePrincipalApi',
+			expect.objectContaining({
+				uri: 'https://graph.microsoft.com/v1.0/users/user_contoso.com%23EXT%23%40tenant.onmicrosoft.com/messages',
+			}),
+		);
+	});
+
 	it('targets /users/{encoded-mailbox}/mailFolders/{id}/messages when folders are included', async () => {
 		mockPollFunctions.getMode.mockReturnValue('manual');
 		const folderId = 'AAMkADYyN2Q4ZTZl';

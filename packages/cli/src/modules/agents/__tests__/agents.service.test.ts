@@ -11,6 +11,7 @@ import { AgentTaskService } from '../agent-task.service';
 import type { AgentTestChatService } from '../agent-test-chat.service';
 import { AgentsService } from '../agents.service';
 import type { Agent } from '../entities/agent.entity';
+import { ChatIntegrationService } from '../integrations/chat-integration.service';
 import type { AgentRepository } from '../repositories/agent.repository';
 
 const agentId = 'agent-1';
@@ -39,11 +40,14 @@ function makeService() {
 	const runtimeCacheService = mock<AgentRuntimeCacheService>();
 	const testChatService = mock<AgentTestChatService>();
 	const agentTaskService = mock<AgentTaskService>();
+	const chatIntegrationService = mock<ChatIntegrationService>();
 
 	agentRepository.save.mockImplementation(async (agent) => agent as Agent);
 	agentTaskService.requestReconcile.mockResolvedValue();
+	chatIntegrationService.disconnectChannel.mockResolvedValue();
 	testChatService.clearAllTestChatMessages.mockResolvedValue();
 	Container.set(AgentTaskService, agentTaskService);
+	Container.set(ChatIntegrationService, chatIntegrationService);
 
 	const service = new AgentsService(
 		mockLogger(),
@@ -61,6 +65,7 @@ function makeService() {
 		runtimeCacheService,
 		testChatService,
 		agentTaskService,
+		chatIntegrationService,
 	};
 }
 
@@ -103,22 +108,32 @@ describe('AgentsService', () => {
 			runtimeCacheService,
 			testChatService,
 			agentTaskService,
+			chatIntegrationService,
 		} = makeService();
-		const agent = makeAgent();
+		const agent = makeAgent({
+			integrations: [
+				{ type: 'slack', credentialId: 'slack-1' },
+				{ type: 'telegram', credentialId: 'telegram-1' },
+			],
+		});
 
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
-		await expect(service.delete(agentId, projectId, 'user-1')).resolves.toBe(true);
+		await expect(service.delete(agentId, projectId)).resolves.toBe(true);
 
-		expect(agentKnowledgeService.deleteAllFilesForAgent).toHaveBeenCalledWith(
-			projectId,
-			agentId,
-			'user-1',
-		);
+		expect(agentKnowledgeService.deleteAllFilesForAgent).toHaveBeenCalledWith(projectId, agentId);
 		expect(agentKnowledgeService.deleteAllFilesForAgent.mock.invocationCallOrder[0]).toBeLessThan(
 			agentRepository.remove.mock.invocationCallOrder[0],
 		);
 		expect(agentRepository.remove).toHaveBeenCalledWith(agent);
+		expect(chatIntegrationService.disconnectChannel).toHaveBeenCalledWith(agentId, {
+			type: 'slack',
+			credentialId: 'slack-1',
+		});
+		expect(chatIntegrationService.disconnectChannel).toHaveBeenCalledWith(agentId, {
+			type: 'telegram',
+			credentialId: 'telegram-1',
+		});
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
 		expect(agentTaskService.requestReconcile).toHaveBeenCalledWith(agentId);
 		expect(testChatService.clearAllTestChatMessages).toHaveBeenCalledWith(agentId);
@@ -132,7 +147,7 @@ describe('AgentsService', () => {
 		agentKnowledgeService.deleteAllFilesForAgent.mockRejectedValue(new Error('storage down'));
 		testChatService.clearAllTestChatMessages.mockRejectedValue(new Error('memory down'));
 
-		await expect(service.delete(agentId, projectId, 'user-1')).resolves.toBe(true);
+		await expect(service.delete(agentId, projectId)).resolves.toBe(true);
 		expect(agentRepository.remove).toHaveBeenCalledWith(agent);
 	});
 
@@ -140,7 +155,7 @@ describe('AgentsService', () => {
 		const { service, agentRepository } = makeService();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(null);
 
-		await expect(service.delete(agentId, projectId, 'user-1')).resolves.toBe(false);
+		await expect(service.delete(agentId, projectId)).resolves.toBe(false);
 		expect(agentRepository.remove).not.toHaveBeenCalled();
 	});
 });
