@@ -104,4 +104,14 @@ describe('mcpToolToDynamicTool', () => {
 			'value',
 		]);
 	});
+
+	it('should forward object-schema args to the callback top-level, not wrapped in value', async () => {
+		vi.mocked(convertJsonSchemaToZod).mockReturnValue(z.object({ url: z.string() }));
+		const onCallTool = vi.fn().mockResolvedValue('ok');
+
+		const dynamicTool = mcpToolToDynamicTool(tool, onCallTool);
+		await dynamicTool.invoke({ url: 'https://example.com' });
+
+		expect(onCallTool.mock.calls[0][0]).toEqual({ url: 'https://example.com' });
+	});
 });
