@@ -1032,6 +1032,12 @@ export interface McpServerConfig {
 	 * in a custom `fetch` implementation).
 	 */
 	cacheKey?: string;
+	metadata?: {
+		/** Registry slug for Instance AI MCP registry servers. */
+		serverSlug?: string;
+		/** User who owns the registry MCP connection. */
+		userId?: string;
+	};
 }
 
 // ── Memory ───────────────────────────────────────────────────────────────────
