@@ -43,6 +43,7 @@ import {
 	GEN_AI_COMPLETION,
 	GEN_AI_PROMPT,
 	mergeTraceInputs,
+	rawTracePayload,
 	redactLangSmithTelemetrySpan,
 	sanitizeTracePayload,
 	sanitizeTraceValue,
@@ -337,11 +338,24 @@ async function finishProductSpan(
 	}
 
 	if (options?.outputs !== undefined) {
-		const completion = stringifyTracePayload(options.outputs);
+		let completion: string | undefined;
+		let runOutputs: Record<string, unknown> | undefined;
+		if (options.rawOutputs) {
+			// Lossless pre-bounded payload; the export scrubber still redacts inside it.
+			const raw = rawTracePayload(options.outputs);
+			try {
+				completion = JSON.stringify(raw);
+				runOutputs = raw;
+			} catch {
+				// Unserializable (cycles) — fall through to the sanitized path.
+			}
+		}
+		completion ??= stringifyTracePayload(options.outputs);
+		runOutputs ??= sanitizeTracePayload(options.outputs);
 		if (completion !== undefined) {
 			attributes[GEN_AI_COMPLETION] = completion;
 		}
-		run.outputs = sanitizeTracePayload(options.outputs);
+		run.outputs = runOutputs;
 	}
 
 	run.endTime = Date.now();
@@ -938,6 +952,7 @@ async function startAndFinishProductChildSpan(
 		metadata?: Record<string, unknown>;
 		inputs?: unknown;
 		outputs?: unknown;
+		rawOutputs?: boolean;
 		error?: string;
 		forceFlush?: boolean;
 	},
@@ -961,12 +976,62 @@ async function startAndFinishProductChildSpan(
 	}
 	await finishProductSpanBestEffort(currentTrace.runtime, childRun, {
 		...(options.outputs !== undefined ? { outputs: options.outputs } : {}),
+		...(options.rawOutputs ? { rawOutputs: true } : {}),
 		...(options.error ? { error: options.error } : {}),
 		metadata: {
 			final_status: options.error ? 'error' : 'completed',
 		},
 		forceFlush: options.forceFlush,
 	});
+}
+
+/**
+ * Emit a trace-only child run, preferring the current turn's ambient trace: a
+ * tool suspended in one turn and resumed in a later one holds a stale handle
+ * whose shut-down runtime silently exports nothing. Returns the path taken.
+ */
+export async function emitTraceOnlyChildRun(
+	fallbackTracing: InstanceAiTraceContext | undefined,
+	init: InstanceAiTraceRunInit,
+	finish: { outputs: unknown; rawOutputs?: boolean },
+): Promise<'ambient' | 'handle' | 'skipped'> {
+	// Raw payloads are flagged in metadata so the export scrubber lifts its
+	// structural depth cap for them — keyed on producer-set metadata, not on a
+	// span name any tool could claim.
+	const metadata = finish.rawOutputs
+		? { ...init.metadata, raw_trace_payload: true }
+		: init.metadata;
+	const currentTrace = getCurrentProductTrace();
+	if (currentTrace) {
+		await startAndFinishProductChildSpan(currentTrace, {
+			name: init.name,
+			canonicalName: init.canonicalName,
+			runType: init.runType,
+			tags: init.tags,
+			metadata,
+			inputs: init.inputs,
+			outputs: finish.outputs,
+			rawOutputs: finish.rawOutputs,
+		});
+		return 'ambient';
+	}
+	// A dead handle's runs are spanless and export nothing — don't claim 'handle'.
+	if (fallbackTracing && (fallbackTracing.isLive?.() ?? true)) {
+		try {
+			const run = await fallbackTracing.startChildRun(fallbackTracing.actorRun, {
+				...init,
+				metadata,
+			});
+			await fallbackTracing.finishRun(run, {
+				outputs: finish.outputs,
+				...(finish.rawOutputs ? { rawOutputs: true } : {}),
+			});
+			return 'handle';
+		} catch {
+			// Best-effort: tracing must never break the caller.
+		}
+	}
+	return 'skipped';
 }
 
 async function traceProductSuspendableToolExecute(
@@ -1131,6 +1196,7 @@ function createTraceContext(
 		messageRun: rootRun,
 		orchestratorRun: actorRun,
 		startChildRun,
+		isLive: () => !otelRuntime.shutdown,
 		withRunTree,
 		withActiveSpan,
 		toHeaders: () => ({}),
