@@ -80,7 +80,12 @@ describe('OAuthTokenService', () => {
 			const userId = 'user-123';
 			const clientId = 'client-456';
 
-			const { accessToken, refreshToken } = service.generateTokenPair(userId, clientId, undefined, []);
+			const { accessToken, refreshToken } = service.generateTokenPair(
+				userId,
+				clientId,
+				undefined,
+				[],
+			);
 
 			expect(accessToken).toMatch(/^[\w-]+\.[\w-]+\.[\w-]+$/); // JWT format
 
