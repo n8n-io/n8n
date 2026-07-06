@@ -498,6 +498,39 @@ describe('createLlmMockHandler', () => {
 		expect(extractNodeConfig).toHaveBeenCalledTimes(1);
 	});
 
+	it('serves identical repeats from cache with isolated body copies', async () => {
+		llmSubmits({ type: 'json', body: { items: [{ id: 1 }] } });
+		const handler = createLlmMockHandler();
+
+		const first = await callHandler(handler);
+		// Simulate node code reshaping the response body in place.
+		(first.body as { items: unknown[] }).items.push({ id: 'mutated' });
+
+		const second = await callHandler(handler);
+
+		// One LLM round-trip — the repeat was a cache hit …
+		expect(mockGenerate).toHaveBeenCalledTimes(1);
+		// … but the first caller's mutation must not leak into it.
+		expect(second.body).toEqual({ items: [{ id: 1 }] });
+		expect(second.body).not.toBe(first.body);
+	});
+
+	it('evicts a soft-fallback response so the next identical request regenerates', async () => {
+		// json + textBody soft-captures the spec and rejects it; the agent never
+		// resubmits, so the first response is served as a soft fallback.
+		llmSubmits({ type: 'json', body: { stale: true }, textBody: 'not allowed with json' });
+		llmSubmits({ type: 'json', body: { fresh: true } });
+		const handler = createLlmMockHandler();
+
+		const first = await callHandler(handler);
+		expect(first.body).toEqual({ stale: true });
+
+		// The soft fallback must not be cached — the identical repeat regenerates.
+		const second = await callHandler(handler);
+		expect(second.body).toEqual({ fresh: true });
+		expect(mockGenerate).toHaveBeenCalledTimes(2);
+	});
+
 	it('should extract config separately for different node names', async () => {
 		const { extractNodeConfig } = (await import('../node-config')) as unknown as {
 			extractNodeConfig: Mock;

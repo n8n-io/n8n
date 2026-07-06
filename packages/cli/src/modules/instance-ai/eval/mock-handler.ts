@@ -41,7 +41,7 @@ You get everything you need in the user message: the request (service, method, U
 **Write operations (POST / PUT / PATCH that create or modify a resource):**
 Return the FULL resource object the API produces on success — not a minimal acknowledgement-only response. When the docs show multiple response variants for one endpoint, default to the FULL/complete one. Use a partial/minimal variant only if the request body contains the explicit field that triggers it (e.g. \`template\`, \`async: true\`).
 
-Each request is mocked independently. Even when the same node makes multiple similar calls in a workflow, every call must produce a fully-shaped response on its own — never shortcut later calls.
+Each request is mocked independently. Even when the same node makes multiple similar calls in a workflow, every call must produce a fully-shaped response on its own — never shortcut later calls. (Byte-identical repeats of a request you already answered are served from a cache and never reach you — any request you DO see is distinct and needs its own full response.)
 
 Response SHAPE comes from the API docs; DATA VALUES come from the node config. Use names/IDs from the config exactly (case-sensitive).
 
@@ -126,8 +126,11 @@ export function createLlmMockHandler(options?: MockHandlerOptions): EvalLlmMockH
 	// per item) are served from cache: one LLM round-trip per distinct request
 	// keeps large workflows inside the scenario time budget, and repeats can't
 	// drift between items. Promises are cached so concurrent identical requests
-	// share one in-flight generation; failed generations (the `_evalMockError`
-	// sentinel) are evicted so a later identical request gets a fresh attempt.
+	// share one in-flight generation. Evicted after resolution: failed
+	// generations (the `_evalMockError` sentinel) so a later identical request
+	// gets a fresh attempt, and soft-fallback responses (served after a
+	// rejected-and-never-resubmitted `submit_response`, e.g. the date-filter
+	// soft rejection) so known-suspect data is served at most once.
 	const responseCache = new Map<string, Promise<EvalMockHttpResponse>>();
 
 	return async (requestOptions, node) => {
@@ -147,7 +150,7 @@ export function createLlmMockHandler(options?: MockHandlerOptions): EvalLlmMockH
 				Container.get(Logger).debug(
 					`[EvalMock] Serving cached mock for ${requestOptions.method ?? 'GET'} ${extractEndpoint(requestOptions.url)} ("${node.name}")`,
 				);
-				return await cached;
+				return cloneMockResponse(await cached);
 			}
 
 			const pending = generateMockResponse(requestOptions, node, {
@@ -163,17 +166,44 @@ export function createLlmMockHandler(options?: MockHandlerOptions): EvalLlmMockH
 				responseCache.set(cacheKey, pending);
 				void pending.then(
 					(response) => {
-						if (isMockErrorSentinel(response)) responseCache.delete(cacheKey);
+						if (isMockErrorSentinel(response) || softFallbackResponses.has(response)) {
+							responseCache.delete(cacheKey);
+						}
 					},
 					() => responseCache.delete(cacheKey),
 				);
 			}
 
-			return await pending;
+			// Clone on EVERY serve (not just cache hits): the first caller shares
+			// the object with the cached promise, so an in-place body mutation by
+			// node code would otherwise leak into every later hit.
+			return cloneMockResponse(await pending);
 		} catch (error) {
 			return buildPipelineErrorResponse(error, requestOptions, node.name);
 		}
 	};
+}
+
+/**
+ * Responses served from a rejected-but-kept `submit_response` (soft fallback).
+ * Membership marks them for cache eviction — identified by object identity,
+ * so this must be checked against the ORIGINAL response resolved from the
+ * cached promise, not the per-serve clones.
+ */
+const softFallbackResponses = new WeakSet<EvalMockHttpResponse>();
+
+/**
+ * Deep-copy the mutable parts of a mock response so no caller can poison the
+ * cached original by mutating the body (nodes routinely reshape response data
+ * in place) or headers.
+ */
+function cloneMockResponse(response: EvalMockHttpResponse): EvalMockHttpResponse {
+	const body = Buffer.isBuffer(response.body)
+		? Buffer.from(response.body)
+		: response.body !== null && typeof response.body === 'object'
+			? structuredClone(response.body)
+			: response.body;
+	return { ...response, body, headers: { ...response.headers } };
 }
 
 /**
@@ -359,7 +389,7 @@ async function generateMockResponse(
 
 	for (let attempt = 0; attempt <= context.maxRetries; attempt++) {
 		try {
-			const spec = await callLlm(
+			const { spec, softOnly } = await callLlm(
 				userPrompt,
 				{
 					serviceName,
@@ -371,7 +401,10 @@ async function generateMockResponse(
 				dateConstraints,
 			);
 			applyEndpointNormalizers(request, spec);
-			return materializeSpec(spec);
+			const response = materializeSpec(spec);
+			// Mark soft-fallback responses so the handler's cache evicts them.
+			if (softOnly) softFallbackResponses.add(response);
+			return response;
 		} catch (error) {
 			lastError = error instanceof Error ? error.message : String(error);
 			if (attempt < context.maxRetries) {
@@ -708,7 +741,7 @@ async function callLlm(
 	requestInfo: { serviceName: string; method: string; pathname: string; hostname?: string },
 	timeoutMs: number,
 	dateConstraints: DateFilterConstraint[] = [],
-): Promise<MockResponseSpec> {
+): Promise<{ spec: MockResponseSpec; softOnly: boolean }> {
 	const capture: SubmitCapture = {};
 
 	// Cached prefix = tools + instructions; keep MOCK_SYSTEM_PROMPT static, per-request data in the user prompt.
@@ -755,7 +788,7 @@ async function callLlm(
 		);
 	}
 
-	return capture.spec;
+	return { spec: capture.spec, softOnly: capture.softOnly === true };
 }
 
 // ---------------------------------------------------------------------------
