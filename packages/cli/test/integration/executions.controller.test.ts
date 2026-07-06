@@ -118,7 +118,7 @@ describe('GET /executions/:id', () => {
 		expect(response.body.data).toBeDefined();
 	});
 
-	test('returns executions of workflows shared with the user regardless of sharing license', async () => {
+	test('returns executions of workflows shared with the user without the sharing license', async () => {
 		const workflow = await createWorkflow({}, owner);
 		await shareWorkflowWithUsers(workflow, [member]);
 		const execution = await createSuccessfulExecution(workflow);
