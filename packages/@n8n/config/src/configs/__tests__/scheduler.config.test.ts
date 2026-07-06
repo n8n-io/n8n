@@ -27,6 +27,7 @@ describe('SchedulerConfig', () => {
 			expect(scheduler.executorIntervalSeconds).toBe(5);
 			expect(scheduler.claimBatchSize).toBe(100);
 			expect(scheduler.reaperIntervalSeconds).toBe(30);
+			expect(scheduler.reaperBatchSize).toBe(100);
 			expect(scheduler.leaseDurationSeconds).toBe(60);
 			expect(scheduler.retentionSeconds).toBe(24 * 60 * 60);
 			expect(scheduler.failedRetentionSeconds).toBe(7 * 24 * 60 * 60);

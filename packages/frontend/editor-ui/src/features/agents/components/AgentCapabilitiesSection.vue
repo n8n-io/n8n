@@ -692,7 +692,7 @@ function handleChannelDisconnected(channelType: string) {
 .section {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--md);
+	gap: var(--spacing--xs);
 	width: 100%;
 }
 
@@ -714,7 +714,7 @@ function handleChannelDisconnected(channelType: string) {
 	display: flex;
 	align-items: center;
 	flex-wrap: wrap;
-	gap: var(--spacing--2xs);
+	gap: var(--spacing--xs);
 	min-width: 0;
 	margin-top: var(--spacing--5xs);
 }

@@ -84,6 +84,14 @@ export class SchedulerConfig {
 	reaperIntervalSeconds: number = 30;
 
 	/**
+	 * The most expired-lease tasks a single reaper sweep reclaims. Defaults to 100.
+	 * Larger batches recover a backlog faster but hold more work on one instance per
+	 * sweep. Must be greater than 0.
+	 */
+	@Env('N8N_SCHEDULER_REAPER_BATCH_SIZE', positiveIntSchema)
+	reaperBatchSize: number = 100;
+
+	/**
 	 * How long, in seconds, a single instance holds an exclusive claim on a run it
 	 * has picked up, so no other instance starts the same one. Defaults to 60 seconds.
 	 *

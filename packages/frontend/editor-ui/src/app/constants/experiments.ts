@@ -138,6 +138,9 @@ export const INSTANCE_AI_COMPUTER_USE_EXPERIMENT = createExperiment('091_instanc
 export const INSTANCE_AI_TEMPLATE_EXAMPLES_EXPERIMENT = createExperiment(
 	'092_instance_ai_template_examples',
 );
+export const INSTANCE_AI_BROWSER_CREDENTIAL_SETUP_EXPERIMENT = createExperiment(
+	'094_instance_ai_browser_credential_setup',
+);
 
 export const EXPERIMENTS_TO_TRACK = [
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
@@ -175,4 +178,5 @@ export const EXPERIMENTS_TO_TRACK = [
 	INSTANCE_AI_BROWSER_USE_EXPERIMENT.name,
 	INSTANCE_AI_COMPUTER_USE_EXPERIMENT.name,
 	INSTANCE_AI_TEMPLATE_EXAMPLES_EXPERIMENT.name,
+	INSTANCE_AI_BROWSER_CREDENTIAL_SETUP_EXPERIMENT.name,
 ];

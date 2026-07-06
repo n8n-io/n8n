@@ -104,6 +104,7 @@ export const GLOBAL_CUSTOM_ROLE_SCOPE_GROUPS = {
 		],
 	},
 	role: {
+		'Manage project roles': ['role:read', 'role:manageProject'],
 		Manage: ['role:read', 'role:manage'],
 	},
 	apiKey: {

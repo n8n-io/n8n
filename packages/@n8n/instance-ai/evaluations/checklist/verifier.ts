@@ -31,8 +31,13 @@ const checklistResultSchema = z.object({
 // Public API
 // ---------------------------------------------------------------------------
 
-const MAX_VERIFY_ATTEMPTS = 2;
+// 3 attempts, longer timeout on the last: "verifier returned empty" scenarios
+// in CI cluster on large artifacts + provider contention, where one more
+// attempt with extra headroom recovers a verdict instead of recording a
+// verification_failure for an already-executed scenario.
+const MAX_VERIFY_ATTEMPTS = 3;
 const VERIFY_ATTEMPT_TIMEOUT_MS = 120_000;
+const VERIFY_FINAL_ATTEMPT_TIMEOUT_MS = 180_000;
 const VERIFIER_DEBUG = process.env.N8N_EVAL_VERIFIER_DEBUG === '1';
 
 export interface VerifierAttemptDebug {
@@ -321,11 +326,12 @@ export async function verifyChecklist(
 	});
 
 	for (let attempt = 1; attempt <= MAX_VERIFY_ATTEMPTS; attempt++) {
+		const attemptTimeoutMs =
+			attempt === MAX_VERIFY_ATTEMPTS ? VERIFY_FINAL_ATTEMPT_TIMEOUT_MS : VERIFY_ATTEMPT_TIMEOUT_MS;
 		const abortController = new AbortController();
 		const timer = setTimeout(
-			() =>
-				abortController.abort(new Error(`verifier timed out after ${VERIFY_ATTEMPT_TIMEOUT_MS}ms`)),
-			VERIFY_ATTEMPT_TIMEOUT_MS,
+			() => abortController.abort(new Error(`verifier timed out after ${attemptTimeoutMs}ms`)),
+			attemptTimeoutMs,
 		);
 
 		try {

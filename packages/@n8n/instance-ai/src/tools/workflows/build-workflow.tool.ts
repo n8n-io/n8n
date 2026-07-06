@@ -1,6 +1,7 @@
 import { Tool } from '@n8n/agents';
 import { instanceAiConfirmationSeveritySchema } from '@n8n/api-types';
 import { hasPlaceholderDeep } from '@n8n/utils/placeholder';
+import { SDK_IMPORTABLE_FUNCTIONS } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -33,6 +34,7 @@ import { withDeterministicRouting } from './workflow-build-routing';
 import { trackWorkflowSourceBuild } from './workflow-build-telemetry';
 import {
 	getWorkflowSourceFileBinding,
+	hashWorkflowSource,
 	normalizeWorkflowSourceFilePath,
 	readWorkflowSourceFile,
 	saveWorkflowSourceFileBinding,
@@ -51,6 +53,7 @@ import type { InstanceAiContext } from '../../types';
 import { BuildFailureTracker } from '../../workflow-builder/build-failure-tracker';
 import { createRemediation } from '../../workflow-loop/remediation';
 import { remediationMetadataSchema } from '../../workflow-loop/workflow-loop-state';
+import { writeWorkspaceFile } from '../../workspace/workspace-files';
 
 const confirmationSuspendSchema = z.object({
 	requestId: z.string(),
@@ -86,6 +89,12 @@ export const buildWorkflowInputSchema = z
 			)
 			.describe(
 				'Workspace path to the workflow source file to build. Supports TypeScript SDK files and WorkflowJSON .json files.',
+			),
+		sourceCode: z
+			.string()
+			.optional()
+			.describe(
+				'Full source to write to filePath before building — use this instead of a separate workspace_write_file call when creating or fully rewriting the source. Omit to build the existing file content (preferred for targeted edits made with file tools).',
 			),
 		workflowId: z
 			.string()
@@ -144,6 +153,48 @@ const setupRequirementOutputSchema = z.discriminatedUnion('status', [
 		guidance: z.string(),
 	}),
 ]);
+
+/** User-facing @n8n/workflow-sdk factories; used to auto-recover missing-import compile failures. */
+const SDK_IMPORTABLE_SYMBOLS = new Set<string>(SDK_IMPORTABLE_FUNCTIONS);
+
+const SDK_IMPORT_REGEX = /import\s*\{([^}]*)\}\s*from\s*['"]@n8n\/workflow-sdk['"]/;
+
+/** Adds missing known SDK symbols to the import for "X is not defined" errors; undefined when not applicable. */
+export function autoImportMissingSdkSymbols(
+	source: string,
+	errors: string[],
+): { source: string; symbols: string[] } | undefined {
+	const missing = new Set<string>();
+	for (const error of errors) {
+		for (const match of error.matchAll(/\b([A-Za-z_$][\w$]*) is not defined\b/g)) {
+			if (SDK_IMPORTABLE_SYMBOLS.has(match[1])) missing.add(match[1]);
+		}
+	}
+	if (missing.size === 0) return undefined;
+
+	const symbols = Array.from(missing);
+	const existing = SDK_IMPORT_REGEX.exec(source);
+	if (existing) {
+		const names = new Set(
+			existing[1]
+				.split(',')
+				.map((name) => name.trim())
+				.filter(Boolean),
+		);
+		for (const symbol of symbols) names.add(symbol);
+		return {
+			source: source.replace(
+				SDK_IMPORT_REGEX,
+				`import {\n  ${Array.from(names).join(',\n  ')},\n} from '@n8n/workflow-sdk'`,
+			),
+			symbols,
+		};
+	}
+	return {
+		source: `import { ${symbols.join(', ')} } from '@n8n/workflow-sdk';\n\n${source}`,
+		symbols,
+	};
+}
 
 const POST_BUILD_FLOW_SKILL_ID = 'post-build-flow';
 
@@ -206,9 +257,10 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 
 	return new Tool('build-workflow')
 		.description(
-			'Build and save a workflow from a workspace source file. ' +
+			'Build and save a workflow from workflow source. ' +
 				'Use TypeScript SDK source for new workflows, or WorkflowJSON .json source for existing workflow edits. ' +
-				'Write or edit the file with workspace file tools, then pass its filePath here.',
+				'For new or fully rewritten source, pass it in `sourceCode` (the tool writes filePath and builds in one call — ' +
+				'do not spend a separate workspace_write_file call). Pass filePath alone only after editing an existing file with file tools.',
 		)
 		.input(buildWorkflowInputSchema)
 		.output(
@@ -375,6 +427,38 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				}
 			}
 
+			// Persist inline source first so the workspace file stays canonical for later repairs.
+			if (input.sourceCode !== undefined && context.workspace) {
+				try {
+					await writeWorkspaceFile(context.workspace, filePath, input.sourceCode, {
+						logger: context.logger,
+						resourceLabel: 'Workflow source file',
+					});
+				} catch (error) {
+					const remediation = createCodeFixableRemediation({
+						reason: 'workflow_source_write_failed',
+						guidance:
+							'The inline sourceCode could not be written to filePath. Write the file with workspace file tools, then call build-workflow again with the same filePath.',
+					});
+					trackWorkflowSourceBuild(context, {
+						result: 'failure',
+						stage: 'source_read',
+						binding,
+						targetWorkflowId,
+						isSupportingWorkflow: input.isSupportingWorkflow,
+						remediation,
+						errorCount: 1,
+					});
+					return {
+						success: false,
+						...sourceResponseBase(binding),
+						workflowId: targetWorkflowId,
+						errors: [error instanceof Error ? error.message : String(error)],
+						remediation,
+					};
+				}
+			}
+
 			let sourceCode: string;
 			let sourceHash: string;
 			try {
@@ -441,7 +525,43 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 
 			let informational: ValidationWarning[] = [];
 
-			const compiled = await compileWorkflowSource(context, filePath, sourceCode);
+			let compiled = await compileWorkflowSource(context, filePath, sourceCode);
+			if (
+				!compiled.success &&
+				compiled.reason === 'workflow_source_build_failed' &&
+				context.workspace
+			) {
+				// Recover missing-import errors server-side; persist so later edits see the fix.
+				const recovery = autoImportMissingSdkSymbols(sourceCode, compiled.errors);
+				if (recovery) {
+					try {
+						await writeWorkspaceFile(context.workspace, filePath, recovery.source, {
+							logger: context.logger,
+							resourceLabel: 'Workflow source file',
+						});
+						const retried = await compileWorkflowSource(context, filePath, recovery.source);
+						// The corrected source is on disk; keep reported errors/hash in sync with it.
+						sourceCode = recovery.source;
+						sourceHash = hashWorkflowSource(recovery.source);
+						compiled = retried.success
+							? {
+									...retried,
+									warnings: [
+										...retried.warnings,
+										{
+											code: 'auto_imported_sdk_symbols',
+											message: `Auto-added missing @n8n/workflow-sdk import(s): ${recovery.symbols.join(', ')}. Include them in future source.`,
+										},
+									],
+								}
+							: retried;
+					} catch (error) {
+						context.logger.debug('Auto-import recovery failed; returning original errors', {
+							error: error instanceof Error ? error.message : String(error),
+						});
+					}
+				}
+			}
 			if (!compiled.success) {
 				const errors = compiled.editable ? withEscalation(compiled.errors) : compiled.errors;
 				const remediation = createSourceCompileRemediation({

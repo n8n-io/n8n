@@ -45,12 +45,14 @@ export const INSTANCE_OPTION_LABEL_KEYS: Record<string, BaseTextKey> = {
 	Manage: 'instanceRoles.option.manage',
 	'Manage own': 'instanceRoles.option.manageOwn',
 	'Manage all': 'instanceRoles.option.manageAll',
+	'Manage project roles': 'instanceRoles.option.manageProjectRoles',
 };
 
 /** Display order of options within a resource group. */
 export const INSTANCE_OPTION_ORDER: string[] = [
 	'View',
 	'Create',
+	'Manage project roles',
 	'Manage',
 	'Manage own',
 	'Manage all',
@@ -107,6 +109,7 @@ export type OptionState = 'checked' | 'indeterminate' | 'unchecked';
  */
 export const SUPERSEDED_BY: Partial<Record<string, string>> = {
 	'Manage own': 'Manage all',
+	'Manage project roles': 'Manage',
 };
 
 /**

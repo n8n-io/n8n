@@ -129,8 +129,13 @@ export function useAutosizeTextarea({
 		const textareaElement = toValue(textarea);
 		if (!textareaElement || document.activeElement !== textareaElement) return;
 
-		textareaElement.scrollTop =
-			textareaElement.selectionStart === 0 ? 0 : textareaElement.scrollHeight;
+		// Only force-scroll at the content boundaries; when editing mid-content
+		// the browser keeps the caret visible and we must preserve the user's scroll position
+		if (textareaElement.selectionStart === 0) {
+			textareaElement.scrollTop = 0;
+		} else if (textareaElement.selectionStart === textareaElement.value.length) {
+			textareaElement.scrollTop = textareaElement.scrollHeight;
+		}
 	}
 
 	const calculateTextareaHeight = () => {
