@@ -100,7 +100,7 @@ export class AgentsService {
 		return agents.filter((agent) => agent.activeVersionId !== null);
 	}
 
-	async delete(agentId: string, projectId: string, userId: string): Promise<boolean> {
+	async delete(agentId: string, projectId: string): Promise<boolean> {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 
 		if (!agent) {
@@ -108,7 +108,7 @@ export class AgentsService {
 		}
 
 		try {
-			await this.agentKnowledgeService.deleteAllFilesForAgent(projectId, agentId, userId);
+			await this.agentKnowledgeService.deleteAllFilesForAgent(projectId, agentId);
 		} catch (error) {
 			this.logger.warn('Failed to delete knowledge files on agent delete', {
 				agentId,
