@@ -18,7 +18,7 @@ test.describe(
 				// deep-link route, mimicking a user coming from the n8n website.
 				await n8n.navigate.toInstanceAi();
 
-				await n8n.page.goto('/assistant/new?templateId=1234&source=website-template');
+				await n8n.page.goto('/assistant/new?templateId=1234');
 
 				// The router guard provisions a thread and redirects with no query —
 				// the URL settles on /assistant/<uuid>, back-button safe.
