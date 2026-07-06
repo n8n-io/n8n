@@ -12,7 +12,6 @@ import { Container } from '@n8n/di';
 
 import { EventService } from '@/events/event.service';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
-
 import { saveCredential } from '@test-integration/db/credentials';
 import { createFolder } from '@test-integration/db/folders';
 import { createMember, createOwner } from '@test-integration/db/users';
@@ -22,9 +21,12 @@ import { FORMAT_VERSION } from '../spec/constants';
 import { readExport } from './utils/tar-support';
 import { buildWorkflowReferencingCredential } from './utils/test-builders';
 
+let service: N8nPackagesService;
+
 beforeAll(async () => {
 	await testModules.loadModules(['n8n-packages']);
 	await testDb.init();
+	service = Container.get(N8nPackagesService);
 });
 
 afterAll(async () => {
@@ -43,28 +45,20 @@ beforeEach(async () => {
 	]);
 });
 
+async function exportProjects(user: User, projectIds: string[]) {
+	return await readExport(await service.exportPackage({ user, projectIds }));
+}
+
+async function exportProject(user: User, projectId: string) {
+	return await exportProjects(user, [projectId]);
+}
+
 describe('project package export', () => {
-	let service: N8nPackagesService;
-
-	beforeAll(() => {
-		service = Container.get(N8nPackagesService);
-	});
-
-	async function exportSingleProject(user: User, projectId: string) {
-		const stream = await service.exportPackage({ user, projectIds: [projectId] });
-		return await readExport(stream);
-	}
-
-	async function exportProjects(user: User, projectIds: string[]) {
-		const stream = await service.exportPackage({ user, projectIds });
-		return await readExport(stream);
-	}
-
 	it('emits a tar with manifest.json first and project.json for an empty team project', async () => {
 		const owner = await createOwner();
 		const project = await createTeamProject('Empty Project', owner);
 
-		const { manifest, entries } = await exportSingleProject(owner, project.id);
+		const { manifest, entries } = await exportProject(owner, project.id);
 
 		expect(entries[0].name).toBe('manifest.json');
 		expect(manifest).toMatchObject({
@@ -138,7 +132,7 @@ describe('project package export', () => {
 		const owner = await createOwner();
 		const personalProject = await getPersonalProject(owner);
 
-		const { manifest, entries } = await exportSingleProject(owner, personalProject.id);
+		const { manifest, entries } = await exportProject(owner, personalProject.id);
 
 		expect(manifest.projects).toEqual([
 			{ id: personalProject.id, name: personalProject.name, target: expect.any(String) },
@@ -160,7 +154,7 @@ describe('project package export', () => {
 		const project = await createTeamProject('Editor Project', owner);
 		await linkUserToProject(editor, project, 'project:editor');
 
-		const { manifest } = await exportSingleProject(editor, project.id);
+		const { manifest } = await exportProject(editor, project.id);
 
 		expect(manifest.projects).toEqual([
 			{ id: project.id, name: 'Editor Project', target: expect.any(String) },
@@ -172,7 +166,7 @@ describe('project package export', () => {
 		const outsider = await createMember();
 		const project = await createTeamProject('Private Project', owner);
 
-		await expect(exportSingleProject(outsider, project.id)).rejects.toThrow(
+		await expect(exportProject(outsider, project.id)).rejects.toThrow(
 			'1 project(s) not found or not accessible. Export aborted.',
 		);
 	});
@@ -182,24 +176,13 @@ describe('project package export', () => {
 		const otherUser = await createMember();
 		const personalProject = await getPersonalProject(projectOwner);
 
-		await expect(exportSingleProject(otherUser, personalProject.id)).rejects.toThrow(
+		await expect(exportProject(otherUser, personalProject.id)).rejects.toThrow(
 			'1 project(s) not found or not accessible. Export aborted.',
 		);
 	});
 });
 
 describe('project package export — with folders / workflows', () => {
-	let service: N8nPackagesService;
-
-	beforeAll(() => {
-		service = Container.get(N8nPackagesService);
-	});
-
-	async function exportProject(user: User, projectId: string) {
-		return await readExport(await service.exportPackage({ user, projectIds: [projectId] }));
-	}
-
-	// AC#1
 	it('nests a folder and its workflow inside the project namespace', async () => {
 		const owner = await createOwner();
 		const project = await createTeamProject('team-ligo', owner);
@@ -219,7 +202,6 @@ describe('project package export — with folders / workflows', () => {
 		expect(entries.find((e) => e.name === `${workflowEntry.target}/workflow.json`)).toBeDefined();
 	});
 
-	// AC#2
 	it('preserves nested folders and exports an empty folder as a shell', async () => {
 		const owner = await createOwner();
 		const project = await createTeamProject('team-ligo', owner);
@@ -234,21 +216,17 @@ describe('project package export — with folders / workflows', () => {
 		const inProgressEntry = manifest.folders!.find((f) => f.id === inProgress.id)!;
 		const nestedEntry = manifest.folders!.find((f) => f.id === nested.id)!;
 
-		// The whole hierarchy stays inside the project namespace, nesting directly.
 		expect(inProgressEntry.target).toMatch(new RegExp(`^${projectEntry.target}/folders/[^/]+$`));
 		expect(nestedEntry.target).toMatch(new RegExp(`^${inProgressEntry.target}/[^/]+$`));
 
-		// Empty folder ships as a shell, with no workflows/ dir under it.
 		const emptyEntry = manifest.folders!.find((f) => f.id === emptyFolder.id)!;
 		expect(emptyEntry.target).toMatch(new RegExp(`^${projectEntry.target}/folders/[^/]+$`));
 		expect(entries.some((e) => e.name.startsWith(`${emptyEntry.target}/workflows/`))).toBe(false);
 
-		// The nested folder's workflow nests correctly.
 		const workflowEntry = manifest.workflows!.find((w) => w.id === workflow.id)!;
 		expect(workflowEntry.target).toMatch(new RegExp(`^${nestedEntry.target}/workflows/[^/]+$`));
 	});
 
-	// Decision [C] — root-level workflow (no parent folder)
 	it('nests a project root workflow under the project workflows/ dir', async () => {
 		const owner = await createOwner();
 		const project = await createTeamProject('team-ligo', owner);
@@ -263,7 +241,6 @@ describe('project package export — with folders / workflows', () => {
 		expect(manifest.folders).toBeUndefined();
 	});
 
-	// AC#3
 	it('namespaces a project-owned credential inside the project directory', async () => {
 		const owner = await createOwner();
 		const project = await createTeamProject('team-ligo', owner);
@@ -303,7 +280,6 @@ describe('project package export — with folders / workflows', () => {
 		});
 	});
 
-	// Decision [A] — a credential owned by a non-exported project stays top-level
 	it('keeps a credential owned by a non-exported project at the package top level', async () => {
 		const owner = await createOwner();
 		const exportedProject = await createTeamProject('team-ligo', owner);
@@ -325,7 +301,6 @@ describe('project package export — with folders / workflows', () => {
 		expect(manifest.credentials![0].target).toMatch(/^credentials\/[^/]+$/);
 	});
 
-	// Decision [A] — dedup: a credential shared across two exported projects is written once under its owner
 	it('writes a credential shared across two exported projects once, under its owner', async () => {
 		const owner = await createOwner();
 		const projectA = await createTeamProject('team-ligo', owner);
@@ -345,9 +320,7 @@ describe('project package export — with folders / workflows', () => {
 			credential,
 		});
 
-		const { manifest } = await readExport(
-			await service.exportPackage({ user: owner, projectIds: [projectA.id, projectB.id] }),
-		);
+		const { manifest } = await exportProjects(owner, [projectA.id, projectB.id]);
 
 		const projectAEntry = manifest.projects!.find((p) => p.id === projectA.id)!;
 		expect(manifest.credentials).toHaveLength(1);
@@ -361,9 +334,6 @@ describe('project package export — with folders / workflows', () => {
 		expect(usedByWorkflows.sort()).toEqual([workflowA.id, workflowB.id].sort());
 	});
 
-	// Regression: a root workflow shared across two exported projects must not be
-	// written twice (which would collide on manifest id and abort the whole export).
-	// Root discovery is owner-scoped, so it ships once under its owner project only.
 	it('exports a root workflow shared across two projects only under its owner', async () => {
 		const owner = await createOwner();
 		const ownerProject = await createTeamProject('team-ligo', owner);
@@ -371,9 +341,7 @@ describe('project package export — with folders / workflows', () => {
 		const workflow = await createWorkflow({ name: 'shared-root' }, ownerProject);
 		await shareWorkflowWithProjects(workflow, [{ project: otherProject, role: 'workflow:editor' }]);
 
-		const { manifest } = await readExport(
-			await service.exportPackage({ user: owner, projectIds: [ownerProject.id, otherProject.id] }),
-		);
+		const { manifest } = await exportProjects(owner, [ownerProject.id, otherProject.id]);
 
 		const ownerProjectEntry = manifest.projects!.find((p) => p.id === ownerProject.id)!;
 		const matching = manifest.workflows!.filter((w) => w.id === workflow.id);
@@ -381,7 +349,6 @@ describe('project package export — with folders / workflows', () => {
 		expect(matching[0].target.startsWith(`${ownerProjectEntry.target}/`)).toBe(true);
 	});
 
-	// Per-baseDir allocator: same-named credentials in different namespaces don't collide.
 	it('allocates same-named credentials independently per namespace', async () => {
 		const owner = await createOwner();
 		const project = await createTeamProject('team-ligo', owner);
@@ -416,7 +383,6 @@ describe('project package export — with folders / workflows', () => {
 		expect(ownedEntry.target).not.toBe(externalEntry.target);
 	});
 
-	// AC#4
 	it('exports two projects each with their own nested contents', async () => {
 		const owner = await createOwner();
 		const projectA = await createTeamProject('team-ligo', owner);
@@ -427,9 +393,7 @@ describe('project package export — with folders / workflows', () => {
 		const folderB = await createFolder(projectB, { name: 'backlog' });
 		const workflowB = await createWorkflow({ name: 'sync', parentFolder: folderB }, projectB);
 
-		const { manifest } = await readExport(
-			await service.exportPackage({ user: owner, projectIds: [projectA.id, projectB.id] }),
-		);
+		const { manifest } = await exportProjects(owner, [projectA.id, projectB.id]);
 
 		expect(manifest.projects).toHaveLength(2);
 		const projectAEntry = manifest.projects!.find((p) => p.id === projectA.id)!;
