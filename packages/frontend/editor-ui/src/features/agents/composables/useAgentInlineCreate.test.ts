@@ -9,11 +9,20 @@ const { upsertProjectAgentsListCache } = vi.hoisted(() => ({
 }));
 const { showError } = vi.hoisted(() => ({ showError: vi.fn() }));
 const { track } = vi.hoisted(() => ({ track: vi.fn() }));
+const { openBuilder } = vi.hoisted(() => ({ openBuilder: vi.fn() }));
+const { saveCurrentWorkflow } = vi.hoisted(() => ({ saveCurrentWorkflow: vi.fn() }));
 
 vi.mock('./useAgentApi', () => ({ createAgent }));
 vi.mock('./useProjectAgentsList', () => ({ upsertProjectAgentsListCache }));
+vi.mock('./useAgentNavigation', () => ({
+	useAgentNavigation: () => ({ openBuilder }),
+}));
 vi.mock('@/app/composables/useToast', () => ({ useToast: () => ({ showError }) }));
 vi.mock('@/app/composables/useTelemetry', () => ({ useTelemetry: () => ({ track }) }));
+vi.mock('@/app/composables/useWorkflowSaving', () => ({
+	useWorkflowSaving: () => ({ saveCurrentWorkflow }),
+}));
+vi.mock('vue-router', () => ({ useRouter: () => ({}) }));
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ restApiContext: { baseUrl: '', pushRef: '' } }),
 }));
@@ -27,6 +36,7 @@ describe('useAgentInlineCreate', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		createAgent.mockResolvedValue(agent);
+		saveCurrentWorkflow.mockResolvedValue(true);
 	});
 
 	it('creates a draft agent and references it, staying in the current flow', async () => {
@@ -59,6 +69,47 @@ describe('useAgentInlineCreate', () => {
 			source: 'ndv_banner',
 		});
 		expect(showError).not.toHaveBeenCalled();
+		// Staying in flow: no workflow save, no builder navigation.
+		expect(saveCurrentWorkflow).not.toHaveBeenCalled();
+		expect(openBuilder).not.toHaveBeenCalled();
+	});
+
+	it('createAndOpenBuilder saves the workflow, then opens the builder with the origin node', async () => {
+		const setReference = vi.fn();
+		const { createAndOpenBuilder } = useAgentInlineCreate({
+			projectId: 'project-1',
+			telemetrySource: 'ndv_banner',
+			getOriginNodeId: () => 'node-7',
+			setReference,
+		});
+
+		await createAndOpenBuilder();
+
+		expect(setReference).toHaveBeenCalledWith(agent);
+		// The reference must be persisted before leaving the workflow, and the
+		// save must precede navigation (an unsaved reference would be dropped
+		// by the route-leave discard, orphaning the draft).
+		expect(saveCurrentWorkflow).toHaveBeenCalled();
+		expect(openBuilder).toHaveBeenCalledWith('project-1', 'agent-1', 'node-7');
+		expect(saveCurrentWorkflow.mock.invocationCallOrder[0]).toBeLessThan(
+			openBuilder.mock.invocationCallOrder[0],
+		);
+	});
+
+	it('createAndOpenBuilder keeps the reference but skips navigation when the save fails', async () => {
+		saveCurrentWorkflow.mockResolvedValue(false);
+		const setReference = vi.fn();
+		const { createAndOpenBuilder, isCreating } = useAgentInlineCreate({
+			projectId: 'project-1',
+			telemetrySource: 'ndv_banner',
+			setReference,
+		});
+
+		await createAndOpenBuilder();
+
+		expect(setReference).toHaveBeenCalledWith(agent);
+		expect(openBuilder).not.toHaveBeenCalled();
+		expect(isCreating.value).toBe(false);
 	});
 
 	it('shows an error and does not create when no project is resolved', async () => {

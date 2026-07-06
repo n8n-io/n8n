@@ -7,8 +7,9 @@ import { NdvAgentConfigKey } from '../../composables/useNdvAgentConfig';
 import type { UseNdvAgentConfigReturn } from '../../composables/useNdvAgentConfig';
 import type { AgentResource } from '@/features/agents/types';
 
-const { createAndSelect, isCreatingHolder } = vi.hoisted(() => ({
+const { createAndSelect, createAndOpenBuilder, isCreatingHolder } = vi.hoisted(() => ({
 	createAndSelect: vi.fn(),
+	createAndOpenBuilder: vi.fn(),
 	isCreatingHolder: { value: false },
 }));
 const { canCreateHolder } = vi.hoisted(() => ({ canCreateHolder: { value: true } }));
@@ -27,7 +28,7 @@ vi.mock('@/features/agents/composables/useAgentPermissions', () => ({
 vi.mock('@/features/agents/composables/useAgentInlineCreate', () => ({
 	useAgentInlineCreate: (options: unknown) => {
 		inlineCreateOptionsHolder.value = options;
-		return { createAndSelect, isCreating: isCreatingHolder };
+		return { createAndSelect, createAndOpenBuilder, isCreating: isCreatingHolder };
 	},
 }));
 
@@ -44,7 +45,7 @@ function createNdvStub(overrides: { agentId?: string } = {}) {
 
 function mountBanner(
 	stub: { value: UseNdvAgentConfigReturn },
-	props: { isReadOnly?: boolean } = {},
+	props: { isReadOnly?: boolean; originNodeId?: string } = {},
 ) {
 	return mount(AgentNdvBuilderBanner, {
 		props,
@@ -76,28 +77,31 @@ describe('AgentNdvBuilderBanner', () => {
 		await wrapper.find('[data-test-id="agent-ndv-banner-open-builder"]').trigger('click');
 
 		expect(stub.openBuilder).toHaveBeenCalled();
-		expect(createAndSelect).not.toHaveBeenCalled();
+		expect(createAndOpenBuilder).not.toHaveBeenCalled();
 	});
 
-	it('runs the inline-create flow (no builder navigation) when no agent is referenced', async () => {
+	it('inline-creates a draft and opens the builder when no agent is referenced', async () => {
 		const stub = createNdvStub();
 		const wrapper = mountBanner(stub);
 
 		await wrapper.find('[data-test-id="agent-ndv-banner-open-builder"]').trigger('click');
 
-		expect(createAndSelect).toHaveBeenCalled();
+		expect(createAndOpenBuilder).toHaveBeenCalled();
+		// Navigation is owned by the inline-create flow, not the orchestrator.
 		expect(stub.openBuilder).not.toHaveBeenCalled();
 	});
 
 	it('emits setAgentReference when the inline-create flow references the new agent', () => {
 		const stub = createNdvStub();
-		const wrapper = mountBanner(stub);
+		const wrapper = mountBanner(stub, { originNodeId: 'node-7' });
 
 		const options = inlineCreateOptionsHolder.value as {
 			setReference: (agent: AgentResource) => void;
+			getOriginNodeId?: () => string | undefined;
 			telemetrySource: string;
 		};
 		expect(options.telemetrySource).toBe('ndv_banner');
+		expect(options.getOriginNodeId?.()).toBe('node-7');
 
 		options.setReference({ id: 'agent-9', name: 'Fresh Agent' } as AgentResource);
 		expect(wrapper.emitted('setAgentReference')).toEqual([

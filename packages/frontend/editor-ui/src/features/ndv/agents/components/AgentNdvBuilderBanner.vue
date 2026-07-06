@@ -2,9 +2,10 @@
 /**
  * Agent Builder promo banner at the top of the AI Agent node's NDV Parameters
  * tab. The "Agent Builder" link is the NDV's builder entry point: with an
- * agent referenced it deep-links to it (setting the "Back to workflow" return
- * context); with none it runs the same inline-create flow as the picker's
- * "+ Create agent" action.
+ * agent referenced it deep-links to it; with none it inline-creates a draft,
+ * references it, and opens the builder for it. Both paths set the "Back to
+ * workflow" return context (unlike the picker's "+ Create agent", which stays
+ * in the current flow).
  */
 import { computed, inject } from 'vue';
 import type { INodeParameterResourceLocator } from 'n8n-workflow';
@@ -18,6 +19,8 @@ import { NdvAgentConfigKey } from '../composables/useNdvAgentConfig';
 
 const props = defineProps<{
 	isReadOnly?: boolean;
+	/** Origin node for the builder's "Back to workflow" return context. */
+	originNodeId?: string;
 }>();
 
 const emit = defineEmits<{
@@ -32,11 +35,13 @@ const projectId = computed(() => ndv?.projectId.value ?? '');
 
 const { canCreate } = useAgentPermissions(projectId);
 
-// Inline create keeps the user in the NDV: the reference lands on the node and
-// the agent section below loads the fresh draft for editing in place.
+// The banner's affordance is "go to the builder", so inline create here also
+// navigates: the reference lands on the node, the workflow is saved, and the
+// builder opens on the fresh draft.
 const inlineCreate = useAgentInlineCreate({
 	projectId,
 	telemetrySource: 'ndv_banner',
+	getOriginNodeId: () => props.originNodeId,
 	setReference: (agent) =>
 		emit('setAgentReference', {
 			__rl: true,
@@ -59,7 +64,7 @@ async function onLinkClick() {
 		await ndv?.openBuilder();
 		return;
 	}
-	await inlineCreate.createAndSelect();
+	await inlineCreate.createAndOpenBuilder();
 }
 </script>
 

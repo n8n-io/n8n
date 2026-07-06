@@ -9,9 +9,10 @@ import { AGENT_BUILDER_VIEW, AGENT_VIEW } from '../constants';
  * user came from, so `AgentView` can render a "Back to workflow" banner.
  *
  * `openBuilder` powers the canvas agent card's open (→) affordance (AGENT-274)
- * and the NDV banner's open-builder path for an already-referenced agent, so
- * opening an agent from the workflow also sets the return context. `openAgent`
- * is the same seam for the agent detail view.
+ * and the NDV banner's builder entry — both the deep-link for a referenced
+ * agent and the navigation after an inline create — so opening an agent from
+ * the workflow always sets the return context. `openAgent` is the same seam
+ * for the agent detail view.
  */
 export function useAgentNavigation() {
 	const router = useRouter();
