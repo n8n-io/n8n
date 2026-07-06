@@ -1,0 +1,19 @@
+{
+	"description": "Build-only: Loop Over Items with parallel branches inside the loop body that merge before feeding back — done output leads to a once-per-run aggregate step.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "When the webhook receives a workflows array, process each workflow definition independently — extract its node list, connection map, and metadata in parallel, combine those pieces, then move on to the next workflow. When all workflows are processed, output one signed payload via POST https://api.example.com/sign."
+		}
+	],
+	"messageBudget": 10,
+	"complexity": "complex",
+	"tags": ["build", "loops", "loop-over-items", "webhook", "http-request"],
+	"triggerType": "webhook",
+	"datasets": ["full"],
+	"outcomeExpectations": [
+		"A Loop Over Items node iterates over each workflow in the input array; the loop output feeds per-workflow processing that flows back into the loop.",
+		"Inside the loop body, multiple parallel branches (node list, connections, metadata) converge via Merge (or equivalent) before the feedback edge.",
+		"The done output leads to a single POST to https://api.example.com/sign that runs once per execution (executeOnce on the aggregate/sign step if it uses $input.all())."
+	]
+}
