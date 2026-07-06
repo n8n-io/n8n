@@ -27,7 +27,7 @@ export interface McpServerConfig {
 	headers?: Record<string, string>;
 
 	/** Optional callback that's invoked after an MCP tool call settles. */
-	onToolCallSettled?: (event: McpToolCallSettledEvent) => void;
+	onToolCallSettled?: (event: McpToolCallSettledEvent) => void | Promise<void>;
 
 	/**
 	 * Maximum time in milliseconds to wait for this server connection (transport

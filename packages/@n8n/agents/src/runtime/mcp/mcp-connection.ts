@@ -183,17 +183,17 @@ export class McpConnection {
 				{ name, arguments: args },
 				CallToolResultSchema,
 			)) as McpCallToolResult;
-			this.notifyToolCallSettled({ toolName: name, success: result.isError !== true });
+			await this.notifyToolCallSettled({ toolName: name, success: result.isError !== true });
 			return result;
 		} catch (error) {
-			this.notifyToolCallSettled({ toolName: name, success: false });
+			await this.notifyToolCallSettled({ toolName: name, success: false });
 			throw error;
 		}
 	}
 
-	private notifyToolCallSettled(event: McpToolCallSettledEvent): void {
+	private async notifyToolCallSettled(event: McpToolCallSettledEvent): Promise<void> {
 		try {
-			this.config.onToolCallSettled?.(event);
+			await this.config.onToolCallSettled?.(event);
 		} catch (error) {
 			console.error(`MCP tool call observer error for server "${this.config.name}":`, error);
 		}
