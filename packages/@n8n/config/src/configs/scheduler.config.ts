@@ -84,6 +84,14 @@ export class SchedulerConfig {
 	reaperIntervalSeconds: number = 30;
 
 	/**
+	 * The most expired-lease tasks a single reaper sweep reclaims. Defaults to 100.
+	 * Larger batches recover a backlog faster but hold more work on one instance per
+	 * sweep. Must be greater than 0.
+	 */
+	@Env('N8N_SCHEDULER_REAPER_BATCH_SIZE', positiveIntSchema)
+	reaperBatchSize: number = 100;
+
+	/**
 	 * How long, in seconds, a single instance holds an exclusive claim on a run it
 	 * has picked up, so no other instance starts the same one. Defaults to 60 seconds.
 	 *
@@ -96,14 +104,44 @@ export class SchedulerConfig {
 	leaseDurationSeconds: number = Time.minutes.toSeconds;
 
 	/**
-	 * How long, in seconds, finished runs are kept in the scheduler's tables before
-	 * being deleted. Defaults to 7 days.
+	 * How long, in seconds, tasks that finished cleanly
+	 * (succeeded or were cancelled) are kept before being deleted.
 	 *
-	 * Raise it to keep scheduling history longer for auditing; lower it to reclaim
-	 * database space sooner. Must be greater than 0.
+	 * These rows exist only as recent history, so a short window keeps the
+	 * scheduler's run table small on busy instances.
+	 *
+	 * Raise it to keep scheduling history longer for auditing.
+	 * Lower it to reclaim database space sooner.
+	 *
+	 * Defaults to 1 day.
+	 * Must be greater than 0.
 	 */
 	@Env('N8N_SCHEDULER_RETENTION', positiveIntSchema)
-	retentionSeconds: number = 7 * Time.days.toSeconds;
+	retentionSeconds: number = Time.days.toSeconds;
+
+	/**
+	 * How long, in seconds, tasks that went wrong
+	 * (failed, or missed their moment entirely) are kept before being deleted.
+	 *
+	 * Meant to be kept longer than cleanly finished runs (`N8N_SCHEDULER_RETENTION`)
+	 * so there is time to notice and debug a problem before its evidence is deleted.
+	 *
+	 * The scheduler warns when this is set below it.
+	 * Must be greater than 0.
+	 * Defaults to 7 days.
+	 */
+	@Env('N8N_SCHEDULER_FAILED_RETENTION', positiveIntSchema)
+	failedRetentionSeconds: number = 7 * Time.days.toSeconds;
+
+	/**
+	 * How often, in seconds, the scheduler deletes finished tasks older than the
+	 * retention windows above.
+	 *
+	 * Must be greater than 0.
+	 * Defaults to 1 hour.
+	 */
+	@Env('N8N_SCHEDULER_RETENTION_INTERVAL', positiveIntSchema)
+	retentionIntervalSeconds: number = Time.hours.toSeconds;
 
 	/**
 	 * The smallest gap, in seconds, allowed between consecutive runs of the same

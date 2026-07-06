@@ -313,23 +313,15 @@ describe('buildFromJson()', () => {
 		expect(loadSkill?.description).not.toContain('Summarize notes');
 		expect(loadSkill?.systemInstruction).toBeUndefined();
 
-		await expect(loadSkill!.handler?.({ skillId: 'summarize_notes' }, {})).resolves.toMatchObject({
-			ok: true,
-			success: true,
-			skillId: 'summarize_notes',
-			name: 'Summarize notes',
-			content: 'Extract decisions and action items.',
-			instructions: 'Extract decisions and action items.',
-			linkedFiles: {
-				references: [
-					{
-						path: 'references/guide.md',
-						bytes: 7,
-						sha256: expect.stringMatching(/^[a-f0-9]{64}$/),
-					},
-				],
-			},
-		});
+		const loaded = (await loadSkill!.handler?.({ skillId: 'summarize_notes' }, {})) as {
+			type?: string;
+			value?: Array<{ type: string; text: string }>;
+		};
+		expect(loaded.type).toBe('content');
+		const loadedText = (loaded.value ?? []).map((part) => part.text).join('\n');
+		expect(loadedText).toContain('[Skill: "Summarize notes"]');
+		expect(loadedText).toContain('Extract decisions and action items.');
+		expect(loadedText).toContain('filePath: "references/guide.md"');
 
 		await expect(
 			loadSkill!.handler?.({ skillId: 'summarize_notes', filePath: 'references/guide.md' }, {}),

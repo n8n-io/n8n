@@ -83,6 +83,7 @@ export class UsersController {
 			NO_USER: 'Target user not found',
 			NO_ADMIN_ON_OWNER: 'Admin cannot change role on global owner',
 			NO_OWNER_ON_OWNER: 'Owner cannot change role on global owner',
+			CANNOT_CHANGE_OWN_ROLE: 'Cannot change your own global role',
 		},
 	} as const;
 
@@ -377,8 +378,12 @@ export class UsersController {
 			);
 		}
 
-		const { NO_ADMIN_ON_OWNER, NO_USER, NO_OWNER_ON_OWNER } =
+		const { NO_ADMIN_ON_OWNER, NO_USER, NO_OWNER_ON_OWNER, CANNOT_CHANGE_OWN_ROLE } =
 			UsersController.ERROR_MESSAGES.CHANGE_ROLE;
+
+		if (req.user.id === id) {
+			throw new ForbiddenError(CANNOT_CHANGE_OWN_ROLE);
+		}
 
 		const targetUser = await this.userRepository.findOne({
 			where: { id },

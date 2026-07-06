@@ -664,7 +664,10 @@ function renderScenarioDetail(sr: ExecutionScenarioResult): string {
 			for (const req of nr.interceptedRequests) {
 				html += '<div class="request-pair">';
 				html += '<div class="request-header">Request sent</div>';
-				html += `<div class="request-method">${escapeHtml(req.method)} ${escapeHtml(req.url)}</div>`;
+				// `req.url` is typed string but older captures stored undefined for
+				// URL-less requests (broken node routing); never let that (or an
+				// empty wire-server fallback) crash report generation.
+				html += `<div class="request-method">${escapeHtml(req.method)} ${escapeHtml(req.url || '(no URL)')}</div>`;
 				if (req.requestBody) {
 					html += `<pre class="json-block json-sm"><code>${escapeHtml(JSON.stringify(req.requestBody, null, 2))}</code></pre>`;
 				}

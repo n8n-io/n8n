@@ -110,7 +110,7 @@ export async function runAgent(
 			}
 		}
 
-		if (options.returnIntermediateSteps && steps.length > 0) {
+		if (options.returnIntermediateSteps) {
 			result.intermediateSteps = steps;
 		}
 
@@ -141,7 +141,7 @@ export async function runAgent(
 			}
 			// Include intermediate steps if requested
 			const result = { ...modelResponse.returnValues };
-			if (options.returnIntermediateSteps && steps.length > 0) {
+			if (options.returnIntermediateSteps) {
 				result.intermediateSteps = steps;
 			}
 			return result;
