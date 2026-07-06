@@ -50,7 +50,7 @@ export class NextCloudApi implements ICredentialType {
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL:
-				'={{$credentials.webDavUrl.replace(//remote.php/(webdav|dav)/?$/, "").replace(//+$/, "")}}',
+				"={{$credentials.webDavUrl.replace(/\\/remote\\.php\\/(webdav|dav)\\/?$/, '').replace(/\\/+$/, '')}}",
 			url: '/ocs/v1.php/cloud/user',
 			headers: { 'OCS-APIRequest': true },
 		},

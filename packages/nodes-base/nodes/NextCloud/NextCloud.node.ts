@@ -1348,13 +1348,14 @@ export class NextCloud implements INodeType {
 							const labelId = this.getNodeParameter('labelId', i, '', {
 								extractValue: true,
 							}) as string;
-							const parsedLabelId = parseInt(labelId, 10);
-							if (Number.isNaN(parsedLabelId)) {
+							if (!/^\d+$/.test(labelId)) {
 								throw new NodeOperationError(
 									this.getNode(),
 									'The label ID must be a valid number.',
 								);
 							}
+							const parsedLabelId = parseInt(labelId, 10);
+
 							responseData = await deckRequest(
 								'PUT',
 								`/boards/${encodeURIComponent(boardId)}/stacks/${encodeURIComponent(stackId)}/cards/${encodeURIComponent(cardId)}/removeLabel`,
@@ -1467,13 +1468,13 @@ export class NextCloud implements INodeType {
 								extractValue: true,
 							}) as string;
 							const order = this.getNodeParameter('order', i, 0) as number;
-							const parsedTargetStackId = parseInt(targetStackId, 10);
-							if (Number.isNaN(parsedTargetStackId)) {
+							if (!/^\d+$/.test(targetStackId)) {
 								throw new NodeOperationError(
 									this.getNode(),
 									'The stack ID must be a valid number.',
 								);
 							}
+							const parsedTargetStackId = parseInt(targetStackId, 10);
 
 							const movePath = `/boards/${encodeURIComponent(boardId)}/stacks/${encodeURIComponent(stackId)}/cards/${encodeURIComponent(cardId)}/reorder`;
 							responseData = await deckRequest('PUT', movePath, {
