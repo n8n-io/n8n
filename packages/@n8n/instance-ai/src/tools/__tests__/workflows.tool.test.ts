@@ -9,6 +9,7 @@ import {
 	applyNodeChanges,
 	buildCompletedReport,
 } from '../workflows/setup-workflow.service';
+import { STRUCTURE_ONLY_NOTE } from '../workflows/summarize-workflow';
 import { createWorkflowsTool, type WorkflowAction } from '../workflows.tool';
 
 // Mock the setup-workflow.service module to avoid pulling in heavy dependencies
@@ -455,17 +456,21 @@ describe('workflows tool', () => {
 			const result = await executeTool(tool, { action: 'get', workflowId: 'wf1' }, {} as never);
 
 			expect(context.workflowService.get).toHaveBeenCalledWith('wf1');
-			expect(result).toMatchObject({
+			expect(result).toEqual({
 				id: 'wf1',
 				name: 'Test WF',
 				versionId: 'v1',
+				activeVersionId: null,
+				isArchived: false,
+				createdAt: '2024-01-01',
+				updatedAt: '2024-01-01',
 				nodeCount: 3,
 				structure: '// generated code',
+				note: STRUCTURE_ONLY_NOTE,
 			});
 			const codegenInput = vi.mocked(generateWorkflowCode).mock.calls[0][0];
 			expect(codegenInput).toMatchObject({ name: 'Test WF' });
 			expect(JSON.stringify(codegenInput)).not.toContain('conditions');
-			expect(JSON.stringify(result)).not.toContain('conditions');
 		});
 
 		it('should return the complete payload when full is true', async () => {
@@ -549,13 +554,20 @@ describe('workflows tool', () => {
 			);
 
 			expect(context.workflowService.getVersion).toHaveBeenCalledWith('wf1', 'v1');
-			expect(result).toMatchObject({
+			expect(result).toEqual({
 				workflowId: 'wf1',
 				versionId: 'v1',
+				name: 'Checkpoint',
+				description: null,
+				authors: 'me',
+				createdAt: '2024-01-01',
+				autosaved: false,
+				isActive: false,
+				isCurrentDraft: false,
 				nodeCount: 1,
 				structure: '// generated code',
+				note: STRUCTURE_ONLY_NOTE,
 			});
-			expect(JSON.stringify(result)).not.toContain('blob');
 		});
 
 		it('should explain when versionId is passed but version history is unavailable', async () => {

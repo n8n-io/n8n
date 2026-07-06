@@ -3106,7 +3106,7 @@ function toWorkflowJSON(
 	workflow: WorkflowEntity,
 	options?: {
 		redactParameters?: boolean;
-		/** Substitute a history version's graph while keeping workflow-level fields. */
+		/** Substitute a history version's graph; id/name/settings stay from the live entity, as history rows only carry a version label. */
 		graph?: Pick<WorkflowEntity, 'nodes' | 'connections' | 'nodeGroups'>;
 	},
 ): WorkflowJSON {
