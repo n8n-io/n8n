@@ -150,21 +150,29 @@ const POST_BUILD_FLOW_SKILL_ID = 'post-build-flow';
 const POST_BUILD_FLOW_GUIDANCE =
 	'This direct build is not complete yet. Follow the post-build instructions in `instructions` now (do NOT load the post-build-flow skill — they are the same instructions) before verification, setup, error-workflow follow-up, publishing, testing, or any final user-visible summary. Follow-up order is verification/setup first, then mocked/no-mock live-test when latest verification used mocks or simulations, then explicit error-workflow opt-in for direct new primary workflows, then generic testing prompts. Do not replace the error-workflow opt-in with a generic add-anything, publish, or test question.';
 
-/**
- * Post-build-flow skill body, inlined into the successful build result so the
- * model can act on it immediately instead of spending a full round-trip on
- * `load_skill` — that extra step resends the entire context. The skill stays
- * registered for verification/setup follow-up turns that reference it by tag.
- */
+// Inlined into successful build results; the skill stays registered for tag-driven follow-up turns.
 let postBuildFlowInstructionsCache: string | undefined;
+
+/** Tag-turn-only sections, stripped from the inline copy; follow-up turns load the full skill. */
+const INLINE_SKIPPED_SECTIONS = [
+	'## Verification follow-up',
+	'## Setup follow-up',
+	'## Credentials before build',
+];
+
 function getPostBuildFlowInstructions(): string {
 	if (postBuildFlowInstructionsCache === undefined) {
 		const raw = readFileSync(
 			join(INSTANCE_AI_SKILLS_DIR, POST_BUILD_FLOW_SKILL_ID, 'SKILL.md'),
 			'utf-8',
 		);
-		// Strip YAML front-matter — the catalog metadata is noise in a tool result.
-		postBuildFlowInstructionsCache = raw.replace(/^---\n[\s\S]*?\n---\n/, '').trim();
+		// Strip the YAML front-matter; catalog metadata is noise in a tool result.
+		const body = raw.replace(/^---\n[\s\S]*?\n---\n/, '').trim();
+		postBuildFlowInstructionsCache = body
+			.split(/\n(?=## )/)
+			.filter((section) => !INLINE_SKIPPED_SECTIONS.some((title) => section.startsWith(title)))
+			.join('\n')
+			.trim();
 	}
 	return postBuildFlowInstructionsCache;
 }
