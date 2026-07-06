@@ -187,10 +187,7 @@ const ctaText = computed(() => {
 		});
 	}
 	return i18n.baseText('evaluation.setup.footer.cta.runAndCompare', {
-		interpolate: {
-			newCount: String(newRunCount.value),
-			total: String(selectedCount.value),
-		},
+		adjustToNumber: selectedCount.value,
 	});
 });
 
@@ -447,6 +444,11 @@ const onSubmit = async () => {
 	flex-direction: column;
 	gap: var(--spacing--md);
 	padding: var(--spacing--sm) 0;
+	// N8nDialog has no intrinsic max-height, so a tall versions table pushes the
+	// footer past the viewport. Cap the body and scroll it, leaving room for the
+	// dialog's header, footer, and padding so the CTA stays visible.
+	max-height: calc(100dvh - 16rem);
+	overflow-y: auto;
 }
 
 .field {

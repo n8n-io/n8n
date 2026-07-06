@@ -5677,7 +5677,7 @@
 	"evaluation.setup.footer.runsExplain.mixed": "Schedules {newCount} new run(s) on {dataset}.",
 	"evaluation.setup.footer.cancel": "Cancel",
 	"evaluation.setup.footer.cta.compare": "Compare {count} version | Compare {count} versions",
-	"evaluation.setup.footer.cta.runAndCompare": "Run {newCount} + compare {total}",
+	"evaluation.setup.footer.cta.runAndCompare": "Run & compare {count} version | Run & compare {count} versions",
 	"evaluation.setup.errors.loadDatasetsFailed": "Could not load datasets",
 	"evaluation.setup.errors.loadVersionsFailed": "Could not load versions for this dataset",
 	"evaluation.setup.errors.createFailed": "Could not create the collection",
