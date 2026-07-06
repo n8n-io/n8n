@@ -68,6 +68,59 @@ Describe-what-you-need, not a fixed recipe: on a dev instance you already use,
 the login and model are usually already set, and you only add the eval-specific
 keys.
 
+## Run locally against a dev instance
+
+The pieces above assume a configured instance; this is the concrete recipe that
+works end-to-end (direct Daytona mode, no proxy), plus the footguns that don't
+surface until you hit them.
+
+**Point the run with the `--base-url` flag, not the `N8N_EVAL_BASE_URL` env var.**
+If you load env via `dotenvx` / `.env.local` (a common dev setup), the file's
+value silently overrides the `N8N_EVAL_BASE_URL` you export, and the run
+authenticates against the wrong instance (a confusing 401). The CLI `--base-url`
+flag wins — use it.
+
+**Direct-mode env combo** (bypass the proxy; your own Daytona + Anthropic keys):
+
+- `N8N_AI_ASSISTANT_BASE_URL=` **empty** — direct mode is only selected when the
+  proxy base URL is unset.
+- `DAYTONA_API_KEY` + `DAYTONA_API_URL` — sandbox auth; without them every build
+  crashes at `DaytonaAuthManager requires exactly one of staticApiKey or
+  getAuthToken`.
+- `ANTHROPIC_API_KEY` — the non-proxy orchestrator reads this (not just
+  `N8N_AI_ANTHROPIC_KEY`); the eval helper (mock-gen / verify / judge) reads
+  either.
+- `E2E_TESTS=true` — exposes `POST /rest/e2e/reset` so you can seed a known owner.
+
+**Seed an owner** (a fresh instance has none → login 401s). Full payload shape in
+the [README](../../../packages/@n8n/instance-ai/evaluations/README.md) quick
+start:
+
+```bash
+curl -sf -X POST <base>/rest/e2e/reset -H 'Content-Type: application/json' \
+  -d '{"owner":{"email":"nathan@n8n.io","password":"PlaywrightTest123","firstName":"Eval","lastName":"Owner"},"admin":{"email":"admin@n8n.io","password":"PlaywrightTest123","firstName":"Admin","lastName":"User"},"members":[],"chat":{"email":"chat@n8n.io","password":"PlaywrightTest123","firstName":"Chat","lastName":"User"}}'
+```
+
+**Run isolated alongside an already-running dev instance** (rather than killing
+it): a running instance holds both its main port *and* the task-broker port
+(default 5679), and the default DB is one shared SQLite file in `~/.n8n`. Give the
+second instance its own everything:
+
+```bash
+N8N_PORT=5680 N8N_RUNNERS_BROKER_PORT=5681 N8N_USER_FOLDER=/tmp/n8n-eval-run \
+E2E_TESTS=true N8N_AI_ASSISTANT_BASE_URL= ANTHROPIC_API_KEY=… \
+  npx dotenvx run -f .env.local -f .env.eval -- pnpm start
+# then seed the owner (above), and run the eval with: --base-url http://localhost:5680
+```
+
+`pnpm start` (built dist) is enough — no need for `pnpm dev:ai`. Case JSON is read
+from source at run time, so new/edited cases need no rebuild.
+
+**Two WARNs are benign, not failures:** `Run debug capture skipped … Run debug is
+not enabled` (a 404 from an optional debug endpoint) and workflow-checks
+`errored, excluded from scoring` — both are expected locally and don't affect
+your case's pass/fail.
+
 ## Parallel lanes
 
 The **build** is the slow step and is capped at **4 concurrent builds per
