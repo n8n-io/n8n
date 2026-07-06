@@ -10,9 +10,9 @@ vi.mock('@n8n/di', () => ({
 }));
 
 import { Container } from '@n8n/di';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import {
 	ApplicationError,
-	createDeferredPromise,
 	NodeConnectionTypes,
 	OperationalError,
 	UnexpectedError,
