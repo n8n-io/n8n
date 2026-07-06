@@ -399,8 +399,6 @@ export function useCredentialOAuth() {
 		isGoogleOAuthType,
 		canOAuthCredentialQuickConnect,
 		hasManualCredentialInputFields,
-		getManuallyConfigurableProperties,
-		getMergedCredentialProperties,
 		authorize,
 		createAndAuthorize,
 		cancelAuthorize,

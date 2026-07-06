@@ -1,9 +1,9 @@
 <script lang="ts" setup>
 import { useToast } from '@/app/composables/useToast';
 import { provideWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
-import { setParameterValue } from '@/app/utils/parameterUtils';
 import type { IUpdateInformation } from '@/Interface';
 import CredentialInputs from '@/features/credentials/components/CredentialEdit/CredentialInputs.vue';
+import { useCredentialForm } from '@/features/credentials/composables/useCredentialForm';
 import { useCredentialOAuth } from '@/features/credentials/composables/useCredentialOAuth';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useInstanceAiHandoff } from '../composables/useInstanceAiHandoff';
@@ -13,9 +13,9 @@ import { N8nButton, N8nInput, N8nInputLabel, N8nLink, N8nText } from '@n8n/desig
 import { extractPlaceholderLabels } from '@n8n/utils/placeholder';
 import { useI18n } from '@n8n/i18n';
 import type {
-	CredentialInformation,
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
+	INodeParameters,
 	INodeProperties,
 } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
@@ -63,48 +63,36 @@ const toast = useToast();
 const credentialsStore = useCredentialsStore();
 const handoff = useInstanceAiHandoff();
 const projectsStore = useProjectsStore();
+// OAuth authorization stays with the host (popup lifecycle) — see useCredentialForm.
+const { createAndAuthorize, authorize } = useCredentialOAuth();
+
+// Shared credential-form controller — same one that drives the edit modal.
 const {
-	isOAuthCredentialType,
-	getManuallyConfigurableProperties,
-	getMergedCredentialProperties,
-	createAndAuthorize,
-	authorize,
-} = useCredentialOAuth();
+	credentialData,
+	credentialName,
+	credentialId,
+	authError,
+	testedSuccessfully,
+	isSaving,
+	credentialType,
+	mergedProperties,
+	credentialProperties,
+	requiredPropertiesFilled,
+	isOAuthType,
+	isCredentialTestable,
+	initialize,
+	onDataChange,
+	testCredential,
+} = useCredentialForm({
+	mode: () => props.mode,
+	activeId: () => (props.mode === 'edit' ? props.credentialId : props.credentialType),
+	projectId: () => props.projectId,
+	suggestedName: () => props.setupHint?.suggestedName || props.suggestedName,
+});
 
-const credentialData = ref<ICredentialDataDecryptedObject>({});
-const credentialName = ref('');
-const isLoading = ref(props.mode === 'edit');
-const isSaving = ref(false);
-const authError = ref('');
-const testedSuccessfully = ref(false);
-// Set once created (or from edit mode) so a retry updates instead of creating duplicates.
-const savedCredentialId = ref(props.mode === 'edit' ? (props.credentialId ?? '') : '');
+const isLoading = ref(true);
 
-const credentialType = computed(() =>
-	credentialsStore.getCredentialTypeByName(props.credentialType),
-);
-
-// Full field set (with defaults seeded) — the source for reactive visibility.
-const mergedProperties = computed(() => getMergedCredentialProperties(props.credentialType));
-
-// Fields the user must configure — decides whether we render inputs at all.
-const configurableProperties = computed(() =>
-	credentialType.value ? getManuallyConfigurableProperties(credentialType.value) : [],
-);
-
-// Fields to render right now, re-evaluated against the live values so
-// displayOptions (e.g. picking "specific domains" reveals a domain list) toggle
-// reactively — matching the credential edit modal.
-const visibleProperties = computed(() =>
-	mergedProperties.value.filter(
-		(property) =>
-			property.type !== 'hidden' &&
-			NodeHelpers.displayParameter(credentialData.value, property, null, null),
-	),
-);
-
-const hasFields = computed(() => configurableProperties.value.length > 0);
-const isOAuth = computed(() => isOAuthCredentialType(props.credentialType));
+const hasFields = computed(() => credentialProperties.value.length > 0);
 
 const documentationUrl = computed(() => {
 	const url = credentialType.value?.documentationUrl ?? '';
@@ -112,7 +100,7 @@ const documentationUrl = computed(() => {
 });
 
 const primaryLabel = computed(() => {
-	if (isOAuth.value) return i18n.baseText('generic.connect');
+	if (isOAuthType.value) return i18n.baseText('generic.connect');
 	return authError.value ? i18n.baseText('generic.retry') : i18n.baseText('generic.save');
 });
 
@@ -179,56 +167,26 @@ const canSubmit = computed(() => {
 	if (isGuided.value) {
 		return guidedSecrets.value.every((label) => (secretValues.value[label] ?? '').trim() !== '');
 	}
-	return visibleProperties.value.every((property) => {
-		if (property.required !== true) return true;
-		const value = credentialData.value[property.name];
-		return value !== undefined && value !== null && value !== '';
-	});
-});
-
-// Mirrors CredentialEdit.isCredentialTestable — temporary until the shared
-// credential-form controller is extracted.
-const isCredentialTestable = computed(() => {
-	if (isOAuth.value || !canSubmit.value) return false;
-	const testerNodes = credentialsStore
-		.getNodesWithAccess(props.credentialType)
-		.filter((node) => node.credentials?.some((c) => c.name === props.credentialType && c.testedBy));
-	return testerNodes.length > 0 || !!credentialType.value?.test;
+	return requiredPropertiesFilled.value;
 });
 
 onMounted(async () => {
-	if (props.mode === 'edit' && props.credentialId) {
-		try {
-			const current = await credentialsStore.getCredentialData({ id: props.credentialId });
-			credentialName.value = current?.name ?? '';
-			credentialData.value = (current?.data ?? {}) as ICredentialDataDecryptedObject;
-		} catch (error) {
-			toast.showError(error, i18n.baseText('nodeCredentials.showMessage.title'));
-		} finally {
-			isLoading.value = false;
+	try {
+		await initialize();
+		// Apply the hint's static values (no secret sentinel) up front, so they hold
+		// even when the user switches to the full field set.
+		for (const [field, value] of staticHintEntries.value) {
+			credentialData.value[field] = value;
 		}
-		return;
+	} catch (error) {
+		toast.showError(error, i18n.baseText('nodeCredentials.showMessage.title'));
+	} finally {
+		isLoading.value = false;
 	}
-
-	credentialName.value =
-		props.setupHint?.suggestedName ||
-		props.suggestedName ||
-		credentialType.value?.displayName ||
-		props.credentialType;
-	const defaults: ICredentialDataDecryptedObject = {};
-	for (const property of mergedProperties.value) {
-		defaults[property.name] = property.default as CredentialInformation;
-	}
-	// Apply the hint's static values (no secret sentinel) up front, so they hold
-	// even when the user switches to the full field set.
-	for (const [field, value] of staticHintEntries.value) {
-		defaults[field] = value;
-	}
-	credentialData.value = defaults;
 });
 
 function onUpdate(update: IUpdateInformation) {
-	setParameterValue(credentialData.value, update.name, update.value);
+	onDataChange(update);
 	authError.value = ''; // clear a stale test error once the user edits a field
 }
 
@@ -288,23 +246,24 @@ function handleFieldHelp(parameter: INodeProperties) {
 }
 
 function buildDetails(id = ''): ICredentialsDecrypted {
+	// Save only the non-default property values — same filtering as the edit
+	// modal; also drops the non-property keys initialize() seeds (homeProject…).
+	const data = credentialType.value
+		? NodeHelpers.getNodeParameters(
+				credentialType.value.properties,
+				credentialData.value as INodeParameters,
+				false,
+				false,
+				null,
+				null,
+			)
+		: credentialData.value;
 	return {
 		id,
 		name: credentialName.value,
 		type: props.credentialType,
-		data: credentialData.value,
+		data: (data ?? {}) as unknown as ICredentialDataDecryptedObject,
 	};
-}
-
-async function runTest(id: string) {
-	const result = await credentialsStore.testCredential(buildDetails(id));
-	if (result.status === 'Error') {
-		authError.value = result.message;
-		testedSuccessfully.value = false;
-	} else {
-		authError.value = '';
-		testedSuccessfully.value = true;
-	}
 }
 
 async function submit() {
@@ -314,25 +273,25 @@ async function submit() {
 		if (isGuided.value) composeGuidedData();
 
 		// Managed OAuth with nothing to fill in: create + authorize in one step.
-		if (props.mode === 'new' && isOAuth.value && !hasFields.value && !savedCredentialId.value) {
+		if (props.mode === 'new' && isOAuthType.value && !hasFields.value && !credentialId.value) {
 			const credential = await createAndAuthorize(props.credentialType);
 			if (credential) emit('saved', credential.id);
 			return;
 		}
 
 		// Persist: update the credential we already created/opened, else create one.
-		const credential = savedCredentialId.value
+		const credential = credentialId.value
 			? await credentialsStore.updateCredential({
-					id: savedCredentialId.value,
-					data: buildDetails(savedCredentialId.value),
+					id: credentialId.value,
+					data: buildDetails(credentialId.value),
 				})
 			: await credentialsStore.createNewCredential(
 					buildDetails(),
 					props.projectId ?? projectsStore.currentProject?.id,
 				);
-		savedCredentialId.value = credential.id;
+		credentialId.value = credential.id;
 
-		if (isOAuth.value) {
+		if (isOAuthType.value) {
 			if (!(await authorize(credential))) return;
 			emit('saved', credential.id);
 			return;
@@ -341,7 +300,7 @@ async function submit() {
 		// Test the connection when the type supports it; keep the form open on
 		// failure so the user can fix a field and retry (the button becomes "Retry").
 		if (isCredentialTestable.value) {
-			await runTest(credential.id);
+			await testCredential(buildDetails(credential.id));
 			if (!testedSuccessfully.value) return;
 		}
 
@@ -403,7 +362,7 @@ async function submit() {
 		</template>
 		<CredentialInputs
 			v-else-if="hasFields"
-			:credential-properties="visibleProperties"
+			:credential-properties="credentialProperties"
 			:credential-data="credentialData"
 			:documentation-url="documentationUrl"
 			:show-focus-panel="false"
