@@ -65,6 +65,14 @@ export class BuilderModelLiveLookupService {
 			fetch: createAiProxyFetch(this.outboundHttp) as typeof globalThis.fetch,
 		});
 
+		// Every supported chat provider offers models, so an empty list means a
+		// broken request or a drifted response shape, not a zero-model account.
+		// Throw so callers fall back (unverified catalog / lookup-failed) instead
+		// of treating "nothing" as a verified answer and pruning every model.
+		if (models.length === 0) {
+			throw new Error(`Provider ${provider} returned no models`);
+		}
+
 		return models.map((model) => ({ name: model.name, value: model.id }));
 	}
 }

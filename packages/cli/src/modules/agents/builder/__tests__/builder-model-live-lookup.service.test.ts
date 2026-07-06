@@ -66,6 +66,23 @@ describe('BuilderModelLiveLookupService', () => {
 		);
 	});
 
+	it('treats an empty provider response as a failed lookup', async () => {
+		const { service, credentialsService, credentialsFinderService } = makeService();
+		credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue(
+			usable('cred-1', 'anthropicApi'),
+		);
+		credentialsFinderService.findCredentialById.mockResolvedValue(mock<CredentialsEntity>());
+		credentialsService.decrypt.mockResolvedValue({ apiKey: 'sk-key' });
+		// An empty list from a chat provider is far more likely a broken request
+		// or drifted response shape than a real zero-model account — callers must
+		// fall back rather than prune everything.
+		listModelsForProvider.mockResolvedValue([]);
+
+		await expect(
+			service.list(user, projectId, 'cred-1', 'anthropicApi', 'anthropic'),
+		).rejects.toThrow('returned no models');
+	});
+
 	it('rejects a credential that is not available in the project', async () => {
 		const { service, credentialsService } = makeService();
 		// The user can read this credential, but it is not in the project's set.
