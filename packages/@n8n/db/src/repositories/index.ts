@@ -37,7 +37,11 @@ export { RoleRepository } from './role.repository';
 export { RoleMappingRuleRepository } from './role-mapping-rule.repository';
 export { ScheduledJobRepository } from './scheduled-job.repository';
 export { ScheduledTaskRepository } from './scheduled-task.repository';
-export type { ClaimDueTasksOptions, ClaimRef } from './scheduled-task.repository';
+export type {
+	ClaimDueTasksOptions,
+	ClaimedRef,
+	HostedClaimedRef,
+} from './scheduled-task.repository';
 export { ProcessedDataRepository } from './processed-data.repository';
 export { SettingsRepository } from './settings.repository';
 export { TagRepository } from './tag.repository';
