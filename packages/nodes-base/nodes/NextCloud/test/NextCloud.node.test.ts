@@ -12,6 +12,7 @@ import { NextCloud } from '../NextCloud.node';
 
 const webDavUrl = 'https://nextcloud.example.com/remote.php/webdav';
 const baseUrl = 'https://nextcloud.example.com';
+const deckBaseUrl = `${baseUrl}/index.php/apps/deck/api/v1.1`;
 
 const ocsSuccessResponse = `<?xml version="1.0"?>
 <ocs>
@@ -83,6 +84,7 @@ interface BuildExecuteFunctionsOptions {
 	inputData?: INodeExecutionData[];
 	authentication?: 'accessToken' | 'oAuth2';
 	continueOnFail?: boolean;
+	credentials?: Record<string, unknown>;
 }
 
 const nextCloudNode = new NextCloud();
@@ -92,9 +94,13 @@ function buildExecuteFunctions({
 	inputData = [{ json: {} }],
 	authentication = 'accessToken',
 	continueOnFail = false,
+	credentials,
 }: BuildExecuteFunctionsOptions) {
 	const requestWithAuthentication = vi.fn();
-	const getCredentials = vi.fn(async () => ({ webDavUrl }));
+	const request = vi.fn();
+	const defaultCredentials = { webDavUrl, user: 'test-user', password: 'test-pass' };
+	const resolvedCredentials = credentials ?? defaultCredentials;
+	const getCredentials = vi.fn(async () => resolvedCredentials);
 	const prepareBinaryData = vi.fn(async () => ({
 		data: 'prepared-binary-data',
 		mimeType: 'text/plain',
@@ -138,6 +144,7 @@ function buildExecuteFunctions({
 			constructExecutionMetaData,
 			getBinaryDataBuffer,
 			prepareBinaryData,
+			request,
 			requestWithAuthentication,
 		},
 	} as unknown as IExecuteFunctions;
@@ -149,6 +156,7 @@ function buildExecuteFunctions({
 		getBinaryDataBuffer,
 		getCredentials,
 		prepareBinaryData,
+		request,
 		requestWithAuthentication,
 	};
 }
@@ -169,6 +177,23 @@ function expectWebDavUri(uri: unknown) {
 
 function expectOcsUri(uri: unknown) {
 	expect(uri).not.toEqual(expect.stringContaining('/remote.php/webdav'));
+}
+
+function expectDeckUrl(url: unknown) {
+	const value = String(url);
+	// Deck requests must target the Deck API v1.1 base and not the WebDAV URL.
+	expect(value).toEqual(expect.stringContaining('/index.php/apps/deck/api/v1.1'));
+	expect(value).not.toEqual(expect.stringContaining('/remote.php/webdav'));
+}
+
+function deckRequestOptions(request: Mock, callIndex = 0) {
+	return request.mock.calls[callIndex][0] as IDataObject;
+}
+
+function expectAuthHeader(headers: unknown) {
+	const auth = (headers as IDataObject).Authorization;
+	expect(typeof auth).toBe('string');
+	expect((auth as string).startsWith('Basic ')).toBe(true);
 }
 
 function webDavUri(path: string) {
@@ -748,6 +773,781 @@ describe('NextCloud Node', () => {
 			const promise = executeNode(executeFunctions);
 			await expect(promise).rejects.toThrow(NodeOperationError);
 			await expect(promise).rejects.toThrow('must end with /remote.php/webdav');
+		});
+	});
+
+	describe('deck', () => {
+		describe('board', () => {
+			it('listBoards requests GET /boards', async () => {
+				const { executeFunctions, request } = buildExecuteFunctions({
+					parameters: { resource: 'deck', operation: 'listBoards' },
+				});
+				request.mockResolvedValue([{ id: 1, title: 'Personal' }]);
+
+				const result = await executeNode(executeFunctions);
+
+				expect(deckRequestOptions(request)).toMatchObject({
+					method: 'GET',
+					url: `${deckBaseUrl}/boards`,
+				});
+				expectDeckUrl(deckRequestOptions(request).url);
+				expectAuthHeader(deckRequestOptions(request).headers);
+				expect(result[0][0].json).toEqual({ id: 1, title: 'Personal' });
+			});
+
+			it('getBoard requests GET /boards/{id}', async () => {
+				const { executeFunctions, request } = buildExecuteFunctions({
+					parameters: { resource: 'deck', operation: 'getBoard', boardId: '5' },
+				});
+				request.mockResolvedValue({ id: 5, title: 'Personal' });
+
+				await executeNode(executeFunctions);
+
+				expect(deckRequestOptions(request)).toMatchObject({
+					method: 'GET',
+					url: `${deckBaseUrl}/boards/5`,
+				});
+				expectDeckUrl(deckRequestOptions(request).url);
+			});
+
+			it('createBoard POSTs to /boards with title and stripped color', async () => {
+				const { executeFunctions, request } = buildExecuteFunctions({
+					parameters: {
+						resource: 'deck',
+						operation: 'createBoard',
+						title: 'Personal',
+						color: '#31CC7C',
+					},
+				});
+				request.mockResolvedValue({ id: 7, title: 'Personal' });
+
+				await executeNode(executeFunctions);
+
+				expect(deckRequestOptions(request)).toMatchObject({
+					method: 'POST',
+					url: `${deckBaseUrl}/boards`,
+					body: { title: 'Personal', color: '31CC7C' },
+					json: true,
+				});
+				expectDeckUrl(deckRequestOptions(request).url);
+			});
+
+			it('updateBoard PUTs to /boards/{id} with stripped color and archived flag', async () => {
+				const { executeFunctions, request } = buildExecuteFunctions({
+					parameters: {
+						resource: 'deck',
+						operation: 'updateBoard',
+						boardId: '5',
+						title: 'Personal',
+						color: '#31CC7C',
+						archived: true,
+					},
+				});
+				request.mockResolvedValue({ id: 5 });
+
+				await executeNode(executeFunctions);
+
+				expect(deckRequestOptions(request)).toMatchObject({
+					method: 'PUT',
+					url: `${deckBaseUrl}/boards/5`,
+					body: { title: 'Personal', color: '31CC7C', archived: true },
+				});
+				expectDeckUrl(deckRequestOptions(request).url);
+			});
+
+			it('updateBoard omits color and title when empty but always sends archived', async () => {
+				const { executeFunctions, request } = buildExecuteFunctions({
+					parameters: {
+						resource: 'deck',
+						operation: 'updateBoard',
+						boardId: '5',
+						title: '',
+						color: '',
+						archived: false,
+					},
+				});
+				request.mockResolvedValue({ id: 5 });
+
+				await executeNode(executeFunctions);
+
+				expect(deckRequestOptions(request).body).toEqual({ archived: false });
+			});
+
+			it('deleteBoard DELETEs /boards/{id}', async () => {
+				const { executeFunctions, request } = buildExecuteFunctions({
+					parameters: {
+						resource: 'deck',
+						operation: 'deleteBoard',
+						boardId: '5',
+					},
+				});
+				request.mockResolvedValue({ status: 'ok' });
+
+				await executeNode(executeFunctions);
+
+				expect(deckRequestOptions(request)).toMatchObject({
+					method: 'DELETE',
+					url: `${deckBaseUrl}/boards/5`,
+				});
+				expectDeckUrl(deckRequestOptions(request).url);
+			});
+		});
+
+		describe('stack', () => {
+			it('listStacks requests GET /boards/{id}/stacks', async () => {
+				const { executeFunctions, request } = buildExecuteFunctions({
+					parameters: {
+						resource: 'deck',
+						operation: 'listStacks',
+						boardId: '5',
+					},
+				});
+				request.mockResolvedValue([{ id: 10, title: 'Todo' }]);
+
+				await executeNode(executeFunctions);
+
+				expect(deckRequestOptions(request)).toMatchObject({
+					method: 'GET',
+					url: `${deckBaseUrl}/boards/5/stacks`,
+				});
+				expectDeckUrl(deckRequestOptions(request).url);
+			});
+
+			it('getStack requests GET /boards/{id}/stacks/{id}', async () => {
+				const { executeFunctions, request } = buildExecuteFunctions({
+					parameters: {
+						resource: 'deck',
+						operation: 'getStack',
+						boardId: '5',
+						stackId: '10',
+					},
+				});
+				request.mockResolvedValue({ id: 10 });
+
+				await executeNode(executeFunctions);
+
+				expect(deckRequestOptions(request)).toMatchObject({
+					method: 'GET',
+					url: `${deckBaseUrl}/boards/5/stacks/10`,
+				});
+				expectDeckUrl(deckRequestOptions(request).url);
+			});
+
+			it('createStack POSTs title and order', async () => {
+				const { executeFunctions, request } = buildExecuteFunctions({
+					parameters: {
+						resource: 'deck',
+						operation: 'createStack',
+						boardId: '5',
+						title: 'Todo',
+						order: 1,
+					},
+				});
+				request.mockResolvedValue({ id: 10 });
+
+				await executeNode(executeFunctions);
+
+				expect(deckRequestOptions(request)).toMatchObject({
+					method: 'POST',
+					url: `${deckBaseUrl}/boards/5/stacks`,
+					body: { title: 'Todo', order: 1 },
+				});
+				expectDeckUrl(deckRequestOptions(request).url);
+			});
+
+			it('updateStack PUTs only provided fields', async () => {
+				const { executeFunctions, request } = buildExecuteFunctions({
+					parameters: {
+						resource: 'deck',
+						operation: 'updateStack',
+						boardId: '5',
+						stackId: '10',
+						title: 'Renamed',
+						order: 2,
+					},
+				});
+				request.mockResolvedValue({ id: 10 });
+
+				await executeNode(executeFunctions);
+
+				expect(deckRequestOptions(request)).toMatchObject({
+					method: 'PUT',
+					url: `${deckBaseUrl}/boards/5/stacks/10`,
+					body: { title: 'Renamed', order: 2 },
+				});
+				expectDeckUrl(deckRequestOptions(request).url);
+			});
+
+			it('updateStack omits order when undefined', async () => {
+				const { executeFunctions, request } = buildExecuteFunctions({
+					parameters: {
+						resource: 'deck',
+						operation: 'updateStack',
+						boardId: '5',
+						stackId: '10',
+						title: 'Renamed',
+						// order intentionally not provided
+					},
+				});
+				request.mockResolvedValue({ id: 10 });
+
+				await executeNode(executeFunctions);
+
+				expect(deckRequestOptions(request).body).toEqual({ title: 'Renamed' });
+			});
+
+			it('deleteStack DELETEs /boards/{id}/stacks/{id}', async () => {
+				const { executeFunctions, request } = buildExecuteFunctions({
+					parameters: {
+						resource: 'deck',
+						operation: 'deleteStack',
+						boardId: '5',
+						stackId: '10',
+					},
+				});
+				request.mockResolvedValue({ status: 'ok' });
+
+				await executeNode(executeFunctions);
+
+				expect(deckRequestOptions(request)).toMatchObject({
+					method: 'DELETE',
+					url: `${deckBaseUrl}/boards/5/stacks/10`,
+				});
+				expectDeckUrl(deckRequestOptions(request).url);
+			});
+		});
+
+		describe('card', () => {
+			it('listCards fetches the parent stack and returns the embedded cards array', async () => {
+				const { executeFunctions, request } = buildExecuteFunctions({
+					parameters: {
+						resource: 'deck',
+						operation: 'listCards',
+						boardId: '5',
+						stackId: '10',
+					},
+				});
+				// 405 fallback: deck API has no standalone /cards endpoint, so we
+				// fetch the parent stack and return its embedded `cards` array.
+				request.mockResolvedValue({
+					id: 10,
+					title: 'Todo',
+					cards: [
+						{ id: 100, title: 'A' },
+						{ id: 101, title: 'B' },
+					],
+				});
+
+				const result = await executeNode(executeFunctions);
+
+				expect(deckRequestOptions(request)).toMatchObject({
+					method: 'GET',
+					url: `${deckBaseUrl}/boards/5/stacks/10`,
+				});
+				expect(deckRequestOptions(request).url).not.toEqual(expect.stringContaining('/cards'));
+				expectDeckUrl(deckRequestOptions(request).url);
+				expect(result[0]).toHaveLength(2);
+				expect(result[0][0].json).toEqual({ id: 100, title: 'A' });
+				expect(result[0][1].json).toEqual({ id: 101, title: 'B' });
+			});
+
+			it('listCards returns an empty array when the stack has no cards', async () => {
+				const { executeFunctions, request } = buildExecuteFunctions({
+					parameters: {
+						resource: 'deck',
+						operation: 'listCards',
+						boardId: '5',
+						stackId: '10',
+					},
+				});
+				request.mockResolvedValue({ id: 10, title: 'Empty' });
+
+				const result = await executeNode(executeFunctions);
+
+				expect(result[0]).toEqual([]);
+			});
+
+			it('getCard requests GET /boards/{id}/stacks/{id}/cards/{id}', async () => {
+				const { executeFunctions, request } = buildExecuteFunctions({
+					parameters: {
+						resource: 'deck',
+						operation: 'getCard',
+						boardId: '5',
+						stackId: '10',
+						cardId: '100',
+					},
+				});
+				request.mockResolvedValue({ id: 100 });
+
+				await executeNode(executeFunctions);
+
+				expect(deckRequestOptions(request)).toMatchObject({
+					method: 'GET',
+					url: `${deckBaseUrl}/boards/5/stacks/10/cards/100`,
+				});
+				expectDeckUrl(deckRequestOptions(request).url);
+			});
+
+			it('createCard POSTs title, type, order, and optional description/dueDate', async () => {
+				const { executeFunctions, request } = buildExecuteFunctions({
+					parameters: {
+						resource: 'deck',
+						operation: 'createCard',
+						boardId: '5',
+						stackId: '10',
+						title: 'Task',
+						type: 'plain',
+						order: 0,
+						description: 'A description',
+						dueDate: '2024-12-31',
+					},
+				});
+				request.mockResolvedValue({ id: 100 });
+
+				await executeNode(executeFunctions);
+
+				expect(deckRequestOptions(request)).toMatchObject({
+					method: 'POST',
+					url: `${deckBaseUrl}/boards/5/stacks/10/cards`,
+					body: {
+						title: 'Task',
+						type: 'plain',
+						order: 0,
+						description: 'A description',
+						duedate: '2024-12-31',
+					},
+				});
+				expectDeckUrl(deckRequestOptions(request).url);
+			});
+
+			it('createCard omits description and dueDate when empty', async () => {
+				const { executeFunctions, request } = buildExecuteFunctions({
+					parameters: {
+						resource: 'deck',
+						operation: 'createCard',
+						boardId: '5',
+						stackId: '10',
+						title: 'Task',
+						type: 'plain',
+						order: 0,
+						description: '',
+						dueDate: '',
+					},
+				});
+				request.mockResolvedValue({ id: 100 });
+
+				await executeNode(executeFunctions);
+
+				expect(deckRequestOptions(request).body).toEqual({
+					title: 'Task',
+					type: 'plain',
+					order: 0,
+				});
+			});
+
+			it('updateCard pre-fetches the current card and includes the owner in the body', async () => {
+				const { executeFunctions, request } = buildExecuteFunctions({
+					parameters: {
+						resource: 'deck',
+						operation: 'updateCard',
+						boardId: '5',
+						stackId: '10',
+						cardId: '100',
+						title: 'Updated',
+						description: 'New description',
+						type: 'plain',
+						order: 1,
+						dueDate: '2024-12-31',
+					},
+				});
+				// Pre-flight GET returns the existing card; PUT returns the updated card.
+				request
+					.mockResolvedValueOnce({ id: 100, owner: { uid: 'alice' } })
+					.mockResolvedValueOnce({ id: 100, title: 'Updated' });
+
+				await executeNode(executeFunctions);
+
+				// Pre-flight GET
+				expect(deckRequestOptions(request)).toMatchObject({
+					method: 'GET',
+					url: `${deckBaseUrl}/boards/5/stacks/10/cards/100`,
+				});
+				// Subsequent PUT includes the owner pulled from the pre-flight
+				expect(deckRequestOptions(request, 1)).toMatchObject({
+					method: 'PUT',
+					url: `${deckBaseUrl}/boards/5/stacks/10/cards/100`,
+					body: {
+						title: 'Updated',
+						description: 'New description',
+						type: 'plain',
+						order: 1,
+						duedate: '2024-12-31',
+						owner: 'alice',
+					},
+				});
+				expect(request).toHaveBeenCalledTimes(2);
+			});
+
+			it('updateCard falls back to an empty owner when the pre-flight has none', async () => {
+				const { executeFunctions, request } = buildExecuteFunctions({
+					parameters: {
+						resource: 'deck',
+						operation: 'updateCard',
+						boardId: '5',
+						stackId: '10',
+						cardId: '100',
+						title: 'Updated',
+					},
+				});
+				request
+					.mockResolvedValueOnce({ id: 100 /* no owner */ })
+					.mockResolvedValueOnce({ id: 100 });
+
+				await executeNode(executeFunctions);
+
+				expect(deckRequestOptions(request, 1).body).toMatchObject({ owner: '' });
+			});
+
+			it('deleteCard DELETEs /boards/{id}/stacks/{id}/cards/{id}', async () => {
+				const { executeFunctions, request } = buildExecuteFunctions({
+					parameters: {
+						resource: 'deck',
+						operation: 'deleteCard',
+						boardId: '5',
+						stackId: '10',
+						cardId: '100',
+					},
+				});
+				request.mockResolvedValue({ status: 'ok' });
+
+				await executeNode(executeFunctions);
+
+				expect(deckRequestOptions(request)).toMatchObject({
+					method: 'DELETE',
+					url: `${deckBaseUrl}/boards/5/stacks/10/cards/100`,
+				});
+				expectDeckUrl(deckRequestOptions(request).url);
+			});
+
+			it('moveCard PUTs to /reorder with stackId as number and order', async () => {
+				const { executeFunctions, request } = buildExecuteFunctions({
+					parameters: {
+						resource: 'deck',
+						operation: 'moveCard',
+						boardId: '5',
+						stackId: '10',
+						cardId: '100',
+						targetStackId: '20',
+						order: 2,
+					},
+				});
+				request.mockResolvedValue({ status: 'ok' });
+
+				await executeNode(executeFunctions);
+
+				expect(deckRequestOptions(request)).toMatchObject({
+					method: 'PUT',
+					url: `${deckBaseUrl}/boards/5/stacks/10/cards/100/reorder`,
+					body: { stackId: 20, order: 2 },
+				});
+				expectDeckUrl(deckRequestOptions(request).url);
+			});
+
+			it('archiveCard PUTs to /archive', async () => {
+				const { executeFunctions, request } = buildExecuteFunctions({
+					parameters: {
+						resource: 'deck',
+						operation: 'archiveCard',
+						boardId: '5',
+						stackId: '10',
+						cardId: '100',
+					},
+				});
+				request.mockResolvedValue({ status: 'ok' });
+
+				await executeNode(executeFunctions);
+
+				expect(deckRequestOptions(request)).toMatchObject({
+					method: 'PUT',
+					url: `${deckBaseUrl}/boards/5/stacks/10/cards/100/archive`,
+				});
+				expectDeckUrl(deckRequestOptions(request).url);
+			});
+
+			it('unarchiveCard PUTs to /unarchive', async () => {
+				const { executeFunctions, request } = buildExecuteFunctions({
+					parameters: {
+						resource: 'deck',
+						operation: 'unarchiveCard',
+						boardId: '5',
+						stackId: '10',
+						cardId: '100',
+					},
+				});
+				request.mockResolvedValue({ status: 'ok' });
+
+				await executeNode(executeFunctions);
+
+				expect(deckRequestOptions(request)).toMatchObject({
+					method: 'PUT',
+					url: `${deckBaseUrl}/boards/5/stacks/10/cards/100/unarchive`,
+				});
+				expectDeckUrl(deckRequestOptions(request).url);
+			});
+
+			it('assignLabel PUTs to /assignLabel with labelId as number', async () => {
+				const { executeFunctions, request } = buildExecuteFunctions({
+					parameters: {
+						resource: 'deck',
+						operation: 'assignLabel',
+						boardId: '5',
+						stackId: '10',
+						cardId: '100',
+						labelId: '42',
+					},
+				});
+				request.mockResolvedValue({ status: 'ok' });
+
+				await executeNode(executeFunctions);
+
+				expect(deckRequestOptions(request)).toMatchObject({
+					method: 'PUT',
+					url: `${deckBaseUrl}/boards/5/stacks/10/cards/100/assignLabel`,
+					body: { labelId: 42 },
+				});
+				expectDeckUrl(deckRequestOptions(request).url);
+			});
+
+			it('removeLabel PUTs to /removeLabel with labelId as number', async () => {
+				const { executeFunctions, request } = buildExecuteFunctions({
+					parameters: {
+						resource: 'deck',
+						operation: 'removeLabel',
+						boardId: '5',
+						stackId: '10',
+						cardId: '100',
+						labelId: '42',
+					},
+				});
+				request.mockResolvedValue({ status: 'ok' });
+
+				await executeNode(executeFunctions);
+
+				expect(deckRequestOptions(request)).toMatchObject({
+					method: 'PUT',
+					url: `${deckBaseUrl}/boards/5/stacks/10/cards/100/removeLabel`,
+					body: { labelId: 42 },
+				});
+				expectDeckUrl(deckRequestOptions(request).url);
+			});
+
+			it('assignUser PUTs to /assignUser with userId', async () => {
+				const { executeFunctions, request } = buildExecuteFunctions({
+					parameters: {
+						resource: 'deck',
+						operation: 'assignUser',
+						boardId: '5',
+						stackId: '10',
+						cardId: '100',
+						userId: 'alice',
+					},
+				});
+				request.mockResolvedValue({ status: 'ok' });
+
+				await executeNode(executeFunctions);
+
+				expect(deckRequestOptions(request)).toMatchObject({
+					method: 'PUT',
+					url: `${deckBaseUrl}/boards/5/stacks/10/cards/100/assignUser`,
+					body: { userId: 'alice' },
+				});
+				expectDeckUrl(deckRequestOptions(request).url);
+			});
+
+			it('unassignUser PUTs to /unassignUser with userId', async () => {
+				const { executeFunctions, request } = buildExecuteFunctions({
+					parameters: {
+						resource: 'deck',
+						operation: 'unassignUser',
+						boardId: '5',
+						stackId: '10',
+						cardId: '100',
+						userId: 'alice',
+					},
+				});
+				request.mockResolvedValue({ status: 'ok' });
+
+				await executeNode(executeFunctions);
+
+				expect(deckRequestOptions(request)).toMatchObject({
+					method: 'PUT',
+					url: `${deckBaseUrl}/boards/5/stacks/10/cards/100/unassignUser`,
+					body: { userId: 'alice' },
+				});
+				expectDeckUrl(deckRequestOptions(request).url);
+			});
+		});
+
+		describe('label', () => {
+			it('createLabel POSTs to /labels with stripped color', async () => {
+				const { executeFunctions, request } = buildExecuteFunctions({
+					parameters: {
+						resource: 'deck',
+						operation: 'createLabel',
+						boardId: '5',
+						title: 'Bug',
+						color: '#FF0000',
+					},
+				});
+				request.mockResolvedValue({ id: 42 });
+
+				await executeNode(executeFunctions);
+
+				expect(deckRequestOptions(request)).toMatchObject({
+					method: 'POST',
+					url: `${deckBaseUrl}/boards/5/labels`,
+					body: { title: 'Bug', color: 'FF0000' },
+				});
+				expectDeckUrl(deckRequestOptions(request).url);
+			});
+
+			it('updateLabel PUTs to /labels/{id} with stripped color', async () => {
+				const { executeFunctions, request } = buildExecuteFunctions({
+					parameters: {
+						resource: 'deck',
+						operation: 'updateLabel',
+						boardId: '5',
+						labelId: '42',
+						title: 'Bug',
+						color: '#00FF00',
+					},
+				});
+				request.mockResolvedValue({ id: 42 });
+
+				await executeNode(executeFunctions);
+
+				expect(deckRequestOptions(request)).toMatchObject({
+					method: 'PUT',
+					url: `${deckBaseUrl}/boards/5/labels/42`,
+					body: { title: 'Bug', color: '00FF00' },
+				});
+				expectDeckUrl(deckRequestOptions(request).url);
+			});
+
+			it('deleteLabel DELETEs /labels/{id}', async () => {
+				const { executeFunctions, request } = buildExecuteFunctions({
+					parameters: {
+						resource: 'deck',
+						operation: 'deleteLabel',
+						boardId: '5',
+						labelId: '42',
+					},
+				});
+				request.mockResolvedValue({ status: 'ok' });
+
+				await executeNode(executeFunctions);
+
+				expect(deckRequestOptions(request)).toMatchObject({
+					method: 'DELETE',
+					url: `${deckBaseUrl}/boards/5/labels/42`,
+				});
+				expectDeckUrl(deckRequestOptions(request).url);
+			});
+		});
+
+		describe('url handling', () => {
+			it('strips /remote.php/webdav suffix from webDavUrl before building deck URLs', async () => {
+				const { executeFunctions, request } = buildExecuteFunctions({
+					parameters: { resource: 'deck', operation: 'listBoards' },
+				});
+				request.mockResolvedValue([]);
+
+				await executeNode(executeFunctions);
+
+				expect(deckRequestOptions(request).url).toBe(
+					'https://nextcloud.example.com/index.php/apps/deck/api/v1.1/boards',
+				);
+			});
+
+			it('strips /remote.php/dav suffix from webDavUrl before building deck URLs', async () => {
+				const { executeFunctions, request } = buildExecuteFunctions({
+					credentials: { webDavUrl: 'https://nextcloud.example.com/remote.php/dav' },
+					parameters: { resource: 'deck', operation: 'listBoards' },
+				});
+				request.mockResolvedValue([]);
+
+				await executeNode(executeFunctions);
+
+				expect(deckRequestOptions(request).url).toBe(
+					'https://nextcloud.example.com/index.php/apps/deck/api/v1.1/boards',
+				);
+			});
+
+			it('preserves a subpath prefix when stripping the dav suffix', async () => {
+				const { executeFunctions, request } = buildExecuteFunctions({
+					credentials: { webDavUrl: 'https://example.com/nextcloud/remote.php/dav' },
+					parameters: { resource: 'deck', operation: 'listBoards' },
+				});
+				request.mockResolvedValue([]);
+
+				await executeNode(executeFunctions);
+
+				expect(deckRequestOptions(request).url).toBe(
+					'https://example.com/nextcloud/index.php/apps/deck/api/v1.1/boards',
+				);
+			});
+
+			it('URL-encodes board, stack, and card ids in the deck path', async () => {
+				const { executeFunctions, request } = buildExecuteFunctions({
+					parameters: {
+						resource: 'deck',
+						operation: 'getCard',
+						boardId: '5',
+						stackId: '10',
+						cardId: '100',
+					},
+				});
+				request.mockResolvedValue({ id: 100 });
+
+				await executeNode(executeFunctions);
+
+				// IDs are numeric in practice; encodeURIComponent leaves them unchanged.
+				expect(deckRequestOptions(request).url).toBe(`${deckBaseUrl}/boards/5/stacks/10/cards/100`);
+			});
+		});
+
+		describe('error handling', () => {
+			it('throws NodeOperationError for an unknown deck operation', async () => {
+				const { executeFunctions } = buildExecuteFunctions({
+					parameters: { resource: 'deck', operation: 'unknownOp' },
+				});
+
+				const promise = executeNode(executeFunctions);
+				await expect(promise).rejects.toThrow(NodeOperationError);
+				await expect(promise).rejects.toThrow('not supported for resource "deck"');
+			});
+
+			it('propagates deck request errors when continueOnFail is false', async () => {
+				const deckError = new Error('405 Method Not Allowed');
+				const { executeFunctions, request } = buildExecuteFunctions({
+					parameters: { resource: 'deck', operation: 'listBoards' },
+				});
+				request.mockRejectedValue(deckError);
+
+				await expect(executeNode(executeFunctions)).rejects.toThrow(deckError);
+			});
+
+			it('wraps deck request errors when continueOnFail is true', async () => {
+				const { executeFunctions, request } = buildExecuteFunctions({
+					continueOnFail: true,
+					parameters: { resource: 'deck', operation: 'listBoards' },
+				});
+				request.mockRejectedValue(new Error('405 Method Not Allowed'));
+
+				const result = await executeNode(executeFunctions);
+
+				expect(result[0][0].json).toEqual({ error: '405 Method Not Allowed' });
+			});
 		});
 	});
 

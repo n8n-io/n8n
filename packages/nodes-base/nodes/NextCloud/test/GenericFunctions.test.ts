@@ -8,7 +8,7 @@ import type {
 import { NodeOperationError } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 
-import { nextCloudApiRequest } from '../GenericFunctions';
+import { nextCloudApiRequest, parseResponseData } from '../GenericFunctions';
 
 const webDavUrl = 'https://nextcloud.example.com/remote.php/webdav';
 const baseUrl = 'https://nextcloud.example.com';
@@ -254,5 +254,45 @@ describe('NextCloud GenericFunctions', () => {
 
 		expect(requestOptions(requestWithAuthentication).uri).toBe(`${customUrl}//test.txt`);
 		expect(requestOptions(requestWithAuthentication).uri).toEqual(expect.stringContaining('/dav'));
+	});
+
+	describe('parseResponseData', () => {
+		it('parses a JSON string into an object', () => {
+			const json = '{"id":1,"title":"Personal"}';
+			expect(parseResponseData(json)).toEqual({ id: 1, title: 'Personal' });
+		});
+
+		it('parses a JSON string that contains an array', () => {
+			const json = '[{"id":1},{"id":2}]';
+			expect(parseResponseData(json)).toEqual([{ id: 1 }, { id: 2 }]);
+		});
+
+		it('returns the original string when JSON parsing fails', () => {
+			const xml = '<?xml version="1.0"?><ocs><data><id>1</id></data></ocs>';
+			expect(parseResponseData(xml)).toBe(xml);
+		});
+
+		it('returns the input unchanged when it is already an object', () => {
+			const value = { id: 1, title: 'Personal' };
+			expect(parseResponseData(value)).toBe(value);
+		});
+
+		it('returns the input unchanged when it is an array', () => {
+			const value = [{ id: 1 }, { id: 2 }];
+			expect(parseResponseData(value)).toBe(value);
+		});
+
+		it('returns undefined when given undefined', () => {
+			expect(parseResponseData(undefined)).toBeUndefined();
+		});
+
+		it('returns the original string when given an empty string', () => {
+			expect(parseResponseData('')).toBe('');
+		});
+
+		it('returns the original string when given a non-JSON, non-XML string', () => {
+			const html = '<html>Not JSON or XML</html>';
+			expect(parseResponseData(html)).toBe(html);
+		});
 	});
 });
