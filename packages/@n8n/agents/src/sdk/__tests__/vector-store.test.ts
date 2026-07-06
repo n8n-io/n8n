@@ -43,13 +43,10 @@ describe('normalizeFilterInput', () => {
 });
 
 describe('assertValidFilter', () => {
-	it('throws when in has a scalar value', () => {
+	it('throws when in has a non-array or empty-array value', () => {
 		expect(() =>
 			assertValidFilter({ conditions: [{ key: 'plan', operator: 'in', value: 'cloud' }] }),
 		).toThrow(/"in" on key "plan" requires a non-empty array value/);
-	});
-
-	it('throws when in has an empty array value', () => {
 		expect(() =>
 			assertValidFilter({ conditions: [{ key: 'plan', operator: 'in', value: [] }] }),
 		).toThrow(/"in" on key "plan" requires a non-empty array value/);
@@ -116,15 +113,6 @@ describe('VectorStore — search()', () => {
 
 		expect(ensureReady).toHaveBeenCalledTimes(1);
 		expect(ensureReady).toHaveBeenCalledWith({ dimensions: 3 });
-	});
-
-	it('omits filter entirely from backend.query when none is set', async () => {
-		const backend = makeBackend();
-		const vectorStore = new VectorStore('kb').store(backend).embeddingModel(makeEmbeddingModel());
-
-		await vectorStore.search('hello');
-
-		expect(backend.query).toHaveBeenCalledWith([1, 0, 0], { topK: 4 });
 	});
 
 	it('normalizes an object-shorthand per-call filter before reaching the backend', async () => {

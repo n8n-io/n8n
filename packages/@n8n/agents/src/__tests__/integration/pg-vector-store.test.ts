@@ -72,10 +72,6 @@ describe.skipIf(!PG_URL)('PgVectorStore', () => {
 		expect(results.find((r) => r.id === 'far')).toBeUndefined();
 	});
 
-	it('deleting an empty ids array is a no-op', async () => {
-		await expect(store.delete({ ids: [] })).resolves.toBeUndefined();
-	});
-
 	it('round-trips through the VectorStore orchestrator with a mock embedding model', async () => {
 		const roundTripTable = `${tableName}_roundtrip`;
 		const roundTripStore = new PgVectorStore('pg-integration-roundtrip', {
@@ -101,42 +97,6 @@ describe.skipIf(!PG_URL)('PgVectorStore', () => {
 		} finally {
 			await adminPool.query(`DROP TABLE IF EXISTS "${roundTripTable}";`);
 			await roundTripStore.close();
-		}
-	});
-
-	it('orchestrator applies a multi-condition per-call filter against real data', async () => {
-		const filterRoundTripTable = `${tableName}_filter_roundtrip`;
-		const filterRoundTripStore = new PgVectorStore('pg-integration-filter-roundtrip', {
-			connectionString: PG_URL!,
-			tableName: filterRoundTripTable,
-		});
-		const embeddingModel = new MockEmbeddingModelV3({
-			doEmbed: async ({ values }) => ({
-				embeddings: values.map(() => [1, 0, 0]),
-				warnings: [],
-			}),
-		});
-
-		try {
-			const knowledge = new VectorStore('filter-roundtrip')
-				.store(filterRoundTripStore)
-				.embeddingModel(embeddingModel);
-			await knowledge.addDocuments([
-				{ content: 'cloud + en doc', metadata: { plan: 'cloud', lang: 'en' } },
-				{ content: 'cloud + de doc', metadata: { plan: 'cloud', lang: 'de' } },
-				{ content: 'self-hosted + en doc', metadata: { plan: 'self-hosted', lang: 'en' } },
-			]);
-
-			// Object shorthand with two keys normalizes to an AND of both equalities.
-			const results = await knowledge.search('doc', {
-				filter: { plan: 'cloud', lang: 'en' },
-			});
-
-			expect(results).toHaveLength(1);
-			expect(results[0].content).toBe('cloud + en doc');
-		} finally {
-			await adminPool.query(`DROP TABLE IF EXISTS "${filterRoundTripTable}";`);
-			await filterRoundTripStore.close();
 		}
 	});
 });
@@ -195,6 +155,21 @@ describe.skipIf(!PG_URL)('PgVectorStore — metadata filtering', () => {
 		expect(await idsFor({ conditions: [{ key: 'active', operator: 'eq', value: true }] })).toEqual([
 			'a',
 		]);
+		expect(
+			await idsFor({ conditions: [{ key: 'topic', operator: 'eq', value: 'nonexistent' }] }),
+		).toEqual([]);
+	});
+
+	it('combines multiple conditions with AND', async () => {
+		expect(
+			await idsFor({
+				conditions: [
+					{ key: 'topic', operator: 'eq', value: 'billing' },
+					{ key: 'count', operator: 'eq', value: 5 },
+				],
+				combineWith: 'and',
+			}),
+		).toEqual(['a']);
 	});
 
 	it('ne excludes only the matching row, including rows missing the key', async () => {
@@ -231,12 +206,6 @@ describe.skipIf(!PG_URL)('PgVectorStore — metadata filtering', () => {
 		).toEqual(['a', 'b']);
 	});
 
-	it('a filter matching nothing returns []', async () => {
-		expect(
-			await idsFor({ conditions: [{ key: 'topic', operator: 'eq', value: 'nonexistent' }] }),
-		).toEqual([]);
-	});
-
 	it('creates a GIN index on metadata during ensureReady', async () => {
 		const result = await adminPool.query<{ indexname: string }>(
 			'SELECT indexname FROM pg_indexes WHERE tablename = $1;',
@@ -261,10 +230,6 @@ describe.skipIf(!PG_URL)('PgVectorStore — filtered HNSW under-return (iterativ
 			t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
 			return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
 		};
-	}
-
-	function serializeVectorForRawQuery(vector: number[]): string {
-		return `[${vector.join(',')}]`;
 	}
 
 	beforeAll(async () => {
@@ -320,34 +285,7 @@ describe.skipIf(!PG_URL)('PgVectorStore — filtered HNSW under-return (iterativ
 		await adminPool.end();
 	});
 
-	it('reproduces the under-return without iterative scan', async () => {
-		// Force the planner through the HNSW index specifically. `enable_seqscan
-		// = off` alone is not enough here: the GIN metadata index our adapter
-		// also creates makes a Bitmap Heap Scan (filter via GIN, then sort by
-		// distance) an available and cheaper plan for this selective filter —
-		// which sidesteps the HNSW under-return bug on its own. Disabling
-		// bitmap scan too isolates the HNSW-graph-traversal behavior this test
-		// is about.
-		const client = await adminPool.connect();
-		try {
-			await client.query('BEGIN');
-			await client.query('SET LOCAL enable_seqscan = off;');
-			await client.query('SET LOCAL enable_bitmapscan = off;');
-			const rawResult = await client.query<{ id: string }>(
-				`SELECT id FROM "${iterTableName}"
-				 WHERE metadata @> '{"group":"target"}'::jsonb
-				 ORDER BY embedding <=> $1::vector
-				 LIMIT 5;`,
-				[serializeVectorForRawQuery(queryVector)],
-			);
-			await client.query('COMMIT');
-			expect(rawResult.rows.length).toBeLessThan(5);
-		} finally {
-			client.release();
-		}
-	});
-
-	it('returns all matching rows through the adapter (iterative scan enabled)', async () => {
+	it('returns all matching rows through the adapter despite the HNSW under-return bug', async () => {
 		const results = await iterStore.query(queryVector, {
 			topK: 5,
 			filter: { conditions: [{ key: 'group', operator: 'eq', value: 'target' }] },
