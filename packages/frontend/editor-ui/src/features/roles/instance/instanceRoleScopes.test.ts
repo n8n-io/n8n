@@ -69,8 +69,8 @@ describe('instanceRoleScopes config', () => {
 
 		it('exposes the configured option labels per resource', () => {
 			expect(Object.keys(INSTANCE_SCOPE_GROUPS.apiKey)).toEqual(['Manage own', 'Manage all']);
-			expect(Object.keys(INSTANCE_SCOPE_GROUPS.tag)).toEqual(['View', 'Manage']);
-			expect(Object.keys(INSTANCE_SCOPE_GROUPS.role)).toEqual(['Manage']);
+			expect(Object.keys(INSTANCE_SCOPE_GROUPS.tag)).toEqual(['Manage']);
+			expect(Object.keys(INSTANCE_SCOPE_GROUPS.role)).toEqual(['Manage project roles', 'Manage']);
 			expect(Object.keys(INSTANCE_SCOPE_GROUPS.project)).toEqual(['Create']);
 			expect(Object.keys(INSTANCE_SCOPE_GROUPS.settings)).toEqual(['Manage']);
 		});
@@ -121,8 +121,16 @@ describe('isOptionImplied', () => {
 
 	it('returns false for options in groups with no superseding relationships', () => {
 		const tagGroup = INSTANCE_SCOPE_GROUP_LIST.find((g) => g.resource === 'tag')!;
-		const tagView = tagGroup.options.find((o) => o.key === 'View')!;
-		expect(isOptionImplied(tagView, tagGroup.options, ['tag:read', 'tag:list'])).toBe(false);
+		const tagManage = tagGroup.options.find((o) => o.key === 'Manage')!;
+		expect(
+			isOptionImplied(tagManage, tagGroup.options, [
+				'tag:read',
+				'tag:list',
+				'tag:create',
+				'tag:update',
+				'tag:delete',
+			]),
+		).toBe(false);
 	});
 
 	it('returns false when the superseding option is present but "Manage own" is checked via own scopes only', () => {
@@ -168,9 +176,17 @@ describe('resolveOptionState', () => {
 
 	it('does not affect unrelated groups', () => {
 		const tagGroup = INSTANCE_SCOPE_GROUP_LIST.find((g) => g.resource === 'tag')!;
-		const tagView = tagGroup.options.find((o) => o.key === 'View')!;
-		expect(resolveOptionState(tagView, tagGroup.options, ['tag:read'])).toBe('indeterminate');
-		expect(resolveOptionState(tagView, tagGroup.options, ['tag:read', 'tag:list'])).toBe('checked');
+		const tagManage = tagGroup.options.find((o) => o.key === 'Manage')!;
+		expect(resolveOptionState(tagManage, tagGroup.options, ['tag:read'])).toBe('indeterminate');
+		expect(
+			resolveOptionState(tagManage, tagGroup.options, [
+				'tag:read',
+				'tag:list',
+				'tag:create',
+				'tag:update',
+				'tag:delete',
+			]),
+		).toBe('checked');
 	});
 });
 

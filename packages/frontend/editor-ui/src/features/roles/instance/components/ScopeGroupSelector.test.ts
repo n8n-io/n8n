@@ -17,21 +17,23 @@ describe('ScopeGroupSelector', () => {
 
 	it('renders an unchecked option for an empty scope list', () => {
 		const { getByTestId } = renderComponent(ScopeGroupSelector, { props: { modelValue: [] } });
-		expect(getByTestId('scope-option-tag-view').getAttribute('aria-checked')).toBe('false');
+		expect(getByTestId('scope-option-tag-manage').getAttribute('aria-checked')).toBe('false');
 	});
 
 	it('renders a checked option when the full resolved set is present', () => {
 		const { getByTestId } = renderComponent(ScopeGroupSelector, {
-			props: { modelValue: ['tag:read', 'tag:list'] },
+			props: {
+				modelValue: ['tag:read', 'tag:list', 'tag:create', 'tag:update', 'tag:delete'],
+			},
 		});
-		expect(getByTestId('scope-option-tag-view').getAttribute('aria-checked')).toBe('true');
+		expect(getByTestId('scope-option-tag-manage').getAttribute('aria-checked')).toBe('true');
 	});
 
 	it('renders indeterminate for a partial subset of an option (round-trip)', () => {
 		const { getByTestId } = renderComponent(ScopeGroupSelector, {
 			props: { modelValue: ['tag:read'] },
 		});
-		expect(getByTestId('scope-option-tag-view').getAttribute('aria-checked')).toBe('mixed');
+		expect(getByTestId('scope-option-tag-manage').getAttribute('aria-checked')).toBe('mixed');
 	});
 
 	it('emits the full resolved scope set when toggling an option on', async () => {
@@ -43,16 +45,20 @@ describe('ScopeGroupSelector', () => {
 
 		await waitFor(() => expect(emitted()['update:modelValue']).toBeTruthy());
 		const [scopes] = emitted()['update:modelValue'][0] as [string[]];
-		expect(scopes).toEqual(expect.arrayContaining(['tag:create', 'tag:update', 'tag:delete']));
-		expect(scopes).toHaveLength(3);
+		expect(scopes).toEqual(
+			expect.arrayContaining(['tag:read', 'tag:list', 'tag:create', 'tag:update', 'tag:delete']),
+		);
+		expect(scopes).toHaveLength(5);
 	});
 
 	it('emits the option scopes removed when toggling a checked option off', async () => {
 		const { getByTestId, emitted } = renderComponent(ScopeGroupSelector, {
-			props: { modelValue: ['tag:read', 'tag:list', 'user:read'] },
+			props: {
+				modelValue: ['tag:read', 'tag:list', 'tag:create', 'tag:update', 'tag:delete', 'user:read'],
+			},
 		});
 
-		await userEvent.click(getByTestId('scope-option-tag-view'));
+		await userEvent.click(getByTestId('scope-option-tag-manage'));
 
 		await waitFor(() => expect(emitted()['update:modelValue']).toBeTruthy());
 		const [scopes] = emitted()['update:modelValue'][0] as [string[]];
@@ -64,12 +70,14 @@ describe('ScopeGroupSelector', () => {
 			props: { modelValue: ['tag:read'] },
 		});
 
-		await userEvent.click(getByTestId('scope-option-tag-view'));
+		await userEvent.click(getByTestId('scope-option-tag-manage'));
 
 		await waitFor(() => expect(emitted()['update:modelValue']).toBeTruthy());
 		const [scopes] = emitted()['update:modelValue'][0] as [string[]];
-		expect(scopes).toEqual(expect.arrayContaining(['tag:read', 'tag:list']));
-		expect(scopes).toHaveLength(2);
+		expect(scopes).toEqual(
+			expect.arrayContaining(['tag:read', 'tag:list', 'tag:create', 'tag:update', 'tag:delete']),
+		);
+		expect(scopes).toHaveLength(5);
 	});
 
 	it('does not emit when readonly', async () => {
