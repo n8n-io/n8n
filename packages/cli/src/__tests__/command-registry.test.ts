@@ -8,6 +8,7 @@ import { z } from 'zod';
 import { CommandRegistry } from '../command-registry';
 
 jest.mock('fast-glob');
+jest.mock('node:fs/promises', () => ({ access: jest.fn() }));
 
 import glob from 'fast-glob';
 import { access } from 'node:fs/promises';
@@ -40,6 +41,8 @@ describe('CommandRegistry', () => {
 		mockProcessExit = jest.spyOn(process, 'exit').mockImplementation((() => {}) as any);
 
 		(glob as unknown as jest.Mock).mockResolvedValue([]);
+		// Default: command file does not exist, so the dynamic import is skipped.
+		(access as unknown as jest.Mock).mockRejectedValue(new Error('ENOENT'));
 
 		commandMetadata = new CommandMetadata();
 		Container.set(CommandMetadata, commandMetadata);
