@@ -1,6 +1,7 @@
 import { Tool } from '@n8n/agents';
 import { instanceAiConfirmationSeveritySchema } from '@n8n/api-types';
 import { hasPlaceholderDeep } from '@n8n/utils/placeholder';
+import { SDK_IMPORTABLE_FUNCTIONS } from '@n8n/workflow-sdk';
 import { nanoid } from 'nanoid';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -154,34 +155,7 @@ const setupRequirementOutputSchema = z.discriminatedUnion('status', [
 ]);
 
 /** User-facing @n8n/workflow-sdk factories; used to auto-recover missing-import compile failures. */
-const SDK_IMPORTABLE_SYMBOLS = new Set([
-	'workflow',
-	'node',
-	'trigger',
-	'sticky',
-	'placeholder',
-	'newCredential',
-	'ifElse',
-	'switchCase',
-	'merge',
-	'languageModel',
-	'memory',
-	'tool',
-	'outputParser',
-	'embedding',
-	'embeddings',
-	'vectorStore',
-	'retriever',
-	'documentLoader',
-	'textSplitter',
-	'fromAi',
-	'splitInBatches',
-	'nextBatch',
-	'expr',
-	'nodeJson',
-	'runOnceForAllItems',
-	'runOnceForEachItem',
-]);
+const SDK_IMPORTABLE_SYMBOLS = new Set<string>(SDK_IMPORTABLE_FUNCTIONS);
 
 const SDK_IMPORT_REGEX = /import\s*\{([^}]*)\}\s*from\s*['"]@n8n\/workflow-sdk['"]/;
 
