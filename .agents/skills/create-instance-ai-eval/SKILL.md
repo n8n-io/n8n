@@ -84,9 +84,15 @@ Request node").
 4. **Inspect** — read the built workflow (the run prints `BUILT (<id>)`; fetch
    via `GET /rest/workflows/<id>`) and the HTML report's transcript to see what
    the agent actually did.
-5. **Calibrate** — relax any assertion the build satisfied a valid-but-different
-   way, tighten any a wrong build would have slipped past, and phrase
-   `executionScenarios` to match how the workflow runs on mocked data.
+5. **Calibrate — sharpen assertions; never dull them to force a green.** Fix
+   assertions that are genuinely mis-sized: relax one that pins a choice the
+   conversation left open (so a valid *alternative* build wrongly fails), tighten
+   one a wrong build would slip past, and phrase `executionScenarios` to match how
+   the workflow runs on mocked data. But when a scenario goes red because the
+   build has a real gap, or because the harness can't exercise it, **that red is
+   the result — keep it and surface why** (see "A red is signal", below). Never
+   delete a scenario, weaken an assertion, or drop to build-only just to make the
+   run green.
 
 `--iterations N` is available to measure flakiness (pass@k / pass^k) — reach for
 it when you suspect a case is non-deterministic or before promoting it to a
@@ -115,6 +121,34 @@ doesn't lose value: it flips from *capability-gap* (currently red) to *regressio
 guard* (currently green, catches a re-introduction). Keep it — but only after the
 non-vacuous check above proves it *would* turn red on the bad behaviour, else the
 "guard" guards nothing.
+
+## A red is signal — surface it, don't work around it
+
+Calibration exists to right-size assertions, **not** to make a case pass. When a
+run turns a scenario or expectation red, classify the red first — then keep it:
+
+- **Real build / capability gap** — the agent's workflow is wrong or missing
+  something the user asked for (a miswired branch, a missing retry, wrong field
+  keys). This is exactly what the eval is for. **Keep it red.** Don't loosen the
+  assertion or drop the scenario; a currently-red gap is the capability signal
+  today, and a re-introduction guard once the builder improves.
+- **Harness limitation** — the build is correct but the mock/execution layer
+  can't exercise the path (see "Known harness limitations", below). **Keep the
+  scenario and say so in its `description`** — that this red is harness-caused,
+  not a build defect — so nobody misreads it as a product bug. Keep it out of
+  gated tiers if it hard-fails every run; when the harness gains the capability it
+  starts earning its keep with no re-authoring.
+- **Genuine non-determinism** — the *same* build flips green/red across runs.
+  This is the only real "noise". Confirm it with `--iterations N` before calling
+  it flaky, then de-tier and note it; deletion is the last resort.
+
+The one move to never make is **working around a red by weakening what the case
+checks** — deleting a failing scenario, loosening an assertion until a wrong
+build would pass, or quietly converting to build-only. That makes the suite look
+greener than the product is, which is the opposite of the eval's job: bugs and
+harness gaps are the deliverable, so **highlight them, don't engineer around
+them**. If you catch yourself editing a case so that a known-bad build would now
+pass, stop.
 
 ## Example
 
@@ -209,6 +243,32 @@ nodes get LLM-generated pin data). So:
 - Don't assert exact counts that depend on mock generation ("exactly 7 posts").
   Say "fewer than the original 10".
 
+### Known harness limitations that turn scenarios red regardless of the build
+
+These produce a **reliable** red on a *correct* build. Don't engineer around them
+— write the scenario for the behaviour you want and note in `description` that the
+red is harness-caused (per "A red is signal", above):
+
+- **Resource-locator fields left empty for setup** (Google Sheets / Drive /
+  Calendar and similar node pickers). The agent legitimately leaves the
+  document/folder/calendar ID blank for the user to pick at setup; the mock
+  substitutes `__evalMockResource`, and the node then crashes looking it up
+  ("Sheet with ID __evalMockResource not found", or "Cannot read properties of
+  undefined"). Any scenario whose success path runs *through* such a node
+  hard-fails before anything downstream executes.
+- **Data tables are never mocked** — reads return empty, so dedup /
+  change-detection / stored-list scenarios (and any "one action per stored row")
+  can't be exercised.
+- **Trigger input can't be forced** — triggers get LLM-generated pin data, so you
+  can't simulate "no new email", "empty inbox", or "no matching rows", and
+  polling / form triggers occasionally fail to load ("workflow not found").
+- **Mock response shape** — for a less-common API the LLM-generated response can
+  omit the real envelope (e.g. Gemini's top-level `candidates`), crashing a
+  downstream parse/format node.
+- **Very large specs can time out the build** — a maximal verbatim prompt can
+  exceed the build timeout and produce no scored result at all; that timeout is
+  itself a finding, but note it so the zero isn't mistaken for a scored failure.
+
 ## outcomeExpectations vs processExpectations
 
 Both are natural-language assertions graded by the same Sonnet judge, and each
@@ -265,12 +325,14 @@ Two different things — keep them apart:
 - **Robust assertion design (always do this).** The agent's unspecified choices
   vary run to run. Source-agnostic `outcomeExpectations` for an unspecified
   source aren't a concession to flakiness — they're the *correct* assertion.
-- **Harness flakiness (a defect — mitigate, don't accept).** The mock layer
-  doesn't reliably honour `dataSetup` for **state-bearing reads** (a data-table
-  "previous value"), so change-detection scenarios can flip run to run. When you
-  hit it: tighten `dataSetup`, move the fragile intent to a `processExpectation`,
-  or keep the scenario out of gated tiers — and note it in `description`. A
-  scenario whose pass/fail is noise is worse than no scenario.
+- **Harness limitations (surface them, don't hide them).** The mock layer doesn't
+  reliably honour `dataSetup` for **state-bearing reads** (a data-table "previous
+  value"), and other paths hard-fail on a correct build (see "Known harness
+  limitations" above). The fix is to *document*, not to *work around*: note the
+  limitation in `description` and keep a hard-failing scenario out of gated tiers.
+  Only when a scenario flips **non-deterministically** run to run is it genuine
+  noise worth removing — a scenario that reliably fails for a documented harness
+  reason is a standing record of what the harness can't yet test, and stays.
 
 ## Negative execution scenarios
 
