@@ -25,7 +25,7 @@ pnpm install
 
 pnpm <anything>
   └─ pnpm shim → runs pnpm.n8n-real, then (backgrounded) →
-       track.mjs  (found by walking up from $PWD) → PostHog capture API
+       track.mjs  (found by walking up from $PWD) → RudderStack (n8n-dev)
 ```
 
 - Replaced **in place**, so it works regardless of PATH order. If the binary's
@@ -41,8 +41,8 @@ pnpm <anything>
 | --- | --- |
 | `setup.mjs` | Consent prompt; replaces/restores binaries; `--status`/`--enable`/`--disable`/`--reset`. |
 | `shadow-shim.sh` | Shim template (versioned via `# n8n-shadow-shim-version`); rendered per binary with the binary name, saved-real path, and its dir baked in. |
-| `track.mjs` | Builds the anonymous event and POSTs it to PostHog (fire-and-forget). |
-| `capture-server.mjs` | Local PostHog stub for testing — logs every event instead of sending it upstream. |
+| `track.mjs` | Builds the anonymous event and POSTs it to RudderStack (fire-and-forget). |
+| `capture-server.mjs` | Local capture stub for testing — logs every event instead of sending it upstream. |
 
 State lives in `~/.n8n/dev-telemetry.json` (separate from n8n's secret `config`):
 
@@ -52,7 +52,7 @@ State lives in `~/.n8n/dev-telemetry.json` (separate from n8n's secret `config`)
 
 ## What is sent
 
-Event `dev:cli_command` with `distinct_id` = the weekly anonymous id, and:
+Event `dev:cli_command` with `anonymousId` = the weekly anonymous id, and:
 
 | Property | Example | Notes |
 | --- | --- | --- |
@@ -60,17 +60,19 @@ Event `dev:cli_command` with `distinct_id` = the weekly anonymous id, and:
 | `binary` | `pnpm` | The shadowed CLI. |
 | `binary_version` | `10.32.1` | The CLI's own version, detected at runtime by the tracker via `<bin> --version` (`null` if unknown). |
 | `command` | `build`, `test`, `install` | Allowlisted per binary (for pnpm: root `package.json` scripts + builtins); anything else → `other`. |
+| `dir` | `packages/cli`, `.` | Where it ran, **relative to the repo root** — never an absolute path. |
 | `duration_ms` | `41230` | Wall-clock duration. |
 | `exit_code` | `0` | The command's exit code. |
 | `os` / `arch` | `darwin` / `arm64` | |
 | `node_version`, `repo_version`, `schema_version` | | For segmenting. |
 
-**Never sent:** paths, file names, branch names, git email, username, or raw
-command arguments. Only allowlisted command names leave the machine.
+**Never sent:** absolute paths, file names, branch names, git email, username,
+or raw command arguments. Only allowlisted command names and the repo-relative
+`dir` leave the machine.
 
 One lifecycle event is also sent: **`dev:metrics_opt_in`**, fired once when a
 developer opts in (the transition into `granted`), under the same anonymous
-weekly `distinct_id` with only the common properties (os/arch/node/repo/schema).
+weekly `anonymousId` with only the common properties (os/arch/node/repo/schema).
 Opting *out* is deliberately **not** tracked — we don't send telemetry about
 someone who just declined it.
 
@@ -78,9 +80,9 @@ someone who just declined it.
 
 - **Opt-in.** Off until an internal developer accepts the prompt. External
   contributors are never prompted and never tracked.
-- **Anonymous.** The `distinct_id` is a random UUID that **rotates every ISO
+- **Anonymous.** The `anonymousId` is a random UUID that **rotates every ISO
   week**, so individuals cannot be followed across weeks. Weekly unique
-  `distinct_id` counts give "how many developers" without identifying anyone.
+  `anonymousId` counts give "how many developers" without identifying anyone.
 - **Scoped.** Only commands run inside an n8n checkout are considered; the
   wrapper looks for `scripts/dev-metrics/track.mjs` by walking up from `$PWD`.
 - **Non-disruptive.** The tracker runs detached with a 2s network timeout and
@@ -115,14 +117,15 @@ node scripts/dev-metrics/setup.mjs --reset     # restore binaries + wipe state -
 export N8N_DEV_TELEMETRY=0                      # runtime kill switch (no sending)
 ```
 
-Endpoint and key are overridable for a dedicated PostHog project:
-`N8N_DEV_METRICS_POSTHOG_HOST`, `N8N_DEV_METRICS_POSTHOG_KEY` (defaults reuse
-n8n's existing PostHog instance at `ph.n8n.io`).
+Data plane and write key are set via env: `N8N_DEV_METRICS_RUDDERSTACK_URL`
+(defaults to n8n's data plane `https://telemetry.n8n.io`) and
+`N8N_DEV_METRICS_RUDDERSTACK_KEY` (the `n8n-dev` workspace source's write key —
+currently a `TODO_...` placeholder; drop the real key in `track.mjs` or via env).
 
 ## Testing locally
 
-`track.mjs` reads its endpoint from `N8N_DEV_METRICS_POSTHOG_HOST`, so you can
-point it at the bundled stub instead of `ph.n8n.io` and watch events arrive.
+`track.mjs` reads its data plane from `N8N_DEV_METRICS_RUDDERSTACK_URL`, so you
+can point it at the bundled stub instead of the real one and watch events arrive.
 
 ```bash
 # terminal A — start the stub (optionally append raw events to a file)
@@ -133,7 +136,7 @@ node scripts/dev-metrics/capture-server.mjs --port 9999 --out /tmp/events.jsonl
 # terminal B — drive the tracker directly (fastest; run from inside the repo)
 U=$(mktemp -d); mkdir -p "$U/.n8n"; echo '{"consent":"granted"}' > "$U/.n8n/dev-telemetry.json"
 N8N_USER_FOLDER="$U" \
-N8N_DEV_METRICS_POSTHOG_HOST=http://localhost:9999 \
+N8N_DEV_METRICS_RUDDERSTACK_URL=http://localhost:9999 \
 N8N_DEV_TRACK_BIN=pnpm \
 N8N_DEV_TRACK_ARGS='run build' N8N_DEV_TRACK_MS=1234 N8N_DEV_TRACK_CODE=0 N8N_DEV_TRACK_CWD="$PWD" \
 node scripts/dev-metrics/track.mjs
@@ -143,7 +146,7 @@ To exercise the **full path** (actually type `pnpm`), point the tracker at the
 stub, opt in, run a command, then restore:
 
 ```bash
-export N8N_DEV_METRICS_POSTHOG_HOST=http://localhost:9999
+export N8N_DEV_METRICS_RUDDERSTACK_URL=http://localhost:9999
 node scripts/dev-metrics/setup.mjs --enable   # replaces pnpm with the shim in place
 pnpm list          # → event appears in terminal A (wait ~1s; it's backgrounded)
 node scripts/dev-metrics/setup.mjs --reset    # restores the real pnpm
@@ -155,12 +158,15 @@ n8n checkout**; `N8N_DEV_TELEMETRY=0` disables sending entirely.
 `sh scripts/dev-metrics/selfcheck.sh` runs the whole enable→run→reset flow
 against a fake binary in a temp dir (never touches your real pnpm).
 
-## Querying in PostHog
+## Querying
 
-- **Most-used commands:** Trends on `dev:cli_command`, break down by `command`
-  (optionally filter by `binary`), math = total count.
-- **How many developers:** same event, math = unique `distinct_id` (per week).
-- **Opt-ins:** Trends on `dev:metrics_opt_in`, math = unique `distinct_id`.
-- **Human vs AI agent:** break any of the above down by `actor`.
-- **How long commands take:** Trends on `duration_ms`, math = p50/p90, broken
-  down by `command`.
+Once the `n8n-dev` RudderStack source is wired to a destination (warehouse /
+analytics tool), query the `dev:cli_command` events there:
+
+- **Most-used commands:** count `dev:cli_command`, grouped by `command`
+  (optionally filtered by `binary`).
+- **How many developers:** unique `anonymousId` per ISO week.
+- **Opt-ins:** unique `anonymousId` on `dev:metrics_opt_in`.
+- **Human vs AI agent:** group any of the above by `actor`.
+- **Which packages:** group by `dir`.
+- **How long commands take:** p50/p90 of `duration_ms`, grouped by `command`.

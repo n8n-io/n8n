@@ -17,7 +17,7 @@ sleep 0.4
 UF=$(mktemp -d); BIN=$(mktemp -d)
 printf '#!/bin/sh\ncase "$1" in --version) echo 9.9.9; exit 0;; esac\necho "REAL $*"\nexit 7\n' > "$BIN/pnpm"
 chmod +x "$BIN/pnpm"
-export N8N_USER_FOLDER="$UF" N8N_DEV_METRICS_POSTHOG_HOST="http://localhost:$PORT" PATH="$BIN:$PATH"
+export N8N_USER_FOLDER="$UF" N8N_DEV_METRICS_RUDDERSTACK_URL="http://localhost:$PORT" PATH="$BIN:$PATH"
 
 fail() { echo "FAIL: $1"; exit 1; }
 

@@ -5,9 +5,9 @@
  * Invoked fire-and-forget (backgrounded) by the shim (shadow-shim.sh) that
  * replaces each tracked binary, after every shadowed command run inside an n8n
  * checkout. It records the binary, the command name, wall-clock duration and
- * exit code to PostHog under a weekly-rotating anonymous id, so we can see which
- * commands are used, how long they take, and roughly how many developers run
- * them each week.
+ * exit code to the `n8n-dev` RudderStack workspace under a weekly-rotating
+ * anonymous id, so we can see which commands are used, how long they take, and
+ * roughly how many developers run them each week.
  *
  * Today only `pnpm` is shadowed, but the wiring is generic: add an entry to
  * BINARY_RESOLVERS here and to SHADOWED_BINARIES in setup.mjs to track another CLI.
@@ -24,18 +24,22 @@
  *
  * Privacy: only allowlisted command tokens are ever transmitted (for pnpm: the
  * repo's package.json scripts plus a small builtin list); anything else is
- * reported as "other". No paths, usernames, emails or raw args leave the
- * machine. Every error is swallowed so tracking can never disrupt a workflow.
+ * reported as "other". Directories are sent repo-relative (e.g. "packages/cli"),
+ * never absolute. No usernames, emails or raw args leave the machine. Every
+ * error is swallowed so tracking can never disrupt a workflow.
  */
 import { execFileSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { dirname, join, parse } from 'node:path';
+import { dirname, join, parse, relative } from 'node:path';
 
-const POSTHOG_HOST = process.env.N8N_DEV_METRICS_POSTHOG_HOST ?? 'https://ph.n8n.io';
-const POSTHOG_KEY =
-	process.env.N8N_DEV_METRICS_POSTHOG_KEY ?? 'phc_kMstNfAgBcBkWSh6KdsgN09heqqNe5VNmalHP1Ni9Q4';
+// Telemetry goes to the `n8n-dev` RudderStack workspace via its HTTP tracking
+// API. The data plane is n8n's shared one; the write key comes from the source
+// created in that workspace (TBD — set it here or override via env).
+const RUDDERSTACK_URL = process.env.N8N_DEV_METRICS_RUDDERSTACK_URL ?? 'https://telemetry.n8n.io';
+const RUDDERSTACK_KEY =
+	process.env.N8N_DEV_METRICS_RUDDERSTACK_KEY ?? 'TODO_N8N_DEV_SOURCE_WRITE_KEY';
 const EVENT_NAME = 'dev:cli_command';
 const SCHEMA_VERSION = 1;
 const POST_TIMEOUT_MS = 2000;
@@ -200,11 +204,15 @@ function detectActor() {
 	return 'human';
 }
 
-async function send(payload) {
-	await fetch(`${POSTHOG_HOST}/capture/`, {
+async function sendEvent(event, anonymousId, properties) {
+	await fetch(`${RUDDERSTACK_URL}/v1/track`, {
 		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify(payload),
+		headers: {
+			'Content-Type': 'application/json',
+			// RudderStack HTTP API: HTTP Basic auth, username = source write key.
+			Authorization: `Basic ${Buffer.from(`${RUDDERSTACK_KEY}:`).toString('base64')}`,
+		},
+		body: JSON.stringify({ type: 'track', event, anonymousId, properties }),
 		signal: AbortSignal.timeout(POST_TIMEOUT_MS),
 	});
 }
@@ -224,20 +232,13 @@ async function main() {
 	const customEvent = process.env.N8N_DEV_EVENT;
 	if (customEvent) {
 		if (!/^dev:[a-z_]+$/.test(customEvent)) return; // only our own event names
-		await send({
-			api_key: POSTHOG_KEY,
-			event: customEvent,
-			distinct_id: currentAnonId(state),
-			properties: {
-				actor: detectActor(),
-				os: process.platform,
-				arch: process.arch,
-				node_version: process.versions.node,
-				repo_version: repo.pkg?.version ?? null,
-				schema_version: SCHEMA_VERSION,
-				$lib: 'n8n-dev-metrics',
-				$process_person_profile: false,
-			},
+		await sendEvent(customEvent, currentAnonId(state), {
+			actor: detectActor(),
+			os: process.platform,
+			arch: process.arch,
+			node_version: process.versions.node,
+			repo_version: repo.pkg?.version ?? null,
+			schema_version: SCHEMA_VERSION,
 		});
 		return;
 	}
@@ -245,33 +246,25 @@ async function main() {
 	const binary = process.env.N8N_DEV_TRACK_BIN || 'pnpm';
 	const command = resolveCommand(binary, process.env.N8N_DEV_TRACK_ARGS ?? '', repo);
 	const binaryVersion = detectBinaryVersion(binary);
-
 	const durationMs = Number.parseInt(process.env.N8N_DEV_TRACK_MS ?? '', 10);
 	const exitCode = Number.parseInt(process.env.N8N_DEV_TRACK_CODE ?? '', 10);
+	// Repo-relative dir (e.g. "packages/cli", "." at root) — never an absolute path.
+	const dir = relative(repo.dir, cwd) || '.';
 
-	const payload = {
-		api_key: POSTHOG_KEY,
-		event: EVENT_NAME,
-		distinct_id: currentAnonId(state),
-		properties: {
-			actor: detectActor(),
-			binary,
-			binary_version: binaryVersion,
-			command,
-			duration_ms: Number.isFinite(durationMs) ? durationMs : null,
-			exit_code: Number.isFinite(exitCode) ? exitCode : null,
-			os: process.platform,
-			arch: process.arch,
-			node_version: process.versions.node,
-			repo_version: repo.pkg?.version ?? null,
-			schema_version: SCHEMA_VERSION,
-			$lib: 'n8n-dev-metrics',
-			// Anonymous event: don't build a person profile, just count distinct ids.
-			$process_person_profile: false,
-		},
-	};
-
-	await send(payload);
+	await sendEvent(EVENT_NAME, currentAnonId(state), {
+		actor: detectActor(),
+		binary,
+		binary_version: binaryVersion,
+		command,
+		dir,
+		duration_ms: Number.isFinite(durationMs) ? durationMs : null,
+		exit_code: Number.isFinite(exitCode) ? exitCode : null,
+		os: process.platform,
+		arch: process.arch,
+		node_version: process.versions.node,
+		repo_version: repo.pkg?.version ?? null,
+		schema_version: SCHEMA_VERSION,
+	});
 }
 
 // Never let tracking surface an error or a non-zero exit to the developer.
