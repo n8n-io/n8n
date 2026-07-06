@@ -211,7 +211,7 @@ const previewDocumentId = computed(() =>
 										data-test-id="start-with-ai-button"
 										:class="$style.startWithAi"
 										:label="i18n.baseText('template.buttons.startWithAi')"
-										variant="subtle"
+										variant="ghost"
 										icon="sparkles"
 										size="large"
 										@click.stop="startWithAi"
@@ -283,15 +283,55 @@ const previewDocumentId = computed(() =>
 	gap: var(--spacing--xs);
 }
 
-// Assistant-tinted variant of the subtle button: purple sparkle + label and
-// border, matching the AI hand-off affordance while keeping the large size.
+// Assistant-branded action: gradient border ring + gradient label with a
+// purple sparkle, mirroring the design system's Ask Assistant button while
+// keeping the large size of the sibling Try template button.
 .startWithAi {
+	position: relative;
+	// Icon inherits currentColor; the label is repainted with the gradient below.
 	--button--color: var(--assistant--color--highlight-2);
-	--button--border-color: var(--assistant--color--highlight-2);
-	--button--border-color--hover: var(--assistant--color--highlight-1);
-	--button--border-color--active: var(--assistant--color--highlight-1);
-	--button--color--background-hover: var(--assistant--button--color--background--hover);
-	--button--color--background-active: var(--assistant--button--color--background--active);
+	// Faint purple wash on hover/active (background-color can't take a gradient).
+	--button--color--background-hover: color-mix(
+		in srgb,
+		var(--assistant--color--highlight-2) 8%,
+		transparent
+	);
+	--button--color--background-active: color-mix(
+		in srgb,
+		var(--assistant--color--highlight-2) 14%,
+		transparent
+	);
+
+	// Gradient border drawn as a masked ring so it rounds with the button.
+	&::before {
+		content: '';
+		position: absolute;
+		inset: 0;
+		border-radius: inherit;
+		padding: 1px;
+		background: var(--assistant--color--highlight-gradient);
+		mask:
+			linear-gradient(#fff 0 0) content-box,
+			linear-gradient(#fff 0 0);
+		mask-composite: exclude;
+		-webkit-mask:
+			linear-gradient(#fff 0 0) content-box,
+			linear-gradient(#fff 0 0);
+		-webkit-mask-composite: xor;
+		pointer-events: none;
+		transition: background 0.2s ease;
+	}
+
+	&:hover::before {
+		background: var(--assistant--color--highlight-gradient--reverse);
+	}
+
+	:global(.button-inner) span {
+		background: var(--assistant--color--highlight-gradient);
+		background-clip: text;
+		-webkit-background-clip: text;
+		-webkit-text-fill-color: transparent;
+	}
 }
 
 .templateCard {
