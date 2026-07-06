@@ -12,7 +12,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import InstanceRolesView from './instance/InstanceRolesView.vue';
 import ProjectRolesView from './project/ProjectRolesView.vue';
-import { useRBACStore } from '@/app/stores/rbac.store.js';
+import { useRBACStore } from '@/app/stores/rbac.store';
 
 type RolesTab = 'instance' | 'project';
 const DEFAULT_TAB: RolesTab = 'instance';
