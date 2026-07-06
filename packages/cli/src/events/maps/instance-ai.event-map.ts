@@ -1,8 +1,6 @@
 export type InstanceAiEventMap = {
 	'instance-ai-run-finished': {
-		/** 'suspended' marks a non-terminal HITL segment — its usage/tool counts must
-		 * be recorded when the segment ends or they are lost, but the run itself
-		 * continues and is counted once by its terminal event. */
+		/** 'suspended' is a non-terminal HITL segment: usage/tool counts only; the terminal event counts the run. */
 		status: 'completed' | 'cancelled' | 'error' | 'suspended';
 		/** Wall-clock duration of the run, or undefined when the start time is unknown. */
 		durationMs?: number;

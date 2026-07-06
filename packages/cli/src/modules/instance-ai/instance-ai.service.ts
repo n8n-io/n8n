@@ -3375,9 +3375,7 @@ export class InstanceAiService {
 						outputRedaction: resolveOutputRedaction(this.instanceAiConfig),
 					});
 			if (result.status === 'suspended') {
-				// Record this segment's usage/tool counts now — finalizeRun only fires on
-				// terminal outcomes, so suspended-segment usage would otherwise never
-				// reach the metrics.
+				// finalizeRun only fires on terminal outcomes; record suspended-segment usage here.
 				this.emitRunMetrics(threadId, 'suspended', {
 					modelId,
 					workSummary: result.workSummary,
@@ -4363,8 +4361,7 @@ export class InstanceAiService {
 					});
 
 			if (result.status === 'suspended') {
-				// Same as the initial-run path: suspended segments must record their
-				// usage/tool counts here or they never reach the metrics.
+				// As in the initial-run path, record suspended-segment usage here.
 				this.emitRunMetrics(opts.threadId, 'suspended', {
 					modelId: opts.modelId,
 					workSummary: result.workSummary,
@@ -5143,8 +5140,7 @@ export class InstanceAiService {
 		const startedAt = this.runState.getActiveRun(threadId)?.startedAt;
 		this.eventService.emit('instance-ai-run-finished', {
 			status: status === 'errored' ? 'error' : status,
-			// Suspended segments aren't terminal — duration is reported once, by the
-			// run's terminal event.
+			// Duration is reported once, by the run's terminal event.
 			durationMs:
 				status !== 'suspended' && startedAt !== undefined ? Date.now() - startedAt : undefined,
 			model: typeof options?.modelId === 'string' ? options.modelId : 'custom',

@@ -27,8 +27,6 @@ describe('resolveNodeTypeDefinition', () => {
 	});
 
 	it('returns all mode variants instead of an error when the mode is omitted', () => {
-		// An error here would force the model into a retry — a full extra LLM
-		// round-trip. All mode-split nodes have few, small variants.
 		const result = resolveNodeTypeDefinition('n8n-nodes-base.set', [defsDir]);
 
 		expect(result.error).toBeUndefined();

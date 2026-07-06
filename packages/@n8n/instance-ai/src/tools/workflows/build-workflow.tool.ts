@@ -150,12 +150,7 @@ const setupRequirementOutputSchema = z.discriminatedUnion('status', [
 	}),
 ]);
 
-/**
- * User-facing @n8n/workflow-sdk factories importable in builder source. Used
- * to auto-recover "X is not defined" compile failures caused by a missing
- * import — a deterministic fix that otherwise costs a full LLM repair
- * round-trip with the entire context resent.
- */
+/** User-facing @n8n/workflow-sdk factories; used to auto-recover missing-import compile failures. */
 const SDK_IMPORTABLE_SYMBOLS = new Set([
 	'workflow',
 	'node',
@@ -187,11 +182,7 @@ const SDK_IMPORTABLE_SYMBOLS = new Set([
 
 const SDK_IMPORT_REGEX = /import\s*\{([^}]*)\}\s*from\s*['"]@n8n\/workflow-sdk['"]/;
 
-/**
- * When compile errors are missing-import ReferenceErrors for known SDK
- * symbols, return the source with those symbols added to the SDK import.
- * Returns undefined when no such recovery applies.
- */
+/** Adds missing known SDK symbols to the import for "X is not defined" errors; undefined when not applicable. */
 export function autoImportMissingSdkSymbols(
 	source: string,
 	errors: string[],
@@ -429,9 +420,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				}
 			}
 
-			// Inline source: persist it to the workspace file first so the file stays
-			// canonical for later repairs — this saves the model a write_file round-trip
-			// (a full extra LLM step) on first builds.
+			// Persist inline source first so the workspace file stays canonical for later repairs.
 			if (input.sourceCode !== undefined && context.workspace) {
 				try {
 					await writeWorkspaceFile(context.workspace, filePath, input.sourceCode, {
@@ -535,9 +524,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				compiled.reason === 'workflow_source_build_failed' &&
 				context.workspace
 			) {
-				// Missing-import ReferenceErrors have a deterministic fix — recover
-				// server-side instead of bouncing the error back for a full LLM repair
-				// round-trip. Persist the corrected source so later edits see it.
+				// Recover missing-import errors server-side; persist so later edits see the fix.
 				const recovery = autoImportMissingSdkSymbols(sourceCode, compiled.errors);
 				if (recovery) {
 					try {

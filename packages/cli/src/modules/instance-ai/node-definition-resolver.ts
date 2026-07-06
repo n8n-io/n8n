@@ -124,9 +124,7 @@ function resolveResourceOperationFile(
 	discriminators?: { resource?: string; operation?: string },
 ): PathResolutionResult {
 	if (!discriminators?.resource || !discriminators?.operation) {
-		// Include the full resource→operations map so the retry can always be
-		// issued correctly in one shot — listing only resources risks a second
-		// failed guess at the operation (each retry is a full LLM round-trip).
+		// Full resource-to-operations map so the retry succeeds in one shot.
 		const index = resources
 			.map((resource) => {
 				try {
@@ -186,9 +184,7 @@ function resolveModeFile(
 	discriminators?: { mode?: string },
 ): PathResolutionResult {
 	if (!discriminators?.mode) {
-		// Mode-split nodes (set, switch, merge, code, …) have few, small variants.
-		// Returning all of them beats an error — an error forces the model into a
-		// retry, which costs a full extra LLM round-trip with the whole context.
+		// All variants instead of an error: mode-split nodes have few, small variants.
 		const variants = modes
 			.map((mode) => ({
 				mode,

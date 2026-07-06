@@ -34,8 +34,6 @@ describe('getNodeTypeDefinition — split-node discriminator handling', () => {
 	});
 
 	it('returns all mode variants instead of an error when the mode is omitted', () => {
-		// An error would force the model into a retry — a full extra LLM
-		// round-trip. All mode-split nodes have few, small variants.
 		const result = getNodeTypeDefinition('n8n-nodes-base.set', undefined, [defsDir]);
 
 		expect(result.error).toBeUndefined();

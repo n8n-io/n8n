@@ -13,9 +13,7 @@ export function getComputerUsePrompt({
 	if (localGateway && localGateway.status !== 'disabledGlobally') {
 		const promptParts: string[] = [];
 
-		// Not connected: the model only needs to know CU exists, when to suggest
-		// connecting, and how — the full operational rules would be dead weight in
-		// every request (most instances never connect).
+		// Not connected: cover only what CU is and how to connect, not the operational rules.
 		if (localGateway.status === 'disconnected' || localGateway.status === 'disabled') {
 			const setupPath =
 				localGateway.status === 'disconnected'

@@ -159,11 +159,7 @@ const skillLoadResultSchema = z.union([skillLoadContentOutputSchema, skillLoadOu
 
 type SkillLoadOutput = z.infer<typeof skillLoadOutputSchema>;
 
-/**
- * Content-block form for the main-skill success result. The runtime passes it
- * through as a text tool_result instead of JSON.stringify-ing an object —
- * avoiding newline/quote escaping across the whole markdown body.
- */
+/** Main-skill success result; passed through as a text tool_result without JSON escaping. */
 type SkillLoadContentOutput = z.infer<typeof skillLoadContentOutputSchema>;
 
 export function createRuntimeSkillTools(source: RuntimeSkillSource): BuiltTool[] {
@@ -311,9 +307,6 @@ async function loadSkill(
 	}
 
 	const content = cap(skill.instructions);
-	// Deliver the body as a text content block: an object result gets
-	// JSON.stringified into the tool_result, escaping every newline/quote in the
-	// markdown body (~15% token overhead, resent on every subsequent step).
 	const linkedFilePaths = LINKED_FILE_GROUPS.flatMap((group) => skillEntry.linkedFiles[group]).map(
 		(file) => file.path,
 	);
