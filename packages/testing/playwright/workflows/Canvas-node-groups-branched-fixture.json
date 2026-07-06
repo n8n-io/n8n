@@ -1,0 +1,87 @@
+{
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [32, 144],
+			"id": "f1c5b6a8-1f5b-4a92-9bb2-3e6e8a8a0001",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"category": "randomData",
+				"randomDataCount": 1
+			},
+			"type": "n8n-nodes-base.debugHelper",
+			"typeVersion": 1,
+			"position": [272, 144],
+			"id": "5809aa61-863c-4086-a5e2-deb824f7bc00",
+			"name": "DebugHelper"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [560, 128],
+			"id": "5f47ab06-70a3-4cab-9ff7-3071da5809f2",
+			"name": "a"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [768, 128],
+			"id": "563d1de9-efda-4b91-bf23-a85d55b4dc08",
+			"name": "b"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1024, 0],
+			"id": "26b484e0-461b-4f21-bb20-abbe9695e441",
+			"name": "c"
+		},
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1024, 224],
+			"id": "6e1a8a52-482a-4860-8301-b7bf7a3c46fb",
+			"name": "d"
+		}
+	],
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [[{ "node": "DebugHelper", "type": "main", "index": 0 }]]
+		},
+		"DebugHelper": {
+			"main": [[{ "node": "a", "type": "main", "index": 0 }]]
+		},
+		"a": {
+			"main": [[{ "node": "b", "type": "main", "index": 0 }]]
+		},
+		"b": {
+			"main": [
+				[{ "node": "c", "type": "main", "index": 0 }, { "node": "d", "type": "main", "index": 0 }]
+			]
+		}
+	},
+	"nodeGroups": [
+		{
+			"id": "229926ec-f89d-44a8-b46c-502538dabead",
+			"name": "Branched group",
+			"nodeIds": [
+				"5f47ab06-70a3-4cab-9ff7-3071da5809f2",
+				"563d1de9-efda-4b91-bf23-a85d55b4dc08",
+				"26b484e0-461b-4f21-bb20-abbe9695e441",
+				"6e1a8a52-482a-4860-8301-b7bf7a3c46fb"
+			]
+		}
+	],
+	"pinData": {},
+	"meta": {
+		"instanceId": "canvas-node-groups-branched-fixture"
+	}
+}
