@@ -26,6 +26,7 @@ const props = withDefaults(
 		loading?: boolean;
 		uploading?: boolean;
 		deletingFileId?: string | null;
+		isPublished: boolean;
 	}>(),
 	{
 		disabled: false,
@@ -44,7 +45,14 @@ const i18n = useI18n();
 const fileInput = useTemplateRef<HTMLInputElement>('fileInput');
 const totalCount = computed(() => props.files.length);
 const isMutating = computed(() => props.uploading || props.deletingFileId !== null);
-const isUploadDisabled = computed(() => props.disabled || props.loading || isMutating.value);
+const isUploadDisabled = computed(
+	() => props.disabled || props.loading || isMutating.value || !props.isPublished,
+);
+const uploadTooltip = computed(() =>
+	props.isPublished
+		? i18n.baseText('agents.builder.files.upload')
+		: i18n.baseText('agents.builder.files.publishRequired'),
+);
 
 const acceptAttr = ALLOWED_AGENT_FILE_EXTENSIONS.join(',');
 const description = computed(() =>
@@ -117,14 +125,14 @@ function onFilesSelected(event: Event) {
 				<N8nText tag="h3" :bold="true">
 					{{ i18n.baseText('agents.builder.files.title') }}
 				</N8nText>
-				<N8nTooltip :content="i18n.baseText('agents.builder.files.upload')" placement="top">
+				<N8nTooltip :content="uploadTooltip" placement="top">
 					<N8nIconButton
 						icon="plus"
 						variant="subtle"
 						size="small"
 						icon-size="medium"
 						:disabled="isUploadDisabled"
-						:aria-label="i18n.baseText('agents.builder.files.upload')"
+						:aria-label="uploadTooltip"
 						data-testid="agent-files-upload"
 						@click="openFilePicker"
 					/>
@@ -151,7 +159,11 @@ function onFilesSelected(event: Event) {
 			v-else-if="totalCount === 0"
 			:class="$style.empty"
 			:icon="{ type: 'icon', value: 'file-text' }"
-			:description="i18n.baseText('agents.builder.files.empty')"
+			:description="
+				props.isPublished
+					? i18n.baseText('agents.builder.files.empty')
+					: i18n.baseText('agents.builder.files.publishRequired')
+			"
 		/>
 
 		<N8nScrollArea
