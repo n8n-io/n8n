@@ -1,6 +1,7 @@
 export type InstanceAiEventMap = {
 	'instance-ai-run-finished': {
-		status: 'completed' | 'cancelled' | 'error';
+		/** 'suspended' is a non-terminal HITL segment: usage/tool counts only; the terminal event counts the run. */
+		status: 'completed' | 'cancelled' | 'error' | 'suspended';
 		/** Wall-clock duration of the run, or undefined when the start time is unknown. */
 		durationMs?: number;
 		/** Model identifier for built-in providers; 'custom' for OpenAI-compatible/native instances. */

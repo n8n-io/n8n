@@ -4,6 +4,7 @@ import {
 	buildImports,
 	hoistSharedCredentials,
 	SDK_FUNCTIONS,
+	SDK_IMPORTABLE_FUNCTIONS,
 } from './emit-instance-ai';
 import type { WorkflowJSON } from '../types/base';
 
@@ -324,6 +325,12 @@ describe('emit-instance-ai', () => {
 
 		it('has no stale entries in SDK_FUNCTIONS', () => {
 			const stale = SDK_FUNCTIONS.filter((n) => !sdkFunctionExports.has(n)).sort();
+
+			expect(stale).toEqual([]);
+		});
+
+		it('has no stale entries in SDK_IMPORTABLE_FUNCTIONS', () => {
+			const stale = SDK_IMPORTABLE_FUNCTIONS.filter((n) => !sdkFunctionExports.has(n)).sort();
 
 			expect(stale).toEqual([]);
 		});
