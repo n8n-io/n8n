@@ -25,6 +25,8 @@ export type UserWithContext = {
 	actor?: User;
 	context?: TelemetryAuthContext;
 	authType?: Mcpauth_type;
+	/** OAuth scopes granted to the token. `undefined` = not scope-bearing (e.g. API key) → full access. */
+	scopes?: string[];
 };
 
 /**

@@ -14,8 +14,9 @@ import {
 	N8nNotice,
 	N8nText,
 } from '@n8n/design-system';
-import { MCP_DOCS_PAGE_URL } from '@/features/ai/mcpAccess/mcp.constants';
+import { MCP_DOCS_PAGE_URL, MCP_SCOPE_GROUPS } from '@/features/ai/mcpAccess/mcp.constants';
 import { useToast } from '@/app/composables/useToast';
+import ScopesSelector from '@/app/components/scopes/ScopesSelector.vue';
 
 const consentStore = useConsentStore();
 
@@ -26,6 +27,7 @@ const toast = useToast();
 // Success state:
 const waitingForRedirect = ref(false);
 const redirectUriTrusted = ref(false);
+const selectedScopes = ref<string[]>([]);
 
 const error = computed(() => consentStore.error);
 const loading = computed(() => consentStore.isLoading);
@@ -39,8 +41,15 @@ const errorMessage = computed(() => {
 });
 
 const clientDetails = computed<ConsentDetails | null>(() => consentStore.consentDetails);
+const availableScopes = computed(() => clientDetails.value?.scopes ?? []);
+const hasScopes = computed(() => availableScopes.value.length > 0);
 const allowDisabled = computed(
-	() => loading.value || error.value !== null || !clientDetails.value || !redirectUriTrusted.value,
+	() =>
+		loading.value ||
+		error.value !== null ||
+		!clientDetails.value ||
+		!redirectUriTrusted.value ||
+		(hasScopes.value && selectedScopes.value.length === 0),
 );
 
 watch(
@@ -50,9 +59,23 @@ watch(
 	},
 );
 
+// Preselect what the client asked for; default to everything when it didn't
+// request specific scopes (the common case — most MCP clients omit `scope`).
+watch(
+	availableScopes,
+	(scopes) => {
+		const requested = clientDetails.value?.requestedScopes ?? [];
+		selectedScopes.value = requested.length > 0 ? requested : [...scopes];
+	},
+	{ immediate: true },
+);
+
 const handleAllow = async () => {
 	try {
-		const response = await consentStore.approveConsent(true);
+		const response = await consentStore.approveConsent(
+			true,
+			hasScopes.value ? selectedScopes.value : undefined,
+		);
 		waitingForRedirect.value = true;
 		window.location.href = response.redirectUrl;
 	} catch (err) {
@@ -144,6 +167,13 @@ onMounted(async () => {
 							})
 						}}
 					</N8nText>
+					<N8nText v-else-if="hasScopes" color="text-base" size="small">
+						{{
+							i18n.baseText('oauth.consentView.scopes.description', {
+								interpolate: { clientName: clientDetails?.clientName ?? '' },
+							})
+						}}
+					</N8nText>
 					<N8nText v-else color="text-base" size="small">
 						{{
 							i18n.baseText('oauth.consentView.description', {
@@ -151,7 +181,19 @@ onMounted(async () => {
 							})
 						}}
 					</N8nText>
-					<ul v-if="!resourceName" :class="$style['permission-list']">
+					<template v-if="hasScopes">
+						<ScopesSelector
+							v-model="selectedScopes"
+							:available-scopes="availableScopes"
+							:groups="MCP_SCOPE_GROUPS"
+							i18n-key-prefix="oauth.consentView.scopes"
+							root-test-id="consent-scopes"
+						/>
+						<N8nText color="text-light" size="xsmall" data-test-id="consent-scopes-note">
+							{{ i18n.baseText('oauth.consentView.scopes.note') }}
+						</N8nText>
+					</template>
+					<ul v-else-if="!resourceName" :class="$style['permission-list']">
 						<li>{{ i18n.baseText('oauth.consentView.action.listWorkflows') }}</li>
 						<li>{{ i18n.baseText('oauth.consentView.action.workflowDetails') }}</li>
 						<li>{{ i18n.baseText('oauth.consentView.action.executeWorkflows') }}</li>

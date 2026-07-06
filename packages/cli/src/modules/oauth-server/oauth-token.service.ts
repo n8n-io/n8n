@@ -24,6 +24,14 @@ import type {
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 
 /**
+ * Backfill value written to the `scope` column by migration 1784000000026 for
+ * grants that predate scoping. No runtime code ever wrote this value, so it
+ * provably identifies a grant made under the old full-delegation contract and
+ * is substituted with the resource's full scope set on rotation.
+ */
+const PRE_SCOPING_SENTINEL = ['tool:listWorkflows', 'tool:getWorkflowDetails'];
+
+/**
  * Manages the OAuth 2.1 token lifecycle for the shared OAuth server.
  * Generates, validates, rotates, and revokes access and refresh tokens.
  *
@@ -52,7 +60,8 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 	generateTokenPair(
 		userId: string,
 		clientId: string,
-		resource?: string,
+		resource: string | undefined,
+		scopes: string[],
 	): { accessToken: string; refreshToken: string } {
 		// Pre-RFC-8707 clients omit the resource indicator; fall back to the
 		// registry's default resource (the instance MCP server).
@@ -70,6 +79,10 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 			jti: randomUUID(),
 			iat: Math.floor(Date.now() / 1000),
 			exp: Math.floor(Date.now() / 1000) + this.ACCESS_TOKEN_EXPIRY_SECONDS,
+			// RFC 9068 space-delimited scope claim. Always present on new tokens
+			// (empty string for scope-less grants), so an absent claim
+			// unambiguously identifies a token minted before scoping shipped.
+			scope: scopes.join(' '),
 			meta: {
 				isOAuth: true,
 			},
@@ -85,6 +98,7 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 		refreshToken: string,
 		clientId: string,
 		userId: string,
+		scopes: string[],
 	): Promise<void> {
 		await this.accessTokenRepository.manager.transaction(async (transactionManager) => {
 			await transactionManager.insert(this.accessTokenRepository.target, {
@@ -98,6 +112,7 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 				clientId,
 				userId,
 				expiresAt: Date.now() + this.REFRESH_TOKEN_EXPIRY_MS,
+				scope: scopes,
 			});
 		});
 	}
@@ -134,10 +149,13 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 				throw new InvalidGrantError('Invalid refresh token');
 			}
 
+			const scopes = await this.resolveGrantedScopes(refreshTokenRecord.scope, resource);
+
 			const { accessToken, refreshToken: newRefreshToken } = this.generateTokenPair(
 				refreshTokenRecord.userId,
 				clientId,
 				resource,
+				scopes,
 			);
 
 			await trx.insert(AccessToken, {
@@ -151,6 +169,7 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 				clientId,
 				userId: refreshTokenRecord.userId,
 				expiresAt: now + this.REFRESH_TOKEN_EXPIRY_MS,
+				scope: scopes,
 			});
 
 			this.logger.info('Refresh token rotated and new access token issued', {
@@ -163,8 +182,40 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 				token_type: 'Bearer',
 				expires_in: this.ACCESS_TOKEN_EXPIRY_SECONDS,
 				refresh_token: newRefreshToken,
+				scope: scopes.join(' '),
 			};
 		});
+	}
+
+	/**
+	 * Effective scopes for a stored grant (auth code or refresh token). Grants
+	 * made before scoping shipped carry the migration backfill sentinel — those
+	 * were full user-delegations, so they keep the resource's full scope set.
+	 * The data self-heals: rows written from here on store real scopes.
+	 *
+	 * TODO: drop the sentinel substitution once refresh tokens minted before
+	 * scoping shipped (2026-07) have aged out (30-day refresh-token lifespan).
+	 */
+	async resolveGrantedScopes(
+		storedScopes: string[],
+		resource: string | undefined,
+	): Promise<string[]> {
+		const isPreScopingSentinel =
+			storedScopes.length === PRE_SCOPING_SENTINEL.length &&
+			PRE_SCOPING_SENTINEL.every((scope, i) => storedScopes[i] === scope);
+
+		if (!isPreScopingSentinel) return storedScopes;
+
+		return await this.getResourceScopes(resource);
+	}
+
+	/** Full scope set of the given resource, falling back to the default resource. */
+	private async getResourceScopes(resource: string | undefined): Promise<string[]> {
+		const target = resource
+			? await this.resourceRegistry.getByResourceUrl(resource)
+			: this.resourceRegistry.getDefaultResource();
+
+		return target?.scopes ?? this.resourceRegistry.getDefaultResource()?.scopes ?? [];
 	}
 
 	async verifyAccessToken(token: string, expectedAudience?: string): Promise<AuthInfo> {
@@ -194,11 +245,27 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 		return {
 			token,
 			clientId,
-			scopes: [],
+			scopes: await this.parseScopeClaim(decoded),
 			extra: {
 				userId,
 			},
 		};
+	}
+
+	/**
+	 * Scopes carried by an access token. New tokens always carry a `scope`
+	 * claim (empty string for scope-less grants); an absent claim means the
+	 * token was minted before scoping shipped (at most one access-token
+	 * lifetime ago) and keeps its original full delegation.
+	 */
+	private async parseScopeClaim(decoded: unknown): Promise<string[]> {
+		const scopeClaim = this.getStringClaim(decoded, 'scope');
+
+		if (scopeClaim === null) {
+			return await this.getResourceScopes(this.getStringClaim(decoded, 'aud') ?? undefined);
+		}
+
+		return scopeClaim === '' ? [] : scopeClaim.split(' ');
 	}
 
 	async verifyOAuthAccessToken(token: string, expectedAudience?: string): Promise<UserWithContext> {
@@ -222,7 +289,7 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 				return { user: null, context: { reason: 'user_not_found', auth_type: 'oauth' } };
 			}
 
-			return { user, authType: 'oauth' };
+			return { user, authType: 'oauth', scopes: authInfo.scopes };
 		} catch (error) {
 			const errorForSure = ensureError(error);
 			const reason =

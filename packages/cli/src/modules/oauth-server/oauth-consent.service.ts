@@ -11,7 +11,17 @@ import { ProtectedResourceRegistry } from '@/services/protected-resource.registr
 import { UrlService } from '@/services/url.service';
 
 type ConsentDetailsResult =
-	| { ok: true; clientName: string; clientId: string; resourceName?: string; redirectUri?: string }
+	| {
+			ok: true;
+			clientName: string;
+			clientId: string;
+			resourceName?: string;
+			redirectUri?: string;
+			/** Scopes the user can grant for the target resource. Empty = full user delegation (no picker). */
+			scopes: string[];
+			/** Scopes the client asked for, to preselect in the picker. */
+			requestedScopes?: string[];
+	  }
 	| { ok: false; reason: 'resource_unavailable' };
 
 /**
@@ -61,6 +71,8 @@ export class OAuthConsentService {
 					clientId: client.id,
 					resourceName: resource.displayName,
 					redirectUri: sessionPayload.redirectUri,
+					scopes: resource.scopes,
+					requestedScopes: sessionPayload.requestedScopes,
 				};
 			}
 
@@ -69,6 +81,8 @@ export class OAuthConsentService {
 				clientName: client.name,
 				clientId: client.id,
 				redirectUri: sessionPayload.redirectUri,
+				scopes: this.protectedResourceRegistry.getDefaultResource()?.scopes ?? [],
+				requestedScopes: sessionPayload.requestedScopes,
 			};
 		} catch (error) {
 			this.logger.error('Error getting consent details', { error });
@@ -84,6 +98,7 @@ export class OAuthConsentService {
 		sessionToken: string,
 		userId: string,
 		approved: boolean,
+		scopes?: string[],
 	): Promise<{ redirectUrl: string }> {
 		let sessionPayload: OAuthSessionPayload;
 		try {
@@ -111,11 +126,14 @@ export class OAuthConsentService {
 			return { redirectUrl };
 		}
 
+		const grantedScopes = await this.resolveGrantedScopes(sessionPayload, scopes);
+
 		await this.userConsentRepository.upsert(
 			{
 				userId,
 				clientId: sessionPayload.clientId,
 				grantedAt: Date.now(),
+				scope: grantedScopes,
 			},
 			['userId', 'clientId'],
 		);
@@ -127,6 +145,7 @@ export class OAuthConsentService {
 			sessionPayload.codeChallenge,
 			sessionPayload.state,
 			sessionPayload.resource,
+			grantedScopes,
 		);
 
 		const successRedirectUrl = OAuthHelpers.buildSuccessRedirectUrl(
@@ -142,5 +161,36 @@ export class OAuthConsentService {
 		});
 
 		return { redirectUrl: successRedirectUrl };
+	}
+
+	/**
+	 * Validates the user's scope selection against the target resource. Resources
+	 * without grantable scopes (e.g. per-workflow MCP triggers) always grant `[]`
+	 * — full delegation scoped to that resource. Otherwise the selection must be
+	 * a non-empty subset of the resource's supported scopes.
+	 */
+	private async resolveGrantedScopes(
+		sessionPayload: OAuthSessionPayload,
+		scopes: string[] | undefined,
+	): Promise<string[]> {
+		const resource = sessionPayload.resource
+			? await this.protectedResourceRegistry.getByResourceUrl(sessionPayload.resource)
+			: this.protectedResourceRegistry.getDefaultResource();
+
+		const supportedScopes = resource?.scopes ?? [];
+		if (supportedScopes.length === 0) {
+			return [];
+		}
+
+		if (!scopes || scopes.length === 0) {
+			throw new UserError('At least one scope must be granted');
+		}
+
+		const unsupported = scopes.filter((scope) => !supportedScopes.includes(scope));
+		if (unsupported.length > 0) {
+			throw new UserError(`Unsupported scopes: ${unsupported.join(', ')}`);
+		}
+
+		return scopes;
 	}
 }

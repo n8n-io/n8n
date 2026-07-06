@@ -1,3 +1,4 @@
+import { MCP_INSTANCE_SCOPES } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 
 import { McpSettingsService } from './mcp.settings.service';
@@ -7,13 +8,10 @@ import { UrlService } from '@/services/url.service';
 export const INSTANCE_MCP_RESOURCE_ID = 'instance-mcp';
 
 /**
- * Reserved for future granular per-tool delegation. Today MCP OAuth tokens are
- * user-delegations: a successful consent authorizes the client to act on
- * behalf of the user with the user's full permission set, equivalent to a
- * Personal API Key. Advertising scopes we don't enforce would misrepresent
- * that contract, so this stays empty until per-tool enforcement ships.
+ * Scopes a user can grant on the consent screen. Enforced per-tool via the
+ * mapping in `mcp-scopes.ts` when the MCP server registers tools.
  */
-export const SUPPORTED_SCOPES: string[] = [];
+export const SUPPORTED_SCOPES: string[] = [...MCP_INSTANCE_SCOPES];
 
 const MCP_RESOURCE_PATH = '/mcp-server/http';
 

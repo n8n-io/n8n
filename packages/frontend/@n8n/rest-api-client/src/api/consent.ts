@@ -6,6 +6,10 @@ export interface ConsentDetails {
 	clientId: string;
 	redirectUri?: string;
 	resourceName?: string;
+	/** Scopes the user can grant. Empty = full user delegation (no picker shown). */
+	scopes: string[];
+	/** Scopes the client asked for, used to preselect the picker. */
+	requestedScopes?: string[];
 }
 
 export interface ConsentApprovalResponse {
@@ -20,6 +24,7 @@ export async function getConsentDetails(context: IRestApiContext): Promise<Conse
 export async function approveConsent(
 	context: IRestApiContext,
 	approved: boolean,
+	scopes?: string[],
 ): Promise<ConsentApprovalResponse> {
-	return await makeRestApiRequest(context, 'POST', '/consent/approve', { approved });
+	return await makeRestApiRequest(context, 'POST', '/consent/approve', { approved, scopes });
 }

@@ -80,7 +80,7 @@ describe('OAuthTokenService', () => {
 			const userId = 'user-123';
 			const clientId = 'client-456';
 
-			const { accessToken, refreshToken } = service.generateTokenPair(userId, clientId);
+			const { accessToken, refreshToken } = service.generateTokenPair(userId, clientId, undefined, []);
 
 			expect(accessToken).toMatch(/^[\w-]+\.[\w-]+\.[\w-]+$/); // JWT format
 
@@ -102,18 +102,36 @@ describe('OAuthTokenService', () => {
 				'user-123',
 				'client-456',
 				'https://n8n.example.com/mcp-server/http',
+				[],
 			);
 
 			const decoded = jwtService.decode(accessToken);
 			expect(decoded.aud).toBe('https://n8n.example.com/mcp-server/http');
 		});
 
+		it('should mint a space-delimited scope claim', () => {
+			const { accessToken } = service.generateTokenPair('user-123', 'client-456', undefined, [
+				'workflow:read',
+				'execution:read',
+			]);
+
+			const decoded = jwtService.decode(accessToken);
+			expect(decoded.scope).toBe('workflow:read execution:read');
+		});
+
+		it('should mint an empty scope claim for scope-less grants', () => {
+			const { accessToken } = service.generateTokenPair('user-123', 'client-456', undefined, []);
+
+			const decoded = jwtService.decode(accessToken);
+			expect(decoded.scope).toBe('');
+		});
+
 		it('should generate different tokens on each call', () => {
 			const userId = 'user-123';
 			const clientId = 'client-456';
 
-			const pair1 = service.generateTokenPair(userId, clientId);
-			const pair2 = service.generateTokenPair(userId, clientId);
+			const pair1 = service.generateTokenPair(userId, clientId, undefined, []);
+			const pair2 = service.generateTokenPair(userId, clientId, undefined, []);
 
 			expect(pair1.accessToken).not.toBe(pair2.accessToken);
 			expect(pair1.refreshToken).not.toBe(pair2.refreshToken);
@@ -127,7 +145,7 @@ describe('OAuthTokenService', () => {
 			const clientId = 'client-123';
 			const userId = 'user-456';
 
-			await service.saveTokenPair(accessToken, refreshToken, clientId, userId);
+			await service.saveTokenPair(accessToken, refreshToken, clientId, userId, ['workflow:read']);
 
 			const mockManager = accessTokenRepository.manager as any;
 			expect(mockManager.transaction).toHaveBeenCalled();
@@ -144,6 +162,7 @@ describe('OAuthTokenService', () => {
 				clientId,
 				userId,
 				expiresAt: expect.any(Number),
+				scope: ['workflow:read'],
 			});
 		});
 	});
@@ -157,6 +176,7 @@ describe('OAuthTokenService', () => {
 				clientId,
 				userId: 'user-456',
 				expiresAt: Date.now() + 1000000, // Valid
+				scope: [],
 			});
 
 			mockTransactionManager.findOne.mockResolvedValue(refreshTokenRecord);
@@ -169,6 +189,7 @@ describe('OAuthTokenService', () => {
 				token_type: 'Bearer',
 				expires_in: 3600,
 				refresh_token: expect.stringMatching(/^[a-f0-9]{64}$/),
+				scope: '',
 			});
 
 			// Verify transaction was used
@@ -189,6 +210,7 @@ describe('OAuthTokenService', () => {
 				clientId,
 				userId: 'user-456',
 				expiresAt: Date.now() + 1000000,
+				scope: [],
 			});
 
 			mockTransactionManager.findOne.mockResolvedValue(refreshTokenRecord);
@@ -202,6 +224,32 @@ describe('OAuthTokenService', () => {
 
 			const decoded = jwtService.decode(result.access_token);
 			expect(decoded.aud).toBe('https://n8n.example.com/mcp-server/http');
+		});
+
+		it('should carry the stored scopes into the new token pair', async () => {
+			const refreshToken = 'old-refresh-token';
+			const clientId = 'client-123';
+			// plain object: vitest-mock-extended wraps array overrides in proxies,
+			// which breaks the equality assertion on the inserted `scope`
+			const refreshTokenRecord = {
+				token: refreshToken,
+				clientId,
+				userId: 'user-456',
+				expiresAt: Date.now() + 1000000,
+				scope: ['workflow:read', 'execution:read'],
+			} as RefreshToken;
+
+			mockTransactionManager.findOne.mockResolvedValue(refreshTokenRecord);
+			mockTransactionManager.delete.mockResolvedValue({ affected: 1 });
+
+			const result = await service.validateAndRotateRefreshToken(refreshToken, clientId);
+
+			expect(result.scope).toBe('workflow:read execution:read');
+			expect(jwtService.decode(result.access_token).scope).toBe('workflow:read execution:read');
+			expect(mockTransactionManager.insert).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ scope: ['workflow:read', 'execution:read'] }),
+			);
 		});
 
 		it('should throw error when refresh token not found', async () => {
@@ -233,7 +281,7 @@ describe('OAuthTokenService', () => {
 		it('should verify valid access token and return auth info', async () => {
 			const userId = 'user-123';
 			const clientId = 'client-456';
-			const { accessToken } = service.generateTokenPair(userId, clientId);
+			const { accessToken } = service.generateTokenPair(userId, clientId, undefined, []);
 
 			const accessTokenRecord = mock<AccessToken>({
 				token: accessToken,
@@ -364,7 +412,7 @@ describe('OAuthTokenService', () => {
 		it('should throw error when token not found in database', async () => {
 			const userId = 'user-123';
 			const clientId = 'client-456';
-			const { accessToken } = service.generateTokenPair(userId, clientId);
+			const { accessToken } = service.generateTokenPair(userId, clientId, undefined, []);
 
 			accessTokenRepository.findOne.mockResolvedValue(null);
 
@@ -378,7 +426,7 @@ describe('OAuthTokenService', () => {
 		it('should verify token and return user', async () => {
 			const userId = 'user-123';
 			const clientId = 'client-456';
-			const { accessToken } = service.generateTokenPair(userId, clientId);
+			const { accessToken } = service.generateTokenPair(userId, clientId, undefined, []);
 
 			const accessTokenRecord = mock<AccessToken>({
 				token: accessToken,
@@ -393,7 +441,7 @@ describe('OAuthTokenService', () => {
 
 			const result = await service.verifyOAuthAccessToken(accessToken);
 
-			expect(result).toEqual({ user, authType: 'oauth' });
+			expect(result).toEqual({ user, authType: 'oauth', scopes: [] });
 			expect(userRepository.findOne).toHaveBeenCalledWith({
 				where: { id: userId },
 				relations: ['role'],
@@ -411,7 +459,7 @@ describe('OAuthTokenService', () => {
 		it('should return null when user not found', async () => {
 			const userId = 'user-123';
 			const clientId = 'client-456';
-			const { accessToken } = service.generateTokenPair(userId, clientId);
+			const { accessToken } = service.generateTokenPair(userId, clientId, undefined, []);
 
 			const accessTokenRecord = mock<AccessToken>({
 				token: accessToken,
@@ -573,6 +621,134 @@ describe('OAuthTokenService', () => {
 			await expect(
 				multiResourceService.verifyAccessToken(legacyToken, RESOURCE_A_URL),
 			).resolves.toMatchObject({ clientId: 'client-456' });
+		});
+	});
+
+	describe('scope handling for pre-scoping grants', () => {
+		const RESOURCE_SCOPES = ['workflow:read', 'workflow:write', 'execution:read'];
+
+		let scopedService: OAuthTokenService;
+
+		beforeAll(() => {
+			const scopedRegistry = new ProtectedResourceRegistry(mock<Logger>());
+			scopedRegistry.register({
+				id: 'instance-mcp',
+				getResourceUrl: () => TEST_RESOURCE_URL,
+				getAudiences: () => [TEST_RESOURCE_URL, LEGACY_AUDIENCE],
+				scopes: RESOURCE_SCOPES,
+				isDefault: true,
+			});
+
+			scopedService = new OAuthTokenService(
+				logger,
+				jwtService,
+				userRepository,
+				accessTokenRepository,
+				refreshTokenRepository,
+				scopedRegistry,
+			);
+		});
+
+		it('substitutes the migration sentinel with the resource full scope set on rotation', async () => {
+			const refreshTokenRecord = {
+				token: 'legacy-refresh-token',
+				clientId: 'client-123',
+				userId: 'user-456',
+				expiresAt: Date.now() + 1000000,
+				scope: ['tool:listWorkflows', 'tool:getWorkflowDetails'],
+			} as RefreshToken;
+
+			mockTransactionManager.findOne.mockResolvedValue(refreshTokenRecord);
+			mockTransactionManager.delete.mockResolvedValue({ affected: 1 });
+
+			const result = await scopedService.validateAndRotateRefreshToken(
+				'legacy-refresh-token',
+				'client-123',
+			);
+
+			expect(result.scope).toBe(RESOURCE_SCOPES.join(' '));
+			expect(mockTransactionManager.insert).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ scope: RESOURCE_SCOPES }),
+			);
+		});
+
+		it('does not substitute an explicit grant that differs from the sentinel', async () => {
+			const refreshTokenRecord = {
+				token: 'scoped-refresh-token',
+				clientId: 'client-123',
+				userId: 'user-456',
+				expiresAt: Date.now() + 1000000,
+				scope: ['workflow:read'],
+			} as RefreshToken;
+
+			mockTransactionManager.findOne.mockResolvedValue(refreshTokenRecord);
+			mockTransactionManager.delete.mockResolvedValue({ affected: 1 });
+
+			const result = await scopedService.validateAndRotateRefreshToken(
+				'scoped-refresh-token',
+				'client-123',
+			);
+
+			expect(result.scope).toBe('workflow:read');
+		});
+
+		it('grandfathers a token without a scope claim to the resource full scope set', async () => {
+			const legacyToken = jwtService.sign({
+				sub: 'user-123',
+				aud: TEST_RESOURCE_URL,
+				client_id: 'client-456',
+			});
+			accessTokenRepository.findOne.mockResolvedValue(
+				mock<AccessToken>({ token: legacyToken, clientId: 'client-456', userId: 'user-123' }),
+			);
+
+			const result = await scopedService.verifyAccessToken(legacyToken);
+
+			expect(result.scopes).toEqual(RESOURCE_SCOPES);
+		});
+
+		it('parses the scope claim of a scoped token', async () => {
+			const { accessToken } = scopedService.generateTokenPair('user-123', 'client-456', undefined, [
+				'workflow:read',
+			]);
+			accessTokenRepository.findOne.mockResolvedValue(
+				mock<AccessToken>({ token: accessToken, clientId: 'client-456', userId: 'user-123' }),
+			);
+
+			const result = await scopedService.verifyAccessToken(accessToken);
+
+			expect(result.scopes).toEqual(['workflow:read']);
+		});
+
+		it('treats an empty scope claim as no scopes', async () => {
+			const { accessToken } = scopedService.generateTokenPair(
+				'user-123',
+				'client-456',
+				undefined,
+				[],
+			);
+			accessTokenRepository.findOne.mockResolvedValue(
+				mock<AccessToken>({ token: accessToken, clientId: 'client-456', userId: 'user-123' }),
+			);
+
+			const result = await scopedService.verifyAccessToken(accessToken);
+
+			expect(result.scopes).toEqual([]);
+		});
+
+		it('returns the token scopes from verifyOAuthAccessToken', async () => {
+			const { accessToken } = scopedService.generateTokenPair('user-123', 'client-456', undefined, [
+				'workflow:read',
+			]);
+			accessTokenRepository.findOne.mockResolvedValue(
+				mock<AccessToken>({ token: accessToken, clientId: 'client-456', userId: 'user-123' }),
+			);
+			userRepository.findOne.mockResolvedValue(mock<User>({ id: 'user-123' }));
+
+			const result = await scopedService.verifyOAuthAccessToken(accessToken);
+
+			expect(result.scopes).toEqual(['workflow:read']);
 		});
 	});
 });

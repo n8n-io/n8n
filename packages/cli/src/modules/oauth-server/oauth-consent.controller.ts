@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, Post, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
+import { UserError } from 'n8n-workflow';
 
 import { ApproveConsentRequestDto } from './dto/approve-consent-request.dto';
 import { OAuthConsentService } from './oauth-consent.service';
@@ -40,6 +41,8 @@ export class OAuthConsentController {
 					clientId: consentDetails.clientId,
 					redirectUri: consentDetails.redirectUri,
 					resourceName: consentDetails.resourceName,
+					scopes: consentDetails.scopes,
+					requestedScopes: consentDetails.requestedScopes,
 				},
 			});
 		} catch (error) {
@@ -63,6 +66,7 @@ export class OAuthConsentController {
 				sessionToken,
 				req.user.id,
 				payload.approved,
+				payload.scopes,
 			);
 
 			this.oauthSessionService.clearSession(res);
@@ -77,7 +81,8 @@ export class OAuthConsentController {
 			this.logger.error('Failed to process consent', { error });
 			this.oauthSessionService.clearSession(res);
 			const message = error instanceof Error ? error.message : 'Failed to process authorization';
-			this.sendErrorResponse(res, 500, message);
+			// UserError = invalid input (e.g. bad scope selection), not a server fault
+			this.sendErrorResponse(res, error instanceof UserError ? 400 : 500, message);
 		}
 	}
 

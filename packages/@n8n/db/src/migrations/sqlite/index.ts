@@ -209,6 +209,7 @@ import { DropAgentExecutionFallbackColumns1784000000039 } from '../common/178400
 import { CreateWorkflowPublicationTriggerStatusTable1784000000040 } from '../common/1784000000040-CreateWorkflowPublicationTriggerStatusTable';
 import { AddUsedPrivateCredentialsToExecutionEntity1784000000041 } from '../common/1784000000041-AddUsedPrivateCredentialsToExecutionEntity';
 import { CreateSchedulerTables1784000000042 } from '../common/1784000000042-CreateSchedulerTables';
+import { AddScopeColumnToOAuthUserConsents1784000000044 } from '../common/1784000000044-AddScopeColumnToOAuthUserConsents';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -421,6 +422,7 @@ const sqliteMigrations: Migration[] = [
 	CreateWorkflowPublicationTriggerStatusTable1784000000040,
 	AddUsedPrivateCredentialsToExecutionEntity1784000000041,
 	CreateSchedulerTables1784000000042,
+	AddScopeColumnToOAuthUserConsents1784000000044,
 ];
 
 export { sqliteMigrations };

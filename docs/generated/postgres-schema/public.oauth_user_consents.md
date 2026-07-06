@@ -7,6 +7,7 @@
 | clientId | varchar |  | false |  | [public.oauth_clients](public.oauth_clients.md) |  |
 | grantedAt | bigint |  | false |  |  | Unix timestamp in milliseconds |
 | id | integer |  | false |  |  |  |
+| scope | json |  | true |  |  |  |
 | userId | uuid |  | false |  | [public.user](public.user.md) |  |
 
 ## Constraints
@@ -41,6 +42,7 @@ erDiagram
   varchar clientId FK
   bigint grantedAt
   integer id
+  json scope
   uuid userId FK
 }
 "public.oauth_clients" {
