@@ -124,6 +124,8 @@ export interface CliArgs {
 // ---------------------------------------------------------------------------
 
 const cliArgsSchema = z.object({
+	// Keep in sync with DEFAULT_TIMEOUT_MS in harness/runner.ts (and its
+	// rationale for why this default must stay conservative).
 	timeoutMs: z.number().int().positive().default(900_000),
 	baseUrls: z.array(z.string().url()).min(1).default(['http://localhost:5678']),
 	email: z.string().optional(),

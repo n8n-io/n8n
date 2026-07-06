@@ -359,6 +359,34 @@ describe('EvalExecutionService', () => {
 			);
 		});
 
+		it('excludes guaranteed-pin placeholders from the pinnedOutputs summary', async () => {
+			const hints = makeEmptyHints();
+			hints.bypassPinData = {
+				Agent: [{ json: { output: 'real pinned data' } }],
+				// Guarantee-loop placeholder — an execution guard, not scenario data.
+				'Sub Agent': [{ json: {} }],
+			};
+			generateMockHintsMock.mockResolvedValue(hints);
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			const options = createLlmMockHandlerMock.mock.calls[0][0] as { pinnedOutputs?: string };
+			expect(options.pinnedOutputs).toContain('Agent');
+			expect(options.pinnedOutputs).toContain('real pinned data');
+			expect(options.pinnedOutputs).not.toContain('Sub Agent');
+		});
+
+		it('omits pinnedOutputs entirely when every pin is a placeholder', async () => {
+			const hints = makeEmptyHints();
+			hints.bypassPinData = { 'Sub Agent': [{ json: {} }] };
+			generateMockHintsMock.mockResolvedValue(hints);
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			const options = createLlmMockHandlerMock.mock.calls[0][0] as { pinnedOutputs?: string };
+			expect(options.pinnedOutputs).toBeUndefined();
+		});
+
 		it('returns the DB-assigned executionId from workflowRunner.run', async () => {
 			const result = await service.executeWithLlmMock('wf-1', makeUser());
 
@@ -767,6 +795,46 @@ describe('EvalExecutionService', () => {
 				const toolUrls = result.nodeResults['Get Order Tool'].interceptedRequests.map((r) => r.url);
 				expect(agentUrls).not.toContain('https://orders.example.com/v1/orders/42');
 				expect(toolUrls).not.toContain('https://api.openai.com/v1/chat/completions');
+			});
+
+			it('records "(no URL)" when broken node routing emits a request without a URL', async () => {
+				const innerMockHandler = vi.fn().mockResolvedValue({
+					body: { error: { message: 'no URL' } },
+					headers: { 'content-type': 'application/json' },
+					statusCode: 400,
+				});
+				createLlmMockHandlerMock.mockReturnValue(innerMockHandler);
+
+				let capturedAd: StubAdditionalData | undefined;
+				workflowRunner.run.mockImplementation(async (data) => {
+					const ad = makeMockedAdditionalData();
+					await data.configureAdditionalData?.(ad as never);
+					capturedAd = ad;
+					return DB_EXECUTION_ID;
+				});
+
+				activeExecutions.getPostExecutePromise.mockImplementation(async () => {
+					// A declarative node whose resource/operation doesn't exist emits a
+					// request with no URL (observed: openAi audio/transcribe).
+					await capturedAd?.evalLlmMockHandler?.(
+						{ method: 'GET' },
+						{
+							id: 'broken-node',
+							name: 'Transcribe Audio',
+							type: 'n8n-nodes-base.openAi',
+							typeVersion: 1.1,
+							position: [0, 0],
+							parameters: {},
+						},
+					);
+					return makeIRun();
+				});
+
+				const result = await service.executeWithLlmMock('wf-1', makeUser());
+
+				expect(result.nodeResults['Transcribe Audio'].interceptedRequests).toEqual([
+					expect.objectContaining({ url: '(no URL)', method: 'GET' }),
+				]);
 			});
 
 			it('upgrades a pre-marked "real" entry to "mocked" when a wire-server turn fires', async () => {

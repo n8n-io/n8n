@@ -148,6 +148,8 @@ export class TelemetryEventRelay extends EventRelay {
 				this.privateCredentialToggledToPrivate(event),
 			'private-credential-toggled-to-static': (event) =>
 				this.privateCredentialToggledToStatic(event),
+			'private-credential-connections-cleared': (event) =>
+				this.privateCredentialConnectionsCleared(event),
 			'private-credential-deleted': (event) => this.privateCredentialDeleted(event),
 			'private-credential-user-connected': (event) => this.privateCredentialUserConnected(event),
 			'ldap-general-sync-finished': (event) => this.ldapGeneralSyncFinished(event),
@@ -739,6 +741,19 @@ export class TelemetryEventRelay extends EventRelay {
 		credentialType,
 	}: RelayEventMap['private-credential-toggled-to-static']) {
 		this.telemetry.track('User made credential static', {
+			user_id: user.id,
+			user_role: user.role?.slug,
+			credential_type: credentialType,
+			credential_id: credentialId,
+		});
+	}
+
+	private privateCredentialConnectionsCleared({
+		user,
+		credentialId,
+		credentialType,
+	}: RelayEventMap['private-credential-connections-cleared']) {
+		this.telemetry.track('User cleared private credential connections', {
 			user_id: user.id,
 			user_role: user.role?.slug,
 			credential_type: credentialType,

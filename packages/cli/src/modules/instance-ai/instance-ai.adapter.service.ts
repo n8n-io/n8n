@@ -505,12 +505,14 @@ export class InstanceAiAdapterService {
 				});
 			},
 
-			async getAsWorkflowJSON(workflowId: string) {
+			async getAsWorkflowJSON(workflowId: string, versionId?: string) {
 				const wf = await workflowFinderService.findWorkflowForUser(workflowId, user, [
 					'workflow:read',
 				]);
 				if (!wf) throw new Error(`Workflow ${workflowId} not found or not accessible`);
-				return toWorkflowJSON(wf, { redactParameters });
+				if (!versionId) return toWorkflowJSON(wf, { redactParameters });
+				const version = await workflowHistoryService.getVersion(user, workflowId, versionId);
+				return toWorkflowJSON(wf, { redactParameters, graph: version });
 			},
 
 			async getWorkflowHead(workflowId: string) {
@@ -795,6 +797,7 @@ export class InstanceAiAdapterService {
 						(n): WorkflowNode => ({
 							name: n.name,
 							type: n.type,
+							typeVersion: n.typeVersion,
 							parameters: redactParameters ? undefined : (n.parameters as Record<string, unknown>),
 							position: n.position,
 						}),
@@ -3114,13 +3117,18 @@ function sanitizeCredentialReferencesForSave(nodes: WorkflowJSON['nodes']): Work
 
 function toWorkflowJSON(
 	workflow: WorkflowEntity,
-	options?: { redactParameters?: boolean },
+	options?: {
+		redactParameters?: boolean;
+		/** Substitute a history version's graph; id/name/settings stay from the live entity, as history rows only carry a version label. */
+		graph?: Pick<WorkflowEntity, 'nodes' | 'connections' | 'nodeGroups'>;
+	},
 ): WorkflowJSON {
 	const redact = options?.redactParameters ?? false;
+	const source = options?.graph ?? workflow;
 	return {
 		id: workflow.id,
 		name: workflow.name,
-		nodes: (workflow.nodes ?? []).map((n) => ({
+		nodes: (source.nodes ?? []).map((n) => ({
 			id: n.id ?? '',
 			name: n.name,
 			type: n.type,
@@ -3137,9 +3145,9 @@ function toWorkflowJSON(
 			alwaysOutputData: n.alwaysOutputData,
 			onError: n.onError,
 		})),
-		connections: workflow.connections as WorkflowJSON['connections'],
+		connections: source.connections as WorkflowJSON['connections'],
 		settings: workflow.settings as WorkflowJSON['settings'],
-		...(workflow.nodeGroups ? { nodeGroups: workflow.nodeGroups } : {}),
+		...(source.nodeGroups ? { nodeGroups: source.nodeGroups } : {}),
 	};
 }
 
@@ -3160,6 +3168,7 @@ function toWorkflowDetail(
 			(n): WorkflowNode => ({
 				name: n.name,
 				type: n.type,
+				typeVersion: n.typeVersion,
 				parameters: redact ? undefined : n.parameters,
 				position: n.position,
 				webhookId: n.webhookId,

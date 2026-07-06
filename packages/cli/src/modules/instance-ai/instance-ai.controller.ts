@@ -35,7 +35,7 @@ import {
 	Body,
 	Query,
 } from '@n8n/decorators';
-import type { StoredEvent } from '@n8n/instance-ai';
+import type { AgentTreeSnapshot, StoredEvent } from '@n8n/instance-ai';
 import { buildAgentTreeFromEvents } from '@n8n/instance-ai';
 import { UnsupportedAttachmentError, validateAttachmentMimeTypes } from '@n8n/instance-ai/parsers';
 import type { NextFunction, Request, Response } from 'express';
@@ -214,12 +214,6 @@ export class InstanceAiController {
 		if (ownership === 'other_user') {
 			throw new ForbiddenError('Not authorized for this thread');
 		}
-		if (ownership === 'owned') {
-			await this.instanceAiService.replayUndeliveredTerminalOutcomes(threadId, {
-				delivery: 'event',
-			});
-		}
-
 		// When the thread didn't exist at connect time, another user could create
 		// and own it before events start flowing. We re-check once on the first
 		// event and close the stream if ownership changed. Events are buffered
@@ -229,7 +223,74 @@ export class InstanceAiController {
 		const pendingEvents: StoredEvent[] = [];
 		const userId = req.user.id;
 
-		// 1. Set SSE headers.
+		// 1. Subscribe to live events before the async bootstrap below.
+		//    hasSubscribers() must be true across the awaits that follow: in
+		//    multi-main, sibling mains drop relayed events for threads without a
+		//    local subscriber, so a relayed event arriving during an await would
+		//    otherwise be lost for good. Events emitted while bootstrapping are
+		//    NOT delivered here — they land in the event store and the replay in
+		//    step 6 picks them up, avoiding duplicates.
+		let bootstrapping = true;
+
+		const deliver = (stored: StoredEvent) => {
+			if (ownershipVerified) {
+				this.writeSseEvent(res, stored);
+				return;
+			}
+
+			// When the thread was not_found at connect time, re-validate ownership
+			// on the first event. Buffer all events until the check resolves to
+			// avoid leaking data during the async gap.
+			pendingEvents.push(stored);
+
+			if (ownershipCheckInFlight) return;
+			ownershipCheckInFlight = true;
+
+			void this.memoryService
+				.checkThreadOwnership(userId, threadId)
+				.then((currentOwnership) => {
+					if (currentOwnership === 'other_user') {
+						res.end();
+						return;
+					}
+					ownershipVerified = true;
+					for (const buffered of pendingEvents) {
+						this.writeSseEvent(res, buffered);
+					}
+					pendingEvents.length = 0;
+				})
+				.catch(() => {
+					pendingEvents.length = 0;
+					res.end();
+				});
+		};
+
+		const unsubscribe = this.eventBus.subscribe(threadId, (stored) => {
+			if (bootstrapping) return;
+			deliver(stored);
+		});
+
+		// Cleanup is registered before the async bootstrap so a client disconnect
+		// (or an error response) during the awaits below doesn't leak the
+		// subscription.
+		let closed = false;
+		let keepAlive: NodeJS.Timeout | undefined = undefined;
+		const cleanup = () => {
+			closed = true;
+			unsubscribe();
+			if (keepAlive !== undefined) clearInterval(keepAlive);
+		};
+		req.once('close', cleanup);
+		res.once('finish', cleanup);
+
+		// 2. Re-publish any terminal outcomes that never reached the client.
+		if (ownership === 'owned') {
+			await this.instanceAiService.replayUndeliveredTerminalOutcomes(threadId, {
+				delivery: 'event',
+			});
+		}
+
+		// 3. Set SSE headers.
 		// Disable response compression — SSE streams small chunks where compression
 		// overhead exceeds the benefit, and each Brotli compressor retains ~8.6 MB
 		// of native memory for the lifetime of the connection.
@@ -240,7 +301,7 @@ export class InstanceAiController {
 		res.setHeader('X-Accel-Buffering', 'no');
 		res.flushHeaders();
 
-		// 2. Determine replay cursor
+		// 4. Determine replay cursor
 		//    Last-Event-ID header (browser auto-reconnect) takes precedence over query param.
 		//    Both are validated as non-negative integers; invalid values fall back to 0.
 		const headerValue = req.headers['last-event-id'];
@@ -248,20 +309,9 @@ export class InstanceAiController {
 		const cursor =
 			Number.isFinite(parsedHeader) && parsedHeader >= 0 ? parsedHeader : (query.lastEventId ?? 0);
 
-		// 3. Replay missed events then subscribe in the same tick.
-		//    Since InProcessEventBus is synchronous and single-threaded (Node.js
-		//    event loop), there is no window for missed events between replay and
-		//    subscribe when done in the same synchronous block.
-		const missed = this.eventBus.getEventsAfter(threadId, cursor);
-		for (const stored of missed) {
-			this.writeSseEvent(res, stored);
-		}
-
-		// 3b. Bootstrap sync: emit one run-sync control frame per live message group.
-		//     Multiple groups can be active simultaneously when a background task
-		//     from an older turn outlives its original turn. Each frame uses named
-		//     SSE event type (event: run-sync) with NO id: field so the browser's
-		//     lastEventId is unaffected and replay cursor stays consistent.
+		// 5. Collect live message groups and fetch their persisted snapshots.
+		//    Multiple groups can be active simultaneously when a background task
+		//    from an older turn outlives its original turn.
 		const threadStatus = this.instanceAiService.getThreadStatus(threadId);
 
 		// Collect all distinct message groups that have live activity.
@@ -292,16 +342,41 @@ export class InstanceAiController {
 			}
 		}
 
+		const persistedSnapshots = new Map<string, AgentTreeSnapshot | undefined>();
+		for (const [groupId, group] of liveGroups) {
+			persistedSnapshots.set(
+				groupId,
+				await this.memoryService.getLatestRunSnapshot(threadId, {
+					messageGroupId: groupId,
+					// Use the group's own latest runId — NOT the thread-global
+					// activeRunId, which belongs to the current orchestrator turn and
+					// would be wrong for background groups from older turns.
+					runId: group.runIds.at(-1),
+				}),
+			);
+		}
+
+		// The client may have disconnected during the awaits above.
+		if (closed) return;
+
+		// 6. Replay missed events, emit run-sync frames, and flip to live delivery
+		//    in one synchronous block. The event bus store and emitter are
+		//    synchronous, so no event can slip between the replay and the live
+		//    handler taking over. Events that arrived during the awaits above are
+		//    already in the store (the early subscription in step 1 keeps relayed
+		//    events flowing in multi-main) and are included in the replay here.
+		const missed = this.eventBus.getEventsAfter(threadId, cursor);
+		for (const stored of missed) {
+			deliver(stored);
+		}
+
+		// 6b. Bootstrap sync: emit one run-sync control frame per live message
+		//     group. Each frame uses a named SSE event type (event: run-sync) with
+		//     NO id: field so the browser's lastEventId is unaffected and the
+		//     replay cursor stays consistent.
 		for (const [groupId, group] of liveGroups) {
 			const runEvents = this.eventBus.getEventsForRuns(threadId, group.runIds);
-			// Use the group's own latest runId — NOT the thread-global activeRunId,
-			// which belongs to the current orchestrator turn and would be wrong for
-			// background groups from older turns.
-			const groupRunId = group.runIds.at(-1);
-			const persistedSnapshot = await this.memoryService.getLatestRunSnapshot(threadId, {
-				messageGroupId: groupId,
-				runId: groupRunId,
-			});
+			const persistedSnapshot = persistedSnapshots.get(groupId);
 			if (runEvents.length === 0 && !persistedSnapshot) continue;
 
 			const eventTree = buildAgentTreeFromEvents(runEvents);
@@ -311,7 +386,7 @@ export class InstanceAiController {
 			);
 			res.write(
 				`event: run-sync\ndata: ${JSON.stringify({
-					runId: groupRunId,
+					runId: group.runIds.at(-1),
 					messageGroupId: groupId,
 					runIds: group.runIds,
 					agentTree,
@@ -322,53 +397,13 @@ export class InstanceAiController {
 		}
 		if (liveGroups.size > 0) res.flush?.();
 
-		// 4. Subscribe to live events
-		// When the thread was not_found at connect time, re-validate ownership on
-		// the first event. Buffer all events until the check resolves to avoid
-		// leaking data during the async gap.
-		const unsubscribe = this.eventBus.subscribe(threadId, (stored) => {
-			if (ownershipVerified) {
-				this.writeSseEvent(res, stored);
-				return;
-			}
+		bootstrapping = false;
 
-			pendingEvents.push(stored);
-
-			if (ownershipCheckInFlight) return;
-			ownershipCheckInFlight = true;
-
-			void this.memoryService
-				.checkThreadOwnership(userId, threadId)
-				.then((currentOwnership) => {
-					if (currentOwnership === 'other_user') {
-						res.end();
-						return;
-					}
-					ownershipVerified = true;
-					for (const buffered of pendingEvents) {
-						this.writeSseEvent(res, buffered);
-					}
-					pendingEvents.length = 0;
-				})
-				.catch(() => {
-					pendingEvents.length = 0;
-					res.end();
-				});
-		});
-
-		// 5. Keep-alive
-		const keepAlive = setInterval(() => {
+		// 7. Keep-alive
+		keepAlive = setInterval(() => {
 			res.write(': ping\n\n');
 			res.flush?.();
 		}, KEEP_ALIVE_INTERVAL_MS);
-
-		// 6. Cleanup on disconnect
-		const cleanup = () => {
-			unsubscribe();
-			clearInterval(keepAlive);
-		};
-		req.once('close', cleanup);
-		res.once('finish', cleanup);
 	}
 
 	@Post('/confirm/:requestId')
@@ -399,7 +434,7 @@ export class InstanceAiController {
 	async cancel(req: AuthenticatedRequest, _res: Response, @Param('threadId') threadId: string) {
 		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
-		this.instanceAiService.cancelRun(threadId);
+		await this.instanceAiService.routeCancelRun(threadId);
 		return { ok: true };
 	}
 
@@ -433,7 +468,7 @@ export class InstanceAiController {
 	) {
 		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
-		this.instanceAiService.cancelBackgroundTask(threadId, taskId);
+		await this.instanceAiService.routeCancelBackgroundTask(threadId, taskId);
 		return { ok: true };
 	}
 
@@ -448,7 +483,7 @@ export class InstanceAiController {
 	) {
 		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
-		this.instanceAiService.sendCorrectionToTask(threadId, taskId, payload.message);
+		await this.instanceAiService.routeCorrectionToTask(threadId, taskId, payload.message);
 		return { ok: true };
 	}
 
@@ -598,7 +633,7 @@ export class InstanceAiController {
 	) {
 		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
-		await this.instanceAiService.clearThreadState(threadId);
+		await this.instanceAiService.routeClearThreadState(threadId);
 		await this.memoryService.deleteThread(threadId);
 		return { ok: true };
 	}

@@ -215,7 +215,6 @@ const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> =>
 .icon {
 	display: flex;
 	text-align: center;
-	margin-right: var(--spacing--2xs);
 	flex-grow: 0;
 	flex-shrink: 0;
 
