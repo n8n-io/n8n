@@ -7,6 +7,8 @@ import {
 	type LatestNodeInfo,
 	type LogEntry,
 	type LogDetailsPanelState,
+	isGroupLog,
+	isNodeLog,
 } from '@/features/execution/logs/logs.types';
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useI18n } from '@n8n/i18n';
@@ -16,8 +18,6 @@ import { computed, ref, useTemplateRef, watch } from 'vue';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import {
 	getSubtreeTotalConsumedTokens,
-	isGroupLog,
-	isNodeLog,
 	isPlaceholderLog,
 } from '@/features/execution/logs/logs.utils';
 import { LOG_DETAILS_PANEL_STATE } from '@/features/execution/logs/logs.constants';

@@ -3,8 +3,7 @@ import { useRouter } from 'vue-router';
 
 import { MESSAGE_AN_AGENT_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { AGENT_SESSION_DETAIL_VIEW } from '@/features/agents/constants';
-import type { LogEntry } from '@/features/execution/logs/logs.types';
-import { isNodeLog } from '@/features/execution/logs/logs.utils';
+import { type LogEntry, isNodeLog } from '@/features/execution/logs/logs.types';
 
 /**
  * Session identifiers the MessageAnAgent node emits in its output JSON. Kept

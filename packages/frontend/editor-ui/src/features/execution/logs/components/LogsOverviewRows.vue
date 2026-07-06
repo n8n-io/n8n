@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import LogsOverviewRow from '@/features/execution/logs/components/LogsOverviewRow.vue';
-import type { LatestNodeInfo, LogEntry } from '@/features/execution/logs/logs.types';
-import { isNodeLog } from '@/features/execution/logs/logs.utils';
+import {
+	type LatestNodeInfo,
+	type LogEntry,
+	isNodeLog,
+} from '@/features/execution/logs/logs.types';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { useVirtualList } from '@vueuse/core';
 import { watch } from 'vue';

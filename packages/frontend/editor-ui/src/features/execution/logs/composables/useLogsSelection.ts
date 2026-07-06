@@ -1,11 +1,14 @@
-import type { LogEntry, LogEntrySelection } from '@/features/execution/logs/logs.types';
+import {
+	type LogEntry,
+	type LogEntrySelection,
+	isGroupLog,
+	isNodeLog,
+} from '@/features/execution/logs/logs.types';
 import {
 	findLogEntryRec,
 	findSelectedLogEntry,
 	getDepth,
 	getEntryAtRelativeIndex,
-	isGroupLog,
-	isNodeLog,
 	isSubNodeLog,
 } from '@/features/execution/logs/logs.utils';
 import { useTelemetry } from '@/app/composables/useTelemetry';

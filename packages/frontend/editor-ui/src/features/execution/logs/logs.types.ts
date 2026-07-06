@@ -49,6 +49,14 @@ export type GroupLogEntry = BaseLogEntry & {
 
 export type LogEntry = NodeLogEntry | GroupLogEntry;
 
+export function isNodeLog(entry: LogEntry): entry is NodeLogEntry {
+	return entry.type === 'node';
+}
+
+export function isGroupLog(entry: LogEntry): entry is GroupLogEntry {
+	return entry.type === 'group';
+}
+
 export interface LogTreeCreationContext {
 	parent: LogEntry | undefined;
 	ancestorRunIndexes: number[];

@@ -6,8 +6,8 @@ import {
 	createTestWorkflowExecutionResponse,
 	createTestWorkflowObject,
 } from '@/__tests__/mocks';
-import { createLogTree, isGroupLog } from '../logs.utils';
-import type { LogEntry } from '../logs.types';
+import { createLogTree } from '../logs.utils';
+import { type LogEntry, isGroupLog } from '../logs.types';
 import { useLogsTreeExpand } from './useLogsTreeExpand';
 
 function buildGroupedTree(options: { withError?: boolean } = {}): LogEntry[] {

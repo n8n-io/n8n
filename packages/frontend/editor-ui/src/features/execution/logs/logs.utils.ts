@@ -18,14 +18,16 @@ import {
 	createEmptyRunExecutionData,
 	createRunExecutionData,
 } from 'n8n-workflow';
-import type {
-	GroupBoundaryRunData,
-	LogEntry,
-	LogEntrySelection,
-	LogTreeCreationContext,
-	LogTreeFilter,
-	NodeLogEntry,
-	GroupLogEntry,
+import {
+	type GroupBoundaryRunData,
+	type LogEntry,
+	type LogEntrySelection,
+	type LogTreeCreationContext,
+	type LogTreeFilter,
+	type NodeLogEntry,
+	type GroupLogEntry,
+	isNodeLog,
+	isGroupLog,
 } from './logs.types';
 import { CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE } from '@/app/constants';
 import { type ChatMessage } from '@n8n/chat/types';
@@ -55,14 +57,6 @@ function getConsumedTokensFromTaskData(runData: ITaskData) {
 			.flat()
 			.flat(),
 	);
-}
-
-export function isNodeLog(entry: LogEntry): entry is NodeLogEntry {
-	return entry.type === 'node';
-}
-
-export function isGroupLog(entry: LogEntry): entry is GroupLogEntry {
-	return entry.type === 'group';
 }
 
 function createNode(

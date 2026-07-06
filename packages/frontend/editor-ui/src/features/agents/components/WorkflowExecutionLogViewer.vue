@@ -18,9 +18,12 @@ import {
 	createLogTree,
 	flattenLogEntries,
 	getSubtreeTotalConsumedTokens,
-	isNodeLog,
 } from '@/features/execution/logs/logs.utils';
-import type { LatestNodeInfo, LogEntry } from '@/features/execution/logs/logs.types';
+import {
+	type LatestNodeInfo,
+	type LogEntry,
+	isNodeLog,
+} from '@/features/execution/logs/logs.types';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { WorkflowObjectAccessors } from '@/app/types/workflow';
 

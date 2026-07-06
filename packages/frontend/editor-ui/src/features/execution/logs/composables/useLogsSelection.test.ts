@@ -5,8 +5,14 @@ import { waitFor } from '@testing-library/vue';
 import { createRunExecutionData, NodeConnectionTypes } from 'n8n-workflow';
 
 import { useLogsSelection } from './useLogsSelection';
-import { createLogTree, flattenLogEntries, isGroupLog, isNodeLog } from '../logs.utils';
-import type { GroupLogEntry, LogEntry, NodeLogEntry } from '../logs.types';
+import { createLogTree, flattenLogEntries } from '../logs.utils';
+import {
+	type GroupLogEntry,
+	type LogEntry,
+	type NodeLogEntry,
+	isGroupLog,
+	isNodeLog,
+} from '../logs.types';
 import { useCanvasStore } from '@/app/stores/canvas.store';
 import {
 	createTestNode,

@@ -13,11 +13,14 @@ import {
 	getGroupTiming,
 	getSubtreeTotalConsumedTokens,
 	hasSubExecution,
-	isGroupLog,
-	isNodeLog,
 } from '@/features/execution/logs/logs.utils';
 import { useTimestamp } from '@vueuse/core';
-import type { LatestNodeInfo, LogEntry } from '@/features/execution/logs/logs.types';
+import {
+	type LatestNodeInfo,
+	type LogEntry,
+	isGroupLog,
+	isNodeLog,
+} from '@/features/execution/logs/logs.types';
 
 import { N8nButton, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
 import AnimatedSpinner from '@/app/components/AnimatedSpinner.vue';

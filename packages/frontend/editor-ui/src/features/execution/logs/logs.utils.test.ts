@@ -13,8 +13,6 @@ import {
 	getGroupTiming,
 	getSubtreeTotalConsumedTokens,
 	getTreeNodeData,
-	isGroupLog,
-	isNodeLog,
 	isSubNodeLog,
 	mergeStartData,
 	restoreChatHistory,
@@ -34,7 +32,14 @@ import {
 	aiModelNode,
 	createTestLogTreeCreationContext,
 } from './__test__/data';
-import type { GroupLogEntry, LogEntry, LogEntrySelection, NodeLogEntry } from './logs.types';
+import {
+	type GroupLogEntry,
+	type LogEntry,
+	type LogEntrySelection,
+	type NodeLogEntry,
+	isGroupLog,
+	isNodeLog,
+} from './logs.types';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { createTestLogEntry } from './__test__/mocks';
 import { AGENT_NODE_TYPE, CHAT_TRIGGER_NODE_TYPE } from '@/app/constants';
