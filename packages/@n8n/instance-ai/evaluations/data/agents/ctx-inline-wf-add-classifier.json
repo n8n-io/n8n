@@ -1,0 +1,23 @@
+{
+	"description": "Intent resolution (inline): inside a wf build; add an LLM classifier node, not a new agent.",
+	"priorConversation": [
+		{
+			"role": "user",
+			"text": "Build a workflow: when a customer message arrives via webhook, store it in the 'inbound-messages' data table."
+		},
+		{
+			"role": "assistant",
+			"text": "Done — I built the workflow 'Inbound message intake': Webhook trigger → save to the 'inbound-messages' data table. It's saved and ready to publish."
+		}
+	],
+	"conversation": [{ "role": "user", "text": "Add a step that classifies the incoming message." }],
+	"complexity": "simple",
+	"tags": ["inline", "paradigm-continuity"],
+	"datasets": ["agents"],
+	"intentExpectation": {
+		"context": "inline-workflow",
+		"accepts": [{ "anchor": "wf", "embedsOther": false }],
+		"rationale": "Inside a wf; add an LLM classifier node, not a new agent.",
+		"source": "synthetic"
+	}
+}

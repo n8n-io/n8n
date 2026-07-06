@@ -1,0 +1,18 @@
+{
+	"description": "Intent resolution: deterministic calculation requiring auditability.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "For each employee row, compute net pay from hours and rate, and write it back to the sheet."
+		}
+	],
+	"complexity": "simple",
+	"tags": ["batch", "deterministic"],
+	"datasets": ["agents"],
+	"intentExpectation": {
+		"context": "standalone",
+		"accepts": [{ "anchor": "wf", "embedsOther": false }],
+		"rationale": "Deterministic calculation; auditability requires reproducibility.",
+		"source": "synthetic"
+	}
+}

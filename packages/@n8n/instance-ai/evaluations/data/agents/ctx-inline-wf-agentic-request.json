@@ -1,0 +1,29 @@
+{
+	"description": "Intent resolution (inline): agentic reasoning requested inside a wf context — embed-agent or ask before switching paradigms.",
+	"priorConversation": [
+		{
+			"role": "user",
+			"text": "Build a workflow that collects our application error logs every hour and appends them to the 'error-log' data table."
+		},
+		{
+			"role": "assistant",
+			"text": "Built — 'Hourly error log collection': Schedule trigger (hourly) → fetch error logs → append rows to the 'error-log' data table."
+		}
+	],
+	"conversation": [
+		{ "role": "user", "text": "I want this to investigate errors and figure out what's wrong." }
+	],
+	"complexity": "complex",
+	"tags": ["inline", "paradigm-mismatch"],
+	"datasets": ["agents"],
+	"intentExpectation": {
+		"context": "inline-workflow",
+		"accepts": [
+			{ "anchor": "wf", "embedsOther": true },
+			{ "anchor": "clarify", "embedsOther": "n/a" }
+		],
+		"clarifyingDimensions": ["paradigm-switch"],
+		"rationale": "Agentic reasoning inside a wf context; cleanest is embed-agent, may also ask before switching paradigms.",
+		"source": "synthetic"
+	}
+}

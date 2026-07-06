@@ -1,0 +1,18 @@
+{
+	"description": "Adversarial: says 'assistant'; scheduled summarize + post is wf-shaped.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Make an assistant that summarizes our RSS feed daily and posts to Slack."
+		}
+	],
+	"complexity": "simple",
+	"tags": ["false-friend", "surface-vocab"],
+	"datasets": ["agents"],
+	"intentExpectation": {
+		"context": "standalone",
+		"accepts": [{ "anchor": "wf", "embedsOther": false }],
+		"rationale": "Says 'assistant'; scheduled summarize + post is wf-shaped.",
+		"source": "synthetic-adversarial"
+	}
+}

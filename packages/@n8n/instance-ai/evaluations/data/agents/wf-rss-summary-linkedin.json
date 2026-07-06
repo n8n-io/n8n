@@ -1,0 +1,18 @@
+{
+	"description": "Intent resolution: LLM as stateless summarizer in a linear pipeline.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "When a new article hits our RSS feed, summarize it in two sentences and post to LinkedIn."
+		}
+	],
+	"complexity": "simple",
+	"tags": ["event-triggered", "single-llm-transform"],
+	"datasets": ["agents"],
+	"intentExpectation": {
+		"context": "standalone",
+		"accepts": [{ "anchor": "wf", "embedsOther": false }],
+		"rationale": "LLM as stateless summarizer; linear pipeline, no reasoning.",
+		"source": "synthetic"
+	}
+}

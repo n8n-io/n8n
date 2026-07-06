@@ -1,0 +1,26 @@
+{
+	"description": "Intent resolution (inline): inside an agent build; add a Slack tool, not a spawned wf.",
+	"priorConversation": [
+		{
+			"role": "user",
+			"text": "Create an agent that reviews failed order payments, investigates the cause in Stripe and our order database, and proposes a fix."
+		},
+		{
+			"role": "assistant",
+			"text": "I've set up the 'Payment recovery' agent. It can look up failed payments in Stripe, cross-check the order database, and propose a fix for each failure."
+		}
+	],
+	"conversation": [{ "role": "user", "text": "Also send a Slack when done." }],
+	"complexity": "simple",
+	"tags": ["inline", "paradigm-continuity"],
+	"datasets": ["agents"],
+	"intentExpectation": {
+		"context": "inline-agent",
+		"accepts": [
+			{ "anchor": "agent", "embedsOther": false },
+			{ "anchor": "agent", "embedsOther": true }
+		],
+		"rationale": "Inside an agent; add a Slack tool, not a spawned wf.",
+		"source": "synthetic"
+	}
+}

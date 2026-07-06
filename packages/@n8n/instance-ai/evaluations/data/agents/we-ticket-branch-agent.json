@@ -1,0 +1,18 @@
+{
+	"description": "Intent resolution: deterministic FAQ branch plus an open-ended complex-case branch embedded as an agent.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "When a support ticket arrives, if it matches an FAQ reply from the KB; otherwise hand it to an agent to investigate and propose a resolution."
+		}
+	],
+	"complexity": "medium",
+	"tags": ["event-triggered", "branch-embed-agent"],
+	"datasets": ["agents"],
+	"intentExpectation": {
+		"context": "standalone",
+		"accepts": [{ "anchor": "wf", "embedsOther": true }],
+		"rationale": "Event trigger + deterministic FAQ-match branch; complex-case branch is open-ended → agent embedded.",
+		"source": "synthetic"
+	}
+}

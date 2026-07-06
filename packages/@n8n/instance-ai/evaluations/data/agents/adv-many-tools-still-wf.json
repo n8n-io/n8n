@@ -1,0 +1,18 @@
+{
+	"description": "Adversarial: seven tools, zero branches, zero reasoning — tool count is not agentic.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "For each new signup: verify email, check against blocklist, add to Postgres, send welcome email, add to Mailchimp, notify sales in Slack, log to Segment."
+		}
+	],
+	"complexity": "medium",
+	"tags": ["false-friend", "tool-count"],
+	"datasets": ["agents"],
+	"intentExpectation": {
+		"context": "standalone",
+		"accepts": [{ "anchor": "wf", "embedsOther": false }],
+		"rationale": "Seven tools, zero branches, zero reasoning — tool count is not agentic.",
+		"source": "synthetic-adversarial"
+	}
+}

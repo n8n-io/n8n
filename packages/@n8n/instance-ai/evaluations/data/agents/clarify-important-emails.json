@@ -1,0 +1,14 @@
+{
+	"description": "Intent resolution: rule-based vs judgment-based hinges on the definition of 'important'.",
+	"conversation": [{ "role": "user", "text": "Notify me about important emails." }],
+	"complexity": "simple",
+	"tags": ["under-specified"],
+	"datasets": ["agents"],
+	"intentExpectation": {
+		"context": "standalone",
+		"accepts": [{ "anchor": "clarify", "embedsOther": "n/a" }],
+		"clarifyingDimensions": ["definition-of-important"],
+		"rationale": "Rule-based (wf) vs judgment-based (agent) hinges on the definition of 'important'.",
+		"source": "synthetic"
+	}
+}

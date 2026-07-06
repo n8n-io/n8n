@@ -1,0 +1,15 @@
+{
+	"description": "Intent resolution: fixed trigger + fixed action, no reasoning.",
+	"conversation": [
+		{ "role": "user", "text": "Every weekday at 9am, Slack me the Berlin weather forecast." }
+	],
+	"complexity": "simple",
+	"tags": ["scheduled", "notification"],
+	"datasets": ["agents"],
+	"intentExpectation": {
+		"context": "standalone",
+		"accepts": [{ "anchor": "wf", "embedsOther": false }],
+		"rationale": "Fixed trigger + fixed action, no reasoning.",
+		"source": "synthetic"
+	}
+}

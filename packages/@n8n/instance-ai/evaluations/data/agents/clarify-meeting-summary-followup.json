@@ -1,0 +1,26 @@
+{
+	"description": "Intent resolution (compound): summarization is bounded wf work; follow-up is under-specified on autonomy and channel.",
+	"conversation": [
+		{ "role": "user", "text": "Summarize my meetings and follow up on action items." }
+	],
+	"complexity": "complex",
+	"tags": ["compound", "partial-clarify"],
+	"datasets": ["agents"],
+	"intentExpectation": {
+		"context": "standalone",
+		"parts": [
+			{
+				"span": "Summarize my meetings",
+				"accepts": [{ "anchor": "wf", "embedsOther": false }],
+				"rationale": "Bounded LLM summarization."
+			},
+			{
+				"span": "follow up on action items",
+				"accepts": [{ "anchor": "clarify", "embedsOther": "n/a" }],
+				"clarifyingDimensions": ["followup-autonomy", "followup-channel"],
+				"rationale": "Under-specified on autonomy and channel."
+			}
+		],
+		"source": "synthetic"
+	}
+}

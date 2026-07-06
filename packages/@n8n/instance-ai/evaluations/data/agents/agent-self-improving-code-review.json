@@ -1,0 +1,21 @@
+{
+	"description": "Intent resolution: skill-accretion / self-improvement is a first-class agent signal.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Create a code-review assistant that comments on new PRs, learns from our team's past comments over time, and gets better at spotting our coding standards."
+		}
+	],
+	"complexity": "medium",
+	"tags": ["self-improving", "event-triggered"],
+	"datasets": ["agents"],
+	"intentExpectation": {
+		"context": "standalone",
+		"accepts": [
+			{ "anchor": "agent", "embedsOther": false },
+			{ "anchor": "agent", "embedsOther": true }
+		],
+		"rationale": "Skill-accretion / self-improvement is a first-class agent signal.",
+		"source": "synthetic"
+	}
+}

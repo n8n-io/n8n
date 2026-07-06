@@ -1,0 +1,31 @@
+{
+	"description": "Intent resolution (compound): two independent automations with separate lifecycles.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "1) Every weekday at 9am, Slack me the Berlin weather. 2) Create a support assistant that chats with customers and decides when to escalate."
+		}
+	],
+	"complexity": "simple",
+	"tags": ["compound", "independent-lifecycles"],
+	"datasets": ["agents"],
+	"intentExpectation": {
+		"context": "standalone",
+		"parts": [
+			{
+				"span": "Every weekday at 9am, Slack me the Berlin weather",
+				"accepts": [{ "anchor": "wf", "embedsOther": false }],
+				"rationale": "Scheduled + fixed action."
+			},
+			{
+				"span": "a support assistant that chats with customers and decides when to escalate",
+				"accepts": [
+					{ "anchor": "agent", "embedsOther": false },
+					{ "anchor": "agent", "embedsOther": true }
+				],
+				"rationale": "Chat + escalation reasoning."
+			}
+		],
+		"source": "synthetic"
+	}
+}

@@ -1,0 +1,18 @@
+{
+	"description": "Intent resolution: bounded LLM classifications feeding finite branches.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "When a Zendesk ticket arrives, classify it as billing/bug/access/product, set priority low/normal/high, and route to the matching Slack channel."
+		}
+	],
+	"complexity": "medium",
+	"tags": ["event-triggered", "multi-branch", "bounded-llm"],
+	"datasets": ["agents"],
+	"intentExpectation": {
+		"context": "standalone",
+		"accepts": [{ "anchor": "wf", "embedsOther": false }],
+		"rationale": "Bounded LLM classifications feeding finite branches. No iterative reasoning.",
+		"source": "synthetic"
+	}
+}

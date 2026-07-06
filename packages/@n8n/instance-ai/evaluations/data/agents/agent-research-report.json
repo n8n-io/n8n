@@ -1,0 +1,21 @@
+{
+	"description": "Intent resolution (tolerance): reasoning drives selection; report compilation is deterministic.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Research agent that finds recent papers on a topic, reads abstracts, decides which are worth summarizing, and compiles a report."
+		}
+	],
+	"complexity": "complex",
+	"tags": ["reasoning-dominated", "tolerance"],
+	"datasets": ["agents"],
+	"intentExpectation": {
+		"context": "standalone",
+		"accepts": [
+			{ "anchor": "agent", "embedsOther": true },
+			{ "anchor": "wf", "embedsOther": true }
+		],
+		"rationale": "Reasoning drives selection; report compilation is deterministic.",
+		"source": "synthetic"
+	}
+}

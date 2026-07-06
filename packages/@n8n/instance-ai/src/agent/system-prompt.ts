@@ -40,7 +40,7 @@ When you need to reference "now", use this date and time.`;
 }
 
 const INTENT_HINT = isAgentFeatureEnabled()
-	? 'For requests asking what kind of automation to build, whether something is workflow/hybrid/agent/single AI task, or how to route ambiguous automation intent, load `intent-recognition` before deciding.'
+	? 'For requests asking what kind of automation to build, whether something should be anchored as a workflow or an agent, whether one should embed the other, or how to route ambiguous or out-of-scope automation intent, load `intent-recognition` before deciding.'
 	: '';
 
 function getInstanceInfoSection(webhookBaseUrl: string, formBaseUrl: string): string {

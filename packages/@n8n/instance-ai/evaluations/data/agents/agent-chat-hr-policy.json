@@ -1,0 +1,21 @@
+{
+	"description": "Intent resolution: multi-turn chat + tool use; KB may be native or a wf-tool.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "I want to chat with an assistant that can look up my company's HR policies and answer questions."
+		}
+	],
+	"complexity": "simple",
+	"tags": ["chat", "tool-use"],
+	"datasets": ["agents"],
+	"intentExpectation": {
+		"context": "standalone",
+		"accepts": [
+			{ "anchor": "agent", "embedsOther": false },
+			{ "anchor": "agent", "embedsOther": true }
+		],
+		"rationale": "Multi-turn chat + tool use; KB may be native or a wf-tool.",
+		"source": "synthetic"
+	}
+}

@@ -54,7 +54,7 @@ describe('EvalTestCaseSchema', () => {
 
 	it('rejects 0 execution scenarios AND 0 expectations (a case must assert something)', () => {
 		expect(() => EvalTestCaseSchema.parse({ ...validFixture(), executionScenarios: [] })).toThrow(
-			/at least one executionScenario, or a process\/outcome expectation/,
+			/at least one executionScenario, a process\/outcome expectation, or an intentExpectation/,
 		);
 	});
 

@@ -1,0 +1,18 @@
+{
+	"description": "Adversarial: says 'automate'; end-to-end investigation is reasoning-dominated.",
+	"conversation": [
+		{ "role": "user", "text": "Automate a bot that investigates production incidents end-to-end." }
+	],
+	"complexity": "medium",
+	"tags": ["false-friend", "surface-vocab"],
+	"datasets": ["agents"],
+	"intentExpectation": {
+		"context": "standalone",
+		"accepts": [
+			{ "anchor": "agent", "embedsOther": true },
+			{ "anchor": "wf", "embedsOther": true }
+		],
+		"rationale": "Says 'automate'; end-to-end investigation is reasoning-dominated.",
+		"source": "synthetic-adversarial"
+	}
+}

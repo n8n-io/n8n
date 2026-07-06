@@ -1,0 +1,18 @@
+{
+	"description": "Intent resolution: bounded scoring feeds enumerable branches.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "When a new lead arrives, score how promising it is from message + company, notify sales if high, send nurture email if low."
+		}
+	],
+	"complexity": "simple",
+	"tags": ["event-triggered", "bounded-llm"],
+	"datasets": ["agents"],
+	"intentExpectation": {
+		"context": "standalone",
+		"accepts": [{ "anchor": "wf", "embedsOther": false }],
+		"rationale": "Bounded scoring feeds enumerable branches.",
+		"source": "synthetic"
+	}
+}

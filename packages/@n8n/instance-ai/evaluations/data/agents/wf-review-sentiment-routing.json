@@ -1,0 +1,18 @@
+{
+	"description": "Intent resolution: sentiment classification feeding a fixed 2-way branch.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Analyze review sentiment; send negative ones to support, auto-thank the positive ones."
+		}
+	],
+	"complexity": "simple",
+	"tags": ["event-triggered", "bounded-llm"],
+	"datasets": ["agents"],
+	"intentExpectation": {
+		"context": "standalone",
+		"accepts": [{ "anchor": "wf", "embedsOther": false }],
+		"rationale": "Sentiment classification feeding fixed 2-way branch.",
+		"source": "synthetic"
+	}
+}

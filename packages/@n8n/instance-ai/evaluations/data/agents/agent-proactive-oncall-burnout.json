@@ -1,0 +1,21 @@
+{
+	"description": "Intent resolution: heartbeat-driven proactive behavior — wakes, checks state, decides who to reach out to.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Have an agent proactively monitor our on-call rotation for burnout signs — who's been paged, when, how often — and suggest coverage shifts before it becomes a problem."
+		}
+	],
+	"complexity": "medium",
+	"tags": ["proactive", "heartbeat"],
+	"datasets": ["agents"],
+	"intentExpectation": {
+		"context": "standalone",
+		"accepts": [
+			{ "anchor": "agent", "embedsOther": false },
+			{ "anchor": "agent", "embedsOther": true }
+		],
+		"rationale": "Heartbeat-driven proactive behavior — wakes, checks state, decides who to reach out to.",
+		"source": "synthetic"
+	}
+}

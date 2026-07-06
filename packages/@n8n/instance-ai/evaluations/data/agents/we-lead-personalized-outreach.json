@@ -1,0 +1,18 @@
+{
+	"description": "Intent resolution: deterministic batch loop with personalized drafting embedded as an agent.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "For each new lead in the CRM, enrich with LinkedIn data, then have an agent draft a personalized outreach based on the lead's profile and our product, and queue it for the SDR to review."
+		}
+	],
+	"complexity": "complex",
+	"tags": ["batch", "embed-agent", "human-in-loop"],
+	"datasets": ["agents"],
+	"intentExpectation": {
+		"context": "standalone",
+		"accepts": [{ "anchor": "wf", "embedsOther": true }],
+		"rationale": "Deterministic loop + enrichment; personalized drafting requires reasoning → agent embedded.",
+		"source": "synthetic"
+	}
+}

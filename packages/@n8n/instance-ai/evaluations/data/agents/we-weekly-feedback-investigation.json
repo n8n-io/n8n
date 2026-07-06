@@ -1,0 +1,18 @@
+{
+	"description": "Intent resolution: scheduled aggregation is wf-shaped, root-cause cross-referencing is agentic tool-use.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Every Sunday, take last week's customer feedback tickets: for each, have an agent cross-reference our docs and past tickets to identify the root cause, then aggregate findings into a report and email leadership."
+		}
+	],
+	"complexity": "complex",
+	"tags": ["scheduled", "batch", "embed-agent", "reporting"],
+	"datasets": ["agents"],
+	"intentExpectation": {
+		"context": "standalone",
+		"accepts": [{ "anchor": "wf", "embedsOther": true }],
+		"rationale": "Scheduled + deterministic aggregation is wf-shaped; root-cause cross-referencing is agentic tool-use → agent embedded.",
+		"source": "synthetic"
+	}
+}

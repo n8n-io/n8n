@@ -102,7 +102,7 @@ describe('Instance AI runtime skills', () => {
 		) {
 			throw new Error('Expected load_skill to return intent-recognition content');
 		}
-		expect(loadResult.content).toContain('workflow | hybrid | agent | single-ai-task | ambiguous');
+		expect(loadResult.content).toContain('workflow | agent | clarify | out-of-scope');
 	});
 
 	it('loads the bundled Computer Use credential setup skill', async () => {

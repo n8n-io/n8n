@@ -181,6 +181,33 @@ export interface TestCaseCredential {
 	name?: string;
 }
 
+// ---------------------------------------------------------------------------
+// Intent-resolution (anchor / embeds_other) expectations
+// ---------------------------------------------------------------------------
+
+export type IntentAnchor = 'wf' | 'agent' | 'clarify' | 'out-of-scope';
+
+export interface IntentAccept {
+	anchor: IntentAnchor;
+	embedsOther: boolean | 'n/a';
+}
+
+export interface IntentPart {
+	span: string;
+	accepts: IntentAccept[];
+	clarifyingDimensions?: string[];
+	rationale: string;
+}
+
+export interface IntentExpectation {
+	context: 'standalone' | 'inline-workflow' | 'inline-agent';
+	accepts?: IntentAccept[];
+	parts?: IntentPart[];
+	clarifyingDimensions?: string[];
+	rationale?: string;
+	source: 'real-user' | 'synthetic' | 'synthetic-adversarial';
+}
+
 export interface WorkflowTestCase {
 	/** Optional human-readable note on what this case is testing (esp. for behaviour cases). */
 	description?: string;
@@ -205,6 +232,10 @@ export interface WorkflowTestCase {
 	/** Optional NL assertions about the resulting WORKFLOW (outcome). LLM-judged from the workflow,
 	 *  so they also run in prebuilt/MCP runs. Counted toward the pass rate alongside scenarios. */
 	outcomeExpectations?: string[];
+	/** Structured grading for an intent-resolution (anchor / embeds_other) case.
+	 *  Graded deterministically by evaluations/intent/, independent of
+	 *  process/outcome expectations. */
+	intentExpectation?: IntentExpectation;
 	/**
 	 * Credentials visible to this case's build. Created for real before the build
 	 * and pinned as the thread's entire credential view — cases without this
@@ -252,6 +283,42 @@ export interface BuildExpectationResult {
 	incomplete?: boolean;
 }
 
+// ---------------------------------------------------------------------------
+// Intent-resolution grading (structured, parsed from the classification output)
+// ---------------------------------------------------------------------------
+
+/** One classification block parsed from the agent's final response. */
+export interface IntentPrediction {
+	/** The `Part:` excerpt, when the response classifies more than one part. */
+	span?: string;
+	anchor: IntentAnchor;
+	embedsOther: boolean | 'n/a';
+	rationale?: string;
+	clarifyingQuestions?: string[];
+}
+
+/** Grading result for one expected part (or the whole case, for single-part cases). */
+export interface IntentPartGrade {
+	/** Undefined for single-part cases (there's only one expectation to grade). */
+	expectedSpan?: string;
+	/** Undefined when unparseable, or no prediction could be matched to this part. */
+	prediction?: IntentPrediction;
+	jointPass: boolean;
+	anchorMatch: boolean;
+	embedsMatch: boolean;
+	/** Clarify parts only — LLM-judged, whether a clarifying question targets an expected dimension. */
+	clarifyDimensionsPass?: boolean;
+	/** LLM-judged rationale quality, 0-2. Secondary signal, not counted toward jointPass. */
+	rationaleScore?: 0 | 1 | 2;
+	reason: string;
+}
+
+export interface IntentCaseGrade {
+	parts: IntentPartGrade[];
+	/** Set when the response couldn't be parsed into any classification block. */
+	parseError?: string;
+}
+
 export interface WorkflowTestCaseResult {
 	testCase: WorkflowTestCase;
 	/** Source-file slug (matches the PR-comment / comparison label, for consistency). */
@@ -270,6 +337,8 @@ export interface WorkflowTestCaseResult {
 	buildTrace?: BuildTrace;
 	/** Per-expectation verdicts from the build-expectations judge. Not consumed by pass@k. */
 	buildExpectationResults?: BuildExpectationResult[];
+	/** Structured intent-resolution grade, set only for cases with an `intentExpectation`. */
+	intentGrade?: IntentCaseGrade;
 	/** Base URL of the n8n instance behind this run. Per-result so multi-lane
 	 *  configs each get their own URL for canvas/execution links. */
 	n8nBaseUrl?: string;

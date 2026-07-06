@@ -1,0 +1,21 @@
+{
+	"description": "Intent resolution (tolerance): reasoning + prioritization; buildable as agent-with-wf-tools or scheduled wf-with-embedded-agent.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "A prospecting agent that finds leads matching our ICP, enriches them, decides who to reach out to first, and drafts personalized outreach."
+		}
+	],
+	"complexity": "complex",
+	"tags": ["reasoning-dominated", "tolerance"],
+	"datasets": ["agents"],
+	"intentExpectation": {
+		"context": "standalone",
+		"accepts": [
+			{ "anchor": "agent", "embedsOther": true },
+			{ "anchor": "wf", "embedsOther": true }
+		],
+		"rationale": "Reasoning + prioritization; buildable as agent-with-wf-tools or scheduled wf-with-embedded-agent.",
+		"source": "synthetic"
+	}
+}

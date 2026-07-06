@@ -1,0 +1,31 @@
+{
+	"description": "Intent resolution (compound): deterministic ingestion coupled via data to a reasoning-driven outreach agent.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Ingest new leads from the website form to our CRM, and separately have an SDR agent that qualifies and reaches out."
+		}
+	],
+	"complexity": "medium",
+	"tags": ["compound", "coupled-via-data"],
+	"datasets": ["agents"],
+	"intentExpectation": {
+		"context": "standalone",
+		"parts": [
+			{
+				"span": "Ingest new leads from the website form to our CRM",
+				"accepts": [{ "anchor": "wf", "embedsOther": false }],
+				"rationale": "Deterministic ingestion."
+			},
+			{
+				"span": "an SDR agent that qualifies and reaches out",
+				"accepts": [
+					{ "anchor": "agent", "embedsOther": true },
+					{ "anchor": "wf", "embedsOther": true }
+				],
+				"rationale": "Reasoning + outreach; either anchoring defensible."
+			}
+		],
+		"source": "synthetic"
+	}
+}

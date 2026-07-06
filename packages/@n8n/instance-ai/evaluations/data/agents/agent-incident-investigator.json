@@ -1,0 +1,21 @@
+{
+	"description": "Intent resolution (tolerance): reasoning dominates; event trigger creates legitimate anchor ambiguity.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Build an incident investigator that watches for critical prod alerts, checks logs and metrics, decides which service is likely responsible, gathers more evidence as needed, and recommends rollback, opens an incident, or escalates."
+		}
+	],
+	"complexity": "complex",
+	"tags": ["reasoning-dominated", "event-triggered", "tolerance"],
+	"datasets": ["agents"],
+	"intentExpectation": {
+		"context": "standalone",
+		"accepts": [
+			{ "anchor": "agent", "embedsOther": true },
+			{ "anchor": "wf", "embedsOther": true }
+		],
+		"rationale": "Reasoning dominates; event trigger creates legitimate anchor ambiguity.",
+		"source": "synthetic"
+	}
+}

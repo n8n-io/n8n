@@ -1,0 +1,18 @@
+{
+	"description": "Intent resolution: cross-session memory plus chat interaction.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "A tutor that helps me learn Python over multiple sessions, remembering what we covered."
+		}
+	],
+	"complexity": "simple",
+	"tags": ["chat", "stateful", "memory"],
+	"datasets": ["agents"],
+	"intentExpectation": {
+		"context": "standalone",
+		"accepts": [{ "anchor": "agent", "embedsOther": false }],
+		"rationale": "Cross-session memory + chat interaction.",
+		"source": "synthetic"
+	}
+}

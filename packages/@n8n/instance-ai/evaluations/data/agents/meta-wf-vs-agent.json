@@ -1,0 +1,15 @@
+{
+	"description": "Intent resolution: product/definition question, not a build intent.",
+	"conversation": [
+		{ "role": "user", "text": "What's the difference between a workflow and an agent?" }
+	],
+	"complexity": "simple",
+	"tags": ["meta"],
+	"datasets": ["agents"],
+	"intentExpectation": {
+		"context": "standalone",
+		"accepts": [{ "anchor": "out-of-scope", "embedsOther": "n/a" }],
+		"rationale": "Product/definition question.",
+		"source": "synthetic"
+	}
+}

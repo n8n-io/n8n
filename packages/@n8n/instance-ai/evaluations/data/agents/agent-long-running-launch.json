@@ -1,0 +1,18 @@
+{
+	"description": "Intent resolution: long-running multi-session coordination with wf-tool actions.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Assign an agent to plan and execute our Q3 product launch — coordinate with design, engineering, marketing; keep track of open threads across teams; check in daily; escalate blockers as they arise."
+		}
+	],
+	"complexity": "medium",
+	"tags": ["long-running", "stateful", "coordination"],
+	"datasets": ["agents"],
+	"intentExpectation": {
+		"context": "standalone",
+		"accepts": [{ "anchor": "agent", "embedsOther": true }],
+		"rationale": "Long-running multi-session coordination; actions (Slack, Notion, calendar) natural wf-tools.",
+		"source": "synthetic"
+	}
+}

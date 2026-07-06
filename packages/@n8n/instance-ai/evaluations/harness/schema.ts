@@ -28,6 +28,45 @@ const ExecutionScenarioSchema = z.object({
 	requires: z.string().optional(),
 });
 
+/** One accepted (anchor, embeds_other) tuple for an intent-resolution case.
+ *  `accepts` lists may contain more than one tuple to model legitimate
+ *  ambiguity (a "tolerance" case) rather than forcing a single answer. */
+const IntentAcceptSchema = z.object({
+	anchor: z.enum(['wf', 'agent', 'clarify', 'out-of-scope']),
+	embedsOther: z.union([z.boolean(), z.literal('n/a')]),
+});
+
+/** One independently-classified part of a compound intent request. */
+const IntentPartSchema = z.object({
+	span: z.string().min(1),
+	accepts: z.array(IntentAcceptSchema).min(1),
+	clarifyingDimensions: z.array(z.string().min(1)).optional(),
+	rationale: z.string().min(1),
+});
+
+/** Expected grading for an intent-resolution eval case — see
+ *  evaluations/intent/ for the parser/grader that consumes this shape.
+ *  Exactly one of `accepts` (single-part case) or `parts` (compound case,
+ *  ≥2 independently-anchored spans) must be set. */
+export const IntentExpectationSchema = z
+	.object({
+		/** Whether the request stands alone or continues an existing workflow/agent build. */
+		context: z.enum(['standalone', 'inline-workflow', 'inline-agent']),
+		accepts: z.array(IntentAcceptSchema).min(1).optional(),
+		parts: z.array(IntentPartSchema).min(2).optional(),
+		/** Top-level clarifying dimensions when `accepts` includes `clarify`. */
+		clarifyingDimensions: z.array(z.string().min(1)).optional(),
+		rationale: z.string().min(1).optional(),
+		source: z.enum(['real-user', 'synthetic', 'synthetic-adversarial']).default('synthetic'),
+	})
+	.strict()
+	.refine((e) => (e.accepts ? !e.parts : !!e.parts), {
+		message: 'exactly one of accepts or parts must be set',
+	})
+	.refine((e) => !e.accepts || e.rationale, {
+		message: 'accepts cases need a rationale',
+	});
+
 const evalTestCaseObjectSchema = z
 	.object({
 		/** Optional human-readable note on what this case is testing (esp. for behaviour cases). */
@@ -46,6 +85,11 @@ const evalTestCaseObjectSchema = z
 		/** Optional NL assertions about the resulting WORKFLOW (outcome). LLM-judged from the workflow,
 		 *  so they also run in prebuilt/MCP runs. Counted as units in the pass rate. */
 		outcomeExpectations: z.array(z.string().min(1)).optional(),
+		/** Structured grading for an intent-resolution (anchor / embeds_other) case.
+		 *  Graded deterministically by evaluations/intent/, independent of
+		 *  process/outcome expectations — see evaluations/intent/README or the
+		 *  harness docs for the grading contract. */
+		intentExpectation: IntentExpectationSchema.optional(),
 		/**
 		 * Removed in favour of the process/outcome split. Declared as a forbidden key (rather
 		 * than dropped from the shape) so a legacy fixture fails loudly with a migration hint,
@@ -134,10 +178,11 @@ export const EvalTestCaseSchema = evalTestCaseObjectSchema
 		(c) =>
 			(c.executionScenarios?.length ?? 0) > 0 ||
 			(c.processExpectations?.length ?? 0) > 0 ||
-			(c.outcomeExpectations?.length ?? 0) > 0,
+			(c.outcomeExpectations?.length ?? 0) > 0 ||
+			c.intentExpectation !== undefined,
 		{
 			message:
-				'a case needs at least one executionScenario, or a process/outcome expectation to grade',
+				'a case needs at least one executionScenario, a process/outcome expectation, or an intentExpectation to grade',
 		},
 	);
 

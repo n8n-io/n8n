@@ -40,6 +40,7 @@ import { allFailVerdicts, verifyBuildExpectations } from '../build-expectations/
 import { type VerifierAttemptDebug, verifyChecklist } from '../checklist/verifier';
 import { N8nApiError, type N8nClient, type WorkflowResponse } from '../clients/n8n-client';
 import { createDeclaredCredentials } from '../credentials/seeder';
+import { intentUnitLabels, judgeIntentForBuild } from '../intent/run';
 import {
 	buildConversationMetrics,
 	extractOutcomeFromEvents,
@@ -269,12 +270,30 @@ export async function runWorkflowTestCase(
 				})
 			: Promise.resolve<BuildExpectationResult[]>([]);
 
+	// Structured intent-resolution grading — independent of process/outcome
+	// expectations above, but its verdicts ride the same buildExpectationResults
+	// array so the untouched aggregator counts its units alongside scenarios.
+	const intentPromise = testCase.intentExpectation
+		? judgeIntentForBuild(testCase, build.transcript).catch((error: unknown) => {
+				const message = error instanceof Error ? error.message : String(error);
+				logger.warn(`  Intent judge errored: ${message}`);
+				return {
+					verdicts: allFailVerdicts(intentUnitLabels(testCase), `judge error: ${message}`),
+					grade: { parts: [], parseError: message },
+				};
+			})
+		: undefined;
+
 	if (!build.success || !build.workflowId) {
 		result.buildError = build.error;
-		const expectationResults = await expectationsPromise;
-		const buildExpectationResults = expectationResults;
+		const [expectationResults, intentResult] = await Promise.all([
+			expectationsPromise,
+			intentPromise ?? Promise.resolve(undefined),
+		]);
+		const buildExpectationResults = [...expectationResults, ...(intentResult?.verdicts ?? [])];
 		if (buildExpectationResults.length > 0)
 			result.buildExpectationResults = buildExpectationResults;
+		if (intentResult?.grade) result.intentGrade = intentResult.grade;
 		return result;
 	}
 
@@ -313,13 +332,15 @@ export async function runWorkflowTestCase(
 		},
 		MAX_CONCURRENT_SCENARIOS,
 	);
-	const [scenarioResults, expectationResults] = await Promise.all([
+	const [scenarioResults, expectationResults, intentResult] = await Promise.all([
 		scenariosPromise,
 		expectationsPromise,
+		intentPromise ?? Promise.resolve(undefined),
 	]);
 	result.executionScenarioResults = scenarioResults;
-	const buildExpectationResults = expectationResults;
+	const buildExpectationResults = [...expectationResults, ...(intentResult?.verdicts ?? [])];
 	if (buildExpectationResults.length > 0) result.buildExpectationResults = buildExpectationResults;
+	if (intentResult?.grade) result.intentGrade = intentResult.grade;
 
 	const scenarioMs = Date.now() - scenarioStart;
 	logger.info(

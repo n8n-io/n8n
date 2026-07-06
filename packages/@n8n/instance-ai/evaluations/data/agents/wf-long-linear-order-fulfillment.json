@@ -1,0 +1,18 @@
+{
+	"description": "Intent resolution: seven steps but zero branches or reasoning — length is not autonomy.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "When a new order arrives: validate address, check inventory, charge the card, generate invoice PDF, email the customer, add to CRM, notify fulfillment."
+		}
+	],
+	"complexity": "medium",
+	"tags": ["event-triggered", "long-linear"],
+	"datasets": ["agents"],
+	"intentExpectation": {
+		"context": "standalone",
+		"accepts": [{ "anchor": "wf", "embedsOther": false }],
+		"rationale": "Seven steps but zero branches or reasoning — length is not autonomy.",
+		"source": "synthetic"
+	}
+}

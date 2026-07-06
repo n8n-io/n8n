@@ -1,0 +1,18 @@
+{
+	"description": "Intent resolution: reasoning-dominated agent with explicit reusable wf-tools.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Research assistant that can crawl our docs, query the data warehouse for stats, and generate PDF reports. The doc-crawl and stats-query workflows should be reusable across other automations too."
+		}
+	],
+	"complexity": "simple",
+	"tags": ["wf-tools", "reusable-actions", "reasoning-dominated"],
+	"datasets": ["agents"],
+	"intentExpectation": {
+		"context": "standalone",
+		"accepts": [{ "anchor": "agent", "embedsOther": true }],
+		"rationale": "Reasoning-dominated + explicit reusable wf-tools.",
+		"source": "synthetic"
+	}
+}

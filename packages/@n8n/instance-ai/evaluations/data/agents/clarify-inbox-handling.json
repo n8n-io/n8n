@@ -1,0 +1,14 @@
+{
+	"description": "Intent resolution: under-specified request — ask before choosing an anchor.",
+	"conversation": [{ "role": "user", "text": "Help me handle my inbox." }],
+	"complexity": "medium",
+	"tags": ["under-specified"],
+	"datasets": ["agents"],
+	"intentExpectation": {
+		"context": "standalone",
+		"accepts": [{ "anchor": "clarify", "embedsOther": "n/a" }],
+		"clarifyingDimensions": ["scope", "autonomy", "interaction-mode"],
+		"rationale": "Under-specified: filing, triage-with-judgment, or autonomous reply?",
+		"source": "synthetic"
+	}
+}

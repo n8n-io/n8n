@@ -1,0 +1,15 @@
+{
+	"description": "Adversarial: says 'agent'; is fixed trigger + fixed action.",
+	"conversation": [
+		{ "role": "user", "text": "Build an AI agent that emails me the Berlin weather every morning." }
+	],
+	"complexity": "medium",
+	"tags": ["false-friend", "surface-vocab"],
+	"datasets": ["agents"],
+	"intentExpectation": {
+		"context": "standalone",
+		"accepts": [{ "anchor": "wf", "embedsOther": false }],
+		"rationale": "Says 'agent'; is fixed trigger + fixed action.",
+		"source": "synthetic-adversarial"
+	}
+}

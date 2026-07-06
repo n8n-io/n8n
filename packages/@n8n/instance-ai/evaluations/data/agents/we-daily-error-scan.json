@@ -1,0 +1,18 @@
+{
+	"description": "Intent resolution: scheduled wf shell with reasoning-dominated anomaly identification embedded as an agent.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Every morning at 8am, have an agent scan our overnight error logs, identify unusual patterns, and post a summary to the #eng-oncall Slack channel."
+		}
+	],
+	"complexity": "medium",
+	"tags": ["scheduled", "embed-agent", "notification"],
+	"datasets": ["agents"],
+	"intentExpectation": {
+		"context": "standalone",
+		"accepts": [{ "anchor": "wf", "embedsOther": true }],
+		"rationale": "Scheduled wf shell; anomaly identification is reasoning-dominated → agent embedded.",
+		"source": "synthetic"
+	}
+}

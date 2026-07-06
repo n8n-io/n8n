@@ -1,0 +1,18 @@
+{
+	"description": "Intent resolution: fixed lookups plus one LLM draft, human closes the loop.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "When a support email comes in, look up the customer's account and last 3 orders, then draft a personalized reply for the agent to review."
+		}
+	],
+	"complexity": "complex",
+	"tags": ["event-triggered", "fixed-tools", "human-in-loop"],
+	"datasets": ["agents"],
+	"intentExpectation": {
+		"context": "standalone",
+		"accepts": [{ "anchor": "wf", "embedsOther": false }],
+		"rationale": "Fixed lookups + one LLM draft; no runtime tool selection. Human closes the loop.",
+		"source": "synthetic"
+	}
+}

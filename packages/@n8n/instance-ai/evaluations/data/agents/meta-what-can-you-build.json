@@ -1,0 +1,13 @@
+{
+	"description": "Intent resolution: meta question, not a build intent.",
+	"conversation": [{ "role": "user", "text": "What can you build?" }],
+	"complexity": "simple",
+	"tags": ["meta"],
+	"datasets": ["agents"],
+	"intentExpectation": {
+		"context": "standalone",
+		"accepts": [{ "anchor": "out-of-scope", "embedsOther": "n/a" }],
+		"rationale": "Meta question.",
+		"source": "synthetic"
+	}
+}

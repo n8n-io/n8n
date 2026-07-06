@@ -1,0 +1,18 @@
+{
+	"description": "Intent resolution: LLM as fixed-label classifier plus deterministic move.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Categorize each incoming email into one of: personal, work, newsletter, spam — and move it to that folder."
+		}
+	],
+	"complexity": "medium",
+	"tags": ["event-triggered", "single-llm-transform"],
+	"datasets": ["agents"],
+	"intentExpectation": {
+		"context": "standalone",
+		"accepts": [{ "anchor": "wf", "embedsOther": false }],
+		"rationale": "LLM as fixed-label classifier + deterministic move.",
+		"source": "synthetic"
+	}
+}

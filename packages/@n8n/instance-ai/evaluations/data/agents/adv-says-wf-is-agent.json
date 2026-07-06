@@ -1,0 +1,21 @@
+{
+	"description": "Adversarial: says 'workflow'; chat + open Q&A is agent-shaped.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Set up a simple workflow that chats with our customers and answers their product questions."
+		}
+	],
+	"complexity": "medium",
+	"tags": ["false-friend", "surface-vocab"],
+	"datasets": ["agents"],
+	"intentExpectation": {
+		"context": "standalone",
+		"accepts": [
+			{ "anchor": "agent", "embedsOther": false },
+			{ "anchor": "agent", "embedsOther": true }
+		],
+		"rationale": "Says 'workflow'; chat + open Q&A is agent-shaped.",
+		"source": "synthetic-adversarial"
+	}
+}

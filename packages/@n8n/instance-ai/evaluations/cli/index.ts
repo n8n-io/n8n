@@ -69,6 +69,8 @@ import {
 	runWithConcurrency,
 	type BuildResult,
 } from '../harness/runner';
+import { intentUnitLabels, judgeIntentForBuild } from '../intent/run';
+import { computeIntentSummary, formatIntentSummaryMarkdown } from '../intent/summary';
 import {
 	BUILD_ONLY_SCENARIO_NAME,
 	syncDataset,
@@ -80,6 +82,7 @@ import { writeRunDebugReport } from '../report/run-debug-report';
 import { writeWorkflowReport } from '../report/workflow-report';
 import type {
 	BuildExpectationResult,
+	IntentCaseGrade,
 	MultiRunEvaluation,
 	ExecutionScenario,
 	TranscriptTurn,
@@ -314,6 +317,11 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 	// Fired during getOrBuild, awaited before reshapeLangSmithRuns.
 	const buildExpectationsByKey = new Map<string, Promise<BuildExpectationResult[]>>();
 	const runDebugByThreadId = new Map<string, Promise<InstanceAiRunDebugResponse[]>>();
+	// Intent-resolution grade per build, keyed the same as buildExpectationsByKey — its
+	// verdicts are merged into that same array (see stashBuildExpectations), but the
+	// structured grade itself is tracked separately so reshapeLangSmithRuns can attach
+	// it to `WorkflowTestCaseResult.intentGrade` for the intent summary.
+	const intentGradeByKey = new Map<string, Promise<IntentCaseGrade>>();
 
 	// LangSmith dataset rows carry only per-scenario fields. The build-side
 	// fields (conversation, expectations, declared credentials) are sourced
@@ -518,20 +526,49 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			isPrebuilt,
 			logger,
 		});
-		if (expectations.length === 0) return;
+
+		const expectationsPromise: Promise<BuildExpectationResult[]> =
+			expectations.length > 0
+				? verifyBuildExpectations(expectations, {
+						transcript,
+						workflowJson: build.workflowJsons[0],
+						metrics: build.conversationMetrics,
+					}).catch((error: unknown) =>
+						allFailVerdicts(
+							expectations,
+							`judge error: ${error instanceof Error ? error.message : String(error)}`,
+						),
+					)
+				: Promise.resolve<BuildExpectationResult[]>([]);
+
+		// Structured intent-resolution grading rides the same buildExpectationsByKey
+		// array (see collectExpectations, which appends its unit labels), but the
+		// grade itself is also tracked separately for the intent summary.
+		const intentPromise = testCase.intentExpectation
+			? judgeIntentForBuild(testCase, build.transcript).catch((error: unknown) => {
+					const message = error instanceof Error ? error.message : String(error);
+					logger.warn(`  Intent judge errored: ${message}`);
+					return {
+						verdicts: allFailVerdicts(intentUnitLabels(testCase), `judge error: ${message}`),
+						grade: { parts: [], parseError: message } satisfies IntentCaseGrade,
+					};
+				})
+			: undefined;
+
+		if (expectations.length === 0 && !intentPromise) return;
+
 		buildExpectationsByKey.set(
 			key,
-			verifyBuildExpectations(expectations, {
-				transcript,
-				workflowJson: build.workflowJsons[0],
-				metrics: build.conversationMetrics,
-			}).catch((error: unknown) =>
-				allFailVerdicts(
-					expectations,
-					`judge error: ${error instanceof Error ? error.message : String(error)}`,
-				),
+			Promise.all([expectationsPromise, intentPromise ?? Promise.resolve(undefined)]).then(
+				([base, intentResult]) => [...base, ...(intentResult?.verdicts ?? [])],
 			),
 		);
+		if (intentPromise) {
+			intentGradeByKey.set(
+				key,
+				intentPromise.then((r) => r.grade),
+			);
+		}
 	}
 
 	const target = async (inputs: TargetInputs): Promise<TargetOutput> => {
@@ -767,6 +804,10 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 		for (const [threadId, runDebugPromise] of runDebugByThreadId) {
 			runDebugResolved.set(threadId, await runDebugPromise);
 		}
+		const intentGradeResolved = new Map<string, IntentCaseGrade>();
+		for (const [key, gradePromise] of intentGradeByKey) {
+			intentGradeResolved.set(key, await gradePromise);
+		}
 		const allRunResults = reshapeLangSmithRuns(
 			experimentResults.results,
 			testCasesWithFiles,
@@ -775,6 +816,7 @@ async function runWithLangSmith(config: RunConfig): Promise<{
 			buildExpectationsResolved,
 			lanes[0]?.baseUrl,
 			runDebugResolved,
+			intentGradeResolved,
 		);
 		const evaluation = aggregateResults(allRunResults, args.iterations);
 
@@ -1191,6 +1233,7 @@ function writeEvalResults(
 	const result = outcome?.kind === 'ok' ? outcome.result : undefined;
 
 	const checksSummary = aggregateWorkflowChecks(evaluation);
+	const intentSummary = computeIntentSummary(evaluation);
 
 	const report = {
 		timestamp: new Date().toISOString(),
@@ -1206,6 +1249,10 @@ function writeEvalResults(
 			passRatePerIter: metrics.passRatePerIter,
 			...(checksSummary ? { workflowChecks: checksSummary } : {}),
 		},
+		// Regression tracker for the anchor/embeds_other intent-resolution eval —
+		// informational only, `agents` is not in GATED_TIERS. Undefined when no
+		// case in this run carries an `intentExpectation`.
+		intentSummary,
 		// Structured comparison payload only — the rendered markdown lives in
 		// the sibling `eval-pr-comment.md` file so consumers can pick the format
 		// they want without re-running the eval. `comparisonStatus` records why
@@ -1267,10 +1314,16 @@ function writeEvalResults(
 	// both with-comparison and no-baseline cases. CI consumes this file
 	// directly; local users get a copy-pasteable artifact.
 	const prCommentPath = join(targetDir, 'eval-pr-comment.md');
-	writeFileSync(
-		prCommentPath,
-		formatComparisonMarkdown(evaluation, outcome, { commitSha, slugByTestCase, rerun, gate }),
-	);
+	const comparisonMarkdown = formatComparisonMarkdown(evaluation, outcome, {
+		commitSha,
+		slugByTestCase,
+		rerun,
+		gate,
+	});
+	const prComment = intentSummary
+		? `${comparisonMarkdown}\n\n${formatIntentSummaryMarkdown(intentSummary)}\n`
+		: comparisonMarkdown;
+	writeFileSync(prCommentPath, prComment);
 
 	return { jsonPath, prCommentPath };
 }

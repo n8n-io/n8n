@@ -1,0 +1,18 @@
+{
+	"description": "Intent resolution: agent outer shell; actions are explicitly first-class reusable wf-tools.",
+	"conversation": [
+		{
+			"role": "user",
+			"text": "Customer support agent that can look up orders from Postgres, issue refunds via our billing service, and escalate to a Zendesk ticket. The lookup, refund, and escalation should be reusable workflows we can also trigger manually elsewhere."
+		}
+	],
+	"complexity": "simple",
+	"tags": ["chat", "wf-tools", "reusable-actions"],
+	"datasets": ["agents"],
+	"intentExpectation": {
+		"context": "standalone",
+		"accepts": [{ "anchor": "agent", "embedsOther": true }],
+		"rationale": "Agent outer shell; actions are explicitly first-class reusable wf-tools.",
+		"source": "synthetic"
+	}
+}
