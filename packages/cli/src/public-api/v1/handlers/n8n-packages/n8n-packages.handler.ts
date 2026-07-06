@@ -150,10 +150,6 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 			let folderId: string | undefined;
 
 			try {
-				assertPackageImportApiKeyScopes(req);
-
-				const packageFile = resolveImportPackageUpload(req);
-
 				const payload = ImportPackageRequestDto.safeParse(req.body ?? {});
 				if (!payload.success) {
 					throw new BadRequestError(payload.error.errors.map(({ message }) => message).join('; '));
@@ -161,6 +157,10 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 
 				projectId = payload.data.projectId;
 				folderId = payload.data.folderId;
+
+				assertPackageImportApiKeyScopes(req);
+
+				const packageFile = resolveImportPackageUpload(req);
 
 				const result = await Container.get(N8nPackagesService).importPackage({
 					user: req.user,

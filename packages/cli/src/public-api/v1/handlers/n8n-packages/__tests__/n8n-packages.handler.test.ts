@@ -323,7 +323,7 @@ describe('n8n-packages handler', () => {
 	});
 
 	describe('importPackage', () => {
-		it('throws ForbiddenError and emits access-denied when the API key lacks workflow:import scope', async () => {
+		it('throws ForbiddenError and emits access-denied with the requested projectId when the API key lacks workflow:import scope', async () => {
 			const caught = await runImport(
 				makeImportRequest({ projectId: 'proj-brie' }, ['project:export']),
 				makeResponse(),
@@ -334,17 +334,22 @@ describe('n8n-packages handler', () => {
 			expect(emittedEvent('n8n-package-import-failed')).toEqual({
 				user: { id: 'user-1' },
 				reason: 'access-denied',
+				projectId: 'proj-brie',
 			});
 		});
 
-		it('throws BadRequestError and emits validation when the multipart package file is missing', async () => {
+		it('throws BadRequestError and emits validation with the requested projectId when the multipart package file is missing', async () => {
 			const caught = await runImport(
-				makeImportRequest({}, ['workflow:import'], []),
+				makeImportRequest({ projectId: 'proj-brie' }, ['workflow:import'], []),
 				makeResponse(),
 			);
 
 			expect(caught).toBeInstanceOf(BadRequestError);
-			expect(emittedEvent('n8n-package-import-failed')).toMatchObject({ reason: 'validation' });
+			expect(emittedEvent('n8n-package-import-failed')).toEqual({
+				user: { id: 'user-1' },
+				reason: 'validation',
+				projectId: 'proj-brie',
+			});
 		});
 
 		it('throws BadRequestError and emits validation when workflowConflictPolicy is missing', async () => {
@@ -400,7 +405,7 @@ describe('n8n-packages handler', () => {
 			expect(emittedEvent('n8n-package-import-failed')).toMatchObject({ reason: 'blocked' });
 		});
 
-		it('omits projectId/folderId from the audit event when parsing fails before they are read', async () => {
+		it('omits projectId/folderId from the audit event when the caller never sent them', async () => {
 			const caught = await runImport(
 				makeImportRequest({ workflowConflictPolicy: 'not-a-real-policy' }, ['workflow:import']),
 				makeResponse(),
