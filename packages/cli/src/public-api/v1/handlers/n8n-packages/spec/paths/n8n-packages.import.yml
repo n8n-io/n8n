@@ -119,6 +119,21 @@ post:
                 `publish-all` publishes every imported workflow.
                 `unpublish-all` leaves new workflows inactive and unpublishes
                 updated workflows that were published.
+            folderConflictPolicy:
+              type: string
+              enum:
+                - new-version
+                - fail
+                - skip
+              default: new-version
+              description: >
+                Controls what happens when a package folder (matched by id in the
+                target project) already exists at the same position. `new-version`
+                (default) updates it in place, `fail` rejects the import, and `skip`
+                leaves it unchanged. A folder whose id exists under a different parent,
+                or belongs to another project, always blocks the import. Requires the
+                `folder:create` scope and a license that supports folders when the
+                package contains folders.
   responses:
     '200':
       description: Import succeeded; the listed workflows were written to the target project.
@@ -129,6 +144,8 @@ post:
             required:
               - package
               - workflows
+              - folders
+              - projects
               - bindings
               - credentials
             properties:
@@ -233,6 +250,64 @@ post:
                         - updated
                         - skipped
                       description: Import outcome for this package workflow.
+              folders:
+                type: array
+                description: Folder shells created, updated, or skipped in the target project.
+                items:
+                  type: object
+                  required:
+                    - sourceFolderId
+                    - localId
+                    - name
+                    - parentFolderId
+                    - status
+                  properties:
+                    sourceFolderId:
+                      type: string
+                      description: Folder id as it appeared in the package.
+                    localId:
+                      type: string
+                      description: Folder id on the target instance (equal to `sourceFolderId`; folder ids are reused).
+                    name:
+                      type: string
+                    parentFolderId:
+                      type: string
+                      nullable: true
+                      description: Resolved parent folder on the target, or `null` at the project root.
+                    status:
+                      type: string
+                      enum:
+                        - created
+                        - updated
+                        - skipped
+                      description: Import outcome for this package folder.
+              projects:
+                type: array
+                description: >
+                  Project shells created or matched-and-updated. Present for project
+                  packages; empty when importing loose workflows/folders.
+                items:
+                  type: object
+                  required:
+                    - sourceProjectId
+                    - localId
+                    - name
+                    - status
+                  properties:
+                    sourceProjectId:
+                      type: string
+                      description: Project id as it appeared in the package.
+                    localId:
+                      type: string
+                      description: Project id on the target instance (equal to `sourceProjectId`; project ids are reused).
+                    name:
+                      type: string
+                    status:
+                      type: string
+                      enum:
+                        - created
+                        - updated
+                      description: Import outcome for this package project.
               credentials:
                 type: object
                 description: >
@@ -280,8 +355,9 @@ post:
                       type: string
     '409':
       description: >
-        Import blocked, with at least one workflow source-id conflict among the
-        issues.
+        Import blocked by at least one conflict among the issues — a workflow
+        source-id conflict or a folder conflict (id under a different parent, id
+        owned by another project, or a `fail`-policy match).
       content:
         application/json:
           schema:

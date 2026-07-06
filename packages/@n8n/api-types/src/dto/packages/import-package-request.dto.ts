@@ -12,6 +12,7 @@ export const IMPORT_PACKAGE_REQUEST_FORM_FIELDS = [
 	'workflowConflictPolicy',
 	'workflowPublishingPolicy',
 	'workflowIdPolicy',
+	'folderConflictPolicy',
 ] as const;
 
 /** Multipart text fields: empty / whitespace-only values become `undefined`. */
@@ -74,4 +75,5 @@ export class ImportPackageRequestDto extends Z.class({
 		.optional()
 		.default('preserve-published-state'),
 	workflowIdPolicy: z.enum(['new', 'source']).optional().default('new'),
+	folderConflictPolicy: z.enum(['new-version', 'fail', 'skip']).optional().default('new-version'),
 }) {}

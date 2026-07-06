@@ -32,6 +32,7 @@ import { initNodeTypes } from '@test-integration/utils';
 import { TarPackageWriter } from '../io/tar/tar-package-writer';
 import { N8nPackagesService } from '../n8n-packages.service';
 import {
+	FolderConflictPolicy,
 	WorkflowConflictPolicy,
 	WorkflowIdPolicy,
 	WorkflowPublishingPolicy,
@@ -57,6 +58,7 @@ type ImportPackageParams = Omit<
 	| 'workflowConflictPolicy'
 	| 'workflowPublishingPolicy'
 	| 'workflowIdPolicy'
+	| 'folderConflictPolicy'
 > &
 	Partial<
 		Pick<
@@ -67,6 +69,7 @@ type ImportPackageParams = Omit<
 			| 'workflowConflictPolicy'
 			| 'workflowPublishingPolicy'
 			| 'workflowIdPolicy'
+			| 'folderConflictPolicy'
 		>
 	>;
 
@@ -77,6 +80,7 @@ async function importPackage(params: ImportPackageParams) {
 		workflowConflictPolicy: WorkflowConflictPolicy.Fail,
 		workflowPublishingPolicy: WorkflowPublishingPolicy.PreservePublishedState,
 		workflowIdPolicy: WorkflowIdPolicy.New,
+		folderConflictPolicy: FolderConflictPolicy.NewVersion,
 		...params,
 	});
 }

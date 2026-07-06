@@ -18,6 +18,21 @@ flowchart LR
   A --> C["4. CLI<br/>@n8n/cli"]
 ```
 
+### Importer rules
+- Importers **plan and decide**; they must never touch a repository directly. All persistence and
+  lookups go through a **service**.
+- Prefer an **existing** domain service from the main n8n codebase (`FolderService`, `ProjectService`,
+  `WorkflowService`, …). When the importer needs a capability the service lacks — reusing a source id,
+  or a fetch-by-ids for matching — **extend that existing service with a general method** rather than
+  reaching for the repository or spinning up an import-only service. Canonical examples:
+  `ProjectService.createTeamProject(data, overrides)` (preset id + description) and
+  `FolderService.createFolder(dto, projectId, id?)` / `FolderService.getFoldersByIds(ids)`.
+- The pipeline is a thin **dispatcher**: it reads the manifest and delegates to a per-package-shape
+  importer (`ProjectPackageImporter` / `WorkflowPackageImporter`). Package shapes mirror export's
+  mutual exclusivity — a **project package** (projects defined by the package) vs a **workflow package**
+  (loose workflows + their folders + credential deps into a target project). Don't split folder vs
+  workflow: they share target resolution, credential resolution, and publishing.
+
 ### Adding an IMPORT property
 
 1. **Module** (here)

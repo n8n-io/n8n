@@ -122,6 +122,7 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 
 			const result = await Container.get(N8nPackagesService).importPackage({
 				user: req.user,
+				apiKeyScopes: req.tokenGrant?.apiKeyScopes,
 				projectId: payload.data.projectId,
 				folderId: payload.data.folderId,
 				credentialMatchingMode: payload.data.credentialMatchingMode,
@@ -130,6 +131,7 @@ const n8nPackagesHandlers: N8nPackagesHandlers = {
 				workflowConflictPolicy: payload.data.workflowConflictPolicy,
 				workflowPublishingPolicy: payload.data.workflowPublishingPolicy,
 				workflowIdPolicy: payload.data.workflowIdPolicy,
+				folderConflictPolicy: payload.data.folderConflictPolicy,
 				packageBuffer: packageFile.buffer,
 			});
 			return res.status(200).json(result);

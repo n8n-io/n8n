@@ -12,6 +12,7 @@ describe('ImportPackageRequestDto', () => {
 				workflowConflictPolicy: 'fail',
 				workflowPublishingPolicy: 'preserve-published-state',
 				workflowIdPolicy: 'new',
+				folderConflictPolicy: 'new-version',
 			});
 		}
 	});
@@ -31,6 +32,7 @@ describe('ImportPackageRequestDto', () => {
 				workflowConflictPolicy: 'fail',
 				workflowPublishingPolicy: 'preserve-published-state',
 				workflowIdPolicy: 'new',
+				folderConflictPolicy: 'new-version',
 			});
 		}
 	});
@@ -52,6 +54,7 @@ describe('ImportPackageRequestDto', () => {
 				workflowConflictPolicy: 'new-version',
 				workflowPublishingPolicy: 'preserve-published-state',
 				workflowIdPolicy: 'new',
+				folderConflictPolicy: 'new-version',
 			});
 		}
 	});
@@ -72,6 +75,7 @@ describe('ImportPackageRequestDto', () => {
 				workflowConflictPolicy: 'skip',
 				workflowPublishingPolicy: 'preserve-published-state',
 				workflowIdPolicy: 'new',
+				folderConflictPolicy: 'new-version',
 			});
 		}
 	});

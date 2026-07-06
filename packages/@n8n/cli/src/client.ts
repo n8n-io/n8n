@@ -16,6 +16,7 @@ export interface ImportPackageFields {
 	credentialMissingMode?: string;
 	workflowConflictPolicy: string;
 	workflowIdPolicy?: string;
+	folderConflictPolicy?: string;
 }
 
 export class ApiError extends Error {
