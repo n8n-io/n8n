@@ -102,21 +102,30 @@ export class ModuleRegistry {
 		}
 
 		for (const moduleName of modules ?? this.eligibleModules) {
+			const modulePath = path.join(modulesDir, moduleName);
+			const eeModulePath = path.join(modulesDir, `${moduleName}.ee`);
+
+			if (!existsSync(modulePath) && !existsSync(eeModulePath)) {
+				this.logger.debug(`Module "${moduleName}" not found, skipping`);
+				continue;
+			}
+
 			try {
 				await import(`${modulesDir}/${moduleName}/${moduleName}.module`);
 			} catch (primaryError) {
-				try {
-					await import(`${modulesDir}/${moduleName}.ee/${moduleName}.module`);
-				} catch (error) {
-					const loggedError =
-						primaryError instanceof Error &&
-						'code' in primaryError &&
-						primaryError.code !== 'MODULE_NOT_FOUND'
-							? primaryError
-							: error;
+				// Only try .ee fallback if primary module directory doesn't exist
+				// This prevents misleading errors when primary module exists but has dependency issues
+				if (!existsSync(modulePath)) {
+					try {
+						await import(`${modulesDir}/${moduleName}.ee/${moduleName}.module`);
+					} catch (error) {
+						throw new MissingModuleError(moduleName, error instanceof Error ? error.message : '');
+					}
+				} else {
+					// Primary module directory exists but import failed - report the actual error
 					throw new MissingModuleError(
 						moduleName,
-						loggedError instanceof Error ? loggedError.message : '',
+						primaryError instanceof Error ? primaryError.message : '',
 					);
 				}
 			}
