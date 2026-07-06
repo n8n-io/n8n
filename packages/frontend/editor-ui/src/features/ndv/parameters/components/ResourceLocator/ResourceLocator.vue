@@ -56,6 +56,8 @@ import {
 import { completeExpressionSyntax } from '@/app/utils/expressions';
 import { DEBOUNCE_TIME, ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
+import { DATA_TABLE_NODES } from '@/app/constants/nodeTypes';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import FromAiOverrideButton from '../ParameterInputOverrides/FromAiOverrideButton.vue';
 import FromAiOverrideField from '../ParameterInputOverrides/FromAiOverrideField.vue';
@@ -160,6 +162,7 @@ const ndvStore = injectNDVStore();
 const rootStore = useRootStore();
 const uiStore = useUIStore();
 const projectsStore = useProjectsStore();
+const dataTableStore = useDataTableStore();
 const workflowDocumentStore = injectWorkflowDocumentStore();
 const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
 
@@ -186,6 +189,8 @@ const selectedMode = computed(() => {
 });
 
 const isListMode = computed(() => selectedMode.value === 'list');
+
+const isDataTableNode = computed(() => !!props.node && DATA_TABLE_NODES.includes(props.node.type));
 
 /**
  * Check if the current response contains an error that indicates a credential issue.
@@ -268,6 +273,18 @@ const urlValue = computedAsync(async () => {
 		if (typeof valueToDisplay.value === 'string' && valueToDisplay.value.startsWith('http')) {
 			return valueToDisplay.value;
 		}
+	}
+
+	// Data table nodes have no url template, so resolve a link from the id by
+	// looking the table up — only link it when it actually exists for the user.
+	if (isDataTableNode.value && selectedMode.value === 'id') {
+		// Use the resolved value for expressions, but only if it's a concrete id —
+		// an unresolved template (still containing `{{ }}`) can't identify a table.
+		const raw = props.isValueExpression ? props.expressionComputedValue : valueToDisplay.value;
+		const id = typeof raw === 'string' ? raw.trim() : '';
+		if (!id || id.includes('{{') || id.includes('}}')) return null;
+		const table = await dataTableStore.fetchDataTableById(id);
+		return table ? `/projects/${table.projectId}/datatables/${table.id}` : null;
 	}
 
 	if (currentMode.value.url) {
