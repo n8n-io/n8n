@@ -540,20 +540,21 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 							resourceLabel: 'Workflow source file',
 						});
 						const retried = await compileWorkflowSource(context, filePath, recovery.source);
-						if (retried.success) {
-							sourceCode = recovery.source;
-							sourceHash = hashWorkflowSource(recovery.source);
-							compiled = {
-								...retried,
-								warnings: [
-									...retried.warnings,
-									{
-										code: 'auto_imported_sdk_symbols',
-										message: `Auto-added missing @n8n/workflow-sdk import(s): ${recovery.symbols.join(', ')}. Include them in future source.`,
-									},
-								],
-							};
-						}
+						// The corrected source is on disk; keep reported errors/hash in sync with it.
+						sourceCode = recovery.source;
+						sourceHash = hashWorkflowSource(recovery.source);
+						compiled = retried.success
+							? {
+									...retried,
+									warnings: [
+										...retried.warnings,
+										{
+											code: 'auto_imported_sdk_symbols',
+											message: `Auto-added missing @n8n/workflow-sdk import(s): ${recovery.symbols.join(', ')}. Include them in future source.`,
+										},
+									],
+								}
+							: retried;
 					} catch (error) {
 						context.logger.debug('Auto-import recovery failed; returning original errors', {
 							error: error instanceof Error ? error.message : String(error),

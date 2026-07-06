@@ -1046,12 +1046,13 @@ describe('autoImportMissingSdkSymbols', () => {
 });
 
 describe('auto-import recovery on compile failure', () => {
-	beforeEach(() => {
+	beforeEach(async () => {
 		vi.clearAllMocks();
-		vi.mocked(partitionWarnings).mockImplementation((warnings: ValidationWarning[]) => ({
-			errors: [],
-			informational: warnings,
-		}));
+		// Real classifier: guards that auto_imported_sdk_symbols stays informational.
+		const actual = await vi.importActual<{ partitionWarnings: typeof partitionWarnings }>(
+			'../workflow-validation-warnings',
+		);
+		vi.mocked(partitionWarnings).mockImplementation(actual.partitionWarnings);
 		vi.mocked(analyzeWorkflow).mockResolvedValue([]);
 	});
 
@@ -1082,6 +1083,27 @@ describe('auto-import recovery on compile failure', () => {
 		expect(result.warnings?.join('\n')).toContain(
 			'Auto-added missing @n8n/workflow-sdk import(s): expr',
 		);
+		expect(compileWorkflowSource).toHaveBeenCalledTimes(2);
+	});
+
+	it('returns the retried errors when the recovery retry still fails', async () => {
+		const source = "export default workflow('id', 'n').add(t).to(s);";
+		const { context, files, filePath } = makeContext({ source });
+
+		vi.mocked(compileWorkflowSource)
+			.mockResolvedValueOnce(workflowSourceBuildFailure('ReferenceError: expr is not defined'))
+			.mockResolvedValueOnce(workflowSourceBuildFailure("Cannot find name 'unrelated'"));
+
+		const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+			filePath,
+			name: 'Still Broken Workflow',
+		});
+
+		expect(result.success).toBe(false);
+		// Errors describe the persisted (import-injected) file, not the original source.
+		expect(result.errors?.join('\n')).toContain("Cannot find name 'unrelated'");
+		expect(result.errors?.join('\n')).not.toContain('expr is not defined');
+		expect(files.get(filePath)).toContain("import { expr } from '@n8n/workflow-sdk';");
 		expect(compileWorkflowSource).toHaveBeenCalledTimes(2);
 	});
 
