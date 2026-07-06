@@ -250,7 +250,10 @@ test.describe(
 			},
 		);
 
-		test(
+		// Skipped on this release branch: the recorded proxy fixtures for this flow
+		// are coupled to master's Instance AI agent, which differs here, so the
+		// request never matches a recording. Covered on master.
+		test.skip(
 			'should show approval panel and deny workflow execution',
 			{
 				annotation: [
