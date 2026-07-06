@@ -12,6 +12,8 @@ import { CredentialImporter } from '../credential-importer';
 import { CredentialMatcherFactory } from '../credential-matcher-factory';
 import type { CredentialBindingRequest, CredentialResolutionFailure } from '../credential.types';
 import { IdBasedCredentialMatcher } from '../id-based-credential-matcher';
+import type { NameAndTypeCredentialMatcher } from '../name-and-type-credential-matcher';
+import type { TypeOnlyCredentialMatcher } from '../type-only-credential-matcher';
 
 type UsableCredential = Awaited<
 	ReturnType<CredentialsService['getCredentialsAUserCanUseInAWorkflow']>
@@ -81,7 +83,11 @@ describe('CredentialImporter', () => {
 			),
 		);
 		importer = new CredentialImporter(
-			new CredentialMatcherFactory(Container.get(IdBasedCredentialMatcher)),
+			new CredentialMatcherFactory(
+				Container.get(IdBasedCredentialMatcher),
+				mock<NameAndTypeCredentialMatcher>(),
+				mock<TypeOnlyCredentialMatcher>(),
+			),
 			credentialsService,
 		);
 	});

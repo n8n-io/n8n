@@ -36,7 +36,7 @@ export default class PackageImport extends BaseCommand {
 		}),
 		credentialMatchingMode: Flags.string({
 			description: 'How credential references are matched on the target instance',
-			options: ['id-only'],
+			options: ['id-only', 'name-and-type', 'type-only'],
 			aliases: ['credential-matching-mode'],
 		}),
 		credentialMissingMode: Flags.string({
