@@ -13,7 +13,6 @@ import { v4 as uuid } from 'uuid';
 import { Telemetry } from '@/telemetry';
 import { WorkflowService } from '@/workflows/workflow.service';
 
-import { v4 as uuid } from 'uuid';
 import z from 'zod';
 import { createWorkflow, createWorkflowHistoryVersion } from './mock.utils';
 import { searchWorkflows, createSearchWorkflowsTool } from '../tools/search-workflows.tool';
