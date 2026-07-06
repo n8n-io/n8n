@@ -140,7 +140,6 @@ const skillLoadOutputSchema = z.object({
 	hash: z.string().optional(),
 	category: z.string().optional(),
 	content: z.string().optional(),
-	instructions: z.string().optional(),
 	filePath: z.string().optional(),
 	bytes: z.number().optional(),
 	sha256: z.string().optional(),
@@ -308,7 +307,6 @@ async function loadSkill(
 		hash: skillEntry.hash,
 		category: skillEntry.category,
 		content,
-		instructions: content,
 		activation: activationEnvelope(skillEntry),
 		linkedFiles: skillEntry.linkedFiles,
 	};
