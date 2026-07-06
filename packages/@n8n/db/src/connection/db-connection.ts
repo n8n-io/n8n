@@ -6,7 +6,9 @@ import { DataSource } from '@n8n/typeorm';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { ErrorReporter } from 'n8n-core';
 import { DbConnectionTimeoutError } from 'n8n-workflow';
+import { setTimeout as setTimeoutP } from 'timers/promises';
 
+import { computeBackoff } from './backoff';
 import { DbConnectionMetrics } from './db-connection-metrics';
 import { DbConnectionMonitor } from './db-connection-monitor';
 import { DbConnectionOptions } from './db-connection-options';
@@ -61,20 +63,32 @@ export class DbConnection {
 			);
 		}
 
-		try {
-			await this.dataSource.initialize();
-		} catch (e) {
-			let error = ensureError(e);
-			if (
-				options.type === 'postgres' &&
-				error.message === 'Connection terminated due to connection timeout'
-			) {
-				error = new DbConnectionTimeoutError({
-					cause: error,
-					configuredTimeoutInMs: options.connectTimeoutMS!,
-				});
+		const { minRecoveryBackoffMs, maxRecoveryBackoffMs, startupConnectMaxRetries } =
+			this.databaseConfig;
+		const maxAttempts = startupConnectMaxRetries + 1;
+		for (let attempt = 1; ; attempt++) {
+			try {
+				await this.dataSource.initialize();
+				break;
+			} catch (e) {
+				let error = ensureError(e);
+				if (
+					options.type === 'postgres' &&
+					error.message === 'Connection terminated due to connection timeout'
+				) {
+					error = new DbConnectionTimeoutError({
+						cause: error,
+						configuredTimeoutInMs: options.connectTimeoutMS!,
+					});
+				}
+				if (attempt >= maxAttempts) throw error;
+
+				const backoff = computeBackoff(attempt, minRecoveryBackoffMs, maxRecoveryBackoffMs);
+				this.logger.warn(
+					`Initial database connection attempt ${attempt} failed: ${error.message}. Retrying in ${backoff}ms`,
+				);
+				await setTimeoutP(backoff);
 			}
-			throw error;
 		}
 
 		connectionState.connected = true;
