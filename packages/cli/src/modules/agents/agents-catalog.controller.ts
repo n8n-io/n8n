@@ -41,6 +41,7 @@ export class AgentsCatalogController {
 		}
 		return await this.agentModelCatalogService.getProviderModels(
 			req.user,
+			req.params.projectId,
 			provider,
 			query.credentialId,
 		);

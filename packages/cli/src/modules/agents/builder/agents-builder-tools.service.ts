@@ -674,7 +674,13 @@ export class AgentsBuilderToolsService {
 
 		const modelLookup: ModelLookup = {
 			list: async (credentialId, credentialType, lookup) =>
-				await this.builderModelLiveLookupService.list(user, credentialId, credentialType, lookup),
+				await this.builderModelLiveLookupService.list(
+					user,
+					projectId,
+					credentialId,
+					credentialType,
+					lookup,
+				),
 		};
 
 		const tools: BuiltTool[] = [

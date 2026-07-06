@@ -39,9 +39,10 @@ describe('AgentsCatalogController — getProviderModels', () => {
 
 	const req = mock<AuthenticatedRequest<{ projectId: string }>>({
 		user: { id: 'user-1' },
+		params: { projectId: 'project-1' },
 	});
 
-	it('delegates to the model catalog service with the user and credential', async () => {
+	it('delegates to the model catalog service with the user, project, and credential', async () => {
 		const { controller, modelCatalogService } = makeController();
 		const response = { provider: 'anthropic', verified: true, models: [] };
 		modelCatalogService.getProviderModels.mockResolvedValue(response);
@@ -53,6 +54,7 @@ describe('AgentsCatalogController — getProviderModels', () => {
 		expect(result).toBe(response);
 		expect(modelCatalogService.getProviderModels).toHaveBeenCalledWith(
 			req.user,
+			'project-1',
 			'anthropic',
 			'cred-1',
 		);

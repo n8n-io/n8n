@@ -66,7 +66,7 @@ describe('AgentModelCatalogService', () => {
 			{ name: 'Claude Sonnet 4.6', value: 'claude-sonnet-4-6' },
 		]);
 
-		const result = await service.getProviderModels(user, 'anthropic', credentialId);
+		const result = await service.getProviderModels(user, 'project-1', 'anthropic', credentialId);
 
 		expect(result.verified).toBe(true);
 		expect(result.models).toHaveLength(1);
@@ -77,6 +77,7 @@ describe('AgentModelCatalogService', () => {
 		});
 		expect(lookupService.list).toHaveBeenCalledWith(
 			user,
+			'project-1',
 			credentialId,
 			'anthropicApi',
 			expect.objectContaining({ kind: 'listSearch' }),
@@ -91,7 +92,7 @@ describe('AgentModelCatalogService', () => {
 			{ name: 'Claude Brand New', value: 'claude-brand-new' },
 		]);
 
-		const result = await service.getProviderModels(user, 'anthropic', credentialId);
+		const result = await service.getProviderModels(user, 'project-1', 'anthropic', credentialId);
 
 		expect(result.verified).toBe(true);
 		// Only the catalog-known model survives; the live-only one is never added.
@@ -104,7 +105,7 @@ describe('AgentModelCatalogService', () => {
 			{ name: 'models/gemini-2.5-flash', value: 'models/gemini-2.5-flash' },
 		]);
 
-		const result = await service.getProviderModels(user, 'google', credentialId);
+		const result = await service.getProviderModels(user, 'project-1', 'google', credentialId);
 
 		expect(result.models).toEqual([
 			expect.objectContaining({ id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash' }),
@@ -115,7 +116,7 @@ describe('AgentModelCatalogService', () => {
 		const { service, lookupService } = makeService();
 		lookupService.list.mockRejectedValue(new Error('provider is down'));
 
-		const result = await service.getProviderModels(user, 'anthropic', credentialId);
+		const result = await service.getProviderModels(user, 'project-1', 'anthropic', credentialId);
 
 		expect(result.verified).toBe(false);
 		expect(result.models.map((m) => m.id).sort()).toEqual(['claude-opus-4-0', 'claude-sonnet-4-6']);
@@ -124,7 +125,7 @@ describe('AgentModelCatalogService', () => {
 	it('falls back to the catalog list (verified: false) when no credential is provided', async () => {
 		const { service, lookupService } = makeService();
 
-		const result = await service.getProviderModels(user, 'anthropic', undefined);
+		const result = await service.getProviderModels(user, 'project-1', 'anthropic', undefined);
 
 		expect(result.verified).toBe(false);
 		expect(result.models).toHaveLength(2);
@@ -148,7 +149,7 @@ describe('AgentModelCatalogService', () => {
 			},
 		});
 
-		const result = await service.getProviderModels(user, 'aws-bedrock', credentialId);
+		const result = await service.getProviderModels(user, 'project-1', 'aws-bedrock', credentialId);
 
 		expect(result.verified).toBe(false);
 		expect(result.models).toHaveLength(1);
@@ -162,7 +163,7 @@ describe('AgentModelCatalogService', () => {
 			{ name: 'Claude Sonnet 4.6', value: 'claude-sonnet-4-6' },
 		]);
 
-		const result = await service.getProviderModels(user, 'anthropic', credentialId);
+		const result = await service.getProviderModels(user, 'project-1', 'anthropic', credentialId);
 
 		expect(result.verified).toBe(true);
 		expect(result.models).toEqual([
@@ -175,7 +176,7 @@ describe('AgentModelCatalogService', () => {
 		fetchProviderCatalog.mockRejectedValue(new Error('models.dev unreachable'));
 		lookupService.list.mockRejectedValue(new Error('provider is down'));
 
-		const result = await service.getProviderModels(user, 'anthropic', credentialId);
+		const result = await service.getProviderModels(user, 'project-1', 'anthropic', credentialId);
 
 		expect(result.verified).toBe(false);
 		expect(result.models).toEqual([]);

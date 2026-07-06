@@ -58,6 +58,7 @@ export class AgentModelCatalogService {
 
 	async getProviderModels(
 		user: User,
+		projectId: string,
 		provider: string,
 		credentialId?: string,
 	): Promise<AgentProviderModelsResponse> {
@@ -72,6 +73,7 @@ export class AgentModelCatalogService {
 		try {
 			liveModels = await this.builderModelLiveLookupService.list(
 				user,
+				projectId,
 				credentialId,
 				providerLookup.credentialType,
 				providerLookup.lookup,

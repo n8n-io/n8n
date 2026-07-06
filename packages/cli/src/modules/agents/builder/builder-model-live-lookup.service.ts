@@ -1,9 +1,8 @@
 import type { User } from '@n8n/db';
-import { ProjectRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { INodeCredentials, INodeParameters } from 'n8n-workflow';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { CredentialsService } from '@/credentials/credentials.service';
 import { NodeTypes } from '@/node-types';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import { getBase } from '@/workflow-execute-additional-data';
@@ -29,8 +28,7 @@ import type { ModelLookupConfig } from './interactive/llm-provider-defaults';
 @Service()
 export class BuilderModelLiveLookupService {
 	constructor(
-		private readonly credentialsFinderService: CredentialsFinderService,
-		private readonly projectRepository: ProjectRepository,
+		private readonly credentialsService: CredentialsService,
 		private readonly dynamicNodeParametersService: DynamicNodeParametersService,
 		private readonly nodeTypes: NodeTypes,
 	) {}
@@ -38,32 +36,34 @@ export class BuilderModelLiveLookupService {
 	/**
 	 * Fetch a provider's live model list by executing the corresponding LangChain
 	 * chat sub-node's list method with the given credential. Returns `{ name,
-	 * value }` pairs (value = the provider's model id). Throws if the credential
-	 * is missing/inaccessible or the node has no list config.
+	 * value }` pairs (value = the provider's model id). The credential must be
+	 * usable by the user within the given project (same set as the workflow
+	 * editor's credential picker); otherwise this throws, as it does when the
+	 * node has no list config.
 	 */
 	async list(
 		user: User,
+		projectId: string,
 		credentialId: string,
 		credentialType: string,
 		lookup: ModelLookupConfig,
 	): Promise<Array<{ name: string; value: string }>> {
-		const credential = await this.credentialsFinderService.findCredentialForUser(
-			credentialId,
+		const usableCredentials = await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(
 			user,
-			['credential:read'],
+			{ projectId },
 		);
+		const credential = usableCredentials.find((c) => c.id === credentialId);
 		if (!credential || credential.type !== credentialType) {
 			throw new Error(`Credential ${credentialId} not found or not accessible`);
 		}
 
-		const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(user.id);
 		const currentNodeParameters: INodeParameters = {};
 		const credentials: INodeCredentials = {
 			[credential.type]: { id: credential.id, name: credential.name },
 		};
 		const additionalData = await getBase({
 			userId: user.id,
-			projectId: personalProject.id,
+			projectId,
 			currentNodeParameters,
 		});
 		const nodeTypeAndVersion = { name: lookup.nodeType, version: lookup.version };
