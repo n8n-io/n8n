@@ -79,6 +79,46 @@ const modelField: INodeProperties = {
 
 const MIN_THINKING_BUDGET = 1024;
 const DEFAULT_MAX_TOKENS = 4096;
+
+/**
+ * Anthropic returns a 400 ("`temperature` is deprecated for this model") when non-default
+ * `temperature`/`top_p`/`top_k` are sent to newer-generation models — starting with Claude
+ * Opus 4.7, and now also Claude Sonnet 5 and Claude Fable. Anthropic's stated direction is to
+ * drop these sampling parameters from every new model going forward, so encoding "which models
+ * reject them" as a list would mean an edit on every future release.
+ *
+ * We instead allow-list the older models that still accept sampling parameters. That set is
+ * closed and only shrinks as legacy models retire, so it never needs proactive maintenance for
+ * new releases — an unrecognized `claude-*` model is assumed to reject them. Non-Claude model
+ * IDs (e.g. models proxied through an AI gateway) are always allowed through, since we can't
+ * know their capabilities from the name alone.
+ */
+function modelSupportsSamplingParams(modelName: string): boolean {
+	if (!modelName.startsWith('claude-')) {
+		return true;
+	}
+
+	if (
+		modelName.startsWith('claude-2') ||
+		modelName.startsWith('claude-instant') ||
+		modelName.startsWith('claude-3')
+	) {
+		return true;
+	}
+
+	if (modelName.startsWith('claude-sonnet-4') || modelName.startsWith('claude-haiku-4')) {
+		return true;
+	}
+
+	// Opus 4 through 4.6 (bare or with a dated suffix, e.g. "claude-opus-4-5-20251101") still
+	// accept sampling params; 4.7 and later ("claude-opus-4-7", "claude-opus-4-8", ...) don't.
+	if (/^claude-opus-4(-[0-6])?(-\d{8})?$/.test(modelName)) {
+		return true;
+	}
+
+	return false;
+}
+
 export class LmChatAnthropic implements INodeType {
 	methods = {
 		listSearch: {
@@ -287,7 +327,7 @@ export class LmChatAnthropic implements INodeType {
 						default: 0.7,
 						typeOptions: { maxValue: 1, minValue: 0, numberPrecision: 1 },
 						description:
-							'Controls randomness: Lowering results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive.',
+							'Controls randomness: Lowering results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. Not supported on newer Anthropic models (Claude Opus 4.7+, Claude Sonnet 5+) — ignored there.',
 						type: 'number',
 						displayOptions: {
 							hide: {
@@ -302,7 +342,7 @@ export class LmChatAnthropic implements INodeType {
 						default: -1,
 						typeOptions: { maxValue: 1, minValue: -1, numberPrecision: 1 },
 						description:
-							'Used to remove "long tail" low probability responses. Defaults to -1, which disables it.',
+							'Used to remove "long tail" low probability responses. Defaults to -1, which disables it. Not supported on newer Anthropic models (Claude Opus 4.7+, Claude Sonnet 5+) — ignored there.',
 						type: 'number',
 						displayOptions: {
 							hide: {
@@ -317,7 +357,7 @@ export class LmChatAnthropic implements INodeType {
 						default: 1,
 						typeOptions: { maxValue: 1, minValue: 0, numberPrecision: 1 },
 						description:
-							'Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered. We generally recommend altering this or temperature but not both.',
+							'Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered. We generally recommend altering this or temperature but not both. Not supported on newer Anthropic models (Claude Opus 4.7+, Claude Sonnet 5+) — ignored there.',
 						type: 'number',
 						displayOptions: {
 							hide: {
@@ -577,20 +617,45 @@ export class LmChatAnthropic implements INodeType {
 				}
 			: undefined;
 
+		// Backstop for the sampling-parameter deprecation that modelSupportsSamplingParams
+		// allow-lists against: catches the same 400 for gateway traffic (whose capabilities we
+		// can't inspect from the model name) and for any Claude model the allow-list doesn't yet
+		// account for, turning a generic "Bad request" into an actionable message.
+		const deprecatedSamplingParamErrorHandler = (error: unknown) => {
+			const message = error instanceof Error ? error.message : String(error);
+			const isDeprecatedSamplingParamError =
+				/(temperature|top_p|top_k).*(deprecated|not supported)/i.test(message);
+			if (isDeprecatedSamplingParamError) {
+				throw new NodeOperationError(
+					this.getNode(),
+					`The model "${modelName}" does not support the Sampling Temperature, Top K, or Top P options. Remove them from Options and try again.`,
+					{ itemIndex },
+				);
+			}
+		};
+
+		const failedAttemptHandler = (error: unknown) => {
+			gatewayErrorHandler?.(error);
+			deprecatedSamplingParamErrorHandler(error);
+		};
+
 		const chatAnthropicParams: ChatAnthropicInput = {
 			anthropicApiKey: credentials.apiKey,
 			model: modelName,
 			anthropicApiUrl: baseURL,
 			maxTokens: options.maxTokensToSample,
 			callbacks: [new N8nLlmTracing(this, { tokensUsageParser })],
-			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, gatewayErrorHandler),
+			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, failedAttemptHandler),
 			invocationKwargs,
 			clientOptions,
 			streaming: options.streaming ?? false,
 		};
 
-		// Opus 4.7 rejects temperature/topK/topP at the SDK layer regardless of thinking mode
-		if (!isOpus47Model) {
+		// Models that reject sampling params (see modelSupportsSamplingParams) get them silently
+		// dropped rather than erroring, for backwards compatibility: workflows built before a
+		// model existed (e.g. an Opus 4.7 node with Sampling Temperature already set) must keep
+		// running unchanged rather than start failing once that model rejects the parameter.
+		if (modelSupportsSamplingParams(modelName)) {
 			chatAnthropicParams.temperature = options.temperature;
 			chatAnthropicParams.topK = options.topK;
 			chatAnthropicParams.topP = options.topP;
