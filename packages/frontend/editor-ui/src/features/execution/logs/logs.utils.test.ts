@@ -2059,6 +2059,68 @@ describe('createLogTree with canvas groups', () => {
 		expect(subGroup.children.map((c) => expectNode(c).node.name)).toEqual(['S1', 'S2']);
 	});
 
+	it('gives repeated sub-executions of the same group distinct ids', () => {
+		// The same sub-workflow (with its own group) is called twice; each fold must get a unique
+		// id so collapsing/selecting one sub-execution's group doesn't affect the other.
+		const rootWorkflow = createTestWorkflowObject({
+			id: 'root-workflow-id',
+			nodes: [createTestNode({ id: 'A', name: 'A' })],
+		});
+		const subWorkflow = createTestWorkflowObject({
+			id: 'sub-workflow-id',
+			nodes: [createTestNode({ id: 'S1', name: 'S1' }), createTestNode({ id: 'S2', name: 'S2' })],
+			connections: {
+				S1: { main: [[{ node: 'S2', type: NodeConnectionTypes.Main, index: 0 }]] },
+			},
+		});
+		const rootResponse = createTestWorkflowExecutionResponse({
+			id: 'root-exec-id',
+			data: createRunExecutionData({
+				resultData: {
+					runData: {
+						A: [
+							taskAt(0, {
+								metadata: {
+									subExecution: { workflowId: 'sub-workflow-id', executionId: 'sub-exec-0' },
+								},
+							}),
+							taskAt(1, {
+								metadata: {
+									subExecution: { workflowId: 'sub-workflow-id', executionId: 'sub-exec-1' },
+								},
+							}),
+						],
+					},
+				},
+			}),
+		});
+		const subExecutionData = () =>
+			createRunExecutionData({
+				resultData: {
+					runData: {
+						S1: [taskAt(1)],
+						S2: [taskAt(2, { source: [{ previousNode: 'S1', previousNodeRun: 0 }] })],
+					},
+				},
+			});
+
+		const logs = createLogTree(
+			rootWorkflow,
+			rootResponse,
+			{ 'sub-workflow-id': subWorkflow },
+			{ 'sub-exec-0': subExecutionData(), 'sub-exec-1': subExecutionData() },
+			undefined,
+			[],
+			{ 'sub-workflow-id': [{ id: 'sub-group', name: 'Sub Group', nodeIds: ['S1', 'S2'] }] },
+		);
+
+		const firstGroup = expectGroup(logs[0].children[0]);
+		const secondGroup = expectGroup(logs[1].children[0]);
+		expect(firstGroup.group.id).toBe('sub-group');
+		expect(secondGroup.group.id).toBe('sub-group');
+		expect(firstGroup.id).not.toBe(secondGroup.id);
+	});
+
 	it('wraps a single executed member in a group row', () => {
 		const singleMemberGroup = { id: 'g-single', name: 'Solo', nodeIds: ['B'] };
 		const logs = createLogTree(createLinearWorkflow(), linearResponse(), {}, {}, undefined, [

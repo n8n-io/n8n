@@ -538,6 +538,8 @@ function groupContiguousEntries(entries: LogEntry[], context: LogTreeCreationCon
 		if (current === undefined || current.group.id !== group.id) {
 			const segmentIndex = segmentCountByGroup.get(group.id) ?? 0;
 			segmentCountByGroup.set(group.id, segmentIndex + 1);
+			// Ancestor run indexes (like node ids) keep repeated sub-executions of the same group distinct
+			const runPath = [...context.ancestorRunIndexes, segmentIndex].join(':');
 			current = {
 				type: 'group',
 				group,
@@ -545,7 +547,7 @@ function groupContiguousEntries(entries: LogEntry[], context: LogTreeCreationCon
 				hasError: false,
 				boundaries: { inputs: [], outputs: [] },
 				parent: context.parent,
-				id: `${context.workflow.id}:group:${group.id}:${segmentIndex}`,
+				id: `${context.workflow.id}:group:${group.id}:${runPath}`,
 				children: [],
 				runIndex: 0,
 				consumedTokens: emptyTokenUsageData,
