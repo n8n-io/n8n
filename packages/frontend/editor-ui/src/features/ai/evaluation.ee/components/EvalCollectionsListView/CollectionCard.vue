@@ -8,6 +8,7 @@ import type {
 	EvaluationCollectionDetail,
 	EvaluationCollectionRecord,
 } from '../../evalCollections.types';
+import { isScoreShapedMetric } from '../../evaluation.utils';
 import GroupedMetricChart from '../shared/GroupedMetricChart.vue';
 import VersionAvatar from '../shared/VersionAvatar.vue';
 
@@ -62,9 +63,15 @@ const lastRunRelative = computed<string | null>(() => {
 		d.getMonth() === today.getMonth() &&
 		d.getDate() === today.getDate();
 	const timeFmt = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-	if (sameDay) return `today, ${timeFmt}`;
+	if (sameDay) {
+		return i18n.baseText('evaluation.collections.card.lastRunToday', {
+			interpolate: { time: timeFmt },
+		});
+	}
 	const dateFmt = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-	return `${dateFmt}, ${timeFmt}`;
+	return i18n.baseText('evaluation.collections.card.lastRunOn', {
+		interpolate: { date: dateFmt, time: timeFmt },
+	});
 });
 
 // `EvaluationCollectionRunSummary` carries `workflowVersionId` (a UUID)
@@ -110,13 +117,13 @@ const groups = computed(() => {
 		}
 	}
 
-	const isScoreShaped = (key: string) =>
+	const isScoreShapedKey = (key: string) =>
 		runs.every((run) => {
 			const v = run.metrics?.[key];
-			return v === undefined || (typeof v === 'number' && v >= 0 && v <= 1);
+			return v === undefined || isScoreShapedMetric(v);
 		});
 
-	return order.filter(isScoreShaped).map((key) => ({
+	return order.filter(isScoreShapedKey).map((key) => ({
 		label: key,
 		values: runs.map((run) => {
 			const v = run.metrics?.[key];

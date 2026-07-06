@@ -310,5 +310,33 @@ describe('evalCollections.store', () => {
 			await vi.advanceTimersByTimeAsync(3000);
 			expect(getCollection).toHaveBeenCalledTimes(1);
 		});
+
+		it('does not re-arm if cleanup runs while a tick is in flight', async () => {
+			// A tick can be parked in its `await getCollection` when the user
+			// navigates away. Its continuation must not resurrect the loop into
+			// the map cleanup just emptied.
+			let resolveInFlight!: (detail: EvaluationCollectionDetail) => void;
+			const inFlight = new Promise<EvaluationCollectionDetail>((resolve) => {
+				resolveInFlight = resolve;
+			});
+
+			getCollection.mockResolvedValueOnce(RUNNING_DETAIL);
+			await store.fetchCollectionDetail('wf-1', 'col-1');
+			expect(getCollection).toHaveBeenCalledTimes(1);
+
+			// Next tick fires and parks on the unresolved request.
+			getCollection.mockReturnValueOnce(inFlight);
+			await vi.advanceTimersByTimeAsync(3000);
+			expect(getCollection).toHaveBeenCalledTimes(2);
+
+			// Teardown mid-flight, then let the request resolve (still running).
+			store.cleanupPolling();
+			resolveInFlight(RUNNING_DETAIL);
+			await flushPromises();
+
+			// The resolved tick bailed instead of re-arming — no further polls.
+			await vi.advanceTimersByTimeAsync(10000);
+			expect(getCollection).toHaveBeenCalledTimes(2);
+		});
 	});
 });

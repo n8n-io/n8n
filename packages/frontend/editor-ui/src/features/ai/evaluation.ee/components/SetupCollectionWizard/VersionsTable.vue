@@ -7,6 +7,7 @@ import { useRouter } from 'vue-router';
 import { VIEWS } from '@/app/constants';
 import type { EvalVersionEntry } from '../../evalCollections.types';
 import VersionAvatar from '../shared/VersionAvatar.vue';
+import { versionRowKey } from './versionRowKey';
 
 const props = defineProps<{
 	versions: EvalVersionEntry[];
@@ -38,9 +39,7 @@ const versionHref = (v: EvalVersionEntry) =>
 
 // Canonical key for a version row. `workflowVersionId === null` represents
 // the "Current draft" row — the server will snapshot it on submit, so we
-// must still be able to select it. Stringifying makes the key safe to use
-// in a Set without `null` collisions across rows.
-const rowKey = (v: EvalVersionEntry) => v.workflowVersionId ?? '__draft__';
+// must still be able to select it (see `versionRowKey`).
 
 interface Row {
 	key: string;
@@ -52,10 +51,10 @@ interface Row {
 
 const rows = computed<Row[]>(() =>
 	props.versions.map((version, idx) => ({
-		key: rowKey(version),
+		key: versionRowKey(version),
 		index: idx,
 		version,
-		checked: props.selectedVersionIds.has(rowKey(version)),
+		checked: props.selectedVersionIds.has(versionRowKey(version)),
 		href: versionHref(version),
 	})),
 );

@@ -10,8 +10,8 @@ import { useEvalCollectionsFlag } from '../composables/useEvalCollectionsFlag';
 import EvaluationsView from './EvaluationsView.vue';
 
 // Lazy-load the collections surface so the flag-off cohort (the 0%-rollout
-// default) never downloads the collections list, setup wizard, chart, and
-// drawer graph. The legacy view stays eager — it's what most users land on.
+// default) never downloads the collections list, setup wizard, and chart
+// graph. The legacy view stays eager — it's what most users land on.
 const EvalCollectionsListView = defineAsyncComponent(
 	async () => await import('./EvalCollectionsListView.vue'),
 );

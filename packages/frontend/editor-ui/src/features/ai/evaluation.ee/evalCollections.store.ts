@@ -17,6 +17,11 @@ import type {
 
 const POLL_INTERVAL_MS = 3000;
 
+// Give up after this many consecutive failed polls so a persistently-failing
+// collection (deleted elsewhere → 404, expired session → 401) doesn't hammer
+// the backend forever at the poll cadence.
+const MAX_POLL_FAILURES = 3;
+
 const isTerminal = (status: EvalCollectionRunStatus) =>
 	status === 'completed' || status === 'error' || status === 'cancelled';
 
@@ -33,10 +38,21 @@ export const useEvalCollectionsStore = defineStore(STORES.EVAL_COLLECTIONS, () =
 	const insightsByCollectionId = ref<Record<string, AiInsightsResponse>>({});
 	const versionsByConfigId = ref<Record<string, EvalVersionsResponse>>({});
 
-	// Per-collection polling timer ids. The poll loop owns the entry's
-	// lifecycle: it overwrites on each tick and the cleanup helper clears
-	// them, so a stale handle never fires after the user navigates away.
+	// Per-collection polling timer ids. Mutated in place (not ref-replaced like
+	// the other maps) — timer handles never render, so they need no reactivity.
 	const pollingTimeouts = ref<Record<string, ReturnType<typeof setTimeout>>>({});
+
+	// Monotonic token per collection. `stopPolling`/`cleanupPolling` bump it to
+	// invalidate any tick that is mid-`await`: clearing a timer handle can't
+	// cancel a request already in flight, so the tick re-checks its token after
+	// awaiting and bails (instead of re-arming a loop into an emptied map that
+	// would outlive the component). Plain Map — internal bookkeeping, not state.
+	const pollTokens = new Map<string, number>();
+	const nextPollToken = (collectionId: string) => {
+		const token = (pollTokens.get(collectionId) ?? 0) + 1;
+		pollTokens.set(collectionId, token);
+		return token;
+	};
 
 	const loadingCollections = ref(false);
 	const loadingDetail = ref<Record<string, boolean>>({});
@@ -254,13 +270,24 @@ export const useEvalCollectionsStore = defineStore(STORES.EVAL_COLLECTIONS, () =
 		// the helper in the same tick.
 		if (pollingTimeouts.value[collectionId]) return;
 
+		// Capture the token for this loop; if it's superseded (stop/cleanup, or
+		// a fresh startPolling), every check below short-circuits.
+		const token = nextPollToken(collectionId);
+		const isCurrent = () => pollTokens.get(collectionId) === token;
+		let failures = 0;
+
 		const tick = async () => {
+			if (!isCurrent()) return;
 			try {
 				const detail = await evalCollectionsApi.getCollection(
 					rootStore.restApiContext,
 					workflowId,
 					collectionId,
 				);
+				// The loop was torn down while this request was in flight — do not
+				// touch shared state or re-arm; that timer would outlive the view.
+				if (!isCurrent()) return;
+				failures = 0;
 				collectionDetailById.value = {
 					...collectionDetailById.value,
 					[collectionId]: detail,
@@ -275,8 +302,14 @@ export const useEvalCollectionsStore = defineStore(STORES.EVAL_COLLECTIONS, () =
 					delete pollingTimeouts.value[collectionId];
 				}
 			} catch {
-				// Keep polling on transient failures — the user navigates away
-				// via cleanupPolling() if needed.
+				if (!isCurrent()) return;
+				failures += 1;
+				if (failures >= MAX_POLL_FAILURES) {
+					// Stop hammering the backend on a persistent failure; the user
+					// can re-open the page to retry.
+					delete pollingTimeouts.value[collectionId];
+					return;
+				}
 				pollingTimeouts.value[collectionId] = setTimeout(tick, POLL_INTERVAL_MS);
 			}
 		};
@@ -285,6 +318,8 @@ export const useEvalCollectionsStore = defineStore(STORES.EVAL_COLLECTIONS, () =
 	};
 
 	const stopPolling = (collectionId: string) => {
+		// Bump the token first so an in-flight tick bails instead of re-arming.
+		nextPollToken(collectionId);
 		const handle = pollingTimeouts.value[collectionId];
 		if (handle) {
 			clearTimeout(handle);
@@ -293,6 +328,10 @@ export const useEvalCollectionsStore = defineStore(STORES.EVAL_COLLECTIONS, () =
 	};
 
 	const cleanupPolling = () => {
+		// Invalidate every known loop so in-flight ticks bail on resume.
+		for (const collectionId of pollTokens.keys()) {
+			nextPollToken(collectionId);
+		}
 		Object.values(pollingTimeouts.value).forEach((handle) => clearTimeout(handle));
 		pollingTimeouts.value = {};
 	};

@@ -1,5 +1,14 @@
 <script setup lang="ts">
-import { N8nButton, N8nDialog, N8nIcon, N8nInput, N8nText, N8nTooltip } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nDialog,
+	N8nIcon,
+	N8nInput,
+	N8nOption,
+	N8nSelect,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { computed, ref, watch } from 'vue';
 
@@ -10,6 +19,7 @@ import type { EvalCollectionVersionEntry, EvalVersionEntry } from '../../evalCol
 
 import DatasetPicker from './DatasetPicker.vue';
 import VersionsTable from './VersionsTable.vue';
+import { versionRowKey } from './versionRowKey';
 
 // State machine matches the setup flow. We collapse INITIAL/NAME_PROVIDED into
 // a single user-facing step ("fill the form"); the meaningful transitions are
@@ -40,6 +50,14 @@ const state = ref<WizardState>('collecting');
 // default — narrows by the `sourceLabel` returned on each version row.
 const sourceFilter = ref<string>('all');
 const sortOrder = ref<'recent' | 'oldest'>('recent');
+
+// N8nSelect emits a broadly-typed value; narrow it back to our refs.
+const onSourceChange = (value: string | number | boolean) => {
+	sourceFilter.value = String(value);
+};
+const onSortChange = (value: string | number | boolean) => {
+	sortOrder.value = value === 'oldest' ? 'oldest' : 'recent';
+};
 
 // Evaluation configs are owned by the evaluation store; each config maps to
 // one dataset in the picker. The collection pins `evaluationConfigId` so its
@@ -113,10 +131,8 @@ const visibleVersions = computed<EvalVersionEntry[]>(() => {
 	return sorted;
 });
 
-const rowKey = (v: EvalVersionEntry) => v.workflowVersionId ?? '__draft__';
-
 const selectedVersions = computed<EvalVersionEntry[]>(() =>
-	allVersions.value.filter((v) => selectedVersionKeys.value.has(rowKey(v))),
+	allVersions.value.filter((v) => selectedVersionKeys.value.has(versionRowKey(v))),
 );
 
 const selectedCount = computed(() => selectedVersionKeys.value.size);
@@ -302,29 +318,44 @@ const onSubmit = async () => {
 				</div>
 
 				<div :class="$style.tableControls">
-					<label :class="$style.controlChip">
+					<div :class="$style.controlChip">
 						<N8nText size="xsmall" color="text-light">
 							{{ i18n.baseText('evaluation.setup.versions.filter.source') }}
 						</N8nText>
-						<select v-model="sourceFilter" :class="$style.controlNative">
-							<option v-for="opt in sourceOptions" :key="opt.value" :value="opt.value">
-								{{ opt.label }}
-							</option>
-						</select>
-					</label>
-					<label :class="$style.controlChip">
+						<N8nSelect
+							:model-value="sourceFilter"
+							size="small"
+							:class="$style.controlSelect"
+							@update:model-value="onSourceChange"
+						>
+							<N8nOption
+								v-for="opt in sourceOptions"
+								:key="opt.value"
+								:value="opt.value"
+								:label="opt.label"
+							/>
+						</N8nSelect>
+					</div>
+					<div :class="$style.controlChip">
 						<N8nText size="xsmall" color="text-light">
 							{{ i18n.baseText('evaluation.setup.versions.sort.label') }}
 						</N8nText>
-						<select v-model="sortOrder" :class="$style.controlNative">
-							<option value="recent">
-								{{ i18n.baseText('evaluation.setup.versions.sort.recent') }}
-							</option>
-							<option value="oldest">
-								{{ i18n.baseText('evaluation.setup.versions.sort.oldest') }}
-							</option>
-						</select>
-					</label>
+						<N8nSelect
+							:model-value="sortOrder"
+							size="small"
+							:class="$style.controlSelect"
+							@update:model-value="onSortChange"
+						>
+							<N8nOption
+								value="recent"
+								:label="i18n.baseText('evaluation.setup.versions.sort.recent')"
+							/>
+							<N8nOption
+								value="oldest"
+								:label="i18n.baseText('evaluation.setup.versions.sort.oldest')"
+							/>
+						</N8nSelect>
+					</div>
 				</div>
 
 				<VersionsTable
@@ -440,21 +471,11 @@ const onSubmit = async () => {
 .controlChip {
 	display: inline-flex;
 	align-items: center;
-	gap: var(--spacing--3xs);
-	padding: var(--spacing--3xs) var(--spacing--2xs);
-	border: 1px solid var(--border-color--subtle);
-	border-radius: var(--radius--md);
-	background: var(--background--surface);
-	cursor: pointer;
+	gap: var(--spacing--2xs);
 }
 
-.controlNative {
-	border: none;
-	background: none;
-	font-size: var(--font-size--xs);
-	color: var(--text-color);
-	cursor: pointer;
-	padding: 0;
+.controlSelect {
+	min-width: 140px;
 }
 
 .metricsRow {

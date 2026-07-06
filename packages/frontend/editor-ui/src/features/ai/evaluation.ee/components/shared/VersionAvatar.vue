@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
+import { versionColorVar } from './versionPalette';
+
 // Identity for a version in a collection comparison. The same `index`
 // produces the same color across the wizard (avatar squares) and the
 // collection-list cards (legend dots) so users can map "A · baseline"
@@ -27,20 +29,7 @@ const label = computed(() => {
 	return String.fromCharCode(65 + first) + String.fromCharCode(65 + second);
 });
 
-// Palette tokens. Maps to semantic states so dark mode + brand changes
-// keep the avatars in step with the rest of the eval UI. Order chosen so
-// the first 3 hit "neutral / success / warn" which matches the Figma
-// frame's baseline / tone-tuned / temp 0.3 example.
-const PALETTE = [
-	'--color--neutral-800',
-	'--color--green-600',
-	'--color--orange-500',
-	'--color--blue-600',
-	'--color--purple-600',
-	'--color--red-600',
-] as const;
-
-const swatch = computed(() => `var(${PALETTE[props.index % PALETTE.length]})`);
+const swatch = computed(() => versionColorVar(props.index));
 </script>
 
 <template>

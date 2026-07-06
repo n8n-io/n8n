@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { N8nBadge, N8nText } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { computed } from 'vue';
 
 import type { TestRunRecord } from '../../evaluation.api';
+import { isScoreShapedMetric } from '../../evaluation.utils';
 
 const STATUS_PILL_THEME: Record<string, 'success' | 'warning' | 'danger' | 'tertiary'> = {
 	completed: 'success',
@@ -15,7 +16,7 @@ const STATUS_PILL_THEME: Record<string, 'success' | 'warning' | 'danger' | 'tert
 	warning: 'warning',
 };
 
-const STATUS_FRIENDLY_KEY: Record<string, string> = {
+const STATUS_FRIENDLY_KEY: Record<string, BaseTextKey> = {
 	completed: 'evaluation.collections.row.status.done',
 	success: 'evaluation.collections.row.status.done',
 	running: 'evaluation.collections.row.status.running',
@@ -37,14 +38,11 @@ const i18n = useI18n();
 // Average only score-shaped metrics (values in [0, 1]). Eval-config metrics
 // commonly co-exist with absolute counts (tokens, latency_ms) in the same
 // `metrics` map, and naively averaging across all of them produces nonsense
-// like `198431%` (mostly the token total). Filtering by range is a heuristic
-// but matches every score metric `evaluation.utils` recognizes today.
+// like `198431%` (mostly the token total).
 const score = computed<number | null>(() => {
 	const m = props.run.metrics;
 	if (!m) return null;
-	const values = Object.values(m).filter(
-		(v): v is number => typeof v === 'number' && v >= 0 && v <= 1,
-	);
+	const values = Object.values(m).filter(isScoreShapedMetric);
 	if (values.length === 0) return null;
 	return Math.round((values.reduce((a, b) => a + b, 0) / values.length) * 100);
 });
@@ -53,7 +51,7 @@ const statusTheme = computed(() => STATUS_PILL_THEME[props.run.status] ?? 'terti
 
 const statusLabel = computed(() => {
 	const key = STATUS_FRIENDLY_KEY[props.run.status];
-	if (key) return i18n.baseText(key as never);
+	if (key) return i18n.baseText(key);
 	return props.run.status;
 });
 
