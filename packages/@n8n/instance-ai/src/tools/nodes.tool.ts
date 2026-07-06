@@ -22,7 +22,7 @@ const METHOD_TYPE_DESCRIPTION =
 const CURRENT_NODE_PARAMETERS_DESCRIPTION =
 	'Current node parameters for dependent lookups — e.g. sheetsSearch needs documentId { __rl: true, mode: "id", value: "<spreadsheetId>" }. Check displayOptions in the type definition.';
 const NODE_TYPES_ARRAY_DESCRIPTION =
-	'Node type IDs for node-level lookups (max 5). For split nodes (e.g. Slack, Gmail, Google Sheets), pass the object form WITH resource/operation (or mode) discriminators when you know them — a bare string returns only an error listing the available discriminators.';
+	'Node type IDs for node-level lookups (max 5). For split nodes (e.g. Slack, Gmail, Google Sheets), pass the object form WITH resource/operation (or mode) discriminators when you know them — a bare string errors with the resource→operations index for resource/operation nodes, and returns all mode variants for mode-split nodes.';
 
 const listAction = z.object({
 	action: z.literal('list').describe('List available node types'),

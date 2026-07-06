@@ -128,7 +128,9 @@ function resolveResourceOperationFile(
 		const index = resources
 			.map((resource) => {
 				try {
-					const ops = readdirSync(safeJoinPath(nodeDir, targetVersion, `resource_${resource}`))
+					const ops = readdirSync(
+						safeJoinPath(nodeDir, targetVersion, `resource_${toSnakeCase(resource)}`),
+					)
 						.filter((f) => f.startsWith('operation_') && f.endsWith('.ts'))
 						.map((f) => f.replace('operation_', '').replace('.ts', ''));
 					return `${resource} (${ops.join(', ')})`;
