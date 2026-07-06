@@ -8,7 +8,6 @@ import { GenerateSink } from './generate-sink';
 import type { RunOutputSink, RunServices } from './run-output-sink';
 import { RuntimeContextBuilder, getModelIdString } from './runtime-context';
 import {
-	describeEmptyModelResponse,
 	extractSettledToolCalls,
 	makeErrorStream,
 	mergeUsage,
@@ -720,11 +719,10 @@ export class AgentRuntime {
 			sink.onTurnFolded?.();
 
 			if (turn.aiFinishReason !== 'tool-calls') {
-				// A rejected/filtered request (e.g. a Google prompt safety block)
+				// A rejected/filtered request (e.g. a provider prompt safety block)
 				// surfaces as an output-less turn instead of an SDK error — throw so
 				// the failure reaches the caller rather than ending the run silently.
-				const emptyResponseError = describeEmptyModelResponse(turn);
-				if (emptyResponseError) throw new Error(emptyResponseError);
+				if (turn.errorReason) throw new Error(turn.errorReason.message);
 				structuredOutput = turn.structuredOutput;
 				this.emitTurnEnd(turn.newMessages, extractSettledToolCalls(turn.newMessages));
 				reachedStopCondition = true;

@@ -6,7 +6,7 @@ import type {
 	RunServices,
 	SuspendEmission,
 } from './run-output-sink';
-import { mergeUsage } from './runtime-helpers';
+import { classifyModelTurnError, mergeUsage } from './runtime-helpers';
 import type { ExecutionOptions, TokenUsage } from '../../types/sdk/agent';
 import type { AgentMessage } from '../../types/sdk/message';
 import { loadAi } from '../model/lazy-ai';
@@ -180,16 +180,22 @@ export class StreamSink implements RunOutputSink<void> {
 		const usage = await result.usage;
 		const providerMetadata = await result.providerMetadata;
 		const response = await result.response;
+		const newMessages = fromAiMessages(response.messages);
+		const errorReason = classifyModelTurnError({
+			aiFinishReason,
+			newMessages,
+			promptBlockReason: this.promptBlockReason,
+		});
 
 		return {
 			aiFinishReason,
 			finishReason: fromAiFinishReason(aiFinishReason),
 			usage: toTokenUsage(usage, providerMetadata),
-			newMessages: fromAiMessages(response.messages),
+			newMessages,
 			toolCalls: await result.toolCalls,
 			structuredOutput:
 				ctx.outputSpec && aiFinishReason !== 'tool-calls' ? await result.output : undefined,
-			...(this.promptBlockReason && { promptBlockReason: this.promptBlockReason }),
+			...(errorReason && { errorReason }),
 		};
 	}
 
