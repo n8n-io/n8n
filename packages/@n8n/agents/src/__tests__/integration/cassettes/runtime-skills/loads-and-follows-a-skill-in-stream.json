@@ -37,8 +37,7 @@
 						},
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
-					},
-					"eager_input_streaming": true
+					}
 				},
 				{
 					"name": "load_skill",
@@ -59,8 +58,7 @@
 						},
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
-					},
-					"eager_input_streaming": true
+					}
 				}
 			],
 			"tool_choice": {
@@ -70,33 +68,33 @@
 		},
 		"status": 200,
 		"response": [
-			"1f8b0800000000000013c5544d8bdb3010bde75784393b6087380b3a9742cb52ca92ed76698a9858d3446b59722439dd10fcdf8b9c38b1f3d1f6b2ad6f7a6fc6f3e6cd30b421edd9b020e77049dc79b47e20d0231beec06f4b02063d12a2f60d6c078511a48041a6b012345aa1ccabd164948ec6f1384de2388108a408ff704b1e278fb3a959ac9fe5f4f5d347bb4eefd397e7af8b77109d558208ac510140e7a4f3a843d9cc684fda03fbf63d02e74dc92da1331a98ae943a408ed615e98c7aa0208f52b916ab5af5529795e7dee4a41db024be9b469061b6229e59422f8de6fd90b8e52da1b8c5b5b9a102952b2ac8a2e26971197f6293d5395b47602adf85d2bb081cd98dcc887b491618046b045a115cd63fc886cef9920c30d0c673dca054b85004753d3c7ef56040fba91f1ce50b65b2fcfaecaf8434c504bdee5beef2a1e3439e3746f1ca513bfff0ae789c3c3c8e354d5cfe7ebcfa327b98e1cfc9f6e9e93344a0b10879caa0e02e974a3565caca03dbd5c15aa542cbc702425aca7cafb17e73a5d4cbb36e861040b8658020e5f1f70634213d03f6c849d77e8c2fcee8637089d64b540d080ce04cf2cd81fc233dbb3934867f107360c339b8aa28d06e4705da9c6c50fb9f05cea16e3cbbbdb8a6fcd3de9ab223e2dcf6f6c05deda74742477fef047517fe2f0f51fd8697e8e274d417bb76baea97ee75393826fe025c5fecac2c060000"
+			"1f8b0800000000000013c555c16e133110bdf72ba2396fa4dd92b4956f0848852007382108b2a6eb2131ebb5b7f6382244fbefc849b6c9b649e905b237bf37de99f76ccfd0922c8b414d21e09c6460f47ca190510cd6c0ab8640408f84ac5b835843ed141910501a8c8a860bd4551c8e86e3e1657e392ef2bc800cb44aff0873991737aa7efde5631c7dfeaa79320aabfbe2eded32c5f4334106de990460083a30da94b67496c932886fdf3308ec1ae90983b3206c34660705ba8f644bea818a18b5091d16bbeab56d224b7615d900a2c8afaf3228b15c902c3d216b67653f24ef784fa84e71ddde94819a05d5e4d1c871fd347ecf168bc76c9b818b7c088daf3308e497ba24c99a3c0848d628f42ab96c7f904fcae59c1c08b08e252e511bbc33046d3be87fedc5056d8f7e67abbc33aeac8e5f8023219b8c8a7e6d751ff249f66e1f3b67640cd45d82b48e322fa69f1a5bdc5c457ef3e176f16a32fd3d51c5bb296460b14efb8c432543a58dd9a469228358b7c95f6392ee87044a7b2a79a36e2fa8d176fe48c1001208a7442b328ccf8bde84f4446f917d2ddbf3fb199c7d086ed0b346b3014100bcf410fe533deb19844aefab3a7339c6bc5733108319407be65242aca13dbb2135fad5b0c6b3bbe12bf233689f7324b5d9bf750dd71cd471ea2174b3e6a8b41e0907527ad3e0b0edbc7026b4ff70283ce9e2ed11b9c7fc3be4a06fd61fc8119c58b6070000"
 		],
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "10000000",
 			"anthropic-ratelimit-input-tokens-remaining": "9999000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-07-05T20:45:40Z",
+			"anthropic-ratelimit-input-tokens-reset": "2026-07-06T08:52:11Z",
 			"anthropic-ratelimit-output-tokens-limit": "2000000",
 			"anthropic-ratelimit-output-tokens-remaining": "2000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-07-05T20:45:40Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-07-06T08:52:11Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-07-05T20:45:40Z",
+			"anthropic-ratelimit-requests-reset": "2026-07-06T08:52:11Z",
 			"anthropic-ratelimit-tokens-limit": "12000000",
 			"anthropic-ratelimit-tokens-remaining": "11999000",
-			"anthropic-ratelimit-tokens-reset": "2026-07-05T20:45:40Z",
+			"anthropic-ratelimit-tokens-reset": "2026-07-06T08:52:11Z",
 			"cache-control": "no-cache",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a16936f4fb26cc4a-BCN",
+			"cf-ray": "a16d5f35098713d0-BCN",
 			"connection": "keep-alive",
 			"content-encoding": "gzip",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "text/event-stream; charset=utf-8",
-			"date": "Sun, 05 Jul 2026 20:45:40 GMT",
-			"request-id": "req_011CcjZgxZcaPL6i8LWsL5H6",
+			"date": "Mon, 06 Jul 2026 08:52:12 GMT",
+			"request-id": "req_011CckX6J9diG4VbNEraa3go",
 			"server": "cloudflare",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-8b1946a4d50a2b3dd6ca6d8718874799-c81e109d43491dca-01",
+			"traceresponse": "00-b89d6b3e0118c6d51f7814b1c974b34c-f347bc182bc59a18-01",
 			"transfer-encoding": "chunked",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
@@ -131,7 +129,7 @@
 					"content": [
 						{
 							"type": "tool_use",
-							"id": "toolu_01RU2ne4skF2hVTRTaw4yWWP",
+							"id": "toolu_01MQpn186utCKGh3FMzFd1EM",
 							"name": "load_skill",
 							"input": {
 								"skillId": "summary-marker"
@@ -147,7 +145,7 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01RU2ne4skF2hVTRTaw4yWWP",
+							"tool_use_id": "toolu_01MQpn186utCKGh3FMzFd1EM",
 							"content": "{\"ok\":true,\"success\":true,\"skillId\":\"summary-marker\",\"name\":\"Summary marker\",\"description\":\"Use for summarizing notes, updates, or short text while preserving a marker.\",\"path\":null,\"skillDir\":null,\"hash\":\"e3433b77c9e3\",\"category\":\"productivity\",\"content\":\"Every final answer after loading this skill must include the exact marker SKILL_MARKER_ALPHA. For summaries, be concise and keep the marker unchanged.\",\"activation\":\"[Skill: \\\"Summary marker\\\"]\\n[Skill category: \\\"productivity\\\"]\\n[Skill hash: \\\"e3433b77c9e3\\\"]\",\"linkedFiles\":{\"references\":[],\"templates\":[],\"scripts\":[],\"assets\":[],\"examples\":[],\"other\":[]}}"
 						}
 					]
@@ -167,8 +165,7 @@
 						},
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
-					},
-					"eager_input_streaming": true
+					}
 				},
 				{
 					"name": "load_skill",
@@ -189,8 +186,7 @@
 						},
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
-					},
-					"eager_input_streaming": true
+					}
 				}
 			],
 			"tool_choice": {
@@ -200,33 +196,33 @@
 		},
 		"status": 200,
 		"response": [
-			"1f8b0800000000000013c554db6ed340107def578ce6a552e4a0a46d42e5b70a8aa85a2ad42210a2c89ada537b95f5aed91da73759e223f842be04ad1bb77148292f05bfac7cceec9e7366ede1391b89a164ef29e7c40b39d9c84828865b94eb8a31c61e8951f78ef12d9636638d31a69aea8c8705a9593ddc194e865ba3adc978341a63842a0b67f83c198ddfbc2e763fef6c7ff8f8727a5ccafe7c277d557ddac56845092374560780bc575ec804d9d41a6123187ff91aa1175b258ec95b83b1a9b55e409ebfd56c52ee81190b29ed3baceedc2b53d592889db1f1188fb7c7d308534a0b4e52c724ca9aa45f32ea78c7943dc6757b8302570597ec482793f2f7fa07765cacb24d84b69665681aa16737572927a2d8618ca13319b92c34d95cb00bc1939c2dc668ac243427a5e95c33360d0040b3b1c177d7bd686572ae6d3a5b7fe96b4a5a998cafeeb22ef321ea629ff055286c9718b1e9e956cae42b428001c4c7bc65ac85feecad2de979bb43fa9eeecb16ce8eed251c6c6a0dbe2e4b72ea86e1dad6ae35fc78ab9ecd0e84152eacd6f652991ca460f033a5f5a60765bcb83a0ddf948fcfcc99190c4e5bd3d7f16070664ec531956113e56cc403974a40acd5d066f03fbfff2899cc43c52264f7fc87b0050954cea6ec3d0401500608fc7d920bf285b2067236ec487891042e0b366d340fe41894993f64f9e731ec8c33b00ef88ad35a387b11eee6f4f0e0e82879b77772b87f92ec1dbd7fbbf7b4c330a49efaff6cb5e4af7f58379fd706ed91b814ac3741914d9648ed0cfef51c6d9e7190ae4cbec9b4599f785de396b930567e017acde564e2060000"
+			"1f8b0800000000000013bd544d6fd34010bdf757ace618d92829a488bdf500023548d0562041d16a6a4fed55f6c3ec8edb942aff1dad63d338a4854bbb17cb336ffdde9bf10c5d9363292cc58815a9c818f8a0444629ee806f1b0209a32464c33bc83bb0be2403120a836d49798d7ad9e6aff2797e383d9ccfa6d31964a0cbf48d58a9e9ece8fc576317df5eeb379f6375eec397f6c686af90ed304106c19b14c01875647489b6f08ec931c8ef3f3288ec1b1508a377205d6b4c1f8af4b32557d0285812a3367188b5837aed9a9615fb25b90872f67276944181454daa0884acbd5363c874c807c2f2a1dc703731505393a58046cdeddff8fbecacdecdae33f02d8ff46510295ceb82146b0a202155a6c450a622bb2b0ac9b8aac88304e759e1356a83978660bd16e9ac0f0e68d3efbe96ead2f862b9bfeb7b201d4f49ab8dd9ed7cf2dadf635a2560f790001be6fb73afa1d1aeda21159082f090ce920ce3e33a3bc848e72632d6f707d6ab7ce78df1371df5a3857a3201826b1267adb5186e85c5b0a420e2521b23b48b1cda22fd5031133505123a76f0b881cb0b77e12693feb29c4cc4190742ab5d25b022c75190d52cd87b233a57e93af2d099e7f77a8585369a9149044293b3b6240a6f6deb74d18d8e40578a442d6855d4e82a1297c43744ae73ded9ea30b4620a0e4de72e0a1f443f227163efd9cdbd48ddc8f3bc6fcac987c5427d3c3e3d797baa8e179fde1f4f268f0b4bfbea5f93e89b2d59fb266b58d87b5d8e92b0e56ab452815ca9b80d0efe7bb1ae9f70b3eeacc2f9d17a9fdf7dc5dbce415fa6df90929bd7f5060000"
 		],
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "10000000",
 			"anthropic-ratelimit-input-tokens-remaining": "9999000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-07-05T20:45:41Z",
+			"anthropic-ratelimit-input-tokens-reset": "2026-07-06T08:52:13Z",
 			"anthropic-ratelimit-output-tokens-limit": "2000000",
 			"anthropic-ratelimit-output-tokens-remaining": "2000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-07-05T20:45:41Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-07-06T08:52:13Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-07-05T20:45:41Z",
+			"anthropic-ratelimit-requests-reset": "2026-07-06T08:52:13Z",
 			"anthropic-ratelimit-tokens-limit": "12000000",
 			"anthropic-ratelimit-tokens-remaining": "11999000",
-			"anthropic-ratelimit-tokens-reset": "2026-07-05T20:45:41Z",
+			"anthropic-ratelimit-tokens-reset": "2026-07-06T08:52:13Z",
 			"cache-control": "no-cache",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a16936faf9b0cc4a-BCN",
+			"cf-ray": "a16d5f3dcb4513d0-BCN",
 			"connection": "keep-alive",
 			"content-encoding": "gzip",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "text/event-stream; charset=utf-8",
-			"date": "Sun, 05 Jul 2026 20:45:41 GMT",
-			"request-id": "req_011CcjZh2fRQ9FCy2TrmFeGU",
+			"date": "Mon, 06 Jul 2026 08:52:13 GMT",
+			"request-id": "req_011CckX6PmDmiz6VpEgDVxj3",
 			"server": "cloudflare",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-d232f4a8a3dfdba09a2c1dc18f2bc757-4bae6cb1e3612c00-01",
+			"traceresponse": "00-5b8273c6ac96500163ab28c6c358efcb-ff4cec2c74a5069e-01",
 			"transfer-encoding": "chunked",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"

@@ -66,30 +66,30 @@
 			}
 		},
 		"status": 200,
-		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_01C1X3kMxGFN2smL5LjA7E8v\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_01PPwnuNQcvct9t4RwMNPS2R\",\"name\":\"list_skills\",\"input\":{\"category\":\"productivity\"},\"caller\":{\"type\":\"direct\"}},{\"type\":\"tool_use\",\"id\":\"toolu_01N9jtRUziP4u7xyC2qYvqvx\",\"name\":\"load_skill\",\"input\":{\"skillId\":\"summary-marker\"},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1122,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":93,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_01Mmcqw7fh6TgR4R5hxrXvKx\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_01PHAJ2JuZj72JwiKsFQgvFi\",\"name\":\"list_skills\",\"input\":{\"category\":\"productivity\"},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1122,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":54,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "10000000",
 			"anthropic-ratelimit-input-tokens-remaining": "10000000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-07-05T20:45:35Z",
+			"anthropic-ratelimit-input-tokens-reset": "2026-07-06T08:52:05Z",
 			"anthropic-ratelimit-output-tokens-limit": "2000000",
 			"anthropic-ratelimit-output-tokens-remaining": "2000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-07-05T20:45:35Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-07-06T08:52:05Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-07-05T20:45:35Z",
+			"anthropic-ratelimit-requests-reset": "2026-07-06T08:52:04Z",
 			"anthropic-ratelimit-tokens-limit": "12000000",
 			"anthropic-ratelimit-tokens-remaining": "12000000",
-			"anthropic-ratelimit-tokens-reset": "2026-07-05T20:45:35Z",
+			"anthropic-ratelimit-tokens-reset": "2026-07-06T08:52:05Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a16936d46b4dcc4a-BCN",
+			"cf-ray": "a16d5f099c7113d0-BCN",
 			"connection": "keep-alive",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Sun, 05 Jul 2026 20:45:35 GMT",
-			"request-id": "req_011CcjZgaGvRkCRRRX45Uuek",
+			"date": "Mon, 06 Jul 2026 08:52:06 GMT",
+			"request-id": "req_011CckX5n9bSrZVLvx7GWYn5",
 			"server": "cloudflare",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-8a15e875cb4ebfd84bba88538e195f13-9a01bfdd13c603fd-01",
+			"traceresponse": "00-f84a3042010b0ebcfc157af41f70feab-e8018ddd10a650cf-01",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
 		},
@@ -123,7 +123,7 @@
 					"content": [
 						{
 							"type": "tool_use",
-							"id": "toolu_01PPwnuNQcvct9t4RwMNPS2R",
+							"id": "toolu_01PHAJ2JuZj72JwiKsFQgvFi",
 							"name": "list_skills",
 							"input": {
 								"category": "productivity"
@@ -131,10 +131,151 @@
 							"caller": {
 								"type": "direct"
 							}
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_01PHAJ2JuZj72JwiKsFQgvFi",
+							"content": "{\"success\":true,\"registryHash\":\"3166364998d4\",\"count\":1,\"categories\":[\"engineering\",\"productivity\"],\"skills\":[{\"name\":\"Summary marker\",\"description\":\"Use for summarizing notes, updates, or short text while preserving a marker.\",\"category\":\"productivity\",\"hash\":\"e3433b77c9e3\"}]}"
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "list_skills",
+					"description": "List installed skills from the registry. Use before loading a skill when you need to discover available domains.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"category": {
+								"type": "string",
+								"description": "Optional exact category filter."
+							}
+						},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "load_skill",
+					"description": "Load a skill by skillId or name. This source does not support linked files, so do not pass filePath.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"skillId": {
+								"type": "string",
+								"minLength": 1,
+								"description": "Skill id from list_skills."
+							},
+							"name": {
+								"type": "string",
+								"minLength": 1,
+								"description": "Skill name from list_skills."
+							}
+						},
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			}
+		},
+		"status": 200,
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_01BMQb31ZJhNqtMqbinxfdEc\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Now loading the summary-marker skill:\"},{\"type\":\"tool_use\",\"id\":\"toolu_01NWgZAjXgsNGe5sqE4247f9\",\"name\":\"load_skill\",\"input\":{\"skillId\":\"summary-marker\"},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1262,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":65,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "10000000",
+			"anthropic-ratelimit-input-tokens-remaining": "9999000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-07-06T08:52:06Z",
+			"anthropic-ratelimit-output-tokens-limit": "2000000",
+			"anthropic-ratelimit-output-tokens-remaining": "2000000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-07-06T08:52:07Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-07-06T08:52:06Z",
+			"anthropic-ratelimit-tokens-limit": "12000000",
+			"anthropic-ratelimit-tokens-remaining": "11999000",
+			"anthropic-ratelimit-tokens-reset": "2026-07-06T08:52:06Z",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a16d5f129eb413d0-BCN",
+			"connection": "keep-alive",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "application/json",
+			"date": "Mon, 06 Jul 2026 08:52:07 GMT",
+			"request-id": "req_011CckX5tBEv27ysFCmXuo5C",
+			"server": "cloudflare",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-983373a858a44aa272293bf6e7c3c805-86a059d8d558b134-01",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-haiku-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "Skill loading protocol:\nSkills are optional instruction packs, not execution tools. Use them to get extra guidance only when they are relevant to the user's current request.\n\nAvailable skills:\n- name: \"Engineering status formatter\"\n  description: \"Use for formatting engineering workflow status identifiers.\"\n  id: \"engineering-status\"\n  category: \"engineering\"\n- name: \"Summary marker\"\n  description: \"Use for summarizing notes, updates, or short text while preserving a marker.\"\n  id: \"summary-marker\"\n  category: \"productivity\"\n\nWhen deciding whether to load a skill:\n- Match the user's request against the skill name and description.\n- Call list_skills when you need to inspect available categories or installed skill metadata.\n- If one skill clearly matches, call load_skill once with `{ \"skillId\": \"<id>\" }`, then follow the returned instructions.\n- If a loaded skill references a supporting file, call load_skill with `{ \"skillId\": \"<id>\", \"filePath\": \"<relative path>\" }`.\n- If the relevant skill was already loaded for this request, do not call load_skill again.\n- If no skill clearly matches, do not call load_skill.\n- Do not load a skill just because it is listed here.\n\nYou are testing runtime skill loading. When the user says a skill applies, first call list_skills if they ask to discover skills or filter by category. Then call load_skill with the exact matching skillId before answering. After loading a skill, strictly follow its returned instructions. Do not answer from memory when a relevant skill applies."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "Call list_skills with category exactly \"productivity\", then load the summary-marker skill, then summarize: budget owners approved the rollout."
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "tool_use",
+							"id": "toolu_01PHAJ2JuZj72JwiKsFQgvFi",
+							"name": "list_skills",
+							"input": {
+								"category": "productivity"
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_01PHAJ2JuZj72JwiKsFQgvFi",
+							"content": "{\"success\":true,\"registryHash\":\"3166364998d4\",\"count\":1,\"categories\":[\"engineering\",\"productivity\"],\"skills\":[{\"name\":\"Summary marker\",\"description\":\"Use for summarizing notes, updates, or short text while preserving a marker.\",\"category\":\"productivity\",\"hash\":\"e3433b77c9e3\"}]}"
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "text",
+							"text": "Now loading the summary-marker skill:"
 						},
 						{
 							"type": "tool_use",
-							"id": "toolu_01N9jtRUziP4u7xyC2qYvqvx",
+							"id": "toolu_01NWgZAjXgsNGe5sqE4247f9",
 							"name": "load_skill",
 							"input": {
 								"skillId": "summary-marker"
@@ -150,12 +291,7 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01PPwnuNQcvct9t4RwMNPS2R",
-							"content": "{\"success\":true,\"registryHash\":\"3166364998d4\",\"count\":1,\"categories\":[\"engineering\",\"productivity\"],\"skills\":[{\"name\":\"Summary marker\",\"description\":\"Use for summarizing notes, updates, or short text while preserving a marker.\",\"category\":\"productivity\",\"hash\":\"e3433b77c9e3\"}]}"
-						},
-						{
-							"type": "tool_result",
-							"tool_use_id": "toolu_01N9jtRUziP4u7xyC2qYvqvx",
+							"tool_use_id": "toolu_01NWgZAjXgsNGe5sqE4247f9",
 							"content": "{\"ok\":true,\"success\":true,\"skillId\":\"summary-marker\",\"name\":\"Summary marker\",\"description\":\"Use for summarizing notes, updates, or short text while preserving a marker.\",\"path\":null,\"skillDir\":null,\"hash\":\"e3433b77c9e3\",\"category\":\"productivity\",\"content\":\"Every final answer after loading this skill must include the exact marker SKILL_MARKER_ALPHA. For summaries, be concise and keep the marker unchanged.\",\"activation\":\"[Skill: \\\"Summary marker\\\"]\\n[Skill category: \\\"productivity\\\"]\\n[Skill hash: \\\"e3433b77c9e3\\\"]\",\"linkedFiles\":{\"references\":[],\"templates\":[],\"scripts\":[],\"assets\":[],\"examples\":[],\"other\":[]}}"
 						}
 					]
@@ -204,30 +340,30 @@
 			}
 		},
 		"status": 200,
-		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_01GLxBw3zQA9qp2LeF7xE4h5\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Following the Summary marker skill instructions, here is the summary:\\n\\n**Summary:** Budget owners approved the rollout.\\n\\n**SKILL_MARKER_ALPHA**\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1523,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":37,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_01UgBVpmLev7cAeyb91seAJx\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Based on the loaded Summary marker skill, here is my response with the required marker:\\n\\n**Summary:** Budget owners have approved the rollout.\\n\\nSKILL_MARKER_ALPHA\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1510,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":41,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "10000000",
 			"anthropic-ratelimit-input-tokens-remaining": "9999000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-07-05T20:45:36Z",
+			"anthropic-ratelimit-input-tokens-reset": "2026-07-06T08:52:08Z",
 			"anthropic-ratelimit-output-tokens-limit": "2000000",
 			"anthropic-ratelimit-output-tokens-remaining": "2000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-07-05T20:45:36Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-07-06T08:52:08Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-07-05T20:45:36Z",
+			"anthropic-ratelimit-requests-reset": "2026-07-06T08:52:07Z",
 			"anthropic-ratelimit-tokens-limit": "12000000",
 			"anthropic-ratelimit-tokens-remaining": "11999000",
-			"anthropic-ratelimit-tokens-reset": "2026-07-05T20:45:36Z",
+			"anthropic-ratelimit-tokens-reset": "2026-07-06T08:52:08Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a16936db3c1fcc4a-BCN",
+			"cf-ray": "a16d5f1879af13d0-BCN",
 			"connection": "keep-alive",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Sun, 05 Jul 2026 20:45:36 GMT",
-			"request-id": "req_011CcjZgewTuxvErkVSJLd9u",
+			"date": "Mon, 06 Jul 2026 08:52:08 GMT",
+			"request-id": "req_011CckX5xD5VmtWaaSM8yqAN",
 			"server": "cloudflare",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-db473a62d5601a0ef6907d2b2a8fd48e-d82cfb6768a3802c-01",
+			"traceresponse": "00-f97a66581d5158de84da7c6830195056-efade998f6293ea5-01",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
 		},
