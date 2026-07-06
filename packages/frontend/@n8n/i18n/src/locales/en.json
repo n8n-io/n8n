@@ -1476,6 +1476,7 @@
 	"executionsList.new": "Queued",
 	"executionsList.openPastExecution": "Open Past Execution",
 	"executionsList.retryExecution": "Retry execution",
+	"executionsList.replayLastFailedRun": "Replay last failed run",
 	"executionsList.retryOf": "Retry of",
 	"executionsList.retryWithCurrentlySavedWorkflow": "Retry with currently saved workflow (from node with error)",
 	"executionsList.retryWithOriginalWorkflow": "Retry with original workflow (from node with error)",

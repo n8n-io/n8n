@@ -20,7 +20,7 @@ import ExecutionStopAllText from '../ExecutionStopAllText.vue';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useIntersectionObserver } from '@/app/composables/useIntersectionObserver';
 
-import { N8nCheckbox, N8nHeading, N8nLoading, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nCheckbox, N8nHeading, N8nLoading, N8nText } from '@n8n/design-system';
 type AutoScrollDeps = { activeExecutionSet: boolean; cardsMounted: boolean; scroll: boolean };
 
 const props = defineProps<{
@@ -78,6 +78,16 @@ watch(
 
 const workflowPermissions = computed(() => getResourcePermissions(props.workflow?.scopes).workflow);
 
+const latestRetriableExecution = computed(() => {
+	const candidates = [props.temporaryExecution, ...props.executions].filter(
+		(execution): execution is ExecutionSummary => Boolean(execution),
+	);
+
+	return candidates.find(
+		(execution) => ['crashed', 'error'].includes(execution.status) && !execution.retrySuccessId,
+	);
+});
+
 // In 'queue' mode concurrency control is applied per worker and returning a global count
 // of concurrent executions would not be meaningful/helpful.
 const showConcurrencyHeader = computed(
@@ -131,6 +141,17 @@ function onItemMounted(id: string): void {
 
 function onRetryExecution(payload: { execution: ExecutionSummary; command: string }) {
 	emit('retryExecution', payload);
+}
+
+function onReplayLastFailedRun() {
+	if (!latestRetriableExecution.value) {
+		return;
+	}
+
+	emit('retryExecution', {
+		execution: latestRetriableExecution.value,
+		command: 'current-workflow',
+	});
 }
 
 function onFilterChanged(filter: ExecutionFilterType) {
@@ -192,6 +213,14 @@ const goToUpgrade = () => {
 				:label="i18n.baseText('executionsList.autoRefresh')"
 				@update:model-value="onAutoRefreshChange"
 			/>
+			<N8nButton
+				v-if="latestRetriableExecution"
+				size="small"
+				data-test-id="replay-last-failed-run-button"
+				@click="onReplayLastFailedRun"
+			>
+				{{ i18n.baseText('executionsList.replayLastFailedRun') }}
+			</N8nButton>
 			<ExecutionsFilter
 				popover-side="right"
 				popover-align="start"
@@ -277,7 +306,8 @@ const goToUpgrade = () => {
 .controls {
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
+	justify-content: flex-start;
+	gap: var(--spacing--xs);
 	padding-top: var(--spacing--sm);
 	padding-right: var(--spacing--md);
 }
