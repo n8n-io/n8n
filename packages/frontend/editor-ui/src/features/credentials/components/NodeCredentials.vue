@@ -216,6 +216,17 @@ const isDefaultResolver = computed(() => {
 	return !resolverId || resolverId === SYSTEM_RESOLVER_ID;
 });
 
+// Whether the node's current resource/operation is runnable by the AI gateway.
+// Nodes without an operation selected are treated as supported so gateway
+// auto-selection still works for operation-agnostic nodes.
+const isCurrentActionSupported = computed(() => {
+	const params = props.node.parameters ?? {};
+	const operation = params.operation as string | undefined;
+	if (!operation) return true;
+	const resource = params.resource as string | undefined;
+	return aiGateway.isActionSupported(node.value.type, resource, operation);
+});
+
 watch(
 	() => props.node.parameters,
 	(newValue, oldValue) => {
@@ -267,7 +278,8 @@ watch(
 				for (const { type } of types) {
 					if (
 						aiGateway.isCredentialTypeSupported(type.name) &&
-						aiGateway.isNodeTypeVersionSupported(node.value.type, node.value.typeVersion)
+						aiGateway.isNodeTypeVersionSupported(node.value.type, node.value.typeVersion) &&
+						isCurrentActionSupported.value
 					) {
 						onAiGatewaySelector(type.name, true, false);
 					}
