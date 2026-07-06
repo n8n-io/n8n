@@ -326,6 +326,34 @@ describe('Source Control Helper', () => {
 			expect(isWorkflowModified(local, remote)).toBe(false);
 		});
 
+		it('should detect modifications when descriptions differ', () => {
+			const local = createWorkflowVersion({ description: 'Old description' });
+			const remote = createWorkflowVersion({ description: 'New description' });
+
+			expect(isWorkflowModified(local, remote)).toBe(true);
+		});
+
+		it('should detect modifications when remote description is cleared', () => {
+			const local = createWorkflowVersion({ description: 'Some description' });
+			const remote = createWorkflowVersion({ description: null });
+
+			expect(isWorkflowModified(local, remote)).toBe(true);
+		});
+
+		it('should not consider it modified when remote description is undefined', () => {
+			const local = createWorkflowVersion({ description: 'Some description' });
+			const remote = createWorkflowVersion({ description: undefined });
+
+			expect(isWorkflowModified(local, remote)).toBe(false);
+		});
+
+		it('should treat null and undefined local descriptions as equal to remote null', () => {
+			const local = createWorkflowVersion({ description: undefined });
+			const remote = createWorkflowVersion({ description: null });
+
+			expect(isWorkflowModified(local, remote)).toBe(false);
+		});
+
 		it('should detect modifications when owner changes', () => {
 			const local = createWorkflowVersion({
 				owner: {

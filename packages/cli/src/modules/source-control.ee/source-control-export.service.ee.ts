@@ -132,6 +132,7 @@ export class SourceControlExportService {
 					const sanitizedWorkflow: ExportableWorkflow = {
 						id: workflow.id,
 						name: workflow.name,
+						description: workflow.description ?? null,
 						nodes: workflow.nodes,
 						connections: workflow.connections,
 						settings: workflow.settings,

@@ -125,6 +125,7 @@ describe('SourceControlImportService', () => {
 				id: 'workflow1',
 				versionId: 'v1',
 				name: 'Test Workflow',
+				description: 'Test description',
 				owner: {
 					type: 'personal',
 					personalEmail: 'email@email.com',
@@ -142,6 +143,7 @@ describe('SourceControlImportService', () => {
 					id: 'workflow1',
 					versionId: 'v1',
 					name: 'Test Workflow',
+					description: 'Test description',
 				}),
 			);
 		});
@@ -193,6 +195,7 @@ describe('SourceControlImportService', () => {
 			const mockWorkflowData1 = {
 				id: '1',
 				name: 'Workflow 1',
+				description: 'Workflow 1 description',
 				active: false,
 				nodes: [
 					{
@@ -255,6 +258,7 @@ describe('SourceControlImportService', () => {
 				expect.objectContaining({
 					id: mockWorkflowData1.id,
 					name: mockWorkflowData1.name,
+					description: mockWorkflowData1.description,
 					nodes: mockWorkflowData1.nodes,
 					connections: mockWorkflowData1.connections,
 					nodeGroups: mockWorkflowData1.nodeGroups,

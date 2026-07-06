@@ -593,6 +593,7 @@ describe('SourceControlExportService', () => {
 				Object.assign(new WorkflowEntity(), {
 					id: workflowId,
 					name: 'Test Workflow',
+					description: 'Test description',
 					nodes,
 					connections: {},
 					settings: {},
@@ -631,6 +632,7 @@ describe('SourceControlExportService', () => {
 			expect(exported).toEqual({
 				id: workflowId,
 				name: 'Test Workflow',
+				description: 'Test description',
 				nodes,
 				connections: {},
 				settings: {},
