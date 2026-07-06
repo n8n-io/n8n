@@ -151,6 +151,13 @@ export class AgentConfigService {
 			decomposeJsonConfig(validatedConfig);
 
 		const nextIntegrations = integrationsProvided ? decomposedIntegrations : previousIntegrations;
+		const nextPersonalisation = personalisationProvided
+			? mergePersonalisationWithPreviousGradient(
+					decomposedSchema.personalisation,
+					previousSchema,
+					config,
+				)
+			: undefined;
 
 		const nextSchema: AgentJsonConfig = {
 			...omitLegacyAgentDescription(previousSchema),
@@ -158,7 +165,7 @@ export class AgentConfigService {
 			model: decomposedSchema.model,
 			instructions: decomposedSchema.instructions,
 			...(credentialProvided ? { credential: decomposedSchema.credential } : {}),
-			...(personalisationProvided ? { personalisation: decomposedSchema.personalisation } : {}),
+			...(personalisationProvided ? { personalisation: nextPersonalisation } : {}),
 			...(memoryProvided ? { memory: decomposedSchema.memory } : {}),
 			...(subAgentsProvided ? { subAgents: decomposedSchema.subAgents } : {}),
 			...(toolsProvided ? { tools: decomposedSchema.tools } : {}),
@@ -363,6 +370,26 @@ function preservePersonalisationGradientLayout(
 	};
 
 	return configWithLayout;
+}
+
+function mergePersonalisationWithPreviousGradient(
+	personalisation: AgentJsonConfig['personalisation'],
+	previousSchema: AgentJsonConfig | null,
+	rawConfig: unknown,
+): AgentJsonConfig['personalisation'] {
+	if (!personalisation || !isRecord(rawConfig) || !isRecord(rawConfig.personalisation)) {
+		return personalisation;
+	}
+
+	if (rawConfig.personalisation.gradient !== undefined) return personalisation;
+
+	const previousGradient = previousSchema?.personalisation?.gradient;
+	if (!previousGradient) return personalisation;
+
+	return {
+		...personalisation,
+		gradient: previousGradient,
+	};
 }
 
 function hasNodeToolInputSchema(raw: unknown): boolean {
