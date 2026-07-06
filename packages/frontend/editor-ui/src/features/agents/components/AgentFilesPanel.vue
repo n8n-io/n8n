@@ -48,6 +48,17 @@ const uploadLabel = computed(() => i18n.baseText('agents.builder.files.addFile' 
 const uploadTooltip = computed(() =>
 	props.isPublished ? uploadLabel.value : i18n.baseText('agents.builder.files.publishRequired'),
 );
+const fileCountLabel = computed(() => {
+	const count = props.files.length;
+	if (count === 0) {
+		return i18n.baseText('agents.builder.files.summary.empty' as BaseTextKey);
+	}
+
+	return i18n.baseText('agents.builder.files.summary.count' as BaseTextKey, {
+		adjustToNumber: count,
+		interpolate: { count },
+	});
+});
 
 const acceptAttr = ALLOWED_AGENT_FILE_EXTENSIONS.join(',');
 
@@ -134,6 +145,10 @@ function onFilesSelected(event: Event) {
 <template>
 	<div :class="$style.panel" data-testid="agent-files-panel">
 		<div :class="$style.toolbar">
+			<span :class="$style.filesSummary" data-testid="agent-files-count">
+				{{ fileCountLabel }}
+			</span>
+
 			<input
 				ref="fileInput"
 				type="file"
@@ -146,17 +161,15 @@ function onFilesSelected(event: Event) {
 
 			<N8nTooltip :content="uploadTooltip" placement="top">
 				<N8nButton
-					variant="outline"
+					variant="ghost"
 					size="small"
-					:label="uploadLabel"
+					icon="plus"
+					icon-only
 					:disabled="isUploadDisabled"
 					:aria-label="uploadTooltip"
 					data-testid="agent-files-upload"
 					@click="openFilePicker"
-				>
-					<template #icon><N8nIcon icon="plus" :size="16" color="text-light" /></template>
-					{{ uploadLabel }}
-				</N8nButton>
+				/>
 			</N8nTooltip>
 		</div>
 
@@ -239,8 +252,17 @@ function onFilesSelected(event: Event) {
 .toolbar {
 	display: flex;
 	align-items: center;
-	justify-content: flex-end;
+	justify-content: space-between;
+	gap: var(--spacing--xs);
 	width: 100%;
+}
+
+.filesSummary {
+	min-width: 0;
+	color: var(--text-color--subtler);
+	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--medium);
+	line-height: var(--line-height--sm);
 }
 
 .fileInput {

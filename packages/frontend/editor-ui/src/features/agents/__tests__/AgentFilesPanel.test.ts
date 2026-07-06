@@ -17,6 +17,13 @@ vi.mock('@n8n/i18n', () => ({
 			if (key === 'agents.builder.files.size.megabytes') {
 				return `${options?.interpolate?.megabytes} MB`;
 			}
+			if (key === 'agents.builder.files.summary.empty') {
+				return 'No files';
+			}
+			if (key === 'agents.builder.files.summary.count') {
+				const count = Number(options?.interpolate?.count ?? 0);
+				return `${count} ${count === 1 ? 'file' : 'files'}`;
+			}
 			return key;
 		},
 	}),
@@ -83,6 +90,18 @@ describe('AgentFilesPanel', () => {
 		const wrapper = mountPanel({ isPublished: true, files: [] });
 
 		expect(wrapper.text()).toContain('agents.builder.files.empty');
+	});
+
+	it('balances the toolbar with a file count and icon-only add action', () => {
+		const wrapper = mountPanel({ files: [file] });
+
+		expect(wrapper.find('[data-testid="agent-files-count"]').text()).toBe('1 file');
+
+		const uploadButton = wrapper.findComponent({ name: 'N8nButton' });
+		expect(uploadButton.props('variant')).toBe('ghost');
+		expect(uploadButton.props('iconOnly')).toBe(true);
+		expect(uploadButton.props('icon')).toBe('plus');
+		expect(wrapper.find('[data-testid="agent-files-upload"]').text()).toBe('');
 	});
 
 	it('renders uploaded files as table rows with owner, type, size, and date metadata', () => {

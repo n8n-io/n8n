@@ -6779,6 +6779,8 @@
 	"agents.builder.files.title": "Knowledge base",
 	"agents.builder.files.description": "Add CSV, PDF, Markdown, or TXT files this agent can search and read. Upload up to {maxFiles} files at a time, {maxSizeMb} MB each. Knowledge base size is limited to {maxTotalGb} GB.",
 	"agents.builder.files.count": "{count} file uploaded | {count} files uploaded",
+	"agents.builder.files.summary.empty": "No files",
+	"agents.builder.files.summary.count": "{count} file | {count} files",
 	"agents.builder.files.upload": "Upload file",
 	"agents.builder.files.publishRequired": "Publish this agent to upload knowledge files",
 	"agents.builder.files.uploadFileTooLarge.title": "File too large",
