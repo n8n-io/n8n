@@ -201,7 +201,6 @@ function onInstructionsInput(value: string) {
 				:class="$style.instructionsDocument"
 				:model-value="instructions"
 				:readonly="props.disabled"
-				:placeholder="i18n.baseText('agents.builder.agent.instructions.placeholder')"
 				:variant="instructionsEditorVariant"
 				:show-toolbar="instructionsToolbarMode"
 				max-height="none"
