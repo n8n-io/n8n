@@ -67,16 +67,3 @@ export async function nextCloudApiRequest(
 
 	return response;
 }
-
-export function parseResponseData(
-	responseData: string | object | undefined,
-): object | string | undefined {
-	if (typeof responseData === 'string') {
-		try {
-			return JSON.parse(responseData);
-		} catch (error) {
-			return responseData;
-		}
-	}
-	return responseData;
-}
