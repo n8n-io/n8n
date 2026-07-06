@@ -1,18 +1,15 @@
-import type { Mock } from 'vitest';
+import type { Mock, Mocked } from 'vitest';
 import type { Logger } from '@n8n/backend-common';
 import type { AgentsConfig } from '@n8n/config';
 import type { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
 import { mock } from 'vitest-mock-extended';
-import type { InstanceSettings } from 'n8n-core';
+import type { BinaryDataService, InstanceSettings } from 'n8n-core';
 
 import type { AiService } from '../../../services/ai.service';
 
 import type { Agent } from '../entities/agent.entity';
 import type { AgentFile } from '../entities/agent-file.entity';
-import {
-	AGENT_KNOWLEDGE_VOLUME_MOUNT_PATH,
-	KNOWLEDGE_MIRROR_FILES_DIR,
-} from '../agent-knowledge-storage';
+import { KNOWLEDGE_MIRROR_FILES_DIR } from '../agent-knowledge-storage';
 import {
 	AGENT_KNOWLEDGE_SANDBOX_NAME_PREFIX,
 	AgentKnowledgeSandboxService,
@@ -40,7 +37,6 @@ interface MockSandbox {
 	id: string;
 	name: string;
 	state?: string;
-	volumes?: Array<{ volumeId: string; mountPath: string; subpath?: string }>;
 	start: Mock<(...args: [number]) => Promise<void>>;
 	delete: Mock<(...args: [number]) => Promise<void>>;
 	fs: MockFilesystem;
@@ -82,15 +78,9 @@ vi.mock('@n8n/agents/sandbox', () => ({
 	}),
 }));
 
-const volumeId = 'vol-1';
 const instanceId = 'instance-1';
 const projectId = 'project-1';
 const agentId = 'agent-1';
-const expectedVolumeMount = {
-	volumeId,
-	mountPath: AGENT_KNOWLEDGE_VOLUME_MOUNT_PATH,
-	subpath: `${instanceId}/agent-knowledge/projects/${projectId}/agents/${agentId}/knowledge`,
-};
 
 function buildExpectedSandboxName(): string {
 	return `${AGENT_KNOWLEDGE_SANDBOX_NAME_PREFIX}${instanceId}-${projectId}-${agentId}`.toLowerCase();
@@ -112,6 +102,12 @@ function makePublishedAgentRepository(): ReturnType<typeof mock<AgentRepository>
 	return repository;
 }
 
+function makeBinaryDataService(): Mocked<BinaryDataService> {
+	const service = mock<BinaryDataService>();
+	service.getAsBuffer.mockResolvedValue(Buffer.from('mock file content'));
+	return service;
+}
+
 function makeService(
 	configOverrides: Partial<AgentsConfig> = {},
 	logger: Logger = mock<Logger>(),
@@ -119,6 +115,7 @@ function makeService(
 	instanceSettings: InstanceSettings = mock<InstanceSettings>({ instanceId }),
 	agentFileRepository: AgentFileRepository = mock<AgentFileRepository>(),
 	agentRepository: AgentRepository = makePublishedAgentRepository(),
+	binaryDataService: BinaryDataService = makeBinaryDataService(),
 ): AgentKnowledgeSandboxService {
 	return new AgentKnowledgeSandboxService(
 		{
@@ -130,7 +127,6 @@ function makeService(
 			sandboxEphemeral: false,
 			daytonaApiUrl: 'https://daytona.example',
 			daytonaApiKey: 'test-key',
-			daytonaVolumeId: volumeId,
 			...configOverrides,
 		} as AgentsConfig,
 		logger,
@@ -138,15 +134,17 @@ function makeService(
 		instanceSettings,
 		agentFileRepository,
 		agentRepository,
+		binaryDataService,
 	);
 }
 
 function makeAgentFile(overrides: Partial<AgentFile> = {}): AgentFile {
+	const id = overrides.id ?? 'file-id';
 	const fileName = overrides.fileName ?? 'file.txt';
 	return {
-		id: 'file-id',
+		id,
 		agentId,
-		binaryDataId: `daytona-volume:${fileName}`,
+		binaryDataId: `filesystem-v2:agents/${agentId}/knowledge-files/${id}/binary_data/uuid`,
 		fileName,
 		mimeType: 'text/plain',
 		fileSizeBytes: 100,
@@ -168,14 +166,12 @@ function makeFilesystem(): MockFilesystem {
 
 function makeSandbox(
 	state = 'started',
-	volumes = [expectedVolumeMount],
 	overrides: Partial<Pick<MockSandbox, 'id' | 'name'>> = {},
 ): MockSandbox {
 	return {
 		id: overrides.id ?? 'sandbox-id',
 		name: overrides.name ?? buildExpectedSandboxName(),
 		state,
-		volumes,
 		start: vi.fn<(...args: [number]) => Promise<void>>(async () => {}),
 		delete: vi.fn<(...args: [number]) => Promise<void>>(async () => {}),
 		fs: makeFilesystem(),
@@ -204,12 +200,12 @@ describe('AgentKnowledgeSandboxService', () => {
 		getMock.mockRejectedValue(new DaytonaNotFoundError('not found'));
 	});
 
-	it('creates a scoped sandbox with the knowledge volume mount', async () => {
+	it('creates a scoped sandbox', async () => {
 		const aiService = makeAiService();
 		const service = makeService({}, mock<Logger>(), aiService);
 		const expectedName = buildExpectedSandboxName();
 
-		await service.withKnowledgeFilesystem(projectId, agentId, async () => {});
+		await service.warmSandbox(projectId, agentId);
 
 		expect(aiService.getClient).not.toHaveBeenCalled();
 		expect(daytonaInstances).toHaveLength(1);
@@ -228,7 +224,6 @@ describe('AgentKnowledgeSandboxService', () => {
 			'n8n-project-id': projectId,
 			'n8n-agent-id': agentId,
 		});
-		expect(params.volumes).toEqual([expectedVolumeMount]);
 		expect(params.ephemeral).toBe(false);
 		expect(params.image).toBe('daytonaio/sandbox:0.5.0');
 		expect(params.snapshot).toBeUndefined();
@@ -238,23 +233,11 @@ describe('AgentKnowledgeSandboxService', () => {
 	it('forwards sandboxEphemeral config to Daytona create params', async () => {
 		const service = makeService({ sandboxEphemeral: true });
 
-		await service.withKnowledgeFilesystem(projectId, agentId, async () => {});
+		await service.warmSandbox(projectId, agentId);
 
 		expect(getMock).toHaveBeenCalledWith(buildExpectedSandboxName());
 		const [params] = createMock.mock.calls[0];
 		expect(params.ephemeral).toBe(true);
-	});
-
-	it('does not include daytonaVolumeId in deterministic sandbox name', async () => {
-		const changedVolumeMount = { ...expectedVolumeMount, volumeId: 'vol-2' };
-		const service = makeService({ daytonaVolumeId: changedVolumeMount.volumeId });
-
-		await service.withKnowledgeFilesystem(projectId, agentId, async () => {});
-
-		expect(getMock).toHaveBeenCalledWith(buildExpectedSandboxName());
-		const [params] = createMock.mock.calls[0];
-		expect(params.name).toBe(buildExpectedSandboxName());
-		expect(params.volumes).toEqual([changedVolumeMount]);
 	});
 
 	it('reuses deterministic sandbox by name without listing', async () => {
@@ -262,7 +245,7 @@ describe('AgentKnowledgeSandboxService', () => {
 		getMock.mockResolvedValue(sandbox);
 		const service = makeService();
 
-		await service.withKnowledgeFilesystem(projectId, agentId, async () => {});
+		await service.warmSandbox(projectId, agentId);
 
 		expect(getMock).toHaveBeenCalledWith(buildExpectedSandboxName());
 		expect(listMock).not.toHaveBeenCalled();
@@ -274,7 +257,7 @@ describe('AgentKnowledgeSandboxService', () => {
 		getMock.mockResolvedValue(sandbox);
 		const service = makeService();
 
-		await service.withKnowledgeFilesystem(projectId, agentId, async () => {});
+		await service.warmSandbox(projectId, agentId);
 
 		expect(sandbox.start).toHaveBeenCalledWith(300);
 		expect(createMock).not.toHaveBeenCalled();
@@ -286,7 +269,7 @@ describe('AgentKnowledgeSandboxService', () => {
 		const service = makeService();
 		const expectedName = buildExpectedSandboxName();
 
-		await service.withKnowledgeFilesystem(projectId, agentId, async () => {});
+		await service.warmSandbox(projectId, agentId);
 
 		expect(sandbox.delete).toHaveBeenCalledWith(300);
 		expect(createMock).toHaveBeenCalledTimes(1);
@@ -297,7 +280,7 @@ describe('AgentKnowledgeSandboxService', () => {
 		const service = makeService({ sandboxSnapshot: 'n8n/agent-knowledge:1.2.3' });
 		const expectedName = buildExpectedSandboxName();
 
-		await service.withKnowledgeFilesystem(projectId, agentId, async () => {});
+		await service.warmSandbox(projectId, agentId);
 
 		expect(createMock).toHaveBeenCalledTimes(1);
 		const [params] = createMock.mock.calls[0];
@@ -306,7 +289,6 @@ describe('AgentKnowledgeSandboxService', () => {
 		expect(params.name).toBe(expectedName);
 		expect(params.ephemeral).toBe(false);
 		expect(params.autoStopInterval).toBe(5);
-		expect(params.volumes).toEqual([expectedVolumeMount]);
 	});
 
 	it('falls back to image when configured snapshot create fails', async () => {
@@ -316,7 +298,7 @@ describe('AgentKnowledgeSandboxService', () => {
 			.mockResolvedValueOnce(makeSandbox('started'));
 		const service = makeService({ sandboxSnapshot: 'n8n/agent-knowledge:missing' }, logger);
 
-		await service.withKnowledgeFilesystem(projectId, agentId, async () => {});
+		await service.warmSandbox(projectId, agentId);
 
 		expect(createMock).toHaveBeenCalledTimes(2);
 		const [snapshotParams] = createMock.mock.calls[0];
@@ -338,7 +320,7 @@ describe('AgentKnowledgeSandboxService', () => {
 	it('ignores whitespace-only sandboxSnapshot', async () => {
 		const service = makeService({ sandboxSnapshot: '   ' });
 
-		await service.withKnowledgeFilesystem(projectId, agentId, async () => {});
+		await service.warmSandbox(projectId, agentId);
 
 		const [params] = createMock.mock.calls[0];
 		expect(params.image).toBe('daytonaio/sandbox:0.5.0');
@@ -359,7 +341,7 @@ describe('AgentKnowledgeSandboxService', () => {
 		});
 		const service = makeService({}, mock<Logger>(), aiService);
 
-		await service.withKnowledgeFilesystem(projectId, agentId, async () => {});
+		await service.warmSandbox(projectId, agentId);
 
 		expect(client.getBuilderApiProxyToken).toHaveBeenCalledWith(
 			{ id: projectId },
@@ -459,9 +441,7 @@ describe('AgentKnowledgeSandboxService', () => {
 			agentRepository,
 		);
 
-		await expect(
-			service.withKnowledgeFilesystem(projectId, agentId, async () => {}),
-		).rejects.toThrow(
+		await expect(service.warmSandbox(projectId, agentId)).rejects.toThrow(
 			'Knowledge base is only available for published agents. Publish the agent first.',
 		);
 		expect(createMock).not.toHaveBeenCalled();
@@ -517,7 +497,7 @@ describe('AgentKnowledgeSandboxService', () => {
 		}
 
 		function makeMirrorFile(id: string, fileName: string): AgentFile {
-			return makeAgentFile({ id, fileName, binaryDataId: `daytona-volume:${fileName}` });
+			return makeAgentFile({ id, fileName });
 		}
 
 		it('syncs on the first operation, skips an unchanged repeat, and diffs on a changed file list', async () => {
@@ -535,6 +515,7 @@ describe('AgentKnowledgeSandboxService', () => {
 			]);
 			const agentRepository = makePublishedAgentRepository();
 			agentRepository.existsBy.mockResolvedValue(true);
+			const binaryDataService = makeBinaryDataService();
 			const service = makeService(
 				{},
 				mock<Logger>(),
@@ -542,22 +523,31 @@ describe('AgentKnowledgeSandboxService', () => {
 				mock<InstanceSettings>({ instanceId }),
 				agentFileRepository,
 				agentRepository,
+				binaryDataService,
 			);
 
 			await service.searchKnowledge(projectId, agentId, { pattern: 'foo' });
 			let commands = sandbox.process.executeCommand.mock.calls.map(([command]) => command);
 			expect(commands.filter(isManifestReadCommand)).toHaveLength(1);
 			expect(commands.filter(isMirrorSyncCommand)).toHaveLength(1);
+			expect(binaryDataService.getAsBuffer).toHaveBeenCalledTimes(2);
+			expect(sandbox.fs.uploadFiles).toHaveBeenCalledTimes(1);
 			manifestState = 'doc1.txt\ndoc2.txt\n';
 
 			sandbox.process.executeCommand.mockClear();
+			binaryDataService.getAsBuffer.mockClear();
+			(sandbox.fs.uploadFiles as Mock).mockClear();
 			await service.searchKnowledge(projectId, agentId, { pattern: 'bar' });
 			commands = sandbox.process.executeCommand.mock.calls.map(([command]) => command);
 			expect(commands.filter(isManifestReadCommand)).toHaveLength(0);
 			expect(commands.filter(isMirrorSyncCommand)).toHaveLength(0);
 			expect(commands).toHaveLength(1);
+			expect(binaryDataService.getAsBuffer).not.toHaveBeenCalled();
+			expect(sandbox.fs.uploadFiles).not.toHaveBeenCalled();
 
 			sandbox.process.executeCommand.mockClear();
+			binaryDataService.getAsBuffer.mockClear();
+			(sandbox.fs.uploadFiles as Mock).mockClear();
 			agentFileRepository.findByAgentId.mockResolvedValue([
 				makeMirrorFile('file-1', 'doc1.txt'),
 				makeMirrorFile('file-2', 'doc2.txt'),
@@ -568,12 +558,50 @@ describe('AgentKnowledgeSandboxService', () => {
 			expect(commands.filter(isManifestReadCommand)).toHaveLength(1);
 			const syncCommands = commands.filter(isMirrorSyncCommand);
 			expect(syncCommands).toHaveLength(1);
-			// Only the newly-added name should be copied — the manifest rewrite
-			// (which always lists every expected name) comes after `xargs`.
-			const copySegment = syncCommands[0].split('| xargs')[0];
-			expect(copySegment).toContain('doc3.txt');
-			expect(copySegment).not.toContain('doc1.txt');
-			expect(copySegment).not.toContain('doc2.txt');
+			// Only the newly-added name should be fetched and staged for move —
+			// the manifest rewrite (which always lists every expected name) is
+			// a separate, later part of the finalize command.
+			expect(binaryDataService.getAsBuffer).toHaveBeenCalledTimes(1);
+			expect(syncCommands[0]).toContain('.tmp-doc3.txt');
+			expect(syncCommands[0]).not.toContain('.tmp-doc1.txt');
+			expect(syncCommands[0]).not.toContain('.tmp-doc2.txt');
+		});
+
+		it('flushes mirror uploads in size-bounded batches', async () => {
+			const MIRROR_UPLOAD_BATCH_BYTES = 64 * 1024 * 1024;
+			const sandbox = makeSandbox('started');
+			sandbox.process.executeCommand.mockResolvedValue({
+				exitCode: 0,
+				artifacts: { stdout: '', stderr: '' },
+			});
+			getMock.mockResolvedValue(sandbox);
+			const agentFileRepository = mock<AgentFileRepository>();
+			agentFileRepository.findByAgentId.mockResolvedValue([
+				makeMirrorFile('file-1', 'doc1.txt'),
+				makeMirrorFile('file-2', 'doc2.txt'),
+			]);
+			const agentRepository = makePublishedAgentRepository();
+			agentRepository.existsBy.mockResolvedValue(true);
+			const binaryDataService = makeBinaryDataService();
+			binaryDataService.getAsBuffer.mockResolvedValue(Buffer.alloc(MIRROR_UPLOAD_BATCH_BYTES));
+			const service = makeService(
+				{},
+				mock<Logger>(),
+				makeAiService(),
+				mock<InstanceSettings>({ instanceId }),
+				agentFileRepository,
+				agentRepository,
+				binaryDataService,
+			);
+
+			await service.searchKnowledge(projectId, agentId, { pattern: 'foo' });
+
+			expect(sandbox.fs.uploadFiles).toHaveBeenCalledTimes(2);
+			const uploadCalls = (sandbox.fs.uploadFiles as Mock).mock.calls as Array<
+				[Array<{ destination: string }>]
+			>;
+			expect(uploadCalls[0][0]).toHaveLength(1);
+			expect(uploadCalls[1][0]).toHaveLength(1);
 		});
 
 		it('cds into the sandbox-local mirror directory for search commands', async () => {
@@ -629,6 +657,51 @@ describe('AgentKnowledgeSandboxService', () => {
 			await expect(service.searchKnowledge(projectId, agentId, { pattern: 'foo' })).rejects.toThrow(
 				/Agent knowledge mirror sync failed/,
 			);
+		});
+
+		it('skips a file that fails to load from binary data storage and retries it next sync', async () => {
+			const sandbox = makeSandbox('started');
+			sandbox.process.executeCommand.mockResolvedValue({
+				exitCode: 0,
+				artifacts: { stdout: '', stderr: '' },
+			});
+			getMock.mockResolvedValue(sandbox);
+			const agentFileRepository = mock<AgentFileRepository>();
+			agentFileRepository.findByAgentId.mockResolvedValue([makeMirrorFile('file-1', 'doc1.txt')]);
+			const agentRepository = makePublishedAgentRepository();
+			agentRepository.existsBy.mockResolvedValue(true);
+			const binaryDataService = makeBinaryDataService();
+			binaryDataService.getAsBuffer.mockRejectedValueOnce(new Error('missing on disk'));
+			const logger = mock<Logger>();
+			const service = makeService(
+				{},
+				logger,
+				makeAiService(),
+				mock<InstanceSettings>({ instanceId }),
+				agentFileRepository,
+				agentRepository,
+				binaryDataService,
+			);
+
+			await expect(
+				service.searchKnowledge(projectId, agentId, { pattern: 'foo' }),
+			).resolves.toBeDefined();
+
+			expect(sandbox.fs.uploadFiles).not.toHaveBeenCalled();
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to load agent knowledge file for mirror sync',
+				expect.objectContaining({ file: 'doc1.txt' }),
+			);
+
+			// The failed file was left out of the cached manifest, so the next
+			// sync's expected hash mismatches and it retries — this time
+			// `getAsBuffer` succeeds (the mock's default resolves).
+			await expect(
+				service.searchKnowledge(projectId, agentId, { pattern: 'bar' }),
+			).resolves.toBeDefined();
+
+			expect(binaryDataService.getAsBuffer).toHaveBeenCalledTimes(2);
+			expect(sandbox.fs.uploadFiles).toHaveBeenCalledTimes(1);
 		});
 	});
 });

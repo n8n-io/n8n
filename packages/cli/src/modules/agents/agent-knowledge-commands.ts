@@ -18,7 +18,6 @@ import {
 } from './agent-knowledge-retrieval';
 import {
 	assertKnowledgePathSegment,
-	KNOWLEDGE_FILES_DIR,
 	KNOWLEDGE_MIRROR_FILES_DIR,
 	KNOWLEDGE_MIRROR_MANIFEST,
 } from './agent-knowledge-storage';
@@ -568,12 +567,12 @@ export function buildReadMirrorManifestCommand(): string {
 }
 
 /**
- * Copies `toCopy` names from the volume-backed `KNOWLEDGE_FILES_DIR` into the
- * sandbox-local mirror, removes `toDelete` names, and rewrites the manifest
- * to `manifestNames`. Copies land via a `.tmp-` name + `mv` so a search
+ * Finalizes a mirror sync: moves `toCopy` names from their already-uploaded
+ * `.tmp-` staging path into place, removes `toDelete` names, and rewrites the
+ * manifest to `manifestNames`. The `.tmp-` + `mv` staging means a search
  * running concurrently never sees a partially-written file.
  */
-export function buildMirrorSyncCommand(
+export function buildMirrorFinalizeCommand(
 	toCopy: string[],
 	toDelete: string[],
 	manifestNames: string[],
@@ -584,15 +583,10 @@ export function buildMirrorSyncCommand(
 
 	const commands = [`mkdir -p ${KNOWLEDGE_MIRROR_FILES_DIR}`];
 
-	if (toCopy.length > 0) {
-		const copyScript = [
-			`cp ${KNOWLEDGE_FILES_DIR}/"$1" ${KNOWLEDGE_MIRROR_FILES_DIR}/".tmp-$1"`,
-			`mv ${KNOWLEDGE_MIRROR_FILES_DIR}/".tmp-$1" ${KNOWLEDGE_MIRROR_FILES_DIR}/"$1"`,
-		].join(' && ');
-		const names = toCopy.map((name) => quoteShellArg(name)).join(' ');
-		commands.push(
-			`printf '%s\\0' ${names} | xargs -0 -P 8 -n 1 bash -c ${quoteShellArg(copyScript)} _`,
-		);
+	for (const name of toCopy) {
+		const tmpPath = quoteShellArg(`${KNOWLEDGE_MIRROR_FILES_DIR}/.tmp-${name}`);
+		const finalPath = quoteShellArg(`${KNOWLEDGE_MIRROR_FILES_DIR}/${name}`);
+		commands.push(`mv ${tmpPath} ${finalPath}`);
 	}
 
 	if (toDelete.length > 0) {
