@@ -37,6 +37,8 @@ export const SECRET_VALUE_PATTERNS: readonly RegExp[] = [
 	/\bgithub_pat_[A-Za-z0-9_]{22,}/g,
 	// AWS access key id
 	/\bAKIA[0-9A-Z]{16}\b/g,
+	// Telegram bot token (`<bot id>:<35-char secret>`, also inside `/bot…/` URLs)
+	/\b(?:bot)?\d{8,10}:[A-Za-z0-9_-]{35}\b/g,
 	// Credentials embedded in a URL: `scheme://user:password@` — redact the userinfo.
 	/(?<=:\/\/)[^\s:/@]+:[^\s:/@]+(?=@)/g,
 	// JSON-shaped `"key": "value"` — matches the quoted field as a whole.
@@ -66,8 +68,13 @@ export const SECRET_VALUE_PATTERNS: readonly RegExp[] = [
 	// Checking only the `[REDACTED:` prefix suffices: inside a marker a keyword can
 	// only start a `\b` match right after that prefix — every other keyword-shaped
 	// substring is preceded by `_` (snake_case type slug) or a digit, so no word
-	// boundary opens there.
-	new RegExp(`(?<!\\[(?:redacted|REDACTED):)\\b(?:${SECRET_KEYS})\\s*[:=]\\s*\\S+`, 'gi'),
+	// boundary opens there. The value lookahead skips values that are already a
+	// redaction placeholder (bracketed, typed, or URL-safe bare form) — the same
+	// idempotency convention as the quoted forms.
+	new RegExp(
+		`(?<!\\[(?:redacted|REDACTED):)\\b(?:${SECRET_KEYS})\\s*[:=]\\s*(?!\\[?(?:redacted|REDACTED)\\b)\\S+`,
+		'gi',
+	),
 ];
 
 export function scrubSecretsInText(input: string): string {
