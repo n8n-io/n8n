@@ -1,10 +1,10 @@
+import { ScheduledTaskStatus } from '@n8n/constants';
 import { mock } from 'vitest-mock-extended';
 
-import { ScheduledTaskStatus } from '../enums';
+import { createScheduler } from '../factory';
+import type { SchedulerDeps, SchedulerTaskStore } from '../factory';
 import type { RunInTransaction } from '../materializer';
 import { DEFAULT_RETENTION_OPTIONS } from '../retention';
-import { createScheduler } from '../scheduler';
-import type { SchedulerDeps, SchedulerTaskStore } from '../scheduler';
 
 /** Compose a scheduler over mocks, with non-default retention windows. */
 function makeScheduler(deps: Partial<SchedulerDeps> = {}) {
