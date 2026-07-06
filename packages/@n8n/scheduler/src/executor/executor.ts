@@ -25,7 +25,7 @@ type ClaimedEntry = { host: string; task: ClaimedTask };
  * This is the executor logic only: a driver (the multi-main loop) calls
  * {@link claimAndSchedule} on a cadence and supplies the instance host id. The
  * reaper that reclaims tasks whose lease expired is a separate concern (see
- * {@link Reaper}).
+ * `Reaper`).
  *
  * The terminal transitions are fenced on the lease epoch (the claim's `leaseEpoch`,
  * threaded into every terminal call as a {@link ClaimRef}), so a handler that stalls

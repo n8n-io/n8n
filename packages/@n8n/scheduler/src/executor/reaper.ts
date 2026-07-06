@@ -18,17 +18,17 @@ export interface ReapResult {
 
 /**
  * Recovers tasks stranded `running` by an instance that crashed or stalled past
- * its lease. Runs on every main; a driver (the multi-main loop, a later ticket)
- * calls {@link reap} on a cadence.
+ * its lease. Runs on every main; a driver (the multi-main loop) calls {@link reap}
+ * on a cadence.
  *
  * The sweep reads expired-lease rows and decides per row, reusing the shared
- * {@link backoff} curve so a lease-expiry retry waits exactly as long as a
- * handler-failure retry would. Reclaim returns the row to `pending`; a stalled
- * original owner is fenced first by the `status = 'running'` guard (while the row
- * is `pending`) and then by the epoch, which the next claim bumps. The reclaim also
- * bumps the epoch itself, but that is defence in depth (a monotonic epoch on every
- * ownership transition, and a fence against a second concurrent reaper), not what
- * closes the stalled-owner window (see {@link Executor}).
+ * {@link backoff} curve so a lease-expiry retry waits as long as a handler-failure
+ * retry would. Reclaim returns the row to `pending`; a stalled original owner is
+ * fenced first by the `status = 'running'` guard (while the row is `pending`) and
+ * then by the epoch, which the next claim bumps. Reclaim also bumps the epoch
+ * itself as an extra safeguard against a second concurrent reaper, but the
+ * `status` change and the next claim's own bump are what actually close the
+ * stalled-owner window (see {@link Executor}).
  *
  * Each per-row update is guarded and 0 rows affected is benign, so concurrent
  * reapers on every main are safe. A row that throws is skipped, not allowed to
@@ -58,12 +58,11 @@ export class Reaper {
 		let reclaimed = 0;
 		let deadLettered = 0;
 		for (const task of expired) {
-			// One row that keeps throwing must not abort the pass: it sorts oldest-first,
+			// A row that keeps throwing must not abort the pass: rows sort oldest-first,
 			// so it would head-of-line block every younger expired row on each sweep.
-			// Skip it (best effort) and let a later pass retry it.
 			try {
-				// The expired lease means the in-flight attempt is lost; count it now, same
-				// as a handler failure would, and decide retry vs terminal on that number.
+				// The expired lease means the in-flight attempt is lost, so count it now,
+				// same as a handler failure would.
 				const nextAttempts = task.attempts + 1;
 				if (nextAttempts >= task.maxAttempts) {
 					deadLettered += await this.taskRepository.deadLetterExpired(

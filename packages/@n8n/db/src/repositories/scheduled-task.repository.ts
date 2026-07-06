@@ -286,8 +286,9 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	 * Clears the claim and lease. Guarded on the epoch read during the sweep and a
 	 * re-asserted expiry, so a row the owner finished, another reaper reclaimed, or a
 	 * renewed lease moved out is a benign 0-row no-op. Returns rows affected. (The
-	 * epoch bump is defence in depth, not what fences the stalled owner; the status
-	 * change and the next claim's own bump do that. See `Reaper` in `@n8n/scheduler`.)
+	 * epoch bump here is an extra safeguard, not what fences the stalled owner; the
+	 * status change and the next claim's own bump do that. See `Reaper` in
+	 * `@n8n/scheduler`.)
 	 */
 	async reclaimExpired(ref: ReapRef, backoffMs: number, errorMessage: string): Promise<number> {
 		return await this.runReaperUpdate(ref, {

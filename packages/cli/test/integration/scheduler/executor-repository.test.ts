@@ -308,9 +308,9 @@ describe('ScheduledTaskRepository executor methods', () => {
 		});
 
 		it('fences a stale epoch: the owner at a superseded epoch cannot transition', async () => {
-			// The canonical bug: the same owner stalls, is reaped + reclaimed (epoch
-			// bumped), then its stale fire() tries to write. claimedBy still matches, so
-			// only the epoch guard stops it. Every terminal method must miss at the old epoch.
+			// The same owner stalls, is reaped and reclaimed (epoch bumped), then its
+			// stale `Executor.fire` tries to write. `claimedBy` still matches, so only
+			// the epoch guard stops it: every terminal method must miss at the old epoch.
 			const { id, epoch } = await claimOne();
 			const stale = epoch + 1;
 
@@ -501,13 +501,11 @@ describe('ScheduledTaskRepository executor methods', () => {
 				expect(found.map((t) => t.id)).toEqual([older.id]);
 			});
 
-			it('reaps a lease whose leaseExpiresAt is exactly now (boundary)', async () => {
-				// The WHERE clause is strictly `leaseExpiresAt < now()`. A row set to expire
-				// at "now" per the JS clock is, by the time the query's own now() evaluates,
-				// already strictly in the past (some time always elapses between the two), so
-				// it must be swept up. This pins the comparison to `<`, not some inverted or
-				// off-by-one variant that would exclude it.
-				const task = await createExpiredRunning({ leaseExpiresAt: new Date() });
+			it('reaps a lease that expired a moment ago (boundary)', async () => {
+				// The WHERE clause is strictly `leaseExpiresAt < now()`. Expiring 1ms in the
+				// past keeps the lease unambiguously below the DB clock, so this pins the
+				// comparison to `<` rather than an off-by-one variant that would exclude it.
+				const task = await createExpiredRunning({ leaseExpiresAt: new Date(Date.now() - 1) });
 
 				const found = await taskRepository.findExpiredLeases(10);
 
