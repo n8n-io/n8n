@@ -43,6 +43,7 @@ import { InstanceAiBrowserSessionService } from './browser/instance-ai-browser-s
 import { EvalExecutionService } from './eval/execution.service';
 import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service';
 import { EvalThreadRestoreService } from './eval/thread-restore.service';
+import { DurableEventLog } from './event-bus/durable-event-log';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
 import { InstanceAiErrorReporterService } from './instance-ai-error-reporter.service';
 import { InstanceAiGatewayService } from './instance-ai-gateway.service';
@@ -107,6 +108,7 @@ export class InstanceAiController {
 		private readonly evalCredentialAllowlists: EvalThreadCredentialAllowlistService,
 		private readonly evalThreadRestore: EvalThreadRestoreService,
 		private readonly eventBus: InProcessEventBus,
+		private readonly eventLog: DurableEventLog,
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly push: Push,
 		private readonly urlService: UrlService,
@@ -358,16 +360,25 @@ export class InstanceAiController {
 		// The client may have disconnected during the awaits above.
 		if (closed) return;
 
-		// 6. Replay missed events, emit run-sync frames, and flip to live delivery
-		//    in one synchronous block. The event bus store and emitter are
-		//    synchronous, so no event can slip between the replay and the live
-		//    handler taking over. Events that arrived during the awaits above are
-		//    already in the store (the early subscription in step 1 keeps relayed
-		//    events flowing in multi-main) and are included in the replay here.
-		const missed = this.eventBus.getEventsAfter(threadId, cursor);
+		// 6. Replay missed events from the DURABLE log — survives restarts and is
+		//    valid on any main (the table is in the shared DB). The read is async,
+		//    so unlike the old synchronous memory-store replay, live events can
+		//    land mid-read: buffer them and flush with seq dedupe (the drain
+		//    persists before it emits, so a fact is never in neither place).
+		const arrivedDuringReplay: StoredEvent[] = [];
+		const stopBuffering = this.eventBus.subscribe(threadId, (stored) => {
+			arrivedDuringReplay.push(stored);
+		});
+		const missed = await this.eventLog.getEventsAfter(threadId, cursor);
+		let lastReplayedSeq = cursor;
 		for (const stored of missed) {
 			deliver(stored);
+			if (stored.id !== undefined) lastReplayedSeq = stored.id;
 		}
+		for (const stored of arrivedDuringReplay) {
+			if (stored.id === undefined || stored.id > lastReplayedSeq) deliver(stored);
+		}
+		stopBuffering();
 
 		// 6b. Bootstrap sync: emit one run-sync control frame per live message
 		//     group. Each frame uses a named SSE event type (event: run-sync) with
@@ -682,7 +693,8 @@ export class InstanceAiController {
 
 		// Include the next SSE event ID so the frontend can skip past events
 		// already covered by these historical messages (prevents duplicates)
-		const nextEventId = this.eventBus.getNextEventId(threadId);
+		// Durable authority: valid across restarts and mains, unlike the bus cache.
+		const nextEventId = await this.eventLog.getNextEventId(threadId);
 		return { ...result, nextEventId };
 	}
 
@@ -1125,8 +1137,12 @@ export class InstanceAiController {
 	}
 
 	private writeSseEvent(res: FlushableResponse, stored: StoredEvent): void {
-		// No `event:` field — events are discriminated by data.type per streaming-protocol.md
-		res.write(`id: ${stored.id}\ndata: ${JSON.stringify(stored.event)}\n\n`);
+		// No `event:` field — events are discriminated by data.type per streaming-protocol.md.
+		// Ephemeral events (deltas/status) carry no `id:` line, so the browser's
+		// Last-Event-ID only ever advances on durable facts — same precedent as
+		// the run-sync control frames above.
+		const idLine = stored.id !== undefined ? `id: ${stored.id}\n` : '';
+		res.write(`${idLine}data: ${JSON.stringify(stored.event)}\n\n`);
 		res.flush?.();
 	}
 }
