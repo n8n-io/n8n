@@ -59,12 +59,15 @@ const renderComponent = createComponentRenderer(WorkflowExecutionsSidebar, {
 	}),
 });
 
-const buildExecutions = (count: number): ExecutionSummary[] =>
+const buildExecutions = (
+	count: number,
+	status: ExecutionSummary['status'] = 'success',
+): ExecutionSummary[] =>
 	Array.from({ length: count }, (_, index) => ({
 		id: `exec-${index}`,
 		workflowId: 'test-workflow-id',
 		mode: 'manual',
-		status: 'success',
+		status,
 		createdAt: new Date().toISOString(),
 		startedAt: new Date().toISOString(),
 		stoppedAt: new Date().toISOString(),
@@ -105,6 +108,54 @@ describe('WorkflowExecutionsSidebar', () => {
 		});
 
 		expect(getByTestId('concurrent-executions-header')).toBeVisible();
+	});
+
+	it('should render replay button when a retriable failed execution exists', async () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				loading: false,
+				loadingMore: false,
+				hasMore: false,
+				executions: buildExecutions(1, 'error'),
+			},
+		});
+
+		expect(getByTestId('replay-last-failed-run-button')).toBeVisible();
+	});
+
+	it('should not render replay button when no retriable failed execution exists', async () => {
+		const { queryByTestId } = renderComponent({
+			props: {
+				loading: false,
+				loadingMore: false,
+				hasMore: false,
+				executions: buildExecutions(1, 'success'),
+			},
+		});
+
+		expect(queryByTestId('replay-last-failed-run-button')).toBeNull();
+	});
+
+	it('should emit retryExecution for latest failed run when replay button is clicked', async () => {
+		const { getByTestId, emitted } = renderComponent({
+			props: {
+				loading: false,
+				loadingMore: false,
+				hasMore: false,
+				executions: buildExecutions(1, 'error'),
+			},
+		});
+
+		getByTestId('replay-last-failed-run-button').click();
+
+		expect(emitted().retryExecution).toEqual([
+			[
+				{
+					execution: expect.objectContaining({ id: 'exec-0', status: 'error' }),
+					command: 'current-workflow',
+				},
+			],
+		]);
 	});
 
 	describe('infinite scroll sentinel', () => {
