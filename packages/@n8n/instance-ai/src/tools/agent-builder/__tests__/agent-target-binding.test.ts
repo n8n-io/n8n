@@ -3,6 +3,7 @@ import type { ThreadRecord } from '../../../storage/thread-patch';
 import type { InstanceAiAgentBuilderService, InstanceAiContext } from '../../../types';
 import { resolveAgentBuilderTarget, saveAgentBuilderTarget } from '../agent-target-binding';
 import { createReadConfigTool } from '../config-tools';
+import { createListAgentsTool, createListWorkflowsTool } from '../creation-tools';
 
 /** In-memory thread store shared across "turns" (fresh contexts). */
 function createThreadMemory(initialMetadata: Record<string, unknown> = {}) {
@@ -88,5 +89,28 @@ describe('agent-builder target binding', () => {
 
 		expect(result.ok).toBe(true);
 		expect(getConfigSnapshot).toHaveBeenCalledWith('agent-1', 'project-1');
+	});
+
+	it('scopes list_workflows and list_agents to the binding project on a later turn', async () => {
+		// Binding says project-1; the fresh run's context.projectId is a different
+		// project. Both listing tools must use the binding's project, not the run's.
+		const threadMemory = createThreadMemory({ instanceAiAgentBuilderTarget: TARGET });
+		const listAttachableWorkflows = vi.fn().mockResolvedValue([]);
+		const listAllProjectAgents = vi.fn().mockResolvedValue([]);
+		const service = {
+			listAttachableWorkflows,
+			listAllProjectAgents,
+		} as unknown as InstanceAiAgentBuilderService;
+		const context = createContext({
+			threadMemory,
+			projectId: 'other-project',
+			agentBuilderService: service,
+		});
+
+		await executeTool(createListWorkflowsTool(context), {}, {});
+		expect(listAttachableWorkflows).toHaveBeenCalledWith('project-1', undefined);
+
+		await executeTool(createListAgentsTool(context), {}, {});
+		expect(listAllProjectAgents).toHaveBeenCalledWith('project-1');
 	});
 });

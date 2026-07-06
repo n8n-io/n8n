@@ -38,7 +38,7 @@ export function createBuildAgentTool(context: InstanceAiContext) {
 				'Do not use a configHash copied from the prompt snapshot. ' +
 				'Returns { ok: true, config, configHash, updatedAt, versionId } on success or ' +
 				'{ ok: false, stage, errors } with path, message fields on failure. ' +
-				'stage is "parse", "stale", or "schema".',
+				'stage is "parse", "stale", "schema", or "validation".',
 		)
 		.input(buildAgentInputSchema)
 		.handler(async ({ filePath, baseConfigHash }) => {

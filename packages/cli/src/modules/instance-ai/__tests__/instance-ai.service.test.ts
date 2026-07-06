@@ -982,6 +982,29 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		expect(createLazyWorkspaceRuntimeSkillSource).not.toHaveBeenCalled();
 		expect(createSandbox).not.toHaveBeenCalled();
 		expect(setupSandboxWorkspace).not.toHaveBeenCalled();
+
+		// Third phase: sandbox available again, but the agents module is inactive.
+		// The agent-builder skill must still be hidden via withoutAgentBuilderSkill.
+		(loadInstanceAiRuntimeSkillSource as Mock).mockClear();
+		(createLazyWorkspaceRuntimeSkillSource as Mock).mockClear();
+		service.settingsService.getSandboxStatus.mockReturnValue({
+			enabled: true,
+			provider: 'n8n-sandbox',
+			workflowBuilderAvailable: true,
+			unavailableReason: null,
+		});
+		service.moduleRegistry.isActive = vi.fn((mod: string) => mod !== 'agents');
+
+		const agentsInactiveEnvironment = await service.createExecutionEnvironment(
+			fakeUser,
+			'thread-3',
+			'run-3',
+			new AbortController().signal,
+		);
+
+		expect(agentsInactiveEnvironment.orchestrationContext.runtimeSkills?.registry.skills).toEqual([
+			{ id: 'data-table-manager' },
+		]);
 	});
 });
 

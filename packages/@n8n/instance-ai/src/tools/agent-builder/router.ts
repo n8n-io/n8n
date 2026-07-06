@@ -21,6 +21,7 @@ import {
 	createBuildCustomToolTool,
 	createCreateSkillTool,
 	createCreateTaskTool,
+	createListAgentsTool,
 	createListIntegrationTypesTool,
 	createListSubAgentsTool,
 	createListWorkflowsTool,
@@ -48,6 +49,7 @@ const ROUTER_TOOL_FACTORIES = [
 	createBuildCustomToolTool,
 	createListIntegrationTypesTool,
 	createListSubAgentsTool,
+	createListAgentsTool,
 	createListWorkflowsTool,
 	createSearchMcpServersTool,
 	createVerifyMcpServerTool,
@@ -100,7 +102,7 @@ export function createAgentBuilderRouterTool(context: InstanceAiContext): BuiltT
 				'agent JSON config + configHash), build_agent (validate and persist the config from a ' +
 				'workspace JSON file), search_nodes / get_node_types / ' +
 				'get_resource_locator_options (node tools), create_skill, create_task, build_custom_tool, ' +
-				'list_integration_types, list_sub_agents, list_workflows, ' +
+				'list_integration_types, list_sub_agents, list_agents, list_workflows, ' +
 				'search_mcp_servers, verify_mcp_server, resolve_llm. To ask the user anything (a choice, ' +
 				'which credential, which model) use the native `ask-user` tool; to list credentials use ' +
 				'the native `credentials` tool (action `list`).',

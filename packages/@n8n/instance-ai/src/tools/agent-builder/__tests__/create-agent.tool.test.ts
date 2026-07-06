@@ -16,6 +16,7 @@ function createService(
 		buildCustomTool: vi.fn(),
 		listChatIntegrations: vi.fn(),
 		listProjectAgents: vi.fn(),
+		listAllProjectAgents: vi.fn(),
 		listModels: vi.fn(),
 		searchMcpServers: vi.fn(),
 		verifyMcpServer: vi.fn(),

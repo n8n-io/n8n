@@ -22,7 +22,7 @@ All builder actions run through a single `agent_builder` tool. Invoke an action
 as `agent_builder({ action: "<name>", ...args })`. Available actions:
 `create_agent`, `read_config`, `build_agent`, `search_nodes`,
 `get_node_types`, `get_resource_locator_options`, `create_skill`, `create_task`,
-`build_custom_tool`, `list_integration_types`, `list_sub_agents`,
+`build_custom_tool`, `list_integration_types`, `list_sub_agents`, `list_agents`,
 `list_workflows`, `search_mcp_servers`, `verify_mcp_server`, `resolve_llm`.
 
 Credentials are listed via the native `credentials` tool (not an `agent_builder`

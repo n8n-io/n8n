@@ -193,6 +193,13 @@ export class InstanceAiAgentBuilderAdapterService {
 					.map((agent) => ({ agentId: agent.id, name: agent.name }));
 			},
 
+			listAllProjectAgents: async (projectId): Promise<ProjectAgentSummary[]> => {
+				const resolvedProjectId = await resolveProjectId(projectId);
+				await assertProjectScope('agent:read', resolvedProjectId);
+				const agents = await this.agentsService.findByProjectId(resolvedProjectId);
+				return agents.map((agent) => ({ agentId: agent.id, name: agent.name }));
+			},
+
 			listModels: async (
 				credentialId,
 				credentialType,

@@ -27,6 +27,7 @@ function createService(
 		buildCustomTool: vi.fn(),
 		listChatIntegrations: vi.fn(),
 		listProjectAgents: vi.fn(),
+		listAllProjectAgents: vi.fn(),
 		listModels: vi.fn(),
 		searchMcpServers: vi.fn(),
 		verifyMcpServer: vi.fn(),
@@ -178,13 +179,14 @@ describe('build_agent tool', () => {
 			files: { [FILE_PATH]: JSON.stringify({ ...VALID_CONFIG, instructions: '   ' }) },
 		});
 
-		const result = await executeTool<{ ok: boolean; errors?: Array<{ path: string }> }>(
-			createBuildAgentTool(context),
-			{ filePath: FILE_PATH, baseConfigHash: null },
-			{},
-		);
+		const result = await executeTool<{
+			ok: boolean;
+			stage?: string;
+			errors?: Array<{ path: string }>;
+		}>(createBuildAgentTool(context), { filePath: FILE_PATH, baseConfigHash: null }, {});
 
 		expect(result.ok).toBe(false);
+		expect(result.stage).toBe('validation');
 		expect(result.errors?.some((e) => e.path === '/instructions')).toBe(true);
 		expect(updateConfig).not.toHaveBeenCalled();
 	});

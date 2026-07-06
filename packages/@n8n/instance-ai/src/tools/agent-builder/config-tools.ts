@@ -55,7 +55,7 @@ async function resolveDeps(context: InstanceAiContext): Promise<AgentBuilderDeps
 	};
 }
 
-export const NOT_CONFIGURED = {
+const NOT_CONFIGURED = {
 	ok: false as const,
 	errors: [
 		{
@@ -66,7 +66,7 @@ export const NOT_CONFIGURED = {
 	],
 };
 
-export const readConfigInputSchema = z.object({});
+const readConfigInputSchema = z.object({});
 
 export const baseConfigHashSchema = z
 	.string()
@@ -81,20 +81,20 @@ async function getHashedSnapshot(deps: AgentBuilderDeps): Promise<HashedSnapshot
 
 /**
  * Run the shared validation gauntlet on a candidate config and persist it.
- * Returns the success/failure tool response.
+ * Returns the success/failure tool response. Post-schema content rejections
+ * are reported as stage `'validation'`.
  */
 async function validateAndPersist(
 	deps: AgentBuilderDeps,
 	candidate: AgentJsonConfig,
 	previousConfig: AgentJsonConfig | null,
-	failureStage: string,
 ) {
 	const empty = rejectIfEmptyInstructions(candidate, INSTANCE_AI_CONFIG_MESSAGES);
-	if (empty) return { ok: false as const, stage: failureStage, errors: empty };
+	if (empty) return { ok: false as const, stage: 'validation', errors: empty };
 
 	const unsupportedWebSearch = rejectIfUnsupportedNativeWebSearch(candidate);
 	if (unsupportedWebSearch) {
-		return { ok: false as const, stage: failureStage, errors: unsupportedWebSearch };
+		return { ok: false as const, stage: 'validation', errors: unsupportedWebSearch };
 	}
 
 	const dynamicSelector = rejectIfDynamicSelectorUsesFromAi(
@@ -104,7 +104,7 @@ async function validateAndPersist(
 		INSTANCE_AI_CONFIG_MESSAGES,
 	);
 	if (dynamicSelector) {
-		return { ok: false as const, stage: failureStage, errors: dynamicSelector };
+		return { ok: false as const, stage: 'validation', errors: dynamicSelector };
 	}
 
 	// Seed the "native model gets web search by default" ergonomic as an explicit
@@ -122,14 +122,14 @@ async function validateAndPersist(
 	} catch (e) {
 		return {
 			ok: false as const,
-			stage: failureStage,
+			stage: 'validation',
 			errors: [{ path: '(root)', message: e instanceof Error ? e.message : String(e) }],
 		};
 	}
 }
 
 /** read_config handler — usable standalone or via the agent_builder router. */
-export async function handleReadConfig(context: InstanceAiContext) {
+async function handleReadConfig(context: InstanceAiContext) {
 	const deps = await resolveDeps(context);
 	if (!deps) return NOT_CONFIGURED;
 	try {
@@ -176,7 +176,7 @@ export async function persistConfigJson(
 		return { ok: false as const, stage: 'schema', errors: formatZodErrors(zodResult.error) };
 	}
 
-	return await validateAndPersist(deps, zodResult.data, snapshot.config, 'schema');
+	return await validateAndPersist(deps, zodResult.data, snapshot.config);
 }
 
 export function createReadConfigTool(context: InstanceAiContext) {

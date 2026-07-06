@@ -714,6 +714,7 @@ only the file medium.
 | `build_custom_tool` | Compile and store a custom TypeScript tool (`export default new Tool(...)`), sandbox-validated. Register it by adding `{ type: "custom", id }` to `tools` in the config file and calling `build_agent`. |
 | `list_integration_types` | List chat-platform integration types with their supported credential types and builder guidance. |
 | `list_sub_agents` | List published same-project agents that can be attached as sub-agents. |
+| `list_agents` | List every agent in the target agent’s project (no published-only filter; use to discover agents to edit or see what exists). |
 | `list_workflows` | List workflows attachable as `type: "workflow"` tools (supported trigger types only). |
 | `search_mcp_servers` | Search the MCP registry for servers to attach (returns url, transport, auth, credential type, tools). |
 | `verify_mcp_server` | Test connectivity to an MCP server and list its tools before adding it to the config. |

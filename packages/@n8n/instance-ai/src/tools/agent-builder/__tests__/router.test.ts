@@ -15,6 +15,7 @@ function createService(
 		buildCustomTool: vi.fn(),
 		listChatIntegrations: vi.fn(),
 		listProjectAgents: vi.fn(),
+		listAllProjectAgents: vi.fn(),
 		listModels: vi.fn(),
 		searchMcpServers: vi.fn(),
 		verifyMcpServer: vi.fn(),
@@ -79,6 +80,19 @@ describe('agent_builder router', () => {
 		);
 		expect(service.listAttachableWorkflows).toHaveBeenCalledWith('project-1', 'billing');
 		expect(result.workflows).toHaveLength(1);
+	});
+
+	it('routes list_agents to the host adapter with the resolved project', async () => {
+		const service = createService({
+			listAllProjectAgents: vi.fn().mockResolvedValue([{ agentId: 'agent-2', name: 'Triage' }]),
+		});
+		const result = await executeTool<{ agents: Array<{ agentId: string; name: string }> }>(
+			createAgentBuilderRouterTool(createContext(service)),
+			{ action: 'list_agents' },
+			{},
+		);
+		expect(service.listAllProjectAgents).toHaveBeenCalledWith('project-1');
+		expect(result.agents).toEqual([{ agentId: 'agent-2', name: 'Triage' }]);
 	});
 
 	it('routes build_agent to the build-agent handler', async () => {

@@ -1,7 +1,7 @@
 /**
  * Creation + listing agent-builder tools: create_skill, create_task,
- * build_custom_tool, list_integration_types, list_sub_agents, list_workflows.
- * Thin wrappers over `agentBuilderService`.
+ * build_custom_tool, list_integration_types, list_sub_agents, list_agents,
+ * list_workflows. Thin wrappers over `agentBuilderService`.
  */
 import { Tool } from '@n8n/agents';
 import { agentSkillSchema, agentTaskSchema } from '@n8n/api-types';
@@ -26,6 +26,17 @@ async function resolveCreationDeps(context: InstanceAiContext): Promise<Creation
 		agentId: target.agentId,
 		projectId: target.projectId,
 	};
+}
+
+/**
+ * Resolve the project id for project-scoped listing tools (list_workflows,
+ * list_agents). Prefers the persisted agent-builder binding so later turns stay
+ * scoped to the agent's project; falls back to the run's `projectId` so the
+ * tools still work before any agent is created.
+ */
+async function resolveProjectId(context: InstanceAiContext): Promise<string | undefined> {
+	const target = await resolveAgentBuilderTarget(context);
+	return target?.projectId ?? context.projectId;
 }
 
 const NOT_CONFIGURED = {
@@ -188,6 +199,23 @@ export function createListSubAgentsTool(context: InstanceAiContext) {
 		.build();
 }
 
+export function createListAgentsTool(context: InstanceAiContext) {
+	return new Tool(AGENT_BUILDER_TOOL_IDS.LIST_AGENTS)
+		.description(
+			'List every agent in the target agent project (no published-only filter, does not ' +
+				'exclude the target agent). Use to discover which agents exist in the project — e.g. to ' +
+				'pick one to edit, or to see what is available before deciding to add a sub-agent. For the ' +
+				'narrower sub-agent candidate list, use list_sub_agents instead. Returns { agents: [{ agentId, name }] }.',
+		)
+		.input(z.object({}))
+		.handler(async () => {
+			if (!context.agentBuilderService) return { agents: [] };
+			const projectId = await resolveProjectId(context);
+			return { agents: await context.agentBuilderService.listAllProjectAgents(projectId) };
+		})
+		.build();
+}
+
 export function createListWorkflowsTool(context: InstanceAiContext) {
 	return new Tool(AGENT_BUILDER_TOOL_IDS.LIST_WORKFLOWS)
 		.description(
@@ -207,7 +235,7 @@ export function createListWorkflowsTool(context: InstanceAiContext) {
 		)
 		.handler(async ({ searchTerm }: { searchTerm?: string }) => {
 			if (!context.agentBuilderService) return { workflows: [] };
-			const projectId = context.agentBuilderTarget?.projectId ?? context.projectId;
+			const projectId = await resolveProjectId(context);
 			return {
 				workflows: await context.agentBuilderService.listAttachableWorkflows(projectId, searchTerm),
 			};
