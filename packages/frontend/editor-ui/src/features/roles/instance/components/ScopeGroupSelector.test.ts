@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 import ScopeGroupSelector from './ScopeGroupSelector.vue';
 import { INSTANCE_SCOPE_GROUP_LIST, INSTANCE_SCOPE_GROUPS } from '../instanceRoleScopes';
+import { CUSTOM_ROLES_DOCS_URL } from '@/app/constants';
 
 const totalOptions = INSTANCE_SCOPE_GROUP_LIST.reduce((sum, g) => sum + g.options.length, 0);
 
@@ -94,6 +95,50 @@ describe('ScopeGroupSelector', () => {
 		const { getByTestId } = renderComponent(ScopeGroupSelector, { props: { modelValue: [] } });
 		expect(getByTestId('scope-option-apiKey-manage-own')).toBeTruthy();
 		expect(getByTestId('scope-option-apiKey-manage-all')).toBeTruthy();
+	});
+
+	it('labels the roles "Manage" option as "Manage all roles (instance and project)"', () => {
+		const { getByText } = renderComponent(ScopeGroupSelector, { props: { modelValue: [] } });
+		expect(getByText('Manage all roles (instance and project)')).toBeTruthy();
+	});
+
+	describe('privilege-escalation warning', () => {
+		it('renders the members warning when a user scope is selected', () => {
+			const { getByTestId } = renderComponent(ScopeGroupSelector, {
+				props: { modelValue: [...INSTANCE_SCOPE_GROUPS.user.Manage] },
+			});
+			expect(getByTestId('scope-escalation-warning-user')).toBeTruthy();
+		});
+
+		it('renders the roles warning when role:manage is selected', () => {
+			const { getByTestId } = renderComponent(ScopeGroupSelector, {
+				props: { modelValue: ['role:read', 'role:manage'] },
+			});
+			expect(getByTestId('scope-escalation-warning-role')).toBeTruthy();
+		});
+
+		it('does not render a warning for a non-escalating scope', () => {
+			const { queryByTestId } = renderComponent(ScopeGroupSelector, {
+				props: { modelValue: ['tag:read'] },
+			});
+			expect(queryByTestId('scope-escalation-warning-user')).toBeNull();
+			expect(queryByTestId('scope-escalation-warning-role')).toBeNull();
+		});
+
+		it('does not render the warning when readonly', () => {
+			const { queryByTestId } = renderComponent(ScopeGroupSelector, {
+				props: { modelValue: [...INSTANCE_SCOPE_GROUPS.user.Manage], readonly: true },
+			});
+			expect(queryByTestId('scope-escalation-warning-user')).toBeNull();
+		});
+
+		it('links the docs to CUSTOM_ROLES_DOCS_URL', () => {
+			const { getByTestId } = renderComponent(ScopeGroupSelector, {
+				props: { modelValue: [...INSTANCE_SCOPE_GROUPS.user.Manage] },
+			});
+			const link = getByTestId('scope-escalation-warning-user').querySelector('a');
+			expect(link?.getAttribute('href')).toBe(CUSTOM_ROLES_DOCS_URL);
+		});
 	});
 
 	describe('apiKey implied-state behaviour', () => {
