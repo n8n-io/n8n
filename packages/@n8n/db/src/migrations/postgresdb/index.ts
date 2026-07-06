@@ -216,6 +216,7 @@ import { DropAgentExecutionFallbackColumns1784000000039 } from '../common/178400
 import { CreateWorkflowPublicationTriggerStatusTable1784000000040 } from '../common/1784000000040-CreateWorkflowPublicationTriggerStatusTable';
 import { AddUsedPrivateCredentialsToExecutionEntity1784000000041 } from '../common/1784000000041-AddUsedPrivateCredentialsToExecutionEntity';
 import { CreateSchedulerTables1784000000042 } from '../common/1784000000042-CreateSchedulerTables';
+import { CreateUserLoginSessionTable1784000000043 } from '../common/1784000000043-CreateUserLoginSessionTable';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -437,4 +438,5 @@ export const postgresMigrations: Migration[] = [
 	CreateWorkflowPublicationTriggerStatusTable1784000000040,
 	AddUsedPrivateCredentialsToExecutionEntity1784000000041,
 	CreateSchedulerTables1784000000042,
+	CreateUserLoginSessionTable1784000000043,
 ];

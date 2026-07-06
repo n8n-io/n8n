@@ -56,11 +56,11 @@ export class HooksService {
 	 * Set the n8n-auth cookie in the response to auto-login
 	 * the user after instance is provisioned
 	 */
-	issueCookie(res: Response, user: User) {
+	async issueCookie(res: Response, user: User) {
 		// TODO: The information on user has mfa enabled here, is missing!!
 		// This could be a security problem!!
 		// This is in just for the hackmation!!
-		return this.authService.issueCookie(res, user, user.mfaEnabled);
+		return await this.authService.issueCookie(res, user, user.mfaEnabled);
 	}
 
 	/**
