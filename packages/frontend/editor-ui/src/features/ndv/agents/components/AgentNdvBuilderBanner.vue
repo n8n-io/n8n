@@ -50,8 +50,12 @@ const agentCreate = useAgentCreate({
 // With an agent referenced the link is pure navigation; without one it first
 // creates a draft agent, which needs create permission and an editable workflow.
 const isLinkEnabled = computed(() => {
+	// An in-flight create owns the flow even once its reference has landed —
+	// re-enabling on agentId would open a second navigation path that skips
+	// the workflow save createAndOpenBuilder is about to do.
+	if (agentCreate.isCreating.value) return false;
 	if (agentId.value) return true;
-	return canCreate.value && !props.isReadOnly && !agentCreate.isCreating.value;
+	return canCreate.value && !props.isReadOnly;
 });
 
 async function onLinkClick() {

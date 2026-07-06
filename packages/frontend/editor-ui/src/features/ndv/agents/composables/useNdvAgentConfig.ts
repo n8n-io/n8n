@@ -163,13 +163,24 @@ export function useNdvAgentConfig(
 	});
 
 	async function saveSkill(snapshot: SkillSnapshot) {
-		const result = await updateAgentSkill(
-			rootStore.restApiContext,
-			snapshot.projectId,
-			snapshot.agentId,
-			snapshot.skillId,
-			snapshot.skill,
-		);
+		let result;
+		try {
+			result = await updateAgentSkill(
+				rootStore.restApiContext,
+				snapshot.projectId,
+				snapshot.agentId,
+				snapshot.skillId,
+				snapshot.skill,
+			);
+		} catch (error) {
+			// Mirror saveConfig: a permanent failure is terminal, but only when the
+			// snapshot targets the current agent (self-addressed snapshots can
+			// outlive a switch).
+			if (isPermanentError(error) && snapshot.agentId === agentId.value) {
+				isUnavailable.value = true;
+			}
+			throw error;
+		}
 
 		emitAgentUpdated(snapshot.agentId);
 

@@ -132,4 +132,12 @@ describe('AgentNdvBuilderBanner', () => {
 		const wrapper = mountBanner(createNdvStub());
 		expect(wrapper.find('[data-test-id="agent-ndv-banner-open-builder"]').exists()).toBe(false);
 	});
+
+	it('keeps the link disabled mid-create even once the reference has landed', () => {
+		// setReference lands before createAndOpenBuilder finishes saving and
+		// navigating — a re-enabled link would open a second navigation path.
+		isCreatingHolder.value = true;
+		const wrapper = mountBanner(createNdvStub({ agentId: 'agent-1' }));
+		expect(wrapper.find('[data-test-id="agent-ndv-banner-open-builder"]').exists()).toBe(false);
+	});
 });

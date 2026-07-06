@@ -87,21 +87,27 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 	const { showError, showMessage } = useToast();
 
 	function onOpenAddToolModal() {
+		// Capture the target at open time: a confirm landing after an agent/node
+		// switch must not write the old agent's tool list into the new one.
+		const targetAgentId = agentId.value;
+
 		uiStore.openModalWithData({
 			name: AGENT_TOOLS_MODAL_KEY,
 			data: {
 				tools: localConfig.value?.tools ?? [],
 				mcpServers: localConfig.value?.mcpServers ?? [],
 				projectId: projectId.value,
-				agentId: agentId.value,
+				agentId: targetAgentId,
 				onConfirm: (payload: {
 					tools?: AgentJsonToolConfig[];
 					mcpServers?: AgentJsonMcpServerConfig[];
-				}) =>
+				}) => {
+					if (agentId.value !== targetAgentId) return;
 					scheduleConfigUpdate({
 						...(payload.tools && { tools: payload.tools }),
 						...(payload.mcpServers && { mcpServers: payload.mcpServers }),
-					}),
+					});
+				},
 			},
 		});
 	}
@@ -310,11 +316,18 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 	function onOpenAddSkillModal() {
 		telemetry?.trackOpenedAddSkillModal?.();
 
+		// Capture the target at open time: the modal can outlive an agent/node
+		// switch, and a late confirm must create the skill on the agent the
+		// modal was opened for — and only mutate local state if that agent is
+		// still the current one.
+		const targetProjectId = projectId.value;
+		const targetAgentId = agentId.value;
+
 		uiStore.openModalWithData({
 			name: AGENT_SKILL_MODAL_KEY,
 			data: {
-				projectId: projectId.value,
-				agentId: agentId.value,
+				projectId: targetProjectId,
+				agentId: targetAgentId,
 				availableTools: configuredToolOptions(),
 				onConfirm: ({ skill }: { id?: string; skill: AgentSkill }) => {
 					void (async () => {
@@ -325,8 +338,8 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 						try {
 							const result = await createAgentSkill(
 								rootStore.restApiContext,
-								projectId.value,
-								agentId.value,
+								targetProjectId,
+								targetAgentId,
 								sanitizedSkill,
 							);
 							skillId = result.id;
@@ -336,7 +349,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 							showError(error, locale.baseText('agents.builder.skills.create.error'));
 							return;
 						}
-						if (agent.value?.id !== agentId.value) return;
+						if (agent.value?.id !== targetAgentId) return;
 						agent.value = {
 							...agent.value,
 							versionId,
