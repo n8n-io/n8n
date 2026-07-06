@@ -377,6 +377,35 @@ describe('WebhookTriggerRegistrar', () => {
 			expect(callOrder).toEqual(['acquire', 'resolve', 'release']);
 		});
 
+		test('holds the isolate across the registered-webhook lookup', async () => {
+			const callOrder: string[] = [];
+			vi.spyOn(WorkflowExpression.prototype, 'acquireIsolate').mockImplementation(async () => {
+				callOrder.push('acquire');
+				return true;
+			});
+			vi.spyOn(WorkflowExpression.prototype, 'releaseIsolate').mockImplementation(async () => {
+				callOrder.push('release');
+			});
+			vi.spyOn(WebhookHelpers, 'getWorkflowWebhooks').mockImplementation(() => {
+				callOrder.push('resolve');
+				return [desiredWebhook({ node: 'Webhook', httpMethod: 'GET', path: 'users' })];
+			});
+			webhookService.getRegisteredWebhooks.mockImplementation(async () => {
+				callOrder.push('db');
+				return [];
+			});
+			const workflow = createWorkflow([node('webhook-node', 'webhook', { name: 'Webhook' })]);
+
+			const result = await registrar.getNodesWithUnregisteredWebhooks(
+				workflow,
+				additionalData,
+				new Set(['webhook-node']),
+			);
+
+			expect(result).toEqual(new Set(['webhook-node']));
+			expect(callOrder).toEqual(['acquire', 'resolve', 'db', 'release']);
+		});
+
 		test('does not release an isolate it did not acquire', async () => {
 			// Simulates a caller that already holds the isolate for this workflow:
 			// acquire is idempotent per caller and reports it did not newly acquire.
