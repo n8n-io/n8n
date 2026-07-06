@@ -124,6 +124,24 @@ function appendTimelineText(
 }
 
 /**
+ * Append reasoning to timeline — merges consecutive reasoning entries within
+ * the same responseId, so each LLM step (and anything interleaved with tool
+ * calls or text) gets its own reasoning segment.
+ */
+function appendTimelineReasoning(
+	timeline: InstanceAiTimelineEntry[],
+	text: string,
+	responseId?: string,
+): void {
+	const last = timeline.at(-1);
+	if (last?.type === 'reasoning' && last.responseId === responseId) {
+		last.content += text;
+	} else {
+		timeline.push({ type: 'reasoning', content: text, ...(responseId ? { responseId } : {}) });
+	}
+}
+
+/**
  * Whether a node carries any content worth preserving across a follow-up
  * `run-start`. Covers every renderable field a turn can populate — not just
  * text/tools/children — so a reasoning-, status-, result-, or error-only tree
@@ -199,6 +217,7 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			const agent = ensureAgent(state, event.agentId);
 			if (agent) {
 				agent.reasoning += event.payload.text;
+				appendTimelineReasoning(agent.timeline, event.payload.text, event.responseId);
 			}
 			break;
 		}

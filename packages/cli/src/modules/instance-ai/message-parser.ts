@@ -176,11 +176,13 @@ function buildToolCallState(invocation: StoredToolInvocation): InstanceAiToolCal
 }
 
 /**
- * Build a chronological timeline from native parts (preserves tool-call vs text ordering).
- * Falls back to tool-calls-first heuristic when parts aren't available.
+ * Build a chronological timeline from native parts (preserves reasoning vs
+ * tool-call vs text ordering). Falls back to a reasoning-first,
+ * tool-calls-next heuristic when parts aren't available.
  */
 function buildTimeline(
 	textContent: string,
+	reasoning: string,
 	toolCalls: InstanceAiToolCallState[],
 	parts?: StoredContentPart[],
 ): InstanceAiTimelineEntry[] {
@@ -190,6 +192,8 @@ function buildTimeline(
 		for (const part of parts) {
 			if (part.type === 'text' && part.text) {
 				timeline.push({ type: 'text', content: part.text });
+			} else if (part.type === 'reasoning' && part.text) {
+				timeline.push({ type: 'reasoning', content: part.text });
 			} else if (part.type === 'tool-call' && part.toolCallId) {
 				timeline.push({ type: 'tool-call', toolCallId: part.toolCallId });
 			}
@@ -197,8 +201,12 @@ function buildTimeline(
 		return timeline;
 	}
 
-	// No parts — heuristic: tool calls first, then text (most common agent pattern)
+	// No parts — heuristic: reasoning first, then tool calls, then text
+	// (most common agent pattern)
 	const timeline: InstanceAiTimelineEntry[] = [];
+	if (reasoning) {
+		timeline.push({ type: 'reasoning', content: reasoning });
+	}
 	for (const tc of toolCalls) {
 		timeline.push({ type: 'tool-call', toolCallId: tc.toolCallId });
 	}
@@ -239,7 +247,7 @@ function buildFlatAgentTree(
 		reasoning,
 		toolCalls: settledToolCalls,
 		children: [],
-		timeline: buildTimeline(textContent, settledToolCalls, parts),
+		timeline: buildTimeline(textContent, reasoning, settledToolCalls, parts),
 	};
 }
 

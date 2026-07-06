@@ -293,6 +293,11 @@ describe('parseStoredMessages', () => {
 
 			expect(result[1].reasoning).toBe('Reasoning part');
 			expect(result[1].content).toBe('Answer');
+			// Reasoning keeps its chronological slot in the timeline
+			expect(result[1].agentTree?.timeline).toEqual([
+				{ type: 'reasoning', content: 'Reasoning part' },
+				{ type: 'text', content: 'Answer' },
+			]);
 		});
 
 		it('should use agentTree snapshot when available', () => {
