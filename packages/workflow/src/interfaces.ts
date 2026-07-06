@@ -2074,6 +2074,12 @@ export interface ExecuteWorkflowData {
 	/** Terminal node output: items from every run concatenated per output branch, unless the caller sets `returnLastRunOnly`. */
 	data: Array<INodeExecutionData[] | null>;
 	waitTill?: Date | null;
+	/** True when the sub-workflow resolved a private credential; the calling node inherits it so redaction covers its embedded output. */
+	usedDynamicCredentials?: boolean;
+	/** True when the sub-workflow attempted to resolve a private credential (telemetry superset of `usedDynamicCredentials`). */
+	attemptedDynamicCredentials?: boolean;
+	/** The n8n user a resolved private credential belonged to; keeps the parent execution revealable to that user. */
+	dynamicCredentialsResolvedUserId?: string;
 }
 
 export interface ExecuteAgentInfo {

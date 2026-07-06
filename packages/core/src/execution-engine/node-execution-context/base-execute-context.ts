@@ -151,6 +151,20 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			parentCallbackManager,
 		});
 
+		// The sub-workflow resolved its credentials under its own context; forward the reported usage
+		// onto this parent node so its task inherits the flag and redaction covers the embedded output.
+		// Resolved user id is execution-scoped, so a present value wins (matches credential resolution).
+		if (result.usedDynamicCredentials) {
+			this.additionalData.currentNodeUsedDynamicCredentials = true;
+			if (result.dynamicCredentialsResolvedUserId) {
+				this.additionalData.dynamicCredentialsResolvedUserId =
+					result.dynamicCredentialsResolvedUserId;
+			}
+		}
+		if (result.attemptedDynamicCredentials) {
+			this.additionalData.currentNodeAttemptedDynamicCredentials = true;
+		}
+
 		// If a sub-workflow execution goes into the waiting state
 		if (result.waitTill) {
 			// then put the parent workflow execution also into the waiting state,
