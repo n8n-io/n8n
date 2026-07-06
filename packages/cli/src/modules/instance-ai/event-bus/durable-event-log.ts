@@ -112,6 +112,13 @@ export class DurableEventLog {
 
 		for (const event of batch) {
 			if (EPHEMERAL_TYPES.has(event.type)) {
+				// A delta with a new responseId starts a new segment: close the old
+				// one as a block first, so blocks stay exactly 1:1 with segments and
+				// the reducer's open-segment replacement stays exact.
+				for (const rolled of this.rollSegmentOnResponseChange(event)) {
+					toPersist.push(rolled);
+					toEmit.push({ id: ++seq, event: rolled, live: false });
+				}
 				this.bufferDelta(event);
 				toEmit.push({ event, live: true });
 				continue;
@@ -168,7 +175,7 @@ export class DurableEventLog {
 	 * always; every agent of the run on `run-finish`. Blocks are persisted as
 	 * `text-block`/`reasoning-block` facts carrying the segment's responseId —
 	 * on replay the reducer REPLACES the segment's streamed deltas, so a client
-	 * that reconnects mid-block never sees partial text twice.
+	 * that reconnects mid-block never sees partial text or reasoning twice.
 	 */
 	private flushBlocks(fact: InstanceAiEvent): InstanceAiEvent[] {
 		const keys =
@@ -182,26 +189,63 @@ export class DurableEventLog {
 			if (!buffer) continue;
 			this.buffers.delete(key);
 			const agentId = key.slice(fact.runId.length + 1);
-			if (buffer.reasoning.length > 0) {
-				flushed.push({
-					type: 'reasoning-block',
-					runId: fact.runId,
-					agentId,
-					...(buffer.reasoningResponseId ? { responseId: buffer.reasoningResponseId } : {}),
-					payload: { text: buffer.reasoning.join('') },
-				});
-			}
-			if (buffer.text.length > 0) {
-				flushed.push({
-					type: 'text-block',
-					runId: fact.runId,
-					agentId,
-					...(buffer.textResponseId ? { responseId: buffer.textResponseId } : {}),
-					payload: { text: buffer.text.join('') },
-				});
-			}
+			const reasoning = this.takeBlock('reasoning', fact.runId, agentId, buffer);
+			if (reasoning) flushed.push(reasoning);
+			const text = this.takeBlock('text', fact.runId, agentId, buffer);
+			if (text) flushed.push(text);
 		}
 		return flushed;
+	}
+
+	/**
+	 * A delta whose responseId differs from its kind's open buffer starts a new
+	 * segment (e.g. consecutive reasoning-only steps with no tool call between).
+	 * Close the previous segment as a block so blocks stay 1:1 with segments.
+	 */
+	private rollSegmentOnResponseChange(event: InstanceAiEvent): InstanceAiEvent[] {
+		if (event.type !== 'text-delta' && event.type !== 'reasoning-delta') return [];
+		const buffer = this.buffers.get(`${event.runId}:${event.agentId}`);
+		if (!buffer) return [];
+		const kind = event.type === 'text-delta' ? 'text' : 'reasoning';
+		const openResponseId = kind === 'text' ? buffer.textResponseId : buffer.reasoningResponseId;
+		const hasContent = (kind === 'text' ? buffer.text : buffer.reasoning).length > 0;
+		if (!hasContent || openResponseId === event.responseId) return [];
+		const block = this.takeBlock(kind, event.runId, event.agentId, buffer);
+		return block ? [block] : [];
+	}
+
+	/** Drain one kind's open segment from a buffer into its block fact. */
+	private takeBlock(
+		kind: 'text' | 'reasoning',
+		runId: string,
+		agentId: string,
+		buffer: CoalesceBuffer,
+	): InstanceAiEvent | undefined {
+		const parts = kind === 'text' ? buffer.text : buffer.reasoning;
+		if (parts.length === 0) return undefined;
+		const text = parts.join('');
+		if (kind === 'text') {
+			const responseId = buffer.textResponseId;
+			buffer.text = [];
+			buffer.textResponseId = undefined;
+			return {
+				type: 'text-block',
+				runId,
+				agentId,
+				...(responseId ? { responseId } : {}),
+				payload: { text },
+			};
+		}
+		const responseId = buffer.reasoningResponseId;
+		buffer.reasoning = [];
+		buffer.reasoningResponseId = undefined;
+		return {
+			type: 'reasoning-block',
+			runId,
+			agentId,
+			...(responseId ? { responseId } : {}),
+			payload: { text },
+		};
 	}
 
 	private async currentSeq(threadId: string): Promise<number> {

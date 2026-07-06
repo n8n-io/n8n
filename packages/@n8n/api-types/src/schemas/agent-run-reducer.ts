@@ -59,6 +59,14 @@ export interface AgentRunState {
 	toolCallsById: Record<string, InstanceAiToolCallState>;
 	/** Run status — tracks the overall run lifecycle. */
 	status: 'active' | 'completed' | 'cancelled' | 'error';
+	/**
+	 * Per-agent marker for the open (streamed, not yet block-closed) reasoning
+	 * segment: its responseId and how many characters of it were appended via
+	 * deltas. Lets a replayed `reasoning-block` REPLACE exactly the partial text
+	 * a mid-block reconnect already rendered. Reducer bookkeeping only — never
+	 * serialized into trees or snapshots.
+	 */
+	openReasoningSegments?: Record<string, { responseId?: string; length: number }>;
 }
 
 // ---------------------------------------------------------------------------
@@ -199,6 +207,17 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 			const agent = ensureAgent(state, event.agentId);
 			if (agent) {
 				agent.reasoning += event.payload.text;
+				// Track the open segment so a replayed reasoning-block can replace it.
+				const segments = (state.openReasoningSegments ??= {});
+				const open = segments[event.agentId];
+				if (open && open.responseId === event.responseId) {
+					open.length += event.payload.text.length;
+				} else {
+					segments[event.agentId] = {
+						responseId: event.responseId,
+						length: event.payload.text.length,
+					};
+				}
 			}
 			break;
 		}
@@ -228,12 +247,25 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 		}
 
 		case 'reasoning-block': {
+			// Coalesced reasoning segment from the durable log (replay path). When
+			// this segment's deltas were streamed to this consumer (mid-block
+			// reconnect), the open-segment marker says exactly how many characters
+			// to strip before appending the full block — no text renders twice.
 			const agent = ensureAgent(state, event.agentId);
 			if (agent) {
-				// SKETCH: reasoning has no per-segment timeline, so a mid-block
-				// reconnect can duplicate partial reasoning. Add segment tracking if
-				// that proves visible (reasoning renders collapsed).
-				agent.reasoning += event.payload.text;
+				const open = state.openReasoningSegments?.[event.agentId];
+				const matchesOpenSegment =
+					open !== undefined &&
+					open.responseId === event.responseId &&
+					open.length <= agent.reasoning.length;
+				if (matchesOpenSegment) {
+					agent.reasoning =
+						agent.reasoning.slice(0, agent.reasoning.length - open.length) +
+						event.payload.text;
+				} else {
+					agent.reasoning += event.payload.text;
+				}
+				if (state.openReasoningSegments) delete state.openReasoningSegments[event.agentId];
 			}
 			break;
 		}
