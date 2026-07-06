@@ -435,18 +435,24 @@ export function hasOwnerChanged(
  * Checks if a workflow has been modified by comparing version IDs, parent folder IDs,
  * descriptions and owners between local and remote versions
  */
+function normalizeDescription(description: string | null | undefined): string | null {
+	return description ? description : null;
+}
+
 export function isWorkflowModified(
 	local: SourceControlWorkflowVersionId,
 	remote: SourceControlWorkflowVersionId,
+	direction: 'push' | 'pull',
 ): boolean {
 	const hasVersionIdChanged = remote.versionId !== local.versionId;
 	const hasParentFolderIdChanged =
 		remote.parentFolderId !== undefined && remote.parentFolderId !== local.parentFolderId;
-	// Description edits don't bump the versionId, so compare them directly.
-	// Skip remote files that predate description syncing (no `description` key).
+	// Description edits don't bump the versionId. On pull, skip legacy remote files
+	// without a `description` key: importing them can't change the local description.
 	const hasDescriptionChanged =
-		remote.description !== undefined &&
-		(remote.description ?? null) !== (local.description ?? null);
+		direction === 'pull' && remote.description === undefined
+			? false
+			: normalizeDescription(remote.description) !== normalizeDescription(local.description);
 	const ownerChanged = hasOwnerChanged(remote.owner, local.owner);
 
 	return hasVersionIdChanged || hasParentFolderIdChanged || hasDescriptionChanged || ownerChanged;

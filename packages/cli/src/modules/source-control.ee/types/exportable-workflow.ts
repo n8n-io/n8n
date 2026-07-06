@@ -5,7 +5,7 @@ import type { RemoteResourceOwner } from './resource-owner';
 export interface ExportableWorkflow {
 	id: string;
 	name: string;
-	description?: string | null;
+	description: string | null;
 	nodes: INode[];
 	connections: IConnections;
 	settings?: IWorkflowSettings;

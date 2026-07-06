@@ -284,77 +284,127 @@ describe('Source Control Helper', () => {
 	});
 
 	describe('isWorkflowModified', () => {
-		it('should detect modifications when version IDs differ', () => {
-			const local = createWorkflowVersion();
-			const remote = createWorkflowVersion({ versionId: 'version2' });
+		const directions = ['push', 'pull'] as const;
 
-			expect(isWorkflowModified(local, remote)).toBe(true);
-		});
+		test.each(directions)(
+			'should detect modifications when version IDs differ (%s)',
+			(direction) => {
+				const local = createWorkflowVersion();
+				const remote = createWorkflowVersion({ versionId: 'version2' });
 
-		it('should detect modifications when parent folder IDs differ', () => {
-			const local = createWorkflowVersion();
-			const remote = createWorkflowVersion({ parentFolderId: 'folder2' });
+				expect(isWorkflowModified(local, remote, direction)).toBe(true);
+			},
+		);
 
-			expect(isWorkflowModified(local, remote)).toBe(true);
-		});
+		test.each(directions)(
+			'should detect modifications when parent folder IDs differ (%s)',
+			(direction) => {
+				const local = createWorkflowVersion();
+				const remote = createWorkflowVersion({ parentFolderId: 'folder2' });
 
-		it('should not detect modifications when version IDs and parent folder IDs are the same', () => {
-			const local = createWorkflowVersion();
-			const remote = createWorkflowVersion();
+				expect(isWorkflowModified(local, remote, direction)).toBe(true);
+			},
+		);
 
-			expect(isWorkflowModified(local, remote)).toBe(false);
-		});
+		test.each(directions)(
+			'should not detect modifications when version IDs and parent folder IDs are the same (%s)',
+			(direction) => {
+				const local = createWorkflowVersion();
+				const remote = createWorkflowVersion();
 
-		it('should not consider it modified when remote parent folder ID is undefined', () => {
-			const local = createWorkflowVersion();
-			const remote = createWorkflowVersion({ parentFolderId: undefined });
+				expect(isWorkflowModified(local, remote, direction)).toBe(false);
+			},
+		);
 
-			expect(isWorkflowModified(local, remote)).toBe(false);
-		});
+		test.each(directions)(
+			'should not consider it modified when remote parent folder ID is undefined (%s)',
+			(direction) => {
+				const local = createWorkflowVersion();
+				const remote = createWorkflowVersion({ parentFolderId: undefined });
 
-		it('should detect modifications when parent folder IDs differ and remote parent folder ID is defined', () => {
-			const local = createWorkflowVersion({ parentFolderId: null });
-			const remote = createWorkflowVersion();
+				expect(isWorkflowModified(local, remote, direction)).toBe(false);
+			},
+		);
 
-			expect(isWorkflowModified(local, remote)).toBe(true);
-		});
+		test.each(directions)(
+			'should detect modifications when parent folder IDs differ and remote parent folder ID is defined (%s)',
+			(direction) => {
+				const local = createWorkflowVersion({ parentFolderId: null });
+				const remote = createWorkflowVersion();
 
-		it('should handle null parent folder IDs correctly', () => {
+				expect(isWorkflowModified(local, remote, direction)).toBe(true);
+			},
+		);
+
+		test.each(directions)('should handle null parent folder IDs correctly (%s)', (direction) => {
 			const local = createWorkflowVersion({ parentFolderId: null });
 			const remote = createWorkflowVersion({ parentFolderId: null });
 
-			expect(isWorkflowModified(local, remote)).toBe(false);
+			expect(isWorkflowModified(local, remote, direction)).toBe(false);
 		});
 
-		it('should detect modifications when descriptions differ', () => {
-			const local = createWorkflowVersion({ description: 'Old description' });
-			const remote = createWorkflowVersion({ description: 'New description' });
+		test.each(directions)(
+			'should detect modifications when descriptions differ (%s)',
+			(direction) => {
+				const local = createWorkflowVersion({ description: 'Old description' });
+				const remote = createWorkflowVersion({ description: 'New description' });
 
-			expect(isWorkflowModified(local, remote)).toBe(true);
-		});
+				expect(isWorkflowModified(local, remote, direction)).toBe(true);
+			},
+		);
 
-		it('should detect modifications when remote description is cleared', () => {
-			const local = createWorkflowVersion({ description: 'Some description' });
-			const remote = createWorkflowVersion({ description: null });
+		test.each(directions)(
+			'should detect modifications when remote description is cleared (%s)',
+			(direction) => {
+				const local = createWorkflowVersion({ description: 'Some description' });
+				const remote = createWorkflowVersion({ description: null });
 
-			expect(isWorkflowModified(local, remote)).toBe(true);
-		});
+				expect(isWorkflowModified(local, remote, direction)).toBe(true);
+			},
+		);
 
-		it('should not consider it modified when remote description is undefined', () => {
+		it('should ignore a legacy remote file without description key on pull', () => {
 			const local = createWorkflowVersion({ description: 'Some description' });
 			const remote = createWorkflowVersion({ description: undefined });
 
-			expect(isWorkflowModified(local, remote)).toBe(false);
+			expect(isWorkflowModified(local, remote, 'pull')).toBe(false);
 		});
 
-		it('should treat null and undefined local descriptions as equal to remote null', () => {
-			const local = createWorkflowVersion({ description: undefined });
-			const remote = createWorkflowVersion({ description: null });
+		it('should detect a local description against a legacy remote file on push', () => {
+			const local = createWorkflowVersion({ description: 'Some description' });
+			const remote = createWorkflowVersion({ description: undefined });
 
-			expect(isWorkflowModified(local, remote)).toBe(false);
+			expect(isWorkflowModified(local, remote, 'push')).toBe(true);
 		});
 
-		it('should detect modifications when owner changes', () => {
+		it('should not flag a workflow without description against a legacy remote file on push', () => {
+			const local = createWorkflowVersion({ description: null });
+			const remote = createWorkflowVersion({ description: undefined });
+
+			expect(isWorkflowModified(local, remote, 'push')).toBe(false);
+		});
+
+		test.each(directions)(
+			'should treat null and undefined local descriptions as equal to remote null (%s)',
+			(direction) => {
+				const local = createWorkflowVersion({ description: undefined });
+				const remote = createWorkflowVersion({ description: null });
+
+				expect(isWorkflowModified(local, remote, direction)).toBe(false);
+			},
+		);
+
+		test.each(directions)(
+			'should treat empty string and null descriptions as equal (%s)',
+			(direction) => {
+				const local = createWorkflowVersion({ description: '' });
+				const remote = createWorkflowVersion({ description: null });
+
+				expect(isWorkflowModified(local, remote, direction)).toBe(false);
+			},
+		);
+
+		test.each(directions)('should detect modifications when owner changes (%s)', (direction) => {
 			const local = createWorkflowVersion({
 				owner: {
 					type: 'personal',
@@ -370,7 +420,7 @@ describe('Source Control Helper', () => {
 				},
 			});
 
-			expect(isWorkflowModified(local, remote)).toBe(true);
+			expect(isWorkflowModified(local, remote, direction)).toBe(true);
 		});
 	});
 

@@ -437,7 +437,7 @@ export class SourceControlStatusService {
 				continue;
 			}
 
-			if (!isWorkflowModified(localWorkflow, remoteWorkflowWithSameId)) {
+			if (!isWorkflowModified(localWorkflow, remoteWorkflowWithSameId, options.direction)) {
 				continue;
 			}
 

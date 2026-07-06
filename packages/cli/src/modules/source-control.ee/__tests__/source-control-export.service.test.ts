@@ -645,6 +645,44 @@ describe('SourceControlExportService', () => {
 			});
 		});
 
+		it('should export an explicit null description when the workflow has none', async () => {
+			const workflowId = 'wf-no-description';
+			workflowRepository.find.mockResolvedValue([
+				Object.assign(new WorkflowEntity(), {
+					id: workflowId,
+					name: 'Test Workflow',
+					nodes: [],
+					connections: {},
+					settings: {},
+					triggerCount: 0,
+					versionId: 'v1',
+					parentFolder: null,
+					isArchived: false,
+					nodeGroups: [],
+				}),
+			]);
+			sharedWorkflowRepository.findByWorkflowIds.mockResolvedValue([
+				mock<SharedWorkflow>({
+					workflowId,
+					project: mock({
+						type: 'personal',
+						projectRelations: [
+							{ role: PROJECT_OWNER_ROLE, user: mock({ email: 'user@test.com' }) },
+						],
+					}),
+					workflow: mock(),
+				} as never) as SharedWorkflow,
+			]);
+
+			await service.exportWorkflowsToWorkFolder([mock<SourceControlledFile>({ id: workflowId })]);
+
+			const dataCaptor = captor<string>();
+			expect(fsWriteFile).toHaveBeenCalledWith(expect.stringContaining(workflowId), dataCaptor);
+			const exported = JSON.parse(dataCaptor.value);
+			expect('description' in exported).toBe(true);
+			expect(exported.description).toBeNull();
+		});
+
 		it('should throw an error if workflow has no owner', async () => {
 			// Arrange
 			sharedWorkflowRepository.findByWorkflowIds.mockResolvedValue([
