@@ -55,6 +55,13 @@ export class WebhookTriggerRegistrar {
 
 	/**
 	 * Resolve workflow-defined webhook triggers.
+	 *
+	 * NOTE: evaluates each webhook node's `path`/`httpMethod` expressions, so
+	 * when the vm expression engine is active the caller must hold an acquired
+	 * isolate (`workflow.expression.acquireIsolate()`) around this call — it
+	 * throws `No bridge acquired for this context` at runtime otherwise. This
+	 * method cannot bracket internally because it is sync. Unlike
+	 * {@link getNodesWithUnregisteredWebhooks}, which brackets itself.
 	 */
 	getWebhookTriggers(workflow: Workflow, additionalData: IWorkflowExecuteAdditionalData) {
 		return WebhookHelpers.getWorkflowWebhooks(workflow, additionalData, undefined, true);
