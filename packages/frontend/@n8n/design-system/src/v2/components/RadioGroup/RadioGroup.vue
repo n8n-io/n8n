@@ -7,7 +7,7 @@ import { RadioGroupRoot, useForwardPropsEmits, type AcceptableValue } from './re
 
 defineOptions({ inheritAttrs: false });
 
-const props = withDefaults(defineProps<RadioGroupProps<T>>(), {
+const props = withDefaults(defineProps<Omit<RadioGroupProps<T>, 'modelValue'>>(), {
 	orientation: 'vertical',
 	disabled: false,
 });
