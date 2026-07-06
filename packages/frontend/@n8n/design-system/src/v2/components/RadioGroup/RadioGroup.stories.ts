@@ -61,7 +61,7 @@ export const Default: Story = {
 					:value="option.value"
 					:label="option.label"
 					:description="option.description"
-					:test-id="'radio-' + option.value"
+					:data-test-id="'radio-' + option.value"
 				/>
 			</RadioGroup>
 			<p style="margin-top: 16px; font-size: 14px;">Selected: {{ value }}</p>

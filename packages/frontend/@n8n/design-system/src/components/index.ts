@@ -83,8 +83,6 @@ export {
 export { default as N8nPulse } from './N8nPulse';
 export { default as N8nSendStopButton } from './N8nSendStopButton';
 export { default as N8nRadioButtons } from './N8nRadioButtons';
-export { default as N8nRadioGroup } from './N8nRadioGroup';
-export type { RadioGroupOption } from './N8nRadioGroup';
 export { default as N8nRoute } from './N8nRoute';
 export { default as N8nRecycleScroller } from './N8nRecycleScroller';
 export { default as N8nResizeWrapper } from './N8nResizeWrapper';

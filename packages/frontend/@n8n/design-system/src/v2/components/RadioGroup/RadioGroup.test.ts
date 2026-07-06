@@ -1,5 +1,6 @@
 import userEvent from '@testing-library/user-event';
 import { render, waitFor } from '@testing-library/vue';
+import { ref } from 'vue';
 
 import RadioGroup from './RadioGroup.vue';
 import RadioGroupItem from './RadioGroupItem.vue';
@@ -54,6 +55,21 @@ describe('v2/components/RadioGroup', () => {
 			const radio = wrapper.container.querySelector('[role="radio"]');
 			expect(radio).toHaveAttribute('data-disabled');
 		});
+
+		it('should render option descriptions when provided', () => {
+			const wrapper = render(RadioGroup, {
+				props: {
+					modelValue: 'custom',
+				},
+				slots: {
+					default:
+						'<RadioGroupItem value="custom" label="Custom" description="Pick scopes individually" />',
+				},
+				global: { components: { RadioGroupItem } },
+			});
+
+			expect(wrapper.getByText('Pick scopes individually')).toBeInTheDocument();
+		});
 	});
 
 	describe('v-model', () => {
@@ -99,6 +115,30 @@ describe('v2/components/RadioGroup', () => {
 
 			const radio = wrapper.getByRole('radio', { name: 'Option B' });
 			await userEvent.click(radio);
+
+			await waitFor(() => {
+				expect(wrapper.emitted('update:modelValue')).toBeFalsy();
+			});
+		});
+
+		it('should not update when the group is disabled', async () => {
+			const wrapper = render(RadioGroup, {
+				props: {
+					modelValue: 'option-a',
+					disabled: true,
+				},
+				slots: {
+					default: `
+						<RadioGroupItem value="option-a" label="Option A" />
+						<RadioGroupItem value="option-b" label="Option B" />
+					`,
+				},
+				global: { components: { RadioGroupItem } },
+			});
+
+			expect(wrapper.getByRole('radio', { name: 'Option B' })).toBeDisabled();
+
+			await userEvent.click(wrapper.getByRole('radio', { name: 'Option B' }));
 
 			await waitFor(() => {
 				expect(wrapper.emitted('update:modelValue')).toBeFalsy();
@@ -216,10 +256,42 @@ describe('v2/components/RadioGroup', () => {
 	});
 
 	describe('accessibility', () => {
+		it('should render one accessible radio per item', () => {
+			const wrapper = render(RadioGroup, {
+				props: {
+					modelValue: 'all',
+				},
+				slots: {
+					default: `
+						<RadioGroupItem value="all" label="All" />
+						<RadioGroupItem value="readOnly" label="Read only" />
+						<RadioGroupItem value="custom" label="Custom" />
+					`,
+				},
+				global: { components: { RadioGroupItem } },
+			});
+
+			expect(wrapper.getAllByRole('radio')).toHaveLength(3);
+		});
+
 		it('should have proper ARIA role', () => {
 			const wrapper = renderRadioGroup();
 			const radio = wrapper.container.querySelector('[role="radio"]');
 			expect(radio).toBeInTheDocument();
+		});
+
+		it('should forward data-test-id to the radio item element', () => {
+			const wrapper = render(RadioGroup, {
+				props: {
+					modelValue: 'all',
+				},
+				slots: {
+					default: '<RadioGroupItem value="all" label="All" data-test-id="mode-all" />',
+				},
+				global: { components: { RadioGroupItem } },
+			});
+
+			expect(wrapper.getByTestId('mode-all')).toHaveAttribute('role', 'radio');
 		});
 
 		it('should associate label with radio using id', () => {
@@ -230,6 +302,35 @@ describe('v2/components/RadioGroup', () => {
 			const label = wrapper.container.querySelector('label');
 			expect(radio).toHaveAttribute('id');
 			expect(label).toHaveAttribute('for', radio.getAttribute('id'));
+		});
+
+		it('should select on arrow keys when keydown propagation is stopped', async () => {
+			const wrapper = render(
+				{
+					components: { RadioGroup, RadioGroupItem },
+					template: `
+						<div @keydown.stop>
+							<RadioGroup v-model="value" aria-label="Options">
+								<RadioGroupItem value="option-a" label="Option A" />
+								<RadioGroupItem value="option-b" label="Option B" />
+							</RadioGroup>
+						</div>
+					`,
+					setup() {
+						const value = ref('option-a');
+						return { value };
+					},
+				},
+				{ global: { components: { RadioGroup, RadioGroupItem } } },
+			);
+
+			const optionA = wrapper.getByRole('radio', { name: 'Option A' });
+			optionA.focus();
+			await userEvent.keyboard('{ArrowDown}');
+
+			await waitFor(() => {
+				expect(wrapper.getByRole('radio', { name: 'option-b' })).toBeChecked();
+			});
 		});
 	});
 });

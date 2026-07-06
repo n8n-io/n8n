@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, useId } from 'vue';
+import { computed, inject, useAttrs, useId } from 'vue';
 
 import type { RadioGroupItemProps, RadioGroupItemSlots } from './RadioGroupItem.types';
+import { radioGroupArrowKeyPressedKey } from './radio-group-context';
 import {
 	injectRadioGroupRootContext,
 	Label,
@@ -9,16 +10,36 @@ import {
 	RadioGroupItem as RekaRadioGroupItem,
 } from './reka-ui';
 
+defineOptions({ inheritAttrs: false });
+
 const props = defineProps<RadioGroupItemProps>();
 const slots = defineSlots<RadioGroupItemSlots>();
+const attrs = useAttrs();
 const uuid = computed(() => props.id ?? useId());
 const groupContext = injectRadioGroupRootContext(null);
+const arrowKeyPressed = inject(radioGroupArrowKeyPressedKey, null);
 const isVertical = computed(() => (groupContext?.orientation.value ?? 'vertical') === 'vertical');
+
+// Completes arrow-key selection when a parent stops keydown propagation — see RadioGroup.vue.
+function onItemFocusIn(event: FocusEvent) {
+	if (!arrowKeyPressed?.value) return;
+
+	const target = event.target;
+	if (target instanceof HTMLElement && target.getAttribute('role') === 'radio') {
+		target.click();
+	}
+}
 </script>
 
 <template>
-	<div :class="[$style.item, isVertical && $style.itemVertical]">
-		<RekaRadioGroupItem :id="uuid" :value="value" :disabled="disabled" :class="$style.control">
+	<div :class="[$style.item, isVertical && $style.itemVertical]" @focusin="onItemFocusIn">
+		<RekaRadioGroupItem
+			:id="uuid"
+			v-bind="attrs"
+			:value="value"
+			:disabled="disabled"
+			:class="$style.control"
+		>
 			<RadioGroupIndicator :class="$style.dot" />
 		</RekaRadioGroupItem>
 		<Label

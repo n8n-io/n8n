@@ -2,7 +2,7 @@
 
 Presents a list of mutually exclusive options where the user can select exactly one. Used when the choice is required and all options should be visible at once.
 
-- **Component Name:** N8nRadioGroup2, N8nRadioGroupItem2
+- **Component Name:** N8nRadioGroup, N8nRadioGroupItem
 - **Figma Component:** TBD (DS-559)
 - **Reka UI Component:** [Radio Group](https://reka-ui.com/docs/components/radio-group)
 
@@ -54,11 +54,11 @@ const mode = ref('all')
 </script>
 
 <template>
-  <N8nRadioGroup2 v-model="mode">
-    <N8nRadioGroupItem2 value="all" label="All" description="Grant every available scope" />
-    <N8nRadioGroupItem2 value="readOnly" label="Read only" description="Read and list scopes only" />
-    <N8nRadioGroupItem2 value="custom" label="Custom" description="Pick scopes individually" />
-  </N8nRadioGroup2>
+  <N8nRadioGroup v-model="mode">
+    <N8nRadioGroupItem value="all" label="All" description="Grant every available scope" />
+    <N8nRadioGroupItem value="readOnly" label="Read only" description="Read and list scopes only" />
+    <N8nRadioGroupItem value="custom" label="Custom" description="Pick scopes individually" />
+  </N8nRadioGroup>
 </template>
 ```
 
@@ -70,11 +70,11 @@ const theme = ref('system')
 </script>
 
 <template>
-  <N8nRadioGroup2 v-model="theme" orientation="horizontal">
-    <N8nRadioGroupItem2 value="system" label="System" />
-    <N8nRadioGroupItem2 value="light" label="Light" />
-    <N8nRadioGroupItem2 value="dark" label="Dark" />
-  </N8nRadioGroup2>
+  <N8nRadioGroup v-model="theme" orientation="horizontal">
+    <N8nRadioGroupItem value="system" label="System" />
+    <N8nRadioGroupItem value="light" label="Light" />
+    <N8nRadioGroupItem value="dark" label="Dark" />
+  </N8nRadioGroup>
 </template>
 ```
 
@@ -86,12 +86,12 @@ const agreement = ref('')
 </script>
 
 <template>
-  <N8nRadioGroup2 v-model="agreement">
-    <N8nRadioGroupItem2 value="terms">
+  <N8nRadioGroup v-model="agreement">
+    <N8nRadioGroupItem value="terms">
       <template #label>
         I accept the <a href="/terms">terms and conditions</a>
       </template>
-    </N8nRadioGroupItem2>
-  </N8nRadioGroup2>
+    </N8nRadioGroupItem>
+  </N8nRadioGroup>
 </template>
 ```
