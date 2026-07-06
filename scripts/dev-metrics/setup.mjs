@@ -1,0 +1,362 @@
+#!/usr/bin/env node
+/**
+ * Consent + install manager for n8n dev-tooling usage metrics.
+ *
+ * Approach: replace the tracked binaries (e.g. pnpm) with a shim in place, so
+ * every invocation — interactive, non-interactive, or from an AI agent — is
+ * intercepted the same way, with no shell function, rc editing, or PATH-ordering
+ * dependence. The shim runs the real binary, times it, and reports anonymous
+ * usage; the original is preserved next to the shim as `<binary>.n8n-real`.
+ *
+ * Invoked with no arguments from scripts/prepare.mjs during `pnpm install`: the
+ * first time an internal developer (git email @n8n.io) installs interactively,
+ * it asks once (via /dev/tty). The decision persists in ~/.n8n/dev-telemetry.json.
+ *
+ * Manual usage:
+ *   node scripts/dev-metrics/setup.mjs            bootstrap (prompt once)
+ *   node scripts/dev-metrics/setup.mjs --status   show current state
+ *   node scripts/dev-metrics/setup.mjs --enable   opt in + install shims
+ *   node scripts/dev-metrics/setup.mjs --disable  opt out + restore binaries
+ *   node scripts/dev-metrics/setup.mjs --reset    wipe state (for testing)
+ *
+ * Nothing here can break `pnpm install`: prepare.mjs invokes it best-effort and
+ * every failure mode exits cleanly.
+ */
+import { execFileSync, spawn } from 'node:child_process';
+import {
+	accessSync,
+	chmodSync,
+	closeSync,
+	constants,
+	existsSync,
+	mkdirSync,
+	openSync,
+	readFileSync,
+	readSync,
+	renameSync,
+	rmSync,
+	writeFileSync,
+	writeSync,
+} from 'node:fs';
+import { homedir } from 'node:os';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
+const SHADOW_SHIM_SRC = join(SCRIPT_DIR, 'shadow-shim.sh');
+const SHIM_MARKER = '# n8n-shadow-shim-version';
+const SAVED_SUFFIX = '.n8n-real';
+
+// Binaries to shadow for usage tracking. Add another CLI here (and, for a
+// meaningful command name, a resolver in track.mjs BINARY_RESOLVERS).
+const SHADOWED_BINARIES = ['pnpm'];
+
+function n8nDir() {
+	const userFolder = process.env.N8N_USER_FOLDER ?? homedir();
+	return join(userFolder, '.n8n');
+}
+
+function statePath() {
+	return join(n8nDir(), 'dev-telemetry.json');
+}
+
+function readState() {
+	try {
+		return JSON.parse(readFileSync(statePath(), 'utf8'));
+	} catch {
+		return null;
+	}
+}
+
+function writeState(next) {
+	mkdirSync(n8nDir(), { recursive: true });
+	const prev = readState() ?? {};
+	writeFileSync(
+		statePath(),
+		JSON.stringify({ schemaVersion: 1, ...prev, ...next }, null, 2) + '\n',
+	);
+}
+
+function gitEmail() {
+	try {
+		return execFileSync('git', ['config', 'user.email'], { encoding: 'utf8' }).trim();
+	} catch {
+		return '';
+	}
+}
+
+function isInternalDev() {
+	return gitEmail().toLowerCase().endsWith('@n8n.io');
+}
+
+// --- Binary replacement -----------------------------------------------------
+
+function isExecutable(path) {
+	try {
+		accessSync(path, constants.X_OK);
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+function isWritableDir(dir) {
+	try {
+		accessSync(dir, constants.W_OK);
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+function isOurShim(path) {
+	try {
+		return readFileSync(path, 'utf8').includes(SHIM_MARKER);
+	} catch {
+		return false;
+	}
+}
+
+const pathDirs = () => (process.env.PATH ?? '').split(':').filter(Boolean);
+
+/** First executable `bin` on PATH (may be our shim). */
+function whichOnPath(bin) {
+	for (const d of pathDirs()) {
+		const p = join(d, bin);
+		if (isExecutable(p)) return p;
+	}
+	return '';
+}
+
+/** The genuine real binary: skips our shims, following an in-place shim to its saved sibling. */
+function resolveRealBinary(bin) {
+	for (const d of pathDirs()) {
+		const p = join(d, bin);
+		if (!isExecutable(p)) continue;
+		if (!isOurShim(p)) return p; // genuine
+		const saved = p + SAVED_SUFFIX;
+		if (isExecutable(saved)) return saved; // in-place shim -> its saved original
+		// stray shim without a saved original: keep looking for the genuine one
+	}
+	return '';
+}
+
+/** Render shadow-shim.sh for `bin` and write it to destPath (idempotent). */
+function writeShim(destPath, realExec, bin) {
+	const rendered = readFileSync(SHADOW_SHIM_SRC, 'utf8')
+		.replaceAll('__N8N_BIN__', bin)
+		.replaceAll('__N8N_REAL__', realExec)
+		.replaceAll('__N8N_BINDIR__', dirname(destPath));
+	let current = '';
+	try {
+		current = readFileSync(destPath, 'utf8');
+	} catch {
+		// no existing shim
+	}
+	if (current !== rendered) {
+		writeFileSync(destPath, rendered);
+		chmodSync(destPath, 0o755);
+	}
+}
+
+function installOne(bin) {
+	const front = whichOnPath(bin);
+
+	// Already shimmed: just refresh the shim contents.
+	if (front && isOurShim(front)) {
+		const saved = front + SAVED_SUFFIX;
+		const real = existsSync(saved) ? saved : resolveRealBinary(bin);
+		if (real) writeShim(front, real, bin);
+		return { bin, action: 'refreshed', path: front };
+	}
+
+	const real = front; // genuine real (first on PATH), or '' if not on PATH
+	if (!real) return { bin, action: 'missing', path: '' };
+
+	const dir = dirname(real);
+	if (!isWritableDir(dir)) return { bin, action: 'unwritable', path: dir };
+
+	// ponytail: in-place replacement. nvm-node switch / `corepack enable` can
+	// leave a fresh binary un-shimmed — the next `pnpm install` re-installs.
+	const saved = real + SAVED_SUFFIX;
+	if (!existsSync(saved)) renameSync(real, saved);
+	writeShim(real, saved, bin);
+	return { bin, action: 'in-place', path: real };
+}
+
+function installBinaries() {
+	return SHADOWED_BINARIES.map(installOne);
+}
+
+function uninstallBinaries() {
+	const restored = [];
+	for (const bin of SHADOWED_BINARIES) {
+		for (const d of pathDirs()) {
+			const p = join(d, bin);
+			if (!isOurShim(p)) continue;
+			const saved = p + SAVED_SUFFIX;
+			if (existsSync(saved))
+				renameSync(saved, p); // restore original
+			else rmSync(p, { force: true }); // stray shim with no saved original
+			restored.push(p);
+		}
+	}
+	return restored;
+}
+
+// --- Consent / lifecycle ----------------------------------------------------
+
+/** Fire a one-off lifecycle event via the tracker, detached so setup never waits. */
+function fireEvent(event) {
+	try {
+		spawn('node', [join(SCRIPT_DIR, 'track.mjs')], {
+			cwd: SCRIPT_DIR, // inside the repo, so the tracker finds the monorepo root
+			env: { ...process.env, N8N_DEV_EVENT: event },
+			detached: true,
+			stdio: 'ignore',
+		}).unref();
+	} catch {
+		// best-effort; opt-in tracking must never disrupt setup
+	}
+}
+
+function enable() {
+	const firstOptIn = readState()?.consent !== 'granted';
+	writeState({ consent: 'granted' });
+	console.log('✓ n8n dev metrics enabled. Thanks for helping improve the tooling!');
+	for (const r of installBinaries()) {
+		if (r.action === 'missing') console.log(`  ${r.bin}: not found on PATH — skipped.`);
+		else if (r.action === 'unwritable')
+			console.log(`  ${r.bin}: ${r.path} not writable — skipped.`);
+		else if (r.action === 'refreshed')
+			console.log(`  ${r.bin}: shim already installed (${r.path}).`);
+		else
+			console.log(
+				`  ${r.bin}: replaced ${r.path} with a shim (original -> ${r.bin}${SAVED_SUFFIX}).`,
+			);
+	}
+	if (firstOptIn) fireEvent('dev:metrics_opt_in');
+}
+
+function disable() {
+	writeState({ consent: 'denied' });
+	const restored = uninstallBinaries();
+	console.log('✓ n8n dev metrics disabled. Nothing will be sent.');
+	console.log(`  restored: ${restored.length ? restored.join(', ') : '(nothing was installed)'}`);
+}
+
+/**
+ * Wipe all local state back to genuine first-run (undecided consent): restore
+ * the binaries and delete the consent/id file. Unlike --disable it records no
+ * decision, so the next `pnpm install` prompts again.
+ */
+function reset() {
+	const restored = uninstallBinaries();
+	let stateRemoved = false;
+	try {
+		rmSync(statePath());
+		stateRemoved = true;
+	} catch {
+		// nothing to remove
+	}
+	console.log('✓ n8n dev metrics reset to first-run state (consent undecided).');
+	console.log(`  state file: ${stateRemoved ? 'removed' : '(none)'}`);
+	console.log(`  restored:   ${restored.length ? restored.join(', ') : '(nothing)'}`);
+}
+
+function status() {
+	const consent = readState()?.consent ?? '(undecided)';
+	console.log(`n8n dev metrics: consent=${consent}`);
+	console.log(`  state file: ${statePath()}`);
+	console.log(`  shim src:   ${SHADOW_SHIM_SRC}`);
+	for (const bin of SHADOWED_BINARIES) {
+		const front = whichOnPath(bin);
+		const shimmed = front && isOurShim(front);
+		console.log(
+			`  ${bin}: ${shimmed ? `shimmed @ ${front}` : 'not shimmed'} (real: ${resolveRealBinary(bin) || '?'})`,
+		);
+	}
+	console.log(`  git email:  ${gitEmail() || '(unset)'} (internal: ${isInternalDev()})`);
+}
+
+/**
+ * Synchronous Y/n prompt via the controlling terminal. We read /dev/tty
+ * directly (not process.stdin) because pnpm pipes lifecycle-script stdio in
+ * workspaces. A synchronous read avoids leaving a stream handle open that would
+ * keep this process — and therefore the parent `pnpm install` — from exiting.
+ */
+function promptViaTty(message) {
+	let fdIn;
+	let fdOut;
+	try {
+		fdIn = openSync('/dev/tty', 'r');
+		fdOut = openSync('/dev/tty', 'w');
+	} catch {
+		return null; // no controlling terminal (CI / non-interactive)
+	}
+	try {
+		writeSync(fdOut, message);
+		const buf = Buffer.alloc(256);
+		const bytes = readSync(fdIn, buf, 0, buf.length, null); // blocks until the line is entered
+		return buf.toString('utf8', 0, bytes).trim().toLowerCase();
+	} catch {
+		return null;
+	} finally {
+		try {
+			closeSync(fdIn);
+		} catch {}
+		try {
+			closeSync(fdOut);
+		} catch {}
+	}
+}
+
+function bootstrap() {
+	if (process.env.CI || process.env.DOCKER_BUILD) return;
+	if (process.env.N8N_DEV_TELEMETRY === '0') return;
+
+	const state = readState();
+	if (state?.consent) {
+		// Decision made — if granted, re-install (idempotent; self-heals after an
+		// nvm node switch that left the current node's binary un-shimmed).
+		if (state.consent === 'granted') installBinaries();
+		return;
+	}
+
+	if (!isInternalDev()) return; // only internal developers are asked or tracked
+
+	const answer = promptViaTty(
+		'\nn8n collects anonymous usage metrics from internal developers\n' +
+			'(command name, duration, exit code) to improve our dev tooling.\n' +
+			'No code, paths, file names or personal data are ever sent.\n\n' +
+			'Share anonymous dev metrics? [Y/n] ',
+	);
+	if (answer === null) return; // no terminal — ask again next time
+	if (answer === '' || answer === 'y' || answer === 'yes') enable();
+	else disable();
+}
+
+function main() {
+	const flag = process.argv[2];
+	if (flag === '--status') return status();
+	if (flag === '--enable') return enable();
+	if (flag === '--disable') return disable();
+	if (flag === '--reset') return reset();
+	if (flag === '--help' || flag === '-h') {
+		console.log(
+			'Usage: node scripts/dev-metrics/setup.mjs [--status|--enable|--disable|--reset]\n' +
+				'  --status   show consent and per-binary shim status\n' +
+				'  --enable   opt in + replace binaries with shims\n' +
+				'  --disable  opt out (records denied) + restore binaries\n' +
+				'  --reset    wipe all local state back to first-run (for testing)\n' +
+				'  (no args)  bootstrap: prompt once for internal developers',
+		);
+		return;
+	}
+	bootstrap();
+}
+
+// Best-effort: never let setup disrupt `pnpm install`.
+try {
+	main();
+} catch {}
