@@ -12,6 +12,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import InstanceRolesView from './instance/InstanceRolesView.vue';
 import ProjectRolesView from './project/ProjectRolesView.vue';
+import { useRBACStore } from '@/app/stores/rbac.store.js';
 
 type RolesTab = 'instance' | 'project';
 const DEFAULT_TAB: RolesTab = 'instance';
@@ -22,6 +23,7 @@ const i18n = useI18n();
 const rolesStore = useRolesStore();
 const settingsStore = useSettingsStore();
 const { showError } = useToast();
+const rbacStore = useRBACStore();
 
 function normalizeTab(value: unknown): RolesTab {
 	return value === 'project' ? 'project' : DEFAULT_TAB;
@@ -35,10 +37,16 @@ function addRole() {
 	});
 }
 
-const tabOptions = computed<Array<TabOptions<RolesTab>>>(() => [
-	{ label: i18n.baseText('roles.tab.instance'), value: 'instance' },
-	{ label: i18n.baseText('roles.tab.project'), value: 'project' },
-]);
+const canManageInstanceRoles = computed(() => rbacStore.hasScope('role:manage'));
+
+const tabOptions = computed<Array<TabOptions<RolesTab>>>(() =>
+	canManageInstanceRoles.value
+		? [
+				{ label: i18n.baseText('roles.tab.instance'), value: 'instance' },
+				{ label: i18n.baseText('roles.tab.project'), value: 'project' },
+			]
+		: [{ label: i18n.baseText('roles.tab.project'), value: 'project' }],
+);
 
 // Reflect tab selection in the URL (replace keeps history clean / back-button safe).
 watch(activeTab, (tab) => {
@@ -93,7 +101,7 @@ onMounted(async () => {
 			</N8nButton>
 		</div>
 
-		<InstanceRolesView v-if="activeTab === 'instance'" />
+		<InstanceRolesView v-if="activeTab === 'instance' && canManageInstanceRoles" />
 		<ProjectRolesView v-else embedded />
 	</div>
 </template>
