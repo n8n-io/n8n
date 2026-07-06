@@ -134,7 +134,7 @@ describe('CommandRegistry', () => {
 		process.argv = ['node', 'n8n', 'test-command'];
 		// Pretend the command file exists so the dynamic import is attempted; the
 		// import then fails (no such file), standing in for a broken dependency.
-		(access as unknown as Mock).mockResolvedValue(undefined);
+		(access as unknown as jest.Mock).mockResolvedValue(undefined);
 
 		commandRegistry = new CommandRegistry(commandMetadata, moduleRegistry, logger, cliParser);
 
