@@ -137,6 +137,7 @@ describe('AgentsService', () => {
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
 		expect(agentTaskService.requestReconcile).toHaveBeenCalledWith(agentId);
 		expect(testChatService.clearAllTestChatMessages).toHaveBeenCalledWith(agentId);
+		expect(agentKnowledgeService.destroySandbox).toHaveBeenCalledWith(projectId, agentId);
 	});
 
 	it('still deletes the agent when best-effort cleanup fails', async () => {
@@ -149,6 +150,7 @@ describe('AgentsService', () => {
 
 		await expect(service.delete(agentId, projectId)).resolves.toBe(true);
 		expect(agentRepository.remove).toHaveBeenCalledWith(agent);
+		expect(agentKnowledgeService.destroySandbox).toHaveBeenCalledWith(projectId, agentId);
 	});
 
 	it('returns false when deleting a missing agent', async () => {

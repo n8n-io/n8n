@@ -630,6 +630,33 @@ describe('ProjectService', () => {
 			expect(agentKnowledgeService.deleteAllFilesForAgent.mock.invocationCallOrder[1]).toBeLessThan(
 				projectRepository.remove.mock.invocationCallOrder[0],
 			);
+			expect(agentKnowledgeService.destroySandbox).toHaveBeenCalledWith(project.id, 'agent-1');
+			expect(agentKnowledgeService.destroySandbox).toHaveBeenCalledWith(project.id, 'agent-2');
+		});
+
+		it('destroys agent sandboxes even when knowledge file cleanup fails', async () => {
+			const project = mock<Project>({ id: 'project-1', type: 'team' });
+			Object.defineProperty(projectService, 'agentRepository', {
+				configurable: true,
+				get: async () => agentRepository,
+			});
+			Object.defineProperty(projectService, 'agentKnowledgeService', {
+				configurable: true,
+				get: async () => agentKnowledgeService,
+			});
+			manager.findOne.mockResolvedValueOnce(project);
+			projectRepository.remove.mockResolvedValueOnce(project);
+			sharedWorkflowRepository.find.mockResolvedValueOnce([]);
+			sharedCredentialsRepository.find.mockResolvedValueOnce([]);
+			moduleRegistry.isActive.mockImplementation((moduleName) => moduleName === 'agents');
+			projectRelationRepository.findBy.mockResolvedValueOnce([]);
+			agentRepository.findByProjectId.mockResolvedValueOnce([{ id: 'agent-1' }] as never);
+			agentKnowledgeService.deleteAllFilesForAgent.mockRejectedValueOnce(new Error('storage down'));
+
+			await expect(projectService.deleteProject(user, project.id)).resolves.toBeUndefined();
+
+			expect(agentKnowledgeService.destroySandbox).toHaveBeenCalledWith(project.id, 'agent-1');
+			expect(projectRepository.remove).toHaveBeenCalledWith(project);
 		});
 	});
 });

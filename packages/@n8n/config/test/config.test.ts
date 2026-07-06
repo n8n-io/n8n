@@ -642,7 +642,6 @@ describe('GlobalConfig', () => {
 			sandboxSnapshot: '',
 			sandboxTimeout: 300000,
 			sandboxEphemeral: false,
-			daytonaVolumeId: '',
 			daytonaApiUrl: '',
 			daytonaApiKey: '',
 		},
