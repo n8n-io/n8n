@@ -28,7 +28,9 @@ describe('SchedulerConfig', () => {
 			expect(scheduler.claimBatchSize).toBe(100);
 			expect(scheduler.reaperIntervalSeconds).toBe(30);
 			expect(scheduler.leaseDurationSeconds).toBe(60);
-			expect(scheduler.retentionSeconds).toBe(7 * 24 * 60 * 60);
+			expect(scheduler.retentionSeconds).toBe(24 * 60 * 60);
+			expect(scheduler.failedRetentionSeconds).toBe(7 * 24 * 60 * 60);
+			expect(scheduler.retentionIntervalSeconds).toBe(60 * 60);
 			expect(scheduler.minIntervalSeconds).toBe(0);
 		});
 	});
@@ -48,7 +50,9 @@ describe('SchedulerConfig', () => {
 			vi.stubEnv('N8N_SCHEDULER_EXECUTOR_INTERVAL', '2');
 			vi.stubEnv('N8N_SCHEDULER_REAPER_INTERVAL', '45');
 			vi.stubEnv('N8N_SCHEDULER_LEASE_DURATION', '90');
-			vi.stubEnv('N8N_SCHEDULER_RETENTION', '86400');
+			vi.stubEnv('N8N_SCHEDULER_RETENTION', '43200');
+			vi.stubEnv('N8N_SCHEDULER_FAILED_RETENTION', '86400');
+			vi.stubEnv('N8N_SCHEDULER_RETENTION_INTERVAL', '600');
 			vi.stubEnv('N8N_SCHEDULER_MIN_INTERVAL', '15');
 
 			const { scheduler } = Container.get(GlobalConfig);
@@ -58,7 +62,9 @@ describe('SchedulerConfig', () => {
 			expect(scheduler.executorIntervalSeconds).toBe(2);
 			expect(scheduler.reaperIntervalSeconds).toBe(45);
 			expect(scheduler.leaseDurationSeconds).toBe(90);
-			expect(scheduler.retentionSeconds).toBe(86400);
+			expect(scheduler.retentionSeconds).toBe(43200);
+			expect(scheduler.failedRetentionSeconds).toBe(86400);
+			expect(scheduler.retentionIntervalSeconds).toBe(600);
 			expect(scheduler.minIntervalSeconds).toBe(15);
 		});
 

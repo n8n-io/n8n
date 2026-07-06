@@ -142,7 +142,7 @@ describe('Instance AI runtime skills', () => {
 		expect(loaded?.instructions).toContain('Verification');
 		expect(loaded?.instructions).toContain('Build/save success is not workflow-quality evidence');
 		expect(loaded?.instructions).toContain('postBuildFlow.required: true');
-		expect(loaded?.instructions).toContain('load `post-build-flow` exactly once');
+		expect(loaded?.instructions).toContain('follow the inlined\n    `postBuildFlow.instructions`');
 		expect(loaded?.instructions).toContain('Do not call\n    `verify-built-workflow` directly');
 		expect(loaded?.instructions).toContain('workflows(action="get-as-code", workflowId)');
 		expect(loaded?.instructions).toContain('n8n has no global error workflow setting');

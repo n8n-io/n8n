@@ -177,8 +177,9 @@ build → publish → assign steps. Do not create one before the user opts in.
     bound to the saved workflow. Never pass local SDK workflow IDs as n8n
     workflow IDs.
 11. After a successful direct `build-workflow` result, if the tool output
-    contains `postBuildFlow.required: true`, load `post-build-flow` exactly once
-    and follow it before verification, setup, error-workflow follow-up,
+    contains `postBuildFlow.required: true`, follow the inlined
+    `postBuildFlow.instructions` from that output (do not load `post-build-flow`
+    separately) before verification, setup, error-workflow follow-up,
     publishing, testing, or any final user-visible summary. Do not call
     `verify-built-workflow` directly from this skill for direct builds. Finish
     with a concise completion message only when the post-build flow, required
@@ -191,9 +192,10 @@ Do not produce visible output until the final step, unless blocked.
 Use the current turn's higher-priority instructions to decide who verifies:
 
 - Direct builds and existing-workflow edits: after `build-workflow` succeeds,
-  load `post-build-flow` when `postBuildFlow.required: true` is present in the
-  tool output. That skill owns verification, setup routing, error-workflow
-  opt-in, and final user-visible completion for direct builds.
+  follow the inlined `postBuildFlow.instructions` when
+  `postBuildFlow.required: true` is present in the tool output. Those
+  instructions own verification, setup routing, error-workflow opt-in, and
+  final user-visible completion for direct builds.
 - Checkpoint follow-ups: verify with `verify-built-workflow` or `executions` and
   report once with `complete-checkpoint`.
 - Planned build follow-ups that explicitly say to stop after save: stop after a

@@ -91,6 +91,7 @@ type BuildToolOutput = {
 		skillId: string;
 		reason: string;
 		guidance: string;
+		instructions: string;
 	};
 	warnings?: string[];
 	errors?: string[];
@@ -199,7 +200,16 @@ describe('createBuildWorkflowTool', () => {
 				reason: 'direct-build-succeeded',
 			},
 		});
-		expect(result.postBuildFlow?.guidance).toContain('Load post-build-flow now');
+		expect(result.postBuildFlow?.guidance).toContain(
+			'Follow the post-build instructions in `instructions` now',
+		);
+		expect(result.postBuildFlow?.instructions).toContain('# Post-Build Flow');
+		expect(result.postBuildFlow?.instructions).not.toContain('recommended_tools');
+		// Tag-turn-only sections are stripped from the inline copy.
+		expect(result.postBuildFlow?.instructions).not.toContain('## Verification follow-up');
+		expect(result.postBuildFlow?.instructions).not.toContain('## Setup follow-up');
+		expect(result.postBuildFlow?.instructions).not.toContain('## Credentials before build');
+		expect(result.postBuildFlow?.instructions).toContain('## After build-workflow succeeds');
 		expect(result.postBuildFlow?.guidance).toContain(
 			'then mocked/no-mock live-test when latest verification used mocks or simulations',
 		);
