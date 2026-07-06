@@ -265,12 +265,10 @@ export class InstanceAiAdapterService {
 		const { searchProxyConfig, pushRef, threadId, projectId, credentialIdAllowlist } =
 			options ?? {};
 
-		// Lazy per-request loader for the AI Gateway config. The first
-		// gateway-aware method call within this context triggers the fetch;
-		// every later call shares the same promise. A second `createContext`
-		// call gets its own closure and refetches — the config can change
-		// when a license changes, so we do not cache process-wide.
-		const getGatewayConfig = this.createGatewayConfigLoader();
+		// Record gateway availability once per context. Fire-and-forget: the
+		// underlying config is cached process-wide (1h TTL) so this rarely hits
+		// the network, and telemetry must never block context creation.
+		void this.trackGatewayAvailability();
 
 		return {
 			userId: user.id,
@@ -278,7 +276,7 @@ export class InstanceAiAdapterService {
 			workflowService: this.createWorkflowAdapter(user, threadId, projectId),
 			executionService: this.createExecutionAdapter(user, pushRef, threadId),
 			credentialService: this.createCredentialAdapter(user, projectId, credentialIdAllowlist),
-			nodeService: this.createNodeAdapter(user, getGatewayConfig),
+			nodeService: this.createNodeAdapter(user),
 			dataTableService: this.createDataTableAdapter(user, projectId),
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
 			workspaceService: this.createWorkspaceAdapter(user),
@@ -290,12 +288,19 @@ export class InstanceAiAdapterService {
 		};
 	}
 
-	private createGatewayConfigLoader(): () => Promise<AiGatewayConfigDto | null> {
-		let cached: Promise<AiGatewayConfigDto | null> | undefined;
-		return () => {
-			if (!cached) cached = this.fetchGatewayConfigSafely();
-			return cached;
-		};
+	/**
+	 * Fail-open read of the AI Gateway config. Returns null when the instance is
+	 * unlicensed for the gateway or the fetch fails for any reason. Every consumer
+	 * (node annotations, credential list, verifier) treats a null as "gateway not
+	 * available", a valid degraded state. Backed by `AiGatewayService`'s own
+	 * process-wide cache (1h TTL), so repeated calls are cheap.
+	 */
+	private async getGatewayConfigOrNull(): Promise<AiGatewayConfigDto | null> {
+		try {
+			return await this.aiGatewayService.getGatewayConfig();
+		} catch {
+			return null;
+		}
 	}
 
 	private buildAiGatewayNodeMeta(
@@ -341,24 +346,14 @@ export class InstanceAiAdapterService {
 		return hints;
 	}
 
-	/**
-	 * Safe wrapper around `AiGatewayService.getGatewayConfig()` — the service
-	 * throws `UserError` when the instance is not licensed for the gateway (or
-	 * on any network / non-2xx). Every downstream consumer of the config
-	 * (node annotations, credential list, verifier) treats the gateway as
-	 * opt-in signal, so a null return is a valid degraded state.
-	 */
-	private async fetchGatewayConfigSafely(): Promise<AiGatewayConfigDto | null> {
-		try {
-			const config = await this.aiGatewayService.getGatewayConfig();
-			this.telemetry.track('instance_ai_gateway_available', {
-				nodeCount: config.nodes.length,
-				credentialTypeCount: config.credentialTypes.length,
-			});
-			return config;
-		} catch {
-			return null;
-		}
+	/** Emit the gateway-availability telemetry event when the gateway is reachable. */
+	private async trackGatewayAvailability(): Promise<void> {
+		const config = await this.getGatewayConfigOrNull();
+		if (!config) return;
+		this.telemetry.track('instance_ai_gateway_available', {
+			nodeCount: config.nodes.length,
+			credentialTypeCount: config.credentialTypes.length,
+		});
 	}
 
 	private assertInstanceNotReadOnly(resourceType: string) {
@@ -1256,12 +1251,8 @@ export class InstanceAiAdapterService {
 		boundProjectId?: string,
 		credentialIdAllowlist?: string[],
 	): InstanceAiCredentialService {
-		const {
-			credentialsService,
-			credentialsFinderService,
-			loadNodesAndCredentials,
-			aiGatewayService,
-		} = this;
+		const { credentialsService, credentialsFinderService, loadNodesAndCredentials } = this;
+		const getGatewayConfig = async () => await this.getGatewayConfigOrNull();
 
 		const adapter: InstanceAiCredentialService = {
 			async list(options) {
@@ -1577,43 +1568,27 @@ export class InstanceAiAdapterService {
 			},
 
 			async isAiGatewayCredentialType(credType: string): Promise<boolean> {
-				try {
-					const config = await aiGatewayService.getGatewayConfig();
-					return config.credentialTypes.includes(credType);
-				} catch {
-					// Fail open if the gateway config is unavailable — the credential
-					// type check is a best-effort validation, not a security gate.
-					return false;
-				}
+				// Fail open if the gateway config is unavailable — the credential
+				// type check is a best-effort validation, not a security gate.
+				const config = await getGatewayConfig();
+				return config?.credentialTypes.includes(credType) ?? false;
 			},
 
 			async listAiGatewayNodes(): Promise<string[]> {
-				try {
-					const config = await aiGatewayService.getGatewayConfig();
-					return config.nodes;
-				} catch {
-					return [];
-				}
+				const config = await getGatewayConfig();
+				return config?.nodes ?? [];
 			},
 
 			async listAiGatewayCredentialTypes(): Promise<string[]> {
-				try {
-					const config = await aiGatewayService.getGatewayConfig();
-					return config.credentialTypes;
-				} catch {
-					return [];
-				}
+				const config = await getGatewayConfig();
+				return config?.credentialTypes ?? [];
 			},
 
 			async getAiGatewayNodeOperations(
 				nodeType: string,
 			): Promise<Record<string, string[]> | undefined> {
-				try {
-					const config = await aiGatewayService.getGatewayConfig();
-					return config.supportedActions?.[nodeType];
-				} catch {
-					return undefined;
-				}
+				const config = await getGatewayConfig();
+				return config?.supportedActions?.[nodeType];
 			},
 		};
 
@@ -2079,13 +2054,11 @@ export class InstanceAiAdapterService {
 		return this.nodeCatalogService ?? Container.get(NodeCatalogService);
 	}
 
-	private createNodeAdapter(
-		user: User,
-		getGatewayConfig: () => Promise<AiGatewayConfigDto | null>,
-	): InstanceAiNodeService {
+	private createNodeAdapter(user: User): InstanceAiNodeService {
 		// Use the service-level cache instead of a per-adapter closure.
 		// This avoids each run retaining its own ~31 MB copy of node descriptions.
 		const getNodes = async () => await this.getNodesFromCache();
+		const getGatewayConfig = async () => await this.getGatewayConfigOrNull();
 		const buildMeta = (config: AiGatewayConfigDto | null, nodeName: string) =>
 			this.buildAiGatewayNodeMeta(config, nodeName);
 

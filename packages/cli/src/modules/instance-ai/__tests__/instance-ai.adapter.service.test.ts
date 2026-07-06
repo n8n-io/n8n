@@ -3071,13 +3071,13 @@ function createAdapterWithGatewayMock(
 	);
 }
 
-describe('fetchGatewayConfigSafely', () => {
-	function callFetch(adapter: InstanceAiAdapterService) {
-		return (
+describe('getGatewayConfigOrNull', () => {
+	async function callGet(adapter: InstanceAiAdapterService) {
+		return await (
 			adapter as unknown as {
-				fetchGatewayConfigSafely: () => Promise<unknown>;
+				getGatewayConfigOrNull: () => Promise<unknown>;
 			}
-		).fetchGatewayConfigSafely();
+		).getGatewayConfigOrNull();
 	}
 
 	it('returns the config when the gateway service resolves', async () => {
@@ -3088,7 +3088,7 @@ describe('fetchGatewayConfigSafely', () => {
 		};
 		const adapter = createAdapterWithGatewayMock(vi.fn().mockResolvedValue(config));
 
-		await expect(callFetch(adapter)).resolves.toEqual(config);
+		await expect(callGet(adapter)).resolves.toEqual(config);
 	});
 
 	it('returns null when the gateway service throws (unlicensed / 404 / network)', async () => {
@@ -3096,8 +3096,18 @@ describe('fetchGatewayConfigSafely', () => {
 			vi.fn().mockRejectedValue(new Error('AI Gateway is not licensed')),
 		);
 
-		await expect(callFetch(adapter)).resolves.toBeNull();
+		await expect(callGet(adapter)).resolves.toBeNull();
 	});
+});
+
+describe('trackGatewayAvailability', () => {
+	async function callTrack(adapter: InstanceAiAdapterService) {
+		await (
+			adapter as unknown as {
+				trackGatewayAvailability: () => Promise<void>;
+			}
+		).trackGatewayAvailability();
+	}
 
 	it('emits instance_ai_gateway_available with node and credential-type counts on success', async () => {
 		const track = vi.fn();
@@ -3110,7 +3120,7 @@ describe('fetchGatewayConfigSafely', () => {
 			{ telemetry: { track } },
 		);
 
-		await callFetch(adapter);
+		await callTrack(adapter);
 
 		expect(track).toHaveBeenCalledWith('instance_ai_gateway_available', {
 			nodeCount: 2,
@@ -3125,7 +3135,7 @@ describe('fetchGatewayConfigSafely', () => {
 			{ telemetry: { track } },
 		);
 
-		await callFetch(adapter);
+		await callTrack(adapter);
 
 		expect(track).not.toHaveBeenCalled();
 	});
@@ -3279,32 +3289,5 @@ describe('createNodeAdapter — n8n Connect annotations', () => {
 			supported: true,
 			operations: { __operation_only__: ['pdfToText', 'ocr'] },
 		});
-	});
-
-	it('shares one upstream gateway fetch across multiple node-service calls in the same context', async () => {
-		const { makeContext, getGatewayConfig } = createNodeServiceWithGateway([openAiNode], {
-			nodes: ['openAi'],
-			credentialTypes: ['openAiApi'],
-			providerConfig: {},
-		});
-
-		const ctx = makeContext();
-		await ctx.nodeService.listSearchable();
-		await ctx.nodeService.getDescription('openAi');
-
-		expect(getGatewayConfig).toHaveBeenCalledTimes(1);
-	});
-
-	it('fetches the gateway config again for each new createContext call', async () => {
-		const { makeContext, getGatewayConfig } = createNodeServiceWithGateway([openAiNode], {
-			nodes: ['openAi'],
-			credentialTypes: ['openAiApi'],
-			providerConfig: {},
-		});
-
-		await makeContext().nodeService.listSearchable();
-		await makeContext().nodeService.listSearchable();
-
-		expect(getGatewayConfig).toHaveBeenCalledTimes(2);
 	});
 });
