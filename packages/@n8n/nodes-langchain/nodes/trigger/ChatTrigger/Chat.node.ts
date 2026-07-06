@@ -38,9 +38,11 @@ import {
 } from './util';
 
 function getToolFlowResponse(context: IExecuteFunctions, data: INodeExecutionData) {
+	// context.isToolExecution() doesn't work with ExecuteFunctionContext
 	const isToolExecution = isToolType(context.getNode().type);
 	if (!isToolExecution) return data;
 
+	// strip empty field and add sent: true to clarify the result for LLMs
 	const json: IDataObject = { ...data.json, sent: true };
 	if (json.chatInput === '') {
 		delete json.chatInput;
