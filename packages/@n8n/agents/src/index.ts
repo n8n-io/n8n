@@ -108,6 +108,13 @@ export type { Cancellation } from './sdk/cancellation';
 export { Tool, wrapToolForApproval } from './sdk/tool';
 export { Memory } from './sdk/memory';
 export { VectorStore } from './sdk/vector-store';
+export {
+	FILTER_OPERATORS,
+	normalizeFilterInput,
+	assertValidFilter,
+	buildFilterInputSchema,
+} from './sdk/vector-store-filter';
+export type { VectorFilterInput } from './sdk/vector-store-filter';
 export { Guardrail } from './sdk/guardrail';
 export {
 	redactText,
@@ -223,6 +230,10 @@ export type {
 	VectorDocument,
 	VectorRecord,
 	VectorQueryResult,
+	FilterOperator,
+	FilterValue,
+	FilterCondition,
+	VectorFilter,
 } from './types';
 
 export { createModel } from './runtime/model/model-factory';

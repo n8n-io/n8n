@@ -3,10 +3,17 @@ import { z } from 'zod';
 
 import { Tool } from './tool';
 import {
+	assertValidFilter,
+	buildFilterInputSchema,
+	normalizeFilterInput,
+	type VectorFilterInput,
+} from './vector-store-filter';
+import {
 	createEmbeddingModel,
 	type EmbeddingProviderOptions,
 } from '../runtime/model/model-factory';
 import type { BuiltVectorStoreBackend, VectorDocument, VectorQueryResult } from '../types';
+import type { VectorFilter } from '../types/sdk/vector-store';
 
 const DEFAULT_TOP_K = 4;
 
@@ -73,12 +80,19 @@ export class VectorStore {
 	}
 
 	/** Search the store for content semantically similar to `query`. Lazy-builds on first call. */
-	async search(query: string, opts?: { topK?: number }): Promise<VectorQueryResult[]> {
+	async search(
+		query: string,
+		opts?: { topK?: number; filter?: VectorFilterInput },
+	): Promise<VectorQueryResult[]> {
 		const { backend, embeddingModel } = this.ensureBuilt();
 		const { embed } = await import('ai');
 		const { embedding } = await embed({ model: embeddingModel, value: query });
 		await this.ensureBackendReady(backend, embedding.length);
-		return await backend.query(embedding, { topK: opts?.topK ?? this.topKValue });
+		const filter = this.resolveFilter(opts?.filter);
+		return await backend.query(embedding, {
+			topK: opts?.topK ?? this.topKValue,
+			...(filter ? { filter } : {}),
+		});
 	}
 
 	/** Embed and upsert documents into the store. Returns the ids used (generated when not provided). */
@@ -114,8 +128,17 @@ export class VectorStore {
 	/**
 	 * Expose this store as an agent tool. The model calls it with a natural
 	 * language `query` and receives ranked search results.
+	 *
+	 * Pass `filterableKeys` to also let the model narrow results with a
+	 * metadata filter — a map from each filterable metadata key to a
+	 * human-readable description of its values, injected into the tool's
+	 * input schema.
 	 */
-	asTool(opts?: { name?: string; description?: string }): Tool {
+	asTool(opts?: {
+		name?: string;
+		description?: string;
+		filterableKeys?: Record<string, string>;
+	}): Tool {
 		const description = opts?.description ?? this.descriptionValue;
 		if (!description) {
 			throw new Error(
@@ -125,10 +148,30 @@ export class VectorStore {
 
 		const toolName = opts?.name ?? `search_${sanitizeToolName(this.name)}`;
 
+		if (!opts?.filterableKeys) {
+			return new Tool(toolName)
+				.description(description)
+				.input(z.object({ query: z.string().describe('Natural language search query') }))
+				.handler(async ({ query }) => ({ results: await this.search(query) }));
+		}
+
+		const filterSchema = buildFilterInputSchema(opts.filterableKeys);
 		return new Tool(toolName)
 			.description(description)
-			.input(z.object({ query: z.string().describe('Natural language search query') }))
-			.handler(async ({ query }) => ({ results: await this.search(query) }));
+			.input(
+				z.object({
+					query: z.string().describe('Natural language search query'),
+					filter: filterSchema,
+				}),
+			)
+			.handler(async ({ query, filter }) => ({
+				results: await this.search(
+					query,
+					filter && filter.length > 0
+						? { filter: { conditions: filter, combineWith: 'and' } }
+						: undefined,
+				),
+			}));
 	}
 
 	private ensureBuilt(): { backend: BuiltVectorStoreBackend; embeddingModel: EmbeddingModel } {
@@ -141,6 +184,17 @@ export class VectorStore {
 			);
 		}
 		return { backend: this.backend, embeddingModel: this.embeddingModelValue };
+	}
+
+	/**
+	 * Normalize and validate a per-call/model filter. Returns `undefined` for
+	 * an empty filter (e.g. `{}`) so it never turns into a no-op `WHERE` clause.
+	 */
+	private resolveFilter(input?: VectorFilterInput): VectorFilter | undefined {
+		if (input === undefined) return undefined;
+		const normalized = normalizeFilterInput(input);
+		assertValidFilter(normalized);
+		return normalized.conditions.length > 0 ? normalized : undefined;
 	}
 
 	private async ensureBackendReady(

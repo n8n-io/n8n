@@ -1,15 +1,18 @@
 import { MockEmbeddingModelV3 } from 'ai/test';
 
+import type { BuiltVectorStoreBackend, VectorFilter, VectorQueryResult } from '../../types';
+import { isZodSchema } from '../../utils/zod';
 import { Agent } from '../agent';
 import { VectorStore } from '../vector-store';
-import type { BuiltVectorStoreBackend, VectorQueryResult } from '../../types';
+import { assertValidFilter, normalizeFilterInput } from '../vector-store-filter';
 
 function makeEmbeddingModel(vector: number[] = [1, 0, 0]) {
 	return new MockEmbeddingModelV3({
-		doEmbed: async ({ values }) => ({
-			embeddings: values.map(() => vector),
-			warnings: [],
-		}),
+		doEmbed: async ({ values }) =>
+			await Promise.resolve({
+				embeddings: values.map(() => vector),
+				warnings: [],
+			}),
 	});
 }
 
@@ -21,6 +24,51 @@ function makeBackend(overrides: Partial<BuiltVectorStoreBackend> = {}): BuiltVec
 		...overrides,
 	};
 }
+
+describe('normalizeFilterInput', () => {
+	it('wraps plain object shorthand into an eq-conditions AND group', () => {
+		expect(normalizeFilterInput({ plan: 'cloud' })).toEqual({
+			conditions: [{ key: 'plan', operator: 'eq', value: 'cloud' }],
+			combineWith: 'and',
+		});
+	});
+
+	it('passes a VectorFilter through unchanged', () => {
+		const filter: VectorFilter = {
+			conditions: [{ key: 'plan', operator: 'eq', value: 'cloud' }],
+			combineWith: 'or',
+		};
+		expect(normalizeFilterInput(filter)).toBe(filter);
+	});
+});
+
+describe('assertValidFilter', () => {
+	it('throws when in has a scalar value', () => {
+		expect(() =>
+			assertValidFilter({ conditions: [{ key: 'plan', operator: 'in', value: 'cloud' }] }),
+		).toThrow(/"in" on key "plan" requires a non-empty array value/);
+	});
+
+	it('throws when in has an empty array value', () => {
+		expect(() =>
+			assertValidFilter({ conditions: [{ key: 'plan', operator: 'in', value: [] }] }),
+		).toThrow(/"in" on key "plan" requires a non-empty array value/);
+	});
+
+	it('throws when eq has an array value', () => {
+		expect(() =>
+			assertValidFilter({ conditions: [{ key: 'plan', operator: 'eq', value: ['cloud'] }] }),
+		).toThrow(/"eq" on key "plan" requires a string, number, or boolean value/);
+	});
+
+	it('throws on an unknown (removed) operator', () => {
+		expect(() =>
+			assertValidFilter({
+				conditions: [{ key: 'plan', operator: 'text_match' as never, value: 'cloud' }],
+			}),
+		).toThrow(/Invalid filter operator "text_match"/);
+	});
+});
 
 describe('VectorStore — configuration validation', () => {
 	it('throws when .store() is not set', async () => {
@@ -68,6 +116,36 @@ describe('VectorStore — search()', () => {
 
 		expect(ensureReady).toHaveBeenCalledTimes(1);
 		expect(ensureReady).toHaveBeenCalledWith({ dimensions: 3 });
+	});
+
+	it('omits filter entirely from backend.query when none is set', async () => {
+		const backend = makeBackend();
+		const vectorStore = new VectorStore('kb').store(backend).embeddingModel(makeEmbeddingModel());
+
+		await vectorStore.search('hello');
+
+		expect(backend.query).toHaveBeenCalledWith([1, 0, 0], { topK: 4 });
+	});
+
+	it('normalizes an object-shorthand per-call filter before reaching the backend', async () => {
+		const backend = makeBackend();
+		const vectorStore = new VectorStore('kb').store(backend).embeddingModel(makeEmbeddingModel());
+
+		await vectorStore.search('hello', { filter: { plan: 'cloud' } });
+
+		expect(backend.query).toHaveBeenCalledWith([1, 0, 0], {
+			topK: 4,
+			filter: { conditions: [{ key: 'plan', operator: 'eq', value: 'cloud' }], combineWith: 'and' },
+		});
+	});
+
+	it('omits filter when an empty object shorthand is passed', async () => {
+		const backend = makeBackend();
+		const vectorStore = new VectorStore('kb').store(backend).embeddingModel(makeEmbeddingModel());
+
+		await vectorStore.search('hello', { filter: {} });
+
+		expect(backend.query).toHaveBeenCalledWith([1, 0, 0], { topK: 4 });
 	});
 });
 
@@ -179,5 +257,108 @@ describe('VectorStore — asTool()', () => {
 		const output = await tool.handler!({ query: 'hello' }, {});
 
 		expect(output).toEqual({ results });
+	});
+
+	it('without filterableKeys, the schema has no filter field', () => {
+		const vectorStore = new VectorStore('product-docs').description('Search the docs');
+		const tool = vectorStore.asTool().build();
+
+		expect(isZodSchema(tool.inputSchema)).toBe(true);
+		if (!isZodSchema(tool.inputSchema)) return;
+		const parsed = tool.inputSchema.safeParse({
+			query: 'hello',
+			filter: [{ key: 'x', operator: 'eq', value: 'y' }],
+		});
+		expect(parsed.success).toBe(true);
+		expect(parsed.data).toEqual({ query: 'hello' });
+	});
+
+	describe('with filterableKeys', () => {
+		it('accepts a valid filter array', () => {
+			const vectorStore = new VectorStore('product-docs').description('Search the docs');
+			const tool = vectorStore.asTool({ filterableKeys: { plan: 'cloud or self-hosted' } }).build();
+
+			expect(isZodSchema(tool.inputSchema)).toBe(true);
+			if (!isZodSchema(tool.inputSchema)) return;
+			const parsed = tool.inputSchema.safeParse({
+				query: 'hello',
+				filter: [{ key: 'plan', operator: 'eq', value: 'cloud' }],
+			});
+			expect(parsed.success).toBe(true);
+		});
+
+		it('rejects a filter key outside filterableKeys', () => {
+			const vectorStore = new VectorStore('product-docs').description('Search the docs');
+			const tool = vectorStore.asTool({ filterableKeys: { plan: 'cloud or self-hosted' } }).build();
+
+			expect(isZodSchema(tool.inputSchema)).toBe(true);
+			if (!isZodSchema(tool.inputSchema)) return;
+			const parsed = tool.inputSchema.safeParse({
+				query: 'hello',
+				filter: [{ key: 'unlisted', operator: 'eq', value: 'x' }],
+			});
+			expect(parsed.success).toBe(false);
+		});
+
+		it('rejects an unknown (removed) operator', () => {
+			const vectorStore = new VectorStore('product-docs').description('Search the docs');
+			const tool = vectorStore.asTool({ filterableKeys: { plan: 'cloud or self-hosted' } }).build();
+
+			expect(isZodSchema(tool.inputSchema)).toBe(true);
+			if (!isZodSchema(tool.inputSchema)) return;
+			const parsed = tool.inputSchema.safeParse({
+				query: 'hello',
+				filter: [{ key: 'plan', operator: 'text_match', value: 'x' }],
+			});
+			expect(parsed.success).toBe(false);
+		});
+
+		it('rejects a condition missing a value', () => {
+			const vectorStore = new VectorStore('product-docs').description('Search the docs');
+			const tool = vectorStore.asTool({ filterableKeys: { plan: 'cloud or self-hosted' } }).build();
+
+			expect(isZodSchema(tool.inputSchema)).toBe(true);
+			if (!isZodSchema(tool.inputSchema)) return;
+			const parsed = tool.inputSchema.safeParse({
+				query: 'hello',
+				filter: [{ key: 'plan', operator: 'eq' }],
+			});
+			expect(parsed.success).toBe(false);
+		});
+
+		it('passes the model filter to backend.query as the single filter group', async () => {
+			const backend = makeBackend();
+			const vectorStore = new VectorStore('product-docs')
+				.store(backend)
+				.embeddingModel(makeEmbeddingModel())
+				.description('Search the docs');
+			const tool = vectorStore.asTool({ filterableKeys: { plan: 'cloud or self-hosted' } }).build();
+
+			await tool.handler!(
+				{ query: 'hello', filter: [{ key: 'plan', operator: 'eq', value: 'cloud' }] },
+				{},
+			);
+
+			expect(backend.query).toHaveBeenCalledWith([1, 0, 0], {
+				topK: 4,
+				filter: {
+					conditions: [{ key: 'plan', operator: 'eq', value: 'cloud' }],
+					combineWith: 'and',
+				},
+			});
+		});
+
+		it('omits the filter key when the model calls without a filter', async () => {
+			const backend = makeBackend();
+			const vectorStore = new VectorStore('product-docs')
+				.store(backend)
+				.embeddingModel(makeEmbeddingModel())
+				.description('Search the docs');
+			const tool = vectorStore.asTool({ filterableKeys: { plan: 'cloud or self-hosted' } }).build();
+
+			await tool.handler!({ query: 'hello' }, {});
+
+			expect(backend.query).toHaveBeenCalledWith([1, 0, 0], { topK: 4 });
+		});
 	});
 });

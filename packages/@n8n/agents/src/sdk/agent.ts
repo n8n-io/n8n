@@ -260,7 +260,10 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	}
 
 	/** Attach a vector store as a search tool. Accepts a VectorStore builder. */
-	vectorStore(store: VectorStore, options?: { name?: string; description?: string }): this {
+	vectorStore(
+		store: VectorStore,
+		options?: { name?: string; description?: string; filterableKeys?: Record<string, string> },
+	): this {
 		return this.tool(store.asTool(options));
 	}
 

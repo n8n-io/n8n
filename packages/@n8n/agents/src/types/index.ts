@@ -108,6 +108,10 @@ export type {
 	VectorRecord,
 	VectorQueryResult,
 	BuiltVectorStoreBackend,
+	FilterOperator,
+	FilterValue,
+	FilterCondition,
+	VectorFilter,
 } from './sdk/vector-store';
 
 export type { ObservationCursor } from './sdk/observation';

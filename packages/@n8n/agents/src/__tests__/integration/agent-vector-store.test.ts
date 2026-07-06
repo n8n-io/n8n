@@ -82,4 +82,61 @@ describe.skipIf(!PG_URL || !hasKeys)('Agent + PgVectorStore end-to-end', () => {
 		const answer = findLastTextContent(result.messages);
 		expect(answer).toMatch(/17/);
 	});
+
+	it('narrows results with a model-controlled metadata filter', async () => {
+		const filterTableName = `${tableName}_filter`;
+		const filterStore = new PgVectorStore('product-line-docs', {
+			connectionString: PG_URL!,
+			tableName: filterTableName,
+		});
+
+		try {
+			// Two near-identical documents that differ only in metadata and one
+			// fact — similarity alone cannot reliably distinguish them, so only
+			// a correct metadata filter makes the right answer deterministic.
+			const productDocs = new VectorStore('product-line-docs')
+				.store(filterStore)
+				.embeddingModel('openai/text-embedding-3-small')
+				.description('Search product-line-specific documentation')
+				.topK(1);
+			await productDocs.addDocuments([
+				{ content: 'The battery lasts 17 hours.', metadata: { product: 'x9' } },
+				{ content: 'The battery lasts 23 hours.', metadata: { product: 'x5' } },
+			]);
+
+			const agent = new Agent('kb-assistant-filtered')
+				.model('anthropic/claude-haiku-4-5')
+				.instructions(
+					'You answer questions about Zephyr products. Always search the product documentation. ' +
+						'Always pass a filter on the product key when the user names a specific product.',
+				)
+				.vectorStore(productDocs, {
+					filterableKeys: { product: "Product line, exactly one of: 'x9', 'x5'" },
+				});
+
+			const result = await agent.generate('How many hours of battery life does the X5 have?');
+
+			const searchCalls = (result.toolCalls ?? []).filter(
+				(tc) => tc.tool === 'search_product_line_docs',
+			);
+			expect(searchCalls.length).toBeGreaterThanOrEqual(1);
+
+			const input = searchCalls[0].input as {
+				filter?: Array<{ key: string; operator: string; value: unknown }>;
+			};
+			const productCondition = input.filter?.find((c) => c.key === 'product');
+			expect(productCondition).toBeDefined();
+			if (productCondition?.operator === 'in') {
+				expect(productCondition.value).toContain('x5');
+			} else {
+				expect(productCondition?.value).toBe('x5');
+			}
+
+			const answer = findLastTextContent(result.messages);
+			expect(answer).toMatch(/23/);
+		} finally {
+			await adminPool.query(`DROP TABLE IF EXISTS "${filterTableName}";`);
+			await filterStore.close();
+		}
+	});
 });

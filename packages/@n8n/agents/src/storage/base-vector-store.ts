@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/promise-function-async */
 import type {
 	BuiltVectorStoreBackend,
+	VectorFilter,
 	VectorQueryResult,
 	VectorRecord,
 } from '../types/sdk/vector-store';
@@ -17,7 +18,10 @@ export abstract class BaseVectorStore<TConstructorOptions extends JSONObject = J
 	upsert(_records: VectorRecord[]): Promise<void> {
 		throw new Error('Method not implemented.');
 	}
-	query(_vector: number[], _opts: { topK: number }): Promise<VectorQueryResult[]> {
+	query(
+		_vector: number[],
+		_opts: { topK: number; filter?: VectorFilter },
+	): Promise<VectorQueryResult[]> {
 		throw new Error('Method not implemented.');
 	}
 	delete(_opts: { ids: string[] }): Promise<void> {
