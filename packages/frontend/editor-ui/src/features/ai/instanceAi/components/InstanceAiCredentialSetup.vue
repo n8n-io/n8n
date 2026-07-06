@@ -190,11 +190,17 @@ onMounted(async () => {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function getDisplayName(credentialType: string): string {
-	const raw =
-		credentialsStore.getCredentialTypeByName(credentialType)?.displayName ?? credentialType;
-	const appName = getAppNameFromCredType(raw);
-	return i18n.baseText('instanceAi.credential.setupTitle', { interpolate: { name: appName } });
+function getDisplayName(request: InstanceAiCredentialRequest): string {
+	// An agent-supplied recipe names the credential after the service ("fal.ai
+	// API Key") — a friendlier title than the generic type ("Header Auth"). It's
+	// already human-authored, so it skips the type-name keyword filtering.
+	const name =
+		request.setupHint?.suggestedName ??
+		getAppNameFromCredType(
+			credentialsStore.getCredentialTypeByName(request.credentialType)?.displayName ??
+				request.credentialType,
+		);
+	return i18n.baseText('instanceAi.credential.setupTitle', { interpolate: { name } });
 }
 
 const hasExistingCredentials = computed(() => {
@@ -340,7 +346,7 @@ async function handleLater() {
 				<header :class="$style.header">
 					<CredentialIcon :credential-type-name="currentRequest.credentialType" :size="16" />
 					<N8nText :class="$style.title" size="medium" color="text-dark" bold>
-						{{ getDisplayName(currentRequest.credentialType) }}
+						{{ getDisplayName(currentRequest) }}
 					</N8nText>
 
 					<N8nText

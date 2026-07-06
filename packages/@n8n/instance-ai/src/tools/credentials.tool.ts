@@ -46,7 +46,12 @@ export const setupHintField = z
 			.describe(
 				"URL of the page where the user obtains the secret (the provider's API-keys / tokens page).",
 			),
-		suggestedName: z.string().optional().describe('Display name for the created credential.'),
+		suggestedName: z
+			.string()
+			.optional()
+			.describe(
+				'Display name for the created credential, also used as the setup card title ("Set up {suggestedName}"). Name it after the service, user-facing — e.g. "fal.ai API Key", not the generic type name.',
+			),
 	})
 	.describe(
 		"Recipe for creating this credential so the user only has to paste their secret(s) — the other fields are pre-filled. Provide it for generic auth types (httpHeaderAuth, httpQueryAuth, httpBasicAuth, httpBearerAuth, httpCustomAuth) whenever you know the provider's auth scheme; ground it in the provider's documentation, never guess the format.",

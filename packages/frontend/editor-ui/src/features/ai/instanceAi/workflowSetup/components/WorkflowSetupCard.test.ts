@@ -133,6 +133,25 @@ describe('WorkflowSetupCard', () => {
 		expect(queryByTestId('credential-icon')).not.toBeInTheDocument();
 	});
 
+	it('titles the card from the setup hint suggested name, verbatim', () => {
+		const section = makeWorkflowSetupSection({
+			credentialType: 'httpHeaderAuth',
+			setupHint: {
+				prefill: { name: 'Authorization' },
+				// "API" must survive — hint names skip the type-name keyword filter.
+				suggestedName: 'fal.ai API Key',
+			},
+		});
+		workflowSetupContext.current = makeContext(section);
+
+		const { getByText, queryByText } = renderComponent({
+			props: { section },
+		});
+
+		expect(getByText('Set up fal.ai API Key')).toBeInTheDocument();
+		expect(queryByText('Set up Header Auth')).not.toBeInTheDocument();
+	});
+
 	it('shows the credential app name when the section only needs credentials', () => {
 		const section = makeWorkflowSetupSection({
 			credentialType: 'httpHeaderAuth',

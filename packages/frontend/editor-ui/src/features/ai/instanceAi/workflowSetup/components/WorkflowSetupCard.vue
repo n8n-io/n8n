@@ -36,10 +36,17 @@ const isCredentialOnlySection = computed(
 const displayName = computed(() => {
 	const credentialTypeName = credentialType.value;
 	if (!isCredentialOnlySection.value || !credentialTypeName) return props.section.node.name;
-	const raw =
-		credentialsStore.getCredentialTypeByName(credentialTypeName)?.displayName ?? credentialTypeName;
-	const appName = getAppNameFromCredType(raw);
-	return i18n.baseText('instanceAi.credential.setupTitle', { interpolate: { name: appName } });
+	// An agent-supplied recipe names the credential after the service ("fal.ai
+	// API Key") — a friendlier title than the generic type ("Header Auth"). It's
+	// already human-authored, so it skips the type-name keyword filtering.
+	const hintName = props.section.setupHint?.suggestedName;
+	const name =
+		hintName ??
+		getAppNameFromCredType(
+			credentialsStore.getCredentialTypeByName(credentialTypeName)?.displayName ??
+				credentialTypeName,
+		);
+	return i18n.baseText('instanceAi.credential.setupTitle', { interpolate: { name } });
 });
 </script>
 
