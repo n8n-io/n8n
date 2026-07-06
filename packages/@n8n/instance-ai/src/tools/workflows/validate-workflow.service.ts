@@ -212,12 +212,11 @@ async function evaluateCredentialEntry(
 		return credentialTypeDescription.required ? notSetIssue(credName, nodeDesc.displayName) : null;
 	}
 
-	// AI-gateway-managed credentials have no real DB record — treat as configured.
-	if (
-		typeof selected === 'object' &&
-		'__aiGatewayManaged' in selected &&
-		(selected as { __aiGatewayManaged?: boolean }).__aiGatewayManaged === true
-	) {
+	// n8n Connect managed credentials have no real DB record — treat as
+	// configured. Recognizes both the resolved `AI_GATEWAY_CREDENTIAL` shape and
+	// the raw builder-emitted `AI_GATEWAY_MANAGED_TAG`, so a node that still
+	// carries the tag isn't flagged missing-credential before the gateway checks.
+	if (isManagedCredentialEntry(selected)) {
 		return null;
 	}
 

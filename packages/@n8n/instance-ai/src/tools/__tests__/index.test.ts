@@ -99,6 +99,10 @@ vi.mock('../workspace.tool', () => ({
 	createWorkspaceTool: vi.fn(() => ({ id: 'workspace' })),
 }));
 
+vi.mock('../n8n-connect.tool', () => ({
+	createN8nConnectTool: vi.fn(() => ({ id: 'n8n-connect' })),
+}));
+
 vi.mock('../filesystem/create-tools-from-mcp-server', () => ({
 	createToolsFromLocalMcpServer: vi.fn(() => ({
 		browser_connect: { id: 'browser_connect' },
@@ -137,6 +141,7 @@ describe('domain tool construction', () => {
 			nodes: { id: 'nodes' },
 			'ask-user': { id: 'ask-user' },
 			'build-workflow': { id: 'build-workflow' },
+			'n8n-connect': { id: 'n8n-connect' },
 		});
 	});
 
@@ -157,6 +162,7 @@ describe('domain tool construction', () => {
 			nodes: { id: 'nodes' },
 			'ask-user': { id: 'ask-user' },
 			'build-workflow': { id: 'build-workflow' },
+			'n8n-connect': { id: 'n8n-connect' },
 		});
 
 		const { createWorkflowsTool } = await import('../workflows.tool');

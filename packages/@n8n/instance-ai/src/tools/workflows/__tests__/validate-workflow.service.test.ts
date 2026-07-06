@@ -1,3 +1,4 @@
+import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
 import type { NodeJSON, WorkflowJSON } from '@n8n/workflow-sdk';
 import type { Mock } from 'vitest';
 
@@ -222,6 +223,29 @@ describe('validateWorkflowConfig', () => {
 						name: 'gateway',
 						__aiGatewayManaged: true,
 					} as unknown as { id: string; name: string },
+				},
+			});
+
+			const result = await validateWorkflowConfig(context, { workflow: makeWorkflow([node]) });
+
+			expect(result.valid).toBe(true);
+			expect(result.issues).toEqual({});
+		});
+
+		it('skips the raw builder-emitted n8n Connect tag (not yet resolved)', async () => {
+			const context = createMockContext();
+			(context.nodeService.getDescription as Mock).mockResolvedValue(
+				makeDescription({
+					credentials: [{ name: 'openAiApi', required: true }],
+				}),
+			);
+			const node = makeNode({
+				type: 'n8n-nodes-base.openAi',
+				credentials: {
+					openAiApi: { id: AI_GATEWAY_MANAGED_TAG, name: 'n8n Connect' } as unknown as {
+						id: string;
+						name: string;
+					},
 				},
 			});
 

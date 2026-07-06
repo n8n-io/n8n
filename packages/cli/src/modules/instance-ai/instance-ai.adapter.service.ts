@@ -46,7 +46,7 @@ import {
 } from '@n8n/instance-ai';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import { GlobalConfig } from '@n8n/config';
-import { Time } from '@n8n/constants';
+import { LICENSE_FEATURES, Time } from '@n8n/constants';
 import type { User, ExecutionSummaries } from '@n8n/db';
 
 import { extractResolvedNodeParameters } from './extract-resolved-node-parameters';
@@ -296,6 +296,12 @@ export class InstanceAiAdapterService {
 	 * process-wide cache (1h TTL), so repeated calls are cheap.
 	 */
 	private async getGatewayConfigOrNull(): Promise<AiGatewayConfigDto | null> {
+		// Gate on the AI Gateway license before touching the config. The FE path
+		// is gated by `@Licensed('feat:aiGateway')` on the controller; this adapter
+		// calls the service directly, so it must enforce the same license itself —
+		// otherwise unlicensed instances would surface n8n Connect (node metadata,
+		// managed credentials) and count it as available in telemetry.
+		if (!this.license.isLicensed(LICENSE_FEATURES.AI_GATEWAY)) return null;
 		try {
 			return await this.aiGatewayService.getGatewayConfig();
 		} catch {

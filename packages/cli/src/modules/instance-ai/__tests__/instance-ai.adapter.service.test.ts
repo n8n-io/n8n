@@ -3027,6 +3027,7 @@ function createAdapterWithGatewayMock(
 	overrides?: {
 		credentialsService?: unknown;
 		telemetry?: unknown;
+		licensed?: boolean;
 	},
 ): InstanceAiAdapterService {
 	const aiGatewayService = { getGatewayConfig };
@@ -3054,9 +3055,11 @@ function createAdapterWithGatewayMock(
 	args[21] = {
 		getPreferences: vi.fn().mockReturnValue({ branchReadOnly: false }),
 	} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[21];
-	args[25] = { isLicensed: vi.fn().mockReturnValue(false) } as unknown as ConstructorParameters<
-		typeof InstanceAiAdapterService
-	>[25];
+	args[25] = {
+		// Gateway exposure is gated on the AI Gateway license; default these
+		// gateway-focused fixtures to licensed so they exercise the enabled path.
+		isLicensed: vi.fn().mockReturnValue(overrides?.licensed ?? true),
+	} as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[25];
 	args[29] = (overrides?.telemetry ?? {
 		track: vi.fn(),
 	}) as unknown as ConstructorParameters<typeof InstanceAiAdapterService>[29];
@@ -3097,6 +3100,18 @@ describe('getGatewayConfigOrNull', () => {
 		);
 
 		await expect(callGet(adapter)).resolves.toBeNull();
+	});
+
+	it('returns null without calling the service when the AI Gateway license is absent', async () => {
+		const getGatewayConfig = vi.fn().mockResolvedValue({
+			nodes: ['openAi'],
+			credentialTypes: ['openAiApi'],
+			providerConfig: {},
+		});
+		const adapter = createAdapterWithGatewayMock(getGatewayConfig, { licensed: false });
+
+		await expect(callGet(adapter)).resolves.toBeNull();
+		expect(getGatewayConfig).not.toHaveBeenCalled();
 	});
 });
 
