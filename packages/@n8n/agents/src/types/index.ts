@@ -103,6 +103,13 @@ export type {
 	TitleGenerationConfig,
 } from './sdk/memory';
 
+export type {
+	VectorDocument,
+	VectorRecord,
+	VectorQueryResult,
+	BuiltVectorStoreBackend,
+} from './sdk/vector-store';
+
 export type { ObservationCursor } from './sdk/observation';
 
 export type {

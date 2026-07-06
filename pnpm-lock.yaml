@@ -978,6 +978,9 @@ importers:
       '@types/json-schema':
         specifier: 'catalog:'
         version: 7.0.15
+      '@types/pg':
+        specifier: ^8.15.6
+        version: 8.20.0
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9)
@@ -990,6 +993,9 @@ importers:
       nock:
         specifier: 'catalog:'
         version: 14.0.14
+      pg:
+        specifier: 'catalog:'
+        version: 8.17.0(pg-native@3.8.0)
       vite:
         specifier: 'catalog:'
         version: 8.0.2(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)

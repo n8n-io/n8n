@@ -15,7 +15,7 @@ import type { ModelConfig } from '../../types/sdk/agent';
  * model calls route through the configured HTTP(S)_PROXY.
  */
 export type FetchFn = typeof globalThis.fetch;
-type EmbeddingProviderOptions = {
+export type EmbeddingProviderOptions = {
 	apiKey?: string;
 	baseURL?: string;
 	fetch?: FetchFn;

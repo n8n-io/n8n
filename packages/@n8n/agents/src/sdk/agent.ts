@@ -8,6 +8,7 @@ import type { McpClient } from './mcp-client';
 import { Memory, normalizeMemoryConfig, resolveMemoryConfigDefaults } from './memory';
 import { Telemetry } from './telemetry';
 import { wrapToolForApproval } from './tool';
+import type { VectorStore } from './vector-store';
 import { AgentRuntime, type AgentRuntimeConfig } from '../runtime/loop/agent-runtime';
 import { RECALL_MEMORY_TOOL_NAME } from '../runtime/memory/episodic-memory';
 import type { ScopedMemoryTaskEvent } from '../runtime/memory/scoped-memory-task-runner';
@@ -256,6 +257,11 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		}
 		this.tools.push(...builtTools);
 		return this;
+	}
+
+	/** Attach a vector store as a search tool. Accepts a VectorStore builder. */
+	vectorStore(store: VectorStore, options?: { name?: string; description?: string }): this {
+		return this.tool(store.asTool(options));
 	}
 
 	/** Add tools that are searchable through `search_tools` and activated on demand with `load_tool`. */

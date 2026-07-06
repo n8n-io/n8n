@@ -15,6 +15,9 @@
       ],
       "sandbox": [
         "dist/workspace/sandbox/index.d.ts"
+      ],
+      "vector-stores/postgres": [
+        "dist/vector-stores/postgres.d.ts"
       ]
     }
   },
@@ -35,6 +38,10 @@
     "./sandbox": {
       "types": "./dist/workspace/sandbox/index.d.ts",
       "default": "./dist/workspace/sandbox/index.js"
+    },
+    "./vector-stores/postgres": {
+      "types": "./dist/vector-stores/postgres.d.ts",
+      "default": "./dist/vector-stores/postgres.js"
     }
   },
   "files": [
@@ -89,6 +96,7 @@
     "zod-to-json-schema": "catalog:"
   },
   "peerDependencies": {
+    "pg": "catalog:",
     "zod": "catalog:"
   },
   "peerDependenciesMeta": {
@@ -103,16 +111,21 @@
     },
     "@opentelemetry/exporter-trace-otlp-http": {
       "optional": true
+    },
+    "pg": {
+      "optional": true
     }
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@types/json-schema": "catalog:",
+    "@types/pg": "^8.15.6",
     "@vitest/coverage-v8": "catalog:",
     "dotenv": "catalog:",
     "cross-env": "catalog:",
     "nock": "catalog:",
+    "pg": "catalog:",
     "vite": "catalog:",
     "vitest": "catalog:",
     "vitest-mock-extended": "catalog:",
