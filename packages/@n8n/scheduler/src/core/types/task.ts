@@ -21,10 +21,22 @@ export interface ScheduledTask {
 	id: string;
 	jobId: string;
 	taskType: string;
-	payload: unknown;
+	payload: Record<string, unknown>;
 	scheduledFor: Date;
 	runAt: Date;
 	status: ScheduledTaskStatus;
 	attempts: number;
 	maxAttempts: number;
+}
+
+/**
+ * A `ScheduledTask` the executor has claimed: `running` and owned for the lease's
+ * duration, carrying the coordination fields the claim sets. `startedAt` stays
+ * null until the task actually fires.
+ */
+export interface ClaimedTask extends ScheduledTask {
+	claimedBy: string;
+	leaseExpiresAt: Date;
+	leaseEpoch: number;
+	startedAt: Date | null;
 }

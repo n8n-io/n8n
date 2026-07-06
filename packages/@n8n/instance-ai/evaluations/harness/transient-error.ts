@@ -34,3 +34,16 @@ export function extractErrorMessage(error: unknown): string {
 export function isTransientNetworkError(message: string): boolean {
 	return /fetch failed|ECONNRESET|ECONNREFUSED|ETIMEDOUT|EAI_AGAIN|socket hang up/i.test(message);
 }
+
+/**
+ * Eval-DB races abort an execution before any node runs. Two known shapes:
+ * `SQLITE_CONSTRAINT: FOREIGN KEY constraint failed` and `Workflow <id> not
+ * found or not accessible` (lookup misses that outlast the server's own 1.7s
+ * retry under concurrent eval load). Both come back as a successful HTTP
+ * response with `success: false`, so the throw-based retry above never sees
+ * them — yet they are infrastructure flakes, not builder or mock defects, and
+ * they double-count across every unit of the affected iteration.
+ */
+export function isTransientExecutionAbort(errors: string[] | undefined): boolean {
+	return (errors ?? []).some((e) => /SQLITE_CONSTRAINT|not found or not accessible/i.test(e));
+}

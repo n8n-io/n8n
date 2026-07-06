@@ -622,12 +622,10 @@ describe('ProjectService', () => {
 			expect(agentKnowledgeService.deleteAllFilesForAgent).toHaveBeenCalledWith(
 				project.id,
 				'agent-1',
-				user.id,
 			);
 			expect(agentKnowledgeService.deleteAllFilesForAgent).toHaveBeenCalledWith(
 				project.id,
 				'agent-2',
-				user.id,
 			);
 			expect(agentKnowledgeService.deleteAllFilesForAgent.mock.invocationCallOrder[1]).toBeLessThan(
 				projectRepository.remove.mock.invocationCallOrder[0],

@@ -2347,6 +2347,9 @@ importers:
       '@n8n/agents':
         specifier: workspace:*
         version: link:../agents
+      '@n8n/ai-utilities':
+        specifier: workspace:*
+        version: link:../ai-utilities
       '@n8n/api-types':
         specifier: workspace:*
         version: link:../api-types
@@ -2429,9 +2432,6 @@ importers:
       '@langchain/core':
         specifier: 'catalog:'
         version: 1.1.41(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.217.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.7.1(@opentelemetry/api@1.9.0))(openai@6.34.0(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(ws@8.21.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))
-      '@n8n/ai-workflow-builder':
-        specifier: workspace:*
-        version: link:../ai-workflow-builder.ee
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -3206,6 +3206,15 @@ importers:
 
   packages/@n8n/scheduler:
     dependencies:
+      '@n8n/backend-common':
+        specifier: workspace:*
+        version: link:../backend-common
+      '@n8n/config':
+        specifier: workspace:*
+        version: link:../config
+      '@n8n/constants':
+        specifier: workspace:*
+        version: link:../constants
       '@n8n/db':
         specifier: workspace:*
         version: link:../db
@@ -3215,6 +3224,9 @@ importers:
       '@n8n/typeorm':
         specifier: workspace:*
         version: link:../typeorm
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../utils
       cron-parser:
         specifier: 'catalog:'
         version: 5.6.1
@@ -3409,15 +3421,6 @@ importers:
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 4.1.9(@vitest/browser@4.1.9)(vitest@4.1.9)
-      nodemon:
-        specifier: ^2.0.20
-        version: 2.0.22
-      ts-node:
-        specifier: ^10.9.1
-        version: 10.9.2(@swc/core@1.15.8(@swc/helpers@0.5.17))(@types/node@20.19.41)(typescript@6.0.2)
-      tsc-alias:
-        specifier: ^1.8.7
-        version: 1.8.10
       typescript:
         specifier: 6.0.2
         version: 6.0.2
@@ -18070,11 +18073,6 @@ packages:
     resolution: {integrity: sha512-BLFuSth7QtHOkBzyqTehWWyub0NTRDuK2Q2SQfnGLsrJnzyU+Yeh4WpV1eZGuARFj1xQJHIdnTuJZLP+b9R1GQ==}
     engines: {node: '>=6.0.0'}
 
-  nodemon@2.0.22:
-    resolution: {integrity: sha512-B8YqaKMmyuCO7BowF1Z1/mkPqLk6cs/l63Ojtd6otKjMx47Dq1utxfRxcavH1I7VSaL8n5BUaoutadnsX3AAVQ==}
-    engines: {node: '>=8.10.0'}
-    hasBin: true
-
   nodemon@3.0.1:
     resolution: {integrity: sha512-g9AZ7HmkhQkqXkRc20w+ZfQ73cHLbE8hnPbtaFbFtCumZsjyMhKk9LajQ07U5Ux28lvFjZ5X7HvWR1xzU8jHVw==}
     engines: {node: '>=10'}
@@ -19940,10 +19938,6 @@ packages:
 
   simple-swizzle@0.2.2:
     resolution: {integrity: sha512-JA//kQgZtbuY83m+xT+tXJkmJncGMTFT+C+g2h2R9uxkYIrE2yy9sgmcLhCnw57/WSD+Eh3J97FPEDFnbXnDUg==}
-
-  simple-update-notifier@1.1.0:
-    resolution: {integrity: sha512-VpsrsJSUcJEseSbMHkrsrAVSdvVS5I96Qo1QAQ4FxQ9wXFcB+pjj7FB7/us9+GcgfW4ziHtYMc1J0PLczb55mg==}
-    engines: {node: '>=8.10.0'}
 
   simple-update-notifier@2.0.0:
     resolution: {integrity: sha512-a2B9Y0KlNXl9u/vsW6sTIu9vGEpfKu2wRV6l1H3XEas/0gUIzGzBoP/IouTcUQbm9JWZLH3COxyn03TYlFax6w==}
@@ -36386,19 +36380,6 @@ snapshots:
 
   nodemailer@8.0.10: {}
 
-  nodemon@2.0.22:
-    dependencies:
-      chokidar: 4.0.3
-      debug: 3.2.7(supports-color@5.5.0)
-      ignore-by-default: 1.0.1
-      minimatch: 5.1.8
-      pstree.remy: 1.1.8
-      semver: 7.7.3
-      simple-update-notifier: 1.1.0
-      supports-color: 5.5.0
-      touch: 3.1.0
-      undefsafe: 2.0.5
-
   nodemon@3.0.1:
     dependencies:
       chokidar: 4.0.3
@@ -38596,10 +38577,6 @@ snapshots:
   simple-swizzle@0.2.2:
     dependencies:
       is-arrayish: 0.3.2
-
-  simple-update-notifier@1.1.0:
-    dependencies:
-      semver: 7.7.3
 
   simple-update-notifier@2.0.0:
     dependencies:
