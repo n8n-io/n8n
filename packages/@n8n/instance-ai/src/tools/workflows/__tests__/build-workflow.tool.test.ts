@@ -1,4 +1,5 @@
 import { executeTool } from '../../../__tests__/tool-test-utils';
+import { WorkflowSaveConflictError } from '../../../errors/workflow-save-conflict.error';
 import { emitTraceOnlyChildRun } from '../../../tracing/langsmith-tracing';
 import type { InstanceAiContext } from '../../../types';
 import type { WorkflowBuildOutcome } from '../../../workflow-loop/workflow-loop-state';
@@ -129,11 +130,16 @@ function makeContext(input: {
 		runId: 'run-1',
 		workflowService: {
 			createFromWorkflowJSON: vi.fn(
-				async () => await Promise.resolve({ id: 'wf-1', versionId: 'v-1' }),
+				async () =>
+					await Promise.resolve({ id: 'wf-1', versionId: 'v-1', checksum: 'checksum-create' }),
 			),
 			updateFromWorkflowJSON: vi.fn(
 				async (workflowId: string) =>
-					await Promise.resolve({ id: workflowId, versionId: 'v-next' }),
+					await Promise.resolve({
+						id: workflowId,
+						versionId: 'v-next',
+						checksum: 'checksum-update',
+					}),
 			),
 			getAsWorkflowJSON: vi.fn(async () => await Promise.resolve({ name: 'Target workflow' })),
 			clearAiTemporary: vi.fn(async () => await Promise.resolve()),
@@ -428,12 +434,22 @@ describe('createBuildWorkflowTool', () => {
 		expect(first).toMatchObject({ success: true, workflowId: 'wf-bound' });
 		expect(second).toMatchObject({ success: true, workflowId: 'wf-bound' });
 		expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledTimes(2);
-		expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenCalledWith(
+		expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenNthCalledWith(
+			1,
 			'wf-bound',
 			expect.any(Object),
 			undefined,
 		);
+		expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenNthCalledWith(
+			2,
+			'wf-bound',
+			expect.any(Object),
+			{ expectedChecksum: 'checksum-update' },
+		);
 		expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
+		await expect(getWorkflowSourceFileBinding(context, filePath)).resolves.toMatchObject({
+			workflowChecksum: 'checksum-update',
+		});
 		expect(trackTelemetry).toHaveBeenCalledWith(
 			'instance_ai_workflow_source_build',
 			expect.objectContaining({
@@ -444,6 +460,46 @@ describe('createBuildWorkflowTool', () => {
 				target_workflow_id: 'wf-bound',
 				workflow_id: 'wf-bound',
 				save_operation: 'update',
+			}),
+		);
+	});
+
+	it('returns conflict remediation when the workflow changed outside the conversation', async () => {
+		const { context, filePath, trackTelemetry } = makeContext({ source: 'workflow source' });
+		const tool = createBuildWorkflowTool(context);
+
+		await executeTool<BuildToolOutput>(tool, {
+			filePath,
+			workflowId: 'wf-bound',
+		});
+
+		vi.mocked(context.workflowService.updateFromWorkflowJSON).mockRejectedValueOnce(
+			new WorkflowSaveConflictError('wf-bound'),
+		);
+
+		const result = await executeTool<BuildToolOutput>(tool, { filePath });
+
+		expect(result).toMatchObject({
+			success: false,
+			filePath,
+			workflowId: 'wf-bound',
+			remediation: {
+				category: 'code_fixable',
+				shouldEdit: true,
+				reason: 'workflow_modified_externally',
+			},
+		});
+		expect(context.workflowService.updateFromWorkflowJSON).toHaveBeenLastCalledWith(
+			'wf-bound',
+			expect.any(Object),
+			{ expectedChecksum: 'checksum-update' },
+		);
+		expect(trackTelemetry).toHaveBeenCalledWith(
+			'instance_ai_workflow_source_build',
+			expect.objectContaining({
+				result: 'failure',
+				stage: 'conflict',
+				target_workflow_id: 'wf-bound',
 			}),
 		);
 	});

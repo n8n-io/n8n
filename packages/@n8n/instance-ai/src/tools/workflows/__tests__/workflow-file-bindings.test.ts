@@ -1,6 +1,7 @@
 import type { InstanceAiContext } from '../../../types';
 import {
 	getWorkflowSourceFileBinding,
+	refreshWorkflowSourceFileBindingFromSave,
 	saveWorkflowSourceFileBinding,
 } from '../workflow-file-bindings';
 
@@ -32,6 +33,32 @@ describe('workflow source file bindings', () => {
 		).resolves.toMatchObject({
 			filePath: 'src/workflows/main.workflow.ts',
 			workflowId: 'wf-1',
+		});
+	});
+
+	it('refreshes checksum and version for bindings tied to a workflow id', async () => {
+		const context = {
+			logger: { debug: vi.fn(), warn: vi.fn() },
+		} as unknown as InstanceAiContext;
+
+		await saveWorkflowSourceFileBinding(context, {
+			filePath: 'src/workflows/main.workflow.ts',
+			workflowId: 'wf-1',
+			workflowVersionId: 'v-old',
+			workflowChecksum: 'checksum-old',
+		});
+
+		await refreshWorkflowSourceFileBindingFromSave(context, 'wf-1', {
+			versionId: 'v-new',
+			checksum: 'checksum-new',
+		});
+
+		await expect(
+			getWorkflowSourceFileBinding(context, 'src/workflows/main.workflow.ts'),
+		).resolves.toMatchObject({
+			workflowId: 'wf-1',
+			workflowVersionId: 'v-new',
+			workflowChecksum: 'checksum-new',
 		});
 	});
 });

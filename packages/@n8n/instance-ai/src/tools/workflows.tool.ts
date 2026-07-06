@@ -25,6 +25,7 @@ import {
 } from './workflows/summarize-workflow';
 import { validateWorkflowConfig } from './workflows/validate-workflow.service';
 import { getReferencedWorkflowIds } from './workflows/workflow-json-utils';
+import { refreshWorkflowSourceFileBindingFromSave } from './workflows/workflow-file-bindings';
 
 // ── Action schemas ──────────────────────────────────────────────────────────
 
@@ -836,6 +837,17 @@ async function handleUpdate(
 	}
 }
 
+async function refreshBindingAfterExternalSave(
+	context: InstanceAiContext,
+	workflowId: string,
+): Promise<void> {
+	const workflow = await context.workflowService.get(workflowId);
+	await refreshWorkflowSourceFileBindingFromSave(context, workflowId, {
+		versionId: workflow.versionId,
+		checksum: workflow.checksum,
+	});
+}
+
 async function handlePublish(
 	context: InstanceAiContext,
 	input: PublishInput,
@@ -882,6 +894,7 @@ async function handlePublish(
 		try {
 			for (const supportingWorkflowId of supportingWorkflowIds) {
 				await context.workflowService.publish(supportingWorkflowId);
+				await refreshBindingAfterExternalSave(context, supportingWorkflowId);
 				publishedSupportingWorkflowIds.push(supportingWorkflowId);
 				publishedWorkflowIds.push(supportingWorkflowId);
 			}
@@ -896,6 +909,7 @@ async function handlePublish(
 					: {}),
 			});
 			publishedWorkflowIds.push(input.workflowId);
+			await refreshBindingAfterExternalSave(context, input.workflowId);
 
 			return {
 				success: true,
@@ -1018,6 +1032,7 @@ async function handleUnpublish(
 
 	try {
 		await context.workflowService.unpublish(input.workflowId);
+		await refreshBindingAfterExternalSave(context, input.workflowId);
 		return { success: true };
 	} catch (error) {
 		return {

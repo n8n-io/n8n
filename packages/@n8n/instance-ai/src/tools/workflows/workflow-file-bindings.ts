@@ -12,6 +12,7 @@ const workflowSourceFileBindingSchema = z.object({
 	filePath: z.string(),
 	workflowId: z.string().optional(),
 	workflowVersionId: z.string().optional(),
+	workflowChecksum: z.string().optional(),
 	sourceHash: z.string().optional(),
 });
 
@@ -105,6 +106,39 @@ export async function saveWorkflowSourceFileBinding(
 
 	getFallbackBindings(context).set(normalizedBinding.filePath, normalizedBinding);
 	return normalizedBinding;
+}
+
+/** Refresh the binding checksum/version after an agent-side DB patch outside build-workflow. */
+export async function refreshWorkflowSourceFileBindingFromSave(
+	context: InstanceAiContext,
+	workflowId: string,
+	saved: { versionId: string; checksum?: string },
+): Promise<void> {
+	const threadBindings = await readThreadBindings(context);
+	const fallback = getFallbackBindings(context);
+	const entries: WorkflowSourceFileBinding[] = [];
+
+	if (threadBindings) {
+		for (const binding of Object.values(threadBindings)) {
+			if (binding.workflowId === workflowId) entries.push(binding);
+		}
+	}
+	for (const binding of fallback.values()) {
+		if (
+			binding.workflowId === workflowId &&
+			!entries.some((e) => e.filePath === binding.filePath)
+		) {
+			entries.push(binding);
+		}
+	}
+
+	for (const binding of entries) {
+		await saveWorkflowSourceFileBinding(context, {
+			...binding,
+			workflowVersionId: saved.versionId,
+			...(saved.checksum ? { workflowChecksum: saved.checksum } : {}),
+		});
+	}
 }
 
 export async function readWorkflowSourceFile(

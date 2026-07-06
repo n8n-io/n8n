@@ -178,6 +178,7 @@ const loadValidateAttachments = lazyModule(
 );
 
 export { MAX_STEPS } from './constants/max-steps';
+export { WorkflowSaveConflictError } from './errors/workflow-save-conflict.error';
 export { deriveCredentialHosts } from './tools/workflows/credential-url-resolver';
 export type { CredentialHostMeta } from './tools/workflows/credential-url-resolver';
 export type {

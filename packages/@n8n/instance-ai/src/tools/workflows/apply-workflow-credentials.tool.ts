@@ -10,6 +10,7 @@ import { Tool } from '@n8n/agents';
 import { z } from 'zod';
 
 import { assignCredentialToNode, resolveCredentialForApply } from './credential-utils';
+import { refreshWorkflowSourceFileBindingFromSave } from './workflow-file-bindings';
 import type { OrchestrationContext } from '../../types';
 
 export const applyWorkflowCredentialsInputSchema = z.object({
@@ -82,7 +83,11 @@ export function createApplyWorkflowCredentialsTool(context: OrchestrationContext
 
 			// Save the workflow with applied credentials
 			try {
-				await workflowService.updateFromWorkflowJSON(input.workflowId, json);
+				const saved = await workflowService.updateFromWorkflowJSON(input.workflowId, json);
+				await refreshWorkflowSourceFileBindingFromSave(context.domainContext, input.workflowId, {
+					versionId: saved.versionId,
+					checksum: saved.checksum,
+				});
 			} catch (error) {
 				return {
 					success: false,
