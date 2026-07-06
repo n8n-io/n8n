@@ -9,7 +9,7 @@ import {
 import { createTestingPinia } from '@pinia/testing';
 import type { INodeUi } from '@/Interface';
 import { computed, defineComponent } from 'vue';
-import { useNodeRunsAsYou } from './useNodeRunsAsYou';
+import { useNodePrivateCredential } from './useNodePrivateCredential';
 
 const WORKFLOW_ID = 'test-workflow-id';
 
@@ -23,11 +23,11 @@ const mockedUsePrivateCredentials = vi.mocked(usePrivateCredentials);
 
 const TestComponent = defineComponent({
 	setup() {
-		const { runsAsYou, tooltipText } = useNodeRunsAsYou(() => 'Test Node');
-		return { runsAsYou, tooltipText };
+		const { hasPrivateCredential, tooltipText } = useNodePrivateCredential(() => 'Test Node');
+		return { hasPrivateCredential, tooltipText };
 	},
 	template: `<div>
-		<span data-test-id="runs-as-you">{{ runsAsYou }}</span>
+		<span data-test-id="has-private-credential">{{ hasPrivateCredential }}</span>
 		<span data-test-id="tooltip-text">{{ tooltipText }}</span>
 	</div>`,
 });
@@ -42,7 +42,7 @@ const mockFeatureFlag = (enabled: boolean) => {
 	} as ReturnType<typeof usePrivateCredentials>);
 };
 
-describe('useNodeRunsAsYou', () => {
+describe('useNodePrivateCredential', () => {
 	let workflowsStore: MockedStore<typeof useWorkflowsStore>;
 	let credentialsStore: MockedStore<typeof useCredentialsStore>;
 	let workflowDocumentStore: ReturnType<typeof useWorkflowDocumentStore>;
@@ -76,7 +76,7 @@ describe('useNodeRunsAsYou', () => {
 
 		const { getByTestId } = renderComponent();
 
-		expect(getByTestId('runs-as-you')).toHaveTextContent('false');
+		expect(getByTestId('has-private-credential')).toHaveTextContent('false');
 	});
 
 	it('is true with a resolvable credential when the flag is enabled', () => {
@@ -87,7 +87,7 @@ describe('useNodeRunsAsYou', () => {
 
 		const { getByTestId } = renderComponent();
 
-		expect(getByTestId('runs-as-you')).toHaveTextContent('true');
+		expect(getByTestId('has-private-credential')).toHaveTextContent('true');
 		expect(getByTestId('tooltip-text')).toHaveTextContent(
 			'This node uses private credentials that are resolved at runtime.',
 		);
@@ -101,7 +101,7 @@ describe('useNodeRunsAsYou', () => {
 
 		const { getByTestId } = renderComponent();
 
-		expect(getByTestId('runs-as-you')).toHaveTextContent('false');
+		expect(getByTestId('has-private-credential')).toHaveTextContent('false');
 	});
 
 	it('is true for a node with context establishment hooks', () => {
@@ -116,7 +116,7 @@ describe('useNodeRunsAsYou', () => {
 
 		const { getByTestId } = renderComponent();
 
-		expect(getByTestId('runs-as-you')).toHaveTextContent('true');
+		expect(getByTestId('has-private-credential')).toHaveTextContent('true');
 		expect(getByTestId('tooltip-text')).toHaveTextContent(
 			"This webhook extracts the triggering user's identity token to resolve credentials at runtime.",
 		);
@@ -133,7 +133,7 @@ describe('useNodeRunsAsYou', () => {
 
 		const { getByTestId } = renderComponent();
 
-		expect(getByTestId('runs-as-you')).toHaveTextContent('false');
+		expect(getByTestId('has-private-credential')).toHaveTextContent('false');
 	});
 
 	it('is false when the node has no credentials', () => {
@@ -143,7 +143,7 @@ describe('useNodeRunsAsYou', () => {
 
 		const { getByTestId } = renderComponent();
 
-		expect(getByTestId('runs-as-you')).toHaveTextContent('false');
+		expect(getByTestId('has-private-credential')).toHaveTextContent('false');
 	});
 
 	it('is false when the credential is not found in the store', () => {
@@ -154,6 +154,6 @@ describe('useNodeRunsAsYou', () => {
 
 		const { getByTestId } = renderComponent();
 
-		expect(getByTestId('runs-as-you')).toHaveTextContent('false');
+		expect(getByTestId('has-private-credential')).toHaveTextContent('false');
 	});
 });

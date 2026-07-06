@@ -6,12 +6,12 @@ import { usePrivateCredentials } from '@/features/resolvers/composables/usePriva
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 
 /**
- * Whether a canvas node "runs as you" — i.e. it resolves credentials at runtime
- * based on whoever runs the workflow (a private/resolvable credential or a
- * context-establishment webhook). Drives the private-credential icon (and its
- * tooltip) shown on the node.
+ * Whether a canvas node uses a private credential — i.e. it resolves credentials
+ * at runtime based on whoever runs the workflow (a private/resolvable credential
+ * or a context-establishment webhook). Drives the private-credential icon (and
+ * its tooltip) shown on the node.
  */
-export function useNodeRunsAsYou(nodeName: MaybeRefOrGetter<string>) {
+export function useNodePrivateCredential(nodeName: MaybeRefOrGetter<string>) {
 	const i18n = useI18n();
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 	const credentialsStore = useCredentialsStore();
@@ -38,7 +38,7 @@ export function useNodeRunsAsYou(nodeName: MaybeRefOrGetter<string>) {
 		return result.data.contextEstablishmentHooks.hooks.length > 0;
 	});
 
-	const runsAsYou = computed(
+	const hasPrivateCredential = computed(
 		() =>
 			isPrivateCredentialsEnabled.value &&
 			(hasResolvableCredential.value || hasContextEstablishmentHooks.value),
@@ -52,5 +52,5 @@ export function useNodeRunsAsYou(nodeName: MaybeRefOrGetter<string>) {
 		),
 	);
 
-	return { runsAsYou, tooltipText };
+	return { hasPrivateCredential, tooltipText };
 }

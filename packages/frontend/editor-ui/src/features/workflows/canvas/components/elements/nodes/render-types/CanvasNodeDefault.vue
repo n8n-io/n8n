@@ -8,7 +8,7 @@ import { injectCanvasRenderData } from '@/features/workflows/canvas/canvas.utils
 import { useCanvas } from '../../../../composables/useCanvas';
 import { useZoomAdjustedValues } from '../../../../composables/useZoomAdjustedValues';
 import CanvasNodeSettingsIcons from './parts/CanvasNodeSettingsIcons.vue';
-import { useNodeRunsAsYou } from '@/features/resolvers/composables/useNodeRunsAsYou';
+import { useNodePrivateCredential } from '@/features/resolvers/composables/useNodePrivateCredential';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { calculateNodeSize } from '@/app/utils/nodeViewUtils';
 import ExperimentalInPlaceNodeSettings from '../../../../experimental/components/ExperimentalEmbeddedNodeDetails.vue';
@@ -49,7 +49,8 @@ const {
 	render,
 	isNotInstalledCommunityNode,
 } = useCanvasNode();
-const { runsAsYou, tooltipText: runsAsYouTooltip } = useNodeRunsAsYou(name);
+const { hasPrivateCredential, tooltipText: privateCredentialTooltip } =
+	useNodePrivateCredential(name);
 const renderData = injectCanvasRenderData();
 const inputs = computed(() => renderData.value.nodeInputsByNodeId.get(id.value)?.value ?? []);
 const outputs = computed(() => renderData.value.nodeOutputsByNodeId.get(id.value)?.value ?? []);
@@ -160,13 +161,13 @@ const iconSource = computed(() => {
 	}
 
 	const source = renderOptions.value.icon;
-	// When the node runs as you, the private-credential icon takes over the node
-	// badge slot, replacing any node-specific badge (e.g. the HTTP Request globe).
-	if (runsAsYou.value && source) {
+	// When the node uses a private credential, that icon takes over the node badge
+	// slot, replacing any node-specific badge (e.g. the HTTP Request globe).
+	if (hasPrivateCredential.value && source) {
 		const badge: NodeIconSource['badge'] = {
 			type: 'icon',
 			name: 'user-round-key',
-			tooltip: runsAsYouTooltip.value,
+			tooltip: privateCredentialTooltip.value,
 		};
 		return { ...source, badge };
 	}

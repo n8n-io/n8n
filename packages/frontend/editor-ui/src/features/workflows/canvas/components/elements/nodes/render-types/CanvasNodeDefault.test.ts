@@ -50,11 +50,11 @@ vi.mock('@/features/workflows/canvas/canvas.utils', async (importOriginal) => {
 	};
 });
 
-vi.mock('@/features/resolvers/composables/useNodeRunsAsYou', () => ({
-	useNodeRunsAsYou: vi.fn(),
+vi.mock('@/features/resolvers/composables/useNodePrivateCredential', () => ({
+	useNodePrivateCredential: vi.fn(),
 }));
 
-import { useNodeRunsAsYou } from '@/features/resolvers/composables/useNodeRunsAsYou';
+import { useNodePrivateCredential } from '@/features/resolvers/composables/useNodePrivateCredential';
 
 const stubs = {
 	NodeIcon: {
@@ -91,8 +91,8 @@ beforeEach(() => {
 	setActivePinia(pinia);
 	nodeTypesStore = mockedStore(useNodeTypesStore);
 	mockedUseRoute.mockReturnValue({} as RouteLocationNormalizedLoadedGeneric);
-	vi.mocked(useNodeRunsAsYou).mockReturnValue({
-		runsAsYou: computed(() => false),
+	vi.mocked(useNodePrivateCredential).mockReturnValue({
+		hasPrivateCredential: computed(() => false),
 		tooltipText: computed(() => ''),
 	});
 });
@@ -111,10 +111,10 @@ describe('CanvasNodeDefault', () => {
 		expect(getByTestId('canvas-default-node')).toMatchSnapshot();
 	});
 
-	describe('private credential (runs as you)', () => {
+	describe('private credential', () => {
 		it('shows the private-credential icon (with tooltip) as the node badge, replacing the node badge', () => {
-			vi.mocked(useNodeRunsAsYou).mockReturnValue({
-				runsAsYou: computed(() => true),
+			vi.mocked(useNodePrivateCredential).mockReturnValue({
+				hasPrivateCredential: computed(() => true),
 				tooltipText: computed(
 					() => 'This node uses private credentials that are resolved at runtime.',
 				),
