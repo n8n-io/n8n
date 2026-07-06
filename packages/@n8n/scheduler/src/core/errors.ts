@@ -15,8 +15,8 @@ export class InvalidScheduleError extends Error {
 
 /**
  * Raised when a stored row is missing a column its `kind`/type guarantees
- * should be set (a corrupt or hand-edited row), surfaced while mapping DB
- * entities to the scheduler's domain types.
+ * should be set (a corrupt or hand-edited row), while mapping DB entities to
+ * the scheduler's domain types.
  */
 export class CorruptStorageRowError extends Error {
 	constructor(message: string) {

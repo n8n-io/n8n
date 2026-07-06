@@ -84,7 +84,7 @@ export class AgentIntegrationsController {
 			undefined,
 			{ syncIntegrations: false },
 		);
-		await this.chatIntegrationService.connect(agentId, integration, req.user.id, agent.projectId);
+		await this.chatIntegrationService.connect(agentId, integration, agent.projectId);
 		await this.chatIntegrationService.broadcastIntegrationChange(agentId, integration, 'connect');
 
 		return {

@@ -838,12 +838,11 @@ describe('RoleService', () => {
 			//
 			// ARRANGE
 			//
-			const testScopes = await createTestScopes();
 			const createRoleDto: CreateRoleDto = {
 				displayName: 'Test Custom Role',
 				description: 'A test custom role',
 				roleType: 'project',
-				scopes: [testScopes.readScope.slug, testScopes.writeScope.slug],
+				scopes: ['workflow:read', 'workflow:create'],
 			};
 
 			//
@@ -876,12 +875,11 @@ describe('RoleService', () => {
 			//
 			// ARRANGE
 			//
-			const testScopes = await createTestScopes();
 			const createRoleDto: CreateRoleDto = {
 				displayName: 'Test Global Role',
 				description: 'A test global custom role',
 				roleType: 'global',
-				scopes: [testScopes.readScope.slug, testScopes.writeScope.slug],
+				scopes: ['user:read', 'role:read'],
 			};
 
 			//
@@ -915,11 +913,10 @@ describe('RoleService', () => {
 			//
 			// ARRANGE
 			//
-			const testScopes = await createTestScopes();
 			const createRoleDto: CreateRoleDto = {
 				displayName: 'No Description Role',
 				roleType: 'project',
-				scopes: [testScopes.readScope.slug],
+				scopes: ['workflow:read'],
 			};
 
 			//
@@ -980,11 +977,10 @@ describe('RoleService', () => {
 			//
 			// ARRANGE
 			//
-			const testScopes = await createTestScopes();
 			const createRoleDto: CreateRoleDto = {
 				displayName: 'Complex Role Name With Spaces & Special Characters!',
 				roleType: 'project',
-				scopes: [testScopes.readScope.slug],
+				scopes: ['workflow:read'],
 			};
 
 			//
@@ -1003,11 +999,10 @@ describe('RoleService', () => {
 		});
 
 		it('should throw BadRequestError when a role with the same display name already exists', async () => {
-			const testScopes = await createTestScopes();
 			const createRoleDto: CreateRoleDto = {
 				displayName: 'Existing Role',
 				roleType: 'project',
-				scopes: [testScopes.readScope.slug],
+				scopes: ['workflow:read'],
 			};
 
 			await roleService.createCustomRole(createRoleDto);
@@ -1015,7 +1010,7 @@ describe('RoleService', () => {
 			const duplicateRoleDto: CreateRoleDto = {
 				displayName: 'Existing Role',
 				roleType: 'project',
-				scopes: [testScopes.writeScope.slug],
+				scopes: ['workflow:create'],
 			};
 
 			await expect(roleService.createCustomRole(duplicateRoleDto)).rejects.toThrow(BadRequestError);
@@ -1029,6 +1024,7 @@ describe('RoleService', () => {
 			//
 			const testScopes = await createTestScopes();
 			const existingRole = await createCustomRoleWithScopes([testScopes.readScope], {
+				slug: `project:original-role-${Math.random().toString(36).substring(7)}`,
 				displayName: 'Original Role',
 				description: 'Original description',
 			});
@@ -1036,7 +1032,7 @@ describe('RoleService', () => {
 			const updateRoleDto: UpdateRoleDto = {
 				displayName: 'Updated Role',
 				description: 'Updated description',
-				scopes: [testScopes.writeScope.slug, testScopes.deleteScope.slug],
+				scopes: ['workflow:update', 'workflow:delete'],
 			};
 
 			//
@@ -1066,6 +1062,7 @@ describe('RoleService', () => {
 			//
 			const testScopes = await createTestScopes();
 			const existingRole = await createCustomRoleWithScopes([testScopes.readScope], {
+				slug: `global:original-global-role-${Math.random().toString(36).substring(7)}`,
 				displayName: 'Original Global Role',
 				description: 'Original description',
 				roleType: 'global',
@@ -1074,7 +1071,7 @@ describe('RoleService', () => {
 			const updateRoleDto: UpdateRoleDto = {
 				displayName: 'Updated Global Role',
 				description: 'Updated description',
-				scopes: [testScopes.writeScope.slug],
+				scopes: ['user:read'],
 			};
 
 			//

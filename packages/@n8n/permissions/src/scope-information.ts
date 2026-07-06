@@ -4,10 +4,8 @@ import type { ApiKeyScope, Scope, ScopeInformation } from './types.ee';
 function buildResourceScopes() {
 	const resourceScopes = Object.entries(RESOURCES).flatMap(([resource, operations]) => [
 		...operations.map((op) => `${resource}:${op}` as const),
-		`${resource}:*` as const,
 	]) as Scope[];
 
-	resourceScopes.push('*' as const); // Global wildcard
 	return resourceScopes;
 }
 
@@ -103,5 +101,17 @@ export const scopeInformation: Partial<Record<Scope, ScopeInformation>> = {
 	'insights:read': {
 		displayName: 'Read Insights',
 		description: 'Allows reading insights data.',
+	},
+	'testRun:read': {
+		displayName: 'Read Test Run',
+		description: 'Allows reading evaluation test runs and their per-case results.',
+	},
+	'testRun:list': {
+		displayName: 'List Test Runs',
+		description: 'Allows listing evaluation test runs for a workflow.',
+	},
+	'workflow:execute-chat': {
+		displayName: 'Execute Workflow in Chat',
+		description: 'Allows executing workflows in chat.',
 	},
 };

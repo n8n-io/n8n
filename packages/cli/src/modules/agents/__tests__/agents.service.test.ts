@@ -120,13 +120,9 @@ describe('AgentsService', () => {
 
 		agentRepository.findByIdAndProjectId.mockResolvedValue(agent);
 
-		await expect(service.delete(agentId, projectId, 'user-1')).resolves.toBe(true);
+		await expect(service.delete(agentId, projectId)).resolves.toBe(true);
 
-		expect(agentKnowledgeService.deleteAllFilesForAgent).toHaveBeenCalledWith(
-			projectId,
-			agentId,
-			'user-1',
-		);
+		expect(agentKnowledgeService.deleteAllFilesForAgent).toHaveBeenCalledWith(projectId, agentId);
 		expect(agentKnowledgeService.deleteAllFilesForAgent.mock.invocationCallOrder[0]).toBeLessThan(
 			agentRepository.remove.mock.invocationCallOrder[0],
 		);
@@ -142,6 +138,7 @@ describe('AgentsService', () => {
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith(agentId);
 		expect(agentTaskService.requestReconcile).toHaveBeenCalledWith(agentId);
 		expect(testChatService.clearAllTestChatMessages).toHaveBeenCalledWith(agentId);
+		expect(agentKnowledgeService.destroySandbox).toHaveBeenCalledWith(projectId, agentId);
 	});
 
 	it('still deletes the agent when best-effort cleanup fails', async () => {
@@ -152,15 +149,16 @@ describe('AgentsService', () => {
 		agentKnowledgeService.deleteAllFilesForAgent.mockRejectedValue(new Error('storage down'));
 		testChatService.clearAllTestChatMessages.mockRejectedValue(new Error('memory down'));
 
-		await expect(service.delete(agentId, projectId, 'user-1')).resolves.toBe(true);
+		await expect(service.delete(agentId, projectId)).resolves.toBe(true);
 		expect(agentRepository.remove).toHaveBeenCalledWith(agent);
+		expect(agentKnowledgeService.destroySandbox).toHaveBeenCalledWith(projectId, agentId);
 	});
 
 	it('returns false when deleting a missing agent', async () => {
 		const { service, agentRepository } = makeService();
 		agentRepository.findByIdAndProjectId.mockResolvedValue(null);
 
-		await expect(service.delete(agentId, projectId, 'user-1')).resolves.toBe(false);
+		await expect(service.delete(agentId, projectId)).resolves.toBe(false);
 		expect(agentRepository.remove).not.toHaveBeenCalled();
 	});
 });

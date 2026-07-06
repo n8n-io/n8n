@@ -44,6 +44,8 @@ export const userTargetRLC: INodeProperties = {
 	type: 'resourceLocator',
 	default: { mode: 'id', value: '' },
 	required: true,
+	// Resolved once per run (from the first item) and reused for every item, so it accepts a fixed
+	// value or an expression; for per-item targeting, feed a single item or use Loop Over Items.
 	modes: [
 		{
 			displayName: 'By ID',
@@ -53,7 +55,8 @@ export const userTargetRLC: INodeProperties = {
 			hint: 'The user principal name (UPN) or object ID of the user whose OneDrive to use',
 		},
 	],
-	description: 'The user whose OneDrive the Service Principal should act on',
+	description:
+		'The user whose OneDrive the Service Principal should act on. Applies to the whole node (every item in the execution).',
 	displayOptions: {
 		show: {
 			authentication: ['microsoftEntraServicePrincipalApi'],
@@ -68,6 +71,8 @@ export const driveTargetRLC: INodeProperties = {
 	type: 'resourceLocator',
 	default: { mode: 'id', value: '' },
 	required: true,
+	// Resolved once per run (from the first item) and reused for every item, so it accepts a fixed
+	// value or an expression; for per-item targeting, feed a single item or use Loop Over Items.
 	modes: [
 		{
 			displayName: 'By ID',
@@ -77,7 +82,8 @@ export const driveTargetRLC: INodeProperties = {
 			hint: "The drive's own ID (looks like `b!…`), not a file or folder ID. Get it from `GET /users/{upn}/drive` (the `id` field).",
 		},
 	],
-	description: 'The drive the Service Principal should act on',
+	description:
+		'The drive the Service Principal should act on. Applies to the whole node (every item in the execution).',
 	displayOptions: {
 		show: {
 			authentication: ['microsoftEntraServicePrincipalApi'],

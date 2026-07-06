@@ -181,6 +181,7 @@ describe('dataTable.store', () => {
 				updatedAt: '2024-01-01',
 				relations: [],
 				scopes: [],
+				rolesManaged: false,
 			};
 			vi.spyOn(dataTableApi, 'createDataTableApi').mockResolvedValue(mockTable);
 

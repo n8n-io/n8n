@@ -114,7 +114,7 @@ export class BrowserLocalMcpServer implements LocalMcpServer {
 		if (typeof confirmation === 'string') {
 			switch (confirmation) {
 				case 'allowForSession':
-					gate.tracker.approveDomain(host);
+					await gate.tracker.approveDomain(host);
 					return undefined;
 				case 'allowOnce':
 					gate.tracker.approveOnce(gate.runId, host);

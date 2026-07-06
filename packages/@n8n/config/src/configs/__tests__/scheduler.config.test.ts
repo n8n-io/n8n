@@ -22,13 +22,14 @@ describe('SchedulerConfig', () => {
 		it('should use default tunables', () => {
 			const { scheduler } = Container.get(GlobalConfig);
 
-			expect(scheduler.materializationWindow).toBe(60);
-			expect(scheduler.sweepInterval).toBe(10);
-			expect(scheduler.executorInterval).toBe(5);
-			expect(scheduler.reaperInterval).toBe(30);
-			expect(scheduler.leaseDuration).toBe(60);
-			expect(scheduler.retention).toBe(7 * 24 * 60 * 60);
-			expect(scheduler.minInterval).toBe(0);
+			expect(scheduler.materializationWindowSeconds).toBe(60);
+			expect(scheduler.sweepIntervalSeconds).toBe(10);
+			expect(scheduler.executorIntervalSeconds).toBe(5);
+			expect(scheduler.claimBatchSize).toBe(100);
+			expect(scheduler.reaperIntervalSeconds).toBe(30);
+			expect(scheduler.leaseDurationSeconds).toBe(60);
+			expect(scheduler.retentionSeconds).toBe(7 * 24 * 60 * 60);
+			expect(scheduler.minIntervalSeconds).toBe(0);
 		});
 	});
 
@@ -52,13 +53,13 @@ describe('SchedulerConfig', () => {
 
 			const { scheduler } = Container.get(GlobalConfig);
 
-			expect(scheduler.materializationWindow).toBe(120);
-			expect(scheduler.sweepInterval).toBe(20);
-			expect(scheduler.executorInterval).toBe(2);
-			expect(scheduler.reaperInterval).toBe(45);
-			expect(scheduler.leaseDuration).toBe(90);
-			expect(scheduler.retention).toBe(86400);
-			expect(scheduler.minInterval).toBe(15);
+			expect(scheduler.materializationWindowSeconds).toBe(120);
+			expect(scheduler.sweepIntervalSeconds).toBe(20);
+			expect(scheduler.executorIntervalSeconds).toBe(2);
+			expect(scheduler.reaperIntervalSeconds).toBe(45);
+			expect(scheduler.leaseDurationSeconds).toBe(90);
+			expect(scheduler.retentionSeconds).toBe(86400);
+			expect(scheduler.minIntervalSeconds).toBe(15);
 		});
 
 		it('should allow disabling the min-interval clamp with 0', () => {
@@ -66,7 +67,7 @@ describe('SchedulerConfig', () => {
 
 			const { scheduler } = Container.get(GlobalConfig);
 
-			expect(scheduler.minInterval).toBe(0);
+			expect(scheduler.minIntervalSeconds).toBe(0);
 		});
 	});
 });
