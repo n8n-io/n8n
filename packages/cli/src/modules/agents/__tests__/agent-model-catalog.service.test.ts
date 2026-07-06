@@ -84,6 +84,41 @@ describe('AgentModelCatalogService', () => {
 		);
 	});
 
+	it('verifies a catalog alias when the provider lists only its dated snapshot', async () => {
+		const { service, lookupService } = makeService();
+		fetchProviderCatalog.mockResolvedValue({
+			anthropic: {
+				id: 'anthropic',
+				name: 'Anthropic',
+				models: {
+					// models.dev keeps the versionless alias and drops the snapshot…
+					'claude-haiku-4-5': {
+						id: 'claude-haiku-4-5',
+						name: 'Claude Haiku 4.5',
+						reasoning: true,
+						toolCall: true,
+					},
+					'claude-opus-4-0': {
+						id: 'claude-opus-4-0',
+						name: 'Claude Opus 4',
+						reasoning: true,
+						toolCall: true,
+					},
+				},
+			},
+		});
+		// …while Anthropic's API lists the dated snapshot only. The snapshot must
+		// verify its alias; the retired alias with no live counterpart stays pruned.
+		lookupService.list.mockResolvedValue([
+			{ name: 'Claude Haiku 4.5', value: 'claude-haiku-4-5-20251001' },
+		]);
+
+		const result = await service.getProviderModels(user, 'project-1', 'anthropic', credentialId);
+
+		expect(result.verified).toBe(true);
+		expect(result.models.map((m) => m.id)).toEqual(['claude-haiku-4-5']);
+	});
+
 	it('does not add live models that are missing from the catalog', async () => {
 		const { service, lookupService } = makeService();
 		// Live list includes a model models.dev has no entry for, alongside a known one.
