@@ -1050,6 +1050,13 @@ export class NextCloud implements INodeType {
 						}
 					}
 				} else if (resource === 'deck') {
+					if (authenticationMethod !== 'accessToken') {
+						throw new NodeOperationError(
+							this.getNode(),
+							'The Deck resource requires username/password authentication. OAuth2 is not supported by the Nextcloud Deck API.',
+						);
+					}
+
 					useWebDavEndpoint = false;
 
 					// Build base URL by stripping WebDAV suffix

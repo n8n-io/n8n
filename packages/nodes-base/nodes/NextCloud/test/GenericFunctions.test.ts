@@ -17,7 +17,7 @@ type Authentication = 'accessToken' | 'oAuth2';
 
 function buildFunctions(authentication: Authentication = 'accessToken') {
 	const requestWithAuthentication = vi.fn();
-	const getCredentials = vi.fn(async () => ({ webDavUrl }));
+	const getCredentials = vi.fn(() => ({ webDavUrl }));
 	const getNodeParameter = vi.fn((parameterName: string) => {
 		if (parameterName === 'authentication') return authentication;
 		return undefined;
