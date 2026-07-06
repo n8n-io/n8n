@@ -1,3 +1,4 @@
+import type { Result } from '@n8n/utils/result';
 import get from 'lodash/get';
 import type {
 	Workflow,
@@ -22,7 +23,6 @@ import type {
 	ISourceData,
 	AiEvent,
 	NodeConnectionType,
-	Result,
 	IExecuteFunctions,
 	ExecuteAgentWorkflowContext,
 } from 'n8n-workflow';

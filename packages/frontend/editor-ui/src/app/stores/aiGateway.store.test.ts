@@ -343,6 +343,20 @@ describe('aiGateway.store', () => {
 			);
 		});
 
+		it('should fall back to the base node name for Tool-suffixed node types', async () => {
+			mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			// "openAiTool" is not a config key, but its base "openAi" is.
+			expect(
+				store.isActionSupported('@n8n/n8n-nodes-langchain.openAiTool', 'text', 'message'),
+			).toBe(true);
+			expect(store.isActionSupported('@n8n/n8n-nodes-langchain.openAiTool', 'file', 'upload')).toBe(
+				false,
+			);
+		});
+
 		describe('operation-only nodes (no resource)', () => {
 			it('should return true when operation is in the OPERATION_ONLY list', async () => {
 				mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
@@ -456,6 +470,19 @@ describe('aiGateway.store', () => {
 
 			expect(store.isNodePropertyHidden(null, 'modelSource')).toBe(false);
 		});
+
+		it('should fall back to the base node name for Tool-suffixed node types', async () => {
+			mockGetGatewayConfig.mockResolvedValue(MOCK_CONFIG);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			const toolNode = {
+				type: 'n8n-nodes-browserbase.browserbaseTool',
+				credentials: { browserbaseApi: { id: null, name: '', __aiGatewayManaged: true } },
+			} as unknown as INode;
+
+			expect(store.isNodePropertyHidden(toolNode, 'modelSource')).toBe(true);
+		});
 	});
 
 	describe('isNodeTypeVersionSupported()', () => {
@@ -515,6 +542,16 @@ describe('aiGateway.store', () => {
 			// config not loaded → no minNodeTypeVersion entry → no version gate → pass through
 			// node support when config is unloaded is handled by isCredentialTypeSupported / isNodeSupported
 			expect(store.isNodeTypeVersionSupported('some-package.SomeNode', 1.1)).toBe(true);
+		});
+
+		it('should fall back to the base node name for Tool-suffixed node types', async () => {
+			mockGetGatewayConfig.mockResolvedValue(CONFIG_WITH_VERSION_REQ);
+			const store = useAiGatewayStore();
+			await store.fetchConfig();
+
+			// "SomeNodeTool" has no entry, but the base "SomeNode" requires >= 1.1.
+			expect(store.isNodeTypeVersionSupported('some-package.SomeNodeTool', 1.1)).toBe(true);
+			expect(store.isNodeTypeVersionSupported('some-package.SomeNodeTool', 1.0)).toBe(false);
 		});
 	});
 });

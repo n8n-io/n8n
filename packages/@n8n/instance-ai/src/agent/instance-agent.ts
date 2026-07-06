@@ -139,12 +139,15 @@ export async function createInstanceAgent(options: CreateInstanceAgentOptions): 
 		isCheckpointFollowUp: orchestrationContext?.isCheckpointFollowUp,
 	});
 	const hasDeferrableTools = !options.disableDeferredTools && deferredTools.size > 0;
+	const hasDeferredExternalMcpTools =
+		hasDeferrableTools && Array.from(safeMcpTools.keys()).some((name) => deferredTools.has(name));
 	const runtimeTools = hasDeferrableTools ? coreTools : tracedOrchestratorTools;
 	const systemPrompt = getSystemPrompt({
 		webhookBaseUrl: orchestrationContext?.webhookBaseUrl,
 		formBaseUrl: orchestrationContext?.formBaseUrl,
 		localGateway: context.localGatewayStatus,
 		toolSearchEnabled: hasDeferrableTools,
+		mcpToolSearchEnabled: hasDeferredExternalMcpTools,
 		licenseHints: context.licenseHints,
 		browserAvailable: browserToolNames.size > 0,
 		branchReadOnly: context.branchReadOnly,

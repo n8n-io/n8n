@@ -123,6 +123,22 @@ describe('scrubSecretsInText', () => {
 		expect(scrubSecretsInText(ownOutput)).toBe(ownOutput);
 	});
 
+	it('leaves typed redaction markers untouched instead of nesting them', () => {
+		expect(scrubSecretsInText('[REDACTED:secret:1]')).toBe('[REDACTED:secret:1]');
+		expect(scrubSecretsInText('[REDACTED:password:2]')).toBe('[REDACTED:password:2]');
+		const out = scrubSecretsInText('button "Copy [REDACTED:secret:1]" and [REDACTED:secret:2]');
+		expect(out).not.toContain('[REDACTED:[REDACTED');
+		expect(out).toContain('[REDACTED:secret:1]');
+		expect(out).toContain('[REDACTED:secret:2]');
+	});
+
+	it('leaves typed redaction markers untouched inside serialized JSON/JS fields', () => {
+		const json = '{"password":"[REDACTED:secret:1]","apiKey":"[REDACTED:anthropic_api_key:2]"}';
+		expect(scrubSecretsInText(json)).toBe(json);
+		const js = "{'password': '[REDACTED:secret:1]'}";
+		expect(scrubSecretsInText(js)).toBe(js);
+	});
+
 	it('leaves opaque strings alone to avoid false positives', () => {
 		expect(scrubSecretsInText('feedback about the workflow plan')).toBe(
 			'feedback about the workflow plan',

@@ -16,7 +16,13 @@ import type {
 	InstanceAiEvalSeedDataTable,
 	InstanceAiEvalSeedWorkflow,
 } from '@n8n/api-types';
+import { Agent, setGlobalDispatcher } from 'undici';
 import { z } from 'zod';
+
+// Disable undici's 300s timeouts — mocked eval runs take minutes; the per-request
+// AbortSignal is the real bound. This is process-global: only ever imported by the
+// eval CLI harness — never import into the n8n server or shared runtime code.
+setGlobalDispatcher(new Agent({ headersTimeout: 0, bodyTimeout: 0 }));
 
 // -- Conversation seeding response shapes -------------------------------------
 
@@ -482,6 +488,56 @@ export class N8nClient {
 			method: 'POST',
 		})) as { data: { ok: boolean; count: number } };
 		return { count: result.data.count };
+	}
+
+	/**
+	 * Enable MCP access for this instance (owner scope required).
+	 * PATCH /rest/mcp/settings  body: { mcpAccessEnabled: true }
+	 *
+	 * `/rest/e2e/reset` truncates the settings table and clears the cache, so MCP
+	 * access is off after a reset regardless of startup env — the fused
+	 * `--build-via-mcp` lane setup calls this after seeding. Throws if the server
+	 * reports MCP still disabled (e.g. N8N_MCP_MANAGED_BY_ENV refuses the PATCH).
+	 */
+	async enableMcpAccess(): Promise<void> {
+		const data = this.unwrapRestData<{ mcpAccessEnabled?: boolean }>(
+			await this.fetch('/rest/mcp/settings', {
+				method: 'PATCH',
+				body: { mcpAccessEnabled: true },
+			}),
+		);
+		if (data.mcpAccessEnabled !== true) {
+			throw new Error(
+				`Failed to enable MCP access (server reported mcpAccessEnabled=${String(data.mcpAccessEnabled)})`,
+			);
+		}
+	}
+
+	/**
+	 * Mint a fresh MCP API key for the authenticated user.
+	 * POST /rest/mcp/api-key/rotate
+	 *
+	 * Uses rotate rather than GET /rest/mcp/api-key because the GET only returns
+	 * the raw JWT when it creates the key; a pre-existing key comes back redacted
+	 * (`******abcd`), which would silently break MCP auth if staged into a
+	 * `claude` config. Rotate deletes + recreates, so the response is always
+	 * unredacted — at the cost of invalidating any prior MCP key for this user.
+	 */
+	async rotateMcpApiKey(): Promise<string> {
+		const data = this.unwrapRestData<{ apiKey?: string }>(
+			await this.fetch('/rest/mcp/api-key/rotate', { method: 'POST' }),
+		);
+		if (!data.apiKey) {
+			throw new Error('MCP api-key rotate endpoint returned no apiKey');
+		}
+		// JWTs are base64url segments and never contain "*" — its presence means
+		// the server redacted the key, which would fail MCP auth downstream.
+		if (data.apiKey.includes('*')) {
+			throw new Error(
+				'MCP api-key rotate endpoint returned a redacted key — cannot stage it for `claude` MCP auth',
+			);
+		}
+		return data.apiKey;
 	}
 
 	/**

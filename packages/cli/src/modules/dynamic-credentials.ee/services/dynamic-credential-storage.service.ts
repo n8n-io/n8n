@@ -104,6 +104,11 @@ export class DynamicCredentialStorageService implements IDynamicCredentialStorag
 				resolverSource: credentialStoreMetadata.resolverId ? 'credential' : 'workflow',
 			});
 		} catch (error) {
+			this.logger.error('Failed to store dynamic credentials data', {
+				credentialId: credentialStoreMetadata.id,
+				credentialType: credentialStoreMetadata.type,
+				error,
+			});
 			throw new CredentialStorageError(
 				`Failed to store dynamic credentials data for "${credentialStoreMetadata.name}"`,
 				{ cause: error },

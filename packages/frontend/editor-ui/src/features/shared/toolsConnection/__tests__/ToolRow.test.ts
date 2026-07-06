@@ -67,17 +67,15 @@ describe('ToolRow', () => {
 		expect(getByTestId('tools-connection-row-connect')).toBeTruthy();
 	});
 
-	it('shows the connected badge and emits open-detail when the gear is clicked', async () => {
+	it('shows the credential picker for a connected item', () => {
 		const connected: McpServerConnectionItem = {
 			...baseMcp,
 			isConnected: true,
 			credentials: [{ authType: 'mcpOAuth2Api', credentialId: 'cred-1', required: true }],
 		};
-		const { getByTestId, emitted } = render(connected);
+		const { getByTestId } = render(connected);
 
-		expect(getByTestId('tools-connection-row-connected')).toBeTruthy();
-		await fireEvent.click(getByTestId('tools-connection-row-configure'));
-		expect(emitted()['open-detail']?.[0]).toEqual([connected]);
+		expect(getByTestId('tool-credential-picker')).toBeTruthy();
 	});
 
 	it('emits open-detail when the main row action is clicked', async () => {

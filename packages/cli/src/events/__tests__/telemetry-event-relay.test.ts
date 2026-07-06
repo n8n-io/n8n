@@ -1972,6 +1972,82 @@ describe('TelemetryEventRelay', () => {
 		});
 	});
 
+	describe('package import/export events', () => {
+		it('should track on `n8n-package-imported` event with params and counts', () => {
+			const event: RelayEventMap['n8n-package-imported'] = {
+				user: { id: 'user123' },
+				projectId: 'project123',
+				folderId: 'folder123',
+				workflowIds: ['wf1', 'wf2', 'wf3'],
+				options: {
+					workflowConflictPolicy: 'new-version',
+					workflowIdPolicy: 'new',
+					credentialMatchingMode: 'id-only',
+					credentialMissingMode: 'must-preexist',
+					workflowPublishingPolicy: 'preserve-published-state',
+				},
+				packageSourceId: 'source-instance-1',
+				packageVersion: '1',
+				credentialIds: {
+					matched: ['cred1', 'cred2'],
+					created: [],
+					updated: [],
+				},
+				counts: {
+					workflows: {
+						created: 2,
+						updated: 1,
+						skipped: 1,
+					},
+					credentials: {
+						matched: 2,
+						created: 1,
+						requirements: 3,
+					},
+				},
+			};
+
+			eventService.emit('n8n-package-imported', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User imported n8n package', {
+				user_id: 'user123',
+				workflow_conflict_policy: 'new-version',
+				workflow_id_policy: 'new',
+				credential_matching_mode: 'id-only',
+				credential_missing_mode: 'must-preexist',
+				workflow_publishing_policy: 'preserve-published-state',
+				workflows_created: 2,
+				workflows_updated: 1,
+				workflows_skipped: 1,
+				credentials_matched: 2,
+				credentials_created: 1,
+				credentials_required: 3,
+			});
+		});
+
+		it('should track on `n8n-package-exported` event with entity counts only, not ids', () => {
+			const event: RelayEventMap['n8n-package-exported'] = {
+				user: { id: 'user123' },
+				workflowIds: ['wf1', 'wf2', 'wf3'],
+				projectIds: ['proj1'],
+				counts: {
+					workflows: 3,
+					folders: 1,
+					credentials: 2,
+				},
+			};
+
+			eventService.emit('n8n-package-exported', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User exported n8n package', {
+				user_id: 'user123',
+				workflow_count: 3,
+				folder_count: 1,
+				credential_count: 2,
+			});
+		});
+	});
+
 	describe('user events', () => {
 		it('should track on `user-updated` event', () => {
 			const event: RelayEventMap['user-updated'] = {

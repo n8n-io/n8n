@@ -3,10 +3,12 @@ import type { DatabaseConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import type { DataSource } from '@n8n/typeorm';
 import type { PostgresDriver } from '@n8n/typeorm/driver/postgres/PostgresDriver';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import type { ErrorReporter } from 'n8n-core';
-import { ensureError, OperationalError } from 'n8n-workflow';
+import { OperationalError } from 'n8n-workflow';
 import { setTimeout as setTimeoutP } from 'timers/promises';
 
+import { computeBackoff } from './backoff';
 import type { DbConnectionMetrics } from './db-connection-metrics';
 
 /** The chokepoint every TypeORM query funnels through to acquire a master connection. */
@@ -297,7 +299,8 @@ export class DbConnectionMonitor {
 				} catch (error) {
 					const wrapped = ensureError(error);
 					this.errorReporter.error(wrapped);
-					const backoff = this.computeBackoff(attempt);
+					const { minRecoveryBackoffMs, maxRecoveryBackoffMs } = this.databaseConfig;
+					const backoff = computeBackoff(attempt, minRecoveryBackoffMs, maxRecoveryBackoffMs);
 					this.logger.warn(
 						`Recovery attempt ${attempt} failed: ${wrapped.message}. Retrying in ${backoff}ms`,
 					);
@@ -325,22 +328,6 @@ export class DbConnectionMonitor {
 		} finally {
 			this.stopRecovery();
 		}
-	}
-
-	/**
-	 * Exponential backoff for the given (1-based) recovery attempt, ramping from
-	 * `minRecoveryBackoffMs` and capped at `maxRecoveryBackoffMs`.
-	 *
-	 * The cap is clamped to never fall below the floor, so a misconfiguration
-	 * (`maxRecoveryBackoffMs < minRecoveryBackoffMs`) degrades to a constant
-	 * `minRecoveryBackoffMs` delay rather than silently collapsing every retry
-	 * onto the smaller max value (which would defeat the floor). The
-	 * misconfiguration is warned about once at `start()`.
-	 */
-	private computeBackoff(attempt: number) {
-		const { minRecoveryBackoffMs, maxRecoveryBackoffMs } = this.databaseConfig;
-		const ceiling = Math.max(minRecoveryBackoffMs, maxRecoveryBackoffMs);
-		return Math.min(minRecoveryBackoffMs * 2 ** (attempt - 1), ceiling);
 	}
 
 	private get isPostgres(): boolean {

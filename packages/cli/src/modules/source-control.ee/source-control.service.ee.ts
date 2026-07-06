@@ -557,6 +557,15 @@ export class SourceControlService {
 			await this.sourceControlImportService.importFoldersFromWorkFolder(user, foldersToBeImported);
 		}
 
+		// IMPORTANT: Import credentials before workflows so that workflow publishing
+		// validates against the freshly imported credential state (e.g. a credential's
+		// resolvable/private status), instead of the stale local state.
+		const credentialsToBeImported = getNonDeletedResources(statusResult, 'credential');
+		await this.sourceControlImportService.importCredentialsFromWorkFolder(
+			credentialsToBeImported,
+			user.id,
+		);
+
 		const workflowsToBeImported = getNonDeletedResources(statusResult, 'workflow');
 		const workflowImportResults =
 			await this.sourceControlImportService.importWorkflowFromWorkFolder(
@@ -585,11 +594,6 @@ export class SourceControlService {
 			workflowsToBeDeleted,
 		);
 
-		const credentialsToBeImported = getNonDeletedResources(statusResult, 'credential');
-		await this.sourceControlImportService.importCredentialsFromWorkFolder(
-			credentialsToBeImported,
-			user.id,
-		);
 		const credentialsToBeDeleted = getDeletedResources(statusResult, 'credential');
 		await this.sourceControlImportService.deleteCredentialsNotInWorkfolder(
 			user,

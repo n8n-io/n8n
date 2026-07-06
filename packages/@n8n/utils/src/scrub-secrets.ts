@@ -48,22 +48,33 @@ export const SECRET_VALUE_PATTERNS: readonly RegExp[] = [
 	// body uses the standard JSON-string idiom `(?:\\.|[^"\r\n])*` so an
 	// escaped quote inside the value (`"abc\"def"`) doesn't end the match
 	// early and leak the rest of the secret. The negative lookahead skips
-	// values that are already a `[redacted]` / `[REDACTED]` placeholder so
-	// this stays idempotent when chained behind upstream object-walking
-	// redaction (e.g. langsmith trace payloads).
+	// values that are already a `[redacted]` / `[REDACTED]` / typed
+	// `[REDACTED:<type>:<index>]` placeholder so this stays idempotent when
+	// chained behind upstream object-walking redaction (langsmith trace
+	// payloads, mcp-browser markers).
 	new RegExp(
-		`"(?:${SECRET_KEYS})"\\s*:\\s*"(?!\\[(?:redacted|REDACTED)\\]")(?:\\\\.|[^"\\r\\n])*"`,
+		`"(?:${SECRET_KEYS})"\\s*:\\s*"(?!\\[(?:redacted|REDACTED)(?::[^"\\]]*)?\\]")(?:\\\\.|[^"\\r\\n])*"`,
 		'gi',
 	),
 	// JS-object-shaped `'key': 'value'`
 	new RegExp(
-		`'(?:${SECRET_KEYS})'\\s*:\\s*'(?!\\[(?:redacted|REDACTED)\\]')(?:\\\\.|[^'\\r\\n])*'`,
+		`'(?:${SECRET_KEYS})'\\s*:\\s*'(?!\\[(?:redacted|REDACTED)(?::[^'\\]]*)?\\]')(?:\\\\.|[^'\\r\\n])*'`,
 		'gi',
 	),
 	// Generic `password=...` / `api_key=...` / `secret=...` style assignments.
-	// Same idempotency lookahead as the quoted forms: skip values that are
-	// already a redaction placeholder (bracketed or URL-safe bare form).
-	new RegExp(`\\b(?:${SECRET_KEYS})\\s*[:=]\\s*(?!\\[?(?:redacted|REDACTED)\\b)\\S+`, 'gi'),
+	// The negative lookbehind skips a keyword sitting at the `<type>` position of
+	// an upstream `[REDACTED:<type>:<index>]` marker (e.g. mcp-browser output), so
+	// the `secret:1]` tail isn't re-matched into a nested `[REDACTED:[REDACTED]`.
+	// Checking only the `[REDACTED:` prefix suffices: inside a marker a keyword can
+	// only start a `\b` match right after that prefix — every other keyword-shaped
+	// substring is preceded by `_` (snake_case type slug) or a digit, so no word
+	// boundary opens there. The value lookahead skips values that are already a
+	// redaction placeholder (bracketed, typed, or URL-safe bare form) — the same
+	// idempotency convention as the quoted forms.
+	new RegExp(
+		`(?<!\\[(?:redacted|REDACTED):)\\b(?:${SECRET_KEYS})\\s*[:=]\\s*(?!\\[?(?:redacted|REDACTED)\\b)\\S+`,
+		'gi',
+	),
 ];
 
 export function scrubSecretsInText(input: string): string {
