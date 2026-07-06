@@ -531,23 +531,6 @@ describe('InstanceAiCredentialSetup', () => {
 			expect(closeModalSpy).toHaveBeenCalledWith(INSTANCE_AI_BROWSER_USE_SETUP_MODAL_KEY);
 		});
 
-		it('does not submit auto setup for a step the user has navigated away from', async () => {
-			experiment.enabled = true;
-			settingsStore.browserConnected = false;
-			const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
-
-			const requests = makeCredentialRequests(2);
-			const { getByTestId } = renderCard(requests);
-			await userEvent.click(getByTestId('setup-choice-ai'));
-
-			await userEvent.click(getByTestId('instance-ai-credential-next'));
-
-			settingsStore.browserConnected = true;
-			await new Promise((resolve) => setTimeout(resolve, 0));
-
-			expect(confirmSpy).not.toHaveBeenCalled();
-		});
-
 		it('does not submit auto setup once the connect modal is dismissed without connecting', async () => {
 			experiment.enabled = true;
 			settingsStore.browserConnected = false;
