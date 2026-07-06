@@ -41,10 +41,7 @@ const projectId = computed(() => {
 		: route?.params?.projectId;
 });
 
-const isTeamProject = computed(() => projectStore.currentProject?.type === ProjectTypes.Team);
-const isPersonalProject = computed(
-	() => projectStore.currentProject?.type === ProjectTypes.Personal,
-);
+const isPublicProject = computed(() => projectStore.currentProject?.type === ProjectTypes.Public);
 
 const getRouteConfigs = () => {
 	// For project pages
@@ -113,7 +110,9 @@ const options = computed<Array<TabOptions<string>>>(() => {
 		tabs.push(createTab('mainSidebar.executions', 'executions', routes));
 	}
 
-	if (props.pageType === 'overview' || isTeamProject.value || isPersonalProject.value) {
+	// Optimistic while currentProject loads — hiding the tab until the fetch
+	// resolves would shift the tab strip on every overview → project navigation
+	if (props.pageType === 'overview' || (props.pageType === 'project' && !isPublicProject.value)) {
 		tabs.push(createTab('mainSidebar.variables', 'variables', routes));
 	}
 
