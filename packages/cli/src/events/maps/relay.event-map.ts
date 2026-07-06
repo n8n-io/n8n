@@ -483,6 +483,12 @@ export type RelayEventMap = {
 		credentialId: string;
 	};
 
+	'private-credential-connections-cleared': {
+		user: UserLike;
+		credentialType: string;
+		credentialId: string;
+	};
+
 	'private-credential-deleted': {
 		user: UserLike;
 		credentialType: string;

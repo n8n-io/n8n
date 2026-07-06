@@ -42,6 +42,8 @@ const {
 } = useRoleEditorForm({
 	roleSlug: () => props.roleSlug,
 	viewRoute: VIEWS.INSTANCE_ROLE_VIEW,
+	filterScopes: (scopes) =>
+		scopes.filter((s) => (ALL_INSTANCE_SCOPES as readonly string[]).includes(s)),
 	fetchError: i18n.baseText('roles.instance.action.fetch.error'),
 });
 
