@@ -4246,7 +4246,7 @@ export class InstanceAiService {
 			signal: abortController.signal,
 			abortController,
 			snapshotStorage: this.dbSnapshotStorage,
-			tracing: resumeTracing ?? tracing,
+			tracing: effectiveTracing,
 			modelId: resumeModelId,
 			checkpoint,
 			plannedBuild,
