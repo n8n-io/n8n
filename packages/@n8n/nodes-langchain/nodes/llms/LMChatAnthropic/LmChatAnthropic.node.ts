@@ -81,17 +81,10 @@ const MIN_THINKING_BUDGET = 1024;
 const DEFAULT_MAX_TOKENS = 4096;
 
 /**
- * Anthropic returns a 400 ("`temperature` is deprecated for this model") when non-default
- * `temperature`/`top_p`/`top_k` are sent to newer-generation models — starting with Claude
- * Opus 4.7, and now also Claude Sonnet 5 and Claude Fable. Anthropic's stated direction is to
- * drop these sampling parameters from every new model going forward, so encoding "which models
- * reject them" as a list would mean an edit on every future release.
- *
- * We instead allow-list the older models that still accept sampling parameters. That set is
- * closed and only shrinks as legacy models retire, so it never needs proactive maintenance for
- * new releases — an unrecognized `claude-*` model is assumed to reject them. Non-Claude model
- * IDs (e.g. models proxied through an AI gateway) are always allowed through, since we can't
- * know their capabilities from the name alone.
+ * Anthropic is dropping temperature/top_p/top_k from every new model generation (Opus 4.7+,
+ * Sonnet 5, Fable, ...), so a deny-list would need an edit per release. Allow-listing the older
+ * models that still accept them instead only shrinks over time as those models retire; unknown
+ * `claude-*` models are assumed to reject them, non-Claude IDs (e.g. AI gateways) always pass.
  */
 function modelSupportsSamplingParams(modelName: string): boolean {
 	if (!modelName.startsWith('claude-')) {
