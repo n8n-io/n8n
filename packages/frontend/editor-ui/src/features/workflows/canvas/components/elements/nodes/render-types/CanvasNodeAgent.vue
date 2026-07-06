@@ -129,7 +129,7 @@ function onPickAgent(value: INodeParameterResourceLocator) {
 }
 
 // A fresh draft was inline-created and referenced — open the NDV so the user
-// keeps configuring it in place instead of being taken to the Agent Builder.
+// keeps configuring it in place.
 function onAgentCreated() {
 	emit('activate', id.value);
 }

@@ -39,8 +39,6 @@ function individualToolChip(tool: AgentCapabilityTool, index: number): AgentCard
 		icon: TOOL_ICONS[tool.type],
 		// Mirror the agent edit page, which humanizes every tool name.
 		label: formatToolNameForDisplay(tool.name),
-		// Node tools carry their node type so the chip renders the node's icon;
-		// undefined for workflow/custom tools.
 		nodeType: tool.nodeType,
 		nodeTypeVersion: tool.nodeTypeVersion,
 	};
@@ -106,10 +104,7 @@ function buildToolChips(
 /**
  * Flattens an agent's capability summary into the ordered chip list shown on the
  * canvas card: tools first, then skills. Channels and tasks are intentionally
- * omitted — both only make sense for a standalone agent, not one invoked by the
- * workflow this node sits in (a channel isn't aware of that workflow and won't
- * trigger it; a task is the agent running a capability on its own schedule, which
- * the invoking workflow already controls). Node tools resolve their friendly
+ * omitted. Node tools resolve their friendly
  * node-type names (and group) via {@link resolveNodeTypeLabel}.
  */
 export function buildAgentCardChips(
