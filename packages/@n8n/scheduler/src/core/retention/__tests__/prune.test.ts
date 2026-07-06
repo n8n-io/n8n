@@ -102,14 +102,17 @@ describe('prune', () => {
 		expect(store.batches.map((batch) => batch.statuses)).toEqual([CLEAN]);
 	});
 
-	it('rejects a non-positive batch size before issuing any statement', async () => {
-		const store = new RecordingStore([10]);
+	it.each([0, -1, 1.5, NaN])(
+		'rejects batch size %p before issuing any statement',
+		async (batchSize) => {
+			const store = new RecordingStore([10]);
 
-		await expect(prune(store, { ...options, batchSize: 0 })).rejects.toThrow(
-			'batchSize must be > 0',
-		);
-		expect(store.batches).toHaveLength(0);
-	});
+			await expect(prune(store, { ...options, batchSize })).rejects.toThrow(
+				'batchSize must be a positive integer',
+			);
+			expect(store.batches).toHaveLength(0);
+		},
+	);
 
 	it('shares one budget across both windows', async () => {
 		// The clean window drains in two batches, leaving one for the other

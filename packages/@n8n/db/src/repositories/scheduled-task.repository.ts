@@ -45,7 +45,7 @@ export interface DeleteFinishedTasksOptions {
 	statuses: TerminalTaskStatus[];
 	/** Minimum age: only rows whose `finishedAt` is at least this far before DB-now go. */
 	olderThanMs: number;
-	/** Cap on how many rows this one statement deletes. Non-positive is a no-op. */
+	/** Cap on how many rows this one statement deletes. Must be an integer; non-positive is a no-op. */
 	limit: number;
 }
 
@@ -307,13 +307,20 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	 * - SQLite runs writers one at a time.
 	 *
 	 * @returns how many rows were deleted
-	 * @throws UnexpectedError when `statuses` contains a non-terminal value
+	 * @throws UnexpectedError when `statuses` contains a non-terminal value or `limit` is not an integer
 	 */
 	async deleteFinishedOlderThan(options: DeleteFinishedTasksOptions): Promise<number> {
 		const invalid = options.statuses.filter((status) => !TerminalTaskStatusList.includes(status));
 		if (invalid.length > 0) {
 			throw new UnexpectedError(
 				`deleteFinishedOlderThan only deletes terminal tasks, got: ${invalid.join(', ')}`,
+			);
+		}
+		// A non-integer bound to LIMIT errors on SQLite (datatype mismatch), and NaN
+		// binds as NULL, which on Postgres means LIMIT ALL; reject it before the SQL.
+		if (!Number.isSafeInteger(options.limit)) {
+			throw new UnexpectedError(
+				`deleteFinishedOlderThan needs an integer limit, got: ${options.limit}`,
 			);
 		}
 		if (options.statuses.length === 0 || options.limit <= 0) {
@@ -348,8 +355,8 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 					 WHERE "status" IN (:...statuses)
 					   AND "finishedAt" <= ${dbNowPlusMsLiteral(false, -options.olderThanMs)}
 					 ORDER BY "finishedAt"
-					 LIMIT ${options.limit})`,
-				{ statuses: options.statuses },
+					 LIMIT :limit)`,
+				{ statuses: options.statuses, limit: options.limit },
 			)
 			.execute();
 		return result.affected ?? 0;

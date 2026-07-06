@@ -19,7 +19,7 @@ export interface RetentionOptions {
 
 	/**
 	 * The most rows one delete statement removes.
-	 * Must be > 0.
+	 * Must be a positive integer.
 	 */
 	batchSize: number;
 

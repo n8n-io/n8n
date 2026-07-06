@@ -546,6 +546,20 @@ describe('scheduled repositories', () => {
 			expect((await taskRepository.find()).map((t) => t.id)).toEqual([oldPending.id]);
 		});
 
+		it('rejects a non-integer limit before touching any row', async () => {
+			const job = await createJob();
+			await createTask(job.id, { status: 'succeeded', finishedAt: secondsFromNow(-7200) });
+
+			await expect(
+				taskRepository.deleteFinishedOlderThan({
+					statuses: ['succeeded'],
+					olderThanMs: HOUR_MS,
+					limit: 1.5,
+				}),
+			).rejects.toThrow('needs an integer limit, got: 1.5');
+			expect(await taskRepository.count()).toBe(1);
+		});
+
 		it('treats a non-positive limit as a no-op batch', async () => {
 			const job = await createJob();
 			await createTask(job.id, { status: 'succeeded', finishedAt: secondsFromNow(-7200) });

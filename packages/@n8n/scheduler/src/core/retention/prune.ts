@@ -54,8 +54,10 @@ export async function prune(
 	store: RetentionStore,
 	options: RetentionOptions = DEFAULT_RETENTION_OPTIONS,
 ): Promise<RetentionSummary> {
-	if (options.batchSize <= 0) {
-		throw new InvalidRetentionOptionsError(`batchSize must be > 0, got ${options.batchSize}`);
+	if (!Number.isInteger(options.batchSize) || options.batchSize <= 0) {
+		throw new InvalidRetentionOptionsError(
+			`batchSize must be a positive integer, got ${options.batchSize}`,
+		);
 	}
 
 	// Only the summary leaves; the budget is pass-internal bookkeeping.
