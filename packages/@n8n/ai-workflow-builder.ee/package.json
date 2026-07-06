@@ -58,7 +58,8 @@
   "dependencies": {
     "@langchain/anthropic": "catalog:",
     "@langchain/core": "catalog:",
-    "@langchain/langgraph": "1.0.2",
+    "@langchain/langgraph": "catalog:",
+    "@langchain/langgraph-checkpoint": "catalog:",
     "@langchain/openai": "catalog:",
     "@mozilla/readability": "catalog:",
     "@n8n/api-types": "workspace:*",
