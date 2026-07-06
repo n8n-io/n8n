@@ -13,7 +13,12 @@ import { validateCredentialReferences } from './credential-validation';
 import { autoPopulateNodeCredentials } from './credentials-auto-assign';
 import { validateDataTableReferencesForUpdate } from './data-table-validation';
 import { sanitizeSkillsUsed } from './skills-used';
-import { buildUpdateVersionMetadata, resolveVersionMetadata } from './version-metadata';
+import {
+	buildUpdateVersionMetadata,
+	resolveVersionMetadata,
+	versionDescriptionInputSchema,
+	versionNameInputSchema,
+} from './version-metadata';
 import {
 	applyOperations,
 	partialUpdateOperationSchema,
@@ -216,20 +221,12 @@ const inputSchema: z.ZodRawShape = {
 		.describe(
 			`Ordered operations to apply atomically (max ${MAX_OPERATIONS_PER_CALL}). If any op fails, nothing is saved.`,
 		),
-	versionName: z
-		.string()
-		.min(1)
-		.max(80)
-		.describe(
-			'Short summary of what this update changes, shown in the workflow\'s version history (e.g. "Added Slack notification after HTTP request").',
-		),
-	versionDescription: z
-		.string()
-		.max(1000)
-		.optional()
-		.describe(
-			'Longer description of what changed and why, shown in the version history alongside the version name.',
-		),
+	versionName: versionNameInputSchema.describe(
+		'Short summary of what this update changes, shown in the workflow\'s version history (e.g. "Added Slack notification after HTTP request"). Always provide it.',
+	),
+	versionDescription: versionDescriptionInputSchema.describe(
+		'Longer description of what changed and why, shown in the version history alongside the version name.',
+	),
 };
 
 // The MCP SDK publishes this schema with `additionalProperties: false` and
@@ -478,7 +475,7 @@ export const createUpdateWorkflowTool = (
 		workflowId: string;
 		skillsUsed?: string[];
 		operations: OperationInput[];
-		versionName: string;
+		versionName?: string;
 		versionDescription?: string;
 	}) => {
 		const sanitizedSkillsUsed = sanitizeSkillsUsed(skillsUsed);
@@ -490,6 +487,7 @@ export const createUpdateWorkflowTool = (
 				...(sanitizedSkillsUsed !== undefined ? { skillsUsed: sanitizedSkillsUsed } : {}),
 				opCount: operations.length,
 				opTypes: operations.map((op) => op.type),
+				hasVersionName: !!versionName,
 				hasVersionDescription: !!versionDescription,
 			},
 		};

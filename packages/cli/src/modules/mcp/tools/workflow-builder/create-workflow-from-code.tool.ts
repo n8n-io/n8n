@@ -7,7 +7,12 @@ import { validateWorkflowCredentialReferences } from './credential-validation';
 import { autoPopulateNodeCredentials, stripNullCredentialStubs } from './credentials-auto-assign';
 import { validateDataTableReferencesForWorkflow } from './data-table-validation';
 import { sanitizeSkillsUsed } from './skills-used';
-import { buildCreateVersionMetadata, resolveVersionMetadata } from './version-metadata';
+import {
+	buildCreateVersionMetadata,
+	resolveVersionMetadata,
+	versionDescriptionInputSchema,
+	versionNameInputSchema,
+} from './version-metadata';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
 import { getSdkReferenceHint } from '../workflow-validation.utils';
@@ -57,20 +62,12 @@ const inputSchema = {
 		.string()
 		.optional()
 		.describe('Workflow description. Longer text is shortened to 255 chars before saving.'),
-	versionName: z
-		.string()
-		.min(1)
-		.max(80)
-		.describe(
-			'Short summary of this initial version, shown in the workflow\'s version history (e.g. "Initial Slack notification workflow").',
-		),
-	versionDescription: z
-		.string()
-		.max(1000)
-		.optional()
-		.describe(
-			'Longer description of what this version does, shown in the version history alongside the version name.',
-		),
+	versionName: versionNameInputSchema.describe(
+		'Short summary of this initial version, shown in the workflow\'s version history (e.g. "Initial Slack notification workflow"). Always provide it.',
+	),
+	versionDescription: versionDescriptionInputSchema.describe(
+		'Longer description of what this version does, shown in the version history alongside the version name.',
+	),
 	projectId: z
 		.string()
 		.optional()
@@ -193,7 +190,7 @@ export const createCreateWorkflowFromCodeTool = (
 		skillsUsed?: string[];
 		name?: string;
 		description?: string;
-		versionName: string;
+		versionName?: string;
 		versionDescription?: string;
 		projectId?: string;
 		folderId?: string;
@@ -208,6 +205,7 @@ export const createCreateWorkflowFromCodeTool = (
 				hasName: !!name,
 				hasProjectId: !!projectId,
 				hasFolderId: !!folderId,
+				hasVersionName: !!versionName,
 				hasVersionDescription: !!versionDescription,
 			},
 		};

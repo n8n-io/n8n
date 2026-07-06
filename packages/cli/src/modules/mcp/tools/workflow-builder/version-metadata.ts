@@ -1,8 +1,18 @@
 import type { IConnections, INode } from 'n8n-workflow';
 import { compareConnections, compareWorkflowsNodes, NodeDiffStatus } from 'n8n-workflow';
+import z from 'zod';
 
 export const MAX_VERSION_NAME_LENGTH = 80;
 export const MAX_VERSION_DESCRIPTION_LENGTH = 1000;
+
+// Optional (not required) so MCP clients holding a cached tool schema from
+// before these params existed keep working; omission falls back to the
+// deterministic diff-based metadata.
+export const versionNameInputSchema = z.string().min(1).max(MAX_VERSION_NAME_LENGTH).optional();
+export const versionDescriptionInputSchema = z
+	.string()
+	.max(MAX_VERSION_DESCRIPTION_LENGTH)
+	.optional();
 
 const MAX_LISTED_NODES = 5;
 
