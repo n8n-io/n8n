@@ -10,6 +10,7 @@ import { CommandRegistry } from '../command-registry';
 jest.mock('fast-glob');
 
 import glob from 'fast-glob';
+import { access } from 'node:fs/promises';
 
 describe('CommandRegistry', () => {
 	let commandRegistry: CommandRegistry;
@@ -127,6 +128,18 @@ describe('CommandRegistry', () => {
 
 		expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('not found'));
 		expect(mockProcessExit).toHaveBeenCalledWith(1);
+	});
+
+	it('should surface the error when a command file exists but fails to load', async () => {
+		process.argv = ['node', 'n8n', 'test-command'];
+		// Pretend the command file exists so the dynamic import is attempted; the
+		// import then fails (no such file), standing in for a broken dependency.
+		(access as unknown as Mock).mockResolvedValue(undefined);
+
+		commandRegistry = new CommandRegistry(commandMetadata, moduleRegistry, logger, cliParser);
+
+		await expect(commandRegistry.execute()).rejects.toThrow();
+		expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('Failed to load'));
 	});
 
 	it('should display help when --help flag is used', async () => {
