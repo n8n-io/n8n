@@ -12,6 +12,7 @@ import type {
 import type { IWorkflowDb } from '@/Interface';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { usePrivateCredentials } from '@/features/resolvers/composables/usePrivateCredentials';
 import { useProjectsStore } from '../projects.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
@@ -55,6 +56,7 @@ const projectsStore = useProjectsStore();
 const searchFn = useAvailableProjectSearch();
 const workflowsListStore = useWorkflowsListStore();
 const credentialsStore = useCredentialsStore();
+const privateCredentials = usePrivateCredentials();
 const telemetry = useTelemetry();
 const { showMoveToProjectToast } = useMoveResourceToProjectToast();
 
@@ -96,6 +98,18 @@ const projectFilterFn = (p: ProjectListItem): boolean =>
 
 const isResourceInTeamProject = computed(() => isHomeProjectTeam(props.data.resource));
 const isResourceWorkflow = computed(() => props.data.resourceType === ResourceType.Workflow);
+
+const connectedUserCount = ref(0);
+const isResolvableCredential = computed(
+	() =>
+		privateCredentials.isEnabled.value &&
+		props.data.resourceType === ResourceType.Credential &&
+		(props.data.resource as ICredentialsResponse).isResolvable === true,
+);
+// Only warn when there are connections to lose.
+const showResolvableConnectionWarning = computed(
+	() => isResolvableCredential.value && connectedUserCount.value > 0,
+);
 const targetProjectName = computed(() => {
 	return getTruncatedProjectName(selectedProject.value?.name);
 });
@@ -184,6 +198,18 @@ onMounted(async () => {
 
 		usedCredentials.value = workflow?.usedCredentials ?? [];
 		allCredentials.value = credentials ?? [];
+	}
+
+	// The list payload omits connectedUserCount, so fetch the detail for it.
+	if (isResolvableCredential.value) {
+		try {
+			const credential = await credentialsStore.getCredentialData({
+				id: props.data.resource.id,
+			});
+			connectedUserCount.value = credential?.connectedUserCount ?? 0;
+		} catch {
+			connectedUserCount.value = 0;
+		}
 	}
 });
 </script>
@@ -324,6 +350,14 @@ onMounted(async () => {
 						</I18nT>
 					</N8nCallout>
 				</N8nText>
+				<N8nCallout
+					v-if="showResolvableConnectionWarning"
+					theme="warning"
+					:class="$style.textBlock"
+					data-test-id="project-move-resource-modal-resolvable-warning"
+				>
+					{{ i18n.baseText('projects.move.resource.modal.message.resolvableConnections') }}
+				</N8nCallout>
 			</div>
 		</template>
 		<template #footer>

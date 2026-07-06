@@ -1,4 +1,9 @@
-import type { SharedCredentialsRepository, User, UserRepository } from '@n8n/db';
+import type {
+	ProjectRelationRepository,
+	SharedCredentialsRepository,
+	User,
+	UserRepository,
+} from '@n8n/db';
 import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
@@ -24,6 +29,7 @@ describe('CredentialConnectionStatusService', () => {
 	const userRepository = mock<UserRepository>();
 	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
 	const roleService = mock<RoleService>();
+	const projectRelationRepository = mock<ProjectRelationRepository>();
 	const em = mock<EntityManager>();
 
 	const service = new CredentialConnectionStatusService(
@@ -31,6 +37,7 @@ describe('CredentialConnectionStatusService', () => {
 		userRepository,
 		sharedCredentialsRepository,
 		roleService,
+		projectRelationRepository,
 	);
 
 	const CRED_ID = 'cred-1';
@@ -78,9 +85,9 @@ describe('CredentialConnectionStatusService', () => {
 			);
 		});
 
-		it('retains pair for a global admin (has credential:update in global role scopes)', async () => {
+		it('retains pair for a global admin (has credential:connect in global role scopes)', async () => {
 			// ARRANGE
-			const admin = makeUser('admin-1', ['credential:update']);
+			const admin = makeUser('admin-1', ['credential:connect']);
 			em.find.mockResolvedValueOnce([makeEntry(CRED_ID, 'admin-1')]);
 			userRepository.find.mockResolvedValueOnce([admin]);
 			// Even if the project check returned nothing, admin is retained in-memory
@@ -90,6 +97,31 @@ describe('CredentialConnectionStatusService', () => {
 			await service.cleanupOrphanedEntriesForUsers(['admin-1'], em);
 
 			// ASSERT — hasGlobalScope is true → pair retained → nothing deleted
+			expect(repository.deleteByPairs).not.toHaveBeenCalled();
+		});
+
+		it('retains pair for a connect-only sharee (has credential:connect but not credential:update)', async () => {
+			// ARRANGE — a `credential:user` sharee can still connect their own account,
+			// so their per-user entry must survive even without edit rights.
+			const sharee = makeUser('sharee-1'); // no global scope
+			em.find.mockResolvedValueOnce([makeEntry(CRED_ID, 'sharee-1')]);
+			userRepository.find.mockResolvedValueOnce([sharee]);
+			// Project path retained via credential:connect
+			sharedCredentialsRepository.findPairsWithCredentialAccess.mockResolvedValueOnce([
+				{ credentialId: CRED_ID, userId: 'sharee-1' },
+			]);
+
+			// ACT
+			await service.cleanupOrphanedEntriesForUsers(['sharee-1'], em);
+
+			// ASSERT — retention is evaluated against credential:connect, not credential:update
+			expect(roleService.rolesWithScope).toHaveBeenCalledWith('credential', 'credential:connect');
+			expect(sharedCredentialsRepository.findPairsWithCredentialAccess).toHaveBeenCalledWith(
+				[{ credentialId: CRED_ID, userId: 'sharee-1' }],
+				'credential:connect',
+				VALID_CRED_ROLES,
+				em,
+			);
 			expect(repository.deleteByPairs).not.toHaveBeenCalled();
 		});
 
@@ -173,6 +205,57 @@ describe('CredentialConnectionStatusService', () => {
 			expect(repository.deleteByPairs).toHaveBeenCalledWith(
 				[{ credentialId: CRED_A, userId: 'user-lost' }],
 				em,
+			);
+		});
+	});
+
+	describe('credentialId scoping', () => {
+		it('scopes the entry scan to the given credential when credentialId is provided', async () => {
+			em.find.mockResolvedValueOnce([]);
+
+			await service.cleanupOrphanedEntriesForUsers(['user-1'], em, 'cred-9');
+
+			expect(em.find).toHaveBeenCalledWith(
+				DynamicCredentialUserEntry,
+				expect.objectContaining({ where: expect.objectContaining({ credentialId: 'cred-9' }) }),
+			);
+		});
+
+		it('does not filter by credential when credentialId is omitted', async () => {
+			em.find.mockResolvedValueOnce([]);
+
+			await service.cleanupOrphanedEntriesForUsers(['user-1'], em);
+
+			const [, options] = em.find.mock.calls[0] as [unknown, { where: Record<string, unknown> }];
+			expect(options.where).not.toHaveProperty('credentialId');
+		});
+	});
+
+	describe('cleanupOrphanedEntriesForProjects', () => {
+		it('is a no-op when projectIds is empty', async () => {
+			await service.cleanupOrphanedEntriesForProjects('cred-1', [], em);
+
+			expect(em.findBy).not.toHaveBeenCalled();
+			expect(em.find).not.toHaveBeenCalled();
+		});
+
+		it('resolves distinct project members and prunes the credential scoped to them', async () => {
+			em.findBy.mockResolvedValueOnce([
+				{ userId: 'user-a' },
+				{ userId: 'user-b' },
+				{ userId: 'user-a' }, // duplicate across projects
+			] as never);
+			em.find.mockResolvedValueOnce([]); // no entries → early return
+
+			await service.cleanupOrphanedEntriesForProjects('cred-1', ['proj-1', 'proj-2'], em);
+
+			expect(em.findBy).toHaveBeenCalledWith(
+				projectRelationRepository.target,
+				expect.objectContaining({ projectId: expect.anything() }),
+			);
+			expect(em.find).toHaveBeenCalledWith(
+				DynamicCredentialUserEntry,
+				expect.objectContaining({ where: expect.objectContaining({ credentialId: 'cred-1' }) }),
 			);
 		});
 	});
