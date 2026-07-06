@@ -28,7 +28,7 @@ const checkOutcomeSchema = z.object({
 	description: z.string(),
 	kind: z.enum(['deterministic', 'llm']),
 	dimension: z.enum(CHECK_DIMENSIONS),
-	status: z.enum(['pass', 'fail', 'n_a']),
+	status: z.enum(['pass', 'fail', 'n_a', 'error']),
 	comment: z.string().optional(),
 });
 
@@ -38,6 +38,7 @@ const targetOutputSchema = z.object({
 	score: z.number().default(0),
 	reasoning: z.string().default(''),
 	workflowId: z.string().optional(),
+	scenarioWorkflowId: z.string().optional(),
 	failureCategory: z.string().optional(),
 	rootCause: z.string().optional(),
 	execErrors: z.array(z.string()).default([]),
@@ -190,6 +191,7 @@ export function reshapeLangSmithRuns(
 					scenario,
 					success: output.passed,
 					evalResult: output.evalResult,
+					workflowId: output.scenarioWorkflowId ?? output.workflowId,
 					score: output.score,
 					reasoning: output.reasoning,
 					failureCategory: output.failureCategory,

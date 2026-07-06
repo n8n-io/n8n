@@ -22,9 +22,9 @@ import { injectNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { executionDataToJson } from '@/app/utils/nodeTypesUtils';
+import { createResultError } from '@n8n/utils/result';
 import {
 	type IRunExecutionData,
-	createResultError,
 	type NodeConnectionType,
 	NodeConnectionTypes,
 	type IConnectedNode,

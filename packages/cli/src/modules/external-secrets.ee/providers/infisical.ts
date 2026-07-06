@@ -9,12 +9,18 @@ import { Container } from '@n8n/di';
 import { type INodeProperties, UnexpectedError } from 'n8n-workflow';
 
 import { DOCS_HELP_NOTICE } from '../constants';
+import {
+	buildHttpProviderErrorContext,
+	logSecretsProviderOperationFailure,
+	type LogContext,
+	type SecretsProviderOperationFailureParams,
+} from '../errors/secrets-provider-errors';
 import type { SecretsProviderSettings } from '../types';
 import { SecretsProvider } from '../types';
 
-type InfisicalAuthMethod = 'universalAuth';
+export type InfisicalAuthMethod = 'universalAuth';
 
-interface InfisicalSettings {
+export interface InfisicalSettings {
 	siteURL: string;
 	projectId: string;
 	environment: string;
@@ -26,25 +32,25 @@ interface InfisicalSettings {
 	clientSecret: string;
 }
 
-interface InfisicalUniversalAuthLoginResponse {
+export interface InfisicalUniversalAuthLoginResponse {
 	accessToken: string;
 	expiresIn: number;
 	accessTokenMaxTTL: number;
 	tokenType: string;
 }
 
-interface InfisicalSecret {
+export interface InfisicalSecret {
 	secretKey: string;
 	secretValue: string;
 }
 
-interface InfisicalImport {
+export interface InfisicalImport {
 	secrets: InfisicalSecret[];
 	secretPath: string;
 	environment: string;
 }
 
-interface InfisicalListSecretsResponse {
+export interface InfisicalListSecretsResponse {
 	secrets: InfisicalSecret[];
 	imports: InfisicalImport[];
 }
@@ -178,19 +184,27 @@ export class InfisicalProvider extends SecretsProvider {
 	protected async doConnect(): Promise<void> {
 		this.refreshAbort = new AbortController();
 
-		if (this.settings.authMethod === 'universalAuth') {
-			if (!this.settings.clientId || !this.settings.clientSecret) {
-				throw new UnexpectedError('Client ID and Client Secret are required for Universal Auth');
+		try {
+			if (this.settings.authMethod === 'universalAuth') {
+				if (!this.settings.clientId || !this.settings.clientSecret) {
+					throw new UnexpectedError('Client ID and Client Secret are required for Universal Auth');
+				}
+				await this.loginUniversalAuth();
 			}
-			await this.loginUniversalAuth();
-		}
 
-		const [testSuccess, testMessage] = await this.test();
-		if (!testSuccess) {
-			throw new Error(testMessage ?? 'Connection test failed');
-		}
+			await this.verifyWorkspaceAccess();
 
-		this.setupTokenRefresh();
+			this.setupTokenRefresh();
+		} catch (error) {
+			const context =
+				error instanceof UnexpectedError ? undefined : buildHttpProviderErrorContext(error);
+			this.logOperationFailure('Failed to connect Infisical provider', {
+				operation: 'connect',
+				error,
+				context,
+			});
+			throw error;
+		}
 	}
 
 	async disconnect(): Promise<void> {
@@ -206,32 +220,18 @@ export class InfisicalProvider extends SecretsProvider {
 
 	async test(): Promise<[boolean] | [boolean, string]> {
 		try {
-			const resp = await this.http.request({
-				url: `/api/v1/workspace/${encodeURIComponent(this.settings.projectId)}`,
-				method: 'GET',
-				returnFullResponse: true,
-				ignoreHttpStatusErrors: true, // Resolve non-2xx responses instead of throwing so the status checks below can return tailored messages.
+			await this.verifyWorkspaceAccess();
+			return [true];
+		} catch (error) {
+			this.logOperationFailure('Infisical provider test failed', {
+				operation: 'test',
+				error,
+				context: {
+					...buildHttpProviderErrorContext(error),
+					endpoint: 'workspace',
+				},
 			});
 
-			if (resp.statusCode >= 200 && resp.statusCode < 300) {
-				return [true];
-			}
-
-			if (resp.statusCode === 401) {
-				return [false, 'Invalid credentials'];
-			}
-			if (resp.statusCode === 403) {
-				return [
-					false,
-					'Permission denied. Verify the machine identity has access to this project.',
-				];
-			}
-			if (resp.statusCode === 404) {
-				return [false, 'Project not found. Check the Project ID and Site URL.'];
-			}
-
-			return [false, `Unexpected response from Infisical (status ${resp.statusCode}).`];
-		} catch (error) {
 			if (isConnectionRefusedError(error)) {
 				return [false, 'Connection refused. Check the Site URL.'];
 			}
@@ -244,17 +244,31 @@ export class InfisicalProvider extends SecretsProvider {
 			throw new UnexpectedError('Update attempted on Infisical before authentication');
 		}
 
-		await this.ensureTokenFresh();
-
 		try {
-			this.cacheSecrets(await this.fetchSecrets());
-		} catch (error) {
-			if (httpStatusFromError(error) === 401) {
-				this.logger.debug('Infisical token rejected during update; re-authenticating and retrying');
-				await this.loginUniversalAuth();
+			await this.ensureTokenFresh();
+
+			try {
 				this.cacheSecrets(await this.fetchSecrets());
-				return;
+			} catch (error) {
+				if (httpStatusFromError(error) === 401) {
+					this.logger.debug(
+						'Infisical token rejected during update; re-authenticating and retrying',
+					);
+					await this.loginUniversalAuth();
+					this.cacheSecrets(await this.fetchSecrets());
+					return;
+				}
+				throw error;
 			}
+		} catch (error) {
+			this.logOperationFailure('Failed to update Infisical provider secrets', {
+				operation: 'update',
+				error,
+				context: {
+					...buildHttpProviderErrorContext(error),
+					endpoint: 'secrets',
+				},
+			});
 			throw error;
 		}
 	}
@@ -337,8 +351,12 @@ export class InfisicalProvider extends SecretsProvider {
 			await this.loginUniversalAuth();
 			if (this.refreshAbort.signal.aborted) return;
 			this.setupTokenRefresh();
-		} catch {
-			this.logger.error('Failed to refresh Infisical token. Attempting reconnect.');
+		} catch (error) {
+			this.logOperationFailure('Failed to refresh Infisical token. Attempting reconnect.', {
+				operation: 'tokenRefresh',
+				error,
+				context: buildHttpProviderErrorContext(error),
+			});
 			void this.connect();
 		}
 	};
@@ -363,5 +381,56 @@ export class InfisicalProvider extends SecretsProvider {
 			};
 		}
 		return {};
+	}
+
+	private async verifyWorkspaceAccess(): Promise<void> {
+		const resp = await this.http.request({
+			url: `/api/v1/workspace/${encodeURIComponent(this.settings.projectId)}`,
+			method: 'GET',
+			returnFullResponse: true,
+			ignoreHttpStatusErrors: true, // Resolve non-2xx responses instead of throwing so the status checks below can return tailored messages.
+		});
+
+		if (resp.statusCode >= 200 && resp.statusCode < 300) {
+			return;
+		}
+
+		if (resp.statusCode === 401) {
+			throw new Error('Invalid credentials');
+		}
+		if (resp.statusCode === 403) {
+			throw new Error('Permission denied. Verify the machine identity has access to this project.');
+		}
+		if (resp.statusCode === 404) {
+			throw new Error('Project not found. Check the Project ID and Site URL.');
+		}
+
+		throw new Error(`Unexpected response from Infisical (status ${resp.statusCode}).`);
+	}
+
+	private logOperationFailure(
+		message: string,
+		params: SecretsProviderOperationFailureParams,
+	): void {
+		const context: LogContext = { ...params.context };
+		if (this.settings) {
+			const { siteURL, projectId, authMethod, environment, secretPath } = this.settings;
+			Object.assign(context, { siteURL, projectId });
+			if (params.operation === 'connect' || params.operation === 'tokenRefresh') {
+				context.authMethod = authMethod;
+			} else if (params.operation === 'update') {
+				Object.assign(context, { environment, secretPath });
+			}
+		}
+
+		logSecretsProviderOperationFailure({
+			logger: this.logger,
+			message,
+			providerName: this.name,
+			providerDisplayName: this.displayName,
+			operation: params.operation,
+			error: params.error,
+			context,
+		});
 	}
 }

@@ -2025,11 +2025,14 @@ describe('TelemetryEventRelay', () => {
 			});
 		});
 
-		it('should track on `n8n-package-exported` event with entity counts', () => {
+		it('should track on `n8n-package-exported` event with entity counts only, not ids', () => {
 			const event: RelayEventMap['n8n-package-exported'] = {
 				user: { id: 'user123' },
+				workflowIds: ['wf1', 'wf2', 'wf3'],
+				projectIds: ['proj1'],
 				counts: {
 					workflows: 3,
+					folders: 1,
 					credentials: 2,
 				},
 			};
@@ -2039,6 +2042,7 @@ describe('TelemetryEventRelay', () => {
 			expect(telemetry.track).toHaveBeenCalledWith('User exported n8n package', {
 				user_id: 'user123',
 				workflow_count: 3,
+				folder_count: 1,
 				credential_count: 2,
 			});
 		});

@@ -7,8 +7,8 @@ import { computed, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useRolesStore } from '@/app/stores/roles.store';
-import { useUsersStore } from '@/features/settings/users/users.store';
 import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 import { VIEWS } from '@/app/constants';
 import {
 	TOTAL_INSTANCE_PERMISSIONS,
@@ -32,7 +32,6 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const settingsStore = useSettingsStore();
 const rolesStore = useRolesStore();
-const usersStore = useUsersStore();
 const { check: envFeatureFlagCheck } = useEnvFeatureFlag();
 
 // Gates the new role-selection UX (custom roles + redesigned dropdown).
@@ -50,7 +49,11 @@ const isEditable = computed(
 );
 
 const hasCustomRolesLicense = computed(() => settingsStore.isCustomRolesFeatureEnabled);
-const isAdminOrOwner = computed(() => usersStore.isAdminOrOwner);
+const canChangeRole = computed(() =>
+	hasPermission(['rbac'], { rbac: { scope: 'user:changeRole' } }),
+);
+
+const canManageRoles = computed(() => hasPermission(['rbac'], { rbac: { scope: 'role:manage' } }));
 
 // Assignable instance roles (sorted, owner excluded).
 const assignableRoles = computed(() => rolesStore.processedInstanceRoles);
@@ -109,12 +112,12 @@ const onLegacyActionSelect = (role: string) => {
 	<!-- New design (custom instance roles feature) -->
 	<div v-if="customInstanceRolesEnabled" :class="$style.flagBranch">
 		<RoleSelectDropdown
-			v-if="isEditable"
+			v-if="isEditable && canChangeRole"
 			:system-roles="systemRoles"
 			:custom-roles="customRoles"
 			:current-role="currentRole"
 			:has-custom-roles-license="hasCustomRolesLicense"
-			:is-admin-or-owner="isAdminOrOwner"
+			:can-manage-roles="canManageRoles"
 			:add-custom-role-route-name="VIEWS.INSTANCE_NEW_ROLE"
 			:loading="loading"
 			:permission-count-fn="permissionCountFor"
@@ -126,14 +129,14 @@ const onLegacyActionSelect = (role: string) => {
 			@update:role="onRoleUpdate"
 			@system-role-upgrade-needed="upgradeModalVisible = true"
 		/>
-		<span v-else>{{ selectedRole?.displayName }}</span>
+		<span v-else :class="$style.roleName">{{ selectedRole?.displayName }}</span>
 		<CustomRolesUpgradeModal v-model="upgradeModalVisible" />
 	</div>
 
 	<!-- Legacy design -->
 	<div v-else>
 		<N8nActionDropdown
-			v-if="isEditable"
+			v-if="isEditable && canChangeRole"
 			placement="bottom-start"
 			:items="legacyRoleActions"
 			:disabled="loading"
@@ -158,7 +161,7 @@ const onLegacyActionSelect = (role: string) => {
 				</ElRadio>
 			</template>
 		</N8nActionDropdown>
-		<span v-else>{{ legacyRoleLabel }}</span>
+		<span v-else :class="$style.roleName">{{ legacyRoleLabel }}</span>
 	</div>
 </template>
 
@@ -166,6 +169,15 @@ const onLegacyActionSelect = (role: string) => {
 /* Wrapper for the feature-flag branch; renders as if it weren't there. */
 .flagBranch {
 	display: contents;
+}
+
+/* Non-editable role name — truncates so it doesn't overflow the adjacent column */
+.roleName {
+	display: block;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	max-width: 200px;
 }
 
 /* Legacy design */
