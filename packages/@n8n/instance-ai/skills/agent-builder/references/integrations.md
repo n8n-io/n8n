@@ -62,6 +62,7 @@ The `integrations` array controls how the target agent is triggered.
 
 - Connect chat channels only through `configure_channel`; never reuse an
   existing credential and never resolve one with the `credentials` tool.
+- To connect chat channels through `configure_channel`, there is **no need to enable socket mode** and **no need to configure a Webhook URL**,  the connection is handled internally and only the new channel bot's respective token is required. **Do not contradict yourself on this matter**
 - Do not add a Linear integration just because the agent needs Linear issue
   CRUD. Use Linear node tools unless Linear itself is the chat/trigger context.
 - For recurring or scheduled runs, create a task (`agent_builder` `action:
