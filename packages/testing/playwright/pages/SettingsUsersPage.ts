@@ -23,7 +23,7 @@ export class SettingsUsersPage extends BasePage {
 	}
 
 	clickAccountType(email: string) {
-		return this.getRow(email).getByTestId('user-role-dropdown').getByRole('button').click();
+		return this.getRow(email).getByTestId('user-role-dropdown').click();
 	}
 
 	async search(email: string) {
@@ -35,7 +35,7 @@ export class SettingsUsersPage extends BasePage {
 	async transferData(emailOrName: string) {
 		await this.page
 			.getByRole('radio', {
-				name: 'Transfer their workflows and credentials to another user or project',
+				name: 'Transfer their workflows, credentials and data tables to another user or project',
 			})
 			// This doesn't work without force: true
 			// eslint-disable-next-line playwright/no-force-option
@@ -61,7 +61,7 @@ export class SettingsUsersPage extends BasePage {
 	async deleteData() {
 		await this.page
 			.getByRole('radio', {
-				name: 'Delete their workflows and credentials',
+				name: 'Delete their workflows, credentials and data tables',
 			})
 			// This doesn't work without force: true
 			// eslint-disable-next-line playwright/no-force-option
@@ -73,9 +73,9 @@ export class SettingsUsersPage extends BasePage {
 	async selectAccountType(email: string, type: 'Admin' | 'Member') {
 		await this.clickAccountType(email);
 		await this.page
-			.getByRole('menu')
+			.getByRole('listbox')
 			.filter({ visible: true })
-			.getByRole('menuitem', { name: new RegExp(`^${type}\\b`) })
+			.getByRole('option', { name: new RegExp(`^${type}\\b`) })
 			.click();
 	}
 

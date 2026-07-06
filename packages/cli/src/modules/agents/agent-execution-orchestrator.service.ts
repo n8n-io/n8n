@@ -2,6 +2,7 @@ import type {
 	Agent as RuntimeAgent,
 	AgentExecutionCounter,
 	BuiltAgent,
+	BuiltTool,
 	CredentialProvider,
 	StreamChunk,
 } from '@n8n/agents';
@@ -10,7 +11,12 @@ import { AGENT_WORKFLOW_TRIGGER_TYPE, N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type { JSONSchema7 } from 'json-schema';
-import { OperationalError, type ExecuteAgentData, UserError } from 'n8n-workflow';
+import {
+	OperationalError,
+	type ExecuteAgentData,
+	type ExecuteAgentWorkflowContext,
+	UserError,
+} from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import type { AgentRunTelemetryType, IAgentConfigurationTelemetryProperties } from '@/interfaces';
@@ -26,6 +32,8 @@ import { IntegrationMessageContextService } from './integrations/integration-mes
 import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import { AgentRepository } from './repositories/agent.repository';
 import type { ToolRegistry } from './tool-registry';
+import { createInputDataTool } from './tools/input-data-tool';
+import { createWorkflowContextTool } from './tools/workflow-context-tool';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
 import { streamAgentChunks } from './utils/agent-stream';
 import { executionsToMessagesDto } from './utils/execution-to-message-mapper';
@@ -143,6 +151,16 @@ export class AgentExecutionOrchestratorService {
 		private readonly integrationMessageContextService: IntegrationMessageContextService,
 	) {}
 
+	private normalizeWorkflowStreamError(error: unknown, outputSchema?: JSONSchema7): Error {
+		const normalizedError = error instanceof Error ? error : new Error(String(error));
+		if (!outputSchema || normalizedError instanceof OperationalError) return normalizedError;
+
+		const structuredOutputError = describeStructuredOutputError(normalizedError.message);
+		if (!structuredOutputError) return normalizedError;
+
+		return new OperationalError(structuredOutputError, { cause: normalizedError });
+	}
+
 	createAgentExecutionCounter({
 		agentId,
 		userId,
@@ -227,7 +245,6 @@ export class AgentExecutionOrchestratorService {
 		const runtime = await this.runtimeCacheService.getRuntime({
 			agentId,
 			projectId,
-			...(userId ? { n8nUserId: userId } : {}),
 			usePublishedVersion,
 			integrationType,
 		});
@@ -262,7 +279,7 @@ export class AgentExecutionOrchestratorService {
 					agentId,
 					agentName: agentInstance.name,
 					projectId,
-					userMessage: '',
+					userMessage: null,
 					record: messageRecord,
 					hitlStatus: recorder.suspended ? 'suspended' : 'resumed',
 					telemetry: {
@@ -289,7 +306,6 @@ export class AgentExecutionOrchestratorService {
 		const runtime = await this.runtimeCacheService.getRuntime({
 			agentId,
 			projectId,
-			n8nUserId: userId,
 			integrationType: N8N_CHAT_INTEGRATION_TYPE,
 		});
 
@@ -391,7 +407,6 @@ export class AgentExecutionOrchestratorService {
 		const runtime = await this.runtimeCacheService.getRuntime({
 			agentId,
 			projectId,
-			n8nUserId: userId,
 		});
 
 		yield* this.streamChatResponse({
@@ -495,8 +510,8 @@ export class AgentExecutionOrchestratorService {
 	async compileIsolated(
 		agentEntity: Agent,
 		credentialProvider: CredentialProvider,
-		userId: string,
 		outputSchema?: JSONSchema7,
+		extraTools?: BuiltTool[],
 	): Promise<{ ok: boolean; agent?: BuiltAgent; error?: string }> {
 		if (!agentEntity.schema) {
 			return { ok: false, error: 'Agent has no JSON config. Create a config first.' };
@@ -507,11 +522,31 @@ export class AgentExecutionOrchestratorService {
 				await this.agentRuntimeReconstructionService.reconstructFromAgentEntity(
 					agentEntity,
 					credentialProvider,
-					userId,
 				);
 			// Apply a per-call structured-output schema before casting to runtime.
 			if (outputSchema) {
 				reconstructed.structuredOutput(outputSchema);
+			}
+			// Inject per-call extra tools (e.g. the workflow-data tools for
+			// MessageAnAgent invocations). A name already declared on the agent would
+			// otherwise be silently dropped (losing workflow data access) or trigger a
+			// "Static tool name collision" error from the SDK at stream time — surface
+			// it instead so the agent author can rename their tool.
+			if (extraTools?.length) {
+				const declared = new Set(reconstructed.declaredTools.map((t) => t.name));
+				const collisions = extraTools.filter((t) => declared.has(t.name)).map((t) => t.name);
+				if (collisions.length) {
+					const names = collisions.map((n) => `"${n}"`).join(', ');
+					const plural = collisions.length > 1;
+					return {
+						ok: false,
+						error:
+							`Agent declares ${plural ? 'tools' : 'a tool'} named ${names}, ` +
+							`which ${plural ? 'are' : 'is'} reserved by n8n for workflow data access. ` +
+							`Rename the agent ${plural ? 'tools' : 'tool'} to avoid the collision.`,
+					};
+				}
+				reconstructed.tool(extraTools);
 			}
 			return { ok: true, agent: reconstructed as BuiltAgent };
 		} catch (e) {
@@ -527,11 +562,11 @@ export class AgentExecutionOrchestratorService {
 		message: string,
 		executionId: string,
 		threadId: string,
-		userId: string,
 		projectId: string,
 		telemetryUserId?: string,
 		useDraftVersion?: boolean,
 		outputSchema?: JSONSchema7,
+		workflowContext?: ExecuteAgentWorkflowContext,
 	): Promise<ExecuteAgentData> {
 		const agentEntity = await this.agentRepository.findByIdAndProjectId(agentId, projectId);
 		if (!agentEntity) {
@@ -547,11 +582,18 @@ export class AgentExecutionOrchestratorService {
 		}
 		const telemetryConfiguration = buildAgentConfigurationTelemetry(agentData);
 
+		const extraTools: BuiltTool[] = [];
+		if (workflowContext) {
+			extraTools.push(createInputDataTool(workflowContext));
+			if (workflowContext.exposeWorkflowData) {
+				extraTools.push(createWorkflowContextTool(workflowContext));
+			}
+		}
 		const compiled = await this.compileIsolated(
 			agentData,
 			credentialProvider,
-			userId,
 			outputSchema,
+			extraTools.length ? extraTools : undefined,
 		);
 		if (!compiled.ok || !compiled.agent) {
 			throw new OperationalError(`Failed to compile agent: ${compiled.error ?? 'unknown error'}`);
@@ -589,9 +631,10 @@ export class AgentExecutionOrchestratorService {
 				}
 			}
 		} catch (error) {
-			recorder.record({ type: 'error', error });
+			const normalizedError = this.normalizeWorkflowStreamError(error, outputSchema);
+			recorder.record({ type: 'error', error: normalizedError });
 			recorder.record({ type: 'finish', finishReason: 'error' });
-			streamError = error instanceof Error ? error : new Error(String(error));
+			streamError = normalizedError;
 		}
 
 		const messageRecord = recorder.getMessageRecord();

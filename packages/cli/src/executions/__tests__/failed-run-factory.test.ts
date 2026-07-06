@@ -1,7 +1,7 @@
-import { mock } from 'jest-mock-extended';
 import type { StorageConfig } from 'n8n-core';
 import { NodeOperationError } from 'n8n-workflow';
 import type { INode, WorkflowExecuteMode } from 'n8n-workflow';
+import { mock } from 'vitest-mock-extended';
 
 import { FailedRunFactory } from '../failed-run-factory';
 

@@ -1,6 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import type { AgentDbMessage } from '@n8n/instance-ai';
-import { mock } from 'jest-mock-extended';
+import { mock } from 'vitest-mock-extended';
 
 import type { InstanceAiMessage } from '../../entities/instance-ai-message.entity';
 import type { InstanceAiThread } from '../../entities/instance-ai-thread.entity';
@@ -39,7 +39,7 @@ function createMemory(deps: {
 	const logger =
 		deps.logger ??
 		mock<Logger>({
-			scoped: jest.fn(() => scopedLogger),
+			scoped: vi.fn(() => scopedLogger),
 		});
 
 	return {
@@ -337,5 +337,58 @@ describe('TypeORMAgentMemory', () => {
 		).rejects.toThrow('without a project');
 
 		expect(threadRepo.save).not.toHaveBeenCalled();
+	});
+
+	describe('deleteThreadsByResourceId', () => {
+		const findOperatorValue = (arg: unknown): unknown[] => {
+			const id = (arg as { id?: { value?: unknown } }).id;
+			return (id?.value as unknown[]) ?? [];
+		};
+
+		it('deletes owner threads, their sub-agent threads, and all working-memory resources', async () => {
+			const threadRepo = mock<InstanceAiThreadRepository>();
+			const resourceRepo = mock<InstanceAiResourceRepository>();
+			const ownerThreadId = '00000000-0000-4000-8000-000000000001';
+			const subAgentResourceId = `instance-ai-subagent:${ownerThreadId}:workflow-builder`;
+
+			threadRepo.find
+				.mockResolvedValueOnce([{ id: ownerThreadId } as InstanceAiThread])
+				.mockResolvedValueOnce([
+					{ id: 'sub-thread-1', resourceId: subAgentResourceId } as InstanceAiThread,
+				]);
+			threadRepo.delete.mockResolvedValue({ affected: 2, raw: [] });
+			resourceRepo.delete.mockResolvedValue({ affected: 3, raw: [] });
+
+			const { memory } = createMemory({ threadRepo, resourceRepo });
+
+			const deleted = await memory.deleteThreadsByResourceId('user-1');
+
+			expect(deleted).toBe(1);
+			// Resources have no FK to threads, so the user resource, both thread
+			// resources, and the sub-agent's own resource are removed explicitly.
+			expect(findOperatorValue(resourceRepo.delete.mock.calls[0][0]).sort()).toEqual(
+				['user-1', `thread:${ownerThreadId}`, subAgentResourceId, 'thread:sub-thread-1'].sort(),
+			);
+			// Threads cascade to their downstream rows; owner + sub-agent are deleted.
+			expect(findOperatorValue(threadRepo.delete.mock.calls[0][0]).sort()).toEqual(
+				[ownerThreadId, 'sub-thread-1'].sort(),
+			);
+		});
+
+		it('still clears the user resource when the user has no threads', async () => {
+			const threadRepo = mock<InstanceAiThreadRepository>();
+			const resourceRepo = mock<InstanceAiResourceRepository>();
+			threadRepo.find.mockResolvedValueOnce([]);
+
+			const { memory } = createMemory({ threadRepo, resourceRepo });
+
+			const deleted = await memory.deleteThreadsByResourceId('user-1');
+
+			expect(deleted).toBe(0);
+			// Only the owner-thread query runs; no sub-agent lookup without threads.
+			expect(threadRepo.find).toHaveBeenCalledTimes(1);
+			expect(findOperatorValue(resourceRepo.delete.mock.calls[0][0])).toEqual(['user-1']);
+			expect(threadRepo.delete).not.toHaveBeenCalled();
+		});
 	});
 });

@@ -5,8 +5,7 @@ import { CUSTOM_API_CALL_KEY, EnterpriseEditionFeature } from '@/app/constants';
 import {
 	NodeHelpers,
 	NodeConnectionTypes,
-	MANUAL_TRIGGER_NODE_TYPES,
-	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	classifyTriggerIdentity,
 	nodeIssuesToString,
 } from 'n8n-workflow';
 import type {
@@ -417,14 +416,16 @@ export function useNodeHelpers() {
 	}
 
 	function workflowHasIncompatibleTrigger(): boolean {
-		const triggers = workflowDocumentStore.value.workflowTriggerNodes;
-		return triggers.some(
-			(trigger) =>
-				!trigger.disabled &&
-				!MANUAL_TRIGGER_NODE_TYPES.includes(trigger.type) &&
-				// Sub-workflows inherit the identity context from the parent execution,
-				// so a private credential resolves as long as the parent provides one.
-				trigger.type !== EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+		const triggers = workflowDocumentStore.value.workflowTriggerNodes.filter(
+			(trigger) => !trigger.disabled,
+		);
+		if (triggers.length === 0) return false;
+
+		// Private (self-connected) credentials resolve via the system resolver, which
+		// keys on the n8n user identity. Mirror the backend publish check: the workflow
+		// is compatible as long as at least one trigger establishes that identity.
+		return !triggers.some(
+			(trigger) => classifyTriggerIdentity(trigger.type, trigger.parameters).providesN8nIdentity,
 		);
 	}
 
@@ -443,10 +444,10 @@ export function useNodeHelpers() {
 			const credential = credentialsStore.getCredentialById(details.id);
 			if (!credential?.isResolvable) continue;
 
-			// An unconnected private credential is a missing setup step, not a hard
-			// error — it's surfaced as a warning via the credential callout/banner in
-			// the UI rather than a node issue, so we don't add it here.
-			if (credential.connectedByMe && incompatibleTrigger) {
+			// Mirror the backend publish check: trigger incompatibility blocks publish
+			// regardless of who connected the credential, so warn on it here too. A
+			// merely-not-yet-connected credential is surfaced via the callout/banner.
+			if (incompatibleTrigger) {
 				foundIssues[credTypeName] = [
 					i18n.baseText('nodeIssues.credentials.privateRequiresManualTrigger'),
 				];

@@ -16,7 +16,7 @@
  *    recoverable; running a destructive operation against user data is not.
  */
 
-import { isRecord } from '@n8n/utils';
+import { isRecord } from '@n8n/utils/is-record';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 import type { IConnections } from 'n8n-workflow';
 import { z } from 'zod';

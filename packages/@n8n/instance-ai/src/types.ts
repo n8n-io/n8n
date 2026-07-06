@@ -36,6 +36,7 @@ import type { DomainAccessTracker } from './domain-access/domain-access-tracker'
 import type { InstanceAiEventBus } from './event-bus/event-bus.interface';
 import type { Logger } from './logger';
 import type { McpClientManager } from './mcp/mcp-client-manager';
+import type { OrchestratorRunHandoffReason } from './runtime/orchestrator-run-control';
 import type { IterationLog } from './storage/iteration-log';
 import type { PatchableThreadMemory } from './storage/thread-patch';
 import type { IdRemapper, TraceIndex, TraceWriter } from './tracing/trace-replay';
@@ -72,6 +73,7 @@ export interface WorkflowDetail extends WorkflowSummary {
 export interface WorkflowNode {
 	name: string;
 	type: string;
+	typeVersion?: number;
 	parameters?: Record<string, unknown>;
 	position: number[];
 	webhookId?: string;
@@ -263,8 +265,9 @@ export interface InstanceAiWorkflowService {
 		scope?: 'project' | 'instance';
 	}): Promise<WorkflowSummary[]>;
 	get(workflowId: string): Promise<WorkflowDetail>;
-	/** Get the workflow as the SDK's WorkflowJSON (full node data for generateWorkflowCode). */
-	getAsWorkflowJSON(workflowId: string): Promise<WorkflowJSON>;
+	/** Get the workflow as the SDK's WorkflowJSON (full node data for generateWorkflowCode).
+	 *  Pass a versionId to get a past version's graph instead of the current draft. */
+	getAsWorkflowJSON(workflowId: string, versionId?: string): Promise<WorkflowJSON>;
 	/** Cheap version-only lookup. The adapter projects just `versionId` and
 	 *  `updatedAt` from the workflow row, skipping `nodes`/`connections`/etc.
 	 *  Use to validate per-session caches when the body isn't needed. */
@@ -348,13 +351,7 @@ export interface InstanceAiExecutionService {
 		inputData?: Record<string, unknown>,
 		options?: {
 			timeout?: number;
-			pinData?: Record<string, unknown[]>;
-			/**
-			 * Nodes whose pin data simulates a destructive operation, keyed by node
-			 * name. Persisted onto the saved execution (`resultData.simulation`) so
-			 * the editor can label simulated outputs.
-			 */
-			simulation?: Record<string, { reason: string }>;
+			verificationPinData?: Record<string, unknown[]>;
 			/** When set, execute this specific trigger node instead of auto-detecting. */
 			triggerNodeName?: string;
 		},
@@ -386,6 +383,15 @@ export interface CredentialTypeSearchResult {
 	displayName: string;
 }
 
+/** An HTTP-usable credential type with the API host(s) it authenticates against,
+ *  derived from credential metadata. Used to steer the builder toward predefined
+ *  credentials instead of generic auth. */
+export interface CredentialHostInfo {
+	type: string;
+	displayName?: string;
+	hosts: string[];
+}
+
 export interface InstanceAiCredentialService {
 	/**
 	 * List credentials.
@@ -414,7 +420,13 @@ export interface InstanceAiCredentialService {
 	): CredentialFieldInfo[] | Promise<CredentialFieldInfo[]>;
 	/** Search available credential types by keyword. Returns matching types with display names. */
 	searchCredentialTypes?(query: string): Promise<CredentialTypeSearchResult[]>;
+	/** HTTP-usable credential types with the API host(s) they authenticate against,
+	 *  derived from credential metadata. Powers steering generic HTTP-node auth toward
+	 *  a predefined credential when one already exists for the target service. */
+	listHttpCredentialHosts?(): Promise<CredentialHostInfo[]>;
 	getAccountContext?(credentialId: string): Promise<{ accountIdentifier?: string }>;
+	/** Whether the given credential type is supported by AI Gateway. */
+	isAiGatewayCredentialType?(credType: string): Promise<boolean>;
 }
 
 export interface CredentialFieldInfo {
@@ -456,7 +468,7 @@ export interface InstanceAiNodeService {
 	getDescription(nodeType: string, version?: number): Promise<NodeDescription>;
 	/** Return all node types with the richer fields needed by NodeSearchEngine. */
 	listSearchable(): Promise<SearchableNodeDescription[]>;
-	/** Return the TypeScript type definition for a node (from dist/node-definitions/). */
+	/** Return the TypeScript type definition for a node, resolved by the host n8n instance. */
 	getNodeTypeDefinition?(
 		nodeType: string,
 		options?: {
@@ -737,6 +749,12 @@ export type LocalGatewayStatus =
 
 export interface InstanceAiContext {
 	userId: string;
+	/**
+	 * Trace handle for the current agent run, threaded in from the orchestration
+	 * context. Lets domain tools (e.g. build-workflow) emit explicit child runs
+	 * that land on the active trace. Absent outside a traced run.
+	 */
+	tracing?: InstanceAiTraceContext;
 	projectId?: string;
 	workflowService: InstanceAiWorkflowService;
 	executionService: InstanceAiExecutionService;
@@ -1020,6 +1038,12 @@ export interface McpServerConfig {
 	 * in a custom `fetch` implementation).
 	 */
 	cacheKey?: string;
+	metadata?: {
+		/** Registry slug for Instance AI MCP registry servers. */
+		serverSlug?: string;
+		/** User who owns the registry MCP connection. */
+		userId?: string;
+	};
 }
 
 // ── Memory ───────────────────────────────────────────────────────────────────
@@ -1096,6 +1120,9 @@ export interface InstanceAiTraceRunInit {
 
 export interface InstanceAiTraceRunFinishOptions {
 	outputs?: unknown;
+	/** Skip structural sanitization for `outputs` — for pre-bounded machine payloads
+	 *  whose consumer needs lossless structure. Export-time scrubbing still applies. */
+	rawOutputs?: boolean;
 	metadata?: Record<string, unknown>;
 	error?: string;
 }
@@ -1134,6 +1161,9 @@ export interface InstanceAiTraceContext {
 		parentRun: InstanceAiTraceRun,
 		options: InstanceAiTraceRunInit,
 	) => Promise<InstanceAiTraceRun>;
+	/** False once the turn's trace runtime is shut down — runs created through a
+	 *  stale handle (e.g. a tool resumed in a later turn) export nothing. */
+	isLive?: () => boolean;
 	withRunTree: <T>(run: InstanceAiTraceRun, fn: () => Promise<T>) => Promise<T>;
 	withActiveSpan: <T>(run: InstanceAiTraceRun, fn: () => Promise<T>) => Promise<T>;
 	toHeaders: (run: InstanceAiTraceRun) => Record<string, string>;
@@ -1231,6 +1261,7 @@ export interface WorkflowTaskService {
 	reportBuildOutcome(outcome: WorkflowBuildOutcome): Promise<WorkflowLoopAction>;
 	reportVerificationVerdict(verdict: VerificationResult): Promise<WorkflowLoopAction>;
 	getBuildOutcome(workItemId: string): Promise<WorkflowBuildOutcome | undefined>;
+	getLatestBuildOutcomeForWorkflow(workflowId: string): Promise<WorkflowBuildOutcome | undefined>;
 	getWorkflowLoopState(workItemId: string): Promise<WorkflowLoopState | undefined>;
 	updateBuildOutcome(workItemId: string, update: Partial<WorkflowBuildOutcome>): Promise<void>;
 }
@@ -1299,6 +1330,8 @@ export interface OrchestrationContext {
 	plannedTaskService?: PlannedTaskService;
 	/** Run one scheduler pass after plan/task state changes. */
 	schedulePlannedTasks?: () => Promise<void>;
+	/** Hand off durable work to follow-up tasks once the current tool result reaches the UI. */
+	requestRunHandoff?: (reason: OrchestratorRunHandoffReason) => void;
 	/** Shared runtime workspace for the current orchestration context. */
 	workspace?: Workspace;
 	/** Absolute or host-relative sandbox workspace root for `<workspace_root>` paths in prompts. */

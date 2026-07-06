@@ -175,6 +175,7 @@ const renderView = createComponentRenderer(InstanceAiThreadView, {
 const defaultModuleSettings: NonNullable<FrontendModuleSettings['instance-ai']> = {
 	enabled: true,
 	localGatewayDisabled: false,
+	browserUseEnabled: true,
 	proxyEnabled: false,
 	cloudManaged: false,
 	sandboxEnabled: true,
@@ -262,6 +263,7 @@ describe('InstanceAiThreadView', () => {
 			currentTasks: null,
 			producedArtifacts: new Map(),
 			resourceNameIndex: new Map(),
+			linkableResourceNameIndex: new Map(),
 			feedbackByResponseId: {},
 			rateableResponseId: null,
 			pendingConfirmations: [],
@@ -291,6 +293,7 @@ describe('InstanceAiThreadView', () => {
 
 		store = mockedStore(useInstanceAiStore);
 		store.getOrCreateRuntime.mockReturnValue(thread);
+		store.getRuntime.mockReturnValue(thread);
 		store.threads = [
 			{
 				id: 'thread-1',
@@ -333,13 +336,39 @@ describe('InstanceAiThreadView', () => {
 		];
 		vi.mocked(thread.loadHistoricalMessages).mockResolvedValue('skipped');
 
+		const callOrder: string[] = [];
+		vi.mocked(thread.loadThreadStatus).mockImplementation(async () => {
+			callOrder.push('loadThreadStatus');
+		});
+		vi.mocked(thread.connectSSE).mockImplementation(() => {
+			callOrder.push('connectSSE');
+		});
+
 		renderView({ props: { threadId: 'thread-1' } });
 
 		await vi.waitFor(() => {
 			expect(thread.loadHistoricalMessages).toHaveBeenCalledWith();
 		});
-		expect(thread.loadThreadStatus).toHaveBeenCalledWith();
-		expect(thread.connectSSE).toHaveBeenCalledWith();
+		await vi.waitFor(() => {
+			expect(callOrder).toEqual(['loadThreadStatus', 'connectSSE']);
+		});
+	});
+
+	it('does not reconnect SSE when the runtime was replaced during status load', async () => {
+		thread.sseState = 'disconnected';
+		vi.mocked(thread.loadHistoricalMessages).mockResolvedValue('skipped');
+		vi.mocked(thread.loadThreadStatus).mockImplementation(async () => {
+			store.getRuntime.mockReturnValue({ id: 'thread-1' } as ThreadRuntime);
+		});
+
+		renderView({ props: { threadId: 'thread-1' } });
+
+		await vi.waitFor(() => {
+			expect(thread.loadThreadStatus).toHaveBeenCalledWith();
+		});
+		await vi.waitFor(() => {
+			expect(thread.connectSSE).not.toHaveBeenCalled();
+		});
 	});
 
 	it('keeps the chat input visible when no floating-eligible confirmation is pending', () => {

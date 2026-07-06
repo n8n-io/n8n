@@ -1,12 +1,13 @@
+import { mock } from 'vitest-mock-extended';
+
 import type { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { linearMockServer, notionMockServer } from '@/modules/mcp-registry/registry/mock-servers';
-import { mock } from 'jest-mock-extended';
 
 import { buildSearchMcpServersTool } from '../search-mcp-servers.tool';
 
 const ctx = {
 	resumeData: undefined,
-	suspend: jest.fn().mockResolvedValue(undefined as never),
+	suspend: vi.fn().mockResolvedValue(undefined as never),
 	parentTelemetry: undefined,
 };
 

@@ -24,7 +24,7 @@ CREATE TABLE "workflow_history" ("versionId" varchar(36) PRIMARY KEY NOT NULL, "
 | nodeGroups | TEXT | '[]' | false |  |  |  |
 | nodes | TEXT |  | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
-| versionId | varchar(36) |  | false | [workflow_entity](workflow_entity.md) [workflow_publish_history](workflow_publish_history.md) [workflow_published_version](workflow_published_version.md) |  |  |
+| versionId | varchar(36) |  | false | [workflow_entity](workflow_entity.md) [workflow_publication_trigger_status](workflow_publication_trigger_status.md) [workflow_publish_history](workflow_publish_history.md) [workflow_published_version](workflow_published_version.md) |  |  |
 | workflowId | varchar(36) |  | false |  | [workflow_entity](workflow_entity.md) |  |
 
 ## Constraints
@@ -48,6 +48,7 @@ CREATE TABLE "workflow_history" ("versionId" varchar(36) PRIMARY KEY NOT NULL, "
 erDiagram
 
 "workflow_entity" }o--o| "workflow_history" : "FOREIGN KEY (activeVersionId) REFERENCES workflow_history (versionId) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
+"workflow_publication_trigger_status" }o--|| "workflow_history" : "FOREIGN KEY (versionId) REFERENCES workflow_history (versionId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_publish_history" }o--o| "workflow_history" : "FOREIGN KEY (versionId) REFERENCES workflow_history (versionId) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "workflow_publish_history" }o--o| "workflow_history" : "FOREIGN KEY (versionId) REFERENCES workflow_history (versionId) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "workflow_published_version" }o--|| "workflow_history" : "FOREIGN KEY (publishedVersionId) REFERENCES workflow_history (versionId) ON UPDATE NO ACTION ON DELETE RESTRICT MATCH NONE"
@@ -88,6 +89,15 @@ erDiagram
   datetime_3_ updatedAt
   INTEGER versionCounter
   varchar_36_ versionId
+}
+"workflow_publication_trigger_status" {
+  datetime_3_ createdAt
+  TEXT errorMessage
+  varchar_36_ nodeId PK
+  varchar_20_ status
+  datetime_3_ updatedAt
+  varchar_36_ versionId FK
+  varchar_36_ workflowId PK
 }
 "workflow_publish_history" {
   datetime_3_ createdAt

@@ -33,6 +33,12 @@ import type {
 	ToolCategory,
 } from '@n8n/api-types';
 import { i18n } from '@n8n/i18n';
+import {
+	BROWSER_USE_CONNECTION_TYPE,
+	COMPUTER_USE_CONNECTION_TYPE,
+	type BrowserUseConnectionType,
+	type ComputerUseConnectionType,
+} from './constants';
 
 export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () => {
 	const rootStore = useRootStore();
@@ -102,6 +108,9 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	const isLocalGatewayDisabled = computed(
 		() => isLocalGatewayDisabledByAdmin.value || preferences.value?.localGatewayDisabled === true,
 	);
+	const isBrowserUseEnabledByAdmin = computed(
+		() => settingsStore.moduleSettings?.['instance-ai']?.browserUseEnabled === true,
+	);
 	const isProxyEnabled = computed(
 		() => settingsStore.moduleSettings?.['instance-ai']?.proxyEnabled === true,
 	);
@@ -131,6 +140,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		const merged: NonNullable<FrontendModuleSettings['instance-ai']> = {
 			enabled: adminRes.enabled,
 			localGatewayDisabled: adminRes.localGatewayDisabled ?? prev?.localGatewayDisabled ?? false,
+			browserUseEnabled: adminRes.browserUseEnabled ?? prev?.browserUseEnabled ?? true,
 			proxyEnabled: prev?.proxyEnabled ?? false,
 			cloudManaged: prev?.cloudManaged ?? false,
 			sandboxEnabled: adminRes.sandboxEnabled,
@@ -267,7 +277,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 	type ConnectionStatus = 'connected' | 'waiting' | 'disconnected';
 
 	interface SidebarConnection {
-		type: 'computer-use' | 'browser-use';
+		type: ComputerUseConnectionType | BrowserUseConnectionType;
 		name: string;
 		subtitle: string;
 		status: ConnectionStatus;
@@ -288,7 +298,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 
 		if (!isLocalGatewayDisabled.value) {
 			result.push({
-				type: 'computer-use',
+				type: COMPUTER_USE_CONNECTION_TYPE,
 				name: gatewayDirectory.value ?? i18n.baseText('instanceAi.connections.add.computerUse'),
 				subtitle: gatewayConnected.value
 					? i18n.baseText('instanceAi.connections.types.computerUse.subtitle')
@@ -297,16 +307,18 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 			});
 		}
 
-		result.push({
-			type: 'browser-use',
-			name: isBrowserUseConnected.value
-				? 'Google Chrome'
-				: i18n.baseText('instanceAi.connections.add.browserUse'),
-			subtitle: isBrowserUseConnected.value
-				? i18n.baseText('instanceAi.connections.types.browserUse.subtitle')
-				: i18n.baseText('instanceAi.connections.row.status.disconnected'),
-			status: isBrowserUseConnected.value ? 'connected' : 'disconnected',
-		});
+		if (isBrowserUseEnabledByAdmin.value) {
+			result.push({
+				type: BROWSER_USE_CONNECTION_TYPE,
+				name: isBrowserUseConnected.value
+					? 'Google Chrome'
+					: i18n.baseText('instanceAi.connections.add.browserUse'),
+				subtitle: isBrowserUseConnected.value
+					? i18n.baseText('instanceAi.connections.types.browserUse.subtitle')
+					: i18n.baseText('instanceAi.connections.row.status.disconnected'),
+				status: isBrowserUseConnected.value ? 'connected' : 'disconnected',
+			});
+		}
 
 		return result;
 	});
@@ -640,6 +652,7 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		isInstanceAiDisabled,
 		isLocalGatewayDisabled,
 		isLocalGatewayDisabledByAdmin,
+		isBrowserUseEnabledByAdmin,
 		isProxyEnabled,
 		isSandboxEnabled,
 		isWorkflowBuilderAvailable,

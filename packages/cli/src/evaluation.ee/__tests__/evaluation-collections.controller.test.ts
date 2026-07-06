@@ -3,20 +3,21 @@ import type { Logger } from '@n8n/backend-common';
 import type { AuthenticatedRequest, User } from '@n8n/db';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { PostHogClient } from '@/posthog';
 
-import { EvaluationCollectionsController } from '../evaluation-collections.controller.ee';
 import type { EvaluationCollectionService } from '../evaluation-collection.service';
+import { EvaluationCollectionsController } from '../evaluation-collections.controller.ee';
 
 describe('EvaluationCollectionsController', () => {
 	let controller: EvaluationCollectionsController;
-	let service: jest.Mocked<EvaluationCollectionService>;
-	let postHogClient: jest.Mocked<PostHogClient>;
-	let logger: jest.Mocked<Logger>;
+	let service: Mocked<EvaluationCollectionService>;
+	let postHogClient: Mocked<PostHogClient>;
+	let logger: Mocked<Logger>;
 
 	const user = mock<User>({ id: 'user-1' });
 

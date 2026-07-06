@@ -7,9 +7,9 @@ import { UserError } from 'n8n-workflow';
 import path from 'path';
 import { z } from 'zod';
 
-import { BaseCommand } from '../base-command';
-
 import type { IWorkflowWithVersionMetadata } from '@/interfaces';
+
+import { BaseCommand } from '../base-command';
 
 import '../../zod-alias-support';
 import { EventService } from '@/events/event.service';

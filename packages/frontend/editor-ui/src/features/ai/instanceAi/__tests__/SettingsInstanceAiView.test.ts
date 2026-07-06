@@ -50,25 +50,28 @@ vi.mock('@/app/utils/rbac/permissions', () => ({
 	hasPermission: vi.fn().mockReturnValue(true),
 }));
 
-const { mcpConnectionsExperimentMock } = vi.hoisted(() => ({
-	mcpConnectionsExperimentMock: vi.fn(),
-}));
+const { mcpConnectionsExperimentMock, computerUseExperimentMock, browserUseExperimentMock } =
+	vi.hoisted(() => ({
+		mcpConnectionsExperimentMock: vi.fn(),
+		browserUseExperimentMock: vi.fn(),
+		computerUseExperimentMock: vi.fn(),
+	}));
 
 vi.mock('@/experiments/instanceAiMcpConnections', () => ({
 	useInstanceAiMcpConnectionsExperiment: mcpConnectionsExperimentMock,
 }));
 
-function makeStub(name: string) {
-	return { template: `<div data-test-stub="${name}" />` };
-}
+vi.mock('@/experiments/instanceAiBrowserUse', () => ({
+	useInstanceAiBrowserUseExperiment: browserUseExperimentMock,
+}));
+
+vi.mock('@/experiments/instanceAiComputerUse', () => ({
+	useInstanceAiComputerUseExperiment: computerUseExperimentMock,
+}));
 
 const renderComponent = createComponentRenderer(SettingsInstanceAiView, {
 	global: {
 		stubs: {
-			ModelSection: makeStub('ModelSection'),
-			SandboxSection: makeStub('SandboxSection'),
-			SearchSection: makeStub('SearchSection'),
-			AdvancedSection: makeStub('AdvancedSection'),
 			// jsdom can't drive element-plus's ElSwitch (it touches a null input ref),
 			// so stub it with a button that emits the toggled value.
 			ElSwitch: {
@@ -90,6 +93,7 @@ function setModuleSettings(
 const defaultModuleSettings: NonNullable<FrontendModuleSettings['instance-ai']> = {
 	enabled: true,
 	localGatewayDisabled: false,
+	browserUseEnabled: true,
 	proxyEnabled: false,
 	cloudManaged: false,
 	sandboxEnabled: true,
@@ -105,6 +109,8 @@ describe('SettingsInstanceAiView', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mcpConnectionsExperimentMock.mockReturnValue({ isFeatureEnabled: ref(true) });
+		browserUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(true) });
+		computerUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(true) });
 		const pinia = createTestingPinia({ stubActions: false });
 		setActivePinia(pinia);
 		store = useInstanceAiSettingsStore();
@@ -129,118 +135,25 @@ describe('SettingsInstanceAiView', () => {
 		});
 	});
 
-	function queryStub(container: Element, name: string) {
-		return container.querySelector(`[data-test-stub="${name}"]`);
-	}
-
-	describe('section visibility — self-hosted (no proxy, no cloud)', () => {
-		it('shows Model section', () => {
-			const { container } = renderComponent();
-			expect(queryStub(container, 'ModelSection')).not.toBeNull();
+	describe('env-only config', () => {
+		// Model, search, sandbox and advanced options are configured via environment
+		// variables only; the settings page exposes just the enable toggle and permissions.
+		it.each([
+			['model', 'instanceAi.settings.section.model'],
+			['search', 'instanceAi.settings.section.search'],
+			['sandbox', 'instanceAi.settings.section.sandbox'],
+			['advanced', 'instanceAi.settings.section.advanced'],
+		])('does not render the %s config section', (_name, titleKey) => {
+			const { queryByText } = renderComponent();
+			expect(queryByText(titleKey)).toBeNull();
 		});
 
-		it('shows Sandbox section', () => {
-			const { container } = renderComponent();
-			expect(queryStub(container, 'SandboxSection')).not.toBeNull();
-		});
-
-		it('shows Search section', () => {
-			const { container } = renderComponent();
-			expect(queryStub(container, 'SearchSection')).not.toBeNull();
-		});
-
-		it('shows Advanced section', () => {
-			const { container } = renderComponent();
-			expect(queryStub(container, 'AdvancedSection')).not.toBeNull();
-		});
-	});
-
-	describe('section visibility — proxy enabled (non-cloud)', () => {
-		beforeEach(() => {
-			setModuleSettings(settingsStore, { ...defaultModuleSettings, proxyEnabled: true });
-		});
-
-		it('hides Model section', () => {
-			const { container } = renderComponent();
-			expect(queryStub(container, 'ModelSection')).toBeNull();
-		});
-
-		it('hides Sandbox section', () => {
-			const { container } = renderComponent();
-			expect(queryStub(container, 'SandboxSection')).toBeNull();
-		});
-
-		it('hides Search section', () => {
-			const { container } = renderComponent();
-			expect(queryStub(container, 'SearchSection')).toBeNull();
-		});
-
-		it('shows Advanced section', () => {
-			const { container } = renderComponent();
-			expect(queryStub(container, 'AdvancedSection')).not.toBeNull();
-		});
-	});
-
-	describe('section visibility — cloud managed (proxy disabled)', () => {
-		beforeEach(() => {
-			setModuleSettings(settingsStore, {
-				...defaultModuleSettings,
-				proxyEnabled: false,
-				cloudManaged: true,
-			});
-		});
-
-		it('hides Model section', () => {
-			const { container } = renderComponent();
-			expect(queryStub(container, 'ModelSection')).toBeNull();
-		});
-
-		it('hides Sandbox section', () => {
-			const { container } = renderComponent();
-			expect(queryStub(container, 'SandboxSection')).toBeNull();
-		});
-
-		it('hides Advanced section', () => {
-			const { container } = renderComponent();
-			expect(queryStub(container, 'AdvancedSection')).toBeNull();
-		});
-	});
-
-	describe('section visibility — cloud managed', () => {
-		beforeEach(() => {
-			setModuleSettings(settingsStore, {
-				...defaultModuleSettings,
-				proxyEnabled: true,
-				cloudManaged: true,
-			});
-		});
-
-		it('hides Model section', () => {
-			const { container } = renderComponent();
-			expect(queryStub(container, 'ModelSection')).toBeNull();
-		});
-
-		it('hides Sandbox section', () => {
-			const { container } = renderComponent();
-			expect(queryStub(container, 'SandboxSection')).toBeNull();
-		});
-
-		it('hides Search section', () => {
-			const { container } = renderComponent();
-			expect(queryStub(container, 'SearchSection')).toBeNull();
-		});
-
-		it('hides Advanced section', () => {
-			const { container } = renderComponent();
-			expect(queryStub(container, 'AdvancedSection')).toBeNull();
-		});
-
-		it('shows Permissions section', () => {
+		it('renders the Permissions section', () => {
 			const { getByText } = renderComponent();
 			expect(getByText('settings.n8nAgent.permissions.title')).toBeVisible();
 		});
 
-		it('shows Enable toggle', () => {
+		it('renders the Enable toggle', () => {
 			const { getByTestId } = renderComponent();
 			expect(getByTestId('n8n-agent-enable-toggle')).toBeVisible();
 		});
@@ -262,6 +175,36 @@ describe('SettingsInstanceAiView', () => {
 
 			const { queryByText } = renderComponent();
 			expect(queryByText('settings.n8nAgent.permissions.title')).toBeNull();
+		});
+	});
+
+	describe('Browser use settings', () => {
+		it('shows the browser use toggle when the experiment is enabled', () => {
+			const { getByTestId } = renderComponent();
+			expect(getByTestId('n8n-agent-browser-use-toggle')).toBeVisible();
+		});
+
+		it('hides the browser use toggle when the experiment is disabled', () => {
+			browserUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(false) });
+
+			const { queryByTestId } = renderComponent();
+
+			expect(queryByTestId('n8n-agent-browser-use-toggle')).toBeNull();
+		});
+	});
+
+	describe('Computer use settings', () => {
+		it('shows the computer use toggle when the experiment is enabled', () => {
+			const { getByTestId } = renderComponent();
+			expect(getByTestId('n8n-agent-computer-use-toggle')).toBeVisible();
+		});
+
+		it('hides the computer use toggle when the experiment is disabled', () => {
+			computerUseExperimentMock.mockReturnValue({ isFeatureEnabled: ref(false) });
+
+			const { queryByTestId } = renderComponent();
+
+			expect(queryByTestId('n8n-agent-computer-use-toggle')).toBeNull();
 		});
 	});
 

@@ -286,6 +286,59 @@ describe('executeResumableStream', () => {
 		expect(secondText?.responseId).toBe('agent-run-1:step:2');
 	});
 
+	it('stops consuming after a requested handoff while publishing the current tool result', async () => {
+		const eventBus = createEventBus();
+		let shouldStop = false;
+		eventBus.publish.mockImplementation((_: string, event: PublishedEvent) => {
+			if (event.type === 'tool-result') {
+				shouldStop = true;
+			}
+		});
+
+		const result = await executeResumableStream({
+			agent: {},
+			stream: {
+				runId: 'agent-run-1',
+				fullStream: fromChunks([
+					{
+						type: 'tool-call',
+						toolCallId: 'tool-call-1',
+						toolName: 'create-tasks',
+						input: {},
+					},
+					{
+						type: 'tool-result',
+						toolCallId: 'tool-call-1',
+						output: { result: 'Plan approved. Started 1 task.', taskCount: 1 },
+					},
+					textChunk('This inline continuation should not be published.'),
+				]),
+			},
+			context: {
+				threadId: 'thread-1',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				eventBus,
+				signal: new AbortController().signal,
+				logger: createLogger(),
+				stopSignal: () => (shouldStop ? { reason: 'planned-tasks-scheduled' } : undefined),
+			},
+			control: { mode: 'manual' },
+		});
+
+		const publishedEvents = eventBus.publish.mock.calls.map(([, event]) => event as PublishedEvent);
+
+		expect(result.status).toBe('completed');
+		expect(result.stopReason).toBe('planned-tasks-scheduled');
+		expect(publishedEvents.some((event) => event.type === 'tool-call')).toBe(true);
+		expect(publishedEvents.some((event) => event.type === 'tool-result')).toBe(true);
+		expect(
+			publishedEvents.some(
+				(event) => event.payload?.text === 'This inline continuation should not be published.',
+			),
+		).toBe(false);
+	});
+
 	it('auto-resumes suspended streams and passes drained corrections to resume data', async () => {
 		const eventBus = createEventBus();
 		const resume = vi.fn().mockResolvedValue({

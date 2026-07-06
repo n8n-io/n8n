@@ -276,6 +276,7 @@ export function createPlanTool(context: OrchestrationContext) {
 			if (resumeData.approved) {
 				await context.plannedTaskService.approvePlan(context.threadId);
 				await context.schedulePlannedTasks();
+				context.requestRunHandoff?.('planned-tasks-scheduled');
 				trackPlanningRoute(context, input.tasks as PlannedTask[], {
 					route: input.planningContext?.source === 'replan' ? 'replan' : 'skill',
 					source: input.planningContext?.source,
