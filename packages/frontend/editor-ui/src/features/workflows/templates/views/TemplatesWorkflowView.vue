@@ -16,12 +16,7 @@ import { createWorkflowDocumentId } from '@/app/stores/workflowDocument.store';
 import TemplatesView from './TemplatesView.vue';
 import RecommendedTemplateCard from '../recommendations/components/RecommendedTemplateCard.vue';
 
-import {
-	N8nButton,
-	N8nInlineAskAssistantButton,
-	N8nMarkdown,
-	N8nText,
-} from '@n8n/design-system';
+import { N8nButton, N8nMarkdown, N8nText } from '@n8n/design-system';
 import type { IWorkflowTemplate } from '@n8n/rest-api-client';
 
 const externalHooks = useExternalHooks();
@@ -211,10 +206,14 @@ const previewDocumentId = computed(() =>
 										size="large"
 										@click.stop="openTemplateSetup(templateId, $event)"
 									/>
-									<N8nInlineAskAssistantButton
+									<N8nButton
 										v-if="!instanceAiSettings.isInstanceAiDisabled"
 										data-test-id="start-with-ai-button"
+										:class="$style.startWithAi"
 										:label="i18n.baseText('template.buttons.startWithAi')"
+										variant="subtle"
+										icon="sparkles"
+										size="large"
 										@click.stop="startWithAi"
 									/>
 								</div>
@@ -282,6 +281,17 @@ const previewDocumentId = computed(() =>
 	flex-wrap: wrap;
 	align-items: center;
 	gap: var(--spacing--xs);
+}
+
+// Assistant-tinted variant of the subtle button: purple sparkle + label and
+// border, matching the AI hand-off affordance while keeping the large size.
+.startWithAi {
+	--button--color: var(--assistant--color--highlight-2);
+	--button--border-color: var(--assistant--color--highlight-2);
+	--button--border-color--hover: var(--assistant--color--highlight-1);
+	--button--border-color--active: var(--assistant--color--highlight-1);
+	--button--color--background-hover: var(--assistant--button--color--background--hover);
+	--button--color--background-active: var(--assistant--button--color--background--active);
 }
 
 .templateCard {
