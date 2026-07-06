@@ -35,6 +35,10 @@ interface Props {
 const props = defineProps<Props>();
 
 const thread = useThread();
+// Every thread is created with a project and hydration populates thread.projectId,
+// so it's the reliable fallback when a setup confirmation carries no explicit projectId
+// (the tool's projectId input is LLM-optional).
+const threadProjectId = computed(() => thread.projectId);
 const i18n = useI18n();
 const rootStore = useRootStore();
 const telemetry = useTelemetry();
@@ -408,7 +412,7 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 					:class="$style.confirmation"
 					:request-id="chunk.item.toolCall.confirmation.requestId"
 					:setup-requests="chunk.item.toolCall.confirmation.setupRequests!"
-					:project-id="chunk.item.toolCall.confirmation.projectId"
+					:project-id="chunk.item.toolCall.confirmation.projectId ?? threadProjectId"
 					:credential-flow="chunk.item.toolCall.confirmation.credentialFlow"
 					:workflow-id="chunk.item.toolCall.confirmation.workflowId"
 				/>
@@ -421,7 +425,7 @@ function handlePlanDeny(conf: InstanceAiConfirmation, numTasks: number) {
 					:request-id="chunk.item.toolCall.confirmation.requestId"
 					:credential-requests="chunk.item.toolCall.confirmation.credentialRequests!"
 					:message="chunk.item.toolCall.confirmation.message"
-					:project-id="chunk.item.toolCall.confirmation.projectId"
+					:project-id="chunk.item.toolCall.confirmation.projectId ?? threadProjectId"
 					:credential-flow="chunk.item.toolCall.confirmation.credentialFlow"
 				/>
 
