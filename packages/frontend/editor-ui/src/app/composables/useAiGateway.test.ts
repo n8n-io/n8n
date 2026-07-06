@@ -146,4 +146,32 @@ describe('useAiGateway', () => {
 			expect(isNodePropertyHidden(managedNode, 'modelSource')).toBe(false);
 		});
 	});
+
+	describe('isActionOptionVisible()', () => {
+		const managedNode = {
+			type: 'n8n-nodes-base.browserbase',
+			parameters: {},
+			credentials: { browserbaseApi: { id: null, name: '', __aiGatewayManaged: true } },
+		} as unknown as INode;
+
+		it('should delegate to the store', async () => {
+			mockGetGatewayConfig.mockResolvedValue({
+				nodes: [],
+				credentialTypes: [],
+				providerConfig: {},
+				supportedActions: { 'n8n-nodes-base.browserbase': { session: ['create'] } },
+			});
+			const aiGatewayStore = useAiGatewayStore();
+			await aiGatewayStore.fetchConfig();
+
+			const { isActionOptionVisible } = useAiGateway();
+			expect(isActionOptionVisible(managedNode, 'resource', 'session')).toBe(true);
+			expect(isActionOptionVisible(managedNode, 'resource', 'other')).toBe(false);
+		});
+
+		it('should return true when no config is loaded', () => {
+			const { isActionOptionVisible } = useAiGateway();
+			expect(isActionOptionVisible(managedNode, 'resource', 'session')).toBe(true);
+		});
+	});
 });

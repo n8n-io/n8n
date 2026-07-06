@@ -1527,6 +1527,60 @@ describe('NodeCredentials', () => {
 			});
 		});
 
+		it('should auto-enable gateway credential on mount when the current action is supported', () => {
+			credentialsStore.state.credentials = {};
+			const nodeWithAction: INodeUi = {
+				...googleAiNode,
+				parameters: { resource: 'chat', operation: 'message' },
+			};
+			ndvStore.activeNode = nodeWithAction;
+
+			const { emitted } = renderComponent({
+				props: { node: nodeWithAction, overrideCredType: 'googlePalmApi' },
+				global: { stubs: { AiGatewaySelector: aiGatewayToggleStub } },
+			});
+
+			expect(emitted('credentialSelected')).toBeTruthy();
+			const payload = ((emitted('credentialSelected')[0] as unknown[]) ?? [])[0] as {
+				properties: { credentials: Record<string, unknown> };
+			};
+			expect(payload.properties.credentials['googlePalmApi']).toEqual({
+				id: null,
+				name: '',
+				__aiGatewayManaged: true,
+			});
+		});
+
+		it('should not auto-enable gateway credential on mount when the current action is unsupported', () => {
+			vi.mocked(useAiGateway).mockReturnValue({
+				isEnabled: computed(() => true),
+				isCredentialTypeSupported: vi.fn((credType: string) => credType === 'googlePalmApi'),
+				isNodeTypeVersionSupported: vi.fn(() => true),
+				isActionSupported: vi.fn(() => false),
+				isActionOptionVisible: vi.fn(() => true),
+				isNodePropertyHidden: vi.fn(() => false),
+				balance: computed(() => undefined),
+				budget: computed(() => undefined),
+				fetchConfig: vi.fn().mockResolvedValue(undefined),
+				fetchWallet: vi.fn().mockResolvedValue(undefined),
+				saveAfterToggle: vi.fn().mockResolvedValue(undefined),
+				fetchError: computed(() => null),
+			});
+			credentialsStore.state.credentials = {};
+			const nodeWithAction: INodeUi = {
+				...googleAiNode,
+				parameters: { resource: 'chat', operation: 'unsupportedOp' },
+			};
+			ndvStore.activeNode = nodeWithAction;
+
+			const { emitted } = renderComponent({
+				props: { node: nodeWithAction, overrideCredType: 'googlePalmApi' },
+				global: { stubs: { AiGatewaySelector: aiGatewayToggleStub } },
+			});
+
+			expect(emitted('credentialSelected')).toBeFalsy();
+		});
+
 		it('should emit credentialSelected restoring credentials when toggled OFF with available credentials', async () => {
 			const existingCred = {
 				id: 'cred-1',
