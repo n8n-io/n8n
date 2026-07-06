@@ -24,12 +24,15 @@ const sectionTitle = computed(
 	() => props.agentNode.subtitle ?? props.agentNode.role ?? 'Working...',
 );
 
-/** Most recent non-child timeline entry, shown as a peek while collapsed and active. */
+/**
+ * Most recent timeline entry that SubagentStepTimeline can render (text or
+ * tool call), shown as a peek while collapsed and active.
+ */
 const peekEntries = computed(() => {
 	const entries = props.agentNode.timeline;
 	for (let i = entries.length - 1; i >= 0; i--) {
 		const entry = entries[i];
-		if (entry.type !== 'child') return [entry];
+		if (entry.type === 'text' || entry.type === 'tool-call') return [entry];
 	}
 	return [];
 });
