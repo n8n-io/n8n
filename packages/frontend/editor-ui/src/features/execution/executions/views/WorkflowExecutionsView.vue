@@ -113,6 +113,7 @@ async function fetchExecution() {
 		executionsStore.activeExecution = currentExecution.value;
 	} catch (error) {
 		toast.showError(error, i18n.baseText('nodeView.showError.openExecution.title'));
+		return;
 	}
 
 	if (!currentExecution.value) {

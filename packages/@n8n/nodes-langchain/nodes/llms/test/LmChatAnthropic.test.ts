@@ -333,7 +333,12 @@ describe('LmChatAnthropic', () => {
 
 			await lmChatAnthropic.supplyData.call(mockContext, 0);
 
-			expect(mockedMakeN8nLlmFailedAttemptHandler).toHaveBeenCalledWith(mockContext, undefined);
+			// A handler is always passed, even without a gateway, since it also sanitizes the
+			// sampling-parameter deprecation error.
+			expect(mockedMakeN8nLlmFailedAttemptHandler).toHaveBeenCalledWith(
+				mockContext,
+				expect.any(Function),
+			);
 		});
 
 		it('should not add custom headers when header toggle is disabled', async () => {

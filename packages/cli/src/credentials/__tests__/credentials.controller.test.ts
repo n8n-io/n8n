@@ -677,6 +677,89 @@ describe('CredentialsController', () => {
 			expect(emittedEventNames).not.toContain('private-credential-toggled-to-private');
 		});
 
+		it('should delete user entries and emit "private-credential-connections-cleared" when a shared field changes on a private credential', async () => {
+			const ownerReq = {
+				user: { id: 'owner-id', role: GLOBAL_OWNER_ROLE },
+				params: { credentialId },
+				body: { data: { clientId: 'new-client-id' }, isResolvable: true },
+			} as unknown as CredentialRequest.Update;
+
+			const privateCredential = mock<CredentialsEntity>({
+				...existingCredential,
+				isResolvable: true,
+			});
+
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(privateCredential);
+			createEncryptedDataSpy.mockResolvedValue(getEncryptedCredential(true));
+			updateSpy.mockResolvedValue({ ...privateCredential, isResolvable: true });
+			const getChangedSharedFieldsSpy = vi
+				.spyOn(credentialsService, 'getChangedSharedFields')
+				.mockResolvedValue(['clientId']);
+
+			await credentialsController.updateCredentials(ownerReq);
+
+			expect(getChangedSharedFieldsSpy).toHaveBeenCalled();
+			expect(updateSpy).toHaveBeenCalledWith(credentialId, expect.any(Object), expect.any(Object), {
+				deleteUserEntries: true,
+			});
+			expect(emitSpy).toHaveBeenCalledWith('private-credential-connections-cleared', {
+				user: ownerReq.user,
+				credentialType: privateCredential.type,
+				credentialId: privateCredential.id,
+			});
+		});
+
+		it('should not delete user entries when no shared field changed on a private credential', async () => {
+			const ownerReq = {
+				user: { id: 'owner-id', role: GLOBAL_OWNER_ROLE },
+				params: { credentialId },
+				body: { data: { clientId: 'same' }, isResolvable: true },
+			} as unknown as CredentialRequest.Update;
+
+			const privateCredential = mock<CredentialsEntity>({
+				...existingCredential,
+				isResolvable: true,
+			});
+
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(privateCredential);
+			createEncryptedDataSpy.mockResolvedValue(getEncryptedCredential(true));
+			updateSpy.mockResolvedValue({ ...privateCredential, isResolvable: true });
+			vi.spyOn(credentialsService, 'getChangedSharedFields').mockResolvedValue([]);
+
+			await credentialsController.updateCredentials(ownerReq);
+
+			expect(updateSpy).toHaveBeenCalledWith(credentialId, expect.any(Object), expect.any(Object), {
+				deleteUserEntries: false,
+			});
+			const emittedEventNames = emitSpy.mock.calls.map((call) => call[0]);
+			expect(emittedEventNames).not.toContain('private-credential-connections-cleared');
+		});
+
+		it('should not check shared fields when toggling private to static (entries deleted by toggle)', async () => {
+			const ownerReq = {
+				user: { id: 'owner-id', role: GLOBAL_OWNER_ROLE },
+				params: { credentialId },
+				body: { data: { clientId: 'new-client-id' }, isResolvable: false },
+			} as unknown as CredentialRequest.Update;
+
+			const privateCredential = mock<CredentialsEntity>({
+				...existingCredential,
+				isResolvable: true,
+			});
+
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(privateCredential);
+			createEncryptedDataSpy.mockResolvedValue(getEncryptedCredential(false));
+			updateSpy.mockResolvedValue({ ...privateCredential, isResolvable: false });
+			const getChangedSharedFieldsSpy = vi.spyOn(credentialsService, 'getChangedSharedFields');
+
+			await credentialsController.updateCredentials(ownerReq);
+
+			expect(getChangedSharedFieldsSpy).not.toHaveBeenCalled();
+			expect(updateSpy).toHaveBeenCalledWith(credentialId, expect.any(Object), expect.any(Object), {
+				deleteUserEntries: true,
+			});
+		});
+
 		it('should not emit toggle events when resolvable state is unchanged', async () => {
 			const ownerReq = {
 				user: { id: 'owner-id', role: GLOBAL_OWNER_ROLE },
