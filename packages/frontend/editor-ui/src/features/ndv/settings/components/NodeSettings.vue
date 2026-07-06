@@ -520,22 +520,14 @@ const nodeSettings = computed(() =>
 );
 
 // The AI Agent node renders extra Parameters-tab surfaces (builder banner,
-// referenced-agent section, unified Advanced section) and trims the Settings
-// tab to a retained subset — all driven by the NDV container's provided
-// orchestrator. Guarded on the orchestrator being provided so NodeSettings
-// still works if ever mounted outside the NDV container.
+// referenced-agent section, unified Advanced section) — all driven by the NDV
+// container's provided orchestrator. Guarded on the orchestrator being
+// provided so NodeSettings still works if ever mounted outside the NDV
+// container.
 const ndvAgentConfig = inject(NdvAgentConfigKey, null);
 // v2-gated to match the canvas card: v1 nodes keep the raw NDV layout.
 const isAgentNode = computed(() => isAgentNodeV2(node.value));
 const showAgentNdvControls = computed(() => isAgentNode.value && ndvAgentConfig !== null);
-/** Node-execution settings kept for the agent node on the Settings tab. */
-const agentNodeRetainedSettings = computed(() =>
-	nodeSettings.value.filter((setting) =>
-		['notes', 'notesInFlow', 'retryOnFail', 'maxTries', 'waitBetweenTries', 'onError'].includes(
-			setting.name,
-		),
-	),
-);
 // The agent node's `advanced` collection is pulled out of the main parameter
 // list and rendered by `AgentNdvAdvancedSection` (a unified "Add option"
 // section combining it with agent-config settings) *below* the Agent section.
@@ -879,40 +871,26 @@ function handleSelectAction(params: INodeParameters) {
 					style="margin-top: var(--spacing--sm)"
 					source="node settings"
 				/>
-				<template v-if="showAgentNdvControls">
-					<ParameterInputList
-						:parameters="agentNodeRetainedSettings"
-						:hide-delete="true"
-						:node-values="nodeValues"
-						:is-read-only="isReadOnly"
-						:hidden-issues-inputs="hiddenIssuesInputs"
-						path=""
-						@value-changed="valueChanged"
-						@parameter-blur="onParameterBlur"
-					/>
-				</template>
-				<template v-else>
-					<ParameterInputList
-						:parameters="parametersByTab.settings"
-						:node-values="nodeValues"
-						:is-read-only="isReadOnly"
-						:hide-delete="true"
-						:hidden-issues-inputs="hiddenIssuesInputs"
-						path="parameters"
-						@value-changed="valueChanged"
-						@parameter-blur="onParameterBlur"
-					/>
-					<ParameterInputList
-						:parameters="nodeSettings"
-						:hide-delete="true"
-						:node-values="nodeValues"
-						:is-read-only="isReadOnly"
-						:hidden-issues-inputs="hiddenIssuesInputs"
-						path=""
-						@value-changed="valueChanged"
-						@parameter-blur="onParameterBlur"
-					/>
-				</template>
+				<ParameterInputList
+					:parameters="parametersByTab.settings"
+					:node-values="nodeValues"
+					:is-read-only="isReadOnly"
+					:hide-delete="true"
+					:hidden-issues-inputs="hiddenIssuesInputs"
+					path="parameters"
+					@value-changed="valueChanged"
+					@parameter-blur="onParameterBlur"
+				/>
+				<ParameterInputList
+					:parameters="nodeSettings"
+					:hide-delete="true"
+					:node-values="nodeValues"
+					:is-read-only="isReadOnly"
+					:hidden-issues-inputs="hiddenIssuesInputs"
+					path=""
+					@value-changed="valueChanged"
+					@parameter-blur="onParameterBlur"
+				/>
 				<div class="node-version" data-test-id="node-version">
 					{{
 						i18n.baseText('nodeSettings.nodeVersion', {
