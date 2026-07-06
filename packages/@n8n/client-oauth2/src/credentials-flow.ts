@@ -11,6 +11,7 @@ interface CredentialsFlowBody {
 	client_secret?: string;
 	grant_type: 'client_credentials';
 	scope?: string;
+	resource?: string;
 	client_assertion_type?: string;
 	client_assertion?: string;
 }
@@ -34,6 +35,7 @@ export class CredentialsFlow {
 		const body: CredentialsFlowBody = {
 			grant_type: 'client_credentials',
 			...(options.additionalBodyProperties ?? {}),
+			...(options.resource ? { resource: options.resource } : {}),
 		};
 
 		if (options.scopes !== undefined) {
