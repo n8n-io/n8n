@@ -409,6 +409,34 @@ function findServerForItem(item: McpServerConnectionItem): McpRegistryServerResp
 	return mcpStore.catalog?.find((s) => s.slug === slug);
 }
 
+function trackMcpCredentialInteraction(
+	item: ToolConnectionItem,
+	track: (serverSlug: string) => void,
+): void {
+	if (item.kind !== 'mcp-server') return;
+	const server = findServerForItem(item);
+	if (!server) return;
+	track(server.slug);
+}
+
+function handleFirstCredentialConnect(item: ToolConnectionItem): void {
+	trackMcpCredentialInteraction(item, (serverSlug) => {
+		mcpTelemetry.trackFirstCredentialConnectionStart(serverSlug);
+	});
+}
+
+function handleCredentialDropdownOpen(item: ToolConnectionItem): void {
+	trackMcpCredentialInteraction(item, (serverSlug) => {
+		mcpTelemetry.trackCredentialDropdownOpened(serverSlug);
+	});
+}
+
+function handleNewCredentialConnect(item: ToolConnectionItem): void {
+	trackMcpCredentialInteraction(item, (serverSlug) => {
+		mcpTelemetry.trackNewCredentialConnectionStart(serverSlug);
+	});
+}
+
 async function handleSelectCredential(
 	item: ToolConnectionItem,
 	_authType: string,
@@ -417,6 +445,7 @@ async function handleSelectCredential(
 	if (item.kind !== 'mcp-server') return;
 	const server = findServerForItem(item);
 	if (!server) return;
+	mcpTelemetry.trackExistingCredentialSelected(server.slug);
 	const ok = await connectOrSwapCredential(server.slug, credentialId);
 	if (ok) showSettingsForServer(server.slug);
 }
@@ -467,6 +496,9 @@ async function handleConnect(item: ToolConnectionItem) {
 		:hide-back-button="shouldHideBackButton"
 		@update:detail-item="(item) => (activeItemId = item?.id ?? null)"
 		@select-credential="handleSelectCredential"
+		@credential-dropdown-open="handleCredentialDropdownOpen"
+		@first-credential-connect="handleFirstCredentialConnect"
+		@new-credential-connect="handleNewCredentialConnect"
 		@connect="handleConnect"
 		@save="handleSave"
 		@disconnect="handleDisconnect"
