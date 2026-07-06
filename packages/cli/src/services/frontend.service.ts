@@ -750,6 +750,18 @@ export class FrontendService {
 				overwrittenProperties.push(...Object.keys(credentialsOverwrites[credential.name]));
 			}
 
+			// In managed OAuth mode Cloud supplies the auth material, so the cert-auth
+			// selector and cert fields aren't user-influenceable and must be hidden even
+			// if the overwrite payload doesn't list them (guards against stale/incomplete
+			// Cloud config and self-hosted CREDENTIALS_OVERWRITE_DATA set by hand).
+			const isMicrosoftOAuth2Credential =
+				credential.name === 'microsoftOAuth2Api' ||
+				this.credentialTypes.getParentTypes(credential.name).includes('microsoftOAuth2Api');
+			if (isMicrosoftOAuth2Credential && overwrittenProperties.includes('clientSecret')) {
+				// do we need to push  this?
+				// overwrittenProperties.push('clientCredentialType', 'privateKey', 'certificate');
+			}
+
 			if (overwrittenProperties.length) {
 				credential.__overwrittenProperties = uniq(overwrittenProperties);
 			}
