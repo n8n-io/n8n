@@ -4,6 +4,7 @@ import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig } from '@n8n/config';
 import { ExecutionRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
+import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { ExecutionLifecycleHooks } from 'n8n-core';
 import {
 	ErrorReporter,
@@ -14,7 +15,6 @@ import {
 } from 'n8n-core';
 import type {
 	ExecutionError,
-	IDeferredPromise,
 	IExecuteResponsePromiseData,
 	INode,
 	IPinData,

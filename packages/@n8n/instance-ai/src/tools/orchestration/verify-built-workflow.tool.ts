@@ -111,14 +111,11 @@ type VerifyInput = z.infer<typeof verifyBuiltWorkflowInputSchema>;
 export function createVerifyBuiltWorkflowTool(context: OrchestrationContext) {
 	return new Tool('verify-built-workflow')
 		.description(
-			'Run a built workflow using sidecar verification context from the build outcome. ' +
-				'Call when the current turn is responsible for post-build verification. ' +
-				'Use this as the standard verifier for workflows produced by the workflow-builder. ' +
-				'It supports manual, schedule, form, webhook, chat, and other event triggers with build-outcome pin data, mocked credential context, or trigger-shaped inputData. ' +
+			'Standard post-build verifier: runs a built workflow with sidecar verification context from the build outcome ' +
+				'(pin data, mocked credentials, trigger-shaped inputData; all trigger types supported). ' +
 				'Use `executions(action="run")` only for ad hoc runs outside build verification. ' +
-				'CRITICAL: `inputData` shape depends on the trigger type; see the per-trigger guidance on the inputData field. ' +
-				'Passing the wrong shape (e.g. wrapping form fields under `formFields`) produces null downstream values that ' +
-				'look like an expression bug but are not. Do not patch the workflow; re-run verify with the correct shape.',
+				'CRITICAL: `inputData` shape depends on the trigger type (see the field description) — a wrong shape produces ' +
+				'null downstream values that look like an expression bug; re-run verify with the correct shape instead of patching the workflow.',
 		)
 		.input(verifyBuiltWorkflowInputSchema)
 		.output(verifyBuiltWorkflowOutputSchema)

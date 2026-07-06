@@ -66,31 +66,30 @@
 			}
 		},
 		"status": 200,
-		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_01EV1WxYcL3XmNm3HngWE3fe\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_013ofnQ1PtshoW76MM6pTcrm\",\"name\":\"load_skill\",\"input\":{\"skillId\":\"summary-marker\"},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1079,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":57,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_017Ydh5amLQEJMZi2SL2BFZp\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_01L1gQY84Qqkbb2Vj91eQHay\",\"name\":\"load_skill\",\"input\":{\"skillId\":\"summary-marker\"},\"caller\":{\"type\":\"direct\"}}],\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1079,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":57,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "10000000",
 			"anthropic-ratelimit-input-tokens-remaining": "10000000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-06-23T12:19:44Z",
+			"anthropic-ratelimit-input-tokens-reset": "2026-07-06T08:44:58Z",
 			"anthropic-ratelimit-output-tokens-limit": "2000000",
 			"anthropic-ratelimit-output-tokens-remaining": "2000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-06-23T12:19:44Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-07-06T08:44:58Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-06-23T12:19:40Z",
+			"anthropic-ratelimit-requests-reset": "2026-07-06T08:44:57Z",
 			"anthropic-ratelimit-tokens-limit": "12000000",
 			"anthropic-ratelimit-tokens-remaining": "12000000",
-			"anthropic-ratelimit-tokens-reset": "2026-06-23T12:19:44Z",
+			"anthropic-ratelimit-tokens-reset": "2026-07-06T08:44:58Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a103713e3c675bb4-VIE",
+			"cf-ray": "a16d549adc3e589a-BCN",
 			"connection": "keep-alive",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Tue, 23 Jun 2026 12:19:44 GMT",
-			"request-id": "req_011CcLBPzkD5E3t3iyGQ8ft7",
+			"date": "Mon, 06 Jul 2026 08:44:58 GMT",
+			"request-id": "req_011CckWYH41USJ75EenpGCQY",
 			"server": "cloudflare",
-			"set-cookie": "_cfuvid=42u2meAPHYJSi6GddXWuucK.AgbGItQ.pKT_pRTbOfk-1782217179.8723311-1.0.1.1-hRqI4wyvPRnHA_9X9NNwlm4YkKVjYkYNPWA3KnugyY8; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-eeb800dfc39278592e36772d6988802e-e760ff2186d2464f-01",
+			"traceresponse": "00-97b48f09aca0aecc15e1ed8c9fe8651d-dd31bf983e86dc71-01",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
 		},
@@ -124,7 +123,7 @@
 					"content": [
 						{
 							"type": "tool_use",
-							"id": "toolu_013ofnQ1PtshoW76MM6pTcrm",
+							"id": "toolu_01L1gQY84Qqkbb2Vj91eQHay",
 							"name": "load_skill",
 							"input": {
 								"skillId": "summary-marker"
@@ -140,8 +139,13 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_013ofnQ1PtshoW76MM6pTcrm",
-							"content": "{\"ok\":true,\"success\":true,\"skillId\":\"summary-marker\",\"name\":\"Summary marker\",\"description\":\"Use for summarizing notes, updates, or short text while preserving a marker.\",\"path\":null,\"skillDir\":null,\"hash\":\"e3433b77c9e3\",\"category\":\"productivity\",\"content\":\"Every final answer after loading this skill must include the exact marker SKILL_MARKER_ALPHA. For summaries, be concise and keep the marker unchanged.\",\"instructions\":\"Every final answer after loading this skill must include the exact marker SKILL_MARKER_ALPHA. For summaries, be concise and keep the marker unchanged.\",\"activation\":\"[Skill: \\\"Summary marker\\\"]\\n[Skill category: \\\"productivity\\\"]\\n[Skill hash: \\\"e3433b77c9e3\\\"]\",\"linkedFiles\":{\"references\":[],\"templates\":[],\"scripts\":[],\"assets\":[],\"examples\":[],\"other\":[]}}"
+							"tool_use_id": "toolu_01L1gQY84Qqkbb2Vj91eQHay",
+							"content": [
+								{
+									"type": "text",
+									"text": "[Skill: \"Summary marker\"]\n[Skill category: \"productivity\"]\n[Skill hash: \"e3433b77c9e3\"]\n\nEvery final answer after loading this skill must include the exact marker SKILL_MARKER_ALPHA. For summaries, be concise and keep the marker unchanged."
+								}
+							]
 						}
 					]
 				}
@@ -189,31 +193,30 @@
 			}
 		},
 		"status": 200,
-		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_016oDjZop9CrU4dTg3iz5Xe5\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Now I'll summarize your text following the skill's instructions:\\n\\n**Summary:**\\nn8n agents maintain efficient workflow context by keeping it compact, reducing overhead and improving performance.\\n\\nSKILL_MARKER_ALPHA\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1356,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":49,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
+		"response": "{\"model\":\"claude-haiku-4-5-20251001\",\"id\":\"msg_01MLCY35L5o8Yag5erP4BPCM\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"**Summary:**\\n\\nn8n agents maintain workflow context efficiently by keeping it compact. This allows for streamlined execution and better memory management within automation workflows, reducing overhead while preserving essential information needed for agent operations.\\n\\nSKILL_MARKER_ALPHA\"}],\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1215,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":55,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"}}",
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "10000000",
 			"anthropic-ratelimit-input-tokens-remaining": "9999000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-06-23T12:19:45Z",
+			"anthropic-ratelimit-input-tokens-reset": "2026-07-06T08:44:59Z",
 			"anthropic-ratelimit-output-tokens-limit": "2000000",
 			"anthropic-ratelimit-output-tokens-remaining": "2000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-06-23T12:19:45Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-07-06T08:45:00Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-06-23T12:19:44Z",
+			"anthropic-ratelimit-requests-reset": "2026-07-06T08:44:58Z",
 			"anthropic-ratelimit-tokens-limit": "12000000",
 			"anthropic-ratelimit-tokens-remaining": "11999000",
-			"anthropic-ratelimit-tokens-reset": "2026-06-23T12:19:45Z",
+			"anthropic-ratelimit-tokens-reset": "2026-07-06T08:44:59Z",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a103715a8fee5bb4-VIE",
+			"cf-ray": "a16d54a14884589a-BCN",
 			"connection": "keep-alive",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "application/json",
-			"date": "Tue, 23 Jun 2026 12:19:46 GMT",
-			"request-id": "req_011CcLBQLVc7xQqrabPHKkba",
+			"date": "Mon, 06 Jul 2026 08:45:00 GMT",
+			"request-id": "req_011CckWYMTgCwuyKTBSpSK89",
 			"server": "cloudflare",
-			"set-cookie": "_cfuvid=VUtw2ULAnfQeviA87ZWqingq7PMylfdlwdZIXnPKEyg-1782217184.4036007-1.0.1.1-A6mtIqqm1S6if3fRfj2FccXVGA9frfP7Qmd4mhbfCrk; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-40a078316e3b54524a9c961d3eca2019-9a7dcd3d8ac7bb2a-01",
+			"traceresponse": "00-2c3af9579d58ddd9db43455722b54b60-d02bea40ae7237b6-01",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
 		},

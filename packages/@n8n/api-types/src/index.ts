@@ -412,6 +412,8 @@ export type {
 	InstanceAiModelCredential,
 	InstanceAiSandboxProvider,
 	InstanceAiMcpConnectionResponse,
+	InstanceAiMcpConnectionToolFilterResponse,
+	InstanceAiMcpConnectionToolResponse,
 	InstanceAiPermissionMode,
 	InstanceAiPermissions,
 	InstanceAiTargetResource,
@@ -456,6 +458,8 @@ export {
 	findAgent,
 	toAgentTree,
 	stateFromAgentTree,
+	normalizeLegacyReasoningTimeline,
+	normalizeAgentTree,
 } from './schemas/agent-run-reducer';
 
 export type { AgentRunState } from './schemas/agent-run-reducer';

@@ -14,6 +14,7 @@ interface SystemPromptOptions {
 	formBaseUrl?: string;
 	localGateway?: LocalGatewayStatus;
 	toolSearchEnabled?: boolean;
+	mcpToolSearchEnabled?: boolean;
 	/** Human-readable hints about licensed features that are NOT available on this instance. */
 	licenseHints?: string[];
 	browserAvailable?: boolean;
@@ -110,6 +111,7 @@ export function getSystemPrompt(options: SystemPromptOptions = {}): string {
 		formBaseUrl,
 		localGateway,
 		toolSearchEnabled,
+		mcpToolSearchEnabled,
 		licenseHints,
 		browserAvailable,
 		branchReadOnly,
@@ -126,7 +128,7 @@ ${getProjectScopeSection(projectId)}
 
 Match the user's request against skill descriptions in the catalog. Call \`load_skill\` before acting on a matched skill's guidance — never call \`data-tables\` or \`parse-file\` without loading \`data-table-manager\` first, and never call \`build-workflow\` without loading \`workflow-builder\` first. A single turn may need more than one skill when routing requires it (e.g. \`data-table-manager\` then \`workflow-builder\`).
 
-- **Single workflow build or edit** (new workflow, add/remove/rewire nodes, expression/credential/schedule/Code fixes, including workflows that create or write to Data Tables) → \`data-table-manager\` when tables are involved, then \`workflow-builder\` → workspace file tools → \`build-workflow\`. If the service or workflow shape is clear, never stop before the first \`build-workflow\` call to ask for setup values like recipients, accounts, resources, credentials, channel IDs, or timezone; use placeholders or unresolved \`newCredential()\` calls. After every successful direct \`build-workflow\` result, if the tool output contains \`postBuildFlow.required: true\`, load \`post-build-flow\` exactly once and follow it before verification, setup, error-workflow follow-up, publishing, testing, or any final user-visible summary. Do not create a plan just for verification. When the edit is to fix a node the user reports as erroring or showing a red expression error, inspect it first via \`debugging-executions\` (run the workflow, read the failing node's real error and resolved parameters) before editing anything — never guess at the cause or change the node on a hunch.
+- **Single workflow build or edit** (new workflow, add/remove/rewire nodes, expression/credential/schedule/Code fixes, including workflows that create or write to Data Tables) → \`data-table-manager\` when tables are involved, then \`workflow-builder\` → \`build-workflow\` (pass the source as \`sourceCode\`). When the needed node types are already obvious from the request, batch \`nodes(action="type-definition")\` — object form with resource/operation or mode discriminators — together with the \`load_skill\` call in your first action turn (each extra sequential turn resends the whole context); when unsure which nodes to use, load the skill first and follow its research process. If the service or workflow shape is clear, never stop before the first \`build-workflow\` call to ask for setup values like recipients, accounts, resources, credentials, channel IDs, or timezone; use placeholders or unresolved \`newCredential()\` calls. After every successful direct \`build-workflow\` result, if the tool output contains \`postBuildFlow.required: true\`, follow the inlined \`postBuildFlow.instructions\` (do not load \`post-build-flow\` separately) before verification, setup, error-workflow follow-up, publishing, testing, or any final user-visible summary. Do not create a plan just for verification. When the edit is to fix a node the user reports as erroring or showing a red expression error, inspect it first via \`debugging-executions\` (run the workflow, read the failing node's real error and resolved parameters) before editing anything — never guess at the cause or change the node on a hunch.
 - **Multi-workflow or coordinated architecture** (dependencies between workflows, shared data-table schema/migration, multiple durable artifacts, broad research, ambiguous business process, user asks to review a plan) → \`data-table-manager\` first when shared tables are involved → \`planning\` → \`create-tasks\` with \`planningContext.source: "planning-skill"\`.
 - **Non-build workflow ops** (rename, toggle active, duplicate, move, describe, list executions, publish, delete) → direct \`workflows\` / \`executions\` tools. Do not run the builder.
 - **Standalone data-table work** (list, schema, query, create, import, mutate rows/columns without building a workflow) → \`data-table-manager\` → \`data-tables\` / \`parse-file\`. Natural requests like "what data tables do I have?", "show/list my tables", and "what columns are in this table?" count as standalone data-table work. Do not call \`create-tasks\` or \`delegate\`.
@@ -163,11 +165,17 @@ ${
 	toolSearchEnabled
 		? `## Tool Discovery
 
-You have additional tools available beyond the ones listed above — including credential management, workflow operations, node browsing, data tables, filesystem access, and external MCP integrations.
+You have additional tools available beyond the ones listed above — including credential management, workflow operations, node browsing, data tables, filesystem access${mcpToolSearchEnabled ? ', and connected MCP integrations' : ''}.
 
-When you need a capability not covered by your current tools, use \`search_tools\` with keyword queries to find relevant tools, then \`load_tool\` to activate them. Loaded tools persist for the rest of the conversation.
+${
+	mcpToolSearchEnabled
+		? `For requests involving a connected service or MCP integration, call \`search_tools\` with the service name and task keywords before saying the integration is unavailable or asking the user to connect it.
 
-Examples: search "credential" for the credentials tool, search "file" for filesystem tools, search "workflow" for workflow management.
+`
+		: ''
+}When the visible tools do not cover the user's request, use \`search_tools\` with keyword queries to find relevant tools, then \`load_tool\` to activate them. Loaded tools persist for the rest of the conversation.
+
+Examples: ${mcpToolSearchEnabled ? 'search "notion page" or "linear issue" for the corresponding MCP tool, ' : ''}search "credential" for the credentials tool, search "file" for filesystem tools, search "workflow" for workflow management.
 
 `
 		: ''

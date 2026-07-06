@@ -719,6 +719,10 @@ export class AgentRuntime {
 			sink.onTurnFolded?.();
 
 			if (turn.aiFinishReason !== 'tool-calls') {
+				// A rejected/filtered request (e.g. a provider prompt safety block)
+				// surfaces as an output-less turn instead of an SDK error — throw so
+				// the failure reaches the caller rather than ending the run silently.
+				if (turn.errorReason) throw new Error(turn.errorReason.message);
 				structuredOutput = turn.structuredOutput;
 				this.emitTurnEnd(turn.newMessages, extractSettledToolCalls(turn.newMessages));
 				reachedStopCondition = true;

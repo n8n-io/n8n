@@ -7,4 +7,6 @@ export {
 	ScheduledJobKindList,
 	ScheduledTaskStatus,
 	ScheduledTaskStatusList,
+	type TerminalTaskStatus,
+	TerminalTaskStatusList,
 } from '@n8n/db';

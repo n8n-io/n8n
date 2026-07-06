@@ -36,8 +36,7 @@
 							}
 						},
 						"required": ["message"]
-					},
-					"eager_input_streaming": true
+					}
 				},
 				{
 					"name": "tools_add",
@@ -55,8 +54,7 @@
 							}
 						},
 						"required": ["a", "b"]
-					},
-					"eager_input_streaming": true
+					}
 				},
 				{
 					"name": "tools_image",
@@ -70,8 +68,7 @@
 							}
 						},
 						"required": ["caption"]
-					},
-					"eager_input_streaming": true
+					}
 				}
 			],
 			"tool_choice": {
@@ -81,34 +78,33 @@
 		},
 		"status": 200,
 		"response": [
-			"1f8b0800000000000013c5544d6fdb300cbde757183c3b80dd2518a05b0eeb2ec180a1ed65cb20b016136b96254f92933681fffba0384eec7c74bd6cf34def5122df234d5a93f62c2ac9395c11771ead1f09f4c8a21df8d78a80c18084b83b03db41690429609029ac058d7394453d9e8ca7e3bbe46e9a26490a314811de702b9ea40f28bf3d7dde7c9dbd7cf934797d2c26f3d9fd7a06f1592688c11a1500744e3a8f3aa4cd8cf6a43db0ef3f6270de54dc123aa381e95aa903e4e8574d3aa30128c8a354aec3eaae7aa9abda736f0ad20ed8c70f490c196639f1cc127a69341f461c794b286e71dddd9080aa9c4ab2a8f8b4bc8c3fb1697ece363198daf7a1e9340647762d33e25e920506c11981560493f5926c10ce57648081369ee31aa5c26745d03451ff6b46236afb7ef0943f2b9315d7bb7f25649f4fd04babbacf07d1877bde18c56b47dd048473cd93746e8d7bbc9fcdcd43feb4915bda8ae576b284183496dd3dc729cbcd3e4d557b60bb26b8ab54507d4c20a4a5cc9fb49d545552afce64441040b8a55c90f2f8b6f27dc840798b9c0a6a5bf8d3197d0caed07a896a0f020368ded1857f54cb6ed1fd6e0b60d1029cb78465b431b6706d9dffb9c005343dbf6ecfaca9fe34b2a6ea9572f65ab7dcae8a1a90d01331583ffd517fe7126afede16ba581bcda5d86ba6f539682dfa0d015e93a31d060000"
+			"1f8b0800000000000013c555c16edb300cbdf72b0c9e1d20ee6204d371e8a1188662e8d06dd832088ac525aa65c993a8ac5de07f1f14c7899da44b2f6b7d131f25be4782cfb842432ca9d07bb140ee4938ba9082044bd6408f3502830108697706b686ca4ad4c0a0d022481c2d852ac36832ca4797e3cb3c1b8f334841c9f8865ff071f6e9d1becf27349f56b75fe84379fbd1dd5c4f6e203da8042938ab634078af3c0913cb16d6101a02f6fd470a9e6ccd1d0a6f0d3013b4de863cfe0a680a1c04259250da77b1d0b157a60ec4c996683cb0e99b710a852896c80b878294357c98b1c31d0af914d6dd8d05b05e62854e689e57c7f97b345b1ea24d0a36503f94e72978742b552027850e18c4ce48e1646cb2f9892e0ae70bb4c0c058e262259416738dd03449fb351717d84e7cdb4d3ed7b6284fcffd44caa692c487566f1f8f72b7f7c85acd83c76ef6f11cf8387b5b863f5fefefe4c337fb2ecba6d7365c7dbe9b430a4654dd3dcfb158da4d993a10b07513fbaa75d4bb2b2095c38276aaf6a26a6516072a128841784ab8444de2dfc2372903e16d64cfa79dddbdb766975c0b474ae84d1018403780e4cc205e88cf7ad6eeda90d72b935ae00c5832034f0e5b62af4c4854099cdb9c17a2f2dbbad2cfa079dec0a2eb9ddb665bf7281dbcd639fe497103107a62069edc7781673a73f3ffacf9c84b8fac63ff933b6e5d1f83c335fe0bbf3ec10742070000"
 		],
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "10000000",
 			"anthropic-ratelimit-input-tokens-remaining": "10000000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-06-23T12:20:19Z",
+			"anthropic-ratelimit-input-tokens-reset": "2026-07-03T09:47:50Z",
 			"anthropic-ratelimit-output-tokens-limit": "2000000",
 			"anthropic-ratelimit-output-tokens-remaining": "2000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-06-23T12:20:19Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-07-03T09:47:50Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-06-23T12:20:19Z",
+			"anthropic-ratelimit-requests-reset": "2026-07-03T09:47:50Z",
 			"anthropic-ratelimit-tokens-limit": "12000000",
 			"anthropic-ratelimit-tokens-remaining": "12000000",
-			"anthropic-ratelimit-tokens-reset": "2026-06-23T12:20:19Z",
+			"anthropic-ratelimit-tokens-reset": "2026-07-03T09:47:50Z",
 			"cache-control": "no-cache",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a10372334c10e1a5-VIE",
+			"cf-ray": "a154f894efab5b7f-VIE",
 			"connection": "keep-alive",
 			"content-encoding": "gzip",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "text/event-stream; charset=utf-8",
-			"date": "Tue, 23 Jun 2026 12:20:20 GMT",
-			"request-id": "req_011CcLBStL5YdJaqtztxZoyw",
+			"date": "Fri, 03 Jul 2026 09:47:50 GMT",
+			"request-id": "req_011CceuucrNfy7unm5P1vJHR",
 			"server": "cloudflare",
-			"set-cookie": "_cfuvid=Vfd.kosemp12j9139Yc7MNZyT.l1WYvOhFC.YW2_V5o-1782217219.081803-1.0.1.1-ydnd4vd6DMJRbBLsDRSTvv6Q6IZ5sHVldTNZMEcnAGU; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-d5e44e37a05d61c08ec3dc42521c1b59-5520c9cfa58ee352-01",
+			"traceresponse": "00-7aa5fb32047c72aed445618512126990-6d44a8d308b32a4e-01",
 			"transfer-encoding": "chunked",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
@@ -143,7 +139,7 @@
 					"content": [
 						{
 							"type": "tool_use",
-							"id": "toolu_01LrosTFALoShUwizezdfz4f",
+							"id": "toolu_019kuzXjUdxZoB117HouDVUb",
 							"name": "tools_echo",
 							"input": {
 								"message": "stream works"
@@ -159,7 +155,7 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_01LrosTFALoShUwizezdfz4f",
+							"tool_use_id": "toolu_019kuzXjUdxZoB117HouDVUb",
 							"content": "{\"content\":[{\"type\":\"text\",\"text\":\"stream works\"}]}"
 						}
 					]
@@ -178,8 +174,7 @@
 							}
 						},
 						"required": ["message"]
-					},
-					"eager_input_streaming": true
+					}
 				},
 				{
 					"name": "tools_add",
@@ -197,8 +192,7 @@
 							}
 						},
 						"required": ["a", "b"]
-					},
-					"eager_input_streaming": true
+					}
 				},
 				{
 					"name": "tools_image",
@@ -212,8 +206,7 @@
 							}
 						},
 						"required": ["caption"]
-					},
-					"eager_input_streaming": true
+					}
 				}
 			],
 			"tool_choice": {
@@ -223,34 +216,33 @@
 		},
 		"status": 200,
 		"response": [
-			"1f8b0800000000000013b554c16e9c3010bdef57b873662b580535f2b5497beaa152a54a6d2a6bd69e2e0863137bd8a68af8f78adda501026d2ee18278efd9f3de8c063a9263296a8a110fa42263e08d4146291e817f370412262424c337c847a8bd210b12b4c5d6d0b6c0b26ab757db7cbb4b777996a61924509afe8e785069f6e13ebbbdcaf5b5c9cde7e2ebc79b4fef390bdf209955820482b73d80319691d1f565b5774c8e417eff914064dfa84018bd03e95a6b2f50a4fb969ca6096888b1b471c0dac17de99a9615fb8a5c04799ded12d0a80b523a1072e99d9a2ad2810f84668d1bcef605a829a8a68056e5f573fd139b1573b64bc0b73c86b204228563a94971490124f48d31184cdf63f793429f5b1dc88304e759e1114b8b7b4bd07562fa749b0d9d077f69aada5bafabe5f12f484e150d3d9c638ff93ef5e51cd3432f3cbd2440b766a129dd615653400fc29a4d4396f1df364f9289cd3332b5f757763179e31dcd8dae36ebd55cbc115f0a1a5652dc41e440588b5f3e54f10e448151ec899c205d7832628fba7afbe47a7db6bef9df687d33323bbd6cf8092ca69e90304a395953206714b7c1c18b97b57bbd6d9dafd7bb6e39f052dfc61c9c0efd01e5092beb48050000"
+			"1f8b0800000000000013bd53c16ed43010bdef5798396751b2622bf0ad52c505c109540145d6ac3d4dac75ec603b6151957f47de4dda24ddb65ce064f9bdb1df9b193deac846ce6a0a014b1221a28f2b851139bb83f8bb21e03023211befc0efa0768a0c7090065b45eb0af5be5dbf596fd79b7cb32df2bc800cb44a7f8452e4c5a5ee3ebebbfe70f1bed4d7874f5f6fbf74e595fc06d9420932f0ce240043d021a24db2d2d9483602fffe2383105d233c617016b86d8d19a0403f5bb29266a0a288da84116b47f7da366d14d1edc906e06f8b4d06126545427ac2a89d15f38a7ce43da17a8a1bdf26016a2aaac9a311dbfa71fd035b544bb6cfc0b5710a151904f29d9624a2260f1cd260147a95666c6fc9a7be45490e3858170576a80dee0c41df33c6fad58a4ecb1e062976c6c9fdf9959f2939aa283a9c5a9df2a9d3e15da4432a3c1e1c20e94e951b6dcb85148304c253ee149988cfbb3b96ccdc9d90b9abfbb2c1db95b334f8630b97ffc9c12bf6b9a23179ec0642f48435fbe5fc3edc00ab30b01d9165242b47eaf5ccecb3fb74cd4beb74cdc4edc34763d0cfb63c2361d2e22c8a405689d87a0b7f1dc8fedf257219a18bfe71b3e7e635e56018f61f8af44cab2a050000"
 		],
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "10000000",
 			"anthropic-ratelimit-input-tokens-remaining": "10000000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-06-23T12:20:20Z",
+			"anthropic-ratelimit-input-tokens-reset": "2026-07-03T09:47:51Z",
 			"anthropic-ratelimit-output-tokens-limit": "2000000",
 			"anthropic-ratelimit-output-tokens-remaining": "2000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-06-23T12:20:20Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-07-03T09:47:51Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-06-23T12:20:20Z",
+			"anthropic-ratelimit-requests-reset": "2026-07-03T09:47:51Z",
 			"anthropic-ratelimit-tokens-limit": "12000000",
 			"anthropic-ratelimit-tokens-remaining": "12000000",
-			"anthropic-ratelimit-tokens-reset": "2026-06-23T12:20:20Z",
+			"anthropic-ratelimit-tokens-reset": "2026-07-03T09:47:51Z",
 			"cache-control": "no-cache",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a1037239ee0ee1a5-VIE",
+			"cf-ray": "a154f89afde25b7f-VIE",
 			"connection": "keep-alive",
 			"content-encoding": "gzip",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "text/event-stream; charset=utf-8",
-			"date": "Tue, 23 Jun 2026 12:20:20 GMT",
-			"request-id": "req_011CcLBSxtRcv2Tjaf9MFC4a",
+			"date": "Fri, 03 Jul 2026 09:47:51 GMT",
+			"request-id": "req_011CceuugxBSUkesaxXet6Ek",
 			"server": "cloudflare",
-			"set-cookie": "_cfuvid=cVYe_b5h6cA2yOYBiqcUKSlVlDLUmHqGspm.qxyL3XA-1782217220.1435325-1.0.1.1-JUwgTJdSsY4neUtys3vn3w195CI5eWoLp8tXQeMBABs; HttpOnly; SameSite=None; Secure; Path=/; Domain=api.anthropic.com",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-45a7a35f6dbab707983f5c1d138098e4-5343b75f1de4e26e-01",
+			"traceresponse": "00-3232a98dd18bcaec92a85712c544eed3-cf7a0a9bb8c58e62-01",
 			"transfer-encoding": "chunked",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"

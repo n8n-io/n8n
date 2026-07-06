@@ -903,6 +903,7 @@ export interface InstanceAiToolCallState {
 
 export type InstanceAiTimelineEntry =
 	| { type: 'text'; content: string; responseId?: string }
+	| { type: 'reasoning'; content: string; responseId?: string }
 	| { type: 'tool-call'; toolCallId: string; responseId?: string }
 	| { type: 'child'; agentId: string; responseId?: string };
 
@@ -926,10 +927,14 @@ export interface InstanceAiAgentNode {
 	statusMessage?: string;
 	status: InstanceAiAgentStatus;
 	textContent: string;
+	/**
+	 * Full concatenated reasoning across the run. Kept as an aggregate for
+	 * previews and old snapshots — per-stage reasoning lives in `timeline`.
+	 */
 	reasoning: string;
 	toolCalls: InstanceAiToolCallState[];
 	children: InstanceAiAgentNode[];
-	/** Chronological ordering of text segments, tool calls, and sub-agents. */
+	/** Chronological ordering of text/reasoning segments, tool calls, and sub-agents. */
 	timeline: InstanceAiTimelineEntry[];
 	/** Latest task list — updated by tasks-update events. */
 	tasks?: TaskList;
@@ -1299,8 +1304,19 @@ export interface InstanceAiMcpConnectionResponse {
 	credentialId: string;
 	credentialName: string;
 	credentialType: string;
+	toolFilter: InstanceAiMcpConnectionToolFilterResponse | null;
 	createdAt: string;
 	updatedAt: string;
+}
+
+export interface InstanceAiMcpConnectionToolFilterResponse {
+	mode: 'allow' | 'exclude';
+	tools: string[];
+}
+
+export interface InstanceAiMcpConnectionToolResponse {
+	name: string;
+	description?: string;
 }
 
 export function getRenderHint(toolName: string): InstanceAiToolCallState['renderHint'] {
