@@ -265,8 +265,8 @@ describe('search-workflows MCP tool', () => {
 		// response with `-32602 ... must NOT have additional properties`.
 		// All other MCP schemas (nodeSchema, tagSchema, workflowDetails) are passthrough.
 		test('tolerates unknown properties on workflow items (passthrough)', () => {
-			const workflowService = mockInstance(WorkflowService, { getMany: jest.fn() });
-			const telemetry = mockInstance(Telemetry, { track: jest.fn() });
+			const workflowService = mockInstance(WorkflowService, { getMany: vi.fn() });
+			const telemetry = mockInstance(Telemetry, { track: vi.fn() });
 			const tool = createSearchWorkflowsTool(
 				user,
 				workflowService as unknown as WorkflowService,
