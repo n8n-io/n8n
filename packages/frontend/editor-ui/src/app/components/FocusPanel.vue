@@ -50,7 +50,15 @@ import { type CanvasNode, CanvasNodeRenderType } from '@/features/workflows/canv
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useSetupPanelStore } from '@/features/setupPanel/setupPanel.store';
 
-import { N8nIcon, N8nInfoTip, N8nInput, N8nRadioButtons, N8nText } from '@n8n/design-system';
+import {
+	N8nIcon,
+	N8nIconButton,
+	N8nInfoTip,
+	N8nInput,
+	N8nMarkdownEditor,
+	N8nRadioButtons,
+	N8nText,
+} from '@n8n/design-system';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 defineOptions({ name: 'FocusPanel' });
 
@@ -89,6 +97,9 @@ const { renameNode } = useCanvasOperations();
 const resolvedParameter = computed(() => focusPanelStore.resolvedParameter);
 
 const inputValue = ref<string>('');
+
+// Renders a plain string param as editable markdown (WYSIWYG + raw toggle) instead of the raw textarea
+const markdownMode = ref(false);
 
 const isDisabled = computedAsync(async () => {
 	if (!resolvedParameter.value) {
@@ -211,6 +222,17 @@ const shouldCaptureForPosthog = computed(
 );
 
 const isReadOnly = computed(() => props.isCanvasReadOnly || isDisabled.value);
+
+// Markdown preview only makes sense for plain string params (no dedicated editor, not an expression)
+const canRenderMarkdown = computed(
+	() =>
+		!!resolvedParameter.value &&
+		typeof resolvedParameter.value.value === 'string' &&
+		resolvedParameter.value.parameter.type === 'string' &&
+		!editorType.value &&
+		!expressionModeEnabled.value &&
+		isDisplayed.value,
+);
 
 const resolvedAdditionalExpressionData = computed(() => {
 	return {
@@ -383,6 +405,16 @@ watch(
 	{ immediate: true },
 );
 
+// Reset markdown mode only when the focused parameter changes, not on every value edit
+watch(
+	() =>
+		resolvedParameter.value &&
+		`${resolvedParameter.value.node.id}:${resolvedParameter.value.parameterPath}`,
+	() => {
+		markdownMode.value = false;
+	},
+);
+
 function onOpenNdv() {
 	if (node.value) {
 		ndvStore.value.setActiveNodeName(node.value.name, 'focus_panel');
@@ -456,13 +488,29 @@ function onRenameNode(value: string) {
 							{{ locale.baseText('nodeView.focusPanel.noExecutionData') }}
 						</N8nInfoTip>
 					</div>
-					<ParameterOptions
-						v-if="isDisplayed"
-						:parameter="resolvedParameter.parameter"
-						:value="resolvedParameter.value"
-						:is-read-only="isReadOnly"
-						@update:model-value="optionSelected"
-					/>
+					<div :class="$style.optionsRight">
+						<N8nIconButton
+							v-if="canRenderMarkdown"
+							:icon="markdownMode ? 'eye-off' : 'eye'"
+							type="tertiary"
+							size="small"
+							text
+							:title="
+								markdownMode
+									? locale.baseText('nodeView.focusPanel.markdownPreview.hide')
+									: locale.baseText('nodeView.focusPanel.markdownPreview.show')
+							"
+							data-test-id="focus-panel-markdown-toggle"
+							@click="markdownMode = !markdownMode"
+						/>
+						<ParameterOptions
+							v-if="isDisplayed"
+							:parameter="resolvedParameter.parameter"
+							:value="resolvedParameter.value"
+							:is-read-only="isReadOnly"
+							@update:model-value="optionSelected"
+						/>
+					</div>
 				</div>
 				<div v-if="typeof resolvedParameter.value === 'string'" :class="$style.editorContainer">
 					<div v-if="!isDisplayed" :class="[$style.content, $style.emptyContent]">
@@ -550,6 +598,15 @@ function onRenameNode(value: string) {
 							:rows="editorRows"
 							fullscreen
 							fill-parent
+							@update:model-value="onInputChange"
+						/>
+						<N8nMarkdownEditor
+							v-else-if="markdownMode && canRenderMarkdown"
+							ref="inputField"
+							v-model="inputValue"
+							:class="$style.markdownEditor"
+							:readonly="isReadOnly"
+							max-height="100%"
 							@update:model-value="onInputChange"
 						/>
 						<N8nInput
@@ -687,6 +744,12 @@ function onRenameNode(value: string) {
 		.parameterOptionsWrapper {
 			display: flex;
 			justify-content: space-between;
+
+			.optionsRight {
+				display: flex;
+				align-items: center;
+				gap: var(--spacing--4xs);
+			}
 		}
 
 		.noExecutionDataTip {
@@ -738,6 +801,14 @@ function onRenameNode(value: string) {
 
 .heightFull {
 	height: 100%;
+}
+
+.markdownEditor {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	min-height: 0;
+	width: 100%;
 }
 
 .forceHover {

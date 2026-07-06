@@ -2323,6 +2323,8 @@
 	"nodeView.focusPanel.v2.noParameters.title": "Select a node to edit it here",
 	"nodeView.focusPanel.v2.noParameters.subtitle": "Or show single node parameter you’d like to iterate on by clicking this button next to it:",
 	"nodeView.focusPanel.missingParameter": "This parameter is no longer visible on the node. A related parameter was likely changed, removing this one.",
+	"nodeView.focusPanel.markdownPreview.show": "Edit as markdown",
+	"nodeView.focusPanel.markdownPreview.hide": "Edit as plain text",
 	"nodeView.itLooksLikeYouHaveBeenEditingSomething": "It looks like you made some edits. If you leave before saving, your changes might be lost.",
 	"nodeView.loadingTemplate": "Loading template",
 	"nodeView.moreInfo": "More info",
