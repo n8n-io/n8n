@@ -11,6 +11,7 @@
  * config — it only orchestrates the UI and reports the outcome to the model.
  */
 import { Tool } from '@n8n/agents';
+import { channelConfigSchema } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
@@ -56,7 +57,7 @@ export function createConfigureChannelTool(context: InstanceAiContext) {
 				message: z.string(),
 				severity: z.literal('info'),
 				inputType: z.literal('channel-config'),
-				channelConfig: z.object({ integrationType: z.string(), agentId: z.string() }),
+				channelConfig: channelConfigSchema,
 				projectId: z.string(),
 			}),
 		)

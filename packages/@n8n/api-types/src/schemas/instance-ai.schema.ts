@@ -838,7 +838,7 @@ export interface InstanceAiConfirmation {
 	introMessage?: string;
 	tasks?: TaskList;
 	resourceDecision?: GatewayConfirmationRequiredPayload;
-	channelConfig?: { integrationType: string; agentId: string };
+	channelConfig?: InstanceAiChannelConfig;
 	expired?: boolean;
 }
 
