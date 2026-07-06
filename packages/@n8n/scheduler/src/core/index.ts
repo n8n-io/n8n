@@ -17,8 +17,6 @@
  * grow without bound.
  */
 
-// These enums live in `@n8n/db` (the schema is their source of truth), re-exported
-// here so consumers use them through the scheduler's own API.
 export {
 	ScheduledJobKind,
 	ScheduledJobKindList,
