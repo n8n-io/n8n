@@ -27,7 +27,7 @@ export function clearAgentCapabilitySummaryCache() {
 	cacheVersion.value++;
 }
 
-// Module-level (not per instance): agent edits can happen while no card is
+// Module-level listener: agent edits can happen while no card is
 // mounted (e.g. on the Agent Builder route, where the canvas is torn down),
 // and remounted cards must not serve the stale pre-edit summary.
 agentsEventBus.on('agentUpdated', (event) => {
@@ -41,6 +41,7 @@ agentsEventBus.on('agentUpdated', (event) => {
 		summaryCache.clear();
 		inFlightRequests.clear();
 	}
+
 	cacheVersion.value++;
 });
 
@@ -62,6 +63,7 @@ async function requestSummary(
 			.finally(() => {
 				if (inFlightRequests.get(key) === request) inFlightRequests.delete(key);
 			});
+
 		inFlightRequests.set(key, request);
 	}
 	return await request;

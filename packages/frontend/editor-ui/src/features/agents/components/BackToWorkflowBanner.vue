@@ -37,7 +37,7 @@ defineEmits<{
 	cursor: pointer;
 }
 
-/* Dark mode: darker purple surface with light text (matches Figma) */
+/* Dark mode: darker purple surface with light text */
 :global(body[data-theme='dark']) .banner {
 	border-bottom-color: var(--color--purple-700);
 	background-color: var(--color--purple-800);

@@ -25,11 +25,7 @@ import type {
 } from '../types';
 
 /**
- * Telemetry seam for the capability actions. Each method is optional so a
- * surface that doesn't want full builder telemetry (e.g. the NDV) can pass a
- * partial / no-op adapter. Only the methods the handlers actually call live
- * here — `recordConfigEdit` is owned by the host's config-update funnel, not
- * by these handlers.
+ * Telemetry seam for the capability actions.
  */
 export interface AgentCapabilitiesTelemetry {
 	trackOpenedToolFromList?: (toolType: string) => void;
@@ -71,9 +67,6 @@ export interface UseAgentCapabilitiesActionsDeps {
  * (tools, skills, tasks, triggers). Extracted from `AgentBuilderView` so a
  * second surface (the agent node's NDV) can reuse them with its own
  * config-update funnel + telemetry adapter.
- *
- * Routing-decoupled: depends only on the injected refs/callbacks, never on
- * `route`/`router`.
  */
 export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDeps) {
 	const {
@@ -101,10 +94,6 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				mcpServers: localConfig.value?.mcpServers ?? [],
 				projectId: projectId.value,
 				agentId: agentId.value,
-				// The modal confirms with a single object payload (the modal-data
-				// plumbing is untyped, so a signature drift here isn't caught by TS —
-				// a positional handler would write `{ tools, mcpServers }` into
-				// `config.tools` and fail backend validation).
 				onConfirm: (payload: {
 					tools?: AgentJsonToolConfig[];
 					mcpServers?: AgentJsonMcpServerConfig[];
@@ -134,9 +123,12 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		if (toolIndex >= 0) {
 			const tool = tools[toolIndex];
 			if (!tool) return;
-			telemetry?.trackOpenedToolFromList?.(tool.type);
+
 			const customTool =
 				tool.type === 'custom' && tool.id ? agent.value?.tools?.[tool.id] : undefined;
+
+			telemetry?.trackOpenedToolFromList?.(tool.type);
+
 			uiStore.openModalWithData({
 				name: AGENT_TOOL_CONFIG_MODAL_KEY,
 				data: {
@@ -170,12 +162,13 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		const mcpServer = mcpServers[mcpServerIndex];
 		if (!mcpServer) return;
 
-		telemetry?.trackOpenedToolFromList?.('mcpServer');
 		const preferredNodeTypeName = mcpServer.metadata?.nodeTypeName ?? AI_MCP_TOOL_NODE_TYPE;
 		const nodeType =
 			nodeTypesStore.getNodeType(preferredNodeTypeName) ??
 			nodeTypesStore.getNodeType(AI_MCP_TOOL_NODE_TYPE);
 		if (!nodeType) return;
+
+		telemetry?.trackOpenedToolFromList?.('mcpServer');
 
 		uiStore.openModalWithData({
 			name: AGENT_TOOL_CONFIG_MODAL_KEY,
@@ -227,7 +220,9 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 	function onOpenSkillFromList(id: string) {
 		const skill = appliedSkills.value.find((s) => s.id === id)?.skill;
 		if (!skill) return;
+
 		telemetry?.trackOpenedSkillFromList?.(id);
+
 		uiStore.openModalWithData({
 			name: AGENT_SKILL_MODAL_KEY,
 			data: {
@@ -262,6 +257,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 
 	function configuredToolOptions(): AgentSkillAllowedToolOption[] {
 		const tools: AgentSkillAllowedToolOption[] = [];
+
 		for (const tool of localConfig.value?.tools ?? []) {
 			if (tool.type === 'custom') {
 				const name = agent.value?.tools?.[tool.id]?.descriptor.name ?? tool.id;
@@ -279,6 +275,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				});
 			}
 		}
+
 		return tools;
 	}
 
@@ -312,6 +309,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 
 	function onOpenAddSkillModal() {
 		telemetry?.trackOpenedAddSkillModal?.();
+
 		uiStore.openModalWithData({
 			name: AGENT_SKILL_MODAL_KEY,
 			data: {
