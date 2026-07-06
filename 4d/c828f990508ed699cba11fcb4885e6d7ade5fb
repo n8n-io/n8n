@@ -1,0 +1,93 @@
+packages/@n8n/permissions/src/roles/scopes/global-scopes.ee.ts
+  s_8c2da1cd113c5b::t_82851965f189e9 113-117
+packages/frontend/editor-ui/src/features/collaboration/projects/views/ProjectSettings.vue
+  s_8c2da1cd113c5b::t_c980359062d224 73
+  s_8c2da1cd113c5b::t_a02fde6eec24ee 32-33
+  h_c63dce324dfc7b 69-72
+  s_8c2da1cd113c5b::t_1f1f7c29eb2fce 667-677
+packages/frontend/@n8n/rest-api-client/src/api/projectEnvironments.ts
+  s_8c2da1cd113c5b::t_6862e23fe82377 1-46
+packages/frontend/editor-ui/src/__tests__/mocks.ts
+  s_8c2da1cd113c5b::t_0a904d5f481609 298
+packages/@n8n/db/src/repositories/index.ts
+  s_8c2da1cd113c5b::t_a4e736c6db1244 34
+packages/@n8n/db/src/entities/index.ts
+  s_8c2da1cd113c5b::t_aedb4ca94ea5f0 26
+  s_8c2da1cd113c5b::t_5c87711e4b9ff9 76
+  s_8c2da1cd113c5b::t_7dcc60c9aaaa7e 126
+packages/frontend/editor-ui/src/features/environments/components/EnvironmentList.vue
+  s_8c2da1cd113c5b::t_6ed568050255a2 1-56,58-75,82-107,109-120
+packages/@n8n/api-types/src/frontend-settings.ts
+  s_8c2da1cd113c5b::t_04ba082e4f03d0 70
+packages/@n8n/db/src/migrations/sqlite/index.ts
+  s_8c2da1cd113c5b::t_a91e03bbb92d7c 206
+  s_8c2da1cd113c5b::t_e2c28ebd7b960e 413
+packages/frontend/editor-ui/src/app/constants/enterprise.ts
+  s_8c2da1cd113c5b::t_ff3e5851404d34 26
+packages/@n8n/permissions/src/roles/scopes/project-scopes.ee.ts
+  s_8c2da1cd113c5b::t_b57e6a2b12016f 66-70
+  s_8c2da1cd113c5b::t_81a76ea4c4c5c6 173-174
+  s_8c2da1cd113c5b::t_775bb4dfaf7750 120-124
+  s_8c2da1cd113c5b::t_fb9907f9bf4e04 197-198
+packages/@n8n/db/src/migrations/common/1784000000037-CreateEnvironmentTables.ts
+  s_8c2da1cd113c5b::t_e726c8018c0bd9 3
+packages/@n8n/api-types/src/dto/environments/environment.dto.ts
+  s_8c2da1cd113c5b::t_ccc862ebea9d2c 1-11
+packages/cli/src/services/frontend.service.ts
+  s_8c2da1cd113c5b::t_d00c17448d9c4f 363
+  s_8c2da1cd113c5b::t_668ad2ef0e4c9b 528
+packages/@n8n/constants/src/index.ts
+  s_8c2da1cd113c5b::t_125cebf0bd3bf0 50
+packages/frontend/editor-ui/src/__tests__/defaults.ts
+  s_8c2da1cd113c5b::t_7c2a22ea27ff6f 59
+packages/@n8n/api-types/src/dto/index.ts
+  s_8c2da1cd113c5b::t_53bfa5f3fcfe9d 3-4
+packages/cli/src/services/project-environment.service.ts
+  s_8c2da1cd113c5b::t_d4c40202795d3b 1-16,18-51
+packages/frontend/editor-ui/src/Interface.ts
+  s_8c2da1cd113c5b::t_a0c77d2e5383de 983-984
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_8c2da1cd113c5b::t_055977abb27836 5126-5133
+packages/cli/src/controllers/project-environment.controller.ts
+  s_8c2da1cd113c5b::t_20219364c3a4e3 1-78
+packages/@n8n/db/src/migrations/postgresdb/index.ts
+  s_8c2da1cd113c5b::t_cef51d905e2d71 213
+  s_8c2da1cd113c5b::t_b3e7674a849912 429
+packages/@n8n/permissions/src/constants.ee.ts
+  s_8c2da1cd113c5b::t_4cf7ebffb93d1d 52
+packages/frontend/editor-ui/src/features/credentials/components/CredentialEdit/CredentialSharing.ee.test.ts
+  s_8c2da1cd113c5b::t_576c656091b922 152
+packages/@n8n/db/src/repositories/project-environment.repository.ts
+  s_8c2da1cd113c5b::t_f906c5aab33a88 1-15
+packages/frontend/editor-ui/src/features/environments/environments.store.ts
+  s_8c2da1cd113c5b::t_bc2222ca145813 1-16,18-55
+packages/frontend/editor-ui/src/app/stores/rbac.store.ts
+  s_8c2da1cd113c5b::t_e5fece7bd49acc 43
+packages/@n8n/db/src/entities/project-environment.ts
+  s_8c2da1cd113c5b::t_fa1d359967258f 1-16
+packages/cli/src/server.ts
+  s_8c2da1cd113c5b::t_402a8fc6bfdc00 53
+packages/frontend/@n8n/stores/src/constants.ts
+  s_8c2da1cd113c5b::t_6652bfbcdc5f45 57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.10",
+  "base_commit_sha": "4dc828f990508ed699cba11fcb4885e6d7ade5fb",
+  "prompts": {},
+  "humans": {
+    "h_c63dce324dfc7b": {
+      "author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_8c2da1cd113c5b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "58ceada5-b2bb-47fb-9531-c90fbf110f72",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "konstantintieber <konstantin.tieber@n8n.io>"
+    }
+  }
+}

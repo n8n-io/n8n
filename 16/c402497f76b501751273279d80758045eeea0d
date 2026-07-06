@@ -1,0 +1,20 @@
+.github/workflows/release-build-daytona-snapshot.yml
+  s_d50e04eff73a97::t_300449ebc38695 56-59
+  s_d50e04eff73a97::t_9e94b16e996daf 61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "16c402497f76b501751273279d80758045eeea0d",
+  "prompts": {},
+  "sessions": {
+    "s_d50e04eff73a97": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a12d2f50-9d84-4e97-beee-ad429e7f321e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

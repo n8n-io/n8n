@@ -1,0 +1,113 @@
+packages/@n8n/local-gateway/src/main/oauth/token-store.ts
+  s_22dba21f85aaca::t_4bd477686308c3 59,64
+packages/@n8n/local-gateway/.env.example
+  s_22dba21f85aaca::t_1228400b25032c 1-4
+packages/@n8n/local-gateway/src/main/index.ts
+  s_22dba21f85aaca::t_4fa941d4210df6 130
+  s_22dba21f85aaca::t_15086f39b37c20 208-217
+  s_22dba21f85aaca::t_261729a0a1f1a7 190-198,200-201
+  s_22dba21f85aaca::t_195bac7900daaf 9-11
+  s_22dba21f85aaca::t_dcdd2111f28f52 64-72
+  s_22dba21f85aaca::t_a84e6906ba5cf6 142-146
+  s_22dba21f85aaca::t_6f98475c472a07 221-225
+packages/@n8n/agents/src/runtime/model-factory.ts
+  s_22dba21f85aaca::t_1d347d32df7f4c 142-150,155-158
+  s_22dba21f85aaca::t_ff1d84a9c08d49 151-154
+packages/@n8n/local-gateway/src/renderer/views/SignInView.vue
+  s_22dba21f85aaca::t_f2fe63e601a905 3-4,7,11
+  s_22dba21f85aaca::t_9b6846fe25e575 61-86
+  s_22dba21f85aaca::t_d6f5627061b997 137-156
+  s_22dba21f85aaca::t_108f154dc8e080 223-234
+packages/@n8n/local-gateway/src/main/ipc-handlers.test.ts
+  s_22dba21f85aaca::t_7c8bcf474bb486 60
+  s_22dba21f85aaca::t_d0a0a33fccfddc 93-96
+  s_22dba21f85aaca::t_6c3b068ab3bfe6 128-154
+packages/@n8n/local-gateway/src/shared/types.ts
+  s_22dba21f85aaca::t_3e5ee8a8cdc3c2 187-193
+  s_22dba21f85aaca::t_10b0f12ac169f1 196-202
+packages/@n8n/local-gateway/src/main/local-instance/local-instance-process.ts
+  s_22dba21f85aaca::t_6f3a0e67194a1e 3
+  s_22dba21f85aaca::t_6b6b501cbd558f 41
+  s_22dba21f85aaca::t_f6997b1b97697c 54-67
+  s_22dba21f85aaca::t_7ea5c5186f9eac 1-2,4-40,42-53,68-117
+packages/@n8n/local-gateway/src/main/local-instance/local-auth.ts
+  s_22dba21f85aaca::t_40cf9dcfbf0bd7 2-130
+  s_22dba21f85aaca::t_e25d62969aa396 1
+packages/@n8n/local-gateway/src/main/oauth/oauth-client.ts
+  s_22dba21f85aaca::t_3c8c4c28890a23 129
+packages/@n8n/agents/src/runtime/provider-credentials.ts
+  s_22dba21f85aaca::t_829f308c362c8b 25-28
+packages/@n8n/local-gateway/src/main/local-instance/local-instance-config.ts
+  s_22dba21f85aaca::t_e2dfc1b72308de 1-13,15-67,73-92
+  s_22dba21f85aaca::t_22ec97a3c567fa 14
+  s_22dba21f85aaca::t_1cb213f52084c5 68-72
+packages/@n8n/local-gateway/src/main/local-instance/local-instance-process.test.ts
+  s_22dba21f85aaca::t_503b3a7597e183 47,52-55
+  s_22dba21f85aaca::t_f50649ce7721b6 61,63
+  s_22dba21f85aaca::t_aab709ab1d4a11 1-2,5-7,10-12,14-15,17-46,48-51,56-60,62,64-129
+  s_22dba21f85aaca::t_a371afbc6bae47 3-4
+  s_22dba21f85aaca::t_cf6ccd425592dc 9,13,16
+packages/@n8n/local-gateway/src/main/local-instance/local-auth.test.ts
+  s_22dba21f85aaca::t_e25d62969aa396 21
+  s_22dba21f85aaca::t_a239b7ec2615d9 52-59
+  s_22dba21f85aaca::t_86f62a65668a2a 100,104,111
+  s_22dba21f85aaca::t_5c1a290fe3c698 27-33
+  s_22dba21f85aaca::t_e87d6bd6bf29be 1-20,22-26,34-51,60-99,102-103,110,116-130,132-142,151,157-174
+  s_22dba21f85aaca::t_705914e97a7d17 101,105-109,112-115
+  s_22dba21f85aaca::t_e03275ddd5339a 131
+  s_22dba21f85aaca::t_79e0dbe32c624b 144,146-150,153-156
+  s_22dba21f85aaca::t_66991edff34d7c 143,145,152
+packages/@n8n/local-gateway/src/main/local-instance/local-instance-manager.ts
+  s_22dba21f85aaca::t_d6f9a1552ff04f 116-122
+  s_22dba21f85aaca::t_e25d62969aa396 142-177
+packages/@n8n/local-gateway/src/main/local-instance/local-instance-store.test.ts
+  s_22dba21f85aaca::t_ce3d9aa1d4d125 1-68
+packages/@n8n/local-gateway/src/main/oauth/oauth-flow.ts
+  s_22dba21f85aaca::t_b49d199eab77e5 156-162
+packages/@n8n/local-gateway/src/main/local-instance/local-instance-store.ts
+  s_22dba21f85aaca::t_ac0752fa631a5d 1-44
+packages/@n8n/local-gateway/src/main/local-instance/local-instance-manager.test.ts
+  s_22dba21f85aaca::t_504f96bdada9ba 5-8,12
+  s_22dba21f85aaca::t_0c79fd9dcf38a5 188,196
+  s_22dba21f85aaca::t_b4adb1ce733e12 1-4,9-11,13-187,189-195,197-252
+packages/@n8n/agents/src/runtime/__tests__/model-factory.test.ts
+  s_22dba21f85aaca::t_87806c64bd1598 400-403
+  s_22dba21f85aaca::t_e25d62969aa396 146-157
+  s_22dba21f85aaca::t_d19987504722e8 325-326
+  s_22dba21f85aaca::t_f7a024d138d7d9 318-324,327-339
+packages/@n8n/local-gateway/src/main/preload.ts
+  s_22dba21f85aaca::t_2a113dde9f2c6a 152-165
+  s_22dba21f85aaca::t_f42cab45de3d28 18
+packages/@n8n/local-gateway/src/main/local-instance/local-instance-config.test.ts
+  s_22dba21f85aaca::t_b3dee4bb7f601a 37
+  s_22dba21f85aaca::t_497aaf2b2a0fa5 49,51-52
+  s_22dba21f85aaca::t_ab38a324d7fd84 1-36,38-48,50,53-78
+packages/@n8n/local-gateway/src/main/ipc-handlers.ts
+  s_22dba21f85aaca::t_c59c9557e35d57 11
+  s_22dba21f85aaca::t_6f94cfef7c0415 45
+  s_22dba21f85aaca::t_b7c17157d8a155 132-147
+  s_22dba21f85aaca::t_bd024a1eba23d6 115
+  s_22dba21f85aaca::t_10ea09c3a5705d 28
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_22dba21f85aaca::t_5cf2efe92dc258 52-53
+packages/@n8n/local-gateway/src/main/oauth/oauth-flow.test.ts
+  s_22dba21f85aaca::t_40425cdb0d7c4b 126-160
+packages/@n8n/agents/src/sdk/provider-capabilities.ts
+  s_22dba21f85aaca::t_d2e5d3f8bb75e8 36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.6",
+  "base_commit_sha": "a0d882fe6b50fd84004903b129be9e098b13a074",
+  "prompts": {},
+  "sessions": {
+    "s_22dba21f85aaca": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e80c488b-60c5-4815-a664-397181ee7c3c",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

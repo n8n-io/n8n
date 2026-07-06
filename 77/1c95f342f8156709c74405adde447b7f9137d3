@@ -1,0 +1,103 @@
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_f3c9e6db456d8f::t_7bc709d3e1d839 3
+  s_f3c9e6db456d8f::t_e73ce2a422dbf2 428-439
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/CanvasNodeRenderer.test.ts
+  s_f3c9e6db456d8f::t_0a1156c8fb76bc 79,83-84,88-104
+  s_f3c9e6db456d8f::t_8ccac132e192c8 80-82,85-87
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/CanvasNodeRenderer.vue
+  s_f3c9e6db456d8f::t_8e7a3f28c2e57a 7
+  s_f3c9e6db456d8f::t_bb780a52c62906 27-29
+packages/frontend/editor-ui/src/app/stores/workflowDocument/useWorkflowDocumentRenderData.ts
+  s_f3c9e6db456d8f::t_4fc094ca9bf950 5
+  s_f3c9e6db456d8f::t_c805c8c04b71af 27
+  s_f3c9e6db456d8f::t_5e6f0ec9869888 252-260
+  s_f3c9e6db456d8f::t_b3cd4f9251a528 314-318
+packages/frontend/editor-ui/src/features/workflows/canvas/canvas.types.ts
+  s_f3c9e6db456d8f::t_21e2b06d807692 58
+  s_f3c9e6db456d8f::t_5f0ec8b78768f4 106-114
+  s_f3c9e6db456d8f::t_289504dc020c1a 145-146
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/parts/canvasNodeAgentChips.utils.ts
+  s_f3c9e6db456d8f::t_b1c89c9bc49e22 1-6,9-15,24-34,101-105,108-111,113-130,132-142
+  s_f3c9e6db456d8f::t_6e545a8ebf016d 7
+  s_f3c9e6db456d8f::t_802bc3fafc410c 8,16-22
+  s_f3c9e6db456d8f::t_c51c8bacec62fc 37-100,106-107,112,131
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/parts/canvasNodeAgentChips.utils.test.ts
+  s_f3c9e6db456d8f::t_62d27969a6ece2 1-21,23-27,78-128
+  s_f3c9e6db456d8f::t_541b19e35cd520 22,28-36
+  s_f3c9e6db456d8f::t_9f75cc10d343ff 39-77
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeAgent.test.ts
+  s_f3c9e6db456d8f::t_6b8c9b9bb0dc3c 1-8,10,22-29,34-37,43-56,58-89,91-109,111-115,117-119,124-128,132-151,153-154,163-164
+  s_f3c9e6db456d8f::t_0eec8f82f2d56d 9
+  s_f3c9e6db456d8f::t_8ee12131344ac3 11-14,18-21,30-33
+  ai_agent 15-17
+  s_f3c9e6db456d8f::t_61d7c98bae3934 38-42
+  s_f3c9e6db456d8f::t_6854a5751e433f 57
+  s_f3c9e6db456d8f::t_a70833f8fde864 90
+  s_f3c9e6db456d8f::t_3687924b49547b 110,116,120-123,129-131
+  s_f3c9e6db456d8f::t_16de2fdebf6c12 152,155-162
+packages/frontend/editor-ui/src/features/agents/composables/useAgentCapabilitySummary.test.ts
+  s_f3c9e6db456d8f::t_9c199950ba4e77 1-134
+packages/cli/src/modules/agents/__tests__/agents.service.test.ts
+  s_f3c9e6db456d8f::t_f26b1c2333bdbe 167-171
+  s_f3c9e6db456d8f::t_b87cbfbeac3f86 198-203
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/CanvasNodeToolbar.test.ts
+  s_f3c9e6db456d8f::t_b9a9b0a18469c4 109-129
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/CanvasNodeAgent.vue
+  s_f3c9e6db456d8f::t_b09da580fcb71b 1,3-9,11-13,16-31,33-35,37,53-107,125,129-163,167-170,187,223-235,243,253-254,287-327,334,338-355,381,399
+  s_f3c9e6db456d8f::t_fe82cb5b4af21f 2
+  s_f3c9e6db456d8f::t_215638f4be1e5f 10
+  s_f3c9e6db456d8f::t_2a2c426e89a273 14
+  s_f3c9e6db456d8f::t_8e341613919eae 32
+  s_f3c9e6db456d8f::t_ba2b1f7ef0b75a 36
+  s_f3c9e6db456d8f::t_546f61ee1155e0 38-40
+  s_f3c9e6db456d8f::t_489963625ad545 42-52,171-176,255-256
+  s_f3c9e6db456d8f::t_be6fa6ee389de5 108-115
+  s_f3c9e6db456d8f::t_715b40c294a666 117-124,126-128
+  s_f3c9e6db456d8f::t_57eb6f5557f519 164-166
+  s_f3c9e6db456d8f::t_3f2570ab5f926b 177-186,188-222
+  s_f3c9e6db456d8f::t_1d2e99b0cddfb7 239-241,246
+  s_f3c9e6db456d8f::t_6f661ba94caf8b 244-245,247-249,267-283
+  s_f3c9e6db456d8f::t_495bf9bc203fff 250-252,262-266
+  s_f3c9e6db456d8f::t_1e453de502744e 329-333,335,337
+  s_05cd7ab5f956cf::t_35616ad850b841 336
+  s_f3c9e6db456d8f::t_fb412e1004a85c 359-360
+  s_f3c9e6db456d8f::t_b923d23f7ad7e1 387
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/parts/CanvasNodeAgentChips.test.ts
+  s_f3c9e6db456d8f::t_7c3e83ad121034 1-30
+packages/frontend/editor-ui/src/app/stores/workflowDocument/useWorkflowDocumentRenderData.test.ts
+  s_f3c9e6db456d8f::t_a502242cf97d88 223-253
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_f3c9e6db456d8f::t_47c9d5de268f8d 5402-5405
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/CanvasNodeToolbar.vue
+  s_f3c9e6db456d8f::t_84a58aa949702b 74-83,91-96
+packages/@n8n/api-types/src/agents/types.ts
+  s_f3c9e6db456d8f::t_8c4e02a3833007 151-157
+packages/frontend/editor-ui/src/features/workflows/canvas/components/elements/nodes/render-types/parts/CanvasNodeAgentChips.vue
+  s_f3c9e6db456d8f::t_3a6e12f793a4ca 1-67,69,71-73,75-90,92-93
+  s_f3c9e6db456d8f::t_aaf2fdb2891f88 68,70,74
+  s_f3c9e6db456d8f::t_5a5203d938be7a 91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "771c95f342f8156709c74405adde447b7f9137d3",
+  "prompts": {},
+  "sessions": {
+    "s_05cd7ab5f956cf": {
+      "agent_id": {
+        "tool": "github-copilot-jetbrains",
+        "id": "1782375244911",
+        "model": "unknown"
+      },
+      "human_author": null
+    },
+    "s_f3c9e6db456d8f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8298b541-e801-4d7c-9c0d-b2ace99ba5cb",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": null
+    }
+  }
+}

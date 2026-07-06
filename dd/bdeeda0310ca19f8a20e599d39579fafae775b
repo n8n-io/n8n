@@ -1,0 +1,77 @@
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_2a64d569f7fd95::t_ceadfc459b5589 4720-4721
+packages/@n8n/config/test/config.test.ts
+  s_2a64d569f7fd95::t_eee8baec8903d7 301
+packages/frontend/editor-ui/src/app/composables/useGlobalEntityCreation.test.ts
+  s_2a64d569f7fd95::t_74d507e6278b0d 625
+packages/frontend/editor-ui/src/features/ai/instanceAi/views/SettingsInstanceAiView.vue
+  s_2a64d569f7fd95::t_89fa24eba18da9 95-99
+  s_2a64d569f7fd95::t_1f5eb529995a34 170-188
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiView.vue
+  s_2a64d569f7fd95::t_65cdd13dce4203 91-94
+  s_2a64d569f7fd95::t_277c9c4c05cfd6 75-77,79-82
+packages/@n8n/config/src/configs/instance-ai.config.ts
+  s_2a64d569f7fd95::t_5d065ebb586745 41
+  s_2a64d569f7fd95::t_eec8bb7bff7b59 39-40
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAiSettings.store.ts
+  s_2a64d569f7fd95::t_14a6be8bdf3f7f 305-315
+  s_2a64d569f7fd95::t_1fa3513a581e85 649
+  s_2a64d569f7fd95::t_ed0f4a97e3b7e6 304
+  s_2a64d569f7fd95::t_87ce0f89c88b31 107
+  s_2a64d569f7fd95::t_c1f5f5c957a3b3 137
+  s_2a64d569f7fd95::t_9c9b3587d6274e 105-106
+packages/cli/src/modules/instance-ai/instance-ai.module.ts
+  s_2a64d569f7fd95::t_1ea08e08acdc43 38,43
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/ConnectionsCard.vue
+  s_2a64d569f7fd95::t_05f1d77e0bf473 89-92
+  s_2a64d569f7fd95::t_47016fdf3227e5 41-50
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/instanceAiSettings.store.test.ts
+  s_2a64d569f7fd95::t_4b34f79d67b35f 69
+packages/frontend/editor-ui/src/app/router.test.ts
+  s_2a64d569f7fd95::t_07260fda24e3e4 257
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiThreadView.test.ts
+  s_2a64d569f7fd95::t_cad748629c1354 178
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiEmptyView.test.ts
+  s_2a64d569f7fd95::t_c15b5fe3d885aa 174
+packages/@n8n/api-types/src/frontend-settings.ts
+  s_2a64d569f7fd95::t_6f1df5b6704dec 300
+packages/cli/src/modules/instance-ai/instance-ai-settings.service.ts
+  s_2a64d569f7fd95::t_f72dd8696dc17f 662-663
+  s_2a64d569f7fd95::t_2b299db13b57cc 237
+  s_2a64d569f7fd95::t_982821c8d8786b 194
+  s_2a64d569f7fd95::t_900a0255c4f4f1 92
+  s_2a64d569f7fd95::t_2127455951c5b7 454-455
+  s_2a64d569f7fd95::t_2da1fe2d5e7e8e 452-453
+  s_2a64d569f7fd95::t_0d662e1812be3d 686
+packages/cli/src/modules/instance-ai/instance-ai.controller.ts
+  s_2a64d569f7fd95::t_6cedf4b8a372b6 476-478
+  s_2a64d569f7fd95::t_e732a64b80df94 925
+  s_2a64d569f7fd95::t_19a59b5f3fd728 475
+  s_2a64d569f7fd95::t_f7c5e1b5efa37c 926
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_2a64d569f7fd95::t_bad08d69f1b29a 2548-2550
+  s_2a64d569f7fd95::t_dc003a0cf514b9 2524
+  s_2a64d569f7fd95::t_935dcd0262d368 2584,2603
+  s_2a64d569f7fd95::t_2aa29f0a3e46bb 2602
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_2a64d569f7fd95::t_e3c4e63d678702 1130
+  s_2a64d569f7fd95::t_63138e8bd8ed5e 1147
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/SettingsInstanceAiView.test.ts
+  s_2a64d569f7fd95::t_7b9ea801ba19bc 93
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.9",
+  "base_commit_sha": "ddbdeeda0310ca19f8a20e599d39579fafae775b",
+  "prompts": {},
+  "sessions": {
+    "s_2a64d569f7fd95": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ee9bcf49-2aeb-4b3f-b6cb-15acc1d3f9e1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
