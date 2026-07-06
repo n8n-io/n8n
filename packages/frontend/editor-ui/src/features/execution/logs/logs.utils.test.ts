@@ -10,6 +10,7 @@ import {
 	findSelectedLogEntry,
 	findSubExecutionLocator,
 	getDefaultCollapsedEntries,
+	getGroupExecutionStatus,
 	getGroupTiming,
 	getSubtreeTotalConsumedTokens,
 	getTreeNodeData,
@@ -25,7 +26,7 @@ import {
 	createRunExecutionData,
 	NodeConnectionTypes,
 } from 'n8n-workflow';
-import type { ExecutionError, ITaskStartedData, IRunExecutionData } from 'n8n-workflow';
+import type { ExecutionError, ITaskData, ITaskStartedData, IRunExecutionData } from 'n8n-workflow';
 import {
 	aiAgentNode,
 	aiChatWorkflow,
@@ -1909,6 +1910,64 @@ describe('createLogTree with canvas groups', () => {
 		groupEntry.children = [];
 
 		expect(getGroupTiming(groupEntry)).toBeUndefined();
+	});
+
+	describe('getGroupExecutionStatus', () => {
+		function groupWithMemberStatuses(
+			bStatus: ITaskData['executionStatus'],
+			cStatus: ITaskData['executionStatus'],
+		) {
+			const response = createTestWorkflowExecutionResponse({
+				id: 'e1',
+				data: createRunExecutionData({
+					resultData: {
+						runData: {
+							A: [taskAt(0)],
+							B: [taskAt(1, { executionStatus: bStatus })],
+							C: [taskAt(2, { executionStatus: cStatus })],
+						},
+					},
+				}),
+			});
+
+			return expectGroup(
+				createLogTree(createLinearWorkflow(), response, {}, {}, undefined, [group])[1],
+			);
+		}
+
+		it('reports success when all members succeeded', () => {
+			expect(getGroupExecutionStatus(groupWithMemberStatuses('success', 'success'))).toBe(
+				'success',
+			);
+		});
+
+		it('reflects a running member over settled ones', () => {
+			expect(getGroupExecutionStatus(groupWithMemberStatuses('success', 'running'))).toBe(
+				'running',
+			);
+		});
+
+		it('reflects a waiting member', () => {
+			expect(getGroupExecutionStatus(groupWithMemberStatuses('waiting', 'success'))).toBe(
+				'waiting',
+			);
+		});
+
+		it('reflects an errored member', () => {
+			expect(getGroupExecutionStatus(groupWithMemberStatuses('success', 'error'))).toBe('error');
+		});
+
+		// Folded into error like the canvas rollup: crashed carries no error object but must not read as success
+		it('folds a crashed member into error', () => {
+			expect(getGroupExecutionStatus(groupWithMemberStatuses('success', 'crashed'))).toBe('error');
+		});
+
+		// A wholly canceled group has no dominant status and must not read as success
+		it('does not report success for a fully canceled group', () => {
+			expect(
+				getGroupExecutionStatus(groupWithMemberStatuses('canceled', 'canceled')),
+			).toBeUndefined();
+		});
 	});
 
 	// Grouped nodes must stay main-flow nodes: a false sub-node match makes their input pane show their own output

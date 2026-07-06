@@ -30,6 +30,11 @@ import {
 	isGroupLog,
 } from './logs.types';
 import { CHAT_TRIGGER_NODE_TYPE, MANUAL_CHAT_TRIGGER_NODE_TYPE } from '@/app/constants';
+import type {
+	GroupExecutionStatus,
+	NodeExecutionSnapshot,
+} from '@/features/workflows/canvas/canvas.types';
+import { aggregateGroupExecution } from '@/features/workflows/canvas/composables/useCanvasMapping.groups';
 import { type ChatMessage } from '@n8n/chat/types';
 import get from 'lodash/get';
 import isEmpty from 'lodash/isEmpty';
@@ -225,23 +230,44 @@ export function getGroupTiming(
 	return startTime === undefined ? undefined : { startTime, executionTime };
 }
 
+/** Build the per-member snapshot the group rollup consumes, from a member's run data. */
+function snapshotFromRunData(runData: ITaskData | undefined): NodeExecutionSnapshot {
+	const status = runData?.executionStatus;
+	return {
+		running: status === 'running',
+		waitingForNext: false,
+		waiting: undefined,
+		// Crashed nodes carry no error object but must not read as success (mirrors canvas)
+		hasExecutionError: status === 'error' || status === 'crashed' || Boolean(runData?.error),
+		hasValidationError: false,
+		status,
+		dirty: false,
+		iterations: 0,
+	};
+}
+
 /**
  * Aggregate execution status for a group segment. Groups have no run data of
- * their own, so surface the most relevant member state: an active member keeps
- * the group live, otherwise reflect error/success.
+ * their own, so reuse the canvas group rollup (`aggregateGroupExecution`) over
+ * the members' run data, keeping the logs badge consistent with the canvas one.
  */
-export function getGroupExecutionStatus(
-	group: GroupLogEntry,
-): 'running' | 'waiting' | 'error' | 'success' {
-	const hasMemberWithStatus = (status: 'running' | 'waiting') =>
-		findLogEntryRec(
-			(e) => isNodeLog(e) && e.runData?.executionStatus === status,
-			group.children,
-		) !== undefined;
+export function getGroupExecutionStatus(group: GroupLogEntry): GroupExecutionStatus | undefined {
+	const snapshots = new Map<string, NodeExecutionSnapshot>();
 
-	if (hasMemberWithStatus('running')) return 'running';
-	if (hasMemberWithStatus('waiting')) return 'waiting';
-	return group.hasError ? 'error' : 'success';
+	function collect(entries: LogEntry[]) {
+		for (const entry of entries) {
+			if (isNodeLog(entry)) {
+				snapshots.set(entry.id, snapshotFromRunData(entry.runData));
+			}
+			collect(entry.children);
+		}
+	}
+	collect(group.children);
+
+	return aggregateGroupExecution(
+		[...snapshots.keys()],
+		(id) => snapshots.get(id) ?? snapshotFromRunData(undefined),
+	);
 }
 
 function findLogEntryToAutoSelect(subTree: LogEntry[]): LogEntry | undefined {
