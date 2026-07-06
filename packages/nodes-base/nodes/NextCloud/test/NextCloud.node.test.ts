@@ -868,7 +868,7 @@ describe('NextCloud Node', () => {
 						title: 'Existing title',
 						color: 'FFFFFF',
 						archived: false,
-						owner: { uid: 'alice' },
+						owner: 'alice',
 						description: 'keep me',
 					})
 					.mockResolvedValueOnce({ id: 5, title: 'Personal' });
@@ -911,7 +911,7 @@ describe('NextCloud Node', () => {
 						title: 'Existing title',
 						color: 'FFFFFF',
 						archived: true,
-						owner: { uid: 'alice' },
+						owner: 'alice',
 						description: 'keep me',
 					})
 					.mockResolvedValueOnce({ id: 5 });
@@ -925,6 +925,42 @@ describe('NextCloud Node', () => {
 					owner: 'alice',
 					description: 'keep me',
 				});
+			});
+
+			it('updateBoard omits archived when the user did not touch it', async () => {
+				// Regression: previously the boolean default (false) was always sent, which
+				// silently un-archived any archived board. With the fix, the field is
+				// omitted from the PUT body when the user leaves it untouched, so the
+				// pre-flight GET value (true) survives.
+				const { executeFunctions, request } = buildExecuteFunctions({
+					parameters: {
+						resource: 'deck',
+						operation: 'updateBoard',
+						boardId: '5',
+						title: 'New title only',
+						// archived intentionally omitted
+					},
+				});
+				request
+					.mockResolvedValueOnce({
+						id: 5,
+						title: 'Existing title',
+						color: 'FFFFFF',
+						archived: true,
+						owner: 'alice',
+					})
+					.mockResolvedValueOnce({ id: 5 });
+
+				await executeNode(executeFunctions);
+
+				const body = deckRequestOptions(request, 1).body as IDataObject;
+				expect(body).toMatchObject({
+					title: 'New title only',
+					color: 'FFFFFF',
+					owner: 'alice',
+				});
+				// Critically, archived must NOT be sent — that would reset it to false.
+				expect(body).not.toHaveProperty('archived');
 			});
 
 			it('deleteBoard DELETEs /boards/{id}', async () => {

@@ -44,7 +44,12 @@ export async function getStacks(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
-	const boardId = this.getCurrentNodeParameter('boardId', { extractValue: true }) as string;
+	let boardId = '';
+	try {
+		boardId = this.getCurrentNodeParameter('boardId', { extractValue: true }) as string;
+	} catch {
+		return { results: [] };
+	}
 	if (!boardId) return { results: [] };
 
 	const ctx = await getNextCloudContext(this);
@@ -93,7 +98,7 @@ export async function getCards(
 	const ctx = await getNextCloudContext(this);
 	if (!ctx) return { results: [] };
 
-	// Fetch the STACK (not standalone /cards endpoint — that returns 405)
+	// Fetch the STACK (not standalone /cards endpoint ï¿½ that returns 405)
 	const stack = (await this.helpers.request({
 		method: 'GET',
 		url: `${ctx.baseUrl}/index.php/apps/deck/api/v1.1/boards/${encodeURIComponent(boardId)}/stacks/${encodeURIComponent(stackId)}`,
@@ -120,7 +125,12 @@ export async function getLabels(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
-	const boardId = this.getCurrentNodeParameter('boardId', { extractValue: true }) as string;
+	let boardId = '';
+	try {
+		boardId = this.getCurrentNodeParameter('boardId', { extractValue: true }) as string;
+	} catch {
+		return { results: [] };
+	}
 	if (!boardId) return { results: [] };
 
 	const ctx = await getNextCloudContext(this);

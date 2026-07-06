@@ -21,7 +21,7 @@ export async function getNextCloudContext(
 	try {
 		authenticationMethod = ctx.getCurrentNodeParameter('authentication') as string;
 	} catch {
-		// 'authentication' parameter not yet set — fall back to default.
+		// 'authentication' parameter not yet set ï¿½ fall back to default.
 		authenticationMethod = 'accessToken';
 	}
 	const credentialName = authenticationMethod === 'oAuth2' ? 'nextCloudOAuth2Api' : 'nextCloudApi';
@@ -45,14 +45,14 @@ export async function getNextCloudContext(
 		return null;
 	}
 	const baseUrl = (credentials.webDavUrl as string)
-		.replace(/\/remote\.php\/(webdav|dav)\/?$/, '')
+		.replace(/\/remote\.php\/.*$/, '')
 		.replace(/\/+$/, '');
 	const basicAuth = Buffer.from(`${credentials.user}:${credentials.password}`).toString('base64');
 	return { baseUrl, basicAuth };
 }
 
 /**
- * Shared user search — reusable by Deck (assign/unassign) and User resource.
+ * Shared user search ï¿½ reusable by Deck (assign/unassign) and User resource.
  * Calls global OCS /cloud/users endpoint.
  */
 export async function getUsers(
@@ -65,8 +65,10 @@ export async function getUsers(
 	const limit = 200;
 	let offset = 0;
 	const users: string[] = [];
+	const maxPages = 100; // safety cap (20,000 users)
+	let page = 0;
 
-	while (true) {
+	while (page < maxPages) {
 		const response = (await this.helpers.request({
 			method: 'GET',
 			url: `${ctx.baseUrl}/ocs/v1.php/cloud/users?limit=${limit}&offset=${offset}`,
@@ -83,6 +85,7 @@ export async function getUsers(
 
 		if (pageUsers.length < limit) break;
 		offset += limit;
+		page++;
 	}
 
 	let results: INodeListSearchItems[] = users.map((id) => ({ name: id, value: id }));

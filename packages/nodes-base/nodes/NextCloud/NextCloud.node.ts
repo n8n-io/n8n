@@ -1084,7 +1084,7 @@ export class NextCloud implements INodeType {
 						method: IHttpRequestMethods,
 						path: string,
 						body?: IDataObject,
-					): Promise<any> => {
+					): Promise<unknown> => {
 						return await this.helpers.request({
 							method,
 							url: `${baseUrl}/${deckBase}${path}`,
@@ -1131,13 +1131,20 @@ export class NextCloud implements INodeType {
 							const updateBody: IDataObject = { ...currentBoard };
 							const title = this.getNodeParameter('title', i, '') as string;
 							const color = this.getNodeParameter('color', i, '') as string;
-							const archived = this.getNodeParameter('archived', i, false) as boolean;
+							// `undefined` default matches the description's `default: undefined`,
+							// so we can detect "user left this untouched" and preserve the server value.
+							const archived = this.getNodeParameter('archived', i, undefined) as
+								| boolean
+								| undefined;
 							if (title) updateBody.title = title;
 							if (color) updateBody.color = stripHash(color);
 							updateBody.owner = getOwnerUid(
 								currentBoard.owner as IDataObject | string | undefined,
 							);
-							updateBody.archived = archived;
+							// Only include `archived` when the user explicitly toggled it.
+							// The Deck API treats PUT as a full replacement, so omitting the field
+							// here lets the pre-flight GET value (`{ ...currentBoard }`) survive.
+							if (archived !== undefined) updateBody.archived = archived;
 							responseData = await deckRequest('PUT', boardPath, updateBody);
 							break;
 						}
@@ -1312,13 +1319,13 @@ export class NextCloud implements INodeType {
 							const labelId = this.getNodeParameter('labelId', i, '', {
 								extractValue: true,
 							}) as string;
-							const parsedLabelId = parseInt(labelId, 10);
-							if (Number.isNaN(parsedLabelId)) {
+							if (!/^\d+$/.test(labelId)) {
 								throw new NodeOperationError(
 									this.getNode(),
 									'The label ID must be a valid number.',
 								);
 							}
+							const parsedLabelId = parseInt(labelId, 10);
 							responseData = await deckRequest(
 								'PUT',
 								`/boards/${encodeURIComponent(boardId)}/stacks/${encodeURIComponent(stackId)}/cards/${encodeURIComponent(cardId)}/assignLabel`,
@@ -1432,6 +1439,9 @@ export class NextCloud implements INodeType {
 							if (type) updateBody.type = type;
 							if (order !== undefined) updateBody.order = order;
 							if (dueDate) updateBody.duedate = dueDate;
+
+							// Owner is REQUIRED by Deck API on update – extract the uid string
+							updateBody.owner = getOwnerUid(currentCard.owner as IDataObject | string | undefined);
 
 							responseData = await deckRequest('PUT', cardPath, updateBody);
 							break;

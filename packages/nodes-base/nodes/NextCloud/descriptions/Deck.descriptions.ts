@@ -525,16 +525,18 @@ export const deckFields: INodeProperties[] = [
 		displayName: 'Color',
 		name: 'color',
 		type: 'color',
-		default: '#31CC7C',
-		description: 'The new color of the board in hex format',
+		default: '',
+		description:
+			'The new color of the board in hex format. Leave empty to keep the existing color.',
 		displayOptions: { show: { resource: ['deck'], operation: ['updateBoard'] } },
 	},
 	{
 		displayName: 'Archived',
 		name: 'archived',
+		// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-boolean
+		default: undefined,
 		type: 'boolean',
-		default: false,
-		description: 'Whether the board is archived',
+		description: 'Whether the board is archived. Leave unset to keep the current archived state.',
 		displayOptions: { show: { resource: ['deck'], operation: ['updateBoard'] } },
 	},
 
@@ -573,9 +575,10 @@ export const deckFields: INodeProperties[] = [
 	{
 		displayName: 'Order',
 		name: 'order',
+		// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-number
+		default: undefined,
 		type: 'number',
-		default: 0,
-		description: 'The new order/position of the stack',
+		description: 'The new order/position of the stack. Leave unset to keep the existing order.',
 		displayOptions: { show: { resource: ['deck'], operation: ['updateStack'] } },
 	},
 
@@ -658,9 +661,10 @@ export const deckFields: INodeProperties[] = [
 	{
 		displayName: 'Order',
 		name: 'order',
+		// eslint-disable-next-line n8n-nodes-base/node-param-default-wrong-for-number
+		default: undefined,
 		type: 'number',
-		default: 0,
-		description: 'The new order/position of the card',
+		description: 'The new order/position of the card. Leave unset to keep the existing order.',
 		displayOptions: { show: { resource: ['deck'], operation: ['updateCard'] } },
 	},
 	{
@@ -732,8 +736,9 @@ export const deckFields: INodeProperties[] = [
 		displayName: 'Color',
 		name: 'color',
 		type: 'color',
-		default: '#FF0000',
-		description: 'The new color of the label in hex format',
+		default: '',
+		description:
+			'The new color of the label in hex format. Leave empty to keep the existing color.',
 		displayOptions: { show: { resource: ['deck'], operation: ['updateLabel'] } },
 	},
 ];
