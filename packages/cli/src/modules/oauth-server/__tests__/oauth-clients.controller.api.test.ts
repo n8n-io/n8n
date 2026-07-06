@@ -44,10 +44,13 @@ describe('GET /rest/mcp/oauth-clients', () => {
 			tokenEndpointAuthMethod: 'none',
 		});
 
+		const grantedAt = Date.now();
 		await userConsentRepository.save({
 			userId: owner.id,
 			clientId: ownerClient.id,
-			grantedAt: Date.now(),
+			grantedAt,
+			scope: ['workflow:read', 'execution:read'],
+			lastActiveAt: null,
 		});
 		await userConsentRepository.save({
 			userId: member.id,
@@ -62,7 +65,37 @@ describe('GET /rest/mcp/oauth-clients', () => {
 			count: 1,
 		});
 		expect(response.body.data.data).toHaveLength(1);
-		expect(response.body.data.data[0].id).toBe(ownerClient.id);
+		expect(response.body.data.data[0]).toMatchObject({
+			id: ownerClient.id,
+			grantedAt,
+			scopes: ['workflow:read', 'execution:read'],
+			lastActiveAt: null,
+		});
+	});
+
+	test('should report full access for consents that predate scoping', async () => {
+		const client = await oauthClientRepository.save({
+			id: 'legacy-consent-client',
+			name: 'Legacy Client',
+			redirectUris: ['https://example.com/callback'],
+			grantTypes: ['authorization_code'],
+			tokenEndpointAuthMethod: 'none',
+		});
+
+		await userConsentRepository.save({
+			userId: owner.id,
+			clientId: client.id,
+			grantedAt: Date.now(),
+		});
+
+		const response = await testServer.authAgentFor(owner).get('/mcp/oauth-clients');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.data[0]).toMatchObject({
+			id: client.id,
+			scopes: null,
+			lastActiveAt: null,
+		});
 	});
 });
 

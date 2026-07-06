@@ -12,6 +12,7 @@ import type { AccessToken } from '../database/entities/oauth-access-token.entity
 import type { RefreshToken } from '../database/entities/oauth-refresh-token.entity';
 import { AccessTokenRepository } from '../database/repositories/oauth-access-token.repository';
 import { RefreshTokenRepository } from '../database/repositories/oauth-refresh-token.repository';
+import { UserConsentRepository } from '../database/repositories/oauth-user-consent.repository';
 import { OAuthTokenService } from '../oauth-token.service';
 import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
 
@@ -22,6 +23,7 @@ let logger: Mocked<Logger>;
 let userRepository: Mocked<UserRepository>;
 let accessTokenRepository: Mocked<AccessTokenRepository>;
 let refreshTokenRepository: Mocked<RefreshTokenRepository>;
+let userConsentRepository: Mocked<UserConsentRepository>;
 let service: OAuthTokenService;
 let mockTransactionManager: any;
 
@@ -44,6 +46,7 @@ describe('OAuthTokenService', () => {
 		userRepository = mockInstance(UserRepository);
 		accessTokenRepository = mockInstance(AccessTokenRepository) as Mocked<AccessTokenRepository>;
 		refreshTokenRepository = mockInstance(RefreshTokenRepository) as Mocked<RefreshTokenRepository>;
+		userConsentRepository = mockInstance(UserConsentRepository) as Mocked<UserConsentRepository>;
 
 		mockTransactionManager = {
 			insert: vi.fn().mockResolvedValue(mock()),
@@ -67,6 +70,7 @@ describe('OAuthTokenService', () => {
 			userRepository,
 			accessTokenRepository,
 			refreshTokenRepository,
+			userConsentRepository,
 			registry,
 		);
 	});
@@ -478,6 +482,41 @@ describe('OAuthTokenService', () => {
 			const result = await service.verifyOAuthAccessToken(accessToken);
 
 			expect(result).toMatchObject({ user: null });
+			expect(userConsentRepository.update).not.toHaveBeenCalled();
+		});
+
+		it('should record client activity on successful verification', async () => {
+			const userId = 'user-activity';
+			const clientId = 'client-activity';
+			const { accessToken } = service.generateTokenPair(userId, clientId, undefined, []);
+
+			accessTokenRepository.findOne.mockResolvedValue(
+				mock<AccessToken>({ token: accessToken, clientId, userId }),
+			);
+			userRepository.findOne.mockResolvedValue(mock<User>({ id: userId }));
+
+			await service.verifyOAuthAccessToken(accessToken);
+
+			expect(userConsentRepository.update).toHaveBeenCalledWith(
+				{ userId, clientId },
+				{ lastActiveAt: expect.any(Number) },
+			);
+		});
+
+		it('should throttle activity writes for the same user and client', async () => {
+			const userId = 'user-throttled';
+			const clientId = 'client-throttled';
+			const { accessToken } = service.generateTokenPair(userId, clientId, undefined, []);
+
+			accessTokenRepository.findOne.mockResolvedValue(
+				mock<AccessToken>({ token: accessToken, clientId, userId }),
+			);
+			userRepository.findOne.mockResolvedValue(mock<User>({ id: userId }));
+
+			await service.verifyOAuthAccessToken(accessToken);
+			await service.verifyOAuthAccessToken(accessToken);
+
+			expect(userConsentRepository.update).toHaveBeenCalledTimes(1);
 		});
 	});
 
@@ -570,6 +609,7 @@ describe('OAuthTokenService', () => {
 				userRepository,
 				accessTokenRepository,
 				refreshTokenRepository,
+				userConsentRepository,
 				multiResourceRegistry,
 			);
 		});
@@ -650,6 +690,7 @@ describe('OAuthTokenService', () => {
 				userRepository,
 				accessTokenRepository,
 				refreshTokenRepository,
+				userConsentRepository,
 				scopedRegistry,
 			);
 		});

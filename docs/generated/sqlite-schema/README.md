@@ -83,7 +83,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [oauth_authorization_codes](oauth_authorization_codes.md) | 13 |  | table |
 | [oauth_clients](oauth_clients.md) | 9 |  | table |
 | [oauth_refresh_tokens](oauth_refresh_tokens.md) | 7 |  | table |
-| [oauth_user_consents](oauth_user_consents.md) | 5 |  | table |
+| [oauth_user_consents](oauth_user_consents.md) | 6 |  | table |
 | [processed_data](processed_data.md) | 5 |  | table |
 | [project](project.md) | 9 |  | table |
 | [project_relation](project_relation.md) | 5 |  | table |
@@ -1022,6 +1022,7 @@ erDiagram
   varchar clientId FK
   bigint grantedAt
   INTEGER id
+  bigint lastActiveAt
   TEXT scope
   varchar userId FK
 }

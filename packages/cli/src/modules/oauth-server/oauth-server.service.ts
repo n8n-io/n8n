@@ -30,6 +30,16 @@ import { ProtectedResourceRegistry } from '@/services/protected-resource.registr
 /** Maximum number of redirect URIs per client */
 const MAX_REDIRECT_URIS = 10;
 
+/** A client the user has consented to, enriched with the grant details of the consent. */
+export type ConnectedOAuthClient = Omit<
+	OAuthClient,
+	'clientSecret' | 'clientSecretExpiresAt' | 'setUpdateDate'
+> & {
+	grantedAt: number;
+	scopes: string[] | null;
+	lastActiveAt: number | null;
+};
+
 /** Maximum length for a single redirect URI */
 const MAX_REDIRECT_URI_LENGTH = 2048;
 
@@ -425,18 +435,24 @@ export class OAuthServerService implements OAuthServerProvider {
 	}
 
 	/**
-	 * Get all OAuth clients for a specific user (excluding sensitive data)
+	 * Get all OAuth clients the user has consented to (excluding sensitive
+	 * data), together with the grant details of the consent itself.
 	 */
-	async getAllClients(
-		userId: string,
-	): Promise<Array<Omit<OAuthClient, 'clientSecret' | 'clientSecretExpiresAt' | 'setUpdateDate'>>> {
+	async getAllClients(userId: string): Promise<ConnectedOAuthClient[]> {
 		// Get all consents for the user with client information
 		const userConsents = await this.userConsentRepository.findByUserWithClient(userId);
 
 		// Extract and sanitize the client information
 		return userConsents.map((consent) => {
 			const { clientSecret, clientSecretExpiresAt, ...sanitizedClient } = consent.client;
-			return sanitizedClient;
+			return {
+				...sanitizedClient,
+				// bigint columns come back as strings on Postgres
+				grantedAt: Number(consent.grantedAt),
+				// NULL = consent predates scoping = full access
+				scopes: consent.scope,
+				lastActiveAt: consent.lastActiveAt === null ? null : Number(consent.lastActiveAt),
+			};
 		});
 	}
 

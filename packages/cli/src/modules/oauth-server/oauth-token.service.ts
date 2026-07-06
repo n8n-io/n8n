@@ -14,6 +14,7 @@ import { AccessToken } from './database/entities/oauth-access-token.entity';
 import { RefreshToken } from './database/entities/oauth-refresh-token.entity';
 import { AccessTokenRepository } from './database/repositories/oauth-access-token.repository';
 import { RefreshTokenRepository } from './database/repositories/oauth-refresh-token.repository';
+import { UserConsentRepository } from './database/repositories/oauth-user-consent.repository';
 import { AccessTokenNotFoundError, JWTVerificationError } from './oauth.errors';
 
 import { JwtService } from '@/services/jwt.service';
@@ -44,12 +45,18 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 	private readonly ACCESS_TOKEN_EXPIRY_SECONDS = 1 * Time.hours.toSeconds;
 	private readonly REFRESH_TOKEN_EXPIRY_MS = 30 * Time.days.toMilliseconds;
 
+	private readonly LAST_ACTIVE_THROTTLE_MS = 1 * Time.minutes.toMilliseconds;
+
+	/** Per user+client timestamp of the last `lastActiveAt` write, to throttle DB updates. */
+	private readonly lastActivityWrites = new Map<string, number>();
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly jwtService: JwtService,
 		private readonly userRepository: UserRepository,
 		private readonly accessTokenRepository: AccessTokenRepository,
 		private readonly refreshTokenRepository: RefreshTokenRepository,
+		private readonly userConsentRepository: UserConsentRepository,
 		private readonly resourceRegistry: ProtectedResourceRegistry,
 	) {}
 
@@ -289,6 +296,8 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 				return { user: null, context: { reason: 'user_not_found', auth_type: 'oauth' } };
 			}
 
+			this.touchConsentActivity(userId, authInfo.clientId);
+
 			return { user, authType: 'oauth', scopes: authInfo.scopes };
 		} catch (error) {
 			const errorForSure = ensureError(error);
@@ -307,6 +316,30 @@ export class OAuthTokenService implements OAuthTokenVerifier {
 				},
 			};
 		}
+	}
+
+	/**
+	 * Records activity on the user+client grant for the connected-clients list.
+	 * Fire-and-forget and throttled so the hot request path never waits on, or
+	 * hammers, the consents table.
+	 */
+	private touchConsentActivity(userId: string, clientId: string): void {
+		const key = `${userId}:${clientId}`;
+		const now = Date.now();
+		const lastWrite = this.lastActivityWrites.get(key);
+		if (lastWrite !== undefined && now - lastWrite < this.LAST_ACTIVE_THROTTLE_MS) return;
+		this.lastActivityWrites.set(key, now);
+
+		void (async () => {
+			try {
+				await this.userConsentRepository.update({ userId, clientId }, { lastActiveAt: now });
+			} catch (error) {
+				this.logger.debug('Failed to record OAuth client activity', {
+					clientId,
+					error: ensureError(error).message,
+				});
+			}
+		})();
 	}
 
 	async revokeAccessToken(token: string, clientId: string): Promise<boolean> {

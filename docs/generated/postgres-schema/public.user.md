@@ -227,6 +227,7 @@ erDiagram
   varchar clientId FK
   bigint grantedAt
   integer id
+  bigint lastActiveAt
   json scope
   uuid userId FK
 }

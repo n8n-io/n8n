@@ -43,6 +43,9 @@ export class OAuthClientsController {
 			tokenEndpointAuthMethod: client.tokenEndpointAuthMethod,
 			createdAt: client.createdAt.toISOString(),
 			updatedAt: client.updatedAt.toISOString(),
+			grantedAt: client.grantedAt,
+			scopes: client.scopes,
+			lastActiveAt: client.lastActiveAt,
 		}));
 
 		return {
