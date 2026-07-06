@@ -186,6 +186,7 @@ export type ReadKnowledgeRequest = z.infer<typeof readKnowledgeInputSchema>;
 export interface AgentKnowledgeFileReference {
 	file: string;
 	fileId: string;
+	binaryDataId: string;
 	displayName: string;
 	mimeType: string;
 	fileSizeBytes: number;

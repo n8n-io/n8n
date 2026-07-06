@@ -19,7 +19,6 @@ function makeController({
 	agentsConfig = {
 		sandboxEnabled: true,
 		sandboxProvider: 'daytona',
-		daytonaVolumeId: 'volume-1',
 	} as AgentsConfig,
 	runtimeCacheService = mock<AgentRuntimeCacheService>(),
 }: {
@@ -134,7 +133,6 @@ describe('AgentKnowledgeController knowledge base gating', () => {
 			agentsConfig: {
 				sandboxEnabled: false,
 				sandboxProvider: 'daytona',
-				daytonaVolumeId: 'volume-1',
 			} as AgentsConfig,
 		});
 

@@ -5,7 +5,7 @@ import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
-import { InstanceSettings } from 'n8n-core';
+import { BinaryDataService, InstanceSettings } from 'n8n-core';
 import { OperationalError } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 import { createHash } from 'node:crypto';
@@ -16,7 +16,7 @@ import { AiService } from '@/services/ai.service';
 import { TtlMap } from '@/utils/ttl-map';
 
 import {
-	buildMirrorSyncCommand,
+	buildMirrorFinalizeCommand,
 	buildReadKnowledgeCommand,
 	buildReadMirrorManifestCommand,
 	buildScopedKnowledgeShellCommand,
@@ -46,11 +46,9 @@ import {
 	type SearchKnowledgeResult,
 } from './agent-knowledge-retrieval';
 import {
-	AGENT_KNOWLEDGE_VOLUME_MOUNT_PATH,
 	assertKnowledgePathSegment,
-	buildKnowledgeVolumeSubpath,
-	fromVolumeStorageReference,
-	type AgentKnowledgeFilesystem,
+	KNOWLEDGE_MIRROR_FILES_DIR,
+	storageFileNameForOriginalFileName,
 } from './agent-knowledge-storage';
 import { AgentFileRepository } from './repositories/agent-file.repository';
 import { AgentRepository } from './repositories/agent.repository';
@@ -84,12 +82,9 @@ const MIRROR_MANIFEST_HASH_TTL_MS = 30 * Time.minutes.toMilliseconds;
 // Cap B (1.5 GB knowledge base limit) keeps real copies well under this —
 // this only guards against the sandbox disk unexpectedly filling up.
 const MIRROR_DISK_FIT_WARNING_BYTES = 2 * 1024 * 1024 * 1024;
-
-interface KnowledgeVolumeMount {
-	volumeId: string;
-	mountPath: string;
-	subpath: string;
-}
+// Caps how many file bytes are held in the main process at once while
+// staging a mirror sync — the KB itself can be up to 1.5 GB.
+const MIRROR_UPLOAD_BATCH_BYTES = 64 * 1024 * 1024;
 
 interface AgentKnowledgeDaytonaConnection {
 	apiUrl?: string;
@@ -168,27 +163,10 @@ function buildScopeLabels(projectId: string, agentId: string): Record<string, st
 	};
 }
 
-function isVolumeMountFailure(error: unknown): boolean {
-	const message = error instanceof Error ? error.message : String(error);
-	return /volume|mount|subpath/i.test(message);
-}
-
 function isUsableSandbox(sandbox: Sandbox): boolean {
 	const state = sandbox.state;
 	if (!state) return true;
 	return !DEAD_SANDBOX_STATES.has(state);
-}
-
-function hasMatchingVolumeMount(sandbox: Sandbox, expected: KnowledgeVolumeMount): boolean {
-	const volumes = sandbox.volumes ?? [];
-	return volumes.some((volume) => {
-		const mount = volume as KnowledgeVolumeMount;
-		return (
-			mount.volumeId === expected.volumeId &&
-			mount.mountPath === expected.mountPath &&
-			mount.subpath === expected.subpath
-		);
-	});
 }
 
 function truncateSandboxErrorDetail(value: string): string {
@@ -237,20 +215,8 @@ export class AgentKnowledgeSandboxService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly agentFileRepository: AgentFileRepository,
 		private readonly agentRepository: AgentRepository,
+		private readonly binaryDataService: BinaryDataService,
 	) {}
-
-	async withKnowledgeFilesystem<T>(
-		projectId: string,
-		agentId: string,
-		operation: (filesystem: AgentKnowledgeFilesystem) => Promise<T>,
-	): Promise<T> {
-		// Callers (AgentKnowledgeService) verify project↔agent ownership before
-		// invoking filesystem operations, so only configuration is asserted here.
-		this.assertKnowledgeConfiguration(projectId, agentId);
-		const sandbox = await this.acquireSandbox(projectId, agentId);
-		const filesystem = this.createFilesystemAdapter(sandbox);
-		return await operation(filesystem);
-	}
 
 	async warmSandbox(projectId: string, agentId: string): Promise<void> {
 		this.assertKnowledgeConfiguration(projectId, agentId);
@@ -514,6 +480,10 @@ export class AgentKnowledgeSandboxService {
 			return;
 		}
 
+		for (const name of [...expectedNames, ...toDelete]) {
+			assertKnowledgePathSegment(name, 'knowledge mirror file name');
+		}
+
 		if (present.length === 0 && toCopy.length > 0) {
 			const totalBytes = files.reduce((total, file) => total + file.fileSizeBytes, 0);
 			if (totalBytes > MIRROR_DISK_FIT_WARNING_BYTES) {
@@ -524,8 +494,16 @@ export class AgentKnowledgeSandboxService {
 			}
 		}
 
+		const filesByName = new Map(files.map((file) => [file.file, file]));
+		const copiedNames = await this.uploadMirrorFiles(sandbox, toCopy, filesByName, sandboxName);
+		// Files that failed to load from BinaryDataService are left out of the
+		// manifest, so the next sync attempt retries them as `toCopy` again.
+		const finalManifestNames = expectedNames.filter(
+			(name) => copiedNames.has(name) || presentSet.has(name),
+		);
+
 		const syncResult = await sandbox.process.executeCommand(
-			buildMirrorSyncCommand(toCopy, toDelete, expectedNames),
+			buildMirrorFinalizeCommand([...copiedNames], toDelete, finalManifestNames),
 			undefined,
 			undefined,
 			MIRROR_SYNC_TIMEOUT_SECONDS,
@@ -535,13 +513,80 @@ export class AgentKnowledgeSandboxService {
 				`Agent knowledge mirror sync failed: exitCode=${syncResult.exitCode}; output=${sanitizeSandboxErrorDetail(extractCommandOutput(syncResult))}`,
 			);
 		}
-		this.mirrorManifestHashes.set(sandboxName, expectedHash);
+		// Cache the hash of what's actually on disk, not `expectedHash`: if a
+		// file failed to load, this mismatches the next `expectedHash` and
+		// forces a retry instead of silently caching a partial mirror as done.
+		this.mirrorManifestHashes.set(sandboxName, hashManifestNames(finalManifestNames));
 	}
 
 	/**
-	 * Fire-and-forget mirror pre-warm. Called after uploads so the volume copy
-	 * runs while the just-written data is still hot in the sandbox's cache,
-	 * instead of taxing the next search with it.
+	 * Fetches each `names` entry from BinaryDataService and uploads it to the
+	 * sandbox mirror under a `.tmp-` prefix; `buildMirrorFinalizeCommand` moves
+	 * it into place so a concurrent search never sees a partially-written file.
+	 * Uploads flush in `MIRROR_UPLOAD_BATCH_BYTES`-sized batches so the whole
+	 * knowledge base (up to 1.5 GB) is never held in memory at once.
+	 * Returns the subset of `names` that were fetched and uploaded successfully.
+	 */
+	private async uploadMirrorFiles(
+		sandbox: Sandbox,
+		names: string[],
+		filesByName: Map<string, AgentKnowledgeFileReference>,
+		sandboxName: string,
+	): Promise<Set<string>> {
+		const copiedNames = new Set<string>();
+		if (names.length === 0) return copiedNames;
+
+		await sandbox.fs.createFolder(KNOWLEDGE_MIRROR_FILES_DIR, '755');
+
+		let batch: Array<{ source: Buffer; destination: string }> = [];
+		let batchNames: string[] = [];
+		let batchBytes = 0;
+
+		const flushBatch = async (): Promise<void> => {
+			if (batch.length === 0) return;
+			await sandbox.fs.uploadFiles(batch);
+			for (const name of batchNames) copiedNames.add(name);
+			batch = [];
+			batchNames = [];
+			batchBytes = 0;
+		};
+
+		for (const name of names) {
+			const file = filesByName.get(name);
+			if (!file) continue;
+
+			try {
+				const buffer = await this.binaryDataService.getAsBuffer({
+					id: file.binaryDataId,
+					data: '',
+					mimeType: file.mimeType,
+				});
+				batch.push({ source: buffer, destination: `${KNOWLEDGE_MIRROR_FILES_DIR}/.tmp-${name}` });
+				batchNames.push(name);
+				batchBytes += buffer.length;
+			} catch (error) {
+				this.logger.warn('Failed to load agent knowledge file for mirror sync', {
+					sandboxName,
+					file: name,
+					error: error instanceof Error ? error.message : String(error),
+				});
+				continue;
+			}
+
+			if (batchBytes >= MIRROR_UPLOAD_BATCH_BYTES) {
+				await flushBatch();
+			}
+		}
+
+		await flushBatch();
+
+		return copiedNames;
+	}
+
+	/**
+	 * Fire-and-forget mirror pre-warm. Called after uploads so the mirror copy
+	 * runs while the just-written data is still hot, instead of taxing the
+	 * next search with it.
 	 */
 	prewarmMirrorInBackground(projectId: string, agentId: string): void {
 		void (async () => {
@@ -591,8 +636,9 @@ export class AgentKnowledgeSandboxService {
 	): Promise<AgentKnowledgeFileReference[]> {
 		const files = await this.agentFileRepository.findByAgentId(agentId);
 		return files.map((file) => ({
-			file: fromVolumeStorageReference(file.binaryDataId),
+			file: storageFileNameForOriginalFileName(file.fileName),
 			fileId: file.id,
+			binaryDataId: file.binaryDataId,
 			displayName: file.fileName,
 			mimeType: file.mimeType,
 			fileSizeBytes: file.fileSizeBytes,
@@ -643,21 +689,6 @@ export class AgentKnowledgeSandboxService {
 		return file;
 	}
 
-	private createFilesystemAdapter(sandbox: Sandbox): AgentKnowledgeFilesystem {
-		return {
-			uploadFiles: async (files) => {
-				if (files.length === 0) {
-					return;
-				}
-				await sandbox.fs.uploadFiles(
-					files.map((file) => ({ source: file.source, destination: file.destination })),
-				);
-			},
-			deleteFile: async (filePath, recursive) => await sandbox.fs.deleteFile(filePath, recursive),
-			ensureDir: async (dirPath) => await sandbox.fs.createFolder(dirPath, '755'),
-		};
-	}
-
 	private async acquireSandbox(projectId: string, agentId: string): Promise<Sandbox> {
 		const cacheKey = buildSandboxScopeKey(projectId, agentId);
 		let pending = this.pendingSandboxAcquisitions.get(cacheKey);
@@ -691,7 +722,6 @@ export class AgentKnowledgeSandboxService {
 		});
 		const labels = buildScopeLabels(projectId, agentId);
 		const timeoutSeconds = Math.ceil(this.agentsConfig.sandboxTimeout / 1000);
-		const volumeMount = this.buildVolumeMount(projectId, agentId);
 		const name = buildSandboxName({
 			instanceId: this.instanceSettings.instanceId,
 			projectId,
@@ -701,7 +731,6 @@ export class AgentKnowledgeSandboxService {
 		const sandboxByName = await this.resolveSandboxByName(
 			daytona,
 			name,
-			volumeMount,
 			timeoutSeconds,
 			connection,
 		);
@@ -717,44 +746,29 @@ export class AgentKnowledgeSandboxService {
 			language: 'typescript' as const,
 			ephemeral: this.agentsConfig.sandboxEphemeral,
 			autoStopInterval: AUTO_STOP_INTERVAL_MINUTES,
-			volumes: [volumeMount],
 		};
 
 		let sandbox: Sandbox;
-		try {
-			if (connection.snapshot) {
-				try {
-					sandbox = await daytona.create(
-						{ ...baseCreateParams, snapshot: connection.snapshot },
-						{ timeout: timeoutSeconds },
-					);
-				} catch (error) {
-					this.logger.warn(
-						'Agent knowledge sandbox create from snapshot failed; falling back to image',
-						{
-							projectId,
-							agentId,
-							snapshotName: connection.snapshot,
-							error: error instanceof Error ? error.message : String(error),
-						},
-					);
-					sandbox = await daytona.create(
-						{ ...baseCreateParams, image },
-						{ timeout: timeoutSeconds },
-					);
-				}
-			} else {
+		if (connection.snapshot) {
+			try {
+				sandbox = await daytona.create(
+					{ ...baseCreateParams, snapshot: connection.snapshot },
+					{ timeout: timeoutSeconds },
+				);
+			} catch (error) {
+				this.logger.warn(
+					'Agent knowledge sandbox create from snapshot failed; falling back to image',
+					{
+						projectId,
+						agentId,
+						snapshotName: connection.snapshot,
+						error: error instanceof Error ? error.message : String(error),
+					},
+				);
 				sandbox = await daytona.create({ ...baseCreateParams, image }, { timeout: timeoutSeconds });
 			}
-		} catch (error) {
-			if (connection.mode === 'proxy' && isVolumeMountFailure(error)) {
-				const message = error instanceof Error ? error.message : String(error);
-				throw new OperationalError(
-					`Agent knowledge sandbox creation failed through the AI Assistant sandbox proxy: ${message}. If the proxy does not support volume mounts, enable them before using the agent knowledge base.`,
-					{ cause: error },
-				);
-			}
-			throw error;
+		} else {
+			sandbox = await daytona.create({ ...baseCreateParams, image }, { timeout: timeoutSeconds });
 		}
 
 		this.logger.debug('Created agent knowledge sandbox', { projectId, agentId, name });
@@ -794,18 +808,9 @@ export class AgentKnowledgeSandboxService {
 		};
 	}
 
-	private buildVolumeMount(projectId: string, agentId: string): KnowledgeVolumeMount {
-		return {
-			volumeId: this.agentsConfig.daytonaVolumeId,
-			mountPath: AGENT_KNOWLEDGE_VOLUME_MOUNT_PATH,
-			subpath: buildKnowledgeVolumeSubpath(this.instanceSettings.instanceId, projectId, agentId),
-		};
-	}
-
 	private async resolveSandboxByName(
 		daytona: { get: (name: string) => Promise<Sandbox> },
 		name: string,
-		volumeMount: KnowledgeVolumeMount,
 		timeoutSeconds: number,
 		connection: AgentKnowledgeDaytonaConnection,
 	): Promise<Sandbox | undefined> {
@@ -822,10 +827,6 @@ export class AgentKnowledgeSandboxService {
 		if (!isUsableSandbox(sandbox)) {
 			await sandbox.delete(timeoutSeconds);
 			return undefined;
-		}
-
-		if (!hasMatchingVolumeMount(sandbox, volumeMount)) {
-			throw new OperationalError('Agent knowledge sandbox has an unexpected volume mount');
 		}
 
 		if (sandbox.state !== SANDBOX_STATE_STARTED) {
@@ -880,14 +881,6 @@ export class AgentKnowledgeSandboxService {
 	private assertKnowledgeBaseEnabled(): void {
 		if (isAgentKnowledgeBaseEnabled(this.agentsConfig)) {
 			return;
-		}
-
-		if (
-			this.agentsConfig.sandboxEnabled &&
-			this.agentsConfig.sandboxProvider === 'daytona' &&
-			!this.agentsConfig.daytonaVolumeId.trim()
-		) {
-			throw new OperationalError('Agent knowledge Daytona volume is not configured');
 		}
 
 		throw new OperationalError('Agent knowledge sandbox is not enabled');
