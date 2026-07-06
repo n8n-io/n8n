@@ -415,12 +415,13 @@ export function useNodeHelpers() {
 		return null;
 	}
 
-	// Returns the first enabled trigger that can't establish the n8n user identity
-	// end-user credentials need, or null when the workflow is compatible. Private
+	// Returns the trigger that blocks end-user credentials — a trigger to name in
+	// the incompatibility issue — or null when the workflow is compatible. Private
 	// (self-connected) credentials resolve via the system resolver, which keys on
-	// the n8n user identity — mirror the backend publish check: the workflow is
-	// compatible as long as at least one trigger establishes that identity.
-	function getIncompatibleTrigger(): INodeUi | null {
+	// the n8n user identity. Mirror the backend publish check: the workflow is
+	// compatible as long as at least one enabled trigger establishes that identity,
+	// so a single compatible trigger clears the issue even if others can't.
+	function getBlockingTrigger(): INodeUi | null {
 		const triggers = workflowDocumentStore.value.workflowTriggerNodes.filter(
 			(trigger) => !trigger.disabled,
 		);
@@ -453,7 +454,7 @@ export function useNodeHelpers() {
 	): void {
 		if (!isPrivateCredentialsEnabled.value) return;
 
-		const incompatibleTrigger = getIncompatibleTrigger();
+		const blockingTrigger = getBlockingTrigger();
 
 		for (const [credTypeName, details] of Object.entries(node.credentials ?? {})) {
 			if (foundIssues[credTypeName]?.length) continue;
@@ -465,10 +466,10 @@ export function useNodeHelpers() {
 			// Mirror the backend publish check: trigger incompatibility blocks publish
 			// regardless of who connected the credential, so warn on it here too. A
 			// merely-not-yet-connected credential is surfaced via the callout/banner.
-			if (incompatibleTrigger) {
+			if (blockingTrigger) {
 				foundIssues[credTypeName] = [
 					i18n.baseText('nodeIssues.credentials.privateRequiresManualTrigger', {
-						interpolate: { triggerName: getTriggerDisplayName(incompatibleTrigger) },
+						interpolate: { triggerName: getTriggerDisplayName(blockingTrigger) },
 					}),
 				];
 			}

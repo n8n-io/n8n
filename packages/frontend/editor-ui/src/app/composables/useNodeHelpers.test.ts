@@ -1325,7 +1325,7 @@ describe('useNodeHelpers()', () => {
 				// Trigger incompatibility blocks publish regardless of who connected the
 				// credential, so the editor warns even when the user did not connect it.
 				expect(result?.credentials?.[NOTION_API]?.[0]).toContain(
-					'Private credentials require a trigger that establishes who is running the workflow',
+					"End-user credentials aren't supported with the Webhook trigger",
 				);
 			});
 		});
