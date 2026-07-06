@@ -57,9 +57,7 @@ export class FolderFinderService {
 	}
 
 	/**
-	 * All folder ids in a project (membership only — no access filter). Access is
-	 * enforced downstream by FolderExporter (folder:read), which aborts on any gap,
-	 * so discovery must surface every folder for that abort to fire.
+	 * List all folder ids in a project
 	 */
 	async findFolderIdsInProject(projectId: string): Promise<string[]> {
 		const folders = await this.folderRepository.find({
